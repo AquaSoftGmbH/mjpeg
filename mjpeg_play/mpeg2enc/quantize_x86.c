@@ -40,17 +40,11 @@
 #include "tables.h"
 #include "quantize_precomp.h"
 #include "quantize_ref.h"
-
-/* Implemented in pure (NASM) assembler routines 	*/
 					
-int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat )
-	__asm__ ("quant_weight_coeff_sum_mmx");
+int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat );
 
-
-void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
-	__asm__ ("iquantize_non_intra_m1_mmx");
-void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
-	__asm__ ("iquantize_non_intra_m2_mmx");
+void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
+void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
 
 /* 
  * Quantisation for non-intra blocks 
@@ -354,7 +348,7 @@ static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
     return nzflag;
 }
 
-#ifdef HAVE_ASM_NASM
+
 static void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
 							 int16_t *src, int16_t *dst, int mquant )
 {
@@ -377,7 +371,6 @@ static int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
 {
 	return quant_weight_coeff_sum_mmx( blk, wsp->i_inter_q_mat );
 }
-#endif
 
 #if 0
 static int quant_non_intra_test(struct QuantizerWorkSpace *wsp,
@@ -463,7 +456,6 @@ void init_x86_quantization( struct QuantizerCalls *qcalls,
         }
 
         opt_type2 = "MMX";
-#ifdef HAVE_ASM_NASM
         if (d_weight_intra == 0)
             qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
         if (d_weight_nonintra == 0)
@@ -479,7 +471,6 @@ void init_x86_quantization( struct QuantizerCalls *qcalls,
             if (d_iquant_nonintra == 0)
                 qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
         }
-#endif
         
         if  (d_quant_nonintra)
             mjpeg_info(" Disabling quant_non_intra");
