@@ -5,11 +5,13 @@ Fix all the BUGS (see BUGS) of course!
 
 TASKS OUTSTANDING
 
+Documentation.
 
-- yuvdenoiser needs to be tidied up with redundant scaffolding code
-removed once we're sure everything is working correctly.
-	
-- Modify yuvscaler to generate MPEG aspect ratio codes if desired?
+	- Maybe an FAQ to complement Bernhard's HOWTO 
+	all those standard "AVI" questions
+	all those standard questions about MPEG, VCD, SVCD
+	all those standard questions about busted audio drivers
+
 
 Code hygiene  basically: GNU guidelines!
 Basically if you want a nice example of how it should be done take
@@ -28,21 +30,16 @@ a look at the source code for vcdimager!
   yuvscale.
 
 
-Medium
+Major
+
+-	Continuation of frozen encoding sessions.
+
+
+Maybe sometime
 
 - Find a proper SSE DCT and iDCT.
 
 - Test support for field pictures to mplex. Not urgent since for most
   sources frame pictures with field DCT/motion compensation seems to
   give better results.
-
-- Add the code to do DVD multiplexing into mplex.  This is
-mainly the addition of facilities to mux in AC-3 as stream PRIVATE1.
-As ever Brent Byeler's "bbmpeg" is a good source here.
-
-
-Major
-
--	Continuation of frozen encoding sessions.
-
 

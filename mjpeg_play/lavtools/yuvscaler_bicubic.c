@@ -5,7 +5,7 @@
 #include <math.h>
 #include <signal.h>
 #include "yuv4mpeg.h"
-#include "inttypes.h"
+#include "mjpeg_types.h"
 #include "yuvscaler.h"
 #include "attributes.h"
 #include "../utils/mmx.h"
