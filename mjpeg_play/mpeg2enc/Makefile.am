@@ -19,6 +19,8 @@ EXTRA_DIST = \
     mblock_sub44_sads_x86_h.c \
 	predcomp_mmxe.o predcomp_mmx.o
 
+INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
+
 if HAVE_X86CPU
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)
 else
@@ -32,7 +34,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
 
-mpeg2enc_LDADD=-lm -lpthread
+mpeg2enc_LDADD= -L $(top_srcdir)/utils -lutils -lm -lpthread
 
 ASM = nasm
 

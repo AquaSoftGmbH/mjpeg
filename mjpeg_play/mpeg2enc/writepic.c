@@ -55,8 +55,7 @@ void writeframe(int frame_num,
   sprintf(name,"%d.Y",frame_num);
   if (!(fd = fopen(name,"wb")))
   {
-    sprintf(errortext,"Couldn't create %s\n",name);
-    error(errortext);
+    mjpeg_error_exit1("Couldn't create %s\n",name);
   }
   fwrite(frame[0],1,horizontal_size*vertical_size,fd);
   fclose(fd);
@@ -65,8 +64,7 @@ void writeframe(int frame_num,
   sprintf(name,"%s.U",fname);
   if (!(fd = fopen(name,"wb")))
   {
-    sprintf(errortext,"Couldn't create %s\n",name);
-    error(errortext);
+    mjpeg_error_exit1("Couldn't create %s\n",name);
   }
   fwrite(frame[1],1,chrom_hsize*chrom_vsize,fd);
   fclose(fd);
@@ -75,8 +73,7 @@ void writeframe(int frame_num,
   sprintf(name,"%s.V",fname);
   if (!(fd = fopen(name,"wb")))
   {
-    sprintf(errortext,"Couldn't create %s\n",name);
-    error(errortext);
+    mjpeg_error_exit1("Couldn't create %s\n",name);
   }
   fwrite(frame[2],1,chrom_hsize*chrom_vsize,fd);
   fclose(fd);

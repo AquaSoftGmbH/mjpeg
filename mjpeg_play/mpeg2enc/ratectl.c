@@ -906,9 +906,8 @@ void calc_vbv_delay(pict_data_s *picture)
 	if (!low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/bit_rate))
 	{
 		/* picture not completely in buffer at intended decoding time */
-		fprintf(stderr,"WARNING: vbv_delay underflow frame %d (target=%.1f, actual=%.1f\n)",
-				frame_num-1, decoding_time, bitcnt_EOP*90000.0/bit_rate);
-		printf( "gu=%d\n", gop_undershoot );
+		mjpeg_warn("vbv_delay underflow frame %d (target=%.1f, actual=%.1f\n)",
+				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/bit_rate);
 	}
 
 
@@ -929,9 +928,9 @@ void calc_vbv_delay(pict_data_s *picture)
 		double oversize = vbv_buffer_size -
 			(decoding_time / 90000.0 * bit_rate - (double)(bitcnt_EOP+gop_undershoot));
 		if(!quiet || oversize > 0.0  )
-			fprintf(stderr,"vbv_delay overflow frame %d - %f.0 bytes!\n", 
-					frame_num,
-					oversize / 8.0
+			mjpeg_warn("vbv_delay overflow frame %d - %f.0 bytes!\n", 
+					   frame_num,
+					   oversize / 8.0
 				);
 	}
 
@@ -944,8 +943,7 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	if (picture->vbv_delay<0)
 	{
-		if (!quiet)
-			fprintf(stderr,"vbv_delay underflow: %d\n",picture->vbv_delay);
+		mjpeg_warn("vbv_delay underflow: %d\n",picture->vbv_delay);
 		picture->vbv_delay = 0;
 	}
 
@@ -953,8 +951,8 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	if (picture->vbv_delay>65535)
 	{
-		fprintf(stderr,"vbv_delay frame %d exceeds permissible range: %d\n",
-				frame_num, picture->vbv_delay);
+		mjpeg_warn("vbv_delay frame %d exceeds permissible range: %d\n",
+				   frame_num, picture->vbv_delay);
 		picture->vbv_delay = 65535;
 	}
 #else

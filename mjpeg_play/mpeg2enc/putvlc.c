@@ -61,8 +61,8 @@ int val;
   if (absval>dctsatlim)
   {
     /* should never happen */
-    sprintf(errortext,"DC value out of range (%d)\n",val);
-    error(errortext);
+    mjpeg_error("Internal: DC value out of range (%d)\n",val);
+	abort();
   }
 
   /* compute dct_dc_size */
@@ -113,9 +113,9 @@ int run,signed_level,vlcformat;
   {
 	  if( signed_level != -(dctsatlim+1))		/* Negative range is actually 1 more */
 	  {
-		  sprintf(errortext,"AC value out of range (run=%d, signed_level=%d)\n",
-				  run,signed_level);
-		  error(errortext);
+		  mjpeg_error("Internal: AC value out of range (run=%d, signed_level=%d)\n",
+					  run,signed_level);
+		  abort();
 	  }
   }
 

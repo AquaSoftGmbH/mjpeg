@@ -79,39 +79,42 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat)
 void init_quantizer()
 {
   int flags;
+  char *opt_type1;
+  char *opt_type2;
+  
   flags = cpu_accel();
 #ifdef HAVE_X86CPU 
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
-		fprintf( stderr, "SETTING " );
 		if( (flags & ACCEL_X86_3DNOW) != 0 )
 		{
-			fprintf( stderr, "3DNOW and ");
+			opt_type1 = "3DNOW and";
 			pquant_non_intra = quant_non_intra_3dnow;
 		}
 		else if ( (flags & ACCEL_X86_MMXEXT) != 0 )
 		{
-			fprintf( stderr, "SSE and ");
+			opt_type1 = "SSE and";
 			pquant_non_intra = quant_non_intra_sse;
 		}
 		else 
 		{
+			opt_type1 = "";
 			pquant_non_intra = quant_non_intra;
 		}
 
 		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
 		{
-			fprintf( stderr, "EXTENDED MMX");
+			opt_type2 = "EXTENDED MMX";
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_sse;
 		}
 		else
 		{
-			fprintf( stderr, "MMX");
+			opt_type2 = "MMX";
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
 		}
-		fprintf( stderr, " for QUANTIZER!\n");
+		mjpeg_info( "SETTING %s %s for QUANTIZER!\n", opt_type1, opt_type2);
 	}
   else
 #endif

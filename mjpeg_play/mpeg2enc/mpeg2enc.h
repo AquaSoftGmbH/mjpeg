@@ -29,6 +29,7 @@
 
 #include <inttypes.h>
 #include "synchrolib.h"
+#include "mjpeg_logging.h"
 
 #define PICTURE_START_CODE 0x100L
 #define SLICE_MIN_START    0x101L

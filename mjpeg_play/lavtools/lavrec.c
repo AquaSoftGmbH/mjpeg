@@ -1816,10 +1816,18 @@ int main(int argc, char ** argv)
 			nm = nm % 60;
 			if( prev_sync.tv_usec > cur_sync.tv_usec )
 				prev_sync.tv_usec -= 1000000;
-			sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4lu ins:%3lu del:%3lu "
-					"aerrs:%3lu td1=%.3f td2=%.3f",
+#ifdef REC_SYNC_DEBUG
+			if( prev_sync.tv_usec > cur_sync.tv_usec )
+				prev_sync.tv_usec -= 1000000;
+			sprintf(infostring,"%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4lu ins:%3lu del:%3lu "
+					"ae:%3lu td1=%.3f td2=%.3f\r",
 					nh, nm, ns, nf, 
 					(cur_sync.tv_usec-prev_sync.tv_usec)/1000, num_lost, num_ins, num_del, num_aerr, tdiff1,tdiff2);
+#else
+			sprintf(infostring,"%2d.%2.2d.%2.2d:%2.2d lst:%4lu ins:%3lu del:%3lu ae:%3lu ",
+					nh, nm, ns, nf, 
+					num_lost, num_ins, num_del, num_aerr );
+#endif
 			lavrec_msg(LAVREC_PROGRESS,infostring,"");
 			if( stats_changed )
 				printf("\n");

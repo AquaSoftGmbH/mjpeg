@@ -128,6 +128,15 @@ mjpeg_error(const char format[], ...)
   va_end (args);
 }
 
+void
+mjpeg_error_exit1(const char format[], ...)
+{
+  va_list args;
+  va_start( args, format );
+  mjpeg_logv( LOG_ERROR, format, args);
+  va_end(args);           
+  exit(1);
+}
 
 
 /* 

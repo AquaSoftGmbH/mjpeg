@@ -154,9 +154,7 @@ static void read_chunk()
       if(strncmp(magic,"FRAME\n",6))
       {
 		  magic[6]='\0';
-         fprintf(stderr,"\n\nStart of frame %d is not \"FRAME<NL>\"\n",n);
-         fprintf(stderr,"Exiting!!!!\n");
-         exit(1);
+		  mjpeg_error_exit1("Start of frame %d is not \"FRAME<NL>\"\n",n);
       }
       v = vertical_size;
       h = horizontal_size;
@@ -199,8 +197,8 @@ static void load_frame( int num_frame, int look_ahead )
 
    if(last_frame>=0 && num_frame>last_frame &&num_frame<nframes)
    {
-      fprintf(stderr,"readframe: internal error reading beyond end of frames\n");
-      exit(1);
+	   mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
+	   abort();
    }
 
    /* Read in chunk(s) of frames if we have insufficient look-ahead margin
@@ -216,8 +214,8 @@ static void load_frame( int num_frame, int look_ahead )
 
    if(num_frame < frames_read - FRAME_BUFFER_SIZE)
    {
-      fprintf(stderr,"readframe: internal error - buffer flusshed too soon\n");
-      exit(1);
+	   mjpeg_error("Internal:readframe: internal error - buffer flushed too soon\n");
+	   abort();
    }
 
 	

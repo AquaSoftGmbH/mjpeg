@@ -354,8 +354,6 @@ EXTERN char errortext[256];
 EXTERN FILE *outfile, *statfile; /* file descriptors */
 EXTERN int inputtype; /* format of input frames */
 
-EXTERN int quiet; /* suppress warnings */
-
 EXTERN int max_encoding_frames; /* Maximum number of concurrent
 								   frames to be concurrently encoded */
 

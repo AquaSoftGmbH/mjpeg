@@ -274,7 +274,7 @@ static int find_gop_length( int gop_start_frame,
 			i = j/2;
 			if( i < gop_min_len )
 			{
-				printf( "++++ WARNING: GOP min length too small to permit scene-change on GOP boundary%d\n", j);
+				mjpeg_debug("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
 				i = gop_min_len;
 			}
 		}
@@ -283,7 +283,7 @@ static int find_gop_length( int gop_start_frame,
 	}
 
 	if( i != gop_max_len )
-		printf( "DEBUG: GOP nonstandard size %d\n", i );
+		mjpeg_debug( "GOP nonstandard size %d\n", i );
 
 	/* last GOP may contain less frames */
 	if (i > nframes-gop_start_frame)
@@ -370,10 +370,10 @@ static void gop_start( stream_state_s *ss )
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
 	bits_after_mux = bitcount() + 
-		(uint64_t)(frame_periods * frame_rate * nonvid_bit_rate);
+		(uint64_t)((frame_periods / frame_rate) * nonvid_bit_rate);
 	if( ss->next_split_point != 0LL && 	bits_after_mux > ss->next_split_point )
 	{
-		printf( "\nSplitting sequence this GOP start\n" );
+		mjpeg_info( "Splitting sequence this GOP start\n" );
 		ss->next_split_point += ss->seq_split_length;
 		/* This is the input stream display order sequence number of
 		   the frame that will become frame 0 in display
@@ -652,19 +652,17 @@ static volatile pict_data_s *picture_to_encode;
 static void stencodeworker(pict_data_s *picture)
 {
 		/* ALWAYS do-able */
-		if (!quiet )
-		{
-			printf("Frame start %d %c %d\n",
-				   picture->decode, 
-				   pict_type_char[picture->pict_type],
-				   picture->temp_ref);
-		}
+	mjpeg_info("Frame start %d %c %d\n",
+			   picture->decode, 
+			   pict_type_char[picture->pict_type],
+			   picture->temp_ref);
 
-		if( picture->pict_struct != FRAME_PICTURE )
-			printf("Field %s (%d)\n",
+
+	if( picture->pict_struct != FRAME_PICTURE )
+		mjpeg_info("Field %s (%d)\n",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
-				);
+			);
 
 		fast_motion_data(picture);
 
@@ -697,9 +695,9 @@ static void stencodeworker(pict_data_s *picture)
 		if( fieldpic )
 		{
 			set_2nd_field_params(picture);
-			printf("Field %s (%d)\n",
-				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-				   picture->pict_struct
+			mjpeg_info("Field %s (%d)\n",
+					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+					   picture->pict_struct
 				);
 
 			motion_estimation(picture);
@@ -712,16 +710,11 @@ static void stencodeworker(pict_data_s *picture)
 		}
 
 
-#ifdef DEBUG
-		if (!quiet)
-		{
-			printf("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
-				   picture->decode, 
-				   picture->pad ? "PAD" : "   ",
-				   picture->avg_act, picture->sum_avg_act,
-				   picture->AQ, picture->SQ);
-		}
-#endif
+		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+					picture->decode, 
+					picture->pad ? "PAD" : "   ",
+					picture->avg_act, picture->sum_avg_act,
+					picture->AQ, picture->SQ);
 			
 }
 #endif
@@ -729,7 +722,7 @@ static void stencodeworker(pict_data_s *picture)
 static void *parencodeworker(void *start_arg)
 {
 	pict_data_s *picture;
-	printf( "Worker thread started\n" );
+	mjpeg_debug( "Worker thread started\n" );
 
 	for(;;)
 	{
@@ -741,18 +734,14 @@ static void *parencodeworker(void *start_arg)
 		semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		if (!quiet )
-		{
-			printf("Frame start %d %c %d\n",
-				   picture->decode, 
-				   pict_type_char[picture->pict_type],
+		mjpeg_info("Frame %d %c %d\n",  
+				   picture->decode,  pict_type_char[picture->pict_type],
 				   picture->temp_ref);
-		}
 
 		if( picture->pict_struct != FRAME_PICTURE )
-			printf("Field %s (%d)\n",
-				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-				   picture->pict_struct
+			mjpeg_info("Field %s (%d)\n",
+					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+					   picture->pict_struct
 				);
 
 		fast_motion_data(picture);
@@ -787,9 +776,9 @@ static void *parencodeworker(void *start_arg)
 		{
 			set_2nd_field_params(picture);
 
-			printf("Field %s (%d)\n",
-				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-				   picture->pict_struct
+			mjpeg_info("Field %s (%d)\n",
+					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+					   picture->pict_struct
 				);
 
 			motion_estimation(picture);
@@ -802,16 +791,12 @@ static void *parencodeworker(void *start_arg)
 		}
 
 
-#ifdef DEBUG
-		if (!quiet)
-		{
-			printf("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
-				   picture->decode, 
-				   picture->pad ? "PAD" : "   ",
-				   picture->avg_act, picture->sum_avg_act,
-				   picture->AQ, picture->SQ);
-		}
-#endif
+		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+					picture->decode, 
+					picture->pad ? "PAD" : "   ",
+					picture->avg_act, picture->sum_avg_act,
+					picture->AQ, picture->SQ);
+
 		/* We're finished - let anyone depending on us know...
 		*/
 		sync_guard_update( &picture->completion, 1 );
@@ -882,7 +867,7 @@ void putseq()
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
 	ss.seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
-	fprintf( stderr, "DEBUG: split len = %lld\n", ss.seq_split_length );
+	mjpeg_debug( "Split len = %lld\n", ss.seq_split_length );
 
 	frame_num = 0;              /* Encoding number */
 
@@ -929,8 +914,8 @@ void putseq()
 
 		if( readframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curorg) )
 		{
-			fprintf( stderr, "Corrupt frame data aborting!\n" );
-			exit(1);
+		    mjpeg_error_exit1("Corrupt frame data in frame %d aborting!\n",
+							  cur_picture->temp_ref+ss.gop_start_frame );
 		}
 
 

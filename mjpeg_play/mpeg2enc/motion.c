@@ -339,7 +339,7 @@ void init_motion()
 #ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
-		fprintf( stderr, "SETTING EXTENDED MMX for MOTION!\n");
+		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");
 		pdist22 = dist22_mmxe;
 		pdist44 = dist44_mmxe;
 		pdist1_00 = dist1_00_mmxe;
@@ -359,7 +359,7 @@ void init_motion()
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
-		fprintf( stderr, "SETTING MMX for MOTION!\n");
+		mjpeg_info( "SETTING MMX for MOTION!\n");
 		pdist22 = dist22_mmx;
 		pdist44 = dist44_mmx;
 		pdist1_00 = dist1_00_mmx;

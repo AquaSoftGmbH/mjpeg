@@ -285,18 +285,5 @@ int16_t *block;
 
       block[8*i+j] = s>>18;
     }
-/*
-  { 
-	static int init = 0;
-	if( ! init )
-	  init_fdctdaan();
-	fdctdaan( temp2 );
-	fdct_mmx( temp1 );
-	for( i = 0; i < 1; ++i )
-	  if( abs(temp2[i] - block[i])>1 || abs(temp1[i] - temp2[i]) > 1 )
-		printf( "%03d: R%06d M%06d I%06d\n", i, temp2[i], temp1[i], block[i] );
-  }
-	memcpy( block, temp1, sizeof(int16_t)*64 );
-*/
 
 }

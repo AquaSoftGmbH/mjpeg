@@ -111,12 +111,12 @@ void init_predict(void)
 #ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
-		fprintf( stderr, "SETTING EXTENDED MMX for PREDICTION!\n");
+		mjpeg_info( "SETTING EXTENDED MMX for PREDICTION!\n");
 		ppred_comp = pred_comp_mmxe;
 	}
     else if(cpucap & ACCEL_X86_MMX ) /* Original MMX... */
 	{
-		fprintf( stderr, "SETTING MMX for PREDICTION!\n");
+		mjpeg_info( "SETTING MMX for PREDICTION!\n");
 		ppred_comp = pred_comp_mmx;
 	}
 #endif
@@ -261,7 +261,8 @@ static void predict_mb (
 			else
 			{
 				/* invalid mbi->motion_type in frame picture */
-				fprintf(stderr,"invalid motion_type\n");
+				mjpeg_error("Internal: invalid motion_type\n");
+				abort();
 			}
 		}
 		else /* TOP_FIELD or BOTTOM_FIELD */
@@ -326,7 +327,8 @@ static void predict_mb (
 			else
 			{
 				/* invalid motion_type in field picture */
-				fprintf(stderr,"invalid motion_type\n");
+				mjpeg_error("Internal: invalid motion_type\n");
+				abort();
 			}
 		}
 		addflag = 1; /* next prediction (if any) will be averaged with this one */
@@ -390,7 +392,8 @@ static void predict_mb (
 			else
 			{
 				/* invalid motion_type in field picture */
-				fprintf(stderr,"invalid motion_type\n");
+				mjpeg_error("Internal: invalid motion_type\n");
+				abort();
 			}
 		}
 	}

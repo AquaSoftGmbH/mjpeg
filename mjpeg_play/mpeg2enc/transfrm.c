@@ -99,7 +99,7 @@ void init_transform(void)
 #ifdef HAVE_X86CPU 
 	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
-		fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
+		mjpeg_info( "SETTING MMX for TRANSFORM!\n");
 		pfdct = fdct_mmx;
 		pidct = idct_mmx;
 		padd_pred = add_pred_mmx;

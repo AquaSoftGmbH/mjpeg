@@ -50,6 +50,8 @@ mjpeg_warn(const char format[], ...) GNUC_PRINTF(1,2);
 void
 mjpeg_error(const char format[], ...) GNUC_PRINTF(1,2);
 
+void
+mjpeg_error_exit1(const char format[], ...) GNUC_PRINTF(1,2);
 #endif /* __MJPEG_LOGGING_H__ */
 
 

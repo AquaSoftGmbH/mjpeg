@@ -985,7 +985,7 @@ int main(int argc, char ** argv)
    
    /* Set field polarity for interlaced video */
    
-	bp.odd_even = (el.video_inter==LAV_INTER_EVEN_FIRST);
+	bp.odd_even = (el.video_inter==LAV_INTER_ODD_FIRST);
 	if(exchange_fields) bp.odd_even = !bp.odd_even;
 
 	mjpeg_set_params(mjpeg, &bp);
