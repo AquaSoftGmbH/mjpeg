@@ -43,7 +43,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   y4m_init_stream_info(&si);
   if (y4m_read_stream_header(0, &si) != Y4M_OK)
     goto FINI_SI;
-  framebytes = FRAMEBYTES(si.width, si.height);
+  framebytes = FRAMEBYTES(y4m_si_get_width(&si), y4m_si_get_height(&si));
   h = YfAllocateTask(&yuvstdin, sizeof *h + framebytes, h0);
   if (!h)
     goto FINI_SI;
