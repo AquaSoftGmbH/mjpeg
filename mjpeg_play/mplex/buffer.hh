@@ -40,18 +40,18 @@ public:
 class BufferModel
 {
 public:
-	BufferModel() : max_size(0),first(0) {}
-void init( unsigned int size);
-
-void cleaned(  clockticks timenow);
-void flushed( );
-unsigned int space();
-void queued( unsigned int bytes,
-			 clockticks removaltime);
-
+  BufferModel() : max_size(0),first(0) {}
+  void init( unsigned int size);
+  
+  void cleaned(  clockticks timenow);
+  void flushed( );
+  unsigned int space();
+  void queued( unsigned int bytes,
+               clockticks removaltime);
+  inline unsigned int size() { return max_size; }
 private:
-	unsigned int max_size;
-    BufferQueue *first;
+  unsigned int max_size;
+  BufferQueue *first;
 };
 
 
@@ -62,7 +62,7 @@ private:
 /* 
  * Local variables:
  *  c-file-style: "gnu"
- *  tab-width: 8
+ *  tab-width: 4
  *  indent-tabs-mode: nil
  * End:
  */

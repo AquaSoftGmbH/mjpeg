@@ -148,11 +148,11 @@ static double bits_per_mb;
 
 static double SQ = 0.0;
 static double sum_vbuf_Q = 0.0;
-static int fast_tune = 0;
-static int first_gop = 1;
-static int first_B = 0;
-static int first_P = 0;
-static int first_I = 0;
+static bool fast_tune = false;
+static bool first_gop = true;
+static bool first_B = false;
+static bool first_P = false;
+static bool first_I = false;
 
 /* Scaling and clipping of quantisation factors
    One floating point used in predictive calculations.  
@@ -245,7 +245,7 @@ static int scale_quant( pict_data_s *picture, double quant )
 
 void rc_init_seq(int reinit)
 {
-
+	double init_quant;
 	/* If its stills with a size we have to hit then make the
 	   guesstimates of for initial quantisation pessimistic...
 	*/
@@ -303,28 +303,33 @@ void rc_init_seq(int reinit)
 	}
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
 
-	/* reaction parameter (constant) decreased to increase response
-	   rate as encoder is currently tending to under/over-shoot... in
-	   rate   */
-	if (r==0)  
+	/*
+	  Reaction paramer - i.e. quantisation feedback gain relative
+	  to bit over/undershoot.
+	  For normal frames it is fairly modest as we can compensate
+	  over multiple frames and can average out variations in image
+	  complexity.
+
+	  For stills we set it a higher so corrections take place
+	  more rapidly *within* a single frame.
+	*/
+	if( opt_still_size > 0 )
+		r = (int)floor(2.0*opt_bit_rate/opt_frame_rate);
+	else
 		r = (int)floor(4.0*opt_bit_rate/opt_frame_rate);
 
 	Ki = 1.2;
 	Kb = 1.3;
 	Kp = 1.2;
 
-	/* Heuristic: In constant bit-rate streams we assume buffering
-	   will allow us to pre-load some (probably small) fraction of the
-	   buffers size worth of following data if earlier data was
-	   undershot its bit-rate allocation
-	 
+
+	/* Set the virtual buffers for per-frame rate control feedback to
+	   values corresponding to the quantisation floor (if specified)
+	   or a "reasonable" quantisation (6.0) if not.
 	*/
 
-
-	d0i = 0;					/* Force initial quuantisation to be */
-	d0pb = 0;					/* predice from image complexity */
-	d0p = 0;
-	d0b = 0;
+	init_quant = (ctl_quant_floor > 0.0 ? ctl_quant_floor : 6.0);
+	d0p = d0b = d0pb = d0i = init_quant * r / 62.0;
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: sequence initialization\n");
@@ -362,9 +367,9 @@ void rc_init_GOP( int np, int nb)
 
 	if( first_gop )
 	{
-		fast_tune = 1;
-		first_I = first_B = first_P = 1;
-		first_gop = 0;
+		fast_tune = true;
+		first_I = first_B = first_P = true;
+		first_gop = false;
 		I_frame_base_bits = per_frame_bits;
 		B_frame_base_bits = per_frame_bits;
 		P_frame_base_bits = per_frame_bits;
@@ -402,6 +407,7 @@ void rc_init_pict(pict_data_s *picture)
 	double Si, Sp, Sb;
 	int available_bits;
 	double Xsum;
+	bool no_avg_K = false;
 
 	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
 
@@ -476,6 +482,7 @@ void rc_init_pict(pict_data_s *picture)
 		d = d0i;
 		avg_K = avg_KI;
 		Si = avg_K*actsum;
+		no_avg_K = first_I;
 		if( first_I )
 		{
 			T = (int32_t)(fields_per_pict*available_bits/(Ni+(Np/1.7)+Nb/(2.0*1.7)));
@@ -492,6 +499,7 @@ void rc_init_pict(pict_data_s *picture)
 		Sp = (2*Xp + avg_K * actsum)/3.0;	 /* Damp P-frame response a little
 											as really big jumps will probably
 											make avg_K inaccurate */
+		no_avg_K = first_P;
 		if( first_P )
 		{
 			T = (int32_t)(fields_per_pict*available_bits/(Np+Nb/2.0));
@@ -507,6 +515,7 @@ void rc_init_pict(pict_data_s *picture)
 		avg_K = avg_KB;
 		Sb = Xb;				/* We don't want B-frames to be too
 								   responsive...*/
+		no_avg_K = first_B;
 		if( first_B )
 		{
 			T =  (int32_t)(fields_per_pict*available_bits/(Nb+Np*2.0));
@@ -554,16 +563,20 @@ void rc_init_pict(pict_data_s *picture)
 		/* If stills size must match then target low to ensure no
 		   overshoot.
 		*/
-		mjpeg_info( "Setting overshoot margin for T=%d\n", T/8 );
+		mjpeg_info( "Setting VCD HR still overshoot margin to %d bytes\n", T/(16*8) );
 		frame_overshoot_margin = T/16;
 		T -= frame_overshoot_margin;
 	}
 
 
 	T_sum += T;
-	target_Q = scale_quantf(picture, 
-							avg_K * avg_act *(mb_per_pict) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
+	if( no_avg_K )
+		target_Q = current_Q;
+	else
+		target_Q = scale_quantf(picture, 
+								avg_K * avg_act *(mb_per_pict) / T);
+
 	picture->avg_act = avg_act;
 	picture->sum_avg_act = sum_avg_act;
 
@@ -803,45 +816,54 @@ void rc_update_pict(pict_data_s *picture)
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
-		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		d0i = d;
 		if( first_I )
 		{
 			Xi = X;
+			avg_KI = K;
 			first_I = 0;
 		}
 		else
+		{
+			avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 			Xi = (X + 2.0*Xi)/3.0;
+		}
 		break;
 	case P_TYPE:
-		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
 		d0p = d;
 		if( first_P )
 		{
 			Xp = X;
+			avg_KP = K;
 			first_P = 0;
 		}
-		else if( fast_tune )
-			Xp = (X+Xp*2.0)/3.0;
 		else
-			Xp = (X + Xp*K_AVG_WINDOW_P)/(K_AVG_WINDOW_P+1.0);
-		/* Np--;*/
+		{
+			avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
+			if( fast_tune )
+				Xp = (X+Xp*2.0)/3.0;
+			else
+				Xp = (X + Xp*K_AVG_WINDOW_P)/(K_AVG_WINDOW_P+1.0);
+		}
 		break;
 	case B_TYPE:
-		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
 		d0b = d;
 		if( first_B )
 		{
 			Xb = X;
+			avg_KB = K;
 			first_B = 0;
 		}
-		else if( fast_tune )
+		else 
 		{
-			Xb = (X + Xb * 3.0) / 4.0;
+			avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
+			if( fast_tune )
+			{
+				Xb = (X + Xb * 3.0) / 4.0;
+			}
+			else
+				Xb = (X + Xb*K_AVG_WINDOW_B)/(K_AVG_WINDOW_B+1.0);
 		}
-		else
-			Xb = (X + Xb*K_AVG_WINDOW_B)/(K_AVG_WINDOW_B+1.0);
-		/* Nb--; */
 		break;
 	}
 
@@ -905,18 +927,18 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		((double)(bitcount()-S) - actcovered * ((double)T) / actsum);
 
 
-
-	/* scale against dynamic range of mquant and the bits/picture count.
-	   ctl_quant_floor != 0.0 is the VBR case where we set a bitrate as a (high)
-	   maximum and then put a floor on quantisation to achieve a reasonable
-	   overall size.
-	   Not that this *is* baseline quantisation.  Not adjust for local activity.
-	   Otherwise we end up blurring active macroblocks. Silly in a VBR context.
+	/* scale against dynamic range of mquant and the bits/picture
+	   count.  ctl_quant_floor != 0.0 is the VBR case where we set a
+	   bitrate as a (high) maximum and then put a floor on
+	   quantisation to achieve a reasonable overall size.  Not that
+	   this *is* baseline quantisation.  Not adjust for local
+	   activity.  Otherwise we end up blurring active
+	   macroblocks. Silly in a VBR context.
 	*/
 
 	Qj = dj*62.0/r;
-
 	Qj = (Qj > ctl_quant_floor) ? Qj : ctl_quant_floor;
+
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
 		a complex texture's coefficients get chopped...

@@ -55,12 +55,6 @@ int main (int argc, char* argv[])
     optargs = intro_and_options (argc, argv, &multi_file);
 	check_files (argc-optargs, argv+optargs,  audio_files, video_files);
 
-	if( video_files.size() != 1 )
-	{
-		mjpeg_debug( "Multiplexing currently only tested with exactly one (1) video stream\n");
-		mjpeg_debug( "If you want to try it you'll need to modify the source code!\n" );
-		exit(1);
-	}
 
 	if( MPEG_STILLS_FORMAT(opt_mux_format) )
 	{
@@ -70,11 +64,10 @@ int main (int argc, char* argv[])
 
 		switch( opt_mux_format )
 		{
-
 		case MPEG_FORMAT_VCD_STILL :
 			frame_interval = 30; // 30 Frame periods
 			if( audio_files.size() > 0 && video_files.size() > 2  )
-				mjpeg_error_exit1("VCD stills stream: no audio and no more than two video streams\n");
+				mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible\n");
 			{
 				VCDStillsStream *str[2];
 				ConstantFrameIntervals *intervals[2];
@@ -115,6 +108,14 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
+
+		if( video_files.size() != 1 )
+		{
+			mjpeg_debug( "Multiplexing non-stills currently only tested with exactly one (1) stream\n");
+			mjpeg_debug( "If you want to try it you'll need to modify the source code!\n" );
+			exit(1);
+		}
+
 		ostrm.InitSyntaxParameters();
 		mjpeg_info( "Found %d video streams and %d audio streams\n",
 					video_files.size(),

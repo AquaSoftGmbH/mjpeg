@@ -152,13 +152,14 @@ static void Usage(char *str)
 	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
 	fprintf(stderr,"              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
 	fprintf(stderr,"   -F num     Frame rate for encoded video (default: frame rate of input stream)\n");
-        fprintf(stderr,"              0 - Display frame rate code table\n");
+	fprintf(stderr,"              0 - Display frame rate code table\n");
 	fprintf(stderr,"   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	fprintf(stderr,"   -B num     Non-video data bitrate to use for sequence splitting\n");
 	fprintf(stderr,"              calculations (see -S).\n");
 	fprintf(stderr,"   -q num     Quality factor [1..31] (1 is best, no default)\n");
 	fprintf(stderr,"              Bitrate and Quality are mutually exclusive!\n");
 	fprintf(stderr,"   -o name    Outputfile name (REQUIRED!!!)\n");
+	fprintf(stderr,"   -T size    Target Size in KB for VCD stills\n");
 	fprintf(stderr,"   -I num     only for MPEG 2 output:\n");
 	fprintf(stderr,"               0 = encode by frame (progressive - per frame MC/ MDCT)\n");
 	fprintf(stderr,"               1 = encode by field, bottom fields before top first\n");

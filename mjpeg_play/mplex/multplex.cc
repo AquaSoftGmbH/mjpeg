@@ -790,14 +790,14 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 
-/* DEBUG
+
 			fprintf( stderr,"STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
 					 (*str)->stream_id,
 					 current_SCR /300,
 					 (*str)->MuxPossible(),
 					 (*str)->RequiredDTS()/300
 				);
-*/
+
 			if( (*str)->MuxPossible() && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )
