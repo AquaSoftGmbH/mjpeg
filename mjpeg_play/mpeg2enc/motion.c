@@ -28,6 +28,7 @@
  */
 
 #include <stdio.h>
+#include <limits.h>
 #include "config.h"
 #include "global.h"
 
@@ -48,6 +49,7 @@ static void field_ME _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg,
 static void frame_estimate _ANSI_ARGS_((unsigned char *org,
 										unsigned char *ref, unsigned char *mb,
 										mcompuint* fmb,
+										mcompuint* qmb,
   int i, int j,
   int sx, int sy, int *iminp, int *jminp, int *imintp, int *jmintp,
   int *iminbp, int *jminbp, int *dframep, int *dfieldp,
@@ -55,14 +57,19 @@ static void frame_estimate _ANSI_ARGS_((unsigned char *org,
 
 static void field_estimate _ANSI_ARGS_((unsigned char *toporg,
   unsigned char *topref, unsigned char *botorg, unsigned char *botref,
-										unsigned char *mb, mcompuint *fmb,
+										unsigned char *mb, 
+										mcompuint *fmb,
+										mcompuint* qmb,
   int i, int j, int sx, int sy, int ipflag,
   int *iminp, int *jminp, int *imin8up, int *jmin8up, int *imin8lp,
   int *jmin8lp, int *dfieldp, int *d8p, int *selp, int *sel8up, int *sel8lp,
   int *iminsp, int *jminsp, int *dsp));
 
 static void dpframe_estimate _ANSI_ARGS_((unsigned char *ref,
-										  unsigned char *mb, mcompuint *fmb,
+										  unsigned char *mb, 
+										  mcompuint *fmb,
+										  mcompuint* qmb,
+
   int i, int j, int iminf[2][2], int jminf[2][2],
   int *iminp, int *jminp, int *imindmvp, int *jmindmvp,
   int *dmcp, int *vmcp));
@@ -73,7 +80,9 @@ static void dpfield_estimate _ANSI_ARGS_((unsigned char *topref,
   int *dmcp, int *vmcp));
 
 static int fullsearch _ANSI_ARGS_( (unsigned char *org, unsigned char *ref,
-								   unsigned char *blk, mcompuint *fblk,
+								   unsigned char *blk, 
+									mcompuint *fblk,
+									mcompuint* qblk,
   int lx, int i0, int j0, int sx, int sy, int h, int xmax, int ymax,
   int *iminp, int *jminp));
 
@@ -96,11 +105,15 @@ int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 #define dist1_11 dist1_11_SSE
 
 
-
 int fdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
+
+int qdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
+
 #define fdist1 fdist1_SSE
+#define qdist1 qdist1_SSE
 
 #else
+
 #ifdef MMX
 int dist1_00_MMX ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
 int dist1_01_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
@@ -113,12 +126,15 @@ int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 #define fdist1 fdist1_MMX
-
+int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
+#define qdist1 qdist1_MMX
 #else
 
 static int fdist1 ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 #define dist1_00( blk1, blk2, lx,  h, distlim ) \
         dist1( blk1, blk2, lx,  0,0,h,distlim)
+static int qdist1 ( mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
+
 #endif
 #endif
 
@@ -150,7 +166,7 @@ static int variance _ANSI_ARGS_((unsigned char *p, int lx));
    difference is larger than this average search is expanded out to
    the user-specified radius to see if we can do better.
  */
-static double fast_motion_threshold;
+static int fast_motion_threshold;
 
 
 
@@ -247,6 +263,7 @@ struct mbinfo *mbi;
   int tsel,bsel,tself,bself,tselr,bselr;
   unsigned char *mb;
   mcompuint  *fmb;
+  mcompuint  *qmb;
   int imins[2][2],jmins[2][2];
   int imindp,jmindp,imindmv,jmindmv,dmc_dp,vmc_dp;
 
@@ -255,7 +272,8 @@ struct mbinfo *mbi;
 	 luminance information 
   */
   fmb = ((mcompuint*)(cur + width*height)) + ((i>>1) + (width>>1)*(j>>1));
-
+  qmb = ((mcompuint*)(cur + width*height+ (width>>1)*(height>>1)))
+	     + ((i>>2) + (width>>2)*(j>>2));
   var = variance(mb,width);
 
   if (pict_type==I_TYPE)
@@ -266,7 +284,7 @@ struct mbinfo *mbi;
   {
     if (frame_pred_dct)
     {
-      dmc = fullsearch(oldorg,oldref,mb, fmb,
+      dmc = fullsearch(oldorg,oldref,mb, fmb, qmb,
                        width,i,j,sxf,syf,16,width,height,&imin,&jmin);
       vmc = dist2(oldref+(imin>>1)+width*(jmin>>1),mb,
                   width,imin&1,jmin&1,16);
@@ -274,12 +292,12 @@ struct mbinfo *mbi;
     }
     else
     {
-      frame_estimate(oldorg,oldref,mb,fmb,i,j,sxf,syf,
+      frame_estimate(oldorg,oldref,mb,fmb,qmb, i,j,sxf,syf,
         &imin,&jmin,&imint,&jmint,&iminb,&jminb,
         &dmc,&dmcfield,&tsel,&bsel,imins,jmins);
 
       if (M==1)
-        dpframe_estimate(oldref,mb,fmb,i,j>>1,imins,jmins,
+        dpframe_estimate(oldref,mb,fmb,qmb, i,j>>1,imins,jmins,
           &imindp,&jmindp,&imindmv,&jmindmv,&dmc_dp,&vmc_dp);
 
       /* select between dual prime, frame and field prediction */
@@ -381,13 +399,13 @@ struct mbinfo *mbi;
     if (frame_pred_dct)
     {
       /* forward */
-      dmcf = fullsearch(oldorg,oldref,mb,fmb,
+      dmcf = fullsearch(oldorg,oldref,mb,fmb, qmb,
                         width,i,j,sxf,syf,16,width,height,&iminf,&jminf);
       vmcf = dist2(oldref+(iminf>>1)+width*(jminf>>1),mb,
                    width,iminf&1,jminf&1,16);
 
       /* backward */
-      dmcr = fullsearch(neworg,newref,mb,fmb,
+      dmcr = fullsearch(neworg,newref,mb,fmb,qmb,
                         width,i,j,sxb,syb,16,width,height,&iminr,&jminr);
       vmcr = dist2(newref+(iminr>>1)+width*(jminr>>1),mb,
                    width,iminr&1,jminr&1,16);
@@ -423,12 +441,12 @@ struct mbinfo *mbi;
     else
     {
       /* forward prediction */
-      frame_estimate(oldorg,oldref,mb,fmb,i,j,sxf,syf,
+      frame_estimate(oldorg,oldref,mb,fmb,qmb,i,j,sxf,syf,
         &iminf,&jminf,&imintf,&jmintf,&iminbf,&jminbf,
         &dmcf,&dmcfieldf,&tself,&bself,imins,jmins);
 
       /* backward prediction */
-      frame_estimate(neworg,newref,mb,fmb,i,j,sxb,syb,
+      frame_estimate(neworg,newref,mb,fmb, qmb, i,j,sxb,syb,
         &iminr,&jminr,&imintr,&jmintr,&iminbr,&jminbr,
         &dmcr,&dmcfieldr,&tselr,&bselr,imins,jmins);
 
@@ -606,6 +624,7 @@ int secondfield,ipflag;
   int w2;
   unsigned char *mb, *toporg, *topref, *botorg, *botref;
   mcompuint *fmb;
+  mcompuint *qmb;
   int var,vmc,v0,dmc,dmcfieldi,dmc8i;
   int imin,jmin,imin8u,jmin8u,imin8l,jmin8l,dmcfield,dmc8,sel,sel8u,sel8l;
   int iminf,jminf,imin8uf,jmin8uf,imin8lf,jmin8lf,dmcfieldf,dmc8f,self,sel8uf,sel8lf;
@@ -615,11 +634,15 @@ int secondfield,ipflag;
   w2 = width<<1;
 
   mb = cur + i + w2*j;
-  fmb = (mcompuint*)(cur + width*height)+(i>>1)+(w2>>1)*(j>>1);
+  /* Fast motion data sits at the end of the luminance buffer */
+  fmb = ((mcompuint*)(cur + width*height))+(i>>1)+(w2>>1)*(j>>1);
+  qmb = ((mcompuint*)(cur + width*height + (width>>1)*(height>>1)))
+	+ (i>>2)+(w2>>2)*(j>>2);
   if (pict_struct==BOTTOM_FIELD)
 	{
 	  mb += width;
 	  fmb += (width >> 1);
+	  qmb += (width >> 2);
 	}
 
 
@@ -651,7 +674,7 @@ int secondfield,ipflag;
       }
     }
 
-    field_estimate(toporg,topref,botorg,botref,mb,fmb,i,j,sxf,syf,ipflag,
+    field_estimate(toporg,topref,botorg,botref,mb,fmb,qmb,i,j,sxf,syf,ipflag,
                    &imin,&jmin,&imin8u,&jmin8u,&imin8l,&jmin8l,
                    &dmcfield,&dmc8,&sel,&sel8u,&sel8l,&imins,&jmins,&ds);
 
@@ -743,13 +766,13 @@ int secondfield,ipflag;
   else /* if (pict_type==B_TYPE) */
   {
     /* forward prediction */
-    field_estimate(oldorg,oldref,oldorg+width,oldref+width,mb,fmb,
+    field_estimate(oldorg,oldref,oldorg+width,oldref+width,mb,fmb,qmb,
                    i,j,sxf,syf,0,
                    &iminf,&jminf,&imin8uf,&jmin8uf,&imin8lf,&jmin8lf,
                    &dmcfieldf,&dmc8f,&self,&sel8uf,&sel8lf,&imins,&jmins,&ds);
 
     /* backward prediction */
-    field_estimate(neworg,newref,neworg+width,newref+width,mb,fmb,
+    field_estimate(neworg,newref,neworg+width,newref+width,mb,fmb,qmb,
                    i,j,sxb,syb,0,
                    &iminr,&jminr,&imin8ur,&jmin8ur,&imin8lr,&jmin8lr,
                    &dmcfieldr,&dmc8r,&selr,&sel8ur,&sel8lr,&imins,&jmins,&ds);
@@ -890,7 +913,8 @@ int secondfield,ipflag;
  * org: top left pel of source reference frame
  * ref: top left pel of reconstructed reference frame
  * mb:  macroblock to be matched
- * fmb: Fast motion estimation image of macro block to be matched
+ * fmb: Fast motion estimation image of macro block to be matched (2*2  sub-sampled)
+ * quad:  " (4*4 sub-sampled)
  * i,j: location of mb relative to ref (=center of search window)
  * sx,sy: half widths of search window
  * iminp,jminp,dframep: location and value of best frame prediction
@@ -898,11 +922,12 @@ int secondfield,ipflag;
  * iminbp,jminbp,bselp: location of best field pred. for bottom field of mb
  * dfieldp: value of field prediction
  */
-static void frame_estimate(org,ref,mb,fmb,i,j,sx,sy,
+static void frame_estimate(org,ref,mb,fmb,qmb,i,j,sx,sy,
   iminp,jminp,imintp,jmintp,iminbp,jminbp,dframep,dfieldp,tselp,bselp,
   imins,jmins)
 unsigned char *org,*ref,*mb;
 mcompuint *fmb;
+mcompuint *qmb;
 int i,j,sx,sy;
 int *iminp,*jminp;
 int *imintp,*jmintp,*iminbp,*jminbp;
@@ -914,15 +939,15 @@ int imins[2][2],jmins[2][2];
   int imint,iminb,jmint,jminb;
 
   /* frame prediction */
-  *dframep = fullsearch(org,ref,mb,fmb,width,i,j,sx,sy,16,width,height,
+  *dframep = fullsearch(org,ref,mb,fmb,qmb,width,i,j,sx,sy,16,width,height,
                         iminp,jminp);
 
   /* predict top field from top field */
-  dt = fullsearch(org,ref,mb,fmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+  dt = fullsearch(org,ref,mb,fmb,qmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
                   &imint,&jmint);
 
   /* predict top field from bottom field */
-  db = fullsearch(org+width,ref+width,mb,fmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+  db = fullsearch(org+width,ref+width,mb,fmb,qmb, width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
                   &iminb,&jminb);
 
   imins[0][0] = imint;
@@ -941,11 +966,13 @@ int imins[2][2],jmins[2][2];
   }
 
   /* predict bottom field from top field */
-  dt = fullsearch(org,ref,mb+width,fmb+(width>>1),width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+  dt = fullsearch(org,ref,mb+width,fmb+(width>>1),qmb+(width>>2), 
+				  width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
                   &imint,&jmint);
 
   /* predict bottom field from bottom field */
-  db = fullsearch(org+width,ref+width,mb+width,fmb+(width>>1),width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+  db = fullsearch(org+width,ref+width,mb+width,fmb+(width>>1),qmb+(width>>2), 
+				  width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
                   &iminb,&jminb);
 
   imins[0][1] = imint;
@@ -976,6 +1003,7 @@ int imins[2][2],jmins[2][2];
  * botorg: address of original bottom reference field
  * botref: address of reconstructed bottom reference field
  * mb:  macroblock to be matched
+ * fmb, qmb - Fast motion compensation sub-sampled data
  * i,j: location of mb (=center of search window)
  * sx,sy: half width/height of search window
  *
@@ -987,11 +1015,12 @@ int imins[2][2],jmins[2][2];
  *                    prediction (needed for dual prime, only valid if
  *                    ipflag==0)
  */
-static void field_estimate(toporg,topref,botorg,botref,mb,fmb,i,j,sx,sy,ipflag,
+static void field_estimate(toporg,topref,botorg,botref,mb,fmb,qmb,i,j,sx,sy,ipflag,
   iminp,jminp,imin8up,jmin8up,imin8lp,jmin8lp,dfieldp,d8p,selp,sel8up,sel8lp,
   iminsp,jminsp,dsp)
 unsigned char *toporg, *topref, *botorg, *botref, *mb;
 mcompuint *fmb;
+mcompuint *qmb;
 int i,j,sx,sy;
 int ipflag;
 int *iminp, *jminp;
@@ -1012,7 +1041,7 @@ int *iminsp, *jminsp, *dsp;
   if (notop)
     dt = 65536; /* infinity */
   else
-    dt = fullsearch(toporg,topref,mb,fmb,width<<1,
+    dt = fullsearch(toporg,topref,mb,fmb,qmb,width<<1,
                     i,j,sx,sy>>1,16,width,height>>1,
                     &imint,&jmint);
 
@@ -1020,7 +1049,7 @@ int *iminsp, *jminsp, *dsp;
   if (nobot)
     db = 65536; /* infinity */
   else
-    db = fullsearch(botorg,botref,mb,fmb,width<<1,
+    db = fullsearch(botorg,botref,mb,fmb,qmb,width<<1,
                     i,j,sx,sy>>1,16,width,height>>1,
                     &iminb,&jminb);
 
@@ -1051,7 +1080,7 @@ int *iminsp, *jminsp, *dsp;
   if (notop)
     dt = 65536;
   else
-    dt = fullsearch(toporg,topref,mb,fmb,width<<1,
+    dt = fullsearch(toporg,topref,mb,fmb,qmb,width<<1,
                     i,j,sx,sy>>1,8,width,height>>1,
                     &imint,&jmint);
 
@@ -1059,7 +1088,7 @@ int *iminsp, *jminsp, *dsp;
   if (nobot)
     db = 65536;
   else
-    db = fullsearch(botorg,botref,mb,fmb,width<<1,
+    db = fullsearch(botorg,botref,mb,fmb,qmb,width<<1,
                     i,j,sx,sy>>1,8,width,height>>1,
                     &iminb,&jminb);
 
@@ -1076,14 +1105,19 @@ int *iminsp, *jminsp, *dsp;
   /* predict lower half field from top field */
   /*
 	 N.b. For interlaced data width<<4 (width*16) takes us 8 rows
-	 down in the same field.  Thus for the fast motion data (2*2
-	 pel sums) we need to go 4 rows down in the same field.
+	 down in the same field.  
+	 Thus for the fast motion data (2*2
+	 sub-sampled) we need to go 4 rows down in the same field.
 	 This requires adding width*4 = (width<<2).
+	 For the 4*4 sub-sampled motion data we need to go down 2 rows.
+	 This requires adding width = width
+	 
   */
   if (notop)
     dt = 65536;
   else
-    dt = fullsearch(toporg,topref,mb+(width<<4),fmb+(width<<2),width<<1,
+    dt = fullsearch(toporg,topref,mb+(width<<4),fmb+(width<<2), qmb+width,
+					width<<1,
                     i,j+8,sx,sy>>1,8,width,height>>1,
                     &imint,&jmint);
 
@@ -1091,7 +1125,7 @@ int *iminsp, *jminsp, *dsp;
   if (nobot)
     db = 65536;
   else
-    db = fullsearch(botorg,botref,mb+(width<<4),fmb+(width<<2),width<<1,
+    db = fullsearch(botorg,botref,mb+(width<<4),fmb+(width<<2),qmb+width,width<<1,
                     i,j+8,sx,sy>>1,8,width,height>>1,
                     &iminb,&jminb);
 
@@ -1106,10 +1140,11 @@ int *iminsp, *jminsp, *dsp;
   }
 }
 
-static void dpframe_estimate(ref,mb,fmb,i,j,iminf,jminf,
+static void dpframe_estimate(ref,mb,fmb,qmb,i,j,iminf,jminf,
   iminp,jminp,imindmvp, jmindmvp, dmcp, vmcp)
 unsigned char *ref, *mb;
 mcompuint *fmb;
+mcompuint *qmb;
 int i,j;
 int iminf[2][2], jminf[2][2];
 int *iminp, *jminp;
@@ -1414,44 +1449,43 @@ void heap_insert( sortelt heap[], int *heapsize, sortelt *newelt )
  *  Standard extract-smallest-element from heap and maintain heap property
  *  procedure.
  */
-void heap_extract( sortelt heap[], int *heapsize, sortelt *extelt )
+void heap_extract( sortelt *heap, int *heapsize, sortelt *extelt )
 {
-  int i,j, p,s;
+  int i,j, p,s,w;
   s = (*heapsize);
+
+
   if( s == 0 )
 	abort();
-  
+  --(*heapsize);
   *extelt = heap[0];
+  s = s - 1;
+
   i = 0; 
-  j = childr(i);   
+  j = childl(i); 
   while( j < s )
 	{
-	  p = i;
+	  register int w = s;
+	  /* ORIGINAL slow branchy code
+	  N.b. childl(x) = x + (x+1) childr(x) = x + (x+2)
+	  if( heap[w].weight > heap[j].weight )
+		w = j;
+	  if( j+1 < s && heap[w].weight > heap[j+1].weight )
+		w = j+1;
+		   */
 
-	  /* ORIGINAL Slow, branchy code 
-	  if( heap[j-1].weight < heap[j].weight  )
-		{
-		  i = childl(i);
-		}
-	  else
-		{
-		  i = childr(i);
-		}
-	  j = childr(i);
-	  */
+	  w += (j-w)&(-(heap[w].weight > heap[j].weight));
+	  ++j;
+	  w += (j-w)&-(((j < heapsize) & (heap[w].weight > heap[j].weight )));
 
-	  /* Fast hack branch-free version... boggle... */
-	  /* N.b. Invariant childl(x) = childr(x) - 1 */
-	  i = j-(heap[j-1].weight < heap[j].weight);
-	  j = childr(j);
-	  heap[p] = heap[i];
-	}
+	  if( w == s )
+		break;
+	  heap[i] = heap[w];
+	  i = w;
+	  j = childl(i);
+	}  
   
-  if( j-1 < s )
-	{
-	  heap[i] = heap[j-1];
-	}
-  --(*heapsize);
+  heap[i] = heap[s];
 }
 
 /*
@@ -1459,7 +1493,7 @@ void heap_extract( sortelt heap[], int *heapsize, sortelt *extelt )
  *   time might convince some...
  */
 
-void heapify( sortelt heap[], int heapsize )
+void heapify( sortelt *heap, int heapsize )
 {
   int base = 0;
   sortelt tmp;
@@ -1482,9 +1516,8 @@ void heapify( sortelt heap[], int heapsize )
 		while( k < heapsize )
 		  {
 			register int w = j;
-			/* ORIGINAL slow branchy code
+			/* ORIGINAL slow branchy code 
 			   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2) 
-
 			if( heap[j].weight > heap[k].weight )
 			  w = k;
 			if( k+1 < heapsize && heap[w].weight > heap[k+1].weight )
@@ -1509,33 +1542,152 @@ void heapify( sortelt heap[], int heapsize )
 
 }
 
+void test_heap( sortelt *heap, int heapsize, char *mesg, int n )
+{
+  int i = 0;
+  while( childr(i) < heapsize )
+	{
+	  if( heap[childr(i)].weight < heap[i].weight ||
+		  heap[childl(i)].weight < heap[i].weight )
+		{
+		  printf( "Fails I heap property: %s at %d pw=%d cl=%d cr=%d!\n", mesg, i,
+				  heap[i].weight, heap[childl(i)].weight, heap[childr(i)].weight );
+		  exit(1);
+		}
+	  ++i;
+	}
+  if( childl(i) < heapsize && heap[childl(i)].weight < heap[i].weight )
+	{
+	  printf( "Fails L heap property: %s!\n", mesg );
+	  exit(1);
+	}
+}
+
 #undef childl
 #undef childr
 #undef parent
 
-/* 
- *   Vector of motion compensations plus a heap of the associated
- *   weights (macro-block distances).
- */
 
-#define MAX_COARSE_HEAP_SIZE 100*100
-static sortelt coarse_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt matches[MAX_COARSE_HEAP_SIZE];
-
-
-static int thin_coarse_match( int threshold, int len )
+static int thin_vector( sortelt vec[], int threshold, int len )
 {
  	int i;
 	int j = 0;
 	for( i = 0; i < len; ++i )
 	  {
-		if( coarse_match_heap[i].weight <= threshold )
+		if( vec[i].weight <= threshold )
 		  {
-			coarse_match_heap[j] =  coarse_match_heap[i];
+			vec[j] = vec[i];
 			++j;
 		  }
 	  }
 	return j;
+}
+
+
+/* 
+ *   Vector of motion compensations plus a heap of the associated
+ *   weights (macro-block distances).
+ *  TODO: Should be put into nice tidy records...
+ */
+
+#define MAX_COARSE_HEAP_SIZE 100*100
+
+static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt half_matches[MAX_COARSE_HEAP_SIZE];
+static int half_heap_size;
+static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt quad_matches[MAX_COARSE_HEAP_SIZE];
+static int quad_heap_size;
+
+
+
+static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
+							mcompuint *qorg, mcompuint *qblk, int qlx, int qh )
+{
+  mcompuint *qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+  mcompuint *old_qorgblk = qorgblk;
+  int i,j;
+  quad_heap_size = 0;
+
+  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+  for( j = jlow; j <= jhigh; j += 4 )
+	{
+  	  old_qorgblk = qorgblk;
+	  for( i = ilow; i <= ihigh; i += 4 )
+		{
+		  quad_matches[quad_heap_size].dx = i;
+		  quad_matches[quad_heap_size].dy = j;
+		  quad_match_heap[quad_heap_size].index = quad_heap_size;
+		  quad_match_heap[quad_heap_size].weight = qdist1( qorgblk,qblk,qlx,qh);;
+		  ++quad_heap_size;
+		  qorgblk += 1;
+		  
+		}
+	  qorgblk = old_qorgblk + qlx;
+	}
+
+  heapify( quad_match_heap, quad_heap_size );
+  test_heap( quad_match_heap, quad_heap_size, "quad_heap", 0 );
+  return quad_heap_size;
+}
+
+static int build_half_heap( mcompuint *forg,  mcompuint *fblk, 
+							int flx, int fh, int searched_quad_size )
+{
+  int i,k,s;
+  sortelt distrec;
+  matchelt matchrec;
+  int dist_sum  = 0;
+  int best_fast_dist = INT_MAX;
+
+  half_heap_size = 0;
+  for( k = 0; k < searched_quad_size; ++k )
+	{
+	  heap_extract( quad_match_heap, &quad_heap_size, &distrec );
+	  matchrec = quad_matches[distrec.index];
+	  for( i = 0; i < 4; ++i )
+		{
+		  
+		  /* A hack for efficiency: we allow the distance
+			 computation to "go off the edge".  We know this
+			 won't cause memory faults because the 4*4 motion
+			 data sits off the end of the ordinary stuff. N.b. we
+			 *do* eventually exclude any eventual off the edge matches though...
+			 */
+		  int x = matchrec.dx+((i&1)<<1);        /* (dx + 2*(i%2)) */
+		  int y = matchrec.dy+(i&2);             /* (dy + 2*(i/2)) */
+		  half_matches[half_heap_size].dx = x;
+		  half_matches[half_heap_size].dy = y;
+		  s = fdist1( forg+(x>>1)+flx*(y>>1),fblk,flx,fh);
+		  half_match_heap[half_heap_size].index = half_heap_size;
+		  half_match_heap[half_heap_size].weight = s;
+		  if( s < best_fast_dist )
+			best_fast_dist = s;
+		  ++half_heap_size;
+		  dist_sum += s;
+		}
+	  
+	  /* If we're thresholding check  got a match below the threshold. 
+		 If we are stop looking... */
+
+	  if( fast_mc_threshold && best_fast_dist < fast_motion_threshold )
+		{ 
+		  break;
+		}
+	}
+  
+  /* Since heapification is relatively expensive we do a swift
+	 pre-processing step throwing out all candidates that
+	 are heavier than the heap average */
+  
+  half_heap_size = thin_vector(  half_match_heap, 
+								 dist_sum / half_heap_size, half_heap_size );
+  heapify( half_match_heap, half_heap_size );
+  
+  /* Update the fast motion match average using the best 2*2 match */
+  update_fast_motion_threshold( half_match_heap[0].weight );
+  
+  return half_heap_size;
 }
 
 /*
@@ -1556,9 +1708,10 @@ static int thin_coarse_match( int threshold, int len )
  */
 
 
-static int fullsearch(org,ref,blk,fblk,lx,i0,j0,sx,sy,h,xmax,ymax,iminp,jminp)
+static int fullsearch(org,ref,blk,fblk,qblk,lx,i0,j0,sx,sy,h,xmax,ymax,iminp,jminp)
 unsigned char *org,*ref,*blk;
 mcompuint *fblk;
+mcompuint *qblk;
 int lx,i0,j0,sx,sy,h,xmax,ymax;
 int *iminp,*jminp;
 {
@@ -1567,12 +1720,9 @@ int *iminp,*jminp;
   int dt,dmint;
   int imint,jmint;
   int k,l,sxy;
-  int heap_size;
   int searched_size,s;
-  int coarse_rad_x, coarse_rad_y;
+  int quad_rad_x, quad_rad_y;
 
-  int dist_sum;
-  int best_fast_dist;
 
   sxy = (sx>sy) ? sx : sy;
 
@@ -1640,24 +1790,26 @@ int *iminp,*jminp;
     }
   }
 #else
-	heap_size = 0;
-
+  half_heap_size = 0;
+  quad_heap_size = 0;
+  
 	/* Round sx/sy up to a multiple of 4 so that to make life
-	   simple in the fast 2*2 pel search  */
-	coarse_rad_x = ((sx + 3) / 4)*4;
-	coarse_rad_y = ((sy + 3) / 4)*4;
+	   simple in the fast 4*4 and 2*2 pel searches  */
+	quad_rad_x = ((sx + 3) / 4)*4;
+	quad_rad_y = ((sy + 3) / 4)*4;
 
-	dist_sum = 0;
-	best_fast_dist = 10000000;
 
 	{
-	  mcompuint *forgblk;
 	  unsigned char *orgblk;
 	  sortelt distrec;
 	  matchelt matchrec;
 	  mcompuint *forg = (mcompuint*)(org+width*height);
+	  mcompuint *qorg = (mcompuint*)(forg+(width>>1)*(height>>1));
 	  int flx = lx >> 1;
+	  int qlx = lx >> 2;
 	  int fh = h >> 1;
+	  int qh = h >> 2;
+	  int quad_mean;
 #ifdef GATHER_FAST_MC_STATS
 	int seq = 0;
 	int seqd;
@@ -1665,132 +1817,64 @@ int *iminp,*jminp;
 	double opt_ratio;
 #endif
 
-	/* Create a distance-ordered heap of possible motion
-	   compensations based on the fast estimation data  -
-	   2*2 pel sums rather than actual pel's.  1/4 the size...
-	*/
-
-	if( (coarse_rad_x>>1)*(coarse_rad_y>>1) > MAX_COARSE_HEAP_SIZE )
+	if( (quad_rad_x>>1)*(quad_rad_y>>1) > MAX_COARSE_HEAP_SIZE )
 	  {
-		fprintf( stderr, "Search radius %d too big for searc heap!\n", sxy );
+		fprintf( stderr, "Search radius %d too big for search heap!\n", sxy );
 		exit(1);
 	  }
-	heap_size = 0;
 
 	/*
-	  First we try with half the specified radius - we only go out to
-	  the full radius if we can't get a better than average match
-	  close in.  This *should* save a lot of time on static parts of
-	  a scene.
-	 */
-	jlow = j0-(coarse_rad_y>>1);
+	  Create a distance-order heap of possible motion
+	   compensations based on the fast estimation data  -
+	   4*4 pel sums (4*4 sub-sampled) rather than actual pel's.  
+	   1/16 the size...
+	*/
+	jlow = j0-quad_rad_y;
 	jlow = jlow < 0 ? 0 : jlow;
-	jhigh =  j0+(coarse_rad_y>>1);
+	jhigh =  j0+quad_rad_y;
 	jhigh = jhigh > ymax ? ymax : jhigh;
-	ilow = i0-(coarse_rad_x>>1);
+	ilow = i0-quad_rad_x;
 	ilow = ilow < 0 ? 0 : ilow;
-	ihigh =  i0+(coarse_rad_x>>1);
+	ihigh =  i0+quad_rad_x;
 	ihigh = ihigh > xmax ? xmax : ihigh;
-	
 
-	/* Invariant:  forgblk = forg+(i>>1)+flx*(j>>1) */
-	for( j = jlow; j <= jhigh; j += 2 )
-	  {
-		forgblk = forg+(ilow>>1)+flx*(j>>1);
-		for( i = ilow; i <= ihigh; i += 2 )
-		  {
-			matches[heap_size].dx = i;
-			matches[heap_size].dy = j;
-			distrec.index = heap_size;
-			s = fdist1( forgblk,fblk,flx,fh);
-			dist_sum += s;
-			distrec.weight = s;
-			if( s < best_fast_dist )
-			  best_fast_dist = s;
-			coarse_match_heap[heap_size] = distrec;
-			++heap_size;
-			forgblk += 1;
-		  }
-	  }
+	quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, qorg, qblk, qlx, qh );
 
-	/* We only bother with a full search if we haven't already got
-	   a significantly better-than average match */
-	if(  ! fast_mc_threshold || 
-		 best_fast_dist > (int)(fast_motion_threshold * 0.95) )
-	  {
-		
-		jlow = j0-coarse_rad_y;
-		jlow = jlow < 0 ? 0 : jlow;
-		jhigh =  j0+coarse_rad_y;
-		jhigh = jhigh > ymax ? ymax : jhigh;
-		ilow = i0-coarse_rad_x;
-		ilow = ilow < 0 ? 0 : ilow;
-		ihigh =  i0+coarse_rad_x;
-		ihigh = ihigh > xmax ? xmax : ihigh;
-	
-		/* Invariant:  forgblk = forg+(i>>1)+flx*(j>>1) */
-		for( j = jlow; j <= jhigh; j += 2 )
-		  {
-			int jold = fastabs(j-j0) <= (coarse_rad_y>>1);
-			forgblk = forg+(ilow>>1)+flx*(j>>1);
+	/* Now create a distance-ordered heap of possible motion
+	   compensations based on the fast estimation data  -
+	   2*2 pel sums using the best fraction of the 4*4 estimates...
+	*/
+	searched_size = 3 + quad_heap_size / 10;
+	if( searched_size > quad_heap_size )
+	  searched_size = quad_heap_size;
 
-			for( i = ilow; i <= ihigh; i += 2 )
-			  {
-				/* Skip the bits we've done before */
-				if( jold & (fastabs(i-i0) <= (coarse_rad_x>>1)) )
-				  {
-					i = i0 + (coarse_rad_x>>1);
-					forgblk = forg+(i>>1)+flx*(j>>1);
-				  }
-				else
-				  {
-					matches[heap_size].dx = i;
-					matches[heap_size].dy = j;
-					distrec.index = heap_size;
-					s = fdist1( forgblk,fblk,flx,fh);
-					dist_sum += s;
-					distrec.weight = s;
-					if( s < best_fast_dist )
-					  best_fast_dist = s;
-					coarse_match_heap[heap_size] = distrec;
-					++heap_size;
-				  }
-				forgblk += 1;
-			  }
-		  }
-	  }
-		
-	/* Since heapification is relatively expensive we do a swift
-	   pre-processing step throwing out all candidates that
-	   are heavier than the heap average */
+	half_heap_size = build_half_heap( forg, fblk, flx, fh, searched_size );
 
-	heap_size = thin_coarse_match(  dist_sum / heap_size, heap_size );
-	heapify( coarse_match_heap, heap_size );
-	
 
-	/* Update the fast motion match average using the best match */
-	update_fast_motion_threshold( coarse_match_heap[0].weight );
 	/* Now choose best 1-pel match from what approximates (not exact due
 	   to the pre-processing trick with the mean) 
-	   the top 1/fast_mc_frac of the   coarse matches. */
-	dmin = 10000000;
+	   the top 1/2 of the 2*2 matches
+	*/
+	dmin = INT_MAX;
 
 #ifdef GATHER_FAST_MC_STATS
-	searched_size = heap_size;
+	searched_size = half_heap_size;
 #else
-	searched_size = 1+heap_size / fast_mc_frac;
+	searched_size = 1+half_heap_size / fast_mc_frac;
 #endif
 
 	for( k = 0; k < searched_size; ++k )
 	  {
-		heap_extract( coarse_match_heap, &heap_size, &distrec );
-		matchrec = matches[distrec.index];
+		heap_extract( half_match_heap, &half_heap_size, &distrec );
+		matchrec = half_matches[distrec.index];
 		orgblk = org+ matchrec.dx+lx*matchrec.dy;
 
-		/* Gross hack for pipeline CPU's: we allow the distance
+		/* Gross hack for pipelined CPU's: we allow the distance
 		   computation to "go off the edge".  We know this
 		   won't cause memory faults because the fast motion
-		   data sits off the end of the ordinary stuff */
+		   data sits off the end of the ordinary stuff. N.b. we
+		   *do* exclude any eventual off the edge matches though...
+		   */
 		d = dist1_00(orgblk,blk,lx,h, dmin);
 		if (d<dmin)
 		  {
@@ -1839,9 +1923,9 @@ int *iminp,*jminp;
   A.Stevens 2000: Why don't we do the rest of the motion comp search against
   the reconstructed image? Weird...
   */
-
   imin <<= 1;
   jmin <<= 1;
+
   ilow = imin - (imin>0);
   ihigh = imin + (imin<((xmax)<<1));
   jlow = jmin - (jmin>0);
@@ -2059,9 +2143,9 @@ static void update_fast_motion_threshold( int match_dist )
   slow_distance_average = (100.0 * slow_distance_average +
 						   fast_distance_average) / 101.0;
   if ( slow_distance_average < fast_distance_average )
-	fast_motion_threshold = slow_distance_average;
+	fast_motion_threshold = (int) (0.90 * slow_distance_average);
   else
-	fast_motion_threshold = fast_distance_average;
+	fast_motion_threshold = (int) (0.90 * fast_distance_average);
 
 }
 
@@ -2088,7 +2172,8 @@ void fast_motion_data(unsigned char *blk )
 {
   unsigned int *b, *nb;
   mcompuint *pb;
-  unsigned int *start_fblk;
+  mcompuint *qb,*p;
+  unsigned int *start_fblk, *start_qblk;
   int i;
   unsigned int sums;
   int nextfieldline;
@@ -2109,13 +2194,16 @@ void fast_motion_data(unsigned char *blk )
   b = (unsigned int*)blk;
   nb = (unsigned int*)(blk+nextfieldline);
   start_fblk = (unsigned int*)(blk+height*width);
+  start_qblk = (unsigned int*)(blk+height*width+(height>>1)*(width>>1));
 
   /* Sneaky stuff here... we can do lines in both fields at once */
   pb = (mcompuint *) start_fblk;
   while( nb < start_fblk )
 	{
-	  for( i = 0; i < nextfieldline; ++i )
+	  for( i = 0; i < nextfieldline/4; ++i ) /* We're doing 4 pels horizontally at once */
 		{
+		  /* TODO: A.Stevens this has to be the most word-length dependent
+			 code in the world.  Better than MMX assembler though I guess... */
 		  sums = ((*b & 0xff00ff00) >> 8) + ((*nb & 0xff00ff00) >> 8)
 			+ (*b & 0x00ff00ff) + (*nb & 0x00ff00ff);
 		  /* TODO: A.Stevens - this only works for mcompuint = unsigned char */
@@ -2125,9 +2213,42 @@ void fast_motion_data(unsigned char *blk )
 		  b += 1;
 		  nb += 1;
 		}
-	  b += nextfieldline;
-	  nb += nextfieldline;
+	  /* We're combining pairs of rows */
+	  b += nextfieldline/sizeof(int);
+	  nb += nextfieldline/sizeof(int);
 	}
+
+  
+
+  /* Now create the 4*4 sub-sampled data from the 2*2 
+	 N.b. the 2*2 sub-sampled motion data preserves the interlace structure of the
+	 original.  Albeit half as many lines and pixels...
+  */
+
+  nextfieldline = nextfieldline >> 1;
+
+  qb = (mcompuint *)   start_qblk;
+  b  = (unsigned int*) start_fblk;
+  nb = (unsigned int*) (start_fblk+nextfieldline);
+
+  while( nb < start_qblk )
+	{
+	  for( i = 0; i < nextfieldline/4; ++i )
+		{
+		  /* TODO: And here the biter could be bit... if mcompuint changes... */
+		  sums = ((*b & 0xff00ff00) >> 8) + ((*nb & 0xff00ff00) >> 8)
+			     + (*b & 0x00ff00ff) + (*nb & 0x00ff00ff);
+		  /* TODO: A.Stevens - this only works for mcompuint = unsigned char */
+		  qb[0] = sums >> 18;
+		  qb[1] = (sums >> 2) & 0xff ;
+		  qb += 2;
+		  b += 1;
+		  nb += 1;
+		}
+	  b += nextfieldline/sizeof(int);
+	  nb += nextfieldline/sizeof(int);
+	}
+
 }
 
 #ifndef SSE
@@ -2154,6 +2275,49 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
   return s;
 }
 #endif
+#endif
+
+/*
+  Sum absolute differences for 4*4 sub-sampled data.  
+
+  TODO: currently assumes  only 16*16 or 16*8 motion compensation will be used...
+  I.e. 4*4 or 4*2 sub-sampled blocks will be compared.
+ */
+
+#if !defined(MMX) && !defined(SSE)
+static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
+{
+  register mcompuint *p1 = qblk1;
+  register mcompuint *p2 = qblk2;
+  int s = 0;
+  int s1;
+  register int diff;
+
+  /* #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff) */
+#define pipestep(o) diff = p1[o]-p2[o]; s += diff < 0 ? -diff : diff;
+  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+  if( qh > 1 )
+	{
+	  p1 += qlx; p2 += qlx;
+	  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+	  if( qh > 2 )
+		{
+		  p1 += qlx; p2 += qlx;
+		  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+		  p1 += qlx; p2 += qlx;
+		  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+		}
+	}
+
+  /* TODO DEBUGGING only remove...
+  s1 =  qdist1_MMX( qblk1,qblk2,qlx,qh);
+  if ( s != s1 )
+	{
+	  printf( "qh = %d qlx=%d I = %d M = %d\n", qh, qlx,  s, s1);
+	}
+  */
+  return s;
+}
 #endif
 
 /*

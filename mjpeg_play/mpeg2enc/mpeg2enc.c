@@ -314,13 +314,14 @@ static void init()
   for (i=0; i<3; i++)
   {
 	/* A.Stevens 2000 for liminance data we allow space for
-	   fast motion estimation data.  This is actually 2*2 pixel
-	   group sum data, hence 1/4 of actual luminance data.
-	   However for speed data is stored in short's hence
-	   sizeof(short/4).
+	   fast motion estimation data.  This is actually 2*2 pixel sub-sampled
+	   mcompuint followed by 4*4 sub-sampled.
 	*/
 	if (i==0)
-	  size = (4*width*height * (1+sizeof(mcompuint)))/4;
+	  size = (width*height) + 
+		sizeof(mcompuint) *(width>>1)*(height>>1) +
+		sizeof(mcompuint) *(width>>2)*(height>>2);
+		
 	else
 	  size = chrom_width*chrom_height;
 

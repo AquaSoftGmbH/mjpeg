@@ -13,22 +13,28 @@ Rainer Johanni changed the input routine so that "lavtools" Edit
 Lists, AVI's and Quicktime input is accepted, introduced command line
 params instead of a param file and made some simple optimizations.
 
-Andrew Stevens added more intelligent motion compensation and optimised
-some key calculations that run badly on modern highly pipelined machines.
+Andrew Stevens added more intelligent motion compensation and
+optimised some key calculations that run badly on modern highly
+pipelined machines.  These were then further refined based on the
+results of some work by Juan Remero Arroyo (who would have guessed 4*4
+blocks still produce useful results!).
  
 Chris Atenasio's contributed MMX2/SSE code for the motion compensation
-macroblock group difference calculation.
+macroblock group difference calculation.  
 
-Andrew Stevens added MMX1 code for motion compensation and adapted
-Chris' code for his intelligent motion compensation too.
+Andrew Stevens added a lot more MMX1 code for motion compensation and
+adapted Chris' code for his intelligent motion compensation mods and
+ported the fdct/idct MMX code to nasm.
 
 Andrew Stevens added some simple pre-processing filters to improve
 output quality when using noisy (e.g. broadcast) source video.
 
+Andrew Stevens modified the bit-allocation routines to use a slightly
+more accurate method of estimating bits needed for good quality results.
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
-around 10 times as fast with sensible (search radius 15) motion compensation
+around 12 times as fast with sensible (search radius 15) motion compensation
 settings, and you can now get half-decent looking results when working with
 typical broadcast quality sources.
 
@@ -51,7 +57,7 @@ Usage: ./mpeg2enc [params] inputfiles
    -n num     Noise filter (low-pass) [0..2] (default: 0)
    -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)
    -t         Activate dynamic thresholding of motion compensation window size 
-[as
+
 
 FAST MOTION COMPENSATION:
 
@@ -61,18 +67,22 @@ an 8*8 region in a preceding or following frame.  The better the match
 the less information it has to drop when compressing.  Obviously, finding
 such a good match in *moving* pictures requires a lot of searching.
 
-To do this (reasonably) quickly we use a trick:  we first search
-coarsely comparing the sums of 2*2 pixel groups rather than individual
-pixels.  This reduces the amount of search by a factor 4 and amount of
-work needed per searched position by another factor of 4.  Since a
-good exact matches (down to half-pixels) will also give a good 2*2
-match we know the best match should be in amoungst the best 2*2
-matches.  However, there may be some false positives.  So we can't
-just work with the very best.  Instead we choose some fraction (the
-default is 1/10) and look for the best exact match corresponding to
-these good 2*2 matches.  Experiments and a bit of simple statistics
-revealed that it was exceedingly rare to miss the best match doing
-this, and even when we did miss the match found was *almost* as good.
+To do this (reasonably) quickly we use a trick: we first search
+coarsely first comparing sums of 4*4 pixel groups and then 2*2 pixel
+groups rather than individual pixels. Technically: we do an initial
+search using sub-sampled data and use this to choose the places to
+search for detail single pixel and sub-pixel matches.
+This reduces the amount of search *dramatically*. 
+
+Since a good exact matches (down to half-pixels) will also give a
+good 2*2 match we know the best match should be in amoungst the best
+2*2 matches.  However, there may be some false positives.  So we
+can't just work with the very best.  Instead we choose some fraction
+(the default is 1/10) and look for the best exact match corresponding
+to these good 2*2 matches.  Experiments and a bit of simple
+statistics revealed that it was exceedingly rare to miss the best
+match doing this, and even when we did miss the match found was
+*almost* as good.
 
 
 Obviously, your mileage may vary so you may want to fiddle with the -f
@@ -82,7 +92,7 @@ where the fast compensation fails!
 
 In case you're wondering: the performance gain is a factor of around 2-3.
 
-SEARCH RADIUS THRESHOLDING
+SEARCH THRESHOLDING
 
 Its a pain to watch the encoder grinding its way through huge motion
 compensation search radii that are really only needed on the fastest
@@ -95,6 +105,9 @@ the program bother searching more widely.  The net result is motion
 compensation is speeded by another factor of two for near zero quality
 loss.
 
+UPDATE: Actually, this currently doesn't happen instead the thresholding
+takes place as 2*2 pel matches are evaluated in order of closeness.  It may 
+be re-instated if the performance gains look worthwhile.
 N.b. because it is possible (if very unlikely) that non-trivial quality
 losses may occur (and the gains in terms of total run-time
 are not huge) thresholding defaults *off*.  Use "-t" to turn it on.
@@ -132,6 +145,27 @@ Update: -d 2 subjectively produces results that look like and inferior
 version of -n 1.  However, it is still worth using if you know your
 source simply doesn't have 8 bit precision as it will assist motion
 compensation find matches.
+
+SMARTER BIT ALLOCATION
+
+The original source code makes heavy use of the variance of
+blocks as a measure of their information content.  This is actually
+pretty poor as what really counts is how many bits it will take
+to encoded the quantised DCT of the block without excessive losses.
+The bit allocation strategy is also very naive, essentially the
+encoder (more or less) tries to keep the bits allocated to each
+block the same.   This is bad news if you have a picture where
+a lot of the information content comes low down....
+
+As a first step to better quality encoding the current source now
+uses the sum of absolute block coefficients as a measure of information
+content. Bits are then allocated on the basis of how much information
+is being covered so that bits are held back if high information
+material comes late in the frame.
+
+These modifications appear to give noticeable better results, greatly
+reducing fringes around sharp contrasts (e.g. titles).  
+
 
 
 PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul 2000)
@@ -178,10 +212,17 @@ with real-time pretensions.  However, to get the additional factor of
 2-3 needed to allow real-time compression on a single modern GHz CPU
 other parts of the program would need to be investigated too...
 
+Profiling reveals that the next targets for "MMX magic" should be
+the quantisation and block coefficient summing routines.
+
 BETTER QUALITY?
 
-I don't understand the code well enough to figure out how smart it is in
-allocating band-width.  Its the next thing on the agenda. Better noise filters might be nice too.
+- There is a lot of room for improvements to bit-allocation.
+
+- It would probably be smart to replace the current pre-processor
+filtering with filtering based on modifications of the DCT quantisation
+matrices.   Strong suppression of HF coefficients would work wonders
+on noise I suspect....
 
 
 
