@@ -121,10 +121,21 @@ Each parameter set comprises the sampling rate in Hz, the number of
 channels, and the number of bits per sample seperated by colons.  For
 example, the default 48kHz two-channel 16-bit audio would be specified
 as 48000:2:16.
+.IP
+
+Note: these parameters are necessary because mplex expects raw LPCM
+audio data without any headers.  That is: for each sample point a
+group of 16,20, or 24 bit amplitude values, one for each
+channel. Amplitude values are signed with the constituent bytes in
+big-endian (most significant bytes first) order.  For 20 bit
+samples I am not sure but what documentation I have suggests such
+samples are padded at the lsb end so that they byte-align at the most
+significant bits.
+
 .TP
 .BI -l|--mux-limit \ num
-Multiplex limit.  Multiplex only the specified number of sectors.  Useful
-for tuning and debugging.
+Multiplex limit.  Multiplex only the specified number of sectors.
+Useful for tuning and debugging.
 .TP
 .BI -O|--sync-offset \ num
 Set the presentation timestamp offset of video stream w.r.t. audio stream (video-audio) in mSec.   This flag is used to produce a stream with synchronised

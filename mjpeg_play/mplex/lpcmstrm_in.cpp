@@ -2,6 +2,12 @@
  *  lpcmstrm_in.c: LPCM Audio strem class members handling scanning and
  *  buffering raw input stream.
  *
+ * Takes a *RAW* LPCM stream as input.
+ * This is *signed* linear 16, 20, or 24-bit sample PCM.
+ * Samples are stored msb first.
+ * How  20-bit samples are allocated to bytes? I just don't know, but
+ * believe 4 bits are appended after the lsb (samples are msb-byte aligned).
+ *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *  Copyright (C) 2000,2001 Brent Byeler for original header-structure
  *                          parsing code.
@@ -128,7 +134,7 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
         {
-            mjpeg_warn("Discarding incomplete fnial frame LPCM  stream %d",
+            mjpeg_warn("Discarding incomplete final frame LPCM  stream %d",
                        stream_num);
             aunits.droplast();
             --decoding_order;

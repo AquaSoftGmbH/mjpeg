@@ -102,7 +102,8 @@ public:
     double secs_per_frame;
 
 	
-	bool dtspts_for_all_au;
+	bool dtspts_for_all_au;     // Ensure every AU has a timestamp 
+                                // (no two AU can start in one sector)
     bool gop_control_packet;
 
 protected:

@@ -194,6 +194,10 @@ void VideoStream::OutputSector ( )
             OutputGOPControlSector();
         }
 
+        //
+        // If we demand every AU should have its own timestamp
+        // We can't start two in the same sector...
+        //
         if(  dtspts_for_all_au  && max_packet_payload == 0 )
             max_packet_payload = au_unsent;
 
