@@ -52,7 +52,7 @@ usage(char **argv)
 {
   char buf[1024];
 
-  sprintf(buf, "Usage: %s %s\n", argv[0], (*MODULE.usage)());
+  sprintf(buf, "Usage: %s %s", argv[0], (*MODULE.usage)());
   WERRORL(buf);
 }
 

@@ -110,22 +110,22 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
       maxb < min || 255 < maxb ||
       maxi < min || 255 < maxi ||
       maxc < min || 255 < maxi) {
-    WERROR("illeagal threshold\n");
+    WERROR("illeagal threshold");
     return NULL;
   }
   if (errt < 1 || 255 < errt ||
       errb < 1 || 255 < errb ||
       erri < 1 || 255 < erri ||
       errc < 1 || 255 < errc) {
-    WERROR("illeagal error\n");
+    WERROR("illeagal error");
     return NULL;
   }
   if (y4m_si_get_interlace(&h0->si) == Y4M_ILACE_BOTTOM_FIRST) {
-    WERROR("unsupported field order\n");
+    WERROR("unsupported field order");
     return NULL;
   }
   if (h0->height != 480 || h0->fpscode != 4)
-    WWARN("input doesn't seem NTSC full height / full motion video\n");
+    WWARN("input doesn't seem NTSC full height / full motion video");
   h = (YfTask_t *)
     YfAllocateTask(&yuvycsnoise,
 		   (sizeof *h + DATABYTES(h0->width, h0->height) + /* frame */

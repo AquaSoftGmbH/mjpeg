@@ -38,8 +38,8 @@ extern "C" {
 # define WERRORL(MSG) mjpeg_error(MSG)
 # define WWARN(MSG) mjpeg_warn(MSG)
 #else
-# define WERROR(MSG) write(2, MSG, sizeof MSG - 1)
-# define WERRORL(MSG) write(2, MSG, strlen(MSG))
+# define WERROR(MSG) write(2, MSG "\n", sizeof MSG)
+# define WERRORL(MSG) do { write(2, MSG, strlen(MSG)); write(2, "\n", 1); } while (0)
 # define WWARN(MSG) WERROR("warning: " MSG)
 #endif
 

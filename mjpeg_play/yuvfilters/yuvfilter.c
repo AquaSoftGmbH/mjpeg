@@ -36,12 +36,12 @@
 # define ERROR1(fmt,a1) mjpeg_error(fmt,a1)
 #else
 # include <stdio.h>
-# define INFO(msg) fprintf(stderr, "%s", msg)
-# define WARN(msg) fprintf(stderr, "%s", msg)
-# define ERROR(msg) fprintf(stderr, "%s", msg)
-# define DEBUG(msg) fprintf(stderr, "%s", msg)
-# define INFO1(fmt,a1) fprintf(stderr, fmt, a1)
-# define ERROR1(fmt,a1) fprintf(stderr, fmt, a1)
+# define INFO(msg) fprintf(stderr, "%s\n", msg)
+# define WARN(msg) fprintf(stderr, "%s\n", msg)
+# define ERROR(msg) fprintf(stderr, "%s\n", msg)
+# define DEBUG(msg) fprintf(stderr, "%s\n", msg)
+# define INFO1(fmt,a1) fprintf(stderr, fmt "\n", a1)
+# define ERROR1(fmt,a1) fprintf(stderr, fmt "\n", a1)
 #endif
 #include <mjpegtools/yst_private.h>
 #include <mjpegtools/yuvfilter.h>
@@ -81,7 +81,7 @@ main(int argc, char **argv)
   yst_frame_t *frame;
 
   if (!(in = yst_stream_init(YST_F_MEDIA_FILE|YST_F_RW_READ, NULL, NULL))) {
-    ERROR("cannot initialize input stream (memory exhausted?)\n");
+    ERROR("cannot initialize input stream (memory exhausted?)");
     return 1;
   }
 
@@ -178,7 +178,7 @@ main(int argc, char **argv)
 	else if (!strcmp(optarg, "raw"))     format = YST_F_FMT_V_RAW;
 # endif
 	else {
-	  ERROR("invalid format\n");
+	  ERROR("invalid format");
 	  print_help = 1;
 	}
 	break;
@@ -201,9 +201,9 @@ main(int argc, char **argv)
     argv += optind;
     optind = 0;
     if (print_version) {
-      INFO("yuvfilter (" PACKAGE ") " VERSION "\n");
+      INFO("yuvfilter (" PACKAGE ") " VERSION);
       INFO("Copyright (C) 2001 Kawamata/Hitoshi. "
-	   "<hitoshi.kawamata@nifty.ne.jp>\n");
+	   "<hitoshi.kawamata@nifty.ne.jp>");
       return 0;
     }
     if (print_help || argc <= 0) {
@@ -212,25 +212,25 @@ main(int argc, char **argv)
 #else
 # define PIPEHELP
 #endif
-      INFO("Usage: [yuvfilter [OPTION]...] COMMAND [OPTION]..." PIPEHELP "\n");
-      INFO("Options:\n");
-      INFO("  -h, --help            print this help\n");
-      INFO("  -V, --version         print version\n");
+      INFO("Usage: [yuvfilter [OPTION]...] COMMAND [OPTION]..." PIPEHELP);
+      INFO("Options:");
+      INFO("  -h, --help            print this help");
+      INFO("  -V, --version         print version");
 #ifdef USE_DLFCN_H
-      INFO("  -a, --any-version     search plugin without version suffix\n");
+      INFO("  -a, --any-version     search plugin without version suffix");
 #endif
 #ifdef MJPEGTOOLS
       INFO("  -v, --verbose LEVEL   set verbosity level {0,1,2} "
-	   "(default: 1)\n");
+	   "(default: 1)");
 #endif
 #ifdef USE_LIBYST
-      INFO("  -p, --property STRING set default property of input stream\n");
-      INFO1("  -f, --format FORMAT   set output header format {default%s}\n",
+      INFO("  -p, --property STRING set default property of input stream");
+      INFO1("  -f, --format FORMAT   set output header format {default%s}",
 	    fmts);
 # ifdef WRITE_Y4M_NAMED_FIELD
-      INFO("                        (default: name)\n");
+      INFO("                        (default: name)");
 # else
-      INFO("                        (default: tag)\n");
+      INFO("                        (default: tag)");
 # endif
 #endif
       return 1;
@@ -255,7 +255,7 @@ main(int argc, char **argv)
 #endif
 
     if (!(task = (task_t *)malloc(sizeof *task))) {
-      ERROR("memory exhausted\n");
+      ERROR("memory exhausted");
       status = 1;
       goto FINI;
     }
@@ -278,7 +278,7 @@ main(int argc, char **argv)
 				(YST_F_RW_WRITE|YST_F_MEDIA_STACK|format):
 				(YST_F_RW_WRITE|YST_F_MEDIA_FILE|format),
 				NULL, NULL))) {
-      ERROR("cannot initialize output stream (memory exhausted?)\n");
+      ERROR("cannot initialize output stream (memory exhausted?)");
       status = 1;
       goto FINI;
     }
@@ -292,7 +292,7 @@ main(int argc, char **argv)
       if ((task->yuvfilter_so = dlopen(yuvfilter_so_name, RTLD_LAZY)))
 	goto DLOPENED;
     }
-    ERROR1("plugin %s not found\n", yuvfilter_name);
+    ERROR1("plugin %s not found", yuvfilter_name);
     status = 1;
     goto FINI;
   DLOPENED:
@@ -306,7 +306,7 @@ main(int argc, char **argv)
     }
 #endif
     if (!task->yuvfilter) {
-      ERROR1("entry table of %s not found\n", yuvfilter_name);
+      ERROR1("entry table of %s not found", yuvfilter_name);
       status = 1;
       goto FINI;
     }
@@ -323,7 +323,7 @@ main(int argc, char **argv)
     if ((status = task0->yuvfilter->frame(task0->appdata, frame)))
       goto FINI;
   if (task0->in->error && task0->in->error != YST_E_EOD)
-    ERROR1("%s\n", yst_errstr(task0->in->error)); /* FIXME: other streams? */
+    ERROR(yst_errstr(task0->in->error)); /* FIXME: other streams? */
   for (task = task0; task; task = task->next)
     task->yuvfilter->frame(task->appdata, NULL); /* notify EOD */
 
