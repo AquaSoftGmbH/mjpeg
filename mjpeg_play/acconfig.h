@@ -61,6 +61,7 @@
 
 /* whether we have avifile/gtk+/sdl */
 #undef HAVE_AVIFILE
+#undef AVIFILE_USE_DESTFMT
 #undef HAVE_GTK
 #undef HAVE_SDL
 

@@ -90,11 +90,17 @@
 // 2002/02/24
 //
 // Fixed a problem with overzealous flip detection.  Replaced the flip detection
-// with an explicity option --flip to allow flipping when necessary (rarely).
+// with an explicit option --flip to allow flipping when necessary (rarely).
+//
+// 2002/02/25
+//
+// Fixed problem with method name drift in upstream avifile.  Detection of
+// old method is done in configuration time, and handled here by ifdef.
 //
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.28"
-#define LastChanged "2002/02/24"
+#define APPVERSION "0.0.29"
+#define LastChanged "2002/02/25"
+// uncomment this if you want lots of not usually useful debugging info.
 //#define DEBUG_DIVXDEC 1
 
 #include <vector>
@@ -267,11 +273,11 @@ readyDestination ( 	IAviReadStream *instream
 	}
 	if ( flip )
 	{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-		flip = ( instream->GetDecoder ()->GetDestFmt ().biHeight > 0 );
-#else
- 		flip = ( instream->GetDecoder ()->DestFmt ().biHeight > 0 );
-#endif /* AVIFILE_MAJOR_VERSION */
+#ifdef AVIFILE_USE_DESTFMT
+                flip = ( instream->GetDecoder ()->DestFmt ().biHeight > 0 );
+#else 		
+                flip = ( instream->GetDecoder ()->GetDestFmt ().biHeight > 0 );
+#endif /* AVIFILE_USE_DESTFMT */
 		instream->SetDirection ( flip );
 		instream->GetDecoder ()->SetDirection ( flip );
 	}

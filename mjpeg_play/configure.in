@@ -361,6 +361,16 @@ fi
 
 if test x$have_aviplay = xtrue; then
   AC_DEFINE(HAVE_AVIFILE)
+  dnl ** Check for GetDestFmt (new) or DestFmt (old)
+  OLD_CPPFLAGS="$CPPFLAGS"
+  CPPFLAGS="$CPPFLAGS $AVIPLAY_CFLAGS"
+  AC_REQUIRE_CPP()
+  AC_MSG_CHECKING([for IVideoDecoder::GetDestFmt() in avifile])
+  AC_EGREP_HEADER([BITMAPINFOHEADER& GetDestFmt()],avifile.h,AC_MSG_RESULT([yes]),[
+        AC_DEFINE(AVIFILE_USE_DESTFMT,1)
+        AC_MSG_RESULT([no, using workaround])
+        ])
+  CPPFLAGS="$OLD_CPPFLAGS"
 fi
 
 dnl *********************************************************************
