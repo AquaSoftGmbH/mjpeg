@@ -1,18 +1,18 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(mjpegtools, 1.6.3, mjpeg-developer@mjpeg.sourceforge.net)
+AC_INIT([mjpegtools],[1.6.3],[mjpeg-developer@mjpeg.sourceforge.net])
 AC_PREREQ(2.57)
+AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
 MJPEG_MAJOR_VERSION=1
 MJPEG_MINOR_VERSION=6
 MJPEG_MICRO_VERSION=3
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
+AC_CONFIG_HEADERS([config.h])
 AC_CANONICAL_HOST
-AC_CANONICAL_TARGET
-AM_INIT_AUTOMAKE(1.6.3)
-AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE([1.6])
 AM_MAINTAINER_MODE
-AM_OUTPUT_DEPENDENCY_COMMANDS
+
 
 # libtool versioning
 LT_RELEASE=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION
@@ -45,7 +45,7 @@ AC_ARG_ENABLE(zalpha,
 AC_GNU_SOURCE
 
 dnl Initialize libtool
-AM_PROG_LIBTOOL
+AC_PROG_LIBTOOL
 
 dnl Checks for programs.
 AC_PROG_AWK
@@ -95,9 +95,9 @@ AC_CHECK_FUNC(getopt_long,[AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
   [AC_DEFINE(HAVE_GETOPT_LONG,1,getopt support) LIBGETOPT_LIB="-lgnugetopt"])])
 AC_SUBST(LIBGETOPT_LIB)
 
-AC_CHECK_FUNC(posix_memalign,[AC_DEFINE(HAVE_POSIX_MEMALIGN,1,posix_memalign support)])
-AC_CHECK_FUNC(memalign,[AC_DEFINE(HAVE_MEMALIGN,1,memalign support)])
-AC_CHECK_FUNC(fmax,[AC_DEFINE(HAVE_FMAX,1,fmax support)])
+AC_CHECK_FUNCS([posix_memalign memalign fmax])
+
+
 AC_CHECK_LIB([m],[lround], [AC_DEFINE(HAVE_LROUND,1,lround support)])
 
 AC_TYPE_SIGNAL
@@ -328,11 +328,11 @@ dnl Check to see if __progname is provided by the system
 dnl ********************************************************************
 AC_MSG_CHECKING(for __progname)
 AC_CACHE_VAL(ac_cv_extern__progname,
-AC_TRY_LINK([],
-	[extern char *__progname;
-	puts(__progname)],
-	ac_cv_extern___progname=yes,
-	ac_cv_extern___progname=no))
+             AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+                                             [[extern char *__progname;
+                                               puts(__progname);]])],
+                            [ac_cv_extern__progname=yes],
+			    [ac_cv_extern__progname=no]))
 if test x$ac_cv_extern___progname = xyes ; then
 	AC_DEFINE(HAVE___PROGNAME,,[Is __progname defined by system?])
 	AC_MSG_RESULT(yes)
@@ -407,7 +407,10 @@ then
   if test x$have_x86cpu = xtrue
   then
       AC_MSG_CHECKING([if C compiler accepts inline MMX assembly])
-      AC_TRY_COMPILE([],[__asm__ __volatile__("emms":::"memory");],have_asm_mmx=true)
+      AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],
+                                         [[__asm__ __volatile__("emms":::"memory");]])],
+                        [have_asm_mmx=true],
+			[have_asm_mmx=false])
       if test $have_asm_mmx = true; then
 	 AC_MSG_RESULT(yes)
       else
@@ -593,27 +596,29 @@ esac
 dnl **********************************************************************
 dnl Output a Makefile or two and the lib/header descriptor script
 dnl
-AC_OUTPUT([
-Makefile
-debian/Makefile
-debian/control
-docs/Makefile
-lavtools/Makefile
-yuvdenoise/Makefile
-yuvdeinterlace/Makefile
-yuvfilters/Makefile
-mpeg2enc/Makefile
-aenc/Makefile
-mplex/Makefile
-scripts/Makefile
-utils/Makefile
-utils/altivec/Makefile
-utils/mmxsse/Makefile
-y4mdenoise/Makefile
-mjpegtools-config
-mjpegtools.pc
-mjpegtools.spec
-])
+AC_CONFIG_FILES([
+     Makefile
+     debian/Makefile
+     debian/control
+     docs/Makefile
+     lavtools/Makefile
+     yuvdenoise/Makefile
+     yuvdeinterlace/Makefile
+     yuvfilters/Makefile
+     mpeg2enc/Makefile
+     aenc/Makefile
+     mplex/Makefile
+     scripts/Makefile
+     utils/Makefile
+     utils/altivec/Makefile
+     utils/mmxsse/Makefile
+     y4mdenoise/Makefile
+     mjpegtools-config
+     mjpegtools.pc
+     mjpegtools.spec
+     ])
+AC_OUTPUT
+
 
 AC_DEFINE(VERSION, ${VERSION}, 
 		  [Version of this build])
