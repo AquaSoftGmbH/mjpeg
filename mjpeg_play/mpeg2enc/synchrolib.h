@@ -44,7 +44,7 @@ typedef struct _semaphore {
 	pthread_mutex_t mutex;
 	pthread_cond_t raised;
 	volatile int count;
-} semaphore_t;
+} mp_semaphore_t;
 
 
 
@@ -61,12 +61,12 @@ void sync_guard_test( sync_guard_t *guard);
 void sync_guard_update( sync_guard_t *guard, int predicate );
 
 
-void mp_semaphore_init( semaphore_t *sema, int init_count );
+void mp_semaphore_init( mp_semaphore_t *sema, int init_count );
 
-void mp_semaphore_wait( semaphore_t *sema);
+void mp_semaphore_wait( mp_semaphore_t *sema);
 
-void mp_semaphore_signal( semaphore_t *sema, int count );
+void mp_semaphore_signal( mp_semaphore_t *sema, int count );
 
-void mp_semaphore_set( semaphore_t *sema );
+void mp_semaphore_set( mp_semaphore_t *sema );
 
 #endif

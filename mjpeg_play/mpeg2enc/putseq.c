@@ -678,9 +678,9 @@ static void reconstruct( pict_data_s *picture)
 #endif
 }
 
-static semaphore_t worker_available =  SEMAPHORE_INITIALIZER;
-static semaphore_t picture_available = SEMAPHORE_INITIALIZER;
-static semaphore_t picture_started = SEMAPHORE_INITIALIZER;
+static mp_semaphore_t worker_available =  SEMAPHORE_INITIALIZER;
+static mp_semaphore_t picture_available = SEMAPHORE_INITIALIZER;
+static mp_semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 
 
 static void stencodeworker(pict_data_s *picture)

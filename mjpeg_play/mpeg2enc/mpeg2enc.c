@@ -1156,7 +1156,7 @@ static void init_mpeg_parms(void)
 		break;
 	}
 
-	opt_dc_prec         = 9;  /* 9 bits */
+	opt_dc_prec         = 1;  /* 9 bits */
 	if( param_fieldenc == 2 )
 		opt_topfirst  = 1;
 	else if (param_fieldenc == 1)
@@ -1190,15 +1190,14 @@ static void init_mpeg_parms(void)
 
 	opt_intravlc_tab[0] 
 		= opt_intravlc_tab[1] 
-		= opt_intravlc_tab[2] = param_mpeg == 1 ? 0 : 1;
+		= opt_intravlc_tab[2] 
+		= param_mpeg == 1 ? 0 : 1;
 
 	opt_altscan_tab[2]  
 		= opt_altscan_tab[1]  
 		= opt_altscan_tab[0]  
 		= param_mpeg == 1 ? 0 : 1;
 	
-	param_mpeg == 1 ? 0 : !opt_fieldpic;
-
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8
 		for the new fast motion compensation search to work correctly.
