@@ -23,9 +23,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "videostrm.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "videostrm.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
 
 
@@ -96,7 +96,7 @@ void VideoStream::Init ( const int stream_num )
 	*/
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
-	AU_start = 0LL;
+	AU_start = 0;
     
     OutputSeqhdrInfo();
 }
@@ -183,7 +183,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			   start a new AU.  I.e. sequence and gop headers count as
 			   part of the AU of the corresponding picture
 			*/
-			stream_length = bs.bitcount()-32LL;
+			stream_length = bs.bitcount()-static_cast<bitcount_t>(32);
 			switch (syncword) 
 			{
 			case SEQUENCE_HEADER :
@@ -215,7 +215,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				if( !bs.eos() && 
 					bs.GetBits( 32) ==SEQUENCE_HEADER )
 				{
-					stream_length = bs.bitcount()-32LL;
+					stream_length = bs.bitcount()-static_cast<bitcount_t>(32);
 					AU_start = stream_length;
 					syncword  = AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;

@@ -133,24 +133,24 @@ y4m_ratio_t y4m_guess_sar(int width, int height, y4m_ratio_t dar)
 {
   int i;
   double implicit_sar = (double)(dar.n * height) / (double)(dar.d * width);
-  y4m_ratio_t sarray[] =
+  const y4m_ratio_t *sarray[] =
     {
-      y4m_sar_SQUARE,
-      y4m_sar_NTSC_CCIR601,
-      y4m_sar_NTSC_16_9,
-      y4m_sar_NTSC_SVCD_4_3,
-      y4m_sar_NTSC_SVCD_16_9,
-      y4m_sar_PAL_CCIR601,
-      y4m_sar_PAL_16_9,
-      y4m_sar_PAL_SVCD_4_3,
-      y4m_sar_PAL_SVCD_16_9,
-      y4m_sar_UNKNOWN
+      &y4m_sar_SQUARE,
+      &y4m_sar_NTSC_CCIR601,
+      &y4m_sar_NTSC_16_9,
+      &y4m_sar_NTSC_SVCD_4_3,
+      &y4m_sar_NTSC_SVCD_16_9,
+      &y4m_sar_PAL_CCIR601,
+      &y4m_sar_PAL_16_9,
+      &y4m_sar_PAL_SVCD_4_3,
+      &y4m_sar_PAL_SVCD_16_9,
+      &y4m_sar_UNKNOWN
     };
-  for (i = 0; !(Y4M_RATIO_EQL(sarray[i],y4m_sar_UNKNOWN)); i++) {
-    double ratio = implicit_sar / Y4M_RATIO_DBL(sarray[i]);
+  for (i = 0; !(Y4M_RATIO_EQL(*(sarray[i]),y4m_sar_UNKNOWN)); i++) {
+    double ratio = implicit_sar / Y4M_RATIO_DBL(*(sarray[i]));
     if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
 	 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
-      return sarray[i];
+      return *(sarray[i]);
   }
   return y4m_sar_UNKNOWN;
 } 

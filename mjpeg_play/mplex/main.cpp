@@ -32,9 +32,9 @@
 #include "mjpeg_logging.h"
 #include "mpegconsts.h"
 
-#include "interact.hh"
-#include "bits.hh"
-#include "multiplexor.hh"
+#include "interact.hpp"
+#include "bits.hpp"
+#include "multiplexor.hpp"
 
 /*************************************************************************
     Main

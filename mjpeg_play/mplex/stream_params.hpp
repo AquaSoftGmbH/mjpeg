@@ -1,5 +1,5 @@
 /*
- * params.hh:  User specifiable parameter classes for various types of stream
+ * params.hpp:  User specifiable parameter classes for various types of stream
  *
  * The class constructors etc are defined so that it is impossible to build
  * objects with illegal combinations of constructors.

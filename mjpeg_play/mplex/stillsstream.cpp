@@ -23,9 +23,9 @@
 
 #include <format_codes.h>
 
-#include "stillsstream.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "stillsstream.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
 void StillsStream::Init ( )
 {
@@ -89,7 +89,7 @@ void StillsStream::Init ( )
 	*/
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
-	AU_start = 0LL;
+	AU_start = 0;
 
     OutputSeqhdrInfo();
 

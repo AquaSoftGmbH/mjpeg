@@ -24,8 +24,8 @@
 #include <config.h>
 #include <assert.h>
 #include "fastintfns.h"
-#include "inputstrm.hh"
-#include "multiplexor.hh"
+#include "inputstrm.hpp"
+#include "multiplexor.hpp"
 
 MuxStream::MuxStream() : init(false) 
 {
@@ -63,6 +63,7 @@ MuxStream::BufferSizeCode()
 		return buffer_size / 128;
 	else
 		assert(false);
+    return 0;                   // Never reached...
 }
 
 

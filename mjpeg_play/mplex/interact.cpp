@@ -22,7 +22,11 @@
 
 #include <config.h>
 #include <stdlib.h>
+#ifdef _WIN32
+#include <win32defs.h>
+#else
 #include <unistd.h>
+#endif
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
@@ -31,12 +35,14 @@
 #include <mjpeg_logging.h>
 #include <format_codes.h>
 
-#include "interact.hh"
-#include "videostrm.hh"
-#include "audiostrm.hh"
-#include "zalphastrm.hh"
-#include "mplexconsts.hh"
-#include "aunit.hh"
+#include "interact.hpp"
+#include "videostrm.hpp"
+#include "audiostrm.hpp"
+#ifdef ZALPHA
+#include "zalphastrm.hpp"
+#endif
+#include "mplexconsts.hpp"
+#include "aunit.hpp"
 
 vector<LpcmParams *> opt_lpcm_param;
 vector<VideoParams *> opt_video_param;
@@ -52,7 +58,7 @@ MultiplexJob::MultiplexJob()
     mpeg = 1;
     mux_format = MPEG_FORMAT_MPEG1;
     multifile_segment = false;
-    always_system_headers = 0;
+    always_system_headers = false;
     packets_per_pack = 20;
     max_timeouts = 10;
     max_PTS = 0;
@@ -231,7 +237,7 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 			break;
 	  
 		case 'h' :
-			always_system_headers = 1;
+			always_system_headers = true;
 			break;
 
 		case 'b' :
@@ -358,6 +364,7 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
             continue;
         }
         bs->UndoChanges( undo);
+#ifdef ZALPHA
         if( ZAlphaStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an Z/Alpha Video stream.",
@@ -366,6 +373,7 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
             z_alpha_files.push_back( bs );
             continue;
         }
+#endif
         bs->UndoChanges( undo);
         if( LPCMStream::Probe( *bs ) )
         {

@@ -40,6 +40,8 @@ typedef u_int64_t uint64_t;
 # define UINT16_C(c)   c ## U
 # define UINT32_C(c)   c ## U
 # define UINT64_C(c)   c ## ULL
+#elif  defined(_WIN32)
+#include <win32defs.h>
 #else
 /* warning ISO/IEC 9899:1999 <stdint.h> was missing and even <inttypes.h> */
 /* fixme */

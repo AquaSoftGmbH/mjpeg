@@ -1,6 +1,6 @@
 
 /*
- *  buffer.hh:  Classes for decoder buffer models for mux despatch
+ *  buffer.hpp:  Classes for decoder buffer models for mux despatch
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -24,7 +24,7 @@
 #define __BUFFER_H__
 
 #include <config.h>
-#include "aunit.hh"
+#include "aunit.hpp"
 
 class BufferQueue
 {

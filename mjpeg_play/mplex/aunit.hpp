@@ -3,7 +3,7 @@
 
 #include <config.h>
 #include "mjpeg_types.h"
-#include "bits.hh"
+#include "bits.hpp"
 
 typedef int64_t clockticks;		// This value *must* be signed
                                 // because we frequently compute *offsets*
@@ -26,6 +26,8 @@ public:
 	bool	   end_seq;
 
 };
+
+typedef Aunit *AunitPtr;
 
 typedef Aunit VAunit;
 

@@ -24,7 +24,8 @@
 #include "mjpeg_types.h"
 
 typedef enum {
-  LOG_DEBUG = 1,
+  LOG_NONE = 0,
+  LOG_DEBUG,
   LOG_INFO,
   LOG_WARN,
   LOG_ERROR

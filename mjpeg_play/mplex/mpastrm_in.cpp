@@ -23,9 +23,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "audiostrm.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "audiostrm.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
 
 static const char *mpa_audio_version[4] =

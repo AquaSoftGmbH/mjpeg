@@ -20,7 +20,7 @@
  */
 
 
-#include "padstrm.hh"
+#include "padstrm.hpp"
 
 
 

@@ -2,7 +2,7 @@
 #define __SYSTEMS_HH__
 
 #include <sys/param.h>
-#include "inputstrm.hh"
+#include "inputstrm.hpp"
 
 #include <vector>
 
@@ -22,16 +22,18 @@ typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
   //clockticks TS                ;
 } Sector_struc;
 
-typedef struct pack_struc	/* Pack Info				*/
-{   unsigned char  buf [MAX_PACK_HEADER_SIZE];
-  int length;
-  clockticks SCR;
-} Pack_struc;
+struct Pack_struc	/* Pack Info				*/
+{ 
+    uint8_t buf[MAX_PACK_HEADER_SIZE];
+    int length;
+    clockticks SCR;
+};
 
-typedef struct sys_header_struc	/* System Header Info			*/
-{   unsigned char  buf [MAX_SYS_HEADER_SIZE];
-  int length;
-} Sys_header_struc;
+struct Sys_header_struc	/* System Header Info			*/
+{   
+    uint8_t buf[MAX_SYS_HEADER_SIZE];
+    int length;
+};
 
 
 class PS_Stream

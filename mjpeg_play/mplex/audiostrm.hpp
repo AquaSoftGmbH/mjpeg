@@ -1,6 +1,6 @@
 
 /*
- *  audiostrm.hh:  Audio stream class sub-hierarchy for MPEG multiplexing
+ *  audiostrm.hpp:  Audio stream class sub-hierarchy for MPEG multiplexing
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -22,8 +22,8 @@
 #ifndef __AUDIOSTRM_H__
 #define __AUDIOSTRM_H__
 
-#include "inputstrm.hh"
-#include "stream_params.hh"
+#include "inputstrm.hpp"
+#include "stream_params.hpp"
 
 class AudioStream : public ElementaryStream
 {
@@ -105,7 +105,7 @@ private:
     void DisplayAc3HeaderInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
     
-    static const unsigned int default_buffer_size = 16*1024;
+    static const unsigned int default_buffer_size;
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
     unsigned int samples_per_second;

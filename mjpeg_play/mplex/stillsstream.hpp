@@ -21,7 +21,7 @@
  */
 
 
-#include "videostrm.hh"
+#include "videostrm.hpp"
 
 //
 // Class for video stills sequence for (S)VCD non-mixed stills segment 
@@ -35,8 +35,8 @@ public:
                   StillsParams *parms,
                   Multiplexor &into) :
 		VideoStream( ibs, parms, into ),
-		current_PTS(0LL),
-		current_DTS(0LL)
+		current_PTS(0),
+		current_DTS(0)
 		{}
 	void Init( );
 private:

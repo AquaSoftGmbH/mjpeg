@@ -2,10 +2,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <memory>
+
+#ifdef _WIN32
+#include <win32defs.h>
+#else
 #include <sys/param.h>
+#endif
 #include <sys/stat.h>
-#include "systems.hh"
-#include "mplexconsts.hh"
+#include "systems.hpp"
+#include "mplexconsts.hpp"
+
+using std::auto_ptr;
 
 PS_Stream:: PS_Stream( unsigned _mpeg,
                        unsigned int _sector_size,
@@ -39,7 +47,8 @@ PS_Stream::FileLimReached()
 void 
 PS_Stream::NextFile( )
 {
-    char prev_filename[strlen(cur_filename)+1];
+    auto_ptr<char> prev_filename_buf( new char[strlen(cur_filename)+1] );
+    char *prev_filename = prev_filename_buf.get();
 	fclose(strm);
 	++segment_num;
     strcpy( prev_filename, cur_filename );
@@ -132,7 +141,7 @@ PS_Stream::BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
 	
 	thetime_base = timecode /300;
 	msb = (thetime_base >> 32) & 1;
-	lsb = (thetime_base & 0xFFFFFFFFLL);
+	lsb = (thetime_base & static_cast<uint64_t>(0xFFFFFFFF));
 		
     temp = (marker << 4) | (msb <<3) |
 		((lsb >> 29) & 0x6) | 1;
@@ -172,7 +181,7 @@ PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
 	thetime_base = timecode /300;
 	thetime_ext =  timecode % 300;
 	msb = (thetime_base>> 32) & 1;
-	lsb = thetime_base & 0xFFFFFFFFLL;
+	lsb = thetime_base & static_cast<uint64_t>(0xFFFFFFFF);
 
 
       temp = (MARKER_MPEG2_SCR << 6) | (msb << 5) |

@@ -1,6 +1,6 @@
 
 /*
- *  videostrm.hh:  Video stream elementary input stream
+ *  videostrm.hpp:  Video stream elementary input stream
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -22,9 +22,9 @@
 #ifndef __VIDEOSTRM_H__
 #define __VIDEOSTRM_H__
 
-#include "inputstrm.hh"
-#include "interact.hh"
-#include "stream_params.hh"
+#include "inputstrm.hpp"
+#include "interact.hpp"
+#include "stream_params.hpp"
 
 class VideoStream : public ElementaryStream
 {
@@ -108,9 +108,9 @@ protected:
 
 	/* State variables for scanning source bit-stream */
     VAunit access_unit;
-	unsigned int fields_presented;
-    unsigned int group_start_pic;
-	unsigned int group_start_field;
+	int fields_presented;
+    int group_start_pic;
+	int group_start_field;
     int temporal_reference;
     unsigned int pict_rate;
     unsigned int pict_struct;

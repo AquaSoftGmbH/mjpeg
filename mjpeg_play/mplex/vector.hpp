@@ -2,15 +2,15 @@
 #define __AUSTREAM_H__
 
 #include <config.h>
-#include <deque>
+#include <memory>
 #include "mjpeg_logging.h"
-#include "aunit.hh"
+#include "aunit.hpp"
 
 class AUStream
 {
 public:
+	// TODO The buffer should be delete-ed on destruction...
 	AUStream();
-
 	void init( Aunit *rec );
 
 	void append( Aunit &rec )
@@ -70,7 +70,7 @@ private:
 	unsigned int cur_wr;
 	unsigned int totalctr;
 	unsigned int size;
-	Aunit **buf;
+	AunitPtr *buf;
 };
 
 

@@ -1,6 +1,6 @@
 
 /*
- *  inptstrm.hh:  Input stream classes for MPEG multiplexing
+ *  inptstrm.hpp:  Input stream classes for MPEG multiplexing
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -32,12 +32,13 @@
 #include "format_codes.h"
 #include "mjpeg_logging.h"
 
-#include "mplexconsts.hh"
-#include "bits.hh"
-#include "aunit.hh"
-#include "vector.hh"
-#include "buffer.hh"
+#include "mplexconsts.hpp"
+#include "bits.hpp"
+#include "aunit.hpp"
+#include "vector.hpp"
+#include "buffer.hpp"
 
+using std::vector;
 
 class InputStream
 {

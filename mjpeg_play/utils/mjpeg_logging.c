@@ -18,8 +18,13 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+
 #ifdef HAVE_CONFIG_H
-# include "config.h"
+# include <config.h>
+#endif
+
+#ifdef _WIN32
+#include <win32defs.h>
 #endif
 
 #include <stdlib.h>
@@ -40,7 +45,7 @@ static const char _rcsid[] = "$Id: ";
 extern const char *__progname;
 #endif
 
-static log_level_t mjpeg_log_verbosity = 0;
+static log_level_t mjpeg_log_verbosity = LOG_NONE;
 static char default_handler_id[MAX_DEFAULT_ID_SIZE];
 static char default_handler_id_is_set = 0;
 
@@ -54,7 +59,7 @@ static int default_mjpeg_log_filter( log_level_t level )
         {
           verb_from_env = LOG_WARN-atoi(mjpeg_verb_env);
           if( verb_from_env >= LOG_DEBUG && verb_from_env <= LOG_ERROR )
-            mjpeg_log_verbosity = verb_from_env;
+            mjpeg_log_verbosity = (log_level_t)verb_from_env;
         }
     }
   return (level < LOG_WARN && level < mjpeg_log_verbosity);
@@ -120,7 +125,7 @@ int
 mjpeg_default_handler_verbosity(int verbosity)
 {
   int prev_verb = mjpeg_log_verbosity;
-  mjpeg_log_verbosity = LOG_WARN - verbosity;
+  mjpeg_log_verbosity = (log_level_t)(LOG_WARN - verbosity);
   return prev_verb;
 }
 

@@ -1,6 +1,6 @@
 
 /*
- *  interact.hh:  Simple command-line front-end
+ *  interact.hpp:  Simple command-line front-end
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <vector>
 #include "mjpeg_types.h"
-#include "stream_params.hh"
+#include "stream_params.hpp"
 
 class IBitStream;
 
@@ -51,7 +51,7 @@ public:
   int mpeg;
   int mux_format;
   bool multifile_segment;
-  int always_system_headers;
+  bool always_system_headers;
   unsigned int max_PTS;
   bool emul_vcdmplex;
   bool stills;

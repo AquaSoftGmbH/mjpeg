@@ -180,7 +180,7 @@ mpeg_conform_framerate( double fps )
 			return mpeg_framerates[i];
 	}
 	/* no luck?  just turn it into a ratio (6 decimal place accuracy) */
-	result.n = (fps * 1000000.0) + 0.5;
+	result.n = (int)((fps * 1000000.0) + 0.5);
 	result.d = 1000000;
 	y4m_ratio_reduce(&result);
 	return result;
@@ -298,7 +298,7 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
 				(double)(sampleaspect.n * frame_width) /
 				(double)(sampleaspect.d * frame_height);
 			/* start at '2'... */
-			for (i = 2; i < mpeg_num_aspect_ratios[mpeg_version-1]; i++) 
+			for (i = 2; i < (int)(mpeg_num_aspect_ratios[mpeg_version-1]); i++) 
 			{
 				double ratio = 
 					true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i-1]);

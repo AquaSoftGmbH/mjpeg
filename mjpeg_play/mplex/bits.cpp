@@ -31,11 +31,16 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#ifdef _WIN32
 #include <sys/param.h>
+#endif
 #include <assert.h>
 #include "mjpeg_logging.h"
-#include "bits.hh"
+#include "bits.hpp"
 
+
+const unsigned int BitStreamBuffering::BUFFER_SIZE = 64 * 1024;
+const unsigned int BitStreamBuffering::BUFFER_CEILING = 32 * 1024 * 1024;
 
 BitStreamBuffering::BitStreamBuffering() :
     bfr(0),
@@ -395,6 +400,7 @@ IFileBitStream::IFileBitStream( const char *bs_filename,
 
     SetBufSize(buf_size);
 	eobs = false;
+    byteidx = 0;
 	if (!ReadIntoBuffer())
 	{
 		if (buffered==0)

@@ -24,8 +24,8 @@
 #include <config.h>
 #include <assert.h>
 #include "fastintfns.h"
-#include "videostrm.hh"
-#include "multiplexor.hh"
+#include "videostrm.hpp"
+#include "multiplexor.hpp"
 
 
 VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms, 

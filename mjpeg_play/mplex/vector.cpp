@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <string.h>
 #include "mjpeg_types.h"
-#include "vector.hh"
+#include "vector.hpp"
 
 
 AUStream::AUStream() : 
-	cur_rd( 0 ), cur_wr(0), totalctr(0), size(0), buf(0)
+	cur_rd( 0 ), cur_wr(0), totalctr(0), size(0), 
+	buf(new AunitPtr[AUStream::BUF_SIZE])
 {
-	buf = new (Aunit*)[AUStream::BUF_SIZE];
 }
 
 

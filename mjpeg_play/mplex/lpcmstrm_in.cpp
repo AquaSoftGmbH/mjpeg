@@ -26,9 +26,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "audiostrm.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "audiostrm.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
 
 
@@ -41,7 +41,7 @@ LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into) :
 
 bool LPCMStream::Probe(IBitStream &bs )
 {
-    char *last_dot = rindex( bs.StreamName(), '.' );
+    char *last_dot = strrchr( bs.StreamName(), '.' );
     return 
         last_dot != NULL 
         && strcmp( last_dot+1, "lpcm") == 0;

@@ -1,4 +1,4 @@
-#include "buffer.hh"
+#include "buffer.hpp"
 #include <stdlib.h>
 
 /******************************************************************

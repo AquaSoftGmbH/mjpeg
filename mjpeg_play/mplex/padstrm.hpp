@@ -1,6 +1,6 @@
 
 /*
- *  padstrm.hh:  Padding stream pseudo input-streamsin
+ *  padstrm.hpp:  Padding stream pseudo input-streamsin
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -22,7 +22,7 @@
 #ifndef __PADSTRM_H__
 #define __PADSTRM_H__
 
-#include "inputstrm.hh"
+#include "inputstrm.hpp"
 
 
 class PaddingStream : public MuxStream

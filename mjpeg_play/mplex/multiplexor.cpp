@@ -2,18 +2,22 @@
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
-#include <unistd.h>
+#include <memory>
 
 #include <mjpeg_types.h>
 #include <mjpeg_logging.h>
 #include <format_codes.h>
 
-#include "interact.hh"
-#include "videostrm.hh"
-#include "stillsstream.hh"
-#include "audiostrm.hh"
-#include "zalphastrm.hh"
-#include "multiplexor.hh"
+#include "interact.hpp"
+#include "videostrm.hpp"
+#include "stillsstream.hpp"
+#include "audiostrm.hpp"
+#ifdef ZALPHA
+#include "zalphastrm.hpp"
+#endif
+#include "multiplexor.hpp"
+
+using std::auto_ptr;
 
 /****************
  *
@@ -386,6 +390,7 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         astreams.push_back(audioStrm);
         ++lpcmparm;
     }
+#ifdef ZALPHA
     for( i = 0 ; i < job.z_alpha_files.size() ; ++i )
     {
         ZAlphaStream *zalphaStrm = new ZAlphaStream( *job.z_alpha_files[i], *vidparm, *this);
@@ -393,7 +398,8 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         estreams.push_back(zalphaStrm);
         vstreams.push_back(zalphaStrm);
         ++lpcmparm;
-    }		
+    }
+#endif		
 }
 
 
@@ -1093,7 +1099,7 @@ void Multiplexor::Multiplex()
 		// Find the ready-to-mux stream with the most urgent DTS
 		//
 		ElementaryStream *despatch = 0;
-		clockticks earliest = 0LL;
+		clockticks earliest = 0;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
             /*
@@ -1365,7 +1371,8 @@ void Multiplexor::OutputDVDPriv2 (	)
 {
     uint8_t *packet_size_field;
     uint8_t *index;
-    uint8_t sector_buf[sector_size];
+    auto_ptr<uint8_t> sector_buffer( new uint8_t[sector_size]);
+    uint8_t *sector_buf = sector_buffer.get();
     unsigned int tozero;
     
     assert( sector_size == 2048 );

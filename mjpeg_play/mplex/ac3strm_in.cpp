@@ -25,13 +25,15 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "audiostrm.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "audiostrm.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
-#define DEBUG_AC3_HEADERS
+//#define DEBUG_AC3_HEADERS
 #define AC3_SYNCWORD            0x0b77
 #define AC3_PACKET_SAMPLES      1536
+
+const unsigned int AC3Stream::default_buffer_size = 16*1024;
 
 /// table for the available AC3 bitrates
 static const unsigned int ac3_bitrate_index[32] =

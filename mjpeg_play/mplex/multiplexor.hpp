@@ -5,10 +5,10 @@
 #include <config.h>
 #include <stdio.h>
 #include "mjpeg_types.h"
-#include "interact.hh"
-#include "inputstrm.hh"
-#include "padstrm.hh"
-#include "systems.hh"
+#include "interact.hpp"
+#include "inputstrm.hpp"
+#include "padstrm.hpp"
+#include "systems.hpp"
 
 
 class Multiplexor

@@ -27,7 +27,9 @@
 
 #include <stdlib.h>
 #include <mjpeg_types.h>
+#ifndef _WIN32
 #include <unistd.h>
+#endif
 #include <mjpeg_logging.h>
 
 

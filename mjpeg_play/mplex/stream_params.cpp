@@ -1,5 +1,5 @@
 /*
- * params.hh:  User specifiable parameters for various types of stream
+ * params.hpp:  User specifiable parameters for various types of stream
  *
  *  The Check<stream>Params pseudo-constructors are constructed so that
  *  they will only construct legal combinations of parameters.
@@ -20,7 +20,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include "stream_params.hh"
+#include "stream_params.hpp"
 #include "format_codes.h"
 
 LpcmParams *LpcmParams::Default(unsigned int mux_format)

@@ -24,8 +24,8 @@
 #include <config.h>
 #include <assert.h>
 #include "fastintfns.h"
-#include "audiostrm.hh"
-#include "multiplexor.hh"
+#include "audiostrm.hpp"
+#include "multiplexor.hpp"
 
 
 

@@ -27,8 +27,8 @@ protected:
 	//
 	// TODO: really we should set these based on system parameters etc.
 	//
-	static const unsigned int BUFFER_SIZE = 64 * 1024;
-	static const unsigned int BUFFER_CEILING = 32 * 1024 * 1024;
+	static const unsigned int BUFFER_SIZE;
+	static const unsigned int BUFFER_CEILING;
 	uint8_t *bfr;				// The read/write buffer tiself
 	unsigned int bfr_size;		// The physical size of the buffer =
 								// maximum buffered data-bytes possible
@@ -56,10 +56,10 @@ class IBitStreamUndo : public BitStreamBuffering
 {
 public:
 	IBitStreamUndo() :
-		bfr_start(0LL),
-		bitreadpos(0LL),
+		bfr_start(0),
+		bitreadpos(0),
 		bitidx(8),
-		bytereadpos(0LL),
+		bytereadpos(0),
 		eobs(true)
 		{}
 	inline bool eos() { return eobs; }
@@ -132,7 +132,7 @@ public:
 	// Bit-level Parsing file-pointer entry-points
 	uint32_t Get1Bit();
 	uint32_t GetBits(int N);
-	bool SeekSync( unsigned int sync, int N, int lim);
+	bool SeekSync( uint32_t sync, int N, int lim);
 	void SeekFwdBits( unsigned int bytes_to_seek_fwd );
 
 	// Bit-level parsing state undo mechanism
@@ -143,7 +143,7 @@ public:
 	inline bitcount_t GetBytePos() { return bytereadpos; }
 	inline unsigned int BufferedBytes()
 		{
-			return (bfr_start+buffered-bytereadpos);
+			return static_cast<unsigned int>(bfr_start+buffered-bytereadpos);
 		}
 	unsigned int GetBytes( uint8_t *dst,
 						   unsigned int length_bytes);
@@ -186,12 +186,12 @@ public:
 
 private:
 	FILE *fileh;
-	const char *filename;
+	char *filename;
 	virtual size_t ReadStreamBytes( uint8_t *buf, size_t number ) 
 		{
 			return fread(buf,sizeof(uint8_t), number, fileh ); 
 		}
-	virtual bool EndOfStream() { return feof(fileh); }
+	virtual bool EndOfStream() { return feof(fileh) != 0; }
 	
 };
 
