@@ -11,13 +11,14 @@
 
 static void Usage(char *str)
 {
-	fprintf( stderr, "Usage: %s [params] [<input stream1> [<input stream2>] <output system stream>\n\n", str);
+	fprintf( stderr, "Usage: %s [params] [<input file1> [<input file2>] <output file>\n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
 	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
 	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
     fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from source streams)\n" );
+	fprintf( stderr, " -l num  Multiplex only num frames (default 0=multiplex all)\n");
 	fprintf( stderr, " -v num  Specify a video timestamp offset in mSec\n");
 	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
 	fprintf( stderr, " -a num  Specify an audio timestamp offset in mSec \n" );
@@ -25,6 +26,10 @@ static void Usage(char *str)
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = Auto MPEG2, 3 = SVCD, 4 = DVD]\n");
 	fprintf( stderr, "         (N.b only 1 and 2 currently implemented!*)\n" ); 
+	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680)\n" );
+	fprintf( stderr, " -M      Generate a *single* multi-file program rather a program per file\n");
+	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
+			
 	exit (1);
 }
 
@@ -37,8 +42,11 @@ int opt_sector_size = 2324;
 int opt_VBR = 0;
 int opt_mpeg = 1;
 int opt_mux_format = 0;
-int opt_multi_segment = 1;
-intmax_t max_system_segment_size = 700*1024*1024;
+int opt_multifile_segment = 1;
+clockticks opt_max_PTS = 0LL;
+
+/* Should fit nicely on an ordinary CD ... */
+intmax_t max_system_segment_size =  680*1024*1024;
 
 int intro_and_options(int argc, char *argv[])
 {
@@ -56,7 +64,7 @@ int intro_and_options(int argc, char *argv[])
     printf(  "***************************************************************\n\n");
 
 
-  while( (n=getopt(argc,argv,"b:r:v:a:m:f:qiVn")) != EOF)
+  while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnM")) != EOF)
   {
     switch(n)
 	  {
@@ -105,10 +113,17 @@ int intro_and_options(int argc, char *argv[])
 		if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
 		  Usage(argv[0]);
 		break;
+		
+	  case 'l' : 
+	  	opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
+		if( opt_max_PTS < 1  )
+		  Usage(argv[0]);
+		break;
+		
 	  
 	  case 'f' :
 	    opt_mux_format = atoi(optarg);
-	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > 4 )
+	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_MPEG2 )
 	    	Usage(argv[0]);
 		break;
 	  case 's' :
@@ -116,7 +131,15 @@ int intro_and_options(int argc, char *argv[])
 		if( opt_sector_size < 256 || opt_sector_size > 16384 )
 		  Usage(argv[0]);
 		break;
-
+	  case 'S' :
+		max_system_segment_size = atoi(optarg);
+		if( max_system_segment_size < 1  )
+		  Usage(argv[0]);
+		   max_system_segment_size *= 1024*1024; 
+		break;
+	  case 'M' :
+	  	 opt_multifile_segment = 1;
+		 break;
 	  default :
 		Usage(argv[0]);
 		break;

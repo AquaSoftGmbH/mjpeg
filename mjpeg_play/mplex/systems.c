@@ -12,28 +12,27 @@ char filename[MAXPATHLEN];
 	return fopen( filename, "wb" );
 }
 
-FILE *system_next( FILE *cur_system_strm, const char *filename_pat )
+int system_file_lim_reached( FILE *cur_system_strm )
+{
+	intmax_t written = (intmax_t) ftell( cur_system_strm);
+	return written > max_system_segment_size;
+}
+
+FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat )
 {
 char filename[MAXPATHLEN];
 
-	FILE *system_strm = cur_system_strm;
-	intmax_t written = (intmax_t) ftell( cur_system_strm);
-	if( written > max_system_segment_size )
+	if( strstr( filename_pat, "%d" ) == NULL )
 	{
-		if( !opt_multi_segment )
-		{
-			fprintf( stderr, 
-				"Maximum system file size (%"PRIdMAX") exceeded, single system file specified\n",
-				written );
-			exit(1); 
-		}
-		
-		fclose(cur_system_strm);
-		++segment_num;
-		snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
-		system_strm = fopen( filename, "wb" );
+		fprintf( stderr, 
+			"Need to start new file but there is no %%d in filename pattern %s\n", filename_pat );
+		exit(1); 
 	}
-	return system_strm;
+		
+	fclose(cur_system_strm);
+	++segment_num;
+	snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
+	return fopen( filename, "wb" );
 }
 
 /* Packet payload
@@ -76,6 +75,91 @@ int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int b
 	return payload;
 }
 
+
+
+/*************************************************************************
+    Kopiert einen TimeCode in einen Bytebuffer. Dabei wird er nach
+    MPEG-Verfahren in bits aufgesplittet.
+
+    Makes a Copy of a TimeCode in a Buffer, splitting it into bitfields
+    for MPEG-1/2 DTS/PTS fields and MPEG-1 pack scr fields
+*************************************************************************/
+
+void buffer_dtspts_mpeg1scr_timecode (clockticks    timecode,
+									 unsigned char  marker,
+									 unsigned char **buffer)
+
+{
+	clockticks thetime_base;
+    unsigned char temp;
+    unsigned int msb, lsb;
+     
+ 	/* MPEG-1 uses a 90KHz clock, extended to 300*90KHz = 27Mhz in MPEG-2 */
+	/* For these fields we only encode to MPEG-1 90Khz resolution... */
+	
+	thetime_base = timecode /300;
+	msb = (thetime_base >> 32) & 1;
+	lsb = (thetime_base & 0xFFFFFFFFLL);
+		
+    temp = (marker << 4) | (msb <<3) |
+		((lsb >> 29) & 0x6) | 1;
+    *((*buffer)++)=temp;
+    temp = (lsb & 0x3fc00000) >> 22;
+    *((*buffer)++)=temp;
+    temp = ((lsb & 0x003f8000) >> 14) | 1;
+    *((*buffer)++)=temp;
+    temp = (lsb & 0x7f80) >> 7;
+    *((*buffer)++)=temp;
+    temp = ((lsb & 0x007f) << 1) | 1;
+    *((*buffer)++)=temp;
+
+}
+
+/*************************************************************************
+    Makes a Copy of a TimeCode in a Buffer, splitting it into bitfields
+    for MPEG-2 pack scr fields  which use the full 27Mhz resolution
+    
+    Did they *really* need to put a 27Mhz
+    clock source into the system stream.  Does anyone really need it
+    for their decoders?  Get real... I guess they thought it might allow
+    someone somewhere to save on a proper clock circuit.
+*************************************************************************/
+
+
+void buffer_mpeg2scr_timecode( clockticks    timecode,
+								unsigned char **buffer
+							 )
+{
+ 	clockticks thetime_base;
+	unsigned int thetime_ext;
+    unsigned char temp;
+    unsigned int msb, lsb;
+     
+	thetime_base = timecode /300;
+	thetime_ext =  timecode % 300;
+	msb = (thetime_base>> 32) & 1;
+	lsb = thetime_base & 0xFFFFFFFFLL;
+
+
+      temp = (MARKER_MPEG2_SCR << 6) | (msb << 5) |
+		  ((lsb >> 27) & 0x18) | 0x4 | ((lsb >> 28) & 0x3);
+      *((*buffer)++)=temp;
+      temp = (lsb & 0x0ff00000) >> 20;
+      *((*buffer)++)=temp;
+      temp = ((lsb & 0x000f8000) >> 12) | 0x4 |
+             ((lsb & 0x00006000) >> 13);
+      *((*buffer)++)=temp;
+      temp = (lsb & 0x00001fe0) >> 5;
+      *((*buffer)++)=temp;
+      temp = ((lsb & 0x0000001f) << 3) | 0x4 |
+             ((thetime_ext & 0x00000180) >> 7);
+      *((*buffer)++)=temp;
+      temp = ((thetime_ext & 0x0000007F) << 1) | 1;
+      *((*buffer)++)=temp;
+}
+
+
+
 /*************************************************************************
 	Create_Sector
 	erstellt einen gesamten Sektor.
@@ -97,16 +181,16 @@ int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int b
 *************************************************************************/
 
 void create_sector (Sector_struc 	 *sector,
-					Pack_struc	 *pack,
+					Pack_struc	 	 *pack,
 					Sys_header_struc *sys_header,
 					unsigned int     max_packet_data_size,
-					FILE		 *inputstream,
+					FILE		 	 *inputstream,
 					unsigned char 	 type,
 					unsigned char 	 buffer_scale,
 					unsigned int 	 buffer_size,
 					unsigned char 	 buffers,
-					Timecode_struc   *PTS,
-					Timecode_struc   *DTS,
+					clockticks   	 PTS,
+					clockticks   	 DTS,
 					unsigned char 	 timestamps
 	)
 
@@ -129,9 +213,9 @@ void create_sector (Sector_struc 	 *sector,
 
     if (pack != NULL)
     {
-		bcopy (pack->buf, index, pack_header_size);
-		index += pack_header_size;
-		sector->length_of_sector += pack_header_size;
+		bcopy (pack->buf, index, pack->length);
+		index += pack->length;
+		sector->length_of_sector += pack->length;
     }
 
     /* soll ein System Header mit auf dem Sektor gespeichert werden? */
@@ -179,12 +263,12 @@ void create_sector (Sector_struc 	 *sector,
 			break;
 		case TIMESTAMPBITS_PTS:
 			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_JUST_PTS, &index);
-			copy_timecode (PTS, &sector->TS);
+			sector->TS = PTS;
 			break;
 		case TIMESTAMPBITS_PTS_DTS:
 			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_PTS, &index);
 			buffer_dtspts_mpeg1scr_timecode (DTS, MARKER_DTS, &index);
-			copy_timecode (DTS, &sector->TS);
+			sector->TS = DTS;
 			break;
 		}
 	}
@@ -209,13 +293,13 @@ void create_sector (Sector_struc 	 *sector,
 		{
 		case TIMESTAMPBITS_PTS:
 			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_JUST_PTS, &index);
-			copy_timecode(PTS, &sector->TS);
+			sector->TS = PTS;
 			break;
 
 		case TIMESTAMPBITS_PTS_DTS:
 			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_PTS, &index);
 			buffer_dtspts_mpeg1scr_timecode(DTS, MARKER_DTS, &index);
-			copy_timecode(DTS, &sector->TS);
+			sector->TS = DTS;
 			break;
 		}
 
@@ -373,7 +457,7 @@ void create_sector (Sector_struc 	 *sector,
 
 void create_pack (
 	Pack_struc	 *pack,
-	Timecode_struc   *SCR,
+	clockticks   SCR,
 	unsigned int 	 mux_rate
 	)
 {
@@ -403,9 +487,8 @@ void create_pack (
 		*(index++) = (unsigned char)(0xff & (mux_rate >> 7));
 		*(index++) = (unsigned char)(0x01 | ((mux_rate & 0x7f) << 1));
     }
-    copy_timecode(SCR, &pack->SCR);
-    /* TODO: Replace with dynamic calculation */
-    pack->length = pack_header_size;
+    pack->SCR = SCR;
+    pack->length = index-pack->buf;
 }
 
 

@@ -60,15 +60,15 @@ Vaunit_struc *pointer;
 {
     pointer->length = 0;
     pointer->type   = 0;
-    empty_timecode_struc (&pointer->DTS);
-    empty_timecode_struc (&pointer->PTS);
+    pointer->DTS = 0;
+   	pointer->PTS = 0;
 }
 
 void empty_aaunit_struc (pointer)
 Aaunit_struc *pointer;
 {
     pointer->length = 0;
-    empty_timecode_struc (&pointer->PTS);
+    pointer->PTS = 0;
 }
 
 void empty_sector_struc (pointer)
@@ -76,7 +76,7 @@ Sector_struc *pointer;
 {
     pointer->length_of_sector  = 0;
     pointer->length_of_packet_data  = 0;
-    empty_timecode_struc (&pointer->TS);
+    pointer->TS = 0;
 }
 
 

@@ -15,7 +15,7 @@ static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
 							 0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
 							 1.2015, 0.};
 
-static double frequency [4] = {44.1, 48, 32, 0};
+static int frequency [4] = {44100, 48000, 32000, 0};
 static char mode [4][15] =
 { "stereo", "joint stereo", "dual channel", "single channel" };
 static char copyright [2][20] =
@@ -192,10 +192,7 @@ void get_info_video (char *video_file,
     unsigned int group_order=0;
     unsigned int group_start_pic=0;
     unsigned long temporal_reference=0;
-    double frame_interval=0.0;
     unsigned short pict_rate;
-    double DTS;
-    double PTS;
     int i;
     unsigned int prozent = 0;
     unsigned int old_prozent=0;
@@ -233,19 +230,18 @@ void get_info_video (char *video_file,
     if (pict_rate >0 && pict_rate<9)
     {
 		frame_rate = picture_rates[pict_rate];
-		frame_interval = 1. / (double)frame_rate;
 	}
     else
     {
 		frame_rate = 25;
-		frame_interval = 1. / 25.0;
 	}
 	
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
 	*/
 	*ret_first_frame_PTS = 0.0;
 	first_pic_header = 1;
-	while(!end_bs(&video_bs) && seek_sync (&video_bs, SYNCWORD_START, 24))
+	while(!end_bs(&video_bs) && seek_sync (&video_bs, SYNCWORD_START, 24) &&
+	      ( !opt_max_PTS || access_unit.PTS < opt_max_PTS   ) )
 	{
 		syncword = (SYNCWORD_START<<8) + getbits (&video_bs, 8);
 		switch (syncword) 
@@ -291,14 +287,9 @@ void get_info_video (char *video_file,
 					group_start_pic = decoding_order;
 				}
 
-				DTS = decoding_order * frame_interval*CLOCKS;
-				PTS = (temporal_reference + group_start_pic) * frame_interval*CLOCKS;
-				/* TODO: TIDY PTS = (temporal_reference - group_order + 1 + 
-					   decoding_order) * frame_interval*CLOCKS; */
-
+				access_unit.DTS =  (clockticks)decoding_order * (clockticks)CLOCKS / frame_rate;
+				access_unit.PTS =  (clockticks)(temporal_reference + group_start_pic) * (clockticks)CLOCKS  / frame_rate;
 				access_unit.dorder = decoding_order;
-				make_timecode (DTS,&access_unit.DTS);
-				make_timecode (PTS,&access_unit.PTS);
 				decoding_order++;
 				group_order++;
 
@@ -465,7 +456,7 @@ void output_info_audio (audio_info)
     if (audio_info->frequency == 3)
 		printf ("Frequency      : reserved\n");
     else
-		printf ("Frequency      :     %2.1f kHz\n",
+		printf ("Frequency      :     %d Hz\n",
 				frequency[audio_info->frequency]);
 
     printf   ("Mode           : %8u %s\n",
@@ -506,8 +497,7 @@ void get_info_audio (
 	unsigned int padding_bit;
     unsigned int skip;
     unsigned int decoding_order=0;
-    double PTS;
-    double samples_per_second;
+    unsigned int samples_per_second;
     Aaunit_struc access_unit;
     unsigned long syncword;
     int i;
@@ -519,7 +509,6 @@ void get_info_audio (
     init_getbits (&audio_bs, audio_file);
     empty_aaunit_struc (&access_unit);
 
-	printf( "first_frame_PTS = %f\n", first_frame_PTS );
     if (getbits (&audio_bs, 12)==AUDIO_SYNCWORD)
     {
 		marker_bit (&audio_bs, 1);
@@ -537,21 +526,20 @@ void get_info_audio (
 		audio_info->emphasis		= getbits (&audio_bs, 2);
 
 		framesize =
-			bitrate_index[3-audio_info->layer][audio_info->bit_rate] /
-			frequency[audio_info->frequency] * slots [3-audio_info->layer];
+			bitrate_index[3-audio_info->layer][audio_info->bit_rate]  * slots [3-audio_info->layer] *1000 /
+			frequency[audio_info->frequency];
 		audio_info->size_frames[0] = framesize;
 		audio_info->size_frames[1] = framesize+1;
 		audio_info->num_frames[padding_bit]++;
 	
 		access_unit.length = audio_info->size_frames[padding_bit];
 	  
-		samples_per_second = (double)frequency [audio_info->frequency];
+		samples_per_second = frequency [audio_info->frequency];
 
 		/* Presentation time-stamping  */
-		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.) + first_frame_PTS;
-
-		make_timecode (PTS, &access_unit.PTS);
+		access_unit.PTS = (clockticks)
+			decoding_order * samples [3-audio_info->layer] * (clockticks)(CLOCKS) /
+			samples_per_second + first_frame_PTS;
 		decoding_order++;
 		VectorAppend( aaunits, &access_unit );
 
@@ -561,8 +549,10 @@ void get_info_audio (
 		exit (1);
     }
 
-
+	printf( "Starting...\n" );
     do {
+    
+
 		skip=access_unit.length-4;
 		if (skip & 0x1) getbits (&audio_bs, 8);
 		if (skip & 0x2) getbits (&audio_bs, 16);
@@ -578,6 +568,7 @@ void get_info_audio (
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
 
+	
 		if ( (syncword = getbits (&audio_bs, 12))!=AUDIO_SYNCWORD )
 		{
 			int bits_to_end = length*8 - offset_bits;
@@ -607,8 +598,10 @@ void get_info_audio (
 		marker_bit (&audio_bs, 1);
 		prozent =(int) (((float) bitcount(&audio_bs)/8/(float)length)*100);
 		audio_info->num_syncword++;
-		if (prozent > old_prozent && verbose > 0)
+
+		if ((prozent > old_prozent && verbose > 0))
 		{
+
 			printf ("Got %d frame headers. %2d%%%c",
 					audio_info->num_syncword,prozent, verbose > 1? '\n' : '\r');
 			fflush (stdout);
@@ -620,17 +613,18 @@ void get_info_audio (
 		padding_bit=get1bit(&audio_bs);
 		access_unit.length = audio_info->size_frames[padding_bit];
 	
-		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.)+first_frame_PTS;
-		make_timecode (PTS, &access_unit.PTS);
+		access_unit.PTS = (clockticks)(decoding_order) * (clockticks)(samples [3-audio_info->layer])* 
+						  (clockticks)(CLOCKS) / samples_per_second +first_frame_PTS;
 	
 		decoding_order++;
 		VectorAppend( aaunits, &access_unit );
 		audio_info->num_frames[padding_bit]++;
 
 		getbits (&audio_bs, 9);
-	
-    } while (!end_bs(&audio_bs));
+		/* TODO: should be handled cleanly through PTS */
+
+    } while (!end_bs(&audio_bs) && 
+    		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));
 
     printf ("\nDone, stream bit offset %lld.\n",offset_bits);
 

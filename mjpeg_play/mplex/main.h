@@ -62,14 +62,22 @@ typedef uint64_t clockticks;
     Definitionen
 *************************************************************************/
  
-#define MPLEX_VER    " 1.3"
-#define MPLEX_DATE   "24.09.2000"
+#define MPLEX_VER    " 1.4"
+#define MPLEX_DATE   "1.11.2000"
+
+/* Buffer size parameters */
+
+#define MAX_SECTOR_SIZE         16384
+#define MAX_PACK_HEADER_SIZE	255
+#define MAX_SYS_HEADER_SIZE     255
+
 
 #define SEQUENCE_HEADER 	0x000001b3
 #define SEQUENCE_END		0x000001b7
 #define PICTURE_START		0x00000100
 #define GROUP_START		0x000001b8
 #define SYNCWORD_START		0x000001
+#define OLDFRAME				0
 #define IFRAME                  1
 #define PFRAME                  2
 #define BFRAME                  3
@@ -90,24 +98,34 @@ typedef uint64_t clockticks;
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
 
+#ifdef OBSOLETE_CODE_DELETE_TODO
 
-#define MPEG2_AFTER_PACKET_LENGTH_MIN    3
-#define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1)
 
 #define MPEG2_LAST_SCR_BYTE_IN_PACK  10			/* No of bytes in pack	*/
 #define MPEG1_LAST_SCR_BYTE_IN_PACK   9         /* preceding, and 	*/
 												/* including, the SCR	*/
-#define DTS_PTS_TIMESTAMP_LENGTH 5
-#define BUFFERINFO_LENGTH 2
+
 #define MPEG2_AFTER_PACKET_LENGTH_MAX    \
 	   (MPEG2_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH)
 #define MPEG1_AFTER_PACKET_LENGTH_MAX    \
 		(MPEG1_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH-1)
+		
+		#define SYS_HEADER_SIZE		18		/* incl. start code and	*/
+                                    /* length field, 2 streams		*/
+#define MPEG2_PACK_HEADER_SIZE	14
+#define MPEG1_PACK_HEADER_SIZE  12
+#endif
+
+#define BUFFERINFO_LENGTH 2
+#define DTS_PTS_TIMESTAMP_LENGTH 5
+#define MPEG2_AFTER_PACKET_LENGTH_MIN    3
+#define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1)
 
 	/* Sector under-size below which header stuffing rather than padding packets
 		or post-packet zero stuffing is used.  *Must* be less than 20 for VCD
 		multiplexing to work correctly!
 	 */
+	 
 #define MINIMUM_PADDING_PACKET_SIZE 10
 
 /* The following values for sys_header_length & size are only valid for */
@@ -116,17 +134,11 @@ typedef uint64_t clockticks;
 /* values get decreased by 3.                                           */
 
 
-#define SYS_HEADER_SIZE		18		/* incl. start code and	*/
-                                    /* length field, 2 streams		*/
-#define MPEG2_PACK_HEADER_SIZE	14
-#define MPEG1_PACK_HEADER_SIZE  12
-
 #define PACKET_HEADER_SIZE	6
 
 #define VIDEOCD_SECTOR_SIZE	2324	        /* VideoCD sector size */
 #define SVCD_SECTOR_SIZE        2324            /* Super VideoCD sector size */
 #define DVD_SECTOR_SIZE         2048            /* DVD sector size     */
-#define MAX_SECTOR_SIZE         4096
 
 
 #define STREAMS_VIDEO           1
@@ -164,22 +176,28 @@ typedef uint64_t clockticks;
 *************************************************************************/
 
 /* TODO: Eventually this should be dealt with as a union... */
-typedef struct timecode_struc	/* Time_code Struktur laut MPEG		*/
+
+#ifdef ORIGINAL_CODE
+typedef struct clockticks	/* Time_code Struktur laut MPEG		*/
 {  
   clockticks thetime;  /* The actual time... (for comparisons)*/
-} Timecode_struc;	
+} clockticks;	
+typedef uint64_t clockticks;
+#endif
+
+
 
 typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
 {   unsigned int length		;
     unsigned int type		;
-    Timecode_struc DTS		;
-    Timecode_struc PTS		;
+    clockticks DTS		;
+    clockticks PTS		;
     int            dorder;
 } Vaunit_struc;
 
 typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
 {   unsigned long length	;
-    Timecode_struc PTS		;
+    clockticks PTS		;
 } Aaunit_struc;
 
 typedef struct video_struc	/* Informationen ueber Video Stream	*/
@@ -224,23 +242,23 @@ typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
 {   unsigned char  buf [MAX_SECTOR_SIZE] ;
     unsigned int   length_of_sector  ;
     unsigned int   length_of_packet_data ;
-    Timecode_struc TS                ;
+    clockticks TS                ;
 } Sector_struc;
 
 typedef struct pack_struc	/* Pack Info				*/
-{   unsigned char  buf [MPEG2_PACK_HEADER_SIZE];
+{   unsigned char  buf [MAX_PACK_HEADER_SIZE];
 	int length;
-    Timecode_struc SCR;
+    clockticks SCR;
 } Pack_struc;
 
 typedef struct sys_header_struc	/* System Header Info			*/
-{   unsigned char  buf [SYS_HEADER_SIZE];
+{   unsigned char  buf [MAX_SYS_HEADER_SIZE];
 	int length;
 } Sys_header_struc;
 
 typedef struct buffer_queue	/* FIFO-Queue fuer STD Buffer		*/
 {   unsigned int size	;	/* als verkettete Liste implementiert	*/
-    Timecode_struc DTS	;
+    clockticks DTS	;
     struct buffer_queue *next	;
 } Buffer_queue;
     
@@ -285,37 +303,37 @@ void empty_audio_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_vaunit_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_aaunit_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_sector_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
-void empty_timecode_struc ();	/* Initialisiert Struktur fuer SUN cc	*/
+void empty_clockticks ();	/* Initialisiert Struktur fuer SUN cc	*/
 void init_buffer_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 
-void offset_timecode      (Timecode_struc *time1,Timecode_struc *time2,Timecode_struc *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
-void copy_timecode        (Timecode_struc *,Timecode_struc *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
-void bytepos_timecode(long long bytepos, Timecode_struc *ts);
-void make_timecode        (double, Timecode_struc *);	/* rechnet aus double einen TimeC.	*/
-				/* und schreibt ihn in Timecode_struc   */
-void add_to_timecode      (Timecode_struc *,Timecode_struc *);	/* addiert 1tes TimeC. zum 2ten		*/ 
-void buffer_dtspts_mpeg1scr_timecode (Timecode_struc *pointer,
+void offset_timecode      (clockticks *time1,clockticks *time2,clockticks *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
+void copy_timecode        (clockticks *,clockticks *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
+void bytepos_timecode(long long bytepos, clockticks *ts);
+void make_timecode        (double, clockticks *);	/* rechnet aus double einen TimeC.	*/
+				/* und schreibt ihn in clockticks   */
+void add_to_timecode      (clockticks *,clockticks *);	/* addiert 1tes TimeC. zum 2ten		*/ 
+void buffer_dtspts_mpeg1scr_timecode (clockticks timecode,
 									 unsigned char  marker,
 									 unsigned char **buffer);
-void buffer_mpeg2scr_timecode( Timecode_struc *pointer,
+void buffer_mpeg2scr_timecode( clockticks timecode,
 								unsigned char **buffer
 							 );
 
-int  comp_timecode        (Timecode_struc *,Timecode_struc *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
+int  comp_timecode        (clockticks *,clockticks *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
 int packet_payload(  Sys_header_struc *sys_header,  Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp );
 	/* Compute available packet payload in a sector... */
 void create_sector (Sector_struc 	 *sector,
-					Pack_struc	 *pack,
+					Pack_struc	     *pack,
 					Sys_header_struc *sys_header,
 					unsigned int     max_packet_data_size,
 					FILE		 *inputstream,
 
 				  unsigned char 	 type,
 				  unsigned char 	 buffer_scale,
-				  unsigned int 	 buffer_size,
+				  unsigned int 	 	buffer_size,
 				  unsigned char 	 buffers,
-				  Timecode_struc   *PTS,
-				  Timecode_struc   *DTS,
+				  clockticks   		PTS,
+				  clockticks   		DTS,
 				  unsigned char 	 timestamps
 				  );
 				  
@@ -339,23 +357,24 @@ void create_sys_header (
 						);						/* erstellt einen System Header		*/
 void create_pack (
 				  Pack_struc	 *pack,
-				  Timecode_struc   *SCR,
+				  clockticks     SCR,
 				  unsigned int 	 mux_rate
 				);	/* erstellt einen Pack Header		*/
 
-void output_video ( Timecode_struc *SCR,
-					Timecode_struc *SCR_delay,
+void output_video ( clockticks SCR,
+					clockticks SCR_delay,
 					FILE *istream_v,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					Vaunit_struc *video_au,
 					Vector vaunit_info_vec,
-					unsigned char *picture_start,
+					unsigned int *new_picture_type,
 					unsigned char marker_pack,
-					unsigned char include_sys_header
+					unsigned char include_sys_header,
+					unsigned char end_of_segment
 					);
-void output_audio ( Timecode_struc *SCR,
-					Timecode_struc *SCR_delay,
+void output_audio ( clockticks SCR,
+					clockticks SCR_delay,
 					FILE *istream_a,
 					FILE *ostream,
 					Buffer_struc *buffer,
@@ -363,19 +382,23 @@ void output_audio ( Timecode_struc *SCR,
 					Vector aaunit_info_vec,
 					unsigned char *audio_frame_start,
 					unsigned char marker_pack,
-					unsigned char include_sys_header);
+					unsigned char include_sys_header,
+					unsigned char end_of_segment);
 
 void output_padding       (
-					Timecode_struc *SCR,
+					clockticks SCR,
 					FILE *ostream,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header,
 					unsigned char pseudo_VBR
 						);	/* erstellt und schreibt Padding packet	*/
 
-void buffer_clean	  ();	/* saeubert die Bufferschlange 		*/
-int  buffer_space         ();	/* Anzahl freier Bytes in Buffer	*/
-void queue_buffer         ();	/* An Bufferliste anhaengen		*/
+void buffer_clean	  (Buffer_struc *buffer, clockticks timenow);
+void buffer_flush     (Buffer_struc *buffer);
+int  buffer_space     (Buffer_struc *buffer);	/* Anzahl freier Bytes in Buffer	*/
+void queue_buffer     (Buffer_struc *buffer,
+						unsigned int bytes,
+						clockticks removaltime);	/* An Bufferliste anhaengen		*/
 
 void outputstream ( char 		*video_file,
 					char 		*audio_file,
@@ -384,7 +407,8 @@ void outputstream ( char 		*video_file,
 					Vector     aaunit_info_vec
 				 );
 FILE *system_open_init( const char *filename_pat );
-FILE *system_next( FILE *cur_system_strm, const char *filename_pat );
+int system_file_lim_reached(  FILE *cur_system_strm );
+FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat );
 
 void status_info          ();	/* Statusmitteilung bei Erstellen	*/
 				/* MPEG multiplex stream		*/
@@ -423,14 +447,15 @@ extern int opt_sector_size;
 extern int opt_VBR;
 extern int opt_mpeg;
 extern int opt_mux_format;
-extern int opt_multi_segment;
+extern int opt_multifile_segment;
+extern clockticks opt_max_PTS;
 
 extern int verbose;
 extern unsigned int which_streams;
 
 extern int packet_overhead;
 extern int rate_restriction_flag;
-extern int pack_header_size;
+/* extern int pack_header_size; */
 extern int sector_size;
 extern int mux_rate;
 extern int dmux_rate;
