@@ -436,57 +436,56 @@ void stats()
 
   }
 
-    
-#if 0
+  if( frame_num < 10 || frame_num > 24 )
+	  return;
   /* useful for debugging */
   fprintf(statfile,"\nmacroblock info dump:\n");
 
   k=0;
- for (j=0; j<mb_height2; j++)
+ for (j=8; j<10; j++)
   {
-    for (i=0; i<mb_width; i++)
+    for (i=14; i<17; i++)
     {
-      fprintf(statfile,"(%d,%d): %1.1f %d %3.1f %d %d\n",
+			  k = j*mb_width+i;
+      fprintf(statfile,"(%d,%d): %02x %1.1f %d %3.1f %02x %d\n",
 			  i,j,
-			  mbinfo[k].N_act,
-      mbinfo[k].mquant,
-	  mbinfo[k].act,
-      mbinfo[k].cbp,
-      mbinfo[k].skipped			  );
-	  ++k;
+		        cur_picture.mbinfo[k].mb_type,
+			  cur_picture.mbinfo[k].N_act,
+      cur_picture.mbinfo[k].mquant,
+	  cur_picture.mbinfo[k].act,
+      cur_picture.mbinfo[k].cbp,
+      cur_picture.mbinfo[k].skipped			  );
 	}
   }
 
-  for (j=1; j<5; j++)
-  {
-    for (i=5; i<11_width; i++)
-    {
-      fprintf(statfile,"%d: %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
-      k,
-      mbinfo[k].mb_type,
-      mbinfo[k].motion_type,
-      mbinfo[k].dct_type,
-      mbinfo[k].mquant,
-      mbinfo[k].cbp,
-      mbinfo[k].skipped,
-      mbinfo[k].MV[0][0][0],
-      mbinfo[k].MV[0][0][1],
-      mbinfo[k].MV[0][1][0],
-      mbinfo[k].MV[0][1][1],
-      mbinfo[k].MV[1][0][0],
-      mbinfo[k].MV[1][0][1],
-      mbinfo[k].MV[1][1][0],
-      mbinfo[k].MV[1][1][1],
-      mbinfo[k].mv_field_sel[0][0],
-      mbinfo[k].mv_field_sel[0][1],
-      mbinfo[k].mv_field_sel[1][0],
-      mbinfo[k].mv_field_sel[1][1]);
 
-      k++;
+ k=0;
+  for (j=8; j<10; j++)
+  {
+    for (i=14; i<17; i++)
+    {
+			  k = j*mb_width+i;
+
+      fprintf(statfile,"(%d,%d): %02x %d %d %d %d %d %d %d %d %d %d %d %d %d\n",
+      i,j,
+      cur_picture.mbinfo[k].motion_type,
+      cur_picture.mbinfo[k].dct_type,
+      cur_picture.mbinfo[k].MV[0][0][0],
+      cur_picture.mbinfo[k].MV[0][0][1],
+      cur_picture.mbinfo[k].MV[0][1][0],
+      cur_picture.mbinfo[k].MV[0][1][1],
+      cur_picture.mbinfo[k].MV[1][0][0],
+      cur_picture.mbinfo[k].MV[1][0][1],
+      cur_picture.mbinfo[k].MV[1][1][0],
+      cur_picture.mbinfo[k].MV[1][1][1],
+      cur_picture.mbinfo[k].mv_field_sel[0][0],
+      cur_picture.mbinfo[k].mv_field_sel[0][1],
+      cur_picture.mbinfo[k].mv_field_sel[1][0],
+      cur_picture.mbinfo[k].mv_field_sel[1][1]);
+
     }
   }
 
 
-#endif
 #endif
 }

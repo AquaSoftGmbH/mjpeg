@@ -180,7 +180,7 @@ int main(argc,argv)
 
 		case '4':
 			param_44_red = atoi(optarg);
-			if(param_44_red<2 || param_44_red>20)
+			if(param_44_red<0 || param_44_red>4)
 			{
 				fprintf(stderr,"-4 option requires arg 0..4\n");
 				nerr++;
@@ -189,9 +189,9 @@ int main(argc,argv)
 			
 		case '2':
 			param_22_red = atoi(optarg);
-			if(param_22_red<2 || param_22_red>20)
+			if(param_22_red<0 || param_22_red>4)
 			{
-				fprintf(stderr,"-4 option requires arg 0..4\n");
+				fprintf(stderr,"-2 option requires arg 0..4\n");
 				nerr++;
 			}
 			break;
@@ -264,7 +264,7 @@ int main(argc,argv)
 	if(nerr) Usage(argv[0]);
 
 	fix_mquant = param_quant;
-	act_boost = param_act_boost;
+	act_boost = (param_act_boost+1.0);
   
 
 	/* Read stdin until linefeed is seen */
@@ -545,12 +545,12 @@ static void readparmfile()
 		if( param_bitrate == 0 && param_quant == 0 )
 		{
 			bit_rate = 1152000;
-			vbv_buffer_size = 20;	/* = 40KB */
+			vbv_buffer_code = 20;	/* = 40KB */
 		}
 		else
 		{
 			bit_rate = MAX(10000, param_bitrate*1000);
-			vbv_buffer_size = (20 * param_bitrate  / 1152);
+			vbv_buffer_code = (20 * param_bitrate  / 1152);
 		}
 	}
 	else
@@ -560,8 +560,9 @@ static void readparmfile()
 			fprintf(stderr, "MPEG-2 specified - must specify bit-rate!\n" );
 		}
 		bit_rate = MAX(10000, param_bitrate*1000);
-		vbv_buffer_size = 112;
+		vbv_buffer_code = 112;
 	}
+	vbv_buffer_size = vbv_buffer_code*16384;
 				
 	fast_mc_frac    = param_fastmc;
 	fast_mc_threshold = param_threshold;
@@ -635,9 +636,9 @@ static void readparmfile()
 		error("N must be an integer multiple of M");
 
 
-	/*  A.Stevens 2000: The search radius has to be a multiple of 4 for the new fast motion
-		compensation search to work correctly.  We simply round it up if needs be.
-	*/  
+	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8
+		for the new fast motion compensation search to work correctly.
+		We simply round it up if needs be.  */
 
 	if(param_searchrad*M>127)
 	{
@@ -646,8 +647,8 @@ static void readparmfile()
 	}
 	
 	{ 
-		int radius_x = (param_searchrad/4)*4;
-		int radius_y = ((param_searchrad*vertical_size/horizontal_size)/4)*4;
+		int radius_x = ((param_searchrad+4)/8)*8;
+		int radius_y = ((param_searchrad*vertical_size/horizontal_size+4)/8)*8;
 
 		/* TODO: These f-codes should really be adjust for each
 		   picture type... */

@@ -56,7 +56,7 @@ void putseqhdr()
     putbits((int)ceil(bit_rate/400.0),18); /* bit_rate_value */
   }
   putbits(1,1); /* marker_bit */
-  putbits(vbv_buffer_size,10); /* vbv_buffer_size_value */
+  putbits(vbv_buffer_code,10); /* vbv_buffer_size_value */
   putbits(constrparms,1); /* constrained_parameters_flag */
 
   putbits(load_iquant,1); /* load_intra_quantizer_matrix */
@@ -87,7 +87,7 @@ void putseqext()
     putbits(((int)ceil(bit_rate/400.0))>>18,12); /* bit_rate_extension */
   }
   putbits(1,1); /* marker_bit */
-  putbits(vbv_buffer_size>>10,8); /* vbv_buffer_size_extension */
+  putbits(vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
   putbits(0,1); /* low_delay  -- currently not implemented */
   putbits(0,2); /* frame_rate_extension_n */
   putbits(0,5); /* frame_rate_extension_d */

@@ -395,7 +395,8 @@ EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 EXTERN int mc_44_red;			/* Sub-mean [opulation reduction passes for 4x4 and 2x2 */
 EXTERN int mc_22_red;			/* Motion compensation stages						*/
 EXTERN int pred_ratectl;      /* Use new predictive rate controller  */
-EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
+EXTERN int vbv_buffer_code;   /* Code for size of VBV buffer (* 16 kbit) */
+EXTERN double vbv_buffer_size; /* Size code codes for... */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
 EXTERN int load_ciquant,load_cniquant;

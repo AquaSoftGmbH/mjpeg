@@ -86,9 +86,9 @@ void range_checks()
   if (mpeg1 && bit_rate > ((1<<18)-1)*400.0)
     error("bit_rate must be less than 104 Mbit/s (MPEG-1)");
 
-  if (vbv_buffer_size<1 || vbv_buffer_size>0x3ffff)
+  if (vbv_buffer_code<1 || vbv_buffer_code>0x3ffff)
     error("vbv_buffer_size must be in range 1..(2^18-1)");
-  if (mpeg1 && vbv_buffer_size>=1024)
+  if (mpeg1 && vbv_buffer_code>=1024)
     error("vbv_buffer_size must be less than 1024 (MPEG-1)");
 
   if (chroma_format<CHROMA420 || chroma_format>CHROMA444)
@@ -282,6 +282,6 @@ void profile_and_level_checks()
     error("Bit rate is greater than permitted in specified Level");
 
   /* Table 8-13 */
-  if (vbv_buffer_size > maxval->vbv_buffer_size)
+  if (vbv_buffer_code > maxval->vbv_buffer_size)
     error("vbv_buffer_size exceeds High Level limit");
 }

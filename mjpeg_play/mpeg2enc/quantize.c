@@ -75,14 +75,21 @@ void init_quantizer()
 			fprintf( stderr, "SETTING 3DNOW for QUANTIZER!\n");
 			pquant_non_intra = quant_non_intra_3dnow;
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;		
+			piquant_non_intra_m1 = iquant_non_intra_m1_sse;		
+		}
+		else if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		{
+			fprintf( stderr, "SETTING EXTENDED MMX for QUANTIZER!\n");
+			pquant_non_intra = quant_non_intra_mmx;
+			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
+			piquant_non_intra_m1 = iquant_non_intra_m1_sse;
 		}
 		else
 		{
 			fprintf( stderr, "SETTING MMX for QUANTIZER!\n");
 			pquant_non_intra = quant_non_intra_mmx;
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra_m1 = iquant_non_intra_m1_sse;
+			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
 		}
 	}
   else

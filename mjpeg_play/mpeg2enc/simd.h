@@ -47,23 +47,26 @@ struct mc_result
 typedef struct mc_result mc_result_s;
 
 int qblock_8grid_dists_sse( uint8_t *blk,  uint8_t *ref,
-						int ilow, int jlow,
-						uint32_t width, uint32_t depth, 
-						int h, int rowstride, mc_result_s *resvec);
+							int ilow, int jlow,
+							uint32_t width, uint32_t depth, 
+							int h, int rowstride, 
+							int threshold,
+							mc_result_s *resvec);
 int qblock_near_dist_sse( uint8_t *blk,  uint8_t *ref,
 					  int basex, int basey,
 					  int across, int down,
 					  int threshold,
 					  int h, int rowstride, mc_result_s *resvec);
 int qblock_8grid_dists_mmx( uint8_t *blk,  uint8_t *ref,
-						int ilow, int jlow,
-						uint32_t width, uint32_t depth, 
-						int h, int rowstride, mc_result_s *resvec);
+							int ilow, int jlow,
+							uint32_t width, uint32_t depth, 
+							int threshold,
+							int h, int rowstride, mc_result_s *resvec);
 int qblock_near_dist_mmx( uint8_t *blk,  uint8_t *ref,
-					  int basex, int basey,
-					  int across, int down,
-					  int threshold,
-					  int h, int rowstride, mc_result_s *resvec);
+						  int basex, int basey,
+						  int across, int down,
+						  int threshold,
+						  int h, int rowstride, mc_result_s *resvec);
 
 int quant_non_intra_3dnow(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);

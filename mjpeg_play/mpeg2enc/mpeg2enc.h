@@ -188,6 +188,11 @@ typedef struct pict_data pict_data_s;
 
 typedef unsigned char mcompuint;
 
+/* 4*4 sub-sampled pel Threshold below which initial 8*8 grid motion
+   compensation matches are always discarded.
+*/
+
+#define COARSE_44_SAD_THRESHOLD 4*4*64
 
 /* SCale factor for fast integer arithmetic routines */
 /* Changed this and you *must* change the quantisation routines as they depend on its absolute

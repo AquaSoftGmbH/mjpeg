@@ -176,7 +176,9 @@ static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							uint32_t width, uint32_t depth, 
-							int h, int rowstride, mc_result_s *resvec);
+							int h, int rowstride, 
+							int threshold,
+							mc_result_s *resvec);
 int (*pqblock_near_dist)( uint8_t *blk,  uint8_t *ref,
 						  int basex, int basey,
 						  int across, int down,
@@ -292,6 +294,17 @@ void init_motion()
  */
  
 static double fast_motion_weighting;
+
+/*
+  4*4 subsampled pel sad threshold below which initial 8*8 grid
+  motion compensations are discarded.
+  Intended only to filter out manifestly absurd matches.
+  Starts *very* generous.  Then simply held as 3/2*mean match
+  from the previous match.
+ */
+
+int sub44_coarse_threshold = COARSE_44_SAD_THRESHOLD;
+
 /* 
    Reset the match accuracy threshhold used to decide whether to
    restrict the size of the the fast motion compensation search window.
@@ -309,7 +322,7 @@ thresholdrec twopel_threshold;
 thresholdrec onepel_threshold;
 thresholdrec quadpel_threshold;
 
-#if HEAPS || HALF_HEAPS
+#if defined(HALF_HEAPS)
 static void update_threshold( thresholdrec *rec, int match_dist )
 {
   
@@ -330,18 +343,7 @@ static void update_threshold( thresholdrec *rec, int match_dist )
 		rec->threshold = (int) (0.90 * rec->fast_average);
 
 }
-
 #endif
-/*
- * Round search radius to suit the search algorithm.
- * Currently radii must be multiples of 4.
- *
- */
-
-int round_search_radius( int radius )
-{
-	return ((radius+3) /4)*4;
-}
 
 /* 
    Reset the match accuracy threshhold used to decide whether to
@@ -352,14 +354,23 @@ void reset_thresholds(int macroblocks_per_frame)
 {
 	onepel_threshold.fast_average = 5.0;
 	twopel_threshold.fast_average = 5.0;
-	quadpel_threshold.fast_average = 5.0;
 	onepel_threshold.threshold = 5;
 	twopel_threshold.threshold = 5;
-	quadpel_threshold.threshold = 5;
 	onepel_threshold.updates_for_valid_slow = 4*macroblocks_per_frame;
 	twopel_threshold.updates_for_valid_slow = macroblocks_per_frame;
-	quadpel_threshold.updates_for_valid_slow = macroblocks_per_frame;
 	fast_motion_weighting = (double)2*macroblocks_per_frame;
+}
+
+
+/*
+ * Round search radius to suit the search algorithm.
+ * Currently radii must be multiples of 8.
+ *
+ */
+
+int round_search_radius( int radius )
+{
+	return ((radius+4) /8)*8;
 }
 
 
@@ -443,7 +454,6 @@ static void frame_ME(pict_data_s *picture,
 	mb_motion_s botfldf_mc;
 	mb_motion_s topfldb_mc;
 	mb_motion_s botfldb_mc;
-
 
 	int var,v0;
 	int dmc,dmcf,dmcr,dmci,vmc,vmcf,vmcr,vmci;
@@ -529,7 +539,9 @@ static void frame_ME(pict_data_s *picture,
 		 * the vmc>= 9*256 test that is suspect.
 		 * 
 		 */
-		if (vmc>var /* && vmc>=9*256*/ )
+
+
+		if (vmc>var && vmc>=(3*3)*16*16 )
 		{
 			mbi->mb_type = MB_INTRA;
 			mbi->var = var;
@@ -588,8 +600,6 @@ static void frame_ME(pict_data_s *picture,
 				mbi->motion_type = MC_FRAME;
 				mbi->MV[0][0][0] = 0;
 				mbi->MV[0][0][1] = 0;
-				mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
-				mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
 			}
 		}
 	}
@@ -2668,11 +2678,14 @@ static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh,
 			= (*pqblock_8grid_dists)( qorgblk, qblk,
 								  ilow, jlow,
 								  ilim, jlim, 
-								  qh, qlx, roughres);
-		k = 0;
+								  qh, qlx, 
+								  sub44_coarse_threshold,
+								  roughres);
 
 		sub_mean_reduction( roughres, rough_heap_size, 1, 
 							&rough_heap_size, &mean_weight);
+		sub44_coarse_threshold = 
+			fastmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
 		/* 
 		   We now use the good matches on 8-pel boundaries 
 		   as starting points for matches on 4-pel boundaries...
@@ -2971,16 +2984,10 @@ static void fullsearch(
 	best.pos.y = j0;
   
   
-  	/* The search radii are *always* multiples of 4 to avoid messiness in the initial
-	   4*4 pel search.  This is handled by the parameter checking/processing code in readparmfile()
-	*/
+  	/* The search radii are *always* multiples of 4 to avoid messiness
+	   in the initial 4*4 pel search.  This is handled by the
+	   parameter checking/processing code in readparmfile() */
   
-	if( (sx>>1)*(sy>>1) > MAX_COARSE_HEAP_SIZE )
-	{
-		fprintf( stderr, "Search radius %d too big for search heap!\n", sxy );
-		exit(1);
-	}
-
 	/* Create a distance-order heap of possible motion compensations
 	  based on the fast estimation data - 4*4 pel sums (4*4
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
@@ -2998,17 +3005,17 @@ static void fullsearch(
 									  i0, j0,
 									  qorg, 
 									  ssblk->qmb, qlx, qh );
-	if( sub44_heap_size == 0 )
-		printf( "NULL QH REUTRN\n");
-	/*
-	if( i0 != sub44_matches[sub44_match_heap[0].index].x ||
-		j0 != 	sub44_matches[sub44_match_heap[0].index].y )
-		printf( "BEST QUAD OF %d FROM %d %d is %d %d\n",
-				sub44_heap_size,
-				i0, j0, 
-				sub44_matches[sub44_match_heap[0].index].x,
-				sub44_matches[sub44_match_heap[0].index].y );
+	/* DELETE
+	if( frame_num == 16 && i0 == 16*15 && j0 == 16*8 )
+	{
+		for( i = 0; i < sub44_heap_size; ++ i )
+		{
+			printf( "Q%03d: %03d %03d %d\n", i,
+					ilow-i0+finalres[i].x, jlow-j0+finalres[i].y, finalres[i].weight );
+		}
+	}	
 	*/
+	
 	/* Now create a distance-ordered heap of possible motion
 	   compensations based on the fast estimation data - 2*2 pel sums
 	   using the best fraction of the 4*4 estimates However we cover

@@ -97,7 +97,6 @@ static int CarryRLim;
 */	
 
 static bitcount_t bitcnt_EOP = 0;
-static bitcount_t bits_padded;
 static int gop_undershoot = 0;
 
 /*
@@ -221,7 +220,7 @@ void rc_init_seq()
 	if( pred_ratectl )
 	{
 		Ki = 1.0;
-		Kb = 1.2;
+		Kb = 1.4;
 		Kp = 1.0;
 	}
 	else
@@ -744,9 +743,8 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 
 	/* compute normalized activity */
-	actj = (double)cur_picture.mbinfo[j].act;
+	actj = cur_picture.mbinfo[j].act;
 	actcovered += actj;
-
 
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
@@ -807,8 +805,8 @@ int rc_calc_mquant( pict_data_s *picture,int j)
   fprintf(statfile,"dj=%.0f, Qj=%1.1f, actj=3.1%f, N_actj=1.1%f, mquant=%03d\n",
   dj,Qj,actj,N_actj,mquant);
 */
+	cur_picture.mbinfo[j].N_act = N_actj;
 #endif
-
 	return mquant;
 }
 
@@ -943,7 +941,7 @@ void calc_vbv_delay(pict_data_s *picture)
 	{
 		/* first call of calc_vbv_delay */
 		/* we start with a 7/8 filled VBV buffer (12.5% back-off) */
-		picture_delay = ((vbv_buffer_size*16384*7)/8)*90000.0/bit_rate;
+		picture_delay = ((vbv_buffer_size*7)/8)*90000.0/bit_rate;
 		if (fieldpic)
 			next_ip_delay = (int)(90000.0/frame_rate+0.5);
 	}
@@ -951,8 +949,7 @@ void calc_vbv_delay(pict_data_s *picture)
 	/* VBV checks */
 
 
-	/* check for underflow (previous picture). Of course, we take undershoot
-	   into account when calculating when it would have finished arriving...
+	/* check for underflow (previous picture).
 	*/
 	if (!low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/bit_rate))
 	{
@@ -969,25 +966,33 @@ void calc_vbv_delay(pict_data_s *picture)
 	picture->vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
 
 
-	/* check for overflow (current picture) 
+	/* check for overflow (current picture).  Unless verbose warn
+	   only if overflow must be at least in part due to an oversize
+	   frame (rather than undersize predecessor).
+	   TODO: This is currently disabled because it is hopeless wrong
+	   most of the time. It generates 20 warnings for frames with small
+	   predecessors (small bitcnt_EOP) that in reality would be padded
+	   away by the multiplexer for every realistic warning for an
+	   oversize packet.
 	*/
-
-	if ((decoding_time - ((double)(bitcnt_EOP)*90000.0/bit_rate)
-		> (vbv_buffer_size*16384)*90000.0/bit_rate) )
+#ifdef CRIES_WOLF
+	if ( decoding_time * ((double)bit_rate  / 90000.0) - ((double)bitcnt_EOP)
+		> vbv_buffer_size )
 	{
-			fprintf(stderr,"vbv_delay overflow frame %d!\n", frame_num);
-			printf( "Decoding pos %.0f current pos %lld us=%d pb=%lld\n", 
-					 decoding_time / 90000.0 * bit_rate,
-					 bitcnt_EOP,
-					 gop_undershoot,
-					 bits_padded );
-					  
+		double oversize = vbv_buffer_size -
+			(decoding_time / 90000.0 * bit_rate - (double)(bitcnt_EOP+gop_undershoot));
+		if(!quiet || oversize > 0.0  )
+			fprintf(stderr,"vbv_delay overflow frame %d - %f.0 bytes!\n", 
+					frame_num,
+					oversize / 8.0
+				);
 	}
+#endif
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,
-			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, vbitcnt_EOP=%lld)\n",
-			cur_picture.vbv_delay,bitcount(),decoding_time,vbitcnt_EOP);
+			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, bitcnt_EOP=%lld)\n",
+			cur_picture.vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
 #endif
 
 	if (picture->vbv_delay<0)

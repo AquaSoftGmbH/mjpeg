@@ -48,17 +48,20 @@
  * */
 
 int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
-						int ilow,int jlow,
-						uint32_t width, uint32_t depth, 
-						int h, int rowstride, mc_result_s *resvec)
+									 int ilow,int jlow,
+									 uint32_t width, uint32_t depth, 
+									 int h, int rowstride, 
+									 int threshold,
+									 mc_result_s *resvec)
 {
 	uint32_t x,y;
 	uint8_t *currowblk = blk;
 	uint8_t *curblk;
 	mc_result_s *cres = resvec;
 	int      gridrowstride = rowstride<<1;
-	int      threshold = 100000;
 
+	/* "Seed" the thresholding with the 0,0 correction case... */
+	
 	for( y=0; y <= depth ; y+=8)
 	{
 		curblk = currowblk;
