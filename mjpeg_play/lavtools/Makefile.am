@@ -8,7 +8,7 @@
 ##	gcc $(INCLUDES) -c v4l-conf.c
 
 ## EXTRA-DIST = README PLANS
-INCLUDES =  -I../mjpeg -I /usr/X11R6/include @MOVTAR_CFLAGS@  @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
+INCLUDES =  -I../mjpeg -I /usr/X11R6/include -I /usr/X11R6/include/X11 @MOVTAR_CFLAGS@  @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
 CFLAGS=-Wall -Wno-uninitialized -Werror -O3 -DLAVPLAY_VERSION=\"1.3\"
 
 ##
