@@ -34,6 +34,7 @@
 #define AC3_SYNCWORD            0x0b77
 #define AC3_PACKET_SAMPLES      1536
 
+/// table for the available AC3 bitrates
 static const unsigned int ac3_bitrate_index[32] =
 { 32,40,48,56,64,80,96,112,128,160,192,
   224,256,320,384,448,512,576,640,
@@ -56,6 +57,7 @@ static const unsigned int ac3_frame_size[3][32] =
     }
 }; 
 
+/// table for the available AC3 frequencies
 static const unsigned int ac3_frequency[4] = 
 { 48000, 44100, 32000, 0};
 
@@ -74,7 +76,7 @@ bool AC3Stream::Probe(IBitStream &bs )
 /*************************************************************************
  *
  * Reads initial stream parameters and displays feedback banner to users
- *
+ * @param stream_num AC3 substream ID
  *************************************************************************/
 
 
@@ -139,13 +141,14 @@ void AC3Stream::Init ( const int stream_num)
 	OutputHdrInfo();
 }
 
+/// @returns the current bitrate
 unsigned int AC3Stream::NominalBitRate()
 { 
 	return bit_rate;
 }
 
-
-
+/// Prefills the internal buffer for output multiplexing.
+/// @param frames_to_buffer the number of audio frames to read ahead
 void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 {
 	unsigned int framesize_code;
@@ -259,7 +262,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 }
 
 
-
+/// Closes the AC3 stream and prints some statistics.
 void AC3Stream::Close()
 {
     stream_length = AU_start >> 3;
@@ -294,7 +297,12 @@ void AC3Stream::OutputHdrInfo ()
 
 }
 
-
+/**
+Reads the bytes neccessary to complete the current packet payload. 
+@param to_read number of bytes to read
+@param dst byte buffer pointer to read to 
+@returns the number of bytes read
+ */
 unsigned int 
 AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {

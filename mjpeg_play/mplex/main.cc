@@ -1,9 +1,11 @@
 
 /*************************************************************************
-*
+* @mainpage
 *  mplex - General-purpose MPEG-1/2 multiplexer.
 * (C) 2000, 2001 Andrew Stevens <andrew.stevens@philips.com>
 * 
+* Doxygen documentation and MPEG Z/Alpha multiplexing part by
+* Gernot Ziegler <gz@lysator.liu.se>
 *  Constructed using mplex - MPEG-1/SYSTEMS multiplexer as starting point
 *  Copyright (C) 1994 1995 Christoph Moar
 *  Siemens ZFE ST SN 11 / T SN 6
@@ -40,6 +42,14 @@
 #include "outputstream.hh"
 /*************************************************************************
     Main
+Very high-level. Parses the command line, tries out different modules
+on the input files. If all input files were recognized by the modules, 
+it initializes the chosen output module. Tells the output module about
+the available input files, and makes the first video stream the master
+substream in the output file. 
+
+@param argc number of command line parameters
+@param argv content of command line parameters
 *************************************************************************/
 
 

@@ -1,8 +1,8 @@
-/* bits.cc, bit-level output                                              */
+/** @file bits.cc, bit-level output                                              */
 
-/* Copyright (C) 2001, Andrew Stevens <andrew.stevens@philips.com> */
+ * Copyright (C) 2001, Andrew Stevens <andrew.stevens@philips.com> *
 
-/*
+ *
  * Disclaimer of Warranty
  *
  * These software programs are available to the user without any license fee or
@@ -37,7 +37,7 @@
 #include "bits.hh"
 
 
-//
+/// Initializes the bitstream, sets internal variables.
 // TODO: The buffer size should be set dynamically to sensible sizes.
 //
 BitStream::BitStream() : 
@@ -51,12 +51,17 @@ BitStream::BitStream() :
 	bfr_size = 0;
 }
 
+/// Deconstructor. Deletes the internal buffer. 
 BitStream::~BitStream()
 {
 	delete bfr;
 }
 
-/* initialize buffer, call once before first putbits or alignbits */
+/**
+   Initialize buffer, call once before first putbits or alignbits.
+  @param bs_filename output filename
+  @param buf_size size of the temporary output buffer to use
+*/
 void OBitStream::open(char *bs_filename, unsigned int buf_size)
 {
 	if ((fileh = fopen(bs_filename, "wb")) == NULL)
@@ -81,6 +86,9 @@ void OBitStream::open(char *bs_filename, unsigned int buf_size)
 	outbyte = 0;
 }
 
+/** 
+    Closes the OBitStream. Flushes the output buffer and closes the output file if one was open. 
+ */
 void OBitStream::close()
 {
 	if (fileh)
@@ -93,6 +101,10 @@ void OBitStream::close()
 	}
 }
 
+/**
+  Puts a byte into the OBitStream. 
+  Puts the byte into the internal buffer; if the buffer is full, it flushes the buffer to disk. 
+ */
 void OBitStream::putbyte()
 {
     bfr[byteidx++] = outbyte;
@@ -105,7 +117,10 @@ void OBitStream::putbyte()
 	bitidx = 8;
 }
 
-/* write rightmost n (0<=n<=32) bits of val to outfile */
+/** write rightmost n (0<=n<=32) bits of val to outfile 
+@param val value to write bitwise
+@param n number of bits to write
+*/
 void OBitStream::putbits(int val, int n)
 {
 	int i;
@@ -125,7 +140,9 @@ void OBitStream::putbits(int val, int n)
 	}
 }
 
-/* write rightmost bit of val to outfile */
+/** write rightmost bit of val to outfile
+    @param val value to write one bit of
+*/
 void OBitStream::put1bit(int val)
 {
 	totbits += 1;
@@ -138,14 +155,16 @@ void OBitStream::put1bit(int val)
 }
 
 
-/* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
+/** zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
 void OBitStream::alignbits()
 {
 	if (bitidx != 8)
 		putbits( 0, bitidx);
 }
 
-
+/**
+   Refills an IBitStream's input buffer based on the internal variables bufcount and bfr_size. 
+ */
 bool IBitStream::refill_buffer()
 {
 	size_t i;
@@ -167,9 +186,10 @@ bool IBitStream::refill_buffer()
 	return true;
 }
 
-/*
+/**
   Flushes all read input up-to *but not including* bit
   unbuffer_upto.
+@param flush_to the number of bits to flush
 */
 
 void IBitStream::flush(bitcount_t flush_upto )
@@ -196,23 +216,30 @@ void IBitStream::flush(bitcount_t flush_upto )
 }
 
 
-/*
+/**
   Undo scanning / reading
   N.b buffer *must not* be flushed between prepareundo and undochanges.
+  @param undo handle to store the undo information
 */
 void IBitStream::prepareundo( BitStreamUndo &undo)
 {
 	undo = *(static_cast<BitStreamUndo*>(this));
 }
 
-
+/**
+Undoes changes committed to an IBitStream. 
+@param undo handle to retrieve the undo information   
+ */
 void IBitStream::undochanges( BitStreamUndo &undo)
 {
 	*(static_cast<BitStreamUndo*>(this)) = undo;
 }
 
-
-
+/**
+   Read a number bytes over an IBitStream, using the buffer. 
+   @param dst buffer to read to 
+   @param length the number of bytes to read
+ */
 unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 {
 	unsigned int to_read = length;
@@ -241,7 +268,10 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 	return to_read;
 }
 
-/* open the device to read the bit stream from it */
+/** open the device to read the bit stream from it 
+@param bs_filename filename to open
+@param buf_size size of the internal buffer 
+*/
 void IBitStream::open( char *bs_filename, unsigned int buf_size)
 {
 
@@ -275,7 +305,9 @@ void IBitStream::open( char *bs_filename, unsigned int buf_size)
 }
 
 
-/* open the device to read the bit stream from it */
+/** sets the internal buffer size. 
+    @param new_buf_size the new internal buffer size 
+*/
 void IBitStream::SetBufSize( unsigned int new_buf_size)
 {
 	assert( bfr != NULL ); // Must be open first!
@@ -291,7 +323,9 @@ void IBitStream::SetBufSize( unsigned int new_buf_size)
 
 }
 
-/*close the device containing the bit stream after a read process*/
+/**
+   close the device containing the bit stream after a read process
+*/
 void IBitStream::close()
 {
 	if (fileh)
@@ -307,7 +341,8 @@ void IBitStream::close()
 
 uint8_t IBitStream::masks[8]={0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
 
-/*read 1 bit from the bit stream */
+/*read 1 bit from the bit stream 
+@returns the read bit, 0 on EOF */
 uint32_t IBitStream::get1bit()
 {
 	unsigned int bit;
@@ -332,7 +367,8 @@ uint32_t IBitStream::get1bit()
 	return bit;
 }
 
-/*read N bits from the bit stream */
+/*read N bits from the bit stream 
+@returns the read bits, 0 on EOF */
 uint32_t IBitStream::getbits(int N)
 {
 	uint32_t val = 0;
@@ -386,9 +422,13 @@ uint32_t IBitStream::getbits(int N)
 }
 
 
-/* This function seeks for a byte aligned sync word (max 32 bits) in the bit stream and
-   places the bit stream pointer right after the sync.
-   This function returns 1 if the sync was found otherwise it returns 0  */
+/** This function seeks for a byte aligned sync word (max 32 bits) in the bit stream and
+    places the bit stream pointer right after the sync.
+    This function returns 1 if the sync was found otherwise it returns 0
+@param sync the sync word to search for
+@param N the number of bits to retrieve
+@param lim number of bytes to search through
+@returns false on error */
 
 bool IBitStream::seek_sync(uint32_t sync, int N, int lim)
 {

@@ -16,7 +16,8 @@
 /******************************************************************* 
 	Find the timecode corresponding to given position in the system stream
    (assuming the SCR starts at 0 at the beginning of the stream 
-   
+@param bytepos byte position in the stream
+@param ts returns the number of clockticks the bytepos is from the file start    
 ****************************************************************** */
 
 void OutputStream::ByteposTimecode(bitcount_t bytepos, clockticks &ts)
@@ -61,7 +62,7 @@ void OutputStream::NextPosAndSCR()
  *
  * NextPosAndSCR - Update nominal (may be >= actual) byte count
  * and SCR to next output sector.
- *
+ * @param bytepos byte position in the stream
  ********/
 
 void OutputStream::SetPosAndSCR( bitcount_t bytepos )
@@ -304,13 +305,13 @@ void OutputStream::InitSyntaxParameters()
 	
 }
 
-/*
+/**
  * Compute the number of run-in sectors needed to fill up the buffers to
  * suit the type of stream being muxed.
  *
  * For stills we have to ensure an entire buffer is loaded as we only
  * ever process one frame at a time.
- *
+ * @returns the number of run-in sectors needed to fill up the buffers to suit the type of stream being muxed.
  */
 
 unsigned int OutputStream::RunInSectors()
@@ -333,6 +334,12 @@ unsigned int OutputStream::RunInSectors()
     sectors_delay += astreams.size();
 	return sectors_delay;
 }
+
+/**
+   Initializes the output stream. Traverses the input files and calculates their payloads.
+   Estimates the multiplex rate. Estimates the neccessary stream delay for the different substreams.
+ */
+
 
 void OutputStream::Init( char *multi_file)
 {
@@ -470,6 +477,10 @@ void OutputStream::Init( char *multi_file)
 				 
 }
 
+/**
+   Prints the current status of the substreams. 
+   @param level the desired log level 
+ */
 void OutputStream::MuxStatus(log_level_t level)
 {
 	vector<ElementaryStream *>::iterator str;
@@ -515,13 +526,9 @@ void OutputStream::MuxStatus(log_level_t level)
 }
 
 
-/******************************************************************
-    Program start-up packets.  Generate any irregular packets						needed at the start of the stream...
-	Note: *must* leave a sensible in-stream system header in
-	sys_header.
-	TODO: get rid of this grotty sys_header global.
-******************************************************************/
-
+/**
+   Append input substreams to the output multiplex stream.
+ */
 void OutputStream::AppendMuxStreamsOf( vector<ElementaryStream *> &elem, 
                                        vector<MuxStream *> &mux )
 {
@@ -532,6 +539,13 @@ void OutputStream::AppendMuxStreamsOf( vector<ElementaryStream *> &elem,
     }
 }
 
+/******************************************************************
+    Program start-up packets.  Generate any irregular packets						
+needed at the start of the stream...
+	Note: *must* leave a sensible in-stream system header in
+	sys_header.
+	TODO: get rid of this grotty sys_header global.
+******************************************************************/
 void OutputStream::OutputPrefix( )
 {
 	vector<ElementaryStream *>::iterator str;
@@ -1086,6 +1100,13 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	}
 }
 
+/**
+   Calculate the packet payload of the output stream at a certain timestamp. 
+@param strm the output stream
+@param buffers the number of buffers
+@param PTSstamp presentation time stamp
+@param DTSstamp decoding time stamp
+ */
 unsigned int OutputStream::PacketPayload( MuxStream &strm, bool buffers, 
 										  bool PTSstamp, bool DTSstamp )
 {
@@ -1099,7 +1120,13 @@ unsigned int OutputStream::PacketPayload( MuxStream &strm, bool buffers,
 
   WritePacket - Write out a normal packet carrying data from one of
               the elementary stream being muxed.
-
+@param max_packet_data_size the maximum packet data size allowed
+@param strm output mux stream
+@param buffers ?
+@param PTSstamp presentation time stamp of the packet
+@param DTSstamp decoding time stamp of the packet
+@param timestamps ?
+@param returns the written bytes/packets (?)
 ***************************************************/
 
 unsigned int 
@@ -1129,6 +1156,8 @@ OutputStream::WritePacket( unsigned int     max_packet_data_size,
  *
  * WriteRawSector - Write out a packet carrying data for
  *                    a control packet with irregular content.
+@param rawsector data for the raw sector
+@param length length of the raw sector
  ***************************************************/
 
 void
@@ -1138,7 +1167,7 @@ OutputStream::WriteRawSector(  uint8_t *rawsector,
 {
     //
     // Writing raw sectors when packs stretch over multiple sectors
-    // is a reciped for disaster!
+    // is a recipe for disaster!
     //
     assert( packets_per_pack == 1 );
 	psstrm->RawWrite( rawsector, length );
@@ -1158,6 +1187,7 @@ OutputStream::WriteRawSector(  uint8_t *rawsector,
 	makes of audio packets (the last 20 bytes being dropped thing) 0 =
 	Fill the packet completetely.  This include "audio packets" that
     include no actual audio, only a system header and padding.
+@param vcd_audio_pad flag for VCD audio padding
 ******************************************************************/
 
 
