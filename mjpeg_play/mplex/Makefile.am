@@ -62,8 +62,7 @@ libmplex_include_HEADERS = \
 
 libmplex2_la_LDFLAGS =  \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic 
+	-release $(LT_RELEASE)
 
 libmplex2_la_LIBADD = \
 	$(top_builddir)/utils/libmjpegutils.la

@@ -21,8 +21,7 @@ lib_LTLIBRARIES = libmjpegutils.la
 
 libmjpegutils_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic
+	-release $(LT_RELEASE)
 
 libmjpegutils_la_SOURCES = \
 	mjpeg_logging.c \

@@ -41,8 +41,7 @@ liblavinclude_HEADERS = \
 
 LAV_ALL_LIB_OPTS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic 
+	-release $(LT_RELEASE)
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \

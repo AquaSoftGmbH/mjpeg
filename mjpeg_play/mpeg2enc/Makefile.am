@@ -111,8 +111,7 @@ libmpeg2encpp_include_HEADERS = \
 
 libmpeg2encpp_la_LDFLAGS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic 
+	-release $(LT_RELEASE)
 
 libmpeg2encpp_la_DEPENDENCIES = \
 	$(LIBMJPEGUTILS) \
