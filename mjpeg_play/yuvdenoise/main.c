@@ -257,16 +257,16 @@ int main(int argc, char *argv[])
 
 void allc_buffers(void)
 {
-  int luma_buffsize = denoiser.frame.w * denoiser.frame.h;
-  int chroma_buffsize = denoiser.frame.Cw * denoiser.frame.Ch;
- 
+  int luma_buffsize; 
+  int chroma_buffsize;
+
   /* now, the MC-functions really(!) do go beyond the vertical
    * frame limits so we need to make the buffers larger to avoid
    * bound-checking (memory vs. speed...)
    */
   
-  luma_buffsize += 2*BUF_OFF*denoiser.frame.w;
-  chroma_buffsize += 2*BUF_COFF*denoiser.frame.Cw;
+  luma_buffsize = denoiser.frame.w * (denoiser.frame.h+2*BUF_OFF);
+  chroma_buffsize = denoiser.frame.Cw * (denoiser.frame.Ch+2*BUF_OFF);
   
   denoiser.frame.io[0] = bufalloc (luma_buffsize);
   denoiser.frame.io[1] = bufalloc (chroma_buffsize);
