@@ -95,8 +95,8 @@ common.c
 *
 ***********************************************************************/
 
-char *mode_names[4] = { "stereo", "j-stereo", "dual-ch", "single-ch" };
-char *layer_names[3] = { "I", "II", "III" };
+const char *mode_names[4] = { "stereo", "j-stereo", "dual-ch", "single-ch" };
+const char *layer_names[3] = { "I", "II", "III" };
 
 double  s_freq[4] = {44.1, 48, 32, 0};
 
@@ -348,7 +348,7 @@ long sRate;             /* legal rates 32000, 44100, 48000 */
 
 void  FAR *mem_alloc(block, item)
 unsigned long   block;
-char            *item;
+const char      *item;
 {
 
     void    *ptr;

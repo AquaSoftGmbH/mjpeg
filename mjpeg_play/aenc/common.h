@@ -354,12 +354,12 @@ typedef struct  bit_stream_struc {
 *
 ***********************************************************************/
 
-extern char     *mode_names[4];
-extern char     *layer_names[3];
-extern double   s_freq[4];
-extern int      bitrate[3][15];
-extern double FAR multiple[64];
-extern int	verbose;
+extern const char  *mode_names[4];
+extern const char  *layer_names[3];
+extern double      s_freq[4];
+extern int         bitrate[3][15];
+extern double FAR  multiple[64];
+extern int	   verbose;
 
 /***********************************************************************
 *
@@ -387,7 +387,7 @@ extern int            NumericQ(char*);
 extern int            BitrateIndex(int, int);
 extern int            SmpFrqIndex(long);
 extern int            memcheck(char*, int, int);
-extern void           FAR *mem_alloc(unsigned long, char*);
+extern void           FAR *mem_alloc(unsigned long, const char*);
 extern void           mem_free(void**);
 extern void           double_to_extended(double*, char[10]);
 extern void           extended_to_double(char[10], double*);

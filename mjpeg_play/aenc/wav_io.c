@@ -47,7 +47,7 @@ static unsigned long getulong(unsigned char *data)
    return (data[0] | (data[1]<<8) | (data[2]<<16) | (data[3]<<24));
 }
 
-static unsigned long find_tag(FILE *fd, char *tag)
+static unsigned long find_tag(FILE *fd, const char *tag)
 {
    unsigned char data[8];
    unsigned long m;
