@@ -130,7 +130,9 @@ public:  // TODO should go protected once encapsulation complete
 	int        stream_id;
 	bool new_au_next_sec;
 	int        buffer_scale;
-	unsigned   int buffer_size;
+	unsigned int 	buffer_size;
+	unsigned int 	max_packet_data;
+	unsigned int	min_packet_data;
 	bool       init;
 };
 

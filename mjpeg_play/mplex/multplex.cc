@@ -14,18 +14,19 @@ int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 5
 int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
 
 
-				/* In some situations the system/PES packets are embedded with external
-				   transport data which has to be taken into account for SCR calculations
-				   to be correct.
-				   E.g. VCD streams. Where each 2324 byte system packet is embedded in a
-				   2352 byte CD sector and the actual MPEG data is preceded by 30 empty sectors.
-				*/
+/* In some situations the system/PES packets are embedded with
+   external transport data which has to be taken into account for SCR
+   calculations to be correct.  E.g. VCD streams. Where each 2324 byte
+   system packet is embedded in a 2352 byte CD sector and the actual
+   MPEG data is preceded by 30 empty sectors.
+*/
+
 int				sector_transport_size;
 int             transport_prefix_sectors; 
 
 
 /* 
-		Stream syntax parameters.
+   Stream syntax parameters.
 */
 		
 	
@@ -43,31 +44,33 @@ static int always_buffers_in_video;
 static int buffers_in_audio;
 static int always_buffers_in_audio;
 static int trailing_pad_pack;		/* Stick a padding packet at the end			*/
+#ifdef REDUNDANT
 static unsigned int audio_max_packet_data;
 static unsigned int video_max_packet_data;
 static unsigned int audio_min_packet_data;
 static unsigned int video_min_packet_data;
+#endif
 static int audio_packet_data_limit; /* Needed for VCD which wastes 20 bytes */
 
 
-	/* Stream packet component buffers */
+/* Stream packet component buffers */
 
 Sys_header_struc 	sys_header;
 Sector_struc 		cur_sector;
 
 
-	/* Stream parameters */
+/* Stream parameters */
 static  unsigned long long bytes_output;
 
 static  FILE *ostream;				/* Outputstream MPEG	*/
 
 
 typedef enum { start_segment, mid_segment, 
-	       last_vau_segment, last_aaus_segment }
+			   last_vau_segment, last_aaus_segment }
 segment_state;
 
 static void outputstreamsuffix(clockticks *SCR, FILE *ostream, 
-			unsigned long long  *bytes_output);
+							   unsigned long long  *bytes_output);
 
 
 void output_video ( clockticks SCR,
@@ -76,7 +79,7 @@ void output_video ( clockticks SCR,
 					FILE *ostream,
 					bool marker_pack,
 					bool include_sys_header
-					);
+	);
 
 static void output_audio ( clockticks SCR,
 						   clockticks SCR_delay,
@@ -228,7 +231,7 @@ void init_stream_syntax_parameters(	)
 	}
 	
 
-  audio_buffer_size = 4 * 1024;
+	audio_buffer_size = 4 * 1024;
 }
 
 
@@ -243,53 +246,53 @@ static void init_outputstream( VideoStream 	&vstrm,
 	Pack_struc 			dummy_pack;
 	Sys_header_struc 	dummy_sys_header;	
 	
-  mjpeg_info("SYSTEMS/PROGRAM stream:\n");
+	mjpeg_info("SYSTEMS/PROGRAM stream:\n");
 	
-  /* These are used to make (conservative) decisions
-	 about whether a packet should fit into the recieve buffers... 
-	 Audio packets always have PTS fields, video packets needn't.	
-  */ 
+	/* These are used to make (conservative) decisions
+	   about whether a packet should fit into the recieve buffers... 
+	   Audio packets always have PTS fields, video packets needn't.	
+	*/ 
 
-  audio_max_packet_data = packet_payload( NULL, NULL, false, true, false );
-  video_max_packet_data = packet_payload( NULL, NULL, false, false, false );
-  create_pack (&dummy_pack, 0, mux_rate);
-  if( always_sys_header_in_pack )
-  {
-	  create_sys_header (&dummy_sys_header, mux_rate,  !opt_VBR, 1, 
-						 1, 1, num_audio, num_video,
-						 astrm, /*0, audio_buffer_size/128,*/
-						 vstrm /*1, video_buffer_size/1024*/
-		                );
+	astrm.max_packet_data = packet_payload( NULL, NULL, false, true, false );
+	vstrm.max_packet_data = packet_payload( NULL, NULL, false, false, false );
+	create_pack (&dummy_pack, 0, mux_rate);
+	if( always_sys_header_in_pack )
+	{
+		create_sys_header (&dummy_sys_header, mux_rate,  !opt_VBR, 1, 
+						   1, 1, num_audio, num_video,
+						   astrm, /*0, audio_buffer_size/128,*/
+						   vstrm /*1, video_buffer_size/1024*/
+			);
 
-  	video_min_packet_data = 
-		packet_payload( &dummy_sys_header, &dummy_pack, 
-						always_buffers_in_video, true, true );
-	audio_min_packet_data = 
-		packet_payload( &dummy_sys_header, &dummy_pack, 
-						true, true, false );
+		vstrm.min_packet_data = 
+			packet_payload( &dummy_sys_header, &dummy_pack, 
+							always_buffers_in_video, true, true );
+		astrm.min_packet_data = 
+			packet_payload( &dummy_sys_header, &dummy_pack, 
+							true, true, false );
 
-  }
-  else
-  {
-    video_min_packet_data = 
-		packet_payload( NULL, &dummy_pack, 
-						always_buffers_in_video, true, true );
-	audio_min_packet_data = 
-		packet_payload( NULL, &dummy_pack, 
-						true, true, false );
+	}
+	else
+	{
+		vstrm.min_packet_data = 
+			packet_payload( NULL, &dummy_pack, 
+							always_buffers_in_video, true, true );
+		astrm.min_packet_data = 
+			packet_payload( NULL, &dummy_pack, 
+							true, true, false );
 
-  }
+	}
       
      
-  /* Set the mux rate depending on flags and the paramters of the specified streams */
+	/* Set the mux rate depending on flags and the paramters of the specified streams */
      
-  if (vstrm.init)
-  {
-	  video_rate = vstrm.bit_rate * 50;
-  }
+	if (vstrm.init)
+	{
+		video_rate = vstrm.bit_rate * 50;
+	}
   
-  if (astrm.init)
-	  audio_rate = bitrate_index[astrm.version_id][3-astrm.layer][astrm.bit_rate]*128;
+	if (astrm.init)
+		audio_rate = bitrate_index[astrm.version_id][3-astrm.layer][astrm.bit_rate]*128;
   
     
 	/* Attempt to guess a sensible mux rate for the given video and audio streams 	*/
@@ -297,9 +300,9 @@ static void init_outputstream( VideoStream 	&vstrm,
 	 
 	dmux_rate = static_cast<int>(
 		1.01 * (video_rate + audio_rate) * 
-		( (1.0  *   sector_size)/video_min_packet_data +
-		  (packets_per_pack-1) * sector_size/video_max_packet_data
-		)
+		( (1.0  *   sector_size)/vstrm.min_packet_data +
+		  (packets_per_pack-1) * sector_size/vstrm.max_packet_data
+			)
 		/ packets_per_pack
 		);
 	dmux_rate = (dmux_rate/50 + 25)*50;
@@ -319,11 +322,11 @@ static void init_outputstream( VideoStream 	&vstrm,
 	}
 	else if ( opt_data_rate < dmux_rate )
 	{
-			mjpeg_warn( "Target data rate lower than computed requirement!\n");
-			mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\n");
-			mjpeg_warn( "streams is common and harmless provided no time-outs will occur\n"); 
-			dmux_rate = opt_data_rate;
-		}
+		mjpeg_warn( "Target data rate lower than computed requirement!\n");
+		mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\n");
+		mjpeg_warn( "streams is common and harmless provided no time-outs will occur\n"); 
+		dmux_rate = opt_data_rate;
+	}
 
 	/* TODO: redundant ? */
 	mux_rate = dmux_rate/50;
@@ -356,9 +359,9 @@ void outputstreamprefix( clockticks *current_SCR,
 	/* VCD: Two padding packets with video and audio system headers */
 
 	switch (opt_mux_format)
-		{
-		case MPEG_FORMAT_VCD :
-		case MPEG_FORMAT_VCD_NSR :
+	{
+	case MPEG_FORMAT_VCD :
+	case MPEG_FORMAT_VCD_NSR :
 		/* First packet carries video-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate, false, true, 
 						   true, true, 0, num_video,
@@ -372,7 +375,7 @@ void outputstreamprefix( clockticks *current_SCR,
 		bytes_output += sector_transport_size;			 
 		bytepos_timecode ( bytes_output, current_SCR);
 		
-				/* Second packet carries audio-info-only sys_header */
+		/* Second packet carries audio-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate,  false, true, 
 						   true, true, num_audio, 0,
 						   astrm, /* 0, audio_buffer_size/128,*/
@@ -387,7 +390,7 @@ void outputstreamprefix( clockticks *current_SCR,
 						true,
 						false,
 						vcd_2nd_syshdr_data_limit
-			          );
+			);
 		bytes_output += sector_transport_size;
 		bytepos_timecode ( bytes_output, current_SCR);
 		/* Calculate the payload of an audio packet... currently 2279 */
@@ -398,8 +401,8 @@ void outputstreamprefix( clockticks *current_SCR,
 
 		break;
 		
-		case MPEG_FORMAT_SVCD :
-		case MPEG_FORMAT_SVCD_NSR :
+	case MPEG_FORMAT_SVCD :
+	case MPEG_FORMAT_SVCD_NSR :
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,  !opt_VBR, true, 
 						   true, true, num_audio, num_video,
@@ -414,41 +417,41 @@ void outputstreamprefix( clockticks *current_SCR,
 		bytepos_timecode ( bytes_output, current_SCR);
 		break;
 
-		case MPEG_FORMAT_VCD_STILL :
+	case MPEG_FORMAT_VCD_STILL :
 
-			/* First packet carries small-still sys_header */
-			/* TODO COMPLETELY BOGUS!!!! */
-			create_sys_header (&sys_header, mux_rate, false, true,
-							   true, true, 0, num_video,
-							   astrm, /* 0, audio_buffer_size/128,*/
-							   vstrm /* , 1, 46 */ );
-			output_padding( *current_SCR, ostream,
-							true,
-							true,
-							false,
-							0);					
-			bytes_output += sector_transport_size;			 
-			bytepos_timecode ( bytes_output, current_SCR);
-			/* Second packet carries large-still sys_header */
-			create_sys_header (&sys_header, mux_rate, false, true, 
-							   true, true, 0, num_video,
-							   astrm, /* 0, audio_buffer_size/128,*/
-							   vstrm /* , 1, 117*/);
-			output_padding( *current_SCR, ostream,
-							true,
-							true,
-							false,
-							0);					 
-			bytes_output += sector_transport_size;			 
-			bytepos_timecode ( bytes_output, current_SCR);
-			break;
+		/* First packet carries small-still sys_header */
+		/* TODO COMPLETELY BOGUS!!!! */
+		create_sys_header (&sys_header, mux_rate, false, true,
+						   true, true, 0, num_video,
+						   astrm, /* 0, audio_buffer_size/128,*/
+						   vstrm /* , 1, 46 */ );
+		output_padding( *current_SCR, ostream,
+						true,
+						true,
+						false,
+						0);					
+		bytes_output += sector_transport_size;			 
+		bytepos_timecode ( bytes_output, current_SCR);
+		/* Second packet carries large-still sys_header */
+		create_sys_header (&sys_header, mux_rate, false, true, 
+						   true, true, 0, num_video,
+						   astrm, /* 0, audio_buffer_size/128,*/
+						   vstrm /* , 1, 117*/);
+		output_padding( *current_SCR, ostream,
+						true,
+						true,
+						false,
+						0);					 
+		bytes_output += sector_transport_size;			 
+		bytepos_timecode ( bytes_output, current_SCR);
+		break;
 			
-		case MPEG_FORMAT_SVCD_STILL :
-			mjpeg_error_exit1("SVCD STILLS NOT YET IMPLEMENTED!\n");
-			break;
+	case MPEG_FORMAT_SVCD_STILL :
+		mjpeg_error_exit1("SVCD STILLS NOT YET IMPLEMENTED!\n");
+		break;
 	}
 
-   /* Create the in-stream header if needed */
+	/* Create the in-stream header if needed */
 	create_sys_header (&sys_header, mux_rate, !opt_VBR, true, 
 					   true, true, num_audio, num_video,
 					   astrm, /*0, audio_buffer_size/128,*/
@@ -466,7 +469,7 @@ void outputstreamprefix( clockticks *current_SCR,
 
 void bytepos_timecode(long long bytepos, clockticks *ts)
 {
-	 *ts = (bytepos*CLOCKS)/((long long)dmux_rate);
+	*ts = (bytepos*CLOCKS)/((long long)dmux_rate);
 }
 
 /******************************************************************
@@ -479,10 +482,10 @@ void outputstreamsuffix(clockticks *SCR,
 						FILE *ostream,
 						unsigned long long  *bytes_output)
 {
-  unsigned char *index;
-  Pack_struc 	pack;
+	unsigned char *index;
+	Pack_struc 	pack;
 
-  if (trailing_pad_pack )
+	if (trailing_pad_pack )
 	{
 		int end_code_padding_payload;
 
@@ -495,19 +498,19 @@ void outputstreamsuffix(clockticks *SCR,
 					   TIMESTAMPBITS_NO );
 		index = cur_sector.buf  + sector_size-4;
 	}
-  else
-	  index = cur_sector.buf;
-  /* write out ISO 11172 END CODE				*/
+	else
+		index = cur_sector.buf;
+	/* write out ISO 11172 END CODE				*/
 
 
-  *(index++) = (unsigned char)((ISO11172_END)>>24);
-  *(index++) = (unsigned char)((ISO11172_END & 0x00ff0000)>>16);
-  *(index++) = (unsigned char)((ISO11172_END & 0x0000ff00)>>8);
-  *(index++) = (unsigned char)(ISO11172_END & 0x000000ff);
+	*(index++) = (unsigned char)((ISO11172_END)>>24);
+	*(index++) = (unsigned char)((ISO11172_END & 0x00ff0000)>>16);
+	*(index++) = (unsigned char)((ISO11172_END & 0x0000ff00)>>8);
+	*(index++) = (unsigned char)(ISO11172_END & 0x000000ff);
 
-  fwrite (cur_sector.buf, sizeof (unsigned char), sector_size, ostream);
-  *bytes_output += sector_transport_size;
-  bytepos_timecode ( *bytes_output, SCR);
+	fwrite (cur_sector.buf, sizeof (unsigned char), sector_size, ostream);
+	*bytes_output += sector_transport_size;
+	bytepos_timecode ( *bytes_output, SCR);
 }
 
 /******************************************************************
@@ -537,7 +540,7 @@ void outputstream ( VideoStream &vstrm,
 					AudioStream &astrm,
 					char 		*audio_file,
 					char 		*multi_file
-					)
+	)
 
 {
 	segment_state seg_state;
@@ -592,9 +595,9 @@ void outputstream ( VideoStream &vstrm,
 
 
 	delay = (clockticks)(sectors_delay +
-			 (vstrm.au.length+video_min_packet_data-1)/video_min_packet_data  +
-			 (astrm.au.length+audio_min_packet_data-1)/video_min_packet_data) *
-			(clockticks)sector_transport_size*(clockticks)CLOCKS/dmux_rate;
+						 (vstrm.au.length+vstrm.min_packet_data-1)/vstrm.min_packet_data  +
+						 (astrm.au.length+astrm.min_packet_data-1)/vstrm.min_packet_data) *
+		(clockticks)sector_transport_size*(clockticks)CLOCKS/dmux_rate;
 
 	/* Debugging aid - allows easy comparison with streams generated by vcdmplex */
 	if( opt_mux_format == 1 && opt_emul_vcdmplex)
@@ -606,15 +609,15 @@ void outputstream ( VideoStream &vstrm,
 	
 
 
-  /*  Let's try to read in unit after unit and to write it out into
-	  the outputstream. The only difficulty herein lies into the 
-	  buffer management, and into the fact the the actual access
-	  unit *has* to arrive in time, that means the whole unit
-	  (better yet, packet data), has to arrive before arrival of
-	  DTS. If both buffers are full we'll generate a padding packet
+	/*  Let's try to read in unit after unit and to write it out into
+		the outputstream. The only difficulty herein lies into the 
+		buffer management, and into the fact the the actual access
+		unit *has* to arrive in time, that means the whole unit
+		(better yet, packet data), has to arrive before arrival of
+		DTS. If both buffers are full we'll generate a padding packet
 	  
-	  Of course, when we start we're starting a new segment with no bytes output...
-	    */
+		Of course, when we start we're starting a new segment with no bytes output...
+	*/
 
 	
 	seg_state = start_segment;
@@ -623,7 +626,7 @@ void outputstream ( VideoStream &vstrm,
 	{
 	
 		/* A little state-machine for handling the transition from one
-		 segment to the next 
+		   segment to the next 
 		*/
 		switch( seg_state )
 		{
@@ -637,89 +640,89 @@ void outputstream ( VideoStream &vstrm,
 			*/
 		case last_aaus_segment :
 			if( astrm.au.length>0 && astrm.au.PTS >= vstrm.au.PTS )
-				{
-					/* Current segment has been written out... 
-					*/
-					outputstreamsuffix( &current_SCR, ostream, &bytes_output);
-					ostream = system_next_file( ostream, multi_file );
-					seg_state = start_segment;
-					/* Start a new segment... */
-				}
+			{
+				/* Current segment has been written out... 
+				 */
+				outputstreamsuffix( &current_SCR, ostream, &bytes_output);
+				ostream = system_next_file( ostream, multi_file );
+				seg_state = start_segment;
+				/* Start a new segment... */
+			}
 			else
 				break;
 
 			/* Starting a new segment.
-			  We send the segment prefix, video and audio reciever
-			  buffers are assumed to start empty.  We reset the segment
-			  length count and hence the SCR.
+			   We send the segment prefix, video and audio reciever
+			   buffers are assumed to start empty.  We reset the segment
+			   length count and hence the SCR.
 			   
 			*/
 
-			case start_segment :
-				mjpeg_info( "New sequence commences...\n" );
-				status_info (nsec_a, nsec_v, nsec_p, bytes_output,
-							 vstrm.bufmodel.space(),
-							 astrm.bufmodel.space(),
-							 LOG_INFO);
+		case start_segment :
+			mjpeg_info( "New sequence commences...\n" );
+			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
+						 vstrm.bufmodel.space(),
+						 astrm.bufmodel.space(),
+						 LOG_INFO);
 
-				bytes_output = 0;
-				bytepos_timecode ( bytes_output, &current_SCR);	
+			bytes_output = 0;
+			bytepos_timecode ( bytes_output, &current_SCR);	
 				
-				vstrm.bufmodel.flushed();
-				astrm.bufmodel.flushed();
-				outputstreamprefix( &current_SCR, vstrm, astrm );
+			vstrm.bufmodel.flushed();
+			astrm.bufmodel.flushed();
+			outputstreamprefix( &current_SCR, vstrm, astrm );
 
-				/* The starting PTS/DTS of AU's may of course be
-				   non-zero since this might not be the first segment
-				   we've built. Hence we adjust the "delay" to
-				   compensate for this as well as for any
-				   synchronisation / start-up delay needed.  
-				*/
+			/* The starting PTS/DTS of AU's may of course be
+			   non-zero since this might not be the first segment
+			   we've built. Hence we adjust the "delay" to
+			   compensate for this as well as for any
+			   synchronisation / start-up delay needed.  
+			*/
 				
-				SCR_audio_delay = audio_delay + current_SCR-vstrm.au.DTS;
-				SCR_video_delay = video_delay + current_SCR-astrm.au.PTS;
-				packets_left_in_pack = packets_per_pack;
-				include_sys_header = sys_header_in_pack1;
-				buffers_in_video = 1;
-				nsec_a = nsec_v = nsec_p =0;
-				seg_state = mid_segment;
-				break;
+			SCR_audio_delay = audio_delay + current_SCR-vstrm.au.DTS;
+			SCR_video_delay = video_delay + current_SCR-astrm.au.PTS;
+			packets_left_in_pack = packets_per_pack;
+			include_sys_header = sys_header_in_pack1;
+			buffers_in_video = 1;
+			nsec_a = nsec_v = nsec_p =0;
+			seg_state = mid_segment;
+			break;
 
-			case mid_segment :
-				/* Once we exceed our file size limit, we need to
-				start a new file soon.  If we want a single program we
-				simply switch.
+		case mid_segment :
+			/* Once we exceed our file size limit, we need to
+			   start a new file soon.  If we want a single program we
+			   simply switch.
 				
-				Otherwise we're in the last gop of the current segment
-				(and need to start winding stuff down ready for a
-				clean continuation in the next segment).
+			   Otherwise we're in the last gop of the current segment
+			   (and need to start winding stuff down ready for a
+			   clean continuation in the next segment).
 				
-				*/
-				if( system_file_lim_reached( ostream ) )
-				{
-					if( opt_multifile_segment )
-						ostream = system_next_file( ostream, multi_file );
-					else
-					{
-						next_vau = vstrm.lookahead( 1);
-						if( next_vau->type != IFRAME)
-							seg_state = last_vau_segment;
-					}
-				}
-				else if( vstrm.au.end_seq )
+			*/
+			if( system_file_lim_reached( ostream ) )
+			{
+				if( opt_multifile_segment )
+					ostream = system_next_file( ostream, multi_file );
+				else
 				{
 					next_vau = vstrm.lookahead( 1);
-					if( next_vau  )
-					{
-						if( ! next_vau->seq_header || next_vau->type != IFRAME)
-						{
-							mjpeg_error_exit1( "Sequence split detected but no following sequence found...\n");
-						}
-						
+					if( next_vau->type != IFRAME)
 						seg_state = last_vau_segment;
-					}
 				}
-				break;
+			}
+			else if( vstrm.au.end_seq )
+			{
+				next_vau = vstrm.lookahead( 1);
+				if( next_vau  )
+				{
+					if( ! next_vau->seq_header || next_vau->type != IFRAME)
+					{
+						mjpeg_error_exit1( "Sequence split detected but no following sequence found...\n");
+					}
+						
+					seg_state = last_vau_segment;
+				}
+			}
+			break;
 			
 			/* If we're the last video AU of the segment and the
 			   current sector will start with a new IFRAME AU we have
@@ -728,10 +731,10 @@ void outputstream ( VideoStream &vstrm,
 			   current video AU (which will form the first video AU
 			   of the next segement.
 			*/
-			case last_vau_segment :
-				if( vstrm.au.type == IFRAME )
-					seg_state = last_aaus_segment;
-				break;
+		case last_vau_segment :
+			if( vstrm.au.type == IFRAME )
+				seg_state = last_aaus_segment;
+			break;
 		}
 
 		padding_packet = false;
@@ -741,11 +744,11 @@ void outputstream ( VideoStream &vstrm,
 		   Slightly pessimistic - assumes worst-case packet data capacity
 		   and the need to start a new packet.
 		*/
-		audio_bytes = (astrm.au.length/audio_min_packet_data)*sector_transport_size +
-			(astrm.au.length%audio_min_packet_data)+(sector_transport_size-audio_min_packet_data);
+		audio_bytes = (astrm.au.length/astrm.min_packet_data)*sector_transport_size +
+			(astrm.au.length%astrm.min_packet_data)+(sector_transport_size-astrm.min_packet_data);
 
-		video_bytes = (vstrm.au.length/video_min_packet_data)*sector_transport_size +
-			(vstrm.au.length%video_min_packet_data)+(sector_transport_size-video_min_packet_data);
+		video_bytes = (vstrm.au.length/vstrm.min_packet_data)*sector_transport_size +
+			(vstrm.au.length%vstrm.min_packet_data)+(sector_transport_size-vstrm.min_packet_data);
 
 
 	
@@ -770,7 +773,7 @@ void outputstream ( VideoStream &vstrm,
 		   SEND An audio packet
 		*/
 
-		/* Heuristic... if we can we prefer to send audio rather than video. 
+		/* Heuristic... if we can we prefer to send audio rather than vstrm. 
 		   Even a few uSec under-run are audible and in any case the data-rate
 		   is trivial compared wth video. The only exception is if not
 		   sending video would cause it to under-run but there's no danger of
@@ -779,7 +782,7 @@ void outputstream ( VideoStream &vstrm,
 		*/
 
 		if ( (astrm.bufmodel.space()-AUDIO_BUFFER_FILL_MARGIN
-			  > audio_max_packet_data)
+			  > astrm.max_packet_data)
 			 && (astrm.au.length>0)
 			 && nsec_v != 0
 			 &&  ! (  vstrm.au.length !=0 &&
@@ -806,7 +809,7 @@ void outputstream ( VideoStream &vstrm,
 		   SEND a video packet.
 		*/
 
-		else if( vstrm.bufmodel.space() >= video_max_packet_data
+		else if( vstrm.bufmodel.space() >= vstrm.max_packet_data
 				 && vstrm.au.length>0 && seg_state != last_aaus_segment
 			)
 		{
@@ -816,9 +819,9 @@ void outputstream ( VideoStream &vstrm,
 			if( video_next_SCR >= vstrm.au.DTS+SCR_video_delay )
 				timeout_error (STATUS_VIDEO_TIME_OUT,vstrm.au.dorder);
 			output_video ( current_SCR, SCR_video_delay, 
-						  vstrm, ostream, 
-						  start_of_new_pack,
-						  include_sys_header);
+						   vstrm, ostream, 
+						   start_of_new_pack,
+						   include_sys_header);
 
 			++nsec_v;
 
@@ -862,8 +865,8 @@ void outputstream ( VideoStream &vstrm,
 		{
 			mjpeg_info( "Video stream ended.\n" );
 			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
-					 vstrm.bufmodel.space(),
-					 astrm.bufmodel.space(),
+						 vstrm.bufmodel.space(),
+						 astrm.bufmodel.space(),
 						 LOG_INFO);
 			video_ended = 1;
 		}
@@ -898,72 +901,72 @@ void outputstream ( VideoStream &vstrm,
 void next_video_access_unit (unsigned int bytes_muxed,
 							 clockticks SCR_delay,
 							 VideoStream  &vstrm
-							 )
+	)
 {
-  clockticks   decode_time;
-  VAunit *vau;
+	clockticks   decode_time;
+	VAunit *vau;
   
-  if (bytes_muxed == 0)
-	return;
+	if (bytes_muxed == 0)
+		return;
 
 
-  /* Work through what's left of the current AU and the following AU's
-	 updating the info until we reach a point where an AU had to be
-	 split between packets.
-	 NOTE: It *is* possible for this loop to iterate. 
+	/* Work through what's left of the current AU and the following AU's
+	   updating the info until we reach a point where an AU had to be
+	   split between packets.
+	   NOTE: It *is* possible for this loop to iterate. 
 
-	 The DTS/PTS field for the packet in this case would have been
-	 given the that for the first AU to start in the packet.
-	 Whether Joe-Blow's hardware VCD player handles this properly is
-	 another matter of course!
+	   The DTS/PTS field for the packet in this case would have been
+	   given the that for the first AU to start in the packet.
+	   Whether Joe-Blow's hardware VCD player handles this properly is
+	   another matter of course!
 	*/
 
-  decode_time = vstrm.au.DTS + SCR_delay;
-  while (vstrm.au.length < bytes_muxed)
+	decode_time = vstrm.au.DTS + SCR_delay;
+	while (vstrm.au.length < bytes_muxed)
 	{	  
 
 		vstrm.bufmodel.queued (vstrm.au.length, decode_time);
-	  bytes_muxed -= vstrm.au.length;
-	  vau = vstrm.next();
-	  if( vau != NULL )
-		vstrm.au = *vau;
-	  else
+		bytes_muxed -= vstrm.au.length;
+		vau = vstrm.next();
+		if( vau != NULL )
+			vstrm.au = *vau;
+		else
 	    {
-		  vstrm.au.markempty();
-		  return;
+			vstrm.au.markempty();
+			return;
 	    }
-	  vstrm.new_au_next_sec = true;
+		vstrm.new_au_next_sec = true;
 	  
-	  decode_time = vstrm.au.DTS + SCR_delay;
+		decode_time = vstrm.au.DTS + SCR_delay;
 	};
 
-  // We've now reached a point where the current AU overran or
-  // fitted exactly.  We need to distinguish the latter case
-  // so we can record whether the next packet starts with an
-  // existing AU or not - info we need to decide what PTS/DTS
-  // info to write at the start of the next packet.
+	// We've now reached a point where the current AU overran or
+	// fitted exactly.  We need to distinguish the latter case
+	// so we can record whether the next packet starts with an
+	// existing AU or not - info we need to decide what PTS/DTS
+	// info to write at the start of the next packet.
 	
-  if (vstrm.au.length > bytes_muxed)
+	if (vstrm.au.length > bytes_muxed)
 	{
 
-	  vstrm.bufmodel.queued( bytes_muxed, decode_time);
-	  vstrm.au.length -= bytes_muxed;
-	  vstrm.new_au_next_sec = false;
+		vstrm.bufmodel.queued( bytes_muxed, decode_time);
+		vstrm.au.length -= bytes_muxed;
+		vstrm.new_au_next_sec = false;
 	} 
-  else //  if (vstrm.au.length == bytes_muxed)
-  {
-	  vstrm.bufmodel.queued(bytes_muxed, decode_time);
+	else //  if (vstrm.au.length == bytes_muxed)
+	{
+		vstrm.bufmodel.queued(bytes_muxed, decode_time);
 	  
-	  vau = vstrm.next();
-	  if( vau != NULL )
-		  vstrm.au = *vau;
-	  else
-	  {
-		  vstrm.au.markempty();
-		  return;
-	  }
-	  vstrm.new_au_next_sec = true;
-  }	   
+		vau = vstrm.next();
+		if( vau != NULL )
+			vstrm.au = *vau;
+		else
+		{
+			vstrm.au.markempty();
+			return;
+		}
+		vstrm.new_au_next_sec = true;
+	}	   
 
 }
 
@@ -983,156 +986,156 @@ void output_video ( clockticks SCR,
 					FILE *ostream,
 					bool start_of_new_pack,
 					bool include_sys_header
-					)
+	)
 
 {
 
-  unsigned int max_packet_payload; 	 
-  unsigned int prev_au_tail;
-  Pack_struc *pack_ptr = NULL;
-  Sys_header_struc *sys_header_ptr = NULL;
-  unsigned char timestamps;
-  VAunit *vau;
-  Pack_struc pack;
-  unsigned int old_au_then_new_payload;
-  clockticks  DTS,PTS;
+	unsigned int max_packet_payload; 	 
+	unsigned int prev_au_tail;
+	Pack_struc *pack_ptr = NULL;
+	Sys_header_struc *sys_header_ptr = NULL;
+	unsigned char timestamps;
+	VAunit *vau;
+	Pack_struc pack;
+	unsigned int old_au_then_new_payload;
+	clockticks  DTS,PTS;
   
-  max_packet_payload = 0;	/* 0 = Fill sector */
+	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	We're now in the last AU of a segment. 
 		So we don't want to go beyond it's end when filling
 		sectors. Hence we limit packet payload size to (remaining) AU length.
 	*/
-  if( vstrm.au.end_seq )
-  {
-	max_packet_payload = vstrm.au.length;
-  }
+	if( vstrm.au.end_seq )
+	{
+		max_packet_payload = vstrm.au.length;
+	}
 
-  if (start_of_new_pack)
+	if (start_of_new_pack)
     {
-	  /* Wir generieren den Pack Header				*/
-	  /* let's generate pack header					*/
-	  create_pack (&pack, SCR, mux_rate);
-	  pack_ptr = &pack;
-	  if( include_sys_header )
-		sys_header_ptr = &sys_header;
+		/* Wir generieren den Pack Header				*/
+		/* let's generate pack header					*/
+		create_pack (&pack, SCR, mux_rate);
+		pack_ptr = &pack;
+		if( include_sys_header )
+			sys_header_ptr = &sys_header;
     }
     
 	
         
-  /* Figure out the threshold payload size below which we can fit more
-	 than one AU into a packet N.b. because fitting more than one in
-	 imposses an overhead of additional header fields so there is a
-	 dead spot where we *have* to stuff the packet rather than start
-	 fitting in an extra AU.  Slightly over-conservative in the case
-	 of the last packet...  */
+	/* Figure out the threshold payload size below which we can fit more
+	   than one AU into a packet N.b. because fitting more than one in
+	   imposses an overhead of additional header fields so there is a
+	   dead spot where we *have* to stuff the packet rather than start
+	   fitting in an extra AU.  Slightly over-conservative in the case
+	   of the last packet...  */
 
-  old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, 
-  									        buffers_in_video, true, true);
+	old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, 
+											  buffers_in_video, true, true);
 
-  PTS = vstrm.au.PTS + SCR_delay;
-  DTS = vstrm.au.DTS + SCR_delay;
+	PTS = vstrm.au.PTS + SCR_delay;
+	DTS = vstrm.au.DTS + SCR_delay;
 
-   /* CASE: Packet starts with new access unit			*/
-  if (vstrm.new_au_next_sec  )
+	/* CASE: Packet starts with new access unit			*/
+	if (vstrm.new_au_next_sec  )
 	{
-	  if(  dtspts_for_all_vau && max_packet_payload == 0 )
-	  	max_packet_payload = vstrm.au.length;
+		if(  dtspts_for_all_vau && max_packet_payload == 0 )
+			max_packet_payload = vstrm.au.length;
 
-	  if (vstrm.au.type == BFRAME)
-		timestamps=TIMESTAMPBITS_PTS;
-	  else
-		timestamps=TIMESTAMPBITS_PTS_DTS;
+		if (vstrm.au.type == BFRAME)
+			timestamps=TIMESTAMPBITS_PTS;
+		else
+			timestamps=TIMESTAMPBITS_PTS_DTS;
 
-	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
-					  max_packet_payload,
-					  vstrm.rawstrm, 
-					  vstrm,
-					  /* vstrm.stream_id, 1, video_buffer_size/1024,*/
-					  buffers_in_video, PTS, DTS,
-					  timestamps );
-	  next_video_access_unit ( cur_sector.length_of_packet_data, 
-							  SCR_delay, vstrm);
+		create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
+						max_packet_payload,
+						vstrm.rawstrm, 
+						vstrm,
+						/* vstrm.stream_id, 1, video_buffer_size/1024,*/
+						buffers_in_video, PTS, DTS,
+						timestamps );
+		next_video_access_unit ( cur_sector.length_of_packet_data, 
+								 SCR_delay, vstrm);
 
 	}
 
-  /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
-  /*       keine neue im selben Packet vor					*/
-  /* CASE: Packet begins with old access unit, no new one	*/
-  /*	     begins in the very same packet					*/
-  else if ( ! vstrm.new_au_next_sec &&
-		   (vstrm.au.length >= old_au_then_new_payload))
+	/* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
+	/*       keine neue im selben Packet vor					*/
+	/* CASE: Packet begins with old access unit, no new one	*/
+	/*	     begins in the very same packet					*/
+	else if ( ! vstrm.new_au_next_sec &&
+			  (vstrm.au.length >= old_au_then_new_payload))
 	{
-	  create_sector( &cur_sector, pack_ptr, sys_header_ptr,
-					 vstrm.au.length,
-					 vstrm.rawstrm,
-					 vstrm,
-					 /*vstrm.stream_id, 1, video_buffer_size/1024,*/
-					 buffers_in_video, 0, 0,
-					 TIMESTAMPBITS_NO );
-	  next_video_access_unit ( cur_sector.length_of_packet_data, 
-							   SCR_delay, vstrm);
+		create_sector( &cur_sector, pack_ptr, sys_header_ptr,
+					   vstrm.au.length,
+					   vstrm.rawstrm,
+					   vstrm,
+					   /*vstrm.stream_id, 1, video_buffer_size/1024,*/
+					   buffers_in_video, 0, 0,
+					   TIMESTAMPBITS_NO );
+		next_video_access_unit ( cur_sector.length_of_packet_data, 
+								 SCR_delay, vstrm);
 
 	}
 
-  /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
-  /*       eine neue im selben Packet vor			*/
-  /* CASE: Packet begins with old access unit, a new one	*/
-  /*	     begins in the very same packet			*/
-  else if ( !vstrm.new_au_next_sec  && 
-		   (vstrm.au.length < old_au_then_new_payload))
+	/* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
+	/*       eine neue im selben Packet vor			*/
+	/* CASE: Packet begins with old access unit, a new one	*/
+	/*	     begins in the very same packet			*/
+	else if ( !vstrm.new_au_next_sec  && 
+			  (vstrm.au.length < old_au_then_new_payload))
 	{
-	  prev_au_tail = vstrm.au.length;
-	  vstrm.bufmodel.queued (vstrm.au.length, DTS);
+		prev_au_tail = vstrm.au.length;
+		vstrm.bufmodel.queued (vstrm.au.length, DTS);
 
-	  /* is there a new access unit anyway? */
+		/* is there a new access unit anyway? */
 
  
-	  vau = vstrm.next();
-	  if( vau != NULL )
+		vau = vstrm.next();
+		if( vau != NULL )
 		{
-		  vstrm.au = *vau;
+			vstrm.au = *vau;
 
-		  if(  dtspts_for_all_vau  && max_packet_payload == 0 )
-	  		max_packet_payload = vstrm.au.length+prev_au_tail;
+			if(  dtspts_for_all_vau  && max_packet_payload == 0 )
+				max_packet_payload = vstrm.au.length+prev_au_tail;
 
-		  if (vstrm.au.type == BFRAME)
-			timestamps=TIMESTAMPBITS_PTS;
-		  else
-			timestamps=TIMESTAMPBITS_PTS_DTS;
-		 vstrm.new_au_next_sec = true;
- 		 PTS = vstrm.au.PTS + SCR_delay;
-  		 DTS = vstrm.au.DTS + SCR_delay;
+			if (vstrm.au.type == BFRAME)
+				timestamps=TIMESTAMPBITS_PTS;
+			else
+				timestamps=TIMESTAMPBITS_PTS_DTS;
+			vstrm.new_au_next_sec = true;
+			PTS = vstrm.au.PTS + SCR_delay;
+			DTS = vstrm.au.DTS + SCR_delay;
 	
-		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-						 max_packet_payload,
-						 vstrm.rawstrm,
-						 vstrm,
-						 /*vstrm.stream_id, 1, video_buffer_size/1024,*/
-						 buffers_in_video, PTS, DTS,
-						 timestamps );
-		  next_video_access_unit ( cur_sector.length_of_packet_data - prev_au_tail, 
-								  SCR_delay, vstrm);
+			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
+						   max_packet_payload,
+						   vstrm.rawstrm,
+						   vstrm,
+						   /*vstrm.stream_id, 1, video_buffer_size/1024,*/
+						   buffers_in_video, PTS, DTS,
+						   timestamps );
+			next_video_access_unit ( cur_sector.length_of_packet_data - prev_au_tail, 
+									 SCR_delay, vstrm);
 		} 
-	  else
+		else
 		{
-		  vstrm.au.markempty();
-		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
-						  0,
-						  vstrm.rawstrm, 
-						  vstrm,
-						  /*vstrm.stream_id, 1, video_buffer_size/1024,*/
-						  buffers_in_video, 0, 0,
-						  TIMESTAMPBITS_NO);
+			vstrm.au.markempty();
+			create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
+							0,
+							vstrm.rawstrm, 
+							vstrm,
+							/*vstrm.stream_id, 1, video_buffer_size/1024,*/
+							buffers_in_video, 0, 0,
+							TIMESTAMPBITS_NO);
 		};
 
 
 	}
 
 
-  /* Sector auf Platte schreiben				*/
-  fwrite (cur_sector.buf, sector_size, 1, ostream);
+	/* Sector auf Platte schreiben				*/
+	fwrite (cur_sector.buf, sector_size, 1, ostream);
   
-  buffers_in_video = always_buffers_in_video;
+	buffers_in_video = always_buffers_in_video;
 	
 }
 
@@ -1153,47 +1156,47 @@ void next_audio_access_unit ( unsigned int bytes_muxed,
 	)
 
 {
-  AAunit *aau;
-  clockticks   decode_time;
+	AAunit *aau;
+	clockticks   decode_time;
   
-  if (bytes_muxed == 0)
-	return;
+	if (bytes_muxed == 0)
+		return;
 
-  decode_time = astrm.au.PTS + SCR_delay;
-  while (astrm.au.length < bytes_muxed)
+	decode_time = astrm.au.PTS + SCR_delay;
+	while (astrm.au.length < bytes_muxed)
 	{
-	  astrm.bufmodel.queued ( astrm.au.length, decode_time);
-	  bytes_muxed -= astrm.au.length;
-	  aau = astrm.next();
-	  if( aau != NULL )
-		astrm.au = *aau;
-	  else
+		astrm.bufmodel.queued ( astrm.au.length, decode_time);
+		bytes_muxed -= astrm.au.length;
+		aau = astrm.next();
+		if( aau != NULL )
+			astrm.au = *aau;
+		else
 	    {
-		  astrm.au.markempty();
-		  return;
+			astrm.au.markempty();
+			return;
 	    }
-	  astrm.new_au_next_sec = true;
-	  decode_time = astrm.au.PTS + SCR_delay;
+		astrm.new_au_next_sec = true;
+		decode_time = astrm.au.PTS + SCR_delay;
 	};
 
-  if (astrm.au.length > bytes_muxed)
+	if (astrm.au.length > bytes_muxed)
 	{
-	  astrm.bufmodel.queued( bytes_muxed, decode_time);
-	  astrm.au.length -= bytes_muxed;
-	  astrm.new_au_next_sec = false;
+		astrm.bufmodel.queued( bytes_muxed, decode_time);
+		astrm.au.length -= bytes_muxed;
+		astrm.new_au_next_sec = false;
 	} else
-	  if (astrm.au.length == bytes_muxed)
+		if (astrm.au.length == bytes_muxed)
 		{
-		  astrm.bufmodel.queued( bytes_muxed, decode_time);
-		  aau = astrm.next();
-		  if( aau != NULL )
-			astrm.au = *aau;
-		  else
+			astrm.bufmodel.queued( bytes_muxed, decode_time);
+			aau = astrm.next();
+			if( aau != NULL )
+				astrm.au = *aau;
+			else
 			{
-			  astrm.au.markempty();
-			  return;
+				astrm.au.markempty();
+				return;
 			}
-		  astrm.new_au_next_sec = true;
+			astrm.new_au_next_sec = true;
 		};
 
 }
@@ -1211,114 +1214,114 @@ void output_audio ( clockticks SCR,
 					bool start_of_new_pack,
 					bool include_sys_header,
 					bool last_au_segment
-					)
+	)
 
 {
-  clockticks   PTS;
-  unsigned int max_packet_data; 	 
-  unsigned int bytes_sent;
-  Pack_struc *pack_ptr = NULL;
-  Sys_header_struc *sys_header_ptr = NULL;
-  AAunit *aau;
-  Pack_struc pack;
-  unsigned int old_au_then_new_payload;
+	clockticks   PTS;
+	unsigned int max_packet_data; 	 
+	unsigned int bytes_sent;
+	Pack_struc *pack_ptr = NULL;
+	Sys_header_struc *sys_header_ptr = NULL;
+	AAunit *aau;
+	Pack_struc pack;
+	unsigned int old_au_then_new_payload;
   
-  PTS = astrm.au.PTS + SCR_delay;
-  old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr,
-											buffers_in_audio, false, false );
+	PTS = astrm.au.PTS + SCR_delay;
+	old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr,
+											  buffers_in_audio, false, false );
 
-  max_packet_data= audio_packet_data_limit;
-  if( last_au_segment )
-  {
-  	/* We're now in the last AU of a segment.  So we don't want to go beyond it's end when willing
-	sectors. Hence we limit packet payload size to (remaining) AU length.
-	*/
-	max_packet_data = astrm.au.length;
-  }
+	max_packet_data= audio_packet_data_limit;
+	if( last_au_segment )
+	{
+		/* We're now in the last AU of a segment.  So we don't want to go beyond it's end when willing
+		   sectors. Hence we limit packet payload size to (remaining) AU length.
+		*/
+		max_packet_data = astrm.au.length;
+	}
   
-  if( audio_packet_data_limit && old_au_then_new_payload > max_packet_data )
-  	old_au_then_new_payload = max_packet_data;
+	if( audio_packet_data_limit && old_au_then_new_payload > max_packet_data )
+		old_au_then_new_payload = max_packet_data;
  
-  if (start_of_new_pack)
+	if (start_of_new_pack)
     {
-	  /* Wir generieren den Pack Header				*/
-	  /* let's generate pack header					*/
-	  create_pack (&pack, SCR, mux_rate);
-	  pack_ptr = &pack;
-	  if( include_sys_header )
-		sys_header_ptr = &sys_header;
+		/* Wir generieren den Pack Header				*/
+		/* let's generate pack header					*/
+		create_pack (&pack, SCR, mux_rate);
+		pack_ptr = &pack;
+		if( include_sys_header )
+			sys_header_ptr = &sys_header;
     }
     
-  /* Wir generieren das Packet				*/
-  /* Let's generate packet					*/
+	/* Wir generieren das Packet				*/
+	/* Let's generate packet					*/
 
-  /* faengt im Packet ein Audio Frame an?			*/
-  /* does a audio frame start in this packet?			*/
+	/* faengt im Packet ein Audio Frame an?			*/
+	/* does a audio frame start in this packet?			*/
 
-  /* FALL: Packet beginnt mit neuer Access Unit			*/
-  /* CASE: packet starts with new access unit			*/
+	/* FALL: Packet beginnt mit neuer Access Unit			*/
+	/* CASE: packet starts with new access unit			*/
 	
-  if (astrm.new_au_next_sec)
+	if (astrm.new_au_next_sec)
     {
-	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 audio_packet_data_limit,
-					 astrm.rawstrm, 
-					 astrm,
-					 /*astrm.stream_id, 0, audio_buffer_size/128,*/
-					 buffers_in_audio, PTS, 0,
-					 TIMESTAMPBITS_PTS);
+		create_sector (&cur_sector, pack_ptr, sys_header_ptr,
+					   audio_packet_data_limit,
+					   astrm.rawstrm, 
+					   astrm,
+					   /*astrm.stream_id, 0, audio_buffer_size/128,*/
+					   buffers_in_audio, PTS, 0,
+					   TIMESTAMPBITS_PTS);
 
-	  next_audio_access_unit ( cur_sector.length_of_packet_data, 
-							  SCR_delay, astrm);
+		next_audio_access_unit ( cur_sector.length_of_packet_data, 
+								 SCR_delay, astrm);
     }
 
-  /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
-  /*       keine neue im selben Packet vor			*/
-  /* CASE: packet starts with old access unit, no new one	*/
-  /*       starts in this very same packet			*/
-  else if (!(astrm.new_au_next_sec) && 
-		   (astrm.au.length >= old_au_then_new_payload))
+	/* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
+	/*       keine neue im selben Packet vor			*/
+	/* CASE: packet starts with old access unit, no new one	*/
+	/*       starts in this very same packet			*/
+	else if (!(astrm.new_au_next_sec) && 
+			 (astrm.au.length >= old_au_then_new_payload))
     {
-	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 audio_packet_data_limit,
-					 astrm.rawstrm, 
-					 astrm,
-					 /*astrm.stream_id, 0, audio_buffer_size/128,*/
-					 buffers_in_audio, 0, 0,
-					 TIMESTAMPBITS_NO );
+		create_sector (&cur_sector, pack_ptr, sys_header_ptr,
+					   audio_packet_data_limit,
+					   astrm.rawstrm, 
+					   astrm,
+					   /*astrm.stream_id, 0, audio_buffer_size/128,*/
+					   buffers_in_audio, 0, 0,
+					   TIMESTAMPBITS_NO );
 
-	  next_audio_access_unit ( cur_sector.length_of_packet_data,
-							   SCR_delay, astrm);
+		next_audio_access_unit ( cur_sector.length_of_packet_data,
+								 SCR_delay, astrm);
     }
 
 
-  /* CASE: packet starts with old access unit, a new one	*/
-  /*       starts in this very same packet			*/
-  else /* !(astrm.new_au_next_sec) &&  (astrm.au.length < old_au_then_new_payload)) */
+	/* CASE: packet starts with old access unit, a new one	*/
+	/*       starts in this very same packet			*/
+	else /* !(astrm.new_au_next_sec) &&  (astrm.au.length < old_au_then_new_payload)) */
     {
-	  bytes_sent = astrm.au.length;
-	  astrm.bufmodel.queued( astrm.au.length, PTS);
+		bytes_sent = astrm.au.length;
+		astrm.bufmodel.queued( astrm.au.length, PTS);
 
-	  /* gibt es ueberhaupt noch eine Access Unit ? */
-	  /* is there another access unit anyway ? */
-	  aau = astrm.next();
-	  if( aau != NULL )
+		/* gibt es ueberhaupt noch eine Access Unit ? */
+		/* is there another access unit anyway ? */
+		aau = astrm.next();
+		if( aau != NULL )
 		{
-		  astrm.au = *aau;
-		  astrm.new_au_next_sec = true;
-		  PTS = astrm.au.PTS + SCR_delay;
-		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-						 audio_packet_data_limit,
-						 astrm.rawstrm, 
-						 astrm,
-						 /*astrm.stream_id, 0, audio_buffer_size/128,*/
-						 buffers_in_audio, PTS, 0,
-						 TIMESTAMPBITS_PTS );
+			astrm.au = *aau;
+			astrm.new_au_next_sec = true;
+			PTS = astrm.au.PTS + SCR_delay;
+			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
+						   audio_packet_data_limit,
+						   astrm.rawstrm, 
+						   astrm,
+						   /*astrm.stream_id, 0, audio_buffer_size/128,*/
+						   buffers_in_audio, PTS, 0,
+						   TIMESTAMPBITS_PTS );
 
-		  next_audio_access_unit ( cur_sector.length_of_packet_data - bytes_sent, 
-								  SCR_delay, astrm );
+			next_audio_access_unit ( cur_sector.length_of_packet_data - bytes_sent, 
+									 SCR_delay, astrm );
 		} else
-		  {
+		{
 			astrm.au.markempty();
 			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						   0,
@@ -1327,15 +1330,15 @@ void output_audio ( clockticks SCR,
 						   /*astrm.stream_id, 0, audio_buffer_size/128,*/
 						   buffers_in_audio, 0, 0,
 						   TIMESTAMPBITS_NO );
-		  };
+		};
 
     }
 
-  /* Sector auf Platte schreiben				*/
-  /* write out sector onto disk				*/
-  fwrite (cur_sector.buf, sector_size, 1, ostream);
+	/* Sector auf Platte schreiben				*/
+	/* write out sector onto disk				*/
+	fwrite (cur_sector.buf, sector_size, 1, ostream);
 
-  buffers_in_audio = always_buffers_in_audio;
+	buffers_in_audio = always_buffers_in_audio;
 	
 }
 
@@ -1363,43 +1366,43 @@ void output_audio ( clockticks SCR,
 ******************************************************************/
 
 void output_padding (
-					 clockticks SCR,
-					 FILE *ostream,
-					 unsigned char start_of_new_pack,
-					 unsigned char include_sys_header,
-					 unsigned char VBR_pseudo,
-					 int padding_limit
-					 )
+	clockticks SCR,
+	FILE *ostream,
+	unsigned char start_of_new_pack,
+	unsigned char include_sys_header,
+	unsigned char VBR_pseudo,
+	int padding_limit
+	)
 
 {
-  Pack_struc *pack_ptr = NULL;
-  Sys_header_struc *sys_header_ptr = NULL;
-  Pack_struc pack;
+	Pack_struc *pack_ptr = NULL;
+	Sys_header_struc *sys_header_ptr = NULL;
+	Pack_struc pack;
 
-  if( ! VBR_pseudo  )
+	if( ! VBR_pseudo  )
 	{
-	  if (start_of_new_pack)
+		if (start_of_new_pack)
 		{
-		  /* Wir generieren den Pack Header				*/
-		  /* let's generate the pack header				*/
-		  create_pack (&pack, SCR, mux_rate);
-	      pack_ptr = &pack;
-	      if( include_sys_header )
-	  	    sys_header_ptr = &sys_header;
+			/* Wir generieren den Pack Header				*/
+			/* let's generate the pack header				*/
+			create_pack (&pack, SCR, mux_rate);
+			pack_ptr = &pack;
+			if( include_sys_header )
+				sys_header_ptr = &sys_header;
 		}
 
 
-	  /* Wir generieren das Packet				*/
-	  /* let's generate the packet				*/
-	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 padding_limit,
-					 NULL, 
-					 pstrm,
-					 /*PADDING_STR, 0, 0,*/
-					 false, 0, 0,
-					 TIMESTAMPBITS_NO );
+		/* Wir generieren das Packet				*/
+		/* let's generate the packet				*/
+		create_sector (&cur_sector, pack_ptr, sys_header_ptr,
+					   padding_limit,
+					   NULL, 
+					   pstrm,
+					   /*PADDING_STR, 0, 0,*/
+					   false, 0, 0,
+					   TIMESTAMPBITS_NO );
 
-	  fwrite (cur_sector.buf, sector_size, 1, ostream);
+		fwrite (cur_sector.buf, sector_size, 1, ostream);
 	}
 
 
