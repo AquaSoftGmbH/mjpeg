@@ -86,13 +86,11 @@ void create_file_input(GtkWidget *widget, gpointer data);
 void file_ok_output( GtkWidget *w, GtkFileSelection *fs );
 void create_in_out (GtkWidget *hbox1, GtkWidget *vbox);
 void create_vcd_svcd (GtkWidget *hbox1, GtkWidget *vbox);
-void create_video_layout (GtkWidget *table);
 void create_file_output(GtkWidget *widget, gpointer data);
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry );
 void file_ok_video ( GtkWidget *w, GtkFileSelection *fs );
 void create_file_video(GtkWidget *widget, gpointer data);
 void create_fileselect_video (GtkWidget *hbox1, GtkWidget *vbox);
-void create_video (GtkWidget *table);
 void create_mplex_options (GtkWidget *table);
 void encode_all (GtkWidget *widget, gpointer data);
 void create_buttons1 (GtkWidget *hbox1);
@@ -468,7 +466,8 @@ void video_convert()
    char command[600];
    char command_temp[256];
    static char temp1[16],temp2[16],temp3[16],temp4[16],temp5[16],temp6[16], temp7[4];
-
+   static char temp8[4], temp9[4], temp10[4],temp11[4],temp12[4],temp13[4];
+   static char temp14[4],temp15[4],temp16[4],temp17[4];
    error = 0;
    progress_encoding = 2;
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
@@ -477,16 +476,66 @@ void video_convert()
    n = 0;
    mpeg2enc_command[n] = MPEG2ENC_LOCATION; n++;
    mpeg2enc_command[n] = "-v1"; n++;
-   mpeg2enc_command[n] = "-b"; n++;
-   sprintf(temp4, "%i", (*pointenc).bitrate);
-   mpeg2enc_command[n] =  temp4; n++;
+   
+   if((*pointenc).bitrate != 0) {
+      mpeg2enc_command[n] = "-b"; n++;
+      sprintf(temp14, "%i", (*pointenc).bitrate);
+      mpeg2enc_command[n] =  temp14; n++;
+     }
+   if((*pointenc).qualityfactor != 0) {
+      mpeg2enc_command[n] = "-q"; n++;
+      sprintf(temp15, "%i", (*pointenc).qualityfactor);
+      mpeg2enc_command[n] =  temp15; n++;
+     }
    if((*pointenc).searchradius != 16) {
       sprintf(temp6, "%i", (*pointenc).searchradius);
       mpeg2enc_command[n] =  "-r"; n++;
       mpeg2enc_command[n] =  temp6; n++;
-   }
+     }
+   if ( fourpelmotion != 2 )
+     {
+       sprintf(temp8,"%i", fourpelmotion);
+       mpeg2enc_command[n] = "-4"; n++;
+       mpeg2enc_command[n] = temp8; n++;
+     }
+   if ( twopelmotion != 3 )
+     {
+       sprintf(temp9,"%i", twopelmotion);
+       mpeg2enc_command[n] = "-2"; n++;
+       mpeg2enc_command[n] = temp9; n++;
+     }
+   if((*pointenc).decoderbuffer != 46) {
+      sprintf(temp10, "%i", (*pointenc).decoderbuffer);
+      mpeg2enc_command[n] =  "-V"; n++;
+      mpeg2enc_command[n] =  temp10; n++;
+     }
+   if((*pointenc).sequencesize != 0) {
+      sprintf(temp12, "%i", (*pointenc).sequencesize);
+      mpeg2enc_command[n] =  "-S"; n++;
+      mpeg2enc_command[n] =  temp12; n++;
+     }
+   if(((*pointenc).sequencesize != 0i) && ((*pointenc).nonvideorate != 0)) {
+      sprintf(temp13, "%i", (*pointenc).nonvideorate);
+      mpeg2enc_command[n] =  "-B"; n++;
+      mpeg2enc_command[n] =  temp13; n++;
+     }
+   if ( ( (*pointenc).minGop != 12 ) && 
+        ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
+      sprintf(temp16, "%i", (*pointenc).minGop);
+      mpeg2enc_command[n] =  "-g"; n++;
+      mpeg2enc_command[n] =  temp16; n++;
+     }
+   if ( ( (*pointenc).maxGop != 12 ) && 
+        ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
+      sprintf(temp16, "%i", (*pointenc).maxGop);
+      mpeg2enc_command[n] =  "-G"; n++;
+      mpeg2enc_command[n] =  temp17; n++;
+     }
+
+
 
 /* And here the support fpr the different versions vo mjpeg tools */
+/* And the different mpeg versions */
    if (encoding_syntax_style == 140)
    {
      if ((*pointenc).muxformat >= 3)
@@ -887,14 +936,6 @@ GtkWidget *filew;
            "clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION (filew)->cancel_button),           "clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
   gtk_widget_show(filew);
-}
-
-/* Create Layout for the video conversation */
-void create_video (GtkWidget *table)
-{
-  //create_video_options_layout(table);
-  //create_yuvscaler_layout(table);
-  create_video_layout(table);
 }
 
 /* creating the layout for temp files */
