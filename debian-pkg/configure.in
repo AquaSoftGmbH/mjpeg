@@ -1,6 +1,6 @@
 AC_INIT(mjpegtools/configure.in)
 
-AM_INIT_AUTOMAKE(mjpegtools-deb, 1.4pre2-0.0.1)
+AM_INIT_AUTOMAKE(mjpegtools-deb, 1.4pre3-0.0.1)
 AC_CANONICAL_HOST
 
 AC_CONFIG_SUBDIRS(jpeg-mmx quicktime4linux libmovtar mjpegtools)
