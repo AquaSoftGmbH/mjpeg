@@ -50,7 +50,7 @@ uint8_t DEL8[(int) (768 * 576 * 1.5)];
 uint8_t AVRG[(int) (768 * 576 * 1.5)];
 uint32_t framenr = 0;
 
-int deinterlace=0;              /* set to 1 if deinterlacing needed */
+int deinterlace = 0;            /* set to 1 if deinterlacing needed */
 int width;                      /* width of the images */
 int height;                     /* height of the images */
 int u_offset;                   /* offset of the U-component from beginning of the image */
@@ -96,7 +96,7 @@ void display_greeting ();
 void display_help ();
 void copy_filtered_block (int x, int y);
 
-void deinterlace_frame (unsigned char* yuv[3]);
+void deinterlace_frame (unsigned char *yuv[3]);
 
 void
 test_line ()
@@ -147,14 +147,10 @@ main (int argc, char *argv[])
   /* process commandline */
   /* REMARK: at present no commandline options are really taken into account */
 
-  while ((c = getopt (argc, argv, "?:d")) != -1)
+  while ((c = getopt (argc, argv, "?")) != -1)
     {
       switch (c)
         {
-        case 'd':
-          deinterlace=1;
-          mjpeg_log (LOG_INFO, "deinterlacer activated\n");    
-          break;
         case '?':
           display_help ();
           break;
@@ -195,6 +191,22 @@ main (int argc, char *argv[])
   yuv2[1] = malloc (width * height * sizeof (unsigned char) / 4);
   yuv2[2] = malloc (width * height * sizeof (unsigned char) / 4);
 
+/* if needed, deinterlace frame */
+
+  fprintf(stderr,"%d\n",streaminfo->interlace);
+  
+  if (streaminfo->interlace != Y4M_ILACE_NONE)
+    {
+      mjpeg_log (LOG_INFO, "stream read is interlaced, using deinterlacer.\n");
+      mjpeg_log (LOG_INFO, "stream written is frame-based.\n");
+
+      /* setting Y4M header to non-interlaced video */
+      streaminfo->interlace = Y4M_ILACE_NONE;
+
+      /* turning on deinterlacer */
+      deinterlace = 1;
+    }
+
 /* write the outstream header */
 
   y4m_write_stream_header (fd_out, streaminfo);
@@ -206,8 +218,8 @@ main (int argc, char *argv[])
       /* process the frame */
 
       /* if needed, deinterlace frame */
-      if(deinterlace)
-        deinterlace_frame(yuv);
+      if (deinterlace)
+        deinterlace_frame (yuv);
 
       /* write the frame */
       y4m_write_frame (fd_out, streaminfo, frameinfo, yuv);
@@ -250,16 +262,19 @@ display_help ()
   exit (0);
 }
 
-void deinterlace_frame (unsigned char* yuv[3])
+void
+deinterlace_frame (unsigned char *yuv[3])
 {
+
   /***********************************************************************/
   /* Line-Deinterlacer                                                   */
   /* 2001 S.Fendt                                                        */
   /* it does a better job than just dropping lines but sometimes it      */
   /* fails and reduces y-resolution... hmm... but everything else is     */
   /* supposed to fail, too, sometimes, and is much more time consuming.  */
+
   /***********************************************************************/
-  
+
   /* Buffer one line */
   unsigned char line[1024];
   unsigned int d;
@@ -274,75 +289,71 @@ void deinterlace_frame (unsigned char* yuv[3])
   int lumadiff;
 
   /* Go through the frame by every two lines */
-  for (y=0;y<height;y+=2)
-  {
-    /* Go through each line by a "block" length of 32 pixels */
-    for (x=0;x<width;x+=16)
+  for (y = 0; y < height; y += 2)
     {
-      /* search best matching block of pixels in other field line */
-      min= 65535;
-      xpos=0;
-      /* search in the range of +/- 12 pixels offset in the line */
-      for (xx=-12;xx<12;xx++)
-      {
-        d=0;
-        /* Calculate SAD */
-        for (i=0;i<16;i++)
+      /* Go through each line by a "block" length of 32 pixels */
+      for (x = 0; x < width; x += 8)
         {
-          /* to avoid blocking in ramps we analyse the best match on */
-          /* two lines ... */
-          d += abs (
-                    *(yuv[0]+(x+i)+y*width) -
-                    *(yuv[0]+(x+xx+i)+(y+1)*width)
-                    );
-          d += abs (
-                    *(yuv[0]+(x+i)+(y+2)*width) -
-                    *(yuv[0]+(x+xx+i)+(y+1)*width)
-                    );
-        }
-        /* if SAD reaches a minimum store the position */
-        if (min>d)
-        {
-          min=d;
-          xpos=xx;
-          l1=l2=0;
-          for (i=0;i<16;i++)
-          {
-            l1+=*(yuv[0]+(x+i)+y*width);
-            l2+=*(yuv[0]+(x+i+xpos)+(y+1)*width);
-          }
-          l1/=16;
-          l2/=16;
-          lumadiff=abs(l1-l2);
-          lumadiff=(lumadiff<12)? 0:1;
-        }
-      }
+          /* search best matching block of pixels in other field line */
+          min = 65535;
+          xpos = 0;
+          /* search in the range of +/- 16 pixels offset in the line */
+          for (xx = -16; xx < 16; xx++)
+            {
+              d = 0;
+              /* Calculate SAD */
+              for (i = -8; i < 16; i++)
+                {
+                  /* to avoid blocking in ramps we analyse the best match on */
+                  /* two lines ... */
+                  d += (int) abs (*(yuv[0] + (x + i) + y * width) -
+                                  *(yuv[0] + (x + xx + i) + (y + 1) * width));
+                  d += (int) abs (*(yuv[0] + (x + i) + (y + 2) * width) -
+                                  *(yuv[0] + (x + xx + i) + (y + 1) * width));
+                }
+              /* if SAD reaches a minimum store the position */
+              if (min > d)
+                {
+                  min = d;
+                  xpos = xx;
+                  l1 = l2 = 0;
+                  for (i = 0; i < 8; i++)
+                    {
+                      l1 += *(yuv[0] + (x + i) + y * width);
+                      l2 += *(yuv[0] + (x + i + xpos) + (y + 1) * width);
+                    }
+                  l1 /= 8;
+                  l2 /= 8;
+                  lumadiff = abs (l1 - l2);
+                  lumadiff = (lumadiff < 6) ? 0 : 1;
+                }
+            }
 
-      /* copy pixel-block into the line-buffer */
+          /* copy pixel-block into the line-buffer */
 
-      /* if lumadiff is small take the fields block, if not */
-      /* take the other fields block */
-      
-      if(lumadiff && min>1024)
-        for (i=0;i<16;i++)
-        {
-          *(line+x+i)=
-          *(yuv[0]+(x+i)+((y)*width));
-        }          
-      else
-        for (i=0;i<16;i++)
-        {
-          *(line+x+i)=
-          *(yuv[0]+(x+i+xpos)+((y+1)*width))*0.5+
-          *(yuv[0]+(x+i)+((y+0)*width))*0.5;
+          /* if lumadiff is small take the fields block, if not */
+          /* take the other fields block */
+
+          if (lumadiff && min > (8 * 24))
+            for (i = 0; i < 8; i++)
+              {
+                *(line + x + i) =
+                  *(yuv[0] + (x + i) + ((y) * width)) * 0.5 +
+                  *(yuv[0] + (x + i) + ((y + 2) * width)) * 0.5;
+              }
+          else
+            for (i = 0; i < 8; i++)
+              {
+                *(line + x + i) =
+                  *(yuv[0] + (x + i + xpos) + ((y + 1) * width)) * 0.5 +
+                  *(yuv[0] + (x + i) + ((y + 0) * width)) * 0.5;
+              }
         }
+
+      /* copy the line-buffer into the source-line */
+      for (i = 0; i < width; i++)
+        *(yuv[0] + i + (y + 1) * width) = *(line + i);
     }
-    
-    /* copy the line-buffer into the source-line */
-    for(i=0;i<width;i++)
-      *(yuv[0]+i+(y+1)*width)=
-        *(line+i);
-  }
 }
 
 /* OLD */
