@@ -85,8 +85,9 @@ endif
 bin_PROGRAMS = \
 	$(LAVPLAY_BIN) $(LAVREC_BIN) lav2wav  lav2yuv \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
- 	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
-	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN)
+	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
+	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
+	ppmtoy4m y4mcolorbars
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h oldyuv4mpeg.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h
@@ -162,3 +163,9 @@ yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils
 yuv2divx_SOURCES = yuv2divx.cpp oldyuv4mpeg.h oldyuv4mpeg.c
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) -lm liblavfile.la
+
+ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
+ppmtoy4m_LDADD = -L$(top_srcdir)/utils -lmjpegutils
+
+y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
+y4mcolorbars_LDADD = -L$(top_srcdir)/utils -lmjpegutils
