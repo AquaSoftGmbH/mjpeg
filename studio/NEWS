@@ -1,0 +1,11 @@
+
+Encode Video Page changes compared wit the last version:
+
+Added the support for the 1.5.x cvs version. The 1.4.x version should also work.
+You can select the encoding syntax version when you set the Syntax style 
+to 1.5.x (default: 1.4.x this option is saved in the config file) 
+Because of this the "MPEG level" checkboxes and the button for the "Sequence
+Header for every GOP" have been dismissed. 
+They are now automatical set when you select the mplex format in the "Muliplex 
+format" box. 
+
