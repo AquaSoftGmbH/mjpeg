@@ -47,12 +47,8 @@ int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat )
 	__asm__ ("quant_weight_coeff_sum_mmx");
 
 
-void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat)
-	__asm__ ("iquantize_non_intra_m1_extmmx");
 void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
 	__asm__ ("iquantize_non_intra_m1_mmx");
-void iquantize_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat)
-	__asm__ ("iquantize_non_intra_m2_extmmx");
 void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
 	__asm__ ("iquantize_non_intra_m2_mmx");
 
@@ -358,12 +354,6 @@ static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
     return nzflag;
 }
 
-static void iquant_non_intra_m1_extmmx(struct QuantizerWorkSpace *wsp,
-								int16_t *src, int16_t *dst, int mquant )
-{
-	iquantize_non_intra_m1_extmmx(src,dst,wsp->inter_q_tbl[mquant]);
-}
-
 static void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
 							 int16_t *src, int16_t *dst, int mquant )
 {
@@ -468,45 +458,23 @@ void init_x86_quantization( struct QuantizerCalls *qcalls,
             }
         }
 
-	if ((flags & ACCEL_X86_MMXEXT) != 0)
+        opt_type2 = "MMX";
+        if (d_weight_intra == 0)
+            qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+        if (d_weight_nonintra == 0)
+            qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+        
+        if (mpeg1)
         {
-	    opt_type2 = "EXTENDED MMX";
-	    if (d_weight_intra == 0)
-                qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-	    if (d_weight_nonintra == 0)
-                qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
-
-            if (mpeg1)
-            {
-		if (d_iquant_nonintra == 0)
-                    qcalls->piquant_non_intra = iquant_non_intra_m1_extmmx;
-            }
-            else
-            {
-		if (d_iquant_nonintra == 0)
-                    qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
-            }
+            if (d_iquant_nonintra == 0)
+                qcalls->piquant_non_intra = iquant_non_intra_m1_mmx;
         }
         else
         {
-            opt_type2 = "MMX";
-            if (d_weight_intra == 0)
-	        qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-            if (d_weight_nonintra == 0)
-	        qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
-
-            if (mpeg1)
-            {
-		if (d_iquant_nonintra == 0)
-                    qcalls->piquant_non_intra = iquant_non_intra_m1_mmx;
-            }
-            else
-            {
-		if (d_iquant_nonintra == 0)
-                    qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
-            }
+            if (d_iquant_nonintra == 0)
+                qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
         }
-
+        
         if  (d_quant_nonintra)
             mjpeg_info(" Disabling quant_non_intra");
         if  (d_iquant_intra)

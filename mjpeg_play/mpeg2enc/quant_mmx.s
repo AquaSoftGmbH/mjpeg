@@ -21,105 +21,6 @@
 ;  quantize_ni_mmx.s:  MMX optimized coefficient quantization sub-routine
 
 
-;;;		
-;;;  void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t
-;;;										 *quant_mat)
-;;; mmx/sse Inverse mpeg-1 quantisation routine.
-;;; 
-;;; eax - block counter...
-;;; edi - src
-;;; esi - dst
-;;; edx - quant_mat
-
-		;; MMX Register usage
-		;; mm7 = [1|0..3]W
-		;; mm6 = [2047|0..3]W
-		;; mm5 = 0
-
-				
-global iquantize_non_intra_m1_extmmx:function
-align 32
-iquantize_non_intra_m1_extmmx:
-		
-		push ebp				; save frame pointer
-		mov ebp, esp		; link
-
-		push eax
-		push esi     
-		push edi
-		push edx
-
-		mov		edi, [ebp+8]			; get psrc
-		mov		esi, [ebp+12]			; get pdst
-		mov		edx, [ebp+16]			; get quant table
-		mov		eax,1
-		movd	mm7, eax
-		punpcklwd	mm7, mm7
-		punpckldq	mm7, mm7
-
-		mov     eax, 2047
-		movd	mm6, eax
-		punpcklwd		mm6, mm6
-		punpckldq		mm6, mm6
-
-		mov		eax, 64			; 64 coeffs in a DCT block
-		pxor	mm5, mm5
-		
-iquantize_loop_m1_extmmx:
-		movq	mm0, [edi]      ; mm0 = *psrc
-		add		edi,8
-		pxor	mm1,mm1
-		movq	mm2, mm0
-		pcmpeqw	mm2, mm1		; mm2 = 1's for non-zero in mm0
-		pcmpeqw	mm2, mm1
-
-		;; Work with absolute value for convience...
-		psubw   mm1, mm0        ; mm1 = -*psrc
-		pmaxsw	mm1, mm0        ; mm1 = val = max(*psrc,-*psrc) = abs(*psrc)
-		paddw   mm1, mm1		; mm1 *= 2;
-		paddw	mm1, mm7		; mm1 += 1
-		pmullw	mm1, [edx]		; mm1 = (val*2+1) * *quant_mat
-		add		edx, 8
-		psraw	mm1, 5			; mm1 = ((val*2+1) * *quant_mat)/32
-
-		;; Now that nasty mis-match control
-
-		movq	mm3, mm1
-		pand	mm3, mm7
-		pxor	mm3, mm7		; mm3 = ~(val&1) (in the low bits, others 0)
-		movq    mm4, mm1
-		pcmpeqw	mm4, mm5		; mm4 = (val == 0) 
-		pxor	mm4, mm7		;  Low bits now (val != 0)
-		pand	mm3, mm4		; mm3 =  (~(val&1))&(val!=0)
-
-		psubw	mm1, mm3		; mm1 -= (~(val&1))&(val!=0)
-		pminsw	mm1, mm6		; mm1 = saturated(res)
-
-		;; Handle zero case and restoring sign
-		pand	mm1, mm2		; Zero in the zero case
-		pxor	mm3, mm3
-		psubw	mm3, mm1		;  mm3 = - res
-		paddw	mm3, mm3		;  mm3 = - 2*res
-		pcmpgtw	mm0, mm5		;  mm0 = *psrc < 0
-		pcmpeqw	mm0, mm5		;  mm0 = *psrc >= 0
-		pand	mm3, mm0		;  mm3 = *psrc <= 0 ? -2 * res :	 0
-		paddw	mm1, mm3		;  mm3 = samesign(*psrc,res)
-		movq	[esi], mm1
-		add		esi,8
-
-		sub		eax, 4
-		jnz		iquantize_loop_m1_extmmx
-		
-		pop	edx
-		pop edi
-		pop esi
-		pop eax
-
-		pop ebp			; restore stack pointer
-
-		emms			; clear mmx registers
-		ret			
-
 
 ;;;		
 ;;;  void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t
@@ -137,97 +38,85 @@ iquantize_loop_m1_extmmx:
 				
 global iquantize_non_intra_m1_mmx:function
 align 32
-iquantize_non_intra_m1_mmx:
+iquantize_non_intra_m1_mmx:		
+	push	ebp				; save frame pointer
+	mov	ebp, esp		; link
+
+	push	eax
+	push	esi     
+	push	edi
+	push	edx
+
+	mov	edi, [ebp+8]			; get psrc
+	mov	esi, [ebp+12]			; get pdst
+	mov	edx, [ebp+16]			; get quant table
+	
+	;; Load 1 into all 4 words of mm7
+	pxor	mm7, mm7
+	pcmpeqw	mm7, mm7
+	psrlw	mm7, 15
+
+	pxor	mm6, mm6
+
+	mov	eax, 64			; 64 coeffs in a DCT block
 		
-		push ebp				; save frame pointer
-		mov ebp, esp		; link
+.loop:
+	movq	mm0, [edi]      ; mm0 = *psrc
+	add	edi,8
+	
+	movq	mm2, mm0	; mm2 = TRUE where *psrc==0
+	pcmpeqw	mm2, mm6
+	
+	movq	mm3, mm0	; mm3 = TRUE where *psrc<0
+	psraw	mm3, 15
 
-		push eax
-		push esi     
-		push edi
-		push edx
+	;; Work with absolute value for convenience...
+	pxor	mm0, mm3	; mm0 = abs(*psrc)
+	psubw	mm0, mm3
+	
+	paddw	mm0, mm0	; mm0 = 2*abs(*psrc)
+	paddw	mm0, mm7	; mm0 = 2*abs(*psrc) + 1
+	
+	movq	mm4, [edx]	; multiply by *quant_mat
+	movq	mm1, mm0
+	pmullw	mm0, mm4
+	pmulhw	mm1, mm4
+	add	edx, 8
 
-		mov		edi, [ebp+8]			; get psrc
-		mov		esi, [ebp+12]			; get pdst
-		mov		edx, [ebp+16]			; get quant table
-		mov		eax,1
-		movd	mm7, eax
-		punpcklwd	mm7, mm7
-		punpckldq	mm7, mm7
+	pcmpgtw	mm1, mm6	; if there was overflow, saturate low bits with all 1's
+	por	mm0, mm1
+	
+	psrlw	mm0, 5		; divide by 32 (largest possible value = 65535/32 == 2047)
 
-		mov     eax, (0xffff-2047)
-		movd	mm6, eax
-		punpcklwd		mm6, mm6
-		punpckldq		mm6, mm6
+	;; zero case
+	pandn	mm2, mm0	; set to 0 where *psrc==0
 
-		mov		eax, 64			; 64 coeffs in a DCT block
-		pxor	mm5, mm5
+	;;  mismatch control
+	movq	mm1, mm2
+	psubw	mm2, mm7
+	pcmpeqw	mm1, mm6 	; mm0 = v==0
+	por	mm2, mm7
+	pandn	mm1, mm2
 		
-iquantize_m1_loop:
-		movq	mm0, [edi]      ; mm0 = *psrc
-		add		edi,8
-		pxor    mm1, mm1		
-		movq	mm2, mm0
-		pcmpeqw	mm2, mm5		; mm2 = 1's for non-zero in mm0
-		pcmpeqw	mm2, mm5
+	;; Handle zero case and restoring sign
+	pxor	mm1, mm3	; retain original sign of *psrc
+	psubw	mm1, mm3
+	
+	movq	[esi], mm1
+	add	esi,8
 
-		;; Work with absolute value for convience...
-
-		psubw   mm1, mm0        ; mm1 = -*psrc
-		psllw	mm1, 1			; mm1 = -2*psrc
-		movq	mm3, mm0		; mm3 = *psrc > 0
-		pcmpgtw	mm3, mm5
-		pcmpeqw mm3, mm5        ; mm3 = *psrc <= 0
-		pand    mm3, mm1		; mm3 = (*psrc <= 0)*-2* *psrc
-		movq	mm1, mm0        ; mm1 = (*psrc <= 0)*-2* *psrc + *psrc = abs(*psrc)
-		paddw	mm1, mm3
-
+	sub	eax, 4
+	jnz	.loop
 		
-		paddw   mm1, mm1		; mm1 *= 2;
-		paddw	mm1, mm7		; mm1 += 1
-		pmullw	mm1, [edx]		; mm1 = (val*2+1) * *quant_mat
-		add		edx, 8
-		psraw	mm1, 5			; mm1 = ((val*2+1) * *quant_mat)/32
+	pop	edx
+	pop	edi
+	pop	esi
+	pop	eax
+	
+	pop	ebp			; restore stack pointer
 
-		;; Now that nasty mis-match control
-
-		movq	mm3, mm1
-		pand	mm3, mm7
-		pxor	mm3, mm7		; mm3 = ~(val&1) (in the low bits, others 0)
-		movq    mm4, mm1
-		pcmpeqw	mm4, mm5		; mm4 = (val == 0) 
-		pxor	mm4, mm7		;  Low bits now (val != 0)
-		pand	mm3, mm4		; mm3 =  (~(val&1))&(val!=0)
-
-		psubw	mm1, mm3		; mm1 -= (~(val&1))&(val!=0)
-
-		paddsw	mm1, mm6		; Will saturate if > 2047
-		psubw	mm1, mm6		; 2047 if saturated... unchanged otherwise
-
-		;; Handle zero case and restoring sign
-		pand	mm1, mm2		; Zero in the zero case
-		pxor	mm3, mm3
-		psubw	mm3, mm1		;  mm3 = - res
-		paddw	mm3, mm3		;  mm3 = - 2*res
-		pcmpgtw	mm0, mm5		;  mm0 = *psrc < 0
-		pcmpeqw	mm0, mm5		;  mm0 = *psrc >= 0
-		pand	mm3, mm0		;  mm3 = *psrc <= 0 ? -2 * res :	 0
-		paddw	mm1, mm3		;  mm3 = samesign(*psrc,res)
-		movq	[esi], mm1
-		add		esi,8
-
-		sub		eax, 4
-		jnz		near iquantize_m1_loop
-		
-		pop	edx
-		pop edi
-		pop esi
-		pop eax
-
-		pop ebp			; restore stack pointer
-
-		emms			; clear mmx registers
-		ret			
+	emms			; clear mmx registers
+	ret			
 						
 ;;;		
 ;;;  void iquantize_non_intra_mmx(int16_t *src, int16_t *dst, uint16_t
