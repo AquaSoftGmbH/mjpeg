@@ -69,9 +69,9 @@ predcomp_00_mmxe:
 	movq		mm1, mm0
 	pcmpeqd		mm0, mm2
 
-	jmp predrow00		; align for speed
+	jmp .predrow00		; align for speed
 align 32
-predrow00:
+.predrow00:
 	movq mm4, [ebx]		; first 8 bytes of row
 	movq mm2, [eax]
 	pand mm2, mm0
@@ -83,7 +83,7 @@ predrow00:
 
 			
 	cmp	edi, 8
-	jz  eightwide00
+	jz  .eightwide00
 		
 	movq mm4, [ebx+8]		; first 8 bytes of row
 	movq mm2, [eax+8]
@@ -95,12 +95,12 @@ predrow00:
 	movq [eax+8], mm4		; 
 
 		
-eightwide00:	
+.eightwide00:	
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
 	
 	sub  ecx, 1					; check h left
-	jnz predrow00
+	jnz .predrow00
 
 	pop edi	
 	pop edx	
@@ -141,9 +141,9 @@ predcomp_10_mmxe:
 	movq		mm1, mm0
 	pcmpeqd		mm0, mm2
 
-	jmp predrow10		; align for speed
+	jmp .predrow10		; align for speed
 align 32
-predrow10:
+.predrow10:
 	movq mm4, [ebx]		; first 8 bytes row:	 avg src in x
 	pavgb mm4, [ebx+1]
 	movq mm2,  [eax]
@@ -155,7 +155,7 @@ predrow10:
 	movq [eax], mm4
 
     cmp  edi, 8
-	jz eightwide10
+	jz .eightwide10
 
 
 	movq mm4, [ebx+8]		; 2nd 8 bytes row:	 avg src in x
@@ -169,13 +169,13 @@ predrow10:
 	movq [eax+8], mm4
 
 		
-eightwide10:			
+.eightwide10:			
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
 	
 
 	sub  ecx, 1			; check h left
-	jnz near predrow10
+	jnz .predrow10
 
 	pop edi		
 	pop edx	
@@ -221,9 +221,9 @@ predcomp_11_mmxe:
 	movq		mm1, mm0
 	pcmpeqd		mm0, mm2
 	
-	jmp predrow11		; align for speed
+	jmp .predrow11		; align for speed
 align 32
-predrow11:
+.predrow11:
 	movq mm4, [ebx]		; mm4 and mm6 accumulate partial sums for interp.
 	movq mm6, mm4
 	punpcklbw	mm4, mm2
@@ -268,7 +268,7 @@ predrow11:
 	movq [eax], mm4
 
 	cmp   edi, 8
-	jz eightwide11
+	jz .eightwide11
 		
 	sub ebx, edx		 		;  Back to 1st row
 
@@ -315,12 +315,12 @@ predrow11:
 	pavgb mm4, mm7
 	movq [eax+8], mm4
 
-eightwide11:	
+.eightwide11:	
 	add eax, edx		; update pointer to next row
 
 		
 	sub  ecx, 1			; check h left
-	jnz near predrow11
+	jnz .predrow11
 
 	pop edi		
 	pop edx	
@@ -361,9 +361,9 @@ predcomp_01_mmxe:
 	movq		mm1, mm0
 	pcmpeqd		mm0, mm2
 
-	jmp predrow01		; align for speed
+	jmp .predrow01		; align for speed
 align 32
-predrow01:
+.predrow01:
 	movq mm4, [ebx]		; first 8 bytes row
 	add ebx, edx		; update pointer to next row
 	pavgb mm4, [ebx]			;  Average in y
@@ -377,7 +377,7 @@ predrow01:
 	movq [eax], mm4
 
 	cmp	edi, 8
-	jz eightwide01
+	jz .eightwide01
 
 	sub	ebx, edx				; Back to prev row
 	movq mm4, [ebx+8]			; first 8 bytes row
@@ -392,12 +392,12 @@ predrow01:
 	pavgb mm4, mm2
 	movq [eax+8], mm4
 
-eightwide01:					
+.eightwide01:					
 	add eax, edx		; update pointer to next row
 
 
 	sub  ecx, 1			; check h left
-	jnz predrow01
+	jnz .predrow01
 
 	pop edi		
 	pop edx	
