@@ -33,7 +33,7 @@ int main(int argc, char **argv)
     int    verbose = 0, fdin;
     int    SS_H = 2, SS_V = 2;
     int    NlumaX = 3, NlumaY = 3, NchromaX = 0, NchromaY = 0;
-    float  BWlumaX = 0.5, BWlumaY = 0.5, BWchromaX = 1.0, BWchromaY = 1.0;
+    float  BWlumaX = 0.7, BWlumaY = 0.7, BWchromaX = 1.0, BWchromaY = 1.0;
     float  **lumaXtaps, **lumaYtaps, **chromaXtaps, **chromaYtaps;
     u_char *yuvinout[3], *yuvtmp[3];
     y4m_stream_info_t istream, ostream;
