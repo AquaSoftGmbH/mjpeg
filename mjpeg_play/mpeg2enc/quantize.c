@@ -98,7 +98,7 @@ void init_quantizer()
 		}
 		else 
 		{
-			opt_type1 = "MMX";
+			opt_type1 = "MMX and";
 			pquant_non_intra = quant_non_intra_mmx;
 		}
 

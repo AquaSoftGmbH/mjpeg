@@ -214,6 +214,7 @@ typedef	union {
 /* SSE goodies */
 #define mulps_r2r( regs, regd) mmx_r2r( mulps, regs, regd )
 #define mulps_m2r( var, regd) mmx_m2r( mulps, var, regd )
+#define movups_r2r(reg1, reg2) mmx_r2r( movups, reg1, reg2 )
 #define movups_m2r(var, reg) mmx_m2r( movups, var, reg )
 #define movaps_m2r(var, reg) mmx_m2r( movaps, var, reg )
 #define movups_r2m(reg, var) mmx_r2m( movups, reg, var )

@@ -22,10 +22,38 @@
 #include <config.h>
 #include <stdio.h>
 #include <inttypes.h>
-
+#include <signal.h>
+#include <setjmp.h>
 #include "cpu_accel.h"
 
 #ifdef HAVE_X86CPU 
+
+/* Some miscelaneous stuff to allow checking whether SSE instructions cause
+   illegal instruction errors.
+*/
+
+static jmp_buf sigill_recover;
+
+void sigillhandler(int sig )
+{
+	siglongjmp( sigill_recover, 1 );
+}
+
+int testsseill()
+{
+	int illegal;
+	sighandler_t old_handler = signal( SIGILL, sigillhandler);
+	if( sigsetjmp( sigill_recover, 1 ) == 0 )
+	{
+		asm ( "movups %xmm0, %xmm0" );
+		illegal = 0;
+	}
+	else
+		illegal = 1;
+	signal( SIGILL, old_handler );
+	return illegal;
+}
+
 static int x86_accel (void)
 {
     int eax, ebx, ecx, edx;
@@ -50,9 +78,10 @@ static int x86_accel (void)
 	 "pushfl\n\t"
 	 "popl %0"
          : "=a" (eax),
-	   "=b" (ebx)
+	       "=b" (ebx)
 	 :
 	 : "cc");
+
 
     if (eax == ebx)		// no cpuid
 	return 0;
@@ -75,8 +104,16 @@ static int x86_accel (void)
 	*/
     if ((edx & 0x02000000))	
 		caps = ACCEL_X86_MMX | ACCEL_X86_MMXEXT;
-	if( (edx & 0x03000000) == 0x03000000)
-		caps |= ACCEL_X86_SSE;
+	if( (edx & 0x03000000) == 0x03000000 )
+	{
+		/* Check whether O.S. has SSE support... has to be done with
+		   exception 'cos those Intel morons put the relevant bit
+		   in a reg that is only accesible in ring 0... doh! 
+		*/
+		if( !testsseill() )
+			caps |= ACCEL_X86_SSE;
+	}
+
     cpuid (0x80000000, eax, ebx, ecx, edx);
     if (eax < 0x80000001)	// no extended capabilities
 		return caps;
