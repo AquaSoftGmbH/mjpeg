@@ -9,6 +9,12 @@ if test $# -ne 1; then
    exit 1
 fi
 
+if test `uname -s` = Darwin; then
+   IsDarwin=yes
+else
+   IsDarwin=no
+fi
+
 target=$1
 
 cc_version=`$CC -dumpversion`
@@ -223,7 +229,7 @@ do_ppc()
 # If neither of those we have no idea what to do - so do nothing.
 if test -r /proc/cpuinfo; then
 	proc=`grep cpu /proc/cpuinfo | cut -d':' -f2 | cut -d',' -f1 | cut -b 2- | head -1`
-elif test `uname -s` = Darwin; then
+elif test $IsDarwin = yes; then
 	proc=`hostinfo | grep "Processor type" | cut -f3 -d' ' | sed 's/ppc//'`
 else
 	return 0
@@ -257,8 +263,12 @@ fi
 # gcc 3.2 and up supports 970
 if test "$_cc_major" -ge "3" && test "$_cc_minor" -ge "3"; then
 	case "$proc" in
-		970*) _march='-mcpu=970' _mcpu='-mtune=970'
-		     ;;
+	     970*) if test $IsDarwin = yes; then
+		      _march='-mcpu=G5 -force_cpusubtype_ALL' _mcpu='-mtune=G5'
+		   else
+		      _march='-mcpu=970' _mcpu='-mtune=970'
+		   fi
+		   ;;
 		*) ;;
 	esac
 fi
