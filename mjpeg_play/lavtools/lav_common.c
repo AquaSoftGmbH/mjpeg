@@ -45,7 +45,11 @@ static uint8_t jpeg_data[MAX_JPEG_LEN];
 #ifdef SUPPORT_READ_DV2
 
 dv_decoder_t *decoder;
+#ifdef LIBDV_PRE_0_9_5
 gint pitches[3];
+#else
+int pitches[3];
+#endif
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 
 /*
@@ -287,8 +291,13 @@ int readframe(int numframe,
 	mjpeg_error("for DV 4:2:0 only full width output is supported");
 	res = 1;
       } else {
+#ifdef LIBDV_PRE_0_9_5
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     (guchar **) frame, pitches);
+#else
+	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			     frame, pitches);
+#endif
 	/* swap the U and V components */
 	frame_tmp = frame[2];
 	frame[2] = frame[1];
@@ -311,8 +320,13 @@ int readframe(int numframe,
 	mjpeg_error("for DV only full width output is supported");
 	res = 1;
       } else {
+#ifdef LIBDV_PRE_0_9_5
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     (guchar **) dv_frame, pitches);
+#else
+	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+			     dv_frame, pitches);
+#endif
 	frame_YUV422_to_YUV420P(frame, dv_frame[0],
 				decoder->width,	decoder->height);
 	
@@ -404,8 +418,12 @@ void writeoutYUV4MPEGheader(int out_fd,
 #ifdef SUPPORT_READ_DV2
 void lav_init_dv_decoder()
 {
+#ifdef LIBDV_PRE_0_9_5
    decoder = dv_decoder_new();
    dv_init();
+#else
+   decoder = dv_decoder_new(0,0,0);
+#endif
    decoder->quality = DV_QUALITY_BEST;
 }
 #endif

@@ -1378,8 +1378,12 @@ static int check_DV2_input(lav_file_t *lav_fd)
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
    {
+#ifdef LIBDV_PRE_0_9_5
      dv_decoder_t *decoder = dv_decoder_new();
      dv_init();
+#else
+     dv_decoder_t *decoder = dv_decoder_new(0,0,0);
+#endif
      dv_parse_header(decoder, frame);
      switch (decoder->system) {
      case e_dv_system_525_60:
@@ -1405,7 +1409,11 @@ static int check_DV2_input(lav_file_t *lav_fd)
        lav_fd->sar_h = 0;
        break;
      }
+#ifdef LIBDV_PRE_0_9_5
      free(decoder);
+#else
+     dv_decoder_free(decoder);
+#endif
    }
 
    /* reset video position to 0 */

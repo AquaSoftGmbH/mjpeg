@@ -406,6 +406,18 @@ AC_CHECK_LIB(dv, dv_init,
     have_dv=true],, 
     -L$with_dv$with_dv_l  ${EXTRA_LIBS})
 
+dnl ******************
+dnl ...and now if we have libdv, check if version >= 0.9.5
+dnl (by checking if the new function dv_decoder_free() exists)
+if test x$have_dv = xtrue; then
+   AC_CHECK_LIB(dv, dv_decoder_free,
+	[ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
+	  DV_CFLAGS="-I$with_dv$with_dv_i"
+	  have_dv_0_9_5=true ],
+	[ AC_DEFINE(LIBDV_PRE_0_9_5) ],
+    -L$with_dv$with_dv_l  ${EXTRA_LIBS})
+fi
+
 dnl *********************************************************************
 dnl Check for libDV YV12 read-support
 if test x$with_dv_yv12 = xyes; then
