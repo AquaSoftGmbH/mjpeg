@@ -77,8 +77,9 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
-#define MAX_MBYTES_PER_FILE_64 ((0x7fffffffffffffffLL >> 20) * 93/100)
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 93/100)
+#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        // 4Tb.  (Most filesystems have 
+                                                            // fundamental limitations around ~Tb)
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 93/100)// Is less than 2^31 and 2*10^9
 #if _FILE_OFFSET_BITS == 64
 #define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
 #else
@@ -1254,7 +1255,7 @@ static int lavrec_init(lavrec_t *info)
 	   /* Handle the limitations of AVI that can only do MAX 2G Byte
 		  files */
 	   if( info->video_format == 'a' || info->video_format == 'A' )
-		   info->max_file_size_mb = FIFTEEN_HUNDRED;
+		   info->max_file_size_mb = MAX_MBYTES_PER_FILE_32;
 	   else
 		   info->max_file_size_mb = MAX_MBYTES_PER_FILE;
       if (info->video_captured || info->audio_captured)
