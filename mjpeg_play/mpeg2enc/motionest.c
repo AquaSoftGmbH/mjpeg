@@ -263,7 +263,7 @@ static __inline__ int unidir_pred_var( const mb_motion_s *motion,
 							int lx, 
 							int h)
 {
-	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
+	return (*psumsq)(motion->blk, mb, lx, motion->hx, motion->hy, h);
 }
 
 
@@ -277,7 +277,7 @@ static __inline__ int bidir_pred_var( const mb_motion_s *motion_f,
 									  uint8_t *mb,  
 									  int lx, int h)
 {
-	return (*pbdist2)( motion_f->blk, motion_b->blk,
+	return (*pbsumsq)( motion_f->blk, motion_b->blk,
 					   mb, lx, 
 					   motion_f->hx, motion_f->hy,
 					   motion_b->hx, motion_b->hy,
@@ -317,8 +317,8 @@ static int unidir_var_sum( mb_motion_s *lum_mc,
 		(lum_mc->pos.x>>2) + (lum_mc->pos.y>>2)*uvlx;
 	
 	return 	lum_mc->var +
-		((*pdist2_22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
-		 (*pdist2_22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh));
+		((*psumsq_sub22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
+		 (*psumsq_sub22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh));
 }
 
 /*
@@ -356,14 +356,14 @@ static int bidir_var_sum( mb_motion_s *lum_mc_f,
 		(lum_mc_b->pos.x>>2) + (lum_mc_b->pos.y>>2)*uvlx;
 	
 	return 	(
-		(*pbdist2)( lum_mc_f->blk, lum_mc_b->blk,
+		(*pbsumsq)( lum_mc_f->blk, lum_mc_b->blk,
 					ssblk->mb, lx, 
 					lum_mc_f->hx, lum_mc_f->hy,
 					lum_mc_b->hx, lum_mc_b->hy,
 					h) +
-		(*pbdist2_22)( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
+		(*pbsumsq_sub22)( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
 					   ssblk->umb, uvlx, uvh ) +
-		(*pbdist2_22)( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
+		(*pbsumsq_sub22)( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
 					   ssblk->vmb, uvlx, uvh ));
 
 }
@@ -389,7 +389,7 @@ static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f,
 									  uint8_t *mb,  
 									  int lx, int h)
 {
-	return (*pbdist1)(motion_f->blk, motion_b->blk, 
+	return (*pbsad)(motion_f->blk, motion_b->blk, 
 					 mb, lx, 
 					 motion_f->hx, motion_f->hy,
 					 motion_b->hx, motion_b->hy,
@@ -1041,7 +1041,7 @@ static void field_ME(
 			 * (not allowed if ipflag is set)
 			 */
 			if (!ipflag)
-				v0 = (*pdist2)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
+				v0 = (*psumsq)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
 			else
 				v0 = 1234;			/* Keep Compiler happy... */
@@ -1594,14 +1594,14 @@ static void dpframe_estimate (
 							jb >= 0 && jb <= (height-16))
 						{
 							/* compute prediction error */
-							local_dist = (*pbdist2)(
+							local_dist = (*pbsumsq)(
 								ref + (is>>1) + (width<<1)*(js>>1),
 								ref + width + (it>>1) + (width<<1)*(jt>>1),
 								ssmb->mb,             /* current mb location */
 								width<<1,       /* adjacent line distance */
 								is&1, js&1, it&1, jt&1, /* half-pel flags */
 								8);             /* block height */
-							local_dist += (*pbdist2)(
+							local_dist += (*pbsumsq)(
 								ref + width + (is>>1) + (width<<1)*(js>>1),
 								ref + (ib>>1) + (width<<1)*(jb>>1),
 								ssmb->mb + width,     /* current mb location */
@@ -1631,14 +1631,14 @@ static void dpframe_estimate (
 
 	/* TODO: This is now likely to be obsolete... */
 	/* Compute L1 error for decision purposes */
-	local_dist = (*pbdist1)(
+	local_dist = (*pbsad)(
 		ref + (imins>>1) + (width<<1)*(jmins>>1),
 		ref + width + (imint>>1) + (width<<1)*(jmint>>1),
 		ssmb->mb,
 		width<<1,
 		imins&1, jmins&1, imint&1, jmint&1,
 		8);
-	local_dist += (*pbdist1)(
+	local_dist += (*pbsad)(
 		ref + width + (imins>>1) + (width<<1)*(jmins>>1),
 		ref + (iminb>>1) + (width<<1)*(jminb>>1),
 		ssmb->mb + width,
@@ -1727,7 +1727,7 @@ static void dpfield_estimate(
 				jo >= 0 && jo <= (height2-16)<<1)
 			{
 				/* compute prediction error */
-				local_dist = (*pbdist2)(
+				local_dist = (*pbsumsq)(
 					sameref + (imins>>1) + width2*(jmins>>1),
 					oppref  + (io>>1)    + width2*(jo>>1),
 					mb,             /* current mb location */
@@ -1750,7 +1750,7 @@ static void dpfield_estimate(
 
 	/* Compute L1 error for decision purposes */
 	bestdp_mc->sad =
-		(*pbdist1)(
+		(*pbsad)(
 			sameref + (imins>>1) + width2*(jmins>>1),
 			oppref  + (imino>>1) + width2*(jmino>>1),
 			mb,             /* current mb location */
@@ -1826,8 +1826,8 @@ static void mb_me_search(
 	int fh = h >> 1;
 	int qh = h >> 2;
 
-	mc_result_set sub44set;
-	mc_result_set sub22set;
+	me_result_set sub44set;
+	me_result_set sub22set;
 
 	/* xmax and ymax into more useful form... */
 	xmax -= 16;
@@ -1838,7 +1838,7 @@ static void mb_me_search(
 	   in the initial 4*4 pel search.  This is handled by the
 	   parameter checking/processing code in readparmfile() */
   
-	/* Create a distance-order mcomps of possible motion estimations
+	/* Create a distance-order mests of possible motion estimations
 	  based on the fast estimation data - 4*4 pel sums (4*4
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
 	jlow = j0-sy;
@@ -1859,7 +1859,7 @@ static void mb_me_search(
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
-	best.sad = (*pdist1_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
+	best.sad = (*psad_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
 	best.pos.x = i0;
 	best.pos.y = j0;
 
@@ -1868,7 +1868,7 @@ static void mb_me_search(
 	   controlled by ctl_44_red
 	   Note: we use the original picture here for the match...
 	 */
-	(*pbuild_sub44_mcomps)( &sub44set,
+	(*pbuild_sub44_mests)( &sub44set,
 							ilow, jlow, ihigh, jhigh,
 							i0, j0,
 							best.sad,
@@ -1884,7 +1884,7 @@ static void mb_me_search(
 
 	*/
 
-	(*pbuild_sub22_mcomps)( &sub44set, &sub22set,
+	(*pbuild_sub22_mests)( &sub44set, &sub22set,
 							i0, j0, ihigh,  jhigh, 
 							best.sad,
 							s22org, ssblk->fmb, flx, fh );
@@ -1925,16 +1925,16 @@ static void mb_me_search(
 			if( i&1 )
 			{
 				if( j & 1 )
-					d = (*pdist1_11)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_11)(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*pdist1_01)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_01)(orgblk,ssblk->mb,lx,h);
 			}
 			else
 			{
 				if( j & 1 )
-					d = (*pdist1_10)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_10)(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*pdist1_00)(orgblk,ssblk->mb,lx,h,best.sad);
+					d = (*psad_00)(orgblk,ssblk->mb,lx,h,best.sad);
 			}
 			if (d<best.sad)
 			{
@@ -1947,7 +1947,7 @@ static void mb_me_search(
 			}
 		}
 	}
-	best.var = (*pdist2)(best.blk, ssblk->mb, lx, best.hx, best.hy, h);
+	best.var = (*psumsq)(best.blk, ssblk->mb, lx, best.hx, best.hy, h);
 	*res = best;
 }
 #else
@@ -1963,7 +1963,7 @@ static void mb_me_search(
 	mb_motion_s *res
 	)
 {
-	mc_result_s best;
+	me_result_s best;
 	int i,j,ilow,ihigh,jlow,jhigh;
 	int x,y;
 	int d;
@@ -1982,8 +1982,8 @@ static void mb_me_search(
 	int fh = h >> 1;
 	int qh = h >> 2;
 
-	mc_result_set sub44set;
-	mc_result_set sub22set;
+	me_result_set sub44set;
+	me_result_set sub22set;
 
 	/* xmax and ymax into more useful form... */
 	xmax -= 16;
@@ -1994,7 +1994,7 @@ static void mb_me_search(
 	   in the initial 4*4 pel search.  This is handled by the
 	   parameter checking/processing code in readparmfile() */
   
-	/* Create a distance-order mcomps of possible motion estimations
+	/* Create a distance-order mests of possible motion estimations
 	  based on the fast estimation data - 4*4 pel sums (4*4
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
 	jlow = j0-sy;
@@ -2015,7 +2015,7 @@ static void mb_me_search(
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
-	best.weight = (*pdist1_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
+	best.weight = (*psad_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
 	best.x = 0;
 	best.y = 0;
 
@@ -2024,7 +2024,7 @@ static void mb_me_search(
 	   controlled by ctl_44_red
 	   Note: we use the original picture here for the match...
 	 */
-	(*pbuild_sub44_mcomps)( &sub44set,
+	(*pbuild_sub44_mests)( &sub44set,
 							ilow, jlow, ihigh, jhigh,
 							i0, j0,
 							best.weight,
@@ -2041,7 +2041,7 @@ static void mb_me_search(
 
 	*/
 
-	(*pbuild_sub22_mcomps)( &sub44set, &sub22set,
+	(*pbuild_sub22_mests)( &sub44set, &sub22set,
 							i0, j0, 
 							ihigh,  jhigh, 
 							best.weight,
@@ -2084,16 +2084,16 @@ static void mb_me_search(
 			if( i&1 )
 			{
 				if( j & 1 )
-					d = (*pdist1_11)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_11)(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*pdist1_01)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_01)(orgblk,ssblk->mb,lx,h);
 			}
 			else
 			{
 				if( j & 1 )
-					d = (*pdist1_10)(orgblk,ssblk->mb,lx,h);
+					d = (*psad_10)(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*pdist1_00)(orgblk,ssblk->mb,lx,h,res->sad);
+					d = (*psad_00)(orgblk,ssblk->mb,lx,h,res->sad);
 			}
 			if (d<res->sad)
 			{
@@ -2106,7 +2106,7 @@ static void mb_me_search(
 			}
 		}
 	}
-	res->var = (*pdist2)(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
+	res->var = (*psumsq)(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
 
 }
 

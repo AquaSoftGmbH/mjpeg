@@ -432,24 +432,7 @@ else
   AC_MSG_RESULT(no)
 fi
 
-dnl ********************************************************************* 
-dnl This test only works on Linux machines with /proc filesystem support
-dnl enabled. We have to check this independantly as cmov is independant
-dnl of MMX and 3DNow stuff.
-dnl
-have_cmov=false
-if test x$have_x86cpu = xtrue ; then
- AC_MSG_CHECKING(for CMOV support)
- if test "$enable_cmov_extension" != "no" ; then
 
-  cpu_family=`grep "cpu family" /proc/cpuinfo | awk 'BEGIN { FS = ":"; } { printf "%d", $2 + 0;}'`
-  if test "$cpu_family" -gt 5 ; then
-    have_cmov=true
-    AC_DEFINE(HAVE_CMOV)
-  fi
- fi
- AC_MSG_RESULT($have_cmov);
-fi
 
 dnl *********************************************************************
 dnl For x86 machines only check which code model we should use
@@ -458,18 +441,23 @@ if test x$have_x86cpu = xtrue ; then
 AC_MSG_CHECKING(x86 sub-architecture settings)
 
   if test "$enable_cmov_extension" != "no" ; then
-    arch=`uname --machine`
+    arch=`uname -m`
   else
     arch=i586
-  fi
-  case `uname --machine` in
+  fi 
+  have_cmov=false
+  case $arch in
   i786) ARCHFLAGS="-mcpu=i786 -march=$arch"
+  have_cmov=true
   ;;
   i686) ARCHFLAGS="-mcpu=i686 -march=$arch"
+  have_cmov=true
   ;;
   i586) ARCHFLAGS="-mcpu=i586 -march=$arch"
+  have_cmov=false
   ;;
   *) 
+  have_cmov=false
   ;;
   esac
 AC_MSG_RESULT($ARCHFLAGS)
