@@ -168,14 +168,16 @@ int frame;
 {
   int fps, pict, sec, minute, hour, tc;
 
-  fps = (int)(frame_rate+0.5);
-  pict = frame%fps;
+  fps = (int)(frame_rate * 100.0);
+  frame *= 100;
+  pict = (frame%fps)/100;
   frame = (frame-pict)/fps;
-  sec = frame%60;
+  sec = (frame%60);
   frame = (frame-sec)/60;
-  minute = frame%60;
+  minute = (frame%60);
   frame = (frame-minute)/60;
-  hour = frame%24;
+  hour = (frame%24);
+
   tc = (hour<<19) | (minute<<13) | (1<<12) | (sec<<6) | pict;
 
   return tc;
