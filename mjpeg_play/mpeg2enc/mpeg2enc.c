@@ -147,55 +147,53 @@ static void DisplayAspectRatios()
 
 static void Usage(char *str)
 {
-	fprintf(stderr,"mjpegtools mpeg2enc version " VERSION "\n" );
-	fprintf(stderr,"Usage: %s [params]\n",str);
-	fprintf(stderr,"   where possible params are:\n");
-	fprintf(stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
-	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
-	fprintf( stderr, "         [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n");
-	fprintf( stderr, "          3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
-			         "          6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n");	
-	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..4] (default:  4:3)\n" );
-	fprintf(stderr,"              0 - Display aspect ratio code tables\n");
-	fprintf(stderr,"   -F num     Playback frame rate of encoded video\n"
-			       "      (default: frame rate of input stream)\n");
-	fprintf(stderr,"              0 - Display frame rate code table\n");
-	fprintf(stderr,"   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
-	fprintf(stderr,"   -B num     Non-video data bitrate to use for sequence splitting\n");
-	fprintf(stderr,"              calculations (see -S).\n");
-	fprintf(stderr,"   -q num     Quality factor [1..31] (1 is best, no default)\n");
-	fprintf(stderr,"              Bitrate sets upper-bound rate when q is specified\n");
-	fprintf(stderr,"   -o name    Outputfile name (REQUIRED!!!)\n");
-	fprintf(stderr,"   -T size    Target Size in KB for VCD stills\n");
-	fprintf(stderr,"   -I num     only for MPEG 2 output:\n");
-	fprintf(stderr,"               0 = encode by frame (progressive - per frame MC/ MDCT)\n");
-	fprintf(stderr,"               1 = encode by field, bottom fields before top first\n");
-	fprintf(stderr,"               2 = encode by field, top fields before bottom\n");
-	fprintf(stderr,"               3 = encode by frame (interlaced per-field MC and MDCT\n)");
-	fprintf(stderr,"               4 = encode by frame (as 0 but with DXR2 bug workaround)\n)");
-
-	fprintf(stderr,"   -r num     Search radius for motion compensation [0..32] (default 16)\n");
-	fprintf(stderr,"   -4 num     (default: 2)\n");
-	fprintf(stderr,"   	  Population halving passes 4*4-pel subsampled motion compensation\n" );
-	fprintf(stderr,"   -2 num     (default: 3)\n");
-	fprintf(stderr,"   	  Population halving passes 2*2-pel subsampled motion compensation\n" );
-	fprintf(stderr,"   -g num     Minimum GOP size (default 12)\n" );
-	fprintf(stderr,"   -G num     Maximum GOP size (default 12)\n" );
-	fprintf(stderr,"   -P         Preserve 2 B frames between I/P even when adjusting GOP size\n");
-	fprintf(stderr,"   -M num     Optimise threading for num CPU's (default: 1)\n");
-	fprintf(stderr,"   -Q num     Quality factor decrement for highly active blocks"
-			       "      [0.0 .. 10] (default: 2.5)\n");
-	fprintf(stderr,"   -V num     Target video buffer size in KB (default 46)\n");
-	fprintf(stderr,"   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
-	fprintf(stderr,"   -S num     Start a new sequence every num Mbytes in the final mux-ed\n");
-	fprintf(stderr,"              stream.  -B specifies the bitrate of non-video data\n");
-	fprintf(stderr,"   -p         Generate header flags for 32 pull down of 24fps movie.\n");
-	fprintf(stderr,"   -N         Noise filter via quantisation adjustment\n" );
-	fprintf(stderr,"   -h         Maximise high-frequency resolution\n"
-			       "              (useful for high quality sources at high bit-rates)\n" );
-	fprintf(stderr,"   -s         Include a sequence header every GOP.\n" );
-	fprintf(stderr,"   -z b|t     Force playback field order of bottom or top first\n");
-	printf("   -?         Print this lot out!\n");
+	fprintf(stderr,
+" -v num     Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n"
+" -f fmt     Set pre-defined mux format.\n"
+"            [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n"
+"             3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
+"             6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
+" -a num     Aspect ratio displayed image [1..4] (default: 4:3)\n"
+"            0 - Display aspect ratio code tables\n"
+" -F num     Playback frame rate of encoded video\n"
+"            (default: frame rate of input stream)\n"
+"            0 - Display frame rate code table\n"
+" -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n"
+" -B num     Non-video data bitrate to use for sequence splitting\n"
+"            calculations (see -S).\n"
+" -q num     Quality factor [1..31] (1 is best, no default)\n"
+"            Bitrate sets upper-bound rate when q is specified\n"
+" -o name    Outputfile name (REQUIRED!!!)\n"
+" -T size    Target Size in KB for VCD stills\n"
+" -I num     only for MPEG 2 output:\n"
+"             0 = encode by frame (progressive - per frame MC / MDCT)\n"
+"             1 = encode by field, bottom fields before top first\n"
+"             2 = encode by field, top fields before bottom\n"
+"             3 = encode by frame (per-field MC and MDCT)\n"
+"             4 = encode by frame (as 0 but with DXR2 bug workaround)\n)"
+" -r num     Search radius for motion compensation [0..32] (default 16)\n"
+" -4 num     Population halving passes 4*4-pel subsampled motion compensation\n"
+"            (default: 2)\n"
+" -2 num     Population halving passes 2*2-pel subsampled motion compensation\n"
+"            (default: 3)\n"
+" -g num     Minimum GOP size (default 12)\n"
+" -G num     Maximum GOP size (default 12)\n"
+" -P         Preserve 2 B frames between I/P even when adjusting GOP size\n"
+" -M num     Optimise threading for num CPU's (default: 1)\n"
+" -Q num     Quality factor decrement for highly active blocks [0.0 .. 10]\n"
+"            (default: 2.5)\n"
+" -V num     Target video buffer size in KB (default 46)\n"
+" -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL)\n"
+" -S num     Start a new sequence every num Mbytes in the final mux-ed\n"
+"            stream.  -B specifies the bitrate of non-video data\n"
+" -p         Generate header flags for 32 pull down of 24fps movie\n"
+" -N         Noise filter via quantisation adjustment\n"
+" -h         Maximise high-frequency resolution\n"
+"            (useful for high quality sources at high bit-rates)\n"
+" -s         Include a sequence header every GOP\n"
+" -z b|t     Force playback field order of bottom or top first\n"
+" -?         Print this lot out!\n"
+	);
 	exit(0);
 }
 
@@ -355,7 +353,6 @@ static void set_format_presets()
 
 	case MPEG_FORMAT_DVD :
 		mjpeg_info( "Selecting DVD output profile\n");
-		mjpeg_info("SVCD standard settings selected\n");
 		
 		if( param_bitrate == 0 )
 			param_bitrate = 7500000;
