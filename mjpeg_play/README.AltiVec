@@ -38,7 +38,8 @@ General comments:
     -mcpu=7450.
 
     This option can be added during configuration by setting the CFLAGS
-    environment variable. For example:
+    environment variable.  Since the encoder (mpeg2enc) and multiplexor
+    (mplex) are now written in C++ the CXXFLAGS environment variable should
+    also be set.  For example:
 
-    env CFLAGS="-O2 -mcpu=750" ./configure
-
+    env CFLAGS="-O2 -mcpu=750" CXXFLAGS="-O2 -mcpu=750" ./configure
