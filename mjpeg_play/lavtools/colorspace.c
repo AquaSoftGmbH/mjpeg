@@ -22,6 +22,10 @@
  */
 
 
+#include <stdio.h>
+#include "colorspace.h"
+
+#define FP_BITS 18
 
 /* precomputed tables */
 
@@ -34,12 +38,14 @@ static int Cb_B[256];
 static int Cr_R[256];
 static int Cr_G[256];
 static int Cr_B[256];
-static int conv_inited = 0;
+static int conv_RY_inited = 0;
 
-#define FP_BITS 18
-
-#include <stdio.h>
-#include "colorspace.h"
+static int RGB_Y[256];
+static int R_Cr[256];
+static int G_Cb[256];
+static int G_Cr[256];
+static int B_Cb[256];
+static int conv_YR_inited = 0;
 
 
 static int myround(double n)
@@ -52,7 +58,7 @@ static int myround(double n)
 
 
 
-static void init_conversion_tables()
+static void init_RGB_to_YCbCr_tables()
 {
   int i;
 
@@ -93,8 +99,80 @@ static void init_conversion_tables()
 		      + (double)(1<<(FP_BITS-1))
 		      + (128.0 * (double)(1<<FP_BITS)));
   }
-  conv_inited = 1;
+  conv_RY_inited = 1;
 }
+
+
+
+
+static void init_YCbCr_to_RGB_tables()
+{
+  int i;
+
+  /*
+   * Q_Z[i] =   (coefficient * i
+   *             * (Q-excursion) / (Z-excursion) * fixed-point-factor)
+   *
+   * to one of each, add the following:
+   *             + (fixed-point-factor / 2)         --- for rounding later
+   *             + (Q-offset * fixed-point-factor)  --- to add the offset
+   *             
+   */
+
+  /* clip Y values under 16 */
+  for (i = 0; i < 16; i++) {
+    RGB_Y[i] = myround((1.0 * (double)(16) 
+		     * 255.0 / 219.0 * (double)(1<<FP_BITS))
+		    + (double)(1<<(FP_BITS-1)));
+  }
+  for (i = 16; i < 236; i++) {
+    RGB_Y[i] = myround((1.0 * (double)(i - 16) 
+		     * 255.0 / 219.0 * (double)(1<<FP_BITS))
+		    + (double)(1<<(FP_BITS-1)));
+  }
+  /* clip Y values above 235 */
+  for (i = 236; i < 256; i++) {
+    RGB_Y[i] = myround((1.0 * (double)(235) 
+		     * 255.0 / 219.0 * (double)(1<<FP_BITS))
+		    + (double)(1<<(FP_BITS-1)));
+  }
+    
+  /* clip Cb/Cr values below 16 */	 
+  for (i = 0; i < 16; i++) {
+    R_Cr[i] = myround(1.402 * (double)(-112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cr[i] = myround(-0.714136 * (double)(-112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cb[i] = myround(-0.344136 * (double)(-112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    B_Cb[i] = myround(1.772 * (double)(-112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+  }
+  for (i = 16; i < 241; i++) {
+    R_Cr[i] = myround(1.402 * (double)(i - 128)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cr[i] = myround(-0.714136 * (double)(i - 128)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cb[i] = myround(-0.344136 * (double)(i - 128)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    B_Cb[i] = myround(1.772 * (double)(i - 128)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+  }
+  /* clip Cb/Cr values above 240 */	 
+  for (i = 241; i < 256; i++) {
+    R_Cr[i] = myround(1.402 * (double)(112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cr[i] = myround(-0.714136 * (double)(112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    G_Cb[i] = myround(-0.344136 * (double)(i - 128)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+    B_Cb[i] = myround(1.772 * (double)(112)
+		   * 255.0 / 224.0 * (double)(1<<FP_BITS));
+  }
+  conv_YR_inited = 1;
+}
+
+
 
 
 
@@ -105,21 +183,53 @@ static void init_conversion_tables()
 
 void convert_RGB_to_YCbCr(unsigned char *planes[], int length)
 {
-  unsigned char *R_Y, *G_Cb, *B_Cr;
+  unsigned char *Y, *Cb, *Cr;
   int i;
 
-  if (!conv_inited) init_conversion_tables();
+  if (!conv_RY_inited) init_RGB_to_YCbCr_tables();
 
-  for ( i = 0, R_Y = planes[0], G_Cb = planes[1], B_Cr = planes[2];
+  for ( i = 0, Y = planes[0], Cb = planes[1], Cr = planes[2];
 	i < length;
-	i++, R_Y++, G_Cb++, B_Cr++ ) {
-    int r = *R_Y;
-    int g = *G_Cb;
-    int b = *B_Cr;
+	i++, Y++, Cb++, Cr++ ) {
+    int r = *Y;
+    int g = *Cb;
+    int b = *Cr;
 
-    *R_Y = (Y_R[r] + Y_G[g]+ Y_B[b]) >> FP_BITS;
-    *G_Cb = (Cb_R[r] + Cb_G[g]+ Cb_B[b]) >> FP_BITS;
-    *B_Cr = (Cr_R[r] + Cr_G[g]+ Cr_B[b]) >> FP_BITS;
+    *Y = (Y_R[r] + Y_G[g]+ Y_B[b]) >> FP_BITS;
+    *Cb = (Cb_R[r] + Cb_G[g]+ Cb_B[b]) >> FP_BITS;
+    *Cr = (Cr_R[r] + Cr_G[g]+ Cr_B[b]) >> FP_BITS;
   }
+}
+
+
+
+/* 
+ * in-place conversion [Y', Cb, Cr] --> [R', G', B']
+ *
+ */
+
+void convert_YCbCr_to_RGB(unsigned char *planes[], int length)
+{
+  unsigned char *R, *G, *B;
+  int i;
+
+  if (!conv_YR_inited) init_YCbCr_to_RGB_tables();
+
+  for ( i = 0, R = planes[0], G = planes[1], B = planes[2];
+	i < length;
+	i++, R++, G++, B++ ) {
+    int y = *R;
+    int cb = *G;
+    int cr = *B;
+
+    int r = (RGB_Y[y] + R_Cr[cr]) >> FP_BITS;
+    int g = (RGB_Y[y] + G_Cb[cb]+ G_Cr[cr]) >> FP_BITS;
+    int b = (RGB_Y[y] + B_Cb[cb]) >> FP_BITS;
+
+    *R = (r < 0) ? 0 : (r > 255) ? 255 : r ;
+    *G = (g < 0) ? 0 : (g > 255) ? 255 : g ;
+    *B = (b < 0) ? 0 : (b > 255) ? 255 : b ;
+  }
+  
 }
 
