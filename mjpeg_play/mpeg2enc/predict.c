@@ -108,8 +108,6 @@ void init_predict()
 
 /* form prediction for a complete picture (frontend for predict_mb)
  *
- * reff: reference frame for forward prediction
- * refb: reference frame for backward prediction
  * cur:  destination (current) frame
  * secondfield: predict second field of a frame
  * mbi:  macroblock info
@@ -118,12 +116,12 @@ void init_predict()
  * - cf. predict_mb
  */
 
-void predict(pict_data_s *picture, 
-			 uint8_t *reff[],
-			 uint8_t *refb[],
-			 uint8_t *cur[3],
-			 int secondfield)
+void predict(pict_data_s *picture)
 {
+	uint8_t **reff = picture->oldref;
+	uint8_t **refb = picture->newref;
+    uint8_t **pred = picture->pred;
+	int secondfield = picture->secondfield;
 	int i, j, k;
 	mbinfo_s *mbi = picture->mbinfo;
 	k = 0;
@@ -132,7 +130,7 @@ void predict(pict_data_s *picture,
 	for (j=0; j<height2; j+=16)
 		for (i=0; i<width; i+=16)
 		{
-			predict_mb(picture,reff,refb,cur,width,i,j,
+			predict_mb(picture,reff,refb,pred,width,i,j,
 					   &mbi[k], secondfield );
 			k++;
 		}

@@ -42,7 +42,7 @@ static int last_frame = -1;
 
 /* Buffers for frame luminance means */
 
-static int lum_mean[2*READ_LOOK_AHEAD];
+static int lum_mean[FRAME_BUFFER_SIZE];
 
 
 static int luminance_mean(uint8_t *frame, int w, int h )
@@ -100,17 +100,16 @@ int piperead(int fd, char *buf, int len)
 
 
 
-static void read_gop()
+static void read_chunk()
 {
-   int n, v, h, i, s;
+   int n, v, h, i,j;
 
    unsigned char magic[7];
 
-   s = frames_read % (2*READ_LOOK_AHEAD);
-   fprintf( stderr,"\nREADING FORWARD TO %d\n", frames_read+READ_LOOK_AHEAD/2);
-   for(n=s;n<s+READ_LOOK_AHEAD/2;n++)
+   fprintf( stderr,"\nREADING FORWARD TO %d\n", frames_read+READ_CHUNK_SIZE);
+   for(j=0;j<READ_CHUNK_SIZE;++j)
    {
-
+	   n = frames_read % FRAME_BUFFER_SIZE;
       if(piperead(input_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
       {
@@ -154,20 +153,8 @@ void load_frame( int num_frame, int look_ahead )
    if( frames_read == 0)
    {
       /* Read first + second look-ahead buffer loads */
-
-      read_gop();
-      read_gop();
-   }
-
-
-
-   /* We're not allow to request frame more than READ_LOOK_AHEAD
-	  ahead, ahead of the last read ... */
-
-   if(num_frame >= frames_read)
-   {
-      fprintf(stderr,"readframe: internal error - reading beyond end of frame read buffer\n");
-      exit(1);
+	   while( frames_read < look_ahead )
+		   read_chunk();
    }
 
    if(last_frame>=0 && num_frame>last_frame)
@@ -176,18 +163,18 @@ void load_frame( int num_frame, int look_ahead )
       exit(1);
    }
 
-   /* Read next look ahead chunk if we have insufficient look-ahead margin
+   /* Read in chunk(s) of frames if we have insufficient look-ahead margin
 	*/
 
-   if(frames_read - num_frame <= look_ahead) 
+   while(frames_read - num_frame <= look_ahead && frames_read < nframes ) 
    {
-	   read_gop();
+	   read_chunk();
    }
 
    /* We aren't allowed to go too far behind the last read
 	  either... */
 
-   if(num_frame < frames_read - 2*READ_LOOK_AHEAD)
+   if(num_frame < frames_read - FRAME_BUFFER_SIZE)
    {
       fprintf(stderr,"readframe: internal error - buffer flusshed too soon\n");
       exit(1);
@@ -202,8 +189,8 @@ int readframe( int num_frame,
 {
    int n;
 
-   load_frame( num_frame, READ_LOOK_AHEAD );
-   n = num_frame % (2*READ_LOOK_AHEAD);
+   load_frame( num_frame, 1 ); 
+   n = num_frame % FRAME_BUFFER_SIZE;
 
    frame[0] = frame_buffers[n][0];
    frame[1] = frame_buffers[n][1];
@@ -220,5 +207,5 @@ int frame_lum_mean( int num_frame )
 		n = frames_read-1;
 	}
 	load_frame( n, 1 );
-	return lum_mean[n% (2*READ_LOOK_AHEAD)];
+	return lum_mean[n% FRAME_BUFFER_SIZE];
 }

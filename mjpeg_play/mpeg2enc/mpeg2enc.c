@@ -289,12 +289,13 @@ int main(argc,argv)
 	}
 
 	if(	param_min_GOP_size < 2*param_Bgrp_size ||
-		param_max_GOP_size > READ_LOOK_AHEAD+param_Bgrp_size )
+		param_max_GOP_size+param_max_GOP_size+param_Bgrp_size+1 > 
+		FRAME_BUFFER_SIZE-READ_CHUNK_SIZE  )
 	{
 		fprintf(stderr, 
 				"Min and max GOP sizes must be in range [%d..%d]\n",
 				2*param_Bgrp_size,
-				READ_LOOK_AHEAD+param_Bgrp_size);
+				(FRAME_BUFFER_SIZE-READ_CHUNK_SIZE-1-param_Bgrp_size)/2);
 		++nerr;
 	}
 	if(nerr) Usage(argv[0]);
@@ -490,9 +491,9 @@ static void init()
 	/* Allocate the frame data buffers */
 
 	frame_buffers = (uint8_t ***) 
-		bufalloc(2*READ_LOOK_AHEAD*sizeof(uint8_t**));
+		bufalloc(FRAME_BUFFER_SIZE*sizeof(uint8_t**));
 	
-	for(n=0;n<2*READ_LOOK_AHEAD;n++)
+	for(n=0;n<FRAME_BUFFER_SIZE;n++)
 	{
          frame_buffers[n] = (uint8_t **) bufalloc(3*sizeof(uint8_t*));
 		 for (i=0; i<3; i++)
@@ -503,7 +504,7 @@ static void init()
 	}
 
 
-	/* TODO: The ref and aux frame buffers are no redundant! */
+	/* TODO: The ref and aux frame buffers are not redundant! */
 	for( i = 0 ; i<3; i++)
 	{
 		int size =  (i==0) ? lum_buffer_size : chrom_buffer_size;
@@ -721,11 +722,7 @@ static void readparmfile()
 	constrparms = !!constrparms;
 	prog_seq = !!prog_seq;
 	opt_topfirst = !!opt_topfirst;
-/*
-	topfirst = !!topfirst;
-	repeatfirst = !!repeatfirst;
-	prog_frame = !!prog_frame;
-*/
+
 	for (i=0; i<3; i++)
 	{
 		frame_pred_dct_tab[i] = !!frame_pred_dct_tab[i];
@@ -881,18 +878,6 @@ static void readparmfile()
 		opt_repeatfirst = 0;
 	}
 
-/*
-	if (opt_prog_frame)
-	{
-		for (i=0; i<3; i++)
-			if (!frame_pred_dct_tab[i])
-			{
-				if (!quiet)
-					fprintf(stderr,"Warning: prog frame - setting frame_pred_frame_dct[%d] = 1\n",i);
-				frame_pred_dct_tab[i] = 1;
-			}
-	}
-*/
 	if (prog_seq && !opt_repeatfirst && opt_topfirst)
 	{
 		if (!quiet)

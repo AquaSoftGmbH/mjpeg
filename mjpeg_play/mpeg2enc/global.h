@@ -62,12 +62,10 @@ void init_motion ();
 
 
 void motion_estimation (
-	pict_data_s *picture,
-	motion_comp_s *mc_data,
-	int secondfield, int ipflag);
+	pict_data_s *picture
+	);
 
-void fast_motion_data (uint8_t *mcompdata, int pict_struct);
-void check_fast_motion_data (uint8_t *blk, char *label );
+void fast_motion_data (pict_data_s *picture);
 
 void reset_thresholds  (int macroblocks_per_frame );
 /* mpeg2enc.c */
@@ -77,10 +75,7 @@ uint8_t *bufalloc( size_t size );
 /* predict.c */
 void init_predict();
 
-void predict (pict_data_s *picture,
-						  uint8_t *reff[], uint8_t *refb[],
-						  uint8_t *cur[3], 
-						  int secondfield);
+void predict (pict_data_s *picture);
 
 /* putbits.c */
 void initbits (void);
@@ -155,18 +150,14 @@ int readframe (int frame_num, uint8_t *frame[]);
 int frame_lum_mean(int frame_num);
 
 /* stats.c */
-void calcSNR (uint8_t *org[3], uint8_t *rec[3]);
+void calcSNR (pict_data_s *picture);
 void stats (void);
 
 /* transfrm.c */
-void transform (pict_data_s *picture,
-				uint8_t *pred[], 
-				uint8_t *cur[]);
+void transform (pict_data_s *picture);
 
-void itransform ( pict_data_s *picture,
-				  uint8_t *pred[], uint8_t *cur[]);
-void dct_type_estimation (pict_data_s *picture,
-						  uint8_t *pred, uint8_t *cur );
+void itransform ( pict_data_s *picture);
+void dct_type_estimation (pict_data_s *picture );
 
 void init_transform();
 
@@ -330,8 +321,7 @@ EXTERN uint8_t ***frame_buffers;
 
 /* Buffers for econstructed frames */
 EXTERN uint8_t *newrefframe[3], *oldrefframe[3], *auxframe[3];
-/* Pointers to original frames in frame_buffers */
-EXTERN uint8_t *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
+
 /* prediction of current frame */
 EXTERN uint8_t *predframe[3];
 /* Buffer for filter pre-processing */
@@ -385,17 +375,11 @@ EXTERN int fieldpic; /* use field pictures */
 
 
 /*
-  How many frames to read ahead (eventually intended to support
-  scene change based GOP structuring.  READ_LOOK_AHEAD/2 must be
-  greater than M (otherwise buffers will be overwritten that are
-  still in use).
-
-  It should also be a multiple of 4 due to the way buffers are
-  filled (in 1/4's).
+  How many frames to read in one go and the size of the frame data buffer.
 */
 
-#define READ_LOOK_AHEAD 24
-
+#define READ_CHUNK_SIZE 12
+#define FRAME_BUFFER_SIZE 64
 
 /* sequence specific data (sequence header) */
 

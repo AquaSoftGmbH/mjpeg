@@ -57,13 +57,38 @@ static void init_seq(int reinit)
 }
 
 
-static void frame_mc_and_pic_params( int decode,
-									 int b_index,
-									 int temp_ref,
-									 motion_comp_s *mc_data, 
-									 pict_data_s *picture )
+static void set_pic_params( int pict_struct,
+							int decode,
+							int b_index,
+							int secondfield,
+							pict_data_s *picture )
 {
-	picture->temp_ref = temp_ref;
+	picture->pict_struct = pict_struct;
+	picture->dc_prec = opt_dc_prec;
+	picture->prog_frame = opt_prog_frame;
+	picture->repeatfirst = 0;
+
+	/* Handle topfirst and ipflag special-case for field pictures */
+	if( pict_struct != FRAME_PICTURE )
+	{
+		picture->topfirst = (!!secondfield) ^ (pict_struct == TOP_FIELD);
+		picture->ipflag = (picture->pict_type==I_TYPE) && secondfield;
+		picture->pict_type = P_TYPE;
+		if (!quiet)
+		{
+			fprintf(stderr,"\nField %s (%s) ",
+					secondfield ? "second" : "first ",
+					picture->topfirst ? "top" : "bot");
+			fflush(stderr);
+		}
+
+	}
+	else
+	{
+		picture->topfirst = 0;
+		picture->ipflag = 0;
+	}
+
 	switch ( picture->pict_type )
 	{
 	case I_TYPE :
@@ -77,18 +102,18 @@ static void frame_mc_and_pic_params( int decode,
 		picture->forw_vert_f_code = motion_data[0].forw_vert_f_code;
 		picture->back_hor_f_code = 15;
 		picture->back_vert_f_code = 15;
-		mc_data->sxf = motion_data[0].sxf;
-		mc_data->syf = motion_data[0].syf;
+		picture->sxf = motion_data[0].sxf;
+		picture->syf = motion_data[0].syf;
 		break;
 	case B_TYPE :
 		picture->forw_hor_f_code = motion_data[b_index].forw_hor_f_code;
 		picture->forw_vert_f_code = motion_data[b_index].forw_vert_f_code;
 		picture->back_hor_f_code = motion_data[b_index].back_hor_f_code;
 		picture->back_vert_f_code = motion_data[b_index].back_vert_f_code;
-		mc_data->sxf = motion_data[b_index].sxf;
-		mc_data->syf = motion_data[b_index].syf;
-		mc_data->sxb = motion_data[b_index].sxb;
-		mc_data->syb = motion_data[b_index].syb;
+		picture->sxf = motion_data[b_index].sxf;
+		picture->syf = motion_data[b_index].syf;
+		picture->sxb = motion_data[b_index].sxb;
+		picture->syb = motion_data[b_index].syb;
 
 		break;
 	}
@@ -233,27 +258,66 @@ int find_gop_length( int gop_start_frame,
 
 }
 
-void putseq()
+
+void encodepict(pict_data_s *picture)
 {
-	int i, j, f, g,  b, np, nb;
-	int ipflag;
-	/*int sxf = 0, sxb = 0, syf = 0, syb = 0;*/
-	motion_comp_s mc_data;
-	unsigned char **curorg, **curref;
-	int gop_start_frame;
-	int seq_start_frame;
+	
+	fast_motion_data(picture);
+	motion_estimation(picture);
+	predict(picture);
+	dct_type_estimation(picture);
+	transform(picture);
+	putpict(picture);
+	
+#ifndef OUTPUT_STAT
+	if( picture->pict_type!=B_TYPE)
+	{
+#endif
+		iquantize( picture );
+		itransform(picture);
+		calcSNR(picture);
+		stats();
+#ifndef OUTPUT_STAT
+	}
+#endif
+	
+
+}
+
+struct _stream_state 
+ {
+	 int i;						/* Index in current sequence */
+	 int g;						/* Index in current GOP */
+	 int b;						/* Index in current B frame group */
+	 int gop_start_frame;		/* Index start current sequence in
+								   input stream */
+	 int seq_start_frame;		/* Index start current gop in input stream */
+	 int gop_length;			/* Length of current gop */
+	 int bigrp_length;			/* Length of current B-frame group */
+	 int bs_short;				/* Number of B frame GOP is short of
+								   having M-1 B's for each I/P frame
+								 */
+	 double next_b_drop;		/* When next B frame drop is due in GOP */
+
+	int64_t next_split_point;
+	int64_t seq_split_length;
+};
+
+typedef struct _stream_state stream_state_s;
+
+void oldputseq()
+{
+	stream_state_s ss;
+	int  np, nb;
+	/*uint8_t **curorg, **curref;*/
+	int pict_type;
 	int temp_ref;
-	int gop_length;
-	int bs_short;
-	int bigrp_length;
-	double next_b_drop;
 	pict_data_s cur_picture;
+	uint8_t **tmp;
 
-	/* Length limit parameter is specied in MBytes */
-	int64_t seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
-	int64_t next_split_point = BITCOUNT_OFFSET + seq_split_length;
-
-	fprintf( stderr, "DEBUG: split len = %lld\n", seq_split_length );
+	/* Pointer blocks pointing to original frame data in frame data buffers
+	 */
+	uint8_t *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
 	
 	/* Allocate buffers for picture transformation */
 	cur_picture.qblocks =
@@ -264,44 +328,58 @@ void putseq()
 	cur_picture.blocks =
 		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
 
+	/* Initialise picture buffers for simple single-threaded encoding 
+	   loop */
+	
+	cur_picture.oldorg = oldorgframe;
+	cur_picture.neworg = neworgframe;
+	cur_picture.oldref = oldrefframe;
+	cur_picture.newref = newrefframe;
+	cur_picture.pred = predframe;
+
 	init_seq(0);
 	
-	i = 0;		                /* Index in current MPEG sequence */
-	frame_num = 0;              /* Encoding number */
-	g = 0;						/* Index in current GOP */
-	b = 0;						/* B frames since last I/P */
-	gop_length = 0;				/* Length of current GOP init 0
+	ss.i = 0;		                /* Index in current MPEG sequence */
+	ss.g = 0;						/* Index in current GOP */
+	ss.b = 0;						/* B frames since last I/P */
+	ss.gop_length = 0;				/* Length of current GOP init 0
 								   0 force new GOP at start 1st sequence */
-	seq_start_frame = 0;		/* Index start current sequence in
+	ss.seq_start_frame = 0;		/* Index start current sequence in
 								 input stream */
-	gop_start_frame = 0;		/* Index start current gop in input stream */
+	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
+	/* Length limit parameter is specied in MBytes */
+	ss.seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
+	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
+	fprintf( stderr, "DEBUG: split len = %lld\n", ss.seq_split_length );
+
+	frame_num = 0;              /* Encoding number */
 
 	/* loop through all frames in encoding/decoding order */
 	while( frame_num<nframes )
 	{
 		/* Are we starting a new GOP? */
-		if( g == gop_length )
+		if( ss.g == ss.gop_length )
 		{
 			/* If	we're starting a GOP and have gone past the current
 			   sequence splitting point split the sequence and
 			   set the next splitting point.
 			*/
 			
-			g = 0;
-			if( next_split_point != 0LL && 	bitcount() > next_split_point )
+			ss.g = 0;
+			if( ss.next_split_point != 0LL && 	bitcount() > ss.next_split_point )
 			{
 				printf( "\nSplitting sequence\n" );
-				next_split_point += seq_split_length;
+				ss.next_split_point += ss.seq_split_length;
 				putseqend();
 				init_seq(1);
 				/* This is the input stream display order sequence number of
 				   the frame that will become frame 0 in display
 				   order in  the new sequence */
-				seq_start_frame += i;
-				i = 0;
+				ss.seq_start_frame += ss.i;
+				ss.i = 0;
 			}
 			
-			gop_start_frame = seq_start_frame + i;
+			ss.gop_start_frame = ss.seq_start_frame + ss.i;
 
 			/*
 			  Compute GOP length based on min and max sizes specified
@@ -311,12 +389,12 @@ void putseq()
 			  all other GOPs have a temp_ref of M-1
 			*/
 
-			if( i == 0 )
-				gop_length =  find_gop_length( gop_start_frame, 0, 
-											   N_min-(M-1), N_max-(M-1));
+			if( ss.i == 0 )
+				ss.gop_length =  find_gop_length( ss.gop_start_frame, 0, 
+												  N_min-(M-1), N_max-(M-1));
 			else
-				gop_length = 
-					find_gop_length( gop_start_frame, M-1, 
+				ss.gop_length = 
+					find_gop_length( ss.gop_start_frame, M-1, 
 									 N_min, N_max);
 
 			
@@ -331,27 +409,27 @@ void putseq()
 			*/
 			if( M-1 > 0 )
 			{
-				bs_short = (M - ((gop_length-(i==0)) % M))%M;
-				next_b_drop = ((double)gop_length) / (double)(bs_short+1)-1.0 ;
+				ss.bs_short = (M - ((ss.gop_length-(ss.i==0)) % M))%M;
+				ss.next_b_drop = ((double)ss.gop_length) / (double)(ss.bs_short+1)-1.0 ;
 			}
 			else
 			{
-				bs_short = 0;
-				next_b_drop = 0.0;
+				ss.bs_short = 0;
+				ss.next_b_drop = 0.0;
 			}
 
 			/* We aim to spread the dropped B's evenly across the GOP */
-			bigrp_length = (M-1);
-			b = bigrp_length;
+			ss.bigrp_length = (M-1);
+			ss.b = ss.bigrp_length;
 
 			/* number of P frames */
-			if (i == 0)
-				np = (gop_length + 2*(M-1))/M - 1; /* first GOP */
+			if (ss.i == 0)
+				np = (ss.gop_length + 2*(M-1))/M - 1; /* first GOP */
 			else
-				np = (gop_length + (M-1))/M - 1;
+				np = (ss.gop_length + (M-1))/M - 1;
 			
 			/* number of B frames */
-			nb = gop_length - np - 1;
+			nb = ss.gop_length - np - 1;
 
 			rc_init_GOP(np,nb);
 			
@@ -359,26 +437,18 @@ void putseq()
 			   No need for per-GOP seqhdr in first GOP as one
 			   has already been created.
 			*/
-			putgophdr(i == 0 ? i : i+(M-1),
-					  i == 0, 
-					  i != 0 && seq_header_every_gop);
+			putgophdr(ss.i == 0 ? ss.i : ss.i+(M-1),
+					  ss.i == 0, 
+					  ss.i != 0 && seq_header_every_gop);
 
 		}
 
 		/* Each bigroup starts once all the B frames of its predecessor
 		   has finished.
 		*/
-		if ( b == bigrp_length)
+		if ( ss.b == ss.bigrp_length)
 		{
 
-			/* The first GOP of a sequence is closed with a 0 length
-			   initial bigroup... */
-			if( i == 0 )
-				b = bigrp_length;
-			else
-				b = 0;
-			
-			
 			/* I or P frame: Somewhat complicated buffer handling.
 			   The original reference frame data is actually held in
 			   the frame input buffers.  In input read-ahead buffer
@@ -387,46 +457,68 @@ void putseq()
 			   simply move the pointers.  However for the
 			   reconstructed "ref" data we are managing our a seperate
 			   pair of buffers. We need to swap these to avoid losing
-			   one!  */
+			   one!  
 
-			for (j=0; j<3; j++)
-			{
-				unsigned char *tmp;
-				oldorgframe[j] = neworgframe[j];
-				tmp = oldrefframe[j];
-				oldrefframe[j] = newrefframe[j];
-				newrefframe[j] = tmp;
-			}
-
-			/* For an I or P frame the "current frame" is simply an alias
+			   The "current frame" is simply an alias
 			   for the new new reference frame. Saves the need to copy
 			   stuff around once the frame has been processed.
 			*/
 
-			curorg = neworgframe;
-			curref = newrefframe;
+			/*
+			cur_picture.oldorg = cur_picture.neworg;
+			tmp = cur_picture.oldref;
+			cur_picture.oldref = cur_picture.newref;
+			cur_picture.newref = tmp;
+			cur_picture.curorg = cur_picture.neworg;
+			cur_picture.curref = cur_picture.newref;
+			*/
 
-			bigrp_length = M-1;
-			if( bs_short != 0 && g > (int)next_b_drop )
+			/*
+			for (j=0; j<3; j++)
 			{
-				bigrp_length = M - 2;
-				if( bs_short )
-					next_b_drop += ((double)gop_length) / (double)(bs_short+1) ;
+				cur_picture.oldorg[j] = cur_picture.neworg[j];
+			}
+			*/
+			tmp = cur_picture.oldorg;
+			cur_picture.oldorg = cur_picture.neworg;
+			cur_picture.neworg = cur_picture.oldorg;
+			tmp = cur_picture.oldref;
+			cur_picture.oldref = cur_picture.newref;
+			cur_picture.newref = tmp;
+
+			cur_picture.curorg = cur_picture.neworg;
+			cur_picture.curref = cur_picture.newref;
+
+
+			/* The first GOP of a sequence is closed with a 0 length
+			   initial bigroup... */
+			if( ss.i == 0 )
+				ss.b = ss.bigrp_length;
+			else
+				ss.b = 0;
+			
+
+			ss.bigrp_length = M-1;
+			if( ss.bs_short != 0 && ss.g > (int)ss.next_b_drop )
+			{
+				ss.bigrp_length = M - 2;
+				if( ss.bs_short )
+					ss.next_b_drop += ((double)ss.gop_length) / (double)(ss.bs_short+1) ;
 			}
 
 			/* f: frame number in sequence display order */
-			temp_ref = (i == 0 ) ? i : g+(bigrp_length);
-			if (temp_ref >= (nframes-gop_start_frame))
-				temp_ref = (nframes-gop_start_frame) - 1;
+			temp_ref = (ss.i == 0 ) ? ss.i : ss.g+(ss.bigrp_length);
+			if (temp_ref >= (nframes-ss.gop_start_frame))
+				temp_ref = (nframes-ss.gop_start_frame) - 1;
 
-			if (g==0) /* first displayed frame in GOP is I */
+			if (ss.g==0) /* first displayed frame in GOP is I */
 			{
 
-				cur_picture.pict_type = I_TYPE;
+				pict_type = I_TYPE;
 			}
 			else 
 			{
-				cur_picture.pict_type = P_TYPE;
+				pict_type = P_TYPE;
 			}
 		}
 		else
@@ -435,150 +527,354 @@ void putseq()
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.
 			*/
-			b++;
+			ss.b++;
 
-			curorg = auxorgframe;
-			curref = auxframe;
+			cur_picture.curorg = auxorgframe;
+			cur_picture.curref = auxframe;
 
 			/* f: frame number in sequence display order */
-			temp_ref = g - 1;
-			cur_picture.pict_type = B_TYPE;
+			temp_ref = ss.g - 1;
+			pict_type = B_TYPE;
 		}
 
-		frame_mc_and_pic_params( i, b,  temp_ref, &mc_data, &cur_picture );
-		printf( "(%d %d %d) ", i-g+temp_ref, temp_ref+gop_start_frame, temp_ref );
-		if( readframe(temp_ref+gop_start_frame,curorg) )
+
+		printf( "(%d %d %d) ",
+				ss.i-ss.g+temp_ref, temp_ref+ss.gop_start_frame, temp_ref );
+		if( readframe(temp_ref+ss.gop_start_frame,cur_picture.curorg) )
 		{
 			fprintf( stderr, "Corrupt frame data aborting!\n" );
 			exit(1);
 		}
 
-		mc_data.oldorg = oldorgframe;
-		mc_data.neworg = neworgframe;
-		mc_data.oldref = oldrefframe;
-		mc_data.newref = newrefframe;
-		mc_data.cur    = curorg;
-		mc_data.curref = curref;
+		cur_picture.pict_type = pict_type;
+		cur_picture.temp_ref = temp_ref;
 
         if (fieldpic)
 		{
-			cur_picture.topfirst = opt_topfirst;
-			if (!quiet)
-			{
-				fprintf(stderr,"\nfirst field  (%s) ",
-						cur_picture.topfirst ? "top" : "bot");
-				fflush(stderr);
-			}
+			set_pic_params( opt_topfirst ? TOP_FIELD : BOTTOM_FIELD,
+							ss.i, ss.b,  0, &cur_picture );
+			encodepict( &cur_picture );
 
-			cur_picture.pict_struct = cur_picture.topfirst ? TOP_FIELD : BOTTOM_FIELD;
-			/* A.Stevens 2000: Append fast motion compensation data for new frame */
-			fast_motion_data(curorg[0], cur_picture.pict_struct);
-			motion_estimation(&cur_picture, &mc_data,0,0);
-
-			predict(&cur_picture,oldrefframe,newrefframe,predframe,0);
-			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
-			transform(&cur_picture,predframe,curorg);
-
-			putpict(&cur_picture);		/* Quantisation: blocks -> qblocks */
-#ifndef OUTPUT_STAT
-			if( cur_picture.pict_type!=B_TYPE)
-			{
-#endif
-				iquantize( &cur_picture );
-				itransform(&cur_picture,predframe,curref);
-				/* No use of FM data in ref frames...
-				fast_motion_data(curref[0], cur_picture.pict_struct);
-				*/
-				calcSNR(curorg,curref);
-				stats();
-#ifndef OUTPUT_STAT
-			}
-#endif
-			if (!quiet)
-			{
-				fprintf(stderr,"second field (%s) ",cur_picture.topfirst ? "bot" : "top");
-				fflush(stderr);
-			}
-
-			cur_picture.pict_struct = cur_picture.topfirst ? BOTTOM_FIELD : TOP_FIELD;
-
-			ipflag = (cur_picture.pict_type==I_TYPE);
-			if (ipflag)
-			{
-				/* first field = I, second field = P */
-				cur_picture.pict_type = P_TYPE;
-				cur_picture.forw_hor_f_code = motion_data[0].forw_hor_f_code;
-				cur_picture.forw_vert_f_code = motion_data[0].forw_vert_f_code;
-				cur_picture.back_hor_f_code = 
-					cur_picture.back_vert_f_code = 15;
-				mc_data.sxf = motion_data[0].sxf;
-				mc_data.syf = motion_data[0].syf;
-			}
-
-			motion_estimation(&cur_picture, &mc_data ,1,ipflag);
-
-			predict(&cur_picture,oldrefframe,newrefframe,predframe,1);
-			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
-			transform(&cur_picture,predframe,curorg);
-
-			putpict(&cur_picture);	/* Quantisation: blocks -> qblocks */
-
-#ifndef OUTPUT_STAT
-			if( cur_picture.pict_type!=B_TYPE)
-			{
-#endif			iquantize( &cur_picture );
-				itransform(&cur_picture,predframe,curref);
-				/* No use of FM data in ref frames
-				fast_motion_data(curref[0], cur_picture.pict_struct);
-				*/
-				calcSNR(curorg,curref);
-				stats();
-#ifndef OUTPUT_STAT
-			}
-#endif
-				
+			set_pic_params( opt_topfirst ? BOTTOM_FIELD : TOP_FIELD,
+							ss.i, ss.b,   1, &cur_picture );
+			encodepict( &cur_picture );
 		}
 		else
 		{
-			cur_picture.pict_struct = FRAME_PICTURE;
-			fast_motion_data(curorg[0], cur_picture.pict_struct);
-
-			/* do motion_estimation
-			 *
-			 * uses source frames (...orgframe) for full pel search
-			 * and reconstructed frames (...refframe) for half pel search
-			 */
-
-			motion_estimation(&cur_picture,&mc_data,0,0);
-
-			predict(&cur_picture, oldrefframe,newrefframe,predframe,0);
-			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
-
-			transform(&cur_picture,predframe,curorg);
-
-			/* Side-effect: quantisation blocks -> qblocks */
-			putpict(&cur_picture);	
-
-#ifndef OUTPUT_STAT
-			if( cur_picture.pict_type!=B_TYPE)
-			{
-#endif
-				iquantize( &cur_picture );
-				itransform(&cur_picture,predframe,curref);
-				/* All FM is now based on org frame...
-				fast_motion_data(curref[0], cur_picture.pict_struct); 
-				*/
-				calcSNR(curorg,curref);
-
-				stats();
-#ifndef OUTPUT_STAT
-			}
-#endif
+			set_pic_params( FRAME_PICTURE,
+							ss.i, ss.b,   0, &cur_picture );
+			encodepict( &cur_picture );
 		}
-		writeframe(f+seq_start_frame,curref);
-		++i;
+
+#ifdef DEBUG
+		writeframe(temp_ref+ss.gop_start_frame,cur_picture.curref);
+#endif
+		++ss.i;
 		++frame_num;
-		++g;
+		++ss.g;
+	}
+	putseqend();
+}
+
+void gop_start( stream_state_s *ss )
+{
+
+	int nb, np;
+	/* If	we're starting a GOP and have gone past the current
+	   sequence splitting point split the sequence and
+	   set the next splitting point.
+	*/
+			
+	ss->g = 0;
+	ss->b = 0;
+
+	if( ss->next_split_point != 0LL && 	bitcount() > ss->next_split_point )
+	{
+		printf( "\nSplitting sequence\n" );
+		ss->next_split_point += ss->seq_split_length;
+		putseqend();
+		init_seq(1);
+		/* This is the input stream display order sequence number of
+		   the frame that will become frame 0 in display
+		   order in  the new sequence */
+		ss->seq_start_frame += ss->i;
+		ss->i = 0;
+	}
+			
+	ss->gop_start_frame = ss->seq_start_frame + ss->i;
+	
+	/*
+	  Compute GOP length based on min and max sizes specified
+	  and scene changes detected.  
+	  First GOP in a sequence has I frame with a 0 temp_ref
+	  nad (M-1) less frames (no initial B frames).
+	  all other GOPs have a temp_ref of M-1
+	*/
+	
+	if( ss->i == 0 )
+		ss->gop_length =  find_gop_length( ss->gop_start_frame, 0, 
+										  N_min-(M-1), N_max-(M-1));
+	else
+		ss->gop_length = 
+			find_gop_length( ss->gop_start_frame, M-1, 
+							 N_min, N_max);
+	
+			
+	/* First figure out how many B frames we're short from
+	   being able to achieve an even M-1 B's per I/P frame.
+	   
+	   To avoid peaks in necessary data-rate we try to
+	   lose the B's in the middle of the GOP. We always
+	   *start* with M-1 B's (makes choosing I-frame breaks simpler).
+	   A complication is the extra I-frame in the initial
+	   closed GOP of a sequence.
+	*/
+	if( M-1 > 0 )
+	{
+		ss->bs_short = (M - ((ss->gop_length-(ss->i==0)) % M))%M;
+		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
+	}
+	else
+	{
+		ss->bs_short = 0;
+		ss->next_b_drop = 0.0;
+	}
+	
+	/* We aim to spread the dropped B's evenly across the GOP */
+	ss->bigrp_length = (M-1);
+	
+	/* number of P frames */
+	if (ss->i == 0)
+	{
+		ss->bigrp_length = 1;
+		np = (ss->gop_length + 2*(M-1))/M - 1; /* first GOP */
+	}
+	else
+	{
+		ss->bigrp_length = M;
+		np = (ss->gop_length + (M-1))/M - 1;
+	}
+			/* number of B frames */
+	nb = ss->gop_length - np - 1;
+	
+	rc_init_GOP(np,nb);
+	
+	/* set closed_GOP in first GOP only 
+	   No need for per-GOP seqhdr in first GOP as one
+	   has already been created.
+	*/
+	putgophdr(ss->i == 0 ? ss->i : ss->i+(M-1),
+			  ss->i == 0, 
+			  ss->i != 0 && seq_header_every_gop);
+
+
+
+}
+
+void flip_ref_images( pict_data_s *picture )
+{
+	uint8_t **tmp;
+
+	/* I or P frame: Somewhat complicated buffer handling! 
+
+	   The "current frame" is simply an alias
+	  for the new new reference frame. Saves the need to copy
+	  stuff around once the frame has been processed.
+
+	  The original reference frame image data is actually held in
+	  the frame input buffers.  In input read-ahead buffer
+	  management code worries about rotating them for use.
+	  So to make the new old one the current new one we
+	  simply move the pointers. However it is *not* enough
+	  to move the pointer to the pointer block. This would
+	  cause us to lose track of one pointer block so that next time
+	  around the pointers would be over-written.
+	  
+	*/
+
+	tmp = picture->oldorg;
+	picture->oldorg = picture->neworg;
+	picture->neworg = tmp;
+
+	tmp = picture->oldref;
+	picture->oldref = picture->newref;
+	picture->newref = tmp;
+
+	picture->curorg = picture->neworg;
+	picture->curref = picture->newref;
+
+}
+
+/* Set the sequencing structure information
+   of a picture (type and temporal reference)
+   based on the specified sequence state
+*/
+
+void I_or_P_frame_struct( stream_state_s *ss,
+                         pict_data_s *picture )
+{
+	/* Temp ref of I frame in initial closed GOP of sequence is 0 */
+	picture->temp_ref = (ss->i == 0 ) ? ss->i : ss->g+(ss->bigrp_length-1);
+	if (picture->temp_ref >= (nframes-ss->gop_start_frame))
+		picture->temp_ref = (nframes-ss->gop_start_frame) - 1;
+	if (ss->g==0) /* first displayed frame in GOP is I */
+	{
+		picture->pict_type = I_TYPE;
+	}
+	else 
+	{
+		picture->pict_type = P_TYPE;
+	}
+}
+
+
+void B_frame_struct(  stream_state_s *ss,
+					  pict_data_s *picture )
+{
+	picture->temp_ref = ss->g - 1;
+	picture->pict_type = B_TYPE;
+}
+
+/*
+  Update ss to the next sequence state.
+ */
+
+void next_seq_state( stream_state_s *ss )
+{
+	++(ss->i);
+	++(ss->g);
+	++(ss->b);	
+
+	/* Are we starting a new B group */
+	if( ss->b == ss->bigrp_length )
+	{
+		ss->b = 0;
+		/* Does this need to be a short B group to make the GOP length
+		   come out right ? */
+		if( ss->bs_short != 0 && ss->g > (int)ss->next_b_drop )
+		{
+			ss->bigrp_length = M - 1;
+			if( ss->bs_short )
+				ss->next_b_drop += ((double)ss->gop_length) / (double)(ss->bs_short+1) ;
+		}
+		else
+			ss->bigrp_length = M;
+	}
+
+    /* Are we starting a new GOP? */
+	if( ss->g == ss->gop_length )
+	{
+		gop_start(ss);
+	}
+
+}
+
+void putseq()
+{
+	stream_state_s ss;
+	int f;
+	pict_data_s cur_picture;
+	/* Pointer blocks pointing to original frame data in frame data buffers
+	 */
+	uint8_t *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
+	
+
+	fprintf( stderr, "DEBUG: split len = %lld\n", ss.seq_split_length );
+	
+	/* Allocate buffers for picture transformation */
+	cur_picture.qblocks =
+		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
+	cur_picture.mbinfo = 
+		(struct mbinfo *)bufalloc(mb_per_pict*sizeof(struct mbinfo));
+
+	cur_picture.blocks =
+		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
+
+	/* Initialise picture buffers for simple single-threaded encoding 
+	   loop */
+	cur_picture.oldorg = oldorgframe;
+	cur_picture.neworg = neworgframe;
+	cur_picture.oldref = oldrefframe;
+	cur_picture.newref = newrefframe;
+	cur_picture.pred = predframe;
+
+	init_seq(0);
+	
+	ss.i = 0;		                /* Index in current MPEG sequence */
+	ss.g = 0;						/* Index in current GOP */
+	ss.b = 0;						/* B frames since last I/P */
+	ss.gop_length = 0;				/* Length of current GOP init 0
+								   0 force new GOP at start 1st sequence */
+	ss.seq_start_frame = 0;		/* Index start current sequence in
+								 input stream */
+	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
+	ss.seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
+	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
+	fprintf( stderr, "DEBUG: split len = %lld\n", ss.seq_split_length );
+
+	frame_num = 0;              /* Encoding number */
+
+	gop_start(&ss);
+
+	/* loop through all frames in encoding/decoding order */
+	while( frame_num<nframes )
+	{
+
+		/* Each bigroup starts once all the B frames of its predecessor
+		   have finished.
+		*/
+		if ( ss.b == 0)
+		{
+			flip_ref_images( &cur_picture );
+			I_or_P_frame_struct(&ss, &cur_picture);
+		}
+		else
+		{
+			/* B frame: no need to change the reference frames.
+			   The current frame data pointers are a 3rd set
+			   seperate from the reference data pointers.
+			*/
+			cur_picture.curorg = auxorgframe;
+			cur_picture.curref = auxframe;
+
+			B_frame_struct( &ss, &cur_picture );
+		}
+
+
+		printf( "(%d %d %d) ",
+				ss.i-ss.g+cur_picture.temp_ref, 
+				cur_picture.temp_ref+ss.gop_start_frame, 
+				cur_picture.temp_ref );
+		if( readframe(cur_picture.temp_ref+ss.gop_start_frame,cur_picture.curorg) )
+		{
+			fprintf( stderr, "Corrupt frame data aborting!\n" );
+			exit(1);
+		}
+
+
+        if (fieldpic)
+		{
+			set_pic_params( opt_topfirst ? TOP_FIELD : BOTTOM_FIELD,
+							ss.i, ss.b,   0, &cur_picture );
+			encodepict( &cur_picture );
+
+			set_pic_params( opt_topfirst ? BOTTOM_FIELD : TOP_FIELD,
+							ss.i, ss.b,  1, &cur_picture );
+			encodepict( &cur_picture );
+		}
+		else
+		{
+			set_pic_params( FRAME_PICTURE,
+							ss.i, ss.b,   0, &cur_picture );
+			encodepict( &cur_picture );
+		}
+
+#ifdef DEBUG
+		writeframe(f+ss.seq_start_frame,cur_picture.curref);
+#endif
+
+		next_seq_state( &ss );
+		++frame_num;
 	}
 	putseqend();
 }

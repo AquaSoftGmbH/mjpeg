@@ -98,26 +98,6 @@ typedef enum coord { x_crd, y_crd} coord_e;
 typedef enum mc_dir { fwd, bwd } mc_dir_e;
 typedef enum field { top, bot }  field_e;
 
-/* Per frame Motion estimation data set 
- * oldorg: original frame for forward prediction (P and B frames)
- * neworg: original frame for backward prediction (B frames only)
- * oldref: reconstructed frame for forward prediction (P and B frames)
- * newref: reconstructed frame for backward prediction (B frames only)
- * cur:    current original frame (the one for which the prediction is formed)
- * curref: current reconstructed frame (to predict second field from first)
- * sxf,syf: forward search window (frame coordinates)
- * sxb,syb: backward search window (frame coordinates)
-*/
-
-struct motion_comp
-{
-	uint8_t **oldorg, **neworg;
-	uint8_t **oldref, **newref;
-	uint8_t **cur, **curref;
-	int sxf, syf, sxb, syb;
-};
-
-typedef struct motion_comp motion_comp_s;
 
 
 /* macroblock information */
@@ -157,6 +137,16 @@ struct motion_data {
 
 struct pict_data
 {
+
+	/* picture encoding source data */
+	uint8_t **oldorg, **neworg;	/* Images for Old and new reference picts */
+	uint8_t **oldref, **newref;	/* original and reconstructed */
+	uint8_t **curorg, **curref;	/* Images for current pict orginal and*/
+								/* reconstructed */
+	uint8_t **pred;				/* Prediction based on MC (if any) */
+	int sxf, syf, sxb, syb;		/* MC search limits. */
+	int secondfield;			/* Second field of field frame */
+	int ipflag;					/* P pict in IP frame */
 
 	/* picture structure (header) data */
 

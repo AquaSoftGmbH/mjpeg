@@ -72,14 +72,14 @@ double *pv,*pe;
 
 #endif
 
-void calcSNR(org,rec)
-unsigned char *org[3];
-unsigned char *rec[3];
+void calcSNR(pict_data_s *picture)
 {
 
 #ifdef OUTPUT_STAT
-  int w,h,offs;
-  double v,e;
+	uint8_t **org = picture->curorg;
+	uint8_t **rec = picture->curref;
+	int w,h,offs;
+	double v,e;
 
 
   w = horizontal_size;

@@ -100,11 +100,12 @@ void init_transform()
 
 /* subtract prediction and transform prediction error */
 void transform(
-	pict_data_s *picture,
-	uint8_t *pred[], uint8_t *cur[]
+	pict_data_s *picture
 	)
 {
 	int i, j, i1, j1, k, n, cc, offs, lx;
+	uint8_t **cur = picture->curorg;
+	uint8_t **pred = picture->pred;
 	mbinfo_s *mbi = picture->mbinfo;
 	int16_t (*blocks)[64] = picture->blocks;
 
@@ -177,11 +178,11 @@ void transform(
 
 
 /* inverse transform prediction error and add prediction */
-void itransform(
-	pict_data_s *picture,
-	uint8_t *pred[], uint8_t *cur[])
+void itransform(pict_data_s *picture)
 {
     mbinfo_s *mbi = picture->mbinfo;
+	uint8_t **cur = picture->curref;
+	uint8_t **pred = picture->pred;
 	/* Its the quantised / inverse quantised blocks were interested in
 	   for inverse transformation */
 	int16_t (*blocks)[64] = picture->qblocks;
@@ -293,11 +294,11 @@ static void sub_pred(pred,cur,lx,blk)
  */
 
 void dct_type_estimation(
-	pict_data_s *picture,
-	uint8_t *pred, uint8_t *cur
+	pict_data_s *picture
 	)
 {
-
+	uint8_t *cur = picture->curorg[0];
+	uint8_t *pred = picture->pred[0];
 	struct mbinfo *mbi = picture->mbinfo;
 
 	int16_t blk0[128], blk1[128];
