@@ -1,13 +1,13 @@
 /*
     lavtrans - takes file arguments like lavplay
-               (AVI/Quicktime files and Edit Lists)
+               (AVI/Quicktime/movtar files and Edit Lists)
                and produces a new file or a bunch of
                JPEG images from that.
 
-    Mostly intented to flaten the content of Edit Lists
+    Mostly intended to flaten the content of Edit Lists
 
     Copyright (C) 2000 Rainer Johanni <Rainer@Johanni.de>
-
+    Additions by Gernot Ziegler <gz@lysator.liu.se>
 
     Usage: lavtrans [options] filename [filename ...]
 
@@ -18,10 +18,11 @@
                Output must fit into 1 file (2 GB limit!!!)
                unless single images are produced.
 
-    -f [aqiw]  Format of output
+    -f [amqiw]  Format of output
                a: AVI (no selection of even/odd frame first possible)
                q: Quicktime (for interlaced input, all input files
                              also must be Quicktime)
+               m: movtar format
                i: single images, "name" in the -o option must be a vaild
                   format string for sprintf!
                w: WAV file (of sound only)
@@ -29,7 +30,7 @@
     Both options are mandatory!
 
     Filename options like in lavplay (optional +p/+n followed by
-    an arbitrary number of AVI / Quicktime files or edit lists).
+    an arbitrary number of AVI / Quicktime / movtar files or edit lists).
 
 
 
@@ -93,6 +94,7 @@ void Usage(char *str)
    fprintf(stderr,"Usage: %s -o <outputfile> -f [aqiw] filenames\n",str);
    fprintf(stderr,"          -f a    output AVI file\n");
    fprintf(stderr,"          -f q    output Quicktime file\n");
+   fprintf(stderr,"          -f m    output movtar file\n");
    fprintf(stderr,"          -f i    output single JPEG images, "
                   "-o option mut be a valid format string\n");
    fprintf(stderr,"          -f w    output WAV file (sound only!)\n");
@@ -135,7 +137,7 @@ main(int argc, char ** argv)
    }
 
    if(outfile==0 || format==0) Usage(argv[0]);
-   if(format!='a' && format!='q' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
+   if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
    if(optind>=argc) Usage(argv[0]);
 
    /* Get and open input files */
@@ -151,7 +153,7 @@ main(int argc, char ** argv)
       exit(1);
    }
 
-   if(format == 'q' || format == 'a' || format == 'A')
+   if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
    {
       outfd = lav_open_output_file(outfile,format,
                                    el.video_width,el.video_height,el.video_inter, 
@@ -216,6 +218,7 @@ main(int argc, char ** argv)
          case 'a':
          case 'A':
          case 'q':
+         case 'm':
             res = lav_write_frame(outfd,vbuff,nv,1);
             if(el.has_audio && res==0)
                res = lav_write_audio(outfd,abuff,na/el.audio_bps);
@@ -259,7 +262,7 @@ main(int argc, char ** argv)
       }
    }
 
-   if(format == 'q' || format == 'a' || format == 'A')
+   if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
    {
       res = lav_close(outfd);
       if(res)

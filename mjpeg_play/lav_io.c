@@ -827,7 +827,7 @@ lav_file_t *lav_open_input_file(char *filename)
 	else
 	  {
 	    /* It is a movtar file */
-	    lav_fd->movtar_fd = movtar_open(filename,1,0);
+	    lav_fd->movtar_fd = movtar_open(filename, 1, 0, 0x0);
 	    video_format = 'm'; /* for error messages */
 	    if(!lav_fd->movtar_fd) { free(lav_fd); return 0; }
 	    lav_fd->avi_fd = 0;
