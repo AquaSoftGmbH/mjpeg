@@ -28,11 +28,11 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 
-#define	PIXEL_AVG \
-	diff = reference - *++pixel; \
-	if (diff < threshold && diff > -threshold) { \
-			total += *pixel; \
-			count++; \
+#define PIXEL_AVG \
+        diff = reference - *++pixel; \
+        if (diff < threshold && diff > -threshold) { \
+                        total += *pixel; \
+                        count++; \
 	}
 
 int verbose = 1;
