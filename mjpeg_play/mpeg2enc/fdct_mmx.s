@@ -136,7 +136,7 @@ fdct_mmx:
     ; for ( i = 0; i < 2; i = i + 1)
     ; the for-loop is executed twice.  We are better off unrolling the 
     ; loop to avoid branch misprediction.
-mmx32_fdct_col03: 
+    ; .mmx32_fdct_col03: 
     movq mm0, [x1] ; 0 ; x1
      ;;
 
@@ -254,7 +254,7 @@ mmx32_fdct_col03:
     movq [y5], mm5 ; 5 ; save y5
 
 
-mmx32_fdct_col47: ; begin processing last four columns
+    ; .mmx32_fdct_col47: ; begin processing last four columns
     movq mm0, [x1] ; 0 ; x1
     ;;
     movq [y7], mm3 ; 3 ; save y7 (columns 0-4)
@@ -397,7 +397,7 @@ mmx32_fdct_col47: ; begin processing last four columns
 	lea round_frw_row,  [fdct_r_row_PIC];
 		; for ( x = 8; x > 0; --x )  ; transform one row per iteration
 		; ---------- loop begin
-lp_mmx_fdct_row1:
+.lp_mmx_fdct_row1:
     movd mm5,  [INP+12]; ; mm5 = 7 6
 
     punpcklwd mm5,  [INP+8] ; mm5 =  5 7 4 6
@@ -501,7 +501,7 @@ lp_mmx_fdct_row1:
     movq  [OUT-8], mm6 ; 7 ; save y7 y6 y5 y4
 
     cmp edi, 0x00;
-    jg near lp_mmx_fdct_row1;  ; begin fdct processing on next row
+    jg near .lp_mmx_fdct_row1;  ; begin fdct processing on next row
 
 		;; 
 		;; Tidy up and return

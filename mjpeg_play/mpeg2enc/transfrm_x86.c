@@ -33,6 +33,8 @@
 /* Routines written  in pure (NASM) assembler */
 
 extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+extern void init_fdct_sse(void);
+extern void fdct_sse( int16_t * blk );
 extern void fdct_test( int16_t * blk );
 
 extern void idct_mmx( int16_t * blk );
@@ -272,6 +274,8 @@ void init_x86_transform()
 	psub_pred = sub_pred_mmx;
 	pfield_dct_best = field_dct_best_mmx;
         if( flags & ACCEL_X86_SSE ) {
+            init_fdct_sse();
+            pfdct = fdct_sse;
             pidct = idct_sse;
             opt_type1 = "SSE and ";
         }

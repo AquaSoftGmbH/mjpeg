@@ -236,6 +236,7 @@ typedef	union {
 #define movaps_m2r(var, reg) mmx_m2r( movaps, var, reg )
 #define movaps_r2r(reg1, reg2) mmx_r2r( movaps, reg1, reg2 )
 #define movlps_m2r(var, reg) mmx_m2r( movlps, var, reg )
+#define movlps_r2m(reg, var) mmx_r2m( movlps, reg, var )
 #define movlhps_m2r(var, reg) mmx_m2r( movlhps, var, reg )
 #define movlhps_r2r(reg1, reg2) mmx_r2r( movlhps, reg1, reg2 )
 #define movhlps_r2r(reg1, reg2) mmx_r2r( movhlps, reg1, reg2 )

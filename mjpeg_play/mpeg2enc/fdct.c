@@ -1,4 +1,4 @@
-/* fdctref.c, forward discrete cosine transform, double precision           */
+/* fdct.c, forward discrete cosine transform, double precision           */
 
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
@@ -76,7 +76,12 @@ void fdct_daan(int16_t *block);
 void init_fdct (void);
 void fdct (int16_t *block);
 
+void init_fdct_sse( void );
+void fdct_sse(int16_t *block);
+
 extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+
+#ifdef FDCTTEST
 
 void init_fdct_daan( void )
 {
@@ -220,7 +225,6 @@ void fdct_daan(int16_t *block)
 		block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.5);
 }
 
-#ifdef FDCTTEST
 struct dct_test {
     int bounds,maxerr,iter;
     int me[64],mse[64];
@@ -293,12 +297,14 @@ void fdct_test(int16_t *block)
     memcpy(origblock,block,64*sizeof(int16_t));
 
     fdct_ref(origblock);
+    // fdct_daan(origblock);
+    // fdct_sse(origblock);
     // fdct(origblock);
 
-    // fdct(block);
-    fdct_daan(block);
+    fdct(block);
+    // fdct_daan(block);
     // fdct_mmx(block);
-    // fdct_sse(block);
+    // fdct_mmx(block);
 
     dct_test_and_print(&fdct_res,2048,origblock,block);
 }
