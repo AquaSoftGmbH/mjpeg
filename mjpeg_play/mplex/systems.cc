@@ -581,9 +581,10 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     if( type == PRIVATE_STR_1 )
     {
         unsigned int syncwords_found;
-        for( i = 0; i < actual_packet_data_size-1; ++i )
+        for( i = 0; i < actual_packet_data_size; ++i )
         {
-            if( index[i] == 0x0b && index[i+1] )
+            if( index[i] == 0x0b && 
+                i+1 < actual_packet_data_size && index[i+1] == 0x77 )
             {
                 if( syncwords_found == 0 )
                 {

@@ -109,6 +109,7 @@ void OutputStream::InitSyntaxParameters()
 {
 	video_buffer_size = 0;
 	seg_starts_with_video = false;
+	audio_buffer_size = 4 * 1024;
 	switch( opt_mux_format  )
 	{
 	case MPEG_FORMAT_VCD :
@@ -303,7 +304,6 @@ void OutputStream::InitSyntaxParameters()
 		break;
 	}
 	
-	audio_buffer_size = 4 * 1024;
 }
 
 /*
@@ -635,8 +635,9 @@ void OutputStream::OutputPrefix( )
         /* It is then followed up by a pair of PRIVATE_STR_2 packets which
             we keep empty 'cos we don't know what goes there...
         */
-        break;
     }
+    break;
+
     default :
         /* Create the in-stream header in case it is needed */
         psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
@@ -1200,7 +1201,7 @@ void OutputStream::OutputDVDPriv2 (	)
     assert( sector_size == 2048 );
     PS_Stream::BufferSectorHeader( sector_buf,
                                 pack_header_ptr,
-                                sys_header_ptr,
+                                &sys_header,
                                 index );
     PS_Stream::BufferPacketHeader( index,
                                    PRIVATE_STR_2,

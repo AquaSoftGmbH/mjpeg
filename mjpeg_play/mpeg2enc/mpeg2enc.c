@@ -62,7 +62,7 @@
 #include "motionsearch.h"
 #include "format_codes.h"
 #include "mpegconsts.h"
-
+#include "fastintfns.h"
 int verbose = 1;
 
 /* private prototypes */
@@ -238,7 +238,7 @@ static void set_format_presets()
 		mjpeg_info("SVCD standard settings selected\n");
 		param_bitrate = 2500000;
 		param_min_GOP_size = 6;
-		param_max_GOP_size = 18;
+		param_max_GOP_size = 15;
 		param_video_buffer_size = 230;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
@@ -247,7 +247,7 @@ static void set_format_presets()
 		if( param_fieldenc == -1 )
 			param_fieldenc = 3;
 		if( param_quant == 0 )
-			param_quant = 12;
+			param_quant = 8;
 		param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
 		break;
@@ -346,9 +346,29 @@ static void set_format_presets()
 		param_min_GOP_size = 1;
 		param_max_GOP_size = 1;
 		break;
+
+
+	case MPEG_FORMAT_DVD :
+		mjpeg_info( "Selecting DVD output profile\n");
+		mjpeg_info("SVCD standard settings selected\n");
+		
+		if( param_bitrate == 0 )
+			param_bitrate = 3800000;
+		if( param_fieldenc == -1 )
+			param_fieldenc = 3;
+		if( param_quant == 0 )
+			param_quant = 12;
+		param_min_GOP_size = 6;
+		param_max_GOP_size = 15;
+		param_video_buffer_size = 230;
+		param_mpeg = 2;
+		if( param_fieldenc == -1 )
+			param_fieldenc = 3;
+		if( param_quant == 0 )
+			param_quant = 10;
+		param_seq_hdr_every_gop = 1;
+		break;
 	}
-	if( param_fieldenc == -1 )
-		param_fieldenc = 0;
 }
 
 static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
@@ -1417,8 +1437,7 @@ static void init_mpeg_parms(void)
 
 static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 {
-	int x = qmat_pos % 8;
-	int y = qmat_pos / 8;
+	int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
 	int qboost = 1024;
 
 	if( ! param_hfnoise_quant )
@@ -1426,13 +1445,11 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 		return orgquant;
 	}
 
-	/* Maximum 50% quantisation boost for HF components... */
-	if( x > 4 )
-		qboost += (256*(x-4)/3);
-	if( y > 4 )
-		qboost += (256*(y-4)/3);
+	/* Maximum 150% quantisation boost for HF components... */
+	qboost = 256+(384/8)*orgdist;
 
-	return (orgquant * qboost + 512)/ 1024;
+
+	return (orgquant * qboost)/ 256;
 }
 
 static void init_quantmat()
