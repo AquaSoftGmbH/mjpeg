@@ -85,9 +85,9 @@ static void resample(  int fdIn
   int                src_frame_counter ;
   int                dest_frame_counter ;
   // To perform bresenham resampling
-  int                srcInc ;
-  int                dstInc ;
-  int                currCount ;
+  uintmax_t          srcInc ;
+  uintmax_t          dstInc ;
+  uintmax_t          currCount ;
 
   // Allocate memory for the YUV channels
   frame_data_size = y4m_si_get_height(inStrInfo) * y4m_si_get_width(inStrInfo);
@@ -101,8 +101,8 @@ static void resample(  int fdIn
   // Initialize counters
   mjpeg_info( "Converting from %d:%d to %d:%d",  src_frame_rate.n,src_frame_rate.d,frame_rate.n,frame_rate.d  );
 
-  srcInc = src_frame_rate.n * frame_rate.d ;
-  dstInc = frame_rate.n * src_frame_rate.d ;
+  srcInc = (uintmax_t)src_frame_rate.n * (uintmax_t)frame_rate.d ;
+  dstInc = (uintmax_t)frame_rate.n * (uintmax_t)src_frame_rate.d ;
 
   write_error_code = Y4M_OK ;
 
