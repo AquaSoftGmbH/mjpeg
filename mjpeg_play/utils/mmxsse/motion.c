@@ -53,7 +53,6 @@ void enable_mmxsse_motion(int cpucap)
     {
         mjpeg_info( "SETTING MMX for MOTION!");
 
-#ifdef HAVE_ASM_NASM
         SIMD_MMX(sad_sub22);
 
         SIMD_MMX(sad_sub44);
@@ -65,7 +64,6 @@ void enable_mmxsse_motion(int cpucap)
         SIMD_MMX(sad_10);
 
         SIMD_MMX(sad_11);
-#endif
 
         SIMD_MMX(bsad);
 
