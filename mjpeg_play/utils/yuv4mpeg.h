@@ -31,6 +31,7 @@
 #define Y4M_ERR_HEADER  3
 #define Y4M_ERR_BADTAG  4
 #define Y4M_ERR_MAGIC   5
+#define Y4M_EOF     6
 
 /* generic 'unknown' value for integer parameters */
 #define Y4M_UNKNOWN -1
@@ -91,7 +92,7 @@ void y4m_free_frame_info(y4m_frame_info_t *i);
 
 
 /* convenient blocking read/write */
-size_t y4m_read(int fd, char *buf, size_t len);
+size_t y4m_read(int fd, char *buf, size_t len, int *eof);
 size_t y4m_write(int fd, char *buf, size_t len);
 
 

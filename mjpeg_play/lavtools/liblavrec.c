@@ -122,10 +122,10 @@ typedef struct {
    double sync_lim;                           /* upper limit of 'out-of-sync' - if higher, quit */
    video_capture_stats* stats;                /* the stats */
 
-   long   MBytes_fs_free;                     /* Free disk space when that was last checked */
-   long   bytes_output_cur;                   /* Bytes output to the current output file */
-   long   bytes_last_checked;                 /* Number of bytes that were output when the
-                                                   free space was last checked */
+	uint64_t   MBytes_fs_free;                     /* Free disk space when that was last checked */
+	uint64_t   bytes_output_cur;                   /* Bytes output to the current output file */
+   uint64_t   bytes_last_checked;                 /* Number of bytes that were output when the
+												 free space was last checked */
    int    mixer_volume_saved;                 /* saved recording volume before setting mixer */
    int    mixer_recsrc_saved;                 /* saved recording source before setting mixer */
    int    mixer_inplev_saved;                 /* saved output volume before setting mixer */
@@ -447,11 +447,11 @@ static int lavrec_autodetect_signal(lavrec_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
-static long lavrec_get_free_space(video_capture_setup *settings)
+static uint64_t lavrec_get_free_space(video_capture_setup *settings)
 {
-   long blocks_per_MB;
+   uint64_t blocks_per_MB;
    struct statfs statfs_buf;
-   long MBytes_fs_free;
+   int64_t MBytes_fs_free;
 
 #ifndef IRIX
    /* check the disk space again */
@@ -558,7 +558,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* Check if we have to open a new output file */
-   if (settings->output_status > 0 && (settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
+   if (settings->output_status > 0 && (uint64_t)(settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
    {
       lavrec_msg(LAVREC_MSG_INFO, info,
          "Max filesize reached, opening next output file");
@@ -1483,7 +1483,7 @@ static void lavrec_wait_for_start(lavrec_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
-static int lavrec_queue_buffer(lavrec_t *info, int *num)
+static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -1543,9 +1543,10 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
 
 static void lavrec_record(lavrec_t *info)
 {
-   int x, y, write_frame, nerr, nfout, jpegsize=0;
-   video_capture_stats stats;
-   unsigned int first_lost;
+	unsigned long frame_cnt;
+	int x,y, write_frame, nerr, nfout, jpegsize=0;
+	video_capture_stats stats;
+	unsigned int first_lost;
    long audio_offset = 0;
    double time;
    struct timeval first_time;
@@ -1563,8 +1564,8 @@ static void lavrec_record(lavrec_t *info)
    /* Queue all buffers, this also starts streaming capture */
    if (info->software_encoding)
    {
-      x = 1;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
+	   frame_cnt = 1;
+      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
       {
          lavrec_msg(LAVREC_MSG_WARNING, info,
             "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
@@ -1585,9 +1586,11 @@ static void lavrec_record(lavrec_t *info)
          lavrec_change_state(info, LAVREC_STATE_STOP);
       }
    }
-   for (x=0;x<(info->software_encoding?settings->softreq.frames:settings->breq.count);x++)
+   for (frame_cnt=0; 
+		frame_cnt<(info->software_encoding?settings->softreq.frames:settings->breq.count);
+		frame_cnt++)
    {
-      if (!lavrec_queue_buffer(info, &x))
+      if (!lavrec_queue_buffer(info, &frame_cnt))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error queuing buffers: %s", (char *)sys_errlist[errno]);
@@ -1672,11 +1675,11 @@ static void lavrec_record(lavrec_t *info)
       {
 
          nfout = 1;
-         x = bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
+         frame_cnt = bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
          if (info->sync_correction > 0) 
-            nfout += x - stats.num_lost; /* lost since last sync */
-         stats.stats_changed = (stats.num_lost != x);
-         stats.num_lost = x;
+            nfout +=  frame_cnt - stats.num_lost; /* lost since last sync */
+         stats.stats_changed = (stats.num_lost != frame_cnt);
+         stats.num_lost = frame_cnt;
 
          /* Check if we have to insert/delete frames to stay in sync */
          if (info->sync_correction > 1)

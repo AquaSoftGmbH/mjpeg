@@ -430,6 +430,15 @@ static int check_param_constraints()
 		++nerr;
 	}
 
+	if( param_preserve_B && 
+		( param_min_GOP_size % param_Bgrp_size != 0 ||
+		  param_max_GOP_size % param_Bgrp_size != 0 )
+		)
+	{
+		mjpeg_error("Preserving I/P frame spacing is impossible if min and max GOP sizes are\n" );
+		mjpeg_error_exit1("Not both divisible by %d\n", param_Bgrp_size );
+	}
+
 	if(	( param_format != MPEG_FORMAT_VCD_STILL &&
 		  param_format != MPEG_FORMAT_SVCD_STILL &&
 		  param_min_GOP_size < 2*param_Bgrp_size 
@@ -541,9 +550,9 @@ int main(argc,argv)
 
 		case 'M':
 			param_num_cpus = atoi(optarg);
-			if(param_num_cpus<1 || param_num_cpus>32)
+			if(param_num_cpus<0 || param_num_cpus>32)
 			{
-				mjpeg_error("-M option requires arg 1..32\n");
+				mjpeg_error("-M option requires arg 0..32\n");
 				++nerr;
 			}
 			break;
@@ -805,10 +814,17 @@ static void init_encoder()
 	ctl_act_boost = (param_act_boost+1.0);
 	switch( param_num_cpus )
 	{
+
+	case 0 : /* Special case for debugging... turns of multi-threading */
+		ctl_max_encoding_frames = 1;
+		ctl_refine_from_rec = true;
+		ctl_parallel_read = false;
+		break;
+
 	case 1 :
 		ctl_max_encoding_frames = 1;
-		ctl_refine_from_rec = 1;
-		ctl_parallel_read = false;
+		ctl_refine_from_rec = true;
+		ctl_parallel_read = true;
 		break;
 	case 2:
 		ctl_max_encoding_frames = 2;

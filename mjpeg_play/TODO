@@ -1,23 +1,14 @@
 IMMEDIATE
 
-Check mpeg2enc buffering thread stuff works.
-
 Merge the interlace fixes.
 
 Have a look over and test the denoiser.
-
-Add stills muxing to mplex
-
-Add a stills mode to mpeg2enc
-
 
 
 Fix all the BUGS (see BUGS) of course!
 
 
 TASKS OUTSTANDING
-
-Add support for large files.
 
 Code hygiene  basically: GNU guidelines!
 Basically if you want a nice example of how it should be done take
@@ -43,24 +34,17 @@ a look at the source code for vcdimager!
 
 Medium
 
-- Move the CPU detection code into utils and use the same throughout.
-
 - Find a proper SSE DCT and iDCT.
 
-- Add support for field pictures to mplex. Not urgent since for most
+- Test support for field pictures to mplex. Not urgent since for most
   sources frame pictures with field DCT/motion compensation seems to
   give better results.
 
-- Get lavtools to use the new up-to-date headers from the drivers...
-
-- Add support for encoding raw (YUV and RGB) AVI files.  	
 
 - Add the code to do DVD multiplexing into mplex.  This is
 mainly the addition of facilities to mux in AC-3 as stream PRIVATE1.
 As ever Brent Byeler's "bbmpeg" is a good source here.
 
-- Get rid of the silly compulsorary two-pass thing in mplex, replace with a
-look-ahead reader instead.
 
 Major
 

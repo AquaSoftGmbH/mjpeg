@@ -204,7 +204,7 @@ static void stats(video_playback_stats *stats)
     m = (stats->frame / (60 * fps)) % 60;
     s = (stats->frame / fps) % 60;
     f = stats->frame % fps;
-    printf("%d:%2.2d:%2.2d.%2.2d (%6.6d/%6.6ld) - Speed: %c%d, Norm: %s, Diff: %lf\r",
+    printf("%d:%2.2d:%2.2d.%2.2d (%6.6d/%6.6ld) - Speed: %c%d, Norm: %s, Diff: %f\r",
       h,m,s,f,stats->frame, info->editlist->video_frames,
       stats->play_speed>0?'+':(stats->play_speed<0?'-':' '), abs(stats->play_speed),
       stats->norm==1?"NTSC":"PAL", stats->tdiff);

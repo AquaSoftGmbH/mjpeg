@@ -40,16 +40,22 @@
  *************************************************************************/
 
 
-size_t y4m_read(int fd, char *buf, size_t len)
+size_t y4m_read(int fd, char *buf, size_t len, int *eof)
 {
    size_t n;
-
+   int was_eof = 1;
    while (len > 0) {
      n = read(fd, buf, len);
-     if (n <= 0) return len;  /* return amount left to read */
+     if (n <= 0)
+	 {
+		 *eof = was_eof;
+		 return len;  /* return amount left to read */
+	 }
      buf += n;
      len -= n;
+	 was_eof = 0;
    }
+   *eof = 0;
    return 0;
 }
 
@@ -283,13 +289,18 @@ int y4m_read_frame_header(int fd, y4m_frame_info_t *i)
    char line[Y4M_LINE_MAX];
    char *p;
    int n;
-
+   int eof;
    /* This is more clever than read_stream_header...
        Try to read "FRAME\n" all at once, and don't try to parse
        if nothing else is there...
    */
-  if (y4m_read(fd, line, sizeof(Y4M_FRAME_MAGIC)-1+1))
-    return Y4M_ERR_SYSTEM;
+  if (y4m_read(fd, line, sizeof(Y4M_FRAME_MAGIC)-1+1, &eof))
+  {
+	  if( eof )
+		  return Y4M_EOF;
+	  else
+		  return Y4M_ERR_SYSTEM;
+  }
   if (strncmp(line, Y4M_FRAME_MAGIC, sizeof(Y4M_FRAME_MAGIC)-1))
     return Y4M_ERR_MAGIC;
   if (line[sizeof(Y4M_FRAME_MAGIC)-1] == '\n')
@@ -339,7 +350,8 @@ int y4m_read_frame(int fd, y4m_stream_info_t *si,
   int v, h, i;
   unsigned char *p;
   int err;
-  
+  int dummy;
+
   /* read frame header */
   if ((err = y4m_read_frame_header(fd, fi)) != Y4M_OK) return err;
 
@@ -347,15 +359,15 @@ int y4m_read_frame(int fd, y4m_stream_info_t *si,
   v = si->height;
   /* Read luminance scanlines */
   for (i = 0, p = yuv[0]; i < v; i++, p += h)
-    if (y4m_read(fd, p, h)) return Y4M_ERR_SYSTEM;
+    if (y4m_read(fd, p, h, &dummy)) return Y4M_ERR_SYSTEM;
   
   v /= 2;
   h /= 2;
   /* Read chrominance scanlines */
   for (i = 0, p = yuv[1]; i < v; i++, p += h)
-    if (y4m_read(fd, p, h)) return Y4M_ERR_SYSTEM;
+    if (y4m_read(fd, p, h, &dummy)) return Y4M_ERR_SYSTEM;
   for (i = 0, p = yuv[2]; i < v; i++, p += h)
-    if (y4m_read(fd, p, h)) return Y4M_ERR_SYSTEM;
+    if (y4m_read(fd, p, h, &dummy)) return Y4M_ERR_SYSTEM;
   return Y4M_OK;
 }
 
