@@ -18,7 +18,8 @@ MAINS		= $(BINARIES:$X=_main$O)
 bin_SCRIPTS	= $(BINARIES)
 CLEANFILES	= $(BINARIES) $(MAINS) $L
 SOURCES		= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h timecode.h timecode.h
-EXTRA_DIST	= README.yuvkineco
+EXTRA_DIST	= README.yuvkineco .cvsignore
+MAINTAINERCLEANFILES = Makefile.in
 
 %$X: %_main$O $L(%$O $(STDOBJS))
 	$(CC) $(LDFLAGS) -o $@ $< $L

@@ -1,5 +1,8 @@
 # Makefile for lavtools
 
+EXTRA_DIST = .cvsignore
+MAINTAINERCLEANFILES = Makefile.in
+
 INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
 	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) -I /usr/X11R6/include/X11 \
@@ -13,7 +16,7 @@ lib_LTLIBRARIES = liblavfile.la liblavjpeg.la liblavrec.la liblavplay.la
 
 liblavincludedir = $(includedir)/mjpegtools
 liblavinclude_HEADERS = editlist.h lav_io.h jpegutils.h frequencies.h \
-	liblavrec.h liblavplay.h
+	liblavrec.h liblavplay.h audiolib.h
 
 LAV_ALL_LIB_OPTS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
@@ -89,7 +92,7 @@ lav2divx_LDADD = -L$(top_srcdir)/utils -lutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
 	$(AVIPLAY_LIBS)
 
-lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c $(lav_headers)
+lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lutils 
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c $(lav_headers)

@@ -1,5 +1,8 @@
 # Process this file with automake to produce Makefile.in
 
+EXTRA_DIST = .cvsignore
+MAINTAINERCLEANFILES = Makefile.in
+
 INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
 bin_PROGRAMS = mp2enc

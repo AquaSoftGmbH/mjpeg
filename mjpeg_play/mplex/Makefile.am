@@ -1,7 +1,11 @@
 # Process this file with Automake to produce Makefile.in
 
 EXTRA_DIST = \
-	README  	INSTRUCT	TODO
+	README  	INSTRUCT	TODO \
+	.cvsignore
+#	mpeg_systems_paper_0.99.ps.gz
+
+MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
@@ -18,6 +22,7 @@ mplex_SOURCES = \
 	systems.cc 		systems.hh \
 	vector.cc 	vector.hh \
 	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh
+#	InElemStream.hh
 
 mplex_LDADD = -L$(top_srcdir)/utils -lutils -lm 
 
