@@ -1,6 +1,6 @@
 /*
  *
- * qblockdist_sse.
+ * qblock_sad_x86.c
  * Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
  *
  * Fast block sum-absolute difference computation for a rectangular area 4*x

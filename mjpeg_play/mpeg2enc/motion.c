@@ -2272,7 +2272,7 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 
 extern int rcdist_mmx( unsigned char *org, uint16_t *sums, int lx, int h );
   
-static int build_rcquad_heap( int ilow, int ihigh, int jlow, int jhigh, 
+static int build_rcsub44_heap( int ilow, int ihigh, int jlow, int jhigh, 
 unsigned char *org, unsigned char *blk, 
 uint16_t *blkcsums, *blkrsums,
 							  int lx, int h )
@@ -2284,27 +2284,27 @@ uint16_t *blkcsums, *blkrsums,
 	
 	
 	rcsums( blk, blksums, lx, h );
-	quad_heap_size = 0;
+	sub44_heap_size = 0;
     /* Invariant:  orgblk = org+(i)+qlx*(j) */
     orgblk = org+(ilow)+lx*(jlow);
-    
+
 	for( j = jlow; j <= jhigh; j += 4 )
 	  {
 		old_orgblk = orgblk;
 		for( i = ilow; i <= ihigh; i += 4 )
 		  {
-		    quad_match_heap[quad_heap_size].index = quad_heap_size;
-		    quad_match_heap[quad_heap_size].weight = rcdist_mmx( orgblk,blksums,lx,h);
-		    quad_matches[quad_heap_size].dx = i;
-		    quad_matches[quad_heap_size].dy = j;
-		    ++quad_heap_size;
+		    sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+		    sub44_match_heap[sub44_heap_size].weight = rcdist_mmx( orgblk,blksums,lx,h);
+		    sub44_matches[sub44_heap_size].dx = i;
+		    sub44_matches[sub44_heap_size].dy = j;
+		    ++sub44_heap_size;
 			orgblk += 4;
 		  }
 		orgblk = old_orgblk + lx*4;
 	  }
 	  
-	heapify( quad_match_heap, quad_heap_size );
-	return quad_heap_size;
+	heapify( sub44_match_heap, sub44_heap_size );
+	return sub44_heap_size;
 
 }
 
@@ -2314,9 +2314,9 @@ uint16_t *blkcsums, *blkrsums,
 */
 
 
-static int build_rchalf_heap(int ihigh, int jhigh, 
+static int build_rcsub22_heap(int ihigh, int jhigh, 
 					        unsigned char *org,  unsigned char *blk, 
-							int lx, int h,  int searched_quad_size )
+							int lx, int h,  int searched_sub44_size )
 {
   int k,s;
   sortelt distrec;
@@ -2328,60 +2328,60 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 	
   rcsums( blk, blksums, lx, h ); 
   
-  half_heap_size = 0;
-  for( k = 0; k < searched_quad_size; ++k )
+  sub22_heap_size = 0;
+  for( k = 0; k < searched_sub44_size; ++k )
 	{
-	  heap_extract( quad_match_heap, &quad_heap_size, &distrec );
-	  matchrec = quad_matches[distrec.index];
+	  heap_extract( sub44_match_heap, &sub44_heap_size, &distrec );
+	  matchrec = sub44_matches[distrec.index];
 	  orgblk =  org + (matchrec.dy>>1)*lx +(matchrec.dx);
 		  
-	  half_matches[half_heap_size].dx = matchrec.dx;
-	  half_matches[half_heap_size].dy = matchrec.dy;
+	  sub22_matches[sub22_heap_size].dx = matchrec.dx;
+	  sub22_matches[sub22_heap_size].dy = matchrec.dy;
 	  s = rcdist_mmx( orgblk,blksums,lx,h);
-	  half_match_heap[half_heap_size].weight = s;
-	  half_match_heap[half_heap_size].index = half_heap_size;
+	  sub22_match_heap[sub22_heap_size].weight = s;
+	  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
 
 	  if( s < best_fast_dist )
 		  best_fast_dist = s;
-	  ++half_heap_size;
+	  ++sub22_heap_size;
 	  dist_sum += s;
 	  
 		  
 	 if(  matchrec.dy+2 <= jhigh )
 	   {
-	   	  half_matches[half_heap_size].dx = matchrec.dx;
-		  half_matches[half_heap_size].dy = matchrec.dy+2;
+	   	  sub22_matches[sub22_heap_size].dx = matchrec.dx;
+		  sub22_matches[sub22_heap_size].dy = matchrec.dy+2;
 		  s = rcdist_mmx( orgblk+lx,blksums,lx,h);
-		  half_match_heap[half_heap_size].index = half_heap_size;
-		  half_match_heap[half_heap_size].weight = s;
+		  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+		  sub22_match_heap[sub22_heap_size].weight = s;
 		  if( s < best_fast_dist )
 				best_fast_dist = s;
-		  ++half_heap_size;
+		  ++sub22_heap_size;
 		  dist_sum += s;
 		} 
 		  
 	  if( matchrec.dx+2 <= ihigh )
 		  {
-		  	  half_matches[half_heap_size].dx = matchrec.dx+2;
-			  half_matches[half_heap_size].dy = matchrec.dy;
+		  	  sub22_matches[sub22_heap_size].dx = matchrec.dx+2;
+			  sub22_matches[sub22_heap_size].dy = matchrec.dy;
 			  s = rcdist_mmx( orgblk+1,blksums,lx,h);
-			  half_match_heap[half_heap_size].index = half_heap_size;
-			  half_match_heap[half_heap_size].weight = s;
+			  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+			  sub22_match_heap[sub22_heap_size].weight = s;
 			  if( s < best_fast_dist )
 					best_fast_dist = s;
-			  ++half_heap_size;
+			  ++sub22_heap_size;
 			  dist_sum += s;
 			  
 			 if( matchrec.dy+2 <= jhigh )
 				{
-					half_matches[half_heap_size].dx = matchrec.dx+2;
-					half_matches[half_heap_size].dy = matchrec.dy+2;
+					sub22_matches[sub22_heap_size].dx = matchrec.dx+2;
+					sub22_matches[sub22_heap_size].dy = matchrec.dy+2;
 				    s = rcdist_mmx( orgblk+lx+1,blk,lx,h);
-					half_match_heap[half_heap_size].index = half_heap_size;
-					half_match_heap[half_heap_size].weight = s;
+					sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+					sub22_match_heap[sub22_heap_size].weight = s;
 					if( s < best_fast_dist )
 						  best_fast_dist = s;
-					++half_heap_size;
+					++sub22_heap_size;
 					dist_sum += s;
 				}
 		 }
@@ -2399,14 +2399,14 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 	 pre-processing step throwing out all candidates that
 	 are heavier than the heap average */
 
-  half_heap_size = thin_vector(  half_match_heap, 
-                                 dist_sum / half_heap_size, half_heap_size );
+  sub22_heap_size = thin_vector(  sub22_match_heap, 
+                                 dist_sum / sub22_heap_size, sub22_heap_size );
 
-  heapify( half_match_heap, half_heap_size );
+  heapify( sub22_match_heap, sub22_heap_size );
   /* Update the fast motion match average using the best 2*2 match */
   update_threshold( &twopel_threshold, smallest_weight );
 
-  return half_heap_size;
+  return sub22_heap_size;
 }
 #endif
 
@@ -2421,19 +2421,19 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 #define MAX_COARSE_HEAP_SIZE 100*100
 
 #if HALF_HEAPS
-static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
-static blockxy half_matches[MAX_COARSE_HEAP_SIZE];
+static sortelt sub22_match_heap[MAX_COARSE_HEAP_SIZE];
+static blockxy sub22_matches[MAX_COARSE_HEAP_SIZE];
 #endif
 #if HEAPS
-static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
-static blockxy quad_matches[MAX_COARSE_HEAP_SIZE];
+static sortelt sub44_match_heap[MAX_COARSE_HEAP_SIZE];
+static blockxy sub44_matches[MAX_COARSE_HEAP_SIZE];
 
 static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
 static blockxy rough_matches[MAX_COARSE_HEAP_SIZE];
 #endif
 static int rough_heap_size;
-static int half_heap_size;
-static int quad_heap_size;
+static int sub22_heap_size;
+static int sub44_heap_size;
 
 /*
   Build a distance based heap of the 4*4 sub-sampled motion compensations.
@@ -2449,7 +2449,7 @@ static int quad_heap_size;
 
 */
 #if ! HEAPS
-static void mean_partition( mc_result_s *matches, int len, int times,
+static void sub_mean_reduction( mc_result_s *matches, int len, int times,
 								    int *newlen_res, int *minweight_res)
 {
 	int i,j;
@@ -2496,7 +2496,7 @@ static mc_result_s finalres[100*100];
 static mc_result_s halfres[100*100];
 #endif
 
-static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
+static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh, 
 							int i0, int j0,
 							uint8_t *qorg, uint8_t *qblk, int qlx, int qh )
 {
@@ -2507,7 +2507,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	int i,j;
 	uint8_t *old_qorgblk;
 	int s1,s2;
-	int best_quad_dist;
+	int best_sub44_dist;
 	sortelt distrec;
 	blockxy matchrec;
 	int searched_rough_size;
@@ -2527,7 +2527,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	*/
 
 	dist_sum = 0;
-	quad_heap_size = 0;
+	sub44_heap_size = 0;
 
 #if HEAPS
 	if(  nodual_qdist )
@@ -2541,17 +2541,17 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 			{
 				s1 = ((*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff)
 					+ fastabs(i-i0) + fastabs(j-j0);
-				quad_matches[quad_heap_size].x = i;
-				quad_matches[quad_heap_size].y = j;
-				quad_match_heap[quad_heap_size].index = quad_heap_size;
-				quad_match_heap[quad_heap_size].weight = s1 ;
+				sub44_matches[sub44_heap_size].x = i;
+				sub44_matches[sub44_heap_size].y = j;
+				sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+				sub44_match_heap[sub44_heap_size].weight = s1 ;
 				dist_sum += s1;
-				++quad_heap_size;
+				++sub44_heap_size;
 				qorgblk += 1;
 			}
 			qorgblk = old_qorgblk + qlx;
 		}
-		heapify( quad_match_heap, quad_heap_size );
+		heapify( sub44_match_heap, sub44_heap_size );
 	}
 	else
 	{
@@ -2618,9 +2618,9 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 
 
 		heapify( rough_match_heap, rough_heap_size );
-		best_quad_dist = rough_match_heap[0].weight;	
+		best_sub44_dist = rough_match_heap[0].weight;	
 		searched_rough_size = 1+rough_heap_size / 6;
-		best_quad_dist = rough_match_heap[0].weight;	
+		best_sub44_dist = rough_match_heap[0].weight;	
 
 		/* 
 		   We now use the good matches on 8-pel boundaries 
@@ -2628,18 +2628,18 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 		*/
 
 		dist_sum = 0;
-		quad_heap_size = 0;
+		sub44_heap_size = 0;
 		for( k = 0; k < searched_rough_size; ++k )
 		{
 			heap_extract( rough_match_heap, &rough_heap_size, &distrec );
 			matchrec = rough_matches[distrec.index];
 			qorgblk =  qorg + (matchrec.y>>2)*qlx +(matchrec.x>>2);
-			quad_matches[quad_heap_size].x = matchrec.x;
-			quad_matches[quad_heap_size].y = matchrec.y;
-			quad_match_heap[quad_heap_size].index = quad_heap_size;
-			quad_match_heap[quad_heap_size].weight = distrec.weight;
+			sub44_matches[sub44_heap_size].x = matchrec.x;
+			sub44_matches[sub44_heap_size].y = matchrec.y;
+			sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+			sub44_match_heap[sub44_heap_size].weight = distrec.weight;
 			dist_sum += distrec.weight;	
-			++quad_heap_size;	  
+			++sub44_heap_size;	  
 
 			for( i = 0; i < 4; ++i )
 			{
@@ -2648,19 +2648,19 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 				y = matchrec.y + (i >>1)*4;
 				s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
 				dist_sum += s1;
-				if( s1 < best_quad_dist )
-					best_quad_dist = s1;
-				quad_match_heap[quad_heap_size].weight = s1;
-				quad_match_heap[quad_heap_size].index = quad_heap_size;
-				quad_matches[quad_heap_size].x = x;
-				quad_matches[quad_heap_size].y = y;
-				quad_heap_size += (x <= ihigh && y <= jhigh);
+				if( s1 < best_sub44_dist )
+					best_sub44_dist = s1;
+				sub44_match_heap[sub44_heap_size].weight = s1;
+				sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+				sub44_matches[sub44_heap_size].x = x;
+				sub44_matches[sub44_heap_size].y = y;
+				sub44_heap_size += (x <= ihigh && y <= jhigh);
 
 				if( i == 2 )
 					qorgblk += qlx;
 			}
 		}
-		heapify( quad_match_heap, quad_heap_size );
+		heapify( sub44_match_heap, sub44_heap_size );
 	}
 #else
 		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
@@ -2671,34 +2671,34 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 								  qh, qlx, roughres);
 		k = 0;
 
-		mean_partition( roughres, rough_heap_size, 1, 
-						&rough_heap_size, &mean_weight);
+		sub_mean_reduction( roughres, rough_heap_size, 1, 
+							&rough_heap_size, &mean_weight);
 		/* 
 		   We now use the good matches on 8-pel boundaries 
 		   as starting points for matches on 4-pel boundaries...
 		*/
 
-		quad_heap_size = 0;
+		sub44_heap_size = 0;
 		for( k = 0; k < rough_heap_size; ++k )
 		{
-			finalres[quad_heap_size] = roughres[k];
+			finalres[sub44_heap_size] = roughres[k];
 			rangex = (roughres[k].x < ilim);
 			rangey = (roughres[k].y < jlim);
-			++quad_heap_size;
-			quad_heap_size +=
+			++sub44_heap_size;
+			sub44_heap_size +=
 				(*pqblock_near_dist)( roughres[k].blk, qblk, 
 									 roughres[k].x, roughres[k].y,
 									 rangex, rangey,
 									 mean_weight,
-									 qh, qlx, finalres+quad_heap_size);
+									 qh, qlx, finalres+sub44_heap_size);
 		}
 
-		mean_partition( finalres, quad_heap_size, 2, 
-						&quad_heap_size, &mean_weight);
+		sub_mean_reduction( finalres, sub44_heap_size, mc_44_red, 
+						&sub44_heap_size, &mean_weight);
 
 
 #endif
-	return quad_heap_size;
+	return sub44_heap_size;
 }
 
 
@@ -2711,9 +2711,9 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 */
 
 
-static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh, 
+static int build_sub22_heap( int ilow,  int ihigh, int jlow, int jhigh, 
 						   uint8_t *forg,  uint8_t *fblk, 
-						   int flx, int fh,  int searched_quad_size )
+						   int flx, int fh,  int searched_sub44_size )
 {
 	int i,k,s;
 #if HEAPS
@@ -2732,12 +2732,12 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 	uint8_t *forgblk;
 	int dist_sum  = 0;
   
-	half_heap_size = 0;
-	for( k = 0; k < searched_quad_size; ++k )
+	sub22_heap_size = 0;
+	for( k = 0; k < searched_sub44_size; ++k )
 	{
 #if HEAPS
-		heap_extract( quad_match_heap, &quad_heap_size, &distrec );
-		matchrec = quad_matches[distrec.index];
+		heap_extract( sub44_match_heap, &sub44_heap_size, &distrec );
+		matchrec = sub44_matches[distrec.index];
 		forgblk =  forg + ((matchrec.y)>>1)*flx +((matchrec.x)>>1);
 #else
 #if HALF_HEAPS
@@ -2757,17 +2757,17 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 			{
 				s = (*pfdist1)( forgblk,fblk,flx,fh);
 #if HALF_HEAPS
-				half_matches[half_heap_size] = matchrec;
-				half_match_heap[half_heap_size].weight = s;
-				half_match_heap[half_heap_size].index = half_heap_size;
+				sub22_matches[sub22_heap_size] = matchrec;
+				sub22_match_heap[sub22_heap_size].weight = s;
+				sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
 				best_fast_dist = fastmin( s, best_fast_dist );
 #else
-				halfres[half_heap_size].x = (int8_t)matchrec.x;
-				halfres[half_heap_size].y = (int8_t)matchrec.y;
-				halfres[half_heap_size].weight = s;
+				halfres[sub22_heap_size].x = (int8_t)matchrec.x;
+				halfres[sub22_heap_size].y = (int8_t)matchrec.y;
+				halfres[sub22_heap_size].weight = s;
 #endif
 
-				++half_heap_size;
+				++sub22_heap_size;
 				dist_sum += s;
 			}
 
@@ -2802,15 +2802,16 @@ static int build_half_heap( int ilow,  int ihigh, int jlow, int jhigh,
 	   pre-processing step throwing out all candidates that
 	   are heavier than the heap average */
 #if HALF_HEAPS	
-	half_heap_size = thin_vector(  half_match_heap, 
-								   dist_sum / half_heap_size, half_heap_size );
-	heapify( half_match_heap, half_heap_size );
-	update_threshold( &twopel_threshold, half_match_heap[0].weight );
+	sub22_heap_size = thin_vector(  sub22_match_heap, 
+								   dist_sum / sub22_heap_size, sub22_heap_size );
+	heapify( sub22_match_heap, sub22_heap_size );
+	update_threshold( &twopel_threshold, sub22_match_heap[0].weight );
 #else
-	mean_partition( halfres, half_heap_size, 3, &half_heap_size, &min_weight );
+	sub_mean_reduction( halfres, sub22_heap_size, mc_22_red,
+						&sub22_heap_size, &min_weight );
 #endif  
 	/* Update the fast motion match average using the best 2*2 match */
-	return half_heap_size;
+	return sub22_heap_size;
 }
 
 /*
@@ -2850,12 +2851,12 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	do {
 #endif
 		init_search = searched_size;
-		init_size = half_heap_size;
+		init_size = sub22_heap_size;
 		for( k = 0; k < searched_size; ++k )
 		{	
 #if HALF_HEAPS
-			heap_extract( half_match_heap, &half_heap_size, &distrec );
-			matchrec = half_matches[distrec.index];
+			heap_extract( sub22_match_heap, &sub22_heap_size, &distrec );
+			matchrec = sub22_matches[distrec.index];
 #else
 			matchrec.x = ilow + halfres[k].x;
 			matchrec.y = jlow + halfres[k].y;
@@ -2898,9 +2899,9 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 
 		}
 #if HALF_HEAPS
-		searched_size = half_heap_size;
+		searched_size = sub22_heap_size;
 
-	} while (half_heap_size>0 && dmin == INT_MAX);
+	} while (sub22_heap_size>0 && dmin == INT_MAX);
 #endif
 	res->pos = minpos;
 	res->blk = org+minpos.x+lx*minpos.y;
@@ -2993,20 +2994,20 @@ static void fullsearch(
 	ihigh = ihigh > xmax ? xmax : ihigh;
 
 
-	quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, 
+	sub44_heap_size = build_sub44_heap( ilow, ihigh, jlow, jhigh, 
 									  i0, j0,
 									  qorg, 
 									  ssblk->qmb, qlx, qh );
-	if( quad_heap_size == 0 )
+	if( sub44_heap_size == 0 )
 		printf( "NULL QH REUTRN\n");
 	/*
-	if( i0 != quad_matches[quad_match_heap[0].index].x ||
-		j0 != 	quad_matches[quad_match_heap[0].index].y )
+	if( i0 != sub44_matches[sub44_match_heap[0].index].x ||
+		j0 != 	sub44_matches[sub44_match_heap[0].index].y )
 		printf( "BEST QUAD OF %d FROM %d %d is %d %d\n",
-				quad_heap_size,
+				sub44_heap_size,
 				i0, j0, 
-				quad_matches[quad_match_heap[0].index].x,
-				quad_matches[quad_match_heap[0].index].y );
+				sub44_matches[sub44_match_heap[0].index].x,
+				sub44_matches[sub44_match_heap[0].index].y );
 	*/
 	/* Now create a distance-ordered heap of possible motion
 	   compensations based on the fast estimation data - 2*2 pel sums
@@ -3015,14 +3016,14 @@ static void fullsearch(
 
 
 #if HEAPS
-	searched_size = 1 + quad_heap_size / 8;
-	if( searched_size > quad_heap_size )
-		searched_size = quad_heap_size;
+	searched_size = 1 + sub44_heap_size / 8;
+	if( searched_size > sub44_heap_size )
+		searched_size = sub44_heap_size;
 #else
-	searched_size = quad_heap_size;
+	searched_size = sub44_heap_size;
 #endif
 
-	half_heap_size = build_half_heap( ilow, ihigh, jlow, jhigh, 
+	sub22_heap_size = build_sub22_heap( ilow, ihigh, jlow, jhigh, 
 									  forg, ssblk->fmb, flx, fh, 
 									  searched_size );
 
@@ -3030,19 +3031,19 @@ static void fullsearch(
 	   due to the pre-processing trick with the mean) the top 1/2 of
 	   the 2*2 matches */
 #if HALF_HEAPS  
-	searched_size = 1+ (half_heap_size / fast_mc_frac);
-	if( searched_size > half_heap_size )
-		searched_size = half_heap_size;
+	searched_size = 1+ (sub22_heap_size / fast_mc_frac);
+	if( searched_size > sub22_heap_size )
+		searched_size = sub22_heap_size;
 #else
-	searched_size = half_heap_size;
+	searched_size = sub22_heap_size;
 #endif
 
 /*
-	if( i0 != half_matches[half_match_heap[0].index].x ||
-		j0 != 	half_matches[half_match_heap[0].index].y )
+	if( i0 != sub22_matches[sub22_match_heap[0].index].x ||
+		j0 != 	sub22_matches[sub22_match_heap[0].index].y )
 	printf( "BEST HALF FROM %d %d is %d %d\n", i0, j0, 
-			half_matches[half_match_heap[0].index].x,
-			half_matches[half_match_heap[0].index].y );
+			sub22_matches[sub22_match_heap[0].index].x,
+			sub22_matches[sub22_match_heap[0].index].y );
 */
 	best.sad = INT_MAX;
 	best.pos.x = i0;

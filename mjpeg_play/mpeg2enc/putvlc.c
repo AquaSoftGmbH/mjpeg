@@ -57,9 +57,8 @@ int val;
 {
   int absval, size;
 
-  absval = (val<0) ? -val : val; /* abs(val) */
-
-  if (absval>2047 || (mpeg1 && absval>255))
+  absval = abs(val);
+  if (absval>dctsatlim)
   {
     /* should never happen */
     sprintf(errortext,"DC value out of range (%d)\n",val);
@@ -110,9 +109,9 @@ int run,signed_level,vlcformat;
   level = abs(signed_level);
 
   /* make sure run and level are valid */
-  if (run<0 || run>63 || level==0 || level>2047 || (mpeg1 && level>255))
+  if (run<0 || run>63 || level==0 || level>dctsatlim)
   {
-	  if( signed_level != -2048 && !(mpeg1 && signed_level == -256 ))
+	  if( signed_level != -(dctsatlim+1))		/* Negative range is actually 1 more */
 	  {
 		  sprintf(errortext,"AC value out of range (run=%d, signed_level=%d)\n",
 				  run,signed_level);

@@ -76,6 +76,30 @@ static double T;
 static int CarryR;
 static int CarryRLim;
 
+/* bitcnt_EOP -	Position in generated bit-stream for latest end-of-picture
+				Comparing these values with the bit-stream position for when the picture
+				is due to be displayed allows us to see what the vbv buffer
+				is up to.
+   gop_undershoot -
+   				If we *undershoot* our bit target the vbv buffer calculations
+				based on the actual length of the bitstream will be wrong because
+				in the final system	stream these bits will be padded away. 
+				I.e. frames *won't* arrive as early as the length of the video
+				stream would suggest they would.  To get it
+				right we have to keep track of the bits that would appear in padding.
+				
+				"padded_bits" is the cumulative total of bits (in a CBR stream)
+				that will *definately* have been padded away.
+				gop_undershoot is the undershoot in the previously generated
+				frame.  It is handled seperately because the in-GOP calculations
+				involve rounding.	
+										
+*/	
+
+static bitcount_t bitcnt_EOP = 0;
+static bitcount_t bits_padded;
+static int gop_undershoot = 0;
+
 /*
   actsum - Total activity (sum block variances) in frame
   actcovered - Activity macroblocks so far quantised (used to
@@ -116,6 +140,7 @@ static double bits_per_mb;
 
 static double SQ = 0.0;
 static double AQ = 0.0;
+
 
 /* Scaling and clipping of quantisation factors
    One floating point for predictive calculations
@@ -281,7 +306,10 @@ void rc_init_GOP(np,nb)
 	
 	if( R > 0 && video_buffer_size < per_gop_bits  )
 	{
-		R = per_gop_bits;
+		gop_undershoot = R;/* We reset it to *exact* value at end of GOP
+							prevent estimation errors accumulating */
+
+		R = per_gop_bits;		
 	}
 	else 
 	{
@@ -505,10 +533,50 @@ void rc_update_pict(pict_data_s *picture)
 {
 	double X;
 	double K;
+	bitcount_t AP,PP;		/* Actual and padded picture bit counts */
 	int    i;
 	int    Qsum;
-	S = bitcount() - S;			/* total # of bits in picture */
-	R-= S;						/* remaining # of bits in GOP */
+	int frame_overshoot;
+	
+	
+	AP = bitcount() - S;
+	frame_overshoot = (int)AP-(int)T;
+
+	/* Can't have negative undershoot - would imply we could "borrow"
+	bits */
+	
+	/* If the cummulative undershoot is getting too large (as
+	   a rough and ready heuristic we use 1/2 buffer size)
+		we start padding the stream.
+	 */
+
+	if( gop_undershoot-frame_overshoot > video_buffer_size/2 )
+	{
+		int padding_2bytes = 
+			((gop_undershoot-frame_overshoot)-video_buffer_size/2)/16;
+	    printf( "PAD " );
+		alignbits();
+		for( i = 0; i < padding_2bytes; ++i )
+		{
+			putbits(0, 16);
+		}
+		
+		PP = bitcount() - S;			/* total # of bits in picture */
+		frame_overshoot = (int)PP-(int)T;
+	}
+	else
+		PP = AP;
+	
+	/* Estimate cummulative undershoot within this gop. 
+	   This is only an estimate because T includes an allocation
+	   from earlier undershoots causing multiple counting.
+	   Padding and an exact calculation each gop prevent the error
+	   in the estimate growing
+	   */
+	gop_undershoot -= frame_overshoot;
+	gop_undershoot = gop_undershoot > 0 ? gop_undershoot : 0;
+	R-= PP;						/* remaining # of bits in GOP */
+
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
 	{
@@ -519,10 +587,13 @@ void rc_update_pict(pict_data_s *picture)
 	AQ = (double)Qsum/(double)mb_per_pict;
 	/* TODO: The X are used as relative activity measures... so why
 	   bother dividing by 2?  
+	   Note we have to be careful to measure the actual data not the
+	   padding too!
 	*/
 	SQ += AQ;
-	X = (double)S*(AQ/2.0);
-	d += (int)S - (int)T;
+	X = (double)AP*(AQ/2.0);
+	
+	d += frame_overshoot;
 	K = X / actsum;
 
 	if( !quiet )
@@ -752,28 +823,38 @@ int rc_calc_mquant( pict_data_s *picture,int j)
  * - has to be called directly after writing picture_data()
  * - needed for accurate VBV buffer overflow calculation
  * - assumes there is no byte stuffing prior to the next start code
+ *
+ * Note correction for bytes that will be stuffed away in the eventual CBR
+ * bit-stream.
  */
-
-static bitcount_t bitcnt_EOP;
 
 void vbv_end_of_picture(pict_data_s *picture)
 {
-	bitcnt_EOP = bitcount() - BITCOUNT_OFFSET;
-	bitcnt_EOP = (bitcnt_EOP + 7) & ~7; /* account for bit stuffing */
+	bitcnt_EOP = (bitcount()) - BITCOUNT_OFFSET;
+
+	/* A.Stevens why bother... accuracy to 7 bits... ha ha!
+	vbitcnt_EOP = (vbitcnt_EOP + 7) & ~7; 
+	*/
 }
 
 /* calc_vbv_delay
  *
  * has to be called directly after writing the picture start code, the
  * reference point for vbv_delay
+ *
+ * A.Stevens 2000: 
+ * Actually we call it just before the start code is written, but anyone
+ * who thinks 32 bits +/- in all these other approximations matters is fooling
+ * themselves.
  */
 
 void calc_vbv_delay(pict_data_s *picture)
 {
-	double picture_delay;
-	static double next_ip_delay; /* due to frame reordering delay */
-	static double decoding_time;
+	static double picture_delay;
+	static double next_ip_delay = 0.0; /* due to frame reordering delay */
+	static double decoding_time = 0.0;
 
+	
 	/* number of 1/90000 s ticks until next picture is to be decoded */
 	if (picture->pict_type == B_TYPE)
 	{
@@ -870,16 +951,17 @@ void calc_vbv_delay(pict_data_s *picture)
 	/* VBV checks */
 
 
-	/* check for underflow (previous picture) */
-#ifdef THIS_CRIES_WOLF_ALL_THE_TIME
-	if (!low_delay && (decoding_time < bitcnt_EOP*90000.0/bit_rate))
+	/* check for underflow (previous picture). Of course, we take undershoot
+	   into account when calculating when it would have finished arriving...
+	*/
+	if (!low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/bit_rate))
 	{
 		/* picture not completely in buffer at intended decoding time */
-		if (!quiet)
-			fprintf(stderr,"vbv_delay underflow! (decoding_time=%.1f, t_EOP=%.1f\n)",
-					decoding_time, bitcnt_EOP*90000.0/bit_rate);
+		fprintf(stderr,"WARNING: vbv_delay underflow frame %d (target=%.1f, actual=%.1f\n)",
+				frame_num-1, decoding_time, bitcnt_EOP*90000.0/bit_rate);
+		printf( "gu=%d\n", gop_undershoot );
 	}
-#endif
+
 
 	/* when to decode current frame */
 	decoding_time += picture_delay;
@@ -888,25 +970,24 @@ void calc_vbv_delay(pict_data_s *picture)
 
 
 	/* check for overflow (current picture) 
-	   A.Stevens Aug 2000: This is very broken as if we heavily undershoot
-	   our data-rate target (e.g. very inactive scenes) we will then permanently
-	   generate vbv_delay overflows.  The problem is that we're (in effect) treating
-	   padding as if it would take up space in the buffer...  Hence we comment
-	   it out until we replace it with a more sensible calculation.
 	*/
-#ifdef TODO_VBV_NEEDS_FIXING
-	if ((decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate)
-		> (vbv_buffer_size*16384)*90000.0/bit_rate)
+
+	if ((decoding_time - ((double)(bitcnt_EOP)*90000.0/bit_rate)
+		> (vbv_buffer_size*16384)*90000.0/bit_rate) )
 	{
-		if (!quiet)
-			fprintf(stderr,"vbv_delay overflow!\n");
+			fprintf(stderr,"vbv_delay overflow frame %d!\n", frame_num);
+			printf( "Decoding pos %.0f current pos %lld us=%d pb=%lld\n", 
+					 decoding_time / 90000.0 * bit_rate,
+					 bitcnt_EOP,
+					 gop_undershoot,
+					 bits_padded );
+					  
 	}
-#endif
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,
-			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, bitcnt_EOP=%lld)\n",
-			cur_picture.vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
+			"\nvbv_delay=%d (bitcount=%lld, decoding_time=%.2f, vbitcnt_EOP=%lld)\n",
+			cur_picture.vbv_delay,bitcount(),decoding_time,vbitcnt_EOP);
 #endif
 
 	if (picture->vbv_delay<0)
@@ -916,12 +997,11 @@ void calc_vbv_delay(pict_data_s *picture)
 		picture->vbv_delay = 0;
 	}
 
-#ifdef TODO_VBV_NEEDS_FIXING
-	if (vbv_delay>65535)
+	if (picture->vbv_delay>65535)
 	{
-		if (!quiet)
-			fprintf(stderr,"vbv_delay overflow: %d\n",vbv_delay);
-		vbv_delay = 65535;
+		fprintf(stderr,"vbv_delay frame %d exceeds permissible range: %d\n",
+				frame_num, picture->vbv_delay);
+		picture->vbv_delay = 65535;
 	}
-#endif
+
 }

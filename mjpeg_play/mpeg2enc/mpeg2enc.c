@@ -76,10 +76,12 @@ static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top fir
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
+static int param_44_red	= 2;
+static int param_22_red	= 3;	
 static int param_hfnoise_quant = 0;
 static int param_hires_quant = 0;
 static double param_act_boost = 2.0;
-static int param_pred_ratectl = 0;
+static int param_pred_ratectl = 1;
 static int param_video_buffer_size = 46;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
@@ -103,13 +105,16 @@ void Usage(char *str)
 	printf("   -r num     Search radius [0..32] (default 0: don\'t search at all)\n");
 	printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
 	printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
-	printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
+	printf("   -4 num     (default: 2)\n");
+	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
+	printf("   -2 num     (default: 3)\n");
+	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources)\n" );
-	printf("   -p         Predictive rate control (experimental)\n");
+	printf("   -o         Use old style lag rate control (deprecated)\n");
 	exit(0);
 }
 
@@ -124,7 +129,7 @@ int main(argc,argv)
 
 	printf( "%d %d\n", (int)(1.0f/1.99f+0.5), (int) (-1.0f / 1.99f+0.5f) );
 
-	while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:v:tNhp")) != EOF)
+	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:d:n:Q:v:tNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -173,11 +178,20 @@ int main(argc,argv)
 			break;
 
 
-		case 'f':
-			param_fastmc = atoi(optarg);
-			if(param_fastmc<2 || param_fastmc>20)
+		case '4':
+			param_44_red = atoi(optarg);
+			if(param_44_red<2 || param_44_red>20)
 			{
-				fprintf(stderr,"-f option requires arg 2..20\n");
+				fprintf(stderr,"-4 option requires arg 0..4\n");
+				nerr++;
+			}
+			break;
+			
+		case '2':
+			param_22_red = atoi(optarg);
+			if(param_22_red<2 || param_22_red>20)
+			{
+				fprintf(stderr,"-4 option requires arg 0..4\n");
 				nerr++;
 			}
 			break;
@@ -201,8 +215,8 @@ int main(argc,argv)
 		case 'h':
 			param_hires_quant = 1;
 			break;
-		case 'p' :
-			param_pred_ratectl = 1;
+		case 'O' :
+			param_pred_ratectl = 0;
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
@@ -252,7 +266,6 @@ int main(argc,argv)
 	fix_mquant = param_quant;
 	act_boost = param_act_boost;
   
-	if(param_bitrate==0 && param_quant==0) param_bitrate = 1152; /* Or 1150? */
 
 	/* Read stdin until linefeed is seen */
 
@@ -522,12 +535,42 @@ static void readparmfile()
 	 *     For MPEG2 aspect ratio is for total image: 2 means 4:3
 	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
 	aspectratio     = mpeg1 ? 1 : 2;
-	bit_rate        = MAX(1000,param_bitrate*1000);
+	dctsatlim		= mpeg1 ? 255 : 2047;
+	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
+		buffer accordingly... */
+
+	if( mpeg1 )
+	{
+		/* Handle the default VCD case... or scale accordingly */
+		if( param_bitrate == 0 && param_quant == 0 )
+		{
+			bit_rate = 1152000;
+			vbv_buffer_size = 20;	/* = 40KB */
+		}
+		else
+		{
+			bit_rate = MAX(10000, param_bitrate*1000);
+			vbv_buffer_size = (20 * param_bitrate  / 1152);
+		}
+	}
+	else
+	{
+		if( param_bitrate == 0 )
+		{
+			fprintf(stderr, "MPEG-2 specified - must specify bit-rate!\n" );
+		}
+		bit_rate = MAX(10000, param_bitrate*1000);
+		vbv_buffer_size = 112;
+	}
+				
 	fast_mc_frac    = param_fastmc;
 	fast_mc_threshold = param_threshold;
+	mc_44_red		= param_44_red;
+	mc_22_red		= param_22_red;
 	pred_ratectl       = param_pred_ratectl;
 	video_buffer_size = param_video_buffer_size * 1024 * 8;
-	vbv_buffer_size = mpeg1 ? 20 : 112;
+	
+
 	low_delay       = 0;
 	constrparms     = mpeg1;             /* Will be reset, if not coompliant */
 	profile         = param_422 ? 1 : 4; /* High or Main profile resp. */

@@ -384,15 +384,17 @@ EXTERN int qsubsample_offset,
 EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						      
 EXTERN int aspectratio;			/* aspect ratio information (pel or display) */
 EXTERN int frame_rate_code;		/* coded value of frame rate */
+EXTERN int dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double frame_rate;		/* frames per second */
 EXTERN double bit_rate;			/* bits per second */
 EXTERN int    fast_mc_frac;		/* inverse proportion of fast motion estimates
-							   consider in detail */
+							   	consider in detail */
 EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 									dynamical adjust motion compensation
 									window size */
-EXTERN int    pred_ratectl;      /* Use experimental predictive rate
-									controller  */
+EXTERN int mc_44_red;			/* Sub-mean [opulation reduction passes for 4x4 and 2x2 */
+EXTERN int mc_22_red;			/* Motion compensation stages						*/
+EXTERN int pred_ratectl;      /* Use new predictive rate controller  */
 EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
@@ -441,10 +443,10 @@ EXTERN int fix_mquant;    		/* use fixed quant, range 1 ... 31 */
 EXTERN int constant_bitrate;  	/* Original CBR encoding strategy  */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
 EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
+
 /* Useful for triggering debug information */
 
 EXTERN int frame_num;			
-
 EXTERN int input_fd;
 
 

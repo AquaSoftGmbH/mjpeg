@@ -233,7 +233,7 @@ int quant_non_intra_mmx(
 	int x, y, d;
 	int nzflag;
 	int coeff_count;
-	int clipvalue  = mpeg1 ? 255 : 2047;
+	int clipvalue  = dctsatlim;
 	int flags = 0;
 	int saturated = 0;
 	uint16_t *quant_mat = inter_q;

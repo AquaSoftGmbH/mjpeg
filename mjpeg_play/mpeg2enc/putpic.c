@@ -163,6 +163,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 	int cur_mb_blocks;
 	MBAinc = 0;          /* Annoying warning otherwise... */
 
+	calc_vbv_delay(picture);
 	rc_init_pict(picture); /* set up rate control */
 
 	/* picture header and picture coding extension */

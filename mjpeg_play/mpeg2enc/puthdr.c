@@ -169,7 +169,6 @@ void putpicthdr(pict_data_s *picture)
 {
   alignbits();
   putbits(PICTURE_START_CODE,32); /* picture_start_code */
-  calc_vbv_delay(picture);
   putbits(picture->temp_ref,10); /* temporal_reference */
   putbits(picture->pict_type,3); /* picture_coding_type */
   putbits(picture->vbv_delay,16); /* vbv_delay */
