@@ -9,6 +9,8 @@
 #define GROUP_START		0x000001b8
 #define SYNCWORD_START		0x000001
 
+#define ZA_SEQUENCE_HEADER      0x000001f8
+
 #define IFRAME                  1
 #define PFRAME                  2
 #define BFRAME                  3
@@ -57,6 +59,7 @@
 #define VIDEO_STREAMS		0xb9		/* Marker Video Streams	*/
 #define AUDIO_STR_0		0xc0		/* Marker Audio Stream0	*/
 #define VIDEO_STR_0		0xe0		/* Marker Video Stream0	*/
+#define ZALPHA_STR_0		0xf8		/* Marker Z/Alpha Stream0 */
 #define PADDING_STR		0xbe		/* Marker Padding Stream*/
 #define PRIVATE_STR_1   0xbd            /* private stream 1 */
 #define PRIVATE_STR_2   0xbf            /* private stream 2 */

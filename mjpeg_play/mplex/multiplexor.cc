@@ -12,6 +12,7 @@
 #include "videostrm.hh"
 #include "stillsstream.hh"
 #include "audiostrm.hh"
+#include "zalphastrm.hh"
 #include "multiplexor.hh"
 
 /****************
@@ -385,7 +386,14 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         astreams.push_back(audioStrm);
         ++lpcmparm;
     }
-
+    for( i = 0 ; i < job.z_alpha_files.size() ; ++i )
+    {
+        ZAlphaStream *zalphaStrm = new ZAlphaStream( *job.z_alpha_files[i], *vidparm, *this);
+        zalphaStrm->Init ( i );
+        estreams.push_back(zalphaStrm);
+        vstreams.push_back(zalphaStrm);
+        ++lpcmparm;
+    }		
 }
 
 

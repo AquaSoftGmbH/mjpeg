@@ -34,6 +34,7 @@
 #include "interact.hh"
 #include "videostrm.hh"
 #include "audiostrm.hh"
+#include "zalphastrm.hh"
 #include "mplexconsts.hh"
 #include "aunit.hh"
 
@@ -318,8 +319,6 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
     InputStreamsFromCmdLine( argc-(optind-1), argv+optind-1);
 }
 
-
-
 void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
 {
     IFileBitStream *bs;
@@ -356,6 +355,15 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
                         argv[i]);
             bs->UndoChanges( undo);
             video_files.push_back( bs );
+            continue;
+        }
+        bs->UndoChanges( undo);
+        if( ZAlphaStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an Z/Alpha Video stream.",
+                        argv[i]);
+            bs->UndoChanges( undo);
+            z_alpha_files.push_back( bs );
             continue;
         }
         bs->UndoChanges( undo);

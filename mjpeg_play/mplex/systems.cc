@@ -258,7 +258,7 @@ PS_Stream::BufferSectorHeader( uint8_t *index,
 /******************************************
  *
  * BufferPacketHeader
- * Construct and MPEG-1/2 header for a packet in the specified
+ * Construct an MPEG-1/2 header for a packet in the specified
  * buffer (which *MUST* be long enough) and set points to the start of
  * the payload and packet length fields.
  *
