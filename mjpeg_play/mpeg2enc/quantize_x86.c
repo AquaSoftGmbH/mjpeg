@@ -483,12 +483,6 @@ static void iquant_non_intra_m1_extmmx(struct QuantizerWorkSpace *wsp,
 	iquantize_non_intra_m1_extmmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-static void iquant_non_intra_m2_extmmx(struct QuantizerWorkSpace *wsp,
-								int16_t *src, int16_t *dst, int mquant )
-{
-	iquantize_non_intra_m2_extmmx( src,dst,wsp->inter_q_tbl[mquant]);
-}
-
 static void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
 							 int16_t *src, int16_t *dst, int mquant )
 {
@@ -544,7 +538,7 @@ void init_x86_quantization( struct QuantizerCalls *qcalls,
             if( mpeg1 )
                 qcalls->piquant_non_intra = iquant_non_intra_m1_extmmx;
             else
-                qcalls->piquant_non_intra = iquant_non_intra_m2_extmmx;
+                qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
         }
 		else
 		{

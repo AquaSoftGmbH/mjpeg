@@ -52,6 +52,7 @@ extern int altivec_copy_v0();
 		"bsumsq",
 		"build_sub22_mests",
 		"build_sub44_mests",
+		"mblocks_sub44_mests",
 		"subsample_image",
 		"find_best_one_pel",
 		"quant_nonintra",
@@ -364,6 +365,14 @@ disable_simd(char *name)
 
 	if	((cp = getenv("MJPEGTOOLS_SIMD_DISABLE")) == NULL)
 		return(0);
+
+/*
+ * Special case for "all" so that all 22 or whatever names don't have to be
+ * explicitly specified.  If "all" is seen as the only name in the environment
+ * variable then always return 1.
+*/
+	if	(strcasecmp(name, "all") == 0)
+		return(1);
 
 /*
  * First check that the routine being tested for disabled status exists in
