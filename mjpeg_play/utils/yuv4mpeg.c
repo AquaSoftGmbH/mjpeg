@@ -329,6 +329,8 @@ void y4m_copy_frame_info(y4m_frame_info_t *dest, const y4m_frame_info_t *src)
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
+y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
+{ return &(fi->x_tags); }
 
 void y4m_fini_frame_info(y4m_frame_info_t *info)
 {
