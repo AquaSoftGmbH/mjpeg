@@ -1267,7 +1267,7 @@ void AudioStream::OutputSector ( )
 	0 = Fill the packet completetely...
 ******************************************************************/
 
-// TODO Make into an elementary Stream type?
+
 void OutputStream::OutputPadding (	clockticks SCR,
 									bool start_of_new_pack,
 									bool include_sys_header,

@@ -65,7 +65,7 @@
 #define MARKER_JUST_PTS			2		/* Marker only PTS	*/
 #define MARKER_PTS				3		/* Marker PTS		*/
 #define MARKER_DTS				1		/* Marker DTS		*/
-#define MARKER_NO_TIMESTAMPS	0x0f		/* Marker NO timestamps	*/
+#define MARKER_NO_TIMESTAMPS	0x0f	/* Marker NO timestamps	*/
 
 
 #endif // __INPUTSTRM_H__
