@@ -136,6 +136,7 @@ static double test_factor = 1.0; /* Internal test of synchronizaion only */
 
 /* gz: This makes lavplay play back in software */
 static int soft_play = 0;
+static int soft_fullscreen = 0;
 
 /* gz: This is the new handle for MJPEG library */
 struct mjpeg_handle *mjpeg;
@@ -357,6 +358,7 @@ void Usage(char *progname)
    fprintf(stderr, "   -x         Exchange fields of an interlaced video\n");
    fprintf(stderr, "   -z         Zoom video to fill screen as much as possible\n");
    fprintf(stderr, "   -S         Use software MJPEG playback (based on SDL and libmjpeg)\n");
+   fprintf(stderr, "   -Z         If using software MJPEG playback, switch to fullscreen\n");
    exit(1);
 }
 
@@ -409,7 +411,7 @@ main(int argc, char ** argv)
    if(argc < 2) Usage(argv[0]);
 
    nerr = 0;
-   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSxzg")) != EOF)
+   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSZxzg")) != EOF)
    {
       switch(n) {
 
@@ -464,6 +466,10 @@ main(int argc, char ** argv)
          case 'S':
 	    printf("Choosing software MJPEG playback\n");
             soft_play = 1;
+            break;
+
+         case 'Z':
+            soft_fullscreen = 1;
             break;
       }
    }
@@ -532,9 +538,13 @@ main(int argc, char ** argv)
        char wintitle[255];
 
        /* Now initialize SDL */
-       /* Set the video mode (800x600 at native depth) */
-       screen = SDL_SetVideoMode(el.video_width, 
-				 el.video_height, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
+       /* Set the video mode, and rely on SDL to find a nice mode */
+       if (soft_fullscreen)
+	 screen = SDL_SetVideoMode(el.video_width, 
+				   el.video_height, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
+       else
+	 screen = SDL_SetVideoMode(el.video_width, 
+				   el.video_height, 0, SDL_HWSURFACE);
        SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
        SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
