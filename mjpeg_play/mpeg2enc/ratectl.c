@@ -88,14 +88,14 @@ static double actcovered;
 double avg_act;
 double peak_act;
 
-static int Np, Nb, Q;
+static int Np, Nb;
 static bitcount_t S;
 static int prev_mquant;
 
 /* Note: eventually we may wish to tweak these to suit image content */
-static double Ki = 1.1;    	/* Down-scaling of I/B/P-frame complexity */
-static double Kb = 1.2;	    /* relative to others in bit-allocation   */
-static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
+static double Ki;    	/* Down-scaling of I/B/P-frame complexity */
+static double Kb;	    /* relative to others in bit-allocation   */
+static double Kp;	    /* calculations.  We only need 2 but have all
 							   3 for readability */
 
 
@@ -103,16 +103,19 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO DEBUG */
-static double avg_KI = 13.0;	/* These values empirically determined 		*/
-static double avg_KB = 20.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
-static double avg_KP = 20.0;
-static double avgsq_KI = 13.0*13.0;
-static double avgsq_KB = 20.0*20.0;
-static double avgsq_KP = 20.0*20.0;
-#define K_AVG_WINDOW 128.0
+static double avg_KI = 8.0;	/* These values empirically determined 		*/
+static double avg_KB = 13.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KP = 12.0;
+static double avgsq_KI = 8.0*8.0;
+static double avgsq_KB = 13.0*13.0;
+static double avgsq_KP = 12.0*12.0;
+#define K_AVG_WINDOW_I 4.0		/* MPEG-1, hard-wired settings */
+#define K_AVG_WINDOW_P   10.0
+#define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
 
 static double SQ = 0.0;
+static double AQ = 0.0;
 
 /* Scaling and clipping of quantisation factors
    One floating point for predictive calculations
@@ -192,8 +195,8 @@ void rc_init_seq()
 
 	if( pred_ratectl )
 	{
-		Ki = 1.0;
-		Kb = 1.4;
+		Ki = 1.3;
+		Kb = 1.6;
 		Kp = 1.0;
 	}
 	else
@@ -440,7 +443,6 @@ void rc_init_pict(pict_data_s *picture)
 	*/
   
 	S = bitcount();
-	Q = 0;
 
 
 #ifdef OUTPUT_STAT
@@ -453,10 +455,10 @@ void rc_init_pict(pict_data_s *picture)
 
 static double calc_actj(void)
 {
-	int i,j,k;
+	int i,j,k,l;
 	double actj,sum;
 	unsigned short *i_q_mat;
-
+	int actsum;
 	sum = 0.0;
 	k = 0;
 
@@ -486,17 +488,14 @@ static double calc_actj(void)
 			   non-zero.
 			 */
 
-			actj = (double)
-				( (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) 
-				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) 
-				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat )
-				  + (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat )
-				  );
-
-
-			actj = actj/COEFFSUM_SCALE;
-			if( actj < 8.0 )
-				actj = 8.0;
+			actsum = 0;
+			for( l = 0; l < 6; ++l )
+				actsum += 
+					(*pquant_weight_coeff_sum)
+					    ( &cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
+			actj = (double)actsum / (double)COEFFSUM_SCALE;
+			if( actj < 12.0 )
+				actj = 12.0;
 
 			cur_picture.mbinfo[k].act = (double)actj;
 			sum += (double)actj;
@@ -505,14 +504,22 @@ static double calc_actj(void)
 	return sum;
 }
 
+/*
+ * Update rate-controls statistics after pictures has ended..
+ *
+ */
 void rc_update_pict(pict_data_s *picture)
 {
 	double X;
-	double AQ;
 	double K;
+	int    i;
+	int    Qsum;
 	S = bitcount() - S;			/* total # of bits in picture */
 	R-= S;						/* remaining # of bits in GOP */
-	AQ = (double)Q/(mb_width*mb_height2);  
+	Qsum = 0;
+	for( i = 0; i < mb_per_pict; ++i )
+		Qsum += picture->mbinfo[i].mquant;
+	AQ = (double)Qsum/(double)mb_per_pict;
 	/* TODO: The X are used as relative activity measures... so why
 	   bother dividing by 2?  
 	*/
@@ -545,8 +552,8 @@ void rc_update_pict(pict_data_s *picture)
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
-		avg_KI = (K + avg_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
-		avgsq_KI = (K*K + avgsq_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
+		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
+		avgsq_KI = (K*K + avgsq_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		if( pred_ratectl )
 		{
 			d0i = d;
@@ -555,8 +562,8 @@ void rc_update_pict(pict_data_s *picture)
 		sliding_di_avg = sliding_d_avg;
 		break;
 	case P_TYPE:
-		avg_KP = (K + avg_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
-		avgsq_KP = (K*K + avgsq_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;;
+		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
+		avgsq_KP = (K*K + avgsq_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;;
 		if( pred_ratectl )
 		{
 			d0p = d;
@@ -567,8 +574,8 @@ void rc_update_pict(pict_data_s *picture)
 		Np--;
 		break;
 	case B_TYPE:
-		avg_KB = (K + avg_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
-		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0);
+		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
+		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0);
 		if( pred_ratectl )
 		{
 			// DEBUG Share d and p d0b = d;
@@ -587,8 +594,8 @@ void rc_update_pict(pict_data_s *picture)
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
 	fprintf(statfile," actual number of bits: S=%lld\n",S);
-	fprintf(statfile," average quantization parameter Q=%.1f\n",
-			(double)Q/(mb_width*mb_height2));
+	fprintf(statfile," average quantization parameter AQ=%.1f\n",
+			(double)AQ);
 	fprintf(statfile," remaining number of bits in GOP: R=%.0f\n",R);
 	fprintf(statfile,
 			" global complexity measures (I,P,B): Xi=%.0f, Xp=%.0f, Xb=%.0f\n",
@@ -715,10 +722,6 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 #endif
 	mquant = iscale_quant(picture,Qj*N_actj);
 
-	/* ignore small changes in mquant */
-	if (mquant>=8 && (mquant-prev_mquant)>=-4 && (mquant-prev_mquant)<=4)
-		mquant = prev_mquant;
-	
 	prev_mquant = mquant;
 	if(fix_mquant>0) 
 	{
@@ -728,9 +731,6 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 			else
 				mquant = 2*fix_mquant;
 	}
-
-	Q += mquant; /* for calculation of average mquant */
-
 
 	 
 #ifdef OUTPUT_STAT

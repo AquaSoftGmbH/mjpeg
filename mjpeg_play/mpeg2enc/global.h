@@ -120,33 +120,18 @@ void putcbp _ANSI_ARGS_((int cbp));
 
 /* quantize.c */
 
-void quant_intra _ANSI_ARGS_((
-	pict_data_s *picture,
-	short *src, short *dst, 
-	int mquant, int *nonsat_mquant));
-int quant_non_intra _ANSI_ARGS_((
-	pict_data_s *picture,
-	short *src, short *dst,
-	int mquant, int *nonsat_mquant));
-void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  int mquant));
-void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
-    int mquant));
+void quant_intra (	pict_data_s *picture,
+					short *src, short *dst, 
+					int mquant, int *nonsat_mquant);
+int quant_non_intra (	pict_data_s *picture,
+						short *src, short *dst,
+						int mquant, int *nonsat_mquant);
+void iquant_intra ( short *src, short *dst, int dc_prec, int mquant);
+void iquant_non_intra (short *src, short *dst, int mquant);
 void init_quantizer();
+int  next_larger_quant( pict_data_s *picture, int quant );
 
-#ifdef X86_CPU
-
-int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
-						   short *i_quant_mat, 
-						   int imquant, int mquant, int sat_limit);
-int quant_weight_coeff_sum_mmx (short *blk, unsigned short*i_quant_mat );
-int cpuid_flags();
-extern int use_mmx_quantizer;
 extern int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
-#endif
-
-
-int quant_weight_coeff_sum(short *blk, unsigned short*i_quant_mat );
 
 
 /* ratectl.c */
@@ -249,15 +234,14 @@ EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
-  16, 17, 18, 19, 20, 21, 22, 23,
-  17, 18, 19, 20, 21, 22, 23, 24,
-  18, 19, 20, 21, 22, 23, 24, 25,
-  19, 20, 21, 22, 23, 24, 26, 27,
-  20, 21, 22, 23, 25, 26, 27, 28,
-  21, 22, 23, 24, 26, 27, 28, 30,
-  22, 23, 24, 26, 27, 28, 30, 31,
-  23, 24, 25, 27, 28, 30, 31, 33  
- 
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16
 }
 #endif
 ;
@@ -324,6 +308,8 @@ EXTERN unsigned short i_intra_q[64], i_inter_q[64];
 /* Table driven intra / non-intra quantization matrices */
 EXTERN unsigned short intra_q_tbl[113][64], inter_q_tbl[113][64];
 EXTERN unsigned short i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];
+EXTERN float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
 
 
 

@@ -234,17 +234,12 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 			}
 			else
 			{
-				cbp = 0;
-				for (comp=0;comp<block_count;comp++)
-					cbp = (cbp<<1) | 
-						quant_non_intra(picture,
-							            picture->blocks[cur_mb_blocks+comp],
-										quant_blocks[cur_mb_blocks+comp],
-										cur_mb->mquant,
-										&cur_mb->mquant );
-
+				cbp = quant_non_intra(picture,
+									  picture->blocks[cur_mb_blocks],
+									  quant_blocks[cur_mb_blocks],
+									  cur_mb->mquant,
+									  &cur_mb->mquant );
 				cur_mb->cbp = cbp;
-
 				if (cbp)
 					mb_type|= MB_PATTERN;
 			}
@@ -384,16 +379,20 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 
 			for (comp=0; comp<block_count; comp++)
 			{
+
 				/* block loop */
 				if (cbp & (1<<(block_count-1-comp)))
 				{
+
 					if (mb_type & MB_INTRA)
 					{
 						cc = (comp<4) ? 0 : (comp&1)+1;
 						putintrablk(picture,quant_blocks[cur_mb_blocks+comp],cc);
 					}
 					else
+					{
 						putnonintrablk(picture,quant_blocks[cur_mb_blocks+comp]);
+					}
 				}
 			}
 

@@ -122,6 +122,8 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
+	printf( "%d %d\n", (int)(1.0f/1.99f+0.5), (int) (-1.0f / 1.99f+0.5f) );
+
 	while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:v:tNhp")) != EOF)
 	{
 		switch(n) {
@@ -473,13 +475,7 @@ static void init()
 		error(errortext);
 	}
 
-	/* This is expressed in half-pel units like the internal
-	   calculations in which it is used
-	*/
-	search_radius[x_crd] = param_searchrad*M*2;
-	search_radius[y_crd] = param_searchrad*M*height/width;
-	search_radius[y_crd] = ((search_radius[y_crd] / 4 + 3) * 4)*2;
-	b_frame_jitter = param_searchrad * M / 9;
+
 }
 
 void error(text)
@@ -518,7 +514,7 @@ static void readparmfile()
 	h = m = s = f = 0;
 	N = 12;      /* I frame distance */
 	M = 3;       /* I or P frame distance */
-	mpeg1           = param_mpeg == 1;
+	mpeg1           = (param_mpeg == 1);
 	fieldpic        = (param_fieldpic!=0);
 	/* RJ: horizontal_size, vertical_size, frame_rate_code
 	   are read from stdin! */
@@ -605,43 +601,46 @@ static void readparmfile()
 		param_searchrad = 127/M;
 		fprintf(stderr,"Search radius reduced to %d\n",param_searchrad);
 	}
-	if( param_searchrad % 4 != 0 )
-	{
-		param_searchrad = (param_searchrad / 4) * 4;
-		fprintf( stderr, "Adjusting search radius to a multiple of 4: %d\n", param_searchrad);
-	}
-	c = 5;
-	if(param_searchrad*M<64) c = 4;
-	if(param_searchrad*M<32) c = 3;
-	if(param_searchrad*M<16) c = 2;
-	if(param_searchrad*M< 8) c = 1;
+	
+	{ 
+		int radius_x = (param_searchrad/4)*4;
+		int radius_y = ((param_searchrad*vertical_size/horizontal_size)/4)*4;
 
-	motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
-	if (!motion_data)
-		error("malloc failed\n");
+		/* TODO: These f-codes should really be adjust for each
+		   picture type... */
+		c=5;
+		if( radius_x*M <64) c = 4;
+		if( radius_x*M < 32) c = 32;
+		if( radius_x*M <16) c = 2;
+		if(radius_x*M < 8) c = 1;
 
-	for (i=0; i<M; i++)
-	{
-		if(i==0)
+		motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
+		if (!motion_data)
+			error("malloc failed\n");
+
+		for (i=0; i<M; i++)
 		{
-			motion_data[i].forw_hor_f_code  = c;
-			motion_data[i].forw_vert_f_code = c;
-			motion_data[i].sxf = MAX(1,param_searchrad*M);
-			motion_data[i].syf = MAX(1,param_searchrad*M);
+			if(i==0)
+			{
+				motion_data[i].forw_hor_f_code  = c;
+				motion_data[i].forw_vert_f_code = c;
+				motion_data[i].sxf = MAX(1,radius_x*M);
+				motion_data[i].syf = MAX(1,radius_y*M);
+			}
+			else
+			{
+				motion_data[i].forw_hor_f_code  = c;
+				motion_data[i].forw_vert_f_code = c;
+				motion_data[i].sxf = MAX(1,radius_x*i);
+				motion_data[i].syf = MAX(1,radius_y*i);
+				motion_data[i].back_hor_f_code  = c;
+				motion_data[i].back_vert_f_code = c;
+				motion_data[i].sxb = MAX(1,radius_x*(M-i));
+				motion_data[i].syb = MAX(1,radius_y*(M-i));
+			}
 		}
-		else
-		{
-			motion_data[i].forw_hor_f_code  = c;
-			motion_data[i].forw_vert_f_code = c;
-			motion_data[i].sxf = MAX(1,param_searchrad*i);
-			motion_data[i].syf = MAX(1,param_searchrad*i);
-			motion_data[i].back_hor_f_code  = c;
-			motion_data[i].back_vert_f_code = c;
-			motion_data[i].sxb = MAX(1,param_searchrad*(M-i));
-			motion_data[i].syb = MAX(1,param_searchrad*(M-i));
-		}
+		
 	}
-
 	/* make flags boolean (x!=0 -> x=1) */
 	mpeg1 = !!mpeg1;
 	fieldpic = !!fieldpic;
@@ -1017,10 +1016,12 @@ static void readquantmat()
 		{
 			intra_q_tbl[q][i] = intra_q[i] * q;
 			inter_q_tbl[q][i] = inter_q[i] * q;
-			i_intra_q_tbl[q][i] = 
-				(int)(((double)IQUANT_SCALE) / (double)(intra_q[i]*q));
-			i_inter_q_tbl[q][i] = 
-				(int)(((double)IQUANT_SCALE) / (double)(inter_q[i]*q));
+			intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
+			inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
+			i_intra_q_tblf[q][i] = 1.0f/ ( intra_q_tblf[q][i]);
+			i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
+			i_inter_q_tblf[q][i] =  1.0f/ (inter_q_tblf[q][i]);
+			i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
 		}
 	}
   

@@ -350,7 +350,8 @@ void putseq()
 
 			transform(&cur_picture,predframe,curorg);
 
-			putpict(&cur_picture,qblocks);	/* Quantisation: blocks -> qblocks */
+			/* Side-effect: quantisation blocks -> qblocks */
+			putpict(&cur_picture,qblocks);	
 
 			for (k=0; k<mb_height*mb_width; k++)
 			{
@@ -361,10 +362,14 @@ void putseq()
 									 cur_picture.dc_prec,
 									 cur_picture.mbinfo[k].mquant);
 				else
+				{
 					for (j=0;j<block_count;j++)
+					{
 						iquant_non_intra(qblocks[k*block_count+j],
 										 qblocks[k*block_count+j],
 										 cur_picture.mbinfo[k].mquant);
+					}
+				}
 			}
 
 			itransform(&cur_picture,predframe,curref,qblocks);

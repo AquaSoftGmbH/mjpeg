@@ -173,7 +173,8 @@ struct pict_data
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */
 
-	/* 8*8 block data, raw (unquantised) and quantised */
+	/* 8*8 block data, raw (unquantised) and quantised, and
+	 inverse quantised */
 	short (*blocks)[64];
 	/* macroblock side information array */
 	struct mbinfo *mbinfo;

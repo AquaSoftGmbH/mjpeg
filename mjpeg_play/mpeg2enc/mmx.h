@@ -58,6 +58,7 @@ typedef	union {
 
 
 #define	emms() __asm__ __volatile__ ("emms")
+#define	femms() __asm__ __volatile__ ("femms")
 
 #define	movd_m2r(var,reg)	mmx_m2r (movd, var, reg)
 #define	movd_r2m(reg,var)	mmx_r2m (movd, reg, var)
@@ -185,6 +186,13 @@ typedef	union {
 #define	pxor_m2r(var, reg)	mmx_m2r (pxor, var, reg)
 #define	pxor_r2r(regs, regd)	mmx_r2r (pxor, regs, regd)
 
+/* 3DNow goodies */
+#define pfmul_m2r(var,reg) mmx_m2r( pfmul, var, reg )
+#define pfmul_r2r(regs,regd) mmx_r2r( pfmul, regs, regd )
+#define pfadd_m2r(var,reg) mmx_m2r( pfadd, var, reg )
+#define pfadd_r2r(regs,regd) mmx_r2r( pfadd, regs, regd )
+#define pf2id_r2r(regs,regd) mmx_r2r( pf2id, regs, regd )
+#define pi2fd_r2r(regs,regd) mmx_r2r( pi2fd, regs, regd )
 
 /* AMD MMX extensions - also available in intel SSE */
 

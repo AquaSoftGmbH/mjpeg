@@ -95,79 +95,82 @@ void init_transform()
 	}
 }
 
+
 /* subtract prediction and transform prediction error */
 void transform(
 	pict_data_s *picture,
 	unsigned char *pred[], unsigned char *cur[]
 	)
 {
-  int i, j, i1, j1, k, n, cc, offs, lx;
-  mbinfo_s *mbi = picture->mbinfo;
-  short (*blocks)[64] = picture->blocks;
+	int i, j, i1, j1, k, n, cc, offs, lx;
+	mbinfo_s *mbi = picture->mbinfo;
+	short (*blocks)[64] = picture->blocks;
 
-  k = 0;
+	k = 0;
 
-  for (j=0; j<height2; j+=16)
-    for (i=0; i<width; i+=16)
-    {
-      for (n=0; n<block_count; n++)
-      {
-        cc = (n<4) ? 0 : (n&1)+1; /* color component index */
-        if (cc==0)
-        {
-		  /* A.Stevens Jul 2000 Record dct blocks associated with macroblock */
-		  /* We'll use this for quantisation calculations                    */
-		  mbi[k].dctblocks = &blocks[k*block_count+n][0];
-          /* luminance */
-          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
-          {
-            /* field DCT */
-            offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
-            lx = width<<1;
-          }
-          else
-          {
-            /* frame DCT */
-            offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
-            lx = width2;
-          }
+	for (j=0; j<height2; j+=16)
+		for (i=0; i<width; i+=16)
+		{
+			for (n=0; n<block_count; n++)
+			{
+				cc = (n<4) ? 0 : (n&1)+1; /* color component index */
+				if (cc==0)
+				{
+					/* A.Stevens Jul 2000 Record dct blocks associated with macroblock */
+					/* We'll use this for quantisation calculations                    */
+					mbi[k].dctblocks = &blocks[k*block_count+n][0];
+					/* luminance */
+					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
+					{
+						/* field DCT */
+						offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
+						lx = width<<1;
+					}
+					else
+					{
+						/* frame DCT */
+						offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
+						lx = width2;
+					}
 
-          if (picture->pict_struct==BOTTOM_FIELD)
-            offs += width;
-        }
-        else
-        {
-          /* chrominance */
+					if (picture->pict_struct==BOTTOM_FIELD)
+						offs += width;
+				}
+				else
+				{
+					/* chrominance */
 
-          /* scale coordinates */
-          i1 = (chroma_format==CHROMA444) ? i : i>>1;
-          j1 = (chroma_format!=CHROMA420) ? j : j>>1;
+					/* scale coordinates */
+					i1 = (chroma_format==CHROMA444) ? i : i>>1;
+					j1 = (chroma_format!=CHROMA420) ? j : j>>1;
 
-          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
-              && (chroma_format!=CHROMA420))
-          {
-            /* field DCT */
-            offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
-            lx = chrom_width<<1;
-          }
-          else
-          {
-            /* frame DCT */
-            offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
-            lx = chrom_width2;
-          }
+					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
+						&& (chroma_format!=CHROMA420))
+					{
+						/* field DCT */
+						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
+						lx = chrom_width<<1;
+					}
+					else
+					{
+						/* frame DCT */
+						offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
+						lx = chrom_width2;
+					}
 
-          if (picture->pict_struct==BOTTOM_FIELD)
-            offs += chrom_width;
-        }
+					if (picture->pict_struct==BOTTOM_FIELD)
+						offs += chrom_width;
+				}
 
-        (*psub_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
-        (*pfdct)(blocks[k*block_count+n]);
-      }
+				(*psub_pred)(pred[cc]+offs,cur[cc]+offs,lx,
+							 blocks[k*block_count+n]);
+				(*pfdct)(blocks[k*block_count+n]);
+			}
 
-      k++;
-    }
+			k++;
+		}
 }
+
 
 /* inverse transform prediction error and add prediction */
 void itransform(
@@ -231,7 +234,6 @@ void itransform(
           if (picture->pict_struct==BOTTOM_FIELD)
             offs += chrom_width;
         }
-
         (*pidct)(blocks[k*block_count+n]);
         (*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
       }

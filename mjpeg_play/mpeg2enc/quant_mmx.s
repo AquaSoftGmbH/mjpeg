@@ -267,7 +267,249 @@ nextquadniq:
 ; int quant_weight_coeff_sum_mmx( short *blk, unsigned short * i_quant_mat )
 ;
 ; Simply add up the sum of coefficients weighted by their quantisation coefficients
+;
+;  fdist1_00 quant_mmx.s:  MMX1 optimised quantisation routines
+;
+;  Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
 
+;
+;  This program is free software; you can redistribute it and/or
+;  modify it under the terms of the GNU General Public License
+;  as published by the Free Software Foundation; either version 2
+;  of the License, or (at your option) any later version.
+;
+;  This program is distributed in the hope that it will be useful,
+;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;  GNU General Public License for more details.
+;
+;  You should have received a copy of the GNU General Public License
+;  along with this program; if not, write to the Free Software
+;  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+;
+;
+;
+
+;;;		
+;;;  void iquant_non_intra_m1_sse(int16_t *src, int16_t *dst, uint16_t
+;;;                               *quant_mat)
+;;; eax - block counter...
+;;; edi - src
+;;; esi - dst
+;;; edx - quant_mat
+
+		;; MMX Register usage
+		;; mm7 = [1|0..3]W
+		;; mm6 = [2047|0..3]W
+		;; mm5 = 0
+
+				
+global iquant_non_intra_m1_sse
+align 32
+iquant_non_intra_m1_sse:
+		
+		push ebp				; save frame pointer
+		mov ebp, esp		; link
+
+		push eax
+		push esi     
+		push edi
+		push edx
+
+		mov		edi, [ebp+8]			; get psrc
+		mov		esi, [ebp+12]			; get pdst
+		mov		edx, [ebp+16]			; get quant table
+		mov		eax,1
+		movd	mm7, eax
+		punpcklwd	mm7, mm7
+		punpckldq	mm7, mm7
+
+		mov     eax, 2047
+		movd	mm6, eax
+		punpcklwd		mm6, mm6
+		punpckldq		mm6, mm6
+
+		mov		eax, 64			; 64 coeffs in a DCT block
+		pxor	mm5, mm5
+		
+iquant_loop_sse:
+		movq	mm0, [edi]      ; mm0 = *psrc
+		add		edi,8
+		pxor	mm1,mm1
+		movq	mm2, mm0
+		pcmpeqw	mm2, mm1		; mm2 = 1's for non-zero in mm0
+		pcmpeqw	mm2, mm1
+
+		;; Work with absolute value for convience...
+		psubw   mm1, mm0        ; mm1 = -*psrc
+		pmaxsw	mm1, mm0        ; mm1 = val = max(*psrc,-*psrc) = abs(*psrc)
+		paddw   mm1, mm1		; mm1 *= 2;
+		paddw	mm1, mm7		; mm1 += 1
+		pmullw	mm1, [edx]		; mm1 = (val*2+1) * *quant_mat
+		add		edx, 8
+		psraw	mm1, 5			; mm1 = ((val*2+1) * *quant_mat)/32
+
+		;; Now that nasty mis-match control
+
+		movq	mm3, mm1
+		pand	mm3, mm7
+		pxor	mm3, mm7		; mm3 = ~(val&1) (in the low bits, others 0)
+		movq    mm4, mm1
+		pcmpeqw	mm4, mm5		; mm4 = (val == 0) 
+		pxor	mm4, mm7		;  Low bits now (val != 0)
+		pand	mm3, mm4		; mm3 =  (~(val&1))&(val!=0)
+
+		psubw	mm1, mm3		; mm1 -= (~(val&1))&(val!=0)
+		pminsw	mm1, mm6		; mm1 = saturated(res)
+
+		;; Handle zero case and restoring sign
+		pand	mm1, mm2		; Zero in the zero case
+		pxor	mm3, mm3
+		psubw	mm3, mm1		;  mm3 = - res
+		paddw	mm3, mm3		;  mm3 = - 2*res
+		pcmpgtw	mm0, mm5		;  mm0 = *psrc < 0
+		pcmpeqw	mm0, mm5		;  mm0 = *psrc >= 0
+		pand	mm3, mm0		;  mm3 = *psrc <= 0 ? -2 * res :	 0
+		paddw	mm1, mm3		;  mm3 = samesign(*psrc,res)
+		movq	[esi], mm1
+		add		esi,8
+
+		sub		eax, 4
+		jnz		iquant_loop_sse
+		
+		pop	edx
+		pop edi
+		pop esi
+		pop eax
+
+		pop ebp			; restore stack pointer
+
+		emms			; clear mmx registers
+		ret			
+
+
+;;;		
+;;;  void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t
+;;;                               *quant_mat)
+;;; eax - block counter...
+;;; edi - src
+;;; esi - dst
+;;; edx - quant_mat
+
+		;; MMX Register usage
+		;; mm7 = [1|0..3]W
+		;; mm6 = [MAX_UINT16-2047|0..3]W
+		;; mm5 = 0
+
+				
+global iquant_non_intra_m1_mmx
+align 32
+iquant_non_intra_m1_mmx:
+		
+		push ebp				; save frame pointer
+		mov ebp, esp		; link
+
+		push eax
+		push esi     
+		push edi
+		push edx
+
+		mov		edi, [ebp+8]			; get psrc
+		mov		esi, [ebp+12]			; get pdst
+		mov		edx, [ebp+16]			; get quant table
+		mov		eax,1
+		movd	mm7, eax
+		punpcklwd	mm7, mm7
+		punpckldq	mm7, mm7
+
+		mov     eax, (0xffff-2047)
+		movd	mm6, eax
+		punpcklwd		mm6, mm6
+		punpckldq		mm6, mm6
+
+		mov		eax, 64			; 64 coeffs in a DCT block
+		pxor	mm5, mm5
+		
+iquant_loop:
+		movq	mm0, [edi]      ; mm0 = *psrc
+		add		edi,8
+		pxor    mm1, mm1		
+		movq	mm2, mm0
+		pcmpeqw	mm2, mm5		; mm2 = 1's for non-zero in mm0
+		pcmpeqw	mm2, mm5
+
+		;; Work with absolute value for convience...
+
+		psubw   mm1, mm0        ; mm1 = -*psrc
+		psllw	mm1, 1			; mm1 = -2*psrc
+		movq	mm3, mm0		; mm3 = *psrc > 0
+		pcmpgtw	mm3, mm5
+		pcmpeqw mm3, mm5        ; mm3 = *psrc <= 0
+		pand    mm3, mm1		; mm3 = (*psrc <= 0)*-2* *psrc
+		movq	mm1, mm0        ; mm1 = (*psrc <= 0)*-2* *psrc + *psrc = abs(*psrc)
+		paddw	mm1, mm3
+
+		
+		paddw   mm1, mm1		; mm1 *= 2;
+		paddw	mm1, mm7		; mm1 += 1
+		pmullw	mm1, [edx]		; mm1 = (val*2+1) * *quant_mat
+		add		edx, 8
+		psraw	mm1, 5			; mm1 = ((val*2+1) * *quant_mat)/32
+
+		;; Now that nasty mis-match control
+
+		movq	mm3, mm1
+		pand	mm3, mm7
+		pxor	mm3, mm7		; mm3 = ~(val&1) (in the low bits, others 0)
+		movq    mm4, mm1
+		pcmpeqw	mm4, mm5		; mm4 = (val == 0) 
+		pxor	mm4, mm7		;  Low bits now (val != 0)
+		pand	mm3, mm4		; mm3 =  (~(val&1))&(val!=0)
+
+		psubw	mm1, mm3		; mm1 -= (~(val&1))&(val!=0)
+
+		paddsw	mm1, mm6		; Will saturate if > 2047
+		psubw	mm1, mm6		; 2047 if saturated... unchanged otherwise
+
+		;; Handle zero case and restoring sign
+		pand	mm1, mm2		; Zero in the zero case
+		pxor	mm3, mm3
+		psubw	mm3, mm1		;  mm3 = - res
+		paddw	mm3, mm3		;  mm3 = - 2*res
+		pcmpgtw	mm0, mm5		;  mm0 = *psrc < 0
+		pcmpeqw	mm0, mm5		;  mm0 = *psrc >= 0
+		pand	mm3, mm0		;  mm3 = *psrc <= 0 ? -2 * res :	 0
+		paddw	mm1, mm3		;  mm3 = samesign(*psrc,res)
+		movq	[esi], mm1
+		add		esi,8
+
+		sub		eax, 4
+		jnz		near iquant_loop
+		
+		pop	edx
+		pop edi
+		pop esi
+		pop eax
+
+		pop ebp			; restore stack pointer
+
+		emms			; clear mmx registers
+		ret			
+						
+
+
+;;;  int32_t quant_weight_coeff_sum_mmx(int16_t *src, int16_t *i_quant_mat
+;;;                               )
+;;; eax - block counter...
+;;; edi - src
+;;; esi - dst
+;;; edx - quant_mat
+
+		;; MMX Register usage
+		;; mm7 = [1|0..3]W
+		;; mm6 = [2047|0..3]W
+		;; mm5 = 0
+		
 global quant_weight_coeff_sum_mmx
 align 32
 quant_weight_coeff_sum_mmx:
