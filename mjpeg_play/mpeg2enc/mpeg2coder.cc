@@ -78,7 +78,7 @@ int MPEG2Coder::FrameToTimeCode(int gop_timecode0_frame)
 	/* Note: no drop_frame_flag support here, so we're simply rounding
 	   the frame rate as per 6.3.8 13818-2
 	*/
-	fps = (int)(encparams.frame_rate+0.5);
+	fps = (int)(encparams.decode_frame_rate+0.5);
 	pict = frame%fps;
 	frame = (frame-pict)/fps;
 	sec = frame%60;
