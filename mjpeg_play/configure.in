@@ -449,8 +449,6 @@ else
   have_altivec=false
 fi
 
-echo enable_simd_accel = X"$enable_simd_accel"X
-
 if test "$enable_simd_accel" != "false" -a "$enable_simd_accel" != "no"
 then
   if test x$have_x86cpu = xtrue

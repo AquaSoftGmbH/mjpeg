@@ -29,9 +29,6 @@
 #include "audiostrm.hpp"
 #include "multiplexor.hpp"
 
-const unsigned int LPCMStream::default_buffer_size = 232*1024;
-const unsigned int LPCMStream::ticks_per_frame_90kHz = 150;
-
 
 AudioStream::AudioStream(IBitStream &ibs, Multiplexor &into) : 
 	ElementaryStream( ibs, into,  ElementaryStream::audio ),
