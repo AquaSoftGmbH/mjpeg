@@ -617,11 +617,14 @@ echo " MJPEG tools ${VERSION} build configuration :"
 echo ""
 if test "$have_x86cpu" = "true" ; then
 echo "    - X86 Optimizations:"
-echo "      - MMX/3DNow! enabled      : ${have_asm_mmx}"
+echo "      - MMX/3DNow! enabled          : ${have_asm_mmx}"
 fi
 if test "$have_ppccpu" = "true" ; then
 echo "    - PowerPC Optimizations:"
 echo "      - AltiVec enabled             : ${have_altivec}"
+fi
+if test x"$ARCHFLAGS" != x; then
+echo "    - arch/cpu compiler flags:      : ${ARCHFLAGS}"
 fi
 echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
