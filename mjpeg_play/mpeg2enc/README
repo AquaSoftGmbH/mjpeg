@@ -50,6 +50,7 @@ Usage: ./mpeg2enc [params] inputfiles
    -d num     Drop lsbs of samples [0..3] (default: 0)
    -n num     Noise filter (low-pass) [0..2] (default: 0)
    -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)
+   -t         Activate dynamic thresholding of motion compensation window size 
 [as
 
 FAST MOTION COMPENSATION:
@@ -79,6 +80,25 @@ Andrew.Stevens@comlab.ox.ac.uk if you think you have found a case
 where the fast compensation fails!
 
 In case you're wondering: the performance gain is a factor of around 2-3.
+
+SEARCH RADIUS THRESHOLDING
+
+Its a pain to watch the encoder grinding its way through huge motion
+compensation search radii that are really only needed on the fastest
+moving of scenes.  As a way around this the encoder now supports
+thresholding of  motion compensation search.  It first searches within
+a small radius (half the specified).  If this already yields a result
+that is better than average (in terms of absolute difference) it aborts
+the search there.  Only if the best match found initially is poor does
+the program bother searching more widely.  The net result is motion
+compensation is speeded by another factor of two for near zero quality
+loss.
+
+N.b. because it is possible (if very unlikely) that non-trivial quality
+losses may occur (and the gains in terms of total run-time
+are not huge) thresholding defaults *off*.  Use "-t" to turn it on.
+
+
 
 NOISE FILTERING and BIT DROPPING
 

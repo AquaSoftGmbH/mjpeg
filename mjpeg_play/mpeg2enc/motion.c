@@ -137,18 +137,15 @@ static int variance _ANSI_ARGS_((unsigned char *p, int lx));
 
 
 /* 
-   Sliding average of fast motion compensation differences.
+   Match distance Threshold for full radius motion compensation search
+   Based on moving averages of fast motion compensation differences.
    If after restricted search, the fast motion compensation block
    difference is larger than this average search is expanded out to
    the user-specified radius to see if we can do better.
  */
-static double fast_motion_average;
+static double fast_motion_threshold;
 
-/*
-  Weighting of moving average relative to new data.  Currently set to
-  around  1/2 the number of macroblocks in a frame.
- */
-static double fast_motion_weighting;
+
 
 /*
  * motion estimation for progressive and interlaced frame pictures
@@ -1700,7 +1697,7 @@ int *iminp,*jminp;
 	/* We only bother with a full search if we haven't already got
 	   a significantly better-than average match */
 	if(  ! fast_mc_threshold || 
-		 best_fast_dist > (int)(fast_motion_average * 0.95) )
+		 best_fast_dist > (int)(fast_motion_threshold * 0.95) )
 	  {
 		
 		jlow = j0-coarse_rad_y;
@@ -2001,17 +1998,44 @@ int distlim;
   return s;
 }
 
+
+/*
+  Weighting of moving average relative to new data.  Currently set to
+  around  1/2 the number of macroblocks in a frame.
+ */
+static double fast_motion_weighting;
 /* 
    Reset the match accuracy threshhold used to decide whether to
    restrict the size of the the fast motion compensation search window.
  */
 
+static int updates_for_valid_slow;
+static double fast_distance_average;
+static double slow_distance_average;
 static void update_fast_motion_threshold( int match_dist )
 {
-
-	fast_motion_average = ( (fast_motion_weighting * fast_motion_average +
+  
+  fast_distance_average = ( (fast_motion_weighting * fast_distance_average +
 							 ((double) match_dist)) /
 							(fast_motion_weighting+1) );
+  /* We initialise the slow with the fast avergage */
+  if ( updates_for_valid_slow )
+	{
+	  --updates_for_valid_slow;
+	  slow_distance_average = fast_distance_average;
+	}
+
+  fast_distance_average = (fast_motion_weighting * fast_distance_average +
+						   ((double) match_dist)) / (fast_motion_weighting+1);
+	
+
+  slow_distance_average = (100.0 * slow_distance_average +
+						   fast_distance_average) / 101.0;
+  if ( slow_distance_average < fast_distance_average )
+	fast_motion_threshold = slow_distance_average;
+  else
+	fast_motion_threshold = fast_distance_average;
+
 }
 
 /* 
@@ -2021,7 +2045,8 @@ static void update_fast_motion_threshold( int match_dist )
 
 void reset_fast_motion_threshold( int macroblocks_per_frame)
 {
-  fast_motion_average = 0.0;
+  fast_distance_average = 0.0;
+  updates_for_valid_slow = 4*macroblocks_per_frame;
   fast_motion_weighting = (double)2*macroblocks_per_frame;
 }
 
