@@ -361,6 +361,7 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
   }
 }
 
+#if defined(HAVE_MMX_INTEL_MNEMONICS) || defined(HAVE_MMX_ATT_MNEMONICS)
 METHODDEF(void)
 ycc_rgb_convert_orig (j_decompress_ptr cinfo,
 		 JSAMPIMAGE input_buf, JDIMENSION input_row,
