@@ -1,0 +1,11 @@
+mjpegtools/README
+mjpegtools/README.lavpipe
+mjpegtools/README.transist
+mjpegtools/scripts/transcode
+mjpegtools/scripts/lav2mpeg
+mjpegtools/scripts/codiere
+mjpegtools/scripts/berechne
+mjpegtools/scripts/aufnahme
+mjpegtools/scripts/frameber
+mjpegtools/mjpeg_howto.txt
+mjpegtools/HINTS
