@@ -68,12 +68,18 @@ static int x86_accel (void)
 	return 0;
 
     caps = ACCEL_X86_MMX;
-    if (edx & 0x02000000)	// SSE - identical to AMD MMX extensions
-	caps = ACCEL_X86_MMX | ACCEL_X86_MMXEXT;
-
+    /* If SSE capable CPU has same MMX extensions as AMD
+	   and then some. However, to use SSE O.S. must have signalled
+	   it use of FXSAVE/FXRSTOR through CR4.OSFXSR and hence FXSR (bit 24)
+	   here
+	*/
+    if ((edx & 0x02000000))	
+		caps = ACCEL_X86_MMX | ACCEL_X86_MMXEXT;
+	if( (edx & 0x03000000) == 0x03000000)
+		caps |= ACCEL_X86_SSE;
     cpuid (0x80000000, eax, ebx, ecx, edx);
     if (eax < 0x80000001)	// no extended capabilities
-	return caps;
+		return caps;
 
     cpuid (0x80000001, eax, ebx, ecx, edx);
 
