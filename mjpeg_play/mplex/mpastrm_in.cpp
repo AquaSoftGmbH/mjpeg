@@ -148,8 +148,8 @@ void MPAStream::Init ( const int stream_num )
 			mpa_slots[layer] *1000 /
 			mpa_freq_table[version_id][frequency];
 
-		size_frames[0] = framesize;
-		size_frames[1] = framesize+( layer == 0 ? 4 : 1);
+		size_frames[0] = framesize * ( layer == 0 ? 4 : 1);
+		size_frames[1] = (framesize+1) * ( layer == 0 ? 4 : 1);
 		num_frames[padding_bit]++;
         access_unit.start  = AU_start;
 		access_unit.length = size_frames[padding_bit];
@@ -183,9 +183,9 @@ unsigned int MPAStream::NominalBitRate()
 
 unsigned int MPAStream::SizeFrame( int rate_code, int padding )
 {
-	return mpa_bitrates_kbps[version_id][layer][rate_code]  * 
+	return ( mpa_bitrates_kbps[version_id][layer][rate_code]  * 
 		mpa_slots [layer] *1000 /
-		mpa_freq_table[version_id][frequency] + padding;
+		mpa_freq_table[version_id][frequency] + padding ) * ( layer == 0 ? 4 : 1);
 }
 
 void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
