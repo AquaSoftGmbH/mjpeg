@@ -105,9 +105,9 @@ unsigned char *frame;
       {
 		/* Return value is mquant adjustment up if necc. to avoid clipping */
         for (comp=0; comp<block_count; comp++)
-          mbinfo[k].mquant = 
+          /* mbinfo[k].mquant = */
 			quant_intra( blocks[k*block_count+comp],blocks[k*block_count+comp],
-						 dc_prec,intra_q,mbinfo[k].mquant);
+						 dc_prec, intra_q, i_intra_q, mbinfo[k].mquant);
         mbinfo[k].cbp = cbp = (1<<block_count) - 1;
       }
       else
@@ -116,8 +116,8 @@ unsigned char *frame;
         for (comp=0;comp<block_count;comp++)
           cbp = (cbp<<1) | quant_non_intra(blocks[k*block_count+comp],
                                            blocks[k*block_count+comp],
-                                           inter_q,mbinfo[k].mquant,
-										   &mbinfo[k].mquant);
+                                           inter_q, i_inter_q,  mbinfo[k].mquant
+										   , &mbinfo[k].mquant );
 
         mbinfo[k].cbp = cbp;
 

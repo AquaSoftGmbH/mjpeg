@@ -33,6 +33,12 @@
 #include "config.h"
 #include "global.h"
 
+/* TODO:  Currently new algorithm is switched.  Once its right tune it properly
+	and make it fixed....
+	*/
+	
+#define NEW_RATE_CTL
+
 /* private prototypes */
 static double calc_actj _ANSI_ARGS_((unsigned char *frame));
 static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
@@ -208,13 +214,17 @@ unsigned char *frame;
 #endif
 }
 
+/*
+#define NEW_RATE_CTL
+*/
+
 static double calc_actj(frame)
 unsigned char *frame;
 {
   int i,j,k;
   unsigned char *p;
   double actj,var, sum;
-  int *q_mat;
+  unsigned short *i_q_mat;
 
   sum = 0.0;
   k = 0;
@@ -222,7 +232,7 @@ unsigned char *frame;
   for (j=0; j<height2; j+=16)
     for (i=0; i<width; i+=16)
     {
-#ifdef ORGINAL_CODE
+#ifndef NEW_RATE_CTL
       p = frame + ((pict_struct==BOTTOM_FIELD)?width:0) + i + width2*j;
 
       /* take minimum spatial activity measure of luminance blocks */
@@ -260,14 +270,22 @@ unsigned char *frame;
 		 variance measure.  
 	  */
 	  if( mbinfo[k].mb_type  & MB_INTRA )
-			q_mat = i_intra_q;
+	  {
+			i_q_mat = i_intra_q;
+		}
 	  else
-			q_mat = i_inter_q;
+	  {
+			i_q_mat = i_inter_q;
+		}
 
-	  actj  = quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], q_mat );
-	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );
-	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );
-	  actj += quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], q_mat );	  
+	  actj  = (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], i_q_mat ) /
+	  	       (double) COEFFSUM_SCALE;
+	  actj += (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
+	  		(double) COEFFSUM_SCALE 	;
+	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
+	  		(double) COEFFSUM_SCALE  ;
+	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) /
+	  		(double) COEFFSUM_SCALE  ;	  
 
 #endif
       mbinfo[k].act = actj;
@@ -318,10 +336,11 @@ void rc_update_pict()
     d0i, d0p, d0b);
   fprintf(statfile," remaining number of P pictures in GOP: Np=%d\n",Np);
   fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
-#endif
-
   fprintf(statfile," average activity: avg_act=%.1f\n", avg_act);
-
+#else
+  if( !quiet )
+  	fprintf( stderr, "avg_act=%.3f\n", avg_act );
+#endif
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) */
@@ -370,11 +389,12 @@ int rc_calc_mquant(j)
 int j;
 {
   int mquant;
-  double dj, Qj, actj, N_actj;
+  double dj, Qj, actj, N_actj; 
 
+#ifndef NEW_RATE_CTL
   /* measure virtual buffer discrepancy from uniform distribution model */
-  /* dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2)); */
-
+	dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2));
+#else
   /* A.Stevens Jul 2000 - This *has* to be dumb.  Essentially,
 	 it tries to give every block a similar share of the available bits.
 	 This will not properly exploit blocks which need few and save them
@@ -387,6 +407,7 @@ int j;
   */
 	
   dj = d + (bitcount()-S) - actcovered * T / actsum;
+#endif
 
   /* scale against dynamic range of mquant and the bits/picture count */
   Qj = dj*31.0/r;
@@ -397,6 +418,8 @@ int j;
   actj = mbinfo[j].act;
   actcovered += actj;
 
+
+#ifdef NEW_RATE_CTL
   /*  Heuristic: Decrease quantisation for blocks with lots of
 	  sizeable coefficients.  We assume we just get a mess if
 	  a complex texture's coefficients get chopped...
@@ -404,10 +427,16 @@ int j;
 	 Used to be the seemingly perverse:
 	 (2.0*actj+avg_act)/(actj+2.0*avg_act)
 	 which gently *increases* quantisation of very active blocks.
+	 
+	 Update - fails badly in active scenes... needs revision... probably
+	 a tweak for intra vs non-intra
   */
-  N_actj = (actj+3.0*avg_act)/(3.0*actj+avg_act);
-  /* N_actj = (3.0*actj+avg_act)/(actj+3.0*avg_act); */
 
+  N_actj = (actj+3.0*avg_act)/(3.0*actj+avg_act);
+#else
+
+  N_actj =  (2.0*actj+avg_act)/(actj+2.0*avg_act);
+#endif
   if (q_scale_type)
   {
     /* modulate mquant with combined buffer and local activity measures */

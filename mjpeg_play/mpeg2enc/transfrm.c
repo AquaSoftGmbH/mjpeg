@@ -32,17 +32,30 @@
 #include "config.h"
 #include "global.h"
 
-#if defined(MMX) || defined(SSE)
+#if (defined(MMX) || defined(SSE))
 extern void fdct_mmx( short * blk );
 extern void idct_mmx( short * blk );
+
+void add_pred_mmx _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
+  int lx, short *blk));
+void sub_pred_mmx _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
+  int lx, short *blk));
+
+
 #define fdct_fast fdct_mmx
 #define idct_fast idct_mmx
+#define add_pred_fast add_pred_mmx
+#define sub_pred_fast sub_pred_mmx
+
 #else
+
 extern void fdct( short *blk );
 extern void idct( short *blk );
+
 #define fdct_fast fdct
 #define idct_fast idct
-#endif
+#define add_pred_fast add_pred
+#define sub_pred_fast sub_pred
 
 
 /* private prototypes*/
@@ -50,6 +63,7 @@ static void add_pred _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
   int lx, short *blk));
 static void sub_pred _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
   int lx, short *blk));
+#endif
 
 /* subtract prediction and transform prediction error */
 void transform(pred,cur,mbi,blocks)
@@ -115,7 +129,7 @@ short blocks[][64];
             offs += chrom_width;
         }
 
-        sub_pred(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
+        sub_pred_fast(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
         fdct_fast(blocks[k*block_count+n]);
       }
 
@@ -186,12 +200,14 @@ short blocks[][64];
         }
 
         idct_fast(blocks[k*block_count+n]);
-        add_pred(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
+        add_pred_fast(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
       }
 
       k++;
     }
 }
+
+#if  (!defined(SSE) && !defined(MMX))
 
 /* add prediction and prediction error, saturate to 0...255 */
 static void add_pred(pred,cur,lx,blk)
@@ -211,6 +227,7 @@ short *blk;
   }
 }
 
+
 /* subtract prediction from block data */
 static void sub_pred(pred,cur,lx,blk)
 unsigned char *pred, *cur;
@@ -228,6 +245,8 @@ short *blk;
     pred+= lx;
   }
 }
+
+#endif
 
 /*
  * select between frame and field DCT

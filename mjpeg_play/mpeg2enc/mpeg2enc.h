@@ -111,3 +111,11 @@ struct motion_data {
   int back_hor_f_code,back_vert_f_code;
   int sxb,syb;
 };
+
+
+/* SCale factor for fast integer arithmetic routines */
+/* Changed this and you *must* change the quantisation routines as they depend on its absolute
+	value */
+#define IQUANT_SCALE_POW2 16
+#define IQUANT_SCALE (1<<IQUANT_SCALE_POW2)
+

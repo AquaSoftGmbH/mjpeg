@@ -109,8 +109,6 @@ unsigned char *frame[];
 	   /* N.b. we know width is multiple of 16 so doing lsb dropping
 		  int-wise will work for sane (32-bit or 64-bit) machines
 	   */
-   		 
-	   fprintf(stderr,"D%d", drop_lsb);
 	   
 	   for( c = 0; c < 3 ; ++c )
 		 {
@@ -135,7 +133,6 @@ unsigned char *frame[];
 	   unsigned char *bp;
 	   unsigned char *p = frame[0]+width+1;
 	   unsigned char *end = frame[0]+width*(height-1);
-	   fprintf(stderr,"F%d", noise_filt);
 
 	   bp = filter_buf + width+1;
 	   if( noise_filt == 1 )

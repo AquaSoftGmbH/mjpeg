@@ -63,7 +63,7 @@ void motion_estimation _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg
 void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
 void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
 
-void reset_fast_motion_threshold _ANSI_ARGS_( (int macroblocks_per_frame ) );
+void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
 void error _ANSI_ARGS_((char *text));
 
@@ -110,15 +110,42 @@ void putdmv _ANSI_ARGS_((int dmv));
 void putcbp _ANSI_ARGS_((int cbp));
 
 /* quantize.c */
+/* TODO: DELETE Original types of reference implementations
+	currently used for testing...
 int quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned char *quant_mat, int mquant));
+  unsigned short *quant_mat,  int mquant));
 int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned char *quant_mat, int mquant, int *mquant_ret));
+  unsigned short *quant_mat,  int mquant));
 void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned char *quant_mat, int mquant));
+  unsigned short *quant_mat,   int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned char *quant_mat, int mquant));
-double quant_weight_coeff_sum _ANSI_ARGS_((short *blk, int *i_quant_mat ));
+  unsigned short *quant_mat,  int mquant));
+*/
+
+int quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
+  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant));
+int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
+  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *mquant_ret));
+void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
+  unsigned short *quant_mat,  unsigned short *i_quant_mat, int mquant));
+void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
+  unsigned short *quant_mat, unsigned short *iquant_mat,  int mquant));
+
+
+#define COEFFSUM_SCALE (1<<16)
+
+#if defined(MMX) || defined(SSE)
+extern int quantize_ni_mmx(short *dst, short *src, short *quant_mat, short *i_quant_mat, 
+												     int imquant, int mquant, int sat_limit);
+extern int quant_weight_coeff_sum_mmx _ANSI_ARGS_((short *blk, unsigned short*i_quant_mat ));
+
+#define  quant_weight_coeff_sum quant_weight_coeff_sum_mmx
+#else
+
+int quant_weight_coeff_sum _ANSI_ARGS_((short *blk, unsigned short*i_quant_mat ));
+
+
+#endif
 
 /* ratectl.c */
 void rc_init_seq _ANSI_ARGS_((void));
@@ -190,7 +217,7 @@ EXTERN unsigned char alternate_scan[64]
 ;
 
 /* default intra quantization matrix */
-EXTERN unsigned char default_intra_quantizer_matrix[64]
+EXTERN unsigned short default_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -207,7 +234,7 @@ EXTERN unsigned char default_intra_quantizer_matrix[64]
 ;
 
 /* default non intra quantization matrix */
-EXTERN unsigned char default_nonintra_quantizer_matrix[64]
+EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -219,6 +246,7 @@ EXTERN unsigned char default_nonintra_quantizer_matrix[64]
   21, 22, 23, 24, 26, 27, 28, 30,
   22, 23, 24, 26, 27, 28, 30, 31,
   23, 24, 25, 27, 28, 30, 31, 33  
+ 
 }
 #endif
 ;
@@ -267,9 +295,9 @@ EXTERN unsigned char *filter_buf;
 /* 8*8 block data */
 EXTERN short (*blocks)[64];
 /* intra / non_intra quantization matrices */
-EXTERN unsigned char intra_q[64], inter_q[64];
-EXTERN int i_intra_q[64], i_inter_q[64];
-EXTERN unsigned char chrom_intra_q[64],chrom_inter_q[64];
+EXTERN unsigned short intra_q[64], inter_q[64];
+EXTERN unsigned short i_intra_q[64], i_inter_q[64];
+EXTERN unsigned short chrom_intra_q[64],chrom_inter_q[64];
 /* prediction values for DCT coefficient (0,0) */
 EXTERN int dc_dct_pred[3];
 /* macroblock side information array */

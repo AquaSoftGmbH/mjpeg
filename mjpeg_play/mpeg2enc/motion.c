@@ -32,6 +32,14 @@
 #include "config.h"
 #include "global.h"
 
+/*
+
+This links in the prototype version of an experimental gradient-descent
+motion compensation algorithm.   Looks good but its not ready for prime-time
+yet....
+#define TEST_GRAD_DESCENT
+*/
+
 /* RJ: parameter if we should not search at all */
 extern int do_not_search;
 
@@ -86,10 +94,6 @@ static int fullsearch _ANSI_ARGS_( (unsigned char *org, unsigned char *ref,
   int lx, int i0, int j0, int sx, int sy, int h, int xmax, int ymax,
   int *iminp, int *jminp));
 
-static int dist1 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
-  int lx, int hx, int hy, int h, int distlim));
-
-static void update_fast_motion_threshold _ANSI_ARGS_(( int match_dist ));
 
 
 #ifdef SSE
@@ -109,8 +113,21 @@ int fdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 
 int qdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 
+int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
+                 int lx, int hx, int hy, int h);
+
+int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+
+int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+
 #define fdist1 fdist1_SSE
 #define qdist1 qdist1_SSE
+
+#define dist2  dist2_mmx
+#define bdist2  bdist2_mmx
+#define bdist1 bdist1_mmx 
 
 #else
 
@@ -125,10 +142,24 @@ int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 #define dist1_11 dist1_11_MMX
 
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-#define fdist1 fdist1_MMX
-#error qdist1_MMX needs to be modded to only do a single block
+
+#error qdist1_MMX needs to checked!!!!
 int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
+
+int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
+                 int lx, int hx, int hy, int h);
+
+int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+
+
 #define qdist1 qdist1_MMX
+#define fdist1 fdist1_MMX
+#define dist2  dist2_mmx
+#define bdist2 bdist2_mmx	
+#define bdist1 bdist1_mmx 
 #else
 
 static int fdist1 ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
@@ -140,8 +171,20 @@ static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 
+static int dist2 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
+  int lx, int hx, int hy, int h));
+  
+  
+static int bdist2 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+
+static int bdist1 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 #endif
 #endif
+
+
+
 
 /*
  * fast int abs function for pipelined CPU's that suffer when
@@ -152,26 +195,81 @@ static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 #define fastabs(x) (((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift))
 
 
-static int dist2 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
-  int lx, int hx, int hy, int h));
 
-static int bdist1 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-
-static int bdist2 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
 static int variance _ANSI_ARGS_((unsigned char *p, int lx));
 
 
 /* 
-   Match distance Threshold for full radius motion compensation search
+   Match distance Thresholds for full radius motion compensation search
    Based on moving averages of fast motion compensation differences.
    If after restricted search, the fast motion compensation block
    difference is larger than this average search is expanded out to
    the user-specified radius to see if we can do better.
  */
-static int fast_motion_threshold;
+
+/*
+  Weighting of moving average relative to new data.  Currently set to
+  around  1/2 the number of macroblocks in a frame.
+ */
+ 
+static double fast_motion_weighting;
+/* 
+   Reset the match accuracy threshhold used to decide whether to
+   restrict the size of the the fast motion compensation search window.
+ */
+
+typedef struct _thresholdrec
+{
+	double fast_average;
+	double slow_average;
+	int updates_for_valid_slow;
+	int threshold;
+	} thresholdrec;
+	
+thresholdrec twopel_threshold;
+thresholdrec onepel_threshold;
+thresholdrec quadpel_threshold;
+
+static void update_threshold( thresholdrec *rec, int match_dist )
+{
+  
+  rec->fast_average = (fast_motion_weighting * rec->fast_average +
+						   ((double) match_dist)) / (fast_motion_weighting+1);
+	  /* We initialise the slow with the fast avergage */
+  if ( rec->updates_for_valid_slow )
+	{
+	  --rec->updates_for_valid_slow;
+	  rec->slow_average = rec->fast_average;
+	}
+
+  rec->slow_average = (100.0 *  rec->slow_average +
+						    rec->fast_average) / 101.0;
+  if ( rec->slow_average < rec->fast_average )
+		rec->threshold = (int) (0.90 *  rec->slow_average);
+  else
+		rec->threshold = (int) (0.90 * rec->fast_average);
+
+}
+
+/* 
+   Reset the match accuracy threshhold used to decide whether to
+   restrict the size of the the fast motion compensation search window.
+ */
+
+void reset_thresholds(int macroblocks_per_frame)
+{
+  onepel_threshold.fast_average = 5.0;
+  twopel_threshold.fast_average = 5.0;
+  quadpel_threshold.fast_average = 5.0;
+  onepel_threshold.threshold = 5;
+  twopel_threshold.threshold = 5;
+  quadpel_threshold.threshold = 5;
+  onepel_threshold.updates_for_valid_slow = 4*macroblocks_per_frame;
+  twopel_threshold.updates_for_valid_slow = macroblocks_per_frame;
+  quadpel_threshold.updates_for_valid_slow = macroblocks_per_frame;
+  fast_motion_weighting = (double)2*macroblocks_per_frame;
+}
 
 
 
@@ -197,11 +295,14 @@ static int fast_motion_threshold;
  * uses global vars: pict_type, frame_pred_dct
  */
 
-#ifdef GATHER_FAST_MC_STATS
+#ifdef TEST_GRAD_DESCENT
 static double seq_sum;
 static double ratio_sum;
 static double worst_seq;
 static int seq_cnt;
+static int miss_cnt;
+static int test_cnt;
+static int dist_cnt;
 #endif
 
 void motion_estimation(oldorg,neworg,oldref,newref,cur,curref,
@@ -212,11 +313,14 @@ struct mbinfo *mbi;
 int secondfield,ipflag;
 {
   int i, j;
-#ifdef GATHER_FAST_MC_STATS
+#ifdef TEST_GRAD_DESCENT
   worst_seq = 0.0;
   seq_sum = 0.0;
   ratio_sum = 0.0;
   seq_cnt = 0;
+  miss_cnt = 0;
+  test_cnt = 0;
+  dist_cnt = 0;
 #endif
 
   /* loop through all macroblocks of the picture */
@@ -231,25 +335,20 @@ int secondfield,ipflag;
           mbi,secondfield,ipflag);
       mbi++;
     }
-
-    if (!quiet)
-    {
-      putc('.',stderr);
-      fflush(stderr);
-    }
   }
 
-#ifdef GATHER_FAST_MC_STATS
+#ifdef TEST_GRAD_DESCENT
   if( seq_cnt != 0 )
 	{
-	  printf( "AS=%04f RS=%04f WS=%04f\n", 
-			  seq_sum  / seq_cnt, 
+	  printf( "\nMISSES=%d TESTS=%d DISTS=%d AS=%04f RS=%04f WS=%04f\n", 
+	  		miss_cnt,
+				test_cnt / seq_cnt,
+				dist_cnt / seq_cnt,
+			  seq_sum  / miss_cnt, 
 			  ratio_sum/ seq_cnt, 
 			  worst_seq);
-	}
+	} else
 #endif
-  if (!quiet)
-    putc('\n',stderr);
 
 }
 
@@ -1592,6 +1691,397 @@ static int thin_vector( sortelt vec[], int threshold, int len )
 }
 
 
+
+#ifdef TEST_GRAD_DESCENT
+/*
+	A table for cacheing already searched locations to allow search to be aborted once
+	existing descent paths have been found
+	CAUTION: Depends on maximum search radius permitted...
+	*/
+
+/* TODO: BUG: CAUTION: Presupposes motion compensation radii of > 256 don't occur */
+
+#define LG_MAX_SEARCH_RADIUS 8
+#define MAX_SEARCH_RADIUS (1<<LG_MAX_SEARCH_RADIUS)
+#define SEARCH_TABLE_SIZE (MAX_SEARCH_RADIUS*MAX_SEARCH_RADIUS)
+
+typedef struct _searchtablerec 
+	{
+		short tag;
+		short weight;
+	} searchtablerec;
+static short searchtable_fresh_ctr = 0xac45;
+
+static searchtablerec searchtable[SEARCH_TABLE_SIZE];
+#define searchentry(x,y) ( searchtable[(x + (y<<LG_MAX_SEARCH_RADIUS)) & (SEARCH_TABLE_SIZE-1)])
+#define isfreshentry(x,y) ( searchentry(x,y).tag == searchtable_fresh_ctr  )
+#define freshensearchtable searchtable_fresh_ctr++
+#define freshsearchtableentry(x,y,w) { searchentry(x,y).tag = searchtable_fresh_ctr;\
+                                       searchentry(x,y).weight = w; }
+                                        
+
+/*
+	Shiny new distance measure absolute difference sum of row/col sums
+
+*/
+
+static int rcdist( unsigned char *org, unsigned char*blk, int x, int y, int lx, int h, int *pdist )
+{
+	int i,j;
+	unsigned char *porg, *pblk;
+	int dist = 0;
+	int rso, rsb;
+	int cso[16], csb[16];
+	
+	if( isfreshentry(x,y) )
+	{
+		*pdist = searchentry(x,y).weight;
+		return 1;
+	}
+	porg = org;
+	pblk = blk;
+	for( i = 0; i <16; ++i )
+		cso[i] = csb[i] = 0;
+	for( j = 0; j < h; ++j )
+		{
+			rso = rsb = 0;
+			for( i = 0; i < 16; ++i )
+			{
+				rso += porg[i];
+				cso[i] += porg[i];
+				rsb += pblk[i];
+				csb[i] += pblk[i];
+				
+			}
+			dist += abs(rso-rsb);
+			porg += lx;
+			pblk += lx;
+		}
+		
+	for( i = 0; i < 16; ++i )
+		dist += abs(cso[i]-csb[i]);
+	
+	freshsearchtableentry(x,y, dist);
+	*pdist = dist;
+	return 0;
+
+}
+
+
+
+/*
+	local_optimum
+	Do a 2D binary search for a locally optimal row/column sum difference 
+	distance match in the 16-pel box right/below initx inity
+	
+	TODO: Lots of performance tweaks in the code's structure not all documented...
+
+*/
+
+
+static void local_optimum( unsigned char *org, unsigned char *blk, 
+								   int initx, int inity,
+								   int xlow, int xhigh,
+								   int ylow, int yhigh,
+								   int threshold,
+	                 int lx, int h, int *pbestd, int *pbestx, int *pbesty )
+{
+		unsigned char *porg;
+		int deltax = 16 / 2;
+		int deltay = h /2;
+		int bestdx;
+		int bestdy;
+		int x = initx;
+		int y = inity;
+		int bestdist = 1234567; 
+		int dist;
+		int allstale,stale;
+		
+		porg = org+(x)+lx*(y);
+			
+		allstale = rcdist( porg, blk, x, y, lx, h, &bestdist);
+		while( (deltax+deltay > 2))  /* zero in to the 1*1 pel match level */
+		{
+				/*
+				We've already covered the "no movement" option in the previous iteration or during
+				initialisation.
+			  */
+			bestdx = 0;
+			bestdy = 0;
+			
+				/* Try the four quadrants and choose the best 
+					*/
+			if( deltax > 1 )
+			{
+				stale = rcdist( porg + deltax, blk, x+deltax, y, lx, h, &dist );
+				allstale &= stale;
+				if( !stale && dist < bestdist && x+deltax <= xhigh)
+				{
+					bestdist = dist;
+					bestdx = deltax;
+					bestdy = 0;
+				}
+				stale = rcdist( porg - deltax, blk, x-deltax, y, lx, h, &dist );
+				allstale &= stale;	
+				if( !stale && dist < bestdist && x-deltax >= xlow)
+				{
+					bestdist = dist;
+					bestdx = -deltax;
+					bestdy = 0;
+				}
+
+			}
+			
+			if( deltay > 1 )	
+			{
+				stale = rcdist( porg + deltay*lx, blk, x, y+deltay, lx, h, &dist );
+				allstale &= stale;	
+				if( !stale && dist < bestdist && y+deltay <= yhigh)
+				{
+					bestdist = dist;
+					bestdx = 0;
+					bestdy = deltay;
+				}
+				stale = rcdist( porg - deltay*lx, blk, x, y-deltay, lx, h, &dist );
+				allstale &= stale;
+				if( !stale && dist < bestdist && x-deltay >= ylow )
+				{
+					bestdist = dist;
+					bestdx = 0;
+					bestdy = -deltay;
+				}
+
+			
+			}
+			
+
+			/*printf( "SEARCH X=%d Y=%d DX=%d DY=%d BDX=%d BDY=%d D=%d\n",
+						 x, y, deltax, deltay, bestdx, bestdy, bestdist );
+			*/
+			/* Heuristic: if neither quadrant works we simply assume they're overshoots.  We assume
+				 diagonals need not be considered because it would make a quadrant better than the current....
+			*/
+			
+			x += bestdx;
+			porg += bestdx;
+			y += bestdy;
+			porg += lx*bestdy;
+			
+			/* Look closer if not different position is better */
+			if( bestdx == 0 && bestdy == 0 )
+			{
+				/* int unchangeable_x, unchangeable_y; */
+				deltax /= 2;
+				deltay /= 2;
+				/* As a a rule of thumb, once the search narrows we are stuck with some of the match.
+					 If both delta's 1/2 of match block then we're stuck with 1/4.
+					 If both delta's are 1/4 then we're stuck with 3/4's
+					 However, since its a fudge we add a 25% safety margin to allow for multi-step shifts.
+					 We don't actually bother doing any hard sums since we hit here when we're already at the
+					 1/4 stage which is good enough for an approximation...
+					 */
+				/* unchangeable_x = 16 - deltax;
+			  unchangeable_y = h - deltay; */
+				if( bestdist / 4 > threshold+(threshold>>2) )
+				{
+					/*printf("Threshold abort!\n");*/
+					break;
+				}
+			}
+
+			/* If we have considered no fresh locations we also abort the search early  
+				One refinement might be to take into account search radius...
+			*/
+			if( allstale )
+			{
+				/*printf( "Staleness abort\n" );*/
+				break;
+			}
+			allstale = 1;
+		}
+
+		*pbestx = x;
+		*pbesty = y;
+		*pbestd = bestdist;
+			
+}
+
+/*
+	best_graddesc_match
+	
+	Find a good motion compensation search based on local optima in row-col sums.
+	
+	TODO: This *not* the right way to do this.  A priority queue based approach
+	"seeded" with the start 24-pitch grid would probably work much better
+	as it would allow a much efficient means of increasing precision in the event
+	of no good match being found first time around... 
+*/
+
+
+static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh, 
+								  unsigned char *org, mcompuint *forg, 
+								  unsigned char *blk,  mcompuint *fblk, 
+								  int lx, int h, 
+								  int *pdmin, int *pimin, int *pjmin )
+{
+  	unsigned char *orgblk;
+		int i,j;
+		int bestrcdist = 256*255;		/* Can't be lazy and use INT_MAX as it gets used in a thresholding
+															calculation and we don't want to cause overflows */
+		int bestdist = 7891011;
+		int bestx, besty;
+		int dist,x,y;
+		int d;
+		int onepel_radius;
+		
+		freshensearchtable;		/* Ensure we can recognise fresh entries in the search cache */
+
+		/* Find the most promising starting point in the search box */
+
+		for( j = jlow+8; j <= jhigh; j += 24 )
+		{
+			for( i = ilow+8; i <= ihigh; i += 24 )
+			{
+				/*printf( "Starting candidate %d %d \n", i, j );*/
+			  local_optimum( org, 	blk, i, j, ilow, ihigh, jlow, jhigh, bestrcdist, lx, h, &dist, &x, &y );
+				if( dist < bestrcdist )
+				{
+					bestrcdist = dist;
+				}
+				/* Now compute 1*1 pel distance measure (we could even try a DCT here  for real accuracy... *) 
+					 And use that as the basis for our final selection of the best match position.
+				*/
+				dist = dist1_00(org+x+y*lx, blk, lx, h, bestdist);
+				if ( dist < bestdist  )
+				{
+					bestdist = dist;
+					bestx = x;
+					besty = y;
+					if( bestdist < onepel_threshold.threshold )
+						{
+							i = ihigh;
+							j = jhigh;
+						}
+				}
+			}
+		}
+		
+		/* We now try to figure out how hard to look for alternative matches based on the crumminess of
+			 the results we have obtained...
+		*/
+		onepel_radius = bestdist / onepel_threshold.threshold ;
+		
+		/* We're already good we simply look for a bit of polish */
+		if( onepel_radius < 1 )
+			onepel_radius = 1;
+		
+		/* If its really bad we simply search the whole box using a coarse 2*2 pel search first and pick out 
+			 the best local area and then zero in with 1*1 pel search.
+		*/
+		
+		if( onepel_radius > 3 )
+			{
+					int flx = lx / 2;
+					int fh = h / 2;
+					mcompuint *forgblk;
+					int bestfdist;
+					int filow = bestx - 16  /* ilow */;
+					int fihigh = bestx + 16  /*ihigh */;
+					int fjlow =  besty - 10 /*jlow  */;
+					int fjhigh = besty + 10 /*jhigh*/;
+					
+					if( filow < ilow )
+						filow = ilow;
+					if( fihigh > ihigh )
+						fihigh = ihigh;
+					if( fjlow < jlow )
+						fjlow = jlow;
+					if( fjhigh > jhigh )
+						fjhigh = jhigh;
+						
+				/* Now find the best 2*2 pel match in the neighbourhood.  This is probably overkill.
+					 TODO: There is almost invariably *some* locality so should be tuned later... */
+	
+				bestfdist = INT_MAX;
+				forgblk = forg+ (fjlow>>1)*flx;
+				for( j = fjlow; j <= fjhigh; j += 2 )
+				{
+					for( i = filow; i <= fihigh; i += 2 )
+						{
+							dist = fdist1( forgblk+(i>>1), fblk, flx, fh );	
+							if( dist < bestfdist )
+							{
+								bestfdist = dist;
+								bestx = i;
+								besty = j;
+							}
+						}
+						forgblk += flx;
+				}
+
+				/* The best 1*1 based on it... going upward only */
+				onepel_radius = 1;   
+				bestdist = INT_MAX;
+				
+				ilow =bestx;
+				jlow =besty;
+			}
+		else
+		{
+			/* Now the best 1*1 pel match... down as well as up */
+			if ( bestx-onepel_radius > 0 )
+				 ilow = bestx-onepel_radius;
+			if( besty-onepel_radius > 0 )
+				jlow = besty-onepel_radius;
+				
+		}
+			
+			
+		if (bestx+onepel_radius <= width-16 )
+				ihigh = bestx+onepel_radius;
+
+		if( besty+onepel_radius <= height-16 )
+				jhigh = besty+onepel_radius;
+
+		orgblk = org +jlow*lx;
+		for( j = jlow; j <= jhigh; ++j )
+		{
+			for( i = ilow; i <= ihigh; ++i)
+				{
+					dist = dist1_00( orgblk+i, blk, lx, h, bestdist );	
+					if( dist < bestdist )
+					{
+						/*
+						printf("Correction to estimate %d %d dist %d (%d %d dist %d )\n", 
+							i,j, dist, bestx, besty, bestdist );
+							*/
+						bestdist = dist;
+						bestx = i;
+						besty = j;
+					}
+				}
+			orgblk += lx;
+		}
+
+		if( bestdist > 65000 )
+			{
+				printf( "Screwed bestdist %d %d %d %d!\n", ilow, ihigh, jlow, jhigh );
+				exit(1);
+			}
+
+		/*printf( "RC local minimum at %d %d rcdist %d dist %d\n", bestx, besty, bestrcdist, bestdist );
+		*/
+		
+		update_threshold( &onepel_threshold, bestdist );
+		*pimin = bestx;
+		*pjmin = besty;
+		*pdmin = bestdist;
+
+
+}														
+
+#endif
+
 /* 
  *   Vector of motion compensations plus a heap of the associated
  *   weights (macro-block distances).
@@ -1606,6 +2096,9 @@ static int half_heap_size;
 static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
 static matchelt quad_matches[MAX_COARSE_HEAP_SIZE];
 static int quad_heap_size;
+static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
+static matchelt rough_matches[MAX_COARSE_HEAP_SIZE];
+static int rough_heap_size;
 
 
 /*
@@ -1632,6 +2125,8 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
   int i,j,k;
   int s1,s2,s3;
   int dist_sum;
+  int searched_rough_size;
+  int best_quad_dist;
 
   /* N.b. we may ignore the right hand block of the pair going over the
 	 right edge as we have carefully allocated a margin to spare us
@@ -1640,34 +2135,36 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	 out-of-range blocks though...
   */
 
-  quad_heap_size = 0;
+  rough_heap_size = 0;
   dist_sum = 0;
 #if (defined(SSE) || defined(MMX))
   qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-  for( j = jlow; j <= jhigh; j += 4 )
+  for( j = jlow; j <= jhigh; j += 8 )
 	{
   	old_qorgblk = qorgblk;
 	  k = 0;
-	  for( i = ilow; i <= ihigh; i+= 4  )
+	  for( i = ilow; i <= ihigh; i+= 8  )
 		{
 
 		  s1 = qdist1( qorgblk,qblk,qlx,qh);
 		  s2 = (s1 >> 16) & 0xffff;
 		  s1 = s1 & 0xffff;
 		  dist_sum += s1+s2;
-		 	quad_match_heap[quad_heap_size].weight = s1;
-			quad_match_heap[quad_heap_size].index = quad_heap_size;	
-			quad_match_heap[quad_heap_size+1].weight = s2;
-		  quad_match_heap[quad_heap_size+1].index = quad_heap_size+1;	
-		  quad_matches[quad_heap_size].dx = i;
-		  quad_matches[quad_heap_size].dy = j;
-			quad_matches[quad_heap_size+1].dx = i+16;
-			quad_matches[quad_heap_size+1].dy = j;
-  		quad_heap_size += 2;
+		 	rough_match_heap[rough_heap_size].weight = s1;
+			rough_match_heap[rough_heap_size].index = rough_heap_size;	
+			rough_match_heap[rough_heap_size+1].weight = s2;
+		  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
+		  rough_matches[rough_heap_size].dx = i;
+		  rough_matches[rough_heap_size].dy = j;
+			rough_matches[rough_heap_size+1].dx = i+16;
+			rough_matches[rough_heap_size+1].dy = j;
+			/* A sneaky fast way way of binning out-of-limits estimates ... */
+  		rough_heap_size += 1 + (i+16 <= ihigh);
 
-
-		  qorgblk+=1;
-		  k = (k+1)&3;
+		  /* NTOE:  If you change the grid size you *must* adjust this code... too */
+	
+		  qorgblk+=2;
+	  	  k = (k+2)&3;
 		  /* Original branchy code...
 		  if( k == 0 )
 			{
@@ -1679,14 +2176,63 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 		  i += (k==0)<<4;
 		  
 		}
-	  qorgblk = old_qorgblk + qlx;
+	  qorgblk = old_qorgblk + (qlx<<1);
 	}
-#else
+	
+  heapify( rough_match_heap, rough_heap_size );
 
-  /* 
+  best_quad_dist = rough_match_heap[0].weight;	
+	  /* 
 	 We now use the better-than-average matches on 8-pel boundaries 
 	 as starting points for matches on 4-pel boundaries...
-  */
+  		*/
+  quad_heap_size = 0;
+  searched_rough_size = 1+rough_heap_size / 2;
+  dist_sum = 0;
+  for( k = 0; k < searched_rough_size; ++k )
+	{
+	  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+	  matchrec = rough_matches[distrec.index];
+	  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
+	  quad_matches[quad_heap_size].dx = matchrec.dx;
+	  quad_matches[quad_heap_size].dy = matchrec.dy;
+	  quad_match_heap[quad_heap_size].index = quad_heap_size;
+	  quad_match_heap[quad_heap_size].weight = distrec.weight;
+	  dist_sum += distrec.weight;	
+	  ++quad_heap_size;	  
+
+	  for( i = 1; i < 4; ++i )
+	 	{
+			int x, y;
+			x = matchrec.dx + (i & 0x1)*4;
+			y = matchrec.dy + (i >>1)*4;
+  			s1 = qdist1( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
+			dist_sum += s1;
+		    if( s1 < best_quad_dist )
+		  		best_quad_dist = s1;
+
+	  		quad_match_heap[quad_heap_size].weight = s1;
+			quad_match_heap[quad_heap_size].index = quad_heap_size;
+	  		quad_matches[quad_heap_size].dx = x;
+	  		quad_matches[quad_heap_size].dy = y;
+			quad_heap_size += (x <= ihigh && y <= jhigh);
+
+			if( i == 2 )
+				qorgblk += qlx;
+	    }
+
+	  /* If we're thresholding check  got a match below the threshold. 
+	  	*and* .. stop looking... we've already found a good candidate...
+		*/
+/*
+	  if( fast_mc_threshold && best_quad_dist < quadpel_threshold.threshold )
+		{ 
+		  break;
+		}
+*/
+
+	}
+#else
 
 
     /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
@@ -1709,9 +2255,14 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	}
 
 #endif
-	quad_heap_size = thin_vector( quad_match_heap, dist_sum/quad_heap_size,
+
+	/*
+  quad_heap_size = thin_vector( quad_match_heap, dist_sum/quad_heap_size,
 													      quad_heap_size);
+	*/
   heapify( quad_match_heap, quad_heap_size );
+  /* Update the fast motion match average using the best 2*2 match */
+  /* update_threshold( &quadpel_threshold, quad_match_heap[0].weight ); */
 
   return quad_heap_size;
 }
@@ -1727,8 +2278,10 @@ make   with with the 4*4 matches We don't collect them densely as they're
 
 */
 
-static int build_half_heap( mcompuint *forg,  mcompuint *fblk, 
-							              int flx, int fh,  int searched_quad_size )
+static int org_half_heap_size;
+static int build_half_heap(int ihigh, int jhigh, 
+					        mcompuint *forg,  mcompuint *fblk, 
+							int flx, int fh,  int searched_quad_size )
 {
   int k,s;
   sortelt distrec;
@@ -1741,28 +2294,36 @@ static int build_half_heap( mcompuint *forg,  mcompuint *fblk,
   for( k = 0; k < searched_quad_size; ++k )
 	{
 	  heap_extract( quad_match_heap, &quad_heap_size, &distrec );
-		matchrec = quad_matches[distrec.index];
+	  matchrec = quad_matches[distrec.index];
 	  forgblk =  forg + (matchrec.dy>>1)*flx +(matchrec.dx>>1);
 		  
-			  /* A hack for efficiency: we allow the distance
-				 computation to "go off the edge".  We know this
-				 won't cause memory faults because the 4*4 motion
-				 data sits off the end of the ordinary stuff. N.b. we
-				 *do* eventually exclude any eventual off the edge 
-				 matches though...
-			  */
-	
-			  s = fdist1( forgblk,fblk,flx,fh);
-			  half_matches[half_heap_size].dx = matchrec.dx;
-			  half_matches[half_heap_size].dy = matchrec.dy;
-			  half_match_heap[half_heap_size].index = half_heap_size;
-			  half_match_heap[half_heap_size].weight = s;
-			  if( s < best_fast_dist )
-					best_fast_dist = s;
-			  ++half_heap_size;
-			  dist_sum += s;
-			  
 
+	  s = fdist1( forgblk,fblk,flx,fh);
+	  half_matches[half_heap_size].dx = matchrec.dx;
+	  half_matches[half_heap_size].dy = matchrec.dy;
+	  half_match_heap[half_heap_size].index = half_heap_size;
+	  half_match_heap[half_heap_size].weight = s;
+	  if( s < best_fast_dist )
+		  best_fast_dist = s;
+	  ++half_heap_size;
+	  dist_sum += s;
+	  
+		  
+	 if(  matchrec.dy+2 <= jhigh )
+	   {
+		  s = fdist1( forgblk+flx,fblk,flx,fh);
+		  half_matches[half_heap_size].dx = matchrec.dx;
+		  half_matches[half_heap_size].dy = matchrec.dy+2;
+		  half_match_heap[half_heap_size].index = half_heap_size;
+		  half_match_heap[half_heap_size].weight = s;
+		  if( s < best_fast_dist )
+				best_fast_dist = s;
+		  ++half_heap_size;
+		  dist_sum += s;
+		} 
+		  
+	  if( matchrec.dx+2 <= ihigh )
+		  {
 			  s = fdist1( forgblk+1,fblk,flx,fh);
 			  half_matches[half_heap_size].dx = matchrec.dx+2;
 			  half_matches[half_heap_size].dy = matchrec.dy;
@@ -1773,30 +2334,25 @@ static int build_half_heap( mcompuint *forg,  mcompuint *fblk,
 			  ++half_heap_size;
 			  dist_sum += s;
 			  
-			  s = fdist1( forgblk+flx,fblk,flx,fh);
-			  half_matches[half_heap_size].dx = matchrec.dx;
-			  half_matches[half_heap_size].dy = matchrec.dy+2;
-			  half_match_heap[half_heap_size].index = half_heap_size;
-			  half_match_heap[half_heap_size].weight = s;
-			  if( s < best_fast_dist )
-					best_fast_dist = s;
-			  ++half_heap_size;
-			  dist_sum += s;
-			  
-			  s = fdist1( forgblk+flx+1,fblk,flx,fh);
-			  half_matches[half_heap_size].dx = matchrec.dx+2;
-			  half_matches[half_heap_size].dy = matchrec.dy+2;
-			  half_match_heap[half_heap_size].index = half_heap_size;
-			  half_match_heap[half_heap_size].weight = s;
-			  if( s < best_fast_dist )
-					best_fast_dist = s;
-			  ++half_heap_size;
-			  dist_sum += s;
+			 if( matchrec.dy+2 <= jhigh )
+				{
+				    s = fdist1( forgblk+flx+1,fblk,flx,fh);
+					half_matches[half_heap_size].dx = matchrec.dx+2;
+					half_matches[half_heap_size].dy = matchrec.dy+2;
+					half_match_heap[half_heap_size].index = half_heap_size;
+					half_match_heap[half_heap_size].weight = s;
+					if( s < best_fast_dist )
+						  best_fast_dist = s;
+					++half_heap_size;
+					dist_sum += s;
+				}
+		 }
+
 
 	  /* If we're thresholding check  got a match below the threshold. 
-		 If we are stop looking... */
-
-	  if( fast_mc_threshold && best_fast_dist < fast_motion_threshold )
+	  	*and* .. stop looking... we've already found a good candidate...
+		*/
+	  if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
 		{ 
 		  break;
 		}
@@ -1805,13 +2361,14 @@ static int build_half_heap( mcompuint *forg,  mcompuint *fblk,
   /* Since heapification is relatively expensive we do a swift
 	 pre-processing step throwing out all candidates that
 	 are heavier than the heap average */
-  
+
+  org_half_heap_size = half_heap_size;
   half_heap_size = thin_vector(  half_match_heap, 
 																dist_sum / half_heap_size, half_heap_size );
   heapify( half_match_heap, half_heap_size );
   
   /* Update the fast motion match average using the best 2*2 match */
-  update_fast_motion_threshold( half_match_heap[0].weight );
+  update_threshold( &twopel_threshold, half_match_heap[0].weight );
 
   return half_heap_size;
 }
@@ -1836,82 +2393,77 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
   int d,rd;
   int imin = *pimin;
   int jmin = *pjmin;
-  int dmin = *pdmin;
+  int dmin = INT_MAX;
   mcompuint *orgblk;
   sortelt distrec;
   matchelt matchrec;
   int count = 0;
-#ifdef GATHER_FAST_MC_STATS
-	int seq = 0;
-	int seqd;
-	double seq_ratio;
-	double opt_ratio;
-#endif
 
     /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+	/* It can happen (rarely) that the best matches are actually illegal.
+		In that case we have to carry on looking... */
+	do {
+		for( k = 0; k < searched_size; ++k )
+		{	
 
-  for( k = 0; k < searched_size; ++k )
-	{	
+			heap_extract( half_match_heap, &half_heap_size, &distrec );
+			matchrec = half_matches[distrec.index];
+			orgblk = org + matchrec.dx+lx*matchrec.dy;
 
-	  heap_extract( half_match_heap, &half_heap_size, &distrec );
-	  matchrec = half_matches[distrec.index];
-	  orgblk = org + matchrec.dx+lx*matchrec.dy;
+			/* Gross hack for pipelined CPU's: we allow the distance
+			computation to "go off the edge".  We know this
+			won't cause memory faults because the fast motion
+			data sits off the end of the ordinary stuff. N.b. we
+			*do* exclude any eventual off the edge matches though...
+			*/
 
-	  /* Gross hack for pipelined CPU's: we allow the distance
-		 computation to "go off the edge".  We know this
-		 won't cause memory faults because the fast motion
-		 data sits off the end of the ordinary stuff. N.b. we
-		 *do* exclude any eventual off the edge matches though...
-		 */
-
-	  if( matchrec.dx <= xmax && matchrec.dy <= ymax )
-		{
-		  d = dist1_00(orgblk,blk,lx,h, dmin);
-		  if (d<dmin)
+			if( matchrec.dx <= xmax && matchrec.dy <= ymax )
 			{
-			  dmin = d;
-			  imin = matchrec.dx;
-			  jmin = matchrec.dy;
+				d = dist1_00(orgblk,blk,lx,h, dmin);
+				if (d<dmin)
+				{
+					dmin = d;
+					imin = matchrec.dx;
+					jmin = matchrec.dy;
 
-			}
-			d = dist1_00(orgblk+1,blk,lx,h, dmin);
-		  if (d<dmin && (matchrec.dx < xmax))
-			{
-			  dmin = d;
-			  imin = matchrec.dx+1;
-			  jmin = matchrec.dy;
+				}
+				d = dist1_00(orgblk+1,blk,lx,h, dmin);
+				if (d<dmin && (matchrec.dx < xmax))
+				{
+					dmin = d;
+					imin = matchrec.dx+1;
+					jmin = matchrec.dy;
 
-			}
+				}
 
-		  d = dist1_00(orgblk+lx,blk,lx,h, dmin);
-		  if( (d<dmin) && (matchrec.dy < ymax))
-			{
-			  dmin = d;
-			  imin = matchrec.dx;
-			  jmin = matchrec.dy+1;
+				d = dist1_00(orgblk+lx,blk,lx,h, dmin);
+				if( (d<dmin) && (matchrec.dy < ymax))
+				{
+					dmin = d;
+					imin = matchrec.dx;
+					jmin = matchrec.dy+1;
 	
-			}
-		  d = dist1_00(orgblk+lx+1,blk,lx,h, dmin);
-		  if ( (d<dmin) && (matchrec.dy < ymax) && (matchrec.dx < xmax))
-      {
-				dmin = d;
-				imin = matchrec.dx+1;
-				jmin = matchrec.dy+1;
+				}
+				d = dist1_00(orgblk+lx+1,blk,lx,h, dmin);
+				if ( (d<dmin) && (matchrec.dy < ymax) && (matchrec.dx < xmax))
+				{
+					dmin = d;
+					imin = matchrec.dx+1;
+					jmin = matchrec.dy+1;
 
-		  }      
+				}      
+			}
+					/* DEBUG: Remove once you've pinned down this phenomenon.. */
+			if( dmin == INT_MAX )
+				{
+					printf( "Null updates pos %d %d lim %d %d\n", matchrec.dx, matchrec.dy, xmax, ymax );
+				}
+
 		}
 
-	}
+		searched_size = half_heap_size;
 
-#ifdef GATHER_FAST_MC_STATS
-  seq_ratio = ((double)seq+1)/((double)half_heap_size);
-  seq_sum += seq_ratio;
-  opt_ratio = ((double)(seqd))/((double)dmin);
-  ratio_sum += opt_ratio;
-  if( opt_ratio > worst_seq )
-		worst_seq = opt_ratio;
-  ++seq_cnt;
-#endif
+	} while (half_heap_size>0 && dmin == INT_MAX);
 
   *pimin = imin;
   *pjmin = jmin;
@@ -1959,6 +2511,12 @@ int *iminp,*jminp;
   int fh = h >> 1;
   int qh = h >> 2;
   int quad_mean;
+#endif
+#ifdef TEST_GRAD_DESCENT
+	int seq = 0;
+	int seqd;
+	double seq_ratio;
+	double opt_ratio;
 #endif
 
   sxy = (sx>sy) ? sx : sy;
@@ -2064,11 +2622,11 @@ int *iminp,*jminp;
 	 However we cover only coarsely... on 4-pel boundaries...
 	*/
 
-  searched_size = 1 + quad_heap_size / 4;
+  searched_size = 1 + quad_heap_size / 3;
   if( searched_size > quad_heap_size )
 		searched_size = quad_heap_size;
 
-  half_heap_size = build_half_heap( forg, fblk, flx, fh, searched_size );
+  half_heap_size = build_half_heap( ihigh, jhigh, forg, fblk, flx, fh, searched_size );
 
   /* Now choose best 1-pel match from what approximates (not exact due
 	   to the pre-processing trick with the mean) 
@@ -2076,20 +2634,87 @@ int *iminp,*jminp;
 	*/
   
 
-#ifdef GATHER_FAST_MC_STATS
+#ifdef TEST_GRAD_DESCENT
   searched_size = half_heap_size;
 #else
-  searched_size = 1+half_heap_size / fast_mc_frac;
+  searched_size = 1+ (half_heap_size / fast_mc_frac);
+  if( searched_size > half_heap_size )
+  	searched_size = half_heap_size;
 #endif
 
-	dmin = 100000;
+	dmin = INT_MAX;
   
+ 	/* Very rarely this may fail to find matchs due to all the good looking ones
+		being "off the edge".... I ignore this as its so rare and the necessary tests
+		costing significant time
+		*/
   find_best_one_pel( org, blk, searched_size,
 					           ihigh, jhigh, lx, h, &dmin, &imin, &jmin );
-					  
+
+#ifdef TEST_GRAD_DESCENT
+	{
+		int rcimin, rcjmin;
+		int rfrcdist, rcrcdist, rcdmin ;
+		best_graddesc_match( ilow, ihigh, jlow, jhigh, org, forg, blk, fblk, lx, h, &rcdmin, &rcimin, &rcjmin);
+	  if( rcimin != imin || rcjmin != jmin )
+		{
+			++miss_cnt;
+			/* Subtlety here... these calls will use info from the search table unless it has been previously
+				freshened (purged) 
+				*/
+	
+			/*rcdist( org+imin+lx*jmin, blk, imin, jmin, lx, h, &rfrcdist );
+			rcdist( org+rcimin+lx*rcjmin, blk, rcimin, rcjmin, lx, h, &rcrcdist  );
+			*/
+			/*
+			 printf( "Disagreement! %d/%d REF %d %d %d  GD  %d %d %d \n", 
+				miss_cnt, seq_cnt, imin, jmin, dmin, 
+				rcimin, rcjmin, rcdmin );
+			*/
+			seq_sum += abs(rcimin-imin) + abs(rcjmin-jmin);
+	
+		}
+		if( rcimin == imin && rcjmin == jmin && dmin != rcdmin && dmin != INT_MAX )
+			{
+				printf( "\n****A %d %d dmin=%d rcdmin=%d!\n", imin, jmin, dmin, rcdmin);
+			}
+		if( dist1_00(org+rcimin+lx*rcjmin, blk, lx, h, INT_MAX ) != rcdmin )
+			{
+				printf( "INCONSISTENT DISTANCE MEASURE B!\n");
+			}
+  	opt_ratio = ((double)(rcdmin))/((double)dmin);
+  	ratio_sum += opt_ratio;
+  	if( opt_ratio > worst_seq )
+			worst_seq = opt_ratio;
+		++seq_cnt;
+  
+	}
+#endif
 
 #endif
-  
+
+#ifdef TEST_MOTION_SEARCH	
+	/* TEST reference motion compensation... just search all 1-pel matches and compare */
+	dmint = INT_MAX;
+	for( j = jlow; j <= jhigh; ++j )
+  		for( i = ilow; i <= ihigh; ++i )
+			{
+				ed = dist1_00(org+i+lx*j, blk, lx, h, dmint );
+				if( ed < dmint )
+					{
+						dmint = ed;
+						imint = i;
+						jmint = j;
+					}			
+			
+			}
+	if( dmint < dmin )
+	{
+		printf( "(%d,%d) [%d %d %d %d] opt %d %d (%d) fnd %d %d (%d)!\n",
+				i0, j0,
+				ilow, ihigh, jlow, jhigh, imint, jmint, dmint, imin, jmin, dmin );
+	}
+#endif
   /* Final polish: half-pel search of best candidate against reconstructed
    image.
   A.Stevens 2000: Why don't we do the rest of the motion comp search against
@@ -2346,58 +2971,6 @@ int distlim;
   return s;
 }
 
-
-/*
-  Weighting of moving average relative to new data.  Currently set to
-  around  1/2 the number of macroblocks in a frame.
- */
-static double fast_motion_weighting;
-/* 
-   Reset the match accuracy threshhold used to decide whether to
-   restrict the size of the the fast motion compensation search window.
- */
-
-static int updates_for_valid_slow;
-static double fast_distance_average;
-static double slow_distance_average;
-static void update_fast_motion_threshold( int match_dist )
-{
-  
-  fast_distance_average = ( (fast_motion_weighting * fast_distance_average +
-							 ((double) match_dist)) /
-							(fast_motion_weighting+1) );
-  /* We initialise the slow with the fast avergage */
-  if ( updates_for_valid_slow )
-	{
-	  --updates_for_valid_slow;
-	  slow_distance_average = fast_distance_average;
-	}
-
-  fast_distance_average = (fast_motion_weighting * fast_distance_average +
-						   ((double) match_dist)) / (fast_motion_weighting+1);
-	
-
-  slow_distance_average = (100.0 * slow_distance_average +
-						   fast_distance_average) / 101.0;
-  if ( slow_distance_average < fast_distance_average )
-	fast_motion_threshold = (int) (0.90 * slow_distance_average);
-  else
-	fast_motion_threshold = (int) (0.90 * fast_distance_average);
-
-}
-
-/* 
-   Reset the match accuracy threshhold used to decide whether to
-   restrict the size of the the fast motion compensation search window.
- */
-
-void reset_fast_motion_threshold( int macroblocks_per_frame)
-{
-  fast_distance_average = 0.0;
-  updates_for_valid_slow = 4*macroblocks_per_frame;
-  fast_motion_weighting = (double)2*macroblocks_per_frame;
-}
-
 void check_fast_motion_data(unsigned char *blk, char *label )
 {
   unsigned char *b, *nb;
@@ -2550,7 +3123,7 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
   return s;
 }
 
-#endif
+
 
 /*
   Sum absolute differences for 4*4 sub-sampled data.  
@@ -2559,7 +3132,7 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
   I.e. 4*4 or 4*2 sub-sampled blocks will be compared.
  */
 
-#if !defined(MMX) && !defined(SSE)
+
 static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
 {
   register mcompuint *p1 = qblk1;
@@ -2603,6 +3176,8 @@ static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
  * hx,hy:     flags for horizontal and/or vertical interpolation
  * h:         height of block (usually 8 or 16)
  */
+ 
+#if (!defined(SSE) && !defined(MMX))
 static int dist2(blk1,blk2,lx,hx,hy,h)
 unsigned char *blk1,*blk2;
 int lx,hx,hy,h;
@@ -2666,7 +3241,7 @@ int lx,hx,hy,h;
       p2+= lx;
     }
   }
-
+ 
   return s;
 }
 
@@ -2681,6 +3256,8 @@ int lx,hx,hy,h;
  * h: height of block
  * lx: distance (in bytes) of vertically adjacent pels in p2,pf,pb
  */
+ 
+
 static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 unsigned char *pf,*pb,*p2;
 int lx,hxf,hyf,hxb,hyb,h;
@@ -2739,6 +3316,8 @@ int lx,hxf,hyf,hxb,hyb,h;
  * h: height of block
  * lx: distance (in bytes) of vertically adjacent pels in p2,pf,pb
  */
+ 
+
 static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 unsigned char *pf,*pb,*p2;
 int lx,hxf,hyf,hxb,hyb,h;
@@ -2779,6 +3358,7 @@ int lx,hxf,hyf,hxb,hyb,h;
 
   return s;
 }
+#endif
 
 /*
  * variance of a (16*16) block, multiplied by 256

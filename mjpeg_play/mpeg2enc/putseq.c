@@ -61,8 +61,9 @@ void putseq()
 	 compensation window thresholding values - we need to
 	 know how many macroblocks per frame to choose sensible
 	 parameters. */
-  reset_fast_motion_threshold( mb_height2*mb_width );
-
+/*
+  reset_thresholds( mb_height2*mb_width );
+*/
   /* Initialise sane values for neworg in case 1st frame of source sequence is
 	 corrupted and we use its "predecessor" */
   neworg[0]=neworgframe[0];
@@ -254,11 +255,11 @@ void putseq()
         if (mbinfo[k].mb_type & MB_INTRA)
           for (j=0; j<block_count; j++)
             iquant_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                         dc_prec,intra_q,mbinfo[k].mquant);
+                         dc_prec,intra_q, i_intra_q, mbinfo[k].mquant);
         else
           for (j=0;j<block_count;j++)
             iquant_non_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                             inter_q,mbinfo[k].mquant);
+                             inter_q,  i_inter_q,  mbinfo[k].mquant);
       }
 
       itransform(predframe,newref,mbinfo,blocks);
@@ -301,11 +302,11 @@ void putseq()
         if (mbinfo[k].mb_type & MB_INTRA)
           for (j=0; j<block_count; j++)
             iquant_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                         dc_prec,intra_q,mbinfo[k].mquant);
+                         dc_prec,intra_q, i_intra_q, mbinfo[k].mquant);
         else
           for (j=0;j<block_count;j++)
             iquant_non_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                             inter_q,mbinfo[k].mquant);
+                             inter_q,  i_intra_q, mbinfo[k].mquant);
       }
 
       itransform(predframe,newref,mbinfo,blocks);
@@ -341,11 +342,11 @@ void putseq()
         if (mbinfo[k].mb_type & MB_INTRA)
           for (j=0; j<block_count; j++)
             iquant_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                         dc_prec,intra_q,mbinfo[k].mquant);
+                         dc_prec,intra_q, i_intra_q,  mbinfo[k].mquant);
         else
           for (j=0;j<block_count;j++)
             iquant_non_intra(blocks[k*block_count+j],blocks[k*block_count+j],
-                             inter_q,mbinfo[k].mquant);
+                             inter_q,  i_inter_q,  mbinfo[k].mquant);
       }
 
       itransform(predframe,newref,mbinfo,blocks);

@@ -33,12 +33,6 @@
 #include "config.h"
 #include "global.h"
 
-extern void	quantize_ni_mmx( short *, short *, unsigned char *,  int, int );
-
-static void iquant1_intra _ANSI_ARGS_((short *src, short *dst,
-  int dc_prec, unsigned char *quant_mat, int mquant));
-static void iquant1_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned char *quant_mat, int mquant));
 
   /* Unpredictable branches suck on modern CPU's... */
 #define fabsshift ((8*sizeof(unsigned int))-1)
@@ -51,10 +45,11 @@ static void iquant1_non_intra _ANSI_ARGS_((short *src, short *dst,
  * this quantizer has a bias of 1/8 stepsize towards zero
  * (except for the DC coefficient)
  */
-int quant_intra(src,dst,dc_prec,quant_mat,mquant)
+int quant_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant)
 short *src, *dst;
 int dc_prec;
-unsigned char *quant_mat;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
 int mquant;
 {
   int i;
@@ -62,19 +57,7 @@ int mquant;
   int clipping;
   short tmp[64];	/* We buffer result in case we need to adjust quantization
 					   to avoid clipping */
-	short res[64];
-	float *sres = (float *)res;
 
-	/*	
-	memcpy( tmp, src, 64*sizeof(short) );
-	printf( "TESTING SSE ASSEMBLER ... " );
-	for( i = 0; i < 4; ++i )
-		printf( "%04d / %03d ", tmp[i], quant_mat[i] );
-		printf( "\n" );
-	quantize_ni_sse( res, tmp, quant_mat, mquant, 255 ); 
-		
-	exit(0);
-	*/
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
    */
@@ -117,14 +100,6 @@ int mquant;
 		  
 		  tmp[i] = samesign(x,y);
 
-#if 0
-		  /* this quantizer is virtually identical to the above */
-		  if (x<0)
-			x = -x;
-		  d = mquant*quant_mat[i];
-		  y = (16*x + ((3*d)>>3)) / d;
-		  dst[i] = (src[i]<0) ? -y : y;
-#endif
 		}
 	} while( clipping );
   
@@ -132,290 +107,153 @@ int mquant;
   return mquant;
 }
 
+#if !defined(SSE) && !defined(MMX)
+
 /*
- * Quantisation matrix weighted Coefficient sum
+ * Quantisation matrix weighted Coefficient sum fixed-point
+ * integer with low 16 bits fractional...
  * To be used for rate control as a measure of dct block
  * complexity...
  *
  */
 
-double quant_weight_coeff_sum( short *blk, int * i_quant_mat )
+int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
 {
   int i;
- /* double dsum = 0.0; */
   int sum = 0;
- /* int sum = 64000; */   /* TODO: This base weight ought to be exposed.... */
    for( i = 0; i < 64; i+=2 )
 	{
 		sum += abs((int)blk[i]) * (i_quant_mat[i]) + abs((int)blk[i+1]) * (i_quant_mat[i+1]);
-  /*
-  		dsum += fabs((double)blk[i]) / ((double) quant_mat[i]) +
-	 		   fabs((double)blk[i+1]) / ((double) quant_mat[i+1]); 
-
-	  register int abs1, abs2;
-	  abs1 = (fastabs(blk[i]) <<(4+8)) / quant_mat[i];
-	  abs2 = (fastabs(blk[i+1]) <<(4+8)) ;
-	  sum += abs1+abs2/ quant_mat[i+1];
-	 */
 	}
-
-    return ((double) sum) / ((double) ( 1 << (16)));
+    return sum;
   /* In case you're wondering typical average coeff_sum's for a rather noisy video
   	are around 20.0.
 	*/
 }
-
-#ifdef FAST_FLOATING_POINT_VERSION_FOR_ALPHA_OWNERS
-int quant_non_intra_inv(src,dst,iquant_mat,imquant_div16, pmquant)
-short *src, *dst;
-float *iquant_mat;
-float imquant_div16;
-int *pmquant;
-{
-  int i;
-  int x, y, d;
-  int x1, y1, d1, x2, y2, d2;
-  int nzflag;
-  int clipping;
-  short tmp[64];	/* We buffer result in case we need to adjust quantization
-					   to avoid clipping */
-
-#ifdef FE_TOWARDZERO
-		fesetround( FE_TOWARDZERO );
-#else
-#error THIS CODE ASSUMES THAT YOU CAN ROUND TO ZERO... 
-#endif
-  
-  /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
-   */
- do
-	{
-
-	  clipping = 0;
-	  nzflag = 0;
-	  for (i=0; i<64; i++)
-		{
-			register int y1;
-			y1 = (int) ( ((float)src[i]) * iquant_mat[i] * imquant_div16 );
-		  clipping |= ((y1 > 255) && (mpeg1 || (y1 > 2047)));
-			nzflag |= (y1 != 0);
-			dst[i] = y1;
-		}
-		if( clipping )
-		{
-			imquant_div16 /= 2.0;
-			*pmquant *= 2;
-		}
-	}
-	while( clipping );
-	memcpy (dst, tmp, sizeof(short)*64 );
-  return nzflag;
-}
-
 #endif
 
-int quant_non_intra_inv(src,dst,quant_mat,iquant_mat,imquant, pmquant)
+int quant_non_intra_inv(src,dst,quant_mat,i_quant_mat,imquant, mquant, pmquant)
 short *src, *dst;
-unsigned char *quant_mat;
-int *iquant_mat;  /* 2^16 / quant_mat */
+unsigned short *quant_mat;
+short *i_quant_mat;  /* 2^16 / quant_mat */
 int imquant;      /* 2^16 / 2*mquant */
+int mquant;
 int *pmquant;
 {
   int i;
-  int x, y, d;
-  int x1, y1, d1, x2, y2, d2;
+  int x, y;
   int nzflag;
   int clipping;
   short tmp[64];	/* We buffer result in case we need to adjust quantization
 					   to avoid clipping */
 
-  /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
-   */
- do
-	{
-
 	  clipping = 0;
-	  nzflag = 0;
+
 	  for (i=0; i<64; i++)
 		{
-			x1 = (int)src[i];
-			y1 = (((  (((abs(x1)<<5)+ (quant_mat[i]>>1))  * i_inter_q[i] )>>14) * imquant)>>18);
-		  clipping |= ((y1 > 255) && (mpeg1 || (y1 > 2047)));
-			nzflag |= (y1 != 0);
-			tmp[i] = samesign(x1,y1);
+			x = (int)src[i];
+			y = ( (((abs(x)<<5)+ (quant_mat[i]>>1))) * i_quant_mat[i])>>(IQUANT_SCALE_POW2);
+			/* y1 is  2*divisor i.e. 1!! guard bits */
+			y = ((y<<4)+(mquant>>1))*imquant;
+			y = y >> (IQUANT_SCALE_POW2+5);
+		  clipping |= ((y > 255) && (mpeg1 || (y > 2047)));
+			nzflag |= (y != 0);
+			dst[i] = samesign(x,y);
 		}
 
-		if( clipping )
-		{
-			imquant /= 2;
-			*pmquant *= 2;
-		}
-	}
-	while( clipping );
-  memcpy (dst, tmp, sizeof(short)*64 );
-  return nzflag;
+  return clipping;
 }
-
-int quant_non_intra(src,dst,quant_mat,mquant, pmquant)
+								     
+static short quant_buf[64];
+																							     											     
+int quant_non_intra(src,dst,quant_mat, i_quant_mat, mquant, pmquant)
 short *src, *dst;
-unsigned char *quant_mat;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
 int mquant;
 int *pmquant;
 {
   int i;
   int x, y, d;
-  int x1, y1, d1, x2, y2, d2;
   int nzflag;
-  int clipping;
-#ifdef DEBUG_TESTING	
-  short tmp[64];	/* We buffer result in case we need to adjust quantization
-					   to avoid clipping */
-	short tst[64];
-	int mismatch;
-	int clipvalue  = mpeg1 ? 255 : 2047;
-	int scaled_mq   = mquant*4;
-  do
-	{
-	  clipping = 0;
-	  nzflag = 0;
-	  for (i=0; i<64; i++)
-		{
-#ifdef ORIG_CODE
-		  x = src[i];
-		  d = quant_mat[i]; 
+  int clipping = 0;
+  int clipvalue  = mpeg1 ? 255 : 2047;
+  int imquant = (IQUANT_SCALE/mquant);
 
-		  y = (32*(x>=0 ? x : -x) + (d>>1))/d; /* round(32*x/d*2*quant_mat) */
-		  y /= (2*mquant);
-		  /* clip to syntax limits */
-		  if (y > 255)
-			{
-			  if (mpeg1)
-				y = 255;
-			  else if (y > 2047)
-				y = 2047;
-			}
-			dst[i] = x < 0 ? -y : y;
-#else
-		  /* RJ: save one divide operation 
-		  x = src[i];
-		  d = quant_mat[i]; 
-		  y = (32*fastabs(x) + (d>>1))/(d*2*mquant);
-		  clipping |= ((y > 255) & (mpeg1 | (y > 2047)));
-		  nzflag |= ((tmp[i] = samesign(x,y)) != 0);
-		  */
-		  x1 = src[i];
-		  d1 = quant_mat[i];
-		  y1 = (abs(x1)<<6) + d1;
+ /*
+  int tstclip;
+  short tst[64];
 
-		  x2 = src[i+1];
-		  y1 /= d1*scaled_mq;
-		  clipping |= (y1 > clipvalue);
- 		  nzflag |= ((tmp[i] = samesign(x1,y1))!=0);
-		  
-		/*
-		  d2 = quant_mat[i+1];
-		  y2 = (abs(x2)<<6) + d2;  
-		  y2 /= d2*scaled_mq;
-	 	  clipping |= (y2 > clipvalue);
-		  nzflag |= ((tmp[i+1] = samesign(x2,y2))!=0);
+ 
+
+  tstclip = quant_non_intra_inv( src,tst,quant_mat, i_quant_mat,imquant, mquant, pmquant);
+  tstclip = quantize_ni_mmx( tst, src, quant_mat, i_quant_mat, 
+  						(IQUANT_SCALE/mquant), mquant, clipvalue ) & 0xffff;
+  */
+
+  /* MMX Quantizer currently disabled: occasionally causes artefacts due to
+  	 a somewhat different rounding behaviour from the reference code...
+  */
+#if (defined(MMX) || defined(SSE))
+	  int  ret = quantize_ni_mmx( quant_buf, src, quant_mat, i_quant_mat, 
+	  			                 imquant, mquant, clipvalue );
+	  nzflag = ret & 0xffff0000;
+	  
+	  /* We had a saturation problem with the MMX code revert to the tougher integer C
+	  	code
 		*/
+	  if( ret & 0xffff )
+	  {
+	  	printf( "MMX saturation - reversion\n" );
+#endif
 
-		}
-	  mquant += !!clipping;
-#endif
-	}
-  while( clipping );
-#endif
-  return quant_non_intra_inv( src, dst, quant_mat, i_inter_q, ((1<<15) / mquant), pmquant );
-#ifdef DEBUG_TESTING
-	mismatch = 0;
-	for( i = 0; i < 64; ++i )
+ 	 	do
 		{
-				mismatch += abs(tst[i] - tmp[i]);
-		}
-	if( mismatch > 4 )
-	{
-		printf( "mquant = %d \n", mquant );
-		for( i = 0; i < 64; ++i )
-		{
-			/* rint( ((double)src[i]) * iquant_mat[i] * imquant_div16 ); */
-			 x1 = (int)src[i];
-		 	y1 = ((  (((abs(x1)<<5)+ (quant_mat[i]>>1))  * i_inter_q[i] )>>16) * ((1<<15) / mquant ))>>16;
 
-			if( tst[i] != tmp[i] )
-				printf( "I=%d C=%d D=%d T=%d X=%d %d %g %d %d %d\n", i, src[i], quant_mat[i], tmp[i],tst[i],
-					i_inter_q[i], ((double)(1<<16)*16) / (double)i_inter_q[i], (1<<15) / mquant,
-					y1,
-					samesign(x1,y1)
-			   );
-		}
-		exit(0);
-	}
-
-	*pmquant = mquant;
-  memcpy( dst, tmp, 64*sizeof(short) );
-
-  return nzflag;
+		  clipping = 0;
+		  nzflag = 0;
+		  for (i=0; i<64; i++)
+		  {
+			/* RJ: save one divide operation */
+			/* AS: Lets make this a little more accurate... */
+			x = abs(src[i]);
+			d = quant_mat[i]; 
+			/* N.b. accurate would be: y = (int)rint(32.0*((double)x)/((double)(d*2*mquant))); */
+			/* Code below does *not* compute this always! */
+			y = (32*abs(x) + (d>>1))/(d*2*mquant);
+			if (y > clipvalue)
+				y = clipvalue;
+			nzflag |= (quant_buf[i] = samesign(src[i],y));
+			
+		  }
+			  /*
+				  TODO: BUG: THis *has* to be bogus in the event of non-linear mquant
+				  values being chosen...
+			if( clipping )
+	  		mquant += 2;
+					  */
+		
+	  }
+  	while( clipping );
+#if (defined(MMX) || defined(SSE))
+  }
 #endif
-}
+	/* TODO:  THis is bogus until it properly rescales in the non-linear case....
+	for now we just do simple saturation...
+  *pmquant = mquant;
+  	*/
+  
+  memcpy( dst, quant_buf, 64*sizeof(short) );
 
-/* MPEG-2 inverse quantization */
-void iquant_intra(src,dst,dc_prec,quant_mat,mquant)
-short *src, *dst;
-int dc_prec;
-unsigned char *quant_mat;
-int mquant;
-{
-  int i, val, sum;
-
-  if (mpeg1)
-    iquant1_intra(src,dst,dc_prec,quant_mat,mquant);
-  else
-  {
-    sum = dst[0] = src[0] << (3-dc_prec);
-    for (i=1; i<64; i++)
-    {
-      val = (int)(src[i]*quant_mat[i]*mquant)/16;
-      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-    }
-
-    /* mismatch control */
-    if ((sum&1)==0)
-      dst[63]^= 1;
-  }
-}
-
-void iquant_non_intra(src,dst,quant_mat,mquant)
-short *src, *dst;
-unsigned char *quant_mat;
-int mquant;
-{
-  int i, val, sum;
-
-  if (mpeg1)
-    iquant1_non_intra(src,dst,quant_mat,mquant);
-  else
-  {
-    sum = 0;
-    for (i=0; i<64; i++)
-    {
-      val = src[i];
-      if (val!=0)
-        val = (int)((2*val+(val>0 ? 1 : -1))*quant_mat[i]*mquant)/32;
-      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-    }
-
-    /* mismatch control */
-    if ((sum&1)==0)
-      dst[63]^= 1;
-  }
+  return !!nzflag;
 }
 
 /* MPEG-1 inverse quantization */
-static void iquant1_intra(src,dst,dc_prec,quant_mat,mquant)
+static void iquant1_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant)
 short *src, *dst;
 int dc_prec;
-unsigned char *quant_mat;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
 int mquant;
 {
   int i, val;
@@ -434,9 +272,41 @@ int mquant;
   }
 }
 
-static void iquant1_non_intra(src,dst,quant_mat,mquant)
+
+/* MPEG-2 inverse quantization */
+void iquant_intra(src,dst,dc_prec,quant_mat,i_quant_mat,mquant)
 short *src, *dst;
-unsigned char *quant_mat;
+int dc_prec;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
+int mquant;
+{
+  int i, val, sum;
+
+  if (mpeg1)
+    iquant1_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant);
+  else
+  {
+    sum = dst[0] = src[0] << (3-dc_prec);
+    for (i=1; i<64; i++)
+    {
+      val = (int)(src[i]*quant_mat[i]*mquant)/16;
+      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+    }
+
+    /* mismatch control */
+    if ((sum&1)==0)
+      dst[63]^= 1;
+  }
+}
+
+
+
+
+static void iquant1_non_intra(src,dst,quant_mat,i_quant_mat,mquant)
+short *src, *dst;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
 int mquant;
 {
   int i, val;
@@ -455,5 +325,33 @@ int mquant;
 
     /* saturation */
     dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+  }
+}
+
+
+void iquant_non_intra(src,dst,quant_mat,i_quant_mat, mquant)
+short *src, *dst;
+unsigned short *quant_mat;
+unsigned short *i_quant_mat;
+int mquant;
+{
+  int i, val, sum;
+
+  if (mpeg1)
+    iquant1_non_intra(src,dst,quant_mat,i_quant_mat, mquant);
+  else
+  {
+    sum = 0;
+    for (i=0; i<64; i++)
+    {
+      val = src[i];
+      if (val!=0)
+        val = (int)((2*val+(val>0 ? 1 : -1))*quant_mat[i]*mquant)/32;
+      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+    }
+
+    /* mismatch control */
+    if ((sum&1)==0)
+      dst[63]^= 1;
   }
 }

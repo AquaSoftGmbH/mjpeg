@@ -745,8 +745,8 @@ static void readquantmat()
     for (i=0; i<64; i++)
     {
       intra_q[i] = default_intra_quantizer_matrix[i];
-     	i_intra_q[i] = (int)(((double)(1<<(16))) / ((double)default_intra_quantizer_matrix[i]));
-
+     i_intra_q[i] = (int)(((double)(IQUANT_SCALE)) / 
+     				(double)(default_intra_quantizer_matrix[i]));
       } 
   }
   else
@@ -765,20 +765,24 @@ static void readquantmat()
       if (v<1 || v>255)
         error("invalid value in quant matrix");
       intra_q[i] = v;
+      i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v));
     }
 
     fclose(fd);
   }
 
+	/* TODO: Inv Quant matrix initialisation should check if the fraction fits in 16 bits! */
   if (niqname[0]=='-')
   {
     /* use default non-intra matrix */
     load_niquant = 0;
     for (i=0; i<64; i++)
     	{
-      	inter_q[i] = default_nonintra_quantizer_matrix[i];
-				i_inter_q[i] = (int)(((double)(1<<(16))) / ((double)default_nonintra_quantizer_matrix[i]));
-			}
+			/* TODO: A TEST THE SPECIFIED MATRIX WAS SUSPECT....*/
+      		inter_q[i] = default_nonintra_quantizer_matrix[i];
+			inter_q[i] = 16;
+			i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+		}
   }
   else
   {
@@ -796,7 +800,7 @@ static void readquantmat()
       if (v<1 || v>255)
         error("invalid value in quant matrix");
       inter_q[i] = v;
-      i_inter_q[i] = (int)(((double)(1<<(16))) / ((double)v)); 
+      i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v)); 
      }
 
     fclose(fd);
