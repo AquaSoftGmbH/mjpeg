@@ -117,7 +117,7 @@ int freq_out=44100;
 int chans_in=0;
 int chans_out=0;
 int audio_bits=0;
-unsigned long audio_bytes=0;
+int32_t audio_bytes=0;
 
 static void Usage(char *str)
 {
@@ -517,7 +517,7 @@ static unsigned int crc;
        mjpeg_info("Fractional number of slots, padding required\n");
     else info.padding = 0;
  
-    while (get_audio(musicin, buffer, num_samples, stereo, info.lay) > 0) {
+    while (get_audio(musicin, buffer, num_samples, stereo, info.lay) != 0) {
 
        win_buf[0] = &buffer[0][0];
        win_buf[1] = &buffer[1][0];

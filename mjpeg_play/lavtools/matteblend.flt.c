@@ -25,7 +25,7 @@
 
 #include "yuv4mpeg.h"
 
-static void usage () {
+static void usage (void) {
 
    fprintf (stderr, "usage:  matteblend.flt\n"
                     "no params at the moment - color saturation falloff or such has to be implemented\n");

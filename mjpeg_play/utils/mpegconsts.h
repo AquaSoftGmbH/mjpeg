@@ -42,7 +42,7 @@ extern "C" {
  *  y4m_fps_UNKNOWN = { 0, 0 } = Undefined/resrerved code.
  */
 
-const y4m_ratio_t
+y4m_ratio_t
 mpeg_framerate( mpeg_framerate_code_t code );
 
 
@@ -51,7 +51,7 @@ mpeg_framerate( mpeg_framerate_code_t code );
  *  0 = No MPEG code defined for frame-rate
  */
 
-const mpeg_framerate_code_t 
+mpeg_framerate_code_t 
 mpeg_framerate_code( y4m_ratio_t framerate );
 
 
@@ -61,7 +61,7 @@ mpeg_framerate_code( y4m_ratio_t framerate );
  *  (see mpegconsts.c), otherwise uses "fps:1000000" as the ratio.
  */
 
-const y4m_ratio_t
+y4m_ratio_t
 mpeg_conform_framerate( double fps );
 
 
@@ -75,7 +75,7 @@ mpeg_conform_framerate( double fps );
  *
  */
 
-const y4m_ratio_t
+y4m_ratio_t
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
 
 /*
@@ -89,7 +89,7 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
  *
  */
 
-const mpeg_aspect_code_t 
+mpeg_aspect_code_t 
 mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio );
 
 /*
@@ -122,7 +122,7 @@ mpeg_interlace_code_definition( int yuv4m_interlace_code );
  * Returns 0 if it has no good answer.
  *
  */
-const mpeg_aspect_code_t 
+mpeg_aspect_code_t 
 mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
 			    int frame_width, int frame_height);
 
@@ -134,7 +134,7 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
  * Returns y4m_sar_UNKNOWN if it has no good answer.
  *
  */
-const y4m_ratio_t 
+y4m_ratio_t 
 mpeg_guess_sample_aspect_ratio(int mpeg_version,
 			       mpeg_aspect_code_t code,
 			       int frame_width, int frame_height);

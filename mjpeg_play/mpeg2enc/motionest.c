@@ -168,7 +168,7 @@ static void mb_me_search (
  * 
  */
 
-void init_motion()
+void init_motion(void)
 {
 	init_motion_search();
 }

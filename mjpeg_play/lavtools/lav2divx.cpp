@@ -73,7 +73,7 @@
 #define LastChanged "2002/03/02"
 #define __MODULE__ APPNAME	// Needed for avifile exceptions
 
-#include <iostream.h>
+#include <iostream>
 #include <math.h>		// M_PI is better than included PI constant
 #include <sys/time.h>
 #include <unistd.h>		// Needed for the access call to check if file exists
@@ -104,7 +104,7 @@ error ( char *text )
 #define BORDER_SOFT 16
 
 static int
-guesstop ( unsigned char *frame, int width, int height )
+guesstop ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -127,7 +127,7 @@ guesstop ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessbottom ( unsigned char *frame, int width, int height )
+guessbottom ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -150,7 +150,7 @@ guessbottom ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessleft ( unsigned char *frame, int width, int height )
+guessleft ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -173,7 +173,7 @@ guessleft ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessright ( unsigned char *frame, int width, int height )
+guessright ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -617,7 +617,7 @@ main ( int argc, char **argv )
 
 	bh.biSizeImage = bh.biWidth * bh.biHeight * 3;
 
-	unsigned char *framebuffer = new unsigned char[bh.biWidth * bh.biHeight * 3];
+	uint8_t *framebuffer = new uint8_t[bh.biWidth * bh.biHeight * 3];
 	CImage imtarget ( ( BitmapInfo * ) & bh, framebuffer, false );
 
 	int audioexist = el.has_audio;
@@ -628,7 +628,7 @@ main ( int argc, char **argv )
 	int audio_rate = el.audio_rate;
 	int audio_bpersamp = el.audio_bits;
 	int bytespersamp = audio_bpersamp / 8;
-	char *audio_buffer;
+	uint8_t *audio_buffer;
 	int audiolen = 0;
 
 	if ( opt_mono )
@@ -672,7 +672,7 @@ main ( int argc, char **argv )
 		mjpeg_info ( "AUDIO: Bits Per Sample = %i\n", format.wBitsPerSample );
 		mjpeg_info ( "AUDIO: cbSize = %i\n", format.cbSize );
 
-	        audio_buffer = ( char * ) malloc ( audio_sampsperframe * format.nBlockAlign * 2);
+	        audio_buffer = ( uint8_t * ) malloc ( audio_sampsperframe * format.nBlockAlign * 2);
 
 	}
 
@@ -872,7 +872,7 @@ main ( int argc, char **argv )
 					//value /= audio_origchan;
 					if ( bytespersamp == 1 )
 					{
-						audio_buffer[samp] = ( unsigned char ) value;
+						audio_buffer[samp] = ( uint8_t ) value;
 					}
 					else if ( bytespersamp == 2 )
 					{

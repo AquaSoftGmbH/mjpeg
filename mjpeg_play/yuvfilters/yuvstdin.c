@@ -26,7 +26,7 @@
 DEFINE_STD_YFTASKCLASS(yuvstdin);
 
 static const char *
-do_usage()
+do_usage(void)
 {
   return "";
 }
@@ -63,12 +63,12 @@ do_fini(YfTaskCore_t *handle)
 }
 
 static int
-do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame)
+do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t * frame)
 {
   YfTaskCore_t *h = handle;
   YfFrame_t *f = (YfFrame_t *)(h + 1);
   int ret;
-  unsigned char *yuv[3];
+  unsigned char * yuv[3];
 
   YfInitFrame(f, h);
   yuv[0] = f->data;

@@ -37,7 +37,7 @@ SDL_Rect rect;
 
 static int got_sigint = 0;
 
-static void usage () {
+static void usage (void) {
   fprintf(stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
 	  "  -s : display size, width x height\n"
 	  "  -f : frame rate (overrides rate in stream header)\n"

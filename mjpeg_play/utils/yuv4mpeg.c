@@ -105,7 +105,7 @@ ssize_t y4m_write(int fd, const void *buf, size_t len)
  *************************************************************************/
 
 
-static char *y4m_new_xtag()
+static char *y4m_new_xtag(void)
 {
   return _y4m_alloc(Y4M_MAX_XTAG_SIZE * sizeof(char));
 }
@@ -592,7 +592,7 @@ int y4m_write_frame_header(int fd, const y4m_frame_info_t *i)
  *************************************************************************/
 
 int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
-		   y4m_frame_info_t *fi, uint8_t *yuv[3])
+		   y4m_frame_info_t *fi, uint8_t * const yuv[3])
 {
   int err;
   int w = si->width;
@@ -613,7 +613,7 @@ int y4m_read_frame(int fd, const y4m_stream_info_t *si,
 
 
 int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
-		    const y4m_frame_info_t *fi, uint8_t *yuv[3])
+		    const y4m_frame_info_t *fi, uint8_t * const yuv[3])
 {
   int err;
   int w = si->width;
@@ -639,8 +639,8 @@ int y4m_write_frame(int fd, const y4m_stream_info_t *si,
 
 
 int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
-                    uint8_t *upper_field[3], 
-                    uint8_t *lower_field[3])
+                    uint8_t * const upper_field[3], 
+                    uint8_t * const lower_field[3])
 {
   int i, y, err;
   int width = si->width;
@@ -672,8 +672,8 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
 
 int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 		     const y4m_frame_info_t *fi,
-                     uint8_t *upper_field[3], 
-                     uint8_t *lower_field[3])
+                     uint8_t * const upper_field[3], 
+                     uint8_t * const lower_field[3])
 {
   int i, y, err;
   int width = si->width;

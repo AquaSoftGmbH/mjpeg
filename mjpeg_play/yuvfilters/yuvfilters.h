@@ -45,7 +45,7 @@ extern "C" {
 
 typedef struct {
   y4m_frame_info_t fi;
-  unsigned char data[0];
+  uint8_t data[0];
 } YfFrame_t;
 
 #define DATABYTES(W,H) (((W)*(H))+(((W)/2)*((H)/2)*2))
@@ -77,7 +77,7 @@ extern const YfTaskClass_t name
 sclass const char *prefix##_usage(void); \
 sclass YfTaskCore_t *prefix##_init(int argc, char **argv, const YfTaskCore_t *h0); \
 sclass void prefix##_fini(YfTaskCore_t *handle); \
-sclass int prefix##_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0); \
+sclass int prefix##_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t * frame0); \
 const YfTaskClass_t name = { prefix##_usage, prefix##_init, prefix##_fini, prefix##_frame, }
 
 #define DEFINE_STD_YFTASKCLASS(name) DEFINE_YFTASKCLASS(static,do,name)

@@ -40,17 +40,17 @@
 
 static int hdr_len = 0;
 
-static unsigned long getulong(unsigned char *data)
+static uint32_t getulong(uint8_t *data)
 {
    /* Interprets data as a little endian number */
 
    return (data[0] | (data[1]<<8) | (data[2]<<16) | (data[3]<<24));
 }
 
-static unsigned long find_tag(FILE *fd, const char *tag)
+static int32_t find_tag(FILE *fd, const char *tag)
 {
-   unsigned char data[8];
-   unsigned long m;
+   uint8_t data[8];
+   uint32_t m;
    int n;
 
    /* scan input stream for specified tag and return its length */
@@ -64,7 +64,7 @@ static unsigned long find_tag(FILE *fd, const char *tag)
       hdr_len += 8;
 
       m = getulong(data+4);
-      if(!strncasecmp(data,tag,4)) return m;
+      if(!strncasecmp((char*)data,tag,4)) return m;
 
       for(n=0;n<m;n++)
          if(fgetc(fd)==EOF) goto error;
@@ -78,10 +78,11 @@ error:
 }
 
 int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
-                    int *format, unsigned long *bytes)
+                    int *format, int32_t *bytes)
 {
-   unsigned long riff_len, fmt_len, m;
-   unsigned char data[16];
+   int32_t fmt_len;
+   uint32_t riff_len, m;
+   uint8_t data[16];
    int n;
 
    n = fread(data,1,12,fd);
@@ -90,14 +91,14 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
       return -1;
    }
 
-   if(strncasecmp(data,"RIFF",4)) {
+   if(strncasecmp((char*)data,"RIFF",4)) {
       mjpeg_error("Input not a WAV file - starts not with \"RIFF\"\n");
       return -1;
    }
 
    riff_len = getulong(data+4);
 
-   if(strncasecmp(data+8,"WAVE",4)) {
+   if(strncasecmp((char*)data+8,"WAVE",4)) {
       mjpeg_error("Input not a WAV file - has no \"WAVE\" tag\n");
       return -1;
    }
@@ -108,7 +109,7 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
    if(fmt_len<0) return -1;
    if(fmt_len&1) fmt_len++;
    if(fmt_len<16) {
-      mjpeg_error("WAV format len %ld too short\n",fmt_len);
+      mjpeg_error("WAV format len %d too short\n",fmt_len);
       return -1;
    }
 
@@ -141,8 +142,8 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
    if(*bytes<0) return -1;
 
    if(*bytes+hdr_len != riff_len+8) {
-      mjpeg_warn("File length according data tag: %lu\n",*bytes+hdr_len);
-      mjpeg_warn("File length according RIFF tag: %lu\n",riff_len+8);
+      mjpeg_warn("File length according data tag: %u\n",*bytes+hdr_len);
+      mjpeg_warn("File length according RIFF tag: %u\n",riff_len+8);
 	  mjpeg_warn("Inconsistency is inevitable if wav's are being piped\n");
    }
 

@@ -419,7 +419,7 @@ static int XParseGeometry(char *string, int *x, int *y, unsigned int *width, uns
    Parse the X-style geometry string
 */
 
-static int parse_geometry (char *geom, int *x, int *y, int *width, int *height)
+static int parse_geometry (char *geom, int *x, int *y, unsigned int *width, unsigned int *height)
 {
 	return XParseGeometry (geom, x, y, width, height);
 }
@@ -793,7 +793,7 @@ static int set_option(const char *name, char *value)
 			    nerr++; 
 			    break;
 			  }
-			printf("Searching for channel: chan: %d %s\n", chan, (chanlists[chlist].list)[chan].name);
+			/*printf("Searching for channel: chan: %d %s\n", chan, (chanlists[chlist].list)[chan].name);*/
 		      }
 		  }
 
@@ -973,7 +973,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 
 /* Simply prints recording parameters */
-static void lavrec_print_properties()
+static void lavrec_print_properties(void)
 {
 	const char *source;
 	mjpeg_info("Recording parameters:\n\n");

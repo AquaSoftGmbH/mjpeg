@@ -32,6 +32,8 @@
 */
 
 #include <config.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "lav_common.h"
 #include "jpegutils.h"
@@ -215,7 +217,7 @@ static uint8_t *bufalloc(size_t size)
    if (buf == NULL) {
       perror("malloc failed\n");
    }
-   adjust = BUFFER_ALIGN - ((int) buf) % BUFFER_ALIGN;
+   adjust = BUFFER_ALIGN - ((unsigned long) buf) % BUFFER_ALIGN;
    if (adjust == BUFFER_ALIGN)
       adjust = 0;
    return (uint8_t *) (buf + adjust);

@@ -5,13 +5,20 @@
   *  
   *  Scales arbitrary sized yuv frame to yuv frames suitable for VCD, SVCD or specified
   * 
-  *  yuvscaler is distributed in the hope that it will be useful, but
-  *  WITHOUT ANY WARRANTY; without even the implied warranty of
-  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  * 
-  *  yuvscaler is distributed under the terms of the GNU General Public Licence
-  *  as discribed in the COPYING file
- */
+  *  This program is free software; you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+  *  the Free Software Foundation; either version 2 of the License, or
+  *  (at your option) any later version.
+  *
+  *  This program is distributed in the hope that it will be useful,
+  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  *  GNU General Public License for more details.
+  *
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program; if not, write to the Free Software
+  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+  */
 // Implementation: there are two scaling methods: one for not_interlaced output and one for interlaced output. 
 // For each method, line switching may occur on input frames (by convention, line are numbered from 0 to n-1)
 // 
@@ -50,7 +57,7 @@
 // #include "config.h"
 #include "attributes.h"
 #include "../utils/mmx.h"
-#include "../utils/yuv4mpeg.h"
+
 
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
@@ -234,7 +241,7 @@ calculate_output_sar (int out_w, int out_h,
 // *************************************************************************************
 int
 my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
-		   unsigned long int buflen, char *buf, int line_switching)
+		   unsigned long int buflen, uint8_t *buf, int line_switching)
 {
   // This function reads a frame from input stream. Same as y4m_read_frame function except line switching is implemented
   static int err = Y4M_OK;
@@ -1881,9 +1888,9 @@ main (int argc, char *argv[])
 	  ("Could not allocate memory for divide table. STOP!\n");
 //      fprintf (stderr, "%p\n", divide);
       // alignement instructions
-      if (((unsigned int) divide % ALIGNEMENT) != 0)
+      if (((unsigned long) divide % ALIGNEMENT) != 0)
 	divide =
-	  (uint8_t *) ((((unsigned int) divide / ALIGNEMENT) + 1) *
+	  (uint8_t *) ((((unsigned long) divide / ALIGNEMENT) + 1) *
 		       ALIGNEMENT);
 //      fprintf (stderr, "%p\n", divide);
 
@@ -1960,9 +1967,9 @@ main (int argc, char *argv[])
 	      ("Could not allocate enough memory for divide table. STOP!\n");
 //                fprintf (stderr, "%p\n", divide);
 	  // alignement instructions
-	  if (((unsigned int) divide % ALIGNEMENT) != 0)
+	  if (((unsigned long) divide % ALIGNEMENT) != 0)
 	    divide =
-	      (uint8_t *) ((((unsigned int) divide / ALIGNEMENT) + 1) *
+	      (uint8_t *) ((((unsigned long) divide / ALIGNEMENT) + 1) *
 			   ALIGNEMENT);
 //                fprintf (stderr, "%p\n", divide);
 	  // 
@@ -2156,12 +2163,12 @@ main (int argc, char *argv[])
     mjpeg_error_exit1
       ("Could not allocate memory for line, field1, field2, input or output tables. STOP!\n");
 //  fprintf (stderr, "%p %p\n", input, output);
-  if (((unsigned int) input % ALIGNEMENT) != 0)
+  if (((unsigned long) input % ALIGNEMENT) != 0)
     input =
-      (uint8_t *) ((((unsigned int) input / ALIGNEMENT) + 1) * ALIGNEMENT);
-  if (((unsigned int) output % ALIGNEMENT) != 0)
+      (uint8_t *) ((((unsigned long) input / ALIGNEMENT) + 1) * ALIGNEMENT);
+  if (((unsigned long) output % ALIGNEMENT) != 0)
     output =
-      (uint8_t *) ((((unsigned int) output / ALIGNEMENT) + 1) * ALIGNEMENT);
+      (uint8_t *) ((((unsigned long) output / ALIGNEMENT) + 1) * ALIGNEMENT);
 //  fprintf (stderr, "%p %p\n", input, output);
 
   // if skip_col==1

@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <assert.h>
+#include <inttypes.h>
 
 #include "global.h"
 #include "motionsearch.h"
@@ -904,7 +904,7 @@ static void parencodepict( pict_data_s *picture )
  *
  ********************/
  
-void putseq()
+void putseq(void)
 {
 	stream_state_s ss;
 	int cur_ref_idx = 0;
@@ -939,7 +939,7 @@ void putseq()
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
 	ss.seq_split_length = ((int64_t)ctl_seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
-	mjpeg_debug( "Split len = %lld\n", ss.seq_split_length );
+	mjpeg_debug( "Split len = %" PRId64 "\n", ss.seq_split_length );
 
 	frame_num = 0;              /* Encoding number */
 

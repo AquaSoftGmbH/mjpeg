@@ -1213,7 +1213,7 @@ Bit_stream_struc *bs;   /* bit stream structure */
 unsigned int val;       /* val to write into the buffer */
 int N;                  /* number of bits of val */
 {
- unsigned long aligning, sstell();
+ unsigned long aligning;
 
  if (N > MAX_LENGTH)
     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
@@ -1229,7 +1229,7 @@ unsigned long byte_ali_getbits(bs, N)
 Bit_stream_struc *bs;   /* bit stream structure */
 int N;                  /* number of bits of val */
 {
- unsigned long aligning, sstell();
+ unsigned long aligning;
 
  if (N > MAX_LENGTH)
     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
@@ -1264,8 +1264,7 @@ Bit_stream_struc *bs;   /* bit stream structure */
 long sync;      /* sync word maximum 32 bits */
 int N;          /* sync word length */
 {
- double pow();
- unsigned long aligning, stell();
+ unsigned long aligning;
  unsigned long val;
  long maxi = (int)pow(2.0, (FLOAT)N) - 1;
 

@@ -107,7 +107,7 @@ static int n_audio;
 
 static char audio_left_buf[BUFFSIZE];  
 static int audio_bytes_left;   /* Number of bytes in audio_left_buf */
-static int n_buffs_output, n_buffs_error;
+static unsigned int n_buffs_output, n_buffs_error;
 static struct timeval buffer_timestamp;
 static int usecs_per_buff;
 
@@ -503,7 +503,7 @@ int audio_read( uint8_t *buf, int size, int swap,
    return 0;
 }
 
-static void update_output_status()
+static void update_output_status(void)
 {
    while(shmemptr->status[NBUF(n_buffs_output)])
    {
@@ -514,7 +514,7 @@ static void update_output_status()
    }
 }
 
-void audio_get_output_status(struct timeval *tmstmp, int *nb_out, int *nb_err)
+void audio_get_output_status(struct timeval *tmstmp, unsigned int *nb_out, unsigned int *nb_err)
 {
    if(tmstmp) *tmstmp = buffer_timestamp;
    if(nb_out) *nb_out = n_buffs_output;

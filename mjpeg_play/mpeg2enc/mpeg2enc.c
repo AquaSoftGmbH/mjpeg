@@ -131,7 +131,7 @@ static int strm_frame_rate_code;
 int param_422 = 0;
 
 
-static void DisplayFrameRates()
+static void DisplayFrameRates(void)
 {
  	int i;
 	printf("Frame-rate codes:\n");
@@ -142,7 +142,7 @@ static void DisplayFrameRates()
 	exit(0);
 }
 
-static void DisplayAspectRatios()
+static void DisplayAspectRatios(void)
 {
  	int i;
 	printf("\nDisplay aspect ratio codes:\n");
@@ -248,7 +248,7 @@ static void Usage(char *str)
 	exit(0);
 }
 
-static void set_format_presets()
+static void set_format_presets(void)
 {
 	switch( param_format  )
 	{
@@ -473,7 +473,7 @@ static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
 	}
 }
 
-static int infer_default_params()
+static int infer_default_params(void)
 {
 	int nerr = 0;
 
@@ -540,7 +540,7 @@ static int infer_default_params()
 	return nerr;
 }
 
-static int check_param_constraints()
+static int check_param_constraints(void)
 {
 	int nerr = 0;
 	if( param_32_pulldown )
@@ -969,7 +969,6 @@ static struct option long_options[]={
 	if(nerr) 
 	{
 		Usage(argv[0]);
-		exit(1);
 	}
 
 
@@ -1050,7 +1049,7 @@ uint8_t *bufalloc( size_t size )
 	return (uint8_t*)(buf+adjust);
 }
 
-static void init_encoder()
+static void init_encoder(void)
 {
 	int i, n;
 	static int block_count_tab[3] = {6,8,12};
@@ -1634,7 +1633,7 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 	return (orgquant * qboost)/ 256;
 }
 
-static void init_quantmat()
+static void init_quantmat(void)
 {
 	int i,v, q;
 	opt_load_iquant = 0;

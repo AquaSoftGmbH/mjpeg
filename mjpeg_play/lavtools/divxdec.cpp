@@ -831,7 +831,7 @@ writeOutputFrame()
 			// write frame to LAV file.
 			if ( output.toLAV )
 			{
-				int lavwrite = lav_write_frame ( output.fdLAV, (char *) currentFrame.jpegFrame, currentFrame.jpegSize, 1) ;
+				int lavwrite = lav_write_frame ( output.fdLAV, currentFrame.jpegFrame, currentFrame.jpegSize, 1) ;
 				if ( lavwrite != 0 )
 				{
 					mjpeg_error ( "\n" );
@@ -864,7 +864,7 @@ writeOutputFrame()
 		if ( output.toLAV )
 		{
 			int res = lav_write_audio ( output.fdLAV
-						, (char*) currentFrame.audio
+						,  currentFrame.audio
 						, writeBytes / input.audioBlockAlign 
 						);
 			if ( res != 0 )
@@ -1103,7 +1103,7 @@ void lavplayStateChanged(int newState)
 }
 
 static void 
-lavplayGetVideoFrame(char *buffer, int *len, long num)
+lavplayGetVideoFrame(uint8_t *buffer, int *len, long num)
 {
   /* the trick is to put the video buffer into chr *buffer
    * and set the length of the JPEG buffer into int *len
@@ -1139,7 +1139,7 @@ lavplayGetVideoFrame(char *buffer, int *len, long num)
 }
 
 static void 
-lavplayGetAudioSamples(char *buffer, int *samps, long num)
+lavplayGetAudioSamples(uint8_t *buffer, int *samps, long num)
 {
   /* put a number of audio samples (int *samps) in the
    * char *buffer

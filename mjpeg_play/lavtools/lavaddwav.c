@@ -48,7 +48,7 @@ int main(int argc, char **argv)
    int  audio_bps;
    long absize;
    long na_out;
-   char *vbuff, *abuff;
+   uint8_t *vbuff, *abuff;
    lav_file_t *lav_fd, *lav_out;
    int wav_fd;
    long data[64];
@@ -143,11 +143,11 @@ int main(int argc, char **argv)
       if(lav_frame_size(lav_fd,i) > max_frame_size)
          max_frame_size = lav_frame_size(lav_fd,i);
    }
-   vbuff = (char*) malloc(max_frame_size);
+   vbuff = (uint8_t*) malloc(max_frame_size);
 
    absize = audio_rate/fps+0.5;
    absize *= audio_bps;
-   abuff = (char*) malloc(absize);
+   abuff = (uint8_t*) malloc(absize);
 
    if(vbuff==0 || abuff==0)
    {

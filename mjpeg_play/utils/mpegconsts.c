@@ -133,10 +133,10 @@ const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] =
  * Convert MPEG frame-rate code to corresponding frame-rate
  */
 
-const y4m_ratio_t
+y4m_ratio_t
 mpeg_framerate( mpeg_framerate_code_t code )
 {
-	if( code <= 0 || code > mpeg_num_framerates )
+	if( code == 0 || code > mpeg_num_framerates )
 		return y4m_fps_UNKNOWN;
 	else
 		return mpeg_framerates[code];
@@ -147,7 +147,7 @@ mpeg_framerate( mpeg_framerate_code_t code )
  */
 
 
-const mpeg_framerate_code_t 
+mpeg_framerate_code_t 
 mpeg_framerate_code( y4m_ratio_t framerate )
 {
 	mpeg_framerate_code_t i;
@@ -165,7 +165,7 @@ mpeg_framerate_code( y4m_ratio_t framerate )
 #define MPEG_FPS_TOLERANCE 0.0001
 
 
-const y4m_ratio_t
+y4m_ratio_t
 mpeg_conform_framerate( double fps )
 {
 	mpeg_framerate_code_t i;
@@ -192,13 +192,13 @@ mpeg_conform_framerate( double fps )
  * Convert MPEG aspect-ratio code to corresponding aspect-ratio
  */
 
-const y4m_ratio_t 
+y4m_ratio_t 
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
 {
 	y4m_ratio_t ratio;
 	if( mpeg_version < 1 || mpeg_version > 2 )
 		return y4m_sar_UNKNOWN;
-	if( code <= 0 || code > mpeg_num_aspect_ratios[mpeg_version-1] )
+	if( code == 0 || code > mpeg_num_aspect_ratios[mpeg_version-1] )
 		return y4m_sar_UNKNOWN;
 	else
 	{
@@ -218,7 +218,7 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
  *
  */
 
-const mpeg_aspect_code_t 
+mpeg_aspect_code_t 
 mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 {
 	mpeg_aspect_code_t i;
@@ -253,7 +253,7 @@ mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 /* this is big enough to accommodate the difference between 720 and 704 */
 #define GUESS_ASPECT_TOLERANCE 0.03
 
-const mpeg_aspect_code_t 
+mpeg_aspect_code_t 
 mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
 							int frame_width, int frame_height)
 {
@@ -326,7 +326,7 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
  * Returns y4m_sar_UNKNOWN if it has no good guess.
  *
  */
-const y4m_ratio_t 
+y4m_ratio_t 
 mpeg_guess_sample_aspect_ratio(int mpeg_version,
 							   mpeg_aspect_code_t code,
 							   int frame_width, int frame_height)
@@ -385,7 +385,7 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 const char *
 mpeg_framerate_code_definition(   mpeg_framerate_code_t code  )
 {
-	if( code <= 0 || code >=  mpeg_num_framerates )
+	if( code == 0 || code >=  mpeg_num_framerates )
 		return "UNDEFINED: illegal/reserved frame-rate ratio code";
 
 	return framerate_definitions[code];

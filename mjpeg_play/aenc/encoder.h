@@ -149,7 +149,7 @@ typedef double     DCB[CBANDS];
 extern void   print_config(frame_params*, int*, unsigned long*,
                            char[MAX_NAME_SIZE]);
 #else
-extern void   print_config();
+extern void   print_config(void);
 #endif
 
 /* The following functions are in the file "encode.c" */
@@ -218,36 +218,36 @@ extern void   II_sample_encoding(unsigned int[2][3][SCALE_BLOCK][SBLIMIT],
                            Bit_stream_struc*);
 extern void   encode_CRC(unsigned int, Bit_stream_struc*);
 #else
-extern unsigned long  read_samples();
-extern unsigned long  get_audio();
-extern void        read_ana_window();
-extern void        window_subband();
-extern void        create_ana_filter();
-extern void        filter_subband();
-extern void        encode_info();
-extern double      mod();
-extern void        I_combine_LR();
-extern void        II_combine_LR();
-extern void        I_scale_factor_calc();
-extern void        II_scale_factor_calc();
-extern void        pick_scale();
-extern void        put_scale();
-extern void        II_transmission_pattern();
-extern void        II_encode_scale();
-extern void        I_encode_scale();
-extern int         II_bits_for_nonoise();
-extern void        II_main_bit_allocation();
-extern int         II_a_bit_allocation();
-extern int         I_bits_for_nonoise();
-extern void        I_main_bit_allocation();
-extern int         I_a_bit_allocation();
-extern void        I_subband_quantization();
-extern void        II_subband_quantization();
-extern void        II_encode_bit_alloc();
-extern void        I_encode_bit_alloc();
-extern void        I_sample_encoding();
-extern void        II_sample_encoding();
-extern void        encode_CRC();
+extern unsigned long  read_samples(void);
+extern unsigned long  get_audio(void);
+extern void        read_ana_window(void);
+extern void        window_subband(void);
+extern void        create_ana_filter(void);
+extern void        filter_subband(void);
+extern void        encode_info(void);
+extern double      mod(void);
+extern void        I_combine_LR(void);
+extern void        II_combine_LR(void);
+extern void        I_scale_factor_calc(void);
+extern void        II_scale_factor_calc(void);
+extern void        pick_scale(void);
+extern void        put_scale(void);
+extern void        II_transmission_pattern(void);
+extern void        II_encode_scale(void);
+extern void        I_encode_scale(void);
+extern int         II_bits_for_nonoise(void);
+extern void        II_main_bit_allocation(void);
+extern int         II_a_bit_allocation(void);
+extern int         I_bits_for_nonoise(void);
+extern void        I_main_bit_allocation(void);
+extern int         I_a_bit_allocation(void);
+extern void        I_subband_quantization(void);
+extern void        II_subband_quantization(void);
+extern void        II_encode_bit_alloc(void);
+extern void        I_encode_bit_alloc(void);
+extern void        I_sample_encoding(void);
+extern void        II_sample_encoding(void);
+extern void        encode_CRC(void);
 #endif
 
 /* The following functions are in the file "tonal.c" */
@@ -278,27 +278,27 @@ extern void        I_smr(double[SBLIMIT], double[SBLIMIT], double[SBLIMIT]);
 extern void        I_Psycho_One(short[2][1152], double[2][SBLIMIT],
                            double[2][SBLIMIT], frame_params*);
 #else
-extern void        read_cbound();
-extern void        read_freq_band();
-extern void        make_map();
-extern double      add_db();
-extern void        II_f_f_t();
-extern void        II_hann_win();
-extern void        II_pick_max();
-extern void        II_tonal_label();
-extern void        noise_label();
-extern void        subsampling();
-extern void        threshold();
-extern void        II_minimum_mask();
-extern void        II_smr();
-extern void        II_Psycho_One();
-extern void        I_f_f_t();
-extern void        I_hann_win();
-extern void        I_pick_max();
-extern void        I_tonal_label();
-extern void        I_minimum_mask();
-extern void        I_smr();
-extern void        I_Psycho_One();
+extern void        read_cbound(void);
+extern void        read_freq_band(void);
+extern void        make_map(void);
+extern double      add_db(void);
+extern void        II_f_f_t(void);
+extern void        II_hann_win(void);
+extern void        II_pick_max(void);
+extern void        II_tonal_label(void);
+extern void        noise_label(void);
+extern void        subsampling(void);
+extern void        threshold(void);
+extern void        II_minimum_mask(void);
+extern void        II_smr(void);
+extern void        II_Psycho_One(void);
+extern void        I_f_f_t(void);
+extern void        I_hann_win(void);
+extern void        I_pick_max(void);
+extern void        I_tonal_label(void);
+extern void        I_minimum_mask(void);
+extern void        I_smr(void);
+extern void        I_Psycho_One(void);
 #endif
 
 /* The following functions are in the file "psy.c" */
@@ -307,7 +307,7 @@ extern void        I_Psycho_One();
 extern void        psycho_anal(short int*, short int[1056], int, int,
                            FLOAT[32], double);
 #else
-extern void        psycho_anal();
+extern void        psycho_anal(void);
 #endif
 
 /* The following functions are in the file "subs.c" */
@@ -319,14 +319,14 @@ extern void        fft(FLOAT[BLKSIZE], FLOAT[BLKSIZE], FLOAT[BLKSIZE],
                            FLOAT[BLKSIZE], int );
 #endif
 #else
-extern void        fft();
+extern void        fft(void);
 #endif
 
 /* The following functions are in the file "wav_io.c" */
 
 #ifdef PROTO_ARGS
 extern int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
-                    int *format, unsigned long *bytes);
+                    int *format, int32_t *bytes);
 #else
-extern int wav_read_header();
+extern int wav_read_header(void);
 #endif

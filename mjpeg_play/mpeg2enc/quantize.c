@@ -78,12 +78,11 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat)
   Currently just setting up MMX routines if available...
  */
 
-void init_quantizer()
+void init_quantizer(void)
 {
-  int flags;
-  const char *opt_type1, *opt_type2;
-  flags = cpu_accel();
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+  int flags = cpu_accel();
+  const char *opt_type1, *opt_type2;
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
 		if( (flags & ACCEL_X86_3DNOW) != 0 )
@@ -295,7 +294,7 @@ int quant_non_intra(
 	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
-	uint16_t *quant_mat = inter_q_tbl[mquant]/* inter_q */;
+	uint16_t *quant_mat = inter_q_tbl[mquant]; /* inter_q */
 	
 	coeff_count = 64*block_count;
 	flags = 0;

@@ -29,6 +29,7 @@
  */
 
 #include <sys/time.h>
+#include <stdint.h>
 #include "frequencies.h"
 
 #define AUDIO_BUFFER_SIZE 8192
@@ -71,8 +72,8 @@ typedef struct {
 typedef struct {
    int x;                       /* x-positions */
    int y;                       /* y-position  */
-   int w;                       /* width       */
-   int h;                       /* height      */
+   unsigned int w;              /* width       */
+   unsigned int h;              /* height      */
 } rect;
 
 
@@ -112,8 +113,8 @@ typedef struct {
    int max_file_size_mb;
    int flush_count;             /* How often (in frames) to flush data to disk */
    void (*output_statistics)(video_capture_stats *stats);      /* speaks for itself */
-   void (*audio_captured)(char *audio, long sampes);           /* callback when audio has been grabbed */
-   void (*video_captured)(char *video, long size, long count); /* callback when a frame has been grabbed */
+   void (*audio_captured)(uint8_t *audio, long sampes);           /* callback when audio has been grabbed */
+   void (*video_captured)(uint8_t *video, long size, long count); /* callback when a frame has been grabbed */
    void (*msg_callback)(int type, char* message);              /* callback for error/info/warn messages */
    void (*state_changed)(int new_state);                       /* changed state */
 

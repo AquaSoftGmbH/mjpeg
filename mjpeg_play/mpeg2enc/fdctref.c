@@ -234,7 +234,7 @@ void fdct (int16_t *block);
 /* private data */
 static int c[8][8]; /* transform coefficients */
 
-void init_fdct()
+void init_fdct(void)
 {
   int i, j;
   double s;

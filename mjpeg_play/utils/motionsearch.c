@@ -1181,7 +1181,7 @@ static int variance(uint8_t *p, int size,	int rowstride)
  * 
  */
 
-void init_motion_search()
+void init_motion_search(void)
 {
 	int cpucap = cpu_accel();
 

@@ -47,7 +47,7 @@
 
 /* conform.c */
 void range_checks (void);
-void profile_and_level_checks ();
+void profile_and_level_checks (void);
 
 /* fdctref.c */
 void init_fdct (void);

@@ -48,8 +48,8 @@ average_coeff (unsigned int input_length, unsigned int output_length,
   unsigned int *non_zero_p = NULL;
   unsigned int *pointer;
 
-  if ((output_length > input_length) || (input_length <= 0)
-      || (output_length <= 0) || (coeff == 0))
+  if ((output_length > input_length) || (input_length == 0)
+      || (output_length == 0) || (coeff == NULL))
     {
       mjpeg_error ("Function average_coeff : arguments are wrong\n");
       mjpeg_error ("input length = %d, output length = %d, input = %p\n",

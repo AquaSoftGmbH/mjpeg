@@ -130,7 +130,7 @@ void calcSNR(pict_data_s *picture)
 #endif
 }
 
-void stats()
+void stats(void)
 {
 #ifdef OUTPUT_STAT
   int i, j, k,  mb_type;

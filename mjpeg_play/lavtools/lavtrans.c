@@ -95,7 +95,7 @@ static struct
    unsigned long datalen;
 } wave_hdr;
 
-static char abuff[16384];
+static uint8_t abuff[16384];
 
 int	verbose = 1;
 void Usage(char *str);
@@ -125,7 +125,8 @@ int main(int argc, char ** argv)
    lav_file_t *outfd = NULL;
    FILE *wavfd = NULL;
    FILE *imgfd = NULL;
-   char *vbuff, *dotptr;
+   uint8_t *vbuff;
+   char *dotptr;
    char imgfname[4096];
    long audio_bytes_out = 0;
    int res, n, nframe;
@@ -248,7 +249,7 @@ int main(int argc, char ** argv)
       if(res!=1) system_error("writing WAV file","fwrite");
    }
 
-   vbuff = (char*) malloc(el.max_frame_size);
+   vbuff = (uint8_t*) malloc(el.max_frame_size);
    if(vbuff==0) { mjpeg_error_exit1("malloc failed\n");  }
 
    /* Quick hack by Ronald to enable one-frame picture grabbing */

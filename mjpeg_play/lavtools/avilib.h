@@ -1,6 +1,23 @@
+/*
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
+
 #ifndef AVILIB_H
 #define AVILIB_H
 
+#include <mjpeg_types.h>
 
 typedef struct
 {
@@ -26,7 +43,7 @@ typedef struct
    char   compressor[8];     /* Type of compressor, 4 bytes + padding for 0 byte */
    long   video_strn;        /* Video stream number */
    long   video_frames;      /* Number of video frames */
-   char   video_tag[4];      /* Tag of video data */
+   uint8_t video_tag[4];      /* Tag of video data */
    long   video_pos;         /* Number of next frame to be read
                                 (if index present) */
 
@@ -37,14 +54,14 @@ typedef struct
    long   audio_strn;        /* Audio stream number */
    long   audio_bytes;       /* Total number of bytes of audio data */
    long   audio_chunks;      /* Chunks of audio data in the file */
-   char   audio_tag[4];      /* Tag of audio data */
+   uint8_t audio_tag[4];      /* Tag of audio data */
    long   audio_posc;        /* Audio position: chunk */
    long   audio_posb;        /* Audio position: byte within chunk */
 
    long   pos;               /* position in file */
    long   n_idx;             /* number of index entries actually filled */
    long   max_idx;           /* number of index entries actually allocated */
-   unsigned char (*idx)[16]; /* index entries (AVI idx1 tag) */
+   uint8_t (*idx)[16];          /* index entries (AVI idx1 tag) */
    video_index_entry * video_index;
    audio_index_entry * audio_index;
    long   last_pos;          /* Position of last frame written */
@@ -122,9 +139,9 @@ typedef struct
 avi_t* AVI_open_output_file(char * filename);
 void AVI_set_video(avi_t *AVI, int width, int height, double fps, const char *compressor);
 void AVI_set_audio(avi_t *AVI, int channels, long rate, int bits, int format);
-int  AVI_write_frame(avi_t *AVI, char *data, long bytes);
+int  AVI_write_frame(avi_t *AVI, uint8_t *data, long bytes);
 int  AVI_dup_frame(avi_t *AVI);
-int  AVI_write_audio(avi_t *AVI, char *data, long bytes);
+int  AVI_write_audio(avi_t *AVI, uint8_t *data, long bytes);
 long AVI_bytes_remain(avi_t *AVI);
 int  AVI_close(avi_t *AVI);
 int  AVI_fileno(avi_t *AVI);
@@ -146,12 +163,12 @@ long AVI_audio_bytes(avi_t *AVI);
 long AVI_frame_size(avi_t *AVI, long frame);
 int  AVI_seek_start(avi_t *AVI);
 int  AVI_set_video_position(avi_t *AVI, long frame);
-long AVI_read_frame(avi_t *AVI, char *vidbuf);
+long AVI_read_frame(avi_t *AVI, uint8_t *vidbuf);
 int  AVI_set_audio_position(avi_t *AVI, long byte);
-long AVI_read_audio(avi_t *AVI, char *audbuf, long bytes);
+long AVI_read_audio(avi_t *AVI, uint8_t *audbuf, long bytes);
 
-int  AVI_read_data(avi_t *AVI, char *vidbuf, long max_vidbuf,
-                               char *audbuf, long max_audbuf,
+int  AVI_read_data(avi_t *AVI, uint8_t *vidbuf, long max_vidbuf,
+                               uint8_t *audbuf, long max_audbuf,
                                long *len);
 
 void AVI_print_error(const char *str);

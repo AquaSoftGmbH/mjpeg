@@ -58,7 +58,7 @@ static int outcnt;
 static int64_t bytecnt;
 
 /* initialize buffer, call once before first putbits or alignbits */
-void initbits()
+void initbits(void)
 {
 
   outcnt = 8;
@@ -86,14 +86,14 @@ void putbits(uint32_t val, int n)
 }
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
-void alignbits()
+void alignbits(void)
 {
   if (outcnt!=8)
     putbits(0,outcnt);
 }
 
 /* return total number of generated bits */
-int64_t bitcount()
+int64_t bitcount(void)
 {
   return 8LL*bytecnt + (8-outcnt);
 }

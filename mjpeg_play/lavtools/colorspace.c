@@ -59,7 +59,7 @@ static int myround(double n)
 
 
 
-static void init_RGB_to_YCbCr_tables()
+static void init_RGB_to_YCbCr_tables(void)
 {
   int i;
 
@@ -106,7 +106,7 @@ static void init_RGB_to_YCbCr_tables()
 
 
 
-static void init_YCbCr_to_RGB_tables()
+static void init_YCbCr_to_RGB_tables(void)
 {
   int i;
 

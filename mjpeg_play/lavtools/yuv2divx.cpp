@@ -149,7 +149,7 @@ error ( char *text )
 }
 
 static int
-guesstop ( unsigned char *frame, int width, int height )
+guesstop ( uint8_t *frame, int width, int height )
 {
  	long currY;
 	long oldY = 0;
@@ -172,7 +172,7 @@ guesstop ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessbottom ( unsigned char *frame, int width, int height )
+guessbottom ( uint8_t *frame, int width, int height )
 {
  	long currY;
 	long oldY = 0;
@@ -195,7 +195,7 @@ guessbottom ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessleft ( unsigned char *frame, int width, int height )
+guessleft ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -218,7 +218,7 @@ guessleft ( unsigned char *frame, int width, int height )
 }
 
 static int
-guessright ( unsigned char *frame, int width, int height )
+guessright ( uint8_t *frame, int width, int height )
 {
  	long currY;
  	long oldY = 0;
@@ -370,7 +370,7 @@ main ( int argc, char **argv )
 
 	FILE *fd_audio;
 	EditList el_audio;
-	char *audio_buffer;
+	uint8_t *audio_buffer;
 	int audioexist = 0;
 	float audio_perframe = 0.0;
 	float audio_shouldhaveread = 0.0;
@@ -660,7 +660,7 @@ main ( int argc, char **argv )
 
 	bh.biSizeImage = bh.biWidth * bh.biHeight * 3;
 
-	unsigned char *framebuffer = new unsigned char[bh.biWidth * bh.biHeight * 3];
+	uint8_t *framebuffer = new uint8_t[bh.biWidth * bh.biHeight * 3];
 	CImage imtarget ( ( BitmapInfo * ) & bh, framebuffer, false );
 
 	WAVEFORMATEX format;
@@ -752,7 +752,7 @@ main ( int argc, char **argv )
 				opt_expectframes = ( int ) ( ( ( float ) dataheader.length ) / audio_perframe );
 			}
 		}
-		audio_buffer = ( char * ) malloc ( ( ( int ) audio_perframe ) * 2 );
+		audio_buffer = ( uint8_t * ) malloc ( ( ( int ) audio_perframe ) * 2 );
 		memset ( audio_buffer, 0, ( ( int ) audio_perframe ) * 2 );
 
 		mjpeg_info ( "AUDIO: FormatTag = %i\n", format.wFormatTag );
@@ -848,10 +848,10 @@ main ( int argc, char **argv )
 
 	long oldtime = 0;
 
-	unsigned char *yuv[3];
-	yuv[0] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) );
-	yuv[1] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) / 4 );
-	yuv[2] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) / 4 );
+	uint8_t *yuv[3];
+	yuv[0] = ( uint8_t * ) malloc ( width * height * sizeof ( uint8_t ) );
+	yuv[1] = ( uint8_t * ) malloc ( width * height * sizeof ( uint8_t ) / 4 );
+	yuv[2] = ( uint8_t * ) malloc ( width * height * sizeof ( uint8_t ) / 4 );
 
 	int currentframe = 0;
 

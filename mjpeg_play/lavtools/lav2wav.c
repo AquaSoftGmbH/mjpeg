@@ -71,11 +71,11 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	/* Write out a ZEROD wave header first */
 	memset(&wave, 0, sizeof(wave));
 
-	strncpy(wave.riff.id, "RIFF", 4);
-	strncpy(wave.riff.wave_id, "WAVE",4);
+	strncpy((char*)wave.riff.id, "RIFF", 4);
+	strncpy((char*)wave.riff.wave_id, "WAVE",4);
 	dummy_size -=8;
 	wave.riff.len =  dummy_size;
-	strncpy(wave.format.id, "fmt ",4);
+	strncpy((char*)wave.format.id, "fmt ",4);
 	wave.format.len = sizeof(struct common_struct);
 
 	/* Store information */
@@ -86,7 +86,7 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	wave.common.wBlockAlign = channels*bits/8;
 	wave.common.wBitsPerSample = bits;
 
-	strncpy(wave.data.id, "data",4);
+	strncpy((char*)wave.data.id, "data",4);
 	dummy_size -= 20+sizeof(struct common_struct);
 	wave.data.len = dummy_size;
 	if (do_write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
@@ -155,7 +155,7 @@ void Usage(char *str)
    exit(0);
 }
 
-static short audio_buff[256*1024]; /* Enough for 1fps, 48kHz ... */
+static uint8_t audio_buff[2*256*1024]; /* Enough for 1fps, 48kHz ... */
 
 int
 main(argc, argv)
@@ -251,7 +251,7 @@ char    **argv;
 	/* Stream out audio wav-style... in per-frame chunks */
 	for( ; f < num_frames; ++f )
 	{
-		n = el_get_audio_data((char *)audio_buff, f, &el, 0);
+		n = el_get_audio_data(audio_buff, f, &el, 0);
 		if( n < 0 )
 		{
 			mjpeg_error_exit1( "%s: Couldn't get audio for frame %d!\n", argv[0], f );

@@ -88,10 +88,10 @@
 #define VALUE_NOT_FILLED -10000
 
 typedef struct {
-   char   *buff;                              /* the buffer for JPEG frames */
+   uint8_t*buff;                              /* the buffer for JPEG frames */
    int    video_fd;                           /* the file descriptor for the video device */
    struct mjpeg_requestbuffers br;            /* buffer requests */
-   char   *tmpbuff[2];                        /* buffers for flicker reduction */
+   uint8_t*tmpbuff[2];                        /* buffers for flicker reduction */
    double spvf;                               /* seconds per video frame */
    int    usec_per_frame;                     /* milliseconds per frame */
    int    min_frame_num;                      /* the lowest frame to be played back - normally 0 */
@@ -130,7 +130,7 @@ typedef struct {
    unsigned long *save_list;                  /* for editing purposes */
    long save_list_len;                        /* for editing purposes */
 
-   char   abuff[16384];                       /* the audio buffer */
+   uint8_t abuff[16384];                       /* the audio buffer */
    double spas;                               /* seconds per audio sample */
    long   audio_buffer_size;                  /* audio stream buffer size */
    int    audio_mute;                         /* controls whether to currently play audio or not */
@@ -297,7 +297,7 @@ int lavplay_set_frame(lavplay_t *info, long framenum)
  * return value: length of frame on success, -1 on error
  ******************************************************/
 
-static int lavplay_get_video(lavplay_t *info, char *buff, long frame_num)
+static int lavplay_get_video(lavplay_t *info, uint8_t *buff, long frame_num)
 {
    if (info->get_video_frame)
    {
@@ -319,7 +319,7 @@ static int lavplay_get_video(lavplay_t *info, char *buff, long frame_num)
  * return value: number of samples on success, -1 on error
  ******************************************************/
 
-static int lavplay_get_audio(lavplay_t *info, char *buff, long frame_num, int mute)
+static int lavplay_get_audio(lavplay_t *info, uint8_t *buff, long frame_num, int mute)
 {
    if (info->get_audio_sample)
    {
@@ -341,7 +341,7 @@ static int lavplay_get_audio(lavplay_t *info, char *buff, long frame_num, int mu
  * return value: 1 on succes, 0 on error
  ******************************************************/
 
-static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff,
+static int lavplay_queue_next_frame(lavplay_t *info, uint8_t *vbuff,
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 				    int data_format,
 #endif
@@ -859,7 +859,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
          /* Just allocate MJPG_nbuf buffers */
          settings->br.count = info->MJPG_numbufs;
          settings->br.size  = (max_frame_size*2 + 4095)&~4095;
-         settings->buff = (char *)malloc(settings->br.count * settings->br.size);
+         settings->buff = (uint8_t *)malloc(settings->br.count * settings->br.size);
          if (!settings->buff)
          {
             lavplay_msg (LAVPLAY_MSG_ERROR, info,
@@ -1024,14 +1024,14 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       vw.clipcount = 0;
       vw.chromakey = -1;
 
-      if (vw.x < 0)
+      if (info->soft_full_screen ? 0: (screenwidth-vc.maxwidth)/2 < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
             "X offset (%d) would be < 0",
             vw.x);
          return 0;
       }
-      if (vw.y < 0)
+      if (info->soft_full_screen ? 0: (screenheight-((bp->norm == 0) ? 576 : 480))/2 < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
             "Y offset (%d) would be < 0",
@@ -1377,8 +1377,8 @@ static int lavplay_init(lavplay_t *info)
    if (info->flicker_reduction)
    {
       /* allocate auxiliary video buffer for flicker reduction */
-      settings->tmpbuff[0] = (char *)malloc(editlist->max_frame_size);
-      settings->tmpbuff[1] = (char *)malloc(editlist->max_frame_size);
+      settings->tmpbuff[0] = (uint8_t *)malloc(editlist->max_frame_size);
+      settings->tmpbuff[1] = (uint8_t *)malloc(editlist->max_frame_size);
       if (!settings->tmpbuff[0] || !settings->tmpbuff[1])
       {
          lavplay_msg (LAVPLAY_MSG_ERROR, info,
@@ -1806,6 +1806,7 @@ static void *lavplay_playback_thread(void *data)
 #endif
 
    pthread_exit(NULL);
+   return NULL;
 }
 
 
@@ -1816,7 +1817,7 @@ static void *lavplay_playback_thread(void *data)
  * return value: a pointer to an allocated lavplay_t
  ******************************************************/
 
-lavplay_t *lavplay_malloc()
+lavplay_t *lavplay_malloc(void)
 {
    lavplay_t *info;
    video_playback_setup *settings;
@@ -2001,7 +2002,7 @@ int lavplay_edit_copy(lavplay_t *info, long start, long end)
    int k, i;
 
    if (settings->save_list) free(settings->save_list);
-   settings->save_list = (long *)malloc((end - start + 1) * sizeof(long));
+   settings->save_list = (unsigned long *)malloc((end - start + 1) * sizeof(unsigned long));
    if (!settings->save_list)
    {
       lavplay_msg (LAVPLAY_MSG_ERROR, info,

@@ -34,7 +34,7 @@
 #include "global.h"
 
 /* check for (level independent) parameter limits */
-void range_checks()
+void range_checks(void)
 {
   int i;
 

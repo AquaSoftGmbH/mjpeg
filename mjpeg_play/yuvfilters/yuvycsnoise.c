@@ -43,7 +43,7 @@ typedef struct {
 DEFINE_STD_YFTASKCLASS(yuvycsnoise);
 
 static const char *
-do_usage()
+do_usage(void)
 {
   return "[-t] [-m {tbic}] [-S min] [-T errt,maxt] [-B errb,maxb] [-I erri,maxi] [-C errc,maxc]";
 }
@@ -161,11 +161,12 @@ do_fini(YfTaskCore_t *handle)
 
 static void
 uvnoise(YfTask_t *h, char *dfpr2_u, char *dfprv, char *dfnow,
-	unsigned char *frprv, unsigned char *frnow, unsigned char *frnxt)
+	unsigned char *frprv, unsigned char *frnow, const unsigned char *frnxt)
 {
   int uw, uh, x, y;
   char *dfpr2_v, *dfprv_u, *dfprv_v, *dfnow_u, *dfnow_v;
-  unsigned char *frprv_u, *frprv_v, *frnow_u, *frnow_v, *frnxt_u, *frnxt_v;
+  unsigned char *frprv_u, *frprv_v, *frnow_u, *frnow_v;
+  const unsigned char *frnxt_u, *frnxt_v;
   unsigned char *frout_u, *frout_v;
 
   if (!(h->flags & CHROMA))
@@ -227,10 +228,10 @@ uvnoise(YfTask_t *h, char *dfpr2_u, char *dfprv, char *dfnow,
 static void
 ynoise(YfTask_t *h, int btmfld,
        char *dnow, char *daux, char *dfprv, char *dfnow,
-       unsigned char *frprv, unsigned char *frnow, unsigned char *frnxt)
+       unsigned char *frprv, unsigned char *frnow, const unsigned char *frnxt)
 {
   char *dprv, *dnxt, *dffld, *dfaux;
-  unsigned char *fraux;
+  const unsigned char *fraux;
   int x, y;
 
   if (!btmfld) {		/* top field */
@@ -343,7 +344,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 {
   YfTask_t *h = (YfTask_t *)handle;
   int databytes = DATABYTES(h->_.width, h->_.height);
-  unsigned char *frnxt = frame0->data;
+  const unsigned char *frnxt = frame0->data;
   unsigned char *frprv = h->frame.data + databytes;
   unsigned char *frnow =         frprv + databytes;
   char          *dfprv = (char *)frnow + databytes;

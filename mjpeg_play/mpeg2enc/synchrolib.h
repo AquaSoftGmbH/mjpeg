@@ -50,10 +50,10 @@ typedef struct _semaphore {
 
 #define SEMAPHORE_INITIALIZER { PTHREAD_MUTEX_INITIALIZER, \
                                 PTHREAD_COND_INITIALIZER, \
-                                0 };
+                                0 }
 #define GUARD_INITIALIZER    { PTHREAD_MUTEX_INITIALIZER, \
                                 PTHREAD_COND_INITIALIZER, \
-                                0 }; 
+                                0 }
 void sync_guard_init( sync_guard_t *guard, int init );
 
 void sync_guard_test( sync_guard_t *guard);

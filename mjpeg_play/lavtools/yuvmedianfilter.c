@@ -33,8 +33,8 @@ int verbose = 1;
 uint8_t	*input_frame[3];
 uint8_t	*output_frame[3];
 
-void	filter(int width, int height, uint8_t *input[], uint8_t *output[]);
-void	filter_buffer(int width, int height, int stride, int radius, int threshold, uint8_t *input, uint8_t *output);
+void	filter(int width, int height, uint8_t *input[], uint8_t * const output[]);
+void	filter_buffer(int width, int height, int stride, int radius, int threshold, uint8_t * const input, uint8_t * const output);
 
 int	threshold_luma = 2;
 int	threshold_chroma = 2;
@@ -152,7 +152,7 @@ main(int argc, char *argv[])
 }
 
 void
-filter(int width, int height, uint8_t *input[], uint8_t *output[])
+filter(int width, int height, uint8_t *input[], uint8_t * const output[])
 {
 	if( interlace )
 	{
@@ -191,7 +191,7 @@ filter(int width, int height, uint8_t *input[], uint8_t *output[])
 
 void
 filter_buffer(int width, int height, int row_stride,
-			  int radius, int threshold, uint8_t *input, uint8_t *output)
+			  int radius, int threshold, uint8_t * const input, uint8_t * const output)
 {
 	int	reference;
 	int	diff;

@@ -102,7 +102,7 @@ static unsigned char *in_buff;
 static short *buf1, *buf2, *out_buff;
 static double freq_quot;
 
-static void read_and_resample()
+static void read_and_resample(void)
 {
    int n, nbps, num_in, is;
    double s, fs;
@@ -157,7 +157,7 @@ static void read_and_resample()
 
    /* Step 3: Change sampling frequency if necessary */
 
-   num_out = ((long long)num_in-1)*(long long)freq_out/(long long)freq_in;
+   num_out = ((int64_t)num_in-1)*(int64_t)freq_out/(int64_t)freq_in;
    if(freq_in != freq_out)
    {
       for(n=0;n<num_out;n++)

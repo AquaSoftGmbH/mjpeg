@@ -421,10 +421,10 @@ int lav_close(lav_file_t *lav_file)
    return res;
 }
 
-int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
+int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 {
    int res, n;
-   unsigned char *jpgdata = NULL;
+   uint8_t *jpgdata = NULL;
    long jpglen = 0;
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
@@ -559,12 +559,12 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
    return res;
 }
 
-int lav_write_audio(lav_file_t *lav_file, char *buff, long samps)
+int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 {
    int res;
 #ifdef	HAVE_LIBQUICKTIME
    int	n, nb;
-   char *hbuff;
+   uint8_t *hbuff;
 #endif
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
@@ -580,20 +580,20 @@ int lav_write_audio(lav_file_t *lav_file, char *buff, long samps)
          if(lav_audio_bits(lav_file)==16)
          {
             nb = samps*2*lav_audio_channels(lav_file);
-            hbuff = (char *) malloc(nb);
+            hbuff = (uint8_t *) malloc(nb);
             if(!hbuff) { internal_error=ERROR_MALLOC; return -1; }
             for(n=0;n<nb;n+=2)
             { hbuff[n] = buff[n+1]; hbuff[n+1] = buff[n]; }
-            res = quicktime_write_audio( lav_file->qt_fd, hbuff, samps, 0 );
+            res = quicktime_write_audio( lav_file->qt_fd, (char*)hbuff, samps, 0 );
             free(hbuff);
          }
          else
-            res = quicktime_write_audio( lav_file->qt_fd, buff, samps, 0 );
+            res = quicktime_write_audio( lav_file->qt_fd, (char*)buff, samps, 0 );
          break;
 #endif
 #ifdef HAVE_LIBMOVTAR
       case 'm':
-         res = movtar_write_audio( lav_file->movtar_fd, buff, samps);
+         res = movtar_write_audio( lav_file->movtar_fd, (char*)buff, samps);
 	 break;
 #endif
       default:
@@ -872,7 +872,7 @@ int lav_set_video_position(lav_file_t *lav_file, long frame)
    return -1;
 }
 
-int lav_read_frame(lav_file_t *lav_file, char *vidbuf)
+int lav_read_frame(lav_file_t *lav_file, uint8_t *vidbuf)
 {
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
@@ -914,7 +914,7 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
    return -1;
 }
 
-long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
+long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
 {
 #ifdef	HAVE_LIBQUICKTIME
    long res, n, t;
@@ -933,7 +933,7 @@ long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         res = quicktime_read_audio(lav_file->qt_fd,audbuf,samps,0)/lav_file->bps;
+         res = quicktime_read_audio(lav_file->qt_fd,(char*)audbuf,samps,0)/lav_file->bps;
          if(res<=0) return res;
          if(lav_audio_bits(lav_file)==16)
          {
@@ -948,7 +948,7 @@ long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
 #endif
 #ifdef HAVE_LIBMOVTAR
       case 'm':
-         return movtar_read_audio(lav_file->movtar_fd,audbuf,samps)/lav_file->bps;
+         return movtar_read_audio(lav_file->movtar_fd,(char*)audbuf,samps)/lav_file->bps;
 #endif
    }
    return -1;
@@ -1254,7 +1254,7 @@ lav_file_t *lav_open_input_file(char *filename)
 
             if(jpeg_app0_offset && 
                get_int2(frame + jpeg_app0_offset + 2) >= 5 &&
-               strncasecmp(frame + jpeg_app0_offset + 4,"AVI1",4)==0 )
+               strncasecmp((char*)(frame + jpeg_app0_offset + 4),"AVI1",4)==0 )
             {
                 if (frame[jpeg_app0_offset+8]==1)
                    lav_fd->interlacing = LAV_INTER_TOP_FIRST;
@@ -1296,7 +1296,7 @@ ERREXIT:
 /* Get size of first field of for a data array containing
    (possibly) two jpeg fields */
 
-int lav_get_field_size(unsigned char * jpegdata, long jpeglen)
+int lav_get_field_size(uint8_t * jpegdata, long jpeglen)
 {
    int res;
 

@@ -351,12 +351,12 @@ int y4m_write_frame_header(int fd, const y4m_frame_info_t *i);
 /* read a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
 int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
-		   y4m_frame_info_t *fi, uint8_t *yuv[3]);
+		   y4m_frame_info_t *fi, uint8_t * const yuv[3]);
 
 /* write a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
 int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
-		    const y4m_frame_info_t *fi, uint8_t *yuv[3]);
+		    const y4m_frame_info_t *fi, uint8_t * const yuv[3]);
 
 
 /* read a complete frame (header + data), but de-interleave fields
@@ -366,8 +366,8 @@ int y4m_write_frame(int fd, const y4m_stream_info_t *si,
 */
 int y4m_read_fields(int fd, const y4m_stream_info_t *si, 
 		    y4m_frame_info_t *fi,
-		    uint8_t *upper_field[3], 
-		    uint8_t *lower_field[3]);
+		    uint8_t * const upper_field[3], 
+		    uint8_t * const lower_field[3]);
 
 /* write a complete frame (header + data), but interleave fields
     from two separate buffers
@@ -376,8 +376,8 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si,
 */
 int y4m_write_fields(int fd, const y4m_stream_info_t *si, 
 		     const y4m_frame_info_t *fi,
-		     uint8_t *upper_field[3], 
-		     uint8_t *lower_field[3]);
+		     uint8_t * const upper_field[3], 
+		     uint8_t * const lower_field[3]);
 
 
 

@@ -59,7 +59,7 @@ static int frametotc (int frame);
  *
  * matrix download not implemented
  */
-void putseqhdr()
+void putseqhdr(void)
 {
 	int i;
 
@@ -101,7 +101,7 @@ void putseqhdr()
 }
 
 /* generate sequence extension (6.2.2.3, 6.3.5) header (MPEG-2 only) */
-void putseqext()
+void putseqext(void)
 {
 	alignbits();
 	putbits(EXT_START_CODE,32); /* extension_start_code */
@@ -123,7 +123,7 @@ void putseqext()
  *
  */
 
-void putseqdispext()
+void putseqdispext(void)
 {
 	alignbits();
 	putbits(EXT_START_CODE,32); /* extension_start_code */
@@ -251,7 +251,7 @@ void putpictcodext(pict_data_s *picture)
 }
 
 /* generate sequence_end_code (6.2.2) */
-void putseqend()
+void putseqend(void)
 {
 	alignbits();
 	putbits(SEQ_END_CODE,32);

@@ -134,7 +134,6 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 	int rowoffs = 0;
 	int sumtop, sumbot, sumsqtop, sumsqbot, sumbottop;
 	int j,i;
-	int dct_type;
 	int topvar, botvar;
 	sumtop = sumsqtop = sumbot = sumsqbot = sumbottop = 0;
 	for (j=0; j<8; j++)
@@ -170,10 +169,7 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 		else
 			return 1; /* field DCT */
 	}
-	else
-		return 1; /* field DCT */
-
-	return dct_type;
+        return 1; /* field DCT */
 }
 #if defined(HAVE_ASM_MMX)
 static __inline__ void

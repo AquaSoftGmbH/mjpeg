@@ -3,11 +3,21 @@
  *                                                                          *
  * Yuv-Denoiser to be used with Andrew Stevens mpeg2enc                     *
  *                                                                          *
- * (C)2001 S.Fendt 				                                            *
+ * (C)2001 S.Fendt 				                            *
  *                                                                          *
- * Licensed and protected by the GNU-General-Public-License version 2       *
- * (or if you prefer any later version of that license). See the file       *
- * LICENSE for detailed information.                                        *
+ *  This program is free software; you can redistribute it and/or modify    *
+ *  it under the terms of the GNU General Public License as published by    *
+ *  the Free Software Foundation; either version 2 of the License, or       *
+ *  (at your option) any later version.                                     *
+ *                                                                          *
+ *  This program is distributed in the hope that it will be useful,         *
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of          *
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           *
+ *  GNU General Public License for more details.                            *
+ *                                                                          *
+ *  You should have received a copy of the GNU General Public License       *
+ *  along with this program; if not, write to the Free Software             *
+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.               *
  *                                                                          *
  ****************************************************************************/
 
@@ -643,7 +653,7 @@ void draw_line (int x0, int y0, int x1, int y1)
  *****************************************************************************/
 
 void
-display_greeting ()
+display_greeting (void)
 {
   mjpeg_log (LOG_INFO, "------------------------------------ \n");
   mjpeg_log (LOG_INFO, "Y4M Motion-Compensating-YUV-Denoiser \n");
@@ -660,7 +670,7 @@ display_greeting ()
  *****************************************************************************/
 
 void
-display_help ()
+display_help (void)
 {
   fprintf (stderr,"\n ----------------------------------------------------------- ");
   fprintf (stderr,"\n yuvdenoise - A brief summery of options                     ");

@@ -94,7 +94,7 @@ DEFINE_STD_YFTASKCLASS(yuvkineco);
 DECLARE_YFTASKCLASS(yuvycsnoise);
 
 static const char *
-do_usage()
+do_usage(void)
 {
   return "[-u] [-F OutputFPSCODE] [-S YCSNoiseThreashold] [-n NoiseLevel] "
     "[-c CycleSearchThreashold] [-i DeinterlacePixelsPermil] "
@@ -323,7 +323,7 @@ dumpnoise(YfTask_t *h, FILE *fp)
   buf_debug(buf, fp, "#");
   for (i = 0; i <= NOISEMAX; i++)
     buf_debug(buf, fp, " %lu",
-	      (unsigned long)((((unsigned long long)h->u.noise.dist[i] * 1000) +
+	      (unsigned long)((((uint64_t)h->u.noise.dist[i] * 1000) +
 			       h->u.noise.total - 1) / h->u.noise.total));
   buf_debug(buf, fp, "\n");
   if (0 <= h->deintl) {

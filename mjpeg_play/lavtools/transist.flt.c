@@ -26,7 +26,7 @@
 
 #include "yuv4mpeg.h"
 
-static void usage () 
+static void usage (void) 
 {
   fprintf(stderr, 
 	  "usage:  transist.flt [params]\n"

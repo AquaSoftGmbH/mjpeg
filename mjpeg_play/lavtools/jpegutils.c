@@ -85,7 +85,7 @@ static void init_source (j_decompress_ptr cinfo)
  *
  */
 
-static char EOI_data[2] = { 0xFF, 0xD9 };
+static uint8_t EOI_data[2] = { 0xFF, 0xD9 };
 
 static boolean fill_input_buffer (j_decompress_ptr cinfo)
 {

@@ -50,7 +50,7 @@ jpeg2yuv
 typedef struct _parameters {
   char *jpegformatstr;
   uint32_t begin;       /* the video frame start */
-  uint32_t numframes;   /* -1 means: take all frames */
+  int32_t numframes;   /* -1 means: take all frames */
   y4m_ratio_t framerate;
   int interlace;   /* will the YUV4MPEG stream be interlaced? */
   int interleave;  /* are the JPEG frames field-interleaved? */
@@ -212,7 +212,7 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
  */
 static int init_parse_files(parameters_t *param)
 { 
-  unsigned char jpegname[255];
+  char jpegname[255];
   FILE *jpegfile;
   
   snprintf(jpegname, sizeof(jpegname), 
@@ -281,10 +281,10 @@ static int generate_YUV4MPEG(parameters_t *param)
 {
   uint32_t frame;
   size_t jpegsize;
-  unsigned char jpegname[FILENAME_MAX];
+  char jpegname[FILENAME_MAX];
   FILE *jpegfile;
-  unsigned char *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
-  static unsigned char jpegdata[MAXPIXELS]; /* that ought to be enough */
+  uint8_t *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
+  static uint8_t jpegdata[MAXPIXELS];  /* that ought to be enough */
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
 

@@ -112,7 +112,7 @@ static int luminance_mean(uint8_t *frame, int w, int h )
 	return sum / (w * h);
 }
 
-static void border_extend(unsigned char *frame,
+static void border_extend(uint8_t *frame,
 						  int w1, int h1, int w2, int h2)
 {
   int i, j;
@@ -137,7 +137,7 @@ static void border_extend(unsigned char *frame,
   }
 }
 
-static int piperead(int fd, char *buf, int len)
+static int piperead(int fd, uint8_t *buf, int len)
 {
    int n, r;
 
@@ -154,7 +154,7 @@ static int piperead(int fd, char *buf, int len)
 
 
 
-static void read_chunk()
+static void read_chunk(void)
 {
    int n, v, h, i,j, y;
    y4m_frame_info_t fi;
@@ -281,7 +281,7 @@ static void *read_chunks_worker(void *_dummy)
 }
 
 
-static void start_worker()
+static void start_worker(void)
 {
 	pthread_attr_t *pattr = NULL;
 

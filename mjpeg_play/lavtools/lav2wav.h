@@ -9,26 +9,26 @@
 
 struct riff_struct 
 {
-  unsigned char id[4];   /* RIFF */
-  unsigned long len;
-  unsigned char wave_id[4]; /* WAVE */
+  uint8_t id[4];   /* RIFF */
+  uint32_t len;
+  uint8_t wave_id[4]; /* WAVE */
 };
 
 
 struct chunk_struct 
 {
-	unsigned char id[4];
-	unsigned long len;
+	uint8_t id[4];
+	uint32_t len;
 };
 
 struct common_struct 
 {
-	unsigned short wFormatTag;
-	unsigned short wChannels;
-	unsigned long dwSamplesPerSec;
-	unsigned long dwAvgBytesPerSec;
-	unsigned short wBlockAlign;
-	unsigned short wBitsPerSample;  /* Only for PCM */
+	uint16_t wFormatTag;
+	uint16_t wChannels;
+	uint32_t dwSamplesPerSec;
+	uint32_t dwAvgBytesPerSec;
+	uint16_t wBlockAlign;
+	uint16_t wBitsPerSample;  /* Only for PCM */
 };
 
 struct wave_header 

@@ -107,14 +107,14 @@ typedef struct {
    struct mjpeg_requestbuffers breq;          /* buffer requests */
    struct mjpeg_sync bsync;
    struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
-   char   *MJPG_buff;                         /* the MJPEG buffer */
+   uint8_t *MJPG_buff;                         /* the MJPEG buffer */
    struct video_mmap mm;                      /* software (YUV) capture info */
    unsigned char *YUV_buff;                   /* in case of software encoding: the YUV buffer */
    lav_file_t *video_file;                    /* current lav_io.c file we're recording to */
    lav_file_t *video_file_old;                /* previous lav_io.c file we're recording to (finish audio/close) */
    int    num_frames_old;
 
-   char   AUDIO_buff[AUDIO_BUFFER_SIZE];      /* the audio buffer */
+   uint8_t AUDIO_buff[AUDIO_BUFFER_SIZE];      /* the audio buffer */
    struct timeval audio_t0;
    int    astat;
    long   audio_offset;
@@ -271,9 +271,9 @@ lavrec_change_state(lavrec_t *info, int new_state)
 static int lavrec_set_mixer(lavrec_t *info, int flag)
 {
    int fd, var;
-   int sound_mixer_read_input;
-   int sound_mixer_write_input;
-   int sound_mask_input;
+   unsigned int sound_mixer_read_input;
+   unsigned int sound_mixer_write_input;
+   unsigned int sound_mask_input;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    /* Avoid restoring anything when nothing was set */
@@ -557,7 +557,7 @@ if (settings->output_status==2)   \
 else                              \
    return 0;
 
-static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long count)
+static int lavrec_output_video_frame(lavrec_t *info, uint8_t *buff, long size, long count)
 {
    int n;
    int OpenNewFlag = 0;
@@ -746,7 +746,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    return 1;
 }
 
-static int video_captured(lavrec_t *info, char *buff, long size, long count)
+static int video_captured(lavrec_t *info, uint8_t *buff, long size, long count)
 {
    if (info->files)
       return lavrec_output_video_frame(info, buff, size, count);
@@ -763,7 +763,7 @@ static int video_captured(lavrec_t *info, char *buff, long size, long count)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
-static int lavrec_output_audio_to_file(lavrec_t *info, char *buff, long samps, int old)
+static int lavrec_output_audio_to_file(lavrec_t *info, uint8_t *buff, long samps, int old)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -794,7 +794,7 @@ static int lavrec_output_audio_to_file(lavrec_t *info, char *buff, long samps, i
  * return value: 1 on success, 0 or -1 on error
  ******************************************************/
 
-static int lavrec_output_audio_samples(lavrec_t *info, char *buff, long samps)
+static int lavrec_output_audio_samples(lavrec_t *info, uint8_t *buff, long samps)
 {
    long diff = 0;
 
@@ -858,7 +858,7 @@ static int lavrec_output_audio_samples(lavrec_t *info, char *buff, long samps)
    return lavrec_output_audio_to_file(info, buff+diff*settings->audio_bps, samps-diff, 0);
 }
 
-static int audio_captured(lavrec_t *info, char *buff, long samps)
+static int audio_captured(lavrec_t *info, uint8_t *buff, long samps)
 {
    if (info->files)
       return lavrec_output_audio_samples(info, buff, samps);
@@ -1123,7 +1123,7 @@ static int lavrec_software_init(lavrec_t *info)
    }
    settings->breq.count = info->MJPG_numbufs;
    settings->breq.size = info->MJPG_bufsize*1024;
-   settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size*settings->breq.count);
+   settings->MJPG_buff = (uint8_t *) malloc(sizeof(uint8_t)*settings->breq.size*settings->breq.count);
    if (!settings->MJPG_buff)
    {
       lavrec_msg (LAVREC_MSG_ERROR, info,
@@ -1696,7 +1696,7 @@ retry:
 
       frame = (frame+1)%settings->softreq.frames;
    }
-   return 0;
+   return NULL;
 }
 
 

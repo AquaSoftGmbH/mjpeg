@@ -1,3 +1,19 @@
+/*
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+*/
+
 #ifndef EDITLIST_H
 #define EDITLIST_H
 
@@ -45,8 +61,8 @@ typedef struct
 }
 EditList;
 
-int el_get_video_frame(char *vbuff, long nframe, EditList *el);  
-int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute);
+int el_get_video_frame(uint8_t *vbuff, long nframe, EditList *el);  
+int el_get_audio_data(uint8_t *abuff, long nframe, EditList *el, int mute);
 void read_video_files(char **filename, int num_files, EditList *el, int preserve_pathnames);
 int write_edit_list(char *name, long n1, long n2, EditList *el);
 int open_video_file(char *filename, EditList *el, int preserve_pathname);

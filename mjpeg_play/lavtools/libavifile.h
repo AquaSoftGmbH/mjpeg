@@ -59,4 +59,4 @@ typedef unsigned int framepos_t;
 #define max(a,b) ((a)>(b))?(a):(b)
 #endif
 
-#endif LIBAVIFILE_H
+#endif /* LIBAVIFILE_H */

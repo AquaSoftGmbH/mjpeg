@@ -49,6 +49,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <limits.h>
+#include <inttypes.h>
 
 #include "global.h"
 #include "fastintfns.h"
@@ -764,7 +765,7 @@ void rc_update_pict(pict_data_s *picture)
 	bits_used += (bitcount()-prev_bitcount);
 	prev_bitcount = bitcount();
 	bits_transported += per_pict_bits;
-	mjpeg_debug( "TR=%lld USD=%lld\n", bits_transported/8, bits_used/8);
+	mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "\n", bits_transported/8, bits_used/8);
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
 
 	if( buffer_variation > 0 )

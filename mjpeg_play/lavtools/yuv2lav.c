@@ -59,7 +59,7 @@ static int got_sigint = 0;
 
 static int verbose = 1;
 
-static void usage() 
+static void usage(void) 
 {
   fprintf(stderr,
 	  "Usage:  yuv2lav [params] -o <filename>\n"
@@ -109,7 +109,7 @@ int main(int argc, char *argv[])
    int filenum = 0;
    unsigned long filesize_cur = 0;
    
-   char *jpeg;
+   uint8_t *jpeg;
    int   jpegsize = 0;
    unsigned char *yuv[3];
 
@@ -257,7 +257,7 @@ int main(int argc, char *argv[])
    yuv[2] = malloc(y4m_si_get_width(&streaminfo) * 
 		   y4m_si_get_height(&streaminfo) *
 		   sizeof(unsigned char) / 4);
-   jpeg = malloc(param_bufsize);
+   jpeg = (uint8_t*)malloc(param_bufsize);
    
    signal (SIGINT, sigint_handler);
 

@@ -436,7 +436,7 @@ int write_edit_list(char *name, long n1, long n2, EditList *el)
    return 0;
 }
 
-int el_get_video_frame(char *vbuff, long nframe, EditList *el)
+int el_get_video_frame(uint8_t *vbuff, long nframe, EditList *el)
 {
    int res, n;
 
@@ -458,7 +458,7 @@ int el_get_video_frame(char *vbuff, long nframe, EditList *el)
    return res;
 }
 
-int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute)
+int el_get_audio_data(uint8_t *abuff, long nframe, EditList *el, int mute)
 {
    int res, n, ns0, ns1, asamps;
 

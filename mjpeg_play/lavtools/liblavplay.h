@@ -92,8 +92,8 @@ typedef struct {
    void (*output_statistics)(video_playback_stats *stats);     /* speaks for itself */
    void (*msg_callback)(int type, char* message);              /* callback for error/info/warn messages */
    void (*state_changed)(int new_state);                       /* changed state */
-   void (*get_video_frame)(char *buffer, int *len, long num);  /* functions for manually submitting video/audio */
-   void (*get_audio_sample)(char *buff, int *samps, long num); /* functions for manually submitting video/audio */
+   void (*get_video_frame)(uint8_t *buffer, int *len, long num);  /* functions for manually submitting video/audio */
+   void (*get_audio_sample)(uint8_t *buff, int *samps, long num); /* functions for manually submitting video/audio */
 
    void *settings;              /* private info - don't touch :-) (type UNKNOWN) */
 } lavplay_t;
