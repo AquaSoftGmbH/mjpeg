@@ -9,7 +9,8 @@
 //
 // (c) 2001/11/01 Shawn Sulma <lavtools@athos.cx>
 //      based on very helpful work by the lavtools, mjpeg.sourceforge.net
-//      and x2divx (Ulrich Hecht et al, www.emulinks.de/divx).
+//      and x2divx (Ulrich Hecht et al, www.emulinks.de/divx), which gave me
+//      an idea of how avifile actually worked.
 //
 //      This program is free software; you can redistribute it and/or modify
 //      it under the terms of the GNU General Public License as published by
@@ -51,11 +52,19 @@
 //
 // Added the "-r" option, to allow input to be 'rationalised'.  This constrains
 // luma values to the 'legal' range of 16-240.  It will help situations where
-// very black (or very white) regions of playback have odd colours.
+// very black (or very white) regions of playback have odd colours.  It does come at
+// a CPU penalty, though and is disabled by default.
+//
+// 2001/11/25
+//
+// Added the -b/--beginframe option to set the starting frame for processing.
+// This currently doesn't work for audio-only extraction.
+// Added the -m/--maxfilesize option to set the maximum file size (in MB) for LAV
+// files.
 //
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.21"
-#define LastChanged "2001/11/06"
+#define APPVERSION "0.0.22"
+#define LastChanged "2001/11/25"
 //#define DEBUG_DIVXDEC 1
 
 #include <vector>
@@ -398,17 +407,22 @@ struct OutputData
 	lav_file_t *fdLAV; // = 0;
 
 	unsigned int lavQuality; // = 50;
+	int currentLAVFile; 
 
+	int beginFrame; // = 0;
 	int endFrame; // = 0;
 	int currentLavplayAudioFrame;
 	int currentLavplayVideoFrame;
 	int processedFrames; // = 0;
-	int foo; 
+	int lavOutputBytes; // = 0;
+	int lavFileSizeLimit; // MiB.
 
 	int audioBytesWritten;
 	int borderHeight; // = 0;
 	int borderWidth; // = 0;
 	int bordered; // = 0;
+	int height;
+	int width;
 	lavplay_t *lavplayInfo;
 
 	// special flags to indicate handling for lavplay
@@ -420,11 +434,14 @@ struct OutputData
 	int yScale;	// not yet implemented
 	int xScale;	// not yet implemented
 
+	char *filenameLAV;
+	char lavFormat;
 	// for YUV output
 	y4m_stream_info_t y4m_info;
 
 };
-static OutputData output = {0,0,0,0, 0,0,0, 50, 0,0,0,0,-1, 0,0,0,0,0, LAV_NOT_INTERLACED,1,0,0,0,0,0};
+static OutputData output = {0,0,0,0, 0,0,0, 50,1, 0,0,0,0,0,-1,1536,
+		 0,0,0,0,0,0,0, LAV_NOT_INTERLACED,1,0,0,0,0,0};
 
 static void
 error ( char *text )
@@ -454,7 +471,9 @@ print_help ( void )
 	printf ( "  -n --norm\t\tthe norm to use with -p.  Must be one of [pn]\n" );
 	printf ( "  -I --interlace\tfor -p [CH], if the input is too large to be played\n\t\t\tnon-interlaced, force interlacing. If not specified\n\t\t\tinput is automatically decimated, which is much better\n\t\t\tfor performance and still reasonable for quality.\n" );
 	printf ( "  -r --rationalise\tEnsure that luma values are valid\n" );
-	printf ( "  -e --endframe\t\tnumber of frames to encode (default all)\n" );
+	printf ( "  -e --endframe\t\tlast frame number to process\n" );
+	printf ( "  -b --beginframe\tfirst frame number to process\n" );
+	printf ( "  -m --maxfilesize\tFor lav output, MiB per file\n" );
 	printf ( "  -V --version\t\tVersion and license.\n" );
 	printf ( "  -v --verbose\t\tVerbosity level [0-2]\n" );
 	printf ( "  -h --help\t\tPrint this help list.\n\n" );
@@ -488,6 +507,35 @@ displayGreeting (  )
 	mjpeg_info ( "-----------------------------\n" );
 }
 
+static void
+nextLavFile ( )
+{
+	if ( output.fdLAV > 0 )
+	{
+		mjpeg_debug ( "Closing LAV output file\n" );
+		lav_close ( output.fdLAV );
+	}
+
+	size_t thisfile_size = strlen ( output.filenameLAV ) + 10;
+	char thisfile [ thisfile_size ];
+
+	snprintf ( thisfile, thisfile_size, output.filenameLAV, output.currentLAVFile++ );
+
+	mjpeg_debug ( "Opening LAV output file %s\n", thisfile );
+	output.fdLAV = lav_open_output_file ( thisfile
+			, output.lavFormat
+			, output.width + output.borderWidth 
+			, output.height + output.borderHeight
+			, output.lavForcedInterlace
+			, input.frameRate
+			, ( input.processAudio ? input.audioBitsPerSample : 0 )
+			, ( input.processAudio ? input.audioChannels : 0 )
+			, ( input.processAudio ? input.audioRate : 0 ) ) ;
+	// reset counter (per file)
+	output.lavOutputBytes = 0;
+}
+
+
 static int
 drawProgress ()
 {
@@ -502,7 +550,7 @@ drawProgress ()
 		mjpeg_info ("Decoding frame %u, %.1f frames per second, %.1f seconds left.\r"
 				, output.processedFrames
 				, fps
-				, ( ( double ) ( output.endFrame - output.processedFrames ) ) / fps );
+				, ( ( double ) ( output.endFrame - output.beginFrame - output.processedFrames ) / fps ) );
 		fflush ( stderr );
 	}
 	return 1;
@@ -622,7 +670,7 @@ rationalise ( uint8_t* luma, int height, int width )
 {
 	for (int i = 0; i < (height * width) ; i ++ )
 	{
-		luma[i] = min ( max ( luma [i], 16 ), 240 );
+		luma[i] = ( luma [i] > 240 )  ? ( 240 ) : ( ( luma [i] < 16 ) ? 16 : luma [i] );
 	}
 }
 
@@ -762,6 +810,7 @@ writeOutputFrame()
 					errCode = 1;
 					return 0;
 				}
+				output.lavOutputBytes += currentFrame.jpegSize;
 			}
 		}
 	}
@@ -796,6 +845,7 @@ writeOutputFrame()
 				errCode = 1;
 				return 0;
 			}
+			output.lavOutputBytes += writeBytes;
 		}
 		if ( output.toPLAY )
 		{
@@ -837,7 +887,20 @@ nextFile ()
 	{
 		return 0; // all done.
 	}
+	// check to see if we're starting yet.
+	if ( input.currentFrame < output.beginFrame )
+	{
+		if ( ( input.currentFrame + input.files[input.currentFile].frames ) < output.beginFrame )
+		{
+			input.currentFrame += input.files[input.currentFile].frames;
+			// keep recursing forward through files until we're out of files
+			// or find the frame we're looking for.
+			return nextFile ();
+		}
+	}
+	
 	input.file = CreateIAviReadFile ( input.files[input.currentFile].filename );
+
 	if ( input.processVideo )
 	{
 		input.invstream = input.file->GetStream (0, AviStream::Video);
@@ -872,6 +935,28 @@ nextFile ()
 #endif
 		}						
 	}
+	if ( input.currentFrame < output.beginFrame )
+	{
+		// need to seek inside this file to the right frame.
+		framepos_t firstFrame = output.beginFrame - input.currentFrame;
+		// firstFrame is the frame in this file that we start with.
+		// well, actually, we get the closest we can -- the nearest
+		// key frame.
+		if ( input.processVideo )
+		{
+			framepos_t fp = input.invstream->SeekToKeyFrame ( firstFrame );
+			if ( input.processAudio )
+			{
+				double pos = input.invstream->GetTime ( max( 0, fp - 1 ) );
+				input.inastream->SeekTime ( pos );
+			}
+		}
+		else if ( input.processAudio )
+		{
+			mjpeg_error_exit1 ( "specifying start frame in audio-only output not yet supported\n" );
+		}
+		input.currentFrame = output.beginFrame;
+	}
 	return 1;
 }
 
@@ -898,6 +983,15 @@ nextFrame ()
 	i = i && readInputFrame ();
 	i = i && writeOutputFrame();
 	output.processedFrames++;
+	if ( ( output.toLAV ) && ( ( output.lavOutputBytes>>20 ) > ( output.lavFileSizeLimit ) ) )
+	{
+		nextLavFile ();
+		if ( output.fdLAV == NULL )
+		{
+			mjpeg_error ( "Could not open LAV output file.  Aborting.\n" );
+			return 0;
+		}
+	}
 	return i;
 }
 
@@ -1067,7 +1161,7 @@ freeAll ()
 	
 	if ( output.toLAV || output.toPLAY )
 	{
-		if ( output.toLAV )
+		if ( output.fdLAV )
 		{
 			// close off LAV file.
 			lav_close ( output.fdLAV );
@@ -1166,7 +1260,7 @@ main (int argc, char **argv)
 	char *filenameWAVE = NULL;
 	char *filenameYUV = NULL;
 	char *filenameLAV = NULL;
-	char optLavFormat = 'a';
+//	char optLavFormat = 'a';
 
 	input.currentFile = -1;
 	input.currentFrame = -1;
@@ -1176,6 +1270,7 @@ main (int argc, char **argv)
 	int optNorm = 0;
 	int optRationalise = false;
 	int optAllowInterlace = false;
+	output.lavFileSizeLimit = 1536;  // default
 	
 	mjpeg_debug ("Started\n");
 	
@@ -1193,16 +1288,18 @@ main (int argc, char **argv)
 			{"format", required_argument, NULL, 'f' },
 			{"version", no_argument, NULL, 'V'},
 			{"license", no_argument, NULL, 'V'},
+			{"beginframe", required_argument, NULL, 'b'},
 			{"endframe", required_argument, NULL, 'e'},
 			{"quality", required_argument, NULL, 'q'},
 			{"interlace", no_argument, NULL, 'I'},
 			{"rationalise", no_argument, NULL, 'r'},
 			{"norm", required_argument, NULL, 'n'},
 			{"verbose", required_argument, NULL, 'v'},
+			{"maxfilesize", required_argument, NULL, 'm'},
 			{0, 0, 0, 0}
 		};
 
-		copt = getopt_long ( argc, argv, "Irv:hW:Y:L:f:Ve:n:q:p:", long_options, &option_index );
+		copt = getopt_long ( argc, argv, "b:Irv:hW:Y:L:f:Ve:n:q:p:m:", long_options, &option_index );
 		if (copt == -1)
 		{
 			break;
@@ -1249,8 +1346,8 @@ main (int argc, char **argv)
 			{
 				mjpeg_error_exit1 ( "Lav format option requires an argument\n" );
 			}
-			optLavFormat = optarg[0];
-			switch ( optLavFormat )
+			output.lavFormat = optarg[0];
+			switch ( output.lavFormat )
 			{
 				case 'A':
 				case 'a':
@@ -1258,10 +1355,10 @@ main (int argc, char **argv)
 				case 'q':
 					break;
 				case 'M':
-					optLavFormat = 'm';
+					output.lavFormat = 'm';
 					break;
 				case 'Q':
-					optLavFormat = 'q';
+					output.lavFormat = 'q';
 					break;
 				default:
 					mjpeg_error_exit1 ( "Lav format must be one of 'm', 'q', 'A', 'a'\n" );
@@ -1272,6 +1369,13 @@ main (int argc, char **argv)
 			if ( output.endFrame  < 1 )
 			{
 				mjpeg_error_exit1 ( "Invalid endframe specified.\n" );
+			}
+			break;
+		case 'b':
+			output.beginFrame = atoi ( optarg );
+			if ( output.beginFrame  < 1 )
+			{
+				mjpeg_error_exit1 ( "Invalid beginframe specified.\n" );
 			}
 			break;
 		case 'V':
@@ -1329,6 +1433,13 @@ main (int argc, char **argv)
 			break;
 		case 'r':
 			output.rationalise = true;
+			break;
+		case 'm':
+			output.lavFileSizeLimit = atoi ( optarg );
+			if ( output.lavFileSizeLimit < 1 )
+			{
+				mjpeg_error_exit1 ( "maxfilesize cannot be negative\n" );
+			}
 			break;
 		case '?':
 			print_usage ();
@@ -1576,11 +1687,11 @@ main (int argc, char **argv)
 
 		y4m_si_set_framerate ( &output.y4m_info, y4m_framerate );
 
-		y4m_ratio_t y4m_aspect;
-		y4m_aspect.n = input.width;
-		y4m_aspect.d = input.height;
+		//y4m_ratio_t y4m_aspect;
+		//y4m_aspect.n = input.width;
+		//y4m_aspect.d = input.height;
 
-		y4m_si_set_sampleaspect ( &output.y4m_info, y4m_aspect );
+		y4m_si_set_sampleaspect ( &output.y4m_info, y4m_sar_UNKNOWN );
 		y4m_write_stream_header ( output.fdYUV, &output.y4m_info);
 
 	}
@@ -1637,8 +1748,8 @@ main (int argc, char **argv)
 
 	}
 
-	int localHeight = input.height;
-	int localWidth = input.width;
+	output.height = input.height;
+	output.width = input.width;
 	
 	if ( output.toPLAY )
 	{
@@ -1719,14 +1830,14 @@ main (int argc, char **argv)
 					// try decimation instead;
 					output.lavDecimate = 2;
 					// initialise the decimation buffers
-					localHeight /= output.lavDecimate;
-					localWidth /= output.lavDecimate;
-					currentFrame.decimateYUV[0] = new unsigned char [ localHeight * localWidth ];
-					currentFrame.decimateYUV[1] = new unsigned char [ localHeight * localWidth / 4 ];
-					currentFrame.decimateYUV[2] = new unsigned char [ localHeight * localWidth / 4 ];
-					memset (currentFrame.decimateYUV[0], 0, localHeight * localWidth );
-					memset (currentFrame.decimateYUV[1], 128, localHeight * localWidth / 4 );
-					memset (currentFrame.decimateYUV[2], 128, localHeight * localWidth / 4 );
+					output.height /= output.lavDecimate;
+					output.width /= output.lavDecimate;
+					currentFrame.decimateYUV[0] = new unsigned char [ output.height * output.width ];
+					currentFrame.decimateYUV[1] = new unsigned char [ output.height * output.width / 4 ];
+					currentFrame.decimateYUV[2] = new unsigned char [ output.height * output.width / 4 ];
+					memset (currentFrame.decimateYUV[0], 0, output.height * output.width );
+					memset (currentFrame.decimateYUV[1], 128, output.height * output.width / 4 );
+					memset (currentFrame.decimateYUV[2], 128, output.height * output.width / 4 );
 					mjpeg_debug ( " Lav decimation factor: %i\n", output.lavDecimate );
 				}
 			}
@@ -1739,13 +1850,13 @@ main (int argc, char **argv)
 	{
 		// if not a multiple of 16 in each direction, get ready to
 		// add a black border.
-		if ( localHeight % 16 != 0 )
+		if ( output.height % 16 != 0 )
 		{
-			output.borderHeight = 16 - ( localHeight % 16 );
+			output.borderHeight = 16 - ( output.height % 16 );
 		}
-		if ( localWidth % 16 != 0 )
+		if ( output.width % 16 != 0 )
 		{
-			output.borderWidth = 16 - ( localWidth % 16 );
+			output.borderWidth = 16 - ( output.width % 16 );
 		}
 
 		currentFrame.jpegFrame =  new uint8_t [ input.width * input.height ];
@@ -1753,8 +1864,8 @@ main (int argc, char **argv)
 		mjpeg_info ( "Original input is %i x %i\n", input.width, input.height );
 		if ( output.bordered )
 		{
-			int fullluma = ( output.borderHeight + localHeight )
-					* ( output.borderWidth + localWidth );
+			int fullluma = ( output.borderHeight + output.height )
+					* ( output.borderWidth + output.width );
 			int fullchroma = fullluma / 4;
 			// need to set up a second buffer.
 			currentFrame.lavYUV[0] = new unsigned char [ fullluma ];
@@ -1764,22 +1875,15 @@ main (int argc, char **argv)
 			memset (currentFrame.lavYUV[1], 128, fullchroma);
 			memset (currentFrame.lavYUV[2], 128, fullchroma);
 
-			mjpeg_info ( "Outbound input is %i x %i\n", localWidth, localHeight );
+			mjpeg_info ( "Outbound input is %i x %i\n", output.width, output.height );
 			mjpeg_info ( "Adding %i wide and %i high border for lav file/play\n", output.borderWidth, output.borderHeight );
 		}
 	}
 
 	if ( output.toLAV )
 	{
-		output.fdLAV = lav_open_output_file ( filenameLAV
-				, optLavFormat
-				, localWidth + output.borderWidth 
-				, localHeight + output.borderHeight
-				, output.lavForcedInterlace
-				, input.frameRate
-				, ( input.processAudio ? waveHeader.wBitsPerSample : 0 )
-				, ( input.processAudio ? waveHeader.nChannels : 0 )
-				, ( input.processAudio ? waveHeader.nSamplesPerSec : 0 ) ) ;
+		output.filenameLAV = filenameLAV;
+		nextLavFile ();
 		if ( output.fdLAV == NULL )
 		{
 			mjpeg_error_exit1 ( "Could not open output LAV file.\n" );
@@ -1801,8 +1905,8 @@ main (int argc, char **argv)
 	input.currentFile = -1;
 	if ( output.toPLAY )
 	{
-		output.lavplayInfo->editlist->video_width = localWidth + output.borderWidth;
-		output.lavplayInfo->editlist->video_height = localHeight + output.borderHeight;
+		output.lavplayInfo->editlist->video_width = output.width + output.borderWidth;
+		output.lavplayInfo->editlist->video_height = output.height + output.borderHeight;
 		output.lavplayInfo->editlist->video_fps = input.frameRate;
 		output.lavplayInfo->editlist->video_frames = 0;
 		output.lavplayInfo->editlist->video_inter = output.lavForcedInterlace;
@@ -1823,7 +1927,7 @@ main (int argc, char **argv)
 		output.currentLavplayAudioFrame = 0;
 		lavplay_main ( output.lavplayInfo );
 		// lavplay_busy ( output.lavplayInfo );
-		while ( ( ! interrupted ) && ( output.processedFrames < output.endFrame ) )
+		while ( ( ! interrupted ) && ( input.currentFrame < output.endFrame ) )
 		{
 			// sleep for two frames
 			usleep ( (unsigned int) (input.frameTime * 2000000.0) );

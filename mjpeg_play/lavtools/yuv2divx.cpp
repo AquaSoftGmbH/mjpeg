@@ -56,9 +56,13 @@
 //   by the size of the audio input.  If none, or it runs out of audio
 //   data, it stops guessing.
 //
+// 2001-11-25 v0.0.21
+//
+// - fixed display bug in audio rate output.
+//
 #define APPNAME "yuv2divx"
-#define APPVERSION "0.0.20"
-#define LastChanged "2001/10/28"
+#define APPVERSION "0.0.21"
+#define LastChanged "2001/11/25"
 
 #include <iostream.h>
 #include <videoencoder.h>
@@ -797,7 +801,7 @@ main ( int argc, char **argv )
 		}
 		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second\n" 
 	                , opt_mp3bitrate           
-                        , ( opt_mp3bitrate / 125 ) );
+                        , ( opt_mp3bitrate * 8000 ) );
 
 		astream = avifile->AddAudioStream ( 0x55, &format, ( opt_mp3bitrate * 1000 ) / 8 );
 		astream->Start (  );
