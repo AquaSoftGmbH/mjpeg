@@ -1,7 +1,22 @@
-#
-# Automake Makefile template for mplex
+# Process this file with Automake to produce Makefile.in
+
+EXTRA_DIST = \
+	README  	INSTRUCT	TODO
+
+INCLUDES = -I $(top_srcdir)
 
 bin_PROGRAMS = mplex
-CFLAGS =  -O3 -Wall
-LDFLAGS=  -lm
-mplex_SOURCES = main.c bits.c buffer.c inits.c inptstrm.c interact.c multplex.c systems.c vector.c bits.h main.h vector.h
+
+mplex_SOURCES = \
+	main.c 		main.h	\
+	bits.c 		bits.h	\
+	buffer.c 		\
+	inits.c 		\
+	inptstrm.c 		\
+	interact.c 		\
+	multplex.c 		\
+	systems.c 		\
+	vector.c 	vector.h
+
+#mplex_LDADD = -lm
+
