@@ -267,7 +267,11 @@ readyDestination ( 	IAviReadStream *instream
 	}
 	if ( flip )
 	{
-		flip = ( instream->GetDecoder ()->DestFmt ().biHeight > 0 );
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+		flip = ( instream->GetDecoder ()->GetDestFmt ().biHeight > 0 );
+#else
+ 		flip = ( instream->GetDecoder ()->DestFmt ().biHeight > 0 );
+#endif /* AVIFILE_MAJOR_VERSION */
 		instream->SetDirection ( flip );
 		instream->GetDecoder ()->SetDirection ( flip );
 	}
