@@ -8,9 +8,11 @@ Build-Depends: debhelper (>> 3.4.4), nasm (>= 0.94.34) [i386], libpopt-dev,
  libsdl1.2-dev, libgtk1.2-dev, libfreetype6-dev, libxrender-dev | xlibs-dev
 Standards-Version: 3.5.2
 
-Package: libmjpegtools0
+Package: libmjpegtools-@LT_RELEASE@
 Section: libs
 Architecture: any
+Replaces: libmjpegtools0
+Conflicts: libmjpegtools0, libmjpegtools-i6860
 Depends: ${shlibs:Depends}
 Description: MJPEG video capture/editting/playback runtime libraries
  This package contains shared libraries for mjpeg programs.
@@ -43,7 +45,7 @@ Description: MJPEG video capture/editting/playback runtime libraries
 Package: libmjpegtools-dev
 Section: libdevel
 Architecture: any
-Depends: libmjpegtools0 (= ${Source-Version})
+Depends: libmjpegtools-@LT_RELEASE@ (= ${Source-Version})
 Description: MJPEG video capture/editting/playback development files
  This package contains header files and static libraries for programs
  using mjpeg runtime libraries.
@@ -103,12 +105,12 @@ Description: MJPEG video capture/editting/playback MPEG encoding
  every player and every OS. SSE/MMX and 3D-Now!  are supported permitting
  a 700Mhz CPU to deliver arond 15-20 VCD frames/second.
 
-Package: libmjpegtools-i6860
+Package: libmjpegtools-i686-@LT_RELEASE@
 Section: libs
 Architecture: any
-Replaces: libmjpegtools0
-Provides: libmjpegtools0
-Conflicts: libmjpegtools0
+Replaces: libmjpegtools-@LT_RELEASE@, libmjpegtools-i6860, libmjpegtools0
+Provides: libmjpegtools-@LT_RELEASE@
+Conflicts: libmjpegtools-@LT_RELEASE@, libmjpegtools-i6860, libmjpegtools0
 Depends: ${shlibs:Depends}
 Description: MJPEG video capture/editting/playback runtime libraries (i686)
  This package contains shared libraries for mjpeg programs.
@@ -145,7 +147,7 @@ Architecture: any
 Replaces: ibmjpegtools-dev
 Provides: ibmjpegtools-dev
 Conflicts: ibmjpegtools-dev
-Depends: libmjpegtools-i6860 (= ${Source-Version})
+Depends: libmjpegtools-i686-@LT_RELEASE@ (= ${Source-Version})
 Description: MJPEG video capture/editting/playback development files (i686)
  This package contains header files and static libraries for programs
  using mjpeg runtime libraries.

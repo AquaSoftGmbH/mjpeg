@@ -1,9 +1,8 @@
 EXTRA_DIST = \
 	changelog \
-	control \
 	copyright \
 	libmjpegtools-dev.files \
-	libmjpegtools0.files \
+	libmjpegtools.files \
 	mjpegtools.docs \
 	mjpegtools.files \
 	mjpegtools.info \
@@ -11,3 +10,5 @@ EXTRA_DIST = \
 	mjpegtools.postinst \
 	mjpegtools.prerm \
 	rules
+
+dist_noinst_DATA = control

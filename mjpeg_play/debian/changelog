@@ -1,3 +1,9 @@
+mjpegtools (1.6.1.93-2) unstable; urgency=low
+
+  * Using libtool -release, rename package libmjpegtools0 to libmjpegtools-1.6.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Sun, 25 Jan 2004 16:27:05 +0900
+
 mjpegtools (1.6.1.93-1) unstable; urgency=low
 
   * Add mjpegtools.{postinst,prerm} to use install-info without automatically adding by dh_installinfo.

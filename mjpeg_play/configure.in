@@ -658,6 +658,7 @@ dnl
 AC_OUTPUT([
 Makefile
 debian/Makefile
+debian/control
 docs/Makefile
 lavtools/Makefile
 yuvdenoise/Makefile
