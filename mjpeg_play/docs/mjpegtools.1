@@ -164,6 +164,54 @@ visually "perfect".  \-d 2 is already better than VHS video (a *lot*!).
 If you're aiming to create VCD's then there is little to be gained recording
 at full resolution as you need to reduce to \-d 2 resolution later anyway.
 
+.SH "CREATING VIDEOS FROM IMAGES"
+.br 
+You can use jpeg2yuv to create a yuv stream from seperate JPEG images.
+This stream is sent to stdout, so that it can either be saved into a
+file, encoded directly to a mpeg video using mpeg2enc or used for
+anything else.
+
+Saving an yuv stream can be done like this:
+.br
+.B > jpeg2yuv -f 25 -j image%05d.jpg > result.yuv
+
+Creates the file result.yuv containig the yuv video data with 25 FPS.
+The -f option is used to set the frame rate. Note that image%05d.jpg means
+that the jpeg files are named image00000.jpg, image00001.jpg and so on.
+(05 means five digits, 04 means four digits, etc.)
+
+If you want to encode an mpeg video directly from jpeg images
+without saving a seperate video file, type:
+.br
+.B > jpeg2yuv -f 25 -j image%05d.jpg | mpeg2enc -o mpegfile.m1v
+
+Does the same as above, but saves a mpeg video rather than a yuv video.
+See mpeg2enc section for details on how to use mpeg2enc.
+
+You can also use yuvscaler between jpeg2yuv and mpeg2enc.
+If you want to create a SVCD from your mpeg-video, type:
+.br
+.B > jpeg2yuv -f 25 -j image%05d.jpg | yuvscaler -O SVCD | mpeg2enc -f 4 -o video.m2v
+
+It's also usefull to put yuvmedianfilter before mpeg2enc. The resulting
+video will be softer but a bit less sharp:
+.br
+.B > jpeg2yuv -f 25 -j image05d*.jpg | yuvmedianfilter | mpeg2enc -o video.m1v
+
+It also depends on the quality (compression) of your jpeg images wheather
+yuvmedianfilter should be used or not.
+
+You can use the -b option to set the number of the image to start with.
+For example, if your first image is image01.jpg rather than image00.jpg, type:
+.br
+.B > jpeg2yuv -b 1 -j image%02d.jpg | yuv2lav -o stream_without_sound.avi
+
+Adding the sound to the stream then:
+.br
+.B > lavaddwav stream_without_sound.avi sound.wav stream.avi
+
+The number of images to be processed can be specified with the -n number.
+
 
 .SH "CHECKING IF RECORDING WAS SUCCESFUL"
 .br 
@@ -664,12 +712,12 @@ color- and luminance-noise and flickering due to phase errors.
 
 Example:
 .br
-.B > lav2yuv stream.avi | yuvkineco -F 4 -S | mpeg2enc -o video.m1v
+.B > lav2yuv stream.avi | yuvkineco -F 1 -S | mpeg2enc -o video.m1v
 .br
-yuvkineco ist used for NTSC sources. The -F 4 flag sets yuvkineco to autodedect
-the framreate. With -S you can use an other threshold than the default. It can
-also do the conversation from 29.97 fps to 23.97fps. yuvkineco does only
-remove NTSC specific problems. So if you want to enhance the image you should   also use yuvdenoise:
+yuvkineco is used for NTSC sources. It does the conversation from 29.97 fps 
+to 23.976fps, you can call it "reverse 2-3 pulldown", more info about this in 
+the README.2-3pulldown.  yuvkineco does only remove NTSC specific problems. 
+So if you want to enhance the image you should also use yuvdenoise:
 .br
 .B > lav2yuv stream.avi | yuvkineco | yuvdenoise | mpeg2enc -o video.m1v
 .br
@@ -685,6 +733,17 @@ bright/dark invert per 1 frame. yuvycsnoise reduces noises of this type.
 You can also use different thresholds for luma/chroma, and the optimizing
 method. 
 .br
+yuvycsnoise workes only correct when we have NTSC with:
+.br
+* full height (480 lines)
+.br
+* full motion captured (29.97 fps)
+.br
+* captured with poor Y/C separator hardware
+
+For more information about the yuvkineco and yuvycsnoise read the README
+in the yuvfilters directory.
+
 
 .SH "PUTTING THE STREAMS TOGETHER (MULTIPLEXING)"
 .br
