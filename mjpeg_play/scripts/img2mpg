@@ -5,7 +5,7 @@
 #
 # IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD portfolio (with vcdimager)
 #
-# This script use this packages :  'ImageMagick' ver >= 5.2.0 [http://www.imagemagick.org/]
+# This script use this packages :  'ImageMagick' ver >= 5.4.8 [http://www.imagemagick.org/]
 #                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
 #
 # You give the images files names on the command line (see the options '--help').
