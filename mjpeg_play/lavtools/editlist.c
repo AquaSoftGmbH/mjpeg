@@ -118,7 +118,7 @@ static int open_video_file(char *filename, EditList *el)
 		  /* TODO: This guessing here is a bit dubious but it can be over-ridden */
 		 if(el->video_fps>24.95 && el->video_fps<25.05)
             el->video_norm = 'p';
-         else if (el->video_fps>30000./999. && el->video_fps<30000./1001.)
+         else if (el->video_fps>29.92 && el->video_fps<=30.02)
             el->video_norm = 'n';
          else
          {

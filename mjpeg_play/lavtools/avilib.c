@@ -714,7 +714,10 @@ avi_t *AVI_open_input_file(char *filename, int getIndex)
             AVI->compressor[4] = 0;
             scale = str2ulong(hdrl_data+i+20);
             rate  = str2ulong(hdrl_data+i+24);
-            if(scale!=0) AVI->fps = (double)rate/(double)scale;
+            if(scale!=0) AVI->fps = (double)rate/(double)(scale);
+	    /* kludge to get ntsc 29.97 correct */
+	    if (AVI->fps > 29.95 && AVI->fps < 29.99)
+		AVI->fps = 30000.0/1001.0; /* ntsc frame rate */
             AVI->video_frames = str2ulong(hdrl_data+i+32);
             AVI->video_strn = num_stream;
             vids_strh_seen = 1;

@@ -14,7 +14,7 @@ CFLAGS=-Wall -Wno-uninitialized -Werror -O3 -DLAVPLAY_VERSION=\"1.3\"
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
 ##
-bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddwav xlav testrec
+bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddwav xlav testrec lav2dfilter
 
 lav_headers = lav_io.h editlist.h xlav.h avilib.h
 
@@ -33,6 +33,9 @@ lav2yuv_SOURCES = lav2yuv.c  jpegutils.c $(lav_headers)
 lav2yuv_LDFLAGS  = -L@LOCAL_JPEG_LIB@ -L movtar 
 lav2yuv_LDADD = editlist.o lav_io.o avilib.o -lmovtar 
 
+lav2dfilter_SOURCES = lav2dfilter.c $(lav_headers)
+lav2dfilter_LDFLAGS = 
+lav2dfilter_LDADD = 
 
 lav2wav_SOURCES = lav2wav.c  $(lav_headers)
 lav2wav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
