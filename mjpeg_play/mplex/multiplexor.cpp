@@ -262,7 +262,7 @@ void Multiplexor::InitInputStreams(MultiplexJob &job)
 
 void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
 {
-	vector<VideoParams *>::iterator vidparm = job.video_param.begin();
+	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
     unsigned int frame_interval;
     unsigned int i;
 
@@ -335,8 +335,8 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
 {
     mjpeg_info( "Multiplexing video program stream!" );
 
-	vector<VideoParams *>::iterator vidparm = job.video_param.begin();
-	vector<LpcmParams *>::iterator lpcmparm = job.lpcm_param.begin();
+	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
+	std::vector<LpcmParams *>::iterator lpcmparm = job.lpcm_param.begin();
     unsigned int i;
 
     if( job.video_files.size() < 1 	&& job.mux_format == MPEG_FORMAT_VCD )
@@ -491,7 +491,7 @@ segment_state;
 
 unsigned int Multiplexor::RunInSectors()
 {
-	vector<ElementaryStream *>::iterator str;
+	std::vector<ElementaryStream *>::iterator str;
 	unsigned int sectors_delay = 1;
 
 	for( str = vstreams.begin(); str < vstreams.end(); ++str )
@@ -522,7 +522,7 @@ unsigned int Multiplexor::RunInSectors()
 
 void Multiplexor::Init()
 {
-	vector<ElementaryStream *>::iterator str;
+	std::vector<ElementaryStream *>::iterator str;
 	clockticks delay;
 	unsigned int sectors_delay;
 
@@ -669,7 +669,7 @@ void Multiplexor::Init()
  */
 void Multiplexor::MuxStatus(log_level_t level)
 {
-	vector<ElementaryStream *>::iterator str;
+	std::vector<ElementaryStream *>::iterator str;
 	for( str = estreams.begin(); str < estreams.end(); ++str )
 	{
 		switch( (*str)->Kind()  )
@@ -718,7 +718,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 void Multiplexor::AppendMuxStreamsOf( vector<ElementaryStream *> &elem, 
                                        vector<MuxStream *> &mux )
 {
-    vector<ElementaryStream *>::iterator str;
+	std::vector<ElementaryStream *>::iterator str;
     for( str = elem.begin(); str < elem.end(); ++str )
     {
         mux.push_back( static_cast<MuxStream *>( *str ) );
@@ -820,7 +820,7 @@ void Multiplexor::OutputPrefix( )
         DummyMuxStream dvd_0xb8_strm_dummy( 0xb8, 0, 4096 );
         DummyMuxStream dvd_0xbf_strm_dummy( 0xbf, 1, 2048 );
         vector<MuxStream *> dvdmux;
-        vector<MuxStream *>::iterator muxstr;
+		std::vector<MuxStream *>::iterator muxstr;
         dvdmux.push_back( &dvd_0xb9_strm_dummy );
         dvdmux.push_back( &dvd_0xb8_strm_dummy );
         unsigned int max_priv1_buffer = 0;
@@ -903,9 +903,9 @@ void Multiplexor::Multiplex()
 
 {
 	segment_state seg_state;
-	vector<bool> completed;
-	vector<bool>::iterator pcomp;
-	vector<ElementaryStream *>::iterator str;
+	std::vector<bool> completed;
+	std::vector<bool>::iterator pcomp;
+	std::vector<ElementaryStream *>::iterator str;
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	bool padding_packet;

@@ -1,7 +1,9 @@
 #ifndef __SYSTEMS_HH__
 #define __SYSTEMS_HH__
 
+#ifndef _WIN32
 #include <sys/param.h>
+#endif
 #include "inputstrm.hpp"
 
 #include <vector>

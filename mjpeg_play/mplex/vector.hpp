@@ -62,7 +62,7 @@ public:
 			return buf[i];
 		}
 
-	static const unsigned int BUF_SIZE = 128;
+	static const unsigned int BUF_SIZE;
 
 	inline unsigned int current() { return totalctr; }
 private:

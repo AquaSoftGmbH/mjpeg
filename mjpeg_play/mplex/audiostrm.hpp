@@ -59,7 +59,7 @@ protected:
     unsigned int framesize;
     unsigned int skip;
     unsigned int samples_per_second;
-    unsigned long long int length_sum;
+    uint64_t	 length_sum;
     AAunit access_unit;
 }; 	
 
@@ -131,8 +131,8 @@ private:
 	void OutputHdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
     
-    static const unsigned int default_buffer_size = 232*1024;
-    static const unsigned int ticks_per_frame_90kHz = 150;
+    static const unsigned int default_buffer_size;
+    static const unsigned int ticks_per_frame_90kHz;
 	/* State variables for scanning source bit-stream */
     unsigned int stream_num;
     unsigned int samples_per_second;

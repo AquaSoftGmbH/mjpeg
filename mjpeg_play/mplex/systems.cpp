@@ -773,7 +773,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
     index = sys_header->buf;
     int video_bound = 0;
     int audio_bound = 0;
-    vector<MuxStream *>::iterator str;
+	std::vector<MuxStream *>::iterator str;
     for( str = streams.begin(); str < streams.end(); ++str )
     {
         switch( ((*str)->stream_id & 0xe0) )

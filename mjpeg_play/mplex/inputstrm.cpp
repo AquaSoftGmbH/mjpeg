@@ -23,6 +23,8 @@
 
 #include <config.h>
 #include <assert.h>
+
+#include "mjpeg_types.h"
 #include "fastintfns.h"
 #include "inputstrm.hpp"
 #include "multiplexor.hpp"

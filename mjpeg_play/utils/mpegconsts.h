@@ -30,12 +30,12 @@
 typedef unsigned int mpeg_framerate_code_t;
 typedef unsigned int mpeg_aspect_code_t;
 
-extern const mpeg_framerate_code_t mpeg_num_framerates;
-extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+extern const mpeg_framerate_code_t mpeg_num_framerates;
+extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
 
 /*
  * Convert MPEG frame-rate code to corresponding frame-rate
