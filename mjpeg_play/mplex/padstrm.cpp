@@ -31,7 +31,7 @@
 
 unsigned int PaddingStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
-	memset( dst, STUFFING_BYTE, to_read );
+	memset( dst, 0, to_read );
 	return to_read;
 }
 
