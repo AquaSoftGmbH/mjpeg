@@ -43,6 +43,7 @@ TCCAT="tccat"
 TCDEMUX="tcdemux"
 TCPROBE="tcprobe"
 TRANSCODE="transcode"
+Y4MDENOISE="y4mdenoise"
 Y4MSCALER="y4mscaler"
 Y4MSPATIALFILTER="y4mspatialfilter"
 Y4MUNSHARP="y4munsharp"
@@ -51,7 +52,8 @@ YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 SCRIPT_NAME="anytovcd.sh"
-SCRIPT_VERSION="8"
+SCRIPT_VERSION="9"
+
 
 # custom quant. matrices
 INTRA_KVCD="8,9,12,22,26,27,29,34,9,10,14,26,27,29,34,37,12,14,18,27,29,34,37,38,22,26,27,31,36,37,38,40,26,27,29,36,39,38,40,48,27,29,34,37,38,40,48,58,29,34,37,38,40,48,58,69,34,37,38,40,48,58,69,79"
@@ -116,7 +118,7 @@ probe_vid_ilace ()
 
 probe_vid_sar ()
 {
-    ${TRANSCODE} -i "$1" -c 0-1 -y yuv4mpeg -o /tmp/tmp.y4m >/dev/null 2>&1
+    ${TRANSCODE} -i "$1" -c 0-1 -y yuv4mpeg,null -o /tmp/tmp.y4m >/dev/null 2>&1
     echo "`head -1 /tmp/tmp.y4m | awk '{print $6}' | cut -c 2-`"
     rm -f /tmp/tmp.y4m
 }
@@ -217,6 +219,8 @@ show_help ()
     echo "-I    force input ilace flag      "
     echo "      avail. : none, top_first and"
     echo "               bottom_first       "
+    echo "-J    force output ilace flag (if possible)"
+    echo "      avail. : none, top_first and bottom_first"
     echo "-f    filtering method (*none*)   "
     echo "      avail.: light, medium, heavy"
     echo "-m    mute mode (no audio)        "
@@ -239,6 +243,7 @@ show_help ()
     echo "               spatial (y4mspatialfilter)"
     echo "               temporal (yuvdenoise)     "
     echo "               unsharp (y4munsharp)      "
+    echo "               hqdenoise (y4mdenoise)    "
     echo "-T    force input length (minutes)"
     echo "-v    script version              "
     echo "-V    number of volumes (1)       "
@@ -275,7 +280,7 @@ for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M}; do
 
 done
 
-while getopts a:A:bcd:e:f:i:I:mn:o:p:q:rR:t:T:vV: OPT
+while getopts a:A:bcd:e:f:i:I:J:mn:o:p:q:rR:t:T:vV: OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
@@ -286,6 +291,7 @@ do
     e)    ENC_TOOL="${OPTARG}";;
     i)    VIDEO_SRC="${OPTARG}"; AUDIO_SRC="${VIDEO_SRC}";;
     I)    INTERLACING="${OPTARG}";;
+    J)    INTERLACING_OUT="${OPTARG}";;
     f)    FILTERING="${OPTARG}";;
     m)    MUTE_MODE="1";;
     n)    OUT_NORM="${OPTARG}";;
@@ -340,6 +346,25 @@ else
 
 fi
 
+# output interlacing
+if test "${INTERLACING_OUT}" == "none"; then
+
+    VID_ILACE_OUT="p"
+
+elif test "${INTERLACING_OUT}" == "top_first"; then
+
+    VID_ILACE_OUT="t"
+
+elif test "${INTERLACING_OUT}" == "bottom_first"; then
+
+    VID_ILACE_OUT="b"
+
+else
+
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
+
+fi
+
 # input framerate
 if test "${VID_FPS_SRC}" == ""; then
 
@@ -371,6 +396,7 @@ FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 MPLEX="${MPLEX} -v 1"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
+Y4MDENOISE_FLAGS="-v 0"
 Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR"
 
 # ffmpeg decoder version
@@ -399,6 +425,7 @@ elif test "${FILTERING}" == "light"; then
     YUVDENOISE="${YUVDENOISE} -l 1 -t 4 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -x 0 -y 0"
     MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1"
+    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 1"
     Y4MUNSHARP="${Y4MUNSHARP} -L 1.5,0.2,0"
 
 elif test "${FILTERING}" == "medium"; then
@@ -407,6 +434,7 @@ elif test "${FILTERING}" == "medium"; then
     YUVDENOISE="${YUVDENOISE} -l 2 -t 6 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.64 -Y 4,0.8"
     MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1 -w 2.667"
+    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 2"
     Y4MUNSHARP="${Y4MUNSHARP} -L 2.0,0.3,0"
 
 elif test "${FILTERING}" == "heavy"; then
@@ -415,6 +443,7 @@ elif test "${FILTERING}" == "heavy"; then
     YUVDENOISE="${YUVDENOISE} -l 3 -t 8 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.5 -Y 4,0.5 -x 2,0.5 -y 2,0.5"
     MEAN_FILTER="${YUVMEDIANFILTER} -f"
+    Y4MDENOISE_FLAGS="${Y4MDENOISE_FLAGS} -t 3"
     Y4MUNSHARP="${Y4MUNSHARP} -L 5.0,0.5,0"
 
 else
@@ -455,7 +484,6 @@ if test "${VCD_TYPE}" == "cvd"; then
     MPLEX="${MPLEX} -f 8"
     
     VID_FMT_OUT="m2v"
-    VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="7500"
 
@@ -479,7 +507,6 @@ elif test "${VCD_TYPE}" == "cvd_wide"; then
     MPLEX="${MPLEX} -f 8"
     
     VID_FMT_OUT="m2v"
-    VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="7500"
 
@@ -503,7 +530,6 @@ elif test "${VCD_TYPE}" == "dvd"; then
     MPLEX="${MPLEX} -f 8"
 
     VID_FMT_OUT="m2v"
-    VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="8000"
     
@@ -527,7 +553,6 @@ elif test "${VCD_TYPE}" == "dvd_wide"; then
     MPLEX="${MPLEX} -f 8"
 
     VID_FMT_OUT="m2v"
-    VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="8000"
     
@@ -577,7 +602,6 @@ elif test "${VCD_TYPE}" == "svcd"; then
     MPLEX="${MPLEX} -f 4"
 
     VID_FMT_OUT="m2v"
-    VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="2500"
     
@@ -643,10 +667,16 @@ MPEG_OUT="${PREFIX_OUT}-%d.mpg"
 if test "${VID_ILACE_OUT}" == "b"; then
 
     FF_ENC="${FF_ENC} -ildct -ilme -top 0"
+    MPEG2ENC="${MPEG2ENC} -I 1 -z b"
 
 elif test "${VID_ILACE_OUT}" == "t"; then
 
     FF_ENC="${FF_ENC} -ildct -ilme -top 1"
+    MPEG2ENC="${MPEG2ENC} -I 1 -z t"
+
+else
+
+    MPEG2ENC="${MPEG2ENC} -I 0"
 
 fi
 
@@ -719,6 +749,11 @@ fi
 if test "${FILTERING}" == "none"; then
 
     FILTER=""
+
+elif test "${FILTER_TYPE}" == "hqdenoise"; then
+
+    test_bin ${Y4MDENOISE}
+    FILTER="${Y4MDENOISE} ${Y4MDENOISE_FLAGS} |"
 
 elif test "${FILTER_TYPE}" == "mean"; then
     
