@@ -55,6 +55,7 @@ typedef struct _cl_info {
   int repeatlast;
   int verbosity;
   int fdin;
+  int bgr;
 } cl_info_t;
 
 
@@ -87,6 +88,7 @@ void usage(const char *progname)
   fprintf(stdout, "             t = top-field-first\n");
   fprintf(stdout, "             b = bottom-field-first\n");
   fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stdout, "  -B       pixels are packed in BGR(A) format [RGB(A)]\n");
 }
 
 
@@ -106,8 +108,9 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->repeatlast = 0;
   cl->verbosity = 1;
   cl->fdin = 0; /* default to stdin */
+  cl->bgr = 0;
 
-  while ((c = getopt(argc, argv, "A:F:I:D:o:n:rv:h")) != -1) {
+  while ((c = getopt(argc, argv, "A:F:I:D:o:n:rv:Bh")) != -1) {
     switch (c) {
     case 'A':
       if (y4m_parse_ratio(&(cl->output_aspect), optarg) != Y4M_OK) {
@@ -163,6 +166,9 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       usage(argv[0]);
       exit(0);
       break;
+    case 'B':
+      cl->bgr = 1;
+      break;
     case '?':
     default:
       goto ERROR_EXIT;
@@ -196,6 +202,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
                "first-image-is-top" :
                "first-image-is-bottom");
   }
+  mjpeg_info("    pixel packing:  %s", (cl->bgr?"BGR(A)":"RGB(A)")); 
   mjpeg_info(" output framerate:  %d:%d",
 	     cl->output_framerate.n, cl->output_framerate.d);
   mjpeg_info("       output SAR:  %d:%d",
@@ -511,7 +518,7 @@ void alloc_buffers(uint8_t *buffers[], int width, int height, int depth)
 
 static
 void read_rgba_raw(int fd, uint8_t *buffers[],
-                   uint8_t *rowbuffer, int width, int height) 
+                   uint8_t *rowbuffer, int width, int height, int bgra) 
 {
   int x, y;
   uint8_t *pixels;
@@ -523,11 +530,20 @@ void read_rgba_raw(int fd, uint8_t *buffers[],
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
     y4m_read(fd, pixels, width * 4);
-    for (x = 0; x < width; x++) {
-      *(R++) = *(pixels++);
-      *(G++) = *(pixels++);
-      *(B++) = *(pixels++);
-      *(A++) = *(pixels++);
+    if (!bgra) {
+      for (x = 0; x < width; x++) {
+	*(R++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(B++) = *(pixels++);
+	*(A++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(B++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(R++) = *(pixels++);
+	*(A++) = *(pixels++);
+      }
     }
   }
 }
@@ -535,7 +551,7 @@ void read_rgba_raw(int fd, uint8_t *buffers[],
 
 static
 void read_ppm_raw(int fd, uint8_t *buffers[],
-                  uint8_t *rowbuffer, int width, int height) 
+                  uint8_t *rowbuffer, int width, int height, int bgr) 
 {
   int x, y;
   uint8_t *pixels;
@@ -546,10 +562,18 @@ void read_ppm_raw(int fd, uint8_t *buffers[],
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
     y4m_read(fd, pixels, width * 3);
-    for (x = 0; x < width; x++) {
-      *(R++) = *(pixels++);
-      *(G++) = *(pixels++);
-      *(B++) = *(pixels++);
+    if (!bgr) {
+      for (x = 0; x < width; x++) {
+	*(R++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(B++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(B++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(R++) = *(pixels++);
+      }
     }
   }
 }
@@ -605,11 +629,11 @@ void read_pbm_raw(int fd, uint8_t *buffer, int width, int height)
 
 static
 void read_pnm_data(int fd, uint8_t *planes[],
-                   uint8_t *rowbuffer, pnm_info_t *pnm)
+                   uint8_t *rowbuffer, pnm_info_t *pnm, int bgr)
 {
   switch (pnm->format) {
   case FMT_PPM_RAW:
-    read_ppm_raw(fd, planes, rowbuffer, pnm->width, pnm->height);
+    read_ppm_raw(fd, planes, rowbuffer, pnm->width, pnm->height, bgr);
     break;
   case FMT_PGM_RAW:
     read_pgm_raw(fd, planes[0], pnm->width, pnm->height);
@@ -620,13 +644,13 @@ void read_pnm_data(int fd, uint8_t *planes[],
   case FMT_PAM:
     switch (pnm->tupl) {
     case TUPL_RGB:
-      read_ppm_raw(fd, planes, rowbuffer, pnm->width, pnm->height);
+      read_ppm_raw(fd, planes, rowbuffer, pnm->width, pnm->height, bgr);
       break;
     case TUPL_GRAY:
       read_pgm_raw(fd, planes[0], pnm->width, pnm->height);
       break;
     case TUPL_RGB_ALPHA:
-      read_rgba_raw(fd, planes, rowbuffer, pnm->width, pnm->height);
+      read_rgba_raw(fd, planes, rowbuffer, pnm->width, pnm->height, bgr);
       break;
     case TUPL_GRAY_ALPHA:
     case TUPL_BW:
@@ -658,7 +682,7 @@ void read_pnm_data(int fd, uint8_t *planes[],
 static
 int read_pnm_frame(int fd, pnm_info_t *pnm,
 		   uint8_t *buffers[], uint8_t *buffers2[],
-		   int de_leaved)
+		   int de_leaved, int bgr)
 {
   static uint8_t *rowbuffer = NULL;
   pnm_info_t new_pnm;
@@ -688,7 +712,7 @@ int read_pnm_frame(int fd, pnm_info_t *pnm,
     alloc_buffers(buffers2, new_pnm.width, new_pnm.height, new_pnm.depth);
 
   /* Interleaved or not --> read image into first buffer... */
-  read_pnm_data(fd, buffers, rowbuffer, pnm);
+  read_pnm_data(fd, buffers, rowbuffer, pnm, bgr);
 
   if (de_leaved) {
     /* Really Non-Interleaved:  --> read second field into second buffer */
@@ -700,7 +724,7 @@ int read_pnm_frame(int fd, pnm_info_t *pnm,
     /* make sure everything matches */
     if ( !pnm_info_equal(pnm, &new_pnm) )
       mjpeg_error_exit1("One of these fields is not like the others!");
-    read_pnm_data(fd, buffers2, rowbuffer, pnm);
+    read_pnm_data(fd, buffers2, rowbuffer, pnm, bgr);
   }
 
   return 0;
@@ -799,7 +823,7 @@ int main(int argc, char **argv)
   }
 
   /* Read first PPM frame/field-pair, to get dimensions/format. */
-  if (read_pnm_frame(cl.fdin, &pnm, planes, planes2, cl.deinterleave))
+  if (read_pnm_frame(cl.fdin, &pnm, planes, planes2, cl.deinterleave, cl.bgr))
     mjpeg_error_exit1("Failed to read first frame.");
 
   /* Setup streaminfo and write output header */
@@ -815,7 +839,7 @@ int main(int argc, char **argv)
     /* Read PPM frame/field */
     /* ...but skip reading very first frame, already read prior to loop */
     if (count > 0) {
-      err = read_pnm_frame(cl.fdin, &pnm, planes, planes2, cl.deinterleave);
+      err = read_pnm_frame(cl.fdin, &pnm, planes, planes2, cl.deinterleave, cl.bgr);
       if (err == 1) {
 	/* clean input EOF */
 	if (cl.repeatlast) {
@@ -932,7 +956,7 @@ int main(int argc, char **argv)
 static
 void read_two_ppm_raw(int fd,
                       uint8_t *buffers[], uint8_t *buffers2[], 
-                      uint8_t *rowbuffer, int width, int height)
+                      uint8_t *rowbuffer, int width, int height, int bgr)
 {
   int x, y;
   uint8_t *pixels;
@@ -949,18 +973,34 @@ void read_two_ppm_raw(int fd,
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
       mjpeg_error_exit1("read error A  y=%d", y);
-    for (x = 0; x < width; x++) {
-      *(R++) = *(pixels++);
-      *(G++) = *(pixels++);
-      *(B++) = *(pixels++);
+    if (!bgr) {
+      for (x = 0; x < width; x++) {
+	*(R++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(B++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(B++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(R++) = *(pixels++);
+      }
     }
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
       mjpeg_error_exit1("read error B  y=%d", y);
-    for (x = 0; x < width; x++) {
-      *(R2++) = *(pixels++);
-      *(G2++) = *(pixels++);
-      *(B2++) = *(pixels++);
+    if (!bgr) {
+      for (x = 0; x < width; x++) {
+	*(R2++) = *(pixels++);
+	*(G2++) = *(pixels++);
+	*(B2++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(B2++) = *(pixels++);
+	*(G2++) = *(pixels++);
+	*(R2++) = *(pixels++);
+      }
     }
   }
 }
@@ -988,11 +1028,11 @@ void read_pnm_into_two_buffers(int fd,
                                uint8_t *planes[],
                                uint8_t *planes2[],
                                uint8_t *rowbuffer,
-                               pnm_info_t *pnm)
+                               pnm_info_t *pnm, int bgr)
 {
   switch (pnm->format) {
   case FMT_PPM_RAW:
-    read_two_ppm_raw(fd, planes, planes2, rowbuffer, pnm->width, pnm->height);
+    read_two_ppm_raw(fd, planes, planes2, rowbuffer, pnm->width, pnm->height, bgr);
     break;
   case FMT_PGM_RAW:
     read_two_pgm_raw(fd, planes[0], planes2[0], pnm->width, pnm->height);

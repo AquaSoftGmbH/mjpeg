@@ -57,6 +57,7 @@ typedef struct _cl_info {
   int ss_mode;
   int verbosity;
   int fdin;
+  int bgr;
 } cl_info_t;
 
 
@@ -107,6 +108,7 @@ void usage(const char *progname)
   }
   /*  fprintf(stdout, "  -R type  subsampling filter type\n");*/
   fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
+  fprintf(stdout, "  -B       PPM image is packed with BGR pixels [RGB]\n");
 }
 
 
@@ -125,9 +127,10 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->repeatlast = 0;
   cl->ss_mode = DEFAULT_CHROMA_MODE;
   cl->verbosity = 1;
+  cl->bgr = 0;
   cl->fdin = 0; /* default to stdin */
 
-  while ((c = getopt(argc, argv, "A:F:I:Lo:n:rS:v:h")) != -1) {
+  while ((c = getopt(argc, argv, "BA:F:I:Lo:n:rS:v:h")) != -1) {
     switch (c) {
     case 'A':
       if (y4m_parse_ratio(&(cl->aspect), optarg) != Y4M_OK) {
@@ -154,6 +157,9 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       break;
     case 'L':
       cl->interleave = 1;
+      break;
+    case 'B':
+      cl->bgr = 1;
       break;
     case 'o':
       if ((cl->offset = atoi(optarg)) < 0)
@@ -207,6 +213,8 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 	     cl->framerate.n, cl->framerate.d);
   mjpeg_info("    pixel aspect ratio:  %d:%d",
 	     cl->aspect.n, cl->aspect.d);
+  mjpeg_info("         pixel packing:  %s",
+	     cl->bgr?"BGR":"RGB");
   mjpeg_info("             interlace:  %s%s",
 	     mpeg_interlace_code_definition(cl->interlace),
 	     (cl->interlace == Y4M_ILACE_NONE) ? "" :
@@ -317,7 +325,7 @@ void read_ppm_into_two_buffers(int fd,
 			       uint8_t *buffers[], 
 			       uint8_t *buffers2[], 
 			       uint8_t *rowbuffer,
-			       int width, int height)
+			       int width, int height, int bgr)
 {
   int x, y;
   uint8_t *pixels;
@@ -334,18 +342,34 @@ void read_ppm_into_two_buffers(int fd,
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
       mjpeg_error_exit1("read error A  y=%d", y);
-    for (x = 0; x < width; x++) {
-      *(R++) = *(pixels++);
-      *(G++) = *(pixels++);
-      *(B++) = *(pixels++);
+    if (bgr) {
+      for (x = 0; x < width; x++) {
+	*(B++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(R++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(R++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(B++) = *(pixels++);
+      }
     }
     pixels = rowbuffer;
     if (y4m_read(fd, pixels, width * 3))
       mjpeg_error_exit1("read error B  y=%d", y);
-    for (x = 0; x < width; x++) {
-      *(R2++) = *(pixels++);
-      *(G2++) = *(pixels++);
-      *(B2++) = *(pixels++);
+    if (bgr) {
+      for (x = 0; x < width; x++) {
+	*(B2++) = *(pixels++);
+	*(G2++) = *(pixels++);
+	*(R2++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(R2++) = *(pixels++);
+	*(G2++) = *(pixels++);
+	*(B2++) = *(pixels++);
+      }
     }
   }
 }
@@ -356,7 +380,7 @@ static
 void read_ppm_into_one_buffer(int fd,
 			      uint8_t *buffers[],
 			      uint8_t *rowbuffer,
-			      int width, int height) 
+			      int width, int height, int bgr) 
 {
   int x, y;
   uint8_t *pixels;
@@ -367,10 +391,18 @@ void read_ppm_into_one_buffer(int fd,
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
     y4m_read(fd, pixels, width * 3);
-    for (x = 0; x < width; x++) {
-      *(R++) = *(pixels++);
-      *(G++) = *(pixels++);
-      *(B++) = *(pixels++);
+    if (bgr) {
+      for (x = 0; x < width; x++) {
+	*(B++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(R++) = *(pixels++);
+      }
+    } else {
+      for (x = 0; x < width; x++) {
+	*(R++) = *(pixels++);
+	*(G++) = *(pixels++);
+	*(B++) = *(pixels++);
+      }
     }
   }
 }
@@ -388,7 +420,7 @@ void read_ppm_into_one_buffer(int fd,
 static
 int read_ppm_frame(int fd, ppm_info_t *ppm,
 		   uint8_t *buffers[], uint8_t *buffers2[],
-		   int ilace, int ileave)
+		   int ilace, int ileave, int bgr)
 {
   int width, height;
   static uint8_t *rowbuffer = NULL;
@@ -424,17 +456,17 @@ int read_ppm_frame(int fd, ppm_info_t *ppm,
     if (ilace == Y4M_ILACE_TOP_FIRST) {
       /* 1st buff arg == top field == temporally first == "buffers" */
       read_ppm_into_two_buffers(fd, buffers, buffers2,
-				rowbuffer, width, height);
+				rowbuffer, width, height, bgr);
     } else {
       /* bottom-field-first */
       /* 1st buff art == top field == temporally second == "buffers2" */
       read_ppm_into_two_buffers(fd, buffers2, buffers,
-				rowbuffer, width, height);
+				rowbuffer, width, height, bgr);
     }      
   } else if ((ilace == Y4M_ILACE_NONE) || (!ileave)) {
     /* Not Interlaced, or Not Interleaved:
        --> read image into first buffer... */
-    read_ppm_into_one_buffer(fd, buffers, rowbuffer, width, height);
+    read_ppm_into_one_buffer(fd, buffers, rowbuffer, width, height, bgr);
     if ((ilace != Y4M_ILACE_NONE) && (!ileave)) {
       /* ...Actually Interlaced:
 	 --> read the second image/field into second buffer */
@@ -447,7 +479,7 @@ int read_ppm_frame(int fd, ppm_info_t *ppm,
       if ( (ppm->width != width) ||
 	   (ppm->height != height) )
 	mjpeg_error_exit1("One of these frames is not like the others!");
-      read_ppm_into_one_buffer(fd, buffers2, rowbuffer, width, height);
+      read_ppm_into_one_buffer(fd, buffers2, rowbuffer, width, height, bgr);
     }
   }
   return 0;
@@ -530,7 +562,7 @@ int main(int argc, char **argv)
 
   /* Read first PPM frame/field-pair, to get dimensions */
   if (read_ppm_frame(cl.fdin, &ppm, buffers, buffers2, 
-		     cl.interlace, cl.interleave))
+		     cl.interlace, cl.interleave, cl.bgr))
     mjpeg_error_exit1("Failed to read first frame.");
 
   /* Setup streaminfo and write output header */
@@ -547,7 +579,7 @@ int main(int argc, char **argv)
     /* ...but skip reading very first frame, already read prior to loop */
     if (count > 0) {
       err = read_ppm_frame(cl.fdin, &ppm, buffers, buffers2, 
-			   cl.interlace, cl.interleave);
+			   cl.interlace, cl.interleave, cl.bgr);
       if (err == 1) {
 	/* clean input EOF */
 	if (cl.repeatlast) {
