@@ -112,7 +112,6 @@ class Guide:
 		if end > -1:
 			station_id = station_id[end + 1:]
 
-		list_time = list_time - self.zone_offset
 		key_time = list_time - (list_time % 1800)
 		zero_time = list_time - 3600 * 5
 
@@ -128,7 +127,6 @@ class Guide:
 		if end > -1:
 			station_id = station_id[end + 1:]
 
-		list_time = list_time - self.zone_offset
 		key_time = list_time - (list_time % 1800)
 		key_time = key_time + 1800
 		zero_time = list_time + 3600 * 5
@@ -159,20 +157,18 @@ class Guide:
 		
 	def save(self, seconds):
 		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir+time.strftime("%y.%m.%d", time.localtime(seconds))
+		file_name = dir+time.strftime("%y.%m.%d", time.gmtime(seconds))
 		file = open(file_name, "w")
 		marshal.dump(self.list_dict, file)
 
 	def load(self, seconds):
 		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir + time.strftime("%y.%m.%d", time.localtime(seconds))
+		file_name = dir + time.strftime("%y.%m.%d", time.gmtime(seconds))
 		file = open(file_name, "r")
 		self.list_dict = marshal.load(file)
 
 	def info(self, key):
-		print "key=",key
 		listing = self.list_dict[key]
-		print "listing=", listing
 		stop = listing[0] + listing[3] * 60;
 		channel = listing[2] + ":" + listing[1]
 		self.events.add(key,  channel, listing[0], stop,
@@ -213,7 +209,6 @@ class Guide:
 		self.listing_widget.add(label, 
 			row=row, 
 			column=0)
-		print label.bbox()
 		return label
 
 	def listing_button(self,list_time, station_id, row, col, command):
@@ -222,7 +217,6 @@ class Guide:
 			return 	1
 		listing_next = self.next(station_id, list_time)
 		if (listing_next != None):
-			list_time = list_time - self.zone_offset
 			next_time = listing_next[0] - (listing_next[0] % 1800)
 			span = int((next_time - list_time)/1800)
 		else:
@@ -258,8 +252,11 @@ class Guide:
 
 	def display_guide(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
-		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
-		date_string = time.strftime("%m/%d/%Y", time.localtime(seconds))
+#		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
+		seconds = seconds - self.zone_offset;
+		seconds = int((seconds/(24 * 60 * 60))) * (24 * 60 * 60) 
+
+		date_string = time.strftime("%m/%d/%Y", time.gmtime(seconds))
 
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)

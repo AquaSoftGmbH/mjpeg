@@ -21,9 +21,6 @@ import marshal
 import Pmw
 import ConfigParser
 
-def aa():
-	print "command aa executed"
-
 class Event:
 	def __init__(self):
 		self.channel = StringVar()
@@ -264,73 +261,65 @@ class Event:
 
 class EventList:
 	def __init__(self, root):
+		self.root = root
 		self.config_data = ConfigParser.ConfigParser()
 		self.config_data.read("/etc/dvcr")
 		self.last_add = []
 
 		self.record_event = {}
 		self.event_groups = {}
-		self.dialog = Pmw.Dialog(root,
-			title="Reording Events",
-			buttons=("OK", "Add", "Cancel"),
-			command=self.execute,
-			defaultbutton='OK')
-		self.dialog.withdraw()
-
-		self.scroll_area = Pmw.ScrolledFrame(self.dialog.interior(),
-			hscrollmode = 'dynamic')
-		self.scroll_area.pack(fill=BOTH, expand=1, pady=4, padx=4)
+		if root != None:
+			self.dialog = Pmw.Dialog(root,
+				title="Reording Events",
+				buttons=("OK", "Add", "Cancel"),
+				command=self.execute,
+				defaultbutton='OK')
+			self.dialog.withdraw()
+	
+			self.scroll_area = Pmw.ScrolledFrame(self.dialog.interior(),
+				hscrollmode = 'dynamic')
+			self.scroll_area.pack(fill=BOTH, expand=1, pady=4, padx=4)
 
 		dir = self.config_string("global", "recorddir") + "/"
 		self.file_name = dir + "directtv"
 
-	def repeat(self):
+	def repeat(self, tag):
 		changes = 0
 		current_time = time.time() - time.timezone 
 
-		for tag in self.tags():
-			start, end, channel, title, repeat = \
-				self.event(tag)
+		start, end, channel, title, repeat = self.event(tag)
 
-			if repeat == "Delete":
-				self.delete(tag)
-				changes = changes + 1
-				continue
+		if repeat == "Delete":
+			self.delete(tag)
+			return
 
-			start, end, channel, title, repeat = \
-				self.event(tag)
-			event = self.event_group[tag]
+		if end > current_time:
+			return
 
-			if end < current_time:
-				if repeat == 'Once':
-					self.delete(tag)
-					changes = changes + 1
-					continue
+		if repeat == 'Once':
+			self.delete(tag)
+			changes = changes + 1
 
-				if repeat == "Daily":
-					start = start + 24 * 60 * 60
-					end = end + 24 * 60 * 60
+		if repeat == "Daily":
+			start = start + 24 * 60 * 60
+			end = end + 24 * 60 * 60
 
-				if repeat == "Weekly":
-					start = start + 24 * 60 * 60 * 7
-					end = end + 24 * 60 * 60 * 7
+		if repeat == "Weekly":
+			start = start + 24 * 60 * 60 * 7
+			end = end + 24 * 60 * 60 * 7
 
-				if repeat == "Monday-Friday":
-					start = start + 24 * 60 * 60
-					end = end + 24 * 60 * 60
+		if repeat == "Monday-Friday":
+			start = start + 24 * 60 * 60
+			end = end + 24 * 60 * 60
 
-				dict = self.record_event[tag]
-				event = self.event_groups[tag]
-				dict['start'] = start
-				dict['stop'] = stop
+		dict = self.record_event[tag]
+		dict['start'] = start
+		dict['stop'] = end
 
-				event.set_start(start)
-				event.set_stop(stop)
-
-		if changes > 0:
-			self.save()
-
-				
+		if self.root != None:
+			event = self.event_groups[tag]
+			event.set_start(start)
+			event.set_stop(end)
 
 	def load(self):
 		try:
@@ -344,15 +333,18 @@ class EventList:
 		for tag in self.tags():
 			start, end, channel, title, repeat = \
 				self.event(tag)
-			current = Event()
-			self.event_groups[tag] = current
-			current.set_start(start)
-			current.set_stop(end)
-			current.set_title(title)
-			current.set_channel(channel)
-			current.set_repeat(repeat)
-			current.group(self.scroll_area.interior(), row)
+			if self.root != None:
+				current = Event()
+				self.event_groups[tag] = current
+				current.set_start(start)
+				current.set_stop(end)
+				current.set_title(title)
+				current.set_channel(channel)
+				current.set_repeat(repeat)
+				current.group(self.scroll_area.interior(), row)
 			row = row + 1
+
+#		self.repeat()
 
 	def save(self):
 		try:
@@ -371,16 +363,16 @@ class EventList:
 			"repeat" : repeat,
 			"title" : title
 			}
-
-		current = Event()
-		self.event_groups[id] = current
-		current.set_start(start)
-		current.set_stop(stop)
-		current.set_title(title)
-		current.set_channel(channel)
-		current.set_repeat(repeat)
-		current.group(self.scroll_area.interior(), 
-			len(self.event_groups)-1)
+		if self.root != None:
+			current = Event()
+			self.event_groups[id] = current
+			current.set_start(start)
+			current.set_stop(stop)
+			current.set_title(title)
+			current.set_channel(channel)
+			current.set_repeat(repeat)
+			current.group(self.scroll_area.interior(), 
+				len(self.event_groups)-1)
 
 		self.last_add.append(id)
 
@@ -391,6 +383,7 @@ class EventList:
 	def delete(self, id):
 		if self.record_event.has_key(id):
 			del self.record_event[id]
+		if self.event_groups.has_key(id):
 			del self.event_groups[id]
 
 	def event_cmp(self, a1, a2):
@@ -407,6 +400,16 @@ class EventList:
 		tags.sort(self.event_cmp)
 		return tags
 
+	def recorder(tag):
+		if self.record_event.has_key(tag):
+			dict = self.record_event[tag]
+			if dict['repeat'] == 'Once':
+				dict['repeat'] = "Deleted"
+				return
+
+			self.repeat(tag)
+
+		
 
 	def event(self, tag):
 		if self.record_event.has_key(tag):
@@ -444,6 +447,7 @@ class EventList:
 					dict['stop'] = event.get_stop()
 					dict['title'] = event.get_title()
 					dict['repeat'] = event.get_repeat()
+#			self.repeat()
 			self.save()
 			return
 
@@ -468,6 +472,7 @@ class EventList:
 
 
 	def display_events(self, group_tag):
+
 		if group_tag != None:
 			if self.event_groups.has_key(group_tag):
 				self.event_groups[group_tag].show()
@@ -476,6 +481,7 @@ class EventList:
 
 		for tag in self.tags():
 			self.event_groups[tag].withdraw()
+			self.repeat(tag)
 
 		row = 0
 		for tag in self.tags():

@@ -1,9 +1,15 @@
 [global]
 guidedir: /src2/guides
 recorddir: /src2/record
+videodir: /video, video1
+recorders: b50
 
 [display]
 stations: HBO:501, HBOP:502, HBOS:503, HBOW:504, HBOPW:505, HBOF:507, HBFW:508, MAX:512, MMAX:513, MAXW:514
+
+[b50]
+program: /usr/local/bin/lavrec
+params:  -iN, -v1, -s, -d12, -t, %size, %file-name
 
 [tvguide]
 serviceid: 63891
