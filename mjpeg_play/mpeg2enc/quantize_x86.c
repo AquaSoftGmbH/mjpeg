@@ -42,10 +42,10 @@
 #ifdef HAVE_FENV_H
 #include <fenv.h>
 #endif
-#include "global.h"
-#include "cpu_accel.h"
+#include "syntaxparams.h"
+#include "tables.h"
+#include "fastintfns.h"
 #include "simd.h"
-#include "attributes.h"
 #include "mmx.h"
 
 /* 
@@ -73,11 +73,10 @@
  * upwards which partly compensates.
  */
  
-int quant_non_intra_3dnow(	
-	Picture *picture,
-	int16_t *src, int16_t *dst,
-	int mquant,
-	int *nonsat_mquant)
+int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
+							int q_scale_type,
+							int mquant,
+							int *nonsat_mquant)
 {
 	int saturated;
 	int satlim = opt_dctsatlim;
@@ -183,7 +182,7 @@ restart:
 
 			if( saturated )
 			{
-				int new_mquant = next_larger_quant( picture, mquant );
+				int new_mquant = next_larger_quant( q_scale_type, mquant );
 				if( new_mquant != mquant )
 				{
 					mquant = new_mquant;
@@ -191,8 +190,9 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra(picture, src, dst, mquant, 
-										   nonsat_mquant);
+					return quant_non_intra( src, dst, mquant, 
+											q_scale_type,
+											nonsat_mquant);
 				}
 			}
 
@@ -214,11 +214,10 @@ restart:
  */
 static int trunc_mxcsr = 0x7f80;
  
-int quant_non_intra_sse(	
-	Picture *picture,
-	int16_t *src, int16_t *dst,
-	int mquant,
-	int *nonsat_mquant)
+int quant_non_intra_sse( int16_t *src, int16_t *dst,
+						 int q_scale_type,
+						 int mquant,
+						 int *nonsat_mquant)
 {
 	int saturated;
 	int satlim = opt_dctsatlim;
@@ -318,7 +317,7 @@ restart:
 
 			if( saturated )
 			{
-				int new_mquant = next_larger_quant( picture, mquant );
+				int new_mquant = next_larger_quant( q_scale_type, mquant );
 				if( new_mquant != mquant )
 				{
 					mquant = new_mquant;
@@ -326,8 +325,8 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra(picture, src, dst, mquant, 
-										   nonsat_mquant);
+					return quant_non_intra(src, dst, q_scale_type,
+										   mquant, nonsat_mquant);
 				}
 			}
 
@@ -344,20 +343,20 @@ restart:
 }
 
 /*
- * The ordinary MMX version.  Due to the limited dynamic range afforded by working
- * with 16-bit int's it (a) has to jump through some gory fudge-factor hoops
- * (b) give up in tough cases and fall back on the reference code. Fortunately, the
- * latter happens *very* rarely.
+ * The ordinary MMX version.  Due to the limited dynamic range
+ * afforded by working with 16-bit int's it (a) has to jump through
+ * some gory fudge-factor hoops (b) give up in tough cases and fall
+ * back on the reference code. Fortunately, the latter happens *very*
+ * rarely.
  *
  * TODO Replace the inefficient block-by-block call to the assembler by a sweep
  * through the whole lot...
  */
 																							     											     
-int quant_non_intra_mmx(
-	Picture *picture,
-	int16_t *src, int16_t *dst,
-	int mquant,
-	int *nonsat_mquant)
+int quant_non_intra_mmx( int16_t *src, int16_t *dst,
+						 int q_scale_type,
+						 int mquant,
+						 int *nonsat_mquant)
 {
 
 	int nzflag;
@@ -373,7 +372,7 @@ int quant_non_intra_mmx(
 	/* MMX routine does not work right for MQ=2 ... (no unsigned mult) */
 	if( mquant == 2 )
 	{
-		return quant_non_intra(picture, src, dst, mquant, nonsat_mquant);
+		return quant_non_intra(src, dst, q_scale_type,mquant, nonsat_mquant);
 	}
 	/* If available use the fast MMX quantiser.  It returns
 	   flags to signal if coefficients are outside its limited range or
@@ -402,7 +401,7 @@ int quant_non_intra_mmx(
   
 		if( (flags & 0xff00) != 0 )
 		{
-			int new_mquant = next_larger_quant( picture, mquant );
+			int new_mquant = next_larger_quant( q_scale_type, mquant );
 			if( new_mquant != mquant )
 			{
 				mquant = new_mquant;
@@ -435,10 +434,26 @@ int quant_non_intra_mmx(
 	fall back to the original 32-bit int version: this is rare */
 	if(  (flags & 0xff) != 0 || saturated)
 	{
-		return quant_non_intra(picture, src, dst, mquant, nonsat_mquant);
+		return quant_non_intra( src, dst, q_scale_type, mquant, nonsat_mquant);
 	}
 
 	*nonsat_mquant = mquant;
 	return nzflag;
 }
 
+void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, int mquant )
+{
+  if ( opt_mpeg1 )
+	  iquant_non_intra_m1_extmmx(src,dst,inter_q_tbl[mquant]);
+  else
+	  iquant_non_intra_m2_extmmx(src,dst,inter_q_tbl[mquant]);
+}
+
+void iquant_non_intra_mmx(int16_t *src, int16_t *dst, int mquant )
+{
+  if ( opt_mpeg1 )
+	  iquant_non_intra_m1_mmx(src,dst,inter_q_tbl[mquant]);
+  else
+	  iquant_non_intra_m2_mmx(src,dst,inter_q_tbl[mquant]);
+  
+}
