@@ -29,7 +29,12 @@
  *      These parameters are usefull for videos captured from other sources
  *      which do not appear centered when played with the BUZ
  *
- *   -a/--audio [01] --- audio playback (defaults to on)
+ *   -a/--audio num --- When play audio, 0:never, or sum of
+ *      1:forward
+ *      2:reverse
+ *      4:fast
+ *      8:pause
+ *      (default 7:forward,reverse,fast)
  *
  *   -s/--skip num --- skip num seconds before playing
  *
@@ -181,7 +186,8 @@ static void Usage(char *progname)
       "(H)ardware (screen) or (C)ard"
 #endif
       "\n");
-   fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
+   fprintf(stderr, "  -a/--audio num             When play audio, 0:never, or sum of\n");
+   fprintf(stderr, "                             1:forward, 2:reverse, 4:fast, 8:pause (default: 7)\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
    fprintf(stderr, "  -S/--size NxN              width X height for SDL (S) or video (H) window\n");
    fprintf(stderr, "  --s-x-offset num           Video Window X offset from topleft corner\n");
@@ -464,7 +470,7 @@ static void check_command_line_options(int argc, char *argv[])
       {"full-screen"     ,0,0,0},   /* -Z/--full-screen     */
       {"preserve-pathnames" ,0,0,0},   /* -P/--preserve-pathnames    */	  
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
-      {"audio"           ,1,0,0},   /* -a/--audio [01]      */
+      {"audio"           ,1,0,0},   /* -a/--audio num       */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
       {"size"            ,1,0,0},   /* -S/--size            */
       {"flicker"         ,0,0,0},   /* -F/--flicker         */

@@ -39,8 +39,16 @@ chosen.
 Size of the video window (default: size of the input video) when using
 software (SDL) or hardware onscreen playback
 .TP 8
-.BR \-a/\-\-audio " [" 0 | 1 ]
-Enables (1) or disables (0) audio playback.
+.BI \-a/\-\-audio " num"
+When play audio, 0 means never, or sum of
+  1: while playing forward,
+  2: while playing reverse,
+  4: even fast playing,
+  8: while pausing
+.br
+(default: 7: forward/reverse/fast).
+If 8(pausing) was contained, lavplay will be very noisy,
+but useful when you want to edit by sound.
 .TP 8
 .B \-z/\-\-zoom
 Zooms the video to fit the screen as good as possible.
@@ -70,13 +78,13 @@ Enables (1) or disables (0) the use of sync corrections. Basically,
 you almost certainly want this.  Disabling is really there for
 diagnostic purposes and not much else.
 .TP 8
-.BI \-H/\-\-H\-offset " num", \-V/\-\-V-offset " num"
+.BI \-H/\-\-H\-offset " num, " \-V/\-\-V-offset " num"
 Horizontal (-H) and vertical (-V) offset when using hardware-playback.
 Offset plus width or height should be smaller than or equal to the
 playback device's maximum allowed size (DC10+: 640x480 or 768x576,
 LML33/Marvel/Buz: 720x480/576).
 .TP 8
-.BI \-\-s\-x\-offset " num", \-\-s\-y\-offset " num"
+.BI \-\-s\-x\-offset " num, " \-\-s\-y\-offset " num"
 Offset for the video window (from top left screen corner) when using
 hardware onscreen playback in non\-fullscreen mode.
 .TP 8

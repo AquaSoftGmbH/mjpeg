@@ -414,10 +414,12 @@ static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff,
    /* Read audio, if present */
    if (editlist->has_audio && !skip_audio && info->audio)
    {
-      mute = settings->current_playback_speed==0 || settings->audio_mute;
-         //(settings->audio_mute &&
-         //settings->current_playback_speed!=1 &&
-         //settings->current_playback_speed!=-1);
+      mute = (settings->audio_mute ||
+	      !((settings->current_playback_speed ==  1 && (info->audio & 1)) ||
+		(settings->current_playback_speed == -1 && (info->audio & 2)) ||
+		(settings->current_playback_speed ==  0 && (info->audio & 8)) ||
+		(1 < settings->current_playback_speed   && (info->audio & (1|4)) == (1|4)) ||
+		(settings->current_playback_speed < -1  && (info->audio & (2|4)) == (2|4))));
       res = lavplay_get_audio(info, settings->abuff,
          settings->current_frame_num, mute);
 
@@ -1839,7 +1841,7 @@ lavplay_t *lavplay_malloc()
    info->video_dev = "/dev/video";
    info->display = ":0.0";
 
-   info->audio = 1;
+   info->audio = 7;		/* 1(forward)|2(reverse)|4(fast) */
    info->audio_dev = "/dev/dsp";
 
    info->continuous = 0;

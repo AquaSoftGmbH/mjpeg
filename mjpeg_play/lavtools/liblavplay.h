@@ -76,7 +76,7 @@ typedef struct {
    const char *video_dev;       /* the video device */
    const char *display;         /* the X-display (only important for -H) */
 
-   int  audio;                  /* [0-1] Whether to play audio, 0 = no, 1 = yes */
+   int  audio;                  /* When play audio, 0:never, or sum of 1:forward, 2:reverse, 4:fast, 8:pause */
    const char *audio_dev;       /* the audio device */
 
    int  continuous;             /* [0-1] 0 = quit when the video has been played, 1 = continue cycle */
