@@ -50,7 +50,7 @@ Difference of name is maybe where to start counting:
 2-3 pulldown is processed before recording and recorded at 30fps.
 3:2 pulldown is processed at playing and recorded at 24fps.
 If we play with progressive (60 frames/seconds) monitor,
-2-3 pulldown video need rather complex proccess at progressive monitor
+2-3 pulldown video need rather complex process at progressive monitor
 to display beautifully.  This process isn't reliable perfectly.
 When we play DVD 24fps video for 3:2 pulldown with progressive monitor,
 if player and monitor connected with cable which support progressive,
