@@ -581,7 +581,7 @@ void close_segment_inputs(pipe_sequence_t *ps, int segnum, int frame)
       }
       mjpeg_info( "closing input %d (source %d)", i, current_index);
       decommission_pipe_source(source);
-    KEEP_SOURCE:
+    KEEP_SOURCE:;
     }
   }
 }

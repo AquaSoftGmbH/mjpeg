@@ -83,9 +83,9 @@ Picture::Picture( EncoderParams &_encparams,
     }
 
 
-	curref = new (uint8_t *)[5];
-	curorg = new (uint8_t *)[5];
-	pred   = new (uint8_t *)[5];
+	curref = new uint8_t *[5];
+	curorg = new uint8_t *[5];
+	pred   = new uint8_t *[5];
 
 	for( i = 0 ; i<3; i++)
 	{
