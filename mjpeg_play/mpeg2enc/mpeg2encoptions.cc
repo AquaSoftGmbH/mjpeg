@@ -71,7 +71,7 @@ MPEG2EncOptions::MPEG2EncOptions()
     pad_stills_to_vbv_buffer_size = 0;
     vbv_buffer_still_size = 0;
     force_interlacing = Y4M_UNKNOWN;
-    input_interlacing = 0;
+    input_interlacing = Y4M_UNKNOWN;
     hack_svcd_hds_bug = 1;
     hack_altscan_bug = 0;
     mpeg2_dc_prec = 1;
@@ -172,6 +172,53 @@ int MPEG2EncOptions::InferStreamDataParams( const MPEG2EncInVidParams &strm)
 	}
 
     input_interlacing = strm.interlacing_code;
+    if (input_interlacing == Y4M_UNKNOWN) {
+        mjpeg_warn("Unknown input interlacing; assuming progressive.");
+        input_interlacing = Y4M_ILACE_NONE;
+    }
+
+    /* 'fieldenc' is dependent on input stream interlacing:
+         a) Interlaced streams are subsampled _per_field_;
+             progressive streams are subsampled over whole frame.
+         b) 'fieldenc' sets/clears the MPEG2 'progressive-frame' flag,
+            which tells decoder how subsampling was performed.
+    */
+    if (fieldenc == -1) {
+        /* not set yet... so set fieldenc from input interlacing */
+        switch (input_interlacing) {
+        case Y4M_ILACE_TOP_FIRST:
+        case Y4M_ILACE_BOTTOM_FIRST:
+            fieldenc = 1; /* interlaced frames */
+            mjpeg_info("Interlaced input - selecting interlaced encoding.");
+            break;
+        case Y4M_ILACE_NONE:
+            fieldenc = 0; /* progressive frames */
+            mjpeg_info("Progressive input - selecting progressive encoding.");
+            break;
+        default:
+            mjpeg_warn("Unknown input interlacing; assuming progressive.");
+            fieldenc = 0;
+            break;
+        }
+    } else {
+        /* fieldenc has been set already... so double-check for user */
+        switch (input_interlacing) {
+        case Y4M_ILACE_TOP_FIRST:
+        case Y4M_ILACE_BOTTOM_FIRST:
+            if (fieldenc == 0) {
+                mjpeg_warn("Progressive encoding selected with interlaced input!");
+                mjpeg_warn("  (This will damage the chroma channels.)");
+            }
+            break;
+        case Y4M_ILACE_NONE:
+            if (fieldenc != 0) {
+                mjpeg_warn("Interlaced encoding selected with progressive input!");
+                mjpeg_warn("  (This will damage the chroma channels.)");
+            }
+            break;
+        }
+    }
+
 	return nerr;
 }
 
@@ -451,9 +498,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		seq_hdr_every_gop = 1;
 		break;
 	}
-
-    if( fieldenc == -1 )
-        fieldenc = 0;
 
     switch( mpeg )
     {

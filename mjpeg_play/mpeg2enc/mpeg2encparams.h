@@ -64,7 +64,7 @@ struct MPEG2EncParams
     int pad_stills_to_vbv_buffer_size;
     int vbv_buffer_still_size;
     int force_interlacing;
-    unsigned int input_interlacing;
+    int input_interlacing;
     int hack_svcd_hds_bug;
     int hack_altscan_bug;
     int mpeg2_dc_prec;
