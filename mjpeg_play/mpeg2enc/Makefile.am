@@ -10,7 +10,7 @@ mpeg2enc_MMXSSE = \
 	predict_x86.c
 
 
-EXTRA_DIST = NOTES .ccvsignore
+EXTRA_DIST = NOTES .cvsignore
 
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -40,8 +40,8 @@ mpeg2enc_SOURCES = mpeg2enc.cc conform.cc putseq.cc putpic.cc puthdr.cc putmpg.c
 	 putvlc.cc putbits.cc motionest.cc predict.cc readpic.cc writepic.cc transfrm.cc \
 	quantize.cc ratectl.cc stats.cc synchrolib.cc \
 	macroblock.hh macroblock.cc picture.hh \
-	global.hh mpeg2enc.hh vlc.hh \
-	simd.hh synchrolib.hh $(mpeg2enc_REF) $(mpeg2enc_SIMD)
+	global.h mpeg2enc.h vlc.h \
+	simd.h synchrolib.h $(mpeg2enc_REF) $(mpeg2enc_SIMD)
 
 mpeg2enc_DEPENDENCIES = $(top_builddir)/utils/libmjpegutils.a $(top_builddir)/utils/libmotion.a
 
