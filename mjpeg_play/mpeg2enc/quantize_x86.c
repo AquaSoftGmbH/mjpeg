@@ -255,11 +255,12 @@ static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
 
         pcmpgtw_m2r( satlim_q, mm0 ); // did result exceed satlim?
         pcmpgtw_m2r( satlim_q, mm4 );
+
         por_r2r( mm4, mm0 );
         movq_r2r( mm0, mm1 );
         psrlq_i2r( 32, mm1 );
         por_r2r( mm1, mm0 );
-        movd_r2g( mm1, tmp );
+        movd_r2g( mm0, tmp );
         saturated |= tmp;
 
         pdiv += 8;
