@@ -108,7 +108,6 @@ public:
 
 private:
 
-    /* TODO: Replace **'s with *&'s */
     static void 
     BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
                                   uint8_t  marker,

@@ -475,7 +475,7 @@ void OBitStream::putbyte()
     bfr[byteidx++] = outbyte;
     if (byteidx == bfr_size)
     {
-		if (fwrite(bfr, sizeof(unsigned char), bfr_size, fileh) != bfr_size)
+		if (fwrite(bfr, sizeof(uint8_t), bfr_size, fileh) != bfr_size)
 			mjpeg_error_exit1( "Write failed: %s", strerror(errno));
 		byteidx = 0;
     }

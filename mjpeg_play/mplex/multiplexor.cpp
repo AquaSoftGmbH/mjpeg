@@ -509,7 +509,7 @@ unsigned int Multiplexor::RunInSectors()
 
 		if( MPEG_STILLS_FORMAT( mux_format ) )
 		{
-			sectors_delay += (unsigned int)(1.02*(*str)->BufferSize()) / sector_size+2;
+			sectors_delay += static_cast<unsigned int>(1.02*(*str)->BufferSize()) / sector_size+2;
 		}
 		else if( vbr )
 			sectors_delay += 3*(*str)->BufferSize() / ( 4 * sector_size );

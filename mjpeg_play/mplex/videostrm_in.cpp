@@ -190,7 +190,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			case GROUP_START :
 			case PICTURE_START :
 				access_unit.start = AU_start;
-				access_unit.length = (int) (stream_length - AU_start)>>3;
+				access_unit.length = static_cast<int>(stream_length - AU_start)>>3;
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
@@ -281,10 +281,13 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				
 			if( access_unit.type == IFRAME )
 			{
-				unsigned int bits_persec = 
-					(unsigned int) ( ((double)static_cast<int64_t>(stream_length - prev_offset)) *
-									 2*frame_rate / ((double)static_cast<int64_t>(2+fields_presented - group_start_field)));
-				
+				unsigned int bits_persec = static_cast<unsigned int>(
+                    static_cast<double>(stream_length - prev_offset) *
+                    2*frame_rate 
+                    / static_cast<double>(2+fields_presented 
+                                          - group_start_field)
+                    );
+                    
 				if( bits_persec > max_bits_persec )
 				{
 					max_bits_persec = bits_persec;
@@ -327,19 +330,19 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 void VideoStream::Close()
 {
 
-    stream_length = (unsigned int)(bs.bitcount() / 8);
-    for (int i=0; i<4; i++)
+    stream_length = bs.bitcount() / 8;
+    for( int i=0; i<4; i++)
 	{
 		avg_frames[i] /= num_frames[i] == 0 ? 1 : num_frames[i];
 	}
 
-    comp_bit_rate = (unsigned int)
-		(
-			(((double)static_cast<int64_t>(stream_length)) / ((double)static_cast<int64_t>(fields_presented))) * 2.0
-			* ((double)static_cast<int64_t>(frame_rate))  + 25.0
-			) / 50;
-	
-	/* Peak bit rate in 50B/sec units... */
+	/* Average and Peak bit rate in 50B/sec units... */
+    comp_bit_rate = static_cast<unsigned int>(
+        ( ( static_cast<double>(stream_length) 
+            / static_cast<double>(fields_presented) * 2.0
+            * static_cast<double>(frame_rate) ) 
+          + 25.0) / 50.0
+        );
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
 	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Video Stream length: %11llu bytes", stream_length);
