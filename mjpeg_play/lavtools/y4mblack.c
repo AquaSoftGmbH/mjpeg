@@ -24,23 +24,26 @@
 extern	char	*__progname;
 
 static	void	usage(void);
+static	void	chroma_usage(void);
 
 int
 main(int argc, char **argv)
 	{
-	int	sts, c, width = 720, height = 480, uvlen, noheader = 0;
-	int	Y = 16, U = 128, V = 128;
-	int	numframes = 1, force = 0, xcss411 = 0;
+	int	sts, c, width = 720, height = 480, noheader = 0;
+	int	Y = 16, U = 128, V = 128, chroma_mode = Y4M_CHROMA_420MPEG2;
+	int	numframes = 1, force = 0;
 	y4m_ratio_t	rate_ratio = y4m_fps_NTSC;
 	y4m_ratio_t	aspect_ratio = y4m_sar_SQUARE;
+	int	plane_length[3];
 	u_char	*yuv[3];
 	y4m_stream_info_t ostream;
 	y4m_frame_info_t oframe;
 	char	interlace = Y4M_ILACE_NONE;
 
 	opterr = 0;
+	y4m_accept_extensions(1);
 
-	while	((c = getopt(argc, argv, "Hfxw:h:r:i:a:Y:U:V:n:")) != EOF)
+	while	((c = getopt(argc, argv, "Hfx:w:h:r:i:a:Y:U:V:n:")) != EOF)
 		{
 		switch	(c)
 			{
@@ -50,11 +53,8 @@ main(int argc, char **argv)
 			case	'a':
 				sts = y4m_parse_ratio(&aspect_ratio, optarg);
 				if	(sts != Y4M_OK)
-					{
-					mjpeg_error("Invalid aspect: %s",
+					mjpeg_error_exit1("Invalid aspect: %s",
 						optarg);
-					exit(1);
-					}
 				break;
 			case	'w':
 				width = atoi(optarg);
@@ -65,10 +65,7 @@ main(int argc, char **argv)
 			case	'r':
 				sts = y4m_parse_ratio(&rate_ratio, optarg);
 				if	(sts != Y4M_OK)
-					{
-					mjpeg_error("Invalid rate: %s", optarg);
-					exit(1);
-					}
+					mjpeg_error_exit1("Invalid rate: %s", optarg);
 				break;
 			case	'Y':
 				Y = atoi(optarg);
@@ -96,7 +93,14 @@ main(int argc, char **argv)
 					}
 				break;
 			case	'x':
-				xcss411 = 1;
+				chroma_mode = y4m_chroma_parse_keyword(optarg);
+				if	(chroma_mode == Y4M_UNKNOWN)
+					{
+					if	(strcmp(optarg, "help") != 0)
+						mjpeg_error("Invalid -x arg '%s'", optarg);
+					chroma_usage();
+					}
+
 				break;
 			case	'f':
 				force = 1;
@@ -111,30 +115,19 @@ main(int argc, char **argv)
 		}
 
 	if	(width <= 0)
-		{
-		mjpeg_error("Invalid Width: %d", width);
-		exit(1);
-		}
+		mjpeg_error_exit1("Invalid Width: %d", width);
+
 	if	(height <= 0)
-		{
-		mjpeg_error("Invalid Height: %d", height);
-		exit(1);
-		}
+		mjpeg_error_exit1("Invalid Height: %d", height);
+
 	if	(!force && (Y < 16 || Y > 235))
-		{
-		mjpeg_error("16 < Y < 235");
-		exit(1);
-		}
+		mjpeg_error_exit1("16 < Y < 235");
+
 	if	(!force && (U < 16 || U > 240))
-		{
-		mjpeg_error("16 < U < 240");
-		exit(1);
-		}
+		mjpeg_error_exit1("16 < U < 240");
+
 	if	(!force && (V < 16 || V > 240))
-		{
-		mjpeg_error("16 < V < 240");
-		exit(1);
-		}
+		mjpeg_error_exit1("16 < V < 240");
 
 	y4m_init_stream_info(&ostream);
 	y4m_init_frame_info(&oframe);
@@ -143,29 +136,25 @@ main(int argc, char **argv)
 	y4m_si_set_interlace(&ostream, interlace);
 	y4m_si_set_framerate(&ostream, rate_ratio);
 	y4m_si_set_sampleaspect(&ostream, aspect_ratio);
-	if	(xcss411)
-		y4m_si_set_chroma(&ostream, Y4M_CHROMA_411);
-	else
-		y4m_si_set_chroma(&ostream, Y4M_CHROMA_420MPEG2);
+	y4m_si_set_chroma(&ostream, chroma_mode);
 
-/*
- * For 4:1:1 and 4:2:0 the sizes of the U and V arrays are different but the
- * total amount of data is the same.
-*/
-	if	(xcss411)
-		uvlen = (width / 4) * height;
-	else
-		uvlen = (height / 2) * (width / 2);
-	yuv[0] = malloc(height * width);
-	yuv[1] = malloc(uvlen);
-	yuv[2] = malloc(uvlen);
+	if	(y4m_si_get_plane_count(&ostream) != 3)
+		mjpeg_error_exit1("Only the 3 plane formats supported");
+
+	plane_length[0] = y4m_si_get_plane_length(&ostream, 0);
+	plane_length[1] = y4m_si_get_plane_length(&ostream, 1);
+	plane_length[2] = y4m_si_get_plane_length(&ostream, 2);
+
+	yuv[0] = malloc(plane_length[0]);
+	yuv[1] = malloc(plane_length[1]);
+	yuv[2] = malloc(plane_length[2]);
 
 /*
  * Now fill the array once with black but use the provided Y, U and V values
 */
-	memset(yuv[0], Y, width * height);
-	memset(yuv[1], U, uvlen);
-	memset(yuv[2], V, uvlen);
+	memset(yuv[0], Y, plane_length[0]);
+	memset(yuv[1], U, plane_length[1]);
+	memset(yuv[2], V, plane_length[2]);
 
 	if	(noheader == 0)
 		y4m_write_stream_header(fileno(stdout), &ostream);
@@ -180,12 +169,14 @@ main(int argc, char **argv)
 	exit(0);
 	}
 
-void usage()
+void usage(void)
 	{
 
 	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-r rate]\n", __progname);
 	fprintf(stderr, "\n  Omit the YUV4MPEG2 header [-H]");
-	fprintf(stderr, "\n  Generate 4:1:1 rather than 4:2:0 output [-x]");
+	fprintf(stderr, "\n  Specify chroma sampling [-x string] (420mpeg2)");
+	fprintf(stderr, "\n      -x help for list");
+	fprintf(stderr, "\n      NOTE: Only 3 plane formats supported");
 	fprintf(stderr, "\n  Allow out of range Y/U/V values [-f]");
 	fprintf(stderr, "\n  Numframes [-n num] (1)");
 	fprintf(stderr, "\n  Width [-w width] (720)");
@@ -197,5 +188,17 @@ void usage()
 	fprintf(stderr, "\n  U: [-U val] (128)");
 	fprintf(stderr, "\n  V: [-V val] (128)");
 	fprintf(stderr, "\n");
+	exit(1);
+	}
+
+void chroma_usage(void)
+	{
+	int mode = 0;
+	char *keyword;
+
+	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
+		__progname);
+	for	(mode = 0; (keyword = y4m_chroma_keyword(mode)) != NULL; mode++)
+		fprintf(stderr, "\t%s - %s\n", keyword, y4m_chroma_description(mode));
 	exit(1);
 	}
