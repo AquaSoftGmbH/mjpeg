@@ -848,7 +848,7 @@ static void *lavrec_encoding_thread(void* arg)
    pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
    pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
-   while (settings->state != LAVREC_STATE_STOP)
+   while (settings->state == LAVREC_STATE_RECORDING)
    {
       pthread_mutex_lock(&(settings->encoding_mutex));
       while (settings->buffer_valid[current_frame] == -1)
@@ -956,7 +956,6 @@ static int lavrec_software_init(lavrec_t *info)
 {
    struct video_capability vc;
    int i;
-   encoder_info_t *encoder;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
@@ -1086,36 +1085,9 @@ static int lavrec_software_init(lavrec_t *info)
    pthread_mutex_init(&(settings->encoding_mutex), NULL);
    for (i=0;i<MJPEG_MAX_BUF;i++)
    {
-      settings->buffer_valid[i] = -1; /* 0 means to just omit the frame, -1 means "in progress" */
-      settings->buffer_completed[i] = 1; /* 1 means compression and writing completed,
-                                            0 means in progress */
       pthread_cond_init(&(settings->buffer_filled[i]), NULL);
       pthread_cond_init(&(settings->buffer_completion[i]), NULL);
-      settings->is_queued[i] = 0;
    }
-
-   for( i=0; i < info->num_encoders; ++i )
-   {
-      if( !(encoder = malloc(sizeof(encoder_info_t))) )
-      {
-         lavrec_msg (LAVREC_MSG_ERROR, info,
-            "Malloc error, you\'re probably out of memory");
-         return 0;
-      }
-      encoder->info = info;
-      encoder->encoder_id = i;
-      encoder->num_encoders = info->num_encoders;
-      if ( pthread_create( &(settings->encoding_thread), NULL,
-         lavrec_encoding_thread, (void *) encoder ) )
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Failed to create software encoding thread");
-         return 0;
-      }
-   }
-   lavrec_msg(LAVREC_MSG_INFO, info,
-      "Created %d software JPEG-encoding process(es)\n",
-      info->num_encoders);
 
    /* queue setup */
    pthread_mutex_init(&(settings->queue_mutex), NULL);
@@ -1565,12 +1537,17 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
-      "Queueing frame %lud", *num);
+      "Queueing frame %lu", *num);
    if (info->software_encoding)
    {
       settings->mm.frame = *num;
+      pthread_mutex_lock(&(settings->queue_mutex));
       if (settings->is_queued[*num] < 0)
-        return 1;
+      {
+         pthread_mutex_unlock(&(settings->queue_mutex));
+         return 1;
+      }
+      pthread_mutex_unlock(&(settings->queue_mutex));
 
       if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
          return 0;
@@ -1611,15 +1588,19 @@ static void *lavrec_software_sync_thread(void* arg)
       pthread_mutex_lock(&(settings->queue_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
-         if (settings->is_queued[frame] < 0) break; /* sync on all remaining frames */
+         if (settings->is_queued[frame] <= 0) break; /* sync on all remaining frames */
          lavrec_msg(LAVREC_MSG_DEBUG, info,
-            "Software sync thread: sleeping for new queues");
+            "Software sync thread: sleeping for new queues (%d)", frame);
          pthread_cond_wait(&(settings->queue_wait),
             &(settings->queue_mutex));
       }
-      pthread_mutex_unlock(&(settings->queue_mutex));
       if (!settings->queue_left)
+      {
+         pthread_mutex_unlock(&(settings->queue_mutex));
          break;
+      }
+      pthread_mutex_unlock(&(settings->queue_mutex));
+
 retry:
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
       {
@@ -1697,7 +1678,7 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
       }
    }
    lavrec_msg(LAVREC_MSG_DEBUG, info,
-      "Sycning on frame %ld", bsync->frame);
+      "Syncing on frame %ld", bsync->frame);
 
    return 1;
 }
@@ -1802,10 +1783,50 @@ static void lavrec_record(lavrec_t *info)
    unsigned int first_lost;
    double time;
    struct timeval first_time;
+   encoder_info_t *encoder;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    settings->stats = &stats;
    settings->queue_left = 0;
+
+   /* basically, this could be done on init, but we need to
+    * reset some variables when going from pause to play and
+    * the other way around, so we need to restart it when we
+    * enter he playing state
+    */
+   if (info->software_encoding)
+   {
+      for (x=0;x<MJPEG_MAX_BUF;x++)
+      {
+         settings->is_queued[x] = 0;
+         settings->buffer_valid[x] = -1; /* 0 means to just omit the frame, -1 means "in progress" */
+         settings->buffer_completed[x] = 1; /* 1 means compression and writing completed,
+                                               0 means in progress */
+      }
+      for (x=0; x < info->num_encoders; ++x )
+      {
+         if( !(encoder = malloc(sizeof(encoder_info_t))) )
+         {
+            lavrec_msg (LAVREC_MSG_ERROR, info,
+               "Malloc error, you\'re probably out of memory");
+            return;
+         }
+         encoder->info = info;
+         encoder->encoder_id = x;
+         encoder->num_encoders = info->num_encoders;
+         if ( pthread_create( &(settings->encoding_thread), NULL,
+            lavrec_encoding_thread, (void *) encoder ) )
+         {
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Failed to create software encoding thread");
+            lavrec_change_state(info, LAVREC_STATE_STOP);
+            return;
+         }
+      }
+   }
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Created %d software JPEG-encoding process(es)\n",
+      info->num_encoders);
    settings->audio_offset = 0;
 
    /* Queue all buffers, this also starts streaming capture */
@@ -1818,7 +1839,7 @@ static void lavrec_record(lavrec_t *info)
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error queuing buffers: %s", (char *)sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
-         break;
+         return;
       }
    }
 
@@ -1973,8 +1994,10 @@ static void lavrec_record(lavrec_t *info)
    if (info->software_encoding)
    {
       /* mark us as "ready" */
+      pthread_mutex_lock(&(settings->queue_mutex));
       for (x=0;x<settings->softreq.frames;x++)
          settings->is_queued[x] = -1;
+      pthread_mutex_unlock(&(settings->queue_mutex));
       pthread_join(settings->software_sync_thread, NULL);
    }
    else
