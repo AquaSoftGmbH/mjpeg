@@ -23,9 +23,9 @@
 
 
 
-void convert_RGB_to_YCbCr(unsigned char *planes[], int length);
+void convert_RGB_to_YCbCr(uint8_t *planes[], int length);
 
 
-void convert_YCbCr_to_RGB(unsigned char *planes[], int length);
+void convert_YCbCr_to_RGB(uint8_t *planes[], int length);
 
 

@@ -21,8 +21,9 @@
  *
  */
 
+#include <config.h>
+#include <mjpeg_types.h>
 
-#include <stdio.h>
 #include "colorspace.h"
 
 #define FP_BITS 18
@@ -181,9 +182,9 @@ static void init_YCbCr_to_RGB_tables()
  *
  */
 
-void convert_RGB_to_YCbCr(unsigned char *planes[], int length)
+void convert_RGB_to_YCbCr(uint8_t *planes[], int length)
 {
-  unsigned char *Y, *Cb, *Cr;
+  uint8_t *Y, *Cb, *Cr;
   int i;
 
   if (!conv_RY_inited) init_RGB_to_YCbCr_tables();
@@ -208,9 +209,9 @@ void convert_RGB_to_YCbCr(unsigned char *planes[], int length)
  *
  */
 
-void convert_YCbCr_to_RGB(unsigned char *planes[], int length)
+void convert_YCbCr_to_RGB(uint8_t *planes[], int length)
 {
-  unsigned char *R, *G, *B;
+  uint8_t *R, *G, *B;
   int i;
 
   if (!conv_YR_inited) init_YCbCr_to_RGB_tables();

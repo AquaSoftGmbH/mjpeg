@@ -23,7 +23,8 @@
 
 
 
-
+#include <config.h>
+#include <mjpeg_types.h>
 
 #include "subsample.h"
 
@@ -68,9 +69,9 @@ const char *ssm_description[SSM_COUNT] = {
  *
  */
 
-static void ss_444_to_420jpeg(unsigned char *buffer, int width, int height)
+static void ss_444_to_420jpeg(uint8_t *buffer, int width, int height)
 {
-  unsigned char *in0, *in1, *out;
+  uint8_t *in0, *in1, *out;
   int x, y;
 
   in0 = buffer;
@@ -109,9 +110,9 @@ static void ss_444_to_420jpeg(unsigned char *buffer, int width, int height)
  *            C
  */
 
-static void ss_444_to_420mpeg2(unsigned char *buffer, int width, int height)
+static void ss_444_to_420mpeg2(uint8_t *buffer, int width, int height)
 {
-  unsigned char *in0, *in1, *out;
+  uint8_t *in0, *in1, *out;
   int x, y;
 
   in0 = buffer;          /* points to */
@@ -141,7 +142,7 @@ static void ss_444_to_420mpeg2(unsigned char *buffer, int width, int height)
 
 
 
-void chroma_subsample(subsample_mode_t mode, unsigned char *ycbcr[],
+void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
 		      int width, int height)
 {
   switch (mode) {

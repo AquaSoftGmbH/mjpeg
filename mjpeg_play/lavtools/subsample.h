@@ -42,5 +42,5 @@ typedef enum subsample_mode {
 extern const char *ssm_id[SSM_COUNT];
 extern const char *ssm_description[SSM_COUNT];
 
-void chroma_subsample(subsample_mode_t mode, unsigned char *ycbcr[],
+void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
 		      int width, int height);

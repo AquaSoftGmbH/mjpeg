@@ -22,8 +22,9 @@
  *
  */
 
-#include <stdio.h>
+#include <config.h>
 
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <ctype.h>
@@ -209,12 +210,12 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 /*  75% magenta */
 /*  75% red     */
 /*  75% blue    */
-static unsigned char rainbowRGB[][7] = {
+static uint8_t rainbowRGB[][7] = {
   { 255, 191,   0,   0, 191, 191,   0 },
   { 255, 191, 191, 191,   0,   0,   0 },
   { 255,   0, 191,   0, 191,   0, 191 }
 };
-static unsigned char *rainbow[3] = {
+static uint8_t *rainbow[3] = {
   rainbowRGB[0], rainbowRGB[1], rainbowRGB[2]
 };
 
@@ -226,31 +227,31 @@ static unsigned char *rainbow[3] = {
 /*  75% cyan    */
 /*      black   */
 /*  75% white   */
-static unsigned char wobnairRGB[][7] = {
+static uint8_t wobnairRGB[][7] = {
   {   0,   0, 191,   0,   0,   0, 191 },
   {   0,   0,   0,   0, 191,   0, 191 },
   { 191,   0, 191,   0, 191,   0, 191 }
 };
-static unsigned char *wobnair[3] = {
+static uint8_t *wobnair[3] = {
   wobnairRGB[0], wobnairRGB[1], wobnairRGB[2]
 };
 
 
 static
-void create_bars(unsigned char *ycbcr[], int width, int height)
+void create_bars(uint8_t *ycbcr[], int width, int height)
 {
   int i, x, y, w;
   int bnb_start;
   int pluge_start;
   int stripe_width;
   int pl_width;
-  unsigned char *lineY;
-  unsigned char *lineCb;
-  unsigned char *lineCr;
+  uint8_t *lineY;
+  uint8_t *lineCb;
+  uint8_t *lineCr;
 
-  unsigned char *Y = ycbcr[0];
-  unsigned char *Cb = ycbcr[1];
-  unsigned char *Cr = ycbcr[2];
+  uint8_t *Y = ycbcr[0];
+  uint8_t *Cb = ycbcr[1];
+  uint8_t *Cr = ycbcr[2];
 
   convert_RGB_to_YCbCr(rainbow, 7);
   convert_RGB_to_YCbCr(wobnair, 7);
@@ -365,7 +366,7 @@ int main(int argc, char **argv)
   cl_info_t cl;
   y4m_stream_info_t sinfo;
   y4m_frame_info_t finfo;
-  unsigned char *planes[3];  /* Y'CbCr frame buffer */
+  uint8_t *planes[3];  /* Y'CbCr frame buffer */
   int fdout = 1;  /* stdout file descriptor */
   int i;
 

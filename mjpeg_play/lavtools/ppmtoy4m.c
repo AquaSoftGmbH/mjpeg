@@ -24,6 +24,8 @@
  *
  */
 
+#include <config.h>
+
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -287,7 +289,7 @@ int read_ppm_header(int fd, int *width, int *height)
 
 
 static
-void alloc_buffers(unsigned char *buffers[], int width, int height)
+void alloc_buffers(uint8_t *buffers[], int width, int height)
 {
   mjpeg_debug("Alloc'ing buffers\n");
   buffers[0] = malloc(width * height * 2 * sizeof(buffers[0][0]));
@@ -302,19 +304,19 @@ void alloc_buffers(unsigned char *buffers[], int width, int height)
 
 static
 void read_ppm_into_two_buffers(int fd,
-			       unsigned char *buffers[], 
-			       unsigned char *buffers2[], 
-			       unsigned char *rowbuffer,
+			       uint8_t *buffers[], 
+			       uint8_t *buffers2[], 
+			       uint8_t *rowbuffer,
 			       int width, int height)
 {
   int x, y;
-  unsigned char *pixels;
-  unsigned char *R = buffers[0];
-  unsigned char *G = buffers[1];
-  unsigned char *B = buffers[2];
-  unsigned char *R2 = buffers2[0];
-  unsigned char *G2 = buffers2[1];
-  unsigned char *B2 = buffers2[2];
+  uint8_t *pixels;
+  uint8_t *R = buffers[0];
+  uint8_t *G = buffers[1];
+  uint8_t *B = buffers[2];
+  uint8_t *R2 = buffers2[0];
+  uint8_t *G2 = buffers2[1];
+  uint8_t *B2 = buffers2[2];
 
   mjpeg_debug("read into two buffers, %dx%d\n", width, height);
   height /= 2;
@@ -342,15 +344,15 @@ void read_ppm_into_two_buffers(int fd,
 
 static
 void read_ppm_into_one_buffer(int fd,
-			      unsigned char *buffers[],
-			      unsigned char *rowbuffer,
+			      uint8_t *buffers[],
+			      uint8_t *rowbuffer,
 			      int width, int height) 
 {
   int x, y;
-  unsigned char *pixels;
-  unsigned char *R = buffers[0];
-  unsigned char *G = buffers[1];
-  unsigned char *B = buffers[2];
+  uint8_t *pixels;
+  uint8_t *R = buffers[0];
+  uint8_t *G = buffers[1];
+  uint8_t *B = buffers[2];
 
   for (y = 0; y < height; y++) {
     pixels = rowbuffer;
@@ -375,11 +377,11 @@ void read_ppm_into_one_buffer(int fd,
 
 static
 int read_ppm_frame(int fd, ppm_info_t *ppm,
-		   unsigned char *buffers[], unsigned char *buffers2[],
+		   uint8_t *buffers[], uint8_t *buffers2[],
 		   int ilace, int ileave)
 {
   int width, height;
-  static unsigned char *rowbuffer = NULL;
+  static uint8_t *rowbuffer = NULL;
   int err;
 
   err = read_ppm_header(fd, &width, &height);
@@ -477,8 +479,8 @@ int main(int argc, char **argv)
   cl_info_t cl;
   y4m_stream_info_t sinfo;
   y4m_frame_info_t finfo;
-  unsigned char *buffers[3];  /* R'G'B' or Y'CbCr */
-  unsigned char *buffers2[3]; /* R'G'B' or Y'CbCr */
+  uint8_t *buffers[3];  /* R'G'B' or Y'CbCr */
+  uint8_t *buffers2[3]; /* R'G'B' or Y'CbCr */
   ppm_info_t ppm;
   int field_height;
 
