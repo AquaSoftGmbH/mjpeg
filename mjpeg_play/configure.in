@@ -184,11 +184,14 @@ AC_CHECK_LIB(pthread, pthread_create,
 			  [Posix pththreads lib present])
     have_pthread=true ],,)
 
+oldLIBS="$LIBS"
+LIBS="$LIBS $PTHREAD_LIBS"
 AC_CHECK_FUNC(pthread_attr_getstacksize,
 	          [
 				AC_DEFINE(HAVE_PTHREADSTACKSIZE,1,
 					      [pthread stack sizes accesible] )
 			  ] )
+LIBS="$oldLIBS"
 
 
 dnl *********************************************************************
