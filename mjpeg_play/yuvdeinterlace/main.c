@@ -94,6 +94,9 @@ uint8_t *frame1_[3];
 uint8_t *frame2_[3];
 uint8_t *reconstructed[3];
 
+int buff_offset;
+int buff_size;
+
 struct vector mv_table[1024][1024];
 //{
 // int x;
@@ -106,6 +109,8 @@ struct vector
   int x;
   int y;
   uint32_t min;
+  uint32_t min23;
+  uint32_t min21;
 };
 
 struct
@@ -274,7 +279,7 @@ main (int argc, char *argv[])
       exit (-1);
     }
 
-  /* the output is not interlaced 4:2:0 MPEG 1 */
+  /* the output is progressive 4:2:0 MPEG 1 */
   y4m_si_set_interlace (&ostreaminfo, Y4M_ILACE_NONE);
   y4m_si_set_chroma (&ostreaminfo, Y4M_CHROMA_420JPEG);
   y4m_si_set_width (&ostreaminfo, width);
@@ -283,47 +288,43 @@ main (int argc, char *argv[])
   y4m_si_set_sampleaspect (&ostreaminfo,
 			   y4m_si_get_sampleaspect (&istreaminfo));
 
+/* fixme, test for field dominance */
+	
+//	mjpeg_log (LOG_INFO, "");
+
   /* write the outstream header */
   y4m_write_stream_header (fd_out, &ostreaminfo);
 
   /* now allocate the needed buffers */
   {
-    inframe[0] = malloc (width * height);
-    inframe[1] = malloc (width * height);
-    inframe[2] = malloc (width * height);
+	/* calculate the memory offset needed to allow the processing
+	 * functions to overshot. The biggest overshot is needed for the
+	 * MC-functions, so we'll use 8*width...
+	 */
+	buff_offset = width*8;
+	buff_size = buff_offset*2 + width*height;
+	
+    inframe[0] = buff_offset + malloc (buff_size);
+    inframe[1] = buff_offset + malloc (buff_size);
+    inframe[2] = buff_offset + malloc (buff_size);
 
-    outframe[0] = malloc (width * height);
-    outframe[1] = malloc (width * height);
-    outframe[2] = malloc (width * height);
+    reconstructed[0] = buff_offset + malloc (buff_size);
+    reconstructed[1] = buff_offset + malloc (buff_size);
+    reconstructed[2] = buff_offset + malloc (buff_size);
 
-    reconstructed[0] = malloc (width * height);
-    reconstructed[1] = malloc (width * height);
-    reconstructed[2] = malloc (width * height);
+    frame1[0] = buff_offset + malloc (buff_size);
+    frame1[1] = buff_offset + malloc (buff_size);
+    frame1[2] = buff_offset + malloc (buff_size);
 
-    frame1[0] = malloc (width * height);
-    frame1[1] = malloc (width * height);
-    frame1[2] = malloc (width * height);
+    frame2[0] = buff_offset + malloc (buff_size);
+    frame2[1] = buff_offset + malloc (buff_size);
+    frame2[2] = buff_offset + malloc (buff_size);
 
-    frame2[0] = malloc (width * height);
-    frame2[1] = malloc (width * height);
-    frame2[2] = malloc (width * height);
+    frame3[0] = buff_offset + malloc (buff_size);
+    frame3[1] = buff_offset + malloc (buff_size);
+    frame3[2] = buff_offset + malloc (buff_size);
 
-    frame3[0] = malloc (width * height);
-    frame3[1] = malloc (width * height);
-    frame3[2] = malloc (width * height);
-
-    frame4[0] = malloc (width * height);
-    frame4[1] = malloc (width * height);
-    frame4[2] = malloc (width * height);
-
-    frame1_[0] = malloc (width * height);
-    frame1_[1] = malloc (width * height);
-    frame1_[2] = malloc (width * height);
-
-    frame2_[0] = malloc (width * height);
-    frame2_[1] = malloc (width * height);
-    frame2_[2] = malloc (width * height);
-
+    mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
   /* read every frame until the end of the input stream and process it */
@@ -332,178 +333,100 @@ main (int argc, char *argv[])
 					    &iframeinfo, inframe)))
     {
 
-	  memcpy (frame4[0], frame2[0], width*height );
-	  memcpy (frame4[1], frame2[1], width*height/4 );
-	  memcpy (frame4[2], frame2[2], width*height/4 );
+		/* store one field behind in a ringbuffer */
+		
 	  memcpy (frame3[0], frame1[0], width*height );
 	  memcpy (frame3[1], frame1[1], width*height/4 );
 	  memcpy (frame3[2], frame1[2], width*height/4 );
 
-	/* 0 == interpolate top field    */
-	/* 1 == interpolate bottom field */
-		
-      sinc_interpolation_luma (frame1[0], inframe[0], 1);
-      sinc_interpolation_luma (frame2[0], inframe[0], 0);
+	/* interpolate the missing field in the frame by 
+	 * bandlimited sinx/x interpolation 
+	 *
+	 * field-order-flag has the following meaning:
+	 * 0 == interpolate top field    
+	 * 1 == interpolate bottom field 
+	 */
+      {
+      int x,y,v;
+      for(y=0;y<height;y++)
+          {
+              for(x=0;x<width;x++)
+                  {
+                  v  = *(inframe[0]+(x-1)+(y  )*width);
+                  v += *(inframe[0]+(x  )+(y-2)*width);
+                  v += *(inframe[0]+(x+1)+(y  )*width);
+                  v += *(inframe[0]+(x  )+(y+2)*width);
+                  v += *(inframe[0]+(x  )+(y  )*width)*2;
+                  v /= 6;
+                  *(inframe[0]+x+y*width)=v;
+                  }
+                  y++;
+              for(x=0;x<width;x++)
+                  {
+                  v  = *(inframe[0]+(x-1)+(y  )*width);
+                  v += *(inframe[0]+(x  )+(y-2)*width);
+                  v += *(inframe[0]+(x+1)+(y  )*width);
+                  v += *(inframe[0]+(x  )+(y+2)*width);
+                  v += *(inframe[0]+(x  )+(y  )*width)*2;
+                  v /= 6;
+                  *(inframe[0]+x+y*width)=v;
+                  }
+          }
+      }
+      sinc_interpolation (frame1[0], inframe[0], 1-field_order);
+      sinc_interpolation (frame2[0], inframe[0], field_order);
 
-          width >>= 1;
+	  /* for the chroma-planes the function remains the same
+	   * just the dimension of the processed frame differs
+	   * so we temporarily adjust width and height
+	   */
+      width >>= 1;
 	  height >>= 1;
-      sinc_interpolation_luma (frame1[1], inframe[1], 1);
-      sinc_interpolation_luma (frame1[2], inframe[2], 1);
-      sinc_interpolation_luma (frame2[1], inframe[1], 0);
-      sinc_interpolation_luma (frame2[2], inframe[2], 0);
+      sinc_interpolation (frame1[1], inframe[1], 1-field_order);
+      sinc_interpolation (frame1[2], inframe[2], 1-field_order);
+      sinc_interpolation (frame2[1], inframe[1], field_order);
+      sinc_interpolation (frame2[2], inframe[2], field_order);
 	  width <<=1;
 	  height <<=1;
-
+	/* at this stage we have three buffers containing the following
+	 * sequence of fields:
+	 *
+	 * frame3
+	 * frame2 current field (to be reconstructed frame)
+	 * frame1
+	 *
+	 * So we motion-compensate frame3 and frame1 against frame2 and
+	 * try to interpolate frame2 by blending the artificially generated
+	 * frame into frame2 ...
+	 */
       motion_compensate_field();
-#if 0
       blend_fields ( reconstructed, frame2 );
-#else
-{
-	int x,y;
-	int a,b,c;
-	int d,  e;
-	int f,  g;
-	int fz=12; // fuzzyness of median-protection
-	
-	for(y=0;y<height;y+=2)
-	{
-		memcpy(reconstructed[0]+(y+1)*width, frame2[0]+(y+1)*width, width);
-	}
-	for(y=0;y<(height/2);y+=2)
-	{
-		memcpy(reconstructed[1]+(y+1)*width/2, frame2[1]+(y+1)*width/2, width/2);
-		memcpy(reconstructed[2]+(y+1)*width/2, frame2[2]+(y+1)*width/2, width/2);
-	}
-	
-	// median-protection
-	for(y=0;y<height;y+=2)	
-		for(x=0;x<width;x++)
-		{
-			a = *(reconstructed[0]+x+(y-1)*width);
-			b = *(reconstructed[0]+x+(y  )*width);
-			c = *(reconstructed[0]+x+(y+1)*width);
-
-			d = *(reconstructed[0]+(x-1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			e = *(reconstructed[0]+(x+1)+(y+1)*width);
-
-			f = *(reconstructed[0]+(x+1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			g = *(reconstructed[0]+(x-1)+(y+1)*width);
-			
-			if( ( a<=(b+fz) && (b-fz)<=c ) || ( a>=(b-fz) && (b+fz)>=c ) ||
-				( d<=(b+fz) && (b-fz)<=e ) || ( d>=(b-fz) && (b+fz)>=e ) ||
-				( f<=(b+fz) && (b-fz)<=g ) || ( f>=(b-fz) && (b+fz)>=g ) )
-			{
-				*(reconstructed[0]+x+y*width) = (a+c+3*b)/5;
-			}
-			else
-			{
-				*(reconstructed[0]+x+y*width) = (a+c)/2;
-			}				
-		}
-		width >>= 1;
-		height >>= 1;
-	for(y=0;y<(height);y+=2)	
-		for(x=0;x<(width);x++)
-		{
-			a = *(reconstructed[1]+x+(y-1)*width);
-			b = *(reconstructed[1]+x+(y  )*width);
-			c = *(reconstructed[1]+x+(y+1)*width);
-
-			d = *(reconstructed[1]+(x-1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			e = *(reconstructed[1]+(x+1)+(y+1)*width);
-
-			f = *(reconstructed[1]+(x+1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			g = *(reconstructed[1]+(x-1)+(y+1)*width);
-			
-			if( ( a<=(b+fz) && (b-fz)<=c ) || ( a>=(b-fz) && (b+fz)>=c ) ||
-				( d<=(b+fz) && (b-fz)<=e ) || ( d>=(b-fz) && (b+fz)>=e ) ||
-				( f<=(b+fz) && (b-fz)<=g ) || ( f>=(b-fz) && (b+fz)>=g ) )
-			{
-				*(reconstructed[1]+x+y*width) = (a+c+3*b)/5;
-			}
-			else
-			{
-				*(reconstructed[1]+x+y*width) = (a+c)/2;
-			}				
-		}
-	for(y=0;y<(height);y+=2)	
-		for(x=0;x<(width);x++)
-		{
-			a = *(reconstructed[2]+x+(y-1)*width);
-			b = *(reconstructed[2]+x+(y  )*width);
-			c = *(reconstructed[2]+x+(y+1)*width);
-
-			d = *(reconstructed[2]+(x-1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			e = *(reconstructed[2]+(x+1)+(y+1)*width);
-
-			f = *(reconstructed[2]+(x+1)+(y-1)*width);
-			/* b is inbetween, too ...*/
-			g = *(reconstructed[2]+(x-1)+(y+1)*width);
-			
-			if( ( a<=(b+fz) && (b-fz)<=c ) || ( a>=(b-fz) && (b+fz)>=c ) ||
-				( d<=(b+fz) && (b-fz)<=e ) || ( d>=(b-fz) && (b+fz)>=e ) ||
-				( f<=(b+fz) && (b-fz)<=g ) || ( f>=(b-fz) && (b+fz)>=g ) )
-			{
-				*(reconstructed[2]+x+y*width) = (a+c+3*b)/5;
-			}
-			else
-			{
-				*(reconstructed[2]+x+y*width) = (a+c)/2;
-			}				
-		}
-		width <<= 1;
-		height <<= 1;
-}
-#endif
-	  film_fx();
-	  
-	  //memset ( outframe[1], 128, width*height );
-	  //memset ( outframe[2], 128, width*height );
-      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
+	 /* all left is to write out the reconstructed frame
+      */
+      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
     }
 
   /* free allocated buffers */
   {
-    free (inframe[0]);
-    free (inframe[1]);
-    free (inframe[2]);
+    free (inframe[0]-buff_offset);
+    free (inframe[1]-buff_offset);
+    free (inframe[2]-buff_offset);
 
-    free (outframe[0]);
-    free (outframe[1]);
-    free (outframe[2]);
+    free (reconstructed[0]-buff_offset);
+    free (reconstructed[1]-buff_offset);
+    free (reconstructed[2]-buff_offset);
 
-    free (reconstructed[0]);
-    free (reconstructed[1]);
-    free (reconstructed[2]);
+    free (frame1[0]-buff_offset);
+    free (frame1[1]-buff_offset);
+    free (frame1[2]-buff_offset);
 
-    free (frame1[0]);
-    free (frame1[1]);
-    free (frame1[2]);
+    free (frame2[0]-buff_offset);
+    free (frame2[1]-buff_offset);
+    free (frame2[2]-buff_offset);
 
-    free (frame2[0]);
-    free (frame2[1]);
-    free (frame2[2]);
-
-    free (frame3[0]);
-    free (frame3[1]);
-    free (frame3[2]);
-
-    free (frame4[0]);
-    free (frame4[1]);
-    free (frame4[2]);
-
-    free (frame1_[0]);
-    free (frame1_[1]);
-    free (frame1_[2]);
-
-    free (frame2_[0]);
-    free (frame2_[1]);
-    free (frame2_[2]);
+    free (frame3[0]-buff_offset);
+    free (frame3[1]-buff_offset);
+    free (frame3[2]-buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
@@ -617,9 +540,11 @@ search_direct_vector (int x, int y)
 
 	
     v.x = v.y = 0;
-	
-    for (dy = -2; dy <= +2; dy+=2)
-      for (dx = -2; dx <= +2; dx++)
+//	x -= 4;
+//	y -= 4;
+    /* search-radius may not exceed half of the macro-block-size ! */
+    for (dy = -6; dy <= +6; dy+=2)
+      for (dx = -6; dx <= +6; dx+=2)
 	{
 	  SAD = psad_sub22
 	    (frame1[0] + (x - dx) + (y + dy ) * width,
@@ -636,9 +561,16 @@ search_direct_vector (int x, int y)
 	      min = SAD;
 	      v.x = dx;
 	      v.y = dy;
-	    }
+
+	  v.min = min;
+	  v.min23 = psad_sub22
+	    (frame2[0] + (x     ) + (y      ) * width,
+	     frame3[0] + (x + dx) + (y + dy ) * width, width, 8);
+	  v.min21 = psad_sub22
+	    (frame2[0] + (x     ) + (y      ) * width,
+	     frame1[0] + (x - dx) + (y - dy ) * width, width, 8);
+		}
 	}
-  v.min = min;
 
   return v;			/* return the found vector */
 }
@@ -654,93 +586,43 @@ motion_compensate_field (void)
   struct vector dv;
   int cnt1=0;
   int cnt2=0;
+  float match_coeff21;
+  float match_coeff23;
   
   /* search the vectors */
+match_coeff21 = 0;
+match_coeff23 = 0;
+  
   for (y = 0; y < height; y += 8)
     {
       for (x = 0; x < width; x += 8)
 	{
-	  fv = search_forward_vector (x, y);
-	  bv = search_backward_vector (x, y);
 	  dv = search_direct_vector (x, y);
-
-	  if( ( dv.min <= fv.min ) && 
-		  ( dv.min <= bv.min ) )
-	  {
-		  cnt1++;
+    
+	  match_coeff21 += dv.min21;
+	  match_coeff23 += dv.min23;
+      
 	  transform_block
 	    (reconstructed[0] + x + y * width,
 	     frame1[0] + (x - dv.x) + (y - dv.y) * width,
 	     frame3[0] + (x + dv.x) + (y + dv.y) * width, width);
-
-		transform_block_chroma
+	transform_block_chroma
 	    (reconstructed[1] + x/2 + y/2 * width/2,
 	     frame1[1] + (x - dv.x)/2 + (y - dv.y)/2 * width/2,
 	     frame3[1] + (x + dv.x)/2 + (y + dv.y)/2 * width/2, width/2);
 		transform_block_chroma
 	    (reconstructed[2] + x/2 + y/2 * width/2,
-	     frame1[2] + (x - dv.x)/2 + (y - dv.y)/2 * width/2,
+		frame1[2] + (x - dv.x)/2 + (y - dv.y)/2 * width/2,
 	     frame3[2] + (x + dv.x)/2 + (y + dv.y)/2 * width/2, width/2);
-	  }
-		  else
-		  {
-			  cnt2++;
-	  transform_block
-	    (reconstructed[0] + x + y * width,
-	     frame1[0] + (x - fv.x) + (y - fv.y) * width,
-	     frame3[0] + (x + bv.x) + (y + bv.y) * width, width);
-
-		transform_block_chroma
-	    (reconstructed[1] + x/2 + y/2 * width/2,
-	     frame1[1] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
-	     frame3[1] + (x - bv.x)/2 + (y - bv.y)/2 * width/2, width/2);
-		transform_block_chroma
-	    (reconstructed[2] + x/2 + y/2 * width/2,
-	     frame1[2] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
-	     frame3[2] + (x - bv.x)/2 + (y - bv.y)/2 * width/2, width/2);
-		  }
 	}
     }
-	fprintf(stderr,"direct:regular MC -> %i:%i \n",cnt2,cnt1);
-}
+    match_coeff21 = match_coeff21/match_coeff23;
 
-void film_fx( void )
-{
-	int x,y,z;
-	static int flicker;
-	static int flicker_int;
-	static int lum_curve[256]=
-	{	16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,16,20,24,28,32,40,44,48,56,
-		64,74,77,79,80,82,83,84,86,87,88,89,90,91,92,93,94,95,96,97,97,98,99,99,
-		100,101,101,102,102,103,104,104,105,105,106,107,107,108,108,109,110,110,
-		111,112,112,113,114,114,115,116,117,118,118,119,120,121,122,123,123,124,
-		125,126,127,128,129,129,130,131,132,133,134,135,135,136,137,138,139,140,
-		141,141,142,143,144,145,146,147,148,148,149,150,151,152,153,154,155,156,
-		156,157,158,159,160,161,162,163,164,164,165,166,167,168,169,170,171,172,
-		173,173,174,175,176,177,178,179,180,181,182,183,184,185,185,186,187,188,
-		189,190,191,192,193,194,195,196,197,198,199,200,201,202,203,204,205,206,
-		207,208,208,209,210,211,212,213,214,215,216,217,217,218,219,220,221,221,
-		222,223,224,224,225,226,226,227,228,228,229,229,230,230,231,231,232,232,
-		233,233,234,234,234,235,235,235,236,236,236,237,237,237,237,238,238,238,
-		238,238,239,239,239,239,239,239,239,239,239,239,240,240,240,240,240,240,
-		240,240,240,240,240,240,240,240,240,240	};
-	int v;
-	
-	flicker++;
-	flicker_int++;
-	flicker = (flicker<5)? flicker:0;
-	flicker_int = (flicker_int<4)? flicker_int:0;
-	
-	for(y=0;y<(width*height/4);y++)
+    if(match_coeff21<0.5 || match_coeff21>2)
 	{
-		*(outframe[1]+y) = *(reconstructed[1]+y);
-	}
-	for(y=0;y<(width*height/4);y++)
-	{
-		*(outframe[2]+y) = *(reconstructed[2]+y);
-	}
-	for(y=0;y<(width*height);y++)
-	{
-		*(outframe[0]+y) = lum_curve[*(reconstructed[0]+y)];
+        mjpeg_log (LOG_INFO, "Scene-Change or field-mismatch. Copying field.");
+		memcpy( reconstructed[0], frame2[0], width*height );
+		memcpy( reconstructed[1], frame2[1], width*height/4 );
+		memcpy( reconstructed[2], frame2[2], width*height/4 );
 	}
 }
