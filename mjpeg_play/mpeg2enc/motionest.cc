@@ -1,7 +1,7 @@
 /* motion.c, motion estimation                                              */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
-#define DUALPRIME 1
+#define DUALPRIME 0
 
 /*
  * Disclaimer of Warranty
@@ -546,6 +546,7 @@ void MacroBlock::FrameME()
 								 i,j>>1,imins,jmins,
 								 &dualpf_mc,
 								 &imindmv,&jmindmv, &vmc_dp);
+                vmc_dp += vmc_dp/2;
 			}
 
 			/* NOTE: Typically M =3 so DP actually disabled... */
@@ -555,7 +556,7 @@ void MacroBlock::FrameME()
 				me.motion_type = MC_DMV;
 				/* No chrominance squared difference measure yet.
 				   Assume identical to luminance */
-				vmc = vmc_dp + vmc_dp;
+				vmc = vmc_dp;
 			}
 			else if ( vmcf < vmcfieldf)
 			{
@@ -1046,7 +1047,8 @@ void MacroBlock::FrameMEs()
                 me.MV[0][0][1] = (dualpf_mc.pos.y<<1) - (j<<1);
                 me.dualprimeMV[0] = imindmv;
                 me.dualprimeMV[1] = jmindmv;
-                me.var = vmc_dp;
+                // TODO +vmc_dp/2This causes illegal MV
+                me.var = vmc_dp + vmc_dp/2;
                 best_of_kind_me.push_back( me );
 			}
 		}
@@ -1804,6 +1806,7 @@ static void dpframe_estimate (
 
 	/* initialize minimum dual prime distortion to large value */
 	vmc = INT_MAX;
+
 
 	for (pref=0; pref<2; pref++)
 	{
