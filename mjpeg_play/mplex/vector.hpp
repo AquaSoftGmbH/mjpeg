@@ -58,7 +58,7 @@ public:
 
 	inline Aunit *last()
 		{
-			int i = cur_wr-1 < 0 ? BUF_SIZE-1 : cur_wr-1;
+			int i = cur_wr < 1 ? BUF_SIZE-1 : cur_wr-1;
 			return buf[i];
 		}
 
