@@ -117,6 +117,7 @@ bin_PROGRAMS = \
 	y4mshift \
 	yuvfps \
 	y4mblack \
+	y4mtoyuv \
 	yuv4mpeg \
 	yuvinactive \
 	$(PNG_BIN)
@@ -230,6 +231,9 @@ y4mshift_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 y4mblack_SOURCES = y4mblack.c
 y4mblack_LDADD = $(top_builddir)/utils/libmjpegutils.a
+
+y4mtoyuv_SOURCES = y4mtoyuv.c
+y4mtoyuv_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuv4mpeg_SOURCES = yuv4mpeg.c
 yuv4mpeg_LDADD = $(top_builddir)/utils/libmjpegutils.a
