@@ -45,6 +45,10 @@ typedef u_int64_t uint64_t;
 /* fixme */
 #endif /* HAVE_STDINT_H */
 
+#if defined(__FreeBSD__)
+#include <sys/types.h> /* FreeBSD - ssize_t */
+#endif
+
 #if defined(HAVE_STDBOOL_H) && !defined(__cplusplus)
 #include <stdbool.h>
 #else
