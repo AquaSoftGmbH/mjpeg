@@ -768,7 +768,9 @@ handle_args_dependent (int argc, char *argv[])
 	   // developper's Testing purpose only
 	   if (strcmp (optarg, NOMMX) == 0)
 	    {
+#ifdef HAVE_ASM_MMX
 	      mmx = 0;
+#endif
 	      mode = 1;
 	    }
 	  if (strcmp (optarg, RESAMPLE) == 0)
