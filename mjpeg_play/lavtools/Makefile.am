@@ -2,11 +2,9 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES =  -I$(top_srcdir) -I$(includedir) \
-	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(LIBDV_CFLAGS) $(LIBQUICKTIME_CFLAGS) ${X_CFLAGS} \
-        -I /usr/X11R6/include -I$(top_srcdir)/utils \
-	${GTK_CFLAGS} $(JPEG_CFLAGS)
+AM_CPPFLAGS = -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils \
+	-DLAVPLAY_VERSION=\"$(VERSION)\"
+
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 LIBCPUACCEL   = $(top_builddir)/utils/libcpuaccel.la
@@ -40,19 +38,21 @@ LAV_ALL_LIB_OPTS = \
 	-release $(LT_RELEASE)
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
+liblavfile_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(JPEG_CFLAGS) $(LIBQUICKTIME_CFLAGS)
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
 	$(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
+liblavjpeg_la_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
+liblavrec_la_CPPFLAGS = $(AM_CPPFLAGS) # so automake doesn't complain about audiolib & frequencies
 liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavrec_la_CFLAGS = $(AM_CFLAGS)
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
+liblavplay_la_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS) $(X_CFLAGS)
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
-liblavplay_la_CFLAGS = $(AM_CFLAGS)
 
 # *********************************************************************
 # The tools themselves
@@ -148,10 +148,12 @@ testrec_SOURCES = testrec.c audiolib.c
 testrec_LDADD = $(PTHREAD_LIBS) $(LIBMJPEGUTILS)
 
 lav2yuv_SOURCES = lav2yuv.c lav_common.c
+lav2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(LIBDV_CFLAGS)
 lav2yuv_LDADD = $(LIBMJPEGUTILS) \
 		liblavfile.la liblavjpeg.la $(LIBDV_LIBS)
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
+jpeg2yuv_CPPFLAGS = $(AM_CPPFLAGS) $(JPEG_CFLAGS)
 jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(JPEG_LIBS)
 
 png2yuv_SOURCES = png2yuv.c colorspace.c subsample.c
@@ -173,6 +175,7 @@ lavaddwav_SOURCES = lavaddwav.c
 lavaddwav_LDADD = $(LIBMJPEGUTILS) liblavfile.la
 
 glav_SOURCES = glav.c glav_main.c
+glav_CPPFLAGS = $(AM_CPPFLAGS) ${GTK_CFLAGS} -DG_LOG_DOMAIN=\"lavtools\"
 glav_LDADD = $(LIBMJPEGUTILS) ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c frequencies.c
