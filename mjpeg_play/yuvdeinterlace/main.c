@@ -138,9 +138,7 @@ void film_fx (void);
 int
 main (int argc, char *argv[])
 {
-  int time;
   int cpucap = cpu_accel ();
-  int framenr = 0;
   char c;
   int fd_in = 0;
   int fd_out = 1;
@@ -579,13 +577,7 @@ void
 motion_compensate_field (void)
 {
   int x, y;
-  int dx, dy;
-  int min;
-  struct vector fv;
-  struct vector bv;
   struct vector dv;
-  int cnt1=0;
-  int cnt2=0;
   float match_coeff21;
   float match_coeff23;
   
