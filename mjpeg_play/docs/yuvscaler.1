@@ -1,4 +1,4 @@
-.TH "yuvscaler" "1" "29 July 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvscaler" "1" "26 Septembre 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 yuvscaler \- UPscales or DOWNscales arbitrary sized yuv frames (stdin by default) to a
@@ -55,23 +55,6 @@ multiple \fB-I\fP flags. Possible \fIinput_keyword\fPs are:
 .IP
 \fBUSE_WidthxHeight+WidthOffset+HeightOffset\fP - select the area of
 input frames to be processed (the rest is ignored).
-.IP
-\fBINTERLACED_TOP_FIRST\fP  to treat stdin input as interlaced, top-field-first input stream.
-
-\fBINTERLACED_BOTTOM_FIRST\fP to treat stdin input as interlaced, bottom-field-first input stream.
-
-\fBNOT_INTERLACED\fP to force non-interlaced input frames.
-
-.IP
-\fBNote:\fP Due to a deficiency in the current version of YUV4MPEG
-format, interlacing type is not recorded. If input comes from stdin
-then \fByuvscaler\fP has to guess:
-- if the video \fIis\fP interlaced used the above
-options to switch \fByuvscaler\fP to the correct scaling mode.
-- if neither input interlacing nor output interlacing is specified,
-both are taken not interlaced
-- if only one is specified, the other is taken of the same type,
-bottom-field-first for output by default
 
 .TP 
 .B -M \fImode_keyword\fP
@@ -107,8 +90,14 @@ image in the output frame.
 \fBWIDE2VCD\fP to scale anamorphic widescreen (16:9) frames into letterboxed 
 VCD format (equivalent to -M WIDE2STD -O VCD).  
 .IP
+\fBFASTVCD\fP to transcode full sized frames to VCD 
+(equivalent to -M RATIO_2_1_2_1 -O VCD, see below).
+.IP
 \fBFAST_WIDE2VCD\fP to transcode full-sized anamorphic (16:9) frames to 
 letter-boxed VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see below).
+.IP
+\fBLINE_SWITCH\fP to switch lines between input and output, no line
+switching by default.
 
 .TP 
 .B -O \fIoutput_keyword\fP
@@ -116,9 +105,9 @@ letter-boxed VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see below).
 .IP
 Sets the output frame format options.  Output format
 options can be combined by giving several \fB-O\fP flags.
-By default,  output frames interlacing is identical to that of the
-input frames.  The options force output to be re-arranged into
-the specified interlace format.  
+By default, output frames size will be the same as input frame sizes, as
+well as output frames interlacing if coherent with output keyword
+specification which prevails, top_first if not. 
 
 .IP
 \fBMONOCHROME\fP to generate monochrome frames on output.  Chrominance
@@ -135,14 +124,10 @@ PAL and NTSC standards). Bottom-field-first interlaced frames.
 \fBSIZE_WidthxHeight\fP to generate frames of size WidthxHeight on
 output (multiple of 4)
 .IP
-\fBINTERLACED_TOP_FIRST\fP force interlaced, top field first frame
-output stream.
-
-\fBINTERLACED_BOTTOM_FIRST\fP force interlaced, bottom field first frame
-output stream.
-
-\fBNOT_INTERLACED\fP to force non-interlaced output frames.
+If output interlacing is not specified, it is taken of the same type
+as input if coherent, top_first by default.
 .IP
+
 
 .TP 
 .B -n p|s|n
@@ -173,8 +158,8 @@ RATIO_WidthIn_WidthOut_1_1 => downscaling only concerns width, not height
 .IP
 RATIO_1_1_HeightIn_HeightOut => downscaling only concerns height, not width
 .IP
-RATIO_2_1_2_1 => slightly width distorted (real ratio 45 to 22) but faster
-Full-sized frame to VCD downscaling (-M RATIO_2_1_2_1 -O VCD)
+RATIO_2_1_2_1 => FASTVCD, slightly width distorted (real ratio 45 to 22) but faster
+full-sized frame to VCD downscaling (-M RATIO_2_1_2_1 -O VCD)
 .IP
 RATIO_WidthIn_WidthOut_8_3 => specific to WIDE2VCD downscaling (-M WIDE2STD -O VCD)
 .IP
