@@ -14,25 +14,26 @@ static void Usage(char *str)
 	fprintf( stderr, "mjpegtools mplex version " VERSION "\n" );
 	fprintf( stderr, "Usage: %s [params] -o <output file> [<input file1> [<input file2>] \n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
-	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
+	fprintf( stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
 	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
 	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
     fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from source streams)\n" );
 	fprintf( stderr, " -l num  Multiplex only num frames (default 0=multiplex all)\n");
-	fprintf( stderr, " -v num  Specify a video timestamp offset in mSec\n");
-	fprintf( stderr, " -a num  Specify an audio timestamp offset in mSec \n" );
+	fprintf( stderr, " -O num  Specify offset of timestamps (video-audio) in mSec\n");
 	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
 	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
 	fprintf( stderr, " -p num  Number of packets per pack (default: 20) [1..100]\n"  );
 	fprintf( stderr, " -h      System header in every pack rather than just in first\n" );
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
-	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = Auto MPEG2, 3 = SVCD, 4 = DVD]\n");
+	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = user-rate VCD,\n");
+	fprintf( stderr, "          2 = Auto MPEG2, 3 = SVCD, 4 = user-rate SVCD, 5 = DVD]\n");
 	fprintf( stderr, "         (N.b only 0 .. 3 currently implemented!*)\n" ); 
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680) (0 = no limit)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program per sequence rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
 	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
+	fprintf( stderr, " -?      Print this lot out!\n");
 			
 	exit (1);
 }
@@ -60,7 +61,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
 	char *outfile = NULL;
-	while( (n=getopt(argc,argv,"o:b:r:v:a:m:f:l:s:S:qiVnMe")) != EOF)
+	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:qiVnMe")) != EOF)
 	{
 		switch(n)
 		{
@@ -73,6 +74,12 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 				Usage(argv[0]);
   	
 			break;
+		case 'v' :
+			verbose = LOG_WARN-atoi(optarg);
+			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+				Usage(argv[0]);
+			break;
+
 		case 'q' :
 			verbose = LOG_WARN;
 			break;
@@ -103,18 +110,15 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 			opt_data_rate = (( opt_data_rate * 1000 / 8 + 49) / 50 ) * 50;
 			break;
 
-		case 'v':
+		case 'O':
 			opt_video_offset = atoi(optarg);
-			if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
-				Usage(argv[0]);
+			if( opt_video_offset < 0 )
+			{
+				opt_audio_offset = - opt_video_offset;
+				opt_video_offset = 0;
+			}
 			break;
-
-		case 'a' :
-			opt_audio_offset = atoi(optarg);
-			if( opt_video_offset < -10000000 || opt_video_offset > 1000000 )
-				Usage(argv[0]);
-			break;
-		
+          
 		case 'l' : 
 			opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
 			if( opt_max_PTS < 1  )
@@ -179,8 +183,8 @@ int open_file(char *name, unsigned int *bytes)
     datei=fopen (name, "rw");
     if (datei==NULL)
     {	
-	printf("File %s not found.\n", name);
-	return (TRUE);
+		mjpeg_error("File %s not found.\n", name);
+		return (TRUE);
     }
     fseek (datei, 0, 2);
     *bytes = ftell(datei);
@@ -233,10 +237,10 @@ void timeout_error(int what, int decode_number)
 	switch (what)
 		{
 		case STATUS_AUDIO_TIME_OUT:
-			mjpeg_error("Timeout in audio at sector %07d",decode_number);
+			mjpeg_error("Timeout in audio at sector %07d\n",decode_number);
 			break;
 		case STATUS_VIDEO_TIME_OUT:
-			mjpeg_error("Timeout in video at sector %07d",decode_number);
+			mjpeg_error("Timeout in video at sector %07d\n",decode_number);
 			break;
 		}
 	if( ++timeouts > opt_max_timeouts )

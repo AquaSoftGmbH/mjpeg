@@ -78,7 +78,7 @@ static void output_info_audio (Audio_struc *audio_info);
     Basic Checks on MPEG Streams
 *************************************************************************/
 
-void marker_bit (Bit_stream_struc *bs, unsigned int what)
+static void marker_bit (Bit_stream_struc *bs, unsigned int what)
 {
     if (what != get1bit(bs))
     {

@@ -42,8 +42,8 @@ int             transport_prefix_sectors;
 	
 
 static unsigned int packets_per_pack;
-static unsigned int audio_buffer_size;
-static unsigned int video_buffer_size;
+static unsigned int audio_buffer_size = 0;
+static unsigned int video_buffer_size = 0;
 
 static int rate_restriction_flag;
 static int always_sys_header_in_pack;
@@ -113,24 +113,23 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 	switch( opt_mux_format  )
 	{
-		case 1 : /* MPEG_VCD */ 
- 		/* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
-	 	fixed bitrate=1150000.0, packets_per_pack=1,
-	 	sys_headers only in first two sector(s?)... all timestamps...
-	 	program end code needs to be appended.
-  		*/
+	case MPEG_VCD :
+		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	video_buffer_size = 46*1024;
+ 
+	case MPEG_VCD_NSR : /* VCD format, non-standard rate */
+		mjpeg_info( "Selecting VCD output profile\n");
+		if( video_buffer_size == 0 )
+			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	trailing_pad_pack = 1;
-	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
-	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
-	  	video_buffer_size = 46*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
@@ -139,8 +138,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		dtspts_for_all_vau = 1;
 		break;
 		
-		case  MPEG_MPEG2 : 
-		fprintf( stderr, "WARNING: MPEG-2 support untested!\n" );
+	case  MPEG_MPEG2 : 
+		mjpeg_info( "Selecting generic MPEG2 output profile\n");
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 1;
@@ -160,8 +159,14 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
         dtspts_for_all_vau = 0;
 		break;
 
-		case  MPEG_SVCD : 
-		fprintf( stderr, "WARNING: SVCD support experimental!\n" );
+	case MPEG_SVCD :
+		opt_data_rate = 150*2324;
+	  	video_buffer_size = 230*1024;
+
+	case  MPEG_SVCD_NSR :		/* Non-standard data-rate */
+		mjpeg_info( "Selecting SVCD output profile\n");
+		if( video_buffer_size == 0 )
+			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 2;
 		/* TODO should test specified data-rate is < 2*CD
 		   = 150 sectors/sec * (mode 2 XA payload) */ 
@@ -172,9 +177,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
-		opt_data_rate = 150*2324;
 	  	opt_VBR = 1;
-	  	video_buffer_size = 230*1024;
+
 		buffers_in_video = 0;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 0;
@@ -185,7 +189,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 		break;
 			 
-	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
+	default : /* MPEG_MPEG1 - auto format MPEG1 */
+		mjpeg_info( "Selecting generic MPEG1 output profile\n");
 		opt_mpeg = 1;
 	  	packets_per_pack = opt_packets_per_pack;
 	  	always_sys_header_in_pack = opt_always_system_headers;
@@ -279,7 +284,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	/* TODO: This is a pretty inexact guess and may need tweaking for different stream formats	 */
 	 
 	dmux_rate = video_rate + audio_rate;
-	dmux_rate = ((double)dmux_rate) * 
+	dmux_rate = 1.01 * ((double)dmux_rate) * 
 				( 1.0  *   ((double)sector_size)/((double)video_min_packet_data) +
 			      ((double)(packets_per_pack-1)) * ((double)sector_size)/((double)(video_max_packet_data))
 			    )

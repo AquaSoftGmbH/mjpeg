@@ -279,7 +279,7 @@ void check_files (int argc,
 				  unsigned int *audio_bytes,
 				  unsigned int *video_bytes
 	);
-int  open_file            ();	/* File vorhanden?			*/
+int  open_file(char *name, unsigned int *bytes);
 void get_info_video (char *video_file,	
 					Video_struc *video_info,
 					double *first_frame_PTS,
@@ -431,11 +431,13 @@ extern unsigned int bitrate_index [4][3][16];
     Command line options and derived parameters
 *************************************************************************/
 
-#define MPEG_MPEG1  0
-#define MPEG_VCD    1
-#define MPEG_MPEG2  2
-#define MPEG_SVCD   3
-#define MPEG_DVD    4
+#define MPEG_MPEG1   0
+#define MPEG_VCD     1
+#define MPEG_VCD_NSR 2
+#define MPEG_MPEG2   3
+#define MPEG_SVCD     4
+#define MPEG_SVCD_NSR 5
+#define MPEG_DVD      6
 
 
 extern int opt_quiet_mode;
