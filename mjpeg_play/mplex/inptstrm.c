@@ -280,8 +280,8 @@ void get_info_video (char *video_file,
 				if( access_unit.type == IFRAME )
 				{
 					unsigned int bits_persec = 
-						(unsigned int) (stream_length - prev_stream_length) /
-						  (frame_interval * (1+decoding_order - group_start_pic) ;
+						(unsigned int) (stream_length - prev_stream_length) *
+							frame_rate / (1+decoding_order - group_start_pic);
 
 					if( bits_persec > max_bits_persec )
 					{
