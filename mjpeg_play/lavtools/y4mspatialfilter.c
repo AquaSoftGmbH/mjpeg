@@ -40,6 +40,8 @@ int main(int argc, char **argv)
 
     fdin = fileno(stdin);
     
+    y4m_accept_extensions(1);
+
     /* read command line */
     opterr = 0;
     while   ((c = getopt(argc, argv, "hvL:C:")) != EOF)
