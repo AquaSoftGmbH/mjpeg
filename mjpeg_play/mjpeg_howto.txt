@@ -755,7 +755,7 @@
 
      -o specifies the outputfile name
 
-     -f m
+     -f q
         specifies the output format, quicktime in this case
 
   This is usually not needed. Keep in your mind that there is the 2GB
