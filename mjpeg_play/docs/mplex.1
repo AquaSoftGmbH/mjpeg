@@ -30,7 +30,7 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .RB [ -M ]
 .RB [ -h ]
 .RB [ -? ]
-.BI -o \ output_filename_pattern
+.BI -o \ output_filename_pattern input_file...
 .SH "DESCRIPTION"
 Mplex is a simple two-stream audio/video multiplexer for
 MPEG-1/MPEG-2.  It accepts an MPEG-1/2 video stream and/or an MPEG
@@ -75,12 +75,13 @@ Bit-rate can be auto-detected.
  1 - VCD.  Standard VCD.  Overrides other option settings.
  2 - User VCD.  VCD format but buffer size, bit rate and VBR can be set
 manually.
- 3 - Auto MPEG2.  Like 0 expect MPEG2.
+ 3 - Auto MPEG2.  Like 0 expcept MPEG2.
  4 - SVCD.  Standard SVCD.  Overrides other option settings.
- 5 - User-rate SVCD.  SVCD format but buffer size and bit rate  can be set.
-.TP
-.BR -m\ 1 | 2
-Set MPEG-1 or MPEG-2 multiplexing.
+ 5 - User-rate SVCD.  SVCD format but buffer size bit rate and VBR can be set.
+ 6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
+	 multiplexed are supported).
+ 7 - SVCD Stills stream.
+ 8 - DVD.   Very very incomplete due to lack of documentation.
 .TP
 .BI -r \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
@@ -122,18 +123,27 @@ When the limit is reached a  new file is started.
 Note: This option is 
 .I not
 suitable for splitting a long video across multiple VCD's or SVCD's.
-It simply splits a single long sequenctreame into chunks.  To replay the
-sequence the chunks have to be concatenated.  For VCD / SVCD a different
-technique is used.  If mplex encounters a sequence break (sequence end followed
-by start) in the input video stream it starts a new output stream and file
-at the sequence start.  Thus to split a long video across VCD's/SVCD's you
-have to get the MPEG video encoder to introduce sequence splits at the
-right points (see mpeg2enc(1) for details of how to do this).
+
+It simply splits a single long sequence into in a way that prevents
+bits of a video GOP(group of pictures) or audio frame being split
+between chunks.  frame reasonable. This is fine for formats like that
+used for DVDs where all stream parameters appear every GOP.  However,
+for VCD / SVCD it won't work as the players expect each file to start a 
+new MPEG sequence.
+
+For VCD / SVCD a different technique is used.  If mplex encounters a
+sequence break (sequence end followed by start) in the input video
+stream it starts a new output stream and file at the sequence start.
+Thus to split a long video across VCD's/SVCD's you have to get the
+MPEG video encoder to introduce sequence splits at the right points
+(see mpeg2enc(1) for details of how to do this).
 .TP
 .B -M
 When splitting a long stream in files based on -S mplex does a certain
-amount of sanity checking.  If the files are going to be concatenated
-for playback this checking is superfluous.  -M suppresses this checking.
+amount of careful "running out" to prevent a GOP or audio frame being
+split. This is wasteful for continuous bit-rate streams. If the files
+are simply going to be concatenated for playback this "run out" is
+superfluous and -M turns it off.
 .TP
 .B -h
 A system header is generated in every pack rather than just in the first.
@@ -144,11 +154,6 @@ have specified is simply too low to permit the video and audio to be
 played back without skipping.  The fix is to either reduce the
 data-rate of the input material or increased the output stream bit-rate.
 .SH "BUGS"
-Variable bit-rate should be auto-detected and supported for audio
-as well as video.
-
-The ludicrous two-pass parsing structure should be made single pass.
-
 The multiplexer should handle AC3 and MPEG(5.1) audio too.
 .SH AUTHOR
 This man page was written by Andrew Stevens.

@@ -6,28 +6,30 @@ mpeg2enc \- MPEG 1/2 encoder
 .B mpeg2enc
 .RB [ -v
 .IR num ]
-.RB [ -m\ 1 | 2 ]
+.RB [ -f
+.IR mpeg_profile ]
+
 .RB [ -b
 .IR bitrate_kbps ]
 .RB [ -V
 .IR video_buf_size_kB ]
 .RB [ -q
 .IR quantization ]
-.RB [ -F
-.IR format_code]
 .RB [ -r
 .IR motion_search_radius]
 .RB [ -Q\ 0.0 - 4.0 ]
 .RB [ -p ]
+.RB [ -I\ 0..3]
 .RB [ -s ]
 .RB [ -g
 .IR min_gop_size ]
 .RB [ -G
 .IR max_gop_size ]
 .RB [ -n\ n | p | s ]
-.RB [ -a\ 0 .. 14 ]
-.RB [ -f
-.IR frame_rate_code ]
+.RB [ -F
+.IR frame_rate_code]
+.RB [ -a\ aspect_ratio_code ]
+.RB [ -z\ b|t]
 .RB [ -4\ 1 .. 4 ]
 .RB [ -2\ 1 .. 4 ]
 .RB [ -S
@@ -69,18 +71,75 @@ on the mjpegtools web-site:
 .br
 .IP
 \fBhttp://mjpeg.sourceforge.net\fP
+.TP
+.SH "SELECTING THE MPEG PROFILE"
+.BR -f\ 1,2,3,4,5,6,7,8
+Set the MPEG profile to use.  The MPEG standards support a vast number
+of options.  In practice, different applications of the MPEG format place
+additional constraints of the form the MPEG stream.   Setting this flag
+selects the kind of stream to produce.
+.IP
+.BR 0 
+- Generic MPEG1.  A basic MPEG-1 profile that lets most parameters
+	be adjusted
+	for particular applications using the other flags.  Typical
+	applications would be to produce a variable bit-rate MPEG-1
+	stream with big buffers and a high data-rate software playback
+	on a computer.
+.IP
+.BR 1 
+		- Standard VCD.  An MPEG1 profile exactly to the VCD2.0 specification.
+		Flag settings that would result in a non-standard stream structure 
+		are simply ignored.
+
+.IP
+.BR 2 
+		- User VCD.  As for profile 2 but bit-rate and video buffer size can
+		be set to non-standard values. Frame size may also be non-standard.
+.IP
+.BR 3
+		- Generic MPEG2. A basic MPEG-1 profile that lets most parameters
+	be adjusted
+	for particular applications using the other flags.  Typical
+	applications would be to produce a MPEG-2 stream with big buffers
+	and long GOP's for software playback on a computer.
+
+.IP
+.BR 4
+		- Standard VCD.  An MPEG-2 profile exactly to the SVCD2.0
+		specification. Flag settings that would result in a
+		non-standard stream structure are simply ignored.
+.BR 5
+		- Non-standard SVCD. As for profile 4 but bit-rate, video
+		buffer size, GOP sizes and structure can be set to
+		non-standard values. Frame size may also be non-standard.
+.BR 6
+		- VCD Stills sequence. Encodes the special style of MPEG stream
+		used for still images on VCDs.  To use this profile you must
+		set the target size you wish to compress the images to using the
+		-T flag.   Reasonable values are around 35KB for standard resolution
+		stills (352 wide) and 120KB for high resolution stills (704 wide).
+.BR 7
+		- VCD Stills sequence. Encodes the special style of MPEG stream
+		used for still images on SVCDs.  Both standard (480 wide) and high
+		resolution (704 wide) images are supported.
+.BR 8
+		- DVD MPEG-2.  Currently unimplemented due to lack of documentation!
+.TP
+.BI -T \ num
+
+Set the target size for VCD still images in KB.
+
 .SH "GENERAL FUNCTION LETTERS"
 .TP
 .BI -v \ num
-Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
+Set verbosity level to num.  0 = warnings and errors only, 1 =
+information as well, 2=really verbose.
 .TP
 .B -?
 Display a synopsis of the command syntax.
 .SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
-.TP
-.BR -m\ 1 | 2
-Set MPEG-1 or MPEG-2 encoding.
-Use the former for encoding VCD's or lower bit-rate / resolution applications or where portability is important.
+
 .TP
 .BI -b \ num
 The bit-rate of the output video stream in k Bits/sec.  The default is
@@ -91,8 +150,8 @@ is the
 bit-rate of the stream.
 .TP
 .BI -V \ num
-The maximum video buffer usage required to decode the stream in k
-Bytes.  The default is 46KB the (tiny) size specified for VCD.  The
+The maximum video buffer usage required to decode the stream in
+KBytes.  The default is 46KB the (tiny) size specified for VCD.  The
 size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
@@ -102,7 +161,7 @@ Minimum quantisation of the output stream.  Quantisation controls the
 precision with which image information is encoded.  The lower the
 number the higher the quality but the greater the required data-rate.
 For VCD resolution anything below 8 or so produces pretty good quality
-video.  For SVCD the equivalent level is around 16. If this option is
+video.  For SVCD the equivalent level is around 10. If this option is
 set a 
 .I variable bit rate 
 stream is produced.  This is more efficient
@@ -113,12 +172,12 @@ decoder you'd be insane not to use variable bit-rate.
 If this option is set without a maximum bit-rate being specified then
 quantisation is fixed at the specified value.
 .TP
-.BR -F\ 0 | 1 | 2 | 3
+.BR -I\ 0 | 1 | 2 | 3
 This sets the sequences picture structure and block encoding type for
 MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
 interlaced video turned off.  This is the most efficient option for
 encoding material that is not interlaced (e.g. movies in PAL 25
-frame/sec or NTSC 24 frames/sec 3:2 pulldown format).  However, it
+frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
 produces rotten results for interlaced video material.  For such
 material use -F 3 which encodes frame-by-frame with interlace-adapted
 motion compensation and block encoding.  Setting 1 or 2 will encode
@@ -130,7 +189,7 @@ inferior.
 It should be noted that encoding -F 3 takes appreciably longer than -F 0.
 .TP
 .B -p
-Setting -p only makes sense for 24 fps Movie source material.  It sets
+Setting -p only makes sense for 24frame/sec Movie source material.  It sets
 flags in the output stream that tell the decoder to play the movie as
 NTSC 60field/sec video using "3:2 pulldown".  This is vastly more
 efficient than encoding as 60field/sec video.  The classic application
@@ -156,6 +215,12 @@ Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
 each I/P frame unless the GOP size forces less.  This is reasonable
 for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
 low-bit-rate encoding.
+.TP
+.BI -P
+	This flag forces the GOP size selection to choose sizes 
+	that ensure 2 B frames appear between adjacent I/P frames.
+	Several common MPEG-1 decoders can't handle streams where less than
+	2 B-frames appear between I/P frames.
 .TP
 .BR -Q\ 0.0 .. 4.0 
 This flag sets the amount quantisation is reduced for
@@ -205,39 +270,6 @@ will be possible.
 .TP
 .BI -a \ num
 Set the playback aspect ratio code of the encoded video.
-The exact interpretation of the code varies between MPEG-1 and MPEG-2.
-.IP
-MPEG1 pixel aspect ratio codes:
-.br
- 1 - 1:1 (square pixels)
-.br
- 2 - 1:0.6735
-.br
- 3 - 1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)
-.br
- 4 - 1:0.7615
-.br
- 5 - 1:0.8055
-.br
- 6 - 1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)
-.br
- 7 - 1:0.8935
-.br
- 8 - 1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)
-.br
- 9 - 1:0.9815
-.br
-10 - 1:1.0255
-.br
-11 - 1:1:0695
-.br
-12 - 1:1.125  (4:3 NTSC for 720x480/352x240 images)
-.br
-13 - 1:1575
-.br
-14 - 1:1.2015
-.IP 
-MPEG2 display aspect ratio codes:
 .br
  1 - 1  - 1:1 display
 .br
@@ -247,16 +279,10 @@ MPEG2 display aspect ratio codes:
 .br
  4 - 4  - 2.21:1 display
 .IP
-Note that "Anamorphic" video is video where the original (16:9 say) image
-has been squished so that the whole picture fits in a standard 4:3
-format frame.  Obviously, telling the decoder the original was
-anamorphic gives it the option to correctly "stretch" or letter-box
-the image to suit the display device that has been attached.  MPEG-2
-is vastly more sensible/flexible than MPEG-1 in that instead of saying what
-shape the pixels actually have after decoding it simply says what
-shape the correctly decoded image should have ideally.  This allows widely
-resolution and data-rate to be traded-off without require huge numbers of
-scaling codes.
+For MPEG-2 the specified aspect ratios are used directly. For MPEG-1
+mpeg2enc infers the MPEG-1 pixel aspect code from the video norm
+specified and the specified playback aspect ratio.
+
 .SH "OPTION LETTERS FOR QUALITY TUNING"
 .TP
 .BI -r \ num
