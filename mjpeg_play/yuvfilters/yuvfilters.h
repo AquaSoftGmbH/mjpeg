@@ -48,8 +48,12 @@ typedef struct {
   uint8_t data[0];
 } YfFrame_t;
 
-#define DATABYTES(W,H) (((W)*(H))+(((W)/2)*((H)/2)*2))
-#define FRAMEBYTES(W,H) (sizeof ((YfFrame_t *)0)->fi + DATABYTES(W,H))
+#define CWDIV(C) (((C)==Y4M_CHROMA_444)?1:((C)==Y4M_CHROMA_411)?4:2)
+#define CHDIV(C) \
+(((C)==Y4M_CHROMA_444||(C)==Y4M_CHROMA_422||(C)==Y4M_CHROMA_411)?1:2)
+#define DATABYTES(C,W,H) \
+(((W)*(H))+(((C)==Y4M_CHROMA_MONO)?0:(((W)/CWDIV(C))*((H)/CHDIV(C))*2)))
+#define FRAMEBYTES(C,W,H) (sizeof ((YfFrame_t *)0)->fi + DATABYTES(C,W,H))
 
 struct YfTaskClass_tag;
 

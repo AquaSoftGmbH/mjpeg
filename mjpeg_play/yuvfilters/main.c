@@ -72,6 +72,8 @@ main(int argc, char **argv)
   if ((p = getenv("MJPEG_VERBOSITY")))
     verbose = atoi(p);
 
+   y4m_accept_extensions(1);
+
   ret = 1;
 #ifndef FILTER
   if (!(hreader = YfAddNewTask(&READER, argc, argv, NULL)))

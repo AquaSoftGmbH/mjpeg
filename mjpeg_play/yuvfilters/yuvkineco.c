@@ -98,7 +98,7 @@ DECLARE_YFTASKCLASS(yuvycsnoise);
 static const char *
 do_usage(void)
 {
-  return "[-u] [-F OutputFPSCODE] [-S YCSNoiseThreashold] [-n NoiseLevel] "
+  return "[-{u|s}] [-F OutputFPSCODE] [-S YCSNoiseThreashold] [-n NoiseLevel] "
     "[-c CycleSearchThreashold] [-i DeinterlacePixelsPermil] "
     "{[-C OutputCycleListName] | -[ON] InputCycleListName}";
 }
@@ -117,13 +117,16 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   int dthr16 = DEFAULTDTHR16;
   int noiselevel = DEFAULTNOISE;
   int deintlval = DEFAULTDEINTL;
-  int unknown_interlace = 0;
+  int output_interlace = 0;
 
   fpscode = h0->fpscode;
-  while ((c = getopt(argc, argv, "uF:S:n:c:i:C:O:N:")) != -1) {
+  while ((c = getopt(argc, argv, "usF:S:n:c:i:C:O:N:")) != -1) {
     switch (c) {
     case 'u':
-      unknown_interlace = 1;
+      output_interlace = 1;
+      break;
+    case 's':
+      output_interlace = 2;
       break;
     case 'F':
       fpscode = atoi(optarg);
@@ -191,13 +194,18 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     YfAllocateTask(&yuvkineco,
 		   (sizeof *h +
 		    ((((!cytype || cytype == 'C')? (sizeof h->framestat[0]):
-		       0) + FRAMEBYTES(h0->width, h0->height)) * nframes) +
-		    ((0 <= deintlval)? FRAMEBYTES(h0->width, h0->height): 0)),
+		       0) + FRAMEBYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height)) * nframes) +
+		    ((0 <= deintlval)? FRAMEBYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height): 0)),
 		   (hycs? hycs: h0));
   if (!h)
     return NULL;
-  y4m_si_set_interlace(&h->_.si, (unknown_interlace?
-				  Y4M_UNKNOWN: Y4M_ILACE_NONE));
+  if (output_interlace == 2 &&
+      (y4m_si_get_interlace(&h0->si) != Y4M_ILACE_TOP_FIRST ||
+       CHDIV(y4m_si_get_chroma(&h0->si)) != 2))
+    output_interlace = 3;
+  y4m_si_set_interlace(&h->_.si, ((output_interlace == 1)? Y4M_UNKNOWN:
+				  (output_interlace == 2)? Y4M_ILACE_TOP_FIRST:
+				  Y4M_ILACE_NONE));
   h->_.fpscode = fpscode;
   h->fpscode0  = h0->fpscode;
   h->cytype    = cytype;
@@ -206,7 +214,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   h->frame     = (YfFrame_t *)(h->framestat +
 			       (nframes * (!cytype || cytype == 'C')));
   h->dthr16    = dthr16;
-  h->deintl    = deintlval * DATABYTES(h0->width, h0->height) / (2*DEINTLRESO);
+  h->deintl    = deintlval * DATABYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height) / (2*DEINTLRESO);
   h->nointlmax = -1;
   h->deintlmin = 0x7fffffff;
   h->u.noise.level0 = h->u.noise.level = noiselevel;
@@ -214,7 +222,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     nframes++;
   while (0 <= --nframes)
     YfInitFrame((YfFrame_t *)((char *)h->frame +
-			      (nframes * FRAMEBYTES(h0->width, h0->height))),
+			      (nframes * FRAMEBYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height))),
 		&h->_);
   if (!cytype)
     goto RETURN;
@@ -268,7 +276,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 "#   _:          ignore\n"
 "#\n"
 "SIZE:%dx%d OLD_FPS:%d NEW_FPS:%d # DON'T CHANGE THIS LINE!!!",
-	    (unknown_interlace? " -u": ""), fpscode,
+	    ((output_interlace == 1)? " -u": (2 <= output_interlace)? " -s": ""), fpscode,
 	    (ycsthres? " -S": ""), (ycsthres? ycsthres: ""),
 	    noiselevel, dthr16, deintlval,
 	    cyname, cyname, cyname, cyname, cyname,
@@ -306,7 +314,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     h->nframes++;
   while (0 <= --h->nframes)
     YfFiniFrame((YfFrame_t *)((char *)h->frame +
-			      (h->nframes * FRAMEBYTES(h0->width, h0->height))));
+			      (h->nframes * FRAMEBYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height))));
   YfFreeTask((YfTaskCore_t *)h);
   return NULL;
 }
@@ -329,7 +337,7 @@ dumpnoise(YfTask_t *h, FILE *fp)
 			       h->u.noise.total - 1) / h->u.noise.total));
   buf_debug(buf, fp, "\n");
   if (0 <= h->deintl) {
-    int bytes = DATABYTES(h->_.width, h->_.height);
+    int bytes = DATABYTES(y4m_si_get_chroma(&h->_.si), h->_.width, h->_.height);
     buf_debug(buf, fp, "# deinterlaced frames: %u;  pixels/frame distribution:",
 	      h->deintlframes);
     for (i = 0; i < sizeof h->deintldist / sizeof h->deintldist[0]; i++) {
@@ -365,7 +373,7 @@ do_fini(YfTaskCore_t *handle)
     h->nframes++;
   while (0 <= --h->nframes)
     YfFiniFrame((YfFrame_t *)((char *)h->frame +
-			      (h->nframes * FRAMEBYTES(h->_.width, h->_.height))));
+			      (h->nframes * FRAMEBYTES(y4m_si_get_chroma(&h->_.si), h->_.width, h->_.height))));
   YfFreeTask((YfTaskCore_t *)h);
 }
 
@@ -405,7 +413,7 @@ putcy(YfTask_t *h, int c)
 }
 
 static int
-deinterlace(unsigned char *data, int width, int height, int noise)
+deinterlace(YfTask_t *h, unsigned char *data, int width, int height, int noise)
 {
   int pln, i, j, n = 0;
   for (pln = 0; pln < 3; pln++) {
@@ -445,8 +453,8 @@ deinterlace(unsigned char *data, int width, int height, int noise)
     }
     data += width * height;
     if (pln == 0) {
-      width  /= 2;
-      height /= 2;
+      width  /= CWDIV(y4m_si_get_chroma(&h->_.si));
+      height /= CHDIV(y4m_si_get_chroma(&h->_.si));
     }
   }
   return n;
@@ -457,15 +465,15 @@ putframe(YfTask_t *h, int c, YfFrame_t *frame)
 {
   if (c <= 1) {
     if (c)
-      deinterlace(frame->data, h->_.width, h->_.height, h->u.noise.level0);
+      deinterlace(h, frame->data, h->_.width, h->_.height, h->u.noise.level0);
   } else {
     if (0 <= h->deintl) {
       int n;
-      int bytes = FRAMEBYTES(h->_.width, h->_.height);
+      int bytes = FRAMEBYTES(y4m_si_get_chroma(&h->_.si), h->_.width, h->_.height);
       YfFrame_t *fdst = (YfFrame_t *)((char *)h->frame + (h->nframes * bytes));
       y4m_copy_frame_info(&fdst->fi, &frame->fi);
       memcpy(fdst->data, frame->data, bytes - sizeof frame->fi);
-      n = deinterlace(fdst->data, h->_.width, h->_.height, h->u.noise.level0);
+      n = deinterlace(h, fdst->data, h->_.width, h->_.height, h->u.noise.level0);
       if (h->deintl < n) {
 	frame = fdst;
 	c -= 'O' - 'D';
@@ -494,10 +502,12 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
   static const unsigned long fp1001s[] = {
     0, 24000, 24024, 25025, 30000, 30030, 50050, 60000, 60060, };
   YfTask_t *h = (YfTask_t *)handle;
-  int framebytes = FRAMEBYTES(h->_.width, h->_.height);
+  int framebytes = FRAMEBYTES(y4m_si_get_chroma(&h->_.si), h->_.width, h->_.height);
   int iadjust = ((h->_.fpscode == h->fpscode0)? 1:
-                (((int64_t)h->iuse * fp1001s[h->_.fpscode] /
+		 (((int64_t)h->iuse * fp1001s[h->_.fpscode] /
 		   fp1001s[h->fpscode0]) - h->iput));
+  int wdiv = CWDIV(y4m_si_get_chroma(&h->_.si));
+  int hdiv = CHDIV(y4m_si_get_chroma(&h->_.si));
 
   /* copy frame to buffer */
   if (frame0) {
@@ -653,14 +663,14 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	for (i = 1; i < (h->nframes / 2) + 2 && i < h->iget - h->iuse; i++)
 	  if (h->framestat[(b + i) % h->nframes].eoediff < d3rd - (long)dthr)
 #else
-	for (i = 1; i < h->iget - h->iuse - 1; i++)
-	  if (h->framestat[(b + i) % h->nframes].eoediff < -(long)dthr)
+	    for (i = 1; i < h->iget - h->iuse - 1; i++)
+	      if (h->framestat[(b + i) % h->nframes].eoediff < -(long)dthr)
 #endif
-	    {
-	      merged = 1;
-	      notdrop[i - 1] &= ~2;
-	      notdrop[i    ] &= ~2;
-	    }
+		{
+		  merged = 1;
+		  notdrop[i - 1] &= ~2;
+		  notdrop[i    ] &= ~2;
+		}
 	if (!merged)
 	  for (i = 0; i < h->iget - h->iuse - 1; i++)
 	    notdrop[i] &= ~2;
@@ -758,10 +768,10 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	    for (i = 1; i < h->_.height; i += 2) /* copy bottom field Y */
 	      memcpy(&fdst->data[i * h->_.width],
 		     &fsrc->data[i * h->_.width], h->_.width);
-	    for (i = (h->_.height * 2) + 1; i < h->_.height * 3; i += 2) /* UV */
-	      memcpy(&fdst->data[i * h->_.width / 2],
-		     &fsrc->data[i * h->_.width / 2],
-		     h->_.width / 2);
+	    for (i = (h->_.height * wdiv) + 1; i < h->_.height * (wdiv + (2 / hdiv)); i += 2) /* UV */
+	      memcpy(&fdst->data[i * h->_.width / wdiv],
+		     &fsrc->data[i * h->_.width / wdiv],
+		     h->_.width / wdiv);
 	    if (1 < verbose)
 	      buf_debug(debugbuf, NULL, "%2d", isrc + 1);
 	    h->framestat[bdst].eoediff = -9999999;
@@ -857,28 +867,28 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
       for (i = 1; i < h->_.height; i += 2) /* copy bottom field Y */
 	memcpy(&fdst->data[i * h->_.width],
 	       &fsrc->data[i * h->_.width], h->_.width);
-      for (i = (h->_.height * 2) + 1; i < h->_.height * 3; i += 2) /* UV */
-	memcpy(&fdst->data[i * h->_.width / 2],
-	       &fsrc->data[i * h->_.width / 2],
-	       h->_.width / 2);
+      for (i = (h->_.height * wdiv) + 1; i < h->_.height * (wdiv + (2 / hdiv)); i += 2) /* UV */
+	memcpy(&fdst->data[i * h->_.width / wdiv],
+	       &fsrc->data[i * h->_.width / wdiv],
+	       h->_.width / wdiv);
       break;
     case 'T':
       for (i = 0; i < h->_.height; i += 2) /* duplicate top field Y */
 	memcpy(&fdst->data[(i + 1) * h->_.width],
 	       &fdst->data[(i)     * h->_.width], h->_.width);
-      for (i = (h->_.height * 2); i < h->_.height * 3; i += 2) /* UV */
-	memcpy(&fdst->data[(i + 1) * h->_.width / 2],
-	       &fdst->data[(i)     * h->_.width / 2],
-	       h->_.width / 2);
+      for (i = (h->_.height * wdiv); i < h->_.height * (wdiv + (2 / hdiv)); i += 2) /* UV */
+	memcpy(&fdst->data[(i + 1) * h->_.width / wdiv],
+	       &fsrc->data[(i)     * h->_.width / wdiv],
+	       h->_.width / wdiv);
       break;
     case 'B':
       for (i = 0; i < h->_.height; i += 2) /* duplicate bottom field Y */
 	memcpy(&fdst->data[(i)     * h->_.width],
 	       &fdst->data[(i + 1) * h->_.width], h->_.width);
-      for (i = (h->_.height * 2); i < h->_.height * 3; i += 2) /* UV */
-	memcpy(&fdst->data[(i)     * h->_.width / 2],
-	       &fdst->data[(i + 1) * h->_.width / 2],
-	       h->_.width / 2);
+      for (i = (h->_.height * wdiv); i < h->_.height * (wdiv + (2 / hdiv)); i += 2) /* UV */
+	memcpy(&fdst->data[(i)     * h->_.width / wdiv],
+	       &fsrc->data[(i + 1) * h->_.width / wdiv],
+	       h->_.width / wdiv);
       break;
     }
     if ((c = putframe(h, deintl, fdst)))

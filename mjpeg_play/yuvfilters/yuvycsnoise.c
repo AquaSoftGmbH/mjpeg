@@ -128,9 +128,9 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     WWARN("input doesn't seem NTSC full height / full motion video");
   h = (YfTask_t *)
     YfAllocateTask(&yuvycsnoise,
-		   (sizeof *h + DATABYTES(h0->width, h0->height) + /* frame */
-		    (DATABYTES(h0->width, h0->height) * 4) + /* frprv, frnow, dfprv, dfnow */
-		    ((h0->width / 2) * (h0->height / 2) * 2) + /* dfpr2 */
+		   (sizeof *h + DATABYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height) + /* frame */
+		    (DATABYTES(y4m_si_get_chroma(&h0->si), h0->width, h0->height) * 4) + /* frprv, frnow, dfprv, dfnow */
+		    ((h0->width / CWDIV(y4m_si_get_chroma(&h0->si))) * (h0->height / CHDIV(y4m_si_get_chroma(&h0->si))) * 2) + /* dfpr2 */
 		    (h0->width * h0->height * 2) + (h0->width * 2)), /* dlprv, dlnow */
 		   h0);
   if (!h)
@@ -172,7 +172,8 @@ uvnoise(YfTask_t *h, char *dfpr2_u, char *dfprv, char *dfnow,
   if (!(h->flags & CHROMA))
     return;
 
-  uw = h->_.width / 2; uh = h->_.height / 2;
+  uw = h->_.width  / CWDIV(y4m_si_get_chroma(&h->_.si));
+  uh = h->_.height / CHDIV(y4m_si_get_chroma(&h->_.si));
   dfpr2_v = dfpr2_u + (uw * uh);
   dfprv_u = dfprv + (h->_.width * h->_.height); dfprv_v = dfprv_u + (uw * uh);
   dfnow_u = dfnow + (h->_.width * h->_.height); dfnow_v = dfnow_u + (uw * uh);
@@ -343,14 +344,15 @@ static int
 do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 {
   YfTask_t *h = (YfTask_t *)handle;
-  int databytes = DATABYTES(h->_.width, h->_.height);
+  int databytes = DATABYTES(y4m_si_get_chroma(&h->_.si), h->_.width, h->_.height);
   const unsigned char *frnxt = frame0->data;
   unsigned char *frprv = h->frame.data + databytes;
   unsigned char *frnow =         frprv + databytes;
   char          *dfprv = (char *)frnow + databytes;
   char          *dfnow =         dfprv + databytes;
   char          *dfpr2 =         dfnow + databytes;
-  char          *dlprv =         dfpr2 + ((h->_.width / 2) * (h->_.height / 2) * 2);
+  char          *dlprv =         dfpr2 + ((h->_.width  / CWDIV(y4m_si_get_chroma(&h->_.si))) *
+					  (h->_.height / CHDIV(y4m_si_get_chroma(&h->_.si))) * 2);
   char          *dlnow =         dlprv + (h->_.width * h->_.height);
 #define dlnxt dlprv
 
@@ -362,7 +364,8 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
   }
   if (h->flags & CHROMA)
     memcpy(dfpr2, dfnow + (h->_.width * h->_.height),
-	   (h->_.width / 2) * (h->_.height / 2) * 2); /* dfnow: 2 frames ago */
+	   (h->_.width  / CWDIV(y4m_si_get_chroma(&h->_.si))) *
+	   (h->_.height / CHDIV(y4m_si_get_chroma(&h->_.si))) * 2); /* dfnow: 2 frames ago */
   if (!frame0)
     frnxt = frnow;
   if (h->flags & (CHROMA|TRIFRAME)) {

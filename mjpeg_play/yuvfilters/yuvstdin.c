@@ -43,7 +43,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   y4m_init_stream_info(&si);
   if (y4m_read_stream_header(0, &si) != Y4M_OK)
     goto FINI_SI;
-  framebytes = FRAMEBYTES(y4m_si_get_width(&si), y4m_si_get_height(&si));
+  framebytes = FRAMEBYTES(y4m_si_get_chroma(&si), y4m_si_get_width(&si), y4m_si_get_height(&si));
   h = YfAllocateTask(&yuvstdin, sizeof *h + framebytes, h0);
   if (!h)
     goto FINI_SI;
@@ -73,7 +73,8 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t * frame)
   YfInitFrame(f, h);
   yuv[0] = f->data;
   yuv[1] = yuv[0] + (h->width * h->height);
-  yuv[2] = yuv[1] + ((h->width / 2) * (h->height / 2));
+  yuv[2] = yuv[1] + ((h->width  / CWDIV(y4m_si_get_chroma(&h->si))) *
+		     (h->height / CHDIV(y4m_si_get_chroma(&h->si))));
   while ((ret = y4m_read_frame(0, &h->si, &f->fi, yuv)) == Y4M_OK) {
     if ((ret = YfPutFrame(h, f)) != Y4M_OK)
       break;

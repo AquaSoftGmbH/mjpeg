@@ -61,6 +61,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t * frame0)
   uint8_t * yuv[3];
   yuv[0] = (uint8_t*)frame0->data;
   yuv[1] = yuv[0] + (handle->width * handle->height);
-  yuv[2] = yuv[1] + ((handle->width / 2) * (handle->height / 2));
+  yuv[2] = yuv[1] + ((handle->width  / CWDIV(y4m_si_get_chroma(&handle->si))) *
+		     (handle->height / CHDIV(y4m_si_get_chroma(&handle->si))));
   return y4m_write_frame(1, &handle->si, &frame0->fi, yuv);
 }
