@@ -1172,7 +1172,7 @@ lav_file_t *lav_open_input_file(char *filename)
    frame = NULL;
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
    /* reset video position to 0 */
@@ -1374,7 +1374,7 @@ static int check_DV2_input(lav_file_t *lav_fd)
 
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
    {
@@ -1435,7 +1435,7 @@ static int check_YUV420_input(lav_file_t *lav_fd)
 
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
-   if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+   if ( (frame = (unsigned char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
    /* reset video position to 0 */
