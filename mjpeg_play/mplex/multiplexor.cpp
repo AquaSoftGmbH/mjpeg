@@ -1037,15 +1037,6 @@ void Multiplexor::Multiplex()
 			for( str = estreams.begin(); str < estreams.end(); ++str )
 				(*str)->nsec = 0;
 			seg_state = mid_segment;
-            //for( str = estreams.begin(); str < estreams.end(); ++str )
-            //{
-            //mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
-            //(*str)->stream_id,
-            //current_SCR /300,
-            //(*str)->MuxPossible(current_SCR),
-            //(*str)->RequiredDTS()/300
-            //);
-            //}
 			break;
 
 		case mid_segment :
@@ -1111,14 +1102,12 @@ void Multiplexor::Multiplex()
 		clockticks earliest = 0;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
-            /*
                 mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
                            (*str)->stream_id,
                            current_SCR /300,
                            (*str)->MuxPossible(current_SCR),
                            (*str)->RequiredDTS()/300
 				);
-            */
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )

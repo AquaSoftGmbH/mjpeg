@@ -61,7 +61,7 @@ public:
 		{}
 	
 	void SetSibling( VCDStillsStream * );
-	virtual bool MuxPossible();
+	virtual bool MuxPossible(clockticks currentSCR);
 private:
 	bool LastSectorLastAU();
 	VCDStillsStream *sibling;

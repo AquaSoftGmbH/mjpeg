@@ -170,7 +170,7 @@ bool VCDStillsStream::LastSectorLastAU()
  */
 
 
-bool VCDStillsStream::MuxPossible()
+bool VCDStillsStream::MuxPossible(clockticks currentSCR)
 {
     if( bufmodel.Size() < au_unsent )
     {
