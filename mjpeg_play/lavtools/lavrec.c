@@ -479,31 +479,53 @@ static int set_option(const char *name, char *value)
 	else if (strcmp(name, "channel")==0 || strcmp(name,"C")==0)
 	{
 		int colin=0; int chlist=0; int chan=0;
+		
+		/* First look for the colon mark */
 		while ( value[colin] && value[colin]!=':') colin++;
 		if (value[colin]==0) /* didn't find the colin */
 		{
-			mjpeg_error("malformed channel parameter (-C/--channel)\n");
+			mjpeg_error("malformed channel parameter (-C/--channel) - example: -C europe-west:SE20\n");
 			nerr++;
 		}
-		if (nerr==0) 
+
+		if (nerr==0) /* Now search for the given channel list in frequencies.c */
 			while (strncmp(chanlists[chlist].name,value,colin)!=0)
 			{
-				if (chanlists[chlist++].name==NULL)
-				{
-					mjpeg_error("bad frequency map\n");
-					nerr++;
-				}
+			  chlist++;
+			  // madmac debug: printf("Searching for channel list: chlist = %d, value=%s\n", chlist, value);
+			  if (chanlists[chlist].name==NULL)
+			    {
+			      mjpeg_error("bad frequency map\n");
+			      nerr++;
+			      break; /* bail out */
+			    }
 			}
+
+		if (nerr==0) /* channel list - get the channel spec */
+		  {
+		    //printf("channel list count is %d\n", chanlists[chlist].count);
+		    while (strcmp((chanlists[chlist].list)[chan].name,  &(value[colin+1]))!=0)
+		      {
+			chan++;
+			
+			if (chan > (chanlists[chlist].count))
+			  {
+			    mjpeg_error("bad channel spec (see e g xawtv, channel editor, for channel spec)\n");
+			    nerr++; 
+			    break;
+			  }
+			printf("Searching for channel: chan: %d %s\n", chan, (chanlists[chlist].list)[chan].name);
+		      }
+		  }
+
 		if (nerr==0) 
-			while (strcmp((chanlists[chlist].list)[chan].name,  &(value[colin+1]))!=0)
-			{
-				if ((chanlists[chlist].list)[chan++].name==NULL)
-				{
-					mjpeg_error("bad channel spec\n");
-					nerr++;
-				}
-			}
-		if (nerr==0) info->tuner_frequency=(chanlists[chlist].list)[chan].freq;
+		  {
+		   printf("Ok, found channel %s with frequency %d\n", 
+			   (chanlists[chlist].list)[chan].name, 
+			   (chanlists[chlist].list)[chan].freq); 
+
+		    info->tuner_frequency=(chanlists[chlist].list)[chan].freq;
+		  }
 	}
 	else nerr++; /* unknown option - error */
 
