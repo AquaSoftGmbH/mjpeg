@@ -31,6 +31,7 @@ Multiplexor::Multiplexor(MultiplexJob &job)
 {
     underrun_ignore = 0;
     underruns = 0;
+	start_of_new_pack = false;
     InitSyntaxParameters(job);
     InitInputStreams(job);
 
@@ -1379,8 +1380,7 @@ void Multiplexor::OutputDVDPriv2 (	)
 {
     uint8_t *packet_size_field;
     uint8_t *index;
-    auto_ptr<uint8_t> sector_buffer( new uint8_t[sector_size]);
-    uint8_t *sector_buf = sector_buffer.get();
+    uint8_t *sector_buf = new uint8_t[sector_size];
     unsigned int tozero;
     
     assert( sector_size == 2048 );
@@ -1421,6 +1421,8 @@ void Multiplexor::OutputDVDPriv2 (	)
     PS_Stream::BufferPacketSize( packet_size_field, index );
 
     WriteRawSector( sector_buf, sector_size );
+
+	delete [] sector_buf;
 }
 
 

@@ -98,7 +98,7 @@ void BitStreamBuffering::SetBufSize( unsigned int new_buf_size)
 		uint8_t *new_buf = new uint8_t[new_buf_size];
 		memcpy( new_buf, bfr, static_cast<size_t>(buffered) );
         if( bfr != 0 )
-            delete bfr;
+            delete [] bfr;
 		bfr_size = new_buf_size;
 		bfr = new_buf;
 	}
