@@ -84,6 +84,8 @@ main(int argc, char *argv[])
 	y4m_stream_info_t istream, ostream;
 	y4m_frame_info_t iframe;
 
+	y4m_accept_extensions(1);
+
 	while((c = getopt(argc, argv, "r:R:t:T:v:S:hI:w:f")) != EOF) {
 		switch(c) {
 		case 'r':
