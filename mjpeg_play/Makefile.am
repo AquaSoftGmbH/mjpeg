@@ -1,16 +1,12 @@
-#Makefile for mjpeg
-#the dependence files are those which have been adapted to MMX and therefore
-#are suspect to change 
+# Process with automake to produce Makefile.in
 
-## FIXME ! Hardcoded libraries are strongly disliked !
-##v4l-conf.o: v4l-conf.c 
-##v4l-conf.o: v4l-conf.c
-##	gcc $(INCLUDES) -c v4l-conf.c
+SUBDIRS    = mjpeg lavtools aenc mplex mpeg2enc scripts docs
 
-## EXTRA-DIST = README PLANS
-INCLUDES = -I./mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
-SUBDIRS = mjpeg lavtools aenc mplex mpeg2enc scripts
-CFLAGS=-Wall -g
+#
+# Add any non autoconf'd files here, extra readmes and other misc 
+# info to be copied into the dist
+#
+EXTRA_DIST = HINTS README.avilib TODO BUGS CHANGES
 
 
 ## make rpms
@@ -23,15 +19,6 @@ deb:
 	mkdir debian/tmp
 	dpkg-buildpackage -rfakeroot
 	rm -r debian/tmp
-
-
-
-
-
-
-
-
-
 
 
 

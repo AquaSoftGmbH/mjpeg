@@ -19,7 +19,7 @@ EXTRA_DIST = \
     mblock_sub44_sads_x86_h.c \
 	predcomp_mmxe.o predcomp_mmx.o
 
-if X86CPU
+if HAVE_X86CPU
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)
 else
 mpeg2enc_SIMD = 

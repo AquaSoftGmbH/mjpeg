@@ -2,18 +2,37 @@
 								 facilities... */
 
 @TOP@
-
-#undef HAVE_X86CPU 				/* Compiling for x86 CPU */
-
-#undef P6_CPU				/* Compiling for PPro upwards x86
-                                   instruction set? */
-
-#undef BUILD_QUICKTIME		/* Quicktime libs present? */
-
-#undef BUILD_MJPEG			/* Mpeg present? */
-
-#undef BUILD_MOVTAR			/* movtar libs present  */
-
-#undef BUILD_PNG				/* PNG libs present */
+#undef X86_CPU /* autobreak is finding this somewhere in cvs */
 
 #define VERSION   "x.x.x"		/* Mjpeg tools release version */
+
+/* Define if the installed GCC tool chain can generate MMX instructions */
+#undef HAVE_ASM_MMX
+
+/* Define if the installed GCC tool-chain can generate 3DNow instructions */
+#undef HAVE_ASM_3DNOW
+
+/* Define if the nasm assembler is available */
+#undef HAVE_ASM_NASM
+
+/* Define if the libpthread library is present */
+#undef HAVE_LIBPTHREAD
+
+/* Define if the quicktime for linux library is present */
+#undef HAVE_LIBQUICKTIME
+
+/* Define if the libXxf86dga library is available */
+#undef HAVE_LIBXXF86DGA
+
+/* Define if the libmovtar library is available */
+#undef HAVE_LIBMOVTAR
+
+/* Define for SSE Support P6 and greater. */
+#undef HAVE_SSE
+
+/* Define for an Intel based CPU */
+#undef HAVE_X86CPU 	
+
+/* Define for software MJPEG playback */
+#undef BUILD_MJPEG
+
