@@ -3,12 +3,10 @@ IMMEDIATE
 
 Fix all the BUGS (see BUGS) of course!
 
-xforms dependency checking in Debian
-
-
-
 
 TASKS OUTSTANDING
+
+Add support for large files.
 
 Code hygiene  basically: GNU guidelines!
 Basically if you want a nice example of how it should be done take

@@ -1,3 +1,7 @@
+0.  Currently large file support has not been tested.
+	Thus it is impossible to create mpeg video streams longer than 2GB.
+    For SVCD this is a real pain in the bottom.
+
 1.	MPEG2 support for progressive sequences frame (-F 0) and  
 	field-interlaced (-F 3) is now well tested.  Field
 	sequences (-F 1 and -F 2) appear to be working but aren't yet thoroughly
