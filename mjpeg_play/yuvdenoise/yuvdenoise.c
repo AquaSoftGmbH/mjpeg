@@ -35,7 +35,7 @@
    management...
 */
 
-uint8_t version[] = "0.0.21\0";
+uint8_t version[] = "0.0.63\0";
 
 uint8_t YUV1[(int) (768 * 576 * 1.5)];
 uint8_t YUV2[(int) (768 * 576 * 1.5)];
@@ -73,7 +73,7 @@ uint32_t init_SQD = 0;
 int lum_delta;
 int cru_delta;
 int crv_delta;
-int search_radius = 16;	        /* initial search-radius in half-pixels */
+int search_radius = 8;	        /* initial search-radius in half-pixels */
 int border = -1;
 double block_quality;
 float sharpen=0;
@@ -100,8 +100,8 @@ main (int argc, char *argv[])
 {
   int dot_x = 0, dot_y = 0;
 
-  uint8_t magic[256];
   uint8_t norm;
+  uint8_t magic[256];
   char c;
 
   int x, y;
@@ -644,13 +644,13 @@ mb_search_44 (int x, int y)
     for (qx = -(search_radius >> 1); qx <= +(search_radius >> 1); qx += 4)
       {
 	d = 0;
-	for (dy = -8; dy < 16; dy += 4)
-	  for (dx = -8; dx < 16; dx += 4)
+	for (dy = -2; dy < 6; dy += 4)
+	  for (dx = -2; dx < 6; dx += 4)
 	    {
 	      Y =
 		SUBA4[(x + dx + qx) + (y + dy + qy) * width] -
 		SUBO4[(x + dx) + (y + dy) * width];
-
+/*
 	      U =
 		SUBA4[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
 		      u_offset] - SUBO4[(x + dx) / 2 + (y +
@@ -662,10 +662,11 @@ mb_search_44 (int x, int y)
 		      v_offset] - SUBO4[(x + dx) / 2 + (y +
 							dy) / 2 * uv_width +
 					v_offset];
+*/
 	      Y *= 4;
 	      d += (Y > 0) ? Y : -Y;	/* SAD is faster and SQD not needed here */
-	      d += (U > 0) ? U : -U;
-	      d += (V > 0) ? V : -V;
+//	      d += (U > 0) ? U : -U;
+//	      d += (V > 0) ? V : -V;
 
 	    }
 	if (qx == 0 && qy == 0)
@@ -698,13 +699,13 @@ mb_search_88 (int x, int y)
     for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
       {
 	d = 0;
-	for (dy = 0; dy < 8; dy += 2)
-	  for (dx = 0; dx < 8; dx += 2)
+	for (dy = -2; dy < 6; dy += 2)
+	  for (dx = -2; dx < 6; dx += 2)
 	    {
 	      Y =
 		SUBA[(x + dx + qx) + (y + dy + qy) * width] -
 		SUBO[(x + dx) + (y + dy) * width];
-
+/*
 	      U =
 		SUBA[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
 		     u_offset] - SUBO[(x + dx) / 2 + (y + dy) / 2 * uv_width +
@@ -714,11 +715,11 @@ mb_search_88 (int x, int y)
 		SUBA[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
 		     v_offset] - SUBO[(x + dx) / 2 + (y + dy) / 2 * uv_width +
 				      v_offset];
-
+*/
 	      Y *= 4;
 	      d += (Y > 0) ? Y : -Y;	/* SAD is faster and SQD not needed here */
-	      d += (U > 0) ? U : -U;
-	      d += (V > 0) ? V : -V;
+//	      d += (U > 0) ? U : -U;
+//	      d += (V > 0) ? V : -V;
 	    }
 
 	if (qx == bx && qy == by)
@@ -754,8 +755,8 @@ mb_search (int x, int y)
 	d = 0;
 	dv = 0;
 	du = 0;
-	for (dy = -4; dy < 8; dy++)
-	  for (dx = -4; dx < 8; dx++)
+	for (dy = -2; dy < 6; dy++)
+	  for (dx = -2; dx < 6; dx++)
 	    {
 	      Y =
 		AVRG[(x + dx + qx) + (y + dy + qy) * width] -
@@ -830,8 +831,8 @@ mb_search_half (int x, int y)
 	yy = y + qy / 2;
 
 	d = 0;
-	for (dy = -4; dy < 8; dy++)
-	  for (dx = -4; dx < 8; dx++)
+	for (dy = -2; dy < 6; dy++)
+	  for (dx = -2; dx < 6; dx++)
 	    {
 	      x0 = xx + dx;
 	      x1 = x0 + 1;
@@ -1164,13 +1165,16 @@ denoise_image ()
     for (x = 0; x < width; x += 4)
       {
 	div++;
-	/* subsampled full-search, first 4x4 then 8x8 pixels */
-	mb_search_44 (x, y);
-	mb_search_88 (x, y);
+	best_match_x=best_match_y=0;
 
+	if(abs(SUBA4[x+y*width]-SUBO4[x+y*width])>10)
+	{
+	    /* subsampled full-search, first 4x4 then 8x8 pixels */
+	    mb_search_44 (x, y);
+	    mb_search_88 (x, y);
+	}
 	/* full-pel search, 16x16 pixels, with range [+/-1 ; +/-1] */
 	mb_search (x, y);
-
 	/* half-pel search, 16x16 pixels, with range [+/-0.5 ; +/-0.5] */
 	mb_search_half (x, y);
 
@@ -1180,12 +1184,12 @@ denoise_image ()
 	min_U_SQD += USQD;
 	min_V_SQD += VSQD;
 
-	if (YSQD < (mean_Y_SQD * 5.0) &&
-	    USQD < (mean_U_SQD * 5.0) && 
-	    VSQD < (mean_V_SQD * 5.0) &&
-	    SQD  < (mean_SQD   * 5.5) )
+	if (YSQD < (mean_Y_SQD * 4.0) &&
+	    USQD < (mean_U_SQD * 4.0) && 
+	    VSQD < (mean_V_SQD * 4.0) &&
+	    SQD  < (mean_SQD   * 4.5) )
 	  {
-	      (double)block_quality = (double)SQD/((double)mean_SQD*5.5);
+	      (double)block_quality = (double)SQD/((double)mean_SQD*4.5);
 	      copy_filtered_block (x, y);
 	  }
 	else
@@ -1199,10 +1203,10 @@ denoise_image ()
   fprintf (stderr, "---  mean_U_SQD :%i\n", mean_U_SQD);
   fprintf (stderr, "---  mean_V_SQD :%i\n", mean_V_SQD);
 
-  mean_SQD   = mean_SQD *   0.95   + min_SQD / div * 0.05;
-  mean_Y_SQD = mean_Y_SQD * 0.95 + min_Y_SQD / div * 0.05;
-  mean_U_SQD = mean_U_SQD * 0.95 + min_U_SQD / div * 0.05;
-  mean_V_SQD = mean_V_SQD * 0.95 + min_V_SQD / div * 0.05;
+  mean_SQD   = mean_SQD *   0.95   + min_SQD / (float)div * 0.05;
+  mean_Y_SQD = mean_Y_SQD * 0.95 + min_Y_SQD / (float)div * 0.05;
+  mean_U_SQD = mean_U_SQD * 0.95 + min_U_SQD / (float)div * 0.05;
+  mean_V_SQD = mean_V_SQD * 0.95 + min_V_SQD / (float)div * 0.05;
 }
 
 
