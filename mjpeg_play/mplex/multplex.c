@@ -70,7 +70,7 @@ void init_stream_syntax_parameters(	)
 	  packets_per_pack = 1;
 	  always_sys_header_in_pack = 0;
 	  trailing_pad_pack = 1;
-	  opt_data_rate = 1740;
+	  opt_data_rate = 174300;  
 	  opt_sector_size = 2324;
 	  opt_mpeg = 1;
 	  opt_VBR = 0;
@@ -194,8 +194,10 @@ void outputstreamsuffix(Timecode_struc *SCR,
   *(index++) = (unsigned char)((ISO11172_END & 0x0000ff00)>>8);
   *(index++) = (unsigned char)(ISO11172_END & 0x000000ff);
 
-  fwrite (cur_sector.buf, sizeof (unsigned char), 4, ostream);
-  *bytes_output += 4;
+  while( index < cur_sector.buf + sector_size )
+  	*(index++) = 0;
+  fwrite (cur_sector.buf, sizeof (unsigned char), sector_size, ostream);
+  *bytes_output += sector_size;
 }
 
 /******************************************************************
@@ -370,7 +372,7 @@ void outputstream ( char 		*video_file,
 	{
 		printf ("\ncomputed multiplexed stream data rate    : %07d\n",data_rate * 8);
 		if( opt_data_rate != 0 )
-			printf ("\ntarget data-rates specified             : %7d\n", opt_data_rate*8 );
+			printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
 		if( opt_data_rate == 0 )
 		{
 			printf( "Setting best-guess data rate:%7d\n", data_rate*8 );
@@ -383,7 +385,8 @@ void outputstream ( char 		*video_file,
 		}
 		else if ( opt_data_rate < data_rate )
 		{
-			printf( "Warning: Target data rate lower than likely requirement!\n");		  
+			printf( "Warning: Target data rate lower than computed requirement!\n");
+			printf( "N.b. a *small* discrepancy is	common and harmless.\n"); 
 			dmux_rate = (double)opt_data_rate;
 		}
 
