@@ -85,15 +85,15 @@ static int open_video_file(char *filename, EditList *el)
    /* Debug Output */
 
    printf("File: %s, absolute name: %s\n",filename,realname);
-   printf("   frames:      %8d\n",lav_video_frames(el->lav_fd[n]));
+   printf("   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
    printf("   width:       %8d\n",lav_video_width (el->lav_fd[n]));
    printf("   height:      %8d\n",lav_video_height(el->lav_fd[n]));
    printf("   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
    printf("   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
-   printf("   audio samps: %8d\n",lav_audio_samples(el->lav_fd[n]));
+   printf("   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
    printf("   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));
    printf("   audio bits:  %8d\n",lav_audio_bits(el->lav_fd[n]));
-   printf("   audio rate:  %8d\n",lav_audio_rate(el->lav_fd[n]));
+   printf("   audio rate:  %8ld\n",lav_audio_rate(el->lav_fd[n]));
    printf("\n");
    fflush(stdout);
 
@@ -140,14 +140,14 @@ static int open_video_file(char *filename, EditList *el)
       if( el->video_height != lav_video_height(el->lav_fd[n]) ||
           el->video_width  != lav_video_width (el->lav_fd[n]) )
       {
-         fprintf(stderr,"File %s: Geometry %dx%d does not match %dx%d\n",
+         fprintf(stderr,"File %s: Geometry %dx%d does not match %ldx%ld\n",
                  filename,lav_video_width (el->lav_fd[n]),
                  lav_video_height(el->lav_fd[n]),el->video_width,el->video_height);
          nerr++;
       }
       if( el->video_inter != lav_video_interlacing(el->lav_fd[n]) )
       {
-         fprintf(stderr,"File %s: Interlacing is %d should be %d\n",
+         fprintf(stderr,"File %s: Interlacing is %d should be %ld\n",
                  filename,lav_video_interlacing(el->lav_fd[n]),el->video_inter);
          nerr++;
       }
@@ -160,8 +160,8 @@ static int open_video_file(char *filename, EditList *el)
             el->audio_bits  != lav_audio_bits(el->lav_fd[n]) ||
             el->audio_rate  != lav_audio_rate(el->lav_fd[n]) )
          {
-            fprintf(stderr,"File %s: Audio is %d chans %d bit %d Hz,"
-                           " should be %d chans %d bit %d Hz\n",
+            fprintf(stderr,"File %s: Audio is %d chans %d bit %ld Hz,"
+                           " should be %d chans %d bit %ld Hz\n",
                     filename,lav_audio_channels(el->lav_fd[n]),
                     lav_audio_bits(el->lav_fd[n]), lav_audio_rate(el->lav_fd[n]),
                     el->audio_chans, el->audio_bits, el->audio_rate);
@@ -350,7 +350,7 @@ int write_edit_list(char *name, long n1, long n2, EditList *el)
    if(n1<0) n1 = 0;
    if(n2>=el->video_frames) n2 = el->video_frames-1;
 
-   printf("Write edit list: %d %d %s\n",n1,n2,name);
+   printf("Write edit list: %ld %ld %s\n",n1,n2,name);
 
    fd = fopen(name,"w");
    if(fd==0)

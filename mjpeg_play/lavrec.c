@@ -150,6 +150,12 @@
 
 #include "lav_io.h"
 
+/* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
+void audio_shutdown();
+int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
+long audio_get_buffer_size();
+int audio_read(char *buf, int size, int swap, struct timeval *tmstmp, int *status);
+
 char *audio_strerror();
 
 /* Set the default options here */

@@ -123,6 +123,19 @@
 char *audio_strerror();
 
 static EditList el;
+/* forward definitions for editlist.c */
+int el_get_video_frame(char *vbuff, long nframe, EditList *el);
+int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute);
+void read_video_files(char **filename, int num_files, EditList *el);
+int write_edit_list(char *name, long n1, long n2, EditList *el);
+
+/* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
+void audio_shutdown();
+int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
+long audio_get_buffer_size();
+int audio_write(char *buf, int size, int swap);
+void audio_get_output_status(struct timeval *tmstmp, long *nb_out, long *nb_err);
+int audio_start();
 
 static int  h_offset = 0;
 static int  v_offset = 0;
@@ -387,9 +400,8 @@ void unlock_update_screen()
   SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
 }
 
-main(int argc, char ** argv)
+int main(int argc, char ** argv)
 {
-   int dev;
    int res, frame, hn;
    long nqueue, nsync, first_free;
    struct timeval audio_tmstmp;
@@ -560,7 +572,7 @@ main(int argc, char ** argv)
        SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
        if (screen->format->BytesPerPixel == 2)
-	 calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
+	 mjpeg_calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
 			   screen->format->Rshift, screen->format->Gshift, screen->format->Bshift);
        
        if ( screen == NULL )  
@@ -645,7 +657,7 @@ main(int argc, char ** argv)
        {
 	 /* This is definitely too large */
 	 
-	 sprintf(infostring,"Video dimensions too large: %d x %d\n",
+	 sprintf(infostring,"Video dimensions too large: %ld x %ld\n",
 		 el.video_width,el.video_height);
 	 lavplay_msg(LAVPLAY_ERROR,infostring,"");
 	 exit(1);
@@ -693,7 +705,7 @@ main(int argc, char ** argv)
        
        if (/*!screen_output && */ ( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
 	 {
-	   sprintf(infostring,"Video dimensions (not interlaced) too large: %d x %d\n",
+	   sprintf(infostring,"Video dimensions (not interlaced) too large: %ld x %ld\n",
 		   el.video_width,el.video_height);
 	   lavplay_msg(LAVPLAY_ERROR,infostring,"");
 	   if(el.video_width>360) lavplay_msg(LAVPLAY_INFO,"Try -z option !!!!","");
@@ -775,7 +787,7 @@ main(int argc, char ** argv)
 	/* Since we queue the frames in order, we have to get them back in order */
 	if(frame != nsync % mjpeg->br.count)
 	  {
-	    printf("frame = %ld, nsync = %ld, mjpeg->br.count = %d\n", frame, nsync, mjpeg->br.count);
+	    printf("frame = %d, nsync = %ld, mjpeg->br.count = %ld\n", frame, nsync, mjpeg->br.count);
             lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
 	    mjpeg_close(mjpeg);
             exit(1);
@@ -788,7 +800,7 @@ main(int argc, char ** argv)
       }
       while(tdiff>spvf && (nsync-first_free)<mjpeg->br.count-1);
 
-      if(gui_mode) printf("@%c%d/%d/%d\n",el.video_norm,frame_number[frame],
+      if(gui_mode) printf("@%lc%ld/%ld/%d\n",el.video_norm,frame_number[frame],
                                           el.video_frames,play_speed);
 
       if((nsync-first_free)> mjpeg->br.count-3)
@@ -961,7 +973,7 @@ main(int argc, char ** argv)
 
                break;
          }
-         printf("- play speed =%3d, pos =%6d/%d >",play_speed,nframe,el.video_frames);
+         printf("- play speed =%3d, pos =%6ld/%ld >",play_speed,nframe,el.video_frames);
       }
       fflush(stdout);
       fflush(stderr);

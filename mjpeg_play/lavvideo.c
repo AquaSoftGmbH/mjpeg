@@ -22,6 +22,7 @@ Copyright by Gernot Ziegler.
 #define FRAMEBUFFERADDRESS NULL
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <time.h>
@@ -161,18 +162,19 @@ int doIt(void)
   if (res < 0) { perror("v4l: VIDIOCCAPTURE"); exit(1); }
 
   if (wait == -1) 
-  { if (verbose) printf("Alright, infinite loop (interrupt with Ctrl-C).", 
-			time);
+  { if (verbose) printf("Alright, infinite loop (interrupt with Ctrl-C).");
     for(;;);
   }
   else
-  if (verbose) printf("Alright, waiting %ld seconds.", time);
+  if (verbose) printf("Alright, waiting %d seconds.", wait);
   usleep(wait*1000000);
 
   if (verbose) printf("Turning off the video window.\n");
   turnon = 0;
   res = ioctl(v4ldev, VIDIOCCAPTURE, &turnon);
   if (res < 0) { perror("v4l: VIDIOCCAPTURE"); exit(1); }
+
+  return 1;
 }
 
 int main(int argc,char *argv[]) 
