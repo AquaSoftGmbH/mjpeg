@@ -47,8 +47,7 @@ void VideoStream::ScanFirstSeqHeader()
 		horizontal_size	= bs.GetBits( 12);
 		vertical_size	= bs.GetBits( 12);
 		aspect_ratio	= bs.GetBits(  4);
-		pict_rate 		= bs.GetBits(  4);
-		picture_rate	= pict_rate;
+		picture_rate 	= bs.GetBits(  4);
 		bit_rate		= bs.GetBits( 18);
 		marker_bit( bs, 1);
 		vbv_buffer_size	= bs.GetBits( 10);
@@ -60,9 +59,9 @@ void VideoStream::ScanFirstSeqHeader()
 		exit (1);
     }
 
-	if (pict_rate >0 && pict_rate <= mpeg_num_framerates)
+	if (picture_rate >0 && picture_rate <= mpeg_num_framerates)
     {
-		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(pict_rate));
+		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(picture_rate));
 	}
     else
     {
