@@ -405,7 +405,7 @@ static const vector signed short PreScale[8] = {
 #ifdef ORIGINAL_SOURCE
 void IDCT(short *input, short *output) {
 #else
-void idct_altivec(short *block) {
+void idct_altivec_old(short *block) {
 #endif
 
   vector signed short t0, t1, t2, t3, t4, t5, t6, t7, t8, t9;

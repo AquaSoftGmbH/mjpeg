@@ -28,6 +28,7 @@ libaltivec_a_SOURCES = \
   build_sub22_mests.c \
   find_best_one_pel.c \
   fdct_idct.c \
+  idct.c \
   quant_non_intra.c \
   quant_weight_coeff_sum.c \
   iquant_non_intra_m1.c \
