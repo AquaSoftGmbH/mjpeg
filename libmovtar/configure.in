@@ -49,26 +49,27 @@ else
   else
     if test -r /usr/local/lib/libjpeg-mmx.a
     then
-      DEFAULT_JPEGDIR=/usr/local/lib
+      DEFAULT_JPEGDIR_I=/usr/local/include
+      DEFAULT_JPEGDIR_L=/usr/local/lib
     else
       echo "No JPEG-MMX lib found"
     fi
   fi
 fi
 
-AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source dir [../jpeg-mmx:/usr/local/src/jpeg-mmx] ], 
+AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source dir [../jpeg-mmx:/usr/local/src/jpeg-mmx:/usr/local/lib] ], 
     JPEGDIR="$withval", 
     JPEGDIR="$DEFAULT_JPEGDIR")
 
 OLDLIBS="$LIBS"
-LIBS="-L $JPEGDIR $LIBS"
+LIBS="-L $JPEGDIR $DEFAULT_JPEGDIR_L $LIBS"
 AC_SUBST(JPEG_INCLUDE)
 
 AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
 					LIBS="$LIBS -ljpeg-mmx"
-					JPEG_INCLUDE="-I $JPEGDIR"
+					JPEG_INCLUDE="-I $JPEGDIR $DEFAULT_JPEGDIR_I"
  		     	],
              	[
              		have_jpeg="no"
