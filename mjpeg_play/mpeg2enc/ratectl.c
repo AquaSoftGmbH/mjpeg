@@ -83,7 +83,6 @@ int	d0i = 0, d0pb = 0;
 */
 static double R;
 static long long int gop_start;
-static long long int  init_R;
 static int d;
 static double T;
 
@@ -107,6 +106,7 @@ static double T;
 
 static int64_t bitcnt_EOP = 0;
 static int gop_undershoot = 0;
+static int undershoot_carry;
 
 /*
   actsum - Total activity (sum block variances) in frame
@@ -242,6 +242,7 @@ void rc_init_seq(int reinit)
 	if( reinit )
 		return;
 
+    undershoot_carry = video_buffer_size / 5;
 	bits_per_mb = (double)bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
@@ -288,10 +289,13 @@ void rc_init_seq(int reinit)
 
 }
 
+static double T_sum;
+
 void rc_init_GOP(int np, int nb)
 {
 	double per_gop_bits = 
-		(double)(1 + np + nb) * (double)bit_rate / frame_rate;
+		(double)(1 + np + nb) * bit_rate / frame_rate;
+
 
 
 	/* A.Stevens Aug 2000: at last I've found the wretched
@@ -318,20 +322,15 @@ void rc_init_GOP(int np, int nb)
 	   it to make bit allocation decisions.
 
 	*/
-	if( gop_start+init_R - bitcount() > (long long int)R+1 ||
-		gop_start+init_R - bitcount() < (long long int)R-1
-		)
-		mjpeg_error( "******BIT LEAKAGE %lld vs %lld\n",
-					 (long long int)R, gop_start+init_R - bitcount() );
-	if( R < -5000 || R > 5000 )
-		mjpeg_warn( "R = %lld\n", (long long int)R );
+
+	T_sum = 0.0;
 	if( R > 0  )
 	{
 		/* We replacing running estimate of undershoot with
 		   *exact* value and use that for calculating how much we
 		   may "carry over"
 		*/
-		gop_undershoot = intmin( video_buffer_size/3, (int)R );
+		gop_undershoot = intmin(undershoot_carry,(int)R);
 
 		R = gop_undershoot + per_gop_bits;		
 	}
@@ -341,9 +340,8 @@ void rc_init_GOP(int np, int nb)
 		R +=  per_gop_bits;
 		gop_undershoot = 0;
 	}
+
 	gop_start = bitcount();
-	init_R = (long long int)R;
-	
 
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;
@@ -355,7 +353,6 @@ void rc_init_GOP(int np, int nb)
 	fprintf(statfile," number of B pictures in GOP: Nb=%d\n",Nb);
 #endif
 }
-
 
 
 /* Step 1: compute target bits for current picture being coded */
@@ -378,7 +375,7 @@ void rc_init_pict(pict_data_s *picture)
 	   of DCT coefficients) and actual quantisation weighted activty.
 	   We use this to try to predict the activity of each frame.
 	*/
-
+	
 	actsum =  calc_actj(picture );
 	avg_act = (double)actsum/(double)(mb_per_pict);
 	sum_avg_act += avg_act;
@@ -440,6 +437,11 @@ void rc_init_pict(pict_data_s *picture)
 	/* Undershot bits have been "returned" via R */
 	if( d < 0 )
 		d = 0;
+	if( picture->decode && picture->pict_type == I_TYPE)
+		printf( "%d: RATE = %lld d=%d\n", 
+				picture->decode, 
+				bitcount() / picture->decode * (long long int) frame_rate,
+				d);
 
 	/* We don't let the target volume get absurdly low as it makes some
 	   of the prediction maths ill-condtioned.  At these levels quantisation
@@ -449,6 +451,8 @@ void rc_init_pict(pict_data_s *picture)
 	{
 		T = 4000.0;
 	}
+
+	T_sum += T;
 	target_Q = scale_quant(picture, 
 						   avg_K * avg_act *(mb_per_pict) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
@@ -564,10 +568,10 @@ void rc_update_pict(pict_data_s *picture)
 	 */
 
 	picture->pad = 0;
-	if( gop_undershoot-frame_overshoot > video_buffer_size/3 )
+	if( gop_undershoot-frame_overshoot > undershoot_carry )
 	{
 		int padding_bytes = 
-			((gop_undershoot-frame_overshoot)-video_buffer_size/3)/8;
+			((gop_undershoot-frame_overshoot)-undershoot_carry)/8;
 		if( quant_floor != 0 )	/* VBR case pretend to pad */
 		{
 			PP = AP + padding_bytes;
@@ -594,7 +598,7 @@ void rc_update_pict(pict_data_s *picture)
 	   in the estimate growing too excessive...
 	   */
 	gop_undershoot -= frame_overshoot;
-	gop_undershoot = gop_undershoot > 0 ? gop_undershoot : 0;
+	//gop_undershoot = gop_undershoot > 0 ? gop_undershoot : 0;
 	R-= PP;						/* remaining # of bits in GOP */
 
 	Qsum = 0;

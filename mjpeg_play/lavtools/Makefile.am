@@ -19,7 +19,7 @@ bin_PROGRAMS = \
 	transist.flt matteblend.flt lavpipe yuvscaler yuvplay
 
 lav_headers = lav_io.h editlist.h xlav.h avilib.h yuv4mpeg.h jpegutils.h \
-	yuvscaler.h frquencies.h
+	yuvscaler.h frequencies.h
 
 ypipe_SOURCES = ypipe.c yuv4mpeg.c $(lav_headers)
 ypipe_LDADD = -L$(top_srcdir)/utils -lutils

@@ -40,7 +40,8 @@
 #define EXTERN
 #endif
 
-#define BITCOUNT_OFFSET  800000000LL
+//#define BITCOUNT_OFFSET  800000000LL
+#define BITCOUNT_OFFSET  0LL
 
 /* prototypes of global functions */
 
@@ -476,3 +477,22 @@ EXTERN int tst_counter
 /* Some macros for stuff that is (tediously) absent from the standard
    C libraries.
 */
+
+EXTERN int ctr_44 
+#ifdef GLOBAL 
+= 0
+#endif
+;
+
+EXTERN int ctr_22
+#ifdef GLOBAL 
+= 0
+#endif
+;
+
+EXTERN int ctr_11
+#ifdef GLOBAL 
+= 0
+#endif
+;
+
