@@ -1,9 +1,9 @@
-transitions/Makefile
-transitions/Makefile.in
-transitions/blend.flt
-transitions/fade.flt
-transitions/fade_s.flt
-transitions/overlay.flt
-transitions/wipe.flt
+Makefile
+Makefile.in
+blend.flt
+fade.flt
+fade_s.flt
+overlay.flt
+wipe.flt
 .deps
 .libs
