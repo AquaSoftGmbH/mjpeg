@@ -32,16 +32,16 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .RB [ -? ]
 .BI -o \ output_filename_pattern input_file...
 .SH "DESCRIPTION"
-Mplex is a simple two-stream audio/video multiplexer for
-MPEG-1/MPEG-2.  It accepts an MPEG-1/2 video stream and/or an MPEG
-layer II/III audio stream and multiplexes them into a combined
+Mplex is a general-purpose audio/video multiplexer for
+MPEG-1/MPEG-2.  It accepts one or more MPEG-1/2 video stream and/or MPEG
+layer II/III audio streams and multiplexes them into a combined
 program/system stream according to the constraints specified.  Many
 different types of output structure are supported along with presets
 for standard VCD and SVCD streams.  These latter can be burned to CD using
 tools such as \fBvcdimager\fP(1) and played in stand-alone players.
 
 It is also capable of automatically splitting the output stream into
-chunks of a specified size either independently or a sequence end/start
+chunks of a specified size either independently or at sequence end/start
 points in the input video stream.
 .SH "GENERAL FUNCTION LETTERS"
 .TP
