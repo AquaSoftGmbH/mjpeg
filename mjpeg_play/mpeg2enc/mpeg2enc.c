@@ -693,8 +693,10 @@ int main(argc,argv)
 	putseq();
 
 	fclose(outfile);
-	fclose(statfile);
-
+#ifdef OUTPUT_STAT
+	if( statfile != NULL )
+		fclose(statfile);
+#endif
 	return 0;
 }
 

@@ -75,7 +75,7 @@ void predict (pict_data_s *picture);
 
 /* putbits.c */
 void initbits (void);
-void putbits (int val, int n);
+void putbits (uint32_t val, int n);
 void alignbits (void);
 int64_t bitcount (void);
 
