@@ -22,8 +22,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 #include <signal.h>
 #include <string.h>
+#include <math.h>
 
 #include "mjpeg_logging.h"
 
@@ -47,10 +50,18 @@
                                      information will be */
 #endif
 
+#define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
+
+#define FOURCC_RIFF     FOURCC ('R', 'I', 'F', 'F')
+#define FOURCC_WAVE     FOURCC ('W', 'A', 'V', 'E')
+#define FOURCC_FMT      FOURCC ('f', 'm', 't', ' ')
+#define FOURCC_DATA     FOURCC ('d', 'a', 't', 'a')
+
 
 static int   param_quality = 80;
 static char  param_format = 'a';
 static char *param_output = 0;
+static char *param_inputwav = NULL;
 static int   param_bufsize = 256*1024; /* 256 kBytes */
 static int   param_interlace = -1;
 static int   param_maxfilesize = 0;
@@ -104,6 +115,19 @@ int main(int argc, char *argv[])
 
    int frame;
    int fd_in;
+   int wav_fd = 0;
+   long data[64];
+   int fmtlen;
+   double fps;
+   long audio_samps = 0;
+   long audio_rate = 0;
+   int  audio_chans = 0;
+   int  audio_bits = 0;
+   int  audio_bps = 1;
+   double absize = 0.0;
+   long asize = 0;
+   uint8_t *abuff = NULL;
+   long na_out = 0;
    int n;
    lav_file_t *output = 0;
    int filenum = 0;
@@ -116,7 +140,7 @@ int main(int argc, char *argv[])
    y4m_frame_info_t frameinfo;
    y4m_stream_info_t streaminfo;
 
-   while ((n = getopt(argc, argv, "v:f:I:q:b:m:o:")) != -1) {
+   while ((n = getopt(argc, argv, "v:f:I:q:b:m:o:w:")) != -1) {
       switch (n) {
       case 'v':
          verbose = atoi(optarg);
@@ -175,6 +199,9 @@ int main(int argc, char *argv[])
       case 'o':
          param_output = optarg;
          break;
+      case 'w':
+         param_inputwav = optarg;
+         break;
       default:
          usage();
          exit(1);
@@ -217,6 +244,68 @@ int main(int argc, char *argv[])
       param_format = 'a';
    else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
+   fps = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
+
+   /* Open WAV file */
+
+   if (param_inputwav != NULL)
+   {
+      wav_fd = open(param_inputwav,O_RDONLY);
+      if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", sys_errlist[errno]);}
+   
+      n = read(wav_fd,(char*)data,20);
+      if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", sys_errlist[errno]); }
+   
+      if(data[0] != FOURCC_RIFF || data[2] != FOURCC_WAVE ||
+         data[3] != FOURCC_FMT  || data[4] > sizeof(data) )
+      {
+         mjpeg_error_exit1("Error in WAV header");
+      }
+   
+      fmtlen = data[4];
+   
+      n = read(wav_fd,(char*)data,fmtlen);
+      if(n!=fmtlen) { perror("read WAV header"); exit(1); }
+   
+      if( (data[0]&0xffff) != 1)
+      {
+         mjpeg_error_exit1("WAV file is not in PCM format");
+      }
+   
+      audio_chans = (data[0]>>16) & 0xffff;
+      audio_rate  = data[1];
+      audio_bits  = (data[3]>>16) & 0xffff;
+      audio_bps   = (audio_chans*audio_bits+7)/8;
+   
+      if(audio_bps==0) audio_bps = 1; /* safety first */
+   
+      n = read(wav_fd,(char*)data,8);
+      if(n!=8) { mjpeg_error_exit1("Read WAV header: %s", sys_errlist[errno]); }
+   
+      if(data[0] != FOURCC_DATA)
+      {
+         mjpeg_error_exit1("Error in WAV header");
+      }
+      audio_samps = data[1]/audio_bps;
+      absize = audio_rate/fps;
+      abuff = (uint8_t*) malloc(((int)ceil(absize)+10)*audio_bps);
+      if(abuff==0)
+      {
+         mjpeg_error_exit1("Out of Memory - malloc failed");
+      }
+      na_out = 0;
+
+      /* Debug Output */
+   
+      mjpeg_debug("File: %s",param_inputwav);
+      mjpeg_debug("   audio samps: %8ld",audio_samps);
+      mjpeg_debug("   audio chans: %8d",audio_chans);
+      mjpeg_debug("   audio bits:  %8d",audio_bits);
+      mjpeg_debug("   audio rate:  %8ld",audio_rate);
+      mjpeg_debug(" ");
+      mjpeg_debug("Length of audio:  %15.3f sec",(double)audio_samps/(double)audio_rate);
+      mjpeg_debug(" ");
+   }
 
    if (strstr(param_output,"%"))
    {
@@ -226,8 +315,13 @@ int main(int argc, char *argv[])
                                   y4m_si_get_width(&streaminfo),
 				  y4m_si_get_height(&streaminfo),
 				  param_interlace,
-                                  Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
-                                  0, 0, 0);
+                                  fps,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_bits,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_chans,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_rate);
       if (!output) {
          mjpeg_error( "Error opening output file %s: %s", buff, lav_strerror ());
          exit(1);
@@ -239,9 +333,13 @@ int main(int argc, char *argv[])
                                   y4m_si_get_width(&streaminfo),
 				  y4m_si_get_height(&streaminfo),
 				  param_interlace,
-                                  Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
-                                  0, 0, 0);
-/*                                audio_bits, audio_chans, audio_rate); */
+                                  fps,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_bits,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_chans,
+                                  (param_inputwav == NULL)
+				     ? 0 : audio_rate);
       if (!output) {
          mjpeg_error( "Error opening output file %s: %s", param_output, lav_strerror ());
          exit(1);
@@ -277,7 +375,7 @@ int main(int argc, char *argv[])
          exit(1);
       }
 
-      if ((filesize_cur + jpegsize)>>20 > param_maxfilesize)
+      if ((filesize_cur + jpegsize + (int)absize*audio_bps)>>20 > param_maxfilesize)
       {
          /* max file size reached, open a new one if possible */
          if (strstr(param_output,"%"))
@@ -292,8 +390,13 @@ int main(int argc, char *argv[])
                                         y4m_si_get_width(&streaminfo),
                                         y4m_si_get_height(&streaminfo),
                                         param_interlace,
-                                        Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
-                                        0, 0, 0);
+                                        fps,
+                                        (param_inputwav == NULL)
+				           ? 0 : audio_bits,
+                                        (param_inputwav == NULL)
+				           ? 0 : audio_chans,
+                                        (param_inputwav == NULL)
+				           ? 0 : audio_rate);
             if (!output) {
                mjpeg_error( "Error opening output file %s: %s", buff, lav_strerror ());
                exit(1);
@@ -316,8 +419,51 @@ int main(int argc, char *argv[])
       filesize_cur += jpegsize;
       frame++;
 
+      if (param_inputwav != NULL)
+      {
+         asize = ((int)ceil ((double)frame * absize)
+            - (int)ceil ((double)(frame - 1) * absize)) * audio_bps;
+         fflush (stdout);
+         n = read(wav_fd,abuff,asize);
+         if(n>0)
+         {
+            na_out += n/audio_bps;
+            n = lav_write_audio(output,abuff,n/audio_bps);
+            if(n<0)
+            {
+               mjpeg_error("Error writing audio: %s",lav_strerror());
+               lav_close(output);
+               exit(1);
+            }
+         }
+      }
    }
 
+   /* copy remaining audio */
+   if (param_inputwav != NULL)
+   {
+      do
+      {
+         asize = (int)absize * audio_bps;
+         n = read(wav_fd,abuff,asize);
+         if(n>0)
+         {
+            na_out += n/audio_bps;
+            n = lav_write_audio(output,abuff,n/audio_bps);
+            if(n<0)
+            {
+               mjpeg_error("Error writing audio: %s",lav_strerror());
+               lav_close(output);
+               exit(1);
+            }
+         }
+      }
+      while(n>0);
+   }
+
+   if(na_out != audio_samps)
+      mjpeg_warn("audio samples expected: %ld, written: %ld",
+              audio_samps, na_out);
    if (lav_close (output)) {
       mjpeg_error("Closing output file: %s",lav_strerror());
       exit(1);
