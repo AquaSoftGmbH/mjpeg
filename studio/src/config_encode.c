@@ -50,6 +50,13 @@ void create_encoding_layout(GtkWidget *table);
 void set_interlacein_type(GtkWidget *widget, gpointer data);
 void set_addoutputnorm(GtkWidget *widget, gpointer data);
 void set_encoding_syntax(GtkWidget *widget, gpointer data);
+void set_structs_default(struct encodingoptions *point);
+void save_common(FILE *fp);
+void save_section(FILE *fp, struct encodingoptions *point,char section[LONGOPT]);
+void load_common(void);
+void load_section(char section[LONGOPT],struct encodingoptions *point);
+void print_encoding_options(char section[LONGOPT],struct encodingoptions *point);
+
 
 /* config.c */
 int chk_dir(char *name);
@@ -68,34 +75,42 @@ char t_ininterlace_type[LONGOPT];
 
 /* ================================================================= */
 
-void load_config_encode()
+void set_structs_default(struct encodingoptions *point)
 {
-char filename[100];
-char *val;
-int  have_config, i;
+int i;
 
-  sprintf(filename,"%s/%s/%s",getenv("HOME"),".studio", encodeconfigfile );
-  if (0 == cfg_parse_file(filename))
-    have_config = 1;
-   
   for (i=0; i < LONGOPT; i++)
     {
-      encoding.notblacksize[i] ='\0';
-      encoding.input_use[i]    ='\0';
-      encoding.output_size[i]  ='\0';
-      encoding.mode_keyword[i] ='\0';
-      encoding.ininterlace_type[i] ='\0';
+      (*point).notblacksize[i] ='\0';
+      (*point).input_use[i]    ='\0';
+      (*point).output_size[i]  ='\0';
+      (*point).mode_keyword[i] ='\0';
+      (*point).ininterlace_type[i] ='\0';
     }
 
   for (i=0; i < SHORTOPT; i++)
     {
-      encoding.forcestereo[i]    ='\0';
-      encoding.forcemono[i]      ='\0';
-      encoding.forcevcd[i]       ='\0';
+      (*point).forcestereo[i]    ='\0';
+      (*point).forcemono[i]      ='\0';
+      (*point).forcevcd[i]       ='\0';
     }
 
-  encoding.addoutputnorm = 0;
-  encoding_syntax_style = 0;
+  (*point).addoutputnorm = 0;
+  (*point).outputformat = 0;
+  (*point).droplsb = 0;
+  (*point).noisefilter = 0;
+  (*point).audiobitrate = 0;
+  (*point).outputbitrate = 0;
+  (*point).bitrate = 0;
+  (*point).searchradius = 0;
+  (*point).muxformat = 0;
+
+}
+
+void load_common()
+{
+char *val;
+int i;
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Input_file")))
       sprintf(enc_inputfile, val);
@@ -117,83 +132,6 @@ int  have_config, i;
   else 
       sprintf(enc_videofile, "/tmp/video.m1v");
 
-  if (NULL != (val = cfg_get_str("Studio","Encode_Notblack_size")))
-        sprintf(encoding.notblacksize, val);
-  else 
-      sprintf(encoding.notblacksize,"as is");
-
-  if (NULL != (val = cfg_get_str("Studio","Encode_Input_use")))
-      sprintf(encoding.input_use, val);
-  else 
-      sprintf(encoding.input_use,"as is");
-
-  if (NULL != (val = cfg_get_str("Studio","Encode_Output_size")))
-      sprintf(encoding.output_size, val);
-  else 
-      sprintf(encoding.output_size,"as is");
-
-  if (NULL != (val = cfg_get_str("Studio","Encode_Mode_keyword")))
-      sprintf(encoding.mode_keyword, val);
-  else 
-      sprintf(encoding.mode_keyword,"as is");
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Outputformat")))
-        encoding.outputformat = i;
-  else 
-        encoding.outputformat = 0;
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Droplsb")))
-        encoding.droplsb = i;
-  else 
-        encoding.droplsb = 0;
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Noisefilter")))
-        encoding.noisefilter = i;
-  else 
-        encoding.noisefilter = 0;
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Audiobitrate")))
-        encoding.audiobitrate = i;
-  else 
-        encoding.audiobitrate = 224;
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Outputbitrate")))
-        encoding.outputbitrate = i;
-  else 
-        encoding.outputbitrate = 441;
-  
-  if (NULL != (val = cfg_get_str("Studio","Encode_Force_Stereo")))
-    if ( 0 != strcmp(val,"as is"))
-      sprintf(encoding.forcestereo, val);
-  
-  if (NULL != (val = cfg_get_str("Studio","Encode_Force_Mono")))
-    if ( 0 != strcmp(val,"as is"))
-      sprintf(encoding.forcemono, val);
-  
-  if (NULL != (val = cfg_get_str("Studio","Encode_Force_Vcd")))
-    if ( 0 != strcmp(val,"as is"))
-      sprintf(encoding.forcevcd, val);
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Mpeglevel")))
-        encoding.mpeglevel = i;
-  else 
-        encoding.mpeglevel = 1;
-  
-  if (-1 != (i = cfg_get_int("Studio","Encode_Video_Bitrate")))
-        encoding.bitrate = i;
-  else 
-        encoding.bitrate = 1152;
-  
-  if (-1 != (i = cfg_get_int("Studio","Encode_Searchradius")))
-        encoding.searchradius = i;
-  else 
-        encoding.searchradius = 16;
-
-  if (-1 != (i = cfg_get_int("Studio","Encode_Muxformat")))
-        encoding.muxformat = i;
-  else 
-        encoding.muxformat = 0;
-
   if (NULL != (val = cfg_get_str("Studio","Encode_Video_Preview")))
     if ( 0 == strcmp(val,"yes"))
         use_yuvplay_pipe = 1;
@@ -204,37 +142,229 @@ int  have_config, i;
     encoding_syntax_style = i;
   else
     encoding_syntax_style = 140;
-    
+}
 
+void load_section(char section[LONGOPT],struct encodingoptions *point)
+{
+char *val;
+int i;
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Notblack_size")))
+        sprintf((*point).notblacksize, val);
+  else
+      sprintf((*point).notblacksize,"as is");
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Input_use")))
+      sprintf((*point).input_use, val);
+  else
+      sprintf((*point).input_use,"as is");
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Output_size")))
+      sprintf((*point).output_size, val);
+  else
+      sprintf((*point).output_size,"as is");
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Mode_keyword")))
+      sprintf((*point).mode_keyword, val);
+  else
+      sprintf((*point).mode_keyword,"as is");
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Outputformat")))
+        (*point).outputformat = i;
+  else
+        (*point).outputformat = 0;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Droplsb")))
+        (*point).droplsb = i;
+  else
+        (*point).droplsb = 0;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Noisefilter")))
+        (*point).noisefilter = i;
+  else
+        (*point).noisefilter = 0;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Audiobitrate")))
+        (*point).audiobitrate = i;
+  else
+        (*point).audiobitrate = 224;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Outputbitrate")))
+        (*point).outputbitrate = i;
+  else
+        (*point).outputbitrate = 441;
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Force_Stereo")))
+    if ( 0 != strcmp(val,"as is"))
+      sprintf((*point).forcestereo, val);
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Force_Mono")))
+    if ( 0 != strcmp(val,"as is"))
+      sprintf((*point).forcemono, val);
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Force_Vcd")))
+    if ( 0 != strcmp(val,"as is"))
+      sprintf((*point).forcevcd, val);
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Video_Bitrate")))
+        (*point).bitrate = i;
+  else
+        (*point).bitrate = 1152;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Searchradius")))
+        (*point).searchradius = i;
+  else
+        (*point).searchradius = 16;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Muxformat")))
+        (*point).muxformat = i;
+  else
+        (*point).muxformat = 0;
+
+}
+
+void print_encoding_options(char section[LONGOPT], struct encodingoptions *point)
+{
+  printf("\n Encoding options of %s \n",section);
+  printf("Encoding Active Window set to \'%s\' \n",    (*point).notblacksize);
+  printf("Encoding Input use to \'%s\' \n",               (*point).input_use);
+  printf("Encoding Output size to \'%s\' \n",           (*point).output_size);
+  printf("Encoding yvscaler scaling Mode to \'%s\' \n",(*point).mode_keyword);
+  printf("Encoding ininterlace type \'%s\' \n",    (*point).ininterlace_type);
+  printf("Encoding lav2yuv output Format \'%i\' \n",   (*point).outputformat);
+  printf("Encoding Dropping \'%i\'LSB \n",                  (*point).droplsb);
+  printf("Encoding Noise filter strength: \'%i\' \n",   (*point).noisefilter);
+  printf("Encoding Audio Bitrate : \'%i\' \n",         (*point).audiobitrate);
+  printf("Encoding Audio Samplerate : \'%i\' \n",     (*point).outputbitrate);
+  printf("Encoding Audio force stereo: \'%s\' \n",      (*point).forcestereo);
+  printf("Encoding Audio force mono: \'%s\' \n",          (*point).forcemono);
+  printf("Encoding Audio force Vcd: \'%s\' \n",            (*point).forcevcd);
+  printf("Encoding Video Bitrate: \'%i\' \n",               (*point).bitrate);
+  printf("Encoding Searchradius : \'%i\' \n",          (*point).searchradius);
+  printf("Encoding Mplex Format : \'%i\' \n",             (*point).muxformat);
+}
+
+void load_config_encode()
+{
+struct encodingoptions *point;
+char filename[100];
+char section[LONGOPT];
+int have_config;
+
+  sprintf(filename,"%s/%s/%s",getenv("HOME"),".studio", encodeconfigfile );
+  if (0 == cfg_parse_file(filename))
+    have_config = 1;
+
+  point = &encoding; 
+  set_structs_default(point);
+  
+  point = &encoding2;
+  set_structs_default(point);
+ 
+  /* Saved bu not in the structs */
+  encoding_syntax_style = 0;
+
+  load_common();
+  
   if (verbose)
     {
       printf("Encode input file set to \'%s\' \n",enc_inputfile);
       printf("Encode output file set to \'%s\' \n",enc_outputfile);
       printf("Encode input file set to \'%s\' \n",enc_audiofile);
       printf("Encode video file set to \'%s\' \n",enc_videofile);
-      printf("Encoding Active Window set to \'%s\' \n", encoding.notblacksize);
-      printf("Encoding Input use to \'%s\' \n",encoding.input_use);
-      printf("Encoding Output size to \'%s\' \n",encoding.output_size);
-      printf("Encoding yvscaler scaling Mode to \'%s\' \n",encoding.mode_keyword);
-      printf("Encoding lav2yuv output Format \'%i\' \n",encoding.outputformat);
-      printf("Encoding Dropping \'%i\'LSB \n",encoding.droplsb);
-      printf("Encoding Noise filter strength: \'%i\' \n",encoding.noisefilter);
-      printf("Encoding Audio force stereo: \'%s\' \n",encoding.forcestereo);
-      printf("Encoding Audio force mono: \'%s\' \n",encoding.forcemono);
-      printf("Encoding Audio force Vcd: \'%s\' \n",encoding.forcevcd);
-      printf("Encoding Mpeg level: \'%i\' \n",encoding.mpeglevel);
-      printf("Encoding Video Bitrate: \'%i\' \n",encoding.bitrate);
-      printf("Encoding Searchradius : \'%i\' \n",encoding.searchradius);
-      printf("Encoding Mplex Format : \'%i\' \n",encoding.muxformat);
       printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
       printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
     }
+
+  strncpy(section,"MPEG1",LONGOPT);
+  point = &encoding; 
+  load_section(section,point);
+  if (verbose) 
+    print_encoding_options(section,point);
+
+  strncpy(section,"MPEG2",LONGOPT);
+  point = &encoding2; 
+  load_section("MPEG2",point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+}
+
+void save_common(FILE *fp)
+{
+
+  fprintf(fp,"[Studio]\n");
+  fprintf(fp,"Encode_Input_file = %s\n", enc_inputfile);
+  fprintf(fp,"Encode_Output_file = %s\n", enc_outputfile);
+  fprintf(fp,"Encode_Audio_file = %s\n", enc_audiofile);
+  fprintf(fp,"Encode_Video_file = %s\n", enc_videofile);
+
+  if (use_yuvplay_pipe == 1)
+    fprintf(fp,"Encode_Video_Preview = %s\n", "yes");
+  else
+    fprintf(fp,"Encode_Video_Preview = %s\n", "no");
+
+  fprintf(fp,"Encoding_Syntax_style = %i\n", encoding_syntax_style);
+
+}
+
+void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT])
+{
+  fprintf(fp,"[%s]\n",section);
+
+  if (strlen ((*point).notblacksize) > 0)
+    fprintf(fp,"Encode_Notblack_size = %s\n", (*point).notblacksize);
+  else
+    fprintf(fp,"Encode_Notblack_size = %s\n", "as is");
+
+  if (strlen ((*point).input_use) > 0)
+    fprintf(fp,"Encode_Input_use = %s\n",(*point).input_use);
+  else
+    fprintf(fp,"Encode_Input_use = %s\n", "as is");
+
+  if (strlen ((*point).output_size) > 0)
+    fprintf(fp,"Encode_Output_size = %s\n", (*point).output_size);
+  else
+    fprintf(fp,"Encode_Output_size = %s\n", "as is");
+
+  if (strlen ((*point).mode_keyword) > 0)
+    fprintf(fp,"Encode_Mode_keyword = %s\n", (*point).mode_keyword);
+  else
+    fprintf(fp,"Encode_Mode_keyword = %s\n", "as is");
+
+  fprintf(fp,"Encode_Outputformat = %i\n", (*point).outputformat);
+  fprintf(fp,"Encode_Droplsb = %i\n", (*point).droplsb);
+  fprintf(fp,"Encode_Noisefilter = %i\n", (*point).noisefilter);
+  fprintf(fp,"Encode_Audiobitrate = %i\n", (*point).audiobitrate);
+  fprintf(fp,"Encode_Outputbitrate = %i\n", (*point).outputbitrate);
+
+  if ((*point).forcestereo[0] == '-')
+    fprintf(fp,"Encode_Force_Stereo = %s\n", (*point).forcestereo);
+  else
+    fprintf(fp,"Encode_Force_Stereo = %s\n", "as is");
+
+  if ((*point).forcemono[0] == '-')
+    fprintf(fp,"Encode_Force_Mono = %s\n", (*point).forcemono);
+  else
+    fprintf(fp,"Encode_Force_Mono = %s\n", "as is");
+
+  if ((*point).forcevcd[0] == '-')
+    fprintf(fp,"Encode_Force_Vcd = %s\n", (*point).forcevcd);
+  else
+    fprintf(fp,"Encode_Force_Vcd = %s\n", "as is");
+
+  fprintf(fp,"Encode_Video_Bitrate = %i\n", (*point).bitrate);
+  fprintf(fp,"Encode_Searchradius = %i\n", (*point).searchradius);
+
+  fprintf(fp,"Encode_Muxformat = %i\n", (*point).muxformat);
+
 }
 
 /* Save the current encoding configuration */
 void save_config_encode()
 {
 char filename[100], directory[100];
+struct encodingoptions *point;
 FILE *fp;
 
   sprintf(filename,"%s/%s/%s",getenv("HOME"),".studio/", encodeconfigfile);
@@ -256,66 +386,17 @@ FILE *fp;
        return;
     }
 
-  fprintf(fp,"[Studio]\n");
-  fprintf(fp,"Encode_Input_file = %s\n", enc_inputfile);
-  fprintf(fp,"Encode_Output_file = %s\n", enc_outputfile);
-  fprintf(fp,"Encode_Audio_file = %s\n", enc_audiofile);
-  fprintf(fp,"Encode_Video_file = %s\n", enc_videofile);
-  if (strlen (encoding.notblacksize) > 0)
-    fprintf(fp,"Encode_Notblack_size = %s\n", encoding.notblacksize);
-  else 
-    fprintf(fp,"Encode_Notblack_size = %s\n", "as is");
+  /* Save common things like: filenames, preview, ... */
+  save_common(fp);
 
-  if (strlen (encoding.input_use) > 0)
-    fprintf(fp,"Encode_Input_use = %s\n",encoding.input_use);
-  else 
-    fprintf(fp,"Encode_Input_use = %s\n", "as is");
-
-  if (strlen (encoding.output_size) > 0)
-    fprintf(fp,"Encode_Output_size = %s\n", encoding.output_size);
-  else 
-    fprintf(fp,"Encode_Output_size = %s\n", "as is");
-
-  if (strlen (encoding.mode_keyword) > 0)
-    fprintf(fp,"Encode_Mode_keyword = %s\n", encoding.mode_keyword);
-  else 
-    fprintf(fp,"Encode_Mode_keyword = %s\n", "as is");
-
-  fprintf(fp,"Encode_Outputformat = %i\n", encoding.outputformat);
-  fprintf(fp,"Encode_Droplsb = %i\n", encoding.droplsb);
-  fprintf(fp,"Encode_Noisefilter = %i\n", encoding.noisefilter);
-  fprintf(fp,"Encode_Audiobitrate = %i\n", encoding.audiobitrate);
-  fprintf(fp,"Encode_Outputbitrate = %i\n", encoding.outputbitrate);
-
-  if (encoding.forcestereo[0] == '-')
-    fprintf(fp,"Encode_Force_Stereo = %s\n", encoding.forcestereo);
-  else
-    fprintf(fp,"Encode_Force_Stereo = %s\n", "as is");
-
-  if (encoding.forcemono[0] == '-')
-    fprintf(fp,"Encode_Force_Mono = %s\n", encoding.forcemono);
-  else
-    fprintf(fp,"Encode_Force_Mono = %s\n", "as is");
-
-  if (encoding.forcevcd[0] == '-')
-    fprintf(fp,"Encode_Force_Vcd = %s\n", encoding.forcevcd);
-  else
-    fprintf(fp,"Encode_Force_Vcd = %s\n", "as is");
-
-  fprintf(fp,"Encode_Mpeglevel = %i\n", encoding.mpeglevel);
-  fprintf(fp,"Encode_Video_Bitrate = %i\n", encoding.bitrate);
-  fprintf(fp,"Encode_Searchradius = %i\n", encoding.searchradius);
-
-  fprintf(fp,"Encode_Muxformat = %i\n", encoding.muxformat);
+  /* Save the working options of the encoding parameters */
+  point = &encoding; 
+  save_section(fp,point,"MPEG1");
  
-  if (use_yuvplay_pipe == 1)
-    fprintf(fp,"Encode_Video_Preview = %s\n", "yes");
-  else
-    fprintf(fp,"Encode_Video_Preview = %s\n", "no");
-
-   if (verbose) printf("Configuration of the encoding options saved\n");
-
-  fprintf(fp,"Encoding_Syntax_style = %i\n", encoding_syntax_style);
+  point = &encoding2; 
+  save_section(fp,point,"MPEG2");
+ 
+  if (verbose) printf("Configuration of the encoding options saved\n");
 
   fclose(fp);
 }
