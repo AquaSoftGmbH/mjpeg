@@ -1836,11 +1836,11 @@ static void lavrec_record(lavrec_t *info)
             return;
          }
       }
+      lavrec_msg(LAVREC_MSG_INFO, info,
+         "Created %d software JPEG-encoding process(es)\n",
+         info->num_encoders);
+      settings->audio_offset = 0;
    }
-   lavrec_msg(LAVREC_MSG_INFO, info,
-      "Created %d software JPEG-encoding process(es)\n",
-      info->num_encoders);
-   settings->audio_offset = 0;
 
    /* Queue all buffers, this also starts streaming capture */
    for (frame_cnt=0; 
@@ -1857,18 +1857,21 @@ static void lavrec_record(lavrec_t *info)
    }
 
    /* if we're doing software-encoding, start up the software-sync thread */
-   pthread_mutex_init(&(settings->software_sync_mutex), NULL);
-   for (x=0;x<MJPEG_MAX_BUF;x++)
+   if (info->software_encoding)
    {
-      settings->software_sync_ready[x] = 0;
-      pthread_cond_init(&(settings->software_sync_wait[x]), NULL);
-   }
-   if ( pthread_create( &(settings->software_sync_thread), NULL,
-      lavrec_software_sync_thread, (void *) info ) )
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Failed to create software sync thread");
-      lavrec_change_state(info, LAVREC_STATE_STOP);
+      pthread_mutex_init(&(settings->software_sync_mutex), NULL);
+      for (x=0;x<MJPEG_MAX_BUF;x++)
+      {
+         settings->software_sync_ready[x] = 0;
+         pthread_cond_init(&(settings->software_sync_wait[x]), NULL);
+      }
+      if ( pthread_create( &(settings->software_sync_thread), NULL,
+         lavrec_software_sync_thread, (void *) info ) )
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Failed to create software sync thread");
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
    }
 
    /* reset the counter(s) */
