@@ -109,20 +109,19 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
    int need_pause=FALSE;
    hscale_down=1;
    switch (event->keyval) {
-      case GDK_Home: // go to beginning of file
-      case GDK_0:
-      case GDK_asciicircum:  // a.k.a "carat" (shift-6 on us keyboards)
+      case GDK_0:// go to beginning of file
          gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
          break;
-      case GDK_End: // go to end of file
-      case GDK_dollar:
+      case GDK_9: // go to end of file
          need_pause=TRUE;
          write(out_pipe,"s10000000\n",10); break;  // go to end
          break;
       case GDK_parenleft: // mark start of selection
+      case GDK_Home:
          gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BSSelStart),"clicked",(gpointer)1);
          break;
       case GDK_parenright: // mark end of selection
+      case GDK_End:
          gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BSSelEnd),"clicked",(gpointer)1);
          break;
       case GDK_l: // 1 frame right
@@ -159,6 +158,7 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BECopy),"clicked",(gpointer)1);
          break;
       case GDK_p: // paste selection
+      case GDK_Insert:
          gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BEPaste),"clicked",(gpointer)1);
          break;
       case GDK_f: //  play (forward)
@@ -186,6 +186,15 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
       case GDK_3: // go 15 seconds forward
          skip_num_frames(450);
          break;
+      case GDK_4: // go 20 seconds forward
+         skip_num_frames(600);
+         break;
+      case GDK_5: // go 25 seconds forward
+         skip_num_frames(750);
+         break;
+      case GDK_6: // go 30 seconds forward
+         skip_num_frames(900);
+         break;
       case GDK_exclam: // go 5 seconds back
          skip_num_frames(-150);
          break;
@@ -194,6 +203,15 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          break;
       case GDK_numbersign: // go 15 seconds back
          skip_num_frames(-450);
+         break;
+      case GDK_dollar: // go 20 seconds back
+         skip_num_frames(-600);
+         break;
+      case GDK_percent: // go 25 seconds back
+         skip_num_frames(-750);
+         break;
+      case GDK_asciicircum:  // a.k.a "carat" (shift-6 on us keyboards)
+         skip_num_frames(-900);
          break;
       case GDK_Shift_L: // just shift keys, eat them
       case GDK_Shift_R:
