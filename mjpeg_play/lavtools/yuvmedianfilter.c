@@ -45,7 +45,8 @@ int	radius_chroma = 2;
 int	interlace = -1;
 int param_skip = 0;
 int param_fast = 0;
-int param_weight_type = 0;	/* 0 = use param_weight, 1 = 8, 2 = 2.667 */
+int param_weight_type = 0;	/* 0 = use param_weight, 1 = 8, 2 = 2.667,
+							   3 = 13.333, 4 = 24 */
 double param_weight = 8.0;
 #define	NUMAVG	1024
 int	avg_replace[NUMAVG];
@@ -119,6 +120,10 @@ main(int argc, char *argv[])
 				param_weight_type = 1;
 			else if (strcmp (optarg, "2.667") == 0)
 				param_weight_type = 2;
+			else if (strcmp (optarg, "13.333") == 0)
+				param_weight_type = 3;
+			else if (strcmp (optarg, "24") == 0)
+				param_weight_type = 4;
 			else
 				param_weight_type = 0;
 			param_weight = atof (optarg);
@@ -462,6 +467,10 @@ filter_buffer_fast(int width, int height, int row_stride,
 		fasttype = 2;
 	else if (radius == 2 && param_weight_type == 1)
 		fasttype = 3;
+	else if (radius == 1 && param_weight_type == 3)
+		fasttype = 4;
+	else if (radius == 1 && param_weight_type == 4)
+		fasttype = 5;
 	else
 		fasttype = 0;
 
@@ -519,7 +528,7 @@ filter_buffer_fast(int width, int height, int row_stride,
 				  + (int)refpix[row_stride-1]
 				  + (int)refpix[row_stride]
 				  + (int)refpix[row_stride+1]))
-					+ (refpix[0]<<3) + 16) >> 5;
+					+ (((int)refpix[0])<<3) + 16) >> 5;
 				++avg_replace[9];
 				++refpix;
 				++outpix;
@@ -545,7 +554,7 @@ filter_buffer_fast(int width, int height, int row_stride,
 					+ (int)refpix[row_stride-1]
 					+ (int)refpix[row_stride]
 					+ (int)refpix[row_stride+1])
-					+ (refpix[0]<<3) + 8) >> 4;
+					+ (((int)refpix[0])<<3) + 8) >> 4;
 				++avg_replace[9];
 				++refpix;
 				++outpix;
@@ -588,8 +597,61 @@ filter_buffer_fast(int width, int height, int row_stride,
 					+ (int)refpix[row_stride+row_stride]
 					+ (int)refpix[row_stride+row_stride+1]
 					+ (int)refpix[row_stride+row_stride+2])
-					+ (refpix[0]<<3) + 8) >> 5;
+					+ (((int)refpix[0])<<3) + 16) >> 5;
 				++avg_replace[25];
+				++refpix;
+				++outpix;
+			}
+			refpix += (row_stride-width+(radius*2));
+			outpix += (row_stride-width+(radius*2));
+		}
+		break;
+
+	case 4:
+		for(y=radius; y < height-radius; y++)
+		{
+			for(x=radius; x < width - radius; x++)
+			{
+				/* Radius 1, weight 13.333.  The 8 pixels surrounding
+				   the current one have a weight of 3, the current
+				   pixel has a weight of 40, for a total weight of
+				   8*3+40 = 64. */
+				*outpix = ((3 * ((int)refpix[-row_stride-1]
+					+ (int)refpix[-row_stride]
+					+ ((int)refpix[-row_stride+1]
+					+  (int)refpix[-1]) 
+				  + (int)refpix[1]
+				  + (int)refpix[row_stride-1]
+				  + (int)refpix[row_stride]
+				  + (int)refpix[row_stride+1]))
+					+ (((int)refpix[0])*40) + 32) >> 6;
+				++avg_replace[9];
+				++refpix;
+				++outpix;
+			}
+			refpix += (row_stride-width+(radius*2));
+			outpix += (row_stride-width+(radius*2));
+		}
+		break;
+
+	case 5:
+		for(y=radius; y < height-radius; y++)
+		{
+			for(x=radius; x < width - radius; x++)
+			{
+				/* Radius 1, weight 24.  The 8 pixels surrounding the
+				   current one have a weight of 1, the current pixel has
+				   a weight of 24, for a total weight of 8*1+24 = 32. */
+				*outpix = (((int)refpix[-row_stride-1]
+					+ (int)refpix[-row_stride]
+					+ (int)refpix[-row_stride+1]
+					+ (int)refpix[-1]
+					+ (int)refpix[1]
+					+ (int)refpix[row_stride-1]
+					+ (int)refpix[row_stride]
+					+ (int)refpix[row_stride+1])
+					+ (((int)refpix[0])*24) + 16) >> 5;
+				++avg_replace[9];
 				++refpix;
 				++outpix;
 			}
