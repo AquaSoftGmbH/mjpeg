@@ -47,12 +47,28 @@ IMAGE,
 TEXT
 };
 
+enum {
+STUDIO_TRANSITION_BLEND = 0,
+STUDIO_TRANSITION_WIPE_L2R,
+STUDIO_TRANSITION_WIPE_R2L,
+STUDIO_TRANSITION_WIPE_T2B,
+STUDIO_TRANSITION_WIPE_B2T,
+STUDIO_TRANSITION_OVERLAY_ENLARGE,
+STUDIO_TRANSITION_OVERLAY_ENSMALL
+};
+
 /* structs for the various effect utilities here */
 struct scene_transition_options {
-	char type[256];		/* the name of the effect used */
+	int type;		/* the name of the effect used */
 	int length;		/* length of the scene transition */
-	int value_start;	/* beginning value for transition */
-	int value_end;		/* end value for transition */
+	int value_start;	/* beginning value for transition (blend) */
+	int value_end;		/* end value for transition (blend) */
+	int num_rows;		/* number of wipe rows (wipe) */
+	int reposition_first;	/* whether to reposition scene 1 (wipe) */
+	int reposition_second;	/* whether to reposition scene 2 (wipe) */
+	int orig_pos_x;		/* point of origin (X, overlay) */
+	int orig_pos_y;		/* point of origin (Y, overlay) */
+	int scaling;		/* whether to scale the stream (overlay) */
 	char scene1_file[256];
 	int scene1_start;	/* filename, start/end framenum for scene 1 */
 	int scene1_stop;
@@ -96,6 +112,9 @@ int preview_or_render; /* 0=preview, 1=render */
 char renderfile[256], soundfile[256];
 static GtkWidget *render_button_label = NULL, *render_progress_label = NULL, *render_progress_status_label = NULL;
 static GtkObject *render_progress_adj = NULL;
+static GtkWidget *progress_label = NULL;
+static int num_frames = 0;
+static GtkWidget *transition_selection_box[3];
 
 /* size of preview-tv-window */
 int lavedit_effects_preview_width = 240;
@@ -109,7 +128,11 @@ void alpha_to_yuv(int width, int height, int rowstride, guchar *rgba, guchar **y
 
 void effects_finished(void);
 void effects_callback(int number, char *msg);
+GtkWidget *effects_tv(gpointer options, GtkSignalFunc play);
 
+void scene_transition_type_selected(GtkWidget *widget, gpointer data);
+void scene_transition_button_toggled(GtkWidget *w, int *i);
+void scene_transition_textbox_changed(GtkWidget *widget, int *i);
 void stop_rendering_process(GtkWidget *w, gpointer data);
 void create_progress_window(int length);
 void start_lavpipe_render(char *lavpipe_file, char *result_file);
@@ -188,6 +211,7 @@ void effects_finished()
 	else
 	{
 		/* lavpipe | yuvplay */
+		gtk_label_set_text(GTK_LABEL(progress_label), "Frame 0/0");
 	}
 }
 
@@ -209,6 +233,19 @@ void effects_callback(int number, char *msg)
 	else
 	{
 		/* lavpipe | yuvplay */
+		if (number == YUVPLAY_E)
+		{
+			if (strncmp(msg, "Playing frame ", 14)==0)
+			{
+				int n;
+				char temp[256];
+				sscanf(msg+14, "%d", &n);
+				sprintf(temp, "Frame %d/%d", n, num_frames);
+				if (progress_label)
+					gtk_label_set_text(GTK_LABEL(progress_label),
+						temp);
+			}
+		}
 	}
 }
 
@@ -287,6 +324,57 @@ void create_progress_window(int length)
 
 	gtk_grab_add(window);
 	gtk_widget_show(window);
+}
+
+GtkWidget *effects_tv(gpointer options, GtkSignalFunc play)
+{
+	GtkWidget *vbox2, *button, *pixmap_widget, *hbox2;
+	GtkTooltips *tooltip;
+	
+	tooltip = gtk_tooltips_new();
+	vbox2 = gtk_vbox_new(FALSE, 5);
+
+	/* tv preview window */
+	lavpipe_preview_tv = gtk_event_box_new();
+	gtk_widget_set_usize(GTK_WIDGET(lavpipe_preview_tv),
+		lavedit_effects_preview_width, lavedit_effects_preview_height);
+	gtk_box_pack_start (GTK_BOX (vbox2), lavpipe_preview_tv, TRUE, FALSE, 0);
+	gtk_widget_show (lavpipe_preview_tv);
+	set_background_color(lavpipe_preview_tv,0,0,0);
+
+	/* a play and a stop button in a new hbox */
+	hbox2 = gtk_hbox_new(FALSE, 10);
+
+	button = gtk_button_new(); //_with_label("Stop []"); /* kill */
+	pixmap_widget = gtk_widget_from_xpm_data(editor_stop_xpm);
+	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	gtk_widget_show (pixmap_widget);
+	gtk_tooltips_set_tip(tooltip, button, "Stop Preview Video Stream", NULL);
+	gtk_widget_set_usize(button, 32, 32);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(stop_scene_transition), NULL);
+	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
+	gtk_widget_show (button);
+
+	button = gtk_button_new(); //_with_label("Play |>"); /* lavpipe | yuvplay */
+	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
+	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
+	gtk_widget_show (pixmap_widget);
+	gtk_tooltips_set_tip(tooltip, button, "Preview the Scene Transition", NULL);
+	gtk_widget_set_usize(button, 32, 32);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		play, (gpointer)options);
+	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
+	gtk_widget_show (button);
+
+	progress_label = gtk_label_new("Frame 0/0");
+	gtk_box_pack_start (GTK_BOX (hbox2), progress_label, TRUE,FALSE, 0);
+	gtk_widget_show (progress_label);
+
+	gtk_box_pack_start (GTK_BOX (vbox2), hbox2, TRUE, FALSE, 0);
+	gtk_widget_show(hbox2); 
+
+	return vbox2;
 }
 
 void start_lavpipe_render(char *lavpipe_file, char *result_file)
@@ -387,13 +475,48 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 
 	if(options->length > 0)
 	{
+		int temp_int = 1;
+
 		fprintf(fd, "%d\n", options->length);
 		fprintf(fd, "2\n");
 		fprintf(fd, "0 %d\n", options->scene1_start + options->scene1_stop -
 			options->scene1_start + 1 - options->length);
 		fprintf(fd, "1 %d\n", options->scene2_start);
-		fprintf(fd, "transist.flt -s $o -n $n -o %d -O %d -d %d\n",
-			options->value_start, options->value_end, options->length);
+		/* here, enter the options for the transition!!  TODO */
+		switch (options->type)
+		{
+			case STUDIO_TRANSITION_BLEND:
+				fprintf(fd, "blend.flt -o %d -O %d",
+					options->value_start, options->value_end);
+				break;
+			case STUDIO_TRANSITION_WIPE_R2L:
+			case STUDIO_TRANSITION_WIPE_L2R:
+			case STUDIO_TRANSITION_WIPE_T2B:
+			case STUDIO_TRANSITION_WIPE_B2T:
+				if (options->type == STUDIO_TRANSITION_WIPE_R2L)
+					temp_int = 2;
+				if (options->type == STUDIO_TRANSITION_WIPE_L2R)
+					temp_int = 1;
+				if (options->type == STUDIO_TRANSITION_WIPE_T2B)
+					temp_int = 3;
+				if (options->type == STUDIO_TRANSITION_WIPE_B2T)
+					temp_int = 4;
+				fprintf(fd, "wipe.flt -d %d -n %d -r %d",
+					temp_int, options->num_rows,
+					options->reposition_second*2+options->reposition_first);
+				break;
+			case STUDIO_TRANSITION_OVERLAY_ENLARGE:
+			case STUDIO_TRANSITION_OVERLAY_ENSMALL:
+				fprintf(fd, "overlay.flt %s%s-p %d,%d",
+					options->type==STUDIO_TRANSITION_OVERLAY_ENSMALL?"-i ":"",
+					options->scaling?"-s ":"",
+					options->orig_pos_x, options->orig_pos_y);
+				break;
+		}
+		/* length */
+		fprintf(fd, " -l %d\n", options->length);
+		//fprintf(fd, "transist.flt -s $o -n $n -o %d -O %d -d %d\n",
+		//	options->value_start, options->value_end, options->length);
 	}
 
 	if (options->scene2_stop - options->scene2_start + 1 - options->length > 0 && preview_or_render == 0)
@@ -408,7 +531,11 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 
 	/* done! now start lavpipe | yuvplay */
 	if (preview_or_render == 0)
+	{
+		num_frames = options->scene2_stop + options->scene1_stop + 2 -
+			options->scene1_start - options->scene2_start - options->length;
 		start_lavpipe_preview(file);
+	}
 	else
 		start_lavpipe_render(file, renderfile);
 }
@@ -484,16 +611,73 @@ void scene_transition_adj_changed(GtkAdjustment *adj, int *i)
 	*i = adj->value;
 }
 
+void scene_transition_textbox_changed(GtkWidget *widget, int *i)
+{
+	*i = atoi(gtk_entry_get_text(GTK_ENTRY(widget)));
+}
+
+void scene_transition_button_toggled(GtkWidget *w, int *i)
+{
+	*i = GTK_TOGGLE_BUTTON (w)->active;
+}
+
+void scene_transition_type_selected(GtkWidget *widget, gpointer data)
+{
+	char *what;
+	int type=0;
+	struct scene_transition_options *options = (struct scene_transition_options*)data;
+
+	what = gtk_entry_get_text(GTK_ENTRY(widget));
+	if (strcmp(what,"Blend")==0)
+		type = STUDIO_TRANSITION_BLEND;
+	else if (strcmp(what,"Left-to-Right Wipe")==0)
+		type = STUDIO_TRANSITION_WIPE_L2R;
+	else if (strcmp(what,"Right-to-Left Wipe")==0)
+		type = STUDIO_TRANSITION_WIPE_R2L;
+	else if (strcmp(what,"Top-to-Bottom Wipe")==0)
+		type = STUDIO_TRANSITION_WIPE_T2B;
+	else if (strcmp(what,"Bottom-to-Top Wipe")==0)
+		type = STUDIO_TRANSITION_WIPE_B2T;
+	else if (strcmp(what,"Covering Overlay")==0)
+		type = STUDIO_TRANSITION_OVERLAY_ENLARGE;
+	else if (strcmp(what,"Disappearing Overlay")==0)
+		type = STUDIO_TRANSITION_OVERLAY_ENSMALL;
+	else return;
+
+	options->type = type;
+	if (type == STUDIO_TRANSITION_BLEND)
+	{
+		gtk_widget_hide(transition_selection_box[1]);
+		gtk_widget_hide(transition_selection_box[2]);
+		gtk_widget_show(transition_selection_box[0]);
+	}
+	if (type == STUDIO_TRANSITION_WIPE_R2L || 
+		type == STUDIO_TRANSITION_WIPE_L2R ||
+		type == STUDIO_TRANSITION_WIPE_T2B ||
+		type == STUDIO_TRANSITION_WIPE_B2T)
+	{
+		gtk_widget_hide(transition_selection_box[0]);
+		gtk_widget_hide(transition_selection_box[2]);
+		gtk_widget_show(transition_selection_box[1]);
+	}
+	else if (type == STUDIO_TRANSITION_OVERLAY_ENLARGE ||
+		type == STUDIO_TRANSITION_OVERLAY_ENSMALL)
+	{
+		gtk_widget_hide(transition_selection_box[1]);
+		gtk_widget_hide(transition_selection_box[0]);
+		gtk_widget_show(transition_selection_box[2]);
+	}
+}
+
 void effects_scene_transition_show_window(struct scene_transition_options *options)
 {
 	/* Create a preview (lavpipe | yuvplay) for the transition in *options */
 
-	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator, *button;
-	GtkWidget *vbox3, *pixmap_widget, *scrollbar, *label;
-	GtkTooltips *tooltip;
+	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator, *button, *listw;
+	GList *list = NULL;
+	GtkWidget *vbox3, *scrollbar, *label, *listbox, *textbox;
 	GtkObject *adj;
-
-	tooltip = gtk_tooltips_new();
+	char temp[256];
 
 	window = gtk_window_new(GTK_WINDOW_DIALOG);
 	vbox = gtk_vbox_new(FALSE, 5);
@@ -502,44 +686,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_container_set_border_width (GTK_CONTAINER (window), 20);
 
 	hbox = gtk_hbox_new(FALSE, 10);
-	vbox2 = gtk_vbox_new(FALSE, 5);
-
-	/* tv preview window */
-	lavpipe_preview_tv = gtk_event_box_new();
-	gtk_widget_set_usize(GTK_WIDGET(lavpipe_preview_tv),
-		lavedit_effects_preview_width, lavedit_effects_preview_height);
-	gtk_box_pack_start (GTK_BOX (vbox2), lavpipe_preview_tv, TRUE, FALSE, 0);
-	gtk_widget_show (lavpipe_preview_tv);
-	set_background_color(lavpipe_preview_tv,0,0,0);
-
-	/* a play and a stop button in a new hbox */
-	hbox2 = gtk_hbox_new(TRUE, 10);
-
-	button = gtk_button_new(); //_with_label("Stop []"); /* kill */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_stop_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Stop Preview Video Stream", NULL);
-	gtk_widget_set_usize(button, 32, 32);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(stop_scene_transition), NULL);
-	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
-	gtk_widget_show (button);
-
-	button = gtk_button_new(); //_with_label("Play |>"); /* lavpipe | yuvplay */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Preview the Scene Transition", NULL);
-	gtk_widget_set_usize(button, 32, 32);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(play_scene_transition), (gpointer)options);
-	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
-	gtk_widget_show (button);
-
-	gtk_box_pack_start (GTK_BOX (vbox2), hbox2, TRUE, FALSE, 0);
-	gtk_widget_show(hbox2); 
-
+	vbox2 = effects_tv((gpointer)options, GTK_SIGNAL_FUNC(play_scene_transition));
 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, FALSE, 0);
 	gtk_widget_show(vbox2);
 
@@ -547,8 +694,30 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 
 	/* options for a scene transition */
 
-	/* Once we have >1 scene transitions, we could add a selection box here */
+	vbox3 = gtk_vbox_new(FALSE, 5);
 
+	label = gtk_label_new("Transition Type: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	list = g_list_append(list, "Blend");
+	list = g_list_append(list, "Left-to-Right Wipe");
+	list = g_list_append(list, "Right-to-Left Wipe");
+	list = g_list_append(list, "Top-to-Bottom Wipe");
+	list = g_list_append(list, "Bottom-to-Top Wipe");
+	list = g_list_append(list, "Covering Overlay");
+	list = g_list_append(list, "Disappearing Overlay");
+	listw = gtk_combo_new();
+	//gtk_entry_set_editable(GTK_ENTRY(GTK_COMBO(listw)->entry), FALSE);
+	gtk_combo_set_popdown_strings(GTK_COMBO(listw), list);
+	gtk_signal_connect(GTK_OBJECT(GTK_COMBO(listw)->entry),
+		"changed", GTK_SIGNAL_FUNC (scene_transition_type_selected),
+		(gpointer)options);
+	gtk_box_pack_start (GTK_BOX (vbox3), listw, TRUE, FALSE, 0);
+	gtk_widget_show (listw);
+
+	gtk_box_pack_start (GTK_BOX (vbox2), vbox3, TRUE, FALSE, 0);
+	gtk_widget_show(vbox3);
 	vbox3 = gtk_vbox_new(FALSE, 5);
 
 	label = gtk_label_new("Length: ");
@@ -572,6 +741,12 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 
 	gtk_box_pack_start (GTK_BOX (vbox2), vbox3, TRUE, FALSE, 0);
 	gtk_widget_show(vbox3);
+
+	/* options which are specific per transition */
+
+	/* BLEND */
+	transition_selection_box[0] = gtk_frame_new("Blend-Specific Options");
+	listbox = gtk_vbox_new(FALSE, 15);
 	vbox3 = gtk_vbox_new(FALSE, 5);
 
 	label = gtk_label_new("Start opacity: ");
@@ -589,7 +764,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_box_pack_start (GTK_BOX (vbox3), scrollbar, TRUE, FALSE, 0);
 	gtk_widget_show(scrollbar);
 
-	gtk_box_pack_start (GTK_BOX (vbox2), vbox3, TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
 	gtk_widget_show(vbox3);
 	vbox3 = gtk_vbox_new(FALSE, 5);
 
@@ -608,8 +783,140 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_box_pack_start (GTK_BOX (vbox3), scrollbar, TRUE, FALSE, 0);
 	gtk_widget_show(scrollbar);
 
-	gtk_box_pack_start (GTK_BOX (vbox2), vbox3, TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
 	gtk_widget_show(vbox3);
+	gtk_container_add(GTK_CONTAINER(transition_selection_box[0]), listbox);
+	gtk_widget_show(listbox);
+	gtk_box_pack_start (GTK_BOX (vbox2),
+		transition_selection_box[0], TRUE, FALSE, 0);
+	if (options->type == STUDIO_TRANSITION_BLEND)
+		gtk_widget_show(transition_selection_box[0]);
+
+
+	/* WIPE */
+	transition_selection_box[1] = gtk_frame_new("Blend-Specific Options");
+	listbox = gtk_vbox_new(FALSE, 15);
+	vbox3 = gtk_vbox_new(FALSE, 5);
+
+	hbox2 = gtk_hbox_new(FALSE, 5);
+	label = gtk_label_new("Number of Rows: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (hbox2), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	sprintf(temp, "%d", options->num_rows);
+	textbox = gtk_entry_new();
+	gtk_widget_set_usize(textbox, 50, 23);
+	gtk_entry_set_text(GTK_ENTRY(textbox),temp);
+	gtk_box_pack_start (GTK_BOX (hbox2),textbox, TRUE, FALSE, 0);
+	gtk_signal_connect(GTK_OBJECT(textbox), "changed",
+		GTK_SIGNAL_FUNC(scene_transition_textbox_changed), &(options->num_rows));
+	gtk_widget_show(textbox);
+	gtk_box_pack_start (GTK_BOX (vbox3),hbox2, TRUE, FALSE, 0);
+	gtk_widget_show(hbox2);
+
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
+	gtk_widget_show(vbox3);
+	vbox3 = gtk_vbox_new(FALSE, 5);
+
+	label = gtk_label_new("Repositioning: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	button =  gtk_check_button_new_with_label ("Stream 1");
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button),
+		options->reposition_first);
+	gtk_signal_connect(GTK_OBJECT(button), "toggled",
+		GTK_SIGNAL_FUNC(scene_transition_button_toggled),
+		&(options->reposition_first));
+	gtk_box_pack_start (GTK_BOX (vbox3),button, TRUE, TRUE, 0);
+	gtk_widget_show (button);
+	button =  gtk_check_button_new_with_label ("Stream 2");
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button),
+		options->reposition_second);
+	gtk_signal_connect(GTK_OBJECT(button), "toggled",
+		GTK_SIGNAL_FUNC(scene_transition_button_toggled),
+		&(options->reposition_second));
+	gtk_box_pack_start (GTK_BOX (vbox3), button, TRUE, FALSE, 0);
+	gtk_widget_show (button);
+
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
+	gtk_widget_show(vbox3);
+	gtk_container_add(GTK_CONTAINER(transition_selection_box[1]), listbox);
+	gtk_widget_show(listbox);
+	gtk_box_pack_start (GTK_BOX (vbox2),
+		transition_selection_box[1], TRUE, FALSE, 0);
+	if (options->type == STUDIO_TRANSITION_WIPE_R2L ||
+		options->type == STUDIO_TRANSITION_WIPE_L2R ||
+		options->type == STUDIO_TRANSITION_WIPE_T2B ||
+		options->type == STUDIO_TRANSITION_WIPE_B2T)
+		gtk_widget_show(transition_selection_box[1]);
+
+	/* OVERLAY */
+	transition_selection_box[2] = gtk_frame_new("Blend-Specific Options");
+	listbox = gtk_vbox_new(FALSE, 15);
+	vbox3 = gtk_vbox_new(FALSE, 5);
+
+	label = gtk_label_new("Point of Origin: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	hbox2 = gtk_hbox_new(FALSE, 5);
+	label = gtk_label_new("X , Y: ");
+	gtk_box_pack_start (GTK_BOX (hbox2), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	textbox = gtk_entry_new();
+	gtk_widget_set_usize(textbox, 50, 23);
+	sprintf(temp, "%d", options->orig_pos_x);
+	gtk_entry_set_text(GTK_ENTRY(textbox), temp);
+	gtk_signal_connect(GTK_OBJECT(textbox), "changed",
+		GTK_SIGNAL_FUNC(scene_transition_textbox_changed),
+		&(options->orig_pos_x));
+	gtk_box_pack_start (GTK_BOX (hbox2), textbox, TRUE, FALSE, 0);
+	gtk_widget_show(textbox);
+	label = gtk_label_new(" , ");
+	gtk_box_pack_start (GTK_BOX (hbox2), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	textbox = gtk_entry_new();
+	gtk_widget_set_usize(textbox, 50, 23);
+	sprintf(temp, "%d", options->orig_pos_y);
+	gtk_entry_set_text(GTK_ENTRY(textbox), temp);
+	gtk_signal_connect(GTK_OBJECT(textbox), "changed",
+		GTK_SIGNAL_FUNC(scene_transition_textbox_changed),
+		&(options->orig_pos_y));
+	gtk_box_pack_start (GTK_BOX (hbox2), textbox, TRUE, FALSE, 0);
+	gtk_widget_show(textbox);
+	gtk_box_pack_start (GTK_BOX (vbox3), hbox2, TRUE, FALSE, 0);
+	gtk_widget_show(hbox2);
+
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
+	gtk_widget_show(vbox3);
+	vbox3 = gtk_vbox_new(FALSE, 5);
+
+	label = gtk_label_new("Scaling: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
+	gtk_widget_show(label);
+	button =  gtk_check_button_new_with_label ("Enable scaling");
+	gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button),
+		options->scaling);
+	gtk_signal_connect(GTK_OBJECT(button), "toggled",
+		GTK_SIGNAL_FUNC(scene_transition_button_toggled),
+		&(options->scaling));
+	gtk_box_pack_start (GTK_BOX (vbox3), button, TRUE, FALSE, 0);
+	gtk_widget_show (button);
+
+	gtk_box_pack_start (GTK_BOX (listbox), vbox3, TRUE, FALSE, 0);
+	gtk_widget_show(vbox3);
+	gtk_container_add(GTK_CONTAINER(transition_selection_box[2]), listbox);
+	gtk_widget_show(listbox);
+	gtk_box_pack_start (GTK_BOX (vbox2),
+		transition_selection_box[2], TRUE, FALSE, 0);
+	if (options->type == STUDIO_TRANSITION_OVERLAY_ENLARGE ||
+		options->type == STUDIO_TRANSITION_OVERLAY_ENSMALL)
+		gtk_widget_show(transition_selection_box[2]);
+
+	/***********************************/
+
 
 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, FALSE, 0);
 	gtk_widget_show(vbox2);
@@ -677,9 +984,15 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	options = (struct scene_transition_options*)malloc(sizeof(struct scene_transition_options));
 
 	/* let's start by setting some defaults */
-	sprintf(options->type, "transist.flt");
+	options->type = STUDIO_TRANSITION_BLEND;
 	options->value_start = 0;
 	options->value_end = 255;
+	options->num_rows = 1;
+	options->reposition_first = 0;
+	options->reposition_second = 0;
+	options->orig_pos_x = 0;
+	options->orig_pos_y = 0;
+	options->scaling = 0;
 	strcpy(options->scene1_file, GTK_IMAGEPLUG(image[current_image])->video_filename);
 	options->scene1_start = GTK_IMAGEPLUG(image[current_image])->startframe;
 	options->scene1_stop = GTK_IMAGEPLUG(image[current_image])->stopframe;
@@ -1008,10 +1321,12 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fprintf(fd, "%s\n", pal_or_ntsc=='p'?"PAL":"NTSC");
 	fprintf(fd, "3\n");
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene_file);
-	fprintf(fd, "/home/rbultje/mjpeg/foreveryuv %d %d %s\n",
-		options->movie_width, options->movie_height, yuv_file);
-	fprintf(fd, "/home/rbultje/mjpeg/foreveryuv %d %d %s\n",
-		options->movie_width, options->movie_height, yuv_blend_file);
+	fprintf(fd, "foreveryuv %d %d %d %s\n",
+		options->movie_width, options->movie_height,
+		pal_or_ntsc=='p'?3:4, yuv_file);
+	fprintf(fd, "foreveryuv %d %d %d %s\n",
+		options->movie_width, options->movie_height,
+		pal_or_ntsc=='p'?3:4, yuv_blend_file);
 
 	if (options->offset > 0)
 	{
@@ -1063,7 +1378,10 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 
 	/* done! now start lavpipe | yuvplay */
 	if (preview_or_render == 0)
+	{
+		num_frames = options->scene_end - options->scene_start + 1;
 		start_lavpipe_preview(file);
+	}
 	else
 		start_lavpipe_render(file, renderfile);
 }
@@ -1302,7 +1620,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 {
 	/* Create a preview (lavpipe | yuvplay) for the image overlay in *options */
 
-	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator, *button;
+	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator,*button=NULL;
 	GtkWidget *vbox3, *pixmap_widget, *scrollbar, *label;
 	GtkTooltips *tooltip;
 	GtkObject *adj;
@@ -1326,48 +1644,12 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	gtk_container_set_border_width (GTK_CONTAINER (window), 20);
 
 	hbox = gtk_hbox_new(FALSE, 10);
-	vbox2 = gtk_vbox_new(FALSE, 5);
-
-	/* tv preview window */
-	lavpipe_preview_tv = gtk_event_box_new();
-	gtk_widget_set_usize(GTK_WIDGET(lavpipe_preview_tv),
-		lavedit_effects_preview_width, lavedit_effects_preview_height);
-	gtk_box_pack_start (GTK_BOX (vbox2), lavpipe_preview_tv, TRUE, FALSE, 0);
-	gtk_widget_show (lavpipe_preview_tv);
-	set_background_color(lavpipe_preview_tv,0,0,0);
-
-	/* a play and a stop button in a new hbox */
-	hbox2 = gtk_hbox_new(TRUE, 10);
-
-	button = gtk_button_new(); //_with_label("Stop []"); /* kill */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_stop_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Stop Preview Video Stream", NULL);
-	gtk_widget_set_usize(button, 32, 32);
-	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(stop_scene_transition), NULL);
-	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
-	gtk_widget_show (button);
-
-	button = gtk_button_new(); //_with_label("Play |>"); /* lavpipe | yuvplay */
-	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
-	gtk_container_add(GTK_CONTAINER(button), pixmap_widget);
-	gtk_widget_show (pixmap_widget);
-	gtk_tooltips_set_tip(tooltip, button, "Preview the Scene Transition", NULL);
-	gtk_widget_set_usize(button, 32, 32);
-	if (options->type == TEXT)
-		gtk_signal_connect(GTK_OBJECT(button), "clicked",
-			GTK_SIGNAL_FUNC(play_text_overlay), (gpointer)options);
-	else if (options->type == IMAGE)
-		gtk_signal_connect(GTK_OBJECT(button), "clicked",
-			GTK_SIGNAL_FUNC(play_image_overlay), (gpointer)options);
-	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE,FALSE, 0);
-	gtk_widget_show (button);
-
-	gtk_box_pack_start (GTK_BOX (vbox2), hbox2, TRUE, FALSE, 0);
-	gtk_widget_show(hbox2); 
-
+	if (options->type == IMAGE)
+		vbox2 = effects_tv((gpointer)options,
+			GTK_SIGNAL_FUNC(play_image_overlay));
+	else
+		vbox2 = effects_tv((gpointer)options,
+			GTK_SIGNAL_FUNC(play_text_overlay));
 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, FALSE, 0);
 	gtk_widget_show(vbox2);
 
