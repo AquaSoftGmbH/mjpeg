@@ -2,6 +2,16 @@ This is the required software for compiling the tools here:
 
 .) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
 
+The configure scripts look for this in /usr/local/src/quicktime by default.
+You can specify another directory using the --with-quicktime flag to
+the ./configure script.
+
+N.b. it would seem that quicktime-1.2 is a little picky about the compilers
+it is built under.  You may get complaints about missing functions.
+If so you need to try a more up-to-date gcc or egcs or an older quicktime
+library that doesn't include the offending code (support for digital
+video that makes heavy use of inline's). 
+
 .) libjpeg6 (preferrably libjpeg6b, an alpha, MMX patched version is included )
 (libjpeg6a or 6b is included in the standard distributions)
 
