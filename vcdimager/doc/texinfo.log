@@ -1,0 +1,127 @@
+This is TeX, Version 3.14159 (Web2C 7.3.1) (format=tex 2000.9.23)  16 OCT 2000 23:14
+**texinfo.tex vcdimager.texi
+(texinfo.tex Loading texinfo [version 1999-01-05]: Basics,
+\bindingoffset=\dimen16
+\normaloffset=\dimen17
+\pagewidth=\dimen18
+\pageheight=\dimen19
+\outerhsize=\dimen20
+\outervsize=\dimen21
+\cornerlong=\dimen22
+\cornerthick=\dimen23
+\topandbottommargin=\dimen24
+\headlinebox=\box16
+\footlinebox=\box17
+\margin=\insert252
+\EMsimple=\toks12
+\singlespaceskip=\skip18
+\groupinvalidhelp=\toks13
+\mil=\dimen25
+\exdentamount=\skip19
+\inmarginspacing=\skip20
+ fonts,
+\sffam=\fam8
+\mainmagstep=\count26
+\fontdepth=\count27
+
+page headings,
+\titlepagetopglue=\skip21
+\titlepagebottomglue=\skip22
+\evenheadline=\toks14
+\oddheadline=\toks15
+\evenfootline=\toks16
+\oddfootline=\toks17
+ tables,
+\tableindent=\dimen26
+\itemindent=\dimen27
+\itemmargin=\dimen28
+\itemmax=\dimen29
+\itemno=\count28
+\multitableparskip=\skip23
+\multitableparindent=\skip24
+\multitablecolspace=\dimen30
+\multitablelinespace=\skip25
+\colcount=\count29
+ indexing,
+\secondaryindent=\skip26
+\partialpage=\box18
+\doublecolumnhsize=\dimen31
+ sectioning,
+\chapno=\count30
+\secno=\count31
+\subsecno=\count32
+\subsubsecno=\count33
+\appendixno=\count34
+\absseclevel=\count35
+\secbase=\count36
+\chapheadingskip=\skip27
+\secheadingskip=\skip28
+\subsecheadingskip=\skip29
+ toc,
+\tocfile=\write0
+\contentsrightmargin=\skip30
+\savepageno=\count37
+\lastnegativepageno=\count38
+\shortappendixwidth=\dimen32
+\tocindent=\dimen33
+ environments,
+\dblarrowbox=\box19
+\longdblarrowbox=\box20
+\pushcharbox=\box21
+\bullbox=\box22
+\equivbox=\box23
+\errorbox=\box24
+\lispnarrowing=\skip31
+\envskipamount=\skip32
+\circthick=\dimen34
+\cartouter=\dimen35
+\cartinner=\dimen36
+\normbskip=\skip33
+\normpskip=\skip34
+\normlskip=\skip35
+\lskip=\skip36
+\rskip=\skip37
+ defuns,
+\defbodyindent=\skip38
+\defargsindent=\skip39
+\deftypemargin=\skip40
+\deflastargmargin=\skip41
+\parencount=\count39
+
+macros,
+\macscribble=\write1
+\paramno=\count40
+\macname=\toks18
+ cross references,
+\auxfile=\write2
+\footnoteno=\count41
+ (/usr/share/texmf/tex/plain/dvips/epsf.tex
+\epsffilein=\read0
+\epsfframemargin=\dimen37
+\epsfframethickness=\dimen38
+\epsfrsize=\dimen39
+\epsftmp=\dimen40
+\epsftsize=\dimen41
+\epsfxsize=\dimen42
+\epsfysize=\dimen43
+\pspoints=\dimen44
+\epsfnoopenhelp=\toks19
+)
+\noepsfhelp=\toks20
+
+paper sizes,
+\defaultparindent=\dimen45
+ and turning on texinfo input format.)
+*
+(Please type a command or say `\end')
+*vcdimage.texi
+
+*
+(Please type a command or say `\end')
+*
+! Emergency stop.
+<*> 
+    
+End of file on the terminal!
+
+No pages of output.

@@ -1,0 +1,20 @@
+GNU VCDImager README
+--------------------
+
+see texinfo documentation for more information
+
+see http://www.hvrlab.dhs.org/~hvr/vcdimager/ for latest news,
+information and how to subscribe to mailing lists for VCDImager.
+
+please report any bugs you encounter
+
+information for CD-i support:
+
+get "Video-CD on CD-i 4.1.1" from http://www.icdia.org/sw_app/, unpack
+that zip file into some directory, which needs to be given to
+vcdimager in order to find those files, using the 
+`--with-cdi=' commandline option.
+
+hvr
+--
+$Id$

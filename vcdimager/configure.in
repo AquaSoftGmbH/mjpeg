@@ -1,0 +1,44 @@
+AC_REVISION([$Id$])dnl
+AC_INIT(src/main.c)
+AM_INIT_AUTOMAKE(vcdimager, 0.4)
+AM_MAINTAINER_MODE
+
+AM_SANITY_CHECK
+
+dnl programs
+
+AC_PROG_CC_GNU
+AM_PROG_CC_STDC
+
+dnl libs
+
+AM_PATH_GLIB(1.2.6)
+
+AC_CHECK_LIB(popt, poptGetContext, POPT_LIBS="-lpopt", 
+	AC_MSG_ERROR([*** popt library not found ***]))
+
+dnl headers
+
+AC_DEFINE(_GNU_SOURCE)
+AC_CHECK_HEADER(popt.h,,
+	AC_MSG_ERROR([*** popt headers not found ***]))
+AC_STDC_HEADERS
+
+dnl compiler
+
+AC_C_CONST
+
+dnl system
+
+AC_ARG_WITH(cdi-path,
+	[  --with-cdi-path=DIR      set irectory where CD-i support files are installed [DATADIR/cdi]], 
+	CDIDIR="${withval}",
+	CDIDIR="${datadir}/cdi")
+
+CDI_CFLAGS="-DCDIDIR=\\\"$CDIDIR\\\""
+WARN_CFLAGS="-Wall -ansi -Wmissing-prototypes -Wunused"
+LIBS="$LIBS $POPT_LIBS $GLIB_LIBS"
+CFLAGS="$CFLAGS $CDI_CFLAGS -ansi $GLIB_CFLAGS $WARN_CFLAGS"
+
+AC_OUTPUT( Makefile src/Makefile doc/Makefile vcdimager.spec )
+dnl EOF
