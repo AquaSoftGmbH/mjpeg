@@ -188,7 +188,7 @@ static int audio_size    = 16;          /* size of an audio sample: 8 or 16 bits
 static int audio_rate    = 44100;       /* sampling rate for audio */
 static int stereo        = 0;           /* 0: capture mono, 1: capture stereo */
 static int audio_lev     = 100;         /* Level of Audio input,
-                                            0..100: Recording level
+										   0..100: Recording level
                                            -1:  don't change mixer settings */
 static int audio_mute    = 0;           /* Flag for muting audio output */
 static int audio_recsrc  = 'l';         /* Audio recording source */
@@ -228,62 +228,62 @@ static int need_newline=0;
 
 static void lavrec_msg(int type, char *str1, char *str2)
 {
-   char *ctype;
+	char *ctype;
 
-   switch(type) {
+	switch(type) {
 
-   case LAVREC_DEBUG:
-	if (verbose < 3)
-		return;
-	break;
+	case LAVREC_DEBUG:
+		if (verbose < 3)
+			return;
+		break;
 
-   case LAVREC_INFO:
-	if (verbose < 1)
-		return;
-	break;
+	case LAVREC_INFO:
+		if (verbose < 1)
+			return;
+		break;
 
-   case LAVREC_WARNING:
-	if (verbose < 2)
-		return;
-	break;
+	case LAVREC_WARNING:
+		if (verbose < 2)
+			return;
+		break;
 
-   case LAVREC_PROGRESS:
-	if (verbose == 0)
-		return;
-	break;
-   }
+	case LAVREC_PROGRESS:
+		if (verbose == 0)
+			return;
+		break;
+	}
 
-   if(type==LAVREC_PROGRESS)
-   {
-      printf("%s   \r",str1);
-      fflush(stdout);
-      need_newline=1;
-   }
-   else
-   {
-      switch(type)
-      {
-          case LAVREC_INTERNAL: ctype = "Internal Error"; break;
-          case LAVREC_DEBUG:    ctype = "Debug";          break;
-          case LAVREC_INFO:     ctype = "Info";           break;
-          case LAVREC_WARNING:  ctype = "Warning";        break;
-          case LAVREC_ERROR:    ctype = "Error";          break;
-          default:              ctype = "Unkown";
-      }
-      if(need_newline) printf("\n");
-      printf("%s: %s\n",ctype,str1);
-      if(str2[0]) printf("%s: %s\n",ctype,str2);
-      need_newline=0;
-   }
+	if(type==LAVREC_PROGRESS)
+	{
+		printf("%s   \r",str1);
+		fflush(stdout);
+		need_newline=1;
+	}
+	else
+	{
+		switch(type)
+		{
+		case LAVREC_INTERNAL: ctype = "Internal Error"; break;
+		case LAVREC_DEBUG:    ctype = "Debug";          break;
+		case LAVREC_INFO:     ctype = "Info";           break;
+		case LAVREC_WARNING:  ctype = "Warning";        break;
+		case LAVREC_ERROR:    ctype = "Error";          break;
+		default:              ctype = "Unkown";
+		}
+		if(need_newline) printf("\n");
+		printf("%s: %s\n",ctype,str1);
+		if(str2[0]) printf("%s: %s\n",ctype,str2);
+		need_newline=0;
+	}
 }
 
 /* system_error: report an error from a system call */
 
 static void system_error(char *str1,char *str2)
 {
-   sprintf(infostring,"Error %s (in %s)",str1,str2);
-   lavrec_msg(LAVREC_ERROR,infostring,strerror(errno));
-   exit(1);
+	sprintf(infostring,"Error %s (in %s)",str1,str2);
+	lavrec_msg(LAVREC_ERROR,infostring,strerror(errno));
+	exit(1);
 }
 
 static int mixer_set = 0;
@@ -299,120 +299,120 @@ static int mixer_inplev_saved = 0;
 
 void set_mixer(int flag)
 {
-   int fd, recsrc, level, status, numerr;
-   int sound_mixer_read_input;
-   int sound_mixer_write_input;
-   int sound_mask_input;
-   char *mixer_dev_name;
+	int fd, recsrc, level, status, numerr;
+	int sound_mixer_read_input;
+	int sound_mixer_write_input;
+	int sound_mask_input;
+	char *mixer_dev_name;
 
-   /* Avoid restoring anything when nothing was set */
+	/* Avoid restoring anything when nothing was set */
 
-   if (flag==0 && mixer_set==0) return;
+	if (flag==0 && mixer_set==0) return;
 
-   mixer_dev_name = getenv("LAV_MIXER_DEV");
-   if(!mixer_dev_name) mixer_dev_name = "/dev/mixer";
-   fd = open(mixer_dev_name, O_RDONLY);
-   if (fd == -1)
-   {
-      sprintf(infostring,"Unable to open sound mixer %s", mixer_dev_name);
-      lavrec_msg(LAVREC_WARNING, infostring,
-                 "Try setting the sound mixer with another tool!!!");
-      return;
-   }
+	mixer_dev_name = getenv("LAV_MIXER_DEV");
+	if(!mixer_dev_name) mixer_dev_name = "/dev/mixer";
+	fd = open(mixer_dev_name, O_RDONLY);
+	if (fd == -1)
+	{
+		sprintf(infostring,"Unable to open sound mixer %s", mixer_dev_name);
+		lavrec_msg(LAVREC_WARNING, infostring,
+				   "Try setting the sound mixer with another tool!!!");
+		return;
+	}
 
-   mixer_set = 1;
+	mixer_set = 1;
 
-   switch(audio_recsrc)
-   {
-      case 'l':
-         sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
-         sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
-         sound_mask_input        = SOUND_MASK_LINE;
-         break;
-      case 'm':
-         sound_mixer_read_input  = SOUND_MIXER_READ_MIC;
-         sound_mixer_write_input = SOUND_MIXER_WRITE_MIC;
-         sound_mask_input        = SOUND_MASK_MIC;
-         break;
-      case 'c':
-         sound_mixer_read_input  = SOUND_MIXER_READ_CD;
-         sound_mixer_write_input = SOUND_MIXER_WRITE_CD;
-         sound_mask_input        = SOUND_MASK_CD;
-         break;
-   }
+	switch(audio_recsrc)
+	{
+	case 'l':
+		sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
+		sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
+		sound_mask_input        = SOUND_MASK_LINE;
+		break;
+	case 'm':
+		sound_mixer_read_input  = SOUND_MIXER_READ_MIC;
+		sound_mixer_write_input = SOUND_MIXER_WRITE_MIC;
+		sound_mask_input        = SOUND_MASK_MIC;
+		break;
+	case 'c':
+		sound_mixer_read_input  = SOUND_MIXER_READ_CD;
+		sound_mixer_write_input = SOUND_MIXER_WRITE_CD;
+		sound_mask_input        = SOUND_MASK_CD;
+		break;
+	}
 
-   if(flag)
-   {
-      /* Save the values we are going to change */
+	if(flag)
+	{
+		/* Save the values we are going to change */
 
-      numerr = 0;
-      status = ioctl(fd, SOUND_MIXER_READ_VOLUME, &mixer_volume_saved);
-      if (status == -1) numerr++;
-      status = ioctl(fd, SOUND_MIXER_READ_RECSRC, &mixer_recsrc_saved);
-      if (status == -1) numerr++;
-      status = ioctl(fd, sound_mixer_read_input , &mixer_inplev_saved);
-      if (status == -1) numerr++;
-      if (numerr) 
-      {
-         lavrec_msg(LAVREC_WARNING,
-                    "Unable to save sound mixer settings",
-                    "Restore your favorite setting with another tool after capture");
-         mixer_set = 0; /* Avoid restoring the wrong values */
-      }
+		numerr = 0;
+		status = ioctl(fd, SOUND_MIXER_READ_VOLUME, &mixer_volume_saved);
+		if (status == -1) numerr++;
+		status = ioctl(fd, SOUND_MIXER_READ_RECSRC, &mixer_recsrc_saved);
+		if (status == -1) numerr++;
+		status = ioctl(fd, sound_mixer_read_input , &mixer_inplev_saved);
+		if (status == -1) numerr++;
+		if (numerr) 
+		{
+			lavrec_msg(LAVREC_WARNING,
+					   "Unable to save sound mixer settings",
+					   "Restore your favorite setting with another tool after capture");
+			mixer_set = 0; /* Avoid restoring the wrong values */
+		}
 
-      /* Set the recording source to the line input, 
-         the level of the line input to audio_lev,
-         the output volume to zero (to avoid audio feedback
-         when using a camera build in microphone */
+		/* Set the recording source to the line input, 
+		   the level of the line input to audio_lev,
+		   the output volume to zero (to avoid audio feedback
+		   when using a camera build in microphone */
 
-      numerr = 0;
+		numerr = 0;
 
-      recsrc = sound_mask_input;
-      status = ioctl(fd, SOUND_MIXER_WRITE_RECSRC, &recsrc);
-      if (status == -1) numerr++;
+		recsrc = sound_mask_input;
+		status = ioctl(fd, SOUND_MIXER_WRITE_RECSRC, &recsrc);
+		if (status == -1) numerr++;
 
-      level = 256*audio_lev + audio_lev; /* left and right channel */
-      status = ioctl(fd, sound_mixer_write_input, &level);
-      if (status == -1) numerr++;
+		level = 256*audio_lev + audio_lev; /* left and right channel */
+		status = ioctl(fd, sound_mixer_write_input, &level);
+		if (status == -1) numerr++;
 
-      if(audio_mute)
-      {
-         level = 0;
-         status = ioctl(fd, SOUND_MIXER_WRITE_VOLUME, &level);
-         if (status == -1) numerr++;
-      }
+		if(audio_mute)
+		{
+			level = 0;
+			status = ioctl(fd, SOUND_MIXER_WRITE_VOLUME, &level);
+			if (status == -1) numerr++;
+		}
 
-      if (numerr) 
-      {
-         lavrec_msg(LAVREC_WARNING,
-                    "Unable to set the sound mixer correctly",
-                    "Audio capture might not be successfull (try another mixer tool!)");
-      }
-   }
-   else
-   {
-      /* Restore previously saved settings */
+		if (numerr) 
+		{
+			lavrec_msg(LAVREC_WARNING,
+					   "Unable to set the sound mixer correctly",
+					   "Audio capture might not be successfull (try another mixer tool!)");
+		}
+	}
+	else
+	{
+		/* Restore previously saved settings */
 
-      numerr = 0;
-      status = ioctl(fd, SOUND_MIXER_WRITE_RECSRC, &mixer_recsrc_saved);
-      if (status == -1) numerr++;
-      status = ioctl(fd, sound_mixer_write_input,  &mixer_inplev_saved);
-      if (status == -1) numerr++;
-      if(audio_mute)
-      {
-         status = ioctl(fd, SOUND_MIXER_WRITE_VOLUME, &mixer_volume_saved);
-         if (status == -1) numerr++;
-      }
+		numerr = 0;
+		status = ioctl(fd, SOUND_MIXER_WRITE_RECSRC, &mixer_recsrc_saved);
+		if (status == -1) numerr++;
+		status = ioctl(fd, sound_mixer_write_input,  &mixer_inplev_saved);
+		if (status == -1) numerr++;
+		if(audio_mute)
+		{
+			status = ioctl(fd, SOUND_MIXER_WRITE_VOLUME, &mixer_volume_saved);
+			if (status == -1) numerr++;
+		}
 
-      if (numerr) 
-      {
-         lavrec_msg(LAVREC_WARNING,
-                    "Unable to restore sound mixer settings",
-                    "Restore your favorite setting with another tool");
-      }
-   }
+		if (numerr) 
+		{
+			lavrec_msg(LAVREC_WARNING,
+					   "Unable to restore sound mixer settings",
+					   "Restore your favorite setting with another tool");
+		}
+	}
 
-   close(fd);
+	close(fd);
 
 }
 
@@ -422,8 +422,8 @@ void set_mixer(int flag)
 
 void CleanUpAudio(void)
 {
-   if(audio_size) audio_shutdown();
-   set_mixer(0);
+	if(audio_size) audio_shutdown();
+	set_mixer(0);
 }
 
 /* The signal handler only sets a flag which makes the main program
@@ -436,36 +436,36 @@ static int VideoExitFlag = 0;
 
 void SigHandler(int sig_num)
 {
-   VideoExitFlag = 1;
+	VideoExitFlag = 1;
 }
 
 void Usage(char *progname)
 {
 	fprintf(stderr, "lavtools version " VERSION ": lavrec\n");
-   fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
-   fprintf(stderr, "where options are:\n");
-   fprintf(stderr, "   -f [aAqm]     Format AVI/Quicktime/movtar\n");
-   fprintf(stderr, "   -i [pPnNsSat] Input Source\n");
-   fprintf(stderr, "   -d num     Decimation (either 1,2,4 or two digit number)\n");
-   fprintf(stderr, "   -g WxH+X+Y X-style geometry string (part of 768/720x576/480 field)\n");
-   fprintf(stderr, "   -q num     Quality [%%]\n");
-   fprintf(stderr, "   -t num     Capture time\n");
-   fprintf(stderr, "   -S         Single frame capture mode\n");
-   fprintf(stderr, "   -T num     Time lapse, capture only every <num>th frame\n");
-   fprintf(stderr, "   -w         Wait for user confirmation to start\n");
-   fprintf(stderr, "   -a num     Audio size, 0 for no audio, 8 or 16\n");
-   fprintf(stderr, "   -r num     Audio rate [Hz]\n");
-   fprintf(stderr, "   -s         Stereo\n");
-   fprintf(stderr, "   -l num     Recording level [%%], -1 for mixers not touched\n");
-   fprintf(stderr, "   -m         Mute audio output during recording\n");
-   fprintf(stderr, "   -R [lmc]   Set recording source: (l)ine, (m)icro, (c)d\n");
-   fprintf(stderr, "   -c [012]   Level of corrections for synchronization\n");
-   fprintf(stderr, "   -n num     # of MJPEG buffers\n");
-   fprintf(stderr, "   -b num     Size of MJPEG buffers [Kb]\n");
-   fprintf(stderr, "   -v num     verbose level\n");
-   fprintf(stderr, "Environment variables recognized:\n");
-   fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
-   exit(1);
+	fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
+	fprintf(stderr, "where options are:\n");
+	fprintf(stderr, "   -f [aAqm]     Format AVI/Quicktime/movtar\n");
+	fprintf(stderr, "   -i [pPnNsSat] Input Source\n");
+	fprintf(stderr, "   -d num     Decimation (either 1,2,4 or two digit number)\n");
+	fprintf(stderr, "   -g WxH+X+Y X-style geometry string (part of 768/720x576/480 field)\n");
+	fprintf(stderr, "   -q num     Quality [%%]\n");
+	fprintf(stderr, "   -t num     Capture time\n");
+	fprintf(stderr, "   -S         Single frame capture mode\n");
+	fprintf(stderr, "   -T num     Time lapse, capture only every <num>th frame\n");
+	fprintf(stderr, "   -w         Wait for user confirmation to start\n");
+	fprintf(stderr, "   -a num     Audio size, 0 for no audio, 8 or 16\n");
+	fprintf(stderr, "   -r num     Audio rate [Hz]\n");
+	fprintf(stderr, "   -s         Stereo\n");
+	fprintf(stderr, "   -l num     Recording level [%%], -1 for mixers not touched\n");
+	fprintf(stderr, "   -m         Mute audio output during recording\n");
+	fprintf(stderr, "   -R [lmc]   Set recording source: (l)ine, (m)icro, (c)d\n");
+	fprintf(stderr, "   -c [012]   Level of corrections for synchronization\n");
+	fprintf(stderr, "   -n num     # of MJPEG buffers\n");
+	fprintf(stderr, "   -b num     Size of MJPEG buffers [Kb]\n");
+	fprintf(stderr, "   -v num     verbose level\n");
+	fprintf(stderr, "Environment variables recognized:\n");
+	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
+	exit(1);
 }
 
 /* RJ: The following stuff thanks to Philipp Zabel: */
@@ -521,21 +521,21 @@ ReadInteger(char *string, char **NextString)
     int Sign = 1;
     
     if (*string == '+')
-	string++;
+		string++;
     else if (*string == '-')
     {
-	string++;
-	Sign = -1;
+		string++;
+		Sign = -1;
     }
     for (; (*string >= '0') && (*string <= '9'); string++)
     {
-	Result = (Result * 10) + (*string - '0');
+		Result = (Result * 10) + (*string - '0');
     }
     *NextString = string;
     if (Sign >= 0)
-	return (Result);
+		return (Result);
     else
-	return (-Result);
+		return (-Result);
 }
 
 int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned int *height)
@@ -580,10 +580,10 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 		}
 		else
 		{	strind++;
-			tempX = ReadInteger(strind, &nextCharacter);
-			if (strind == nextCharacter)
-			    return(0);
-			strind = nextCharacter;
+		tempX = ReadInteger(strind, &nextCharacter);
+		if (strind == nextCharacter)
+			return(0);
+		strind = nextCharacter;
 		}
 		mask |= XValue;
 		if ((*strind == '+') || (*strind == '-')) {
@@ -591,7 +591,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 				strind++;
 				tempY = -ReadInteger(strind, &nextCharacter);
 				if (strind == nextCharacter)
-			    	    return(0);
+					return(0);
 				strind = nextCharacter;
 				mask |= YNegative;
 
@@ -601,7 +601,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 				strind++;
 				tempY = ReadInteger(strind, &nextCharacter);
 				if (strind == nextCharacter)
-			    	    return(0);
+					return(0);
 				strind = nextCharacter;
 			}
 			mask |= YValue;
@@ -609,7 +609,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 	}
 	
 	/* If strind isn't at the end of the string the it's an invalid
-		geometry specification. */
+	   geometry specification. */
 
 	if (*strind != '\0') return (0);
 
@@ -618,9 +618,9 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
  	if (mask & YValue)
 	    *y = tempY;
 	if (mask & WidthValue)
-            *width = tempWidth;
+		*width = tempWidth;
 	if (mask & HeightValue)
-            *height = tempHeight;
+		*height = tempHeight;
 	return (mask);
 }
 
@@ -630,7 +630,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 
 int parse_geometry (char *geom, int *x, int *y, int *width, int *height)
 {
-   return XParseGeometry (geom, x, y, width, height);
+	return XParseGeometry (geom, x, y, width, height);
 }
 
 #define MAX_MBYTES_PER_FILE 1600  /* Maximum number of Mbytes per file.
@@ -672,23 +672,23 @@ static double spas;   /* seconds per audio sample */
 
 static void get_free_space()
 {
-   int res;
-   long blocks_per_MB;
-   struct statfs statfs_buf;
+	int res;
+	long blocks_per_MB;
+	struct statfs statfs_buf;
 
-   /* check the disk space again */
-   res = statfs(out_filename,&statfs_buf);
-   if(res)
-   {
-      /* some error happened */
-      MBytes_fs_free = MAX_MBYTES_PER_FILE; /* some fake value */
-   }
-   else
-   {
-      blocks_per_MB = (1024*1024) / statfs_buf.f_bsize;
-      MBytes_fs_free = statfs_buf.f_bavail/blocks_per_MB;
-   }
-   bytes_last_checked = bytes_output_cur;
+	/* check the disk space again */
+	res = statfs(out_filename,&statfs_buf);
+	if(res)
+	{
+		/* some error happened */
+		MBytes_fs_free = MAX_MBYTES_PER_FILE; /* some fake value */
+	}
+	else
+	{
+		blocks_per_MB = (1024*1024) / statfs_buf.f_bsize;
+		MBytes_fs_free = statfs_buf.f_bavail/blocks_per_MB;
+	}
+	bytes_last_checked = bytes_output_cur;
 }
 
 /*
@@ -698,13 +698,13 @@ static void get_free_space()
                          
 static void close_files_on_error()
 {
-   int res;
+	int res;
 
-   if(output_status > 0) res = lav_close(video_file);
-   if(output_status > 1) res = lav_close(video_file_old);
+	if(output_status > 0) res = lav_close(video_file);
+	if(output_status > 1) res = lav_close(video_file_old);
 
-   lavrec_msg(LAVREC_WARNING,"Trying to close output file(s) and exiting",
-                             "Output file(s) my not be readable due to error");
+	lavrec_msg(LAVREC_WARNING,"Trying to close output file(s) and exiting",
+			   "Output file(s) my not be readable due to error");
 }
 
 #define OUTPUT_VIDEO_ERROR_RETURN \
@@ -723,469 +723,469 @@ else \
 
 static int output_video_frame(char *buff, long size, long count)
 {
-   int res, n;
-   int OpenNewFlag=0;
+	int res, n;
+	int OpenNewFlag=0;
 
-   if(output_status == 3) return 0; /* Only audio is still active */
+	if(output_status == 3) return 0; /* Only audio is still active */
 
-   /* Check space on filesystem if we have filled it up
-      or if we have written more than CHECK_INTERVAL bytes since last check */
+	/* Check space on filesystem if we have filled it up
+	   or if we have written more than CHECK_INTERVAL bytes since last check */
 
-   if( output_status>0 )
-   {
-      n = (bytes_output_cur - bytes_last_checked)>>20; /* in MBytes */
-      if( n > CHECK_INTERVAL || n > MBytes_fs_free-MIN_MBYTES_FREE )
-         get_free_space();
-   }
+	if( output_status>0 )
+	{
+		n = (bytes_output_cur - bytes_last_checked)>>20; /* in MBytes */
+		if( n > CHECK_INTERVAL || n > MBytes_fs_free-MIN_MBYTES_FREE )
+			get_free_space();
+	}
 
-   /* Check if it is time to exit */
+	/* Check if it is time to exit */
 
-   if(VideoExitFlag) lavrec_msg(LAVREC_INFO,"Signal caught, exiting","");
-   if (num_frames*spvf > record_time)
-   {
-      lavrec_msg(LAVREC_INFO,"Recording time reached, exiting","");
-      VideoExitFlag = 1;
-   }
+	if(VideoExitFlag) lavrec_msg(LAVREC_INFO,"Signal caught, exiting","");
+	if (num_frames*spvf > record_time)
+	{
+		lavrec_msg(LAVREC_INFO,"Recording time reached, exiting","");
+		VideoExitFlag = 1;
+	}
 
-   /* Check if we have to open a new output file */
+	/* Check if we have to open a new output file */
 
-   if( output_status>0 && (bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
-   {
-      lavrec_msg(LAVREC_INFO,"Max filesize reached, opening next output file","");
-      OpenNewFlag = 1;
-   }
-   if( output_status>0 && MBytes_fs_free < MIN_MBYTES_FREE)
-   {
-      lavrec_msg(LAVREC_INFO,"File system is nearly full, "
-                             "trying to open next output file","");
-      OpenNewFlag = 1;
-   }
+	if( output_status>0 && (bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
+	{
+		lavrec_msg(LAVREC_INFO,"Max filesize reached, opening next output file","");
+		OpenNewFlag = 1;
+	}
+	if( output_status>0 && MBytes_fs_free < MIN_MBYTES_FREE)
+	{
+		lavrec_msg(LAVREC_INFO,"File system is nearly full, "
+				   "trying to open next output file","");
+		OpenNewFlag = 1;
+	}
 
-   /* If a file is open and we should open a new one or exit,
-      close current file */
+	/* If a file is open and we should open a new one or exit,
+	   close current file */
 
-   if(output_status>0 && (OpenNewFlag || VideoExitFlag) )
-   {
-      if (audio_size)
-      {
-         /* Audio is running - flag that the old file should be closed */
-         if(output_status != 1)
-         {
-            /* There happened something bad - the old output file from the
-               last file change is not closed.
-               We try to close all files and exit */
-            lavrec_msg(LAVREC_ERROR,"Error: Audio too far behind video",
-                                    "Check if audio works correctly!");
-            close_files_on_error();
-            return -1;
-         }
-         lavrec_msg(LAVREC_DEBUG,"Closing current output file for video, "
-                                 "waiting for audio to be filled","");
-         video_file_old = video_file;
-         num_frames_old = num_frames;
-         if (VideoExitFlag)
-         {
-            output_status = 3;
-            return 0;
-         }
-         else
-            output_status = 2;
-      }
-      else
-      {
-         res = lav_close(video_file);
-         if(res)
-         {
-            sprintf(infostring,"Error closing video output file %s, "
-                               "may be unuseable due to error",out_filename);
-            lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
-            return res;
-         }
-         if (VideoExitFlag) return 1;
-      }
-   }
+	if(output_status>0 && (OpenNewFlag || VideoExitFlag) )
+	{
+		if (audio_size)
+		{
+			/* Audio is running - flag that the old file should be closed */
+			if(output_status != 1)
+			{
+				/* There happened something bad - the old output file from the
+				   last file change is not closed.
+				   We try to close all files and exit */
+				lavrec_msg(LAVREC_ERROR,"Error: Audio too far behind video",
+						   "Check if audio works correctly!");
+				close_files_on_error();
+				return -1;
+			}
+			lavrec_msg(LAVREC_DEBUG,"Closing current output file for video, "
+					   "waiting for audio to be filled","");
+			video_file_old = video_file;
+			num_frames_old = num_frames;
+			if (VideoExitFlag)
+			{
+				output_status = 3;
+				return 0;
+			}
+			else
+				output_status = 2;
+		}
+		else
+		{
+			res = lav_close(video_file);
+			if(res)
+			{
+				sprintf(infostring,"Error closing video output file %s, "
+						"may be unuseable due to error",out_filename);
+				lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
+				return res;
+			}
+			if (VideoExitFlag) return 1;
+		}
+	}
 
-   /* Open new output file if needed */
+	/* Open new output file if needed */
 
-   if(output_status==0 || OpenNewFlag )
-   {
-      /* Get next filename */
+	if(output_status==0 || OpenNewFlag )
+	{
+		/* Get next filename */
 
-      if(num_out_files==0)
-      {
-         sprintf(out_filename,out_file_list[0],++cur_out_file);
-      }
-      else
-      {
-         if(cur_out_file>=num_out_files)
-         {
-            lavrec_msg(LAVREC_WARNING,"Number of given output files reached","");
-            OUTPUT_VIDEO_ERROR_RETURN
-         }
-         strncpy(out_filename,out_file_list[cur_out_file++],sizeof(out_filename));
-      }
-      sprintf(infostring,"Opening output file %s",out_filename);
-      lavrec_msg(LAVREC_INFO,infostring,"");
+		if(num_out_files==0)
+		{
+			sprintf(out_filename,out_file_list[0],++cur_out_file);
+		}
+		else
+		{
+			if(cur_out_file>=num_out_files)
+			{
+				lavrec_msg(LAVREC_WARNING,"Number of given output files reached","");
+				OUTPUT_VIDEO_ERROR_RETURN
+					}
+			strncpy(out_filename,out_file_list[cur_out_file++],sizeof(out_filename));
+		}
+		sprintf(infostring,"Opening output file %s",out_filename);
+		lavrec_msg(LAVREC_INFO,infostring,"");
          
-      /* Open next file */
+		/* Open next file */
 
-      video_file = lav_open_output_file(out_filename,video_format,
-										width,height,interlaced,
-										(norm==VIDEO_MODE_NTSC? 30000.0/1001.0 : 25.0),
-										audio_size,(stereo ? 2 : 1),audio_rate);
-      if(!video_file)
-      {
-         sprintf(infostring,"Error opening output file %s",out_filename);
-         lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
-         OUTPUT_VIDEO_ERROR_RETURN
-      }
+		video_file = lav_open_output_file(out_filename,video_format,
+										  width,height,interlaced,
+										  (norm==VIDEO_MODE_NTSC? 30000.0/1001.0 : 25.0),
+										  audio_size,(stereo ? 2 : 1),audio_rate);
+		if(!video_file)
+		{
+			sprintf(infostring,"Error opening output file %s",out_filename);
+			lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
+			OUTPUT_VIDEO_ERROR_RETURN
+				}
 
-      if(output_status==0) output_status = 1;
+		if(output_status==0) output_status = 1;
 
-      /* Check space on filesystem. Exit if not enough space */
+		/* Check space on filesystem. Exit if not enough space */
 
-      bytes_output_cur = 0;
-      get_free_space();
-      if(MBytes_fs_free < MIN_MBYTES_FREE_OPEN)
-      {
-         lavrec_msg(LAVREC_ERROR,"Not enough space for opening new output file","");
-         /* try to close and remove file, don't care about errors */
-         res = lav_close(video_file);
-         res = remove(out_filename);
-         OUTPUT_VIDEO_ERROR_RETURN
-      }
-   }
+		bytes_output_cur = 0;
+		get_free_space();
+		if(MBytes_fs_free < MIN_MBYTES_FREE_OPEN)
+		{
+			lavrec_msg(LAVREC_ERROR,"Not enough space for opening new output file","");
+			/* try to close and remove file, don't care about errors */
+			res = lav_close(video_file);
+			res = remove(out_filename);
+			OUTPUT_VIDEO_ERROR_RETURN
+				}
+	}
 
-   /* Output the frame count times */
+	/* Output the frame count times */
 
-   res = lav_write_frame(video_file,buff,size,count);
+	res = lav_write_frame(video_file,buff,size,count);
 
-   /* If an error happened, try to close output files and exit */
+	/* If an error happened, try to close output files and exit */
 
-   if(res)
-   {
-      sprintf(infostring,"Error writing to output file %s",out_filename);
-      lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
-      close_files_on_error();
-      return res;
-   }
+	if(res)
+	{
+		sprintf(infostring,"Error writing to output file %s",out_filename);
+		lavrec_msg(LAVREC_ERROR,infostring,lav_strerror());
+		close_files_on_error();
+		return res;
+	}
 
-   /* Update counters. Maybe frame its written only once,
-     but size*count is the save guess */
+	/* Update counters. Maybe frame its written only once,
+	   but size*count is the save guess */
 
-   bytes_output_cur += size*count;+
-   num_frames += count;
+	bytes_output_cur += size*count;+
+		num_frames += count;
 
-   return 0;
+		return 0;
 }
 
 static int output_audio_to_file(char *buff, long samps, int old)
 {
-   int res;
+	int res;
 
-   if(samps==0) return 0;
+	if(samps==0) return 0;
 
-   /* Output data */
+	/* Output data */
 
-   res = lav_write_audio(old?video_file_old:video_file,buff,samps);
+	res = lav_write_audio(old?video_file_old:video_file,buff,samps);
 
-   /* If an error happened, try to close output files and exit */
+	/* If an error happened, try to close output files and exit */
 
-   if(res)
-   {
-      lavrec_msg(LAVREC_ERROR,"Error writing to output file",lav_strerror());
-      close_files_on_error();
-      return res;
-   }
+	if(res)
+	{
+		lavrec_msg(LAVREC_ERROR,"Error writing to output file",lav_strerror());
+		close_files_on_error();
+		return res;
+	}
 
-   /* update counters */
+	/* update counters */
 
-   num_asamps += samps;
-   if(!old) bytes_output_cur += samps*audio_bps;
+	num_asamps += samps;
+	if(!old) bytes_output_cur += samps*audio_bps;
 
-   return 0;
+	return 0;
 }
 
 static int output_audio_samples(char *buff, long samps)
 {
-   int res;
-   long diff;
+	int res;
+	long diff;
 
-   /* Safety first */
+	/* Safety first */
 
-   if(!output_status)
-   {
-      lavrec_msg(LAVREC_INTERNAL,"Output audio but no file open","");
-      return -1;
-   }
+	if(!output_status)
+	{
+		lavrec_msg(LAVREC_INTERNAL,"Output audio but no file open","");
+		return -1;
+	}
 
-   if(output_status<2)
-   {
-      /* Normal mode, just output the sample */
-      res = output_audio_to_file(buff,samps,0);
-      return res;
-   }
+	if(output_status<2)
+	{
+		/* Normal mode, just output the sample */
+		res = output_audio_to_file(buff,samps,0);
+		return res;
+	}
 
-   /* if we come here, we have to fill up the old file first */
+	/* if we come here, we have to fill up the old file first */
 
-   diff  = (num_frames_old*spvf - num_asamps*spas)*audio_rate;
+	diff  = (num_frames_old*spvf - num_asamps*spas)*audio_rate;
    
-   if(diff<0)
-   {
-      lavrec_msg(LAVREC_INTERNAL,"Audio output ahead video output","");
-      return -1;
-   }
+	if(diff<0)
+	{
+		lavrec_msg(LAVREC_INTERNAL,"Audio output ahead video output","");
+		return -1;
+	}
 
-   if(diff >= samps)
-   {
-      /* All goes to old file */
-      res = output_audio_to_file(buff,samps,1);
-      return res;
-   }
+	if(diff >= samps)
+	{
+		/* All goes to old file */
+		res = output_audio_to_file(buff,samps,1);
+		return res;
+	}
 
-   /* diff samples go to old file */
+	/* diff samples go to old file */
 
-   res = output_audio_to_file(buff,diff,1);
-   if(res) return res;
+	res = output_audio_to_file(buff,diff,1);
+	if(res) return res;
 
-   /* close old file */
+	/* close old file */
 
-   lavrec_msg(LAVREC_DEBUG,"Audio is filled","");
-   res = lav_close(video_file_old);
+	lavrec_msg(LAVREC_DEBUG,"Audio is filled","");
+	res = lav_close(video_file_old);
 
-   if(res)
-   {
-      lavrec_msg(LAVREC_ERROR,
-                "Error closing video output file, may be unuseable due to error",
-                lav_strerror());
-      return res;
-   }
+	if(res)
+	{
+		lavrec_msg(LAVREC_ERROR,
+				   "Error closing video output file, may be unuseable due to error",
+				   lav_strerror());
+		return res;
+	}
 
-   /* Check if we are ready */
+	/* Check if we are ready */
 
-   if(output_status==3) return 1;
+	if(output_status==3) return 1;
 
-   /* remaining samples go to new file */
+	/* remaining samples go to new file */
 
-   output_status = 1;
-   res = output_audio_to_file(buff+diff*audio_bps,samps-diff,0);
-   return res;
+	output_status = 1;
+	res = output_audio_to_file(buff+diff*audio_bps,samps-diff,0);
+	return res;
 }
 
 
 int main(int argc, char ** argv)
 {
-   int video_dev;
-   int res;
-   struct mjpeg_status bstat;
-   struct mjpeg_params bparm;
-   struct mjpeg_requestbuffers breq;
-   struct mjpeg_sync bsync;
-   struct timeval first_time;
-   struct timeval audio_t0;
-   struct timeval audio_tmstmp;
-   struct video_capability vc;
-   struct video_channel vch;
-   char * MJPG_buff;
-   char AUDIO_buff[8192];
-   long audio_offset, nb;
-   int write_frame;
-   char input_buffer[256];
-   int i, n, nerr, nfout;
-   unsigned long first_lost, num_lost;
-   unsigned long num_syncs;
-   unsigned long num_ins, num_del;
-   unsigned long num_aerr;
-   int stats_changed;
-   int astat;
-   long audio_buffer_size;
-   double time;
-   double tdiff1, tdiff2;
-   char *video_dev_name;
-   int device_width;
-   /* check usage */
-   if (argc < 2)  Usage(argv[0]);
+	int video_dev;
+	int res;
+	struct mjpeg_status bstat;
+	struct mjpeg_params bparm;
+	struct mjpeg_requestbuffers breq;
+	struct mjpeg_sync bsync;
+	struct timeval first_time;
+	struct timeval audio_t0;
+	struct timeval audio_tmstmp;
+	struct video_capability vc;
+	struct video_channel vch;
+	char * MJPG_buff;
+	char AUDIO_buff[8192];
+	long audio_offset, nb;
+	int write_frame;
+	char input_buffer[256];
+	int i, n, nerr, nfout;
+	unsigned long first_lost, num_lost;
+	unsigned long num_syncs;
+	unsigned long num_ins, num_del;
+	unsigned long num_aerr;
+	int stats_changed;
+	int astat;
+	long audio_buffer_size;
+	double time;
+	double tdiff1, tdiff2;
+	char *video_dev_name;
+	int device_width;
+	/* check usage */
+	if (argc < 2)  Usage(argv[0]);
 
-   /* Get options */
+	/* Get options */
 
-   nerr = 0;
-   while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:")) != EOF)
-   {
-      switch(n) {
-         case 'f':
+	nerr = 0;
+	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:")) != EOF)
+	{
+		switch(n) {
+		case 'f':
             video_format = optarg[0];
             if(optarg[0]!='a' && optarg[0]!='A' && optarg[0]!='q' && optarg[0]!='m')
             {
-               fprintf(stderr,"Format (-f option) must be a, A, q or m\n");
-               nerr++;
+				fprintf(stderr,"Format (-f option) must be a, A, q or m\n");
+				nerr++;
             }
             break;
 
-         case 'i':
+		case 'i':
             input_source = optarg[0];
             break;
 
-         case 'd':
+		case 'd':
             i = atoi(optarg);
             if(i<10)
             {
-               hordcm = verdcm = i;
+				hordcm = verdcm = i;
             }
             else
             {
-               hordcm = i/10;
-               verdcm = i%10;
+				hordcm = i/10;
+				verdcm = i%10;
             }
             if( (hordcm != 1 && hordcm != 2 && hordcm != 4) ||
                 (verdcm != 1 && verdcm != 2 && verdcm != 4) )
             {
-               fprintf(stderr,"decimation = %d invalid\n",i);
-               fprintf(stderr,"   must be one of 1,2,4,11,12,14,21,22,24,41,42,44\n");
-               nerr++;
+				fprintf(stderr,"decimation = %d invalid\n",i);
+				fprintf(stderr,"   must be one of 1,2,4,11,12,14,21,22,24,41,42,44\n");
+				nerr++;
             }
             break;
 
-         case 'g':
+		case 'g':
             geom_flags = parse_geometry (optarg, &geom_x, &geom_y, &geom_width, &geom_height);
             /* RJ: We check for errors later since the allowed range of params
                dependes on other settings not yet known */
             break;
 
-         case 'q':
+		case 'q':
             quality = atoi(optarg);
             if(quality<0 || quality>100)
             {
-               fprintf(stderr,"quality = %d invalid (must be 0 ... 100)\n",quality);
-               nerr++;
+				fprintf(stderr,"quality = %d invalid (must be 0 ... 100)\n",quality);
+				nerr++;
             }
             break;
 
-         case 't':
+		case 't':
             record_time = atoi(optarg);
             if(record_time<=0)
             {
-               fprintf(stderr,"record_time = %d invalid\n",record_time);
-               nerr++;
+				fprintf(stderr,"record_time = %d invalid\n",record_time);
+				nerr++;
             }
             break;
 
-         case 'S':
+		case 'S':
             single_frame = 1;
             break;
 
-         case 'T':
+		case 'T':
             time_lapse = atoi(optarg);
             if(time_lapse<=1) time_lapse = 1;
             break;
 
-         case 'w':
+		case 'w':
             wait_for_start = 1;
             break;
 
-         case 'a':
+		case 'a':
             audio_size = atoi(optarg);
             if(audio_size != 0 && audio_size != 8 && audio_size != 16)
             {
-               fprintf(stderr,"audio_size = %d invalid (must be 0, 8 or 16)\n",
-                              audio_size);
-               nerr++;
+				fprintf(stderr,"audio_size = %d invalid (must be 0, 8 or 16)\n",
+						audio_size);
+				nerr++;
             }
             break;
 
-         case 'r':
+		case 'r':
             audio_rate = atoi(optarg);
             if(audio_rate<=0)
             {
-               fprintf(stderr,"audio_rate = %d invalid\n",audio_rate);
-               nerr++;
+				fprintf(stderr,"audio_rate = %d invalid\n",audio_rate);
+				nerr++;
             }
             break;
 
-         case 's':
+		case 's':
             stereo = 1;
             break;
 
-         case 'l':
+		case 'l':
             audio_lev = atoi(optarg);
             if(audio_lev<-1 || audio_lev>100)
             {
-               fprintf(stderr,"recording level = %d invalid (must be 0 ... 100 or -1)\n",
-                              audio_lev);
-               nerr++;
+				fprintf(stderr,"recording level = %d invalid (must be 0 ... 100 or -1)\n",
+						audio_lev);
+				nerr++;
             }
             break;
 
-         case 'm':
+		case 'm':
             audio_mute = 1;
             break;
 
-         case 'R':
+		case 'R':
             audio_recsrc = optarg[0];
             if(audio_recsrc!='l' && audio_recsrc!='m' && audio_recsrc!='c')
             {
-               fprintf(stderr,"Recording source (-R param) must be l,m or c\n");
-               nerr++;
+				fprintf(stderr,"Recording source (-R param) must be l,m or c\n");
+				nerr++;
             }
             break;
 
-         case 'c':
+		case 'c':
             sync_corr = atoi(optarg);
             if(sync_corr<0 || sync_corr>2)
             {
-               fprintf(stderr,"parameter -c %d invalid (must be 0, 1 or 2)\n",sync_corr);
-               nerr++;
+				fprintf(stderr,"parameter -c %d invalid (must be 0, 1 or 2)\n",sync_corr);
+				nerr++;
             }
             break;
 
-         case 'n':
+		case 'n':
             MJPG_nbufs = atoi(optarg);
             break;
 
-         case 'b':
+		case 'b':
             MJPG_bufsize = atoi(optarg);
             break;
 
-	case 'v':
-	  verbose = atoi(optarg);
-	  break;
+		case 'v':
+			verbose = atoi(optarg);
+			break;
 
-         default:
+		default:
             nerr++;
             break;
-      }
-   }
+		}
+	}
 
-   if(optind>=argc) nerr++;
+	if(optind>=argc) nerr++;
 
-   if(nerr) Usage(argv[0]);
+	if(nerr) Usage(argv[0]);
 
-   num_out_files = argc - optind;
-   out_file_list = argv + optind;
-   cur_out_file  = 0; /* Not yet opened */
-   output_status = 0;
+	num_out_files = argc - optind;
+	out_file_list = argv + optind;
+	cur_out_file  = 0; /* Not yet opened */
+	output_status = 0;
 
-   /* If the first filename contains a '%', the user wants file patterns */
+	/* If the first filename contains a '%', the user wants file patterns */
 
-   if(strstr(argv[optind],"%")) num_out_files = 0;
+	if(strstr(argv[optind],"%")) num_out_files = 0;
 
-   /* Special settings for single frame captures */
+	/* Special settings for single frame captures */
 
-   if(single_frame)
-   {
-      audio_size = 0;
-      MJPG_nbufs = 4;
-   }
+	if(single_frame)
+	{
+		audio_size = 0;
+		MJPG_nbufs = 4;
+	}
 
-   /* time lapse also doesn't want audio */
+	/* time lapse also doesn't want audio */
 
-   if(time_lapse>1) audio_size = 0;
+	if(time_lapse>1) audio_size = 0;
 
-   if (verbose > 1) {
-     printf("\nRecording parameters:\n\n");
-     printf("Output format:      %s\n",video_format=='q'?"Quicktime":"AVI");
-     printf("Input Source:       ");
-     switch(input_source)
-     {
+	if (verbose > 1) {
+		printf("\nRecording parameters:\n\n");
+		printf("Output format:      %s\n",video_format=='q'?"Quicktime":"AVI");
+		printf("Input Source:       ");
+		switch(input_source)
+		{
         case 'p': printf("Composite PAL\n"); break;
         case 'P': printf("S-VHS PAL\n"); break;
         case 'n': printf("Composite NTSC\n"); break;
@@ -1194,109 +1194,109 @@ int main(int argc, char ** argv)
         case 'S': printf("S-VHS SECAM\n"); break;
         case 't': printf("TV tuner\n"); break;
         default:  printf("Auto detect\n");
-     }
-     if(hordcm==verdcm)
-        printf("Decimation:         %d\n",hordcm);
-     else
-        printf("Decimation:         %d (hor) x %d (ver)\n",hordcm,verdcm);
-     printf("Quality:            %d\n",quality);
-     printf("Recording time:     %d sec\n",record_time);
-     if(time_lapse>1)
-        printf("Time lapse factor:  %d\n",time_lapse);
+		}
+		if(hordcm==verdcm)
+			printf("Decimation:         %d\n",hordcm);
+		else
+			printf("Decimation:         %d (hor) x %d (ver)\n",hordcm,verdcm);
+		printf("Quality:            %d\n",quality);
+		printf("Recording time:     %d sec\n",record_time);
+		if(time_lapse>1)
+			printf("Time lapse factor:  %d\n",time_lapse);
 
-     printf("\n");
-     printf("MJPEG buffer size:  %d KB\n",MJPG_bufsize);
-     printf("# of MJPEG buffers: %d\n",MJPG_nbufs);
-     if(audio_size)
-     {
-        printf("\nAudio parameters:\n\n");
-        printf("Audio sample size:           %d bit\n",audio_size);
-        printf("Audio sampling rate:         %d Hz\n",audio_rate);
-        printf("Audio is %s\n",stereo ? "STEREO" : "MONO");
-        if(audio_lev!=-1)
-        {
-           printf("Audio input recording level: %d %%\n",audio_lev);
-           printf("%s audio output during recording\n",
-				  audio_mute?"Mute":"Don\'t mute");
-           printf("Recording source: %c\n",audio_recsrc);
-        }
-        else
-           printf("Audio input recording level: Use mixer setting\n");
-        printf("Level of correction for Audio/Video synchronization:\n");
-        switch(sync_corr)
-        {
-           case 0: printf("No lost frame compensation, No frame drop/insert\n"); break;
-           case 1: printf("Lost frame compensation, No frame drop/insert\n"); break;
-           case 2: printf("Lost frame compensation and frame drop/insert\n"); break;
-        }
-     }
-     else
-        printf("\nAudio disabled\n\n");
-     printf("\n");
-   }
-   /* Flush the Linux File buffers to disk */
+		printf("\n");
+		printf("MJPEG buffer size:  %d KB\n",MJPG_bufsize);
+		printf("# of MJPEG buffers: %d\n",MJPG_nbufs);
+		if(audio_size)
+		{
+			printf("\nAudio parameters:\n\n");
+			printf("Audio sample size:           %d bit\n",audio_size);
+			printf("Audio sampling rate:         %d Hz\n",audio_rate);
+			printf("Audio is %s\n",stereo ? "STEREO" : "MONO");
+			if(audio_lev!=-1)
+			{
+				printf("Audio input recording level: %d %%\n",audio_lev);
+				printf("%s audio output during recording\n",
+					   audio_mute?"Mute":"Don\'t mute");
+				printf("Recording source: %c\n",audio_recsrc);
+			}
+			else
+				printf("Audio input recording level: Use mixer setting\n");
+			printf("Level of correction for Audio/Video synchronization:\n");
+			switch(sync_corr)
+			{
+			case 0: printf("No lost frame compensation, No frame drop/insert\n"); break;
+			case 1: printf("Lost frame compensation, No frame drop/insert\n"); break;
+			case 2: printf("Lost frame compensation and frame drop/insert\n"); break;
+			}
+		}
+		else
+			printf("\nAudio disabled\n\n");
+		printf("\n");
+	}
+	/* Flush the Linux File buffers to disk */
 
-   sync();
+	sync();
 
-   /* set the sound mixer */
+	/* set the sound mixer */
 
-   if(audio_size && audio_lev>=0) set_mixer(1);
+	if(audio_size && audio_lev>=0) set_mixer(1);
 
-   /* Initialize the audio system if audio is wanted.
-      This involves a fork of the audio task and is done before
-      the video device and the output file is opened */
+	/* Initialize the audio system if audio is wanted.
+	   This involves a fork of the audio task and is done before
+	   the video device and the output file is opened */
 
-   audio_bps = 0;
-   if (audio_size)
-   {
-      res = audio_init(1,stereo,audio_size,audio_rate);
-      if(res)
-      {
-         set_mixer(0);
-         lavrec_msg(LAVREC_ERROR,"Error initializing Audio",audio_strerror());
-         exit(1);
-      }
-      audio_bps = audio_size/8;
-      if(stereo) audio_bps *= 2;
-      audio_buffer_size = audio_get_buffer_size();
-   }
+	audio_bps = 0;
+	if (audio_size)
+	{
+		res = audio_init(1,stereo,audio_size,audio_rate);
+		if(res)
+		{
+			set_mixer(0);
+			lavrec_msg(LAVREC_ERROR,"Error initializing Audio",audio_strerror());
+			exit(1);
+		}
+		audio_bps = audio_size/8;
+		if(stereo) audio_bps *= 2;
+		audio_buffer_size = audio_get_buffer_size();
+	}
 
-   /* After we have fired up the audio system (which is assisted if we're
-	  installed setuid root, we want to set the effective user id to the
-	  real user id */
-   if( seteuid( getuid() ) < 0 )
-	   system_error("Can't set effective user-id: ",
-					(char *)sys_errlist[errno]);
+	/* After we have fired up the audio system (which is assisted if we're
+	   installed setuid root, we want to set the effective user id to the
+	   real user id */
+	if( seteuid( getuid() ) < 0 )
+		system_error("Can't set effective user-id: ",
+					 (char *)sys_errlist[errno]);
 
-   /* The audio system needs a exit processing (audio_shutdown()),
-      the mixers also should be reset at exit. */
+	/* The audio system needs a exit processing (audio_shutdown()),
+	   the mixers also should be reset at exit. */
 
-   atexit(CleanUpAudio);
+	atexit(CleanUpAudio);
 
-   /* open the video device */
+	/* open the video device */
 
-   video_dev_name = getenv("LAV_VIDEO_DEV");
-   if(!video_dev_name) video_dev_name = "/dev/video";
-   video_dev = open(video_dev_name, O_RDONLY);
-   if (video_dev < 0) system_error(video_dev_name,"open");
+	video_dev_name = getenv("LAV_VIDEO_DEV");
+	if(!video_dev_name) video_dev_name = "/dev/video";
+	video_dev = open(video_dev_name, O_RDONLY);
+	if (video_dev < 0) system_error(video_dev_name,"open");
 
-   /* Set input and norm according to input_source,
-      do an auto detect if neccessary */
+	/* Set input and norm according to input_source,
+	   do an auto detect if neccessary */
 
-   switch(input_source)
-   {
-      case 'p': input = 0; norm = 0; break;
-      case 'P': input = 1; norm = 0; break;
-      case 'n': input = 0; norm = 1; break;
-      case 'N': input = 1; norm = 1; break;
-      case 's': input = 0; norm = 2; break;
-      case 'S': input = 1; norm = 2; break;
-      case 't': input = 2; norm = 0; break;
-      default:
-         n = 0;
-         lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
-         for(i=0;i<2;i++)
-         {
+	switch(input_source)
+	{
+	case 'p': input = 0; norm = 0; break;
+	case 'P': input = 1; norm = 0; break;
+	case 'n': input = 0; norm = 1; break;
+	case 'N': input = 1; norm = 1; break;
+	case 's': input = 0; norm = 2; break;
+	case 'S': input = 1; norm = 2; break;
+	case 't': input = 2; norm = 0; break;
+	default:
+		n = 0;
+		lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
+		for(i=0;i<2;i++)
+		{
             sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
             lavrec_msg(LAVREC_INFO,infostring,"");
             bstat.input = i;
@@ -1307,450 +1307,454 @@ int main(int argc, char ** argv)
                 sprintf(infostring,"input present: %s %s",
 						norm_name[bstat.norm],
 						bstat.color?"color":"no color");
-               lavrec_msg(LAVREC_INFO,infostring,"");
-               input = i;
-               norm = bstat.norm;
-               n++;
+				lavrec_msg(LAVREC_INFO,infostring,"");
+				input = i;
+				norm = bstat.norm;
+				n++;
             }
             else
-               lavrec_msg(LAVREC_INFO,"NO signal","");
-         }
-         switch(n)
-         {
-            case 0:
-               lavrec_msg(LAVREC_ERROR,"No input signal ... exiting","");
-               exit(1);
-            case 1:
-               sprintf(infostring,"Detected %s %s",
-					   norm_name[norm],
-					   input==0?"Composite":"S-Video");
-               lavrec_msg(LAVREC_INFO,infostring,"");
-               break;
-            case 2:
-               lavrec_msg(LAVREC_ERROR,"Input signal on Composite AND S-Video ... exiting","");
-               exit(1);
-         }
-   }
+				lavrec_msg(LAVREC_INFO,"NO signal","");
+		}
+		switch(n)
+		{
+		case 0:
+			lavrec_msg(LAVREC_ERROR,"No input signal ... exiting","");
+			exit(1);
+		case 1:
+			sprintf(infostring,"Detected %s %s",
+					norm_name[norm],
+					input==0?"Composite":"S-Video");
+			lavrec_msg(LAVREC_INFO,infostring,"");
+			break;
+		case 2:
+			lavrec_msg(LAVREC_ERROR,"Input signal on Composite AND S-Video ... exiting","");
+			exit(1);
+		}
+	}
 
-   /* Set input and norm first so we can determine width*/
-   vch.channel = input;
-   vch.norm    = norm;
-   res = ioctl(video_dev, VIDIOCSCHAN,&vch);
-   if(res<0) system_error("setting norm","ioctl VIDIOCSCHAN");
+	/* Set input and norm first so we can determine width*/
+	vch.channel = input;
+	vch.norm    = norm;
+	res = ioctl(video_dev, VIDIOCSCHAN,&vch);
+	if(res<0) system_error("setting norm","ioctl VIDIOCSCHAN");
    
-   /* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
+	/* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
    
     res = ioctl(video_dev, VIDIOCGCAP,&vc);
     if (res < 0) system_error("getting device capabilities","ioctl VIDIOCGCAP");
     device_width=vc.maxwidth;
 
-   /* Query and set params for capture */
+	/* Query and set params for capture */
 
-   res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
-   if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
+	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
+	if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
 
-   bparm.decimation = 0;
-   bparm.quality    = quality;
+	bparm.decimation = 0;
+	bparm.quality    = quality;
 
-   /* Set decimation and image geometry params */
+	/* Set decimation and image geometry params */
 
-   bparm.HorDcm         = hordcm;
-   bparm.VerDcm         = (verdcm==4) ? 2 : 1;
-   bparm.TmpDcm         = (verdcm==1) ? 1 : 2;
-   bparm.field_per_buff = (verdcm==1) ? 2 : 1;
+	bparm.HorDcm         = hordcm;
+	bparm.VerDcm         = (verdcm==4) ? 2 : 1;
+	bparm.TmpDcm         = (verdcm==1) ? 1 : 2;
+	bparm.field_per_buff = (verdcm==1) ? 2 : 1;
 
-   bparm.img_width      = (hordcm==1) ? device_width : (device_width-64);
-   bparm.img_height     = (norm==1)   ? 240 : 288;
+	if( device_width == 720 ) /* Buz etc */
+		bparm.img_width      = (hordcm==1) ? 720 : 704;
+	else /* DC10 */
+		bparm.img_width      = (hordcm==1) ? device_width : (device_width-64);
+		
+	bparm.img_height     = (norm==1)   ? 240 : 288;
 
-   if (geom_width>device_width) {
-      lavrec_msg(LAVREC_ERROR,"Image width too big! Exiting.","");
-      exit(1);
-   }
-   if ((geom_width%(bparm.HorDcm*16))!=0) {
-      sprintf(infostring,"Image width not multiple of %d! Exiting",bparm.HorDcm*16);
-      lavrec_msg(LAVREC_ERROR,infostring,"");
-      exit(1);
-   }
-   if (geom_height>(norm==1 ? 480 : 576)) {
-      lavrec_msg(LAVREC_ERROR,"Image height too big! Exiting.","");
-      exit(1);
-   }
-   /* RJ: Image height must only be a multiple of 8, but geom_height
-          is double the field height */
-   if ((geom_height%(bparm.VerDcm*16))!=0) {
-      sprintf(infostring,"Image height not multiple of %d! Exiting",bparm.VerDcm*16);
-      lavrec_msg(LAVREC_ERROR,infostring,"");
-      exit(1);
-   }
+	if (geom_width>device_width) {
+		lavrec_msg(LAVREC_ERROR,"Image width too big! Exiting.","");
+		exit(1);
+	}
+	if ((geom_width%(bparm.HorDcm*16))!=0) {
+		sprintf(infostring,"Image width not multiple of %d! Exiting",bparm.HorDcm*16);
+		lavrec_msg(LAVREC_ERROR,infostring,"");
+		exit(1);
+	}
+	if (geom_height>(norm==1 ? 480 : 576)) {
+		lavrec_msg(LAVREC_ERROR,"Image height too big! Exiting.","");
+		exit(1);
+	}
+	/* RJ: Image height must only be a multiple of 8, but geom_height
+	   is double the field height */
+	if ((geom_height%(bparm.VerDcm*16))!=0) {
+		sprintf(infostring,"Image height not multiple of %d! Exiting",bparm.VerDcm*16);
+		lavrec_msg(LAVREC_ERROR,infostring,"");
+		exit(1);
+	}
 
-   if(geom_flags&WidthValue)  bparm.img_width  = geom_width;
-   if(geom_flags&HeightValue) bparm.img_height = geom_height/2;
+	if(geom_flags&WidthValue)  bparm.img_width  = geom_width;
+	if(geom_flags&HeightValue) bparm.img_height = geom_height/2;
 
-   if(geom_flags&XValue)
-      bparm.img_x = geom_x;
-   else
-      bparm.img_x = (device_width - bparm.img_width)/2;
+	if(geom_flags&XValue)
+		bparm.img_x = geom_x;
+	else
+		bparm.img_x = (device_width - bparm.img_width)/2;
 
-   if(geom_flags&YValue)
-      bparm.img_y = geom_y/2;
-   else
-      bparm.img_y = ( (norm==1 ? 240 : 288) - bparm.img_height)/2;
+	if(geom_flags&YValue)
+		bparm.img_y = geom_y/2;
+	else
+		bparm.img_y = ( (norm==1 ? 240 : 288) - bparm.img_height)/2;
 
 
-   /* Care about field polarity and APP Markers which are needed for AVI
-      and Quicktime and may be for other video formats as well */
+	/* Care about field polarity and APP Markers which are needed for AVI
+	   and Quicktime and may be for other video formats as well */
 
-   if(verdcm > 1)
-   {
-      /* for vertical decimation > 1 no known video format needs app markers,
-         we need also not to care about field polarity */
+	if(verdcm > 1)
+	{
+		/* for vertical decimation > 1 no known video format needs app markers,
+		   we need also not to care about field polarity */
 
-      bparm.APP_len = 0; /* No markers */
-   }
-   else
-   {
-      bparm.APPn     = lav_query_APP_marker(video_format);
-      bparm.APP_len  = lav_query_APP_length(video_format);
-      /* There seems to be some confusion about what is the even and odd field ... */
-      bparm.odd_even = lav_query_polarity(video_format) == LAV_INTER_ODD_FIRST;
-      for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
-   }
+		bparm.APP_len = 0; /* No markers */
+	}
+	else
+	{
+		bparm.APPn     = lav_query_APP_marker(video_format);
+		bparm.APP_len  = lav_query_APP_length(video_format);
+		/* There seems to be some confusion about what is the even and odd field ... */
+		bparm.odd_even = lav_query_polarity(video_format) == LAV_INTER_ODD_FIRST;
+		for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
+	}
 
-   res = ioctl(video_dev, MJPIOC_S_PARAMS, &bparm);
-   if(res<0) system_error("setting video parameters","ioctl MJPIOC_S_PARAMS");
+	res = ioctl(video_dev, MJPIOC_S_PARAMS, &bparm);
+	if(res<0) system_error("setting video parameters","ioctl MJPIOC_S_PARAMS");
 
-   width  = bparm.img_width/bparm.HorDcm;
-   height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
-   interlaced = (bparm.field_per_buff>1);
+	width  = bparm.img_width/bparm.HorDcm;
+	height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
+	interlaced = (bparm.field_per_buff>1);
 
-   sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
-                      width, height, bparm.field_per_buff);
-   lavrec_msg(LAVREC_INFO,infostring,"");
+	sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
+			width, height, bparm.field_per_buff);
+	lavrec_msg(LAVREC_INFO,infostring,"");
 
-   /* Request buffers */
+	/* Request buffers */
 
-   breq.count = MJPG_nbufs;
-   breq.size  = MJPG_bufsize*1024;
-   res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
-   if(res<0) system_error("requesting video buffers","ioctl MJPIOC_REQBUFS");
+	breq.count = MJPG_nbufs;
+	breq.size  = MJPG_bufsize*1024;
+	res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
+	if(res<0) system_error("requesting video buffers","ioctl MJPIOC_REQBUFS");
 
-   sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
-   lavrec_msg(LAVREC_INFO,infostring,"");
+	sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
+	lavrec_msg(LAVREC_INFO,infostring,"");
 
-   /* Map the buffers */
+	/* Map the buffers */
 
-   MJPG_buff = mmap(0, breq.count*breq.size, PROT_READ, MAP_SHARED, video_dev, 0);
-   if (MJPG_buff == MAP_FAILED) system_error("mapping video buffers","mmap");
+	MJPG_buff = mmap(0, breq.count*breq.size, PROT_READ, MAP_SHARED, video_dev, 0);
+	if (MJPG_buff == MAP_FAILED) system_error("mapping video buffers","mmap");
 
-   /* Assure proper exit handling if the user presses ^C during recording */
+	/* Assure proper exit handling if the user presses ^C during recording */
 
-   signal(SIGINT,SigHandler);
+	signal(SIGINT,SigHandler);
 
-   /* Try to get a reliable timestamp for Audio */
+	/* Try to get a reliable timestamp for Audio */
 
-   if (audio_size && sync_corr>1)
-   {
-     lavrec_msg(LAVREC_INFO, "Getting audio ... ", "");
+	if (audio_size && sync_corr>1)
+	{
+		lavrec_msg(LAVREC_INFO, "Getting audio ... ", "");
 
-      for(n=0;;n++)
-      {
-         if(n>NUM_AUDIO_TRIES)
-         {
-            lavrec_msg(LAVREC_ERROR,"Unable to get audio - exiting ....","");
-            exit(1);
-         }
-         res = audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_t0,&astat);
-         if(res<0)
-         {
-            lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
-            exit(1);
-         }
-         if(res && audio_t0.tv_sec ) break;
-         usleep(20000);
-      }
-   }
+		for(n=0;;n++)
+		{
+			if(n>NUM_AUDIO_TRIES)
+			{
+				lavrec_msg(LAVREC_ERROR,"Unable to get audio - exiting ....","");
+				exit(1);
+			}
+			res = audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_t0,&astat);
+			if(res<0)
+			{
+				lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
+				exit(1);
+			}
+			if(res && audio_t0.tv_sec ) break;
+			usleep(20000);
+		}
+	}
          
-   /* For single frame recording: Make stdin nonblocking */
+	/* For single frame recording: Make stdin nonblocking */
 
-   if(single_frame || wait_for_start)
-   {
-      res = fcntl(0,F_SETFL,O_NONBLOCK);
-      if (res<0) system_error("making stdin nonblocking","fcntl F_SETFL");
-   }
+	if(single_frame || wait_for_start)
+	{
+		res = fcntl(0,F_SETFL,O_NONBLOCK);
+		if (res<0) system_error("making stdin nonblocking","fcntl F_SETFL");
+	}
 
-   /* If we can increase process priority ... no need for R/T though... */
-   /* This is mainly useful for running using "at" which otherwise drops the
-	  priority which causes sporadic audio buffer over-runs */
-   if( getpriority(PRIO_PROCESS, 0) > -5 )
-	   setpriority(PRIO_PROCESS, 0, -5 );
+	/* If we can increase process priority ... no need for R/T though... */
+	/* This is mainly useful for running using "at" which otherwise drops the
+	   priority which causes sporadic audio buffer over-runs */
+	if( getpriority(PRIO_PROCESS, 0) > -5 )
+		setpriority(PRIO_PROCESS, 0, -5 );
 
-   /* We are set up now - wait for user confirmation if wanted */
+	/* We are set up now - wait for user confirmation if wanted */
 
-   if(wait_for_start)
-   {
-      printf("\nPress enter to start recording>");
-      fflush(stdout);
-      while(1)
-      {
-         usleep(20000);
-         res = read(0,input_buffer,256);
-         if(res>0) break; /* Got Return */
-         if(VideoExitFlag) exit(0); /* caught signal */
+	if(wait_for_start)
+	{
+		printf("\nPress enter to start recording>");
+		fflush(stdout);
+		while(1)
+		{
+			usleep(20000);
+			res = read(0,input_buffer,256);
+			if(res>0) break; /* Got Return */
+			if(VideoExitFlag) exit(0); /* caught signal */
 
-         /* Audio (if on) is allready running, empty buffer to avoid overflow */
+			/* Audio (if on) is allready running, empty buffer to avoid overflow */
 
-         if (audio_size)
-         {
-            while( (res=audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_t0,&astat)) >0 ) /*noop*/;
-            if(res==0) continue;
-            if(res<0)
-            {
-               lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
-               exit(1);
-            }
-         }
-      }
-   }
+			if (audio_size)
+			{
+				while( (res=audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_t0,&astat)) >0 ) /*noop*/;
+				if(res==0) continue;
+				if(res<0)
+				{
+					lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
+					exit(1);
+				}
+			}
+		}
+	}
 
-   /* Queue all buffers, this also starts streaming capture */
+	/* Queue all buffers, this also starts streaming capture */
 
-   for(n=0;n<breq.count;n++)
-   {
-      res = ioctl(video_dev, MJPIOC_QBUF_CAPT, &n);
-      if (res<0) system_error("queuing buffers","ioctl MJPIOC_QBUF_CAPT");
-   }
+	for(n=0;n<breq.count;n++)
+	{
+		res = ioctl(video_dev, MJPIOC_QBUF_CAPT, &n);
+		if (res<0) system_error("queuing buffers","ioctl MJPIOC_QBUF_CAPT");
+	}
 
-   /* The video capture loop */
+	/* The video capture loop */
 
-   write_frame = 1;
-   stats_changed = 0;
-   num_syncs  = 0; /* Number of MJPIOC_SYNC ioctls            */
-   num_lost   = 0; /* Number of frames lost                   */
-   num_frames = 0; /* Number of frames written to file        */
-   num_asamps = 0; /* Number of audio samples written to file */
-   num_ins    = 0; /* Number of frames inserted for sync      */
-   num_del    = 0; /* Number of frames deleted for sync       */
-   num_aerr   = 0; /* Number of audio buffers in error        */
+	write_frame = 1;
+	stats_changed = 0;
+	num_syncs  = 0; /* Number of MJPIOC_SYNC ioctls            */
+	num_lost   = 0; /* Number of frames lost                   */
+	num_frames = 0; /* Number of frames written to file        */
+	num_asamps = 0; /* Number of audio samples written to file */
+	num_ins    = 0; /* Number of frames inserted for sync      */
+	num_del    = 0; /* Number of frames deleted for sync       */
+	num_aerr   = 0; /* Number of audio buffers in error        */
 
-   /* Seconds per video frame: */
-   spvf = (norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
+	/* Seconds per video frame: */
+	spvf = (norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
 
-   /* Seconds per audio sample: */
-   if(audio_size)
-      spas = 1.0/audio_rate;
-   else
-      spas = 0.;
+	/* Seconds per audio sample: */
+	if(audio_size)
+		spas = 1.0/audio_rate;
+	else
+		spas = 0.;
 
-   tdiff1 = 0.;
-   tdiff2 = 0.;
+	tdiff1 = 0.;
+	tdiff2 = 0.;
 
-   while (1)
-   {
-      /* sync on a frame */
-      res = ioctl(video_dev, MJPIOC_SYNC, &bsync);
-      if (res < 0)
-      {
-         close_files_on_error();
-         system_error("syncing on a buffer","ioctl MJPIOC_SYNC");
-      }
-      num_syncs++;
+	while (1)
+	{
+		/* sync on a frame */
+		res = ioctl(video_dev, MJPIOC_SYNC, &bsync);
+		if (res < 0)
+		{
+			close_files_on_error();
+			system_error("syncing on a buffer","ioctl MJPIOC_SYNC");
+		}
+		num_syncs++;
 
-      if(num_syncs==1)
-      {
-         first_time = bsync.timestamp;
-         first_lost = bsync.seq;
-         if(audio_size && sync_corr>1)
-         {
-            /* Get time difference beetween audio and video in bytes */
-            audio_offset  = ((first_time.tv_usec-audio_t0.tv_usec)*1.e-6 +
-                             first_time.tv_sec-audio_t0.tv_sec - spvf)*audio_rate;
-            audio_offset *= audio_bps;   /* convert to bytes */
-         }
-         else
-            audio_offset = 0;
-      }
+		if(num_syncs==1)
+		{
+			first_time = bsync.timestamp;
+			first_lost = bsync.seq;
+			if(audio_size && sync_corr>1)
+			{
+				/* Get time difference beetween audio and video in bytes */
+				audio_offset  = ((first_time.tv_usec-audio_t0.tv_usec)*1.e-6 +
+								 first_time.tv_sec-audio_t0.tv_sec - spvf)*audio_rate;
+				audio_offset *= audio_bps;   /* convert to bytes */
+			}
+			else
+				audio_offset = 0;
+		}
 
-      time = bsync.timestamp.tv_sec - first_time.tv_sec
-           + 1.e-6*(bsync.timestamp.tv_usec - first_time.tv_usec)
-           + spvf; /* for first frame */
+		time = bsync.timestamp.tv_sec - first_time.tv_sec
+			+ 1.e-6*(bsync.timestamp.tv_usec - first_time.tv_usec)
+			+ spvf; /* for first frame */
 
-      if(single_frame)
-      {
-         if(write_frame==1) /* first time here or frame written in last loop cycle */
-         {
-            printf("%6ld frames, press enter>",num_frames);
-            fflush(stdout);
-         }
-         res = read(0,input_buffer,256);
-         if(res>0)
-            write_frame = 1;
-         else
-            write_frame = 0;
-         nfout = 1; /* always output frame only once */
-      }
-      else if(time_lapse>1)
-      {
-         write_frame = (num_syncs % time_lapse) == 0;
-         nfout = 1; /* always output frame only once */
-      }
-      else /* normal capture */
-      {
-         nfout = 1;
-         n = bsync.seq - num_syncs - first_lost + 1; /* total lost frames */
-         if(sync_corr>0) nfout += n - num_lost; /* lost since last sync */
-		 stats_changed = (num_lost != n);
-         num_lost = n;
+		if(single_frame)
+		{
+			if(write_frame==1) /* first time here or frame written in last loop cycle */
+			{
+				printf("%6ld frames, press enter>",num_frames);
+				fflush(stdout);
+			}
+			res = read(0,input_buffer,256);
+			if(res>0)
+				write_frame = 1;
+			else
+				write_frame = 0;
+			nfout = 1; /* always output frame only once */
+		}
+		else if(time_lapse>1)
+		{
+			write_frame = (num_syncs % time_lapse) == 0;
+			nfout = 1; /* always output frame only once */
+		}
+		else /* normal capture */
+		{
+			nfout = 1;
+			n = bsync.seq - num_syncs - first_lost + 1; /* total lost frames */
+			if(sync_corr>0) nfout += n - num_lost; /* lost since last sync */
+			stats_changed = (num_lost != n);
+			num_lost = n;
 
-         /* Check if we have to insert/delete frames to stay in sync */
+			/* Check if we have to insert/delete frames to stay in sync */
 
-         if(sync_corr>1)
-         {
-            if( tdiff1-tdiff2 < -spvf)
-            {
-               nfout++;
-               num_ins++;
-			   stats_changed = 1;
-               tdiff1 += spvf;
-            }
-            if( tdiff1-tdiff2 > spvf)
-            {
-               nfout--;
-               num_del++;
-			   stats_changed = 1;
-               tdiff1 -= spvf;
-            }
-         }
-      }
+			if(sync_corr>1)
+			{
+				if( tdiff1-tdiff2 < -spvf)
+				{
+					nfout++;
+					num_ins++;
+					stats_changed = 1;
+					tdiff1 += spvf;
+				}
+				if( tdiff1-tdiff2 > spvf)
+				{
+					nfout--;
+					num_del++;
+					stats_changed = 1;
+					tdiff1 -= spvf;
+				}
+			}
+		}
 
-      /* write it out */
+		/* write it out */
 
-      if(write_frame && nfout>0)
-      {
-         res = output_video_frame(MJPG_buff+bsync.frame*breq.size, bsync.length, nfout);
-         if(res) break; /* Done or error occured */
-      }
+		if(write_frame && nfout>0)
+		{
+			res = output_video_frame(MJPG_buff+bsync.frame*breq.size, bsync.length, nfout);
+			if(res) break; /* Done or error occured */
+		}
 
-      /* Re-queue the buffer */
+		/* Re-queue the buffer */
 
-      res = ioctl(video_dev, MJPIOC_QBUF_CAPT, &bsync.frame);
-      if (res < 0)
-      {
-         close_files_on_error();
-         system_error("re-queuing buffer","ioctl MJPIOC_QBUF_CAPT");
-      }
+		res = ioctl(video_dev, MJPIOC_QBUF_CAPT, &bsync.frame);
+		if (res < 0)
+		{
+			close_files_on_error();
+			system_error("re-queuing buffer","ioctl MJPIOC_QBUF_CAPT");
+		}
    
-      /* Output statistics */
+		/* Output statistics */
 
-      if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
-      {
-         int nf, ns, nm, nh;
-         if(norm!=VIDEO_MODE_NTSC)
-         {
-            nf = num_frames % 25;
-            ns = num_frames / 25;
-         }
-         else
-         {
-            nf = num_frames % 30;
-            ns = num_frames / 30;
-         }
-         nm = ns / 60;
-         ns = ns % 60;
-         nh = nm / 60;
-         nm = nm % 60;
-         sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
-                            "audio errs:%3lu tdiff=%10.6f",
-                nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
-        lavrec_msg(LAVREC_PROGRESS,infostring,"");
-		stats_changed = 0;
-      }
+		if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
+		{
+			int nf, ns, nm, nh;
+			if(norm!=VIDEO_MODE_NTSC)
+			{
+				nf = num_frames % 25;
+				ns = num_frames / 25;
+			}
+			else
+			{
+				nf = num_frames % 30;
+				ns = num_frames / 30;
+			}
+			nm = ns / 60;
+			ns = ns % 60;
+			nh = nm / 60;
+			nm = nm % 60;
+			sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
+					"audio errs:%3lu tdiff=%10.6f",
+					nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
+			lavrec_msg(LAVREC_PROGRESS,infostring,"");
+			stats_changed = 0;
+		}
 
 #ifdef	NEVER
-{
-static int last_ins;
-static int last_del;
-static double time_diff;
-static double diff;
-if (num_ins != last_ins || num_del != last_del) {
-	fprintf(stderr, "\n%d seq ins = %d del = %d\n", bsync.seq,
-num_ins, num_del);
-	last_ins = num_ins;
-	last_del = num_del;
-}
-diff = time_diff - (tdiff1 - tdiff2);
-if (diff < 0)
-	diff = -diff;
-if (diff > 0.001000) {
-	fprintf(stderr, "\n%d seq video diff %10.6f\n", bsync.seq, time_diff - (tdiff1 - tdiff2));
-}
-time_diff = tdiff1 - tdiff2;
-}
+		{
+			static int last_ins;
+			static int last_del;
+			static double time_diff;
+			static double diff;
+			if (num_ins != last_ins || num_del != last_del) {
+				fprintf(stderr, "\n%d seq ins = %d del = %d\n", bsync.seq,
+						num_ins, num_del);
+				last_ins = num_ins;
+				last_del = num_del;
+			}
+			diff = time_diff - (tdiff1 - tdiff2);
+			if (diff < 0)
+				diff = -diff;
+			if (diff > 0.001000) {
+				fprintf(stderr, "\n%d seq video diff %10.6f\n", bsync.seq, time_diff - (tdiff1 - tdiff2));
+			}
+			time_diff = tdiff1 - tdiff2;
+		}
 #endif
 
-      /* Care about audio */
+		/* Care about audio */
 
-      if (!audio_size) continue;
+		if (!audio_size) continue;
 
-      res = 0;
+		res = 0;
 
-      while(1)
-      {
+		while(1)
+		{
 
-         /* Only try to read a audio sample if video is ahead - else we might
-            get into difficulties when writing the last samples */
+			/* Only try to read a audio sample if video is ahead - else we might
+			   get into difficulties when writing the last samples */
 
-         if(output_status < 3 && 
-            num_frames*spvf < (num_asamps+audio_buffer_size/audio_bps)*spas) break;
+			if(output_status < 3 && 
+			   num_frames*spvf < (num_asamps+audio_buffer_size/audio_bps)*spas) break;
 
-         nb=audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_tmstmp,&astat);
-         if(nb==0) break;
+			nb=audio_read(AUDIO_buff,sizeof(AUDIO_buff),0,&audio_tmstmp,&astat);
+			if(nb==0) break;
 
-         if(nb<0)
-         {
-            lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
-            close_files_on_error();
-            res = -1;
-            break;
-         }
+			if(nb<0)
+			{
+				lavrec_msg(LAVREC_ERROR,"Error reading audio",audio_strerror());
+				close_files_on_error();
+				res = -1;
+				break;
+			}
 
-         if(!astat) 
-		 {
-			 num_aerr++;
-			 stats_changed = 1;
-		 }
+			if(!astat) 
+			{
+				num_aerr++;
+				stats_changed = 1;
+			}
 
-         /* Adjust for difference at start */
+			/* Adjust for difference at start */
 
-         if(audio_offset>=nb) { audio_offset -= nb; continue; }
-         nb -= audio_offset;
+			if(audio_offset>=nb) { audio_offset -= nb; continue; }
+			nb -= audio_offset;
 
-         /* Got an audio sample, write it out */
+			/* Got an audio sample, write it out */
 
-         res = output_audio_samples(AUDIO_buff+audio_offset,nb/audio_bps);
-         if(res) break; /* Done or error occured */
-         audio_offset = 0;
+			res = output_audio_samples(AUDIO_buff+audio_offset,nb/audio_bps);
+			if(res) break; /* Done or error occured */
+			audio_offset = 0;
 
-         /* calculate time differences beetween audio and video
-            tdiff1 is the difference according to the number of frames/samples written
-            tdiff2 is the difference according to the timestamps
-           (only if audio timestamp is not zero) */
+			/* calculate time differences beetween audio and video
+			   tdiff1 is the difference according to the number of frames/samples written
+			   tdiff2 is the difference according to the timestamps
+			   (only if audio timestamp is not zero) */
 
-         if(audio_tmstmp.tv_sec)
-         {
-            tdiff1 = num_frames*spvf - num_asamps*spas;
-            tdiff2 = (bsync.timestamp.tv_sec -audio_tmstmp.tv_sec )
-                   + (bsync.timestamp.tv_usec-audio_tmstmp.tv_usec)*1.e-6;
-         }
-      }
-      if (res) break;
-   }
+			if(audio_tmstmp.tv_sec)
+			{
+				tdiff1 = num_frames*spvf - num_asamps*spas;
+				tdiff2 = (bsync.timestamp.tv_sec -audio_tmstmp.tv_sec )
+					+ (bsync.timestamp.tv_usec-audio_tmstmp.tv_usec)*1.e-6;
+			}
+		}
+		if (res) break;
+	}
 
-   /* Audio and mixer exit processing is done with atexit() */
+	/* Audio and mixer exit processing is done with atexit() */
 
-   if(res>=0) {
-      lavrec_msg(LAVREC_INFO,"Clean exit ...","");
-   } else
-      lavrec_msg(LAVREC_INFO,"Error exit ...","");
-   exit(0);
+	if(res>=0) {
+		lavrec_msg(LAVREC_INFO,"Clean exit ...","");
+	} else
+		lavrec_msg(LAVREC_INFO,"Error exit ...","");
+	exit(0);
 }
 

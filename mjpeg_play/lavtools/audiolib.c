@@ -895,14 +895,18 @@ void do_audio()
       /* Get the difference of minimum number of bytes after the select call
          and bytes actually present - this gives us a measure of accuracy
          of the time in tv.
+		 TODO
          Note: count.bytes can overflow in extreme situations (more than
                3 hrs recording with 44.1 KHz, 16bit stereo), ndiff should
                be calculated correctly.
       */
 
       ndiff = count.bytes - audio_buffer_size*(nbdone+1);
-      if(ndiff>maxdiff) tv.tv_sec = tv.tv_usec = 0;
 
+	  /* Uncomment this and run testrec if you're getting audio problems...
+	   */
+	  printf( "CB = %d ND=%d MD=%d\n", count.bytes, ndiff,maxdiff );
+      if(ndiff>maxdiff) tv.tv_sec = tv.tv_usec = 0;
       if(audio_capt)
       {
          /* if exit_flag is set, exit immediatly */
