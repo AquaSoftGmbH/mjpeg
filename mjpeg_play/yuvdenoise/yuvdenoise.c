@@ -73,7 +73,7 @@ uint32_t init_SQD = 0;
 int lum_delta;
 int cru_delta;
 int crv_delta;
-int search_radius = 8;	        /* initial search-radius in half-pixels */
+int search_radius = 16;	        /* initial search-radius in half-pixels */
 int border = -1;
 double block_quality;
 float sharpen=0;
