@@ -54,5 +54,5 @@ If we play with progressive (60 frames/seconds) monitor,
 to display beautifully.  This process isn't reliable perfectly.
 When we play DVD 24fps video for 3:2 pulldown with progressive monitor,
 if player and monitor connected with cable which support progressive,
-player may not do normal 3:2 pulldown process but directly generate
-progressive frames.  This is simple and reliable perfectly.
+player may directly generate progressive frames instead of normal
+3:2 pulldown process.  This is simple and reliable perfectly.
