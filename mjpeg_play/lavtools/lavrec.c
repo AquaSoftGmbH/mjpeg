@@ -83,6 +83,11 @@
  *      this option for zoran-devices since they have hardware-encoding
  *      possibilities
  *
+ *   --max-file-size --- The maximum size (in MB) per video file
+ *      Intended for those that would like to record video in MJPEG
+ *      format and need a specific filesize limit, for example to be
+ *      able to burn the video files to CD (650 MB).
+ *
  **** Audio settings ***
  *
  *   -a/--audio-bitsize num --- audio bitsize:
@@ -170,7 +175,7 @@
 static lavrec_t *info;
 static int show_stats = 0;
 static int state;
-static int verbose;
+static int verbose = 0;
 static int wait_for_start = 0;
 static char input_source;
 static pthread_cond_t state_cond;
@@ -203,6 +208,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
+	fprintf(stderr, "  --max-file-size             Maximum size per file (in MB)\n");
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
 	fprintf(stderr, "Environment variables recognized:\n");
 	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
@@ -742,6 +748,10 @@ static int set_option(const char *name, char *value)
 	{
 		info->software_encoding = 1;
 	}
+	else if (strcmp(name, "max-file-size")==0)
+	{
+		info->max_file_size_mb = atoi(optarg);
+	}
 	else nerr++; /* unknown option - error */
 
 	return nerr;
@@ -778,6 +788,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"channel"          ,1,0,0},   /* -C/--channel           */
 		{"use-read"         ,0,0,0},   /* --use-read             */
 		{"software-encoding",0,0,0},   /* --software-encoding    */
+		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
 		{0,0,0,0}
 	};
 #endif

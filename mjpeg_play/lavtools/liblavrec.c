@@ -125,10 +125,10 @@ typedef struct {
    double sync_lim;                           /* upper limit of 'out-of-sync' - if higher, quit */
    video_capture_stats* stats;                /* the stats */
 
-	uint64_t   MBytes_fs_free;                     /* Free disk space when that was last checked */
-	uint64_t   bytes_output_cur;                   /* Bytes output to the current output file */
-   uint64_t   bytes_last_checked;                 /* Number of bytes that were output when the
-												 free space was last checked */
+   uint64_t   MBytes_fs_free;                 /* Free disk space when that was last checked */
+   uint64_t   bytes_output_cur;               /* Bytes output to the current output file */
+   uint64_t   bytes_last_checked;             /* Number of bytes that were output when the
+                                                 free space was last checked */
    int    mixer_volume_saved;                 /* saved recording volume before setting mixer */
    int    mixer_recsrc_saved;                 /* saved recording source before setting mixer */
    int    mixer_inplev_saved;                 /* saved output volume before setting mixer */
@@ -152,44 +152,28 @@ typedef struct {
 static void lavrec_msg(int type, lavrec_t *info, const char format[], ...) GNUC_PRINTF(3,4);
 static void lavrec_msg(int type, lavrec_t *info, const char format[], ...)
 {
-   if (!info)
+   char buf[1024];
+   va_list args;
+
+   va_start(args, format);
+   vsnprintf(buf, sizeof(buf)-1, format, args);
+
+   if (!info && type == LAVREC_MSG_ERROR)
    {
       /* we can't let errors pass without giving notice */
-      char buf[1024];
-      va_list args;
-
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
-
       printf("**ERROR: %s\n", buf);
-
-      va_end(args);
    }
    else if (info->msg_callback)
    {
-      char buf[1024];
-      va_list args;
-
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
-
       info->msg_callback(type, buf);
-
-      va_end(args);
    }
    else if (type == LAVREC_MSG_ERROR)
    {
       /* we can't let errors pass without giving notice */
-      char buf[1024];
-      va_list args;
-
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
-
       printf("**ERROR: %s\n", buf);
-
-      va_end(args);
    }
+
+   va_end(args);
 }
 
 
@@ -1252,12 +1236,18 @@ static int lavrec_init(lavrec_t *info)
    /* are there files to capture to? */
    if (info->files) /* yes */
    {
-	   /* Handle the limitations of AVI that can only do MAX 2G Byte
-		  files */
-	   if( info->video_format == 'a' || info->video_format == 'A' )
-		   info->max_file_size_mb = MAX_MBYTES_PER_FILE_32;
-	   else
-		   info->max_file_size_mb = MAX_MBYTES_PER_FILE;
+      /* Handle the limitations of AVI that can only do MAX 2G Byte files */
+      if (info->max_file_size_mb < 0)
+      {
+         if( info->video_format == 'a' || info->video_format == 'A' )
+            info->max_file_size_mb = MAX_MBYTES_PER_FILE_32;
+         else
+            info->max_file_size_mb = MAX_MBYTES_PER_FILE;
+      }
+      lavrec_msg(LAVREC_MSG_DEBUG, info,
+         "Maximum size per file will be %d MB",
+         info->max_file_size_mb);
+
       if (info->video_captured || info->audio_captured)
       {
          lavrec_msg(LAVREC_MSG_DEBUG, info,
@@ -2025,7 +2015,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_captured = NULL;
    info->msg_callback = NULL;
    info->state_changed = NULL;
-   info->max_file_size_mb = (0x4000000>>20); /* Safety first ;-) */
+   info->max_file_size_mb = -1; //(0x4000000>>20); /* Safety first ;-) */
    info->settings = (void *)malloc(sizeof(video_capture_setup));
    if (!(info->settings))
    {
