@@ -41,16 +41,15 @@ int	threshold_chroma = 2;
 
 int	radius_luma = 2;
 int	radius_chroma = 2;
-int interlace = 0;
+int	interlace;
 #define	NUMAVG	1024
 int	avg_replace[NUMAVG];
 
 static void Usage(char *name )
 {
 	fprintf(stderr,
-		"Usage: %s: [-h] [-I] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
+		"Usage: %s: [-h] [-r num] [-R num] [-t num] [-T num] [-v num]\n"
                 "-h   - Print out this help\n"
-		"-I   - treat input as interlaced fields\n"
 		"-r   - Radius for luma median (default: 2 pixels)\n"
 		"-R   - Radius for chroma median (default: 2 pixels)\n"
 		"-t   - Trigger luma threshold (default: 2 [0=disable])\n"
@@ -73,7 +72,7 @@ main(int argc, char *argv[])
 	y4m_stream_info_t istream, ostream;
 	y4m_frame_info_t iframe;
 
-	while((c = getopt(argc, argv, "r:R:t:T:v:hI")) != EOF) {
+	while((c = getopt(argc, argv, "r:R:t:T:v:h")) != EOF) {
 		switch(c) {
 		case 'r':
 			radius_luma = atoi(optarg);
@@ -86,9 +85,6 @@ main(int argc, char *argv[])
 			break;
 		case 'T':
 			threshold_chroma = atoi(optarg);
-			break;
-		case 'I' :
-			interlace = 1;
 			break;
 		case 'v':
 			verbose = atoi (optarg);
@@ -121,6 +117,22 @@ main(int argc, char *argv[])
 	i = y4m_read_stream_header(input_fd, &istream);
 	if (i != Y4M_OK)
 		mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
+
+	i = y4m_si_get_interlace(&istream);
+	switch (i)
+	{
+	case Y4M_ILACE_NONE:
+	     interlace = 0;
+	     break;
+	case Y4M_ILACE_BOTTOM_FIRST:
+	case Y4M_ILACE_TOP_FIRST:
+	     interlace = 1;
+	     break;
+	default:
+	     mjpeg_warn("Unknown interlacing '%d', assuming non-interlaced", i);
+	     interlace = 0;
+	     break;
+	}
 
 	if( interlace && istream.height % 2 != 0 )
 		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!" );
