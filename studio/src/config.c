@@ -42,6 +42,9 @@ GtkWidget *tvplug_port_textfield, *tvplug_width_process_textfield, *tvplug_heigh
 GtkWidget *tvplug_width_edit_textfield, *tvplug_height_edit_textfield;
 GtkWidget *tvplug_width_capture_textfield, *tvplug_height_capture_textfield;
 GtkWidget *geom_x_text, *geom_y_text, *geom_w_text, *geom_h_text;
+GtkWidget *soft_r_w_text, *soft_r_h_text;
+GtkWidget *fileflush_text, *maxfilesize_text;
+GtkWidget *soft_r_label, *soft_r_hbox, *decimation_label, *decimation_hbox;
 GtkWidget *hbox_lapse, *hbox_timer, *textfield_sd_decimation, *textfield_sd_treshold;
 int have_config;
 char connector, video_input, *videodev, *audiodev, *mixerdev;
@@ -52,7 +55,7 @@ char connector, video_input, *videodev, *audiodev, *mixerdev;
 GtkWidget *timelapsemode_checkbutton, *timermode_checkbutton, *screenperscreen_checkbutton, *audioaudio_mute_checkbutton, *audiostereo_checkbutton;
 GtkObject *adjustment; //, *audio_adjustment;
 char t_vinput, t_output, t_ainput, t_connector;
-gint t_sync, t_res, t_bitsize, t_bitrate;
+gint t_sync, t_res, t_bitsize, t_bitrate, t_encoding, t_useread;
 
 /* Forward declarations */
 void load_config(void);
@@ -295,6 +298,68 @@ void load_config()
 		if (verbose) printf("default_sync_correction - default 2 loaded\n");
 	}
 
+	if (-1 != (i = cfg_get_int("Studio","default_file_flush")))
+	{
+		file_flush = i;
+		if (verbose) printf("default_file_flush \'%d\' loaded\n", i);
+	}
+	else
+	{
+		file_flush = 0;
+		if (verbose) printf("default_file_flush - default 0 loaded\n");
+	}
+
+	if (-1 != (i = cfg_get_int("Studio","default_max_file_size")))
+	{
+		max_file_size = i;
+		if (verbose) printf("default_max_file_size \'%d\' loaded\n", i);
+	}
+	else
+	{
+		max_file_size = 0;
+		if (verbose) printf("default_max_file_size - default 0 loaded\n");
+	}
+
+	if (-1 != (i = cfg_get_int("Studio","default_software_encoding")))
+	{
+		if (i==0 || i==1)
+		{
+			software_encoding = i;
+			if (verbose) printf("default_software_encoding \'%d\' loaded\n", i);
+		}
+		else
+		{
+			printf("Config file Error: default_software_encoding == \'%d\' not allowed\n",
+				i);
+			software_encoding = 0;
+		}
+	}
+	else
+	{
+		software_encoding = 0;
+		if (verbose) printf("default_software_encoding - default 0 loaded\n");
+	}
+
+	if (-1 != (i = cfg_get_int("Studio","default_use_read")))
+	{
+		if (i==0 || i==1)
+		{
+			use_read = i;
+			if (verbose) printf("default_use_read \'%d\' loaded\n", i);
+		}
+		else
+		{
+			printf("Config file Error: default_use_read == \'%d\' not allowed\n",
+				i);
+			use_read = 0;
+		}
+	}
+	else
+	{
+		use_read = 0;
+		if (verbose) printf("default_use_read - default 0 loaded\n");
+	}
+
 /*	if (-1 != (i = cfg_get_int("Studio","default_audio_volume")))
 	{
 		if (i >= 0 && i <= 100)
@@ -487,6 +552,29 @@ void load_config()
 	else
 		scene_detection_treshold = 10;
 
+	if (NULL != (val = cfg_get_str("Studio","default_software_recording_size")))
+	{
+		if (sscanf(val, "%d x %d", &software_recwidth, &software_recheight) == 2)
+		{
+			if (verbose) printf("default_software_recording_size - \'%s\' loaded\n",
+				val);
+		}
+		else
+		{
+			software_recwidth = 160;
+			software_recheight = 120;
+			printf("Config file error: default_software_recording_size \'%s\' not allowed\n",
+				val);
+		}
+	}
+	else
+	{
+		software_recwidth = 160;
+		software_recheight = 120;
+		if (verbose) printf("default_software_recording_size - default %d x %d loaded\n",
+			software_recwidth, software_recheight);
+	}
+
 	if (-1 != (i = cfg_get_int("Studio","default_scene_detection_decimation")))
 		scene_detection_width_decimation = i;
 	else
@@ -590,9 +678,14 @@ void save_config()
 	fprintf(fp,"default_tv_p_size = %d x %d\n", tv_width_process, tv_height_process);
 	fprintf(fp,"default_tv_e_size = %d x %d\n", tv_width_edit, tv_height_edit);
 	fprintf(fp,"default_recording_size = %d x %d + %d + %d\n", geom_width, geom_height, geom_x, geom_y);
+	fprintf(fp,"default_software_recording_size = %d x %d\n", software_recwidth, software_recheight);
 	fprintf(fp,"default_screenperscreenmode = %d\n", single_frame);
 	fprintf(fp,"default_time = %d\n", record_time);
 	fprintf(fp,"default_lapse = %d\n", time_lapse);
+	fprintf(fp,"default_file_flush = %d\n", file_flush);
+	fprintf(fp,"default_max_file_size = %d\n", max_file_size);
+	fprintf(fp,"default_software_encoding = %d\n", software_encoding);
+	fprintf(fp,"default_use_read = %d\n", use_read);
 	fprintf(fp,"default_mjpeg_buffers = %d\n", MJPG_nbufs);
 	fprintf(fp,"default_mjpeg_buffer_size = %d\n", MJPG_bufsize);
 	fprintf(fp,"default_video_dev = %s\n", videodev);
@@ -644,6 +737,32 @@ void change_fileformat(GtkWidget *widget, gpointer data)
 void change_resolution(GtkWidget *widget, gpointer data)
 {
 	t_res = (int)data;
+}
+
+static void change_encodingtype(GtkWidget *widget, gpointer data)
+{
+	t_encoding = (int)data;
+	if (t_encoding)
+	{
+		gtk_widget_hide(decimation_label);
+		gtk_widget_hide(decimation_hbox);
+
+		gtk_widget_show(soft_r_hbox);
+		gtk_widget_show(soft_r_label);
+	}
+	else
+	{
+		gtk_widget_hide(soft_r_label);
+		gtk_widget_hide(soft_r_hbox);
+
+		gtk_widget_show(decimation_hbox);
+		gtk_widget_show(decimation_label);
+	}
+}
+
+static void change_audioreadmethod(GtkWidget *widget, gpointer data)
+{
+	t_useread = (int)data;
 }
 
 void change_audio_bitsize(GtkWidget *widget, gpointer data)
@@ -718,6 +837,9 @@ void accept_options(GtkWidget *widget, gpointer data)
 	else
 		record_time = 100000;
 
+	software_recwidth = atoi(gtk_entry_get_text(GTK_ENTRY(soft_r_w_text)));
+	software_recheight = atoi(gtk_entry_get_text(GTK_ENTRY(soft_r_h_text)));
+
 	connector = t_connector; /* auto/tc/composite/svideo */
 	video_input = t_vinput; /* pal/secam/ntsc */
 	sync_corr = t_sync;
@@ -758,6 +880,8 @@ void accept_options(GtkWidget *widget, gpointer data)
 	verdcm = t_res;
 	MJPG_nbufs = atoi(gtk_entry_get_text(GTK_ENTRY(textfield_buffers)));
 	MJPG_bufsize = atoi(gtk_entry_get_text(GTK_ENTRY(textfield_buffer_size)));
+	software_encoding = t_encoding;
+	use_read = t_useread;
 	videodev = gtk_entry_get_text(GTK_ENTRY(textfield_videodev));
 	audiodev = gtk_entry_get_text(GTK_ENTRY(textfield_audiodev));
 	mixerdev = gtk_entry_get_text(GTK_ENTRY(textfield_mixerdev));
@@ -789,6 +913,9 @@ void accept_options(GtkWidget *widget, gpointer data)
 	geom_y = atoi(gtk_entry_get_text(GTK_ENTRY(geom_y_text)));
 	geom_x = atoi(gtk_entry_get_text(GTK_ENTRY(geom_x_text)));
 
+	max_file_size = atoi(gtk_entry_get_text(GTK_ENTRY(maxfilesize_text)));
+	file_flush = atoi(gtk_entry_get_text(GTK_ENTRY(fileflush_text)));
+
 	if (tv_changed)
 	{
 		reset_lavrec_tv();
@@ -808,6 +935,7 @@ void accept_options(GtkWidget *widget, gpointer data)
 void create_capture_layout(GtkWidget *table)
 {
 	GtkWidget *label, *button, *hbox, *scrollbar;
+	char tmp[10];
 
 	/*Input method (SHVS/Composite)*/
 	label = gtk_label_new("Video Input Method: ");
@@ -892,33 +1020,62 @@ void create_capture_layout(GtkWidget *table)
 	gtk_widget_show(hbox);
 
 	/*Capture Resolution (1x, 1/2x, 1/4x)*/
-	label = gtk_label_new("Capture Resolution: ");
-	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 3, 4);
-	gtk_widget_show (label);
-	hbox = gtk_hbox_new (FALSE, 10);
+	decimation_label = gtk_label_new("Capture Resolution: ");
+	gtk_misc_set_alignment(GTK_MISC(decimation_label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), decimation_label, 0, 1, 3, 4);
+	gtk_widget_show (decimation_label);
+	if (software_encoding) gtk_widget_hide(decimation_label);
+	decimation_hbox = gtk_hbox_new (FALSE, 10);
 	button = gtk_radio_button_new_with_label(NULL, "Full");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(change_resolution), (gpointer) 1);
-	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (decimation_hbox), button, FALSE, FALSE, 0);
 	if (t_res == 1) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
 	gtk_widget_show (button);
 	button = gtk_radio_button_new_with_label(gtk_radio_button_group (GTK_RADIO_BUTTON (button)), "1/2");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(change_resolution), (gpointer) 2);
-	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (decimation_hbox), button, FALSE, FALSE, 0);
 	if (t_res == 2) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
 	gtk_widget_show (button);
 	button = gtk_radio_button_new_with_label(gtk_radio_button_group (GTK_RADIO_BUTTON (button)), "1/4");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(change_resolution), (gpointer) 4);
-	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (decimation_hbox), button, FALSE, FALSE, 0);
 	if (t_res == 4) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
 	gtk_widget_show (button);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 3, 4);
-	gtk_widget_show(hbox);
+	gtk_table_attach_defaults (GTK_TABLE (table), decimation_hbox, 1, 2, 3, 4);
+	gtk_widget_show(decimation_hbox);
+	if (software_encoding) gtk_widget_hide(decimation_hbox);
 
-	/*Capture Quality*/
+	/* software-encoded recording size */
+	soft_r_label = gtk_label_new("Recording Size (<w>x<h>): ");
+	gtk_misc_set_alignment(GTK_MISC(soft_r_label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), soft_r_label, 0, 1, 4, 5);
+	gtk_widget_show (soft_r_label);
+	if (!software_encoding) gtk_widget_hide(soft_r_label);
+	soft_r_hbox = gtk_hbox_new(FALSE, 10);
+	soft_r_w_text = gtk_entry_new();
+	gtk_widget_set_usize(soft_r_w_text, 50, 23);
+	sprintf(tmp, "%i", software_recwidth);
+	gtk_entry_set_text(GTK_ENTRY(soft_r_w_text), tmp);
+	gtk_box_pack_start (GTK_BOX (soft_r_hbox), soft_r_w_text, FALSE, FALSE, 0);
+	gtk_widget_show(soft_r_w_text);
+	label = gtk_label_new("x");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (soft_r_hbox), label, FALSE, FALSE, 0);
+	gtk_widget_show (label);
+	soft_r_h_text = gtk_entry_new();
+	gtk_widget_set_usize(soft_r_h_text, 50, 23);
+	sprintf(tmp, "%i", software_recheight);
+	gtk_entry_set_text(GTK_ENTRY(soft_r_h_text), tmp);
+	gtk_box_pack_start (GTK_BOX (soft_r_hbox), soft_r_h_text, FALSE, FALSE, 0);
+	gtk_widget_show(soft_r_h_text);
+	gtk_table_attach_defaults (GTK_TABLE (table), soft_r_hbox, 1, 2, 4, 5);
+	gtk_widget_show(soft_r_hbox);
+	if (!software_encoding) gtk_widget_hide(soft_r_hbox);
+
+	/* Capture Quality */
 	label = gtk_label_new("Capture Quality: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 5, 6);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new (FALSE, 10);
 	adjustment = gtk_adjustment_new(quality, 0, 100, 1, 10, 0);
@@ -930,20 +1087,42 @@ void create_capture_layout(GtkWidget *table)
 	label = gtk_label_new("                ");
 	gtk_box_pack_start(GTK_BOX (hbox), label, TRUE, TRUE, 0);
 	gtk_widget_show (label);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 5, 6);
 	gtk_widget_show(hbox);
+
+	/* software or hardware JPEG encoding ? */
+	label = gtk_label_new("JPEG Encoding Type: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 6, 7);
+	gtk_widget_show (label);
+	hbox = gtk_hbox_new (FALSE, 10);
+	button = gtk_radio_button_new_with_label(NULL, "Hardware JPEG");
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(change_encodingtype), (gpointer)0);
+	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	if (t_encoding==0) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+	gtk_widget_show (button);
+	button = gtk_radio_button_new_with_label(gtk_radio_button_group (GTK_RADIO_BUTTON (button)),
+		"Software JPEG");
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(change_encodingtype), (gpointer)1);
+	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	if (t_encoding==1) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+	gtk_widget_show (button);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 6, 7);
+	gtk_widget_show(hbox);	
 
 	/* Video Device */
 	label = gtk_label_new("Video Device: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 5, 6);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 7, 8);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new(FALSE, 0);
 	textfield_videodev = gtk_entry_new();
 	gtk_entry_set_text(GTK_ENTRY(textfield_videodev), videodev);
 	gtk_box_pack_start (GTK_BOX (hbox), textfield_videodev, FALSE, FALSE, 0);
 	gtk_widget_show(textfield_videodev);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 5, 6);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 7, 8);
 	gtk_widget_show(hbox);
 }
 
@@ -1041,46 +1220,68 @@ void create_sound_layout(GtkWidget *table)
 	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 3, 4);
 	gtk_widget_show(hbox);
 
+	/* read() or mmap() ? */
+	label = gtk_label_new("Audio Read Method: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 4, 5);
+	gtk_widget_show (label);
+	hbox = gtk_hbox_new (FALSE, 10);
+	button = gtk_radio_button_new_with_label(NULL, "mmap()");
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(change_audioreadmethod), (gpointer) 0);
+	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	if (t_useread==0) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+	gtk_widget_show (button);
+	button = gtk_radio_button_new_with_label(gtk_radio_button_group (GTK_RADIO_BUTTON (button)),
+		"read()");
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(change_audioreadmethod), (gpointer) 1);
+	gtk_box_pack_start (GTK_BOX (hbox), button, FALSE, FALSE, 0);
+	if (t_useread==1) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button), TRUE);
+	gtk_widget_show (button);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 4, 5);
+	gtk_widget_show(hbox);
+
 	/*Stereo?*/
 	label = gtk_label_new("Other options: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 5, 6);
 	gtk_widget_show (label);
 	audiostereo_checkbutton =  gtk_check_button_new_with_label ("Stereo");
 	if (stereo) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (audiostereo_checkbutton), TRUE);
 	gtk_widget_show (audiostereo_checkbutton);
-	gtk_table_attach_defaults (GTK_TABLE (table), audiostereo_checkbutton, 1, 2, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), audiostereo_checkbutton, 1, 2, 5, 6);
 
 	/*audio_mute audio during recording?*/
 	audioaudio_mute_checkbutton =  gtk_check_button_new_with_label ("Mute during capturing");
 	if (audio_mute) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (audioaudio_mute_checkbutton), TRUE);
 	gtk_widget_show (audioaudio_mute_checkbutton);
-	gtk_table_attach_defaults (GTK_TABLE (table), audioaudio_mute_checkbutton, 1, 2, 5, 6);
+	gtk_table_attach_defaults (GTK_TABLE (table), audioaudio_mute_checkbutton, 1, 2, 6, 7);
 
 	/* Audio Device */
 	label = gtk_label_new("Audio Device: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 6, 7);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 7, 8);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new(FALSE, 0);
 	textfield_audiodev = gtk_entry_new();
 	gtk_entry_set_text(GTK_ENTRY(textfield_audiodev), audiodev);
 	gtk_box_pack_start (GTK_BOX (hbox), textfield_audiodev, FALSE, FALSE, 0);
 	gtk_widget_show(textfield_audiodev);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 6, 7);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 7, 8);
 	gtk_widget_show(hbox);
 
 	/* Mixer Device */
 	label = gtk_label_new("Mixer Device: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 7, 8);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 8, 9);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new(FALSE, 0);
 	textfield_mixerdev = gtk_entry_new();
 	gtk_entry_set_text(GTK_ENTRY(textfield_mixerdev), mixerdev);
 	gtk_box_pack_start (GTK_BOX (hbox), textfield_mixerdev, FALSE, FALSE, 0);
 	gtk_widget_show(textfield_mixerdev);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 7, 8);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 8, 9);
 	gtk_widget_show(hbox);
 }
 
@@ -1113,14 +1314,52 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 0, 1);
 	gtk_widget_show(hbox);
 
-	/*screenshot mode*/
-	label = gtk_label_new("Other options: ");
+	/* maxfilesize */
+	label = gtk_label_new("Max file size: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
 	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 1, 2);
 	gtk_widget_show (label);
+	hbox = gtk_hbox_new(FALSE, 0);
+	maxfilesize_text = gtk_entry_new();
+	gtk_widget_set_usize(maxfilesize_text, 100, 23);
+	sprintf(tmp, "%d", max_file_size);
+	gtk_entry_set_text(GTK_ENTRY(maxfilesize_text), tmp);
+	gtk_box_pack_start (GTK_BOX (hbox), maxfilesize_text, FALSE, FALSE, 0);
+	gtk_widget_show(maxfilesize_text);
+	label = gtk_label_new(" (MB)");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+	gtk_widget_show (label);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 1, 2);
+	gtk_widget_show(hbox);
+
+	/* file-flush */
+	label = gtk_label_new("File flush rate: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 2, 3);
+	gtk_widget_show (label);
+	hbox = gtk_hbox_new(FALSE, 0);
+	fileflush_text = gtk_entry_new();
+	gtk_widget_set_usize(fileflush_text, 50, 23);
+	sprintf(tmp, "%d", file_flush);
+	gtk_entry_set_text(GTK_ENTRY(fileflush_text), tmp);
+	gtk_box_pack_start (GTK_BOX (hbox), fileflush_text, FALSE, FALSE, 0);
+	gtk_widget_show(fileflush_text);
+	label = gtk_label_new(" (1 flush per N frames)");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
+	gtk_widget_show(label);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 2, 3);
+	gtk_widget_show(hbox);
+
+	/*screenshot mode*/
+	label = gtk_label_new("Other options: ");
+	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 3, 4);
+	gtk_widget_show (label);
 	screenperscreen_checkbutton =  gtk_check_button_new_with_label ("Single frame capture mode");
 	gtk_widget_show (screenperscreen_checkbutton);
-	gtk_table_attach_defaults (GTK_TABLE (table), screenperscreen_checkbutton, 1, 2, 1, 2);
+	gtk_table_attach_defaults (GTK_TABLE (table), screenperscreen_checkbutton, 1, 2, 3, 4);
 	if (single_frame) gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (screenperscreen_checkbutton), TRUE);
 
 	/*timer mode*/
@@ -1143,7 +1382,7 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_box_pack_start (GTK_BOX (hbox_timer), textfield_timer, FALSE, FALSE, 0);
 	gtk_box_pack_start (GTK_BOX (hbox), hbox_timer, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 2, 3);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 4, 5);
 
 	/*time lapse mode*/
 	hbox = gtk_hbox_new(FALSE, 10);
@@ -1165,12 +1404,12 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_box_pack_start (GTK_BOX (hbox_lapse), textfield_lapse, FALSE, FALSE, 0);
 	gtk_box_pack_start (GTK_BOX (hbox), hbox_lapse, FALSE, FALSE, 0);
 	gtk_widget_show(hbox);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 3, 4);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 5, 6);
 
 	/* MJPEG buffer # */
 	label = gtk_label_new("MJPEG buffer number: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 6, 7);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new(FALSE, 0);
 	textfield_buffers = gtk_entry_new();
@@ -1179,13 +1418,13 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_entry_set_text(GTK_ENTRY(textfield_buffers), tmp);
 	gtk_box_pack_start (GTK_BOX (hbox), textfield_buffers, FALSE, FALSE, 0);
 	gtk_widget_show(textfield_buffers);
-	//gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 4, 5);
+	//gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 6, 7);
 	//gtk_widget_show(hbox);
 	
 	/* MJPEG buffer size */
 	label = gtk_label_new("     MJPEG buffer size: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	//gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 5, 6);
+	//gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 6, 7);
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
 	gtk_widget_show (label);
 	//hbox = gtk_hbox_new(FALSE, 0);
@@ -1199,13 +1438,13 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
 	gtk_box_pack_start (GTK_BOX (hbox), label, FALSE, FALSE, 0);
 	gtk_widget_show (label);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 4, 5);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 6, 7);
 	gtk_widget_show(hbox);
 
 	/* treshold/decimation for scene detection */
 	label = gtk_label_new("Scene detection decimation: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 5, 6);
+	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 7, 8);
 	gtk_widget_show (label);
 	hbox = gtk_hbox_new(FALSE, 0);
 	textfield_sd_decimation = gtk_entry_new();
@@ -1224,7 +1463,7 @@ void create_advanced_layout(GtkWidget *table)
 	gtk_entry_set_text(GTK_ENTRY(textfield_sd_treshold), tmp);
 	gtk_box_pack_start (GTK_BOX (hbox), textfield_sd_treshold, FALSE, FALSE, 0);
 	gtk_widget_show(textfield_sd_treshold);
-	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 5, 6);
+	gtk_table_attach_defaults (GTK_TABLE (table), hbox, 1, 2, 7, 8);
 	gtk_widget_show(hbox);
 }
 
@@ -1326,7 +1565,7 @@ void create_tvplug_options_layout(GtkWidget *table)
 	gtk_widget_show(hbox);
 
 	/* Recording size parameters (-g) */
-	label = gtk_label_new("Recording size (x,y,<w>x<h>): ");
+	label = gtk_label_new("Subframe size (<x>,<y>,<w>x<h>): ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
 	gtk_table_attach_defaults (GTK_TABLE (table), label, 0, 1, 3, 4);
 	gtk_widget_show (label);
@@ -1438,6 +1677,8 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	t_vinput = video_input;
 	t_ainput = audio_recsrc;
 	t_output = video_format;
+	t_encoding = software_encoding;
+	t_useread = use_read;
 
 	options_window = gtk_window_new(GTK_WINDOW_DIALOG);
 	vbox = gtk_vbox_new (FALSE, 10);
@@ -1447,7 +1688,7 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	gtk_container_set_border_width (GTK_CONTAINER (options_window), 15);
 
 	hbox = gtk_hbox_new(FALSE, 20);
-	table = gtk_table_new (2, 6, FALSE);
+	table = gtk_table_new (2, 8, FALSE);
 	create_capture_layout(table);
 	gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
 	gtk_widget_show(table);
@@ -1455,7 +1696,7 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	gtk_widget_show (hbox);
 
 	hbox = gtk_hbox_new(TRUE, 20);
-	table = gtk_table_new (2,8, FALSE);
+	table = gtk_table_new (2,9, FALSE);
 	create_sound_layout(table);
 	gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
 	gtk_widget_show(table);
@@ -1463,7 +1704,7 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	gtk_widget_show (hbox);
 
 	hbox = gtk_hbox_new(TRUE, 20);
-	table = gtk_table_new (2,6, FALSE);
+	table = gtk_table_new (2,8, FALSE);
 	create_advanced_layout(table);
 	gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
 	gtk_widget_show(table);

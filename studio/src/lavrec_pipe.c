@@ -407,7 +407,7 @@ void create_child()
 {
 	char lavrec_i[4], lavrec_f[4], lavrec_d[4], lavrec_q[6], lavrec_a[5], lavrec_r[8];
 	char lavrec_R[4], lavrec_c[4], lavrec_t[11], lavrec_T[4], lavrec_n[6], lavrec_b[8];
-	char lavrec_g[20];
+	char lavrec_g[20], lavrec_ff[6], lavrec_mfs[10];
 	int n;
 	char *lavrec_command[256];
 
@@ -417,7 +417,12 @@ void create_child()
 	lavrec_command[n] = "-i"; n++; sprintf(lavrec_i, "%c", input_source); lavrec_command[n] = lavrec_i; n++;
 	lavrec_command[n] = single_frame ? "-S" : "-w"; n++;
 	lavrec_command[n] = "-f"; n++; sprintf(lavrec_f, "%c", video_format); lavrec_command[n] = lavrec_f; n++;
-	lavrec_command[n] = "-d"; n++; sprintf(lavrec_d, "%i", hordcm); lavrec_command[n] = lavrec_d; n++;
+	if (!software_encoding)
+	{
+		lavrec_command[n] = "-d"; n++;
+		sprintf(lavrec_d, "%i", hordcm);
+		lavrec_command[n] = lavrec_d; n++;
+	}
 	lavrec_command[n] = "-q"; n++; sprintf(lavrec_q, "%i", quality); lavrec_command[n] = lavrec_q; n++;
 	lavrec_command[n] = "-a"; n++; sprintf(lavrec_a, "%i", audio_size); lavrec_command[n] = lavrec_a; n++;
 	lavrec_command[n] = "-r"; n++; sprintf(lavrec_r, "%i", audio_rate); lavrec_command[n] = lavrec_r; n++;
@@ -430,10 +435,32 @@ void create_child()
 	lavrec_command[n] = "-b"; n++; sprintf(lavrec_b, "%i", MJPG_bufsize); lavrec_command[n] = lavrec_b; n++;
 	if (audio_mute) { lavrec_command[n] = "-m"; n++; }
 	if (stereo) { lavrec_command[n] = "-s"; n++; }
-	if (geom_width!=0 && geom_height!=0 && geom_x!=0 && geom_y !=0)
+	if (software_encoding && encoding_syntax_style==150)
+	{ lavrec_command[n] = "--software-encoding"; n++; }
+	if (use_read && encoding_syntax_style == 150)
+	{ lavrec_command[n] = "--use-read"; n++; }
+	if (file_flush > 0 && encoding_syntax_style == 150)
+	{
+		lavrec_command[n] = "--file_flush"; n++;
+		sprintf(lavrec_ff, "%d", file_flush);
+		lavrec_command[n] = lavrec_ff; n++;
+	}
+	if (max_file_size > 0 && encoding_syntax_style == 150)
+	{
+		lavrec_command[n] = "--max-file-size"; n++;
+		sprintf(lavrec_mfs, "%d", max_file_size);
+		lavrec_command[n] = lavrec_mfs; n++;
+	}
+	if ((geom_width!=0 && geom_height!=0) && !software_encoding)
 	{
 		lavrec_command[n] = "-g"; n++;
 		sprintf(lavrec_g, "%ix%i+%i+%i", geom_width, geom_height, geom_x, geom_y);
+		lavrec_command[n] = lavrec_g; n++;
+	}
+	else if (software_encoding && encoding_syntax_style == 150)
+	{
+		lavrec_command[n] = "-g"; n++;
+		sprintf(lavrec_g, "%ix%i", software_recwidth, software_recheight);
 		lavrec_command[n] = lavrec_g; n++;
 	}
 	lavrec_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield)); n++;

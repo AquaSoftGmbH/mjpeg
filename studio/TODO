@@ -1,7 +1,6 @@
 Short term:
 ===========
-* new lavrec options: channel, use-read, software-encoding,
-    file-flush and max-file-size (all lavrec-1.5 only)
+* new lavrec options: channel (just as in stv?)
 * add images to remaining "un-images" buttons (esp. lavencode.c)
     - "power"-button image
     - more :-)

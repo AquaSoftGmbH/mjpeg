@@ -26,6 +26,12 @@ int record_time;
 int single_frame;
 int time_lapse;
 int wait_for_start;
+int file_flush;
+int max_file_size;
+int software_encoding;
+int software_recwidth;
+int software_recheight;
+int use_read;
 int audio_size;
 int audio_rate;
 int stereo;
@@ -34,6 +40,7 @@ int audio_recsrc;
 int sync_corr;
 int MJPG_nbufs;
 int MJPG_bufsize;
+
 /* used for the encoding configuratione */
 #define FILELEN 100
 char enc_inputfile [FILELEN];
