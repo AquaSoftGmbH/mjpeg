@@ -12,13 +12,12 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 #include "mjpeg_types.h"
 
-#include <unistd.h>
-#include <time.h>
-
-/* #define DEBUG */
+/* #define DEBUG */ 
+#define BLOCKSIZE   8
+#define BLOCKOFFSET (BLOCKSIZE-(BLOCKSIZE/2))/2
 
 #define MAGIC "YUV4MPEG"
 
@@ -38,10 +37,12 @@ uint8_t version[] = "0.0.63\0";
 uint8_t YUV1[(int) (768 * 576 * 1.5)];
 uint8_t YUV2[(int) (768 * 576 * 1.5)];
 uint8_t YUV3[(int) (768 * 576 * 1.5)];
-uint8_t SUBO[(int) (768 * 576 * 1.5)];
-uint8_t SUBA[(int) (768 * 576 * 1.5)];
+uint8_t SUBO2[(int) (768 * 576 * 1.5)];
+uint8_t SUBA2[(int) (768 * 576 * 1.5)];
 uint8_t SUBO4[(int) (768 * 576 * 1.5)];
 uint8_t SUBA4[(int) (768 * 576 * 1.5)];
+uint8_t SUBO8[(int) (768 * 576 * 1.5)];
+uint8_t SUBA8[(int) (768 * 576 * 1.5)];
 uint8_t DEL0[(int) (768 * 576 * 1.5)];
 uint8_t DEL1[(int) (768 * 576 * 1.5)];
 uint8_t DEL2[(int) (768 * 576 * 1.5)];
@@ -60,8 +61,10 @@ int u_offset;			/* offset of the U-component from beginning of the image */
 int v_offset;			/* offset of the V-component from beginning of the image */
 int uv_width;			/* width of the UV-components */
 int uv_height;			/* height of the UV-components */
-int best_match_x;		/* best block-match's X-coordinate in half-pixels */
-int best_match_y;		/* best block-match's Y-coordinate in half-pixels */
+int best_match_x[4];		/* best block-match's X-coordinate in half-pixels */
+int best_match_y[4];		/* best block-match's Y-coordinate in half-pixels */
+uint32_t SAD[4];		/* best block-match's sum of absolute differences */
+uint32_t CSAD;	   	        /* best block-match's sum of absolute differences */
 uint32_t SQD;			/* best block-match's sum of absolute differences */
 uint32_t YSQD;			/* best block-match's sum of absolute differences */
 uint32_t USQD;			/* best block-match's sum of absolute differences */
@@ -71,7 +74,7 @@ uint32_t init_SQD = 0;
 int lum_delta;
 int cru_delta;
 int crv_delta;
-int search_radius = 16;	        /* initial search-radius in half-pixels */
+int search_radius = 64;	        /* initial search-radius in half-pixels */
 int border = -1;
 double block_quality;
 float sharpen=0;
@@ -92,18 +95,59 @@ void delay_images ();
 void time_average_images ();
 void display_greeting ();
 void display_help ();
+void copy_filtered_block(int x, int y);
+
+void noise_it()
+{ /* TEST-Routine um Bilder gezielt und stark zu verrauschen...*/
+
+    int b;
+    int v;
+
+    for(b=0;b<(width*height*1.5);b++)
+    {
+	v=(YUV1[b]+((float)rand()/(float)RAND_MAX)*32-16);
+	v=(v>255)? 255:v;
+	v=(v<0  )? 0  :v;
+
+	YUV1[b]=v;
+    }
+}
+
+void test_line()
+{
+    static int x;
+    int y;
+
+    int xx,yy;
+
+    for(yy=0;yy<height;yy++)
+    for(xx=0;xx<width;xx++)
+    {
+	YUV1[xx+yy*width]=0;
+	YUV1[xx/2+yy/2*uv_width+u_offset]=128;
+	YUV1[xx/2+yy/2*uv_width+v_offset]=128;
+    }
+
+    for(y=0;y<(height/2);y++)
+    {
+	YUV1[0+x+y*width]=155;
+	YUV1[3+x+y*width]=155;
+	YUV1[4+x+y*width]=155;
+	YUV1[5+x+y*width]=155;
+	YUV1[8+x+y*width]=155;
+    }
+
+    x+=2;
+    x=(x>(width/2))? 0:x;
+}
 
 int
 main (int argc, char *argv[])
 {
-  int dot_x = 0, dot_y = 0;
-
-  uint8_t norm;
+  int norm;
   uint8_t magic[256];
   char c;
 
-  int x, y;
-  int dx,dy;
   display_greeting ();
 
   while ((c = getopt (argc, argv, "b:m:s:h")) != -1)
@@ -122,7 +166,7 @@ main (int argc, char *argv[])
 	  break;
 	case 's':
 	  sharpen = (float)(atoi (optarg))/100;
-	  fprintf (stderr, "---  Sharpen-filter used\n", init_SQD);
+	  fprintf (stderr, "---  Sharpen-filter used\n");
 	  break;
 	case 'h':
 	  display_help ();
@@ -132,7 +176,7 @@ main (int argc, char *argv[])
 
   /* read the YUV4MPEG header */
 
-  if (0 == (fscanf (stdin, "%s %i %i %i", &magic, &width, &height, &norm)))
+  if (0 == (fscanf (stdin, "%s %i %i %i", &magic[0], &width, &height, &norm)))
     {
       fprintf (stderr, "### yuvdenoise ### : Error, no header found\n");
       exit (-1);
@@ -173,8 +217,9 @@ main (int argc, char *argv[])
 	}
 
       /* Do whatever ... */
+      /* noise_it(); */
+      /* test_line(); */
       denoise_image ();
-      detect_black_borders ();
       framenr++;
 
       /* write one frame */
@@ -224,6 +269,8 @@ display_help ()
   exit (0);
 }
 
+/* OLD */
+#if 0
 void
 time_average_images ()
 {
@@ -264,116 +311,36 @@ time_average_images ()
 		      DEL8[x + y * uv_width + v_offset]) >> 3;
       }
 }
-
+#endif
 void
-delay_images ()
+time_average_images ()
 {
-  static int init = 0;
   int x, y;
 
-  if (init == 0)
-    {
-      for (y = 0; y < height; y++)
-	for (x = 0; x < width; x++)
-	  {
-	    /* Y */
-	    DEL0[x + y * width] =
-	      DEL1[x + y * width] =
-	      DEL2[x + y * width] =
-	      DEL3[x + y * width] =
-	      DEL4[x + y * width] =
-	      DEL5[x + y * width] =
-	      DEL6[x + y * width] =
-	      DEL7[x + y * width] = DEL8[x + y * width] = YUV1[x + y * width];
-	  }
-      for (y = 0; y < uv_height; y++)
-	for (x = 0; x < uv_width; x++)
-	  {
-	    /* U + V */
-	    DEL0[x + y * uv_width + u_offset] =
-	      DEL1[x + y * uv_width + u_offset] =
-	      DEL2[x + y * uv_width + u_offset] =
-	      DEL3[x + y * uv_width + u_offset] =
-	      DEL4[x + y * uv_width + u_offset] =
-	      DEL5[x + y * uv_width + u_offset] =
-	      DEL6[x + y * uv_width + u_offset] =
-	      DEL7[x + y * uv_width + u_offset] =
-	      DEL8[x + y * uv_width + u_offset] =
-	      YUV1[x + y * uv_width + u_offset];
-	    DEL0[x + y * uv_width + v_offset] =
-	      DEL1[x + y * uv_width + v_offset] =
-	      DEL2[x + y * uv_width + v_offset] =
-	      DEL3[x + y * uv_width + v_offset] =
-	      DEL4[x + y * uv_width + v_offset] =
-	      DEL5[x + y * uv_width + v_offset] =
-	      DEL6[x + y * uv_width + v_offset] =
-	      DEL7[x + y * uv_width + v_offset] =
-	      DEL8[x + y * uv_width + v_offset] =
-	      YUV1[x + y * uv_width + v_offset];
-	  }
-      init = 1;
-    }
-  else
-    {
-      for (y = 0; y < height; y++)
-	for (x = 0; x < width; x++)
-	  {
-	    DEL8[x + y * width] = DEL7[x + y * width];
-	    DEL7[x + y * width] = DEL6[x + y * width];
-	    DEL6[x + y * width] = DEL5[x + y * width];
-	    DEL5[x + y * width] = DEL4[x + y * width];
-	    DEL4[x + y * width] = DEL3[x + y * width];
-	    DEL3[x + y * width] = DEL2[x + y * width];
-	    DEL2[x + y * width] = DEL1[x + y * width];
-	    DEL1[x + y * width] = DEL0[x + y * width];
-	    DEL0[x + y * width] = YUV1[x + y * width];
-	  }
-      for (y = 0; y < uv_height; y++)
-	for (x = 0; x < uv_width; x++)
-	  {
-	    DEL8[x + y * uv_width + u_offset] =
-	      DEL7[x + y * uv_width + u_offset];
-	    DEL7[x + y * uv_width + u_offset] =
-	      DEL6[x + y * uv_width + u_offset];
-	    DEL6[x + y * uv_width + u_offset] =
-	      DEL5[x + y * uv_width + u_offset];
-	    DEL5[x + y * uv_width + u_offset] =
-	      DEL4[x + y * uv_width + u_offset];
-	    DEL4[x + y * uv_width + u_offset] =
-	      DEL3[x + y * uv_width + u_offset];
-	    DEL3[x + y * uv_width + u_offset] =
-	      DEL2[x + y * uv_width + u_offset];
-	    DEL2[x + y * uv_width + u_offset] =
-	      DEL1[x + y * uv_width + u_offset];
-	    DEL1[x + y * uv_width + u_offset] =
-	      DEL0[x + y * uv_width + u_offset];
-	    DEL0[x + y * uv_width + u_offset] =
-	      YUV1[x + y * uv_width + u_offset];
+  for (y = 0; y < height; y++)
+    for (x = 0; x < width; x++)
+      {
+	AVRG[x + y * width] =
+	    (
+		YUV2[x + y * width]*3+
+		YUV1[x + y * width]*1
+		)/4;
+      }
+  for (y = 0; y < uv_height; y++)
+    for (x = 0; x < uv_width; x++)
+      {
+	AVRG[x + y * uv_width + u_offset] =
+	    ( YUV2[x + y * uv_width + u_offset]*3+
+	      YUV1[x + y * uv_width + u_offset]*1)/4;
 
-	    DEL8[x + y * uv_width + v_offset] =
-	      DEL7[x + y * uv_width + v_offset];
-	    DEL7[x + y * uv_width + v_offset] =
-	      DEL6[x + y * uv_width + v_offset];
-	    DEL6[x + y * uv_width + v_offset] =
-	      DEL5[x + y * uv_width + v_offset];
-	    DEL5[x + y * uv_width + v_offset] =
-	      DEL4[x + y * uv_width + v_offset];
-	    DEL4[x + y * uv_width + v_offset] =
-	      DEL3[x + y * uv_width + v_offset];
-	    DEL3[x + y * uv_width + v_offset] =
-	      DEL2[x + y * uv_width + v_offset];
-	    DEL2[x + y * uv_width + v_offset] =
-	      DEL1[x + y * uv_width + v_offset];
-	    DEL1[x + y * uv_width + v_offset] =
-	      DEL0[x + y * uv_width + v_offset];
-	    DEL0[x + y * uv_width + v_offset] =
-	      YUV1[x + y * uv_width + v_offset];
-	  }
-    }
+	AVRG[x + y * uv_width + v_offset] =
+	    ( YUV2[x + y * uv_width + v_offset]*3+
+	      YUV1[x + y * uv_width + v_offset]*1)/4;
+      }
 }
 
 void
-subsample_reference_image2 ()
+subsample_image (uint8_t* dest, uint8_t* source)
 {
   int x, y;
 
@@ -381,111 +348,33 @@ subsample_reference_image2 ()
   for (y = 0; y < height; y += 2)
     for (x = 0; x < width; x += 2)
       {
-	SUBO[(x) + (y) * width] =
-	  SUBO[(x + 1) + (y) * width] =
-	  SUBO[(x) + (y + 1) * width] =
-	  SUBO[(x + 1) + (y + 1) * width] =
-	  (YUV1[(x) + (y) * width] +
-	   YUV1[(x + 1) + (y) * width] +
-	   YUV1[(x) + (y + 1) * width] +
-	   YUV1[(x + 1) + (y + 1) * width]) >> 2;
+	dest[(x/2) + (y/2) * width] =
+	  (source[(x) + (y) * width] +
+	   source[(x + 1) + (y) * width] +
+	   source[(x) + (y + 1) * width] +
+	   source[(x + 1) + (y + 1) * width]) >> 2;
       }
 
-  /* subsample U and V */
-/*
-    for(y=0;y<uv_height;y+=2)
-	for(x=0;x<uv_width;x+=2)
-	{
-	    * U *
-	    SUBO[(x  ) + (y  )*uv_width+u_offset]=
-	    SUBO[(x+1) + (y  )*uv_width+u_offset]=
-	    SUBO[(x  ) + (y+1)*uv_width+u_offset]=
-	    SUBO[(x+1) + (y+1)*uv_width+u_offset]=
-		(YUV1[(x  ) + (y  )*uv_width+u_offset]+
-		 YUV1[(x+1) + (y  )*uv_width+u_offset]+
-		 YUV1[(x  ) + (y+1)*uv_width+u_offset]+
-		 YUV1[(x+1) + (y+1)*uv_width+u_offset])>>2;
-	    * V *
-	    SUBO[(x  ) + (y  )*uv_width+v_offset]=
-	    SUBO[(x+1) + (y  )*uv_width+v_offset]=
-	    SUBO[(x  ) + (y+1)*uv_width+v_offset]=
-	    SUBO[(x+1) + (y+1)*uv_width+v_offset]=
-		(YUV1[(x  ) + (y  )*uv_width+v_offset]+
-		 YUV1[(x+1) + (y  )*uv_width+v_offset]+
-		 YUV1[(x  ) + (y+1)*uv_width+v_offset]+
-		 YUV1[(x+1) + (y+1)*uv_width+v_offset])>>2;
-	}
-*/
-  for (y = 0; y < uv_height; y++)
-    for (x = 0; x < uv_width; x++)
+  for (y = 0; y < uv_height; y+=2)
+    for (x = 0; x < uv_width; x+=2)
       {
 	/* U */
-	SUBO[(x) + (y) * uv_width + u_offset] =
-	  YUV1[(x) + (y) * uv_width + u_offset];
+	dest[(x/2) + (y/2) * uv_width + u_offset] =
+	    ( source[(x) + (y) * uv_width + u_offset] +
+	      source[(x+1) + (y) * uv_width + u_offset] +
+	      source[(x) + (y+1) * uv_width + u_offset] +
+	      source[(x+1) + (y+1) * uv_width + u_offset] ) >>2;
 
 	/* V */
-	SUBO[(x) + (y) * uv_width + v_offset] =
-	  YUV1[(x) + (y) * uv_width + v_offset];
+	dest[(x/2) + (y/2) * uv_width + v_offset] =
+	    ( source[(x) + (y) * uv_width + v_offset]+
+	      source[(x+1) + (y) * uv_width + v_offset]+
+	      source[(x) + (y+1) * uv_width + v_offset]+
+	      source[(x+1) + (y+1) * uv_width + v_offset] )>>2;
       }
 }
-
-void
-subsample_averaged_image2 ()
-{
-  int x, y;
-
-  /* subsample Y */
-  for (y = 0; y < height; y += 2)
-    for (x = 0; x < width; x += 2)
-      {
-	SUBA[(x) + (y) * width] =
-	  SUBA[(x + 1) + (y) * width] =
-	  SUBA[(x) + (y + 1) * width] =
-	  SUBA[(x + 1) + (y + 1) * width] =
-	  (AVRG[(x) + (y) * width] +
-	   AVRG[(x + 1) + (y) * width] +
-	   AVRG[(x) + (y + 1) * width] +
-	   AVRG[(x + 1) + (y + 1) * width]) >> 2;
-      }
-/*
-    * subsample U and V *
-    for(y=0;y<uv_height;y+=2)
-	for(x=0;x<uv_width;x+=2)
-	{
-	    * U *
-	    SUBA[(x  ) + (y  )*uv_width+u_offset]=
-	    SUBA[(x+1) + (y  )*uv_width+u_offset]=
-	    SUBA[(x  ) + (y+1)*uv_width+u_offset]=
-	    SUBA[(x+1) + (y+1)*uv_width+u_offset]=
-		(AVRG[(x  ) + (y  )*uv_width+u_offset]+
-		 AVRG[(x+1) + (y  )*uv_width+u_offset]+
-		 AVRG[(x  ) + (y+1)*uv_width+u_offset]+
-		 AVRG[(x+1) + (y+1)*uv_width+u_offset])>>2;
-	    * V *
-	    SUBA[(x  ) + (y  )*uv_width+v_offset]=
-	    SUBA[(x+1) + (y  )*uv_width+v_offset]=
-	    SUBA[(x  ) + (y+1)*uv_width+v_offset]=
-	    SUBA[(x+1) + (y+1)*uv_width+v_offset]=
-		(AVRG[(x  ) + (y  )*uv_width+v_offset]+
-		 AVRG[(x+1) + (y  )*uv_width+v_offset]+
-		 AVRG[(x  ) + (y+1)*uv_width+v_offset]+
-		 AVRG[(x+1) + (y+1)*uv_width+v_offset])>>2;
-	}
-*/
-
-  for (y = 0; y < uv_height; y++)
-    for (x = 0; x < uv_width; x++)
-      {
-	/* U */
-	SUBA[(x) + (y) * uv_width + u_offset] =
-	  AVRG[(x) + (y) * uv_width + u_offset];
-	/* V */
-	SUBA[(x) + (y) * uv_width + v_offset] =
-	  AVRG[(x) + (y) * uv_width + v_offset];
-      }
-}
-void
-subsample_reference_image4 ()
+#if 0
+subsample_image4 (uint8_t* dest, uint8_t* source)
 {
   int x, y;
 
@@ -493,310 +382,390 @@ subsample_reference_image4 ()
   for (y = 0; y < height; y += 4)
     for (x = 0; x < width; x += 4)
       {
-	SUBO4[(x) + (y) * width] =
-	  SUBO4[(x + 1) + (y) * width] =
-	  SUBO4[(x + 2) + (y) * width] =
-	  SUBO4[(x + 3) + (y) * width] =
-	  SUBO4[(x) + (y + 1) * width] =
-	  SUBO4[(x + 1) + (y + 1) * width] =
-	  SUBO4[(x + 2) + (y + 1) * width] =
-	  SUBO4[(x + 3) + (y + 1) * width] =
-	  SUBO4[(x) + (y + 2) * width] =
-	  SUBO4[(x + 1) + (y + 2) * width] =
-	  SUBO4[(x + 2) + (y + 2) * width] =
-	  SUBO4[(x + 3) + (y + 2) * width] =
-	  SUBO4[(x) + (y + 3) * width] =
-	  SUBO4[(x + 1) + (y + 3) * width] =
-	  SUBO4[(x + 2) + (y + 3) * width] =
-	  SUBO4[(x + 3) + (y + 3) * width] =
-	  (YUV1[(x) + (y) * width] +
-	   YUV1[(x + 1) + (y) * width] +
-	   YUV1[(x + 2) + (y) * width] +
-	   YUV1[(x + 3) + (y) * width] +
-	   YUV1[(x) + (y + 1) * width] +
-	   YUV1[(x + 1) + (y + 1) * width] +
-	   YUV1[(x + 2) + (y + 1) * width] +
-	   YUV1[(x + 3) + (y + 1) * width] +
-	   YUV1[(x) + (y + 2) * width] +
-	   YUV1[(x + 1) + (y + 2) * width] +
-	   YUV1[(x + 2) + (y + 2) * width] +
-	   YUV1[(x + 3) + (y + 2) * width] +
-	   YUV1[(x) + (y + 3) * width] +
-	   YUV1[(x + 1) + (y + 3) * width] +
-	   YUV1[(x + 2) + (y + 3) * width] +
-	   YUV1[(x + 3) + (y + 3) * width]) >> 4;
+	dest[(x/4) + (y/4) * width] =
+	  (source[(x + 0) + (y + 0) * width] +
+	   source[(x + 1) + (y + 0) * width] +
+	   source[(x + 2) + (y + 0) * width] +
+	   source[(x + 3) + (y + 0) * width] +
+	   source[(x + 0) + (y + 1) * width] +
+	   source[(x + 1) + (y + 1) * width] +
+	   source[(x + 2) + (y + 1) * width] +
+	   source[(x + 3) + (y + 1) * width] +
+	   source[(x + 0) + (y + 2) * width] +
+	   source[(x + 1) + (y + 2) * width] +
+	   source[(x + 2) + (y + 2) * width] +
+	   source[(x + 3) + (y + 2) * width] +
+	   source[(x + 0) + (y + 3) * width] +
+	   source[(x + 1) + (y + 3) * width] +
+	   source[(x + 2) + (y + 3) * width] +
+	   source[(x + 3) + (y + 3) * width] )>>4;
       }
 
-  /* subsample U and V */
-  for (y = 0; y < uv_height; y += 2)
-    for (x = 0; x < uv_width; x += 2)
+  for (y = 0; y < uv_height; y+=4)
+    for (x = 0; x < uv_width; x+=4)
       {
 	/* U */
-	SUBO4[(x) + (y) * uv_width + u_offset] =
-	  SUBO4[(x + 1) + (y) * uv_width + u_offset] =
-	  SUBO4[(x) + (y + 1) * uv_width + u_offset] =
-	  SUBO4[(x + 1) + (y + 1) * uv_width + u_offset] =
-	  (YUV1[(x) + (y) * uv_width + u_offset] +
-	   YUV1[(x + 1) + (y) * uv_width + u_offset] +
-	   YUV1[(x) + (y + 1) * uv_width + u_offset] +
-	   YUV1[(x + 1) + (y + 1) * uv_width + u_offset]) >> 2;
+	dest[(x/4) + (y/4) * uv_width + u_offset] =
+	  (source[(x + 0) + (y + 0) * uv_width + u_offset] +
+	   source[(x + 1) + (y + 0) * uv_width + u_offset] +
+	   source[(x + 2) + (y + 0) * uv_width + u_offset] +
+	   source[(x + 3) + (y + 0) * uv_width + u_offset] +
+	   source[(x + 0) + (y + 1) * uv_width + u_offset] +
+	   source[(x + 1) + (y + 1) * uv_width + u_offset] +
+	   source[(x + 2) + (y + 1) * uv_width + u_offset] +
+	   source[(x + 3) + (y + 1) * uv_width + u_offset] +
+	   source[(x + 0) + (y + 2) * uv_width + u_offset] +
+	   source[(x + 1) + (y + 2) * uv_width + u_offset] +
+	   source[(x + 2) + (y + 2) * uv_width + u_offset] +
+	   source[(x + 3) + (y + 2) * uv_width + u_offset] +
+	   source[(x + 0) + (y + 3) * uv_width + u_offset] +
+	   source[(x + 1) + (y + 3) * uv_width + u_offset] +
+	   source[(x + 2) + (y + 3) * uv_width + u_offset] +
+	   source[(x + 3) + (y + 3) * uv_width + u_offset] )>>4;
 
 	/* V */
-	SUBO4[(x) + (y) * uv_width + v_offset] =
-	  SUBO4[(x + 1) + (y) * uv_width + v_offset] =
-	  SUBO4[(x) + (y + 1) * uv_width + v_offset] =
-	  SUBO4[(x + 1) + (y + 1) * uv_width + v_offset] =
-	  (YUV1[(x) + (y) * uv_width + v_offset] +
-	   YUV1[(x + 1) + (y) * uv_width + v_offset] +
-	   YUV1[(x) + (y + 1) * uv_width + v_offset] +
-	   YUV1[(x + 1) + (y + 1) * uv_width + v_offset]) >> 2;
+	dest[(x/4) + (y/4) * uv_width + v_offset] =
+	  (source[(x + 0) + (y + 0) * uv_width + v_offset] +
+	   source[(x + 1) + (y + 0) * uv_width + v_offset] +
+	   source[(x + 2) + (y + 0) * uv_width + v_offset] +
+	   source[(x + 3) + (y + 0) * uv_width + v_offset] +
+	   source[(x + 0) + (y + 1) * uv_width + v_offset] +
+	   source[(x + 1) + (y + 1) * uv_width + v_offset] +
+	   source[(x + 2) + (y + 1) * uv_width + v_offset] +
+	   source[(x + 3) + (y + 1) * uv_width + v_offset] +
+	   source[(x + 0) + (y + 2) * uv_width + v_offset] +
+	   source[(x + 1) + (y + 2) * uv_width + v_offset] +
+	   source[(x + 2) + (y + 2) * uv_width + v_offset] +
+	   source[(x + 3) + (y + 2) * uv_width + v_offset] +
+	   source[(x + 0) + (y + 3) * uv_width + v_offset] +
+	   source[(x + 1) + (y + 3) * uv_width + v_offset] +
+	   source[(x + 2) + (y + 3) * uv_width + v_offset] +
+	   source[(x + 3) + (y + 3) * uv_width + v_offset] )>>4;
+
       }
 }
+#endif
 
-void
-subsample_averaged_image4 ()
+/* preparing to use MMX ;-) */
+uint32_t 
+calc_SAD(char* frm, char* ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
-  int x, y;
+    int dx,dy,Y;
+    uint32_t d=0;
 
-  /* subsample Y */
-  for (y = 0; y < height; y += 4)
-    for (x = 0; x < width; x += 4)
-      {
-	SUBA4[(x) + (y) * width] =
-	  SUBA4[(x + 1) + (y) * width] =
-	  SUBA4[(x + 2) + (y) * width] =
-	  SUBA4[(x + 3) + (y) * width] =
-	  SUBA4[(x) + (y + 1) * width] =
-	  SUBA4[(x + 1) + (y + 1) * width] =
-	  SUBA4[(x + 2) + (y + 1) * width] =
-	  SUBA4[(x + 3) + (y + 1) * width] =
-	  SUBA4[(x) + (y + 2) * width] =
-	  SUBA4[(x + 1) + (y + 2) * width] =
-	  SUBA4[(x + 2) + (y + 2) * width] =
-	  SUBA4[(x + 3) + (y + 2) * width] =
-	  SUBA4[(x) + (y + 3) * width] =
-	  SUBA4[(x + 1) + (y + 3) * width] =
-	  SUBA4[(x + 2) + (y + 3) * width] =
-	  SUBA4[(x + 3) + (y + 3) * width] =
-	  (AVRG[(x) + (y) * width] +
-	   AVRG[(x + 1) + (y) * width] +
-	   AVRG[(x + 2) + (y) * width] +
-	   AVRG[(x + 3) + (y) * width] +
-	   AVRG[(x) + (y + 1) * width] +
-	   AVRG[(x + 1) + (y + 1) * width] +
-	   AVRG[(x + 2) + (y + 1) * width] +
-	   AVRG[(x + 3) + (y + 1) * width] +
-	   AVRG[(x) + (y + 2) * width] +
-	   AVRG[(x + 1) + (y + 2) * width] +
-	   AVRG[(x + 2) + (y + 2) * width] +
-	   AVRG[(x + 3) + (y + 2) * width] +
-	   AVRG[(x) + (y + 3) * width] +
-	   AVRG[(x + 1) + (y + 3) * width] +
-	   AVRG[(x + 2) + (y + 3) * width] +
-	   AVRG[(x + 3) + (y + 3) * width]) >> 4;
-      }
+    for (dy = 0; dy < BLOCKSIZE/div; dy++)
+	for (dx = 0; dx < BLOCKSIZE/div; dx++)
+	{
+	    Y =
+		*( frm + frm_offs + (dx) + (dy) * width ) -
+		*( ref + ref_offs + (dx) + (dy) * width ) ;
 
-  /* subsample U and V */
-  for (y = 0; y < uv_height; y += 2)
-    for (x = 0; x < uv_width; x += 2)
-      {
-	/* U */
-	SUBA4[(x) + (y) * uv_width + u_offset] =
-	  SUBA4[(x + 1) + (y) * uv_width + u_offset] =
-	  SUBA4[(x) + (y + 1) * uv_width + u_offset] =
-	  SUBA4[(x + 1) + (y + 1) * uv_width + u_offset] =
-	  (AVRG[(x) + (y) * uv_width + u_offset] +
-	   AVRG[(x + 1) + (y) * uv_width + u_offset] +
-	   AVRG[(x) + (y + 1) * uv_width + u_offset] +
-	   AVRG[(x + 1) + (y + 1) * uv_width + u_offset]) / 4;
+	    d += (Y > 0) ? Y : -Y;
+	}
+    return d;
+}
+uint32_t 
+calc_SAD_uv(uint8_t *frm, uint8_t *ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+{
+    int dx=0,dy=0,Y;
+    uint32_t d=0;
+    static uint32_t old_frm_offs;
+    static uint32_t old_d;
 
-	/* V */
-	SUBA4[(x) + (y) * uv_width + v_offset] =
-	  SUBA4[(x + 1) + (y) * uv_width + v_offset] =
-	  SUBA4[(x) + (y + 1) * uv_width + v_offset] =
-	  SUBA4[(x + 1) + (y + 1) * uv_width + v_offset] =
-	  (AVRG[(x) + (y) * uv_width + v_offset] +
-	   AVRG[(x + 1) + (y) * uv_width + v_offset] +
-	   AVRG[(x) + (y + 1) * uv_width + v_offset] +
-	   AVRG[(x + 1) + (y + 1) * uv_width + v_offset]) / 4;
+    if( old_frm_offs != frm_offs )
+    {
+	for (dy = 0; dy < (BLOCKSIZE/2)/div; dy++)
+	    for (dx = 0; dx < (BLOCKSIZE/2)/div; dx++)
+	    {
+		Y =
+		    *( frm + frm_offs + (dx) + (dy) * uv_width ) -
+		    *( ref + ref_offs + (dx) + (dy) * uv_width ) ;
+		
+		d += (Y > 0) ? Y : -Y;
+	    }
+	old_d=d;
+	return d;
+    }
+    else
+    {
+	return old_d;
+    }
+}
+uint32_t 
+calc_SQD(char* frm, char* ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+{
+    int dx,dy,Y;
+    uint32_t d=0;
 
-      }
+    for (dy = 0; dy < BLOCKSIZE/div; dy++)
+	for (dx = 0; dx < BLOCKSIZE/div; dx++)
+	{
+	    Y =
+		*( frm + frm_offs + (dx) + (dy) * width ) -
+		*( ref + ref_offs + (dx) + (dy) * width ) ;
 
-  for(y=0;y<height;y++)
-      for(x=0;x<width;x++)
-      {
-	  SUBA4[x+y*width]&=~1;
-      }
+	    d += Y*Y;
+	}
+    return d;
+}
+uint32_t 
+calc_SQD_uv(uint8_t *frm, uint8_t *ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+{
+    int dx=0,dy=0,Y;
+    uint32_t d=0;
+    static uint32_t old_frm_offs;
+    static uint32_t old_d;
 
+    if( old_frm_offs != frm_offs )
+    {
+	for (dy = 0; dy < (BLOCKSIZE/2)/div; dy++)
+	    for (dx = 0; dx < (BLOCKSIZE/2)/div; dx++)
+	    {
+		Y =
+		    *( frm + frm_offs + (dx) + (dy) * uv_width ) -
+		    *( ref + ref_offs + (dx) + (dy) * uv_width ) ;
+		
+		d += Y*Y;
+	    }
+	old_d=d;
+	return d;
+    }
+    else
+    {
+	return old_d;
+    }
 }
 
 void
 mb_search_44 (int x, int y)
 {
-  int dy, dx, qy, qx, x1, x2, y1, y2;
+  int dy, dx, qy, qx;
   uint32_t d;
   int Y, U, V;
 
-  SQD = 10000000;
-  for (qy = -(search_radius >> 1); qy <= +(search_radius >> 1); qy += 4)
-    for (qx = -(search_radius >> 1); qx <= +(search_radius >> 1); qx += 4)
+  d  = calc_SAD( SUBA4,
+		 SUBO4,
+		 (x)/4+(y)/4*width,
+		 (x)/4+(y)/4*width,
+		 4 );
+
+  d += calc_SAD_uv(SUBA4+u_offset,
+		   SUBO4+u_offset,
+		   (x)/8+(y)/8*uv_width,
+		   (x)/8+(y)/8*uv_width,
+		   4 );
+  d += calc_SAD_uv(SUBA4+v_offset,
+		   SUBO4+v_offset,
+		   (x)/8+(y)/8*uv_width,
+		   (x)/8+(y)/8*uv_width,
+		   4 );
+
+  CSAD=d;
+
+  SAD[0] = 10000000;
+  SAD[1] = 10000000;
+  SAD[2] = 10000000;
+  SAD[3] = 10000000;
+  best_match_x[0]=
+      best_match_y[0]=
+      best_match_x[1]=
+      best_match_y[1]=
+      best_match_x[2]=
+      best_match_y[2]=
+      best_match_x[3]=
+      best_match_y[3]=0;
+
+  for (qy = -(search_radius >> 1); qy <= +(search_radius >> 1); qy+=4)
+    for (qx = -(search_radius >> 1); qx <= +(search_radius >> 1); qx+=4)
       {
-	d = 0;
-	for (dy = -2; dy < 6; dy += 4)
-	  for (dx = -2; dx < 6; dx += 4)
-	    {
-	      Y =
-		SUBA4[(x + dx + qx) + (y + dy + qy) * width] -
-		SUBO4[(x + dx) + (y + dy) * width];
-/*
-	      U =
-		SUBA4[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		      u_offset] - SUBO4[(x + dx) / 2 + (y +
-							dy) / 2 * uv_width +
-					u_offset];
+	  d  = calc_SAD( SUBA4,
+			 SUBO4,
+			 (x+qx-BLOCKOFFSET)/4+(y+qy-BLOCKOFFSET)/4*width,
+			 (x   -BLOCKOFFSET)/4+(y   -BLOCKOFFSET)/4*width,
+			 4 );
 
-	      V =
-		SUBA4[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		      v_offset] - SUBO4[(x + dx) / 2 + (y +
-							dy) / 2 * uv_width +
-					v_offset];
-*/
-	      Y *= 4;
-	      d += (Y > 0) ? Y : -Y;	/* SAD is faster and SQD not needed here */
-//	      d += (U > 0) ? U : -U;
-//	      d += (V > 0) ? V : -V;
+	  d += calc_SAD_uv(SUBA4+u_offset,
+			   SUBO4+u_offset,
+			   (x+qx-BLOCKOFFSET)/8+(y+qy-BLOCKOFFSET)/8*uv_width,
+			   (x   -BLOCKOFFSET)/8+(y   -BLOCKOFFSET)/8*uv_width,
+			   4 );
+	  d += calc_SAD_uv(SUBA4+v_offset,
+			   SUBO4+v_offset,
+			   (x+qx-BLOCKOFFSET)/8+(y+qy-BLOCKOFFSET)/8*uv_width,
+			   (x   -BLOCKOFFSET)/8+(y   -BLOCKOFFSET)/8*uv_width,
+			   4 );
 
-	    }
-	if (qx == 0 && qy == 0)
-	  CQD = d;		/* store center's SAD -- we need it... */
+	  d += (qx>0)? qx/2:-qx/2;
+	  d += (qy>0)? qy/2:-qy/2;
 
-	if (d < SQD)
+	  if (d < CSAD)
 	  {
-	    best_match_x = qx * 2;
-	    best_match_y = qy * 2;
-	    SQD = d;
+	      if (d < SAD[0])
+	      {
+		  best_match_x[1] = best_match_x[0];
+		  best_match_x[2] = best_match_x[1];
+		  best_match_x[3] = best_match_x[2];
+		  SAD[1]=SAD[0];
+		  SAD[2]=SAD[1];
+		  SAD[3]=SAD[2];
+
+		  best_match_x[0] = qx * 2;
+		  best_match_y[0] = qy * 2;
+		  SAD[0] = d;
+	      }
+	      else
+		  if (d < SAD[1])
+		  {
+		      best_match_x[2] = best_match_x[1];
+		      best_match_x[3] = best_match_x[2];
+		      SAD[2]=SAD[1];
+		      SAD[3]=SAD[2];
+
+		      best_match_x[1] = qx * 2;
+		      best_match_y[1] = qy * 2;
+		      SAD[1] = d;
+		  }
+		  else
+		      if (d < SAD[2])
+		      {
+			  best_match_x[3] = best_match_x[2];
+			  SAD[3]=SAD[2];
+
+			  best_match_x[2] = qx * 2;
+			  best_match_y[2] = qy * 2;
+			  SAD[2] = d;
+		      }
+		      else
+			  if (d < SAD[3])
+			  {
+			      best_match_x[3] = qx * 2;
+			      best_match_y[3] = qy * 2;
+			      SAD[3] = d;
+			  }
 	  }
       }
-
-  if (CQD == SQD)		/* compensate for center */
-    best_match_x = best_match_y = 0;
-
 }
 
 void
-mb_search_88 (int x, int y)
+mb_search_22 (int x, int y)
 {
-  int dy, dx, qy, qx, x1, x2, y1, y2;
+  int dy, dx, qy, qx;
   uint32_t d;
   int Y, U, V;
-  int bx = best_match_x / 2;
-  int by = best_match_y / 2;
+  int bx;
+  int by;
+  int i;
 
-  SQD = 10000000;
-  for (qy = (by -2); qy <= (by + 2); qy += 2)
-    for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
-      {
-	d = 0;
-	for (dy = -2; dy < 6; dy += 2)
-	  for (dx = -2; dx < 6; dx += 2)
-	    {
-	      Y =
-		SUBA[(x + dx + qx) + (y + dy + qy) * width] -
-		SUBO[(x + dx) + (y + dy) * width];
-/*
-	      U =
-		SUBA[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		     u_offset] - SUBO[(x + dx) / 2 + (y + dy) / 2 * uv_width +
-				      u_offset];
+  SAD[0] = 10000000;
+  SAD[1] = 10000000;
+  SAD[2] = 10000000;
+  SAD[3] = 10000000;
 
-	      V =
-		SUBA[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		     v_offset] - SUBO[(x + dx) / 2 + (y + dy) / 2 * uv_width +
-				      v_offset];
-*/
-	      Y *= 4;
-	      d += (Y > 0) ? Y : -Y;	/* SAD is faster and SQD not needed here */
-//	      d += (U > 0) ? U : -U;
-//	      d += (V > 0) ? V : -V;
-	    }
+  for( i=0; i<4; i++)
+  {
+      bx=best_match_x[i]/2;
+      by=best_match_y[i]/2;
 
-	if (qx == bx && qy == by)
-	  CQD = d;		/* store center's SAD -- we need it... */
-
-	if (d < SQD)
+      for (qy = (by - 8); qy <= (by + 8); qy+=2)
+	  for (qx = (bx - 8); qx <= (bx + 8); qx+=2)
 	  {
-	    best_match_x = qx * 2;
-	    best_match_y = qy * 2;
-	    SQD = d;
+	      d  = calc_SAD( SUBA2,
+			     SUBO2,
+			     (x+qx-BLOCKOFFSET)/2+(y+qy-BLOCKOFFSET)/2*width,
+			     (x   -BLOCKOFFSET)/2+(y   -BLOCKOFFSET)/2*width,
+			     2 );
+	      d += calc_SAD_uv(SUBA2+u_offset,
+			       SUBO2+u_offset,
+			       (x+qx-BLOCKOFFSET)/4+(y+qy-BLOCKOFFSET)/4*uv_width,
+			       (x   -BLOCKOFFSET)/4+(y   -BLOCKOFFSET)/4*uv_width,
+			       2 );
+	      d += calc_SAD_uv(SUBA2+v_offset,
+			       SUBO2+v_offset,
+			       (x+qx-BLOCKOFFSET)/4+(y+qy-BLOCKOFFSET)/4*uv_width,
+			       (x   -BLOCKOFFSET)/4+(y   -BLOCKOFFSET)/4*uv_width,
+			       2 );
+
+	      if ( qx==qy==0 )
+	      {
+		  CSAD=d;
+	      }
+
+	      if (d < SAD[i])
+	      {
+		  best_match_x[i] = qx * 2;
+		  best_match_y[i] = qy * 2;
+		  SAD[i] = d;
+	      }
 	  }
+      if(CSAD<=SAD[i])
+      {
+	  best_match_x[i] = bx * 2;
+	  best_match_y[i] = by * 2;
+	  SAD[i] = CSAD;
       }
-
-  if (CQD == SQD)		/* compensate for center */
-    best_match_x = bx * 2, best_match_y = by * 2;
-
+  }
 }
 
 void
 mb_search (int x, int y)
 {
-  int dy, dx, qy, qx, x1, x2, y1, y2;
+  int dy, dx, qy, qx;
   uint32_t d, du, dv;
   int Y, U, V;
-  int L_min = 255, L_max = 0;
-  int bx = best_match_x / 2;
-  int by = best_match_y / 2;
+  int bx;
+  int by;
+  int i;
 
-  SQD = 10000000;
-  for (qy = (by - 1); qy <= (by + 1); qy++)
-    for (qx = (bx - 1); qx <= (bx + 1); qx++)
-      {
-	d = 0;
-	dv = 0;
-	du = 0;
-	for (dy = -2; dy < 6; dy++)
-	  for (dx = -2; dx < 6; dx++)
-	    {
-	      Y =
-		AVRG[(x + dx + qx) + (y + dy + qy) * width] -
-		YUV1[(x + dx) + (y + dy) * width];
+  SAD[0] = 10000000;
+  SAD[1] = 10000000;
+  SAD[2] = 10000000;
+  SAD[3] = 10000000;
 
-	      U =
-		AVRG[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		     u_offset] - YUV1[(x + dx) / 2 + (y + dy) / 2 * uv_width +
-				      u_offset];
+  for (i=0; i<4; i++)
+  {
+      bx=best_match_x[i]/2;
+      by=best_match_y[i]/2;
 
-	      V =
-		AVRG[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width +
-		     v_offset] - YUV1[(x + dx) / 2 + (y + dy) / 2 * uv_width +
-				      v_offset];
-
-	      Y *= 2;
-	      d +=  Y * Y;          /* Y is wightened as we process compressed data               */
-	      d +=  U * U;          /* eg. MJpeg... where luminance is prefered over              */
-	      d +=  V * V;          /* color --> where lum is OK, chroma _should_ be OK, too...   */
-	      du += U * U;
-	      dv += V * V;
-	    }
-
-	if (qx == bx && qy == by)
-	  CQD = d;		/* store center's SQD -- we need it... */
-
-	if (d < SQD)
+      for (qy = (by - 4); qy <= (by + 4); qy++)
+	  for (qx = (bx - 4); qx <= (bx + 4); qx++)
 	  {
-	    best_match_x = qx * 2;
-	    best_match_y = qy * 2;
-	    SQD = d;
-	    USQD = du;
-	    VSQD = dv;
-	  }
-      }
+	      d  = calc_SAD( AVRG,
+			     YUV1,
+			     (x+qx-BLOCKOFFSET)+(y+qy-BLOCKOFFSET)*width,
+			     (x   -BLOCKOFFSET)+(y   -BLOCKOFFSET)*width,
+			     1 );
 
-  if (CQD == SQD)		/* compensate for center */
-    {
-      best_match_x = bx * 2;
-      best_match_y = by * 2;
-      SQD = CQD;
-    }
+	      d += calc_SAD_uv(AVRG+u_offset,
+			       YUV1+u_offset,
+			       (x+qx-BLOCKOFFSET)/2+(y+qy-BLOCKOFFSET)/2*uv_width,
+			       (x   -BLOCKOFFSET)/2+(y   -BLOCKOFFSET)/2*uv_width,
+			       1 );
+
+	      d += calc_SAD_uv(AVRG+v_offset,
+			       YUV1+v_offset,
+			       (x+qx-BLOCKOFFSET)/2+(y+qy-BLOCKOFFSET)/2*uv_width,
+			       (x   -BLOCKOFFSET)/2+(y   -BLOCKOFFSET)/2*uv_width,
+			       1 );
+
+	      if ( qx==qy==0 )
+	      {
+		  CSAD=d;
+	      }
+	      
+	      if (d < SAD[i])
+	      {
+		  best_match_x[i] = qx * 2;
+		  best_match_y[i] = qy * 2;
+		  SAD[i] = d;
+	      }
+	  }
+      if(CSAD<=SAD[i])
+      {
+	  best_match_x[i] = bx * 2;
+	  best_match_y[i] = by * 2;
+	  SAD[i] = CSAD;
+      }
+  }
 }
 
 void
@@ -805,78 +774,72 @@ mb_search_half (int x, int y)
   int dy, dx, qy, qx, xx, yy, x0, x1, y0, y1;
   uint32_t d;
   int Y, U, V;
-  int lum_min = 255, lum_max = 0;
-  int bx = best_match_x;
-  int by = best_match_y;
+  int bx;
+  int by;
   float sx, sy;
   float a0, a1, a2, a3;
   uint32_t old_SQD;
+  int i;
 
-  old_SQD = SQD;
-  SQD = 10000000;
-  for (qy = (by - 1); qy <= (by + 1); qy++)
-    for (qx = (bx - 1); qx <= (bx + 1); qx++)
-      {
-	sx = (qx - (qx & ~1)) * 0.5;
-	sy = (qy - (qy & ~1)) * 0.5;
+  SAD[0] = 10000000;
+  SAD[1] = 10000000;
+  SAD[2] = 10000000;
+  SAD[3] = 10000000;
 
-	a0 = (1 - sx) * (1 - sy);
-	a1 = (sx) * (1 - sy);
-	a2 = (1 - sx) * (sy);
-	a3 = (sx) * (sy);
+  for(i=0; i<4; i++)
+  {
+      bx=best_match_x[i];
+      by=best_match_y[i];
 
-	xx = x + qx / 2;	/* Keeps some calc. out of the MB-search-loop... */
-	yy = y + qy / 2;
-
-	d = 0;
-	for (dy = -2; dy < 6; dy++)
-	  for (dx = -2; dx < 6; dx++)
-	    {
-	      x0 = xx + dx;
-	      x1 = x0 + 1;
-	      y0 = yy + dy;
-	      y1 = y0 + 1;
-	      y0 *= width;
-	      y1 *= width;
-
-	      /* we only need Y for half-pels... */
-	      Y = (AVRG[(x0) + (y0)] * a0 +
-		   AVRG[(x1) + (y0)] * a1 +
-		   AVRG[(x0) + (y1)] * a2 +
-		   AVRG[(x1) + (y1)] * a3) -
-		YUV1[(x + dx) + (y + dy) * width];
-
-	      Y *= 2;
-	      d += Y * Y;
-	    }
-	if (qx == bx && qy == by)
-	  CQD = d;		/* store center's SQD -- we need it... */
-
-	if (d < SQD)
+      for (qy = (by - 1); qy <= (by + 1); qy++)
+	  for (qx = (bx - 1); qx <= (bx + 1); qx++)
 	  {
-	    best_match_x = qx;
-	    best_match_y = qy;
-	    SQD = d;
+	      sx = (qx - (qx & ~1)) * 0.5;
+	      sy = (qy - (qy & ~1)) * 0.5;
+	      
+	      a0 = (1 - sx) * (1 - sy);
+	      a1 = (sx) * (1 - sy);
+	      a2 = (1 - sx) * (sy);
+	      a3 = (sx) * (sy);
+	      
+	      xx = x + qx / 2;	/* Keeps some calc. out of the MB-search-loop... */
+	      yy = y + qy / 2;
+	      
+	      d = 0;
+	      for (dy = -2; dy < 6; dy++)
+		  for (dx = -2; dx < 6; dx++)
+		  {
+		      x0 = xx + dx;
+		      x1 = x0 - 1;
+		      y0 = (yy + dy)*width;
+		      y1 = (yy + dy - 1)*width;
+		      
+		      /* we only need Y for half-pels... */
+		      Y = (AVRG[(x0) + (y0)] * a0 +
+			   AVRG[(x1) + (y0)] * a1 +
+			   AVRG[(x0) + (y1)] * a2 +
+			   AVRG[(x1) + (y1)] * a3) -
+			  YUV1[(x + dx) + (y + dy) * width];
+
+		      d += (Y<0)? -Y:Y ; /* doch mal einen SAD... nur testweise ...*/
+		  }
+
+	      if (d < SAD[i])
+	      {
+		  best_match_x[i] = qx;
+		  best_match_y[i] = qy;
+		  SAD[i] = d;
+	      }
 	  }
-      }
-
-  if (CQD == SQD)		/* compensate for center */
-    {
-      /* No half-pel matches... OK, go back to the old values... */
-      best_match_x = bx, best_match_y = by;
-    }
-
-  YSQD = SQD;
-  SQD = old_SQD - CQD + SQD;	/* This ugly trick is a major speed-up ;-) */
-
+  }
 }
 
 void
 copy_filtered_block (int x, int y)
 {
   int dx, dy;
-  int qx = best_match_x;
-  int qy = best_match_y;
+  int qx = best_match_x[0];
+  int qy = best_match_y[0];
   int xx, yy, x2, y2;
   float sx, sy;
   float a0, a1, a2, a3;
@@ -891,8 +854,8 @@ copy_filtered_block (int x, int y)
   a2 = (1 - sx) * (sy);
   a3 = (sx) * (sy);
 
-  for (dy = 0; dy < 4; dy++)
-    for (dx = 0; dx < 4; dx++)
+  for (dy = 0; dy < (BLOCKSIZE/2); dy++)
+    for (dx = 0; dx < (BLOCKSIZE/2); dx++)
       {
 	xx = x + dx;
 	yy = y + dy;
@@ -902,117 +865,82 @@ copy_filtered_block (int x, int y)
 	/* Y */
 	if (sx != 0 || sy != 0)
 	  YUV2[(xx) + (yy) * width] =
-	    DEL1[(xx) + (yy) * width] =
-	    DEL2[(xx) + (yy) * width] =
-	    DEL3[(xx) + (yy) * width] =
-	    DEL4[(xx) + (yy) * width] =
-	    DEL5[(xx) + (yy) * width] =
-	    DEL6[(xx) + (yy) * width] =
-	    DEL7[(xx) + (yy) * width] =
-	    DEL8[(xx) + (yy) * width] =
-	    (AVRG[(xx + qx) + (yy + qy) * width] * a0 +
-	     AVRG[(xx + qx + 1) + (yy + qy) * width] * a1 +
-	     AVRG[(xx + qx) + (yy + qy + 1) * width] * a2 +
-	     AVRG[(xx + qx + 1) + (yy + qy + 1) * width] * a3) * (1-block_quality) +
-	    DEL0[(xx) + (yy) * width] * block_quality;
+	    (AVRG[(xx + qx - 0) + (yy + qy - 0) * width] * a0 +
+	     AVRG[(xx + qx - 1) + (yy + qy - 0) * width] * a1 +
+	     AVRG[(xx + qx - 0) + (yy + qy - 1) * width] * a2 +
+	     AVRG[(xx + qx - 1) + (yy + qy - 1) * width] * a3) * (1-block_quality) +
+	    YUV1[(xx) + (yy) * width] * block_quality;
 
 	else
 	  YUV2[(xx) + (yy) * width] =
-	    DEL1[(xx) + (yy) * width] =
-	    DEL2[(xx) + (yy) * width] =
-	    DEL3[(xx) + (yy) * width] =
-	    DEL4[(xx) + (yy) * width] =
-	    DEL5[(xx) + (yy) * width] =
-	    DEL6[(xx) + (yy) * width] =
-	    DEL7[(xx) + (yy) * width] =
-	    DEL8[(xx) + (yy) * width] = 
 	      AVRG[(xx + qx) + (yy + qy) * width] * (1-block_quality) +
-	      DEL0[(xx) + (yy) * width] * block_quality;
+	      YUV1[(xx) + (yy) * width] * block_quality;
 
 	/* U */
 	YUV2[(x + dx) / 2 + (y + dy) / 2 * uv_width + u_offset] =
-	  DEL1[(x2) + (y2) + u_offset] =
-	  DEL2[(x2) + (y2) + u_offset] =
-	  DEL3[(x2) + (y2) + u_offset] =
-	  DEL4[(x2) + (y2) + u_offset] =
-	  DEL5[(x2) + (y2) + u_offset] =
-	  DEL6[(x2) + (y2) + u_offset] =
-	  DEL7[(x2) + (y2) + u_offset] =
-	  DEL8[(x2) + (y2) + u_offset] =
 	    AVRG[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width + u_offset] * (1-block_quality) +
-	    DEL0[(x2) + (y2) + u_offset] * block_quality;
+	    YUV1[(x2) + (y2) + u_offset] * block_quality;
 
 	/* V */
 	YUV2[(x2) + (y2) + v_offset] =
-	  DEL1[(x2) + (y2) + v_offset] =
-	  DEL2[(x2) + (y2) + v_offset] =
-	  DEL3[(x2) + (y2) + v_offset] =
-	  DEL4[(x2) + (y2) + v_offset] =
-	  DEL5[(x2) + (y2) + v_offset] =
-	  DEL6[(x2) + (y2) + v_offset] =
-	  DEL7[(x2) + (y2) + v_offset] =
-	  DEL8[(x2) + (y2) + v_offset] =
 	    AVRG[(x + dx + qx) / 2 + (y + dy + qy) / 2 * uv_width + v_offset] * (1-block_quality) +
-	    DEL0[(x2) + (y2) + v_offset] * block_quality;
+	    YUV1[(x2) + (y2) + v_offset] * block_quality;
       }
 }
 
+#if 0
 void
 copy_reference_block (int x, int y)
 {
   int dx, dy;
-  int xx, yy, x2, y2;
+  int xx, yy;
 
-  for (dy = 0; dy < 4; dy++)
-    for (dx = 0; dx < 4; dx++)
+  for (dy = 0; dy < (BLOCKSIZE/2); dy++)
+    for (dx = 0; dx < (BLOCKSIZE/2); dx++)
       {
 	xx = x + dx;
 	yy = (y + dy) * width;
 
 	/* Y */
 	YUV2[(xx) + (yy)] =
-	  DEL1[(xx) + (yy)] =
-	  DEL2[(xx) + (yy)] =
-	  DEL3[(xx) + (yy)] =
-	  DEL4[(xx) + (yy)] =
-	  DEL5[(xx) + (yy)] =
-	  DEL6[(xx) + (yy)] =
-	  DEL7[(xx) + (yy)] = 
-	  DEL8[(xx) + (yy)] = DEL0[(xx) + (yy)];
+	    YUV1[(xx) + (yy)];
 
 	/* U */
 	xx = (x + dx) / 2 + u_offset;
 	yy = (y + dy) / 2 * uv_width;
 
-#ifdef DEBUG
-	YUV2[(xx) + (yy)] = 128;
-#else
 	YUV2[(xx) + (yy)] = 
-#endif
-	  DEL1[(xx) + (yy)] =
-	  DEL2[(xx) + (yy)] =
-	  DEL3[(xx) + (yy)] =
-	  DEL4[(xx) + (yy)] =
-	  DEL5[(xx) + (yy)] =
-	  DEL6[(xx) + (yy)] =
-	  DEL7[(xx) + (yy)] = 
-	  DEL8[(xx) + (yy)] = DEL0[(xx) + (yy)];
+	    YUV1[(xx) + (yy)];
 
 	xx += u_offset >> 2;
 
-#ifdef DEBUG
-	YUV2[(xx) + (yy)] = 128;
-#else
 	YUV2[(xx) + (yy)] =
+	    YUV1[(xx) + (yy)];
+      }
+}
 #endif
-	  DEL1[(xx) + (yy)] =
-	  DEL2[(xx) + (yy)] =
-	  DEL3[(xx) + (yy)] =
-	  DEL4[(xx) + (yy)] =
-	  DEL5[(xx) + (yy)] =
-	  DEL6[(xx) + (yy)] =
-	  DEL7[(xx) + (yy)] = 
-	  DEL8[(xx) + (yy)] = DEL0[(xx) + (yy)];
+void
+copy_reference_block (int x, int y)
+{
+  int dx, dy;
+  int xx, yy;
+
+  for (dy = 0; dy < (BLOCKSIZE/2); dy++)
+  {
+      /* Y */
+      memcpy(YUV2+x+(y+dy)*width,
+	     YUV1+x+(y+dy)*width,BLOCKSIZE/2);
+      
+      xx=x/2;
+      yy=(y+dy)/2;
+
+      /* U */
+      memcpy(YUV2+u_offset+xx+yy*uv_width,
+	     YUV1+u_offset+xx+yy*uv_width,BLOCKSIZE/4);
+
+      /* V */
+      memcpy(YUV2+v_offset+xx+yy*uv_width,
+	     YUV1+v_offset+xx+yy*uv_width,BLOCKSIZE/4);
       }
 }
 
@@ -1020,10 +948,7 @@ void
 detect_black_borders ()
 {
   int x, y, z;
-  int vy, vu, vv, vd;
-  int top_border;
-  int bot_border;
-  static int tb = 0, bb = 0, bbb = 0;
+  static int tb = 0;
 
   {
     if (border != -1)
@@ -1052,20 +977,7 @@ void
 antiflicker_reference ()
 {
   int x, y;
-  int diff;
   int value;
-
-  if (framenr > 1)
-    for (y = 0; y < uv_height; y++)
-      for (x = 0; x < uv_width; x++)
-	{
-	  YUV1[x + y * uv_width + u_offset] =
-	      YUV1[x + y * uv_width + u_offset] * 0.5 +
-	      DEL0[x + y * uv_width + u_offset] * 0.5 ;
-	  YUV1[x + y * uv_width + v_offset] =
-	      YUV1[x + y * uv_width + v_offset] * 0.5 +
-	      DEL0[x + y * uv_width + v_offset] * 0.5 ;
-	}
 
   if(sharpen!=0)
       for (y = 1; y < (height-1); y++)
@@ -1095,120 +1007,241 @@ antiflicker_reference ()
 
 }
 
+int
+block_change(int x, int y, uint32_t mean)
+{
+    int d;
+    d = calc_SAD( SUBA4,
+		  SUBO4,
+		  (x-BLOCKOFFSET)/4+(y-BLOCKOFFSET)/4*width,
+		  (x-BLOCKOFFSET)/4+(y-BLOCKOFFSET)/4*width,
+		  1 );
+    d += calc_SAD_uv( SUBA4+u_offset,
+		      SUBO4+u_offset,
+		      (x-BLOCKOFFSET)/8+(y-BLOCKOFFSET)/8*uv_width,
+		      (x-BLOCKOFFSET)/8+(y-BLOCKOFFSET)/8*uv_width,
+		      1 );
+    d += calc_SAD_uv( SUBA4+v_offset,
+		      SUBO4+v_offset,
+		      (x-BLOCKOFFSET)/8+(y-BLOCKOFFSET)/8*uv_width,
+		      (x-BLOCKOFFSET)/8+(y-BLOCKOFFSET)/8*uv_width,
+		      1 );
+    d = (d<128)? 0:1 ;
+    return d;
+}
+
+void
+delay_image ()
+{
+    memcpy(DEL0, YUV1, (size_t)width*height*1.5);
+}
+
+
 void
 denoise_image ()
 {
-  int div;
+  int sy,sx;
+  uint32_t div;
   int x, y;
-  uint32_t min_SQD;
-  uint32_t min_Y_SQD;
-  uint32_t min_U_SQD;
-  uint32_t min_V_SQD;
-  uint32_t Smin;
+  uint32_t min_SQD=0;
+  uint32_t avg_SQD=0;
+  uint32_t min_Y_SQD=0;
+  uint32_t min_U_SQD=0;
+  uint32_t min_V_SQD=0;
+  uint32_t Smin=0;
   static uint32_t mean_SQD = -1;
   static uint32_t mean_Y_SQD = -1;
   static uint32_t mean_U_SQD = -1;
   static uint32_t mean_V_SQD = -1;
-  float SDEV;
-  float RATIO;
   int y_start, y_end;
 
-  /* manual mean-override ? */
-  if (mean_Y_SQD == -1)
-    {
-	mean_SQD=mean_Y_SQD = init_SQD;
-	mean_U_SQD = mean_V_SQD = init_SQD/100;
-    }
+/* ---------------- */
+/* TEST BLOCK !!!!! */
+/* ---------------- */
+#if 0
+      for(y=0;y<128;y++)
+	  for(x=0;x<128;x++)
+	  {
+	      YUV1[(x+0)+(y+0)*width]=
+	      AVRG[(x+0)+(y+0)*width]=
+		  0;
+	      YUV1[(x+0)/2+(y+0)/2*uv_width+u_offset]=
+	      AVRG[(x+0)/2+(y+0)/2*uv_width+u_offset]=
+		  0;
+	      YUV1[(x+0)/2+(y+0)/2*uv_width+v_offset]=
+	      AVRG[(x+0)/2+(y+0)/2*uv_width+v_offset]=
+		  0;
+	  }
 
-  /* remove color-flicker and do filtering of the reference frame */
-  antiflicker_reference ();
+      for(y=0;y<16;y++)
+	  for(x=0;x<16;x++)
+	  {
+	      YUV1[(x+0)+(y+0)*width]=
+	      AVRG[(x+5)+(y+8)*width]=
+		  x*y*10;
+	      YUV1[(x+0)/2+(y+0)/2*uv_width+u_offset]=
+	      AVRG[(x+5)/2+(y+8)/2*uv_width+u_offset]=
+		  x+y;
+	      YUV1[(x+0)/2+(y+0)/2*uv_width+v_offset]=
+	      AVRG[(x+5)/2+(y+8)/2*uv_width+v_offset]=
+		  x+y;
+	  }
+#endif
+/* ---------------- */
+/* TEST BLOCK !!!!! */
+/* ---------------- */
 
-  /* fill the delay loop */
-  delay_images ();
+  if(framenr==0)
+  {
+      memcpy(AVRG, YUV1, (size_t)width*height*1.5);
+      memcpy(DEL0, YUV1, (size_t)width*height*1.5);
+      memcpy(YUV2, YUV1, (size_t)width*height*1.5);
+  }
+  else
+  {
+      /* subsample the reference image */
+      subsample_image (SUBO2,YUV1);
+      subsample_image (SUBO4,SUBO2);
+
+      /* subsample the averaged image */
+      subsample_image (SUBA2,AVRG);
+      subsample_image (SUBA4,SUBA2);
+
+      /* reset the minimum SQD-counter */
+      min_SQD = 10000;
+      avg_SQD = 0;
+      div = 0;
+
+      for (y = 0; y < height; y += (BLOCKSIZE/2))
+	  for (x = 0; x < width; x += (BLOCKSIZE/2))
+	  {
+	      div++;
+
+	      if( block_change(x+0,y+0,mean_SQD))
+	      {
+		  /* subsampled full-search, first subsampled 4x4 then subsampled 2x2 pixels */
+		  mb_search_44 (x, y);
+#ifdef DEBUG
+		  fprintf(stderr,"mb_search_44:\n");
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[0],best_match_y[0],SAD[0]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[1],best_match_y[1],SAD[1]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[2],best_match_y[2],SAD[2]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[3],best_match_y[3],SAD[3]);
+#endif
+		  mb_search_22 (x, y);
+#ifdef DEBUG
+		  fprintf(stderr,"mb_search_22:\n");
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[0],best_match_y[0],SAD[0]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[1],best_match_y[1],SAD[1]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[2],best_match_y[2],SAD[2]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[3],best_match_y[3],SAD[3]);
+#endif
+		  /* full-pel search, 16x16 pixels, with range [+/-1 ; +/-1] */
+		  mb_search (x, y);
+#ifdef DEBUG
+		  fprintf(stderr,"mb_search:\n");
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[0],best_match_y[0],SAD[0]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[1],best_match_y[1],SAD[1]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[2],best_match_y[2],SAD[2]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[3],best_match_y[3],SAD[3]);
+#endif
+		  /* half-pel search, 16x16 pixels, with range [+/-0.5 ; +/-0.5] */
+/*	          mb_search_half (x, y); 
+ */
+		  if(SAD[1]<SAD[0] &&
+		     SAD[1]<SAD[2] &&
+		     SAD[1]<SAD[3] )
+		  {
+		      best_match_x[0]=best_match_x[1];
+		      best_match_y[0]=best_match_y[1];
+		  }
+		  else
+		      if(SAD[2]<SAD[0] &&
+			 SAD[2]<SAD[1] &&
+			 SAD[2]<SAD[3] )
+		      {
+			  best_match_x[0]=best_match_x[2];
+			  best_match_y[0]=best_match_y[2];
+		      }
+		      else
+			  if(SAD[3]<SAD[0] &&
+			     SAD[3]<SAD[1] &&
+			     SAD[3]<SAD[2] )
+			  {
+			      best_match_x[0]=best_match_x[3];
+			      best_match_y[0]=best_match_y[3];
+			  }
+#ifdef DEBUG
+		  fprintf(stderr,"sorted:\n");
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[0],best_match_y[0],SAD[0]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[1],best_match_y[1],SAD[1]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[2],best_match_y[2],SAD[2]);
+		  fprintf(stderr,"bx: %3i  by: %3i SAD:%i\n",best_match_x[3],best_match_y[3],SAD[3]);
+#endif
+	      }
+	      else
+	      {
+		  best_match_x[0]=0;
+		  best_match_y[0]=0;
+	      }
+
+	      /* eleminate block_matches outside the image */
+	      if( (best_match_x[0]+x+BLOCKSIZE/2)>width  || 
+		  (best_match_y[0]+y+BLOCKSIZE/2)>height ||
+		  (best_match_x[0]+x)<0                  ||
+		  (best_match_y[0]+y)<0                  )
+	      {
+		  best_match_x[0]=best_match_y[0]=0;
+	      }
+	      /* calculate SQD for 4x4(!!!) Block */
+	      SQD = calc_SAD( AVRG,
+			      YUV1,
+			      (x)+(y)*width,
+			      (x)+(y)*width,
+			      2 );
+	      SQD += calc_SAD_uv( AVRG+u_offset,
+	                          YUV1+u_offset,
+				  (x+best_match_x[0]/2)/2+(y+best_match_y[0]/2)/2*uv_width,
+				  (x)/2+(y)/2*uv_width,
+				  2 );
+	      SQD += calc_SAD_uv( AVRG+v_offset,
+				  YUV1+v_offset,
+				  (x+best_match_x[0]/2)/2+(y+best_match_y[0]/2)/2*uv_width,
+				  (x)/2+(y)/2*uv_width,
+				  2 );
+
+	      avg_SQD+=SQD;
+
+	      if ( SQD  <= (mean_SQD   * 2) )
+	      {
+		  if(SQD<mean_SQD)
+		  {
+		      block_quality=0.0;
+		  }
+		  else
+		  {
+		      block_quality=(SQD-mean_SQD)/(mean_SQD+1);
+		  }
+		  copy_filtered_block (x, y);
+	      }
+	      else
+	      {
+		  copy_reference_block (x, y);
+	      }
+	  }
+  }
+
+  fprintf (stderr, "---  mean_SQD   :%i -- %f \n", mean_SQD, (float)mean_SQD/(BLOCKSIZE*BLOCKSIZE/4)/3);
+
+  avg_SQD /= div;
+  mean_SQD   = (float)mean_SQD *   0.95   + (float)avg_SQD * 0.05;
+  if((avg_SQD)<mean_SQD)
+      mean_SQD=avg_SQD;
 
   /* calculate the time averaged image */
   time_average_images ();
-
-  /* subsample the reference and the averaged image */
-  subsample_averaged_image2 ();
-  subsample_reference_image2 ();
-  subsample_averaged_image4 ();
-  subsample_reference_image4 ();
-
-
-  /* top and bottom border "blackener" ? */
-  if (border != -1)
-    {
-      /* YES ! -> it's not necessary any more to check the 
-         complete image 
-       */
-      y_start = border & ~15;
-      y_end = height - (border & ~15 - 1);
-      y_end = (y_end > height) ? height : y_end;
-    }
-  else
-    {
-      /* No, check everything */
-      y_start = 0;
-      y_end = height;
-    }
-
-  /* reset the minimum SQD-counter */
-  min_Y_SQD = 0;
-  min_U_SQD = 0;
-  min_V_SQD = 0;
-  div = 0;
-  Smin=1000000000;
-  for (y = y_start; y < y_end; y += 4)
-    for (x = 0; x < width; x += 4)
-      {
-	div++;
-	best_match_x=best_match_y=0;
-
-	if(abs(SUBA4[x+y*width]-SUBO4[x+y*width])>10)
-	{
-	    /* subsampled full-search, first 4x4 then 8x8 pixels */
-	    mb_search_44 (x, y);
-	    mb_search_88 (x, y);
-	}
-	/* full-pel search, 16x16 pixels, with range [+/-1 ; +/-1] */
-	mb_search (x, y);
-	/* half-pel search, 16x16 pixels, with range [+/-0.5 ; +/-0.5] */
-	mb_search_half (x, y);
-
-	/* calculate the mean of the three SQDs (Y-U-V) and of the full SQD*/
-	min_SQD   += SQD;
-	min_Y_SQD += YSQD;
-	min_U_SQD += USQD;
-	min_V_SQD += VSQD;
-
-	if (YSQD < (mean_Y_SQD * 4.0) &&
-	    USQD < (mean_U_SQD * 4.0) && 
-	    VSQD < (mean_V_SQD * 4.0) &&
-	    SQD  < (mean_SQD   * 4.5) )
-	  {
-	      (double)block_quality = (double)SQD/((double)mean_SQD*4.5);
-	      copy_filtered_block (x, y);
-	  }
-	else
-	{
-	    copy_reference_block (x, y);
-	}
-      }
-
-  fprintf (stderr, "---  mean_SQD   :%i\n", mean_SQD);
-  fprintf (stderr, "---  mean_Y_SQD :%i\n", mean_Y_SQD);
-  fprintf (stderr, "---  mean_U_SQD :%i\n", mean_U_SQD);
-  fprintf (stderr, "---  mean_V_SQD :%i\n", mean_V_SQD);
-
-  mean_SQD   = mean_SQD *   0.95   + min_SQD / (float)div * 0.05;
-  mean_Y_SQD = mean_Y_SQD * 0.95 + min_Y_SQD / (float)div * 0.05;
-  mean_U_SQD = mean_U_SQD * 0.95 + min_U_SQD / (float)div * 0.05;
-  mean_V_SQD = mean_V_SQD * 0.95 + min_V_SQD / (float)div * 0.05;
+  delay_image();
 }
-
-
-
 
 
 
