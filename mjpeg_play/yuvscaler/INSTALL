@@ -1,0 +1,4 @@
+Modify in Makefile the CFLAGS line according to your architecture (pentium III/K7 by default)
+type "make"
+then "make install", that will copy the executable yuvscaler to /usr/local/bin.
+

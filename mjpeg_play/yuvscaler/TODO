@@ -1,0 +1,3 @@
+Optimized speed conversion when height is already OK (typical for SVCD) =>
+function that only average on height or width!!
+
