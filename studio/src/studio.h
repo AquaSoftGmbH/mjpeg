@@ -146,6 +146,9 @@ void load_config(void);
 void save_config(void);
 void open_options_window(GtkWidget *widget, gpointer data);
 int chk_dir(char *name);
+char videodev[LONGOPT];   /** holds the video dev for LAV_VIDEO_DEV */
+char audiodev[LONGOPT];   /** holds the audio dev for LAV_AUDIO_DEV */
+char mixerdev[LONGOPT];   /** holds the mixer dev for LAV_MIXER_DEV */
 
 /* config_encode.c */
 void load_config_encode(void);

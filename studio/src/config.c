@@ -48,7 +48,7 @@ GtkWidget *fileflush_text, *maxfilesize_text;
 GtkWidget *soft_r_label, *soft_r_hbox, *decimation_label, *decimation_hbox;
 GtkWidget *hbox_lapse, *hbox_timer, *textfield_sd_decimation, *textfield_sd_treshold;
 int have_config;
-char connector, video_input, *videodev, *audiodev, *mixerdev;
+char connector, video_input;
 
 /* Global option objects, *yuck*, but I can't think of a
  * better option. Besides, they are only pointers anyway..
@@ -583,44 +583,50 @@ void load_config()
 
 	if (NULL != (val = cfg_get_str("Studio","default_video_dev")))
 	{
-		if (val[0] == '/')
-			videodev = val;
+		if (0 == strncmp(val,"/dev",4))
+			sprintf(videodev,val);
 		else
 		{
 			printf("Config file Error: default_video_dev == \'%s\' not allowed\n", val);
-			videodev = DEFAULT_VIDEO;
+			sprintf(videodev,DEFAULT_VIDEO);
 		}
 	}
 	else
-		videodev = DEFAULT_VIDEO;
+		sprintf(videodev,DEFAULT_VIDEO);
+
+	if (verbose) printf("default_video_dev = %s \n",videodev);
 	setenv("LAV_VIDEO_DEV", videodev, 1);
 
 	if (NULL != (val = cfg_get_str("Studio","default_audio_dev")))
 	{
-		if (val[0] == '/')
-			audiodev = val;
+		if (0 == strncmp(val,"/dev",4))
+			sprintf(audiodev,val);
 		else
 		{
 			printf("Config file Error: default_audio_dev == \'%s\' not allowed\n", val);
-			audiodev = DEFAULT_AUDIO;
+			sprintf(audiodev,DEFAULT_AUDIO);
 		}
 	}
 	else
-		audiodev = DEFAULT_AUDIO;
+		sprintf(audiodev,DEFAULT_AUDIO);
+
+	if (verbose) printf("default_audio_dev = %s \n",audiodev);
 	setenv("LAV_AUDIO_DEV", audiodev, 1);
 
 	if (NULL != (val = cfg_get_str("Studio","default_mixer_dev")))
 	{
-		if (val[0] == '/')
-			mixerdev = val;
+		if (0 == strncmp(val,"/dev",4))
+			sprintf(mixerdev,val);
 		else
 		{
 			printf("Config file Error: default_mixer_dev == \'%s\' not allowed\n", val);
-			mixerdev = DEFAULT_MIXER;
+			sprintf(mixerdev,DEFAULT_MIXER);
 		}
 	}
 	else
-		mixerdev = DEFAULT_MIXER;
+		sprintf(mixerdev,DEFAULT_MIXER);
+
+	if (verbose) printf("default_mixer_dev = %s \n",mixerdev);
 	setenv("LAV_MIXER_DEV", mixerdev, 1);
 
 	if (NULL != (val = cfg_get_str("Studio","default_record_dir")))
@@ -891,9 +897,9 @@ void accept_options(GtkWidget *widget, gpointer data)
 	MJPG_bufsize = atoi(gtk_entry_get_text(GTK_ENTRY(textfield_buffer_size)));
 	software_encoding = t_encoding;
 	use_read = t_useread;
-	videodev = gtk_entry_get_text(GTK_ENTRY(textfield_videodev));
-	audiodev = gtk_entry_get_text(GTK_ENTRY(textfield_audiodev));
-	mixerdev = gtk_entry_get_text(GTK_ENTRY(textfield_mixerdev));
+	sprintf(videodev,gtk_entry_get_text(GTK_ENTRY(textfield_videodev)));
+	sprintf(audiodev,gtk_entry_get_text(GTK_ENTRY(textfield_audiodev)));
+	sprintf(mixerdev,gtk_entry_get_text(GTK_ENTRY(textfield_mixerdev)));
 	setenv("LAV_VIDEO_DEV", videodev, 1);
 	setenv("LAV_AUDIO_DEV", audiodev, 1);
 	setenv("LAV_MIXER_DEV", mixerdev, 1);

@@ -414,6 +414,7 @@ void create_child()
 	char lavrec_g[20], lavrec_ff[6], lavrec_mfs[10];
 	int n;
 	char *lavrec_command[256];
+	char command[256];
 
 	/* create command in lavrec_command */
 	n=0;
@@ -439,17 +440,17 @@ void create_child()
 	lavrec_command[n] = "-b"; n++; sprintf(lavrec_b, "%i", MJPG_bufsize); lavrec_command[n] = lavrec_b; n++;
 	if (audio_mute) { lavrec_command[n] = "-m"; n++; }
 	if (stereo) { lavrec_command[n] = "-s"; n++; }
-	if (software_encoding && encoding_syntax_style==150)
+	if (software_encoding)
 	{ lavrec_command[n] = "--software-encoding"; n++; }
-	if (use_read && encoding_syntax_style == 150)
+	if (use_read)
 	{ lavrec_command[n] = "--use-read"; n++; }
-	if (file_flush > 0 && encoding_syntax_style == 150)
+	if (file_flush > 0)
 	{
 		lavrec_command[n] = "--file_flush"; n++;
 		sprintf(lavrec_ff, "%d", file_flush);
 		lavrec_command[n] = lavrec_ff; n++;
 	}
-	if (max_file_size > 0 && encoding_syntax_style == 150)
+	if (max_file_size > 0)
 	{
 		lavrec_command[n] = "--max-file-size"; n++;
 		sprintf(lavrec_mfs, "%d", max_file_size);
@@ -461,7 +462,7 @@ void create_child()
 		sprintf(lavrec_g, "%ix%i+%i+%i", geom_width, geom_height, geom_x, geom_y);
 		lavrec_command[n] = lavrec_g; n++;
 	}
-	else if (software_encoding && encoding_syntax_style == 150)
+	else if (software_encoding)
 	{
 		lavrec_command[n] = "-g"; n++;
 		sprintf(lavrec_g, "%ix%i", software_recwidth, software_recheight);
@@ -469,6 +470,12 @@ void create_child()
 	}
 	lavrec_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield)); n++;
 	lavrec_command[n] = NULL;
+
+	if (verbose)
+	{
+	        command_2string(lavrec_command, command);
+		printf("Executing: %s\n",command);
+	}
 
 	start_pipe_command(lavrec_command, LAVREC);
 }
