@@ -92,10 +92,15 @@ for the install.
 	playback crashes out on you immediately try compiling and
 	installing SDL from source-code.
 
-*** Software you'll find useful
-
 5) A reasonably up-to-date installation of the "xforms" library.
 In RedHat land xforms-0.88.1-1 (you need the -devel too) is known to work.
+
+6) If you wish to recompile the mpeg encoder you'll need a recent version
+of the "nasm" assembler.
+
+
+*** Software you'll find useful
+
 
 Irritatingly some older installation make the header "X11/forms.h" whilst
 more recent ones use "forms.h".  If compilation stops with one of these
