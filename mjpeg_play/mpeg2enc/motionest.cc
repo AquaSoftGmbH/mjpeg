@@ -1325,8 +1325,6 @@ void MacroBlock::FrameMEs()
 	if (picture.pict_type==P_TYPE)
 	{
 
-        if( i == 688 && j == 464 && picture.decode == 122 ) 
-            printf( "GOT THERE!\n" );
         /* FRAME mode non-intra coding 0 MV and estimated MVs is
            always possible */
         zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, 

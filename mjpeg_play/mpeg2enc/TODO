@@ -56,6 +56,10 @@ Near Future improvements
 
 Minor Tidying
 
+1.	A lot of parameter passing could be removed from motionest.cc routines
+	by creating an 'MacroBlockMotionModes' object carrying parameters fixed
+	for a block...
+
 2.	The order of return from block_dist1_MMXE is silly.  Why not
 	retune in the order it is held and adjust find_best_one_pel_MMXE to
 	suit.  
