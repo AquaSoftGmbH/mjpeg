@@ -222,6 +222,29 @@ static void lavrec_msg(int type, char *str1, char *str2)
 {
    char *ctype;
 
+   switch(type) {
+
+   case LAVREC_DEBUG:
+	if (verbose < 3)
+		return;
+	break;
+
+   case LAVREC_INFO:
+	if (verbose < 1)
+		return;
+	break;
+
+   case LAVREC_WARNING:
+	if (verbose < 2)
+		return;
+	break;
+
+   case LAVREC_PROGRESS:
+	if (verbose == 0)
+		return;
+	break;
+   }
+
    if(type==LAVREC_PROGRESS)
    {
       printf("%s   \r",str1);
@@ -1246,24 +1269,19 @@ int main(int argc, char ** argv)
       case 't': input = 2; norm = 0; break;
       default:
          n = 0;
-	 if (verbose > 1)
-           lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
+         lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
          for(i=0;i<2;i++)
          {
-	    if (verbose > 1) {
-              sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
-              lavrec_msg(LAVREC_INFO,infostring,"");
-	    }
+            sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
+            lavrec_msg(LAVREC_INFO,infostring,"");
             bstat.input = i;
             res = ioctl(video_dev,MJPIOC_G_STATUS,&bstat);
             if(res<0) system_error("getting input status","ioctl MJPIOC_G_STATUS");
             if(bstat.signal)
             {
-		if (verbose > 1) {
-                  sprintf(infostring,"input present: %s %s",bstat.norm?"NTSC":"PAL",
+                sprintf(infostring,"input present: %s %s",bstat.norm?"NTSC":"PAL",
                                                          bstat.color?"color":"no color");
-                  lavrec_msg(LAVREC_INFO,infostring,"");
-		}
+               lavrec_msg(LAVREC_INFO,infostring,"");
                input = i;
                norm = bstat.norm;
                n++;
@@ -1277,11 +1295,9 @@ int main(int argc, char ** argv)
                lavrec_msg(LAVREC_ERROR,"No input signal ... exiting","");
                exit(1);
             case 1:
-	       if (verbose > 1) {	
-                 sprintf(infostring,"Detected %s %s",norm?"NTSC":"PAL",
+               sprintf(infostring,"Detected %s %s",norm?"NTSC":"PAL",
                                                    input==0?"Composite":"S-Video");
-                 lavrec_msg(LAVREC_INFO,infostring,"");
-	       }
+               lavrec_msg(LAVREC_INFO,infostring,"");
                break;
             case 2:
                lavrec_msg(LAVREC_ERROR,"Input signal on Composite AND S-Video ... exiting","");
@@ -1371,11 +1387,9 @@ int main(int argc, char ** argv)
    height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
    interlaced = (bparm.field_per_buff>1);
 
-   if (verbose > 1) {
-     sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
+   sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
                       width, height, bparm.field_per_buff);
-     lavrec_msg(LAVREC_INFO,infostring,"");
-   }
+   lavrec_msg(LAVREC_INFO,infostring,"");
 
    /* Request buffers */
 
@@ -1384,10 +1398,8 @@ int main(int argc, char ** argv)
    res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
    if(res<0) system_error("requesting video buffers","ioctl MJPIOC_REQBUFS");
 
-   if (verbose > 1) { 
-     sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
-     lavrec_msg(LAVREC_INFO,infostring,"");
-   }
+   sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
+   lavrec_msg(LAVREC_INFO,infostring,"");
 
    /* Map the buffers */
 
@@ -1402,9 +1414,8 @@ int main(int argc, char ** argv)
 
    if (audio_size && sync_corr>1)
    {
-     if (verbose > 1) {
-       printf("Getting audio ... \n");
-     }
+     lavrec_msg(LAVREC_INFO, "Getting audio ... ", "");
+
       for(n=0;;n++)
       {
          if(n>NUM_AUDIO_TRIES)
@@ -1582,7 +1593,7 @@ int main(int argc, char ** argv)
          close_files_on_error();
          system_error("re-queuing buffer","ioctl MJPIOC_QBUF_CAPT");
       }
-
+   
       /* Output statistics */
 
       if(!single_frame && output_status<3)
@@ -1602,14 +1613,34 @@ int main(int argc, char ** argv)
          ns = ns % 60;
          nh = nm / 60;
          nm = nm % 60;
-	 if (verbose > 0) {
-           sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
+         sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
                             "audio errs:%3lu tdiff=%10.6f",
                 nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
-           lavrec_msg(LAVREC_PROGRESS,infostring,"");
-	 }
+        lavrec_msg(LAVREC_PROGRESS,infostring,"");
+      
       }
 
+#ifdef	NEVER
+{
+static int last_ins;
+static int last_del;
+static double time_diff;
+static double diff;
+if (num_ins != last_ins || num_del != last_del) {
+	fprintf(stderr, "\n%d seq ins = %d del = %d\n", bsync.seq,
+num_ins, num_del);
+	last_ins = num_ins;
+	last_del = num_del;
+}
+diff = time_diff - (tdiff1 - tdiff2);
+if (diff < 0)
+	diff = -diff;
+if (diff > 0.001000) {
+	fprintf(stderr, "\n%d seq video diff %10.6f\n", bsync.seq, time_diff - (tdiff1 - tdiff2));
+}
+time_diff = tdiff1 - tdiff2;
+}
+#endif
 
       /* Care about audio */
 
@@ -1668,9 +1699,7 @@ int main(int argc, char ** argv)
    /* Audio and mixer exit processing is done with atexit() */
 
    if(res>=0) {
-      if (verbose > 1) {
-        lavrec_msg(LAVREC_INFO,"Clean exit ...","");
-      }
+      lavrec_msg(LAVREC_INFO,"Clean exit ...","");
    } else
       lavrec_msg(LAVREC_INFO,"Error exit ...","");
    exit(0);
