@@ -939,7 +939,8 @@ static void zr36057_set_vfe(struct zoran *zr, int video_width, int video_height,
 	reg |= (HorDcm << ZR36057_VFESPFR_HorDcm);
 	reg |= (VerDcm << ZR36057_VFESPFR_VerDcm);
 	reg |= (DispMode << ZR36057_VFESPFR_DispMode);
-	reg |= ZR36057_VFESPFR_LittleEndian;
+	if (video_format != VIDEO_PALETTE_YUV422)
+		reg |= ZR36057_VFESPFR_LittleEndian;
 	/* RJ: I don't know, why the following has to be the opposite
 	   of the corresponding ZR36060 setting, but only this way
 	   we get the correct colors when uncompressing to the screen  */
