@@ -1,7 +1,7 @@
 .TH "yuv4mpeg" "5" "25 November 2002" "MJPEG Linux Square" "MJPEG Tools Manual"
 
 .SH "NAME"
-yuv4mpeg \- video stream format used by pipe-based MJPEGtools
+YUV4MPEG2 \- video stream format used by pipe-based MJPEGtools
 .hw libmjpegutils yuv4mpeg.h YUV4MPEG YUV4MPEG2 
 
 .SH "DESCRIPTION"
@@ -103,40 +103,79 @@ numerator (base 10 ASCII integer)
 .IP - 3
 denominator (base 10 ASCII integer)
 
+.PP
+Header tags fall into three categories:  \fBoptional\fP, \fBrequired\fP and 
+\fBhas-default\fP.
+Optional tags are completely optional and may be omitted from a header.
+Required tags must be present in a header.  Has-Default tags have a default
+value which is implied if the tag is not present.
+Independent of these categories, some tags allow an "unknown" value and
+some do not.
 
 .PP
 The supported tags for the \fISTREAM-HEADER\fP:
 .RS
 .HP
-W\ \-\ [integer] frame width in pixels, must be > 0 (\fBrequired\fP)
+W[integer]\ \-\ frame width in pixels, must be > 0 (\fBrequired\fP)
 .HP
-H\ \-\ [integer] frame height in pixels, must be > 0 (\fBrequired\fP)
+H[integer]\ \-\ frame height in pixels, must be > 0 (\fBrequired\fP)
 .HP
-I\ \-\ [char] interlacing specification:  
+C[string]\ \-\ chroma subsampling, image data format (\fBhas default\fP)
 .RS
- p\ \-\ progressive (none)
- t\ \-\ top-field-first
- b\ \-\ bottom-field-first
- ?\ \-\ unknown
+ 420jpeg\  \-\ 4:2:0 with JPEG/MPEG-1 siting (default)
+ 420mpeg2\ \-\ 4:2:0 with MPEG-2 siting
+ 420paldv\ \-\ 4:2:0 with PAL-DV siting
+ 411\      \-\ 4:1:1, cosited
+ 422\      \-\ 4:2:2, cosited
+ 444\      \-\ 4:4:4 (no subsampling)
+ 444alpha\ \-\ 4:4:4 with an alpha channel
+ mono\     \-\ luma (Y') plane only
 .RE
 .HP
-F\ \-\ [ratio] frame-rate, 0:0 == unknown
+I[char]\ \-\ interlacing specification:  (\fBhas default\fP)
+.RS
+ ?\ \-\ unknown (default)
+ p\ \-\ progressive/none
+ t\ \-\ top-field-first
+ b\ \-\ bottom-field-first
+ m\ \-\ mixed-mode: refer to 'I' tag in frame header
+.RE
 .HP
-A\ \-\ [ratio] sample aspect ratio, 0:0 == unknown
+F[ratio]\ \-\ frame-rate (\fBhas default\fP of 0:0 == unknown)
 .HP
-X\ \-\ [string] 'metadata' (unparsed, but passed around)
+A[ratio]\ \-\ sample aspect ratio (\fBhas default\fP of 0:0 == unknown)
+.HP
+X[string]\ \-\ 'metadata' (\fBoptional\fP; unparsed, but passed around)
 .RE
 
 .PP
 The currently supported tags for the \fIFRAME-HEADER\fP:
 .RS
 .HP
-X\ \-\ [string] 'metadata' (unparsed, but passed around)
+I[string]\ \-\ framing and sampling (\fBrequired if-and-only-if\fP Im is
+present in stream header).  Value is a string of three characters "xyz"
+which have the following meanings:
+.RS
+ x: frame presentation
+    t\ \-\ top-field-first
+    T\ \-\ top-field-first and repeat
+    b\ \-\ bottom-field-first
+    B\ \-\ bottom-field-first and repeat
+    1\ \-\ single progressive frame
+    2\ \-\ double progressive frame (repeat)
+    3\ \-\ triple progressive frame (repeat)
+ y: frame temporal sampling
+    p\ \-\ progressive (fields sampled at same time)
+    i\ \-\ interlaced (fields sampled at different times)
+ z: frame chroma-subsampling
+    p\ \-\ progressive (subsampling over whole frame)
+    i\ \-\ interlaced (each field subsampled independently)
+    ?\ \-\ unknown (allowed only for non-4:2:0 subsampling)
+.RE
+.HP
+X[string]\ \-\ 'metadata' (\fBoptional\fP; unparsed, but passed around)
 .RE
 
-.PP
-Except for those specified as "required", all tags are optional,
-and the absence of a tag indicates that the parameter is unknown.
 .PP
 Note that a filter application must faithfully forward all "X" tags from 
 input pipe to output pipe (unless it uses one of those tags, of course).
@@ -145,23 +184,34 @@ y4m_copy_stream_info() and y4m_copy_frame_info() are used appropriately.
 
 .SH "NOTES ON IMAGE DATA"
 .PP
-Currently only planar, 4:2:0-subsampled CCIR-601, Y'CbCr image data is 
-supported.
-This consists of, one after another:
+All image data is in the CCIR-601 Y'CbCr colorspace, presented plane-by-plane
+in row-major order.
+Each sample within each plane is one octet (8-bits) in size.
+When all planes are present, they are transmitted in the order Y', Cb, Cr,
+potentially followed by an alpha/transparency mask plane (for the 
+\fB444alpha\fP chroma format).  The alpha channel data is follows the same
+range as the Y' luma channel:  full transparency is at 16 and full opacity
+is at 235.
+
+All Y' and alpha planes consist of (height\ X\ width) octets.
+The size of the chroma planes depends on the subsampling mode:
 .IP - 3
-(height\ X\ width) octets (8-bit bytes) of Y' samples in row-major order;
+4:4:4 - (height\ X\ width) octets
 .IP - 3
-(height\ X\ width\ /\ 4) octets of Cb samples;
+4:2:2 - (height\ X\ width)\ /\ 2 octets
 .IP - 3
-(height\ X\ width\ /\ 4) octets of Cr samples.
+4:1:1 - (height\ X\ width)\ /\ 4 octets
+.IP - 3
+4:2:0 - (height\ X\ width)\ /\ 4 octets
+
+.SH "NOTES ON FRAMING"
 .PP
-Sample siting (for the subsampling of the chroma planes) is not specified.
-(Not yet, at least.)
+(More to come here.)
 
 .SH "SEE ALSO"
 .BR mjpegtools (1),
 yuv4mpeg.h
 
 .SH "AUTHOR"
-This manual page Copyright 2002 Matthew J. Marjanovic.
+This manual page Copyright 2004 Matthew J. Marjanovic.
 
