@@ -47,7 +47,7 @@ lavrec_LDADD = -L$(top_builddir)/mjpeg -lmjpeg -L$(top_srcdir)/utils -lutils \
 testrec_SOURCES = testrec.c  audiolib.c  $(lav_headers)
 testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
 
-lav2yuv_SOURCES = lav2yuv.c  jpegutils.c $(lav_headers)
+lav2yuv_SOURCES = lav2yuv.c  jpegutils.c yuv4mpeg.c  $(lav_headers)
 lav2yuv_LDADD = -L$(top_srcdir)/utils -lutils \
 	-L$(top_builddir)/lavtools -lavio $(QUICKTIME_LIBS) \
 	$(MOVTAR_LIBS) 	$(JPEG_LIBS) $(DV_LIBS)
