@@ -99,10 +99,67 @@ static struct
 } wave_hdr;
 
 static uint8_t abuff[16384];
+unsigned int fred; /* needed for endian detection */
+char *pfred;       /* needed for endian detection */
+int big_endian;    /* and that too ;) */
 
 int	verbose = 1;
+
+/* Prototype definitions */
 void Usage(char *str);
 void system_error(const char *str1, const char *str2);
+void detect_endian (void);
+unsigned long reorder_32(unsigned long todo);
+void initwav_hdr(void);
+
+/* The rest of the code */
+void detect_endian ()
+{
+  /* The endian detection copied from mp2enc */
+    fred = 2 | (1 << (sizeof(int)*8-8));
+    pfred = (char *)&fred;
+
+    if(*pfred == 1)
+      {
+         big_endian = 1;
+         mjpeg_info("System is big endian");
+      }
+    else if(*pfred == 2)
+      {
+         big_endian = 0;
+         mjpeg_info("System is little endian");
+      }
+    else
+      {
+         mjpeg_error("Can not determine if system is big/lttle endian");
+         mjpeg_error_exit1("Are you running on a Cray - or what?");
+      }
+}
+
+void initwav_hdr()
+{
+wave_hdr.rifflen = 0; /* to be filled later */
+wave_hdr.datalen = 0; /* to be filled later */
+wave_hdr.wFormatTag = 1;  /* PCM */
+
+if (big_endian == 0)
+  {
+     wave_hdr.rifftag = FOURCC_RIFF;
+     wave_hdr.wavetag = FOURCC_WAVE;
+     wave_hdr.fmt_tag = FOURCC_FMT;
+     wave_hdr.fmt_len = 16;
+     wave_hdr.datatag = FOURCC_DATA;
+  }
+else if (big_endian == 1)
+  {
+     wave_hdr.rifftag = reorder_32(FOURCC_RIFF);
+     wave_hdr.wavetag = reorder_32(FOURCC_WAVE);
+     wave_hdr.fmt_tag = reorder_32(FOURCC_FMT);
+     wave_hdr.fmt_len = reorder_32(16);
+     wave_hdr.datatag = reorder_32(FOURCC_DATA);
+     swab(&wave_hdr.wFormatTag, &wave_hdr.wFormatTag ,2);
+  }
+}
 
 void Usage(char *str)
 {
@@ -114,6 +171,22 @@ void Usage(char *str)
    fprintf(stderr,"          -f w    output WAV file (sound only!)\n");
    fprintf(stderr,"          -i num  convert single frame to JPEG\n");
    exit(1);
+}
+
+
+/* We need this to reorder the 32 bit values for big endian systems */
+unsigned long reorder_32(unsigned long todo)
+{
+unsigned char b0, b1, b2, b3;
+unsigned long reversed; 
+
+b0 = (todo & 0x000000FF);
+b1 = (todo & 0x0000FF00) >> 8;
+b2 = (todo & 0x00FF0000) >> 16;
+b3 = (todo & 0xFF000000) >> 24;
+
+reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
+return reversed;
 }
 
 
@@ -167,6 +240,8 @@ int main(int argc, char ** argv)
 
    (void)mjpeg_default_handler_verbosity(verbose);
 
+   detect_endian();
+
    if(outfile==0) Usage(argv[0]);
    if(optind>=argc) Usage(argv[0]);
    if(outfile != 0 && format == 0) {
@@ -176,10 +251,11 @@ int main(int argc, char ** argv)
                || !strcasecmp(dotptr+1, "moov")) format = 'q';
 #endif
             if(!strcasecmp(dotptr+1, "avi")) format = 'a';
+            if(!strcasecmp(dotptr+1, "wav")) format = 'w';
          }
       if(format == '\0') format = 'a';
    }
-   if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
+   if(format!='a' && format!='q' && format!='i' && format!='w' && format!='A' && format!='W') Usage(argv[0]);
 
    if (process_image_frame != -1 && format!='i')
    {
@@ -194,12 +270,12 @@ int main(int argc, char ** argv)
 
    if(format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';
 
-   if((format == 'q' || format == 'm') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
+   if((format == 'q') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
    {
       mjpeg_error_exit1("Output is Quicktime - wrong interlacing order");
    }
 
-   if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
+   if(format == 'q' || format == 'a' || format == 'A')
    {
       outfd = lav_open_output_file(outfile,format,
                                    el.video_width,el.video_height,el.video_inter, 
@@ -227,20 +303,25 @@ int main(int argc, char ** argv)
 			  mjpeg_error_exit1("STEREOFIED WAV output request but non mono 16-bit audio present");
           }
       }
-      wave_hdr.rifftag = FOURCC_RIFF;
-      wave_hdr.rifflen = 0; /* to be filled later */
-      wave_hdr.wavetag = FOURCC_WAVE;
-      wave_hdr.fmt_tag = FOURCC_FMT;
-      wave_hdr.fmt_len = 16;
-         wave_hdr.wFormatTag      = 1;  /* PCM */
-         wave_hdr.nChannels       = forcestereo ? 2 : el.audio_chans;
-         wave_hdr.nSamplesPerSec  = el.audio_rate;
-         wave_hdr.nAvgBytesPerSec = el.audio_rate*el.audio_bps;
-         wave_hdr.nBlockAlign     = el.audio_bps;
-         wave_hdr.wBitsPerSample  = el.audio_bits;
-      wave_hdr.datatag = FOURCC_DATA;
-      wave_hdr.datalen = 0; /* to be filled later */
       
+      initwav_hdr();
+      wave_hdr.nChannels       = forcestereo ? 2 : el.audio_chans;
+      wave_hdr.nBlockAlign     = el.audio_bps;
+      wave_hdr.wBitsPerSample  = el.audio_bits;
+      if (big_endian == 0)
+        {
+           wave_hdr.nSamplesPerSec  = el.audio_rate;
+           wave_hdr.nAvgBytesPerSec = el.audio_rate*el.audio_bps;
+        }
+      else
+        {
+           wave_hdr.nSamplesPerSec  = reorder_32(el.audio_rate);
+           wave_hdr.nAvgBytesPerSec = reorder_32(el.audio_rate*el.audio_bps);
+           swab(&wave_hdr.nChannels, &wave_hdr.nChannels, 2);
+           swab(&wave_hdr.nBlockAlign, &wave_hdr.nBlockAlign, 2);
+           swab(&wave_hdr.wBitsPerSample, &wave_hdr.wBitsPerSample, 2);
+        }
+
       wavfd = fopen(outfile,"wb");
       if(wavfd==0) system_error("opening WAV file","fopen");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
@@ -276,7 +357,6 @@ int main(int argc, char ** argv)
          case 'a':
          case 'A':
          case 'q':
-         case 'm':
             res = lav_write_frame(outfd,vbuff,nv,1);
             if(el.has_audio && res==0)
                res = lav_write_audio(outfd,abuff,na/el.audio_bps);
@@ -319,7 +399,7 @@ int main(int argc, char ** argv)
       }
    }
 
-   if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
+   if(format == 'q' || format == 'a' || format == 'A')
    {
       res = lav_close(outfd);
       if(res)
@@ -330,8 +410,16 @@ int main(int argc, char ** argv)
 
    if(format == 'w' || format == 'W')
    {
-      wave_hdr.rifflen = sizeof(wave_hdr) - 8 + audio_bytes_out;
-      wave_hdr.datalen = audio_bytes_out;
+      if (big_endian == 0)
+        {
+           wave_hdr.rifflen = sizeof(wave_hdr) - 8 + audio_bytes_out;
+           wave_hdr.datalen = audio_bytes_out;
+        }
+      else
+        {
+           wave_hdr.rifflen = reorder_32(sizeof(wave_hdr) -8+ audio_bytes_out);
+           wave_hdr.datalen = reorder_32(audio_bytes_out);
+        }
       res = fseek(wavfd,0,SEEK_SET);
       if(res) system_error("writing WAV file","fseek");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
