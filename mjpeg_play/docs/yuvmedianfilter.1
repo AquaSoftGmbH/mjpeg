@@ -1,4 +1,4 @@
-.TH "yuvmedianfilter" "1" "10 February 2003" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvmedianfilter" "1" "11 February 2003" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH "NAME"
 yuvmedianfilter \- A filter for yuv images produced by the mjpeg tools
@@ -14,12 +14,14 @@ yuvmedianfilter \- A filter for yuv images produced by the mjpeg tools
 .RB [ \-h ]
 
 .SH "DESCRIPTION"
-\fByuvmedianfilter\fP is designet to enhance/filter images. It takes the input of STDIN and take the output do STDOUT.  
+\fByuvmedianfilter\fP is designed to enhance/filter images.  It takes the input from STDIN and writes output to STDOUT.  
 .br
-This filter look around the current point for a radius and averages this values that fall inside a threshold.
-So the image is softend and the edges become more sharp. If the input material is noisy (it is always noisy but you do not always see it) the images are better.
-The encoder spends less bandwith for encoding the noise in the source.
-The more sophisticated version of image filtering is yuvdenoise. But you can use both programms in the encoding procces.
+This filter looks around the current point for a radius and averages the values that fall inside a threshold.
+So the image is softened and the edges become more sharp. If the input 
+material is noisy (it is always noisy but you do not always see it) the 
+output images are improved and
+the encoder spends less bandwidth encoding the noise in the source.
+The more sophisticated version of image filtering is yuvdenoise. But you can use both programs in the encoding procces.
 It cannot procces a recorded file and write the improved version to another file. 
 
 .SH "OPTIONS"
@@ -39,7 +41,7 @@ Verbosity level (0, 1 or 2)
 Print out a help message
 
 .SH BUGS
-It is slow.  Using a radius greater than the default of 2 is painfully slow.
+It is slow.  Using a radius greater than the default of 2 is painfully slow.
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.
