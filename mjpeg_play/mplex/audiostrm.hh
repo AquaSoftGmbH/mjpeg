@@ -97,16 +97,20 @@ public:
     virtual void Close();
     virtual unsigned int NominalBitRate();
 
+    virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
+    virtual unsigned int StreamHeaderSize() { return 4; }
+    
 
 private:
 	void OutputHdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-
+    
     static const unsigned int default_buffer_size = 16*1024;
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
     unsigned int samples_per_second;
     unsigned int bit_rate;
+    unsigned int stream_num;
 }; 	
 
 #endif // __AUDIOSTRM_H__

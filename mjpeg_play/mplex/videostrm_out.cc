@@ -191,8 +191,9 @@ void VideoStream::OutputSector ( )
             OutputGOPControlSector();
         }
 
-		if( dtspts_for_all_au && max_packet_payload == 0 )
-			max_packet_payload = au_unsent;
+        if(  dtspts_for_all_au  && max_packet_payload == 0 )
+            max_packet_payload = au_unsent;
+
         PTS = RequiredPTS();
         DTS = RequiredDTS();
 		actual_payload =
@@ -201,23 +202,20 @@ void VideoStream::OutputSector ( )
 								  NewAUBuffers(autype), 
                                   PTS, DTS,
 								  NewAUTimestamps(autype) );
-		Muxed( actual_payload);
 
 	}
 
 	/* CASE: Packet begins with old access unit, no new one	*/
-	/*	     begins in the very same packet					*/
+	/*	     can begin in the very same packet					*/
 
-	else if ( ! new_au_next_sec &&
-			  (au_unsent >= old_au_then_new_payload))
+	else if ( au_unsent >= old_au_then_new_payload ||
+              (max_packet_payload != 0 && au_unsent >= max_packet_payload) )
 	{
 		actual_payload = 
 			muxinto.WritePacket( au_unsent,
 								  *this,
 								  false, 0, 0,
 								  TIMESTAMPBITS_NO );
-		Muxed ( actual_payload );
-
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -225,42 +223,30 @@ void VideoStream::OutputSector ( )
 	else /* if ( !new_au_next_sec  && 
 			(au_unsent < old_au_then_new_payload)) */
 	{
-		prev_au_tail = au_unsent;
-
-		Muxed( au_unsent );
-		/* is there a new access unit anyway? */
-		if( !MuxCompleted() )
+		/* Is there a new access unit ? */
+		if( Lookahead() != 0 )
 		{
-            autype = AUType();
-            /* No timestamps if sector restricted to only current */
-            /* AU (new Au though possible is not muxed)           */
-            uint8_t timestamps = 
-                max_packet_payload != 0 && prev_au_tail >= max_packet_payload
-                ? TIMESTAMPBITS_NO 
-                : NewAUTimestamps(autype) ;
-
+            autype = NextAUType();
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
-				max_packet_payload = prev_au_tail + au_unsent;
+				max_packet_payload = au_unsent + Lookahead()->length;
 
-			PTS = RequiredPTS();
-			DTS = RequiredDTS();
+			PTS = NextRequiredPTS();
+			DTS = NextRequiredDTS();
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
 									  *this,
 									  NewAUBuffers(autype), 
                                       PTS, DTS,
-									  timestamps );
-			Muxed( actual_payload - prev_au_tail );
+									  NewAUTimestamps(autype) );
 		} 
 		else
 		{
-			(void) muxinto.WritePacket ( 0,
+			actual_payload = muxinto.WritePacket ( 0,
 										 *this,
 										 false, 0, 0,
 										 TIMESTAMPBITS_NO);
-		};
-
+		}
 
 	}
 	++nsec;

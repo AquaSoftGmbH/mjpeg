@@ -54,7 +54,6 @@ void AudioStream::InitAUbuffer()
 
 bool AudioStream::RunOutComplete()
 {
-
 	return (au_unsent == 0 || 
 			( muxinto.running_out && RequiredPTS() >= muxinto.runout_PTS));
 }
@@ -101,7 +100,6 @@ void AudioStream::OutputSector ( )
 		max_packet_data = au_unsent;
 	}
   
-    
 	/* CASE: packet starts with new access unit			*/
 	
 	if (new_au_next_sec)
@@ -112,7 +110,6 @@ void AudioStream::OutputSector ( )
 								  buffers_in_header, PTS, 0,
 								  TIMESTAMPBITS_PTS);
 
-		Muxed( actual_payload );
     }
 
 
@@ -126,7 +123,6 @@ void AudioStream::OutputSector ( )
 								  *this,
 								  buffers_in_header, 0, 0,
 								  TIMESTAMPBITS_NO );
-		Muxed( actual_payload );
     }
 
 
@@ -134,27 +130,23 @@ void AudioStream::OutputSector ( )
 	/*       starts in this very same packet			*/
 	else /* !(new_au_next_sec) &&  (au_unsent < old_au_then_new_payload)) */
     {
-		bytes_sent = au_unsent;
-		Muxed(bytes_sent);
-		/* gibt es ueberhaupt noch eine Access Unit ? */
 		/* is there another access unit anyway ? */
-		if( !MuxCompleted()  )
+		if( Lookahead() != 0 )
 		{
-			PTS = RequiredDTS();
+			PTS = NextRequiredDTS();
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_data,
 									  *this,
 									  buffers_in_header, PTS, 0,
 									  TIMESTAMPBITS_PTS );
 
-			Muxed( actual_payload - bytes_sent );
 		} 
 		else
 		{
-			muxinto.WritePacket ( 0,
-								  *this,
-								  buffers_in_header, 0, 0,
-								  TIMESTAMPBITS_NO );
+			actual_payload = muxinto.WritePacket ( 0,
+                                                   *this,
+                                                   buffers_in_header, 0, 0,
+                                                   TIMESTAMPBITS_NO );
 		};
 		
     }

@@ -218,7 +218,7 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 	unsigned int to_read = length;
 	if( readpos < buffer_start)
 		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)", readpos, buffer_start );
-    mjpeg_debug( "Writing to %lld",  readpos+length );
+
 	if( readpos+length > buffer_start+bufcount )
 	{
 		if( !feof(fileh) )

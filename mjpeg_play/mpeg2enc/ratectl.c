@@ -247,10 +247,10 @@ double inv_scale_quant( int q_scale_type, int raw_code )
 		i = 112;
 		while( 1 < i && map_non_linear_mquant[i] != raw_code )
 			--i;
-		return ((double)i+0.5);
+		return ((double)i);
 	}
 	else
-		return ((double)raw_code)+0.5;
+		return ((double)raw_code);
 }
 
 

@@ -29,19 +29,19 @@
 //
 
 
-unsigned int PaddingStream::ReadStrm(uint8_t *dst, unsigned int to_read)
+unsigned int PaddingStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
 	memset( dst, STUFFING_BYTE, to_read );
 	return to_read;
 }
 
-unsigned int VCDAPadStream::ReadStrm(uint8_t *dst, unsigned int to_read)
+unsigned int VCDAPadStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
 	memset( dst, STUFFING_BYTE, to_read );
 	return to_read;
 }
 
-unsigned int DVDPriv2Stream::ReadStrm(uint8_t *dst, unsigned int to_read)
+unsigned int DVDPriv2Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
 	memset( dst, 0, to_read );
 	return to_read;

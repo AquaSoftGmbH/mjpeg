@@ -33,7 +33,7 @@ public:
 			MuxStream::Init( PADDING_STR, 0, 0,  0, false,false );
 		}
 
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+	unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 };
 
 class VCDAPadStream : public MuxStream
@@ -45,7 +45,7 @@ public:
 
 		}
 
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+	unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 };
 
 class DVDPriv2Stream : public MuxStream
@@ -57,7 +57,7 @@ public:
 
 		}
 
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+	unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 };
 
 

@@ -80,10 +80,6 @@ PS_Stream::PacketPayload( MuxStream &strm,
 	  if ( PTSstamp )
 	    payload -= DTS_PTS_TIMESTAMP_LENGTH;
 
-      // DVD AC3 stream is in PRIVATE_STR_1 and follows MPEG header
-      // with audio stream num, syncword count and offset to first syncword
-      if( strm.stream_id == PRIVATE_STR_1 )
-          payload -= 4; 
 	}
 	else
 	{
@@ -377,23 +373,27 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 }
 
 /*************************************************************************
-	Create_Sector
-	creates a complete sector to carry a padding packet or
-    a packet from one of the elementary streams.
-    Pack and System headers are prepended if required.
-
-    We allow for situations where want to
-	deliberately reduce the payload carried by stuffing.
-	This allows us to deal with tricky situations where the
-	header overhead of adding in additional information
-	would exceed the remaining payload capacity.
-
-    Header stuffing and/or a padding packet is appended if the sector is
-    unfilled.   Zero stuffing after the end of a packet is also supported
-    to allow thos wretched audio packets from VCD's to be handled.
-
-  TODO: Should really be called "WriteSector"
-*************************************************************************/
+ *	CreateSector
+ *
+ *  Creates a complete sector to carry a padding packet or a packet
+ *  from one of the elementary streams.  Pack and System headers are
+ *  prepended if required.
+ *
+ *  We allow for situations where want to
+ *  deliberately reduce the payload carried by stuffing.
+ *  This allows us to deal with tricky situations where the
+ *	header overhead of adding in additional information
+ *	would exceed the remaining payload capacity.
+ *
+ *    Header stuffing and/or a padding packet is appended if the sector is
+ *    unfilled.   Zero stuffing after the end of a packet is also supported
+ *    to allow thos wretched audio packets from VCD's to be handled.
+ *
+ *  TODO: Should really be called "WriteSector"
+ *  TODO: We need to add a mechanism for sub-headers of private streams
+ *        to be generated...
+ *
+ *************************************************************************/
 
 
 unsigned int
@@ -417,7 +417,6 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	uint8_t *pes_header_len_offset;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
-    unsigned int subheader_size; // Non-MPEG headers before muxed payload
 	int packet_data_to_read;
 	int bytes_short;
 	uint8_t 	 type = strm.stream_id;
@@ -519,20 +518,22 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		}
 	}
 
+#ifdef MUX_DEBUG
     // DVD MPEG2: AC3 in PRIVATE_STR_1
     if( type == PRIVATE_STR_1 )
     {
         ac3_header = index;
         // TODO: should allow multiple AC3 streams...
-        ac3_header[0] = AC3_SUB_STR_1; // byte: Audio stream number
+        //ac3_header[0] = AC3_SUB_STR_1; // byte: Audio stream number
                                 // byte: num of AC3 syncwords
                                 // byte: Offset first AC3 syncword (hi)
                                 // byte: Offset 2nd AC2 syncword (lo)
-        index += 4;
-        subheader_size = 4;
+        //index += 4;
+        //subheader_size = 4;
+        subheader_size = 0;
     }
     else
-        subheader_size = 0;
+#endif
 
     
     /* MPEG-1, MPEG-2: data available to be filled is packet_size less
@@ -576,28 +577,33 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     /* MPEG-1, MPEG-2: read in available packet data ... */
 
-    actual_packet_data_size = strm.ReadStrm(index,packet_data_to_read);
+    actual_packet_data_size = strm.ReadPacketPayload(index,packet_data_to_read);
 
     // DVD MPEG2: AC3 in PRIVATE_STR_1: fill in syncword count and offset
+#ifdef MUX_DEBUG
     if( type == PRIVATE_STR_1 )
     {
         unsigned int syncwords_found;
         for( i = 0; i < actual_packet_data_size; ++i )
         {
-            if( index[i] == 0x0b && 
-                i+1 < actual_packet_data_size && index[i+1] == 0x77 )
+            if( index[i+4] == 0x0b && 
+                i+5 < actual_packet_data_size && index[i+5] == 0x77 )
             {
                 if( syncwords_found == 0 )
                 {
-                    ac3_header[2] = static_cast<uint8_t>(i >>8);
-                    ac3_header[3] = static_cast<uint8_t>(i & 0xff);
+                    if(  ac3_header[2] != static_cast<uint8_t>((i+1) >>8) ||
+                         ac3_header[3] != static_cast<uint8_t>((i+1) & 0xff) )
+                        printf( "BROKEN HEADER %2x %2x (%2x %2x)\n",
+                                ac3_header[2],
+                                ac3_header[3],
+                                static_cast<uint8_t>((i+1) >>8),
+                                static_cast<uint8_t>((i+1) & 0xff) );
                 }
                 ++syncwords_found;
             }
         }
-        ac3_header[1] = static_cast<uint8_t>(syncwords_found);
     }
-
+#endif
     bytes_short = target_packet_data_size - actual_packet_data_size;
 	
     /* Handle the situations where we don't have enough data to fill
@@ -637,7 +643,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     if( mpeg_version == 2 && type != PADDING_STR )
     {
         unsigned int pes_header_len = 
-            index-(pes_header_len_offset+1)-subheader_size;
+            index-(pes_header_len_offset+1);
         *pes_header_len_offset = static_cast<uint8_t>(pes_header_len);	
     }
     index += actual_packet_data_size;	 

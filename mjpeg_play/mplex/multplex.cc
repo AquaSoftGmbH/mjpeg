@@ -251,7 +251,7 @@ void OutputStream::InitSyntaxParameters()
 		break;
 
     case MPEG_FORMAT_DVD :
-		mjpeg_info( "Selecting DVD output profile (INCOMEPLETE!!!!)");
+		mjpeg_info( "Selecting DVD output profile (INCOMPLETE!!!!)");
         opt_data_rate = 1260000;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
@@ -927,14 +927,14 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		clockticks earliest;
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
-/*
+            /* DEBUG
                 mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
                            (*str)->stream_id,
                            current_SCR /300,
                            (*str)->MuxPossible(current_SCR),
                            (*str)->RequiredDTS()/300
 				);
-*/
+            */
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )
@@ -1076,7 +1076,8 @@ unsigned int OutputStream::PacketPayload( MuxStream &strm, bool buffers,
 {
 	return psstrm->PacketPayload( strm, sys_header_ptr, pack_header_ptr, 
 								  buffers, 
-								  PTSstamp, DTSstamp);
+								  PTSstamp, DTSstamp)
+        - strm.StreamHeaderSize();
 }
 
 /***************************************************
@@ -1130,71 +1131,6 @@ OutputStream::WriteRawSector(  uint8_t *rawsector,
 
 }
 
-
-
-/******************************************************************
-	ElementaryStream::Muxed
-    Updates buffer model and current access unit
-	information from the look-ahead scanning buffer
-    to account for bytes_muxed bytes being muxed out.
-******************************************************************/
-
-
-
-void ElementaryStream::Muxed (unsigned int bytes_muxed)
-{
-	clockticks   decode_time;
-	VAunit *vau;
-  
-	if (bytes_muxed == 0 || MuxCompleted() )
-		return;
-
-
-	/* Work through what's left of the current AU and the following AU's
-	   updating the info until we reach a point where an AU had to be
-	   split between packets.
-	   NOTE: It *is* possible for this loop to iterate. 
-
-	   The DTS/PTS field for the packet in this case would have been
-	   given the that for the first AU to start in the packet.
-	   Whether Joe-Blow's hardware VCD player handles this properly is
-	   another matter of course!
-	*/
-
-	decode_time = RequiredDTS();
-	while (au_unsent < bytes_muxed)
-	{	  
-
-		bufmodel.Queued(au_unsent, decode_time);
-		bytes_muxed -= au_unsent;
-		if( !NextAU() )
-			return;
-		new_au_next_sec = true;
-		decode_time = RequiredDTS();
-	};
-
-	// We've now reached a point where the current AU overran or
-	// fitted exactly.  We need to distinguish the latter case
-	// so we can record whether the next packet starts with an
-	// existing AU or not - info we need to decide what PTS/DTS
-	// info to write at the start of the next packet.
-	
-	if (au_unsent > bytes_muxed)
-	{
-
-		bufmodel.Queued( bytes_muxed, decode_time);
-		au_unsent -= bytes_muxed;
-		new_au_next_sec = false;
-	} 
-	else //  if (au_unsent == bytes_muxed)
-	{
-		bufmodel.Queued(bytes_muxed, decode_time);
-		if( ! NextAU() )
-			return;
-		new_au_next_sec = true;
-	}	   
-
-}
 
 
 /******************************************************************

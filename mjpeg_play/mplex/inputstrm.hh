@@ -110,8 +110,18 @@ public:
 	inline unsigned int MinPacketData() { return min_packet_data; }
     inline bool NewAUNextSector() { return new_au_next_sec; }
 
+	//
+	//  Read the next packet payload (sub-stream headers plus
+	//  parsed and spliced stream data) for a packet with the
+	//  specified payload capacity.  Update the AU info.
+	//
 
-	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
+	virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read) = 0;
+
+    //
+    // Return the size of the substream headers...
+    //
+    virtual unsigned int StreamHeaderSize() { return 0; }
 
 public:  // TODO should go protected once encapsulation complete
 	int        stream_id;
@@ -140,7 +150,7 @@ public:
             buffer_size = buf_size;
         }
 
-    unsigned int ReadStrm(uint8_t *dst, unsigned int to_read)
+    unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read)
         {
             abort();
             return 0;
@@ -164,7 +174,6 @@ public:
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
 	bool MuxCompleted();
 	virtual bool MuxPossible(clockticks currentSCR );
-	void Muxed( unsigned int bytes_muxed );
 	void DemuxedTo( clockticks SCR );
 	void SetTSOffset( clockticks baseTS );
 	void AllDemuxed();
@@ -199,11 +208,8 @@ public:
 	virtual unsigned int NominalBitRate() = 0;
 	virtual bool RunOutComplete() = 0;
 	virtual void OutputSector() = 0;
-	//
-	//  Read the (parsed and spliced) stream data from the stream
-	//  buffer.
-	//
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+
+	virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 
 
 protected:
@@ -211,6 +217,8 @@ protected:
 	virtual void InitAUbuffer() = 0;
     virtual bool AUBufferNeedsRefill() = 0;
 	AUStream aunits;
+	void Muxed( unsigned int bytes_muxed );
+
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
 	     // stream.

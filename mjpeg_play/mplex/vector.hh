@@ -46,6 +46,12 @@ public:
 		return size == 0 ? 0 : buf[cur_rd];
     }
 
+	inline Aunit *last()
+		{
+			int i = cur_wr-1 < 0 ? BUF_SIZE-1 : cur_wr-1;
+			return buf[i];
+		}
+
 	static const int BUF_SIZE = 128;
 
 	inline unsigned int current() { return totalctr; }

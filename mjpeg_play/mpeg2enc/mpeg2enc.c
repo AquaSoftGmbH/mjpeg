@@ -995,7 +995,7 @@ static struct option long_options[]={
 		mjpeg_info("Quality factor: %d (Quantisation = %d) (1=best, 31=worst)",
                    param_quant, 
                    (int)(inv_scale_quant( param_mpeg == 1 ? 0 : 1, 
-                                          param_quant)+0.5)
+                                          param_quant))
             );
 
 	mjpeg_info("Field order for input: %s", 

@@ -87,15 +87,15 @@ void AC3Stream::Init ( const int stream_num)
 	mjpeg_debug( "SETTING zero stuff to %d", muxinto.vcd_zero_stuffing );
 	mjpeg_debug( "SETTING audio buffer to %d", default_buffer_size );
 
-	MuxStream::Init( PRIVATE_STR_1, // TODO Currently hard-wired....
+	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
 					 muxinto.vcd_zero_stuffing,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)",
-                AUDIO_STR_0 + stream_num,
+    mjpeg_info ("Scanning for header info: AC3 Audio stream %02x (%s)",
+                stream_num,
                 bs.filename
                 );
 
@@ -118,8 +118,14 @@ void AC3Stream::Init ( const int stream_num)
 		size_frames[1] = framesize;
 		num_frames[0]++;
 		access_unit.length = framesize;
+        if( framesize != 1792 )
+        {
+            fprintf( stderr," Frame %d %d\n", decoding_order, framesize );
+            exit(1);
+        }
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];
+        
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
@@ -150,17 +156,20 @@ unsigned int AC3Stream::NominalBitRate()
 void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 {
 	unsigned int framesize_code;
-	last_buffered_AU += frames_to_buffer;
 
+	last_buffered_AU += frames_to_buffer;
 	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
+    BitStream undo;
+    static int header_skip = 5;        // Initially skipped past  5 bytes of header 
+    int skip;
+    bool bad_last_frame = false;
 	while (!bs.eos() && 
 		   decoding_order < last_buffered_AU && 
 		   (!opt_max_PTS || access_unit.PTS < opt_max_PTS))
 	{
-
-		skip=access_unit.length-5; // 5 bytes of header read already...
+		skip=access_unit.length-header_skip; 
 		if (skip & 0x1) bs.getbits( 8);
 		if (skip & 0x2) bs.getbits( 16);
 		skip=skip>>2;
@@ -172,14 +181,19 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
+        if( AU_start - prev_offset != access_unit.length*8 )
+        {
+            bad_last_frame = true;
+            break;
+        }
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
 		if ( (syncword = bs.getbits(16))!=AC3_SYNCWORD )
 		{
-			if( !bs.eobs   )
+			if( !bs.eos()   )
 			{
-				mjpeg_warn( "Can't find next AC3 frame - broken bit-stream?" );
+				mjpeg_error_exit1( "Can't find next AC3 frame - broken bit-stream?" );
             }
             break;
 		}
@@ -187,8 +201,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
         bs.getbits(16);         // CRC field
         bs.getbits(2);          // Sample rate code TOOD: check for change!
         framesize_code = bs.getbits(6);
-        if( bs.eobs )
-            break;
         framesize = ac3_frame_size[frequency][framesize_code>>1];
         framesize = 
             (framesize_code&1) && frequency == 1 ?
@@ -208,14 +220,45 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		
 		num_syncword++;
 
+
+#ifdef DEBUG_AC3_HEADERS
+        /* Some stuff to generate frame-header information */
+        printf( "bsid       = %d\n", bs.getbits(5) );
+        printf( "bsmode     = 0x%1x\n", bs.getbits(3) ); 
+        int acmode = bs.getbits(3);
+        printf( "acmode     = 0x%1x\n", acmode ); 
+        if( (acmode & 0x1) && (acmode != 1 ) )
+            printf( "cmixlev   = %d\n", bs.getbits(2) ); 
+        if( (acmode & 0x4) )
+            printf( "smixlev   = %d\n", bs.getbits(2) ); 
+        if( acmode == 2 ) 
+            printf( "dsurr     = %d\n", bs.getbits(2) ); 
+        printf( "lfeon      = %d\n", bs.getbits(1) ); 
+        printf( "dialnorm   = %02d\n", bs.getbits(5) ); 
+        int compre = bs.getbits(1);
+        printf( "compre     = %d\n", compre ); 
+        if( compre )
+            printf( "compr    = %02d\n", bs.getbits(8) ); 
+        int langcode = bs.getbits(1);
+        printf( "langcode     = %d\n", langcode ); 
+        if( langcode )
+            printf( "langcod  = 0x%02x\n", bs.getbits(8) ); 
+        
+        while( bs.bitcount() % 8 != 0 )
+            bs.getbits(1);
+        header_skip = (bs.bitcount()-AU_start)/8;
+#endif
 		if (num_syncword >= old_frames+10 )
 		{
 			mjpeg_debug ("Got %d frame headers.", num_syncword);
 			old_frames=num_syncword;
-		
 		}
 
 
+    }
+    if( bad_last_frame )
+    {
+        mjpeg_error_exit1( "Last AC3 frame ended prematurely!\n" );
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
@@ -256,6 +299,104 @@ void AC3Stream::OutputHdrInfo ()
 		mjpeg_info ("Frequency      :     %d Hz",
 				ac3_frequency[frequency]);
 
+}
+
+
+unsigned int 
+AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
+{
+    static unsigned int aus = 0;
+    static unsigned int rd = 0; 
+
+    unsigned int bytes_read = bs.read_buffered_bytes( dst+4, to_read-4 );
+    rd += bytes_read;
+	clockticks   decode_time;
+	VAunit *vau;
+
+    int first_header = 
+        (new_au_next_sec || au_unsent > bytes_read )
+        ? 0 
+        : au_unsent;
+
+    // BUG BUG BUG: how do we set the 1st header pointer if we have
+    // the *middle* part of a large frame?
+    assert( first_header <= to_read-2 );
+
+    unsigned int syncwords = 0;
+    int bytes_muxed = bytes_read;
+    int nextl = 0;
+    if( Lookahead() != 0 )
+        nextl = Lookahead()->length;
+  
+	if (bytes_muxed == 0 || MuxCompleted() )
+    {
+		goto completion;
+    }
+
+
+	/* Work through what's left of the current AU and the following AU's
+	   updating the info until we reach a point where an AU had to be
+	   split between packets.
+	   NOTE: It *is* possible for this loop to iterate. 
+
+	   The DTS/PTS field for the packet in this case would have been
+	   given the that for the first AU to start in the packet.
+	   Whether Joe-Blow's hardware VCD player handles this properly is
+	   another matter of course!
+	*/
+
+	decode_time = RequiredDTS();
+	while (au_unsent < bytes_muxed)
+	{	  
+        // BUG BUG BUG: if we ever had odd payload / packet size we might
+        // split an AC3 frame in the middle of the syncword!
+        assert( bytes_muxed > 1 );
+		bufmodel.Queued(au_unsent, decode_time);
+		bytes_muxed -= au_unsent;
+        if( new_au_next_sec )
+            ++syncwords;
+        aus += au->length;
+		if( !NextAU() )
+        {
+            printf( "FINI 1\n" );
+            goto completion;
+        }
+		new_au_next_sec = true;
+		decode_time = RequiredDTS();
+	};
+
+	// We've now reached a point where the current AU overran or
+	// fitted exactly.  We need to distinguish the latter case
+	// so we can record whether the next packet starts with an
+	// existing AU or not - info we need to decide what PTS/DTS
+	// info to write at the start of the next packet.
+	
+	if (au_unsent > bytes_muxed)
+	{
+        if( new_au_next_sec )
+            ++syncwords;
+		bufmodel.Queued( bytes_muxed, decode_time);
+		au_unsent -= bytes_muxed;
+		new_au_next_sec = false;
+	} 
+	else //  if (au_unsent == bytes_muxed)
+	{
+		bufmodel.Queued(bytes_muxed, decode_time);
+        if( new_au_next_sec )
+            ++syncwords;
+        aus += au->length;
+        new_au_next_sec = NextAU();
+	}	   
+completion:
+    // Generate the AC3 header...
+    // Note the index counts from the low byte of the offset so
+    // the smallest value is 1!
+    dst[0] = AC3_SUB_STR_1 + stream_num;
+    dst[1] = syncwords;
+    dst[2] = (first_header+1)>>8;
+    dst[3] = (first_header+1)&0xff;
+
+	return bytes_read+4;
 }
 
 
