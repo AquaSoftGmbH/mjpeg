@@ -41,6 +41,9 @@ extern "C" {
 #if	!defined(HAVE_POSIX_MEMALIGN)
 	int posix_memalign(void **, size_t, size_t);
 #endif
+#if	!defined(HAVE_MEMALIGN)
+	void *memalign(size_t, size_t);
+#endif
 #if	!defined(HAVE_FMAX)
 	double fmax(double, double);
 #endif

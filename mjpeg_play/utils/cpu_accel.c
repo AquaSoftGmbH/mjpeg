@@ -23,15 +23,17 @@
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
 #include "cpu_accel.h"
+#include "mjpeg_logging.h"
 
 #ifdef HAVE_ALTIVEC
 extern int detect_altivec();
 #endif
 
 #ifdef HAVE_X86CPU 
-
-#include "mjpeg_logging.h"
 
 /* Some miscelaneous stuff to allow checking whether SSE instructions cause
    illegal instruction errors.
@@ -178,12 +180,9 @@ int32_t cpu_accel (void)
  *
  ****************************/
 
-#if	!defined(HAVE_POSIX_MEMALIGN)
-
-#include <stdlib.h>
-#include <errno.h>
-
 #define powerof2(x)     ((((x)-1)&(x))==0)
+
+#if	!defined(HAVE_POSIX_MEMALIGN)
 
 int
 posix_memalign(void **ptr, size_t alignment, size_t size)
@@ -199,6 +198,20 @@ posix_memalign(void **ptr, size_t alignment, size_t size)
 		return(0);
 	}
 	return(ENOMEM);
+}
+#endif
+
+#if	!defined(HAVE_MEMALIGN)
+void *
+memalign(size_t alignment, size_t size)
+{
+
+	if 	(alignment % sizeof (void *) || !powerof2(alignment))
+	{
+		errno = EINVAL;
+		return(NULL);
+	}
+	return(malloc((size + alignment - 1) & ~(alignment - 1)));
 }
 #endif
 
@@ -222,7 +235,8 @@ void *bufalloc( size_t size )
 {
 	static size_t simd_alignment = 16;
 	static int bufalloc_init = 0;
-	void *buf;
+	int  pgsize;
+	void *buf = NULL;
 
 	if( !bufalloc_init )
 	{
@@ -235,7 +249,21 @@ void *bufalloc( size_t size )
 #endif		
 	}
 		
-	if( posix_memalign( &buf, simd_alignment, size ) !=0 )
-		mjpeg_error_exit1("malloc failed");
+	pgsize = sysconf(_SC_PAGESIZE);
+/*
+ * If posix_memalign fails it could be a broken glibc that caused the error,
+ * so try again with a page aligned memalign request
+*/
+	if (posix_memalign( &buf, simd_alignment, size))
+		buf = memalign(pgsize, size);
+	if (buf && ((int)buf & (simd_alignment - 1)))
+	{
+		free(buf);
+		buf = memalign(pgsize, size);
+	}
+	if (buf == NULL)
+		mjpeg_error_exit1("malloc of %d bytes failed", size);
+	if ((int)buf & (simd_alignment - 1))
+		mjpeg_error_exit1("could not allocate %d bytes aligned on a %d byte boundary", size, simd_alignment);
 	return buf;
 }
