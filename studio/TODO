@@ -10,18 +10,16 @@ Long term:
 ==========
 * Make a lavpipe-kind of gstreamer-based video-editor library for
     stream-combining and effects
-* Librarify lavplay (and yuvscaler (Xavier), mpeg2enc and such (Andrew))
 * Make a preview screen for the image-overlay thingy
     it should support dragging so the user can place the image
     in the image
 
 Laurens - images:
 =================
-* Gnome desktop icon
-* power button image (on && off)
 * for the three effect buttons (text, image, scene transition)
 * some encoding buttons?
 * effects: color and font
+* scenelist icons for (each of the?) transitions, text/image overlay
 
 Bernhards Problems:
 ===================

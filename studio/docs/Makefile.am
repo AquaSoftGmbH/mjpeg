@@ -3,6 +3,6 @@
 #######################################################
 
 
-man_MANS = studio.1
+man_MANS = studio.1 stv.1
 
 EXTRA_DIST = $(man_MANS)

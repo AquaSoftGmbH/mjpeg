@@ -373,14 +373,19 @@ void quit_lavrec_with_error(char *msg)
 void dispatch_input(char *buff)
 {
 	char buff2[4096], buff3[4096];
-	int h, m, s, f, l, i, d, a;
+	int h, m, s, f, l, i, d, a, bla;
 
 	if (strcmp(buff, "Press enter to start recording>") == 0)
 	{
 		studio_set_lavrec_label("Press Start to start");
 	}
 	else if (sscanf(buff, "%d.%d.%d:%d lst: %d ins: %d del: %d ae: %d",
-		&h, &m, &s, &f, &l, &i, &d, &a)==8)
+		&h, &m, &s, &f, &l, &i, &d, &a)==8) /* 1.4.x syntax */
+	{
+		table_set_text(h, m, s, f, l, i, d, a);
+	}
+	else if (sscanf(buff, "%d.%d.%d:%d int: %d lst: %d ins: %d del: %d ae: %d",
+		&h, &m, &s, &f, &bla, &l, &i, &d, &a) == 9) /* 1.5.x syntax */
 	{
 		table_set_text(h, m, s, f, l, i, d, a);
 	}
@@ -398,40 +403,8 @@ void dispatch_input(char *buff)
 	}
 }
 
-/*void lavreclog_input_cb (gpointer data, gint source, GdkInputCondition condition)
-{
-	static char inpbuff[4096];
-	static int inplen = 0;
-
-	char input[4096];
-	int i, n;
-
-	n = read(source,input,4096);
-	if(n==0) return;
-
-	for(i=0;i<n;i++)
-	{
-		if(inplen<4096-2) inpbuff[inplen++] = input[i];
-		if(input[i]=='\n' || input[i]=='\r')
-		{
-			inpbuff[inplen] = '\0';
-			dispatch_input(inpbuff, inplen);
-			inplen = 0;
-		}
-		if(input[i]=='>')
-		{
-			inpbuff[inplen] = '>';
-			inpbuff[inplen+1] = '\0';
-			dispatch_input(inpbuff, inplen+1);
-			inplen = 0;
-		}
-	}
-}*/
-
 void create_child()
 {
-	/* TODO: should actually use pipes.c calls later on */
-/*	int ipipe[2], opipe[2];*/
 	char lavrec_i[4], lavrec_f[4], lavrec_d[4], lavrec_q[6], lavrec_a[5], lavrec_r[8];
 	char lavrec_R[4], lavrec_c[4], lavrec_t[11], lavrec_T[4], lavrec_n[6], lavrec_b[8];
 	char lavrec_g[20];
@@ -477,31 +450,15 @@ void emulate_enter()
 		write_pipe(LAVREC, "\n");
 		studio_set_lavrec_label("\nPress \"Stop\" to stop...");
 	}
-/*	capturing = TRUE;*/
 }
 
 void emulate_ctrl_c()
 {
-/*	if (capturing_init)
-	{
-		kill (pid_lr, SIGINT);
-		waitpid (pid_lr, NULL, 0);
-		close (inp_pipe);
-		close (out_pipe);
-		gdk_input_remove (studio_lavreclog_gint);
-		capturing = FALSE;
-		capturing_init = FALSE;
-		if (verbose) g_print("\nLavrec Stopped\n");
-		studio_set_lavrec_label("Lavrec was stopped\nPress \"Initialize Capture\" to start");
-		scene_detection();
-
-	}*/
 	close_pipe(LAVREC);
 }
 
 void lavrec_quit()
 {
-/*	capturing = FALSE;*/
 	studio_set_lavrec_label("Lavrec was stopped\nPress \"Initialize Capture\" to start");
 	scene_detection();
 }
@@ -542,8 +499,6 @@ void create_filesel1(GtkWidget *widget, gpointer data)
 
 void write_result(GtkWidget *widget, gpointer data)
 {
-/*	if (capturing_init)
-		emulate_ctrl_c();*/
 	if (pipe_is_active(LAVREC))
 	{
 		printf("Error, lavrec is already active!\n");
@@ -551,7 +506,6 @@ void write_result(GtkWidget *widget, gpointer data)
 	}
 	table_set_text(0, 0, 0, 0, 0, 0, 0, 0);
 	current_file = 0;
-/*	capturing_init = TRUE;*/
 	studio_set_lavrec_label("Initializing capture\nPlease wait...");
 	create_child();
 }
@@ -559,13 +513,9 @@ void write_result(GtkWidget *widget, gpointer data)
 GtkWidget *create_buttons(GtkWidget *vbox, GtkWidget *window)
 {
 	GtkWidget *hbox, *label, *button, *pixmap_widget, *hbox2;
-/*	GdkPixmap *pixmap;
-	GdkBitmap *mask;
-	GtkStyle *style;*/
 	GtkTooltips *tooltip;
 
 	tooltip = gtk_tooltips_new();
-/*	style = gtk_widget_get_style(window);*/
 	lavrec_label = gtk_label_new("Welcome to Linux Video Studio\nPress \"Initialize Capture\" to start");
 	gtk_box_pack_start (GTK_BOX (vbox), lavrec_label, TRUE, TRUE, 10);
 	gtk_widget_show (lavrec_label);
@@ -763,14 +713,10 @@ GtkWidget *create_audio_sliders(GtkWidget *window)
 {
 	GtkWidget *vbox, *scrollbar, *label, *pixmap_w;
 	GtkObject *adj;
-/*	GdkPixmap *pixmap;
-	GdkBitmap *mask;
-	GtkStyle *style;*/
 	GtkTooltips *tooltip;
-	int no_of_devs, i = -1, value; //, i_;
+	int no_of_devs, i = -1, value;
 
 	tooltip = gtk_tooltips_new();
-/*	style = gtk_widget_get_style(window);*/
 	vbox = gtk_vbox_new (FALSE, 0);
 
 	mixer_id = mixer_init (getenv("LAV_MIXER_DEV"));
@@ -808,9 +754,6 @@ GtkWidget *create_audio_sliders(GtkWidget *window)
 	gtk_widget_show(scrollbar);
 
 	gtk_tooltips_set_tip(tooltip, scrollbar, "Volume", NULL);
-/*	pixmap = gdk_pixmap_create_from_xpm_d(window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL], slider_volume_xpm);
-	pixmap_w = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_w = gtk_widget_from_xpm_data(slider_volume_xpm);
 	gtk_widget_show(pixmap_w);
 	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
@@ -831,13 +774,9 @@ GtkWidget *create_video_sliders(GtkWidget *window)
 {
 	GtkWidget *hbox, *vbox, *scrollbar, *label, *pixmap_w;
 	GtkObject *adj;
-/*	GdkPixmap *pixmap;
-	GdkBitmap *mask;
-	GtkStyle *style;*/
 	GtkTooltips *tooltip;
 
 	tooltip = gtk_tooltips_new();
-/*	style = gtk_widget_get_style(window);*/
 	hbox = gtk_hbox_new (FALSE, 20);
 
 	vbox = gtk_vbox_new (FALSE, 0);
@@ -853,8 +792,6 @@ GtkWidget *create_video_sliders(GtkWidget *window)
 	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
 	gtk_widget_show(scrollbar);
 	gtk_tooltips_set_tip(tooltip, scrollbar, "Hue", NULL);
-/*	pixmap = gdk_pixmap_create_from_xpm_d(window->window, &mask, &style->bg[GTK_STATE_NORMAL], slider_hue_xpm);
-	pixmap_w = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_w = gtk_widget_from_xpm_data(slider_hue_xpm);
 	gtk_widget_show(pixmap_w);
 	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
@@ -877,11 +814,6 @@ GtkWidget *create_video_sliders(GtkWidget *window)
 	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
 	gtk_widget_show(scrollbar);
 	gtk_tooltips_set_tip(tooltip, scrollbar, "Contrast", NULL);
-	/*label = gtk_label_new("Ctr");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);*/
-/*	pixmap = gdk_pixmap_create_from_xpm_d(window->window, &mask, &style->bg[GTK_STATE_NORMAL], slider_contrast_xpm);
-	pixmap_w = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_w = gtk_widget_from_xpm_data(slider_contrast_xpm);
 	gtk_widget_show(pixmap_w);
 	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
@@ -904,11 +836,6 @@ GtkWidget *create_video_sliders(GtkWidget *window)
 	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
 	gtk_widget_show(scrollbar);
 	gtk_tooltips_set_tip(tooltip, scrollbar, "Brightness", NULL);
-	/*label = gtk_label_new("Brt");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);*/
-/*	pixmap = gdk_pixmap_create_from_xpm_d(window->window, &mask, &style->bg[GTK_STATE_NORMAL], slider_brightness_xpm);
-	pixmap_w = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_w = gtk_widget_from_xpm_data(slider_brightness_xpm);
 	gtk_widget_show(pixmap_w);
 	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
@@ -931,11 +858,6 @@ GtkWidget *create_video_sliders(GtkWidget *window)
 	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
 	gtk_widget_show(scrollbar);
 	gtk_tooltips_set_tip(tooltip, scrollbar, "Colour Saturation", NULL);
-	/*label = gtk_label_new("Clr");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);*/
-/*	pixmap = gdk_pixmap_create_from_xpm_d(window->window, &mask, &style->bg[GTK_STATE_NORMAL], slider_sat_colour_xpm);
-	pixmap_w = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_w = gtk_widget_from_xpm_data(slider_sat_colour_xpm);
 	gtk_widget_show(pixmap_w);
 	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);

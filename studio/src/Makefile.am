@@ -8,12 +8,12 @@ INCLUDES = ${GTK_CFLAGS} ${GDK_PIXBUF_CFLAGS} ${GLIB_CFLAGS} \
 OBJS= studio.c config.c parseconfig.c gtktvplug.c lavrec_pipe.c \
 	lavplay_pipe.c gtkimageplug.c lavedit.c mixer.c lavencode.c \
 	pipes.c gtkenhancedscale.c lavedit_trimming.c gtkfunctions.c \
-	config_encode.c lavedit_effects.c lavencode_mpeg.c
+	config_encode.c lavedit_effects.c lavencode_mpeg.c gtkscenelist.c
 
 bin_PROGRAMS = studio stv
 
 studio_headers = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
-	mixer.h gtkfunctions.h yuv4mpeg.h
+	mixer.h gtkfunctions.h yuv4mpeg.h gtkscenelist.h
 
 studio_SOURCES = ${studio_headers} ${OBJS}
 studio_LDADD = ${X_LIBS} -lXv -L$(top_srcdir)/yuv4mpeg -lyuv4mpeg

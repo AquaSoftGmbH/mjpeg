@@ -33,9 +33,11 @@
 
 void gtk_show_text_window(int type, char *message, char *message2)
 {
-	GtkWidget *window, *hbox, *vbox, *label, *button, *hseparator, *pixmap_widget, *vbox2;
+	extern GtkWidget *window;
+	GtkWidget *pop_window, *hbox, *vbox, *label, *button, *hseparator, *pixmap_widget, *vbox2;
 	char *title = "Linux Video Studio";
 	gchar **data = NULL;
+	int x,y,w,h;
 
 	switch(type)
 	{
@@ -53,11 +55,11 @@ void gtk_show_text_window(int type, char *message, char *message2)
 			break;
 	}
 
-	window = gtk_window_new(GTK_WINDOW_DIALOG);
+	pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
 	vbox = gtk_vbox_new(FALSE, 5);
 
-	gtk_window_set_title (GTK_WINDOW(window),title);
-	gtk_container_set_border_width (GTK_CONTAINER (window), 20);
+	gtk_window_set_title (GTK_WINDOW(pop_window),title);
+	gtk_container_set_border_width (GTK_CONTAINER (pop_window), 20);
 
 	hbox = gtk_hbox_new(FALSE, 10);
 
@@ -92,15 +94,19 @@ void gtk_show_text_window(int type, char *message, char *message2)
 
 	button = gtk_button_new_with_label("  Close  ");
 	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(window));
+		gtk_widget_destroy, GTK_OBJECT(pop_window));
 	gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 
-	gtk_container_add (GTK_CONTAINER (window), vbox);
+	gtk_container_add (GTK_CONTAINER (pop_window), vbox);
 	gtk_widget_show(vbox);
 
-	gtk_grab_add(window);
-	gtk_widget_show(window);
+	gtk_grab_add(pop_window);
+	gtk_window_set_transient_for(GTK_WINDOW(pop_window), GTK_WINDOW(window));
+	gdk_window_get_origin(window->window, &x, &y);
+	gdk_window_get_size(window->window, &w, &h);
+	gtk_widget_set_uposition(pop_window, x+w/4, y+h/4);
+	gtk_widget_show(pop_window);
 }
 
 GtkWidget *gtk_widget_from_xpm_data(gchar **data)
@@ -114,4 +120,54 @@ GtkWidget *gtk_widget_from_xpm_data(gchar **data)
 	widget = gtk_pixmap_new(pixmap, mask);
 
 	return widget;
+}
+
+void set_background_color(GtkWidget *widget, int r, int g, int b)
+{
+	GtkRcStyle* rc_style;
+
+	rc_style = gtk_rc_style_new();
+	rc_style->bg[GTK_STATE_NORMAL].red = r;
+	rc_style->bg[GTK_STATE_NORMAL].green = g;
+	rc_style->bg[GTK_STATE_NORMAL].blue = b;
+	rc_style->color_flags[GTK_STATE_NORMAL] = GTK_RC_BG;
+	gtk_widget_modify_style(widget,rc_style);
+	gtk_rc_style_unref(rc_style);
+}
+
+GtkWidget *gtk_image_label_button(char *text, gchar **imagedata, gint spacing, GtkPositionType pos)
+{
+   GtkWidget *button, *box, *pixmap=NULL, *label;
+
+   button = gtk_button_new();
+   if (pos == GTK_POS_BOTTOM || pos == GTK_POS_TOP)
+      box = gtk_vbox_new(FALSE, spacing);
+   else if (pos == GTK_POS_LEFT || pos == GTK_POS_RIGHT)
+      box = gtk_hbox_new(FALSE, spacing);
+   else
+      return NULL;
+   if (imagedata)
+   {
+      pixmap = gtk_widget_from_xpm_data(imagedata);
+      if (pos == GTK_POS_RIGHT || pos == GTK_POS_BOTTOM)
+      {
+         gtk_box_pack_start(GTK_BOX (box), pixmap, FALSE, TRUE, 0);
+         gtk_widget_show(pixmap);
+      }
+   }
+   if (text)
+   {
+      label = gtk_label_new(text);
+      gtk_box_pack_start(GTK_BOX (box), label, FALSE, TRUE, 0);
+      gtk_widget_show(label);
+   }
+   if (imagedata && (pos == GTK_POS_LEFT || pos == GTK_POS_TOP))
+   {
+      gtk_box_pack_start(GTK_BOX (box), pixmap, FALSE, TRUE, 0);
+      gtk_widget_show(pixmap);
+   }
+   gtk_container_add (GTK_CONTAINER (button), box);
+   gtk_widget_show(box);
+
+   return button;
 }

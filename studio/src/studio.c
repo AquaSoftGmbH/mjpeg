@@ -238,17 +238,16 @@ void open_help_menu(GtkWidget *widget, gpointer data)
 
 void usage()
 {
-	g_print("                  Linux Video Studio options\n");
-	g_print("===============================================================\n");
-	g_print("-h        : this help message\n");
-	g_print("-v        : version information\n");
-	g_print("-p <num>  : port to be used for Xvideo extension (0=autodetect)\n");
-/*	g_print("-s <n>x<n>: specify preferred tv-plug size (<width>x<height>)\n");*/
-	g_print("-t        : probe ports to select the port to use for Xvideo\n");
-	g_print("-d        : debug/verbose\n");
-	g_print("-c <name> : specify configuration name (default: studio)\n");
-	g_print("===============================================================\n");
-	g_print("               (c) Ronald Bultje, 2000-2001 (GPL)\n");
+	g_print("Linux Video Studio - a video editor based on the MJPEG-tools\n");
+	g_print("Usage: \'studio [options]\' - where options are:\n");
+	g_print("  -p num : Xvideo port number to use (see -t, default: 0)\n");
+	g_print("  -t     : probe Xvideo ports for video cards\n");
+	g_print("  -c name: config name (default: \'studio\')\n");
+	g_print("  -h     : this information\n");
+	g_print("  -v     : version information\n");
+	g_print("  -d     : debug/verbose mode\n");
+	g_print("\n");
+	g_print("(c) copyright Ronald Bultje, 2000-2001 - under the terms of the GPL\n");
 	exit(1);
 }
 
