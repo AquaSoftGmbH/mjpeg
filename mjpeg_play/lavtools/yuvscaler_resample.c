@@ -368,7 +368,7 @@ average_specific (uint8_t * input, uint8_t * output,
   unsigned int local_output_active_width = output_active_width >> half;
   unsigned int local_out_nb_col_slice = out_nb_col_slice >> half;
   unsigned int local_out_nb_line_slice = out_nb_line_slice >> half;
-  unsigned int number;
+  unsigned int number,in_line_offset,out_line_offset;
   // specific==1, 4
   uint8_t temp_uint8_t;
   uint8_t *in_line_p;
@@ -598,10 +598,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	      for (in_line = 0; in_line < input_height_slice; in_line++)
 		{
 		  number = out_line_slice * input_height_slice + in_line;
-		  input_line_p[in_line] =
-		    input + ((number & ~(unsigned int) 1) +
-			     (line_switching +
-			      number) % 2) * local_input_width;
+		  input_line_p[in_line] = input + number * local_input_width;
 		}
 	      u_c_p =
 		output +
@@ -690,22 +687,30 @@ average_specific (uint8_t * input, uint8_t * output,
   if (specific == 6)
     {
       // Dedicated SVCD: we downscale 3 for 2 on width, and 1 to 1 on height. Infered from specific=1
-      // For width, W points on  "2 2 1 2 1 2" => we can explicitely write down the calculs of value
+      // For width, W points are "2 2 1 2 1 2" => we can explicitely write down the calculs of value
       treatment = 6;
       mjpeg_debug ("Non interlaced and/or interlaced treatment");
+      in_line_offset  = local_input_width  - local_out_nb_col_slice * 3;
+      out_line_offset = local_output_width - local_out_nb_col_slice * 2;
+      in_line_p  = input;
+      out_line_p = output;
       for (line_index = 0; line_index < local_output_active_height;
 	   line_index++)
 	{
-	  in_line_p = input + line_index * local_input_width;
-	  out_line_p = output + line_index * local_output_width;
+//	  in_line_p = input + line_index * local_input_width;
+//	  out_line_p = output + line_index * local_output_width;
 	  for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
 	       out_col_slice++)
 	    {
 	      temp_uint8_t = in_line_p[1];
-	      *(out_line_p++) = divide[((*in_line_p) << 1) + temp_uint8_t];
+//	      *(out_line_p++) = divide[((*in_line_p) << 1) + temp_uint8_t];
+	       *(out_line_p++) = (((*in_line_p) << 1) + temp_uint8_t + 1) / 3;
 	      in_line_p += 2;
-	      *(out_line_p++) = divide[temp_uint8_t + ((*in_line_p++) << 1)];
+//	      *(out_line_p++) = divide[temp_uint8_t + ((*in_line_p++) << 1)];
+	      *(out_line_p++) = (temp_uint8_t + ((*in_line_p++) << 1) + 1) / 3;	      
 	    }
+	   in_line_p  += in_line_offset;
+	   out_line_p += out_line_offset;
 	}
     }
 

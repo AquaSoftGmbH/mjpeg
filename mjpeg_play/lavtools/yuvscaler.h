@@ -11,23 +11,29 @@ void handle_args_dependent (int argc, char *argv[]);
 int main (int argc, char *argv[]);
 unsigned int pgcd(unsigned int,unsigned int);
 
-// yuvscaler_resample
+// yuvscaler_resample.c
 int average_coeff(unsigned int,unsigned int,unsigned int *);
 int average(unsigned char *,unsigned char *, unsigned int *, unsigned int *,unsigned int);
 int average_specific(unsigned char *,unsigned char *, unsigned int *, unsigned int *, unsigned int);
-// yuvscaler_bicubic
+
+// yuvscaler_bicubic.c
 int16_t cubic_spline(float,unsigned int);
-int padding(uint8_t *,uint8_t *,unsigned int); 
-int padding_interlaced (uint8_t *, uint8_t *, uint8_t *, unsigned int);
-int cubic_scale (uint8_t * , uint8_t *, 
-	     unsigned int *, unsigned int *,
-	     int16_t * , int16_t * , int16_t * , int16_t * ,
-	     int16_t * , int16_t * , int16_t * , int16_t * ,
-	     unsigned int);
-int cubic_scale_interlaced (uint8_t *, uint8_t *, uint8_t *, 
-			unsigned int *, unsigned int *,
-			int16_t * , int16_t * , int16_t * , int16_t * ,
-			int16_t * , int16_t * , int16_t * , int16_t * ,
-			unsigned int);
+int
+padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t * input, unsigned int half,
+		    uint16_t left_offset, uint16_t top_offset, uint16_t right_offset, uint16_t bottom_offset,
+		    uint16_t width_pad);
+int
+padding (uint8_t * padded_input, uint8_t * input, unsigned int half, 
+	 uint16_t left_offset, uint16_t top_offset, uint16_t right_offset, uint16_t bottom_offset,
+	 uint16_t width_pad);
 
-
+int cubic_scale_interlaced (uint8_t *, uint8_t *, uint8_t *,
+			    unsigned int *, unsigned int *,
+			    int16_t **, uint16_t,
+			    int16_t **, uint16_t,
+			    unsigned int);
+int cubic_scale (uint8_t *, uint8_t *,
+			    unsigned int *, unsigned int *,
+			    int16_t **, uint16_t,
+			    int16_t **, uint16_t,
+			    unsigned int);
