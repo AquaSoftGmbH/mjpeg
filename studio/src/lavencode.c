@@ -98,7 +98,7 @@ void create_buttons2 (GtkWidget *hbox1);
 void create_mplex (GtkWidget *table);
 void create_status (GtkWidget *hbox1, GtkWidget *vbox);
 void create_option_button(GSList *task_group, GtkWidget *table, 
-       char task[LONGOPT], int encx, int ency);
+                         char task[LONGOPT], int encx, int ency);
 void create_task_layout(GtkWidget *table);
 void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
 void set_task(GtkWidget *widget, gpointer data);
@@ -470,12 +470,15 @@ void video_convert()
    char command_temp[256];
    static char temp1[16],temp2[16],temp3[16],temp5[16],temp6[16], temp7[4];
    static char temp8[4], temp9[4], temp10[4],temp12[4],temp13[4];
-   static char temp14[4],temp15[4],temp16[4],temp17[4];
+   static char temp14[6],temp15[4],temp16[4],temp17[4];
+   FILE *backup_pipe;      /* if there are troubels with the piping or if we */
+                           /* are late in supporting the current YUV4MPEG    */
+                           /* format. It use popen/pclose no status aviable */
    error = 0;
    scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
                      /* for the encoding process                  */
-
+ 
    progress_encoding = 2;
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding video");
@@ -568,8 +571,9 @@ void video_convert()
    mpeg2enc_command[n] = "-o"; n++;
    mpeg2enc_command[n] = enc_videofile; n++;
    mpeg2enc_command[n] = NULL;
-
-   start_pipe_command(mpeg2enc_command, MPEG2ENC); /* mpeg2enc */
+ 
+   if (encoding_syntax_style != 150)                          /* the backup */ 
+     start_pipe_command(mpeg2enc_command, MPEG2ENC); /* mpeg2enc */
 
    /* let's start yuvplay to show video while it's being encoded */
    if (use_yuvplay_pipe)
@@ -650,7 +654,8 @@ void video_convert()
       }
       yuvscaler_command[n] = NULL;
 
-      start_pipe_command(yuvscaler_command, YUVSCALER); /* yuvscaler */
+      if (encoding_syntax_style != 150)                       /* the backup */ 
+        start_pipe_command(yuvscaler_command, YUVSCALER); /* yuvscaler */
 
       /* set variable in pipes.h to tell to use yuvscaler */
       use_yuvscaler_pipe = 1;
@@ -689,8 +694,9 @@ void video_convert()
      }
    lav2yuv_command[n] = enc_inputfile; n++;
    lav2yuv_command[n] = NULL;
-
-   start_pipe_command(lav2yuv_command, LAV2YUV); /* lav2yuv */
+  
+   if (encoding_syntax_style != 150)                       /* the backup */ 
+     start_pipe_command(lav2yuv_command, LAV2YUV); /* lav2yuv */
 
    command2string(lav2yuv_command, command_temp);
    sprintf(command, "%s |", command_temp);
@@ -710,6 +716,13 @@ void video_convert()
    if (verbose)
       printf("Executing : %s\n", command);
    show_executing(command);
+
+   if (encoding_syntax_style == 150)
+     {
+       backup_pipe = popen(command, "w"); /* grab output until it's ready */
+       pclose(backup_pipe);
+       show_executing(command);
+     }
 }
 
 /* mplexing the encodet streams */
