@@ -1,4 +1,4 @@
-#include "main.h"
+#include "main.hh"
 #include <stdlib.h>
 #include <unistd.h>
 #include <format_codes.h>
@@ -170,7 +170,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
     File found?
 *************************************************************************/
 
-int open_file(char *name, unsigned int *bytes)			
+bool open_file(char *name, unsigned int *bytes)			
 {
     FILE* datei;
 
@@ -178,12 +178,12 @@ int open_file(char *name, unsigned int *bytes)
     if (datei==NULL)
     {	
 		mjpeg_error("File %s not found.\n", name);
-		return (TRUE);
+		return (true);
     }
     fseek (datei, 0, 2);
     *bytes = ftell(datei);
     fclose(datei);
-    return (FALSE);
+    return (false);
 }
 
 

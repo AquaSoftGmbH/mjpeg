@@ -8,15 +8,15 @@ INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 bin_PROGRAMS = mplex
 
 mplex_SOURCES = \
-	main.c 		main.h	\
-	bits.c 		bits.h	\
-	buffer.c 		\
-	inits.c 		\
-	inptstrm.c 		\
-	interact.c 		\
-	multplex.c 		\
-	systems.c 		\
-	vector.c 	vector.h
+	main.cc 		main.hh	\
+	bits.cc 		bits.hh	\
+	buffer.cc 		\
+	inits.cc 		\
+	inptstrm.cc 		\
+	interact.cc		\
+	multplex.cc 		\
+	systems.cc 		\
+	vector.cc 	vector.hh
 
 mplex_LDADD = -L$(top_srcdir)/utils -lutils -lm 
 

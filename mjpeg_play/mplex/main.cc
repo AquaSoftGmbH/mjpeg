@@ -58,7 +58,7 @@
 *  MPEG/SYSTEM stream an additional 50-100 kByte tmp Diskspace		 *
 *************************************************************************/
 
-#include "main.h"
+#include "main.hh"
 #include "mjpeg_logging.h"
 
 /*************************************************************************
@@ -66,12 +66,7 @@
 *************************************************************************/
 
 
-unsigned int which_streams;
-
-int main (argc, argv)
-
-int argc;
-char* argv[];
+int main (int argc, char* argv[])
 {
     char 	*audio_file = NULL;
     char        *video_file = NULL;
@@ -81,16 +76,17 @@ char* argv[];
     Video_struc video_info;
     Audio_struc audio_info;
     unsigned int audio_bytes, video_bytes;
-    double first_frame_PTS = 0.0;
+    clockticks first_frame_PTS = 0;
     Vector  vaunits_info, aaunits_info;
 
     optargs = intro_and_options (argc, argv, &multi_file);
     check_files (argc-optargs, argv+optargs, 
                  &audio_file, &video_file,
 				 &audio_bytes, &video_bytes);
+#ifdef REDUNDANT
 	empty_video_struc (&video_info);
     empty_audio_struc (&audio_info);
-
+#endif
     if (which_streams & STREAMS_VIDEO) {
 	  get_info_video (video_file, &video_info, &first_frame_PTS,
 			  video_bytes, &vaunits_info);

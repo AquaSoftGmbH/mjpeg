@@ -1,36 +1,13 @@
-/*************************************************************************
-*  MPEG SYSTEMS MULTIPLEXER                                              *
-*  Erzeugen einer MPEG/SYSTEMS                           		 *
-*  MULTIPLEXED VIDEO/AUDIO DATEI					 *
-*  aus zwei MPEG Basis Streams						 *
-*  Christoph Moar							 *
-*  SIEMENS ZFE ST SN 11 / T SN 6					 *
-*  (C) 1994 1995    							 *
-**************************************************************************
-*  Generating a MPEG/SYSTEMS						 *
-*  MULTIPLEXED VIDEO/AUDIO STREAM					 *
-*  from two MPEG source streams						 *
-*  Christoph Moar							 *
-*  SIEMENS CORPORATE RESEARCH AND DEVELOPMENT ST SN 11 / T SN 6		 *
-*  (C) 1994 1995							 *
-**************************************************************************
-*  Einschraenkungen vorhanden. Unterstuetzt nicht gesamten MPEG/SYSTEMS  *
-*  Standard. Haelt sich i.d.R. an den CSPF-Werten, zusaetzlich (noch)    *
-*  nur fuer ein Audio- und/oder ein Video- Stream. Evtl. erweiterbar.    *
-**************************************************************************
-*  Restrictions apply. Will not support the whole MPEG/SYSTEM Standard.  *
-*  Basically, will generate Constrained System Parameter Files.		 *
-*  Mixes only one audio and/or one video stream. Might be expanded.	 *
-*************************************************************************/
 
 /*************************************************************************
-*  mplex - MPEG/SYSTEMS multiplexer					 *
-*  Copyright (C) 1994 1995 Christoph Moar				 *
-*  Siemens ZFE ST SN 11 / T SN 6					 *
-*									 *
-*  moar@informatik.tu-muenchen.de 					 *
-*       (Christoph Moar)			 			 *
-*									 *
+*  mplex - MPEG/SYSTEMS multiplexer
+*  Copyright (C) 1994 1995 Christoph Moar
+*  Siemens ZFE ST SN 11 / T SN 6
+*  moar@informatik.tu-muenchen.de 
+*       (Christoph Moar)
+*
+*  Copyright (C) 2000, 2001, Andrew Stevens <andrew.stevens@philips.com>
+*
 *  This program is free software; you can redistribute it and/or modify	 *
 *  it under the terms of the GNU General Public License as published by	 *
 *  the Free Software Foundation; either version 2 of the License, or	 *
@@ -49,24 +26,24 @@
 #include <config.h>
 #include <stdio.h>
 #include <inttypes.h>
-#include "bits.h"
+#include "bits.hh"
 #ifdef TIMER
 #include <sys/time.h>
 #endif
 
 
-#include "vector.h"
+#include "vector.hh"
+#include "aunit.hh"
 
 #include "mjpeg_logging.h"
 
-typedef uint64_t clockticks;
 
 /*************************************************************************
     Definitionen
 *************************************************************************/
  
-#define MPLEX_VER    " 1.4.1"
-#define MPLEX_DATE   "7.12.2000"
+#define MPLEX_VER    "1.5.1"
+#define MPLEX_DATE   "$Date$"
 
 /* Buffer size parameters */
 
@@ -171,23 +148,6 @@ typedef uint64_t clockticks;
 
 
 
-typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
-{   unsigned int length		;
-    unsigned int type		;
-    clockticks DTS		;
-    clockticks PTS		;
-    int        dorder;
-    int		   porder;
-	int		   seq_header;
-	int	       end_seq;
-} Vaunit_struc;
-
-typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
-{   unsigned long length	;
-    clockticks PTS		;
-    int        dorder;
-} Aaunit_struc;
-
 typedef struct video_struc	/* Informationen ueber Video Stream	*/
 {   bitcount_t stream_length  ;
     unsigned int num_sequence 	;
@@ -277,25 +237,32 @@ void check_files (int argc,
 				  unsigned int *audio_bytes,
 				  unsigned int *video_bytes
 	);
-int  open_file(char *name, unsigned int *bytes);
+bool  open_file(char *name, unsigned int *bytes);
 void get_info_video (char *video_file,	
 					Video_struc *video_info,
-					double *first_frame_PTS,
+					 clockticks *first_frame_PTS,
 					unsigned int length,
 					Vector *vid_info_vec);
 void get_info_audio (char *audio_file,
 					  Audio_struc *audio_info,
-					  double first_frame_PTS,
+					  clockticks first_frame_PTS,
 					  unsigned int length,
 					  Vector *audio_info_vec
+
 					  );
-void empty_video_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
-void empty_audio_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
-void empty_vaunit_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
-void empty_aaunit_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
+
+// TODO Get rid of the ugly use of access unit structs with 0 length
+// fields a means of signalling "Null AU/beyond end of AU's".
+
+#ifdef REDDUNDANT
+void empty_vaunit_struc   (VAunit *);	
+void empty_aaunit_struc   (AAunit *);	
+void empty_video_struc    ();
+void empty_audio_struc    ();
 void empty_sector_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_clockticks ();	/* Initialisiert Struktur fuer SUN cc	*/
-void init_buffer_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
+#endif
+void init_buffer_struc (Buffer_struc *pointer, unsigned int size);
 
 void offset_timecode      (clockticks *time1,clockticks *time2,clockticks *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
 void copy_timecode        (clockticks *,clockticks *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
@@ -357,7 +324,7 @@ void output_video ( clockticks SCR,
 					FILE *istream_v,
 					FILE *ostream,
 					Buffer_struc *buffer,
-					Vaunit_struc *video_au,
+					VAunit *video_au,
 					Vector vaunit_info_vec,
 					unsigned int *new_picture_type,
 					unsigned char marker_pack,
@@ -368,7 +335,7 @@ void output_audio ( clockticks SCR,
 					FILE *istream_a,
 					FILE *ostream,
 					Buffer_struc *buffer,
-					Aaunit_struc *audio_au,
+					AAunit *audio_au,
 					Vector aaunit_info_vec,
 					unsigned char *audio_frame_start,
 					unsigned char marker_pack,
@@ -450,7 +417,6 @@ extern int verbose;
 extern unsigned int which_streams;
 
 extern int packet_overhead;
-extern int rate_restriction_flag;
 /* extern int pack_header_size; */
 extern int sector_size;
 extern int mux_rate;

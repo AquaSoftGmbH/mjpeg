@@ -1,13 +1,12 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include "vector.h"
+#include <inttypes.h>
+#include "vector.hh"
 
 
-
-
-struct _Vector {
-	char *buf;
+struct VectorStrct {
+	uint8_t *buf;
 	size_t end;
 	size_t ptr;
 	size_t lim;
@@ -16,17 +15,16 @@ struct _Vector {
 };
 
 
-
 Vector NewVector( size_t recsize )
 {	
-	Vector v = malloc(sizeof(struct _Vector));
+	Vector v = new VectorStrct;
 	v->recsize = ((recsize + 7 )/ 8) * 8;
 	if( recsize > 1024 ) 
 	{
 		v->size = ((recsize + 1023) / 1024 ) * 1024;
 	}
 	v->size = 1024;
-	v->buf = malloc( v->size );
+	v->buf = static_cast<uint8_t*>(malloc( v->size ));
 	v->end = 0;
 	v->ptr = 0;
 	v->lim = v->size - v->recsize;
@@ -43,7 +41,7 @@ void *VectorAppend( Vector v, void *rec )
 	{
 		v->size = v->size + v->size;
 		v->lim = v->size - v->recsize;
-		v->buf = realloc( v->buf, v->size );
+		v->buf = static_cast<uint8_t *>(realloc( v->buf, v->size ));
 		if( v->buf == NULL )
 			return NULL;
 	}

@@ -1,16 +1,6 @@
-#include "main.h"
-/*************************************************************************
-	Initialisieren von Strukturen fuer S*N cc Compiler.
+#include "main.hh"
 
-	Initialize structs for S*N cc compiler.
-*************************************************************************/
-void empty_video_struc (Video_struc *pointer);
-void empty_audio_struc (Audio_struc *pointer);
-void empty_vaunit_struc (Vaunit_struc *pointer);
-void empty_aaunit_struc (Aaunit_struc *pointer);
-void empty_sector_struc (Sector_struc *pointer);
-void init_buffer_struc (Buffer_struc *pointer, unsigned int size);
-
+#ifdef REDUNDANT
 void empty_video_struc (Video_struc *pointer)
 {
     int i;
@@ -76,7 +66,7 @@ void empty_sector_struc (Sector_struc *pointer)
     pointer->length_of_packet_data  = 0;
     pointer->TS = 0;
 }
-
+#endif
 
 void init_buffer_struc (Buffer_struc *pointer, unsigned int size)
 {
