@@ -157,7 +157,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
         return;
 
 	last_buffered_AU += frames_to_buffer;
-	mjpeg_debug( "Scanning %d video frames to frame %d", 
+	mjpeg_debug( "Scanning %d video frames to start of frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
     // We set a limit of 2M to seek before we give up.
@@ -194,9 +194,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
-				mjpeg_debug( "Found AU %d @ %lld: DTS=%d", access_unit.dorder,
+                decoding_order++;
+				mjpeg_debug( "Found start AU %d @ %lld: DTS=%d", 
+                             decoding_order,
                              bs.bitcount() / 8-4,
 							 access_unit.DTS/300 );
+
 				AU_hdr = syncword;
 				AU_start = stream_length;
 				AU_pict_data = 0;
@@ -241,7 +244,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			
 		case GROUP_START:
 			num_groups++;
-			group_order=0;
 			break;
 			
 		case PICTURE_START:
@@ -298,9 +300,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			access_unit.porder = temporal_reference + group_start_pic;
 			access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
 
-			decoding_order++;
-			group_order++;
-
 			if ((access_unit.type>0) && (access_unit.type<5))
 			{
 				num_frames[access_unit.type-1]++;
@@ -319,6 +318,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				
 		}
 	}
+
 	last_buffered_AU = decoding_order;
 	num_pictures = decoding_order;	
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
@@ -343,7 +343,7 @@ void VideoStream::Close()
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
 	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
-    mjpeg_info ("Video Stream length: %11llu bytes",stream_length/8);
+    mjpeg_info ("Video Stream length: %11llu bytes",stream_length);
     mjpeg_info ("Sequence headers: %8u",num_sequence);
     mjpeg_info ("Sequence ends   : %8u",num_seq_end);
     mjpeg_info ("No. Pictures    : %8u",num_pictures);
@@ -354,8 +354,6 @@ void VideoStream::Close()
 			  num_frames[1],avg_frames[1]);
     mjpeg_info ("No. B Frames    : %8u avg. size%6u bytes",
 			  num_frames[2],avg_frames[2]);
-    mjpeg_info ("No. D Frames    : %8u avg. size%6u bytes",
-			  num_frames[3],avg_frames[3]);
     mjpeg_info("Average bit-rate : %8u bits/sec",comp_bit_rate*400);
     mjpeg_info("Peak bit-rate    : %8u  bits/sec",peak_bit_rate*400);
 	

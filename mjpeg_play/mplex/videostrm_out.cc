@@ -42,7 +42,6 @@ VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms,
 	prev_offset=0;
     decoding_order=0;
 	fields_presented=0;
-    group_order=0;
     group_start_pic=0;
 	group_start_field=0;
     temporal_reference=0;

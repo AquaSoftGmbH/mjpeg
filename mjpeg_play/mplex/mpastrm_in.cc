@@ -178,7 +178,7 @@ void MPAStream::Init ( const int stream_num )
 
 unsigned int MPAStream::NominalBitRate()
 { 
-	return mpa_bitrates_kbps[version_id][layer][bit_rate_code]*128;
+	return mpa_bitrates_kbps[version_id][layer][bit_rate_code]*1024;
 }
 
 
@@ -194,6 +194,9 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int i;
 	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
+
+    if( eoscan )
+        return;
 
     mjpeg_debug( "Scanning %d MPA frames to frame %d", 
                 frames_to_buffer,
@@ -215,30 +218,19 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
             exit(1);
             break;
         }
-
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
 		if ( (syncword = bs.GetBits( 11))!=AUDIO_SYNCWORD )
 		{
+            //
+            // Handle a broken last frame...
 			if( !bs.eos()   )
 			{
-				/* There appears to be another catenated stream... */
-				int next;
-				mjpeg_warn( "End of component bit-stream ... seeking next" );
-				/* Catenated stream must start on byte boundary */
-				syncword = (syncword<<(8-AU_start % 8));
-				next = bs.GetBits(8-(AU_start % 8) );
-				AU_start = bs.bitcount()-11;
-				syncword = syncword | next;
-				if( syncword != AUDIO_SYNCWORD )
-				{
-					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !", AU_start/8, prev_offset/8 );
-					break;
-				}
+                mjpeg_warn( "Data follows end of last recogniseable MPEG audio frame - bad stream?");
+                eoscan = true;
+                return;
 			}
-			else
-				/* No catenated stream... finished! */
-				break;
+            break;
 		}
 		// Skip version_id:2, layer:2, protection:1
 		(void) bs.GetBits( 5);

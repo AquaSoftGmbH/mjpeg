@@ -109,7 +109,6 @@ protected:
 	/* State variables for scanning source bit-stream */
     VAunit access_unit;
 	unsigned int fields_presented;
-    unsigned int group_order;
     unsigned int group_start_pic;
 	unsigned int group_start_field;
     int temporal_reference;

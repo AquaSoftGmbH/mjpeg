@@ -578,7 +578,6 @@ void Multiplexor::Init()
 		if( (*str)->NominalBitRate() == 0 && data_rate == 0)
 			mjpeg_error_exit1( "Variable bit-rate stream present: output stream (max) data-rate *must* be specified!");
 		nominal_rate_sum += (*str)->NominalBitRate();
-
 	}
 		
 	/* Attempt to guess a sensible mux rate for the given video and *
