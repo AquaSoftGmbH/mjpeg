@@ -265,7 +265,8 @@ private:
 		// The base class for all our region types.
 
 	typedef SetRegion2D<PIXELINDEX,FRAMESIZE> Region_t;
-		// How we use Region2D<>.
+	typedef typename Region_t::Allocator RegionAllocator_t;
+		// How we use SetRegion2D<>.
 
 	typedef BitmapRegion2D<PIXELINDEX,FRAMESIZE> BitmapRegion_t;
 		// How we use BitmapRegion2D<>.
@@ -275,6 +276,9 @@ private:
 	
 	typedef typename SearchBorder_t::MovedRegion MovedRegion;
 		// A moved region of pixels that has been detected.
+	
+	RegionAllocator_t m_oRegionAllocator;
+		// Used by all our set-regions to allocate their space.
 
 	typedef Set<MovedRegion *,
 		typename MovedRegion::SortBySizeThenMotionVectorLength>
@@ -347,6 +351,10 @@ private:
 			MatchedPixelGroupSet;
 		// The type for a set of matched pixel-groups.
 
+	MatchedPixelGroupSet m_setMatches;
+		// All the matches for the current pixel-group that we
+		// want to use.
+
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 
 #ifdef USE_SEARCH_BORDER
@@ -404,8 +412,16 @@ private:
 			// The motion-searcher we're working for.
 
 	public:
+#ifdef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 		ZeroMotionFloodFillControl();
 			// Default constructor.  Must be followed by Init().
+#else // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+		ZeroMotionFloodFillControl
+				(typename BaseClass::Allocator &a_rAllocator
+					= Region_t::Extents::Imp::sm_oNodeAllocator);
+			// Partially-initializing constructor.
+			// Must be followed by Init().
+#endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 		void Init (Status_t &a_reStatus,
 				MotionSearcher *a_pMotionSearcher);
@@ -446,8 +462,16 @@ private:
 			// Keep track of who our base class is.
 #endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 	public:
+#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 		MatchThrottleFloodFillControl();
 			// Default constructor.  Must be followed by Init().
+#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+		MatchThrottleFloodFillControl
+				(typename BaseClass::Allocator &a_rAllocator
+					= Region_t::Extents::Imp::sm_oNodeAllocator);
+			// Partially-initializing constructor.
+			// Must be followed by Init().
+#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 
 		void Init (Status_t &a_reStatus,
 				MotionSearcher *a_pMotionSearcher);
@@ -495,9 +519,20 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 		REFERENCEFRAME>::MotionSearcher()
+	:
 #ifdef USE_SEARCH_BORDER
-	: m_oSearchBorder (m_setRegions)
+	  m_oSearchBorder (m_setRegions),
 #endif // USE_SEARCH_BORDER
+									  m_oRegionAllocator (1048576),
+	  m_oMatchThrottleRegion (m_oRegionAllocator)
+#ifndef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+												 ,
+	  m_oZeroMotionFloodFillControl (m_oRegionAllocator)
+#endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+#ifndef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+													 	,
+	  m_oMatchThrottleFloodFillControl (m_oRegionAllocator)
+#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// No frames yet.
 	m_nFrames = 0;
@@ -654,6 +689,17 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	if (a_reStatus != g_kNoError)
 		return;
 
+#ifdef THROTTLE_PIXELSORTER_WITH_SAD
+
+		// Initialize our set of matches.  (We'll use this to sort the
+		// incoming matches by how closely it matches the current
+		// pixel-group, and we'll throw away bad matches.)
+		m_setMatches.Init (a_reStatus, true);
+		if (a_reStatus != g_kNoError)
+			return;
+
+#endif // THROTTLE_PIXELSORTER_WITH_SAD
+
 	// Initialize our moved-regions set.
 	m_setRegions.Init (a_reStatus, true);
 	if (a_reStatus != g_kNoError)
@@ -663,7 +709,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 #ifdef USED_REFERENCE_PIXELS_REGION_IS_BITMAP
 	m_oUsedReferencePixels.Init (a_reStatus, a_tnWidth, a_tnHeight);
 #else // USED_REFERENCE_PIXELS_REGION_IS_BITMAP
-	m_oUsedReferencePixels.Init (a_reStatus);
+	m_oUsedReferencePixels.Init (a_reStatus, m_oRegionAllocator);
 #endif // USED_REFERENCE_PIXELS_REGION_IS_BITMAP
 	if (a_reStatus != g_kNoError)
 		return;
@@ -807,18 +853,6 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	{
 		PIXELINDEX tnLastX, tnLastY;
 			// Used to zigzag through the frame.
-#ifdef THROTTLE_PIXELSORTER_WITH_SAD
-		MatchedPixelGroupSet setMatches;
-			// All the matches for the current pixel-group that we
-			// want to use.
-
-		// Initialize our set of matches.  (We'll use this to sort the
-		// incoming matches by how closely it matches the current
-		// pixel-group, and we'll throw away bad matches.)
-		setMatches.Init (a_reStatus, true);
-		if (a_reStatus != g_kNoError)
-			return;
-#endif // THROTTLE_PIXELSORTER_WITH_SAD
 
 		// Get the reference frame, i.e. the one that we'll do
 		// motion-detection against.  (For now, that's the previous
@@ -1321,7 +1355,7 @@ noMatch:
 					m_oSearchWindow.StartSearch (itMatch,
 						oCurrentGroup);
 #ifdef THROTTLE_PIXELSORTER_WITH_SAD
-					setMatches.Clear();
+					m_setMatches.Clear();
 					while (pMatch = m_oSearchWindow.FoundNextMatch
 						(itMatch, tnSAD), pMatch != NULL)
 #else // THROTTLE_PIXELSORTER_WITH_SAD
@@ -1356,7 +1390,8 @@ noMatch:
 						// If this match is better than our worst so
 						// far, get rid of our worst & use the new one
 						// instead.
-						if (setMatches.Size() == m_nMatchCountThrottle)
+						if (m_setMatches.Size()
+							== m_nMatchCountThrottle)
 						{
 							typename MatchedPixelGroupSet::Iterator
 									itWorst;
@@ -1364,21 +1399,21 @@ noMatch:
 		
 							// Get the worst match.  (It's at the end of
 							// the list.)
-							itWorst = setMatches.End();
+							itWorst = m_setMatches.End();
 							--itWorst;
 		
 							// If the new item is better than our worst,
 							// get rid of our worst to make room for the
 							// new item.
 							if (tnSAD < (*itWorst).m_tnSAD)
-								setMatches.Erase (itWorst);
+								m_setMatches.Erase (itWorst);
 						}
 		
 						// If this match is close enough to the current
 						// pixel-group, make a note of it.
-						if (setMatches.Size() < m_nMatchCountThrottle)
+						if (m_setMatches.Size() < m_nMatchCountThrottle)
 						{
-							setMatches.Insert (a_reStatus,
+							m_setMatches.Insert (a_reStatus,
 								MatchedPixelGroup (tnSAD, pMatch));
 							if (a_reStatus != g_kNoError)
 								return;
@@ -1441,8 +1476,8 @@ noMatch:
 					// Now loop through all the good matches found,
 					// flood-fill each one, and use the first one that
 					// fills a large enough area.
-					for (itBestMatch = setMatches.Begin();
-						 itBestMatch != setMatches.End();
+					for (itBestMatch = m_setMatches.Begin();
+						 itBestMatch != m_setMatches.End();
 						 ++itBestMatch)
 					{
 						PIXELINDEX tnMotionX, tnMotionY;
@@ -1535,6 +1570,9 @@ noMatch:
 						}
 #endif // USE_SEARCH_BORDER
 					}
+
+					// All done with the matches.
+					m_setMatches.Clear();
 
 #else // THROTTLE_PIXELSORTER_WITH_SAD
 
@@ -2255,7 +2293,13 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 	REFERENCEFRAME>::ZeroMotionFloodFillControl
+#ifdef ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 	::ZeroMotionFloodFillControl()
+#else // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
+	::ZeroMotionFloodFillControl
+		(typename BaseClass::Allocator &a_rAllocator)
+	: BaseClass (a_rAllocator)
+#endif // ZERO_MOTION_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// We don't know who we're working for yet.
 	m_pMotionSearcher = NULL;
@@ -2393,7 +2437,13 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 	REFERENCEFRAME>::MatchThrottleFloodFillControl
+#ifdef MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 	::MatchThrottleFloodFillControl()
+#else // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
+	::MatchThrottleFloodFillControl
+		(typename BaseClass::Allocator &a_rAllocator)
+	: BaseClass (a_rAllocator)
+#endif // MATCH_THROTTLE_FLOOD_FILL_WITH_BITMAP_REGIONS
 {
 	// We don't know who we're working for yet.
 	m_pMotionSearcher = NULL;

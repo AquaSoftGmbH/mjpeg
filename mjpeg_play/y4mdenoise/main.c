@@ -50,6 +50,7 @@ int main(int argc, char *argv[])
   y4m_frame_info_t frameinfo;
   y4m_stream_info_t streaminfo;
   int chroma_mode;
+  int bInputStreamEnded;
 
   frame = 0;
 
@@ -59,7 +60,6 @@ int main(int argc, char *argv[])
   y4m_init_frame_info (&frameinfo);
   
   /* setup denoiser's global variables */
-  denoiser.skip               = 0;
   denoiser.frames             = 10;
   denoiser.interlaced         = -1;
   denoiser.bwonly             = 0;
@@ -69,8 +69,9 @@ int main(int argc, char *argv[])
   denoiser.zThresholdCbCr     = -1;
   denoiser.thresholdY         = 3; /* assume medium noise material */
   denoiser.thresholdCbCr      = -1;
-  denoiser.matchCountThrottle = 10;
+  denoiser.matchCountThrottle = 15;
   denoiser.matchSizeThrottle  = 3;
+  denoiser.threads            = 1;
   
   /* process commandline */
   process_commandline(argc, argv);
@@ -111,7 +112,8 @@ int main(int argc, char *argv[])
   y4m_write_stream_header (fd_out, &streaminfo); 
 
   /* allocate memory for frames */
-  alloc_buffers();
+  if (denoiser.threads != 2)
+	  alloc_buffers();
 	
   /* set interlacing, if it hasn't been yet. */
   if (denoiser.interlaced == -1)
@@ -135,23 +137,57 @@ int main(int argc, char *argv[])
     }
   }
 
+  /* if we're processing interlaced material, there is an additional
+     requirement that the number of reference frames be a multiple of
+	 2 (since there are 2 fields per frame). */
+  if (denoiser.interlaced != 0 && (denoiser.frames & 1) != 0)
+	mjpeg_error_exit1 ("When denoising interlaced material, -f must be"
+		" a multiple of 2");
+
 	/* initialize the denoiser */
 	errno = newdenoise_init (denoiser.frames, denoiser.frame.w,
 		denoiser.frame.h, (denoiser.bwonly) ? 0 : denoiser.frame.Cw,
-		(denoiser.bwonly) ? 0 : denoiser.frame.Ch);
+		(denoiser.bwonly) ? 0 : denoiser.frame.Ch, fd_in, fd_out,
+		&streaminfo, &frameinfo);
 	if (errno == -1)
 		mjpeg_error_exit1( "Could not initialize denoiser");
 
+	/* get space for the first output frame, if necessary */
+	if (denoiser.threads >= 1)
+	{
+		errno = newdenoise_get_write_frame (denoiser.frame.out);
+		if (errno)
+			mjpeg_error_exit1 ("Could not get space for frame %d",
+				frame);
+	}
+
   /* read every single frame until the end of the input stream */
-  while 
-    (
-          Y4M_OK == ( errno = y4m_read_frame (fd_in, 
-                                              &streaminfo, 
-                                              &frameinfo, 
-                                              denoiser.frame.in) )
-    )
-    {
+  bInputStreamEnded = 0;
+  for (;;)
+  {
+	/* If there is another input frame, read it.  We may find there
+	is no more input. */
+	if (!bInputStreamEnded)
+	{
+		/* Read the next frame. */
+		if (denoiser.threads == 0)
+			errno = y4m_read_frame (fd_in, &streaminfo, &frameinfo, 
+				denoiser.frame.in);
+		else
+			errno = newdenoise_read_frame (denoiser.frame.in);
+
+		/* did stream end unexpectedly ? */
+		if(errno != Y4M_ERR_EOF && errno != Y4M_OK )
+			mjpeg_error_exit1( "%s", y4m_strerr( errno ) );
+
+		/* Note if the stream ended. */
+		if (errno == Y4M_ERR_EOF)
+			bInputStreamEnded = 1;
+	}
+
+	  /* One more input frame. */
 	  frame++;
+
 	  //if (frame < 5395) continue;	// MAJOR HACK MAJOR HACK MAJOR HACK
 	  //if (frame == 5455) break;	// MAJOR HACK MAJOR HACK MAJOR HACK
 	  // fprintf (stderr, "Frame %d\r", frame);	// HACK
@@ -161,23 +197,21 @@ int main(int argc, char *argv[])
 	  //|| (frame >= 42737 && frame <= 45764)
 	  //|| (frame >= 68541 && frame <= 74895)
 	  //|| (frame >= 92217 && frame <= 95814))
-	  if (frame <= denoiser.skip)
-	  {
-         y4m_write_frame ( fd_out, 
-                        &streaminfo, 
-                        &frameinfo, 
-                        denoiser.frame.in);
-		 continue;
-	  }
-      
+
 		/* denoise the current frame */
 		errno = ((denoiser.interlaced == 0) ? newdenoise_frame
-			: newdenoise_interlaced_frame) (denoiser.frame.in[0],
-			denoiser.frame.in[1], denoiser.frame.in[2],
+			: newdenoise_interlaced_frame)
+			(((bInputStreamEnded) ? NULL : denoiser.frame.in[0]),
+			((bInputStreamEnded) ? NULL : denoiser.frame.in[1]),
+			((bInputStreamEnded) ? NULL : denoiser.frame.in[2]),
 			denoiser.frame.out[0], denoiser.frame.out[1],
 			denoiser.frame.out[2]);
 		if (errno == -1)
 			mjpeg_error_exit1( "Could not denoise frame %d", frame);
+
+    	/* if there was no output from the denoiser, leave. */
+		if (bInputStreamEnded && errno == 1)
+			break;
 	      
 		/* if b/w was selected, set the frame color to white */
 		if (denoiser.bwonly)
@@ -190,52 +224,33 @@ int main(int argc, char *argv[])
 				denoiser.frame.out[2][i] = 128;
 		}
 
-		/* if there was some output, write it. */
+		/* if there was some output from the denoiser, write it. */
 		if (errno == 0)
-	    	y4m_write_frame ( fd_out, 
-	                        &streaminfo, 
-	                        &frameinfo, 
-	                        denoiser.frame.out);
-    }
-    
-  /* did stream end unexpectedly ? */
-  if(errno != Y4M_ERR_EOF && errno != Y4M_OK )
-          mjpeg_error_exit1( "%s", y4m_strerr( errno ) );
-  
-  /* write out any remaining frames */
-  for (;;)
-  {
-	frame++;
-	// fprintf (stderr, "Frame %d\r", frame);	// HACK
-	errno = ((denoiser.interlaced == 0) ? newdenoise_frame
-		: newdenoise_interlaced_frame) (NULL, NULL, NULL,
-		denoiser.frame.out[0], denoiser.frame.out[1],
-		denoiser.frame.out[2]);
-	if (errno == -1)
-		mjpeg_error_exit1( "Could not denoise frame %d", frame);
-    /* if there was no output, leave. */
-	if (errno == 1)
-		break;
+		{
+			if (denoiser.threads == 0)
+	    		errno = y4m_write_frame ( fd_out, &streaminfo,
+					&frameinfo, denoiser.frame.out);
+			else
+				errno = newdenoise_write_frame();
+			if (errno)
+				mjpeg_error_exit1 ("Could not write frame %d", frame);
 
-	/* if b/w was selected, set the frame color to white */
-	if (denoiser.bwonly)
-	{
-		int i, iExtent = denoiser.frame.Cw * denoiser.frame.Ch;
-
-		for (i = 0; i < iExtent; ++i)
-			denoiser.frame.out[1][i] = 128;
-		for (i = 0; i < iExtent; ++i)
-			denoiser.frame.out[2][i] = 128;
-	}
-
-	/* if there was some output, write it. */
-	if (errno == 0)
-    	y4m_write_frame ( fd_out, 
-                        &streaminfo, 
-                        &frameinfo, 
-                        denoiser.frame.out);
+			/* Get space for the next frame.*/
+			if (denoiser.threads >= 1)
+			{
+				errno = newdenoise_get_write_frame (denoiser.frame.out);
+				if (errno)
+					mjpeg_error_exit1 ("Could not get space for "
+						"frame %d", frame);
+			}
+		}
   }
 
+  /* shut down the denoiser */
+  errno = newdenoise_shutdown();
+  if (errno != 0)
+	mjpeg_error_exit1 ("Could not shut down denoiser");
+  
   /* Exit gently */
   return(0);
 }
@@ -247,7 +262,7 @@ process_commandline(int argc, char *argv[])
 {
   char c;
 
-  while ((c = getopt (argc, argv, "h?z:Z:t:T:r:R:m:M:s:f:BI:v:i:")) != -1)	// HACK
+  while ((c = getopt (argc, argv, "h?z:Z:t:T:r:R:m:M:f:BI:p:v:i:")) != -1)	// HACK
   {
     switch (c)
     {
@@ -318,11 +333,6 @@ process_commandline(int argc, char *argv[])
         denoiser.matchSizeThrottle = atoi(optarg);
         break;
       }
-      case 's':
-      {
-        denoiser.skip = atoi(optarg);
-        break;
-      }
       case 'f':
       {
         denoiser.frames = atoi(optarg);
@@ -342,6 +352,17 @@ process_commandline(int argc, char *argv[])
 			exit (1);
 		}
         denoiser.interlaced = interlaced;
+        break;
+      }
+      case 'p':
+      {
+	 	int threads = atoi (optarg);
+		if (threads != 0 && threads != 1 && threads != 2)
+		{
+      		mjpeg_log (LOG_ERROR, "-p must be either 0, 1, or 2");
+			exit (1);
+		}
+        denoiser.threads = threads;
         break;
       }
       case 'v':
@@ -392,6 +413,8 @@ display_help (void)
 	fprintf (stderr,
 	"y4mdenoise options\n"
 	"------------------\n"
+	"-p    parallelism: 0=no threads, 1=r/w thread only, 2=do color in\n"
+	"      separate thread (default: 1)\n"
 	"-r    Radius for motion-search (default: 16)\n"
 	"-R    Radius for color motion-search (default: -r setting)\n"
 	"-t    Error tolerance (default: 3)\n"
@@ -402,7 +425,6 @@ display_help (void)
 	"      matches found in a radius search) (default: 10)\n"
 	"-M    Match-size throttle (apply first match whose flood-fill is the\n"
 	"      size of this many pixel-groups or greater) (default: 3)\n"
-	"-s    Beginning frames to skip (i.e. leave undenoised) (default: 0)\n"
 	"-f    Number of reference frames (default: 10)\n"
 	"-B    Black-and-white mode; denoise intensity, set color to white\n"
 	"-I    Interlacing type: 0=frame, 1=top-field-first, 2=bottom-field-first\n"

@@ -20,7 +20,23 @@ extern "C"
    Returns 0 if successful, -1 if there was some problem (usually,
    running out of memory). */
 int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
-	int a_nWidthCbCr, int a_nHeightCbCr);
+	int a_nWidthCbCr, int a_nHeightCbCr, int a_nInputFD,
+	int a_nOutputFD, const y4m_stream_info_t *a_pStreamInfo,
+	y4m_frame_info_t *a_pFrameInfo);
+
+/* Shutdown the new denoiser.
+   Returns 0 if successful, -1 if there was some problem. */
+int newdenoise_shutdown (void);
+
+/* Read another frame.  Usable only in multi-threaded situations. */
+int newdenoise_read_frame (uint8_t **a_apPlanes);
+
+/* Get space to write another frame.  Usable only in multi-threaded
+   situations. */
+int newdenoise_get_write_frame (uint8_t **a_apPlanes);
+
+/* Write another frame.  Usable only in multi-threaded situations. */
+int newdenoise_write_frame (void);
 
 /* Denoise another frame.  a_pInputY/a_pInputCb/a_pInputCr point to the
    incoming undenoised frame.
@@ -43,7 +59,6 @@ int newdenoise_interlaced_frame (const uint8_t *a_pInputY,
 /* Denoiser configuration. */
 typedef struct DNSR_GLOBAL
 {
-	int skip;				/* # of input frames to skip */
 	int frames;				/* # of frames over which to average */
 	int interlaced;			/* 0 == not interlaced, 1 == interlaced */
 	int bwonly;				/* 1 if we're to denoise intensity only */
@@ -55,6 +70,7 @@ typedef struct DNSR_GLOBAL
 	int thresholdCbCr;		/* color error threshold */
 	int matchCountThrottle;	/* match throttle on count */
 	int matchSizeThrottle;	/* match throttle on size */
+	int threads;			/* 0=none, 1=rw only, 2=color in parallel */
 	struct
 	{
 		int w, h;			/* width/height of intensity frame */

@@ -151,8 +151,7 @@ public:
 
 	// A structure that implements flood-fills using SetRegion2D<> to
 	// do the work.
-	typedef typename BaseClass::template FloodFillControl<SetRegion2D<INDEX,SIZE> >
-		FloodFillControl;
+	class FloodFillControl;
 
 	template <class CONTROL>
 	void FloodFill (Status_t &a_reStatus, CONTROL &a_rControl,
@@ -205,6 +204,65 @@ public:
 	static uint32_t GetInstances (void) { return sm_ulInstances; }
 	
 #endif // NDEBUG
+};
+
+
+
+// The flood-fill-control class.
+template <class INDEX, class SIZE>
+class SetRegion2D<INDEX,SIZE>::FloodFillControl
+{
+private:
+	typedef SetRegion2D<INDEX,SIZE> Region_t;
+		// Keep track of our region class.
+public:
+	// (Although these fields are public, they should be considered
+	// opaque to the client.)
+
+	Region_t m_oToDo;
+		// Extents that still need to be be tested.
+
+	Region_t m_oAlreadyDone;
+		// Extents that have been tested.
+
+	Region_t m_oNextToDo;
+		// Extents contiguous with those that have just been added
+		// to the flood-filled area.
+
+	typedef typename Region_t::ConstIterator ConstIterator;
+	typedef typename Region_t::Extent Extent;
+		// The iterator/extent type for running through the above
+		// regions.
+	typedef typename Region_t::Allocator Allocator;
+		// The allocator type for region extents.
+
+public:
+	explicit FloodFillControl (Allocator &a_rAllocator
+			= Region_t::Extents::Imp::sm_oNodeAllocator);
+		// Default constructor.  Must be followed by a call to Init().
+	
+	FloodFillControl (Status_t &a_reStatus, Allocator &a_rAllocator
+			= Region_t::Extents::Imp::sm_oNodeAllocator);
+		// Initializing constructor.
+	
+	void Init (Status_t &a_reStatus);
+		// Initializer.  Must be called on default-constructed objects.
+		// (May not be valid to call on subclasses, depending on
+		// whether more parameters are needed for its Init().)
+
+	// Methods to be redefined by clients implementing specific
+	// flood-fills.
+
+	bool ShouldUseExtent (Extent &a_rExtent) { return true; }
+		// Return true if the flood-fill should examine the given
+		// extent.  Clients should redefine this to define their own
+		// criteria for when extents should be used, and to modify the
+		// extent as needed (e.g. to clip the extent to a bounding box).
+	
+	bool IsPointInRegion (INDEX a_tnX, INDEX a_tnY) { return false; }
+		// Returns true if the given point should be included in the
+		// flood-fill.  Clients must redefine this to explain their
+		// flood-fill criteria.
 };
 
 
@@ -1415,6 +1473,60 @@ SetRegion2D<INDEX,SIZE>::UnionSurroundingExtents (Status_t &a_reStatus,
 template <class INDEX, class SIZE>
 uint32_t SetRegion2D<INDEX,SIZE>::sm_ulInstances;
 #endif // NDEBUG
+
+
+
+// Default constructor.  Must be followed by a call to Init().
+template <class INDEX, class SIZE>
+SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
+		(Allocator &a_rAllocator)
+	: m_oToDo (a_rAllocator),
+	  m_oAlreadyDone (a_rAllocator),
+	  m_oNextToDo (a_rAllocator)
+{
+	// Nothing to do.
+}
+
+
+
+// Initializing constructor.
+template <class INDEX, class SIZE>
+SetRegion2D<INDEX,SIZE>::FloodFillControl::FloodFillControl
+		(Status_t &a_reStatus, Allocator &a_rAllocator)
+	: m_oToDo (a_rAllocator),
+	  m_oAlreadyDone (a_rAllocator),
+	  m_oNextToDo (a_rAllocator)
+{
+	// Make sure they didn't start us off with an error.
+	assert (a_reStatus == g_kNoError);
+
+	// Initialize ourselves.
+	Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+}
+
+
+
+// Initializer.  Must be called on default-constructed objects.
+template <class INDEX, class SIZE>
+void
+SetRegion2D<INDEX,SIZE>::FloodFillControl::Init (Status_t &a_reStatus)
+{
+	// Make sure they didn't start us off with an error.
+	assert (a_reStatus == g_kNoError);
+
+	// Initialize our helper regions.
+	m_oToDo.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+	m_oAlreadyDone.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+	m_oNextToDo.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+}
 
 
 
