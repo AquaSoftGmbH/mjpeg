@@ -519,6 +519,42 @@ y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
  *
  *************************************************************************/
 
+static int
+find_old_chroma_xtag(y4m_stream_info_t *si)
+{
+  y4m_xtag_list_t *xtags = y4m_si_xtags(si);
+  const char *tag = NULL;
+  int n, chroma;
+
+  for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) {
+    tag = y4m_xtag_get(xtags, n);
+    if (!strncmp("XYSCSS=", tag, 7)) break;
+  }
+  if ((tag == NULL) || (n < 0)) return Y4M_UNKNOWN;
+  mjpeg_warn("Deprecated X-tag for chroma found in a stream header...");
+  mjpeg_warn("...pester someone to upgrade the source program!");
+  /* parse the tag */
+  tag += 7;
+  if (!strcmp("411", tag))           chroma = Y4M_CHROMA_411;
+  else if (!strcmp(tag, "420"))      chroma = Y4M_CHROMA_420JPEG;
+  else if (!strcmp(tag, "420MPEG2")) chroma = Y4M_CHROMA_420MPEG2;
+  else if (!strcmp(tag, "420PALDV")) chroma = Y4M_CHROMA_420PALDV;
+  else if (!strcmp(tag, "420JPEG"))  chroma = Y4M_CHROMA_420JPEG;
+  else if (!strcmp(tag, "444"))      chroma = Y4M_CHROMA_444;
+  else chroma = Y4M_UNKNOWN;
+  /* if running with feature-level > 0, remove the 'X' tag so that no one
+     has to worry about it any more */
+  if (_y4mparam_feature_level > 0) {
+    y4m_xtag_remove(xtags, n);
+  }
+  /* Hmm... what if there are more XYSCSS tags?  Broken is as broken does;
+     thank goodness this is temporary code. */
+  return chroma;
+}
+
+
+
+
 int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
 {
   char *token, *value;
@@ -599,7 +635,14 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
     }
   }
   /* Without 'C' tag, chroma defaults to 420jpeg */
-  if (i->chroma == Y4M_UNKNOWN)
+  /* ...but first, try to look for deprecated X-tag
+     (If feature_level < 1, then i->chroma will have been 'cleared' to
+      420JPEG coming into y4m_parse_frame_tags, so always check in 
+      that case.  Any XYSCSS tag should be consistent with C tag anyhow. */
+  if ((i->chroma == Y4M_UNKNOWN) || (_y4mparam_feature_level < 1))
+    i->chroma = find_old_chroma_xtag(i);
+  /* ...ok, no chroma tags whatsoever, so use the default. */
+  if (i->chroma == Y4M_UNKNOWN) 
     i->chroma = Y4M_CHROMA_420JPEG;
 
   /* Error checking... */
