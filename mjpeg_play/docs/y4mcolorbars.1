@@ -1,42 +1,28 @@
 .\" 
-.TH "ppmtoy4m" "1" "28 October 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "y4mcolorbars" "1" "13 November 2001" "MJPEG Linux Square" "MJPEG tools manual"
 .SH "NAME"
-ppmtoy4m \- Convert PPM images to YUV4MPEG2 stream
+y4mcolorbars \- Create a YUV4MPEG2 stream containing a colorbar test pattern
 
 .SH "SYNOPSIS"
-.B ppmtoy4m
+.B y4mcolorbars
 .RI [ options ]
-.I [ filename ] " ..."
 
 .SH "DESCRIPTION"
-\fBppmtoy4m\fP converts one or more raw PPM images into a YUV4MPEG2 stream
+\fBy4mcolorbars\fP creates a YUV4MPEG2 stream consisting entirely of frames
+containing a colorbar test pattern.  This stream is
 ready for further processing by the \fBmpeg2enc\fP(1) 
 MPEG encoder and image processing filters like
 \fByuvscaler\fP(1).
 
 Output is to stdout to facilitate piping to other MJPEG tools.
-The size of the output frame(s) is determined from the (first) input image.
-
-Input is a 'raw' format PPM image, read from stdin or from the optional
-filename.  The input may contain multiple PPM images concatenated together;
-ppmtoy4m will read and process them sequentially.  All images must have
-identical size and format.  Input images can be interpreted as whole
-progressive frames, interleaved fields, or (in pairs) as sequential fields.
-The input images must have 8 bits per channel (i.e. 'maxval' must be 255).
-
-Input images should be in the usual R'G'B' colorspace.  They are converted
-to the Y'CbCr colorspace (ITU-R BT.601) and chroma subsampled before output.
 
 .SH "OPTIONS"
-\fBppmtoy4m\fP accepts the following options:
+\fBy4mcolorbars\fP accepts the following options:
 
 .TP 5
-.BI \-o " num"
-Frame offset:  skip output of the first 'num' frames.  (default: 0)
-.TP 5
 .BI \-n " num"
-Output a total of 'num' output frames.  Use '0' to specify all frames.
-(default: 0)
+Output a total of 'num' output frames.
+(default: 1)
 .TP 5
 .BI \-F " n:d"
 Set framerate encoded in output stream, as an exact integer ratio.
@@ -48,9 +34,15 @@ Set framerate encoded in output stream, as an exact integer ratio.
        50:1 - PAL field rate
  60000:1001 - NTSC field rate
 .TP 5
+.BI \-W " w"
+Set frame width. (default: 720)
+.TP 5
+.BI \-H " h"
+Set frame height. (default: 480)
+.TP 5
 .BI \-A " n:d"
 Set pixel aspect ratio encoded in output stream, as an exact integer ratio.
-(default:  1:1)  Common ratios are:
+(default:  10:11)  Common ratios are:
      1:1  - square pixels (computer graphics)
     10:11 - CCIR-601 NTSC
     59:54 - CCIR-601 PAL
@@ -61,14 +53,6 @@ in output stream.  (default:  'p')
  p - progressive, non-interlaced
  t - top/upper-field-first interlaced
  b - bottom/lower-field-first interlaced
-.TP 5
-.BI \-L
-For interlaced streams, treat each PPM image as two interleaved fields.
-(Otherwise, two PPM images will be read for each frame; one per field.)
-.TP 5
-.BI \-r 
-Repeat last input frame until output is complete.  If '-n 0' is also specified,
-last input frame will be repeated forever.
 .TP 5
 .BI \-S " mode"
 Set chroma subsampling mode.  (default:  420_jpeg)
@@ -85,19 +69,19 @@ Set verbosity level.
  2 = add chatty debugging message, too.
 
 .SH "EXAMPLES"
-.hw ppmtoy4m yuvplay tgatoppm
-To convert a file containing a single PPM file into a stream of 15
-(identical) frames:
+.hw y4mcolorbars yuvplay tgatoppm
+To create and display 200 frames of colorbars corresponding to a 
+top-field-first interlaced 4:3 NTSC source:
 
 .RS 5
-ppmtoy4m -n 15 -r some-image.ppm
+y4mcolorbars -n 200 -It | yuvplay
 .RE
 
-To convert a series of Targa format images (in the current directory)
-to a YUV4MPEG2 stream displayed by yuvplay:
+To create and display 200 frames of colorbars corresponding to a 
+bottom-field-first interlaced 4:3 PAL source:
 
 .RS 5
-ls *.tga | xargs -n1 tgatoppm | ppmtoy4m | yuvplay
+y4mcolorbars -n 200 -H 576 -F 25:1 -A 59:54 -Ib | yuvplay
 .RE
 
 .SH "AUTHOR"
@@ -112,7 +96,6 @@ For more info, see our website at
 .I http://mjpeg.sourceforge.net
 
 .SH "SEE ALSO"
-.BR ppm (5),
 .BR mjpegtools (1),
 .BR mpeg2enc (1),
 .BR yuvscaler (1),
