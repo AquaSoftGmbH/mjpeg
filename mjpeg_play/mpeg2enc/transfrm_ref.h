@@ -47,7 +47,6 @@
 #ifndef _TRANSFRM_H
 #define _TRANSFRM_H
 
-#include "config.h"
 #include "mjpeg_types.h"
 
 

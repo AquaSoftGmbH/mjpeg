@@ -1,7 +1,6 @@
 #ifndef __BITS_H__
 #define __BITS_H__
 
-#include <config.h>
 #include <stdio.h>
 #include <assert.h>
 

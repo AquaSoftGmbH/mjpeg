@@ -28,6 +28,11 @@
 **       Ron Mayer; mayer@acuson.com
 **
 */
+
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <math.h>
 #define FLOAT float
 #define         SQRT2                   1.4142135623730951454746218587388284504414

@@ -2,9 +2,9 @@
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
-noinst_LIBRARIES = libmmxsse.a
+noinst_LTLIBRARIES = libmmxsse.la
 
-libmmxsse_a_SOURCES = \
+libmmxsse_la_SOURCES = \
 	build_sub44_mests.c \
 	build_sub22_mests.c \
 	find_best_one_pel.c \
@@ -25,4 +25,9 @@ EXTRA_DIST = \
 
 MAINTAINERCLEANFILES = Makefile.in
 
-%.o: %.s ; 	$(AS) $(ASFLAGS) -o $@ $<
+NO_FPIC = $(SHELL) $(top_srcdir)/strip_fPIC.sh
+CCASCOMPILE = $(AS) $(ASFLAGS)
+LTCCASCOMPILE = $(LIBTOOL) --mode=compile --tag=CC $(NO_FPIC) $(CCASCOMPILE)
+
+%.lo: %.s
+	$(LTCCASCOMPILE) -o $@ $<

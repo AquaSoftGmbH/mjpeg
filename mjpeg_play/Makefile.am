@@ -32,13 +32,17 @@ EXTRA_DIST = \
 	mjpeg_howto.txt \
 	mjpegtools.spec \
 	mjpegtools.spec.in \
+	mjpegtools-config.in \
 	mjpegtools.pc.in \
-	autogen.sh
+	autogen.sh \
+	strip_fPIC.sh
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = mjpegtools.pc
 
 DISTCLEANFILES = \
+	mjpegtools.pc \
+	mjpegtools-config \
 	confdefs.h \
 	config.cache \
 	config.status \

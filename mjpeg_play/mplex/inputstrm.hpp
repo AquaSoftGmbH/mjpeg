@@ -22,7 +22,6 @@
 #ifndef __INPUTSTRM_H__
 #define __INPUTSTRM_H__
 
-#include <config.h>
 #include <stdio.h>
 #include <vector>
 #include <sys/stat.h>

@@ -23,13 +23,10 @@
 #ifndef __BUFFER_H__
 #define __BUFFER_H__
 
-#include <config.h>
 #include "aunit.hpp"
 
 class BufferQueue
 {
-#include <config.h>
-#
 public:
 	unsigned int size	;	/* als verkettete Liste implementiert	*/
     clockticks DTS	;

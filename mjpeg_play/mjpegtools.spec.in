@@ -5,6 +5,8 @@
 %define infoentry "* mjpeg-howto: (mjpeg-howto).        How to use the mjpeg tools"
 %define infofile mjpeg-howto.info
 
+%define __os_install_post %{nil}
+
 Name:           %name
 Version:        %version
 Release:        %release
@@ -61,7 +63,11 @@ make -C jpeg-mmx libjpeg-mmx.a
 
 CONF_ARGS="--with-jpeg-mmx=`pwd`/jpeg-mmx"
 
-./configure $CONF_ARGS --enable-large-file --enable-cmov-extension
+./configure \
+	$CONF_ARGS \
+	--enable-large-file \
+	--enable-cmov-extension \
+	--prefix=%{_prefix}
 make
 
 %install
@@ -99,12 +105,9 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %{_bindir}/glav
 %{_bindir}/ypipe
 %{_bindir}/mp*
-%{_bindir}/img2mpg
 %{_bindir}/pgmtoy4m
 %{_bindir}/png2yuv
 %{_bindir}/*.flt
-%{_bindir}/pnm2rtj
-%{_bindir}/rtjshow
 %{_libdir}/*.so.*
 %{_prefix}/man/man1/*
 %{_prefix}/man/man5/*
@@ -124,13 +127,16 @@ of the mjpegtools package.
 %{_includedir}/mjpegtools/*.h
 %{_includedir}/mjpegtools/mpeg2enc/*.hh
 %{_includedir}/mjpegtools/mpeg2enc/*.h
-%{_prefix}/share/aclocal/*.m4
+%{_includedir}/mjpegtools/mplex/*.hpp
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a
 %{_libdir}/*.la
 %{_libdir}/*.so
 
 %changelog
+* Fri Dec 19 2003 Ronald Bultje <rbultje@ronald.bitfreak.net>
+- add everything for mpeg2enc/mplex libs (dev headers and so on)
+
 * Sat Aug 23 2003 Ronald Bultje <rbultje@ronald.bitfreak.net>
 - Remove quicktime4linux hacks, add libquicktime depdency
 - Remove avifile leftovers

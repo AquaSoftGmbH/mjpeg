@@ -1,7 +1,6 @@
 #ifndef __AUNIT_H__
 #define __AUNIT_H__
 
-#include <config.h>
 #include "mjpeg_types.h"
 #include "bits.hpp"
 

@@ -25,6 +25,10 @@ Have a look at the options below. Nothing is guaranteed to be working.
 Copyright by Gernot Ziegler.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #define DEBUG(x) x
 #define VERBOSE(x) x
 

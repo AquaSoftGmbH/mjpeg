@@ -21,7 +21,6 @@
 #ifndef _CPU_ACCEL_HH
 #define _CPU_ACCEL_HH
 
-#include <config.h>
 #include <stdlib.h>
 #include "mjpeg_types.h"
 

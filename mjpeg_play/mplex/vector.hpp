@@ -1,7 +1,6 @@
 #ifndef __AUSTREAM_H__
 #define __AUSTREAM_H__
 
-#include <config.h>
 #include <vector>
 #include "mjpeg_logging.h"
 #include "aunit.hpp"

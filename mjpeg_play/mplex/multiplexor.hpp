@@ -2,7 +2,6 @@
 #ifndef __OUTPUTSTREAM_H__
 #define __OUTPUTSTREAM_H__
 
-#include <config.h>
 #include <stdio.h>
 #include "mjpeg_types.h"
 #include "interact.hpp"

@@ -2,12 +2,13 @@
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+LTCOMPILE = $(LIBTOOL) --mode=compile \
+	$(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
 	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(ALTIVEC_CFLAGS)
 
-noinst_LIBRARIES = libaltivec.a
+noinst_LTLIBRARIES = libaltivec.la
 
-libaltivec_a_SOURCES = \
+libaltivec_la_SOURCES = \
 	add_pred.c \
 	amber.c \
 	benchmark.c \

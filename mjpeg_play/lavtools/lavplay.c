@@ -132,7 +132,15 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#include "liblavplay.c"
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "liblavplay.h"
 #include "mjpeg_logging.h"
 #include <mpegconsts.h>
 #include <mpegtimecode.h>

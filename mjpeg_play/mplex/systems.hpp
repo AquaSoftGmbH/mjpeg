@@ -64,7 +64,7 @@ public:
                OutputStream &_output_strm, 
                off_t max_segment_size // 0 = No Limit
         );
-    ~PS_Stream();
+    virtual ~PS_Stream();
 
     unsigned int PacketPayload( MuxStream &strm,
                                 Sys_header_struc *sys_header, 

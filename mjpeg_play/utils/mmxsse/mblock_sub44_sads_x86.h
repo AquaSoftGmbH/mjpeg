@@ -20,7 +20,6 @@
 #ifndef __MBLOCK_SUB44_SADS_X86_H__
 #define __MBLOCK_SUB44_SADS_X86__
 
-#include <config.h>
 #include "mjpeg_types.h"
 
 int mblocks_sub44_mests_mmxe( uint8_t *blk,  uint8_t *ref,

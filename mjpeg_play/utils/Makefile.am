@@ -13,7 +13,9 @@ DIST_SUBDIRS = altivec mmxsse
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
-noinst_LIBRARIES = libmotion.a libcpuaccel.a
+noinst_LTLIBRARIES = libmotion.la libcpuaccel.la
+
+# FIXME: make this libtool (but static-only!) too
 lib_LIBRARIES = libmjpegutils.a
 
 libmjpegutils_a_SOURCES = \
@@ -27,36 +29,34 @@ noinst_HEADERS = \
 	attributes.h \
 	cpu_accel.h \
 	fastintfns.h \
-	format_codes.h \
 	mmx.h \
 	motionsearch.h \
 	videodev_mjpeg.h \
 	yuv4mpeg_intern.h
 
-#if HAVE_ALTIVEC
-#altivec_lib = $(top_builddir)/utils/altivec/libaltivec.a
-#endif
-#if HAVE_ASM_NASM
-#if HAVE_ASM_MMX
-#mmxsse_lib = $(top_builddir)/utils/mmxsse/libmmxsse.a
-#endif
-#endif
+if HAVE_ALTIVEC
+altivec_lib = $(top_builddir)/utils/altivec/libaltivec.la
+endif
+if HAVE_ASM_NASM
+if HAVE_ASM_MMX
+mmxsse_lib = $(top_builddir)/utils/mmxsse/libmmxsse.la
+endif
+endif
 
 pkginclude_HEADERS = \
+	format_codes.h \
 	mjpeg_logging.h \
 	mjpeg_types.h \
 	mpegconsts.h \
 	mpegtimecode.h \
 	yuv4mpeg.h
 
-libmotion_a_SOURCES = \
+libmotion_la_SOURCES = \
 	motionsearch.c
 
-libcpuaccel_a_SOURCES = \
+libcpuaccel_la_SOURCES = \
 	cpu_accel.c
 
-#libcpuaccel_a_LIBADD = $(mmxsse_lib) $(altivec_lib)
+libcpuaccel_la_LIBADD = $(mmxsse_lib) $(altivec_lib)
 
 MAINTAINERCLEANFILES = Makefile.in
-
-%.o: %.s ; 	$(AS) $(ASFLAGS) -o $@ $<

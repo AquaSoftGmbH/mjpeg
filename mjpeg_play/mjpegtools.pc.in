@@ -7,4 +7,4 @@ Name: MJPEG-tools
 Description: Video-recording, -editing, -filtering and -encoding tools
 Version: @VERSION@
 Libs: -L${libdir} -lmjpegutils
-Cflags: -I${includedir}
+Cflags: -I${includedir} -I${includedir}/mpeg2enc -I${includedir}/mplex

@@ -42,7 +42,9 @@ libmplex2_la_SOURCES = \
 	videostrm_out.cpp \
 	$(ZALPHA_FILES)
 
-noinst_HEADERS = \
+libmplex_includedir = $(pkgincludedir)/mplex
+
+libmplex_include_HEADERS = \
 	audiostrm.hpp \
 	aunit.hpp \
 	bits.hpp \
@@ -51,6 +53,7 @@ noinst_HEADERS = \
 	interact.hpp \
 	mplexconsts.hpp \
 	multiplexor.hpp \
+	outputstrm.hpp \
 	padstrm.hpp \
 	stillsstream.hpp \
 	stream_params.hpp \
@@ -73,4 +76,3 @@ mplex_SOURCES = main.cpp
 mplex_LDADD = \
 	$(top_builddir)/mplex/libmplex2.la \
 	@LIBGETOPT_LIB@ $(LIBM_LIBS) 
-
