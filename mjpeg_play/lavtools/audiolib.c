@@ -27,6 +27,10 @@
     Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#ifdef HAVE_CONFIG_H
+#include "../config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -35,7 +39,9 @@
 #include <string.h>
 #include <errno.h>
 
+#ifdef HAVE_SYS_SOUNDCARD_H
 #include <sys/soundcard.h>
+#endif
 
 #include <sys/time.h>
 #include <sys/resource.h>
@@ -641,7 +647,7 @@ static void system_error(const char *str, int fd, int use_strerror)
 #endif
 }
 
-#ifndef IRIX 
+#ifdef HAVE_SYS_SOUNDCARD_H
 void do_audio(void)
 {
 

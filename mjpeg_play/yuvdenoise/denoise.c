@@ -635,7 +635,7 @@ denoise_frame(void)
     average_frame();
     correct_frame2();
     denoise_frame_pass2();
-    sharpen_frame();
+    //sharpen_frame();
     black_border();
     
     memcpy(denoiser.frame.avg[0],denoiser.frame.tmp[0],denoiser.frame.w*(denoiser.frame.h+64));

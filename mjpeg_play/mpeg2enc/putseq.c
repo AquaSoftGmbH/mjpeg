@@ -863,7 +863,7 @@ static void *parencodeworker(void *start_arg)
 		}
 
 
-		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f",
+		mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f",
 					picture->decode, 
 					picture->pad ? "PAD" : "   ",
 					picture->avg_act, picture->sum_avg_act,

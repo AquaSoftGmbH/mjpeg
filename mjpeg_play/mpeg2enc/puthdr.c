@@ -188,6 +188,7 @@ static int frametotc(int gop_timecode0_frame)
 	frame = (frame-minute)/60;
 	hour = frame%24;
 	tc = (hour<<19) | (minute<<13) | (1<<12) | (sec<<6) | pict;
+    mjpeg_info( "GOP TC: %02d:%02d:%02d-%02d", hour, minute, sec, pict );
 
 	return tc;
 }

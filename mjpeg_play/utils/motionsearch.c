@@ -31,6 +31,18 @@
 #include "mjpeg_logging.h"
 
 
+/* The AltiVec code needs access to symbols during benchmarking
+ * and verification.
+ */
+#define STATIC static
+#ifdef HAVE_ALTIVEC
+#include "altivec/altivec_motion.h"
+#  if ALTIVEC_TEST_MOTION
+#    undef STATIC
+#    define STATIC /* static */
+#  endif
+#endif
+
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
 #include "mblock_sub44_sads_x86.h"
@@ -141,6 +153,9 @@ int (*pbsad) (uint8_t *pf, uint8_t *pb,
 					   uint8_t *p2, int rowstride, int hxf, int hyf, int hxb, int hyb, int h);
 
 
+void (*psubsample_image) (uint8_t *image, int rowstride, 
+						uint8_t *sub22_image, 
+						uint8_t *sub44_image);
 
 
 
@@ -162,7 +177,7 @@ int round_search_radius( int radius )
 	discarding all elements whose sad "weight" is above the current mean weight.
 */
 
-static void sub_mean_reduction( me_result_set *matchset, 
+void sub_mean_reduction( me_result_set *matchset, 
 								int times,
 							    int *minweight_res)
 {
@@ -243,7 +258,7 @@ static void sub_mean_reduction( me_result_set *matchset,
  * 
  */
 
-static int build_sub44_mests( me_result_set *sub44set,
+STATIC int build_sub44_mests( me_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
 							   int i0, int j0,
 							   int null_ctl_sad,
@@ -372,7 +387,7 @@ static int build_sub44_mests_mmx( me_result_set *sub44set,
  * Other CPU's could/should be handled the same way.  */
 
 
-static int build_sub22_mests( me_result_set *sub44set,
+STATIC int build_sub22_mests( me_result_set *sub44set,
 							   me_result_set *sub22set,
 							   int i0,  int j0, int ihigh, int jhigh, 
 							   int null_ctl_sad,
@@ -513,7 +528,7 @@ static int build_sub22_mests_mmxe( me_result_set *sub44set,
  */
 
 
-static void find_best_one_pel( me_result_set *sub22set,
+STATIC void find_best_one_pel( me_result_set *sub22set,
 							   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ihigh, int jhigh,
@@ -649,7 +664,7 @@ static void find_best_one_pel_mmxe( me_result_set *sub22set,
  **/
 
 
-static int sad_00(uint8_t *blk1,uint8_t *blk2,
+STATIC int sad_00(uint8_t *blk1,uint8_t *blk2,
 					int rowstride, int h,int distlim)
 {
 	uint8_t *p1,*p2;
@@ -679,7 +694,7 @@ static int sad_00(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-static int sad_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
+STATIC int sad_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
 {
 	uint8_t *p1,*p2;
 	int i,j;
@@ -703,7 +718,7 @@ static int sad_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
 	return s;
 }
 
-static int sad_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
+STATIC int sad_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -729,7 +744,7 @@ static int sad_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 	return s;
 }
 
-static int sad_11(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
+STATIC int sad_11(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -828,7 +843,7 @@ void subsample_image( uint8_t *image, int rowstride,
  */
  
 
-static int sad_sub22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
+STATIC int sad_sub22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
 {
 	uint8_t *p1 = s22blk1;
 	uint8_t *p2 = s22blk2;
@@ -863,7 +878,7 @@ static int sad_sub22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
  */
 
 
-static int sad_sub44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
+STATIC int sad_sub44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
 {
 	register uint8_t *p1 = s44blk1;
 	register uint8_t *p2 = s44blk2;
@@ -897,7 +912,7 @@ static int sad_sub44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
  * h:         height of block (usually 8 or 16)
  */
  
-static int sumsq_sub22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
+STATIC int sumsq_sub22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1 = blk1, *p2 = blk2;
 	int i,j,v;
@@ -924,7 +939,7 @@ static int sumsq_sub22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
  * h: height of block (usually 4 or 8)
  */
  
-static int bsumsq_sub22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, 
+STATIC int bsumsq_sub22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, 
 					 int rowstride, int h)
 {
 	uint8_t *p1f = blk1f,*p1b = blk1b,*p2 = blk2;
@@ -954,7 +969,7 @@ static int bsumsq_sub22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2,
  */
  
 
-static int sumsq(blk1,blk2,rowstride,hx,hy,h)
+STATIC int sumsq(blk1,blk2,rowstride,hx,hy,h)
 	uint8_t *blk1,*blk2;
 	int rowstride,hx,hy,h;
 {
@@ -1034,7 +1049,7 @@ static int sumsq(blk1,blk2,rowstride,hx,hy,h)
  */
  
 
-static int bsad(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
+STATIC int bsad(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
 	uint8_t *pf,*pb,*p2;
 	int rowstride,hxf,hyf,hxb,hyb,h;
 {
@@ -1087,7 +1102,7 @@ static int bsad(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
  */
  
 
-static int bsumsq(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
+STATIC int bsumsq(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
 	uint8_t *pf,*pb,*p2;
 	int rowstride,hxf,hyf,hxb,hyb,h;
 {
@@ -1138,7 +1153,7 @@ static int bsumsq(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
  * rowstride: distance (in bytes) of vertically adjacent pels
  * SIZE is a multiple of 8.
  */
-static int variance(uint8_t *p, int size,	int rowstride)
+STATIC int variance(uint8_t *p, int size,	int rowstride)
 {
 	int i,j;
 	unsigned int v,s,s2;
@@ -1173,26 +1188,28 @@ void init_motion_search(void)
 {
 	int cpucap = cpu_accel();
 
-	if( cpucap == 0 )	/* No MMX/SSE etc support available */
-	{
-		psad_sub22 = sad_sub22;
-		psad_sub44 = sad_sub44;
-		psad_00 = sad_00;
-		psad_01 = sad_01;
-		psad_10 = sad_10;
-		psad_11 = sad_11;
-		pbsad = bsad;
-		pvariance = variance;
-		psumsq = sumsq;
-		pbsumsq = bsumsq;
-		psumsq_sub22 = sumsq_sub22;
-		pbsumsq_sub22 = bsumsq_sub22;
-		pfind_best_one_pel = find_best_one_pel;
-		pbuild_sub22_mests	= build_sub22_mests;
-		pbuild_sub44_mests	= build_sub44_mests;
-	 }
+	/* Initialize function pointers. This allows partial acceleration
+	 * implementations to update only the function pointers they support.
+	 */
+	psad_sub22 = sad_sub22;
+	psad_sub44 = sad_sub44;
+	psad_00 = sad_00;
+	psad_01 = sad_01;
+	psad_10 = sad_10;
+	psad_11 = sad_11;
+	pbsad = bsad;
+	pvariance = variance;
+	psumsq = sumsq;
+	pbsumsq = bsumsq;
+	psumsq_sub22 = sumsq_sub22;
+	pbsumsq_sub22 = bsumsq_sub22;
+	pfind_best_one_pel = find_best_one_pel;
+	pbuild_sub22_mests = build_sub22_mests;
+	pbuild_sub44_mests = build_sub44_mests;
+	psubsample_image = subsample_image;
+
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
-	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
+	if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for MOTION!");
 		psad_sub22 = sad_sub22_mmxe;
@@ -1233,5 +1250,9 @@ void init_motion_search(void)
 		pmblocks_sub44_mests = mblocks_sub44_mests_mmx;
 	}
 #endif
-
+#ifdef HAVE_ALTIVEC
+	if (cpucap > 0) {
+		enable_altivec_motion();
+	}
+#endif
 }

@@ -518,6 +518,7 @@ static unsigned int crc;
     else info.padding = 0;
  
     while (get_audio(musicin, buffer, num_samples, stereo, info.lay) != 0) {
+		++frameNum;
 
        win_buf[0] = &buffer[0][0];
        win_buf[1] = &buffer[1][0];

@@ -201,7 +201,7 @@ void motion_subsampled_lum( pict_data_s *picture )
 		linestride = 2*opt_phy_width;
 	}
 
-	subsample_image( picture->curorg[0], 
+	(*psubsample_image)( picture->curorg[0], 
 					 linestride,
 					 picture->curorg[0]+fsubsample_offset, 
 					 picture->curorg[0]+qsubsample_offset );
@@ -526,17 +526,16 @@ static void frame_ME(pict_data_s *picture,
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations... ;-)
 	 */
-	var = (*pvariance)(ssmb.mb,16,opt_phy_width);
+	var = (*pvariance)(ssmb.mb,16,opt_phy_width) 
+        + chrom_var_sum(&ssmb,16,opt_phy_width);
 
 	if (picture->pict_type==I_TYPE)
 	{
 		mbi->mb_type = MB_INTRA;
+        mbi->var = var;
 	}
 	else if (picture->pict_type==P_TYPE)
 	{
-		/* For P pictures we take into account chrominance. This
-		   provides much better performance at scene changes */
-		var += chrom_var_sum(&ssmb,16,opt_phy_width);
 
 		if (picture->frame_pred_dct )
 		{
@@ -618,12 +617,11 @@ static void frame_ME(pict_data_s *picture,
 		 */
 
 
-		if (vmc>var*3/2 )
+		if (vmc>var && vmc > 12*256 )
 		{
 			mbi->mb_type = MB_INTRA;
-			mbi->var = var;
+            mbi->var = var;
 		}
-		
 		else
 		{
 			/* select between MC / No-MC
@@ -671,27 +669,26 @@ static void frame_ME(pict_data_s *picture,
 					mbi->mv_field_sel[0][0] = topfldf_mc.fieldsel;
 					mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
 				}
+                mbi->var = vmc;
 			}
 			else
 			{
 
 				/* No-MC */
-				var = v0;
 				mbi->mb_type = 0;
 				mbi->motion_type = MC_FRAME;
 				mbi->MV[0][0][0] = 0;
 				mbi->MV[0][0][1] = 0;
+				mbi->var = v0;
 			}
 		}
+
 	}
 	else /* if (pict_type==B_TYPE) */
 	{
 		if (picture->frame_pred_dct )
 		{
 
-
-			var = (*pvariance)(ssmb.mb,16,opt_phy_width) 
-                + chrom_var_sum(&ssmb,16,opt_phy_width);
 			/* forward */
 			mb_me_search(picture->oldorg[0],oldrefimg[0],0,&ssmb,
                          opt_phy_width,i,j,picture->sxf,picture->syf,
@@ -853,8 +850,11 @@ static void frame_ME(pict_data_s *picture,
 		 * 
 		 */
 
-		if (vmc>var*3/2)
+		if (vmc>var && vmc > 12*256)
+        {
 			mbi->mb_type = MB_INTRA;
+            mbi->var = var;
+        }
 		else
 		{
 			mbi->var = vmc;
@@ -896,7 +896,7 @@ static void frame_ME(pict_data_s *picture,
 		fprintf( stderr,"MC mvf(%d,%d)%d/%d mvb(%d,%d)%d/%d i=%d var=%d type=%d\n",
 				 mbi->MV[0][0][0],mbi->MV[0][0][1], vmcf, framef_mc.sad,
 				 mbi->MV[0][1][0],mbi->MV[0][1][1], vmcr, frameb_mc.sad,
-				 vmci, var, mbi->mb_type
+				 vmci, mbi->var, mbi->mb_type
 				 );
 
 		display_mb( &frameb_mc, newrefimg, &ssmb, width, 16 );
@@ -978,8 +978,11 @@ static void field_ME(
 
 	var = (*pvariance)(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
         
-	if (picture->pict_type==I_TYPE)
+	if(picture->pict_type==I_TYPE)
+    {
 		mbi->mb_type = MB_INTRA;
+        mbi->var = var;
+    }
 	else if (picture->pict_type==P_TYPE)
 	{
 		toporg = picture->oldorg[0];
@@ -1050,9 +1053,10 @@ static void field_ME(
 
 		/* select between intra and non-intra coding */
         
-		if ( vmc>var && vmc>=9*256)
+		if ( vmc>var && vmc > 12*256)
         {
 			mbi->mb_type = MB_INTRA;
+            mbi->var = var;
         }
 		else
 		{
@@ -1065,9 +1069,10 @@ static void field_ME(
 			else
 				v0 = 1234;			/* Keep Compiler happy... */
 
-			if (ipflag  || (4*v0>5*vmc && v0>=9*256))
+			if (ipflag  || (4*v0>5*vmc ))
 			{
 				mbi->mb_type = MB_FORWARD;
+                mbi->var = vmc;
 				if (mbi->motion_type==MC_FIELD)
 				{
 					mbi->MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
@@ -1098,6 +1103,7 @@ static void field_ME(
 			{
 				/* No MC */
 				mbi->mb_type = 0;
+                mbi->var = v0;
 				mbi->motion_type = MC_FIELD;
 				mbi->MV[0][0][0] = 0;
 				mbi->MV[0][0][1] = 0;
@@ -1200,8 +1206,11 @@ static void field_ME(
 		}
 
 		/* select between intra and non-intra coding */
-		if (vmc>var && vmc>=9*256)
+		if (vmc>var && vmc > 12*256)
+        {
 			mbi->mb_type = MB_INTRA;
+            mbi->var = var;
+        }
 		else
 		{
 			if (mbi->motion_type==MC_FIELD)

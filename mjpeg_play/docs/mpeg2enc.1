@@ -119,7 +119,7 @@ for software playback on a computer.
 
 .PP
 .BR -f|--format \ 4
-	-	Standard VCD.
+	-	Standard SVCD.
 .PP
 An MPEG-2 profile exactly to the SVCD2.0
 specification. Flag settings that would result in a
@@ -450,11 +450,13 @@ This flag allows the target size of individual sequences in the final
 multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
 of how large the eventual stream is getting and inserts a sequence
 split (actually: sequence end / sequence start) into the output stream
-each time it reaches the specified limit.  The multiplexor \fBmplex\fP(1) can
+each time it reaches the specified limit.  The multiplexer \fBmplex\fP(1) can
 recognise these splits and start a new multiplexed output file each time
 it encounters one.   In this way it is easy to automatically ensure
 each component sequence file can be burnt onto a CD-R and still be
-played as a stand-alone MPEG sequence.
+played as a stand-alone MPEG sequence.   For the SVCD and VCD profiles
+the default target sequence length is 700M bytes. For other profiles the
+default is that sequence length is unlimited.
 .PP
 .BI -B|-nonvideo-bitrate \ num
 .PP

@@ -122,17 +122,17 @@ This option specifies the sector size of the output stream in bytes.
 This option specifies the number of packets per pack in the output stream.
 .TP
 .BI -S|--max-segment-size \ num
-This option specifies the maximum size of output files in MBytes (2^10).
-The default is 2000 Mbytes (splitting output before 2G limits can hit).
+This option specifies the maximum size of output files in MBytes (2^10)
+The default is 2000 Mbytes for the DVD profile and otherwise unlimited.
 When the limit is reached a  new file is started.
 .IP
 Note: This option is 
 .I not
-suitable for splitting a long video across multiple VCD's or SVCD's.
+for splitting a long video across multiple VCD's or SVCD's.
 
 It simply splits a single long sequence into in a way that prevents
 bits of a video GOP(group of pictures) or audio frame being split
-between chunks.  frame reasonable. This is fine for formats like that
+between chunks.  This is fine for formats like that
 used for DVDs where all stream parameters appear every GOP.  However,
 for VCD / SVCD it won't work as the players expect each file to start a 
 new MPEG sequence.
@@ -147,9 +147,10 @@ MPEG video encoder to introduce sequence splits at the right points
 .B -M|--split-segment
 When splitting a long stream in files based on -S mplex does a certain
 amount of careful "running out" to prevent a GOP or audio frame being
-split. This is wasteful for continuous bit-rate streams. If the files
-are simply going to be concatenated for playback this "run out" is
-superfluous and -M turns it off.
+split.  If the files are simply going to be concatenated for playback
+this "run out" is superfluous and makes it harder for the player to 
+maintain audio/video sync. This flag allows the run-out to be turned
+off.  The DVD profile turns this option on automatically.
 .TP
 .B -h|--system-headers
 A system header is generated in every pack rather than just in the first.

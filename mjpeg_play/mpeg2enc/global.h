@@ -418,7 +418,7 @@ EXTERN struct motion_data *opt_motion_data;
 
 
 /* Orginal intra / non_intra quantization matrices */
-EXTERN uint16_t opt_intra_q[64], opt_inter_q[64];
+EXTERN uint16_t *opt_intra_q, *opt_inter_q;
 
 
 /* **************************
@@ -509,7 +509,7 @@ EXTERN unsigned int frame_buffer_size
 ;
 
 /* Table driven intra / non-intra quantization matrices */
-EXTERN uint16_t i_intra_q[64], i_inter_q[64];
+EXTERN uint16_t *i_intra_q, *i_inter_q;
 EXTERN uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
 EXTERN uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
 EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];

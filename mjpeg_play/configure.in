@@ -553,9 +553,12 @@ fi
 AC_MSG_CHECKING([for PowerPC architecture])
 if test "$host_cpu" = "powerpc" ; then
   AC_MSG_RESULT(yes)
+  AC_DEFINE(HAVE_PPCCPU)
   have_ppccpu=true
+  have_altivec=false
 else
   AC_MSG_RESULT(no)
+  have_altivec=false
 fi
 
 echo enable_simd_accel = X"$enable_simd_accel"X
@@ -617,9 +620,52 @@ EOF
    [AC_MSG_RESULT(no)
     AC_MSG_WARN(*** MMX Optimizations disabled....)]);
   fi
-elif test x$have_ppccpu = xtrue
-then
-   AC_DEFINE(HAVE_PPCCPU)
+
+
+  if test x$have_ppccpu = xtrue
+  then
+    AC_MSG_CHECKING([compiler support for AltiVec])
+    cat > conftest.c <<EOF
+#ifdef HAVE_ALTIVEC_H
+#include <altivec.h>
+#endif
+int main() {
+    union { vector signed int v;
+            signed int i;
+          } vi;
+    vi.v = vec_splat_s32(1);
+    return vi.i;
+}
+EOF
+    ALTIVEC_CFLAGS=""
+    if $CC -o conftest conftest.c >/dev/null 2>&1; then
+      have_altivec=true
+    elif $CC -faltivec -o conftest conftest.c >/dev/null 2>&1; then
+      # Mac OS X style
+      have_altivec=true
+      ALTIVEC_CFLAGS="-faltivec"
+    elif $CC -fvec -o conftest conftest.c >/dev/null 2>&1; then
+      # Motorola style
+      have_altivec=true
+      ALTIVEC_CFLAGS="-fvec"
+    elif $CC -DHAVE_ALTIVEC_H=1 -maltivec -mabi=altivec -o conftest conftest.c >/dev/null 2>&1; then
+      # gcc 3.1 style
+      have_altivec=true
+      ALTIVEC_CFLAGS="-DHAVE_ALTIVEC_H=1 -maltivec -mabi=altivec"
+    fi
+    rm -f conftest*;
+  
+    if test x$have_altivec = xtrue
+    then
+      # add -O3 flag
+      ALTIVEC_CFLAGS="-O3 ${ALTIVEC_CFLAGS}"
+      AC_MSG_RESULT(yes)
+      AC_DEFINE(HAVE_ALTIVEC)
+      AC_SUBST(ALTIVEC_CFLAGS)
+    else
+      AC_MSG_RESULT(no)
+    fi
+  fi
 fi
 
 
@@ -664,6 +710,7 @@ AM_CONDITIONAL(HAVE_ASM_MMX, test x$have_asm_mmx = xtrue)
 AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
+AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
 AM_CONDITIONAL(BUILD_MJPEG, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_AVIFILE, test x$have_aviplay = xtrue)
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
@@ -735,6 +782,7 @@ aenc/Makefile
 mplex/Makefile
 scripts/Makefile
 utils/Makefile
+utils/altivec/Makefile
 mjpegtools-config
 mjpegtools.pc
 ])
@@ -747,14 +795,21 @@ dnl
 echo ""
 echo " MJPEG tools ${VERSION} build configuration :"
 echo ""
+if test "$have_x86cpu" = "true" ; then
 echo "    - X86 Optimizations:"
 echo "      - MMX/3DNow!/SSE enabled      : ${have_asm_mmx}"
 echo "      - cmov support enabled        : ${have_cmov}"
-if test "$have_cmov" = "true" ; then
-echo "   ***********************************************************************
-   * NOTE:                                                               *
-   *   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU  *
-   ***********************************************************************"
+  if test "$have_cmov" = "true" ; then
+    echo "
+****************************************************************************
+* NOTE:                                                                    *
+*   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU       *
+****************************************************************************"
+  fi
+fi
+if test "$have_ppccpu" = "true" ; then
+echo "    - PowerPC Optimizations:"
+echo "      - AltiVec enabled             : ${have_altivec}"
 fi
 echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"

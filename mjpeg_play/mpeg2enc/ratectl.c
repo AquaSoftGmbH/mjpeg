@@ -56,7 +56,7 @@
 
 /* private prototypes */
 
-static double calc_actj ( pict_data_s *picture);
+static void calc_actj ( pict_data_s *picture, double *act_sum, double *var_sum);
 
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
@@ -124,7 +124,8 @@ static double actsum;
 static double actcovered;
 static double sum_avg_act = 0.0;
 static double avg_act;
-
+static double avg_var;
+static double sum_avg_var = 0.0;
 
 static int Ni, Np, Nb;
 static int64_t S;
@@ -408,7 +409,7 @@ void rc_init_pict(pict_data_s *picture)
 	double current_Q;
 	double Si, Sp, Sb;
 	int available_bits;
-	double Xsum;
+	double Xsum,varsum;
 	bool no_avg_K = false;
 
 	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
@@ -425,9 +426,11 @@ void rc_init_pict(pict_data_s *picture)
 	   We use this to try to predict the activity of each frame.
 	*/
 	
-	actsum =  calc_actj(picture );
-	avg_act = (double)actsum/(double)(mb_per_pict);
+	calc_actj(picture, &actsum, &varsum );
+	avg_act = actsum/(double)(mb_per_pict);
+	avg_var = varsum/(double)(mb_per_pict);
 	sum_avg_act += avg_act;
+	sum_avg_var += avg_var;
 	actcovered = 0.0;
 	sum_vbuf_Q = 0.0;
 
@@ -623,13 +626,15 @@ void rc_init_pict(pict_data_s *picture)
 
 
 
-static double calc_actj(pict_data_s *picture)
+static void calc_actj(pict_data_s *picture, double *act_sum, double *var_sum)
 {
 	int i,j,k,l;
 	double actj,sum;
+	double varsum;
 	uint16_t *i_q_mat;
-	int actsum;
+	int blksum;
 	sum = 0.0;
+	varsum = 0.0;
 	k = 0;
 
 	for (j=0; j<opt_enc_height2; j+=16)
@@ -645,6 +650,7 @@ static double calc_actj(pict_data_s *picture)
 			   original we use the absolute sum of DCT coefficients as
 			   our block activity measure.  */
 
+			varsum += (double)picture->mbinfo[k].var;
 			if( picture->mbinfo[k].mb_type  & MB_INTRA )
 			{
 				i_q_mat = i_intra_q;
@@ -653,14 +659,13 @@ static double calc_actj(pict_data_s *picture)
 				 results...  yes... it *is* an mostly empirically derived
 				 fudge factor ;-)
 				*/
-				actsum =  -80*COEFFSUM_SCALE;
+				blksum =  -80*COEFFSUM_SCALE;
 			}
 			else
 			{
 				i_q_mat = i_inter_q;
-				actsum = 0;
+				blksum = 0;
 			}
-
 			/* It takes some bits to code even an entirely zero block...
 			   It also makes a lot of calculations a lot better conditioned
 			   if it can be guaranteed that activity is always distinctly
@@ -669,10 +674,10 @@ static double calc_actj(pict_data_s *picture)
 
 
 			for( l = 0; l < 6; ++l )
-				actsum += 
+				blksum += 
 					(*pquant_weight_coeff_sum)
 					    ( picture->mbinfo[k].dctblocks[l], i_q_mat ) ;
-			actj = (double)actsum / (double)COEFFSUM_SCALE;
+			actj = (double)blksum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;
 
@@ -680,7 +685,8 @@ static double calc_actj(pict_data_s *picture)
 			sum += (double)actj;
 			++k;
 		}
-	return sum;
+	*act_sum = sum;
+	*var_sum = varsum;
 }
 
 /*
@@ -915,11 +921,12 @@ void rc_update_pict(pict_data_s *picture)
    maximum and then put a floor on quantisation to achieve a reasonable
    overall size.
  */
+static int init_quant;
 int rc_start_mb(pict_data_s *picture)
 {
 	
 	int mquant = scale_quant( picture, d*62.0/r );
-	mquant = intmax(mquant, ctl_quant_floor);
+	init_quant = mquant = intmax(mquant, ctl_quant_floor);
 
 /*
   fprintf(statfile,"rc_start_mb:\n");
@@ -932,7 +939,7 @@ int rc_start_mb(pict_data_s *picture)
 int rc_calc_mquant( pict_data_s *picture,int j)
 {
 	int mquant;
-	double dj, Qj, actj, N_actj; 
+	double dj, Qj, actj, N_actj, varj; 
 
 	/* A.Stevens 2000 : we measure how much *information* (total activity)
 	   has been covered and aim to release bits in proportion.  Indeed,
@@ -942,6 +949,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	*/
 
 	actj = picture->mbinfo[j].act;
+	varj =  picture->mbinfo[j].var;
 	/* Guesstimate a virtual buffer fullness based on
 	   bits used vs. bits in proportion to activity encoded
 	*/
@@ -970,15 +978,27 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		and hence not really noticeable.  The bits can be better "spent"
 		on improving P and I frames.
 	*/
-		
+
+#ifndef NEW_QUANTISATION_STEARING
 	N_actj =  ( actj < avg_act || picture->pict_type == B_TYPE ) ? 
 		1.0 : 
-		(actj + ctl_act_boost*avg_act)/(ctl_act_boost*actj +  avg_act);
-
+		(ctl_act_boost*actj +  avg_act)/(actj + ctl_act_boost*avg_act);
+#else
+	N_actj = (ctl_act_boost*varj +  avg_var)/(varj + ctl_act_boost*avg_var);
+	if( N_actj > 1.3 )
+		N_actj = 1.3;
+	if( N_actj < 0.7 )
+		N_actj = 0.7;
+#endif	
 	sum_vbuf_Q += scale_quantf(picture,Qj*N_actj);
 	mquant = scale_quant(picture,Qj*N_actj);
 
-
+#ifdef PER_FRAME_STEARING
+	if( j % 23 == 0 )
+		init_quant = mquant;
+	else
+		mquant = init_quant;
+#endif
 	/* Update activity covered */
 
 	actcovered += actj;

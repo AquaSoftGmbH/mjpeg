@@ -52,6 +52,12 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
+#ifdef HAVE_ALTIVEC
+#define __INCLUDE_FROM_MPEG2ENC_PREDICT_C__
+#include "../utils/altivec/altivec_predict.h"
+#undef __INCLUDE_FROM_MPEG2ENC_PREDICT_C__
+#endif
+
 
 /* private prototypes */
 static void predict_mb (
@@ -65,7 +71,7 @@ static void pred (
 	uint8_t *dst[], int dfield,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 
-static void pred_comp (
+/* static */ void pred_comp (
 	pict_data_s *picture,
 	uint8_t *src, uint8_t *dst,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
@@ -94,6 +100,7 @@ void init_predict(void);
   
   */
 
+
 static void (*ppred_comp)(
 	pict_data_s *picture,
 	uint8_t *src, uint8_t *dst,
@@ -120,10 +127,26 @@ void init_predict(void)
 		ppred_comp = pred_comp_mmx;
 	}
 #endif
+#ifdef HAVE_ALTIVEC
     else
 	{
-		ppred_comp = pred_comp;
+#  if ALTIVEC_TEST_PREDICT
+#    if defined(ALTIVEC_BENCHMARK)
+	    mjpeg_info("SETTING AltiVec BENCHMARK for PREDICTION!");
+#    elif defined(ALTIVEC_VERIFY)
+	    mjpeg_info("SETTING AltiVec VERIFY for PREDICTION!");
+#    endif
+#  else
+	    mjpeg_info("SETTING AltiVec for PREDICTION!");
+#  endif
+
+#  if ALTIVEC_TEST_FUNCTION(pred_comp)
+	    ppred_comp = ALTIVEC_TEST_SUFFIX(pred_comp);
+#  else
+	    ppred_comp = ALTIVEC_SUFFIX(pred_comp);
+#  endif
 	}
+#endif /* HAVE_ALTIVEC */
 }
 
 
@@ -456,7 +479,7 @@ static void pred (
  * There are also SIMD versions of this routine...
  */
 
-static void pred_comp(
+/* static */ void pred_comp(
 	pict_data_s *picture,
 	uint8_t *src,
 	uint8_t *dst,

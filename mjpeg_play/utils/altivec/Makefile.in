@@ -1,0 +1,450 @@
+# Makefile.in generated automatically by automake 1.5 from Makefile.am.
+
+# Copyright 1994, 1995, 1996, 1997, 1998, 1999, 2000, 2001
+# Free Software Foundation, Inc.
+# This Makefile.in is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
+
+@SET_MAKE@
+
+# Process this file with Automake to produce Makefile.in
+
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+pkgdatadir = $(datadir)/@PACKAGE@
+pkglibdir = $(libdir)/@PACKAGE@
+pkgincludedir = $(includedir)/@PACKAGE@
+top_builddir = ../..
+
+ACLOCAL = @ACLOCAL@
+AUTOCONF = @AUTOCONF@
+AUTOMAKE = @AUTOMAKE@
+AUTOHEADER = @AUTOHEADER@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+INSTALL_HEADER = $(INSTALL_DATA)
+transform = @program_transform_name@
+NORMAL_INSTALL = :
+PRE_INSTALL = :
+POST_INSTALL = :
+NORMAL_UNINSTALL = :
+PRE_UNINSTALL = :
+POST_UNINSTALL = :
+host_alias = @host_alias@
+host_triplet = @host@
+ALTIVEC_CFLAGS = @ALTIVEC_CFLAGS@
+AMTAR = @AMTAR@
+AS = @AS@
+ASFLAGS = @ASFLAGS@
+AVIFILE_CONFIG = @AVIFILE_CONFIG@
+AVIPLAY_CFLAGS = @AVIPLAY_CFLAGS@
+AVIPLAY_LIBS = @AVIPLAY_LIBS@
+AWK = @AWK@
+CC = @CC@
+CXX = @CXX@
+DEPDIR = @DEPDIR@
+DLLTOOL = @DLLTOOL@
+DV_CFLAGS = @DV_CFLAGS@
+DV_LIBS = @DV_LIBS@
+ECHO = @ECHO@
+EXEEXT = @EXEEXT@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GLIB_LIBS = @GLIB_LIBS@
+GTK_CFLAGS = @GTK_CFLAGS@
+GTK_CONFIG = @GTK_CONFIG@
+GTK_LIBS = @GTK_LIBS@
+HAVE_OPENQUICKTIME = @HAVE_OPENQUICKTIME@
+HAVE_QUICKTIME = @HAVE_QUICKTIME@
+INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+JPEG_CFLAGS = @JPEG_CFLAGS@
+JPEG_LIBS = @JPEG_LIBS@
+LIBGETOPT_LIB = @LIBGETOPT_LIB@
+LIBM_LIBS = @LIBM_LIBS@
+LIBTOOL = @LIBTOOL@
+LN_S = @LN_S@
+LT_AGE = @LT_AGE@
+LT_CURRENT = @LT_CURRENT@
+LT_RELEASE = @LT_RELEASE@
+LT_REVISION = @LT_REVISION@
+MAINT = @MAINT@
+MOVTAR_CFLAGS = @MOVTAR_CFLAGS@
+MOVTAR_CONFIG = @MOVTAR_CONFIG@
+MOVTAR_LIBS = @MOVTAR_LIBS@
+MOVTAR_VERSION = @MOVTAR_VERSION@
+OBJDUMP = @OBJDUMP@
+OBJEXT = @OBJEXT@
+PACKAGE = @PACKAGE@
+PRID64_STRING_FORMAT = @PRID64_STRING_FORMAT@
+PTHREAD_LIBS = @PTHREAD_LIBS@
+QUICKTIME_CFLAGS = @QUICKTIME_CFLAGS@
+QUICKTIME_DIR = @QUICKTIME_DIR@
+QUICKTIME_LIBS = @QUICKTIME_LIBS@
+RANLIB = @RANLIB@
+SDL_CFLAGS = @SDL_CFLAGS@
+SDL_CONFIG = @SDL_CONFIG@
+SDL_LIBS = @SDL_LIBS@
+SDL_LIBS_FOR_LIBS = @SDL_LIBS_FOR_LIBS@
+SDL_LIBS_FOR_PLUGINS = @SDL_LIBS_FOR_PLUGINS@
+STRIP = @STRIP@
+V4LCONF_LIBS = @V4LCONF_LIBS@
+VERSION = @VERSION@
+X_CFLAGS = @X_CFLAGS@
+X_EXTRA_LIBS = @X_EXTRA_LIBS@
+X_LIBS = @X_LIBS@
+X_PRE_LIBS = @X_PRE_LIBS@
+am__include = @am__include@
+am__quote = @am__quote@
+install_sh = @install_sh@
+x_libraries = @x_libraries@
+
+INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
+
+COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
+	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(ALTIVEC_CFLAGS)
+
+
+noinst_LIBRARIES = libaltivec.a
+
+libaltivec_a_SOURCES = \
+  detect.c \
+  motion.c \
+  quantize.c \
+  benchmark.c \
+  amber.c \
+  sad_00.c \
+  sad_01.c \
+  sad_10.c \
+  sad_11.c \
+  bsad.c \
+  sub_mean_reduction.c \
+  sumsq.c \
+  sumsq_sub22.c \
+  bsumsq.c \
+  bsumsq_sub22.c \
+  build_sub44_mests.c \
+  build_sub22_mests.c \
+  find_best_one_pel.c \
+  fdct_idct.c \
+  quant_non_intra.c \
+  quant_weight_coeff_sum.c \
+  variance.c \
+  sub_pred.c \
+  add_pred.c \
+  pred_comp.c \
+  subsample_image.c \
+  altivec_conf.h \
+  altivec_motion.h \
+  altivec_predict.h \
+  altivec_quantize.h \
+  altivec_transform.h \
+  benchmark.h \
+  amber.h \
+  vectorize.h \
+  verify.h
+
+
+EXTRA_DIST = .cvsignore
+
+MAINTAINERCLEANFILES = Makefile.in
+subdir = utils/altivec
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+CONFIG_HEADER = $(top_builddir)/config.h
+CONFIG_CLEAN_FILES =
+LIBRARIES = $(noinst_LIBRARIES)
+
+libaltivec_a_AR = $(AR) cru
+libaltivec_a_LIBADD =
+am_libaltivec_a_OBJECTS = detect.$(OBJEXT) motion.$(OBJEXT) \
+	quantize.$(OBJEXT) benchmark.$(OBJEXT) amber.$(OBJEXT) \
+	sad_00.$(OBJEXT) sad_01.$(OBJEXT) sad_10.$(OBJEXT) \
+	sad_11.$(OBJEXT) bsad.$(OBJEXT) sub_mean_reduction.$(OBJEXT) \
+	sumsq.$(OBJEXT) sumsq_sub22.$(OBJEXT) bsumsq.$(OBJEXT) \
+	bsumsq_sub22.$(OBJEXT) build_sub44_mests.$(OBJEXT) \
+	build_sub22_mests.$(OBJEXT) find_best_one_pel.$(OBJEXT) \
+	fdct_idct.$(OBJEXT) quant_non_intra.$(OBJEXT) \
+	quant_weight_coeff_sum.$(OBJEXT) variance.$(OBJEXT) \
+	sub_pred.$(OBJEXT) add_pred.$(OBJEXT) pred_comp.$(OBJEXT) \
+	subsample_image.$(OBJEXT)
+libaltivec_a_OBJECTS = $(am_libaltivec_a_OBJECTS)
+
+DEFS = @DEFS@
+DEFAULT_INCLUDES =  -I. -I$(srcdir) -I$(top_builddir)
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+depcomp = $(SHELL) $(top_srcdir)/depcomp
+@AMDEP_TRUE@DEP_FILES = $(DEPDIR)/add_pred.Po $(DEPDIR)/amber.Po \
+@AMDEP_TRUE@	$(DEPDIR)/benchmark.Po $(DEPDIR)/bsad.Po \
+@AMDEP_TRUE@	$(DEPDIR)/bsumsq.Po $(DEPDIR)/bsumsq_sub22.Po \
+@AMDEP_TRUE@	$(DEPDIR)/build_sub22_mests.Po \
+@AMDEP_TRUE@	$(DEPDIR)/build_sub44_mests.Po $(DEPDIR)/detect.Po \
+@AMDEP_TRUE@	$(DEPDIR)/fdct_idct.Po \
+@AMDEP_TRUE@	$(DEPDIR)/find_best_one_pel.Po $(DEPDIR)/motion.Po \
+@AMDEP_TRUE@	$(DEPDIR)/pred_comp.Po $(DEPDIR)/quant_non_intra.Po \
+@AMDEP_TRUE@	$(DEPDIR)/quant_weight_coeff_sum.Po \
+@AMDEP_TRUE@	$(DEPDIR)/quantize.Po $(DEPDIR)/sad_00.Po \
+@AMDEP_TRUE@	$(DEPDIR)/sad_01.Po $(DEPDIR)/sad_10.Po \
+@AMDEP_TRUE@	$(DEPDIR)/sad_11.Po $(DEPDIR)/sub_mean_reduction.Po \
+@AMDEP_TRUE@	$(DEPDIR)/sub_pred.Po $(DEPDIR)/subsample_image.Po \
+@AMDEP_TRUE@	$(DEPDIR)/sumsq.Po $(DEPDIR)/sumsq_sub22.Po \
+@AMDEP_TRUE@	$(DEPDIR)/variance.Po
+LTCOMPILE = $(LIBTOOL) --mode=compile $(CC) $(DEFS) $(DEFAULT_INCLUDES) \
+	$(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(LIBTOOL) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
+	$(AM_LDFLAGS) $(LDFLAGS) -o $@
+CFLAGS = @CFLAGS@
+DIST_SOURCES = $(libaltivec_a_SOURCES)
+DIST_COMMON = README Makefile.am Makefile.in
+SOURCES = $(libaltivec_a_SOURCES)
+
+all: all-am
+
+.SUFFIXES:
+.SUFFIXES: .c .lo .o .obj
+
+mostlyclean-libtool:
+	-rm -f *.lo
+
+clean-libtool:
+	-rm -rf .libs _libs
+
+distclean-libtool:
+	-rm -f libtool
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ Makefile.am  $(top_srcdir)/configure.in $(ACLOCAL_M4)
+	cd $(top_srcdir) && \
+	  $(AUTOMAKE) --gnu  utils/altivec/Makefile
+Makefile: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.in  $(top_builddir)/config.status
+	cd $(top_builddir) && \
+	  CONFIG_HEADERS= CONFIG_LINKS= \
+	  CONFIG_FILES=$(subdir)/$@ $(SHELL) ./config.status
+
+AR = ar
+
+clean-noinstLIBRARIES:
+	-test -z "$(noinst_LIBRARIES)" || rm -f $(noinst_LIBRARIES)
+libaltivec.a: $(libaltivec_a_OBJECTS) $(libaltivec_a_DEPENDENCIES) 
+	-rm -f libaltivec.a
+	$(libaltivec_a_AR) libaltivec.a $(libaltivec_a_OBJECTS) $(libaltivec_a_LIBADD)
+	$(RANLIB) libaltivec.a
+
+mostlyclean-compile:
+	-rm -f *.$(OBJEXT) core *.core
+
+distclean-compile:
+	-rm -f *.tab.c
+
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/add_pred.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/amber.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/benchmark.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/bsad.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/bsumsq.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/bsumsq_sub22.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/build_sub22_mests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/build_sub44_mests.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/detect.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/fdct_idct.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/find_best_one_pel.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/motion.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/pred_comp.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/quant_non_intra.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/quant_weight_coeff_sum.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/quantize.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sad_00.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sad_01.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sad_10.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sad_11.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sub_mean_reduction.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sub_pred.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/subsample_image.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sumsq.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/sumsq_sub22.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@$(DEPDIR)/variance.Po@am__quote@
+
+distclean-depend:
+	-rm -rf $(DEPDIR)
+
+.c.o:
+@AMDEP_TRUE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
+@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+	$(COMPILE) -c `test -f $< || echo '$(srcdir)/'`$<
+
+.c.obj:
+@AMDEP_TRUE@	source='$<' object='$@' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Po' tmpdepfile='$(DEPDIR)/$*.TPo' @AMDEPBACKSLASH@
+@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+	$(COMPILE) -c `cygpath -w $<`
+
+.c.lo:
+@AMDEP_TRUE@	source='$<' object='$@' libtool=yes @AMDEPBACKSLASH@
+@AMDEP_TRUE@	depfile='$(DEPDIR)/$*.Plo' tmpdepfile='$(DEPDIR)/$*.TPlo' @AMDEPBACKSLASH@
+@AMDEP_TRUE@	$(CCDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+	$(LTCOMPILE) -c -o $@ `test -f $< || echo '$(srcdir)/'`$<
+CCDEPMODE = @CCDEPMODE@
+uninstall-info-am:
+
+tags: TAGS
+
+ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
+	list='$(SOURCES) $(HEADERS) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	mkid -fID $$unique $(LISP)
+
+TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+		$(TAGS_FILES) $(LISP)
+	tags=; \
+	here=`pwd`; \
+	list='$(SOURCES) $(HEADERS) $(TAGS_FILES)'; \
+	unique=`for i in $$list; do \
+	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
+	  done | \
+	  $(AWK) '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	test -z "$(ETAGS_ARGS)$$unique$(LISP)$$tags" \
+	  || etags $(ETAGS_ARGS) $$tags  $$unique $(LISP)
+
+GTAGS:
+	here=`CDPATH=: && cd $(top_builddir) && pwd` \
+	  && cd $(top_srcdir) \
+	  && gtags -i $(GTAGS_ARGS) $$here
+
+distclean-tags:
+	-rm -f TAGS ID GTAGS GRTAGS GSYMS GPATH
+
+DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+
+top_distdir = ../..
+distdir = $(top_distdir)/$(PACKAGE)-$(VERSION)
+
+distdir: $(DISTFILES)
+	@for file in $(DISTFILES); do \
+	  if test -f $$file; then d=.; else d=$(srcdir); fi; \
+	  dir=`echo "$$file" | sed -e 's,/[^/]*$$,,'`; \
+	  if test "$$dir" != "$$file" && test "$$dir" != "."; then \
+	    $(mkinstalldirs) "$(distdir)/$$dir"; \
+	  fi; \
+	  if test -d $$d/$$file; then \
+	    cp -pR $$d/$$file $(distdir) \
+	    || exit 1; \
+	  else \
+	    test -f $(distdir)/$$file \
+	    || cp -p $$d/$$file $(distdir)/$$file \
+	    || exit 1; \
+	  fi; \
+	done
+check-am: all-am
+check: check-am
+all-am: Makefile $(LIBRARIES)
+
+installdirs:
+
+install: install-am
+install-exec: install-exec-am
+install-data: install-data-am
+uninstall: uninstall-am
+
+install-am: all-am
+	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
+
+installcheck: installcheck-am
+install-strip:
+	$(MAKE) $(AM_MAKEFLAGS) INSTALL_PROGRAM="$(INSTALL_STRIP_PROGRAM)" \
+	  `test -z '$(STRIP)' || \
+	    echo "INSTALL_PROGRAM_ENV=STRIPPROG='$(STRIP)'"` install
+mostlyclean-generic:
+
+clean-generic:
+
+distclean-generic:
+	-rm -f Makefile $(CONFIG_CLEAN_FILES) stamp-h stamp-h[0-9]*
+
+maintainer-clean-generic:
+	@echo "This command is intended for maintainers to use"
+	@echo "it deletes files that may require special tools to rebuild."
+	-test -z "$(MAINTAINERCLEANFILES)" || rm -f $(MAINTAINERCLEANFILES)
+clean: clean-am
+
+clean-am: clean-generic clean-libtool clean-noinstLIBRARIES \
+	mostlyclean-am
+
+distclean: distclean-am
+
+distclean-am: clean-am distclean-compile distclean-depend \
+	distclean-generic distclean-libtool distclean-tags
+
+dvi: dvi-am
+
+dvi-am:
+
+info: info-am
+
+info-am:
+
+install-data-am:
+
+install-exec-am:
+
+install-info: install-info-am
+
+install-man:
+
+installcheck-am:
+
+maintainer-clean: maintainer-clean-am
+
+maintainer-clean-am: distclean-am maintainer-clean-generic
+
+mostlyclean: mostlyclean-am
+
+mostlyclean-am: mostlyclean-compile mostlyclean-generic \
+	mostlyclean-libtool
+
+uninstall-am: uninstall-info-am
+
+.PHONY: GTAGS all all-am check check-am clean clean-generic \
+	clean-libtool clean-noinstLIBRARIES distclean distclean-compile \
+	distclean-depend distclean-generic distclean-libtool \
+	distclean-tags distdir dvi dvi-am info info-am install \
+	install-am install-data install-data-am install-exec \
+	install-exec-am install-info install-info-am install-man \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	tags uninstall uninstall-am uninstall-info-am
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

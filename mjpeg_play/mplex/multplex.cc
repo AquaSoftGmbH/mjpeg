@@ -271,8 +271,8 @@ void OutputStream::InitSyntaxParameters()
         timestamp_iframe_only = true;
         video_buffers_iframe_only = true;
 		vbr = true;
-        opt_max_segment_size = 2000*1024*1024;
-        opt_multifile_segment = true;
+        if( opt_max_segment_size == 0 )
+            opt_max_segment_size = 2000*1024*1024;
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
@@ -1061,12 +1061,12 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
     if( underruns> 0 )
 	{
-		mjpeg_error(" ");
+		mjpeg_error("");
 		mjpeg_error_exit1( "MUX STATUS: Frame data under-runs detected!" );
 	}
 	else
 	{
-		mjpeg_info( " " );
+		mjpeg_info( "" );
 		mjpeg_info( "MUX STATUS: no under-runs detected.");
 	}
 }

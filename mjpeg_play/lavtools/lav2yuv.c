@@ -129,7 +129,8 @@ void streamout(void)
 		if (param.scenefile) 
 		{
 			lum_mean =
-				luminance_mean(frame_buf, param.output_width, param.output_height);
+				luminance_mean(frame_buf, 
+							   param.output_width, param.output_height );
 			if (framenum == 0)
 			{
 				delta_lum = 0;

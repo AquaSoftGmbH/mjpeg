@@ -1,6 +1,9 @@
 # Process this file with Automake to produce Makefile.in
 
 
+if HAVE_ALTIVEC
+SUBDIRS = altivec
+endif
 
 INCLUDES = -I$(top_srcdir)
 
@@ -18,6 +21,10 @@ libmjpegutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \
                           yuv4mpeg.h yuv4mpeg_intern.h \
                           mpegconsts.c mpegconsts.h \
                           mpegtimecode.c mpegtimecode.h
+
+if HAVE_ALTIVEC
+libmjpegutils_a_LIBADD = altivec/*.o
+endif
 
 pkginclude_HEADERS = yuv4mpeg.h mpegconsts.h mjpeg_logging.h mjpeg_types.h mpegtimecode.h
 

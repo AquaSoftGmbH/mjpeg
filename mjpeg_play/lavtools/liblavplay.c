@@ -51,7 +51,9 @@
 #include <X11/Xutil.h>
 #endif
 
+#ifdef HAVE_SYS_SOUNDCARD_H
 #include <sys/soundcard.h>
+#endif
 #ifdef HAVE_V4L 
 #include <linux/videodev.h>
 #else

@@ -349,7 +349,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          lav_fd->qt_fd = quicktime_open(filename, 1, 1);
          if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
          quicktime_set_video(lav_fd->qt_fd, 1, width, height, fps,
-                             interlaced ? QUICKTIME_MJPA : QUICKTIME_JPEG);
+                             (interlaced ? QUICKTIME_MJPA : QUICKTIME_JPEG));
 
          /* The sound system wants unsigned data (QUICKTIME_RAW) for 8 bit
             and signed twos complement data (QUICKTIME_TWOS) for 16 bit! */

@@ -54,6 +54,10 @@
 #include "mmx.h"
 #include "cpu_accel.h"
 
+#ifdef HAVE_ALTIVEC
+#include "../utils/altivec/altivec_transform.h"
+#endif
+
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 int select_dct_type_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
 
@@ -72,11 +76,10 @@ extern void fdct( int16_t *blk );
 extern void idct( int16_t *blk );
 
 
-
 /* private prototypes*/
-static void add_pred (uint8_t *pred, uint8_t *cur,
+/* static */ void add_pred (uint8_t *pred, uint8_t *cur,
 					  int lx, int16_t *blk);
-static void sub_pred (uint8_t *pred, uint8_t *cur,
+/* static */ void sub_pred (uint8_t *pred, uint8_t *cur,
 					  int lx, int16_t *blk);
 
 /*
@@ -121,6 +124,45 @@ void init_transform(void)
 		psub_pred = sub_pred;
 		pselect_dct_type = select_dct_type;
 	}
+
+#ifdef HAVE_ALTIVEC
+	if (flags > 0)
+	{
+#if ALTIVEC_TEST_TRANSFORM
+#  if defined(ALTIVEC_BENCHMARK)
+	    mjpeg_info("SETTING AltiVec BENCHMARK for TRANSFORM!");
+#  elif defined(ALTIVEC_VERIFY)
+	    mjpeg_info("SETTING AltiVec VERIFY for TRANSFORM!");
+#  endif
+#else
+	    mjpeg_info("SETTING AltiVec for TRANSFORM!");
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(fdct)
+	    pfdct = ALTIVEC_TEST_SUFFIX(fdct);
+#else
+	    pfdct = ALTIVEC_SUFFIX(fdct);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(idct)
+	    pidct = ALTIVEC_TEST_SUFFIX(idct);
+#else
+	    pidct = ALTIVEC_SUFFIX(idct);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(add_pred)
+	    padd_pred = ALTIVEC_TEST_SUFFIX(add_pred);
+#else
+	    padd_pred = ALTIVEC_SUFFIX(add_pred);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(sub_pred)
+	    psub_pred = ALTIVEC_TEST_SUFFIX(sub_pred);
+#else
+	    psub_pred = ALTIVEC_SUFFIX(sub_pred);
+#endif
+	}
+#endif /* HAVE_ALTIVEC */
 }
 
 
@@ -549,7 +591,7 @@ void itransform(pict_data_s *picture)
 
 
 /* add prediction and prediction error, saturate to 0...255 */
-static void add_pred(pred,cur,lx,blk)
+/* static */ void add_pred(pred,cur,lx,blk)
 	uint8_t *pred, *cur;
 	int lx;
 	int16_t *blk;
@@ -568,7 +610,8 @@ static void add_pred(pred,cur,lx,blk)
 
 
 /* subtract prediction from block data */
-static void sub_pred(pred,cur,lx,blk)
+/* static */
+void sub_pred(pred,cur,lx,blk)
 	uint8_t *pred, *cur;
 	int lx;
 	int16_t *blk;

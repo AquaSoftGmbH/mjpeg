@@ -1,0 +1,40 @@
+AltiVec optimized library for MJPEG tools MPEG-1/2 Video Encoder
+-----------------------------------------------------------------------------
+
+Copyright (C) 2002  James Klicman <james@klicman.org>
+
+
+Platform specific comments:
+
+    Linux:
+    
+	AltiVec enabled compilers are not yet widely distributed.  This
+	should change now that GCC 3.1 has been released.  However, GCC
+	3.1 has issues compiling certain parts of this AltiVec library.
+	When GCC's AltiVec support matures, it should be able to compile
+	the code (with minor changes).  Until then, gcc 2.96.4 with the
+	Motorola AltiVec patches works just fine. There are AltiVec enabled
+	GCC compilers maintained by Kaoru Fukui at
+	ftp://ppc.linux.or.jp/pub/users/fukui/.
+
+        You will also need a recent binutils package. I've verified that
+        binutils-2.12.90.0.7 works. It is also the recommended version
+        for GCC 3.1. There may also be suitable binutils packages at
+        Kaoru's FTP site.
+    
+    Mac OS X:
+    
+        If you have the developer tools, you're all set.
+
+
+General comments:
+
+    Additional performance can be gained by setting the -mcpu option. For
+    GCC 2.95.* use -mcpu=750, for GCC 3.1 and higher try -mcpu=7400 or
+    -mcpu=7450.
+
+    This option can be added during configuration by setting the CFLAGS
+    environment variable. For example:
+
+    env CFLAGS="-O2 -mcpu=750" ./configure
+
