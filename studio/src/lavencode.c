@@ -143,7 +143,7 @@ int number_of_frames(char *editlist)
          sprintf(file_temp, "%s/.studio/.temp.eli", getenv("HOME"));
          /* this is for certainty to prevent circles */
          if (strcmp(editlist, file_temp)==0) return -1;
-         sprintf(command_temp, "%s -S %s -T -1 %s%s",
+         sprintf(command_temp, "\"%s\" -S \"%s\" -T -1 \"%s\"%s",
             app_location(LAV2YUV), file_temp, editlist,
             verbose?"":" >> /dev/null 2>&1");
          system(command_temp);

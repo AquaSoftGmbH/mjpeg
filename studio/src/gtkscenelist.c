@@ -163,7 +163,7 @@ static GtkScene *gtk_scene_new(gint view_start, gint view_end,
 	scene->movie_num = movie_num;
 
 	sprintf(filename, "%s/.studio/temp.jpg", getenv("HOME"));
-	sprintf(command, "%s -o %s -f i -i %d %s%s",
+	sprintf(command, "\"%s\" -o \"%s\" -f i -i %d \"%s\"%s",
 		app_location(LAVTRANS), filename, view_start, movie,
 		verbose?"":" >> /dev/null 2>&1");
 	system(command);
@@ -186,7 +186,6 @@ static void gtk_scene_destroy(GtkScene *scene)
 	//if (scene->effect) gtk_effect_destroy(scene->effect);
 	free(scene);
 }
-
 
 GtkWidget *gtk_scenelist_new(gchar *editlist)
 {
@@ -274,6 +273,8 @@ gint gtk_scenelist_open_editlist(GtkSceneList *scenelist, gchar *editlist)
 	scenelist->num_frames = total;
 
 	fclose(fd);
+
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
 
 	return 1;
 
@@ -383,7 +384,6 @@ static void gtk_scenelist_size_allocate (GtkWidget *widget, GtkAllocation *alloc
 			allocation->width, allocation->height);
 	}
 }
-
 
 static gint gtk_scenelist_expose (GtkWidget *widget, GdkEventExpose *event)
 {
@@ -605,6 +605,7 @@ gint gtk_scenelist_write_editlist(GtkSceneList *scenelist, gchar *filename)
 void gtk_scenelist_new_editlist(GtkSceneList *scenelist)
 {
 	gtk_scenelist_make_empty(scenelist);
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
 	gtk_scenelist_draw(GTK_WIDGET(scenelist));
 }
 
@@ -696,9 +697,10 @@ void gtk_scenelist_edit_add(GtkSceneList *scenelist, char *movie, gint view_star
 		if (!strcmp(movie, (char *)g_list_nth_data(scenelist->movie, i)))
 			goto no_insert;
 	}
-	scenelist->movie = g_list_append(scenelist->movie, (gpointer)movie);
+	scenelist->movie = g_list_append(scenelist->movie, (gpointer)strdup(movie));
 
 no_insert:
+	/* NOTE: appending doesn't work currently! */
 	scene = gtk_scene_new(view_start, view_end,
 			scene_start, scene_end,
 			scene1?scene1->start_total:0, i, movie);
@@ -709,11 +711,12 @@ no_insert:
 	scenelist->scene = g_list_insert(scenelist->scene,
 		g_list_nth_data(scenelist->scene, scene_num),
 		scene_num);
+	for (i=scene_num+1;i<g_list_length(scenelist->scene);i++)
+		((gint) g_list_nth(scenelist->scene, i)->data)++;
 
 	/* change the starting point frame.nr. of each scene and move it */
 	for (i=scene_num+1;i<g_list_length(scenelist->scene);i++)
 	{
-		((gint) g_list_nth(scenelist->scene, i)->data)++;
 		scene1 = gtk_scenelist_get_scene(scenelist, i);
 		scene1->start_total += (view_end - view_start + 1);
 	}
@@ -726,7 +729,7 @@ no_insert:
 void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 {
 	GtkScene *scene;
-	int i, diff;
+	int i, diff, movie_num;
 
 	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return;
 	scene = gtk_scenelist_get_scene(scenelist, scene_num);
@@ -734,6 +737,7 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 	scenelist->items = g_list_remove_link(scenelist->items, g_list_nth(scenelist->items,
 		(gint) g_list_nth_data(scenelist->scene, scene_num)));
 	scenelist->scene = g_list_remove_link(scenelist->scene, g_list_nth(scenelist->scene, scene_num));
+	movie_num = scene->movie_num;
 	free(scene);
 	for (i=scene_num;i<g_list_length(scenelist->scene);i++)
 	{
@@ -747,6 +751,27 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 		gtk_scenelist_select(scenelist, scenelist->selected_scene - 1);
 	else
 		gtk_scenelist_draw(GTK_WIDGET(scenelist));
+
+	/* clean up the list of movies */
+	for (i=0;i<g_list_length(scenelist->scene);i++)
+	{
+		scene = gtk_scenelist_get_scene(scenelist, i);
+		if (movie_num == scene->movie_num)
+			break;
+	}
+	if (i == g_list_length(scenelist->scene))
+	{
+		/* the movie is not reffed anymore */
+		scenelist->movie = g_list_remove_link(scenelist->movie,
+			g_list_nth(scenelist->movie, movie_num));
+		/* and decrease the referrals to subsequent movies */
+		for (i=0;i<g_list_length(scenelist->scene);i++)
+		{
+			scene = gtk_scenelist_get_scene(scenelist, i);
+			if (scene->movie_num > movie_num)
+				scene->movie_num--;
+		}
+	}
 }
 
 

@@ -1,5 +1,9 @@
-Updates from 0.1.5 to current
+Updates from 0.1.6 to current
 -----------------------------
+* ...
+
+Updates from 0.1.5 to 0.1.6
+---------------------------
 
 * Changed the saving of the encoding options. 
 * Updated som options in the encoding part because they were chnaged in the 
@@ -7,6 +11,9 @@ Updates from 0.1.5 to current
 * Added the yuv2lav encoding part (a better name would be fine too
 * Added the aviable interlacing correction options to the input field
 * A proper error handling for missing/not aviable apllications was added
+* Distributed encoding support added
+* A memory allocation error which totally screwed up the editor was fixed
+* pretty many small fixes which allow spaces in filenames
 
 Updates from 0.1.4 to 0.1.5
 ---------------------------

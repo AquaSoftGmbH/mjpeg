@@ -145,7 +145,7 @@ char *check_editlist(char *editlist)
 
 		sprintf(file, "%s/.studio/%s.eli", getenv("HOME"),
 			editlist+i+1);
-		sprintf(command, "%s -S %s -T -1 %s%s",
+		sprintf(command, "\"%s\" -S \"%s\" -T -1 \"%s\"%s",
 			app_location(LAV2YUV), file, editlist,
 			verbose?"":" >> /dev/null 2>&1");
 		system(command);
@@ -468,7 +468,7 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 	if (verbose) printf("(Screenshot to) File: %s\n", file);
 
 	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
-	sprintf(command, "%s -o %s -f i %s -i %d%s",
+	sprintf(command, "\"%s\" -o \"%s\" -f i \"%s\" -i %d%s",
 		app_location(LAVTRANS), file, temp, current_position,
 			verbose?"":" >> /dev/null 2>&1");
 	system(command);
@@ -662,7 +662,7 @@ int open_add_movie_scene_editlist()
 
 			y = sscanf(temp_entry, "%d %d %d (%d %d)\n", &a, &b, &c, &d, &e);
 			sprintf(file, "%s/.studio/.temp.jpg", getenv("HOME"));
-			sprintf(command, "%s -f i -o %s -i %d %s%s",
+			sprintf(command, "\"%s\" -f i -o \"%s\" -i %d \"%s\"%s",
 				app_location(LAVTRANS), file, total, file_selected,
 				verbose?"":" >> /dev/null 2>&1");
 			system(command);
@@ -1311,7 +1311,7 @@ static void scrollbar_expose_event(GtkWidget *widget, gpointer data)
 	GtkWidget *scrollbar = GTK_WIDGET(data);
 	GtkObject *adj;
 	gint num;
-printf("Signal\n");
+
 	gtk_scenelist_get_num_drawn(GTK_SCENELIST(scenelist),&num,NULL);
 	adj = gtk_adjustment_new(GTK_SCENELIST(scenelist)->current_scene,
 		0, g_list_length(GTK_SCENELIST(scenelist)->scene), 1, 3, num);

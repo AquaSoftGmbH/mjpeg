@@ -165,7 +165,7 @@ void effects_finished()
 				gtk_label_set_text(GTK_LABEL(render_progress_status_label), "...");
 
 			sprintf(file, "/tmp/.sound.wav");
-			sprintf(command, "%s %s > %s%s",
+			sprintf(command, "\"%s\" \"%s\" > \"%s\"%s",
 				app_location(LAV2WAV), soundfile, file,
 				verbose?"":" 2>/dev/null");
 			system(command);
@@ -177,7 +177,7 @@ void effects_finished()
 
 			strcpy(new_renderfile, renderfile);
 			new_renderfile[strlen(new_renderfile)-1] = '\0';
-			sprintf(command, "%s %s %s %s%s",
+			sprintf(command, "\"%s\" \"%s\" \"%s\" \"%s\"%s",
 				app_location(LAVADDWAV), renderfile, file, new_renderfile,
 				verbose?"":" >> /dev/null 2>&1");
 			system(command);
@@ -1335,7 +1335,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 		char tempfile[256];
 		char syscall[256];
 		sprintf(tempfile, "%s/.studio/tempfile.lav2yuv.data", getenv("HOME"));
-		sprintf(syscall, "%s -f 1 %s > %s 2>/dev/null",
+		sprintf(syscall, "\"%s\" -f 1 \"%s\" > \"%s\" 2>/dev/null",
 			app_location(LAV2YUV), options->scene_file, tempfile);
 		system(syscall);
 		fdd = fopen(tempfile, "r");
@@ -1931,7 +1931,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 
 	/* now a bit tricky, get the movie settings by obtaining one frame */
 	sprintf(file, "%s/.studio/temp.jpg", getenv("HOME"));
-	sprintf(command, "%s -o %s -f i -i %d %s%s",
+	sprintf(command, "\"%s\" -o \"%s \"-f i -i %d \"%s\"%s",
 		app_location(LAVTRANS), file, options->scene_start, options->scene_file,
 		verbose?"":" >> /dev/null 2>&1");
 	system(command);

@@ -174,7 +174,7 @@ GtkWidget* gtk_imageplug_new_from_video (char *filename, int start, int stop,
 	if (strcmp(filename, "") != 0)
 	{
 		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg", getenv("HOME"));
-		sprintf(command, "%s -o %s -f i -i %d %s%s",
+		sprintf(command, "\"%s\" -o \"%s\" -f i -i %d \"%s\"%s",
 			app_location(LAVTRANS), filename_img_tmp, start, filename,
 			verbose?"":" >> /dev/null 2>&1");
 		system(command);
