@@ -90,4 +90,5 @@ lav_file_t *lav_open_input_file(char *filename);
 int  lav_get_field_size(uint8_t * jpegdata, long jpeglen);
 const char *lav_strerror(void);
 int  lav_fileno( lav_file_t *lav_file );
+uint32_t reorder_32(uint32_t);
 #endif

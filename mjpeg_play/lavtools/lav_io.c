@@ -1313,3 +1313,17 @@ int lav_fileno(lav_file_t *lav_file)
 
    return res;
 }
+
+uint32_t reorder_32(uint32_t todo)
+{
+unsigned char b0, b1, b2, b3;
+uint32_t reversed;
+
+b0 = (todo & 0x000000FF);
+b1 = (todo & 0x0000FF00) >> 8;
+b2 = (todo & 0x00FF0000) >> 16;
+b3 = (todo & 0xFF000000) >> 24;
+
+reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
+return reversed;
+}

@@ -39,7 +39,6 @@ static uint8_t audio_buff[2*256*1024]; /* Enough for 1fps, 48kHz ... */
 int silence_sr, silence_bs, silence_ch ; 
 EditList el;
 
-uint32_t reorder_32(uint32_t);
 void set_silence (char *);
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd );
 void Usage(char *str);
@@ -62,20 +61,6 @@ static size_t do_write( int fd, void *buf, size_t count )
 		cbuf += written;
 	}
 	return count;
-}
-
-uint32_t reorder_32(uint32_t todo)
-{
-unsigned char b0, b1, b2, b3;
-uint32_t reversed;
-
-b0 = (todo & 0x000000FF);
-b1 = (todo & 0x0000FF00) >> 8;
-b2 = (todo & 0x00FF0000) >> 16;
-b3 = (todo & 0xFF000000) >> 24;
-
-reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
-return reversed;
 }
 
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )

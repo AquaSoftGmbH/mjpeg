@@ -83,19 +83,19 @@ static int process_image_frame = -1; /* All, >-1 means not all */
 
 static struct
 {
-   unsigned long rifftag;
-   unsigned long rifflen;
-   unsigned long wavetag;
-   unsigned long fmt_tag;
-   unsigned long fmt_len;
-      unsigned short wFormatTag;
-      unsigned short nChannels;
-      unsigned long  nSamplesPerSec;
-      unsigned long  nAvgBytesPerSec;
-      unsigned short nBlockAlign;
-      unsigned short wBitsPerSample;
-   unsigned long datatag;
-   unsigned long datalen;
+   uint32_t rifftag;
+   uint32_t rifflen;
+   uint32_t wavetag;
+   uint32_t fmt_tag;
+   uint32_t fmt_len;
+   uint16_t wFormatTag;
+   uint16_t nChannels;
+   uint32_t nSamplesPerSec;
+   uint32_t nAvgBytesPerSec;
+   uint16_t nBlockAlign;
+   uint16_t wBitsPerSample;
+   uint32_t datatag;
+   uint32_t datalen;
 } wave_hdr;
 
 static uint8_t abuff[16384];
@@ -109,7 +109,6 @@ int	verbose = 1;
 void Usage(char *str);
 void system_error(const char *str1, const char *str2);
 void detect_endian (void);
-unsigned long reorder_32(unsigned long todo);
 void initwav_hdr(void);
 
 /* The rest of the code */
@@ -172,23 +171,6 @@ void Usage(char *str)
    fprintf(stderr,"          -i num  convert single frame to JPEG\n");
    exit(1);
 }
-
-
-/* We need this to reorder the 32 bit values for big endian systems */
-unsigned long reorder_32(unsigned long todo)
-{
-unsigned char b0, b1, b2, b3;
-unsigned long reversed; 
-
-b0 = (todo & 0x000000FF);
-b1 = (todo & 0x0000FF00) >> 8;
-b2 = (todo & 0x00FF0000) >> 16;
-b3 = (todo & 0xFF000000) >> 24;
-
-reversed = (b0 << 24) + (b1 << 16) + (b2 << 8) +b3;
-return reversed;
-}
-
 
 void system_error(const char *str1, const char *str2)
 {
