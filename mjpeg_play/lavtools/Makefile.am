@@ -9,33 +9,31 @@ INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 # *********************************************************************
 # Support lib
 
-lib_LTLIBRARIES = liblavfile.la liblavjpeg.la liblavrec.la
+lib_LTLIBRARIES = liblavfile.la liblavjpeg.la liblavrec.la liblavplay.la
 
 liblavincludedir = $(includedir)/mjpegtools
 liblavinclude_HEADERS = editlist.h lav_io.h jpegutils.h frequencies.h \
-	liblavrec.h
+	liblavrec.h liblavplay.h
 
-liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
-liblavfile_la_LDFLAGS = \
+LAV_ALL_LIB_OPTS = \
 	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
 	-release $(LT_RELEASE) \
-	-export-dynamic \
+	-export-dynamic 
+
+liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
+liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
 	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
-liblavjpeg_la_LDFLAGS = \
-	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic \
-	$(JPEG_LIBS)
+liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
 
-liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c \
-	lav_io.c avilib.c
-liblavrec_la_LDFLAGS = \
-	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
-	-release $(LT_RELEASE) \
-	-export-dynamic \
-	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS) $(PTHREAD_LIBS)
+liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
+liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
+	$(PTHREAD_LIBS) liblavfile.la
+
+liblavplay_la_SOURCES = liblavplay.c audiolib.c
+liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
+	$(PTHREAD_LIBS) $(SDL_LIBS) liblavfile.la liblavjpeg.la
 
 # *********************************************************************
 # The tools themselves
@@ -74,14 +72,13 @@ transist_flt_LDADD = -L$(top_srcdir)/utils -lutils
 matteblend_flt_SOURCES = matteblend.flt.c yuv4mpeg.c ${lav_headers}
 matteblend_flt_LDADD = -L$(top_srcdir)/utils -lutils
 
-lavplay_SOURCES = lavplay.c audiolib.c $(lav_headers)
-lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
-	-L$(top_srcdir)/utils -lutils $(SDL_LIBS) \
-			liblavfile.la liblavjpeg.la
+lavplay_SOURCES = lavplay.c
+lavplay_LDADD = -L$(top_srcdir)/utils -lutils \
+	liblavplay.la
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
 lavrec_LDADD = -L$(top_srcdir)/utils -lutils \
-				liblavrec.la
+	liblavrec.la
 
 testrec_SOURCES = testrec.c  audiolib.c  $(lav_headers)
 testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
