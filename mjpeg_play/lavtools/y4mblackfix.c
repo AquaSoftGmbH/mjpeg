@@ -174,9 +174,9 @@ gotenough:
  * process.
 */
 		mjpeg_info("frame %d num_dark: %d %s", frames, num_dark,
-			num_dark <= pixel_thresh ? "" : "X");
+			num_dark < pixel_thresh ? "" : "X");
 
-		if	(num_dark <= pixel_thresh || nomodify)
+		if	(num_dark < pixel_thresh || nomodify)
 			goto outputframe;
 
 /*
@@ -187,9 +187,9 @@ gotenough:
 			{
 			for	(j = 0; j < width; j++)
 				{
-				y = yuv[0][i + j];
-				u = yuv[1][(i/2) + (j/2)];
-				v = yuv[2][(i/2) + (j/2)];
+				y = yuv[0][(i * width) + j];
+				u = yuv[1][(i/2) * (width/2) + (j/2)];
+				v = yuv[2][(i/2) * (width/2) + (j/2)];
 				if	(y > highpass)
 					continue;
 				if ((luma_center - luma_radius) <= y &&
