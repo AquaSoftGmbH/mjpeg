@@ -82,7 +82,6 @@ static void resample(  int fdIn
 {
   y4m_frame_info_t   in_frame ;
   uint8_t            *yuv_data[3] ;
-  int                frame_data_size ;
   int                read_error_code ;
   int                write_error_code ;
   int                src_frame_counter ;
@@ -94,10 +93,9 @@ static void resample(  int fdIn
   y4m_ratio_t        normalized_ratio;
 
   // Allocate memory for the YUV channels
-  frame_data_size = y4m_si_get_height(inStrInfo) * y4m_si_get_width(inStrInfo);
-  yuv_data[0] = (uint8_t *)malloc( frame_data_size );
-  yuv_data[1] = (uint8_t *)malloc( frame_data_size >> 2);
-  yuv_data[2] = (uint8_t *)malloc( frame_data_size >> 2);
+  yuv_data[0] = (uint8_t *)malloc(y4m_si_get_plane_length(inStrInfo, 0));
+  yuv_data[1] = (uint8_t *)malloc(y4m_si_get_plane_length(inStrInfo, 1));
+  yuv_data[2] = (uint8_t *)malloc(y4m_si_get_plane_length(inStrInfo, 2));
 
   if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] )
     mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
@@ -170,6 +168,8 @@ int main (int argc, char *argv[])
   const static char *legal_flags = "r:s:cnv:h";
   int c ;
 
+  y4m_accept_extensions(1);
+
   /* mjpeg tools global initialisations */
   mjpeg_default_handler_verbosity (verbose);
 
@@ -184,6 +184,9 @@ int main (int argc, char *argv[])
   // INPUT comes from stdin, we check for a correct file header
   if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
     mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
+
+  if (y4m_si_get_plane_count(&in_streaminfo) != 3)
+     mjpeg_error_exit1("Only 3 plane formats supported");
 
   /* Prepare output stream */
   src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
