@@ -265,7 +265,7 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
     writer( _writer ),
     ratecontroller( _ratecontroller ),
     despatcher( *new Despatcher ),
-    ss( _encparams )
+    ss( _encparams, _reader )
 
 {
 }
@@ -376,7 +376,7 @@ void SeqEncoder::Init()
     new_ref_picture = GetPicture();
 	ReleasePicture( new_ref_picture );
 	ratecontroller.InitSeq(false);
-    ss.Init( reader.NumberOfFrames()-1 );
+    ss.Init(  );
 }
 
 
@@ -425,7 +425,7 @@ void SeqEncoder::EncodeStream()
         else
         {
             Pass1EncodeFrame();
-            ss.Next( reader.NumberOfFrames()-1,  BitsAfterMux() ); 
+            ss.Next( BitsAfterMux() ); 
         }
     } while( pass2queue.size() != 0 ||  ss.FrameInStream() < reader.NumberOfFrames() );
 
@@ -492,11 +492,10 @@ void SeqEncoder::Pass1EncodeFrame()
         cur_picture->fwd_ref_frame = old_ref_picture;
         cur_picture->bwd_ref_frame = new_ref_picture;
     }
-    
-    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
 
-    
+    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames() );
     reader.ReadFrame( cur_picture->input, cur_picture->org_img );
+
     EncodePicture( cur_picture );
 
     if( cur_picture->end_seq )

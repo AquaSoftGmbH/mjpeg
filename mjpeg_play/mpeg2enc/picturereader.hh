@@ -41,6 +41,7 @@ public:
     virtual void StreamPictureParams( MPEG2EncInVidParams &strm ) = 0;
     void ReadFrame( int num_frame, uint8_t *frame[] );
     void FreeFrame( int num_frame );
+    void FillBufferUpto( int num_frame );
     inline int NumberOfFrames() { return istrm_nframes; }
 protected:
     int LumMean(uint8_t *frame );
@@ -50,7 +51,6 @@ protected:
     void StartWorker();
     void ReadChunkSequential( int num_frame );
     void ReadChunkParallel( int num_frame );
-    void FillBufferUpto( int num_frame ); // Load frame
     virtual bool LoadFrame( ) = 0;
     
 protected:

@@ -33,23 +33,35 @@
  **********************************************/
 
 class EncoderParams;
+class PictureReader;
+
 class StreamState 
 {
 public:
-    StreamState( EncoderParams &encparams );
-    void Init( int num_last_frame );
-
-    void Next( int num_last_frame,  int64_t bits_after_mux );
+    StreamState( EncoderParams &encparams, PictureReader &reader );
+    void Init( );
+    void Next( int64_t bits_after_mux );
     
+    // Handle seperately - need to know input frame number (set by Next)
     inline int FrameInStream() const { return frame_num; }
     inline int FrameInSeq() const { return s_idx; }
-    
+    inline int  TemporalReference() const
+    {
+        /* Temp ref of I frame in closed GOP of sequence is 0 We have to
+        be a little careful with the end of stream special-case.
+        */
+        return ( g_idx == 0 && closed_gop ) ? 0 :  g_idx+(bigrp_length-1);
+    }
+    inline int  InputFrameNum() const { return TemporalReference()+gop_start_frame; }
 protected:    
     void GopStart();
-    
+
+    void SetEndSeq();
+
 public:
     // Conext of current frame in hierarchy of structures: sequence, GOP, B-group */
     int frame_num;                  /* Index in total video stream */
+    int temp_ref;                   /* Temporal reference in GOP   */
     int s_idx;                      /* Index in current sequence */
     int g_idx;                      /* Index in current GOP */
     int b_idx;                      /* Index in current B frame group */
@@ -81,6 +93,7 @@ private:
     uint64_t next_split_point;      // Keep track of size-based points to split individual sequences
     uint64_t seq_split_length;
     EncoderParams &encparams;
+    PictureReader &reader;
 };
 
 #endif

@@ -22,6 +22,7 @@
 #include "mjpeg_logging.h"
 #include "encoderparams.hh"
 #include "mpeg2syntaxcodes.h"
+#include "picturereader.hh"
 
 
 
@@ -30,12 +31,13 @@
 //  Stream state maintenance class
 
 
-StreamState::StreamState( EncoderParams &_encparams ) :
-    encparams(_encparams)
+StreamState::StreamState( EncoderParams &_encparams, PictureReader &_reader ) :
+    encparams(_encparams),
+    reader(_reader)
 {
 }
 
-void StreamState::Init( int num_last_frame )
+void StreamState::Init(  )
 {
     seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
     next_split_point = BITCOUNT_OFFSET + seq_split_length;
@@ -50,7 +52,7 @@ void StreamState::Init( int num_last_frame )
     gop_start_frame = 0;
     gop_end_seq = true;         // At start we act as after sequence split...
     GopStart(  );
-    end_seq = frame_num == num_last_frame; // Catch single frame mpegs
+    SetEndSeq();
 }
 
 
@@ -58,9 +60,7 @@ void StreamState::Init( int num_last_frame )
   Update ss to the next sequence state.
 */
 
-void StreamState::Next( int num_last_frame,     // MAX_INT if not yet known
-                        int64_t bits_after_mux   // Estimate of how much output would have been produced
-                      )
+void StreamState::Next(  int64_t bits_after_mux )   // Estimate of how much output would have been produced
 {
     ++frame_num;    
     ++s_idx;
@@ -108,7 +108,18 @@ void StreamState::Next( int num_last_frame,     // MAX_INT if not yet known
         next_split_point += seq_split_length;
         gop_end_seq = true;
     }
-    end_seq = frame_num == num_last_frame || ( g_idx == gop_length-1 && gop_end_seq);
+    
+     SetEndSeq();
+}
+
+void StreamState::SetEndSeq()
+{
+   // Ensure we have read up to the frame we plan to processs / decide
+   // EOS at (need to know if this frame is at EOF - hence must be read).
+   // TODO Cropping of Temporal reference from  Picture::Set_IP_Frame
+   // should really be handled here...
+   reader.FillBufferUpto( InputFrameNum() );
+   end_seq = frame_num == (reader.NumberOfFrames()-1) || ( g_idx == gop_length-1 && gop_end_seq);
 }
 
 
@@ -199,3 +210,5 @@ void StreamState::GopStart(  )
     }
 
 }
+
+

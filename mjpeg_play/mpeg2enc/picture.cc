@@ -162,8 +162,8 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 
     assert( pict_type == ss.frame_type );
 
-	decode = ss.s_idx;
-    input   = temp_ref+ss.gop_start_frame;
+	decode = ss.FrameInSeq(); // == ss.s_idx;
+    input   = temp_ref+ss.gop_start_frame;//ss.InputFrameNum(); // temp_ref+ss.gop_start_frame;
 
 	dc_prec = encparams.dc_prec;
 	secondfield = false;
@@ -304,22 +304,12 @@ void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 
 void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
 {
-	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
-	   be a little careful with the end of stream special-case.
-	*/
-	if( ss.g_idx == 0 && ss.closed_gop )
-	{
-		temp_ref = 0;
-	}
-	else 
-	{
-		temp_ref = ss.g_idx+(ss.bigrp_length-1);
-	}
 
-    // We don't want to look-ahead unnecessarily so
-    // stream may end before the planned GOP length
-    // We handle this here...
-	if (temp_ref >= (num_frames-ss.gop_start_frame))
+    // Temp_ref could go beyond end of input sequence (StreamState
+    // currently doesn't check) so need to handle this here.
+    // This is what sorts out correct GOP structure at end of sequence
+    temp_ref = ss.TemporalReference();
+    if (temp_ref >= (num_frames-ss.gop_start_frame))
 		temp_ref = (num_frames-ss.gop_start_frame) - 1;
 
 	present = (ss.s_idx-ss.g_idx)+temp_ref;
