@@ -2758,8 +2758,6 @@ void fast_motion_data( pict_data_s *picture )
 	{
 		for( i = 0; i < nextfieldline/4; ++i ) /* We're doing 4 pels horizontally at once */
 		{
-			/* TODO: A.Stevens this has to be the most word-length dependent
-			   code in the world.  Better than MMX assembler though I guess... */
 			pb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			pb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;	
 			pb += 2;
@@ -2786,7 +2784,6 @@ void fast_motion_data( pict_data_s *picture )
 	{
 		for( i = 0; i < nextfieldline/4; ++i )
 		{
-			/* TODO: BRITTLE: A.Stevens - this only works for uint8_t = uint8_t */
 			qb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			qb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;
 			qb += 2;

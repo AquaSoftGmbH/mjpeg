@@ -472,17 +472,16 @@ iquant_loop:
 ;;;                               )
 ;;; eax - block counter...
 ;;; edi - src
-;;; esi - dst
-;;; edx - quant_mat
+;;; esi - inverse quantisation coefficient matrix...
 
 		;; MMX Register usage
 		;; mm7 = [1|0..3]W
 		;; mm6 = [2047|0..3]W
 		;; mm5 = 0
 		
-global quant_weight_coeff_sum_mmx
+global quant_weight_coeff_sum_mmx_old
 align 32
-quant_weight_coeff_sum_mmx:
+quant_weight_coeff_sum_mmx_old:
 	push ebp				; save frame pointer
 	mov ebp, esp		; link
 
@@ -544,4 +543,75 @@ quantsum:
 	emms			; clear mmx registers
 	ret			
 
-			
+
+		
+;;;  int32_t quant_weight_coeff_sum_mmx(int16_t *src, int16_t *i_quant_mat
+;;; Simply add up the sum of coefficients weighted 
+;;; by their quantisation coefficients
+;;;                               )
+;;; eax - block counter...
+;;; edi - src
+;;; esi - inverse quantisation coefficient matrix...
+
+		;; MMX Register usage
+		;; mm7 = [1|0..3]W
+		;; mm6 = [2047|0..3]W
+		;; mm5 = 0
+		
+global quant_weight_coeff_sum_mmx
+align 32
+quant_weight_coeff_sum_mmx:
+	push ebp				; save frame pointer
+	mov ebp, esp		; link
+
+	push ecx
+	push esi     
+	push edi
+
+	mov edi, [ebp+8]	; get pdst
+	mov esi, [ebp+12]	; get piqm
+
+	mov ecx, 16			; 16 coefficient / quantiser quads to process...
+	pxor mm6, mm6		; Accumulator
+	pxor mm7, mm7		; Zero
+nquantsum:
+	movq    mm0, [edi]
+	movq    mm1, mm7
+	movq    mm2, [esi]
+	
+	;;
+	;;      Compute absolute value of coefficients...
+	;;
+	pcmpgtw mm1, mm0   ; (mm0 < 0 )
+	movq	mm3, mm0
+	psllw   mm3, 1     ; 2*mm0
+	pand    mm3, mm1   ; 2*mm0 * (mm0 < 0)
+	psubw   mm0, mm3   ; mm0 = abs(mm0)
+
+
+	;;
+	;; Compute the low and high words of the result....
+	;;
+	pmaddwd   mm0, mm2				
+	add		edi, 8
+	add		esi, 8
+	paddd      mm6, mm0
+	
+	
+	sub ecx,	1
+	jnz   nquantsum
+
+	movd   eax, mm6
+	psrlq  mm6, 32
+	movd   ecx, mm6
+	add    eax, ecx
+	
+	pop edi
+	pop esi
+	pop ecx
+
+	pop ebp			; restore stack pointer
+
+	emms			; clear mmx registers
+	ret			
+					

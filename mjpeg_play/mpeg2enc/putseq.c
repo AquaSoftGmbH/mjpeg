@@ -687,7 +687,7 @@ static void stencodeworker(pict_data_s *picture)
 		predict(picture);
 
 		/* No dependency */
-		dct_type_estimation(picture);
+		//dct_type_estimation(picture);
 		transform(picture);
 		/* Depends on previous frame completion for IB and P */
 
@@ -706,7 +706,7 @@ static void stencodeworker(pict_data_s *picture)
 
 			motion_estimation(picture);
 			predict(picture);
-			dct_type_estimation(picture);
+			//dct_type_estimation(picture);
 			transform(picture);
 			putpict(picture);
 			reconstruct(picture);
@@ -778,7 +778,7 @@ static void *parencodeworker(void *start_arg)
 		predict(picture);
 
 		/* No dependency */
-		dct_type_estimation(picture);
+		//dct_type_estimation(picture);
 		transform(picture);
 		/* Depends on previous frame completion for IB and P */
 		sync_guard_test( picture->prev_frame_completion );
@@ -797,7 +797,7 @@ static void *parencodeworker(void *start_arg)
 
 			motion_estimation(picture);
 			predict(picture);
-			dct_type_estimation(picture);
+			//dct_type_estimation(picture);
 			transform(picture);
 			putpict(picture);
 			reconstruct(picture);

@@ -107,8 +107,8 @@ static void field_ME (pict_data_s *picture,
 								  int ipflag);
 
 static void frame_estimate (
-	unsigned char *org,
-	 unsigned char *ref, 
+	uint8_t *org,
+	 uint8_t *ref, 
 	 subsampled_mb_s *ssmb,
 	 int i, int j,
 	 int sx, int sy, 
@@ -118,10 +118,10 @@ static void frame_estimate (
 	 int imins[2][2], int jmins[2][2]);
 
 static void field_estimate (pict_data_s *picture,
-							unsigned char *toporg,
-							unsigned char *topref, 
-							unsigned char *botorg, 
-							unsigned char *botref,
+							uint8_t *toporg,
+							uint8_t *topref, 
+							uint8_t *botorg, 
+							uint8_t *botref,
 							subsampled_mb_s *ssmb,
 							int i, int j, int sx, int sy, int ipflag,
 							mb_motion_s *bestfr,
@@ -131,7 +131,7 @@ static void field_estimate (pict_data_s *picture,
 
 static void dpframe_estimate (
 	pict_data_s *picture,
-	unsigned char *ref,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int iminf[2][2], int jminf[2][2],
 	mb_motion_s *dpbest,
@@ -140,16 +140,16 @@ static void dpframe_estimate (
 
 static void dpfield_estimate (
 	pict_data_s *picture,
-	unsigned char *topref,
-	unsigned char *botref, 
-	unsigned char *mb,
+	uint8_t *topref,
+	uint8_t *botref, 
+	uint8_t *mb,
 	int i, int j, 
 	int imins, int jmins, 
 	mb_motion_s *dpbest,
 	int *vmcp);
 
 static void fullsearch (
-	unsigned char *org, unsigned char *ref,
+	uint8_t *org, uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h, 
@@ -187,32 +187,32 @@ int (*pqblock_near_dist)( uint8_t *blk,  uint8_t *ref,
 
 
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
-static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist2 (unsigned char *blk1, unsigned char *blk2,
+static int dist1_01(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_10(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_11(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist2 (uint8_t *blk1, uint8_t *blk2,
 							  int lx, int hx, int hy, int h);
-static int bdist2 (unsigned char *pf, unsigned char *pb,
-	unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
-static int bdist1 (unsigned char *pf, unsigned char *pb,
-				   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist2 (uint8_t *pf, uint8_t *pb,
+	uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist1 (uint8_t *pf, uint8_t *pb,
+				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 static int (*pfdist1) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 static int (*pqdist1) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 static int (*pdist1_00) ( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
-static int (*pdist1_01) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int (*pdist1_10) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int (*pdist1_11) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int (*pdist1_01) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int (*pdist1_10) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int (*pdist1_11) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
 
-static int (*pdist2) (unsigned char *blk1, unsigned char *blk2,
+static int (*pdist2) (uint8_t *blk1, uint8_t *blk2,
 					  int lx, int hx, int hy, int h);
   
   
-static int (*pbdist2) (unsigned char *pf, unsigned char *pb,
-					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int (*pbdist2) (uint8_t *pf, uint8_t *pb,
+					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
-static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
-					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
+					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 /*
   Initialise motion compensation - currently purely selection of which
@@ -867,7 +867,7 @@ static void field_ME(
 	int secondfield, int ipflag)
 {
 	int w2;
-	unsigned char *toporg, *topref, *botorg, *botref;
+	uint8_t *toporg, *topref, *botorg, *botref;
 	subsampled_mb_s ssmb;
 	mb_motion_s fields_mc, dualp_mc;
 	mb_motion_s fieldf_mc, fieldb_mc;
@@ -1167,8 +1167,8 @@ static void field_ME(
  */
 
 static void frame_estimate(
-	unsigned char *org,
-	unsigned char *ref,
+	uint8_t *org,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int sx, int sy,
 	mb_motion_s *bestfr,
@@ -1262,10 +1262,10 @@ static void frame_estimate(
 
 static void field_estimate (
 	pict_data_s *picture,
-	unsigned char *toporg,
-	unsigned char *topref, 
-	unsigned char *botorg, 
-	unsigned char *botref,
+	uint8_t *toporg,
+	uint8_t *topref, 
+	uint8_t *botorg, 
+	uint8_t *botref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int sx, int sy, int ipflag,
 	mb_motion_s *bestfld,
@@ -1413,7 +1413,7 @@ static void field_estimate (
 
 static void dpframe_estimate (
 	pict_data_s *picture,
-	unsigned char *ref,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	
 	int i, int j, int iminf[2][2], int jminf[2][2],
@@ -1576,16 +1576,16 @@ static void dpframe_estimate (
 
 static void dpfield_estimate(
 	pict_data_s *picture,
-	unsigned char *topref,
-	unsigned char *botref, 
-	unsigned char *mb,
+	uint8_t *topref,
+	uint8_t *botref, 
+	uint8_t *mb,
 	int i, int j, int imins, int jmins, 
 	mb_motion_s *bestdp_mc,
 	int *vmcp
 	)
 
 {
-	unsigned char *sameref, *oppref;
+	uint8_t *sameref, *oppref;
 	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
 	int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
 
@@ -1897,10 +1897,10 @@ static searchtablerec searchtable[SEARCH_TABLE_SIZE];
 
 */
 
-static int rcdist( unsigned char *org, uint16_t* blksums, int lx, int h )
+static int rcdist( uint8_t *org, uint16_t* blksums, int lx, int h )
 {
 	int i,j;
-	unsigned char *porg; 
+	uint8_t *porg; 
 	int dist = 0;
 	int rowsum;
 	uint16_t *blkrowsums = &blksums[0];
@@ -1945,10 +1945,10 @@ static int rcdist1( uint16_t *orgrsums, uint16_t *orgcsums,
 	return dist;
 }
 
-static void rcsums( unsigned char *org, uint16_t *sums, int lx, int h)
+static void rcsums( uint8_t *org, uint16_t *sums, int lx, int h)
 {
 	int i,j;
-	unsigned char *porg;
+	uint8_t *porg;
 	int rowsum;
 	uint16_t *rowsums = &sums[0];
 	uint16_t *colsums = &sums[h];
@@ -1981,11 +1981,11 @@ static void rcsums( unsigned char *org, uint16_t *sums, int lx, int h)
 */
 
 
-static int rcdist_table( unsigned char *org, int16_t* blksums, 
+static int rcdist_table( uint8_t *org, int16_t* blksums, 
 						 int x, int y, int lx, int h, int (*pdist) )
 {
 	int i,j;
-	unsigned char *porg, *pblk;
+	uint8_t *porg, *pblk;
 	int dist = 0;
 	int rso, rsb;
 	int cso[16], csb[16];
@@ -2024,14 +2024,14 @@ static int rcdist_table( unsigned char *org, int16_t* blksums,
 
 }
 
-static void local_optimum( unsigned char *org, unsigned char *blk, 
+static void local_optimum( uint8_t *org, uint8_t *blk, 
 						   int initx, int inity,
 						   int xlow, int xhigh,
 						   int ylow, int yhigh,
 						   int threshold,
 						   int lx, int h, int *pbestd, int *pbestx, int *pbesty )
 {
-	unsigned char *porg;
+	uint8_t *porg;
 	int deltax = 16 / 2;
 	int deltay = h /2;
 	int bestdx;
@@ -2164,12 +2164,12 @@ static void local_optimum( unsigned char *org, unsigned char *blk,
 
 
 static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh, 
-								 unsigned char *org, uint8_t *forg, 
-								 unsigned char *blk,  uint8_t *fblk, 
+								 uint8_t *org, uint8_t *forg, 
+								 uint8_t *blk,  uint8_t *fblk, 
 								 int lx, int h, 
 								 int *pdmin, int *pimin, int *pjmin )
 {
-  	unsigned char *orgblk;
+  	uint8_t *orgblk;
 	int i,j;
 	int bestrcdist = 256*255;		/* Can't be lazy and use INT_MAX as it gets used in a thresholding
 									   calculation and we don't want to cause overflows */
@@ -2344,15 +2344,15 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 
 */
 
-extern int rcdist_mmx( unsigned char *org, uint16_t *sums, int lx, int h );
+extern int rcdist_mmx( uint8_t *org, uint16_t *sums, int lx, int h );
   
 static int build_rcsub44_heap( int ilow, int ihigh, int jlow, int jhigh, 
-unsigned char *org, unsigned char *blk, 
+uint8_t *org, uint8_t *blk, 
 uint16_t *blkcsums, *blkrsums,
 							  int lx, int h )
 {
 	int i,j;
-	unsigned char *orgblk, *old_orgblk;
+	uint8_t *orgblk, *old_orgblk;
 	uint16_t *orgcsums, *orgrsums,;
 	uint16_t blksums[32];
 	
@@ -2389,7 +2389,7 @@ uint16_t *blkcsums, *blkrsums,
 
 
 static int build_rcsub22_heap(int ihigh, int jhigh, 
-					        unsigned char *org,  unsigned char *blk, 
+					        uint8_t *org,  uint8_t *blk, 
 							int lx, int h,  int searched_sub44_size )
 {
   int k,s;
@@ -3016,8 +3016,8 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 
 
 static void fullsearch(
-	unsigned char *org,
-	unsigned char *ref,
+	uint8_t *org,
+	uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h,
@@ -3201,10 +3201,10 @@ static void fullsearch(
 */
 
 
-static int dist1_00(unsigned char *blk1,unsigned char *blk2,
+static int dist1_00(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h,int distlim)
 {
-	unsigned char *p1,*p2;
+	uint8_t *p1,*p2;
 	int j;
 	int s;
 	register int v;
@@ -3231,10 +3231,10 @@ static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_01(unsigned char *blk1,unsigned char *blk2,
+static int dist1_01(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p2;
+	uint8_t *p1,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -3259,10 +3259,10 @@ static int dist1_01(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_10(unsigned char *blk1,unsigned char *blk2,
+static int dist1_10(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -3286,10 +3286,10 @@ static int dist1_10(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_11(unsigned char *blk1,unsigned char *blk2,
+static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -3314,9 +3314,9 @@ static int dist1_11(unsigned char *blk1,unsigned char *blk2,
 }
 
 /* USED only during debugging...
-void check_fast_motion_data(unsigned char *blk, char *label )
+void check_fast_motion_data(uint8_t *blk, char *label )
 {
-  unsigned char *b, *nb;
+  uint8_t *b, *nb;
   uint8_t *pb,*p;
   uint8_t *qb;
   uint8_t *start_fblk, *start_qblk;
@@ -3363,25 +3363,15 @@ void check_fast_motion_data(unsigned char *blk, char *label )
    for this information...
  */
 
-void fast_motion_data(unsigned char *blk, int picture_struct )
+void fast_motion_data(uint8_t *blk, int picture_struct )
 {
-	unsigned char *b, *nb;
+	uint8_t *b, *nb;
 	uint8_t *pb;
 	uint8_t *qb;
 	uint8_t *start_fblk, *start_qblk;
 	uint16_t *start_rowblk, *start_colblk;
 	int i;
 	int nextfieldline;
-#ifdef TEST_RCSEARCH
-	uint16_t *pc, *pr,*p;
-	int rowsum;
-	int j,s;
-	int down16 = width*16;
-	uint16_t sums[32];
-	uint16_t rowsums[2048];
-	uint16_t colsums[2048];  /* TODO: BUG: should resize with width */
-#endif 
-  
 
 	/* In an interlaced field the "next" line is 2 width's down 
 	   rather than 1 width down                                 */
@@ -3436,7 +3426,7 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 	{
 		for( i = 0; i < nextfieldline/4; ++i )
 		{
-			/* TODO: BRITTLE: A.Stevens - this only works for uint8_t = unsigned char */
+			/* TODO: BRITTLE: A.Stevens - this only works for uint8_t = uint8_t */
 			qb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			qb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;
 			qb += 2;
@@ -3447,67 +3437,6 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 		nb = b + nextfieldline;
 	}
 
-#ifdef TEST_RCSEARCH
-	/* TODO: BUG: THIS CODE DOES NOT YET ALLOW FOR INTERLACED FIELDS.... */
-  
-	/*
-	  Initial row sums....
-	*/
-	pb = blk;
-	for(j = 0; j < height; ++j )
-	{
-		rowsum = 0;
-		for( i = 0; i < 16; ++ i )
-		{
-			rowsum += pb[i];
-		}
-		rowsums[j] = rowsum;
-		pb += width;
-	}
-  
-	/*
-	  Initial column sums
-	*/
-	for( i = 0; i < width; ++i )
-	{
-		colsums[i] = 0;
-	}
-	pb = blk;
-	for( j = 0; j < 16; ++j )
-	{
-		for( i = 0; i < width; ++i )
-		{
-			colsums[i] += *pb;
-			++pb;
-		}
-	}
-  
-	/* Now fill in the row/column sum tables...
-	   Note: to allow efficient construction of sum/col differences for a
-	   given position row sums are held in a *column major* array
-	   (changing y co-ordinate makes for small index changes)
-	   the col sums are held in a *row major* array
-	*/
-  
-	pb = blk;
-	pc = start_colblk;
-	for(j = 0; j <32; ++j )
-	{
-		pr = start_rowblk;
-		rowsum = rowsums[j];
-		for( i = 0; i < width-16; ++i )
-		{
-			pc[i] = colsums[i];
-			pr[j] = rowsum;
-			colsums[i] = (colsums[i] + pb[down16] )-pb[0];
-			rowsum = (rowsum + pb[16]) - pb[0];
-			++pb;
-			pr += height;
-		}
-		pb += 16;   /* move pb on to next row... rememember we only did width-16! */
-		pc += width;
-	}
-#endif 		
 }
 
 
@@ -3583,10 +3512,10 @@ static int qdist1( uint8_t *qblk1, uint8_t *qblk2,int qlx,int qh)
  
 
 static int dist2(blk1,blk2,lx,hx,hy,h)
-	unsigned char *blk1,*blk2;
+	uint8_t *blk1,*blk2;
 	int lx,hx,hy,h;
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s,v;
 
@@ -3663,10 +3592,10 @@ static int dist2(blk1,blk2,lx,hx,hy,h)
  
 
 static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-	unsigned char *pf,*pb,*p2;
+	uint8_t *pf,*pb,*p2;
 	int lx,hxf,hyf,hxb,hyb,h;
 {
-	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
 	int i,j;
 	int s,v;
 
@@ -3716,10 +3645,10 @@ static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
  
 
 static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-	unsigned char *pf,*pb,*p2;
+	uint8_t *pf,*pb,*p2;
 	int lx,hxf,hyf,hxb,hyb,h;
 {
-	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
 	int i,j;
 	int s,v;
 
@@ -3763,7 +3692,7 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
  * lx: distance (in bytes) of vertically adjacent pels
  */
 static int variance(p,lx)
-	unsigned char *p;
+	uint8_t *p;
 	int lx;
 {
 	int i,j;
