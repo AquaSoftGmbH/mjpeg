@@ -27,9 +27,9 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "config.h"
 #include "global.h"
 
 #ifdef OUTPUT_STAT
@@ -114,7 +114,7 @@ unsigned char *rec[3];
 void stats()
 {
 #ifdef OUTPUT_STAT
-  int i, j, k, nmb, mb_type;
+  int i, j, k,  mb_type;
   int n_skipped, n_intra, n_ncoded, n_blocks, n_interp, n_forward, n_backward;
   struct mbinfo *mbi;
 
@@ -139,11 +139,10 @@ void stats()
 					-(4<<cur_picture.back_vert_f_code),(4<<cur_picture.back_vert_f_code)-1);
 		}
 #endif
-  nmb = ;
 
   n_skipped=n_intra=n_ncoded=n_blocks=n_interp=n_forward=n_backward=0;
 
-  for (k=0; k<mb_per_piect; k++)
+  for (k=0; k<mb_per_pict; k++)
   {
     mbi = cur_picture.mbinfo+k;
     if (mbi->skipped)
@@ -170,19 +169,19 @@ void stats()
 
   fprintf(statfile,"\npicture statistics:\n");
   fprintf(statfile," # of intra coded macroblocks:  %4d (%.1f%%)\n",
-    n_intra,100.0*(double)n_intra/mb_per_piect);
+    n_intra,100.0*(double)n_intra/mb_per_pict);
   fprintf(statfile," # of coded blocks:             %4d (%.1f%%)\n",
-    n_blocks,100.0*(double)n_blocks/(block_count*mb_per_piect));
+    n_blocks,100.0*(double)n_blocks/(block_count*mb_per_pict));
   fprintf(statfile," # of not coded macroblocks:    %4d (%.1f%%)\n",
-    n_ncoded,100.0*(double)n_ncoded/mb_per_piect);
+    n_ncoded,100.0*(double)n_ncoded/mb_per_pict);
   fprintf(statfile," # of skipped macroblocks:      %4d (%.1f%%)\n",
-    n_skipped,100.0*(double)n_skipped/mb_per_piect);
+    n_skipped,100.0*(double)n_skipped/mb_per_pict);
   fprintf(statfile," # of forw. pred. macroblocks:  %4d (%.1f%%)\n",
-    n_forward,100.0*(double)n_forward/mb_per_piect);
+    n_forward,100.0*(double)n_forward/mb_per_pict);
   fprintf(statfile," # of backw. pred. macroblocks: %4d (%.1f%%)\n",
-    n_backward,100.0*(double)n_backward/mb_per_piect);
+    n_backward,100.0*(double)n_backward/mb_per_pict);
   fprintf(statfile," # of interpolated macroblocks: %4d (%.1f%%)\n",
-    n_interp,100.0*(double)n_interp/mb_per_piect);
+    n_interp,100.0*(double)n_interp/mb_per_pict);
 
   fprintf(statfile,"\nmacroblock_type map:\n");
 

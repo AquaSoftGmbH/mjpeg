@@ -27,9 +27,9 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <string.h>
-#include "config.h"
 #include "global.h"
 
 
@@ -354,6 +354,5 @@ void putseq()
 		writeframe(f+frame0,curref);
 			
 	}
-
 	putseqend();
 }

@@ -1,6 +1,7 @@
 /* idct.c, inverse fast discrete cosine transform                           */
 
-#include <inttypes.h>
+#include <config.h>
+#include "mpeg2enc.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -43,7 +44,7 @@
 /* this code assumes >> to be a two's-complement arithmetic */
 /* right shift: (-2)>>1 == -1 , (-3)>>1 == -2               */
 
-#include "config.h"
+
 
 #define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
 #define W2 2676 /* 2048*sqrt(2)*cos(2*pi/16) */

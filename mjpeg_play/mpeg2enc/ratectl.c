@@ -27,13 +27,13 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
 #include <limits.h>
 
-#include "config.h"
 #include "global.h"
-
+#include "fastintfns.h"
 
 /* private prototypes */
 
@@ -87,7 +87,7 @@ static int CarryRLim;
 										
 */
 
-static bitcount_t bitcnt_EOP = 0;
+static int64_t bitcnt_EOP = 0;
 static int gop_undershoot = 0;
 
 /*
@@ -103,7 +103,7 @@ double avg_act;
 double peak_act;
 
 static int Np, Nb;
-static bitcount_t S;
+static int64_t S;
 static double IR;
 
 /* Note: eventually we may wish to tweak these to suit image content */
@@ -482,7 +482,7 @@ void rc_update_pict(pict_data_s *picture)
 {
 	double X;
 	double K;
-	bitcount_t AP,PP;		/* Actual and padded picture bit counts */
+	int64_t AP,PP;		/* Actual and padded picture bit counts */
 	int    i;
 	int    Qsum;
 	int frame_overshoot;

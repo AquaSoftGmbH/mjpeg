@@ -27,7 +27,6 @@
  *
  */
 
-#include <inttypes.h>
 #include "mpeg2enc.h"
 
 /* choose between declaration (GLOBAL undefined)
@@ -46,79 +45,79 @@
 /* prototypes of global functions */
 
 /* conform.c */
-void range_checks _ANSI_ARGS_((void));
-void profile_and_level_checks _ANSI_ARGS_(());
+void range_checks (void);
+void profile_and_level_checks ();
 
 /* fdctref.c */
-void init_fdct _ANSI_ARGS_((void));
-void fdct _ANSI_ARGS_((int16_t *block));
+void init_fdct (void);
+void fdct (int16_t *block);
 
 /* idct.c */
-void idct _ANSI_ARGS_((int16_t *block));
-void init_idct _ANSI_ARGS_((void));
+void idct (int16_t *block);
+void init_idct (void);
 
 /* motion.c */
 
 void init_motion ();
 
 
-void motion_estimation _ANSI_ARGS_((
+void motion_estimation (
 	pict_data_s *picture,
 	motion_comp_s *mc_data,
-	int secondfield, int ipflag));
+	int secondfield, int ipflag);
 
-void fast_motion_data _ANSI_ARGS_((uint8_t *mcompdata, int pict_struct));
-void check_fast_motion_data _ANSI_ARGS_((uint8_t *blk, char *label ));
+void fast_motion_data (uint8_t *mcompdata, int pict_struct);
+void check_fast_motion_data (uint8_t *blk, char *label );
 
-void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
+void reset_thresholds  (int macroblocks_per_frame );
 /* mpeg2enc.c */
-void error _ANSI_ARGS_((char *text));
+void error (char *text);
 
 /* predict.c */
 void init_predict();
 
-void predict _ANSI_ARGS_((pict_data_s *picture,
+void predict (pict_data_s *picture,
 						  uint8_t *reff[], uint8_t *refb[],
 						  uint8_t *cur[3], 
-						  int secondfield));
+						  int secondfield);
 
 /* putbits.c */
-void initbits _ANSI_ARGS_((void));
-void putbits _ANSI_ARGS_((int val, int n));
-void alignbits _ANSI_ARGS_((void));
-bitcount_t bitcount _ANSI_ARGS_((void));
+void initbits (void);
+void putbits (int val, int n);
+void alignbits (void);
+int64_t bitcount (void);
 
 /* puthdr.c */
-void putseqhdr _ANSI_ARGS_((void));
-void putseqext _ANSI_ARGS_((void));
-void putseqdispext _ANSI_ARGS_((void));
-void putuserdata _ANSI_ARGS_((char *userdata));
-void putgophdr _ANSI_ARGS_((int frame, int closed_gop));
-void putpicthdr _ANSI_ARGS_((pict_data_s *picture));
-void putpictcodext _ANSI_ARGS_((pict_data_s *picture));
-void putseqend _ANSI_ARGS_((void));
+void putseqhdr (void);
+void putseqext (void);
+void putseqdispext (void);
+void putuserdata (char *userdata);
+void putgophdr (int frame, int closed_gop);
+void putpicthdr (pict_data_s *picture);
+void putpictcodext (pict_data_s *picture);
+void putseqend (void);
 
 /* putmpg.c */
-void putintrablk _ANSI_ARGS_((pict_data_s *picture, int16_t *blk, int cc));
-void putnonintrablk _ANSI_ARGS_((pict_data_s *picture,int16_t *blk));
-void putmv _ANSI_ARGS_((int dmv, int f_code));
+void putintrablk (pict_data_s *picture, int16_t *blk, int cc);
+void putnonintrablk (pict_data_s *picture,int16_t *blk);
+void putmv (int dmv, int f_code);
 
 /* putpic.c */
 void putpict (pict_data_s *picture);
 
 /* putseq.c */
-void putseq _ANSI_ARGS_((void));
+void putseq (void);
 
 /* putvlc.c */
-void putDClum _ANSI_ARGS_((int val));
-void putDCchrom _ANSI_ARGS_((int val));
-void putACfirst _ANSI_ARGS_((int run, int val));
-void putAC _ANSI_ARGS_((int run, int signed_level, int vlcformat));
-void putaddrinc _ANSI_ARGS_((int addrinc));
-void putmbtype _ANSI_ARGS_((int pict_type, int mb_type));
-void putmotioncode _ANSI_ARGS_((int motion_code));
-void putdmv _ANSI_ARGS_((int dmv));
-void putcbp _ANSI_ARGS_((int cbp));
+void putDClum (int val);
+void putDCchrom (int val);
+void putACfirst (int run, int val);
+void putAC (int run, int signed_level, int vlcformat);
+void putaddrinc (int addrinc);
+void putmbtype (int pict_type, int mb_type);
+void putmotioncode (int motion_code);
+void putdmv (int dmv);
+void putcbp (int cbp);
 
 /* quantize.c */
 
@@ -138,21 +137,21 @@ extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 
 /* ratectl.c */
-void rc_init_seq _ANSI_ARGS_((void));
-void rc_init_GOP _ANSI_ARGS_((int np, int nb));
-void rc_init_pict _ANSI_ARGS_((pict_data_s *picture));
-void rc_update_pict _ANSI_ARGS_((pict_data_s *picture));
-int rc_start_mb _ANSI_ARGS_((pict_data_s *picture));
-int rc_calc_mquant _ANSI_ARGS_((pict_data_s *picture,int j));
-void vbv_end_of_picture _ANSI_ARGS_((pict_data_s *picture));
-void calc_vbv_delay _ANSI_ARGS_((pict_data_s *picture));
+void rc_init_seq (void);
+void rc_init_GOP (int np, int nb);
+void rc_init_pict (pict_data_s *picture);
+void rc_update_pict (pict_data_s *picture);
+int rc_start_mb (pict_data_s *picture);
+int rc_calc_mquant (pict_data_s *picture,int j);
+void vbv_end_of_picture (pict_data_s *picture);
+void calc_vbv_delay (pict_data_s *picture);
 
 /* readpic.c */
-int readframe _ANSI_ARGS_((int frame_num, uint8_t *frame[]));
+int readframe (int frame_num, uint8_t *frame[]);
 
 /* stats.c */
-void calcSNR _ANSI_ARGS_((uint8_t *org[3], uint8_t *rec[3]));
-void stats _ANSI_ARGS_((void));
+void calcSNR (uint8_t *org[3], uint8_t *rec[3]);
+void stats (void);
 
 /* transfrm.c */
 void transform (pict_data_s *picture,
@@ -167,7 +166,7 @@ void dct_type_estimation (pict_data_s *picture,
 void init_transform();
 
 /* writepic.c */
-void writeframe _ANSI_ARGS_((int frame_num, uint8_t *frame[]));
+void writeframe (int frame_num, uint8_t *frame[]);
 
 
 /* global variables */
@@ -470,42 +469,12 @@ EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 EXTERN int frame_num;			
 EXTERN int input_fd;
 
+EXTERN int tst_counter
+#ifdef GLOBAL
+= 0
+#endif
+;
 
 /* Some macros for stuff that is (tediously) absent from the standard
    C libraries.
 */
-
-
-/*
- * fast int abs function for pipelined CPU's that suffer when
- * they have unpredictable branches...
- * WARNING: Assumes 8-bit bytes...
- *
- */
-
-
-#define fabsshift ((8*sizeof(unsigned int))-1)
-static __inline__ int intabs(int x)
-{
-	return ((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift);
-}
-
-static __inline__ int intmax(int x, int y)
-{
-	return (((x-y)>>fabsshift) & y) |  ((~((x-y)>>fabsshift)) & x);
-}
-
-static __inline__ int intmin(int x,int y)
-{
-	return (((y-x)>>fabsshift) & y) |  ((~((y-x)>>fabsshift)) & x);
-}
-
-
-#define signmask(x) (((int)x)>>fabsshift)
-static __inline__ int intsamesign(int x, int y)
-{
-	return (y+(signmask(x) & -(y<<1)));
-}
-#undef signmask
-#undef fabsshift
-

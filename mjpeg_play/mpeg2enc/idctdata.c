@@ -9,7 +9,10 @@
 // Intel's app-note focuses on the numerical issues of the algorithm, but
 // assumes the programmer is familiar with IDCT mathematics, leaving the
 // form of the complete function up to the programmer's imagination.
-//
+
+#include "mpeg2enc.h"
+#include "simd.h"
+
 //  ALGORITHM OVERVIEW
 //  ------------------
 // I played around with the code for quite a few hours.  I came up
@@ -79,8 +82,6 @@
 //
 //   liaor@umcc.ais.org  http://members.tripod.com/~liaor
 //  
-
-#include <inttypes.h>
 
 //;=============================================================================
 //;

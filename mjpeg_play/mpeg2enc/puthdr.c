@@ -27,14 +27,14 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "config.h"
 #include "global.h"
 
 
 /* private prototypes */
-static int frametotc _ANSI_ARGS_((int frame));
+static int frametotc (int frame);
 
 /* generate sequence header (6.2.2.1, 6.3.3)
  *

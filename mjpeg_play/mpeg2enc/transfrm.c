@@ -27,9 +27,9 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "config.h"
 #include "global.h"
 #include "cpu_accel.h"
 

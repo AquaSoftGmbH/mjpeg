@@ -27,8 +27,8 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
-#include "config.h"
 #include "global.h"
 #include "cpu_accel.h"
 #include "simd.h"

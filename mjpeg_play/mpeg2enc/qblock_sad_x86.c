@@ -34,10 +34,12 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include <config.h>
+#include "mpeg2enc.h"
 #include "simd.h"
 #include "attributes.h"
 #include "mmx.h"
-#include "stdio.h"
+#include "fastintfns.h"
 
 /*
   Register usage:
@@ -224,34 +226,6 @@ static __inline__ int qblock_sad_mmx(uint8_t *refblk,
 	return res & 0xffff;
 }
 
-
-__inline__ int fastmax( register int x, register int y )
-{
-	asm( "cmpl %1, %0\n"
-	     "cmovl %1, %0\n"
-         : "+r" (x) :  "r" (y)
-       );
-	return x;
-}
-
-__inline__ int fastmin( register int x, register int y )
-{
-	asm( "cmpl %1, %0\n"
-	     "cmovg %1, %0\n"
-         : "+r" (x) :  "rm" (y)
-       );
-	return x;
-}
-
-__inline__ int fastabs( register int x )
-{
-	register int neg = -x;
-	asm( "cmpl %1, %0\n"
-	     "cmovl %1, %0\n"
-         : "+r" (x) :  "r" (neg)
-       );
-	return x;
-}
 
 /*
  * Do the Extended MMX versions

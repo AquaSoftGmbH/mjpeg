@@ -27,9 +27,9 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "config.h"
 #include "global.h"
 
 void writeframe(int frame_num,

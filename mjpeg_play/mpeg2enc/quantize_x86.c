@@ -36,11 +36,10 @@
  * RETURN: 1 If non-zero coefficients left after quantisaion 0 otherwise
  */
 
-
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
 #include <fenv.h>
-#include "config.h"
 #include "global.h"
 #include "cpu_accel.h"
 #include "simd.h"

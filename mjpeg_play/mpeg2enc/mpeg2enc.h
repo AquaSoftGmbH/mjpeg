@@ -1,5 +1,7 @@
 /* mpg2enc.h, defines and types                                             */
 
+#include <inttypes.h>
+
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
 /*
@@ -175,8 +177,8 @@ struct pict_data
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */
-	short (*blocks)[64];
-	short (*qblocks)[64];
+	int16_t (*blocks)[64];
+	int16_t (*qblocks)[64];
 
 	/* macroblock side information array */
 	struct mbinfo *mbinfo;
@@ -185,6 +187,14 @@ struct pict_data
 
 typedef struct pict_data pict_data_s;
 
+struct mc_result
+{
+	uint16_t weight;
+	int8_t x;
+	int8_t y;
+};
+
+typedef struct mc_result mc_result_s;
 
 
 /* 4*4 sub-sampled pel Threshold below which initial 8*8 grid motion

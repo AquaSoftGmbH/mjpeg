@@ -27,14 +27,14 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
 #include <math.h>
 #include <fenv.h>
-#include "config.h"
 #include "global.h"
 #include "cpu_accel.h"
 #include "simd.h"
-
+#include "fastintfns.h"
 
 
 /* Global function pointers for SIMD-dependent functions */
@@ -62,27 +62,30 @@ void init_quantizer()
 #ifdef X86_CPU
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
+		fprintf( stderr, "SETTING " );
 		if( (flags & ACCEL_X86_3DNOW) != 0 )
 		{
-			fprintf( stderr, "SETTING 3DNOW for QUANTIZER!\n");
+			fprintf( stderr, "3DNOW and ");
 			pquant_non_intra = quant_non_intra_3dnow;
-			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra_m1 = iquant_non_intra_m1_sse;		
 		}
-		else if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		else 
 		{
-			fprintf( stderr, "SETTING EXTENDED MMX for QUANTIZER!\n");
 			pquant_non_intra = quant_non_intra_mmx;
+		}
+
+		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		{
+			fprintf( stderr, "EXTENDED MMX");
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_sse;
 		}
 		else
 		{
-			fprintf( stderr, "SETTING MMX for QUANTIZER!\n");
-			pquant_non_intra = quant_non_intra_mmx;
+			fprintf( stderr, "MMX");
 			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
 			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
 		}
+		fprintf( stderr, " for QUANTIZER!\n");
 	}
   else
 #endif

@@ -27,14 +27,13 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
-
-#include "config.h"
 #include "global.h"
 #include "vlc.h"
 
 /* private prototypes */
-static void putDC _ANSI_ARGS_((sVLCtable *tab, int val));
+static void putDC (sVLCtable *tab, int val);
 
 /* generate variable length code for luminance DC coefficient */
 void putDClum(val)

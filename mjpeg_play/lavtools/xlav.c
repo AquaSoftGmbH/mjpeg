@@ -1,5 +1,5 @@
 /* Form definition file generated with fdesign. */
-
+#include <config.h>
 #include "forms.h"
 #include <stdlib.h>
 #include "xlav.h"

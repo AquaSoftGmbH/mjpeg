@@ -32,7 +32,7 @@
  * Modifications to speed up motion compensation (c) 2000 Andrew Stevens
  * 
  */
-
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -41,15 +41,15 @@
 #include <string.h>
 
 #define GLOBAL /* used by global.h */
-#include "config.h"
+
 #include "global.h"
 
 int verbose = 2;
 
 /* private prototypes */
-static void init _ANSI_ARGS_((void));
+static void init (void);
 static void readparmfile();
-static void readquantmat _ANSI_ARGS_((void));
+static void readquantmat (void);
 
 
 

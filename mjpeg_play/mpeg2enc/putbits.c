@@ -27,8 +27,8 @@
  *
  */
 
+#include <config.h>
 #include <stdio.h>
-#include "config.h"
 #include "global.h"
 
 extern FILE *outfile; /* the only global var we need here */
@@ -47,7 +47,7 @@ char *outbfrch=(char *)&outbfr;
 #endif
 #define ORIGINAL_CODE
 static int outcnt;
-static bitcount_t bytecnt;
+static int64_t bytecnt;
 
 /* initialize buffer, call once before first putbits or alignbits */
 void initbits()
@@ -132,7 +132,7 @@ void alignbits()
 }
 
 /* return total number of generated bits */
-bitcount_t bitcount()
+int64_t bitcount()
 {
 #ifdef ORIGINAL_CODE
   return 8LL*bytecnt + (8-outcnt);

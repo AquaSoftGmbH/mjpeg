@@ -73,10 +73,13 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 			weight = SIMD_SUFFIX(qblock_sad)(ref, h, rowstride);
 			if( weight <= threshold )
 			{
-				threshold =  fastmin(weight<<2,threshold);
+				threshold = intmin(weight<<2,threshold);
 				/* Rough and-ready absolute distance penalty */
-				/* NOTE: This penalty is *vital* to correct operation */
-				cres->weight = (uint16_t)weight+((fastabs(x)+fastabs(y))>>3);
+				/* NOTE: This penalty is *vital* to correct operation 
+				   as otherwise the sub-mean filtering won't work on very
+				   uniform images.
+				 */
+				cres->weight = (uint16_t)weight+((intabs(x)+intabs(y))>>3);
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
 				++cres;
@@ -90,50 +93,4 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 	return cres - resvec;
 }
 
-/*
- * across - Look at neighbours to the right (1 or 0)
- * down   - look at neighbours to below (1 or 0)
- */
-
-int SIMD_SUFFIX(qblock_near_dist)( uint8_t *blk,  uint8_t *ref,
-								   int basex, int basey,
-								   int across, int down,
-								   int threshold,
-								   int h, int rowstride, mc_result_s *resvec)
-{
-	int x,y;
-	uint8_t *curblk = blk;
-	mc_result_s *cres = resvec;
-	int start = 1-across;
-	int fin   = across + down + (across&down);
-	int i;
-	int weight;
-	y = basey;
-	for( i = start; i < fin; ++i )
-	{
-		if (i==1)
-		{
-			curblk = blk+rowstride;
-			x=basex;
-			y+=4;
-		}
-		if( i < 2)
-			load_blk( curblk, rowstride, h );
-		if( i != 1)
-		{
-			x = basex+4;
-			shift_blk(8);
-		}
-		weight = SIMD_SUFFIX(qblock_sad)(ref, h, rowstride);
-		if( weight <= threshold )
-		{
-			cres->weight = weight;
-			cres->x = (int8_t)x;
-			cres->y = (int8_t)y;
-			++cres;
-		}
-	}		
-	emms();
-	return cres - resvec;
-}
 #undef concat

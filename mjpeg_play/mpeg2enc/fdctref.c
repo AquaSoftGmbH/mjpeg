@@ -1,6 +1,6 @@
 /* fdctref.c, forward discrete cosine transform, double precision           */
 
-#include <inttypes.h>
+#include "mpeg2enc.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -29,10 +29,11 @@
  *
  */
 
+#include <config.h>
 #include <math.h>
 #include <stdio.h>
 
-#include "config.h"
+
 
 
 
@@ -224,8 +225,8 @@ void fdctdaan(int16_t *block)
 #endif
 
 /* global declarations */
-void init_fdct _ANSI_ARGS_((void));
-void fdct _ANSI_ARGS_((int16_t *block));
+void init_fdct (void);
+void fdct (int16_t *block);
 
 /* private data */
 static int c[8][8]; /* transform coefficients */

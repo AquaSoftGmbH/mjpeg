@@ -46,10 +46,9 @@
  *
  */
 
-
+#include <config.h>
 #include <stdio.h>
 #include <limits.h>
-#include "config.h"
 #include "global.h"
 #include "math.h"
 #include "cpu_accel.h"
@@ -174,11 +173,6 @@ int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 							int h, int rowstride, 
 							int threshold,
 							mc_result_s *resvec);
-int (*pqblock_near_dist)( uint8_t *blk,  uint8_t *ref,
-						  int basex, int basey,
-						  int across, int down,
-						  int threshold,
-						  int h, int rowstride, mc_result_s *resvec);
 
 
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
@@ -245,7 +239,6 @@ void init_motion()
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
 		pqblock_8grid_dists = qblock_8grid_dists_sse;
-		pqblock_near_dist = qblock_near_dist_sse;
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
@@ -260,7 +253,6 @@ void init_motion()
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
 		pqblock_8grid_dists = qblock_8grid_dists_mmx;
-		pqblock_near_dist = qblock_near_dist_mmx;
 	}
 #endif
 }
@@ -430,12 +422,15 @@ static void frame_ME(pict_data_s *picture,
 			dmc = framef_mc.sad;
 			dmcfield = topfldf_mc.sad + botfldf_mc.sad;
 			
-			if (M==1)
+			if (0 && M==1)
+			{
 				dpframe_estimate(picture,mc->oldref,&ssmb,
 								 i,j>>1,imins,jmins,
 								 &dualpf_mc,
 								 &imindmv,&jmindmv, &vmc_dp);
-			dmc_dp = dualpf_mc.sad;
+				dmc_dp = dualpf_mc.sad;
+			}
+
 			/* select between dual prime, frame and field prediction */
 			if (M==1 && dmc_dp<dmc && dmc_dp<dmcfield)
 			{
@@ -443,7 +438,7 @@ static void frame_ME(pict_data_s *picture,
 				dmc = dmc_dp;
 				vmc = vmc_dp;
 			}
-			else if (dmc<=dmcfield)
+			else if ( dmc<=dmcfield)
 			{
 				mbi->motion_type = MC_FRAME;
 				vmc = unidir_pred_var( &framef_mc, ssmb.mb, width,16);
@@ -1833,7 +1828,8 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	int init_search;
 	int init_size;
 	blockxy matchrec;
-  
+	/*	int resvec[4];*/
+
  
 	init_search = searched_size;
 	init_size = sub22_num_mcomps;
@@ -1843,11 +1839,17 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 		matchrec.y = j0 + sub22_mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
 		penalty = abs(matchrec.x)+abs(matchrec.y);
-
+		
+		/* EXPERIMENTAL
+		   block_dist1_SSE(orgblk,blk,lx,h, resvec);
+		*/
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= xmax && matchrec.y <= ymax )
 			{
+				/*EXPERIMENTAL
+				  d = penalty+resvec[i];*/
+
 				d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
 				if (d<dmin)
 				{
@@ -1867,6 +1869,16 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 				matchrec.x += 1;
 			}
 		}
+		/*
+		if( bad )
+		{
+			for(i=0; i< 4; ++i )
+			{
+					fprintf( stderr, "BAD%d: B=%d R=%d\n", i, resvec[i], refvec[i] );
+			}
+			exit(1);
+		}
+		*/
 
 	}
 

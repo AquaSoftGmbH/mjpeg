@@ -1,11 +1,9 @@
 ;
-;  dist1_00.s:  SSE optimized version of the noninterpolative section of
-;               dist1(), part of the motion vector detection code.  Runs
-;               mpeg2enc -r11 at about 450% the speed of the original on
-;               my Athlon.
+;  fdist1_00.s:  SSE optimized 2*2 sub-sampled SAD computation.
 ;
-;  Copyright (C) 2000 Chris Atenasio <chris@crud.net>
-
+;  Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
+		;; Yes - I tried prefetching.  Either makes no difference
+		;; or makes things *slower* on Duron and PIII.
 ;
 ;  This program is free software; you can reaxstribute it and/or
 ;  modify it under the terms of the GNU General Public License
@@ -44,8 +42,8 @@ global fdist1_SSE
 
 align 32
 fdist1_SSE:
-	push ebp		; save stack pointer
-	mov ebp, esp		; so that we can do this
+	push ebp		; save frame pointer
+	mov ebp, esp
 
 	push ebx	
 	push ecx
@@ -57,34 +55,34 @@ fdist1_SSE:
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
 
-	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrowfd		; snap to it
+	mov ecx, [ebp+20]
+	jmp nextrowfd
 align 32
 nextrowfd:
 	movq   mm4, [eax]	 ; load first 8 bytes of p1 (row 1) 
-	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
 	add eax, edx		; update pointer to next row
+	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
 	add ebx, edx		; ditto
 	paddd  mm0, mm4		; accumulate difference
 	
 
 	movq mm6, [eax]		; load first 8 bytes of p1 (row 2)
-	psadbw mm6, [ebx]	; compare to first 8 bytes of p2 (row 2)
 	add eax, edx		; update pointer to next row
+	psadbw mm6, [ebx]	; compare to first 8 bytes of p2 (row 2)
 	add ebx, edx		; ditto
 	paddd mm0, mm6		; accumulate difference
 	
 
 	sub ecx, 2
-	jnz nextrowfd		; rinse and repeat
+	jnz nextrowfd
 
-	movd eax, mm0		; store return value
+	movd eax, mm0
 	
 	pop edx	
 	pop ecx	
 	pop ebx	
 
-	pop ebp			; restore stack pointer
+	pop ebp
 
-	emms			; clear mmx registers
-	ret			; we now return you to your regular programming
+	emms
+	ret
