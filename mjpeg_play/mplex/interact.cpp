@@ -27,11 +27,10 @@
 #else
 #include <unistd.h>
 #endif
+#include <sys/stat.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
-#include <sys/stat.h>
-
 #include <mjpeg_logging.h>
 #include <format_codes.h>
 
@@ -239,7 +238,7 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
     outfile_pattern = NULL;
 
 #if defined(HAVE_GETOPT_LONG)
-	while( (n=getlong(argc,argv,short_options,long_options, NULL)) != -1 )
+	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1 )
 #endif
