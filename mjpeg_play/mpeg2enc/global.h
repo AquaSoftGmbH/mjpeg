@@ -35,7 +35,7 @@
 #include "macroblock.hh"
 #include "picture.hh"
 
-class RateCtl;
+class MPEG2Encoder;
 
 /* prototypes of global functions */
 
@@ -49,8 +49,6 @@ void init_motion (void);
 void motion_estimation (Picture *picture);
 void motion_subsampled_lum( Picture *picture );
 
-/* mpeg2enc.c */
-void *bufalloc( size_t size );
 
 /* predict.c */
 
@@ -68,8 +66,6 @@ void putseqext (void);
 void putseqdispext (void);
 void putuserdata (const uint8_t *userdata, int len);
 void putgophdr (int frame, int closed_gop);
-void putpicthdr (Picture &picture, RateCtl &ratectl);
-void putpictcodext (Picture *picture);
 void putseqend (void);
 
 /* putmpg.c */
@@ -79,7 +75,7 @@ void putmv (int dmv, int f_code);
 
 
 /* putseq.c */
-void putseq (void);
+void putseq (MPEG2Encoder &encoder);
 
 /* putvlc.c */
 void putDClum (int val);
@@ -101,12 +97,13 @@ double inv_scale_quant( int q_scale_type, int raw_code );
 int scale_quant( int q_scale_type, double quant );
 
 /* readpic.c */
-int readframe (int frame_num, uint8_t *frame[]);
-int frame_lum_mean(int frame_num);
-void read_stream_params( unsigned int *hsize, unsigned int *vsize, 
-						 unsigned int *frame_rate_code,
-						 unsigned int  *interlacing_code, 
-						 unsigned int *aspect_code );
+//void init_reader();
+//int readframe (int frame_num, uint8_t *frame[]);
+//int frame_lum_mean(int frame_num);
+//void read_stream_params( unsigned int *hsize, unsigned int *vsize, 
+//						 unsigned int *frame_rate_code,
+//						 unsigned int  *interlacing_code, 
+//						 unsigned int *aspect_code );
 
 /* stats.c */
 void calcSNR (Picture *picture);
@@ -124,23 +121,8 @@ void writeframe (int frame_num, uint8_t *frame[]);
 
 
 
-/* Buffers frame data */
-EXTERN uint8_t ***frame_buffers
-#ifdef GLOBAL
- = NULL
-#endif
-;
-EXTERN unsigned int frame_buffer_size
-#ifdef GLOBAL
-  = 0
-#endif
-;
-
 EXTERN FILE *outfile, *statfile; /* file descriptors */
 EXTERN int inputtype; /* format of input frames */
-extern struct EncoderParams encparams;
-
-
 
 EXTERN int frame_num;			/* Useful for triggering debug information */
 

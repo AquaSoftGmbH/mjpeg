@@ -49,7 +49,7 @@
 #include "config.h"
 #include "global.h"
 #include "fastintfns.h"
-#include "quantize_ref.h"
+#include "quantize.hh"
 
 /********************
  * 
@@ -137,26 +137,26 @@ static int unit_coeff_elimination(DCTblock &block,
 }
 
 
-void MacroBlock::Quantize()
+void MacroBlock::Quantize( Quantizer &quant  )
 {
     if (final_me.mb_type & MB_INTRA)
     {
-        quant_intra( dctblocks[0],
-                     qdctblocks[0],
-                     picture->q_scale_type,
-                     picture->dc_prec,
-                     encparams.dctsatlim,
-                     &mquant );
+        quant.QuantIntra( dctblocks[0],
+                          qdctblocks[0],
+                          picture->q_scale_type,
+                          picture->dc_prec,
+                          picture->encparams->dctsatlim,
+                          &mquant );
 		
         cbp = (1<<BLOCK_COUNT) - 1;
     }
     else
     {
-        cbp = (*pquant_non_intra)( dctblocks[0],
-                                   qdctblocks[0],
-                                   picture->q_scale_type,
-                                   encparams.dctsatlim,
-                                   &mquant );
+        cbp = quant.QuantInter( dctblocks[0],
+                                qdctblocks[0],
+                                picture->q_scale_type,
+                                picture->encparams->dctsatlim,
+                                &mquant );
         int block;
 		if( picture->unit_coeff_threshold )
         {
@@ -175,31 +175,51 @@ void MacroBlock::Quantize()
     }
 }
 
-void MacroBlock::IQuantize()
+void MacroBlock::IQuantize( Quantizer &quant)
 {
     int j;
     if (final_me.mb_type & MB_INTRA)
     {
         for (j=0; j<BLOCK_COUNT; j++)
-            (*piquant_intra)(qdctblocks[j], qdctblocks[j], picture->dc_prec, mquant);
+            quant.IQuantIntra(qdctblocks[j], qdctblocks[j], picture->dc_prec, mquant);
     }
     else
     {
         for (j=0;j<BLOCK_COUNT;j++)
-            (*piquant_non_intra)(qdctblocks[j], qdctblocks[j], mquant);
+            quant.IQuantInter(qdctblocks[j], qdctblocks[j], mquant);
     }
 }
 
 
-
-void iquantize( Picture *picture )
+void Picture::IQuantize()
 {
     int k;
-	for (k=0; k<encparams.mb_per_pict; k++)
+	for (k=0; k<encparams->mb_per_pict; k++)
 	{
-        picture->mbinfo[k].IQuantize();
+        mbinfo[k].IQuantize( encoder->quantizer );
 	}
 }
+
+Quantizer::Quantizer( MPEG2Encoder &_encoder ) :
+    encoder( _encoder )
+{
+}
+
+void Quantizer::Init()
+{
+    init_quantizer( static_cast<QuantizerCalls *>(this),
+                    &workspace,
+                    static_cast<int>(encoder.parms.mpeg1), 
+                    encoder.parms.intra_q, 
+                    encoder.parms.inter_q );
+    //dctsatlim = encoder.parms.dctsatlim;
+}
+
+Quantizer::~Quantizer()
+{
+    shutdown_quantizer( workspace );
+}
+
 
 /* 
  * Local variables:

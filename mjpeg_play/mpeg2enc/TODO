@@ -1,8 +1,9 @@
 IN PROGRESS
 
-	- Fix segfault on exit with -M 2
+	- We should replace BUFFER_ALIGN with something cleaner/more OS / Compiler
+	  aware...
 	- Tidy up the source code placement of the Picture, StreamState etc classes
-	- Probably need to create an 'Encoder' object
+	- Tidy up filenames: they are now wildy out-of-date compared to their contents.
 	- MotionEst should be called 'MacroBlockCodingMode'
 	- Shouldn't <X> (picture et al) be called <X>Encoder?
 

@@ -24,13 +24,14 @@
 /* picture.hh picture class... */
 
 #include "config.h"
+#include "mjpeg_types.h"
+#include "mpeg2enc.h"
+#include "macroblock.hh"
 #include <vector>
+
 using namespace std;
 
-/* Transformed per-picture data  */
 
-typedef int MotionVecPred[2][2][2];
-typedef int DC_DctPred[3];
 
 class CodingPredictors
 {
@@ -58,7 +59,7 @@ public:
     
 };
 
-
+class MPEG2Encoder;
 class RateCtl;
 class EncoderParams;
 class StreamState;
@@ -67,9 +68,15 @@ class Picture : public CodingPredictors
 {
 public:
     Picture() {}
-    
+    Picture(  MPEG2Encoder &_encoder ); 
+    ~Picture();
+
     // In putseq.cc
-    void Init( EncoderParams &_encparms ); 
+    void Init( MPEG2Encoder &_encoder ); 
+    void Reconstruct();
+    void EncodeMacroBlocks();
+    void IQuantize();
+
     void SetSeqPos( int decode, int b_index );
     void Set2ndField();
     void Set_IP_Frame( StreamState *ss );
@@ -79,6 +86,10 @@ public:
     void PutHeadersAndEncoding( RateCtl &ratecontrol );
     void QuantiseAndPutEncoding(RateCtl &ratecontrol);
     void PutHeader(); 
+
+    // In ratectl.cc
+    void ActivityMeasures( double &act_sum, double &var_sum);
+
 private:
     void PutSliceHdr( int slice_mb_y );
     void PutMVs( MotionEst &me, bool back );
@@ -92,6 +103,7 @@ public:
      **************/
 
     EncoderParams *encparams;
+    MPEG2Encoder *encoder;
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */
@@ -118,11 +130,11 @@ public:
 	sync_guard_t completion;
 
 	/* picture encoding source data  */
-	uint8_t **oldorg, **neworg;	/* Images for Old and new reference picts */
-	uint8_t **oldref, **newref;	/* original and reconstructed */
-	uint8_t **curorg, **curref;	/* Images for current pict orginal and*/
-								/* reconstructed */
-	uint8_t **pred;			/* Prediction based on MC (if any) */
+	ImagePlanes oldorg, neworg;	/* Images for Old and new reference picts */
+	ImagePlanes oldref, newref;	/* original and reconstructed */
+	ImagePlanes curorg, curref;	/* Images for current pict orginal and*/
+                                    /* reconstructed */
+	ImagePlanes pred;			/* Prediction based on MC (if any) */
 	int sxf, syf, sxb, syb;		/* MC search limits. */
 	bool secondfield;			/* Second field of field frame */
 	bool ipflag;				/* P pict in IP frame (FIELD pics only)*/

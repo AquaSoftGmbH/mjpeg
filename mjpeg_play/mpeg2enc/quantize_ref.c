@@ -57,9 +57,9 @@
 #endif
 #include "syntaxconsts.h"
 #include "fastintfns.h"
-
 #include "cpu_accel.h"
 #include "simd.h"
+#include "quantize_ref.h"
 #include "quantize_precomp.h"
 
 #ifdef HAVE_ALTIVEC
@@ -68,18 +68,9 @@ void enable_altivec_quantization(int opt_mpeg1,
                                  uint16_t *inter_q);
 #endif
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
-void enable_x86_quantization( int mpeg1 );
+void enable_x86_quantization( struct QuantizerCalls *calls,
+                              int mpeg1 );
 #endif
-
-int (*pquant_non_intra)( int16_t *src, int16_t *dst,
-                         int q_scale_type, 
-                         int dctsatlim,
-                         int *nonsat_mquant);
-int (*pquant_weight_coeff_intra)(int16_t *blk );
-int (*pquant_weight_coeff_inter)(int16_t *blk );
-
-void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
-void (*piquant_intra)(int16_t *src, int16_t *dst, int dc_prec, int mquant );
 
 /* non-linear quantization coefficient table */
 const uint8_t non_linear_mquant_table[32] =
@@ -105,16 +96,6 @@ const uint8_t map_non_linear_mquant[113] =
 };
 
 
-/* Precomputed quantisation factors for fast quantisation calculations */
-
-uint16_t intra_q_mat[64], i_intra_q_mat[64];
-uint16_t inter_q_mat[64], i_inter_q_mat[64];
-uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-
-float intra_q_tblf[113][64], inter_q_tblf[113][64];
-float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
-	
 
 /*
  * Return the code for a quantisation level
@@ -163,7 +144,8 @@ int next_larger_quant( int q_scale_type, int quant )
  * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
  */
 
-void quant_intra( int16_t *src, 
+void quant_intra( struct QuantizerWorkSpace *wsp,
+                  int16_t *src, 
 				  int16_t *dst,
 				  int q_scale_type, 
                   int dc_prec,
@@ -176,7 +158,7 @@ void quant_intra( int16_t *src,
   int x, y, d;
   int clipping;
   int mquant = *nonsat_mquant;
-  uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
+  uint16_t *quant_mat = wsp->intra_q_tbl[mquant] /* intra_q */;
 
   /* 
    * Complicate by handlin clipping by increasing quantisation.  This
@@ -221,7 +203,7 @@ void quant_intra( int16_t *src,
             {
 				clipping = 1;
 				mquant = next_larger_quant(q_scale_type, mquant );
-				quant_mat =intra_q_tbl[mquant];
+				quant_mat = wsp->intra_q_tbl[mquant];
 				break;
             }
 #endif
@@ -245,9 +227,10 @@ void quant_intra( int16_t *src,
  *
  */
 
-int quant_weight_coeff_intra( int16_t *blk  )
+int quant_weight_coeff_intra( struct QuantizerWorkSpace *wsp,
+                              int16_t *blk  )
 {
-    uint16_t * i_quant_mat = i_intra_q_mat;
+    uint16_t * i_quant_mat = wsp->i_intra_q_mat;
     int i;
     int sum = 0;
     for( i = 0; i < 64; i+=2 )
@@ -259,9 +242,10 @@ int quant_weight_coeff_intra( int16_t *blk  )
 	 noisy video are around 20.0.  */
 }
 
-int quant_weight_coeff_inter( int16_t *blk )
+int quant_weight_coeff_inter( struct QuantizerWorkSpace *wsp,
+                              int16_t *blk )
 {
-    uint16_t * i_quant_mat = i_inter_q_mat;
+    uint16_t * i_quant_mat = wsp->i_inter_q_mat;
     int i;
     int sum = 0;
     for( i = 0; i < 64; i+=2 )
@@ -291,7 +275,8 @@ int quant_weight_coeff_inter( int16_t *blk )
  *
  */
 																							     											     
-int quant_non_intra( int16_t *src, int16_t *dst,
+int quant_non_intra( struct QuantizerWorkSpace *wsp,
+                     int16_t *src, int16_t *dst,
 					 int q_scale_type,
                      int clipvalue,
 					 int *nonsat_mquant)
@@ -303,7 +288,7 @@ int quant_non_intra( int16_t *src, int16_t *dst,
 	int flags = 0;
 	int saturated = 0;
     int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = inter_q_tbl[mquant]; /* inter_q */
+	uint16_t *quant_mat = wsp->inter_q_tbl[mquant]; /* inter_q */
 	
 	coeff_count = 64*BLOCK_COUNT;
 	flags = 0;
@@ -340,7 +325,7 @@ restart:
 				if( new_mquant != mquant )
 				{
 					mquant = new_mquant;
-					quant_mat = inter_q_tbl[mquant];
+					quant_mat = wsp->inter_q_tbl[mquant];
 				}
 				else
 				{
@@ -361,10 +346,11 @@ restart:
 }
 
 /* MPEG-1 inverse quantization */
-void iquant_intra_m1(int16_t *src, int16_t *dst, int dc_prec, int mquant)
+void iquant_intra_m1(struct QuantizerWorkSpace *wsp,
+                     int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val;
-  uint16_t *quant_mat = intra_q_mat;
+  uint16_t *quant_mat = wsp->intra_q_mat;
 
   dst[0] = src[0] << (3-dc_prec);
   for (i=1; i<64; i++)
@@ -382,14 +368,15 @@ void iquant_intra_m1(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 
 
 /* MPEG-2 inverse quantization */
-void iquant_intra_m2(int16_t *src, int16_t *dst, int dc_prec, int mquant)
+void iquant_intra_m2(struct QuantizerWorkSpace *wsp,
+                     int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
   sum = dst[0] = src[0] << (3-dc_prec);
   for (i=1; i<64; i++)
   {
-      val = (int)(src[i]*intra_q_mat[i]*mquant)/16;
+      val = (int)(src[i]*wsp->intra_q_mat[i]*mquant)/16;
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
   }
   
@@ -443,12 +430,14 @@ static void iquant_non_intra_m1_low(int16_t *src, int16_t *dst,  uint16_t *quant
 
 
 
-void iquant_non_intra_m1(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m1(struct QuantizerWorkSpace *wsp,
+                         int16_t *src, int16_t *dst, int mquant )
 {
-  iquant_non_intra_m1_low(src,dst,inter_q_tbl[mquant]);
+    iquant_non_intra_m1_low(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m2(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m2(struct QuantizerWorkSpace *wsp,
+                         int16_t *src, int16_t *dst, int mquant )
 {
   int i, val, sum;
   uint16_t *quant_mat;
@@ -465,7 +454,7 @@ void iquant_non_intra_m2(int16_t *src, int16_t *dst, int mquant )
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
   }
 #else
-  quant_mat = inter_q_tbl[mquant];
+  quant_mat = wsp->inter_q_tbl[mquant];
   for (i=0; i<64; i++)
   {
       val = src[i];
@@ -494,19 +483,23 @@ void iquant_non_intra_m2(int16_t *src, int16_t *dst, int mquant )
   here...
 */
 
-void init_quantizer( int mpeg1, 
+void init_quantizer( struct QuantizerCalls *calls, 
+                     struct QuantizerWorkSpace **workspace,
+                     int mpeg1, 
                      uint16_t intra_q[64], 
                      uint16_t inter_q[64])
 {
-
     int q, i;
+    struct QuantizerWorkSpace *wsp =
+        bufalloc(sizeof(struct QuantizerWorkSpace));
+    *workspace = wsp;
     for (i = 0; i < 64; i++)
     {
-        intra_q_mat[i] = intra_q[i];
-        inter_q_mat[i] = inter_q[i];
-        i_intra_q_mat[i] = 
+        wsp->intra_q_mat[i] = intra_q[i];
+        wsp->inter_q_mat[i] = inter_q[i];
+        wsp->i_intra_q_mat[i] = 
             (int)(((double)IQUANT_SCALE) / ((double)intra_q[i]));
-        i_inter_q_mat[i] = 
+        wsp->i_inter_q_mat[i] = 
             (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
     }
 
@@ -514,34 +507,34 @@ void init_quantizer( int mpeg1,
     {
         for (i = 0; i < 64; i++)
         {
-            intra_q_tbl[q][i] = intra_q[i] * q;
-            inter_q_tbl[q][i] = inter_q[i] * q;
-            intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
-            inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
-            i_intra_q_tblf[q][i] = (float)(1.0 / (intra_q_tblf[q][i] * 0.98));
-            i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
-            i_inter_q_tblf[q][i] =  (float)(1.0 / (inter_q_tblf[q][i] * 0.98));
-            i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
+            wsp->intra_q_tbl[q][i] = intra_q[i] * q;
+            wsp->inter_q_tbl[q][i] = inter_q[i] * q;
+            wsp->intra_q_tblf[q][i] = (float)wsp->intra_q_tbl[q][i];
+            wsp->inter_q_tblf[q][i] = (float)wsp->inter_q_tbl[q][i];
+            wsp->i_intra_q_tblf[q][i] = (float)(1.0 / (wsp->intra_q_tblf[q][i] * 0.98));
+            wsp->i_intra_q_tbl[q][i] = (IQUANT_SCALE/ wsp->intra_q_tbl[q][i]);
+            wsp->i_inter_q_tblf[q][i] =  (float)(1.0 / (wsp->inter_q_tblf[q][i] * 0.98));
+            wsp->i_inter_q_tbl[q][i] = (IQUANT_SCALE/wsp->inter_q_tbl[q][i]);
         }
     }
     if( mpeg1 )
     {
-        piquant_intra = iquant_intra_m1;
-        piquant_non_intra = iquant_non_intra_m1;
+        calls->piquant_intra = iquant_intra_m1;
+        calls->piquant_non_intra = iquant_non_intra_m1;
     }
     else
     {
-        piquant_intra = iquant_intra_m2;
-        piquant_non_intra = iquant_non_intra_m2;
+        calls->piquant_intra = iquant_intra_m2;
+        calls->piquant_non_intra = iquant_non_intra_m2;
     }
-    pquant_non_intra = quant_non_intra;	  
-    pquant_weight_coeff_intra = quant_weight_coeff_intra;
-    pquant_weight_coeff_inter = quant_weight_coeff_inter;
+    calls->pquant_non_intra = quant_non_intra;	  
+    calls->pquant_weight_coeff_intra = quant_weight_coeff_intra;
+    calls->pquant_weight_coeff_inter = quant_weight_coeff_inter;
     
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
     if( cpu_accel() )
     {
-        enable_x86_quantization( mpeg1 );
+        enable_x86_quantization( calls, mpeg1 );
     }
 #endif
 #ifdef HAVE_ALTIVEC
@@ -550,6 +543,10 @@ void init_quantizer( int mpeg1,
 #endif
 }
 
+void shutdown_quantizer(struct QuantizerWorkSpace *workspace)
+{
+    free(workspace);
+}
 
 /* 
  * Local variables:

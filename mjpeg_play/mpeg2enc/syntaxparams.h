@@ -247,11 +247,11 @@ struct EncoderParams
 		phy_height;   /* Physical Frame buffer size (pels) may differ
 						 from encoded size due to alignment
 						 constraints */
+	int enc_chrom_width,enc_chrom_height;
+	int phy_chrom_width,phy_chrom_height;
 
 	int lum_buffer_size, chrom_buffer_size;
 
-
-	int phy_chrom_width,phy_chrom_height;
 	int mb_width, mb_height;	/* frame size (macroblocks) */
 
 	/* Picture dimensioning (allowing for interlaced/non-interlaced coding) */
@@ -269,7 +269,6 @@ struct EncoderParams
 	/* and inverted */
 	uint16_t *intra_q, *inter_q;
 	
-	struct RateCtl *bitrate_controller;	/* Ick struct for use in .c files */
 
 };
 

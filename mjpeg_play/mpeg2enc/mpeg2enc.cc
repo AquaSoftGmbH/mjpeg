@@ -60,10 +60,8 @@
 #define GLOBAL /* used by global.h */
 
 #include "global.h"
+#include "simd.h"
 #include "motionsearch.h"
-#include "predict_ref.h"
-#include "transfrm_ref.h"
-#include "quantize_ref.h"
 #include "format_codes.h"
 #include "mpegconsts.h"
 #include "fastintfns.h"
@@ -73,7 +71,32 @@
 #endif
 int verbose = 1;
 
+#include "mpeg2encoder.hh"
+#include "picturereader.hh"
+#include "quantize.hh"
 #include "ratectl.hh"
+#include "seqencoder.hh"
+
+MPEG2Encoder::MPEG2Encoder( int istrm_fd ) :
+    parms( *new EncoderParams ),
+    reader( *new Y4MPipeReader( *this, istrm_fd ) ),
+    quantizer( *new Quantizer( *this ) ),
+    bitrate_controller( *new OnTheFlyRateCtl),
+    seqencoder( *new SeqEncoder( *this ) )
+{}
+
+MPEG2Encoder::~MPEG2Encoder()
+{
+    delete &seqencoder;
+    delete &bitrate_controller;
+    delete &quantizer;
+    delete &reader;
+    delete &parms;
+}
+    
+    
+
+MPEG2Encoder *enc;
 
 /* private prototypes */
 static void init_mpeg_parms (void);
@@ -93,6 +116,8 @@ static void init_quantmat (void);
    defaults etc after parsing.  The resulting values then set the encdims->
    variables that control the actual encoder.
 */
+
+static char *param_outfilename=0;
 
 static int param_format = MPEG_FORMAT_MPEG1;
 static int param_bitrate    = 0;
@@ -148,7 +173,6 @@ static unsigned int strm_frame_rate_code;
 static uint16_t custom_intra_quantizer_matrix[64];
 static uint16_t custom_nonintra_quantizer_matrix[64];
 
-struct EncoderParams encparams;
 
 static void DisplayFrameRates(void)
 {
@@ -390,7 +414,8 @@ static void Usage(char *str)
 	exit(0);
 }
 
-static void set_format_presets(void)
+
+static void set_format_presets( int in_imgs_horiz_size, int in_imgs_vert_size )
 {
 	switch( param_format  )
 	{
@@ -473,8 +498,8 @@ static void set_format_presets(void)
 		   resolution. 
 		*/
 		
-		if( encparams.horizontal_size == 352 && 
-			(encparams.vertical_size == 240 || encparams.vertical_size == 288 ) )
+		if( in_imgs_horiz_size == 352 && 
+			(in_imgs_vert_size == 240 || in_imgs_vert_size == 288 ) )
 		{
 			/* VCD normal resolution still */
 			if( param_still_size == 0 )
@@ -488,8 +513,8 @@ static void set_format_presets(void)
 			param_video_buffer_size = 46;
 			param_pad_stills_to_vbv_buffer_size = 0;
 		}
-		else if( encparams.horizontal_size == 704 &&
-				 (encparams.vertical_size == 480 || encparams.vertical_size == 576) )
+		else if( in_imgs_horiz_size == 704 &&
+				 (in_imgs_vert_size == 480 || in_imgs_vert_size == 576) )
 		{
 			/* VCD high-resolution stills: only these use vbv_delay
 			 to encode picture size...
@@ -536,15 +561,15 @@ static void set_format_presets(void)
 		   resolution. 
 		*/
 		
-		if( encparams.horizontal_size == 480 && 
-			(encparams.vertical_size == 480 || encparams.vertical_size == 576 ) )
+		if( in_imgs_horiz_size == 480 && 
+			(in_imgs_vert_size == 480 || in_imgs_vert_size == 576 ) )
 		{
 			mjpeg_info( "SVCD normal-resolution stills selected." );
 			if( param_still_size == 0 )
 				param_still_size = 90*1024;
 		}
-		else if( encparams.horizontal_size == 704 &&
-				 (encparams.vertical_size == 480 || encparams.vertical_size == 576) )
+		else if( in_imgs_horiz_size == 704 &&
+				 (in_imgs_vert_size == 480 || in_imgs_vert_size == 576) )
 		{
 			mjpeg_info( "SVCD high-resolution stills selected." );
 			if( param_still_size == 0 )
@@ -672,7 +697,6 @@ static int infer_default_params(void)
 			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream",
 						Y4M_RATIO_DBL(mpeg_framerate(strm_frame_rate_code)));
 		}
-		encparams.frame_rate_code = param_frame_rate;
 	}
 
 	if( param_aspect_ratio == 0 )
@@ -779,14 +803,6 @@ static int check_param_constraints(void)
 }
 
 
-int main( int argc,	char *argv[] )
-{
-	char *outfilename=0;
-	int nerr = 0;
-	int n;
-
-	/* Set up error logging.  The initial handling level is LOG_INFO
-	 */
 
 static const char	short_options[]=
 	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
@@ -833,6 +849,10 @@ static struct option long_options[]={
      { 0,                   0, 0, 0 }
 };
 
+int set_cmdline_params( int argc,	char *argv[] )
+{
+    int n;
+    int nerr = 0;
     while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1)
@@ -910,7 +930,7 @@ static struct option long_options[]={
 			break;
 
 		case 'o':
-			outfilename = optarg;
+			param_outfilename = optarg;
 			break;
 
 		case 'I':
@@ -1095,13 +1115,23 @@ static struct option long_options[]={
 			++nerr;
 		}
 	}
+    return nerr;
+}
 
-    if( nerr )
+
+int main( int argc,	char *argv[] )
+{
+	int n;
+
+	/* Set up error logging.  The initial handling level is LOG_INFO
+	 */
+
+    if( set_cmdline_params( argc, argv ) != 0 )
 		Usage(argv[0]);
 
 	mjpeg_default_handler_verbosity(verbose);
 
-
+    int nerr = 0;
 	/* Select input stream */
 	if(optind!=argc)
 	{
@@ -1121,18 +1151,26 @@ static struct option long_options[]={
 	else
 		istrm_fd = 0; /* stdin */
 
+    MPEG2Encoder encoder( istrm_fd );
+    enc = &encoder;
+
 	/* Read parameters inferred from input stream */
-	read_stream_params( &encparams.horizontal_size, &encparams.vertical_size, 
-						&strm_frame_rate_code, &param_input_interlacing,
-						&strm_aspect_ratio
-						);
-	
-	if(encparams.horizontal_size<=0)
+//     read_stream_params( &enc->parms.horizontal_size, &enc->parms.vertical_size, 
+// 						&strm_frame_rate_code, &param_input_interlacing,
+// 						&strm_aspect_ratio
+// 						);
+
+	encoder.reader.StreamPictureParams( enc->parms.horizontal_size, 
+                                        enc->parms.vertical_size, 
+                                        strm_frame_rate_code, 
+                                        param_input_interlacing,
+                                        strm_aspect_ratio );
+	if(enc->parms.horizontal_size<=0)
 	{
 		mjpeg_error("Horizontal size from input stream illegal");
 		++nerr;
 	}
-	if(encparams.vertical_size<=0)
+	if(enc->parms.vertical_size<=0)
 	{
 		mjpeg_error("Vertical size from input stream illegal");
 		++nerr;
@@ -1141,7 +1179,7 @@ static struct option long_options[]={
 	
 	/* Check parameters that cannot be checked when parsed/read */
 
-	if(!outfilename)
+	if(!param_outfilename)
 	{
 		mjpeg_error("Output file name (-o option) is required!");
 		++nerr;
@@ -1149,7 +1187,7 @@ static struct option long_options[]={
 
 	
 
-	set_format_presets();
+	set_format_presets( enc->parms.horizontal_size, enc->parms.vertical_size);
 
 	nerr += infer_default_params();
 
@@ -1161,9 +1199,9 @@ static struct option long_options[]={
 	}
 
 
-	mjpeg_info("Encoding MPEG-%d video to %s",param_mpeg,outfilename);
-	mjpeg_info("Horizontal size: %d pel",encparams.horizontal_size);
-	mjpeg_info("Vertical size: %d pel",encparams.vertical_size);
+	mjpeg_info("Encoding MPEG-%d video to %s",param_mpeg,param_outfilename);
+	mjpeg_info("Horizontal size: %d pel",enc->parms.horizontal_size);
+	mjpeg_info("Vertical size: %d pel",enc->parms.vertical_size);
 	mjpeg_info("Aspect ratio code: %d = %s", 
 			param_aspect_ratio,
 			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
@@ -1202,16 +1240,17 @@ static struct option long_options[]={
 	init_quantmat();
 
 	/* open output file */
-	if (!(outfile=fopen(outfilename,"wb")))
+	if (!(outfile=fopen(param_outfilename,"wb")))
 	{
-		mjpeg_error_exit1("Couldn't create output file %s",outfilename);
+		mjpeg_error_exit1("Couldn't create output file %s",param_outfilename);
 	}
-	init_encoder();
-	init_quantizer( static_cast<int>(encparams.mpeg1), encparams.intra_q, encparams.inter_q );
+	init_encoder();             // Sets enc->parms
+    encoder.reader.Init();
+    encoder.quantizer.Init();
 	init_motion();
 	init_transform();
 	init_predict();
-	putseq();
+    encoder.seqencoder.Encode();
 
 	fclose(outfile);
 #ifdef OUTPUT_STAT
@@ -1225,64 +1264,17 @@ static struct option long_options[]={
 }
 
 /*
-	Wrapper for malloc that allocates pbuffers aligned to the 
-	specified byte boundary and checks for failure.
-	N.b.  don't try to free the resulting pointers, eh...
+	Wrapper for memory allocation that checks for failure.
 */
+
 void *bufalloc( size_t size )
 {
-	uint8_t *buf = static_cast<uint8_t *>(malloc( size + BUFFER_ALIGN ));
-	unsigned long adjust;
-
-	if( buf == NULL )
-	{
+	void *buf;
+    if( posix_memalign( &buf, static_cast<size_t>(BUFFER_ALIGN), size ) !=0 )
 		mjpeg_error_exit1("malloc failed");
-	}
-	adjust = BUFFER_ALIGN-((unsigned long)buf)%BUFFER_ALIGN;
-	if( adjust == BUFFER_ALIGN )
-		adjust = 0;
-	return (void *)(buf+adjust);
+    return buf;
 }
 
-/*********************
- *
- * Mark the border so that blocks in the frame are unlikely
- * to match blocks outside the frame.  This is useful for
- * motion estimation routines that, for speed, are a little
- * sloppy about some of the candidates they consider.
- *
- ********************/
-
-static void border_mark( uint8_t *frame,
-                         int w1, int h1, int w2, int h2)
-{
-  int i, j;
-  uint8_t *fp;
-  uint8_t mask = 0xff;
-  /* horizontal pixel replication (right border) */
- 
-  for (j=0; j<h1; j++)
-  {
-    fp = frame + j*w2;
-    for (i=w1; i<w2; i++)
-    {
-      fp[i] = mask;
-      mask ^= 0xff;
-    }
-  }
- 
-  /* vertical pixel replication (bottom border) */
-
-  for (j=h1; j<h2; j++)
-  {
-    fp = frame + j*w2;
-    for (i=0; i<w2; i++)
-    {
-        fp[i] = mask;
-        mask ^= 0xff;
-    }
-  }
-}
 
 
 static void init_encoder(void)
@@ -1339,11 +1331,11 @@ static void init_encoder(void)
     ctl_unit_coeff_elim	= param_unit_coeff_elim;
 
 	/* round picture dimensions to nearest multiple of 16 or 32 */
-	encparams.mb_width = (encparams.horizontal_size+15)/16;
-	encparams.mb_height = encparams.prog_seq ? (encparams.vertical_size+15)/16 : 2*((encparams.vertical_size+31)/32);
-	encparams.mb_height2 = encparams.fieldpic ? encparams.mb_height>>1 : encparams.mb_height; /* for field pictures */
-	encparams.enc_width = 16*encparams.mb_width;
-	encparams.enc_height = 16*encparams.mb_height;
+	enc->parms.mb_width = (enc->parms.horizontal_size+15)/16;
+	enc->parms.mb_height = enc->parms.prog_seq ? (enc->parms.vertical_size+15)/16 : 2*((enc->parms.vertical_size+31)/32);
+	enc->parms.mb_height2 = enc->parms.fieldpic ? enc->parms.mb_height>>1 : enc->parms.mb_height; /* for field pictures */
+	enc->parms.enc_width = 16*enc->parms.mb_width;
+	enc->parms.enc_height = 16*enc->parms.mb_height;
 
 #ifdef DEBUG_MOTION_EST
     static const int MARGIN = 64;
@@ -1352,16 +1344,16 @@ static void init_encoder(void)
 #endif
     
 #ifdef HAVE_ALTIVEC
-	/* Pad encparams.phy_width to 64 so that the rowstride of 4*4
+	/* Pad enc->parms.phy_width to 64 so that the rowstride of 4*4
 	 * sub-sampled data will be a multiple of 16 (ideal for AltiVec)
 	 * and the rowstride of 2*2 sub-sampled data will be a multiple
 	 * of 32. Height does not affect rowstride, no padding needed.
 	 */
-	encparams.phy_width = (encparams.enc_width + 63) & (~63);
+	enc->parms.phy_width = (enc->parms.enc_width + 63) & (~63);
 #else
-	encparams.phy_width = encparams.enc_width+MARGIN;
+	enc->parms.phy_width = enc->parms.enc_width+MARGIN;
 #endif
-	encparams.phy_height = encparams.enc_height+MARGIN;
+	enc->parms.phy_height = enc->parms.enc_height+MARGIN;
 
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
@@ -1370,72 +1362,39 @@ static void init_encoder(void)
 	   extra row to act as a margin to allow us to neglect / postpone
 	   edge condition checking in time-critical loops...  */
 
-	encparams.phy_chrom_width = (CHROMA420==CHROMA444) 
-        ? encparams.phy_width 
-        : encparams.phy_width>>1;
-	encparams.phy_chrom_height = (CHROMA420!=CHROMA420) 
-        ? encparams.phy_height 
-        : encparams.phy_height>>1;
-	enc_chrom_width = (CHROMA420==CHROMA444) 
-        ? encparams.enc_width 
-        : encparams.enc_width>>1;
-	enc_chrom_height = (CHROMA420!=CHROMA420) 
-        ? encparams.enc_height 
-        : encparams.enc_height>>1;
+	enc->parms.phy_chrom_width = (CHROMA420==CHROMA444) 
+        ? enc->parms.phy_width 
+        : enc->parms.phy_width>>1;
+	enc->parms.phy_chrom_height = (CHROMA420!=CHROMA420) 
+        ? enc->parms.phy_height 
+        : enc->parms.phy_height>>1;
+	enc->parms.enc_chrom_width = (CHROMA420==CHROMA444) 
+        ? enc->parms.enc_width 
+        : enc->parms.enc_width>>1;
+	enc->parms.enc_chrom_height = (CHROMA420!=CHROMA420) 
+        ? enc->parms.enc_height 
+        : enc->parms.enc_height>>1;
 
-	encparams.phy_height2 = encparams.fieldpic ? encparams.phy_height>>1 : encparams.phy_height;
-	encparams.enc_height2 = encparams.fieldpic ? encparams.enc_height>>1 : encparams.enc_height;
-	encparams.phy_width2 = encparams.fieldpic ? encparams.phy_width<<1 : encparams.phy_width;
-	encparams.phy_chrom_width2 = encparams.fieldpic 
-        ? encparams.phy_chrom_width<<1 
-        : encparams.phy_chrom_width;
+	enc->parms.phy_height2 = enc->parms.fieldpic ? enc->parms.phy_height>>1 : enc->parms.phy_height;
+	enc->parms.enc_height2 = enc->parms.fieldpic ? enc->parms.enc_height>>1 : enc->parms.enc_height;
+	enc->parms.phy_width2 = enc->parms.fieldpic ? enc->parms.phy_width<<1 : enc->parms.phy_width;
+	enc->parms.phy_chrom_width2 = enc->parms.fieldpic 
+        ? enc->parms.phy_chrom_width<<1 
+        : enc->parms.phy_chrom_width;
  
-	encparams.lum_buffer_size = (encparams.phy_width*encparams.phy_height) +
-					 sizeof(uint8_t) *(encparams.phy_width/2)*(encparams.phy_height/2) +
-					 sizeof(uint8_t) *(encparams.phy_width/4)*(encparams.phy_height/4);
-	encparams.chrom_buffer_size = encparams.phy_chrom_width*encparams.phy_chrom_height;
+	enc->parms.lum_buffer_size = (enc->parms.phy_width*enc->parms.phy_height) +
+					 sizeof(uint8_t) *(enc->parms.phy_width/2)*(enc->parms.phy_height/2) +
+					 sizeof(uint8_t) *(enc->parms.phy_width/4)*(enc->parms.phy_height/4);
+	enc->parms.chrom_buffer_size = enc->parms.phy_chrom_width*enc->parms.phy_chrom_height;
     
 
-	encparams.fsubsample_offset = (encparams.phy_width)*(encparams.phy_height) * sizeof(uint8_t);
-	encparams.qsubsample_offset =  encparams.fsubsample_offset 
-        + (encparams.phy_width/2)*(encparams.phy_height/2)*sizeof(uint8_t);
+	enc->parms.fsubsample_offset = (enc->parms.phy_width)*(enc->parms.phy_height) * sizeof(uint8_t);
+	enc->parms.qsubsample_offset =  enc->parms.fsubsample_offset 
+        + (enc->parms.phy_width/2)*(enc->parms.phy_height/2)*sizeof(uint8_t);
 
-	encparams.mb_per_pict = encparams.mb_width*encparams.mb_height2;
+	enc->parms.mb_per_pict = enc->parms.mb_width*enc->parms.mb_height2;
 
 
-	/* Allocate the frame data buffers: if we're not going to scan ahead
-     for GOP size we can save a *lot* of memory... */
-    if( param_max_GOP_size == param_min_GOP_size )
-        frame_buffer_size = 2*param_Bgrp_size+READ_CHUNK_SIZE;
-    else
-        frame_buffer_size = 2*param_max_GOP_size+READ_CHUNK_SIZE;
-    mjpeg_info( "Buffering %d frames", frame_buffer_size );
-	frame_buffers = (uint8_t ***) 
-		bufalloc(frame_buffer_size*sizeof(uint8_t**));
-	
-	for(n=0;n<frame_buffer_size;n++)
-	{
-         frame_buffers[n] = (uint8_t **) bufalloc(3*sizeof(uint8_t*));
-		 for (i=0; i<3; i++)
-		 {
-			 frame_buffers[n][i] = 
-                 static_cast<uint8_t *>( bufalloc( (i==0) 
-                                                   ? encparams.lum_buffer_size 
-                                                   : encparams.chrom_buffer_size ) 
-                     );
-		 }
-
-         border_mark(frame_buffers[n][0],
-                     encparams.enc_width,encparams.enc_height,
-                     encparams.phy_width,encparams.phy_height);
-         border_mark(frame_buffers[n][1],
-                     enc_chrom_width, enc_chrom_height,
-                     encparams.phy_chrom_width,encparams.phy_chrom_height);
-         border_mark(frame_buffers[n][2],
-                     enc_chrom_width, enc_chrom_height,
-                     encparams.phy_chrom_width,encparams.phy_chrom_height);
-
-	}
 #ifdef OUTPUT_STAT
 	/* open statistics output file */
 	if (!(statfile = fopen(statname,"w")))
@@ -1476,8 +1435,8 @@ static void init_mpeg_parms(void)
 	ctl_M_min = param_preserve_B ? ctl_M : 1;
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
-	encparams.mpeg1           = (param_mpeg == 1);
-	encparams.fieldpic        = (param_fieldenc == 2);
+	enc->parms.mpeg1           = (param_mpeg == 1);
+	enc->parms.fieldpic        = (param_fieldenc == 2);
 
     // SVCD and probably DVD? mandate progressive_sequence = 0 
     switch( param_format )
@@ -1487,17 +1446,17 @@ static void init_mpeg_parms(void)
     case MPEG_FORMAT_SVCD_STILL :
     case MPEG_FORMAT_DVD :
     case MPEG_FORMAT_DVD_NAV :
-        encparams.prog_seq = 0;
+        enc->parms.prog_seq = 0;
         break;
     default :
-        encparams.prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
+        enc->parms.prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
         break;
     }
-	encparams.pulldown_32     = param_32_pulldown;
+	enc->parms.pulldown_32     = param_32_pulldown;
 
-	encparams.aspectratio     = param_aspect_ratio;
-	encparams.frame_rate_code = param_frame_rate;
-	encparams.dctsatlim		= encparams.mpeg1 ? 255 : 2047;
+	enc->parms.aspectratio     = param_aspect_ratio;
+	enc->parms.frame_rate_code = param_frame_rate;
+	enc->parms.dctsatlim		= enc->parms.mpeg1 ? 255 : 2047;
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
 		buffer accordingly... */
@@ -1507,26 +1466,26 @@ static void init_mpeg_parms(void)
 		mjpeg_error_exit1( "Generic format - must specify bit-rate!" );
 	}
 
-	encparams.still_size = 0;
+	enc->parms.still_size = 0;
 	if( MPEG_STILLS_FORMAT(param_format) )
 	{
-		encparams.vbv_buffer_code = param_vbv_buffer_still_size / 2048;
-		encparams.vbv_buffer_still_size = param_pad_stills_to_vbv_buffer_size;
-		encparams.bit_rate = param_bitrate;
-		encparams.still_size = param_still_size;
+		enc->parms.vbv_buffer_code = param_vbv_buffer_still_size / 2048;
+		enc->parms.vbv_buffer_still_size = param_pad_stills_to_vbv_buffer_size;
+		enc->parms.bit_rate = param_bitrate;
+		enc->parms.still_size = param_still_size;
 	}
 	else if( param_mpeg == 1 )
 	{
 		/* Scale VBV relative to VCD  */
-		encparams.bit_rate = MAX(10000, param_bitrate);
-		encparams.vbv_buffer_code = (20 * param_bitrate  / 1151929);
+		enc->parms.bit_rate = MAX(10000, param_bitrate);
+		enc->parms.vbv_buffer_code = (20 * param_bitrate  / 1151929);
 	}
 	else
 	{
-		encparams.bit_rate = MAX(10000, param_bitrate);
-		encparams.vbv_buffer_code = MIN(112,param_video_buffer_size / 2);
+		enc->parms.bit_rate = MAX(10000, param_bitrate);
+		enc->parms.vbv_buffer_code = MIN(112,param_video_buffer_size / 2);
 	}
-	encparams.vbv_buffer_size = encparams.vbv_buffer_code*16384;
+	enc->parms.vbv_buffer_size = enc->parms.vbv_buffer_code*16384;
 
 	if( param_quant )
 	{
@@ -1540,43 +1499,43 @@ static void init_mpeg_parms(void)
 
 	ctl_video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
-	encparams.seq_hdr_every_gop = param_seq_hdr_every_gop;
-	encparams.seq_end_every_gop = param_seq_end_every_gop;
-	encparams.svcd_scan_data = param_svcd_scan_data;
-	encparams.ignore_constraints = param_ignore_constraints;
+	enc->parms.seq_hdr_every_gop = param_seq_hdr_every_gop;
+	enc->parms.seq_end_every_gop = param_seq_end_every_gop;
+	enc->parms.svcd_scan_data = param_svcd_scan_data;
+	enc->parms.ignore_constraints = param_ignore_constraints;
 	ctl_seq_length_limit = param_seq_length_limit;
 	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;
-	encparams.low_delay       = 0;
-	encparams.constrparms     = (param_mpeg == 1 && 
+	enc->parms.low_delay       = 0;
+	enc->parms.constrparms     = (param_mpeg == 1 && 
 						   !MPEG_STILLS_FORMAT(param_format));
-	encparams.profile         = 4; /* Main profile resp. */
-	encparams.level           = 8; /* Main Level      CCIR 601 rates */
+	enc->parms.profile         = 4; /* Main profile resp. */
+	enc->parms.level           = 8; /* Main Level      CCIR 601 rates */
 	switch(param_norm)
 	{
-	case 'p': encparams.video_format = 1; break;
-	case 'n': encparams.video_format = 2; break;
-	case 's': encparams.video_format = 3; break;
-	default:  encparams.video_format = 5; break; /* unspec. */
+	case 'p': enc->parms.video_format = 1; break;
+	case 'n': enc->parms.video_format = 2; break;
+	case 's': enc->parms.video_format = 3; break;
+	default:  enc->parms.video_format = 5; break; /* unspec. */
 	}
 	switch(param_norm)
 	{
 	case 's':
 	case 'p':  /* ITU BT.470  B,G */
-		encparams.color_primaries = 5;
-		encparams.transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
-		encparams.matrix_coefficients = 5; 
+		enc->parms.color_primaries = 5;
+		enc->parms.transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
+		enc->parms.matrix_coefficients = 5; 
         msg = "PAL B/G";
 		break;
 	case 'n': /* SMPTPE 170M "modern NTSC" */
-		encparams.color_primaries = 6;
-		encparams.matrix_coefficients = 6; 
-		encparams.transfer_characteristics = 6;
+		enc->parms.color_primaries = 6;
+		enc->parms.matrix_coefficients = 6; 
+		enc->parms.transfer_characteristics = 6;
         msg = "NTSC";
 		break; 
 	default:   /* unspec. */
-		encparams.color_primaries = 2;
-		encparams.matrix_coefficients = 2; 
-		encparams.transfer_characteristics = 2;
+		enc->parms.color_primaries = 2;
+		enc->parms.matrix_coefficients = 2; 
+		enc->parms.transfer_characteristics = 2;
         msg = "unspecified";
 		break;
 	}
@@ -1595,24 +1554,24 @@ static void init_mpeg_parms(void)
         */
         if( param_hack_svcd_hds_bug )
         {
-            encparams.display_horizontal_size  = encparams.horizontal_size;
-            encparams.display_vertical_size    = encparams.vertical_size;
+            enc->parms.display_horizontal_size  = enc->parms.horizontal_size;
+            enc->parms.display_vertical_size    = enc->parms.vertical_size;
         }
         else
         {
-            encparams.display_horizontal_size  = encparams.aspectratio == 2 ? 540 : 720;
-            encparams.display_vertical_size    = encparams.vertical_size;
+            enc->parms.display_horizontal_size  = enc->parms.aspectratio == 2 ? 540 : 720;
+            enc->parms.display_vertical_size    = enc->parms.vertical_size;
         }
 		break;
 	default:
-		encparams.display_horizontal_size  = encparams.horizontal_size;
-		encparams.display_vertical_size    = encparams.vertical_size;
+		enc->parms.display_horizontal_size  = enc->parms.horizontal_size;
+		enc->parms.display_vertical_size    = enc->parms.vertical_size;
 		break;
 	}
 
-	encparams.dc_prec         = param_mpeg2_dc_prec;  /* 9 bits */
-    encparams.topfirst = 0;
-	if( ! encparams.prog_seq )
+	enc->parms.dc_prec         = param_mpeg2_dc_prec;  /* 9 bits */
+    enc->parms.topfirst = 0;
+	if( ! enc->parms.prog_seq )
 	{
 		int fieldorder;
 		if( param_force_interlacing != Y4M_UNKNOWN ) 
@@ -1624,35 +1583,35 @@ static void init_mpeg_parms(void)
 		else
 			fieldorder = param_input_interlacing;
 
-		encparams.topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
+		enc->parms.topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
                               fieldorder ==Y4M_ILACE_NONE );
 	}
 	else
-		encparams.topfirst = 0;
+		enc->parms.topfirst = 0;
 
     // Restrict to frame motion estimation and DCT modes only when MPEG1
     // or when progressive content is specified for MPEG2.
     // Note that for some profiles although we have progressive sequence 
     // header bit = 0 we still only encode with frame modes (for speed).
-	encparams.frame_pred_dct_tab[0] 
-		= encparams.frame_pred_dct_tab[1] 
-		= encparams.frame_pred_dct_tab[2] 
+	enc->parms.frame_pred_dct_tab[0] 
+		= enc->parms.frame_pred_dct_tab[1] 
+		= enc->parms.frame_pred_dct_tab[2] 
         = (param_mpeg == 1 || param_fieldenc == 0) ? 1 : 0;
 
-    mjpeg_info( "Progressive format frames = %d", 	encparams.frame_pred_dct_tab[0] );
-	encparams.qscale_tab[0] 
-		= encparams.qscale_tab[1] 
-		= encparams.qscale_tab[2] 
+    mjpeg_info( "Progressive format frames = %d", 	enc->parms.frame_pred_dct_tab[0] );
+	enc->parms.qscale_tab[0] 
+		= enc->parms.qscale_tab[1] 
+		= enc->parms.qscale_tab[2] 
 		= param_mpeg == 1 ? 0 : 1;
 
-	encparams.intravlc_tab[0] 
-		= encparams.intravlc_tab[1] 
-		= encparams.intravlc_tab[2] 
+	enc->parms.intravlc_tab[0] 
+		= enc->parms.intravlc_tab[1] 
+		= enc->parms.intravlc_tab[2] 
 		= param_mpeg == 1 ? 0 : 1;
 
-	encparams.altscan_tab[2]  
-		= encparams.altscan_tab[1]  
-		= encparams.altscan_tab[0]  
+	enc->parms.altscan_tab[2]  
+		= enc->parms.altscan_tab[1]  
+		= enc->parms.altscan_tab[0]  
 		= (param_mpeg == 1 || param_hack_altscan_bug) ? 0 : 1;
 	
 
@@ -1668,47 +1627,47 @@ static void init_mpeg_parms(void)
 	
 	{ 
 		int radius_x = param_searchrad;
-		int radius_y = param_searchrad*encparams.vertical_size/encparams.horizontal_size;
+		int radius_y = param_searchrad*enc->parms.vertical_size/enc->parms.horizontal_size;
 
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 
-		encparams.motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
-		if (!encparams.motion_data)
+		enc->parms.motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
+		if (!enc->parms.motion_data)
 			mjpeg_error_exit1("malloc failed");
 
 		for (i=0; i<ctl_M; i++)
 		{
 			if(i==0)
 			{
-				encparams.motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
-				encparams.motion_data[i].forw_hor_f_code  = f_code(encparams.motion_data[i].sxf);
-				encparams.motion_data[i].syf = round_search_radius(radius_y*ctl_M);
-				encparams.motion_data[i].forw_vert_f_code  = f_code(encparams.motion_data[i].syf);
+				enc->parms.motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
+				enc->parms.motion_data[i].forw_hor_f_code  = f_code(enc->parms.motion_data[i].sxf);
+				enc->parms.motion_data[i].syf = round_search_radius(radius_y*ctl_M);
+				enc->parms.motion_data[i].forw_vert_f_code  = f_code(enc->parms.motion_data[i].syf);
 			}
 			else
 			{
-				encparams.motion_data[i].sxf = round_search_radius(radius_x*i);
-				encparams.motion_data[i].forw_hor_f_code  = f_code(encparams.motion_data[i].sxf);
-				encparams.motion_data[i].syf = round_search_radius(radius_y*i);
-				encparams.motion_data[i].forw_vert_f_code  = f_code(encparams.motion_data[i].syf);
-				encparams.motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
-				encparams.motion_data[i].back_hor_f_code  = f_code(encparams.motion_data[i].sxb);
-				encparams.motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
-				encparams.motion_data[i].back_vert_f_code  = f_code(encparams.motion_data[i].syb);
+				enc->parms.motion_data[i].sxf = round_search_radius(radius_x*i);
+				enc->parms.motion_data[i].forw_hor_f_code  = f_code(enc->parms.motion_data[i].sxf);
+				enc->parms.motion_data[i].syf = round_search_radius(radius_y*i);
+				enc->parms.motion_data[i].forw_vert_f_code  = f_code(enc->parms.motion_data[i].syf);
+				enc->parms.motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
+				enc->parms.motion_data[i].back_hor_f_code  = f_code(enc->parms.motion_data[i].sxb);
+				enc->parms.motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
+				enc->parms.motion_data[i].back_vert_f_code  = f_code(enc->parms.motion_data[i].syb);
 			}
 
 			/* MPEG-1 demands f-codes for vertical and horizontal axes are
 			   identical!!!!
 			*/
-			if( encparams.mpeg1 )
+			if( enc->parms.mpeg1 )
 			{
-				encparams.motion_data[i].syf = encparams.motion_data[i].sxf;
-				encparams.motion_data[i].syb  = encparams.motion_data[i].sxb;
-				encparams.motion_data[i].forw_vert_f_code  = 
-					encparams.motion_data[i].forw_hor_f_code;
-				encparams.motion_data[i].back_vert_f_code  = 
-					encparams.motion_data[i].back_hor_f_code;
+				enc->parms.motion_data[i].syf = enc->parms.motion_data[i].sxf;
+				enc->parms.motion_data[i].syb  = enc->parms.motion_data[i].sxb;
+				enc->parms.motion_data[i].forw_vert_f_code  = 
+					enc->parms.motion_data[i].forw_hor_f_code;
+				enc->parms.motion_data[i].back_vert_f_code  = 
+					enc->parms.motion_data[i].back_hor_f_code;
 				
 			}
 		}
@@ -1724,67 +1683,67 @@ static void init_mpeg_parms(void)
 	   For 3:2 movie pulldown decode rate is != display rate due to
 	   the repeated field that appears every other frame.
 	*/
-	encparams.frame_rate = Y4M_RATIO_DBL(mpeg_framerate(encparams.frame_rate_code));
+	enc->parms.frame_rate = Y4M_RATIO_DBL(mpeg_framerate(enc->parms.frame_rate_code));
 	if( param_32_pulldown )
 	{
-		ctl_decode_frame_rate = encparams.frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
+		ctl_decode_frame_rate = enc->parms.frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
 		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps", 
 					ctl_decode_frame_rate);
 	}
 	else
-		ctl_decode_frame_rate = encparams.frame_rate;
+		ctl_decode_frame_rate = enc->parms.frame_rate;
 
-	if ( !encparams.mpeg1)
+	if ( !enc->parms.mpeg1)
 	{
 		profile_and_level_checks();
 	}
 	else
 	{
 		/* MPEG-1 */
-		if (encparams.constrparms)
+		if (enc->parms.constrparms)
 		{
-			if (encparams.horizontal_size>768
-				|| encparams.vertical_size>576
-				|| ((encparams.horizontal_size+15)/16)*((encparams.vertical_size+15)/16)>396
-				|| ((encparams.horizontal_size+15)/16)*((encparams.vertical_size+15)/16)*encparams.frame_rate>396*25.0
-				|| encparams.frame_rate>30.0)
+			if (enc->parms.horizontal_size>768
+				|| enc->parms.vertical_size>576
+				|| ((enc->parms.horizontal_size+15)/16)*((enc->parms.vertical_size+15)/16)>396
+				|| ((enc->parms.horizontal_size+15)/16)*((enc->parms.vertical_size+15)/16)*enc->parms.frame_rate>396*25.0
+				|| enc->parms.frame_rate>30.0)
 			{
 				mjpeg_info( "size - setting constrained_parameters_flag = 0");
-				encparams.constrparms = 0;
+				enc->parms.constrparms = 0;
 			}
 		}
 
-		if (encparams.constrparms)
+		if (enc->parms.constrparms)
 		{
 			for (i=0; i<ctl_M; i++)
 			{
-				if (encparams.motion_data[i].forw_hor_f_code>4)
+				if (enc->parms.motion_data[i].forw_hor_f_code>4)
 				{
 					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0");
-					encparams.constrparms = 0;
+					enc->parms.constrparms = 0;
 					break;
 				}
 
-				if (encparams.motion_data[i].forw_vert_f_code>4)
+				if (enc->parms.motion_data[i].forw_vert_f_code>4)
 				{
 					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0");
-					encparams.constrparms = 0;
+					enc->parms.constrparms = 0;
 					break;
 				}
 
 				if (i!=0)
 				{
-					if (encparams.motion_data[i].back_hor_f_code>4)
+					if (enc->parms.motion_data[i].back_hor_f_code>4)
 					{
 						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0");
-						encparams.constrparms = 0;
+						enc->parms.constrparms = 0;
 						break;
 					}
 
-					if (encparams.motion_data[i].back_vert_f_code>4)
+					if (enc->parms.motion_data[i].back_vert_f_code>4)
 					{
 						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0");
-						encparams.constrparms = 0;
+						enc->parms.constrparms = 0;
 						break;
 					}
 				}
@@ -1793,112 +1752,111 @@ static void init_mpeg_parms(void)
 	}
 
 	/* relational checks */
-	if ( encparams.mpeg1 )
+	if ( enc->parms.mpeg1 )
 	{
-		if (!encparams.prog_seq)
+		if (!enc->parms.prog_seq)
 		{
-			mjpeg_warn("encparams.mpeg1 specified - setting progressive_sequence = 1");
-			encparams.prog_seq = 1;
+			mjpeg_warn("enc->parms.mpeg1 specified - setting progressive_sequence = 1");
+			enc->parms.prog_seq = 1;
 		}
 
-		if (encparams.dc_prec!=0)
+		if (enc->parms.dc_prec!=0)
 		{
 			mjpeg_info("mpeg1 - setting intra_dc_precision = 0");
-			encparams.dc_prec = 0;
+			enc->parms.dc_prec = 0;
 		}
 
 		for (i=0; i<3; i++)
-			if (encparams.qscale_tab[i])
+			if (enc->parms.qscale_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting qscale_tab[%d] = 0",i);
-				encparams.qscale_tab[i] = 0;
+				enc->parms.qscale_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
-			if (encparams.intravlc_tab[i])
+			if (enc->parms.intravlc_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting intravlc_tab[%d] = 0",i);
-				encparams.intravlc_tab[i] = 0;
+				enc->parms.intravlc_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
-			if (encparams.altscan_tab[i])
+			if (enc->parms.altscan_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting altscan_tab[%d] = 0",i);
-				encparams.altscan_tab[i] = 0;
+				enc->parms.altscan_tab[i] = 0;
 			}
 	}
 
-	if ( !encparams.mpeg1 && encparams.constrparms)
+	if ( !enc->parms.mpeg1 && enc->parms.constrparms)
 	{
 		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0");
-		encparams.constrparms = 0;
+		enc->parms.constrparms = 0;
 	}
 
 
-	if( (!encparams.prog_seq || encparams.fieldpic != 0 ) &&
-		( (encparams.vertical_size+15) / 16)%2 != 0 )
+	if( (!enc->parms.prog_seq || enc->parms.fieldpic != 0 ) &&
+		( (enc->parms.vertical_size+15) / 16)%2 != 0 )
 	{
 		mjpeg_warn( "Frame height won't split into two equal field pictures...");
 		mjpeg_warn( "forcing encoding as progressive video");
-		encparams.prog_seq = 1;
-		encparams.fieldpic = 0;
+		enc->parms.prog_seq = 1;
+		enc->parms.fieldpic = 0;
 	}
 
 
-	if (encparams.prog_seq && encparams.fieldpic != 0)
+	if (enc->parms.prog_seq && enc->parms.fieldpic != 0)
 	{
 		mjpeg_info("prog sequence - forcing progressive frame encoding");
-		encparams.fieldpic = 0;
+		enc->parms.fieldpic = 0;
 	}
 
 
-	if (encparams.prog_seq && encparams.topfirst)
+	if (enc->parms.prog_seq && enc->parms.topfirst)
 	{
 		mjpeg_info("prog sequence setting top_field_first = 0");
-		encparams.topfirst = 0;
+		enc->parms.topfirst = 0;
 	}
 
 	/* search windows */
 	for (i=0; i<ctl_M; i++)
 	{
-		if (encparams.motion_data[i].sxf > (4U<<encparams.motion_data[i].forw_hor_f_code)-1)
+		if (enc->parms.motion_data[i].sxf > (4U<<enc->parms.motion_data[i].forw_hor_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward horizontal search width to %d",
-						(4<<encparams.motion_data[i].forw_hor_f_code)-1);
-			encparams.motion_data[i].sxf = (4U<<encparams.motion_data[i].forw_hor_f_code)-1;
+						(4<<enc->parms.motion_data[i].forw_hor_f_code)-1);
+			enc->parms.motion_data[i].sxf = (4U<<enc->parms.motion_data[i].forw_hor_f_code)-1;
 		}
 
-		if (encparams.motion_data[i].syf > (4U<<encparams.motion_data[i].forw_vert_f_code)-1)
+		if (enc->parms.motion_data[i].syf > (4U<<enc->parms.motion_data[i].forw_vert_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward vertical search width to %d",
-				(4<<encparams.motion_data[i].forw_vert_f_code)-1);
-			encparams.motion_data[i].syf = (4U<<encparams.motion_data[i].forw_vert_f_code)-1;
+				(4<<enc->parms.motion_data[i].forw_vert_f_code)-1);
+			enc->parms.motion_data[i].syf = (4U<<enc->parms.motion_data[i].forw_vert_f_code)-1;
 		}
 
 		if (i!=0)
 		{
-			if (encparams.motion_data[i].sxb > (4U<<encparams.motion_data[i].back_hor_f_code)-1)
+			if (enc->parms.motion_data[i].sxb > (4U<<enc->parms.motion_data[i].back_hor_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward horizontal search width to %d",
-					(4<<encparams.motion_data[i].back_hor_f_code)-1);
-				encparams.motion_data[i].sxb = (4U<<encparams.motion_data[i].back_hor_f_code)-1;
+					(4<<enc->parms.motion_data[i].back_hor_f_code)-1);
+				enc->parms.motion_data[i].sxb = (4U<<enc->parms.motion_data[i].back_hor_f_code)-1;
 			}
 
-			if (encparams.motion_data[i].syb > (4U<<encparams.motion_data[i].back_vert_f_code)-1)
+			if (enc->parms.motion_data[i].syb > (4U<<enc->parms.motion_data[i].back_vert_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward vertical search width to %d",
-					(4<<encparams.motion_data[i].back_vert_f_code)-1);
-				encparams.motion_data[i].syb = (4U<<encparams.motion_data[i].back_vert_f_code)-1;
+					(4<<enc->parms.motion_data[i].back_vert_f_code)-1);
+				enc->parms.motion_data[i].syb = (4U<<enc->parms.motion_data[i].back_vert_f_code)-1;
 			}
 		}
 	}
 
-    encparams.bitrate_controller = new OnTheFlyRateCtl;
 
 }
 
@@ -1926,12 +1884,12 @@ init_quantmat(void)
     int i, v, q;
     const char *msg = NULL;
     const uint16_t *qmat, *niqmat;
-    encparams.load_iquant = 0;
-    encparams.load_niquant = 0;
+    enc->parms.load_iquant = 0;
+    enc->parms.load_niquant = 0;
 
     /* bufalloc to ensure alignment */
-    encparams.intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    encparams.inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    enc->parms.intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    enc->parms.inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
 
     switch  (param_hf_quant)
         {
@@ -1944,35 +1902,35 @@ init_quantmat(void)
             msg = "Using -N modified default quantization matrices";
             qmat = default_intra_quantizer_matrix;
             niqmat = default_nonintra_quantizer_matrix;
-            encparams.load_iquant = 1;
-            encparams.load_niquant = 1;
+            enc->parms.load_iquant = 1;
+            enc->parms.load_niquant = 1;
             break;
         case  2:    /* -H used OR -H followed by "-N value" */
             msg = "Setting hi-res intra Quantisation matrix";
             qmat = hires_intra_quantizer_matrix;
             niqmat = hires_nonintra_quantizer_matrix;
-            encparams.load_iquant = 1;
+            enc->parms.load_iquant = 1;
             if  (param_hf_q_boost)
-                encparams.load_niquant = 1;   /* Custom matrix if -N used */
+                enc->parms.load_niquant = 1;   /* Custom matrix if -N used */
             break;
         case  3:
             msg = "KVCD Notch Quantization Matrix";
             qmat = kvcd_intra_quantizer_matrix;
             niqmat = kvcd_nonintra_quantizer_matrix;
-            encparams.load_iquant = 1;
-            encparams.load_niquant = 1;
+            enc->parms.load_iquant = 1;
+            enc->parms.load_niquant = 1;
             break;
         case  4:
             msg = "TMPGEnc Quantization matrix";
             qmat = tmpgenc_intra_quantizer_matrix;
             niqmat = tmpgenc_nonintra_quantizer_matrix;
-            encparams.load_iquant = 1;
-            encparams.load_niquant = 1;
+            enc->parms.load_iquant = 1;
+            enc->parms.load_niquant = 1;
             break;
         case  5:            /* -K file=qmatrixfilename */
             msg = "Loading custom matrices from user specified file";
-            encparams.load_iquant = 1;
-            encparams.load_niquant = 1;
+            enc->parms.load_iquant = 1;
+            enc->parms.load_niquant = 1;
             qmat = custom_intra_quantizer_matrix;
             niqmat = custom_nonintra_quantizer_matrix;
             break;
@@ -1990,12 +1948,12 @@ init_quantmat(void)
         v = quant_hfnoise_filt(qmat[i], i);
         if  (v < 1 || v > 255)
             mjpeg_error_exit1("bad intra value after -N adjust");
-        encparams.intra_q[i] = v;
+        enc->parms.intra_q[i] = v;
 
         v = quant_hfnoise_filt(niqmat[i], i);
         if  (v < 1 || v > 255)
             mjpeg_error_exit1("bad nonintra value after -N adjust");
-        encparams.inter_q[i] = v;
+        enc->parms.inter_q[i] = v;
         }
 
 }

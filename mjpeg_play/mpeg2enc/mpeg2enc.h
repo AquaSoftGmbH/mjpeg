@@ -88,21 +88,28 @@
 #define TEMPSCAL_ID 10
 
 /* inputtype */
+/*
 #define T_Y_U_V 0
 #define T_YUV   1
 #define T_PPM   2
+*/
+
 
 /*
-  Some enumerated types to give legible indices into motion vector arrays
+  Some typedefs to give legible types certain kinds of data items.
 */
 
 
 
-/* 4*4 sub-sampled pel Threshold below which initial 8*8 grid motion
-   compensation matches are always discarded.
-*/
+/* Transformed per-picture data  */
 
-#define COARSE_44_SAD_THRESHOLD 4*4*64
+typedef int MotionVecPred[2][2][2];
+typedef int DC_DctPred[3];
+
+// TODO: Nasty hack to keep interface to some old routines the same
+// Allocation should be done with ImagePlaneArray
+typedef uint8_t **ImagePlanes;
+typedef uint8_t *ImagePlaneArray[5];
 
 
 /* Byte alignment of buffers for picture data.  Very important for

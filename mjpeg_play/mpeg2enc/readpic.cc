@@ -67,16 +67,17 @@
  *
  */
 
-
 #include <config.h>
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
 #include <errno.h>
+#include "syntaxparams.h"
 #include "global.h"
-
+#include "simd.h"
+#include "mpeg2encoder.hh"
 #include "mpegconsts.h"
 #include "yuv4mpeg.h"
  
@@ -98,18 +99,32 @@ static int last_frame = -1;
 
 static int *lum_mean = NULL;
 
+/* Buffers frame data */
+static uint8_t ***frame_buffers;
+int frame_buffer_size;
 
-static int luminance_mean(uint8_t *frame, int w, int h )
+static int luminance_mean(uint8_t *frame )
 {
-	uint8_t *p = frame;
-	uint8_t *lim = frame + w*h;
+	uint8_t *p;
+    int stride = enc->parms.phy_width;
+    int width = enc->parms.enc_width;
+    int height = enc->parms.enc_height;
 	int sum = 0;
-	while( p < lim )
-	{
-		sum += (p[0] + p[1]) + (p[2] + p[3]) + (p[4] + p[5]) + (p[6] + p[7]);
-		p += 8;
-	}
-	return sum / (w * h);
+    int line;
+    uint8_t *line_base = frame;
+    for( line = 0; line < height; ++line )
+    {
+        for( p = line_base; p < line_base+width ; p += 8 )
+        {
+            sum += (static_cast<int>(p[0]) + static_cast<int>(p[1])) 
+                + (static_cast<int>(p[2]) + static_cast<int>(p[3]))
+                + (static_cast<int>(p[4]) + static_cast<int>(p[5]))
+                + (static_cast<int>(p[6]) + static_cast<int>(p[7]));
+            
+        }
+        line_base += stride;
+    }
+	return sum / (width * height);
 }
 
 
@@ -166,20 +181,20 @@ static void read_chunk(void)
          goto EOF_MARK;
       }
       
-      v = encparams.vertical_size;
-      h = encparams.horizontal_size;
+      v = enc->parms.vertical_size;
+      h = enc->parms.horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][0]+i*encparams.phy_width,h)!=h) goto EOF_MARK;
-	  lum_mean[n] = luminance_mean(frame_buffers[n][0], encparams.phy_width, encparams.phy_height );
+         if(piperead(istrm_fd,frame_buffers[n][0]+i*enc->parms.phy_width,h)!=h) goto EOF_MARK;
+	  lum_mean[n] = luminance_mean(frame_buffers[n][0] );
 
       v = CHROMA420==CHROMA420 ? 
-		  encparams.vertical_size/2 : encparams.vertical_size;
+		  enc->parms.vertical_size/2 : enc->parms.vertical_size;
       h = CHROMA420!=CHROMA444 ? 
-		  encparams.horizontal_size/2 : encparams.horizontal_size;
+		  enc->parms.horizontal_size/2 : enc->parms.horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][1]+i*encparams.phy_chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][1]+i*enc->parms.phy_chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][2]+i*encparams.phy_chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][2]+i*enc->parms.phy_chrom_width,h)!=h) goto EOF_MARK;
 
 
 	  if( ctl_parallel_read )
@@ -354,34 +369,6 @@ static void load_frame( int num_frame )
 		abort();
 	}
 	
-	if( frames_read == 0)
-	{
-#ifdef __linux__
-		pthread_mutexattr_t mu_attr;
-		pthread_mutexattr_t *p_attr = &mu_attr;
-		pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
-
-#else
-		pthread_mutexattr_t *p_attr = NULL;		
-#endif		
-		pthread_mutex_init( &frame_buffer_lock, p_attr );
-
-        lum_mean = new int[frame_buffer_size];
-
-		/*
-          Pre-fill the buffer 
-        */
-		if( ctl_parallel_read )
-        {
-			start_worker();
-            read_chunk_par( frame_buffer_size/2 );
-        }
-        else
-        {
-            read_chunk_seq( frame_buffer_size/2);
-        }
- 
-	}
 
    /* Read a chunk of frames if we've got less than one chunk buffered
 	*/
@@ -468,6 +455,109 @@ void read_stream_params( unsigned int *hsize,
                                                     *hsize, *vsize);
 }
 
+/*********************
+ *
+ * Mark the border so that blocks in the frame are unlikely
+ * to match blocks outside the frame.  This is useful for
+ * motion estimation routines that, for speed, are a little
+ * sloppy about some of the candidates they consider.
+ *
+ ********************/
+
+static void border_mark( uint8_t *frame,
+                         int w1, int h1, int w2, int h2)
+{
+  int i, j;
+  uint8_t *fp;
+  uint8_t mask = 0xff;
+  /* horizontal pixel replication (right border) */
+ 
+  for (j=0; j<h1; j++)
+  {
+    fp = frame + j*w2;
+    for (i=w1; i<w2; i++)
+    {
+      fp[i] = mask;
+      mask ^= 0xff;
+    }
+  }
+ 
+  /* vertical pixel replication (bottom border) */
+
+  for (j=h1; j<h2; j++)
+  {
+    fp = frame + j*w2;
+    for (i=0; i<w2; i++)
+    {
+        fp[i] = mask;
+        mask ^= 0xff;
+    }
+  }
+}
+
+void init_reader( )
+{
+#ifdef __linux__
+    pthread_mutexattr_t mu_attr;
+    pthread_mutexattr_t *p_attr = &mu_attr;
+    pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
+    
+#else
+    pthread_mutexattr_t *p_attr = NULL;		
+#endif		
+    pthread_mutex_init( &frame_buffer_lock, p_attr );
+
+    mjpeg_info( "Buffering %d frames", frame_buffer_size );
+
+    /* Allocate the frame data buffers: if we're not going to scan ahead
+       for GOP size we can save a *lot* of memory... */
+    if( ctl_N_max == ctl_N_min )
+        frame_buffer_size = max(2*ctl_M,1)+READ_CHUNK_SIZE;
+    else
+        frame_buffer_size = 2*ctl_N_max+READ_CHUNK_SIZE;
+    frame_buffers = (uint8_t ***) 
+        bufalloc(frame_buffer_size*sizeof(uint8_t**));
+	int n,i;
+    for(n=0;n<frame_buffer_size;n++)
+    {
+        frame_buffers[n] = (uint8_t **) bufalloc(3*sizeof(uint8_t*));
+        for (i=0; i<3; i++)
+        {
+                frame_buffers[n][i] = 
+                    static_cast<uint8_t *>( bufalloc( (i==0) 
+                                                      ? enc->parms.lum_buffer_size 
+                                                      : enc->parms.chrom_buffer_size ) 
+                        );
+            }
+        
+        border_mark(frame_buffers[n][0],
+                    enc->parms.enc_width,enc->parms.enc_height,
+                    enc->parms.phy_width,enc->parms.phy_height);
+        border_mark(frame_buffers[n][1],
+                    enc->parms.enc_chrom_width, enc->parms.enc_chrom_height,
+                    enc->parms.phy_chrom_width,enc->parms.phy_chrom_height);
+        border_mark(frame_buffers[n][2],
+                    enc->parms.enc_chrom_width, enc->parms.enc_chrom_height,
+                    enc->parms.phy_chrom_width,enc->parms.phy_chrom_height);
+        
+    }
+    
+    lum_mean = new int[frame_buffer_size];
+
+    /*
+          Pre-fill the buffer 
+        */
+    if( ctl_parallel_read )
+    {
+        start_worker();
+        read_chunk_par( frame_buffer_size/2 );
+    }
+    else
+    {
+        read_chunk_seq( frame_buffer_size/2);
+    }
+    
+}
 
 /* 
  * Local variables:

@@ -49,6 +49,7 @@
 #include "config.h"
 #include "mjpeg_logging.h"
 #include "global.h"
+#include "mpeg2encoder.hh"
 #include "predict_ref.h"
 
 /* form prediction for a complete picture (frontend for predict_mb)
@@ -138,7 +139,7 @@ void MacroBlock::Predict()
 	uint8_t **oldref = picture.oldref;	// Forward prediction
 	uint8_t **newref = picture.newref;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
-	int lx = encparams.phy_width;
+	int lx = enc->parms.phy_width;
 
 	bool addflag;
 	int currentfield;
@@ -148,8 +149,8 @@ void MacroBlock::Predict()
 	if (final_me.mb_type&MB_INTRA)
 	{
 		clearblock( cur,bx,by, 
-				   ((picture.pict_struct==BOTTOM_FIELD) ? encparams.phy_width : 0),
-					encparams.phy_width2);
+				   ((picture.pict_struct==BOTTOM_FIELD) ? enc->parms.phy_width : 0),
+					enc->parms.phy_width2);
 		return;
 	}
 

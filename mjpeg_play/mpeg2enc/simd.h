@@ -28,12 +28,21 @@
 #ifndef __SIMD_H__
 #define __SIMD_H__
 #include <config.h>
+#include "stdlib.h"
 #include "mjpeg_types.h"
 
 #ifdef __cplusplus
 extern "C" 
 {
 #endif
+
+/*
+ * Memory allocator that assures SIMD alignment and error handling
+ *
+ */
+
+void *bufalloc( size_t size );
+
 
 /*
  * Reference / Architecture neutral implementations of functions which

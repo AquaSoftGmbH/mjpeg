@@ -50,6 +50,7 @@
 #include <stdio.h>
 #include "global.h"
 #include "simd.h"
+#include "mpeg2encoder.hh"
 #include "ratectl.hh"
 
 /* output motion vectors (6.2.5.2, 6.3.16.2)
@@ -439,7 +440,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
 			/* quantize macroblock : N.b. the MB_PATTERN bit may be
                set as a side-effect of this call. */
-            cur_mb->Quantize();
+            cur_mb->Quantize( encoder->quantizer);
 
 			/* output mquant if it has changed */
 			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)

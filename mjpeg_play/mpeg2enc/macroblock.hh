@@ -71,6 +71,7 @@ public:
                    (measure of activity) */
 };
 
+class Quantizer;
 
 /* macroblock information */
 class MacroBlock
@@ -96,14 +97,14 @@ public:
     void FrameMEs();
     void FieldME();
     void Predict();            // In predict.cc
-    void Quantize();            // In quantize.cc
-    void IQuantize();
+    void Quantize( Quantizer &quant);             // In quantize.cc
+    void IQuantize( Quantizer &quant);
     void Transform();          // In transfrm.cc
     void ITransform();
     void PutBlocks();           // In putpic.cc
     void SkippedCoding( bool slice_begin_end );
 
-    inline const Picture &ParentPicture() const { return *picture; }
+    inline Picture &ParentPicture() const { return *picture; }
     inline int BaseLumVariance() const { return lum_variance; }
     inline double Activity() const { return act; }
     inline const int TopleftX() const { return i; }

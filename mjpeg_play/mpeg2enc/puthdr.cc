@@ -50,7 +50,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "global.h"
-
+#include "mpeg2encoder.hh"
 
 /* private prototypes */
 static int frametotc (int frame);
@@ -65,34 +65,34 @@ void putseqhdr(void)
 
 	alignbits();
 	putbits(SEQ_START_CODE,32); /* sequence_header_code */
-	putbits(encparams.horizontal_size,12); /* horizontal_size_value */
-	putbits(encparams.vertical_size,12); /* vertical_size_value */
-	putbits(encparams.aspectratio,4); /* aspect_ratio_information */
-	putbits(encparams.frame_rate_code,4); /* frame_rate_code */
+	putbits(enc->parms.horizontal_size,12); /* horizontal_size_value */
+	putbits(enc->parms.vertical_size,12); /* vertical_size_value */
+	putbits(enc->parms.aspectratio,4); /* aspect_ratio_information */
+	putbits(enc->parms.frame_rate_code,4); /* frame_rate_code */
 
 	/* MPEG-1 VBR is FFFF rate code. 
 	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
 	   sent 
 	*/
-	if(encparams.mpeg1 && (ctl_quant_floor != 0 || encparams.still_size > 0) ) {
+	if(enc->parms.mpeg1 && (ctl_quant_floor != 0 || enc->parms.still_size > 0) ) {
 		putbits(0xfffff,18);
 	} else {
-		putbits((int)ceil(encparams.bit_rate/400.0),18); /* bit_rate_value */
+		putbits((int)ceil(enc->parms.bit_rate/400.0),18); /* bit_rate_value */
 	}
 	putbits(1,1); /* marker_bit */
-	putbits(encparams.vbv_buffer_code,10); /* vbv_buffer_size_value */
-	putbits(encparams.constrparms,1); /* constrained_parameters_flag */
+	putbits(enc->parms.vbv_buffer_code,10); /* vbv_buffer_size_value */
+	putbits(enc->parms.constrparms,1); /* constrained_parameters_flag */
 
-	putbits(encparams.load_iquant,1); /* load_intra_quantizer_matrix */
-	if (encparams.load_iquant)
+	putbits(enc->parms.load_iquant,1); /* load_intra_quantizer_matrix */
+	if (enc->parms.load_iquant)
 		for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
-			putbits(encparams.intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
+			putbits(enc->parms.intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
 
-	putbits(encparams.load_niquant,1); /* load_non_intra_quantizer_matrix */
-	if (encparams.load_niquant)
+	putbits(enc->parms.load_niquant,1); /* load_non_intra_quantizer_matrix */
+	if (enc->parms.load_niquant)
 		for (i=0; i<64; i++)
-			putbits(encparams.inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
-	if (!encparams.mpeg1)
+			putbits(enc->parms.inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
+	if (!enc->parms.mpeg1)
 	{
 		putseqext();
 		putseqdispext();
@@ -106,14 +106,14 @@ void putseqext(void)
 	alignbits();
 	putbits(EXT_START_CODE,32); /* extension_start_code */
 	putbits(SEQ_ID,4); /* extension_start_code_identifier */
-	putbits((encparams.profile<<4)|encparams.level,8); /* profile_and_level_indication */
-	putbits(encparams.prog_seq,1); /* progressive sequence */
+	putbits((enc->parms.profile<<4)|enc->parms.level,8); /* profile_and_level_indication */
+	putbits(enc->parms.prog_seq,1); /* progressive sequence */
 	putbits(CHROMA420,2); /* chroma_format */
-	putbits(encparams.horizontal_size>>12,2); /* horizontal_size_extension */
-	putbits(encparams.vertical_size>>12,2); /* vertical_size_extension */
-	putbits(((int)ceil(encparams.bit_rate/400.0))>>18,12); /* bit_rate_extension */
+	putbits(enc->parms.horizontal_size>>12,2); /* horizontal_size_extension */
+	putbits(enc->parms.vertical_size>>12,2); /* vertical_size_extension */
+	putbits(((int)ceil(enc->parms.bit_rate/400.0))>>18,12); /* bit_rate_extension */
 	putbits(1,1); /* marker_bit */
-	putbits(encparams.vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
+	putbits(enc->parms.vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
 	putbits(0,1); /* low_delay  -- currently not implemented */
 	putbits(0,2); /* frame_rate_extension_n */
 	putbits(0,5); /* frame_rate_extension_d */
@@ -128,14 +128,14 @@ void putseqdispext(void)
 	alignbits();
 	putbits(EXT_START_CODE,32); /* extension_start_code */
 	putbits(DISP_ID,4); /* extension_start_code_identifier */
-	putbits(encparams.video_format,3); /* video_format */
+	putbits(enc->parms.video_format,3); /* video_format */
 	putbits(1,1); /* colour_description */
-	putbits(encparams.color_primaries,8); /* colour_primaries */
-	putbits(encparams.transfer_characteristics,8); /* transfer_characteristics */
-	putbits(encparams.matrix_coefficients,8); /* matrix_coefficients */
-	putbits(encparams.display_horizontal_size,14); /* display_horizontal_size */
+	putbits(enc->parms.color_primaries,8); /* colour_primaries */
+	putbits(enc->parms.transfer_characteristics,8); /* transfer_characteristics */
+	putbits(enc->parms.matrix_coefficients,8); /* matrix_coefficients */
+	putbits(enc->parms.display_horizontal_size,14); /* display_horizontal_size */
 	putbits(1,1); /* marker_bit */
-	putbits(encparams.display_vertical_size,14); /* display_vertical_size */
+	putbits(enc->parms.display_vertical_size,14); /* display_vertical_size */
 }
 
 /* output a zero terminated string as user data (6.2.2.2.2, 6.3.4.1)
@@ -179,7 +179,7 @@ static int frametotc(int gop_timecode0_frame)
 	/* Note: no drop_frame_flag support here, so we're simply rounding
 	   the frame rate as per 6.3.8 13818-2
 	*/
-	fps = (int)(encparams.frame_rate+0.5);
+	fps = (int)(enc->parms.frame_rate+0.5);
 	pict = frame%fps;
 	frame = (frame-pict)/fps;
 	sec = frame%60;

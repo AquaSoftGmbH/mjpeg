@@ -50,28 +50,30 @@
 #include "mmx.h"
 #include "tables.h"
 #include "quantize_precomp.h"
+#include "quantize_ref.h"
 
-extern uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-extern uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-
-extern float intra_q_tblf[113][64], inter_q_tblf[113][64];
-extern float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
 
 /* Implemented in pure (NASM) assembler routines 	*/
 
-int quantize_non_intra_mb_mmx(int16_t *dst, int16_t *src, 
-					uint16_t *quant_mat, 
-					uint16_t *i_quant_mat, 
-					int imquant, int mquant, 
-					int sat_limit) __asm__ ("quantize_non_intra_mb_mmx");
+int quantize_non_intra_mb_mmx( int16_t *dst, int16_t *src, 
+							   uint16_t *quant_mat, 
+							   uint16_t *i_quant_mat, 
+							   int imquant, int mquant, 
+							   int sat_limit) 
+	__asm__ ("quantize_non_intra_mb_mmx");
 					
-int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
+int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat )
+	__asm__ ("quant_weight_coeff_sum_mmx");
 
 
-void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m1_extmmx");
-void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m1_mmx");
-void iquantize_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m2_extmmx");
-void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m2_mmx");
+void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat)
+	__asm__ ("iquantize_non_intra_m1_extmmx");
+void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
+	__asm__ ("iquantize_non_intra_m1_mmx");
+void iquantize_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat)
+	__asm__ ("iquantize_non_intra_m2_extmmx");
+void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
+	__asm__ ("iquantize_non_intra_m2_mmx");
 
 /* 
  * Quantisation for non-intra blocks 
@@ -98,7 +100,8 @@ void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __as
  * upwards which partly compensates.
  */
  
-int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
+int quant_non_intra_3dnow(	struct QuantizerWorkSpace *wsp,
+							int16_t *src, int16_t *dst,
 							int q_scale_type,
 							int satlim,
 							int *nonsat_mquant)
@@ -123,7 +126,7 @@ int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = i_inter_q_tblf[mquant];
+	i_quant_matf = wsp->i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -215,7 +218,8 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra( src, dst, 
+					return quant_non_intra( wsp,
+											src, dst, 
 											q_scale_type,
 										    satlim,
 											nonsat_mquant);
@@ -240,7 +244,8 @@ restart:
  */
 static int trunc_mxcsr = 0x7f80;
  
-int quant_non_intra_sse( int16_t *src, int16_t *dst,
+int quant_non_intra_sse( struct QuantizerWorkSpace *wsp,
+						 int16_t *src, int16_t *dst,
 						 int q_scale_type,
 						 int satlim,
 						 int *nonsat_mquant)
@@ -268,7 +273,7 @@ int quant_non_intra_sse( int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = i_inter_q_tblf[mquant];
+	i_quant_matf = wsp->i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -351,7 +356,7 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra(src, dst, 
+					return quant_non_intra(wsp, src, dst, 
 										   q_scale_type,
 										   satlim,
 										   nonsat_mquant);
@@ -381,7 +386,8 @@ restart:
  * through the whole lot...
  */
 																							     											     
-int quant_non_intra_mmx( int16_t *src, int16_t *dst,
+int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
+						 int16_t *src, int16_t *dst,
 						 int q_scale_type,
 						 int clipvalue,
 						 int *nonsat_mquant)
@@ -391,16 +397,17 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	int flags = 0;
 	int saturated = 0;
 	int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = inter_q_mat;
+	uint16_t *quant_mat = wsp->inter_q_mat;
 	int comp;
-	uint16_t *i_quant_mat = i_inter_q_mat;
+	uint16_t *i_quant_mat = wsp->i_inter_q_mat;
 	int imquant;
 	int16_t *psrc, *pdst;
 
 	/* MMX routine does not work right for MQ=2 ... (no unsigned mult) */
 	if( mquant == 2 )
 	{
-		return quant_non_intra(src, dst, q_scale_type, clipvalue, nonsat_mquant);
+		return quant_non_intra( wsp,
+								src, dst, q_scale_type, clipvalue, nonsat_mquant);
 	}
 	/* If available use the fast MMX quantiser.  It returns
 	   flags to signal if coefficients are outside its limited range or
@@ -462,44 +469,52 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	fall back to the original 32-bit int version: this is rare */
 	if(  (flags & 0xff) != 0 || saturated)
 	{
-		return quant_non_intra( src, dst, q_scale_type, clipvalue, nonsat_mquant);
+		return quant_non_intra( wsp,
+								src, dst, q_scale_type, clipvalue, nonsat_mquant);
 	}
 
 	*nonsat_mquant = mquant;
 	return nzflag;
 }
 
-void iquant_non_intra_m1_extmmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m1_extmmx(struct QuantizerWorkSpace *wsp,
+								int16_t *src, int16_t *dst, int mquant )
 {
-	iquantize_non_intra_m1_extmmx(src,dst,inter_q_tbl[mquant]);
+	iquantize_non_intra_m1_extmmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m2_extmmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m2_extmmx(struct QuantizerWorkSpace *wsp,
+								int16_t *src, int16_t *dst, int mquant )
 {
-	iquantize_non_intra_m2_extmmx(src,dst,inter_q_tbl[mquant]);
+	iquantize_non_intra_m2_extmmx( src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
+							 int16_t *src, int16_t *dst, int mquant )
 {
-	iquantize_non_intra_m1_mmx(src,dst,inter_q_tbl[mquant]);
+	iquantize_non_intra_m1_mmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m2_mmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m2_mmx(struct QuantizerWorkSpace *wsp,
+							 int16_t *src, int16_t *dst, int mquant )
 {
-	iquantize_non_intra_m2_mmx(src,dst,inter_q_tbl[mquant]);
+	iquantize_non_intra_m2_mmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-int quant_weight_coeff_x86_intra( int16_t *blk )
+int quant_weight_coeff_x86_intra( struct QuantizerWorkSpace *wsp,
+								  int16_t *blk )
 {
-	return quant_weight_coeff_sum_mmx( blk, i_intra_q_mat );
+	return quant_weight_coeff_sum_mmx( blk, wsp->i_intra_q_mat );
 }
-int quant_weight_coeff_x86_inter( int16_t *blk )
+int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
+								  int16_t *blk )
 {
-	return quant_weight_coeff_sum_mmx( blk, i_inter_q_mat );
+	return quant_weight_coeff_sum_mmx( blk, wsp->i_inter_q_mat );
 }
 
 
-void enable_x86_quantization( int mpeg1)
+void enable_x86_quantization( struct QuantizerCalls *qcalls,
+int mpeg1)
 {
 	int flags = cpu_accel();
 	const char *opt_type1, *opt_type2;
@@ -508,38 +523,38 @@ void enable_x86_quantization( int mpeg1)
 		if( (flags & ACCEL_X86_3DNOW) != 0 )
 		{
 			opt_type1 = "3DNOW and";
-			pquant_non_intra = quant_non_intra_3dnow;
+			qcalls->pquant_non_intra = quant_non_intra_3dnow;
 		}
 		else if ( (flags & ACCEL_X86_SSE) != 0 )
 		{
 			opt_type1 = "SSE and";
-			pquant_non_intra = quant_non_intra_sse;
+			qcalls->pquant_non_intra = quant_non_intra_sse;
 		}
 		else 
 		{
 			opt_type1 = "MMX and";
-			pquant_non_intra = quant_non_intra_mmx;
+			qcalls->pquant_non_intra = quant_non_intra_mmx;
 		}
 
 		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
 		{
 			opt_type2 = "EXTENDED MMX";
-			pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-			pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+			qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+			qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
             if( mpeg1 )
-                piquant_non_intra = iquant_non_intra_m1_extmmx;
+                qcalls->piquant_non_intra = iquant_non_intra_m1_extmmx;
             else
-                piquant_non_intra = iquant_non_intra_m2_extmmx;
+                qcalls->piquant_non_intra = iquant_non_intra_m2_extmmx;
         }
 		else
 		{
 			opt_type2 = "MMX";
-			pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-			pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+			qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+			qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
             if( mpeg1 )
-                piquant_non_intra = iquant_non_intra_m1_mmx;
+                qcalls->piquant_non_intra = iquant_non_intra_m1_mmx;
             else
-                piquant_non_intra = iquant_non_intra_m2_mmx;
+                qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
 		}
 		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
 	}
