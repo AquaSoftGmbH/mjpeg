@@ -137,7 +137,7 @@ main(int argc, char **argv)
 	y4m_si_set_framerate(&ostream, rate_ratio);
 	y4m_si_set_sampleaspect(&ostream, aspect_ratio);
 	if	(xcss411)
-		y4m_xtag_add(&(ostream.x_tags), "XYSCSS=411");
+		y4m_si_set_chroma(&ostream, Y4M_CHROMA_411);
 
 /*
  *                    Y                    U                      V
