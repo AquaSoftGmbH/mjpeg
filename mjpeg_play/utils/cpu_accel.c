@@ -23,7 +23,6 @@
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
-#include <malloc.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <errno.h>
