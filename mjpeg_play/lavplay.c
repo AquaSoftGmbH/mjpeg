@@ -413,6 +413,14 @@ void unlock_update_screen()
   SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
 }
 
+void x_shutdown(int a)
+{
+  printf("Ctrl-C shutdown (mjpeg = %p) !\n", mjpeg);
+  if (el.has_audio && audio_enable) audio_shutdown();
+  mjpeg_close(mjpeg);
+  if (soft_play) SDL_Quit();
+}
+
 int main(int argc, char ** argv)
 {
    int res, frame, hn;
@@ -644,6 +652,7 @@ int main(int argc, char ** argv)
       atexit(audio_shutdown);
    }
 
+  signal(SIGINT, x_shutdown);
 
    /* Fill all buffers first */
 
@@ -814,7 +823,8 @@ int main(int argc, char ** argv)
 	  {
 	    printf("frame = %d, nsync = %ld, mjpeg->br.count = %ld\n", frame, nsync, mjpeg->br.count);
             lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
-	    mjpeg_close(mjpeg);
+	    //mjpeg_close(mjpeg);
+	    x_shutdown(1);
             exit(1);
 	  }
 	nsync++;
