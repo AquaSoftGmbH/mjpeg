@@ -638,13 +638,13 @@ jinit_forward_dct (j_compress_ptr cinfo)
 	  {
 
 		  fdct->do_dct = jpeg_fdct_ifast_mmx;
-		  if( 0 && cpu_flags & ACCEL_X86_SSE )
+		  if( cpu_flags & ACCEL_X86_SSE )
 		  {
 			  fdct->fast_quantiser = QUANT_FLOAT32;
 			  fdct->pub.forward_DCT = forward_DCT_x86float32;
 			  fdct->do_float32_quant = jcquant_sse;
 		  }
-		  else if( 0 && cpu_flags & ACCEL_X86_3DNOW )
+		  else if( cpu_flags & ACCEL_X86_3DNOW )
 		  {
 			  fdct->fast_quantiser = QUANT_FLOAT32;
 			  fdct->pub.forward_DCT = forward_DCT_x86float32;
