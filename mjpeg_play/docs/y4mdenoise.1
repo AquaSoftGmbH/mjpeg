@@ -53,9 +53,9 @@ useless) matches.  Presently, intensity pixel-groups are 4x2
 
 It compares every pixel-group in the current frame with all
 pixel-groups in the previous frame, within a given search-radius,
-and sorts them based on how close the match was, keeping the
-top contenders.  It then flood-fills each pixel-group in turn, to
-determine the size of the actual match.  The first match found to
+and sorts them based on how close the match was, keeping the top
+contenders.  It then flood-fills each found pixel-group in turn,
+to determine the full size of the match.  The first match found to
 be big enough is applied to the image.  The number of contenders
 to consider, and the minimum size of a match, can be specified on
 the command line.
@@ -97,13 +97,13 @@ The default is whatever the main error-tolerance was set to.
 .BI \-m " [num] Match-count throttle"
 The maximum number of pixel-group matches (within the search radius)
 to consider.  If more are found, only the closest matches are kept.
-Default is 5.
+Default is 10.
 
 .TP 4
 .BI \-M " [num] Match-size throttle"
-The minimum size of the flood-filled region generated from a match
-necessary for it to be used.  Matches smaller than this are thrown
-away.  Specified in terms of pixel-groups.  Default is 2.
+The minimum size of the flood-filled region generated from a match.
+Matches smaller than this are thrown away.  Specified in terms of
+pixel-groups.  Default is 3.
 
 .TP 4
 .BI \-s " num"
@@ -156,10 +156,9 @@ gain experience with the tool, you may know what error threshold
 generally works with various types of sources, but you'll still
 want to double-check your assumptions.
 
-Animation seems to require a higher error threshold than comparable
-live-action video, e.g. 50% higher and up.  Flat, shiny surfaces, like
-gloss-painted walls, or the polished wood floor of an indoor gymnasium,
-seem to require a lower error threshold.
+Flat, shiny surfaces, like gloss-painted walls, or the polished wood
+floor of an indoor gymnasium, seem to require a lower error threshold
+than other types of video.
 
 Here is the author's experience:
 
@@ -167,7 +166,6 @@ Here is the author's experience:
  -t 2 : VHS camcorder video, commercially-produced videotapes
  -t 3 : Analog cable TV, VHS videotape (at the 2-hour speed)
  -t 4 : VHS videotape (at the 6-hour speed)
- -t 5 : Flat animation
 
 Interlaced video that was made from non-interlaced video (e.g. a
 videotape or LaserDisc of a film) must be denoised as non-interlaced.

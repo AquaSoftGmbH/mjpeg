@@ -304,7 +304,7 @@ newdenoise_interlaced_frame (const uint8_t *a_pInputY,
 	// If it's time to purge, do so.
 	{
 		extern int frame;
-		if (frame % 100 == 0)
+		if (frame % 10 == 0)
 		{
 			g_oMotionSearcherY.Purge();
 			g_oMotionSearcherCbCr.Purge();
