@@ -131,7 +131,8 @@ d2top00:
 	add       ebx, esi
 	dec       edi
 	jg        d2top00
-	jmp       d2exit
+        jmp       near d2exit
+	;jmp         d2exit changes made because of problems with nasm 0.98.23
 
 
 d2is10:
@@ -218,7 +219,8 @@ d2top10:
 	jg        near d2top10
 	
 	
-	jmp       d2exit
+	jmp       near d2exit
+	;jmp       d2exit   changes made because of problems with nasm 0.98.23
 
 d2is01:
 	test      eax, eax
@@ -302,7 +304,8 @@ d2top01:
 	add       ebx, esi    ; ebx = ebx + lx
 	dec       edi
 	jg        near d2top01
-	jmp       d2exit
+	jmp       near d2exit
+	;jmp       d2exit    changes made because of problems with nasm 0.98.23
 
 d2is11:
 	mov       eax, [ebp+8] ; blk1
