@@ -482,9 +482,9 @@ int audio_read( uint8_t *buf, int size, int swap,
       /* Got an audio sample, copy it to the output buffer */
 
       if(swap && audio_size==16)
-         swpcpy(buf,(void*)shmemptr->audio_data[NBUF(n_audio)],audio_buffer_size);
+         swpcpy((void*)buf,(void*)shmemptr->audio_data[NBUF(n_audio)],audio_buffer_size);
       else
-         memcpy(buf,(void*)shmemptr->audio_data[NBUF(n_audio)],audio_buffer_size);
+         memcpy((void*)buf,(void*)shmemptr->audio_data[NBUF(n_audio)],audio_buffer_size);
 
       /* set the other return values */
 
@@ -599,9 +599,9 @@ int audio_write(uint8_t *buf, int size, int swap)
       }
 
       if(swap && audio_size==16)
-         swpcpy((void*)shmemptr->audio_data[NBUF(n_audio)],buf+nb,audio_buffer_size);
+         swpcpy((void*)shmemptr->audio_data[NBUF(n_audio)],(void*)(buf+nb),audio_buffer_size);
       else
-         memcpy((void*)shmemptr->audio_data[NBUF(n_audio)],buf+nb,audio_buffer_size);
+         memcpy((void*)shmemptr->audio_data[NBUF(n_audio)],(void*)(buf+nb),audio_buffer_size);
 
       shmemptr->used_flag[NBUF(n_audio)] = 1;
 
