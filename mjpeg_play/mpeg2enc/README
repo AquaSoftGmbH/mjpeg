@@ -28,7 +28,7 @@ output quality when using noisy (e.g. broadcast) source video.
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
-around 5 times as fast with sensible (search radius 15) motion compensation
+around 10 times as fast with sensible (search radius 15) motion compensation
 settings, and you can now get half-decent looking results when working with
 typical broadcast quality sources.
 
@@ -74,6 +74,7 @@ these good 2*2 matches.  Experiments and a bit of simple statistics
 revealed that it was exceedingly rare to miss the best match doing
 this, and even when we did miss the match found was *almost* as good.
 
+
 Obviously, your mileage may vary so you may want to fiddle with the -f
 setting if you're getting rotten results.  Contact
 Andrew.Stevens@comlab.ox.ac.uk if you think you have found a case
@@ -98,6 +99,11 @@ N.b. because it is possible (if very unlikely) that non-trivial quality
 losses may occur (and the gains in terms of total run-time
 are not huge) thresholding defaults *off*.  Use "-t" to turn it on.
 
+As an aside to prevent short patches of very rapidly changing scenes
+with poor matching after motion compensation making the encoder "lazy"
+by skewing the average, the system uses *two* averages on long-term
+one short-term.  It uses the *smaller* of the two when deciding whether
+or not to bother searching further.   
 
 
 NOISE FILTERING and BIT DROPPING
@@ -111,7 +117,7 @@ end result is ugly "artifacted" results where MPEG has dropped real
 information in favour of spurious noise.  The solution is to try to
 filter the noise out of the source.   Currently, nothing terribly
 clever is done: just simple smoothing. -n 1 smooths gently and is almost
-imperceptible, -n 2 is rather stronger is noticeable if you compare
+imperceptible, -n 2 is rather stronger and is noticeable if you compare
 source video.  However, if you really have noisy sources then -n 2 is
 infinitely preferable to the swimming sea of artefacts MPEG otherwise
 generates.
@@ -122,6 +128,10 @@ Stevens) don't really know if this makes one jot of difference once
 MPEG's DCT coefficients have been quantized.  Certainly, not nearly as
 useful as -n.
 
+Update: -d 2 subjectively produces results that look like and inferior
+version of -n 1.  However, it is still worth using if you know your
+source simply doesn't have 8 bit precision as it will assist motion
+compensation find matches.
 
 
 PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul 2000)
@@ -130,12 +140,12 @@ In addition to improved fast motion compensation the updated code
 also has x86 assembly language MMX/SSE routines for key motion
 compensation calculations (8*8 and 16*16 block absolute difference sums).
 
-Unfortunately, the original MMX (MMX1) instruction set is utterly
-brainless in that it only permits signed comparison and makes it
-hard to shift between different packed representations.
-In this case: computing a 16 bit sum of packed 8 bit unsigned differences
-is greatly complicated.  Thus the performance gains from moving to MMX
-aren't as spectacular as one might expect: only around 50% speed up.
+Unfortunately, the original MMX (MMX1) instruction set is somewhat
+deficient in a couple of key areas.  In particular there's no way of
+preserving carries. In this case: computing a 16 bit sum of packed 8
+bit unsigned differences or averaging 8 bit values are greatly
+complicated by this.  Thus the performance gains from moving to MMX aren't as
+spectacular as one might expect: only around 50% speed up.
 
 
 Fortunately, MMX2 as found on Athlon's and Intel chips with SSE adds
@@ -150,16 +160,23 @@ There have also been some gross-me-out hacky optimisations made
 to the non-MMX code to make it run better on modern pipelined CPU's.
 However, if you're trying to compress long MPEG sequences on a pre-MMX
 x86 CPU you *will* need some serious patience ;-).  I reckon compressing
-a 1 hour TV show is just barely tolerable with the new super-duper fast
-mpeg2enc and 4 300Mhz+  CPU's on the job.
+a 1 hour TV show is now tolerable with the new super-duper fast
+mpeg2enc and a  600Mhz+  CPU's on the job.  Personally, I split the
+work between 4 CPU's: Celeron 366, 2*PIII-450 and a K6-2 500.
 
+I suspect the code would need serious reworking on an alpha as it
+merrily abuses data alignment constraints.
 
 STILL MORE PERFORMANCE?
 
-Not easy to see how bit improvements can be made without radical rebuilding of
-the code.  The program still spends 60-70% of its time in motion
-compesation search.  Further speed ups would require still better algorithms.
-Perhaps a hierarchical search?  First 4*4 blocks then 2*2 then 1*1?
+Not easy to see how bit improvements can be made without radical
+rebuilding of the code.  The program still spends around 50% of its
+time in motion compesation search.  Further speed ups would require
+more aggressive algoriths. A logarithmic search with row/column sums
+might be worth investigating for a "quick and dirty" compression mode
+with real-time pretensions.  However, to get the additional factor of
+2-3 needed to allow real-time compression on a single modern GHz CPU
+other parts of the program would need to be investigated too...
 
 BETTER QUALITY?
 
