@@ -140,6 +140,9 @@ case $host in
   *-apple-darwin*)
    CFLAGS="$CFLAGS -no-cpp-precomp"
    ;;
+  *-unknown-netbsdelf2.*)
+   LIBS="-lossaudio"
+   ;;
 esac
 
 dnl *********************************************************************
