@@ -2,7 +2,7 @@
 # Automake Makefile template for mpeg2enc...
 
 bin_PROGRAMS = mpeg2enc mjpegcat
-mpeg2enc_LDFLAGS = -L ../movtar -L
+mpeg2enc_LDFLAGS = -L ../movtar 
 mpeg2enc_LDADD = ../editlist.o ../lav_io.o ../avilib.o -ljpeg @MOVTAR_LIBS@
 
 mpeg2enc_MMXSSE = 	fdist1_mmx.s dist1_00_mmx.s dist1_01_mmx.s dist1_10_mmx.s dist1_11_mmx.s \
