@@ -215,23 +215,14 @@ static void lavrec_msg(int type, lavrec_t *info, const char format[], ...)
 
    va_start(args, format);
    vsnprintf(buf, sizeof(buf)-1, format, args);
-
-   if (!info && type == LAVREC_MSG_ERROR)
-   {
-      /* we can't let errors pass without giving notice */
-      printf("**ERROR: %s\n", buf);
-   }
-   else if (info->msg_callback)
-   {
-      info->msg_callback(type, buf);
-   }
-   else if (type == LAVREC_MSG_ERROR)
-   {
-      /* we can't let errors pass without giving notice */
-      printf("**ERROR: %s\n", buf);
-   }
-
    va_end(args);
+
+   if (!info) /* we can't let errors pass without giving notice */
+      mjpeg_error("%s", buf);
+   else if (info->msg_callback)
+      info->msg_callback(type, buf);
+   else if (type == LAVREC_MSG_ERROR)
+      mjpeg_error("%s", buf);
 }
 
 

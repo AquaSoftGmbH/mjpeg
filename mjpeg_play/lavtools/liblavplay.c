@@ -370,44 +370,19 @@ typedef struct {
 static void lavplay_msg(int type, lavplay_t *info, const char format[], ...) GNUC_PRINTF(3,4);
 static void lavplay_msg(int type, lavplay_t *info, const char format[], ...)
 {
-   if (!info)
-   {
-      /* we can't let errors pass without giving notice */
-      char buf[1024];
-      va_list args;
+   char buf[1024];
+   va_list args;
 
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
+   va_start(args, format);
+   vsnprintf(buf, sizeof(buf)-1, format, args);
+   va_end(args);
 
-      printf("**ERROR: %s\n", buf);
-
-      va_end(args);
-   }
+   if (!info) 		/* we can't let errors pass without giving notice */
+      mjpeg_error("**ERROR: %s", buf);
    else if (info->msg_callback)
-   {
-      char buf[1024];
-      va_list args;
-
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
-
       info->msg_callback(type, buf);
-
-      va_end(args);
-   }
    else if (type == LAVPLAY_MSG_ERROR)
-   {
-      /* we can't let errors pass without giving notice */
-      char buf[1024];
-      va_list args;
-
-      va_start(args, format);
-      vsnprintf(buf, sizeof(buf)-1, format, args);
-
-      printf("**ERROR: %s\n", buf);
-
-      va_end(args);
-   }
+      mjpeg_error("**ERROR: %s", buf);
 }
 
 
