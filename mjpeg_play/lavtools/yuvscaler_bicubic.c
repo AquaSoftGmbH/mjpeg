@@ -21,15 +21,16 @@ extern uint8_t *divide;
 extern long int bicubic_offset;
 
 
+#ifdef HAVE_ASM_MMX
 // MMX
 extern int16_t *mmx_padded, *mmx_cubic;
 extern int32_t *mmx_res;
 extern long int max_lint_neg;	// maximal negative number available for long int
 extern int mmx;			// =1 for mmx activated
+#endif
 // Defines
 #define FLOAT2INTEGERPOWER 11
 extern long int FLOAT2INTOFFSET;
-
 
 
 
@@ -48,7 +49,6 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
 
-  unsigned long int ulint, base_0, base_1, base_2, base_3;
   int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
     cubic_spline_n_3;
   int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
@@ -58,10 +58,22 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 //   uint8_t zero=0;
   uint8_t *output_p;
   long int value;
-  long int value1, value2;
-  int32_t value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
+  long int value1;
 
+#ifdef HAVE_ASM_MMX
+  unsigned long int ulint, base_0, base_1, base_2, base_3;
+  int32_t value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
+  long int value2;
+#endif
+   
+   
+   mjpeg_debug ("Start of cubic_scale\n");
+
+
+   
    /* *INDENT-OFF* */
+
+#ifdef HAVE_ASM_MMX
    if (mmx==1) 
      {
 	mjpeg_debug ("-- MMX --");
@@ -239,6 +251,7 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 	  }
      }
    else
+#endif
      {
 	// NON-MMX algorithms
 	if ((specific==1) || (specific==6)) 
@@ -362,6 +375,7 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
      }
 
 
+
    /* *INDENT-ON* */
   mjpeg_debug ("End of cubic_scale\n");
   return (0);
@@ -385,18 +399,23 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
 
-  long int value1, value2, value;
-  long int value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
-  unsigned long int ulint, base_0, base_1, base_2, base_3;
+  long int value1, value;
   int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
     cubic_spline_n_3;
   int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
     cubic_spline_m_3;
   uint8_t *output_p;
 
-  mjpeg_debug ("Start of cubic_scale_interlaced\n");
+#ifdef HAVE_ASM_MMX
+  unsigned long int ulint, base_0, base_1, base_2, base_3;
+  long int value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
+  long int value2;
+#endif
+
+   mjpeg_debug ("Start of cubic_scale_interlaced\n");
 
    /* *INDENT-OFF* */
+#ifdef HAVE_ASM_MMX
    if (mmx==1) 
      {
 	mjpeg_debug ("-- MMX --");
@@ -731,6 +750,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 	  }
      }
    else
+#endif
      {
 	// NON-MMX algorithms
 	if ((specific==1) || (specific==6)) 
