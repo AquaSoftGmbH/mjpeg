@@ -1,0 +1,135 @@
+#!/bin/bash
+
+#
+# A convenient front-end for the various mpeg encoding tools.
+# Allows "1 command" production of a video stream...
+# 
+
+function tidy_exit ()
+{
+	rm -f $tidyfile
+	exit 0
+}
+
+scale=0
+kind=avi
+quality=""
+search=16
+noise=""
+bitdrop=""
+thresh="-t"
+MPEGENC=mpeg2enc
+MP2ENC=mp2enc
+MPLEX=mplex
+dst=""
+conc="0"
+mplexflags=""
+
+while getopts ":s:q:n:d:o:MQSVTNtc" opt
+do
+case $opt in
+s) scale=$OPTARG
+  echo Setting scaling option to $OPTARG
+;;
+q) quality=$OPTARG
+  echo Setting quality factor to $quality
+;;
+M) quality="-b 1550"
+  mplexflags="-b 80"
+  echo "Setting medium-quality (1550Kbps) mode"
+;;
+Q) quality="-b 2200"
+  mplexflags="-b 80"
+  echo "Setting high-quality (2200Kbps) mode"
+;;
+S) quality="-b 2600"
+  mplexflags="-b 80"
+  echo "Setting super high-quality (2600kbps) mode"
+;;
+V)
+  quality="-q 3"
+  mplexflags="-V"
+  echo  "Using variable bitrate (fixed quantisation)"
+  echo "WARNING: don't expect this work on hardware players..."
+;;
+t) echo "De-activating thresholding"
+thresh=""
+;;
+n) echo "Setting noise filter $OPTARG"
+noise="-n $OPTARG"
+;;
+d) echo "Setting bit-drop to $OPTARG"
+bitdrop="-d $OPTARG"
+;;
+o) echo "Setting destination directory to $OPTARG"
+dst=$OPTARG
+;;
+c) echo "Concurrent mode - > 1 lav2mpeg's can run on a file set without repeated work"
+conc=1
+;;
+?)
+  echo "Usage: lav2mpeg [-s num] [-d num] [-n num] [-S] [-Q] [-M] [-t] [-c] [-o dstdir] srcfile ..."
+  echo "Q - High quality mode (2200Kbps video)"
+  echo "S - Super high quality mode (2600Kbps video)"
+  echo "M - Medium high quality mode (1550Kbps video)"
+  echo "t - De-activate search thresholding".
+exit 1
+;;
+esac
+done
+
+
+shift $[$OPTIND-1]
+
+trap tidy_exit SIGINT
+trap tidy_exit SIGHUP
+
+for f in $*
+do
+  fname=${f%.*}
+  kind=${f##${fname}.}
+  if [ ! x${dst} = "x" ]
+  then
+    fname=${f##*/}
+    r=${dst}/${fname%%.${kind}}
+  else
+    r=${fname}
+  fi
+  mpgfile=${r}.mpg
+  if [ ! ${conc} = 1 -o ! -f ${r}.m1v ]
+  then
+    if [ ${conc} = 1 ]
+    then
+      tidyfile=${r}.m1v
+    fi
+    lav2yuv -s ${scale} ${bitdrop}  ${noise} $f | buffer -b 4M | nice -n 15 ${MPEGENC} -m 1 ${quality}  ${thresh} -r ${search}  -o ${r}.m1v
+    if [ ! $? = 0 ]
+    then
+       exit $?
+    fi
+
+    if [ ! ${conc} = 1 -o ! -f ${r}.mp2 ]
+    then
+      if [ $conc = 1 ]
+      then
+        tidyfile=${r}.mp2
+      fi
+		# Don't mux / aenc two at once - screws up NFS...
+		while [ -r ${r%%.*}.mux ]
+		do
+		  sleep 30
+		done
+      lav2wav $f | buffer | nice -n 15 mp2enc -v -o ${r}.mp2
+    fi
+	# Don't mux / aenc two at once - screws up NFS...
+	while [ -r ${r%%.*}.mux ]
+	do
+	sleep 30
+    done
+	echo  > ${r%%.*}.mux
+     nice -n 15 ${MPLEX} -q ${mplexflags} ${r}.m1v ${r}.mp2 ${mpgfile} 
+     rm -f ${r}.mp2 ${r}.m1v ${r%%.*}.mux
+    sleep 2
+  fi
+done
+
