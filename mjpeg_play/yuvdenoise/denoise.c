@@ -417,8 +417,9 @@ correct_frame2 (void)
     q8 = (q8<0)? -q8:q8;
     q9 = (q9<0)? -q9:q9;
     
-    q = (q1+q2+q3+q4+2*q5+q6+q7+q8+q9)/10;
-    
+    q = (q1+q2+q3+q4+q5+q6+q7+q8+q9)/9;
+    q = (q+3*q5)>>2;
+
     if (q>denoiser.threshold)
     {
       *(dst) = *(src);
