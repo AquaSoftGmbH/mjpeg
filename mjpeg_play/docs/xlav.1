@@ -1,10 +1,14 @@
-.TH "xlav" "1" "V 1.4" "Andrew Stevens" "description"
+.TH "xlav" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH NAME
 xlav \- Video editting and interactive playback front-end to \fBlavplay\fP(1)
+
 .SH SYNOPSIS
-xlav [options] [filename(s)]
+.B xlav
+.RI [ options ] \ filename \ ...
+
 .SH DESCRIPTION
-\fBxlavy\fP acts as a front-end to the \fBlavplay\fP(1) tool to allow
+\fBxlav\fP acts as a front-end to the \fBlavplay\fP(1) tool to allow
 interactive editting or browsing/playback of a video stream.  All the
 actual work of playback and editting is done by the underlying
 \fBlavplay\fP with command line options being passed through also.
@@ -40,11 +44,6 @@ stand-alone copy of the editted sequence by applying the
 
 .SH OPTIONS
 See \fBlavplay\fP(1).
-.SH SEE ALSO
-.BR mjpegtools (1),
-.BR lavrec (1),
-.BR lavplay (1),
-.BR lavtrans (1)
 
 .SH BUGS
 Editlists are really record absolute pathnames.  This more
@@ -54,10 +53,19 @@ to move editlists and source video files.
 xlav really is rather spartan and uses the now obsolescent "xforms"
 library.  Superior replacements are currently under development.
 
-
-.SH CONTACT
+.SH AUTHOR
+This man page was written by Andrew Stevens.
+.br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH SEE ALSO
+.BR mjpegtools (1),
+.BR lavrec (1),
+.BR lavplay (1),
+.BR lavtrans (1)

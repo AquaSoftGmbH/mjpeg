@@ -1,8 +1,13 @@
-.TH "lavplay" "1" "V 1.4" "Ronald Bultje" "description"
+.TH "lavplay" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH NAME
-lav \- Playback and edit MJPEG video
+lavplay \- Playback and edit MJPEG video
+
 .SH SYNOPSIS
-lavplay [options] [filename(s)]
+.B lavplay
+.RI [ options ]
+.IR filename " ..."
+
 .SH DESCRIPTION
 
 \fBlavplay\fP can be used to playback video in MJPEG format (either
@@ -11,14 +16,15 @@ the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33,
 or in software mode (using SDL).
 
 It also provides mechanisms for non-destructive editting video using
-an interactive front-end such as \fBxlav\fP(1).  See "SEARCHING AND
-EDITTING" below for details.
+an interactive front-end such as \fBxlav\fP(1).  See
+.B SEARCHING AND EDITTING
+below for details.
 
 
 .SH OPTIONS
 \fBlavplay\fP accepts the following options:
 .TP 8
-.B  \-S, -H or -C
+.BR  \-S | \-H | \-C
 The playback mode to be used. \-S means software\-playback using SDL.
 \-H means hardware\-playback on the monitor (full\-screen). \-C means
 hardware\-playback to the video-out of the zoran video-capture device.
@@ -156,10 +162,6 @@ N1=-1 means to add the whole video.
 .B es N1 N2
 Sets the current viewable frames within the whole video to N1-N2. This
 is useful for trimming.
-.SH SEE ALSO
-.BR mjpegtools (1),
-.BR lavrec (1),
-.BR xlav (1)
 
 .SH BUGS
 Editlists record absolute pathnames.  This more or less forces manual
@@ -172,11 +174,16 @@ on x86 CPU's performance is not what it should be.  Future releases
 will utilise the X server for colour space conversion to allow
 hardware acceleration and improve stability and portability.
 
-
-
-.SH CONTACT
+.SH AUTHOR
+This man page was written by Ronald Bultje.
+.br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
 For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
+
+.SH SEE ALSO
+.BR mjpegtools (1),
+.BR lavrec (1),
+.BR xlav (1)

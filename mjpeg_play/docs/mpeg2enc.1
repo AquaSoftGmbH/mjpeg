@@ -1,98 +1,44 @@
-.TH "mpeg2enc" "1" "V 1.4" "Andrew Stevens" "description"
+.TH "mpeg2enc" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH "NAME"
-.LP 
-.br 
 mpeg2enc \- MPEG 1/2 encoder
-.br 
+
 .SH "SYNOPSIS"
-.LP 
 .B mpeg2enc
-[
-.B -v 
-.I num
-]
-[
-.B -m 1
-|
-.B 2
-]
-[
-.B -b 
-.I bitrate_kbps
-]
-[
-.B -V
-.I video_buf_size_kB
-]
-[
-.B -q 
-.I quantisation
-]
-[
-.B -F 
-format_code
-]
-[
-.B -r
-.I motion_search_radius
-]
-[
-.B -Q 
-0.0-4.0
-]
-[
-.B -p
-]
-[
-.B -s
-]
-[
-.B -g min_gop_size
-]
-[
-.B -G max_gop_size
-]
-[
-.B -n n
-|
-.B p
-|
-.B s
-]
-[
-.B -a 
-0..14
-]
-[
-.B -f 
-.I frame_rate_code
-]
-[
-.B -4
-1..4
-]
-[
-.B -2 
-1..4
-]
-[
-.B -S size_MB
-]
-[
-.B -B 
-.I bitrate_kbps
-]
-[
-.B -N
-]
-[
-.B -h
-]
-[
-.B -?
-] 
-.B -o output_filename
-.br 
+.RB [ -v
+.IR num ]
+.RB [ -m\ 1 | 2 ]
+.RB [ -b
+.IR bitrate_kbps ]
+.RB [ -V
+.IR video_buf_size_kB ]
+.RB [ -q
+.IR quantization ]
+.RB [ -F
+.IR format_code]
+.RB [ -r
+.IR motion_search_radius]
+.RB [ -Q\ 0.0 - 4.0 ]
+.RB [ -p ]
+.RB [ -s ]
+.RB [ -g
+.IR min_gop_size ]
+.RB [ -G
+.IR max_gop_size ]
+.RB [ -n\ n | p | s ]
+.RB [ -a\ 0 .. 14 ]
+.RB [ -f
+.IR frame_rate_code ]
+.RB [ -4\ 1 .. 4 ]
+.RB [ -2\ 1 .. 4 ]
+.RB [ -S
+.IR size_MB ]
+.RB [ -B
+-IR bitrate_kbps ]
+.RB [ -N ]
+.RB [ -h ]
+.RB [ -? ]
+.BI -o \ output_filename
 
 .SH "DESCRIPTION"
 .br
@@ -111,7 +57,7 @@ is also possible but is not currently maintained or supported.
 For most purposes this elementary stream output will need to be
 multiplexed with layer-II MPEG audio into a program/systems stream
 using the
-.B mplex (1)
+.BR mplex (1)
 tool.
 
 Note that although this manual page aims to explain how mpeg2enc can
@@ -133,7 +79,7 @@ on the mjpegtools web-site:
 .SH "GENERAL FUNCTION LETTERS"
 
 .TP
-.B -v num
+.BI -v \ num
 Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
 .B -?
 Display a synopsis of the command syntax.
@@ -141,11 +87,11 @@ Display a synopsis of the command syntax.
 .SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
 
 .TP
-.B -m 1|2
+.BR -m\ 1 | 2
 Set MPEG-1 or MPEG-2 encoding.
 Use the former for encoding VCD's or lower bit-rate / resolution applications or where portability is important.
 .TP
-.B -b num
+.BI -b \ num
 The bit-rate of the output video stream in k Bits/sec.  The default is
 exactly the bit-rate required for VCD streams. A sensible bit-rate to
 set for SVCD is 2500.  If variable bit-rate mode has been selected (see the -q option) this
@@ -153,14 +99,14 @@ is the
 .I maximum
 bit-rate of the stream.
 .TP
-.B -V num
+.BI -V \ num
 The maximum video buffer usage required to decode the stream in k
 Bytes.  The default is 46KB the (tiny) size specified for VCD.  The
 size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
 .TP
-.B -q 2..31
+.BR -q\ 2 .. 31
 Minimum quantisation of the output stream.  Quantisation controls the
 precision with which image information is encoded.  The lower the
 number the higher the quality but the greater the required data-rate.
@@ -176,7 +122,7 @@ decoder you'd be insane not to use variable bit-rate.
 If this option is set without a maximum bit-rate being specified then
 quantisation is fixed at the specified value.
 .TP
-.B -F 0|1|2|3
+.BR -F\ 0 | 1 | 2 | 3
 
 This sets the sequences picture structure and block encoding type for
 MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
@@ -201,8 +147,9 @@ efficient than encoding as 60field/sec video.  The classic application
 is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
 into NTSC (see the -f flag).
 .TP
-.B 
--g num, -G num
+
+.BR -g | -G
+.I num
 
 These flags set the minimum and maximum group-of-picture (GOP) size
 for the output MPEG stream.  By default both are set to 12 to suit VCD
@@ -224,8 +171,7 @@ each I/P frame unless the GOP size forces less.  This is reasonable
 for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
 low-bit-rate encoding.
 .TP
-.B
--Q 0.0 .. 4.0 
+.BR -Q\ 0.0 .. 4.0 
 
 This flag sets the amount quantisation is reduce for
 blocks containing unusually large amounts of sharp image detail.
@@ -236,8 +182,7 @@ a "swimming" effect on textured backgrounds as the noise cause blocks to
 be boosted at random.  The default is 1.0 (which is actually pretty mild)
 if swimminess occurs turn set to 0.0.
 .TP
-.B
--s
+.B -s
 
 This flag forces the encoder to generate a "sequence header" at the start
 of every group-of-pictures.  This is needed by some player hardware to
@@ -247,13 +192,13 @@ otherwise.
 .SH "OPTION LETTERS CONTROLLING FORMAT OF DECODED VIDEO"
 
 .TP
-.B -n n|p|s
+.BR -n\ n | p | s
 
 Force the input stream to be treated as NTSC|PAL|SECAM regardless of
 what the stream header might suggest.  Basically this just sets the
 defaults for a bunch of other options.
 .TP
-.B -f num
+.BI -f \ num
 
 Set the frame-rate of the output-stream.  Currently only the standard
 MPEG rates are supported.  Eventually more-or-less arbitrary rates
@@ -278,7 +223,7 @@ will be possible.
  8 - 60.0
 .br
 .TP
-.B -a num
+.BI -a \ num
 
 Set the playback aspect ratio code of the encoded video.
 The exact interpretation of the code varies between MPEG-1 and MPEG-2.
@@ -337,7 +282,7 @@ scaling codes.
 .SH "OPTION LETTERS FOR QUALITY TUNING"
 
 .TP
-.B -r num
+.BI -r \ num
 This flag sets the motion compensation search radius.  For most
 purposes the default (16) should be just fine.  For high-resolution
 MPEG-2 and active scenes it may be worth bumping it up.  However, this
@@ -345,7 +290,7 @@ will make encoding significantly slower.  There is little point
 reducing the radius.  Speed gains are not huge and the impact on quality
 can be marked.
 .TP
-.B -4 1..4 -2 1..4
+.BR -4 | -2\ 1 .. 4
 These options control how radical the encoder is in throwing away
 apparently poor candidate blocks during motion compensation.  A
 setting of 1 means very few blocks are discarded early which makes for
@@ -376,7 +321,7 @@ with "swimmy" material if you can spare the bit-rate!
 
 .SH "OPTION LETTERS FOR CHUNKING THE OUTPUT STREAM"
 .TP
-.B -S num
+.BI -S \ num
 
 This flag allows the target size of individual sequences in the final
 multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
@@ -388,7 +333,8 @@ it encounters one.   In this way it is easy to automatically ensure
 each component sequence file can be burnt onto a CD-R and still be
 played as a stand-alone MPEG sequence.
 .TP
-.B -B num
+
+.BI -B \ num
 Since mpeg2enc can't read minds it cannot know in advance what other
 material will be multiplexed with the output video stream.  Thus to
 get its calculations of where to insert split point right it needs to be
@@ -397,14 +343,11 @@ be multiplexed with the video.   This flag allows this rate to be specified in K
 
 .SH "SSE/3D-Now!/MMX"
 
-Mpeg2enc makes extensive use of these SIMD instruction set extension
+mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
 run-time.  It should be noted that using SSE requires operating system
 support.  Old 2.2.x Linux kernels (unless patched ones like RedHat) do
 not have this and so SSE, although physically present, won't be activated.
-.SH "SEE ALSO"
-.BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
-.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)," mjpegtools "(1)"
 
 .SH "BUGS"
 There should be an option to force GOP sizes that permit 2 B frames
@@ -421,10 +364,16 @@ muxing/imaging an SVCD.
 Is there some kind soul out there with source-code for a good SSE
 (not MMX) DCT and iDCT?
 
-
-.SH CONTACT
+.SH AUTHOR
+This man page was written by Andrew Stevens.
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)," mjpegtools "(1)"

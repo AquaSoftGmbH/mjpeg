@@ -1,7 +1,7 @@
-.TH "yuv2lav" "1" "V 1.4" "pHilipp Zabel" "description"
+.TH "yuv2lav" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH "NAME"
-yuv2lav - encodes lavtool's raw YUV frame streams into MJPEG files
+yuv2lav \- encodes lavtool's raw YUV frame streams into MJPEG files
 
 .SH "SYNOPSIS"
 .B yuv2lav
@@ -73,9 +73,14 @@ you can use this option to suit your needs.
 .B -?
 Display a synopsis of the command syntax.
 
-.SH "SEE ALSO"
-.BR lav2yuv "(1), " lavpipe "(1), " lavplay "(1),"
-.BR lavrec "(1), " mpeg2enc "(1), " yuvscaler "(1)"
+.SH "EXAMPLES"
+
+.TP
+lav2yuv movie.avi | yuv2lav -fq -q 30 lowbitrate.mov
+would recompress movie.avi as a low bit rate Quicktime file.
+.TP
+lavpipe input.pli | yuv2lav -q80 output.avi
+would save the movie assembled by lavpipe as a single AVI file.
 
 .SH "BUGS"
 As far as I can remember, there's still no file size checking
@@ -93,9 +98,17 @@ should be added to this tool, too.
 If you experience any problems with this tool, please feel
 free to contact the developers (see below).
 
-.SH CONTACT
+.SH AUTHOR
+This man page was written by pHilipp Zabel.
+.br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR lav2yuv "(1), " lavpipe "(1), " lavplay "(1),"
+.BR lavrec "(1), " mpeg2enc "(1), " yuvscaler "(1)"

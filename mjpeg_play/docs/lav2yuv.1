@@ -1,14 +1,19 @@
-.TH "lav2yuv" "1" "V 1.4" "Bernhard Praschinger" "description"
+.TH "lav2yuv" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH "NAME"
 lav2yuv \- Convert a MJPEG file to raw yuv
+
 .SH "SYNOPSIS"
-lav2uv [params] [filename(s)]
+.B lav2yuv
+.RI [ options ]
+.IR filename " ..."
+
 .SH "DESCRIPTION"
 \fBlav2yuv\fP converts an MJPEG video sequence described by a sequence
 of MJPEG video files and/or edit lists pointing to such files into the
 simple uncompressed planar YUV format expected by the used by the
 \fBmpeg2enc\fP(1) MPEG encoder and image processing filters like
-\fByuvscaler\f(1) or \fByuv2dfilter\fP(1).
+\fByuvscaler\fP(1) or \fByuv2dfilter\fP(1).
 
 Output is to stdout so that by piping the output of lav2yuv into a
 suitable pipeline it is possible to process and then encode or play
@@ -22,15 +27,17 @@ built-in although superior facilities are also available through the
 
 Mixing differnt files with different video formats is currently not possible.
 
-The \-S \-T \-D options are used for scene detection, which is used by linuxvideosstudio.
+The \fB\-S \-T \-D\fP options are used for scene detection,
+which is used by linux video studio.
+
 .SH "OPTIONS"
 \fBlav2yuv\fP accepts the following options:
 
 .TP 5
-.B \-a widthxhight+x+y
+.BI \-a " widthxhight+x+y"
 Sets everything that is not in the described area to black
 .TP 4
-.B \-s num   
+.BI \-s " num"
 Special output format option:
  0 output like input, nothing special
  1 create half height/width output from input
@@ -38,30 +45,42 @@ Special output format option:
  3 create 352 wide output from 720 wide input (VCD)
  4 create 480 x 480 output from 720 x 240 input (SVCD)
 .TP 5
-.B \-d [0..3]
+.BR \-d \ [ 0 .. 3 ]
 Drop lsbs of samples (default: 0) Improves the quality a bit, because the less sigificant bits of every sample aere dropped. Reduces the number of different colors. 
 .TP 5
-.B \-n [0..2]
+.BR \-n \ [ 0 .. 2 ]
 Noise filter (low\-pass) (default: 0) This removes low fequency noise in the picture. 
 .TP 5
 .B \-m 
 Force mono\-chrome
 .TP 5
-.B \-S list.el
+.BI \-S " list.el"
 Output a scene list with scene detection
 .TP 5
-.B \-T num
+.BI \-T " num"
 Set scene detection threshold to num (default: 4)
 .TP 5
-.B \-D num
+.BI \-D " num"
 Width decimation to use for scene detection (default: 2)
 .TP 5
-.B \-o num
+.BI \-o " num"
 Frame offset skip num frames in the beginning if num is negative, 
 all but the last num frames are skipped
 .TP 5
-.B \-f num
+.BI \-f " num"
 Only num frames are written to stdout. 0 means that all frames aure procced. 
+
+.SH "AUTHOR"
+This man page was written by Bernhard Praschinger.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
 .SH "SEE ALSO"
 .BR mjpeg (1),
 .BR mpeg2enc (1),
@@ -69,9 +88,3 @@ Only num frames are written to stdout. 0 means that all frames aure procced.
 .BR yuvscaler (1),
 .BR yuv2lav (1),
 .BR yuvplay (1)
-.SH "CONTACT"
-If you have questions, remarks, problems or you just want to contact
-the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/

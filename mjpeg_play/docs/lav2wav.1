@@ -1,8 +1,18 @@
-.TH "lavrec" "1" "V 1.4" "Bernhard Praschinger" "description"
+.TH "lav2wav" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH "NAME"
 lav2wav \- Extract the audio out of MJPEG container files to stdout
+
 .SH "SYNOPSIS"
-lav2wav [params] [filename(s)]
+.B lav2wav
+.RB [ \-s
+.IR num ]
+.RB [ \-c
+.IR num ]
+.RB [ \-v
+.IR num ]
+.IR filename " ..."
+
 .SH "DESCRIPTION"
 \fBlav2wav\fP can be used to extract the audio to stdout.
 This output goes to stdout and can be saved as a wav file, or piped to an 
@@ -10,27 +20,22 @@ other sound processing tool, that is able to handle wave.
 This can be mp2enc and toolame for mpeg layer 2 audio, 
 or for example lame for mpeg layer 3 audio. 
 
-As input sources you can use serveral files, mixing up with editlistfiles. 
+As input sources you can use serveral files, mixing up with edit list files. 
 
 .SH "OPTIONS"
 \fBlav2wav\fP accepts the following options:
 
 .TP 5
-.B \-s num
+.BI \-s " num"
 Start extracting at video frame (num)
 .TP 5
-.B \-c num
+.BI \-c " num"
 Extract (num) frames of audio
 .TP 5
-.B \-v num
+.BI \-v " num"
 Verbosity level (0, 1 or 2)
-.SH "SEE ALSO"
-.BR mjpegtools (1),
-.BR mp2enc (1),
-.BR sox(1)
 
 .SH BUGS
-
 The "WAV" file format (technically: RIFF) is really very much less
 than ideal for a tool intended to be used in pipelines as lav2wav is.
 The Problem is that the header includes a field specifying the length
@@ -40,10 +45,18 @@ lav2wav simply writes a large length into the header and leaves it at
 that).  Most tools like sox(1) or mp2enc(1) either ignore the length
 field anyway or only give a warning.
 
-
-.SH "CONTACT"
+.SH "AUTHOR"
+This man page was written by Bernhard Praschinger.
+.br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR mjpegtools (1),
+.BR mp2enc (1),
+.BR sox(1)

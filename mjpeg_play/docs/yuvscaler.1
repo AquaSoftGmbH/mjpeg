@@ -1,38 +1,21 @@
-.TH "yuvscaler" "1" "V 2.2" "Xavier Biquard" "description"
+.TH "yuvscaler" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH NAME
 yuvscaler \- downscales arbitrary sized yuv frames (stdin by default) to a
 specified format (to stdout)
+
 .SH SYNOPSIS
-.B yuvscaler -I 
-[
+.B yuvscaler -I
 .I input_keyword
-]
-.B -M 
-[
-.I mode_keyword
-]
-.B -O
-[
-.I output_keyword
-]
-[
-.B n
-.B p
-|
-.B s
-|
-.B n
-] 
-[
-.B -v 
-0-2
-]
-[
-.B -h
-]
-[
-.I mjpegfiles
-]
+.RB [ -M 
+.IR mode_keyword ]
+.RB [ -O
+.IR output_keyword ]
+.RB [ -n\ p | s | n ]
+.RB [ -v\ 0 - 2 ]
+.RB [ -h ]
+.RI [ mjpegfiles ]
+
 .SH DESCRIPTION
 \fByuvscaler\fP is a general downscaling utility that is provided to
 make allow conversion between different video formats. It can filter
@@ -175,15 +158,19 @@ Specifies the degree of verbosity: 0=quiet, 1=normal, 2=verbose/debug
 .B -h
 Prints a summary of command line syntax.
 
+.SH AUTHOR
+This man page was written by Xavier Biquard.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net/
+
 .SH SEE ALSO
 .BR mjpegtools (1),
 .BR lavpipe (1),
 .BR lav2yuv (1)
 .BR mpeg2enc (1)
-
-.SH CONTACT
-If you have questions, remarks, problems or you just want to contact
-the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/

@@ -1,8 +1,14 @@
-.TH "yuvplay" "1" "V 1.4" "Ronald Bultje" "description"
+.TH "yuvplay" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
 .SH NAME
 yuvplay \- Play YUV data using SDL
+
 .SH SYNOPSIS
-lavpipe/lav2yuv [options] [file(s)] | yuvplay [\-s NxN]
+lavpipe/lav2yuv [options] [file(s)] |
+.B yuvplay
+.RB [ \-s
+.IR NxN ]
+
 .SH DESCRIPTION
 \fByuvplay\fP can be used to playback YUV data which is provided to
 the stdin, mostly through piping this data from the stdout of
@@ -12,23 +18,27 @@ playback lavplay should be a superior option. Yuvplay is intended
 primarily as a debugging or diagnostic utility when setting up image
 processing / encoding pipelines.  
 
-
 .SH OPTIONS
 \fByuvplay\fP accepts the following options:
 .TP 8
-.B  \-s NxN
+.BI \-s \ NxN
 The size of the SDL window. By default, it takes the size of the video,
 but through software YUV scaling, you can specify any size you want.
 NxN is the width x height of the scaled window.
+
+.SH AUTHOR
+This man page was written by Ronald Bultje.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net/
+
 .SH SEE ALSO
 .BR mjpegtools (1),
 .BR lavpipe (1),
 .BR lav2yuv (1)
 .BR lavplay (1)
-
-.SH CONTACTING
-If you have questions, remarks, problems or you just want to contact
-the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
