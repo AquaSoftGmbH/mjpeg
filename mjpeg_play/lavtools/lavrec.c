@@ -130,6 +130,9 @@
  *      'l': line-in
  *      'm': microphone
  *      'c': cdrom
+ *      '1': line1
+ *      '2': line2
+ *      '3': line3
  *
  **** Audio/Video synchronization ***
  *
@@ -238,7 +241,8 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -s/--stereo                 Stereo (default: mono)\n");
 	fprintf(stderr, "  -l/--audio-volume num       Recording level [%%], -1 for mixers not touched\n");
 	fprintf(stderr, "  -m/--mute                   Mute audio output during recording\n");
-	fprintf(stderr, "  -R/--audio-source [lmc]     Set recording source: (l)ine, (m)icro, (c)d\n");
+	fprintf(stderr, "  -R/--audio-source [lmc123]  Set recording source: (l)ine, (m)icro, (c)d,\n");
+	fprintf(stderr, "                              line(1), line(2), line(3\n");
 	fprintf(stderr, "  -c/--synchronization [012]  Level of corrections for synchronization\n");
 	fprintf(stderr, "  -n/--mjpeg-buffers num      Number of MJPEG buffers (default: 64)\n");
 	fprintf(stderr, "  -b/--mjpeg-buffer-size num  Size of MJPEG buffers [Kb] (default: 256)\n");
@@ -543,22 +547,22 @@ static void output_stats(video_capture_stats *stats)
   if (show_stats > 0 && !batch_mode)
   {
     MPEG_timecode_t tc;
-    char infostring[1024];
 
     mpeg_timecode(&tc, stats->num_frames, ((info->video_norm!=1)? 3: 4),
 				  ((info->video_norm!=1)? 25.: 30000./1001.));
     if( stats->prev_sync.tv_usec > stats->cur_sync.tv_usec )
       stats->prev_sync.tv_usec -= 1000000;
     if (info->single_frame)
-      sprintf(infostring, "%06d frames captured, press enter for more>", stats->num_frames);
-    else
-      sprintf(infostring,
+      printf("%06d frames captured, press enter for more>", stats->num_frames);
+    else {
+      printf(
         "%d.%2.2d.%2.2d:%2.2d int:%03ld lst:%3d ins:%3d del:%3d "
         "ae:%3d td1=%.3f td2=%.3f\r",
         tc.h, tc.m, tc.s, tc.f,
         (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
         stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);
-     printf(infostring);
+      if(verbose) printf("\n"); // Keep lines from overlapping
+    }
      fflush(stdout);
   }
 }
@@ -730,10 +734,12 @@ static int set_option(const char *name, char *value)
 	else if (strcmp(name, "audio-source")==0 || strcmp(name, "R")==0)
 	{
 		info->audio_src = value[0];
-		if(info->audio_src!='l' && info->audio_src!='m' && info->audio_src!='c')
+                if(info->audio_src!='l' && info->audio_src!='m' &&
+                        info->audio_src!='c' && info->audio_src!='1'&&
+                        info->audio_src!='2'&& info->audio_src!='3')
 		{
 			mjpeg_error("Recording source (-R/--audio-source)"
-				" must be l,m or c");
+				" must be l,m,c,1,2, or 3\n");
 			nerr++;
 		}
 	}

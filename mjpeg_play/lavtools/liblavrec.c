@@ -309,6 +309,21 @@ static int lavrec_set_mixer(lavrec_t *info, int flag)
          sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
          sound_mask_input        = SOUND_MASK_LINE;
          break;
+      case '1':
+         sound_mixer_read_input  = SOUND_MIXER_READ_LINE1;
+         sound_mixer_write_input = SOUND_MIXER_WRITE_LINE1;
+         sound_mask_input        = SOUND_MASK_LINE1;
+         break;
+      case '2':
+         sound_mixer_read_input  = SOUND_MIXER_READ_LINE2;
+         sound_mixer_write_input = SOUND_MIXER_WRITE_LINE2;
+         sound_mask_input        = SOUND_MASK_LINE2;
+         break;
+      case '3':
+         sound_mixer_read_input  = SOUND_MIXER_READ_LINE3;
+         sound_mixer_write_input = SOUND_MIXER_WRITE_LINE3;
+         sound_mask_input        = SOUND_MASK_LINE3;
+         break;
       default:
          lavrec_msg(LAVREC_MSG_WARNING, info,
             "Unknown sound source: \'%c\'", info->audio_src);
@@ -2360,6 +2375,13 @@ int lavrec_main(lavrec_t *info)
    int ret;
    struct sched_param schedparam;
 
+   /* Flush the Linux File buffers to disk */
+   sync();
+
+   /* start with initing */
+   if (!lavrec_init(info))
+      return 0;
+
    /* Now we're ready to go move to Real-time scheduling... */
    schedparam.sched_priority = 1;
    if(setpriority(PRIO_PROCESS, 0, -15)) { /* Give myself maximum priority */ 
@@ -2370,13 +2392,6 @@ int lavrec_main(lavrec_t *info)
       lavrec_msg(LAVREC_MSG_WARNING, info,
          "Pthread Real-time scheduling for main thread could not be enabled"); 
    }
-
-   /* Flush the Linux File buffers to disk */
-   sync();
-
-   /* start with initing */
-   if (!lavrec_init(info))
-      return 0;
 
    /* now, set state to pause and catch audio until started */
    /* lavrec_change_state(info, LAVREC_STATE_PAUSED); */
