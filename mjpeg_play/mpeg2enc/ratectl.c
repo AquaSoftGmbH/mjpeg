@@ -81,9 +81,9 @@ int	d0i = 0, d0pb = 0, d0p = 0, d0b = 0;
    there's some tricky float arithmetic required/
 
 */
-static double R;
-static double R_cum = 0.0;
-static double e_R_cum = 0.0;
+static int32_t R;
+static int64_t R_cum = 0.0;
+static int64_t e_R_cum = 0.0;
 static int64_t gop_start;
 static int64_t gop_bits = 0;
 static int64_t per_frame_bits;
@@ -92,7 +92,7 @@ static int64_t bits_transported;
 static int64_t bits_used;
 static int32_t buffer_variation = 0;
 static int d;
-static double T;
+static int32_t T;
 
 /* bitcnt_EOP - Position in generated bit-stream for latest
 				end-of-picture Comparing these values with the
@@ -295,7 +295,7 @@ void rc_init_seq(int reinit)
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe);
 		if( undershoot_carry < per_frame_bits/2 )
 			mjpeg_error_exit1( "Buffer appears to be set too small (< a frames variation possible)\n" );
-		undershoot_gain = 3.0;
+		undershoot_gain = 3.0 * (46*1024 * 8) / ctl_video_buffer_size;
 		overshoot_gain = 1.5 * undershoot_gain;
 		
 	}
@@ -487,11 +487,11 @@ void rc_init_pict(pict_data_s *picture)
 		Si = avg_K*actsum;
 		if( first_I )
 		{
-			T = available_bits/(1.0+(Np/1.7)+Nb/(2.0*1.7));
+			T = (int32_t)(available_bits/(1.0+(Np/1.7)+Nb/(2.0*1.7)));
 			first_I = 0;
 		}
 		else
-			T = available_bits/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
+			T =(int32_t)(available_bits/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb)));
 		break;
 	case P_TYPE:
 		d = d0p;
@@ -499,10 +499,10 @@ void rc_init_pict(pict_data_s *picture)
 		Sp = avg_K * actsum;
 		if( first_P )
 		{
-			T = available_bits/(Np+Nb/2.0);
+			T = (int32_t)(available_bits/(Np+Nb/2.0));
 		}
 		else
-			T =  available_bits/(Np+Nb*Kp*Xb/(Kb*Sp));
+			T =  (int32_t)(available_bits/(Np+Nb*Kp*Xb/(Kb*Sp)));
 		break;
 	case B_TYPE:
 		d = d0b;
@@ -510,10 +510,10 @@ void rc_init_pict(pict_data_s *picture)
 		Sb = avg_K * actsum;
 		if( first_B )
 		{
-			T =  available_bits/(Nb+Np*2.0);
+			T =  (int32_t)(available_bits/(Nb+Np*2.0));
 		}
 		else
-			T =  available_bits/(Nb+Np*Kb*Xp/(Kp*Sb));
+			T =  (int32_t)(available_bits/(Nb+Np*Kb*Xp/(Kp*Sb)));
 		break;
 	}
 
@@ -526,22 +526,19 @@ void rc_init_pict(pict_data_s *picture)
 	   of the prediction maths ill-condtioned.  At these levels quantisation
 	   is always minimum anyway
 	*/
-	if( T < 4000.0 )
-	{
-		T = 4000.0;
-	}
+	T = intmax( T, 4000 );
 
 	if( opt_still_size > 0 && opt_vbv_buffer_still_size )
 	{
 		/* If stills size must match then target low to ensure no
 		   overshoot.
 		*/
-		printf( "Setting overshoot margin for T=%d\n", (int)T/8 );
-		frame_overshoot_margin = (int)(T/16.0);
+		mjpeg_info( "Setting overshoot margin for T=%d\n", T/8 );
+		frame_overshoot_margin = T/16;
 		T -= frame_overshoot_margin;
 	}
 
-	//printf( "(%d,%d):R=%6.0f T=%6.0f ", Nb, Np,R/8, T/8);
+	//printf( "(%d,%d):R=%d T=%d ", Nb, Np,R/8, T/8);
 
 	T_sum += T;
 	target_Q = scale_quantf(picture, 
@@ -729,7 +726,14 @@ void rc_update_pict(pict_data_s *picture)
 		PP = AP;
 
 	
+	   
 	R = (R-PP)+per_frame_bits;		/* remaining # of bits over a  GOP length*/
+
+	/* Make sure our 1-second bit-pool never grows larger than our nominal
+	   bit-rate plus our maximum carry margin
+	*/
+
+	R = intmin( opt_bit_rate+undershoot_carry, R );
 
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
