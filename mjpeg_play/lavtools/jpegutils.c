@@ -236,7 +236,6 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
    /* Read header, make some checks and try to figure out what the
       user really wants */
 
-	 fprintf( stderr, "HS = %08x\n", *(int *)dinfo.src->next_input_byte );
    jpeg_read_header(&dinfo, TRUE);
    dinfo.raw_data_out = TRUE;
    dinfo.out_color_space = JCS_YCbCr;
@@ -326,7 +325,6 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
    {
       if(field>0)
       {
-		 fprintf( stderr, "HS = %08x\n", *(int *)dinfo.src->next_input_byte );
          jpeg_read_header(&dinfo, TRUE);
          dinfo.raw_data_out = TRUE;
          dinfo.out_color_space = JCS_YCbCr;
