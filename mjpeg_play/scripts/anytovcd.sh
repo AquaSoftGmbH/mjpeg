@@ -24,7 +24,7 @@ FILTERING="none"
 FILTER_TYPE="median"
 VCD_TYPE="dvd"
 QUALITY="best"
-VERSION="1"
+VERSION="2"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -32,6 +32,7 @@ MPEG2DEC="mpeg2dec"
 MPEG2ENC="mpeg2enc"
 MPLEX="mplex"
 PGMTOY4M="pgmtoy4m"
+SOX="sox"
 TRANSCODE="transcode"
 Y4MSCALER="y4mscaler"
 Y4MSPATIALFILTER="y4mspatialfilter"
@@ -44,6 +45,14 @@ probe_aud_fmt ()
     # $2 = audio track
     echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
     awk '/Audio:/ {print $4}' | sed s/,// | head -${2} | tail -1`"
+}
+
+probe_aud_freq ()
+{
+    # $1 = audio input
+    # $2 = audio track
+    echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
+    awk '/Audio:/ {print $5}' | sed s/,// | head -${2} | tail -1`"
 }
 
 probe_vid_fps ()
@@ -140,6 +149,7 @@ if test "${VIDEO_SRC}" == "" || ! test -r "${VIDEO_SRC}"; then
 fi
 
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
+AUD_FREQ_SRC="`probe_aud_freq "${AUDIO_SRC}" ${AUD_TRACK}`"
 VID_FPS_SRC="`probe_vid_fps "${VIDEO_SRC}"`"
 VID_ILACE_SRC="`probe_vid_ilace "${VIDEO_SRC}"`"
 VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
@@ -281,7 +291,13 @@ else
 fi
 
 # quality preset(s)
-if test "${QUALITY}" == "best"; then
+if test "${VCD_TYPE}" == "vcd"; then
+
+    # when using -q with mpeg2enc, variable bitrate is selected.
+    # it's not ok for vcds...
+    MPEG2ENC="${MPEG2ENC}"
+
+elif test "${QUALITY}" == "best"; then
 
     MPEG2ENC="${MPEG2ENC} -q 4 -K kvcd"
 
@@ -308,14 +324,14 @@ if which ${BFR} >/dev/null; then
 
 fi
 
-# video (de)coding
-if test "$VID_FMT_SRC" == "mpeg2video" && which ${MPEG2DEC} >/dev/null; then
+# video decoder
+if test "${VID_FMT_SRC}" == "mpeg2video" || test "${VID_FMT_SRC}" == "mpeg1video" && which ${MPEG2DEC} >/dev/null; then
 
-    DECODER="${MPEG2DEC} -s -o pgmpipe "${VIDEO_SRC}" | ${PGMTOY4M} |"
+    DECODER="${MPEG2DEC} -s -o pgmpipe \"${VIDEO_SRC}\" | ${PGMTOY4M} |"
 
 else
 
-    DECODER="${FFMPEG} -i "${VIDEO_SRC}" -f imagepipe -img pgmyuv -y /dev/stdout | ${PGMTOY4M} |"
+    DECODER="${FFMPEG} -i \"${VIDEO_SRC}\" -f imagepipe -img pgmyuv -y /dev/stdout | ${PGMTOY4M} |"
 
 fi
 
@@ -367,16 +383,33 @@ fi
 # video encoder
 ENCODER="${MPEG2ENC} -o ${VIDEO_OUT}"
 
-# audio decoder/encoder
-if test "${AUD_FMT_SRC}" == "${AUD_FMT_OUT}"; then
+# audio resampler
+if test "${AUD_FREQ_SRC}" == "${AUD_FREQ_OUT}"; then
 
-    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i "${AUDIO_SRC}""
-    AUDIO_ENCODER="-acodec copy -y ${AUDIO_OUT}"
+    AUDIO_RESAMPLER=""
 
 else
 
-    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i "${AUDIO_SRC}""
-    AUDIO_ENCODER="-ab ${AUD_BITRATE_OUT} -ar ${AUD_FREQ_OUT} -ac ${AUD_CHANNELS_OUT} -y ${AUDIO_OUT}"
+    test_bin ${SOX}
+    AUDIO_RESAMPLER="${SOX} -t au /dev/stdin -r ${AUD_FREQ_OUT} -t au /dev/stdout polyphase |"
+
+fi
+
+# audio decoder/encoder
+if test "${AUD_FMT_SRC}" == "${AUD_FMT_OUT}"; then
+
+    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
+    AUDIO_ENCODER="-acodec copy -y ${AUDIO_OUT}"
+
+elif test "${AUD_FREQ_SRC}" == "${AUD_FREQ_OUT}"; then
+
+    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
+    AUDIO_ENCODER="-ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y ${AUDIO_OUT}"
+
+else
+
+    AUDIO_DECODER="${FFMPEG} -v 0 -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\" -f au -y /dev/stdout |"
+    AUDIO_ENCODER="${FFMPEG} -f au -i /dev/stdin -ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y ${AUDIO_OUT}"
 
 fi
 
@@ -390,7 +423,7 @@ fi
 # audio (de)coding
 if ! test "${MUTE_MODE}" == "1"; then
 
-    eval "${AUDIO_DECODER} ${AUDIO_ENCODER}"
+    eval "${AUDIO_DECODER} ${AUDIO_RESAMPLER} ${AUDIO_ENCODER}"
 
 fi
 
@@ -402,5 +435,3 @@ if ! test "${BLIND_MODE}" == "1" && ! test "${MUTE_MODE}" == "1"; then
 fi
 
 exit 0
-
-
