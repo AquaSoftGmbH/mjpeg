@@ -7,42 +7,58 @@
 // other projects, this utility is licensed under the GPL v2.
 //
 // (c) 2001/07/13 Shawn Sulma <lavtools@athos.cx>
-//	based on very helpful work by the lavtools, mjpeg.sourceforge.net
-//	and x2divx (Ulrich Hecht et al, www.emulinks.de/divx).
+//      based on very helpful work by the lavtools, mjpeg.sourceforge.net
+//      and x2divx (Ulrich Hecht et al, www.emulinks.de/divx).
 //
-//	This program is free software; you can redistribute it and/or modify
-//	it under the terms of the GNU General Public License as published by
-//	the Free Software Foundation; either version 2 of the License, or
-//	(at your option) any later version.
+//      This program is free software; you can redistribute it and/or modify
+//      it under the terms of the GNU General Public License as published by
+//      the Free Software Foundation; either version 2 of the License, or
+//      (at your option) any later version.
 //
-//	This program is distributed in the hope that it will be useful,
-//	but WITHOUT ANY WARRANTY; without even the implied warranty of
-//	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//	GNU General Public License for more details.
+//      This program is distributed in the hope that it will be useful,
+//      but WITHOUT ANY WARRANTY; without even the implied warranty of
+//      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//      GNU General Public License for more details.
 //
-//	You should have received a copy of the GNU General Public License
-//	along with this program; if not, write to the Free Software
-//	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
-//	USA
+//      You should have received a copy of the GNU General Public License
+//      along with this program; if not, write to the Free Software
+//      Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+//      USA
 //
-//
-// NOTES: the encoding to divx is hardcoded, but there's nothing special
-// about it so in theory, you could have it encode to any available avifile
-// format.
 //
 // This utility is a mix of C (from lavtools) and C++ (from x2divx).  I'm not
 // a guru at either, but it works for me and is very handy.
 //
-// One desired additional feature would be YUV scaling (as opposed to
-// decimation). This should be added RSN.
+// YUV scaling or denoising, or whatever is not performed in this
+// application.  That's what yuvscaler et al are for. :)
 //
 // This is very early code.  Expect unusual things, naive assumptions, odd
 // behaviour, and just plain Wrongness.  Helpful, constructive criticism is
 // encouraged.  Flames... well... you know where you can stick them.
 //
+// 2001-10-28 v0.0.20
+//
+// - added right and left border guessing (and top and bottom work!)
+// - added ability to take audio from lav files (elists, etc)
+// - added ability (-E) to select any available avifile codec
+//   (only tested against CVS avifile 0.6 as of this date).
+// - code formatting made internally consistent.
+// - reduced use of [f]printf wherever possible
+// - fixed a rather nasty audio bug that could arise when odd sample
+//   rates were created.  The simple solution is to round up to the
+//   next block-align of the sound.  However, the audio track will then
+//   slooowly get ahead of the video.  Code inserted to try to keep it
+//   on track by request enough blocks to keep the audio stream where it
+//   _should_ be.
+// - added option (-F) to tell yuv2divx how many frames to expect.  This
+//   is only used for the display of the time remaining.  If you don't
+//   specify it, yuv2divx will try to guess the frames in the stream
+//   by the size of the audio input.  If none, or it runs out of audio
+//   data, it stops guessing.
+//
 #define APPNAME "yuv2divx"
-#define APPVERSION "0.0.13"
-#define LastChanged "2001/07/13"
+#define APPVERSION "0.0.20"
+#define LastChanged "2001/10/28"
 
 #include <iostream.h>
 #include <videoencoder.h>
@@ -55,8 +71,23 @@
 #else
 #include <aviutil.h>
 #endif
+
+// More defines to map from deprecated fcc's to RIFFINFOs
+// eventually, these should go away.
+#ifndef RIFFINFO_YV12
+#define RIFFINFO_YV12 fccYV12
+#endif
+#ifndef RIFFINFO_DIV3
+#define RIFFINFO_DIV3 fccDIV3
+#endif
+#ifndef RIFFINFO_DIV4
+#define RIFFINFO_DIV4 fccDIV4
+#endif
+
+
+
 #include <avifile/except.h>
-#include <math.h>		// M_PI is better than included PI constant
+#include <math.h>
 #include <sys/time.h>
 #include <unistd.h>		// Needed for the access call to check if file exists
 #include <getopt.h>		// getopt
@@ -71,375 +102,487 @@
 #include <fcntl.h>
 #include <string.h>
 
-extern "C" 
+extern "C"
 {
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include "lav_common.h"
 }
 
 #ifndef min
-#define min(a,b) (a<b)?a:b
+#define min(a,b) (a<b)?(a):(b)
 #endif
 
-typedef struct {
-	char riff[4] ;	// always "RIFF"
-	int  length ;	// Length (little endian)
-	char format[4] ; // fourcc with the format.  We only want WAVE
-} RiffHeader ;
+#ifndef max
+#define max(a,b) (a>b)?(a):(b)
+#endif
 
-typedef struct {
-	char  fmt[4] ;	// "fmt_" (ASCII characters)
-	int   length ;	// chunk length
-	short que ;	// ??? - always 1
-	short channels;	// channels
-	int   rate ;	// samples per second
-	int   bps ;	// bytes per second
-	short bytes ;	// bytes per sample:	1 = 8 bit Mono, 
-			//			2 = 16 bit Mono/8 bit stereo
-			//			4 = 16 bit Stereo
-	short bits ;	// bits per sample
-} WaveHeader ;
+#define BORDER_LSB_DROP 0
+#define BORDER_SOFT 16
+
+typedef struct
+{
+	char riff[4];		// always "RIFF"
+	int length;		// Length (little endian)
+	char format[4];		// fourcc with the format.  We only want WAVE
+}
+RiffHeader;
+
+typedef struct
+{
+	char fmt[4];		// "fmt_" (ASCII characters)
+	int length;		// chunk length
+	short que;		// wave format
+	short channels;		// channels
+	int rate;		// samples per second
+	int bps;		// bytes per second
+	short bytes;		// bytes per sample:    1 = 8 bit Mono, 
+	//                      2 = 16 bit Mono/8 bit stereo
+	//                      4 = 16 bit Stereo
+	short bits;		// bits per sample
+}
+WaveHeader;
 
 /* The DATA chunk */
 
-typedef struct {
-	char data[4] ;	// chunk type ("DATA")
-	int  length ;	// length
-} DataHeader ;
+typedef struct
+{
+	char data[4];		// chunk type ("DATA")
+	int length;		// length
+}
+DataHeader;
 
 int got_sigint = 0;
 
 // From yuvplay
-static void sigint_handler (int signal)
+static void
+sigint_handler ( int signal )
 {
-	mjpeg_log (LOG_WARN, "Caugth SIGINT, exiting...\n");
+	mjpeg_log ( LOG_WARN, "Caught SIGINT, exiting...\n" );
 	got_sigint = 1;
 }
 
-void error(char *text)
+void
+error ( char *text )
 {
-	mjpeg_error(text);
+	mjpeg_error ( text );
+}
+
+static int
+guesstop ( unsigned char *frame, int width, int height )
+{
+ 	long currY;
+	long oldY = 0;
+	for ( int y = 0; y < height; y++ )
+	{
+         	currY = 0;
+		for ( int x = 0; x < width; x++ )
+		{
+                 	currY += frame[y * width + x];
+		}
+                currY /= height;
+		currY = currY>> BORDER_LSB_DROP;
+		if ( currY > oldY + BORDER_SOFT)
+		{
+			return y;
+		}
+                oldY = currY;
+	}
+        return 0;
+}
+
+static int
+guessbottom ( unsigned char *frame, int width, int height )
+{
+ 	long currY;
+	long oldY = 0;
+	for ( int y = height - 1; y > 0; y-- )
+	{
+                currY = 0;
+		for ( int x = 0; x < width; x++ )
+		{
+                 	currY += frame[y * width + x];
+		}
+                currY /= height;
+		currY = currY>> BORDER_LSB_DROP;
+		if ( currY > oldY + BORDER_SOFT)
+		{
+			return y;
+		}
+                oldY = currY;
+	}
+        return 0;
+}
+
+static int
+guessleft ( unsigned char *frame, int width, int height )
+{
+ 	long currY;
+ 	long oldY = 0;
+ 	for ( int x = 0; x < width; x++ )
+ 	{
+ 	 	currY = 0;
+ 	 	for ( int y = 0; y < height; y++ )
+ 	 	{
+ 	 	 	currY += frame[y * width + x];
+ 	 	}
+ 	 	currY /= height;
+ 	 	currY = currY>> BORDER_LSB_DROP;
+ 	 	if ( currY > oldY + BORDER_SOFT)
+ 	 	{
+ 	 	 	return x;
+ 	 	}
+ 	 	oldY = currY;
+ 	}
+ 	return 0;
+}
+
+static int
+guessright ( unsigned char *frame, int width, int height )
+{
+ 	long currY;
+ 	long oldY = 0;
+ 	for ( int x = width - 1; x >= 0; x-- )
+ 	{
+ 	 	currY = 0;
+ 	 	for ( int y = 0; y < height; y++ )
+ 	 	{
+ 	 	 	currY += frame[y * width + x];
+ 	 	}
+ 	 	currY /= height;
+ 	 	currY = currY>> BORDER_LSB_DROP;
+ 	 	if ( currY > oldY + BORDER_SOFT)
+ 	 	{
+ 	 	 	return x;
+ 	 	}
+ 	 	oldY = currY;
+ 	}
+ 	return 0;
+}
+
+
+static void
+print_usage ( void )
+{
+	mjpeg_info ( "\n" );
+	mjpeg_info ( "Usage: %s [OPTION]... -o [output AVI]\n", APPNAME );
+	exit ( 0 );
 }
 
 static void
-print_usage (void)
+print_help ( void )
 {
-  printf ("\nUsage: %s [OPTION]... [input AVI]... -o [output AVI]\n",
-	  APPNAME);
-  exit (0);
-}
-
-static void
-print_help (void)
-{
-  printf ("\nUsage: %s [OPTION]... [input AVI]... -o [output AVI]\n",
-	  APPNAME);
-  printf ("\nOptions:\n");
-  printf ("  -b --divxbitrate\tDivX ;-) bitrate (default 1800)\n");
-  printf ("  -f --fast_motion\tuse fast-motion codec (default low-motion)\n");
-  printf ("  -a --mp3bitrate\tMP3 bitrate (kBit, default auto)\n");
-  printf ("  -e --endframe\t\tnumber of frames to encode (default all)\n");
-  printf ("  -c --crop\t\tcrop output to \"wxh+x+y\" (default full frame)\n");
-//  printf ("  -l --blur\t\tradius for blur filter (default off)\n");
-  printf ("  -w --width\t\toutput width (use when not available in stream)\n");
-  printf ("  -h --height\t\toutput height (use when not available in stream)\n");
-  printf ("  -o --outputfile\tOutput filename IS REQUIRED\n");
-  printf ("  -v --version\t\tVersion and license.\n");
-  printf
-    ("  -s --forcedaudiorate\taudio sample rate of input file (Hz);\n\t\t\tuse only if avifile gets it wrong\n");
-  printf ("  -d --droplsb\t\tdrop x least significant bits (0..3, default 0)\n");
-  printf ("  -n --noise\t\tnoise filter (0..2, default 0)\n");
-  printf ("  -g --guess\t\tguess values for -c and -z options\n");
+	printf ( "\nUsage: %s [OPTION]... -o [output AVI]\n", APPNAME );
+	printf ( "\nOptions:\n" );
+	printf ( "  -b --divxbitrate\tDivX ;-) bitrate (default 1800)\n" );
+//      printf ("  -f --fast_motion\tuse fast-motion codec (default low-motion)\n");
+	printf ( "  -a --mp3bitrate\tMP3 bitrate (kBit, default auto)\n" );
+	printf ( "  -e --endframe\t\tnumber of frames to encode (default all)\n" );
+	printf ( "  -c --crop\t\tcrop output to \"wxh+x+y\" (default full frame)\n" );
+	printf ( "  -w --width\t\toutput width (use when not available in stream)\n" );
+	printf ( "  -h --height\t\toutput height (use when not available in stream)\n" );
+	printf ( "  -o --outputfile\tOutput filename IS REQUIRED\n" );
+	printf ( "  -V --version\t\tVersion and license.\n" );
+	printf ( "  -s --forcedaudiorate\taudio sample rate of input file (Hz);\n\t\t\tuse only if avifile gets it wrong\n" );
+	printf ( "  -d --droplsb\t\tdrop x least significant bits (0..3, default 0)\n" );
+	printf ( "  -n --noise\t\tnoise filter (0..2, default 0)\n" );
+	printf ( "  -g --guess\t\tguess values for -c and -z options\n" );
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-  printf ("  -k --keyframes\tset keyframes attribute (default 15)\n");
-  printf ("  -C --crispness\tset crispness attribute (default 20)\n");
-  printf ("  -A --audio\t\tspecify audio file\n");
+	printf ( "  -k --keyframes\tset keyframes attribute (default 15)\n" );
+	printf ( "  -C --crispness\tset crispness attribute (default 20)\n" );
+	printf ( "  -A --audio\t\tspecify audio file\n" );
+	printf ( "  -E --encoder\t\tspecify the fourcc of the desired encoder\n" );
+	printf ( "  -F --frames\t\tnumber of frames to expect in YUV4MPEG stream\n\t\t\t(for display purposes only)\n" );
 #endif
-//  printf
-//    ("  -u --flip_video\tflip picture (use if output video stream is upside-down,\n\t\t\tdefault off)\n");
-  printf ("     --help\t\tPrint this help list.\n");
-  cout << "\n" << APPNAME << " version " << APPVERSION << " by Ulrich Hecht <uli@emulinks.de>\n" ;
-  printf ("Last changed on " LastChanged "\n");
-  exit (0);
+	printf ( "     --help\t\tPrint this help list.\n\n" );
+	exit ( 0 );
 }
 
 static void
-display_license (void)
+display_license ( void )
 {
-  printf ("\nThis is %s version %s \n", APPNAME, APPVERSION);
-  printf ("%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx> \n\
-Based on code from Ulricht Hecht and the MJPEG Square. \n\
-This program is distributed in the hope that it will be useful,\n\
-but WITHOUT ANY WARRANTY; without even the implied warranty of\n\
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\
-GNU General Public License for more details.\n");
-  exit (0);
+	mjpeg_info ( "\nThis is %s version %s \n", APPNAME, APPVERSION );
+	mjpeg_info ( "%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>\n" );
+	mjpeg_info ( "Based on code from Ulricht Hecht and the MJPEG Square. This\n" );
+	mjpeg_info ( "program is distributed in the hope that it will be useful, but\n" );
+	mjpeg_info ( "WITHOUT ANY WARRANTY; without even the implied warranty of\n" );
+	mjpeg_info ( "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n" );
+	mjpeg_info ( "See the GNU General Public License for more information.\n" );
+	exit ( 0 );
+}
+
+void
+displayGreeting (  )
+{
+	mjpeg_info ( "===========================================\n" );
+	mjpeg_info ( "%s\n", APPNAME );
+	mjpeg_info ( "-----------------------------\n" );
+	mjpeg_info ( "MJPEGTools version %s\n", VERSION );
+        mjpeg_info ( "%s version %s (%s)\n", APPNAME, APPVERSION, LastChanged );
+	mjpeg_info ( "\n" );
+	mjpeg_info ( "This utility is development software.  It may eat your\n" );
+	mjpeg_info ( "movies or let the smoke out of your computer.\n" );
+	mjpeg_info ( "-----------------------------\n" );
 }
 
 int
-main (int argc, char **argv)
+main ( int argc, char **argv )
 {
 
-  if (GetAvifileVersion () != AVIFILE_VERSION)
-    {
-      cout << "This binary was compiled for Avifile ver. " << AVIFILE_VERSION
-	<< ", but the library is ver. " << GetAvifileVersion () <<
-	". Aborting." << endl;
-      return 0;
-    }
+	displayGreeting();
 
-   (void)mjpeg_default_handler_verbosity(1);
-
-  int copt;			// getopt switch variable
-
-  char *outputfile = NULL;	// gcc howled at some point so I put it here
-  char *audiofile = NULL;
-  int opt_divxbitrate = 1800;
-  int opt_mp3bitrate = -1;
-  int opt_codec = fccDIV3;
-  int opt_endframe = -1;
-//  int opt_blur = 0;
-  int opt_outputwidth = 0;
-  int opt_outputheight = 0;
-  int opt_forcedaudiorate = 0;
-  int opt_guess = 0;
-  int flip = 1;
-
-  int opt_x = 0;
-  int opt_y = 0;
-  int opt_w = 0;
-  int opt_h = 0;
-
-  FILE* fd_audio;
-  char* audio_buffer;
-  int audioexist=0;
-  int audio_bytesperframe;
-  int audio_bytes;
-
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-  int opt_keyframes=15;
-  int opt_crispness=20;
-#endif
-  char* arg_geom;
-  char* arg_end;
-//#endif
-
-   /* for the new YUV4MPEG streaming */
-   y4m_frame_info_t frameinfo;
-   y4m_stream_info_t streaminfo;
-
-//  static char x1, x2;
-//  static unsigned int NewY1, NewY2, NewX1, NewX2, Size, x, y, c;
-//  static double ScaleX, ScaleY, t1, t2, t3, t4, f, ft, NewX;
-
-  // double PI      = 3.14159265359f;    
-  // M_PI is the long version in 
-  // <math.h> and is more accurate
-
-  // Ok I've redone this whole section for getopt
-  // Pretty easy I had to change the options bit above 
-  // To steal -o for outputfile and make all options one character
-  // The snarly mess with the input files took a while and 
-  // Could probably be improved on but this puts paid to
-  // core dumps on non-existant or mistyped filenames
-  // Since getopt howls when there is no arg to an option 
-  // I didn't bother providing my own howling.
-
-  while (1)
-    {
-      int option_index = 0;
-
-      // Ok a few piddly long option but my gawd there has
-      // to be a better way to parse this
-      // This example weasels out by just using the
-      // short options. Except for help.
-      // For real horror, look at wgets options list
-      // yea may the gawds smile upon those poor
-      // sway backed, downtrodden, programmers.
-
-      static struct option long_options[] = {
-	{"help", 0, 0, 0},
-	{"version", no_argument, NULL, 'V'},
-	{"license", no_argument, NULL, 'V'},
-	{"divxbitrate", required_argument, NULL, 'b'},
-	{"fast_motion", no_argument, NULL, 'f'},
-	{"mp3bitrate", required_argument, NULL, 'a'},
-	{"endframe", required_argument, NULL, 'e'},
-	{"crop", required_argument, NULL, 'c'},
-//	{"blur", required_argument, NULL, 'l'},
-	{"forcedaudiorate", required_argument, NULL, 's'},
-	{"width", required_argument, NULL, 'w'},
-	{"height", required_argument, NULL, 'h'},
-	{"audio", required_argument, NULL, 'A'},
-	{"video", required_argument, NULL, 'V'},
-	{"number_cpus", required_argument, NULL, 'n'},
-	{"outputfile", required_argument, NULL, 'o'},
-	{"droplsb", required_argument, NULL, 'd'},
-	{"noise", required_argument, NULL, 'n'},
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-        {"keyframes", required_argument, NULL, 'k'},
-        {"crispness", required_argument, NULL, 'C'},
-#endif
-//	{"flip_video", no_argument, NULL, 'u'},
-	{"guess", no_argument, NULL, 'g'},
-	{0, 0, 0, 0}
-      };
-
-// w,h removed as yuv scaling is a real pain.
-// b removed as it doesn't seem to work properly with this input.
-      copt =
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-	getopt_long (argc, argv, "A:fa:w:h:e:c:b:o:s:n:d:gvk:C:", long_options,
-		     &option_index);
-#else
-	getopt_long (argc, argv, "A:fa:w:h:e:c:b:o:s:n:d:gv", long_options,
-		     &option_index);
-#endif
-      if (copt == -1)
-	break;
-
-      switch (copt)
+	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
 	{
-	case 0:
-	  if (long_options[option_index].name == "help")
-	    print_help ();
-	  break;
+		mjpeg_error_exit1 ( "This binary was compiled for Avifile version %s but the library is %s\n"
+			, AVIFILE_VERSION
+			, GetAvifileVersion (  ) );
+	}
 
-	case 'b':
-	  opt_divxbitrate = atoi (optarg);
-	  break;
+	( void ) mjpeg_default_handler_verbosity ( 1 );
 
-	case 'f':
-	  opt_codec = fccDIV4;
-	  break;
+	int copt;		// getopt switch variable
 
-	case 'a':
-	  opt_mp3bitrate = atoi (optarg);
-	  break;
+	char *outputfile = NULL;	// gcc howled at some point so I put it here
+	char *audiofile = NULL;
+	int opt_divxbitrate = 1800;
+	int opt_expectframes = 0;
+	int opt_mp3bitrate = -1;
+	int opt_codec = RIFFINFO_DIV3;
+	char opt_codec_str[] = "DIV3";
+	int opt_endframe = -1;
+	int opt_outputwidth = 0;
+	int opt_outputheight = 0;
+	int opt_forcedaudiorate = 0;
+	int opt_guess = 0;
+	int flip = 1;
 
-	case 'e':
-	  opt_endframe = atoi (optarg);
-	  break;
+	int opt_x = 0;
+	int opt_y = 0;
+	int opt_w = 0;
+	int opt_h = 0;
 
-//	case 'l':
-//	  opt_blur = atoi (optarg);
-//	  break;
+	FILE *fd_audio;
+	EditList el_audio;
+	char *audio_buffer;
+	int audioexist = 0;
+	float audio_perframe = 0.0;
+	float audio_shouldhaveread = 0.0;
+	float audio_thisframe = 0.0;
+	int audio_totalbytesread = 0;
+	int audio_bytesthisframe = 0;
 
-	case 's':
-	  opt_forcedaudiorate = atoi (optarg);
-	  break;
-
-	case 'w':
-	  opt_outputwidth = atoi (optarg);
-	  break;
-
-	case 'h':
-	  opt_outputheight = atoi (optarg);
-	  break;
-
-	case 'g':
-	  opt_guess = 1;
-	  opt_endframe = 100;
-	  break;
-
-	case 'o':
-	  outputfile = optarg;
-	  break;
-
-	case 'A':
-	  audiofile = optarg;
-	  audioexist = 1;
-	  break;
+	int audio_bytes;
 
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-	case 'k':
-	  opt_keyframes = atoi(optarg);
-	  break;
-	  
-	case 'C':
-	  opt_crispness = atoi(optarg);
-	  break;
+	int opt_keyframes = 15;
+	int opt_crispness = 20;
+#endif
+	char *arg_geom;
+	char *arg_end;
+
+	/* for the new YUV4MPEG streaming */
+	y4m_frame_info_t frameinfo;
+	y4m_stream_info_t streaminfo;
+
+	// Ok I've redone this whole section for getopt
+	// Pretty easy I had to change the options bit above 
+	// To steal -o for outputfile and make all options one character
+	// The snarly mess with the input files took a while and 
+	// Could probably be improved on but this puts paid to
+	// core dumps on non-existant or mistyped filenames
+	// Since getopt howls when there is no arg to an option 
+	// I didn't bother providing my own howling.
+
+	while ( 1 )
+	{
+		int option_index = 0;
+
+		// Ok a few piddly long option but my gawd there has
+		// to be a better way to parse this
+		// This example weasels out by just using the
+		// short options. Except for help.
+		// For real horror, look at wgets options list
+		// yea may the gawds smile upon those poor
+		// sway backed, downtrodden, programmers.
+
+		static struct option long_options[] = {
+			{"help", 0, 0, 0},
+			{"version", no_argument, NULL, 'V'},
+			{"license", no_argument, NULL, 'V'},
+			{"divxbitrate", required_argument, NULL, 'b'},
+			{"fast_motion", no_argument, NULL, 'f'},
+			{"mp3bitrate", required_argument, NULL, 'a'},
+			{"endframe", required_argument, NULL, 'e'},
+			{"crop", required_argument, NULL, 'c'},
+			{"forcedaudiorate", required_argument, NULL, 's'},
+			{"width", required_argument, NULL, 'w'},
+			{"height", required_argument, NULL, 'h'},
+			{"audio", required_argument, NULL, 'A'},
+			{"number_cpus", required_argument, NULL, 'n'},
+			{"outputfile", required_argument, NULL, 'o'},
+			{"droplsb", required_argument, NULL, 'd'},
+			{"noise", required_argument, NULL, 'n'},
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+			{"keyframes", required_argument, NULL, 'k'},
+			{"crispness", required_argument, NULL, 'C'},
+#endif
+			{"guess", no_argument, NULL, 'g'},
+			{"encoder", required_argument, NULL, 'E'},
+			{"expectframes", required_argument, NULL, 'F'},
+			{0, 0, 0, 0}
+		};
+
+		copt =
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvk:C:", long_options, &option_index );
+#else
+			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gv", long_options, &option_index );
+#endif
+		if ( copt == -1 )
+		{
+			break;
+		}
+
+		switch ( copt )
+		{
+		case 0:
+			if ( long_options[option_index].name == "help" )
+			{
+				print_help (  );
+			}
+			break;
+
+		case 'b':
+			opt_divxbitrate = atoi ( optarg );
+			break;
+
+//      // replaced by -E <fcc>, use -E DIV4 or -E DIV6 to use fast motion
+//      case 'f':
+//        opt_codec = RIFFINFO_DIV4;
+//        break;
+
+		case 'a':
+			opt_mp3bitrate = atoi ( optarg );
+			break;
+
+		case 'e':
+			opt_endframe = atoi ( optarg );
+			break;
+
+		case 's':
+			opt_forcedaudiorate = atoi ( optarg );
+			break;
+
+		case 'w':
+			opt_outputwidth = atoi ( optarg );
+			break;
+
+		case 'h':
+			opt_outputheight = atoi ( optarg );
+			break;
+
+		case 'g':
+			opt_guess = 1;
+			opt_endframe = 100;
+			break;
+
+		case 'o':
+			outputfile = optarg;
+			break;
+
+		case 'A':
+			audiofile = optarg;
+			audioexist = 1;
+			break;
+
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+		case 'k':
+			opt_keyframes = atoi ( optarg );
+			break;
+
+		case 'C':
+			opt_crispness = atoi ( optarg );
+			break;
 #endif
 
-	case 'c': // crop
-		arg_geom = optarg;
-		opt_w = strtol(arg_geom, &arg_end, 10);
-		if (*arg_end != 'x' || opt_w < 100) 
-		{
-                        mjpeg_error_exit1("Bad width parameter\n");
-			// nerr++;
+		case 'c':	// crop
+			arg_geom = optarg;
+			opt_w = strtol ( arg_geom, &arg_end, 10 );
+			if ( *arg_end != 'x' || opt_w < 100 )
+			{
+				mjpeg_error_exit1 ( "Bad width parameter\n" );
+				// nerr++;
+				break;
+			}
+
+			arg_geom = arg_end + 1;
+			opt_h = strtol ( arg_geom, &arg_end, 10 );
+			if ( ( *arg_end != '+' && *arg_end != '\0' ) || opt_h < 100 )
+			{
+				mjpeg_error_exit1 ( "Bad height parameter\n" );
+				// nerr++;
+				break;
+			}
+			if ( *arg_end == '\0' )
+			{
+				break;
+			}
+
+			arg_geom = arg_end + 1;
+			opt_x = strtol ( arg_geom, &arg_end, 10 );
+			if ( ( *arg_end != '+' && *arg_end != '\0' ) || opt_x > 720 )
+			{
+				mjpeg_error_exit1 ( "Bad x parameter\n" );
+				// nerr++;
+				break;
+			}
+
+			arg_geom = arg_end + 1;
+			opt_y = strtol ( arg_geom, &arg_end, 10 );
+			if ( *arg_end != '\0' || opt_y > 240 )
+			{
+				mjpeg_error_exit1 ( "Bad y parameter\n" );
+				// nerr++;
+				break;
+			}
 			break;
-		}
 
-		arg_geom = arg_end + 1;
-		opt_h = strtol(arg_geom, &arg_end, 10);
-		if ((*arg_end != '+' && *arg_end != '\0') || opt_h < 100)
-		{
-			mjpeg_error_exit1( "Bad height parameter\n");
-			// nerr++;
+		case 'V':
+			display_license (  );
 			break;
-		}
-		if (*arg_end == '\0')
-		{
+
+		case 'E':
+			if ( strlen ( optarg ) != 4 )
+			{
+				mjpeg_error_exit1 ( "encoder argument requires a four character fcc.\n" );
+			}
+			else
+			{
+				memcpy ( opt_codec_str, optarg, 4 );
+			}
 			break;
-		}
 
-		arg_geom = arg_end + 1;
-		opt_x = strtol(arg_geom, &arg_end, 10);
-		if ((*arg_end != '+' && *arg_end != '\0') || opt_x > 720) 
-		{
-			mjpeg_error_exit1( "Bad x parameter\n");
-			// nerr++;
+		case 'F':
+			opt_expectframes = atoi ( optarg );
+			if ( opt_expectframes < 1 )
+			{
+				mjpeg_warn ( "Invalid 'expectframes', ignoring\n" );
+			}
 			break;
-		}
 
-		arg_geom = arg_end + 1;
-		opt_y = strtol(arg_geom, &arg_end, 10);
-		if (*arg_end != '\0' || opt_y > 240) 
-		{
-			mjpeg_error_exit1( "Bad y parameter\n");
-			// nerr++;
+		case '?':
+			print_usage (  );
 			break;
+
+		case ':':
+			mjpeg_warn ( "You missed giving something an argument.\n" );	// since we have non-options
+			break;	// never gets called
 		}
-		break;
-
-//	case 'u':
-//	  flip = 0;
-//	  break;
-
-//	case 'd': // drop-lsb
-//		param_drop_lsb = atoi(optarg);
-//		if (param_drop_lsb < 0 || param_drop_lsb > 3) 
-//		{
-//			mjpeg_error_exit1( "-d option requires arg 0..3\n");
-//			//nerr++;
-//		}
-//		break;
-
-//	case 'n':
-//		param_noise_filt = atoi(optarg);
-//		if (param_noise_filt < 0 || param_noise_filt > 2) 
-//		{
-//			mjpeg_error_exit1( "-n option requires arg 0..2\n");
-//			//nerr++;
-//		}
-//		break;
-
-	case 'V':
-	  display_license ();
-	  break;
-
-	case '?':
-	  print_usage ();
-	  break;
-
-	case ':':
-	  printf ("You missed giving something an argument.\n");	// since we have non-options
-	  break;							// never gets called
 	}
-    }
+	opt_codec = mmioFOURCC ( opt_codec_str[0], opt_codec_str[1], opt_codec_str[2], opt_codec_str[3] );
+	mjpeg_info ( "VIDEO: Using codec %s for encoding.\n", opt_codec_str );
 
-	int fd_in = 0; // stdin
+	int fd_in = 0;		// stdin
 
 	// check on output filename here since it 
 	// stops a lot of avifile spewing.
@@ -447,10 +590,9 @@ main (int argc, char **argv)
 	// not allow overwrite...could  
 	// add a switch to allow overwrite...nah
 
-	if (outputfile == NULL)
-  	{
-		printf ("\nOutput filename IS REQUIRED use -o filename\n");
-		exit (1);
+	if ( outputfile == NULL )
+	{
+		mjpeg_error_exit1 ( "\nOutput filename IS REQUIRED. Use -o <filename>\n" );
 	}
 
 	int width = 0;
@@ -458,184 +600,212 @@ main (int argc, char **argv)
 	double framerate = 0;
 	int frame_rate_code = 0;
 
-	y4m_init_frame_info(&frameinfo);
-	y4m_init_stream_info(&streaminfo);
-	if (y4m_read_stream_header(fd_in, &streaminfo) != Y4M_OK)
+	y4m_init_frame_info ( &frameinfo );
+	y4m_init_stream_info ( &streaminfo );
+	if ( y4m_read_stream_header ( fd_in, &streaminfo ) != Y4M_OK )
 	{
-		mjpeg_error_exit1("Couldn't read YUV4MPEG header!\n");
+		mjpeg_error_exit1 ( "Couldn't read YUV4MPEG header!\n" );
 	}
 
-	width = ( opt_outputwidth > 0) ? opt_outputwidth : y4m_si_get_width(&streaminfo) ;
-	height = ( opt_outputheight > 0) ? opt_outputheight : y4m_si_get_height(&streaminfo) ;
-	double time_between_frames ;
+	width = ( opt_outputwidth > 0 ) ? opt_outputwidth : y4m_si_get_width ( &streaminfo );
+	height = ( opt_outputheight > 0 ) ? opt_outputheight : y4m_si_get_height ( &streaminfo );
+	double time_between_frames;
 
-	time_between_frames = 1000000 * (1.0 / Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)));
+	time_between_frames = 1000000 * ( 1.0 / Y4M_RATIO_DBL ( y4m_si_get_framerate ( &streaminfo ) ) );
 
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
 
-	double framespersec = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
+	double framespersec = Y4M_RATIO_DBL ( y4m_si_get_framerate ( &streaminfo ) );
 
 	BITMAPINFOHEADER bh;
-	memset (&bh, 0, sizeof(BITMAPINFOHEADER));
-	bh.biSize = sizeof(BITMAPINFOHEADER);
+	memset ( &bh, 0, sizeof ( BITMAPINFOHEADER ) );
+	bh.biSize = sizeof ( BITMAPINFOHEADER );
 	bh.biPlanes = 1;
 	bh.biBitCount = 24;
-	bh.biCompression = fccYV12;
+	bh.biCompression = RIFFINFO_YV12;
 	int output_height = height;
 	int output_width = width;
-	
-	int origwidth = bh.biWidth = abs (width);
-	int origheight = bh.biHeight = abs (height);
 
-/* SCALING
-	if (opt_outputheight || opt_outputwidth)
-	{
-		if (opt_outputheight)
-		{
-			bh.biHeight = opt_outputheight;
-		}
-		if (owidth)
-		{
-			bh.biWidth = opt_outputwidth;
-		}
-	}
-*/
+	mjpeg_info ("VIDEO: input height: %i\n", height);
+	mjpeg_info ("VIDEO: input width: %i\n", width);
+	mjpeg_info ("VIDEO: frames per second: %.5f\n", framespersec);
 
-	if (opt_h > 0)
+	int origwidth = bh.biWidth = abs ( width );
+	int origheight = bh.biHeight = abs ( height );
+
+	if ( opt_h > 0 )
 	{
-		opt_h = min (opt_h, (bh.biHeight - opt_y));
+		opt_h = min ( opt_h, ( bh.biHeight - opt_y ) );
 		bh.biHeight = opt_h;
 	}
-	if (opt_w > 0)
+	if ( opt_w > 0 )
 	{
-		opt_w = min (opt_w, (bh.biWidth - opt_x));
+		opt_w = min ( opt_w, ( bh.biWidth - opt_x ) );
 		bh.biWidth = opt_w;
 	}
 
 	bh.biSizeImage = bh.biWidth * bh.biHeight * 3;
 
 	unsigned char *framebuffer = new unsigned char[bh.biWidth * bh.biHeight * 3];
-	CImage imtarget ((BitmapInfo *) & bh, framebuffer, false);
-
-	RiffHeader	riffheader;
-	WaveHeader	waveheader;
-	DataHeader	dataheader;
-
-	if (audioexist>0)
-	{
-
-		fd_audio = fopen(audiofile, "r");
-		if (fd_audio == 0)
-		{
-			mjpeg_error_exit1("Audio file could not be opened\n");
-		}
-
-		size_t	bytesread;
-		bytesread = fread(&riffheader, 1, sizeof(RiffHeader), fd_audio);
-		if (bytesread != sizeof(RiffHeader))
-		{ 	//error
-			mjpeg_error_exit1("Audio file too short\n");
-		}
-	
-		if (  (strncmp(riffheader.riff, "RIFF", 4) != 0)
-		   || (strncmp(riffheader.format, "WAVE", 4) != 0)
-		   )
-		{	// error
-			mjpeg_error_exit1("Audio file invalid\n");
-		}
-
-		bytesread = fread(&waveheader, 1, sizeof(WaveHeader), fd_audio);	
-		if (bytesread != sizeof (WaveHeader))
-		{ 	// error
-			mjpeg_error_exit1("No Wave Header in audio file\n");
-		}
-	
-		bytesread = fread(&dataheader, 1, sizeof(DataHeader), fd_audio);
-		if (bytesread != sizeof (DataHeader))
-		{ 	// error
-			mjpeg_error_exit1("No Data in audio file\n");
-		}
-	
-		fprintf(stderr, "Audio file is %d bytes long.\n", dataheader.length) ;
-	}
+	CImage imtarget ( ( BitmapInfo * ) & bh, framebuffer, false );
 
 	WAVEFORMATEX format;
-	memset(&format, 0, sizeof(WAVEFORMATEX));
+	memset ( &format, 0, sizeof ( WAVEFORMATEX ) );
 	int audiosampsperframe = 0;
 
-	if (audioexist > 0)
-	{	
-		format.wFormatTag = mmioFOURCC( waveheader.fmt[0]
-					, waveheader.fmt[1]
-					, waveheader.fmt[2]
-					, waveheader.fmt[3]
-					);
-		format.nChannels = waveheader.channels;
-		format.nSamplesPerSec = waveheader.rate;
-		format.nBlockAlign = (waveheader.channels * waveheader.bits) / 8;
-		format.nAvgBytesPerSec = waveheader.bps;
-		format.wBitsPerSample = waveheader.bits;
-		format.cbSize = sizeof(WAVEFORMATEX);
+	if ( audioexist > 0 )
+	{
+		RiffHeader riffheader;
+		WaveHeader waveheader;
+		DataHeader dataheader;
 
+		el_audio.has_audio = 0;
 
-		audio_bytesperframe = (int) ( ( ((double) waveheader.rate) / framespersec) * ((double) waveheader.bits/8 * waveheader.channels) );
-		audio_bytesperframe += (audio_bytesperframe % 4) ? (4 - (audio_bytesperframe % 4)) : 0; // Avifile wants an exact number of samples
-		fprintf(stderr, "ABF = %i\n", audio_bytesperframe);
-		audio_buffer = (char*) malloc(audio_bytesperframe);
+		fd_audio = fopen ( audiofile, "r" );
+		if ( fd_audio == 0 )
+		{
+			mjpeg_error_exit1 ( "Audio file could not be opened\n" );
+		}
+
+		size_t bytesread;
+		bytesread = fread ( &riffheader, 1, sizeof ( RiffHeader ), fd_audio );
+		if ( bytesread != sizeof ( RiffHeader ) )
+		{		//error
+			fclose ( fd_audio );
+			mjpeg_error_exit1 ( "Audio file too short\n" );
+		}
+
+		if ( ( strncmp ( riffheader.riff, "RIFF", 4 ) != 0 ) || ( strncmp ( riffheader.format, "WAVE", 4 ) != 0 ) )
+		{		// error, not a wave file.
+			// but it might be a editlist file.
+			fclose ( fd_audio );
+
+			char *inputfile[1];
+			inputfile[0] = audiofile;
+			read_video_files ( inputfile, 1, &el_audio );
+
+			audioexist = el_audio.has_audio;
+			if ( audioexist < 1 )
+			{
+				mjpeg_error_exit1 ( "No compatible audio found in %s", audiofile );
+			}
+			format.wFormatTag = 1;
+			format.nChannels = el_audio.audio_chans;
+			format.nSamplesPerSec = el_audio.audio_rate;
+			format.nBlockAlign = ( el_audio.audio_chans * el_audio.audio_bits ) / 8;
+			format.nAvgBytesPerSec = el_audio.audio_bits * el_audio.audio_chans * el_audio.audio_bits / 8;
+			format.wBitsPerSample = el_audio.audio_bits;
+			format.cbSize = sizeof ( WAVEFORMATEX );
+			audio_perframe = ( float ) ( ( ( ( double ) format.nSamplesPerSec ) / framespersec )
+						     * ( ( double ) ( format.wBitsPerSample / 8 * format.nChannels ) ) );
+			// make a guess as to the number of frames based on the number
+			// of frames in the audio edit list.
+			if ( opt_expectframes < 1 )
+			{
+				opt_expectframes = el_audio.video_frames;
+			}
+		}
+		else
+		{
+			bytesread = fread ( &waveheader, 1, sizeof ( WaveHeader ), fd_audio );
+			if ( bytesread != sizeof ( WaveHeader ) )
+			{	// error
+				fclose ( fd_audio );
+				mjpeg_error_exit1 ( "No Wave Header in audio file\n" );
+			}
+
+			bytesread = fread ( &dataheader, 1, sizeof ( DataHeader ), fd_audio );
+			if ( bytesread != sizeof ( DataHeader ) )
+			{	// error
+				fclose ( fd_audio );
+				mjpeg_error_exit1 ( "No Data in audio file\n" );
+			}
+			mjpeg_info ( "Audio file is %d bytes long.\n", dataheader.length );
+			format.wFormatTag = waveheader.que;
+			format.nChannels = waveheader.channels;
+			format.nSamplesPerSec = waveheader.rate;
+			format.nBlockAlign = ( waveheader.channels * waveheader.bits ) / 8;
+			format.nAvgBytesPerSec = waveheader.bps;
+			format.wBitsPerSample = waveheader.bits;
+			format.cbSize = sizeof ( WAVEFORMATEX );
+
+			audio_perframe = ( float ) ( ( ( ( double ) format.nSamplesPerSec ) / framespersec )
+						     * ( ( double ) ( format.wBitsPerSample / 8 * format.nChannels ) ) );
+			// make a guess at the number of frames based on the number
+			// of audio samples in the wave file.
+			if ( opt_expectframes < 1 )
+			{
+				opt_expectframes = ( int ) ( ( ( float ) dataheader.length ) / audio_perframe );
+			}
+		}
+		audio_buffer = ( char * ) malloc ( ( ( int ) audio_perframe ) * 2 );
+		memset ( audio_buffer, 0, ( ( int ) audio_perframe ) * 2 );
+
+		mjpeg_info ( "AUDIO: FormatTag = %i\n", format.wFormatTag );
+		mjpeg_info ( "AUDIO: Channels = %i\n", format.nChannels );
+		mjpeg_info ( "AUDIO: Samples per Sec = %i\n", format.nSamplesPerSec );
+		mjpeg_info ( "AUDIO: Block Align = %i\n", format.nBlockAlign );
+		mjpeg_info ( "AUDIO: Avg Bytes per Sec = %i\n", format.nAvgBytesPerSec );
+		mjpeg_info ( "AUDIO: Bits Per Sample = %i\n", format.wBitsPerSample );
+		mjpeg_info ( "AUDIO: cbSize = %i\n", format.cbSize );
+		mjpeg_info ( "AUDIO: Avg Bytes Per Frame = %f\n", audio_perframe );
 	}
 
-	int fccHandler = opt_codec;
 	IAviWriteFile *avifile;
 
-	avifile = CreateIAviWriteFile (outputfile);
+	avifile = CreateIAviWriteFile ( outputfile );
 
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-	const CodecInfo* codecInfo = CodecInfo::match(opt_codec);
-	Creators::SetCodecAttr(*codecInfo, "BitRate", opt_divxbitrate);
-	Creators::SetCodecAttr(*codecInfo, "Crispness", opt_crispness);
-	Creators::SetCodecAttr(*codecInfo, "KeyFrames", opt_keyframes);
+	const CodecInfo *codecInfo = CodecInfo::match ( opt_codec );
+	if ( codecInfo == NULL )
+	{
+		mjpeg_error_exit1 ( "Avifile could not find codec '%s'\n", opt_codec_str );
+	}
+	Creators::SetCodecAttr ( *codecInfo, "BitRate", opt_divxbitrate );
+	Creators::SetCodecAttr ( *codecInfo, "Crispness", opt_crispness );
+	Creators::SetCodecAttr ( *codecInfo, "KeyFrames", opt_keyframes );
 #else
-	IVideoEncoder::SetExtendedAttr (opt_codec, "BitRate", opt_divxbitrate);
+	IVideoEncoder::SetExtendedAttr ( opt_codec, "BitRate", opt_divxbitrate );
+	// not sure how to detect a codec-not-found error in this case.
 #endif
 
-  	IAviVideoWriteStream *stream = avifile->AddVideoStream (
-				fccHandler
-				, &bh
-				, (int)time_between_frames
-				);
+	IAviVideoWriteStream *stream = avifile->AddVideoStream ( opt_codec, &bh, ( int ) time_between_frames );
 
-	stream->SetQuality (8000);
+	stream->SetQuality ( 65535 );
 
-	stream->Start ();
+	stream->Start (  );
 
 	IAviAudioWriteStream *astream;
 
-	if (audioexist > 0)
+	if ( audioexist > 0 )
 	{
-		if (opt_mp3bitrate = -1)
+		if ( opt_mp3bitrate = -1 )
 		{
-			switch (waveheader.rate)
+			switch ( format.nSamplesPerSec )
 			{
 			case 48000:
-				opt_mp3bitrate = 80 * waveheader.channels;
+				opt_mp3bitrate = 80 * format.nChannels;
 				break;
 			case 44100:
-				opt_mp3bitrate = ((waveheader.channels>1)?64:56) * waveheader.channels;
+				opt_mp3bitrate = ( ( format.nChannels > 1 ) ? 64 : 56 ) * format.nChannels;
 				break;
 			case 22050:
-				opt_mp3bitrate = 32 * waveheader.channels;
+				opt_mp3bitrate = 32 * format.nChannels;
 				break;
 			}
 		}
+		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second\n" 
+	                , opt_mp3bitrate           
+                        , ( opt_mp3bitrate / 125 ) );
 
-		astream = avifile->AddAudioStream (0x55, &format, (opt_mp3bitrate * 1000)/8);
-		astream->Start();
-	}	
+		astream = avifile->AddAudioStream ( 0x55, &format, ( opt_mp3bitrate * 1000 ) / 8 );
+		astream->Start (  );
+	}
 
 	struct timeval tv;
 	struct timezone tz = { 0, 0 };
-	gettimeofday (&tv, &tz);
+	gettimeofday ( &tv, &tz );
 	long startsec = tv.tv_sec;
 	long startusec = tv.tv_usec;
 	double fps = 0;
@@ -644,191 +814,209 @@ main (int argc, char **argv)
 	int lineguessbottom = 0;
 	int lineguesstopcount = 0;
 	int lineguessbottomcount = 0;
-
-//	init(); // initialize lav2yuv code.
+	int colguessleft = 0;
+	int colguessright = 0;
+	int colguessleftcount = 0;
+	int colguessrightcount = 0;
 
 	int yplane = bh.biWidth * bh.biHeight;
-	int uplane = yplane / 4;
 	int vplane = yplane / 4;
+	int uplane = yplane / 4;
 
 	int asis = 0;
-	
-	if ((opt_x > 0) || (opt_y > 0) || (opt_h > 0) || (opt_w > 0))
+	char progress[128];
+
+	if ( ( opt_x > 0 ) || ( opt_y > 0 ) || ( opt_h > 0 ) || ( opt_w > 0 ) )
 	{
 		asis = 1;
-		printf(" window (%i, %i) height: %i width: %i)\n", opt_x, opt_y, opt_h, opt_w);
+		mjpeg_info ( "VIDEO: output cropped to: top: %i, left: %i, height: %i, width: %i\n"
+			, opt_x, opt_y, opt_h, opt_w );
 	}
 
 	long oldtime = 0;
 
-	unsigned char* yuv[3];
-	yuv[0] = (unsigned char*) malloc(width * height * sizeof(unsigned char));
-	yuv[1] = (unsigned char*) malloc(width * height * sizeof(unsigned char) / 4);
-	yuv[2] = (unsigned char*) malloc(width * height * sizeof(unsigned char) / 4);
+	unsigned char *yuv[3];
+	yuv[0] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) );
+	yuv[1] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) / 4 );
+	yuv[2] = ( unsigned char * ) malloc ( width * height * sizeof ( unsigned char ) / 4 );
 
 	int currentframe = 0;
 
-	while (y4m_read_frame(fd_in, &streaminfo, &frameinfo, yuv)==Y4M_OK && (!got_sigint)) 
+	if ( opt_endframe > 0 )
 	{
-		if (opt_endframe > 0 && currentframe >= opt_endframe)
+		opt_expectframes = opt_endframe;
+		mjpeg_info ( "Encoding only %i frames.\n", opt_endframe );
+	}
+	else if ( opt_expectframes > 0 )
+	{
+		mjpeg_info ( "Expecting %i frames of data.\n", opt_expectframes );
+	}
+
+	while ( y4m_read_frame ( fd_in, &streaminfo, &frameinfo, yuv ) == Y4M_OK && ( !got_sigint ) )
+	{
+		if ( opt_endframe > 0 && currentframe >= opt_endframe )
 		{
-			goto finished;
+			break;
 		}
 
-		gettimeofday (&tv, &tz);
-		if ((tv.tv_sec != oldtime) && (! opt_guess) )
+		gettimeofday ( &tv, &tz );
+		if ( ( tv.tv_sec != oldtime ) && ( !opt_guess ) )
 		{
-			fps = currentframe 
-				/ ( (tv.tv_sec + tv.tv_usec / 1000000.0) 
-				    - (startsec + startusec / 1000000.0)
-				  );
+			fps = currentframe / ( ( tv.tv_sec + tv.tv_usec / 1000000.0 ) 
+						- ( startsec + startusec / 1000000.0 ) );
 			oldtime = tv.tv_sec;
-			printf ("\rEncoding frame %i, %.1f frames per sec.    "
-				, currentframe, fps);
-			fflush (stdout);
+			snprintf ( progress
+				, sizeof ( progress )
+				, "Encoding frame %i, %.1f frames per second"
+				, currentframe
+				, fps 
+				);
+			if ( currentframe < opt_expectframes )
+			{
+				mjpeg_info ( "%s, %.1f seconds left.   \r"
+					, progress
+					, ( ( double ) ( opt_expectframes - currentframe ) ) / fps );
+			}
+			else
+			{
+				mjpeg_info ( "%s.                      \r", progress );
+			}
+			fflush ( stderr );
 		}
 
 		// CLIPPING
 		//
 		// If there's no clipping, use a faster way of copying the frame data.
 		//
-		if (asis < 1)  //faster
+		if ( asis < 1 )	//faster
 		{
-			memcpy (framebuffer, yuv[0], yplane);
-			memcpy (framebuffer + yplane, yuv[2], uplane);
-			memcpy (framebuffer + yplane + uplane, yuv[1], vplane);
+			memcpy ( framebuffer, yuv[0], yplane );
+			memcpy ( framebuffer + yplane, yuv[2], vplane );
+			memcpy ( framebuffer + yplane + uplane, yuv[1], uplane );
 		}
-		else	// slower, but handles cropping.
+		else		// slower, but handles cropping.
 		{
 			int chromaw = opt_w / 2;
 			int chromax = opt_x / 2;
-			int chromawidth = output_width/2;
-			for (int yy = 0; yy < opt_h; yy++)
+			int chromawidth = output_width / 2;
+			for ( int yy = 0; yy < opt_h; yy++ )
 			{
-				int chromaoffset = (yy/2) * chromaw;
-				int chromaoffsetsrc = ((yy+opt_y)/2) * chromawidth;
-				memcpy ( framebuffer+yy*opt_w
-					, yuv[0] + (yy+opt_y) * output_width + opt_x
-					, opt_w
-					);
+				int chromaoffset = ( yy / 2 ) * chromaw;
+				int chromaoffsetsrc = ( ( yy + opt_y ) / 2 ) * chromawidth;
+				memcpy ( framebuffer + yy * opt_w
+					, yuv[0] + ( yy + opt_y ) * output_width + opt_x
+					, opt_w );
 				memcpy ( framebuffer + yplane + chromaoffset
-					, yuv[2] + chromaoffsetsrc + chromax
-					, chromaw
-					);
-				memcpy ( framebuffer + yplane + uplane + chromaoffset
+					, yuv[2] + chromaoffsetsrc + chromax, chromaw );
+				memcpy ( framebuffer + yplane + vplane + chromaoffset
 					, yuv[1] + chromaoffsetsrc + chromax
-					, chromaw
-					);
+					, chromaw );
 			}
 		}
 
 
-/* SCALING - this is the original avi2divx scaling, which works with RGB.
- * expect it to be replaced sometime soon.
-		else // if scaled.
+		if ( opt_guess )
 		{
-			ScaleX = (float) bh.biWidth / origwidth;
-			ScaleY = (float) bh.biHeight / origheight;
-
-			for (y = 0; abs ((int)y) < abs (bh.biHeight); y++)	//obscure gcc error without the abs jpc
+			int border = guesstop ( framebuffer, bh.biWidth, bh.biHeight );
+			lineguesstopcount += ( border > 0 ) ? 1 : 0;
+			lineguesstop += border;
+			border = guessbottom ( framebuffer, bh.biWidth, bh.biHeight );
+			lineguessbottomcount += ( border > 0 ) ? 1 : 0;
+			lineguessbottom += border;
+			border = guessleft ( framebuffer, bh.biWidth, bh.biHeight );
+			colguessleftcount += ( border > 0 ) ? 1 : 0;
+			colguessleft += border;
+			border = guessright ( framebuffer, bh.biWidth, bh.biHeight );
+			colguessrightcount += ( border > 0 ) ? 1 : 0;
+			colguessright += border;
+		}
+		else
+		{
+			stream->AddFrame ( &imtarget );
+			if ( audioexist )
 			{
-				NewY1 = (unsigned int) (y / ScaleY + cliplines - clipoffset) * origwidth * 3;
-				for (x = 0; abs ((int)x) < abs (bh.biWidth); x++)	//obscure gcc error without the abs jpc
+				if ( el_audio.has_audio )	// edit-list audio is easy.
 				{
-					t1 = x / (double) bh.biWidth;
-					t4 = t1 * bh.biWidth;
-					t2 = t4 - (unsigned int) (t4);
-					ft = t2 * M_PI;
-					f = (1.0 - cos (ft)) * .5;
-					NewX1 = ((unsigned int) (t4 / ScaleX)) * 3;
-					NewX2 = ((unsigned int) (t4 / ScaleX) + 1) * 3;
-
-					Size = y * bh.biWidth * 3 + x * 3;
-					for (c = 0; c < 3; c++)
+					audio_bytes = el_get_audio_data ( audio_buffer, currentframe, &el_audio, 0 );
+				}
+				else	// wave audio is tougher.
+				{
+					// get next audio buffer.
+					audio_thisframe = audio_perframe + audio_shouldhaveread - ( float ) audio_totalbytesread;
+					audio_bytesthisframe = ( int ) audio_thisframe;
+					if ( audio_thisframe <= audio_perframe )
 					{
-						x1 = frame_buf[NewY1 + NewX1][c];
-						x2 = frame_buf[NewY1 + NewX2][c];
-						framebuffer[Size + c] = (unsigned char) ((1.0 - f) * x1 + f * x2);
+						audio_bytesthisframe +=
+							( audio_bytesthisframe % format.nBlockAlign ) 
+							? ( format.nBlockAlign -  ( audio_bytesthisframe % format.nBlockAlign ) ) 
+							: 0;
 					}
-				}
-			}
-		}
-*/
-		if (opt_guess)
-		{
-			double totallum;
-			double oldlum = 0;
-	      		for (int y = 0; y < bh.biHeight; y++)
-			{
-				totallum = 0;
-				for (int x = 0; x < bh.biWidth; x++)
-				{
-					totallum += *(framebuffer + y * bh.biWidth + x);
-				}
-				totallum /= 3 * bh.biWidth;
-				//printf("line %d: totallum: %lf, oldlum: %lf\n",y,totallum,oldlum);
-				if (totallum > oldlum + 30)
-				{
-					printf ("top line: %d\n", y);
-					lineguesstop += y;
-					lineguesstopcount++;
-					break;
-				}
-				oldlum = totallum;
-			}
-			for (int y = bh.biHeight-1 ; y > 0; y--)
-			{
-				totallum = 0;
-				for (int x = 0; x < bh.biWidth ; x++)
-				{
-					totallum += *(framebuffer + y * bh.biWidth + x);
-				}
-				totallum /= 3 * bh.biWidth;
-				if (totallum > oldlum + 30)
-				{
-					printf ("bottom line: %d\n", y);
-					lineguessbottom += y;
-					lineguessbottomcount++;
-					break;
-				}
-				oldlum = totallum;
-			}
-			continue;
-		}
+					else
+					{
+						audio_bytesthisframe -= ( audio_bytesthisframe % format.nBlockAlign );
+					}
 
-		stream->AddFrame (&imtarget);
-		if (audioexist)
-		{
-			audio_bytes = fread (audio_buffer, 1, audio_bytesperframe, fd_audio);
-			// get next audio buffer.
-			astream->AddData(audio_buffer, audio_bytes);
+					audio_bytes = fread ( audio_buffer, 1, audio_bytesthisframe, fd_audio );
+					if ( audio_bytesthisframe != audio_bytes )
+					{
+						mjpeg_info ( "\nShort audio read. %i\n", audio_bytes );
+					}
+					audio_totalbytesread += audio_bytes;
+					audio_shouldhaveread += audio_perframe;
+				}
+				astream->AddData ( audio_buffer, audio_bytes );
+			}
 		}
 
 		currentframe++;
 	}
 
-finished:
-	stream->Stop ();
+	stream->Stop (  );
 	delete avifile;
-	free (yuv[0]) ;
-	free (yuv[1]) ;
-	free (yuv[2]) ;
+	free ( yuv[0] );
+	free ( yuv[1] );
+	free ( yuv[2] );
+	mjpeg_info ( "\n" );
+	mjpeg_info ( "Done.\n" );
 
-	y4m_fini_frame_info(&frameinfo);
-	y4m_fini_stream_info(&streaminfo);
+	y4m_fini_frame_info ( &frameinfo );
+	y4m_fini_stream_info ( &streaminfo );
 
-	if (audioexist > 0)
+	if ( audioexist > 0 )
 	{
-		free (audio_buffer);
-		fclose (fd_audio);
+		free ( audio_buffer );
+		if ( !el_audio.has_audio )
+		{
+			fclose ( fd_audio );
+			mjpeg_info ( "Expected to read %i bytes of audio data, and read %i.\n"
+				, ( int ) audio_shouldhaveread
+				, audio_totalbytesread );
+		}
 	}
 
-	if (opt_guess)
+	if ( opt_guess )
 	{
-		int avgtop = lineguesstop / lineguesstopcount;
-		int avgbottom = lineguessbottom / lineguessbottomcount;
-		printf ("avg line top: %f\n", (double) lineguesstop / lineguesstopcount);
-		printf ("avg line bottom: %f\n", (double) lineguessbottom / lineguessbottomcount);
-		printf ("suggested options: -c %dx%d+0+%d\n", width, (avgbottom - avgtop), avgtop);
+		int avgtop = lineguesstop / ( max ( lineguesstopcount, 1 ) );
+		int avgbottom = lineguessbottom / ( max ( lineguessbottomcount, 1 ) );
+		int avgleft = colguessleft / ( max ( colguessleftcount, 1 ) );
+		int avgright = colguessright / ( max ( colguessrightcount, 1 ) );
+
+		avgright = (avgright==0) ? bh.biWidth : avgright;
+		avgbottom = (avgbottom==0) ? bh.biHeight : avgbottom;
+		mjpeg_info ( "avg top border: %i\n", avgtop );
+		mjpeg_info ( "avg bottom border: %i\n", avgbottom );
+		mjpeg_info ( "avg left border: %i\n", avgleft );
+		mjpeg_info ( "avg right border: %i\n", avgright );
+
+		// cropping window only like multiples of two in each direction.
+		avgtop += avgtop % 4;
+		avgbottom -= avgbottom % 4;
+		avgleft += avgleft % 4;
+		avgright -= avgright % 4;
+		mjpeg_info ( "suggested options: -c %dx%d+%d+%d\n"
+			, ( avgright - avgleft )
+			, ( avgbottom - avgtop )
+			, avgleft
+			, avgtop );
 	}
 }

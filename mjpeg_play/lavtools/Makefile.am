@@ -161,4 +161,4 @@ yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils
 
 yuv2divx_SOURCES = yuv2divx.cpp oldyuv4mpeg.h oldyuv4mpeg.c
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
-	$(AVIPLAY_LIBS) -lm
+	$(AVIPLAY_LIBS) -lm liblavfile.la
