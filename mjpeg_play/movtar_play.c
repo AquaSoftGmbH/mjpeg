@@ -327,7 +327,7 @@ int main(int argc,char** argv)
     {
       readnext();
       frame++;
-           SDL_Delay(5000);
+//           SDL_Delay(5000);
     }
   while((frame < 200) && !movtar_eof(movtarfile));
 
