@@ -214,7 +214,7 @@ void *my_malloc(size_t size)
 {
     void *tmp = malloc(size);
     if (tmp == NULL)
-	    mjpeg_error_exit1("malloc(%ld) failed\n", size);
+	    mjpeg_error_exit1("malloc(%ld) failed\n", (long)size);
     return tmp;
 }
 
@@ -247,44 +247,47 @@ void get_coeff(float **taps, int length, float bandwidth)
 /* Routine to perform a 1-dimensional convolution with the result 
    symmetrically truncated to match the input length.  
    Filter is odd and linear phase, only center and right-side taps are specified */
-void convolve1D(u_char data[], int datalength, int datastride, float **filter, int filterlength, u_char output[])
+
+static inline void convolveitem(u_char *data,int stride,float *filter,int flen,u_char *out)
+{
+    int k,r;
+    u_char *d1=data,*d2=data;
+    float tempout=filter[0]*data[0];
+    for( k=1; k<=flen; k++) {
+        d1-=stride;
+        d2+=stride;
+        tempout+=filter[k]*(d1[0]+d2[0]);
+    }
+    r=tempout+0.5;
+    /* clip and cast to integer */
+    out[0]=MIN(MAX(r,0),255);
+}
+
+void convolve1D(u_char *data, int datalength, int datastride, float **filter, int filterlength, u_char *output)
 {
 
-    int   n, k;
-    float tempout;
+    int   n;
 
     /* leading edge, use filters of increasing width */
     for(n=0;n<filterlength;n++)
 	{
-	    tempout=filter[n][0]*data[n*datastride];
-	    for(k=1; k<=n; k++)
-		tempout+=filter[n][k]*(data[(n-k)*datastride]+data[(n+k)*datastride]);
-	    /* uncomment if using asymmetric filters at the edges */
-	    /*	    for(k=n+1; k<=filterlength; k++)
-		    tempout+=filter[n][k]*data[(n+k)*datastride]; */
-	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
+            convolveitem(data,datastride,filter[n],n,output);
+            data+=datastride;
+            output+=datastride;
 	}
     /* center, use full-width filter */
     for(n=filterlength; n<datalength-filterlength; n++)
 	{
-	    tempout=filter[filterlength][0]*data[n*datastride];
-	    for(k=1; k<=filterlength; k++)
-		tempout+=filter[filterlength][k]*(data[(n-k)*datastride]+data[(n+k)*datastride]);
-	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
+            convolveitem(data,datastride,filter[filterlength],filterlength,output);
+            data+=datastride;
+            output+=datastride;
 	}
     /* trailing edge, use filters of decreasing width */
     for(n=datalength-filterlength;n<datalength;n++)
 	{
-	    tempout=filter[datalength-n-1][0]*data[n*datastride];
-	    for(k=1; k<datalength-n; k++)
-		tempout+=filter[datalength-n-1][k]*(data[(n-k)*datastride]+data[(n+k)*datastride]);
-	    /* uncomment if using asymmetric filters at the edges */
-	    /*	    for(k=datalength-n; k<=filterlength; k++)
-		    tempout+=filter[datalength-n-1][k]*data[(n-k)*datastride]; */
-	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
+            convolveitem(data,datastride,filter[datalength-n-1],datalength-n-1,output);
+            data+=datastride;
+            output+=datastride;
 	}
 }
 
