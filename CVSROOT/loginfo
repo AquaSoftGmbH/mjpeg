@@ -25,4 +25,4 @@
 # or
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #
-DEFAULT  $CVSROOT/CVSROOT/logmail.py %{sVv} mdoggydog@users.sourceforge.net
+DEFAULT  $CVSROOT/CVSROOT/logmail.py %{sVv} mjpeg-cvs@lists.sourceforge.net
