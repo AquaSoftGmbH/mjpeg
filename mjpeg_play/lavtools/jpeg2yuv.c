@@ -277,6 +277,12 @@ static int init_parse_files(parameters_t *param)
   
   mjpeg_info("Image dimensions are %dx%d",
 	     dinfo.image_width, dinfo.image_height);
+  /* picture size check  */
+  if ( (dinfo.image_width % 2) != 0 )
+    mjpeg_error_exit1("The image width has to be a even number, rescale the image");
+  if ( (dinfo.image_height % 2) != 0 )
+    mjpeg_error_exit1("The image height has to be even number, rescale the image");
+
   param->width = dinfo.image_width;
   param->height = dinfo.image_height;
   param->colorspace = dinfo.jpeg_color_space;
