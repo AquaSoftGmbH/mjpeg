@@ -73,8 +73,8 @@ AC_CHECK_LIB( quicktime, quicktime_open,
 	          [ 
 		        AC_DEFINE(BUILD_QUICKTIME)
 				LIBS="$LIBS -lquicktime"
-			    QUICKTIME_INCLUDE="-I ${QUICKTIME_LIBDIR}"
-				JPEG_INCLUDE=""	
+			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
+				JPEG_INCLUDE="${QUICKTIME_INCLUDE}/jpeg"	
 			    have_quicktime="yes"
 				have_jpeg="yes"	
 			    

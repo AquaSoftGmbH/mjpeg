@@ -7,9 +7,9 @@
 	some annoying problems with overshoots in the pre-release version and
 	poor handling of unusually active blocks but I'd want more evidence...
 
-3.	CPU detection is currently somewhat lame and there and no use is made
-	of SSE or 3DNow.
-
 4.	At least for my install of SDL software playback MJPEG function sizes
 	its window inconsistently with what it claims it is going to do.
 	Playback speed
+
+5.  The option for switching to a high-res DCT matrix is broken (segfaults) in
+	mpeg2enc is broken.

@@ -2,6 +2,12 @@ TASKS OUTSTANDING
 
 Minor
 
+- Do  a purge through the code replacing clunky code with fast in-line
+	"abs", "min" and "max" operations.  Add a "PRODUCTION" flag
+	to turn off error checking in the code generation routines
+
+
+
 - Update the included scripts to reflect the new seperate input filter
 architecture for the  mpeg decoder.
 
