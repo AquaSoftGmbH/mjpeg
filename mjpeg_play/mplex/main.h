@@ -338,8 +338,6 @@ void output_video ( Timecode_struc *SCR,
 					Vaunit_struc *video_au,
 					Vector vaunit_info_vec,
 					unsigned char *picture_start,
-					unsigned long long  *bytes_output,
-					unsigned int mux_rate,
 					unsigned char marker_pack,
 					unsigned char include_sys_header
 					);
@@ -351,17 +349,12 @@ void output_audio ( Timecode_struc *SCR,
 					Aaunit_struc *audio_au,
 					Vector aaunit_info_vec,
 					unsigned char *audio_frame_start,
-					unsigned long long  *bytes_output,
-					unsigned int mux_rate,
 					unsigned char marker_pack,
 					unsigned char include_sys_header);
 
 void output_padding       (
 					Timecode_struc *SCR,
 					FILE *ostream,
-					unsigned long long  *bytes_output,
-					unsigned int mux_rate,
-					unsigned long packet_data_size,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header,
 					unsigned char pseudo_VBR

@@ -16,12 +16,21 @@ extern struct timeval  tp_global_end;
 #endif
 
 unsigned int    which_streams;
-int pack_header_size;
-int system_header_size;
+int				pack_header_size;
+int 			system_header_size;
+int 			sector_size;
+int				sector_transport_size;
+				/* In some situations the system/PES packets are embedded with external
+				   transport data which has to be taken into account for SCR calculations
+				   to be correct.
+				   E.g. VCD streams. Where each 2324 byte system packet is embedded in a
+				   2352 byte CD sector.
+				*/
+
 
 /* 
 		Stream syntax parameters.
-	*/
+*/
 		
 	
 static unsigned int min_packet_data;
@@ -37,9 +46,8 @@ static int trailing_pad_pack;
 static int audio_max_packet_data;
 static int video_max_packet_data;
 
-int sector_size;
-
-
+static double dmux_rate;	/* Actual data mux-rate for calculations */
+static double mux_rate;		/* MPEG mux rate (50 byte/sec units      */
 
 	/* Stream packet component buffers */
 
@@ -70,21 +78,25 @@ void init_stream_syntax_parameters(	)
 	  packets_per_pack = 1;
 	  always_sys_header_in_pack = 0;
 	  trailing_pad_pack = 1;
-	  opt_data_rate = 174300;  
-	  opt_sector_size = 2324;
+	  opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
+	  sector_size = 2324;
 	  opt_mpeg = 1;
 	  opt_VBR = 0;
-	  opt_buffer_size = 46;
+	  video_buffer_size = 46*1024;
+
 	}
   else /* MPEG_MPEG1 - auto format MPEG1 */
 	{
 	  packets_per_pack = 20;
 	  always_sys_header_in_pack = 1;
 	  trailing_pad_pack = 0;
+  	  sector_transport_size = opt_sector_size;
+	  sector_size = opt_sector_size;
+  	  video_buffer_size = opt_buffer_size * 1024;
 	}
 	
-  sector_size = opt_sector_size;
-  video_buffer_size = opt_buffer_size * 1024;
+
   audio_buffer_size = 4 * 1024;
   printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
     
@@ -178,9 +190,7 @@ void outputstreamsuffix(Timecode_struc *SCR,
   unsigned char *index;
   if (trailing_pad_pack )
 	{
-	  output_padding( SCR, ostream, bytes_output,
-					  mux_rate,
-					  0,
+	  output_padding( SCR, ostream,
 					  TRUE,
 					  FALSE,
 					  FALSE);
@@ -235,7 +245,6 @@ void outputstream ( char 		*video_file,
 
 {
 
-	int in_time;
 	Vaunit_struc video_au;		/* Video Access Unit	*/
 	Aaunit_struc audio_au;		/* Audio Access Unit	*/
 
@@ -246,9 +255,7 @@ void outputstream ( char 		*video_file,
 	double clock_cycles;
 	double audio_next_clock_cycles;
 	double video_next_clock_cycles;
-	double dmux_rate;
 	unsigned int sectors_delay,video_delay_ms,audio_delay_ms;
-	unsigned int mux_rate;
 	unsigned char picture_start;
 	unsigned char audio_frame_start;
 	unsigned int audio_bytes;
@@ -485,32 +492,30 @@ void outputstream ( char 		*video_file,
 
 
 		/* Calculate amount of data to be moved for the next AU's.
+		   Slightly pessimistic - assumes worst-case packet data capacity
+		   and the need to start a new packet.
 		*/
-		audio_bytes = (audio_au.length/min_packet_data)*sector_size +
-			(audio_au.length%min_packet_data)+(sector_size-min_packet_data);
-		video_bytes = (video_au.length/min_packet_data)*sector_size +
-			(video_au.length%min_packet_data)+(sector_size-min_packet_data);
+		audio_bytes = (audio_au.length/min_packet_data)*sector_transport_size +
+			(audio_au.length%min_packet_data)+(sector_transport_size-min_packet_data);
+		video_bytes = (video_au.length/min_packet_data)*sector_transport_size +
+			(video_au.length%min_packet_data)+(sector_transport_size-min_packet_data);
 
 
 		clock_cycles = ((double)(bytes_output+last_scr_byte_in_pack))*CLOCKS/dmux_rate;
 	
-		/* Calculate when the the next AU's will under the assumption
+		/* Calculate when the the next AU's will finish arriving under the assumption
 		   that the next sector carries a *different* payload.  Using
 		   this time we can see if a stream will definately under-run
-		   if no sector is sent immediately.  Since a sector is relatively
-		   small compared to buffer sizes we use the exact same time measure
-		   to detect "actual" under-runs.  
-		   
+		   if no sector is sent immediately. 		   
 		*/
-		audio_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
-								   ((double)audio_bytes))*CLOCKS/dmux_rate;
-		video_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
-								   ((double)video_bytes))*CLOCKS/dmux_rate;
+		audio_next_clock_cycles = 
+			((double)(bytes_output+(sector_transport_size+audio_bytes)))*CLOCKS/dmux_rate;
+		video_next_clock_cycles = 
+			((double)(bytes_output+(sector_transport_size+video_bytes)))*CLOCKS/dmux_rate;
 
 		make_timecode (clock_cycles, &current_SCR);
 		make_timecode (audio_next_clock_cycles, &audio_next_SCR);
 		make_timecode (video_next_clock_cycles, &video_next_SCR);
-
 
 		if (which_streams & STREAMS_AUDIO) 
 			buffer_clean (&audio_buffer, &current_SCR);
@@ -547,31 +552,19 @@ void outputstream ( char 		*video_file,
 				 )
 			)
 		{
-			
-			in_time = comp_timecode (&audio_next_SCR, &audio_au.PTS);
+			/* Calculate actual time current AU is likely to arrive. */
+			audio_next_clock_cycles = ((double)(bytes_output+audio_bytes))*CLOCKS/dmux_rate;
+			make_timecode (audio_next_clock_cycles, &audio_next_SCR);
+			if( ! comp_timecode (&audio_next_SCR, &audio_au.PTS) )
+				status_message (STATUS_AUDIO_TIME_OUT);
+
 			output_audio (&current_SCR, &SCR_audio_delay, 
 						  istream_a, ostream, 
 						  &audio_buffer, &audio_au, aaunit_info_vec,
 						  &audio_frame_start,
-						  &bytes_output, mux_rate,
 						  start_of_new_pack,
 						  include_sys_header);
-
-#ifdef TIMER
-			gettimeofday (&tp_start,NULL);
-#endif 
-			status_info (++nsec_a, nsec_v, nsec_p, bytes_output, 
-						 buffer_space(&video_buffer),
-						 buffer_space(&audio_buffer),verbose);
-			if( ! in_time )
-				status_message (STATUS_AUDIO_TIME_OUT);
-
-
-#ifdef TIMER
-			gettimeofday (&tp_end,NULL);
-			total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-			total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
+			++nsec_a;
 		}
 
 		/* CASE: Video Buffer OK, Video Data ready  (implicitly -
@@ -583,69 +576,55 @@ void outputstream ( char 		*video_file,
 				 && video_au.length>0
 			)
 		{
-			/* video packet schicken */
-			/* write out video packet */
-			in_time = comp_timecode (&video_next_SCR, &video_au.DTS);
+			/* Calculate actual time current AU is likely to arrive. */
+			video_next_clock_cycles = ((double)(bytes_output+video_bytes))*CLOCKS/dmux_rate;
+			make_timecode (video_next_clock_cycles, &video_next_SCR);
+			if( ! comp_timecode (&video_next_SCR, &video_au.DTS) )
+				status_message (STATUS_VIDEO_TIME_OUT);
 			output_video (&current_SCR, &SCR_video_delay, 
 						  istream_v, ostream, 
 						  &video_buffer, &video_au, 
 						  vaunit_info_vec, &picture_start,
-						  &bytes_output, mux_rate, 
 						  start_of_new_pack,
 						  include_sys_header);
 
-			/* status info */
-#ifdef TIMER
-			gettimeofday (&tp_start,NULL);
-#endif 
-			status_info (nsec_a, ++nsec_v, nsec_p, bytes_output,
-						 buffer_space(&video_buffer),
-						 buffer_space(&audio_buffer),verbose);
-			if( ! in_time )
-				status_message (STATUS_VIDEO_TIME_OUT);
+			++nsec_v;
 
-#ifdef TIMER
-			gettimeofday (&tp_end,NULL);
-			total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-			total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 		}
 
 		/* CASE: Audio Buffer and Video Buffers NOT OK (too full to send)
 		   SEND padding packet */
 		else
 		{
-			/* padding packet schicken */
-			/* write out padding packet */
-			output_padding (&current_SCR, ostream, 
-							&bytes_output, mux_rate,  
-							packet_data_size, start_of_new_pack, include_sys_header, opt_VBR);
-			padding_packet =TRUE;
 
-#ifdef TIMER
-			gettimeofday (&tp_start,NULL);
-#endif 
-			/* In case of VBR "padding" packets are stripped */
-			if( ! opt_VBR )
-				status_info (nsec_a, nsec_v, ++nsec_p, bytes_output, 
-							 buffer_space(&video_buffer),
-							 buffer_space(&audio_buffer),verbose);
-		
-#ifdef TIMER
-			gettimeofday (&tp_end,NULL);
-			total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-			total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
+			output_padding (&current_SCR, ostream, 
+							start_of_new_pack, include_sys_header, opt_VBR);
+			padding_packet =TRUE;
+			++nsec_p;
 		}
 	
 		/* Update the counter for pack packets.  VBR is a tricky case as here padding
 		   packets are "virtual" */
+		
 		if( ! opt_VBR || !padding_packet )
 		{
 			--packets_left_in_pack;
 			if (packets_left_in_pack == 0) 
 				packets_left_in_pack = packets_per_pack;
+			bytes_output += sector_transport_size;
 		}
+#ifdef TIMER
+			gettimeofday (&tp_start,NULL);
+#endif 
+			status_info (nsec_a, ++nsec_v, nsec_p, bytes_output,
+						 buffer_space(&video_buffer),
+						 buffer_space(&audio_buffer),verbose);
+
+#ifdef TIMER
+			gettimeofday (&tp_end,NULL);
+			total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
+			total_usec += (tp_end.tv_usec - tp_start.tv_usec);
+#endif
 		/* Unless sys headers are always required we turn them off after the first
 		   packet has been generated */
 		include_sys_header = always_sys_header_in_pack;
@@ -778,8 +757,6 @@ void output_video ( Timecode_struc *SCR,
 					Vaunit_struc *video_au,
 					Vector vaunit_info_vec,
 					unsigned char *picture_start,
-					unsigned long long *bytes_output,
-					unsigned int mux_rate,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header)
 
@@ -929,7 +906,14 @@ void output_video ( Timecode_struc *SCR,
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
   total_usec += (tp_end.tv_usec - tp_start.tv_usec);
 #endif
-  *bytes_output += cur_sector.length_of_sector;
+
+	/* TODO DEBUG */
+  if( cur_sector.length_of_sector != sector_size )
+  {
+  	fprintf(stderr, "Sector generated %d bytes actual size %d bytes\n", 
+	cur_sector.length_of_sector,sector_size  );
+	exit(1);
+  }
 	
 }
 
@@ -1016,8 +1000,6 @@ void output_audio ( Timecode_struc *SCR,
 					Aaunit_struc *audio_au,
 					Vector aaunit_info_vec,
 					unsigned char *audio_frame_start,
-					unsigned long long  *bytes_output,
-					unsigned int mux_rate,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header
 					)
@@ -1141,8 +1123,6 @@ void output_audio ( Timecode_struc *SCR,
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
   total_usec += (tp_end.tv_usec - tp_start.tv_usec);
 #endif
-  *bytes_output += cur_sector.length_of_sector;
-
 	
 }
 
@@ -1167,9 +1147,6 @@ void output_audio ( Timecode_struc *SCR,
 void output_padding (
 					 Timecode_struc *SCR,
 					 FILE *ostream,
-					 unsigned long long  *bytes_output,
-					 unsigned int mux_rate,
-					 unsigned long packet_data_size,
 					 unsigned char start_of_new_pack,
 					 unsigned char include_sys_header,
 					 unsigned char VBR_pseudo
@@ -1214,7 +1191,7 @@ void output_padding (
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
   total_usec += (tp_end.tv_usec - tp_start.tv_usec);
 #endif
-  *bytes_output += cur_sector.length_of_sector;
+
 	
 }
 
