@@ -174,7 +174,7 @@ lav2yuv_LDADD = $(LIBMJPEGUTILS) \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
-jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la
+jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(JPEG_LIBS)
 
 png2yuv_SOURCES = png2yuv.c colorspace.c subsample.c
 png2yuv_LDADD = $(LIBMJPEGUTILS) -lpng -lz -lm
