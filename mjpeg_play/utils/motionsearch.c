@@ -88,7 +88,8 @@ int (*pbsumsq_sub22)( uint8_t *blk1f, uint8_t *blk1b,
 						  uint8_t *blk2,
 						  int rowstride, int h);
 
-int (*pvariance)(uint8_t *mb, int size, int rowstride);
+void (*pvariance)(uint8_t *mb, int size, int rowstride, 
+				 uint32_t *p_var, uint32_t *p_mean);
 
 
 int (*psad_sub22) ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
@@ -933,11 +934,11 @@ STATIC int bsumsq(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
  * rowstride: distance (in bytes) of vertically adjacent pels
  * SIZE is a multiple of 8.
  */
-STATIC int variance(uint8_t *p, int size,	int rowstride)
+void variance(uint8_t *p, int size,	int rowstride,
+			 unsigned int *p_var, unsigned int *p_mean)
 {
 	int i,j;
 	unsigned int v,s,s2;
-	int var;
 	s = s2 = 0;
 
 	for (j=0; j<size; j++)
@@ -950,9 +951,8 @@ STATIC int variance(uint8_t *p, int size,	int rowstride)
 		}
 		p+= rowstride-size;
 	}
-	var = s2 - (s*s)/(size*size);
-
-	return var;
+	*p_mean = s/(size*size);
+	*p_var = s2 - (s*s)/(size*size);
 }
 
 

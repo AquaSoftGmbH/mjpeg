@@ -588,12 +588,17 @@ global variance_mmx
 ;;; lx: seperation (in bytes) of vertically adjacent pels
 ;;; NOTE:		 size  is 8 or 16
 
-;;; int variance_mmx(uint8_t *p, int size,	int lx)
+;;; void variance_mmx(uint8_t *p, int size,	int lx, 
+;;;			         unsigned int *p_var, unsigned int *p_mean)
 
-		
+		;; Use of MMX registers
+		;; mm0 = <0,0,0,0>
+		;; mm6 = Sum pixel squared
+		;; mm7 = Sum pixels
 variance_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
+	push eax
 	push ebx
 	push ecx
 	push edx
@@ -634,39 +639,49 @@ varrows:
 	cmp			eax, [ebp+12]
 	jl			varcols
 
-		;; Sum squared -> eax
+		;; Sum/64 = mean -> ebx Sum squared -> eax
 
 	movq		mm1, mm7
 	psrlq		mm1, 32
 	paddw		mm7, mm1
+
+		
 	movq		mm1, mm7
 	psrlq		mm1, 16
 	paddw		mm7, mm1
 	movd		eax, mm7
 	and			eax, 0xffff
+	mov			ebx, eax
 	imul		eax, eax
-
+		
 		;; Squares sum -> ecx
 
 	movq		mm1, mm6
 	psrlq		mm1, 32
 	paddd		mm6, mm1
 	movd		ecx, mm6
-	
-	mov			ebx, [ebp+12]
-	shr			eax, 6			; Divide sum squared by 64 for 8*8
-	cmp			ebx, 8
+
+		;; sum / (size*size) -> *p_mean
+		;; Squares sum - sum squares / (size*size) -> *p_var
+	mov			edx, [ebp+12]
+	shr			eax, 6			; Divide  sum and sum squared by 64 for 8*8
+	shr			ebx, 6
+	cmp			edx, 8
 	jz			var8_8			; If 16 * 16 divide again by 4 (256)
 	shr			eax, 2
+	shr			ebx, 2
 var8_8:			
-
+	mov         edx, [ebp+20]
 	sub			ecx, eax
-	mov			eax, ecx
+	mov         eax, [ebp+24]
+	mov			[eax], ebx
+	mov			[edx], ecx
 
 	pop edx
 	pop ecx
 	pop ebx
-
+	pop eax
+		
 	pop ebp			; restore stack pointer
 
 	emms			; clear mmx registers

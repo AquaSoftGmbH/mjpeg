@@ -113,7 +113,8 @@ extern int (*pbsumsq_sub22)( uint8_t *blk1f, uint8_t *blk1b,
 						  uint8_t *blk2,
 						  int rowstride, int h);
 
-extern int (*pvariance)(uint8_t *mb, int size, int rowstride);
+extern void (*pvariance)(uint8_t *mb, int size, int rowstride,
+						 uint32_t *p_variance, uint32_t *p_mean);
 
 
 extern int (*psad_sub22) ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
