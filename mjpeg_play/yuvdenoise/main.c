@@ -547,7 +547,7 @@ void turn_on_accels(void)
     deinterlace = &deinterlace_mmx;
   }
   else
-    if( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
+    if ( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
     {
       calc_SAD    = &calc_SAD_mmx;
       if (denoiser.frame.Cw==denoiser.frame.w/4 && denoiser.frame.Ch==denoiser.frame.h)

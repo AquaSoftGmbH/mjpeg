@@ -99,8 +99,8 @@ struct DNSR_GLOBAL
   
 struct DNSR_VECTOR
 {
-  int8_t  x;
-  int8_t  y;
+  int8_t     x;
+  int8_t     y;
   uint32_t SAD;
 };
 

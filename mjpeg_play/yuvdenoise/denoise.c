@@ -794,7 +794,7 @@ denoise_frame(void)
     case 2: /* PASS II only mode */
     {      
       /* deinterlacing wanted ? */
-      if(denoiser.deinterlace) deinterlace();
+      if (denoiser.deinterlace) deinterlace();
       
       /* as the normal denoising functions are not used we need to copy ... */
       memcpy(denoiser.frame.tmp[0],denoiser.frame.ref[0],denoiser.frame.w*(denoiser.frame.h+2*BUF_OFF));
