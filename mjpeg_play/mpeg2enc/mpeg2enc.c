@@ -1018,7 +1018,8 @@ static void init_mpeg_parms(void)
 	ctl_seq_length_limit = param_seq_length_limit;
 	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;
 	opt_low_delay       = 0;
-	opt_constrparms     = param_mpeg == 1;       /* Will be reset, if not coompliant */
+	opt_constrparms     = (param_mpeg == 1 && 
+						   !MPEG_STILLS_FORMAT(param_format));
 	opt_profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
 	opt_level           = 8;                 /* Main Level      CCIR 601 rates */
 	opt_chroma_format   = param_422 ? CHROMA422 : CHROMA420;
@@ -1236,6 +1237,7 @@ static void init_mpeg_parms(void)
 		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0\n");
 		opt_constrparms = 0;
 	}
+
 
 	if( ( (opt_vertical_size+15) / 16)%2 != 0 )
 	{
