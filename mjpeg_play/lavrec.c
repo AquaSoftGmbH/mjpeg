@@ -1477,7 +1477,6 @@ int main(int argc, char ** argv)
    while (1)
    {
       /* sync on a frame */
-     printf("Syncing on buffer %ld\n", num_syncs);
       res = ioctl(video_dev, MJPIOC_SYNC, &bsync);
       if (res < 0)
       {
