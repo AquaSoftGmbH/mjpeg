@@ -93,7 +93,7 @@ public:
     void MotionEstimate();
     void SelectCodingModeOnVariance();
     void FrameME();            // In motionest.cc
-    void FrameMEs();            // In motionest.cc
+    void FrameMEs();
     void FieldME();
     void Predict();            // In predict.cc
     void Quantize();            // In quantize.cc
