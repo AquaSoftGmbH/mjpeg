@@ -490,7 +490,7 @@ display_help(void)
   "                   (default=%i)"
   "\n"
   "-S <0...255>       Set sharpness in percent. WARNING: do not set too high\n"
-  "                   as this will gain bit-noise. (default=%i)\n"
+  "                   as this will gain bit-noise. (default=%i), 0 = disabled\n"
   "\n"
   "-F                 Force deinterlacing. By default denoise interlaced.\n"
   "\n"

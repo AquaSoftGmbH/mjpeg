@@ -558,6 +558,9 @@ sharpen_frame(void)
   register int m;
   register int c;
 
+  if (denoiser.sharpen == 0)
+    return;
+
   dst[Yy]=denoiser.frame.avg2[Yy]+32*W;
 
   /* Y */
