@@ -48,15 +48,14 @@ GTK_xlav *create_form_xlav(void)
   gtk_box_pack_start(GTK_BOX(vbox), temphbox, TRUE, TRUE, 0);
   gui->timeslider=gtk_adjustment_new (0.0, 0.0, 100.0, 0.01, 2.0, .10);
   gui->timehscale=gtk_hscale_new (GTK_ADJUSTMENT (gui->timeslider));
-    gtk_scale_set_draw_value(GTK_SCALE(gui->timehscale),FALSE);
+  gtk_scale_set_draw_value(GTK_SCALE(gui->timehscale),FALSE);
+  gtk_range_set_update_policy(GTK_RANGE(gui->timehscale),GTK_UPDATE_CONTINUOUS);
     gtk_box_pack_start(GTK_BOX(temphbox), gui->timehscale, TRUE, TRUE, 0);
-    gtk_widget_show(gui->timehscale);
-    g_signal_connect (G_OBJECT (gui->timeslider), "value_changed",
-       G_CALLBACK (timeslider_cb), (gpointer)0);
-    g_signal_connect (G_OBJECT (gui->timehscale), "button-release-event",
-       G_CALLBACK (timehscale_button_released_cb), (gpointer)0);
-    g_signal_connect (G_OBJECT (gui->timehscale), "button-press-event",
-       G_CALLBACK (timehscale_button_pressed_cb), (gpointer)0);
+  gtk_widget_show(gui->timehscale);
+
+  gtk_signal_connect (GTK_OBJECT (gui->timeslider), "value_changed",
+    GTK_SIGNAL_FUNC (timeslider_cb), (gpointer)0);
+
   gtk_widget_show(temphbox);
 
   /* second row */

@@ -374,27 +374,16 @@ static void get_input(gpointer data, gint fd, GdkInputCondition condition)
    }
 }
 
-
-void        timehscale_button_pressed_cb(GtkAdjustment *adjustment, gpointer data) {
-   hscale_down=1;
-}
-
-void        timehscale_button_released_cb(GtkAdjustment *adjustment, gpointer data) {
-   hscale_down=0;
-}
-
 void        timeslider_cb(GtkAdjustment *adjustment, gpointer data)
 {
-   gfloat val;
-   char out[256];
+gfloat val;
+char out[256];
+float new;
 
-   if (hscale_down) {
-      float new;
       val = ((GTK_ADJUSTMENT(gtk_xlav->timeslider)->value));
       new = (val / 100.00 );
       sprintf(out,"s%d\n",(int)((val*total_frames)/100));
       write(out_pipe,out,strlen(out));
-   }
       slider_pause = 8;
 }
 
