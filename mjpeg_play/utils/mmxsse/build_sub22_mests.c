@@ -2,6 +2,8 @@
 #include "mmxsse_motion.h"
 #include "fastintfns.h"
 
+#include <stdlib.h>
+
 int build_sub22_mests_mmxe( me_result_set *sub44set,
 				me_result_set *sub22set,
 				int i0,  int j0, int ihigh, int jhigh, 
