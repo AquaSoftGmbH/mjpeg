@@ -373,6 +373,7 @@ Pixel<NUM,1,TOL>::IsWithinTolerance
 
 
 // Return true if the two pixels are within the specified tolerance.
+template <>
 bool
 PixelY::IsWithinTolerance (const PixelY &a_rOther,
 	int32_t a_tnTolerance) const
@@ -386,6 +387,7 @@ PixelY::IsWithinTolerance (const PixelY &a_rOther,
 
 
 // Return true if the two pixels are within the specified tolerance.
+template <>
 bool
 PixelY::IsWithinTolerance (const PixelY &a_rOther,
 	int32_t a_tnTolerance, int32_t &a_rtnSAD) const
@@ -425,6 +427,7 @@ Pixel<NUM,2,TOL>::IsWithinTolerance
 
 
 // Return true if the two pixels are within the specified tolerance.
+template <>
 bool
 PixelCbCr::IsWithinTolerance
 	(const PixelCbCr &a_rOther, int32_t a_tnTolerance) const
@@ -445,6 +448,7 @@ PixelCbCr::IsWithinTolerance
 
 
 // Return true if the two pixels are within the specified tolerance.
+template <>
 bool
 PixelCbCr::IsWithinTolerance
 	(const PixelCbCr &a_rOther, int32_t a_tnTolerance,
