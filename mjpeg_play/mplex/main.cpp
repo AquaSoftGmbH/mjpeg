@@ -588,7 +588,7 @@ bool CmdLineMultiplexJob::ParseTimeOffset(const char *optarg)
 		else
 			return false;
     }
-    video_offset = lround(f*CLOCKS/(persecond));
+    video_offset = static_cast<int>(f*CLOCKS/(persecond));
 	if( video_offset < 0 )
 	{
 		audio_offset = - video_offset;
