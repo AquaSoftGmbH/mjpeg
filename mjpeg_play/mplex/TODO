@@ -1,5 +1,8 @@
 TODO
 
+- When truncated last frame detected in audio streams the last AU in the
+  AU list should be deleted as well as generating a warning!
+
 - Complete encapsulation by utilising stream interface rather than
   direct access to C-style file I/O 
 

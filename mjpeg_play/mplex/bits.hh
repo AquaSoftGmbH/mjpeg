@@ -27,7 +27,7 @@ protected:
 	//
 	// TODO: really we should set these based on system parameters etc.
 	//
-	static const unsigned int BUFFER_SIZE = 512 * 1024;
+	static const unsigned int BUFFER_SIZE = 64 * 1024;
 	static const unsigned int BUFFER_CEILING = 32 * 1024 * 1024;
 	uint8_t *bfr;				// The read/write buffer tiself
 	unsigned int bfr_size;		// The physical size of the buffer =
@@ -115,7 +115,7 @@ public:
 private:
 	FILE *fileh;
 	const char *filename;
-	bool ReadIntoBuffer();
+	bool ReadIntoBuffer( unsigned int to_read = BUFFER_SIZE );
 };
 
 #ifdef REDUNDANT_CODE

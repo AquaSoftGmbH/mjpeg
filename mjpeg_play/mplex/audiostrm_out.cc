@@ -89,6 +89,8 @@ void AudioStream::OutputSector ( )
 	old_au_then_new_payload = 
 		muxinto.PacketPayload( *this, buffers_in_header, false, false );
 
+    // Ensure we have access units data buffered to allow a sector to be
+    // written.
 	max_packet_data = 0;
 	if( muxinto.running_out && 
         NextRequiredPTS() > muxinto.runout_PTS )

@@ -202,11 +202,11 @@ public:
 
 	void SetSyncOffset( clockticks timestamp_delay );
 
+	void BufferAndOutputSector();
  
 	inline bool BuffersInHeader() { return buffers_in_header; }
 	virtual unsigned int NominalBitRate() = 0;
 	virtual bool RunOutComplete() = 0;
-	virtual void OutputSector() = 0;
 
 	virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 
@@ -215,6 +215,7 @@ protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;
     virtual bool AUBufferNeedsRefill() = 0;
+    virtual void OutputSector() = 0;
 	AUStream aunits;
 	void Muxed( unsigned int bytes_muxed );
 

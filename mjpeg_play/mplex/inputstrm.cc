@@ -249,6 +249,28 @@ Aunit *ElementaryStream::next()
 
 
 
+//
+// TODO: The buffer refilling is a mess.  We not only refull here but
+// TODO: also refill in next().  However, neither is *guaranteed* to put
+// TODO: enough data in the buffer.  What we need to ensure is that we have
+// TODO: read enough input stream into the buffer to guarantee a sectors
+// TODO: worth of payload.  A reasonable approximation would be simply to
+// TODO: try to read-ahead 2* the sector size. However, this will break for
+// TODO: streams which have big inclusions.  One example might be direct AVI
+// TODO: reading of mixed streams or reading of program streams.
+//
+
+
+void ElementaryStream::BufferAndOutputSector( )
+{
+    while( AUBufferNeedsRefill() )
+	{
+        FillAUbuffer(FRAME_CHUNK);
+	}
+    OutputSector();
+}
+
+
 
 /* 
  * Local variables:

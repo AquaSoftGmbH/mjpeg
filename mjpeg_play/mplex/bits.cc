@@ -37,13 +37,6 @@
 #include "bits.hh"
 
 
-/// Initializes the bitstream, sets internal variables.
-// TODO: The buffer size should be set dynamically to sensible sizes.
-//
-
-/// Initializes the bitstream, sets internal variables.
-// TODO: The buffer size should be set dynamically to sensible sizes.
-//
 BitStreamBuffering::BitStreamBuffering() :
     bfr(0),
     bfr_size(0),
@@ -94,7 +87,7 @@ void BitStreamBuffering::SetBufSize( unsigned int new_buf_size)
 		mjpeg_error_exit1("INTERNAL ERROR: additional data required but "
                           " input buffer size would exceed ceiling");
 	}
-
+    
     if( new_buf_size > buffered && bfr_size != new_buf_size )
 	{
 		uint8_t *new_buf = new uint8_t[new_buf_size];
@@ -132,13 +125,15 @@ uint8_t *BitStreamBuffering::StartAppendPoint( unsigned int to_append )
    variables buffered and bfr_size.
    Strategy: we read 1/4 of a buffer, always.
  */
-bool IBitStream::ReadIntoBuffer()
+bool IBitStream::ReadIntoBuffer(unsigned int to_read)
 {
 	size_t i;
-    unsigned int to_read = bfr_size / 4;
-    
-	i = fread(StartAppendPoint(to_read), sizeof(uint8_t), 
-			  static_cast<size_t>(to_read), fileh);
+    unsigned int read_pow2 = BUFFER_SIZE/4;
+    while( read_pow2 < to_read ) 
+        read_pow2 <<= 1;
+            
+	i = fread(StartAppendPoint(read_pow2), sizeof(uint8_t), 
+			  static_cast<size_t>(read_pow2), fileh);
     Appended(static_cast<unsigned int>(i));
 
 	if ( i == 0 )
@@ -306,10 +301,10 @@ bool IBitStream::SeekFwdBits( unsigned int bytes_to_seek_fwd)
     unsigned int req_byteidx = byteidx + bytes_to_seek_fwd;
     while( req_byteidx >= buffered &&  !eobs)
     {
-        ReadIntoBuffer();
+        ReadIntoBuffer( req_byteidx - buffered );
     }
     
-    eobs = ( req_byteidx >= buffered );
+    eobs = ( req_byteidx > buffered );
     bitreadpos += bytes_to_seek_fwd*8;
     byteidx = req_byteidx;
 }
@@ -335,9 +330,8 @@ void IBitStream::Flush(bitcount_t flush_upto )
 	// will be cleared.
 	//
 
-	if( bytes_to_flush < bfr_size*3/4 )
+	if( bytes_to_flush < bfr_size/2 )
 		return;
-
 	buffered -= bytes_to_flush;
 	bfr_start = flush_upto;
 	byteidx -= bytes_to_flush;

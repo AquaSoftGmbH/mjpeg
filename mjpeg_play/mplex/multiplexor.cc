@@ -1133,7 +1133,7 @@ void Multiplexor::Multiplex()
 
 		if( despatch )
 		{
-			despatch->OutputSector();
+			despatch->BufferAndOutputSector();
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{

@@ -195,6 +195,9 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
 
+    mjpeg_debug( "Scanning %d MPA frames to frame %d", 
+                frames_to_buffer,
+                last_buffered_AU );
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
@@ -270,6 +273,8 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
+    if( eoscan )
+        mjpeg_info( "Scan ends %02x %lld (%lld) %d last=%d", stream_id, bs.bitcount(), bs.GetBytePos()+bs.BufferedBytes(), bs.eos(), last_buffered_AU );
 
 }
 
