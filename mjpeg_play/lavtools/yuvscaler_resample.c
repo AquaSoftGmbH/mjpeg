@@ -1,7 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -22,8 +18,7 @@ extern unsigned int output_height_slice;
 extern unsigned int input_width_slice;
 extern unsigned int output_width_slice;
 
-extern int input_interlaced; 
-extern int output_interlaced; 
+extern int interlaced; 
 
 extern unsigned int output_active_width;
 extern unsigned int output_active_height;
@@ -192,8 +187,7 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
   mjpeg_debug ("Start of average");
   //End of INIT
 
-  if ((output_interlaced == Y4M_ILACE_NONE)
-      || (input_interlaced == Y4M_ILACE_NONE))
+  if (interlaced == Y4M_ILACE_NONE)
     {
       mjpeg_debug ("Non-interlaced downscaling");
       // output frames are not interlaced => averaging will generate output lines is growing order, 
@@ -436,8 +430,7 @@ average_specific (uint8_t * input, uint8_t * output,
       // SPECIAL FAST Full_size to VCD downscaling : 2to1 for width and height
       // Since 2 to 1 height dowscaling, no need for line switching
       // Drawback: slight distortion on width
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line = 0; out_line < local_output_active_height;
@@ -503,8 +496,7 @@ average_specific (uint8_t * input, uint8_t * output,
       // input_height_slice=2, output_height_slice=1 => input lines will be summed together.
       // infered from average with output_height_slice=1 and explicity writting of the for(in_line=0;in_line<input_height_slice;in_line++)
       // Special VCD downscaling without width distortion
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line = 0; out_line < local_output_active_height;
@@ -593,8 +585,7 @@ average_specific (uint8_t * input, uint8_t * output,
     {
       // We downscale only lines along the height, not the width
       treatment = 5;
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
@@ -720,8 +711,7 @@ average_specific (uint8_t * input, uint8_t * output,
       // For the height, H is equal to 2 3 1 2 2 2 2 1 3
       // Infered from specific=5
       treatment = 7;
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
@@ -799,8 +789,7 @@ average_specific (uint8_t * input, uint8_t * output,
       // Drawback: slight distortion on width
       // Coefficient for horizontal downscaling : (3,3,2), (1,3,3,1), (2,3,3)
       treatment = 8;
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
@@ -917,8 +906,7 @@ average_specific (uint8_t * input, uint8_t * output,
     {
       // Special WIDE2VCD, on height : 8->3
       treatment = 9;
-      if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE))
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  mjpeg_debug ("Non-interlaced downscaling");
 	  // input frames are not interlaced, as are output frames.

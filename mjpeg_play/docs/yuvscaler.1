@@ -44,7 +44,11 @@ lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2VCD | mpeg2enc -f 1 -o letterbox_vcd.
 
 \fBEncoding anamorphic 16:9 as letterboxed SVCD:\fP
 .br
-lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2STD -O SVCD | mpeg2enc -f 4 -o letterbox_svcd.%d.m1v
+lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2STD -O SVCD | mpeg2enc -f 4 -o letterbox_svcd.%d.m2v
+
+\fBEncoding anamorphic 16:9 as letterboxed DVD:\fP
+.br
+lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2STD -O DVD | mpeg2enc -f 8 -o letterbox_dvd.%d.m2v
 
 .SH OPTIONS
 
@@ -107,16 +111,6 @@ letter-boxed VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see below).
 .IP
 \fBMMX\fP to use MMX functions for BICUBIC scaling (experimental feature!!)
 .IP
-If you suspect that your video capture was given a wrong interlacing type,
-please use and combine:
-.IP
-\fBLINE_SWITCH\fP to preprocess frames by switching lines two by two
-(spatial reordering)
-.IP
-\fBBOTT_FORWARD\fP to preprocess frames by moving bottom field one frame
-forward (time reordering)
-.IP
-\fBTOP_FORWARD\fP to preprocess frames by moving top field one frame forward (time reordering)
 
 .TP 
 .B -O \fIoutput_keyword\fP
@@ -140,10 +134,13 @@ PAL and NTSC standards). Non-interlaced output.
 \fBSVCD\fP to generate SVCD compliant frames on output (taking care of
 PAL and NTSC standards). Top-field-first interlaced frames.
 .IP
+\fBDVD\fP to generate DVD compliant frames on output (taking care of
+PAL and NTSC standards). Top-field-first interlaced frames.
+.IP
 \fBSIZE_WidthxHeight\fP to generate frames of size WidthxHeight on
 output (multiple of 4)
 .IP
-If VCD or SVCD keywords are not used, output interlacing is taken of the
+If VCD, SVCD or DVD keywords are not used, output interlacing is taken of the
 same type as input. By default, output frames size will be the same as input
 frame size.
 .IP
