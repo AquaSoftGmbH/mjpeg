@@ -213,7 +213,8 @@ gotenough:
 					}
 				}
 			}
-		mjpeg_info("frame %d replaced %d", frames, num_replaced);
+		if	(num_replaced)
+			mjpeg_info("frame %d replaced %d", frames,num_replaced);
 outputframe:
                 y4m_write_frame(fileno(stdout), &ostream, &iframe, yuv);
                 }
