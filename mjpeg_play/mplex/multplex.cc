@@ -100,9 +100,11 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_size = 2324;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		buffers_in_audio = 1;
-		always_buffers_in_audio = 0;
-		vcd_zero_stuffing = 20;
+		buffers_in_audio = 1;   		// This is needed as otherwise we have
+		always_buffers_in_audio = 1;	//  to stuff the packer header which 
+                                        // must be 13 bytes for VCD audio
+		vcd_zero_stuffing = 20;         // The famous 20 zero bytes for VCD
+                                        // audio sectors.
 		dtspts_for_all_vau = false;
 		sector_align_iframeAUs = false;
         timestamp_iframe_only = false;
