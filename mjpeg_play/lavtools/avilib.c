@@ -33,6 +33,20 @@
 #include "avilib.h"
 #include "mjpeg_logging.h"
 
+/* There is an experimental kernel patch available at 
+ *   http://www.tech9.net/rml/linux/
+ * that adds the O_STREAMING flag for open().  Files opened this way will
+ * bypass the linux buffer cache entirely, so that writing multi-gigabyte files
+ * with lavrec will not cause everything in memory to get swapped to disk.
+ * This is highly desirable, hopefuly it will be merged with the mainstream
+ * kernel.
+ *
+ * we leave it out if it's unknown, since its value differs per arch...
+ */
+#ifndef O_STREAMING
+#define O_STREAMING 0
+#endif
+
 /* The following variable indicates the kind of error */
 
 long AVI_errno = 0;
@@ -179,7 +193,7 @@ avi_t* AVI_open_output_file(char * filename)
       we do not truncate the file when we open it.
       Instead it is truncated when the AVI file is closed */
 
-   AVI->fdes = open(filename,O_RDWR|O_CREAT,0644);
+   AVI->fdes = open(filename,O_RDWR|O_CREAT|O_STREAMING,0644);
    if (AVI->fdes < 0)
    {
       AVI_errno = AVI_ERR_OPEN;
@@ -635,7 +649,7 @@ avi_t *AVI_open_input_file(char *filename, int getIndex)
 
    /* Open the file */
 
-   AVI->fdes = open(filename,O_RDONLY);
+   AVI->fdes = open(filename,O_RDONLY|O_STREAMING);
    if(AVI->fdes < 0)
    {
       AVI_errno = AVI_ERR_OPEN;
