@@ -21,6 +21,16 @@
 
 
 
+// Part of BitmapRegion2D<> breaks gcc 2.95.  An earlier arrangement of
+// the code also broke gcc 3.3, but that seems to be in remission now.
+#if defined(__GNUC_MAJOR__) && defined(__GNUC_MINOR__)
+#if __GNUC_MANOR__ == 2 && __GNUC_MINOR__ < 96
+#define GCC_295_WORKAROUND
+#endif
+#endif
+
+
+
 // The 2-dimensional region class.  Parameterized by the numeric type
 // to use for point indices, and the numeric type to use to count the
 // contained number of points.
@@ -238,10 +248,33 @@ public:
 // do the work.
 template <class INDEX, class SIZE>
 class BitmapRegion2D<INDEX,SIZE>::FloodFillControl
+#ifndef GCC_295_WORKAROUND
 	: public Region2D<INDEX,SIZE>::
 		FloodFillControl<BitmapRegion2D<INDEX,SIZE> >
+#endif // ! GCC_295_WORKAROUND
 {
 public:
+#ifdef GCC_295_WORKAROUND
+	// (Although these fields are public, they should be considered
+	// opaque to the client.)
+
+	BitmapRegion2D<INDEX,SIZE> m_oToDo;
+		// Extents that still need to be be tested.
+
+	BitmapRegion2D<INDEX,SIZE> m_oAlreadyDone;
+		// Extents that have been tested.
+
+	BitmapRegion2D<INDEX,SIZE> m_oNextToDo;
+		// Extents contiguous with those that have just been added
+		// to the flood-filled area.
+
+	typedef typename BitmapRegion2D<INDEX,SIZE>::ConstIterator
+		ConstIterator;
+	typedef typename BitmapRegion2D<INDEX,SIZE>::Extent Extent;
+		// The iterator/extent type for running through the above
+		// regions.
+#endif // GCC_295_WORKAROUND
+
 	FloodFillControl();
 		// Default constructor.  Must be followed by a call to Init().
 	
@@ -251,6 +284,22 @@ public:
 	
 	void Init (Status_t &a_reStatus, INDEX a_tnWidth, INDEX a_tnHeight);
 		// Initializer.  Must be called on default-constructed objects.
+
+#ifdef GCC_295_WORKAROUND
+	// Methods to be redefined by clients implementing specific
+	// flood-fills.
+
+	bool ShouldUseExtent (Extent &a_rExtent) { return true; }
+		// Return true if the flood-fill should examine the given
+		// extent.  Clients should redefine this to define their own
+		// criteria for when extents should be used, and to modify the
+		// extent as needed (e.g. to clip the extent to a bounding box).
+	
+	bool IsPointInRegion (INDEX a_tnX, INDEX a_tnY) { return false; }
+		// Returns true if the given point should be included in the
+		// flood-fill.  Clients must redefine this to explain their
+		// flood-fill criteria.
+#endif // GCC_295_WORKAROUND
 };
 
 
