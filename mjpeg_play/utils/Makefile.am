@@ -19,7 +19,7 @@ libmjpegutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \
                           mpegconsts.c mpegconsts.h \
                           mpegtimecode.c mpegtimecode.h
 
-pkginclude_HEADERS = yuv4mpeg.h mpegconsts.h mjpeg_logging.h mjpeg_types.h
+pkginclude_HEADERS = yuv4mpeg.h mpegconsts.h mjpeg_logging.h mjpeg_types.h mpegtimecode.h
 
 if HAVE_ASM_NASM
 if HAVE_ASM_MMX
