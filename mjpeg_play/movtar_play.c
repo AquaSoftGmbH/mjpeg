@@ -144,21 +144,11 @@ void initmovtar(char *filename)
 
 void readnext()
 {
-static int played=0;
-static int viewed=0; 
+  static int played=0;
+  static int viewed=0; 
 
   int datasize; 
-  //char *readbuffer;
   int datatype;
-
-/*  played++; */
- 
-/*   if(viewed>200) */
-/*     { */
-/*       printf("visat %i av %i\n",viewed,played); */
-/*       audio_shutdown(); */
-/*       exit(0); */
-/*     } */
 
   do
     {
@@ -204,6 +194,8 @@ void inline swap(unsigned char *a, unsigned char *b)
   *b = tmp;
 }
 
+#undef BYPASS_CONVERSION
+
 void readpicfrommem(void *inbuffer,int size)
 {
   struct jpeg_error_mgr jerr;
@@ -227,8 +219,7 @@ void readpicfrommem(void *inbuffer,int size)
 
   jpeg_start_decompress(&cinfo);
   
-
-#if 0
+#if defined(BYPASS_CONVERSION)
   /* lock the screen for current decompression */
   if ( SDL_MUSTLOCK(screen) ) 
     {
@@ -239,7 +230,11 @@ void readpicfrommem(void *inbuffer,int size)
 
   if(img == NULL)
     {
+#if defined(BYPASS_CONVERSION)
+      img = screen->pixels;
+#else
       img = jpeg->pixels;
+#endif
       /* and WHERE are they deallocated ?? */
       if((imglines = (char **)calloc(cinfo.output_height, sizeof(char *)))==NULL)
 	{
@@ -249,7 +244,7 @@ void readpicfrommem(void *inbuffer,int size)
       for(i=0;i < cinfo.output_height;i++)
 	imglines[i]= img + i * 3 * screen->w;
 
-      jpegdims.x = 0;
+      jpegdims.x = 0; // This is not going to work with interlaced pics !!
       jpegdims.y = 0;
       jpegdims.w = cinfo.output_width;
       jpegdims.h = cinfo.output_height;
@@ -261,53 +256,16 @@ void readpicfrommem(void *inbuffer,int size)
       jpeg_read_scanlines(&cinfo, (JSAMPARRAY) &imglines[cinfo.output_scanline], 10);
     }
 
-
-#if 0
-  /* need to convert all pixels - ugh ! */
-  if (screen->format->BytesPerPixel != 3)
-    { 
-      // dprintf("Have to convert pixels - BAD for performance !");
-      switch(screen->format->BytesPerPixel)
-	{
-	case 4:
-	  mask = 0xffffffff; break;
-	case 3:
-
-	  for (y = 0; y < cinfo.output_height; y++)
-	    for (x = 0; x < cinfo.output_width; x++)
-	      {
-		swap(img + (y * screen->w + x) * screen->format->BytesPerPixel, 
-		     img + (y * screen->w + x) * screen->format->BytesPerPixel + 2);
-	      };
-	  break;
-
-
-	case 2:
-	  /*	  pixelval = SDL_MapRGB(screen->format, img[y * screen->w * 3 + x * 3 + 2], 
-				img[y * screen->w * 3 + x * 3 + 1], 
-				img[y * screen->w * 3 + x * 3 + 0]); 
-	  */
-
-	case 1:
-	  mask = 0xff; break;
-	}
-
-    }
-#endif
-
-#if 0 
+#if defined(BYPASS_CONVERSION)
   /* unlock it again */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       SDL_UnlockSurface(screen);
     }
-
-  /* Update the screen */
-  SDL_UpdateRect(screen, 0, 0, screen->w, screen->h);
-#endif
-
+#else
   /* Only blit and update the neccessary parts */
   SDL_BlitSurface(jpeg, &jpegdims, screen, &jpegdims);
+#endif
   SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
                           
   jpeg_finish_decompress(&cinfo);
@@ -339,6 +297,8 @@ int main(int argc,char** argv)
   unsigned char *buffer;
   char wintitle[255];
   int frame =0;
+  Uint8 *keys;
+  SDL_Event event;
 
   /* Initialize SDL library */
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) 
@@ -348,9 +308,12 @@ int main(int argc,char** argv)
   atexit(SDL_Quit);
   
   /* Set the video mode (800x600 at native depth) */
-  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
+  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN*/);
+  SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
+  SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
+
   dump_pixel_format(screen->format);
-  jpeg = SDL_CreateRGBSurface (SDL_SWSURFACE, 800, 600, 24, 0x0ff, 0x00ff00, 0xff0000, 0xff000000); 
+  jpeg = SDL_CreateRGBSurface (SDL_SWSURFACE, 800, 600, 24, 0x0ff0000, 0x00ff00, 0x0000ff, 0xff000000); 
   dump_pixel_format(jpeg->format);
 
   if ( screen == NULL )  
@@ -358,14 +321,6 @@ int main(int argc,char** argv)
 
   /* init the movtar library */
   initmovtar(argv[1]);
-
-  /* init the Hermes pixel conversion library */
-  //if (!Hermes_Init()) 
-  //  ComplainAndExit();
-
-  //YUV2MyRGB = Hermes_ConverterInstance(0);
-  //Hermes_ConverterRequest(YUV2MyRGB, HermesFormat *source, HermesFormat *dest);
-
 
   sprintf(wintitle, "movtar_play %s", argv[1]);
   SDL_WM_SetCaption(wintitle, "0000000");  
@@ -384,14 +339,8 @@ int main(int argc,char** argv)
       readnext();
       frame++;
     }
-  while((frame < 200) && !movtar_eof(movtarfile));
+  while((frame < 100) && !movtar_eof(movtarfile) && !SDL_PollEvent(&event));
 
-  //SDL_Delay(1000);        /* Wait x seconds */
-
-  /* Deinitialize Hermes functions */
-  //Hermes_ConverterReturn(YUV2MyRGB);
-  //Hermes_Done();
-                         
   return 0;
 }
 
