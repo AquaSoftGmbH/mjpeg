@@ -102,6 +102,7 @@ typedef struct {
    int    height;                             /* height of the captured frames */
    double spvf;                               /* seconds per video frame */
    int    video_fd;                           /* file descriptor of open("/dev/video") */
+   int    has_audio;                          /* whether it has an audio ability */
    struct mjpeg_requestbuffers breq;          /* buffer requests */
    struct mjpeg_sync bsync;
    struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
@@ -366,9 +367,9 @@ static int lavrec_autodetect_signal(lavrec_t *info)
 
    if (info->software_encoding && (info->video_norm==3 || info->video_src==3))
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Autodetection of input or norm not supported for non-MJPEG-cards");
-      return 0;
+      lavrec_msg(LAVREC_MSG_DEBUG, info,
+         "Using current input signal settings for non-MJPEG card");
+      return 1;
    }
 
    if (info->video_src == 3) /* detect video_src && norm */
@@ -964,7 +965,7 @@ static int lavrec_software_init(lavrec_t *info)
       return 0;
    }
    /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
-   if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;
+   /*if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;*/
 
    /* set some "subcapture" options - cropping is done later on (during capture) */
    if(!info->geometry->w)
@@ -1384,17 +1385,31 @@ static int lavrec_init(lavrec_t *info)
    if (lavrec_autodetect_signal(info) == 0)
       return 0;
 
-   vch.channel = info->video_src;
+   if (info->software_encoding && info->video_src == 3)
+      vch.channel = 0;
+   else
+      vch.channel = info->video_src;
    vch.norm = info->video_norm;
-   if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
+   if (info->video_norm != 3 && info->video_src != 3)
+   {
+      if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error setting channel: %s", (char *)sys_errlist[errno]);
+         return 0;
+      }
+   }
+   if (ioctl(settings->video_fd, VIDIOCGCHAN, &vch) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error setting channel: %s", (char *)sys_errlist[errno]);
+         "Error getting channel info: %s", (char *)sys_errlist[errno]);
       return 0;
    }
+   settings->has_audio = (vch.flags & VIDEO_VC_AUDIO);
+   info->video_norm = vch.norm; /* the final norm */
 
    /* set channel if we're tuning */
-   if ((info->video_src == 2 || info->software_encoding) && info->tuner_frequency)
+   if (vch.flags & VIDEO_VC_TUNER && info->tuner_frequency)
    {
       unsigned long outfreq;
       outfreq = info->tuner_frequency*16/1000;
@@ -1409,7 +1424,7 @@ static int lavrec_init(lavrec_t *info)
    /* Set up tuner audio if this is a tuner. I think this should be done
     * AFTER the tuner device is selected
     */
-   if (info->video_src == 2 || info->software_encoding) 
+   if (settings->has_audio) 
    {
       struct video_audio vau;
 
@@ -2013,7 +2028,7 @@ static void *lavrec_capture_thread(void *arg)
       lavrec_set_mixer(info, 0);
 
    /* Re-mute tuner audio if this is a tuner */
-   if (info->video_src == 2 || info->software_encoding) {
+   if (settings->has_audio) {
       struct video_audio vau;
          
       lavrec_msg(LAVREC_MSG_INFO, info,
