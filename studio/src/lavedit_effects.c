@@ -157,8 +157,9 @@ void effects_finished()
 				gtk_label_set_text(GTK_LABEL(render_progress_status_label), "...");
 
 			sprintf(file, "/tmp/.sound.wav");
-			sprintf(command, "%s %s > %s 2>/dev/null",
-				LAV2WAV_LOCATION, soundfile, file);
+			sprintf(command, "%s %s > %s%s",
+				LAV2WAV_LOCATION, soundfile, file,
+				verbose?"":" 2>/dev/null");
 			system(command);
 
 			if (render_progress_label)
@@ -168,8 +169,9 @@ void effects_finished()
 
 			strcpy(new_renderfile, renderfile);
 			new_renderfile[strlen(new_renderfile)-1] = '\0';
-			sprintf(command, "%s %s %s %s >> /dev/null 2>&1",
-				LAVADDWAV_LOCATION, renderfile, file, new_renderfile);
+			sprintf(command, "%s %s %s %s%s",
+				LAVADDWAV_LOCATION, renderfile, file, new_renderfile,
+				verbose?"":" >> /dev/null 2>&1");
 			system(command);
 
 			unlink(file);
@@ -1598,8 +1600,9 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 
 	/* now a bit tricky, get the movie settings by obtaining one frame */
 	sprintf(file, "%s/.studio/temp.jpg", getenv("HOME"));
-	sprintf(command, "%s -o %s -f i -i %d %s >> /dev/null 2>&1",
-		LAVTRANS_LOCATION, file, options->scene_start, options->scene_file);
+	sprintf(command, "%s -o %s -f i -i %d %s%s",
+		LAVTRANS_LOCATION, file, options->scene_start, options->scene_file,
+		verbose?"":" >> /dev/null 2>&1");
 	system(command);
 	options->video_image = gdk_pixbuf_new_from_file (file);
 	unlink(file);

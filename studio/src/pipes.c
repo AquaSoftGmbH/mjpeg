@@ -400,6 +400,7 @@ void start_pipe_command(char *command[], int number)
 
          if (number == LAV2YUV)
          {
+            active[LAV2YUV_DATA] = 0;
             pipe_in[LAV2YUV_DATA] = spipe[0];
             close(spipe[1]);
             reader[LAV2YUV_DATA] = gdk_input_add (pipe_in[LAV2YUV_DATA],

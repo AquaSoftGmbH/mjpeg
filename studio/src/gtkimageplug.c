@@ -40,6 +40,8 @@
 	LAST_SIGNAL
 };*/
 
+extern int verbose;
+
 /* Forward declarations */
 
 static void gtk_imageplug_class_init (GtkImagePlugClass *klass);
@@ -171,8 +173,9 @@ GtkWidget* gtk_imageplug_new_from_video (char *filename, int start, int stop,
 	if (strcmp(filename, "") != 0)
 	{
 		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg", getenv("HOME"));
-		sprintf(command, "%s -o %s -f i -i %d %s >> /dev/null 2>&1",
-			LAVTRANS_LOCATION, filename_img_tmp, start, filename);
+		sprintf(command, "%s -o %s -f i -i %d %s%s",
+			LAVTRANS_LOCATION, filename_img_tmp, start, filename,
+			verbose?"":" >> /dev/null 2>&1");
 		system(command);
 		temp = gdk_pixbuf_new_from_file (filename_img_tmp);
 		unlink(filename_img_tmp);

@@ -151,8 +151,9 @@ char *check_editlist(char *editlist)
 
 		sprintf(file, "%s/.studio/%s.eli", getenv("HOME"),
 			editlist+i+1);
-		sprintf(command, "%s -S %s -T -1 %s 2>&1 >/dev/null",
-			LAV2YUV_LOCATION, file, editlist);
+		sprintf(command, "%s -S %s -T -1 %s%s",
+			LAV2YUV_LOCATION, file, editlist,
+			verbose?"":" >> /dev/null 2>&1");
 		system(command);
 
 		/* this means we're done - scene_detection_filename is ready */
@@ -442,8 +443,9 @@ void process_lavplay_edit_input(char *msg)
 
 		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg",
 			getenv("HOME"),number_of_files);
-		sprintf(command, "%s -o %s -f i %s -i %d >> /dev/null 2>&1",
-			LAVTRANS_LOCATION, filename_img_tmp, temp, a);
+		sprintf(command, "%s -o %s -f i %s -i %d%s",
+			LAVTRANS_LOCATION, filename_img_tmp, temp, a,
+			verbose?"":" >> /dev/null 2>&1");
 		system(command);
 		temp2 = gdk_pixbuf_new_from_file (filename_img_tmp);
 		unlink(filename_img_tmp);
@@ -547,8 +549,9 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 	if (verbose) printf("(Screenshot to) File: %s\n", file);
 
 	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
-	sprintf(command, "%s -o %s -f i %s -i %d >> /dev/null 2>&1",
-		LAVTRANS_LOCATION, file, temp, current_position);
+	sprintf(command, "%s -o %s -f i %s -i %d%s",
+		LAVTRANS_LOCATION, file, temp, current_position,
+			verbose?"":" >> /dev/null 2>&1");
 	system(command);
 
 	sprintf(temp, "Image saved to %s", file);
@@ -746,8 +749,9 @@ int open_add_movie_scene_editlist()
 
 			y = sscanf(temp_entry, "%d %d %d (%d %d)\n", &a, &b, &c, &d, &e);
 			sprintf(file, "%s/.studio/.temp.jpg", getenv("HOME"));
-			sprintf(command, "%s -f i -o %s -i %d %s >> /dev/null 2>&1",
-				LAVTRANS_LOCATION, file, total, file_selected);
+			sprintf(command, "%s -f i -o %s -i %d %s%s",
+				LAVTRANS_LOCATION, file, total, file_selected,
+				verbose?"":" >> /dev/null 2>&1");
 			system(command);
 
 			temp = gdk_pixbuf_new_from_file (file);
@@ -866,9 +870,10 @@ void add_scene_to_editlist(GtkWidget *widget, gpointer data)
 		GTK_IMAGEPLUG(image[current_image+1])->selection = 0;
 
 		sprintf(file_jpg, "%s/.studio/.temp.jpg", getenv("HOME"));
-		sprintf(temp, "%s -f i -i %d -o %s %s >> /dev/null 2>&1",
+		sprintf(temp, "%s -f i -i %d -o %s %s%s",
 			LAVTRANS_LOCATION, im->start_total,
-			file_jpg, im->video_filename);
+			file_jpg, im->video_filename,
+			verbose?"":" >> /dev/null 2>&1");
 		system(temp);
 		temp_buf = gdk_pixbuf_new_from_file (file_jpg);
 		unlink(file_jpg);
@@ -1495,9 +1500,10 @@ void split_scene(GtkWidget *widget, gpointer data)
 
 		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg",
 			getenv("HOME"));
-		sprintf(command, "%s -o %s -f i -i %d %s >> /dev/null 2>&1",
+		sprintf(command, "%s -o %s -f i -i %d %s%s",
 			LAVTRANS_LOCATION, filename_img_tmp, current_position,
-			GTK_IMAGEPLUG(image[current_image])->video_filename);
+			GTK_IMAGEPLUG(image[current_image])->video_filename,
+			verbose?"":" >> /dev/null 2>&1");
 		system(command);
 		temp = gdk_pixbuf_new_from_file (filename_img_tmp);
 		GTK_IMAGEPLUG(image[current_image])->picture =
