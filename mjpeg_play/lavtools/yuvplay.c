@@ -40,6 +40,7 @@ static void usage () {
   fprintf(stdout, "Usage: lavpipe/lav2yuv... | yuvplay [options]\n"
 	  "  -s : display size, width x height\n"
 	  "  -f : frame rate (overrides rate in stream header)\n"
+          "  -c : don't sync on frames - plays at stream speed\n"
 	  );
 }
 
@@ -79,9 +80,13 @@ int main(int argc, char *argv[])
    y4m_frame_info_t frameinfo;
    int frame_width;
    int frame_height;
+   int wait_for_sync = 1;
 
-   while ((n = getopt(argc, argv, "hs:f:")) != EOF) {
+   while ((n = getopt(argc, argv, "hs:f:c")) != EOF) {
       switch (n) {
+         case 'c':
+            wait_for_sync = 0;
+            break;
          case 's':
             if (sscanf(optarg, "%dx%d", &screenwidth, &screenheight) != 2) {
                mjpeg_error_exit1( "-s option needs two arguments: -s 10x10\n");
@@ -226,20 +231,19 @@ int main(int argc, char *argv[])
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
 
+      fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
+          print_status(frame, frame_rate));
 
-	  fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
-			  print_status(frame, frame_rate));
-	  
-	  
-	  while(get_time_diff(time_now) < time_between_frames) {
-		  usleep(1000);
-	  }
-	  frame++;
-	  gettimeofday(&time_now,0);
+      if (wait_for_sync)
+         while(get_time_diff(time_now) < time_between_frames) {
+            usleep(1000);
+         }
+      frame++;
 
+      gettimeofday(&time_now,0);
    }
 
-   if (n != Y4M_OK)
+   if (n != Y4M_OK && n != Y4M_ERR_EOF)
       mjpeg_error("Couldn't read frame: %s\n",
          y4m_strerr(n));
 
