@@ -41,7 +41,7 @@ int sync_corr;
 int MJPG_nbufs;
 int MJPG_bufsize;
 
-/* used for the encoding configuratione */
+/* used for the encoding configuration */
 #define FILELEN 100
 char enc_inputfile [FILELEN];
 char enc_outputfile[FILELEN];
@@ -53,6 +53,7 @@ int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 int  fourpelmotion;             /* Common Quality setting */
 int  twopelmotion;              /* Common Quality setting */
 int  use_bicubic;               /* Use bicubic algorithmus for the scaling */
+int  saveonexit;                 /* save the encoding options when exiting */
 
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
