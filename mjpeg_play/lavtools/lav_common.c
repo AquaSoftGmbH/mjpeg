@@ -45,7 +45,7 @@ static uint8_t jpeg_data[MAX_JPEG_LEN];
 #ifdef SUPPORT_READ_DV2
 
 dv_decoder_t *decoder;
-int pitches[3];
+gint pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 
 /*
@@ -288,7 +288,7 @@ int readframe(int numframe,
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     frame, pitches);
+			     (guchar **) frame, pitches);
 	/* swap the U and V components */
 	frame_tmp = frame[2];
 	frame[2] = frame[1];
@@ -312,7 +312,7 @@ int readframe(int numframe,
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     dv_frame, pitches);
+			     (guchar **) dv_frame, pitches);
 	frame_YUV422_to_YUV420P(frame, dv_frame[0],
 				decoder->width,	decoder->height);
 	
