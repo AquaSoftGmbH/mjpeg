@@ -174,22 +174,28 @@ AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
 
 
 dnl *********************************************************************
-dnl Figure out how to build with POSIX threads.
-dnl (Creates PTHREAD_LIBS, PTHREAD_CFLAGS, PTHREAD_CC,
-dnl  and defines HAVE_PTHREAD.)
-dnl *********************************************************************
-dnl ACX_PTHREAD([have_pthread=true
-dnl              AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix threads are available])],
-dnl             [have_pthread=false])
-ACX_PTHREAD
-dnl maddog: The following matches the original pthread-checking behavior
-dnl         in this script, i.e. "If a CFLAG is necessary, use it for 
-dnl         *everything*."  Hopefully, any CFLAGs will eventually go away.
-dnl         The other option is to stick PTHREAD_CFLAGS/CC in Makefile.am....
-CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
-CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
-CC="$PTHREAD_CC"
+dnl Figure out how to build with POSIX threads.  If the compiler accepts
+dnl the option -pthread then add it to CFLAGS and CXXFLAGS.  Then test if
+dnl -lpthread works, if it does then set PTHREAD_LIB.
 
+SAVE_CFLAGS="$CFLAGS"
+CFLAGS="$CFLAGS -pthread"
+AC_MSG_CHECKING([if compiler accepts -pthread])
+AC_TRY_COMPILE([], [], has_option=yes, has_option=no,)
+if test $has_option = yes; then
+   CXXFLAGS="$CXXFLAGS -pthread"
+else
+   CFLAGS="$SAVE_CFLAGS"
+fi
+unset has_option
+unset SAVE_CFLAGS
+
+AC_SUBST(PTHREAD_LIBS)
+AC_CHECK_LIB(pthread, pthread_create,
+             [PTHREAD_LIBS="-lpthread"
+	     AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix pthreads lib present])
+	     have_pthread=true],
+	     [have_pthread=false])
 
 oldLIBS="$LIBS"
 LIBS="$LIBS $PTHREAD_LIBS"
@@ -253,27 +259,28 @@ dnl Check for the libquicktime library
 dnl *********************************************************************
 AC_SUBST(QUICKTIME_LIBS)
 AC_SUBST(QUICKTIME_CFLAGS)
-dnl have_quicktime=false
-dnl if test x$with_quicktime != xno ; then
-dnl   AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
-dnl   AC_MSG_CHECKING([for libquicktime])
-dnl   if test x"$LQT_CONFIG" = x"no" ; then
-dnl     AC_MSG_RESULT(no)
-dnl   else
-dnl     have_quicktime=true
-dnl     QUICKTIME_LIBS=`$LQT_CONFIG --libs`
-dnl     QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
-dnl     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
-dnl     AC_MSG_RESULT(yes)
-dnl   fi
-dnl fi
 have_quicktime=false
 if test x$with_quicktime != xno ; then
-  AC_PATH_LIB_LIBCONFIG
-  AC_PATH_LIB(quicktime, [], [], [lqt-config], [],
-              [have_quicktime=true
-               AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
+   AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
+   AC_MSG_CHECKING([for libquicktime])
+   if test x"$LQT_CONFIG" = x"no" ; then
+      AC_MSG_RESULT(no)
+   else
+      have_quicktime=true
+      QUICKTIME_LIBS=`$LQT_CONFIG --libs`
+      QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
+      AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
+      AC_MSG_RESULT(yes)
+   fi
 fi
+
+dnl have_quicktime=false
+dnl if test x$with_quicktime != xno ; then
+dnl  AC_PATH_LIB_LIBCONFIG
+dnl  AC_PATH_LIB(quicktime, [], [], [lqt-config], [],
+dnl              [have_quicktime=true
+dnl               AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
+dnl fi
 
 
 dnl *********************************************************************
