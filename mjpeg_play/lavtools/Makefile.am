@@ -5,7 +5,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) -I /usr/X11R6/include/X11 \
+	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
         $(DV_CFLAGS) -I /usr/X11R6/include -I$(top_srcdir)/utils \
 	$(AVIPLAY_CFLAGS) ${GTK_CFLAGS}
 
@@ -108,7 +108,7 @@ matteblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
 lavplay_SOURCES = lavplay.c ${lav_headers}
 lavplay_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS} -lX11
+	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS}
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
 lavrec_LDADD = -L$(top_builddir)/utils -lmjpegutils \

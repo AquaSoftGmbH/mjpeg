@@ -1038,6 +1038,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
             vw.y);
          return 0;
       }
+#ifndef X_DISPLAY_MISSING
       if (vw.x + vw.width > wts.width)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
@@ -1052,6 +1053,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
             vw.y, vw.height, wts.height);
          return 0;
       }
+#endif
       if (ioctl(settings->video_fd, VIDIOCSWIN, &vw) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
