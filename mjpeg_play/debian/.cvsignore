@@ -1,5 +1,6 @@
 Makefile
 Makefile.in
+control
 *.substvars
 *i686*
 build-*
