@@ -22,8 +22,9 @@
 
 extern	char	*__progname;
 
-static	void	usage();
+static	void	usage(void);
 
+int
 main(int argc, char **argv)
 	{
 	int	sts, c, width = 720, height = 480, uvlen, noheader = 0;
@@ -35,7 +36,6 @@ main(int argc, char **argv)
 	y4m_stream_info_t ostream;
 	y4m_frame_info_t oframe;
 	char	interlace = Y4M_ILACE_NONE;
-	char	junk[32];
 
 	opterr = 0;
 
@@ -179,7 +179,6 @@ main(int argc, char **argv)
 
 void usage()
 	{
-	int	i;
 
 	fprintf(stderr, "%s usage: [-H] [-f] [-n numframes] [-w width] [-h height] [-Y val] [-U val] [-V val] [-a pixel aspect] [-i p|t|b] [-r rate]\n", __progname);
 	fprintf(stderr, "\n  Omit the YUV4MPEG2 header [-H]");
