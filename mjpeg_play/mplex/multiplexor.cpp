@@ -85,8 +85,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     max_segment_size = static_cast<off_t>(job.max_segment_size)
                        * static_cast<off_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
-	video_delay = static_cast<clockticks>(job.video_offset*CLOCKS/1000);
-	audio_delay = static_cast<clockticks>(job.audio_offset*CLOCKS/1000);
+	video_delay = static_cast<clockticks>(job.video_offset)*CLOCKS/1000;
+	audio_delay = static_cast<clockticks>(job.audio_offset)*CLOCKS/1000;
  	switch( mux_format  )
 	{
 	case MPEG_FORMAT_VCD :
