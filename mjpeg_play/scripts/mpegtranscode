@@ -77,7 +77,7 @@ sleep $[$sleep*60]
 cat $* | mpeg2dec -s -o $decode | \
         ${MPEG2ENC} ${MPEGOPTS} $bitrate $framerate -o $outfile.m1v
 
-cat $* | extract_ac3 - -s | ac3dec -m wav | \
+cat $* | extract_a52 - -s | a52dec -m wav | \
         sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | \
         toolame -p 2 -b 224 /dev/stdin $outfile.mp2
 
