@@ -2,7 +2,9 @@
    as well as yuv4mpeg2 (mjpegtools-1.5) */
 
 #include "yuv4mpeg-1.4.h"
+#ifdef HAVE_MJPEGTOOLS_15
 #include <yuv4mpeg.h>
+#endif
 
 typedef struct _y4m12_t {
   unsigned char *buffer[3];
