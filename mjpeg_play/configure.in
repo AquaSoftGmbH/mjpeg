@@ -163,7 +163,6 @@ AM_CONDITIONAL(X86CPU, test $x86cpu=yes   )
 
 
 AC_OUTPUT(Makefile
-	movtar/Makefile
 	mjpeg/Makefile
 	mpeg2enc/Makefile
 	aenc/Makefile

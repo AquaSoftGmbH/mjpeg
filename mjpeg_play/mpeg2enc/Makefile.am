@@ -3,7 +3,7 @@
 
 bin_PROGRAMS = mpeg2enc
 mpeg2enc_LDFLAGS = -L ../movtar 
-mpeg2enc_LDADD = ../editlist.o ../lav_io.o ../avilib.o ../jpeg-6b-mmx/libjpeg.a -lmovtar
+mpeg2enc_LDADD = ../editlist.o ../lav_io.o ../avilib.o -lmovtar
 mpeg2enc_MMXSSE = 	fdist1_mmx.s dist1_00_mmx.s dist1_01_mmx.s dist1_10_mmx.s dist1_11_mmx.s \
     fdct_mmx.s fdctdata.c idct_mmx.s idctdata.c \
     qdist1_mmx.s quant_mmx.s rcdist_mmx.s dist2_mmx.s bdist2_mmx.s\

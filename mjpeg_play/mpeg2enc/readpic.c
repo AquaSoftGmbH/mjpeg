@@ -55,7 +55,7 @@ unsigned char *frame[];
 
    if(MAX_JPEG_LEN < el.max_frame_size)
    {
-      fprintf(stderr,"Max size of JPEG frame = %d: too big\n",el.max_frame_size);
+      fprintf(stderr,"Max size of JPEG frame = %ld: too big\n",el.max_frame_size);
       exit(1);
    }
 
@@ -136,16 +136,28 @@ unsigned char *frame[];
 
 	   bp = filter_buf + width+1;
 	   if( noise_filt == 1 )
+	   	 {
+		   for( p = frame[0]+width+1; p < end; ++p )
+			 {
+			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
+								p[-1] + p[1] +
+								p[width-1]+p[width]+p[width+1]);
+			   f = f + (*p<<3) + ((*p)<<4);   /* 8 + (8 + 16) = 32 */
+			   *bp = (f + 8) >> (4 + 1);
+			   ++bp;
+			 }
+		 
+		 }
+	   if( noise_filt == 2 )
 		 {
 		   for( p = frame[0]+width+1; p < end; ++p )
 			 {
 			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
 								p[-1] + p[1] +
 								p[width-1]+p[width]+p[width+1]);
-			   /* f = f + (f<<1) + (*p << 3);
-				*bp = (f + (1 << 4)) >> (3+2); */
+
 			   f = f + (*p<<3);
-			   *bp = (f + 8) >> (3 + 1);
+			   *bp = (f + 16) >> (3 + 1);
 			   ++bp;
 			 }
 		 }

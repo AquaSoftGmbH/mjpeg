@@ -262,8 +262,9 @@ int *nonsat_mquant;
 		  if( (flags & 0xff00) != 0 )
 			{
 			  mquant = next_larger_quant( mquant );
-			  if(!quiet)
+			  /* if(!quiet)
 			  	printf( "*M");
+				*/
 			  comp = 0; 
 			  pdst = dst;
 			  psrc = src;

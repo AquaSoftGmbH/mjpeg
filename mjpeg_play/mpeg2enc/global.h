@@ -27,6 +27,7 @@
  *
  */
 
+
 #include "mpeg2enc.h"
 
 /* choose between declaration (GLOBAL undefined)

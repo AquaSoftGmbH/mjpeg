@@ -1,9 +1,9 @@
 # Makefile for lavtools/utils
 
-QT_LIBS=  ../jpeg-6b-mmx/libjpeg.a -lpthread -lpng -lz -lglib -lmovtar \
-	-lm -lquicktime                      
+QT_LIBS=   -lpthread -lpng -lz -lglib -lmovtar \
+	-lm -lquicktime -ljpeg                     
 
-CFLAGS= -O2 -I .. -I ../buz -I ../jpeg-6b
+CFLAGS= -O2 -I .. 
 
 all:		lavtrans lavaddwav
 
