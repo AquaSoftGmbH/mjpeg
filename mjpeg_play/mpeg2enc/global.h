@@ -78,13 +78,6 @@ void putbits (uint32_t val, int n);
 void alignbits (void);
 int64_t bitcount (void);
 
-/* puthdr.c */
-void putseqhdr (void);
-void putseqext (void);
-void putseqdispext (void);
-void putuserdata (const uint8_t *userdata, int len);
-void putgophdr (int frame, int closed_gop);
-void putseqend (void);
 
 /* putmpg.c */
 void putintrablk (Picture *picture, int16_t *blk, int cc);
@@ -92,8 +85,6 @@ void putnonintrablk (Picture *picture,int16_t *blk);
 void putmv (int dmv, int f_code);
 
 
-/* putseq.c */
-void putseq (MPEG2Encoder &encoder);
 
 /* putvlc.c */
 void putDClum (int val);

@@ -145,7 +145,7 @@ void MacroBlock::Quantize( Quantizer &quant  )
                           qdctblocks[0],
                           picture->q_scale_type,
                           picture->dc_prec,
-                          picture->encparams->dctsatlim,
+                          picture->encparams.dctsatlim,
                           &mquant );
 		
         cbp = (1<<BLOCK_COUNT) - 1;
@@ -155,7 +155,7 @@ void MacroBlock::Quantize( Quantizer &quant  )
         cbp = quant.QuantInter( dctblocks[0],
                                 qdctblocks[0],
                                 picture->q_scale_type,
-                                picture->encparams->dctsatlim,
+                                picture->encparams.dctsatlim,
                                 &mquant );
         int block;
 		if( picture->unit_coeff_threshold )
@@ -194,9 +194,9 @@ void MacroBlock::IQuantize( Quantizer &quant)
 void Picture::IQuantize()
 {
     int k;
-	for (k=0; k<encparams->mb_per_pict; k++)
+	for (k=0; k<encparams.mb_per_pict; k++)
 	{
-        mbinfo[k].IQuantize( encoder->quantizer );
+        mbinfo[k].IQuantize( encoder.quantizer );
 	}
 }
 

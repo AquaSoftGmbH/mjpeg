@@ -24,7 +24,6 @@
 #include <config.h>
 #include "mpegconsts.h"
 #include "syntaxparams.h"
-#include "quantize_ref.h"
 
 
 struct MPEG2EncInVidParams
@@ -99,7 +98,8 @@ class RateController;
 class SeqEncoder;
 class Quantizer;
 class Transformer;
-
+class MPEG2Coder;
+class ElemStrmWriter;
 
 class MPEG2Encoder
 {
@@ -108,15 +108,13 @@ public:
     ~MPEG2Encoder();
     MPEG2EncOptions &options;
     EncoderParams &parms;
+    // TODO: SHOULD be called YUVPictStrmReader!!
     PictureReader &reader;
-    Quantizer &quantizer;
-    RateCtl &bitrate_controller;
-    SeqEncoder &seqencoder;
-
-    // Function Pointers and Private Workspaces for
-    // SIMD low-level functions
-    struct QuantizerWorkSpace *quant_wsp;
-    struct QuantizerCalls quant_calls;
+    Quantizer     &quantizer;
+    RateCtl       &bitrate_controller;
+    SeqEncoder    &seqencoder;
+    MPEG2Coder    &coder;
+    ElemStrmWriter &writer;
 };
 
 extern MPEG2Encoder *enc;

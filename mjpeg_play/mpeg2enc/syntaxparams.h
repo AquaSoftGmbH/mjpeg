@@ -95,70 +95,6 @@ struct motion_data {
 
 
 
-/* **************************
- * Global flags controlling encoding behaviour 
- ************************** */
-
-EXTERN double ctl_decode_frame_rate;	/* Actual stream frame
-										   decode-rate. This is lower
-										   than playback rate if 3:2
-										   pulldown is active.
-										*/
-EXTERN int ctl_video_buffer_size;    /* Video buffer requirement target */
-
-EXTERN int ctl_N_max;				/* number of frames in Group of Pictures (max) */
-EXTERN int ctl_N_min;				/* number of frames in Group of Pictures (min) */
-EXTERN int ctl_M;					/* distance between I/P frames */
-
-EXTERN int ctl_M_min;			    /* Minimum distance between I/P frames */
-
-EXTERN bool ctl_closed_GOPs;	    /* Force all GOPs to be closed -
-									 * useful for satisfying
-									 * requirements for multi-angle
-									 * DVD authoring */
-
-EXTERN bool ctl_refine_from_rec;	/* Is final refinement of motion
-									 * compensation computed from
-									 * reconstructed reference frame
-									 * image (slightly higher quality,
-									 * bad for multi-threading) or
-									 * original reference frame
-									 * (opposite) */
-
-EXTERN int ctl_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
-EXTERN int ctl_22_red;			/* Motion compensation stages						*/
-EXTERN int ctl_seq_length_limit;
-EXTERN double ctl_nonvid_bit_rate;	/* Bit-rate for non-video to assume for
-								   sequence splitting calculations */
-
-EXTERN double ctl_quant_floor;    /* quantisation floor [1..10] (0 for
-										 * CBR) */
-
-
-EXTERN double ctl_act_boost;		/* Quantisation reduction factor for blocks
-									 with little texture (low variance) */
-
-EXTERN double ctl_boost_var_ceil;		/* Variance below which
-									 * quantisation boost cuts in */
-
-
-EXTERN int ctl_max_encoding_frames; /* Maximum number of concurrent
-									   frames to be concurrently encoded 
-									   Used to control multi_threading.
-									*/
-
-EXTERN int ctl_max_active_ref_frames;
-EXTERN int ctl_max_active_b_frames;
-
-EXTERN bool ctl_parallel_read; /* Does the input reader / bufferer
-								 run as a seperate thread?
-							  */
-EXTERN int ctl_unit_coeff_elim;	/* Threshold of unit coefficient
-									density below which unit
-									coefficient blocks should be
-									zeroed.  < 0 implies DCT
-									coefficient should be included. */
-
 
 /* *************************
  * input stream attributes
@@ -300,6 +236,69 @@ public:
 	/* and inverted */
 	uint16_t *intra_q, *inter_q;
 	
+   /* **************************
+    * Global flags controlling encoding behaviour 
+    ************************** */
+
+    double decode_frame_rate;	/* Actual stream frame
+                                 * decode-rate. This is lower than
+                                 * playback rate if 3:2 pulldown is
+                                 * active.
+								*/
+    int video_buffer_size;    /* Video buffer requirement target */
+
+    int N_max;				/* number of frames in Group of Pictures (max) */
+    int N_min;				/* number of frames in Group of Pictures (min) */
+    int M;					/* distance between I/P frames */
+
+    int M_min;			    /* Minimum distance between I/P frames */
+
+    bool closed_GOPs;	    /* Force all GOPs to be closed - useful
+                             * for satisfying requirements for
+                             * multi-angle DVD authoring */
+
+    bool refine_from_rec;	/* Is final refinement of motion
+                             * compensation computed from
+                             * reconstructed reference frame image
+                             * (slightly higher quality, bad for
+                             * multi-threading) or original reference
+                             * frame (opposite) */
+
+    int me44_red;			/* Sub-mean population reduction passes
+                            * for 4x4 and 2x2 */
+    int me22_red;			/* Motion compensation stages  */
+    int seq_length_limit;
+    double nonvid_bit_rate;	/* Bit-rate for non-video to assume for
+								   sequence splitting calculations */
+
+    double quant_floor;    /* quantisation floor [1..10] (0 for
+                                * CBR) */
+
+
+    double act_boost;		/* Quantisation reduction factor for blocks
+                                   with little texture (low variance) */
+
+    double boost_var_ceil;		/* Variance below which
+									 * quantisation boost cuts in */
+
+
+    int max_encoding_frames; /* Maximum number of concurrent
+                                    frames to be concurrently encoded 
+                                    Used to control multi_threading.
+                                 */
+
+    int max_active_ref_frames;
+    int max_active_b_frames;
+
+    bool parallel_read; /* Does the input reader / bufferer
+                               run as a seperate thread?
+                            */
+    int unit_coeff_elim;	/* Threshold of unit coefficient
+                                   density below which unit
+                                   coefficient blocks should be
+                                   zeroed.  < 0 implies DCT
+                                   coefficient should be included. */
+
 
 };
 

@@ -53,31 +53,33 @@
 #include "global.h"
 #include "mpeg2encoder.hh"
 #include "picturereader.hh"
+#include "mpeg2coder.hh"
 #include "seqencoder.hh"
 #include "ratectl.hh"
 
-Picture::Picture( MPEG2Encoder &encoder )
+Picture::Picture( MPEG2Encoder &_encoder ) :
+    encoder( _encoder ),
+    encparams( _encoder.parms ),
+    coder( _encoder.coder )
 {
     Init( encoder );
 }
 
 void Picture::Init( MPEG2Encoder &_encoder )
 {
-    encparams = &_encoder.parms;
-    encoder = &_encoder;
 	int i,j;
 	/* Allocate buffers for picture transformation */
 	blocks = 
         static_cast<DCTblock*>(
-            bufalloc(encparams->mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
+            bufalloc(encparams.mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
 	qblocks =
 		static_cast<DCTblock *>(
-            bufalloc(encparams->mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
+            bufalloc(encparams.mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
     DCTblock *block = blocks;
     DCTblock *qblock = qblocks;
-    for (j=0; j<encparams->enc_height2; j+=16)
+    for (j=0; j<encparams.enc_height2; j+=16)
     {
-        for (i=0; i<encparams->enc_width; i+=16)
+        for (i=0; i<encparams.enc_width; i+=16)
         {
             mbinfo.push_back(MacroBlock(*this, i,j, block,qblock ));
             block += BLOCK_COUNT;
@@ -92,7 +94,7 @@ void Picture::Init( MPEG2Encoder &_encoder )
 
 	for( i = 0 ; i<3; i++)
 	{
-		int size =  (i==0) ? encparams->lum_buffer_size : encparams->chrom_buffer_size;
+		int size =  (i==0) ? encparams.lum_buffer_size : encparams.chrom_buffer_size;
 		curref[i] = static_cast<uint8_t *>(bufalloc(size));
 		curorg[i] = NULL;       // Will point to input frame data buffered by
                                 // PictureReader
@@ -145,40 +147,40 @@ void Picture::Reconstruct()
 void Picture::SetSeqPos(int _decode,int b_index )
 {
 	decode = _decode;
-	dc_prec = encparams->dc_prec;
+	dc_prec = encparams.dc_prec;
 	secondfield = false;
 	ipflag = 0;
 
 		
 	/* Handle picture structure... */
-	if( encparams->fieldpic )
+	if( encparams.fieldpic )
 	{
-		pict_struct = encparams->topfirst ? TOP_FIELD : BOTTOM_FIELD;
+		pict_struct = encparams.topfirst ? TOP_FIELD : BOTTOM_FIELD;
 		topfirst = 0;
 		repeatfirst = 0;
 	}
 
 	/* Handle 3:2 pulldown frame pictures */
-	else if( encparams->pulldown_32 )
+	else if( encparams.pulldown_32 )
 	{
 		pict_struct = FRAME_PICTURE;
 		switch( present % 4 )
 		{
 		case 0 :
 			repeatfirst = 1;
-			topfirst = encparams->topfirst;			
+			topfirst = encparams.topfirst;			
 			break;
 		case 1 :
 			repeatfirst = 0;
-			topfirst = !encparams->topfirst;
+			topfirst = !encparams.topfirst;
 			break;
 		case 2 :
 			repeatfirst = 1;
-			topfirst = !encparams->topfirst;
+			topfirst = !encparams.topfirst;
 			break;
 		case 3 :
 			repeatfirst = 0;
-			topfirst = encparams->topfirst;
+			topfirst = encparams.topfirst;
 			break;
 		}
 	}
@@ -189,7 +191,7 @@ void Picture::SetSeqPos(int _decode,int b_index )
 	{
 		pict_struct = FRAME_PICTURE;
 		repeatfirst = 0;
-		topfirst = encparams->topfirst;
+		topfirst = encparams.topfirst;
 	}
 
 
@@ -200,46 +202,46 @@ void Picture::SetSeqPos(int _decode,int b_index )
 		forw_vert_f_code = 15;
 		back_hor_f_code = 15;
 		back_vert_f_code = 15;
-		sxf = encparams->motion_data[0].sxf;
-		syf = encparams->motion_data[0].syf;
+		sxf = encparams.motion_data[0].sxf;
+		syf = encparams.motion_data[0].syf;
 		break;
 	case P_TYPE :
-		forw_hor_f_code = encparams->motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams->motion_data[0].forw_vert_f_code;
+		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
+		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
 		back_hor_f_code = 15;
 		back_vert_f_code = 15;
-		sxf = encparams->motion_data[0].sxf;
-		syf = encparams->motion_data[0].syf;
+		sxf = encparams.motion_data[0].sxf;
+		syf = encparams.motion_data[0].syf;
 		break;
 	case B_TYPE :
-		forw_hor_f_code = encparams->motion_data[b_index].forw_hor_f_code;
-		forw_vert_f_code = encparams->motion_data[b_index].forw_vert_f_code;
-		back_hor_f_code = encparams->motion_data[b_index].back_hor_f_code;
-		back_vert_f_code = encparams->motion_data[b_index].back_vert_f_code;
-		sxf = encparams->motion_data[b_index].sxf;
-		syf = encparams->motion_data[b_index].syf;
-		sxb = encparams->motion_data[b_index].sxb;
-		syb = encparams->motion_data[b_index].syb;
+		forw_hor_f_code = encparams.motion_data[b_index].forw_hor_f_code;
+		forw_vert_f_code = encparams.motion_data[b_index].forw_vert_f_code;
+		back_hor_f_code = encparams.motion_data[b_index].back_hor_f_code;
+		back_vert_f_code = encparams.motion_data[b_index].back_vert_f_code;
+		sxf = encparams.motion_data[b_index].sxf;
+		syf = encparams.motion_data[b_index].syf;
+		sxb = encparams.motion_data[b_index].sxb;
+		syb = encparams.motion_data[b_index].syb;
 
 		break;
 	}
 
 	/* We currently don't support frame-only DCT/Motion Est.  for non
 	   progressive frames */
-	prog_frame = encparams->frame_pred_dct_tab[pict_type-1];
-	frame_pred_dct = encparams->frame_pred_dct_tab[pict_type-1];
-	q_scale_type = encparams->qscale_tab[pict_type-1];
-	intravlc = encparams->intravlc_tab[pict_type-1];
-	altscan = encparams->altscan_tab[pict_type-1];
+	prog_frame = encparams.frame_pred_dct_tab[pict_type-1];
+	frame_pred_dct = encparams.frame_pred_dct_tab[pict_type-1];
+	q_scale_type = encparams.qscale_tab[pict_type-1];
+	intravlc = encparams.intravlc_tab[pict_type-1];
+	altscan = encparams.altscan_tab[pict_type-1];
     scan_pattern = (altscan ? alternate_scan : zig_zag_scan);
 
     /* If we're using B frames then we reserve unit coefficient
        dropping for them as B frames have no 'knock on' information
        loss */
-    if( pict_type == B_TYPE || ctl_M == 1 )
+    if( pict_type == B_TYPE || encparams.M == 1 )
     {
-        unit_coeff_threshold = abs( ctl_unit_coeff_elim );
-        unit_coeff_first = ctl_unit_coeff_elim < 0 ? 0 : 1;
+        unit_coeff_threshold = abs( encparams.unit_coeff_elim );
+        unit_coeff_first = encparams.unit_coeff_elim < 0 ? 0 : 1;
     }
     else
     {
@@ -299,12 +301,12 @@ void Picture::Set2ndField()
 		ipflag = 1;
 		pict_type = P_TYPE;
 		
-		forw_hor_f_code = encparams->motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams->motion_data[0].forw_vert_f_code;
+		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
+		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
 		back_hor_f_code = 15;
 		back_vert_f_code = 15;
-		sxf = encparams->motion_data[0].sxf;
-		syf = encparams->motion_data[0].syf;	
+		sxf = encparams.motion_data[0].sxf;
+		syf = encparams.motion_data[0].syf;	
 	}
 }
 
@@ -387,7 +389,9 @@ void Picture::EncodeMacroBlocks()
 
 
 SeqEncoder::SeqEncoder( MPEG2Encoder &_encoder ) :
-    encoder( _encoder )
+    encoder( _encoder ),
+    encparams( encoder.parms ),
+    coder( encoder.coder )
 {
     mp_semaphore_init( &worker_available, 0 );
     mp_semaphore_init( &picture_available, 0 );
@@ -535,10 +539,9 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
 
 
 
-static void create_threads( pthread_t *threads,
-                            int num, void *(*start_routine)(void *),
-                            SeqEncoder *seqencoder
-                            )
+void SeqEncoder::CreateThreads( pthread_t *threads,
+                                int num, void *(*start_routine)(void *),
+                                SeqEncoder *seqencoder )
 {
 	int i;
 	pthread_attr_t *pattr = NULL;
@@ -584,7 +587,7 @@ void SeqEncoder::GopStart( StreamState *ss )
 	ss->b = 0;
 	ss->new_seq = false;
 	
-	if( enc->parms.pulldown_32 )
+	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
@@ -596,14 +599,14 @@ void SeqEncoder::GopStart( StreamState *ss )
       muxing.
     */
     
-    if( ctl_quant_floor > 0.0 )
+    if( encparams.quant_floor > 0.0 )
         bits_after_mux = bitcount() + 
-            (uint64_t)((frame_periods / enc->parms.frame_rate) * ctl_nonvid_bit_rate);
+            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
-        bits_after_mux = (uint64_t)((frame_periods / enc->parms.frame_rate) * 
-                                    (ctl_nonvid_bit_rate + enc->parms.bit_rate));
+        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
+                                    (encparams.nonvid_bit_rate + encparams.bit_rate));
 	if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
-		|| (ss->i != 0 && enc->parms.seq_end_every_gop)
+		|| (ss->i != 0 && encparams.seq_end_every_gop)
 		)
 	{
 		mjpeg_info( "Splitting sequence this GOP start" );
@@ -616,7 +619,7 @@ void SeqEncoder::GopStart( StreamState *ss )
 		ss->new_seq = true;
 	}
 
-    ss->closed_gop = ss->i == 0 || ctl_closed_GOPs;
+    ss->closed_gop = ss->i == 0 || encparams.closed_GOPs;
 	ss->gop_start_frame = ss->seq_start_frame + ss->i;
 	
 	/*
@@ -629,9 +632,9 @@ void SeqEncoder::GopStart( StreamState *ss )
 	
     ss->gop_length =  
         FindGopLength( ss->gop_start_frame, 
-                       ss->closed_gop ? 0 : ctl_M-1, 
-                       ctl_N_min, ctl_N_max,
-                       ctl_M_min);
+                       ss->closed_gop ? 0 : encparams.M-1, 
+                       encparams.N_min, encparams.N_max,
+                       encparams.M_min);
 			
 	/* First figure out how many B frames we're short from
 	   being able to achieve an even M-1 B's per I/P frame.
@@ -642,9 +645,9 @@ void SeqEncoder::GopStart( StreamState *ss )
 	   A complication is the extra I-frame in the initial
 	   closed GOP of a sequence.
 	*/
-	if( ctl_M-1 > 0 )
+	if( encparams.M-1 > 0 )
 	{
-		ss->bs_short = (ctl_M - ((ss->gop_length-(ss->i==0)) % ctl_M))%ctl_M;
+		ss->bs_short = (encparams.M - ((ss->gop_length-(ss->i==0)) % encparams.M))%encparams.M;
 		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
 	}
 	else
@@ -654,10 +657,10 @@ void SeqEncoder::GopStart( StreamState *ss )
 	}
 	
 	/* We aim to spread the dropped B's evenly across the GOP */
-	ss->bigrp_length = (ctl_M-1);
+	ss->bigrp_length = (encparams.M-1);
 	
 	/* number of P frames */
-	if( ctl_M == 0 ) 
+	if( encparams.M == 0 ) 
 	{
 		ss->bigrp_length = 0;
 		np = 0;
@@ -665,12 +668,12 @@ void SeqEncoder::GopStart( StreamState *ss )
 	else if (ss->closed_gop )
 	{
 		ss->bigrp_length = 1;
-		np = (ss->gop_length + 2*(ctl_M-1))/ctl_M - 1; /* Closed GOP */
+		np = (ss->gop_length + 2*(encparams.M-1))/encparams.M - 1; /* Closed GOP */
 	}
 	else
 	{
-		ss->bigrp_length = ctl_M;
-		np = (ss->gop_length + (ctl_M-1))/ctl_M - 1;
+		ss->bigrp_length = encparams.M;
+		np = (ss->gop_length + (encparams.M-1))/encparams.M - 1;
 	}
 	/* number of B frames */
 	nb = ss->gop_length - np - 1;
@@ -704,12 +707,12 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 		   come out right ? */
 		if( ss->bs_short != 0 && ss->g > (int)ss->next_b_drop )
 		{
-			ss->bigrp_length = ctl_M - 1;
+			ss->bigrp_length = encparams.M - 1;
 			if( ss->bs_short )
 				ss->next_b_drop += ((double)ss->gop_length) / (double)(ss->bs_short+1) ;
 		}
 		else
-			ss->bigrp_length = ctl_M;
+			ss->bigrp_length = encparams.M;
 	}
 
     /* Are we starting a new GOP? */
@@ -740,30 +743,31 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 */
 
 
-void SeqEncoder::LinkPictures( Picture *ref_pictures, 
-                               Picture *b_pictures )
+void SeqEncoder::LinkPictures( Picture *ref_pictures[], 
+                               Picture *b_pictures[] )
 {
 
 	int i,j;
 
-	
-	for( i = 0; i < ctl_max_active_ref_frames; ++i )
-		ref_pictures[i].Init( encoder );
+	//REMOVE
+	//for( i = 0; i < encparams.max_active_ref_frames; ++i )
+    //ref_pictures[i].Init( encoder );
 
-	for( i = 0; i < ctl_max_active_ref_frames; ++i )
+	for( i = 0; i < encparams.max_active_ref_frames; ++i )
 	{
-		j = (i + 1) % ctl_max_active_ref_frames;
+		j = (i + 1) % encparams.max_active_ref_frames;
 
-		ref_pictures[j].oldorg = ref_pictures[i].curorg;
-		ref_pictures[j].oldref = ref_pictures[i].curref;
-		ref_pictures[j].neworg = ref_pictures[j].curorg;
-		ref_pictures[j].newref = ref_pictures[j].curref;
+		ref_pictures[j]->oldorg = ref_pictures[i]->curorg;
+		ref_pictures[j]->oldref = ref_pictures[i]->curref;
+		ref_pictures[j]->neworg = ref_pictures[j]->curorg;
+		ref_pictures[j]->newref = ref_pictures[j]->curref;
 	}
 
-	for( i = 0; i < ctl_max_active_b_frames; ++i )
-	{
-		b_pictures[i].Init( encoder );
-	}	
+    // REMOVE
+	//for( i = 0; i < encparams.max_active_b_frames; ++i )
+	//{
+    //b_pictures[i].Init( encoder );
+    //}	
 
 }
 
@@ -821,12 +825,12 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 #endif
 	/* Depends on previous frame completion for IB and P */
 
-	picture->PutHeadersAndEncoding(enc->bitrate_controller);
+	picture->PutHeadersAndEncoding(encoder.bitrate_controller);
 
 	picture->Reconstruct();
 
 	/* Handle second field of a frame that is being field encoded */
-	if( enc->parms.fieldpic )
+	if( encparams.fieldpic )
 	{
 		picture->Set2ndField();
 		mjpeg_info("Field %s (%d)",
@@ -837,7 +841,7 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 		motion_estimation(picture);
 		predict(picture);
 		transform(picture);
-		picture->PutHeadersAndEncoding(enc->bitrate_controller);
+		picture->PutHeadersAndEncoding(encoder.bitrate_controller);
 		picture->Reconstruct();
 
 	}
@@ -903,7 +907,7 @@ void SeqEncoder::ParallelEncodeWorker()
 		   before starting the P field
 		*/
 #ifdef ORIGINAL_PHASE_BASED_PROC
-		if( ctl_refine_from_rec )
+		if( encparams.refine_from_rec )
 		{
 			sync_guard_test( &picture->ref_frame->completion );
 			motion_estimation(picture);
@@ -937,11 +941,11 @@ void SeqEncoder::ParallelEncodeWorker()
                 picture->prev_frame );
 #endif
 		sync_guard_test( &picture->prev_frame->completion );
-		picture->PutHeadersAndEncoding(enc->bitrate_controller);
+		picture->PutHeadersAndEncoding(encoder.bitrate_controller);
 
 		picture->Reconstruct();
 		/* Handle second field of a frame that is being field encoded */
-		if( enc->parms.fieldpic )
+		if( encparams.fieldpic )
 		{
 			picture->Set2ndField();
 
@@ -953,7 +957,7 @@ void SeqEncoder::ParallelEncodeWorker()
 			motion_estimation(picture);
 			predict(picture);
 			transform(picture);
-            picture->PutHeadersAndEncoding(enc->bitrate_controller);
+            picture->PutHeadersAndEncoding(encoder.bitrate_controller);
 			picture->Reconstruct();
 
 		}
@@ -994,7 +998,8 @@ void SeqEncoder::ParallelEncode( Picture *picture )
  *  Picture record for the oldest frame that could still be needed
  *  by active worker threads.
  * 
- *  Buffers sizes are given by ctl_max_active_ref_frames and ctl_max_active_b_frames
+ *  Buffers sizes are given by encparams.max_active_ref_frames and
+ *  encparams.max_active_b_frames
  *
  ********************/
  
@@ -1009,25 +1014,33 @@ void SeqEncoder::Encode()
 	int cur_b_idx = 0;
 
     int i;
-	Picture b_pictures[ctl_max_active_b_frames];
-	Picture ref_pictures[ctl_max_active_ref_frames];
-
-	Picture *cur_picture, *old_picture;
-	Picture *new_ref_picture, *old_ref_picture;
+	Picture *b_pictures[encparams.max_active_b_frames];
+	Picture *ref_pictures[encparams.max_active_ref_frames];
+    for( i = 0; i < encparams.max_active_b_frames; ++i )
+    {
+        b_pictures[i] = new Picture(encoder);
+    }
+    for( i = 0; i < encparams.max_active_ref_frames; ++i )
+    {
+        ref_pictures[i] = new Picture(encoder);
+    }
 
 	LinkPictures( ref_pictures, b_pictures );
 
-	pthread_t worker_threads[ctl_max_encoding_frames];
-	if( ctl_max_encoding_frames > 1 )
-		create_threads( worker_threads, ctl_max_encoding_frames, 
-                        ParallelEncodeWrapper, this );
+	pthread_t worker_threads[encparams.max_encoding_frames];
+	if( encparams.max_encoding_frames > 1 )
+		CreateThreads( worker_threads, encparams.max_encoding_frames, 
+                       ParallelEncodeWrapper, this );
 
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
 	   must wait on.
 	*/
-	old_ref_picture = &ref_pictures[ctl_max_active_ref_frames-1];
-	new_ref_picture = &ref_pictures[cur_ref_idx];
+	Picture *cur_picture, *old_picture;
+	Picture *new_ref_picture, *old_ref_picture;
+
+	old_ref_picture = ref_pictures[encparams.max_active_ref_frames-1];
+	new_ref_picture = ref_pictures[cur_ref_idx];
 	cur_picture = new_ref_picture;
 	
 	encoder.bitrate_controller.InitSeq(false);
@@ -1040,7 +1053,7 @@ void SeqEncoder::Encode()
 	ss.seq_start_frame = 0;		/* Index start current sequence in
 								   input stream */
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
-	ss.seq_split_length = ((int64_t)ctl_seq_length_limit)*(8*1024*1024);
+	ss.seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
 	mjpeg_debug( "Split len = %" PRId64 "", ss.seq_split_length );
 
@@ -1061,10 +1074,10 @@ void SeqEncoder::Encode()
 		if ( ss.b == 0)
 		{
             type = 'R';
-			cur_ref_idx = (cur_ref_idx + 1) % ctl_max_active_ref_frames;
+			cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
             index = cur_ref_idx;
 			old_ref_picture = new_ref_picture;
-			new_ref_picture = &ref_pictures[cur_ref_idx];
+			new_ref_picture = ref_pictures[cur_ref_idx];
 			new_ref_picture->ref_frame = old_ref_picture;
 			new_ref_picture->prev_frame = cur_picture;
 			new_ref_picture->Set_IP_Frame(&ss);
@@ -1079,9 +1092,9 @@ void SeqEncoder::Encode()
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.
 			*/
-			cur_b_idx = ( cur_b_idx + 1) % ctl_max_active_b_frames;
+			cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
             index = cur_b_idx;
-			new_b_picture = &b_pictures[cur_b_idx];
+			new_b_picture = b_pictures[cur_b_idx];
 			new_b_picture->oldorg = new_ref_picture->oldorg;
 			new_b_picture->oldref = new_ref_picture->oldref;
 			new_b_picture->neworg = new_ref_picture->neworg;
@@ -1100,7 +1113,7 @@ void SeqEncoder::Encode()
                                   cur_picture->curorg );
 
 		cur_picture->SetSeqPos( ss.i, ss.b );
-		if( ctl_max_encoding_frames > 1 )
+		if( encparams.max_encoding_frames > 1 )
 			ParallelEncode( cur_picture );
 		else
 			SequentialEncode( cur_picture );
@@ -1114,27 +1127,38 @@ void SeqEncoder::Encode()
 	}
 	
 	/* Wait for final frame's encoding to complete */
-	if( ctl_max_encoding_frames > 1 )
+	if( encparams.max_encoding_frames > 1 )
 		sync_guard_test( &cur_picture->completion );
-	putseqend();
+	coder.PutSeqEnd();
 
-	if( enc->parms.pulldown_32 )
+	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss.seq_start_frame + ss.i);
     
-    /* DEBUG */
     
-    if( ctl_quant_floor > 0.0 )
+    if( encparams.quant_floor > 0.0 )
         bits_after_mux = bitcount() + 
-            (uint64_t)((frame_periods / enc->parms.frame_rate) * ctl_nonvid_bit_rate);
+            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
-        bits_after_mux = (uint64_t)((frame_periods / enc->parms.frame_rate) * 
-                                    (ctl_nonvid_bit_rate + enc->parms.bit_rate));
+        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
+                                    (encparams.nonvid_bit_rate + encparams.bit_rate));
 
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
-    /* END DEBUG */
-
+    
+    //
+    // TODO: Really this ought to be a job for smart ptrs, but auto_ptr
+    // gets messed with the copy constructor implicit in push_back...
+    //
+    for( i = 0; i < encparams.max_active_b_frames; ++i )
+    {
+        delete b_pictures[i];
+    }
+    for( i = 0; i < encparams.max_active_ref_frames; ++i )
+    {
+        delete ref_pictures[i];
+    }
+    
 }
 
 

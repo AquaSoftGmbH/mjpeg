@@ -151,7 +151,7 @@ void init_motion(void)
 void motion_subsampled_lum( Picture *picture )
 {
 	int linestride;
-    EncoderParams &eparams = *picture->encparams;
+    EncoderParams &eparams = picture->encparams;
 	/* In an interlaced field the "next" line is 2 width's down rather
 	   than 1 width down  .
        TODO: Shoudn't we be treating the frame as interlaced for
@@ -477,9 +477,9 @@ static bool dpframe_estimate (
 
     BlockXY minsrc, mintop, minbot;
 	int vmc,local_dist;
-    int stride = picture.encparams->phy_width;
-    int max_x_tgt = (picture.encparams->enc_width-16)<<1;
-    int max_y_tgt = picture.encparams->enc_height-16;
+    int stride = picture.encparams.phy_width;
+    int max_x_tgt = (picture.encparams.enc_width-16)<<1;
+    int max_y_tgt = picture.encparams.enc_height-16;
     bool dpmvfound = false;
 	/* Calculate Dual Prime distortions for 9 delta candidates
 	 * for each of the four minimum field vectors
@@ -645,7 +645,7 @@ static void dpfield_estimate(
 	)
 
 {
-    const EncoderParams &eparams = *picture.encparams;
+    const EncoderParams &eparams = picture.encparams;
 	uint8_t *sameref, *oppref;
 	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
 	int imino = 0;
@@ -763,7 +763,7 @@ const static bool trace_me = false;
 void MacroBlock::FrameMEs()
 {
     const Picture &picture = ParentPicture();
-    const EncoderParams &eparams = *picture.encparams;
+    const EncoderParams &eparams = picture.encparams;
     int i = TopleftX();
     int j = TopleftY();
 	uint8_t **oldrefimg, **newrefimg;
@@ -797,7 +797,7 @@ void MacroBlock::FrameMEs()
 
 	/* Select between the original or the reconstructed image for
 	   final refinement of motion estimation */
-	if( ctl_refine_from_rec )
+	if( eparams.refine_from_rec )
 	{
 		oldrefimg = picture.oldref;
 		newrefimg = picture.newref;
@@ -916,7 +916,7 @@ void MacroBlock::FrameMEs()
 
             best_of_kind_me.push_back( me );
 
-			if ( ctl_M==1 &&
+			if ( eparams.M==1 &&
                  dpframe_estimate(picture,oldrefimg[0],&ssmb,
                                   i,j>>1,
                                   best_fieldmvs,
@@ -1073,7 +1073,7 @@ void MacroBlock::FrameMEs()
 void MacroBlock::FieldME()
 {
     const Picture &picture = ParentPicture();
-    const EncoderParams &eparams = *picture.encparams;
+    const EncoderParams &eparams = picture.encparams;
     int i = TopleftX();
     int j = TopleftY();
 	int w2;
@@ -1092,7 +1092,7 @@ void MacroBlock::FieldME()
 
 	/* Select between the original or the reconstructed image for
 	   final refinement of motion estimation */
-	if( ctl_refine_from_rec )
+	if( eparams.refine_from_rec )
 	{
 		oldrefimg = picture.oldref;
 		newrefimg = picture.newref;
@@ -1165,7 +1165,7 @@ void MacroBlock::FieldME()
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 		dctl_dp = 100000000;		/* Suppress compiler warning */
 
-		if ( ctl_M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
+		if ( eparams.M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
@@ -1175,7 +1175,7 @@ void MacroBlock::FieldME()
 			dctl_dp = dualp_mc.sad;
 		}
 		/* select between dual prime, field and 16x8 prediction */
-		if ( ctl_M==1 && !picture.ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
+		if ( eparams.M==1 && !picture.ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
 		{
 			/* Dual Prime prediction */
 			me.motion_type = MC_DMV;
@@ -1443,7 +1443,7 @@ static void field_estimate (
 	mb_motion_s *bestsp)
 
 {
-    const EncoderParams &eparams = *picture.encparams;
+    const EncoderParams &eparams = picture.encparams;
 	mb_motion_s topfld_mc;
 	mb_motion_s botfld_mc;
 	int dt, db;
@@ -1734,7 +1734,7 @@ static void mb_me_search(
 
 	/* Generate the best matches at 4*4 sub-sampling. 
 	   The precise fraction of the matches included is
-	   controlled by ctl_44_red
+	   controlled by eparams.44_red
 	   Note: we use the original picture here for the match...
 	 */
 
@@ -1745,7 +1745,7 @@ static void mb_me_search(
                         best.weight,
                         s44org, 
                         ssblk->qmb, qlx, qh,
-                        ctl_44_red); 
+                        eparams.me44_red); 
 #ifdef DEBUG_MOTION_EST
     if( trace_me )
         log_result_set( &sub44set );
@@ -1753,7 +1753,7 @@ static void mb_me_search(
 	/* Generate the best 2*2 sub-sampling matches from the
 	   immediate 2*2 neighbourhoods of the 4*4 sub-sampling matches.
 	   The precise fraction of the matches included is controlled
-	   by ctl_22_red.
+	   by eparams.22_red.
 	   Note: we use the original picture here for the match...
 
 	*/
@@ -1763,7 +1763,7 @@ static void mb_me_search(
                         ihigh,  jhigh, 
                         best.weight,
                         s22org, ssblk->fmb, flx, fh,
-                        ctl_22_red);
+                        eparams.me22_red);
 
 #ifdef DEBUG_MOTION_EST
     if( trace_me )

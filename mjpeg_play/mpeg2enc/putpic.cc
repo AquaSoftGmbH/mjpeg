@@ -51,6 +51,7 @@
 #include "global.h"
 #include "simd.h"
 #include "mpeg2encoder.hh"
+#include "mpeg2coder.hh"
 #include "ratectl.hh"
 
 /* output motion vectors (6.2.5.2, 6.3.16.2)
@@ -256,7 +257,7 @@ void Picture::PutHeader()
 	if (pict_type==P_TYPE || pict_type==B_TYPE)
 	{
 		putbits(0,1); /* full_pel_forward_vector */
-		if (encparams->mpeg1)
+		if (encparams.mpeg1)
 			putbits(forw_hor_f_code,3);
 		else
 			putbits(7,3); /* forward_f_code */
@@ -265,7 +266,7 @@ void Picture::PutHeader()
 	if (pict_type==B_TYPE)
 	{
 		putbits(0,1); /* full_pel_backward_vector */
-		if (encparams->mpeg1)
+		if (encparams.mpeg1)
 			putbits(back_hor_f_code,3);
 		else
 			putbits(7,3); /* backward_f_code */
@@ -273,7 +274,7 @@ void Picture::PutHeader()
 
 
 	putbits(0,1); /* extra_bit_picture */
-	if ( !encparams->mpeg1 )
+	if ( !encparams.mpeg1 )
 	{
 		PutCodingExt();
 	}
@@ -314,7 +315,7 @@ void Picture::PutSliceHdr( int slice_mb_y )
     /* slice header (6.2.4) */
     alignbits();
     
-    if (encparams->mpeg1 || encparams->vertical_size<=2800)
+    if (encparams.mpeg1 || encparams.vertical_size<=2800)
         putbits(SLICE_MIN_START+slice_mb_y,32); /* slice_start_code */
     else
     {
@@ -350,7 +351,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 	/* Handle splitting of output stream into sequences of desired size */
 	if( new_seq )
 	{
-		putseqend();
+		coder.PutSeqEnd();
 		ratecontrol.InitSeq(true);
 	}
 	/* Handle start of GOP stuff... */
@@ -368,9 +369,9 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 	*/
 
     if( new_seq || decode == 0 ||
-        (gop_start && encparams->seq_hdr_every_gop) )
+        (gop_start && encparams.seq_hdr_every_gop) )
     {
-		putseqhdr();
+		coder.PutSeqHdr();
     }
 	if( gop_start )
 	{
@@ -378,8 +379,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 		   in first GOP as one has already been created.
 		*/
         
-		putgophdr( decode,
-				   closed_gop );
+		coder.PutGopHdr( decode,  closed_gop );
 	}
     
     QuantiseAndPutEncoding(ratecontrol);
@@ -407,9 +407,9 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
     PutHeader();
 
     /* TODO: This should really be a member of the picture object */
-	if( encparams->svcd_scan_data && pict_type == I_TYPE )
+	if( encparams.svcd_scan_data && pict_type == I_TYPE )
 	{
-		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
+		coder.PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
 	}
 
 	mquant_pred = ratectl.InitialMacroBlockQuant(*this);
@@ -420,7 +420,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
        slice.  For MPEG-2 we could do this better and reduce slice
        start code coverhead... */
 
-	for (j=0; j<encparams->mb_height2; j++)
+	for (j=0; j<encparams.mb_height2; j++)
 	{
 
         PutSliceHdr(j);
@@ -430,7 +430,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
         MBAinc = 1; /* first MBAinc denotes absolute position */
 
         /* Slice macroblocks... */
-		for (i=0; i<encparams->mb_width; i++)
+		for (i=0; i<encparams.mb_width; i++)
 		{
             prev_mb = cur_mb;
 			cur_mb = &mbinfo[k];
@@ -440,7 +440,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
 			/* quantize macroblock : N.b. the MB_PATTERN bit may be
                set as a side-effect of this call. */
-            cur_mb->Quantize( encoder->quantizer);
+            cur_mb->Quantize( encoder.quantizer);
 
 			/* output mquant if it has changed */
 			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)
@@ -448,7 +448,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
             /* Check to see if Macroblock is skippable, this may set
                the MB_FORWARD bit... */
-            bool slice_begin_or_end = (i==0 || i==encparams->mb_width-1);
+            bool slice_begin_or_end = (i==0 || i==encparams.mb_width-1);
             cur_mb->SkippedCoding(slice_begin_or_end);
             if( cur_mb->skipped )
             {

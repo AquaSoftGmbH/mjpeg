@@ -73,21 +73,28 @@ int verbose = 1;
 
 #include "mpeg2encoder.hh"
 #include "picturereader.hh"
+#include "elemstrmwriter.hh"
 #include "quantize.hh"
 #include "ratectl.hh"
 #include "seqencoder.hh"
+#include "mpeg2coder.hh"
+
 
 MPEG2Encoder::MPEG2Encoder( int istrm_fd, MPEG2EncOptions &_options ) :
     options( _options ),
     parms( *new EncoderParams ),
     reader( *new Y4MPipeReader( *this, istrm_fd ) ),
+    // TODO: Concrete type for writing to fd...
+    writer( *new ElemStrmWriter( *this ) ),
     quantizer( *new Quantizer( *this ) ),
     bitrate_controller( *new OnTheFlyRateCtl( *this ) ),
-    seqencoder( *new SeqEncoder( *this ) )
+    seqencoder( *new SeqEncoder( *this ) ),
+    coder( *new MPEG2Coder( *this ) )
 {}
 
 MPEG2Encoder::~MPEG2Encoder()
 {
+    delete &coder;
     delete &seqencoder;
     delete &bitrate_controller;
     delete &quantizer;
@@ -1288,47 +1295,47 @@ void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 	   and specified speed parameters.
 	 */
     
-	ctl_act_boost =  options.act_boost >= 0.0 
+	act_boost =  options.act_boost >= 0.0 
         ? (options.act_boost+1.0)
         : (options.act_boost-1.0);
-    ctl_boost_var_ceil = options.boost_var_ceil;
+    boost_var_ceil = options.boost_var_ceil;
 	switch( options.num_cpus )
 	{
 
 	case 0 : /* Special case for debugging... turns of multi-threading */
-		ctl_max_encoding_frames = 1;
-		ctl_refine_from_rec = true;
-		ctl_parallel_read = false;
+		max_encoding_frames = 1;
+		refine_from_rec = true;
+		parallel_read = false;
 		break;
 
 	case 1 :
-		ctl_max_encoding_frames = 1;
-		ctl_refine_from_rec = true;
-		ctl_parallel_read = true;
+		max_encoding_frames = 1;
+		refine_from_rec = true;
+		parallel_read = true;
 		break;
 	case 2:
-		ctl_max_encoding_frames = 2;
-		ctl_refine_from_rec = true;
-		ctl_parallel_read = true;
+		max_encoding_frames = 2;
+		refine_from_rec = true;
+		parallel_read = true;
 		break;
 	default :
-		ctl_max_encoding_frames = options.num_cpus > MAX_WORKER_THREADS-1 ?
+		max_encoding_frames = options.num_cpus > MAX_WORKER_THREADS-1 ?
 			                  MAX_WORKER_THREADS-1 :
 			                  options.num_cpus;
-		ctl_refine_from_rec = false;
-		ctl_parallel_read = true;
+		refine_from_rec = false;
+		parallel_read = true;
 		break;
 	}
 
-    ctl_max_active_ref_frames = 
-        ctl_M == 0 ? ctl_max_encoding_frames : (ctl_max_encoding_frames+2);
-    ctl_max_active_b_frames = 
-        ctl_M <= 1 ? 0 : ctl_max_encoding_frames+1;
+    max_active_ref_frames = 
+        M == 0 ? max_encoding_frames : (max_encoding_frames+2);
+    max_active_b_frames = 
+        M <= 1 ? 0 : max_encoding_frames+1;
 
-	ctl_44_red		= options.me44_red;
-	ctl_22_red		= options.me22_red;
+	me44_red		= options.me44_red;
+	me22_red		= options.me22_red;
 
-    ctl_unit_coeff_elim	= options.unit_coeff_elim;
+    unit_coeff_elim	= options.unit_coeff_elim;
 
 	/* round picture dimensions to nearest multiple of 16 or 32 */
 	mb_width = (horizontal_size+15)/16;
@@ -1424,17 +1431,17 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	inputtype = 0;  /* doesnt matter */
 	istrm_nframes = 999999999; /* determined by EOF of stdin */
 
-	ctl_N_min = options.min_GOP_size;      /* I frame distance */
-	ctl_N_max = options.max_GOP_size;
-    ctl_closed_GOPs = options.closed_GOPs;
+	N_min = options.min_GOP_size;      /* I frame distance */
+	N_max = options.max_GOP_size;
+    closed_GOPs = options.closed_GOPs;
 	mjpeg_info( "GOP SIZE RANGE %d TO %d %s", 
-                ctl_N_min, ctl_N_max,
-                ctl_closed_GOPs ? "(all GOPs closed)" : "" 
+                N_min, N_max,
+                closed_GOPs ? "(all GOPs closed)" : "" 
                 );
-	ctl_M = options.Bgrp_size;             /* I or P frame distance */
-	ctl_M_min = options.preserve_B ? ctl_M : 1;
-	if( ctl_M >= ctl_N_min )
-		ctl_M = ctl_N_min-1;
+	M = options.Bgrp_size;             /* I or P frame distance */
+	M_min = options.preserve_B ? M : 1;
+	if( M >= N_min )
+		M = N_min-1;
 	mpeg1           = (options.mpeg == 1);
 	fieldpic        = (options.fieldenc == 2);
 
@@ -1489,22 +1496,22 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 
 	if( options.quant )
 	{
-		ctl_quant_floor = inv_scale_quant( options.mpeg == 1 ? 0 : 1, 
+		quant_floor = inv_scale_quant( options.mpeg == 1 ? 0 : 1, 
                                            options.quant );
 	}
 	else
 	{
-		ctl_quant_floor = 0.0;		/* Larger than max quantisation */
+		quant_floor = 0.0;		/* Larger than max quantisation */
 	}
 
-	ctl_video_buffer_size = options.video_buffer_size * 1024 * 8;
+	video_buffer_size = options.video_buffer_size * 1024 * 8;
 	
 	seq_hdr_every_gop = options.seq_hdr_every_gop;
 	seq_end_every_gop = options.seq_end_every_gop;
 	svcd_scan_data = options.svcd_scan_data;
 	ignore_constraints = options.ignore_constraints;
-	ctl_seq_length_limit = options.seq_length_limit;
-	ctl_nonvid_bit_rate = options.nonvid_bitrate * 1000;
+	seq_length_limit = options.seq_length_limit;
+	nonvid_bit_rate = options.nonvid_bitrate * 1000;
 	low_delay       = 0;
 	constrparms     = (options.mpeg == 1 && 
 						   !MPEG_STILLS_FORMAT(options.format));
@@ -1622,9 +1629,9 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		We simply round it up if needs be.  */
 
     int searchrad = options.searchrad;
-	if(searchrad*ctl_M>127)
+	if(searchrad*M>127)
 	{
-		searchrad = 127/ctl_M;
+		searchrad = 127/M;
 		mjpeg_warn("Search radius reduced to %d",searchrad);
 	}
 	
@@ -1635,17 +1642,17 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 
-		motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
+		motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
 		if (!motion_data)
 			mjpeg_error_exit1("malloc failed");
 
-		for (i=0; i<ctl_M; i++)
+		for (i=0; i<M; i++)
 		{
 			if(i==0)
 			{
-				motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
+				motion_data[i].sxf = round_search_radius(radius_x*M);
 				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
-				motion_data[i].syf = round_search_radius(radius_y*ctl_M);
+				motion_data[i].syf = round_search_radius(radius_y*M);
 				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
 			}
 			else
@@ -1654,9 +1661,9 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
 				motion_data[i].syf = round_search_radius(radius_y*i);
 				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
-				motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
+				motion_data[i].sxb = round_search_radius(radius_x*(M-i));
 				motion_data[i].back_hor_f_code  = f_code(motion_data[i].sxb);
-				motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
+				motion_data[i].syb = round_search_radius(radius_y*(M-i));
 				motion_data[i].back_vert_f_code  = f_code(motion_data[i].syb);
 			}
 
@@ -1689,12 +1696,12 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	frame_rate = Y4M_RATIO_DBL(mpeg_framerate(frame_rate_code));
 	if( options.vid32_pulldown )
 	{
-		ctl_decode_frame_rate = frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
+		decode_frame_rate = frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
 		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps", 
-					ctl_decode_frame_rate);
+					decode_frame_rate);
 	}
 	else
-		ctl_decode_frame_rate = frame_rate;
+		decode_frame_rate = frame_rate;
 
 	if ( !mpeg1)
 	{
@@ -1718,7 +1725,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 
 		if (constrparms)
 		{
-			for (i=0; i<ctl_M; i++)
+			for (i=0; i<M; i++)
 			{
 				if (motion_data[i].forw_hor_f_code>4)
 				{
@@ -1822,7 +1829,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	}
 
 	/* search windows */
-	for (i=0; i<ctl_M; i++)
+	for (i=0; i<M; i++)
 	{
 		if (motion_data[i].sxf > (4U<<motion_data[i].forw_hor_f_code)-1)
 		{

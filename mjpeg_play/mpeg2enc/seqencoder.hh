@@ -24,10 +24,11 @@
 #include <config.h>
 #include "mjpeg_types.h"
 #include "synchrolib.h"
+#include "picture.hh"
 
 class MPEG2Encoder;
-
-class Picture;
+class EncoderParams;
+class MPEG2Coder;
 
 struct StreamState 
 {
@@ -59,20 +60,24 @@ public:
 
 	void Encode();
 private:
+    void CreateThreads( pthread_t *threads,
+                        int num, void *(*start_routine)(void *),
+                        SeqEncoder *seqencoder );
 	int FindGopLength( int gop_start_frame, 
 					   int I_frame_temp_ref,
 					   int gop_min_len, int gop_max_len,
 					   int min_b_grp);
 	void GopStart( StreamState *ss );
 	void NextSeqState( StreamState *ss );
-	void LinkPictures( Picture *ref_pictures, 
-					   Picture *b_pictures );
+	void LinkPictures( Picture *ref_pictures[], 
+					   Picture *b_pictures[] );
 	static void *ParallelEncodeWrapper( void *seqencoder );
 	void ParallelEncodeWorker();
 	void ParallelEncode( Picture *picture );
 	void SequentialEncode( Picture *picture );
 	MPEG2Encoder &encoder;
-
+    EncoderParams &encparams;
+    MPEG2Coder &coder;
 	mp_semaphore_t worker_available;
 	mp_semaphore_t picture_available;
 	mp_semaphore_t picture_started;

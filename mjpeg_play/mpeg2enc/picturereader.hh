@@ -53,7 +53,7 @@ protected:
     
 protected:
     MPEG2Encoder &encoder;
-    EncoderParams *encparams;
+    EncoderParams &encparams;
 	pthread_mutex_t input_imgs_buf_lock;
 
 	pthread_cond_t new_chunk_req;

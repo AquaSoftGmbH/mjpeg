@@ -140,8 +140,8 @@ void MacroBlock::Predict()
 	uint8_t **oldref = picture.oldref;	// Forward prediction
 	uint8_t **newref = picture.newref;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
-	int lx = picture.encparams->phy_width;
-	int lx2 = picture.encparams->phy_width;
+	int lx = picture.encparams.phy_width;
+	int lx2 = picture.encparams.phy_width;
 
 	bool addflag;
 	int currentfield;

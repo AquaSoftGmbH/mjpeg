@@ -33,7 +33,8 @@
 #include "mpeg2encoder.hh"
 
 PictureReader::PictureReader(MPEG2Encoder &_encoder ) :
-    encoder( _encoder )
+    encoder( _encoder ),
+    encparams( encoder.parms )
 {
     pthread_cond_init( &new_chunk_req, NULL );
     pthread_cond_init( &new_chunk_ack, NULL );
@@ -85,7 +86,6 @@ static void border_mark( uint8_t *frame,
 
 void PictureReader::Init()
 {
-    encparams = &encoder.parms;
 #ifdef __linux__
     pthread_mutexattr_t mu_attr;
     pthread_mutexattr_t *p_attr = &mu_attr;
@@ -97,10 +97,10 @@ void PictureReader::Init()
     pthread_mutex_init( &input_imgs_buf_lock, p_attr );
     /* Allocate the frame data buffers: if we're not going to scan ahead
        for GOP size we can save a *lot* of memory... */
-    if( ctl_N_max == ctl_N_min )
-        input_imgs_buf_size = max(2*ctl_M,1)+READ_CHUNK_SIZE;
+    if( encparams.N_max == encparams.N_min )
+        input_imgs_buf_size = max(2*encparams.M,1)+READ_CHUNK_SIZE;
     else
-        input_imgs_buf_size = 2*ctl_N_max+READ_CHUNK_SIZE;
+        input_imgs_buf_size = 2*encparams.N_max+READ_CHUNK_SIZE;
 
     mjpeg_info( "Buffering %d frames", input_imgs_buf_size );
     input_imgs_buf = new ImagePlanes[input_imgs_buf_size];
@@ -113,20 +113,20 @@ void PictureReader::Init()
         {
             input_imgs_buf[n][i] = 
                 static_cast<uint8_t *>( bufalloc( (i==0) 
-                                                  ? encparams->lum_buffer_size 
-                                                  : encparams->chrom_buffer_size ) 
+                                                  ? encparams.lum_buffer_size 
+                                                  : encparams.chrom_buffer_size ) 
                     );
         }
         
         border_mark(input_imgs_buf[n][0],
-                    encparams->enc_width,encparams->enc_height,
-                    encparams->phy_width,encparams->phy_height);
+                    encparams.enc_width,encparams.enc_height,
+                    encparams.phy_width,encparams.phy_height);
         border_mark(input_imgs_buf[n][1],
-                    encparams->enc_chrom_width, encparams->enc_chrom_height,
-                    encparams->phy_chrom_width,encparams->phy_chrom_height);
+                    encparams.enc_chrom_width, encparams.enc_chrom_height,
+                    encparams.phy_chrom_width,encparams.phy_chrom_height);
         border_mark(input_imgs_buf[n][2],
-                    encparams->enc_chrom_width, encparams->enc_chrom_height,
-                    encparams->phy_chrom_width,encparams->phy_chrom_height);
+                    encparams.enc_chrom_width, encparams.enc_chrom_height,
+                    encparams.phy_chrom_width,encparams.phy_chrom_height);
     }
     
     lum_mean = new int[input_imgs_buf_size];
@@ -134,7 +134,7 @@ void PictureReader::Init()
     /*
           Pre-fill the buffer 
         */
-    if( ctl_parallel_read )
+    if( encparams.parallel_read )
     {
         StartWorker();
         ReadChunkParallel( input_imgs_buf_size/2 );
@@ -165,9 +165,9 @@ PictureReader::~PictureReader()
 int PictureReader::LumMean( uint8_t *frame )
 {
 	uint8_t *p;
-    int stride = encparams->phy_width;
-    int width = encparams->enc_width;
-    int height = encparams->enc_height;
+    int stride = encparams.phy_width;
+    int width = encparams.enc_width;
+    int height = encparams.enc_height;
 	int sum = 0;
     int line;
     uint8_t *line_base = frame;
@@ -195,7 +195,7 @@ void PictureReader::ReadChunk()
 
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
-	   if( ctl_parallel_read )
+	   if( encparams.parallel_read )
 	   {
 		   // Unlock during the actual I/O filling buffers to allow
 		   // the main thread to run if there are still the frames
@@ -212,14 +212,14 @@ void PictureReader::ReadChunk()
       if( LoadFrame() )
       {
           mjpeg_debug( "End of input stream detected" );
-          if( ctl_parallel_read )
+          if( encparams.parallel_read )
           {
               pthread_mutex_lock( &input_imgs_buf_lock );
           }
           last_frame = frames_read-1;
           istrm_nframes = frames_read;
           mjpeg_info( "Signalling last frame = %d", last_frame );
-          if( ctl_parallel_read )
+          if( encparams.parallel_read )
           {
               //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
               pthread_cond_broadcast( &new_chunk_ack );
@@ -227,7 +227,7 @@ void PictureReader::ReadChunk()
           return;
       }
 
-	  if( ctl_parallel_read )
+	  if( encparams.parallel_read )
 	  {
 		  //
 		  // Lock to atomically signal the availability of additional
@@ -240,7 +240,7 @@ void PictureReader::ReadChunk()
 	  }
 	  ++frames_read;
 
-	  if( ctl_parallel_read )
+	  if( encparams.parallel_read )
 	  {
 		  //mjpeg_info( "PRO: Signalling new_chunk_ack @ %d", frames_read );
 		  pthread_cond_broadcast( &new_chunk_ack );
@@ -319,7 +319,7 @@ void PictureReader::StartWorker()
  *  buffer.  This version is for when frame input reading is not
  *  multi-threaded and just goes ahead and does it.
  *
- * N.b. if ctl_parallel_read is active then ReadChunk signals/locks
+ * N.b. if encparams.parallel_read is active then ReadChunk signals/locks
  * which could cause problems hence the assert!
  *
  *****************************************************/
@@ -341,7 +341,7 @@ void PictureReader::ReadChunkSequential( int num_frame )
  * at least one extra frame added to the buffer) if the specified frame
  * is not yet in the buffer.
  *
- * N.b. *must* be called with ctl_parallel_read active as otherwise it
+ * N.b. *must* be called with encparams.parallel_read active as otherwise it
  * will thoroughly deadlocked.
  *
  *****************************************************/
@@ -389,7 +389,7 @@ void PictureReader::FillBufferUpto( int num_frame )
    /* Read a chunk of frames if we've got less than one chunk buffered
 	*/
 
-   if( ctl_parallel_read )
+   if( encparams.parallel_read )
 	   ReadChunkParallel( num_frame );
    else
 	   ReadChunkSequential( num_frame );
@@ -507,27 +507,27 @@ bool Y4MPipeReader::LoadFrame( )
        return true;
       }
       
-   v = encparams->vertical_size;
-   h = encparams->horizontal_size;
+   v = encparams.vertical_size;
+   h = encparams.horizontal_size;
    int i;
    for(i=0;i<v;i++)
    {
-       if( PipeRead(input_imgs_buf[buffer_slot][0]+i*encparams->phy_width,h)!=h)
+       if( PipeRead(input_imgs_buf[buffer_slot][0]+i*encparams.phy_width,h)!=h)
            return true;
    }
    lum_mean[buffer_slot] = LumMean(input_imgs_buf[buffer_slot][0] );
    v = CHROMA420==CHROMA420 ? 
-       encparams->vertical_size/2 : encparams->vertical_size;
+       encparams.vertical_size/2 : encparams.vertical_size;
    h = CHROMA420!=CHROMA444 ? 
-       encparams->horizontal_size/2 : encparams->horizontal_size;
+       encparams.horizontal_size/2 : encparams.horizontal_size;
    for(i=0;i<v;i++)
    {
-       if(PipeRead(input_imgs_buf[buffer_slot][1]+i*encparams->phy_chrom_width,h)!=h)
+       if(PipeRead(input_imgs_buf[buffer_slot][1]+i*encparams.phy_chrom_width,h)!=h)
            return true;
    }
    for(i=0;i<v;i++)
    {
-       if(PipeRead(input_imgs_buf[buffer_slot][2]+i*encparams->phy_chrom_width,h)!=h)
+       if(PipeRead(input_imgs_buf[buffer_slot][2]+i*encparams.phy_chrom_width,h)!=h)
            return true;
    }
    return false;

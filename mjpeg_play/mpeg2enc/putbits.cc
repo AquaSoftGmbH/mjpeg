@@ -46,9 +46,17 @@
  */
 
 
-#include <config.h>
+#include "elemstrmwriter.hh"
+#include "mpeg2encoder.hh"
 #include <stdio.h>
 #include "global.h"
+
+
+ElemStrmWriter::ElemStrmWriter( MPEG2Encoder &_encoder ) :
+	encoder( _encoder ),
+	encparams( _encoder.parms )
+{
+}
 
 extern FILE *outfile; /* the only global var we need here */
 /* private data */

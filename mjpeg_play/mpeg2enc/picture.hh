@@ -32,7 +32,6 @@
 using namespace std;
 
 
-
 class CodingPredictors
 {
 public:
@@ -62,12 +61,12 @@ public:
 class MPEG2Encoder;
 class RateCtl;
 class EncoderParams;
+class MPEG2Coder;
 class StreamState;
 
 class Picture : public CodingPredictors
 {
 public:
-    Picture() {}
     Picture(  MPEG2Encoder &_encoder ); 
     ~Picture();
 
@@ -96,14 +95,16 @@ private:
     void PutCodingExt(); 
 
 public:
+
     /***************
      *
      * Data initialised at construction
      *
      **************/
 
-    EncoderParams *encparams;
-    MPEG2Encoder *encoder;
+    MPEG2Encoder &encoder;
+    EncoderParams &encparams;
+    MPEG2Coder &coder;
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */

@@ -37,12 +37,12 @@ void MacroBlock::Transform()
 	// assert( dctblocks == &blocks[k*block_count]);
 	int i = TopleftX();
 	int j = TopleftY();
-	int blocktopleft = j*picture->encparams->phy_width+i;
+	int blocktopleft = j*picture->encparams.phy_width+i;
 	field_dct =
 		! picture->frame_pred_dct 
 		&& picture->pict_struct == FRAME_PICTURE
 		&& (*pfield_dct_best)( &cur[0][blocktopleft], &pred[0][blocktopleft],
-							   picture->encparams->phy_width);
+							   picture->encparams.phy_width);
 	int i1, j1, n, cc, offs, lx;
 
 	for (n=0; n<BLOCK_COUNT; n++)
@@ -57,18 +57,18 @@ void MacroBlock::Transform()
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct)
 			{
 				/* field DCT */
-				lx = picture->encparams->phy_width<<1;
-				offs = i + ((n&1)<<3) + picture->encparams->phy_width*(j+((n&2)>>1));
+				lx = picture->encparams.phy_width<<1;
+				offs = i + ((n&1)<<3) + picture->encparams.phy_width*(j+((n&2)>>1));
 			}
 			else
 			{
 				/* frame DCT */
-				lx =  picture->encparams->phy_width2;
+				lx =  picture->encparams.phy_width2;
 				offs = i + ((n&1)<<3) +  lx*(j+((n&2)<<2));
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs += picture->encparams->phy_width;
+				offs += picture->encparams.phy_width;
 		}
 		else
 		{
@@ -82,18 +82,18 @@ void MacroBlock::Transform()
 				&& (CHROMA420!=CHROMA420))
 			{
 				/* field DCT */
-				lx =  picture->encparams->phy_chrom_width<<1;
-				offs = i1 + (n&8) +  picture->encparams->phy_chrom_width*(j1+((n&2)>>1));
+				lx =  picture->encparams.phy_chrom_width<<1;
+				offs = i1 + (n&8) +  picture->encparams.phy_chrom_width*(j1+((n&2)>>1));
 			}
 			else
 			{
 				/* frame DCT */
-				lx =  picture->encparams->phy_chrom_width2;
+				lx =  picture->encparams.phy_chrom_width2;
 				offs = i1 + (n&8) +  lx*(j1+((n&2)<<2));
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  picture->encparams->phy_chrom_width;
+				offs +=  picture->encparams.phy_chrom_width;
 		}
 
 		psub_pred(pred[cc]+offs,cur[cc]+offs,lx, dctblocks[n]);
@@ -133,18 +133,18 @@ void MacroBlock::ITransform()
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct)
 			{
 				/* field DCT */
-				lx = picture->encparams->phy_width<<1;
-				offs = i + ((n&1)<<3) + picture->encparams->phy_width*(j+((n&2)>>1));
+				lx = picture->encparams.phy_width<<1;
+				offs = i + ((n&1)<<3) + picture->encparams.phy_width*(j+((n&2)>>1));
 			}
 			else
 			{
 				/* frame DCT */
-				lx = picture->encparams->phy_width2;
+				lx = picture->encparams.phy_width2;
 				offs = i + ((n&1)<<3) + lx*(j+((n&2)<<2));
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  picture->encparams->phy_width;
+				offs +=  picture->encparams.phy_width;
 		}
 		else
 		{
@@ -158,18 +158,18 @@ void MacroBlock::ITransform()
 				&& (CHROMA420!=CHROMA420))
 			{
 				/* field DCT */
-				lx = picture->encparams->phy_chrom_width<<1;
-				offs = i1 + (n&8) +  picture->encparams->phy_chrom_width*(j1+((n&2)>>1));
+				lx = picture->encparams.phy_chrom_width<<1;
+				offs = i1 + (n&8) +  picture->encparams.phy_chrom_width*(j1+((n&2)>>1));
 			}
 			else
 			{
 				/* frame DCT */
-				lx =  picture->encparams->phy_chrom_width2;
+				lx =  picture->encparams.phy_chrom_width2;
 				offs = i1 + (n&8) + lx*(j1+((n&2)<<2));
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  picture->encparams->phy_chrom_width;
+				offs +=  picture->encparams.phy_chrom_width;
 		}
 		pidct(qdctblocks[n]);
 		padd_pred(pred[cc]+offs,cur[cc]+offs,lx,qdctblocks[n]);

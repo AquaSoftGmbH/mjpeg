@@ -132,7 +132,7 @@ void EncoderParams::RangeChecks()
   if (dc_prec<0 || dc_prec>3)
     mjpeg_error_exit1("intra_dc_precision must be in range 0...3");
 
-  for (i=0; i<ctl_M; i++)
+  for (i=0; i<M; i++)
   {
     if (motion_data[i].forw_hor_f_code<1 || motion_data[i].forw_hor_f_code>9)
       mjpeg_error_exit1("f_code x must be between 1 and 9");
@@ -240,7 +240,7 @@ void EncoderParams::ProfileAndLevelChecks()
 
   /* profile (syntax) constraints */
 
-  if (profile==SP && ctl_M!=1)
+  if (profile==SP && M!=1)
     mjpeg_error_exit1("Simple Profile does not allow B pictures");
 
 
@@ -254,7 +254,7 @@ void EncoderParams::ProfileAndLevelChecks()
   if (frame_rate_code>5 && level>=ML)
     mjpeg_error_exit1("Picture rate greater than permitted in specified Level");
 
-  for (i=0; i<ctl_M; i++)
+  for (i=0; i<M; i++)
   {
     if (motion_data[i].forw_hor_f_code > maxval->hor_f_code)
       mjpeg_error_exit1("forward horizontal f_code greater than permitted in specified Level");
