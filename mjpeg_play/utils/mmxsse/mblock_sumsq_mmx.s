@@ -26,7 +26,7 @@
 ; h:         height of block (usually 8 or 16)
 ; mmX version
 
-global sumsq_mmx
+global	sumsq_mmx:function
 ; int sumsq_mmx(unsigned char *blk1, unsigned char *blk2,
 ;                 int lx, int hx, int hy, int h)
 
@@ -439,7 +439,7 @@ d2exit:
 ; h:         height of block (usually 4, or 8)
 ; mmX version
 
-global sumsq_sub22_mmx
+global	sumsq_sub22_mmx:function
 ; int sumsq_sub22_mmx(unsigned char *blk1, unsigned char *blk2,
 ;                 int lx, int h)
 
@@ -508,7 +508,7 @@ d2top22:
 ; h:         height of block (usually 4, or 8)
 ; mmX version
 		
-global bsumsq_sub22_mmx
+global	bsumsq_sub22_mmx:function
 ; int bsumsq_sub22_mmx(unsigned char *blk1f, unsigned char*blk1b,
 ;				   unsigned char *blk2,
 ;                 int lx, int h)
@@ -581,7 +581,7 @@ bd2top22:
 		jmp       d2exit
 
 
-global variance_mmx
+global	variance_mmx:function
 		
 ;;;  variance of a (size*size) block, multiplied by 256
 ;;; p:  address of top left pel of block

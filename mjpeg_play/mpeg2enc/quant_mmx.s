@@ -21,7 +21,7 @@
 ;  quantize_ni_mmx.s:  MMX optimized coefficient quantization sub-routine
 
 
-global quantize_non_intra_mb_mmx
+global quantize_non_intra_mb_mmx:function
 ; int quantize_non_intra_mb_mmx(short *dst, short *src, 
 ;		              short *quant_mat, short *i_quant_mat,
 ;                     int imquant, int mquant, int sat_limit)
@@ -272,7 +272,7 @@ saturated:
 		;; mm5 = 0
 
 				
-global iquantize_non_intra_m1_extmmx
+global iquantize_non_intra_m1_extmmx:function
 align 32
 iquantize_non_intra_m1_extmmx:
 		
@@ -370,7 +370,7 @@ iquantize_loop_m1_extmmx:
 		;; mm5 = 0
 
 				
-global iquantize_non_intra_m1_mmx
+global iquantize_non_intra_m1_mmx:function
 align 32
 iquantize_non_intra_m1_mmx:
 		
@@ -474,7 +474,7 @@ iquantize_m1_loop:
 ;;; esi - dst
 ;;; edx - quant_mat
 
-global iquantize_non_intra_m2_extmmx
+global iquantize_non_intra_m2_extmmx:function
 align 32
 iquantize_non_intra_m2_extmmx:
 		;; mm0
@@ -581,7 +581,7 @@ iquantize_loop_extmmx_m2:
 
 
 				
-global iquantize_non_intra_m2_mmx
+global iquantize_non_intra_m2_mmx:function
 align 32
 iquantize_non_intra_m2_mmx:
 		;; mm0
@@ -702,7 +702,7 @@ iquantize_m2_loop:
 		;; mm6 = [2047|0..3]W
 		;; mm5 = 0
 		
-global quant_weight_coeff_sum_mmx_old
+global quant_weight_coeff_sum_mmx_old:function
 align 32
 quant_weight_coeff_sum_mmx_old:
 	push ebp				; save frame pointer
@@ -781,7 +781,7 @@ quantsum:
 		;; mm6 = [2047|0..3]W
 		;; mm5 = 0
 		
-global quant_weight_coeff_sum_mmx
+global quant_weight_coeff_sum_mmx:function
 align 32
 quant_weight_coeff_sum_mmx:
 	push ebp				; save frame pointer

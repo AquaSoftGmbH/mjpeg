@@ -29,7 +29,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-
+#define PREFETCH_OPT
 /*
  *
  * Generates a vector sad's for 4*4 sub-sampled pel (qpel) data (with
@@ -66,6 +66,9 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 	for( y=jlow; y <= jhigh ; y+=4)
 	{
 		curblk = currowblk;
+		// You'd think prefetching curblk+4*rowstride would help here.
+		// I have found *NO* measurable increase in performance...
+		
 		for( x = ilow; x <= ihigh; x += 4)
 		{
 			if( (x & 15) == (ilow & 15) )

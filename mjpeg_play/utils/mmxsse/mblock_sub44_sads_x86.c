@@ -60,18 +60,15 @@ static inline void mmx_zero_reg (void)
  * registers
  *
  */
-
 static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
 {
 	movq_m2r( *blk, mm0);
-	blk += rowstride;
-	movq_m2r( *blk, mm1);
+	movq_m2r( *(blk+rowstride), mm1);
+	blk += 2*rowstride;
 	if( h == 2 )
 		return;
-	blk += rowstride;
 	movq_m2r( *blk, mm2);
-	blk += rowstride;
-	movq_m2r( *blk, mm3);
+	movq_m2r( *(blk+rowstride), mm3);
 }
 
 /*

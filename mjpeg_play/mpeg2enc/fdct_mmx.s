@@ -19,12 +19,13 @@
 ; //     
 ; //  liaor@iname.com  http://members.tripod.com/~liaor  
 ; //////////////////////////////////////////////////////////////////////////////
-
+extern  _GLOBAL_OFFSET_TABLE_
 ;;;
 ;;; A.Stevens Jul 2000:	 ported to nasm syntax and disentangled from
 ;;; from Win**** compiler specific stuff.
 ;;; All the real work was done above though.
 ;;; See above for how to optimise quality on 3DNow! CPU's
+;;; Nov 2003 changed to PIC for use in shared libraries
 
 		;;
 		;;		Macros for code-readability...
@@ -62,12 +63,16 @@
 %define RND_FRW_ROW		(1 << (SHIFT_FRW_ROW-1))
 %define RND_FRW_COL		(1 << (SHIFT_FRW_COL-1))
 
-extern fdct_one_corr		
-extern fdct_r_row				;  Defined in C for convenience
+extern fdct_one_corr
+%define fdct_one_corr_PIC esi+fdct_one_corr wrt ..gotoff
+extern fdct_r_row
+%define fdct_r_row_PIC esi+fdct_r_row wrt ..gotoff
+
 		;;
 		;; Concatenated table of forward dct transformation coeffs.
 		;; 
-extern  fdct_tg_all_16			; Defined in C for convenience
+extern  fdct_tg_all_16
+%define fdct_tg_all_16_PIC esi+fdct_tg_all_16 wrt ..gotoff
 		;; Offsets into table..
 		
 %define tg_1_16 (TABLEF + 0)
@@ -80,11 +85,11 @@ extern  fdct_tg_all_16			; Defined in C for convenience
 		;; Concatenated table of forward dct coefficients
 		;; 
 extern tab_frw_01234567		; Defined in C for convenience
-
+%define tab_frw_01234567_PIC esi+tab_frw_01234567 wrt ..gotoff
 		;; Offsets into table..
 SECTION .text
 		
-global fdct_mmx
+global fdct_mmx:function
 		
 ;;; 
 ;;; void fdct_mmx( short *blk )
@@ -115,11 +120,16 @@ fdct_mmx:
 	push ecx		
 	push edx
 	push edi
-					
+    push esi
+
+	call .get_GOT
+.get_GOT:		
+	pop esi
+	add esi, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc								
 	mov INP, [ebp+8];		; input data is row 0 of blk[]
     ;// transform the left half of the matrix (4 columns)
 
-    lea TABLEF,  [fdct_tg_all_16];
+    lea TABLEF,  [fdct_tg_all_16_PIC];
     mov OUT, INP;
 
 ;	lea round_frw_col,  [r_frw_col]
@@ -166,7 +176,7 @@ mmx32_fdct_col03:
     paddsw mm1, mm5 ; y2 = tm03 + tm12*tg_2_16
     paddsw mm4, mm7 ; 7 ; tp03 = t0 + t3
 
-    por mm1,  [fdct_one_corr] ; correction y2 +0.5
+    por mm1,  [fdct_one_corr_PIC] ; correction y2 +0.5
     psllw mm2, SHIFT_FRW_COL+1 ; t6
 
     pmulhw mm5,  [tg_2_16] ; tm03*tg_2_16
@@ -193,10 +203,10 @@ mmx32_fdct_col03:
     pmulhw mm6,  [ocos_4_16] ; tm65 = (t6 - t5)*cos_4_16
     psubsw mm5, mm0 ; 0 ; y6 = tm03*tg_2_16 - tm12
 
-    por mm5,  [fdct_one_corr] ; correction y6 +0.5
+    por mm5,  [fdct_one_corr_PIC] ; correction y6 +0.5
     psllw mm1, SHIFT_FRW_COL ; t4
 
-    por mm2,  [fdct_one_corr] ; correction tp65 +0.5
+    por mm2,  [fdct_one_corr_PIC] ; correction tp65 +0.5
     movq mm4, mm1 ; 4 ; t4
 
     movq mm3, [x0] ; 3 ; x0
@@ -229,7 +239,7 @@ mmx32_fdct_col03:
     pmulhw mm3,  [tg_1_16] ; tp765*tg_1_16
     ;;
 
-    por mm0,  [fdct_one_corr] ; correction y1 +0.5
+    por mm0,  [fdct_one_corr_PIC] ; correction y1 +0.5
     paddsw mm5, mm7 ; tm765*tg_3_16
 
     psubsw mm7, mm6 ; 6 ; y3 = tm765 - tm465*tg_3_16
@@ -286,7 +296,7 @@ mmx32_fdct_col47: ; begin processing last four columns
     paddsw mm1, mm5 ; y2 = tm03 + tm12*tg_2_16
     paddsw mm4, mm7 ; 7 ; tp03 = t0 + t3
 
-    por mm1,  [fdct_one_corr] ; correction y2 +0.5
+    por mm1,  [fdct_one_corr_PIC] ; correction y2 +0.5
     psllw mm2, SHIFT_FRW_COL+1 ; t6
 
     pmulhw mm5,  [tg_2_16] ; tm03*tg_2_16
@@ -313,10 +323,10 @@ mmx32_fdct_col47: ; begin processing last four columns
     pmulhw mm6,  [ocos_4_16] ; tm65 = (t6 - t5)*cos_4_16
     psubsw mm5, mm0 ; 0 ; y6 = tm03*tg_2_16 - tm12
 
-    por mm5,  [fdct_one_corr] ; correction y6 +0.5
+    por mm5,  [fdct_one_corr_PIC] ; correction y6 +0.5
     psllw mm1, SHIFT_FRW_COL ; t4
 
-    por mm2,  [fdct_one_corr] ; correction tp65 +0.5
+    por mm2,  [fdct_one_corr_PIC] ; correction tp65 +0.5
     movq mm4, mm1 ; 4 ; t4
 
     movq mm3, [x0] ; 3 ; x0
@@ -349,7 +359,7 @@ mmx32_fdct_col47: ; begin processing last four columns
     pmulhw mm3,  [tg_1_16] ; tp765*tg_1_16
     ;;
 
-    por mm0, [fdct_one_corr] ; correction y1 +0.5
+    por mm0, [fdct_one_corr_PIC] ; correction y1 +0.5
     paddsw mm5, mm7 ; tm765*tg_3_16
 
     psubsw mm7, mm6 ; 6 ; y3 = tm765 - tm465*tg_3_16
@@ -365,9 +375,9 @@ mmx32_fdct_col47: ; begin processing last four columns
 
     movq [y7+8], mm3 ; 3 ; save y7
 
-;    emms;
+
 ;    }   ; end of forward_dct_col07() 
-    ;  done with dct_row transform
+ ;  done with dct_row transform
 
   
   ; fdct_mmx32_cols() --
@@ -379,16 +389,15 @@ mmx32_fdct_col47: ; begin processing last four columns
   ;  The output is stored into blk[], which destroys the original
   ;  input data.
 	mov INP,  [ebp+8];		;; row 0
-	 mov edi, 0x08;	;x = 8
+	mov edi, 0x08;	;x = 8
 
-	lea TABLE,  [tab_frw_01234567]; ; row 0
-	 mov OUT, INP;
+	lea TABLE,  [tab_frw_01234567_PIC]; ; row 0
+	mov OUT, INP;
 
-	lea round_frw_row,  [fdct_r_row];
-	; for ( x = 8; x > 0; --x )  ; transform one row per iteration
-
-; ---------- loop begin
-  lp_mmx_fdct_row1:
+	lea round_frw_row,  [fdct_r_row_PIC];
+		; for ( x = 8; x > 0; --x )  ; transform one row per iteration
+		; ---------- loop begin
+lp_mmx_fdct_row1:
     movd mm5,  [INP+12]; ; mm5 = 7 6
 
     punpcklwd mm5,  [INP+8] ; mm5 =  5 7 4 6
@@ -415,9 +424,8 @@ mmx32_fdct_col47: ; begin processing last four columns
 
     ;; shuffle bytes around
 
-;  movq mm0,  [INP] ; 0 ; x3 x2 x1 x0
-
-;  movq mm1,  [INP+8] ; 1 ; x7 x6 x5 x4
+		;  movq mm0,  [INP] ; 0 ; x3 x2 x1 x0
+		;  movq mm1,  [INP+8] ; 1 ; x7 x6 x5 x4
     movq mm2, mm0 ; 2 ; x3 x2 x1 x0
 
     movq mm3,  [TABLE] ; 3 ; w06 w04 w02 w00
@@ -443,10 +451,11 @@ mmx32_fdct_col47: ; begin processing last four columns
 
     movq mm7,  [TABLE+40] ; 7 ; w23 w21 w19 w17
     pmaddwd mm1, mm5 ; x5*w22+x1*w20 x5*w18+x1*w16
-;mm3 = a1, a0 (y2,y0)
-;mm1 = b1, b0 (y3,y1)
-;mm0 = a3,a2  (y6,y4)
-;mm5 = b3,b2  (y7,y5)
+
+		;mm3 = a1, a0 (y2,y0)
+		;mm1 = b1, b0 (y3,y1)
+		;mm0 = a3,a2  (y6,y4)
+		;mm5 = b3,b2  (y7,y5)
 
     paddd mm3,  [round_frw_row] ; +rounder (y2,y0)
     pmaddwd mm7, mm6 ; x7*w23+x3*w21 x7*w19+x3*w17
@@ -493,9 +502,11 @@ mmx32_fdct_col47: ; begin processing last four columns
 
     cmp edi, 0x00;
     jg near lp_mmx_fdct_row1;  ; begin fdct processing on next row
+
 		;; 
 		;; Tidy up and return
 		;;
+	pop esi
 	pop edi
 	pop edx			
 	pop ecx			

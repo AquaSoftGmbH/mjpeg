@@ -83,7 +83,9 @@
 ;;;
 ;;; A.Stevens Jul 2000 easy-peasy quick port to nasm
 ;;; Isn't open source a sensible idea...
-;;; 
+;;; Nov 2003 modified into PIC for use in shared libraries
+		
+extern  _GLOBAL_OFFSET_TABLE_
 
 ;=============================================================================
 ;
@@ -109,10 +111,11 @@
 		;; Variables and tables defined in C for convenience
 		;;
 extern	idct_r_inv_row				; 2 DWORDSs
+%define idct_r_inv_row_PIC 		esi+idct_r_inv_row wrt ..gotoff
 extern  idct_r_inv_col				;    "
-extern  idct_r_inv_corr				;    "
-extern idct_tab_01234567		; Catenated table of coefficients
-		
+%define idct_r_inv_col_PIC 		esi+idct_r_inv_col wrt ..gotoff
+extern  idct_tab_01234567		; Catenated table of coefficients
+%define idct_tab_01234567_PIC   esi+idct_tab_01234567 wrt ..gotoff		
 		;; 
 		;;  private variables and functions
 		;; 
@@ -120,12 +123,12 @@ extern idct_tab_01234567		; Catenated table of coefficients
 SECTION .bss
 align 16
 qwTemp:		resw 64				; temporary storage space, 8x8 of shorts
-
+%define qwTemp_PIC esi+qwTemp wrt ..gotoff
 		
 SECTION .text
 		
 		;; static void idct_mmx( short *blk 
-global idct_mmx
+global idct_mmx:function
 
 idct_mmx:
 	push ebp			; save frame pointer
@@ -135,7 +138,12 @@ idct_mmx:
 	push ecx		
 	push edx
 	push edi
-		
+    push esi
+
+	call .get_GOT
+.get_GOT:		
+	pop esi
+	add esi, _GLOBAL_OFFSET_TABLE_+$$-.get_GOT wrt ..gotpc								
 		;; 
 		;; transform all 8 rows of 8x8 iDCT block
 		;;
@@ -151,11 +159,11 @@ idct_mmx:
 	mov INP, [ebp+8]			; INP = blk
 	mov edi, 0x00;				; x = 0
 
-	lea TABLE,[idct_tab_01234567]; ; row 0
+	lea TABLE,[idct_tab_01234567_PIC]; ; row 0
 
 
-	lea OUT,   [qwTemp];
-	lea round_inv_row,   [idct_r_inv_row]
+	lea OUT,   [qwTemp_PIC];
+	lea round_inv_row,   [idct_r_inv_row_PIC]
     jmp lpa
 				
 	; for ( x = 0; x < 8; ++x )  ; transform one row per iteration
@@ -267,7 +275,7 @@ lpa:
 	; mm3 = 4th row [ M N O P ] 4
 
 			; 1) transpose upper-left quad
-	lea OUT,   [qwTemp];
+	lea OUT,   [qwTemp_PIC];
 
 	movq mm0,   [OUT + ROW_STRIDE * 0 ]
 
@@ -443,11 +451,11 @@ lpa:
 	mov INP,   [ebp+8];		; ; row 0
 	mov edi, 0x00;	; x = 0
  
-	lea TABLE,   [idct_tab_01234567]; ; row 0
-	lea OUT,   [qwTemp];
+	lea TABLE,   [idct_tab_01234567_PIC]; ; row 0
+	lea OUT,   [qwTemp_PIC];
 ;	 mov OUT, INP;	; algorithm writes data in-place  -> row 0
 
-	lea round_inv_col,   [idct_r_inv_col]
+	lea round_inv_col,   [idct_r_inv_col_PIC]
     jmp acc_idct_colloop1
 			
 	; for ( x = 0; x < 8; ++x )  ; transform one row per iteration
@@ -565,7 +573,7 @@ acc_idct_colloop1:
 	; mm3 = 4th row [ M N O P ] 4
 
 	; 1) transpose upper-left quad
-	lea OUT,   [qwTemp];
+	lea OUT,   [qwTemp_PIC];
 
 	movq mm0,   [OUT + ROW_STRIDE * 0 ]
 
@@ -725,6 +733,7 @@ acc_idct_colloop1:
 
 	movq  [ INP +ROW_STRIDE*7 ], mm3; ; store row 4
 
+	pop esi
 	pop edi
 	pop edx
 	pop ecx

@@ -53,26 +53,16 @@
 #include "mjpeg_types.h"
 
 static double aanscales[64];
-/*
-  #define NC_COS6      0.382683433//cos(6*pi/16)
-
-  #define NC_R_SQRT2   0.707106781// 1/sqrt(2)
-
-  #define NC_COS1SQRT2 1.387039845 //cos(1*pi/16)*sqrt(2)
-  #define NC_COS2SQRT2 1.306562965//cos(2*pi/16)*sqrt(2)
-  #define NC_COS3SQRT2 1.175875602//cos(3*pi/16)*sqrt(2)
-  #define NC_COS5SQRT2 0.785694958//cos(5*pi/16)*sqrt(2)
-  #define NC_COS6SQRT2 0.541196100//cos(6*pi/16)*sqrt(2)
-  #define NC_COS7SQRT2 0.275899379//cos(7*pi/16)*sqrt(2)
-*/
 
 #define NC_COS6      0.382683432365089771728459984030399//cos(6*pi/16)
 
 #define NC_R_SQRT2   0.707106781186547524400844362104849// 1/sqrt(2)
 
+#define NC_COS0SQRT2 1.0                                //cos(0*pi/16)*sqrt(2)
 #define NC_COS1SQRT2 1.38703984532214746182161919156644 //cos(1*pi/16)*sqrt(2)
 #define NC_COS2SQRT2 1.30656296487637652785664317342719 //cos(2*pi/16)*sqrt(2)
 #define NC_COS3SQRT2 1.17587560241935871697446710461126 //cos(3*pi/16)*sqrt(2)
+#define NC_COS4SQRT2 1.0                                //cos(4*pi/16)*sqrt(2)
 #define NC_COS5SQRT2 0.785694958387102181277897367657217//cos(5*pi/16)*sqrt(2)
 #define NC_COS6SQRT2 0.541196100146196984399723205366389//cos(6*pi/16)*sqrt(2)
 #define NC_COS7SQRT2 0.275899379282943012335957563669373//cos(7*pi/16)*sqrt(2)
@@ -85,11 +75,11 @@ void init_fdctdaan( void )
 {
 	int i, j;
 	static const double aansf[8] = {
-		1.0, 
+		1.0,           // sqrt(2) factor left out here...
 		NC_COS1SQRT2,
 		NC_COS2SQRT2,
 		NC_COS3SQRT2,
-		1.0,  // cos(4*pi/16) * sqrt(2) = 1.0 exactly
+		NC_COS4SQRT2,  // cos(4*pi/16) * sqrt(2) = 1.0 exactly
 		NC_COS5SQRT2,
 		NC_COS6SQRT2,
 		NC_COS7SQRT2
@@ -139,7 +129,6 @@ void fdctdaan(int16_t *block)
 		dataptr[0] = tmp10 + tmp11; /* phase 3 */
 		dataptr[4] = tmp10 - tmp11;
 
-//    z1 = (tmp12 + tmp13) * ((double) 0.707106781); /* c4 */
 		z1 = (tmp12 + tmp13) * ((double) NC_R_SQRT2); /* c4 */
 		dataptr[2] = tmp13 + z1;	/* phase 5 */
 		dataptr[6] = tmp13 - z1;
@@ -196,7 +185,6 @@ void fdctdaan(int16_t *block)
 		dataptr[0] = tmp10 + tmp11; /* phase 3 */
 		dataptr[32] = tmp10 - tmp11;
 
-//    z1 = (tmp12 + tmp13) * ((double) 0.707106781); /* c4 */
 		z1 = (tmp12 + tmp13) * ((double) NC_R_SQRT2); /* c4 */
 		dataptr[16] = tmp13 + z1; /* phase 5 */
 		dataptr[48] = tmp13 - z1;

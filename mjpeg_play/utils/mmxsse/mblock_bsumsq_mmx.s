@@ -58,7 +58,7 @@
 %define pbc [esp+24]
 
 SECTION .text
-global bsumsq_mmx
+global	bsumsq_mmx:function
 
 align 32
 bsumsq_mmx:

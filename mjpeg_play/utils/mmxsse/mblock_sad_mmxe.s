@@ -30,7 +30,7 @@
 
 SECTION .text
 
-global sad_00_mmxe
+global	sad_00_mmxe:function
 
 ; int sad_00(char *blk1,char *blk2,int lx,int h,int distlim);
 ; distlim unused - costs more to check than the savings of
@@ -90,16 +90,6 @@ nextrow00sse:
 	add ebx, edx		; ditto
 	paddd mm0, mm4		; accumulate difference
 
-	;psubd mm2, mm3		; decrease rowsleft
-	;movq mm5, mm1		; copy distlim
-	;pcmpgtd mm5, mm0	; distlim > dist?
-	;pand mm2, mm5		; mask rowsleft with answer
-	;movd ecx, mm2		; move rowsleft to ecx
-
-	;add eax, edx		; update pointer to next row
-	;add ebx, edx		; ditto
-	
-	;test ecx, ecx		; check rowsleft
 	sub  ecx, 2
 	jnz nextrow00sse
 
@@ -116,7 +106,7 @@ nextrow00sse:
 
 				
 
-global sad_00_Ammxe
+global	sad_00_Ammxe:function			
 		;; This is a special version that only does aligned accesses...
 		;; Wonder if it'll make it faster on a P-III
 		;; ANSWER:		 NO its slower hence no longer used.
@@ -203,7 +193,7 @@ nextrow00ssea:
 	ret	
 
 
-global sad_01_mmxe
+global	sad_01_mmxe:function
 
 ; int sad_01(char *blk1,char *blk2,int lx,int h);
 
@@ -281,7 +271,7 @@ nextrow01:
 	ret			; we now return you to your regular programming
 
 
-global sad_10_mmxe
+global	sad_10_mmxe:function
 
 ; int sad_10(char *blk1,char *blk2,int lx,int h);
 
@@ -366,7 +356,7 @@ nextrow10:
 	ret			; we now return you to your regular programming
 
 
-global sad_11_mmxe
+global	sad_11_mmxe:function
 
 ; int sad_11(char *blk1,char *blk2,int lx,int h);
 
@@ -462,7 +452,7 @@ nextrow11:
 	emms			; clear mmx registers
 	ret			; we now return you to your regular programming
 
-global sad_sub22_mmxe
+global	sad_sub22_mmxe:function
 
 ; int sad_sub22_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh);
 
@@ -530,7 +520,7 @@ nextrowfd:
 
 
 
-global sad_sub44_mmxe
+global	sad_sub44_mmxe:function
 
 ; int sad_sub44_mmxe(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
 
@@ -627,7 +617,7 @@ nextrowqd:
 
 
 ;;; CURRENTLY not used but used in testing as reference for tweaks...
-global mblockq_sad_REF
+global	mblockq_sad_REF:function
 
 ; void mblockq_sad_REF(char *blk1,char *blk2,int lx,int h,int *weightvec);
 ; eax = p1
@@ -767,7 +757,7 @@ firstrow1:
 
 
 
-global mblock_nearest4_sads_mmxe
+global	mblock_nearest4_sads_mmxe:function
 
 ; void mblock_nearest4_sads_mmxe(char *blk1,char *blk2,int lx,int h,int *weightvec);
 
@@ -915,7 +905,7 @@ firstrowe1:
 	emms
 	ret
 
-global mblock_sub22_nearest4_sads_mmxe
+global	mblock_sub22_nearest4_sads_mmxe:function
 
 ; void mblock_sub22_nearest4_sads_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh, int* resvec);
 

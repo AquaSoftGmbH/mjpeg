@@ -25,7 +25,7 @@
 ;                  unsigned char *cur,
 ;                  int lx, short *blk)
 
-global sub_pred_mmx
+global sub_pred_mmx:function
 
 SECTION .text
 
@@ -84,7 +84,7 @@ sub_top:
 ;                  int lx, short *blk)
 
 align 32
-global add_pred_mmx
+global add_pred_mmx:function
 add_pred_mmx:
 
 		push ebp				; save frame pointer

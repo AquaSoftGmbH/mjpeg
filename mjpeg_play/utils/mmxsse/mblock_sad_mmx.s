@@ -27,7 +27,7 @@
 
 SECTION .text
 
-global sad_00_mmx
+global	sad_00_mmx:function
 
 ; int sad_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h, int distlim);
 ; N.b. distlim is *ignored* as testing for it is more expensive than the
@@ -164,7 +164,7 @@ returnmm00:
 ;
 
 
-global sad_01_mmx
+global	sad_01_mmx:function
 
 ; int sad_01_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
@@ -402,7 +402,7 @@ nextrowmm01:
 ;
 
 
-global sad_10_mmx
+global	sad_10_mmx:function
 
 ; int sad_10_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
@@ -637,7 +637,7 @@ nextrowmm10:
 ;
 
 
-global sad_11_mmx
+global	sad_11_mmx:function
 
 ; int sad_11_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
@@ -883,7 +883,7 @@ nextrowmm11:
 	ret			; we now return you to your regular programming
 
 
-global sad_sub22_mmx
+global	sad_sub22_mmx:function
 
 ; int sad_sub22_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h);
 
@@ -986,7 +986,7 @@ nextrow:
 
 
 
-global sad_sub44_mmx
+global	sad_sub44_mmx:function
 
 ; int sad_sub44_mmx(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
 

@@ -27,7 +27,7 @@
 
 ;;; The no interpolation case...
 
-global predcomp_00_mmx
+global predcomp_00_mmx:function
 
 ;;; void predcomp_<ix><iy>_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
 
@@ -139,7 +139,7 @@ eightwide00:
 
 ;;; The x-axis interpolation case...
 
-global predcomp_10_mmx
+global predcomp_10_mmx:function
 
 
 align 32
@@ -258,7 +258,7 @@ eightwide10:
 
 ;;; The y-axis interpolation case...
 
-global predcomp_01_mmx
+global predcomp_01_mmx:function
 
 
 align 32
@@ -381,7 +381,7 @@ eightwide01:
 		
 ;;; The x-axis and y-axis interpolation case...
 		
-global predcomp_11_mmx
+global predcomp_11_mmx:function
 
 ;;; mm0 = [0,0,0,0]W
 ;;; mm1 = [1,1,1,1]W		

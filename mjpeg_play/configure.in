@@ -59,7 +59,9 @@ AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
 
-dnl configure AS and ASFLAGS
+dnl configure AS and ASFLAGS... a pity nasm doesn't take  flags similar to cc
+dnl CCAS=nasm
+dnl CCASFLAGS=
 AM_PROG_AS
 
 dnl Initialize libtool
