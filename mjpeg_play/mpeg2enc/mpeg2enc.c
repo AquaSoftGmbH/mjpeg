@@ -182,6 +182,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   -p         Generate header flags for 32 pull down of 24fps movie.\n");
 	fprintf(stderr,"   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	fprintf(stderr,"   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
+	fprintf(stderr,"   -s         Include a sequence header every GOP.\n" );
 	fprintf(stderr,"   -z         Assume bottom-first rather than top-first interlaced video\n");
 	printf("   -?         Print this lot out!\n");
 	exit(0);
@@ -469,7 +470,7 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpZNhOPz?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpsZNhOPz?")) != EOF)
 	{
 		switch(n) {
 
@@ -647,6 +648,9 @@ int main(argc,argv)
 			break;
 		case 'h':
 			param_hires_quant = 1;
+			break;
+		case 's' :
+			param_seq_hdr_every_gop = 1;
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
