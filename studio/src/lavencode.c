@@ -1737,9 +1737,5 @@ int enc_x,enc_y;
   /* loading the configuration */
   do_defaults(NULL, "load");
 
-  /* hiding or unhiding some some options */
-  if (encoding_syntax_style == 140)
-    gtk_widget_hide(button_divx);
-
   return (vbox_main);
 }

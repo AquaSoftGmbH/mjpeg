@@ -51,12 +51,21 @@ void set_interlacein_type(GtkWidget *widget, gpointer data);
 void set_addoutputnorm(GtkWidget *widget, gpointer data);
 void set_encoding_syntax(GtkWidget *widget, gpointer data);
 void set_structs_default(struct encodingoptions *point);
+void set_machine_default(struct machine *point);
+void set_distributed(void);
 void save_common(FILE *fp);
-void save_section(FILE *fp, struct encodingoptions *point,char section[LONGOPT]);
+void save_section(FILE *fp,struct encodingoptions *point,char section[LONGOPT]);
+void save_machine_data(FILE *fp, char section[LONGOPT]);
+void save_machine_section(FILE *fp,struct machine *point,char section[LONGOPT]);
 void set_common(void);
 void load_common(void);
+void show_common(void);
+void load_machine_data(char section[LONGOPT], struct machine *pointm);
+void load_machine_names(void);
 void load_section(char section[LONGOPT],struct encodingoptions *point);
 void print_encoding_options(char section[LONGOPT],struct encodingoptions *point);
+void print_machine_names(void);
+void print_machine_data(char section[LONGOPT], struct machine *pointm);
 void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
@@ -108,6 +117,7 @@ fourpelmotion = 2;
 twopelmotion  = 3;
 use_bicubic   = 0;
 saveonexit    = 1;
+
 }
 
 /* set the structs to default values */
@@ -155,6 +165,41 @@ int i;
   sprintf((*point).output_size,"as is");
 }
 
+/* Set the machine struct to a predefines value */
+void set_machine_default(struct machine *point)
+{
+  (*point).lav2wav   = 0;
+  (*point).mp2enc    = 0;
+  (*point).lav2yuv   = 0;
+  (*point).yuvdenoise= 0;
+  (*point).yuvscaler = 0;
+  (*point).mpeg2enc  = 0;
+  (*point).yuv2divx  = 0;
+  (*point).yuv2lav   = 0;
+}
+
+/* Set up the default values for the distributed encoding */
+void set_distributed()
+{
+struct machine *point;
+
+  machine_names = g_list_append (machine_names, "localhost");
+
+  point = &machine4mpeg1;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4mpeg2;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4vcd;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4svcd;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4divx;
+  set_machine_default(point);  /* set struct to the defaults */
+  point = &machine4yuv2lav;
+  set_machine_default(point);  /* set struct to the defaults */
+
+}
+
 /* set some mpeg2 specific options */
 void do_preset_mpeg2(struct encodingoptions *point)
 {
@@ -192,6 +237,101 @@ void do_preset_yuv2lav(struct encodingoptions *point)
   (*point).qualityfactor = 80;
   (*point).minGop = 3;
   sprintf((*point).codec,"AVI");
+}
+
+/* Load the machine number for the encoding process */
+void load_machine_data(char section[LONGOPT],struct machine *pointm)
+{
+int i,j;
+i=0;
+j=0;
+
+  j = g_list_length (machine_names);
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_lav2wav")))
+    {
+      if ( i <= j )
+         (*pointm).lav2wav = i;
+      else if (verbose) 
+         printf("Wrong value for lav2wav %i, setting to value: 0\n", i); 
+    }
+  
+  if (-1 != (i = cfg_get_int(section,"Machine_running_mp2enc")))
+    {
+      if ( i <= j )
+        (*pointm).mp2enc = i;
+      else if (verbose)
+         printf("Wrong value for mp2enc %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_lav2yuv")))
+    {
+      if ( i <= j )
+        (*pointm).lav2yuv = i;
+      else if (verbose) 
+         printf("Wrong value for lav2yuv %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_yuvdenoise")))
+    {
+      if ( i <= j )
+        (*pointm).yuvdenoise = i;
+      else if (verbose) 
+         printf("Wrong value for yuvdenoise %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_yuvscaler")))
+    {
+      if ( i <= j )
+        (*pointm).yuvscaler = i;
+      else if (verbose) 
+         printf("Wrong value for yuvscaler %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_mpeg2enc")))
+    {
+      if ( i <= j )
+        (*pointm).mpeg2enc = i;
+      else if (verbose) 
+         printf("Wrong value for mpeg2enc %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_yuv2divx")))
+    {
+      if ( i <= j )
+        (*pointm).yuv2divx = i;
+      else if (verbose) 
+         printf("Wrong value for yuv2divx %i, setting to value: 0\n", i); 
+    }
+
+  if (-1 != (i = cfg_get_int(section,"Machine_running_yuv2lav")))
+    {
+      if ( i <= j )
+        (*pointm).yuv2lav = i;
+      else if (verbose) 
+         printf("Wrong value for yuv2lav %i, setting to value: 0\n", i); 
+    }
+
+
+}
+/* load the Machine names used for distributed encoding */
+void load_machine_names()
+{
+char *val;
+int i;
+char test[50];
+
+  for ( i=1; i < 50 ; i++)
+  {
+    sprintf(test,"Encode_Machine_%i",i);
+ 
+    if ( NULL != (val = cfg_get_str("Machinenames",test)) )
+       machine_names = g_list_append (machine_names, val);
+    else
+       break; 
+  }
+
+   machine_names = g_list_first (machine_names);
 }
 
 /* load the common things */
@@ -359,6 +499,53 @@ int i;
       sprintf((*point).codec, val);
 }
 
+/* Print the names of the machines */
+void print_machine_names(void)
+{
+char machnames[1024];
+int i;
+
+for (i=0;i<1024;i++)
+  machnames[i] = '\0';
+
+  for(i=0; i<g_list_length(machine_names); i++)
+    {
+      sprintf(machnames, "%s%i=%s%s", machnames, i,
+      (char*) g_list_nth_data(machine_names, i),
+      (i==g_list_length(machine_names)-1)?"":", ");
+    }
+
+  machine_names = g_list_first (machine_names);
+
+  printf("\nMachine names: %s\n", machnames);
+}
+
+/* Print the loaded machine data */
+void print_machine_data(char section[LONGOPT], struct machine *pointm)
+{
+int i, len;
+char temp[LONGOPT];
+
+i=0;
+len=0;
+
+for (i = 0; i < LONGOPT; i++)
+  temp[i]='\0';
+
+  len = strlen (section);  
+
+  for ( i = 9; i < len ; i++)
+     sprintf( temp,"%s%c",temp, section[i] ); 
+
+  printf("\nMachines set for the %s process \n", temp);
+  printf("Machine for lav2wav %i,  for mp2enc %i,  for lav2yuv %i, \
+  for yuvdenoise %i \n", (*pointm).lav2wav, (*pointm).mp2enc, 
+          (*pointm).lav2yuv, (*pointm).yuvdenoise);
+  printf("Machine for yuvscaler %i,  for mpeg2enc %i,  for yuv2divx %i, \
+  for yuv2lav %i \n", (*pointm).yuvscaler, (*pointm).mpeg2enc, 
+          (*pointm).yuv2divx, (*pointm).yuv2lav);
+}
+
 /* show the current options */
 void print_encoding_options(char section[LONGOPT], struct encodingoptions *point)
 {
@@ -392,9 +579,25 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Codec : \'%s\' \n",                        (*point).codec);
 }
 
+/* Show the common variabels if wanted/needed */
+void show_common()
+{
+  printf("Encode input file set to \'%s\' \n",enc_inputfile);
+  printf("Encode output file set to \'%s\' \n",enc_outputfile);
+  printf("Encode input file set to \'%s\' \n",enc_audiofile);
+  printf("Encode video file set to \'%s\' \n",enc_videofile);
+  printf("Video player set to \'%s\' \n",selected_player);
+  printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
+  printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
+  printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
+  printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
+  printf("Encoding save on exit :\'%i\' \n",saveonexit);
+}
+
 void load_config_encode()
 {
 struct encodingoptions *point;
+struct machine *pointm;
 char filename[100];
 char section[LONGOPT];
 int have_config;
@@ -426,6 +629,8 @@ int have_config;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_yuv2lav(point);     /* set some DIVX specific options */
 
+  set_distributed(); /*set the distributed encoding variabels to the defaults*/
+
   /* Saved but not in the structs */
   encoding_syntax_style = 0;
 
@@ -433,18 +638,7 @@ int have_config;
   load_common();
   
   if (verbose)
-    {
-      printf("Encode input file set to \'%s\' \n",enc_inputfile);
-      printf("Encode output file set to \'%s\' \n",enc_outputfile);
-      printf("Encode input file set to \'%s\' \n",enc_audiofile);
-      printf("Encode video file set to \'%s\' \n",enc_videofile);
-      printf("Video player set to \'%s\' \n",selected_player);
-      printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
-      printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
-      printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
-      printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
-      printf("Encoding save on exit :\'%i\' \n",saveonexit);
-    }
+    show_common();
 
   strncpy(section,"MPEG1",LONGOPT);
   point = &encoding; 
@@ -481,6 +675,46 @@ int have_config;
   load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
+
+  load_machine_names();  /* fill the GList with machine names */
+  if (verbose)
+    print_machine_names(); 
+ 
+  strncpy(section,"Machines4MPEG1",LONGOPT);
+  pointm = &machine4mpeg1; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4MPEG2",LONGOPT);
+  pointm = &machine4mpeg2; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4VCD",LONGOPT);
+  pointm = &machine4vcd; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4SVCD",LONGOPT);
+  pointm = &machine4svcd; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4DIVX",LONGOPT);
+  pointm = &machine4divx; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
+
+  strncpy(section,"Machines4YUV2LAV",LONGOPT);
+  pointm = &machine4yuv2lav; 
+  load_machine_data(section, pointm);
+  if (verbose)
+    print_machine_data(section,pointm);
 
 }
 
@@ -590,6 +824,58 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
     fprintf(fp,"Encode_Codec = not used\n");
 }
 
+void save_machine_section(FILE *fp,struct machine *point, char section[LONGOPT])
+{
+  fprintf(fp,"[%s]\n",section);
+
+  fprintf(fp, "Machine_running_lav2wav = %i\n", (*point).lav2wav);
+  fprintf(fp, "Machine_running_mp2enc = %i\n", (*point).mp2enc);
+  fprintf(fp, "Machine_running_lav2yuv = %i\n", (*point).lav2yuv);
+  fprintf(fp, "Machine_running_yuvdenoise = %i\n", (*point).yuvdenoise);
+  fprintf(fp, "Machine_running_yuvscaler = %i\n", (*point).yuvscaler);
+  fprintf(fp, "Machine_running_mpeg2enc = %i\n", (*point).mpeg2enc);
+  fprintf(fp, "Machine_running_yuv2divx = %i\n", (*point).yuv2divx);
+  fprintf(fp, "Machine_running_yuv2lav = %i\n", (*point).yuv2lav);
+}
+
+/* Saving the Glist with all the machine names and the machine options */
+void save_machine_data(FILE *fp, char section[LONGOPT])
+{
+struct machine *point;
+int i, length;
+char test[50];
+
+  fprintf(fp,"\n[%s]\n",section);
+
+  machine_names = g_list_first(machine_names);
+  length = g_list_length(machine_names);
+  machine_names = g_list_next(machine_names); 
+
+  if (length > 1) 
+  { 
+    for ( i=1; i < length ;i++)
+      {
+       strcpy(test,machine_names->data);
+       fprintf(fp,"Encode_Machine_%i = %s\n", i, test); 
+       machine_names = g_list_next (machine_names);
+      }
+  }
+
+  point = &machine4mpeg1;
+  save_machine_section(fp,point,"Machines4MPEG1");
+  point = &machine4mpeg2;
+  save_machine_section(fp,point,"Machines4MPEG2");
+  point = &machine4vcd;
+  save_machine_section(fp,point,"Machines4VCD");
+  point = &machine4svcd;
+  save_machine_section(fp,point,"Machines4SVCD");
+  point = &machine4divx;
+  save_machine_section(fp,point,"Machines4DIVX");
+  point = &machine4yuv2lav;
+  save_machine_section(fp,point,"Machines4YUV2LAV");
+
+}
+
 /* Save the current encoding configuration */
 void save_config_encode()
 {
@@ -637,6 +923,8 @@ FILE *fp;
  
   point = &encoding_yuv2lav; 
   save_section(fp,point,"YUV2LAV");
+
+  save_machine_data(fp,"Machinenames");
  
   if (verbose) printf("Configuration of the encoding options saved\n");
 
