@@ -27,10 +27,10 @@ PREFIX_OUT="out"
 VCD_TYPE="dvd"
 DEC_TOOL="ffmpeg"
 ENC_TOOL="mpeg2enc"
+MATRICES="tmpgenc"
 QUALITY="best"
 CQMFILE="matrices.txt"
 STATFILE="statfile.log"
-VERSION="6"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -49,6 +49,9 @@ Y4MUNSHARP="y4munsharp"
 YUVDENOISE="yuvdenoise"
 YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
+
+SCRIPT_NAME="anytovcd.sh"
+SCRIPT_VERSION="7"
 
 # custom quant. matrices
 INTRA_KVCD="8,9,12,22,26,27,29,34,9,10,14,26,27,29,34,37,12,14,18,27,29,34,37,38,22,26,27,31,36,37,38,40,26,27,29,36,39,38,40,48,27,29,34,37,38,40,48,58,29,34,37,38,40,48,58,69,34,37,38,40,48,58,69,79"
@@ -77,7 +80,7 @@ probe_aud_bitrate ()
 {
     # $1 = audio input
     # $2 = audio track
-    echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
+    echo "`${FFMPEG} -i "$1" 2>&1 | \
     awk '/Audio:/ {print $8}' | head -${2} | tail -1`"
 }
 
@@ -85,7 +88,7 @@ probe_aud_fmt ()
 {
     # $1 = audio input
     # $2 = audio track
-    echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
+    echo "`${FFMPEG} -i "$1" 2>&1 | \
     awk '/Audio:/ {print $4}' | sed s/,// | head -${2} | tail -1`"
 }
 
@@ -93,13 +96,13 @@ probe_aud_freq ()
 {
     # $1 = audio input
     # $2 = audio track
-    echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
+    echo "`${FFMPEG} -i "$1" 2>&1 | \
     awk '/Audio:/ {print $5}' | sed s/,// | head -${2} | tail -1`"
 }
 
 probe_vid_fps ()
 {
-    ${TRANSCODE} -i "$1" -c 0-1 -y yuv4mpeg -o /tmp/tmp.y4m >/dev/null 2>&1
+    ${FFMPEG} -i "$1" -f yuv4mpegpipe -t 1 -y /tmp/tmp.y4m >/dev/null 2>&1
     echo "`head -1 /tmp/tmp.y4m | awk '{print $4}' | cut -c 2-`"
     rm -f /tmp/tmp.y4m
 }
@@ -222,7 +225,7 @@ show_help ()
     echo "      pal (default), ntsc or ntsc_film"
     echo "-o    output files prefix (default = \"out\")"
     echo "-p    output type (default = dvd) "
-    echo "      avail. : cvd, dvd, dvd_wide, mvcd,"
+    echo "      avail. : cvd, cvd_wide, dvd, dvd_wide, mvcd,"
     echo "               svcd and vcd       "
     echo "-q    quality (default = best)    "
     echo "      avail. : best, good, fair   "
@@ -241,17 +244,32 @@ show_help ()
     echo "-V    number of volumes (1)       "
 }
 
+show_error ()
+{
+    echo "**ERROR: [${SCRIPT_NAME}] $1"
+}
+
+show_info ()
+{
+    echo "   INFO: [${SCRIPT_NAME}] $1"
+}
+
+show_warn ()
+{
+    echo "++ WARN: [${SCRIPT_NAME}] $1"
+}
+
 test_bin ()
 {
     if ! which ${1} >/dev/null; then
 
-        echo "Error : ${1} not present."
+        show_error "${1} binary not present."
         exit 2
 
     fi
 }
 
-for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
+for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M}; do
 
     test_bin ${BIN}
 
@@ -278,7 +296,7 @@ do
     R)    VID_FPS_SRC="${OPTARG}";;
     t)    FILTER_TYPE="${OPTARG}";;
     T)    DURATION="${OPTARG}";;
-    v)    echo "$0 version ${VERSION}"; exit 0;;
+    v)    echo "${SCRIPT_NAME} version ${SCRIPT_VERSION}"; exit 0;;
     V)    VOLUMES="${OPTARG}";;
     \?)   show_help; exit 0;;
     esac
@@ -286,13 +304,16 @@ done
 
 if test "${VIDEO_SRC}" == "" || ! test -r "${VIDEO_SRC}"; then
 
-    echo "Error : input file not specified or not present."
+    show_error "input file not specified or not present."
     show_help
     exit 2
 
 fi
 
 FFMPEG_VERSION="`probe_ffmpeg_version`"
+
+AUD_TRACK="`range_check ${AUD_TRACK} 1 99`"
+FFMPEG_AUD_TRACK="`${FFMPEG} -i \"${AUDIO_SRC}\" 2>&1 | awk '/Audio:/ {sub("^#","",$2); print $2}' | head -${AUD_TRACK} | tail -1`"
 
 AUD_BITRATE_SRC="`probe_aud_bitrate "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
@@ -329,6 +350,7 @@ fi
 # input pixel/sample aspect ratio
 if test "${VID_SAR_SRC}" == ""; then
 
+    test_bin ${TRANSCODE}
     VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
 
 fi
@@ -338,11 +360,13 @@ VID_SAR_D_SRC="`echo ${VID_SAR_SRC} | cut -d: -f2`"
 
 if test "${VID_SAR_N_SRC}" == "0" || test "${VID_SAR_D_SRC}" == "0"; then
 
+    show_warn "Unknown pixel aspect ratio, defaulting to 1:1"
     VID_SAR_SRC="1:1"
 
 fi
 
 FF_DEC="${FFMPEG} -i \"${VIDEO_SRC}\""
+FF_DEC_AFLAGS="-map ${FFMPEG_AUD_TRACK} -i \"${AUDIO_SRC}\""
 FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 MPLEX="${MPLEX} -v 1"
@@ -395,7 +419,7 @@ elif test "${FILTERING}" == "heavy"; then
 
 else
 
-    echo "Error : the specified filtering method is inexistant."
+    show_error "the specified filtering method is inexistant."
     show_help
     exit 2
 
@@ -404,22 +428,19 @@ fi
 # quality presets
 if test "${QUALITY}" == "best"; then
 
-    MATRICES="default"
     QUANT="4"
 
 elif test "${QUALITY}" == "good"; then
 
-    MATRICES="tmpgenc"
     QUANT="5"
 
 elif test "${QUALITY}" == "fair"; then
 
-    MATRICES="kvcd"
     QUANT="6"
 
 else
 
-    echo "Error : the specified quality preset is inexistant."
+    show_error "the specified quality preset is inexistant."
     show_help
     exit 2
 
@@ -449,6 +470,29 @@ if test "${VCD_TYPE}" == "cvd"; then
     AUD_CHANNELS_OUT="2"
     
     # default volume size in mbytes (m = 1000)
+    VOL_SIZE="4700"
+
+elif test "${VCD_TYPE}" == "cvd_wide"; then
+
+    FF_ENC="${FF_ENC} -vcodec mpeg2video -f rawvideo -bufsize 224"
+    MPEG2ENC="${MPEG2ENC} -f 8"
+    MPLEX="${MPLEX} -f 8"
+    
+    VID_FMT_OUT="m2v"
+    VID_ILACE_OUT="${VID_ILACE_SRC}"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="7500"
+
+    VID_SAR_525_OUT="80:33"
+    VID_SAR_625_OUT="236:81"
+    VID_SIZE_525_OUT="352x480"
+    VID_SIZE_625_OUT="352x576"
+    
+    AUD_FMT_OUT="ac3"
+    AUD_BITRATE_OUT="192"
+    AUD_FREQ_OUT="48000"
+    AUD_CHANNELS_OUT="2"
+    
     VOL_SIZE="4700"
 
 elif test "${VCD_TYPE}" == "dvd"; then
@@ -575,7 +619,7 @@ elif test "${VCD_TYPE}" == "vcd"; then
 
 else
 
-    echo "Error : the specified output type/profile is inexistant."
+    show_error "the specified output type/profile is inexistant."
     show_help
     exit 2
 
@@ -638,6 +682,13 @@ else
 
 fi
 
+# cvd_wide "preset" for y4mscaler
+if test "${VCD_TYPE}" == "cvd_wide"; then
+
+    Y4MSCALER="${Y4MSCALER} -O sar=${VID_SAR_OUT} -O size=${VID_SIZE_OUT}"
+
+fi
+
 # pipe buffer
 if which ${BFR} >/dev/null; then
 
@@ -658,7 +709,7 @@ elif test "${DEC_TOOL}" == "ffmpeg"; then
 
 else
 
-    echo "Error : the specified video decoder tool is not used by this script."
+    show_error "the specified video decoder tool is not used by this script."
     show_help
     exit 2
 
@@ -696,7 +747,7 @@ elif test "${FILTER_TYPE}" == "unsharp"; then
 
 else
 
-    echo "Error : the specified filter tool is not used by this script."
+    show_error "the specified filter tool is not used by this script."
     show_help
     exit 2
 
@@ -782,10 +833,12 @@ elif test "${ENC_TYPE}" == "abr"; then
         # input length (frames)
         if echo "${VID_FMT_SRC}" | grep -e mpeg1 -e mpeg2 >/dev/null 2>&1; then
 	
-	    VID_LENGTH_SRC="`probe_mpeg_length "${VIDEO_SRC}"`"
+            test_bin ${TCCAT} && test_bin ${TCDEMUX}
+            VID_LENGTH_SRC="`probe_mpeg_length "${VIDEO_SRC}"`"
 
         else
 
+            test_bin ${TCPROBE}
             VID_LENGTH_SRC="`probe_vid_length "${VIDEO_SRC}"`"
 
         fi
@@ -837,7 +890,7 @@ elif test "${ENC_TOOL}" == "mpeg2enc"; then
 
 else
 
-    echo "Error : the specified video encoder tool is not used by this script."
+    show_error "the specified video encoder tool is not used by this script."
     show_help
     exit 2
 
@@ -858,20 +911,32 @@ fi
 # audio decoder/encoder
 if test "${ACOPY_MODE}" == "1"; then
 
-    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
+    AUDIO_DECODER="${FFMPEG} ${FF_DEC_AFLAGS}"
     AUDIO_ENCODER="-acodec copy -y \"${AUDIO_OUT}\""
 
 elif test "${AUD_FREQ_SRC}" == "${AUD_FREQ_OUT}"; then
 
-    AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
+    AUDIO_DECODER="${FFMPEG} ${FF_DEC_AFLAGS}"
     AUDIO_ENCODER="-ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y \"${AUDIO_OUT}\""
 
 else
 
-    AUDIO_DECODER="${FFMPEG} -v 0 -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\" -f au -y /dev/stdout |"
+    AUDIO_DECODER="${FFMPEG} ${FF_DEC_AFLAGS} -v 0 -f au -y /dev/stdout |"
     AUDIO_ENCODER="${FFMPEG} -f au -i /dev/stdin -ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y \"${AUDIO_OUT}\""
 
 fi
+
+# output some info.
+show_info "===== SOURCE STREAM ====================="
+show_info "           frame size: ${VID_SIZE_SRC}"
+show_info "           frame rate: ${VID_FPS_SRC}"
+show_info "          interlacing: ${VID_ILACE_SRC}"
+show_info "   pixel aspect ratio: ${VID_SAR_SRC}"
+show_info "===== OUTPUT STREAM ====================="
+show_info "           frame size: ${VID_SIZE_OUT}"
+show_info "           frame rate: ${VID_FPS_OUT}"
+show_info "          interlacing: ${VID_ILACE_OUT}"
+show_info "   pixel aspect ratio: ${VID_SAR_OUT}"
 
 # video "analyse"
 if ! test "${BLIND_MODE}" == "1" && test "${ENC_TYPE}" == "abr"; then
@@ -881,7 +946,7 @@ if ! test "${BLIND_MODE}" == "1" && test "${ENC_TYPE}" == "abr"; then
     if test "${ENC_TOOL}" == "mpeg2enc"; then
     
         QUANT="`mpeg2enc_statfile_analyse ${STATFILE}`"
-        QUANT="`range_check $QUANT 4 31`"
+        QUANT="`range_check $QUANT 3 31`"
         ENCODER="${MPEG2ENC} -b ${VID_MAXRATE_OUT} -q ${QUANT} -o ${VIDEO_OUT}"
 
     fi
