@@ -58,34 +58,34 @@ int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
 #define LONGOPT 25
-struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
+struct encodingoptions{ char notblacksize[LONGOPT];    /**< lav2yuv options */
                         int  outputformat;           
                         int  droplsb;
                         int  noisefilter;
                         char interlacecorr[LONGOPT];
-                        char input_use[LONGOPT];     /* yuvscaler options */
+                        char input_use[LONGOPT];     /**< yuvscaler options */
                         char output_size[LONGOPT];
                         char mode_keyword[LONGOPT];
                         char ininterlace_type[LONGOPT];
                         int  addoutputnorm;
-                        int  audiobitrate;               /* audio options */
+                        int  audiobitrate;               /**< audio options */
                         int  outputbitrate;
                         char forcestereo[SHORTOPT];
                         char forcemono[SHORTOPT];
                         char forcevcd[SHORTOPT];
-                        int  use_yuvdenoise;            /* filter options */
-                        int  bitrate;                 /* mpeg2enc options */
+                        int  use_yuvdenoise;            /**< filter options */
+                        int  bitrate;                 /**< mpeg2enc options */
                         int  qualityfactor;
                         int  minGop;
                         int  maxGop;
                         int  sequencesize;
                         int  nonvideorate;
                         int  searchradius;
-                        int  muxformat;                  /* mplex options */
+                        int  muxformat;                  /**< mplex options */
                         char muxvbr[SHORTOPT];
                         int  streamdatarate;
-			int  decoderbuffer;     /* also used for mpeg2enc */
-                        char codec[LONGOPT];           /* yuv2divx option */
+			int  decoderbuffer;     /**< also used for mpeg2enc */
+                        char codec[LONGOPT];           /**< yuv2divx option */
           /* for the other options needed for divx, other fields are used */
                       };
 /************************* END *********************/
@@ -115,7 +115,21 @@ struct machine machine4divx;
 struct machine machine4yuv2lav;
 
 GList *machine_names;
-int enhanced_settings;
+int enhanced_settings; /*use a different set of machines for every task (rsh)*/
+
+/* Struct that holds the data of the script we want to create */
+struct f_script {
+                int mpeg1;    /* Bit 0 (1) = Audio */
+                int mpeg2;    /* Bit 1 (2) = Video */
+                int vcd;      /* Bit 2 (4) = Mplex */
+                int svcd;     /* Bit 3 (8) = Full  */
+                int divx;
+                int yuv2lav;
+              };
+/**************************************************************/
+struct f_script script;
+char script_name [FILELEN]; /* used for the script name in script generation */
+int script_use_distributed; /*used for check of usage of distributed encoding*/ 
 
 char *record_dir;
 int scene_detection_width_decimation;
@@ -166,6 +180,26 @@ void open_mpeg_window(GtkWidget *widget, gpointer data);
 
 /* lavencode_distributed.c */
 void open_distributed_window(GtkWidget *widget, gpointer data);
+
+/* lavencode_script.c */
+void open_scriptgen_window(GtkWidget *widget, gpointer data);
+void command_2string(char **command, char *string);
+void create_command_mp2enc(char *mp2enc_command[256], int use_rsh,
+  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
+void create_command_lav2wav(char *lav2wav_command[256], int use_rsh,
+           struct encodingoptions *option, struct machine *machine4);
+void create_command_lav2yuv(char *lav2yuv_command[256], int use_rsh,
+          struct encodingoptions *option, struct machine *machine4);
+void create_command_yuvscaler(char *lav2yuv_command[256], int use_rsh,
+          struct encodingoptions *option, struct machine *machine4);
+void create_command_mpeg2enc(char* mpeg2enc_command[256], int use_rsh,
+  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
+void create_command_yuv2divx(char* yuv2divx_command[256], int use_rsh,
+  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
+void create_command_yuv2lav(char* yuv2divx_command[256], int use_rsh,
+  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
+void create_command_mplex(char* mplex_command[256], int use_rsh,
+  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 
 /* studio.c */
 void global_open_location(char *location);

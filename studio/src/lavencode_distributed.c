@@ -55,7 +55,6 @@ void set_lav2yuv   (GtkWidget *menu_itme, gpointer data);
 void set_yuvdenoise(GtkWidget *menu_itme, gpointer data);
 void set_yuvscaler (GtkWidget *menu_itme, gpointer data);
 void set_yuv2divx  (GtkWidget *menu_itme, gpointer data);
-void set_up_defaults(void);
 void create_menu4mpeg2enc  (GtkWidget *table, int *tx, int *ty);
 void create_menu4yuv2lav   (GtkWidget *table, int *tx, int *ty);
 void create_menu4lav2yuv    (GtkWidget *table, int *tx, int *ty);
@@ -72,6 +71,9 @@ void menu_lav2yuv    (void);
 void menu_yuvdenoise (void);
 void menu_yuvscaler  (void);
 void menu_yuv2divx   (void);
+
+/* Only for this file, same names used in other files */
+static void set_up_defaults(void);
 
 /* Some Constant values */
 #define NUMBER_MACHINE 10
@@ -94,7 +96,9 @@ GList *temp_mnames;
 /* =============================================================== */
 /* Start of the code */
 
-/* We add the items to the "menus" and show them */
+/**
+    We add the items to the "menus" and show them
+ @param val unused callback parameter */
 void add_item_to_menu(gchar *val)
 {
   removename();
@@ -147,7 +151,7 @@ do_not_insert = 0;
     }
 }
 
-/* Here we check if the machine number hast to be changed after a machine
+/* Here we check if the machine number has to be changed after a machine
  * was removed from the list */
 void check_numbers (int number)
 {
@@ -416,8 +420,6 @@ void set_mname (GtkWidget *menu_item, gpointer data)
 void set_lav2wav (GtkWidget *menu_item, gpointer data)
 {
 int i;
-
-  printf("\n name :%s ,nummer %i \n",(char*)data, g_list_length(temp_mnames));
  
   for(i=0; i < g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0 )
@@ -816,8 +818,6 @@ void work_values(gpointer data)
 {
 int i;
 
-  printf("\n Wert von enh:%i und data: \"%s\"\n",enhanced_settings,(char*)data);
-
   point = &machine4mpeg1; /* fallback should never be used ;) */
 
   if ((strcmp((char*)data,"MPEG1") == 0) || (enhanced_settings == 0))
@@ -878,21 +878,6 @@ void set_up_defaults()
 void accept_option (gpointer data)
 {
 int i;
-
-  if ((strcmp((char*)data,"MPEG1") == 0) || (enhanced_settings == 0))
-    point = &machine4mpeg1;
-  if ((strcmp((char*)data,"MPEG2") == 0) && (enhanced_settings == 1))
-    point = &machine4mpeg2;
-  if ((strcmp((char*)data,"VCD") == 0)   && (enhanced_settings == 1))
-    point = &machine4vcd;
-  if ((strcmp((char*)data,"SVCD") == 0)  && (enhanced_settings == 1))
-    point = &machine4svcd;
-  if ((strcmp((char*)data,"DivX") == 0)  && (enhanced_settings == 1))
-    point = &machine4divx;
-  if ((strcmp((char*)data,"MJPEG") == 0) && (enhanced_settings == 1))
-    point = &machine4yuv2lav;
-  else 
-    point = &machine4mpeg1; /* fallback should never be used ;) */
 
   /* Copy back the values */
   (*point).lav2wav   = tempmach.lav2wav;

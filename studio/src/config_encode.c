@@ -53,16 +53,19 @@ void set_encoding_syntax(GtkWidget *widget, gpointer data);
 void set_structs_default(struct encodingoptions *point);
 void set_machine_default(struct machine *point);
 void set_distributed(void);
+void set_scripting_defaults (void);
 void save_common(FILE *fp);
 void save_section(FILE *fp,struct encodingoptions *point,char section[LONGOPT]);
 void save_machine_data(FILE *fp, char section[LONGOPT]);
 void save_machine_section(FILE *fp,struct machine *point,char section[LONGOPT]);
+void save_script_data(FILE *fp, char section[LONGOPT]);
 void set_common(void);
 void load_common(void);
 void show_common(void);
 void load_machine_data(char section[LONGOPT], struct machine *pointm);
 void load_machine_names(void);
 void load_section(char section[LONGOPT],struct encodingoptions *point);
+void load_script_data(void);
 void print_encoding_options(char section[LONGOPT],struct encodingoptions *point);
 void print_machine_names(void);
 void print_machine_data(char section[LONGOPT], struct machine *pointm);
@@ -200,6 +203,24 @@ struct machine *point;
   point = &machine4yuv2lav;
   set_machine_default(point);  /* set struct to the defaults */
 
+}
+
+/* Set the defaults for the scripting */
+void set_scripting_defaults (void)
+{
+int i; 
+
+for (i=0; i < FILELEN; i++)
+   script_name[i]  ='\0';
+ 
+  script_use_distributed = 0;
+
+  script.mpeg1   = 0;
+  script.mpeg2   = 0;
+  script.vcd     = 0;
+  script.svcd    = 0;
+  script.divx    = 0;
+  script.yuv2lav = 0;
 }
 
 /* set some mpeg2 specific options */
@@ -504,6 +525,46 @@ int i;
       sprintf((*point).codec, val);
 }
 
+void load_script_data(void)
+{
+int i;
+char *val;
+
+  if ( NULL != (val = cfg_get_str("Scriptdata","Script_name")))
+    sprintf(script_name, val);
+  else 
+    sprintf(script_name,"script.sh");
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_distributed")))
+    if ( (i == 0) || (i == 1) )
+      script_use_distributed = i;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_MPEG1")))
+    if ( i >= 0 || i <= 8)
+      script.mpeg1 = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_MPEG2")))
+    if ( i >= 0 || i <= 8)
+      script.mpeg2 = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_VCD")))
+    if ( i >= 0 || i <= 8)
+      script.vcd = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_SVCD")))
+    if ( i >= 0 || i <= 8)
+      script.svcd = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_DIVX")))
+    if ( i >= 0 || i <= 8)
+      script.divx = i;;
+
+  if ( -1 != (i = cfg_get_int("Scriptdata","Script_YUV2LAV")))
+    if ( i >= 0 || i <= 8)
+      script.yuv2lav = i;;
+
+}
+
 /* Print the names of the machines */
 void print_machine_names(void)
 {
@@ -641,6 +702,9 @@ int have_config;
   /* Saved but not in the structs */
   encoding_syntax_style = 0;
 
+  /* set the defaults for the scripting options */
+  set_scripting_defaults ();
+
   set_common();
   load_common();
   
@@ -722,6 +786,8 @@ int have_config;
   load_machine_data(section, pointm);
   if (verbose)
     print_machine_data(section,pointm);
+
+  load_script_data();
 
 }
 
@@ -885,6 +951,23 @@ char test[50];
 
 }
 
+/* Save the Data used fo script generation */
+void save_script_data(FILE *fp, char section[LONGOPT])
+{
+
+  fprintf(fp, "[%s]\n",section);
+
+  fprintf(fp, "Script_name = %s\n", script_name);
+  fprintf(fp, "Script_distributed = %i\n", script_use_distributed);
+  fprintf(fp, "Script_MPEG1 = %i\n", script.mpeg1);
+  fprintf(fp, "Script_MPEG2 = %i\n", script.mpeg2);
+  fprintf(fp, "Script_VCD = %i\n", script.vcd);
+  fprintf(fp, "Script_SVCD = %i\n", script.svcd);
+  fprintf(fp, "Script_DIVX = %i\n", script.divx);
+  fprintf(fp, "Script_YUV2LAV = %i\n", script.yuv2lav);
+
+}
+
 /* Save the current encoding configuration */
 void save_config_encode()
 {
@@ -934,6 +1017,8 @@ FILE *fp;
   save_section(fp,point,"YUV2LAV");
 
   save_machine_data(fp,"Machinenames");
+
+  save_script_data(fp,"Scriptdata");
  
   if (verbose) printf("Configuration of the encoding options saved\n");
 

@@ -641,7 +641,6 @@ void load_config()
 void save_config()
 {
 	char filename[100], directory[100];
-	int i;
 	FILE *fp;
 
 	sprintf(filename,"%s/%s/%s",getenv("HOME"),".studio", studioconfigfile);

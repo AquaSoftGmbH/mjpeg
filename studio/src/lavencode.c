@@ -79,7 +79,6 @@ int number_of_frames(char *editlist);
 void status_progress_window(void);
 void stop_encoding_process(GtkWidget *widget, gpointer data);
 void show_executing(char *command);
-void command2string(char **command, char *string);
 void callback_pipes(gpointer data, gint source,GdkInputCondition condition);
 void audio_convert(void);
 void video_convert(void);
@@ -115,9 +114,6 @@ void set_task(GtkWidget *widget, gpointer data);
 void play_output_stream ( GtkWidget *widget, gpointer data);
 void play_video_stream ( GtkWidget *widget, gpointer data);
 void check_mpegname(gpointer data);
-void create_command_mpeg2enc(char *mpeg2enc_command[256]);
-void create_command_yuv2divx(char *mpeg2enc_command[256]);
-void create_command_yuv2lav(char *yuv2lav_command[256]);
 void set_enhanced (GtkWidget *widget, gpointer data);
 
 /*************************** Programm starts here **************************/
@@ -422,287 +418,44 @@ void show_executing(char command[500])
   gtk_widget_show (execute_status);
 }
 
-void command2string(char **command, char *string)
-{
-   int i;
-
-   string[0] = '\0';
-   for (i=0;command[i]!=NULL;i++)
-   {
-      sprintf(string, "%s %s", string, command[i]); 
-   }
-}
-
 /* here the audio command is created */
 void audio_convert()
 {
-   int n;
    char *mp2enc_command[256];
    char *lav2wav_command[256];
    char command[500];
    char command_temp[256];
-   static char temp1[16], temp2[16];
 
-   n=0;
    error = 0;
    progress_encoding = 1;
 
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding audio: lav2wav | mp2enc");
 
-   if (machine4mpeg1.mp2enc != 0)
-     {
-       lav2wav_command[n] = "rsh"; n++;
-       lav2wav_command[n] = (char*) 
-                 g_list_nth_data(machine_names, machine4mpeg1.mp2enc); n++;
-     }
-
-   mp2enc_command[n] = app_name(MP2ENC); n++;
-   mp2enc_command[n] = "-v 2"; n++;
-   if ((*pointenc).forcevcd[0] == '-')
-     {
-       mp2enc_command[n] = (*pointenc).forcevcd;
-       n++;
-     }
-   else                   /* If VCD is set no other Options are needed */
-     {
-        mp2enc_command[n] = "-b"; n++;
-        sprintf(temp1,"%i", (*pointenc).audiobitrate);
-        mp2enc_command[n] = temp1; n++;
-        mp2enc_command[n] = "-r"; n++;
-        sprintf(temp2, "%i00", (*pointenc).outputbitrate);
-        mp2enc_command[n] = temp2; n++;
-       if ((*pointenc).forcemono[0] == '-')
-         {
-           mp2enc_command[n] = (*pointenc).forcemono;
-           n++;
-         }
-       if ((*pointenc).forcestereo[0] == '-')
-         {
-           mp2enc_command[n] = (*pointenc).forcestereo;
-           n++;
-         }
-     }
-   mp2enc_command[n] = "-o"; n++;         /* Setting output file name */
-   mp2enc_command[n] = enc_audiofile; n++;
-   mp2enc_command[n] = NULL;
+   /* Calling void where the command is created */
+   create_command_mp2enc(mp2enc_command, 0 , pointenc, &machine4mpeg1, ".mp2");
    
-   start_pipe_command(mp2enc_command, MP2ENC); /* mp2enc */
+   start_pipe_command(mp2enc_command, MP2ENC); /* lav2wav */
 
-   n = 0;
-
-   printf("\n test lav2wav %i \n",  machine4mpeg1.lav2wav);
-
-   if (machine4mpeg1.lav2wav != 0)
-     {
-       lav2wav_command[n] = "rsh"; n++;
-       lav2wav_command[n] = (char*) 
-                 g_list_nth_data(machine_names, machine4mpeg1.lav2wav); n++;
-     }
-
-   lav2wav_command[n] = app_name(LAV2WAV); n++;
-   lav2wav_command[n] = enc_inputfile; n++;
-   lav2wav_command[n] = NULL;
+   /* Calling void where the command is created */
+   create_command_lav2wav(lav2wav_command, 0 , pointenc, &machine4mpeg1);
  
    start_pipe_command(lav2wav_command, LAV2WAV); /* lav2wav */
 
-   command2string(lav2wav_command, command_temp);
+   command_2string(lav2wav_command, command_temp);
    sprintf(command, "%s |", command_temp);
-   command2string(mp2enc_command, command_temp);
+   command_2string(mp2enc_command, command_temp);
    sprintf(command, "%s %s", command, command_temp);
    if (verbose)
       printf("Executing: %s\n", command);
    show_executing(command);
 }
 
-/* Here the yuv2divx command is set together with all options */
-void create_command_yuv2lav(char *yuv2lav_command[256])
-{
-int n;
-static char temp1[4], temp2[4], temp3[6];
-n=0;
-
-yuv2lav_command[n] = app_name(YUV2LAV_E); n++;
-
-if (strlen((*pointenc).codec) > 3)
-  {
-    yuv2lav_command[n] = "-f"; n++;
-
-    if (strcmp ((*pointenc).codec, "AVI fields reversed") == 0) 
-      yuv2lav_command[n] = "A";
-    else if (strcmp ((*pointenc).codec, "Quicktime") == 0)
-      yuv2lav_command[n] = "q";
-    else if (strcmp ((*pointenc).codec, "Movtar") == 0)
-      yuv2lav_command[n] = "m";
-    
-    n++;
-  } 
-
-if ( (*pointenc).minGop != 3 )
-  {
-    yuv2lav_command[n] = "-I"; n++;
-    sprintf(temp1, "%i", (*pointenc).minGop);
-    yuv2lav_command[n] = temp1; n++; 
-  }
-
-if ( (*pointenc).qualityfactor != 80)
-  {
-    yuv2lav_command[n] = "-q"; n++;
-    sprintf(temp2, "%i", (*pointenc).qualityfactor);
-    yuv2lav_command[n] = temp2; n++;
-  }
-
-if ( (*pointenc).sequencesize != 0)
-  { 
-    yuv2lav_command[n] = "-m"; n++;
-    sprintf(temp3, "%i", (*pointenc).sequencesize);
-    yuv2lav_command[n] = temp3; n++;
-  }
-
-yuv2lav_command[n] = "-o"; n++;
-yuv2lav_command[n] = enc_outputfile; n++;
-yuv2lav_command[n] = NULL;
-}
-
-/* Here the yuv2divx command is set together with all options */
-void create_command_yuv2divx(char *yuv2divx_command[256])
-{
-int n;
-static char temp1[4], temp2[4];
-n=0;
-
-yuv2divx_command[n] = app_name(YUV2DIVX); n++;
-
-if ((*pointenc).audiobitrate != 0) {
-   yuv2divx_command[n] = "-a"; n++; 
-   sprintf(temp1, "%i", (*pointenc).audiobitrate);
-   yuv2divx_command[n] = temp1; n++;
-  }
-
-yuv2divx_command[n] = "-A"; n++;
-yuv2divx_command[n] = enc_inputfile; n++;
-
-if ((*pointenc).bitrate != 0) {
-   yuv2divx_command[n] = "-b"; n++; 
-   sprintf(temp2, "%i", (*pointenc).bitrate);
-   yuv2divx_command[n] = temp2; n++;
-  }
-
-yuv2divx_command[n] = "-E"; n++;
-yuv2divx_command[n] = (*pointenc).codec; n++;
-
-yuv2divx_command[n] = "-o"; n++;
-yuv2divx_command[n] = enc_outputfile; n++;
-yuv2divx_command[n] = NULL;
-
-}
-
-/* Here the mpeg2enc command is set together with all options */
-void create_command_mpeg2enc(char *mpeg2enc_command[256])
-{
-int n;
-static char temp1[4], temp2[4], temp3[4], temp4[4], temp5[4], temp6[4];
-static char temp7[4], temp8[4], temp9[4], temp10[4], temp11[4];
-
-n=0;
-
-mpeg2enc_command[n] = app_name(MPEG2ENC); n++;
-mpeg2enc_command[n] = "-v1"; n++;
-
-if((*pointenc).bitrate != 0) {
-   mpeg2enc_command[n] = "-b"; n++;
-   sprintf(temp1, "%i", (*pointenc).bitrate);
-   mpeg2enc_command[n] =  temp1; n++;
-  }
-if((*pointenc).qualityfactor != 0) {
-   mpeg2enc_command[n] = "-q"; n++;
-   sprintf(temp2, "%i", (*pointenc).qualityfactor);
-   mpeg2enc_command[n] =  temp2; n++;
-  }
-if((*pointenc).searchradius != 16) {
-   sprintf(temp3, "%i", (*pointenc).searchradius);
-   mpeg2enc_command[n] =  "-r"; n++;
-   mpeg2enc_command[n] =  temp3; n++;
-  }
-if ( fourpelmotion != 2 )
-  {
-    sprintf(temp4,"%i", fourpelmotion);
-    mpeg2enc_command[n] = "-4"; n++;
-    mpeg2enc_command[n] = temp4; n++;
-  }
-if ( twopelmotion != 3 )
-  {
-    sprintf(temp5,"%i", twopelmotion);
-    mpeg2enc_command[n] = "-2"; n++;
-    mpeg2enc_command[n] = temp5; n++;
-  }
-if((*pointenc).decoderbuffer != 46) {
-   sprintf(temp6, "%i", (*pointenc).decoderbuffer);
-   mpeg2enc_command[n] =  "-V"; n++;
-   mpeg2enc_command[n] =  temp6; n++;
-  }
-if((*pointenc).sequencesize != 0) {
-   sprintf(temp7, "%i", (*pointenc).sequencesize);
-   mpeg2enc_command[n] =  "-S"; n++;
-   mpeg2enc_command[n] =  temp7; n++;
-  }
-if(((*pointenc).sequencesize != 0i) && ((*pointenc).nonvideorate != 0)) {
-   sprintf(temp8, "%i", (*pointenc).nonvideorate);
-   mpeg2enc_command[n] =  "-B"; n++;
-   mpeg2enc_command[n] =  temp8; n++;
-  }
-if ( ( (*pointenc).minGop != 12 ) && 
-     ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
-   sprintf(temp9, "%i", (*pointenc).minGop);
-   mpeg2enc_command[n] =  "-g"; n++;
-   mpeg2enc_command[n] =  temp9; n++;
-  }
-if ( ( (*pointenc).maxGop != 12 ) && 
-     ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
-   sprintf(temp10, "%i", (*pointenc).maxGop);
-   mpeg2enc_command[n] =  "-G"; n++;
-   mpeg2enc_command[n] =  temp10; n++;
-  }
-
-/* And here the support fpr the different versions vo mjpeg tools */
-/* And the different mpeg versions */
-if (encoding_syntax_style == 140)
-{
-  if ((*pointenc).muxformat >= 3)
-    {
-      mpeg2enc_command[n] = "-m"; n++;
-      mpeg2enc_command[n] = "2"; n++; 
-    }
-  if (((*pointenc).muxformat != 0) && ((*pointenc).muxformat != 3))
-    {
-      mpeg2enc_command[n] = "-s"; n++;
-    }
-}
-if (encoding_syntax_style == 150)
-{
-  if((*pointenc).muxformat != 0) 
-    {
-      sprintf(temp11, "%i",(*pointenc).muxformat);
-      mpeg2enc_command[n] =  "-f"; n++;
-      mpeg2enc_command[n] =  temp11; n++;
-    }
-  if((*pointenc).muxformat >= 3)
-    {
-      mpeg2enc_command[n] = "-P";
-      n++;
-    }
-}
-
-/* And here again some common stuff */
-mpeg2enc_command[n] = "-o"; n++;
-mpeg2enc_command[n] = enc_videofile; n++;
-mpeg2enc_command[n] = NULL;
-}
-
 /* video encoding */
 void video_convert()
 {
-   int n, scale_140, scale_150;
+   int n;
+   static int scale_140, scale_150;
    char *mpeg2enc_command[256];
    char *yuv2divx_command[256];
    char *lav2yuv_command[256];
@@ -713,7 +466,6 @@ void video_convert()
    char command[600];
    char command_temp[256];
    char command_progress[256];
-   static char temp1[16], temp2[16], temp3[16], temp4[24], temp7[4];
    error = 0;
    scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
@@ -725,19 +477,19 @@ void video_convert()
 
    if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)
      {
-       create_command_mpeg2enc(mpeg2enc_command);
+       create_command_mpeg2enc(mpeg2enc_command,0,pointenc,&machine4mpeg1,"");
   
        start_pipe_command(mpeg2enc_command, MPEG2ENC);
      }
    else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
      {
-       create_command_yuv2divx(yuv2divx_command);
+       create_command_yuv2divx(yuv2divx_command,0,pointenc,&machine4mpeg1,"");
 
        start_pipe_command(yuv2divx_command, YUV2DIVX);
      }
    else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
      {
-       create_command_yuv2lav(yuv2lav_command);
+       create_command_yuv2lav(yuv2lav_command,0,pointenc,&machine4mpeg1,"");
        start_pipe_command(yuv2lav_command, YUV2LAV_E);
      }
  
@@ -761,81 +513,8 @@ void video_convert()
          (strcmp((*pointenc).output_size,"as is") != 0) ||
          (scale_140 == 1) || (scale_150 == 1)             )
    {
-      n = 0;
-      yuvscaler_command[n] = app_name(YUVSCALER); n++;
-      yuvscaler_command[n] = "-v 0"; n++;
-      if (strlen((*pointenc).input_use) > 0 &&
-          strcmp((*pointenc).input_use,"as is") )
-      {
-         yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = (*pointenc).input_use; n++;
-      }
-      if ( (strlen((*pointenc).ininterlace_type) > 0) && 
-                        (encoding_syntax_style == 140))
-      {
-         yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = (*pointenc).ininterlace_type; n++;
-      }
-      if (strlen((*pointenc).notblacksize) > 0 && 
-          strcmp((*pointenc).notblacksize,"as is") != 0 &&
-          encoding_syntax_style == 150) 
-      {
-       yuvscaler_command[n] = "-I"; n++;
-       sprintf(temp4,"ACTIVE_%s", (*pointenc).notblacksize);
-       yuvscaler_command[n] = temp4; n++;
-      }
-      if ( (use_bicubic == 1) && (encoding_syntax_style == 150))
-      {
-         yuvscaler_command[n] = "-M"; n++;
-         yuvscaler_command[n] = "BICUBIC"; n++;
-      }
-      if ((strcmp((*pointenc).mode_keyword,"LINE_SWITCH") != 0) &&
-          (strcmp((*pointenc).mode_keyword,"as is") != 0) && 
-          encoding_syntax_style == 140 )
-      {
-         yuvscaler_command[n] = "-M"; n++;
-         yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
-      }
-      else if ((strcmp((*pointenc).mode_keyword,"as is") != 0) && 
-                encoding_syntax_style == 150 )
-      {
-         yuvscaler_command[n] = "-M"; n++;
-         yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
-      }
-  
-      if( (strcmp((*pointenc).interlacecorr,"not needed") != 0) &&
-                  (encoding_syntax_style == 150) )
-      {
-       yuvscaler_command[n] = "-M"; n++;
-        
-       if (strcmp((*pointenc).interlacecorr,"exchange fields") == 0) 
-           yuvscaler_command[n] = "LINE_SWITCH"; 
-       if (strcmp((*pointenc).interlacecorr,"shift bottom field forward") == 0) 
-           yuvscaler_command[n] = "BOTT_FORWARD"; 
-       if (strcmp((*pointenc).interlacecorr,"shift top field forward") == 0) 
-           yuvscaler_command[n] = "TOP_FORWARD"; 
-       if (strcmp((*pointenc).interlacecorr,"interlace top first") == 0) 
-           yuvscaler_command[n] = "INTERLACED_TOP_FIRST"; 
-       if (strcmp((*pointenc).interlacecorr,"interlace bottom first") == 0) 
-           yuvscaler_command[n] = "INTERLACED_BOTTOM_FIRST"; 
-       if (strcmp((*pointenc).interlacecorr,"not interlaced") == 0) 
-           yuvscaler_command[n] = "NOT_INTERLACED"; 
 
-         n++;
-      }
-
-      if (strlen((*pointenc).output_size) > 0 &&
-          strcmp((*pointenc).output_size,"as is") )
-      {
-         yuvscaler_command[n] = "-O"; n++;
-         yuvscaler_command[n] = (*pointenc).output_size; n++;
-      }
-      if ((*pointenc).addoutputnorm == 1)
-      {
-         sprintf(temp7, "-n%c", standard);
-         yuvscaler_command[n] = temp7; n++;
-      }
-      yuvscaler_command[n] = NULL;
+      create_command_yuvscaler (yuvscaler_command, 0, pointenc, &machine4mpeg1);
 
       start_pipe_command(yuvscaler_command, YUVSCALER);
 
@@ -846,7 +525,7 @@ void video_convert()
    {
       /* set variable in pipes.h to tell not to use yuvscaler */
       use_yuvscaler_pipe = 0;
-     }
+   }
 
    /* let's start yuvplay to show video while it's being encoded */
    if (use_yuvplay_pipe)
@@ -864,76 +543,45 @@ void video_convert()
       start_pipe_command(yuvplay_command, YUVPLAY); /* yuvplay */
    }
 
-   n = 0;
-   lav2yuv_command[n] = app_name(LAV2YUV); n++;
-   if (encoding_syntax_style == 140)
-     {
-       if (strlen((*pointenc).notblacksize) > 0 && 
-           strcmp((*pointenc).notblacksize,"as is") != 0) 
-       {
-        lav2yuv_command[n] = "-a"; n++;
-        lav2yuv_command[n] = (*pointenc).notblacksize; n++;
-       }
-       if ((*pointenc).outputformat > 0) 
-       {
-        sprintf(temp1, "%i", (*pointenc).outputformat);
-        lav2yuv_command[n] = "-s"; n++;
-        lav2yuv_command[n] = temp1; n++;
-       }
-       if ((*pointenc).droplsb > 0) 
-       {
-        sprintf(temp2, "%i", (*pointenc).droplsb);
-        lav2yuv_command[n] = "-d"; n++;
-        lav2yuv_command[n] = temp2; n++;
-       }
-       if ((*pointenc).noisefilter > 0) 
-       {
-        sprintf(temp3, "%i", (*pointenc).noisefilter);
-        lav2yuv_command[n] = "-n"; n++;
-        lav2yuv_command[n] = temp3; n++;
-       }
-     }
-
-   lav2yuv_command[n] = enc_inputfile; n++;
-   lav2yuv_command[n] = NULL;
+  create_command_lav2yuv(lav2yuv_command, 0, pointenc, &machine4mpeg1);
   
    start_pipe_command(lav2yuv_command, LAV2YUV); 
 
    /* now here the the commands are set together for the:
       executing, the debug mode and the progress window */
-   command2string(lav2yuv_command, command_temp);
+   command_2string(lav2yuv_command, command_temp);
    sprintf(command, "%s |", command_temp);
    sprintf(command_progress, "lav2yuv |");
 
    if (use_yuvdenoise_pipe)
    {
-      command2string(yuvdenoise_command, command_temp);
+      command_2string(yuvdenoise_command, command_temp);
       sprintf(command,"%s %s |", command, command_temp);
       sprintf(command_progress, "%s yuvdenoise |", command_progress);
    }
 
    if (use_yuvscaler_pipe)
    {
-      command2string(yuvscaler_command, command_temp);
+      command_2string(yuvscaler_command, command_temp);
       sprintf(command, "%s %s |", command, command_temp);
       sprintf(command_progress, "%s yuvscaler |", command_progress);
    }
 
    if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)
    {
-     command2string(mpeg2enc_command, command_temp);
+     command_2string(mpeg2enc_command, command_temp);
      sprintf(command, "%s %s ", command, command_temp);
      sprintf(command_progress, "%s mpeg2enc", command_progress);
    }
    else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
    {
-     command2string(yuv2divx_command, command_temp);
+     command_2string(yuv2divx_command, command_temp);
      sprintf(command, "%s %s ", command, command_temp);
      sprintf(command_progress, "%s yuv2divx", command_progress);
    }
    else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
    {
-     command2string(yuv2lav_command, command_temp);
+     command_2string(yuv2lav_command, command_temp);
      sprintf(command, "%s %s ", command, command_temp);
      sprintf(command_progress, "%s yuv2lav", command_progress);
    }
@@ -951,8 +599,6 @@ void mplex_convert()
 {
 char *mplex_command[256];
 char command[256];
-static char temp1[16], temp2[16], temp3[16], temp4[4];
-int n;
 
 error = 0;
 progress_encoding = 3;
@@ -960,52 +606,11 @@ progress_encoding = 3;
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Multiplexing: mplex");
 
-   n = 0;
-   mplex_command[n] = app_name(MPLEX); n++;
-   if ((*pointenc).muxformat != 0) 
-   {
-      sprintf(temp1, "%i", (*pointenc).muxformat);
-      mplex_command[n] = "-f"; n++;
-      mplex_command[n] = temp1; n++;
-      if (( (*pointenc).muxformat == 3) && ((*pointenc).muxvbr[0] != '-' ) )
-      {
-        sprintf(temp1, "-V");
-        mplex_command[n] = temp1; n++;
-      }
-   }
-   if ((*pointenc).streamdatarate != 0)
-   {
-      sprintf(temp2, "%i", (*pointenc).streamdatarate);
-      mplex_command[n] = "-r"; n++;
-      mplex_command[n] = temp2; n++;
-   }  
-   if ((*pointenc).decoderbuffer != 46)
-   {
-      sprintf(temp2, "%i", (*pointenc).decoderbuffer);
-      mplex_command[n] = "-r"; n++;
-      mplex_command[n] = temp3; n++;
-   }
-   if ((*pointenc).muxvbr[0] == '-' )
-   {
-      mplex_command[n] = (*pointenc).muxvbr; 
-      n++;
-   }  
-
-   if( ((*pointenc).muxformat == 3) && ((*pointenc).muxvbr[0] != '-') ) 
-   {
-      sprintf(temp4,"-V");
-      mplex_command[n] =  temp4; n++;
-   }
-
-   mplex_command[n] = enc_audiofile; n++;
-   mplex_command[n] = enc_videofile; n++;
-   mplex_command[n] = "-o"; n++;
-   mplex_command[n] = enc_outputfile; n++;
-   mplex_command[n] = NULL;
+   create_command_mplex (mplex_command, 0, pointenc, &machine4mpeg1, "");
 
    start_pipe_command(mplex_command, MPLEX); /* mplex */
 
-   command2string(mplex_command, command);
+   command_2string(mplex_command, command);
    if (verbose)
      printf("\nExecuting : %s\n", command);
    show_executing(command);
@@ -1422,7 +1027,13 @@ void create_buttons2 (GtkWidget *hbox1)
 /* Create the 3rd line iwth the distributed encoding and batch buttons */
 void create_buttons3 (GtkWidget *hbox1)
 {
-GtkWidget *distribute, *enhanced_options;
+GtkWidget *distribute, *enhanced_options, *script_gen;
+
+  script_gen = gtk_button_new_with_label ("Script generation");
+  gtk_signal_connect (GTK_OBJECT (script_gen), "clicked",
+                  GTK_SIGNAL_FUNC (open_scriptgen_window), NULL);
+  gtk_box_pack_start (GTK_BOX (hbox1), script_gen, TRUE, TRUE, 0);
+  gtk_widget_show(script_gen);
 
   distribute = gtk_button_new_with_label ("Distributed encoding setup");
   gtk_signal_connect (GTK_OBJECT (distribute), "clicked",
