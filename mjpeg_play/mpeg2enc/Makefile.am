@@ -8,7 +8,6 @@ bin_PROGRAMS = mpeg2enc
 mpeg2encpp_MMXSSE_ASM = \
 	fdct_mmx.s \
 	fdctdata.c \
-	predcomp_mmxe.s \
 	predcomp_mmx.s \
 	quant_mmx.s
 
@@ -16,6 +15,7 @@ mpeg2encpp_MMXSSE_INLINE = \
 	fdct_x86.c \
 	idct_mmx.c \
 	predict_mmx.c \
+	predcomp_mmxe.c \
 	predict_x86.c \
 	quantize_x86.c \
 	transfrm_x86.c
