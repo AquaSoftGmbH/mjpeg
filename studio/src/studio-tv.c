@@ -353,6 +353,7 @@ static void toggle_fullscreen()
 {
    static gboolean full_screen = FALSE;
    static GtkWidget *fullscreen_win = NULL;
+   static GtkWidget *window_bc;
 #if 0
    static gint w=0,h=0,x=0,y=0;
    GdkGeometry geom;
@@ -393,9 +394,14 @@ static void toggle_fullscreen()
        * Make the settings/options windows transient for both them
        * and make this fullscreen window appear *in front of* the Gnome panel and such
        */
+
+      window_bc = window;
+      window = fullscreen_win;
    }
    else
    {
+      window = window_bc;
+
       /* go back to windowed mode */
       if (verbose) g_print("Going to windowed mode\n");
 
