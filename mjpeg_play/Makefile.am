@@ -21,7 +21,6 @@ lavplay_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-
 lavrec_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
 lavrec_LDADD = @MOVTAR_LIBS@ -lmjpeg
 

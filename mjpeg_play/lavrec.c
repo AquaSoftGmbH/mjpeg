@@ -18,7 +18,7 @@
                  Hint: If your AVI video looks strange, try 'A' instead 'a'
                  and vice versa.
 		 
-    -i [pPnNa]   Input Source:
+    -i [pPnNta]  Input Source:
                  'p' PAL  Composite Input
                  'P' PAL  SVHS-Input
                  'n' NTSC Composite Input
@@ -1230,7 +1230,7 @@ int main(int argc, char ** argv)
       case 'P': input = 1; norm = 0; break;
       case 'n': input = 0; norm = 1; break;
       case 'N': input = 1; norm = 1; break;
-      case 't': input = 2; norm = 1; break;
+      case 't': input = 2; norm = 0; break;
       default:
          n = 0;
          lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
@@ -1362,11 +1362,12 @@ int main(int argc, char ** argv)
    res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
    if(res<0) system_error("requesting video buffers","ioctl MJPIOC_REQBUFS");
 
-   sprintf(infostring,"Got %d buffers of size %d KB",breq.count,breq.size/1024);
+   sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
    lavrec_msg(LAVREC_INFO,infostring,"");
 
    /* Map the buffers */
 
+   printf("Mapping video buffers !\n");
    MJPG_buff = mmap(0, breq.count*breq.size, PROT_READ, MAP_SHARED, video_dev, 0);
    if (MJPG_buff == MAP_FAILED) system_error("mapping video buffers","mmap");
 
@@ -1378,6 +1379,7 @@ int main(int argc, char ** argv)
 
    if (audio_size && sync_corr>1)
    {
+     printf("Getting audio ... \n");
       for(n=0;;n++)
       {
          if(n>NUM_AUDIO_TRIES)
@@ -1396,6 +1398,7 @@ int main(int argc, char ** argv)
       }
    }
          
+   printf("Queueing !\n");
    /* For single frame recording: Make stdin nonblocking */
 
    if(single_frame || wait_for_start)
@@ -1433,6 +1436,7 @@ int main(int argc, char ** argv)
    }
 
    /* Queue all buffers, this also starts streaming capture */
+   printf("Queueing video buffers !\n");
 
    for(n=0;n<breq.count;n++)
    {
@@ -1467,7 +1471,7 @@ int main(int argc, char ** argv)
    while (1)
    {
       /* sync on a frame */
-
+     printf("Syncing on buffer %ld\n", num_syncs);
       res = ioctl(video_dev, MJPIOC_SYNC, &bsync);
       if (res < 0)
       {
@@ -1499,7 +1503,7 @@ int main(int argc, char ** argv)
       {
          if(write_frame==1) /* first time here or frame written in last loop cycle */
          {
-            printf("%6d frames, press enter>",num_frames);
+            printf("%6ld frames, press enter>",num_frames);
             fflush(stdout);
          }
          res = read(0,input_buffer,256);
@@ -1507,12 +1511,12 @@ int main(int argc, char ** argv)
             write_frame = 1;
          else
             write_frame = 0;
-         nfout = 1; /* allways output frame just once */
+         nfout = 1; /* always output frame only once */
       }
       else if(time_lapse>1)
       {
          write_frame = (num_syncs % time_lapse) == 0;
-         nfout = 1; /* allways output frame just once */
+         nfout = 1; /* always output frame only once */
       }
       else /* normal capture */
       {
@@ -1576,8 +1580,8 @@ int main(int argc, char ** argv)
          ns = ns % 60;
          nh = nm / 60;
          nm = nm % 60;
-         sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4u ins:%3u del:%3u "
-                            "audio errs:%3u tdiff=%10.6f",
+         sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
+                            "audio errs:%3lu tdiff=%10.6f",
                 nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
          lavrec_msg(LAVREC_PROGRESS,infostring,"");
       }
@@ -1645,3 +1649,4 @@ int main(int argc, char ** argv)
       lavrec_msg(LAVREC_INFO,"Error exit ...","");
    exit(0);
 }
+

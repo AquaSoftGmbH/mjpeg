@@ -106,6 +106,8 @@ that directory and change the Makefiles accordingly.
 
 - go into directory xlav, type make
   xlav needs the xforms toolkit, you may have to get it from the net
+  or install the xformsd (Forms Library development packet) from your
+  distribution 
   and you may have to change the Makefile
 
 - go into directory utils, type make
