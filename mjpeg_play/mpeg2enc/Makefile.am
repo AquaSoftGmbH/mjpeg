@@ -34,7 +34,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
 
-mpeg2enc_LDADD= -L $(top_srcdir)/utils -lutils -lm -lpthread
+mpeg2enc_LDADD=-L$(top_srcdir)/utils -lutils -lm -lpthread
 
 ASM = nasm
 

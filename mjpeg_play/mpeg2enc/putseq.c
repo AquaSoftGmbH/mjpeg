@@ -726,12 +726,12 @@ static void *parencodeworker(void *start_arg)
 
 	for(;;)
 	{
-		semaphore_signal( &worker_available, 1);
-		semaphore_wait( &picture_available );
+		mp_semaphore_signal( &worker_available, 1);
+		mp_semaphore_wait( &picture_available );
 		/* Precisely *one* worker is started after update of
 		   picture_for_started_worker, so no need for handshake.  */
 		picture = (pict_data_s *)picture_to_encode;
-		semaphore_signal( &picture_started, 1);
+		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
 		mjpeg_info("Frame %d %c %d\n",  
@@ -809,10 +809,10 @@ static void *parencodeworker(void *start_arg)
 static void parencodepict( pict_data_s *picture )
 {
 
-	semaphore_wait( &worker_available );
+	mp_semaphore_wait( &worker_available );
 	picture_to_encode = picture;
-	semaphore_signal( &picture_available, 1 );
-	semaphore_wait( &picture_started );
+	mp_semaphore_signal( &picture_available, 1 );
+	mp_semaphore_wait( &picture_started );
 }
 
 

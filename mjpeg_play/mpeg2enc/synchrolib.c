@@ -60,14 +60,14 @@ void sync_guard_update( sync_guard_t *guard, int predicate )
 }
 
 
-void semaphore_init( semaphore_t *sema, int init_count )
+void mp_semaphore_init( semaphore_t *sema, int init_count )
 {
 	pthread_mutex_init( &sema->mutex, NULL );
 	pthread_cond_init( &sema->raised, NULL );
 	sema->count = init_count;
 }
 
-void semaphore_wait( semaphore_t *sema)
+void mp_semaphore_wait( semaphore_t *sema)
 {
 	pthread_mutex_lock( &sema->mutex );
 	while( sema->count == 0 )
@@ -78,7 +78,7 @@ void semaphore_wait( semaphore_t *sema)
 	pthread_mutex_unlock( &sema->mutex );
 }
 
-void semaphore_signal( semaphore_t *sema, int count )
+void mp_semaphore_signal( semaphore_t *sema, int count )
 {
 	pthread_mutex_lock( &sema->mutex );
 	sema->count += count;

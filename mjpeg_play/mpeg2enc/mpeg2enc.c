@@ -126,10 +126,10 @@ static char * mpeg1_aspect_ratio_definitions[] =
 {
 	"1:1 (square pixels)",
 	"1:0.6735",
-	"1:0.7031 (16:9 Anisomorphic PAL/SECAM for 720x578/352x288 images)",
+	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
     "1:0.7615",
 	"1:0.8055",
-	"1:0.8437 (16:9 Anisomorphic NTSC for 720x480/352x240 images)",
+	"1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)",
 	"1:0.8935",
 	"1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)",
 	"1:0.9815",
@@ -192,9 +192,10 @@ static void Usage(char *str)
 	printf("mjpegtools mpeg2enc version " VERSION "\n" );
 	printf("Usage: %s [params]\n",str);
 	printf("   where possible params are:\n");
+	printf( " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
 	printf("   -m num     MPEG level (1 or 2) default: 1\n");
 	printf("   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
-	printf("              0 - Display MPEG1 and MPEG2 aspect ratio code tables");
+	printf("              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
 	printf("   -f num     Frame rate for encoded video (default: frame rate of input stream)\n");
 	printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	printf("   -B num     Non-video data bitrate to use for sequence splitting\n");
@@ -221,7 +222,7 @@ static void Usage(char *str)
 	printf("   -S num     Start a new sequence every num Mbytes in the final mux-ed\n");
 	printf("              stream.  -B specifies the bitrate of non-video data\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
-	printf("   -p         Generate header flags for 32 pull down of 24fps movie.");
+	printf("   -p         Generate header flags for 32 pull down of 24fps movie.\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
@@ -258,7 +259,7 @@ int main(argc,argv)
 	
 	default_mjpeg_log_handler = mjpeg_log_set_handler(mplex_log_handler );
 
-	while( (n=getopt(argc,argv,"m:a:f:n:b:B:q:o:S:F:r:M:4:2:Q:g:G:v:stpNhO?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:B:q:o:S:F:r:M:4:2:Q:g:G:v:V:stpNhO?")) != EOF)
 	{
 		switch(n) {
 
@@ -266,7 +267,7 @@ int main(argc,argv)
 			if(strlen(optarg)!=1 || (optarg[0]!='1' && optarg[0]!='2') )
 			{
 				mjpeg_error("-m option requires arg 1 or 2\n");
-				nerr++;
+				++nerr;
 			}
 			param_mpeg = optarg[0]-'0';
 			break;
@@ -280,7 +281,7 @@ int main(argc,argv)
 			if( param_nonvid_bitrate < 0 )
 			{
 				mjpeg_error("-B requires arg > 0\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 		case 'q':
@@ -288,7 +289,7 @@ int main(argc,argv)
 			if(param_quant<1 || param_quant>32)
 			{
 				mjpeg_error("-q option requires arg 1 .. 32\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -300,7 +301,7 @@ int main(argc,argv)
 			if( param_aspect_ratio < 0 )
 			{
 				mjpeg_error( "-a option must be positive\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -312,7 +313,7 @@ int main(argc,argv)
 			{
 				mjpeg_error( "-f option must be [0..%d]\n", 
 						 num_frame_rates-1);
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -325,7 +326,7 @@ int main(argc,argv)
 			if(param_fieldpic<0 || param_fieldpic>3)
 			{
 				mjpeg_error("-F option requires 0 ... 3\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -334,7 +335,7 @@ int main(argc,argv)
 			if(param_searchrad<0 || param_searchrad>32)
 			{
 				mjpeg_error("-r option requires arg 0 .. 32\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -343,7 +344,7 @@ int main(argc,argv)
 			if(param_num_cpus<1 || param_num_cpus>32)
 			{
 				mjpeg_error("-M option requires arg 1..32\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -352,7 +353,7 @@ int main(argc,argv)
 			if(param_44_red<0 || param_44_red>4)
 			{
 				mjpeg_error("-4 option requires arg 0..4\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 			
@@ -361,16 +362,21 @@ int main(argc,argv)
 			if(param_22_red<0 || param_22_red>4)
 			{
 				mjpeg_error("-2 option requires arg 0..4\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
 		case 'v':
+			log_level = LOG_WARN-atoi(optarg);
+			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+				++nerr;
+			break;
+		case 'V' :
 			param_video_buffer_size = atoi(optarg);
 			if(param_video_buffer_size<20 || param_video_buffer_size>4000)
 			{
 				mjpeg_error("-v option requires arg 20..4000\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 
@@ -379,7 +385,7 @@ int main(argc,argv)
 			if(param_seq_length_limit<1 )
 			{
 				mjpeg_error("-S option requires arg > 1\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 		case 'p' :
@@ -419,12 +425,12 @@ int main(argc,argv)
 			if( param_act_boost <0.1 || param_act_boost > 10.0)
 			{
 				mjpeg_error( "-q option requires arg 0.1 .. 10.0\n");
-				nerr++;
+				++nerr;
 			}
 			break;
 		case '?':
 		default:
-			nerr++;
+			++nerr;
 		}
 	}
 
@@ -441,11 +447,11 @@ int main(argc,argv)
 			{
 				mjpeg_error( "Unable to open: %s: ",argv[optind] );
 				perror("");
-				nerr++;
+				++nerr;
 			}
 		}
 		else
-			nerr++;
+			++nerr;
 	}
 	else
 		input_fd = 0; /* stdin */
@@ -456,12 +462,12 @@ int main(argc,argv)
 	if(horizontal_size<=0)
 	{
 		mjpeg_error("Horizontal size from input stream illegal\n");
-		nerr++;
+		++nerr;
 	}
 	if(vertical_size<=0)
 	{
 		mjpeg_error("Vertical size from input stream illegal\n");
-		nerr++;
+		++nerr;
 	}
 
 	
@@ -515,7 +521,7 @@ int main(argc,argv)
 		else
 		{
 			mjpeg_error( "No default aspect ratio if norm unspecified!\n");
-			nerr++;
+			++nerr;
 		}
 	}
 
@@ -524,13 +530,13 @@ int main(argc,argv)
 	if(!outfilename)
 	{
 		mjpeg_error("Output file name (-o option) is required!\n");
-		nerr++;
+		++nerr;
 	}
 
 	if(frame_rate_code<1 || frame_rate_code>8)
 	{
 		mjpeg_error("Frame rate code from input stream cannot be interpreted !!!!\n");
-		nerr++;
+		++nerr;
 	}
 
 
@@ -539,7 +545,7 @@ int main(argc,argv)
 	{
 		mjpeg_error("For MPEG-%d aspect ratio codes > %d illegal\n", 
 				 param_mpeg, num_aspect_ratios[param_mpeg-1]);
-		nerr++;
+		++nerr;
 	}
 		
 
