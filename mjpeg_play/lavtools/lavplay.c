@@ -51,7 +51,9 @@
                maintained, ie. the zoom factors for horizontal and vertical directions
                may be different. This might not always yield the results you want!
 
-
+    -C, -H, -S On-card, on-screen or software (SDL)-playback. On-screen is not working
+               properly, On-card is lavtools-1.2 compatible (and I (Ronald) set it to
+               default to be fully lavtools-1.2 compatible). 
 
     Following the options, you may give a optional +p/+n parameter (for forcing
     the use of PAL or NTSC) and the several AVI files, Quicktime files
@@ -149,9 +151,10 @@ static int  MJPG_nbufs = 8;          /* Number of MJPEG buffers */
 static int  skip_seconds = 0;
 static double test_factor = 1.0; /* Internal test of synchronizaion only */
 static int  audio_enable = 1;
+static int  playback_width = 720;
 
 /* gz: This makes lavplay play back in software */
-int soft_play = 1;
+int soft_play = 0;
 int soft_fullscreen = 0;
 
 /* gz: This is the new handle for MJPEG library */
@@ -394,6 +397,7 @@ void Usage(char *progname)
    fprintf(stderr, "   -S         Use software MJPEG playback (based on SDL and libmjpeg)\n");
    fprintf(stderr, "   -Z         Switch to fullscreen\n");
    fprintf(stderr, "   -H         Use hardware MJPEG on-screen playback\n");
+   fprintf(stderr, "   -C         Use hardware MJPEG on-card playback\n");
    fprintf(stderr, "   -a [01]    Eanble audio playback\n");
    exit(1);
 }
@@ -473,7 +477,7 @@ int main(int argc, char ** argv)
 	if(argc < 2) Usage(argv[0]);
 
 	nerr = 0;
-	while( (n=getopt(argc,argv,"a:h:v:s:c:n:t:qSZHxzg")) != EOF)
+	while( (n=getopt(argc,argv,"a:h:v:w:s:c:n:t:qSZHCxzg")) != EOF)
 	{
 		switch(n) {
 		case 'a':
@@ -482,6 +486,10 @@ int main(int argc, char ** argv)
 
 		case 'h':
             h_offset = atoi(optarg);
+            break;
+
+		case 'w':
+            playback_width = atoi(optarg);
             break;
 
 		case 'v':
@@ -541,6 +549,11 @@ int main(int argc, char ** argv)
 		case 'H':
 			printf("Choosing hardware MJPEG playback (on-screen)\n");
             screen_output = 1;
+			soft_play = 0;
+            break;
+		case 'C':
+			printf("Choosing hardware MJPEG playback (on-screen)\n");
+            screen_output = 0;
 			soft_play = 0;
             break;
 		}
@@ -713,7 +726,7 @@ int main(int argc, char ** argv)
    
 	/* Check dimensions of video, select decimation factors */
 	if (!soft_play && !screen_output)
-		if( el.video_width > 720 || el.video_height > hn )
+		if( el.video_width > playback_width || el.video_height > hn )
 		{
 			/* This is definitely too large */
 	 
@@ -727,9 +740,9 @@ int main(int argc, char ** argv)
        
 	if(zoom_to_fit)
 	{
-		if ( el.video_width < 180 )
+		if ( el.video_width < playback_width/4 )
 			bp.HorDcm = 4;
-		else if ( el.video_width < 360 )
+		else if ( el.video_width < playback_width/2 )
 			bp.HorDcm = 2;
 		else
 			bp.HorDcm = 1;
@@ -764,12 +777,12 @@ int main(int argc, char ** argv)
 		bp.TmpDcm = 2;
        
 		if (!soft_play && !screen_output &&  
-			( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
+			( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>playback_width/2) ))
 		{
 			sprintf(infostring,"Video dimensions (not interlaced) too large: %ld x %ld\n",
 					el.video_width,el.video_height);
 			lavplay_msg(LAVPLAY_ERROR,infostring,"");
-			if(el.video_width>360) lavplay_msg(LAVPLAY_INFO,"Try -z option !!!!","");
+			if(el.video_width>playback_width/2) lavplay_msg(LAVPLAY_INFO,"Try -z option !!!!","");
 			exit(1);
 		}
        
@@ -793,7 +806,7 @@ int main(int argc, char ** argv)
 	bp.quality = 100;
 	bp.img_width  = bp.HorDcm*el.video_width;
 	bp.img_height = bp.VerDcm*el.video_height/bp.field_per_buff;
-	bp.img_x = (720  - bp.img_width )/2 + h_offset;
+	bp.img_x = (playback_width  - bp.img_width )/2 + h_offset;
 	bp.img_y = (hn/2 - bp.img_height)/2 + v_offset/2;
    
 	sprintf(infostring,"Output dimensions: %dx%d+%d+%d",
