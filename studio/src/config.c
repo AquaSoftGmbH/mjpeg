@@ -698,6 +698,10 @@ void save_config()
 	if (verbose) printf("Configuration saved\n");
 
 	fclose(fp);
+
+        /* Added by Bernhard, to get the encoding options saved when exiting */
+        if (saveonexit != 0)
+          save_config_encode();
 }
 
 void change_method(GtkWidget *widget, gpointer data)
@@ -1734,8 +1738,8 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	hbox = gtk_hbox_new(TRUE, 20);
 
 	button = gtk_button_new_with_label("OK");
-	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_options), NULL);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_encoptions), NULL);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_options), NULL);
 	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
 		gtk_widget_destroy, GTK_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);

@@ -60,6 +60,7 @@ void print_encoding_options(char section[LONGOPT],struct encodingoptions *point)
 void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
+void do_preset_divx(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
 void set_bicubicuse(GtkWidget *widget, gpointer data);
@@ -121,6 +122,7 @@ int i;
       (*point).output_size[i]   ='\0';
       (*point).mode_keyword[i]  ='\0';
       (*point).ininterlace_type[i] ='\0';
+      (*point).codec[i]  ='\0';
     }
 
   for (i=0; i < SHORTOPT; i++)
@@ -135,7 +137,7 @@ int i;
   (*point).outputformat   = 0;
   (*point).droplsb        = 0;
   (*point).noisefilter    = 0;
-  (*point).audiobitrate   = 0;
+  (*point).audiobitrate   = 224;
   (*point).outputbitrate  = 0;
   (*point).use_yuvdenoise = 0;
   (*point).bitrate        = 1152;
@@ -173,6 +175,14 @@ void do_preset_svcd(struct encodingoptions *point)
   sprintf((*point).forcevcd,"-V");
   sprintf((*point).output_size,"SVCD");
   (*point).bitrate = 2500;
+}
+
+/* set some divx specific options */
+void do_preset_divx(struct encodingoptions *point)
+{
+  (*point).audiobitrate = 0;
+  (*point).bitrate = 0;
+  sprintf((*point).codec,"DIV3");
 }
 
 /* load the common things */
@@ -278,8 +288,6 @@ int i;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Audiobitrate")))
         (*point).audiobitrate = i;
-  else
-        (*point).audiobitrate = 224;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Outputbitrate")))
         (*point).outputbitrate = i;
@@ -336,6 +344,10 @@ int i;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Decoder_Buffer")))
         (*point).decoderbuffer = i;
+
+  if (NULL != (val = cfg_get_str(section,"Encode_Codec")))
+    if ( 0 != strcmp(val,"not used"))
+      sprintf((*point).codec, val);
 }
 
 /* show the current options */
@@ -368,6 +380,7 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Mux VBR : \'%s\' \n",                     (*point).muxvbr);
   printf("Encoding Stream Datarate : \'%i\' \n",     (*point).streamdatarate);
   printf("Encoding Decoder Buffer Size : \'%i\' \n",  (*point).decoderbuffer);
+  printf("Encoding Codec : \'%s\' \n",                        (*point).codec);
 }
 
 void load_config_encode()
@@ -395,8 +408,12 @@ int have_config;
   point = &encoding_svcd;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_svcd(point);     /* set some SVCD specific options */
- 
-  /* Saved bu not in the structs */
+
+  point = &encoding_divx;
+  set_structs_default(point);  /* set struct to the defaults */
+  do_preset_divx(point);     /* set some DIVX specific options */
+
+  /* Saved but not in the structs */
   encoding_syntax_style = 0;
 
   set_common();
@@ -424,19 +441,25 @@ int have_config;
 
   strncpy(section,"MPEG2",LONGOPT);
   point = &encoding2; 
-  load_section("MPEG2",point);
+  load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
 
   strncpy(section,"VCD",LONGOPT);
   point = &encoding_vcd; 
-  load_section("VCD",point);
+  load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
 
   strncpy(section,"SVCD",LONGOPT);
   point = &encoding_svcd; 
-  load_section("SVCD",point);
+  load_section(section,point);
+  if (verbose)
+    print_encoding_options(section,point);
+
+  strncpy(section,"DIVX",LONGOPT);
+  point = &encoding_divx; 
+  load_section(section,point);
   if (verbose)
     print_encoding_options(section,point);
 
@@ -466,7 +489,9 @@ void save_common(FILE *fp)
     fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "yes");
   else
     fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "no");
-
+  
+  if (saveonexit == 2)
+    saveonexit = 0;  /* part 2 of the workaround, take a look accept_options */
   fprintf(fp,"Encoding_save_on_exit = %i\n",saveonexit);
 
 }
@@ -481,7 +506,7 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
     fprintf(fp,"Encode_Notblack_size = %s\n", "as is");
 
   if (strlen ((*point).notblacksize) > 0)
-    fprintf(fp,"Encode_Interlacing_Correction =%s\n", (*point).interlacecorr);
+    fprintf(fp,"Encode_Interlacing_Correction = %s\n", (*point).interlacecorr);
   else
     fprintf(fp,"Encode_Interlacing_Correction = %s\n", "not needed");
 
@@ -540,6 +565,10 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
   fprintf(fp,"Encode_Stream_Datarate = %i\n", (*point).streamdatarate);
   fprintf(fp,"Encode_Decoder_Buffer = %i\n", (*point).decoderbuffer);
 
+  if (strlen((*point).codec) > 0)
+    fprintf(fp,"Encode_Codec = %s\n", (*point).codec);
+  else 
+    fprintf(fp,"Encode_Codec = not used\n");
 }
 
 /* Save the current encoding configuration */
@@ -584,6 +613,9 @@ FILE *fp;
   point = &encoding_svcd; 
   save_section(fp,point,"SVCD");
  
+  point = &encoding_divx; 
+  save_section(fp,point,"DIVX");
+ 
   if (verbose) printf("Configuration of the encoding options saved\n");
 
   fclose(fp);
@@ -621,7 +653,7 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
       if (t_saveonexit != saveonexit)
         printf(" Save on when exit set to  %i \n", t_saveonexit);
     }
- 
+
   use_yuvplay_pipe = t_use_yuvplay_pipe;
   encoding.addoutputnorm = t_addoutputnorm;
   strcpy(encoding.ininterlace_type, t_ininterlace_type);
@@ -630,7 +662,13 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
   fourpelmotion = t_fourpelmotion;
   twopelmotion = t_twopelmotion;
   strcpy(selected_player,t_selected_player);
-  saveonexit =t_saveonexit;
+
+  /* how is the configuration saven when you dont want this feature ? */
+  /* this should solve the problem properly, als check save_common () */
+  if ( (t_saveonexit == 0) && (saveonexit == 1))
+     saveonexit = 2;
+  else  
+     saveonexit =t_saveonexit;
 }
 
 /* Set the value of the Slider 4 to the variable */
@@ -741,7 +779,7 @@ table_line = 0;
   gtk_widget_show (label);
   saveonexit_button = gtk_check_button_new();
   gtk_widget_ref (saveonexit_button);
-  if (saveonexit)
+  if (saveonexit != 0)
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (saveonexit_button), TRUE);
   gtk_signal_connect (GTK_OBJECT (saveonexit_button), "toggled",
                       GTK_SIGNAL_FUNC (set_saveonexit), NULL );
