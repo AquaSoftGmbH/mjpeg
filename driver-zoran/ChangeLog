@@ -27,6 +27,8 @@ Version 0.9.4 -> 0.9.5
 * fix JPEG COM/APP marker writeing in zr360[56]0
 * reduce zoran_do_ioctl() stack size usage (patch by Randy Dunlap
     <rddunlap@osdl.org>)
+* fixes for big-endian machines (patch by Ben Capper
+    <benandeve@optusnet.com.au>)
 
 Version 0.9.3 -> 0.9.4
 ----------------------
