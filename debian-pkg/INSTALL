@@ -1,6 +1,8 @@
 Installation - Actually: creation of Debian binary packages
 -----------------------------------------------------------
 
+0.  Rename directory to suit Debian conventions
+
 1.  Untar the latest source tarballs for: 
 
 	jpeg-mmx, libmovtar, quicktime4linux and mjpegtools

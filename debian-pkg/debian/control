@@ -1,0 +1,31 @@
+Source: mjpegtools
+Section: contrib/video
+Priority: optional
+Maintainer: Andrew Stevens <andrew.stevens@philips.com>
+Build-Depends: debhelper (>> 3.0.0)
+Standards-Version: 3.5.2
+
+Package: mjpegtools
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: MJPEG video capture/editting/playback MPEG encoding
+
+The mjpeg programs are a set of tools that can do recording of videos
+and playback, simple cut-and-paste editing and the MPEG compression of
+audio and video under Linux.
+
+Recording is supported for the Zoran based cards like the Buz
+(Iomega), DC10 (MIRO, Pinnacle) and the LML33 (Linux Media Labs).  The
+recorded videos can be converted to MPEG streams. The software
+playback of MPEG streams works with almost every player and every OS.
+You can produce special forms of MPEG streams like VCD (Video CD) and
+SVCD for hardware playback.
+
+A key design objective of the tools is interoperability with other
+video tools: currently xawtv, bcast2000, nuppelvideo and vcdimager
+are known to interoperate.
+
+Package: mjpegtools-doc
+Architecture: all
+Description: Documentation for mjpegtools
+ <insert long description, indented with spaces>
