@@ -9,6 +9,10 @@
  * mation.                                                 *
  ***********************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -490,7 +494,7 @@ display_help(void)
   "                   (default=%i)"
   "\n"
   "-S <0...255>       Set sharpness in percent. WARNING: do not set too high\n"
-  "                   as this will gain bit-noise. (default=%i), 0 = disabled\n"
+  "                   as this will gain bit-noise. (default=%i)\n"
   "\n"
   "-F                 Force deinterlacing. By default denoise interlaced.\n"
   "\n"

@@ -19,6 +19,10 @@ subs.c
  * 4/27/92  Masahiro Iwadare    Added 256 point version for Layer III *
  **********************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "common.h"
 #include "encoder.h"
 

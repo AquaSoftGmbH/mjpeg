@@ -20,7 +20,7 @@
 
 #ifndef __MJPEG_TYPES_H__
 #define __MJPEG_TYPES_H__
-#include <config.h>
+//#include <config.h>
 
 #if defined(HAVE_STDINT_H)
 # include <stdint.h>
@@ -43,6 +43,17 @@ typedef u_int64_t uint64_t;
 #else
 /* warning ISO/IEC 9899:1999 <stdint.h> was missing and even <inttypes.h> */
 /* fixme */
+/* (Ronald) we'll just give an error now...Better solutions might come later */
+#error You don't seem to have sys/types.h, inttypes.h or stdint.h! \
+This might mean two things: \
+Either you really don't have them, in which case you should \
+install the system headers and/or C-library headers. \
+You might also have forgotten to define whether you have them. \
+You can do this by either defining their presence before including \
+mjpegtools' header files (e.g. "#define HAVE_STDINT_H"), or you can check \
+for their presence in a configure script. mjpegtools' configure \
+script is a good example of how to do this. You need to check for \
+PRId64, stdbool.h, inttypes.h, stdint.h and sys/types.h
 #endif /* HAVE_STDINT_H */
 
 #if defined(__FreeBSD__)

@@ -23,6 +23,10 @@ psy.c
  * 8/07/92  Mike Coleman        Bug fix, read_absthr()                *
  **********************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "common.h"
 #include "encoder.h"
 

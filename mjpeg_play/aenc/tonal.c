@@ -63,6 +63,10 @@ tonal.c
  * 8/05/93 Masahiro Iwadare     noise_label modification "option"     *
  **********************************************************************/
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "common.h"
 #include "encoder.h"
 #define LONDON                  /* enable "LONDON" modification */

@@ -148,6 +148,7 @@ typedef struct {
    pthread_t software_sync_thread;            /* the thread */
    pthread_mutex_t software_sync_mutex;       /* the mutex */
    sig_atomic_t please_stop_syncing;
+   unsigned long buffers_queued;		/* evil hack for BTTV-0.8 */
    int software_sync_ready[MJPEG_MAX_BUF];    /* whether the frame has already been synced on */
    pthread_cond_t software_sync_wait[MJPEG_MAX_BUF]; /* wait for frame to be synced on */
    struct timeval software_sync_timestamp[MJPEG_MAX_BUF];
@@ -968,7 +969,7 @@ static void *lavrec_encoding_thread(void* arg)
          }
       }
 
-
+#if 0
       if (!lavrec_queue_buffer(info, &current_frame))
       {
          if (info->files)
@@ -980,6 +981,9 @@ static void *lavrec_encoding_thread(void* arg)
       }
       /* Mark the capture buffer as once again as in progress for capture */
       settings->buffer_valid[current_frame] = -1;
+#endif
+      /* hack for BTTV-0.8 - give it a status that tells us to queue it in another thread */
+      settings->buffer_valid[current_frame] = -2;
 
       if (!lavrec_handle_audio(info, &(timestamp[current_frame])))
          lavrec_change_state(info, LAVREC_STATE_STOP);
@@ -1611,6 +1615,7 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
       pthread_mutex_lock(&(settings->queue_mutex));
       settings->queue_left++;
       settings->is_queued[*num] = 1;
+      settings->buffers_queued++;
       pthread_cond_broadcast(&(settings->queue_wait));
       pthread_mutex_unlock(&(settings->queue_mutex));
    }
@@ -1634,6 +1639,9 @@ static void *lavrec_software_sync_thread(void* arg)
    lavrec_t *info = (lavrec_t *) arg;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    int frame = 0; /* framenum to sync on */
+#if 1
+   unsigned long qframe, i;
+#endif
 
    /* Allow easy shutting down by other processes... */
    /* PTHREAD_CANCEL_ASYNCHRONOUS is evil
@@ -1649,17 +1657,69 @@ static void *lavrec_software_sync_thread(void* arg)
 
    while (1)
    {
+      /* evil hack for BTTV-0.8 - we need to queue frames here */
+      /* this cycle is non-onbligatory - we just queue frames as they become available,
+       * below, we'll wait for queues if we don't have enough of them */
+      for (i=0;i<settings->softreq.frames;i++)
+      {
+         qframe = settings->buffers_queued % settings->softreq.frames;
+         if (settings->buffer_valid[qframe] == -2)
+         {
+            if (!lavrec_queue_buffer(info, &qframe))
+            {
+               pthread_mutex_lock(&(settings->software_sync_mutex));
+               settings->software_sync_ready[qframe] = -1;
+               pthread_cond_broadcast(&(settings->software_sync_wait[qframe]));
+               pthread_mutex_unlock(&(settings->software_sync_mutex));
+               lavrec_msg(LAVREC_MSG_ERROR, info,
+                  "Error re-queueing a buffer (%lu): %s", qframe, sys_errlist[errno]);
+               lavrec_change_state(info, LAVREC_STATE_STOP);
+               pthread_exit(0);
+            }
+            settings->buffer_valid[qframe] = -1;
+         }
+         else
+            break;
+      }
+
       pthread_mutex_lock(&(settings->queue_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
 	 if (settings->is_queued[frame] <= 0 ||
              settings->please_stop_syncing)
             break; /* sync on all remaining frames */
+#if 0
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Software sync thread: sleeping for new queues (%d)", frame);
          pthread_cond_wait(&(settings->queue_wait),
             &(settings->queue_mutex));
+#else
+         /* sleep for new buffers to be completed encoding. After that,
+          * requeue them so we have more than MIN_QUEUES_NEEDED buffers
+          * free */
+         qframe = settings->buffers_queued % settings->softreq.frames;
+         lavrec_msg(LAVREC_MSG_DEBUG, info,
+            "Software sync thread: sleeping for new queues (%lu) to become available", qframe);
+         while (settings->buffer_valid[qframe] != -2)
+         {
+            pthread_cond_wait(&(settings->buffer_completion[qframe]),
+               &(settings->encoding_mutex));
+         }
+         if (!lavrec_queue_buffer(info, &qframe))
+         {
+            pthread_mutex_lock(&(settings->software_sync_mutex));
+            settings->software_sync_ready[qframe] = -1;
+            pthread_cond_broadcast(&(settings->software_sync_wait[qframe]));
+            pthread_mutex_unlock(&(settings->software_sync_mutex));
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Error re-queueing a buffer (%lu): %s", qframe, sys_errlist[errno]);
+            lavrec_change_state(info, LAVREC_STATE_STOP);
+            pthread_exit(0);
+         }
+         settings->buffer_valid[qframe] = -1;
+#endif
       }
+
       if (!settings->queue_left)
       {
 	 lavrec_msg(LAVREC_MSG_DEBUG, info,
@@ -1863,10 +1923,12 @@ static void lavrec_record(lavrec_t *info)
       for (x=0;x<MJPEG_MAX_BUF;x++)
       {
          settings->is_queued[x] = 0;
-         settings->buffer_valid[x] = -1; /* 0 means to just omit the frame, -1 means "in progress" */
+         settings->buffer_valid[x] = -1; /* 0 means to just omit the frame, -1 means "in progress",
+						-2 is an evil hack for BTTV-0.8 */
          settings->buffer_completed[x] = 1; /* 1 means compression and writing completed,
                                                0 means in progress */
       }
+      settings->buffers_queued = 0;
 
       if( !(settings->encoders = malloc(info->num_encoders * sizeof(encoder_info_t))) )
       {

@@ -1150,7 +1150,8 @@ static int lavplay_mjpeg_set_playback_rate(lavplay_t *info, double video_fps, in
       abs(target_usec_per_frame - norm_usec_per_frame) > 50)
    {
       lavplay_msg(LAVPLAY_MSG_ERROR, info,
-         "Specified frame-rate doesn't match in mode in hardware playback");
+         "Specified frame-rate doesn't match in mode in hardware playback (target: %d, norm: %d)",
+		target_usec_per_frame, norm_usec_per_frame);
       return 0;
    }
 
@@ -1584,7 +1585,8 @@ static int lavplay_init(lavplay_t *info)
    if (!lavplay_mjpeg_set_params(info, &bp))
       return 0;
 
-   if (!lavplay_mjpeg_set_playback_rate(info, editlist->video_fps, bp.norm))
+   if (!lavplay_mjpeg_set_playback_rate(info, editlist->video_fps,
+       editlist->video_norm=='p'?0:1))
       return 0;
 
    return 1;

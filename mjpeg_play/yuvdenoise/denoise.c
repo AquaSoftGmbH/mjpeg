@@ -1,3 +1,7 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
@@ -558,9 +562,6 @@ sharpen_frame(void)
   register int m;
   register int c;
 
-  if (denoiser.sharpen == 0)
-    return;
-
   dst[Yy]=denoiser.frame.avg2[Yy]+32*W;
 
   /* Y */
@@ -638,7 +639,7 @@ denoise_frame(void)
     average_frame();
     correct_frame2();
     denoise_frame_pass2();
-    //sharpen_frame();
+    sharpen_frame();
     black_border();
     
     memcpy(denoiser.frame.avg[0],denoiser.frame.tmp[0],denoiser.frame.w*(denoiser.frame.h+64));
