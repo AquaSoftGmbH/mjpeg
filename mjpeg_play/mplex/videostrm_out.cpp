@@ -25,10 +25,8 @@
 #include <assert.h>
 
 #include "mjpeg_types.h"
-#include "fastintfns.h"
 #include "videostrm.hpp"
 #include "multiplexor.hpp"
-
 
 VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms, 
                          Multiplexor &into ) :
@@ -64,7 +62,6 @@ bool VideoStream::Probe(IBitStream &bs )
     return bs.GetBits( 32)  == 0x1b3;
 }
 
-
 /*********************************
  * Signals when video stream has completed mux run-out specified
  * in associated mux stream.   Run-out is always to complete GOP's.
@@ -86,7 +83,6 @@ bool VideoStream::RunOutComplete()
  * one second.  This is mainly for the benefit of (S)VCD and DVD applications
  * where long delays mess up random access.
  *******************************/
-
 
 bool VideoStream::MuxPossible( clockticks currentSCR )
 {
@@ -182,7 +178,6 @@ const AUnit *VideoStream::NextIFrame()
     return au_ahead;
 }
 
-
 /********************************
  *
  * Calculate how much payload can be muxed next sector without
@@ -219,7 +214,6 @@ unsigned int VideoStream::ExcludeNextIFramePayload()
 void VideoStream::OutputSector ( )
 
 {
-
 	unsigned int max_packet_payload; 	 
 	unsigned int actual_payload;
 	unsigned int old_au_then_new_payload;
@@ -257,8 +251,8 @@ void VideoStream::OutputSector ( )
 	   of the last packet...  */
 
 	old_au_then_new_payload = muxinto.PacketPayload( *this,
-													 buffers_in_header, 
-													 true, true);
+					buffers_in_header, 
+					true, true);
 
 	/* CASE: Packet starts with new access unit			*/
 	if (new_au_next_sec  )
@@ -285,10 +279,10 @@ void VideoStream::OutputSector ( )
         DTS = RequiredDTS();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
-								  *this,
-								  NewAUBuffers(autype), 
-                                  PTS, DTS,
-								  NewAUTimestamps(autype) );
+						*this,
+						NewAUBuffers(autype), 
+                                  		PTS, DTS,
+						NewAUTimestamps(autype) );
 
 	}
 
@@ -300,9 +294,9 @@ void VideoStream::OutputSector ( )
 	{
 		actual_payload = 
 			muxinto.WritePacket( au_unsent,
-								  *this,
-								  false, 0, 0,
-								  TIMESTAMPBITS_NO );
+							*this,
+							false, 0, 0,
+							TIMESTAMPBITS_NO );
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -322,24 +316,21 @@ void VideoStream::OutputSector ( )
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
-									  *this,
-									  NewAUBuffers(autype), 
-                                      PTS, DTS,
-									  NewAUTimestamps(autype) );
+						*this,
+						NewAUBuffers(autype), 
+                                      		PTS, DTS,
+						NewAUTimestamps(autype) );
 		} 
 		else
 		{
-			actual_payload = muxinto.WritePacket ( au_unsent,
-										 *this,
-										 false, 0, 0,
-										 TIMESTAMPBITS_NO);
+			actual_payload = muxinto.WritePacket ( au_unsent, 
+							*this, false, 0, 0,
+							TIMESTAMPBITS_NO);
 		}
-
 	}
 	++nsec;
 	buffers_in_header = always_buffers_in_header;
 }
-
 
 
 /***********************************************

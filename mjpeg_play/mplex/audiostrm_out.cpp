@@ -25,7 +25,6 @@
 #include <assert.h>
 
 #include "mjpeg_types.h"
-#include "fastintfns.h"
 #include "audiostrm.hpp"
 #include "multiplexor.hpp"
 

@@ -25,7 +25,6 @@
 #include <assert.h>
 
 #include "mjpeg_types.h"
-#include "fastintfns.h"
 #include "inputstrm.hpp"
 #include "multiplexor.hpp"
 
@@ -33,14 +32,12 @@ MuxStream::MuxStream() : init(false)
 {
 }
 
-
 void MuxStream::Init( const int strm_id, 
-					  const unsigned int _buf_scale,
-					  const unsigned int buf_size,
-					  const unsigned int _zero_stuffing,
-					  bool bufs_in_first, 
-					  bool always_bufs
-	) 
+			const unsigned int _buf_scale,
+			const unsigned int buf_size,
+			const unsigned int _zero_stuffing,
+			bool bufs_in_first, 
+			bool always_bufs) 
 {
 	stream_id = strm_id;
 	nsec = 0;
@@ -56,7 +53,6 @@ void MuxStream::Init( const int strm_id,
 }
 
 
-
 unsigned int 
 MuxStream::BufferSizeCode()
 {
@@ -70,10 +66,8 @@ MuxStream::BufferSizeCode()
 }
 
 
-
 ElementaryStream::ElementaryStream( IBitStream &ibs,
-                                    Multiplexor &into, 
-									stream_kind _kind) : 
+                                    Multiplexor &into, stream_kind _kind) : 
     InputStream( ibs ),
     au(0),
 	muxinto( into ),
@@ -167,7 +161,6 @@ ElementaryStream::BytesToMuxAUEnd(unsigned int sector_transport_size)
  ******************************************************************/
 
 
-
 unsigned int 
 ElementaryStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
@@ -182,9 +175,6 @@ ElementaryStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     ReadStreamHeader(dst, header_size);
 	return actually_read;
 }
-
-
-
 
 void ElementaryStream::Muxed (unsigned int bytes_muxed)
 {
@@ -246,7 +236,6 @@ bool ElementaryStream::MuxPossible(clockticks currentSCR)
 			bufmodel.Space() > max_packet_data);
 }
 
-
 void ElementaryStream::UpdateBufferMinMax()
 {
     buffer_min =  buffer_min < bufmodel.Space() ? 
@@ -254,7 +243,6 @@ void ElementaryStream::UpdateBufferMinMax()
     buffer_max = buffer_max > bufmodel.Space() ? 
         buffer_max : bufmodel.Space();
 }
-
 
 
 void ElementaryStream::AllDemuxed()
@@ -278,14 +266,11 @@ ElementaryStream::SetSyncOffset( clockticks sync_offset )
 	timestamp_delay = sync_offset;
 }
 
-
-
 void ElementaryStream::BufferAndOutputSector( )
 {
     AUBufferLookaheadFill(1);   // TODO is this really needed here?
     OutputSector();
 }
-
 
 
 /* 

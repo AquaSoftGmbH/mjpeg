@@ -24,7 +24,6 @@
 
 #include <config.h>
 #include <assert.h>
-#include "fastintfns.h"
 #include "zalphastrm.hpp"
 #include "multiplexor.hpp"
 
@@ -56,7 +55,6 @@ bool ZAlphaStream::Probe(IBitStream &bs )
     return bs.GetBits( 32)  == ZA_SEQUENCE_HEADER;
 }
 
-
 /*********************************
  * Signals if it is permissible/possible to Mux out a sector from the Stream.
  * The universal constraints that muxing should not be complete and that
@@ -66,14 +64,12 @@ bool ZAlphaStream::Probe(IBitStream &bs )
  * where long delays mess up random access.
  *******************************/
 
-
 bool ZAlphaStream::MuxPossible( clockticks currentSCR )
 {
     bool a = ElementaryStream::MuxPossible(currentSCR);
     bool b = (RequiredDTS() < (currentSCR + max_STD_buffer_delay));
 
     //mjpeg_info("Z/A max_STD_buffer_delay %d", max_STD_buffer_delay); 
-
     //mjpeg_info("Z/A Mux Possible %d, %d ", a, b);
     //mjpeg_info("RequiredDTS %ld",RequiredDTS());
     //mjpeg_info("currentSCR %ld", currentSCR);
@@ -81,8 +77,6 @@ bool ZAlphaStream::MuxPossible( clockticks currentSCR )
 
 	return (  a && b );
 }
-
-
 
 /******************************************************************
 	Output_Video
@@ -152,10 +146,10 @@ void ZAlphaStream::OutputSector ( )
         DTS = RequiredDTS();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
-								  *this,
-								  NewAUBuffers(autype), 
-                                  PTS, DTS,
-								  NewAUTimestamps(autype) );
+						*this,
+						NewAUBuffers(autype), 
+                                  		PTS, DTS,
+						NewAUTimestamps(autype) );
 
 	}
 
@@ -167,9 +161,9 @@ void ZAlphaStream::OutputSector ( )
 	{
 		actual_payload = 
 			muxinto.WritePacket( au_unsent,
-								  *this,
-								  false, 0, 0,
-								  TIMESTAMPBITS_NO );
+						*this,
+						false, 0, 0,
+						TIMESTAMPBITS_NO );
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -189,19 +183,17 @@ void ZAlphaStream::OutputSector ( )
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
-									  *this,
-									  NewAUBuffers(autype), 
-                                      PTS, DTS,
-									  NewAUTimestamps(autype) );
+						*this,
+						NewAUBuffers(autype), 
+                                      		PTS, DTS,
+						NewAUTimestamps(autype) );
 		} 
 		else
 		{
 			actual_payload = muxinto.WritePacket ( au_unsent,
-										 *this,
-										 false, 0, 0,
-										 TIMESTAMPBITS_NO);
+						*this, false, 0, 0,
+						TIMESTAMPBITS_NO);
 		}
-
 	}
 	++nsec;
 	buffers_in_header = always_buffers_in_header;
@@ -209,14 +201,13 @@ void ZAlphaStream::OutputSector ( )
 
 #else
 {
-
 	unsigned int max_packet_payload; 	 
 	unsigned int actual_payload;
 	unsigned int prev_au_tail;
 	VAunit *vau;
 	unsigned int old_au_then_new_payload;
 	clockticks  DTS,PTS;
-    int autype;
+        int autype;
 
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
@@ -243,8 +234,7 @@ void ZAlphaStream::OutputSector ( )
 	   of the last packet...  */
 
 	old_au_then_new_payload = muxinto.PacketPayload( *this,
-													 buffers_in_header, 
-													 true, true);
+					buffers_in_header, true, true);
 
 	/* CASE: Packet starts with new access unit			*/
 	if (new_au_next_sec  )
@@ -256,9 +246,7 @@ void ZAlphaStream::OutputSector ( )
         // N.b. this implies muxinto.sector_align_iframeAUs
         //
         if( gop_control_packet && autype == IFRAME )
-        {
             OutputGOPControlSector();
-        }
 
         if(  dtspts_for_all_au  && max_packet_payload == 0 )
             max_packet_payload = au_unsent;
@@ -267,11 +255,10 @@ void ZAlphaStream::OutputSector ( )
         DTS = RequiredDTS();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
-								  *this,
-								  NewAUBuffers(autype), 
-                                  PTS, DTS,
-								  NewAUTimestamps(autype) );
-
+						*this,
+						NewAUBuffers(autype), 
+                                  		PTS, DTS,
+						NewAUTimestamps(autype) );
 	}
 
 	/* CASE: Packet begins with old access unit, no new one	*/
@@ -281,10 +268,8 @@ void ZAlphaStream::OutputSector ( )
               (max_packet_payload != 0 && au_unsent >= max_packet_payload) )
 	{
 		actual_payload = 
-			muxinto.WritePacket( au_unsent,
-								  *this,
-								  false, 0, 0,
-								  TIMESTAMPBITS_NO );
+			muxinto.WritePacket( au_unsent, *this,
+						false, 0, 0, TIMESTAMPBITS_NO );
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -303,18 +288,16 @@ void ZAlphaStream::OutputSector ( )
 			DTS = NextRequiredDTS();
 
 			actual_payload = 
-				muxinto.WritePacket ( max_packet_payload,
-									  *this,
-									  NewAUBuffers(autype), 
-                                      PTS, DTS,
-									  NewAUTimestamps(autype) );
+				muxinto.WritePacket ( max_packet_payload, *this,
+						NewAUBuffers(autype), 
+                                     		PTS, DTS, 
+						NewAUTimestamps(autype) );
 		} 
 		else
 		{
-			actual_payload = muxinto.WritePacket ( 0,
-										 *this,
-										 false, 0, 0,
-										 TIMESTAMPBITS_NO);
+			actual_payload = muxinto.WritePacket ( 0, *this,
+							false, 0, 0,
+							TIMESTAMPBITS_NO);
 		}
 
 	}
@@ -323,10 +306,8 @@ void ZAlphaStream::OutputSector ( )
 }
 #endif
 
-
 bool ZAlphaStream::RunOutComplete()
 {
- 
 	return (au_unsent == 0);
 // || 
 //			( muxinto.running_out &&
