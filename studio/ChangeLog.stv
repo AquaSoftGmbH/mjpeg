@@ -1,0 +1,36 @@
+12-9-2001
+* Added audio mute option ('a' or remote control RC_MUTE button)
+
+11-9-2001
+* Added infrared controls
+* Added notebook to settings window
+
+30-8-2001
+* added blocked/block-size resize
+* fixed dirty full-screen-to-windowed-mode toggle by a somewhat better one
+* all subwindows are now modal and positioned
+* remembers size/position of last session and after resize
+
+29-8-2001
+* added images to the channel editor
+* added entry-up/entry-down buttons to channel editor
+* added scrollbar to channel editor's channel list
+* new keys:
+   - numpad/num keys: choose channel by number
+   - 'q': quit
+
+28-8-2001
+* added full-screen option
+* added key-support
+   - up/left: go 1 channel back
+   - right/down: go 1 channel forward
+   - home/end: go to first/last channel
+   - enter/escape: toggle full-screen
+* fixed resize bug
+* changed full-screen mouse button from left to middle
+
+27-8-2001
+* added proper channel selection
+
+long before
+* started the whole thing
