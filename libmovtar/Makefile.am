@@ -6,10 +6,10 @@ bin_PROGRAMS = @MOVTAR_PLAY@ movtar_split movtar_unify movtar_index movtar_setin
 bin_SCRIPTS = movtar-config
 lib_LIBRARIES = libmovtar.a
 libmovtar_a_SOURCES = movtar.c tar.c 
-INCLUDES = @GLIB_CFLAGS@ @JPEG_INCLUDE@ @RTJPEG_INCLUDE@
+INCLUDES = @GLIB_CFLAGS@ @JPEG_INCLUDE@ @RTJPEG_INCLUDE@ @SDL_CFLAGS@
 include_HEADERS = movtar.h
 
-movtar_play_LDADD = -lSDL -lpthread -ljpeg ./libmovtar.a @RTJPEG_OBJS@ @GLIB_LIBS@
+movtar_play_LDADD = @SDL_LIBS@ -lpthread -ljpeg ./libmovtar.a @RTJPEG_OBJS@ @GLIB_LIBS@
 
 movtar_unify_LDADD = ./libmovtar.a -ljpeg @RTJPEG_OBJS@ @GLIB_LIBS@
 movtar_unify_COMPILE = -DRTJPEG
