@@ -1,8 +1,3 @@
-Critical:
-=========
-Make everything mjpegtools-1.5 compatible
-  * yuv4mpeg2
-
 Short term:
 ===========
 * add images to remaining "un-images" buttons (esp. lavencode.c)
@@ -10,6 +5,7 @@ Short term:
     - more :-)
 * If recording src is changed, auto-update the mixer device/slider (audio)
 * Effect-result movies should be used in the editlist (doh)
+* Brightness and sound volume sliders in lavplay-page
 
 Long term:
 ==========
