@@ -32,7 +32,7 @@ static void Usage(char *str)
 int verbose = 1;
 int opt_interactive_mode = 0;
 int opt_buffer_size = 46;
-int opt_data_rate = 0;  /* 1740 would be right for VCD */
+int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
 int opt_video_offset = 0;
 int opt_audio_offset = 0;
 int opt_sector_size = 2324;
@@ -92,7 +92,9 @@ int intro_and_options(int argc, char *argv[])
 	  case 'r':
 		opt_data_rate = atoi(optarg);
 		if( opt_data_rate < 0 )
-		  Usage(argv[0]);
+			Usage(argv[0]);
+		/* Convert from kbit/sec (user spec) to 50B/sec units... */
+		opt_data_rate = (( opt_data_rate * 1000 / 8 + 49) / 50 ) * 50;
 		break;
 
 	  case 'v':

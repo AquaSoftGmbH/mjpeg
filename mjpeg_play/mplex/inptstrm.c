@@ -414,11 +414,11 @@ void output_info_video (video_info)
     else if (video_info->bit_rate == 0)
 		printf("Bit rate      : forbidden\n");
     else
-		printf("Bit rate       : %8u bytes/sec (%7u bits/sec)\n",
-			   video_info->bit_rate*50,video_info->bit_rate*400);
+		printf("Bit rate       : %7u bits/sec\n",
+			   video_info->bit_rate*400);
 
-    printf   ("Computed rate  : %8u bytes/sec\n",video_info->comp_bit_rate*50);
-    printf   ("Peak     rate  : %8u  bytes/sec\n",video_info->peak_bit_rate*50);
+    printf   ("Computed rate  : %8u bits/sec\n",video_info->comp_bit_rate*400);
+    printf   ("Peak     rate  : %8u  bits/sec\n",video_info->peak_bit_rate*400);
     printf   ("Vbv buffer size: %8u bytes\n",video_info->vbv_buffer_size*2048);
     printf   ("CSPF           : %8u\n",video_info->CSPF);
 }
