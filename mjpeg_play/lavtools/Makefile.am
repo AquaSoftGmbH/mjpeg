@@ -87,7 +87,7 @@ bin_PROGRAMS = \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
 	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
 	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
-	ppmtoy4m y4mcolorbars
+	ppmtoy4m y4mcolorbars lavinfo
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h lav2wav.h
@@ -175,4 +175,6 @@ divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) \
 	liblavfile.la liblavplay.la liblavjpeg.la
 
-
+lavinfo_SOURCES = lavinfo.c $(lav_headers)
+lavinfo_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
+	liblavfile.la
