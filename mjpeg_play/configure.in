@@ -173,6 +173,7 @@ if test x$os_type = x"Linux"; then
     )
 else
   AC_MSG_WARN([Did not find linux platform - video4linux functionality will be disabled])
+  AC_MSG_WARN([If you are on MacOS X, please note that only the classic libjpeg works !])
 fi
 
 dnl *********************************************************************
