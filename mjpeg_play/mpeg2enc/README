@@ -280,11 +280,15 @@ hardware decoders react allergically to variable-size GOP's.
 
 STILL MORE PERFORMANCE?
 
-Buy a multi-processor P-III Coppermine!   The SMP support gives
-a speed up of around 1.8 on dual CPU machines!  Apart from this
-see how big improvements can be made without radical
-rebuilding of the code.  The program now spends around 50% of its
-time in routines that are already aggressively implement in MMX (etc).
+Buy a multi-processor Athlon or P-IV machine!  The SMP support now
+gives a speed up of around 1.9 on dual CPU machines.  It should give
+useful speed scaling on 3 and 4 CPU machines too. Apart from this it
+is hard to see how big improvements can be made without radical
+rebuilding of the code.  The program now spends around 50% of its time
+in routines that are already aggressively implement in MMX (etc).
+
+Note: the Athlon CPU's are a *lot* faster at a couple of key MMX instructions
+than the original P-III Katmai's. 
 
 BETTER QUALITY?
 

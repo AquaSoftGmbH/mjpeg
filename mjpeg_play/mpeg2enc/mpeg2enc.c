@@ -858,7 +858,7 @@ static void init_encoding_parms(void)
 	opt_dc_prec         = 0;  /* 8 bits */
 	opt_topfirst        = (param_fieldpic==2) || (param_fieldpic == 3);
 	opt_repeatfirst     = 0;
-	opt_prog_frame      = (param_fieldpic==0) || (param_fieldpic == 3);
+	opt_prog_frame      = (param_fieldpic==0);
 
 	frame_pred_dct_tab[0] = mpeg1 ? 1 : (param_fieldpic == 0);
 	frame_pred_dct_tab[1] = mpeg1 ? 1 : (param_fieldpic == 0);
