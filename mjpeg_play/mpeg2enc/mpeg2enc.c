@@ -125,6 +125,7 @@ static int param_input_interlacing;
 static int param_hack_svcd_hds_bug = 1;
 static int param_hack_altscan_bug = 0;
 static int param_mpeg2_dc_prec = 1;
+static int param_ignore_constraints = 0;
 
 /* Input Stream parameter values that have to be further processed to
    set encoding options */
@@ -167,7 +168,7 @@ static void Usage(char *str)
 "    Set pre-defined mux format fmt.\n"
 "    [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n"
 "     3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
-"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8,9 = DVD]\n"
+"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
 "--aspect|-a num\n"
 "    Set displayed image aspect ratio image (default: 2 = 4:3)\n"
 "    [1 = 1:1, 2 = 4:3, 3 = 16:9, 4 = 2.21:1]\n"
@@ -249,6 +250,9 @@ static void Usage(char *str)
 "--no-altscan-mpeg2\n"
 "    Force MPEG2 *not* to use alternate block scanning.  This may allow some\n"
 "    buggy players to play SVCD streams\n"
+"--no-constraints\n"
+"    Deactivate the constraints for maximum video resolution and sample rate.\n"
+"    Could expose bugs in the software at very high resolutions !\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
@@ -682,6 +686,7 @@ static struct option long_options[]={
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
      { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
+     { "no-constraints", 0, &param_ignore_constraints, 0},
      { "no-altscan-mpeg2", 0, &param_hack_altscan_bug, 1},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
@@ -1297,7 +1302,6 @@ static void init_mpeg_parms(void)
     case MPEG_FORMAT_SVCD_NSR :
     case MPEG_FORMAT_SVCD_STILL :
     case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
         opt_prog_seq = 0;
         break;
     default :
@@ -1354,6 +1358,7 @@ static void init_mpeg_parms(void)
 	opt_seq_hdr_every_gop = param_seq_hdr_every_gop;
 	opt_seq_end_every_gop = param_seq_end_every_gop;
 	opt_svcd_scan_data = param_svcd_scan_data;
+	opt_ignore_constraints = param_ignore_constraints;
 	ctl_seq_length_limit = param_seq_length_limit;
 	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;
 	opt_low_delay       = 0;
@@ -1399,7 +1404,6 @@ static void init_mpeg_parms(void)
 	case MPEG_FORMAT_SVCD_NSR :
 	case MPEG_FORMAT_SVCD :
     case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
         /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
            for 4:3 aspect video. However, many players expect 480 and go weird
            if this isn't set...

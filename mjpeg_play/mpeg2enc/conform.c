@@ -261,17 +261,20 @@ void profile_and_level_checks(void)
     }
   }
 
-  /* Table 8-10 */
-  if (opt_horizontal_size > maxval->hor_size)
-    mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level");
-
-  if (opt_vertical_size > maxval->vert_size)
-    mjpeg_error_exit1("Vertical size is greater than permitted in specified Level");
-
-  /* Table 8-11 */
-  if (opt_horizontal_size*opt_vertical_size*opt_frame_rate > 
+  if (!opt_ignore_constraints) 
+    {
+      /* Table 8-10 */
+      if (opt_horizontal_size > maxval->hor_size)
+	mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level");
+      
+      if (opt_vertical_size > maxval->vert_size)
+	mjpeg_error_exit1("Vertical size is greater than permitted in specified Level");
+      
+      /* Table 8-11 */
+      if (opt_horizontal_size*opt_vertical_size*opt_frame_rate > 
 	  maxval->sample_rate)
-    mjpeg_error_exit1("Sample rate is greater than permitted in specified Level");
+	mjpeg_error_exit1("Sample rate is greater than permitted in specified Level");
+    }      
 
   /* Table 8-12 */
   if (opt_bit_rate> 1.0e6 * maxval->opt_bit_rate)
