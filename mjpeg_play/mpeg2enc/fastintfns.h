@@ -10,7 +10,7 @@ static __inline__ int intmax( register int x, register int y )
 {
 	asm( "cmpl %1, %0\n"
 	     "cmovl %1, %0\n"
-         : "=r" (x) :  "rm" (y)
+         : "=r" (x) : "0" (x),  "rm" (y)
        );
 	return x;
 }
@@ -19,7 +19,7 @@ static __inline__ int intmin( register int x, register int y )
 {
 	asm( "cmpl %1, %0\n"
 	     "cmovg %1, %0\n"
-         : "=r" (x) :  "rm" (y)
+         : "=r" (x) :  "0" (x), "rm" (y)
        );
 	return x;
 }
@@ -29,7 +29,7 @@ static __inline__ int intabs( register int x )
 	register int neg = -x;
 	asm( "cmpl %1, %0\n"
 	     "cmovl %1, %0\n"
-         : "=r" (x) :  "rm" (neg)
+         : "=r" (x) : "0" (x), "rm" (neg)
        );
 	return x;
 }
