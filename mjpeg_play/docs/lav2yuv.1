@@ -1,28 +1,28 @@
+.\" 
 .TH "lav2yuv" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
-
 .SH "NAME"
 lav2yuv \- Convert a MJPEG file to raw yuv
 
 .SH "SYNOPSIS"
 .B lav2yuv
 .RI [ options ]
-.IR filename " ..."
+.I filename " ..."
 
 .SH "DESCRIPTION"
 \fBlav2yuv\fP converts an MJPEG video sequence described by a sequence
 of MJPEG video files and/or edit lists pointing to such files into the
-simple uncompressed planar YUV format expected by the used by the
-\fBmpeg2enc\fP(1) MPEG encoder and image processing filters like
-\fByuvscaler\fP(1) or \fByuv2dfilter\fP(1).
+simple uncompressed planar YUV format. Used by \fBmpeg2enc\fP(1) 
+MPEG encoder and image processing filters like
+\fByuvscaler\fP(1) or \fByuv2dfilter\fP(1) or \fByuvdenoise\fP(1).
 
 Output is to stdout so that by piping the output of lav2yuv into a
 suitable pipeline it is possible to process and then encode or play
 back video recorded in any of the mjpegtools MJPEG container formats:
 AVI, quicktime or movtar or edit lists describing editted versions of
-videon held in such files.
+video held in such files.
 
 For historical reasons lav2yuv has simple scaling and cropping facilities
-built-in although superior facilities are also available through the
+built\-in although superior facilities are also available through the
 \fByuvscaler\fP(1) filter.
 
 Mixing differnt files with different video formats is currently not possible.
@@ -45,13 +45,14 @@ Special output format option:
  3 create 352 wide output from 720 wide input (VCD)
  4 create 480 x 480 output from 720 x 240 input (SVCD)
 .TP 5
-.BR \-d \ [ 0 .. 3 ]
-Drop lsbs of samples (default: 0) Improves the quality a bit, because the less sigificant bits of every sample aere dropped. Reduces the number of different colors. 
+.BI \-d \ [0..3]
+Drop lsbs of samples (default: 0) Improves the quality a bit, because the less sigificant bits of every sample are dropped. Reduces the number of different colors
 .TP 5
-.BR \-n \ [ 0 .. 2 ]
-Noise filter (low\-pass) (default: 0) This removes low fequency noise in the picture. 
+.BI \-n \ [0..2]
+Noise filter (low\-pass) (default: 0) This removes low fequency noise in the picture
+
 .TP 5
-.B \-m 
+.BI \-m 
 Force mono\-chrome
 .TP 5
 .BI \-S " list.el"
@@ -69,22 +70,34 @@ all but the last num frames are skipped
 .TP 5
 .BI \-f " num"
 Only num frames are written to stdout. 0 means that all frames aure procced. 
+.TP 5
+.BI \-I \ [0..3]
+De-Interlacing mode for DV input 
+.TP 5
+.BI \-i \ [0..65025]
+De-Interlacing spatial threshold (default: 440) for DV
+.TP 5
+.BI \-j \ [0..65025]
+De-Interlacing temporal threshold (default: 220) for DV
+.TP 5
+.BI \-Y
+switch field order in DV input
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.
-.br
+.br 
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
-.TP
+.TP 
 For more info, see our website at
 .I http://mjpeg.sourceforge.net
 
 .SH "SEE ALSO"
-.BR mjpeg (1),
+.BR mjpegtools (1),
 .BR mpeg2enc (1),
-.BR lav2wav (1),
 .BR yuvscaler (1),
 .BR yuv2lav (1),
+.BR yuvdenoise (1),
 .BR yuvplay (1)
