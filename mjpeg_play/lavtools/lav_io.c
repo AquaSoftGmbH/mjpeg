@@ -953,7 +953,12 @@ lav_file_t *lav_open_input_file(char *filename)
 	if (!movtar_check_sig(filename))
 	  {
 	    /* None of the known formats */
-	    printf("No movtar file\n");
+            char errmsg[1024];
+            sprintf(errmsg, "movtar");
+#ifdef HAVE_LIBQUICKTIME
+            sprintf(errmsg, "%s quicktime", errmsg);
+#endif
+	    printf("Unable to identify file (not one of: avi %s).\n", errmsg);
 	    free(lav_fd);
 	    internal_error = ERROR_FORMAT; /* Format not recognized */
 	    return 0;
@@ -1268,7 +1273,8 @@ char *lav_strerror(void)
 #endif
       default:
          /* No or unknown video format */
-         sprintf(error_string,"No or unknown video format");
+         if(errno) strerror(errno);
+         else sprintf(error_string,"No or unknown video format");
          return error_string;
    }
 }
