@@ -20,13 +20,17 @@
 #
 
 AUD_TRACK="1"
+VOLUMES="1"
 FILTERING="none"
 FILTER_TYPE="median"
 PREFIX_OUT="out"
 VCD_TYPE="dvd"
+DEC_TOOL="ffmpeg"
 ENC_TOOL="mpeg2enc"
 QUALITY="best"
-VERSION="5"
+CQMFILE="matrices.txt"
+STATFILE="statfile.log"
+VERSION="6"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -35,17 +39,46 @@ MPEG2ENC="mpeg2enc"
 MPLEX="mplex"
 PGMTOY4M="pgmtoy4m"
 SOX="sox"
+TCCAT="tccat"
+TCDEMUX="tcdemux"
+TCPROBE="tcprobe"
 TRANSCODE="transcode"
 Y4MSCALER="y4mscaler"
 Y4MSPATIALFILTER="y4mspatialfilter"
+Y4MUNSHARP="y4munsharp"
 YUVDENOISE="yuvdenoise"
 YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
+
+# custom quant. matrices
+INTRA_KVCD="8,9,12,22,26,27,29,34,9,10,14,26,27,29,34,37,12,14,18,27,29,34,37,38,22,26,27,31,36,37,38,40,26,27,29,36,39,38,40,48,27,29,34,37,38,40,48,58,29,34,37,38,40,48,58,69,34,37,38,40,48,58,69,79"
+INTER_KVCD="16,18,20,22,24,26,28,30,18,20,22,24,26,28,30,32,20,22,24,26,28,30,32,34,22,24,26,30,32,32,34,36,24,26,28,32,34,34,36,38,26,28,30,32,34,36,38,40,28,30,32,34,36,38,42,42,30,32,34,36,38,40,42,44"
+
+INTRA_MVCD="8,10,16,20,25,28,33,44,10,10,14,26,27,29,34,47,16,14,18,27,29,34,37,48,20,26,27,31,36,37,38,50,25,27,29,32,37,40,48,58,28,33,36,42,45,50,58,68,33,37,39,44,48,56,66,79,37,39,45,48,56,66,79,83"
+INTER_MVCD="16,18,20,22,23,27,32,40,18,20,22,24,26,32,36,42,20,22,24,26,33,38,42,44,22,24,26,34,38,42,44,46,23,26,33,38,42,44,46,48,27,32,38,42,44,46,48,50,32,36,42,44,46,48,50,52,40,42,44,46,48,50,52,58"
+
+INTRA_TMPGENC="8,16,19,22,26,27,29,34,16,16,22,24,27,29,34,37,19,22,26,27,29,34,34,38,22,22,26,27,29,34,37,40,22,26,27,29,32,35,40,48,26,27,29,32,35,40,40,58,26,27,29,34,38,46,56,69,27,29,35,38,46,56,69,83"
+INTER_TMPGENC="16,17,18,19,20,21,22,23,17,18,19,20,21,22,23,24,18,19,20,21,22,23,24,25,19,20,21,22,23,24,26,27,20,21,22,23,25,26,27,28,21,22,23,24,26,27,28,30,22,23,24,26,27,28,30,31,23,24,25,27,28,30,31,33"
+
+matrix_copy ()
+{
+    # TODO: find less ugly func.
+    echo "`echo "$1" | \
+    awk -F, '{for (i=1; i<=NF; i++) {n=n$i","; z+=1; if (i==64) {z=0; sub(",$","",n)}; if (z==8) {z=0; n=n"\n"}}; print n}'`"
+}
 
 probe_ffmpeg_version ()
 {
     echo "`${FFMPEG} 2>&1 | \
     awk '$4 == "build" {print $5}' | sed s/,// | head -1`"
+}
+
+probe_aud_bitrate ()
+{
+    # $1 = audio input
+    # $2 = audio track
+    echo "`${FFMPEG} -map 0:${2} -i "$1" 2>&1 | \
+    awk '/Audio:/ {print $8}' | head -${2} | tail -1`"
 }
 
 probe_aud_fmt ()
@@ -97,12 +130,83 @@ probe_vid_fmt ()
     awk '/Video:/ {print $4}' | sed s/,// | head -1`"
 }
 
+probe_mpeg_length ()
+{
+    echo "`${TCCAT} -i "$1" | ${TCDEMUX} -W 2>&1 | \
+    awk '/unit/ {print sum+=$2}' | tail -1`"
+}
+
+probe_vid_length ()
+{
+    echo "`${TCPROBE} -i "$1" 2>/dev/null | \
+    awk '/length:/ {print $2}'`"
+}
+
+range_check ()
+{
+    # if input value < min. value
+    if test "$1" -lt "$2"; then
+        
+	# = min. value
+	echo "$2"
+
+    # if input value > max. value
+    elif test "$1" -gt "$3"; then
+        
+	# = max. value
+	echo "$3"
+    
+    else
+        
+	echo "$1"
+    
+    fi
+}
+
+mpeg2enc_statfile_analyse ()
+{
+    # calculate average quant value from pseudo statfile (mpeg2enc output)
+    echo "`awk '/quant=/ {print $7}' "$1" | \
+    awk -F= '{iquant=$2; \
+    oquant=iquant; \
+    if (iquant>=  10) {oquant=9}; \
+    if (iquant>=  12) {oquant=10}; \
+    if (iquant>=  14) {oquant=11}; \
+    if (iquant>=  16) {oquant=12}; \
+    if (iquant>=  18) {oquant=13}; \
+    if (iquant>=  20) {oquant=14}; \
+    if (iquant>=  22) {oquant=15}; \
+    if (iquant>=  24) {oquant=16}; \
+    if (iquant>=  28) {oquant=17}; \
+    if (iquant>=  32) {oquant=18}; \
+    if (iquant>=  36) {oquant=19}; \
+    if (iquant>=  40) {oquant=20}; \
+    if (iquant>=  44) {oquant=21}; \
+    if (iquant>=  48) {oquant=22}; \
+    if (iquant>=  52) {oquant=23}; \
+    if (iquant>=  56) {oquant=24}; \
+    if (iquant>=  64) {oquant=25}; \
+    if (iquant>=  72) {oquant=26}; \
+    if (iquant>=  80) {oquant=27}; \
+    if (iquant>=  88) {oquant=28}; \
+    if (iquant>=  96) {oquant=29}; \
+    if (iquant>= 104) {oquant=30}; \
+    if (iquant>= 112) {oquant=31}; \
+    nquant+=1; \
+    sum_quant+=oquant; \
+    print sum_quant/nquant}' | \
+    tail -1 | awk -F. '{print $1}'`"
+}
+
 show_help ()
 {
     echo "----------------------------------"
     echo "-a    audio track number (1)      "
     echo "-A    force input pixel aspect ratio (X:Y)"
     echo "-b    blind mode (no video)       "
+    echo "-c    enable audio pass-through   "
+    echo "-d    video decoder tool          "
+    echo "      avail. : ffmpeg (default) or mpeg2dec"
     echo "-e    video encoder tool          "
     echo "      avail. : mpeg2enc (default) "
     echo "      or ffmpeg (experimental)    "
@@ -122,6 +226,7 @@ show_help ()
     echo "               svcd and vcd       "
     echo "-q    quality (default = best)    "
     echo "      avail. : best, good, fair   "
+    echo "-r    enable two passes encoding mode"
     echo "-R    force input framerate (X:Y) "
     echo "-t    filter type to use with     "
     echo "      the chosen filter method    "
@@ -130,7 +235,10 @@ show_help ()
     echo "               median (yuvmedianfilter)  "
     echo "               spatial (y4mspatialfilter)"
     echo "               temporal (yuvdenoise)     "
+    echo "               unsharp (y4munsharp)      "
+    echo "-T    force input length (minutes)"
     echo "-v    script version              "
+    echo "-V    number of volumes (1)       "
 }
 
 test_bin ()
@@ -149,12 +257,14 @@ for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
 
 done
 
-while getopts a:A:be:f:i:I:mn:o:p:q:R:t:v OPT
+while getopts a:A:bcd:e:f:i:I:mn:o:p:q:rR:t:T:vV: OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
     A)    VID_SAR_SRC="${OPTARG}";;
     b)    BLIND_MODE="1";;
+    c)    ACOPY_MODE="1";;
+    d)    DEC_TOOL="${OPTARG}";;
     e)    ENC_TOOL="${OPTARG}";;
     i)    VIDEO_SRC="${OPTARG}"; AUDIO_SRC="${VIDEO_SRC}";;
     I)    INTERLACING="${OPTARG}";;
@@ -164,9 +274,12 @@ do
     o)    PREFIX_OUT="${OPTARG}";;
     p)    VCD_TYPE="${OPTARG}";;
     q)    QUALITY="${OPTARG}";;
+    r)    ENC_TYPE="abr";;
     R)    VID_FPS_SRC="${OPTARG}";;
     t)    FILTER_TYPE="${OPTARG}";;
+    T)    DURATION="${OPTARG}";;
     v)    echo "$0 version ${VERSION}"; exit 0;;
+    V)    VOLUMES="${OPTARG}";;
     \?)   show_help; exit 0;;
     esac
 done
@@ -181,6 +294,7 @@ fi
 
 FFMPEG_VERSION="`probe_ffmpeg_version`"
 
+AUD_BITRATE_SRC="`probe_aud_bitrate "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FREQ_SRC="`probe_aud_freq "${AUDIO_SRC}" ${AUD_TRACK}`"
 VID_FMT_SRC="`probe_vid_fmt "${VIDEO_SRC}"`"
@@ -228,11 +342,23 @@ if test "${VID_SAR_N_SRC}" == "0" || test "${VID_SAR_D_SRC}" == "0"; then
 
 fi
 
+FF_DEC="${FFMPEG} -i \"${VIDEO_SRC}\""
 FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 MPLEX="${MPLEX} -v 1"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
 Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR"
+
+# ffmpeg decoder version
+if test "${FFMPEG_VERSION}" -ge "4731"; then
+
+    FF_DEC="${FF_DEC} -f image2pipe -vcodec pgmyuv"
+
+else
+
+    FF_DEC="${FF_DEC} -f imagepipe -img pgmyuv"
+
+fi
 
 # filtering method(s)
 if test "${FILTERING}" == "none"; then
@@ -241,6 +367,7 @@ if test "${FILTERING}" == "none"; then
     YUVDENOISE=""
     Y4MSPATIALFILTER=""
     MEAN_FILTER=""
+    Y4MUNSHARP=""
 
 elif test "${FILTERING}" == "light"; then
 
@@ -248,6 +375,7 @@ elif test "${FILTERING}" == "light"; then
     YUVDENOISE="${YUVDENOISE} -l 1 -t 4 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -x 0 -y 0"
     MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1"
+    Y4MUNSHARP="${Y4MUNSHARP} -L 1.5,0.2,0"
 
 elif test "${FILTERING}" == "medium"; then
 
@@ -255,6 +383,7 @@ elif test "${FILTERING}" == "medium"; then
     YUVDENOISE="${YUVDENOISE} -l 2 -t 6 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.64 -Y 4,0.8"
     MEAN_FILTER="${YUVMEDIANFILTER} -f -r 1 -R 1 -w 2.667"
+    Y4MUNSHARP="${Y4MUNSHARP} -L 2.0,0.3,0"
 
 elif test "${FILTERING}" == "heavy"; then
 
@@ -262,6 +391,7 @@ elif test "${FILTERING}" == "heavy"; then
     YUVDENOISE="${YUVDENOISE} -l 3 -t 8 -S 0"
     Y4MSPATIALFILTER="${Y4MSPATIALFILTER} -X 4,0.5 -Y 4,0.5 -x 2,0.5 -y 2,0.5"
     MEAN_FILTER="${YUVMEDIANFILTER} -f"
+    Y4MUNSHARP="${Y4MUNSHARP} -L 5.0,0.5,0"
 
 else
 
@@ -317,6 +447,9 @@ if test "${VCD_TYPE}" == "cvd"; then
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
     AUD_CHANNELS_OUT="2"
+    
+    # default volume size in mbytes (m = 1000)
+    VOL_SIZE="4700"
 
 elif test "${VCD_TYPE}" == "dvd"; then
 
@@ -339,6 +472,8 @@ elif test "${VCD_TYPE}" == "dvd"; then
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
     AUD_CHANNELS_OUT="2"
+    
+    VOL_SIZE="4700"
 
 elif test "${VCD_TYPE}" == "dvd_wide"; then
 
@@ -361,6 +496,8 @@ elif test "${VCD_TYPE}" == "dvd_wide"; then
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
     AUD_CHANNELS_OUT="2"
+    
+    VOL_SIZE="4700"
 
 elif test "${VCD_TYPE}" == "mvcd"; then
 
@@ -369,7 +506,7 @@ elif test "${VCD_TYPE}" == "mvcd"; then
     Y4MSCALER="${Y4MSCALER} -O preset=vcd"
     MPLEX="${MPLEX} -f 2 -r 1400 -V"
 
-    MATRICES="kvcd"
+    MATRICES="mvcd"
     VID_FMT_OUT="m1v"
     VID_ILACE_OUT="p"
     VID_MINRATE_OUT="0"
@@ -381,9 +518,12 @@ elif test "${VCD_TYPE}" == "mvcd"; then
     VID_SIZE_625_OUT="352x288"
     
     AUD_FMT_OUT="mp2"
-    AUD_BITRATE_OUT="224"
+    AUD_BITRATE_OUT="128"
     AUD_FREQ_OUT="44100"
     AUD_CHANNELS_OUT="2"
+    
+    # 360000 sectors * 2324 bytes per sector / 1000 / 1000
+    VOL_SIZE="836"
 
 elif test "${VCD_TYPE}" == "svcd"; then
 
@@ -406,8 +546,12 @@ elif test "${VCD_TYPE}" == "svcd"; then
     AUD_BITRATE_OUT="224"
     AUD_FREQ_OUT="44100"
     AUD_CHANNELS_OUT="2"
+    
+    VOL_SIZE="836"
 
 elif test "${VCD_TYPE}" == "vcd"; then
+
+    ENC_TYPE="cbr"
 
     FF_ENC="${FF_ENC} -target vcd -f rawvideo -me_range 64"
     MPEG2ENC="${MPEG2ENC} -f 1 -B 256 -S 797"
@@ -426,12 +570,23 @@ elif test "${VCD_TYPE}" == "vcd"; then
     AUD_BITRATE_OUT="224"
     AUD_FREQ_OUT="44100"
     AUD_CHANNELS_OUT="2"
+    
+    VOL_SIZE="836"
 
 else
 
     echo "Error : the specified output type/profile is inexistant."
     show_help
     exit 2
+
+fi
+
+# audio pass-through
+if test "${ACOPY_MODE}" == "1"; then
+
+    AUD_BITRATE_OUT="${AUD_BITRATE_SRC}"
+    AUD_FMT_OUT="${AUD_FMT_SRC}"
+    AUD_FREQ_OUT="${AUD_FREQ_SRC}"
 
 fi
 
@@ -491,17 +646,21 @@ if which ${BFR} >/dev/null; then
 fi
 
 # video decoder
-if test "${VID_FMT_SRC}" == "mpeg2video" || test "${VID_FMT_SRC}" == "mpeg1video" && which ${MPEG2DEC} >/dev/null; then
+if test "${DEC_TOOL}" == "mpeg2dec"; then
 
+    test_bin ${MPEG2DEC}
     DECODER="${MPEG2DEC} -s -o pgmpipe \"${VIDEO_SRC}\" | ${PGMTOY4M} |"
 
-elif test "${FFMPEG_VERSION}" -ge "4731"; then
+elif test "${DEC_TOOL}" == "ffmpeg"; then
 
-    DECODER="${FFMPEG} -i \"${VIDEO_SRC}\" -f image2pipe -vcodec pgmyuv -y /dev/stdout | ${PGMTOY4M} |"
+    test_bin ${FFMPEG}
+    DECODER="${FF_DEC} -y /dev/stdout | ${PGMTOY4M} |"
 
 else
 
-    DECODER="${FFMPEG} -i \"${VIDEO_SRC}\" -f imagepipe -img pgmyuv -y /dev/stdout | ${PGMTOY4M} |"
+    echo "Error : the specified video decoder tool is not used by this script."
+    show_help
+    exit 2
 
 fi
 
@@ -529,6 +688,11 @@ elif test "${FILTER_TYPE}" == "temporal"; then
 
     test_bin ${YUVDENOISE}
     FILTER="${YUVDENOISE} |"
+
+elif test "${FILTER_TYPE}" == "unsharp"; then
+
+    test_bin ${Y4MUNSHARP}
+    FILTER="${Y4MUNSHARP} |"
 
 else
 
@@ -580,19 +744,75 @@ fi
 # quantisation matrices
 if test "${MATRICES}" == "kvcd"; then
 
+    FF_ENC="${FF_ENC} -intra_matrix ${INTRA_KVCD} -inter_matrix ${INTER_KVCD}"
     MPEG2ENC="${MPEG2ENC} -K kvcd"
+
+elif test "${MATRICES}" == "mvcd"; then
+
+    echo "`matrix_copy ${INTRA_MVCD}`" > ${CQMFILE}
+    echo "`matrix_copy ${INTER_MVCD}`" >> ${CQMFILE}
+
+    FF_ENC="${FF_ENC} -intra_matrix ${INTRA_MVCD} -inter_matrix ${INTER_MVCD}"
+    MPEG2ENC="${MPEG2ENC} -K file=${CQMFILE}"
 
 elif test "${MATRICES}" == "tmpgenc"; then
 
+    FF_ENC="${FF_ENC} -intra_matrix ${INTRA_TMPGENC} -inter_matrix ${INTER_TMPGENC}"
     MPEG2ENC="${MPEG2ENC} -K tmpgenc"
 
 fi
 
 # video encoding mode
-if test "${VCD_TYPE}" == "vcd"; then
+if test "${ENC_TYPE}" == "cbr"; then
 
     # when using -q with mpeg2enc, variable bitrate is selected.
     # it's not ok for vcds...
+    MPEG2ENC="${MPEG2ENC}"
+
+elif test "${ENC_TYPE}" == "abr"; then
+
+    if test "${DURATION}" != ""; then
+    
+        # input total time (seconds)
+        VID_TIME_SRC="`echo "${DURATION}" | \
+        awk '{print $1 * 60}'`"
+
+    else
+    
+        # input length (frames)
+        if echo "${VID_FMT_SRC}" | grep -e mpeg1 -e mpeg2 >/dev/null 2>&1; then
+	
+	    VID_LENGTH_SRC="`probe_mpeg_length "${VIDEO_SRC}"`"
+
+        else
+
+            VID_LENGTH_SRC="`probe_vid_length "${VIDEO_SRC}"`"
+
+        fi
+
+        # input total time (seconds) = nb of frames / fps
+        VID_TIME_SRC="`echo "${VID_LENGTH_SRC}:${VID_FPS_SRC}" | \
+        awk -F: '{print $1 / $2 * $3 + 1}'`"
+
+    fi
+    
+    test_bin bc
+    
+    # available kbits (k = 1000) per second = global bitrate
+    BPS="`echo "${VOLUMES} * ${VOL_SIZE} * 1000 * 8 / ${VID_TIME_SRC}" | bc`"
+    
+    # muxing-overhead: 3% (0.97 * ...)
+    VID_BITRATE_OUT="`echo "0.97 * ${BPS} - ${AUD_BITRATE_OUT}" | bc | \
+    awk -F. '{print $1}'`"
+    
+    VID_BITRATE_OUT="`range_check ${VID_BITRATE_OUT} ${VID_MINRATE_OUT} ${VID_MAXRATE_OUT}`"
+    
+    FF_ENC="${FF_ENC} -minrate ${VID_MINRATE_OUT} -maxrate ${VID_MAXRATE_OUT} -b ${VID_BITRATE_OUT} -passlogfile ${STATFILE}"
+    
+    FF_STATS="${FF_ENC} -pass 1"
+    MPEG2ENC_STATS="${MPEG2ENC} -b ${VID_BITRATE_OUT} -q 1 -v 1 2>${STATFILE}"
+    
+    FF_ENC="${FF_ENC} -pass 2"
     MPEG2ENC="${MPEG2ENC}"
 
 else
@@ -606,11 +826,13 @@ fi
 if test "${ENC_TOOL}" == "ffmpeg"; then
 
     test_bin ${FFMPEG}
+    ANALYSER="${FF_STATS} -y \"${VIDEO_OUT}\""
     ENCODER="${FF_ENC} -y \"${VIDEO_OUT}\""
 
 elif test "${ENC_TOOL}" == "mpeg2enc"; then
 
     test_bin ${MPEG2ENC}
+    ANALYSER="${MPEG2ENC_STATS} -o \"${VIDEO_OUT}\""
     ENCODER="${MPEG2ENC} -o \"${VIDEO_OUT}\""
 
 else
@@ -634,7 +856,7 @@ else
 fi
 
 # audio decoder/encoder
-if test "${AUD_FMT_SRC}" == "${AUD_FMT_OUT}"; then
+if test "${ACOPY_MODE}" == "1"; then
 
     AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
     AUDIO_ENCODER="-acodec copy -y \"${AUDIO_OUT}\""
@@ -648,6 +870,21 @@ else
 
     AUDIO_DECODER="${FFMPEG} -v 0 -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\" -f au -y /dev/stdout |"
     AUDIO_ENCODER="${FFMPEG} -f au -i /dev/stdin -ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y \"${AUDIO_OUT}\""
+
+fi
+
+# video "analyse"
+if ! test "${BLIND_MODE}" == "1" && test "${ENC_TYPE}" == "abr"; then
+
+    eval "${DECODER} ${FILTER} ${FRC} ${SCALER} ${PIPE_BUFFER} ${ANALYSER}"
+    
+    if test "${ENC_TOOL}" == "mpeg2enc"; then
+    
+        QUANT="`mpeg2enc_statfile_analyse ${STATFILE}`"
+        QUANT="`range_check $QUANT 4 31`"
+        ENCODER="${MPEG2ENC} -b ${VID_MAXRATE_OUT} -q ${QUANT} -o ${VIDEO_OUT}"
+
+    fi
 
 fi
 
@@ -671,5 +908,7 @@ if ! test "${BLIND_MODE}" == "1" && ! test "${MUTE_MODE}" == "1"; then
     ${MPLEX} -o "${MPEG_OUT}" "${VIDEO_OUT}" "${AUDIO_OUT}"
 
 fi
+
+rm -f ${CQMFILE} ${STATFILE}
 
 exit 0
