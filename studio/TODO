@@ -29,8 +29,9 @@ Bernhards Problems:
 * make test for the input and output files
 * remove beginning mistakes
 * make some kind of batch productions 
-* Make the "out of order" buttons working again
 * write a description for the thing. 
 * Long term: make it look better
-* Long term: add the dix output
+* Long term: add the divx output
+* Long term: add lavtrans 
+* Long term: add jpeg2yuv as source
 * Very long therm: add the transcoding stuff (maybe)
