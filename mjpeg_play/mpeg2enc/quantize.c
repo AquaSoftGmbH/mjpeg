@@ -84,11 +84,17 @@ static int next_larger_quant( int quant )
 {
 	if( q_scale_type )
 		{
-			return non_linear_mquant_table[map_non_linear_mquant[quant]+1];
+			if( map_non_linear_mquant[quant]+1 > 31 )
+				return quant;
+			else
+				return non_linear_mquant_table[map_non_linear_mquant[quant]+1];
 		}
 	else 
 		{
-			return quant+2;
+			if( quant+2 > 31 )
+				return quant;
+			else 
+				return quant+2;
 		}
 	
 }
@@ -158,6 +164,8 @@ int *nonsat_mquant;
 			  {
 				clipping = 1;
 				mquant = next_larger_quant( mquant );
+				if( !quiet )
+					printf("*I");
 				break;
 			  }
 #endif
@@ -224,6 +232,7 @@ int *nonsat_mquant;
   int clipvalue  = mpeg1 ? 255 : 2047;
   int imquant;
   int flags = 0;
+  int saturated = 0;
 
     	/* If available use the fast MMX quantiser.  It returns
 		flags to signal if coefficients are outside its limited range or
@@ -253,6 +262,8 @@ int *nonsat_mquant;
 		  if( (flags & 0xff00) != 0 )
 			{
 			  mquant = next_larger_quant( mquant );
+			  if(!quiet)
+			  	printf( "*M");
 			  comp = 0; 
 			  pdst = dst;
 			  psrc = src;
@@ -274,32 +285,44 @@ int *nonsat_mquant;
   if( (flags & 0xff) != 0)
 #endif
 	{
+	  if( !quiet )
+	    printf("*O");
+
 	  coeff_count = 64*block_count;
 
 	  nzflag = 0;
-	  pdst = dst;
-	  psrc = src;		
 	  for (i=0; i<coeff_count; ++i)
 		{
+restart:
 		  /* RJ: save one divide operation */
 
-		  x = abs(*psrc);
+		  x = abs(src[i]);
 		  d = quant_mat[(i&63)]; 
 		  y = (32*abs(x) + (d>>1))/(d*2*mquant);
-		  nzflag |= (*pdst=samesign(src[i],y));
-		  if (y > clipvalue)
+		  if (y > clipvalue )
+		  {
+		  	if( saturated )
 			{
-			  mquant = next_larger_quant( mquant );
+			  y = clipvalue;
+			  if( !quiet )
+			  	printf( "*S");
+			}
+			else
+			{
+			  int new_mquant = next_larger_quant( mquant );
+			  if( new_mquant != mquant )
+			  	mquant = new_mquant;
+			  else
+			  {
+			    saturated = 1;
+			  }
 			  i=0;
-			  pdst = dst;
-			  psrc = src;
-			  continue;		
+			  if( !quiet )
+				printf("*N");
+			  goto restart;
 			}
-		  else
-			{
-			  ++pdst; 
-			  ++psrc;
-			}
+		  }
+		  nzflag |= (dst[i]=samesign(src[i],y));
 		}
 	}
   *nonsat_mquant = mquant;

@@ -252,12 +252,12 @@ short *block;
   int i, j;
   int s;
   int tmp[64];
-  /*
+/*
   short temp1[64];
   short temp2[64];
   memcpy( temp1, block, sizeof(short)*64 );
   memcpy( temp2, block, sizeof(short)*64 );
-  */
+*/
   for (i=0; i<8; i++)
     for (j=0; j<8; j++)
     {
@@ -287,17 +287,18 @@ short *block;
 
       block[8*i+j] = s>>18;
     }
-  /*
+/*
   { 
 	static int init = 0;
 	if( ! init )
 	  init_fdctdaan();
 	fdctdaan( temp2 );
 	fdct_mmx( temp1 );
-	for( i = 0; i < 64; ++i )
-	  if( temp2[i] != block[i] || temp1[i] != temp2[i] )
+	for( i = 0; i < 1; ++i )
+	  if( abs(temp2[i] - block[i])>1 || abs(temp1[i] - temp2[i]) > 1 )
 		printf( "%03d: R%06d M%06d I%06d\n", i, temp2[i], temp1[i], block[i] );
   }
-	memcpy( block, temp2, sizeof(short)*64 );
-  */
+	memcpy( block, temp1, sizeof(short)*64 );
+*/
+
 }

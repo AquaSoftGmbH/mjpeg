@@ -144,6 +144,7 @@ void rc_init_GOP(np,nb)
 int np,nb;
 {
 
+	int  per_gop_bits = (bitcount_t) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
 	/* A.Stevens Aug 2000: at last I've found the wretched rate-control overshoot bug...
 		Simply "topping up" R here means that we can accumulate an indefinately large
 		pool of bits "saved" from previous low-activity frames.  For CBR this is of course
@@ -155,14 +156,12 @@ int np,nb;
 		never allow more than a frames worth of carry over.
 	*/		
    
-  if(fix_mquant==0 && R > 0)
+  if ( R > per_gop_bits / 16 )
   {
-  	R = R / 2;
- 	 if( R > bit_rate / frame_rate )
-	 	R = (int) (bit_rate / frame_rate);
+  	printf( "R carry-over overshoot = %lld\n", R);
+  	R = per_gop_bits / 16;
   }
-
-  R += (int) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
+  R += per_gop_bits;
   Np = fieldpic ? 2*np+1 : np;
   Nb = fieldpic ? 2*nb : nb;
 
@@ -375,13 +374,10 @@ void rc_update_pict()
 #endif
   if( !quiet )
   {
-  	printf( "S=%lld T=%lld S-T=%d Xi=%d, Xp=%d, Xb=%d\n",
-    S, T, ((int) (S - T)),
-    Xi, Xp, Xb);
-  	printf( "AA=%.1f AQ=%.1f  L=%.0f dI=%d,dP=%d,dB=%d\n", 
+   	printf( "AA=%.1f AQ=%.1f  L=%.0f R=%lld T=%lld\n", 
 		avg_act, ((double)Q) / (double) (mb_width*mb_height2), 
 		(double)(bitcount()-OLD_S),
-		d0i, d0p, d0b   );
+		R, T   );
 	}
  }
 
@@ -689,6 +685,7 @@ void calc_vbv_delay()
 
 
   /* check for underflow (previous picture) */
+#ifdef THIS_CRIES_WOLF_ALL_THE_TIME
   if (!low_delay && (decoding_time < bitcnt_EOP*90000.0/bit_rate))
   {
     /* picture not completely in buffer at intended decoding time */
@@ -696,22 +693,29 @@ void calc_vbv_delay()
       fprintf(stderr,"vbv_delay underflow! (decoding_time=%.1f, t_EOP=%.1f\n)",
         decoding_time, bitcnt_EOP*90000.0/bit_rate);
   }
-
+#endif
 
   /* when to decode current frame */
   decoding_time += picture_delay;
 
-  /* warning: bitcount() may overflow (e.g. after 9 min. at 8 Mbit/s */
   vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
 
 
-  /* check for overflow (current picture) */
+  /* check for overflow (current picture) 
+  	A.Stevens Aug 2000: This is very broken as if we heavily undershoot
+	our data-rate target (e.g. very inactive scenes) we will then permanently
+	generate vbv_delay overflows.  The problem is that we're (in effect) treating
+	padding as if it would take up space in the buffer...  Hence we comment
+	it out until we replace it with a more sensible calculation.
+  */
+#ifdef THIS_CRIES_WOLF_ALL_THE_TIME
   if ((decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate)
       > (vbv_buffer_size*16384)*90000.0/bit_rate)
   {
     if (!quiet)
       fprintf(stderr,"vbv_delay overflow!\n");
   }
+#endif
 
 #ifdef OUTPUT_STAT
   fprintf(statfile,
