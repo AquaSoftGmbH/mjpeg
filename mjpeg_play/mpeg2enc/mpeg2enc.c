@@ -105,7 +105,7 @@ void Usage(char *str)
 	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
 	printf("   -2 num     (default: 3)\n");
 	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
-	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
+	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
 	printf("   -S num     Start a new sequence in the output every num Mbytes\n");
