@@ -309,12 +309,16 @@ if test x$with_aviplay = xyes ; then
   *** A directory must be specified for the --with-aviplay option.])
 fi
 
-dnl add some more libs which are probably needed
+dnl some more libs which are probably needed.  Don't add -ldl unconditionally
+dnl Some systems lack -ldl and adding it here breaks things.
+EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS"
 if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS  -ldl"
-else
-  EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS -ldl"
+  EXTRA_LIBS="$EXTRA_LIBS $PTHREAD_LIBS"
 fi
+
+AC_CHECK_LIB([dl],[dlopen],
+    [AC_DEFINE(HAVE_LIBDL,1,dlopen support) LIBDL_LIB="-ldl"])
+AC_SUBST(LIBDL_LIB)
 
 dnl if the argument was not given, try finding it ourselves
 if test x$with_aviplay = x ; then
@@ -370,7 +374,7 @@ if test x$with_dv = x ; then
 fi
 
 have_dv=false
-EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
+EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS"
 AC_CHECK_LIB(dv, dv_decoder_free,
   [ DV_LIBS="-L${with_dv}/lib -ldv ${EXTRA_LIBS}"
     DV_CFLAGS="-I${with_dv}/include"
