@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#
+# A convenient front-end for the various mpeg encoding tools.
+# Allows "1 command" production of a video stream...
+# 
+
 function tidy_exit ()
 {
 	rm -f $tidyfile
@@ -13,37 +18,38 @@ quality=""
 search=15
 noise=""
 bitdrop=""
+test="-t"
+thresh=""
 MPEGENC=mpeg2enc
+MPEGSUF=
+dst=""
+conc="0"
 
-while getopts ":s:q:n:d:maeQMSTN" opt
+while getopts ":s:q:n:d:o:QMSTNtc" opt
 do
 case $opt in
 s) scale=$OPTARG
   echo Setting scaling option to $OPTARG
-;;
-m) kind=mov
-  echo Setting kind to $kind
-;;
-e) kind=eli
-  echo Setting kind to $kind
-;;
-a) kind=avi
-  echo Setting kind to $kind
 ;;
 q) quality=$OPTARG
   echo Setting quality factor to $quality
 ;;
 Q) quality="-b 2000"
   echo "Setting high-quality (2000Kbps) mode"
+  echo "WARNING: I don't test very often at this rate" 
 ;;
-S) echo "Using SSE encoder"
-MPEGENC="mpeg2enc.sse"
+S) echo "Using seperately installed SSE encoder "
+MPEGSUF=".sse"
 ;;
-M) echo "Using MMX encoder"
-MPEGENC="mpeg2enc.mmx"
+M) echo "Using seperately installed MMX encoder "
+MPEGSUF=".mmx"
 ;;
 T) echo "Using test encoder"
 MPEGENC="mpeg2enc.test"
+test=""
+;;
+t) echo "Activating thresholding"
+thresh="-t"
 ;;
 n) echo "Setting noise filter $OPTARG"
 noise="-n $OPTARG"
@@ -51,8 +57,15 @@ noise="-n $OPTARG"
 d) echo "Setting bit-drop to $OPTARG"
 bitdrop="-d $OPTARG"
 ;;
+o) echo "Setting destination directory to $OPTARG"
+dst=$OPTARG
+;;
+c) echo "Concurrent mode - > 1 avi2mpeg's can run on a file set without repeated work"
+conc=1
+;;
 ?)
-  echo Usage: avi2mpeg [-s num] [-d num] [-n num] [-S][-Q][-M][-m][-a] srcrootname dstdir
+  echo "Usage: avi2mpeg [-s num] [-d num] [-n num] [-S] [-Q] [-M] [-c] [-o dstdir] srcfile ..."
+exit 1
 ;;
 esac
 done
@@ -70,23 +83,38 @@ shift $[$OPTIND-1]
 trap tidy_exit SIGINT
 trap tidy_exit SIGHUP
 
-src=$1
-dst=$2
-echo FILES: ${src}*.${kind}
-for f in ${src}*.${kind}
+for f in $*
 do
-  fname=${f##*/}
-  r=${dst}/${fname%%.${kind}}
-  if [ ! -f ${r}.mpv ]
+  fname=${f%%.*}
+  kind=${f##${fname}.}
+  if [ ! x${dst} = "x" ]
   then
-    tidyfile=${r}.mpv
-    nice -n 15 $MPEGENC -m 1 ${quality} ${noise} ${bitdrop} -r ${search} -s ${scale} $f -o ${r}.mpv
-    if [ ! -f ${r}.mpa ]
+    fname=${f##*/}
+    r=${dst}/${fname%%.${kind}}
+  else
+    r=${fname}
+  fi
+  mpgfile=${r}.mpg
+  if [ ! ${conc} -o ! -f ${r}.mpv ]
+  then
+    if [ ${conc} = 1 ]
     then
-      tidyfile=${r}.mpa
+      tidyfile=${r}.mpv
+    fi
+    nice -n 15 ${MPEGENC}${MPEGSUF} -m 1 ${quality} ${noise} ${bitdrop} ${test}  ${thresh} -r ${search} -s ${scale} $f -o ${r}.mpv
+    if [ ! $? = 0 ]
+    then
+       exit $?
+    fi
+    if [ ! $conc -o ! -f ${r}.mpa ]
+    then
+      if [ $conc = 1 ]
+      then
+        tidyfile=${r}.mpa
+      fi
       nice -n 15 aenc -b ${aencbpr} $f -o ${r}.mpa
     fi
-    #mplex -r 0 ${r}.mpv ${r}.mpa ${mpgfile} 
+    mplex ${r}.mpv ${r}.mpa ${mpgfile} 
     #rm -f ${r}.mpa ${r}.mpv
     sleep 2
   fi
