@@ -46,8 +46,10 @@
 #include <sys/vfs.h>
 #endif
 
+#ifndef X_DISPLAY_MISSING
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
+#endif
 
 #include <sys/soundcard.h>
 #ifdef HAVE_V4L 
@@ -969,15 +971,17 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
    {
       struct video_window vw;
       struct video_capability vc;
+      int n, screenwidth, screenheight;
+#ifndef X_DISPLAY_MISSING
       XWindowAttributes wts;
       Display *dpy;
-      int n;
 
       if (NULL == (dpy = XOpenDisplay(strchr(info->display, ':'))))
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info, "Can't open X11 display %s\n", info->display);
          return 0;
       }
+#endif
       if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
@@ -988,18 +992,25 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       /* hack for wrong return value of marvel cards..... */
       if (vc.maxwidth!=640 && vc.maxwidth!=768)
          vc.maxwidth=720;
+#ifndef X_DISPLAY_MISSING
       XGetWindowAttributes(dpy, DefaultRootWindow(dpy), &wts);
+      screenwidth = wts.width;
+      screenheight = wts.height;
+#else
+      screenwidth = 1024;
+      screenheight = 768;
+#endif
 
-      vw.y = info->soft_full_screen ? 0: (wts.height-((bp->norm == 0) ? 576 : 480))/2;
+      vw.y = info->soft_full_screen ? 0: (screenheight-((bp->norm == 0) ? 576 : 480))/2;
       if (info->vw_y_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
          vw.y = info->vw_y_offset;
-      vw.x = info->soft_full_screen ? 0: (wts.width-vc.maxwidth)/2;
+      vw.x = info->soft_full_screen ? 0: (screenwidth-vc.maxwidth)/2;
       if (info->vw_x_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
          vw.x = info->vw_x_offset;
-      vw.width = info->soft_full_screen ? wts.width : vc.maxwidth;
+      vw.width = info->soft_full_screen ? screenwidth : vc.maxwidth;
       if (info->sdl_width > 0 && !info->soft_full_screen)
          vw.width = info->sdl_width;
-      vw.height = info->soft_full_screen ? wts.height : ((bp->norm == 0) ? 576 : 480);
+      vw.height = info->soft_full_screen ? screenheight : ((bp->norm == 0) ? 576 : 480);
       if (info->sdl_height > 0 && !info->soft_full_screen)
          vw.height = info->sdl_height;
       vw.clips = NULL;
