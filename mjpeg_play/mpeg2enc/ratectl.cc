@@ -420,24 +420,11 @@ void OnTheFlyRateCtl::InitPict(Picture &picture, int64_t bitcount_SOP)
 		available_bits = per_pict_bits;
 	else
 	{
-        const double danger_fraction = 0.5;
-        int danger_level = 
-            static_cast<int>(danger_fraction*encparams.video_buffer_size);
-        // Double gain as we come up toward a buffer variation of the decoders
-        // buffer size
-        double gain = 
-            -buffer_variation < danger_level
-            ? ( overshoot_gain )
-            : ( overshoot_gain * (2.0*danger_fraction) 
-                * - buffer_variation / danger_level );
-
-        if( gain > overshoot_gain )
-            mjpeg_warn( "Decoder buffer running low: boosting overshoot gain!" );
 		int feedback_correction =
 			static_cast<int>( fast_tune 
-							  ?	buffer_variation * gain
+							  ?	buffer_variation * overshoot_gain
 							  : (buffer_variation+gop_buffer_correction) 
-							    * gain
+							    * overshoot_gain
 				);
 		available_bits = 
 			static_cast<int>( (encparams.bit_rate+feedback_correction)
