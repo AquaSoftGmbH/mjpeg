@@ -193,6 +193,7 @@ typedef struct video_struc	/* Informationen ueber Video Stream	*/
     unsigned int peak_bit_rate  ;
     unsigned int vbv_buffer_size;
     unsigned int CSPF 		;
+    double secs_per_frame;
 } Video_struc; 		
 
 typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
@@ -259,12 +260,12 @@ void check_files          ();	/* Kontrolliert ob Files vorhanden und	*/
 int  open_file            ();	/* File vorhanden?			*/
 void get_info_video (char *video_file,	
 					Video_struc *video_info,
-					double *startup_delay,
+					double *first_frame_PTS,
 					unsigned int length,
 					Vector *vid_info_vec);
 void get_info_audio (char *audio_file,
 					  Audio_struc *audio_info,
-					  double *startup_delay,
+					  double first_frame_PTS,
 					  unsigned int length,
 					  Vector *audio_info_vec
 					  );

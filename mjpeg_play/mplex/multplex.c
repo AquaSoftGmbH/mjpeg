@@ -256,7 +256,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 		printf ("\nbest-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
 		if( opt_data_rate != 0 )
-			printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
+
+						printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
 		if( opt_data_rate == 0 )
 		{
 			printf( "Setting best-guess data rate.\n");
@@ -404,7 +405,7 @@ void outputstream ( char 		*video_file,
 
 	Timecode_struc SCR_audio_delay;
 	Timecode_struc SCR_video_delay;
-	Timecode_struc transport_delay;
+
 	Timecode_struc current_SCR;
 	Timecode_struc audio_next_SCR;
 	Timecode_struc video_next_SCR;
@@ -444,8 +445,6 @@ void outputstream ( char 		*video_file,
 		video_au = *(Vaunit_struc*)VectorNext( vaunit_info_vec );
 		picture_start = TRUE;
 	}
-
-	printf( "III DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime, video_au.PTS.thetime, video_au.type );
 
 
 	/* Bufferstrukturen Initialisieren				*/
@@ -501,8 +500,6 @@ void outputstream ( char 		*video_file,
 	add_to_timecode	(&SCR_video_delay, &video_au.PTS);
 	add_to_timecode	(&SCR_audio_delay, &audio_au.PTS);
 
-	printf( "II DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime, video_au.PTS.thetime, video_au.type );
-
 	/* Output any special prefix packets required by the specified stream format 	*/
 	/* bytes_output and current_SCR will be correctly updated...                  	*/
 	outputstreamprefix( &current_SCR );
@@ -536,8 +533,6 @@ void outputstream ( char 		*video_file,
 			packet_data_size = max_packet_data;
 		}
 
-
-		printf( "DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime/300, video_au.PTS.thetime/300, video_au.type );
 
 		/* Calculate amount of data to be moved for the next AU's.
 		   Slightly pessimistic - assumes worst-case packet data capacity
@@ -829,7 +824,7 @@ void output_video ( Timecode_struc *SCR,
 	 fields so there is a dead spot where we *have* to stuff the packet rather than start
 	 fitting in an extra AU.
   */
-		printf( "OV DTS=%lld PTS=%lld\n", video_au->DTS.thetime/300, video_au->PTS.thetime/300);
+
   next_vau = VectorLookAhead( vaunit_info_vec, 1 );
   if( next_vau != NULL )
 	{

@@ -178,7 +178,7 @@ void check_files (int argc,
 
 void get_info_video (char *video_file,	
 					 Video_struc *video_info,
-					 double *startup_delay,
+					 double *ret_secs_per_frame,
 					 unsigned int length,
 					 Vector *vid_info_vec)
 {
@@ -227,7 +227,6 @@ void get_info_video (char *video_file,
     }
 
     empty_vaunit_struc (&access_unit);
-    *startup_delay = 2*MAX_FFFFFFFF;
 
     if (pict_rate >0 && pict_rate<9)
     {
@@ -239,6 +238,8 @@ void get_info_video (char *video_file,
 		secs_per_frame = 1. / 25.;	/* invalid pict_rate info */
 		frame_rate = 25;
 	}
+	
+	*ret_secs_per_frame = secs_per_frame;
     do {
 		if (seek_sync (&video_bs, SYNCWORD_START, 24))
 		{
@@ -287,15 +288,10 @@ void get_info_video (char *video_file,
 				DTS = decoding_order * secs_per_frame*CLOCKS;
 				PTS = (temporal_reference - group_order + 1 + 
 					   decoding_order) * secs_per_frame*CLOCKS;
-				/* TODO DEBUG */
-				printf( "DecN=%ld PresN=%ld type=%d\n", decoding_order, temporal_reference - group_order + 1 + 
-					   decoding_order, access_unit.type);
-				*startup_delay=(PTS<*startup_delay ? PTS : *startup_delay);
+
 
 				make_timecode (DTS,&access_unit.DTS);
 				make_timecode (PTS,&access_unit.PTS);
-				printf( "DTS=%lld PTS=%lld \n", access_unit.DTS.thetime/300, access_unit.PTS.thetime/300 );
-
 
 				decoding_order++;
 				group_order++;
@@ -356,7 +352,7 @@ void get_info_video (char *video_file,
     output_info_video (video_info);
 
 	*vid_info_vec = vaunits;
- 	
+
 }
 
 /*************************************************************************
@@ -495,7 +491,7 @@ void output_info_audio (audio_info)
 void get_info_audio (
 	char *audio_file,
 	Audio_struc *audio_info,
-	double *startup_delay,
+	double secs_per_frame,
 	unsigned int length,
 	Vector *audio_info_vec
 	)
@@ -517,7 +513,7 @@ void get_info_audio (
     unsigned int old_prozent=0;
     Vector aaunits = NewVector(sizeof(Aaunit_struc));
    
-    printf ("\nScanning Audio stream for access units information.\n");
+    printf ("\nScanning Audio stream for access units information. \n");
     init_getbits (&audio_bs, audio_file);
     empty_aaunit_struc (&access_unit);
 
@@ -548,9 +544,9 @@ void get_info_audio (
 	  
 		samples_per_second = (double)frequency [audio_info->frequency];
 
-		/* TODO This code here should be based on CLOCK */
+		/* Presentation time-stamping  */
 		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.) + *startup_delay;
+			samples_per_second * (CLOCKS/1000.) + secs_per_frame*CLOCKS;
 
 		make_timecode (PTS, &access_unit.PTS);
 		decoding_order++;
@@ -622,7 +618,7 @@ void get_info_audio (
 		access_unit.length = audio_info->size_frames[padding_bit];
 	
 		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.)+ *startup_delay;
+			samples_per_second * (CLOCKS/1000.)+secs_per_frame*CLOCKS;
 		make_timecode (PTS, &access_unit.PTS);
 	
 		decoding_order++;
