@@ -1,0 +1,85 @@
+/*
+ *  yuv4mpeg.c:  Functions for reading and writing "new" YUV4MPEG streams
+ *
+ *  Copyright (C) 2001 Matthew J. Marjanovic <maddog@mir.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2
+ *  of the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ *
+ */
+
+#include <config.h>
+
+#include "yuv4mpeg.h"
+#include "yuv4mpeg_intern.h"
+
+
+/* useful list of standard framerates */
+const y4m_ratio_t y4m_fps_UNKNOWN    = Y4M_FPS_UNKNOWN;
+const y4m_ratio_t y4m_fps_NTSC_FILM  = Y4M_FPS_NTSC_FILM;
+const y4m_ratio_t y4m_fps_FILM       = Y4M_FPS_FILM;
+const y4m_ratio_t y4m_fps_PAL        = Y4M_FPS_PAL;
+const y4m_ratio_t y4m_fps_NTSC       = Y4M_FPS_NTSC;
+const y4m_ratio_t y4m_fps_30         = Y4M_FPS_30;
+const y4m_ratio_t y4m_fps_PAL_FIELD  = Y4M_FPS_PAL_FIELD;
+const y4m_ratio_t y4m_fps_NTSC_FIELD = Y4M_FPS_NTSC_FIELD;
+const y4m_ratio_t y4m_fps_60         = Y4M_FPS_60;
+
+/* useful list of standard (MPEG-2) display aspect ratios */
+const y4m_ratio_t y4m_aspect_UNKNOWN = Y4M_ASPECT_UNKNOWN;
+const y4m_ratio_t y4m_aspect_1_1     = Y4M_ASPECT_1_1;     /* square TV???  */
+const y4m_ratio_t y4m_aspect_4_3     = Y4M_ASPECT_4_3;     /* standard TV   */
+const y4m_ratio_t y4m_aspect_16_9    = Y4M_ASPECT_16_9;    /* widescreen TV */
+const y4m_ratio_t y4m_aspect_221_100 = Y4M_ASPECT_221_100; /* even wider... */
+
+
+
+/*
+ *  Euler's algorithm for greatest common divisor
+ */
+
+static int gcd(int a, int b)
+{
+  a = (a >= 0) ? a : -a;
+  b = (b >= 0) ? b : -b;
+
+  while (b > 0) {
+    int x = b;
+    b = a % b;
+    a = x;
+  }
+  return a;
+}
+    
+
+/*************************************************************************
+ *
+ * Remove common factors from a ratio
+ *
+ *************************************************************************/
+
+
+void y4m_ratio_reduce(y4m_ratio_t *r)
+{
+  int d;
+  if ((r->n == 0) && (r->d == 0)) return;  /* "unknown" */
+  d = gcd(r->n, r->d);
+  r->n /= d;
+  r->d /= d;
+}
+
+
+
+
