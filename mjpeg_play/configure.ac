@@ -182,6 +182,7 @@ SAVE_CFLAGS="$CFLAGS"
 CFLAGS="$CFLAGS -pthread"
 AC_MSG_CHECKING([if compiler accepts -pthread])
 AC_TRY_COMPILE([], [], has_option=yes, has_option=no,)
+AC_MSG_RESULT($has_option)
 if test $has_option = yes; then
    CXXFLAGS="$CXXFLAGS -pthread"
 else
