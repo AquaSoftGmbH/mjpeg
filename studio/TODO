@@ -1,5 +1,5 @@
-Next Version
-==========
+Short term:
+===========
 * add images to remaining "un-images" buttons (esp. lavencode.c)
     - "power"-button image
     - more :-)
@@ -8,21 +8,20 @@ Next Version
     one in lavplay, lavedit AND lavencode
 * open movie menu-item in the file menu which does the same
 * sliders or a label in lavpipe | yuvplay-part (preview) ("frame 0/12")
-* change all the " >> /dev/null 2>&1" into if (verbose) NO_OUTPUT and
-    #define NO_OUTPUT "..."
+* Implement the new scene transitions with a choice for which to use
+* Effect-result movies should be used in the editlist (doh)
 
 Long term:
 ==========
-* rewrite lavpipe to allow searching, runtime loading/editing
-    etc. (like lavplay) and use it instead of "lavplay -S"
-    (This will probably become uesless once we use gstreamer)
-* Once we've >1 scene transition, make a selection box
+* Make a lavpipe-kind of gstreamer-based video-editor library for
+    stream-combining and effects
+* Librarify lavplay (and yuvscaler)
 * Make a preview screen for the image-overlay thingy
     it should support dragging so the user can place the image
     in the image
 
 Bernhards Problems:
-====lavencode.c====
+===================
 * add more options
 * make option screens for video encoding and mplex
 * make the setting of the values file based. 
