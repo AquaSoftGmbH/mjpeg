@@ -690,7 +690,7 @@ static struct option long_options[]={
      { "sequence-length",   1, 0, 'S' },
      { "3-2-pulldown",      1, &param_32_pulldown, 1 },
      { "keep-hf",           0, 0, 'H' },
-     { "reduce-hf",         0, 0, 'N' },
+     { "reduce-hf",         1, 0, 'N' },
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
      { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
