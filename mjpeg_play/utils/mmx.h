@@ -214,16 +214,27 @@ typedef	union {
 #define pi2fd_r2r(regs,regd) mmx_r2r( pi2fd, regs, regd )
 
 /* SSE goodies */
+#define addps_r2r( regs, regd) mmx_r2r( addps, regs, regd )
+#define subps_r2r( regs, regd) mmx_r2r( subps, regs, regd )
+
 #define mulps_r2r( regs, regd) mmx_r2r( mulps, regs, regd )
 #define mulps_m2r( var, regd) mmx_m2r( mulps, var, regd )
 #define movups_r2r(reg1, reg2) mmx_r2r( movups, reg1, reg2 )
 #define movups_m2r(var, reg) mmx_m2r( movups, var, reg )
 #define movaps_m2r(var, reg) mmx_m2r( movaps, var, reg )
+#define movaps_r2r(reg1, reg2) mmx_r2r( movaps, reg1, reg2 )
+#define movlps_m2r(var, reg) mmx_m2r( movlps, var, reg )
+#define movlhps_m2r(var, reg) mmx_m2r( movlhps, var, reg )
+#define movlhps_r2r(reg1, reg2) mmx_r2r( movlhps, reg1, reg2 )
+#define movhlps_r2r(reg1, reg2) mmx_r2r( movhlps, reg1, reg2 )
 #define movups_r2m(reg, var) mmx_r2m( movups, reg, var )
 #define movaps_r2m(reg, var) mmx_r2m( movaps, reg, var )
+#define cvttps2pi_r2r(regs,regd) mmx_r2r( cvttps2pi, regs, regd )
 #define cvtps2pi_r2r(regs,regd) mmx_r2r( cvtps2pi, regs, regd )
 #define cvtpi2ps_r2r(regs,regd) mmx_r2r( cvtpi2ps, regs, regd )
 #define shufps_r2ri(regs, regd, imm) mmx_r2ri( shufps, regs, regd, imm )
+#define unpcklps_r2r(reg1, reg2) mmx_r2r( unpcklps, reg1, reg2 )
+#define unpckhps_r2r(reg1, reg2) mmx_r2r( unpckhps, reg1, reg2 )
 
 
 #define	maskmovq(regs,maskreg)		mmx_r2ri (maskmovq, regs, maskreg)
