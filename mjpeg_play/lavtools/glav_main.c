@@ -107,6 +107,7 @@ void create_file_selection() {
 gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
 {
    int need_pause=FALSE;
+   int n=1;
    hscale_down=1;
    switch (event->keyval) {
       case GDK_0:// go to beginning of file
@@ -124,15 +125,34 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
       case GDK_End:
          gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BSSelEnd),"clicked",(gpointer)1);
          break;
-      case GDK_l: // 1 frame right
+      case GDK_l: // some number of frames right
       case GDK_Right:
          need_pause=TRUE;
-         skip_num_frames(1);
+         gtk_signal_emit_stop_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
+         n=1;
+         if(event->state & GDK_CONTROL_MASK) {
+            write(out_pipe,"s10000000\n",10); break;  // go to end
+            break;
+         } else if(event->state & GDK_MOD1_MASK) {
+            n=50;
+         } else if (event->state & GDK_SHIFT_MASK) { 
+            n=10;
+         }
+         skip_num_frames(n);
          break;
-      case GDK_h: // 1 frame left
+      case GDK_h: // some number of frames left
       case GDK_Left:
+         gtk_signal_emit_stop_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
+         n=-1;
+         if(event->state & GDK_CONTROL_MASK) { // go to beginning 
+            gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
+         } else if(event->state & GDK_MOD1_MASK) {
+            n=-50;
+         } else if (event->state & GDK_SHIFT_MASK) { 
+            n=-10;
+         }
          need_pause=TRUE;
-         skip_num_frames(-1);
+         skip_num_frames(n);
          break;
       case GDK_w: // (word) 15 frames right
          need_pause=TRUE;
