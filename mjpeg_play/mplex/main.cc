@@ -54,6 +54,9 @@ int main (int argc, char* argv[])
 
     optargs = intro_and_options (argc, argv, &multi_file);
 	check_files (argc-optargs, argv+optargs,  audio_files, video_files);
+	mjpeg_info( "Found %d video streams and %d audio streams\n",
+				video_files.size(),
+				audio_files.size() );
 
 
 	if( MPEG_STILLS_FORMAT(opt_mux_format) )
@@ -98,6 +101,13 @@ int main (int argc, char* argv[])
 				strms.push_back( str );
 				str->Init( video_files[0] );
 			}
+			for( i = 0 ; i < audio_files.size() ; ++i )
+			{
+				AudioStream *audioStrm = new AudioStream(ostrm);
+				audioStrm->Init ( i, audio_files[i]);
+				strms.push_back(audioStrm);
+			}
+
 			break;
 		default:
 			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...\n");
@@ -111,15 +121,12 @@ int main (int argc, char* argv[])
 
 		if( video_files.size() != 1 )
 		{
-			mjpeg_debug( "Multiplexing non-stills currently only tested with exactly one (1) stream\n");
+			mjpeg_debug( "Multiplexing non-stills currently only tested with exactly 1 video stream\n");
 			mjpeg_debug( "If you want to try it you'll need to modify the source code!\n" );
 			exit(1);
 		}
 
 		ostrm.InitSyntaxParameters();
-		mjpeg_info( "Found %d video streams and %d audio streams\n",
-					video_files.size(),
-					audio_files.size() );
 		for( i = 0 ; i < video_files.size() ; ++i )
 		{
 			VideoStream *videoStrm = new VideoStream(ostrm);

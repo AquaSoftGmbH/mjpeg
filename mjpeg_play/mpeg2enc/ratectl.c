@@ -141,7 +141,7 @@ static int min_q, max_q;
 static double avg_KI = 5.0;	/* TODO: These values empirically determined 		*/
 static double avg_KB = 10.0*2.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 10.0*2.0;
-#define K_AVG_WINDOW_I 4.0
+#define K_AVG_WINDOW_I 10.0
 #define K_AVG_WINDOW_P   10.0
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
