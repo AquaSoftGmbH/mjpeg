@@ -1,5 +1,5 @@
 #!/bin/sh
-# cp *.info* $1/.
+install -m 644 -c  *.info* $1/
 
 install-info --help | grep menuentry >/dev/null
 
