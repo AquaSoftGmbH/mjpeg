@@ -6,14 +6,13 @@
   to perform was the hard part.
 <p>It maintains a list of the last several frames, called <i>reference
   frames</i>.  Each reference frame is composed of <i>reference
-  pixels</i>, which are much like normal pixels except that each
-  contains the sum of the values of all the pixels it represents, and
-  the number of pixels it represents.  Every time a pixel in one frame
-  is proven to be a moved instance of a pixel in another frame, the
-  reference-pixel incorporates its value, and produces an average value
-  for the pixel.  The oldest reference frame, therefore, gets a pretty
-  good idea of the real value of every pixel, but of course output is
-  delayed by the number of reference frames.
+  pixels</i>, which accumulate the values of several pixels.
+  Every time a pixel in one frame is proven to be a moved instance of a
+  pixel in another frame, the reference-pixel incorporates its value,
+  and produces an average value for the pixel.  The oldest reference
+  frame, therefore, gets a pretty good idea of the real value of every
+  pixel, but of course output is delayed by the number of reference
+  frames.
 <p>It compares every pixel in the current frame with all pixels
   in the previous frame, within a given search-radius, and any pixels
   that are equal within the given error tolerance are assumed to be the
@@ -48,7 +47,6 @@
 <p><br>Table of contents:
 <ul>
   <li><a href="#Overview">Overview</a>
-  <li><a href="#Interface">Interface</a>
   <li><a href="#Implementation">Implementation</a>
   <ul>
 	<li><a href="#ImplementationSkipList">SkipList, Set</a>
@@ -58,6 +56,9 @@
 		ReferenceFrame</a>
 	<li><a href="#ImplementationMotionSearcher">MotionSearcher,
 	  SearchWindow, SearchBorder</a>
+    <ul>
+	  <li><a href="#ImplementationMotionSearcherVersion0">Version 1</a>
+    </ul>
   </ul>
   <li><a href="#FutureExtensions">Future Extensions</a>
   <!-- <li><a href="#XXX">XXX</a> -->
@@ -87,55 +88,17 @@
   two 8-bit unsigned integers, intensity pixel-groups are 4x2, color
   pixel-groups are 2x2, intensity is denoised separately from color, and
   the search-radius used for color is proportional to the relative size
-  of the intensity and color planes.
+  of the intensity and color planes (and may, in effect, be
+  rectangular).
 <br>
 
-<a name="Interface"><h1>Interface</h1></a>
-The new denoiser's command-line options are:
-<ul>
-  <li><b>-r num</b> - The search radius.  Default is 16.
-    <br>There are no particular restrictions on the search radius, e.g.
-	  it doesn't have to be an even multiple of 4.  The denoiser code,
-	  as implemented internally, allows it to be rectangular.
-  <li><b>-R num</b> - The color search-radius.  Default is whatever the
-    main search-radius was set to.  This value ends up getting scaled by
-	the relative sizes of the intensity/color planes.
-  <li><b>-t num</b> - The error tolerance, i.e. the largest difference
-    between two pixels values that's accepted for the two pixels to be
-	considered equal.  Default is 3 (which is good for medium-noise
-	material like analog cable-TV.)
-  <li><b>-T num</b> - The error tolerance for color.  Default is
-    whatever the intensity error tolerance was set to.
-  <li><b>-m num</b> - The match-count throttle.  If there are more than
-    match-count-throttle regions in the area being searched, the search
-	is short-circuited and the best region in the area is applied to the
-	new image right then.  Default is 5.
-  <li><b>-M num</b> - The match-size throttle.  If the biggest region in
-    the area being searched is greater than match-size-throttle times
-	the size of a pixel-group, the search is short-circuited and the
-	best region in the area is applied to the new image right then.
-	Default is 5.
-  <li><b>-s num</b> - Skip the given number of frames before starting
-  	to denoise.  Default is 0.
-  <li><b>-f num</b> - The number of reference frames to keep.  Pixel
-    values are averaged over this many frames before they're written to
-	output; this also implies that output is delayed by this many
-	frames.  Default is 10.
-  <li><b>-B</b> - Black-and-white mode.  Denoise only the intensity, and
-    set the color channel to all white.
-  <li><b>-I num</b> - Set interlacing type.  Default is taken from the
-  	YUV stream header.  0 is not interlaced, 1 is top-field interlaced,
-	and 2 is bottom-field interlaced.
-</ul>
-<p>
-
-<a name="#Implementation"><h1>Implementation</h1></a>
+<a name="Implementation"><h1>Implementation</h1></a>
 <p><tt>newdenoise.cc</tt> gives a good top-level view of how to use the
   denoiser for YUV420P video.  Although the top-level class of the
   denoiser is <tt>MotionSearcher</tt>, a small army of classes is
   responsible for implementing all the necessary pieces.
 
-<a name="#ImplementationSkipList"><h2>SkipList, Set</h2></a>
+<a name="ImplementationSkipList"><h2>SkipList, Set</h2></a>
 <p><tt>SkipList</tt> is a highly optimized version of the famous
   probabilistically-balanced logarithmic-complexity sorted list
   structure.  Skip lists are well-described in other documents.  Note
@@ -147,13 +110,14 @@ The new denoiser's command-line options are:
   space-efficient than a tree structure also.)
 <p>One big advantage of skip-lists over tree structures, given the way
   the denoiser uses them, is that iterator forward/backward operations
-  are small-constant complexity; they're a single pointer dereference.
-  The typical tree-structure iterator forward/backward is logarithmic.
-  Iterator forward/backward is used constantly throughout the denoiser.
+  are small-constant complexity; they're implemented by a single pointer
+  dereference.  The typical tree-structure iterator forward/backward is
+  logarithmic.  Iterator forward/backward is used constantly throughout
+  the denoiser.
 <p><tt>Set</tt> is much like STL's <tt>set</tt> class, except that it's
   based on <tt>SkipList</tt>.
 
-<a name="#ImplementationRegion2D"><h2>Region2D, SetRegion2D,
+<a name="ImplementationRegion2D"><h2>Region2D, SetRegion2D,
 	BitmapRegion2D</h2></a>
 <p><tt>SetRegion2D</tt> was the first region class written for the
   denoiser; later, <tt>Region2D</tt> and <tt>SetRegion2D</tt> were split
@@ -171,7 +135,7 @@ The new denoiser's command-line options are:
   though they're a lot less memory-efficient than <tt>SetRegion2D</tt>,
   and have to be created with a maximum size.
 
-<a name="#ImplementationReferenceFrame"><h2>Pixel, ReferencePixel,
+<a name="ImplementationReferenceFrame"><h2>Pixel, ReferencePixel,
 	ReferenceFrame</h2></a>
 <p>The <tt>Pixel</tt> class is templated with a numeric type for storing
   pixel values, the number of dimensions in the pixel's value, and
@@ -184,8 +148,8 @@ The new denoiser's command-line options are:
 <p>The <tt>Pixel</tt> class contains methods to get and set the value of
   pixels, and to compare two pixels within a given tolerance.  It also
   contains methods to generate tolerance values from integers, in case
-  the pixel has special rules.  (For instance, the tolerance value for
-  a color pixel is the square of its integer counterpart, since CbCr
+  the pixel type has special rules.  (For instance, the tolerance value
+  for a color pixel is the square of its integer counterpart, since CbCr
   color is 2-dimensional.)
 <p>The <tt>ReferencePixel</tt> is templated much like the <tt>Pixel</tt>
   class.  It holds a sum of pixel values, and the number of pixel values
@@ -197,7 +161,7 @@ The new denoiser's command-line options are:
   <tt>ReferencePixel</tt>s, representing each frame and the parts of the
   image that it has in common with other frames.
 
-<a name="#ImplementationMotionSearcher"><h2>MotionSearcher,
+<a name="ImplementationMotionSearcher"><h2>MotionSearcher,
 	SearchWindow, SearchBorder</h2></a>
 <p>OK, so much for the easy part.
 <p><tt>MotionSearcher</tt> maintains a circular list of
@@ -238,15 +202,16 @@ The new denoiser's command-line options are:
   descend into child branches based on their value.  But if any of the
   pixel-group's pixel dimension values are within the error tolerance of
   the split-point for that dimension in the current pixel-sorter branch
-  node, the search-window cell has to stay at that level of the tree.
-  (Alternately, a copy of it could be placed in each branch, but this
-  design decides not to do that.)  Each pixel-sorter branch node
-  maintains a doubly-linked list of search-window cells that are
-  attached to it.  As an optimization, once a search-window cell is
+  node, then that pixel-group won't fit neatly into any of the children
+  nodes, and thus the search-window cell has to stay at that level of
+  the tree.  (Alternately, a copy of it could be placed in multiple
+  children, but this design opts not to do that.)  Each pixel-sorter
+  branch node maintains a doubly-linked list of search-window cells that
+  are attached to it.  As an optimization, once a search-window cell is
   inserted into the pixel-sorter, that result is used for the rest of
-  the frame, as the search-window cell is added to and removed from
-  the pixel-sorter, depending on whether that search-window cell is
-  within the search radius of the current new-frame pixel-group.
+  the frame, as the search-window cell is added to and removed from the
+  pixel-sorter, depending on whether that search-window cell is within
+  the search radius of the current new-frame pixel-group.
 <p>To look for matches between the current pixel-group from the new
   frame, and all pixel-groups from the previous frame within the search
   radius, one just matches the current pixel-group to every
@@ -257,10 +222,10 @@ The new denoiser's command-line options are:
   values was within the tolerance of the split value of that
   pixel-sorter branch node, and none of the current pixel-group's
   pixel values are within twice the tolerance of the split value
-  of that pixel-sorter branch node, then we can save time, for no
-  search-window cell that had to stop at that level could possibly
-  intersect the new pixel-group.  This especially helps in the presence
-  of low error thresholds.)
+  of that pixel-sorter branch node, then we can save time and avoid the
+  comparison, for no search-window cell that had to stop at that level
+  could possibly intersect the new pixel-group.  This especially helps
+  in the presence of low error thresholds.)
 <p>As matches are found, the search-border builds contiguous regions of
   matches that all have the same motion-vector.  (The "border" is the
   border between the searched area and the not-yet-searched area.)
@@ -318,22 +283,49 @@ The new denoiser's command-line options are:
   to small-constant), and to use data structure design to understand
   the problem in ways that directly lead to efficient implementations.
 
+<a name="ImplementationMotionSearcherVersion1"><h3>Version 1</h3></a>
+<p>The above discussion describes the intent of the first version of
+  the denoiser (which I'm calling version 0).  However, the very last
+  high-level change I made to it, right before releasing it under GPL,
+  was defective!  In effect, the match-count throttle was always 1, and
+  the best match was applied every pixel-group!  It was intended
+  to be a performance increase, and it was, but obviously it broke the
+  code...except that this bugged change also vastly increased the
+  quality!  There is every reason in the world to believe that such a
+  bug should have broken the denoiser's quality, except that it didn't.
+  What a stroke of luck!
+<p>I decided to take the implications of this accidental discovery to
+  the next logical level.  Before, I wouldn't have believed that the
+  best match could be found without amassing a large list of
+  possibilities from several pixel-group searches.  Now, each match
+  found is flood-filled, and the first one to exceed the match-size
+  throttle is applied to the image right then and there, and all other
+  possibilities aren't considered.  So there is no big list of regions
+  to try at the end.
+<p>This version performed better than the bugged version, which is
+  surprising enough, but the quality was vastly improved too.
+<p>Parallel processing was added at this time too.  Color can be
+  denoised in a thread separate from intensity denoising, and
+  reading/writing frames can be moved into separate threads too.
 
 <!--
-<a name="#ImplementationXXX"><h2>XXX</h2></a>
+<a name="ImplementationXXX"><h2>XXX</h2></a>
 <p>
 -->
 
-<a name="#FutureExtensions"><h1>Future Extensions</h1></a>
-<p>The motion-detector is highly parallel, and a multi-threaded version
-  should be written.  Obviously, color and intensity can be analyzed
-  separately.  But a thread could denoise one half of the remaining
-  area of an image plane.  The pixel-sorter would have to become its
-  own class for this to work, since there'd now be more than one per
-  search-window, and the search-window would have to keep pixel-sorters
-  from colliding with each other (i.e. the areas being searched by
-  each can't overlap).  But I'd also need a multi-processor machine to
-  develop it properly, which I don't have.
+<a name="FutureExtensions"><h1>Future Extensions</h1></a>
+<p>The motion-detector is highly parallel, and a better multi-threaded
+  version should be written.  So far, color and intensity can be
+  analyzed separately.  But a thread could conceivably denoise one half of the
+  remaining area of an image plane.  The pixel-sorter would have to
+  become its own class for this to work, since there'd now be more than
+  one per search-window, and the search-window would have to keep
+  pixel-sorters from colliding with each other (i.e. the areas being
+  searched by each can't overlap).  Also, depending on how efficient
+  the thread-synchronization methods are, the pixel-sorter could feed
+  results to the flood-filling stage.  Perhaps both approaches can be
+  taken.  Anything that allows the denoiser to fill up processors is
+  probably worth trying.
 <p>The motion-detector should probably be able to find matches in
   more than one previous frame.  I'd probably want to avoid later-frame
   matches that occur in earlier frames, for efficiency's sake.
@@ -359,8 +351,9 @@ The new denoiser's command-line options are:
 <p>I think the search-window could replace the radius-search in
   yuvmedianfilter.  It could even do motion-detection for mpeg2enc.
 
-<p>Copyright (C) 2004 by <a href="mailto:ulatekh@yahoo.com">Steven
-  Boswell</a>.  All rights reserved, and all that stuff.
+<p>Copyright (C) 2004 by
+  <a href="mailto:ulatec@users.sourceforge.net">Steven Boswell</a>.
+  All rights reserved, and all that stuff.
 <br>Released to the public under the GNU General Public License.
   See the file COPYING for more information.
 </body>
