@@ -170,7 +170,5 @@ long AVI_read_audio(avi_t *AVI, uint8_t *audbuf, long bytes);
 int  AVI_read_data(avi_t *AVI, uint8_t *vidbuf, long max_vidbuf,
                                uint8_t *audbuf, long max_audbuf,
                                long *len);
-
-void AVI_print_error(const char *str);
 const char *AVI_strerror(void);
 #endif

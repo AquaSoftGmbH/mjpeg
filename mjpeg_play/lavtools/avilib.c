@@ -1163,8 +1163,6 @@ int AVI_read_data(avi_t *AVI, uint8_t *vidbuf, long max_vidbuf,
    }
 }
 
-/* AVI_print_error: Print most recent error (similar to perror) */
-
 const char *(avi_errors[]) =
 {
   /*  0 */ "avilib - No Error",
@@ -1186,26 +1184,6 @@ const char *(avi_errors[]) =
 static int num_avi_errors = sizeof(avi_errors)/sizeof(char*);
 
 static char error_string[4096];
-
-void AVI_print_error(const char *str)
-{
-   int aerrno;
-
-   aerrno = (AVI_errno>=0 && AVI_errno<num_avi_errors) ? AVI_errno : num_avi_errors-1;
-
-   mjpeg_error("%s: %s",str,avi_errors[aerrno]);
-
-   /* for the following errors, perror should report a more detailed reason: */
-
-   if(AVI_errno == AVI_ERR_OPEN ||
-      AVI_errno == AVI_ERR_READ ||
-      AVI_errno == AVI_ERR_WRITE ||
-      AVI_errno == AVI_ERR_WRITE_INDEX ||
-      AVI_errno == AVI_ERR_CLOSE )
-   {
-      perror("REASON");
-   }
-}
 
 const char *AVI_strerror(void)
 {

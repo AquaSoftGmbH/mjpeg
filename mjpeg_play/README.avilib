@@ -89,15 +89,14 @@ and some data (unless your program is finishing anyway).
 Error handling:
 ---------------
 
-Most routines (besides open/close) will return 0 or a usefull number if successfull
+Most routines (besides open/close) will return 0 or a useful number if successfull
 and a -1 in the case of an error. If an error occured, the external variable
 AVI_errno is set. See avilib.h for the meaning of the error codes in AVI_errno.
 
-There is also a routine (which acts like perror) to output a description
-of the last error to stderr:
+There is also a routine (which acts like strerror) to retrieve a string
+description of the last error (which can then be logged or printed):
 
-AVI_print_error(char *str)
-
+AVI_strerror(char *str)
 
 
 Reading from an AVI file:
