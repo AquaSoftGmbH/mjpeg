@@ -1,4 +1,4 @@
-#define DEBUGLEVEL 0
+#define DEBUGLEVEL 2
 #define MAX_KMALLOC_MEM (128*1024)
 /*
    Miro/Pinnacle Systems Inc. DC10/DC10plus and
@@ -2022,6 +2022,25 @@ static void zr36060_set_jpg_COM(struct zoran *zr)
 	}
 }
 
+static void dump (struct zoran *zr)
+{
+	/* dump all registers to printk (this is bad!) */
+	int i;
+
+	for (i=0;i<0x060;i++) {
+		if (i%16==0)
+			printk("0x%03x: ", i);
+
+		if (i%4==0)
+			printk(" ");
+
+		printk("%02x", zr36060_read_8(zr, i));
+
+		if ((i+1)%16==0)
+			printk("\n");
+	}
+}
+
 static void zr36060_set_cap(struct zoran *zr, enum zoran_codec_mode mode)
 {
 	unsigned i;
@@ -2043,6 +2062,8 @@ static void zr36060_set_cap(struct zoran *zr, enum zoran_codec_mode mode)
 	zr36060_set_jpg_DHT(zr);
 	zr36060_set_jpg_APP(zr);
 	zr36060_set_jpg_COM(zr);
+
+	dump(zr);
 
 	reg = (1 << 7)		/* Load=1 */
 	    |(1 << 0);		/* SynRst=0 */
@@ -3326,12 +3347,12 @@ static void zoran_close(struct video_device *dev)
 			encoder_command(zr, ENCODER_SET_INPUT, &two);
 		        // set_videobus_enable(zr, 1);
 		}
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,19)
+		dev->users = 1;
+#endif
 	}
 
 	zr->user--;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,19)
-	dev->users = 0;
-#endif
 
 	MOD_DEC_USE_COUNT;
 	DEBUG2(printk(KERN_INFO "%s: zoran_close done\n", zr->name));
