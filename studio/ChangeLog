@@ -1,6 +1,8 @@
 Updates from 0.1.6 to current
 -----------------------------
-* ...
+* some GList related preferences save bugfixes
+* bugfixes where the extension of a file (.mp2, .m1v) precedes the filename,
+  but that path doesn't exist
 
 Updates from 0.1.5 to 0.1.6
 ---------------------------
