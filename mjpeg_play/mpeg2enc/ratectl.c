@@ -62,12 +62,16 @@ static int sliding_dp_avg = 0;
 /* R - Remaining bits available in GOP
    T - Target bits for current frame 
    d - Current d for quantisation purposes updated using 
-   scaled difference of target bit usage and actual usage */
-static bitcount_t R;
+   scaled difference of target bit usage and actual usage
+   NOTE: We use double's for these as 48 bits will suffice and
+   there's some tricky float arithmetic required/
+
+*/
+static double R;
 static int d;
-static bitcount_t T;
-static bitcount_t CarryR;
-static bitcount_t CarryRLim;
+static double T;
+static int CarryR;
+static int CarryRLim;
 
 /*
   actsum - Total activity (sum block variances) in frame
@@ -204,7 +208,8 @@ void rc_init_seq()
 void rc_init_GOP(np,nb)
 	int np,nb;
 {
-	int per_gop_bits = (bitcount_t) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
+	double per_gop_bits = 
+		(double)(1 + np + nb) * (double)bit_rate / frame_rate;
 
 	/* A.Stevens Aug 2000: at last I've found the wretched
 	   rate-control overshoot bug...  Simply "topping up" R here means
@@ -221,7 +226,7 @@ void rc_init_GOP(np,nb)
 	   bit allocation decisions.
 
 	*/
-	printf( "GOP under/over run = %lld\n", -R );
+	printf( "GOP under/over run = %7.0f\n", -R );
 	
 	if( R > 0 && video_buffer_size < per_gop_bits  )
 	{
@@ -229,7 +234,7 @@ void rc_init_GOP(np,nb)
 	}
 	else 
 	{
-		R += per_gop_bits;
+		R +=  per_gop_bits;
 	}
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;
@@ -287,7 +292,7 @@ void rc_init_pict(pict_data_s *picture)
 			Xi = avg_act;
 			avg_K = avg_KI;
 		}
-		T = (bitcount_t) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
+		T = R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb));
 		d = d0i;
 		sliding_d_avg = sliding_di_avg;
 		break;
@@ -297,7 +302,7 @@ void rc_init_pict(pict_data_s *picture)
 			Xp = avg_act;
 			avg_K = avg_KP;
 		}
-		T = (bitcount_t) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
+		T =  R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5;
 		d = d0p;
 		sliding_d_avg = sliding_dp_avg;
 		break;
@@ -307,7 +312,7 @@ void rc_init_pict(pict_data_s *picture)
 			Xb = avg_act;
 			avg_K = avg_KB;
 		}
-		T = (bitcount_t) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
+		T =  R/(Nb+Np*Kb*Xp/(Kp*Xb));
 		d = d0b;
 		sliding_d_avg = sliding_db_avg;
 		break;
@@ -317,17 +322,17 @@ void rc_init_pict(pict_data_s *picture)
 	if( d < 0 )
 		d = 0;
 
-	if( T < 4000 )
+	if( T < 4000.0 )
 	{
-		printf( "\nWARNING VERY LOW T=%lld\n", T);
-		T = 4000;
+		printf( "\nWARNING VERY LOW T=%6.0f\n", T);
+		T = 4000.0;
 	}
 	target_Q = scale_quant(picture, 
 						   avg_K * avg_act *(mb_width*mb_height2) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
 	if( !quiet )
 	{
-		printf( "d=%6d T=%lld K=%.1f BQ=%2.1f TQ=%2.1f ",d, T,avg_K, current_Q, target_Q  );
+		printf( "AA=%3.1f T=%6.0f K=%.1f BQ=%2.1f TQ=%2.1f ",avg_act, T, avg_K, current_Q, target_Q  );
 	}
 	
 	if( pred_ratectl )
@@ -416,6 +421,12 @@ static double calc_actj(void)
 				i_q_mat = i_inter_q;
 			}
 
+			/* It takes some bits to code even an entirely zero block...
+			   It also makes a lot of calculations a lot better conditioned
+			   if it can be guaranteed that activity is always distinctly
+			   non-zero.
+			 */
+			actj = 16.0;
 			actj  = (double) (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) /
 				(double) COEFFSUM_SCALE ;
 			actj += (double) (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) / 
@@ -445,8 +456,8 @@ void rc_update_pict(pict_data_s *picture)
 	   bother dividing by 2?  */
 	X = (int) floor((double)S*(AQ/2.0) + 0.5);
   
-	d += (int) (S - T);
-	K = (double)(S) / (double) (mb_width*mb_height2) * AQ / avg_act;
+	d += (int)S - (int)T;
+	K = (double)S / (double) (mb_width*mb_height2) * AQ / avg_act;
 
 	if( !quiet )
 	{
