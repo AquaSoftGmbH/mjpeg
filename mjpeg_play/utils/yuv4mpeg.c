@@ -519,8 +519,11 @@ y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi)
  *
  *************************************************************************/
 
+
+/* Parse (the first) old, unofficial X-tag chroma specification,
+   and then remove that tag from the X-tag list. */
 static int
-find_old_chroma_xtag(y4m_stream_info_t *si)
+handle_old_chroma_xtag(y4m_stream_info_t *si)
 {
   y4m_xtag_list_t *xtags = y4m_si_xtags(si);
   const char *tag = NULL;
@@ -531,8 +534,8 @@ find_old_chroma_xtag(y4m_stream_info_t *si)
     if (!strncmp("XYSCSS=", tag, 7)) break;
   }
   if ((tag == NULL) || (n < 0)) return Y4M_UNKNOWN;
-  mjpeg_warn("Deprecated chroma X-tag found and removed in stream header...");
-  mjpeg_warn("...pester someone to upgrade the source program!");
+  mjpeg_warn("Deprecated X-tag for chroma found in a stream header...");
+  mjpeg_warn("...pester someone to upgrade the source's program!");
   /* parse the tag */
   tag += 7;
   if (!strcmp("411", tag))           chroma = Y4M_CHROMA_411;
@@ -542,13 +545,8 @@ find_old_chroma_xtag(y4m_stream_info_t *si)
   else if (!strcmp(tag, "420JPEG"))  chroma = Y4M_CHROMA_420JPEG;
   else if (!strcmp(tag, "444"))      chroma = Y4M_CHROMA_444;
   else chroma = Y4M_UNKNOWN;
-
-/* 
- * Remove the tag so it never bothers anyone again.  Basically accept it
- * on input but NEVER let it slip out into the world again.
-*/
+  /* Remove the 'X' tag so that no one has to worry about it any more. */
   y4m_xtag_remove(xtags, n);
-
   /* Hmm... what if there are more XYSCSS tags?  Broken is as broken does;
      thank goodness this is temporary code. */
   return chroma;
@@ -561,7 +559,7 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
 {
   char *token, *value;
   char tag;
-  int err, val;
+  int err;
 
   /* parse fields */
   for (token = strtok(s, Y4M_DELIM); 
@@ -621,16 +619,20 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       break;
     }
   }
-  /*
-   *...but first, try to look for deprecated X-tag (it will be removed if 
-   * found).  The XYSCSS tag had to be consistent with C tag anyhow.
-  */
-  val = find_old_chroma_xtag(i);
-  if (val != Y4M_UNKNOWN)
-     i->chroma = val;
 
-  /* Without 'C' or XYSCSS tag, chroma defaults to 420jpeg */
-  /* ...ok, no chroma tags whatsoever, so use the default. */
+  /* If feature_level > 0, then handle and/or remove any old-style XYSCSS
+     chroma tags.  The new-style 'C' tag takes precedence, however. */
+  if (_y4mparam_feature_level > 0) {
+    int xt_chroma = handle_old_chroma_xtag(i);
+
+    if (i->chroma == Y4M_UNKNOWN)
+      i->chroma = xt_chroma;
+    else if ((xt_chroma != Y4M_UNKNOWN) &&
+             (xt_chroma != i->chroma))
+      mjpeg_warn("Old chroma X-tag (ignored) does not match new chroma tag.");
+  }
+
+  /* Without 'C' tag or any other chroma spec, default to 420jpeg */
   if (i->chroma == Y4M_UNKNOWN) 
     i->chroma = Y4M_CHROMA_420JPEG;
 
