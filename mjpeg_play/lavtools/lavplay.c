@@ -943,16 +943,19 @@ static int set_option(char *name, char *value)
 {
 	/* return 1 means error, return 0 means okay */
 	int nerr = 0;
-
-	if (strcmp(name, "audio")==0 || strcmp(name, "a")==0)
+	if (strcmp(name, "verbose")==0 || strcmp(name, "v")==0)
+	{
+		verbose = atoi(optarg);
+	}
+	else if (strcmp(name, "audio")==0 || strcmp(name, "a")==0)
 	{
 		audio_enable = atoi(optarg);
 	}
-	else if (strcmp(name, "h-offset")==0 || strcmp(name, "h")==0)
+	else if (strcmp(name, "H-offset")==0 || strcmp(name, "H")==0)
 	{
 		h_offset = atoi(optarg);
 	}
-	else if (strcmp(name, "v-offset")==0 || strcmp(name, "v")==0)
+	else if (strcmp(name, "V-offset")==0 || strcmp(name, "V")==0)
 	{
 		v_offset = atoi(optarg);
 	}
@@ -1038,9 +1041,10 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* getopt_long options */
 	static struct option long_options[]={
+        {"verbose"       ,1,0,0},     /* -v/--verbose         */
 		{"norm"            ,1,0,0},   /* -o/--norm            */
-		{"h-offset"        ,1,0,0},   /* -h/--h-offset        */
-		{"v-offset"        ,1,0,0},   /* -v/--v-offset        */
+		{"h-offset"        ,1,0,0},   /* -H/--H-offset        */
+		{"v-offset"        ,1,0,0},   /* -V/--V-offset        */
 		{"skip"            ,1,0,0},   /* -s/--skip            */
 		{"synchronization" ,1,0,0},   /* -c/--synchronization */
 		{"mjpeg-buffers"   ,1,0,0},   /* -n/--mjpeg-buffers   */
@@ -1059,7 +1063,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* Get options */
 	nerr = 0;
-	while( (n=getopt_long(argc,argv,"a:h:v:s:c:n:t:qZp:xzg",
+	while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xzg",
 		long_options, &option_index)) != EOF)
 	{
 		switch(n)

@@ -25,7 +25,6 @@
 #include "editlist.h"
 #include <math.h>
 
-extern	int	verbose;
 
 /* Since we use malloc often, here the error handling */
 
