@@ -58,10 +58,20 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 CC = @CC@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GLIB_LIBS = @GLIB_LIBS@
 JPEG = @JPEG@
+MAINT = @MAINT@
+MAKEINFO = @MAKEINFO@
 MOVTAR_PLAY = @MOVTAR_PLAY@
+PACKAGE = @PACKAGE@
 RANLIB = @RANLIB@
 SDL = @SDL@
+SDL_CFLAGS = @SDL_CFLAGS@
+SDL_CONFIG = @SDL_CONFIG@
+SDL_LIBS = @SDL_LIBS@
+VERSION = @VERSION@
 
 EXTRA_PROGRAMS = movtar_play
 bin_PROGRAMS = @MOVTAR_PLAY@ movtar_split movtar_unify movtar_index movtar_setinfo movtar_yuv422
@@ -82,6 +92,7 @@ EXTRA_DIST = README.movtar.implement movtar.m4
 
 m4datadir = $(datadir)/aclocal
 m4data_DATA = movtar.m4
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES =  movtar-config
 LIBRARIES =  $(lib_LIBRARIES)
@@ -131,15 +142,15 @@ LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
 DATA =  $(m4data_DATA)
 
 HEADERS =  $(include_HEADERS)
-DIST_COMMON =  README AUTHORS ChangeLog Makefile.am Makefile.in NEWS \
-configure configure.in install-sh mkinstalldirs movtar-config.in
 
-PACKAGE = @PACKAGE@
-VERSION = @VERSION@
+DIST_COMMON =  README AUTHORS ChangeLog Makefile.am Makefile.in NEWS \
+aclocal.m4 configure configure.in install-sh mkinstalldirs \
+movtar-config.in
+
 
 DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
-TAR = tar
+TAR = gtar
 GZIP_ENV = --best
 DEP_FILES =  .deps/movtar.P .deps/movtar_index.P .deps/movtar_play.P \
 .deps/movtar_setinfo.P .deps/movtar_split.P .deps/movtar_unify.P \
@@ -157,6 +168,8 @@ Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status $(BUILT_SOURCES)
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ configure.in 
+	cd $(srcdir) && $(ACLOCAL)
 
 config.status: $(srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
@@ -395,7 +408,7 @@ distdir: $(DISTFILES)
 	@for file in $(DISTFILES); do \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
-	    cp -pr $$d/$$file $(distdir)/$$file; \
+	    cp -pr $$/$$file $(distdir)/$$file; \
 	  else \
 	    test -f $(distdir)/$$file \
 	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \

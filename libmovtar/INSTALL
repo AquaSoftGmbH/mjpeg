@@ -1,0 +1,25 @@
+Linux Audio/Video tools - LAVTOOLS
+==================================
+
+The lavtools stand for "Linux/Audio video tools" and are released under the General GNU Public Licence, see the COPYING file for details.
+
+Installation:
+-------------
+
+Please see REQUIRED_SOFTWARE to find out which software you will need to compile and install this package.
+
+To build the package just type :
+
+./configure 
+make
+
+Then (with root privileges if needed) :
+
+make install
+
+You should now be able to run the lavtools, at least. 
+
+Have a look at the README to see how the lavtools (ought to ;) ) work ...
+
+/Gernot <gz@lysator.liu.se>
+
