@@ -75,9 +75,9 @@
 # * Don't use an default external black 'PNG' background image file.
 # * Add an option with the RVB color for the background image color.
 # * Add a trap signal fonction : clear temporary files when killed.
-# - Testing ImageMagick & MjpegTools binary programs disponibility.
 # - Add an option for a specific temporary folder.
 # - Add more return error codes.
+# - Testing ImageMagick & MjpegTools binary programs disponibility.
 # - Add an option for showing some image notations (file name, date, etc...).
 #
 # -------------------------------------------------------------------------------------------------------
@@ -128,6 +128,7 @@
 #                 Add a transition fonction with 'composite' binary program from ImageMagick package.
 #                 Add a final transition for the sequence.
 #                 Add this script to the MjpegTools project on sourceforge repository.
+# January 2003  : Add a manual page (on MjpegTools project package).
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -234,12 +235,12 @@ while test $# -gt 0; do
          exit -1
       fi
 
-      if [ $[$1 == 1 || $1 == 2 || $1 == 4 || $1 == 5 || $1 == 8 || $1 == 10 || $1 == 16 || $1 == 20] = 1 ]; then
+      if [ $[$1 == 1 || $1 == 2 || $1 == 4 || $1 == 5 || $1 == 10 || $1 == 20] = 1 ]; then
          # Increment value for dissolving the images with the transition.
 	 DISSOLVEVALUEINC=$1
     	 TRANSITIONENABLE=1
       else
-         echo -e "Bad transition speed value (must be 1, 2, 4, 5, 8, 10, 16, or 20) !"
+         echo -e "Bad transition speed value (must be 1, 2, 4, 5, 10, or 20) !"
          exit -1
       fi
       ;;
