@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <string.h>
@@ -20,9 +21,15 @@
 #include <glib.h>
 #include <movtar.h>
 
+#ifdef RTJPEG
+#include "format.h"
+#endif
+
 #define readbuffsize 200000
 
 #define dprintf(x) if (debug) fprintf(stderr, x);
+
+//#define IRIX
 
 /* the usual code continuing here */
 char *img=NULL;
@@ -33,12 +40,26 @@ FILE *tempfile;
 struct tarinfotype frameinfo;
 char readbuffer[readbuffsize];
 char **imglines;
+
+/* SDL video output */
 SDL_Surface *screen;
-SDL_Rect jpegdims;
+SDL_Rect yuvdims;
+SDL_Overlay *yuv_overlay;
+static unsigned char *yuv[3]; /* Points to the right YUV plane */
+
 struct jpeg_decompress_struct cinfo; 
 
 int debug = 1;
 
+/* Performance measurement */
+static struct timeval tv_beg, tv_end, tv_start;
+static int elapsed;
+static int total_elapsed;
+static int last_count = 0;
+static int frame_counter = 0;
+
+/* YUV temp buffer for RTJPEG */
+static char yuvbuffer[1280*1024*3];
 
 /***********************************************************
  * JPEG HACKING (PLUGIN extensions)                        * 
@@ -449,6 +470,56 @@ ycc_rgb16_convert_mmx (j_decompress_ptr cinfo,
  *          MAIN PROGRAM                                *
  ********************************************************/
 
+/** 
+ * FPS statistics for performance measurement 
+ */
+void print_fps (int final) 
+{
+    int fps, tfps, frames;
+	
+    gettimeofday (&tv_end, NULL);
+
+    if (frame_counter++ == 0) {
+	tv_start = tv_beg = tv_end;
+    }
+
+    elapsed = (tv_end.tv_sec - tv_beg.tv_sec) * 100 +
+	(tv_end.tv_usec - tv_beg.tv_usec) / 10000;
+    total_elapsed = (tv_end.tv_sec - tv_start.tv_sec) * 100 +
+	(tv_end.tv_usec - tv_start.tv_usec) / 10000;
+
+    if (final) {
+	if (total_elapsed) 
+	    tfps = frame_counter * 10000 / total_elapsed;
+	else
+	    tfps = 0;
+
+	fprintf (stderr,"\n%d frames decoded in %d.%02d "
+		 "seconds (%d.%02d fps)\n", frame_counter,
+		 total_elapsed / 100, total_elapsed % 100,
+		 tfps / 100, tfps % 100);
+
+	return;
+    }
+
+    if (elapsed < 50)	/* only display every 0.50 seconds */
+	return;
+
+    tv_beg = tv_end;
+    frames = frame_counter - last_count;
+
+    fps = frames * 10000 / elapsed;			/* 100x */
+    tfps = frame_counter * 10000 / total_elapsed;	/* 100x */
+
+    fprintf (stderr, "%d frames in %d.%02d sec (%d.%02d fps), "
+	     "%d last %d.%02d sec (%d.%02d fps)\033[K\r", frame_counter,
+	     total_elapsed / 100, total_elapsed % 100,
+	     tfps / 100, tfps % 100, frames, elapsed / 100, elapsed % 100,
+	     fps / 100, fps % 100);
+
+    last_count = frame_counter;
+}
+
 void ComplainAndExit(void)
 {
   fprintf(stderr, "Problem: %s\n", SDL_GetError());
@@ -457,6 +528,8 @@ void ComplainAndExit(void)
 
 void callback_AbortProg(int num)
 {
+  printf("Emergency exit\n");
+  print_fps (1);
   SDL_Quit();
 }
 
@@ -483,15 +556,22 @@ void inline readpicfrommem(void *inbuffer, long size)
   jpeg_mem_src_reset(&cinfo, size);
   jpeg_read_header(&cinfo, TRUE);
 
+#ifndef IRIX
   cinfo.dct_method = JDCT_IFAST;
+  cinfo.out_color_space = JCS_RGB;
+#else
+  cinfo.dct_method = JDCT_FLOAT;
+  cinfo.out_color_space = JCS_RGB;
+#endif
   jpeg_start_decompress(&cinfo);
 
   switch (screen->format->BytesPerPixel)
     {
     case 4:
 #ifndef IRIX
+      //printf("Choosing MMX color convert\n");
       cconvert = cinfo.cconvert;
-      cconvert->color_convert = ycc_rgb32_convert_mmx;
+      //cconvert->color_convert = ycc_rgb32_convert_mmx;
 #else
       fprintf(stderr, "32 bits per pixel can't be decoded by libjpeg on IRIX !\n");
 #endif
@@ -507,12 +587,14 @@ void inline readpicfrommem(void *inbuffer, long size)
     default: break;
     }
 
+#if 1
   /* lock the screen for current decompression */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       if ( SDL_LockSurface(screen) < 0 )
 	ComplainAndExit();
     }
+#endif
 
   if(img == NULL)
     {
@@ -526,10 +608,10 @@ void inline readpicfrommem(void *inbuffer, long size)
       for(i=0;i < cinfo.output_height;i++)
 	imglines[i]= screen->pixels + i * screen->format->BytesPerPixel * screen->w;
 
-      jpegdims.x = 0; // This is not going to work with interlaced pics !!
-      jpegdims.y = 0;
-      jpegdims.w = cinfo.output_width;
-      jpegdims.h = cinfo.output_height;
+      yuvdims.x = 0; // This is not going to work with interlaced pics !!
+      yuvdims.y = 0;
+      yuvdims.w = cinfo.output_width;
+      yuvdims.h = cinfo.output_height;
     }
   
   while (cinfo.output_scanline < cinfo.output_height) 
@@ -538,17 +620,93 @@ void inline readpicfrommem(void *inbuffer, long size)
       jpeg_read_scanlines(&cinfo, (JSAMPARRAY) &imglines[cinfo.output_scanline], 100);
     }
 
+#if 1
+  /* unlock it again */
+  if ( SDL_MUSTLOCK(screen) ) 
+    {
+      SDL_UnlockSurface(screen);
+    }
+#endif
+
+  SDL_UpdateRect(screen, 0, 0, movtar->mov_width, movtar->mov_height);
+  print_fps(0);
+                          
+  jpeg_finish_decompress(&cinfo);
+}
+
+
+void inline rtjpeg_decompress(void *inbuffer, long size)
+{
+#ifdef RTJPEG
+  static struct rtj_header fileheader;
+  int i;
+
+  memcpy(&fileheader, inbuffer, sizeof(struct rtj_header));
+
+#if 0 
+  if (strncmp(fileheader.desc, "RTJPEG20", 8) != 0)
+    {
+      fprintf(stderr, "This is no RTJPEG header.\n");
+      return;
+    }
+
+  switch (screen->format->BytesPerPixel)
+    {
+    case 4:
+      fprintf(stderr, "32 bits per pixel can't be decoded by RTJPEG !\n");
+      return;
+    case 2:
+      fprintf(stderr, "15/16 bits per pixel can't be decoded by RTJPEG !");
+      return;
+    default: break;
+    }
+#endif
+
+  /* lock the screen for current decompression */
+  if ( SDL_MUSTLOCK(screen) ) 
+    {
+      if ( SDL_LockSurface(screen) < 0 )
+	ComplainAndExit();
+    }
+
+  if(img == NULL)
+    {
+      if (SDL_LockYUVOverlay(yuv_overlay) < 0)
+	fprintf(stderr, "Error locking yuv overlay: %s\n", SDL_GetError());
+
+      img = screen->pixels;
+      yuv[0] = yuvbuffer; /* Point to the right planes, see yuv2rgb in movtar_unify */
+      yuv[1] = yuvbuffer + movtar->mov_width * movtar->mov_height;
+      yuv[2] = yuv[1] + movtar->mov_width * movtar->mov_height / 4;
+
+      yuv_overlay->pixels = yuv;
+      
+      yuvdims.x = 0; // This is not going to work with interlaced pics !!
+      yuvdims.y = 0;
+      yuvdims.w = movtar->mov_width;
+      yuvdims.h = movtar->mov_height;
+      SDL_UnlockYUVOverlay(yuv_overlay);
+    }
+
+   RTjpeg_init_decompress(fileheader.tbls, fileheader.width, fileheader.height);
+   RTjpeg_decompressYUV420((char *)inbuffer + sizeof(fileheader), yuvbuffer);
+   // RTjpeg_yuvrgb24(yuvbuffer, img, 0);
+
   /* unlock it again */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       SDL_UnlockSurface(screen);
     }
 
-  SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
+  /* Show, baby, show! */
+  SDL_DisplayYUVOverlay(yuv_overlay, &yuvdims);
+  //SDL_UpdateRect(screen, 0, 0, movtar->mov_width, movtar->mov_height); // not needed ! 
+  print_fps(0);
                           
-  jpeg_finish_decompress(&cinfo);
+#else
+  fprintf(stderr, "RTJPEG support NOT COMPILED IN !\n");
+#endif
 }
-
 
 void dump_pixel_format(struct SDL_PixelFormat *format)
 {
@@ -599,7 +757,7 @@ int main(int argc,char** argv)
   int frame =0;
   SDL_Event event;
   struct jpeg_error_mgr jerr;
-  long framesize;
+  long framesize; 
 
   movtar_init(FALSE, FALSE);
 
@@ -614,18 +772,26 @@ int main(int argc,char** argv)
   atexit(SDL_Quit);
   
   /* get the movtar parameters */
-  initmovtar(argv[1]);
+ initmovtar(argv[1]);
 
   printf("wxh: %dx%d@%f fr/s\n", width, height, movtar_frame_rate(movtar));
 
   /* Set the video mode (at least the movtar resolution, with native bitdepth) */
 #ifndef IRIX /* let the hardware choose its mode */
-  screen = SDL_SetVideoMode(width, height, 0, SDL_HWSURFACE /* | SDL_HWSURFACE *//*| SDL_FULLSCREEN */);
+  screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 #else /* must force it to a mode */
-  screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /* | SDL_HWSURFACE *//*| SDL_FULLSCREEN */);
+  screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /* | SDL_FULLSCREEN */ );
 #endif
+  yuv_overlay = SDL_CreateYUVOverlay(width, height, SDL_IYUV_OVERLAY, screen);
+  if (yuv_overlay == 0)
+    printf("Couldn't get YUV overlay !\n");
+  
+  if (yuv_overlay->hw_overlay)
+    printf("Got hardware accelerated YUV overlay !\n");
+
   SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
+  SDL_EventState(SDL_ACTIVEEVENT, SDL_IGNORE);
 
   dump_pixel_format(screen->format);
 
@@ -639,27 +805,37 @@ int main(int argc,char** argv)
     ComplainAndExit(); 
   cinfo.err = jpeg_std_error(&jerr);	
   jpeg_create_decompress(&cinfo);
-  cinfo.out_color_space = JCS_RGB;
-  cinfo.dct_method = JDCT_IFAST;
   jpeg_mem_src(&cinfo, readbuffer, 200000);
 
   sprintf(wintitle, "movtar_play %s", argv[1]);
   SDL_WM_SetCaption(wintitle, "0000000");  
 
+  if (movtar->rtjpeg_mode)
+    {
+      printf("RTJPEG mode recognized\n");
+    }
+
   do
     {
-      framesize = movtar_read_frame(movtar, readbuffer);
-      printf("Now showing frame %d (size %ld)\n", frame, framesize);
+      framesize = movtar_read_frame(movtar, readbuffer);      
+      //printf("Now showing frame %d (size %ld)\n", frame, framesize);
 
       if (framesize != 0)
 	{
 	  if (framesize == 1) fprintf(stderr, "fake frame at %d !\n", frame);
-	  readpicfrommem(readbuffer, framesize);
+	  if (!movtar->rtjpeg_mode)
+	    readpicfrommem(readbuffer, framesize);
+	  else
+	    rtjpeg_decompress(readbuffer, framesize);
+	    
 	  frame++;
 	}
     }
-  while((frame < 250) && (framesize != 0) && !SDL_PollEvent(&event));
-
+  while((frame < 250) && (framesize != 0) /* && !SDL_PollEvent(&event)*/);
+  
+  SDL_FreeYUVOverlay(yuv_overlay);
+  SDL_Quit();
+  print_fps(1); // write the final FPS statistics
   return 0;
 }
 

@@ -230,13 +230,16 @@ int main(int argc, char **argv)
 	     "Resolution: %dx%d\n" 
 	     "JPEG quality: %d %% \n"
 	     "JPEG Fields per Buffer: %d\n"
+	     "RTJPEG mode: %d\n"
 	     "(movtar format version %s)\n", 
 	     movtar->gen_author, movtar->gen_date, 
 	     movtar->gen_classification, movtar->gen_description, 
 	     movtar->gen_input, movtar_norm_string(movtar),
 	     movtar->mov_width, movtar->mov_height, 
 	     movtar->gen_jpeg_quality,
-	     movtar->mov_jpegnumfield, movtar->version);
+	     movtar->mov_jpegnumfield,
+	     movtar->rtjpeg_mode,
+	     movtar->version);
 
       if (movtar->sound_avail)
 	{

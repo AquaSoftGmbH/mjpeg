@@ -32,12 +32,23 @@ movtar_unify (V1.0)
 #include <string.h>
 #include <glib.h>
 #include <jpeglib.h>
+#include <sys/types.h>
 
 #include "movtar.h"
+#ifdef RTJPEG
+#include "format.h"
+#endif
 
-#define MAXPIXELS (1024*1024)  /* Maximum size of final image */
+#define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
-static unsigned char outBuffer[MAXPIXELS*3];
+static unsigned char outbuffer[MAXPIXELS*3];
+static unsigned char outbuffer2[MAXPIXELS*3];
+static unsigned char yuvbuffer[MAXPIXELS*3];
+#ifdef RTJPEG
+static unsigned char rtjpegcode[MAXPIXELS + MAXPIXELS/2];
+static unsigned long rtquant_tables[128];
+static int rtjpeg_quality = 128;
+#endif
 
 /* Definitions for Microsoft WAVE format */
 #define WAV_RIFF		0x46464952
@@ -88,6 +99,7 @@ static int verbose = 0;
 static int debug = 0;
 
 static int recompress = 0; /* recompress the information ? */
+static int rtjpeg = 0; /* generate an RTJpeg movtar stream */
 static int omit_sound = 0; /* do not add sound */
 
 static struct jpeg_decompress_struct dinfo;
@@ -145,7 +157,7 @@ void usage(char *prog)
 	  "\n"
 	  "--\n"
 	  "(c) 2000 Gernot Ziegler <gz@lysator.liu.se>\n",
-	  prog, prog, inmovtarname, inwavname, outmovtarname, prog, prog, prog);
+	  prog, prog, inmovtarname, inwavname, outmovtarname, prog, prog, prog, prog);
 }
 
 /* parse_commandline
@@ -157,7 +169,7 @@ void parse_commandline(int argc, char ** argv)
 
 /* parse options */
  for (;;) {
-   if (-1 == (c = getopt(argc, argv, "dhvi:w:o:O:b:j:n:")))
+   if (-1 == (c = getopt(argc, argv, "dhvRi:w:o:O:b:j:n:")))
      break;
    switch (c) {
    case 'v':
@@ -182,6 +194,15 @@ void parse_commandline(int argc, char ** argv)
    case 'O':
      wavoffset = atol(optarg);
      if (wavoffset == -1) omit_sound = 1;
+     break;
+   case 'R':
+#ifdef RTJPEG
+     rtjpeg = 1;
+     recompress = 1;
+#else
+     fprintf(stderr, "RTJPEG compression is not compiled in !\n");
+     exit(1);
+#endif
      break;
    case 'o':
      outmovtarname = optarg;
@@ -235,12 +256,12 @@ static int test_wavefile(void *buffer)
   return FALSE;
 }
 
-/* init_parse_files
+/** init_parse_files
  * Parses the input movtar INFO and generates the new files with
  * the according headers.
- * in: filename: movtar filename
- *     buzdev:   UNIX file descriptor for the Buz video character device 
- * out:vb:       MJPEG buffer information. 
+ * @param filename: movtar filename
+ * @param buzdev:   UNIX file descriptor for the Buz video character device 
+ * @returns 
  */
 int init_parse_files()
 { 
@@ -288,6 +309,9 @@ int init_parse_files()
       /* I'm changing the internal inmovtar struct, I shouldn't do that, but hey:
 	 I'm lazy, and I am the creator of the movtar lib - just trust me ;) */
       movtar_copy_header(inmovtar, outmovtar);
+
+      if (rtjpeg)
+	outmovtar->rtjpeg_mode = 1; /* mmmm, what a hack ! (there is no function call) */
 
       /* Prepare for the calculations in unify_movtar, see below */
       framerate = movtar_frame_rate(inmovtar);
@@ -356,13 +380,16 @@ int init_parse_files()
 	    }
 
 	  /* SECAM ? No clue, contact me if you have info about possible resolutions ! */
-
+	  if (rtjpeg)
+	    outmovtar->rtjpeg_mode = 1; /* mmmm, what a hack ! (there is no function call) */
+	  
 	  /* Setting the vital movtar parameters, the last parameters guesses interlaced */
-	  movtar_set_video(outmovtar, 1, dinfo.output_width, dinfo.output_height, 
-			   framerate, "MJPG", (dinfo.output_width > 360));
+	  movtar_set_video(outmovtar, 1, dinfo.output_width, 
+			   (dinfo.output_width/dinfo.output_height >= 2) ? dinfo.output_height*2 : dinfo.output_height, 
+			   framerate, "MJPG", (dinfo.output_width/dinfo.output_height >= 2) ? 1 : 0);
 	  fprintf(stderr, "Image dimensions are %dx%d, framerate = %f frames/s, chosen norm: %s\n" 
                           "YUV-convert: %s\n", 
-		  dinfo.output_width, dinfo.output_height, framerate, movtar_norm_string(outmovtar),
+		  outmovtar->mov_width, outmovtar->mov_height, framerate, movtar_norm_string(outmovtar),
 		  recompress ? "yes" : "no");
 	  jpeg_destroy_decompress(&dinfo);
 	  fclose(jpegfile);
@@ -417,6 +444,8 @@ Add every time a video frame is written these x/25 bytes to some fake
 to a whole byte, add it to the audiobuffer (and reduce the accumulated sum).
 */
 
+
+
 int jpeg_recompress(FILE *injpeg, FILE *outfile)
 {
   int img_height, img_width, field = 0, y, ystart;
@@ -444,7 +473,7 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
   
   for (y=0; y<img_height; y++)
     {
-      addr = outBuffer+y*img_width*3;
+      addr = outbuffer+y*img_width*3;
       jpeg_read_scanlines(&dinfo, (JSAMPARRAY) &addr, 1);
     }
    
@@ -475,7 +504,7 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
   newinfo.comp_info[2].h_samp_factor = 1; 
   newinfo.comp_info[2].v_samp_factor = 1; 
   
-  if (img_width < 630)
+  if (img_width/img_height < 2) 
     { 
       newinfo.image_height = img_height;
       
@@ -483,7 +512,7 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
       
       for (y=0; y<img_height; y++)
 	{
-	  addr = outBuffer+y*img_width*3;
+	  addr = outbuffer+y*img_width*3;
 	  jpeg_write_scanlines(&newinfo, (JSAMPARRAY) &addr, 1);
 	}
       
@@ -499,7 +528,7 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
       ystart = field;
       for (y=0; y<img_height; y+=2)
 	{
-	  addr = outBuffer+y*img_width*3;
+	  addr = outbuffer+y*img_width*3;
 	  jpeg_write_scanlines(&newinfo, (JSAMPARRAY) &addr, 1);
 	}
       
@@ -509,7 +538,7 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
       
       for (y=1; y<img_height; y+=2)
 	{
-	  addr = outBuffer+y*img_width*3;
+	  addr = outbuffer+y*img_width*3;
 	  jpeg_write_scanlines(&newinfo, (JSAMPARRAY) &addr, 1);
 	}
       
@@ -520,7 +549,147 @@ int jpeg_recompress(FILE *injpeg, FILE *outfile)
    jpeg_destroy_compress(&newinfo);
 }
 
+void rgb2yuv(int w, int h, unsigned char *rgb, unsigned char *buf) 
+{
+  register int i,j; 
+  char *off = buf+w*h, *off2 = buf+w*h+w*h/4;
 
+  for(j=0; j<h; j++) 
+    {
+      for(i=0; i<w; i++) 
+	{
+	  int b = *rgb++;
+	  int g = *rgb++;
+	  int r = *rgb++;
+	  int y,cb,cr;
+	  y  =  (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
+	  cr =  (0.439 * r) - (0.368 * g) - (0.071 * b) + 128;
+	  cb = -(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;
+	  if(y<0) y = 0; if(y>255) y = 255;
+	  if(cb<0) cb = 0; if(cb>255) cb = 255;
+	  if(cr<0) cr = 0; if(cr>255) cr = 255;
+	  *buf++ = y;
+	  if(j&1&&i&1)
+	    *off++ = cr;
+	  if(j&1&&i&1)
+	    *off2++ = cb;
+	}
+    }
+}
+
+int rtjpeg_recompress(FILE *injpeg, FILE *outfile)
+{
+#ifdef RTJPEG
+  int img_height, img_width, field = 0, y, ystart;
+  unsigned char *addr;
+  struct jpeg_decompress_struct dinfo;
+  struct jpeg_compress_struct newinfo;
+  struct jpeg_error_mgr jerr;
+  unsigned int codelength;
+  static struct rtj_header fileheader;
+  unsigned int interleaved = 0;
+  int mov_height = 0, mov_width = 0;
+  FILE *xoutfile;
+ 
+  if (debug) printf("RTJPEG compression active !\n");
+
+  dinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_decompress(&dinfo);
+  jpeg_stdio_src(&dinfo, injpeg);
+
+  jpeg_read_header(&dinfo, TRUE);
+  dinfo.out_color_space = JCS_RGB;      
+  jpeg_start_decompress(&dinfo);
+  
+  if(dinfo.output_components != 3)
+    {
+      fprintf(stderr,"Output components of JPEG image = %d, must be 3\n",dinfo.output_components);
+      exit(1);
+    }
+  
+  img_width  = dinfo.output_width;
+  img_height = dinfo.output_height;
+
+  //printf("w:%d, h:%d, div:%d\n", img_width, img_height, img_width/img_height);
+  if (img_width/img_height >= 2) 
+    {
+      printf("Aspect ration > 2: The input is interleaved !\n");      
+      interleaved = 1;
+    }
+
+  if (!interleaved)
+    {  
+      for (y=0; y<img_height; y++)
+	{
+	  addr = outbuffer+y*img_width*3;
+	  jpeg_read_scanlines(&dinfo, (JSAMPARRAY) &addr, 1);
+	}
+      
+      (void) jpeg_finish_decompress(&dinfo);
+      fprintf(stderr,"JPEG file successfully read.\n");
+      
+      /* Decompressing finished */
+      jpeg_destroy_decompress(&dinfo);
+
+      mov_width = img_width; 
+      mov_height = img_height;
+    }
+  else
+    {  
+      /* First read the even lines */
+      for (y=0; y<img_height; y++)
+	{
+	  addr = outbuffer + 2 * y * img_width*3;
+	  jpeg_read_scanlines(&dinfo, (JSAMPARRAY) &addr, 1);
+	}
+      
+      /* Decompressing finished */
+      jpeg_finish_decompress(&dinfo);
+
+      jpeg_read_header(&dinfo, TRUE);
+      dinfo.out_color_space = JCS_RGB;      
+      jpeg_start_decompress(&dinfo);
+      
+      /* Now read the odd lines */
+      for (y=0; y<img_height; y++)
+	{
+	  addr = outbuffer + (2 * y + 1) * img_width*3;
+	  jpeg_read_scanlines(&dinfo, (JSAMPARRAY) &addr, 1);
+	}
+      
+      (void) jpeg_finish_decompress(&dinfo);
+      fprintf(stderr,"JPEG file successfully read.\n");
+      
+      /* Decompressing finished */
+      jpeg_destroy_decompress(&dinfo);
+
+      mov_width = img_width; 
+      mov_height = img_height * 2;
+    }  
+
+  /* Starting the compression */  
+  printf("Initializing the compression\n");
+
+  RTjpeg_init_compress(fileheader.tbls, mov_width, mov_height, rtjpeg_quality);
+
+  fprintf(stderr, "YUV->RGB conversion\n");
+  rgb2yuv(mov_width, mov_height, outbuffer, yuvbuffer);
+
+  fprintf(stderr, "RTJPEG compression\n");
+  codelength = RTjpeg_compressYUV420(rtjpegcode, yuvbuffer);
+
+  fprintf(stderr, "RTJPEG codelength: %d (%f %% of uncompressed size)\n", codelength, (mov_width * mov_height * 3)/(float)codelength);
+
+  memcpy(fileheader.desc, "RTJPEG20", 8); 
+  fileheader.width = mov_width;
+  fileheader.height = mov_height;
+  
+  fwrite(&fileheader, sizeof(struct rtj_header), 1, outfile);
+  fwrite(rtjpegcode, 1, codelength, outfile);
+
+  return 0;
+#endif
+}
 
 int unify_movtar()
 {
@@ -608,9 +777,18 @@ int unify_movtar()
 	      else
 		{
 		  if (debug) printf("Preparing frame\n");
+
 		  movtar_write_frame_init(outmovtar);
-		  if (debug) printf("Recompressing frame\n");
-		  jpeg_recompress(jpegfile, movtar_get_fd(outmovtar));
+		  if (!rtjpeg)
+		    {
+		      if (debug) printf("Recompressing frame in JPEG format\n");
+		      jpeg_recompress(jpegfile, movtar_get_fd(outmovtar));
+		    }
+		  else
+		    {
+		      if (debug) printf("Recompressing frame in RTJPEG format\n");
+		      rtjpeg_recompress(jpegfile, movtar_get_fd(outmovtar));
+		    }
 		  if (debug) printf("Finishing frame\n");
 		  movtar_write_frame_end(outmovtar);
 		}

@@ -84,6 +84,8 @@ typedef struct
   int show_fake_mode; /* Signals the lib that fake frames should be shown with frame size set to 1 byte
 			 (and not hidden in special handling) */
   int INFO_written; /* Internal: Signals movtarlib that the INFO file has been written */
+  int rtjpeg_mode; /* Signals if the movtar contains RTJPEG frames instead of "normal" JPEG frames */
+
 #ifdef	NEVER
   fpos_t writepos; /*to be able to measure the bytes the application has written */
 #else
@@ -121,6 +123,7 @@ struct tarinfotype
    returned by movtar_getdatatype */
 #define MOVTAR_DATA_AUDIO   0x8000
 #define MOVTAR_DATA_VIDEO   0x0800
+#define MOVTAR_DATA_VIDEO_RTJPEG  0x0900
 #define MOVTAR_DATA_FAKE    0x0001
 #define MOVTAR_DATA_UNKNOWN 0x0000
 

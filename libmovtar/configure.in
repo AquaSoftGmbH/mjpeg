@@ -19,6 +19,7 @@ AC_HEADER_STDC
 dnl Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
 AC_C_INLINE
+AC_C_BIGENDIAN
 AC_TYPE_SIZE_T
 
 dnl Checks for library functions.
@@ -36,12 +37,33 @@ AC_ARG_WITH(m4data-prefix, [  --with-m4data-prefix=PFX  Where to put the libmovt
     M4DATADIR="$withval/aclocal", 
     M4DATADIR="/usr/share/aclocal")
 
-dnl This activates IRIX specific changes (e g no MMX)
+dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
 case "$HOSTTYPE" in
   mips*) 
    echo Activating IRIX changes !
-   CFLAGS="$CFLAGS -DIRIX";;
+   CFLAGS="$CFLAGS -DIRIX -DWORD_BIGENDIAN";;
+  i?86*) 
+   echo Activating Intel MMX !
+   RTJPEG_MMX="-DMMX";;
 esac
+
+dnl madmac/gernot: 
+if test -r rtjpeg
+then
+  CFLAGS="$CFLAGS -DRTJPEG"  
+  RTJPEG_INCLUDE="-Irtjpeg"  
+  RTJPEG_OBJS="./rtjpeg/RTjpeg.o"
+  have_rtjpeg="yes"
+else
+  RTJPEG_OBJS=
+  RTJPEG_INCLUDE=
+  echo "No RTJPEG codec found"
+  have_rtjpeg="no"
+fi
+
+AC_SUBST(RTJPEG_OBJS)
+AC_SUBST(RTJPEG_INCLUDE)
+AC_SUBST(RTJPEG_MMX)
 
 dnl No jpeg yet... try for a local jpeg-mmx first!
 dnl -- Quicktime checks --
@@ -99,7 +121,7 @@ AC_CHECK_LIB( jpeg, jpeg_start_compress,
 			)
 fi
 
-AC_OUTPUT(Makefile
+AC_OUTPUT(Makefile rtjpeg/Makefile 
 	movtar-config)
 
 echo ""
@@ -107,6 +129,7 @@ echo " libmovtar ${VERSION} build configuration :"
 echo ""
 echo "    - Build movtar_play     : ${have_SDL}"
 echo "    - JPEG input in      : ${have_jpeg}"
+echo "    - RTJPEG support      : ${have_rtjpeg}"
 echo ""
 
 
