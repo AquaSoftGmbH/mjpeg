@@ -50,79 +50,47 @@ int BLKmedian=256;
 int BLKquantile25=256;
 int BLKquantile75=256;
 
-int search_radius=24;
+int search_radius=48;
 int verbose = 0;
 int fast_mode = 0;
 int field_order = -1;
 int bttv_hack = 0;
 int width = 0;
 int height = 0;
+int input_chroma_subsampling = 0;
+int output_chroma_subsampling = 0;
 int non_interleaved_fields = 0;
 
-uint8_t f10y[1024 * 768];
-uint8_t f10cr[512 * 384];
-uint8_t f10cb[512 * 384];
-uint8_t *frame10[3] = { f10y, f10cr, f10cb };
+uint8_t fiy	[1024 * 768];
+uint8_t ficr[1024 * 768];
+uint8_t ficb[1024 * 768];
+uint8_t *inframe[3] = { fiy, ficr, ficb };
 
-uint8_t f11y[1024 * 768];
-uint8_t f11cr[512 * 384];
-uint8_t f11cb[512 * 384];
-uint8_t *frame11[3] = { f11y, f11cr, f11cb };
+uint8_t foy	[1024 * 768];
+uint8_t focr[1024 * 768];
+uint8_t focb[1024 * 768];
+uint8_t *outframe[3] = { foy, focr, focb };
 
-uint8_t f20y[1024 * 768];
-uint8_t f20cr[512 * 384];
-uint8_t f20cb[512 * 384];
-uint8_t *frame20[3] = { f20y, f20cr, f20cb };
+uint8_t f1y	[1024 * 768];
+uint8_t f1cr[1024 * 768];
+uint8_t f1cb[1024 * 768];
+uint8_t *frame1[3] = { f1y, f1cr, f1cb };
 
-uint8_t f21y[1024 * 768];
-uint8_t f21cr[512 * 384];
-uint8_t f21cb[512 * 384];
-uint8_t *frame21[3] = { f21y, f21cr, f21cb };
+uint8_t f2y	[1024 * 768];
+uint8_t f2cr[1024 * 768];
+uint8_t f2cb[1024 * 768];
+uint8_t *frame2[3] = { f2y, f2cr, f2cb };
 
-uint8_t f30y[1024 * 768];
-uint8_t f30cr[512 * 384];
-uint8_t f30cb[512 * 384];
-uint8_t *frame30[3] = { f30y, f30cr, f30cb };
+uint8_t f3y	[1024 * 768];
+uint8_t f3cr[1024 * 768];
+uint8_t f3cb[1024 * 768];
+uint8_t *frame3[3] = { f3y, f3cr, f3cb };
 
-uint8_t f31y[1024 * 768];
-uint8_t f31cr[512 * 384];
-uint8_t f31cb[512 * 384];
-uint8_t *frame31[3] = { f31y, f31cr, f31cb };
-
-uint8_t f4y[1024 * 768];
-uint8_t f4cr[512 * 384];
-uint8_t f4cb[512 * 384];
+uint8_t f4y	[1024 * 768];
+uint8_t f4cr[1024 * 768];
+uint8_t f4cb[1024 * 768];
 uint8_t *frame4[3] = { f4y, f4cr, f4cb };
 
-uint8_t f5y[1024 * 768];
-uint8_t f5cr[512 * 384];
-uint8_t f5cb[512 * 384];
-uint8_t *frame5[3] = { f5y, f5cr, f5cb };
-
-uint8_t f6y[1024 * 768];
-uint8_t f6cr[512 * 384];
-uint8_t f6cb[512 * 384];
-uint8_t *frame6[3] = { f6y, f6cr, f6cb };
-
-uint8_t f7y[1024 * 768];
-uint8_t f7cr[512 * 384];
-uint8_t f7cb[512 * 384];
-uint8_t *frame_sub22[3] = { f7y, f7cr, f7cb };
-
-uint8_t f8y[1024 * 768];
-uint8_t f8cr[512 * 384];
-uint8_t f8cb[512 * 384];
-uint8_t *frame_sub44[3] = { f8y, f8cr, f8cb };
-
-uint8_t f9y[1024 * 768];
-uint8_t f9cr[512 * 384];
-uint8_t f9cb[512 * 384];
-uint8_t *frame_sub22_[3] = { f9y, f9cr, f9cb };
-
-uint8_t fay[1024 * 768];
-uint8_t facr[512 * 384];
-uint8_t facb[512 * 384];
-uint8_t *frame_sub44_[3] = { fay, facr, facb };
 
 struct
 {
@@ -167,8 +135,10 @@ main (int argc, char *argv[])
 	int fd_in = 0;
 	int fd_out = 1;
 	int errno = 0;
-	y4m_frame_info_t frameinfo;
-	y4m_stream_info_t streaminfo;
+	y4m_frame_info_t iframeinfo;
+	y4m_stream_info_t istreaminfo;
+	y4m_frame_info_t oframeinfo;
+	y4m_stream_info_t ostreaminfo;
 
 	blend_fields = &blend_fields_non_accel;
 
@@ -196,7 +166,7 @@ main (int argc, char *argv[])
 			mjpeg_log (LOG_INFO,
 				   "    this leads to a better quality when using mencoder to record");
 			mjpeg_log (LOG_INFO,
-				   " -r [n=0...255] sets the serach-radius (default is 8)");
+				   " -r [n=0...72] sets the serach-radius (default is 8)");
 			mjpeg_log (LOG_INFO,
 				   " -s [n=0/1] forces field-order");
 			exit (0);
@@ -252,31 +222,57 @@ main (int argc, char *argv[])
 	if( (cpucap & ACCEL_X86_MMXEXT)!=0 ||
 		(cpucap & ACCEL_X86_SSE   )!=0 )
 	{
-		mjpeg_log (LOG_INFO,"could use MMX/SSE Block/Frame-Copy/Blend if I had one ;-)");
+		mjpeg_log (LOG_INFO,"FIXME: could use MMX/SSE Block/Frame-Copy/Blend if I had one ;-)");
 	}
 
 	/* initialize stream-information */
-	y4m_init_stream_info (&streaminfo);
-	y4m_init_frame_info (&frameinfo);
+	y4m_accept_extensions(1);
+	y4m_init_stream_info (&istreaminfo);
+	y4m_init_frame_info (&iframeinfo);
+	y4m_init_stream_info (&ostreaminfo);
+	y4m_init_frame_info (&oframeinfo);
 
 	/* open input stream */
-	if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
+	if ((errno = y4m_read_stream_header (fd_in, &istreaminfo)) != Y4M_OK)
 	{
 		mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!",
 			   y4m_strerr (errno));
 		exit (1);
 	}
-	width = y4m_si_get_width (&streaminfo);
-	height = y4m_si_get_height (&streaminfo);
 
+	/* get format information */
+	width = y4m_si_get_width (&istreaminfo);
+	height = y4m_si_get_height (&istreaminfo);
+	input_chroma_subsampling = y4m_si_get_chroma (&istreaminfo);
+	mjpeg_log (LOG_INFO, "Y4M-Stream is %ix%i(%s)",
+		width,
+		height,
+		input_chroma_subsampling==Y4M_CHROMA_420JPEG  ? "4:2:0 MPEG1"   :
+		input_chroma_subsampling==Y4M_CHROMA_420MPEG2 ? "4:2:0 MPEG2"   :
+		input_chroma_subsampling==Y4M_CHROMA_420PALDV ? "4:2:0 PAL-DV"  :
+		input_chroma_subsampling==Y4M_CHROMA_444      ? "4:4:4"         :
+		input_chroma_subsampling==Y4M_CHROMA_422      ? "4:2:2"         :
+		input_chroma_subsampling==Y4M_CHROMA_411      ? "4:2:0 NTSC-DV" :
+		input_chroma_subsampling==Y4M_CHROMA_MONO     ? "MONOCHROME"    :
+		input_chroma_subsampling==Y4M_CHROMA_444ALPHA ? "4:4:4:4 ALPHA" : 
+		"unknown" );
+
+	/* if chroma-subsampling isn't supported bail out ... */
+	if( input_chroma_subsampling==Y4M_CHROMA_MONO     ||
+		input_chroma_subsampling==Y4M_CHROMA_444ALPHA )
+	{
+		exit (-1);
+	}
+
+	/* check for the field-order or if the fieldorder was forced */
 	if(field_order==-1)
 	{
-		if (Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&streaminfo))
+		if (Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&istreaminfo))
 		{
 			mjpeg_log (LOG_INFO, "top-field-first");
 			field_order = 1;
 		}
-		else if (Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&streaminfo))
+		else if (Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&istreaminfo))
 		{
 			mjpeg_log (LOG_INFO, "bottom-field-first");
 			field_order = 0;
@@ -290,69 +286,61 @@ main (int argc, char *argv[])
 		}
 	}
 
-	/* the output is not interlaced 4:2:0 */
-	y4m_si_set_interlace (&streaminfo, Y4M_ILACE_NONE);
-
+	/* the output is not interlaced 4:2:0 MPEG 1 */
+	y4m_si_set_interlace (&ostreaminfo, Y4M_ILACE_NONE);
+	y4m_si_set_chroma    (&ostreaminfo, Y4M_CHROMA_444);
+	y4m_si_set_width     (&ostreaminfo, width);
+	y4m_si_set_height    (&ostreaminfo, height);
+	y4m_si_set_framerate (&ostreaminfo, y4m_si_get_framerate(&istreaminfo));
 	/* write the outstream header */
-	y4m_write_stream_header (fd_out, &streaminfo);
+	y4m_write_stream_header (fd_out, &ostreaminfo);
 
-	/* read every single frame until the end of the input stream */
+	/* read every frame until the end of the input stream and process it */
 	while (Y4M_OK == (errno = y4m_read_frame (fd_in,
-						  &streaminfo,
-						  &frameinfo, frame11)))
+						  &istreaminfo,
+						  &iframeinfo, inframe)))
 	{
-
-		if(non_interleaved_fields)
+		/* reconstruct 4:4:4 full resolution frame by upsampling luma and chroma of one field */
+		if( input_chroma_subsampling == Y4M_CHROMA_420JPEG )
 		{
-			// interleave fields using frame10 as a buffer 
-			interleave_fields (width,height,frame11,frame10);
-		}
-		/* copy the frame */
-
-		memcpy (frame10[0], frame11[0], width * height);
-		memcpy (frame10[1], frame11[1], width * height / 4);
-		memcpy (frame10[2], frame11[2], width * height / 4);
-
-		/* interpolate the other field */
-		if (fast_mode == 0)
-		{
-			sinc_interpolation (frame10, field_order);
-			sinc_interpolation (frame11, 1 - field_order);
-
-			/* create working copy */
-
-			copy_frame ( frame4, frame20 );
-
-			/* deinterlace the frame in the middle of the ringbuffer */
-
-			motion_compensate_field ();
-			blend_fields ();
-
-			/* write output-frame */
-			if (framenr != 0)
-			{
-				y4m_write_frame (fd_out, &streaminfo,
-						 &frameinfo, frame6);
-				if(verbose == 1)
-				mjpeg_log (LOG_INFO,"frame %i       ",framenr);
-			}
-			framenr++;
+			sinc_interpolation_420JPEG_to_444 (frame1,inframe,1-field_order);
+			sinc_interpolation_420JPEG_to_444 (frame2,inframe,field_order);
 		}
 		else
-		{
-			sinc_interpolation (frame10, field_order);
+			if( input_chroma_subsampling == Y4M_CHROMA_420MPEG2 )
+			{
+			}
+			else
+				if( input_chroma_subsampling == Y4M_CHROMA_420PALDV )
+				{
+				}
+				else
+					if( input_chroma_subsampling == Y4M_CHROMA_444 )
+					{
+					}
+					else
+						if( input_chroma_subsampling == Y4M_CHROMA_422 )
+						{
+						}
+						else
+							if( input_chroma_subsampling == Y4M_CHROMA_411 )
+							{
+							}			
 
-			y4m_write_frame (fd_out, &streaminfo, &frameinfo,
-					 frame10);
-		}
+		motion_compensate_field();
+		blend_fields();
 
-		/* rotate buffers */
+		/* write out reconstructed fields */
+        //y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 
-		copy_frame ( frame31, frame21 );
-		copy_frame ( frame30, frame20 );
-		copy_frame ( frame21, frame11 );
-		copy_frame ( frame20, frame10 );
-
+		/* move fields */
+		memcpy ( frame3[0], frame1[0], width*height );
+		memcpy ( frame3[1], frame1[1], width*height );
+		memcpy ( frame3[2], frame1[2], width*height );
+		memcpy ( frame4[0], frame2[0], width*height );
+		memcpy ( frame4[1], frame2[1], width*height );
+		memcpy ( frame4[2], frame2[2], width*height );
 	}
 
 	/* did stream end unexpectedly ? */
@@ -385,7 +373,7 @@ int qsort_cmp_medianSAD ( const void * x, const void * y )
 			return 0;
 }
 
-struct vector medianvector (struct vector v1, struct vector v2, struct vector v3, struct vector v4)
+struct vector medianvector (struct vector v1, struct vector v2, struct vector v3)
 {
 	struct vector v;
 	int xlist[4];
@@ -394,20 +382,17 @@ struct vector medianvector (struct vector v1, struct vector v2, struct vector v3
 	xlist[0] = v1.x;
 	xlist[1] = v2.x;
 	xlist[2] = v3.x;
-	xlist[3] = v4.x;
 
 	ylist[0] = v1.y;
 	ylist[1] = v2.y;
 	ylist[2] = v3.y;
-	ylist[3] = v4.y;
 
 	/* need to sort the vectors for median calculation */
-	qsort ( xlist, 4, sizeof(xlist[0]), qsort_cmp_medianvector );
-	qsort ( ylist, 4, sizeof(ylist[0]), qsort_cmp_medianvector );
+	qsort ( xlist, 3, sizeof(xlist[0]), qsort_cmp_medianvector );
+	qsort ( ylist, 3, sizeof(ylist[0]), qsort_cmp_medianvector );
 
-	/* even median is mean of two centered values */
-	v.x = (xlist[1]+xlist[2])>>1;
-	v.y = (ylist[1]+ylist[2])>>1;
+	v.x = xlist[2];
+	v.y = ylist[2];
 
 	return v;
 }
@@ -430,7 +415,7 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 	} search_path[15000];
 	static int cnt=0;
 
-	struct vector v;
+	struct vector v,w;
 	struct vector mean;
 	struct vector median;
 	int vx,vy;
@@ -445,7 +430,7 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 
 		for(r=1;r<=search_radius;r++)
 		{
-			for(vy=-64;vy<=64;vy+=4) // it doesn't make sense to search some y-values
+			for(vy=-64;vy<=64;vy+=1) 
 				for(vx=-64;vx<=64;vx++)
 				{
 					if( (vx*vx+vy*vy) <= (r*r) &&
@@ -463,108 +448,78 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 
 	mean.x = (top.x + left.x + topleft.x + co.x )/4;
 	mean.y = (top.y + left.y + topleft.y + co.y )/4;
-	median = medianvector( topleft , top, left, co);
+	median = medianvector( topleft , top, left );
 
 	/* initialize best-match with (0,0)MV SAD */
-	min  = 	psad_00( frame20[0]+x+y*width, frame10[0]+x+y*width, width, 16, 0 );
-	//min += 	psad_00( frame20[0]+x+y*width+16, frame10[0]+x+y*width+16, width, 32, 0 );
-	//min +=  psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+x/2+y*width/4, width/2, 8 );
-	//min +=  psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+x/2+y*width/4, width/2, 8 );
+	min  = 	psad_00( frame1[0]+x+y*width, frame3[0]+x+y*width, width, 16, 0 );
 	v.x  = 0;
 	v.y  = 0;
 
 	/* If we are in a region were we have predicted MVs check them first */
 	if ( (x>>4)>0 && (y>>4)>0 )
 	{
-#if 1
 		/* check median predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+mean.x)+(y+mean.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
 		if (SAD<min)
 		{
 			min = SAD;
 			v.x = median.x;
 			v.y = median.y;
 		}
-#endif
-#if 1
-		/* check colocated predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+co.x)+(y+co.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+co.x)+(y+co.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+co.x)/2+(y+co.y)*width/4, width/2, 8 );
-		if (SAD<min)
+
+		/* don't check the other predictors if the median is reasonably good */
+		if(min>BLKmedian)
 		{
-			min = SAD;
-			v.x = co.x;
-			v.y = co.y;
+			/* check colocated predictor */
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+co.x)+(y+co.y)*width, width, 16, 0 );
+			if (SAD<min)
+			{
+				min = SAD;
+				v.x = co.x;
+				v.y = co.y;
+			}
+			/* check top predictor */
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+top.x)+(y+top.y)*width, width, 16, 0 );
+			if (SAD<min)
+			{
+				min = SAD;
+				v.x = top.x;
+				v.y = top.y;
+			}
+			/* check left predictor */
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+left.x)+(y+left.y)*width, width, 16, 0 );
+			if (SAD<min)
+			{
+				min = SAD;
+				v.x = left.x;
+				v.y = left.y;
+			}
+			/* check top-left predictor */
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+topleft.x)+(y+topleft.y)*width, width, 16, 0 );
+			if (SAD<min)
+			{
+				min = SAD;
+				v.x = topleft.x;
+				v.y = topleft.y;
+			}
+			/* check mean predictor */
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+mean.x)+(y+mean.y)*width, width, 16, 0 );
+			if (SAD<min)
+			{
+				min = SAD;
+				v.x = mean.x;
+				v.y = mean.y;
+			}
 		}
-#endif
-#if 1
-		/* check top predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+top.x)+(y+top.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+top.x)+(y+top.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
-		if (SAD<min)
-		{
-			min = SAD;
-			v.x = top.x;
-			v.y = top.y;
-		}
-#endif
-#if 1
-		/* check left predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+left.x)+(y+left.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+left.x)+(y+left.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
-		if (SAD<min)
-		{
-			min = SAD;
-			v.x = left.x;
-			v.y = left.y;
-		}
-#endif
-#if 1
-		/* check top-left predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+topleft.x)+(y+topleft.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+topleft.x)+(y+topleft.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
-		if (SAD<min)
-		{
-			min = SAD;
-			v.x = topleft.x;
-			v.y = topleft.y;
-		}
-#endif
-#if 1
-		/* check mean predictor */
-		SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+mean.x)+(y+mean.y)*width, width, 16, 0 );
-		//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+mean.x)+(y+mean.y)*width+16, width, 32, 0 );
-		//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
-		//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
-		if (SAD<min)
-		{
-			min = SAD;
-			v.x = mean.x;
-			v.y = mean.y;
-		}
-#endif
 	}
 
 	/* if one of the predictors is good, we should be below BLKquantile75, now
-     * if not, do a full search for this block ... shit happens... :)
+     * if not, do a circular full search for this block ... shit happens... :)
      */
 	if(min>BLKquantile75)
 	{
-		min  = psad_00( frame20[0]+x+y*width, frame10[0]+x+y*width, width, 16, 0 );
-		//min  = psad_00( frame20[0]+x+y*width+16, frame10[0]+x+y*width+16, width, 32, 0 );
-		//min += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+x/2+y*width/4, width/2, 8 );
-		//min += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+x/2+y*width/4, width/2, 8 );
+		min  = psad_00( frame1[0]+x+y*width, frame3[0]+x+y*width, width, 16, 0 );
+
 		v.x = 0;
 		v.y = 0;
 
@@ -573,32 +528,42 @@ search_forward_vector( int x, int y , struct vector topleft , struct vector top,
 			vx = search_path[r].x;
 			vy = search_path[r].y;
 
-			SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
-			//SAD  = psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
-			//SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
-			//SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
+			SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
 			if( SAD<min )
 			{
-				/* this check avoids trouble with repeating patterns ... */
-				SAD2  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+vx/2)+(y+vy/2)*width, width, 16, 0 );
-				//SAD2  = psad_00( frame20[0]+x+y*width+16, frame21[0]+(x+vx/2)+(y+vy/2)*width+16, width, 32, 0 );
-				//SAD2 += psad_sub22( frame20[1]+x/2+y*width/4, frame10[1]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
-				//SAD2 += psad_sub22( frame20[2]+x/2+y*width/4, frame10[2]+(x+vx/2)/2+(y+vy/2)*width/4, width/2, 8 );
-
-				if(SAD2<min)
-				{
-					min   = SAD;
-					v.x   = vx;
-					v.y   = vy;
-				}
+				min   = SAD;
+				v.x   = vx;
+				v.y   = vy;
 			}
-			/* abort the search as soon, as we get below the 25% quantile */
-			if(min<(BLKquantile25)) break;
+			/* abort the search as soon, as we get below the median */
+			if(min<(BLKmedian)) break;
 		}
 	}
 
+	/* refine the search by a minimal search arround the found match */
+	if(min>BLKquantile25)
+		{
+		w.x = v.x;
+		w.y = v.y;
+		for(r = 0 ; r <= 12 ; r++) // search radius 2pixel
+			{
+				vx = search_path[r].x+v.x;
+				vy = search_path[r].y+v.y;
+	
+				SAD  = psad_00( frame1[0]+x+y*width, frame3[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
+				if( SAD<min )
+				{
+					min   = SAD;
+					w.x   = vx;
+					w.y   = vy;
+				}
+			}
+		v.x = w.x;
+		v.y = w.y;
+		}
+
 	/* we need the SAD of the current field for statistics, not of the upcoming-next one */
-	v.sad = psad_00( frame20[0]+x+y*width, frame21[0]+(x+v.x/2)+(y+v.y/2)*width, width, 16, 0 );
+	v.sad  = psad_00( frame1[0]+x+y*width, frame2[0]+(x+v.x/2)+(y+v.y/2)*width, width, 16, 0 );
 	return v;
 }
 
@@ -637,33 +602,30 @@ motion_compensate_field (void)
 	BLKquantile75 >>= 4;
 	
 	/* limit values to lower-boundary to avoid unnessecary searches*/
-	if(BLKquantile25 <  384) BLKquantile25 =  384;
-	if(BLKmedian     <  768) BLKmedian     =  768;
-	if(BLKquantile75 < 2560) BLKquantile75 = 2560;
-
-	fprintf(stderr,"BLKmedian = %i BLK-Q25%% = %i BLK-Q75%% = %i \n",BLKmedian,BLKquantile25,BLKquantile75);
+	if(BLKquantile25 <  512) BLKquantile25 =  512;
+	if(BLKmedian     < 1024) BLKmedian     = 1024;
+	if(BLKquantile75 < 3840) BLKquantile75 = 3840;
 
 	for(y=0;y<height;y+=16)
 		for(x=0;x<width;x+=16)
 		{
 			if (fv[x>>4][y>>4].sad<=BLKquantile75)
 			{
-				transform_block_Y  (frame5[0]+x+y*width,
-									frame21[0]+(x+fv[x>>4][y>>4].x/2)+(y+fv[x>>4][y>>4].y/2)*width, width );
-				transform_block_UV  (frame5[1]+x/2+y/2*width/2,
-									frame21[1]+(x+fv[x>>4][y>>4].x/2)/2+(y+fv[x>>4][y>>4].y/2)/2*width/2, width/2 );
-				transform_block_UV  (frame5[2]+x/2+y/2*width/2,
-									frame21[2]+(x+fv[x>>4][y>>4].x/2)/2+(y+fv[x>>4][y>>4].y/2)/2*width/2, width/2 );
+				transform_block_Y  (outframe[0]+x+y*width,
+									frame2[0]+(x+fv[x>>4][y>>4].x/2)+(y+fv[x>>4][y>>4].y/2)*width, width );
+				transform_block_Y  (outframe[1]+x+y*width,
+									frame2[1]+(x+fv[x>>4][y>>4].x/2)+(y+fv[x>>4][y>>4].y/2)*width, width );
+				transform_block_Y  (outframe[2]+x+y*width,
+									frame2[2]+(x+fv[x>>4][y>>4].x/2)+(y+fv[x>>4][y>>4].y/2)*width, width );
 			}
 			else
-			if(1)
 			{
-				transform_block_Y  (frame5[0]+x+y*width,
-									frame20[0]+x+y*width, width );
-				transform_block_UV  (frame5[1]+x/2+y/2*width/2,
-									frame20[1]+x/2+y/2*width/2, width/2 );
-				transform_block_UV  (frame5[2]+x/2+y/2*width/2,
-									frame20[2]+x/2+y/2*width/2, width/2 );
+				transform_block_Y  (outframe[0]+x+y*width,
+									frame1[0]+x+y*width, width );
+				transform_block_Y  (outframe[1]+x+y*width,
+									frame1[1]+x+y*width, width );
+				transform_block_Y  (outframe[2]+x+y*width,
+									frame1[2]+x+y*width, width );
 			}
 		}
 }

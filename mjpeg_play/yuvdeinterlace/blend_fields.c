@@ -7,11 +7,12 @@ extern int width;
 extern int height;
 extern int bttv_hack;
 
-extern uint8_t * frame5[3];
-extern uint8_t * frame6[3];
-extern uint8_t * frame20[3];
-extern uint8_t * frame21[3];
-extern uint8_t * frame31[3];
+extern uint8_t * frame1[3];
+extern uint8_t * frame2[3];
+extern uint8_t * frame3[3];
+extern uint8_t * frame4[3];
+extern uint8_t * inframe[3];
+extern uint8_t * outframe[3];
 
 void
 blend_fields_non_accel (void)
@@ -25,15 +26,26 @@ blend_fields_non_accel (void)
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			*(frame6[0]) = ( *(frame5[0]) + *(frame20[0]) )>>1;
-			frame5[0]++;
-			frame6[0]++;
-			frame20[0]++;
-		}
-	frame5[0] -= offs1;
-	frame6[0] -= offs1;
-	frame20[0] -= offs1;
+			*(outframe[0]) = ( *(outframe[0]) + *(frame1[0]) )>>1;
+			frame1[0]++;
+			outframe[0]++;
 
+			*(outframe[1]) = ( *(outframe[1]) + *(frame1[1]) )>>1;
+			frame1[1]++;
+			outframe[1]++;
+
+			*(outframe[2]) = ( *(outframe[2]) + *(frame1[2]) )>>1;
+			frame1[2]++;
+			outframe[2]++;
+		}
+	frame1[0] -= offs1;
+	outframe[0] -= offs1;
+	frame1[1] -= offs1;
+	outframe[1] -= offs1;
+	frame1[2] -= offs1;
+	outframe[2] -= offs1;
+
+#if 0
 	for (y = 0; y < h2; y++)
 		for (x = 0; x < w2; x++)
 		{
@@ -53,6 +65,5 @@ blend_fields_non_accel (void)
 	frame5[2] -= offs2;
 	frame6[2] -= offs2;
 	frame20[2] -= offs2;
+#endif
 }
-
-
