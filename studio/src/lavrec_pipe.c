@@ -59,6 +59,8 @@ GtkWidget *table_label_aerrors, *table_label_inserted, *table_label_deleted, *ta
 int mixer_id;
 int current_file;
 char files_recorded[256][256];
+GtkWidget *scene_detection_window;
+char eli_file[256];
 
 GtkWidget *scene_detection_status_label, *scene_detection_button_label, *scene_detection_bar;
 
@@ -88,11 +90,19 @@ void create_scene_detection_window(void);
 void scene_detection_input_cb(char *input);
 void stop_scene_detection_process(GtkWidget *widget, gpointer data);
 void scene_detection_finished(void);
+void scene_detection_open_movie(GtkWidget *widget, gpointer data);
 
 /* ================================================================= */
 
+void scene_detection_open_movie(GtkWidget *widget, gpointer data)
+{
+	global_open_location(eli_file);
+}
+
 void scene_detection_finished()
 {
+	GtkWidget *dialog_window, *button, *vbox, *hbox, *label;
+
 	if (scene_detection_button_label)
 		gtk_label_set_text(GTK_LABEL(scene_detection_button_label),
 		" Close ");
@@ -102,17 +112,55 @@ void scene_detection_finished()
 	if (scene_detection_status_label)
 		gtk_label_set_text(GTK_LABEL(scene_detection_status_label),
 		"Scene detection finished!");
+
+	scene_detection_button_label = NULL;
+	scene_detection_status_label = NULL;
+	scene_detection_bar = NULL;
+	gtk_widget_destroy(scene_detection_window);
+
+	/* ask to open eli_file */
+	dialog_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	vbox = gtk_vbox_new(FALSE, 5);
+
+	gtk_window_set_title (GTK_WINDOW(dialog_window),
+		"Linux Video Studio - Question");
+	gtk_container_set_border_width (GTK_CONTAINER (dialog_window), 20);
+
+	label = gtk_label_new("Would you like to open this movie\n" \
+		"in all the editor-subparts?");
+	gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, FALSE, 0);
+	gtk_widget_show(label);
+
+	hbox = gtk_hbox_new(TRUE, 5);
+	button = gtk_button_new_with_label("Yes");
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		(GtkSignalFunc)scene_detection_open_movie, NULL);
+	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
+		gtk_widget_destroy, GTK_OBJECT(dialog_window));
+	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+	gtk_widget_show(button);
+	button = gtk_button_new_with_label("No");
+	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
+		gtk_widget_destroy, GTK_OBJECT(dialog_window));
+	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
+	gtk_widget_show(button);
+	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
+	gtk_widget_show(hbox);
+
+	gtk_container_add (GTK_CONTAINER (dialog_window), vbox);
+	gtk_widget_show(vbox);
+
+	gtk_grab_add(dialog_window);
+	gtk_widget_show(dialog_window);
 }
 
 void stop_scene_detection_process(GtkWidget *widget, gpointer data)
 {
-	GtkWidget *window = (GtkWidget*)data;
-
 	close_pipe(LAV2YUV_S);
 	scene_detection_button_label = NULL;
 	scene_detection_status_label = NULL;
 	scene_detection_bar = NULL;
-	gtk_widget_destroy(window);
+	gtk_widget_destroy(scene_detection_window);
 }
 
 void scene_detection_input_cb(char *input)
@@ -141,14 +189,14 @@ void scene_detection_input_cb(char *input)
 
 void create_scene_detection_window()
 {
-	GtkWidget *progress_window, *vbox, *button;
+	GtkWidget *vbox, *button;
 
-	progress_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	scene_detection_window = gtk_window_new(GTK_WINDOW_DIALOG);
 	vbox = gtk_vbox_new(FALSE, 5);
 
-	gtk_window_set_title (GTK_WINDOW(progress_window),
+	gtk_window_set_title (GTK_WINDOW(scene_detection_window),
 		"Linux Video Studio - Scene detection");
-	gtk_container_set_border_width (GTK_CONTAINER (progress_window), 20);
+	gtk_container_set_border_width (GTK_CONTAINER (scene_detection_window), 20);
 
 	scene_detection_status_label = gtk_label_new(" ");
 	gtk_box_pack_start (GTK_BOX (vbox), scene_detection_status_label,
@@ -168,18 +216,18 @@ void create_scene_detection_window()
 
 	button = gtk_button_new();
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		(GtkSignalFunc)stop_scene_detection_process, (gpointer)progress_window);
+		(GtkSignalFunc)stop_scene_detection_process, NULL);
 	scene_detection_button_label = gtk_label_new(" Cancel ");
 	gtk_container_add (GTK_CONTAINER (button), scene_detection_button_label);
 	gtk_widget_show(scene_detection_button_label);
 	gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 
-	gtk_container_add (GTK_CONTAINER (progress_window), vbox);
+	gtk_container_add (GTK_CONTAINER (scene_detection_window), vbox);
 	gtk_widget_show(vbox);
 
-	gtk_grab_add(progress_window);
-	gtk_widget_show(progress_window);
+	gtk_grab_add(scene_detection_window);
+	gtk_widget_show(scene_detection_window);
 }
 
 void do_scene_detection(GtkWidget *w, GtkFileSelection *fs)
@@ -197,8 +245,9 @@ void do_scene_detection(GtkWidget *w, GtkFileSelection *fs)
 	sprintf(temp2, "%d", scene_detection_treshold);
 	lav2yuv_command[n] = temp2; n++;
 	lav2yuv_command[n] = "-S"; n++;
-	lav2yuv_command[n] =
-		gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)); n++;
+	sprintf(eli_file,
+		gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
+	lav2yuv_command[n] = eli_file; n++;
 
 	for(i=0;i<current_file;i++)
 	{

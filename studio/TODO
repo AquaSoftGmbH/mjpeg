@@ -4,9 +4,6 @@ Short term:
     - "power"-button image
     - more :-)
 * If recording src is changed, auto-update the mixer device/slider (audio)
-* After scene detection, offer to make the newly recorded movie the active 
-    one in lavplay, lavedit AND lavencode
-* open movie menu-item in the file menu which does the same
 * Effect-result movies should be used in the editlist (doh)
 
 Long term:

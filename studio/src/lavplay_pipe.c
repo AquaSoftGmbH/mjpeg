@@ -217,32 +217,6 @@ void process_lavplay_input(char *msg)
 	}
 }
 
-/*void lavplay_input(gpointer data, gint source, GdkInputCondition condition)
-{
-	char input[4096];
-	int i, n;
-	static char inpbuff[4096];
-	static int inplen = 0;
-
-	n = read(source,input,4095);
-	if(n==0)
-	{
-		printf("No child input\n");;
-		quit_lavplay();
-	}
-
-	for(i=0;i<n;i++)
-	{
-		if(inplen<4095) inpbuff[inplen++] = input[i];
-		if(input[i]=='\n')
-		{
-			inpbuff[inplen] = 0;
-			process_lavplay_input(inpbuff, inplen);
-			inplen = 0;
-		}
-	}
-}*/
-
 void quit_lavplay()
 {
 	close_pipe(LAVPLAY);
@@ -256,60 +230,15 @@ void lavplay_stopped()
 
 void create_lavplay_child()
 {
-/*	int ipipe[2], opipe[2];*/
 	char *lavplay_command[256];
 	int n;
-
-/*	if(pipe(ipipe)!=0 || pipe(opipe)!=0) { perror("Starting Lavplay"); exit(1); }
-
-	lavplay_pid = fork();
-
-	if(lavplay_pid<0) { perror("Starting Lavplay"); exit(1); }
-
-	if (lavplay_pid)
-	{
-		// We are the parent
-
-		lavplay_inp_pipe = ipipe[0];
-		close(ipipe[1]);
-		fcntl (lavplay_inp_pipe, F_SETFL, O_NONBLOCK);
-		lavplay_out_pipe = opipe[1];
-		close(opipe[0]);
-		fcntl (lavplay_out_pipe, F_SETFL, O_NONBLOCK);
-		studio_lavplay_gint = gdk_input_add (lavplay_inp_pipe, GDK_INPUT_READ, lavplay_input, NULL);
-	}
-	else
-	{
-		// We are the child
-
-		close(ipipe[0]);
-		close(opipe[1]);
-
-		close(0);
-		n = dup(opipe[0]);
-		if(n!=0) exit(1);
-		close(opipe[0]);
-		close(1);
-		n = dup(ipipe[1]);
-		if(n!=1) exit(1);
-		close(ipipe[1]);
-		close(2);
-		n = dup(1);
-		if(n!=2) exit(1);
-
-		execlp(LAVPLAY_LOCATION, LAVPLAY_LOCATION, "-q", "-g", "-v2",
-			gtk_entry_get_text(GTK_ENTRY(textfield2)), NULL);
-
-		// Kill child
-		exit(1);
-	}*/
 
 	n=0;
 	lavplay_command[n] = LAVPLAY_LOCATION; n++;
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++; lavplay_command[n] = "2"; n++;
-	lavplay_command[n] = "-C"; n++;
+	lavplay_command[n] = encoding_syntax_style==140?"-C":"-pC"; n++;
 	lavplay_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield2)); n++;
 	lavplay_command[n] = NULL;
 

@@ -42,6 +42,8 @@
 #include "editor_fast_i.xpm"
 
 extern int verbose;
+extern int encoding_syntax_style;
+extern int tv_width_edit, tv_height_edit;
 GtkWidget *tv_trimming, *pop_window;
 char command_to_lavplay_trimming[256];
 GtkObject *popup_adj[3];
@@ -71,7 +73,6 @@ static GtkWidget *create_tv_stuff_for_trimming(GtkWidget *window)
 	GtkStyle *style;*/
 	GtkTooltips *tooltip;
 	int i;
-	extern int tv_width_edit, tv_height_edit;
 
 	tooltip = gtk_tooltips_new();
 /*	style = gtk_widget_get_style(window);*/
@@ -329,7 +330,7 @@ void lavplay_enhanced_slider_value_changed(GtkAdjustment *adj, gpointer data)
 void create_lavplay_trimming_child()
 {
 	char *lavplay_command[256];
-	char temp1[256];
+	char temp1[256], temp2[256];
 	int n;
 	char SDL_windowhack[32];
 
@@ -342,7 +343,13 @@ void create_lavplay_trimming_child()
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;
 	lavplay_command[n] = "1"; n++;
-	lavplay_command[n] = "-S"; n++;
+	if (encoding_syntax_style != 140)
+	{
+		lavplay_command[n] = "--size"; n++;
+		sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
+		lavplay_command[n] = temp2; n++;
+	}
+	lavplay_command[n] = encoding_syntax_style==140?"-S":"-pS"; n++;
 	sprintf(temp1, "%s/.studio/%s", getenv("HOME"), "trimming.eli");
 	lavplay_command[n] = temp1; n++;
 	lavplay_command[n] = NULL;

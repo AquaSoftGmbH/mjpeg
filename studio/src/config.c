@@ -34,6 +34,7 @@
 
 #include "parseconfig.h"
 #include "studio.h"
+#include "gtkfunctions.h"
 
 /* Variables */
 GtkWidget *textfield_timer, *textfield_lapse, *textfield_buffers, *textfield_buffer_size, *textfield_videodev, *textfield_audiodev, *textfield_mixerdev;
@@ -54,7 +55,6 @@ char t_vinput, t_output, t_ainput, t_connector;
 gint t_sync, t_res, t_bitsize, t_bitrate;
 
 /* Forward declarations */
-int chk_dir(char *name);
 void load_config(void);
 void save_config(void);
 void change_method(GtkWidget *widget, gpointer data);
@@ -85,7 +85,8 @@ int chk_dir(char *name)
 	if ((stat(name, &filestat) == -1) && (errno == ENOENT)) {
 		if (verbose) printf("chk_dir, %s does not exist, creating\n", name);
 		if (mkdir(name, DIR_MODE) != 0) {
-			printf("chk_dir, unable to create directory %s!\n", name);
+			gtk_show_text_window(STUDIO_ERROR,
+				"Unable to create directory config directory!", name);
 			return 0;
 		};
 	};

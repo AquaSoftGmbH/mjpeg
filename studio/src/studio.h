@@ -82,6 +82,7 @@ char editlist_filename[256];
 void load_config(void);
 void save_config(void);
 void open_options_window(GtkWidget *widget, gpointer data);
+int chk_dir(char *name);
 
 /* config_encode.c */
 void load_config_encode(void);
@@ -106,9 +107,13 @@ GtkWidget *create_lavedit_layout(GtkWidget *window);
 void reset_lavedit_tv(void);
 void quit_lavplay_edit(void);
 void set_background_color(GtkWidget *widget, int r, int g, int b);
+int open_eli_file(char *filename);
 
 /* lavencode.c */
 GtkWidget *create_lavencode_layout(void);
+
+/* studio.c */
+void global_open_location(char *location);
 
 #ifdef __cplusplus
 }

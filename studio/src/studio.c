@@ -50,6 +50,8 @@ gint delete_event( GtkWidget *widget, GdkEvent *event, gpointer data );
 void destroy( GtkWidget *widget, gpointer data );
 void signal_handler(int signal_type);
 void exit_func(GtkWidget *widget, gpointer data);
+void open_func(GtkWidget *widget, gpointer data);
+void file_ok_open_global(GtkWidget *widget, GtkWidget *filew);
 void open_about_menu(GtkWidget *widget, gpointer data);
 void open_help_menu(GtkWidget *widget, gpointer data);
 void usage(void);
@@ -96,23 +98,59 @@ void signal_handler(int signal_type)
 			"mjpeg-users@lists.sourceforge.net containing the situation\n"
 			"in which this segfault occurred, gdb-output (+backtrace)\n"
 			"and other possibly noteworthy information\n");
-		printf("Trying to shut down lav-applications (if running): ");
 	}
 	else if (signal_type == SIGTERM)
 	{
 		printf("*** WARNING *** - Got termination signal (SIGTERM)\n");
-		printf("Trying to shut down lav-applications (if running): ");
 	}
 	else if (signal_type == SIGINT)
 	{
 		printf("*** WARNING *** - Got interrupt signal (SIGINT)\n");
-		printf("Trying to shut down lav-applications (if running): ");
 	}
 
+	printf("Trying to shut down lav-applications (if running): ");
 	for (i=0;i<NUM;i++)
 		close_pipe(i);
 	printf("succeeded\n");
 	signal(signal_type, SIG_DFL);
+}
+
+void global_open_location(char *file)
+{
+	/* open the file in editor, player and encoder */
+	extern GtkWidget *textfield2;
+	extern GtkWidget *input_entry;
+	/* editor */
+	open_eli_file(file);
+	/* player */
+	gtk_entry_set_text(GTK_ENTRY(textfield2),file);
+	/* encoder */
+	gtk_entry_set_text(GTK_ENTRY(input_entry),file);
+}
+
+void file_ok_open_global(GtkWidget *widget, GtkWidget *fs)
+{
+	/* get file from the fileselection box */
+	char *file;
+
+	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
+	global_open_location(file);
+}
+
+void open_func(GtkWidget *widget, gpointer data)
+{
+	/* file selection box to try and open a file */
+	GtkWidget *filew;
+
+	filew = gtk_file_selection_new ("Linux Video Studio - Select Location");
+	gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
+		"clicked", (GtkSignalFunc) file_ok_open_global, filew);
+	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(filew)->ok_button),
+		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
+	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(filew)->cancel_button),
+		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
+	gtk_file_selection_set_filename (GTK_FILE_SELECTION(filew), "editlist.eli");
+	gtk_widget_show(filew);
 }
 
 void exit_func(GtkWidget *widget, gpointer data)
@@ -226,6 +264,11 @@ void make_menus(GtkWidget *box)
 
 	/* FILE menu */
 	menu = gtk_menu_new ();
+	menu_items = gtk_menu_item_new_with_label ("Open");
+	gtk_menu_append (GTK_MENU (menu), menu_items);
+	gtk_signal_connect_object (GTK_OBJECT (menu_items), "activate",
+		GTK_SIGNAL_FUNC(open_func), NULL);
+	gtk_widget_show(menu_items);
 	menu_items = gtk_menu_item_new_with_label ("Exit");
 	gtk_menu_append (GTK_MENU (menu), menu_items);
 	gtk_signal_connect_object (GTK_OBJECT (menu_items), "activate",
@@ -247,8 +290,8 @@ void make_menus(GtkWidget *box)
 	gtk_signal_connect_object (GTK_OBJECT (menu_items), "activate",
 		GTK_SIGNAL_FUNC(open_options_window), NULL);
 	gtk_widget_show(menu_items);
-	root_menu = gtk_menu_item_new_with_label ("Options");
-	gtk_widget_show (root_menu);
+//	root_menu = gtk_menu_item_new_with_label ("Options");
+//	gtk_widget_show (root_menu);
 
 	menu_items = gtk_menu_item_new_with_label ("Encoding Options");
 	gtk_menu_append (GTK_MENU (menu), menu_items);
@@ -285,6 +328,7 @@ void command_line_options( int argc, char *argv[] )
 {
 	int n, changed, tmp_port; //, sizechanged,w,h;
 	char *optstr = NULL; //, *sizetmp;
+	char config_dir[256];
 
 	verbose = FALSE;
 	//sizechanged = 0;
@@ -341,6 +385,8 @@ void command_line_options( int argc, char *argv[] )
 		sprintf(editlist_filename, "studio_editlist.eli");
 	}
 
+	sprintf(config_dir, "%s/.studio", getenv("HOME"));
+	chk_dir(config_dir);
 	if (verbose && changed) g_print("Configuration Filename: %s\n", studioconfigfile);
 
 	/* Load basic configuration */
@@ -482,8 +528,8 @@ int main( int argc, char *argv[] )
 	init_pipes(); /* set all data to 0 */
 
 	gdk_threads_enter();
-	gtk_main ();
+	gtk_main();
 	gdk_threads_leave();
-
-	return(0);
+	
+	return 0;
 }

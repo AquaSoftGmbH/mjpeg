@@ -93,10 +93,9 @@ void prepare_for_scene_detection( GtkWidget *w, GtkFileSelection *fs );
 void add_scene_movie_change_page( GtkWidget *widget, char *direction);
 int open_add_movie_scene_editlist(void);
 void add_movie_scene_image_clicked( GtkWidget *widget, gpointer data);
-void create_filesel3(GtkWidget *widget, char *what_to_do);
+static void create_filesel3(GtkWidget *widget, char *what_to_do);
 void clear_editlist(GtkWidget *widget, gpointer data);
 void save_eli_file(char *target);
-int open_eli_file(char *filename);
 void image_clicked(GtkWidget *widget, GdkEventButton *event, gpointer data);
 void lavplay_edit_slider_value_changed(GtkAdjustment *adj);
 void command_to_lavplay_edit(GtkWidget *widget, char *data);
@@ -499,7 +498,7 @@ void lavplay_edit_stopped()
 void create_lavplay_edit_child()
 {
 	char *lavplay_command[256];
-	char temp1[256];
+	char temp1[256], temp2[256];
 	int n;
 
 	char SDL_windowhack[32];
@@ -512,7 +511,13 @@ void create_lavplay_edit_child()
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;
 	lavplay_command[n] = "1"; n++;
-	lavplay_command[n] = "-S"; n++;
+	if (encoding_syntax_style != 140)
+	{
+		lavplay_command[n] = "--size"; n++;
+		sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
+		lavplay_command[n] = temp2; n++;
+	}
+	lavplay_command[n] = encoding_syntax_style==140?"-S":"-pS"; n++;
 	sprintf(temp1, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 	lavplay_command[n] = temp1; n++;
 	lavplay_command[n] = NULL;

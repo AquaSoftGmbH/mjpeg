@@ -450,7 +450,7 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 	struct scene_transition_options *options = (struct scene_transition_options*)data;
 
 	/* let's start writing an editlist */
-	sprintf(file, "%s/.studio/.effect.pli", getenv("HOME"));
+	sprintf(file, "%s/.studio/effect.pli", getenv("HOME"));
 	fd = fopen(file, "w");
 	if (fd == NULL)
 	{
@@ -1238,7 +1238,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	}
 
 	/* let's start writing an editlist */
-	sprintf(file, "%s/.studio/.effect.pli", getenv("HOME"));
+	sprintf(file, "%s/.studio/effect.pli", getenv("HOME"));
 
 	/* create a scaled gdkpixbuf and "yuv" it */
 	yuv[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
@@ -1360,7 +1360,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 
 	if (preview_or_render == 1)
 	{
-		sprintf(soundfile, "%s/.studio/.effect.eli", getenv("HOME"));
+		sprintf(soundfile, "%s/.studio/effect.eli", getenv("HOME"));
 		fd = fopen(soundfile, "w");
 		if (fd == NULL)
 		{
