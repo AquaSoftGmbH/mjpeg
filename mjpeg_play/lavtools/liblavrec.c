@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <sched.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
@@ -55,6 +56,7 @@
 #include <pthread.h>
 
 #include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "liblavrec.h"
 #include "lav_io.h"
 #include "audiolib.h"
@@ -69,11 +71,16 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
-#define MAX_MBYTES_PER_FILE 1600  /* Maximum number of Mbytes per file.
+#if _FILE_OFFSET_BITS == 64
+#define MAX_MBYTES_PER_FILE ((0x7fffffffffffffffL >> 20) * 3/4)
+#else
+#define MAX_MBYTES_PER_FILE ((0x7fffffff >> 20) * 3 / 4)
+                                  /* Maximum number of Mbytes per file.
                                      We make a conservative guess since we
                                      only count the number of bytes output
                                      and don't know how big the control
                                      information will be */
+#endif
 #define MIN_MBYTES_FREE 10        /* Minimum number of Mbytes that should
                                      stay free on the file system, this is also
                                      only a guess */
@@ -2045,6 +2052,18 @@ lavrec_t *lavrec_malloc(void)
 int lavrec_main(lavrec_t *info)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
+#ifndef FORK_NOT_THREAD
+   int ret;
+   struct sched_param schedparam;
+   /* Now we're ready to go move to Real-time scheduling... */
+   schedparam.sched_priority = 1;
+   if(setpriority(PRIO_PROCESS, 0, -15)) { /* Give myself maximum priority */ 
+      mjpeg_warn("Unable to set negative priority for main thread.\n");
+   }
+   if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
+      mjpeg_warn("Pthread Real-time scheduling for main thread could not be enabled.\n"); 
+   }
+#endif
 
    /* Flush the Linux File buffers to disk */
    sync();

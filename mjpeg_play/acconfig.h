@@ -6,6 +6,8 @@
 
 /* Large file support ? */
 #undef _FILE_OFFSET_BITS
+#undef _LARGEFILE_SOURCE
+#undef _LARGEFILE64_SOURCE
 
 /* Define pthread lib stack size */
 #undef HAVE_PTHREADSTACKSIZE
@@ -48,3 +50,6 @@
 /* whether we have avifile/gtk+ */
 #undef HAVE_AVIFILE
 #undef HAVE_GTK
+
+/* Name of package */
+#define PACKAGE "mjpegtools"

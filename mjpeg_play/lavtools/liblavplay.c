@@ -1413,7 +1413,10 @@ static int lavplay_init(lavplay_t *info)
    bp.img_height = bp.VerDcm * editlist->video_height/bp.field_per_buff;
 
 #ifndef IRIX
-   bp.img_x = (vc.maxwidth  - bp.img_width )/2 + info->horizontal_offset;
+   if(info->playback_mode == 'C')
+       bp.img_x = (vc.maxwidth  - bp.img_width )/2 + info->horizontal_offset;
+   else 
+       bp.img_x = info->horizontal_offset;
 #else
    bp.img_x = 0;
 #endif

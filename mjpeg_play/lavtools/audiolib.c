@@ -732,7 +732,7 @@ void do_audio(void)
 
    tmp = audio_rate;
    ret = ioctl(fd, SNDCTL_DSP_SPEED, &tmp);
-   if(ret<0 || abs(tmp-audio_rate) > 5) system_error("setting sound rate",fd,0);
+   if(ret<0 || abs(tmp-audio_rate) > 100) system_error("setting sound rate",fd,0);
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
 
@@ -857,10 +857,12 @@ void do_audio(void)
    /* Now we're ready to go move to Real-time scheduling... */
    schedparam.sched_priority = 1;
 
-   if( (ret = pthread_setschedparam( pthread_self(), SCHED_RR, &schedparam ) ) )
-	 {
-		 mjpeg_warn("Pthread Real-time scheduling could not be enabled.\n"); 
-	 }
+   if(setpriority(PRIO_PROCESS, 0, -20)) { /* Give myself maximum priority */ 
+      mjpeg_warn("Unable to set negative priority for audio thread.\n");
+   }
+   if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
+      mjpeg_warn("Pthread Real-time scheduling for audio thread could not be enabled.\n"); 
+   }
 #endif
 
 /*

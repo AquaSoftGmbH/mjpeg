@@ -46,9 +46,9 @@ AC_ARG_WITH(dv,
 AC_ARG_WITH(dv-yv12,
   [  --with-dv-yv12,                   libDV PAL YV12 read-support])
 AC_ARG_WITH(large-file,
-  [ --disable-large-file,              enable large file support in 32 bit systems])
+  [  --disable-large-file,              disable large file support (>2GB)])
 AC_ARG_WITH(aviplay,
-  [ --with-aviplay                     use aviplay libraries])
+  [  --with-aviplay                     use aviplay libraries])
 
 dnl Checks for programs.
 AC_PROG_AWK
@@ -64,13 +64,55 @@ AC_C_INLINE
 AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h alloca.h)
 AC_TYPE_SIGNAL
 
+OS_ARCH=`uname -s | sed -e 's|/|_|g'`
+OS_RELEASE=`uname -r`
+OS_CPU=`uname -m`
 
 dnl Set up the usual compiler infos...
+have_large_file=false
 if test ! x$disable_large_file = xyes
 then
-AC_DEFINE(_FILE_OFFSET_BITS,64)
+  if test x$OS_ARCH = xLinux ; then
+    AC_MSG_CHECKING([whether glibc supports 64-bit file offsets])
+    AC_TRY_COMPILE(
+      [ 
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
+#define _FILE_OFFSET_BITS 64
+#include <gnu/libc-version.h>
+#include <stdio.h> ],
+      [ 
+if(sizeof(__off_t) == 8 && sizeof(fpos_t) == 8) return 0;
+return 1;
+],
+      [ have_large_file=true 
+        AC_MSG_RESULT([yes])],
+      [ have_large_file=false
+        AC_MSG_RESULT([no])])
+            
+  fi
+dnl test for glibc 2.1.3 or later
+dnl test for kernel 2.4.0 or later
+  AC_DEFINE(_FILE_OFFSET_BITS,64)
+  AC_DEFINE(_LARGEFILE_SOURCE)
+  AC_DEFINE(_LARGEFILE64_SOURCE)
+dnl  CFLAGS="$CFLAGS -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64"
 else
-AC_DEFINE(_FILE_OFFSET_BITS,32)
+  AC_DEFINE(_FILE_OFFSET_BITS,32)
+fi
+
+dnl test for alpha architecture, and Compaq Math Library (cpml) -- much faster
+dnl than GNU libm on this arch.
+LIBM_LIBS="-lm "
+AC_SUBST(LIBM_LIBS)
+AC_MSG_CHECKING([for alpha architecture])
+if test x$OS_ARCH = xLinux && test x$OS_CPU = xalpha ; then
+    AC_MSG_RESULT([yes])
+    AC_CHECK_LIB(cpml, asin,
+      [ LIBM_LIBS="-lcpml"
+        have_cpml=true ],,)
+else
+    AC_MSG_RESULT([no])
 fi
 
 dnl system
@@ -174,36 +216,46 @@ if test x$with_quicktime = xyes ; then
   AC_MSG_ERROR([
 *** A directory must be specified for the --with-quicktime option.])
 
-else if test x$with_quicktime = x ; then
-	if test -d /usr/local/src/quicktime4linux-1.3  ; then
-	  with_quicktime=/usr/local/src/quicktime4linux-1.3
-	else if test -d /usr/local/src/quicktime  ; then
-	  with_quicktime=/usr/local/src/quicktime	
-	else if test -d /usr/include/quicktime	; then
-	  with_quicktime=/usr/include/quicktime
-	fi	
-	fi
-	fi
-fi
-fi
-have_quicktime=false
-AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
-if test "$PNG" = "found" ; then
-  if test x$have_pthread = xtrue ; then
-    EXTRA_LIBS=" $GLIB_LIBS  $PTHREAD_LIBS  -lpng -ldl"
+elif test x$with_quicktime = x ; then
+  if test -d /usr/src/quicktime4linux-1.4  ; then
+    with_quicktime=/usr/src/quicktime4linux-1.4
+  elif test -d /usr/src/quicktime4linux-1.3  ; then
+    with_quicktime=/usr/src/quicktime4linux-1.3
+  elif test -d /usr/local/src/quicktime4linux-1.4  ; then
+    with_quicktime=/usr/local/src/quicktime4linux-1.4
+  elif test -d /usr/local/src/quicktime4linux-1.3  ; then
+    with_quicktime=/usr/local/src/quicktime4linux-1.3
+  elif test -d /usr/src/quicktime  ; then
+    with_quicktime=/usr/src/quicktime	
+  elif test -d /usr/local/src/quicktime  ; then
+    with_quicktime=/usr/local/src/quicktime	
+dnl This case doesn't work because Quicktime doesn't install qtprivate.h and
+dnl codecs.h by default.  We need the actual source tree.  If you copy the
+dnl appropriate headers to /usr/include/quicktime, uncomment the following case:
+dnl	else if test -d /usr/include/quicktime	; then
+dnl	  with_quicktime=/usr/include/quicktime
+  fi	
+  have_quicktime=false
+  AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
+  if test "$PNG" = "found" ; then
+    if test x$have_pthread = xtrue ; then
+      EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS  -lpng -ldl"
+    else
+      EXTRA_LIBS="-L$with_quicktime $LIBM_LIBS $GLIB_LIBS -lpng -ldl"
+    fi
+    if ! test x$with_quicktime = x ; then
+      AC_CHECK_LIB(quicktime, quicktime_open,
+        [ QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
+    	  QUICKTIME_CFLAGS="-I $with_quicktime"
+          AC_DEFINE(HAVE_LIBQUICKTIME)
+          have_quicktime=true],, 
+          -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
+      EXTRA_LIBS=""
+    fi
   else
-    EXTRA_LIBS="-L$with_quicktime $GLIB_LIBS -lpng -ldl"
-  fi
-  AC_CHECK_LIB(quicktime, quicktime_open,
-    [ QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
-	  QUICKTIME_CFLAGS="-I $with_quicktime"
-      AC_DEFINE(HAVE_LIBQUICKTIME)
-      have_quicktime=true],, 
-      -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
-  EXTRA_LIBS=""
-else
-  AC_MSG_WARN([
+    AC_MSG_WARN([
 **** Quicktime record/playback disabled.])
+  fi
 fi
 
 if test x$have_quicktime = xtrue ; then
@@ -254,9 +306,9 @@ fi
 
 dnl add some more libs which are probably needed
 if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS="$GLIB_LIBS  $PTHREAD_LIBS  -ldl"
+  EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS  -ldl"
 else
-  EXTRA_LIBS="-L$with_aviplay$with_aviplay_l $GLIB_LIBS -ldl"
+  EXTRA_LIBS="-L$with_aviplay$with_aviplay_l $LIBM_LIBS $GLIB_LIBS -ldl"
 fi
 
 if test x$have_aviplay = xtrue ; then
@@ -281,9 +333,9 @@ fi
 fi
 have_dv=false
 if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS=" $GLIB_LIBS  $PTHREAD_LIBS -ldl -lm"
+  EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
 else
-  EXTRA_LIBS="-L$with_dv$with_dv_l $GLIB_LIBS -ldl -lm"
+  EXTRA_LIBS="-L$with_dv$with_dv_l $LIBM_LIBS $GLIB_LIBS -ldl "
 fi
 AC_CHECK_LIB(dv, dv_init,
   [ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
@@ -297,9 +349,9 @@ dnl *********************************************************************
 dnl Check for libDV YV12 read-support
 if test x$with_dv_yv12 = xyes; then
 if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS=" $GLIB_LIBS  $PTHREAD_LIBS -ldl -lm"
+  EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
 else
-  EXTRA_LIBS="-L$with_dv$with_dv_l $GLIB_LIBS -ldl -lm"
+  EXTRA_LIBS="-L$with_dv$with_dv_l $LIBM_LIBS $GLIB_LIBS -ldl "
 fi
 AC_CHECK_LIB(dv, dv_init,
   [ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
@@ -419,20 +471,22 @@ dnl Check that the GCC tool chain can generate 3DNow assmebly instructions
 dnl
 AC_MSG_CHECKING([for support of 3DNow in assembly code])
 if test "$enable_3dnow_accel" != "no" ; then
-  cat > conftest.S <<EOF
-    .text
+  if test x$have_x86cpu = xtrue ; then
+    cat > conftest.S <<EOF
+      .text
 
-    pfmul %mm3, %mm4
+      pfmul %mm3, %mm4
 EOF
- if $CC -c conftest.S ; then
-   rm -f conftest.*
-   AC_DEFINE(HAVE_ASM_3DNOW)
-   have_asm_3dnow=true
- else
-   echo "configure: failed program was:" >&AC_FD_CC
-   cat conftest.S >&AC_FD_CC
-   rm -f conftest.*
- fi
+    if $CC -c conftest.S >&AC_FD_CC; then
+      rm -f conftest.*
+      AC_DEFINE(HAVE_ASM_3DNOW)
+      have_asm_3dnow=true
+    else
+      echo "configure: failed program was:" >&AC_FD_CC
+      cat conftest.S >&AC_FD_CC
+      rm -f conftest.*
+    fi
+  fi
 fi
 if test x$have_asm_3dnow = xtrue ; then
   AC_MSG_RESULT(yes)
@@ -469,6 +523,8 @@ AC_MSG_CHECKING(x86 sub-architecture settings)
   ;;
   esac
 AC_MSG_RESULT($ARCHFLAGS)
+else
+  have_cmov=false
 fi
 
 dnl **********************************************************************
@@ -538,8 +594,10 @@ dnl
 echo ""
 echo " MJPEG tools ${VERSION} build configuration :"
 echo ""
-echo "    - MMX Optimizations enabled     : ${have_asm_mmx}"
-echo "    - cmov support enabled          : ${have_cmov}"
+echo "    - X86 Optimizations:"
+echo "      - MMX Optimizations enabled   : ${have_asm_mmx}"
+echo "      - 3DNow support               : ${have_asm_3dnow}"
+echo "      - cmov support enabled        : ${have_cmov}"
 if test "$have_cmov" = "true" ; then
 echo "
 ****************************************************************************
@@ -547,13 +605,15 @@ echo "
 *   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU       *
 ****************************************************************************"
 fi
-echo ""
-echo "    - 3DNow support                : ${have_asm_3dnow}"
-echo "    - software MJPEG playback      : ${have_sdl}"
-echo "    - movtar playback/recording    : ${have_movtar}"
-echo "    - Quicktime playback/recording : ${have_quicktime}"
-echo "    - AVI MJPEG playback/recording : true (always)"
-echo "    - libDV (digital video) support: ${have_dv}"
-echo "    - AVIFILE divx encoding support: ${have_aviplay}"
-echo "    - Gtk+ support for glav        : ${have_gtk}"
+echo "    - software MJPEG playback       : ${have_sdl}"
+echo "    - movtar playback/recording     : ${have_movtar}"
+echo "    - Quicktime playback/recording  : ${have_quicktime}"
+if test "$have_quicktime" = "true" ; then
+echo "      - Quicktime source in         : ${with_quicktime}"
+fi
+echo "    - AVI MJPEG playback/recording  : true (always)"
+echo "    - libDV (digital video) support : ${have_dv}"
+echo "    - AVIFILE divx encoding support : ${have_aviplay}"
+echo "    - Gtk+ support for glav         : ${have_gtk}"
+echo "    - Support for large (>2GB) files: ${have_large_file}"
 echo ""

@@ -25,7 +25,7 @@
 
 struct me_result
 {
-	uint16_t weight;
+        uint16_t weight;
 	int8_t x;
 	int8_t y;
 };

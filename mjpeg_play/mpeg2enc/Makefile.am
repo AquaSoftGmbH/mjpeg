@@ -32,7 +32,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 
 mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libutils.a $(top_srcdir)/utils/libmotion.a
 
-mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lutils @PTHREAD_LIBS@ -lm
+mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lutils @PTHREAD_LIBS@ $(LIBM_LIBS)
 
 .s.o:
 	$(NASM) $(NASMFLAGS) -o $@ $<
