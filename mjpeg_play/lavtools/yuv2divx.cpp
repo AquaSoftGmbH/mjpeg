@@ -73,7 +73,7 @@
 
 extern "C" 
 {
-#include "yuv4mpeg.h"
+#include "oldyuv4mpeg.h"
 #include "mjpeg_logging.h"
 }
 
