@@ -173,6 +173,4 @@ int  AVI_read_data(avi_t *AVI, uint8_t *vidbuf, long max_vidbuf,
 
 void AVI_print_error(const char *str);
 const char *AVI_strerror(void);
-const char *AVI_syserror(void);
-
 #endif
