@@ -46,7 +46,7 @@ OBJS = \
 	yuv4.o
 
 
-JPEGOBJS = \
+ORGJPEGOBJS = \
 	jpeg/jcapimin.o \
 	jpeg/jcapistd.o \
 	jpeg/jctrans.o \
@@ -109,13 +109,10 @@ DVOBJS = \
 
 OUTPUT = libquicktime.a
 
-
-
-$(OUTPUT): $(OBJS)
-	$(MAKE) -C jpeg
+$(OUTPUT): $(OBJS) 
 	$(MAKE) -C libdv
 	$(MAKE) -C libraw1394
-	ar rcs $(OUTPUT) $(OBJS) $(JPEGOBJS) $(DVOBJS) $(FIREWIREOBJS) $(DVMMXOBJS)
+	ar rcs $(OUTPUT) $(OBJS)  $(JPEGOBJS) $(DVOBJS) $(FIREWIREOBJS) $(DVMMXOBJS)
 
 dump: dump.o $(OUTPUT)
 	$(CC) -o dump dump.o $(OUTPUT) -lpng -lz -lpthread -lglib -lraw1394
@@ -134,14 +131,18 @@ qtinfo: qtinfo.o
 
 util:  dump make_streamable qtinfo dechunk yuv4toyuv
 	
+install:
+	@echo "No need to \"make install\" if all you're trying to do is build"
+	@echo "the mjpeg tools.  If you want to use quicktime more properly"
+	@echo "probably also want to build and install the original version."
+	@echo "That way the author won't get mad at us when he gets bug reports"
+	@echo "from this chopped-off version"
+	@echo
 
 quicktime.o: quicktime.h  quicktime.c
 
 .c.o:
 	$(CC) -c `./c_flags` $*.c
-
-install:
-	$(MAKE) -C jpeg install
 
 clean:
 	rm -f core
