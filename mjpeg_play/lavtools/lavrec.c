@@ -564,11 +564,12 @@ static void batch_stats(video_capture_stats *stats)
 	prev_stats = *stats;
 	mpeg_timecode(&tc, stats->num_frames, ((info->video_norm!=1)? 3: 4),
 				  ((info->video_norm!=1)? 25.: 30000./1001.));
-	printf("%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
+	fprintf(stdout, "%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
 		   "ae:%3d td1=%.3f td2=%.3f\n",
 		   tc.h, tc.m, tc.s, tc.f,
 		   (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
         stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);
+	fflush(stdout);
 
 }
 
@@ -900,7 +901,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"mjpeg-buffers"    ,1,0,0},   /* -n/--mjpeg_buffers     */
 		{"mjpeg-buffer-size",1,0,0},   /* -b/--mjpeg-buffer-size */
 		{"channel"          ,1,0,0},   /* -C/--channel           */
-		{"use-read"         ,0,0,0},   /* --use-read             */
+		{"use-read"         ,0,0,0},   /* -U/--use-read          */
 		{"software-encoding",0,0,0},   /* --software-encoding    */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
 		{"file-flush"       ,1,0,0},   /* --file-flush           */
