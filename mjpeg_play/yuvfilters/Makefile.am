@@ -1,4 +1,4 @@
-EXTRA_DIST = README.yuvkineco README.2-3pulldown .cvsignore
+EXTRA_DIST = README.2-3pulldown .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
 
 bin_PROGRAMS = yuvycsnoise yuvkineco
