@@ -81,4 +81,3 @@ EXTERNTBL const uint8_t dummy_svcd_scan_data[14];
 
 EXTERNTBL const uint8_t map_non_linear_mquant[113];
 EXTERNTBL const uint8_t non_linear_mquant_table[32];
-

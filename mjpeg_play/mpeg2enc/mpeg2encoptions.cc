@@ -41,6 +41,7 @@ MPEG2EncOptions::MPEG2EncOptions()
                         in picture 2 = field pictures
                      */
     norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
+    rate_control = 0;
     me44_red	= 2;
     me22_red	= 3;	
     hf_quant = 0;
@@ -71,8 +72,9 @@ MPEG2EncOptions::MPEG2EncOptions()
     verbose = 1;
     hack_svcd_hds_bug = 1;
     hack_altscan_bug = 0;
-/* dual prime Disabled by default. --dualprime-mpeg2 to enable (set to 0) */
+    /* dual prime Disabled by default. --dualprime-mpeg2 to enable (set to 0) */
     hack_nodualprime = 1;
+    force_cbr = 0;
 };
 
 
@@ -499,17 +501,19 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 	}
 
-/*
- * At this point the command line arguments have been processed, the format (-f)
- * selection has had a chance to set the bitrate.  IF --cbr was used and we
- * STILL do not have a bitrate set then declare an error because a Constant
- * Bit Rate of 0 makes no sense (most of the time CBR doesn't either ... ;))
-*/
+
+    /*
+     * At this point the command line arguments have been processed, the format (-f)
+     * selection has had a chance to set the bitrate.  IF --cbr was used and we
+     * STILL do not have a bitrate set then declare an error because a Constant
+     * Bit Rate of 0 makes no sense (most of the time CBR doesn't either ... ;))
+     */
      if (force_cbr && bitrate == 0)
         {
         nerr++;
         mjpeg_error("--cbr used but no bitrate set with -b or -f!");
         }
+
 
     switch( mpeg )
     {

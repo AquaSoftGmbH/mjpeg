@@ -23,7 +23,9 @@
 #define _PICTURE_HH
 /* picture.hh picture class... */
 
+#include "config.h"
 #include "mjpeg_types.h"
+#include "encoderparams.hh"
 #include "synchrolib.h"
 #include "macroblock.hh"
 #include <vector>
@@ -64,7 +66,6 @@ public:
 
 class MPEG2Encoder;
 class RateCtl;
-class EncoderParams;
 class MPEG2Coder;
 class Quantizer;
 class StreamState;
@@ -100,11 +101,36 @@ public:
 
     // In putpic..c
     void PutHeadersAndEncoding( RateCtl &ratecontrol );
-    void QuantiseAndPutEncoding(RateCtl &ratecontrol);
+    bool TryEncoding(RateCtl &ratecontrol);
     void PutHeader(); 
 
     // In ratectl.cc
     void ActivityMeasures( double &act_sum, double &var_sum);
+
+    //
+    //
+    //
+    inline bool Legal( const MotionVector &mv ) const
+        {
+            return mv[Dim::X] >= -sxf && mv[Dim::X] < sxf 
+                && mv[Dim::Y] >= -syf && mv[Dim::Y] < syf;
+        }
+
+
+    inline bool InRangeFrameMVRef( const Coord &crd ) const
+        {
+            return  crd.x >= 0 && crd.x <= (encparams.enc_width-16)*2
+                && crd.y >= 0 && crd.y <= (encparams.enc_height-16)*2;
+            
+        }
+
+    inline bool InRangeFieldMVRef( const Coord &crd ) const
+        {
+            return  crd.x >= 0 && crd.x <= (encparams.enc_width-16)*2
+                && crd.y >= 0 && crd.y <= (encparams.enc_height/2-16)*2;
+            
+        }
+
 
 private:
 
@@ -147,7 +173,6 @@ public:
 	 */
     Picture *ref_frame;
     Picture *prev_frame;
-	sync_guard_t completion;
 
 	/* picture encoding source data  */
 	ImagePlanes oldorg, neworg;	/* Images for Old and new reference picts */
@@ -168,7 +193,7 @@ public:
 	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
 	int dc_prec;				/* DC coefficient prec for intra blocks */
 	int pict_struct;			/* picture structure (frame, top / bottom) */
-	bool topfirst;				/* display top field first */
+	int topfirst;				/* display top field first */
 	bool frame_pred_dct;			/* Use only frame prediction... */
 	int intravlc;				/* Intra VLC format */
 	int q_scale_type;			/* Quantiser scale... */

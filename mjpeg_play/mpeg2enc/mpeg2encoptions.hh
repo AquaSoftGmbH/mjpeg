@@ -22,8 +22,10 @@
  *
  */
 
+#include <config.h>
 #include "mpeg2encparams.h"
 #include "mpegconsts.h"
+
 
 struct MPEG2EncInVidParams
 {

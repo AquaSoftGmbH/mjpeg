@@ -1,5 +1,7 @@
 /* mpeg2syntaxcodes.h - Identifying bit-patterns and codes  for MPEG2 syntax */
 
+#ifndef _MPEG2SYNTAXCODES_H
+#define _MPEG2SYNTAXCODES_H
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
 /*
@@ -40,10 +42,14 @@
 #define SYSTEM_START_CODE  0x1BBL
 
 /* picture coding type */
+
 #define I_TYPE 1
 #define P_TYPE 2
 #define B_TYPE 3
-#define NUM_PICT_TYPES 3
+#define FIRST_PICT_TYPE I_TYPE
+#define LAST_PICT_TYPE B_TYPE
+// Allow for arrays starting at 0...
+#define NUM_PICT_TYPES (LAST_PICT_TYPE+FIRST_PICT_TYPE) 
 
 /* picture structure */
 #define TOP_FIELD     1
@@ -83,18 +89,6 @@
 #define SPATSCAL_ID  9
 #define TEMPSCAL_ID 10
 
-/* inputtype */
-/*
-#define T_Y_U_V 0
-#define T_YUV   1
-#define T_PPM   2
-*/
 
 
-
-
-
-
-
-
-
+#endif

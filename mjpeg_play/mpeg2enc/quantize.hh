@@ -20,6 +20,7 @@
  *
  */
 
+#include <config.h>
 #include "mjpeg_types.h"
 #include "quantize_ref.h"
 

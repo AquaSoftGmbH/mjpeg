@@ -42,7 +42,7 @@ void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag
 
 
 
-static void pred_comp_mmxe(
+void pred_comp_mmxe(
 	uint8_t *src,
 	uint8_t *dst,
 	int lx,
@@ -81,7 +81,7 @@ static void pred_comp_mmxe(
 		
 }
 
-static void pred_comp_mmx(
+void pred_comp_mmx(
 	uint8_t *src,
 	uint8_t *dst,
 	int lx,
@@ -120,9 +120,8 @@ static void pred_comp_mmx(
 		
 }
 
-void init_x86_predict( )
+void init_x86_predict( int32_t cpucap )
 {
-	uint32_t cpucap = cpu_accel();
 	if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for PREDICTION!");

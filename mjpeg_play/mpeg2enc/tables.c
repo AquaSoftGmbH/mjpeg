@@ -239,6 +239,28 @@ const uint8_t dummy_svcd_scan_data[14]
 ;
 
 
-extern const uint8_t map_non_linear_mquant[113];
-extern const uint8_t non_linear_mquant_table[32];
+
+/* non-linear quantization coefficient table */
+const uint8_t non_linear_mquant_table[32] =
+{
+	0, 1, 2, 3, 4, 5, 6, 7,
+	8,10,12,14,16,18,20,22,
+	24,28,32,36,40,44,48,52,
+	56,64,72,80,88,96,104,112
+};
+
+/* non-linear mquant table for mapping from scale to code
+ * since reconstruction levels are not bijective with the index map,
+ * it is up to the designer to determine most of the quantization levels
+ */
+
+const uint8_t map_non_linear_mquant[113] =
+{
+	0,1,2,3,4,5,6,7,8,8,9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,
+	16,17,17,17,18,18,18,18,19,19,19,19,20,20,20,20,21,21,21,21,22,22,
+	22,22,23,23,23,23,24,24,24,24,24,24,24,25,25,25,25,25,25,25,26,26,
+	26,26,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,29,
+	29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,31,31,31,31,31
+};
+
 

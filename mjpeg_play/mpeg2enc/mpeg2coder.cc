@@ -46,7 +46,6 @@
  * design.
  *
  */
-
 
 
 #include <config.h>
@@ -100,8 +99,7 @@ int MPEG2Coder::FrameToTimeCode(int gop_timecode0_frame)
 void MPEG2Coder::PutSeqHdr()
 {
 	int i;
-
-	writer.AlignBits();
+    assert( writer.Aligned() );
 	writer.PutBits(SEQ_START_CODE,32); /* sequence_header_code */
 	writer.PutBits(encparams.horizontal_size,12); /* horizontal_size_value */
 	writer.PutBits(encparams.vertical_size,12); /* vertical_size_value */
@@ -135,6 +133,7 @@ void MPEG2Coder::PutSeqHdr()
 		PutSeqExt();
 		PutSeqDispExt();
 	}
+	writer.AlignBits();
 
 }
 
@@ -146,7 +145,7 @@ void MPEG2Coder::PutSeqHdr()
 
 void MPEG2Coder::PutSeqExt()
 {
-	writer.AlignBits();
+	assert( writer.Aligned() );
 	writer.PutBits(EXT_START_CODE,32); /* extension_start_code */
 	writer.PutBits(SEQ_ID,4); /* extension_start_code_identifier */
 	writer.PutBits((encparams.profile<<4)|encparams.level,8); /* profile_and_level_indication */
@@ -160,6 +159,7 @@ void MPEG2Coder::PutSeqExt()
 	writer.PutBits(0,1); /* low_delay  -- currently not implemented */
 	writer.PutBits(0,2); /* frame_rate_extension_n */
 	writer.PutBits(0,5); /* frame_rate_extension_d */
+    writer.AlignBits();
 }
 
 /*****************************
@@ -170,7 +170,7 @@ void MPEG2Coder::PutSeqExt()
 
 void MPEG2Coder::PutSeqDispExt()
 {
-	writer.AlignBits();
+	assert(writer.Aligned() );
 	writer.PutBits(EXT_START_CODE,32); /* extension_start_code */
 	writer.PutBits(DISP_ID,4); /* extension_start_code_identifier */
 	writer.PutBits(encparams.video_format,3); /* video_format */
@@ -181,6 +181,7 @@ void MPEG2Coder::PutSeqDispExt()
 	writer.PutBits(encparams.display_horizontal_size,14); /* display_horizontal_size */
 	writer.PutBits(1,1); /* marker_bit */
 	writer.PutBits(encparams.display_vertical_size,14); /* display_vertical_size */
+    writer.AlignBits();
 }
 
 /********************************
@@ -194,7 +195,7 @@ void MPEG2Coder::PutSeqDispExt()
 void MPEG2Coder::PutUserData(const uint8_t *userdata, int len)
 {
 	int i;
-	writer.AlignBits();
+	assert( writer.Aligned() );
 	writer.PutBits(USER_START_CODE,32); /* user_data_start_code */
 	for( i =0; i < len; ++i )
 		writer.PutBits(userdata[i],8);
@@ -214,6 +215,7 @@ void MPEG2Coder::PutGopHdr(int frame,int closed_gop )
 	writer.PutBits(tc,25); /* time_code */
 	writer.PutBits(closed_gop,1); /* closed_gop */
 	writer.PutBits(0,1); /* broken_link */
+    writer.AlignBits();
 }
 
 
@@ -322,7 +324,7 @@ void  MPEG2Coder::PutMV(int dmv, int f_code)
   }
 
   /* split dmv into motion_code and motion_residual */
-  temp = abs(dmv) + f - 1;
+  temp = ((dmv<0) ? -dmv : dmv) + f - 1;
   motion_code = temp>>r_size;
   if (dmv<0)
     motion_code = -motion_code;

@@ -31,7 +31,6 @@
 #define SYNCHROLIB_H
 #include <pthread.h>
 
-
 /* Synchronisation condition */
 
 typedef struct _sync_guard {
@@ -68,5 +67,6 @@ void mp_semaphore_wait( mp_semaphore_t *sema);
 void mp_semaphore_signal( mp_semaphore_t *sema, int count );
 
 void mp_semaphore_set( mp_semaphore_t *sema );
+
 
 #endif

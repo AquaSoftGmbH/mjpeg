@@ -19,14 +19,19 @@
  *
  */
 
-
-#ifdef	HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include <stdio.h>
 
 #include "macroblock.hh"
 #include "mpeg2syntaxcodes.h"
 #include "picture.hh"
+
+void MacroBlock::Encode()
+{ 
+    MotionEstimate();
+    SelectCodingModeOnVariance();
+    Predict();
+    Transform();
+}
 
 void MacroBlock::MotionEstimate()
 {

@@ -21,20 +21,15 @@
  *
  */
 
+#include <config.h>
 #include "mjpeg_types.h"
-#include "synchrolib.h"
-#include "elemstrmwriter.hh"
-#include "mpeg2coder.hh"
-#include "mpeg2encparams.h"
-#include "picturereader.hh"
-#include "ratectl.hh"
-#include "quantize.hh"
 #include "picture.hh"
 
 class MPEG2Encoder;
 class EncoderParams;
 class MPEG2Coder;
 class PictureReader;
+class Despatcher;
 
 struct StreamState 
 {
@@ -58,6 +53,7 @@ struct StreamState
 	uint64_t seq_split_length;
 };
 
+
 class SeqEncoder
 {
 public:
@@ -70,11 +66,32 @@ public:
         );
 	~SeqEncoder();
 
-	void Encode();
+
+    /**********************************
+     *
+     * Setup ready to start encoding once parameter objects have
+     * (where relevant) been Init-ed.
+     * Spawns worker threads for parallel prociessing.
+     *
+     *********************************/
+
+    void Init();
+   
+    /**********************************
+     *
+     * EncodeFrmae - encode and output exactly one MPEG frame.
+     * Between zero and many frames may be read (lots of internal
+     * look-ahead and buffering).  Internal parallelism via
+     * POSIXworker threads.
+     *
+     * RETURN: true if more frames remain to be encoded.
+     *
+     *********************************/
+	bool EncodeFrame();
+    
+    
 private:
-    void CreateThreads( pthread_t *threads,
-                        int num, void *(*start_routine)(void *),
-                        SeqEncoder *seqencoder );
+
 	int FindGopLength( int gop_start_frame, 
 					   int I_frame_temp_ref,
 					   int gop_min_len, int gop_max_len,
@@ -83,30 +100,38 @@ private:
 	void NextSeqState( StreamState *ss );
 	void LinkPictures( Picture *ref_pictures[], 
 					   Picture *b_pictures[] );
-	static void *ParallelEncodeWrapper( void *seqencoder );
-	void ParallelEncodeWorker();
-	void ParallelEncode( Picture *picture );
-	void SequentialEncode( Picture *picture );
+	void EncodePicture( Picture *picture );
     EncoderParams &encparams;
     PictureReader &reader;
     Quantizer &quantizer;
     ElemStrmWriter &writer;
     MPEG2Coder &coder;
     RateCtl    &ratecontroller;
-
-	mp_semaphore_t worker_available;
-	mp_semaphore_t picture_available;
-	mp_semaphore_t picture_started;
+    
+    Despatcher &despatcher;
 	
-	/*
-	  Ohh, lovely C type syntax... more or less have to introduce a named
-	  typed here to bind the "volatile" correctly - to the pointer not the
-	  data it points to. K&R: hang your heads in shame...
-	*/
-	
-	typedef Picture * pict_data_ptr;
+	// Internal state of encoding...
 
-	volatile pict_data_ptr picture_to_encode;
+	StreamState ss;
+	int cur_ref_idx;
+	int cur_b_idx;
+
+
+    /* DEBUG */
+	uint64_t bits_after_mux;
+	double frame_periods;
+    /* END DEBUG */
+
+	Picture **b_pictures;
+	Picture **ref_pictures;
+
+	Picture *cur_picture, *old_picture;
+	Picture *new_ref_picture, *old_ref_picture;
+
+	int frame_num;              // Encoding number - not
+                                // necessarily the one that gets
+                                // output!!
+
 };
 
 

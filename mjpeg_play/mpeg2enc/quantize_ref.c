@@ -58,43 +58,29 @@
 #include "syntaxconsts.h"
 #include "fastintfns.h"
 #include "cpu_accel.h"
+#include "tables.h"
 #include "simd.h"
+#include "quantize_ref.h"
 #include "quantize_precomp.h"
 
 #ifdef HAVE_ALTIVEC
 void enable_altivec_quantization(struct QuantizerCalls *calls, int opt_mpeg1);
 #endif
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+void init_x86_quantization( struct QuantizerCalls *calls,
+                                                        int mpeg1 );
+#endif
 
+#define fabsshift ((8*sizeof(unsigned int))-1)
+
+#define signmask(x) (((int)x)>>fabsshift)
 static __inline__ int intsamesign(int x, int y)
 {
-   if (x < 0) 
-      return(-abs(y));
-   else
-      return(abs(y));
+	return (y+(signmask(x) & -(y<<1)));
 }
 
-/* non-linear quantization coefficient table */
-const uint8_t non_linear_mquant_table[32] =
-{
-	0, 1, 2, 3, 4, 5, 6, 7,
-	8,10,12,14,16,18,20,22,
-	24,28,32,36,40,44,48,52,
-	56,64,72,80,88,96,104,112
-};
-
-/* non-linear mquant table for mapping from scale to code
- * since reconstruction levels are not bijective with the index map,
- * it is up to the designer to determine most of the quantization levels
- */
-
-const uint8_t map_non_linear_mquant[113] =
-{
-	0,1,2,3,4,5,6,7,8,8,9,9,10,10,11,11,12,12,13,13,14,14,15,15,16,16,
-	16,17,17,17,18,18,18,18,19,19,19,19,20,20,20,20,21,21,21,21,22,22,
-	22,22,23,23,23,23,24,24,24,24,24,24,24,25,25,25,25,25,25,25,26,26,
-	26,26,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,29,
-	29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,31,31,31,31,31
-};
+#undef signmask
+#undef fabsshift
 
 
 /*
@@ -496,6 +482,11 @@ void init_quantizer( struct QuantizerCalls *calls,
     int q, i;
     struct QuantizerWorkSpace *wsp =
         bufalloc(sizeof(struct QuantizerWorkSpace));
+    if( ((int)wsp)%16 != 0 )
+    {
+        printf( "BANG!");
+        abort();
+    }
     *workspace = wsp;
     for (i = 0; i < 64; i++)
     {

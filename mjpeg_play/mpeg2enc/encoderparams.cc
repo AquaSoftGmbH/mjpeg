@@ -1,4 +1,4 @@
-/* encoderparams - class holding all the various control parameters for 
+/* encoderparams - class holding all the various control parameters for
    and individual encoder instance.  For speed a lot of address offsets/sizes
    are computed once-and-for-all and held in this object.
 */
@@ -84,34 +84,34 @@ void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 	{
 
 	case 0 : /* Special case for debugging... turns of multi-threading */
-		max_encoding_frames = 1;
+		encoding_parallelism = 0;
 		refine_from_rec = true;
 		parallel_read = false;
 		break;
 
 	case 1 :
-		max_encoding_frames = 1;
+		encoding_parallelism = 1;
 		refine_from_rec = true;
-		parallel_read = true;
+		parallel_read = options.allow_parallel_read;
 		break;
 	case 2:
-		max_encoding_frames = 2;
+		encoding_parallelism = 2;
 		refine_from_rec = true;
-		parallel_read = true;
+		parallel_read = options.allow_parallel_read ;
 		break;
 	default :
-		max_encoding_frames = options.num_cpus > MAX_WORKER_THREADS-1 ?
+		encoding_parallelism = options.num_cpus > MAX_WORKER_THREADS-1 ?
 			                  MAX_WORKER_THREADS-1 :
 			                  options.num_cpus;
 		refine_from_rec = false;
-		parallel_read = true;
+		parallel_read =  options.allow_parallel_read;
 		break;
 	}
 
     max_active_ref_frames = 
-        M == 0 ? max_encoding_frames : (max_encoding_frames+2);
+        M == 0 ? encoding_parallelism : (encoding_parallelism+2);
     max_active_b_frames = 
-        M <= 1 ? 0 : max_encoding_frames+1;
+        M <= 1 ? 0 : encoding_parallelism+1;
 
 	me44_red		= options.me44_red;
 	me22_red		= options.me22_red;
@@ -286,7 +286,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	seq_length_limit = options.seq_length_limit;
 	nonvid_bit_rate = options.nonvid_bitrate * 1000;
 	low_delay       = 0;
-	constrparms     = (options.mpeg == 1 && 
+	constrparms     = (options.mpeg == 1 &&
 						   !MPEG_STILLS_FORMAT(options.format));
 	profile         = 4; /* Main profile resp. */
 	level           = 8; /* Main Level      CCIR 601 rates */
@@ -365,8 +365,8 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 		else
 			fieldorder = options.input_interlacing;
 
-		topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
-                              fieldorder ==Y4M_ILACE_NONE );
+		topfirst = 
+            (fieldorder == Y4M_ILACE_TOP_FIRST || fieldorder ==Y4M_ILACE_NONE );
 	}
 	else
 		topfirst = 0;
@@ -595,7 +595,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	}
 
 
-	if (prog_seq && topfirst)
+	if (prog_seq && topfirst )
 	{
 		mjpeg_info("prog sequence setting top_field_first = 0");
 		topfirst = 0;

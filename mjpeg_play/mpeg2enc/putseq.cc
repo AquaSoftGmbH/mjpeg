@@ -48,6 +48,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <cassert>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "simd.h"
@@ -58,6 +59,184 @@
 #include "seqencoder.hh"
 #include "ratectl.hh"
 #include "tables.h"
+
+#include "channel.hh"
+
+struct EncoderJob
+{
+    EncoderJob() : shutdown( false ) {}
+    void (MacroBlock::*encodingFunc)(); 
+    Picture *picture;
+    unsigned int stripe;
+    bool shutdown;
+};
+
+class ShutdownJob : public EncoderJob
+{
+public:
+    ShutdownJob()
+        {
+            shutdown = true;
+        }
+};
+
+class Despatcher
+{
+public:
+    Despatcher();
+    ~Despatcher();
+    void Init( unsigned int mb_width,
+               unsigned int mb_height,
+               unsigned int parallelism );
+    void Despatch( Picture *picture, void (MacroBlock::*encodingFunc)() );
+    void ParallelWorker();
+    void WaitForCompletion();
+private:
+    static void *ParallelPerformWrapper(void *despatcher);
+
+    unsigned int parallelism;
+    unsigned int mb_width;
+    unsigned int mb_height;
+    vector<unsigned int> stripe_start;
+    vector<unsigned int> stripe_length;
+    Channel<EncoderJob> jobs;	
+    pthread_t *worker_threads;
+};
+
+Despatcher::Despatcher() :
+    worker_threads(0)
+{}
+
+void Despatcher::Init( unsigned int _mb_width,
+                       unsigned int _mb_height,
+                       unsigned int _parallelism )
+{
+    parallelism = _parallelism;
+    mb_width = _mb_width;
+    mb_height = _mb_height;
+    unsigned int mb_in_stripe = 0;
+    int i = 0;
+    unsigned int pitch = mb_width / parallelism;
+    for( int stripe = 0; stripe < parallelism; ++stripe )
+    {
+        stripe_start.push_back(mb_in_stripe);
+        mb_in_stripe += pitch;
+        stripe_length.push_back(pitch);
+    }
+    stripe_length.back() = mb_width - stripe_start.back();
+	pthread_attr_t *pattr = NULL;
+
+	/* For some Unixen we get a ridiculously small default stack size.
+	   Hence we need to beef this up if we can.
+	*/
+#ifdef HAVE_PTHREADSTACKSIZE
+#define MINSTACKSIZE 200000
+	pthread_attr_t attr;
+	size_t stacksize;
+
+	pthread_attr_init(&attr);
+	pthread_attr_getstacksize(&attr, &stacksize);
+
+	if (stacksize < MINSTACKSIZE) {
+		pthread_attr_setstacksize(&attr, MINSTACKSIZE);
+	}
+
+	pattr = &attr;
+#endif
+    worker_threads = new pthread_t[parallelism];
+	for(i = 0; i < parallelism; ++i )
+	{
+        mjpeg_info("Creating worker thread" );
+		if( pthread_create( &worker_threads[i], pattr, 
+                            &Despatcher::ParallelPerformWrapper,
+                            this ) != 0 )
+		{
+			mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
+		}
+	}
+}
+
+Despatcher::~Despatcher()
+{
+    if( worker_threads != 0 )
+    {
+        WaitForCompletion();
+        unsigned int i;
+        ShutdownJob shutdownjob;
+
+        for( i = 0; i < parallelism; ++i )
+        {
+            jobs.Put( shutdownjob );
+        }
+        for( i = 0; i < parallelism; ++i )
+        {
+            pthread_join( worker_threads[i], NULL );
+        }
+
+    }
+    delete [] worker_threads;
+}
+
+void *Despatcher::ParallelPerformWrapper(void *despatcher)
+{
+    static_cast<Despatcher *>(despatcher)->ParallelWorker();
+    return 0;
+}
+
+void Despatcher::ParallelWorker()
+{
+	EncoderJob job;
+	mjpeg_debug( "Worker thread started" );
+    pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
+
+	for(;;)
+	{
+        // Get Job to do and do it!!
+        jobs.Get( job );
+        if( job.shutdown )
+        {
+            mjpeg_info ("SHUTDOWN worker" );
+            pthread_exit( 0 );
+        }
+        vector<MacroBlock>::iterator stripe_begin;
+        vector<MacroBlock>::iterator stripe_end;
+        vector<MacroBlock>::iterator mbi;
+
+        stripe_begin = job.picture->mbinfo.begin() + stripe_start[job.stripe];
+        for( int row = 0; row < mb_height; ++row )
+        {
+            stripe_end = stripe_begin + stripe_length[job.stripe];
+            for( mbi = stripe_begin; mbi < stripe_end; ++mbi )
+            {
+                (*mbi.*job.encodingFunc)();
+            }
+            stripe_begin += mb_width;
+        }
+
+    }
+}
+
+void Despatcher::Despatch(  Picture *picture,
+                            void (MacroBlock::*encodingFunc)() )
+{
+    EncoderJob job;
+    job.encodingFunc = encodingFunc;
+    job.picture = picture;
+    for( job.stripe = 0; job.stripe < parallelism; ++job.stripe )
+    {
+        jobs.Put( job );
+    }
+}
+
+void Despatcher::WaitForCompletion()
+{
+    //
+    // We know all despatched jobs have completed if the entire
+    // pool of worker threads is waiting on the job despatch
+    // channel
+    //
+    jobs.WaitUntilConsumersWaitingAtLeast( parallelism );
+}
 
 
 
@@ -72,16 +251,15 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
     quantizer( _quantizer ),
     writer( _writer ),
     coder( _coder ),
-    ratecontroller( _ratecontroller )
+    ratecontroller( _ratecontroller ),
+    despatcher( *new Despatcher )
 
 {
-    mp_semaphore_init( &worker_available, 0 );
-    mp_semaphore_init( &picture_available, 0 );
-    mp_semaphore_init( &picture_started, 0 );
 }
 
 SeqEncoder::~SeqEncoder()
 {
+    delete &despatcher;
 }
 
 /************************************
@@ -217,38 +395,6 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
 
 
 
-void SeqEncoder::CreateThreads( pthread_t *threads,
-                                int num, void *(*start_routine)(void *),
-                                SeqEncoder *seqencoder )
-{
-	int i;
-	pthread_attr_t *pattr = NULL;
-
-	/* For some Unixen we get a ridiculously small default stack size.
-	   Hence we need to beef this up if we can.
-	*/
-#ifdef HAVE_PTHREADSTACKSIZE
-#define MINSTACKSIZE 200000
-	pthread_attr_t attr;
-	size_t stacksize;
-
-	pthread_attr_init(&attr);
-	pthread_attr_getstacksize(&attr, &stacksize);
-
-	if (stacksize < MINSTACKSIZE) {
-		pthread_attr_setstacksize(&attr, MINSTACKSIZE);
-	}
-
-	pattr = &attr;
-#endif
-	for(i = 0; i < num; ++i )
-	{
-		if( pthread_create( &threads[i], pattr, start_routine, seqencoder ) != 0 )
-		{
-			mjpeg_error_exit1( "worker thread creation failed: %s", strerror(errno) );
-		}
-	}
-}
 
 void SeqEncoder::GopStart( StreamState *ss )
 {
@@ -296,6 +442,8 @@ void SeqEncoder::GopStart( StreamState *ss )
 		ss->i = 0;
 		ss->new_seq = true;
 	}
+
+    /* Normally set closed_GOP in first GOP only...   */
 
     ss->closed_gop = ss->i == 0 || encparams.closed_GOPs;
 	ss->gop_start_frame = ss->seq_start_frame + ss->i;
@@ -449,9 +597,9 @@ static unsigned int checksum( uint8_t *buf, unsigned int len )
 #endif
 
 
-void SeqEncoder::SequentialEncode(Picture *picture)
+void SeqEncoder::EncodePicture(Picture *picture)
 {
-	mjpeg_debug("Frame start %d %c %d %d",
+	mjpeg_debug("Start %d %c %d %d",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
 			   picture->temp_ref,
@@ -466,8 +614,16 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 
 	picture->MotionSubSampledLum();
 
-		
-    picture->EncodeMacroBlocks();
+    if( encparams.encoding_parallelism > 0 )
+    {
+        despatcher.Despatch( picture, &MacroBlock::Encode );
+        despatcher.WaitForCompletion();
+    }
+    else
+    {
+        picture->EncodeMacroBlocks();
+    }
+
 	picture->PutHeadersAndEncoding(ratecontroller);
 	picture->Reconstruct();
 
@@ -480,171 +636,70 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 				   picture->pict_struct
 			);
 
-        picture->EncodeMacroBlocks();
-		picture->PutHeadersAndEncoding(ratecontroller);
-		picture->Reconstruct();
-
-	}
-
-
-	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.5f %s", 
-               picture->decode, 
-			   pict_type_char[picture->pict_type],
-               picture->AQ,
-               picture->sum_avg_act,
-               picture->pad ? "PAD" : "   "
-        );
-			
-}
-
-
-
-void *SeqEncoder::ParallelEncodeWrapper(void *seqencoder)
-{
-    static_cast<SeqEncoder *>(seqencoder)->ParallelEncodeWorker();
-    return 0;
-}
-
-void SeqEncoder::ParallelEncodeWorker()
-{
-	pict_data_ptr picture;
-	mjpeg_debug( "Worker thread started" );
-
-	for(;;)
-	{
-		mp_semaphore_signal( &worker_available, 1);
-		mp_semaphore_wait( &picture_available );
-		/* Precisely *one* worker is started after update of
-		   picture_for_started_worker, so no need for handshake.  */
-		picture = picture_to_encode;
-		mp_semaphore_signal( &picture_started, 1);
-
-		/* ALWAYS do-able */
-		mjpeg_debug("Frame %d  %c %d %d",  
-                    picture->decode,  
-                    pict_type_char[picture->pict_type],
-                    picture->temp_ref,
-                    picture->present);
-
-		if( picture->pict_struct != FRAME_PICTURE )
-			mjpeg_debug("Field %s (%d)",
-					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-					   picture->pict_struct
-				);
-
-		picture->MotionSubSampledLum();
-
-		
-		/* DEPEND on completion previous Reference frames (P) or on old
-		   and new Reference frames B.  However, since new reference frame
-		   cannot complete until old reference frame completed (see below)
-		   suffices just to check new reference frame... 
-		   N.b. completion guard of picture is always reset to false
-		   before this function is called...
-		   
-		   In field picture encoding the P field of an I frame is
-		   a special case.  We have to wait for completion of the I field
-		   before starting the P field
-		*/
-
-#ifdef SEQ_DEBUG
-        printf( "Frame %d %08x Waiting for ref: %d %08x\n",
-                picture->decode, 
-                picture, 
-                picture->ref_frame->decode,
-                picture->ref_frame );
-#endif
-        sync_guard_test( &picture->ref_frame->completion );
-        picture->EncodeMacroBlocks();
-
-		/* Depends on previous frame completion for IB and P */
-#ifdef SEQ_DEBUG
-        printf( "Frame %d %08x Waiting for compl: %d %08x\n",
-                picture->decode, 
-                picture, 
-                picture->prev_frame->decode,
-                picture->prev_frame );
-#endif
-		sync_guard_test( &picture->prev_frame->completion );
-		picture->PutHeadersAndEncoding(ratecontroller);
-
-		picture->Reconstruct();
-		/* Handle second field of a frame that is being field encoded */
-		if( encparams.fieldpic )
-		{
-			picture->Set2ndField();
-
-			mjpeg_debug("Field %s (%d)",
-                        (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-                        picture->pict_struct
-				);
-
+        if( encparams.encoding_parallelism > 0 )
+        {
+            despatcher.Despatch( picture, &MacroBlock::Encode );
+            despatcher.WaitForCompletion();
+        }
+        else
+        {
             picture->EncodeMacroBlocks();
-            picture->PutHeadersAndEncoding(ratecontroller);
-			picture->Reconstruct();
+        }
+		picture->PutHeadersAndEncoding(ratecontroller);
+		picture->Reconstruct();
 
-		}
+	}
 
 
-	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.5f %s", 
+	mjpeg_info("Frame %d %c quant=%3.2f total act=%8.5f %s", 
                picture->decode, 
 			   pict_type_char[picture->pict_type],
                picture->AQ,
                picture->sum_avg_act,
                picture->pad ? "PAD" : "   "
         );
-
-		/* We're finished - let anyone depending on us know...
-		 */
-		sync_guard_update( &picture->completion, 1 );
 			
-	}
 }
 
 
-void SeqEncoder::ParallelEncode( Picture *picture )
-{
 
-	mp_semaphore_wait( &worker_available );
-	picture_to_encode = picture;
-	mp_semaphore_signal( &picture_available, 1 );
-	mp_semaphore_wait( &picture_started );
-}
 
 
 /*********************
  *
- *  Multi-threading capable putseq 
- *
- *  N.b. It is *critical* that the reference and b picture buffers are
- *  at least two larger than the number of encoding worker threads.
- *  The despatcher thread *must* have to halt to wait for free
- *  worker threads *before* it re-uses the record for the
- *  Picture record for the oldest frame that could still be needed
- *  by active worker threads.
+ * Init - Setup worker threads an set internal encoding state for
+ * beginning of stream = beginning of first sequence.  Do no actual
+ * encoding or I/O.... 
+ *  N.b. It is *critical* that the reference and b
+ * picture buffers are at least two larger than the number of encoding
+ * worker threads.  The despatcher thread *must* have to halt to wait
+ * for free worker threads *before* it re-uses the record for the
+ * Picture record for the oldest frame that could still be needed by
+ * active worker threads.
  * 
  *  Buffers sizes are given by encparams.max_active_ref_frames and
  *  encparams.max_active_b_frames
  *
  ********************/
  
-void SeqEncoder::Encode()
+void SeqEncoder::Init()
 {
-    /* DEBUG */
-	uint64_t bits_after_mux;
-	double frame_periods;
-    /* END DEBUG */
-	StreamState ss;
-	int cur_ref_idx = 0;
-	int cur_b_idx = 0;
 
+    //
+    // Setup the parallel job despatcher...
+    //
+    despatcher.Init( encparams.mb_width, 
+                     encparams.mb_height, 
+                     encparams.encoding_parallelism );
+
+    // Allocate the Buffers for pictures active when encoding...
     int i;
-	Picture *b_pictures[encparams.max_active_b_frames];
-	Picture *ref_pictures[encparams.max_active_ref_frames];
+    b_pictures = new (Picture *)[encparams.max_active_b_frames];
     for( i = 0; i < encparams.max_active_b_frames; ++i )
     {
         b_pictures[i] = new Picture(encparams, coder, quantizer);
     }
+    ref_pictures = new (Picture *)[encparams.max_active_ref_frames];
     for( i = 0; i < encparams.max_active_ref_frames; ++i )
     {
         ref_pictures[i] = new Picture(encparams, coder, quantizer);
@@ -652,18 +707,12 @@ void SeqEncoder::Encode()
 
 	LinkPictures( ref_pictures, b_pictures );
 
-	pthread_t worker_threads[encparams.max_encoding_frames];
-	if( encparams.max_encoding_frames > 1 )
-		CreateThreads( worker_threads, encparams.max_encoding_frames, 
-                       ParallelEncodeWrapper, this );
-
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
 	   must wait on.
 	*/
-	Picture *cur_picture, *old_picture;
-	Picture *new_ref_picture, *old_ref_picture;
-
+	cur_ref_idx = 0;
+	cur_b_idx = 0;
 	old_ref_picture = ref_pictures[encparams.max_active_ref_frames-1];
 	new_ref_picture = ref_pictures[cur_ref_idx];
 	cur_picture = new_ref_picture;
@@ -680,89 +729,85 @@ void SeqEncoder::Encode()
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
 	ss.seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
-	mjpeg_debug( "Split len=%lld", ss.seq_split_length );
+	mjpeg_debug( "Split len = %lld", ss.seq_split_length );
 
-	int frame_num = 0;              /* Encoding number */
-
+    frame_num = 0;
 	GopStart( &ss);
+}
+
+bool SeqEncoder::EncodeFrame()
+{
+
+	if( frame_num >= reader.NumberOfFrames() )
+        return false;
 
 	/* loop through all frames in encoding/decoding order */
-	while( frame_num< reader.NumberOfFrames() )
-	{
-		old_picture = cur_picture;
 
-		/* Each bigroup starts once all the B frames of its predecessor
-		   have finished.
-		*/
-        int index;
-        char type;
-		if ( ss.b == 0)
-		{
-            type = 'R';
-			cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
-            index = cur_ref_idx;
-			old_ref_picture = new_ref_picture;
-			new_ref_picture = ref_pictures[cur_ref_idx];
-			new_ref_picture->ref_frame = old_ref_picture;
-			new_ref_picture->prev_frame = cur_picture;
-			new_ref_picture->Set_IP_Frame(&ss, reader.NumberOfFrames());
-			cur_picture = new_ref_picture;
-		}
-		else
-		{
-            type = 'B';
+    old_picture = cur_picture;
 
-			Picture *new_b_picture;
-			/* B frame: no need to change the reference frames.
-			   The current frame data pointers are a 3rd set
-			   seperate from the reference data pointers.
-			*/
-			cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
-            index = cur_b_idx;
-			new_b_picture = b_pictures[cur_b_idx];
-			new_b_picture->oldorg = new_ref_picture->oldorg;
-			new_b_picture->oldref = new_ref_picture->oldref;
-			new_b_picture->neworg = new_ref_picture->neworg;
-			new_b_picture->newref = new_ref_picture->newref;
-			new_b_picture->ref_frame = new_ref_picture;
-			new_b_picture->prev_frame = cur_picture;
-			new_b_picture->Set_B_Frame( &ss );
-			cur_picture = new_b_picture;
-		}
+    /* Each bigroup starts once all the B frames of its predecessor
+       have finished.
+    */
+    int index;
+    char type;
+    if ( ss.b == 0)
+    {
+        type = 'R';
+        cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
+        index = cur_ref_idx;
+        old_ref_picture = new_ref_picture;
+        new_ref_picture = ref_pictures[cur_ref_idx];
+        new_ref_picture->ref_frame = old_ref_picture;
+        new_ref_picture->prev_frame = cur_picture;
+        new_ref_picture->Set_IP_Frame(&ss, reader.NumberOfFrames());
+        cur_picture = new_ref_picture;
+    }
+    else
+    {
+        type = 'B';
 
-#ifdef SEQ_DEBUG
-        printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
-#endif
-		sync_guard_update( &cur_picture->completion, 0 );
-		reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
-                          cur_picture->curorg );
+        Picture *new_b_picture;
+        /* B frame: no need to change the reference frames.
+           The current frame data pointers are a 3rd set
+           seperate from the reference data pointers.
+        */
+        cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
+        index = cur_b_idx;
+        new_b_picture = b_pictures[cur_b_idx];
+        new_b_picture->oldorg = new_ref_picture->oldorg;
+        new_b_picture->oldref = new_ref_picture->oldref;
+        new_b_picture->neworg = new_ref_picture->neworg;
+        new_b_picture->newref = new_ref_picture->newref;
+        new_b_picture->ref_frame = new_ref_picture;
+        new_b_picture->prev_frame = cur_picture;
+        new_b_picture->Set_B_Frame( &ss );
+        cur_picture = new_b_picture;
+    }
 
-		cur_picture->SetSeqPos( ss.i, ss.b );
-		if( encparams.max_encoding_frames > 1 )
-			ParallelEncode( cur_picture );
-		else
-			SequentialEncode( cur_picture );
+    reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
+                      cur_picture->curorg );
+
+    cur_picture->SetSeqPos( ss.i, ss.b );
+    EncodePicture( cur_picture );
 
 #ifdef DEBUG
-		writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curref);
+    writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curref);
 #endif
 
-		NextSeqState( &ss );
-		++frame_num;
-	}
-	
-	/* Wait for final frame's encoding to complete */
-	if( encparams.max_encoding_frames > 1 )
-		sync_guard_test( &cur_picture->completion );
-	coder.PutSeqEnd();
+    NextSeqState( &ss );
+    ++frame_num;
 
+	if( frame_num < reader.NumberOfFrames() )
+        return true;
+	
+	coder.PutSeqEnd();
+    coder.EmitCoded();
+
+    // DEBUG
 	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss.seq_start_frame + ss.i);
-    
-    
-    // TODO Belongs in BitRateCtl
     if( encparams.quant_floor > 0.0 )
         bits_after_mux = writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
@@ -772,10 +817,9 @@ void SeqEncoder::Encode()
 
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
     
-    //
-    // TODO: Really this ought to be a job for smart ptrs, but auto_ptr
-    // gets messed with the copy constructor implicit in push_back...
-    //
+    // END DEBUG
+
+    int i;
     for( i = 0; i < encparams.max_active_b_frames; ++i )
     {
         delete b_pictures[i];
@@ -784,7 +828,9 @@ void SeqEncoder::Encode()
     {
         delete ref_pictures[i];
     }
-    
+    delete [] b_pictures;
+    delete [] ref_pictures;
+    return false;
 }
 
 

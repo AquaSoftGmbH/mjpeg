@@ -46,31 +46,93 @@
  */
 
 
-#ifdef	HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "elemstrmwriter.hh"
 #include "mpeg2encoder.hh"
-#include <stdio.h>
-
+#include <cassert>
+#include <string.h>
 
 ElemStrmWriter::ElemStrmWriter(EncoderParams &_encparams ) :
 	encparams( _encparams )
 {
-  outcnt = 8;
-  bytecnt = BITCOUNT_OFFSET/8LL;
+	serial_id = 1;
+	last_flushed_serial_id = 0;
+	outcnt = 8;
+	bytecnt = BITCOUNT_OFFSET/8LL;
+	buffer_size = 1024*128;
+
+	buffer = NULL;
+	ExpandBuffer();
 }
 
 
+ElemStrmWriter::~ElemStrmWriter()
+{
+	free( buffer );
+}
 
-/* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
+void ElemStrmWriter::ExpandBuffer()
+{
+	buffer_size *= 2;
+	buffer = static_cast<uint8_t *>(realloc( buffer, sizeof(uint8_t[buffer_size])));
+	if( !buffer )
+		mjpeg_error_exit1( "output buffer memory allocation: out of memory" );
+}
+
+ElemStrmBufferState	ElemStrmWriter::CurrentState()
+{
+	assert( outcnt == 8 );
+	++serial_id;
+	return static_cast<ElemStrmBufferState>(*this);
+}
+
+void ElemStrmWriter::FlushBuffer( )
+{
+	assert( outcnt == 8 );
+	WriteOutBufferUpto( unflushed );
+	unflushed = 0;
+	++serial_id;
+	last_flushed_serial_id = serial_id;
+}
+
+void ElemStrmWriter::RestoreState( const ElemStrmBufferState &restore )
+{
+	assert( restore.serial_id > last_flushed_serial_id );
+	*static_cast<ElemStrmBufferState *>(this) = restore;
+}
+
 void ElemStrmWriter::AlignBits()
 {
 	if (outcnt!=8)
 		PutBits(0,outcnt);
 }
-    
+
+/**************
+ *
+ * Write least significant n (0<=n<=32) bits of val to output buffer
+ *
+ *************/
+
+void ElemStrmWriter::PutBits(uint32_t val, int n)
+{
+	val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
+	while( n >= outcnt )
+	{
+		pendingbits = (pendingbits << outcnt ) | (val >> (n-outcnt));
+		if( unflushed == buffer_size )
+			ExpandBuffer();
+		buffer[unflushed] = pendingbits;
+		++unflushed;
+		n -= outcnt;
+		outcnt = 8;
+		++bytecnt;
+	}
+	if( n != 0 )
+	{
+		pendingbits = (pendingbits<<n) | val;
+		outcnt -= n;
+	}
+}
+
 
 
 /* 

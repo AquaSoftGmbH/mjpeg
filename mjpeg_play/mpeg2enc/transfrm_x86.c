@@ -174,7 +174,7 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 	emms();
 }
 
-static int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
+int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
 {
 	/*
 	 * calculate prediction error (cur-pred) for top (blk0)

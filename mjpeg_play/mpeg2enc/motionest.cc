@@ -1,4 +1,4 @@
-/* motion.c, motion estimation                                              */
+/* motionest.cc, motion estimation  */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -26,7 +26,7 @@
  * design.
  * */
 
-/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
+/* Modifications and enhancements (C) 2000-2004 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -54,26 +54,34 @@
 #include <mpeg2syntaxcodes.h>
 #include "cpu_accel.h"
 #include "simd.h"
+#include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
 #include "encoderparams.hh"
 #include "picture.hh"
 
-/* Macro-block Motion estimation results record */
 
-struct BlockXY 
+/* See ISO13818-2 7.6.3.5 */
+int 
+dualprime_m[FieldOrder::dim][Parity::dim /*ref*/][Parity::dim /*pred*/] =
 {
-	int x;
-	int y;
-    inline bool inlimits( int top_x, int top_y )
-        {
-            return x >= 0 && x <= top_x && y >= 0 && y <= top_y;
-        }
+    { { 2, 1 }, { 3, 2 } }, // Botfield first
+    { { 2, 3 }, { 1, 2 } }  // Topfield first
 };
 
-struct mb_motion
+int dualprime_e[Parity::dim /*ref*/ ][Parity::dim /*pred*/ ] =
+{ 
+    { 0, +1 }, 
+    { -1, 0 }
+};
+        
+
+/* Macro-block Motion estimation results record */
+
+
+struct MotionCand
 {
-	BlockXY pos;        // Half-pel co-ordinates of source block
+	Coord pos;        // Half-pel co-ormv[1]dinates of source block
 	int sad;			// Sum of absolute difference
 	int var;
 	uint8_t *blk ;		// Source block data (in luminace data array)
@@ -83,9 +91,8 @@ struct mb_motion
 						// of field.	(top = 0, bottom = width );
 };
 
-typedef struct mb_motion mb_motion_s;
 
-struct subsampled_mb
+struct SubSampledImg
 {
 	uint8_t *mb;		// One pel
 	uint8_t *fmb;		// Two-pel subsampled
@@ -94,39 +101,40 @@ struct subsampled_mb
 	uint8_t *vmb;       // V component  one-pel
 };
 
-typedef struct subsampled_mb subsampled_mb_s;
 
 
 /*
   Main field and frame based motion estimation entry points.
 */
 
+
+
 static void field_estimate (const Picture &picture,
-					uint8_t *toporg,
-					uint8_t *topref, 
-					uint8_t *botorg, 
-					uint8_t *botref,
-					subsampled_mb_s *ssmb,
-					int i, int j, int sx, int sy,
-					mb_motion_s *bestfr,
-					mb_motion_s *best8u,
-					mb_motion_s *best8l,
-					mb_motion_s *bestsp);
+							uint8_t *toporg,
+							uint8_t *topref, 
+							uint8_t *botorg, 
+							uint8_t *botref,
+							SubSampledImg *ssmb,
+							int i, int j, int sx, int sy,
+							MotionCand *bestfr,
+							MotionCand *best8u,
+							MotionCand *best8l,
+							MotionCand *bestsp);
 
 static void mb_me_search (
     const EncoderParams &eparams,
 	uint8_t *org, uint8_t *ref,
     int fieldoff,
-	subsampled_mb_s *ssblk,
+	SubSampledImg *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h, 
 	int xmax, int ymax,
-	mb_motion_s *motion );
+	MotionCand *motion );
 
 
-static __inline__ int mv_coding_penalty( int mv_x, int mv_y )
+inline int mv_coding_penalty( int mv_x, int mv_y )
 {
-    return (abs(mv_x) + abs(mv_y))<<3;
+    return (intabs(mv_x) + intabs(mv_y))<<3;
 }
 
 
@@ -136,13 +144,15 @@ static __inline__ int mv_coding_penalty( int mv_x, int mv_y )
  *  as two half-height images side-by-side.
  */
 
+
+
 /*
  * Compute the variance of the residual of uni-directionally motion
  * compensated block.
  *
  */
 
-static __inline__ int unidir_pred_var( const mb_motion_s *motion,
+static __inline__ int unidir_pred_var( const MotionCand *motion,
 							uint8_t *mb,  
 							int lx, 
 							int h)
@@ -156,8 +166,8 @@ static __inline__ int unidir_pred_var( const mb_motion_s *motion,
  * compensated block.
  */
 
-static __inline__ int bidir_pred_var( const mb_motion_s *motion_f, 
-									  const mb_motion_s *motion_b,
+static __inline__ int bidir_pred_var( const MotionCand *motion_f, 
+									  const MotionCand *motion_b,
 									  uint8_t *mb,  
 									  int lx, int h)
 {
@@ -189,9 +199,9 @@ static __inline__ int bidir_pred_var( const mb_motion_s *motion_f,
  *  
  */
 
-static int unidir_var_sum( mb_motion_s *lum_mc, 
+static int unidir_var_sum( MotionCand *lum_mc, 
 						   uint8_t **ref, 
-						   subsampled_mb_s *ssblk,
+						   SubSampledImg *ssblk,
 						   int lx, int h )
 {
 	int uvlx = (lx>>1);
@@ -224,11 +234,11 @@ static int unidir_var_sum( mb_motion_s *lum_mc,
  *
  */
 
-static int bidir_var_sum( mb_motion_s *lum_mc_f, 
-						  mb_motion_s *lum_mc_b, 
+static int bidir_var_sum( MotionCand *lum_mc_f, 
+						  MotionCand *lum_mc_b, 
 						  uint8_t **ref_f, 
 						  uint8_t **ref_b,
-						  subsampled_mb_s *ssblk,
+						  SubSampledImg *ssblk,
 						  int lx, int h )
 {
 	int uvlx = (lx>>1);
@@ -256,7 +266,7 @@ static int bidir_var_sum( mb_motion_s *lum_mc_f,
  * Sum of chrominance variance of a block.
  */
 
-static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
+static __inline__ int chrom_var_sum( SubSampledImg *ssblk, int h, int lx )
 {
     uint32_t var1, var2, dummy_mean;
     assert( (h>>1) == 8 || (h>>1) == 16 );
@@ -267,14 +277,15 @@ static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 }
 
 
+
 /*
  * Compute SAD for bi-directionally motion compensated blocks...
  */
 
-static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f, 
-					const mb_motion_s *motion_b,
-					uint8_t *mb,  
-					int lx, int h)
+static __inline__ int bidir_pred_sad( const MotionCand *motion_f, 
+									  const MotionCand *motion_b,
+									  uint8_t *mb,  
+									  int lx, int h)
 {
 	return pbsad(motion_f->blk, motion_b->blk, 
 					 mb, lx, 
@@ -284,9 +295,9 @@ static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f,
 }
 
 #ifdef DEBUG_MC
-static void display_mb(mb_motion_s *lum_mc, 
+static void display_mb(MotionCand *lum_mc, 
 				  uint8_t **ref, 
-				  subsampled_mb_s *ssblk,
+				  SubSampledImg *ssblk,
 				  int lx, int h )
 
 {
@@ -322,51 +333,46 @@ static void display_mb(mb_motion_s *lum_mc,
 }
 #endif
 
-static void frame_field_modes(
+void FieldMotionCands(
     const EncoderParams &eparams,
 	uint8_t *org,
 	uint8_t *ref,
-	subsampled_mb_s *topssmb,
-	subsampled_mb_s *botssmb,
+	SubSampledImg *topssmb,
+	SubSampledImg *botssmb,
 	int i, int j, int sx, int sy,
-	mb_motion_s *besttop,
-	mb_motion_s *bestbot,
-    BlockXY best_fieldmvs[2][2]
+	MotionCand *besttop,
+	MotionCand *bestbot,
+    MotionCand (&fieldmcs)[2][2]
 	)
 {
-	mb_motion_s topfld_mc;
-	mb_motion_s botfld_mc;
-
 	/* predict top field from top field */
 	mb_me_search( eparams,
                   org,ref,0,topssmb,
                   eparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
                   eparams.enc_width,eparams.enc_height>>1,
-                  &topfld_mc);
+                  &fieldmcs[Parity::top][Parity::top]);
 
 	/* predict top field from bottom field */
 	mb_me_search( eparams,
                   org,ref,eparams.phy_width,topssmb, 
                   eparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
-                  eparams.enc_width,eparams.enc_height>>1, &botfld_mc);
+                  eparams.enc_width,eparams.enc_height>>1, 
+                  &fieldmcs[Parity::bot][Parity::top]);
     
 	/* set correct field selectors... */
-	topfld_mc.fieldsel = 0;
-	botfld_mc.fieldsel = 1;
-	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = eparams.phy_width;
-
-	best_fieldmvs[0][0] = topfld_mc.pos;
-	best_fieldmvs[1][0] = botfld_mc.pos;
+	fieldmcs[Parity::top][Parity::top].fieldsel = 0;
+	fieldmcs[Parity::bot][Parity::top].fieldsel = 1;
+	fieldmcs[Parity::top][Parity::top].fieldoff = 0;
+	fieldmcs[Parity::bot][Parity::top].fieldoff = eparams.phy_width;
 
 	/* select prediction for top field */
-	if (topfld_mc.sad<=botfld_mc.sad)
+	if (fieldmcs[Parity::top][Parity::top].sad<=fieldmcs[Parity::bot][Parity::top].sad)
 	{
-		*besttop = topfld_mc;
+		*besttop = fieldmcs[Parity::top][Parity::top];
 	}
 	else
 	{
-		*besttop = botfld_mc;
+		*besttop = fieldmcs[Parity::bot][Parity::top];
 	}
 
 	/* predict bottom field from top field */
@@ -374,55 +380,101 @@ static void frame_field_modes(
                   org,ref,0,botssmb,
                   eparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
                   eparams.enc_width,eparams.enc_height>>1,
-                  &topfld_mc);
+                  &fieldmcs[Parity::top][Parity::bot]);
 
 	/* predict bottom field from bottom field */
 	mb_me_search( eparams,
                   org,ref,eparams.phy_width,botssmb,
                   eparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
                   eparams.enc_width,eparams.enc_height>>1,
-                  &botfld_mc);
+                  &fieldmcs[Parity::bot][Parity::bot]);
     
 	/* set correct field selectors... */
-	topfld_mc.fieldsel = 0;
-	botfld_mc.fieldsel = 1;
-	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = eparams.phy_width;
-
-	best_fieldmvs[0][1] = topfld_mc.pos;
-	best_fieldmvs[1][1] = botfld_mc.pos;
+	fieldmcs[Parity::top][Parity::bot].fieldsel = 0;
+	fieldmcs[Parity::bot][Parity::bot].fieldsel = 1;
+	fieldmcs[Parity::top][Parity::bot].fieldoff = 0;
+	fieldmcs[Parity::bot][Parity::bot].fieldoff = eparams.phy_width;
 
 	/* select prediction for bottom field */
-	if (botfld_mc.sad<=topfld_mc.sad)
+	if (fieldmcs[Parity::bot][Parity::bot].sad<=fieldmcs[Parity::top][Parity::bot].sad)
 	{
-		*bestbot = botfld_mc;
+		*bestbot = fieldmcs[Parity::bot][Parity::bot];
 	}
 	else
 	{
-		*bestbot = topfld_mc;
+		*bestbot = fieldmcs[Parity::top][Parity::bot];
 	}
 }
 
-static bool dpframe_estimate (
-	const Picture &picture,
-	uint8_t *ref,
-	subsampled_mb_s *ssmb,
-	int i, int j, 
-    BlockXY best_fieldmvs[2][2], 
-	mb_motion_s *best_mc,
-    BlockXY &min_dpmv)
-{
-	int pref,ppred,delta_x,delta_y;
-    BlockXY srcblk;
-    BlockXY topblk, topblk0;
-    BlockXY botblk, botblk0;
 
-    BlockXY minsrc, mintop, minbot;
+typedef int (*DualPrimeMeasure)( uint8_t *sameref,
+                                 uint8_t *crossref,
+                                 uint8_t *pred_mb,
+                                 int field_stride,
+                                 int same_fx, int same_fy,
+                                 int cross_fx, int cross_fy,
+                                 int h
+    );
+
+
+void DualPrimeMetric( const Picture &picture,
+                      DualPrimeMeasure meas,
+                      const Coord &same,
+                      const Coord (&crossblks)[Parity::dim], // Cross-field ref
+                      const Coord &dmv,
+                      uint8_t *ref,
+                      uint8_t *pred_mb,
+                      int stride,
+                      int &measure,
+                      bool &legal
+    )
+{
+    bool all_legal = true;
+    Coord cross;
+    int part_meas = 0;
+    for( int ppred = Parity::top; ppred < Parity::bot; ++ppred )
+    {
+        int same_fieldoff = (ppred == Parity::top ? 0 : stride);
+        Coord cross = crossblks[Parity::Invert(ppred)];
+        cross.x += dmv.x;
+        cross.y += dmv.y;
+        int cross_fieldoff = stride - same_fieldoff;
+        all_legal &=  picture.InRangeFieldMVRef( cross );
+        if( all_legal  )
+        {
+            uint8_t *sameref = ref + same_fieldoff
+                + (same.x>>1) + (stride<<1)*(same.y>>1);
+            uint8_t *crossref = ref + cross_fieldoff
+                + (cross.x>>1) + (stride<<1)*(cross.y>>1);
+            /* compute prediction error */
+            part_meas += meas( sameref, crossref,
+                               pred_mb,
+                               stride<<1,
+                               same.x&1,
+                               same.y&1,
+                               cross.x&1,
+                               cross.y&1,
+                               8
+                );
+        }
+    }
+    measure = part_meas;
+    legal = all_legal;
+}
+
+
+bool 
+MacroBlock::FrameDualPrimeCand (uint8_t *ref,
+                                const SubSampledImg &ssmb,
+                                const MotionCand (&best_fieldmcs)[Parity::dim][Parity::dim], 
+                                MotionCand &best_mc,
+                                Coord &min_dpmv)
+{
 	int local_dist;
-    int stride = picture.encparams.phy_width;
-    int max_x_tgt = (picture.encparams.enc_width-16)<<1;
-    int max_y_tgt = picture.encparams.enc_height-16;
+    int stride = picture->encparams.phy_width;
     bool dpmvfound = false;
+    const Coord mb( Coord::HalfPel(Coord::Field(pel)) );
+
 	/* Calculate Dual Prime distortions for 9 delta candidates
 	 * for each of the four minimum field vectors
 	 * Note: only for P pictures!
@@ -434,135 +486,105 @@ static bool dpframe_estimate (
      */
     int best_sad = 256*16*16;
     
-	for (pref=0; pref<=1; pref++)
+    int (&m)[Parity::dim /*ref*/][Parity::dim /*pred*/] =
+        dualprime_m[picture->topfirst];
+
+    Coord min_cross[Parity::dim];
+    Coord min_same;
+    // Iterate over the different suggestions corresponding to the
+    // different possible combinations of reference/prediction
+    // field parity 
+	for ( int psugref=Parity::top; psugref<=Parity::bot; psugref++) 
 	{
-        /* convert Cartesian absolute to relative motion vector
-         * values (wrt current macroblock address (i,j)
-         */
-        ppred = 1-pref;
-        srcblk.x = best_fieldmvs[pref][ppred].x - (i<<1);
-        srcblk.y = best_fieldmvs[pref][ppred].y - (j<<1);
-        
-        /* vertical field shift adjustment */
-        if (ppred==0)
-            srcblk.y++;
-        else
-            srcblk.y--;
+        // Iterate of over parity predicted MB suggestion
+		for ( int psugpred=Parity::top; psugpred<=Parity::top; psugpred++)
+		{
+			/* convert Cartesian absolute to relative motion vector
+			 * values (wrt current macroblock address (i,j)
+			 */
+            MotionVector suggestion = 
+                MotionVector::Frame(best_fieldmcs[psugref][psugpred].pos, mb );
 
-        /* mvxs and mvys scaling*/
-        srcblk.x<<=1;
-        srcblk.y<<=1;
-        if (picture.topfirst == ppred)
-        {
-            /* second field: scale by 1/3 */
-            srcblk.x = (srcblk.x>=0) ? (srcblk.x+1)/3 : -((srcblk.x-1)/3);
-            srcblk.y = (srcblk.y>=0) ? (srcblk.y+1)/3 : -((srcblk.y-1)/3);
-        }
+            /* If the candidate base vector is between opposite polarity
+               fields we have to convert it to a corresponding dual-prime
+               base-vector.  N.b. this may *increase* its magnitude outside the
+               legal range so we have to check for this...
+            */
+            MotionVector base;
+            base[Dim::X] = suggestion[Dim::X]*2/m[psugref][psugpred];
+            base[Dim::Y] = (suggestion[Dim::Y] - dualprime_e[psugref][psugpred])*2/m[psugref][psugpred];
+            if( ! picture->Legal( base ) )
+                continue;
 
-        /* vector for prediction from field of opposite 'parity' */
-        if (picture.topfirst)
-        {
-            /* vector for prediction of top field from bottom field */
-            topblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
-            topblk0.y = ((srcblk.y+(srcblk.y>0))>>1) - 1;
-
-            /* vector for prediction of bottom field from top field */
-            botblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
-            botblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) + 1;
-        }
-        else
-        {
-            /* vector for prediction of top field from bottom field */
-            topblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
-            topblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) - 1;
-
-            /* vector for prediction of bottom field from top field */
-            botblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
-            botblk0.y = ((srcblk.y+(srcblk.y>0))>>1) + 1;
-        }
-
-        /* convert back to absolute half-pel field picture coordinates */
-        srcblk.x += i<<1;
-        srcblk.y += j<<1;
-        topblk0.x += i<<1;
-        topblk0.y += j<<1;
-        botblk0.x += i<<1;
-        botblk0.y += j<<1;
-
-        for (delta_y=-1; delta_y<=1; delta_y++)
-        {
-            for (delta_x=-1; delta_x<=1; delta_x++)
+            /* We use (legal) base motion vectors for the same
+               polarity prediction and to derive the base motion
+               vectors for the cross-polarity predictions */
+            
+            Coord same( mb, base );
+            //same.x = base[Dim::X] + mb.x;
+            //same.y = base[Dim::Y] + mb.y;
+            Coord cross[Parity::dim /* ref polarity */];
+            for( int pref = Parity::top; pref < Parity::dim; ++pref )
             {
-                /* opposite field coordinates */
-                topblk.x = topblk0.x + delta_x;
-                topblk.y = topblk0.y + delta_y;
-                botblk.x = botblk0.x + delta_x;
-                botblk.y = botblk0.y + delta_y;
+                int ppred = Parity::Invert(pref);
+                cross[pref].x = rnddiv2(base[Dim::X] * m[pref][ppred]) 
+                    + mb.x;
+                cross[pref].y = rnddiv2(base[Dim::Y] * m[pref][ppred])
+                    +dualprime_e[pref][ppred]+mb.y;
+            }
+                              
+			/* Now find the best differential motion vector for the
+               cross-polarity predictions 
+            */
 
-                uint8_t *topref = 
-                    ref + (srcblk.x>>1) + (stride<<1)*(srcblk.y>>1);
-                uint8_t *botref = topref + stride;
-                /* compute prediction error */
-                local_dist = pbsad(
-                    topref,
-                    ref + stride + (topblk.x>>1) + (stride<<1)*(topblk.y>>1),
-                    ssmb->mb,
-                    stride<<1,
-                    srcblk.x&1, srcblk.y&1, topblk.x&1, topblk.y&1,
-                    8);
-                local_dist += pbsad(
-                    botref,
-                    ref + (botblk.x>>1) + (stride<<1)*(botblk.y>>1),
-                    ssmb->mb + stride,
-                    stride<<1,
-                    srcblk.x&1, srcblk.y&1, botblk.x&1, botblk.y&1,
-                    8);
-                    
-                /* update delta legal MV with smallest distortion */
-                    
-                if ( local_dist < best_sad &&
-                     srcblk.x >= 0 && srcblk.x <= max_x_tgt && 
-                     srcblk.y >= 0 && srcblk.y <= max_y_tgt &&
-                     topblk.x >= 0 && topblk.x <= max_x_tgt &&
-                     topblk.y >= 0 && topblk.y <= max_y_tgt &&
-                     botblk.x >= 0 && botblk.x <= max_x_tgt &&
-                     botblk.y >= 0 && botblk.y <= max_y_tgt )
+            Coord dmv;
+            for (dmv.y=-1; dmv.y<=1; ++dmv.y)
+            {
+                for (dmv.x=-1; dmv.x<=1; ++dmv.x)
                 {
-                    dpmvfound = true;
-                    minsrc = srcblk;
-                    mintop = topblk;
-                    minbot = botblk;
-                    min_dpmv.x = delta_x;
-                    min_dpmv.y = delta_y;
-                    best_sad = local_dist;
-                }
-            }  /* end delta x loop */
-        } /* end delta y loop */
+                    local_dist = 0;
+                    bool legal = true;
+
+                    DualPrimeMetric( *picture,
+                                     pbsad,
+                                     same, cross,
+                                     dmv,
+                                     ref,
+                                     ssmb.mb,
+                                     stride,
+                                     local_dist,
+                                     legal );
+
+                    /* update best legal MV with smallest distortion
+                     * distortion */
+                    
+                    if ( local_dist < best_sad && legal )
+                    {
+                        dpmvfound = true;
+                        min_dpmv = dmv;
+                        best_sad = local_dist;
+                        min_same = same;
+                        min_cross[Parity::top] = cross[Parity::top];
+                        min_cross[Parity::bot] = cross[Parity::bot];
+                    }
+                }  /* end delta x loop */
+            } /* end delta y loop */
+		}
 	}
     
     if( dpmvfound )
     {
-       best_mc->var = 
-           pbsumsq(
-               ref + (minsrc.x>>1) + (stride<<1)*(minsrc.y>>1),
-               ref + stride + (mintop.x>>1) + (stride<<1)*(mintop.y>>1),
-               ssmb->mb,
-               stride<<1,
-               minsrc.x&1, minsrc.y&1, mintop.x&1, mintop.y&1,
-               8);
-       best_mc->var +=
-           pbsumsq(
-               ref + stride + (minsrc.x>>1) + (stride<<1)*(minsrc.y>>1),
-               ref + (minbot.x>>1) + (stride<<1)*(minbot.y>>1),
-               ssmb->mb + stride,
-               stride<<1,
-               minsrc.x&1, minsrc.y&1, minbot.x&1, minbot.y&1,
-               8);
-        
-       best_mc->sad = best_sad + mv_coding_penalty( minsrc.x-(i<<1), 
-                                                    minsrc.y-(j<<1) );
-       best_mc->pos.x = minsrc.x;
-       best_mc->pos.y = minsrc.y;
+        bool legal;
+        DualPrimeMetric( *picture, pbsumsq,
+                         min_same, min_cross, min_dpmv,
+                         ref,
+                         ssmb.mb,
+                         stride,
+                         best_mc.var,
+                         legal );
+        best_mc.sad = best_sad + mv_coding_penalty( min_same.x-mb.x, 
+                                                    min_same.y-mb.y );
+        best_mc.pos = min_same;
     }
     return dpmvfound;
 }
@@ -573,8 +595,8 @@ static void dpfield_estimate(
 	uint8_t *botref, 
 	uint8_t *mb,
 	int i, int j, 
-	mb_motion_s *bestsp_mc,
-	mb_motion_s *bestdp_mc,
+	MotionCand *bestsp_mc,
+	MotionCand *bestdp_mc,
 	int *vmcp
 	)
 
@@ -705,23 +727,23 @@ void MacroBlock::FrameMEs()
     //
     // Motion info for the various possible motion modes...
     //
-	mb_motion_s framef_mc;
-	mb_motion_s frameb_mc;
-	mb_motion_s dualpf_mc;
-	mb_motion_s topfldf_mc;
-	mb_motion_s botfldf_mc;
-	mb_motion_s topfldb_mc;
-	mb_motion_s botfldb_mc;
-	mb_motion_s zeromot_mc;
+	MotionCand framef_mc;
+	MotionCand frameb_mc;
+	MotionCand dualpf_mc;
+	MotionCand topfldf_mc;
+	MotionCand botfldf_mc;
+	MotionCand topfldb_mc;
+	MotionCand botfldb_mc;
+	MotionCand zeromot_mc;
 
     // Pointers to macroblock's contents in YUV and half and quad
     // subsampled planes, and for FIELD modes, the bottom field
     // variants...
-	subsampled_mb_s ssmb;
-	subsampled_mb_s  botssmb;
+	SubSampledImg ssmb;
+	SubSampledImg  botssmb;
 
-	BlockXY best_fieldmvs[2][2];
-    BlockXY min_dpmv;
+	MotionCand best_fieldmcs[2][2];
+    Coord min_dpmv;
 
     int mb_row_start = j*eparams.phy_width;
 	
@@ -782,8 +804,7 @@ void MacroBlock::FrameMEs()
     me.mb_type = MB_INTRA;
     me.motion_type = 0;
     me.var = intravar;
-    me.MV[0][0][0] = 0;
-    me.MV[0][0][1] = 0;
+    me.MV[0][0].Zero();
     best_of_kind_me.push_back( me );
 
 	if (picture.pict_type==P_TYPE)
@@ -809,10 +830,9 @@ void MacroBlock::FrameMEs()
 
         me.mb_type = MB_FORWARD;
         me.motion_type=MC_FRAME;
-        me.MV[0][0][0] = framef_mc.pos.x - (i<<1);
-        me.MV[0][0][1] = framef_mc.pos.y - (j<<1);
         me.var = unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  
                                  eparams.phy_width, 16 );
+        me.MV[0][0] = MotionVector::Frame( framef_mc.pos, hpel );
         best_of_kind_me.push_back( me );
         
 
@@ -825,44 +845,39 @@ void MacroBlock::FrameMEs()
 			botssmb.umb = ssmb.umb+(eparams.phy_width>>1);
 			botssmb.vmb = ssmb.vmb+(eparams.phy_width>>1);
 
-			frame_field_modes( eparams,
+			FieldMotionCands( eparams,
                                picture.oldorg[0],oldrefimg[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxf,picture.syf,
                                &topfldf_mc,
                                &botfldf_mc,
-                               best_fieldmvs);
+                               best_fieldmcs);
 
             me.mb_type = MB_FORWARD;
             me.motion_type = MC_FIELD;
-            me.MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
-            me.MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
-            me.MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
-            me.MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
-            me.field_sel[0][0] = topfldf_mc.fieldsel;
-            me.field_sel[1][0] = botfldf_mc.fieldsel;
             me.var = 
                 unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb,
                                 (eparams.phy_width<<1), 8 )
 				+ unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
                                   (eparams.phy_width<<1), 8 );
+            me.MV[0][0] = MotionVector::Field(topfldf_mc.pos, hpel);
+            me.MV[1][0] = MotionVector::Field(botfldf_mc.pos, hpel);
+            me.field_sel[0][0] = topfldf_mc.fieldsel;
+            me.field_sel[1][0] = botfldf_mc.fieldsel;
 
             best_of_kind_me.push_back( me );
 
-			if ( eparams.dualprime &&
-                 dpframe_estimate(picture,oldrefimg[0],&ssmb,
-                                  i,j>>1,
-                                  best_fieldmvs,
-                                  &dualpf_mc,
-                                  min_dpmv ) )
+			if ( eparams.dualprime 
+                 && FrameDualPrimeCand(oldrefimg[0], ssmb,
+                                       best_fieldmcs, dualpf_mc, min_dpmv ) 
+                )
             {
                     me.mb_type = MB_FORWARD;
                     me.motion_type = MC_DMV;
-                    me.MV[0][0][0] = dualpf_mc.pos.x - (i<<1);
-                    me.MV[0][0][1] = (dualpf_mc.pos.y<<1) - (j<<1);
+                    me.MV[0][0] = MotionVector::Field(dualpf_mc.pos, hpel);
                     me.dualprimeMV[0] = min_dpmv.x;
                     me.dualprimeMV[1] = min_dpmv.y;
-                    me.var = dualpf_mc.var + dualpf_mc.var/2;
+                    me.var = dualpf_mc.var + 7*dualpf_mc.var/8;
                     best_of_kind_me.push_back( me );
             }
         }
@@ -922,23 +937,23 @@ void MacroBlock::FrameMEs()
 			botssmb.vmb = ssmb.vmb+(eparams.phy_width>>1);
 
             // Forward motion estimates...
-			frame_field_modes( eparams,
+			FieldMotionCands( eparams,
                                picture.oldorg[0],oldrefimg[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxf,picture.syf,
                                &topfldf_mc,
                                &botfldf_mc,
-                               best_fieldmvs);
+                               best_fieldmcs);
             
 
 			// Backward motion estimates...
-			frame_field_modes( eparams,
+			FieldMotionCands( eparams,
                                picture.neworg[0],newrefimg[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxb,picture.syb,
                                &topfldb_mc,
                                &botfldb_mc,
-                               best_fieldmvs);
+                               best_fieldmcs);
 
 
             me.motion_type = MC_FIELD;
@@ -984,7 +999,9 @@ void MacroBlock::FrameMEs()
             
 		}
 	}
+
 }
+
 
 
 /*
@@ -1010,11 +1027,11 @@ void MacroBlock::FieldME()
 	int w2;
 	uint8_t **oldrefimg, **newrefimg;
 	uint8_t *toporg, *topref, *botorg, *botref;
-	subsampled_mb_s ssmb;
-	mb_motion_s fieldsp_mc, dualp_mc;
-	mb_motion_s fieldf_mc, fieldb_mc;
-	mb_motion_s field8uf_mc, field8lf_mc;
-	mb_motion_s field8ub_mc, field8lb_mc;
+	SubSampledImg ssmb;
+	MotionCand fieldsp_mc, dualp_mc;
+	MotionCand fieldf_mc, fieldb_mc;
+	MotionCand field8uf_mc, field8lf_mc;
+	MotionCand field8ub_mc, field8lb_mc;
 	int intravar, vmc,v0,dmc,dmcfieldi,dmcfield,dmcfieldf,dmcfieldr,dmc8i;
 	int dmc8f,dmc8r;
 	int vmc_dp,dctl_dp;
@@ -1094,7 +1111,7 @@ void MacroBlock::FieldME()
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 		dctl_dp = 100000000;		/* Suppress compiler warning */
 
-		if ( eparams.dualprime && !picture.ipflag)  /* No DP on IP field */
+		if ( eparams.dualprime && !picture.ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
@@ -1364,20 +1381,20 @@ static void field_estimate (
 	uint8_t *topref, 
 	uint8_t *botorg, 
 	uint8_t *botref,
-	subsampled_mb_s *ssmb,
+	SubSampledImg *ssmb,
 	int i, int j, int sx, int sy,
-	mb_motion_s *bestfld,
-	mb_motion_s *best8u,
-	mb_motion_s *best8l,
-	mb_motion_s *bestsp)
+	MotionCand *bestfld,
+	MotionCand *best8u,
+	MotionCand *best8l,
+	MotionCand *bestsp)
 
 {
     const EncoderParams &eparams = picture.encparams;
-	mb_motion_s topfld_mc;
-	mb_motion_s botfld_mc;
+	MotionCand topfld_mc;
+	MotionCand botfld_mc;
 	int dt, db;
 	int notop, nobot;
-	subsampled_mb_s botssmb;
+	SubSampledImg botssmb;
 
 	botssmb.mb = ssmb->mb+eparams.phy_width;
 	botssmb.umb = ssmb->umb+(eparams.phy_width>>1);
@@ -1521,6 +1538,10 @@ static void field_estimate (
 }
 
 
+
+
+
+ 
 /* Hierarchical block matching motion estimation search
  *
  * A.Stevens 2000: This is now a big misnomer.  The search is now a
@@ -1593,11 +1614,11 @@ static void mb_me_search(
 	uint8_t *org,
 	uint8_t *ref,
     int fieldoff,
-	subsampled_mb_s *ssblk,
+	SubSampledImg *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h,
 	int xmax, int ymax,
-	mb_motion_s *res
+	MotionCand *res
 	)
 {
 	me_result_s best;
@@ -1779,6 +1800,8 @@ static void mb_me_search(
 	res->var = psumsq(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
 
 }
+
+
 
 
 /* 

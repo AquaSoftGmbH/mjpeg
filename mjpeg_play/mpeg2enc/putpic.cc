@@ -48,6 +48,7 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <cassert>
 #include "mpeg2syntaxcodes.h"
 #include "tables.h"
 #include "simd.h"
@@ -57,6 +58,15 @@
 #include "macroblock.hh"
 #include "picture.hh"
 
+#ifdef DEBUG_DPME
+static int dp_mv = 0;
+void calc_DMV( const Picture &picture, /*int pict_struct,  int topfirst,*/
+                      MotionVector DMV[Parity::dim],
+                      MotionVector &dmvector, 
+                      int mvx, int mvy
+    );
+#endif
+    
 /* output motion vectors (6.2.5.2, 6.3.16.2)
  *
  * this routine also updates the predictions for motion vectors (PMV)
@@ -106,6 +116,20 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		}
 		else
 		{
+#ifdef DEBUG_DPME
+            MotionVector DMV[Parity::dim /*pred*/];
+                        calc_DMV(*this,
+                         DMV,
+                         me.dualprimeMV,
+                         me.MV[0][0][0],
+                         me.MV[0][0][1]>>1);
+                         
+            printf( "PR%06d: %03d %03d %03d %03d %03d %03d\n", dp_mv,
+                me.MV[0][0][0], (me.MV[0][0][1]>>1), DMV[0][0], DMV[0][1], DMV[1][0], DMV[1][1] );
+            ++dp_mv;
+            if( dp_mv == 45000 )
+                exit(0);
+#endif
 			/* dual prime prediction */
 			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
 			coder.PutDMV(me.dualprimeMV[0]);
@@ -251,7 +275,7 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
 /* generate picture header (6.2.3, 6.3.10) */
 void Picture::PutHeader()
 {
-	coder.AlignBits();
+	assert( coder.Aligned() );
 	coder.PutBits(PICTURE_START_CODE,32); /* picture_start_code */
 	coder.PutBits(temp_ref,10); /* temporal_reference */
 	coder.PutBits(pict_type,3); /* picture_coding_type */
@@ -274,9 +298,8 @@ void Picture::PutHeader()
 		else
 			coder.PutBits(7,3); /* backward_f_code */
 	}
-
-
 	coder.PutBits(0,1); /* extra_bit_picture */
+    coder.AlignBits();
 	if ( !encparams.mpeg1 )
 	{
 		PutCodingExt();
@@ -290,7 +313,7 @@ void Picture::PutHeader()
  */
 void Picture::PutCodingExt()
 {
-	coder.AlignBits();
+	assert( coder.Aligned() );
 	coder.PutBits(EXT_START_CODE,32); /* extension_start_code */
 	coder.PutBits(CODING_ID,4); /* extension_start_code_identifier */
 	coder.PutBits(forw_hor_f_code,4); /* forward_horizontal_f_code */
@@ -310,6 +333,7 @@ void Picture::PutCodingExt()
 	coder.PutBits(prog_frame,1); /* chroma_420_type */
 	coder.PutBits(prog_frame,1); /* progressive_frame */
 	coder.PutBits(0,1); /* composite_display_flag */
+    coder.AlignBits();
 }
 
 
@@ -342,10 +366,6 @@ void Picture::PutSliceHdr( int slice_mb_y )
  * putpict - Quantise and encode picture with Sequence and GOP headers
  * as required.
  *
- *
- * TODO: Really we should seperate the Sequence start / GOP start logic
- * out.
- *
  ******************/
 
 void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
@@ -357,35 +377,29 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 		coder.PutSeqEnd();
 		ratecontrol.InitSeq(true);
 	}
-	/* Handle start of GOP stuff... */
+	/* Handle start of GOP stuff:
+       We've reach a new GOP so we emit what we coded for the
+       previous one as (for the moment) and mark the resulting coder
+       state for eventual backup.
+       Currently, we never backup more that to the start of the current GOP.
+     */
 	if( gop_start )
 	{
+        coder.EmitCoded();
 		ratecontrol.InitGOP( np, nb);
 	}
 
+    MPEG2CoderState pre_picture_state = coder.CurrentState();
 	ratecontrol.CalcVbvDelay(*this);
-    ratecontrol.InitPict(*this, coder.BitCount()); /* set up rate control */
-
-	/* Sequence header if new sequence or we're generating for a
-       format like (S)VCD that mandates sequence headers every GOP to
-       do fast forward, rewind etc.
-	*/
-
-    if( new_seq || decode == 0 ||
-        (gop_start && encparams.seq_hdr_every_gop) )
+    ratecontrol.InitNewPict(*this, coder.BitCount()); /* set up rate control */
+    bool recoding_suggested = TryEncoding(ratecontrol);
+    if( recoding_suggested )
     {
-		coder.PutSeqHdr();
+        mjpeg_info( "RECODING!");
+        coder.RestoreCodingState( pre_picture_state );
+        ratecontrol.InitKnownPict(*this);
+        TryEncoding(ratecontrol);
     }
-	if( gop_start )
-	{
-		/* set closed_GOP in first GOP only No need for per-GOP seqhdr
-		   in first GOP as one has already been created.
-		*/
-        
-		coder.PutGopHdr( decode,  closed_gop );
-	}
-    
-    QuantiseAndPutEncoding(ratecontrol);
 }
 
 /* ************************************************
@@ -400,11 +414,27 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
  *
  * *********************************************** */
 
-void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
+bool Picture::TryEncoding(RateCtl &ratectl)
 {
+	/* Sequence header if new sequence or we're generating for a
+       format like (S)VCD that mandates sequence headers every GOP to
+       do fast forward, rewind etc.
+	*/
+
+    if( new_seq || decode == 0 ||
+        (gop_start && encparams.seq_hdr_every_gop) )
+    {
+		coder.PutSeqHdr();
+    }
+	if( gop_start )
+	{
+		coder.PutGopHdr( decode,  closed_gop );
+	}
+    
 	int i, j, k;
 	int MBAinc;
 	MacroBlock *cur_mb = 0;
+
     
 	/* picture header and picture coding extension */
     PutHeader();
@@ -513,10 +543,13 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
         } /* Slice MB loop */
     } /* Slice loop */
     int64_t bitcount_EOP = coder.BitCount();
-	int padding_needed = ratectl.UpdatePict(*this, bitcount_EOP );
+	int padding_needed;
+    bool recoding_suggested;
+    ratectl.UpdatePict( *this, bitcount_EOP, 
+                        padding_needed, recoding_suggested );
+    coder.AlignBits();
     if( padding_needed > 0 )
     {
-        coder.AlignBits();          // Important: per-pic rate control byte based
         mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
                      padding_needed );
         for( i = 0; i < padding_needed; ++i )
@@ -524,7 +557,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
             coder.PutBits(0, 8);
         }
     }
-    
+    return recoding_suggested;
 }
 
 

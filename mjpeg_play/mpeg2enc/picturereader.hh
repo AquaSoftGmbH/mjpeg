@@ -21,8 +21,9 @@
  *
  */
 
-#include <mjpeg_types.h>
+#include <config.h>
 #include <pthread.h>
+#include "mjpeg_types.h"
 #include "picture.hh"
 
 class EncoderParams;

@@ -53,8 +53,11 @@
  */
 
 
+
+#include "config.h"
 #include "mjpeg_types.h"
 #include "syntaxconsts.h"
+
 
 /*
   How many frames to read in one go
@@ -140,7 +143,7 @@ public:
 	bool ignore_constraints;	/* Disabled conformance checking of
 								 * hor_size, vert_size and
 								 * samp_rate */
-    bool dualprime;             /* Use dual prime motion compensation */
+    bool dualprime;             /* Allow dual prime motion compensation */
 			
 
 	bool prog_seq; /* progressive sequence */
@@ -164,7 +167,6 @@ public:
 	bool fieldpic;			/* use field pictures */
 	bool pulldown_32;		/* 3:2 Pulldown of movie material */
 	bool topfirst;
-
 
 	/************
 	 *
@@ -258,10 +260,8 @@ public:
 									 * quantisation boost cuts in */
 
 
-    int max_encoding_frames; /* Maximum number of concurrent
-                                    frames to be concurrently encoded 
-                                    Used to control multi_threading.
-                                 */
+    int encoding_parallelism; /* Maximum number of concurrent worker threads
+                                 to be used for encoding  */
 
     int max_active_ref_frames;
     int max_active_b_frames;

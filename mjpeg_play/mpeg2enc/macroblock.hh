@@ -29,7 +29,7 @@
  *
  */
 
-/*  (C) 2000/2001 Andrew Stevens */
+/*  (C) 2000-2004 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -48,8 +48,10 @@
  *
  */
 
+#include "config.h"
 #include <vector>
 #include "mjpeg_types.h"
+#include "encodertypes.h"
 
 using namespace std;
 
@@ -58,21 +60,27 @@ class Picture;
 
 typedef int16_t DCTblock[64];
 
+
 class MotionEst
 {
 public:
+    enum Direction { fwd = 0, bwd =1 };
+
 	int mb_type; /* intra/forward/backward/interpolated */
 	int motion_type; /* frame/field/16x8/dual_prime */
-	int MV[2][2][2]; /* motion vectors */
+	MotionVector MV[2][2]; /* motion vectors */
 	int field_sel[2][2]; /* motion vertical field select */
-	int dualprimeMV[2]; /* dual prime vectors */
+	MotionVector dualprimeMV; /* dual prime vectors */
 	int var; 	/* luminance variance after motion compensation 
                    (measure of activity) */
 };
 
 class Quantizer;
+class MotionCand;
 
 /* macroblock information */
+class SubSampledImg;
+
 class MacroBlock
 {
 public:
@@ -85,11 +93,13 @@ public:
         picture(&_picture),
         i(_i),
         j(_j),
+        pel( _i, _j ),
+        hpel( _i<<1, _j<<1 ),
         dctblocks(_dctblocks),
         qdctblocks(_qdctblocks)
         {
         }
-    
+    void Encode();
     void MotionEstimate();
     void SelectCodingModeOnVariance();
     void FrameME();            // In motionest.cc
@@ -113,8 +123,18 @@ public:
 
 
 private:
+    bool FrameDualPrimeCand(uint8_t *ref,
+                            const SubSampledImg &ssmb,
+                            const MotionCand (&best_fieldmcs)[2][2], 
+                            MotionCand &best_mc,
+                            Coord &min_dpmv);
+
+private:
+
     Picture *picture;   
-    unsigned int i,j;           // Co-ordinates top-left in picture
+    unsigned int i,j;           // Co-ordinates top-left in picture DEBUG
+    Coord pel;                  // Co-ordinates top-left in picture (pels)
+    Coord hpel;                 // Co-ordindates top-left in picture (half-pel)
     int row_start;              // Offset from frame top to start of MB's row
 
 

@@ -284,15 +284,15 @@ void EncoderParams::ProfileAndLevelChecks()
       if (horizontal_size*vertical_size*frame_rate > 
 	  maxval->sample_rate)
 	mjpeg_error_exit1("Sample rate is greater than permitted in specified Level");
+    }      
 
   /* Table 8-12 */
-      if (bit_rate> 1.0e6 * maxval->bit_rate)
-        mjpeg_error_exit1("Bit rate is greater than permitted in specified Level");
+  if (bit_rate> 1.0e6 * maxval->bit_rate)
+    mjpeg_error_exit1("Bit rate is greater than permitted in specified Level");
 
   /* Table 8-13 */
-      if (vbv_buffer_code > maxval->vbv_buffer_size)
-        mjpeg_error_exit1("vbv_buffer_size exceeds High Level limit");
-    }      
+  if (vbv_buffer_code > maxval->vbv_buffer_size)
+    mjpeg_error_exit1("vbv_buffer_size exceeds High Level limit");
 }
 
 

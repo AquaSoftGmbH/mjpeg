@@ -47,6 +47,7 @@
 
 
 #include "config.h"
+#include <assert.h>
 #include "mjpeg_logging.h"
 #include "mpeg2encoder.hh"
 #include "mpeg2syntaxcodes.h"
@@ -95,6 +96,67 @@ void pred (	uint8_t *src[], int sfield,
 }
 
 
+
+/* calculate derived motion vectors (DMV) for dual prime prediction
+ * dmvector[2]: differential motion vectors (-1,0,+1)
+ * mvx,mvy: motion vector (for same parity)
+ *
+ * DMV[2][2]: derived motion vectors (for opposite parity)
+ *
+ * uses global variables pict_struct and topfirst
+ *
+ * Notes:
+ *  - all vectors are in field coordinates (even for frame pictures)
+ *
+ */
+
+#ifndef DEBUG_DPME
+static
+#endif
+void calc_DMV( const Picture &picture, /*int pict_struct,  int topfirst,*/
+					  MotionVector DMV[Parity::dim],
+					  MotionVector &dmvector, 
+					  int mvx, int mvy
+	)
+{
+	if (picture.pict_struct==FRAME_PICTURE)
+	{
+		if (picture.topfirst)
+		{
+			/* vector for prediction of top field from bottom field */
+			DMV[0][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
+			DMV[0][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] - 1;
+			
+			/* vector for prediction of bottom field from top field */
+			DMV[1][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
+			DMV[1][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] + 1;
+		}
+		else
+		{
+			/* vector for prediction of top field from bottom field */
+			DMV[0][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
+			DMV[0][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] - 1;
+			
+			/* vector for prediction of bottom field from top field */
+			DMV[1][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
+			DMV[1][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] + 1;
+		}
+	}
+	else
+	{
+		/* vector for prediction from field of opposite 'parity' */
+		DMV[0][0] = ((mvx+(mvx>0))>>1) + dmvector[0];
+		DMV[0][1] = ((mvy+(mvy>0))>>1) + dmvector[1];
+		
+		/* correct for vertical field shift */
+		if (picture.pict_struct==TOP_FIELD)
+			DMV[0][1]--;
+		else
+			DMV[0][1]++;
+	}
+}
+
+
 /* form prediction for one macroblock
  *
  * lx:     frame width (identical to global var `width')
@@ -115,9 +177,8 @@ void pred (	uint8_t *src[], int sfield,
 void MacroBlock::Predict()
 {
 	const Picture &picture = ParentPicture();
-	const 
-	int bx = TopleftX();
-	int by = TopleftY();
+	const int bx = TopleftX();
+	const int by = TopleftY();
 	uint8_t **oldref = picture.oldref;	// Forward prediction
 	uint8_t **newref = picture.newref;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
@@ -127,7 +188,7 @@ void MacroBlock::Predict()
 	bool addflag;
 	int currentfield;
 	uint8_t **predframe;
-	int DMV[2][2];
+	MotionVector DMV[Parity::dim /*pred*/];
 
 	if (final_me.mb_type&MB_INTRA)
 	{
@@ -174,19 +235,19 @@ void MacroBlock::Predict()
 			}
 			else if (final_me.motion_type==MC_DMV)
 			{
-				/* dual prime prediction */
+				/* dual prime prediction calculate derived motion vectors */
+				calc_DMV(picture,
+						 DMV,
+						 final_me.dualprimeMV,
+						 final_me.MV[0][0][0],
+						 final_me.MV[0][0][1]>>1);
 
-				/* calculate derived motion vectors */
-				calc_DMV(picture.pict_struct, 
-						 static_cast<int>(picture.topfirst),
-						 DMV,final_me.dualprimeMV,
-						 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1);
 
 				/* predict top field from top field */
 				pred(oldref,0,cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
-
+      
 				/* predict bottom field from bottom field */
 				pred(oldref,1,cur,1,
 					 lx<<1,16,8,bx,by>>1,
@@ -196,6 +257,7 @@ void MacroBlock::Predict()
 				pred(oldref,1,cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 DMV[0][0],DMV[0][1],true);
+
 
 				/* predict and add to bottom field from top field */
 				pred(oldref,0,cur,1,
@@ -261,10 +323,10 @@ void MacroBlock::Predict()
 					predframe = oldref; /* previous frame */
 
 				/* calculate derived motion vectors */
-				calc_DMV(picture.pict_struct,
-						 static_cast<int>(picture.topfirst),
+				calc_DMV(picture,
 						 DMV,final_me.dualprimeMV,
-						 final_me.MV[0][0][0],final_me.MV[0][0][1]);
+						 final_me.MV[0][0][0],
+						 final_me.MV[0][0][1]);
 
 				/* predict from field of same parity */
 				pred(oldref,currentfield,cur,currentfield,

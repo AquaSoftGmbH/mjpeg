@@ -23,6 +23,7 @@
 #ifndef _QUANTIZE_H
 #define _QUANTIZE_H
 
+#include "config.h"
 #include "mjpeg_types.h"
 
 struct QuantizerWorkSpace;

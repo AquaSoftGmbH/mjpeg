@@ -20,10 +20,6 @@
  */
 
 
-#ifdef	HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include "picturereader.hh"
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,13 +94,15 @@ void PictureReader::Init()
     pthread_mutex_init( &input_imgs_buf_lock, p_attr );
     /* Allocate the frame data buffers: if we're not going to scan ahead
        for GOP size we can save a *lot* of memory... */
-    input_imgs_buf_size = 
-        max( 2*READ_CHUNK_SIZE,
-             ( encparams.N_max == encparams.N_min )
-             ? ( READ_CHUNK_SIZE +
-                 (encparams.max_encoding_frames/encparams.M+1)*encparams.M )
-             : 2*encparams.N_max+READ_CHUNK_SIZE
-             );
+    int active_frames = max( encparams.encoding_parallelism, 1);
+    int buffering_min = 2*READ_CHUNK_SIZE;
+    int B_group_min = READ_CHUNK_SIZE + 
+        (active_frames/encparams.M+1)*encparams.M;
+    int GOP_lookahead_min  =2*encparams.N_max+READ_CHUNK_SIZE;
+    input_imgs_buf_size = max( buffering_min,
+                               ( encparams.N_max == encparams.N_min )
+                               ? B_group_min
+                               : GOP_lookahead_min );
 
     mjpeg_info( "Buffering %d frames", input_imgs_buf_size );
     input_imgs_buf = new ImagePlanes[input_imgs_buf_size];

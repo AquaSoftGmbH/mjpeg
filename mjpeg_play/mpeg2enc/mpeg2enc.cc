@@ -65,8 +65,6 @@
 #include "ratectl.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
-
-#include "yuv4mpeg.h"
 #include "format_codes.h"
 #include "mpegconsts.h"
 
@@ -88,13 +86,36 @@
 class FILE_StrmWriter : public ElemStrmWriter
 {
 public:
-    FILE_StrmWriter( EncoderParams &encoder, const char *ofile_ptr ); 
-    virtual ~FILE_StrmWriter();       
-    void PutBits( uint32_t val, int n);
-    void FrameBegin();
-    void FrameFlush();
-    void FrameDiscard();
-    
+
+
+    FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) :
+        ElemStrmWriter( encparams )
+        {
+            /* open output file */
+            if (!(outfile=fopen(outfilename,"wb")))
+            {
+                mjpeg_error_exit1("Couldn't create output file %s",outfilename);
+            }
+        }
+
+    virtual void WriteOutBufferUpto( const size_t flush_upto )
+        {
+            size_t written = fwrite( buffer, 
+                                     sizeof(uint8_t), flush_upto,
+                                     outfile );
+            if( written != flush_upto )
+            {
+                mjpeg_error_exit1( strerror(ferror(outfile)) );
+            }
+	
+        }
+
+    virtual ~FILE_StrmWriter()
+        {
+            fclose( outfile );
+        }
+
+
 private:
     FILE *outfile;
 };
@@ -102,70 +123,20 @@ private:
 
 
 
-FILE_StrmWriter::FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) :
-    ElemStrmWriter( encparams )
-{
-	/* open output file */
-	if (!(outfile=fopen(outfilename,"wb")))
-	{
-		mjpeg_error_exit1("Couldn't create output file %s",outfilename);
-	}
-}
-
-FILE_StrmWriter::~FILE_StrmWriter()
-{
-	fclose( outfile );
-}
-
-/**************
- *
- * Write rightmost n (0<=n<=32) bits of val to outfile 
- *
- *************/
-void FILE_StrmWriter::PutBits(uint32_t val, int n)
-{
-	val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
-	while( n >= outcnt )
-	{
-		outbfr = (outbfr << outcnt ) | (val >> (n-outcnt));
-		putc( outbfr, outfile );
-		n -= outcnt;
-		outcnt = 8;
-		++bytecnt;
-	}
-	if( n != 0 )
-	{
-		outbfr = (outbfr<<n) | val;
-		outcnt -= n;
-	}
-}
-
-
-void FILE_StrmWriter::FrameBegin()
-{
-}
-
-void FILE_StrmWriter::FrameFlush()
-{
-}
-
-void FILE_StrmWriter::FrameDiscard()
-{
-}
-
-
 /**************************
  *
- * Derived class for File (actually: pipe and FIFO) based bitstream output
+ * Derived class for File (actually: pipe and FIFO) based input of frames
+ * in the YUV4MPEG2 format
  *
  *************************/
-
 
 class Y4MPipeReader : public PictureReader
 {
 public:
-    Y4MPipeReader( EncoderParams &encparams, int pipe_fd );
+
+    Y4MPipeReader( EncoderParams &encparams, int istrm_fd );
     ~Y4MPipeReader();
+
     void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:
     bool LoadFrame( );
@@ -304,6 +275,8 @@ int Y4MPipeReader::PipeRead(uint8_t *buf, int len)
    return r;
 }
 
+
+
 /**************************
  *
  * Derived class for options set from command line
@@ -347,7 +320,7 @@ void MPEG2EncCmdLineOptions::DisplayFrameRates(void)
 {
  	unsigned int i;
 	printf("Frame-rate codes:\n");
-	for( i = 1; mpeg_valid_framerate_code(i); ++i )
+    for( i = 1; mpeg_valid_framerate_code(i); ++i )
 	{
 		printf( "%2d - %s\n", i, mpeg_framerate_code_definition(i));
 	}
@@ -570,8 +543,14 @@ void MPEG2EncCmdLineOptions::Usage()
 "    Turn ON the use of dual-prime motion compensation.  This is not the\n"
 "    default because artifacting has been observed (bug).  See mpeg2enc(1).\n"
 "--no-constraints\n"
-"    Deactivate the constraints for maximum video resolution and sample rate.\n"
+"    Deactivate constraints for maximum video resolution and sample rate.\n"
 "    Could expose bugs in the software at very high resolutions!\n"
+"--no-altscan-mpeg2\n"
+"    Deactivate the use of the alternate block pattern for MPEG-2.  This is\n"
+"    A work-around for a Bug in an obscure hardware decoder.\n"
+"--no-dualprime-mpeg2\n"
+"    Turn off the use of dual-prime motion compensation.  This is a\n"
+"    work-around for a Bug in some software players.\n"
 "--custom-quant-matrices|-K kvcd|tmpgenc|default|hi-res|file=inputfile|help\n"
 "    Request custom or userspecified (from a file) quantization matrices\n"
 "--unit-coeff-elim|-E num\n"
@@ -633,9 +612,8 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 {
     int n;
     int nerr = 0;
-
     static const char	short_options[]=
-        "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tupdsZHOcCPK:E:R:";
+        "m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:A:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
     static struct option long_options[]={
@@ -657,6 +635,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "max-gop-size",      1, 0, 'G'},
         { "closed-gop",        0, 0, 'c'},
         { "force-b-b-p", 0, &preserve_B, 1},
+        { "ratecontroller", 1, 0, 'A' },
         { "quantisation-reduction", 1, 0, 'Q' },
         { "quant-reduction-max-var", 1, 0, 'X' },
         { "video-buffer",      1, 0, 'V' },
@@ -677,7 +656,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "custom-quant-matrices", 1, 0, 'K'},
         { "unit-coeff-elim",   1, 0, 'E'},
         { "b-per-refframe",    1, 0, 'R' },
-	{ "cbr",               0, 0, 'u'},
+	    { "cbr",               0, 0, 'u'},
         { "help",              0, 0, '?' },
         { 0,                   0, 0, 0 }
     };
@@ -751,7 +730,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 				DisplayFrameRates();
 			if( !mpeg_valid_framerate_code(frame_rate) )
 			{
-				mjpeg_error( "illegal -F value (use -F 0 to list options)" );
+                mjpeg_error( "illegal -F value (use -F 0 to list options)" );
 				++nerr;
 			}
 			break;
@@ -898,9 +877,9 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 			ParseCustomOption(optarg);
 			break;
 
-	case 'u':
-		force_cbr = 1;
-		break;
+        case 'u':
+		    force_cbr = 1;
+    		break;
 
         case 'E':
             unit_coeff_elim = atoi(optarg);
@@ -924,9 +903,17 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 		case 'd' :
 			svcd_scan_data = 0;
 			break;
+		case 'A' :
+			rate_control = atoi(optarg);
+			if( rate_control < 0 || rate_control > 1 )
+			{
+				mjpeg_error( "-A option requires arg [0,1]");
+				++nerr;
+			}
+			break;
 		case 'Q' :
 			act_boost = atof(optarg);
-			if( act_boost <-4.0 || act_boost > 5.0)
+			if( act_boost <-4.0 || act_boost > 4.0)
 			{
 				mjpeg_error( "-Q option requires arg -4.0 .. 5.0");
 				++nerr;
@@ -986,10 +973,12 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 
 
 
+
 class YUV4MPEGEncoder : public MPEG2Encoder
 {
 public:
     YUV4MPEGEncoder( MPEG2EncCmdLineOptions &options );
+    void Encode();
 };
 
 
@@ -1007,7 +996,18 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
     writer = new FILE_StrmWriter( parms, cmd_options.outfilename );
     quantizer = new Quantizer( parms );
     coder = new MPEG2Coder( parms, *writer );
-    bitrate_controller = new OnTheFlyRateCtl( parms );
+    
+    if( cmd_options.rate_control == 0 )
+    {
+        mjpeg_info( "Using one-pass rate controller" );
+        bitrate_controller = new OnTheFlyRateCtl( parms );
+    }
+    else 
+    {
+        mjpeg_info( "Using Pass1 rate controller" );
+        bitrate_controller = new Pass1RateCtl( parms );
+    }
+
     seqencoder = new SeqEncoder( parms, *reader, *quantizer,
                                  *writer, *coder, *bitrate_controller);
 
@@ -1015,8 +1015,17 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
     parms.Init( options );
     reader->Init();
     quantizer->Init();
-    
+    seqencoder->Init();
 
+}
+
+void YUV4MPEGEncoder::Encode( )
+{
+    bool more;
+    do
+    {
+        more = seqencoder->EncodeFrame();
+    } while( more );
 }
 
 int main( int argc,	char *argv[] )
@@ -1031,7 +1040,8 @@ int main( int argc,	char *argv[] )
 	mjpeg_default_handler_verbosity(options.verbose);
 
     YUV4MPEGEncoder encoder( options );
-    encoder.seqencoder->Encode();
+
+    encoder.Encode();
 
 #ifdef OUTPUT_STAT
 	if( statfile != NULL )

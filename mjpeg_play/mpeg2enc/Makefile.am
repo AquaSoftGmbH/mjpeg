@@ -74,6 +74,7 @@ libmpeg2encpp_la_SOURCES = \
 	putseq.cc \
 	quantize.cc \
 	ratectl.cc \
+	pass1ratectl.cc \
 	stats.cc \
 	synchrolib.cc \
 	tables.c  \

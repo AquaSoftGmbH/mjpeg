@@ -22,6 +22,9 @@
  *
  */
 
+#include <config.h>
+
+
 
 struct MPEG2EncParams
 {
@@ -48,6 +51,7 @@ struct MPEG2EncParams
     double hf_q_boost;
     double act_boost;
     double boost_var_ceil;
+    int rate_control;           /* The rate controller to use */
     int video_buffer_size;
     int seq_length_limit;
     int min_GOP_size;
@@ -73,7 +77,11 @@ struct MPEG2EncParams
     int unit_coeff_elim;
     int force_cbr;
     int verbose;
-
+    int allow_parallel_read;    /* This should be set false when lib is
+                                 * used as a component in Multimedia
+                                 * frameworks that do their own thread
+                                 * scheduling / co-routining
+                                 */
 };
 
 #endif

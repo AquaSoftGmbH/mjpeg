@@ -1,5 +1,6 @@
 IN PROGRESS
 
+	- Remove obsolete i,j in macroblocks in favour of Coord....
 	- Replace appending subsampled luminance to luminance data with a 5-plane
 	  picture data model (YUVHQ)
 	- MotionEst should be called 'MacroBlockCodingMode'
