@@ -469,9 +469,6 @@ void video_convert()
    static char temp1[16],temp2[16],temp3[16],temp5[16],temp6[16], temp7[4];
    static char temp8[4], temp9[4], temp10[4],temp12[4],temp13[4];
    static char temp14[6],temp15[4],temp16[4],temp17[4];
-   FILE *backup_pipe;      /* if there are troubels with the piping or if we */
-                           /* are late in supporting the current YUV4MPEG    */
-                           /* format. It use popen/pclose no status aviable */
    error = 0;
    scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
@@ -539,7 +536,7 @@ void video_convert()
       mpeg2enc_command[n] =  "-G"; n++;
       mpeg2enc_command[n] =  temp17; n++;
      }
-
+   
 /* And here the support fpr the different versions vo mjpeg tools */
 /* And the different mpeg versions */
    if (encoding_syntax_style == 140)
@@ -562,7 +559,11 @@ void video_convert()
          mpeg2enc_command[n] =  "-f"; n++;
          mpeg2enc_command[n] =  temp5; n++;
        }
-     
+     if((*pointenc).muxformat >= 3)
+       {
+         mpeg2enc_command[n] = "-P";
+         n++;
+       }
    }
 
 /* And here again some common stuff */
@@ -570,8 +571,7 @@ void video_convert()
    mpeg2enc_command[n] = enc_videofile; n++;
    mpeg2enc_command[n] = NULL;
  
-   if (encoding_syntax_style != 150)                          /* the backup */ 
-     start_pipe_command(mpeg2enc_command, MPEG2ENC); /* mpeg2enc */
+   start_pipe_command(mpeg2enc_command, MPEG2ENC);
 
    /* let's start yuvplay to show video while it's being encoded */
    if (use_yuvplay_pipe)
@@ -652,8 +652,7 @@ void video_convert()
       }
       yuvscaler_command[n] = NULL;
 
-      if (encoding_syntax_style != 150)                       /* the backup */ 
-        start_pipe_command(yuvscaler_command, YUVSCALER); /* yuvscaler */
+      start_pipe_command(yuvscaler_command, YUVSCALER);
 
       /* set variable in pipes.h to tell to use yuvscaler */
       use_yuvscaler_pipe = 1;
@@ -690,11 +689,27 @@ void video_convert()
       lav2yuv_command[n] = "-n"; n++;
       lav2yuv_command[n] = temp3; n++;
      }
+   if( (strcmp((*pointenc).interlacecorr,"not needed") != 0) &&
+               (encoding_syntax_style == 150) )
+     {
+       if ( (strcmp((*pointenc).interlacecorr,"exchange fields") == 0) ||
+            (strcmp((*pointenc).interlacecorr,"do both") == 0)           )
+         {
+           lav2yuv_command[n] = "-x"; 
+           n++;
+         }
+         if ( (strcmp((*pointenc).interlacecorr,"shift fields") == 0) ||
+            (strcmp((*pointenc).interlacecorr,"do both") == 0)           )
+         {
+           lav2yuv_command[n] = "-F"; 
+             n++;
+         }
+     }
+
    lav2yuv_command[n] = enc_inputfile; n++;
    lav2yuv_command[n] = NULL;
   
-   if (encoding_syntax_style != 150)                       /* the backup */ 
-     start_pipe_command(lav2yuv_command, LAV2YUV); /* lav2yuv */
+   start_pipe_command(lav2yuv_command, LAV2YUV); 
 
    command2string(lav2yuv_command, command_temp);
    sprintf(command, "%s |", command_temp);
@@ -715,12 +730,6 @@ void video_convert()
       printf("Executing : %s\n", command);
    show_executing(command);
 
-   if (encoding_syntax_style == 150)
-     {
-       backup_pipe = popen(command, "w"); /* grab output until it's ready */
-       pclose(backup_pipe);
-       show_executing(command);
-     }
 }
 
 /* mplexing the encodet streams */
@@ -728,7 +737,7 @@ void mplex_convert()
 {
 char *mplex_command[256];
 char command[256];
-static char temp1[16], temp2[16], temp3[16];
+static char temp1[16], temp2[16], temp3[16], temp4[4];
 int n;
 
 error = 0;
@@ -744,6 +753,11 @@ progress_encoding = 3;
       sprintf(temp1, "%i", (*pointenc).muxformat);
       mplex_command[n] = "-f"; n++;
       mplex_command[n] = temp1; n++;
+      if (( (*pointenc).muxformat == 3) && ((*pointenc).muxvbr[0] != '-' ) )
+      {
+        sprintf(temp1, "-V");
+        mplex_command[n] = temp1; n++;
+      }
    }
    if ((*pointenc).streamdatarate != 0)
    {
@@ -762,6 +776,12 @@ progress_encoding = 3;
       mplex_command[n] = (*pointenc).muxvbr; 
       n++;
    }  
+
+   if( ((*pointenc).muxformat == 3) && ((*pointenc).muxvbr[0] != '-') ) 
+   {
+      sprintf(temp4,"-V");
+      mplex_command[n] =  temp4; n++;
+   }
 
    mplex_command[n] = enc_audiofile; n++;
    mplex_command[n] = enc_videofile; n++;
