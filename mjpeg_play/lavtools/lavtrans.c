@@ -55,6 +55,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -124,7 +125,7 @@ int main(int argc, char ** argv)
    lav_file_t *outfd = NULL;
    FILE *wavfd = NULL;
    FILE *imgfd = NULL;
-   char *vbuff;
+   char *vbuff, *dotptr;
    char imgfname[4096];
    long audio_bytes_out = 0;
    int res, n, nframe;
@@ -163,9 +164,23 @@ int main(int argc, char ** argv)
 
    (void)mjpeg_default_handler_verbosity(verbose);
 
-   if(outfile==0 || format==0) Usage(argv[0]);
-   if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
+   if(outfile==0) Usage(argv[0]);
    if(optind>=argc) Usage(argv[0]);
+   if(outfile != 0 && format == 0) {
+      if((dotptr = strrchr(outfile, '.'))) {
+#ifdef HAVE_LIBMOVTAR
+         if(!strcasecmp(dotptr+1, "tar") || !strcasecmp(dotptr+1, "movtar"))
+            format = 'm';
+#endif
+#ifdef HAVE_LIBQUICKTIME
+            if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
+               || !strcasecmp(dotptr+1, "moov")) format = 'q';
+#endif
+            if(!strcasecmp(dotptr+1, "avi")) format = 'a';
+         }
+      if(format == '\0') format = 'a';
+   }
+   if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
 
    if (process_image_frame != -1 && format!='i')
    {

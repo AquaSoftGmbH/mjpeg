@@ -1961,7 +1961,7 @@ lavrec_t *lavrec_malloc(void)
    }
 
    /* let's set some default values now */
-   info->video_format = 'a';
+   info->video_format = '\0';
    info->video_norm = 3;
    info->video_src = 3;
    info->software_encoding = 0;
@@ -2058,10 +2058,10 @@ int lavrec_main(lavrec_t *info)
    /* Now we're ready to go move to Real-time scheduling... */
    schedparam.sched_priority = 1;
    if(setpriority(PRIO_PROCESS, 0, -15)) { /* Give myself maximum priority */ 
-      mjpeg_warn("Unable to set negative priority for main thread.\n");
+      mjpeg_info("Unable to set negative priority for main thread.\n");
    }
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
-      mjpeg_warn("Pthread Real-time scheduling for main thread could not be enabled.\n"); 
+      mjpeg_info("Pthread Real-time scheduling for main thread could not be enabled.\n"); 
    }
 #endif
 
