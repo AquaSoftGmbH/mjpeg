@@ -4102,7 +4102,9 @@ static int zoran_init_done(struct video_device *dev)
 
 static struct video_device zoran_template =
 {
+#if LINUX_VERSION_CODE >= 0x020403
 	owner:		THIS_MODULE,
+#endif
 	name:		ZORAN_NAME,
 	type:		VID_TYPE_CAPTURE | VID_TYPE_OVERLAY | VID_TYPE_CLIPPING | VID_TYPE_FRAMERAM |
 			VID_TYPE_SCALES | VID_TYPE_SUBCAPTURE,
