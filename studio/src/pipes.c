@@ -369,24 +369,24 @@ void start_pipe_command(char *command[], int number)
 
       if(pipe(ipipe) || pipe(opipe))
       {
-         perror("pipe() failed");
-         exit(1);
+         gtk_show_text_window(STUDIO_ERROR, "pipe() failed");
+         return;
       }
 
       if (number == LAV2YUV)
       {
          if (pipe(spipe))
          {
-            perror("pipe() failed");
-            exit(1);
+            gtk_show_text_window(STUDIO_ERROR, "pipe() failed");
+            return;
          }
       }
 
       pid[number] = fork();
       if(pid[number]<0)
       {
-         perror("fork() failed");
-         exit(1);
+         gtk_show_text_window(STUDIO_ERROR, "fork() failed");
+         return;
       }
 
       active[number] = 1;

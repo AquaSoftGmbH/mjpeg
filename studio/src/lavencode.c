@@ -192,7 +192,7 @@ void lavencode_callback(int number, char *input)
       }
       
       if ( (encoding_syntax_style == 150) && 
-           (sscanf(input, "    INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
+           (sscanf(input, "   INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
       {
        gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
