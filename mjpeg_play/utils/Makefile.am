@@ -15,6 +15,8 @@ EXTRA_DIST = cpuinfo.c
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
+bin_PROGRAMS = mjpeg_simd_helper
+
 noinst_LTLIBRARIES = libmotion.la libcpuaccel.la
 
 lib_LTLIBRARIES = libmjpegutils.la
@@ -63,5 +65,8 @@ libcpuaccel_la_SOURCES = \
 	cpu_accel.c
 
 libcpuaccel_la_LIBADD = $(mmxsse_lib) $(altivec_lib)
+
+mjpeg_simd_helper_SOURCES = mjpeg_simd_helper.c
+mjpeg_simd_helper_LDADD = libcpuaccel.la libmjpegutils.la
 
 MAINTAINERCLEANFILES = Makefile.in

@@ -47,6 +47,9 @@ extern "C" {
 	double fmax(double, double);
 #endif
 
+extern const char *disable_simd_flags[];
+extern int disable_simd(char *);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11,7 +11,10 @@ void enable_mmxsse_motion(int cpucap)
 	if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for MOTION!");
-		psad_sub22 = sad_sub22_mmxe;
+		if (disable_simd("sad_sub22") != 0)
+		   mjpeg_info(" Disabling sad_sub22");
+		else
+		   psad_sub22 = sad_sub22_mmxe;
 		psad_sub44 = sad_sub44_mmxe;
 		psad_00 = sad_00_mmxe;
 		psad_01 = sad_01_mmxe;
@@ -31,7 +34,10 @@ void enable_mmxsse_motion(int cpucap)
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
 		mjpeg_info( "SETTING MMX for MOTION!");
-		psad_sub22 = sad_sub22_mmx;
+		if (disable_simd("sad_sub22") != 0)
+		   mjpeg_info(" Disabling sad_sub22");
+		else
+		   psad_sub22 = sad_sub22_mmx;
 		psad_sub44 = sad_sub44_mmx;
 		psad_00 = sad_00_mmx;
 		psad_01 = sad_01_mmx;

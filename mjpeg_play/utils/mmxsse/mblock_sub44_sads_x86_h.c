@@ -70,6 +70,7 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 	int      gridrowstride = rowstride;
 	int weight;
 
+        SIMD_SUFFIX(init_qblock_sad)(ref, h, rowstride);
 	for( y=jlow; y <= jhigh ; y+=4)
 	{
 		curblk = currowblk;

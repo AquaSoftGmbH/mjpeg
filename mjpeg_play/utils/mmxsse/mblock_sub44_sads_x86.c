@@ -43,19 +43,6 @@
 #include "mblock_sub44_sads_x86.h"
 
 /*
-  Register usage:
-  mm0-mm3  Hold the current row 
-  mm4      Used for accumulating partial SAD
-  mm7      Holds zero
- */
-
-static inline void mmx_zero_reg (void)
-{
-	/*  load 0 into mm7	 */
-	pxor_r2r (mm7, mm7);
-}
-
-/*
  * Load a 8*4 block of 4*4 sub-sampled pels (qpels) into the MMX
  * registers
  *
@@ -94,51 +81,52 @@ static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
  *
  */
 
+static __inline__ void init_qblock_sad_mmxe(uint8_t *refblk,uint32_t h,uint32_t rowstride)
+{
+    /* load refblk into mm6 and mm7 */
+
+    movd_m2r(refblk[0],mm6);
+    movd_m2r(refblk[rowstride],mm4);
+    punpcklbw_r2r(mm4,mm6);
+
+    if( h == 4 ) {
+        refblk+=rowstride*2;
+        movd_m2r(refblk[0],mm7);
+        movd_m2r(refblk[rowstride],mm5);
+        punpcklbw_r2r(mm5,mm7);
+    }
+}
+
 static __inline__ int qblock_sad_mmxe(uint8_t *refblk, 
 								  uint32_t h,
 								  uint32_t rowstride)
 {
-	int res;
-	pxor_r2r 	(mm4,mm4);
-			
-	movq_r2r	(mm0,mm5);		/* First row */
-	movd_m2r	(*refblk, mm6);
-	pxor_r2r    ( mm7, mm7);
-	refblk += rowstride;
-	punpcklbw_r2r	( mm7, mm5);
-	punpcklbw_r2r	( mm7, mm6);
-	psadbw_r2r      ( mm5, mm6);
-	paddw_r2r     ( mm6, mm4 );
-	
+	int res,res2,foo;
 
+        /* On input,
+           mm0 = first row
+           mm1 = second row
+           mm2 = third row
+           mm3 = fourth row
 
-	movq_r2r	(mm1,mm5);		/* Second row */
-	movd_m2r	(*refblk, mm6);
-	refblk += rowstride;
-	punpcklbw_r2r	( mm7, mm5);
-	punpcklbw_r2r	( mm7, mm6);
-	psadbw_r2r      ( mm5, mm6);
-	paddw_r2r     ( mm6, mm4 );
+           mm6 = refblk for first and second roww packed together (ala init_qblock_sad_mmxe)
+           mm7 = refblk for third and fourth rows packed together (ala init_qblock_sad_mmxe)
+        */
+
+        /* Do the first two rows together, by packing the two rows of 4 bytes
+           into one eight byte register; then perform only one SAD for both
+           rows at once. */
+
+        movq_r2r     (mm0,mm4);
+        punpcklbw_r2r(mm1,mm4);
+        psadbw_r2r   (mm6,mm4);
 
 	if( h == 4 )
 	{
-
-		movq_r2r	(mm2,mm5);		/* Third row */
-		movd_m2r	(*refblk, mm6);
-		refblk += rowstride;
-		punpcklbw_r2r	( mm7, mm5);
-		punpcklbw_r2r	( mm7, mm6);
-		psadbw_r2r      ( mm5, mm6);
-		paddw_r2r     ( mm6, mm4 );
-
-		
-		movq_r2r	(mm3,mm5);		/* Fourth row */
-		movd_m2r	(*refblk, mm6);
-		punpcklbw_r2r	( mm7, mm5);
-		punpcklbw_r2r	( mm7, mm6);
-		psadbw_r2r      ( mm5, mm6);
-		paddw_r2r     ( mm6, mm4 );
-		
+            movq_r2r     (mm2,mm5);
+            punpcklbw_r2r(mm3,mm5);
+            psadbw_r2r   (mm7,mm5);
+            paddw_r2r    (mm5,mm4);
 	}
 	movd_r2m      ( mm4, res );
 
@@ -146,6 +134,16 @@ static __inline__ int qblock_sad_mmxe(uint8_t *refblk,
 }
 
 
+
+/*
+  Register usage:
+  mm0-mm3  Hold the current row 
+  mm4      Used for accumulating partial SAD
+ */
+
+static __inline__ void init_qblock_sad_mmx(uint8_t *refblk,uint32_t h,uint32_t rowstride)
+{
+}
 
 static __inline__ int qblock_sad_mmx(uint8_t *refblk, 
 								  uint32_t h,

@@ -1,23 +1,23 @@
 /*
- * cpu_accel.c
- * Copyright (C) 1999-2000 Aaron Holtzman <aholtzma@ess.engr.uvic.ca>
- *
- * This file is part of mpeg2dec, a free MPEG-2 video stream decoder.
- *
- * mpeg2dec is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * mpeg2dec is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
- */
+* cpu_accel.c
+* Copyright (C) 1999-2000 Aaron Holtzman <aholtzma@ess.engr.uvic.ca>
+*
+* This file is part of mpeg2dec, a free MPEG-2 video stream decoder.
+*
+* mpeg2dec is free software; you can redistribute it and/or modify
+* it under the terms of the GNU General Public License as published by
+* the Free Software Foundation; either version 2 of the License, or
+* (at your option) any later version.
+*
+* mpeg2dec is distributed in the hope that it will be useful,
+* but WITHOUT ANY WARRANTY; without even the implied warranty of
+* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+* GNU General Public License for more details.
+*
+* You should have received a copy of the GNU General Public License
+* along with this program; if not, write to the Free Software
+* Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
 
 #include <config.h>
 #include <stdio.h>
@@ -28,6 +28,7 @@
 #include <malloc.h>
 #endif
 #include <unistd.h>
+#include <string.h>
 #include <errno.h>
 #include "cpu_accel.h"
 #include "mjpeg_logging.h"
@@ -35,6 +36,33 @@
 #ifdef HAVE_ALTIVEC
 extern int altivec_copy_v0();
 #endif
+
+	const char *disable_simd_flags[] = {
+		"sad_00",
+		"sad_01",
+		"sad_10",
+		"sad_11",
+		"sad_sub22",
+		"sad_sub44",
+		"bsad",
+		"variance",
+		"sumsq",
+		"sumsq_sub22",
+		"bsumsq_sub22",
+		"bsumsq",
+		"build_sub22_mests",
+		"build_sub44_mests",
+		"subsample_image",
+		"find_best_one_pel",
+		"quant_nonintra",
+		"quant_weight_intra",
+		"quant_weight_nonintra",
+		"iquant_intra",
+		"iquant_nonintra",
+		NULL
+		};
+
+static char *parse_next(char **, const char *);
 
 #ifdef HAVE_X86CPU 
 
@@ -325,4 +353,71 @@ void *bufalloc( size_t size )
 	if ((int)buf & (simd_alignment - 1))
 		mjpeg_error_exit1("could not allocate %d bytes aligned on a %d byte boundary", size, simd_alignment);
 	return buf;
+}
+
+int
+disable_simd(char *name)
+	{
+	int	foundit;
+	char	*cp, *simd_env;
+	const char **dft;
+
+	if	((cp = getenv("MJPEGTOOLS_SIMD_DISABLE")) == NULL)
+		return(0);
+
+/*
+ * First check that the routine being tested for disabled status exists in
+ * the list of known functions.
+*/
+	foundit = 0;
+	for	(dft = disable_simd_flags; *dft; dft++)
+		{
+		if	(strcasecmp(name, *dft) == 0)
+			{
+			foundit = 1;
+			break;
+			}
+		}
+	if	(foundit == 0)
+		return(0);
+
+/*
+ * Next compare the function name passed as input to the comma separated
+ * names in the environment variable.  If a match is found then return 1
+*/
+	simd_env = strdup(cp);
+	cp = simd_env;
+	while	(cp = parse_next(&simd_env, ","))
+		{
+		foundit = 0;
+		if	(strcasecmp(cp, name) == 0)
+			{
+			foundit = 1;
+			break;
+			}
+		}
+	free(simd_env);
+	return(foundit);
+	}
+
+static char *parse_next(char **sptr, const char *delim)
+{
+	char *start, *ret;
+	start = ret = *sptr;
+	if ((ret == NULL) || ret == '\0') {
+	   return (NULL);
+	}
+
+	while (*ret != '\0' &&
+		   strchr(delim, *ret) == NULL) {
+		ret++;
+	}
+	if (*ret == '\0') {
+		*sptr = NULL;
+	} else {
+	    *ret = '\0';
+	    ret++;
+	    *sptr = ret;
+	}
+	return (start);
 }
