@@ -4,8 +4,8 @@ INCLUDES = -I$(top_srcdir)
 
 noinst_LIBRARIES = libutils.a libmotion.a
 
-libmotion_MMXSSE =  dist2_mmx.s bdist2_mmx.s bdist1_mmx.s \
-                    mblockq_sad_mmxe.s mblock_sad_mmxe.s mblock_sad_mmx.s  \
+libmotion_MMXSSE =  mblock_sumsq_mmx.s mblock_bsumsq_mmx.s mblock_bsad_mmx.s \
+                    mblock_sad_mmxe.s mblock_sad_mmx.s  \
 	                mblock_sub44_sads_x86.c
 
 libutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \

@@ -4,8 +4,8 @@
 ;;; Enhanced MMX optimized Sum Absolute Differences routines for macroblocks
 ;;; (interpolated, 1-pel, 2*2 sub-sampled pel and 4*4 sub-sampled pel)
 ;
-;  dist1_* Original Copyright (C) 2000 Chris Atenasio <chris@crud.net>
-;  Enhancements and rest Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
+;  Original MMX sad_* Copyright (C) 2000 Chris Atenasio <chris@crud.net>
+;  Enhanced MMX and rest Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
 
 		;; Yes, I tried prefetch-ing.  It makes no difference or makes
 		;; stuff *slower*.
@@ -29,9 +29,9 @@
 ;
 
 
-global dist1_00_mmxe
+global sad_00_mmxe
 
-; int dist1_00(char *blk1,char *blk2,int lx,int h,int distlim);
+; int sad_00(char *blk1,char *blk2,int lx,int h,int distlim);
 ; distlim unused - costs more to check than the savings of
 ; aborting the computation early from time to time...
 ; eax = p1
@@ -49,7 +49,7 @@ global dist1_00_mmxe
 
 
 align 32
-dist1_00_mmxe:
+sad_00_mmxe:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 
@@ -60,7 +60,7 @@ dist1_00_mmxe:
 	pxor mm0, mm0		; zero acculumator
 
 	mov eax, [ebp+8]	; get p1
-dist1_00_0misalign:		
+sad_00_0misalign:		
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
 
@@ -115,12 +115,12 @@ nextrow00sse:
 
 				
 
-global dist1_00_Ammxe
+global sad_00_Ammxe
 		;; This is a special version that only does aligned accesses...
 		;; Wonder if it'll make it faster on a P-III
 		;; ANSWER:		 NO its slower hence no longer used.
 
-; int dist1_00(char *blk1,char *blk2,int lx,int h,int distlim);
+; int sad_00(char *blk1,char *blk2,int lx,int h,int distlim);
 ; distlim unused - costs more to check than the savings of
 ; aborting the computation early from time to time...
 ; eax = p1
@@ -138,7 +138,7 @@ global dist1_00_Ammxe
 
 
 align 32
-dist1_00_Ammxe:
+sad_00_Ammxe:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 
@@ -152,7 +152,7 @@ dist1_00_Ammxe:
 	mov ebx, eax
 	and ebx, 7					; Misalignment!
 	cmp ebx, 0
-	jz	near dist1_00_0misalign
+	jz	near sad_00_0misalign
 	sub eax, ebx				; Align eax
 	mov ecx, 8					; ecx = 8-misalignment
 	sub ecx, ebx
@@ -202,9 +202,9 @@ nextrow00ssea:
 	ret	
 
 
-global dist1_01_mmxe
+global sad_01_mmxe
 
-; int dist1_01(char *blk1,char *blk2,int lx,int h);
+; int sad_01(char *blk1,char *blk2,int lx,int h);
 
 ; eax = p1
 ; ebx = p2
@@ -221,7 +221,7 @@ global dist1_01_mmxe
 
 
 align 32
-dist1_01_mmxe:
+sad_01_mmxe:
 	push ebp	
 	mov ebp, esp
 
@@ -280,9 +280,9 @@ nextrow01:
 	ret			; we now return you to your regular programming
 
 
-global dist1_10_mmxe
+global sad_10_mmxe
 
-; int dist1_10(char *blk1,char *blk2,int lx,int h);
+; int sad_10(char *blk1,char *blk2,int lx,int h);
 
 ; eax = p1
 ; ebx = p2
@@ -299,7 +299,7 @@ global dist1_10_mmxe
 
 
 align 32
-dist1_10_mmxe:
+sad_10_mmxe:
 	push ebp		; save stack pointer
 	mov ebp, esp
 
@@ -365,9 +365,9 @@ nextrow10:
 	ret			; we now return you to your regular programming
 
 
-global dist1_11_mmxe
+global sad_11_mmxe
 
-; int dist1_11(char *blk1,char *blk2,int lx,int h);
+; int sad_11(char *blk1,char *blk2,int lx,int h);
 
 ; eax = p1
 ; ebx = p2
@@ -385,7 +385,7 @@ global dist1_11_mmxe
 
 
 align 32
-dist1_11_mmxe:
+sad_11_mmxe:
 	push ebp		; save stack pointer
 	mov ebp, esp		; so that we can do this
 
@@ -461,9 +461,9 @@ nextrow11:
 	emms			; clear mmx registers
 	ret			; we now return you to your regular programming
 
-global dist22_mmxe
+global sad_sub22_mmxe
 
-; int dist22_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh);
+; int sad_sub22_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh);
 
 ; eax = p1
 ; ebx = p2
@@ -479,7 +479,7 @@ global dist22_mmxe
 
 
 align 32
-dist22_mmxe:
+sad_sub22_mmxe:
 	push ebp		; save frame pointer
 	mov ebp, esp
 
@@ -529,9 +529,9 @@ nextrowfd:
 
 
 
-global dist44_mmxe
+global sad_sub44_mmxe
 
-; int dist44_mmxe(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
+; int sad_sub44_mmxe(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
 
 ; eax = p1
 ; ebx = p2
@@ -549,7 +549,7 @@ global dist44_mmxe
 
 
 align 32
-dist44_mmxe:
+sad_sub44_mmxe:
 	push ebp
 	mov ebp, esp
 
@@ -605,3 +605,397 @@ nextrowqd:
 
 	emms			; clear mmx registers
 	ret			; we now return you to your regular programming
+
+
+;;; 
+;;;  mblock_*nearest4_sad_mmxe.s:  
+;;; 
+;;; Enhanced MMX optimized Sum Absolute Differences routines for
+;;; quads macroblocks offset by (0,0) (0,1) (1,0) (1,1) pel
+;;; 
+
+;;; Explanation: the motion compensation search at 1-pel and 2*2 sub-sampled
+;;; evaluates macroblock quads.  A lot of memory accesses can be saved
+;;; if each quad is done together rather than each macroblock in the
+;;; quad handled individually.
+
+;;; TODO:		Really there ought to be MMX versions and the function's
+;;; specification should be documented...
+;
+; Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>	
+
+
+;;; CURRENTLY not used but used in testing as reference for tweaks...
+global mblockq_sad_REF
+
+; void mblockq_sad_REF(char *blk1,char *blk2,int lx,int h,int *weightvec);
+; eax = p1
+; ebx = p2
+; ecx = unused
+; edx = lx;
+; edi = rowsleft
+; esi = h
+		
+; mm0 = SAD (x+0,y+0)
+; mm1 = SAD (x+2,y+0)
+; mm2 = SAD (x+0,y+2)
+; mm3 = SAD (x+2,y+2)
+; mm4 = temp
+; mm5 = temp
+; mm6 = temp
+; mm7 = temp						
+
+align 32
+mblockq_sad_REF:
+	push ebp					; save frame pointer
+	mov ebp, esp				; link
+	push eax
+	push ebx
+	push ecx
+	push edx
+	push edi
+	push esi
+
+	pxor mm0, mm0		; zero accumulators
+	pxor mm1, mm1
+	pxor mm2, mm2
+	pxor mm3, mm3
+	mov eax, [ebp+8]	; get p1
+	mov ebx, [ebp+12]	; get p2
+	mov edx, [ebp+16]	; get lx
+	
+	mov edi, [ebp+20]	; get rowsleft
+	mov esi, edi
+
+	jmp nextrow_block_d1
+align 32
+nextrow_block_d1:		
+
+		;; Do the (+0,+0) SAD
+		
+	movq mm4, [eax]		; load 1st 8 bytes of p1
+	movq mm6, mm4
+	movq mm5, [ebx]
+	psadbw mm4, mm5	; compare to 1st 8 bytes of p2 
+	paddd mm0, mm4		; accumulate difference
+	movq mm4, [eax+8]	; load 2nd 8 bytes of p1
+	movq mm7, mm4		
+	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2 
+	paddd mm0, mm4		; accumulate difference
+
+		
+    cmp edi, esi
+	jz  firstrow0
+
+		;; Do the (0,+2) SAD
+	sub ebx, edx
+	psadbw mm6, [ebx]	; compare to next 8 bytes of p2 (row 1)
+	paddd mm2, mm6		; accumulate difference
+	psadbw mm7, [ebx+8]	;  next 8 bytes of p1 (row 1)
+	add ebx, edx
+	paddd mm2, mm7	
+
+firstrow0:
+
+		;; Do the (+2,0) SAD
+	
+	movq mm4, [eax+1]
+				
+	movq mm6, mm4
+	psadbw mm4, mm5	; compare to 1st 8 bytes of p2
+	paddd mm1, mm4		; accumulate difference
+	movq mm4, [eax+9]
+	movq mm7, mm4
+	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2
+	paddd mm1, mm4		; accumulate difference
+
+    cmp edi, esi
+	jz  firstrow1
+
+		;; Do the (+2, +2 ) SAD
+	sub ebx, edx
+	psadbw mm6, [ebx]	; compare to 1st 8 bytes of prev p2 
+	psadbw mm7, [ebx+8]	;  2nd 8 bytes of prev p2
+	add ebx, edx
+	paddd mm3, mm6		; accumulate difference
+	paddd mm3, mm7	
+firstrow1:		
+
+	add eax, edx				; update pointer to next row
+	add ebx, edx		; ditto
+		
+	sub edi, 1
+	jnz near nextrow_block_d1
+
+		;; Do the last row of the (0,+2) SAD
+
+	movq mm4, [eax]		; load 1st 8 bytes of p1
+	movq mm5, [eax+8]	; load 2nd 8 bytes of p1
+	sub  ebx, edx
+	psadbw mm4, [ebx]	; compare to next 8 bytes of p2 (row 1)
+	psadbw mm5, [ebx+8]	;  next 8 bytes of p1 (row 1)
+	paddd mm2, mm4		; accumulate difference
+	paddd mm2, mm5
+		
+	movq mm4, [eax+1]
+	movq mm5, [eax+9]
+		
+		;; Do the last row of rhw (+2, +2) SAD
+	psadbw mm4, [ebx]	; compare to 1st 8 bytes of prev p2 
+	psadbw mm5, [ebx+8]	;  2nd 8 bytes of prev p2
+	paddd mm3, mm4		; accumulate difference
+	paddd mm3, mm5
+		
+
+	mov eax, [ebp+24]			; Weightvec
+	movd [eax+0], mm0
+	movd [eax+4], mm1
+	movd [eax+8], mm2
+	movd [eax+12], mm3
+		
+	pop esi
+	pop edi
+	pop edx	
+	pop ecx	
+	pop ebx	
+	pop eax
+		
+	pop ebp	
+	emms
+	ret	
+
+
+
+global mblock_nearest4_sads_mmxe
+
+; void mblock_nearest4_sads_mmxe(char *blk1,char *blk2,int lx,int h,int *weightvec);
+
+; eax = p1
+; ebx = p2
+; ecx = unused
+; edx = lx;
+; edi = rowsleft
+; esi = h
+		
+; mm0 = SAD (x+0,y+0),SAD (x+0,y+2)
+; mm1 = SAD (x+2,y+0),SAD (x+2,y+2)
+		
+; mm4 = temp
+; mm5 = temp
+; mm6 = temp
+; mm7 = temp						
+
+align 32
+mblock_nearest4_sads_mmxe:
+	push ebp					; save frame pointer
+	mov ebp, esp				; link
+	push eax
+	push ebx
+	push ecx
+	push edx
+	push edi
+	push esi
+
+	mov eax, [ebp+8]	; get p1
+	prefetcht0 [eax]
+	pxor mm0, mm0		; zero accumulators
+	pxor mm1, mm1
+	mov ebx, [ebp+12]	; get p2
+	mov edx, [ebp+16]	; get lx
+	
+	mov edi, [ebp+20]	; get rowsleft
+	mov esi, edi
+
+	jmp nextrow_block_e1
+align 32
+nextrow_block_e1:		
+
+		;; Do the (+0,+0) SAD
+	prefetcht0 [eax+edx]		
+	movq mm4, [eax]		; load 1st 8 bytes of p1
+	movq mm6, mm4
+	movq mm5, [ebx]
+	psadbw mm4, mm5	; compare to 1st 8 bytes of p2 
+	paddd mm0, mm4		; accumulate difference
+	movq mm4, [eax+8]	; load 2nd 8 bytes of p1
+	movq mm7, mm4		
+	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2 
+	paddd mm0, mm4		; accumulate difference
+
+		
+    cmp edi, esi
+	jz  firstrowe0
+
+		;; Do the (0,+2) SAD
+	sub ebx, edx
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	movq   mm2, [ebx]
+	psadbw mm6, mm2	    ; compare to next 8 bytes of p2 (row 1)
+	paddd mm0, mm6		; accumulate difference
+	movq  mm3, [ebx+8]
+	psadbw mm7, mm3	;  next 8 bytes of p1 (row 1)
+	add ebx, edx
+	paddd mm0, mm7	
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
+firstrowe0:
+
+		;; Do the (+2,0) SAD
+	
+	movq mm4, [eax+1]
+	movq mm6, mm4
+
+	psadbw mm4, mm5	; compare to 1st 8 bytes of p2
+	paddd mm1, mm4		; accumulate difference
+
+	movq mm4, [eax+9]
+	movq mm7, mm4
+
+	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2
+	paddd mm1, mm4		; accumulate difference
+
+    cmp edi, esi
+	jz  firstrowe1
+
+		;; Do the (+2, +2 ) SAD
+	sub ebx, edx
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
+	psadbw mm6, mm2	; compare to 1st 8 bytes of prev p2 
+	psadbw mm7, mm3	;  2nd 8 bytes of prev p2
+	add ebx, edx
+	paddd mm1, mm6		; accumulate difference
+	paddd mm1, mm7
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
+firstrowe1:		
+
+	add eax, edx				; update pointer to next row
+	add ebx, edx		; ditto
+		
+	sub edi, 1
+	jnz near nextrow_block_e1
+
+		;; Do the last row of the (0,+2) SAD
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	movq mm4, [eax]		; load 1st 8 bytes of p1
+	movq mm5, [eax+8]	; load 2nd 8 bytes of p1
+	sub  ebx, edx
+	psadbw mm4, [ebx]	; compare to next 8 bytes of p2 (row 1)
+	psadbw mm5, [ebx+8]	;  next 8 bytes of p1 (row 1)
+	paddd mm0, mm4		; accumulate difference
+	paddd mm0, mm5
+
+		
+		;; Do the last row of rhw (+2, +2) SAD
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
+	movq mm4, [eax+1]
+	movq mm5, [eax+9]
+
+	psadbw mm4, [ebx]	; compare to 1st 8 bytes of prev p2 
+	psadbw mm5, [ebx+8]	;  2nd 8 bytes of prev p2
+	paddd mm1, mm4		; accumulate difference
+	paddd mm1, mm5
+		
+
+	mov eax, [ebp+24]			; Weightvec
+	movd [eax+8], mm0
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	movd [eax+12], mm1
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	movd [eax+0], mm0
+	movd [eax+4], mm1
+		
+	pop esi
+	pop edi
+	pop edx	
+	pop ecx	
+	pop ebx	
+	pop eax
+		
+	pop ebp	
+	emms
+	ret
+
+global mblock_sub22_nearest4_sads_mmxe
+
+; void mblock_sub22_nearest4_sads_mmxe(unsigned char *blk1,unsigned char *blk2,int flx,int fh, int* resvec);
+
+; eax = p1
+; ebx = p2
+; ecx = counter temp
+; edx = flx;
+
+; mm0 = distance accumulator
+; mm1 = distance accumulator
+; mm2 = previous p1 row
+; mm3 = previous p1 displaced by 1 byte...
+; mm4 = temp
+; mm5 = temp
+; mm6 = temp
+; mm7 = temp / 0 if first row 0xff otherwise
+
+
+align 32
+mblock_sub22_nearest4_sads_mmxe:
+	push ebp		; save frame pointer
+	mov ebp, esp
+	push eax
+	push ebx	
+	push ecx
+	push edx	
+
+	pxor mm0, mm0		; zero acculumator
+	pxor mm1, mm1		; zero acculumator
+	pxor mm2, mm2		; zero acculumator
+	pxor mm3, mm3		; zero acculumator						
+
+	mov eax, [ebp+8]	; get p1
+	mov ebx, [ebp+12]	; get p2
+	mov edx, [ebp+16]	; get lx
+	mov ecx, [ebp+20]
+	movq mm2, [eax+edx]
+	movq mm3, [eax+edx+1]
+	jmp nextrowbd22
+align 32
+nextrowbd22:
+	movq   mm5, [ebx]			; load previous row reference block
+								; mm2 /mm3 containts current row target block
+		
+	psadbw mm2, mm5				; Comparse (x+0,y+2)
+	paddd  mm1, mm2
+		
+	psadbw mm3, mm5				; Compare (x+2,y+2)
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	paddd  mm1, mm3
+
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 					
+
+	movq mm2, [eax]				; Load current row traget block into mm2 / mm3
+	movq mm6, mm2
+	movq mm3, [eax+1]
+	sub	   eax, edx
+	sub	   ebx, edx
+	prefetcht0 [eax]
+	movq mm7, mm3		
+
+	psadbw	mm6, mm5			; Compare (x+0,y+0)
+	paddd   mm0, mm6
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	psadbw  mm7, mm5			; Compare (x+2,y+0)
+	paddd   mm0, mm7
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+
+	sub ecx, 1
+	jnz nextrowbd22
+
+	mov  eax, [ebp+24]
+	movq [eax+0], mm0
+	movq [eax+8], mm1
+	pop edx	
+	pop ecx	
+	pop ebx	
+	pop eax
+	pop ebp
+
+	emms
+	ret
+
+		

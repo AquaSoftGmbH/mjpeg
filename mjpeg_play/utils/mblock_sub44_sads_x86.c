@@ -55,7 +55,7 @@ static inline void mmx_zero_reg (void)
 }
 
 /*
- * Load a 4*4 block of 4*4 sub-sampled pels (qpels) into the MMX
+ * Load a 8*4 block of 4*4 sub-sampled pels (qpels) into the MMX
  * registers
  *
  */
@@ -86,7 +86,7 @@ static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
 
 /*
  * Compute the Sum absolute differences between the 4*h block in
- * the MMX registers 
+ * the MMX registers (4 least sig. bytes in mm0..mm3)
  *
  * and the 4*h block pointed to by refblk
  *

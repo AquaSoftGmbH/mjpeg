@@ -61,66 +61,70 @@
 
 #ifdef HAVE_X86CPU 
 
-static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
+static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
 							int h, int rowstride, 
 							int threshold,
-							mc_result_s *resvec);
+							me_result_s *resvec);
 
-int mblock_sub44_dists_mmxe( uint8_t *blk,  uint8_t *ref,
+int mblocks_sub44_mests_mmxe( uint8_t *blk,  uint8_t *ref,
+							 int ilow, int jlow,
+							 int ihigh, int jhigh, 
+							 int h, int rowstride, 
+							 int threshold,
+							 me_result_s *resvec);
+int mblocks_sub44_mests_mmx( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
-							int h, int rowstride, 
-							int threshold,
-							mc_result_s *resvec);
-int mblock_sub44_dists_mmx( uint8_t *blk,  uint8_t *ref,
-							int ilow, int jlow,
-							int ihigh, int jhigh, 
 							int threshold,
 							int h, int rowstride, 
-							mc_result_s *resvec);
+							me_result_s *resvec);
 
-int dist1_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h, int distlim);
-int dist1_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int dist1_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int dist1_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
+									 int frowstride,int fh, int* resvec);
 
-void mblockq_dist1_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h, int *resvec);
-void mblockq_dist22_mmxe(unsigned char *blk1,unsigned char *blk2,int frowstride,int fh, int* resvec);
+void mblock_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2, 
+							   int rowstride, int h, int *resvec);
 
-int dist22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int dist44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int dist2_mmx( uint8_t *blk1, uint8_t *blk2,
+int sad_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h, int distlim);
+int sad_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+
+
+int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int sumsq_mmx( uint8_t *blk1, uint8_t *blk2,
 			   int rowstride, int hx, int hy, int h);
-int dist2_22_mmx( uint8_t *blk1, uint8_t *blk2,
+int sumsq_sub22_mmx( uint8_t *blk1, uint8_t *blk2,
 				  int rowstride, int h);
-int bdist2_22_mmx( uint8_t *blk1f, uint8_t *blk1b, 
+int bsumsq_sub22_mmx( uint8_t *blk1f, uint8_t *blk1b, 
 				   uint8_t *blk2,
 				  int rowstride, int h);
-int bdist2_mmx (uint8_t *pf, uint8_t *pb,
+int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride,
 				int hxf, int hyf, int hxb, int hyb, int h);
-int bdist1_mmx (uint8_t *pf, uint8_t *pb,
+int bsad_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride,
 				int hxf, int hyf, int hxb, int hyb, int h);
 
 int variance_mmx( uint8_t *p, int size,	int rowstride);
 
-int dist1_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim);
-int dist1_01_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int dist1_10_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int dist1_11_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int dist22_mmx ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int dist44_mmx (uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
-int dist2_mmx  ( uint8_t *blk1, uint8_t *blk2,
+int sad_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim);
+int sad_01_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_10_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_11_mmx(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_sub22_mmx ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int sad_sub44_mmx (uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
+int sumsq_mmx  ( uint8_t *blk1, uint8_t *blk2,
 			   int rowstride, int hx, int hy, int h);
-int bdist2_mmx (uint8_t *pf, uint8_t *pb,
+int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride, 
 				int hxf, int hyf, int hxb, int hyb, int h);
-int bdist1_mmx (uint8_t *pf, uint8_t *pb,
-				uint8_t *p2, int rowstride, 
-				int hxf, int hyf, int hxb, int hyb, int h);
+int bsad_mmx (uint8_t *pf, uint8_t *pb,
+			  uint8_t *p2, int rowstride, 
+			  int hxf, int hyf, int hxb, int hyb, int h);
 
 #endif
 
@@ -130,15 +134,15 @@ int bdist1_mmx (uint8_t *pf, uint8_t *pb,
  *
  */
 
-void (*pfind_best_one_pel)( mc_result_set *sub22set,
+void (*pfind_best_one_pel)( me_result_set *sub22set,
 							uint8_t *org, uint8_t *blk,
 							int i0, int j0,
 							int ihigh, int jhigh,
 							int rowstride, int h, 
-							mc_result_s *res
+							me_result_s *res
 	);
-int (*pbuild_sub22_mcomps)( mc_result_set *sub44set,
-							mc_result_set *sub22set,
+int (*pbuild_sub22_mests)( me_result_set *sub44set,
+							me_result_set *sub22set,
 							int i0,  int j0, int ihigh, int jhigh, 
 							int null_mc_sad,
 							uint8_t *s22org,  uint8_t *s22blk, 
@@ -146,7 +150,7 @@ int (*pbuild_sub22_mcomps)( mc_result_set *sub44set,
 							int reduction
 							);
 
-int (*pbuild_sub44_mcomps)( mc_result_set *sub44set,
+int (*pbuild_sub44_mests)( me_result_set *sub44set,
 							int ilow, int jlow, int ihigh, int jhigh, 
 							int i0, int j0,
 							int null_mc_sad,
@@ -154,30 +158,30 @@ int (*pbuild_sub44_mcomps)( mc_result_set *sub44set,
 							int qrowstride, int qh,
 							int reduction );
 
-int (*pdist2_22)( uint8_t *blk1, uint8_t *blk2,
+int (*psumsq_sub22)( uint8_t *blk1, uint8_t *blk2,
 						 int rowstride, int h);
-int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b, 
+int (*pbsumsq_sub22)( uint8_t *blk1f, uint8_t *blk1b, 
 						  uint8_t *blk2,
 						  int rowstride, int h);
 
 int (*pvariance)(uint8_t *mb, int size, int rowstride);
 
 
-int (*pdist22) ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
-int (*pdist44) ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
-int (*pdist1_00) ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim);
-int (*pdist1_01) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int (*pdist1_10) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
-int (*pdist1_11) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int (*psad_sub22) ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int (*psad_sub44) ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
+int (*psad_00) ( uint8_t *blk1, uint8_t *blk2,  int rowstride, int h, int distlim);
+int (*psad_01) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int (*psad_10) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int (*psad_11) (uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
 
-int (*pdist2) (uint8_t *blk1, uint8_t *blk2,
+int (*psumsq) (uint8_t *blk1, uint8_t *blk2,
 					  int rowstride, int hx, int hy, int h);
   
   
-int (*pbdist2) (uint8_t *pf, uint8_t *pb,
+int (*pbsumsq) (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride, int hxf, int hyf, int hxb, int hyb, int h);
 
-int (*pbdist1) (uint8_t *pf, uint8_t *pb,
+int (*pbsad) (uint8_t *pf, uint8_t *pb,
 					   uint8_t *p2, int rowstride, int hxf, int hyf, int hxb, int hyb, int h);
 
 
@@ -202,11 +206,11 @@ int round_search_radius( int radius )
 	discarding all elements whose sad "weight" is above the current mean weight.
 */
 
-static void sub_mean_reduction( mc_result_set *matchset, 
+static void sub_mean_reduction( me_result_set *matchset, 
 								int times,
 							    int *minweight_res)
 {
-	mc_result_s *matches = matchset->mcomps;
+	me_result_s *matches = matchset->mests;
 	int len = matchset->len;
 	int i,j;
 	int weight_sum;
@@ -283,7 +287,7 @@ static void sub_mean_reduction( mc_result_set *matchset,
  * 
  */
 
-static int build_sub44_mcomps( mc_result_set *sub44set,
+static int build_sub44_mests( me_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
 							   int i0, int j0,
 							   int null_ctl_sad,
@@ -293,7 +297,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 							   )
 {
 	uint8_t *s44orgblk;
-	mc_result_s *sub44_mcomps = sub44set->mcomps;
+	me_result_s *sub44_mests = sub44set->mests;
 	int istrt = ilow-i0;
 	int jstrt = jlow-j0;
 	int iend = ihigh-i0;
@@ -304,7 +308,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 	int i,j;
 	int s1;
 	uint8_t *old_s44orgblk;
-	int sub44_num_mcomps;
+	int sub44_num_mests;
 
 	/* N.b. we may ignore the right hand block of the pair going over the
 	   right edge as we have carefully allocated the buffer oversize to ensure
@@ -321,7 +325,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 		(b) we ignore those matches with an sad above our threshold.	
 	*/
 
-	sub44_num_mcomps = 0;
+	sub44_num_mests = 0;
 
 	/* Invariant:  s44orgblk = s44org+(i>>2)+qrowstride*(j>>2) */
 	s44orgblk = s44org+(ilow>>2)+qrowstride*(jlow>>2);
@@ -330,20 +334,20 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 		old_s44orgblk = s44orgblk;
 		for( i = istrt; i <= iend; i += 4 )
 		{
-			s1 = ((*pdist44)( s44orgblk,s44blk,qrowstride,qh) & 0xffff);
+			s1 = ((*psad_sub44)( s44orgblk,s44blk,qrowstride,qh) & 0xffff);
 			if( s1 < threshold )
 			{
 				threshold = intmin(s1<<2,threshold);
-				sub44_mcomps[sub44_num_mcomps].x = i;
-				sub44_mcomps[sub44_num_mcomps].y = j;
-				sub44_mcomps[sub44_num_mcomps].weight = s1 + ((intabs(i-i0)+intabs(j-j0))>>3);
-				++sub44_num_mcomps;
+				sub44_mests[sub44_num_mests].x = i;
+				sub44_mests[sub44_num_mests].y = j;
+				sub44_mests[sub44_num_mests].weight = s1 + ((intabs(i-i0)+intabs(j-j0))>>3);
+				++sub44_num_mests;
 			}
 			s44orgblk += 1;
 		}
 		s44orgblk = old_s44orgblk + qrowstride;
 	}
-	sub44set->len = sub44_num_mcomps;
+	sub44set->len = sub44_num_mests;
 			
 	sub_mean_reduction( sub44set, 1+(reduction>1),  &mean_weight);
 
@@ -353,7 +357,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 
 #ifdef HAVE_X86CPU
 
-static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
+static int build_sub44_mests_mmx( me_result_set *sub44set,
 								   int ilow, int jlow, int ihigh, int jhigh, 
 								   int i0, int j0,
 								   int null_ctl_sad,
@@ -362,7 +366,7 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 								   int reduction)
 {
 	uint8_t *s44orgblk;
-	mc_result_s *sub44_mcomps = sub44set->mcomps;
+	me_result_s *sub44_mests = sub44set->mests;
 	int istrt = ilow-i0;
 	int jstrt = jlow-j0;
 	int iend = ihigh-i0;
@@ -374,12 +378,12 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 	threshold = 6*null_ctl_sad / (4*4*reduction);
 	s44orgblk = s44org+(ilow>>2)+qrowstride*(jlow>>2);
 	
-	sub44set->len = (*pmblock_sub44_dists)( s44orgblk, s44blk,
-											istrt, jstrt,
-											iend, jend, 
-											qh, qrowstride, 
-											threshold,
-											sub44_mcomps);
+	sub44set->len = (*pmblocks_sub44_mests)( s44orgblk, s44blk,
+											  istrt, jstrt,
+											  iend, jend, 
+											  qh, qrowstride, 
+											  threshold,
+											  sub44_mests);
 	
    /* If we're really pushing quality we reduce once otherwise twice. */
 			
@@ -411,8 +415,8 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
  * Other CPU's could/should be handled the same way.  */
 
 
-static int build_sub22_mcomps( mc_result_set *sub44set,
-							   mc_result_set *sub22set,
+static int build_sub22_mests( me_result_set *sub44set,
+							   me_result_set *sub22set,
 							   int i0,  int j0, int ihigh, int jhigh, 
 							   int null_ctl_sad,
 							   uint8_t *s22org,  uint8_t *s22blk, 
@@ -432,18 +436,18 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 	for( k = 0; k < sub44set->len; ++k )
 	{
 
-		x = sub44set->mcomps[k].x;
-		y = sub44set->mcomps[k].y;
+		x = sub44set->mests[k].x;
+		y = sub44set->mests[k].y;
 
 		s22orgblk =  s22org +((y+j0)>>1)*frowstride +((x+i0)>>1);
 		for( i = 0; i < 4; ++i )
 		{
 			if( x <= ilim && y <= jlim )
 			{	
-				s = (*pdist22)( s22orgblk,s22blk,frowstride,fh);
+				s = (*psad_sub22)( s22orgblk,s22blk,frowstride,fh);
 				if( s < threshold )
 				{
-					mc_result_s *mc = &sub22set->mcomps[sub22set->len];
+					me_result_s *mc = &sub22set->mests[sub22set->len];
 					mc->x = (int8_t)x;
 					mc->y = (int8_t)y;
 					mc->weight = s;
@@ -472,8 +476,8 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 }
 
 #ifdef HAVE_X86CPU 
-int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
-							 mc_result_set *sub22set,
+int build_sub22_mests_mmxe( me_result_set *sub44set,
+							 me_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
 							 int null_ctl_sad,
 							 uint8_t *s22org,  uint8_t *s22blk, 
@@ -498,11 +502,16 @@ int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 	for( k = 0; k < sub44set->len; ++k )
 	{
 
-		x = sub44set->mcomps[k].x;
-		y = sub44set->mcomps[k].y;
+		x = sub44set->mests[k].x;
+		y = sub44set->mests[k].y;
 
 		s22orgblk =  s22org +((y+j0)>>1)*frowstride +((x+i0)>>1);
-		mblockq_dist22_mmxe(s22orgblk+lstrow, s22blk+lstrow, frowstride, fh, resvec);
+		/*
+		  Get SAD for 2*2 subsampled macroblocks: orgblk,orgblk(+2,0),
+		  orgblk(0,+2), and orgblk(+2,+2) Done all in one go to reduce
+		  memory bandwidth demand
+		*/
+		mblock_sub22_nearest4_sads_mmxe(s22orgblk+lstrow, s22blk+lstrow, frowstride, fh, resvec);
 		for( i = 0; i < 4; ++i )
 		{
 			if( x <= ilim && y <= jlim )
@@ -510,7 +519,7 @@ int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 				s =resvec[i];
 				if( s < threshold )
 				{
-					mc_result_s *mc = &sub22set->mcomps[sub22set->len];
+					me_result_s *mc = &sub22set->mests[sub22set->len];
 					mc->x = (int8_t)x;
 					mc->y = (int8_t)y;
 					mc->weight = s;
@@ -546,27 +555,27 @@ int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
  */
 
 
-static void find_best_one_pel( mc_result_set *sub22set,
+static void find_best_one_pel( me_result_set *sub22set,
 							   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ihigh, int jhigh,
 							   int rowstride, int h, 
-							   mc_result_s *best_so_far
+							   me_result_s *best_so_far
 	)
 
 {
 	int i,k;
 	int d;
-	mc_result_s minpos = *best_so_far;
+	me_result_s minpos = *best_so_far;
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
 	int penalty;
-	mc_result_s matchrec;
+	me_result_s matchrec;
  
 	for( k = 0; k < sub22set->len; ++k )
 	{	
 
-		matchrec = sub22set->mcomps[k];
+		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
 		penalty = abs(matchrec.x)+abs(matchrec.y);
 
@@ -575,7 +584,7 @@ static void find_best_one_pel( mc_result_set *sub22set,
 			if( matchrec.x <= ihigh && matchrec.y <= jhigh )
 			{
 		
-				d = penalty+(*pdist1_00)(orgblk,blk,rowstride,h, dmin);
+				d = penalty+(*psad_00)(orgblk,blk,rowstride,h, dmin);
 				if (d<dmin)
 				{
 					dmin = d;
@@ -601,32 +610,36 @@ static void find_best_one_pel( mc_result_set *sub22set,
 }
 
 #ifdef HAVE_X86CPU 
-void find_best_one_pel_mmxe( mc_result_set *sub22set,
+void find_best_one_pel_mmxe( me_result_set *sub22set,
 							 uint8_t *org, uint8_t *blk,
 							 int i0, int j0,
 							 int ihigh, int jhigh,
 							 int rowstride, int h,
-							 mc_result_s *best_so_far
+							 me_result_s *best_so_far
 	)
 
 {
 	int i,k;
 	int d;
-	mc_result_s minpos = *best_so_far;
+	me_result_s minpos = *best_so_far;
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
 	int penalty;
-	mc_result_s matchrec;
+	me_result_s matchrec;
 	int resvec[4];
 
 	for( k = 0; k < sub22set->len; ++k )
 	{	
-		matchrec = sub22set->mcomps[k];
+		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
 		penalty = abs(matchrec.x)+abs(matchrec.y);
 		
-
-		mblockq_dist1_mmxe(orgblk,blk,rowstride,h, resvec);
+		/* Get SAD for macroblocks: 	orgblk,orgblk(+1,0),
+		   orgblk(0,+1), and orgblk(+1,+1)
+		   Done all in one go to reduce memory bandwidth demand
+		*/
+		mblock_nearest4_sads_mmxe(orgblk,blk,rowstride,h,
+		resvec);
 
 		for( i = 0; i < 4; ++i )
 		{
@@ -674,7 +687,7 @@ void find_best_one_pel_mmxe( mc_result_set *sub22set,
  **/
 
 
-static int dist1_00(uint8_t *blk1,uint8_t *blk2,
+static int sad_00(uint8_t *blk1,uint8_t *blk2,
 					int rowstride, int h,int distlim)
 {
 	uint8_t *p1,*p2;
@@ -704,7 +717,7 @@ static int dist1_00(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-static int dist1_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
+static int sad_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
 {
 	uint8_t *p1,*p2;
 	int i,j;
@@ -728,7 +741,7 @@ static int dist1_01(uint8_t *blk1,uint8_t *blk2,int rowstride, int h)
 	return s;
 }
 
-static int dist1_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
+static int sad_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -754,7 +767,7 @@ static int dist1_10(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 	return s;
 }
 
-static int dist1_11(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
+static int sad_11(uint8_t *blk1,uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1,*p1a,*p2;
 	int i,j;
@@ -848,12 +861,12 @@ void subsample_image( uint8_t *image, int rowstride,
 }
 
 /*
- * Same as dist1_00 except for 2*2 subsampled data so only 8 wide!
+ * Same as sad_00 except for 2*2 subsampled data so only 8 wide!
  *
  */
  
 
-static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
+static int sad_sub22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
 {
 	uint8_t *p1 = s22blk1;
 	uint8_t *p2 = s22blk2;
@@ -879,7 +892,7 @@ static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
 
 
 /*
- * Same as dist1_00 except for 4*4 sub-sampled data.  
+ * Same as sad_00 except for 4*4 sub-sampled data.  
  *
  * N.b.: currently assumes only 16*16 or 16*8 motion estimation will
  * be used...  I.e. 4*4 or 4*2 sub-sampled blocks will be compared.  
@@ -888,7 +901,7 @@ static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int frowstride,int fh)
  */
 
 
-static int dist44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
+static int sad_sub44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
 {
 	register uint8_t *p1 = s44blk1;
 	register uint8_t *p2 = s44blk2;
@@ -922,7 +935,7 @@ static int dist44( uint8_t *s44blk1, uint8_t *s44blk2,int qrowstride,int qh)
  * h:         height of block (usually 8 or 16)
  */
  
-static int dist2_22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
+static int sumsq_sub22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
 {
 	uint8_t *p1 = blk1, *p2 = blk2;
 	int i,j,v;
@@ -949,7 +962,7 @@ static int dist2_22(uint8_t *blk1, uint8_t *blk2, int rowstride, int h)
  * h: height of block (usually 4 or 8)
  */
  
-static int bdist2_22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, 
+static int bsumsq_sub22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, 
 					 int rowstride, int h)
 {
 	uint8_t *p1f = blk1f,*p1b = blk1b,*p2 = blk2;
@@ -979,7 +992,7 @@ static int bdist2_22(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2,
  */
  
 
-static int dist2(blk1,blk2,rowstride,hx,hy,h)
+static int sumsq(blk1,blk2,rowstride,hx,hy,h)
 	uint8_t *blk1,*blk2;
 	int rowstride,hx,hy,h;
 {
@@ -1059,7 +1072,7 @@ static int dist2(blk1,blk2,rowstride,hx,hy,h)
  */
  
 
-static int bdist1(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
+static int bsad(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
 	uint8_t *pf,*pb,*p2;
 	int rowstride,hxf,hyf,hxb,hyb,h;
 {
@@ -1112,7 +1125,7 @@ static int bdist1(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
  */
  
 
-static int bdist2(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
+static int bsumsq(pf,pb,p2,rowstride,hxf,hyf,hxb,hyb,h)
 	uint8_t *pf,*pb,*p2;
 	int rowstride,hxf,hyf,hxb,hyb,h;
 {
@@ -1200,62 +1213,62 @@ void init_motion_search()
 
 	if( cpucap == 0 )	/* No MMX/SSE etc support available */
 	{
-		pdist22 = dist22;
-		pdist44 = dist44;
-		pdist1_00 = dist1_00;
-		pdist1_01 = dist1_01;
-		pdist1_10 = dist1_10;
-		pdist1_11 = dist1_11;
-		pbdist1 = bdist1;
+		psad_sub22 = sad_sub22;
+		psad_sub44 = sad_sub44;
+		psad_00 = sad_00;
+		psad_01 = sad_01;
+		psad_10 = sad_10;
+		psad_11 = sad_11;
+		pbsad = bsad;
 		pvariance = variance;
-		pdist2 = dist2;
-		pbdist2 = bdist2;
-		pdist2_22 = dist2_22;
-		pbdist2_22 = bdist2_22;
+		psumsq = sumsq;
+		pbsumsq = bsumsq;
+		psumsq_sub22 = sumsq_sub22;
+		pbsumsq_sub22 = bsumsq_sub22;
 		pfind_best_one_pel = find_best_one_pel;
-		pbuild_sub22_mcomps	= build_sub22_mcomps;
-		pbuild_sub44_mcomps	= build_sub44_mcomps;
+		pbuild_sub22_mests	= build_sub22_mests;
+		pbuild_sub44_mests	= build_sub44_mests;
 	 }
 #ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");
-		pdist22 = dist22_mmxe;
-		pdist44 = dist44_mmxe;
-		pdist1_00 = dist1_00_mmxe;
-		pdist1_01 = dist1_01_mmxe;
-		pdist1_10 = dist1_10_mmxe;
-		pdist1_11 = dist1_11_mmxe;
-		pbdist1 = bdist1_mmx;
+		psad_sub22 = sad_sub22_mmxe;
+		psad_sub44 = sad_sub44_mmxe;
+		psad_00 = sad_00_mmxe;
+		psad_01 = sad_01_mmxe;
+		psad_10 = sad_10_mmxe;
+		psad_11 = sad_11_mmxe;
+		pbsad = bsad_mmx;
 		pvariance = variance_mmx;
-		pdist2 = dist2_mmx;
-		pbdist2 = bdist2_mmx;
-		pdist2_22 = dist2_22_mmx;
-		pbdist2_22 = bdist2_22_mmx;
+		psumsq = sumsq_mmx;
+		pbsumsq = bsumsq_mmx;
+		psumsq_sub22 = sumsq_sub22_mmx;
+		pbsumsq_sub22 = bsumsq_sub22_mmx;
 		pfind_best_one_pel = find_best_one_pel_mmxe;
-		pbuild_sub22_mcomps	= build_sub22_mcomps_mmxe;
-		pbuild_sub44_mcomps	= build_sub44_mcomps_mmx;
-		pmblock_sub44_dists = mblock_sub44_dists_mmxe;
+		pbuild_sub22_mests	= build_sub22_mests_mmxe;
+		pbuild_sub44_mests	= build_sub44_mests_mmx;
+		pmblocks_sub44_mests = mblocks_sub44_mests_mmxe;
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
 		mjpeg_info( "SETTING MMX for MOTION!\n");
-		pdist22 = dist22_mmx;
-		pdist44 = dist44_mmx;
-		pdist1_00 = dist1_00_mmx;
-		pdist1_01 = dist1_01_mmx;
-		pdist1_10 = dist1_10_mmx;
-		pdist1_11 = dist1_11_mmx;
-		pbdist1 = bdist1_mmx;
+		psad_sub22 = sad_sub22_mmx;
+		psad_sub44 = sad_sub44_mmx;
+		psad_00 = sad_00_mmx;
+		psad_01 = sad_01_mmx;
+		psad_10 = sad_10_mmx;
+		psad_11 = sad_11_mmx;
+		pbsad = bsad_mmx;
 		pvariance = variance_mmx;
-		pdist2 = dist2_mmx;
-		pbdist2 = bdist2_mmx;
-		pdist2_22 = dist2_22_mmx;
-		pbdist2_22 = bdist2_22_mmx;
+		psumsq = sumsq_mmx;
+		pbsumsq = bsumsq_mmx;
+		psumsq_sub22 = sumsq_sub22_mmx;
+		pbsumsq_sub22 = bsumsq_sub22_mmx;
 		pfind_best_one_pel = find_best_one_pel;
-		pbuild_sub22_mcomps	= build_sub22_mcomps;
-		pbuild_sub44_mcomps	= build_sub44_mcomps_mmx;
-		pmblock_sub44_dists = mblock_sub44_dists_mmx;
+		pbuild_sub22_mests	= build_sub22_mests;
+		pbuild_sub44_mests	= build_sub44_mests_mmx;
+		pmblocks_sub44_mests = mblocks_sub44_mests_mmx;
 	}
 #endif
 

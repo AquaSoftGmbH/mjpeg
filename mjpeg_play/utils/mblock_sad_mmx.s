@@ -4,7 +4,7 @@
 ;;; Enhanced MMX optimized Sum Absolute Differences routines for macroblocks
 ;;; (interpolated, 1-pel, 2*2 sub-sampled pel and 4*4 sub-sampled pel)
 ;
-;  dist1_* Original Copyright (C) 2000 Chris Atenasio <chris@crud.net>
+;  sad_* Original Copyright (C) 2000 Chris Atenasio <chris@crud.net>
 ;  Enhancements and rest Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
 
 ;
@@ -26,9 +26,9 @@
 ;
 
 
-global dist1_00_mmx
+global sad_00_mmx
 
-; int dist1_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h, int distlim);
+; int sad_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h, int distlim);
 ; N.b. distlim is *ignored* as testing for it is more expensive than the
 ; occasional saving by aborting the computionation early...
 ; esi = p1 (init:		blk1)
@@ -48,7 +48,7 @@ global dist1_00_mmx
 
 
 align 32
-dist1_00_mmx:
+sad_00_mmx:
 	push ebp		; save frame pointer
 	mov ebp, esp
 
@@ -133,7 +133,7 @@ returnmm00:
 	emms			; clear mmx registers
 	ret	
 ;
-;;;  dist1_01_mmx.s:  mmx1 optimised 7bit*8 word absolute difference sum
+;;;  sad_01_mmx.s:  mmx1 optimised 7bit*8 word absolute difference sum
 ;;;     We're reduce to seven bits as otherwise we also have to mess
 ;;;     horribly with carries and signed only comparisons make the code
 ;;;     simply enormous (and probably barely faster than a simple loop).
@@ -163,9 +163,9 @@ returnmm00:
 ;
 
 
-global dist1_01_mmx
+global sad_01_mmx
 
-; int dist1_01_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
+; int sad_01_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
 ; esi = p1 (init:		blk1)
 ; edi = p2 (init:		blk2)
@@ -183,7 +183,7 @@ global dist1_01_mmx
 
 
 align 32
-dist1_01_mmx:
+sad_01_mmx:
 	push ebp		; save stack pointer
 	mov ebp, esp	; so that we can do this
 
@@ -371,7 +371,7 @@ nextrowmm01:
 	emms			; clear mmx registers
 	ret			; we now return you to your regular programming
 ;
-;;;  dist1_01_mmx.s:  mmx1 optimised 7bit*8 word absolute difference sum
+;;;  sad_01_mmx.s:  mmx1 optimised 7bit*8 word absolute difference sum
 ;;;     We're reduce to seven bits as otherwise we also have to mess
 ;;;     horribly with carries and signed only comparisons make the code
 ;;;     simply enormous (and probably barely faster than a simple loop).
@@ -401,9 +401,9 @@ nextrowmm01:
 ;
 
 
-global dist1_10_mmx
+global sad_10_mmx
 
-; int dist1_10_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
+; int sad_10_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
 ; esi = p1 (init:		blk1)
 ; edi = p2 (init:		blk2)
@@ -422,7 +422,7 @@ global dist1_10_mmx
 
 
 align 32
-dist1_10_mmx:
+sad_10_mmx:
 	push ebp		; save stack pointer
 	mov ebp, esp	; so that we can do this
 
@@ -613,7 +613,7 @@ nextrowmm10:
 	emms			; clear mmx registers
 	ret			; we now return you to your regular programming
 ;
-;;;  dist1_01_mmx.s:  
+;;;  sad_01_mmx.s:  
 ;;; 
 ;  Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
 
@@ -636,9 +636,9 @@ nextrowmm10:
 ;
 
 
-global dist1_11_mmx
+global sad_11_mmx
 
-; int dist1_11_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
+; int sad_11_mmx(unsigned char *p1,unsigned char *p2,int lx,int h);
 
 ; esi = p1 (init:		blk1)
 ; edi = p2 (init:		blk2)
@@ -659,7 +659,7 @@ global dist1_11_mmx
 
 
 align 32
-dist1_11_mmx:
+sad_11_mmx:
 	push ebp		; save stack pointer
 	mov ebp, esp	; so that we can do this
 
@@ -882,9 +882,9 @@ nextrowmm11:
 	ret			; we now return you to your regular programming
 
 
-global dist22_mmx
+global sad_sub22_mmx
 
-; int dist22_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h);
+; int sad_sub22_mmx(unsigned char *blk1,unsigned char *blk2,int lx,int h);
 
 ; eax = p1 (init:		blk1)
 ; ebx = p2 (init:		 blk2)
@@ -902,7 +902,7 @@ global dist22_mmx
 
 
 align 32
-dist22_mmx:
+sad_sub22_mmx:
 	push ebp		; save stack pointer
 	mov ebp, esp	; so that we can do this
 
@@ -985,9 +985,9 @@ nextrow:
 
 
 
-global dist44_mmx
+global sad_sub44_mmx
 
-; int dist44_mmx(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
+; int sad_sub44_mmx(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);
 
 ; eax = p1
 ; ebx = p2
@@ -1005,7 +1005,7 @@ global dist44_mmx
 ; mm7 = temp
 
 align 32
-dist44_mmx:
+sad_sub44_mmx:
 	push ebp		; save stack pointer
 	mov ebp, esp		; so that we can do this
 

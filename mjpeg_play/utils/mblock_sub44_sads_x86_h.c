@@ -49,17 +49,17 @@
  *
  * */
 
-int SIMD_SUFFIX(mblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
-									 int ilow,int jlow,
-									 int ihigh, int jhigh, 
-									 int h, int rowstride, 
-									 int threshold,
-									 mc_result_s *resvec)
+int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
+									  int ilow,int jlow,
+									  int ihigh, int jhigh, 
+									  int h, int rowstride, 
+									  int threshold,
+									  me_result_s *resvec)
 {
 	int32_t x,y;
 	uint8_t *currowblk = blk;
 	uint8_t *curblk;
-	mc_result_s *cres = resvec;
+	me_result_s *cres = resvec;
 	int      gridrowstride = (rowstride);
 
 	for( y=jlow; y <= jhigh ; y+=4)

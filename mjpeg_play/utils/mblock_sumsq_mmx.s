@@ -26,8 +26,8 @@
 ; h:         height of block (usually 8 or 16)
 ; mmX version
 
-global dist2_mmx
-; int dist2_mmx(unsigned char *blk1, unsigned char *blk2,
+global sumsq_mmx
+; int sumsq_mmx(unsigned char *blk1, unsigned char *blk2,
 ;                 int lx, int hx, int hy, int h)
 
 ; mm7 = 0
@@ -52,7 +52,7 @@ twos:
 			dw	2
 
 align 32
-dist2_mmx:
+sumsq_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
@@ -434,8 +434,8 @@ d2exit:
 ; h:         height of block (usually 4, or 8)
 ; mmX version
 
-global dist2_22_mmx
-; int dist2_22_mmx(unsigned char *blk1, unsigned char *blk2,
+global sumsq_sub22_mmx
+; int sumsq_sub22_mmx(unsigned char *blk1, unsigned char *blk2,
 ;                 int lx, int h)
 
 ; mm7 = 0
@@ -448,7 +448,7 @@ global dist2_22_mmx
 ; esi = lx
 
 align 32
-dist2_22_mmx:
+sumsq_sub22_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
@@ -503,8 +503,8 @@ d2top22:
 ; h:         height of block (usually 4, or 8)
 ; mmX version
 		
-global bdist2_22_mmx
-; int bdist2_22_mmx(unsigned char *blk1f, unsigned char*blk1b,
+global bsumsq_sub22_mmx
+; int bsumsq_sub22_mmx(unsigned char *blk1f, unsigned char*blk1b,
 ;				   unsigned char *blk2,
 ;                 int lx, int h)
 
@@ -518,7 +518,7 @@ global bdist2_22_mmx
 ; esi = lx
 
 align 32
-bdist2_22_mmx:
+bsumsq_sub22_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx

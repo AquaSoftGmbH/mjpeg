@@ -1,5 +1,5 @@
 ;
-;  bdist2_mmx.s:  MMX optimized bidirectional squared distance sum
+;  bdist1_mmx.s:  mmX optimized bidirectional absolute distance sum
 ;
 ;  Original believed to be Copyright (C) 2000 Brent Byeler
 ;
@@ -19,7 +19,7 @@
 ;
 
 ;/*
-; * squared error between a (16*h) block and a bidirectional
+; * absolute difference error between a (16*h) block and a bidirectional
 ; * prediction
 ; *
 ; * p2: address of top left pel of block
@@ -29,13 +29,12 @@
 ; * lx: distance (in bytes) of vertically adjacent pels in p2,pf,pb
 ; * mmX version
 ; */
-
-;int bdist2_mmx(
+ 
+;int bsad_mmx(
 ;unsigned char *pf, unsigned char *pb, unsigned char *p2,
 ;int lx, int hxf, int hyf, int hxb, int hyb, int h)
 ;{
 ;  unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
-;  int s;
 
 ; Handy macros for readbility
 
@@ -58,10 +57,10 @@
 %define pbc [esp+24]
 
 SECTION .text
-global bdist2_mmx
+global bsad_mmx
 
 align 32
-bdist2_mmx:
+bsad_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
@@ -73,7 +72,8 @@ bdist2_mmx:
 	;;
 	;; Make space for local variables on stack
 	sub       esp, 32
-	
+
+
 	mov       edx, hxb
 	mov       eax, hxf
 	mov       esi, lx
@@ -98,12 +98,12 @@ bdist2_mmx:
 	mov       pbb, eax
 	add       edx, eax
 	mov       pbc, edx
-	xor       esi, esi	; esi = s (accumulated sym)
+	xor       esi, esi         ; esi is "s" the accumulator
 	mov       eax, esi
 
 	mov       edi, h
 	test      edi, edi  ; h = 0?
-	jle       near bdist2exit
+	jle       near bsadexit
 
 	pxor	  mm7, mm7
 	pxor	  mm6, mm6
@@ -111,7 +111,7 @@ bdist2_mmx:
 	psubw	  mm6, mm5
 	psllw	  mm6, 1
 
-bdist2top:
+bsadtop:
 	mov	  eax, pf
 	mov	  ebx, pfa
 	mov	  ecx, pfb
@@ -142,7 +142,6 @@ bdist2top:
 	paddw	  mm1, mm6
 	psrlw	  mm0, 2
 	psrlw	  mm1, 2
-
 	mov	  eax, pb
 	mov	  ebx, pba
 	mov	  ecx, pbb
@@ -169,12 +168,10 @@ bdist2top:
 	punpckhbw mm5, mm7
 	paddw	  mm2, mm4
 	paddw	  mm3, mm5
-
 	paddw	  mm2, mm6
 	paddw	  mm3, mm6
 	psrlw	  mm2, 2
 	psrlw	  mm3, 2
-
 	paddw	  mm0, mm2
 	paddw	  mm1, mm3
 	psrlw	  mm6, 1
@@ -183,25 +180,28 @@ bdist2top:
 	psllw	  mm6, 1
 	psrlw	  mm0, 1
 	psrlw	  mm1, 1
+	packuswb  mm0, mm1
 
 	mov	  eax, p2
-	movq	  mm2, [eax]
-	movq	  mm3, mm2
-        punpcklbw mm2, mm7
-        punpckhbw mm3, mm7
+	movq	  mm1, [eax]
+	movq	  mm2, mm0
+	psubusb	  mm0, mm1
+	psubusb	  mm1, mm2
+	por	  mm0, mm1
+	movq	  mm1, mm0
+	punpcklbw mm0, mm7
+	punpckhbw mm1, mm7
+	paddw	  mm0, mm1
+	movq	  mm1, mm0
+	punpcklwd mm0, mm7
+	punpckhwd mm1, mm7
 
-        psubw     mm0, mm2
-        psubw     mm1, mm3
-        pmaddwd   mm0, mm0
-        pmaddwd   mm1, mm1
-        paddd     mm0, mm1
-
+	paddd	  mm0, mm1
 	movd	  eax, mm0
 	psrlq	  mm0, 32
 	movd	  ebx, mm0
 	add	  esi, eax
 	add	  esi, ebx
-
 	mov	  eax, pf
 	mov	  ebx, pfa
 	mov	  ecx, pfb
@@ -232,7 +232,6 @@ bdist2top:
 	paddw	  mm1, mm6
 	psrlw	  mm0, 2
 	psrlw	  mm1, 2
-
 	mov	  eax, pb
 	mov	  ebx, pba
 	mov	  ecx, pbb
@@ -263,7 +262,6 @@ bdist2top:
 	paddw	  mm3, mm6
 	psrlw	  mm2, 2
 	psrlw	  mm3, 2
-
 	paddw	  mm0, mm2
 	paddw	  mm1, mm3
 	psrlw	  mm6, 1
@@ -272,19 +270,21 @@ bdist2top:
 	psllw	  mm6, 1
 	psrlw	  mm0, 1
 	psrlw	  mm1, 1
-
+	packuswb  mm0, mm1
 	mov	  eax, p2
-	movq	  mm2, [eax+8]
-	movq	  mm3, mm2
-        punpcklbw mm2, mm7
-        punpckhbw mm3, mm7
-
-        psubw     mm0, mm2
-        psubw     mm1, mm3
-        pmaddwd   mm0, mm0
-        pmaddwd   mm1, mm1
-        paddd     mm0, mm1
-
+	movq	  mm1, [eax+8]
+	movq	  mm2, mm0
+	psubusb	  mm0, mm1
+	psubusb	  mm1, mm2
+	por	  mm0, mm1
+	movq	  mm1, mm0
+	punpcklbw mm0, mm7
+	punpckhbw mm1, mm7
+	paddw	  mm0, mm1
+	movq	  mm1, mm0
+	punpcklwd mm0, mm7
+	punpckhwd mm1, mm7
+	paddd	  mm0, mm1
 	movd	  eax, mm0
 	psrlq	  mm0, 32
 	movd	  ebx, mm0
@@ -303,11 +303,12 @@ bdist2top:
 	add       pbc, eax
 
 	dec       edi
-	jg        near bdist2top
+	jg        near bsadtop
     mov       eax, esi
 
-bdist2exit:
-	
+bsadexit:
+ 
+ 	
 	;;
 	;; Get rid of local variables
 	add esp, 32
@@ -325,3 +326,4 @@ bdist2exit:
 	emms			; clear mmx registers
 	ret	
 	
+
