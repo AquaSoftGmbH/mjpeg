@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT(lavtools/lav_io.c)
+AC_INIT(mjpegtools, 1.6.3, mjpeg-developer@mjpeg.sourceforge.net)
 AC_PREREQ(2.57)
 
 MJPEG_MAJOR_VERSION=1
@@ -9,7 +9,7 @@ MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CANONICAL_HOST
 AC_CANONICAL_TARGET
-AM_INIT_AUTOMAKE(mjpegtools, $MJPEG_VERSION)
+AM_INIT_AUTOMAKE(1.6.3)
 AM_CONFIG_HEADER(config.h)
 AM_MAINTAINER_MODE
 AM_OUTPUT_DEPENDENCY_COMMANDS
@@ -480,7 +480,7 @@ fi
 dnl *********************************************************************
 dnl For x86 and ppc machines check which code model we should use.  This is
 dnl done with the helper script cpuinfo.sh because the logic to do the job
-dnl correctly is complex and lengthy (about as long as the entire configure.in
+dnl correctly is complex and lengthy (about as long as the entire configure.ac
 dnl file).
 
 if test x$have_x86cpu = xtrue -o x$have_ppccpu = xtrue; then
