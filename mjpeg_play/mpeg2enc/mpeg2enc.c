@@ -108,7 +108,7 @@ void Usage(char *str)
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
-	printf("   -S num     Start a new sequence in the output every num Mbytes");
+	printf("   -S num     Start a new sequence in the output every num Mbytes\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
