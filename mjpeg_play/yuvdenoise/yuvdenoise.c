@@ -25,14 +25,17 @@
    and doesn't produce any leaks (and modern systems
    should really have enough memory anyways :-} ...)
 
-   HINT: Thist of course will go away if the filter is
+   HINT: This of course will go away if the filter is
    more stable ... bet for it ! But at present there are
    other problems to solve than an elegant memory 
    management...
 */
 
+uint8_t version[] = "0.0.21\0";
+
 uint8_t YUV1[(int) (768 * 576 * 1.5)];
 uint8_t YUV2[(int) (768 * 576 * 1.5)];
+uint8_t YUV3[(int) (768 * 576 * 1.5)];
 uint8_t SUBO[(int) (768 * 576 * 1.5)];
 uint8_t SUBA[(int) (768 * 576 * 1.5)];
 uint8_t SUBO4[(int) (768 * 576 * 1.5)];
@@ -66,11 +69,14 @@ uint32_t init_SQD = 0;
 int lum_delta;
 int cru_delta;
 int crv_delta;
-int search_radius = 32;		/* search radius in half-pixels */
+int search_radius = 16;	        /* initial search-radius in half-pixels */
 int border = -1;
 double block_quality;
+float sharpen=0;
 
-uint8_t version[] = "0.0.15";
+float a[16];
+int i;
+float v;
 
 void denoise_image ();
 void detect_black_borders ();
@@ -95,9 +101,10 @@ main (int argc, char *argv[])
   char c;
 
   int x, y;
+  int dx,dy;
   display_greeting ();
 
-  while ((c = getopt (argc, argv, "b:m:h")) != -1)
+  while ((c = getopt (argc, argv, "b:m:s:h")) != -1)
     {
       switch (c)
 	{
@@ -110,6 +117,10 @@ main (int argc, char *argv[])
 	case 'm':
 	  init_SQD = atoi (optarg);
 	  fprintf (stderr, "---  Initial mean-SQD set to %i.\n", init_SQD);
+	  break;
+	case 's':
+	  sharpen = (float)(atoi (optarg))/100;
+	  fprintf (stderr, "---  Sharpen-filter used\n", init_SQD);
 	  break;
 	case 'h':
 	  display_help ();
@@ -179,7 +190,7 @@ display_greeting ()
   fprintf (stderr,
 	   "---      YUV4MPEG  Motion-Compensating-Movie-Denoiser         ---\n");
   fprintf (stderr,
-	   "---      Version %6s     (this is a developer's version)       ---\n",
+	   "---      Version %6s (this is a developer's version)       ---\n",
 	   version);
   fprintf (stderr,
 	   "-----------------------------------------------------------------\n");
@@ -629,8 +640,8 @@ mb_search_44 (int x, int y)
     for (qx = -(search_radius >> 1); qx <= +(search_radius >> 1); qx += 4)
       {
 	d = 0;
-	for (dy = -4; dy < 12; dy += 4)
-	  for (dx = -4; dx < 12; dx += 4)
+	for (dy = -8; dy < 16; dy += 4)
+	  for (dx = -8; dx < 16; dx += 4)
 	    {
 	      Y =
 		SUBA4[(x + dx + qx) + (y + dy + qy) * width] -
@@ -679,12 +690,12 @@ mb_search_88 (int x, int y)
   int by = best_match_y / 2;
 
   SQD = 10000000;
-  for (qy = (by - 4); qy <= (by + 4); qy += 2)
-    for (qx = (bx - 4); qx <= (bx + 4); qx += 2)
+  for (qy = (by -2); qy <= (by + 2); qy += 2)
+    for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
       {
 	d = 0;
-	for (dy = -4; dy < 12; dy += 2)
-	  for (dx = -4; dx < 12; dx += 2)
+	for (dy = 0; dy < 8; dy += 2)
+	  for (dx = 0; dx < 8; dx += 2)
 	    {
 	      Y =
 		SUBA[(x + dx + qx) + (y + dy + qy) * width] -
@@ -733,14 +744,14 @@ mb_search (int x, int y)
   int by = best_match_y / 2;
 
   SQD = 10000000;
-  for (qy = (by - 2); qy <= (by + 2); qy++)
-    for (qx = (bx - 2); qx <= (bx + 2); qx++)
+  for (qy = (by - 1); qy <= (by + 1); qy++)
+    for (qx = (bx - 1); qx <= (bx + 1); qx++)
       {
 	d = 0;
 	dv = 0;
 	du = 0;
-	for (dy = 0; dy < 8; dy++)
-	  for (dx = 0; dx < 8; dx++)
+	for (dy = -4; dy < 8; dy++)
+	  for (dx = -4; dx < 8; dx++)
 	    {
 	      Y =
 		AVRG[(x + dx + qx) + (y + dy + qy) * width] -
@@ -815,8 +826,8 @@ mb_search_half (int x, int y)
 	yy = y + qy / 2;
 
 	d = 0;
-	for (dy = 0; dy < 8; dy++)
-	  for (dx = 0; dx < 8; dx++)
+	for (dy = -4; dy < 8; dy++)
+	  for (dx = -4; dx < 8; dx++)
 	    {
 	      x0 = xx + dx;
 	      x1 = x0 + 1;
@@ -877,8 +888,8 @@ copy_filtered_block (int x, int y)
   a2 = (1 - sx) * (sy);
   a3 = (sx) * (sy);
 
-  for (dy = 0; dy < 8; dy++)
-    for (dx = 0; dx < 8; dx++)
+  for (dy = 0; dy < 4; dy++)
+    for (dx = 0; dx < 4; dx++)
       {
 	xx = x + dx;
 	yy = y + dy;
@@ -949,8 +960,8 @@ copy_reference_block (int x, int y)
   int dx, dy;
   int xx, yy, x2, y2;
 
-  for (dy = 0; dy < 8; dy++)
-    for (dx = 0; dx < 8; dx++)
+  for (dy = 0; dy < 4; dy++)
+    for (dx = 0; dx < 4; dx++)
       {
 	xx = x + dx;
 	yy = (y + dy) * width;
@@ -1046,14 +1057,39 @@ antiflicker_reference ()
       for (x = 0; x < uv_width; x++)
 	{
 	  YUV1[x + y * uv_width + u_offset] =
-	    YUV1[x + y * uv_width + u_offset] * 0.4 +
-	    DEL0[x + y * uv_width + u_offset] * 0.3 +
-	    DEL1[x + y * uv_width + u_offset] * 0.3;
+	      YUV1[x + y * uv_width + u_offset] * 0.5 +
+	      DEL0[x + y * uv_width + u_offset] * 0.5 ;
 	  YUV1[x + y * uv_width + v_offset] =
-	    YUV1[x + y * uv_width + v_offset] * 0.4 +
-	    DEL0[x + y * uv_width + v_offset] * 0.3 +
-	    DEL1[x + y * uv_width + v_offset] * 0.3;
+	      YUV1[x + y * uv_width + v_offset] * 0.5 +
+	      DEL0[x + y * uv_width + v_offset] * 0.5 ;
 	}
+
+  if(sharpen!=0)
+      for (y = 1; y < (height-1); y++)
+	  for (x = 1; x < (width-1); x++)
+	  {
+	      value=
+		  YUV1[x + y * width]+
+		  (
+		      YUV1[x + y * width]-
+		      (
+			  YUV1[(x-1) + (y-1) * width] +
+			  YUV1[(x+0) + (y-1) * width] +
+			  YUV1[(x+1) + (y-1) * width] +
+			  YUV1[(x-1) + (y+0) * width] +
+			  YUV1[(x+0) + (y+0) * width] +
+			  YUV1[(x+1) + (y+0) * width] +
+			  YUV1[(x-1) + (y+1) * width] +
+			  YUV1[(x+0) + (y+1) * width] +
+			  YUV1[(x+1) + (y+1) * width] 
+			  )/9
+		      )*sharpen;
+	      value=(value>248)? 248:value;
+	      value=(value<16 )?  16:value;
+
+	      YUV1[x + y * width]=value;
+	  }
+
 }
 
 void
@@ -1081,9 +1117,7 @@ denoise_image ()
 	mean_U_SQD = mean_V_SQD = init_SQD/100;
     }
 
-  /* remove color-flicker and do heavy
-     filtering of the reference frame
-   */
+  /* remove color-flicker and do filtering of the reference frame */
   antiflicker_reference ();
 
   /* fill the delay loop */
@@ -1122,8 +1156,8 @@ denoise_image ()
   min_V_SQD = 0;
   div = 0;
   Smin=1000000000;
-  for (y = y_start; y < y_end; y += 8)
-    for (x = 0; x < width; x += 8)
+  for (y = y_start; y < y_end; y += 4)
+    for (x = 0; x < width; x += 4)
       {
 	div++;
 	/* subsampled full-search, first 4x4 then 8x8 pixels */
@@ -1142,16 +1176,12 @@ denoise_image ()
 	min_U_SQD += USQD;
 	min_V_SQD += VSQD;
 
-	/* it doesn't seem to be a good idea to set the
-	   factors to any higher value than '4' ... If
-	   you do, you *will* have blocks 
-	 */
-	if (YSQD < (mean_Y_SQD * 3.0) &&
-	    USQD < (mean_U_SQD * 3.0) && 
-	    VSQD < (mean_V_SQD * 3.0) &&
-	    SQD  < (mean_SQD   * 3.0) )
+	if (YSQD < (mean_Y_SQD * 5.0) &&
+	    USQD < (mean_U_SQD * 5.0) && 
+	    VSQD < (mean_V_SQD * 5.0) &&
+	    SQD  < (mean_SQD   * 5.5) )
 	  {
-	      (double)block_quality = (double)SQD/((double)mean_SQD*6);
+	      (double)block_quality = (double)SQD/((double)mean_SQD*5.5);
 	      copy_filtered_block (x, y);
 	  }
 	else
@@ -1170,3 +1200,9 @@ denoise_image ()
   mean_U_SQD = mean_U_SQD * 0.95 + min_U_SQD / div * 0.05;
   mean_V_SQD = mean_V_SQD * 0.95 + min_V_SQD / div * 0.05;
 }
+
+
+
+
+
+
