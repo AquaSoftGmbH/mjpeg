@@ -1,7 +1,7 @@
-.TH "lavrec" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "lavrec" "1" "23 November 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
-lavrec \- Record MJPEG-video from a zoran-device
+lavrec \- Record MJPEG-video from a zoran/video4linux-device
 
 .SH SYNOPSIS
 .B lavrec
@@ -11,116 +11,164 @@ lavrec \- Record MJPEG-video from a zoran-device
 .SH DESCRIPTION
 \fBlavrec\fP can be used to record video in MJPEG format (either
 quicktime, movtar or AVI) from a zoran video-capture device, such as
-the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33.
+the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33,
+or from a generic video4linux device, such as the cheap Bt848 or Bt878
+based TV-cards that are being sold in every computer shop around the
+corner.
+
 
 .SH OPTIONS
 \fBlavrec\fP accepts the following options:
 
 .TP 8
-.BR \-f " [" a | A | q | m ]
+.BR \-\-software\-encoding
+By default, lavrec will capture in a mode that is only suitable
+for recording from hardware MJPEG devices. Using this option
+will make lavrec use software\-JPEG\-encoding (using libjpeg)
+which enables MJPEG\-video\-capture from many generic video4linux
+devices (such as Bt848/Bt878\-based ones).
+
+.TP 8
+.BR \-f/\-\-format " [" a | A | q | m ]
 The format in which the video should be saved to the harddisk.
-  a - MJPEG AVI
+  a - MJPEG AVI (default)
   A - MJPEG AVI with fields exchanged
   q - Quicktime
   m - Movtar
 
 .TP 8
-.BR \-i " [" p | P | n | N | s | S | t | T | a ]
+.BR \-i/\-\-input " [" p | P | n | N | s | S | t | T | a ]
 The recording source and the video source standard format.
-  p - PAL through the Composite-in
+  p - PAL through the Composite-in or Bt8x8
   P - PAL through the S-Video
-  n - NTSC through the Composite-in
+  n - NTSC through the Composite-in or Bt8x8
   N - NTSC through the S-Video
-  s - SECAM through the Composite-in
+  s - SECAM through the Composite-in or Bt8x8
   S - SECAM through the S-Video
   t - PAL through the TV-tuner input
   T - NTSC through the TV-tuner input
   a - Auto-detect (default)
 
 .TP 8
-.BI  \-d " num"
+.BI  \-d/\-\-decimation " num"
 Recording decimation, either 1, 2 or 4. This will decimate the size
 of the recorded video horizontally and vertically. To use different
 horizontal and vertical decimations, use two numbers, the first one
 being the horizontal and the second one being the vertical (-d 12).
+\fBNote:\fP this option can only be used during hardware recording.
 
 .TP 8
-.BI \-g " WxH+X+Y"
-An X-style geometry string, giving the geometry of the full-sized
-frame to record. The default is the full frame, so 720x576/480 for
-Buz/LML33-users and 640x480 or 768x576 for DC10(+)-users.
+.BI \-g/\-\-geometry " WxH(+X+Y)"
+\fBFor hardware recording:\fP An X\-style geometry string, giving
+the geometry of the undecimated subframe to record. The default is the
+full frame, so 720x576/480+0+0 for Buz/LML33\-users and 640x480+0+0
+or 768x576+0+0 for DC10(+)-users.
+\fBFor software recordingP: The size of the video to be captured.
+Currently, width and height need to be a multiple of 16. You always
+capture the full frame since most video4linux devices don\'t support
+subframe capture.
 
 .TP 8
-.BI \-q " num"
-Quality of the video to be recorded (in percent). This must be a
+.BI \-q/\-\-quality " num"
+Quality of the JPEG\-video to be recorded (in percent). This must be a
 number between 0 and 100. Lower quality should generally mean lower
 filesize, higher quality will take more diskspace but will give more
-detailed perfectness in the resulting recorded video.
+detailed perfectness in the resulting recorded video. Default is 50%.
 
 .TP 8
-.BI \-t " num"
+.BI \-C\-\-channel " LIST:CHAN"
+Choose the channel to record from (xawtv-style). By default, lavrec will
+just use the current TV channel.
+
+.TP 8
+.BI \-t/\-\-time " num"
 Recording time in seconds. The default is unlimited. To stop capturing
 video while recording, use Ctrl-C.
 
 .TP 8
-.B \-S
+.B \-/\-\-single\-frame
 Single-frame capture mode. This means that one can capture individual
 frames from the capture device.
 
 .TP 8
-.BI \-T " num"
+.BI \-T/\-\-time\-lapse " num"
 time-lapse factor, which means that only every <num>th frame is saved
 to the recording file.
 
 .TP 8
-.B \-w
+.B \-w/\-\-wait
 If this option is given, lavrec will wait for the user to press enter
 before starting to record.
 
 .TP 8
-.BI \-a " num"
-Audio size in bits, either 0, 8 or 16. 0 means no audio.
+.B \-b/\-\-batch
+This option turns off all possible interactivity options and limits
+console output as much as possible. Useful for cron/scheduled recordings.
+
+.TP 8
+.BI \-a/\-\-audio\-bitsize " num"
+Audio size in bits, either 0, 8 or 16 (default). 0 means no audio.
 .TP 8
 
-.BI \-r " num"
+.BI \-r/\-\-audio\-bitrate " num"
 Audio sampling rate in Hz. This must be a sampling rate which is
 supported by the soundcard. Often-supported audio sampling rate values
-are 11025, 22050 or 44100.
+are 11025, 22050 or 44100 (default).
 
 .TP 8
-.B  \-s
+.B  \-s/\-\-stereo
 Capture in stereo. By default, lavrec captures in mono.
 .TP 8
 
-.BI \-l " num"
+.BI \-l/\-\-audio\-volume " num"
 Recording level. This must be a value between 0 (no sound) and 100
-(loud recording). -1 means to not touch the mixer settings at all.
+(loud recording). \-1 (default) means to not touch the mixer settings
+at all.
 
 .TP 8
-.B \-m
+.B \-m/\-\-mute
 Mute sound output while recording. This can be useful when recording
-sound from the microphone to disable echos.
-.TP 8
-
-.BR \-R " [" l | m | c ]
-Recording source, either (l)ine-in, (m)icrophone or (c)d-rom.
+sound from the microphone to disable echos. This option is disabled by
+default.
 
 .TP 8
-.BR \-c " [" 0 | 1 | 2 ]
+.BR \-R/\-\-audio\-source " [" l | m | c ]
+Recording source, either (l)ine-in, (m)icrophone or (c)d-rom. The default
+is to record from line-in (l).
+
+.TP 8
+.BR \-U/\-\-use\-read
+Use the read() system call rather than the mmap() system call for
+audio recording. This may fix many audio recording problems.
+
+.TP 8
+.BR \-c/\-\-synchronization " [" 0 | 1 | 2 ]
 Audio/video synchronization level efforts. (0) means no synchronization,
 (1) means that lavrec will replicate frames for lost frames. (2) means
 that lavrec will replicate frames for lost frames and do sync correction.
+Default is 2.
 
 .TP 8
-.BI \-n " num"
+.BI \-n/\-\-mjpeg-buffers " num"
 Number of MJPEG-buffers. Default is 32. Try changing this number if you
 have many lost frames.
+
 .TP 8
-.BI \-b " num"
-MJPEG buffersize in kilobytes. The default is 256 kb.
+.BI \-b/\-\-mjpeg-buffer-size " num"
+MJPEG buffersize in kilobytes. The default is 256 kB.
+
 .TP 8
-.BI \-v " num"
-Verbosity level (0, 1 or 2)
+.BI \-\-max\-file\-size " num"
+The maximum file size per JPEG file. By default, lavrec uses the maximum
+possible size for that specific recording format.
+
+.TP 8
+.BR \-\-file\-flush " num"
+Flush the file to disk after every num frames captured.
+
+.TP 8
+.BI \-v/\-\-verbose " num"
+Verbosity level (0, 1 or 2). Default is 0.
 
 .SH ENVIRONMENT
 The following environment variables can be recognized by lavrec:
@@ -134,16 +182,31 @@ The audio device. Default is /dev/dsp
 .B LAV_MIXER_DEV
 The mixer device. Default is /dev/mixer
 
+.SH TYPICAL RECORDING SESSIONS
+Okay, that's a lot of options. Now how would I normally record video?
+Let's assume you want to record at VCD resolution (352x288) from PAL source.
+You might want some higher quality than default (80%). You use default
+audio options and record to an AVI file. That having said, your recording
+command line would look like:
+.TP 8
+.B From hardware MJPEG devices (S\-video input)
+  lavrec --format=a --input=P --quality=80 --decimation=2 /path/to/file.avi
+.TP 8
+.B From normal video4linux devices
+  lavrec --software-encoding --format=a --input=p --quality=80 --geometry=352x288 /path/to/file.avi
+
 .SH AUTHOR
 This man page was written by Ronald Bultje.
 .br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-.TP
+.br
+    \fImjpeg\-users@lists.sourceforge.net\fP
+.br
+.br
 For more info, see our website at
-.I http://mjpeg.sourceforge.net/
+.br
+    \fIhttp://mjpeg.sourceforge.net/\fP
 
 .SH SEE ALSO
 .BR mjpegtools (1),
