@@ -124,6 +124,8 @@
 
 char *audio_strerror();
 
+int  verbose = 2;
+
 static EditList el;
 /* forward definitions for editlist.c */
 int el_get_video_frame(char *vbuff, long nframe, EditList *el);

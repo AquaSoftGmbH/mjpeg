@@ -80,6 +80,8 @@ static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940,
 /* reserved: for later use */
 int param_422 = 0;
 
+int verbose = 2;
+
 void Usage(char *str)
 {
   printf("Usage: %s [params]\n",str);
@@ -99,6 +101,7 @@ void Usage(char *str)
   printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
   printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
   printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
+  printf("   -v num	verbose level\n");
   exit(0);
 }
 
@@ -111,8 +114,9 @@ char *argv[];
 #define PARAM_LINE_MAX 256
   char param_line[PARAM_LINE_MAX];
 
-  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:tN")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:tNv:")) != EOF)
   {
+printf("optind=%d optarg=%s\n", optind, optarg);
     switch(n) {
 
       case 'm':
@@ -194,6 +198,11 @@ char *argv[];
 	case 'N':
 	  param_hfnoise_quant = 1;
 	  break;
+
+	case 'v':
+	  verbose = atoi(optarg);
+	  break;
+
 	default:
 	  nerr++;
     }
@@ -211,6 +220,7 @@ char *argv[];
     nerr++;
   }
 
+printf("optind=%d argc=%d nerr=%d\n", optind, argc, nerr);
   if(optind!=argc) nerr++;
 
   if(nerr) Usage(argv[0]);

@@ -125,8 +125,10 @@ double sfreq;        /* to match prototype : float args are always double */
         default:    printf("error, invalid sampling frequency: %d Hz\n",i);
         exit(-1);
      }
+
      // RJ: disturbs our percent counting:
      //printf("absthr[][] sampling frequency index: %d\n",sfreq_idx);
+
      read_absthr(absthr, sfreq_idx);
      if(lay==1){
         flush = 384;

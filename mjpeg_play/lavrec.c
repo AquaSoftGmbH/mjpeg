@@ -192,6 +192,7 @@ static int MJPG_bufsize  = 256;         /* Size   of MJPEG buffers */
 
 static int interlaced;
 
+static int verbose	= 2;
 /* On some systems MAP_FAILED seems to be missing */
 
 #ifndef MAP_FAILED
@@ -429,6 +430,7 @@ void Usage(char *progname)
    fprintf(stderr, "   -c [012]   Level of corrections for synchronization\n");
    fprintf(stderr, "   -n num     # of MJPEG buffers\n");
    fprintf(stderr, "   -b num     Size of MJPEG buffers [Kb]\n");
+   fprintf(stderr, "   -v num     verbose level\n");
    fprintf(stderr, "Environment variables recognized:\n");
    fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
    exit(1);
@@ -971,7 +973,7 @@ int main(int argc, char ** argv)
    /* Get options */
 
    nerr = 0;
-   while( (n=getopt(argc,argv,"f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:")) != EOF)
+   while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:")) != EOF)
    {
       switch(n) {
          case 'f':
@@ -1107,6 +1109,10 @@ int main(int argc, char ** argv)
             MJPG_bufsize = atoi(optarg);
             break;
 
+	case 'v':
+	  verbose = atoi(optarg);
+	  break;
+
          default:
             nerr++;
             break;
@@ -1138,56 +1144,57 @@ int main(int argc, char ** argv)
 
    if(time_lapse>1) audio_size = 0;
 
-   printf("\nRecording parameters:\n\n");
-   printf("Output format:      %s\n",video_format=='q'?"Quicktime":"AVI");
-   printf("Input Source:       ");
-   switch(input_source)
-   {
-      case 'p': printf("Composite PAL\n"); break;
-      case 'P': printf("S-VHS PAL\n"); break;
-      case 'n': printf("Composite NTSC\n"); break;
-      case 'N': printf("S-VHS NTSC\n"); break;
-      case 't': printf("TV tuner\n"); break;
-      default:  printf("Auto detect\n");
-   }
-   if(hordcm==verdcm)
-      printf("Decimation:         %d\n",hordcm);
-   else
-      printf("Decimation:         %d (hor) x %d (ver)\n",hordcm,verdcm);
-   printf("Quality:            %d\n",quality);
-   printf("Recording time:     %d sec\n",record_time);
-   if(time_lapse>1)
-      printf("Time lapse factor:  %d\n",time_lapse);
+   if (verbose > 1) {
+     printf("\nRecording parameters:\n\n");
+     printf("Output format:      %s\n",video_format=='q'?"Quicktime":"AVI");
+     printf("Input Source:       ");
+     switch(input_source)
+     {
+        case 'p': printf("Composite PAL\n"); break;
+        case 'P': printf("S-VHS PAL\n"); break;
+        case 'n': printf("Composite NTSC\n"); break;
+        case 'N': printf("S-VHS NTSC\n"); break;
+        case 't': printf("TV tuner\n"); break;
+        default:  printf("Auto detect\n");
+     }
+     if(hordcm==verdcm)
+        printf("Decimation:         %d\n",hordcm);
+     else
+        printf("Decimation:         %d (hor) x %d (ver)\n",hordcm,verdcm);
+     printf("Quality:            %d\n",quality);
+     printf("Recording time:     %d sec\n",record_time);
+     if(time_lapse>1)
+        printf("Time lapse factor:  %d\n",time_lapse);
 
-   printf("\n");
-   printf("MJPEG buffer size:  %d KB\n",MJPG_bufsize);
-   printf("# of MJPEG buffers: %d\n",MJPG_nbufs);
-   if(audio_size)
-   {
-      printf("\nAudio parameters:\n\n");
-      printf("Audio sample size:           %d bit\n",audio_size);
-      printf("Audio sampling rate:         %d Hz\n",audio_rate);
-      printf("Audio is %s\n",stereo ? "STEREO" : "MONO");
-      if(audio_lev!=-1)
-      {
-         printf("Audio input recording level: %d %%\n",audio_lev);
-         printf("%s audio output during recording\n",audio_mute?"Mute":"Don\'t mute");
-         printf("Recording source: %c\n",audio_recsrc);
-      }
-      else
-         printf("Audio input recording level: Use mixer setting\n");
-      printf("Level of correction for Audio/Video synchronization:\n");
-      switch(sync_corr)
-      {
-         case 0: printf("No lost frame compensation, No frame drop/insert\n"); break;
-         case 1: printf("Lost frame compensation, No frame drop/insert\n"); break;
-         case 2: printf("Lost frame compensation and frame drop/insert\n"); break;
-      }
+     printf("\n");
+     printf("MJPEG buffer size:  %d KB\n",MJPG_bufsize);
+     printf("# of MJPEG buffers: %d\n",MJPG_nbufs);
+     if(audio_size)
+     {
+        printf("\nAudio parameters:\n\n");
+        printf("Audio sample size:           %d bit\n",audio_size);
+        printf("Audio sampling rate:         %d Hz\n",audio_rate);
+        printf("Audio is %s\n",stereo ? "STEREO" : "MONO");
+        if(audio_lev!=-1)
+        {
+           printf("Audio input recording level: %d %%\n",audio_lev);
+           printf("%s audio output during recording\n",audio_mute?"Mute":"Don\'t mute");
+           printf("Recording source: %c\n",audio_recsrc);
+        }
+        else
+           printf("Audio input recording level: Use mixer setting\n");
+        printf("Level of correction for Audio/Video synchronization:\n");
+        switch(sync_corr)
+        {
+           case 0: printf("No lost frame compensation, No frame drop/insert\n"); break;
+           case 1: printf("Lost frame compensation, No frame drop/insert\n"); break;
+           case 2: printf("Lost frame compensation and frame drop/insert\n"); break;
+        }
+     }
+     else
+        printf("\nAudio disabled\n\n");
+     printf("\n");
    }
-   else
-      printf("\nAudio disabled\n\n");
-   printf("\n");
-
    /* Flush the Linux File buffers to disk */
 
    sync();
@@ -1239,19 +1246,24 @@ int main(int argc, char ** argv)
       case 't': input = 2; norm = 0; break;
       default:
          n = 0;
-         lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
+	 if (verbose > 1)
+           lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
          for(i=0;i<2;i++)
          {
-            sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
-            lavrec_msg(LAVREC_INFO,infostring,"");
+	    if (verbose > 1) {
+              sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
+              lavrec_msg(LAVREC_INFO,infostring,"");
+	    }
             bstat.input = i;
             res = ioctl(video_dev,MJPIOC_G_STATUS,&bstat);
             if(res<0) system_error("getting input status","ioctl MJPIOC_G_STATUS");
             if(bstat.signal)
             {
-               sprintf(infostring,"input present: %s %s",bstat.norm?"NTSC":"PAL",
+		if (verbose > 1) {
+                  sprintf(infostring,"input present: %s %s",bstat.norm?"NTSC":"PAL",
                                                          bstat.color?"color":"no color");
-               lavrec_msg(LAVREC_INFO,infostring,"");
+                  lavrec_msg(LAVREC_INFO,infostring,"");
+		}
                input = i;
                norm = bstat.norm;
                n++;
@@ -1265,9 +1277,11 @@ int main(int argc, char ** argv)
                lavrec_msg(LAVREC_ERROR,"No input signal ... exiting","");
                exit(1);
             case 1:
-               sprintf(infostring,"Detected %s %s",norm?"NTSC":"PAL",
+	       if (verbose > 1) {	
+                 sprintf(infostring,"Detected %s %s",norm?"NTSC":"PAL",
                                                    input==0?"Composite":"S-Video");
-               lavrec_msg(LAVREC_INFO,infostring,"");
+                 lavrec_msg(LAVREC_INFO,infostring,"");
+	       }
                break;
             case 2:
                lavrec_msg(LAVREC_ERROR,"Input signal on Composite AND S-Video ... exiting","");
@@ -1357,9 +1371,11 @@ int main(int argc, char ** argv)
    height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
    interlaced = (bparm.field_per_buff>1);
 
-   sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
+   if (verbose > 1) {
+     sprintf(infostring,"Image size will be %dx%d, %d field(s) per buffer",
                       width, height, bparm.field_per_buff);
-   lavrec_msg(LAVREC_INFO,infostring,"");
+     lavrec_msg(LAVREC_INFO,infostring,"");
+   }
 
    /* Request buffers */
 
@@ -1368,8 +1384,10 @@ int main(int argc, char ** argv)
    res = ioctl(video_dev, MJPIOC_REQBUFS,&breq);
    if(res<0) system_error("requesting video buffers","ioctl MJPIOC_REQBUFS");
 
-   sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
-   lavrec_msg(LAVREC_INFO,infostring,"");
+   if (verbose > 1) { 
+     sprintf(infostring,"Got %ld buffers of size %ld KB",breq.count,breq.size/1024);
+     lavrec_msg(LAVREC_INFO,infostring,"");
+   }
 
    /* Map the buffers */
 
@@ -1384,7 +1402,9 @@ int main(int argc, char ** argv)
 
    if (audio_size && sync_corr>1)
    {
-     printf("Getting audio ... \n");
+     if (verbose > 1) {
+       printf("Getting audio ... \n");
+     }
       for(n=0;;n++)
       {
          if(n>NUM_AUDIO_TRIES)
@@ -1582,10 +1602,12 @@ int main(int argc, char ** argv)
          ns = ns % 60;
          nh = nm / 60;
          nm = nm % 60;
-         sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
+	 if (verbose > 0) {
+           sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
                             "audio errs:%3lu tdiff=%10.6f",
                 nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
-         lavrec_msg(LAVREC_PROGRESS,infostring,"");
+           lavrec_msg(LAVREC_PROGRESS,infostring,"");
+	 }
       }
 
 
@@ -1645,9 +1667,11 @@ int main(int argc, char ** argv)
 
    /* Audio and mixer exit processing is done with atexit() */
 
-   if(res>=0)
-      lavrec_msg(LAVREC_INFO,"Clean exit ...","");
-   else
+   if(res>=0) {
+      if (verbose > 1) {
+        lavrec_msg(LAVREC_INFO,"Clean exit ...","");
+      }
+   } else
       lavrec_msg(LAVREC_INFO,"Error exit ...","");
    exit(0);
 }

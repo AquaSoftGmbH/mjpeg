@@ -105,6 +105,7 @@ musicin.c
 
 FILE               *musicin;
 Bit_stream_struc   bs;
+int		   verbose = 2;
 char               *programName;
 
 /* Global variables */
@@ -344,6 +345,9 @@ unsigned long *num_samples;
 char    outPath[MAX_NAME_SIZE];
 {
  layer *info = fr_ps->header;
+
+   if (verbose < 2)
+	return;
  
    printf("Encoding configuration:\n");
    if(info->mode != MPG_MD_JOINT_STEREO)
@@ -485,14 +489,16 @@ static unsigned int crc;
                           ((double)bitrate[info.lay-1][info.bitrate_index] /
                            (double)bitsPerSlot);
     whole_SpF = (int) avg_slots_per_frame;
-    printf("slots/frame = %d\n",whole_SpF);
+    if (verbose > 1)
+	printf("slots/frame = %d\n",whole_SpF);
     frac_SpF  = avg_slots_per_frame - (double)whole_SpF;
     slot_lag  = -frac_SpF;
-    printf("frac SpF=%.3f, tot bitrate=%d kbps, s freq=%.1f kHz\n",
+    if (verbose > 1)
+	printf("frac SpF=%.3f, tot bitrate=%d kbps, s freq=%.1f kHz\n",
            frac_SpF, bitrate[info.lay-1][info.bitrate_index],
            s_freq[info.sampling_frequency]);
  
-    if (frac_SpF != 0)
+    if (verbose > 2 &&frac_SpF != 0)
        printf("Fractional number of slots, padding required\n");
     else info.padding = 0;
  
@@ -622,7 +628,8 @@ static unsigned int crc;
 
     close_bit_stream_w(&bs);
 
-    printf("Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps\n",
+    if (verbose > 1)
+	printf("Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps\n",
            (FLOAT) sentBits / (frameNum * bitsPerSlot),
            (FLOAT) sentBits / (frameNum * samplesPerFrame),
            (FLOAT) sentBits / (frameNum * samplesPerFrame) *
@@ -633,8 +640,10 @@ static unsigned int crc;
                       FILETYPE_ENCODE);
 #endif
 
-    printf("Encoding with psychoacoustic model %d is finished\n", model);
-    printf("The MPEG encoded output file name is \"%s\"\n",
+    if (verbose > 1) {
+	printf("Encoding with psychoacoustic model %d is finished\n", model);
+	printf("The MPEG encoded output file name is \"%s\"\n",
             encoded_file_name);
+    }
     exit(0);
 }

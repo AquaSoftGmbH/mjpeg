@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 #include "lav_io.h"
 #include "editlist.h"
@@ -68,6 +69,8 @@ struct wave_header
 };
 
 struct wave_header wave;
+int verbose = 2;
+
 
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )
 {
@@ -150,6 +153,7 @@ void Usage(char *str)
 
 static short audio_buff[256*1024]; /* Enough for 1fps, 48kHz ... */
 
+int
 main(argc, argv)
 int     argc;
 char    **argv;
@@ -190,7 +194,7 @@ char    **argv;
        case 32000 :
            break;
        default:
-           fprintf(stderr,"Audio rate is %d Hz\n",el.audio_rate);
+           fprintf(stderr,"Audio rate is %ld Hz\n",el.audio_rate);
            fprintf(stderr,"Audio rate must be 32000, 44100 or 48000 !\n");
            exit(1);
     }

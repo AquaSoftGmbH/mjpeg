@@ -350,6 +350,7 @@ extern char     *layer_names[3];
 extern double   s_freq[4];
 extern int      bitrate[3][15];
 extern double FAR multiple[64];
+extern int	verbose;
 
 /***********************************************************************
 *

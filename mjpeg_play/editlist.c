@@ -22,6 +22,8 @@
 #include "lav_io.h"
 #include "editlist.h"
 
+extern	int	verbose;
+
 /* Since we use malloc often, here the error handling */
 
 static void malloc_error()
@@ -63,7 +65,8 @@ static int open_video_file(char *filename, EditList *el)
    n = el->num_video_files;
    el->num_video_files++;
 
-   fprintf(stderr,"Opening video file %s ...\n",filename);
+   if (verbose > 1)
+     fprintf(stderr,"Opening video file %s ...\n",filename);
 
    el->lav_fd[n] = lav_open_input_file(filename);
    if(!el->lav_fd[n])
@@ -84,18 +87,20 @@ static int open_video_file(char *filename, EditList *el)
 
    /* Debug Output */
 
-   fprintf(stderr,"File: %s, absolute name: %s\n",filename,realname);
-   fprintf(stderr,"   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
-   fprintf(stderr,"   width:       %8d\n",lav_video_width (el->lav_fd[n]));
-   fprintf(stderr,"   height:      %8d\n",lav_video_height(el->lav_fd[n]));
-   fprintf(stderr,"   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
-   fprintf(stderr,"   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
-   fprintf(stderr,"   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
-   fprintf(stderr,"   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));
-   fprintf(stderr,"   audio bits:  %8d\n",lav_audio_bits(el->lav_fd[n]));
-   fprintf(stderr,"   audio rate:  %8ld\n",lav_audio_rate(el->lav_fd[n]));
-   fprintf(stderr,"\n");
-   fflush(stderr);
+   if (verbose > 1) {
+     fprintf(stderr,"File: %s, absolute name: %s\n",filename,realname);
+     fprintf(stderr,"   frames:      %8ld\n",lav_video_frames(el->lav_fd[n]));
+     fprintf(stderr,"   width:       %8d\n",lav_video_width (el->lav_fd[n]));
+     fprintf(stderr,"   height:      %8d\n",lav_video_height(el->lav_fd[n]));
+     fprintf(stderr,"   interlacing: %8d\n",lav_video_interlacing(el->lav_fd[n]));
+     fprintf(stderr,"   frames/sec:  %8.3f\n",lav_frame_rate(el->lav_fd[n]));
+     fprintf(stderr,"   audio samps: %8ld\n",lav_audio_samples(el->lav_fd[n]));
+     fprintf(stderr,"   audio chans: %8d\n",lav_audio_channels(el->lav_fd[n]));
+     fprintf(stderr,"   audio bits:  %8d\n",lav_audio_bits(el->lav_fd[n]));
+     fprintf(stderr,"   audio rate:  %8ld\n",lav_audio_rate(el->lav_fd[n]));
+     fprintf(stderr,"\n");
+     fflush(stderr);
+   }
 
    nerr = 0;
 
@@ -230,8 +235,8 @@ void read_video_files(char **filename, int num_files, EditList *el)
       if(strcmp(line,"LAV Edit List\n")==0)
       {
          /* Ok, it is a edit list */
-
-         fprintf(stderr,"Edit list %s opened\n",filename[nf]);
+	 if (verbose > 1)
+           fprintf(stderr,"Edit list %s opened\n",filename[nf]);
 
          /* Read second line: Video norm */
 
@@ -242,7 +247,8 @@ void read_video_files(char **filename, int num_files, EditList *el)
             exit(1);
          }
 
-         fprintf(stderr,"Edit list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
+	 if (verbose > 1)
+           fprintf(stderr,"Edit list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
 
          if(line[0]=='N'||line[0]=='n')
          {
@@ -267,8 +273,8 @@ void read_video_files(char **filename, int num_files, EditList *el)
 
          fgets(line,1024,fd);
          sscanf(line,"%d",&num_list_files);
-
-         fprintf(stderr,"Edit list contains %d files\n",num_list_files);
+	 if (verbose > 1)
+           fprintf(stderr,"Edit list contains %d files\n",num_list_files);
 
          /* read files */
 
@@ -349,8 +355,8 @@ int write_edit_list(char *name, long n1, long n2, EditList *el)
 
    if(n1<0) n1 = 0;
    if(n2>=el->video_frames) n2 = el->video_frames-1;
-
-   printf("Write edit list: %ld %ld %s\n",n1,n2,name);
+   if (verbose > 1)
+     printf("Write edit list: %ld %ld %s\n",n1,n2,name);
 
    fd = fopen(name,"w");
    if(fd==0)

@@ -179,8 +179,10 @@ static void read_and_resample()
    num_out *= chans_out;
 
    nseconds++;
-   printf("%4d seconds done\r",nseconds);
-   fflush(stdout);
+   if (verbose > 0) {
+     printf("%4d seconds done\r",nseconds);
+     fflush(stdout);
+   }
 }
 
 int get_samples(short *abuff, int num, int stereo)

@@ -65,11 +65,10 @@ int chrom_width, chrom_height;
 unsigned char *frame_buf[3]; /* YUV... */
 
 
-int	verbose = 2;
 
 EditList el;
 
-
+int	verbose = 0;
 
 void error(text)
 char *text;
@@ -264,7 +263,7 @@ void writeoutYUV4MPEGheader()
 		something more reliable than height */
 	 
 	 sprintf(str,"YUV4MPEG %d %d %d\n",
-			 output_width,output_height,el.video_norm == 'n' ? 4 : 3);
+			 output_width,output_height,(output_height>512)?3:4);
 	 write(1,str,strlen(str));
 }
 
