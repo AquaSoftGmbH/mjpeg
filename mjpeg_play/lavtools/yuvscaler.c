@@ -25,6 +25,8 @@
 #include "inttypes.h"
 #include "yuvscaler.h"
 
+#define YUVSCALER_VERSION LAVPLAY_VERSION
+
 
 // For input
 unsigned int input_width;
@@ -141,7 +143,7 @@ print_usage (char *argv[])
 	   "\t USE_WidthxHeight+WidthOffset+HeightOffset to select a useful area of the input frame (multiple of 4)\n"
 	   "\t    the rest of the image being discarded\n"
 	   "\t if frames come from stdin, input frames interlacing type is not known from header. For interlacing specification, use:\n"
-	   "\t NOT_INTERLACED to select not interlaced output frames\n"
+	   "\t NOT_INTERLACED to select not interlaced input frames\n"
 	   "\t INTERLACED_ODD_FIRST  to select an interlaced, odd  first frame input stream from stdin\n"
 	   "\t INTERLACED_EVEN_FIRST to select an interlaced, even first frame input stream from stdin\n"
 	   "\n"
@@ -696,7 +698,7 @@ main (int argc, char *argv[])
   unsigned int divider;
   FILE *in_file = stdin;
   FILE *out_file = stdout;
-  char *info_str="If you see this, please report to the author that info_str was faulty used unitialized <xbiquard@free.fr>\n";
+  char info_str[]="If you see this, please report to the author that info_str was faulty used unitialized <xbiquard@free.fr>\n";
 
    // SPECIFIC TO BICUBIC
   unsigned int *in_line=NULL, *in_col=NULL, out_line, out_col;
@@ -705,14 +707,10 @@ main (int argc, char *argv[])
   float *a=NULL, *b=NULL;
   long int *cubic_spline_m=NULL, *cubic_spline_n=NULL;
 
-  mjpeg_info ("yuvscaler is a general scaling utility for yuv frames\n");
+  mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION") is a general scaling utility for yuv frames\n");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
   mjpeg_info ("%s -h for help\n", argv[0]);
    
-   // To avoid the famous "might be used unitialized" warnings! we allocate pointers here, even if we do not use them
-
-   
-
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
 
@@ -831,7 +829,7 @@ main (int argc, char *argv[])
 
   // Deal with args that depend on input stream
   handle_args_dependent (argc, argv);
-
+   
   // Scaling algorithm determination
   if ((algorithm == 0) || (algorithm == -1))
     {
