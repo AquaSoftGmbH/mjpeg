@@ -430,7 +430,7 @@ main (int argc, char *argv[])
      yuv_correct->Gamma, yuv_correct->InputYmin, yuv_correct->InputYmax,
      yuv_correct->OutputYmin, yuv_correct->OutputYmax);
   // Master loop : continue until there is no next frame in stdin
-  while ((err = yuvcorrect_y4m_read_frame (0, frame, gen_correct->line_switch)) == Y4M_OK)
+  while ((err = yuvcorrect_y4m_read_frame (0, &gen_correct->streaminfo, frame, gen_correct->line_switch)) == Y4M_OK)
     {
       if (overall->stat == 1)
 	yuvstat (frame);
@@ -447,7 +447,7 @@ main (int argc, char *argv[])
 	      if (frame_num == 0)
 		{
 		  bottom_field_storage (frame, oddeven, frame->field1, frame->field2);
-		  if (yuvcorrect_y4m_read_frame (0, frame, gen_correct->line_switch) !=
+		  if (yuvcorrect_y4m_read_frame (0, &gen_correct->streaminfo, frame, gen_correct->line_switch) !=
 		      Y4M_OK)
 		    mjpeg_error_exit1 ("Can't read frame %ld", frame_num);
 		  frame_num++;
@@ -463,7 +463,7 @@ main (int argc, char *argv[])
 	      if (frame_num == 0)
 		{
 		  top_field_storage (frame, oddeven, frame->field1, frame->field2);
-		  if (yuvcorrect_y4m_read_frame (0, frame, gen_correct->line_switch) !=
+		  if (yuvcorrect_y4m_read_frame (0, &gen_correct->streaminfo, frame, gen_correct->line_switch) !=
 		      Y4M_OK)
 		    mjpeg_error_exit1 ("Can't read frame %ld", frame_num);
 		  frame_num++;
@@ -496,7 +496,7 @@ main (int argc, char *argv[])
 	}
 
       // Output Frame Header
-      if (y4m_write_frame_header (1, &frame->info) != Y4M_OK)
+      if (y4m_write_frame_header (1, &gen_correct->streaminfo, &frame->info) != Y4M_OK)
 	goto out_error;
 
       // Output Frame content

@@ -560,7 +560,7 @@ void initialisation2(yuv_correction_t * yuv_correct, rgb_correction_t * rgb_corr
 
 // *************************************************************************************
 int
-yuvcorrect_y4m_read_frame (int fd, frame_t * frame, uint8_t line_switch)
+yuvcorrect_y4m_read_frame (int fd, y4m_stream_info_t *si, frame_t * frame, uint8_t line_switch)
 {
   // This function reads a frame from input stream. 
   // It is the same as the y4m_read_frame function (from y4mpeg.c) except that line switching
@@ -570,7 +570,7 @@ yuvcorrect_y4m_read_frame (int fd, frame_t * frame, uint8_t line_switch)
   uint8_t *buf;
   buf = frame->y;
 
-  if ((err = y4m_read_frame_header (fd, &frame->info)) == Y4M_OK)
+  if ((err = y4m_read_frame_header (fd, si, &frame->info)) == Y4M_OK)
     {
       if (!line_switch)
 	{

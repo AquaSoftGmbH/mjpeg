@@ -488,7 +488,7 @@ main (int argc, char *argv[])
    mjpeg_debug ("after alignement: %p", u_c_p);
    image_frame=u_c_p;
    // Read image frame and apply corrections eventually defined on command line
-   if(yuvcorrect_y4m_read_frame (overall->ImgFrame, frame, gen_correct->line_switch) != Y4M_OK)
+   if(yuvcorrect_y4m_read_frame (overall->ImgFrame, &gen_correct->streaminfo, frame, gen_correct->line_switch) != Y4M_OK)
      mjpeg_error_exit1("Unable to read image frame. Aborting now !!");
    close(overall->ImgFrame);
    
@@ -501,7 +501,7 @@ main (int argc, char *argv[])
 	if ((ref_frame->width!=frame->y_width)||(ref_frame->height!=frame->y_height))
 	  mjpeg_error_exit1("Width and Height of Image and Ref Frame differ. aborting now!!");
 	// Read ref frame
-	if (y4m_read_frame_header (overall->RefFrame, &ref_frame->info) == Y4M_OK)
+	if (y4m_read_frame_header (overall->RefFrame, &gen_correct->streaminfo, &ref_frame->info) == Y4M_OK)
 	  {
 	     if ((err = y4m_read (overall->RefFrame, ref_frame->ref, frame->length)) != Y4M_OK)
 	       mjpeg_error_exit1 ("Couldn't read FRAME content: %s!",y4m_strerr (err));
@@ -531,7 +531,7 @@ main (int argc, char *argv[])
    // Now, frame->y points on the corrected frame. Store it inside image_frame
    memcpy(image_frame,frame->y,frame->length);
    // Output Frame Header
-   if (y4m_write_frame_header (1, &frame->info) != Y4M_OK)
+   if (y4m_write_frame_header (1, &gen_correct->streaminfo, &frame->info) != Y4M_OK)
      goto out_error;
    // Output Frame content
    if (y4m_write (1, frame->y, frame->length) != Y4M_OK)
@@ -1085,7 +1085,7 @@ main (int argc, char *argv[])
 	  }
 	
 	// Output Frame Header
-	if (y4m_write_frame_header (1, &frame->info) != Y4M_OK)
+	if (y4m_write_frame_header (1, &gen_correct->streaminfo, &frame->info) != Y4M_OK)
 	  goto out_error;
 	// Output Frame content
 	// Output may be in fact constituted of two parts => cover part of frame with final_ref

@@ -118,7 +118,7 @@ rgb_correction_t;
 
 // Functions Prototypes
 void handle_args_overall (int argc, char *argv[], overall_t * overall);
-int yuvcorrect_y4m_read_frame (int fd, frame_t * frame, uint8_t line_switch);
+int yuvcorrect_y4m_read_frame (int fd, y4m_stream_info_t *si, frame_t * frame, uint8_t line_switch);
 int yuvcorrect_luminance_init (yuv_correction_t * yuv_correct);
 int yuvcorrect_chrominance_init (yuv_correction_t * yuv_correct);
 int yuvcorrect_luminance_treatment (frame_t * frame,
