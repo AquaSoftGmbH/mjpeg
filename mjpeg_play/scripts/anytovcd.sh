@@ -22,11 +22,11 @@
 AUD_TRACK="1"
 FILTERING="none"
 FILTER_TYPE="median"
+PREFIX_OUT="out"
 VCD_TYPE="dvd"
-OUT_NORM="pal"
 ENC_TOOL="mpeg2enc"
 QUALITY="best"
-VERSION="4"
+VERSION="5"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -85,6 +85,12 @@ probe_vid_sar ()
     rm -f /tmp/tmp.y4m
 }
 
+probe_vid_size ()
+{
+    echo "`${FFMPEG} -i "$1" 2>&1 | \
+    awk '/Video:/ {print $5}' | sed s/,// | head -1`"
+}
+
 probe_vid_fmt ()
 {
     echo "`${FFMPEG} -i "$1" 2>&1 | \
@@ -97,7 +103,6 @@ show_help ()
     echo "-a    audio track number (1)      "
     echo "-A    force input pixel aspect ratio (X:Y)"
     echo "-b    blind mode (no video)       "
-    echo "-d    don't scale video           "
     echo "-e    video encoder tool          "
     echo "      avail. : mpeg2enc (default) "
     echo "      or ffmpeg (experimental)    "
@@ -110,12 +115,14 @@ show_help ()
     echo "-m    mute mode (no audio)        "
     echo "-n    output norm in case of input"
     echo "      with non-standard framerate "
-    echo "      pal (default) or ntsc       "
+    echo "      pal (default), ntsc or ntsc_film"
+    echo "-o    output files prefix (default = \"out\")"
     echo "-p    output type (default = dvd) "
     echo "      avail. : cvd, dvd, dvd_wide, mvcd,"
     echo "               svcd and vcd       "
     echo "-q    quality (default = best)    "
     echo "      avail. : best, good, fair   "
+    echo "-R    force input framerate (X:Y) "
     echo "-t    filter type to use with     "
     echo "      the chosen filter method    "
     echo "      (default = median)          "
@@ -136,27 +143,28 @@ test_bin ()
     fi
 }
 
-for BIN in ${FFMPEG} ${MPEG2ENC} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
+for BIN in ${FFMPEG} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
 
     test_bin ${BIN}
 
 done
 
-while getopts a:A:bde:f:i:I:mn:p:q:t:v OPT
+while getopts a:A:be:f:i:I:mn:o:p:q:R:t:v OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
     A)    VID_SAR_SRC="${OPTARG}";;
     b)    BLIND_MODE="1";;
-    d)    SCALING="none";;
     e)    ENC_TOOL="${OPTARG}";;
     i)    VIDEO_SRC="${OPTARG}"; AUDIO_SRC="${VIDEO_SRC}";;
     I)    INTERLACING="${OPTARG}";;
     f)    FILTERING="${OPTARG}";;
     m)    MUTE_MODE="1";;
     n)    OUT_NORM="${OPTARG}";;
+    o)    PREFIX_OUT="${OPTARG}";;
     p)    VCD_TYPE="${OPTARG}";;
     q)    QUALITY="${OPTARG}";;
+    R)    VID_FPS_SRC="${OPTARG}";;
     t)    FILTER_TYPE="${OPTARG}";;
     v)    echo "$0 version ${VERSION}"; exit 0;;
     \?)   show_help; exit 0;;
@@ -175,8 +183,8 @@ FFMPEG_VERSION="`probe_ffmpeg_version`"
 
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FREQ_SRC="`probe_aud_freq "${AUDIO_SRC}" ${AUD_TRACK}`"
-VID_FPS_SRC="`probe_vid_fps "${VIDEO_SRC}"`"
 VID_FMT_SRC="`probe_vid_fmt "${VIDEO_SRC}"`"
+VID_SIZE_SRC="`probe_vid_size "${VIDEO_SRC}"`"
 
 # input interlacing
 if test "${INTERLACING}" == "none"; then
@@ -197,6 +205,13 @@ else
 
 fi
 
+# input framerate
+if test "${VID_FPS_SRC}" == ""; then
+
+    VID_FPS_SRC="`probe_vid_fps "${VIDEO_SRC}"`"
+
+fi
+
 # input pixel/sample aspect ratio
 if test "${VID_SAR_SRC}" == ""; then
 
@@ -204,7 +219,10 @@ if test "${VID_SAR_SRC}" == ""; then
 
 fi
 
-if test "${VID_SAR_SRC}" == "0:0"; then
+VID_SAR_N_SRC="`echo ${VID_SAR_SRC} | cut -d: -f1`"
+VID_SAR_D_SRC="`echo ${VID_SAR_SRC} | cut -d: -f2`"
+
+if test "${VID_SAR_N_SRC}" == "0" || test "${VID_SAR_D_SRC}" == "0"; then
 
     VID_SAR_SRC="1:1"
 
@@ -212,6 +230,7 @@ fi
 
 FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
+MPLEX="${MPLEX} -v 1"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
 Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR"
 
@@ -279,19 +298,21 @@ fi
 # profile(s)
 if test "${VCD_TYPE}" == "cvd"; then
 
-    VIDEO_OUT="out.m2v"
-    AUDIO_OUT="out.ac3"
-    MPEG_OUT="out.mpg"
-
     FF_ENC="${FF_ENC} -vcodec mpeg2video -f rawvideo -bufsize 224"
     MPEG2ENC="${MPEG2ENC} -f 8"
     Y4MSCALER="${Y4MSCALER} -O preset=cvd"
     MPLEX="${MPLEX} -f 8"
     
+    VID_FMT_OUT="m2v"
     VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="7500"
 
+    VID_SAR_525_OUT="20:11"
+    VID_SAR_625_OUT="59:27"
+    VID_SIZE_525_OUT="352x480"
+    VID_SIZE_625_OUT="352x576"
+    
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
@@ -299,18 +320,20 @@ if test "${VCD_TYPE}" == "cvd"; then
 
 elif test "${VCD_TYPE}" == "dvd"; then
 
-    VIDEO_OUT="out.m2v"
-    AUDIO_OUT="out.ac3"
-    MPEG_OUT="out.mpg"
-
     FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
     MPEG2ENC="${MPEG2ENC} -f 8 -D 10"
     Y4MSCALER="${Y4MSCALER} -O preset=dvd"
     MPLEX="${MPLEX} -f 8"
 
+    VID_FMT_OUT="m2v"
     VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="8000"
+    
+    VID_SAR_525_OUT="10:11"
+    VID_SAR_625_OUT="59:54"
+    VID_SIZE_525_OUT="720x480"
+    VID_SIZE_625_OUT="720x576"
     
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
@@ -319,18 +342,20 @@ elif test "${VCD_TYPE}" == "dvd"; then
 
 elif test "${VCD_TYPE}" == "dvd_wide"; then
 
-    VIDEO_OUT="out.m2v"
-    AUDIO_OUT="out.ac3"
-    MPEG_OUT="out.mpg"
-
     FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
     MPEG2ENC="${MPEG2ENC} -f 8 -D 10"
     Y4MSCALER="${Y4MSCALER} -O preset=dvd_wide"
     MPLEX="${MPLEX} -f 8"
 
+    VID_FMT_OUT="m2v"
     VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="8000"
+    
+    VID_SAR_525_OUT="40:33"
+    VID_SAR_625_OUT="118:81"
+    VID_SIZE_525_OUT="720x480"
+    VID_SIZE_625_OUT="720x576"
     
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
@@ -339,19 +364,21 @@ elif test "${VCD_TYPE}" == "dvd_wide"; then
 
 elif test "${VCD_TYPE}" == "mvcd"; then
 
-    VIDEO_OUT="out.m1v"
-    AUDIO_OUT="out.mp2"
-    MPEG_OUT="out-%d.mpg"
-
     FF_ENC="${FF_ENC} -vcodec mpeg1video -f rawvideo -bufsize 40 -me_range 64"
     MPEG2ENC="${MPEG2ENC} -f 2 -g 12 -G 24 -B 256 -S 797"
     Y4MSCALER="${Y4MSCALER} -O preset=vcd"
     MPLEX="${MPLEX} -f 2 -r 1400 -V"
 
     MATRICES="kvcd"
+    VID_FMT_OUT="m1v"
     VID_ILACE_OUT="p"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="1152"
+    
+    VID_SAR_525_OUT="10:11"
+    VID_SAR_625_OUT="59:54"
+    VID_SIZE_525_OUT="352x240"
+    VID_SIZE_625_OUT="352x288"
     
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
@@ -360,18 +387,20 @@ elif test "${VCD_TYPE}" == "mvcd"; then
 
 elif test "${VCD_TYPE}" == "svcd"; then
 
-    VIDEO_OUT="out.m2v"
-    AUDIO_OUT="out.mp2"
-    MPEG_OUT="out-%d.mpg"
-
     FF_ENC="${FF_ENC} -target svcd -f rawvideo"
     MPEG2ENC="${MPEG2ENC} -f 4 -B 256 -S 797"
     Y4MSCALER="${Y4MSCALER} -O preset=svcd"
     MPLEX="${MPLEX} -f 4"
 
+    VID_FMT_OUT="m2v"
     VID_ILACE_OUT="${VID_ILACE_SRC}"
     VID_MINRATE_OUT="0"
     VID_MAXRATE_OUT="2500"
+    
+    VID_SAR_525_OUT="15:11"
+    VID_SAR_625_OUT="59:36"
+    VID_SIZE_525_OUT="480x480"
+    VID_SIZE_625_OUT="480x576"
     
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
@@ -380,16 +409,18 @@ elif test "${VCD_TYPE}" == "svcd"; then
 
 elif test "${VCD_TYPE}" == "vcd"; then
 
-    VIDEO_OUT="out.m1v"
-    AUDIO_OUT="out.mp2"
-    MPEG_OUT="out-%d.mpg"
-
     FF_ENC="${FF_ENC} -target vcd -f rawvideo -me_range 64"
     MPEG2ENC="${MPEG2ENC} -f 1 -B 256 -S 797"
     Y4MSCALER="${Y4MSCALER} -O preset=vcd"
     MPLEX="${MPLEX} -f 1"
 
+    VID_FMT_OUT="m1v"
     VID_ILACE_OUT="p"
+    
+    VID_SAR_525_OUT="10:11"
+    VID_SAR_625_OUT="59:54"
+    VID_SIZE_525_OUT="352x240"
+    VID_SIZE_625_OUT="352x288"
     
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
@@ -403,6 +434,11 @@ else
     exit 2
 
 fi
+
+# output filenames
+VIDEO_OUT="${PREFIX_OUT}.${VID_FMT_OUT}"
+AUDIO_OUT="${PREFIX_OUT}.${AUD_FMT_OUT}"
+MPEG_OUT="${PREFIX_OUT}-%d.mpg"
 
 # output interlacing
 if test "${VID_ILACE_OUT}" == "b"; then
@@ -424,9 +460,26 @@ elif test "${OUT_NORM}" == "ntsc"; then
 
     VID_FPS_OUT="30000:1001"
 
+elif test "${OUT_NORM}" == "ntsc_film"; then
+
+    VID_FPS_OUT="24000:1001"
+
 else
 
     VID_FPS_OUT="25:1"
+
+fi
+
+# output sar and framesize for pal/ntsc
+if test "${VID_FPS_OUT}" == "25:1"; then
+
+    VID_SAR_OUT="${VID_SAR_625_OUT}"
+    VID_SIZE_OUT="${VID_SIZE_625_OUT}"
+
+else
+
+    VID_SAR_OUT="${VID_SAR_525_OUT}"
+    VID_SIZE_OUT="${VID_SIZE_525_OUT}"
 
 fi
 
@@ -505,7 +558,7 @@ if test "${VID_ILACE_SRC}" != "p" && test "${VID_ILACE_OUT}" == "p"; then
 fi
 
 # video scaler
-if test "${SCALING}" == "none"; then
+if test "${VID_SAR_SRC}" == "${VID_SAR_OUT}" && test "${VID_SIZE_SRC}" == "${VID_SIZE_OUT}"; then
 
     SCALER=""
 
@@ -513,6 +566,14 @@ else
 
     test_bin ${Y4MSCALER}
     SCALER="${Y4MSCALER} |"
+
+fi
+
+# 3:2 pulldown
+if test "${VID_FPS_OUT}" == "24000:1001" && test "${VID_FMT_OUT}" == "m2v"; then
+
+    FF_ENC="${FF_ENC}"
+    MPEG2ENC="${MPEG2ENC} -p"
 
 fi
 
@@ -545,12 +606,12 @@ fi
 if test "${ENC_TOOL}" == "ffmpeg"; then
 
     test_bin ${FFMPEG}
-    ENCODER="${FF_ENC} -y ${VIDEO_OUT}"
+    ENCODER="${FF_ENC} -y \"${VIDEO_OUT}\""
 
 elif test "${ENC_TOOL}" == "mpeg2enc"; then
 
     test_bin ${MPEG2ENC}
-    ENCODER="${MPEG2ENC} -o ${VIDEO_OUT}"
+    ENCODER="${MPEG2ENC} -o \"${VIDEO_OUT}\""
 
 else
 
@@ -576,17 +637,17 @@ fi
 if test "${AUD_FMT_SRC}" == "${AUD_FMT_OUT}"; then
 
     AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
-    AUDIO_ENCODER="-acodec copy -y ${AUDIO_OUT}"
+    AUDIO_ENCODER="-acodec copy -y \"${AUDIO_OUT}\""
 
 elif test "${AUD_FREQ_SRC}" == "${AUD_FREQ_OUT}"; then
 
     AUDIO_DECODER="${FFMPEG} -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\""
-    AUDIO_ENCODER="-ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y ${AUDIO_OUT}"
+    AUDIO_ENCODER="-ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y \"${AUDIO_OUT}\""
 
 else
 
     AUDIO_DECODER="${FFMPEG} -v 0 -map 0:${AUD_TRACK} -i \"${AUDIO_SRC}\" -f au -y /dev/stdout |"
-    AUDIO_ENCODER="${FFMPEG} -f au -i /dev/stdin -ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y ${AUDIO_OUT}"
+    AUDIO_ENCODER="${FFMPEG} -f au -i /dev/stdin -ab ${AUD_BITRATE_OUT} -ac ${AUD_CHANNELS_OUT} -y \"${AUDIO_OUT}\""
 
 fi
 
@@ -607,7 +668,7 @@ fi
 # multiplexing
 if ! test "${BLIND_MODE}" == "1" && ! test "${MUTE_MODE}" == "1"; then
 
-    ${MPLEX} -o ${MPEG_OUT} ${VIDEO_OUT} ${AUDIO_OUT}
+    ${MPLEX} -o "${MPEG_OUT}" "${VIDEO_OUT}" "${AUDIO_OUT}"
 
 fi
 
