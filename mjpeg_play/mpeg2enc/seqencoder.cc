@@ -431,6 +431,16 @@ void SeqEncoder::EncodeStream()
             Pass1EncodeFrame();
          }
     } while( pass2queue.size() != 0 ||  ss.FrameInStream() < reader.NumberOfFrames() );
+
+    while( pass1coded.size() )
+    {
+        pass2queue.push_back( pass1coded.front() );
+        pass1coded.pop_front();
+    }
+
+    while( pass2queue.size() )
+        Pass2EncodeFrame();
+
     StreamEnd();
 }
 
