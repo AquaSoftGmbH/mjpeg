@@ -36,7 +36,8 @@
 #endif
 
 #ifdef HAVE_LIBQUICKTIME
-#include <quicktime.h>
+#include <quicktime/quicktime.h>
+#include <quicktime/lqt.h>
 #endif
 
 extern int AVI_errno;
@@ -545,10 +546,6 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 {
    int res;
-#ifdef	HAVE_LIBQUICKTIME
-   int	n, nb;
-   uint8_t *hbuff;
-#endif
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
 
@@ -560,18 +557,7 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         if(lav_audio_bits(lav_file)==16)
-         {
-            nb = samps*2*lav_audio_channels(lav_file);
-            hbuff = (uint8_t *) malloc(nb);
-            if(!hbuff) { internal_error=ERROR_MALLOC; return -1; }
-            for(n=0;n<nb;n+=2)
-            { hbuff[n] = buff[n+1]; hbuff[n+1] = buff[n]; }
-            res = quicktime_write_audio( lav_file->qt_fd, (char*)hbuff, samps, 0 );
-            free(hbuff);
-         }
-         else
-            res = quicktime_write_audio( lav_file->qt_fd, (char*)buff, samps, 0 );
+	res = lqt_encode_audio_track(lav_file->qt_fd, (int16_t **)&buff, NULL, samps, 0);
          break;
 #endif
       default:
@@ -834,13 +820,14 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
 long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
 {
 #ifdef	HAVE_LIBQUICKTIME
-   long res, n, t;
+   int64_t last_pos, start_pos;
+   int res;
 #endif
 
    if(!lav_file->has_audio)
    {
       internal_error = ERROR_NOAUDIO;
-      return -1;
+      return(-1);
    }
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
@@ -850,18 +837,14 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         res = quicktime_read_audio(lav_file->qt_fd,(char*)audbuf,samps,0)/lav_file->bps;
-         if(res<=0) return res;
-         if(lav_audio_bits(lav_file)==16)
-         {
-            for(n=0;n<res*2*lav_audio_channels(lav_file);n+=2)
-            {
-               t = audbuf[n];
-               audbuf[n] = audbuf[n+1];
-               audbuf[n+1] = t;
-            }
-         }
-         return res;
+	 start_pos = quicktime_audio_position(lav_file->qt_fd, 0);
+	 res = lqt_decode_audio_track(lav_file->qt_fd, (int16_t **)audbuf, NULL, samps, 0);
+	 if (res <= 0)
+	    return(res);
+	 last_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
+	 res = last_pos - start_pos;
+	 res /= lav_file->bps;		/* XXX */
+         return(res);
 #endif
    }
    return -1;
@@ -889,8 +872,8 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->qt_fd       = 0;
    lav_fd->format      = 0;
    lav_fd->interlacing = LAV_INTER_UNKNOWN;
-   lav_fd->sar_w       = 0; /* (0,0) == unknown */
-   lav_fd->sar_h       = 0; 
+   lav_fd->sar_w       = 1; /* unknown - assume square pixels */
+   lav_fd->sar_h       = 1; 
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
    lav_fd->MJPG_chroma = CHROMAUNKNOWN;
