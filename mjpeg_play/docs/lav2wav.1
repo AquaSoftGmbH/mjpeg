@@ -11,6 +11,7 @@ lav2wav \- Extract the audio out of MJPEG container files to stdout
 .IR num ]
 .RB [ \-v
 .IR num ]
+.RB [ \-I ]
 .IR filename " ..."
 
 .SH "DESCRIPTION"
@@ -34,6 +35,9 @@ Extract (num) frames of audio
 .TP 5
 .BI \-v " num"
 Verbosity level (0, 1 or 2)
+.TP 5
+.BI \-I 
+Ignore unsupported bitrates/bits per sample
 
 .SH BUGS
 The "WAV" file format (technically: RIFF) is really very much less
