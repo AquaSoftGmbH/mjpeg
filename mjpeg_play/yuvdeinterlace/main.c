@@ -252,19 +252,48 @@ main (int argc, char *argv[])
   y4m_si_set_sampleaspect (&ostreaminfo,
 			   y4m_si_get_sampleaspect (&istreaminfo));
 
-/* fixme, test for field dominance */
-  mjpeg_log (LOG_WARN,
-	     "## FIXME !!! ####################################################");
-  mjpeg_log (LOG_WARN,
-	     "Currently, you *must* set the field-dominance as the deinterlacer");
-  mjpeg_log (LOG_WARN,
-	     "does not check the according Y4M-Flag.                           ");
-  mjpeg_log (LOG_WARN,
-	     "BTTV-recordings typicaly require top-field-first.                ");
-  mjpeg_log (LOG_WARN,
-	     "All others require bottom-field-first. (miniDV + lavrec)         ");
-  mjpeg_log (LOG_WARN,
-	     "#################################################################");
+/* check for field dominance */
+
+  if (field_order == -1)
+    {
+      /* field-order was not specified on commandline. So we try to
+       * get it from the stream itself...
+       */
+
+      if (y4m_si_get_interlace (&istreaminfo) == Y4M_ILACE_TOP_FIRST)
+          {
+          /* got it: Top-field-first... */
+          mjpeg_log(LOG_INFO," Stream is interlaced, top-field-first.");
+	field_order = 0;
+          }
+      else
+	if (y4m_si_get_interlace (&istreaminfo) ==
+	    Y4M_ILACE_BOTTOM_FIRST)
+    {
+          /* got it: Bottom-field-first... */
+          mjpeg_log(LOG_INFO," Stream is interlaced, bottom-field-first.");
+	field_order = 1;
+    }
+      else
+	{
+	  mjpeg_log (LOG_ERROR,
+		     "Unable to determine field-order from input-stream.  ");
+	  mjpeg_log (LOG_ERROR,
+		     "This is most likely the case when using mplayer to  ");
+	  mjpeg_log (LOG_ERROR,
+		     "produce my input-stream.                            ");
+	  mjpeg_log (LOG_ERROR,
+		     "                                                    ");
+	  mjpeg_log (LOG_ERROR,
+		     "Either the stream is misflagged or progressive...   ");
+	  mjpeg_log (LOG_ERROR,
+		     "I will stop here, sorry. Please choose a field-order");
+	  mjpeg_log (LOG_ERROR,
+		     "with -s0 or -s1. Otherwise I can't do anything for  ");
+	  mjpeg_log (LOG_ERROR, "you. TERMINATED. Thanks...");
+	  exit (-1);
+	}
+    }
 
   /* write the outstream header */
   y4m_write_stream_header (fd_out, &ostreaminfo);
