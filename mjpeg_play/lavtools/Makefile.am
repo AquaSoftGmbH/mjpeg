@@ -14,10 +14,17 @@ libavio_a_SOURCES = editlist.c lav_io.c avilib.c
 
 bin_PROGRAMS = \
 	lavplay   lavrec   lav2wav  lav2yuv lav2dfilter  lavaddwav \
-	lavvideo  lavtrans xlav     testrec v4l-conf
+	lavvideo  lavtrans xlav     testrec v4l-conf \
+	ypipe     yuv2lav lavscene
 
-lav_headers = lav_io.h editlist.h xlav.h avilib.h
+lav_headers = lav_io.h editlist.h xlav.h avilib.h yuv4mpeg.h jpegutils.h
 
+ypipe_SOURCES = ypipe.c yuv4mpeg.c $(lav_headers)
+ypipe_LDADD =
+
+yuv2lav_SOURCES = yuv2lav.c jpegutils.c yuv4mpeg.c $(lav_headers)
+yuv2lav_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
+	$(JPEG_LIBS)
 
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_headers)
 lavplay_LDADD = -L$(top_builddir)/mjpeg -lmjpeg $(PTHREAD_LIBS) \
@@ -43,6 +50,10 @@ lav2wav_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS)
 
 lavtrans_SOURCES = lavtrans.c $(lav_headers)
 lavtrans_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
+	$(JPEG_LIBS)
+
+lavscene_SOURCES = lavscene.c jpegutils.c $(lav_headers)
+lavscene_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
 	$(JPEG_LIBS)
 
 lavaddwav_SOURCES = lavaddwav.c $(lav_headers)
