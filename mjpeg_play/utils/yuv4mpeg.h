@@ -303,10 +303,10 @@ y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi);
  ************************************************************************/
 
 /* read len bytes from fd into buf */
-ssize_t y4m_read(int fd, char *buf, size_t len);
+ssize_t y4m_read(int fd, void *buf, size_t len);
 
 /* write len bytes from fd into buf */
-ssize_t y4m_write(int fd, char *buf, size_t len);
+ssize_t y4m_write(int fd, void *buf, size_t len);
 
 
 
@@ -348,12 +348,12 @@ int y4m_write_frame_header(int fd, y4m_frame_info_t *i);
 /* read a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
 int y4m_read_frame(int fd, y4m_stream_info_t *si, 
-		   y4m_frame_info_t *fi, unsigned char *yuv[3]);
+		   y4m_frame_info_t *fi, uint8_t *yuv[3]);
 
 /* write a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
 int y4m_write_frame(int fd, y4m_stream_info_t *si, 
-		    y4m_frame_info_t *fi, unsigned char *yuv[3]);
+		    y4m_frame_info_t *fi, uint8_t *yuv[3]);
 
 
 /* read a complete frame (header + data), but de-interleave fields
@@ -362,8 +362,8 @@ int y4m_write_frame(int fd, y4m_stream_info_t *si,
    o lower_field[3] same as yuv[3] above, but for lower field
 */
 int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
-		    unsigned char *upper_field[3], 
-		    unsigned char *lower_field[3]);
+		    uint8_t *upper_field[3], 
+		    uint8_t *lower_field[3]);
 
 /* write a complete frame (header + data), but interleave fields
     from two separate buffers
@@ -371,8 +371,8 @@ int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
    o lower_field[3] same as yuv[3] above, but for lower field
 */
 int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
-		     unsigned char *upper_field[3], 
-		     unsigned char *lower_field[3]);
+		     uint8_t *upper_field[3], 
+		     uint8_t *lower_field[3]);
 
 
 

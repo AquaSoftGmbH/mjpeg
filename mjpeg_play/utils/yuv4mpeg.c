@@ -60,12 +60,13 @@ int y4m_allow_unknown_tags(int yn)
  *************************************************************************/
 
 
-ssize_t y4m_read(int fd, char *buf, size_t len)
+ssize_t y4m_read(int fd, void *buf, size_t len)
 {
    ssize_t n;
+   uint8_t *ptr = (uint8_t *)buf;
 
    while (len > 0) {
-     n = read(fd, buf, len);
+     n = read(fd, ptr, len);
      if (n <= 0) {
        /* return amount left to read */
        if (n == 0)
@@ -73,21 +74,22 @@ ssize_t y4m_read(int fd, char *buf, size_t len)
        else
 	 return -len; /* n < 0 --> error */
      }
-     buf += n;
+     ptr += n;
      len -= n;
    }
    return 0;
 }
 
 
-ssize_t y4m_write(int fd, char *buf, size_t len)
+ssize_t y4m_write(int fd, void *buf, size_t len)
 {
    ssize_t n;
+   uint8_t *ptr = (uint8_t *)buf;
 
    while (len > 0) {
-     n = write(fd, buf, len);
+     n = write(fd, ptr, len);
      if (n <= 0) return -len;  /* return amount left to write */
-     buf += n;
+     ptr += n;
      len -= n;
    }
    return 0;
@@ -586,7 +588,7 @@ int y4m_write_frame_header(int fd, y4m_frame_info_t *i)
  *************************************************************************/
 
 int y4m_read_frame(int fd, y4m_stream_info_t *si, 
-		   y4m_frame_info_t *fi, unsigned char *yuv[3])
+		   y4m_frame_info_t *fi, uint8_t *yuv[3])
 {
   int err;
   int w = si->width;
@@ -607,7 +609,7 @@ int y4m_read_frame(int fd, y4m_stream_info_t *si,
 
 
 int y4m_write_frame(int fd, y4m_stream_info_t *si, 
-		    y4m_frame_info_t *fi, unsigned char *yuv[3])
+		    y4m_frame_info_t *fi, uint8_t *yuv[3])
 {
   int err;
   int w = si->width;
@@ -633,8 +635,8 @@ int y4m_write_frame(int fd, y4m_stream_info_t *si,
 
 
 int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
-                    unsigned char *upper_field[3], 
-                    unsigned char *lower_field[3])
+                    uint8_t *upper_field[3], 
+                    uint8_t *lower_field[3])
 {
   int i, y, err;
   int width = si->width;
@@ -644,8 +646,8 @@ int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
   if ((err = y4m_read_frame_header(fd, fi)) != Y4M_OK) return err;
   /* Read Y', Cb, and Cr planes */
   for (i = 0; i < 3; i++) {
-    unsigned char *srctop = upper_field[i];
-    unsigned char *srcbot = lower_field[i];
+    uint8_t *srctop = upper_field[i];
+    uint8_t *srcbot = lower_field[i];
     /* alternately write one line from each */
     for (y = 0; y < height; y += 2) {
       if (y4m_read(fd, srctop, width)) return Y4M_ERR_SYSTEM;
@@ -665,8 +667,8 @@ int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
 
 
 int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
-                     unsigned char *upper_field[3], 
-                     unsigned char *lower_field[3])
+                     uint8_t *upper_field[3], 
+                     uint8_t *lower_field[3])
 {
   int i, y, err;
   int width = si->width;
@@ -676,8 +678,8 @@ int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
   if ((err = y4m_write_frame_header(fd, fi)) != Y4M_OK) return err;
   /* Write Y', Cb, and Cr planes */
   for (i = 0; i < 3; i++) {
-    unsigned char *srctop = upper_field[i];
-    unsigned char *srcbot = lower_field[i];
+    uint8_t *srctop = upper_field[i];
+    uint8_t *srcbot = lower_field[i];
     /* alternately write one line from each */
     for (y = 0; y < height; y += 2) {
       if (y4m_write(fd, srctop, width)) return Y4M_ERR_SYSTEM;
