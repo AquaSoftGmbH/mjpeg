@@ -72,11 +72,11 @@ void putseq()
   for (i=0; i<nframes; i++)
   {
 	
-	/* We keep track of the previously read frame in case source material
-	 has occasional corrupt frames */
-	prevframe[0]=neworg[0];
-	prevframe[1]=neworg[1];
-	prevframe[2]=neworg[2];
+		/* We keep track of the previously read frame in case source material
+	 	has occasional corrupt frames */
+		prevframe[0]=neworg[0];
+		prevframe[1]=neworg[1];
+		prevframe[2]=neworg[2];
 
     if (!quiet)
     {
@@ -96,6 +96,7 @@ void putseq()
 
     if (i==0 || (i-1)%M==0)
     {
+
       /* I or P frame */
       for (j=0; j<3; j++)
       {
@@ -107,6 +108,7 @@ void putseq()
         neworgframe[j] = neworg[j];
         newrefframe[j] = newref[j];
       }
+
 
       /* f: frame number in display order */
       f = (i==0) ? 0 : i+M-1;
@@ -218,14 +220,13 @@ void putseq()
     sprintf(name,tplorg,f+frame0);
     if( readframe(name,neworg) )
 	  {
-		/* Corrupt source frame, re-use predecessor! */
-		neworg[0] = prevframe[0];
-		neworg[1] = prevframe[1];
-		neworg[2] = prevframe[2];
+			/* Corrupt source frame, re-use predecessor! */
+			neworg[0] = prevframe[0];
+			neworg[1] = prevframe[1];
+			neworg[2] = prevframe[2];
+			printf( "Warning... corrupt data re-using previous frame\n" );
 	  }
-
-	/* A.Stevens 2000: Append fast motion compensation data for new frame */
-	fast_motion_data(neworg[0]);
+       check_fast_motion_data(oldorgframe[0], "oldorgframe[0] after reading...");  
     if (fieldpic)
     {
       if (!quiet)
@@ -235,7 +236,8 @@ void putseq()
       }
 
       pict_struct = topfirst ? TOP_FIELD : BOTTOM_FIELD;
-
+			/* A.Stevens 2000: Append fast motion compensation data for new frame */
+			fast_motion_data(neworg[0], pict_struct);
       motion_estimation(oldorgframe[0],neworgframe[0],
                         oldrefframe[0],newrefframe[0],
                         neworg[0],newref[0],
@@ -313,12 +315,15 @@ void putseq()
     else
     {
       pict_struct = FRAME_PICTURE;
+			fast_motion_data(neworg[0], pict_struct);
 
       /* do motion_estimation
        *
        * uses source frames (...orgframe) for full pel search
        * and reconstructed frames (...refframe) for half pel search
        */
+
+      check_fast_motion_data(neworgframe[0], "neworgframe[0]"); 
 
       motion_estimation(oldorgframe[0],neworgframe[0],
                         oldrefframe[0],newrefframe[0],
@@ -327,6 +332,7 @@ void putseq()
 
       predict(oldrefframe,newrefframe,predframe,0,mbinfo);
       dct_type_estimation(predframe[0],neworg[0],mbinfo);
+
       transform(predframe,neworg,mbinfo,blocks);
 
       putpict(neworg[0]);
@@ -345,6 +351,7 @@ void putseq()
 
       itransform(predframe,newref,mbinfo,blocks);
       calcSNR(neworg,newref);
+      check_fast_motion_data(neworg[0], "oldorg after calcSNR"); 
       stats();
     }
 

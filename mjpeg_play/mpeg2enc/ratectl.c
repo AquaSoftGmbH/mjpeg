@@ -63,6 +63,7 @@ static int R, T, d;
 static double actsum;
 static double actcovered;
 double avg_act;
+double peak_act;
 
 static int Np, Nb, S, Q;
 static int prev_mquant;
@@ -317,8 +318,9 @@ void rc_update_pict()
     d0i, d0p, d0b);
   fprintf(statfile," remaining number of P pictures in GOP: Np=%d\n",Np);
   fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
-  fprintf(statfile," average activity: avg_act=%.1f\n", avg_act);
 #endif
+
+  fprintf(statfile," average activity: avg_act=%.1f\n", avg_act);
 
 }
 
@@ -367,7 +369,6 @@ int rc_start_mb()
 int rc_calc_mquant(j)
 int j;
 {
-  static int ctr = 0;
   int mquant;
   double dj, Qj, actj, N_actj;
 
@@ -404,14 +405,9 @@ int j;
 	 (2.0*actj+avg_act)/(actj+2.0*avg_act)
 	 which gently *increases* quantisation of very active blocks.
   */
-  N_actj = (actj+4.0*avg_act)/(4.0*actj+avg_act);
+  N_actj = (actj+3.0*avg_act)/(3.0*actj+avg_act);
+  /* N_actj = (3.0*actj+avg_act)/(actj+3.0*avg_act); */
 
-  /* TODO: Stuff for debugging... remove
-  if( (++ctr) % 8 == 0 )
-	{
-	  printf( "R" ); fflush(stdout);
-	}
-  */
   if (q_scale_type)
   {
     /* modulate mquant with combined buffer and local activity measures */

@@ -127,12 +127,12 @@ int mquant;
 double quant_weight_coeff_sum( short *blk, unsigned char * quant_mat )
 {
   int i;
-  double sum = 2000.0;
- /* int sum = 2000; */   /* TODO: This base weight ought to be exposed.... */
+  double sum = 0.0;
+ /* int sum = 64000; */   /* TODO: This base weight ought to be exposed.... */
    for( i = 0; i < 64; i+=2 )
 	{
-		sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]) +
-	  ((double)(fastabs(blk[i+1]) * 16)) / ((double) quant_mat[i+1]);
+		sum += fabs((double)blk[i]) / ((double) quant_mat[i]) +
+	 		   fabs((double)blk[i+1]) / ((double) quant_mat[i+1]);
 /*
 	  register int abs1, abs2;
 	  abs1 = (fastabs(blk[i]) <<(4+8)) / quant_mat[i];
@@ -144,7 +144,10 @@ double quant_weight_coeff_sum( short *blk, unsigned char * quant_mat )
 	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
  */
 	  
-  return (double) (sum / 256);
+  return (double) sum;
+  /* In case you're wondering typical average coeff_sum's for a rather noisy video
+  	are around 40.0.
+	*/
 }
 
 int quant_non_intra(src,dst,quant_mat,mquant, mquant_ret)

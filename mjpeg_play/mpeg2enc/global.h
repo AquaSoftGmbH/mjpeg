@@ -60,7 +60,9 @@ void motion_estimation _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg
   unsigned char *curref, int sxf, int syf, int sxb, int syb,
   struct mbinfo *mbi, int secondfield, int ipflag));
 
-void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata));
+void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
+void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
+
 void reset_fast_motion_threshold _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
 void error _ANSI_ARGS_((char *text));
