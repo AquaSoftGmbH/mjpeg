@@ -49,7 +49,8 @@ static int pid;
 
 static double fps;
 static int cur_pos, total_frames, cur_speed=1, old_speed=999999;
-static int slider_pause = 0;
+static int slider_pause;
+static int slider_pos;
 
 static int ff_stat=0, fr_stat=0;
 static int ff_speed[4] = { 1, 3, 10, 30 };
@@ -65,7 +66,6 @@ static int savetype = 0;
 static char inpbuff[MAXINP];
 static int inplen = 0;
 
-static int hscale_down = 0;
 static int frame_skip_button_up = 1;
 static char frame_skip_char;
 
@@ -138,14 +138,13 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
 {
    int need_pause=FALSE;
    int n=1;
-   hscale_down=1;
    switch (event->keyval) {
       case GDK_0:/* go to beginning of file */
-         gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
+         write(out_pipe,"s0\n",3); /* go to beginning */
          break;
       case GDK_9: /* go to end of file */
          need_pause=TRUE;
-         write(out_pipe,"s10000000\n",10); break;  /* go to end */
+         write(out_pipe,"s10000000\n",10); /* go to end */
          break;
       case GDK_parenleft: /* mark start of selection */
       case GDK_Home:
@@ -155,13 +154,29 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
       case GDK_End:
          g_signal_emit_by_name(G_OBJECT(gtk_xlav->BSSelEnd),"clicked",(gpointer)1);
          break;
+      case GDK_bracketleft: /* skip to selected start */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BGotoSelStart),"clicked",(gpointer)1);
+         break;
+      case GDK_bracketright: /* skip to selected end */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BGotoSelEnd),"clicked",(gpointer)1);
+         break;
+      case GDK_a: /* Save all */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BSaveAll),"clicked",(gpointer)1);
+         break;
+      case GDK_v: /* Save */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BSaveSel),"clicked",(gpointer)1);
+         break;
+      case GDK_q: /* Exit */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->Exit),"clicked",(gpointer)1);
+         break;
       case GDK_l: /* some number of frames right */
+      case GDK_L:
       case GDK_Right:
          need_pause=TRUE;
          g_signal_stop_emission_by_name(G_OBJECT(gtk_xlav->xlav), "key_press_event");
          n=1;
          if(event->state & GDK_CONTROL_MASK) {
-            write(out_pipe,"s10000000\n",10); break;  /* go to end */
+            write(out_pipe,"s10000000\n",10); /* go to end */
             break;
          } else if(event->state & GDK_MOD1_MASK) {
             n=50;
@@ -171,11 +186,13 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          skip_num_frames(n);
          break;
       case GDK_h: /* some number of frames left */
+      case GDK_H:
       case GDK_Left:
          g_signal_stop_emission_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
          n=-1;
          if(event->state & GDK_CONTROL_MASK) { /* go to beginning  */
-            gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
+            write(out_pipe,"s0\n",3); /* go to beginning */
+	    break;
          } else if(event->state & GDK_MOD1_MASK) {
             n=-50;
          } else if (event->state & GDK_SHIFT_MASK) { 
@@ -199,6 +216,9 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
       case GDK_B: /* 30 frames left */
          need_pause=TRUE;
          skip_num_frames(-30);
+         break;
+      case GDK_c: /* clear selection */
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BClearSel),"clicked",(gpointer)1);
          break;
       case GDK_x: /* cut selection */
       case GDK_Delete:
@@ -274,7 +294,6 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          write(out_pipe,"p0\n",3); /* pause on all keys */
       }
    }
-   hscale_down=0;
    return 0;
 }
 
@@ -314,18 +333,17 @@ void dispatch_input(void)
 
    if(inpbuff[0]=='@')
    {
+      int slider_new_pos;
       sscanf(inpbuff+1,"%lg/%d/%d/%d",&fps,&cur_pos,&total_frames,&cur_speed);
       calc_timecode(cur_pos,cur_speed==0);
       gtk_label_set_text(GTK_LABEL(gtk_xlav->Timer),timecode);
       /* fl_set_object_label(gtk_xlav->Timer,timecode); */
       if(total_frames<1) total_frames=1;
-      if(slider_pause) {
-         slider_pause--;
-
-      } else {
-         if (!hscale_down) {
-         gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(100.0)*(double) ((double)cur_pos)/((double)total_frames));
-         }
+      slider_new_pos = 10000 * cur_pos / total_frames;
+      if (slider_pos != slider_new_pos) {
+	 slider_pos = slider_new_pos;
+	 slider_pause++;
+	 gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider), (double)slider_new_pos / 100.0);
       }
       if(cur_speed != old_speed) {
          char label[32];
@@ -378,13 +396,14 @@ void        timeslider_cb(GtkAdjustment *adjustment, gpointer data)
 {
 gfloat val;
 char out[256];
-float new;
 
+   if (0 < slider_pause) {
+      --slider_pause;
+   } else {
       val = ((GTK_ADJUSTMENT(gtk_xlav->timeslider)->value));
-      new = (val / 100.00 );
       sprintf(out,"s%d\n",(int)((val*total_frames)/100));
       write(out_pipe,out,strlen(out));
-      slider_pause = 8;
+   }
 }
 
 void button_cb(GtkWidget *ob, long data)
