@@ -1,7 +1,7 @@
 # Process this file with Automake to produce Makefile.in
 
 EXTRA_DIST = \
-	README  	INSTRUCT	TODO mplex.1
+	README  	INSTRUCT	TODO
 
 INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 

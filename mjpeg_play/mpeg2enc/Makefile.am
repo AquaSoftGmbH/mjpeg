@@ -12,7 +12,7 @@ mpeg2enc_MMXSSE = \
 	quantize_x86.c  \
     predcomp_mmxe.s predcomp_mmx.s
 
-EXTRA_DIST = mblock_sub44_sads_x86_h.c mpeg2enc.1
+EXTRA_DIST = mblock_sub44_sads_x86_h.c
 
 INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
