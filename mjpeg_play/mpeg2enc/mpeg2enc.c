@@ -81,6 +81,8 @@ static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
 static int param_hires_quant = 0;
 static double param_act_boost = 1.0;
+static int param_pred_ratectl = 0;
+static int param_video_buffer_size = 46;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
 
@@ -105,9 +107,11 @@ void Usage(char *str)
 	printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
 	printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
+	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources)\n" );
+	printf("   -p         Predictive rate control (experimental)\n");
 	exit(0);
 }
 
@@ -120,7 +124,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:tNh")) != EOF)
+	while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:v:tNhp")) != EOF)
 	{
 		switch(n) {
 
@@ -196,6 +200,15 @@ int main(argc,argv)
 			}
 			break;
 
+		case 'v':
+			param_video_buffer_size = atoi(optarg);
+			if(param_video_buffer_size<20 || param_video_buffer_size>4000)
+			{
+				fprintf(stderr,"-v option requires arg 20..4000\n");
+				nerr++;
+			}
+			break;
+
 		case 't':
 			param_threshold = 1;
 			break;
@@ -206,7 +219,9 @@ int main(argc,argv)
 		case 'h':
 			param_hires_quant = 1;
 			break;
-	  
+		case 'p' :
+			param_pred_ratectl = 1;
+			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
 			if( param_act_boost <0.1 || param_act_boost > 10.0)
@@ -512,6 +527,8 @@ static void readparmfile()
 	noise_filt	  = param_noise_filt;
 	fast_mc_frac    = param_fastmc;
 	fast_mc_threshold = param_threshold;
+	pred_ratectl       = param_pred_ratectl;
+	video_buffer_size = param_video_buffer_size * 1024 * 8;
 	vbv_buffer_size = mpeg1 ? 20 : 112;
 	low_delay       = 0;
 	constrparms     = mpeg1;             /* Will be reset, if not coompliant */

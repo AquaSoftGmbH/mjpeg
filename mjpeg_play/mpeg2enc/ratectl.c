@@ -34,7 +34,7 @@
 #include "config.h"
 #include "global.h"
 
-	
+
 /* private prototypes */
 
 static double calc_actj _ANSI_ARGS_((void));
@@ -47,7 +47,9 @@ static double calc_actj _ANSI_ARGS_((void));
    buffer" is x% full and
 */
 
-int Xi, Xp, Xb, r, d0i, d0p, d0b;
+int Xi = 0, Xp = 0, Xb = 0;
+int r;
+int	d0i = 0, d0p = 0, d0b = 0;
 
 /* Virtual reciever fullness moving averages.  Used to allow sensible
  rate-control recovery after a period of bit-rate undershoot
@@ -93,48 +95,93 @@ static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
 
 static int min_d,max_d;
 static int min_q, max_q;
+
+/* TODO DEBUG */
+static double avg_KI = 13.0;	/* These values empirically determined 		*/
+static double avg_KB = 20.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KP = 20.0;
+static double avgsq_KI = 13.0*13.0;
+static double avgsq_KB = 20.0*20.0;
+static double avgsq_KP = 20.0*20.0;
+#define K_AVG_WINDOW 128.0
+static double bits_per_mb;
+
+static double scale_quant( pict_data_s *picture, double quant )
+{
+	double squant;
+	int iquant;
+	if (picture->q_scale_type)
+	{
+		iquant = (int) floor(quant + 0.5);
+
+		/* clip mquant to legal (linear) range */
+		if (iquant<1)
+			iquant = 1;
+		if (iquant>112)
+			iquant = 112;
+
+		squant = (double)
+			non_linear_mquant_table[map_non_linear_mquant[iquant]];
+	}
+	else
+	{
+		/* clip mquant to legal (linear) range */
+		squant = quant;
+		if (squant<2.0)
+			squant = 2;
+		if (squant>62.0)
+			squant = 62.0;
+	}
+	return squant;
+}
+
 void rc_init_seq()
 {
+	bits_per_mb = (double)bit_rate / (mb_width*mb_height2);
 
-	/* reaction parameter (constant) decreased to increase response rate as encoder
-	   is currently tending to under/over-shoot... in rate
-	   TODO: Reaction parameter is *same* for every frame type despite
-	   different weightings...
-	*/
+	/* reaction parameter (constant) decreased to increase response
+	   rate as encoder is currently tending to under/over-shoot... in
+	   rate TODO: Reaction parameter is *same* for every frame type
+	   despite different weightings...  */
 	if (r==0)  
 		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
-	/* average activity */
-	if (avg_act==0.0)  avg_act = 400.0;
 
 	/* remaining # of bits in GOP */
 	R = 0;
   
-	/* Heuristic: In constant bit-rate streams we assume buffering will allow us to 
-	   pre-load some (probably small) fraction of the buffers size worth of following
-	   data if earlier data was undershot its bit-rate allocation
+	/* Heuristic: In constant bit-rate streams we assume buffering
+	   will allow us to pre-load some (probably small) fraction of the
+	   buffers size worth of following data if earlier data was
+	   undershot its bit-rate allocation
 	 
 	*/
 	CarryR = 0;
-	CarryRLim = vbv_buffer_size / 5;
+	CarryRLim = video_buffer_size / 3;
 	/* global complexity (Chi! not X!) measure of different frame types */
 	/* These are just some sort-of sensible initial values for start-up */
-	if (Xi==0) Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
-	if (Xp==0) Xp = (int)floor( 60.0*bit_rate/115.0 + 0.5);
-	if (Xb==0) Xb = (int)floor( 42.0*bit_rate/115.0 + 0.5);
+	if ( pred_ratectl )
+	{
+		Xi = 120;				/* Empirically derived values */
+		Xp = 45;
+		Xb = 20;
+		d0i = -1;				/* Force initial Quant prediction */
+		d0p = -1;
+		d0b = -1;
+	}
+	else
+	{
+		/* A.Stevens Nov 2000 Don't know where these values came from ! */
+		d0i = (int)(Ki*r*0.15 );
+		d0p = (int)(Kp*r*0.15 );
+		d0b = (int)(Kb*r*0.15 );
 
+		Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
+		Xp = (int)floor( 60.0*bit_rate/115.0 + 0.5);
+		Xb = (int)floor( 42.0*bit_rate/115.0 + 0.5);
+	}
 
-	/* TODO: These initialisatino values are plausible for O(1500mbps)
-	   VCD like MPEG-1, but will be silly for higher data-rates they need
-	   to be adjusted based on bit_rate. */
-
-	/* virtual buffer fullness - Originally initialised for initial quantisation
-	   around 10 (1/3 maximum).  This, however proved excessive so now
-	   its 0.25 */
-  
-	if (d0i==0) d0i = (int)floor(Ki*r*0.25 + 0.5);
-	if (d0p==0) d0p = (int)floor(Kp*r*0.25 + 0.5);
-	if (d0b==0) d0b = (int)floor(Kb*r*0.25 + 0.5);
+		
 /*
   if (d0i==0) d0i = (int)floor(10.0*r/(qscale_tab[0] ? 56.0 : 31.0) + 0.5);
   if (d0p==0) d0p = (int)floor(10.0*r/(qscale_tab[1] ? 56.0 : 31.0) + 0.5);
@@ -150,32 +197,40 @@ void rc_init_seq()
 	fprintf(statfile,
 			" initial virtual buffer fullness (I,P,B): d0i=%d, d0p=%d, d0b=%d\n",
 			d0i, d0p, d0b);
-	fprintf(statfile," initial average activity: avg_act=%.1f\n", avg_act);
 #endif
+
 }
 
 void rc_init_GOP(np,nb)
 	int np,nb;
 {
+	int per_gop_bits = (bitcount_t) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
 
-	int  per_gop_bits = (bitcount_t) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
-	/* A.Stevens Aug 2000: at last I've found the wretched rate-control overshoot bug...
-	   Simply "topping up" R here means that we can accumulate an indefinately large
-	   pool of bits "saved" from previous low-activity frames.  For CBR this is of course
-	   nonsense. Typically the specified buffer sizes are actually quite small compared
-	   with the size of a GOP. Thus only an undershoot occuring right at the end of a GOP
-	   would actually allow the next GOP to be loaded early.  Earlier undershoot would simply be
-	   padded away.
+	/* A.Stevens Aug 2000: at last I've found the wretched
+	   rate-control overshoot bug...  Simply "topping up" R here means
+	   that we can accumulate an indefinately large pool of bits
+	   "saved" from previous low-activity frames.  For CBR this is of
+	   course nonsense. Typically the specified buffer sizes are
+	   actually quite small compared with the size of a GOP. Thus only
+	   the undershoot occuring right at the end of a GOP can safely
+	   be carried over.
 		
-	   Hence we (rather pessimisitcally) allow carry over of bits in the event 
-	   of an undershoot only when the buffer is larger than the GOP.
-	   TODO: This should be dealt with more elegantly...
-	*/		
-   
-	if( R < 0 || per_gop_bits < vbv_buffer_size )
-		R += per_gop_bits;
-	else
+	   As a crude approximation currently simply forbid carry over
+	   between GOPs.
+	   TODO: We should do a proper video buffer model and use to make
+	   bit allocation decisions.
+
+	*/
+	printf( "GOP under/over run = %lld\n", -R );
+	
+	if( R > 0 && video_buffer_size < per_gop_bits  )
+	{
 		R = per_gop_bits;
+	}
+	else 
+	{
+		R += per_gop_bits;
+	}
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;
 
@@ -192,6 +247,23 @@ void rc_init_GOP(np,nb)
 /* Step 1: compute target bits for current picture being coded */
 void rc_init_pict(pict_data_s *picture)
 {
+	double avg_K;
+	double target_Q;
+	double current_Q;
+
+	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
+
+	   Weird.  The original code used the average activity of the
+	   *previous* frame as the basis for quantisation calculations for
+	   rather than the activity in the *current* frame.  That *has* to
+	   be a bad idea..., surely, here we try to be smarter by using the
+	   current values and keeping track of how much of the frames
+	   activitity has been covered as we go along.
+	*/
+
+	actsum =  calc_actj( );
+	avg_act = actsum/(mb_width*mb_height2);
+	actcovered = 0.0;
 
 	/* Allocate target bits for frame based on frames numbers in GOP
 	   weighted by global complexity estimates and B-frame scale factor
@@ -210,38 +282,88 @@ void rc_init_pict(pict_data_s *picture)
 		   account for with the remaining pool of bits R.
 		*/
 
-		/* TODO BUG: The relative
-		   weightings for different frame types are historical.
-		   Actually they should be based on the bit-demand in the *frames
-		   to come*!
-		*/
-
+		if( pred_ratectl )
+		{
+			Xi = avg_act;
+			avg_K = avg_KI;
+		}
 		T = (bitcount_t) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
-#ifdef SEPERATE_IBP_VBUFS
 		d = d0i;
 		sliding_d_avg = sliding_di_avg;
-#endif
 		break;
 	case P_TYPE:
+		if( pred_ratectl )
+		{
+			Xp = avg_act;
+			avg_K = avg_KP;
+		}
 		T = (bitcount_t) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
-#ifdef SEPERATE_IBP_VBUFS
 		d = d0p;
 		sliding_d_avg = sliding_dp_avg;
-#endif
 		break;
 	case B_TYPE:
+		if( pred_ratectl )
+		{
+			Xb = avg_act;
+			avg_K = avg_KB;
+		}
 		T = (bitcount_t) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
-#ifdef SEPERATE_IBP_VBUFS
 		d = d0b;
 		sliding_d_avg = sliding_db_avg;
-#endif
 		break;
 	}
-  
+
+	/* Undershot bits have been "returned" via R */
+	if( d < 0 )
+		d = 0;
+
+	if( T < 4000 )
+	{
+		printf( "\nWARNING VERY LOW T=%lld\n", T);
+		T = 4000;
+	}
+	target_Q = scale_quant(picture, 
+						   avg_K * avg_act *(mb_width*mb_height2) / T);
+	current_Q = scale_quant(picture,62.0*d / r);
 	if( !quiet )
 	{
-		printf( "T=%6lld ",T/8  );
+		printf( "d=%6d T=%lld K=%.1f BQ=%2.1f TQ=%2.1f ",d, T,avg_K, current_Q, target_Q  );
 	}
+	
+	if( pred_ratectl )
+	{
+		/* We can only carry over as much total undershoot as
+		buffering permits */
+		
+		/* Deliberately allow quantisation to fall to minimum...
+		*/
+		if( target_Q > 6.0 )
+		{	
+		/* If the discrepancy is because we're undershooting we only
+			   adjust if it looks like a serious overshoot may happen */
+			target_Q = (target_Q + current_Q)/2.0;
+			d = (int) (target_Q * r / 62.0);
+		} else if ( current_Q < 2.5 && target_Q > 12.0 )
+		{
+			/* We're undershooting and a serious surge in the data_flow
+			   due to lagging adjustment is possible...
+			*/
+			d = (int) (target_Q * r / 62.0);
+		}
+		printf( "td=%6d ",  d );
+
+
+	}
+	else
+	{
+		if( d < 0 )
+		{
+			d = sliding_d_avg / 2;
+		}
+		else
+			sliding_d_avg = (127 * sliding_d_avg + d) / 128;
+	}
+
 
 	/* TODO:
 	   This is a good idea but currently may lead to over-shoots...
@@ -256,19 +378,6 @@ void rc_init_pict(pict_data_s *picture)
 	S = bitcount();
 	Q = 0;
 
-	/* TODO: A.Stevens Jul 2000 - This modification needs testing visually.
-
-	   Weird.  The original code used the average activity of the
-	   *previous* frame as the basis for quantisation calculations for
-	   rather than the activity in the *current* frame.  That *has* to
-	   be a bad idea..., surely, here we try to be smarter by using the
-	   current values and keeping track of how much of the frames
-	   activitity has been covered as we go along.
-	*/
-
-	actsum =  calc_actj( );
-	avg_act = actsum/(mb_width*mb_height2);
-	actcovered = 0.0;
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: start of picture\n");
@@ -328,60 +437,72 @@ void rc_update_pict(pict_data_s *picture)
 {
 	double X;
 	double AQ;
-   
-	S = bitcount() - S; /* total # of bits in picture */
-	R-= S; /* remaining # of bits in GOP */
-	X = (int) floor((double)S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
+	double K;
+	S = bitcount() - S;			/* total # of bits in picture */
+	R-= S;						/* remaining # of bits in GOP */
+	AQ = (double)Q/(mb_width*mb_height2);  
+	/* TODO: The X are used as relative activity measures... so why
+	   bother dividing by 2?  */
+	X = (int) floor((double)S*(AQ/2.0) + 0.5);
   
 	d += (int) (S - T);
-  
-	AQ = (double)Q/(mb_width*mb_height2);
+	K = (double)(S) / (double) (mb_width*mb_height2) * AQ / avg_act;
+
 	if( !quiet )
 	{
-		printf( "AQ=%.1f MR=%05.0f SZ=%05lld d=%6d\n", 
-				AQ, 
-				(double)T *  AQ / avg_act,
-				S/8, d   );
+		printf( "AQ=%.1f ",  AQ);
 	}
 
-	/* Bits that never got used in the past can't be resurrected now... 
-	   We use an average of past (positive) virtual buffer fullness
-	   in the event of an under-shoot as otherwise we will tend to over-shoot
-	   heavily when activity picks up.
+	/* Bits that never got used in the past can't be resurrected
+	   now...  We use an average of past (positive) virtual buffer
+	   fullness in the event of an under-shoot as otherwise we will
+	   tend to over-shoot heavily when activity picks up.
 	 
-	   TODO BUG: Overshoots in one type of frame have no effect on other types.
-	   Thus we can overshoot in an I a B and a P before *any* corrective 
-	   adjustment  is made to quantisation.
+	   TODO: We should really use our estimate K[IBP] of
+	   bit_usage*activity / quantisation ratio to set a "sensible"
+	   initial d to achieve a reasonable initial quantisation. Rather
+	   than have to cut in a huge (lagging correction).
+
+	   Alternatively, simply requantising with mean buffer if there is
+	   a big buffer swing would work nicely...
 
 	*/
-  
-
 	
-	if( d < 0 )
-		d = sliding_d_avg / 2;
-	else
-		sliding_d_avg = (127 * sliding_d_avg + d) / 128;
 
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
-		Xi = X;
 		d0i = d;
+		avg_KI = (K + avg_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
+		avgsq_KI = (K*K + avgsq_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
+		/* DEBUG */
+		if( ! pred_ratectl )
+			Xi = X;
 		sliding_di_avg = sliding_d_avg;
 		break;
 	case P_TYPE:
-		Xp = X;
 		d0p = d;
+		avg_KP = (K + avg_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
+		avgsq_KP = (K*K + avgsq_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;;
+		if( ! pred_ratectl )
+			Xp = X;
+
 		sliding_dp_avg = sliding_d_avg;
 		Np--;
 		break;
 	case B_TYPE:
-		Xb = X;
 		d0b = d;
+		avg_KB = (K + avg_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
+		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;;
+		if( ! pred_ratectl )
+			Xb = X;
 		sliding_db_avg = sliding_d_avg;
 		Nb--;
 		break;
 	}
+
+	if( !quiet )
+		printf( "\n" );
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
@@ -462,7 +583,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
     
     /* scale against dynamic range of mquant and the bits/picture count */
-	Qj = dj*31.0/r;
+	Qj = dj*62.0/r;
 /*Qj = dj*(q_scale_type ? 56.0 : 31.0)/r;  */
 
 
@@ -484,7 +605,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		
 	N_actj =  actj < avg_act ? 1.0 : (actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
 
-
+#ifdef ORIGINAL_CODE
 	if (picture->q_scale_type)
 	{
 		/* modulate mquant with combined buffer and local activity measures */
@@ -496,16 +617,12 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		if (mquant>112)
 			mquant = 112;
 
-		/* map to legal quantization level */
-		if(fix_mquant>0) 
-			mquant = 2*fix_mquant;
-		mquant = non_linear_mquant_table[map_non_linear_mquant[mquant]];
 	}
 	else
 	{
 		/* modulate mquant with combined buffer and local activity measures */
 		mquant = (int) floor(Qj*N_actj + 0.5);
-		mquant <<= 1;
+		mquant = ((mquant)>>1)<<1;
 
 		/* clip mquant to legal (linear) range */
 		if (mquant<2)
@@ -513,15 +630,25 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		if (mquant>62)
 			mquant = 62;
 
-		/* ignore small changes in mquant */
-		if (mquant>=8 && (mquant-prev_mquant)>=-4 && (mquant-prev_mquant)<=4)
-			mquant = prev_mquant;
-
-		prev_mquant = mquant;
-		if(fix_mquant>0) mquant = 2*fix_mquant;
 	}
+#endif
+	mquant = (int)floor(scale_quant(picture,Qj*N_actj)+0.5);
+
+	/* ignore small changes in mquant */
+	if (mquant>=8 && (mquant-prev_mquant)>=-4 && (mquant-prev_mquant)<=4)
+		mquant = prev_mquant;
 	
-	Q+= mquant; /* for calculation of average mquant */
+	prev_mquant = mquant;
+	if(fix_mquant>0) 
+	{
+		if( picture->q_scale_type )
+			mquant = 
+				non_linear_mquant_table[map_non_linear_mquant[2*fix_mquant]];
+			else
+				mquant = 2*fix_mquant;
+	}
+
+	Q += mquant; /* for calculation of average mquant */
 
 
 	 

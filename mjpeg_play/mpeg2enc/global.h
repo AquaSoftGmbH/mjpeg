@@ -300,6 +300,8 @@ EXTERN char pict_type_char[6]
 #endif
 ;
 
+int video_buffer_size;
+
 EXTERN pict_data_s cur_picture;
 
 /* reconstructed frames */
@@ -376,6 +378,8 @@ EXTERN int    fast_mc_frac; /* inverse proportion of fast motion estimates
 EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 									dynamical adjust motion compensation
 									window size */
+EXTERN int    pred_ratectl;      /* Use experimental predictive rate
+									controller  */
 EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
