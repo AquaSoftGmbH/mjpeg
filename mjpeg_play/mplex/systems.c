@@ -101,7 +101,6 @@ void create_sector (Sector_struc 	 *sector,
 					Sys_header_struc *sys_header,
 					unsigned int     max_packet_data_size,
 					FILE		 *inputstream,
-
 					unsigned char 	 type,
 					unsigned char 	 buffer_scale,
 					unsigned int 	 buffer_size,
@@ -282,10 +281,11 @@ void create_sector (Sector_struc 	 *sector,
 	   the packet size fully ...
 	   Small shortfalls are dealt with by stuffing, big ones by inserting
 	   padding packets.
+	   
 	*/
 
 
-	if( bytes_short < MINIMUM_PADDING_PACKET_SIZE && bytes_short > 0  )
+	if(  bytes_short < MINIMUM_PADDING_PACKET_SIZE && bytes_short > 0 )
 	{
 		if (opt_mpeg == 1 )
 		{
@@ -322,9 +322,6 @@ void create_sector (Sector_struc 	 *sector,
 	   inserting a stuffing packet... */	
 	if ( bytes_short != 0 )
 	{
-		/* TODO: This should really only be permitted in streams where we
-			know zero stuffing is o.k.
-			*/
 		if( zero_stuffing )
 		{
 			for (i = 0; i < bytes_short; i++)

@@ -104,7 +104,11 @@ typedef uint64_t clockticks;
 #define MPEG1_AFTER_PACKET_LENGTH_MAX    \
 		(MPEG1_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH-1)
 
-#define MINIMUM_PADDING_PACKET_SIZE 25
+	/* Sector under-size below which header stuffing rather than padding packets
+		or post-packet zero stuffing is used.  *Must* be less than 20 for VCD
+		multiplexing to work correctly!
+	 */
+#define MINIMUM_PADDING_PACKET_SIZE 10
 
 /* The following values for sys_header_length & size are only valid for */
 /* System streams consisting of two basic streams. When wrapping around */

@@ -20,9 +20,7 @@ int				pack_header_size;
 int 			system_header_size;
 int 			sector_size;
 int 			zero_stuffing;	/* Pad short sectors with 0's not padding packets */
-int				stuff_packet_header; 
-								/* Replace unused fields in packet header with
-									stuffing to keep size constant */
+
 int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
 int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
 
@@ -56,6 +54,7 @@ static int always_buffers_in_video;
 static int trailing_pad_pack;		/* Stick a padding packet at the end			*/
 static int audio_max_packet_data;
 static int video_max_packet_data;
+static int audio_packet_data_limit; /* Needed for VCD which wastes 20 bytes */
 
 /* TODO: DEBUG */
 static int audio_buf_margin = 0;
@@ -112,6 +111,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		always_buffers_in_video = 0;
 		zero_stuffing = 1;
 		audio_buf_margin = 128;
+		audio_packet_data_limit = 2279;		/* Ugh... what *were* they thinking of? */
 		break;
 	
 		case 2 :
@@ -130,6 +130,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		always_buffers_in_video = 0;
 		zero_stuffing = 1;
 		audio_buf_margin = 512;
+			audio_packet_data_limit = 2279;
 		break;
 		
 		case 3 :   /* alternate VCD 2 */
@@ -148,6 +149,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		always_buffers_in_video = 0;
 		zero_stuffing = 1;
 		audio_buf_margin = 1024;
+			audio_packet_data_limit = 2279;
 		break;
 		
 		case 4 : /* Atlernate VCD 3 */
@@ -155,15 +157,18 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	trailing_pad_pack = 1;
-	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
-	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 0;
+	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
-	  	video_buffer_size = 46*1024;
+	  	video_buffer_size = 83*1024;
 		buffers_in_video = 1;
-		always_buffers_in_video = 0;		
+		always_buffers_in_video = 0;
+		zero_stuffing = 1;
+		audio_buf_margin = 512;
+			audio_packet_data_limit = 2279;
 		break;
 	 
 	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
@@ -178,6 +183,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
 		zero_stuffing = 0;
+		audio_packet_data_limit = 0;		/* Fill packet completely */
 		break;
 	}
 	
@@ -955,7 +961,7 @@ void output_video ( Timecode_struc *SCR,
 						  0,
 						  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
 						  buffers_in_video, NULL, NULL,
-						  TIMESTAMPBITS_NO );
+						  TIMESTAMPBITS_NO);
 		};
 #ifdef TIMER
 	  gettimeofday (&tp_end,NULL);
@@ -1085,7 +1091,14 @@ void output_audio ( Timecode_struc *SCR,
   Sys_header_struc *sys_header_ptr = NULL;
   Aaunit_struc *aau;
   Pack_struc pack;
+  
+  /* TODO: all this stuff should be computed once and for all */
+  int old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE );
+
 	
+  if( audio_packet_data_limit && old_au_then_new_payload > audio_packet_data_limit )
+  	old_au_then_new_payload = audio_packet_data_limit;
+
   if (start_of_new_pack)
     {
 	  /* Wir generieren den Pack Header				*/
@@ -1108,7 +1121,7 @@ void output_audio ( Timecode_struc *SCR,
   if (*audio_frame_start)
     {
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 0,
+					 audio_packet_data_limit,
 					 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
 					 TRUE, &audio_au->PTS, NULL,
 					 TIMESTAMPBITS_PTS);
@@ -1124,10 +1137,10 @@ void output_audio ( Timecode_struc *SCR,
   /* CASE: packet starts with old access unit, no new one	*/
   /*       starts in this very same packet			*/
   else if (!(*audio_frame_start) && 
-		   (audio_au->length >= packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE )))
+		   (audio_au->length >= old_au_then_new_payload))
     {
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-					 0,
+					 audio_packet_data_limit,
 					 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
 					 TRUE, NULL, NULL,
 					 TIMESTAMPBITS_NO );
@@ -1142,8 +1155,7 @@ void output_audio ( Timecode_struc *SCR,
   /*       eine neue im selben Packet vor			*/
   /* CASE: packet starts with old access unit, a new one	*/
   /*       starts in this very same packet			*/
-  else if (!(*audio_frame_start) && 
-		   (audio_au->length < packet_payload( sys_header_ptr, pack_ptr, TRUE, TRUE, FALSE )))
+  else /* !(*audio_frame_start) &&  (audio_au->length < old_au_then_new_payload)) */
     {
 	  temp = audio_au->length;
 	  queue_buffer (buffer, audio_au->length, &audio_au->PTS);
@@ -1157,7 +1169,7 @@ void output_audio ( Timecode_struc *SCR,
 		  *audio_frame_start = TRUE;
 		  add_to_timecode (SCR_delay, &audio_au->PTS);
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-						 0,
+						 audio_packet_data_limit,
 						 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
 						 TRUE, &audio_au->PTS, NULL,
 						 TIMESTAMPBITS_PTS );

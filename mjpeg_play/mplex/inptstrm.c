@@ -308,7 +308,7 @@ void get_info_video (char *video_file,
 				}
 
 			    prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
-				if (prozent > old_prozent && verbose > 0 )
+				if ( prozent > old_prozent && verbose > 0 )
 				{
 					printf ("Got %d picture headers. %2d%%%c",
 							decoding_order, prozent, verbose > 1 ? '\n' : '\r');
