@@ -79,7 +79,7 @@ extern off_t opt_max_segment_size;
     Program ID
 *************************************************************************/
  
-#define MPLEX_VER    "2.0.2"
+#define MPLEX_VER    "2.2.1"
 #define MPLEX_DATE   "$Date$"
 
 

@@ -42,44 +42,75 @@ off_t opt_max_segment_size = 0;
 
 static void Usage(char *str)
 {
-	fprintf( stderr, "mjpegtools mplex version " VERSION "\n" );
-	fprintf( stderr, "Usage: %s [params] -o <output file> <input file>... \n\n", str);
-	fprintf( stderr, "  where possible params are:\n" );
-	fprintf( stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
-	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
-	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
-    fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec\n"
-			         "(default 0=Compute from source streams)\n" );
-	fprintf( stderr, " -l num  Multiplex only num seconds of material (default 0=multiplex all)\n");
-	fprintf( stderr, " -O num  Specify offset of timestamps (video-audio) in mSec\n");
-	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
-	fprintf( stderr, " -V      Multiplex variable bit-rate video\n");
-	fprintf( stderr, " -p num  Number of packets per pack (default: 20) [1..100]\n"  );
-	fprintf( stderr, " -h      System header in every pack rather than just in first\n" );
-	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
-	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = user-rate VCD,\n");
-	fprintf( stderr, "          3 = Auto MPEG2, 4 = SVCD, 5 = user-rate SVCD\n");
-	fprintf( stderr, "          6 = VCD Stills, 7 = SVCD Stills, 8 = DVD\n");
-
-	fprintf( stderr, "         (N.b only 0 .. 7 currently implemented!*)\n" ); 
-	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 2000) (0 = no limit)\n" );
-	fprintf( stderr, " -M      Generate a *single* multi-file program per\n"
-			         "         sequence rather a program per file\n");
-	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
-	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
-	fprintf( stderr, " -?      Print this lot out!\n");
-			
+    fprintf( stderr,
+	"mjpegtools mplex version " VERSION "\n"
+	"Usage: %s [params] -o <output filename pattern> <input file>... \n"
+	"         %%d in the output file name is by segment count\n"
+	"  where possible params are:\n"
+	"--verbose|-v num\n"
+    "  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n"
+	"--format|-f fmt\n"
+    "  Set defaults for particular MPEG profiles\n"
+	"  [0 = Generic MPEG1, 1 = VCD, 2 = user-rate VCD, 3 = Generic MPEG2,\n"
+    "   4 = SVCD, 5 = user-rate SVCD\n",
+	"   6 = VCD Stills, 7 = SVCD Stills, 8 = DVD\n"
+    "--mux-bitrate|-r num\n"
+    "  Specify data rate of output stream in kbit/sec\n"
+	"    (default 0=Compute from source streams)\n"
+	"--video-buffer|-b num\n"
+    "  Specifies decoder buffers size in kB.  [ 20...2000]\n"
+	"--mux-limit|-l num\n"
+    "  Multiplex only num seconds of material (default 0=multiplex all)\n"
+	"--sync-offset|-O num\n"
+    "  Specify offset of timestamps (video-audio) in mSec\n"
+	"--sector-size|-s num\n"
+    "  Specify sector size in bytes for generic formats [256..16384]\n"
+    "--vbr|-V\n"
+    "  Multiplex variable bit-rate video\n"
+	"--packets-per-pack|-p num\n"
+    "  Number of packets per pack generic formats [1..100]\n"
+	"--system-headers|-h\n"
+    "  Create System header in every pack in generic formats\n"
+	"--max-segment-size|-S size\n"
+    "  Maximum size of output file(s) in Mbyte (default: 2000) (0 = no limit)\n"
+	"--split-segment|-M\n"
+    "  Simply split a sequence across files rather than building run-out/run-in\n"
+	"--help|-?\n"
+    "  Print this lot out!\n", str);
 	exit (1);
 }
+
+static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:VXMeh";
+
+ static struct option long_options[]={
+     { "verbose",           1, 0, 'v' },
+     { "format",            1, 0, 'f' },
+     { "mux-bitrate",       1, 0, 'r' },
+     { "video-buffer",      1, 0, 'b' },
+     { "output",            1, 0, 'o' },
+     { "sync-offset",    	1, 0, 'O' },
+     { "vbr",      	        1, 0, 'V' },
+     { "system-headers", 1, 0, 'h' },
+     { "split-segment", 0, &opt_multifile_segment, 1},
+     { "max-segment-size",  1, 0, 'S' },
+     { "mux-upto",   	    1, 0, 'l' },
+     { "packets-per-pack",  1, 0, 'p' },
+     { "sector-size",       1, 0, 's' },
+     { "help",              0, 0, '?' },
+     { 0,                   0, 0, 0 }
+ };
+
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
 	char *outfile = NULL;
-	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:q:p:VXMeh")) != EOF)
+	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 	{
 		switch(n)
 		{
+        case 0 :
+            break;
 		case 'o' :
 			outfile = optarg;
 			break;
