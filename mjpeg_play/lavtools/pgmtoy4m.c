@@ -55,7 +55,7 @@ getmagicnumber(int fd)
 	}
 
 static int
-piperead(int fd, void *buf, int len)
+piperead(int fd, u_char *buf, int len)
 	{
 	int n = 0;
 	int r = 0;
