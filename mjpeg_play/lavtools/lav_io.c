@@ -546,6 +546,15 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 {
    int res;
+#ifdef HAVE_LIBQUICKTIME
+   int i, j;
+   int16_t *qt_audio = (int16_t *)buff, **qt_audion;
+   int channels = lav_audio_channels(lav_file);
+
+   qt_audion = malloc(channels * sizeof (int16_t **));
+   for (i = 0; i < channels; i++)
+	qt_audion[i] = (int16_t *)malloc(samps * lav_file->bps);
+#endif
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
 
@@ -557,8 +566,17 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-	res = lqt_encode_audio_track(lav_file->qt_fd, (int16_t **)&buff, NULL, samps, 0);
-         break;
+	/* Deinterleave the audio into the two channels. */
+	for (i = 0; i < samps; i++)
+	    {
+	    for (j = 0; j < channels; j++)
+		qt_audion[j][i] = qt_audio[(2*i) + j];
+	    }
+	res = lqt_encode_audio_track(lav_file->qt_fd, qt_audion, NULL,samps,0);
+	free(qt_audion[0]);
+	free(qt_audion[1]);
+	free(qt_audion);
+        break;
 #endif
       default:
          res = -1;
@@ -566,8 +584,6 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
 
    return res;
 }
-
-
 
 long lav_video_frames(lav_file_t *lav_file)
 {
@@ -821,7 +837,13 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
 {
 #ifdef	HAVE_LIBQUICKTIME
    int64_t last_pos, start_pos;
-   int res;
+   int res, i, j;
+   int16_t *qt_audio = (int16_t *)audbuf, **qt_audion;
+   int channels = lav_audio_channels(lav_file);
+
+   qt_audion = malloc(channels * sizeof (int16_t **));
+   for (i = 0; i < channels; i++)
+	qt_audion[i] = (int16_t *)malloc(samps * lav_file->bps);
 #endif
 
    if(!lav_file->has_audio)
@@ -837,13 +859,22 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-	 start_pos = quicktime_audio_position(lav_file->qt_fd, 0);
-	 res = lqt_decode_audio_track(lav_file->qt_fd, (int16_t **)audbuf, NULL, samps, 0);
-	 if (res <= 0)
-	    return(res);
-	 last_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
-	 res = last_pos - start_pos;
-	 res /= lav_file->bps;		/* XXX */
+	start_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
+	lqt_decode_audio_track(lav_file->qt_fd, qt_audion, NULL, samps, 0);
+	last_pos = lqt_last_audio_position(lav_file->qt_fd, 0);
+	res = last_pos - start_pos;
+	if (res <= 0)
+	   goto out;
+	/* Interleave the channels of audio into the one buffer provided */
+	for (i =0; i < res; i++)
+	    {
+	    for (j = 0; j < channels; j++)
+		qt_audio[(2*i) + j] = qt_audion[j][i];
+	    }
+out:
+	 free(qt_audion[0]);
+	 free(qt_audion[1]);
+	 free(qt_audion);
          return(res);
 #endif
    }
@@ -1299,17 +1330,3 @@ int lav_fileno(lav_file_t *lav_file)
 
    return res;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
