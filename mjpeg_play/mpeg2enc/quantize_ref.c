@@ -362,7 +362,7 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 }
 
 
-static void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
+/* static */ void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
 {
   int i, val;
 

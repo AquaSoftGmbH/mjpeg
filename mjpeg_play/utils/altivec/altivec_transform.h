@@ -21,6 +21,7 @@
 
 #include "altivec_conf.h"
 
+
 #define ALTIVEC_TEST_TRANSFORM /* {{{ */                                     \
     ( ( defined(ALTIVEC_BENCHMARK) || defined(ALTIVEC_VERIFY) ) &&           \
       ( ALTIVEC_TEST_FUNCTION(fdct) ||                                       \
@@ -28,6 +29,11 @@
         ALTIVEC_TEST_FUNCTION(add_pred) ||                                   \
         ALTIVEC_TEST_FUNCTION(sub_pred) ) )                                  \
     /* }}} */
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 ALTIVEC_FUNCTION(fdct, void, (int16_t *blk));
 
@@ -38,3 +44,7 @@ ALTIVEC_FUNCTION(sub_pred, void,
 
 ALTIVEC_FUNCTION(add_pred, void,
     (uint8_t *pred, uint8_t *cur, int lx, int16_t *blk));
+
+#ifdef __cplusplus
+}
+#endif

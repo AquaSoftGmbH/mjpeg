@@ -33,7 +33,6 @@
 #include "amber.h"
 
 #define PRED_COMP_PDECL /* {{{ */                                            \
-    pict_data_s *picture,                                                    \
     uint8_t *src,                                                            \
     uint8_t *dst,                                                            \
     int lx,                                                                  \
@@ -42,9 +41,9 @@
     int dx, int dy,                                                          \
     int addflag                                                              \
     /* }}} */
-#define PRED_COMP_ARGS picture, src, dst, lx, w, h, x, y, dx, dy, addflag
+#define PRED_COMP_ARGS src, dst, lx, w, h, x, y, dx, dy, addflag
 #define PRED_COMP_PFMT /* {{{ */                                             \
-    "picture=0x%X, src=0x%X, dst=0x%X, lx=%d, w=%d, h=%d, x=%d, y=%d,"       \
+    "src=0x%X, dst=0x%X, lx=%d, w=%d, h=%d, x=%d, y=%d,"                     \
     " dx=%d, dy=%d, addflag=%d"                                              \
     /* }}} */
 

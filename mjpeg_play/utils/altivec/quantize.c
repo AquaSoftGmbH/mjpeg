@@ -29,13 +29,14 @@
 #include "../mjpeg_logging.h"
 
 
-extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
-                               int mquant, int *nonsat_mquant);
+extern int (*pquant_non_intra)(int16_t *src, int16_t *dst, int q_scale_type,
+				int mquant, int *nonsat_mquant);
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t *i_quant_mat);
-extern void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst, uint16_t *qmat);
+
+extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, uint16_t *qmat);
 
 
-void enable_altivec_quantization()
+void enable_altivec_quantization(int opt_mpeg1)
 {
 #if ALTIVEC_TEST_QUANTIZE
 #  if defined(ALTIVEC_BENCHMARK)
@@ -59,9 +60,11 @@ void enable_altivec_quantization()
     pquant_weight_coeff_sum = ALTIVEC_SUFFIX(quant_weight_coeff_sum);
 #endif
 
+    if (opt_mpeg1) {
 #if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
-    piquant_non_intra_m1 = ALTIVEC_TEST_SUFFIX(iquant_non_intra_m1);
+	piquant_non_intra = ALTIVEC_TEST_SUFFIX(iquant_non_intra_m1);
 #else
-    piquant_non_intra_m1 = ALTIVEC_SUFFIX(iquant_non_intra_m1);
+	piquant_non_intra = ALTIVEC_SUFFIX(iquant_non_intra_m1);
 #endif
+    }
 }

@@ -53,9 +53,7 @@
 #include "simd.h"
 
 #ifdef HAVE_ALTIVEC
-#define __INCLUDE_FROM_MPEG2ENC_PREDICT_C__
 #include "../utils/altivec/altivec_predict.h"
-#undef __INCLUDE_FROM_MPEG2ENC_PREDICT_C__
 #endif
 
 
@@ -66,7 +64,7 @@ static void pred (
 	uint8_t *dst[], int dfield,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 
-/* static */ void pred_comp (
+extern "C" /* static */ void pred_comp (
 	uint8_t *src, uint8_t *dst,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
@@ -446,7 +444,7 @@ static void pred (	uint8_t *src[], int sfield,
  * There are also SIMD versions of this routine...
  */
 
-/* static */ void pred_comp(
+extern "C" /* static */ void pred_comp(
 	uint8_t *src,
 	uint8_t *dst,
 	int lx,

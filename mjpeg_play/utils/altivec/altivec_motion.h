@@ -22,7 +22,6 @@
 
 #include "altivec_conf.h"
 
-void enable_altivec_motion();
 
 #define ALTIVEC_TEST_MOTION /* {{{ */                                        \
     ( ( defined(ALTIVEC_BENCHMARK) || defined(ALTIVEC_VERIFY) ) &&           \
@@ -43,6 +42,12 @@ void enable_altivec_motion();
         ALTIVEC_TEST_FUNCTION(variance) ) )                                  \
     /* }}} */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void enable_altivec_motion();
 
 ALTIVEC_FUNCTION(build_sub44_mests, int,
   (
@@ -118,3 +123,6 @@ ALTIVEC_FUNCTION(subsample_image, void,
 ALTIVEC_FUNCTION(variance, int,
 	(uint8_t *p, int size, int rowstride));
 
+#ifdef __cplusplus
+}
+#endif

@@ -17,13 +17,11 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#include <stdio.h>  /* FILE required by global.h */
 #include <stdint.h>
-#include "../../mpeg2enc/mpeg2enc.h" /* pict_data_s */
+#include "../../mpeg2enc/quantize_ref.h" /* next_larger_quant */
 
 #include "altivec_conf.h"
 
-void enable_altivec_quantization();
 
 #define ALTIVEC_TEST_QUANTIZE /* {{{ */                                      \
     ( ( defined(ALTIVEC_BENCHMARK) || defined(ALTIVEC_VERIFY) ) &&           \
@@ -32,12 +30,23 @@ void enable_altivec_quantization();
         ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) ) )                       \
     /* }}} */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void enable_altivec_quantization(int opt_mpeg1);
+
 ALTIVEC_FUNCTION(quant_non_intra, int,
-	(pict_data_s *picture, int16_t *src, int16_t *dst,
-	 int mquant, int *nonsat_mquant));
+	(int16_t *src, int16_t *dst,
+	 int q_scale_type, int mquant, int *nonsat_mquant));
 
 ALTIVEC_FUNCTION(quant_weight_coeff_sum, int,
 	(int16_t *blk, uint16_t *i_quant_mat));
 
 ALTIVEC_FUNCTION(iquant_non_intra_m1, void,
 	(int16_t *src, int16_t *dst, uint16_t *qmat));
+
+#ifdef __cplusplus
+}
+#endif

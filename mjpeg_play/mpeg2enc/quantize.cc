@@ -69,7 +69,7 @@ void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
 
 
 #ifdef HAVE_ALTIVEC
-extern void enable_altivec_quantization();
+extern "C" void enable_altivec_quantization(int opt_mpeg1);
 #endif
 
 /*
@@ -123,7 +123,7 @@ void init_quantizer(void)
 	}
 #ifdef HAVE_ALTIVEC
 	if (cpu_accel())
-	    enable_altivec_quantization();
+	    enable_altivec_quantization(opt_mpeg1);
 #endif
 }
 

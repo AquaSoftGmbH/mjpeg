@@ -25,13 +25,12 @@
 #include <altivec.h>
 #endif
 
-#ifdef ALTIVEC_VERIFY
-#  if ALTIVEC_TEST_FUNCTION(quant_non_intra))
-#    include <stdlib.h>
-#  endif
+#include "altivec_quantize.h"
+
+#if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(quant_non_intra)
+#include <stdlib.h>
 #endif
 
-#include "altivec_quantize.h"
 #include "vectorize.h"
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"
@@ -54,11 +53,10 @@ extern int block_count;
  */
 
 #define QUANT_NON_INTRA_PDECL                                                \
-    pict_data_s *picture,                                                    \
     int16_t *src, int16_t *dst,                                              \
-    int mquant, int *nonsat_mquant                                           \
+    int q_scale_type, int mquant, int *nonsat_mquant                         \
 
-#define  QUANT_NON_INTRA_ARGS picture, src, dst, mquant, nonsat_mquant
+#define  QUANT_NON_INTRA_ARGS src, dst, q_scale_type, mquant, nonsat_mquant
 
 
 int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
@@ -291,7 +289,7 @@ recalc:
 	vuv = vec_ld(0, (unsigned short*)&vu);
 	vuv = vec_splat(vuv, 1); /* splat clipvalue */
 	if (vec_any_gt(max, vuv)) {
-	    int next_mquant = next_larger_quant(picture, mquant);
+	    int next_mquant = next_larger_quant(q_scale_type, mquant);
     	    if (next_mquant == mquant) {
 		/* saturation has occured, clip values then
 		 * goto saturated jump point.
@@ -434,7 +432,7 @@ done:
 
 #if ALTIVEC_TEST_FUNCTION(quant_non_intra) /* {{{ */
 #define QUANT_NON_INTRA_PFMT \
-  "picture=0x%X, src=0x%X, dst=0x%X, mquant=%d, nonsat_mquant=0x%X"
+  "src=0x%X, dst=0x%X, q_scale_type=%d, mquant=%d, nonsat_mquant=0x%X"
 
 #  ifdef ALTIVEC_VERIFY
 int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)

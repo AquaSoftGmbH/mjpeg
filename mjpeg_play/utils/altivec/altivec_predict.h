@@ -17,19 +17,25 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef __INCLUDE_FROM_MPEG2ENC_PREDICT_C__
-#include <stdio.h>  /* FILE required by global.h */
 #include <stdint.h>
-#include "../../mpeg2enc/mpeg2enc.h" /* pict_data_s */
-#endif
 
 #include "altivec_conf.h"
+
 
 #define ALTIVEC_TEST_PREDICT /* {{{ */                                       \
     ( ( defined(ALTIVEC_BENCHMARK) || defined(ALTIVEC_VERIFY) ) &&           \
     ALTIVEC_TEST_FUNCTION(pred_comp) )                                       \
     /* }}} */
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 ALTIVEC_FUNCTION(pred_comp, void,
-	(pict_data_s *picture, uint8_t *src, uint8_t *dst, int lx,
+	(uint8_t *src, uint8_t *dst, int lx,
 	 int w, int h, int x, int y, int dx, int dy, int addflag));
+
+#ifdef __cplusplus
+}
+#endif
