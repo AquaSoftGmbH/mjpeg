@@ -51,18 +51,19 @@ static void init_seq(int reinit)
 
 
 	/* optionally output some text data (description, copyright or whatever) */
-	if (strlen(id_string) > 1)
-		putuserdata(id_string);
+	/* if (strlen(id_string) > 1)
+	   putuserdata(id_string);*/
 
 }
 
 
 static void frame_mc_and_pic_params( int decode,
 									 int b_index,
+									 int temp_ref,
 									 motion_comp_s *mc_data, 
 									 pict_data_s *picture )
 {
-
+	picture->temp_ref = temp_ref;
 	switch ( picture->pict_type )
 	{
 	case I_TYPE :
@@ -139,7 +140,8 @@ static void frame_mc_and_pic_params( int decode,
  * the mean luminance strategy developed in Dirk Farin's sampeg-2
  *
  * Basically it looks for a frame whose mean luminance is above
- * certain threshold distance over that of its predecessor.
+ * certain threshold distance from that of its predecessor and adjust the
+ * suggested length of the GOP to make that the I frame of the *next* GOP.
  * 
  * A slight trick is that search commences at the end of the legal range
  * backwards.  The reason is that longer GOP's are more efficient.  Thus if
@@ -147,33 +149,92 @@ static void frame_mc_and_pic_params( int decode,
  * the middle of a long GOP (with plenty of bits to play with) rather than
  * a short GOP followed by another potentially very short GOP.
  *
+ * Another complication is that the temporal reference of the I frame
+ * of the successor frame need not be 0, so the length calculation has to
+ * take into account this offset.
+ *
  * N.b. This is experimental and could be highly bogus
  *
  ************************************/
 
-#ifdef NEW_CODE
 #define SCENE_CHANGE_THRESHOLD 4
 
-static int gop_end_frame( int gop_start_frame, int gop_min_len, int gop_max_len )
+int find_gop_length( int gop_start_frame, 
+					 int I_frame_temp_ref,
+					 int gop_min_len, int gop_max_len )
 {
-	int i;
-	int prev_lum_mean = frame_lum_mean( gop_start_frame+gop_max_len-1 );
-	int cur_lum_mean;
-	for( i = gop_start_frame+gop_max_len-2; i >= gop_min_len; --i )
+	int i,j;
+
+	int cur_lum_mean = 
+		frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
+	int pred_lum_mean;
+
+	/* Search backwards from max gop length for I-frame candidate starting 
+	   adjusting for I-frame temporal reference
+	 */
+	for( i = gop_max_len; i >= gop_min_len; --i )
 	{
-		cur_lum_mean =  frame_lum_mean( i );
-		if( abs(cur_lum_mean-prev_lum_mean ) > SCENE_CHANGE_THRESHOLD )
+		pred_lum_mean =  frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-1 );
+		if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
 			break;
+		cur_lum_mean = pred_lum_mean;
 	}
 
 	if( i < gop_min_len )
-		i = gop_max_len;
+	{
+
+		/* No scene change detected within maximum GOP length.
+		   Now do a look-ahead check to see if running a maximum length
+		   GOP next would put scene change into the GOP after-next
+		   that would need a GOP smaller than minum to handle...
+		*/
+		pred_lum_mean = 
+			frame_lum_mean( gop_start_frame+gop_max_len+I_frame_temp_ref );
+		for( j = gop_max_len+1; j < gop_max_len+gop_min_len; ++j )
+		{
+			cur_lum_mean = frame_lum_mean( gop_start_frame+j+I_frame_temp_ref );
+			if(  abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD )
+				break;
+		}
+		
+		/* If a max length GOP next would cause a scene change in a
+		   place where the GOP after-next would be under-size to handle it
+		   *and* making the current GOP minimum size would allow an acceptable
+		   GOP after-next size the next GOP to give it and after-next
+		   roughly equal sizes
+		   otherwise simply set the GOP to maximum length
+		*/
+
+		if( j < gop_max_len+gop_min_len && j >= gop_min_len+gop_min_len )
+		{
+			i = j/2;
+			if( i < gop_min_len )
+			{
+				printf( "++++ WARNING: GOP min length too small to permit scene-change on GOP boundary%d\n", j);
+				i = gop_min_len;
+			}
+		}
+		else
+			i = gop_max_len;
+	}
+
+	/* TODO DEBUG remove....
+	for( j= gop_start_frame; j<= gop_start_frame+gop_max_len+gop_min_len; ++j)
+		printf( "%03d ", frame_lum_mean( j+I_frame_temp_ref ));
+		printf( "\n");
+	*/
+	if( i != gop_max_len )
+		printf( "DEBUG: GOP nonstandard size %d\n", i );
+
+	/* last GOP may contain less frames */
+	if (i > nframes-gop_start_frame)
+		i = nframes-gop_start_frame;
 	return i;
+
 }
-#endif
+
 void putseq()
 {
-	/* this routine assumes (N % M) == 0 */
 	int i, j, f, g,  b, np, nb;
 	int ipflag;
 	/*int sxf = 0, sxb = 0, syf = 0, syb = 0;*/
@@ -185,7 +246,7 @@ void putseq()
 	int gop_length;
 	int bs_short;
 	int bigrp_length;
-	int b_drop;
+	double next_b_drop;
 	pict_data_s cur_picture;
 
 	/* Length limit parameter is specied in MBytes */
@@ -243,35 +304,43 @@ void putseq()
 			gop_start_frame = seq_start_frame + i;
 
 			/*
-			  First GOP in a sequence contains N-(M-1) frames,
-			  all other GOPs contain N frames
+			  Compute GOP length based on min and max sizes specified
+			  and scene changes detected.  
+			  First GOP in a sequence has I frame with a 0 temp_ref
+			  nad (M-1) less frames (no initial B frames).
+			  all other GOPs have a temp_ref of M-1
 			*/
+
 			if( i == 0 )
-				gop_length = N-(M-1);
+				gop_length =  find_gop_length( gop_start_frame, 0, 
+											   N_min-(M-1), N_max-(M-1));
 			else
-				gop_length = N;
+				gop_length = 
+					find_gop_length( gop_start_frame, M-1, 
+									 N_min, N_max);
 
-			/* last GOP may contain less frames */
-			if (gop_length > nframes-gop_start_frame)
-				gop_length = nframes-gop_start_frame;
-
+			
 			/* First figure out how many B frames we're short from
 			   being able to achieve an even M-1 B's per I/P frame.
 
 			   To avoid peaks in necessary data-rate we try to
 			   lose the B's in the middle of the GOP. We always
-			   *start* with M-1 B's.
+			   *start* with M-1 B's (makes choosing I-frame breaks simpler).
+			   A complication is the extra I-frame in the initial
+			   closed GOP of a sequence.
 			*/
 			if( M-1 > 0 )
-				bs_short = (M - (gop_length % M))%M;
+			{
+				bs_short = (M - ((gop_length-(i==0)) % M))%M;
+				next_b_drop = ((double)gop_length) / (double)(bs_short+1)-1.0 ;
+			}
 			else
+			{
 				bs_short = 0;
+				next_b_drop = 0.0;
+			}
 
 			/* We aim to spread the dropped B's evenly across the GOP */
-
-			if( bs_short )
-				b_drop = (M - bs_short) * gop_length / M;
-
 			bigrp_length = (M-1);
 			b = bigrp_length;
 
@@ -290,13 +359,10 @@ void putseq()
 			   No need for per-GOP seqhdr in first GOP as one
 			   has already been created.
 			*/
-			
 			putgophdr(i == 0 ? i : i+(M-1),
 					  i == 0, 
 					  i != 0 && seq_header_every_gop);
 
-			fprintf( stderr, "GOP len = %d GOP start =%d\n", 
-					 gop_length, gop_start_frame);
 		}
 
 		/* Each bigroup starts once all the B frames of its predecessor
@@ -341,12 +407,11 @@ void putseq()
 			curref = newrefframe;
 
 			bigrp_length = M-1;
-			if( bs_short != 0 && g >= b_drop )
+			if( bs_short != 0 && g > (int)next_b_drop )
 			{
-				--bs_short;
 				bigrp_length = M - 2;
 				if( bs_short )
-					b_drop = (M - bs_short) * gop_length / M;
+					next_b_drop += ((double)gop_length) / (double)(bs_short+1) ;
 			}
 
 			/* f: frame number in sequence display order */
@@ -380,7 +445,7 @@ void putseq()
 			cur_picture.pict_type = B_TYPE;
 		}
 
-		frame_mc_and_pic_params( i, b,  &mc_data, &cur_picture );
+		frame_mc_and_pic_params( i, b,  temp_ref, &mc_data, &cur_picture );
 		printf( "(%d %d %d) ", i-g+temp_ref, temp_ref+gop_start_frame, temp_ref );
 		if( readframe(temp_ref+gop_start_frame,curorg) )
 		{

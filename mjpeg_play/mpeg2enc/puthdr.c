@@ -184,6 +184,7 @@ int frame;
 /* generate picture header (6.2.3, 6.3.10) */
 void putpicthdr(pict_data_s *picture)
 {
+	printf( "TR=%d ", picture->temp_ref);
   alignbits();
   putbits(PICTURE_START_CODE,32); /* picture_start_code */
   putbits(picture->temp_ref,10); /* temporal_reference */

@@ -312,16 +312,17 @@ void get_info_video (char *video_file,
 				AU_pict_data = 0;
 				break;
 			case SEQUENCE_END:
+				stream_length = bitcount (&video_bs);
+				access_unit.length = ((stream_length - AU_start)>>3);
+				access_unit.end_seq = 1;
+				VectorAppend( vaunits, &access_unit );
+				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
 				if( !end_bs(&video_bs) && 
 					getbits (&video_bs, 32) ==SEQUENCE_HEADER )
 				{
 					stream_length = bitcount (&video_bs);
-					access_unit.length = ((stream_length - AU_start)>>3);
-					access_unit.end_seq = 1;
-					VectorAppend( vaunits, &access_unit );
-					video_info->avg_frames[access_unit.type-1]+=access_unit.length;
 					AU_start = stream_length;
 					AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
@@ -371,13 +372,13 @@ void get_info_video (char *video_file,
 				prev_stream_length = stream_length;
 				group_start_pic = decoding_order;
 			}
-			
 			access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
 			access_unit.dorder = decoding_order;
 			access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
 											 / frame_rate);
 			access_unit.porder = temporal_reference + group_start_pic;
 			access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
+
 			decoding_order++;
 			group_order++;
 

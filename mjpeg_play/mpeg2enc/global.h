@@ -152,6 +152,7 @@ void calc_vbv_delay (pict_data_s *picture);
 
 /* readpic.c */
 int readframe (int frame_num, uint8_t *frame[]);
+int frame_lum_mean(int frame_num);
 
 /* stats.c */
 void calcSNR (uint8_t *org[3], uint8_t *rec[3]);
@@ -369,7 +370,8 @@ EXTERN int quiet; /* suppress warnings */
 
 /* coding model parameters */
 
-EXTERN int N; /* number of frames in Group of Pictures */
+EXTERN int N_max; /* number of frames in Group of Pictures (max) */
+EXTERN int N_min;  /* number of frames in Group of Pictures (min) */
 EXTERN int M; /* distance between I/P frames */
 EXTERN int P; /* intra slice refresh interval */
 EXTERN int nframes; /* total number of frames to encode
@@ -392,7 +394,7 @@ EXTERN int fieldpic; /* use field pictures */
   filled (in 1/4's).
 */
 
-#define READ_LOOK_AHEAD 16 
+#define READ_LOOK_AHEAD 24
 
 
 /* sequence specific data (sequence header) */

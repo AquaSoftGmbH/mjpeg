@@ -601,6 +601,7 @@ void outputstream ( char 		*video_file,
 				SCR_video_delay = video_delay + current_SCR-audio_au.PTS;
 				packets_left_in_pack = packets_per_pack;
 				include_sys_header = sys_header_in_pack1;
+				buffers_in_video = 1;
 				nsec_a = nsec_v = nsec_p =0;
 				seg_state = mid_segment;
 				break;
@@ -940,7 +941,6 @@ void output_video ( clockticks SCR,
   if( video_au->end_seq )
   {
 	max_packet_payload = video_au->length;
-	fprintf( stderr, "End segment lim = %d\n",max_packet_payload  );
   }
 
   if (start_of_new_pack)

@@ -176,5 +176,16 @@
 
 	Obviously, there are some limitations. MPEG-1 players won't play MPEG-2!
 
+11) Optimising encoding.
+
+	Encoder performance is slightly enhanced if you allow it to dynamically
+	size the output streams groups-of-pictures to reflect scene changes.
+	This is done by setting a maximum GOP (-G flag) size larger than
+	the minimum (-g flag).
+	
+	The default value for both is 12.    For VCD's sensible values might be
+	a minimum of 9 and a maximum of 15.  For SVCD 9 and 18 would be good 
+	values.
+
 Andrew
 

@@ -77,6 +77,9 @@ static double param_act_boost = 2.0;
 static int param_video_buffer_size = 46;
 static int param_seq_hdr_every_gop = 0;
 static int param_seq_length_limit = 2000;
+static int param_min_GOP_size = 12;
+static int param_max_GOP_size = 12;
+static int param_Bgrp_size = 3;
 
 static double framerates[9]=
     {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
@@ -105,6 +108,8 @@ void Usage(char *str)
 	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
 	printf("   -2 num     (default: 3)\n");
 	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
+	printf("   -g num     Minimum GOP size (default 12)\n" );
+	printf("   -G num     Maximum GOP size (default 12)\n" );
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
@@ -125,7 +130,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:4:2:Q:v:stNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:4:2:Q:g:G:v:stNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -227,6 +232,12 @@ int main(argc,argv)
 				++nerr;
 			}
 
+		case 'g' :
+			param_min_GOP_size = atoi(optarg);
+			break;
+		case 'G' :
+			param_max_GOP_size = atoi(optarg);
+			break;
 		case 'N':
 			param_hfnoise_quant = 1;
 			break;
@@ -271,6 +282,21 @@ int main(argc,argv)
 	else
 		input_fd = 0; /* stdin */
 
+	if( param_min_GOP_size > param_max_GOP_size )
+	{
+		fprintf(stderr, "Min GOP size must be <= Max GOP size\n" );
+		++nerr;
+	}
+
+	if(	param_min_GOP_size < 2*param_Bgrp_size ||
+		param_max_GOP_size > READ_LOOK_AHEAD+param_Bgrp_size )
+	{
+		fprintf(stderr, 
+				"Min and max GOP sizes must be in range [%d..%d]\n",
+				2*param_Bgrp_size,
+				READ_LOOK_AHEAD+param_Bgrp_size);
+		++nerr;
+	}
 	if(nerr) Usage(argv[0]);
 
 	if( param_quant )
@@ -524,8 +550,9 @@ static void readparmfile()
 	inputtype = 0;  /* doesnt matter */
 	nframes = 999999999; /* determined by EOF of stdin */
 
-	N = 12;      /* I frame distance */
-	M = 3;       /* I or P frame distance */
+	N_min = param_min_GOP_size;      /* I frame distance */
+	N_max = param_max_GOP_size;
+	M = param_Bgrp_size;             /* I or P frame distance */
 	mpeg1           = (param_mpeg == 1);
 	fieldpic        = (param_fieldpic!=0 && param_fieldpic != 3);
 	/* RJ: horizontal_size, vertical_size, frame_rate_code
@@ -636,13 +663,6 @@ static void readparmfile()
 	altscan_tab[2]  = 0;
 	opt_repeatfirst     = 0;
 	opt_prog_frame      = prog_seq;
-
-	if (N<1)
-		error("N must be positive");
-	if (M<1)
-		error("M must be positive");
-	if (N%M != 0)
-		error("N must be an integer multiple of M");
 
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8

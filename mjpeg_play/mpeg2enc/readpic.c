@@ -52,10 +52,10 @@ static int luminance_mean(uint8_t *frame, int w, int h )
 	int sum = 0;
 	while( p < lim )
 	{
-		sum = (p[0] + p[1]) + (p[2] + p[3]) + (p[4] + p[5]) + (p[6] + p[7]);
+		sum += (p[0] + p[1]) + (p[2] + p[3]) + (p[4] + p[5]) + (p[6] + p[7]);
 		p += 8;
 	}
-	return sum / (h * h);
+	return sum / (w * h);
 }
 
 static void border_extend(unsigned char *frame,
@@ -148,7 +148,7 @@ static void read_gop()
    nframes = frames_read;
 }
 
-void load_frame( int num_frame )
+void load_frame( int num_frame, int look_ahead )
 {
 
    if( frames_read == 0)
@@ -176,10 +176,10 @@ void load_frame( int num_frame )
       exit(1);
    }
 
-   /* Read next look ahead chunk if this was the last 
-	  frame of current one */
+   /* Read next look ahead chunk if we have insufficient look-ahead margin
+	*/
 
-   if(frames_read - num_frame < READ_LOOK_AHEAD) 
+   if(frames_read - num_frame <= look_ahead) 
    {
 	   read_gop();
    }
@@ -202,7 +202,7 @@ int readframe( int num_frame,
 {
    int n;
 
-   load_frame( num_frame );
+   load_frame( num_frame, READ_LOOK_AHEAD );
    n = num_frame % (2*READ_LOOK_AHEAD);
 
    frame[0] = frame_buffers[n][0];
@@ -210,4 +210,15 @@ int readframe( int num_frame,
    frame[2] = frame_buffers[n][2];
 
    return 0;
+}
+
+int frame_lum_mean( int num_frame )
+{
+	int n = num_frame;
+	if(  frames_read > 0 && num_frame > frames_read-1 )
+	{
+		n = frames_read-1;
+	}
+	load_frame( n, 1 );
+	return lum_mean[n% (2*READ_LOOK_AHEAD)];
 }
