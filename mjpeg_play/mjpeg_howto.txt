@@ -466,12 +466,13 @@ using yuvscaler, one can now also scale the video before encoding it. This can
 be useful for, for example, users with a DC10+ card, which captures at 
 384x288 (PAL/SECAM) or 640x480 (NTSC) when using full resolution with
 decimation two during recording.
->lav2yuv stream.avi | yuvscaler -o VCD | mpeg2enc -o video.m1v
+>lav2yuv stream.avi | yuvscaler -k VCD | mpeg2enc -o video.m1v
 This will rescale the 384x288 or 768x576 (PAL/SECAM) or 320x240 or 640x480
 (NTSC) stream to the VCD-size 352x288 (PAL/SECAM) or 352x240 (NTSC) and
 encode the resulting output YUV data to an mpeg stream.
+
 It can also do SVCD-scaling to 480x480 (NTSC) or 480x567 (PAL/SECAM):
->lav2yuv stream.avi | yuvscaler -o SVCD | mpeg2enc -o video.m2v
+>lav2yuv stream.avi | yuvscaler -k SVCD | mpeg2enc -o video.m2v
 
 Testing is done by:
 > plaympeg video.m1v
@@ -674,14 +675,16 @@ For better Quality there are SVCD and XVCD and DVD.
 Currently only SVCD is fully supported with a pre-set format in mplex
 and tools to create disks. MPEG streams that can be played by DVD player
 hardware and software can readily produced using mpeg2enc/mplex but there
-is currently no means to make a properly structured disk image.
+is currently no means to make a properly structured disk image. 
 
 If your player doesn't support SVCD however, you may well find it can
 handle VCD streams that have much higher than standard bit-rates.Often
 as much as 2500kBit/sec is possible.  With higher bit-rates and good
 quality source material it is worth trying mpeg2enc's -h flag which
 produce a stream that is as sharp as the limits of the VCD standard
-permits.
+permits. The -h flag seems to help also if there is a low quality stream, 
+the video does not look that sharp using the flag, but there are not that 
+much gitches as without it. 
 
 However, if your player supports it and you have the patience for the
 much longer encoding times SVCD is a much better alternative.  Using
