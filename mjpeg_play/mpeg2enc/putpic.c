@@ -203,12 +203,11 @@ void putpict(pict_data_s *picture )
 
 	if( picture->gop_start )
 	{
-		/* set closed_GOP in first GOP only 
-		   No need for per-GOP seqhdr in first GOP as one
-		   has already been created.
+		/* set closed_GOP in first GOP only No need for per-GOP seqhdr
+		   in first GOP as one has already been created.
 		*/
 
-		putgophdr( picture->decode+picture->temp_ref,
+		putgophdr( picture->decode,
 				   picture->decode == 0,
 				   picture->decode != 0 && opt_seq_hdr_every_gop);
 	}

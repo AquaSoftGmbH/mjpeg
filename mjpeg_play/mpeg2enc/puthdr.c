@@ -178,20 +178,23 @@ void putgophdr(int frame,int closed_gop, int seq_header )
  *
  * drop_frame not implemented
  */
-static int frametotc(frame)
-int frame;
+static int frametotc(int gop_timecode0_frame)
 {
-  int fps, pict, sec, minute, hour, tc;
+	int frame = gop_timecode0_frame;
+	int fps, pict, sec, minute, hour, tc;
 
-  fps = (int)(opt_frame_rate+0.5);
-  pict = frame%fps;
-  frame = (frame-pict)/fps;
-  sec = frame%60;
-  frame = (frame-sec)/60;
-  minute = frame%60;
-  frame = (frame-minute)/60;
-  hour = frame%24;
-  tc = (hour<<19) | (minute<<13) | (1<<12) | (sec<<6) | pict;
+	/* Note: no drop_frame_flag support here, so we're simply rounding
+	   the frame rate as per 6.3.8 13818-2
+	*/
+	fps = (int)(opt_frame_rate+0.5);
+	pict = frame%fps;
+	frame = (frame-pict)/fps;
+	sec = frame%60;
+	frame = (frame-sec)/60;
+	minute = frame%60;
+	frame = (frame-minute)/60;
+	hour = frame%24;
+	tc = (hour<<19) | (minute<<13) | (1<<12) | (sec<<6) | pict;
 
   return tc;
 }

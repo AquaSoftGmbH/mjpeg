@@ -1121,19 +1121,42 @@ static void init_mpeg_parms(void)
 	case 's': opt_video_format = 3; break;
 	default:  opt_video_format = 5; break; /* unspec. */
 	}
-	opt_color_primaries = 5;
-	opt_transfer_characteristics = 5;
 	switch(param_norm)
 	{
-	case 'p': opt_matrix_coefficients = 5; break;
-	case 'n': opt_matrix_coefficients = 4; break;
-	case 's': opt_matrix_coefficients = 5; break; /* ???? */
-	default:  opt_matrix_coefficients = 2; break; /* unspec. */
+	case 's':
+	case 'p':  /* ITU BT.470  B,G */
+		opt_color_primaries = 5;
+		opt_transfer_characteristics = 4; /* Gamma = 2.2 */
+		opt_matrix_coefficients = 5; 
+		break;
+	case 'n': /* SMPTPE 170M "modern NTSC" */
+		opt_color_primaries = 6;
+		opt_transfer_characteristics = 6;
+		opt_matrix_coefficients = 6; 
+		opt_matrix_coefficients = 5; 
+		break; 
+	default:   /* unspec. */
+		opt_matrix_coefficients = 2; 
+		opt_color_primaries = 2;
+		opt_transfer_characteristics = 2;
+		break;
 	}
-	opt_display_horizontal_size  = opt_horizontal_size;
-	opt_display_vertical_size    = opt_vertical_size;
 
-	opt_dc_prec         = 0;  /* 8 bits */
+	switch( param_format )
+	{
+	case MPEG_FORMAT_SVCD_STILL :
+	case MPEG_FORMAT_SVCD_NSR :
+	case MPEG_FORMAT_SVCD : 
+		opt_display_horizontal_size  = 720;
+		opt_display_vertical_size    = opt_vertical_size;
+		break;
+	default:
+		opt_display_horizontal_size  = opt_horizontal_size;
+		opt_display_vertical_size    = opt_vertical_size;
+		break;
+	}
+
+	opt_dc_prec         = 9;  /* 9 bits */
 	if( param_fieldenc == 2 )
 		opt_topfirst  = 1;
 	else if (param_fieldenc == 1)
@@ -1156,21 +1179,25 @@ static void init_mpeg_parms(void)
 	else
 		opt_topfirst = 0;
 
-	opt_frame_pred_dct_tab[0] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
-	opt_frame_pred_dct_tab[1] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
-	opt_frame_pred_dct_tab[2] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
+	opt_frame_pred_dct_tab[0] 
+		= opt_frame_pred_dct_tab[1] 
+		= opt_frame_pred_dct_tab[2] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
 
-	opt_qscale_tab[0]   = param_mpeg == 1 ? 0 : 1;
-	opt_qscale_tab[1]   = param_mpeg == 1 ? 0 : 1;
-	opt_qscale_tab[2]   = param_mpeg == 1 ? 0 : 1;
+	opt_qscale_tab[0] 
+		= opt_qscale_tab[1] 
+		= opt_qscale_tab[2] 
+		= param_mpeg == 1 ? 0 : 1;
 
-	opt_intravlc_tab[0] = param_mpeg == 1 ? 0 : 1;
-	opt_intravlc_tab[1] = param_mpeg == 1 ? 0 : 1;
-	opt_intravlc_tab[2] = param_mpeg == 1 ? 0 : 1;
+	opt_intravlc_tab[0] 
+		= opt_intravlc_tab[1] 
+		= opt_intravlc_tab[2] = param_mpeg == 1 ? 0 : 1;
 
-	opt_altscan_tab[0]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
-	opt_altscan_tab[1]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
-	opt_altscan_tab[2]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
+	opt_altscan_tab[2]  
+		= opt_altscan_tab[1]  
+		= opt_altscan_tab[0]  
+		= param_mpeg == 1 ? 0 : 1;
+	
+	param_mpeg == 1 ? 0 : !opt_fieldpic;
 
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8
