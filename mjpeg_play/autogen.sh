@@ -1,6 +1,13 @@
 #!/bin/sh
 # Run this to generate all the initial makefiles, etc.
 
+echo "***"
+echo "*** WARNING: Use of this script is deprecated."
+echo "***     Instead of running this script you should use: autoreconf -f -i"
+echo "***     Then run ./configure"
+echo "***"
+sleep 2
+
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 test -z "$automake" && automake=automake
