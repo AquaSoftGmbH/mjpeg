@@ -32,11 +32,45 @@
 #include "config.h"
 #include "global.h"
 
+#ifdef OUTPUT_STATS
+static void calcSNR1(org,rec,lx,w,h,pv,pe)
+unsigned char *org;
+unsigned char *rec;
+int lx,w,h;
+double *pv,*pe;
+{
+  int i, j;
+  double v1, s1, s2, e2;
 
-/* private prototypes */
-static void calcSNR1 _ANSI_ARGS_((unsigned char *org, unsigned char *rec,
-  int lx, int w, int h, double *pv, double *pe));
+  s1 = s2 = e2 = 0.0;
 
+  for (j=0; j<h; j++)
+  {
+    for (i=0; i<w; i++)
+    {
+      v1 = org[i];
+      s1+= v1;
+      s2+= v1*v1;
+      v1-= rec[i];
+      e2+= v1*v1;
+    }
+    org += lx;
+    rec += lx;
+  }
+
+  s1 /= w*h;
+  s2 /= w*h;
+  e2 /= w*h;
+
+  /* prevent division by zero in calcSNR() */
+  if(e2==0.0)
+    e2 = 0.00001;
+
+  *pv = s2 - s1*s1; /* variance */
+  *pe = e2;         /* MSE */
+}
+
+#endif
 
 void calcSNR(org,rec)
 unsigned char *org[3];
@@ -75,43 +109,6 @@ unsigned char *rec[3];
     
   
 #endif
-}
-
-static void calcSNR1(org,rec,lx,w,h,pv,pe)
-unsigned char *org;
-unsigned char *rec;
-int lx,w,h;
-double *pv,*pe;
-{
-  int i, j;
-  double v1, s1, s2, e2;
-
-  s1 = s2 = e2 = 0.0;
-
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<w; i++)
-    {
-      v1 = org[i];
-      s1+= v1;
-      s2+= v1*v1;
-      v1-= rec[i];
-      e2+= v1*v1;
-    }
-    org += lx;
-    rec += lx;
-  }
-
-  s1 /= w*h;
-  s2 /= w*h;
-  e2 /= w*h;
-
-  /* prevent division by zero in calcSNR() */
-  if(e2==0.0)
-    e2 = 0.00001;
-
-  *pv = s2 - s1*s1; /* variance */
-  *pe = e2;         /* MSE */
 }
 
 void stats()

@@ -43,8 +43,11 @@
 
 	
 /* private prototypes */
+#ifdef NEW_RATE_CTL
 static double calc_actj _ANSI_ARGS_((unsigned char *frame));
+#else
 static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
+#endif
 
 /*Constant bit-rate rate control variables */
 /* X's global complexity (Chi! not X!) measures.
@@ -248,8 +251,11 @@ static double calc_actj(frame)
 unsigned char *frame;
 {
   int i,j,k;
+#ifndef NEW_RATE_CTL
   unsigned char *p;
-  double actj,var, sum;
+  double var;
+#endif
+  double actj,sum;
   unsigned short *i_q_mat;
 
   sum = 0.0;
@@ -428,7 +434,6 @@ int rc_start_mb()
 int rc_calc_mquant(j)
 int j;
 {
-  static int k = 0;
   int mquant;
   double dj, Qj, actj, N_actj; 
 
@@ -539,6 +544,8 @@ int j;
   return mquant;
 }
 
+#ifndef NEW_RATE_CTL
+
 /* compute variance of 8x8 block */
 static double var_sblk(p,lx)
 unsigned char *p;
@@ -562,6 +569,7 @@ int lx;
 
   return s2/64.0 - (s/64.0)*(s/64.0);
 }
+#endif
 
 /* VBV calculations
  *

@@ -1735,6 +1735,8 @@ static int thin_vector( sortelt vec[], int threshold, int len )
 
 /* TODO: BUG: CAUTION: Presupposes motion compensation radii of > 256 don't occur */
 
+#ifdef TEST_GRAD_DESCENT
+
 #define LG_MAX_SEARCH_RADIUS 8
 #define MAX_SEARCH_RADIUS (1<<LG_MAX_SEARCH_RADIUS)
 #define SEARCH_TABLE_SIZE (MAX_SEARCH_RADIUS*MAX_SEARCH_RADIUS)
@@ -1744,6 +1746,7 @@ typedef struct _searchtablerec
 		short tag;
 		short weight;
 	} searchtablerec;
+	
 static short searchtable_fresh_ctr = 0xac45;
 
 static searchtablerec searchtable[SEARCH_TABLE_SIZE];
@@ -1842,7 +1845,6 @@ static void rcsums( unsigned char *org, unsigned short *sums, int lx, int h)
 
 */
 
-#ifdef TEST_GRAD_DESCENT
 
 
 
@@ -2743,7 +2745,6 @@ int *iminp,*jminp;
 {
   int i,j,imin,jmin,ilow,ihigh,jlow,jhigh;
   int d,dmin;
-  int dt;
   int sxy;
   int searched_size;
 #ifdef ORIGINAL_CODE
@@ -3192,32 +3193,6 @@ static int dist1_11(unsigned char *blk1,unsigned char *blk2,
   return s;
 }
 
-
-static int dist1(blk1,blk2,lx,hx,hy,h,distlim)
-unsigned char *blk1,*blk2;
-int lx,hx,hy,h;
-int distlim;
-{
-  int s;
-  if (hx && !hy)
-	{
-	  s = dist1_01( blk1,blk2,lx,h);
-	}
-  else if (!hx && !hy)
-	{
-	  s = dist1_00( blk1,blk2,lx,h,distlim );
-	}
-  else if (!hx && hy)
-	{
-	  s = dist1_10( blk1,blk2,lx,h);
-	}
-  else /* if (hx && hy) */
-	{
-	  s = dist1_11( blk1,blk2,lx,h);
-	}
-  return s;
-}
-
 /* USED only during debugging...
 void check_fast_motion_data(unsigned char *blk, char *label )
 {
@@ -3271,20 +3246,21 @@ void check_fast_motion_data(unsigned char *blk, char *label )
 void fast_motion_data(unsigned char *blk, int picture_struct )
 {
   unsigned char *b, *nb;
-  mcompuint *pb,*p;
+  mcompuint *pb;
   mcompuint *qb;
   mcompuint *start_fblk, *start_qblk;
   unsigned short *start_rowblk, *start_colblk;
-  unsigned short *pc, *pr;
-  int down16 = width*16;
-  int i,j;
-  int rowsum;
+  int i;
   int nextfieldline;
-  int s;
+#ifdef TEST_RCSEARCH
+  unsigned short *pc, *pr,*p;
+  int rowsum;
+  int j,s;
+  int down16 = width*16;
   unsigned short sums[32];
   unsigned short rowsums[2048];
   unsigned short colsums[2048];  /* TODO: BUG: should resize with width */
-  
+#endif 
   
 
   /* In an interlaced field the "next" line is 2 width's down 
@@ -3453,7 +3429,6 @@ static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
   register mcompuint *p1 = qblk1;
   register mcompuint *p2 = qblk2;
   int s = 0;
-  int s1;
   register int diff;
 
   /* #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff) */

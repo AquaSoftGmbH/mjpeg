@@ -105,7 +105,7 @@ void putAC(run,signed_level,vlcformat)
 int run,signed_level,vlcformat;
 {
   int level, len;
-  VLCtable *ptab;
+  VLCtable *ptab = NULL;
 
   level = (signed_level<0) ? -signed_level : signed_level; /* abs(signed_level) */
 

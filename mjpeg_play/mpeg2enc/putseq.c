@@ -37,7 +37,7 @@ void putseq()
   /* this routine assumes (N % M) == 0 */
   int i, j, k, f, f0, n, np, nb;
   int ipflag;
-  int sxf, sxb, syf, syb;
+  int sxf = 0, sxb = 0, syf = 0, syb = 0;
   unsigned char *neworg[3], *newref[3];
   unsigned char *prevframe[3];
   char fkind;
