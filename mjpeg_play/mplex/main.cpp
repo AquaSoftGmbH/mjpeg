@@ -580,7 +580,7 @@ bool CmdLineMultiplexJob::ParseTimeOffset(const char *optarg)
     char *e;
 
     f=strtod(optarg,&e);
-    if( e ) {
+    if( *e ) {
         while(isspace(*e)) e++;
         if(!strcmp(e,"ms")) persecond=1000.0;
         else if(!strcmp(e,"s")) persecond=1.0;
