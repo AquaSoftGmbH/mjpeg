@@ -916,7 +916,7 @@ Now both streams are multiplexed, a mp3 audio and a mpeg2 video. You have to
 use the -f 3 option to tell mplex the output format. You also have to add the
 -b decoder buffers size with the same value used when encoding the video.
 -r is that rate of video + audio +1-2% of mplex information.
-The -V option tells that your sourc for mplexing is a VBR stream. If you don't
+The -V option tells that your source for mplexing is a VBR stream. If you don't
 use this option mplex creates something like a CBR Stream with the bitrate you
 have told it with the -r option. An this streams usually get BIG.  
 
@@ -1025,7 +1025,7 @@ while typically producing files that are rather less than twice as big.
 
 CREATING SVCD'S
 =====================================
-Record at full TV resolution (means: -d 1  for PAL this is 720x568 for the Buz)
+Record at full TV resolution (means: -d 1  for PAL this is 720x576 for the Buz)
 
 Audio creation Example:
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -1083,7 +1083,7 @@ fits on the CD don't you ?
 
 Multiplexing Example
 ^^^^^^^^^^^^^^^^^^^^
-> mplex -f 4 -b 300 -r 2750 sound.mp2 video.m2v -o vcd_out.mpg
+> mplex -f 4 -b 300 -r 2750 sound.mp2 video.m2v -o svcd_out.mpg
 
 -f 4    : tells mplex to encode a SVCD,
 -r 2750 : is the calculated Audio + Video Bitrate + 1-2% multiplex information
@@ -1142,10 +1142,12 @@ bitrate to 192kBit/s. The video codec this time used is the DIV5.
 
 A bitrate of 2500 is considered rather high for Divx encoding.  Divx
 encoding offers its greatest utility (giving decent images at high
-compression) at bitrates that MPEG2 encoding would generate poor quality. 
+compression) at bitrates that MPEG1/2 encoding would generate poor quality. 
 Experimentation is encouraged, of course, but the general rule of thumb
 appears to be that Divx offers similar quality at two-thirds of the bitrate
-of MPEG2 -- note that this is video bitrate only, audio bitrate remains the
+of MPEG1/2 till a bitrate of 1500kBit. From a bitrate of 1500-2500 kBit the 
+gain of using Divx (= MPEG-4) compared to MPEG1/2 is getting smaler.
+Note that this is video bitrate only, audio bitrate remains the
 same as the same type of encoding is used for both.
 
 lav2divx

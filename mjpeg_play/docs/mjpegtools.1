@@ -1097,7 +1097,7 @@ Now both streams are multiplexed, a mp3 audio and a mpeg2 video. You have to
 use the -f 3 option to tell mplex the output format. You also have to add the
 -b decoder buffers size with the same value used when encoding the video.
 -r is that rate of video + audio +1-2% of mplex information.
-The -V option tells that your sourc for mplexing is a VBR stream. If you don't
+The -V option tells that your source for mplexing is a VBR stream. If you don't
 use this option mplex creates something like a CBR Stream with the bitrate you
 have told it with the -r option. An this streams usually get BIG.  
 
@@ -1211,7 +1211,7 @@ while typically producing files that are rather less than twice as big.
 
 .SH "CREATING SVCD'S"
 .br 
-Record at full TV resolution (means: \-d 1  for PAL this is 720x568)
+Record at full TV resolution (means: \-d 1  for PAL this is 720x576)
 .br
 
 .B Audio creation Example:
@@ -1278,7 +1278,7 @@ fits on the CD don't you ?
 
 .B Multiplexing Example
  
-.B > mplex \-f 4 \-b 300 \-r 2750 sound.mp2 video.m2v \-o vcd_out.mpg
+.B > mplex \-f 4 \-b 300 \-r 2750 sound.mp2 video.m2v \-o svcd_out.mpg
 
 .TP 8
 .B \\-f 4 
@@ -1311,31 +1311,66 @@ work. Nor am I responsible for unusable CDs. ("coasters")
 
 .SH "CREATING DIVX VIDEOS"
 .br
-The yuv2divx in the mjpeg tools uses the codecs of the avifile libary to
-generate videos. The output formats you can create are depended of the avifile
-version you use. It is recomended that you the avifile you use is at least
-version 0.6.
+The yuv2divx in the mjpeg tools uses the codecs of the avifile library to
+generate videos. The output formats you can create are dependent on the avifile
+version you use. It is recomended that you use at least version 0.6 of avifile.
+.br
+(Some distributions come with avifile-0.53, which is no longer supported by   the avifile maintainers.)
 
-The prossesing is a little bit different because the audio and video files are
-not multiplex afterwards. The output is created in a single step. You can use
-the normal vide encoding procces. The audio file, or the sound that is already
-in the recorded avi, has to be given yuv2divx as option.
+The prossesing is a little bit different because the audio and video files
+do not need to be multiplexed afterwards. The output is created in a single
+pass.  You can use the normal video encoding process. The audio file, or the
+sound that is already in the recorded avi, has to be given yuv2divx as an
+option.  You can specify a WAV file, an edit list, or, as in this case, the
+same file we're getting the video from.
 
 Enougth talk here is an example:
 .br
 .B > lav2yuv stream.avi | yuv2divx -A stream.avi -o lowrate.avi
 
-Lookes a bit strange because the yuv2divx reads the YUV video stream from
-stdin. The -A specifies the audio stream, that is also in our stream.avi.
-The output is also a .avi file because Divx is also named avi.
+Looks a bit strange because yuv2divx reads the YUV video stream from stdin
+but has the audio passed in by an option. The -A specifies the audio stream.
+In this case, it is also in our stream.avi.  The output is also a .avi file
+because Divx is also named avi. The .divx extension is also sometimes used.
 
 Example:
 .br
-.B > lav2yuv stream.avi | yuvdenoise | yuvscaler -O SIZE_640x480 | yuv2divx -b 2500 -a 196 -E DIV6 -A stream.avi -o output.avi
+.B > lav2yuv stream.avi | yuvdenoise | yuvscaler -O SIZE_640x480 | yuv2divx -b 2500 -a 196 -E DIV5 -A stream.avi -o output.avi
 
 You see that using other tools to get the stream in the proper form is no
 problem.  Here we set the maximum bitrate to 2500kBit/s, and the audio
-bitrate to 192kBit/s. The video coded this time used is the DIV6.
+bitrate to 192kBit/s. The video coded this time used is the DIV5.
+
+A bitrate of 2500 is considered rather high for Divx encoding.  Divx
+encoding offers its greatest utility (giving decent images at high
+compression) at bitrates that MPEG2 encoding would generate poor quality.
+Experimentation is encouraged, of course, but the general rule of thumb
+appears to be that Divx offers similar quality at two-thirds of the bitrate
+of MPEG1/2 till a bitrate of 1500kBit. From a bitrate of 1500-2500 kBit the
+gain of using Divx (= MPEG-4) compared to MPEG1/2 is getting smaler.
+Note that this is video bitrate only, audio bitrate remains the
+same as the same type of encoding is used for both.
+
+.B lav2divx
+
+If you do not need to perform any audio or video alteration of the audio or
+video streams, you can perform a conversion to divx in one step using the
+lav2divx utility.
+
+lav2divx -b 1000 -E DIV5 -o output.avi input.editlist
+
+This takes the edit list and uses that as the source for both the video and
+the audio.  Since it's all done in one step, there's no opportunity to use
+any of the YUV filters, scalers, and denoisers.
+
+.B A word on avifile codecs
+
+The lav2divx and yuv2divx utilities are primarily intended for creating Divx
+avi files.  However, since they use avifile, it's possible to generate
+output in any video format avifile is aware of.  You specify the codec by
+its four letter code ("DIV5" in the examples above; this is sometimes called
+the codec's "fourcc").  The ones that are available vary greatly depending
+on the specific libraries available to avifile.
 
 .SH "OPTIMIZING THE STREAM"
 .br
