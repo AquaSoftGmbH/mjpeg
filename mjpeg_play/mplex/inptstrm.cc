@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 
 static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
@@ -242,6 +243,7 @@ void check_files (int argc,
 
 void VideoStream::Init (const char *video_file, int stream_num )
 {
+	struct stat stb;
 	prev_stream_length=0;
     decoding_order=0;
 	fields_presented=0;
@@ -267,10 +269,9 @@ void VideoStream::Init (const char *video_file, int stream_num )
 	rawstrm = fopen( video_file, "rb" );
 	if( rawstrm == NULL )
 		mjpeg_error_exit1( "Cannot open for scan and read: %s\n", video_file );
-    fseeko (rawstrm, 0, SEEK_END);
-    file_length = ftello(rawstrm);
-	fseek(rawstrm,0,SEEK_SET);
-
+    fstat(fileno(rawstrm), &stb);
+	file_length = stb.st_size;
+ 
     bs.open( const_cast<char *>(video_file) );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {

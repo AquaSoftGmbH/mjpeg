@@ -1,7 +1,9 @@
 #include "main.hh"
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <format_codes.h>
+
 
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
@@ -57,7 +59,7 @@ int opt_emul_vcdmplex = 0;
 bool opt_stills = false;
 
 /* Should fit nicely on an ordinary CD ... */
-intmax_t max_system_segment_size =  2000*1024*1024;
+off_t max_system_segment_size =  2000*1024*1024;
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
@@ -177,15 +179,17 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 bool open_file(const char *name, off_t &bytes)			
 {
     FILE* datei;
+	struct stat stb;
 
     datei=fopen (name, "rw");
+
     if (datei==NULL)
     {	
 		mjpeg_error("File %s not found.\n", name);
 		return (true);
     }
-    fseeko (datei, 0, 2);
-    bytes = ftello(datei);
+    fstat (fileno(datei), &stb);
+    bytes = stb.st_size;
     fclose(datei);
     return (false);
 }

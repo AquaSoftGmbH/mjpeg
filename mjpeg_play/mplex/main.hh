@@ -492,4 +492,4 @@ extern int mux_rate;
 extern int dmux_rate;
 extern int zero_stuffing;
 
-extern intmax_t max_system_segment_size;
+extern off_t max_system_segment_size;
