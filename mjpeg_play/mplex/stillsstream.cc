@@ -73,7 +73,7 @@ void StillsStream::Init ( )
 			mjpeg_info( "Stills Stream %02x: normal-resolution SVCD stills.", stream_id );
 		}
 		break;
-	defaut:
+	default:
 		mjpeg_error_exit1( "Only SVCD and VCD Still currently supported");
 	}
 

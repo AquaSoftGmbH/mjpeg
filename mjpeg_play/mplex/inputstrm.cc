@@ -146,7 +146,6 @@ ElementaryStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 void ElementaryStream::Muxed (unsigned int bytes_muxed)
 {
 	clockticks   decode_time;
-	VAunit *vau;
   
 	if (bytes_muxed == 0 || MuxCompleted() )
 		return;

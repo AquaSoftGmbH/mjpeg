@@ -177,8 +177,8 @@ public:
 	void SetTSOffset( clockticks baseTS );
 	void AllDemuxed();
 	inline stream_kind Kind() { return kind; }
-    inline int BufferMin() { return buffer_min; }
-    inline int BufferMax() { return buffer_max; }
+    inline unsigned int BufferMin() { return buffer_min; }
+    inline unsigned int BufferMax() { return buffer_max; }
     inline clockticks RequiredDTS() { return au->DTS + timestamp_delay; };
     inline clockticks RequiredPTS() { return au->PTS + timestamp_delay; };
     inline clockticks NextRequiredDTS()
@@ -230,8 +230,8 @@ protected:
 	Aunit *next();
 	Multiplexor &muxinto;
 	stream_kind kind;
-    int buffer_min;
-    int buffer_max;
+    unsigned int buffer_min;
+    unsigned int buffer_max;
     int FRAME_CHUNK;
 									
 };
