@@ -30,9 +30,9 @@
 #define MAXHALFHEIGHT 288
 #define NOISEMAX 31
 #define DEINTLRESO 1000
-#define DEFAULTDTHR16 2
+#define DEFAULTDTHR16 4
 #define DEFAULTNOISE 10
-#define DEFAULTDEINTL 20
+#define DEFAULTDEINTL 10
 
 static void
 buf_debug(char *buf, FILE *fp, const char *format, ...)
@@ -243,8 +243,8 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 #
 # When used as '-O %s':
 #   O,o:        output
-#   X,x,Y,y:    replace bottom field by previous one and output
 #   D,d,E,e:    deinterlace and output
+#   X,x,Y,y:    replace bottom field by previous one and output
 #   M,m,N,n:    replace bottom field by previous one and deinterlace and output
 #   T,t:        duplicate top field and output
 #   B,b:        duplicate bottom field and output
@@ -252,8 +252,8 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 #
 # When used as '-N %s':
 #   O,o,X,x,D,d,M,m:    output
-#   Y,y:        replace bottom field by previous one and output
 #   E,e:        deinterlace and output
+#   Y,y:        replace bottom field by previous one and output
 #   N,n:        replace bottom field by previous one and deinterlace and output
 #   T,t:        duplicate top field and output
 #   B,b:        duplicate bottom field and output
@@ -380,7 +380,7 @@ putcy(YfTask_t *h, int c)
   if (f %  5 == 0)
     putc(' ', h->cyfp);
   if (c != '_' &&
-      h->framestat[h->iuse % h->nframes].eoediff == 99999999)
+      h->framestat[h->iuse % h->nframes].eoediff == -9999999)
     c += 'X' - 'O';
   putc(c, h->cyfp);
 }
@@ -389,49 +389,45 @@ static int
 deinterlace(unsigned char *data, int width, int height, int noise)
 {
   int pln, i, j, n = 0;
-  noise *= 2;
   for (pln = 0; pln < 3; pln++) {
     for (i = 1; i < height - 1; i += 2) {
       for (j = 0; j < width; j++) {
 	int ymin = data[((i - 1) * width) + j];
 	int ynow = data[((i    ) * width) + j];
 	int ymax = data[((i + 1) * width) + j];
-#if 0
 	int ynxt = data[((i + 2) * width) + j];
-#endif
 	if (ymax < ymin) {
 	  int ytmp = ymax; ymax = ymin; ymin = ytmp;
 	}
 	ymin -= noise;
 	ymax += noise;
-	if ((ynow < ymin /* && ynxt < ymin */ ) || (ymax < ynow /* && ymax < ynxt */ )) {
-#if 0
-	  if (i < height - 3) {
-	    int ynx2 = data[((i + 3) * width) + j];
-	    if ((ynx2 < ynxt && ynxt < ymin) || (ymax < ynxt && ynxt < ynx2))
-	      continue;
-	  }
-#endif
-	  ynow = (ymin + ymax) / 2;
-	  data[((i    ) * width) + j] = ynow;
+	if ((ynow < ymin && ynxt < ymin ) || (ymax < ynow && ymax < ynxt ))
 	  n++;
-	  if (i < height - 3) {
+	else if (!(ynow < ymin || ymax < ynow))
+	  continue;
 #if 0
-	    int ynx2 = data[((i + 4) * width) + j];
-	    if ((ynx2 < ymin && ynxt < ymin) || (ymax < ynx2 && ymax < ynxt))
-#endif
-	      continue;
-	  }
-	  data[((i + 2) * width) + j] = ynow;
-	  n++;
+	if (i < height - 3) {
+	  int ynx2 = data[((i + 3) * width) + j];
+	  if ((ynx2 < ynxt && ynxt < ymin) || (ymax < ynxt && ynxt < ynx2))
+	    continue;
 	}
+#endif
+	ynow = (ymin + ymax) / 2;
+	data[((i    ) * width) + j] = ynow;
+	if (i < height - 3) {
+#if 0
+	  int ynx2 = data[((i + 4) * width) + j];
+	  if ((ynx2 < ymin && ynxt < ymin) || (ymax < ynx2 && ymax < ynxt))
+#endif
+	    continue;
+	}
+	data[((i + 2) * width) + j] = ynow;
       }
     }
     data += width * height;
     if (pln == 0) {
       width  /= 2;
       height /= 2;
-      noise  /= 2;
     }
   }
   return n;
@@ -613,10 +609,12 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  notdrop[i] |= 1;
       if (1 < h->nfields) {	/* check field merged */
 	int merged = 0;
+#if 0
+	/* codes for video editing fade-in/out */
 	long dmax = -0x7fffffffL, d2nd = -0x7fffffffL, d3rd = -0x7fffffffL;
 	for (i = 1; i < (h->nframes / 2) + 2 && i < h->iget - h->iuse; i++) {
 	  long eoediff = h->framestat[(b + i) % h->nframes].eoediff;
-	  if (eoediff == 99999999)
+	  if (eoediff == -9999999)
 	    continue;
 	  if        (dmax < eoediff) {
 	    d3rd = d2nd; d2nd = dmax; dmax = eoediff;
@@ -630,15 +628,19 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  d3rd = 0;
 	if (1 < verbose)
 	  buf_debug(debugbuf, NULL, "%6ld", d3rd);
-	for (i = 1; i < (h->nframes / 2) + 2 && i < h->iget - h->iuse; i++) {
-	  if (h->framestat[(b + i) % h->nframes].eoediff < d3rd - (long)dthr) {
-	    merged = 1;
-	    notdrop[i - 1] &= ~2;
-	    notdrop[i    ] &= ~2;
-	  }
-	}
+	for (i = 1; i < (h->nframes / 2) + 2 && i < h->iget - h->iuse; i++)
+	  if (h->framestat[(b + i) % h->nframes].eoediff < d3rd - (long)dthr)
+#else
+	for (i = 1; i < h->iget - h->iuse - 1; i++)
+	  if (h->framestat[(b + i) % h->nframes].eoediff < -(long)dthr)
+#endif
+	    {
+	      merged = 1;
+	      notdrop[i - 1] &= ~2;
+	      notdrop[i    ] &= ~2;
+	    }
 	if (!merged)
-	  for (i = 0; i < h->iget - h->iuse; i++)
+	  for (i = 0; i < h->iget - h->iuse - 1; i++)
 	    notdrop[i] &= ~2;
       }
 
@@ -720,7 +722,8 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  int bdst = (bsrc + 1) % h->nframes;
 	  if ((isrc < idrp + (h->nframes / 4) - 1 ||
 	       dthr < h->framestat[bdst].ediff) &&
-	      h->framestat[bdst].eoediff <= 0) {
+	      h->framestat[bdst].eoediff <= 0 &&
+	      h->framestat[bdst].eoediff != -9999999) {
 	    YfFrame_t *fsrc = (YfFrame_t *)((char *)h->frame + (bsrc * framebytes));
 	    YfFrame_t *fdst = (YfFrame_t *)((char *)h->frame + (bdst * framebytes));
 	    for (i = 1; i < h->_.height; i += 2) /* copy bottom field Y */
@@ -732,7 +735,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 		     h->_.width / 2);
 	    if (1 < verbose)
 	      buf_debug(debugbuf, NULL, "%2d", isrc + 1);
-	    h->framestat[bdst].eoediff = 99999999;
+	    h->framestat[bdst].eoediff = -9999999;
 	  } else {
 	    if (1 < verbose)
 	      buf_debug(debugbuf, NULL, " -");
