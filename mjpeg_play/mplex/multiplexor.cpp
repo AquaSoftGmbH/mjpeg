@@ -871,8 +871,13 @@ void Multiplexor::OutputPrefix( )
                 if( (*muxstr)->BufferSize() > max_priv1_buffer )
                     max_priv1_buffer = (*muxstr)->BufferSize();
             }
-            else
-                dvdmux.push_back( *muxstr );
+            // Now the *sane* thing to do if MPEG audio is present would be
+            // record this in the system header.  However, dvdauthor lacks
+            // a header parser and barfs if the system headers aren't exactly
+            // 18 bytes.  Soooo we simply skip them for now...
+            // TOOD: Add back in when dvdauthor can parse system headers
+            //else
+            //    dvdmux.push_back( *muxstr );
         }
         
         DummyMuxStream dvd_priv1_strm_dummy( PRIVATE_STR_1, 1, 
