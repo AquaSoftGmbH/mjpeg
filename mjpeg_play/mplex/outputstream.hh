@@ -49,6 +49,7 @@ public:
 	bool always_buffers_in_audio;
 	bool sector_align_iframeAUs;
 	bool split_at_seq_end;
+	bool seg_starts_with_video;
 	unsigned int audio_buffer_size;
 	unsigned int video_buffer_size;
 

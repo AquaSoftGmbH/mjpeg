@@ -302,8 +302,8 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	  	/* MPEG-2 packet syntax header flags. */
 		/* First byte:
 		   <1,0><PES_scrambling_control:2=0><data_alignment_ind.=0>
-		   <copyright=0><original=0> */
-		*(index++) = 0x80;
+		   <copyright=0><original=1> */
+		*(index++) = 0x81;
 		/* Second byte: PTS PTS_DTS or neither?  Buffer info?
 		   <PTS_DTS:2><ESCR=0><ES_rate=0>
 		   <DSM_trick_mode:2=0><PES_CRC=0><PES_extension=(!!buffers)>

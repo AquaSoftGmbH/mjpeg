@@ -74,6 +74,7 @@ segment_state;
 void OutputStream::InitSyntaxParameters()
 {
 	video_buffer_size = 0;
+	seg_starts_with_video = false;
 	switch( opt_mux_format  )
 	{
 	case MPEG_FORMAT_VCD :
@@ -100,7 +101,7 @@ void OutputStream::InitSyntaxParameters()
 		vcd_zero_stuffing = 20;
 		dtspts_for_all_vau = 1;
 		sector_align_iframeAUs = false;
-
+		seg_starts_with_video = true;
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -142,13 +143,14 @@ void OutputStream::InitSyntaxParameters()
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 		vbr = opt_VBR;
-		buffers_in_video = 0;
+		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		buffers_in_audio = 0;
+		buffers_in_audio = 1;
 		always_buffers_in_audio = 0;
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = true;
+		seg_starts_with_video = true;
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -198,9 +200,9 @@ void OutputStream::InitSyntaxParameters()
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 		vbr = opt_VBR = 1;
-		buffers_in_video = 0;
+		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		buffers_in_audio = 0;
+		buffers_in_audio = 1;
 		always_buffers_in_audio = 0;
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
@@ -567,7 +569,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	bool padding_packet;
 	bool start_of_new_pack;
 	bool include_sys_header = false; /* Suppress warning */
-
+	bool video_first = seg_starts_with_video;
 
 	if( e_vstrm != 0 )
 	{
@@ -687,7 +689,8 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
  
 			packets_left_in_pack = packets_per_pack;
 			include_sys_header = sys_header_in_pack1;
-			buffers_in_video = true;
+			buffers_in_video = always_buffers_in_video;
+			video_first = seg_starts_with_video;
 			pstrm.nsec = 0;
 			for( str = estreams.begin(); str < estreams.end(); ++str )
 				(*str)->nsec = 0;
@@ -847,9 +850,10 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 					 (*str)->RequiredDTS()/300
 				);
 */
-			if( (*str)->MuxPossible() )
+			if( (*str)->MuxPossible() && 
+				( !video_first || (*str)->Kind() == ElementaryStream::video )
+				 )
 			{
-				
 				if( despatch == 0 || earliest > (*str)->RequiredDTS() )
 				{
 					despatch = *str;
@@ -864,6 +868,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 		if( despatch )
 		{
 			despatch->OutputSector();
+			video_first = false;
 			NextPosAndSCR();
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{
