@@ -977,10 +977,17 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
  * Probably not necessary but err on the safe side.  If someone wants to
  * waste space by using a Constant Bit Rate stream then disable the '-q'
  * parameter.  Further checks for CBR are made in mpeg2encoptions.cc 
+ *
+ * Also, if Constant Bit Rate is specified then it follows that that bitrate
+ * must be specified since a CBR of 0 makes no sense.
 */
     if (force_cbr != 0)
        quant = 0;
-
+    else if (bitrate == 0)
+       {
+       mjpeg_error("--cbr used but no bitrate specified with -b!");
+       nerr++;
+       }
     return nerr;
 }
 

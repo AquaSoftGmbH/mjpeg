@@ -610,6 +610,9 @@ Force the use of Constant Bit Rate encoding.  Less than optimal (and
 inefficient in almost all cases)
 but some folks insist on it. \fBNOTE:\fP this \fBdisables\fP (overrides)
 the use of the \fB-q\fP option!
+.sp
+It is an error to use this option and not specify a bitrate using \fB-b\fP
+since a constant bitrate of 0 makes no sense.
 .SH "SSE, 3D-Now!, MMX"!
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
