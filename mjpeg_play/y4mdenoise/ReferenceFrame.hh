@@ -312,6 +312,7 @@ Pixel<NUM,1,TOL>::MakeTolerance (NUM a_tnTolerance)
 
 // Turn an integer tolerance value into what's appropriate for
 // the pixel type.
+template <>
 int32_t
 PixelY::MakeTolerance (uint8_t a_tnTolerance)
 {
@@ -341,6 +342,7 @@ Pixel<NUM,2,TOL>::MakeTolerance (NUM a_tnTolerance)
 
 // Turn an integer tolerance value into what's appropriate for
 // the pixel type.
+template <>
 int32_t
 PixelCbCr::MakeTolerance (uint8_t a_tnTolerance)
 {
