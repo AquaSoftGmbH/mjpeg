@@ -608,9 +608,6 @@ There should be an option to force GOP sizes that permit 2 B frames
 between I/P frames.  Some decoders (even software)  can't handle the case
 where I/P frames come back to back or with only 1 B frame between them.
 
-There really should be some kind of dynamic noise-reduction algorithm
-someplace in the mpegtools tool chain.
-
 There needs to be a facility for writing dummy user-data fields so
 that the multiplexer/imager can insert forward/backward pointers when
 muxing/imaging an SVCD.
@@ -628,4 +625,4 @@ For more info, see our website at
 
 .SH "SEE ALSO"
 .BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
-.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1), " yuvdenoise "(1)," mjpegtools "(1)"
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1), " yuvdenoise "(1), " y4mdenoise "(1), " mjpegtools "(1)"
