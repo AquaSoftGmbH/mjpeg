@@ -25,11 +25,11 @@
 #include <assert.h>
 #include "fastintfns.h"
 #include "audiostrm.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 
-AudioStream::AudioStream(IBitStream &ibs, OutputStream &into) : 
+AudioStream::AudioStream(IBitStream &ibs, Multiplexor &into) : 
 	ElementaryStream( ibs, into,  ElementaryStream::audio ),
 	num_syncword(0)
 {

@@ -1,8 +1,6 @@
 
 /*
  *  inptstrm.hh:  Input stream classes for MPEG multiplexing
- *  TODO: Split into the base classes and the different types of
- *  actual input stream.
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -77,7 +75,7 @@ protected:
 // Abstract forward reference...
 //
 
-class OutputStream;
+class Multiplexor;
 
 
 class MuxStream 
@@ -164,7 +162,7 @@ class ElementaryStream : public InputStream,
 public:
 	enum stream_kind { audio, video, dummy };
 	ElementaryStream( IBitStream &ibs,
-                      OutputStream &into, 
+                      Multiplexor &into, 
 					  stream_kind kind
 					  );
 	virtual void Close() = 0;
@@ -228,7 +226,7 @@ public:  // TODO should go protected once encapsulation complete
 protected:
 	unsigned int au_unsent;
 	Aunit *next();
-	OutputStream &muxinto;
+	Multiplexor &muxinto;
 	stream_kind kind;
     int buffer_min;
     int buffer_max;

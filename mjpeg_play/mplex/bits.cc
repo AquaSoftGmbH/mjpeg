@@ -374,9 +374,7 @@ void IBitStream::close()
 }
 
 
-// TODO replace with shift ops!
-
-uint8_t IBitStream::masks[8]={0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+#define masks(idx) (1<<(idx))
 
 /*read 1 bit from the bit stream 
 @returns the read bit, 0 on EOF */
@@ -387,7 +385,7 @@ uint32_t IBitStream::get1bit()
 	if (eobs)
 		return 0;
 
-	bit = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
+	bit = (bfr[byteidx] & masks(bitidx - 1)) >> (bitidx - 1);
 	totbits++;
 	bitidx--;
 	if (!bitidx)
@@ -438,7 +436,7 @@ uint32_t IBitStream::getbits(int N)
 			if (eobs)
 				return 0;
 
-			j = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
+			j = (bfr[byteidx] & masks(bitidx - 1)) >> (bitidx - 1);
 			totbits++;
 			bitidx--;
 			if (!bitidx)

@@ -22,7 +22,7 @@ mplex_SOURCES = \
 	videostrm_in.cc	 padstrm.cc \
 	lpcmstrm_in.cc mpastrm_in.cc	ac3strm_in.cc \
 	videostrm_out.cc	audiostrm_out.cc	\
-	multplex.cc	outputstream.hh	\
+	multiplexor.cc	multiplexor.hh	\
 	systems.cc		systems.hh \
 	vector.cc	vector.hh	mplexconsts.hh \
 	inputstrm.cc inputstrm.hh aunit.hh \

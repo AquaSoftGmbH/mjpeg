@@ -5,25 +5,19 @@
 #include <config.h>
 #include <stdio.h>
 #include "mjpeg_types.h"
-
+#include "interact.hh"
 #include "inputstrm.hh"
 #include "padstrm.hh"
 #include "systems.hh"
 
 
-class OutputStream
+class Multiplexor
 {
 public:
-	OutputStream()
-		{
-			underrun_ignore = 0;
-			underruns = 0;
-		}
-	void OutputMultiplex ( vector<ElementaryStream *> *strms,
-						   char *multi_file);
+	Multiplexor(MultiplexJob &job);
+	void Multiplex ();
 
 
-	void InitSyntaxParameters();
 	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
 	
 	inline Sys_header_struc *SystemHeader() { return &sys_header; }
@@ -38,6 +32,10 @@ public:
 							  uint8_t 	 timestamps
 		);
 
+	bool AfterMaxPTS(clockticks &timestamp) 
+		{ return max_PTS != 0 && timestamp >= max_PTS; }
+
+
 	/* Special "unusual" sector types needed for particular formats 
 	 */
 	  
@@ -46,7 +44,8 @@ public:
 	/* Syntax control parameters, public becaus they're partly referenced
 	   by the input stream objects.
 	 */
-
+	
+	char *output_filename_pattern;
 	bool always_sys_header_in_pack;
 	bool dtspts_for_all_vau;
 	bool sys_header_in_pack1;
@@ -60,10 +59,14 @@ public:
 	bool timestamp_iframe_only;
 	bool video_buffers_iframe_only;
 	unsigned int audio_buffer_size;
+	unsigned int packets_per_pack;
+	clockticks max_PTS;
 
-	/* Sequence run-out control */
-	bool running_out;
-	clockticks runout_PTS;
+	int mpeg;
+	int data_rate;
+	int mux_format;
+	off_t max_segment_size;
+	bool multifile_segment;
 
 
 /* In some situations the system/PES packets are embedded with
@@ -80,7 +83,11 @@ public:
 
 	int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
 	int 		mux_rate;	/* MPEG mux rate (50 byte/sec units      */
-	unsigned int packets_per_pack;
+
+
+	/* Sequence run-out control */
+	bool running_out;
+	clockticks runout_PTS;
 	
 private:	
 	
@@ -112,7 +119,7 @@ private:
 	/* Note: 1st video stream is regarded as the "master" stream for
 	   the purpose of splitting sequences etc...
 	*/
-	vector<ElementaryStream *> *estreams; // Complete set
+	vector<ElementaryStream *> estreams; // Complete set
 	vector<ElementaryStream *> vstreams; // Video streams in estreams
 	vector<ElementaryStream *> astreams; // Audio streams in estreams
 	
@@ -121,8 +128,12 @@ private:
 	DVDPriv2Stream dvdpriv2strm;
 
 private:
+	void InitSyntaxParameters(MultiplexJob &job);
+	void InitInputStreams(MultiplexJob &job);
+	void InitInputStreamsForStills(MultiplexJob & job );
+	void InitInputStreamsForVideo(MultiplexJob & job );
 	unsigned int RunInSectors();
-	void Init( char *multi_file );
+	void Init();
 	
 
 	void NextPosAndSCR();

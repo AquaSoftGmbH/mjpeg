@@ -25,7 +25,7 @@
 
 #include "audiostrm.hh"
 #include "interact.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 static const char *mpa_audio_version[4] =
@@ -87,7 +87,7 @@ static const unsigned int mpa_samples [4] = {384, 1152, 1152, 0};
 
 
 
-MPAStream::MPAStream(IBitStream &ibs, OutputStream &into) : 
+MPAStream::MPAStream(IBitStream &ibs, Multiplexor &into) : 
 	AudioStream( ibs, into )
 {
 }
@@ -198,9 +198,9 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
-	while (!bs.eos() && 
-		   decoding_order < last_buffered_AU && 
-		   (!opt_max_PTS || access_unit.PTS < opt_max_PTS))
+	while( !bs.eos() 
+           && decoding_order < last_buffered_AU 
+           && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 
 		skip=access_unit.length-4;
@@ -271,8 +271,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 
     }
 	last_buffered_AU = decoding_order;
-	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
-
+	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
 }
 
 

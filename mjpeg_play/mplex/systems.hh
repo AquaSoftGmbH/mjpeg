@@ -38,19 +38,11 @@ class PS_Stream
 {
 public:
     PS_Stream( unsigned _mpeg,
-               unsigned int _sector_size
-        )
-        : mpeg_version( _mpeg),
-          sector_size( _sector_size ),
-          segment_num( 1 ),
-          max_segment_size( 2040 * 1024 * 1024 )
-        {
-            sector_buf = new uint8_t[sector_size];
-        }
-
-    void Init( const char *filename_pat,
+               unsigned int _sector_size,
+               const char *filename_pat,
                off_t max_segment_size // 0 = No Limit
         );
+
     bool FileLimReached( );
     void NextFile();
     unsigned int PacketPayload( MuxStream &strm,
@@ -115,9 +107,9 @@ private:
     static void 
     BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
                                   uint8_t  marker,
-                                  uint8_t **buffer);
+                                  uint8_t *&buffer);
     static void BufferMpeg2ScrTimecode( clockticks    timecode,
-                                        uint8_t **buffer);
+                                        uint8_t *&buffer);
     void BufferPaddingPacket( int padding,
                               uint8_t *&buffer );
 private:

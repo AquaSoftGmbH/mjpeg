@@ -33,7 +33,7 @@ class StillsStream : public VideoStream
 public:
 	StillsStream( IBitStream &ibs, 
                   StillsParams *parms,
-                  OutputStream &into) :
+                  Multiplexor &into) :
 		VideoStream( ibs, parms, into ),
 		current_PTS(0LL),
 		current_DTS(0LL)
@@ -54,7 +54,7 @@ class VCDStillsStream : public StillsStream
 public:
 	VCDStillsStream( IBitStream &ibs,
                      StillsParams *vparms,
-                     OutputStream &into ) :
+                     Multiplexor &into ) :
 		StillsStream( ibs, vparms, into ),
 		sibling( 0 ),
         stream_mismatch_warned( false )

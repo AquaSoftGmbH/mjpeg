@@ -28,12 +28,12 @@
 
 #include "audiostrm.hh"
 #include "interact.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 
 
-LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, OutputStream &into) : 
+LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into) : 
 	AudioStream( ibs, into ),
     parms(parms)
 {
@@ -120,9 +120,9 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
     static int header_skip = 0;        // Initially skipped past  5 bytes of header 
     int skip;
     bool bad_last_frame = false;
-	while (!bs.eos() && 
-		   decoding_order < last_buffered_AU && 
-		   (!opt_max_PTS || access_unit.PTS < opt_max_PTS))
+	while ( !bs.eos() 
+            && decoding_order < last_buffered_AU 
+            && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 		skip=access_unit.length-header_skip; 
         mjpeg_debug( "Buffering frame %d (%d bytes)\n", decoding_order-1, skip );
@@ -172,8 +172,7 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
         mjpeg_error_exit1( "Last LPCM frame ended prematurely!\n" );
     }
 	last_buffered_AU = decoding_order;
-	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
-
+	eoscan =  bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
 }
 
 

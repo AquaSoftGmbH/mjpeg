@@ -1,5 +1,7 @@
 TODO
 
+- Check the now broken passing in of input files...
+
 - Check if video and MPEG audio streams have the same eof bug as I found
 in AC3 audio.
 

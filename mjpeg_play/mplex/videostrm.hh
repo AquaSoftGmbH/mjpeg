@@ -23,12 +23,14 @@
 #define __VIDEOSTRM_H__
 
 #include "inputstrm.hh"
+#include "interact.hh"
 #include "stream_params.hh"
 
 class VideoStream : public ElementaryStream
 {
 public:
-	VideoStream(IBitStream &ibs, VideoParams *parms, OutputStream &into);
+	VideoStream(IBitStream &ibs, VideoParams *parms, 
+                Multiplexor &into);
 	void Init( const int stream_num );
     static bool Probe(IBitStream &bs );
 
@@ -132,7 +134,7 @@ protected:
 class DVDVideoStream : public VideoStream
 {
 public:
-	DVDVideoStream(IBitStream &ibs,VideoParams *parms,OutputStream &into) : 
+	DVDVideoStream(IBitStream &ibs,VideoParams *parms,Multiplexor &into) : 
         VideoStream( ibs, parms, into )
         {
             gop_control_packet = true;

@@ -25,11 +25,11 @@
 #include <assert.h>
 #include "fastintfns.h"
 #include "videostrm.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms, 
-                         OutputStream &into ) :
+                         Multiplexor &into ) :
 	ElementaryStream( ibs, into, ElementaryStream::video ),
 	num_sequence(0),
 	num_seq_end(0),

@@ -1,8 +1,6 @@
 
 /*
- *  inptstrm.hh:  Input stream classes for MPEG multiplexing
- *  TODO: Split into the base classes and the different types of
- *  actual input stream.
+ *  audiostrm.hh:  Audio stream class sub-hierarchy for MPEG multiplexing
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -30,7 +28,7 @@
 class AudioStream : public ElementaryStream
 {
 public:   
-    AudioStream(IBitStream &ibs, OutputStream &into );
+    AudioStream(IBitStream &ibs, Multiplexor &into );
     virtual void Init(const int stream_num) = 0;
     virtual void Close() = 0;
 
@@ -68,7 +66,7 @@ protected:
 class MPAStream : public AudioStream
 {
 public:   
-    MPAStream(IBitStream &ibs, OutputStream &into );
+    MPAStream(IBitStream &ibs, Multiplexor &into );
     virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();
@@ -92,7 +90,7 @@ private:
 class AC3Stream : public AudioStream
 {
 public:   
-    AC3Stream(IBitStream &ibs,OutputStream &into );
+    AC3Stream(IBitStream &ibs,Multiplexor &into );
     virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();
@@ -117,7 +115,7 @@ private:
 class LPCMStream : public AudioStream
 {
 public:   
-    LPCMStream(IBitStream &ibs, LpcmParams *parms, OutputStream &into );
+    LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into );
     virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();

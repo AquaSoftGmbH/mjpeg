@@ -35,28 +35,31 @@
 #include "videostrm.hh"
 #include "audiostrm.hh"
 #include "mplexconsts.hh"
+#include "aunit.hh"
 
 vector<LpcmParams *> opt_lpcm_param;
 vector<VideoParams *> opt_video_param;
 
-int opt_verbosity = 1;
-int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
-int opt_video_offset = 0;
-int opt_audio_offset = 0;
-int opt_sector_size = 2324;
-int opt_VBR = 0;
-int opt_mpeg = 1;
-int opt_mux_format = 0;			/* Generic MPEG-1 stream as default */
-int opt_multifile_segment = 0;
-int opt_always_system_headers = 0;
-int opt_packets_per_pack = 20;
-int opt_max_timeouts = 10;
-clockticks opt_max_PTS = 0;
-int opt_emul_vcdmplex = 0;
-bool opt_ignore_underrun = false;
-bool opt_split_at_seq_end = true;
-off_t opt_max_segment_size = 0;
-char *opt_multplex_outfile = 0;
+MultiplexJob::MultiplexJob()
+{
+    verbose = 1;
+    data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
+    video_offset = 0;
+    audio_offset = 0;
+    sector_size = 2048;
+    VBR = false;
+    mpeg = 1;
+    mux_format = MPEG_FORMAT_MPEG1;
+    multifile_segment = false;
+    always_system_headers = 0;
+    packets_per_pack = 20;
+    max_timeouts = 10;
+    max_PTS = 0;
+    emul_vcdmplex = 0;
+    max_segment_size = 0;
+    outfile_pattern = 0;
+    packets_per_pack = 1;
+}
 
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
@@ -65,7 +68,7 @@ char *opt_multplex_outfile = 0;
 *************************************************************************/
 
     
-static void Usage(char *str)
+void MultiplexJob::Usage(char *str)
 {
     fprintf( stderr,
 	"mjpegtools mplex version " VERSION "\n"
@@ -108,7 +111,7 @@ static void Usage(char *str)
 
 static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:L:VXMeh";
 
-#if defined(HAVE_GETOPT_LONG)
+#if defined(HAVE_GETLONG)
 static struct option long_options[] = 
 {
      { "verbose",           1, 0, 'v' },
@@ -119,26 +122,26 @@ static struct option long_options[] =
      { "output",            1, 0, 'o' },
      { "sync-offset",    	1, 0, 'O' },
      { "vbr",      	        1, 0, 'V' },
-     { "system-headers", 1, 0, 'h' },
-     { "split-segment", 0, &opt_multifile_segment, 1},
+     { "system-headers",    1, 0, 'h' },
+     { "split-segment",     0, 0, 'M' },
      { "max-segment-size",  1, 0, 'S' },
      { "mux-upto",   	    1, 0, 'l' },
      { "packets-per-pack",  1, 0, 'p' },
      { "sector-size",       1, 0, 's' },
      { "help",              0, 0, '?' },
-     { 0,                   0, 0, 0 }
+     { 0,                   0, 0, 0   }
  };
 #endif
 
 
-bool parse_lpcm_opt( char *optarg )
+bool MultiplexJob::ParseLpcmOpt( const char *optarg )
 {
     char *endptr, *startptr;
     long number;
     unsigned int samples_sec;
     unsigned int channels;
     unsigned int bits_sample;
-    endptr = optarg;
+    endptr = const_cast<char *>(optarg);
     do 
     {
         startptr = endptr;
@@ -162,7 +165,7 @@ bool parse_lpcm_opt( char *optarg )
                                                   bits_sample );
         if( params == 0 )
             return false;
-        opt_lpcm_param.push_back(params);
+        lpcm_param.push_back(params);
         if( *endptr == ',' )
             ++endptr;
     } while( *endptr != '\0' );
@@ -170,16 +173,15 @@ bool parse_lpcm_opt( char *optarg )
 }
 
 
-bool parse_video_opt( char *optarg )
+bool MultiplexJob::ParseVideoOpt( const char *optarg )
 {
     char *endptr, *startptr;
     long number;
     unsigned int buffer_size;
-    endptr = optarg;
+    endptr = const_cast<char *>(optarg);
     do 
     {
         startptr = endptr;
-        mjpeg_info( "BUFFER: %s", optarg );
         buffer_size = static_cast<unsigned int>(strtol(startptr, &endptr, 10));
         if( startptr == endptr )
             return false;
@@ -187,7 +189,7 @@ bool parse_video_opt( char *optarg )
         VideoParams *params = VideoParams::Checked( buffer_size );
         if( params == 0 )
             return false;
-        opt_video_param.push_back(params);
+        video_param.push_back(params);
         if( *endptr == ',' )
             ++endptr;
     } 
@@ -195,19 +197,17 @@ bool parse_video_opt( char *optarg )
     return true;
 }
 
-int intro_and_options(int argc, char *argv[])
+void MultiplexJob::SetFromCmdLine(int argc, char *argv[])
 {
     int n;
-	char *outfile = NULL;
+    outfile_pattern = NULL;
     long number;
     char *numptr, *endptr;
 
-#if defined(HAVE_GETOPT_LONG)
-	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+#if defined(HAVE_GETLONG)
+	while( (n=getlong(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1 )
-    {
-    switch(n)
 #endif
 	{
 		switch(n)
@@ -215,30 +215,30 @@ int intro_and_options(int argc, char *argv[])
         case 0 :
             break;
 		case 'o' :
-			outfile = optarg;
+			outfile_pattern = optarg;
 			break;
 		case 'm' :
-			opt_mpeg = atoi(optarg);
-			if( opt_mpeg < 1 || opt_mpeg > 2 )
+			mpeg = atoi(optarg);
+			if( mpeg < 1 || mpeg > 2 )
 				Usage(argv[0]);
   	
 			break;
 		case 'v' :
-			opt_verbosity = atoi(optarg);
-			if( opt_verbosity < 0 || opt_verbosity > 2 )
+			verbose = atoi(optarg);
+			if( verbose < 0 || verbose > 2 )
 				Usage(argv[0]);
 			break;
 
 		case 'V' :
-			opt_VBR = 1;
+			VBR = true;
 			break;
 	  
 		case 'h' :
-			opt_always_system_headers = 1;
+			always_system_headers = 1;
 			break;
 
 		case 'b' :
-            if( ! parse_video_opt( optarg ) )
+            if( ! ParseVideoOpt( optarg ) )
             {
                 mjpeg_error( "Illegal video decoder buffer size(s): %s", 
                              optarg );
@@ -246,7 +246,7 @@ int intro_and_options(int argc, char *argv[])
             }
             break;
         case 'L':
-            if( ! parse_lpcm_opt( optarg ) )
+            if( ! ParseLpcmOpt( optarg ) )
             {
                 mjpeg_error( "Illegal LPCM option(s): %s", optarg );
                 Usage(argv[0]);
@@ -254,58 +254,58 @@ int intro_and_options(int argc, char *argv[])
             break;
 
 		case 'r':
-			opt_data_rate = atoi(optarg);
-			if( opt_data_rate < 0 )
+			data_rate = atoi(optarg);
+			if( data_rate < 0 )
 				Usage(argv[0]);
 			/* Convert from kbit/sec (user spec) to 50B/sec units... */
-			opt_data_rate = (( opt_data_rate * 1000 / 8 + 49) / 50 ) * 50;
+			data_rate = (( data_rate * 1000 / 8 + 49) / 50 ) * 50;
 			break;
 
 		case 'O':
-			opt_video_offset = atoi(optarg);
-			if( opt_video_offset < 0 )
+			video_offset = atoi(optarg);
+			if( video_offset < 0 )
 			{
-				opt_audio_offset = - opt_video_offset;
-				opt_video_offset = 0;
+				audio_offset = - video_offset;
+				video_offset = 0;
 			}
 			break;
           
 		case 'l' : 
- 			opt_max_PTS = static_cast<clockticks>(atoi(optarg)) * CLOCKS;
-			if( opt_max_PTS < 1LL  )
+ 			max_PTS = atoi(optarg);
+			if( max_PTS < 1  )
 				Usage(argv[0]);
 			break;
 		
 		case 'p' : 
-			opt_packets_per_pack = atoi(optarg);
-			if( opt_packets_per_pack < 1 || opt_packets_per_pack > 100  )
+			packets_per_pack = atoi(optarg);
+			if( packets_per_pack < 1 || packets_per_pack > 100  )
 				Usage(argv[0]);
 			break;
 		
 	  
 		case 'f' :
-			opt_mux_format = atoi(optarg);
-			if( opt_mux_format != MPEG_FORMAT_DVD &&
-                (opt_mux_format < MPEG_FORMAT_MPEG1 || opt_mux_format > MPEG_FORMAT_LAST)
+			mux_format = atoi(optarg);
+			if( mux_format != MPEG_FORMAT_DVD &&
+                (mux_format < MPEG_FORMAT_MPEG1 || mux_format > MPEG_FORMAT_LAST)
                 )
 				Usage(argv[0]);
 			break;
 		case 's' :
-			opt_sector_size = atoi(optarg);
-			if( opt_sector_size < 256 || opt_sector_size > 16384 )
+			sector_size = atoi(optarg);
+			if( sector_size < 256 || sector_size > 16384 )
 				Usage(argv[0]);
 			break;
 		case 'S' :
-			opt_max_segment_size = atoi(optarg);
-			if( opt_max_segment_size < 0  )
+			max_segment_size = atoi(optarg);
+			if( max_segment_size < 0  )
 				Usage(argv[0]);
-			opt_max_segment_size *= 1024*1024; 
+			max_segment_size *= 1024*1024; 
 			break;
 		case 'M' :
-			opt_multifile_segment = 1;
+			multifile_segment = true;
 			break;
 		case 'e' :
-			opt_emul_vcdmplex = 1;
+			emul_vcdmplex = 1;
 			break;
 		case '?' :
 		default :
@@ -313,38 +313,19 @@ int intro_and_options(int argc, char *argv[])
 			break;
 		}
 	}
-	if (argc - optind < 1 || outfile == NULL)
+	if (argc - optind < 1 || outfile_pattern == NULL)
     {	
 		Usage(argv[0]);
     }
-	(void)mjpeg_default_handler_verbosity(opt_verbosity);
+	(void)mjpeg_default_handler_verbosity(verbose);
 	mjpeg_info( "mplex version %s (%s)",MPLEX_VER,MPLEX_DATE );
-	opt_multplex_outfile = outfile;
-	return optind-1;
+
+    InputStreamsFromCmdLine( argc-(optind-1), argv+optind-1);
 }
 
 
 
-/*************************************************************************
-    MPEG Streams Kontrolle
-
-    Basic Checks on MPEG Streams
-*************************************************************************/
-
-
-
-
-/*************************************************************************
-    Check if files are valid MPEG / AC3 streams
-*************************************************************************/
-
-void check_files (int argc,
-				  char* argv[],
-                  vector<IBitStream *> &mpa_files,
-                  vector<IBitStream *> &ac3_files,
-                  vector<IBitStream *> &lpcm_files,
-				  vector<IBitStream *> &video_files
-	)
+void MultiplexJob::InputStreamsFromCmdLine (int argc, char* argv[] )
 {
     IBitStream *bs;
     BitStreamUndo undo;
@@ -402,31 +383,35 @@ void check_files (int argc,
     {
         mjpeg_error_exit1( "Unrecogniseable file(s)... exiting.");
     }
+
+	//
+	// Where no parameters for streams have been specified
+	// simply set the default values (these will depend on the format
+	// we're muxing of course...)
+	//
+
+	for( i = video_param.size(); i < video_files.size(); ++i )
+	{
+		video_param.push_back(VideoParams::Default( mux_format ));
+	}
+	for( i = lpcm_param.size(); i < lpcm_files.size(); ++i )
+	{
+		lpcm_param.push_back(LpcmParams::Default(mux_format));
+	}
+
+	//
+	// Set standard values if the selected profile implies this...
+	//
+	for( i = 0; i < video_files.size(); ++i )
+	{
+		if( video_param[i]->Force(mux_format) )
+		{
+			mjpeg_info( "Video stream %d: profile %d selected - ignoring non-srtandard options!", i, mux_format );
+		}
+	}
         
 }
 
-
-/*************************************************************************
-    File vorhanden?
-
-    File found?
-*************************************************************************/
-
-bool open_file(const char *name)			
-{
-    FILE* datei;
-	struct stat stb;
-
-    datei=fopen (name, "rw");
-
-    if (datei==NULL)
-    {	
-		mjpeg_error("File %s not found.", name);
-		return (true);
-    }
-    fclose(datei);
-    return (false);
-}
 
 
 /* 

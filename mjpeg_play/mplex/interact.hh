@@ -19,71 +19,82 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#ifndef __INTERACT_H__
-#define __INTERACT_H__
+#ifndef __INTERACT_HH__
+#define __INTERACT_HH__
 
 #include <config.h>
 #include <unistd.h>
 #include <vector>
 #include "mjpeg_types.h"
 #include "stream_params.hh"
-#include "aunit.hh"
 
-/*************************************************************************
-    Entry points...
-*************************************************************************/
+class IBitStream;
 
 using std::vector;
 
-    
-int intro_and_options( int argc, char *argv[]);
-
-void check_files (int argc, char* argv[],
-                  vector<IBitStream *> &mpa_file,
-                  vector<IBitStream *> &ac3_file,                  
-                  vector<IBitStream *> &lpcm_file,                  
-                  vector<IBitStream *> &video_file
-	);
-bool open_file(const char *name);
-
-
-
-
 
 /*************************************************************************
-    Command line options and derived parameters
-*************************************************************************/
+ *
+ * The Multiplexor job Parameters:
+ * The various parametes of a multiplexing job: muxing options
+ *
+ *************************************************************************/
 
-const unsigned int default_video_buffer_size = 46;
+class MultiplexParams
+{
+public:
+  unsigned int data_rate;
+  unsigned int packets_per_pack;
+  int video_offset;
+  int audio_offset;
+  unsigned int sector_size;
+  bool VBR;
+  int mpeg;
+  int mux_format;
+  bool multifile_segment;
+  int always_system_headers;
+  unsigned int max_PTS;
+  bool emul_vcdmplex;
+  bool stills;
+  int verbose;
+  int max_timeouts;
+  char *outfile_pattern;
+  off_t max_segment_size;
+};
 
-extern int opt_quiet_mode;
-extern int opt_interactive_mode;
-extern vector<LpcmParams *> opt_lpcm_param;
-extern vector<VideoParams *> opt_video_param;
-//extern int opt_buffer_size; = 46
-extern int opt_data_rate;
-extern int opt_video_offset;
-extern int opt_audio_offset;
-extern int opt_sector_size;
-extern int opt_VBR;
-extern int opt_mpeg;
-extern int opt_mux_format;
-extern int opt_multifile_segment;
-extern int opt_always_system_headers;
-extern int opt_packets_per_pack;
-extern clockticks opt_max_PTS;
-extern int opt_emul_vcdmplex;
-extern bool opt_stills;
-extern bool opt_ignore_underrun;
-extern int verbose;
-extern char *opt_multplex_outfile;
-extern off_t opt_max_segment_size;
+/***********************************************************************
+ *
+ * Multiplexor job - paramters plus the streams to mux.
+ *
+ *
+ **********************************************************************/
+
+class MultiplexJob : public MultiplexParams
+{
+public:
+  MultiplexJob();
+  void SetFromCmdLine( int argc, char *argv[]);
+private:
+  void InputStreamsFromCmdLine (int argc, char* argv[] );
+  static void Usage(char *program_name);
+  bool ParseVideoOpt( const char *optarg );
+  bool ParseLpcmOpt( const char *optarg );
+public:  
+  vector<IBitStream *> mpa_files;
+  vector<IBitStream *> ac3_files;
+  vector<IBitStream *> lpcm_files;
+  vector<IBitStream *> video_files;
+  vector<LpcmParams *> lpcm_param;
+  vector<VideoParams *> video_param;
+};
+
+
 
 /*************************************************************************
     Program ID
 *************************************************************************/
  
-#define MPLEX_VER    "2.2.1"
+#define MPLEX_VER    "2.2.2"
 #define MPLEX_DATE   "$Date$"
 
 

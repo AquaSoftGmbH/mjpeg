@@ -25,7 +25,7 @@
 #include <assert.h>
 #include "fastintfns.h"
 #include "inputstrm.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 MuxStream::MuxStream() : init(false) 
 {
@@ -68,7 +68,7 @@ MuxStream::BufferSizeCode()
 
 
 ElementaryStream::ElementaryStream( IBitStream &ibs,
-                                    OutputStream &into, 
+                                    Multiplexor &into, 
 									stream_kind _kind) : 
     InputStream( ibs ),
 	muxinto( into ),

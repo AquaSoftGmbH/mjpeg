@@ -25,7 +25,7 @@
 
 #include "videostrm.hh"
 #include "interact.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 
@@ -167,7 +167,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 	while(!bs.eos() && 
 		  bs.seek_sync( SYNCWORD_START, 24, 2*1024*1024) &&
 	      decoding_order < last_buffered_AU  &&
-		  (!opt_max_PTS || access_unit.PTS < opt_max_PTS ) 
+		  (!max_PTS || access_unit.PTS < max_PTS ) 
 		)
 	{
 		syncword = (SYNCWORD_START<<8) + bs.getbits( 8);
@@ -213,12 +213,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 					AU_start = stream_length;
 					syncword  = AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
-					if( opt_multifile_segment )
+					if( muxinto.multifile_segment )
 						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!" );
 				}
 				else
 				{
-					if( !bs.eos() && ! opt_multifile_segment )
+					if( !bs.eos() && ! muxinto.multifile_segment )
 						mjpeg_warn("No seq. header starting new sequence after seq. end!");
 				}
 					
@@ -318,7 +318,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 	}
 	last_buffered_AU = decoding_order;
 	num_pictures = decoding_order;	
-	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
+	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
 }
 
 void VideoStream::Close()
@@ -373,8 +373,8 @@ void VideoStream::OutputSeqhdrInfo ()
 
     mjpeg_info ("Frame width     : %u",horizontal_size);
     mjpeg_info ("Frame height    : %u",vertical_size);
-	if( aspect_ratio <= mpeg_num_aspect_ratios[opt_mpeg-1] )
-		str =  mpeg_aspect_code_definition(opt_mpeg,aspect_ratio);
+	if( aspect_ratio <= mpeg_num_aspect_ratios[muxinto.mpeg-1] )
+		str =  mpeg_aspect_code_definition(muxinto.mpeg,aspect_ratio);
 	else
 		str = "forbidden";
     mjpeg_info ("Aspect ratio    : %s", str );

@@ -27,7 +27,7 @@
 
 #include "audiostrm.hh"
 #include "interact.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 
 
@@ -62,7 +62,7 @@ static const unsigned int ac3_frequency[4] =
 { 48000, 44100, 32000, 0};
 
 
-AC3Stream::AC3Stream(IBitStream &ibs, OutputStream &into) : 
+AC3Stream::AC3Stream(IBitStream &ibs, Multiplexor &into) : 
 	AudioStream( ibs, into )
 {
 }
@@ -161,9 +161,9 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     static int header_skip = 5;        // Initially skipped past  5 bytes of header 
     int skip;
     bool bad_last_frame = false;
-	while (!bs.eos() && 
-		   decoding_order < last_buffered_AU && 
-		   (!opt_max_PTS || access_unit.PTS < opt_max_PTS))
+	while( !bs.eos() 
+           && decoding_order < last_buffered_AU 
+           && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 		skip=access_unit.length-header_skip; 
 		if (skip & 0x1) bs.getbits( 8);
@@ -257,7 +257,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
         mjpeg_error_exit1( "Last AC3 frame ended prematurely!\n" );
     }
 	last_buffered_AU = decoding_order;
-	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
+	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
 
 }
 

@@ -25,7 +25,7 @@
 
 #include "stillsstream.hh"
 #include "interact.hh"
-#include "outputstream.hh"
+#include "multiplexor.hh"
 
 void StillsStream::Init ( )
 {
@@ -37,7 +37,7 @@ void StillsStream::Init ( )
 	ScanFirstSeqHeader();
 
 	mjpeg_debug( "Stills: Video buffer suggestion ignored!" );
-	switch( opt_mux_format )
+	switch( muxinto.mux_format )
 	{
 	case  MPEG_FORMAT_VCD_STILL :
 		if( horizontal_size > 352 )

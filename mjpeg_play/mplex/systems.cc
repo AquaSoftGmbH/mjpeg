@@ -7,10 +7,16 @@
 #include "systems.hh"
 #include "mplexconsts.hh"
 
-uint8_t dummy_buf[8000];
-void
-PS_Stream::Init( const char *name_pat, off_t max_seg_size )
+PS_Stream:: PS_Stream( unsigned _mpeg,
+                       unsigned int _sector_size,
+                       const char *name_pat, 
+                       off_t max_seg_size )
+    : mpeg_version( _mpeg),
+      sector_size( _sector_size ),
+      segment_num( 1 ),
+      max_segment_size( max_seg_size )
 {
+    sector_buf = new uint8_t[sector_size];
 	max_segment_size = max_seg_size;
 	strncpy( filename_pat, name_pat, MAXPATHLEN );
 	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
@@ -114,7 +120,7 @@ PS_Stream::PacketPayload( MuxStream &strm,
 void 
 PS_Stream::BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
 										 uint8_t  marker,
-										 uint8_t **buffer)
+										 uint8_t *&buffer)
 
 {
 	clockticks thetime_base;
@@ -130,15 +136,15 @@ PS_Stream::BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
 		
     temp = (marker << 4) | (msb <<3) |
 		((lsb >> 29) & 0x6) | 1;
-    *((*buffer)++)=temp;
+    *(buffer++)=temp;
     temp = (lsb & 0x3fc00000) >> 22;
-    *((*buffer)++)=temp;
+    *(buffer++)=temp;
     temp = ((lsb & 0x003f8000) >> 14) | 1;
-    *((*buffer)++)=temp;
+    *(buffer++)=temp;
     temp = (lsb & 0x7f80) >> 7;
-    *((*buffer)++)=temp;
+    *(buffer++)=temp;
     temp = ((lsb & 0x007f) << 1) | 1;
-    *((*buffer)++)=temp;
+    *(buffer++)=temp;
 
 }
 
@@ -155,7 +161,7 @@ PS_Stream::BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
 
 void 
 PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
-								   uint8_t **buffer
+								   uint8_t *&buffer
 	)
 {
  	clockticks thetime_base;
@@ -171,19 +177,19 @@ PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
 
       temp = (MARKER_MPEG2_SCR << 6) | (msb << 5) |
 		  ((lsb >> 27) & 0x18) | 0x4 | ((lsb >> 28) & 0x3);
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
       temp = (lsb & 0x0ff00000) >> 20;
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
       temp = ((lsb & 0x000f8000) >> 12) | 0x4 |
              ((lsb & 0x00006000) >> 13);
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
       temp = (lsb & 0x00001fe0) >> 5;
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
       temp = ((lsb & 0x0000001f) << 3) | 0x4 |
              ((thetime_ext & 0x00000180) >> 7);
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
       temp = ((thetime_ext & 0x0000007F) << 1) | 1;
-      *((*buffer)++)=temp;
+      *(buffer++)=temp;
 }
 
 /*************************************************************************
@@ -310,11 +316,11 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 			*(index++) = MARKER_NO_TIMESTAMPS;
 			break;
 		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, index);
 			break;
 		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, &index);
-			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, index);
+			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, index);
 			break;
 		}
 	}
@@ -340,12 +346,12 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
 		switch (timestamps)
 		{
 		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, index);
 			break;
 
 		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, &index);
-			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, index);
+			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, index);
 			break;
 		}
 
@@ -389,9 +395,10 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
  *    unfilled.   Zero stuffing after the end of a packet is also supported
  *    to allow thos wretched audio packets from VCD's to be handled.
  *
- *  TODO: Should really be called "WriteSector"
- *  TODO: We need to add a mechanism for sub-headers of private streams
- *        to be generated...
+ *  TODO: Should really be called "WriteSector" 
+ * 
+ * TODO: We need to add a * generic mechanism for sub-headers of
+ * private streams to be * generated...
  *
  *************************************************************************/
 
@@ -465,11 +472,11 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 			*(index++) = MARKER_NO_TIMESTAMPS;
 			break;
 		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, index);
 			break;
 		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, &index);
-			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, index);
+			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, index);
 			break;
 		}
 	}
@@ -495,12 +502,12 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		switch (timestamps)
 		{
 		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, index);
 			break;
 
 		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, &index);
-			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, index);
+			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, index);
 			break;
 		}
 
@@ -518,24 +525,6 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		}
 	}
 
-#ifdef MUX_DEBUG
-    // DVD MPEG2: AC3 in PRIVATE_STR_1
-    if( type == PRIVATE_STR_1 )
-    {
-        ac3_header = index;
-        // TODO: should allow multiple AC3 streams...
-        //ac3_header[0] = AC3_SUB_STR_1; // byte: Audio stream number
-                                // byte: num of AC3 syncwords
-                                // byte: Offset first AC3 syncword (hi)
-                                // byte: Offset 2nd AC2 syncword (lo)
-        //index += 4;
-        //subheader_size = 4;
-        subheader_size = 0;
-    }
-    else
-#endif
-
-    
     /* MPEG-1, MPEG-2: data available to be filled is packet_size less
      * header and MPEG-1 trailer... */
 
@@ -668,7 +657,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
         }
         else
         {
-            *(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
+            *(index++) = 0x0F;
             for (i = 0; i < bytes_short - 7; i++)
                 *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
         }
@@ -728,7 +717,7 @@ PS_Stream::CreatePack ( Pack_struc	 *pack,
     {
         /* Annoying: MPEG-2's SCR pack header time is different from
            all the rest... */
-        BufferMpeg2ScrTimecode(SCR, &index);
+        BufferMpeg2ScrTimecode(SCR, index);
         *(index++) = static_cast<uint8_t>(mux_rate >> 14);
         *(index++) = static_cast<uint8_t>(0xff & (mux_rate >> 6));
         *(index++) = static_cast<uint8_t>(0x03 | ((mux_rate & 0x3f) << 2));
@@ -736,7 +725,7 @@ PS_Stream::CreatePack ( Pack_struc	 *pack,
     }
     else
     {
-        BufferDtsPtsMpeg1ScrTimecode(SCR, MARKER_MPEG1_SCR, &index);
+        BufferDtsPtsMpeg1ScrTimecode(SCR, MARKER_MPEG1_SCR, index);
         *(index++) = static_cast<uint8_t>(0x80 | (mux_rate >> 15));
         *(index++) = static_cast<uint8_t>(0xff & (mux_rate >> 7));
         *(index++) = static_cast<uint8_t>(0x01 | ((mux_rate & 0x7f) << 1));
