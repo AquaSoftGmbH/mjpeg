@@ -910,10 +910,9 @@ static void *parencodeworker(void *start_arg)
                 picture, 
                 picture->ref_frame->decode,
                 picture->ref_frame );
-
+#endif
         sync_guard_test( &picture->ref_frame->completion );
         encodembs(picture);
-#endif SEQ_DEBUG
 #endif
 		/* Depends on previous frame completion for IB and P */
 #ifdef SEQ_DEBUG
