@@ -1,9 +1,10 @@
 #################################################
 # config
+CONFIG_SHELL := /bin/bash
 
 # where the kernel sources are located
-KERNEL_LOCATION=/usr/src/linux
-TOPDIR=/usr/src/linux
+TOPDIR := /usr/src/linux
+export TOPDIR CONFIG_SHELL
 #################################################
 # some magic for using linux kernel settings
 # when compiling module(s)
@@ -13,7 +14,7 @@ CURRENT = $(shell uname -r)
 
 here:
 	@echo Making Zoran 36060+36057/67 driver for $(CURRENT) kernel...
-	DIR=`pwd`; (cd $(KERNEL_LOCATION); make SUBDIRS=$$DIR modules)
+	DIR=`pwd`; (cd $(TOPDIR); make SUBDIRS=$$DIR modules)
 
 ifneq (,$(findstring 2.2.,$(CURRENT)))
 # This part is for 2.2.x kernels
@@ -40,6 +41,6 @@ clean:
 endif
 
 
-include $(KERNEL_LOCATION)/Rules.make
+include $(TOPDIR)/Rules.make
 
 zoran.o:  zoran_procfs.c
