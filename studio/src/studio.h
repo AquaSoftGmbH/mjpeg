@@ -96,7 +96,6 @@ struct encodingoptions encoding_gmpeg;   /* for general mpeg */
 struct encodingoptions encoding_vcd;     /* for vcd */
 struct encodingoptions encoding_svcd;    /* for svcd */
 struct encodingoptions encoding_dvd;     /* for dvd */
-struct encodingoptions encoding_divx;    /* for divx */
 struct encodingoptions encoding_yuv2lav; /* for yuv2lav */
 
 /* Struct that holds the machine that thas to do the task */
@@ -106,7 +105,6 @@ struct machine {  int lav2wav;
                   int yuvdenoise;
                   int yuvscaler;
                   int mpeg2enc;
-                  int yuv2divx;
                   int yuv2lav;
                };
 /************************* END *********************/
@@ -116,7 +114,6 @@ struct machine machine4generic;
 struct machine machine4vcd;
 struct machine machine4svcd;
 struct machine machine4dvd;
-struct machine machine4divx;
 struct machine machine4yuv2lav;
 
 GList *machine_names;
@@ -130,7 +127,6 @@ struct f_script {
                 int vcd;      /* Bit 3 (8) = Full  */  
                 int svcd;
                 int dvd;
-                int divx;
                 int yuv2lav;
               };
 /**************************************************************/
@@ -207,8 +203,6 @@ void create_command_yuvscaler(char *lav2yuv_command[256], int use_rsh,
 void create_command_yuvdenoise(char *yuvdenoise_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
 void create_command_mpeg2enc(char* mpeg2enc_command[256], int use_rsh,
-  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
-void create_command_yuv2divx(char* yuv2divx_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 void create_command_yuv2lav(char* yuv2divx_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);

@@ -54,13 +54,11 @@ void set_yuv2lav   (GtkWidget *menu_itme, gpointer data);
 void set_lav2yuv   (GtkWidget *menu_itme, gpointer data);
 void set_yuvdenoise(GtkWidget *menu_itme, gpointer data);
 void set_yuvscaler (GtkWidget *menu_itme, gpointer data);
-void set_yuv2divx  (GtkWidget *menu_itme, gpointer data);
 void create_menu4mpeg2enc  (GtkWidget *table, int *tx, int *ty);
 void create_menu4yuv2lav   (GtkWidget *table, int *tx, int *ty);
 void create_menu4lav2yuv    (GtkWidget *table, int *tx, int *ty);
 void create_menu4yuvdenoise (GtkWidget *table, int *tx, int *ty);
 void create_menu4yuvscaler  (GtkWidget *table, int *tx, int *ty);
-void create_menu4yuv2divx   (GtkWidget *table, int *tx, int *ty);
 void check_numbers (int number);
 void removename      (void);
 void menu_lav2wav    (void);
@@ -70,7 +68,6 @@ void menu_yuv2lav    (void);
 void menu_lav2yuv    (void);
 void menu_yuvdenoise (void);
 void menu_yuvscaler  (void);
-void menu_yuv2divx   (void);
 
 /* Only for this file, same names used in other files */
 static void set_up_defaults(void);
@@ -86,7 +83,6 @@ GtkWidget *remove_mnames, *menu, *menu_item;
 GtkWidget *mlav2yuv, *menulav2yuv, *item_lav2yuv;
 GtkWidget *myuvdenoise, *menuyuvdenoise, *item_yuvdenoise;
 GtkWidget *myuvscaler, *menuyuvscaler, *item_yuvscaler;
-GtkWidget *myuv2divx, *menuyuv2divx, *item_yuv2divx;
 char remove_name[LONGOPT];
 
 struct machine tempmach;
@@ -109,7 +105,6 @@ void add_item_to_menu(gchar *val)
   menu_lav2yuv();
   menu_yuvdenoise();
   menu_yuvscaler();
-  menu_yuv2divx();
 
   set_up_defaults();
 }
@@ -185,11 +180,6 @@ void check_numbers (int number)
   else if  ( number < tempmach.mpeg2enc)
     tempmach.mpeg2enc = tempmach.mpeg2enc -1;
 
-  if (number == tempmach.yuv2divx )
-    tempmach.yuv2divx = 0;
-  else if  ( number < tempmach.yuv2divx)
-    tempmach.yuv2divx = tempmach.yuv2divx -1;
-
   if (number == tempmach.yuv2lav )
     tempmach.yuv2lav = 0;
   else if  ( number < tempmach.yuv2lav)
@@ -221,7 +211,6 @@ int i;
           menu_lav2yuv();
           menu_yuvdenoise();
           menu_yuvscaler();
-          menu_yuv2divx();
 
           set_up_defaults();
           break;
@@ -371,27 +360,6 @@ int i;
   gtk_widget_show_all(menuyuvscaler);
 }
 
-/* Here we create or recreate the menu entries for yuv2divx */
-void menu_yuv2divx()
-{
-int i;
-
-  menuyuv2divx = gtk_menu_new();
-
-  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
-    {
-      item_yuv2divx = gtk_menu_item_new_with_label
-                         ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_yuv2divx), "activate", 
-                          GTK_SIGNAL_FUNC (set_yuv2divx),
-                         ((char*) g_list_nth_data(temp_mnames, i)) );
-      gtk_menu_append (GTK_MENU (menuyuv2divx), item_yuv2divx);
-    }
-  gtk_option_menu_set_menu (GTK_OPTION_MENU (myuv2divx), menuyuv2divx);
-  gtk_widget_show_all(menuyuv2divx);
-}
-
-
 /* Here we create or recreate the menu entries for lav2yuv */
 void menu_lav2yuv()
 {
@@ -540,23 +508,6 @@ int i;
   if (verbose)
     printf("Set machine number for yuvscaler to %i, will be: %s \n",
                  tempmach.yuvscaler, (char*) g_list_nth_data(temp_mnames,i));
-}
-
-/* See aboth, but here we set the number for the yuv2divx machine */
-void set_yuv2divx (GtkWidget *menu_item, gpointer data)
-{
-int i;
-
-  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
-    if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
-      {
-        tempmach.yuv2divx = i;
-        break;
-      }
-
-  if (verbose)
-    printf("Set machine number for yuv2divx to %i, will be: %s \n",
-                 tempmach.yuv2divx, (char*) g_list_nth_data(temp_mnames,i));
 }
 
 /* Here we create the layout for the machine data */
@@ -733,19 +684,6 @@ void create_menu4yuvscaler (GtkWidget *table, int *tx, int *ty)
   gtk_widget_show (myuvscaler);
 }
 
-/* Here we create the menu for yuv2divx */
-void create_menu4yuv2divx (GtkWidget *table, int *tx, int *ty)
-{ 
-  myuv2divx = gtk_option_menu_new ();
-  
-  menu_yuv2divx();
-  
-  gtk_widget_set_usize (myuv2divx, 100, 25);
-  gtk_table_attach_defaults (GTK_TABLE(table),myuv2divx, *tx,*tx+1, *ty,*ty+1);
-  gtk_widget_show (myuv2divx);
-}
-
-
 /* Here we create the layout for the vide encoding part */
 void create_video (GtkWidget *hbox)
 {
@@ -787,10 +725,6 @@ ty=6;
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
   tx++;
-  
-  label = gtk_label_new ("| yuv2divx ");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
-  gtk_widget_show(label);
 
   tx=0; /* return to the first field (or first colum) */
   ty++; /* of the next row */
@@ -803,10 +737,8 @@ ty=6;
 
   create_menu4yuvscaler (table, &tx, &ty);
   tx++;
-
-  create_menu4yuv2divx (table, &tx, &ty);
  
-  ty++;
+  ty++; /*Here we took out yuv2divx mabe we have to change somethin too  */
   tx=3;
 
   label = gtk_label_new ("| yuv2lav  ");
@@ -839,8 +771,6 @@ int i;
     point = &machine4svcd;
   if ((strcmp((char*)data,"DVD") == 0)  && (enhanced_settings == 1))
     point = &machine4dvd;
-  if ((strcmp((char*)data,"DivX") == 0)  && (enhanced_settings == 1))
-    point = &machine4divx;
   if ((strcmp((char*)data,"MJPEG") == 0) && (enhanced_settings == 1))
     point = &machine4yuv2lav;
 
@@ -851,7 +781,6 @@ int i;
   tempmach.yuvdenoise= (*point).yuvdenoise;
   tempmach.yuvscaler = (*point).yuvscaler;
   tempmach.mpeg2enc  = (*point).mpeg2enc;
-  tempmach.yuv2divx  = (*point).yuv2divx;
   tempmach.yuv2lav   = (*point).yuv2lav;
  
   g_list_free(temp_mnames); 
@@ -865,9 +794,8 @@ int i;
       printf("Machine for lav2wav %i,  for mp2enc %i,  for lav2yuv %i, \
       for yuvdenoise %i \n", tempmach.lav2wav, tempmach.mp2enc,
           tempmach.lav2yuv, tempmach.yuvdenoise);
-      printf("Machine for yuvscaler %i,  for mpeg2enc %i,  for yuv2divx %i, \
-      for yuv2lav %i \n", tempmach.yuvscaler, tempmach.mpeg2enc,
-          tempmach.yuv2divx, tempmach.yuv2lav);
+      printf("Machine for yuvscaler %i,  for mpeg2enc %i, for yuv2lav %i \n", \
+          tempmach.yuvscaler, tempmach.mpeg2enc, tempmach.yuv2lav);
     }
 
 }
@@ -882,7 +810,6 @@ void set_up_defaults()
   gtk_option_menu_set_history (GTK_OPTION_MENU (mlav2yuv), tempmach.lav2yuv);
   gtk_option_menu_set_history(GTK_OPTION_MENU(myuvdenoise),tempmach.yuvdenoise);
   gtk_option_menu_set_history (GTK_OPTION_MENU (myuvscaler),tempmach.yuvscaler);
-  gtk_option_menu_set_history (GTK_OPTION_MENU (myuv2divx), tempmach.yuv2divx);
 }
 
 /* Here we save the chnaged options */
@@ -897,7 +824,6 @@ int i;
   (*point).yuvdenoise= tempmach.yuvdenoise;
   (*point).yuvscaler = tempmach.yuvscaler;
   (*point).mpeg2enc  = tempmach.mpeg2enc;
-  (*point).yuv2divx  = tempmach.yuv2divx;
   (*point).yuv2lav   = tempmach.yuv2lav;
 
   /* free the orignal g_list and copy back the temp values */

@@ -73,7 +73,6 @@ void do_preset_mpeg2(struct encodingoptions *point);
 void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
 void do_preset_dvd(struct encodingoptions *point);
-void do_preset_divx(struct encodingoptions *point);
 void do_preset_yuv2lav(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
@@ -182,7 +181,6 @@ void set_machine_default(struct machine *point)
   (*point).yuvdenoise= 0;
   (*point).yuvscaler = 0;
   (*point).mpeg2enc  = 0;
-  (*point).yuv2divx  = 0;
   (*point).yuv2lav   = 0;
 }
 
@@ -202,8 +200,6 @@ struct machine *point;
   point = &machine4svcd;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4dvd;
-  set_machine_default(point);  /* set struct to the defaults */
-  point = &machine4divx;
   set_machine_default(point);  /* set struct to the defaults */
   point = &machine4yuv2lav;
   set_machine_default(point);  /* set struct to the defaults */
@@ -226,7 +222,6 @@ for (i=0; i < FILELEN; i++)
   script.vcd     = 0;
   script.svcd    = 0;
   script.dvd     = 0;
-  script.divx    = 0;
   script.yuv2lav = 0;
 }
 
@@ -263,15 +258,6 @@ void do_preset_dvd(struct encodingoptions *point)
   (*point).bitrate = 0;
   (*point).outputbitrate = 480;
   (*point).muxformat = 8;
-}
-
-/** set some divx specific options
- @param point points to the struct we use */
-void do_preset_divx(struct encodingoptions *point)
-{
-  (*point).audiobitrate = 0;
-  (*point).bitrate = 0;
-  sprintf((*point).codec,"DIV3");
 }
 
 /** set some yuv2lav specific options
@@ -338,14 +324,6 @@ j=0;
         (*pointm).mpeg2enc = i;
       else if (verbose) 
          printf("Wrong value for mpeg2enc %i, setting to value: 0\n", i); 
-    }
-
-  if (-1 != (i = cfg_get_int(section,"Machine_running_yuv2divx")))
-    {
-      if ( i <= j )
-        (*pointm).yuv2divx = i;
-      else if (verbose) 
-         printf("Wrong value for yuv2divx %i, setting to value: 0\n", i); 
     }
 
   if (-1 != (i = cfg_get_int(section,"Machine_running_yuv2lav")))
@@ -579,10 +557,6 @@ char *val;
     if ( i >= 0 || i <= 8)
       script.dvd = i;;
 
-  if ( -1 != (i = cfg_get_int("Scriptdata","Script_DIVX")))
-    if ( i >= 0 || i <= 8)
-      script.divx = i;;
-
   if ( -1 != (i = cfg_get_int("Scriptdata","Script_YUV2LAV")))
     if ( i >= 0 || i <= 8)
       script.yuv2lav = i;;
@@ -631,9 +605,8 @@ for (i = 0; i < LONGOPT; i++)
   printf("Machine for lav2wav %i,  for mp2enc %i,  for lav2yuv %i, \
   for yuvdenoise %i \n", (*pointm).lav2wav, (*pointm).mp2enc, 
           (*pointm).lav2yuv, (*pointm).yuvdenoise);
-  printf("Machine for yuvscaler %i,  for mpeg2enc %i,  for yuv2divx %i, \
-  for yuv2lav %i \n", (*pointm).yuvscaler, (*pointm).mpeg2enc, 
-          (*pointm).yuv2divx, (*pointm).yuv2lav);
+  printf("Machine for yuvscaler %i,  for mpeg2enc %i, for yuv2lav %i \n", 
+          (*pointm).yuvscaler, (*pointm).mpeg2enc, (*pointm).yuv2lav);
 }
 
 /* show the current options */
@@ -720,10 +693,6 @@ int have_config;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_dvd(point);     /* set some DVD specific options */
 
-  point = &encoding_divx;
-  set_structs_default(point);  /* set struct to the defaults */
-  do_preset_divx(point);     /* set some DIVX specific options */
-
   point = &encoding_yuv2lav;
   set_structs_default(point);  /* set struct to the defaults */
   do_preset_yuv2lav(point);     /* set some DIVX specific options */
@@ -775,12 +744,6 @@ int have_config;
   if (verbose)
     print_encoding_options(section,point);
 
-  strncpy(section,"DIVX",LONGOPT);
-  point = &encoding_divx; 
-  load_section(section,point);
-  if (verbose)
-    print_encoding_options(section,point);
-
   strncpy(section,"YUV2LAV",LONGOPT);
   point = &encoding_yuv2lav; 
   load_section(section,point);
@@ -823,12 +786,6 @@ int have_config;
 
   strncpy(section,"Machines4DVD",LONGOPT);
   pointm = &machine4svcd; 
-  load_machine_data(section, pointm);
-  if (verbose)
-    print_machine_data(section,pointm);
-
-  strncpy(section,"Machines4DIVX",LONGOPT);
-  pointm = &machine4divx; 
   load_machine_data(section, pointm);
   if (verbose)
     print_machine_data(section,pointm);
@@ -960,7 +917,6 @@ void save_machine_section(FILE *fp,struct machine *point, char section[LONGOPT])
   fprintf(fp, "Machine_running_yuvdenoise = %i\n", (*point).yuvdenoise);
   fprintf(fp, "Machine_running_yuvscaler = %i\n", (*point).yuvscaler);
   fprintf(fp, "Machine_running_mpeg2enc = %i\n", (*point).mpeg2enc);
-  fprintf(fp, "Machine_running_yuv2divx = %i\n", (*point).yuv2divx);
   fprintf(fp, "Machine_running_yuv2lav = %i\n", (*point).yuv2lav);
 }
 
@@ -997,8 +953,6 @@ char test[50];
   save_machine_section(fp,point,"Machines4SVCD");
   point = &machine4dvd;
   save_machine_section(fp,point,"Machines4DVD");
-  point = &machine4divx;
-  save_machine_section(fp,point,"Machines4DIVX");
   point = &machine4yuv2lav;
   save_machine_section(fp,point,"Machines4YUV2LAV");
 
@@ -1018,7 +972,6 @@ void save_script_data(FILE *fp, char section[LONGOPT])
   fprintf(fp, "Script_VCD = %i\n", script.vcd);
   fprintf(fp, "Script_SVCD = %i\n", script.svcd);
   fprintf(fp, "Script_DVD = %i\n", script.dvd);
-  fprintf(fp, "Script_DIVX = %i\n", script.divx);
   fprintf(fp, "Script_YUV2LAV = %i\n", script.yuv2lav);
 
 }
@@ -1070,9 +1023,6 @@ FILE *fp;
  
   point = &encoding_dvd; 
   save_section(fp,point,"DVD");
- 
-  point = &encoding_divx; 
-  save_section(fp,point,"DIVX");
  
   point = &encoding_yuv2lav; 
   save_section(fp,point,"YUV2LAV");

@@ -59,7 +59,6 @@ GtkWidget *execute_status;
    /* Used Buttons  but they need to be deactivated from everywhere */
 GtkWidget *create_sound, *do_video, *mplex_only;
 GtkWidget *remove_files_after_completion;
-GtkWidget *button_divx;
 
 /* For progress-meter */
 GtkWidget *progress_label;
@@ -488,12 +487,6 @@ void video_convert()
        create_command_mpeg2enc(mpeg2enc_command,0,pointenc,&machine4mpeg1,"");
   
        start_pipe_command(mpeg2enc_command, MPEG2ENC);
-     }
-   else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
-     {
-       create_command_yuv2divx(yuv2divx_command,0,pointenc,&machine4mpeg1,"");
-
-       start_pipe_command(yuv2divx_command, YUV2DIVX);
      }
    else if (studio_enc_format == STUDIO_ENC_FORMAT_MJPEG)
      {
@@ -1240,33 +1233,6 @@ for (i = 0; i < 3; i++)
       sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
-  else if (strcmp ((char*)data,"DivX")  == 0)
-   {
-      pointenc = &encoding_divx;
-      pointdist = &machine4divx;
-      sprintf(text_task,"%s",(char*)data);
-      gtk_widget_set_sensitive(create_sound, FALSE); 
-      gtk_widget_set_sensitive(do_video, FALSE); 
-      gtk_widget_set_sensitive(mplex_only, FALSE);
-      gtk_widget_set_sensitive(sound_entry, FALSE);
-      gtk_widget_set_sensitive(sound_select, FALSE);
-      gtk_widget_set_sensitive(video_entry, FALSE);
-      gtk_widget_set_sensitive(video_select, FALSE);
-      gtk_widget_set_sensitive(remove_files_after_completion, FALSE);
-
-      studio_enc_format = STUDIO_ENC_FORMAT_DIVX;
-
-      sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
-                            enc_outputfile[strlen(enc_outputfile)-2], 
-                            enc_outputfile[strlen(enc_outputfile)-1] );
-      if ( strcmp(temp,"mpg") == 0)
-        {
-          enc_outputfile[strlen(enc_outputfile)-3] = 'a';
-          enc_outputfile[strlen(enc_outputfile)-2] = 'v';
-          enc_outputfile[strlen(enc_outputfile)-1] = 'i';
-        }
-      gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
-   }
   else if (strcmp ((char*)data,"MJPEG")  == 0)
    {
       pointenc = &encoding_yuv2lav;
@@ -1377,16 +1343,6 @@ ency = 1;
 
 encx = 4;
 ency = 1;
-
-  button_divx = gtk_radio_button_new_with_label(task_group, "DivX ");
-  gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
-                      GTK_SIGNAL_FUNC (set_task), (gpointer) "DivX");
-  gtk_table_attach_defaults (GTK_TABLE (table), button_divx, 
-                                    encx, encx+1, ency, ency+1);
-  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_divx));
-  gtk_widget_show (button_divx);
-  create_option_button(task_group, table, "DivX", encx+1, ency);
-  ency++;
 
   button_2lav = gtk_radio_button_new_with_label(task_group, "MJPEG");
   gtk_signal_connect (GTK_OBJECT (button_2lav), "toggled",

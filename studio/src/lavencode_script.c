@@ -66,8 +66,6 @@ void create_command_yuvdenoise(char *yuvdenoise_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
 void create_command_mp2enc(char *mp2enc_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
-void create_command_yuv2divx(char* yuv2divx_command[256], int use_rsh,
-  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 void create_command_yuv2lav(char* yuv2divx_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 void create_command_mplex(char* mplex_command[256], int use_rsh,
@@ -83,7 +81,6 @@ static void create_checkbox_generic(GtkWidget *table);
 static void create_checkbox_vcd(GtkWidget *table);
 static void create_checkbox_svcd(GtkWidget *table);
 static void create_checkbox_dvd(GtkWidget *table);
-static void create_checkbox_divx(GtkWidget *table);
 static void create_checkbox_yuv2lav(GtkWidget *table);
 static void set_mpeg1(GtkWidget *widget, gpointer data);
 static void set_mpeg2(GtkWidget *widget, gpointer data);
@@ -91,7 +88,6 @@ static void set_generic(GtkWidget *widget, gpointer data);
 static void set_vcd(GtkWidget *widget, gpointer data);
 static void set_svcd(GtkWidget *widget, gpointer data);
 static void set_dvd(GtkWidget *widget, gpointer data);
-static void set_divx(GtkWidget *widget, gpointer data);
 static void set_yuv2lav(GtkWidget *widget, gpointer data);
 static void create_script(GtkWidget *widget, gpointer data);
 static void create_audio(FILE *fp, struct encodingoptions *option, 
@@ -109,7 +105,7 @@ GtkWidget *generic_a, *generic_v, *generic_m, *generic_f;
 GtkWidget *vcd_a, *vcd_v, *vcd_m, *vcd_f;
 GtkWidget *svcd_a, *svcd_v, *svcd_m, *svcd_f;
 GtkWidget *dvd_a, *dvd_v, *dvd_m, *dvd_f;
-GtkWidget *divx_f, *yuv2lav_v;
+GtkWidget *yuv2lav_v;
 int temp_use_distributed;
 char temp_scriptname[FILELEN];
 struct f_script t_script;
@@ -181,9 +177,6 @@ void set_up_defaults(void)
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(dvd_m), TRUE);
   if ( (t_script.dvd & bit_full  ) == bit_full  )
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(dvd_f), TRUE);
-
-  if ( (t_script.divx & bit_full  ) == bit_full  )
-    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(divx_f), TRUE);
 
   if ( (t_script.yuv2lav & bit_video ) == bit_video )
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(yuv2lav_v), TRUE);
@@ -430,60 +423,6 @@ if ( (*option).sequencesize != 0)
     sprintf(temp4,"%s",enc_videofile);
   yuv2lav_command[n] = temp4; n++;
   yuv2lav_command[n] = NULL;
-
-}
-
-/* Here the yuv2divx command is set together with all options */
-void create_command_yuv2divx(char* yuv2divx_command[256], int use_rsh,
-  struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT])
-{
-int n;
-static char temp1[4], temp2[4], temp3[256];
-n=0;
-
-  if ((use_rsh ==1)&&((machine4mpeg1.yuv2divx!=0)||((*machine4).yuv2divx!=0)))    {
-      yuv2divx_command[n] = "rsh"; n++;
-      if (enhanced_settings == 0)
-        {
-           yuv2divx_command[n] = (char*)
-                g_list_nth_data(machine_names, machine4mpeg1.yuv2divx); n++;
-        }
-      else
-        {
-          yuv2divx_command[n] = (char*)
-                g_list_nth_data(machine_names, (*machine4).yuv2divx); n++;
-        }
-    }
-
-  yuv2divx_command[n] = app_name(YUV2DIVX); n++;
-
-  if ((*option).audiobitrate != 0)
-    {
-      yuv2divx_command[n] = "-a"; n++;
-      sprintf(temp1, "%i", (*option).audiobitrate);
-      yuv2divx_command[n] = temp1; n++;
-    }
-
-  yuv2divx_command[n] = "-A"; n++;
-  yuv2divx_command[n] = enc_inputfile; n++;
-
-  if ((*option).bitrate != 0)
-    {
-      yuv2divx_command[n] = "-b"; n++;
-      sprintf(temp2, "%i", (*option).bitrate);
-      yuv2divx_command[n] = temp2; n++;
-    }
-
-  yuv2divx_command[n] = "-E"; n++;
-  yuv2divx_command[n] = (*option).codec; n++;
-
-  yuv2divx_command[n] = "-o"; n++;
-  if (strlen(ext) != 0)
-    filename_ext(ext, temp3, enc_videofile);
-  else
-    sprintf(temp3,"%s",enc_videofile);
-  yuv2divx_command[n] = temp3; n++;
-  yuv2divx_command[n] = NULL;
 
 }
 
@@ -809,13 +748,11 @@ char *lav2yuv_command[256];
 char *yuvscaler_command[256];
 char *yuvdenoise_command[256];
 char *mpeg2enc_command[256];
-char *yuv2divx_command[256];
 char *yuv2lav_command[256];
 char lav2yuv_string[800];
 char yuvscaler_string[256];
 char yuvdenoise_string[256];
 char mpeg2enc_string[256];
-char yuv2divx_string[256];
 char yuv2lav_string[256];
 
 create_command_lav2yuv(lav2yuv_command,temp_use_distributed,option, machine4);
@@ -854,13 +791,6 @@ command_2string(lav2yuv_command, lav2yuv_string);
                                                     option, machine4, ext);
       command_2string(mpeg2enc_command, mpeg2enc_string); 
       sprintf(lav2yuv_string,"%s |%s", lav2yuv_string, mpeg2enc_string);
-    }
-  else if ( strcmp(ext,"divx") == 0 )
-    {
-      create_command_yuv2divx(yuv2divx_command, temp_use_distributed,
-                                                    option, machine4, ext);
-      command_2string(yuv2divx_command, yuv2divx_string); 
-      sprintf(lav2yuv_string,"%s |%s", lav2yuv_string, yuv2divx_string);
     }
   else if ( strcmp(ext,"mjpeg") == 0 )
     {
@@ -1030,10 +960,6 @@ FILE *fp;
   if( (t_script.dvd & bit_full ) || (t_script.dvd & bit_mplex) )
     create_mplex(fp, &encoding_dvd, &machine4dvd, "dvd");
 
-  /* Creating the divx lines */
-  if( t_script.divx & bit_full ) 
-    create_video(fp, &encoding_divx, &machine4divx, "divx");
-
   /* Creating the yuv2lav lines */
   if( t_script.yuv2lav & bit_video )
     create_video(fp, &encoding_yuv2lav, &machine4yuv2lav, "mjpeg");
@@ -1079,7 +1005,6 @@ void init_temp ()
   t_script.vcd    = script.vcd;
   t_script.svcd   = script.svcd;
   t_script.dvd    = script.dvd;
-  t_script.divx   = script.divx;
   t_script.yuv2lav= script.yuv2lav;
 }
 
@@ -1095,7 +1020,6 @@ void accept_changes(GtkWidget *widget, gpointer data)
   script.vcd    = t_script.vcd;
   script.svcd   = t_script.svcd;
   script.dvd    = t_script.dvd;
-  script.divx   = t_script.divx;
   script.yuv2lav= t_script.yuv2lav;
 }
 
@@ -1178,15 +1102,6 @@ void set_dvd(GtkWidget *widget, gpointer data)
     t_script.dvd = (t_script.dvd | ((gint)data));
   else
     t_script.dvd = (t_script.dvd & (~(gint)data));
-}
- 
-/* Here we have the callback for the divx settings */
-void set_divx(GtkWidget *widget, gpointer data)
-{
-  if (GTK_TOGGLE_BUTTON (widget)->active)
-    t_script.divx = (t_script.divx | ((gint)data));
-  else
-    t_script.divx = (t_script.divx & (~(gint)data));
 }
  
 /* Here we have the callback for the yuv2lav settings */
@@ -1424,29 +1339,13 @@ int tx, ty;
   tx++;
 }
 
-/* Here we create the check boxes for the field divx */
-void create_checkbox_divx(GtkWidget *table) 
-{
-int tx, ty;
-  
-  tx = 4;
-  ty = 7;
-
-  divx_f = gtk_check_button_new ();
-  gtk_table_attach_defaults (GTK_TABLE(table),divx_f,tx,tx+1,ty,ty+1);
-  gtk_signal_connect (GTK_OBJECT (divx_f), "toggled",
-                      GTK_SIGNAL_FUNC (set_divx), (gpointer) 8);
-  gtk_widget_show (divx_f);
-  tx++;
-}
-
 /* Here we create the check boxes for the field yuv2lav */
 void create_checkbox_yuv2lav(GtkWidget *table)
 {
 int tx, ty;
 
   tx = 2;
-  ty = 8;
+  ty = 7;
 
   yuv2lav_v = gtk_check_button_new ();
   gtk_table_attach_defaults (GTK_TABLE(table),yuv2lav_v,tx,tx+1,ty,ty+1);
@@ -1485,7 +1384,7 @@ ty = 9;
   gtk_widget_show(label);
   tx++;
 
-  label = gtk_label_new (" Full ");
+  label = gtk_label_new (" All ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
   tx++;
@@ -1523,11 +1422,6 @@ ty = 9;
   gtk_widget_show(label);
   ty++;
 
-  label = gtk_label_new (" DivX ");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
-  gtk_widget_show(label);
-  ty++;
-
   label = gtk_label_new (" MJPEG ");
   gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
   gtk_widget_show(label);
@@ -1539,7 +1433,6 @@ ty = 9;
   create_checkbox_vcd     (table);
   create_checkbox_svcd    (table);
   create_checkbox_dvd     (table);
-  create_checkbox_divx    (table);
   create_checkbox_yuv2lav (table);
 
   gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
@@ -1589,7 +1482,7 @@ GtkWidget *script_window, *vbox, *hbox, *separator, *label;
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 5);
   gtk_widget_show (hbox); 
 
-  label = gtk_label_new (" Create Script for : ");
+  label = gtk_label_new (" Create script for : ");
   gtk_box_pack_start (GTK_BOX (vbox), label, FALSE, TRUE, 5);  
   gtk_widget_show (label);
 

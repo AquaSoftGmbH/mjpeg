@@ -42,7 +42,6 @@
 void open_mpeg_window(GtkWidget *widget, gpointer data);
 void accept_mpegoptions(GtkWidget *widget, gpointer data);
 void create_audio_mplex_layout(GtkWidget *hbox);
-void create_divx_options(GtkWidget *hbox);
 void create_yuv2lav_options(GtkWidget *hbox);
 void create_yuv2mpeg_layout(GtkWidget *hbox);
 void create_sound_encoding (GtkWidget *table, int *tx,int *ty);
@@ -51,7 +50,6 @@ void create_denoise_layout (GtkWidget *table, int *tx, int *ty);
 void create_video_options_layout (GtkWidget *table, int *tx, int *ty);
 void create_yuvscaler_layout (GtkWidget *table, int *tx, int *ty);
 void create_video_layout (GtkWidget *table, int *tx, int *ty);
-void create_divx_layout (GtkWidget *table, int *tx, int *ty);
 void create_yuv2lav_layout (GtkWidget *table, int *tx, int *ty);
 void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
 void set_audiobitrate (GtkWidget *widget, gpointer data);
@@ -71,7 +69,6 @@ void show_data_lav2yuv(gpointer task);
 void show_data_yuvtools(gpointer task);
 void show_data_mpeg2enc(gpointer task);
 void show_data_mplex(gpointer task);
-void show_data_divx(gpointer task);
 void show_data_yuv2lav(gpointer task);
 void set_decoderbuffer(GtkWidget *widget, gpointer data);
 void set_datarate (GtkWidget *widget, gpointer data);
@@ -85,9 +82,6 @@ void update_vbr(void);
 void set_interlacing (GtkWidget *widget, gpointer data);
 void set_use_yuvdenoise(GtkWidget *widget, gpointer data);
 void set_use_deinterlace(GtkWidget *widget, gpointer data);
-void set_divxaudio (GtkWidget *widget, gpointer data);
-void set_divxvideo (GtkWidget *widget, gpointer data);
-void set_divxcodec (GtkWidget *widget, gpointer data);
 void set_2lav_interlacing (GtkWidget *widget, gpointer data);
 void set_sharpen (GtkWidget *widget, gpointer data);
 void set_thhold (GtkWidget *widget, gpointer data);
@@ -113,8 +107,8 @@ GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr;
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
 GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
 GtkWidget *combo_streamrate, *combo_entry_interlacecorr, *switch_yuvdenoise;
-GtkWidget *combo_entry_divxaudio, *combo_entry_divxvideo, *combo_entry_quality; 
-GtkWidget *combo_entry_divxcodec, *combo_entry_format,*combo_entry_maxfilesize;
+GtkWidget *combo_entry_quality; 
+GtkWidget *combo_entry_format,*combo_entry_maxfilesize;
 GtkWidget *combo_entry_interlace, *switch_deinterlace, *combo_entry_sharp;
 GtkWidget *combo_entry_thhold, *combo_entry_average;
 
@@ -299,27 +293,6 @@ if (tempenco.nonvideorate != 0)
   else
     sprintf(val,"%i",tempenco.streamdatarate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_streamrate), val);
-}
-
-/* setting the values of the GTK_ENTRY's for the divx options */
-void show_data_divx(gpointer task)
-{
-char val[LONGOPT];
-
-  if (tempenco.audiobitrate != 0)
-    sprintf(val,"%i",tempenco.audiobitrate);
-  else
-    sprintf(val,"default");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_divxaudio),val);
-
-  if (tempenco.bitrate != 0)
-    sprintf(val,"%i",tempenco.bitrate);
-  else
-    sprintf(val,"default");
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_divxvideo),val);
-
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_divxcodec),tempenco.codec);
-
 }
 
 /* setting the values of the GTK_ENTRY's for the lav2yuv options */
@@ -850,48 +823,6 @@ char *test;
 
   if (verbose)
     printf(" selected audio bitrate: %i \n", tempenco.audiobitrate);
-}
-
-/* set output bitrate for the divx audio */
-void set_divxaudio (GtkWidget *widget, gpointer data)
-{
-char *test;
-
-  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
-    
-  tempenco.audiobitrate = atoi ( test );
-  if ( (tempenco.audiobitrate < 32) || (tempenco.audiobitrate > 384))
-    tempenco.audiobitrate = 0;
-
-  if (verbose)
-    printf(" selected divx audio bitrate: %i \n", tempenco.audiobitrate);
-}
-
-/* set output bitrate for the divx video */
-void set_divxvideo (GtkWidget *widget, gpointer data)
-{
-char *test;
-
-  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
-    
-  tempenco.bitrate = atoi ( test );
-  if ( (tempenco.bitrate < 500 ) || (tempenco.bitrate > 10000))
-    tempenco.bitrate = 0;
-
-  if (verbose)
-    printf(" selected divx video bitrate: %i \n", tempenco.bitrate);
-}
-
-/* set output bitrate for the divx video */
-void set_divxcodec (GtkWidget *widget, gpointer data)
-{
-char *test;
-
-  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
-  strncpy(tempenco.codec,test,LONGOPT);   
-
-  if (verbose)
-    printf(" selected divx codec bitrate: %s \n", tempenco.codec);
 }
 
 /* set samplerate for the audio */
@@ -1756,83 +1687,6 @@ GList *yuv2lav_filesize = NULL;
 
 }
 
-/* create the divx specific options */
-void create_divx_layout (GtkWidget *table, int *tx, int *ty)
-{
-GtkWidget *label1, *combo_divxaudio, *combo_divxvideo, *combo_divxcodec;
-GList *divxvideo = NULL;
-GList *divxaudio = NULL;
-GList *divxcodec = NULL;
-
-   divxaudio = g_list_append (divxaudio, "default");
-   divxaudio = g_list_append (divxaudio, "56");
-   divxaudio = g_list_append (divxaudio, "128");
-   divxaudio = g_list_append (divxaudio, "160");
-   divxaudio = g_list_append (divxaudio, "192");
-   divxaudio = g_list_append (divxaudio, "224");
-
-   divxvideo = g_list_append (divxvideo, "default");
-   divxvideo = g_list_append (divxvideo, "1000");
-   divxvideo = g_list_append (divxvideo, "1500");
-   divxvideo = g_list_append (divxvideo, "2200");
-   divxvideo = g_list_append (divxvideo, "3500");
-
-   divxcodec = g_list_append (divxcodec, "DIV3");
-   divxcodec = g_list_append (divxcodec, "DIV4");
-   divxcodec = g_list_append (divxcodec, "DIV5");
-   divxcodec = g_list_append (divxcodec, "DIV6");
-
-  label1 = gtk_label_new ("  Audio Bitrate: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_divxaudio = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_divxaudio), divxaudio);
-  combo_entry_divxaudio = GTK_COMBO (combo_divxaudio)->entry;
-  gtk_widget_set_usize (combo_divxaudio, 50, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_divxaudio), "changed",
-                      GTK_SIGNAL_FUNC (set_divxaudio), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_divxaudio,
-                                             *tx+1,*tx+2,*ty,*ty+1);
-  gtk_widget_show (combo_divxaudio);
-  (*ty)++;
-
-
-  label1 = gtk_label_new ("  Video Bitrate: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_divxvideo = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_divxvideo), divxvideo);
-  combo_entry_divxvideo = GTK_COMBO (combo_divxvideo)->entry;
-  gtk_widget_set_usize (combo_divxvideo, 50, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_divxvideo), "changed",
-                      GTK_SIGNAL_FUNC (set_divxvideo), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_divxvideo,
-                                             *tx+1,*tx+2,*ty,*ty+1);
-  gtk_widget_show (combo_divxvideo);
-  (*ty)++;
-
-  label1 = gtk_label_new ("  Divx Codec: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_divxcodec = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_divxcodec), divxcodec);
-  combo_entry_divxcodec = GTK_COMBO (combo_divxcodec)->entry;
-  gtk_widget_set_usize (combo_divxcodec, 50, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_divxcodec), "changed",
-                      GTK_SIGNAL_FUNC (set_divxcodec), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_divxcodec,
-                                             *tx+1,*tx+2,*ty,*ty+1);
-  gtk_widget_show (combo_divxcodec);
-  (*ty)++;
-
-}
-
 /* Create the audio and mplex layout */
 void create_audio_mplex_layout(GtkWidget *hbox)
 {
@@ -1892,35 +1746,6 @@ ty = 9;
 
   gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
   gtk_widget_show(table);
-}
-
-void create_divx_options(GtkWidget *hbox)
-{
-GtkWidget *label, *table;
-int tx, ty; /*  table size x, y */
-
-tx = 2;
-ty = 9;
-
-  table = gtk_table_new (tx,ty, FALSE);
-  tx = 0;
-  ty = 0;
-
-  label = gtk_label_new (" DivX Encoding options: ");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
-  gtk_widget_show(label);
-  ty++;
-
-  create_video_options_layout(table, &tx, &ty);
-
-  create_yuvscaler_layout (table, &tx, &ty);
-
-  create_denoise_layout(table, &tx, &ty);
-
-  create_divx_layout(table, &tx, &ty);
-
-  gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
-  gtk_widget_show(table); 
 }
 
 void create_yuv2lav_options(GtkWidget *hbox)
@@ -2049,8 +1874,6 @@ if (g_list_length (yuv2lav_interlace) == 0)
     point = &encoding_svcd;
   else if (strcmp ((char*)data,"DVD") == 0)
     point = &encoding_dvd;
-  else if (strcmp ((char*)data,"DivX") == 0)
-    point = &encoding_divx;
   else if (strcmp ((char*)data,"MJPEG") == 0)
     point = &encoding_yuv2lav;
   else 
@@ -2063,15 +1886,7 @@ if (g_list_length (yuv2lav_interlace) == 0)
   hbox = gtk_hbox_new (FALSE, 10);
   vbox = gtk_vbox_new (FALSE, 10);
 
-  if ( strcmp(data,"DivX") == 0)
-    {
-      create_divx_options(hbox);
-
-      show_data_lav2yuv  (data);
-      show_data_yuvtools (data);
-      show_data_divx     (data);
-    }
-  else if ( strcmp(data,"MJPEG") == 0)
+  if ( strcmp(data,"MJPEG") == 0)
     {
       create_yuv2lav_options(hbox);
 
