@@ -57,21 +57,52 @@ static void set_pic_params( int decode,
 	picture->decode = decode;
 	picture->dc_prec = opt_dc_prec;
 	picture->prog_frame = opt_prog_frame;
-	picture->repeatfirst = 0;
 	picture->secondfield = 0;
 	picture->ipflag = 0;
 
+		
 	/* Handle picture structure... */
 	if( fieldpic )
 	{
 		picture->pict_struct = opt_topfirst ? TOP_FIELD : BOTTOM_FIELD;
 		picture->topfirst = 0;
+		picture->repeatfirst = 0;
 	}
-	else
+
+	/* Handle 3:2 pulldown frame pictures */
+	else if( pulldown_32 )
 	{
 		picture->pict_struct = FRAME_PICTURE;
+		switch( picture->present % 4 )
+		{
+		case 0 :
+			picture->repeatfirst = 1;
+			picture->topfirst = opt_topfirst;			
+			break;
+		case 1 :
+			picture->repeatfirst = 0;
+			picture->topfirst = !opt_topfirst;
+			break;
+		case 2 :
+			picture->repeatfirst = 1;
+			picture->topfirst = !opt_topfirst;
+			break;
+		case 3 :
+			picture->repeatfirst = 0;
+			picture->topfirst = opt_topfirst;
+			break;
+		}
+	}
+	
+	/* Handle ordinary frame pictures */
+	else
+
+	{
+		picture->pict_struct = FRAME_PICTURE;
+		picture->repeatfirst = 0;
 		picture->topfirst = opt_topfirst;
 	}
+
 
 	switch ( picture->pict_type )
 	{
@@ -441,10 +472,14 @@ void flip_ref_images( pict_data_s *picture )
 void I_or_P_frame_struct( stream_state_s *ss,
                          pict_data_s *picture )
 {
-	/* Temp ref of I frame in initial closed GOP of sequence is 0 */
+	/* Temp ref of I frame in initial closed GOP of sequence is 0 
+	   We have to be a little careful with the end of stream special-case.
+	 */
 	picture->temp_ref = (ss->i == 0 ) ? ss->i : ss->g+(ss->bigrp_length-1);
 	if (picture->temp_ref >= (nframes-ss->gop_start_frame))
 		picture->temp_ref = (nframes-ss->gop_start_frame) - 1;
+
+	picture->present = (ss->i-ss->g)+picture->temp_ref;
 	if (ss->g==0) /* first displayed frame in GOP is I */
 	{
 		picture->pict_type = I_TYPE;
@@ -474,6 +509,7 @@ void B_frame_struct(  stream_state_s *ss,
 					  pict_data_s *picture )
 {
 	picture->temp_ref = ss->g - 1;
+	picture->present = ss->i+1;
 	picture->pict_type = B_TYPE;
 	picture->gop_start = 0;
 	picture->new_seq = 0;

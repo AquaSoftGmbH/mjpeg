@@ -139,7 +139,7 @@ struct motion_data {
 struct pict_data
 {
 	int decode;					/* Number of frame in stream */
-
+	int present;				/* Number of frame in playbakc order */
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
 	 */

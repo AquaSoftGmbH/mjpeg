@@ -365,17 +365,17 @@ EXTERN int max_encoding_frames; /* Maximum number of concurrent
 
 /* coding model parameters */
 
-EXTERN int N_max; /* number of frames in Group of Pictures (max) */
-EXTERN int N_min;  /* number of frames in Group of Pictures (min) */
-EXTERN int M; /* distance between I/P frames */
-EXTERN int nframes; /* total number of frames to encode
-					   Note: this may start enormous and shrink
-					   down later if the input stream length is
-					   unknown at the start of encoding.
-					 */
-EXTERN int mpeg1; /* ISO/IEC IS 11172-2 sequence */
-EXTERN int fieldpic; /* use field pictures */
-
+EXTERN int N_max;				/* number of frames in Group of Pictures (max) */
+EXTERN int N_min;				/* number of frames in Group of Pictures (min) */
+EXTERN int M;					/* distance between I/P frames */
+EXTERN int nframes;				/* total number of frames to encode
+								   Note: this may start enormous and shrink
+								   down later if the input stream length is
+								   unknown at the start of encoding.
+								*/
+EXTERN int mpeg1;				/* ISO/IEC IS 11172-2 sequence */
+EXTERN int fieldpic;			/* use field pictures */
+EXTERN int pulldown_32;			/* 3:2 Pulldown of movie material */
 
 
 /*

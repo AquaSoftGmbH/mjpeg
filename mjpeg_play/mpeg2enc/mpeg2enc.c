@@ -95,6 +95,8 @@ static int param_min_GOP_size = 12;
 static int param_max_GOP_size = 12;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
+static int param_32_pulldown = 0;
+
 /* reserved: for later use */
 int param_422 = 0;
 
@@ -215,6 +217,7 @@ void Usage(char *str)
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
 	printf("   -S num     Start a new sequence in the output every num Mbytes\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
+	printf("   -p         Generate header flags for 32 pull down of 24fps movie.");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
@@ -231,7 +234,7 @@ int main(argc,argv)
 	int nerr = 0;
 	int n;
 
-	while( (n=getopt(argc,argv,"m:a:f:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stNhO?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stpNhO?")) != EOF)
 	{
 		switch(n) {
 
@@ -347,7 +350,9 @@ int main(argc,argv)
 				nerr++;
 			}
 			break;
-			
+		case 'p' :
+			param_32_pulldown = 1;
+			break;
 		case 's' :
 			param_seq_hdr_every_gop = 1;
 			break;
@@ -450,6 +455,20 @@ int main(argc,argv)
 		}
 		frame_rate_code = param_frame_rate;
 	}
+
+	if( param_32_pulldown )
+	{
+		if( frame_rate_code != 1 && frame_rate_code != 2  )
+		{
+			fprintf( stderr, "3:2 pulldown only sensible for 2400/1001 or 24fps output stream\n" );
+			exit(1);
+		}
+		if( param_fieldpic != 0 )
+		{
+			fprintf( stderr, "3:2 pulldown only sensible for Frame pictures\n");
+			exit(1);
+		}
+	}
 	
 	if( param_aspect_ratio == 0 )
 	{
@@ -459,7 +478,7 @@ int main(argc,argv)
 		}
 	    else if( param_norm == 'n' )
 		{
-			param_aspect_ratio = param_mpeg == 1 ? 12 : 2;
+			param_aspect_ratio = param_mpeg == 1 ? 12 : 1;
 		}
 		else
 		{
@@ -743,11 +762,8 @@ static void init_encoding_parms()
 	M = param_Bgrp_size;             /* I or P frame distance */
 	mpeg1           = (param_mpeg == 1);
 	fieldpic        = (param_fieldpic!=0 && param_fieldpic != 3);
-	/* RJ: horizontal_size, vertical_size, frame_rate_code
-	   are read from stdin! */
-	/* RJ: aspectratio is differently coded for MPEG1 and MPEG2.
-	 *     For MPEG2 aspect ratio is for total image: 2 means 4:3
-	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
+	pulldown_32     = param_32_pulldown;
+
 	aspectratio     = param_aspect_ratio;
 	dctsatlim		= mpeg1 ? 255 : 2047;
 
