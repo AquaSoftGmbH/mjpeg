@@ -216,6 +216,8 @@ int open_video_file(char *filename, EditList *el)
 
    -  Edit list file names
 
+   - lines starting with a colon (:) are ignored for third-party editlist extensions
+
 */
 
 void read_video_files(char **filename, int num_files, EditList *el)
@@ -318,21 +320,24 @@ void read_video_files(char **filename, int num_files, EditList *el)
 
          while(fgets(line,1024,fd))
          {
-            sscanf(line,"%d %d %d",&nl,&n1,&n2);
-            if(nl<0 || nl>=num_list_files)
+            if(line[0]!=':') /* ignore lines starting with a : */
             {
-               fprintf(stderr,"Wrong file number in edit list entry\n");
-               exit(1);
-            }
-            if(n1<0) n1 = 0;
-            if(n2>=el->num_frames[index_list[nl]]) n2 = el->num_frames[index_list[nl]];
-            if(n2<n1) continue;
+               sscanf(line,"%d %d %d",&nl,&n1,&n2);
+               if(nl<0 || nl>=num_list_files)
+               {
+                  fprintf(stderr,"Wrong file number in edit list entry\n");
+                  exit(1);
+               }
+               if(n1<0) n1 = 0;
+               if(n2>=el->num_frames[index_list[nl]]) n2 = el->num_frames[index_list[nl]];
+               if(n2<n1) continue;
 
-            el->frame_list = (long*) realloc(el->frame_list,
-                                (el->video_frames+n2-n1+1)*sizeof(long));
-            if(el->frame_list==0) malloc_error();
-            for(i=n1;i<=n2;i++)
-               el->frame_list[el->video_frames++] = EL_ENTRY(index_list[nl],i);
+               el->frame_list = (long*) realloc(el->frame_list,
+                                   (el->video_frames+n2-n1+1)*sizeof(long));
+               if(el->frame_list==0) malloc_error();
+               for(i=n1;i<=n2;i++)
+                  el->frame_list[el->video_frames++] = EL_ENTRY(index_list[nl],i);
+            }
          }
 
          fclose(fd);
