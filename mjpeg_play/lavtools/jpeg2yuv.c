@@ -2,7 +2,7 @@
 jpeg2yuv
 ========
 
-
+  Converts a collection of JPEG images to a YUV4MPEG stream.
   (see jpeg2yuv -h for help (or have a look at the function "usage"))
   
   Copyright (C) 1999 Gernot Ziegler (gz@lysator.liu.se)
@@ -22,6 +22,8 @@ jpeg2yuv
   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -34,7 +36,7 @@ jpeg2yuv
 #include "mjpeg_logging.h"
 #include "mjpeg_types.h"
 
-#include "yuv4mpeg.h"
+#include "oldyuv4mpeg.h"
 
 #define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
@@ -45,8 +47,7 @@ static int fpscode = 0;
 static uint32_t begin = 0; /* the video frame start */
 static uint32_t numframes = -1; /* -1 means: take all frames */
 
-static int verbose = 0;
-static int debug = 0;
+static int verbose = 1; /* the verbosity of the program (see mjpeg_logging.h) */
 static int interlaced = 0; /* tells if the YUV4MPEG stream shall be interlaced */
 static int interlaced_top_first = 0; /* tells if the YUV4MPEG's frames are bottom first or top first */
 
@@ -76,7 +77,7 @@ void usage(char *prog)
     if (NULL != (h = (char *)strrchr(prog,'/')))
 	prog = h+1;
     
-  fprintf(stderr,
+  mjpeg_error(
 	  "%s pipes a stream of JPEG files to stdout,\n"
 	  "making the direct encoding of MPEG files possible under mpeg2enc.\n"
 	  "Any JPEG format supported by libjpeg can be read.\n"
@@ -86,14 +87,14 @@ void usage(char *prog)
 	  "usage: %s [ options ]\n"
 	  "\n"
 	  "where options are ([] shows the defaults):\n"
-	  "  -v          verbose operation	       \n"
-	  "  -d          debug information	       \n"
+	  "  -v num      Verbosity [0..2] (default 1)\n"
 	  "  -b framenr. start at given frame nr.               [0]\n"
 	  "  -n numframes processes the given nr. of frames     [all]\n"
 	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
 	  "               {1} JPEG filename prefix (e g rendered_ )\n"
 	  "               {2} Counting placeholder (like in C, printf, eg 06 ))\n"
-	  "               {1} JPEG filename postfix (e g .jpeg)\n"
+	  "  -I force interlaced mode (default:autodetect)"
+	  "  -T x : (only for Interlaced) x=1: Top picture first, x=0: Bottom picture first\n" 
 	  "\n"
 	  "\n"
 	  "examples:\n"
@@ -121,15 +122,9 @@ void parse_commandline(int argc, char ** argv)
 
 /* parse options */
  for (;;) {
-   if (-1 == (c = getopt(argc, argv, "dIhvb:j:n:f:")))
+   if (-1 == (c = getopt(argc, argv, "Ihv:T:b:j:n:f:")))
      break;
    switch (c) {
-   case 'v':
-     verbose = 1;
-     break;
-   case 'd':
-     debug = 1;
-     break;
    case 'j':
      jpegformatstr = optarg;
      break;
@@ -145,6 +140,14 @@ void parse_commandline(int argc, char ** argv)
    case 'I':
      interlaced = 1;
      break;
+   case 'T':
+     interlaced_top_first = atoi(optarg);
+     break;
+   case 'v':
+     verbose = atoi(optarg);
+     if (verbose < 0 ||verbose > 2) 
+       mjpeg_error_exit1( "-v option requires arg 0, 1, or 2\n");    
+     break;     
    case 'h':
    default:
      usage(argv[0]);
@@ -152,13 +155,14 @@ void parse_commandline(int argc, char ** argv)
    }
  }
  if (jpegformatstr == NULL)
-   { fprintf(stderr, "%s needs an input filename to proceed. (-j option)\n\n", argv[0]); 
+   { 
+     mjpeg_error("%s needs an input filename to proceed. (-j option)\n\n", argv[0]); 
      usage(argv[0]); 
      exit(1);
    }
 
  if (framerate == -1.0)
-   { fprintf(stderr, "%s needs the framerate of the forthcoming YUV4MPEG movie. (-f option)\n\n", argv[0]); 
+   { mjpeg_error("%s needs the framerate of the forthcoming YUV4MPEG movie. (-f option)\n\n", argv[0]); 
      usage(argv[0]); 
      exit(1);
    }
@@ -178,12 +182,12 @@ int init_parse_files()
   FILE *jpegfile;
 
   snprintf(jpegname, sizeof(jpegname), jpegformatstr, begin);
-  if (debug) fprintf(stderr, "Analyzing %s to get the right pic params\n", jpegname);
+  mjpeg_debug("Analyzing %s to get the right pic params\n", jpegname);
   jpegfile = fopen(jpegname, "r");
 
   if (jpegfile == NULL)
     {
-      fprintf(stderr, "While opening: \"%s\"\n", jpegname);
+      mjpeg_error("While opening: \"%s\"\n", jpegname);
       perror("Fatal: Couldn't open first given JPEG frame"); 
       exit(1);
     }
@@ -200,12 +204,9 @@ int init_parse_files()
       jpeg_start_decompress(&dinfo);
       
       if(dinfo.output_components != 3)
-	{
-	  fprintf(stderr, "Output components of JPEG image = %d, must be 3\n", dinfo.output_components);
-	  exit(1);
-	}
+	mjpeg_error_exit1("Output components of JPEG image = %d, must be 3\n", dinfo.output_components);
       
-      fprintf(stderr, "Image dimensions are %dx%d, framerate = %f frames/s\n",
+      mjpeg_info("Image dimensions are %dx%d, framerate = %f frames/s\n",
 	      dinfo.image_width, dinfo.image_height, framerate);
       image_width = dinfo.image_width;
       image_height = dinfo.image_height;
@@ -217,30 +218,29 @@ int init_parse_files()
   fpscode = yuv_fps2mpegcode (framerate);
   if (fpscode == 0) 
     {
-      fprintf(stderr, "%2.0f frames/s is an unsupported framerate !\n"
+      mjpeg_error_exit1("%2.0f frames/s is an unsupported framerate !\n"
 	      "use  23.976\n"
 	      "24.000, /* 24fps movie */\n"
 	      "25.000, /* PAL */\n"
 	      "29.970, /* NTSC */\n"
 	      "30.000, 50.000, 59.940, 60.000\n"
 	      "\n", framerate);
-      exit(10);
     }
   else
     {
-      if (verbose) fprintf(stderr, "movie frame rate is: %f frames/s\n", framerate);
+      mjpeg_info("movie frame rate is: %f frames/s\n", framerate);
     }
 
   if (interlaced == -1)
     {
       if (image_height / image_width >= 2)
 	{
-	  if (verbose) fprintf(stderr, "INTERLACED format detected\n");      
+	  mjpeg_info("INTERLACED format detected\n");      
 	  interlaced = 1;
 	}
       else
 	{
-	  if (verbose) fprintf(stderr, "(non_interlaced input assumed)\n");      
+	  mjpeg_info("(non_interlaced input assumed)\n");      
 	  interlaced = 0;
 	}
     }
@@ -250,19 +250,16 @@ int init_parse_files()
       switch(interlaced_top_first)
 	{
 	case -1:
-	  {
-	    fprintf(stderr, "You have not specified the order of the frames (use the -T option)\n");      
-	    exit(9);
-	  }; break;
+	  mjpeg_error_exit1("You have not specified the order of the frames (use the -T option)\n");      
+	  break;
 	case 0:
-	  if (verbose) fprintf(stderr, "Interlaced frame order: Bottom frame first.\n");      
+	  mjpeg_info("Interlaced frame order: Bottom frame first.\n");      
 	  break;
 	case 1:
-	  if (verbose) fprintf(stderr, "Interlaced frame order: Top frame first.\n");      
+	  mjpeg_info("Interlaced frame order: Top frame first.\n");      
 	  break;
 	default:
-	  fprintf(stderr, "Invalid Top/Bottom paramter (only 0 or 1 allowed for -T)\n");      
-	  exit(9);
+	  mjpeg_error_exit1("Invalid Top/Bottom paramter (only 0 or 1 allowed for -T)\n");      
 	}
     }
 
@@ -283,7 +280,7 @@ int generate_YUV4MPEG()
   static unsigned char jpegdata[MAXPIXELS]; // that ought to be enough
   unsigned char *yuvbufptr[3];
 
-  if (verbose) fprintf(stderr, "Now generating YUV4MPEG stream.\n");
+  mjpeg_info("Now generating YUV4MPEG stream.\n");
 
   yuvbufptr[0] = ybuffer; 
   yuvbufptr[1] = ubuffer; 
@@ -298,34 +295,36 @@ int generate_YUV4MPEG()
 
       if (jpegfile == NULL)
 	{ 
-	  if (verbose) fprintf(stderr, "While opening %s:\n", jpegname);
+	  mjpeg_info("While opening %s:\n", jpegname);
 	  
 	  if (numframes != -1)
 	    {
 	      if (verbose) perror("Warning: Read from jpeg file failed (non-critical)");
-	      //if (verbose) fprintf(stderr, "(Rewriting latest frame, size %lld, instead)\n", read_video_bytes);
-	      if (verbose) fprintf(stderr, "(Rewriting latest frame instead)\n");
+	      mjpeg_info("(Rewriting latest frame instead)\n");
+
+	      mjpeg_debug("Old frame recycled, now writing to output stream.\n");
+	      yuv_write_frame (STDOUT_FILENO, yuvbufptr, image_width, image_height);
 	    }
 	  else
 	    {
-	      if (verbose) fprintf(stderr, "Last frame encountered (%s invalid). Stop.\n", jpegname);
+	      mjpeg_info("Last frame encountered (%s invalid). Stop.\n", jpegname);
 	      newpicsavail = 0;
 	    }
 	} 
       else
 	{
-	  if (debug) fprintf(stderr, "Preparing frame\n");
+	  mjpeg_debug("Preparing frame\n");
 	  
 	  jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
 	  fclose(jpegfile);
 	  
-	  if (verbose) fprintf(stderr, "Processing %s, size %d (video index is %d).\n", jpegname, jpegsize, vid_index);
+	  mjpeg_info("Processing %s, size %d (video index is %d).\n", jpegname, jpegsize, vid_index);
 
 	  decode_jpeg_raw (jpegdata, jpegsize,
 			   0, 420, image_width, image_height,
 			   ybuffer, ubuffer, vbuffer);
 	  
-	  if (debug) fprintf(stderr, "Frame decoded, now writing to output stream.\n");
+	  mjpeg_debug("Frame decoded, now writing to output stream.\n");
 	  yuv_write_frame (STDOUT_FILENO, yuvbufptr, image_width, image_height);
 	}
 
@@ -345,14 +344,16 @@ int main(int argc, char ** argv)
 { 
   parse_commandline(argc, argv);
 
-  if (debug) fprintf(stderr, "Parsing & checking input files.\n");
-  if (init_parse_files() == 0)
-  { fprintf(stderr, "* Error processing the JPEG input.\n"); exit(1); }
+  mjpeg_default_handler_verbosity(verbose);
 
-  if (debug) fprintf(stderr, "Now generating YUV4MPEG output stream.\n");
+  mjpeg_info("Parsing & checking input files.\n");
+  if (init_parse_files() == 0)
+  { mjpeg_error_exit1("* Error processing the JPEG input.\n"); }
+
+  mjpeg_debug("Now generating YUV4MPEG output stream.\n");
   if (generate_YUV4MPEG() == 0)
-  { fprintf(stderr, "* Error processing the input files.\n");
-    exit(1);
+  { 
+    mjpeg_error_exit1("* Error processing the input files.\n");
   }
 
   return 0;

@@ -54,7 +54,7 @@ endif
 bin_PROGRAMS = \
 	lavplay   lavrec   lav2wav  lav2yuv yuvmedianfilter  lavaddwav \
 	lavvideo  lavtrans $(GLAV_BIN)  ypipe yuv2lav testrec \
-	transist.flt matteblend.flt lavpipe yuvscaler yuvplay \
+	transist.flt matteblend.flt lavpipe yuvscaler yuvplay jpeg2yuv \
 	$(AVIFILE_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h oldyuv4mpeg.h jpegutils.h \
@@ -89,6 +89,9 @@ testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
 lav2yuv_SOURCES = lav2yuv.c oldyuv4mpeg.c lav_common.c $(lav_headers)
 lav2yuv_LDADD = -L$(top_srcdir)/utils -lutils \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
+
+jpeg2yuv_SOURCES = jpeg2yuv.c oldyuv4mpeg.c jpegutils.c 
+jpeg2yuv_LDADD = -L$(top_srcdir)/utils -lutils liblavjpeg.la ${GTK_LIBS}
 
 lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c oldyuv4mpeg.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lutils \
