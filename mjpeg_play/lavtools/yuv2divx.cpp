@@ -56,10 +56,6 @@
 #include <aviutil.h>
 #endif
 #include <avifile/except.h>
-				// To be sure to get avifile version
-				// header. Needed if some programmer puts version.h
-				// in the standard include directory. Also allows 
-				// local version.h
 #include <math.h>		// M_PI is better than included PI constant
 #include <sys/time.h>
 #include <unistd.h>		// Needed for the access call to check if file exists
@@ -71,19 +67,41 @@
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 #include <creators.h>
 #endif
-
 #include <config.h>
-#include <stdio.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 
 extern "C" 
 {
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 }
+
+typedef struct {
+	char riff[4] ;	// always "RIFF"
+	int  length ;	// Length (little endian)
+	char format[4] ; // fourcc with the format.  We only want WAVE
+} RiffHeader ;
+
+typedef struct {
+	char  fmt[4] ;	// "fmt_" (ASCII characters)
+	int   length ;	// chunk length
+	short que ;	// ??? - always 1
+	short channels;	// channels
+	int   rate ;	// samples per second
+	int   bps ;	// bytes per second
+	short bytes ;	// bytes per sample:	1 = 8 bit Mono, 
+			//			2 = 16 bit Mono/8 bit stereo
+			//			4 = 16 bit Stereo
+	short bits ;	// bits per sample
+} WaveHeader ;
+
+/* The DATA chunk */
+
+typedef struct {
+	char data[4] ;	// chunk type ("DATA")
+	int  length ;	// length
+} DataHeader ;
 
 int got_sigint = 0;
 
@@ -129,8 +147,9 @@ print_help (void)
   printf ("  -n --noise\t\tnoise filter (0..2, default 0)\n");
   printf ("  -g --guess\t\tguess values for -c and -z options\n");
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-  printf("  -k --keyframes\tset keyframes attribute (default 15)\n");
-  printf("  -C --crispness\tset crispness attribute (default 20)\n");
+  printf ("  -k --keyframes\tset keyframes attribute (default 15)\n");
+  printf ("  -C --crispness\tset crispness attribute (default 20)\n");
+  printf ("  -A --audio\t\tspecify audio file\n");
 #endif
 //  printf
 //    ("  -u --flip_video\tflip picture (use if output video stream is upside-down,\n\t\t\tdefault off)\n");
@@ -144,7 +163,8 @@ static void
 display_license (void)
 {
   printf ("\nThis is %s version %s \n", APPNAME, APPVERSION);
-  printf ("%s", "Copyright (C) Ulrich Hecht <uli@emulinks.de> \n\
+  printf ("%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx> \n\
+Based on code from Ulricht Hecht and the MJPEG Square. \n\
 This program is distributed in the hope that it will be useful,\n\
 but WITHOUT ANY WARRANTY; without even the implied warranty of\n\
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\
@@ -169,6 +189,7 @@ main (int argc, char **argv)
   int copt;			// getopt switch variable
 
   char *outputfile = NULL;	// gcc howled at some point so I put it here
+  char *audiofile = NULL;
   int opt_divxbitrate = 1800;
   int opt_mp3bitrate = -1;
   int opt_codec = fccDIV3;
@@ -184,6 +205,12 @@ main (int argc, char **argv)
   int opt_y = 0;
   int opt_w = 0;
   int opt_h = 0;
+
+  FILE* fd_audio;
+  char* audio_buffer;
+  int audioexist;
+  int audio_bytesperframe;
+  int audio_bytes;
 
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
   int opt_keyframes=15;
@@ -235,8 +262,8 @@ main (int argc, char **argv)
 	{"forcedaudiorate", required_argument, NULL, 's'},
 	{"width", required_argument, NULL, 'w'},
 	{"height", required_argument, NULL, 'h'},
-	{"audio_stream", required_argument, NULL, 'A'},
-	{"video_stream", required_argument, NULL, 'V'},
+	{"audio", required_argument, NULL, 'A'},
+	{"video", required_argument, NULL, 'V'},
 	{"number_cpus", required_argument, NULL, 'n'},
 	{"outputfile", required_argument, NULL, 'o'},
 	{"droplsb", required_argument, NULL, 'd'},
@@ -254,10 +281,10 @@ main (int argc, char **argv)
 // b removed as it doesn't seem to work properly with this input.
       copt =
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-	getopt_long (argc, argv, "fa:w:h:e:c:b:o:s:n:d:gvk:C:", long_options,
+	getopt_long (argc, argv, "A:fa:w:h:e:c:b:o:s:n:d:gvk:C:", long_options,
 		     &option_index);
 #else
-	getopt_long (argc, argv, "fa:w:h:e:c:b:o:s:n:d:gv", long_options,
+	getopt_long (argc, argv, "A:fa:w:h:e:c:b:o:s:n:d:gv", long_options,
 		     &option_index);
 #endif
       if (copt == -1)
@@ -309,6 +336,11 @@ main (int argc, char **argv)
 
 	case 'o':
 	  outputfile = optarg;
+	  break;
+
+	case 'A':
+	  audiofile = optarg;
+	  audioexist = 1;
 	  break;
 
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
@@ -430,16 +462,16 @@ main (int argc, char **argv)
 	switch (frame_rate_code)
 	{
 		case 2:
-			time_between_frames = 1000000 * 1.0 / 24.0;
 			framerate = 24.0;
+			time_between_frames = 1000000 * (1.0 / framerate);
 			break;
 		case 3:
-			time_between_frames = 1000000 * 1.0 / 25.0;
 			framerate = 25.0;
+			time_between_frames = 1000000 * (1.0 / framerate);
 			break;
 		case 4:
-			time_between_frames = 1000000 * 1.0 / 29.997;
-			framerate = 29.997;
+			framerate = 30000.0/1001.0;
+			time_between_frames = 1000000 * (1.0 / framerate);
 			break;
 		default:
 			mjpeg_error_exit1("Unknown format!!\n");
@@ -492,6 +524,72 @@ main (int argc, char **argv)
 	unsigned char *framebuffer = new unsigned char[bh.biWidth * bh.biHeight * 3];
 	CImage imtarget ((BitmapInfo *) & bh, framebuffer, false);
 
+	RiffHeader	riffheader;
+	WaveHeader	waveheader;
+	DataHeader	dataheader;
+
+	if (audioexist>0)
+	{
+
+		fd_audio = fopen(audiofile, "r");
+		if (fd_audio == 0)
+		{
+			mjpeg_error_exit1("Audio file could not be opened\n");
+		}
+
+		size_t	bytesread;
+		bytesread = fread(&riffheader, 1, sizeof(RiffHeader), fd_audio);
+		if (bytesread != sizeof(RiffHeader))
+		{ 	//error
+			mjpeg_error_exit1("Audio file too short\n");
+		}
+	
+		if (  (strncmp(riffheader.riff, "RIFF", 4) != 0)
+		   || (strncmp(riffheader.format, "WAVE", 4) != 0)
+		   )
+		{	// error
+			mjpeg_error_exit1("Audio file invalid\n");
+		}
+
+		bytesread = fread(&waveheader, 1, sizeof(WaveHeader), fd_audio);	
+		if (bytesread != sizeof (WaveHeader))
+		{ 	// error
+			mjpeg_error_exit1("No Wave Header in audio file\n");
+		}
+	
+		bytesread = fread(&dataheader, 1, sizeof(DataHeader), fd_audio);
+		if (bytesread != sizeof (DataHeader))
+		{ 	// error
+			mjpeg_error_exit1("No Data in audio file\n");
+		}
+	
+		fprintf(stderr, "Audio file is %d bytes long.\n", dataheader.length) ;
+	}
+
+	WAVEFORMATEX format;
+	memset(&format, 0, sizeof(WAVEFORMATEX));
+	int audiosampsperframe = 0;
+
+	if (audioexist > 0)
+	{	
+		format.wFormatTag = mmioFOURCC( waveheader.fmt[0]
+					, waveheader.fmt[1]
+					, waveheader.fmt[2]
+					, waveheader.fmt[3]
+					);
+		format.nChannels = waveheader.channels;
+		format.nSamplesPerSec = waveheader.rate;
+		format.nBlockAlign = (waveheader.channels * waveheader.bits) / 8;
+		format.nAvgBytesPerSec = waveheader.bps;
+		format.wBitsPerSample = waveheader.bits;
+		format.cbSize = sizeof(WAVEFORMATEX);
+
+
+		audio_bytesperframe = (int) ( ( ((double) waveheader.rate) / framespersec) * ((double) waveheader.bits/8 * waveheader.channels) );
+		fprintf(stderr, "ABF = %i\n", audio_bytesperframe);
+		audio_buffer = (char*) malloc(audio_bytesperframe);
+	}
+
 	int fccHandler = opt_codec;
 	IAviWriteFile *avifile;
 
@@ -516,6 +614,30 @@ main (int argc, char **argv)
 
 	stream->Start ();
 
+	IAviAudioWriteStream *astream;
+
+	if (audioexist > 0)
+	{
+		if (opt_mp3bitrate = -1)
+		{
+			switch (waveheader.rate)
+			{
+			case 48000:
+				opt_mp3bitrate = 80 * waveheader.channels;
+				break;
+			case 44100:
+				opt_mp3bitrate = ((waveheader.channels>1)?64:56) * waveheader.channels;
+				break;
+			case 22050:
+				opt_mp3bitrate = 32 * waveheader.channels;
+				break;
+			}
+		}
+
+		astream = avifile->AddAudioStream (0x55, &format, (opt_mp3bitrate * 1000)/8);
+		astream->Start();
+	}	
+
 	struct timeval tv;
 	struct timezone tz = { 0, 0 };
 	gettimeofday (&tv, &tz);
@@ -539,7 +661,7 @@ main (int argc, char **argv)
 	if ((opt_x > 0) || (opt_y > 0) || (opt_h > 0) || (opt_w > 0))
 	{
 		asis = 1;
-		printf(" window (%i, %i, %i, %i)\n", opt_x, opt_y, opt_h, opt_w);
+		printf(" window (%i, %i) height: %i width: %i)\n", opt_x, opt_y, opt_h, opt_w);
 	}
 
 	long oldtime = 0;
@@ -680,6 +802,13 @@ main (int argc, char **argv)
 		}
 
 		stream->AddFrame (&imtarget);
+		if (audioexist)
+		{
+			audio_bytes = fread (audio_buffer, 1, audio_bytesperframe, fd_audio);
+			// get next audio buffer.
+			astream->AddData(audio_buffer, audio_bytes);
+		}
+
 		currentframe++;
 	}
 
@@ -689,6 +818,12 @@ finished:
 	free (yuv[0]) ;
 	free (yuv[1]) ;
 	free (yuv[2]) ;
+
+	if (audioexist > 0)
+	{
+		free (audio_buffer);
+		fclose (fd_audio);
+	}
 
 	if (opt_guess)
 	{

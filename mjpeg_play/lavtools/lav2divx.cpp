@@ -140,7 +140,9 @@ static void
 display_license (void)
 {
   printf ("\nThis is %s version %s \n", APPNAME, APPVERSION);
-  printf ("%s", "Copyright (C) Ulrich Hecht <uli@emulinks.de> \n\
+  printf ("%s", "Copyright (C) Shawn Sulma <lavtools@athos.cx>\n\
+Based on code by Ulrich Hecht <emulinks.de/divx> and the MJPEG Square\n\
+<mjpeg.sourceforge.net>.\n\n\
 This program is distributed in the hope that it will be useful,\n\
 but WITHOUT ANY WARRANTY; without even the implied warranty of\n\
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n\
@@ -448,8 +450,6 @@ main (int argc, char **argv)
       exit (1);
     }
 
-	printf("about to read_video_files\n");
-
 	// SS: I think this try...catch is useless as it's calling a C
 	// function, but (as I said, my C and C++ are limited).
 	try
@@ -464,8 +464,6 @@ main (int argc, char **argv)
 		exit (1);		
 		// Exit never gets called as far as I can tell.
 	}
-
-	printf("After fatal exception catch\n");
 
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
@@ -630,7 +628,7 @@ main (int argc, char **argv)
 	if ((opt_x > 0) || (opt_y > 0) || (opt_h > 0) || (opt_w > 0))
 	{
 		asis = 1;
-		printf(" window (%i, %i, %i, %i)\n", opt_x, opt_y, opt_h, opt_w);
+		printf(" window: (%i, %i) height: %i width: %i)\n", opt_x, opt_y, opt_h, opt_w);
 	}
 
 	long oldtime = 0;
