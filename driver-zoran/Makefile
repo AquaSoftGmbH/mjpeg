@@ -3,7 +3,7 @@
 
 # where the kernel sources are located
 KERNEL_LOCATION=/usr/src/linux
-
+TOPDIR=/usr/src/linux
 #################################################
 # some magic for using linux kernel settings
 # when compiling module(s)
@@ -42,4 +42,4 @@ endif
 
 include $(KERNEL_LOCATION)/Rules.make
 
-dc10.o:  zoran_procfs.c
+zoran.o:  zoran_procfs.c
