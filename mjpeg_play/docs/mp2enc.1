@@ -3,7 +3,7 @@
 .SH "NAME"
 .LP 
 .br 
-mp2enc \- Simple MPEG-2 layer-II audio encoder
+mp2enc \- Simple MPEG-1 layer-II audio encoder
 .br 
 
 .SH "SYNOPSIS"
@@ -26,7 +26,7 @@ mp2enc \- Simple MPEG-2 layer-II audio encoder
 .BI -o \ output_filename
 
 .SH "DESCRIPTION"
-Mp2enc is a simple MPEG layer-II audio encoder.  It is actually a very
+Mp2enc is a simple MPEG-1 layer-II audio encoder.  It is actually a very
 mildly warmed over version of the MPEG Software Simulation Group's
 reference encoder.  It accepts a WAV file or stream on stdin and
 ouputs an a layer-II elementary audio stream.  It is included in the
@@ -60,7 +60,7 @@ This sets the bit-rate of the output stream i kBit/sec.  Typical
 values might be 224kbps for good-quality audio suitable for capturing
 Dolby pro-logic signals.  A rate of 192kbps or 128kbps is reasonable
 for low quality audio (e.g. mono TV audio).  Really high compression
-is, of course, better achieved using MPEG layer III "MP3" audio
+is, of course, better achieved using MPEG-1 layer III ("MP3") audio
 encoding or AAC.
 
 .TP
@@ -72,19 +72,19 @@ sample-rate convert the input signal if necessary.
 .TP
 .BI -s
 Force stereo output.  A mono input signal is channel doubled before
-encoding to make it stereo.  This is useful for many MPEG players
+encoding to make it stereo.  This is useful for players
 which simply can't handle a non-stero signal.
 .TP
 .BI -m
 Force mono output.  A stereo input signal is down-mixed before encoding.
 Useful if you've captured a mono signal in stereo and your player can
-handle mono MPEG.
+handle mono MPEG-1 Layer 2 audio.
 .TP
 .BI -e
 Use CRC error protection.
 .TP
 .BI -V
-Force VCD comaptible output. Same as -b 224 -r 44100 -s.
+Force VCD compatible output. Same as -b 224 -r 44100 -s.
 .TP
 .BI -o \ outputpathname
 The name of the output file to generate.  If '-' is given as the pathname output is written to standard output.
