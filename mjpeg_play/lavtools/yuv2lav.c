@@ -30,11 +30,29 @@
 #include "jpegutils.h"
 #include "lav_io.h"
 
+
+/* max_file_size stuff */
+#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        // 4Tb.  (Most filesystems have 
+                                                            // fundamental limitations around ~Tb)
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)// Is less than 2^31 and 2*10^9
+#if _FILE_OFFSET_BITS == 64
+#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
+#else
+#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_32
+                                  /* Maximum number of Mbytes per file.
+                                     We make a conservative guess since we
+                                     only count the number of bytes output
+                                     and don't know how big the control
+                                     information will be */
+#endif
+
+
 static int   param_quality = 80;
 static char  param_format = 'a';
 static char *param_output = 0;
 static int   param_bufsize = 256*1024; /* 256 kBytes */
 static int   param_interlace = -1;
+static int   param_maxfilesize = MAX_MBYTES_PER_FILE;
 
 static int got_sigint = 0;
 
@@ -49,9 +67,13 @@ static void usage()
 	  "   -f [aA"
 #ifdef HAVE_LIBQUICKTIME
                    "q"
+#else
+                   " "
 #endif
 #ifdef HAVE_LIBMOVTAR
                     "m"
+#else
+                    " "
 #endif
                      "]   output format (AVI"
 #ifdef HAVE_LIBQUICKTIME
@@ -64,8 +86,9 @@ static void usage()
 	  "   -I num      force output interlacing 0:no 1:top 2:bottom field first\n"
 	  "   -q num      JPEG encoding quality [%d%%]\n"
 	  "   -b num      size of MJPEG buffer [%d kB]\n"
-	  "   -o file     output mjpeg file (REQUIRED!) \n",
-	  param_format, param_quality, param_bufsize/1024);
+          "   -m num      maimum size per file [%d MB]\n"
+	  "   -o file     output mjpeg file (REQUIRED!)\n",
+	  param_format, param_quality, param_bufsize/1024, param_maxfilesize);
 }
 
 static void sigint_handler (int signal) {
@@ -82,6 +105,8 @@ int main(int argc, char *argv[])
    int fd_in;
    int n;
    lav_file_t *output = 0;
+   int filenum = 0;
+   unsigned long filesize_cur = 0;
    
    char *jpeg;
    int   jpegsize = 0;
@@ -90,7 +115,7 @@ int main(int argc, char *argv[])
    y4m_frame_info_t frameinfo;
    y4m_stream_info_t streaminfo;
 
-   while ((n = getopt(argc, argv, "v:f:I:q:b:o:")) != -1) {
+   while ((n = getopt(argc, argv, "v:f:I:q:b:m:o:")) != -1) {
       switch (n) {
       case 'v':
          verbose = atoi(optarg);
@@ -143,6 +168,9 @@ int main(int argc, char *argv[])
          param_bufsize = atoi (optarg) * 1024;
          /* constraints? */
          break;
+      case 'm':
+         param_maxfilesize = atoi(optarg);
+         break;
       case 'o':
          param_output = optarg;
          break;
@@ -187,16 +215,34 @@ int main(int argc, char *argv[])
    else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
 
-   output = lav_open_output_file (param_output, param_format,
+   if (strstr(param_output,"%"))
+   {
+      char buff[256];
+      sprintf(buff, param_output, filenum++);
+      output = lav_open_output_file (buff, param_format,
+                                  y4m_si_get_width(&streaminfo),
+				  y4m_si_get_height(&streaminfo),
+				  param_interlace,
+                                  Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
+                                  0, 0, 0);
+      if (!output) {
+         mjpeg_error( "Error opening output file %s: %s\n", buff, lav_strerror ());
+         exit(1);
+      }
+   }
+   else
+   {
+      output = lav_open_output_file (param_output, param_format,
                                   y4m_si_get_width(&streaminfo),
 				  y4m_si_get_height(&streaminfo),
 				  param_interlace,
                                   Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
                                   0, 0, 0);
 //                                audio_bits, audio_chans, audio_rate);
-   if (!output) {
-      mjpeg_error( "Error opening output file %s: %s\n", param_output, lav_strerror ());
-      exit(1);
+      if (!output) {
+         mjpeg_error( "Error opening output file %s: %s\n", param_output, lav_strerror ());
+         exit(1);
+      }
    }
 
    yuv[0] = malloc(y4m_si_get_width(&streaminfo) *
@@ -227,10 +273,44 @@ int main(int argc, char *argv[])
          mjpeg_error( "Couldn't compress YUV to JPEG\n");
          exit(1);
       }
+
+      if ((filesize_cur + jpegsize)>>20 > param_maxfilesize)
+      {
+         /* max file size reached, open a new one if possible */
+         if (strstr(param_output,"%"))
+         {
+            char buff[256];
+            if (lav_close (output)) {
+               mjpeg_error("Closing output file: %s\n",lav_strerror());
+               exit(1);
+            }
+            sprintf(buff, param_output, filenum++);
+            output = lav_open_output_file (buff, param_format,
+                                        y4m_si_get_width(&streaminfo),
+                                        y4m_si_get_height(&streaminfo),
+                                        param_interlace,
+                                        Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
+                                        0, 0, 0);
+            if (!output) {
+               mjpeg_error( "Error opening output file %s: %s\n", buff, lav_strerror ());
+               exit(1);
+            }
+            mjpeg_info("Maximum file size reached (%d MB), opened new file: %s\n",
+               param_maxfilesize, buff);
+            filesize_cur = 0;
+         }
+         else
+         {
+            mjpeg_warn("Maximum file size reached\n");
+            break;
+         }
+      }
+
       if (lav_write_frame (output, jpeg, jpegsize, 1)) {
          mjpeg_error( "Writing output: %s\n", lav_strerror());
          exit(1);
       }
+      filesize_cur += jpegsize;
       frame++;
 
    }
