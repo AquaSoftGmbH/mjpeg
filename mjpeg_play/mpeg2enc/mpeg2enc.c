@@ -737,13 +737,15 @@ static void init_encoder()
 		break;
 	case 2:
 		ctl_max_encoding_frames = 2;
-		ctl_refine_from_rec = 1;
+		ctl_refine_from_rec = true;
+		ctl_parallel_read = true;
 		break;
 	default :
 		ctl_max_encoding_frames = param_num_cpus > MAX_WORKER_THREADS-1 ?
 			                  MAX_WORKER_THREADS-1 :
 			                  param_num_cpus;
-		ctl_refine_from_rec = 0;
+		ctl_refine_from_rec = false;
+		ctl_parallel_read = true;
 		break;
 	}
 

@@ -859,7 +859,7 @@ void putseq()
 
 	init_pictures( ref_pictures, b_pictures );
 	if( ctl_max_encoding_frames > 1 )
-		create_threads( worker_threads, ctl_max_encoding_frames, parencodeworker );
+		create_threads( worker_threads, 2, parencodeworker );
 
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it

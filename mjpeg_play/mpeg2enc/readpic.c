@@ -187,12 +187,12 @@ static void read_chunk()
       border_extend(frame_buffers[n][1],h,v,chrom_width,chrom_height);
       border_extend(frame_buffers[n][2],h,v,chrom_width,chrom_height);
 
-	  if( ctl_max_encoding_frames > 2 )
+	  if( ctl_parallel_read )
 	  {
 		  pthread_mutex_lock( &frame_buffer_lock );
 	  }
 	  ++frames_read;
-	  if( ctl_max_encoding_frames > 2 )
+	  if( ctl_parallel_read )
 	  {
 		  pthread_cond_broadcast( &new_chunk_ack );
 		  pthread_mutex_unlock( &frame_buffer_lock );
@@ -203,8 +203,18 @@ static void read_chunk()
 
    EOF_MARK:
    mjpeg_debug( "End of input stream detected\n" );
+   if( ctl_parallel_read )
+   {
+	   pthread_mutex_lock( &frame_buffer_lock );
+   }
    last_frame = frames_read-1;
    istrm_nframes = frames_read;
+   if( ctl_parallel_read )
+   {
+	   pthread_cond_broadcast( &new_chunk_ack );
+	   pthread_mutex_unlock( &frame_buffer_lock );
+   }
+
 }
 
 
@@ -296,7 +306,7 @@ static void load_frame( int num_frame )
 	   read_chunk();
 	   if( frames_read != istrm_nframes )
 		   read_chunk();
-	   if( ctl_max_encoding_frames > 2 )
+	   if( ctl_parallel_read )
 		   start_worker();
    }
 
@@ -309,7 +319,7 @@ static void load_frame( int num_frame )
    /* Read a chunk of frames if we've got less than one chunk buffered
 	*/
 
-   if( ctl_max_encoding_frames > 2 )
+   if( ctl_parallel_read )
 	   read_chunk_par( num_frame );
    else
 	   read_chunk_seq( num_frame );
