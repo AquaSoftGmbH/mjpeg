@@ -63,21 +63,23 @@ void do_preset_svcd(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
 void set_bicubicuse(GtkWidget *widget, gpointer data);
+void player_callback( GtkWidget *widget, GtkWidget *player_field);
 
-/* config.c */
+/* used from config.c */
 int chk_dir(char *name);
 
-/* Here the filename for the configuration is set, should be changed to something
- * that can be set in the command line, or at least in studio.c 
+/* Here the filename for the configuration is set, should be changed to
+ * something that can be set in the command line, or at least in studio.c 
  * or the configuration is saved to the existing studio.conf
  */
 #define encodeconfigfile "encode.conf"
 
-/* other variables*/
+/* other variables */
 #define Encoptions_Table_x 2
-#define Encoptions_Table_y 8
+#define Encoptions_Table_y 9
 int t_use_yuvplay_pipe, t_encoding_syntax_style, t_addoutputnorm;
 int t_fourpelmotion, t_twopelmotion, t_use_bicubic;
+char t_selected_player[FILELEN];
 char t_ininterlace_type[LONGOPT];
 GtkWidget *fourpel_scale, *twopel_scale;
 
@@ -94,6 +96,7 @@ for (i=0; i < FILELEN; i++)
      enc_outputfile[i] ='\0';
      enc_audiofile[i]  ='\0';
      enc_videofile[i]  ='\0';
+     selected_player[i]='\0';
   }
 
 use_yuvplay_pipe = 0;
@@ -193,6 +196,11 @@ int i;
       sprintf(enc_videofile, val);
   else 
       sprintf(enc_videofile, "/tmp/video.m1v");
+
+  if (NULL != (val = cfg_get_str("Studio","Encode_Player_use")))
+      sprintf(selected_player, val);
+  else 
+      sprintf(selected_player, "no player selected");
 
   if (NULL != (val = cfg_get_str("Studio","Encode_Video_Preview")))
     if ( 0 == strcmp(val,"yes"))
@@ -383,6 +391,7 @@ int have_config;
       printf("Encode output file set to \'%s\' \n",enc_outputfile);
       printf("Encode input file set to \'%s\' \n",enc_audiofile);
       printf("Encode video file set to \'%s\' \n",enc_videofile);
+      printf("Video player set to \'%s\' \n",selected_player);
       printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
       printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
       printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
@@ -423,6 +432,7 @@ void save_common(FILE *fp)
   fprintf(fp,"Encode_Output_file = %s\n", enc_outputfile);
   fprintf(fp,"Encode_Audio_file = %s\n", enc_audiofile);
   fprintf(fp,"Encode_Video_file = %s\n", enc_videofile);
+  fprintf(fp,"Encode_Player_use = %s\n", selected_player);
 
   if (use_yuvplay_pipe == 1)
     fprintf(fp,"Encode_Video_Preview = %s\n", "yes");
@@ -576,7 +586,10 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
       if (t_fourpelmotion != fourpelmotion)
         printf(" 4*4-pel subsampled motion compensation : %i \n", t_fourpelmotion);
       if (t_twopelmotion != twopelmotion)
-        printf(" 2*2-pel subsampled motion compensation : %i \n", twopelmotion);
+        printf(" 2*2-pel subsampled motion compensation : %i\n",t_twopelmotion);
+      
+      if (strcmp(t_selected_player,selected_player) != 0)
+        printf(" Setting the player to : %s \n", t_selected_player);
     }
  
   use_yuvplay_pipe = t_use_yuvplay_pipe;
@@ -586,6 +599,7 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
   encoding_syntax_style = t_encoding_syntax_style;  
   fourpelmotion = t_fourpelmotion;
   twopelmotion = t_twopelmotion;
+  strcpy(selected_player,t_selected_player);
 }
 
 /* Set the value of the Slider 4 to the variable */
@@ -633,7 +647,7 @@ int i;
     sprintf(t_ininterlace_type,"%s",(char*)data);
 }
 
-/* Set if the bicubis rescaling algorithm is used */ 
+/* Set if the bicubic rescaling algorithm is used */ 
 void set_bicubicuse(GtkWidget *widget, gpointer data)
 {
   if (GTK_TOGGLE_BUTTON (widget)->active)
@@ -642,7 +656,15 @@ void set_bicubicuse(GtkWidget *widget, gpointer data)
     t_use_bicubic = 0;
 }
 
-/* Set if the output norm is added */
+/* Set the player for the video */
+void player_callback( GtkWidget *widget, GtkWidget *player_field)
+{
+gchar *name;
+
+  name = gtk_entry_get_text(GTK_ENTRY(player_field));
+
+  strcpy(t_selected_player,name);
+}
 
 /* Set the encoding syntax syle */
 void set_encoding_syntax(GtkWidget *widget, gpointer data)
@@ -655,7 +677,7 @@ void create_encoding_layout(GtkWidget *table)
 {
 GtkWidget *preview_button, *label, *addnorm_button, *int_asis_button;
 GtkWidget *int_odd_button, *int_even_button, *style_14x, *style_15x;
-GtkWidget *bicubic_button;
+GtkWidget *bicubic_button, *player_field;
 GSList *interlace_type, *encoding_style;
 GtkObject *adjust_scale, *adjust_scale_n;
 int table_line;
@@ -669,6 +691,7 @@ table_line = 0;
   t_encoding_syntax_style = encoding_syntax_style;
   t_fourpelmotion = fourpelmotion;
   t_twopelmotion = twopelmotion;
+  sprintf(t_selected_player, "%s", selected_player);
 
   label = gtk_label_new ("Show video while encoding : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
@@ -824,7 +847,22 @@ table_line = 0;
                             twopel_scale, 1, 2, table_line, table_line+1);
   gtk_widget_show (twopel_scale);
   gtk_adjustment_set_value (GTK_ADJUSTMENT (adjust_scale_n), t_twopelmotion);
- 
+  table_line++;
+
+  label = gtk_label_new (" Player and options for playback : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+  gtk_widget_show (label);
+  
+  player_field = gtk_entry_new ();
+  gtk_entry_set_text(GTK_ENTRY(player_field), selected_player); 
+  gtk_signal_connect(GTK_OBJECT(player_field), "changed",
+                     GTK_SIGNAL_FUNC(player_callback), player_field);
+  gtk_widget_set_usize (player_field, 100, -2);
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             player_field, 1, 2, table_line, table_line+1);
+  gtk_widget_show (player_field);
 }
 
 /* Encoding options dialog */
