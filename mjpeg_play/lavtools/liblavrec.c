@@ -993,7 +993,10 @@ static int lavrec_software_init(lavrec_t *info)
    info->geometry->h /= info->vertical_decimation;
    info->geometry->y /= info->vertical_decimation;
 
-   settings->interlaced = LAV_NOT_INTERLACED; /* VERY doubtable - just a guess for now (yikes!) */
+   if (info->vertical_decimation == 1)
+      settings->interlaced = LAV_INTER_TOP_FIRST;
+   else
+      settings->interlaced = LAV_NOT_INTERLACED; /* VERY doubtable - just a guess for now (yikes!) */
 
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Image size will be %dx%d, %d field(s) per buffer",
