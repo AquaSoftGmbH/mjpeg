@@ -180,8 +180,11 @@ public:
 	inline stream_kind Kind() { return kind; }
     inline unsigned int BufferMin() { return buffer_min; }
     inline unsigned int BufferMax() { return buffer_max; }
+    inline clockticks BaseDTS() { return au->DTS; };
+    inline clockticks BasePTS() { return au->PTS; };
     inline clockticks RequiredDTS() { return au->DTS + timestamp_delay; };
     inline clockticks RequiredPTS() { return au->PTS + timestamp_delay; };
+    inline int        DecodeOrder() { return au->dorder; }
     inline clockticks NextRequiredDTS()
         { 
             Aunit *next = Lookahead();
@@ -219,14 +222,9 @@ protected:
     virtual void OutputSector() = 0;
 	AUStream aunits;
 	void Muxed( unsigned int bytes_muxed );
-
-public:  // TODO should go protected once encapsulation complete
-	     // N.b. currently length=0 is used to indicate an ended
-	     // stream.
-	     // au itself should simply disappear
 	Aunit *au;
 	clockticks timestamp_delay;
-protected:
+
 	unsigned int au_unsent;
 	Aunit *next();
 	Multiplexor &muxinto;

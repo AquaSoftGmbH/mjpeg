@@ -659,27 +659,6 @@ void Multiplexor::Init()
 
 	mux_rate = dmux_rate/50;
 
-	/* To avoid Buffer underflow, the DTS of the first video and audio AU's
-	   must be offset sufficiently	forward of the SCR to allow the buffer 
-	   time to fill before decoding starts. Calculate the necessary delays...
-	*/
-
-	sectors_delay = RunInSectors();
-
-	ByteposTimecode( 
-		static_cast<bitcount_t>(sectors_delay*sector_transport_size),
-		delay );
-    video_delay += delay;
-    audio_delay += delay;
-
-	mjpeg_info( "Run-in Sectors = %d Video delay = %lld Audio delay = %lld",
-				sectors_delay,
-				 video_delay / 300,
-				 audio_delay / 300 );
-
-    if( max_PTS != 0 )
-        
-        mjpeg_info( "Multiplexed stream will be ended at %lld seconds playback time\n", max_PTS/CLOCKS );
 
 	//
 	// Now that all mux parameters are set we can trigger parsing
@@ -701,6 +680,41 @@ void Multiplexor::Init()
     {
         static_cast<VideoStream*>(*str)->SetMaxStdBufferDelay( dmux_rate );
     }				 
+
+	/* To avoid Buffer underflow, the DTS of the first video and audio AU's
+	   must be offset sufficiently	forward of the SCR to allow the buffer 
+	   time to fill before decoding starts. Calculate the necessary delays...
+	*/
+
+	sectors_delay = RunInSectors();
+
+	ByteposTimecode( 
+		static_cast<bitcount_t>(sectors_delay*sector_transport_size),
+		delay );
+    video_delay += delay;
+    audio_delay += delay;
+
+    /* 
+     * The PTS of the first frame may be different from its DTS.
+     * Thus to hit perfect A/V sync we need to delay audio by the difference
+     * PTS-DTS.
+     *
+     */
+    
+    if(  vstreams.size() != 0 )
+    {
+        audio_delay += vstreams[0]->BasePTS()-vstreams[0]->BaseDTS();
+    }
+
+	mjpeg_info( "Run-in Sectors = %d Video delay = %lld Audio delay = %lld",
+				sectors_delay,
+				 video_delay / 300,
+				 audio_delay / 300 );
+
+    if( max_PTS != 0 )
+        
+        mjpeg_info( "Multiplexed stream will be ended at %lld seconds playback time\n", max_PTS/CLOCKS );
+
 }
 
 /**
@@ -719,7 +733,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 					   "Video %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
 					   (*str)->bufmodel.Space(),
-					   (*str)->au->dorder,
+					   (*str)->DecodeOrder(),
 					   (*str)->nsec
 				);
 			break;
@@ -728,7 +742,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 					   "Audio %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
 					   (*str)->bufmodel.Space(),
-					   (*str)->au->dorder,
+					   (*str)->DecodeOrder(),
 					   (*str)->nsec
 				);
 			break;
@@ -1056,9 +1070,9 @@ void Multiplexor::Multiplex()
             clockticks ZeroSCR;
 
             if( vstreams.size() != 0 )
-                ZeroSCR = vstreams[0]->au->DTS;
+                ZeroSCR = vstreams[0]->BaseDTS();
             else
-                ZeroSCR = estreams[0]->au->DTS;
+                ZeroSCR = estreams[0]->BaseDTS();
 
 			for( str = vstreams.begin(); str < vstreams.end(); ++str )
 				(*str)->SetSyncOffset(video_delay + current_SCR - ZeroSCR );
@@ -1239,7 +1253,7 @@ void Multiplexor::Multiplex()
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_info( "STREAM %02x completed @ frame %d.", (*str)->stream_id, (*str)->au->dorder );
+				mjpeg_info( "STREAM %02x completed @ frame %d.", (*str)->stream_id, (*str)->DecodeOrder() );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}

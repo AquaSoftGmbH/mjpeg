@@ -71,6 +71,7 @@ public:
 	virtual bool MuxPossible(clockticks currentSCR);
     void SetMaxStdBufferDelay( unsigned int demux_rate );
 	void OutputSector();
+
 protected:
 	void OutputSeqhdrInfo();
     virtual bool AUBufferNeedsRefill();
