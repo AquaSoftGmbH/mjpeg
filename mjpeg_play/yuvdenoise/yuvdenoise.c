@@ -401,7 +401,7 @@ main (int argc, char *argv[])
 	  denoise_frame (yuv);
 
 	  /* blur depending on distance */
-	  distance_blur_frame (yuv);
+	  //distance_blur_frame (yuv);
 
 	  /* despeckling */
 	  if (scene_change && despeckle_filter)
@@ -714,6 +714,40 @@ subsample_frame (uint8_t * dst[3], uint8_t * src[3])
 }
 
 
+
+/*****************************************************************************
+ * halfpel-SAD-function for Y without MMX/SSE                                *
+ *****************************************************************************/
+
+uint32_t
+calc_SAD_half (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
+{
+  int dx = 0;
+  int dy = 0;
+  int Y = 0;
+  uint32_t d = 0;
+  uint8_t *fs = frm + frm_offs;
+  uint8_t *fs2 = frm + frm_offs+xx+yy*width;
+  uint8_t *rs = ref + ref_offs;
+
+  for (dy = 0; dy < BLOCKSIZE; dy++)
+    {
+      for (dx = 0; dx < BLOCKSIZE; dx++)
+        {
+          Y = 
+	      ( 
+		  (int) *(fs  + dx) + 
+		  (int) *(fs2 + dx) 
+	      )/2 - (int) *(rs + dx);
+
+          d += (Y > 0) ? Y : -Y;
+        }
+      fs += width;
+      fs2 += width;
+      rs += width;
+    }
+  return d;
+}
 
 /*****************************************************************************
  * SAD-function for Y without MMX/SSE                                        *
@@ -1149,7 +1183,7 @@ void
 mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
   int qy, qx;
-  uint32_t d,d_uv;
+  uint32_t d,d_uv=0;
   uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
   uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
 
@@ -1163,7 +1197,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 4 + (y + qy - BLOCKOFFSET) / 4 * width,
                       (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * width, 2);
-        if((qx&7)==0)
+      if((qx&7)==0 || d_uv==0)
         {
         d_uv = calc_SAD_uv (tgt_frame[1],
                           ref_frame[1],
@@ -1298,6 +1332,50 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 
 }
 
+void
+mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
+{
+  int qy, qx;
+  uint32_t d,d_uv;
+  uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
+  uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
+  int bx;
+  int by;
+
+  bx = matrix[x][y][0] / 2;
+  by = matrix[x][y][1] / 2;
+
+  for (qy = -1; qy <= +1; qy++)
+    for (qx = -1; qx <= +1; qx++)
+      {
+        d = calc_SAD_half (tgt_frame[0],
+			   ref_frame[0],
+			   (x + bx - BLOCKOFFSET) + (y + by - BLOCKOFFSET) * width,
+			   (x - BLOCKOFFSET) + (y - BLOCKOFFSET) * width, qx, qy);
+
+        
+        if (d < SAD)
+          {
+            matrix[x][y][0] = qx+bx;
+            matrix[x][y][1] = qy+by;
+            SAD = d;
+          }
+
+        if (qx == 0 && qy == 0)
+	{
+            CAD = d;
+	}
+      }
+
+  if (SAD > CAD)
+  {
+      matrix[x][y][0] = 0;
+      matrix[x][y][1] = 0;
+      SAD = CAD;
+  }
+}
+
+
 /* half pixel search seem's definetly not to be needed ... hmm */
 #if 0
 void
@@ -1372,35 +1450,18 @@ copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
   int dx,dy;
   int qx = matrix[x][y][0]/2;
   int qy = matrix[x][y][1]/2;
+  int sx = matrix[x][y][0]-(qx*2);
+  int sy = matrix[x][y][1]-(qy*2);
 
-  if(block_quality<0.25)
-  {
-  for (dy=0;dy<(BLOCKSIZE/2);dy++)
-  {
-    memcpy(dest[0]+x+(y+dy)*width,srce[0]+(x+qx)+(y+qy+dy)*width,BLOCKSIZE/2);
-    memcpy(dest[1]+x/2+(y+dy)/2*uv_width,srce[1]+(x+qx)/2+(y+qy+dy)/2*uv_width,BLOCKSIZE/4);
-    memcpy(dest[2]+x/2+(y+dy)/2*uv_width,srce[2]+(x+qx)/2+(y+qy+dy)/2*uv_width,BLOCKSIZE/4);
-  }
-}
-else
-{
-  if(block_quality==1)
-  {
-  for (dy=0;dy<(BLOCKSIZE/2);dy++)
-  {
-    memcpy(dest[0]+x+(y+dy)*width,yuv[0]+x+(y+dy)*width,BLOCKSIZE/2);
-    memcpy(dest[1]+x/2+(y+dy)/2*uv_width,yuv[1]+x/2+(y+dy)/2*uv_width,BLOCKSIZE/4);
-    memcpy(dest[2]+x/2+(y+dy)/2*uv_width,yuv[2]+x/2+(y+dy)/2*uv_width,BLOCKSIZE/4);
-  }
-}
-else
-{
   for (dy=0;dy<(BLOCKSIZE/2);dy++)
   {
     for (dx=0;dx<(BLOCKSIZE/2);dx++)
     {
       *(dest[0]+(x+dx)+(y+dy)*width)=
-        *(srce[0]+(x+dx+qx)+(y+dy+qy)*width)*(1-block_quality)+
+	  (
+	      *(srce[0]+(x+dx+qx)+(y+dy+qy)*width)+
+	      *(srce[0]+(x+dx+qx+sx)+(y+dy+qy+sy)*width)
+	      )/2*(1-block_quality)+
         *(yuv[0]+(x+dx)+(y+dy)*width)*(block_quality);
       *(dest[1]+(x+dx)/2+(y+dy)/2*uv_width)=
         *(srce[1]+(x+dx+qx)/2+(y+dy+qy)/2*uv_width)*(1-block_quality)+
@@ -1410,8 +1471,6 @@ else
         *(yuv[2]+(x+dx)/2+(y+dy)/2*uv_width)*(block_quality);
     }
   }  
-}
-}  
 }
 
 void
@@ -1679,6 +1738,7 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
              * real frame and store the result in matrix[x][y][d]
              */
             mb_search (x, y, ref_frame, target);
+            mb_search_half (x, y, ref_frame, target);
 
             /* now, we need(!!) to check if the vector is valid...  
              * to do so, the center-SAD is calculated and compared  
@@ -1706,12 +1766,15 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    (x) / 2 + (y) / 2 * uv_width, 1);
 
 
-        if (vector_SAD > (center_SAD * 0.50))   /* only choose vector if result is */
-          {                     /* at least better by 30% ...      */
+        if ( 
+	    (vector_SAD > (center_SAD * 0.50) ) ||
+	    (center_SAD < (mean_SAD) )
+	    )
+	{
             //vector_SAD = center_SAD;
             matrix[x][y][0] = 0;
             matrix[x][y][1] = 0;
-          }
+	}
 
         SAD_matrix[x][y] = vector_SAD;
         sum_of_SADs += vector_SAD;
@@ -1722,8 +1785,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   last_mean_SAD = mean_SAD;
   mean_SAD = mean_SAD * 0.99 + avrg_SAD * 0.01;
 
-  if (mean_SAD < 72)            /* don't go too low !!! */
-    mean_SAD = 72;              /* a SAD of 72 is nearly noisefree source material */
+  if (mean_SAD < 100)            /* don't go too low !!! */
+    mean_SAD = 100;              /* a SAD of 100 is nearly noisefree source material */
 
   if (avrg_SAD > (mean_SAD * 2) && framenr++ > 12)
     {
@@ -1795,7 +1858,7 @@ transform_frame (uint8_t * avg[3])
       if(x>(BX0-4) && x<(BX1+4) && y>(BY0-4) && y<(BY1+4))
       {
         if (SAD_matrix[x][y] < (mean_SAD))
-          block_quality = 0;
+	    block_quality = 0;
         else if (SAD_matrix[x][y] < (mean_SAD * 2))
           block_quality = (float) (SAD_matrix[x][y]) / (float) (mean_SAD) - 1;
         else
