@@ -2,9 +2,10 @@
 #include "mjpeg_types.h"
 #include "sinc_interpolation.h"
 #include "motionsearch.h"
-#include "stdlib.h"
-#include "stdio.h"
-#include "string.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 extern int width;
 extern int height;
@@ -25,14 +26,12 @@ void interpolate_field_linear (uint8_t * dst, uint8_t * src, int field)
 		}
 }
 
-#define ABS(a) a<0? -a:a
-
 void
 non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 {
 	int x,vx,y,v;
 	int min;
-	int delta, d;
+	int delta;
 	int iv;
 	int a,b;
 
@@ -41,11 +40,7 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 	for(y = field+2; y < (height-2); y +=2)
 		for(x=0; x<width; x++)
 		{
-			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
-			min = d < 0 ? -d:d;
-			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
-			min += d < 0 ? -d:d;
-
+			min = 2 * abs(*(frame+x+(y-1)*width) - *(frame+x+(y+1)*width));
 			v = 0;
 
 			/* search best diagonal pixel-match */
@@ -54,9 +49,7 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 
 			for(vx=0;vx<=4;vx++)
 			{
-				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
-				delta = d < 0 ? -d:d;
-
+				delta = abs(*(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width));
 				if(delta<min)
 				{
 					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
@@ -68,9 +61,7 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 				}
 
 				vx = -vx;
-				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
-				delta = d < 0 ? -d:d;
-
+				delta = abs(*(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width));
 				if(delta<min)
 				{
 					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
