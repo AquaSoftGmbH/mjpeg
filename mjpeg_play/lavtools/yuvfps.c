@@ -44,6 +44,7 @@ static void print_usage()
            "\t -r Frame rate for the resulting stream (in X:Y fractional form)\n"
            "\t -s Assume this source frame rate ignoring source YUV header\n"
            "\t -c Change only the output header frame rate, does not modify stream\n"
+           "\t -n don't try to normalize the input framerate\n"
 	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 	   "\t -h print this help\n"
          );
