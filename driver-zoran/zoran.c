@@ -1580,7 +1580,7 @@ static void zr36060_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	if (size * zr->params.field_per_buff > zr->jpg_bufsize * 6)
 		size = zr->jpg_bufsize * 6 / zr->params.field_per_buff;
 
-	reg = size / (blocks * 2);
+	reg = size * 4 / blocks;
 	if (reg > 0xf0)
                 reg = 0xf0;		/* 480 bits/block, does 0xff represents unlimited? */
 	zr36060_write_8(zr, 0x005, reg);
