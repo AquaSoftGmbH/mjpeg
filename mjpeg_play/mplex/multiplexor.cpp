@@ -192,8 +192,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		break;
 
     case MPEG_FORMAT_DVD :
-    case MPEG_FORMAT_DVD_NAV :
-		mjpeg_info( "Selecting DVD output profile (INCOMPLETE!!!!)");
+		mjpeg_info( "Selecting generic DVD output profile (PROVISIONAL)");
         if( data_rate == 0 )
             data_rate = 1260000;
 		mpeg = 2;
@@ -213,6 +212,30 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
         timestamp_iframe_only = true;
         video_buffers_iframe_only = true;
 		vbr = true;
+        break;
+
+    case MPEG_FORMAT_DVD_NAV :
+		mjpeg_info( "Selecting dvdauthor DVD output profile");
+        if( data_rate == 0 )
+            data_rate = 1260000;
+		mpeg = 2;
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = false; // Handle by control packets
+	  	always_sys_header_in_pack = false;
+	  	sector_transport_size = 2048;
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2048;
+		buffers_in_video = true;
+		always_buffers_in_video = false;
+		buffers_in_audio = true;
+		always_buffers_in_audio = false;
+		vcd_zero_stuffing = 0;
+        dtspts_for_all_vau = 0;
+		sector_align_iframeAUs = true;
+        timestamp_iframe_only = true;
+        video_buffers_iframe_only = true;
+		vbr = true;
+        seg_starts_with_video = true; // Needs special NAV sector 1st!
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
