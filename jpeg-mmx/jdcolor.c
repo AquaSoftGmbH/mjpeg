@@ -510,6 +510,9 @@ jinit_color_deconverter (j_decompress_ptr cinfo)
       if (MMXAvailable)
 	{
 	  cconvert->pub.color_convert = ycc_rgb_convert_mmx;
+	  /* A.Stevens 2001 - sometimes we use non-MMX colorspace conversion
+		 hacks  with MMX jpeglib.  TODO: A clean solution! */
+	  build_ycc_rgb_table(cinfo);
 	}
       else
 	{
