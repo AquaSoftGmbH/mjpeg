@@ -151,6 +151,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)\n" );
 	fprintf(stderr,"              0 - Display MPEG1 and MPEG2 aspect ratio code tables\n");
 	fprintf(stderr,"   -F num     Frame rate for encoded video (default: frame rate of input stream)\n");
+        fprintf(stderr,"              0 - Display frame rate code table\n");
 	fprintf(stderr,"   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	fprintf(stderr,"   -B num     Non-video data bitrate to use for sequence splitting\n");
 	fprintf(stderr,"              calculations (see -S).\n");
