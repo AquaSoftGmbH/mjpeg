@@ -41,23 +41,25 @@
 #include "studio.h"
 
 /* Size of drawing area */
-#define WIDTH 720
+#define WIDTH 768
 #define HEIGHT 576
 
 /* Forward declarations */
 void quit_cb (GtkWidget *widget);
 void expose_event_cb(GtkWidget *widget, GdkEventExpose *event, gpointer data);
 gint event_cb(GtkWidget *widget, GdkEvent *event, gpointer data);
-void view_image (void );
+void view_image (void);
+void load_image (char filename[FILELEN]);
 
 static void create_ok_cancel(GtkWidget *hbox, GtkWidget *picture_window);
 static void show_selected_points (GtkWidget *hbox);
-static void show_selection(void);
+static void show_selection(char filename[FILELEN]);
 static void show_selected_points(GtkWidget *hbox);
 static void set_defaults(void);
 static void calc_area(void); 
 static void show_active_points (GtkWidget *hbox);
 static void update_text_fields(void);
+static void accept_changes(GtkWidget *widget, gpointer data);
 
 /* Some common variables */
 /* Visible drawing surface */
@@ -91,6 +93,10 @@ int mark_mode = 0;
 int valid_rect = 0;
 int redraw_rect = 0;
 
+/* for loading the image */
+gint width;
+gint height;
+GdkPixbuf *pixbuf1;
 
 /* =============================================================== */
 /* Start of the code */
@@ -139,10 +145,10 @@ char val6[LONGOPT];
   gtk_entry_set_text(GTK_ENTRY(actfield_p2s), val4);
 
   sprintf(val5,"%i / %i", large_points.p1.x, large_points.p1.y);
-  gtk_entry_set_text(GTK_ENTRY(actfield_p1l), val4);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p1l), val5);
 
   sprintf(val6,"%i / %i", large_points.p2.x, large_points.p2.y);
-  gtk_entry_set_text(GTK_ENTRY(actfield_p2l), val5);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p2l), val6);
 }
 
 
@@ -152,7 +158,7 @@ void calc_area ()
 struct rect norm;
 int i; /** counts if we have a problem in the calculation, if 0 it is ok */
 
-/* Here we set the image Size to something predefined, but the size shoul be
+/* Here we set the image Size to something predefined, but the size should be
    set by the actual image size */ 
 imgsize.x = 720;
 imgsize.y = 576;
@@ -260,6 +266,27 @@ else
 
 }
 
+/** Here we hand back the selected Active_size 
+    @param widget The calling widget,
+    @param data   dummy option                   */
+void accept_changes(GtkWidget *widget, gpointer data)
+{
+
+ if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_s)) == TRUE )
+   {
+     sprintf(area_size, "%s", gtk_entry_get_text(GTK_ENTRY(actfield_s)));
+     printf("\n button S: %s \n", area_size);
+   }
+ if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_l)) == TRUE )
+   {
+     printf("\n button L\n");
+   }
+ if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_m)) == TRUE )
+   {
+     printf("\n button M\n");
+   }
+}
+
 /** Here we create the OK and Cancel Button 
     @param hbox the box where we insert the two buttons 
     @param control_window on window we need to close */
@@ -268,6 +295,8 @@ void create_ok_cancel(GtkWidget *hbox, GtkWidget *control_window)
 GtkWidget *button;
 
   button = gtk_button_new_with_label("OK");
+  gtk_signal_connect(GTK_OBJECT(button), "clicked",
+                  GTK_SIGNAL_FUNC (accept_changes), NULL);
   gtk_signal_connect(GTK_OBJECT(button), "clicked", 
                 GTK_SIGNAL_FUNC(quit_cb), button );
   gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
@@ -279,7 +308,7 @@ GtkWidget *button;
   gtk_signal_connect(GTK_OBJECT(button), "clicked", 
                 GTK_SIGNAL_FUNC(quit_cb), button );
   gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-          gtk_widget_destroy, GTK_OBJECT(control_window));
+                            gtk_widget_destroy, GTK_OBJECT(control_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
@@ -372,12 +401,8 @@ static void init_drawing_buffer(  )
 }
 
 /* Hier wird das Bild geladen, und angezeigt */
-void view_image ()
+void load_image (char filename[FILELEN])
 {
-gint width;
-gint height;
-GdkPixbuf *pixbuf1;
-gchar *filename = ("file.png");
   
   if (verbose)
     printf (" Rendering %s \n", filename);
@@ -387,7 +412,11 @@ gchar *filename = ("file.png");
 
   if (verbose)
     printf(" Picture loaded, width %i, height %i \n", width, height);
+}
 
+
+void view_image()
+{
   gdk_pixbuf_render_to_drawable_alpha(pixbuf1, dbuf_pixmap,
     0, 0, 0, 0, width, height,
     GDK_PIXBUF_ALPHA_BILEVEL, 128,
@@ -431,9 +460,32 @@ GSList *group;
 int i, j;
 
   i = 0;
-  j = 1; /*starting in the second row */
+  j = 0; 
 
-  table1 = gtk_table_new (4, 4, FALSE);
+  table1 = gtk_table_new (5, 4, FALSE);
+
+  label = gtk_label_new("Select calc size:");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+2, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  label = gtk_label_new(" Smaler size");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  label = gtk_label_new(" Larger size");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  label = gtk_label_new(" Manual size");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  i++;  /* 2nd colum */
+  j= 1; /*starting in the second row */
 
   button_s = gtk_radio_button_new(NULL);
   gtk_table_attach_defaults (GTK_TABLE(table1), button_s, i, i+1, j, j+1);
@@ -485,13 +537,13 @@ int i, j;
   j++;
 
   actfield_p1s = gtk_entry_new();
-  gtk_widget_set_usize(actfield_p1s, 60, -2);
+  gtk_widget_set_usize(actfield_p1s, 70, -2);
   gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p1s, i, i+1, j, j+1);
   gtk_widget_show(actfield_p1s);
   j++;
 
   actfield_p1l = gtk_entry_new();
-  gtk_widget_set_usize(actfield_p1l, 60, -2);
+  gtk_widget_set_usize(actfield_p1l, 70, -2);
   gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p1l, i, i+1, j, j+1);
   gtk_widget_show(actfield_p1l);
 
@@ -503,13 +555,13 @@ int i, j;
   j++;
 
   actfield_p2s = gtk_entry_new();
-  gtk_widget_set_usize(actfield_p2s, 60, -2);
+  gtk_widget_set_usize(actfield_p2s, 70, -2);
   gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p2s, i, i+1, j, j+1);
   gtk_widget_show(actfield_p2s);
   j++;
  
   actfield_p2l = gtk_entry_new();
-  gtk_widget_set_usize(actfield_p2l, 60, -2);
+  gtk_widget_set_usize(actfield_p2l, 70, -2);
   gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p2l, i, i+1, j, j+1);
   gtk_widget_show(actfield_p2l);
   j++;
@@ -519,7 +571,7 @@ int i, j;
 }
 
 /** Here we create the 1rst window with the controls */
-void create_window_select(char filename[LONGOPT], char *size[LONGOPT])
+void create_window_select(char filename[FILELEN])
 {
 GtkWidget *control_window, *vbox, *hbox;
 
@@ -549,11 +601,14 @@ GtkWidget *control_window, *vbox, *hbox;
   gtk_widget_show (vbox);
   gtk_widget_show (control_window); 
 
-  show_selection ();
+  load_image(filename);
+
+  show_selection (filename);
+
 }
 
 /** Here we create the new window for the active size selection */
-void show_selection()
+void show_selection(char filename[FILELEN])
 {
 GtkWidget *vbox, *hbox;
 GdkPixbuf *pixbuf;
@@ -570,8 +625,11 @@ GdkPixbuf *pixbuf;
   
 
   hbox = gtk_hbox_new (TRUE,5);
-  gtk_widget_set_usize(GTK_WIDGET(picture_window), WIDTH, HEIGHT);
+  /* Here we have a quick'n'dirty workaround. For only setting the window size
+     to the size the image loaded has */
+  gtk_widget_set_usize(GTK_WIDGET(picture_window), width, height);
   gtk_window_set_policy(GTK_WINDOW(picture_window), TRUE, FALSE, FALSE);
+  
 
   /* Create drawing-area widget */
   drawing_area = gtk_drawing_area_new (  );

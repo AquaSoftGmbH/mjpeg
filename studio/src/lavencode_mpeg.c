@@ -1247,19 +1247,47 @@ void set_average (GtkWidget *widget, gpointer data)
     printf (" Setting Denoiser threshold to : %i\n", tempenco.average_frames);
 }
 
-/** here we preprae the size selection
+/** here we preprare the size selection
   @param widget the calling widget 
   @param the data with the contence of the data we select what we do */
 void input_select (GtkWidget *widget, gpointer data)
 {
-  char filename[LONGOPT];
-  char *size[LONGOPT]; 
+  char filename[FILELEN];
+  char command[200];
+  FILE *fp;
+  int i;
+
+for (i= 1; i < 200; i++)
+   command[i]='\0'; 
 
 if (strcmp((char*)data,"inputwindow") == 0)
   {
+   if ((fp = fopen(enc_inputfile, "r")) == NULL)
+     {
+        printf("\n File does not exist \n");
+        // make a gui version
+     }
+   else 
+     {
+        fclose(fp);
 
-   sprintf(filename,"file.png");
-   create_window_select(filename, size);
+        sprintf(command, "lav2yuv -f 1 %s | y4mtoppm -L >%s/.studio/frame.ppm",
+        enc_inputfile, getenv("HOME"));
+//        lav2yuv -f 1 paul.eli | y4mtoppm -L >test.ppm
+        if (verbose)
+          printf("Command creating input window pic : %s \n",command);
+       
+        fp = popen(command, "w");
+        fflush(fp);
+        pclose(fp);
+ 
+        sprintf(filename,"%s/.studio/frame.ppm",getenv("HOME"));
+   
+        create_window_select(filename);
+        printf(" wert von area : %s \n", area_size);
+   //   gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput), area_size);
+
+     }
   }
 
 }
