@@ -654,7 +654,7 @@ char *lav_video_compressor(lav_file_t *lav_file)
 #endif
 #ifdef HAVE_LIBMOVTAR
       case 'm':
-         return "N/A";
+         return "jpeg";
 #endif
    }
    return "N/A";
