@@ -27,29 +27,39 @@ jpeg2yuv
 #include <unistd.h>
 
 #include <string.h>
-//#include <glib.h>
 #include <jpeglib.h>
+#include "jpegutils.h"
 #include <sys/types.h>
+
+#include "mjpeg_logging.h"
+#include "mjpeg_types.h"
+
+#include "yuv4mpeg.h"
 
 #define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
-static unsigned char outbuffer[MAXPIXELS*3];
-static unsigned char outbuffer2[MAXPIXELS*3];
-static unsigned char yuvbuffer[MAXPIXELS*3];
-
-static gchar *jpegformatstr   = NULL;
+static unsigned char *jpegformatstr   = NULL;
 
 static float framerate = -1.0;
-static gint32 begin = 0; /* the video frame start */
-static gint32 numframes = -1; /* -1 means: take all frames */
+static int fpscode = 0;
+static uint32_t begin = 0; /* the video frame start */
+static uint32_t numframes = -1; /* -1 means: take all frames */
 
 static int verbose = 0;
 static int debug = 0;
 static int interlaced = 0; /* tells if the YUV4MPEG stream shall be interlaced */
+static int interlaced_top_first = 0; /* tells if the YUV4MPEG's frames are bottom first or top first */
+
+static int image_width = 0;
+static int image_height = 0;
 
 static struct jpeg_decompress_struct dinfo;
-/* static struct jpeg_compress_struct newinfo; */
 static struct jpeg_error_mgr jerr;
+
+void usage(char *prog);
+void parse_commandline(int argc, char ** argv);
+int generate_YUV4MPEG(void);
+int init_parse_files(void);
 
 /*
  * The User Interface parts 
@@ -122,7 +132,6 @@ void parse_commandline(int argc, char ** argv)
      break;
    case 'j':
      jpegformatstr = optarg;
-     inmovtarname = NULL;
      break;
    case 'b':
      begin = atol(optarg);
@@ -143,13 +152,13 @@ void parse_commandline(int argc, char ** argv)
    }
  }
  if (jpegformatstr == NULL)
-   { printf("%s needs an input filename to proceed. (-j option)\n\n", argv[0]); 
+   { fprintf(stderr, "%s needs an input filename to proceed. (-j option)\n\n", argv[0]); 
      usage(argv[0]); 
      exit(1);
    }
 
  if (framerate == -1.0)
-   { printf("%s needs the framerate of the forthcoming YUV4MPEG movie. (-f option)\n\n", argv[0]); 
+   { fprintf(stderr, "%s needs the framerate of the forthcoming YUV4MPEG movie. (-f option)\n\n", argv[0]); 
      usage(argv[0]); 
      exit(1);
    }
@@ -165,10 +174,10 @@ void parse_commandline(int argc, char ** argv)
  */
 int init_parse_files()
 { 
-  gchar jpegname[255];
+  unsigned char jpegname[255];
   FILE *jpegfile;
 
-  sprintf(jpegname, 254, jpegformatstr, begin);
+  snprintf(jpegname, sizeof(jpegname), jpegformatstr, begin);
   if (debug) fprintf(stderr, "Analyzing %s to get the right pic params\n", jpegname);
   jpegfile = fopen(jpegname, "r");
 
@@ -192,35 +201,95 @@ int init_parse_files()
       
       if(dinfo.output_components != 3)
 	{
-	  printf("Output components of JPEG image = %d, must be 3\n",dinfo.output_components);
+	  fprintf(stderr, "Output components of JPEG image = %d, must be 3\n", dinfo.output_components);
 	  exit(1);
 	}
       
       fprintf(stderr, "Image dimensions are %dx%d, framerate = %f frames/s\n",
-	      outmovtar->mov_width, outmovtar->mov_height, framerate);
+	      dinfo.image_width, dinfo.image_height, framerate);
+      image_width = dinfo.image_width;
+      image_height = dinfo.image_height;
+
       jpeg_destroy_decompress(&dinfo);
       fclose(jpegfile);
     }
 
-  if (verbose) printf("movie frame rate is: %f frames/s\n", framerate);
+  fpscode = yuv_fps2mpegcode (framerate);
+  if (fpscode == 0) 
+    {
+      fprintf(stderr, "%2.0f frames/s is an unsupported framerate !\n"
+	      "use  23.976\n"
+	      "24.000, /* 24fps movie */\n"
+	      "25.000, /* PAL */\n"
+	      "29.970, /* NTSC */\n"
+	      "30.000, 50.000, 59.940, 60.000\n"
+	      "\n", framerate);
+      exit(10);
+    }
+  else
+    {
+      if (verbose) fprintf(stderr, "movie frame rate is: %f frames/s\n", framerate);
+    }
+
+  if (interlaced == -1)
+    {
+      if (image_height / image_width >= 2)
+	{
+	  if (verbose) fprintf(stderr, "INTERLACED format detected\n");      
+	  interlaced = 1;
+	}
+      else
+	{
+	  if (verbose) fprintf(stderr, "(non_interlaced input assumed)\n");      
+	  interlaced = 0;
+	}
+    }
+
+  if (interlaced)
+    {
+      switch(interlaced_top_first)
+	{
+	case -1:
+	  {
+	    fprintf(stderr, "You have not specified the order of the frames (use the -T option)\n");      
+	    exit(9);
+	  }; break;
+	case 0:
+	  if (verbose) fprintf(stderr, "Interlaced frame order: Bottom frame first.\n");      
+	  break;
+	case 1:
+	  if (verbose) fprintf(stderr, "Interlaced frame order: Top frame first.\n");      
+	  break;
+	default:
+	  fprintf(stderr, "Invalid Top/Bottom paramter (only 0 or 1 allowed for -T)\n");      
+	  exit(9);
+	}
+    }
 
   return 1;
 }
 
-int unify_movtar()
+int generate_YUV4MPEG()
 {
   int newpicsavail = 1;
-  gint64 read_bytes, read_video_bytes = 0;
-  gint64 bytes_to_read;
 
-  guchar videobuffer[300000]; /* ought to be enough */
-  gint32 vid_index = begin;
-  gchar jpegname[255];
+  uint32_t vid_index = begin;
+  uint32_t jpegsize;
+  unsigned char jpegname[FILENAME_MAX];
   FILE *jpegfile;
+  static unsigned char ybuffer[MAXPIXELS]; // the YUV-buffers for the decoded JPEG content
+  static unsigned char ubuffer[MAXPIXELS];
+  static unsigned char vbuffer[MAXPIXELS];
+  static unsigned char jpegdata[MAXPIXELS]; // that ought to be enough
+  unsigned char *yuvbufptr[3];
 
-  if (verbose) fprintf(stderr, "Now starting unify process.\n");
+  if (verbose) fprintf(stderr, "Now generating YUV4MPEG stream.\n");
 
-  if (debug) printf("input wavsize is %lld\n", wavsize);
+  yuvbufptr[0] = ybuffer; 
+  yuvbufptr[1] = ubuffer; 
+  yuvbufptr[2] = vbuffer; 
+
+  yuv_write_header(STDOUT_FILENO, image_width, image_height, fpscode);
 
   while (newpicsavail)
     {
@@ -229,52 +298,35 @@ int unify_movtar()
 
       if (jpegfile == NULL)
 	{ 
-	  if (verbose) printf("While opening %s:\n", jpegname);
+	  if (verbose) fprintf(stderr, "While opening %s:\n", jpegname);
 	  
-	  if (!recompress)
+	  if (numframes != -1)
 	    {
 	      if (verbose) perror("Warning: Read from jpeg file failed (non-critical)");
-	      if (verbose) printf("(Rewriting latest frame, size %lld, instead)\n", read_video_bytes);
+	      //if (verbose) fprintf(stderr, "(Rewriting latest frame, size %lld, instead)\n", read_video_bytes);
+	      if (verbose) fprintf(stderr, "(Rewriting latest frame instead)\n");
 	    }
 	  else
 	    {
-	      if (verbose) printf("Last frame encountered (%s invalid). Stop.\n", jpegname);
+	      if (verbose) fprintf(stderr, "Last frame encountered (%s invalid). Stop.\n", jpegname);
 	      newpicsavail = 0;
 	    }
 	} 
       else
 	{
-	  if (!recompress)
-	    {
-	      read_video_bytes = fread(videobuffer, 1, 300000, jpegfile);
-	      if (verbose) printf("Got %s, size %lld\n", jpegname, read_video_bytes); 
-	    }
-	  else
-	    {
-	      if (debug) printf("Preparing frame\n");
-
-	      movtar_write_frame_init(outmovtar);
-	      if (!rtjpeg)
-		{
-		  if (debug) printf("Recompressing frame in JPEG format\n");
-		  jpeg_recompress(jpegfile, movtar_get_fd(outmovtar));
-		}
-	      else
-		{
-		  if (debug) printf("Recompressing frame in RTJPEG format\n");
-		  rtjpeg_recompress(jpegfile, movtar_get_fd(outmovtar));
-		}
-	      if (debug) printf("Finishing frame\n");
-	      movtar_write_frame_end(outmovtar);
-	    }
+	  if (debug) fprintf(stderr, "Preparing frame\n");
+	  
+	  jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
 	  fclose(jpegfile);
-	}
+	  
+	  if (verbose) fprintf(stderr, "Processing %s, size %d (video index is %d).\n", jpegname, jpegsize, vid_index);
 
-      if (!recompress)
-	{
-	  /* The video data should now be in videobuffer, read_bytes contains the read bytes */      
-	  if (read_video_bytes != 0)
-	    movtar_write_frame(outmovtar, videobuffer, read_video_bytes); /* write it out */
+	  decode_jpeg_raw (jpegdata, jpegsize,
+			   0, 420, image_width, image_height,
+			   ybuffer, ubuffer, vbuffer);
+	  
+	  if (debug) fprintf(stderr, "Frame decoded, now writing to output stream.\n");
+	  yuv_write_frame (STDOUT_FILENO, yuvbufptr, image_width, image_height);
 	}
 
       vid_index++; /* reached the end of the file, or the desired number of frames ? */
@@ -297,8 +349,8 @@ int main(int argc, char ** argv)
   if (init_parse_files() == 0)
   { fprintf(stderr, "* Error processing the JPEG input.\n"); exit(1); }
 
-  if (debug) fprintf("Now generating YUV4MPEG output stream.\n");
-  if (unify_movtar() == 0)
+  if (debug) fprintf(stderr, "Now generating YUV4MPEG output stream.\n");
+  if (generate_YUV4MPEG() == 0)
   { fprintf(stderr, "* Error processing the input files.\n");
     exit(1);
   }
