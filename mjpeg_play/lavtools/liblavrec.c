@@ -912,7 +912,7 @@ static void *lavrec_encoding_thread(void* arg)
 	 pthread_cleanup_push((void (*)(void*))pthread_mutex_lock, &settings->encoding_mutex);
          pthread_mutex_unlock(&(settings->encoding_mutex));
 
-         jpegsize = encode_jpeg_raw(settings->MJPG_buff+current_frame*settings->breq.size,
+         jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+current_frame*settings->breq.size),
             settings->breq.size, info->quality, settings->interlaced,
             CHROMA420, info->geometry->w, info->geometry->h,
             settings->YUV_buff+settings->softreq.offsets[current_frame],
@@ -994,6 +994,7 @@ static void *lavrec_encoding_thread(void* arg)
    }
 
    pthread_exit(NULL);
+   return(NULL);
 }
 
 
@@ -1302,7 +1303,7 @@ static int lavrec_hardware_init(lavrec_t *info)
 
    /* Map the buffers */
    settings->MJPG_buff = mmap(0, settings->breq.count*settings->breq.size, 
-      PROT_READ, MAP_SHARED, settings->video_fd, 0);
+      PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd, 0);
    if (settings->MJPG_buff == MAP_FAILED)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1511,7 +1512,7 @@ static int lavrec_init(lavrec_t *info)
                "Unable to get audio - exiting ....");
             return 0;
          }
-         res = audio_read(settings->AUDIO_buff,AUDIO_BUFFER_SIZE,0,
+         res = audio_read((unsigned char*)settings->AUDIO_buff,AUDIO_BUFFER_SIZE,0,
             &(settings->audio_t0),&(settings->astat));
          if (res < 0)
          {
@@ -1563,7 +1564,7 @@ static void lavrec_wait_for_start(lavrec_t *info)
       /* Audio (if on) is allready running, empty buffer to avoid overflow */
       if (info->audio_size)
       {
-         while( (res=audio_read(settings->AUDIO_buff,AUDIO_BUFFER_SIZE,
+         while( (res=audio_read((unsigned char*)settings->AUDIO_buff,AUDIO_BUFFER_SIZE,
             0,&settings->audio_t0,&settings->astat)) >0 ) /*noop*/;
          if(res==0) continue;
          if(res<0)
@@ -1771,7 +1772,7 @@ static int lavrec_handle_audio(lavrec_t *info, struct timeval *timestamp)
          settings->audio_bps) * settings->spas)
          break;
 
-      x = audio_read(settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
+      x = audio_read((unsigned char*)settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
          0, &(settings->audio_tmstmp), &(settings->astat));
 
       if (x == 0) break;
