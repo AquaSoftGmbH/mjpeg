@@ -3,11 +3,13 @@
 #define __INPUTSTRM_H__
 
 #include <config.h>
+#include <stdio.h>
 #include <inttypes.h>
 #include <vector>
 #include <sys/stat.h>
 #include <vector>
 
+#include "bits.hh"
 #include "aunit.hh"
 #include "vector.hh"
 #include "mpegconsts.hh"
@@ -107,22 +109,11 @@ public:
 		{
 
 		}
-	void SetMuxParams( unsigned int buf_size )
-		{
-			bufmodel.init( buf_size );
-			buffer_size = buf_size;
-			init = true;
-		}
-	unsigned int buffer_size_code()
-		{
-			assert(init);
-			if( buffer_scale == 1 )
-				return buffer_size / 1024;
-			else if( buffer_scale == 0 )
-				return buffer_size / 128;
-			else
-				assert(false);
-		}
+
+	void SetMuxParams( unsigned int buf_size );
+	unsigned int BufferSizeCode();
+	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
+	
 public:  // TODO should go protected once encapsulation complete
 
 
@@ -130,6 +121,7 @@ public:  // TODO should go protected once encapsulation complete
 	int        stream_id;
 	bool new_au_next_sec;
 	int        buffer_scale;
+	unsigned int    au_unsent;
 	unsigned int 	buffer_size;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
@@ -138,13 +130,56 @@ public:  // TODO should go protected once encapsulation complete
 
 
 template <class T, const int frame_chunk>
-class BufInputStream : public InputStream
+class ElementaryStream : public InputStream,
+						 public MuxStream
 {
 protected:
 	virtual void fillAUbuffer(unsigned int frames_to_buffer) = 0;
 
 	AUStream<T> aunits;
     static const int FRAME_CHUNK = frame_chunk;
+public:
+	ElementaryStream( const int stream_id,
+					  const int buf_scale ) : 
+		MuxStream( stream_id, buf_scale )
+		{}
+
+	T *next()
+		{
+			if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
+			{
+				if( aunits.curpos() > FRAME_CHUNK )
+				{
+					aunits.flush(FRAME_CHUNK);
+				}
+				fillAUbuffer(FRAME_CHUNK);
+			}
+			
+			return aunits.next();
+		}
+	
+	T *lookahead( unsigned int i )
+		{
+			assert( i < FRAME_CHUNK-1 );
+			return aunits.lookahead(i);
+		}
+
+
+	bool NextAU()
+		{
+			T *p_au = next();
+			if( p_au != NULL )
+			{
+				au = *p_au;
+				au_unsent = p_au->length;
+				return true;
+			}
+			else
+			{
+				au_unsent = 0;
+				return false;
+			}
+		}
 
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
@@ -154,12 +189,11 @@ public:  // TODO should go protected once encapsulation complete
 };
 
 
-class VideoStream : public BufInputStream<VAunit, 256>,
-					public MuxStream
+class VideoStream : public ElementaryStream<VAunit, 256>
 {
 public:
 	VideoStream(const int stream_num) :
-		MuxStream(VIDEO_STR_0+stream_num,1),
+		ElementaryStream<VAunit, 256>(VIDEO_STR_0+stream_num,1),
 		num_sequence(0),
 		num_seq_end(0),
 		num_pictures(0),
@@ -168,11 +202,9 @@ public:
 			for( int i =0; i<4; ++i )
 				num_frames[i] = avg_frames[i] = 0;
 		}
+
 	void Init(const char *input_file);
-	
 	void close();
-	VAunit *next();
-	VAunit *lookahead( unsigned int lookahead );
 
 
 private:
@@ -223,12 +255,11 @@ public:							// TODO make private once encapsulation comple
 	int next_sec_AU_type;
 }; 		
 
-class AudioStream : public BufInputStream<AAunit, 128>,
-					public MuxStream
+class AudioStream : public ElementaryStream<AAunit, 128>
 {
 public:   
 	AudioStream(const int stream_num) : 
-		MuxStream( AUDIO_STR_0 + stream_num, 0),
+		ElementaryStream<AAunit, 128>( AUDIO_STR_0 + stream_num, 0),
 		num_syncword(0)
 		{
 			for( int i = 0; i <2 ; ++i )
@@ -238,9 +269,6 @@ public:
 	void Init(char *audio_file);
 
 	void close();
-	AAunit *next();
-	AAunit *lookahead( unsigned int lookahead );
-
 	
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;

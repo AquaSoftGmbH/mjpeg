@@ -221,7 +221,7 @@ void create_sector (Sector_struc 	 *sector,
 	int bytes_short;
 	uint8_t 	 type = strm.stream_id;
 	uint8_t 	 buffer_scale = strm.buffer_scale;
-	unsigned int buffer_size = strm.buffer_size_code();
+	unsigned int buffer_size = strm.BufferSizeCode();
 
     index = sector->buf;
 
@@ -540,9 +540,9 @@ void create_sys_header (
 	int system_header_size;
     index = sys_header->buf;
 	unsigned int 	 buffer1_scale = strm1.buffer_scale;
-	unsigned int 	 buffer1_size = strm1.buffer_size_code();
+	unsigned int 	 buffer1_size = strm1.BufferSizeCode();
 	unsigned int 	 buffer2_scale = strm2.buffer_scale;
-	unsigned int 	 buffer2_size = strm2.buffer_size_code();
+	unsigned int 	 buffer2_size = strm2.BufferSizeCode();
 
     /* if we are not using both streams, we should clear some
        options here */

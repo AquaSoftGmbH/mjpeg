@@ -16,7 +16,8 @@ mplex_SOURCES = \
 	interact.cc		\
 	multplex.cc 		\
 	systems.cc 		\
-	vector.cc 	vector.hh
+	vector.cc 	vector.hh \
+	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh
 
 mplex_LDADD = -L$(top_srcdir)/utils -lutils -lm 
 

@@ -230,7 +230,7 @@ void VideoStream::Init (const char *video_file )
 	max_bits_persec = 0;
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
-    mjpeg_debug( "Scanning Video stream %d for access units information.\n",
+    mjpeg_info( "Scanning Video stream %d for access units information.\n",
 				 stream_id-VIDEO_STR_0);
 
 	InputStream::Init( video_file );
@@ -272,7 +272,7 @@ void VideoStream::Init (const char *video_file )
 
 	fillAUbuffer(FRAME_CHUNK);
     output_seqhdr_info();
-	au = *next();
+	(void)NextAU();
 }
 
 void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
@@ -457,26 +457,6 @@ void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
 
 }
 
-VAunit *VideoStream::next()
-{
-	if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
-	{
-		if( aunits.curpos() > FRAME_CHUNK )
-		{
-			aunits.flush(FRAME_CHUNK);
-		}
-		fillAUbuffer(FRAME_CHUNK);
-	}
-
-	return aunits.next();
-}
-
-VAunit *VideoStream::lookahead( unsigned int i )
-{
-	assert( i < FRAME_CHUNK-1 );
-	return aunits.lookahead(i);
-}
-
 void VideoStream::close()
 {
 
@@ -631,7 +611,7 @@ void AudioStream::Init (char *audio_file)
 
 
 	fillAUbuffer(FRAME_CHUNK);
-	au = *next();
+	(void)NextAU();
 	output_audio_info();
 }
 
@@ -640,7 +620,7 @@ void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int i;
 	last_buffered_AU += frames_to_buffer;
 
-	mjpeg_info( "Scanning %d MPEG audio frames to frame %d\n", 
+	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d\n", 
 				 frames_to_buffer, last_buffered_AU );
 
 	while (!bs.eos() && 
@@ -720,25 +700,7 @@ void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
 	}
 }
 
-AAunit *AudioStream::next()
-{
-	if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
-	{
-		if( aunits.curpos() > FRAME_CHUNK )
-		{
-			aunits.flush(FRAME_CHUNK);
-		}
-		fillAUbuffer(FRAME_CHUNK);
-	}
 
-	return aunits.next();
-}
-
-AAunit *AudioStream::lookahead( unsigned int i )
-{
-	assert( i < FRAME_CHUNK-1 );
-	return aunits.lookahead(i);
-}
 
 void AudioStream::close()
 {
