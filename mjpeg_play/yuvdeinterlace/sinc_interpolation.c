@@ -10,6 +10,54 @@ extern int width;
 extern int height;
 
 void
+non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
+{
+	int x,vx,y,v;
+	int min;
+	int delta,d,d1,d2,d3;
+	int line1,line2;
+	int iv;
+	int i0;
+	int a,b;
+
+	memcpy ( frame, inframe, width*height );
+
+	for(y = field+2; y < (height-2); y +=2)
+		for(x=0; x<width; x++)
+		{
+			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
+			min = d < 0 ? -d:d;
+			v = 0;
+
+			/* search best diagonal pixel-match */
+			a  = *(frame+x  +(y+1)*width);
+			b  = *(frame+x  +(y-1)*width);
+			//if( (a-b)>5 || (b-a)>5 )
+			for(vx=-11;vx<=11;vx++)
+			{
+				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
+				delta = d < 0 ? -d:d;
+
+				if(delta<min)
+				{
+					iv = (*(frame+x+vx+(y-1)*width) + *(frame+x-vx+(y+1)*width) )/2;
+					if( (iv<a && b<iv) || (iv>a && b>iv) )
+					{
+						min = delta;
+						v   = vx;
+					}
+				}
+			}
+
+			iv = (*(frame+x+v+(y-1)*width) + *(frame+x-v+(y+1)*width) )/2;
+			*(frame+x+y*width) = iv;
+
+		}
+	
+		
+}
+
+void
 sinc_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 {
 	int x,y,v;

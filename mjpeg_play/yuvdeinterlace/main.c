@@ -268,9 +268,9 @@ main (int argc, char *argv[])
 		"unknown" );
 
 	/* if chroma-subsampling isn't supported bail out ... */
-	if( input_chroma_subsampling==Y4M_CHROMA_MONO     ||
-		input_chroma_subsampling==Y4M_CHROMA_444ALPHA )
+	if( input_chroma_subsampling!=Y4M_CHROMA_420JPEG )
 	{
+		mjpeg_log (LOG_ERROR, "Y4M-Stream is not 4:2:0. Other chroma-modes currently not allowed. Sorry.");
 		exit (-1);
 	}
 
@@ -337,12 +337,12 @@ main (int argc, char *argv[])
 			/* chroma is handled like luma in this case ... */
 
 			/* interpolate first frame */
-			sinc_interpolation_luma (frame1[0],inframe[0],0);
+			non_linear_interpolation_luma (frame1[0],inframe[0],0);
 			interpolation_420JPEG_to_444_chroma (frame1[1],inframe[1],0);
 			interpolation_420JPEG_to_444_chroma (frame1[2],inframe[2],0);
 
 			/* interpolate second frame */
-			sinc_interpolation_luma (frame2[0],inframe[0],1);
+			non_linear_interpolation_luma (frame2[0],inframe[0],1);
 			interpolation_420JPEG_to_444_chroma (frame2[1],inframe[1],1);
 			interpolation_420JPEG_to_444_chroma (frame2[2],inframe[2],1);
 		}
@@ -350,27 +350,27 @@ main (int argc, char *argv[])
 			if( input_chroma_subsampling == Y4M_CHROMA_420MPEG2 )
 			{
 				/* interpolate first frame */
-				sinc_interpolation_luma (frame1[0],inframe[0],0);
-				interpolation_420MPEG2_to_444_chroma (frame1[1],inframe[1],0);
-				interpolation_420MPEG2_to_444_chroma (frame1[2],inframe[2],0);
+//				sinc_interpolation_luma (frame1[0],inframe[0],0);
+//				interpolation_420MPEG2_to_444_chroma (frame1[1],inframe[1],0);
+//				interpolation_420MPEG2_to_444_chroma (frame1[2],inframe[2],0);
 	
 				/* interpolate second frame */
-				sinc_interpolation_luma (frame2[0],inframe[0],1);
-				interpolation_420MPEG2_to_444_chroma (frame2[1],inframe[1],1);
-				interpolation_420MPEG2_to_444_chroma (frame2[2],inframe[2],1);
+//				sinc_interpolation_luma (frame2[0],inframe[0],1);
+//				interpolation_420MPEG2_to_444_chroma (frame2[1],inframe[1],1);
+//				interpolation_420MPEG2_to_444_chroma (frame2[2],inframe[2],1);
 			}
 			else
 				if( input_chroma_subsampling == Y4M_CHROMA_420PALDV )
 				{
 					/* interpolate first frame */
-					sinc_interpolation_luma (frame1[0],inframe[0],0);
-					interpolation_420PALDV_to_444_chroma (frame1[1],inframe[1],0);
-					interpolation_420PALDV_to_444_chroma (frame1[2],inframe[2],0);
+//					sinc_interpolation_luma (frame1[0],inframe[0],0);
+//					interpolation_420PALDV_to_444_chroma (frame1[1],inframe[1],0);
+//					interpolation_420PALDV_to_444_chroma (frame1[2],inframe[2],0);
 
 					/* interpolate second frame */
-					sinc_interpolation_luma (frame2[0],inframe[0],1);
-					interpolation_420PALDV_to_444_chroma (frame2[1],inframe[1],1);
-					interpolation_420PALDV_to_444_chroma (frame2[2],inframe[2],1);
+//					sinc_interpolation_luma (frame2[0],inframe[0],1);
+//					interpolation_420PALDV_to_444_chroma (frame2[1],inframe[1],1);
+//					interpolation_420PALDV_to_444_chroma (frame2[2],inframe[2],1);
 				}
 				else
 					if( input_chroma_subsampling == Y4M_CHROMA_444 )
@@ -378,40 +378,40 @@ main (int argc, char *argv[])
 						/* chroma is handled like luma in this case ... */
 
 						/* interpolate first frame */
-						sinc_interpolation_luma (frame1[0],inframe[0],0);
-						sinc_interpolation_luma (frame1[1],inframe[1],0);
-						sinc_interpolation_luma (frame1[2],inframe[2],0);
+//						sinc_interpolation_luma (frame1[0],inframe[0],0);
+//						sinc_interpolation_luma (frame1[1],inframe[1],0);
+//						sinc_interpolation_luma (frame1[2],inframe[2],0);
 
 						/* interpolate second frame */
-						sinc_interpolation_luma (frame2[0],inframe[0],1);
-						sinc_interpolation_luma (frame2[1],inframe[1],1);
-						sinc_interpolation_luma (frame2[2],inframe[2],1);
+//						sinc_interpolation_luma (frame2[0],inframe[0],1);
+//						sinc_interpolation_luma (frame2[1],inframe[1],1);
+//						sinc_interpolation_luma (frame2[2],inframe[2],1);
 					}
 					else
 						if( input_chroma_subsampling == Y4M_CHROMA_422 )
 						{
 							/* interpolate first frame */
-							sinc_interpolation_luma (frame1[0],inframe[0],0);
-							interpolation_422_to_444_chroma (frame1[1],inframe[1],0);
-							interpolation_422_to_444_chroma (frame1[2],inframe[2],0);
+//							sinc_interpolation_luma (frame1[0],inframe[0],0);
+//							interpolation_422_to_444_chroma (frame1[1],inframe[1],0);
+//							interpolation_422_to_444_chroma (frame1[2],inframe[2],0);
 
 							/* interpolate second frame */
-							sinc_interpolation_luma (frame2[0],inframe[0],1);
-							interpolation_422_to_444_chroma (frame2[1],inframe[1],1);
-							interpolation_422_to_444_chroma (frame2[2],inframe[2],1);
+//							sinc_interpolation_luma (frame2[0],inframe[0],1);
+//							interpolation_422_to_444_chroma (frame2[1],inframe[1],1);
+//							interpolation_422_to_444_chroma (frame2[2],inframe[2],1);
 						}
 						else
 							if( input_chroma_subsampling == Y4M_CHROMA_411 )
 							{
 								/* interpolate first frame */
-								sinc_interpolation_luma (frame1[0],inframe[0],0);
-								interpolation_411_to_444_chroma (frame1[1],inframe[1],0);
-								interpolation_411_to_444_chroma (frame1[2],inframe[2],0);
+//								sinc_interpolation_luma (frame1[0],inframe[0],0);
+//								interpolation_411_to_444_chroma (frame1[1],inframe[1],0);
+//								interpolation_411_to_444_chroma (frame1[2],inframe[2],0);
 	
 								/* interpolate second frame */
-								sinc_interpolation_luma (frame2[0],inframe[0],1);
-								interpolation_411_to_444_chroma (frame2[1],inframe[1],1);
-								interpolation_411_to_444_chroma (frame2[2],inframe[2],1);
+//								sinc_interpolation_luma (frame2[0],inframe[0],1);
+//								interpolation_411_to_444_chroma (frame2[1],inframe[1],1);
+//								interpolation_411_to_444_chroma (frame2[2],inframe[2],1);
 							}			
 
 		/* subsample by 2 */
@@ -505,12 +505,12 @@ search_forward_vector( int x, int y )
 	static struct vector me_candidates2[17];
 	int cc2=0; // candidate count
 	int i;
-	int max_candidates = 16;
+	int max_candidates = 4;
 	uint32_t SAD;
 	uint32_t min;
 
 	/* subsampled full-search with radius 16*4=64 */
-	min = psad_sub44 ( frame1_sub2[0]+(x4)+(y4)*width, frame2_sub2[0]+(x4)+(y4)*width, width, 4 );
+	min = psad_sub44 ( frame1_sub2[0]+(x4-1)+(y4-1)*width, frame2_sub2[0]+(x4-1)+(y4-1)*width, width, 4 );
 	me_candidates1[0].x = 0;
 	me_candidates1[0].y = 0;
 	cc1 = 1;
@@ -518,7 +518,7 @@ search_forward_vector( int x, int y )
 	for(dy=-sr4;dy<=sr4;dy++)
 		for(dx=-sr4;dx<=sr4;dx++)
 		{
-			SAD  = psad_sub44 ( frame1_sub2[0]+(x4)+(y4)*width, frame2_sub2[0]+(x4+dx)+(y4+dy)*width, width, 4 );
+			SAD  = psad_sub44 ( frame1_sub2[0]+(x4-1)+(y4-1)*width, frame2_sub2[0]+(x4+dx-1)+(y4+dy-1)*width, width, 4 );
 
 			if(SAD < min)
 			{
@@ -547,7 +547,7 @@ search_forward_vector( int x, int y )
 		}
 
 	/* subsampled reduced full-search arround sub44 candidates */
-	min = psad_sub22 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2)+(y2)*width, width, 8 );
+	min = psad_sub44 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2)+(y2)*width, width, 4 );
 	me_candidates2[0].x = 0;
 	me_candidates2[0].y = 0;
 	cc2 = 1;
@@ -556,7 +556,7 @@ search_forward_vector( int x, int y )
 		for(dy=(me_candidates1[cc1].y*2-2);dy<=(me_candidates1[cc1].y*2+2);dy++)
 			for(dx=(me_candidates1[cc1].x*2-2);dx<=(me_candidates1[cc1].x*2+2);dx++)
 			{
-				SAD  = psad_sub22 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2+dx)+(y2+dy)*width, width, 8 );
+				SAD  = psad_sub44 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2+dx)+(y2+dy)*width, width, 4 );
 
 				if(SAD < min)
 				{
@@ -589,18 +589,21 @@ search_forward_vector( int x, int y )
 
 	/* reduced full-search arround sub22 candidates */
 
-	min  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x-8)+(y)*width, width, 32, 0x0000ffff );
-	min += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+8)+(y)*width, width, 32, 0x0000ffff );
+//	min  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x-8)+(y-8)*width, width, 32, 0x00ffff );
+//	min += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+8)+(y-8)*width, width, 32, 0x00ffff );
+	min  = psad_sub22 ( frame1[0]+(x)+(y)*width, frame2[0]+(x)+(y)*width, width, 8);
 	v.x = 0;
 	v.y = 0;
 
 	while(cc2>-1)
 	{
-		for(dy=(me_candidates2[cc2].y*2-2);dy<=(me_candidates2[cc2].y*2+2);dy++)
+		//for(dy=(me_candidates2[cc2].y*2-2);dy<=(me_candidates2[cc2].y*2+2);dy++)
+			dy=me_candidates2[cc2].y*2;
 			for(dx=(me_candidates2[cc2].x*2-2);dx<=(me_candidates2[cc2].x*2+2);dx++)
 			{
-				SAD  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x+dx-8)+(y+dy-8)*width, width, 32, 0x0000ffff );
-				SAD += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+dx+8)+(y+dy-8)*width, width, 32, 0x0000ffff );
+//				SAD  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x+dx-8)+(y+dy-8)*width, width, 32, 0x00ffff );
+//				SAD += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+dx+8)+(y+dy-8)*width, width, 32, 0x00ffff );
+				SAD  = psad_sub22 ( frame1[0]+(x)+(y)*width, frame2[0]+(x+dx)+(y+dy)*width, width, 8);
 
 				if( SAD<min )
 				{
@@ -624,9 +627,9 @@ motion_compensate_field (void)
 	struct vector forward_vector;
 
 	/* search the vectors */
-	for(y=0;y<height;y+=16)
+	for(y=0;y<height;y+=8)
 	{
-		for(x=0;x<width;x+=16)
+		for(x=0;x<width;x+=8)
 		{
 			forward_vector = search_forward_vector ( x, y );
 
