@@ -16,16 +16,28 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
+from httplib import *
 from string import *
 from time import *
-
-def starttime_seconds(start_time):
+import guide
+#
+# convert tvguide time to unix time
+#
+def tvguide_seconds(start_time):
+# 86400 = 1800 * 48
 	starting_point = mktime(2000, 11, 9, 0, 0, 0, 0, 0, -1)
-	time_sec = atof(start_time) - 36839.20833333333333
-	temp = starting_point + time_sec / .0208333333333333333 * 60 * 30
+	time_sec = start_time - 36839.2083333333
+	temp = starting_point + time_sec * 86400 + 290
+	temp = temp - (temp % 300)
 	return temp
-
+#
+# convret unix time to tvguide time
+#
+def seconds_tvguide(start_time):
+	starting_point = mktime(2000, 11, 9, 0, 0, 0, 0, 0, -1)
+	start_time = (start_time - starting_point) / 86400
+	start_time = start_time + 36839.2083333333333
+	return start_time
 #
 # need to parse cl('svcid','titleid')
 #
@@ -56,8 +68,6 @@ def parse_cl(line):
 	titleid = line[start:end]
 
 	return end, svcid, titleid
-
-
 #
 #
 #	parseing view=chan&i=svcid&S=??&ST=start_time&N=station>name</a>
@@ -100,11 +110,12 @@ def parse_station(line):
 	if start > 0:
 		name = name[start+6:]
 
-	st = starttime_seconds(time_start)
+	st = tvguide_seconds(atof(time_start))
 
 	return st, channel, name
-
-
+#
+#
+#
 def parse_show(line):
 	empty = None, None, None, None
 
@@ -145,7 +156,7 @@ def parse_show(line):
 
 
 
-def parse_tvguide_data(guide_data, listings):
+def parse_tvguide_data(guide_data, guide):
 	for line in guide_data:
 		channel = None
 		name = None
@@ -162,18 +173,47 @@ def parse_tvguide_data(guide_data, listings):
 			if run_time == None:
 				continue
 
-			listings.append([curr_time, name, channel, run_time, show_name])
+			guide.append([curr_time, name, channel, run_time, show_name])
 			curr_time = curr_time + run_time * 60
 
-def guide_file(file_name, listing):
+def  guide_url(host, url, guide):
+	http = HTTP(host)
+	http.putrequest("GET", url)
+	http.putheader("Accept", "text/html")
+	http.putheader("Accept", "text/plain");
+	http.endheaders()
+
+	errcode, errmsg, headers = http.getreply()
+
+	data = http.getfile()	
+	guide_data = (data.read(), "\n")
+	parse_tvguide_data(guide_data, guide)
+
+def tvguide_url(host, service_id, guide, start, end):
+	while start < end:
+		time_st = "%f" % start
+		url = "/listings/index.asp?I=" + service_id + "&ST=" + time_st
+		guide_url(host, url, guide)
+		start = start + 1.0/12.0
+
+def guide_file(file_name, guide):
 	file = open("test", "r")
 	guide_data = file.readlines()
-	parse_tvguide_data(guide_data, listing)
+	parse_tvguide_data(guide_data, guide)
 
 
-listing = []
-guide_file("test", listing)
-for data in listing:
-	print "%s %-10s %3d mins. %s" % \
-		(strftime("%m/%d/%y %H:%M", localtime(data[0])), 
-		data[1], data[3], data[4])
+guide = guide.Guide()
+
+host="www.tvguide.com"
+
+current = mktime(localtime(time()))
+current = current - (current % (24 * 60 * 60))
+start = seconds_tvguide(current)
+end = seconds_tvguide(current + 28 * 60 * 60)
+tvguide_url(host, "100182", guide, start, end)
+#guide_file("test", guide)
+
+guide.save()
+guide.output()
+
+
