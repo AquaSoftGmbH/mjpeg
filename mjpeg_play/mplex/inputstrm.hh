@@ -225,7 +225,7 @@ private:
 	void OutputSeqhdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 	virtual void InitAUbuffer();
-
+	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
 public:	
     unsigned int num_sequence 	;
     unsigned int num_seq_end	;
@@ -245,7 +245,7 @@ public:
     unsigned int CSPF 		;
     double secs_per_frame;
 
-
+	
 	bool dtspts_for_all_au;
 
 private:
@@ -268,7 +268,64 @@ private:
 	clockticks max_PTS;
 
 	
-}; 		
+}; 	
+
+#ifdef GAGAGAGA
+class VideoStream : public PictureStream
+{
+public:
+	VideoStream(OutputStream &into, const int stream_num) :
+		PictureStream( into, stream_num )
+		{}
+private:
+	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS ) = 0;
+};
+#endif
+
+class FrameIntervals
+{
+public:
+	virtual double NextFrameInterval() = 0;
+};
+
+//
+// Class of sequence of frame intervals.
+//
+
+class ConstantFrameIntervals : public FrameIntervals
+{
+public:
+	ConstantFrameIntervals( double _frame_interval ) :
+		frame_interval( _frame_interval )
+		{
+		}
+	double NextFrameInterval() { return frame_interval; };
+private:
+	double frame_interval;
+};
+
+
+//
+// Class for video stills sequence (VCD/SVCD)
+//
+
+class StillsStream : public VideoStream
+{
+public:
+	StillsStream(OutputStream &into, const int stream_num,
+				 FrameIntervals *frame_ints) :
+		VideoStream( into, stream_num ),
+		current_PTS(0LL),
+		current_DTS(0LL),
+		intervals( frame_ints )
+		{}
+private:
+	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
+	clockticks current_PTS;
+	clockticks current_DTS;
+	FrameIntervals *intervals;
+};
+	
 
 class AudioStream : public ElementaryStream
 {
@@ -332,16 +389,6 @@ public:
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
 };
 
-class EndMarkerStream : public MuxStream
-{
-public:
-	EndMarkerStream() :
-		MuxStream( PADDING_STR, 0, 0, 0 )
-		{
-		}
-
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
-};
 
 
 #endif // __INPUTSTRM_H__

@@ -212,6 +212,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 						 unsigned int     max_packet_data_size,
 						 MuxStream        &strm,
 						 bool 	 buffers,
+						 bool    end_marker,
 						 clockticks   	 PTS,
 						 clockticks   	 DTS,
 						 uint8_t 	 timestamps
@@ -230,16 +231,18 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	uint8_t 	 type = strm.stream_id;
 	uint8_t 	 buffer_scale = strm.BufferScale();
 	unsigned int buffer_size = strm.BufferSizeCode();
-	bool zero_stuff = false;
+	unsigned int sector_pack_area;
 	index = sector_buf;
 
+	sector_pack_area = sector_size - strm.zero_stuffing;
+	if( end_marker )
+		sector_pack_area -= 4;
     /* soll ein Pack Header mit auf dem Sektor gespeichert werden? */
     /* Should we copy Pack Header information ? */
 
     if (pack != NULL)
     {
-      //bcopy (pack->buf, index, pack->length);
-      memcpy (index, pack->buf, pack->length);
+		bcopy (pack->buf, index, pack->length);
 		index += pack->length;
     }
 
@@ -248,8 +251,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     if (sys_header != NULL)
     {
-      //bcopy (sys_header->buf, index, sys_header->length);
-      memcpy (index, sys_header->buf, sys_header->length);
+		bcopy (sys_header->buf, index, sys_header->length);
 		index += sys_header->length;
     }
 
@@ -340,13 +342,15 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
 	/* MPEG-1, MPEG-2: data available to be filled is packet_size less header and MPEG-1 trailer... */
 
-	target_packet_data_size = sector_size - (index + strm.zero_stuffing - sector_buf );
+	target_packet_data_size = sector_pack_area - (index - sector_buf );
 	
 		
 	/* DEBUG: A handy consistency check when we're messing around */
-#ifndef NDEBUG		
-	if( target_packet_data_size != PacketPayload( strm, sys_header, pack, buffers,
-												  timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
+#ifdef MUX_DEBUG		
+	if( (end_marker ? target_packet_data_size+4 : target_packet_data_size) 
+		!= 
+		PacketPayload( strm, sys_header, pack, buffers,
+					   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
 		printf("\nPacket size calculation error %d S%d P%d B%d %d %d!\n ", timestamps,
 			   sys_header!=0, pack!=0, buffers,
@@ -447,38 +451,39 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	size_offset[0] = static_cast<uint8_t>((index-size_offset-2)>>8);
 	size_offset[1] = static_cast<uint8_t>((index-size_offset-2)&0xff);
 	
-	/* The case where we have fallen short enough to allow it to be dealt with by
-	   inserting a stuffing packet... */	
+	/* The case where we have fallen short enough to allow it to be
+	   dealt with by inserting a stuffing packet... */	
 	if ( bytes_short != 0 )
 	{
-		if( zero_stuffing )
+		*(index++) = static_cast<uint8_t>(PACKET_START)>>16;
+		*(index++) = static_cast<uint8_t>(PACKET_START & 0x00ffff)>>8;
+		*(index++) = static_cast<uint8_t>(PACKET_START & 0x0000ff);
+		*(index++) = PADDING_STR;
+		*(index++) = static_cast<uint8_t>((bytes_short - 6) >> 8);
+		*(index++) = static_cast<uint8_t>((bytes_short - 6) & 0xff);
+		if (mpeg_version == 2)
 		{
-			for (i = 0; i < bytes_short; i++)
-				  *(index++) = static_cast<uint8_t>(0);
+			for (i = 0; i < bytes_short - 6; i++)
+				*(index++) = static_cast<uint8_t>(STUFFING_BYTE);
 		}
 		else
 		{
-		  *(index++) = static_cast<uint8_t>(PACKET_START)>>16;
-		  *(index++) = static_cast<uint8_t>(PACKET_START & 0x00ffff)>>8;
-		  *(index++) = static_cast<uint8_t>(PACKET_START & 0x0000ff);
-		  *(index++) = PADDING_STR;
-		  *(index++) = static_cast<uint8_t>((bytes_short - 6) >> 8);
-		  *(index++) = static_cast<uint8_t>((bytes_short - 6) & 0xff);
-		  if (mpeg_version == 2)
-		  {
-			  for (i = 0; i < bytes_short - 6; i++)
-				  *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
-		  }
-		  else
-		  {
-			  *(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
-			  for (i = 0; i < bytes_short - 7; i++)
-				  *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
-		  }
+			*(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
+			for (i = 0; i < bytes_short - 7; i++)
+				*(index++) = static_cast<uint8_t>(STUFFING_BYTE);
 		}
+		
 		bytes_short = 0;
 	}
-	  
+	 
+	if( end_marker )
+	{
+		*(index++) = static_cast<uint8_t>((ISO11172_END)>>24);
+		*(index++) = static_cast<uint8_t>((ISO11172_END & 0x00ff0000)>>16);
+		*(index++) = static_cast<uint8_t>((ISO11172_END & 0x0000ff00)>>8);
+		*(index++) = static_cast<uint8_t>(ISO11172_END & 0x000000ff);
+	}
+		
 	for (i = 0; i < strm.zero_stuffing; i++)
 		*(index++) = static_cast<uint8_t>(0);
 	
@@ -558,12 +563,6 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 								bool	 audio_lock,
 								bool	 video_lock,
 								vector<ElementaryStream *> &streams
-								/*
-								int video_bound,
-								int audio_bound,
-								MuxStream      &strm1,	// Usually 1 is audio
-								MuxStream      &strm2	// Usually 2 is video
-								*/
 	)
 
 {

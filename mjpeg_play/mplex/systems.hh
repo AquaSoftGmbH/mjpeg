@@ -59,6 +59,7 @@ public:
 							   unsigned int     max_packet_data_size,
 							   MuxStream        &strm,
 							   bool 	 buffers,
+							   bool      end_marker,
 							   clockticks   	 PTS,
 							   clockticks   	 DTS,
 							   uint8_t 	 timestamps
@@ -92,7 +93,6 @@ private:
 private:
 	unsigned int mpeg_version;
 	unsigned int sector_size;
-	bool zero_stuffing;
 	int segment_num;
 	off_t max_segment_size;
 	FILE *strm;

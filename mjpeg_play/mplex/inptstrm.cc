@@ -246,7 +246,7 @@ void VideoStream::Init (const char *video_file )
 		exit (1);
     }
 
-    if (pict_rate >0 && pict_rate<9)
+	if (pict_rate >0 && pict_rate<9)
     {
 		frame_rate = picture_rates[pict_rate];
 		film_rate = 1;
@@ -254,7 +254,7 @@ void VideoStream::Init (const char *video_file )
     else
     {
 		frame_rate = 25.0;
-		film_rate = 0;
+		film_rate = 1;
 	}
 
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
@@ -268,6 +268,13 @@ void VideoStream::Init (const char *video_file )
 	(void)NextAU();
 }
 
+
+
+
+//
+// Refill the AU unit buffer setting  AU PTS DTS from the scanned
+// header information...
+//
 
 void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 {
@@ -303,6 +310,8 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
+				mjpeg_debug( "Found AU %d: DTS=%d\n", access_unit.dorder,
+							 access_unit.DTS/300 );
 				AU_hdr = syncword;
 				AU_start = stream_length;
 				AU_pict_data = 0;
@@ -311,6 +320,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
 				aunits.append( access_unit );
+				mjpeg_debug( "Completed end AU %d\n", access_unit.dorder );
 				avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
@@ -376,6 +386,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				repeat_first_field = 0;
 			}
 			
+				
 			if( access_unit.type == IFRAME )
 			{
 				unsigned int bits_persec = 
@@ -391,34 +402,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				group_start_field = fields_presented;
 			}
 
-			if( pulldown_32 )
-			{
-				int frames2field;
-				int frames3field;
-				access_unit.DTS =  (clockticks) (fields_presented * (double)(CLOCKS/2) / frame_rate);
-				access_unit.dorder = decoding_order;
-				if( repeat_first_field )
-				{
-					frames2field = (temporal_reference+1) / 2;
-					frames3field = temporal_reference / 2;
-					fields_presented += 3;
-				}
-				else
-				{
-					frames2field = (temporal_reference) / 2;
-					frames3field = (temporal_reference+1) / 2;
-					fields_presented += 2;
-				}
-				access_unit.PTS =  (clockticks) 
-					((frames2field*2 + frames3field*3 + group_start_field) * (double)(CLOCKS/2) / frame_rate);
-				access_unit.porder = temporal_reference + group_start_pic;
-			}
-			else
-			{
-				access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
-				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS / frame_rate);
-				fields_presented += 2;
-			}
+			NextDTSPTS( access_unit.DTS, access_unit.PTS );
 
 			access_unit.dorder = decoding_order;
 			access_unit.porder = temporal_reference + group_start_pic;
@@ -538,6 +522,66 @@ void VideoStream::OutputSeqhdrInfo ()
 
     mjpeg_info("Vbv buffer size : %8u bytes\n",vbv_buffer_size*2048);
     mjpeg_info("CSPF            : %8u\n",CSPF);
+}
+
+//
+// Compute PTS DTS of current AU in the video sequence being
+// scanned.  This is is the PTS/DTS calculation for normal video only.
+// It is virtual and over-ridden for non-standard streams (Stills
+// etc!).
+//
+
+void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
+{
+	if( pulldown_32 )
+	{
+		int frames2field;
+		int frames3field;
+		DTS = static_cast<clockticks>
+			(fields_presented * (double)(CLOCKS/2) / frame_rate);
+		if( repeat_first_field )
+		{
+			frames2field = (temporal_reference+1) / 2;
+			frames3field = temporal_reference / 2;
+			fields_presented += 3;
+		}
+		else
+		{
+			frames2field = (temporal_reference) / 2;
+			frames3field = (temporal_reference+1) / 2;
+			fields_presented += 2;
+		}
+		PTS = static_cast<clockticks>
+			((frames2field*2 + frames3field*3 + group_start_field) * (double)(CLOCKS/2) / frame_rate);
+		access_unit.porder = temporal_reference + group_start_pic;
+	}
+	else 
+	{
+		DTS = static_cast<clockticks> 
+			(decoding_order * (double)CLOCKS / frame_rate);
+		PTS = static_cast<clockticks>
+			((temporal_reference + group_start_pic) * (double)CLOCKS / frame_rate);
+		fields_presented += 2;
+	}
+
+}
+
+//
+// Compute DTS / PTS for a VCD/SVCD Stills sequence
+// TODO: Very crude. Simply assumes each still stays for the specified
+// frame interval and that enough run-in delay is present for the first
+// frame to be loaded.
+//
+
+void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
+{
+	clockticks interval = static_cast<clockticks>
+		(intervals->NextFrameInterval() * CLOCKS);
+	DTS = current_PTS + 1200;	// This frame decoded just after
+	                            // Predecessor completed.
+	PTS = current_PTS + interval;
+	current_PTS = PTS;
+	current_DTS = DTS;
 }
 
 /*************************************************************************

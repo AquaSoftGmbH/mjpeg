@@ -102,7 +102,6 @@ private:
 	vector<ElementaryStream *> astreams; // Audio streams in estreams
 	
 	PaddingStream pstrm;
-	EndMarkerStream estrm;
 	VCDAPadStream vcdapstrm;
 
 private:

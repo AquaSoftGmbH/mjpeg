@@ -28,6 +28,7 @@
 
 
 #include "main.hh"
+#include "format_codes.h"
 #include "mjpeg_logging.h"
 
 /*************************************************************************
@@ -48,17 +49,34 @@ int main (int argc, char* argv[])
     clockticks first_frame_PTS = 0;
 
     optargs = intro_and_options (argc, argv, &multi_file);
-	// For the moment everything is such a mess that we can't really cleanly
-	// handle stills. We'll get there in the end though...
-	if(  opt_stills )
+	// 
+	// TODO: Just crude single-stream stills for the momement
+	// TODO: Clean up interface to muxing routine...
+	//
+	if(  MPEG_STILLS_FORMAT(opt_mux_format) )
 	{
-		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
-		//vector<const char *> stills;
-		//check_stills(argc-optargs, argv+optargs, stills);
+		mjpeg_debug( "Multiplexing stills stream!\n" );
+		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
 		ostrm.InitSyntaxParameters();
-		VideoStream stillStrm(ostrm,0);
-		//stillStrm.Init( stills[0] );
-		//outputstream( stillStrm, audioStrm, multi_file );
+		int stream_num;
+		double frame_interval;
+		switch( opt_mux_format )
+		{
+		case MPEG_FORMAT_VCD_STILL :
+			stream_num = 1;
+			frame_interval = 10.0; // 10 Seconds!
+			break;
+		default:
+			mjpeg_error_exit1("Only VCD stills format for the moment...\n");
+		}
+		ConstantFrameIntervals intervals( frame_interval );
+		StillsStream stillStrm(ostrm,stream_num,  
+							   &intervals);
+		stillStrm.Init( video_file );
+		ostrm.OutputMultiplex( &stillStrm , 
+							   NULL, 
+							   multi_file);
+		
 	}
 	else
 	{

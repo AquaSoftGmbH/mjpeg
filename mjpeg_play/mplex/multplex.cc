@@ -112,7 +112,6 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_transport_size = 2048;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2048;
-	  	opt_VBR = 0;
 	  	video_buffer_size = 234*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
@@ -334,7 +333,10 @@ void OutputStream::Init( char *multi_file)
 	static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
 	audio_delay = delay + 
 	static_cast<clockticks>(opt_audio_offset*CLOCKS/1000);
-
+	mjpeg_debug( "Video delay = %lld Audio delay = %lld\n",
+				 video_delay / 300,
+				 audio_delay / 300 );
+				 
 }
 
 void OutputStream::MuxStatus(log_level_t level)
@@ -375,7 +377,7 @@ void OutputStream::MuxStatus(log_level_t level)
 	if( !vbr )
 		mjpeg_log( level,
 				   "Padding : sector=%08d\n",
-				   (*str)->nsec
+				   pstrm.nsec
 			);
 	
 	
@@ -396,6 +398,7 @@ void OutputStream::OutputPrefix( )
 	/* Deal with transport padding */
 	SetPosAndSCR( bytes_output + 
 				  transport_prefix_sectors*sector_transport_size );
+	fprintf(stderr, "init current_SCR = %lld\n", current_SCR/300 );
 	/* Pack header for system header packs */
 	psstrm->CreatePack (&pack_header, 0, mux_rate);
 	
@@ -414,8 +417,9 @@ void OutputStream::OutputPrefix( )
 		}
 
 		/* First packet carries video-info-only sys_header */
-		psstrm->CreateSysHeader (&sys_header, mux_rate, false, true, 
-						   true, true, vstreams  );
+		psstrm->CreateSysHeader (&sys_header, mux_rate, 
+								 false, true, 
+								 true, true, vstreams  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( current_SCR,  true, true, false,  false);		
@@ -441,16 +445,11 @@ void OutputStream::OutputPrefix( )
 		split_at_seq_end = false;
 		/* First packet carries small-still sys_header */
 		/* TODO COMPLETELY BOGUS!!!! */
-		psstrm->CreateSysHeader (&sys_header, mux_rate, false, true,
-						   true, true, estreams );
+		psstrm->CreateSysHeader (&sys_header, mux_rate, false, false,
+								 true, true, estreams );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-		OutputPadding( current_SCR, true, true, false, false);					
-		/* Second packet carries large-still sys_header */
-		psstrm->CreateSysHeader (&sys_header, mux_rate, false, true, 
-								 true, true, estreams );
-		OutputPadding( current_SCR, true,true, false, false);					 
-		break;
+		OutputPadding( current_SCR, true, true, false, false);							break;
 			
 	case MPEG_FORMAT_SVCD_STILL :
 		mjpeg_error_exit1("SVCD STILLS NOT YET IMPLEMENTED!\n");
@@ -475,12 +474,13 @@ void OutputStream::OutputPrefix( )
 void OutputStream::OutputSuffix()
 {
 	unsigned char *index;
-
 	psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
 	psstrm->CreateSector (&pack_header, NULL,
 						  0,
-						  estrm, 
-						  false, 0, 0,
+						  pstrm, 
+						  false,
+						  true,
+						  0, 0,
 						  TIMESTAMPBITS_NO );
 }
 
@@ -497,8 +497,8 @@ void OutputStream::OutputSuffix()
 
 
 	
-void OutputStream::OutputMultiplex ( VideoStream *vstrm,
-									 AudioStream *astrm,
+void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
+									 AudioStream *e_astrm,
 									 char *multi_file)
 
 {
@@ -511,7 +511,8 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 	vector<ElementaryStream *>::iterator str;
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
-
+	vector<bool> completed;
+	vector<bool>::iterator pcomp;
 	bool video_ended = false;
 	bool audio_ended = false;
 
@@ -521,13 +522,13 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 	bool include_sys_header = false; /* Suppress warning */
 
 
-	if( vstrm != 0 )
+	if( e_vstrm != 0 )
 	{
-		estreams.push_back(vstrm);
+		estreams.push_back(e_vstrm);
 	}
-	if( astrm != 0)
+	if( e_astrm != 0)
 	{
-		estreams.push_back(astrm);
+		estreams.push_back(e_astrm);
 	}
 
 	for( str = estreams.begin(); str < estreams.end(); ++str )
@@ -541,6 +542,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			vstreams.push_back(*str);
 			break;
 		}
+		completed.push_back(false);
 	}
 
 	Init( multi_file );
@@ -615,16 +617,16 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		case start_segment :
 			mjpeg_info( "New sequence commences...\n" );
 			SetPosAndSCR(0);
-			status_info (astrm->nsec, vstrm->nsec, pstrm.nsec, bytes_output,
-						 vstrm->bufmodel.space(),
-						 astrm->bufmodel.space(),
-						 LOG_INFO);
+			MuxStatus( LOG_INFO );
 
 			for( str = estreams.begin(); str < estreams.end(); ++str )
+			{
 				(*str)->AllDemuxed();
 
+			}
+
 			OutputPrefix();
-			
+
 			/* The starting PTS/DTS of AU's may of course be
 			   non-zero since this might not be the first segment
 			   we've built. Hence we adjust the "delay" to
@@ -632,6 +634,9 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			   synchronisation / start-up delay needed.  
 			*/
 
+			fprintf(stderr, "Prefix done: offset =%lld\n", 
+					(video_delay + current_SCR));
+			
 			for( str = vstreams.begin(); str < vstreams.end(); ++str )
 				(*str)->SetTSOffset(video_delay + current_SCR );
 			for( str = astreams.begin(); str < astreams.end(); ++str )
@@ -644,6 +649,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			for( str = estreams.begin(); str < estreams.end(); ++str )
 				(*str)->nsec = 0;
 			seg_state = mid_segment;
+			fprintf(stderr, "Finished init\n");
 			break;
 
 		case mid_segment :
@@ -661,7 +667,6 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			master = 
 				vstreams.size() > 0 ? 
 				static_cast<VideoStream*>(vstreams[0]) : 0 ;
-			assert( master == vstrm );
 			if( psstrm->FileLimReached() )
 			{
 				if( opt_multifile_segment || master == 0 )
@@ -811,6 +816,12 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		clockticks earliest;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
+			fprintf( stderr,"STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+					 (*str)->stream_id,
+					 current_SCR /300,
+					 (*str)->MuxPossible(),
+					 (*str)->RequiredDTS()/300
+				);
 			if( (*str)->MuxPossible() )
 			{
 				
@@ -869,6 +880,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		   packet has been generated */
 		include_sys_header = always_sys_header_in_pack;
 
+#ifdef ORIGINAL_CODE
 		if( !video_ended && vstrm->MuxCompleted() )
 		{
 			mjpeg_info( "Video stream ended.\n" );
@@ -882,8 +894,22 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			MuxStatus( LOG_DEBUG );
 			audio_ended = true;
 		}
+#else
+		pcomp = completed.begin();
+		str = estreams.begin();
+		while( str < estreams.end() )
+		{
+			if( !(*pcomp) && (*str)->MuxCompleted() )
+			{
+				mjpeg_debug( "STREAM %d completed.\n", (*str)->stream_id );
+				MuxStatus( LOG_DEBUG );
+				(*pcomp) = true;
+			}
+			++str;
+			++pcomp;
+		}
+#endif
 	}
-
 	// Tidy up
 	
 	OutputSuffix( );
@@ -917,6 +943,7 @@ unsigned int OutputStream::WritePacket( unsigned int     max_packet_data_size,
 								  max_packet_data_size,
 								  strm,
 								  buffers,
+								  false,
 								  PTS,
 								  DTS,
 								  timestamps );
@@ -1270,7 +1297,6 @@ void OutputStream::OutputPadding (	clockticks SCR,
 	)
 
 {
-
 	if( ! VBR_pseudo  )
 	{
 		/* let's generate the packet				*/
@@ -1278,13 +1304,15 @@ void OutputStream::OutputPadding (	clockticks SCR,
 			psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
 								   0,
 								   vcdapstrm,
-								   false, 0, 0,
+								   false, false,
+								   0, 0,
 								   TIMESTAMPBITS_NO );
 		else
 			psstrm->CreateSector ( pack_header_ptr, sys_header_ptr,
 								   0,
 								   pstrm,
-								   false, 0, 0,
+								   false, false,
+								   0, 0,
 								   TIMESTAMPBITS_NO );
 		++pstrm.nsec;
 	}

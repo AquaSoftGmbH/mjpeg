@@ -123,7 +123,7 @@ bool ElementaryStream::MuxCompleted()
 
 void ElementaryStream::SetTSOffset( clockticks baseTS )
 {
-	SetSyncOffset( baseTS - au->PTS );
+	SetSyncOffset( baseTS - au->DTS );
 }
 
 void 
@@ -144,7 +144,7 @@ Aunit *ElementaryStream::next()
 
 
 
-VideoStream::VideoStream(OutputStream &into, const int stream_num)
+VideoStream::VideoStream(OutputStream &into, const int stream_num )
 	:
 	ElementaryStream(into, VIDEO_STR_0+stream_num,
 					 0,  // Zero stuffing
@@ -161,7 +161,6 @@ VideoStream::VideoStream(OutputStream &into, const int stream_num)
 	dtspts_for_all_au( into.dtspts_for_all_vau )
 {
 	mjpeg_debug( "SETTING video buffer to %d\n", into.video_buffer_size );
-
 	prev_offset=0;
     decoding_order=0;
 	fields_presented=0;
@@ -227,19 +226,3 @@ unsigned int VCDAPadStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 	return to_read;
 }
 
-
-//
-//  Generator for end-of-stream marker packets...
-// 
-
-unsigned int EndMarkerStream::ReadStrm(uint8_t *dst, unsigned int to_read)
-{
-	uint8_t *end_marker = &dst[to_read-4];
-	memset( dst, STUFFING_BYTE, to_read-4 );
-	end_marker[0] = static_cast<uint8_t>((ISO11172_END)>>24);
-	end_marker[1] = static_cast<uint8_t>((ISO11172_END & 0x00ff0000)>>16);
-	end_marker[2] = static_cast<uint8_t>((ISO11172_END & 0x0000ff00)>>8);
-	end_marker[3] = static_cast<uint8_t>(ISO11172_END & 0x000000ff);
-	
-	return to_read;
-}

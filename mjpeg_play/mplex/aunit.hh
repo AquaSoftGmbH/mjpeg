@@ -6,7 +6,8 @@
 
 #include "bits.hh"
 
-typedef uint64_t clockticks;
+typedef int64_t clockticks;		// This value *must* be signed
+                                // because we frequently compute *offsets*
 
 class Aunit
 {
