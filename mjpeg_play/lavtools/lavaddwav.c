@@ -5,7 +5,9 @@
 
     Multiple output file version by Nicholas Redgrave 
     <baron@bologrew.demon.co.uk> 8th January 2005
-    Use "%d" style output filenames for multiple files.
+    Use "%02d" style output filenames for multiple files.
+    Parameter options added by Nicholas Redgrave 
+    <baron@bologrew.demon.co.uk> 15th January 2005
     
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,6 +32,7 @@
 #include <errno.h>
 #include "lav_io.h"
 #include "mjpeg_logging.h"
+       
 
 #define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
 
@@ -40,11 +43,28 @@
 
 #define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
 
+static int param_maxfilesize = MAX_MBYTES_PER_FILE_32;
 int verbose = 1;
+
+
+static void usage(void) 
+{
+  fprintf(stderr,
+    "Usage:  lavaddwav [params] <AVI_or_QT_file> <WAV_file> <Output_file>\n"
+    "  where possible params are:\n"
+    "    -m num      maximum size per file [%d MB]\n",
+    param_maxfilesize);
+  
+  fprintf(stderr,"    If the output file is too large for one AVI use %%0xd in\n");
+  fprintf(stderr,"    the output filename so that lavaddwav creates several files.\n");
+  fprintf(stderr,"    e.g. lavaddwav video.avi sound.wav output%%02d.avi\n");
+}
+
+
 
 int main(int argc, char **argv)
 {
-   int i, n, res, fmtlen, max_frame_size;
+   int i, n, p, res, fmtlen, max_frame_size;
    long video_frames;
    double fps;
    long audio_samps;
@@ -64,28 +84,53 @@ int main(int argc, char **argv)
    char chOutFile[128] = "\0";
    int iOutNum = 1;
    unsigned long ulOutputBytes = 0;
-
-   if(argc != 4)
+   
+   if(argc < 4)
    {
-      fprintf(stderr,"Usage:\n\n");
-      fprintf(stderr,"   %s AVI_or_QT_file WAV_file Output_file\n\n",argv[0]);
-      fprintf(stderr,"   If the output file is to large for one AVI use %%0xd in\n");
-      fprintf(stderr,"   the output filename so %s creates several files.\n",argv[0]);
-      fprintf(stderr,"   The comannd lookes than like: %s video.avi sound.wav output%%02d.avi\n",argv[0]);
+      /* Show usage */
+      usage();
       exit(1);
    }
+   /* disable error messages from getopt */
+   opterr = 0;
+   
+   /* Parse options first */   
+   while( (p = getopt(argc, argv, "m:")) != -1 )
+   {
+      switch(p)
+      {
+         case 'm':
+         {   
+            param_maxfilesize = atoi(optarg);
+            break;
+         }
+         default:
+         {
+            usage();
+            exit(1);
+         }
+      }
+   }
+
+   if( (param_maxfilesize <= 0) || (param_maxfilesize > MAX_MBYTES_PER_FILE_32) )
+   {
+      param_maxfilesize = MAX_MBYTES_PER_FILE_32;
+      fprintf(stderr,"Maximum size per file out of range - resetting to maximum\n");
+   }
+
+
 
    /* Open AVI or Quicktime file */
 
-   lav_fd = lav_open_input_file(argv[1]);
+   lav_fd = lav_open_input_file(argv[optind++]);
    if(!lav_fd)
    {
-	   mjpeg_error_exit1("Error opening %s: %s",argv[1],lav_strerror());
+	   mjpeg_error_exit1("Error opening %s: %s",argv[optind-1],lav_strerror());
    }
 
    /* Debug Output */
 
-   mjpeg_debug("File: %s",argv[1]);
+   mjpeg_debug("File: %s",argv[optind-1]);
    mjpeg_debug("   frames:      %8ld",lav_video_frames(lav_fd));
    mjpeg_debug("   width:       %8d",lav_video_width (lav_fd));
    mjpeg_debug("   height:      %8d",lav_video_height(lav_fd));
@@ -101,8 +146,8 @@ int main(int argc, char **argv)
 
    /* Open WAV file */
 
-   wav_fd = open(argv[2],O_RDONLY);
-   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", strerror(errno));}
+   wav_fd = open(argv[optind++],O_RDONLY);
+   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", strerror(errno)); }
 
    n = read(wav_fd,(char*)data,20);
    if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", strerror(errno)); }
@@ -141,7 +186,7 @@ int main(int argc, char **argv)
 
    /* Debug Output */
 
-   mjpeg_debug("File: %s",argv[2]);
+   mjpeg_debug("File: %s",argv[optind-1]);
    mjpeg_debug("   audio samps: %8ld",audio_samps);
    mjpeg_debug("   audio chans: %8d",audio_chans);
    mjpeg_debug("   audio bits:  %8d",audio_bits);
@@ -175,7 +220,7 @@ int main(int argc, char **argv)
    i = 0;
    
    /* check for enough string space for output filename */
-   if( strlen(argv[3]) > (sizeof(chOutFile)-2) )
+   if( strlen(argv[optind]) > (sizeof(chOutFile)-2) )
    {
       mjpeg_error_exit1("Insufficient string space to create output filename");
    }
@@ -197,15 +242,15 @@ int main(int argc, char **argv)
    {
       
       /* rough check for "%d" style filename */
-      if( strchr(argv[3], 37) != NULL )
+      if( strchr(argv[optind], 37) != NULL )
       {
          /* build output filename */
-         sprintf(chOutFile, argv[3], iOutNum++);
+         sprintf(chOutFile, argv[optind], iOutNum++);
          have_percent_n = 1;
       }
       else
       {
-         strncpy(chOutFile, argv[3], sizeof(chOutFile)-1);
+         strncpy(chOutFile, argv[optind], sizeof(chOutFile)-1);
          chOutFile[sizeof(chOutFile)-1] = 0;
       }
       
@@ -258,19 +303,20 @@ int main(int argc, char **argv)
          
          i++;
          /* check for exceeding maximum output file size */
-         if  ( ((ulOutputBytes >> 20) >= (unsigned long)MAX_MBYTES_PER_FILE_32 )
+         if  ( ((ulOutputBytes >> 20) >= (unsigned long)param_maxfilesize )
              && (format != 'q') )
          {
-	    if (have_percent_n)
-              {
-	         mjpeg_debug("  Starting new sequence");
-                 ulOutputBytes = 0;
-                 break;
-              }
+            if (have_percent_n)
+            {
+               mjpeg_debug("  Starting new sequence: %d",iOutNum);
+               ulOutputBytes = 0;
+               break;
+            }
             else
-              {
-                 mjpeg_error_exit1("Max file size reaced use %%0xd in your output filename");
-              }
+            {
+               lav_close(lav_out);
+               mjpeg_error_exit1("Max file size reached use %%0xd in your output filename");
+            }
          }
       
       } /* end of while( i < lav_video_frames(lav_fd) ) */
