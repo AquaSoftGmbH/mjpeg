@@ -30,10 +30,10 @@ Bernhards Problems:
 * add support for yuvmedianfilter
 * make the input fields more secure
 * make test for the input and output files
+* take a look at the yuvscaler options ( do they really work correct ? )
 * remove beginning mistakes
 * write a description for the thing. 
 * make a thing that created scripts can be scheduled with crontab or at
-* create a DVD profile
 * make a solution for dermining the active window in LVS 
 * Long term: make it look better (especially the distributed part)
 * Long term: make the task labes editable
