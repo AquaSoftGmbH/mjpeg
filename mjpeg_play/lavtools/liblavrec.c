@@ -36,33 +36,22 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <sched.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <sys/time.h>
 #include <sys/resource.h>
-#include <sys/wait.h>
+#include <sys/vfs.h>
+#include <pthread.h>
 
 #ifdef IRIX
 #include <sys/statfs.h>
 #endif
-
-#include <sys/vfs.h>
-#include <stdlib.h>
-#include <getopt.h>
-
 #ifndef IRIX
-#include <linux/videodev.h>
 #include <linux/soundcard.h>
 #endif 
 
-#include <videodev_mjpeg.h>
-#include <pthread.h>
-
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
+#include "liblavrec_low.h"
 #include "liblavrec.h"
 #include "lav_io.h"
 #include "audiolib.h"
@@ -352,11 +341,11 @@ static int lavrec_autodetect_signal(lavrec_t *info)
                "Trying %s ...", (i==2)?"TV tuner":(i==0?"Composite":"S-Video"));
 
          bstat.input = i;
-         if (ioctl(settings->video_fd,MJPIOC_G_STATUS,&bstat) < 0)
+         if (!lavrec_low_get_status(settings->video_fd, &bstat))
          {
             lavrec_msg (LAVREC_MSG_ERROR, info,
                "Error getting video input status: %s",
-               (char*)sys_errlist[errno]);
+               lavrec_low_get_error());
             return 0;
          }
 
@@ -404,10 +393,10 @@ static int lavrec_autodetect_signal(lavrec_t *info)
          (info->video_src==2) ? "TV tuner" : (info->video_src==0?"Composite":"S-Video"));
 
       bstat.input = info->video_src;
-      if (ioctl(settings->video_fd,MJPIOC_G_STATUS,&bstat) < 0)
+      if (!lavrec_low_get_status(settings->video_fd, &bstat))
       {
          lavrec_msg (LAVREC_MSG_ERROR, info,
-            "Error getting video input status: %s",sys_errlist[errno]);
+            "Error getting video input status: %s", lavrec_low_get_error());
          return 0;
       }
 
@@ -545,9 +534,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* Check if we have to open a new output file */
-   if (settings->output_status > 0 && (((settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
-       || ((info->video_format == 'a' || info->video_format == 'A') && 
-            ((settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE_32))))
+   if (settings->output_status > 0 && (settings->bytes_output_cur>>20) > info->max_file_size_mb)
    {
       lavrec_msg(LAVREC_MSG_INFO, info,
          "Max filesize reached, opening next output file");
@@ -591,13 +578,16 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
       }
       else
       {
-         if (lav_close(settings->video_file))
+         if (settings->video_file)
          {
-            settings->video_file = NULL;
-            lavrec_msg(LAVREC_MSG_ERROR, info,
-               "Error closing video output file %s, may be unuseable due to error",
-               settings->stats->output_filename);
-            return 0;
+            if (lav_close(settings->video_file))
+            {
+               settings->video_file = NULL;
+               lavrec_msg(LAVREC_MSG_ERROR, info,
+                  "Error closing video output file %s, may be unuseable due to error",
+                  settings->stats->output_filename);
+               return 0;
+            }
          }
          settings->video_file = NULL;
          if (settings->state == LAVREC_STATE_STOP) return 0;
@@ -651,9 +641,12 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
             "Not enough space for opening new output file");
 
          /* try to close and remove file, don't care about errors */
-         lav_close(settings->video_file);
-         settings->video_file = NULL;
-         remove(settings->stats->output_filename);
+         if (settings->video_file)
+         {
+            lav_close(settings->video_file);
+            settings->video_file = NULL;
+            remove(settings->stats->output_filename);
+         }
          OUTPUT_VIDEO_ERROR_RETURN;
       }
    }
@@ -768,15 +761,18 @@ static int lavrec_output_audio_samples(lavrec_t *info, char *buff, long samps)
 
    /* close old file */
    lavrec_msg(LAVREC_MSG_DEBUG, info, "Audio is filled - closing old file");
-   if (lav_close(settings->video_file_old))
+   if (settings->video_file_old)
    {
+      if (lav_close(settings->video_file_old))
+      {
+         settings->video_file_old = NULL;
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error closing video output file, may be unuseable due to error: %s",
+            lav_strerror());
+         return 0;
+      }
       settings->video_file_old = NULL;
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error closing video output file, may be unuseable due to error: %s",
-         lav_strerror());
-      return 0;
    }
-   settings->video_file_old = NULL;
 
    /* Check if we are ready */
    if (settings->output_status==3) return 0;
@@ -924,10 +920,10 @@ static int lavrec_software_init(lavrec_t *info)
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
-   if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+   if (!lavrec_low_get_caps(settings->video_fd, &vc))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+         "Error getting device capabilities: %s", lavrec_low_get_error());
       return 0;
    }
    /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
@@ -993,28 +989,18 @@ static int lavrec_software_init(lavrec_t *info)
       info->geometry->w, info->geometry->h,
       (settings->interlaced==LAV_NOT_INTERLACED)?1:2);
 
-   /* request buffer info */
-   if (ioctl(settings->video_fd, VIDIOCGMBUF, &(settings->softreq)) < 0)
+   /* request YUV buffers */
+   if (!(settings->YUV_buff = lavrec_low_request_yuv_buff(settings->video_fd, &(settings->softreq))))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting buffer information: %s", (char *)sys_errlist[errno]);
+         "Error creating YUV buffer: %s", lavrec_low_get_error());
       return 0;
    }
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Got %d YUV-buffers of size %d KB", settings->softreq.frames,
       settings->softreq.size/(1024*settings->softreq.frames));
 
-   /* Map the buffers */
-   settings->YUV_buff = mmap(0, settings->softreq.size, 
-      PROT_READ, MAP_SHARED, settings->video_fd, 0);
-   if (settings->YUV_buff == MAP_FAILED)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-
-   /* set up buffers for software encoding thread */
+   /* set up MJPEG buffers for software encoding thread */
    if (info->MJPG_numbufs > MJPEG_MAX_BUF)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1024,16 +1010,17 @@ static int lavrec_software_init(lavrec_t *info)
    }
    settings->breq.count = info->MJPG_numbufs;
    settings->breq.size = info->MJPG_bufsize*1024;
-   settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size*settings->breq.count);
-   if (!settings->MJPG_buff)
+   if (!(settings->MJPG_buff = lavrec_low_request_mjpeg_buff(settings->video_fd,
+      V4L_BTTV_SOFTWARE, &(settings->breq))));
    {
       lavrec_msg (LAVREC_MSG_ERROR, info,
-         "Malloc error, you\'re probably out of memory");
+         "Erro creating MJPEG buffer: %s", lavrec_low_get_error());
       return 0;
    }
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Created %ld MJPEG-buffers of size %ld KB",
       settings->breq.count, settings->breq.size/1024);
+
 #if 0
    /* set up thread */
    pthread_mutex_init(&(settings->valid_mutex), NULL);
@@ -1068,20 +1055,20 @@ static int lavrec_hardware_init(lavrec_t *info)
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
-   if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+   if (!lavrec_low_get_caps(settings->video_fd, &vc))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+         "Error getting device capabilities: %s", lavrec_low_get_error());
       return 0;
    }
    /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
    if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;
 
    /* Query and set params for capture */
-   if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, &bparm) < 0)
+   if (!lavrec_low_get_params(settings->video_fd, &bparm))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting video parameters: %s", (char *)sys_errlist[errno]);
+         "Error getting video parameters: %s", lavrec_low_get_error());
       return 0;
    }
    bparm.input = info->video_src;
@@ -1177,10 +1164,10 @@ static int lavrec_hardware_init(lavrec_t *info)
       for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
    }
 
-   if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, &bparm) < 0)
+   if (!lavrec_low_set_params(settings->video_fd, &bparm))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error setting video parameters: %s", (char *)sys_errlist[errno]);
+         "Error setting video parameters: %s", lavrec_low_get_error());
       return 0;
    }
 
@@ -1195,24 +1182,15 @@ static int lavrec_hardware_init(lavrec_t *info)
    /* Request buffers */
    settings->breq.count = info->MJPG_numbufs;
    settings->breq.size = info->MJPG_bufsize*1024;
-   if (ioctl(settings->video_fd, MJPIOC_REQBUFS,&(settings->breq)) < 0)
+   if (!(settings->MJPG_buff = lavrec_low_request_mjpeg_buff(settings->video_fd,
+      V4L_MJPEG_HARDWARE, &(settings->breq))))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error requesting video buffers: %s", (char *)sys_errlist[errno]);
+         "Error requesting video buffers: %s", lavrec_low_get_error());
       return 0;
    }
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Got %ld buffers of size %ld KB", settings->breq.count, settings->breq.size/1024);
-
-   /* Map the buffers */
-   settings->MJPG_buff = mmap(0, settings->breq.count*settings->breq.size, 
-      PROT_READ, MAP_SHARED, settings->video_fd, 0);
-   if (settings->MJPG_buff == MAP_FAILED)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
 
    return 1;
 }
@@ -1327,10 +1305,10 @@ static int lavrec_init(lavrec_t *info)
 #ifndef IRIX 
    vch.channel = info->video_src;
    vch.norm = info->video_norm;
-   if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
+   if (!lavrec_low_set_channel(settings->video_fd, &vch))
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error setting channel: %s", (char *)sys_errlist[errno]);
+         "Error setting channel: %s", lavrec_low_get_error());
       return 0;
    }
 
@@ -1339,10 +1317,10 @@ static int lavrec_init(lavrec_t *info)
    {
       unsigned long outfreq;
       outfreq = info->tuner_frequency*16/1000;
-      if (ioctl(settings->video_fd, VIDIOCSFREQ, &outfreq) < 0)
+      if (!lavrec_low_set_frequency(settings->video_fd, outfreq))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error setting tuner frequency: %s", (char *)sys_errlist[errno]);
+            "Error setting tuner frequency: %s", lavrec_low_get_error());
          return 0;
       }
    }
@@ -1355,10 +1333,10 @@ static int lavrec_init(lavrec_t *info)
       struct video_audio vau;
 
       /* get current */
-      if (ioctl(settings->video_fd,VIDIOCGAUDIO, &vau) < 0)
+      if (!lavrec_low_get_audio(settings->video_fd, &vau))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error getting tuner audio params: %s", (char *)sys_errlist[errno]);
+            "Error getting tuner audio params: %s", lavrec_low_get_error());
          return 0;
       }
       /* unmute so we get sound to record
@@ -1367,10 +1345,10 @@ static int lavrec_init(lavrec_t *info)
        */
       lavrec_msg(LAVREC_MSG_INFO, info, "Unmuting tuner audio...");
       vau.flags &= (~VIDEO_AUDIO_MUTE);
-      if (ioctl(settings->video_fd,VIDIOCSAUDIO, &vau) < 0)
+      if (!lavrec_low_set_audio(settings->video_fd, &vau))
       {
-         lavrec_msg(LAVREC_MSG_INFO, info,
-            "Error setting tuner audio params: %s", (char *)sys_errlist[errno]);
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error getting tuner audio params: %s", lavrec_low_get_error());
          return 0;
       }
    }
@@ -1440,6 +1418,10 @@ static int lavrec_init(lavrec_t *info)
    else
       settings->spas = 0.;
 
+   settings->mm.width = settings->width;
+   settings->mm.height = settings->height;
+   settings->mm.format = VIDEO_PALETTE_YUV422; /* UYVY, only format supported by the zoran-driver */
+
    return 1;
 }
 
@@ -1487,20 +1469,10 @@ static void lavrec_wait_for_start(lavrec_t *info)
 static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
-
-   if (info->software_encoding)
-   {
-      settings->mm.frame = *num;
-      if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
-         return 0;
-   }
-   else
-   {
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, num) < 0)
-         return 0;
-   }
-
-   return 1;
+   settings->mm.frame = *num;
+   return lavrec_low_queue_buffer(settings->video_fd,
+      info->software_encoding?V4L_BTTV_SOFTWARE:V4L_MJPEG_HARDWARE,
+      &(settings->mm));
 }
 
 
@@ -1516,24 +1488,10 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    if (info->software_encoding)
-   {
       bsync->frame = (settings->mm.frame+1)%settings->softreq.frames;
-      bsync->seq++;
-      if (ioctl(settings->video_fd, VIDIOCSYNC, &(bsync->frame)) < 0)
-      {
-         return 0;
-      }
-      gettimeofday( &(bsync->timestamp), NULL );
-   }
-   else
-   {
-      if (ioctl(settings->video_fd, MJPIOC_SYNC, bsync) < 0)
-      {
-         return 0;
-      }
-   }
-
-   return 1;
+   return lavrec_low_sync_frame(settings->video_fd,
+      info->software_encoding?V4L_BTTV_SOFTWARE:V4L_MJPEG_HARDWARE,
+      bsync);
 }
 
 
@@ -1544,10 +1502,10 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
 
 static void lavrec_record(lavrec_t *info)
 {
-	unsigned long frame_cnt;
-	int x,y, write_frame, nerr, nfout, jpegsize=0;
-	video_capture_stats stats;
-	unsigned int first_lost;
+   unsigned long frame_cnt;
+   int x,y, write_frame, nerr, nfout, jpegsize=0;
+   video_capture_stats stats;
+   unsigned int first_lost;
    long audio_offset = 0;
    double time;
    struct timeval first_time;
@@ -1562,19 +1520,15 @@ static void lavrec_record(lavrec_t *info)
    settings->stats = &stats;
 
 #ifndef IRIX
+   if (!lavrec_low_start_capture(settings->video_fd,
+      info->software_encoding?V4L_BTTV_SOFTWARE:V4L_MJPEG_HARDWARE))
+   {
+      lavrec_msg(LAVREC_MSG_WARNING, info,
+         "Error starting streaming capture: %s", lavrec_low_get_error());
+   }
    /* Queue all buffers, this also starts streaming capture */
    if (info->software_encoding)
    {
-	   frame_cnt = 1;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
-         //lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
-      settings->mm.width = settings->width;
-      settings->mm.height = settings->height;
-      settings->mm.format = VIDEO_PALETTE_YUV422; /* UYVY, only format supported by the zoran-driver */
       /* until the threads work, we need this */
       yuv_endbuff[0] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
       yuv_endbuff[1] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
@@ -1594,7 +1548,7 @@ static void lavrec_record(lavrec_t *info)
       if (!lavrec_queue_buffer(info, &frame_cnt))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error queuing buffers: %s", (char *)sys_errlist[errno]);
+            "Error queuing buffers: %s", lavrec_low_get_error());
          lavrec_change_state(info, LAVREC_STATE_STOP);
          break;
       }
@@ -1630,7 +1584,7 @@ static void lavrec_record(lavrec_t *info)
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error syncing on a buffer: %s", (char *)sys_errlist[errno]);
+            "Error syncing on a buffer: %s", lavrec_low_get_error());
          nerr++;
       }
       stats.num_syncs++;
@@ -1756,13 +1710,12 @@ static void lavrec_record(lavrec_t *info)
       }
 
       /* Re-queue the buffer */
-      //if (!info->software_encoding)
       if (!lavrec_queue_buffer(info, &(bsync.frame)))
       {
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
+            "Error re-queuing buffer: %s", lavrec_low_get_error());
          nerr++;
       }
 
@@ -1807,7 +1760,10 @@ static void lavrec_record(lavrec_t *info)
 
          /* Got an audio sample, write it out */
          if (audio_captured(info, settings->AUDIO_buff+audio_offset, x/settings->audio_bps) != 1)
+         {
+            nerr++;
             break; /* Done or error occured */
+         }
          audio_offset = 0;
 
          /* calculate time differences beetween audio and video
@@ -1839,24 +1795,11 @@ static void lavrec_record(lavrec_t *info)
 
 #ifndef IRIX
    /* stop streaming capture */
-   if (info->software_encoding)
+   if (!lavrec_low_stop_capture(settings->video_fd,
+      info->software_encoding?V4L_BTTV_SOFTWARE:V4L_MJPEG_HARDWARE))
    {
-      x = 0;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
-         //lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
-   }
-   else
-   {
-      x = -1;
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &x) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
-      }
+      lavrec_msg(LAVREC_MSG_WARNING, info,
+         "Error stopping streaming capture: %s", lavrec_low_get_error());
    }
 #else
    fprintf(stderr, "Can't stop capturing in IRIX !\n");
@@ -1925,13 +1868,18 @@ static void *lavrec_capture_thread(void *arg)
    if (info->video_src == 2) {
       struct video_audio vau;
          
+      if (!lavrec_low_get_audio(settings->video_fd, &vau))
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error regetting tuner audio params: %s", lavrec_low_get_error());
+      }
       lavrec_msg(LAVREC_MSG_INFO, info,
          "Re-muting tuner audio...");
       vau.flags |= VIDEO_AUDIO_MUTE;
-      if (ioctl(settings->video_fd,VIDIOCSAUDIO,&vau) < 0)
+      if (!lavrec_low_set_audio(settings->video_fd, &vau))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error resetting tuner audio params: %s", (char *)sys_errlist[errno]);
+            "Error resetting tuner audio params: %s", lavrec_low_get_error());
       }
    }
 #else
