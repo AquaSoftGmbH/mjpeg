@@ -58,8 +58,8 @@ Usage: ./mpeg2enc [params]
    where possible params are:
    -m num     MPEG level (1 or 2) default: 1
    -b num     Bitrate in KBit/sec (default: 1152 KBit/s)
-   -q num     Quality factor [1..31] (1 is best, no default)
-              Bitrate and Quality are mutually exclusive!
+   -q num     Quality ceiling [1..16] (1 is best, no default)
+			  This activates *variable bitrate encoding*. See below!
    -o name    Outputfile name (REQUIRED!!!)
    -F num     only for MPEG 2 output:
                0 = progressive output (no field pictures)
@@ -181,6 +181,23 @@ The encoder now also tries to predict the likely bit-demand for each
 frame so it can set quantisation roughly right so that there isn't a
 "ramping" of quality down a frame with the top (too) good and the bottom
 (excessively) poor.
+
+
+VARIABLE BIT RATE ENCODING
+
+The encoder now supports a form of variable bit-rate encoding.  You
+can specify a quality ceiling (for the technical: a quantisation
+floor).  In this case the bitrate is interpeted as a "do not exceed
+ceiling".  The encoder bumps quality up as high as it can without
+exceeding this rate and the specified quality ceiling.  For this
+option to be usefully use the speed ceiling should be high enough that
+it is rarely if ever reached and a large video buffer size (say 250 or
+400K specified).  Sensible numbers for quality ceiling are between 4
+and 8.  Below 4 and quality gains are probably no longer visible.
+Above 8 and artefacting may occur.  An interesting effect of setting a
+fixed quality rate is that encoding is actually marginally more
+efficient as the encoder encodes *changes* in quality setting from
+screen block to block.. If they don't change they don't use any bits!
 
 PERFORMANCE: MMX/MMXEXT/SSE/3D-NOW (A.Stevens Jul/Aug 2000)
 

@@ -52,12 +52,6 @@ static void readparmfile();
 static void readquantmat _ANSI_ARGS_((void));
 
 
-/*
- * RJ: Introduced fix_mquant which is a quantization quality
- * parameter to circumvent the use of fixed bitrates only.
- */
-
-int fix_mquant = 0; /* use fixed quant, range 1 ... 31 */
 
 /*
  * RJ: Introduced the possiblity to not search at all.
@@ -257,11 +251,11 @@ int main(argc,argv)
 
 	if( param_quant )
 	{
-		quant_floor = param_quant;
+		quant_floor = (double)param_quant;
 	}
 	else
 	{
-		quant_floor = 0;		/* Larger than max quantisation */
+		quant_floor = 0.0;		/* Larger than max quantisation */
 	}
 	act_boost = (param_act_boost+1.0);
   

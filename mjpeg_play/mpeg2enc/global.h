@@ -466,7 +466,7 @@ EXTERN int conceal_tab[3]; 	/* use concealment motion vectors (I,P,B) */
 
 /* Global flags controlling encoding behaviour */
 
-EXTERN int quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
+EXTERN double quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
 EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 

@@ -104,6 +104,7 @@ double peak_act;
 
 static int Np, Nb;
 static bitcount_t S;
+static double IR;
 
 /* Note: eventually we may wish to tweak these to suit image content */
 static double Ki;    	/* Down-scaling of I/B/P-frame complexity */
@@ -115,14 +116,11 @@ static double Kp;	    /* calculations.  We only need 2 but have all
 static int min_d,max_d;
 static int min_q, max_q;
 
-/* TODO DEBUG */
-static double avg_KI = 6.0;	/* These values empirically determined 		*/
+/* TODO EXPERIMENT */
+static double avg_KI = 16.0;	/* TODO: These values empirically determined 		*/
 static double avg_KB = 10.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 10.0;
-static double avgsq_KI = 8.0*8.0;
-static double avgsq_KB = 13.0*13.0;
-static double avgsq_KP = 12.0*12.0;
-#define K_AVG_WINDOW_I 4.0		/* MPEG-1, hard-wired settings */
+#define K_AVG_WINDOW_I 4.0		/* TODO: MPEG-1, hard-wired settings */
 #define K_AVG_WINDOW_P   10.0
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
@@ -209,14 +207,14 @@ void rc_init_seq()
 	if (r==0)  
 		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
-	Ki = 1.0;
+	Ki = 1.2;  /* EXPERIMENT: ADJUST activities for I MB's */
 	Kb = 1.4;
 	Kp = 1.0;
 
 
 	/* remaining # of bits in GOP */
 	R = 0;
-  
+	IR = 0;
 	/* Heuristic: In constant bit-rate streams we assume buffering
 	   will allow us to pre-load some (probably small) fraction of the
 	   buffers size worth of following data if earlier data was
@@ -280,14 +278,14 @@ void rc_init_GOP(np,nb)
 	   it to make bit allocation decisions.
 
 	*/
-	
+
 	if( R > 0  )
 	{
 		/* We replacing running estimate of undershoot with
 		   *exact* value and use that for calculating how much we
 		   may "carry over"
 		*/
-		gop_undershoot = intmax( video_buffer_size/2, (int)R );
+		gop_undershoot = intmin( video_buffer_size/2, (int)R );
 
 		R = gop_undershoot + per_gop_bits;		
 	}
@@ -295,7 +293,9 @@ void rc_init_GOP(np,nb)
 	{
 		/* Overshoots are easy - we have to make up the bits */
 		R +=  per_gop_bits;
+		gop_undershoot = 0;
 	}
+	IR = R;
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;
 
@@ -437,10 +437,15 @@ static double calc_actj(void)
 			if( cur_picture.mbinfo[k].mb_type  & MB_INTRA )
 			{
 				i_q_mat = i_intra_q;
+				/* EXPERIMENT: See what happens if we compensate for
+				 the wholly disproprotionate weight of the DC
+				 coefficients.  Shold produce more sensible results...  */
+				actsum =  -80*COEFFSUM_SCALE;
 			}
 			else
 			{
 				i_q_mat = i_inter_q;
+				actsum = 0;
 			}
 
 			/* It takes some bits to code even an entirely zero block...
@@ -449,12 +454,14 @@ static double calc_actj(void)
 			   non-zero.
 			 */
 
-			actsum = 0;
+
 			for( l = 0; l < 6; ++l )
 				actsum += 
 					(*pquant_weight_coeff_sum)
 					    ( &cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
 			actj = (double)actsum / (double)COEFFSUM_SCALE;
+			/* DEBUG: See what happens if we correct for the disproportionate
+			   weight of intra-blocks. DC coefficients */
 			if( actj < 12.0 )
 				actj = 12.0;
 
@@ -504,7 +511,7 @@ void rc_update_pict(pict_data_s *picture)
 		}
 		else
 		{
-			printf( "PAD " );
+			printf( "PAD" );
 			alignbits();
 			for( i = 0; i < padding_bytes/2; ++i )
 			{
@@ -565,27 +572,30 @@ void rc_update_pict(pict_data_s *picture)
 
 	*/
 	
-
+	/* EXPERIMENT: Xi are used as a guesstimate of likely *future* frame
+	   activities based on the past.  Thus we don't want anomalous outliers
+	   due to scene changes swinging things too much.  Introduce moving averages
+	   for the Xi...
+	   TODO: The averaging constants should be adjust to suit relative frame
+	   frequencies...
+	*/
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
 		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
-		avgsq_KI = (K*K + avgsq_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		d0i = d;
-		Xi = X;
+		Xi = (X + 3.0*Xi)/4.0;
 		break;
 	case P_TYPE:
 		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
-		avgsq_KP = (K*K + avgsq_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;;
 		d0pb = d;
-		Xp = X;
+		Xp = (X + Xp*12.0)/13.0;
 		Np--;
 		break;
 	case B_TYPE:
 		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
-		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0);
 		d0pb = d;
-		Xb = X;
+		Xb = (X + Xb*24.0)/25.0;
 		Nb--;
 		break;
 	}
@@ -656,9 +666,17 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	dj = ((double)d) + 
 		((double)(bitcount()-S) - actcovered * ((double)T) / actsum);
 
-	/* scale against dynamic range of mquant and the bits/picture count */
-	Qj = dj*62.0/r;
+	/* scale against dynamic range of mquant and the bits/picture count.
+	   quant_floor != 0.0 is the VBR case where we set a bitrate as a (high)
+	   maximum and then put a floor on quantisation to achieve a reasonable
+	   overall size.
+	   Not that this *is* baseline quantisation.  Not adjust for local activity.
+	   Otherwise we end up blurring active macroblocks. Silly in a VBR context.
+	*/
 
+	Qj = dj*62.0/r;
+	
+	Qj = (Qj > quant_floor) ? Qj : quant_floor;
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
 		a complex texture's coefficients get chopped...
@@ -668,12 +686,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		1.0 : 
 		(actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
    
-	/* quant_floor != 0 is the VBR case where we set a bitrate as a (high)
-	   maximum and then put a floor on quantisation to achieve a reasonable
-	   overall size.
-	*/
 	mquant = iscale_quant(picture,Qj*N_actj);
-	mquant = intmax( mquant, quant_floor );
 
 
 	/* Update activity covered */
