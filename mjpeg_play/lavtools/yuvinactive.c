@@ -36,7 +36,7 @@
 #define CHROMA 128
 
 /* some defintions */
-extern char *__progname;
+/* extern char *__progname; */
 struct area_s {
       int width;    /**< width of the area */
       int height;   /**< height of the area */
@@ -53,7 +53,7 @@ struct color_yuv {
 int verbose = 1;
 
 /* protoypes */
-static void print_usage();
+static void print_usage(char *progname);
 void process_commandline(int argc, char *argv[], struct area_s *inarea, 
  int *darker, int *copy_pixel, struct color_yuv *coloryuv, int *average_pixel);
 void fillarea(char area[20], struct area_s *inarea);
@@ -66,9 +66,9 @@ void average_block(int go_h, int go_w, int horz, int plane, int *orig_offset, ui
 /* Here we start the programm */
 
 /** The typical help output */
-static void print_usage()
+static void print_usage(char *progname)
 {
-  fprintf(stderr, "%s usage: -i XxY+XOFF+YOFF\n\n",__progname);
+  fprintf(stderr, "%s usage: -i XxY+XOFF+YOFF\n\n",progname);
   fprintf(stderr, " -h -H            - print out this help\n");
   fprintf(stderr, " -i X+Y+XOFF+YOFF - the area which will be set inactive, from top left\n");
   fprintf(stderr, "                  - X=Width, Y=Height, XOFF=VerticalOffset, YOFF=HorizonalOffset\n");
@@ -94,7 +94,7 @@ while ((c = getopt(argc, argv, "Hhv:i:s:d:c:a:")) != -1)
        case 'v':
          verbose = atoi(optarg);
          if ( verbose < 0 || verbose > 2)
-           print_usage();
+           print_usage(argv[0]);
          if (verbose == 2)
            mjpeg_info("Set Verbose = %i", verbose);
          break;
@@ -117,7 +117,7 @@ while ((c = getopt(argc, argv, "Hhv:i:s:d:c:a:")) != -1)
          break;
        case 'H':
        case 'h':
-         print_usage();
+         print_usage(argv[0]);
     }
   }
 
@@ -251,7 +251,7 @@ while (i < (inarea.height/2)) /* copying lines from the top down */
        memcpy(temp_pix_l, (plane_l+(copy_offset_pix+(j*horz))), inarea.width);
        memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
        offset_pix += horz;
-mjpeg_info("copy_offset %i, offset %i von j %i, von i %i", copy_offset_pix, offset_pix, j ,i);
+//mjpeg_info("copy_offset %i, offset %i von j %i, von i %i", copy_offset_pix, offset_pix, j ,i);
     } 
     i += copy_pixel; /* we copy more lines in one step */
   }
@@ -265,7 +265,7 @@ while (i < inarea.height) /* copying lines from the bottom up */
        memcpy(temp_pix_l, (plane_l+copy_offset_pix+(j*horz)), inarea.width);
        memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
        offset_pix += horz;
-mjpeg_info("wert von offset_pix %i, von j %i, von i %i", copy_offset_pix, j ,i);
+// mjpeg_info("wert von offset_pix %i, von j %i, von i %i", copy_offset_pix, j ,i);
     } 
     i += copy_pixel; /* we copy more lines in one step */
   }
