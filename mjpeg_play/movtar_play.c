@@ -13,7 +13,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
 
-#include <Hermes/Hermes.h>
+//#include <Hermes/Hermes.h>
 
 #define readbuffsize 200000
 
@@ -32,7 +32,7 @@ char **imglines;
 struct movtarinfotype movtarinfo;
 SDL_Surface *screen;
 SDL_Surface *jpeg;
-HermesHandle YUV2MyRGB; /* conversion routine handle */
+SDL_Rect jpegdims;
 
 int debug = 1;
 
@@ -139,6 +139,7 @@ void initmovtar(char *filename)
   /* start sound */
   //audio_init(0,movtarinfo.sound_stereo,movtarinfo.sound_size,movtarinfo.sound_rate);
   //audio_start();
+
 }
 
 void readnext()
@@ -186,13 +187,13 @@ static int viewed=0;
   while(!(datatype & MOVTAR_DATA_VIDEO));
 }
 
-void inline triple(unsigned char *a, unsigned char *b, unsigned char *c)
+void inline triple_swap(unsigned char *a, unsigned char *b, unsigned char *c)
 {
   unsigned char tmp_a = *a;
-  unsigned char tmp_b = *b;
+  //unsigned char tmp_b = *b;
   unsigned char tmp_c = *c;
   *a = tmp_c;
-  *b = tmp_b;
+  //*b = tmp_b;
   *c = tmp_a;
 }
 
@@ -208,6 +209,7 @@ void readpicfrommem(void *inbuffer,int size)
   struct jpeg_error_mgr jerr;
   struct jpeg_decompress_struct cinfo; 
   JSAMPARRAY buffer;
+  
 
   int i, x, y;
   unsigned long pixelval;
@@ -226,16 +228,18 @@ void readpicfrommem(void *inbuffer,int size)
   jpeg_start_decompress(&cinfo);
   
 
+#if 0
   /* lock the screen for current decompression */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       if ( SDL_LockSurface(screen) < 0 )
 	ComplainAndExit();
     }
+#endif
 
   if(img == NULL)
     {
-      img = screen->pixels;
+      img = jpeg->pixels;
       /* and WHERE are they deallocated ?? */
       if((imglines = (char **)calloc(cinfo.output_height, sizeof(char *)))==NULL)
 	{
@@ -244,6 +248,11 @@ void readpicfrommem(void *inbuffer,int size)
 	}
       for(i=0;i < cinfo.output_height;i++)
 	imglines[i]= img + i * 3 * screen->w;
+
+      jpegdims.x = 0;
+      jpegdims.y = 0;
+      jpegdims.w = cinfo.output_width;
+      jpegdims.h = cinfo.output_height;
     }
   
   while (cinfo.output_scanline < cinfo.output_height) 
@@ -253,6 +262,7 @@ void readpicfrommem(void *inbuffer,int size)
     }
 
 
+#if 0
   /* need to convert all pixels - ugh ! */
   if (screen->format->BytesPerPixel != 3)
     { 
@@ -283,7 +293,9 @@ void readpicfrommem(void *inbuffer,int size)
 	}
 
     }
+#endif
 
+#if 0 
   /* unlock it again */
   if ( SDL_MUSTLOCK(screen) ) 
     {
@@ -292,8 +304,33 @@ void readpicfrommem(void *inbuffer,int size)
 
   /* Update the screen */
   SDL_UpdateRect(screen, 0, 0, screen->w, screen->h);
+#endif
+
+  /* Only blit and update the neccessary parts */
+  SDL_BlitSurface(jpeg, &jpegdims, screen, &jpegdims);
+  SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
                           
   jpeg_finish_decompress(&cinfo);
+}
+
+
+void dump_pixel_format(struct SDL_PixelFormat *format)
+{
+  printf("Dumping format content\n");
+
+  printf("BitsPerPixel: %d\n", format->BitsPerPixel);
+  printf("BytesPerPixel: %d\n", format->BytesPerPixel);
+  printf("Rloss: %d\n", format->Rloss);
+  printf("Gloss: %d\n", format->Gloss);
+  printf("Bloss: %d\n", format->Bloss);
+  printf("Aloss: %d\n", format->Aloss);
+  printf("Rshift: %d\n", format->Rshift);
+  printf("Gshift: %d\n", format->Gshift);
+  printf("Bshift: %d\n", format->Bshift);
+  printf("Rmask: 0x%x\n", format->Rmask);
+  printf("Gmask: 0x%x\n", format->Gmask);
+  printf("Bmask: 0x%x\n", format->Bmask);
+  printf("Amask: 0x%x\n", format->Amask);
 }
 
 int main(int argc,char** argv)
@@ -311,7 +348,10 @@ int main(int argc,char** argv)
   atexit(SDL_Quit);
   
   /* Set the video mode (800x600 at native depth) */
-  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN*/);
+  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
+  dump_pixel_format(screen->format);
+  jpeg = SDL_CreateRGBSurface (SDL_SWSURFACE, 800, 600, 24, 0x0ff, 0x00ff00, 0xff0000, 0xff000000); 
+  dump_pixel_format(jpeg->format);
 
   if ( screen == NULL )  
     ComplainAndExit(); 
