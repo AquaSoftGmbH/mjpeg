@@ -2,13 +2,15 @@
 
 function usage ()
 {
-echo "Usage: transcode -S|-V [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
+echo "Usage: transcode -S|-V [-T] [-s mins] [-b bitrate] [-F framerate] [-o dstfile] srcfile ..."
 echo "o - output file root name"
 echo "b - bitrate for video in kbps"
 echo "s - sleep for specified number of minutes before starting work"
 echo "T - Use test encoder"
 echo "S - Transcode for SVCD or"
 echo "V - Transcode for VCD"
+echo "F - fhe frame rate must also be specified choose one: "
+mpeg2enc -F -h
 exit 0
 }
 
@@ -25,7 +27,8 @@ outfile=transcoded
 bitrate=""
 sleep=0
 decode="YUVh"
-while getopts ":o:b:s:SVTXh" opt
+framerate="-F 2"
+while getopts ":o:b:s:F:SVTXh" opt
 do
 case $opt in
 s) sleep=$OPTARG
@@ -33,6 +36,8 @@ s) sleep=$OPTARG
 b) bitrate="-b $OPTARG"
 ;;
 o) outfile=$OPTARG
+;;
+F) framerate="-F $OPTARG"
 ;;
 T)
 echo Using test encoder
@@ -71,7 +76,7 @@ shift $[$OPTIND-1]
 sleep $[$sleep*60]
 
 cat $* | mpeg2dec -s -o $decode | \
-        ${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
+        ${MPEG2ENC} ${MPEGOPTS} $bitrate $framerate -o $outfile.m1v
 
 cat $* | extract_ac3 - -s | ac3dec -m wav | \
         sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | \
@@ -79,3 +84,4 @@ cat $* | extract_ac3 - -s | ac3dec -m wav | \
 
 # Eventually mux-ing goes here!
 
+ 
