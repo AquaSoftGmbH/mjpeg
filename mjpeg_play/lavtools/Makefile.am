@@ -125,7 +125,7 @@ lav2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 jpeg2yuv_SOURCES = jpeg2yuv.c $(lav_headers)
 jpeg2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
 
-lav2divx_SOURCES = lav2divx.cpp lav_common.c $(lav_headers)
+lav2divx_SOURCES = lav2divx.cpp libavifile.h lav_common.c $(lav_headers)
 lav2divx_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS)
@@ -160,7 +160,7 @@ yuvscaler_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
 yuvplay_SOURCES = yuvplay.c $(lav_headers)
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils
 
-yuv2divx_SOURCES = yuv2divx.cpp $(lav_headers)
+yuv2divx_SOURCES = yuv2divx.cpp libavifile.h $(lav_headers)
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) liblavfile.la
 
@@ -170,7 +170,7 @@ ppmtoy4m_LDADD = -L$(top_builddir)/utils -lmjpegutils
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
 y4mcolorbars_LDADD = -L$(top_builddir)/utils -lmjpegutils
 
-divxdec_SOURCES = divxdec.cpp riffinfo.h lav_common.c
+divxdec_SOURCES = divxdec.cpp riffinfo.h libavifile.h lav_common.c
 divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) \
 	liblavfile.la liblavplay.la liblavjpeg.la
