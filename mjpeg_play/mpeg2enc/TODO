@@ -1,16 +1,20 @@
 Short Term
 
-1.	Tidy up defaults for gop sizes etc for NTSC vs. PAL
+1.	Fix the buffer allocation so only enough buffers for the specified
+	number of worker threads and GOP sizes are allocated.
 
 2.	The order of return from block_dist1_MMXE is silly.  Why not
 	retune in the order it is held and adjust find_best_one_pel_MMXE to
 	suit.  
 
-3.	The rate control code is now a mess of int64_t , double and int. Needs
+3.	For Motion estimation in -I 1 we really need both field *and* frame
+	sub-sampled images for motion estimation to be optimal.
+
+4.	The rate control code is now a mess of int64_t , double and int. Needs
 	tidying...
 
 
-4.	The code for scene-change gop sizing and ending sequences can in
+5.	The code for scene-change gop sizing and ending sequences can in
 	some circumstances mess up as the sizing takes no account of
 	the fact the when a sequence split occurs the I-frame tempref is
 	0 not M-1.
@@ -21,8 +25,9 @@ Medium Term
 0.	Librarify for gstreamer
 
 
-/1.  	Bring field sequence MC/prediction to same level as progressive	
+1.  	Bring field sequence MC/prediction to same level as progressive	
 	sequence.
+
 	
 2.	Improve locality of reference by motion-estimating entire 4x4, 2x2, 1x1
 phases in a single pass rather doing each for each Macroblock.

@@ -153,6 +153,7 @@ static void dpfield_estimate (
 
 static void mb_me_search (
 	uint8_t *org, uint8_t *ref,
+    int fieldoff,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h, 
@@ -185,7 +186,11 @@ void motion_subsampled_lum( pict_data_s *picture )
 	int linestride;
 
 	/* In an interlaced field the "next" line is 2 width's down rather
-	   than 1 width down  */
+	   than 1 width down  .
+       TODO: Shoudn't we be treating the frame as interlaced for
+       frame based interlaced encoding too... or at least for the
+       interlaced ME modes?
+    */
 
 	if (!opt_fieldpic)
 	{
@@ -200,6 +205,7 @@ void motion_subsampled_lum( pict_data_s *picture )
 					 linestride,
 					 picture->curorg[0]+fsubsample_offset, 
 					 picture->curorg[0]+qsubsample_offset );
+
 }
 
 /*
@@ -534,7 +540,9 @@ static void frame_ME(pict_data_s *picture,
 
 		if (picture->frame_pred_dct )
 		{
-			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb, opt_phy_width,
+			mb_me_search(picture->oldorg[0],oldrefimg[0],
+                         0,
+                         &ssmb, opt_phy_width,
                          i,j,picture->sxf,picture->syf,16,
                          opt_enc_width,opt_enc_height, &framef_mc);
 			framef_mc.fieldoff = 0;
@@ -685,17 +693,17 @@ static void frame_ME(pict_data_s *picture,
 			var = (*pvariance)(ssmb.mb,16,opt_phy_width) 
                 + chrom_var_sum(&ssmb,16,opt_phy_width);
 			/* forward */
-			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
-					   opt_phy_width,i,j,picture->sxf,picture->syf,
-					   16,opt_enc_width,opt_enc_height,
-					   &framef_mc
+			mb_me_search(picture->oldorg[0],oldrefimg[0],0,&ssmb,
+                         opt_phy_width,i,j,picture->sxf,picture->syf,
+                         16,opt_enc_width,opt_enc_height,
+                         &framef_mc
 					   );
 			framef_mc.fieldoff = 0;
 			vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
                                    opt_phy_width, 16 );
 
 			/* backward */
-			mb_me_search(picture->neworg[0],newrefimg[0],&ssmb, 
+			mb_me_search(picture->neworg[0],newrefimg[0],0,&ssmb, 
                          opt_phy_width, i,j,picture->sxb,picture->syb,
 						 16, opt_enc_width, opt_enc_height,
 						 &frameb_mc);
@@ -976,8 +984,8 @@ static void field_ME(
 	{
 		toporg = picture->oldorg[0];
 		topref = oldrefimg[0];
-		botorg = picture->oldorg[0] + opt_phy_width;
-		botref = oldrefimg[0] + opt_phy_width;
+		botorg = picture->oldorg[0];
+		botref = oldrefimg[0];
                                                         
 		if (secondfield)
 		{
@@ -985,8 +993,8 @@ static void field_ME(
 			if (picture->pict_struct==TOP_FIELD)
 			{
 				/* current is top field */
-				botorg = picture->curorg[0] + opt_phy_width;
-				botref = picture->curref[0] + opt_phy_width;
+				botorg = picture->curorg[0] ;
+				botref = picture->curref[0];
 			}
 			else
 			{
@@ -1103,8 +1111,8 @@ static void field_ME(
 		field_estimate(picture,
 					   picture->oldorg[0],
                        oldrefimg[0],
-					   picture->oldorg[0]+opt_phy_width,
-                       oldrefimg[0]+opt_phy_width,
+					   picture->oldorg[0],
+                       oldrefimg[0],
                        &ssmb,i,j,picture->sxf,picture->syf,0,
 					   &fieldf_mc,
 					   &field8uf_mc,
@@ -1117,8 +1125,8 @@ static void field_ME(
 		field_estimate(picture,
 					   picture->neworg[0],
                        newrefimg[0],
-                       picture->neworg[0]+opt_phy_width,
-                       newrefimg[0]+opt_phy_width,
+                       picture->neworg[0],
+                       newrefimg[0],
 					   &ssmb,i,j,picture->sxb,picture->syb,0,
 					   &fieldb_mc,
 					   &field8ub_mc,
@@ -1259,19 +1267,20 @@ static void frame_estimate(
 	mb_motion_s botfld_mc;
 
 	/* frame prediction */
-	mb_me_search(org,ref,topssmb,opt_phy_width,i,j,sx,sy,16,
+	mb_me_search(org,ref,0,topssmb,
+                 opt_phy_width,i,j,sx,sy,16,
                  opt_enc_width,opt_enc_height, bestfr );
 	bestfr->fieldsel = 0;
 	bestfr->fieldoff = 0;
 
 	/* predict top field from top field */
-	mb_me_search(org,ref,topssmb,
+	mb_me_search(org,ref,0,topssmb,
                  opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
                  opt_enc_width,opt_enc_height>>1,
                  &topfld_mc);
 
 	/* predict top field from bottom field */
-	mb_me_search(org+opt_phy_width,ref+opt_phy_width,topssmb, 
+	mb_me_search(org,ref,opt_phy_width,topssmb, 
                  opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
                  opt_enc_width,opt_enc_height>>1, &botfld_mc);
 
@@ -1297,17 +1306,17 @@ static void frame_estimate(
 	}
 
 	/* predict bottom field from top field */
-	mb_me_search(org,ref,botssmb,
+	mb_me_search(org,ref,0,botssmb,
                  opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
                  opt_enc_width,opt_enc_height>>1,
                  &topfld_mc);
 
 	/* predict bottom field from bottom field */
-	mb_me_search(org+opt_phy_width,ref+opt_phy_width,botssmb,
+	mb_me_search(org,ref,opt_phy_width,botssmb,
                  opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
                  opt_enc_width,opt_enc_height>>1,
                  &botfld_mc);
-
+    
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
@@ -1333,10 +1342,10 @@ static void frame_estimate(
 /*
  * field picture motion estimation subroutine
  *
- * toporg: address of original top reference field
- * topref: address of reconstructed top reference field
- * botorg: address of original bottom reference field
- * botref: address of reconstructed bottom reference field
+ * toporg: address of frame holding original top reference field
+ * topref: address of frame holding reconstructed top reference field
+ * botorg: address of frame holding original bottom reference field
+ * botref: address of frame holding reconstructed bottom reference field
  * ssmmb:  macroblock to be matched
  * i,j: location of mb (=center of search window)
  * sx,sy: half width/height of search window
@@ -1385,7 +1394,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536; /* infinity */
 	else
-		mb_me_search(toporg,topref,ssmb,
+		mb_me_search(toporg,topref,0,ssmb,
                      opt_phy_width<<1, i,j,sx,sy>>1,16,
                      opt_enc_width,opt_enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1393,7 +1402,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
 	else
-		mb_me_search(botorg,botref,ssmb,
+		mb_me_search(botorg,botref,opt_phy_width,ssmb,
                      opt_phy_width<<1, i,j,sx,sy>>1,16,
                      opt_enc_width,opt_enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
@@ -1431,7 +1440,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		mb_me_search(toporg,topref,ssmb,
+		mb_me_search(toporg,topref,0,ssmb,
                      opt_phy_width<<1, i,j,sx,sy>>1,8,
                      opt_enc_width,opt_enc_height>>1,&topfld_mc);
 	dt = topfld_mc.sad;
@@ -1439,7 +1448,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,ssmb,
+		mb_me_search(botorg,botref,opt_phy_width,ssmb,
                      opt_phy_width<<1, i,j,sx,sy>>1,8,
                      opt_enc_width,opt_enc_height>>1,&botfld_mc);
 	db = botfld_mc.sad;
@@ -1474,7 +1483,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		mb_me_search(toporg,topref,&botssmb,
+		mb_me_search(toporg,topref,0,&botssmb,
                      opt_phy_width<<1, i,j+8,sx,sy>>1,8,
                      opt_enc_width,opt_enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1482,7 +1491,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,&botssmb,
+		mb_me_search(botorg,botref,opt_phy_width,&botssmb,
                      opt_phy_width<<1,i,j+8,sx,sy>>1,8,
                      opt_enc_width,opt_enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
@@ -1793,11 +1802,15 @@ static void dpfield_estimate(
  * experiments have shown it is always close to optimal and almost
  * always very close or optimal.
  *
- * org: top left pel of source reference picture
- * ref: top left pel of reconstructed reference picture
+ * org: top left pel of source reference frame
+ * ref: top left pel of reconstructed reference frame
+ * fieldoff - Offset to top left pel relevant field in org and ref
+ *          if we're doing by-field matching 
  * ssblk: top-left element of macro block to be motion compensated
  *        at 1*1,2*2 and 4*4 subsampling
  * lx: distance (in bytes) of vertically adjacent pels in ref,blk
+ *     This is twice the physical line length if we're doing by-field
+ *     matching otherwise the physical line length
  * i0,j0: center of search window
  * sx,sy: half widths of search window
  * h: height of macro block
@@ -1816,6 +1829,7 @@ static void dpfield_estimate(
 static void mb_me_search(
 	uint8_t *org,
 	uint8_t *ref,
+    int fieldoff,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h,
@@ -1832,10 +1846,11 @@ static void mb_me_search(
 	   works better when the original image not the reference (reconstructed)
 	   image is used. 
 	*/
-	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset);
-	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset);
+	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset+(fieldoff>>1));
+	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset+(fieldoff>>2));
 	uint8_t *orgblk;
 
+    uint8_t *reffld = ref+fieldoff;
 
 	int flx = lx >> 1;
 	int qlx = lx >> 2;
@@ -1875,7 +1890,7 @@ static void mb_me_search(
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
-	best.weight = (*psad_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
+	best.weight = (*psad_00)(reffld+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
 	best.x = 0;
 	best.y = 0;
 
@@ -1884,13 +1899,15 @@ static void mb_me_search(
 	   controlled by ctl_44_red
 	   Note: we use the original picture here for the match...
 	 */
+
+
 	(*pbuild_sub44_mests)( &sub44set,
 							ilow, jlow, ihigh, jhigh,
 							i0, j0,
 							best.weight,
 							s44org, 
 							ssblk->qmb, qlx, qh,
-							ctl_44_red);
+							ctl_44_red); 
 
 	
 	/* Generate the best 2*2 sub-sampling matches from the
@@ -1917,11 +1934,10 @@ static void mb_me_search(
 	
 
 	(*pfind_best_one_pel)( &sub22set,
-						   ref, ssblk->mb, 
+						   reffld, ssblk->mb, 
 						   i0, j0,
 						   ihigh, jhigh, 
 						   lx, h, &best );
-
 	/* Final polish: half-pel search of best 1*1 against
 	   reconstructed image. 
 	*/
@@ -1940,7 +1956,7 @@ static void mb_me_search(
 	{
 		for (i=ilow; i<=ihigh; i++)
 		{
-			orgblk = ref+(i>>1)+((j>>1)*lx);
+			orgblk = reffld+(i>>1)+((j>>1)*lx);
 			if( i&1 )
 			{
 				if( j & 1 )

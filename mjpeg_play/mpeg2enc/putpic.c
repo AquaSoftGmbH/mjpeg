@@ -211,7 +211,6 @@ void putpict(pict_data_s *picture )
     {
 		putseqhdr();
     }
-
 	if( picture->gop_start )
 	{
 		/* set closed_GOP in first GOP only No need for per-GOP seqhdr
@@ -278,7 +277,9 @@ void putpict(pict_data_s *picture )
 
 			}
 
+
 			mb_type = cur_mb->mb_type;
+
 
 			/* determine mquant (rate control) */
 			cur_mb->mquant = rc_calc_mquant(picture,k);

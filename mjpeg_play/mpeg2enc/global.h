@@ -325,8 +325,8 @@ EXTERN const char *statname
   How many frames to read in one go and the size of the frame data buffer.
 */
 
-#define READ_CHUNK_SIZE 20
-#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*3)
+#define READ_CHUNK_SIZE 5
+#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*9)
 
 /*
   How many frames encoding may be concurrently under way.
@@ -335,7 +335,7 @@ EXTERN const char *statname
   parallelising per-macro-block computations.
  */
 
-#define MAX_WORKER_THREADS 8
+#define MAX_WORKER_THREADS 4
 
 
 /* *************************************

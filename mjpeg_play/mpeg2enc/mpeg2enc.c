@@ -1095,7 +1095,6 @@ static void border_mark( uint8_t *frame,
         mask ^= 0xff;
     }
   }
-
 }
 
 
@@ -1218,6 +1217,7 @@ static void init_encoder(void)
 			 frame_buffers[n][i] = 
 				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
 		 }
+
          border_mark(frame_buffers[n][0],
                      opt_enc_width,opt_enc_height,
                      opt_phy_width,opt_phy_height);
@@ -1227,6 +1227,7 @@ static void init_encoder(void)
          border_mark(frame_buffers[n][2],
                      enc_chrom_width, enc_chrom_height,
                      opt_phy_chrom_width,opt_phy_chrom_height);
+
 	}
 #ifdef OUTPUT_STAT
 	/* open statistics output file */
