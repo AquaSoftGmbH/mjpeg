@@ -19,15 +19,15 @@
 
 #CFLAGS =  -g
 
-CFLAGS =  -O3
+CFLAGS =  -O1 -g -Wall
 LDFLAGS=  -lm
 #CC     =  egcs
 CC    =  gcc
 RM     =  /bin/rm -f
 
-OBJS = main.o bitstrm.o buffer.o inits.o inptstrm.o interact.o multplex.o systems.o timecode.o
+OBJS = main.o bits.o buffer.o inits.o inptstrm.o interact.o multplex.o systems.o timecode.o vector.o
 
-SRCS = main.c bitstrm.c buffer.c inits.c inptstrm.c interact.c multplex.c systems.c timecode.c
+SRCS = main.c bits.c buffer.c inits.c inptstrm.c interact.c multplex.c systems.c timecode.c vector.c
 
 all: mplex
 

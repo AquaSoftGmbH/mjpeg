@@ -1,4 +1,9 @@
 #include "main.h"
+
+#include <math.h>
+#include <unistd.h>
+
+
 #ifdef TIMER
     extern long total_sec;
     extern long total_usec;
@@ -34,18 +39,17 @@
 	packet.
 ******************************************************************/
 
-void outputstream (video_file, video_units, video_info,
-		   audio_file, audio_units, audio_info,
-		   multi_file, which_streams )
-
-char 		*video_file;
-char 		*video_units;
-Video_struc 	*video_info;
-char 		*audio_file;
-char 		*audio_units;
-Audio_struc 	*audio_info;
-char 		*multi_file;
-unsigned int    which_streams;
+void outputstream ( char 		*video_file,
+					char 		*video_units,
+					Video_struc 	*video_info,
+					char 		*audio_file,
+					char 		*audio_units,
+					Audio_struc 	*audio_info,
+					char 		*multi_file,
+					unsigned int    which_streams,
+					Vector	   vaunit_info_vec,
+					Vector     aaunit_info_vec
+				 )
 
 {
 
@@ -110,8 +114,10 @@ unsigned int    which_streams;
 
     if (which_streams & STREAMS_VIDEO) istream_v = fopen (video_file, "rb");
     if (which_streams & STREAMS_AUDIO) istream_a = fopen (audio_file, "rb");
+#ifdef FILE_INTERMEDIATES
     if (which_streams & STREAMS_VIDEO) vunits_info = fopen (video_units, "rb");
     if (which_streams & STREAMS_AUDIO) aunits_info = fopen (audio_units, "rb");
+#endif
     ostream	= fopen (multi_file, "wb");
 
     /* Einlesen erster Access Unit Informationen		*/
@@ -123,12 +129,18 @@ unsigned int    which_streams;
     empty_aaunit_struc (&audio_au);
 
     if (which_streams & STREAMS_AUDIO) {
-	fread (&audio_au, sizeof(Aaunit_struc), 1, aunits_info);
-	audio_frame_start = TRUE;
+#ifdef FILE_INTERMEDIATES
+	  fread (&audio_au, sizeof(Aaunit_struc), 1, aunits_info);
+#endif
+	  audio_au = *(Aaunit_struc*)VectorNext( aaunit_info_vec );
+	  audio_frame_start = TRUE;
     }
     if (which_streams & STREAMS_VIDEO) {
-	fread (&video_au, sizeof(Vaunit_struc), 1, vunits_info);
-	picture_start = TRUE;
+#ifdef FILE_INTERMEDIATES
+	  fread (&video_au, sizeof(Vaunit_struc), 1, vunits_info);
+#endif
+	  video_au = *(Vaunit_struc*)VectorNext( vaunit_info_vec );
+	  picture_start = TRUE;
     }
 
 	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
@@ -376,7 +388,8 @@ unsigned int    which_streams;
 
 	    output_audio (&current_SCR, &SCR_audio_delay, aunits_info,
 		istream_a, ostream, &pack, &sys_header, &sector,
-		&audio_buffer, &audio_au, &audio_frame_start,
+		&audio_buffer, &audio_au, aaunit_info_vec,
+		&audio_frame_start,
 		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
 		packet_data_size, marker_pack, which_streams);
 
@@ -408,7 +421,7 @@ unsigned int    which_streams;
 	    /* write out video packet */
 	    output_video (&current_SCR, &SCR_video_delay, vunits_info,
 		istream_v, ostream, &pack, &sys_header, &sector,
-		&video_buffer, &video_au, &picture_start,
+		&video_buffer, &video_au, vaunit_info_vec, &picture_start,
 		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
 		packet_data_size, marker_pack, which_streams);
 
@@ -438,7 +451,8 @@ unsigned int    which_streams;
 	    /* write out audio packet */
 	    output_audio (&current_SCR, &SCR_audio_delay, aunits_info,
 		istream_a, ostream, &pack, &sys_header, &sector,
-		&audio_buffer, &audio_au, &audio_frame_start,
+		&audio_buffer, &audio_au, aaunit_info_vec,
+		&audio_frame_start,
 		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
 		packet_data_size, marker_pack, which_streams);
 
@@ -448,11 +462,11 @@ unsigned int    which_streams;
             gettimeofday (&tp_start,NULL);
 #endif 
 	    status_message (STATUS_AUDIO_TIME_OUT);
-#ifdef DEBUG_ARITH
+
 	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
 			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
 			video_au.DTS.msb, video_au.DTS.lsb );
-#endif
+
 	    /* status info */
 	    status_info (++nsec_a, nsec_v, nsec_p, bytes_output, 
 			 buffer_space(&video_buffer),
@@ -477,7 +491,7 @@ unsigned int    which_streams;
 	    /* write out video packet */
 	    output_video (&current_SCR, &SCR_video_delay, vunits_info,
 		istream_v, ostream, &pack, &sys_header, &sector,
-		&video_buffer, &video_au, &picture_start,
+		&video_buffer, &video_au, vaunit_info_vec, &picture_start,
 		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
 		packet_data_size, marker_pack, which_streams);
 
@@ -487,11 +501,11 @@ unsigned int    which_streams;
             gettimeofday (&tp_start,NULL);
 #endif 
 	    status_message (STATUS_VIDEO_TIME_OUT);
-#ifdef DEBUG_ARITH
+
 	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
 			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
 			video_au.DTS.msb, video_au.DTS.lsb );
-#endif
+
 	    /* status info */
 	    status_info (nsec_a, ++nsec_v, nsec_p, bytes_output, 
 			 buffer_space(&video_buffer),
@@ -564,9 +578,10 @@ unsigned int    which_streams;
     /* close all In- and Outputfiles				*/
 
     fclose (ostream);
-
+#ifdef FILE_INTERMEDIATES
     if (which_streams & STREAMS_AUDIO) fclose (aunits_info);
     if (which_streams & STREAMS_VIDEO) fclose (vunits_info);
+#endif
     if (which_streams & STREAMS_AUDIO) fclose (istream_a);
     if (which_streams & STREAMS_VIDEO) fclose (istream_v);
 
@@ -604,18 +619,18 @@ unsigned int    which_streams;
 	file
 ******************************************************************/
 
-void next_video_access_unit (buffer, video_au, bytes_left, vunits_info,
-			picture_start, SCR_delay)
-Buffer_struc *buffer;
-Vaunit_struc *video_au;
-unsigned int *bytes_left;
-FILE *vunits_info;
-unsigned char *picture_start;
-Timecode_struc *SCR_delay;
-
+void next_video_access_unit (Buffer_struc *buffer,
+							Vaunit_struc *video_au,
+							unsigned int *bytes_left,
+							FILE *vunits_info,
+							unsigned char *picture_start,
+							Timecode_struc *SCR_delay,
+							Vector vaunit_info_vec
+							 )
 {
 
 	int i;
+	Vaunit_struc *vau;
 
 	if (*bytes_left == 0)
 	    return;
@@ -624,20 +639,19 @@ Timecode_struc *SCR_delay;
 	{
 	    queue_buffer (buffer, video_au->length, &video_au->DTS);
 	    *bytes_left -= video_au->length;
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+#ifdef FILE_INTERMEDIATES
 	    i=fread (video_au, sizeof(Vaunit_struc), 1, vunits_info);
-#ifdef TIMER
-            gettimeofday (&tp_end,NULL);
-            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 	    if (i != 1)
+#else
+		vau = (Vaunit_struc*)VectorNext( vaunit_info_vec );
+		if( vau != NULL )
+			*video_au = *vau;
+		else
+#endif	
 	    {
-		empty_vaunit_struc (video_au);
-		status_message(STATUS_VIDEO_END);
-		return;
+		  empty_vaunit_struc (video_au);
+		  status_message(STATUS_VIDEO_END);
+		  return;
 	    }
 	    *picture_start = TRUE;
 	    add_to_timecode (SCR_delay, &video_au->DTS);
@@ -653,20 +667,19 @@ Timecode_struc *SCR_delay;
 	if (video_au->length == *bytes_left)
 	{
 	    queue_buffer (buffer, *bytes_left, &video_au->DTS);
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+#ifdef FILE_INTERMEDIATES
 	    i=fread (video_au, sizeof(Vaunit_struc), 1, vunits_info);
-#ifdef TIMER
-            gettimeofday (&tp_end,NULL);
-            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 	    if (i != 1)
+#else
+		vau = (Vaunit_struc*)VectorNext( vaunit_info_vec );
+		if( vau != NULL )
+			*video_au = *vau;
+		else
+#endif	
 	    {
-		empty_vaunit_struc (video_au);
-		status_message(STATUS_VIDEO_END);
-		return;
+		  empty_vaunit_struc (video_au);
+		  status_message(STATUS_VIDEO_END);
+		  return;
 	    }
 	    *picture_start = TRUE;
 	    add_to_timecode (SCR_delay, &video_au->DTS);
@@ -685,30 +698,26 @@ Timecode_struc *SCR_delay;
 	video stream and writes out the new sector
 ******************************************************************/
 
-void output_video (SCR, SCR_delay, vunits_info, istream_v, ostream,
-		   pack, sys_header, sector, buffer, video_au,
-		   picture_start, bytes_output, mux_rate,
-		   audio_buffer_size, video_buffer_size,
-		   packet_data_size, marker_pack, which_streams)
-
-Timecode_struc *SCR;
-Timecode_struc *SCR_delay;
-FILE *vunits_info;
-FILE *istream_v;
-FILE *ostream;
-Pack_struc *pack;
-Sys_header_struc *sys_header;
-Sector_struc *sector;
-Buffer_struc *buffer;
-Vaunit_struc *video_au;
-unsigned char *picture_start;
-unsigned long long *bytes_output;
-unsigned int mux_rate;
-unsigned long audio_buffer_size;
-unsigned long video_buffer_size;
-unsigned long packet_data_size;
-unsigned char marker_pack;
-unsigned int which_streams;
+void output_video ( Timecode_struc *SCR,
+					Timecode_struc *SCR_delay,
+					FILE *vunits_info,
+					FILE *istream_v,
+					FILE *ostream,
+					Pack_struc *pack,
+					Sys_header_struc *sys_header,
+					Sector_struc *sector,
+					Buffer_struc *buffer,
+					Vaunit_struc *video_au,
+					Vector vaunit_info_vec,
+					unsigned char *picture_start,
+					unsigned long long *bytes_output,
+					unsigned int mux_rate,
+					unsigned long audio_buffer_size,
+					unsigned long video_buffer_size,
+					unsigned long packet_data_size,
+					unsigned char marker_pack,
+					unsigned int which_streams
+)
 
 {
 
@@ -717,7 +726,7 @@ unsigned int which_streams;
     Pack_struc *pack_ptr;
     Sys_header_struc *sys_header_ptr;
     unsigned char timestamps;
-
+	Vaunit_struc *vau;
 
     if (marker_pack)
     {
@@ -762,7 +771,7 @@ unsigned int which_streams;
 	bytes_left = sector->length_of_packet_data;
 
 	next_video_access_unit (buffer, video_au, &bytes_left, vunits_info,
-				picture_start, SCR_delay);
+							picture_start, SCR_delay, vaunit_info_vec);
 
     }
 
@@ -781,7 +790,7 @@ unsigned int which_streams;
 	bytes_left = sector->length_of_packet_data;
 
 	next_video_access_unit (buffer, video_au, &bytes_left, vunits_info,
-				picture_start, SCR_delay);
+				picture_start, SCR_delay, vaunit_info_vec);
 
     }
 
@@ -797,11 +806,17 @@ unsigned int which_streams;
 	/* gibt es ueberhaupt noch eine Access Unit ? */
 	/* is there a new access unit anyway? */
 
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+ 
+#ifdef FILE_INTERMEDIATES
 	if (fread (video_au, sizeof(Vaunit_struc), 1, vunits_info)==1)
+#else
+	vau = (Vaunit_struc*)VectorNext( vaunit_info_vec );
+	if( vau != NULL )
+#endif	
 	{
+#ifndef FILE_INTERMEDIATES
+		*video_au = *vau;
+#endif
 	    if (video_au->type == BFRAME)
 		timestamps=TIMESTAMPS_PTS;
 	    else
@@ -818,7 +833,7 @@ unsigned int which_streams;
 	bytes_left = sector->length_of_packet_data - temp;
 
 	next_video_access_unit (buffer, video_au, &bytes_left, vunits_info,
-				picture_start, SCR_delay);
+							picture_start, SCR_delay, vaunit_info_vec);
 	} else
 	{
 	    status_message(STATUS_VIDEO_END);
@@ -864,18 +879,19 @@ unsigned int which_streams;
 	gets information on access unit from the tmp file
 ******************************************************************/
 
-void next_audio_access_unit (buffer, audio_au, bytes_left, aunits_info,
-			audio_frame_start, SCR_delay)
-Buffer_struc *buffer;
-Aaunit_struc *audio_au;
-unsigned int *bytes_left;
-FILE *aunits_info;
-unsigned char *audio_frame_start;
-Timecode_struc *SCR_delay;
+void next_audio_access_unit (Buffer_struc *buffer,
+							Aaunit_struc *audio_au,
+							unsigned int *bytes_left,
+							FILE *aunits_info,
+							unsigned char *audio_frame_start,
+							Timecode_struc *SCR_delay,
+							Vector aaunit_info_vec
+							)
 
 {
 
 	int i;
+	Aaunit_struc *aau;
 
 	if (*bytes_left == 0)
 	    return;
@@ -884,20 +900,19 @@ Timecode_struc *SCR_delay;
 	{
 	    queue_buffer (buffer, audio_au->length, &audio_au->PTS);
 	    *bytes_left -= audio_au->length;
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+#ifdef FILE_INTERMEDIATES
 	    i=fread (audio_au, sizeof(Aaunit_struc), 1, aunits_info);
-#ifdef TIMER
-            gettimeofday (&tp_end,NULL);
-            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 	    if (i != 1)
+#else
+		aau = (Aaunit_struc*)VectorNext( aaunit_info_vec );
+		if( aau != NULL )
+			*audio_au = *aau;
+		else
+#endif
 	    {
-		empty_aaunit_struc (audio_au);
-		status_message(STATUS_AUDIO_END);
-		return;
+		  empty_aaunit_struc (audio_au);
+		  status_message(STATUS_AUDIO_END);
+		  return;
 	    }
 	    *audio_frame_start = TRUE;
 	    add_to_timecode (SCR_delay, &audio_au->PTS);
@@ -912,20 +927,19 @@ Timecode_struc *SCR_delay;
 	if (audio_au->length == *bytes_left)
 	{
 	    queue_buffer (buffer, *bytes_left, &audio_au->PTS);
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+#ifdef FILE_INTERMEDIATES
 	    i=fread (audio_au, sizeof(Aaunit_struc), 1, aunits_info);
-#ifdef TIMER
-            gettimeofday (&tp_end,NULL);
-            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 	    if (i != 1)
+#else
+		aau = (Aaunit_struc*)VectorNext( aaunit_info_vec );
+		if( aau != NULL )
+			*audio_au = *aau;
+		else
+#endif
 	    {
-		empty_aaunit_struc (audio_au);
-		status_message(STATUS_AUDIO_END);
-		return;
+		  empty_aaunit_struc (audio_au);
+		  status_message(STATUS_AUDIO_END);
+		  return;
 	    }
 	    *audio_frame_start = TRUE;
 	    add_to_timecode (SCR_delay, &audio_au->PTS);
@@ -942,30 +956,26 @@ Timecode_struc *SCR_delay;
 	audio stream and saves them into the sector
 ******************************************************************/
 
-void output_audio (SCR, SCR_delay, aunits_info, istream_a, ostream,
-		   pack, sys_header, sector, buffer, audio_au,
-		   audio_frame_start, bytes_output, mux_rate,
-		   audio_buffer_size, video_buffer_size,
-		   packet_data_size, marker_pack, which_streams)
-
-Timecode_struc *SCR;
-Timecode_struc *SCR_delay;
-FILE *aunits_info;
-FILE *istream_a;
-FILE *ostream;
-Pack_struc *pack;
-Sys_header_struc *sys_header;
-Sector_struc *sector;
-Buffer_struc *buffer;
-Aaunit_struc *audio_au;
-unsigned char *audio_frame_start;
-unsigned long long  *bytes_output;
-unsigned int mux_rate;
-unsigned long audio_buffer_size;
-unsigned long video_buffer_size;
-unsigned long packet_data_size;
-unsigned char marker_pack;
-unsigned int which_streams;
+void output_audio ( Timecode_struc *SCR,
+					Timecode_struc *SCR_delay,
+					FILE *aunits_info,
+					FILE *istream_a,
+					FILE *ostream,
+					Pack_struc *pack,
+					Sys_header_struc *sys_header,
+					Sector_struc *sector,
+					Buffer_struc *buffer,
+					Aaunit_struc *audio_au,
+					Vector aaunit_info_vec,
+					unsigned char *audio_frame_start,
+					unsigned long long  *bytes_output,
+					unsigned int mux_rate,
+					unsigned long audio_buffer_size,
+					unsigned long video_buffer_size,
+					unsigned long packet_data_size,
+					unsigned char marker_pack,
+					unsigned int which_streams
+				)
 
 {
 
@@ -973,7 +983,8 @@ unsigned int which_streams;
     unsigned int temp;
     Pack_struc *pack_ptr;
     Sys_header_struc *sys_header_ptr;
-
+	Aaunit_struc *aau;
+	
     if (marker_pack)
     {
     	/* Wir generieren den Pack Header				*/
@@ -1004,16 +1015,16 @@ unsigned int which_streams;
     /* CASE: packet starts with new access unit			*/
     if (*audio_frame_start)
     {
-	create_sector (sector, pack_ptr, sys_header_ptr,
-			packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
-			istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-			TRUE, &audio_au->PTS, NULL,
-			TIMESTAMPS_PTS, which_streams);
+	  create_sector (sector, pack_ptr, sys_header_ptr,
+			  packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
+			  istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
+			  TRUE, &audio_au->PTS, NULL,
+			  TIMESTAMPS_PTS, which_streams);
 
-	bytes_left = sector->length_of_packet_data;
+	  bytes_left = sector->length_of_packet_data;
 
-	next_audio_access_unit (buffer, audio_au, &bytes_left, aunits_info,
-				audio_frame_start, SCR_delay);
+	  next_audio_access_unit (buffer, audio_au, &bytes_left, aunits_info,
+				  audio_frame_start, SCR_delay, aaunit_info_vec);
     }
 
     /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
@@ -1022,16 +1033,16 @@ unsigned int which_streams;
     /*       starts in this very same packet			*/
     else if (!(*audio_frame_start) && (audio_au->length >= packet_data_size))
     {
-	create_sector (sector, pack_ptr, sys_header_ptr,
-			packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
-			istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-			TRUE, NULL, NULL,
-			TIMESTAMPS_NO, which_streams );
+	  create_sector (sector, pack_ptr, sys_header_ptr,
+			  packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
+			  istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
+			  TRUE, NULL, NULL,
+			  TIMESTAMPS_NO, which_streams );
 
-	bytes_left = sector->length_of_packet_data;
+	  bytes_left = sector->length_of_packet_data;
 
-	next_audio_access_unit (buffer, audio_au, &bytes_left, aunits_info,
-				audio_frame_start, SCR_delay);
+	  next_audio_access_unit (buffer, audio_au, &bytes_left, aunits_info,
+				  audio_frame_start, SCR_delay, aaunit_info_vec);
     }
 
     /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
@@ -1045,12 +1056,16 @@ unsigned int which_streams;
 
 	/* gibt es ueberhaupt noch eine Access Unit ? */
 	/* is there another access unit anyway ? */
-
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
+#ifdef FILE_INTERMEDIATES
 	if (fread (audio_au, sizeof(Aaunit_struc), 1, aunits_info)==1)
+#else
+	aau = (Aaunit_struc*)VectorNext( aaunit_info_vec );
+	if( aau != NULL )
+#endif
 	{
+#ifndef FILE_INTERMEDIATES
+		*audio_au = *aau;
+#endif
 	    *audio_frame_start = TRUE;
 	    add_to_timecode (SCR_delay, &audio_au->PTS);
 	    create_sector (sector, pack_ptr, sys_header_ptr,
@@ -1062,7 +1077,7 @@ unsigned int which_streams;
 	bytes_left = sector->length_of_packet_data - temp;
 
 	next_audio_access_unit (buffer, audio_au, &bytes_left, aunits_info,
-				audio_frame_start, SCR_delay);
+				audio_frame_start, SCR_delay, aaunit_info_vec );
 	} else
 	{
 	    status_message(STATUS_AUDIO_END);

@@ -47,11 +47,13 @@
 *************************************************************************/
 
 #include <stdio.h>
-#include "bitstrm.h"
+#include "bits.h"
 #ifdef TIMER
 #include <sys/time.h>
 #endif
 
+
+#include "vector.h"
 
 /*************************************************************************
     Definitionen
@@ -174,7 +176,7 @@ typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
 } Aaunit_struc;
 
 typedef struct video_struc	/* Informationen ueber Video Stream	*/
-{   unsigned long long stream_length  ;
+{   bitcount_t stream_length  ;
     unsigned int num_sequence 	;
     unsigned int num_seq_end	;
     unsigned int num_pictures 	;
@@ -194,7 +196,7 @@ typedef struct video_struc	/* Informationen ueber Video Stream	*/
 } Video_struc; 		
 
 typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
-{   unsigned long long stream_length  ;
+{   bitcount_t stream_length ;
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
     unsigned int size_frames[2] ;
@@ -248,7 +250,20 @@ int intro_and_options( int, char **);	/* Anzeigen des Introbildschirmes und	*/
 void check_files          ();	/* Kontrolliert ob Files vorhanden und	*/
 				/* weist sie Audio/Video Pointern zu	*/
 int  open_file            ();	/* File vorhanden?			*/
-void get_info_video       ();	/* Info Access Units Video Stream	*/
+void get_info_video (char *video_file,	
+					char *video_units,
+					Video_struc *video_info,
+					double *startup_delay,
+					unsigned int length,
+					Vector *vid_info_vec);
+void get_info_audio (char *audio_file,
+					  char *audio_units,
+					  Audio_struc *audio_info,
+					  double *startup_delay,
+					  unsigned int length,
+					  Vector *audio_info_vec
+					  );
+
 void output_info_video    ();	/* Ausgabe Information Access Units	*/
 void get_info_audio       ();	/* Info Access Units Audio Stream	*/
 void output_info_audio    ();	/* Ausgabe Information Access Units	*/
@@ -273,18 +288,83 @@ void create_sector	  ();	/* erstellt einen Sector		*/
 void create_sys_header	  ();	/* erstellt einen System Header		*/
 void create_pack	  ();	/* erstellt einen Pack Header		*/
 
-void output_video         ();	/* erstellt und schreibt Video pack aus	*/
-void output_audio         ();   /* erstellt und schreibt Audio pack aus */
+void output_video ( Timecode_struc *SCR,
+					Timecode_struc *SCR_delay,
+					FILE *vunits_info,
+					FILE *istream_v,
+					FILE *ostream,
+					Pack_struc *pack,
+					Sys_header_struc *sys_header,
+					Sector_struc *sector,
+					Buffer_struc *buffer,
+					Vaunit_struc *video_au,
+					Vector vaunit_info_vec,
+					unsigned char *picture_start,
+					unsigned long long *bytes_output,
+					unsigned int mux_rate,
+					unsigned long audio_buffer_size,
+					unsigned long video_buffer_size,
+					unsigned long packet_data_size,
+					unsigned char marker_pack,
+					unsigned int which_streams
+				);
+void output_audio ( Timecode_struc *SCR,
+					Timecode_struc *SCR_delay,
+					FILE *aunits_info,
+					FILE *istream_a,
+					FILE *ostream,
+					Pack_struc *pack,
+					Sys_header_struc *sys_header,
+					Sector_struc *sector,
+					Buffer_struc *buffer,
+					Aaunit_struc *audio_au,
+					Vector aaunit_info_vec,
+					unsigned char *audio_frame_start,
+					unsigned long long  *bytes_output,
+					unsigned int mux_rate,
+					unsigned long audio_buffer_size,
+					unsigned long video_buffer_size,
+					unsigned long packet_data_size,
+					unsigned char marker_pack,
+					unsigned int which_streams
+				);
+
 void output_padding       ();	/* erstellt und schreibt Padding pack	*/
 
-void next_video_access_unit ();	/* holt naechste gueltige AU Info her	*/
-void next_audio_access_unit ();	/* holt naechste gueltige AU Info her	*/
+
+
+void next_video_access_unit ( Buffer_struc *buffer,
+							  Vaunit_struc *video_au,
+							  unsigned int *bytes_left,
+							FILE *vunits_info,
+							unsigned char *picture_start,
+							Timecode_struc *SCR_delay,
+							Vector vaunit_info_vec
+							 );
+void next_audio_access_unit (Buffer_struc *buffer,
+							Aaunit_struc *audio_au,
+							unsigned int *bytes_left,
+							FILE *aunits_info,
+							unsigned char *audio_frame_start,
+							Timecode_struc *SCR_delay,
+							Vector aaunit_info_vec
+							);
 
 void buffer_clean	  ();	/* saeubert die Bufferschlange 		*/
 int  buffer_space         ();	/* Anzahl freier Bytes in Buffer	*/
 void queue_buffer         ();	/* An Bufferliste anhaengen		*/
 
-void outputstream         ();	/* Hauptschleife Multiplexroutinen	*/
+void outputstream ( char 		*video_file,
+					char 		*video_units,
+					Video_struc 	*video_info,
+					char 		*audio_file,
+					char 		*audio_units,
+					Audio_struc 	*audio_info,
+					char 		*multi_file,
+					unsigned int    which_streams,
+					Vector	   vaunit_info_vec,
+					Vector     aaunit_info_vec
+				 );
 
 void status_info          ();	/* Statusmitteilung bei Erstellen	*/
 				/* MPEG multiplex stream		*/

@@ -1,4 +1,6 @@
 #include "main.h"
+#include <string.h>
+
 /*************************************************************************
 	Create_Sector
 	erstellt einen gesamten Sektor.

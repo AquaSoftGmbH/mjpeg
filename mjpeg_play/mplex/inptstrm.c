@@ -1,6 +1,6 @@
 #include "main.h"
 
-
+#include <math.h>
 
 static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
 	30000./1001., 30., 50., 60000./1001., 60. };
@@ -39,7 +39,7 @@ unsigned int what;
 {
     if (what != get1bit(bs))
     {
-        printf ("\nError in MPEG stream at offset (bits) %llu: supposed marker bit not found.\n",sstell(bs));
+        printf ("\nError in MPEG stream at offset (bits) %llu: supposed marker bit not found.\n",bitcount(bs));
         exit (1);
     }
 }
@@ -64,7 +64,7 @@ unsigned int *video_bytes;
 unsigned int *ptr_which_streams;
 
 {
-    Bit_stream_struc bs1, bs2;
+    Bit_stream_struc bs1, bs2, undo;
     unsigned int bytes_1, bytes_2;
 
     if (argc == 3) {
@@ -74,10 +74,10 @@ unsigned int *ptr_which_streams;
 	if (open_file(argv[1],&bytes_1) || open_file(argv[2],&bytes_2))
 	    exit (1); }
 
-    open_bit_stream_r (&bs1, argv[1], BUFFER_SIZE);
+    init_getbits (&bs1, argv[1]);
  
     if (argc == 4)
-	open_bit_stream_r (&bs2, argv[2], BUFFER_SIZE);
+	init_getbits (&bs2, argv[2]);
 
     /* Das Bitstreampaket kuemmert sich bei einem look_ahead nicht
        darum, den Buffer vorzubereiten, weil es davon ausgeht, dass
@@ -89,7 +89,7 @@ unsigned int *ptr_which_streams;
     /* The Bitstream package doesn't prepare the buffer when doing
        a look_ahead, since it thinks that at least ont getbits ()
        function call was done earlier. This gets done by hand here */
-
+#ifdef ORIGINAL_CODE
     bs1.totbit       = 32;
     bs1.buf_byte_idx = -1;
     bs1.buf_bit_idx  = 8;
@@ -103,73 +103,77 @@ unsigned int *ptr_which_streams;
 	refill_buffer (&bs2);
 	bs2.buf_byte_idx = bs2.buf_size-1;
     }
-
-    if (look_ahead (&bs1, 12) == 0xfff)
+#endif
+	prepareundo(&bs1, &undo);
+    if ( /* look_ahead (&bs1, 12) */ getbits( &bs1, 12 ) == 0xfff)
     {
-	*audio_file = argv[1];
-	*audio_bytes= bytes_1;
-	printf ("File %s is a 11172-3 Audio stream.\n",argv[1]);
-	*ptr_which_streams |= STREAMS_AUDIO;
-	if (argc == 4 ) {
-	    if (look_ahead (&bs2, 32) != 0x1b3)
-		{
-		    printf ("File %s is not a 11172-2 Video stream.\n",argv[2]);
-		    close_bit_stream_r (&bs1);
-		    close_bit_stream_r (&bs2);
-		    exit (1);
-		} 
-	    else
-		{
-		    printf ("File %s is a 11172-2 Video stream.\n",argv[2]);
-		    *ptr_which_streams |= STREAMS_VIDEO;
-		    *video_file = argv[2];
-		    *video_bytes= bytes_2;
+	  *audio_file = argv[1];
+	  *audio_bytes= bytes_1;
+	  printf ("File %s is a 11172-3 Audio stream.\n",argv[1]);
+	  *ptr_which_streams |= STREAMS_AUDIO;
+	  if (argc == 4 ) {
+		  if ( /* look_ahead (&bs2, 32)*/ getbits(&bs2, 32) != 0x1b3)
+		  {
+			  printf ("File %s is not a 11172-2 Video stream.\n",argv[2]);
+			  finish_getbits (&bs1);
+			  finish_getbits (&bs2);
+			  exit (1);
+		  } 
+		  else
+		  {
+			  printf ("File %s is a 11172-2 Video stream.\n",argv[2]);
+			  *ptr_which_streams |= STREAMS_VIDEO;
+			  *video_file = argv[2];
+			  *video_bytes= bytes_2;
+		  }
+	  }
+
+    }
+    else
+    { 
+       undochanges( &bs1, &undo);
+	  if ( /* look_ahead (&bs1, 32)*/ getbits( &bs1, 32) == 0x1b3)
+	  {
+		*video_file = argv[1];
+		*video_bytes= bytes_1;
+		printf ("File %s is a 11172-2 Video stream.\n",argv[1]);
+		*ptr_which_streams |= STREAMS_VIDEO;
+		if (argc == 4 ) {
+			if ( /* look_ahead (&bs2, 12)*/ getbits( &bs2, 12 ) != 0xfff)
+			{
+				printf ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
+				finish_getbits (&bs1);
+				finish_getbits (&bs2);
+				exit (1);
+			} 
+			else
+			{
+				printf ("File %s is a 11172-3 Audio stream.\n",argv[2]);
+				*ptr_which_streams |= STREAMS_AUDIO;
+				*audio_file = argv[2];
+				*audio_bytes= bytes_2;
+			}
 		}
-	}
-
-    }
-    else if (look_ahead (&bs1, 32) == 0x1b3)
-    {
-	*video_file = argv[1];
-	*video_bytes= bytes_1;
-	printf ("File %s is a 11172-2 Video stream.\n",argv[1]);
-	*ptr_which_streams |= STREAMS_VIDEO;
-	if (argc == 4 ) {
-	    if (look_ahead (&bs2, 12) != 0xfff)
-		{
-		    printf ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
-		    close_bit_stream_r (&bs1);
-		    close_bit_stream_r (&bs2);
-		    exit (1);
-		} 
-	    else
-		{
-		    printf ("File %s is a 11172-3 Audio stream.\n",argv[2]);
-		    *ptr_which_streams |= STREAMS_AUDIO;
-		    *audio_file = argv[2];
-		    *audio_bytes= bytes_2;
+      }
+      else 
+	  {
+		if (argc == 4) {
+			printf ("Files %s and %s are not valid MPEG streams.\n",
+				argv[1],argv[2]);
+			finish_getbits (&bs1);
+			finish_getbits (&bs2);
+			exit (1);
 		}
+		else {
+			printf ("File %s is not a valid MPEG stream.\n", argv[1]);
+			finish_getbits (&bs1);
+			exit (1);
+		}
+	  }
 	}
-    }
 
-    else 
-    {
-	if (argc == 4) {
-	    printf ("Files %s and %s are not valid MPEG streams.\n",
-		    argv[1],argv[2]);
-	    close_bit_stream_r (&bs1);
-	    close_bit_stream_r (&bs2);
-	    exit (1);
-	}
-	else {
-	    printf ("File %s is not a valid MPEG stream.\n", argv[1]);
-	    close_bit_stream_r (&bs1);
-	    exit (1);
-	}
-    }
-
-    close_bit_stream_r (&bs1);
-    if (argc == 4) close_bit_stream_r (&bs2);
+    finish_getbits (&bs1);
+    if (argc == 4) finish_getbits (&bs2);
 
     if (argc == 4 )
 	*multi_file = argv[3];
@@ -190,14 +194,12 @@ unsigned int *ptr_which_streams;
 	processing. We need it for building the multiplex file.
 *************************************************************************/
 
-void get_info_video (video_file, video_units, video_info, startup_delay, length)
-
-char *video_file;	
-char *video_units;
-Video_struc *video_info;
-double *startup_delay;
-unsigned int length;
-
+void get_info_video (char *video_file,	
+					char *video_units,
+					Video_struc *video_info,
+					double *startup_delay,
+					unsigned int length,
+					Vector *vid_info_vec)
 {
     FILE* info_file;
     Bit_stream_struc video_bs;
@@ -218,10 +220,15 @@ unsigned int length;
     unsigned int old_prozent=0;
     int frame_rate;
 	unsigned int max_bits_persec = 0;
+	Vector vaunits = NewVector( sizeof(Vaunit_struc));
+
+	
   
     printf ("\nScanning Video stream for access units information.\n");
+#ifdef FILE_INTERMEDIATES
     info_file = fopen (video_units, "wb");
-    open_bit_stream_r (&video_bs, video_file, BUFFER_SIZE);
+#endif
+    init_getbits (&video_bs, video_file);
 
 
     if (getbits (&video_bs, 32)==SEQUENCE_HEADER)
@@ -273,15 +280,17 @@ unsigned int length;
 
 		case PICTURE_START:
 			
-			stream_length = sstell (&video_bs)-32LL;
+			stream_length = bitcount (&video_bs)-32LL;
 		    /* skip access unit number 0 */
 		    if (access_unit.type != 0)
 			{
 
 			  access_unit.length = (stream_length - offset_bits)>>3;
 			  offset_bits = stream_length;
-				  fwrite (&access_unit, sizeof (Vaunit_struc),
-				  1, info_file);
+#ifdef FILE_INTERMEDIATES
+			  fwrite (&access_unit, sizeof (Vaunit_struc), 1, info_file);
+#endif
+			  VectorAppend( vaunits, &access_unit );
 			  video_info->avg_frames[access_unit.type-1]+=
 				  access_unit.length;
 	
@@ -316,7 +325,7 @@ unsigned int length;
 		    if ((access_unit.type>0) && (access_unit.type<5))
 		        video_info->num_frames[access_unit.type-1]++;
 
-		    prozent =(int) (((float)sstell(&video_bs)/8/(float)length)*100);
+		    prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
 		    video_info->num_pictures++;	
 		    
 
@@ -332,12 +341,14 @@ unsigned int length;
 		    break;		    
 
 		case SEQUENCE_END:
-		    stream_length = sstell (&video_bs);
+		    stream_length = bitcount (&video_bs);
 		    access_unit.length = (stream_length - offset_bits)>>3;
-	            fwrite (&access_unit, sizeof (Vaunit_struc),
-			1, info_file);
-		    video_info->avg_frames[access_unit.type-1]+=
-			access_unit.length;
+#ifdef FILE_INTERMEDIATES
+	        fwrite (&access_unit, sizeof (Vaunit_struc),1, info_file);
+#else
+		    VectorAppend( vaunits, &access_unit );
+#endif
+		    video_info->avg_frames[access_unit.type-1]+=access_unit.length;
 		    offset_bits = stream_length;
 		    video_info->num_seq_end++;
 		    break;		    
@@ -348,26 +359,32 @@ unsigned int length;
 
     printf ("\nDone, stream bit offset %lld.\n",offset_bits);
 
-    video_info->stream_length = (unsigned int)(offset_bits >> 3);
+    video_info->stream_length = (unsigned int)(offset_bits / 8);
     for (i=0; i<4; i++)
 	if (video_info->num_frames[i]!=0)
 	   video_info->avg_frames[i] /= video_info->num_frames[i];
 
     if (secs_per_frame >0.)
-        video_info->comp_bit_rate = ceil ((double)(video_info->stream_length)/
-	(double)(video_info->num_pictures)/secs_per_frame/1250.)*25;
+        video_info->comp_bit_rate = (unsigned int)
+		(
+		  (((double)video_info->stream_length) / ((double) video_info->num_pictures)) 
+		  * ((double)frame_rate)  + 25.0
+		) / 50;
     else
 		video_info->comp_bit_rate = 0;
 	
-	/* Peak bit rate in 50kbps units... */
-	video_info->peak_bit_rate = ((max_bits_persec >> 3) / 50);
+	/* Peak bit rate in 50B/sec units... */
+	video_info->peak_bit_rate = ((max_bits_persec / 8) / 50);
 
-    close_bit_stream_r (&video_bs);
+    finish_getbits (&video_bs);
+#ifdef FILE_INTERMEDIATES
     fclose (info_file);
+#endif
     output_info_video (video_info);
 
+	*vid_info_vec = vaunits;
     ask_continue ();
- 
+ 	
 }
 
 /*************************************************************************
@@ -503,13 +520,14 @@ printf("\n+------------------ AUDIO STREAM INFORMATION -----------------+\n");
 *************************************************************************/
 
 
-void get_info_audio (audio_file, audio_units, audio_info, startup_delay, length)
-
-char *audio_file;	
-char *audio_units;
-Audio_struc *audio_info;
-double *startup_delay;
-unsigned int length;
+void get_info_audio (
+					  char *audio_file,
+					  char *audio_units,
+					  Audio_struc *audio_info,
+					  double *startup_delay,
+					  unsigned int length,
+					  Vector *audio_info_vec
+					  )
 
 {
     FILE* info_file;
@@ -527,10 +545,13 @@ unsigned int length;
     int i;
     unsigned int prozent;
     unsigned int old_prozent=0;
+    Vector aaunits = NewVector(sizeof(Aaunit_struc));
    
     printf ("\nScanning Audio stream for access units information.\n");
+#ifdef FILE_INTERMEDIATES
     info_file = fopen (audio_units, "wb");
-    open_bit_stream_r (&audio_bs, audio_file, BUFFER_SIZE);
+#endif
+    init_getbits (&audio_bs, audio_file);
 
     empty_aaunit_struc (&access_unit);
 
@@ -567,7 +588,10 @@ unsigned int length;
 
 	  make_timecode (PTS, &access_unit.PTS);
 	  decoding_order++;
+#ifdef FILE_INTERMEDIATES
 	  fwrite (&access_unit, sizeof (Aaunit_struc),1, info_file);
+#endif
+	  VectorAppend( aaunits, &access_unit );
 
     } else
     {
@@ -587,7 +611,7 @@ unsigned int length;
 		  getbits (&audio_bs, 32);
 		}
 	  prev_offset = offset_bits;
-	  offset_bits = sstell(&audio_bs);
+	  offset_bits = bitcount(&audio_bs);
 
 	  /* Check we have reached the end of have  another catenated 
 		 stream to process before finishing ... */
@@ -619,7 +643,7 @@ unsigned int length;
 		}
 	
 	  marker_bit (&audio_bs, 1);
-	  prozent =(int) (((float) sstell(&audio_bs)/8/(float)length)*100);
+	  prozent =(int) (((float) bitcount(&audio_bs)/8/(float)length)*100);
 	  audio_info->num_syncword++;
 	  if (prozent > old_prozent && verbose > 0)
 		{
@@ -639,8 +663,10 @@ unsigned int length;
 	  make_timecode (PTS, &access_unit.PTS);
 	
 	  decoding_order++;
-	
+#ifdef FILE_INTERMEDIATES	
 	  fwrite (&access_unit, sizeof (Aaunit_struc),1, info_file);
+#endif
+	  VectorAppend( aaunits, &access_unit );
 	  audio_info->num_frames[padding_bit]++;
 
 	  getbits (&audio_bs, 9);
@@ -650,10 +676,14 @@ unsigned int length;
     printf ("\nDone, stream bit offset %lld.\n",offset_bits);
 
     audio_info->stream_length = offset_bits >> 3;
-    close_bit_stream_r (&audio_bs);
+    finish_getbits (&audio_bs);
+#ifdef FILE_INTERMEDIATES
     fclose (info_file);
+#endif
     output_info_audio (audio_info);
     ask_continue ();
+    
+    *audio_info_vec = aaunits;
 
 }
 
