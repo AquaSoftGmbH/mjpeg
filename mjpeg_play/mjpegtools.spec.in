@@ -15,7 +15,7 @@ License:	GPL
 Url:		http://mjpeg.sourceforge.net/
 Group:		Video
 Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
-Source1:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
+Source1:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.5.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 
 Requires:	XFree86 SDL
