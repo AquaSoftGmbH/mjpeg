@@ -64,10 +64,20 @@
 //
 // - _really_ fixed display of audio rate output :)
 //
+// 2002-02-16 v0.0.23
+//
+// - added -L/--listcodecs to display a list of available avifile codecs
+//   it is dependent on what avifile thinks is available, and is mostly
+//   for troubleshooting.  Warning: it can be a LONG list.
+//
+// 2002-02-24 v0.0.24
+//
+// - fixed breakage caused by editlist changes
+//
 
 #define APPNAME "yuv2divx"
-#define APPVERSION "0.0.22"
-#define LastChanged "2002/01/21"
+#define APPVERSION "0.0.24"
+#define LastChanged "2002/02/24"
 
 #include <iostream.h>
 #include <videoencoder.h>
@@ -299,10 +309,11 @@ print_help ( void )
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 	printf ( "  -k --keyframes\tset keyframes attribute (default 15)\n" );
 	printf ( "  -C --crispness\tset crispness attribute (default 20)\n" );
+	printf ( "  -L --listcodecs\tshow the list of avifile codecs (LONG!)\n" );
+#endif
+	printf ( "  -F --frames\t\tnumber of frames to expect in YUV4MPEG stream\n\t\t\t(for display purposes only)\n" );
 	printf ( "  -A --audio\t\tspecify audio file\n" );
 	printf ( "  -E --encoder\t\tspecify the fourcc of the desired encoder\n" );
-	printf ( "  -F --frames\t\tnumber of frames to expect in YUV4MPEG stream\n\t\t\t(for display purposes only)\n" );
-#endif
 	printf ( "     --help\t\tPrint this help list.\n\n" );
 	exit ( 0 );
 }
@@ -333,6 +344,32 @@ displayGreeting (  )
 	mjpeg_info ( "movies or let the smoke out of your computer.\n" );
 	mjpeg_info ( "-----------------------------\n" );
 }
+
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+static void
+listCodecs ( )
+{
+ 	BITMAPINFOHEADER bih;
+ 	bih.biCompression = 0xffffffff;
+ 	// just to fill video_codecs list
+ 	Creators::CreateVideoDecoder(bih, 0, 0);
+
+	fprintf ( stderr, "List of available codecs:\n" );
+	avm::vector<CodecInfo>::iterator it;
+	for ( it = video_codecs.begin (); it != video_codecs.end (); it++ )
+	{
+	 	fprintf ( stderr, "Name: %s\n", it->GetName() );
+	 	fprintf ( stderr, "   Module: library %s\n", it->modulename.c_str() );
+	 	fprintf ( stderr, "   Codecs: ");
+	 	avm::vector<fourcc_t>::iterator ic;
+	 	for ( ic = it->fourcc_array.begin () ; ic != it->fourcc_array.end () ; ic++ )
+	 	{
+	 	 	fprintf ( stderr, "%.4s ", ic );
+	 	}
+	 	fprintf ( stderr, "\n" );
+	}
+}
+#endif
 
 int
 main ( int argc, char **argv )
@@ -434,6 +471,7 @@ main ( int argc, char **argv )
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 			{"keyframes", required_argument, NULL, 'k'},
 			{"crispness", required_argument, NULL, 'C'},
+			{"listcodecs", no_argument, NULL, 'L' },
 #endif
 			{"guess", no_argument, NULL, 'g'},
 			{"encoder", required_argument, NULL, 'E'},
@@ -443,7 +481,7 @@ main ( int argc, char **argv )
 
 		copt =
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvVk:C:", long_options, &option_index );
+			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvVLk:C:", long_options, &option_index );
 #else
 			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvV", long_options, &option_index );
 #endif
@@ -467,8 +505,8 @@ main ( int argc, char **argv )
 
 //      // replaced by -E <fcc>, use -E DIV4 or -E DIV6 to use fast motion
 //      case 'f':
-//        opt_codec = RIFFINFO_DIV4;
-//        break;
+//	opt_codec = RIFFINFO_DIV4;
+//	break;
 
 		case 'a':
 			opt_mp3bitrate = atoi ( optarg );
@@ -511,6 +549,11 @@ main ( int argc, char **argv )
 
 		case 'C':
 			opt_crispness = atoi ( optarg );
+			break;
+
+		case 'L':
+			listCodecs ();
+			exit ( 0 );
 			break;
 #endif
 
@@ -692,7 +735,7 @@ main ( int argc, char **argv )
 
 			char *inputfile[1];
 			inputfile[0] = audiofile;
-			read_video_files ( inputfile, 1, &el_audio );
+			read_video_files ( inputfile, 1, &el_audio, false );
 
 			audioexist = el_audio.has_audio;
 			if ( audioexist < 1 )
@@ -805,8 +848,8 @@ main ( int argc, char **argv )
 			}
 		}
 		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second\n" 
-	                , opt_mp3bitrate           
-                        , ( (opt_mp3bitrate * 1000) / 8 ) );
+			, opt_mp3bitrate	   
+			, ( (opt_mp3bitrate * 1000) / 8 ) );
 
 		astream = avifile->AddAudioStream ( 0x55, &format, ( opt_mp3bitrate * 1000 ) / 8 );
 		astream->Start (  );

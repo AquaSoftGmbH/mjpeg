@@ -57,9 +57,20 @@
 // - reduced use of [f]printf wherever possible
 // - added ability (-m) to combine stereo audio to mono
 //
+// 2002-02-16 v0.0.21
+//
+// - added -L/--listcodecs to display a list of available avifile codecs
+//   it is dependent on what avifile thinks is available, and is mostly
+//   for troubleshooting.  Warning: it can be a LONG list.
+//
+// 2002-02-24 v0.0.22
+//
+// - fixed breakage caused by editlist changes
+//
+
 #define APPNAME "lav2divx"
-#define APPVERSION "0.0.20"
-#define LastChanged "2001/10/28"
+#define APPVERSION "0.0.22"
+#define LastChanged "2002/02/24"
 
 #include <iostream.h>
 #include <videoencoder.h>
@@ -246,10 +257,10 @@ print_help ( void )
 	printf ( "  -o --outputfile\tOutput filename IS REQUIRED\n" );
 	printf ( "  -v --version\t\tVersion and license.\n" );
 	printf ( "  -s --forcedaudiorate\taudio sample rate of input file (Hz);\n\t\t\tuse only if avifile gets it wrong\n" );
-	printf ( "  -d --droplsb\t\tdrop x least significant bits (0..3, default 0)\n" );
 	printf ( "  -n --noise\t\tnoise filter (0..2, default 0)\n" );
 	printf ( "  -g --guess\t\tguess values for -c and -z options\n" );
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+	printf ( "  -L --listcodecs\tdisplay available avifile codecs (LONG)\n" );
 	printf ( "  -k --keyframes\tset keyframes attribute (default 15)\n" );
 	printf ( "  -C --crispness\tset crispness attribute (default 20)\n" );
 #endif
@@ -272,7 +283,7 @@ display_license ( void )
 	exit ( 0 );
 };
 
-void
+static void
 displayGreeting (  )
 {
 	mjpeg_info ( "===========================================\n" );
@@ -285,6 +296,32 @@ displayGreeting (  )
 	mjpeg_info ( "movies or let the smoke out of your computer.\n" );
 	mjpeg_info ( "-----------------------------\n" );
 }
+
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+static void
+listCodecs ( )
+{
+	BITMAPINFOHEADER bih;
+	bih.biCompression = 0xffffffff;
+	// just to fill video_codecs list
+	Creators::CreateVideoDecoder(bih, 0, 0);
+
+	fprintf ( stderr, "List of available codecs:\n" );
+	avm::vector<CodecInfo>::iterator it;
+	for ( it = video_codecs.begin (); it != video_codecs.end (); it++ )
+	{
+		fprintf ( stderr, "Name: %s\n", it->GetName() );
+		fprintf ( stderr, "   Module: library %s\n", it->modulename.c_str() );
+		fprintf ( stderr, "   Codecs: ");
+		avm::vector<fourcc_t>::iterator ic;
+		for ( ic = it->fourcc_array.begin () ; ic != it->fourcc_array.end () ; ic++ )
+		{
+			fprintf ( stderr, "%.4s ", ic );
+		}
+		fprintf ( stderr, "\n" );
+	}
+}
+#endif
 
 int
 main ( int argc, char **argv )
@@ -328,7 +365,8 @@ main ( int argc, char **argv )
 //#endif
 
 	EditList el;
-	LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
+	// LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
+	LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0, 0 };
 	LavBounds bounds;
 	LavBuffers buffer;
 
@@ -373,11 +411,11 @@ main ( int argc, char **argv )
 			{"video_stream", required_argument, NULL, 'V'},
 			{"number_cpus", required_argument, NULL, 'U'},
 			{"outputfile", required_argument, NULL, 'o'},
-			{"droplsb", required_argument, NULL, 'd'},
 			{"noise", required_argument, NULL, 'n'},
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 			{"keyframes", required_argument, NULL, 'k'},
 			{"crispness", required_argument, NULL, 'C'},
+			{"listcodecs", no_argument, NULL, 'L'},
 #endif
 			{"guess", no_argument, NULL, 'g'},
 			{"mono", no_argument, NULL, 'm'},
@@ -387,9 +425,9 @@ main ( int argc, char **argv )
 
 		copt =
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:n:d:gmvk:C:", long_options, &option_index );
+			getopt_long ( argc, argv, "LE:fa:e:c:b:o:s:n:gmvk:C:", long_options, &option_index );
 #else
-			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:n:d:gmv", long_options, &option_index );
+			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:n:gmv", long_options, &option_index );
 #endif
 		if ( copt == -1 )
 		{
@@ -452,6 +490,11 @@ main ( int argc, char **argv )
 		case 'C':
 			opt_crispness = atoi ( optarg );
 			break;
+
+		case 'L':
+			listCodecs ( );
+			exit ( 0 );
+			break;
 #endif
 
 		case 'c':	// crop
@@ -493,15 +536,6 @@ main ( int argc, char **argv )
 				mjpeg_error_exit1 ( "Bad y parameter\n" );
 				// nerr++;
 				break;
-			}
-			break;
-
-		case 'd':	// drop-lsb
-			param.drop_lsb = atoi ( optarg );
-			if ( param.drop_lsb < 0 || param.drop_lsb > 3 )
-			{
-				mjpeg_error_exit1 ( "-d option requires arg 0..3\n" );
-				//nerr++;
 			}
 			break;
 
@@ -589,7 +623,7 @@ main ( int argc, char **argv )
 	}
 
 	// open files with EDITLIST library.
-	read_video_files ( inputfiles, numfiles, &el );
+	read_video_files ( inputfiles, numfiles, &el, false );
 
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
