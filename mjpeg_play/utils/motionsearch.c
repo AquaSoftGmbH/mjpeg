@@ -29,10 +29,10 @@
 #include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
-#include "mblock_sub44_sads_x86.h"
 
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+#include "mblock_sub44_sads_x86.h"
 
 static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
