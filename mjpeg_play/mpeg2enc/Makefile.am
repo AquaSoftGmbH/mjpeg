@@ -33,6 +33,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	fastintfns.h  global.h mpeg2enc.h vlc.h cpu_accel.h mmx.h attributes.h \
 	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
+mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libutils.a
 
 mpeg2enc_LDADD=-L$(top_srcdir)/utils -lutils -lm -lpthread
 
@@ -41,5 +42,3 @@ ASM = nasm
 
 .s.o:
 	$(ASM) -o $@ -f elf $<
-
-
