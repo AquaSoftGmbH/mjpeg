@@ -392,7 +392,7 @@ static void iquant_non_intra_m2_mmxtest( struct QuantizerWorkSpace *wsp,
     {
         if( dst[i] != ref[i] )
         {
-            printf( "OUCH!!! Bad iquant coeff %d: %d ref=%d\n", dst[i], ref[i] );
+            printf( "OUCH!!! Bad iquant coeff %d: %d ref=%d\n", i, dst[i], ref[i] );
             abort();
         } 
     }

@@ -34,18 +34,17 @@ public:
     RateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit ) = 0;
 	virtual void InitGOP( int nb, int np ) = 0;
-	virtual void InitNewPict (Picture &picture, int64_t bitcount) = 0;
+	virtual void InitNewPict (Picture &picture) = 0;
 	virtual void InitKnownPict (Picture &picture) = 0;
-	virtual void UpdatePict (Picture &picture, int64_t bitcount, 
-                             int &padding_needed, bool &recode ) = 0;
-	virtual int  MacroBlockQuant( const MacroBlock &mb, int64_t bitcount) = 0;
+	virtual void UpdatePict (Picture &picture, int &padding_needed ) = 0;
+    virtual int MacroBlockQuant(  const MacroBlock &mb) = 0;
 	virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
 	virtual void CalcVbvDelay (Picture &picture) = 0;
 
     static double InvScaleQuant(  int q_scale_type, int raw_code );
     static int ScaleQuant( int q_scale_type, double quant );
 protected:
-	virtual void VbvEndOfPict (Picture &picture, int64_t bitcount) = 0;
+	virtual void VbvEndOfPict (Picture &picture) = 0;
     double ScaleQuantf( int q_scale_type, double quant );
     EncoderParams &encparams;
 };
@@ -56,17 +55,18 @@ public:
 	OnTheFlyRateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit );
 	virtual void InitGOP( int nb, int np );
-	virtual void InitNewPict (Picture &picture, int64_t bitcount);
+	virtual void InitNewPict (Picture &picture);
 	virtual void InitKnownPict (Picture &picture);
-	virtual void UpdatePict ( Picture &picture, int64_t bitcount,
-                              int &padding_needed, bool &recode );
-	virtual int  MacroBlockQuant( const MacroBlock &mb, int64_t bitcount );
+	virtual void UpdatePict ( Picture &picture, int &padding_needed );
+	virtual int  MacroBlockQuant( const MacroBlock &mb);
 	virtual int  InitialMacroBlockQuant(Picture &picture);
 	virtual void CalcVbvDelay (Picture &picture);
 private:
-	virtual void VbvEndOfPict (Picture &picture, int64_t bitcount);
+	virtual void VbvEndOfPict (Picture &picture);
 
-
+    int     cur_mquant;
+    int     mquant_change_ctr;
+    
 	int32_t fb_gain;
 	
 	/* R - Remaining bits available in the next one second period.
@@ -97,8 +97,6 @@ private:
 	   to.
 	*/
 
-	int64_t bitcnt_EOP;
-	int64_t prev_bitcount;
 	int frame_overshoot_margin;
 	int undershoot_carry;
 	double overshoot_gain;
@@ -120,7 +118,6 @@ private:
 	double sum_vbuf_Q;
 
     int N[NUM_PICT_TYPES];
-	int64_t S;
 
 
 	int min_d, max_d;
@@ -188,15 +185,14 @@ public:
 	Pass1RateCtl( EncoderParams &encoder );
 	virtual void InitSeq( bool reinit );
 	virtual void InitGOP( int nb, int np );
-	virtual void InitNewPict (Picture &picture, int64_t bitcount);
+	virtual void InitNewPict (Picture &picture);
 	virtual void InitKnownPict (Picture &picture);
-	virtual void UpdatePict (Picture &picture, int64_t bitcount,
-                            int &padding_needed, bool &recode);
-	virtual int  MacroBlockQuant( const MacroBlock &mb, int64_t bitcount );
+	virtual void UpdatePict (Picture &picture, int &padding_needed);
+	virtual int  MacroBlockQuant( const MacroBlock &mb );
 	virtual int  InitialMacroBlockQuant(Picture &picture);
 	virtual void CalcVbvDelay (Picture &picture);
 private:
-	virtual void VbvEndOfPict (Picture &picture, int64_t bitcount);
+	virtual void VbvEndOfPict (Picture &picture);
 
 
 	int32_t fb_gain;

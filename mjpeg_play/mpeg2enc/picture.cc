@@ -46,6 +46,7 @@
 
 #include "config.h"
 #include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "mpeg2syntaxcodes.h"
 #include "cpu_accel.h"
 #include "motionsearch.h"
@@ -53,6 +54,7 @@
 #include "mpeg2coder.hh"
 #include "quantize.hh"
 #include "seqencoder.hh"
+#include "ratectl.hh"
 #include "tables.h"
 
 Picture::Picture( EncoderParams &_encparams, 
@@ -342,6 +344,7 @@ void Picture::Set_IP_Frame( StreamState *ss, int num_frames )
 		gop_start = true;
         closed_gop = ss->closed_gop;
 		new_seq = ss->new_seq;
+        end_seq = ss->end_seq;
 		nb = ss->nb;
 		np = ss->np;
 	}		
@@ -480,6 +483,191 @@ void Picture::MotionSubSampledLum( )
 					 linestride,
 					 curorg[0]+eparams.fsubsample_offset, 
 					 curorg[0]+eparams.qsubsample_offset );
+}
+
+
+/* ************************************************
+ *
+ * QuantiseAndEncode - Quantise and Encode a picture.
+ *
+ * NOTE: It may seem perverse to quantise at the same time as
+ * coding. However, actually makes (limited) sense
+ * - feedback from the *actual* bit-allocation may be used to adjust 
+ * quantisation "on the fly". This is good for fast 1-pass no-look-ahead coding.
+ * - The coded result is in any even only buffered not actually written
+ * out. We can back off and try again with a different quantisation
+ * easily.
+ * - The alternative is calculating size and generating actual codes seperately.
+ * The poorer cache coherence of this latter probably makes the performance gain
+ * modest.
+ *
+ * *********************************************** */
+
+void Picture::QuantiseAndEncode(RateCtl &ratectl)
+{
+
+    InitRateControl( ratectl );
+    
+    PutHeaders();
+
+    /* Now the actual quantisation and encoding... */     
+ 
+    int i, j, k;
+    int MBAinc;
+    MacroBlock *cur_mb = 0;
+	int mquant_pred = ratectl.InitialMacroBlockQuant(*this);
+
+	k = 0;
+    
+    /* TODO: We're currently hard-wiring each macroblock row as a
+       slice.  For MPEG-2 we could do this better and reduce slice
+       start code coverhead... */
+
+	for (j=0; j<encparams.mb_height2; j++)
+	{
+        PutSliceHdr(j, mquant_pred);
+        Reset_DC_DCT_Pred();
+        Reset_MV_Pred();
+
+        MBAinc = 1; /* first MBAinc denotes absolute position */
+
+        /* Slice macroblocks... */
+		for (i=0; i<encparams.mb_width; i++)
+		{
+            prev_mb = cur_mb;
+			cur_mb = &mbinfo[k];
+
+            int suggested_mquant = ratectl.MacroBlockQuant( *cur_mb );
+            cur_mb->mquant = suggested_mquant;
+			/* Quantize macroblock : N.b. the MB_PATTERN bit may be
+               set as a side-effect of this call. */
+            cur_mb->Quantize( quantizer);
+            
+            /* Output mquant and update prediction if it changed in this macroblock */
+            if( cur_mb->cbp && suggested_mquant != mquant_pred )
+            {
+                mquant_pred = suggested_mquant;
+                cur_mb->final_me.mb_type |= MB_QUANT;
+            }
+                
+            /* Check to see if Macroblock is skippable, this may set
+               the MB_FORWARD bit... */
+            bool slice_begin_or_end = (i==0 || i==encparams.mb_width-1);
+            cur_mb->SkippedCoding(slice_begin_or_end);
+            if( cur_mb->skipped )
+            {
+                ++MBAinc;
+            }
+            else
+            {
+                coder.PutAddrInc(MBAinc); /* macroblock_address_increment */
+                MBAinc = 1;
+                
+                coder.PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
+
+                if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
+                    coder.PutBits(cur_mb->final_me.motion_type,2);
+
+                if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
+                    coder.PutBits(cur_mb->field_dct,1);
+
+                if (cur_mb->final_me.mb_type & MB_QUANT)
+                {
+                    coder.PutBits(q_scale_type 
+                            ? map_non_linear_mquant[cur_mb->mquant]
+                            : cur_mb->mquant>>1,5);
+                }
+
+
+                if (cur_mb->final_me.mb_type & MB_FORWARD)
+                {
+                    /* forward motion vectors, update predictors */
+                    PutMVs( cur_mb->final_me, false );
+                }
+
+                if (cur_mb->final_me.mb_type & MB_BACKWARD)
+                {
+                    /* backward motion vectors, update predictors */
+                    PutMVs( cur_mb->final_me,  true );
+                }
+
+                if (cur_mb->final_me.mb_type & MB_PATTERN)
+                {
+                    coder.PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
+                }
+            
+                /* Output VLC DCT Blocks for Macroblock */
+
+                cur_mb->PutBlocks( );
+                /* reset predictors */
+                if (!(cur_mb->final_me.mb_type & MB_INTRA))
+                    Reset_DC_DCT_Pred();
+
+                if (cur_mb->final_me.mb_type & MB_INTRA || 
+                    (pict_type==P_TYPE && !(cur_mb->final_me.mb_type & MB_FORWARD)))
+                {
+                    Reset_MV_Pred();
+                }
+            }
+            ++k;
+        } /* Slice MB loop */
+    } /* Slice loop */
+	int padding_needed;
+    bool recoding_suggested;
+    ratectl.UpdatePict( *this, padding_needed);
+    coder.AlignBits();
+    if( padding_needed > 0 )
+    {
+        mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
+                     padding_needed );
+        for( i = 0; i < padding_needed; ++i )
+        {
+            coder.PutBits(0, 8);
+        }
+    }
+    
+    /* Handle splitting of output stream into sequences of desired size */
+    if( end_seq )
+    {
+        coder.PutSeqEnd();
+    }
+    
+}
+
+
+/* *****************
+ *
+ * InitRateControl - Setup rate controller new current picture / GOP/ Sequence
+ *
+ ******************/
+
+void Picture::InitRateControl( RateCtl &ratecontrol )
+{
+     /* Handle splitting of output stream into sequences of desired size */
+    if( new_seq )
+    {
+        ratecontrol.InitSeq(true);
+    }
+    
+    /* Handle start of GOP stuff:
+       We've reach a new GOP so we emit what we coded for the
+       previous one as (for the moment) and mark the resulting coder
+       state for eventual backup.
+       Currently, we never backup more that to the start of the current GOP.
+     */
+    if( gop_start )
+    {
+        ratecontrol.InitGOP( np, nb);
+    }
+
+    ratecontrol.CalcVbvDelay(*this);
+    ratecontrol.InitNewPict(*this); /* set up rate control */
+}
+
+
+int Picture::SizeCodedMacroBlocks() const
+{ 
+    return coder.ByteCount() * 8; 
 }
 
 

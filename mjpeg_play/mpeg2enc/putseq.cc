@@ -397,8 +397,6 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
 
 
 
-
-
 void SeqEncoder::GopStart( StreamState *ss )
 {
 
@@ -412,39 +410,19 @@ void SeqEncoder::GopStart( StreamState *ss )
 			
 	ss->g = 0;
 	ss->b = 0;
-	ss->new_seq = false;
-	
-	if( encparams.pulldown_32 )
-		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
-	else
-		frame_periods = (double)(ss->seq_start_frame + ss->i);
     
-    /*
-      For VBR we estimate total bits based on actual stream size and
-      an estimate for the other streams based on time.
-      For CBR we do *both* based on time to account for padding during
-      muxing.
-      TODO: This should be placed in the bitrate controller....
-    */
+    /* Sequence ended at previous frame so this one starts a new sequence */
+    if( ss->end_seq )
+    {
+          /* We split sequence last frame.This is the input stream display 
+           * order sequence number of the frame that will become frame 0 in display
+           * order in  the new sequence 
+           */
+          ss->seq_start_frame += ss->i;
+          ss->i = 0;
+          ss->new_seq = true;
+    }
     
-    if( encparams.quant_floor > 0.0 ) bits_after_mux = writer.BitCount() + 
-            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
-    else
-        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
-                                    (encparams.nonvid_bit_rate + encparams.bit_rate));
-	if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
-		|| (ss->i != 0 && encparams.seq_end_every_gop)
-		)
-	{
-		mjpeg_info( "Splitting sequence this GOP start" );
-		ss->next_split_point += ss->seq_split_length;
-		/* This is the input stream display order sequence number of
-		   the frame that will become frame 0 in display
-		   order in  the new sequence */
-		ss->seq_start_frame += ss->i;
-		ss->i = 0;
-		ss->new_seq = true;
-	}
 
     /* Normally set closed_GOP in first GOP only...   */
 
@@ -541,10 +519,44 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 	}
 
     /* Are we starting a new GOP? */
+    ss->new_seq = false;
 	if( ss->g == ss->gop_length )
 	{
 		GopStart( ss);
 	}
+  
+    ++frame_num;
+    ss->end_seq = false;
+    if( frame_num >= reader.NumberOfFrames() )
+        ss->end_seq = true;
+    else if( ss->g == ss->gop_length-1 ) /* Last frame GOP: sequence split? */
+    {
+        if( encparams.pulldown_32 )
+            frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
+        else
+            frame_periods = (double)(ss->seq_start_frame + ss->i);
+        
+        /*
+          For VBR we estimate total bits based on actual stream size and
+          an estimate for the other streams based on time.
+          For CBR we do *both* based on time to account for padding during
+          muxing.
+        */
+        
+        if( encparams.quant_floor > 0.0 ) bits_after_mux = writer.BitCount() + 
+            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
+        else
+            bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
+                                        (encparams.nonvid_bit_rate + encparams.bit_rate));
+        if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
+            || (ss->i != 0 && encparams.seq_end_every_gop)
+            )
+        {
+            mjpeg_info( "Splitting sequence this GOP start" );
+            ss->next_split_point += ss->seq_split_length;
+            ss->end_seq = true;
+        }
+    }
 
 }
 
@@ -627,7 +639,7 @@ void SeqEncoder::EncodePicture(Picture *picture)
         picture->EncodeMacroBlocks();
     }
 
-	picture->PutHeadersAndEncoding(ratecontroller);
+	picture->QuantiseAndEncode(ratecontroller);
 	picture->Reconstruct();
 
 	/* Handle second field of a frame that is being field encoded */
@@ -648,9 +660,8 @@ void SeqEncoder::EncodePicture(Picture *picture)
         {
             picture->EncodeMacroBlocks();
         }
-		picture->PutHeadersAndEncoding(ratecontroller);
+		picture->QuantiseAndEncode(ratecontroller);
 		picture->Reconstruct();
-
 	}
 
 
@@ -738,6 +749,8 @@ void SeqEncoder::Init()
 	GopStart( &ss);
 }
 
+
+
 bool SeqEncoder::EncodeFrame()
 {
 
@@ -747,28 +760,25 @@ bool SeqEncoder::EncodeFrame()
 	/* loop through all frames in encoding/decoding order */
 
     old_picture = cur_picture;
-
-    /* Each bigroup starts once all the B frames of its predecessor
+    
+    // TODO: Eventually the encoder should allow the picture type B/R
+    //
+   /* Each bigroup starts once all the B frames of its predecessor
        have finished.
     */
     int index;
-    char type;
     if ( ss.b == 0)
     {
-        type = 'R';
         cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
         index = cur_ref_idx;
         old_ref_picture = new_ref_picture;
         new_ref_picture = ref_pictures[cur_ref_idx];
         new_ref_picture->ref_frame = old_ref_picture;
-        new_ref_picture->prev_frame = cur_picture;
         new_ref_picture->Set_IP_Frame(&ss, reader.NumberOfFrames());
         cur_picture = new_ref_picture;
     }
     else
     {
-        type = 'B';
-
         Picture *new_b_picture;
         /* B frame: no need to change the reference frames.
            The current frame data pointers are a 3rd set
@@ -782,10 +792,10 @@ bool SeqEncoder::EncodeFrame()
         new_b_picture->neworg = new_ref_picture->neworg;
         new_b_picture->newref = new_ref_picture->newref;
         new_b_picture->ref_frame = new_ref_picture;
-        new_b_picture->prev_frame = cur_picture;
         new_b_picture->Set_B_Frame( &ss );
         cur_picture = new_b_picture;
     }
+
 
     reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
                       cur_picture->curorg );
@@ -798,14 +808,13 @@ bool SeqEncoder::EncodeFrame()
 #endif
 
     NextSeqState( &ss );
-    ++frame_num;
 
-	if( frame_num < reader.NumberOfFrames() )
+
+    // Hard-wired simple 1-pass encoder!!!
+    coder.FlushBuffer();
+    if( frame_num < reader.NumberOfFrames() )
         return true;
-	
-	coder.PutSeqEnd();
-    coder.EmitCoded();
-
+        
     // DEBUG
 	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);

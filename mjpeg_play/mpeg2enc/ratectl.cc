@@ -173,8 +173,6 @@ OnTheFlyRateCtl::OnTheFlyRateCtl(EncoderParams &encparams ) :
 	buffer_variation = 0;
 	bits_transported = 0;
 	bits_used = 0;
-	prev_bitcount = 0;
-	bitcnt_EOP = 0;
 	frame_overshoot_margin = 0;
 	sum_avg_act = 0.0;
 	sum_avg_var = 0.0;
@@ -360,7 +358,7 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb)
 /* Step 1a: compute target bits for current picture being coded, based
  * on predicting from past frames */
 
-void OnTheFlyRateCtl::InitNewPict(Picture &picture, int64_t bitcount_SOP)
+void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 {
 	double target_Q;
 	int available_bits;
@@ -504,9 +502,10 @@ void OnTheFlyRateCtl::InitNewPict(Picture &picture, int64_t bitcount_SOP)
 
 	picture.avg_act = avg_act;
 	picture.sum_avg_act = sum_avg_act;
-
-	S = bitcount_SOP;
-
+    mquant_change_ctr = encparams.mb_width;
+	cur_mquant = ScaleQuant( picture.q_scale_type, 
+                             fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
+    mquant_change_ctr = encparams.mb_width;
 }
 
 /* Step 1b: compute target bits for current picture being coded, based
@@ -603,6 +602,11 @@ void OnTheFlyRateCtl::InitKnownPict( Picture &picture )
 		target_bits -= frame_overshoot_margin;
 	}
 
+    printf( "vbuf = %d\n", vbuf_fullness );
+	cur_mquant = ScaleQuant( picture.q_scale_type, 
+                             fmax( vbuf_fullness*62.0/fb_gain, encparams.quant_floor) );
+    printf( "MQ = %d\n", cur_mquant );
+    mquant_change_ctr = encparams.mb_width;
 }
 
 
@@ -614,16 +618,14 @@ void OnTheFlyRateCtl::InitKnownPict( Picture &picture )
  * rate constraints...
  */
 
-void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
-                                 int &padding_needed, bool &recode )
+void OnTheFlyRateCtl::UpdatePict( Picture &picture, int &padding_needed)
 {
 	double K;
 	int32_t actual_bits;		/* Actual (inc. padding) picture bit counts */
 	int    i;
 	int    Qsum;
 	int frame_overshoot;
-    int64_t bitcount_EOP = _bitcount_EOP; 
-	actual_bits = bitcount_EOP - S;
+	actual_bits = picture.SizeCodedMacroBlocks();
 	frame_overshoot = (int)actual_bits-(int)target_bits;
 
 	/* For the virtual buffers for quantisation feedback it is the
@@ -660,7 +662,7 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
         // Make sure we pad nicely to byte alignment
         if( frame_overshoot < 0 )
         {
-            padding_bits = (((bitcount_EOP-frame_overshoot)>>3)<<3)-bitcount_EOP;
+            padding_bits = (((actual_bits-frame_overshoot)>>3)<<3)-actual_bits;
             picture.pad = 1;
         }
 	}
@@ -669,7 +671,6 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
      * will be added */
     actual_bits += padding_bits ;
     frame_overshoot += padding_bits;
-    bitcount_EOP += padding_bits;
 
 	/*
 	  Compute the estimate of the current decoder buffer state.  We
@@ -685,9 +686,8 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
 	*/
 
 	
-	bits_used += (bitcount_EOP-prev_bitcount);
-	prev_bitcount = bitcount_EOP;
-    
+	bits_used += actual_bits;
+ 
 	bits_transported += per_pict_bits;
 	//mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "", bits_transported/8, bits_used/8);
 	buffer_variation  = static_cast<int32_t>(bits_transported - bits_used);
@@ -756,6 +756,7 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
 	   similar real-time decay periods based on an assumption of
 	   20-30Hz frame rates.
 	*/
+    
     ratectl_vbuf[picture.pict_type] = vbuf_fullness;
     sum_size[picture.pict_type] += actual_bits/8.0;
     pict_count[picture.pict_type] += 1;
@@ -784,10 +785,8 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
         );
     
                 
-	VbvEndOfPict(picture, bitcount_EOP);
-
+	VbvEndOfPict(picture);
     padding_needed = padding_bits/8;
-    recode = false;
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) 
@@ -798,9 +797,7 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int64_t _bitcount_EOP,
 
 int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
 {
-	
-	int mquant = ScaleQuant( picture.q_scale_type, vbuf_fullness*62.0/fb_gain );
-	return intmax(mquant, static_cast<int>(encparams.quant_floor));
+    return cur_mquant;
 }
 
 
@@ -809,74 +806,81 @@ int OnTheFlyRateCtl::InitialMacroBlockQuant(Picture &picture)
  * SelectQuantization - select a quantisation for the current
  * macroblock based on the fullness of the virtual decoder buffer.
  *
+ * NOTE: *Must* be called for all Macroblocks as content-based quantisation tuning is
+ * supported.
  ************/
 
-int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb, int64_t bitcount )
+int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb )
 {
-	int mquant;
-	int lum_variance = mb.BaseLumVariance();
-	double act  = mb.Activity();
-	const Picture &picture = mb.ParentPicture();
-	/* A.Stevens 2000 : we measure how much *information* (total activity)
-	   has been covered and aim to release bits in proportion.
+    --mquant_change_ctr;
+    if( mquant_change_ctr < 0)
+        mquant_change_ctr =  encparams.mb_width/2;
+    int lum_variance = mb.BaseLumVariance();
+    int mquant;
+    if( mquant_change_ctr == 0 || lum_variance < encparams.boost_var_ceil )
+    {
+        const Picture &picture = mb.ParentPicture();
+        /* A.Stevens 2000 : we measure how much *information* (total activity)
+           has been covered and aim to release bits in proportion.
 
-	   We keep track of a virtual buffer that catches the difference
-	   between the bits allocated and the bits we actually used.  The
-	   fullness of this buffer controls quantisation.
+           We keep track of a virtual buffer that catches the difference
+           between the bits allocated and the bits we actually used.  The
+           fullness of this buffer controls quantisation.
 
-	*/
+        */
 
-	/* Guesstimate a virtual buffer fullness based on
-	   bits used vs. bits in proportion to activity encoded
-	*/
+        /* Guesstimate a virtual buffer fullness based on
+           bits used vs. bits in proportion to activity encoded
+        */
 
-	double dj = static_cast<double>(vbuf_fullness) 
-        + static_cast<double>(bitcount-S) 
-        - actcovered * target_bits / actsum;
+        double dj = static_cast<double>(vbuf_fullness) 
+            + static_cast<double>(picture.SizeCodedMacroBlocks()) 
+            - actcovered * target_bits / actsum;
 
 
-	/* scale against dynamic range of mquant and the bits/picture
-	   count.  encparams.quant_floor != 0.0 is the VBR case where we set a
-	   bitrate as a (high) maximum and then put a floor on
-	   quantisation to achieve a reasonable overall size.  Not that
-	   this *is* baseline quantisation.  Not adjust for local
-	   activity.  Otherwise we end up blurring active
-	   macroblocks. Silly in a VBR context.
-	*/
+        /* scale against dynamic range of mquant and the bits/picture
+           count.  encparams.quant_floor != 0.0 is the VBR case where we set a
+           bitrate as a (high) maximum and then put a floor on
+           quantisation to achieve a reasonable overall size.  Not that
+           this *is* baseline quantisation.  Not adjust for local
+           activity.  Otherwise we end up blurring active
+           macroblocks. Silly in a VBR context.
+        */
 
-	double Qj = dj*62.0/fb_gain;
-	Qj =  fmax(Qj,encparams.quant_floor);
+        double Qj = dj*62.0/fb_gain;
+        Qj =  fmax(Qj,encparams.quant_floor);
 
-	/*  Heuristic: We decrease quantisation for macroblocks
-		with markedly low luminace variance.  This helps make
-		gentle gradients (e.g. smooth backgrounds) look better at
-		(hopefully) small additonal cost  in coding bits
-	*/
+        /*  Heuristic: We decrease quantisation for macroblocks
+            with markedly low luminace variance.  This helps make
+            gentle gradients (e.g. smooth backgrounds) look better at
+            (hopefully) small additonal cost  in coding bits
+        */
 
-	double act_boost;
-	if( lum_variance < encparams.boost_var_ceil )
-	{
-		if( lum_variance < encparams.boost_var_ceil/2)
-			act_boost = encparams.act_boost;
-		else
-		{
-			double max_boost_var = encparams.boost_var_ceil/2;
-			double above_max_boost = 
-				(static_cast<double>(lum_variance)-max_boost_var)
-				/ max_boost_var;
-			act_boost = 1.0 + (encparams.act_boost-1.0) * (1.0-above_max_boost);
-		}
-	}
-	else
-		act_boost = 1.0;
-	sum_vbuf_Q += ScaleQuantf(picture.q_scale_type,Qj/act_boost);
-	mquant = ScaleQuant(picture.q_scale_type,Qj/act_boost) ;
-	
+        double act_boost;
+        if( lum_variance < encparams.boost_var_ceil )
+        {
+            if( lum_variance < encparams.boost_var_ceil/2)
+                act_boost = encparams.act_boost;
+            else
+            {
+                double max_boost_var = encparams.boost_var_ceil/2;
+                double above_max_boost = 
+                    (static_cast<double>(lum_variance)-max_boost_var)
+                    / max_boost_var;
+                act_boost = 1.0 + (encparams.act_boost-1.0) * (1.0-above_max_boost);
+            }
+        }
+        else
+            act_boost = 1.0;
+        sum_vbuf_Q += ScaleQuantf(picture.q_scale_type,Qj/act_boost);
+        cur_mquant = ScaleQuant(picture.q_scale_type,Qj/act_boost) ;
+    }
+
 	/* Update activity covered */
-
+	double act  = mb.Activity();
 	actcovered += act;
 	 
-	return mquant;
+	return cur_mquant;
 }
 
 /* VBV calculations
@@ -894,10 +898,8 @@ int OnTheFlyRateCtl::MacroBlockQuant( const MacroBlock &mb, int64_t bitcount )
  * bit-stream.
  */
 
-void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture, int64_t bitcount)
+void OnTheFlyRateCtl::VbvEndOfPict(Picture &picture)
 {
-	bitcnt_EOP = bitcount - BITCOUNT_OFFSET;
-
 }
 
 /* calc_vbv_delay

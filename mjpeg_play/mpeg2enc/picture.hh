@@ -60,7 +60,6 @@ public:
     DC_DctPred dc_dct_pred;
     MotionVecPred PMV;
     MacroBlock *prev_mb;
-    int mquant_pred;
     
 };
 
@@ -69,7 +68,6 @@ class RateCtl;
 class MPEG2Coder;
 class Quantizer;
 class StreamState;
-
 
 
 // TODO: Nasty hack to keep interface to some old routines the same
@@ -100,8 +98,9 @@ public:
     void Set_B_Frame( StreamState *ss );
 
     // In putpic..c
-    void PutHeadersAndEncoding( RateCtl &ratecontrol );
-    bool TryEncoding(RateCtl &ratecontrol);
+    void QuantiseAndEncode(RateCtl &ratecontrol);
+    void InitRateControl(RateCtl &ratecontrol);
+    void PutHeaders();
     void PutHeader(); 
 
     // In ratectl.cc
@@ -131,10 +130,11 @@ public:
             
         }
 
-
+    int SizeCodedMacroBlocks() const;
+    
 private:
 
-    void PutSliceHdr( int slice_mb_y );
+    void PutSliceHdr( int slice_mb_y, int mquant );
     void PutMVs( MotionEst &me, bool back );
     void PutCodingExt(); 
 
@@ -146,7 +146,6 @@ public:
      *
      **************/
 
-    //MPEG2Encoder &encoder;
     EncoderParams &encparams;
     MPEG2Coder &coder;
     Quantizer &quantizer;
@@ -172,7 +171,6 @@ public:
 	   sync only: no data is "read"/"written"
 	 */
     Picture *ref_frame;
-    Picture *prev_frame;
 
 	/* picture encoding source data  */
 	ImagePlanes oldorg, neworg;	/* Images for Old and new reference picts */
@@ -212,7 +210,7 @@ public:
 	int nb;						/* B frames in GOP */
 	int np;						/* P frames in GOP */
 	bool new_seq;				/* GOP starts new sequence */
-
+    bool end_seq;               /* Frame ends sequence */
 	/* Statistics... */
 	int pad;
 	int split;

@@ -23,20 +23,14 @@
  */
 
 #include <config.h>
+#include <stdlib.h>
 #include "mjpeg_types.h"
 #include "synchrolib.h"
 #include "elemstrmwriter.hh"
 
 class Picture;
 
-class MPEG2CoderState
-{
-    friend class MPEG2Coder;
-private:
-    ElemStrmBufferState writerState;
-};    
-
-class MPEG2Coder
+class MPEG2Coder : public ElemStrmFragBuf
 {
 public:
 	MPEG2Coder( EncoderParams &encoder, ElemStrmWriter &writer );
@@ -53,28 +47,6 @@ public:
     void PutMBType(int pict_type, int mb_type);
     void PutMotionCode(int motion_code);
     void PutCPB(int cbp);
-
-
-    inline void PutBits( uint32_t val, int n) { writer.PutBits( val, n ); }
-    inline int64_t BitCount() { return writer.BitCount(); }
-    inline void AlignBits() { writer.AlignBits(); }
-    inline bool Aligned() { return writer.Aligned(); }
-
-    //
-    // Eventually these may actually do something coding state manipulation...
-    //
-    inline void EmitCoded() { writer.FlushBuffer(); }
-    inline MPEG2CoderState CurrentState() 
-        {
-            MPEG2CoderState state;
-            state.writerState = writer.CurrentState();
-            return state;
-        }
-
-    inline void RestoreCodingState( const MPEG2CoderState &restore) 
-        {
-            writer.RestoreState( restore.writerState );
-        }
 
 private:
 	void PutSeqExt();
@@ -132,9 +104,6 @@ private:
 
 private:
 	EncoderParams &encparams;
-    ElemStrmWriter &writer;
-
-
 
     const static VLCtable addrinctab[33];
     const static VLCtable mbtypetab[3][32];

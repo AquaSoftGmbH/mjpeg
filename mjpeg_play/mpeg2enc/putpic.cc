@@ -1,6 +1,27 @@
 /* putpic.c, block and motion vector encoding routines                      */
 
-/* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
+ 
+/*  (C) 2000-2005 Andrew Stevens */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+ 
+/* Original reference encoder from which this derived:
+ * Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
 /*
  * Disclaimer of Warranty
@@ -26,24 +47,7 @@
  * design.
  *
  */
-/* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
 
-/* These modifications are free software; you can redistribute it
- *  and/or modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either version 2 of
- *  the License, or (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
- *
- */
 
 
 #include <config.h>
@@ -58,14 +62,6 @@
 #include "macroblock.hh"
 #include "picture.hh"
 
-#ifdef DEBUG_DPME
-static int dp_mv = 0;
-void calc_DMV( const Picture &picture, /*int pict_struct,  int topfirst,*/
-                      MotionVector DMV[Parity::dim],
-                      MotionVector &dmvector, 
-                      int mvx, int mvy
-    );
-#endif
     
 /* output motion vectors (6.2.5.2, 6.3.16.2)
  *
@@ -337,7 +333,7 @@ void Picture::PutCodingExt()
 }
 
 
-void Picture::PutSliceHdr( int slice_mb_y )
+void Picture::PutSliceHdr( int slice_mb_y, int mquant )
 {
     /* slice header (6.2.4) */
     coder.AlignBits();
@@ -352,8 +348,8 @@ void Picture::PutSliceHdr( int slice_mb_y )
     
     /* quantiser_scale_code */
     coder.PutBits(q_scale_type 
-            ? map_non_linear_mquant[mquant_pred] 
-            : mquant_pred >> 1, 5);
+            ? map_non_linear_mquant[mquant] 
+            : mquant >> 1, 5);
     
     coder.PutBits(0,1); /* extra_bit_slice */
     
@@ -361,205 +357,39 @@ void Picture::PutSliceHdr( int slice_mb_y )
 
 
 
-/* *****************
- *
- * putpict - Quantise and encode picture with Sequence and GOP headers
- * as required.
- *
- ******************/
-
-void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
+/* **********************************
+ * 
+ * PutHeaders - Put sequence of headers and user data elements that 'belong'
+ * to this frame.  We count sequence and GOP headers as belong to the first
+ * following picture.
+ * 
+ * ********************************/
+ 
+void Picture::PutHeaders()
 {
-
-	/* Handle splitting of output stream into sequences of desired size */
-	if( new_seq )
-	{
-		coder.PutSeqEnd();
-		ratecontrol.InitSeq(true);
-	}
-	/* Handle start of GOP stuff:
-       We've reach a new GOP so we emit what we coded for the
-       previous one as (for the moment) and mark the resulting coder
-       state for eventual backup.
-       Currently, we never backup more that to the start of the current GOP.
-     */
-	if( gop_start )
-	{
-        coder.EmitCoded();
-		ratecontrol.InitGOP( np, nb);
-	}
-
-    MPEG2CoderState pre_picture_state = coder.CurrentState();
-	ratecontrol.CalcVbvDelay(*this);
-    ratecontrol.InitNewPict(*this, coder.BitCount()); /* set up rate control */
-    bool recoding_suggested = TryEncoding(ratecontrol);
-    if( recoding_suggested )
-    {
-        mjpeg_info( "RECODING!");
-        coder.RestoreCodingState( pre_picture_state );
-        ratecontrol.InitKnownPict(*this);
-        TryEncoding(ratecontrol);
-    }
-}
-
-/* ************************************************
- *
- * QuantiseAndEncode - Quantise and Encode a picture.
- *
- * NOTE: It may seem perverse to quantise at the same time as
- * coding. However, actually makes (limited) sense: feedback from the
- * *actual* bit-allocation may be used to adjust quantisation "on the
- * fly".  We, of course, need the quantised DCT blocks to construct
- * the reference picture for future motion compensation etc.
- *
- * *********************************************** */
-
-bool Picture::TryEncoding(RateCtl &ratectl)
-{
-	/* Sequence header if new sequence or we're generating for a
+    /* Sequence header if new sequence or we're generating for a
        format like (S)VCD that mandates sequence headers every GOP to
        do fast forward, rewind etc.
-	*/
-
-    if( new_seq || decode == 0 ||
-        (gop_start && encparams.seq_hdr_every_gop) )
+    */
+    if( new_seq || decode == 0 || (gop_start && encparams.seq_hdr_every_gop) )
     {
-		coder.PutSeqHdr();
+      coder.PutSeqHdr();
     }
-	if( gop_start )
-	{
-		coder.PutGopHdr( decode,  closed_gop );
-	}
+   
+    if( gop_start )
+    {
+      coder.PutGopHdr( decode,  closed_gop );
+    }
     
-	int i, j, k;
-	int MBAinc;
-	MacroBlock *cur_mb = 0;
-
-    
-	/* picture header and picture coding extension */
+    /* picture header and picture coding extension */
     PutHeader();
 
     /* TODO: This should really be a member of the picture object */
-	if( encparams.svcd_scan_data && pict_type == I_TYPE )
-	{
-		coder.PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
-	}
-
-	mquant_pred = ratectl.InitialMacroBlockQuant(*this);
-
-	k = 0;
-    
-    /* TODO: We're currently hard-wiring each macroblock row as a
-       slice.  For MPEG-2 we could do this better and reduce slice
-       start code coverhead... */
-
-	for (j=0; j<encparams.mb_height2; j++)
-	{
-
-        PutSliceHdr(j);
-        Reset_DC_DCT_Pred();
-        Reset_MV_Pred();
-
-        MBAinc = 1; /* first MBAinc denotes absolute position */
-
-        /* Slice macroblocks... */
-		for (i=0; i<encparams.mb_width; i++)
-		{
-            prev_mb = cur_mb;
-			cur_mb = &mbinfo[k];
-
-			/* determine mquant (rate control) */
-            cur_mb->mquant = ratectl.MacroBlockQuant( *cur_mb, coder.BitCount() );
-
-			/* quantize macroblock : N.b. the MB_PATTERN bit may be
-               set as a side-effect of this call. */
-            cur_mb->Quantize( quantizer);
-
-			/* output mquant if it has changed */
-			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)
-				cur_mb->final_me.mb_type|= MB_QUANT;
-
-            /* Check to see if Macroblock is skippable, this may set
-               the MB_FORWARD bit... */
-            bool slice_begin_or_end = (i==0 || i==encparams.mb_width-1);
-            cur_mb->SkippedCoding(slice_begin_or_end);
-            if( cur_mb->skipped )
-            {
-                ++MBAinc;
-            }
-            else
-            {
-                coder.PutAddrInc(MBAinc); /* macroblock_address_increment */
-                MBAinc = 1;
-                
-                coder.PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
-
-                if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
-                    coder.PutBits(cur_mb->final_me.motion_type,2);
-
-                if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
-                    coder.PutBits(cur_mb->field_dct,1);
-
-                if (cur_mb->final_me.mb_type & MB_QUANT)
-                {
-                    coder.PutBits(q_scale_type 
-                            ? map_non_linear_mquant[cur_mb->mquant]
-                            : cur_mb->mquant>>1,5);
-                    mquant_pred = cur_mb->mquant;
-                }
-
-
-                if (cur_mb->final_me.mb_type & MB_FORWARD)
-                {
-                    /* forward motion vectors, update predictors */
-                    PutMVs( cur_mb->final_me, false );
-                }
-
-                if (cur_mb->final_me.mb_type & MB_BACKWARD)
-                {
-                    /* backward motion vectors, update predictors */
-                    PutMVs( cur_mb->final_me,  true );
-                }
-
-                if (cur_mb->final_me.mb_type & MB_PATTERN)
-                {
-                    coder.PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
-                }
-            
-                /* Output VLC DCT Blocks for Macroblock */
-
-                cur_mb->PutBlocks( );
-                /* reset predictors */
-                if (!(cur_mb->final_me.mb_type & MB_INTRA))
-                    Reset_DC_DCT_Pred();
-
-                if (cur_mb->final_me.mb_type & MB_INTRA || 
-                    (pict_type==P_TYPE && !(cur_mb->final_me.mb_type & MB_FORWARD)))
-                {
-                    Reset_MV_Pred();
-                }
-            }
-            ++k;
-        } /* Slice MB loop */
-    } /* Slice loop */
-    int64_t bitcount_EOP = coder.BitCount();
-	int padding_needed;
-    bool recoding_suggested;
-    ratectl.UpdatePict( *this, bitcount_EOP, 
-                        padding_needed, recoding_suggested );
-    coder.AlignBits();
-    if( padding_needed > 0 )
-    {
-        mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
-                     padding_needed );
-        for( i = 0; i < padding_needed; ++i )
-        {
-            coder.PutBits(0, 8);
-        }
-    }
-    return recoding_suggested;
+   if( encparams.svcd_scan_data && pict_type == I_TYPE )
+   {
+      coder.PutUserData( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
+   }
 }
-
 
 
 /* 

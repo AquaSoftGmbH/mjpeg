@@ -88,34 +88,35 @@ class FILE_StrmWriter : public ElemStrmWriter
 public:
 
 
-    FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) :
-        ElemStrmWriter( encparams )
+    FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) 
         {
             /* open output file */
             if (!(outfile=fopen(outfilename,"wb")))
             {
                 mjpeg_error_exit1("Couldn't create output file %s",outfilename);
             }
+            flushed = 0;
         }
 
-    virtual void WriteOutBufferUpto( const size_t flush_upto )
+    virtual void WriteOutBufferUpto( const uint8_t *buffer, const uint32_t flush_upto )
         {
             size_t written = fwrite( buffer, 
-                                     sizeof(uint8_t), flush_upto,
+                                     sizeof(uint8_t), 
+                                     static_cast<size_t>(flush_upto),
                                      outfile );
-            if( written != flush_upto )
+            if( written != static_cast<size_t>(flush_upto) )
             {
                 mjpeg_error_exit1( strerror(ferror(outfile)) );
             }
-	
+	       flushed += flush_upto;
         }
 
     virtual ~FILE_StrmWriter()
         {
             fclose( outfile );
         }
-
-
+        
+    virtual size_t BitCount() { return flushed * 8LL; }
 private:
     FILE *outfile;
 };
@@ -996,11 +997,13 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
         mjpeg_info( "Using one-pass rate controller" );
         bitrate_controller = new OnTheFlyRateCtl( parms );
     }
+    /* TODONOW
     else 
     {
         mjpeg_info( "Using Pass1 rate controller" );
         bitrate_controller = new Pass1RateCtl( parms );
     }
+    */
 
     seqencoder = new SeqEncoder( parms, *reader, *quantizer,
                                  *writer, *coder, *bitrate_controller);

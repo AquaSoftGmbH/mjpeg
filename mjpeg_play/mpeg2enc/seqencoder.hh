@@ -47,6 +47,7 @@ struct StreamState
 	int np;					/* P frames in current GOP */
 	int nb;					/* B frames in current GOP */
 	double next_b_drop;		/* When next B frame drop is due in GOP */
+    bool end_seq;           /* Current frame is last in sequence */
 	bool new_seq;				/* Current GOP/frame starts new sequence */
     bool closed_gop;            /* Current GOP is closed */
 	uint64_t next_split_point;
