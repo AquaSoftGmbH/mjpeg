@@ -26,6 +26,7 @@
 */
 
 #include "lav_common.h"
+#include <stdio.h>
 
 void error(char *text);
 void Usage(char *str);

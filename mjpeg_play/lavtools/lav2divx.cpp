@@ -383,7 +383,6 @@ main ( int argc, char **argv )
 			{"video_stream", required_argument, NULL, 'V'},
 			{"number_cpus", required_argument, NULL, 'U'},
 			{"outputfile", required_argument, NULL, 'o'},
-			{"noise", required_argument, NULL, 'n'},
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			{"keyframes", required_argument, NULL, 'k'},
 			{"crispness", required_argument, NULL, 'C'},
@@ -397,9 +396,9 @@ main ( int argc, char **argv )
 
 		copt =
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
-			getopt_long ( argc, argv, "LE:fa:e:c:b:o:s:n:gmvk:C:", long_options, &option_index );
+			getopt_long ( argc, argv, "LE:fa:e:c:b:o:s:gmvk:C:", long_options, &option_index );
 #else
-			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:n:gmv", long_options, &option_index );
+			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:gmv", long_options, &option_index );
 #endif
 		if ( copt == -1 )
 		{
@@ -508,15 +507,6 @@ main ( int argc, char **argv )
 				mjpeg_error_exit1 ( "Bad y parameter\n" );
 				// nerr++;
 				break;
-			}
-			break;
-
-		case 'n':
-			param.noise_filt = atoi ( optarg );
-			if ( param.noise_filt < 0 || param.noise_filt > 2 )
-			{
-				mjpeg_error_exit1 ( "-n option requires arg 0..2\n" );
-				//nerr++;
 			}
 			break;
 
