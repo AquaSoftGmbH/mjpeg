@@ -1,5 +1,5 @@
-This is mjpeg-howto.info, produced by makeinfo version 4.2 from
-/tmp/linuxdoc-dir-4578/sgmltmp.mjpeg-howto.info.2.
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.2 aus
+/tmp/linuxdoc-dir-1894/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -10,14 +10,14 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 ************************************************
 
      Praschinger Bernhard
-     v1.32
+     v1.33
 
    MJPEG capture/editting/replay and MPEG encoding toolset description
 
 * Menu:
 
 * Introduction::
-* Unsorted list of usefull Hints::
+* Unsorted list of useful Hints::
 * Recording videos::
 * Creating videos from images::
 * Checking if recording was successful::
@@ -30,7 +30,7 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 * Interoperability::
 
 
-File: mjpeg-howto.info,  Node: Introduction,  Next: Unsorted list of usefull Hints,  Prev: Top,  Up: Top
+File: mjpeg-howto.info,  Node: Introduction,  Next: Unsorted list of useful Hints,  Prev: Top,  Up: Top
 
 Introduction
 ************
@@ -62,14 +62,14 @@ http://sourceforge.net/projects/mjpeg
    There is also a manpage of this text, you can read it with "man
 mjpegtools" if installed.
 
-   The text version of this text is aviabel via cvs, you should get it
+   The text version of this text is aviable via cvs, you should get it
 with a tarball or the precompiled package (RPM and deb).
 
 
-File: mjpeg-howto.info,  Node: Unsorted list of usefull Hints,  Next: Recording videos,  Prev: Introduction,  Up: Top
+File: mjpeg-howto.info,  Node: Unsorted list of useful Hints,  Next: Recording videos,  Prev: Introduction,  Up: Top
 
-Unsorted list of usefull Hints
-******************************
+Unsorted list of useful Hints
+*****************************
 
    You have to compile and install the mjpeg_play package, for this
 read the README & REQUIRED_SOFTWARE & INSTALL.  If you do not want to
@@ -114,7 +114,15 @@ work.  The v4l (video4linux) stuff will very likely fail to work.
 
    Never try to stop or start the TV application when lavrec runs. If
 you start or stop the TV application lavrec will stop recording, or
-your computer could get "frozen".
+your computer could get "frozen". This is a problem of v4l
+(video4linux).
+
+   This problem is solve with v4l2. If you use v4l2 you can recrd the
+video and stop and start the tv application whenever you want.  But
+v4l2 is currently (7. Jan. 2003) only supported for the zoran based
+cards (BUZ, DC10, DC10+, LML33) if you use the CVS driver from
+mjpeg.sf.net tagged with ZORAN_VIDEODEV_2.  And this driver only works
+with the 2.4.20 kernel and the 2.5.* development kernel.
 
    One last thing about the data you get before we start:
 
@@ -148,13 +156,13 @@ overflows can happen. The maximal value is 512kB.
    How video works, and the difference between the video type is
 explained here: http://www.mir.com/DMG/
 
+   There you also find how to create MPEG Still Images for VCD/SVCD.
+
    A other nice description of DV (Digital Video) can be found here:
 http://www.iki.fi/znark/video/conversion/
 
-   There you also find how to create MPEG Still Images for VCD/SVCD.
-
 
-File: mjpeg-howto.info,  Node: Recording videos,  Next: Creating videos from images,  Prev: Unsorted list of usefull Hints,  Up: Top
+File: mjpeg-howto.info,  Node: Recording videos,  Next: Creating videos from images,  Prev: Unsorted list of useful Hints,  Up: Top
 
 Recording videos
 ****************
@@ -192,7 +200,7 @@ lavrec examples
      name of the created file.
 
    Recording is finished by pressing Crtl-C (nowadays: Strg-C).
-Sometimes useing `-f A' instead of `-f a' might be necessary
+Sometimes using `-f A' instead of `-f a' might be necessary
 
    Other example:
 
@@ -227,8 +235,42 @@ Sometimes useing `-f A' instead of `-f a' might be necessary
      is needed if your sound card does not support the mmap for
      recording.
 
-   The cards record at a different size in PAL when recording at -d 1 :
-BUZ and LML33: 720x576 and the DC10: 768x576
+   Setting the mixer does not work with every sound card. If you record
+with 2 different settings. If both recordings are equal loud, you
+should setup the mixer with a with a mixer programm. After that you
+should use the `-l -1' option when you record using lavrec
+
+   The size of the image depends on the card you use, at full size (-d
+1) you get that image size: BUZ and LML33: 720x576 and the DC10: 768x576
+
+   Other example:
+
+   `> lavrec -w -f a -i S -d 2 -l -1 record%02d.avi'
+
+`'
+     Should start recording,
+
+`-w'
+     Waits for user confirmation to start (press enter)
+
+`-f a'
+     use AVI as output format,
+
+`-i S'
+     use SECAM SVHS-Input (SECAM Composite recording is also possible:
+     -i s)
+
+`-d 2'
+     the size of the pictures are half size
+
+`-l -1'
+     do not touch the mixer settings
+
+`record%02d.avi'
+     Here lavrec creates the first file named record00.avi after the
+     file has reached a size of 1.6GB (after about 20 Minutes
+     recording) it starts a new sequence named record01.avi and so on
+     till the recording is stopped or the disk is full
 
    Other example:
 
@@ -290,6 +332,14 @@ more likely that you encounter problems. If you use much higher
 settings you will encounter framedropps.  If you're aiming to create
 VCD's then there is little to be gained recording at full resolution as
 you need to reduce to -d 2 resolution later anyway.
+
+   you can record at other sizes than the obvious -d 1/2/4. You can use
+combinations where you use halve horizontal size and full vertical
+size: -d 21.  This would record for NTSC at a size of 352x480. This
+helps if you want to create SVCDs, scaling the 352 Pixles put to 480 is
+not that visible for the eye as if you would use the other combination
+-d 12 . Where you have the full horzontl resolution and halve vertical.
+This Version will have a size of 720x288 for NTSC
 
 
 File: mjpeg-howto.info,  Node: Some information about the typical lavrec output while recording,  Next: Notes about "interlace field order - what can go wrong and how to fix it",  Prev: Other recording hints,  Up: Recording videos
@@ -396,7 +446,7 @@ How can I recognize if I have one of these Problems ?
      containing an image sampled earlier in time comes after an image
      sampled later. Weird "juddering" effects are the results.
 
-   If you use glav or lavplay be soure that you also use the
+   If you use glav or lavplay be sure that you also use the
 `-F/-flicker' option. This disables some things that make the picture
 to look better, and problems are not that hard to be recognized.
 
@@ -444,7 +494,7 @@ remove the first 10 images because pnmsplit does not support the %0xd
 numbering. Without a leading zero in the number, the files will be
 sorted in the wrong order, leading to a confusing playback.
 
-   Use your favourite grafic program (xv for example) to view the
+   Use your favorite grafic program (xv for example) to view the
 pictures. As each picture only contain one field out of two, they will
 appear scaled vertically. If you look at the pictures you should see
 the movie slow advancing.
@@ -452,7 +502,7 @@ the movie slow advancing.
    If you have a film you should always see 2 pictures that are nearly
 the same after each other. Nearly because the film frame is split into
 two field for broadcasting. You can notice this rather easy if you have
-comb efects when you pause the film because both field should fit
+comb effects when you pause the film because both field should fit
 together well. The two pictures that belong together should have an
 even number and the following odd number. So if you take a look on
 pictures: 4 and 5 are nearly identical, 5 and 6 differ (have movement),
@@ -479,7 +529,7 @@ File: mjpeg-howto.info,  Node: Hey what about NTSC movies ?,  Prev: How can you 
 Hey what about NTSC movies ?
 ----------------------------
 
-   Movies are broadcast in NTSC using "3:2" pulldown which means that
+   Movies are broadcast in NTSC using "3:2" pull down which means that
 half the capture frames contain fields from 1 movie frame and half
 fields from 2 frames. To undo this effect for efficient MPEG encoding
 you need to use yuvkineco.
@@ -487,7 +537,7 @@ you need to use yuvkineco.
    If you have an interlaced source like a TV camera you have a frame
 consists of two fields that are recorded at different points in time
 and shown after each other. Spotting the problem here is harder. You
-need to find something moving hoziontally from the left to the right.
+need to find something moving hoziontal from the left to the right.
 When you extract the fields, the thing should move in small steps from
 the left to the right, not one large step forward, small step back,
 large forward, small back......  You have to use the same options
@@ -612,7 +662,7 @@ the card.
 
    `> glav record.avi'
 
-   Does the same as lavplay, but you have an nice gui. The options for
+   Does the same as lavplay, but you have an nice GUI. The options for
 glav and lavplay are nearly the same. Using no option SW playback is
 used.
 
@@ -636,9 +686,9 @@ work correct !!!
    `NOTE3:' SECAM playback is now (12.3.2001) only in monochrome, but
 the recording and encoding is done right.
 
-   `NOTE4:' You reduce your quality by using low quality cables.
-Normally you can't see this, but when there is text you might notice a
-small shadow. When you see this you should change the cable.
+   `NOTE4:'Bad cables may reduce the quality of the image. Normally you
+can't see this, but when there is text you might notice a small shadow.
+When you see this you should change the cable.
 
    `Comming soon:' There is a tool, that makes recoding videos very
 simple named Linux Studio. You can download it at:
@@ -896,10 +946,10 @@ formats.
    If you want a one command conversation to mpeg videos try lav2mpeg in
 the scripts directory
 
-   The encoding with the lav2mpeg script lookes like this for mpeg1
+   The encoding with the lav2mpeg script looks like this for mpeg1
 output:
 
-   `>lav2mpeg -a 160 -b 2110 -d 320x240 -o mpeg1 -O output.mpg file.eli'
+   `>lav2mpeg -a 160 -b 2110 -d 320x240 -m mpeg1 -o output.mpg file.eli'
 
    * Will create a mpeg1 with videobitrate of 2110kBit/sec and
      audiobitrate of 160 kBit/sec
@@ -969,7 +1019,7 @@ bitrate.
 compatible output from the wav file.
 
    With -v 2 mp2enc is more verbose, while encoding you see the number
-of sec of audio already encodet.
+of sec of audio already encoded.
 
    You can test the output with:
 
@@ -988,8 +1038,8 @@ Converting video
 
    Normally the first video you create is not the best. For optimal
 quality/size you need to play with the bitrate, search radius, noise
-filter .... The options of mpeg2enc are described in the README in the
-mpeg2enc directory.
+filter .... The options of mpeg2enc are described in the manpage of
+mpeg2enc.
 
    Example:
 
@@ -997,7 +1047,7 @@ mpeg2enc directory.
 
    This creates an video file with the default bitrate of 1152kBit/sec.
 This is the bitrate you need if you want to create VCDs. You can
-specifie more files, and also use the placeholder %nd. Where `n'
+specifies more files, and also use the placeholder %nd. Where `n'
 describes the number.
 
    Example:
@@ -1034,18 +1084,13 @@ starting:
 
    `>yuvscaler -h'
 
-   Using yuvscaler, you can downscale the video before encoding it.
-This can be usefull for, for example, for users with a DC10+ card,
-which captures at 384x288 (PAL/SECAM) when using a  decimation two
-during recording. And you want a VCD conform image size which is 352x288
-(for PAL/SECAM).
+   Example:
 
    `> lav2yuv stream.avi | yuvscaler -O VCD | mpeg2enc -o video.m1v'
 
-   This will rescale the 384x288 or 768x576 (PAL/SECAM) or 352x240 or
-640x480 (NTSC) stream to the VCD-size 352x288 (PAL/SECAM) or 352x240
-(NTSC) and encode the resulting output YUV data to an mpeg stream. In
-other words it will scale nearly every size to the desired output size.
+   This will scale the stream to VCD size which is for PAL/SECAM
+352x288 and NTSC 352x240. The scaled yuvstream is encoded as MPEG1
+stream.
 
    It can also do SVCD-scaling to 480x480 (NTSC) or 480x576 (PAL/SECAM):
 
@@ -1105,12 +1150,12 @@ Putting the streams together
 based on the SMPG library work well. Other Players are: xmovie, xine,
 gtv, MPlayer for example.
 
-   `NOTE:'If you have specified the `-S' option for mpeg2enc mplex will
-automatically split the files if there is in the output filename a %d
-(looks like: -o test%d.mpg) The files generated this way are separate
-stand-alone MPEG steams!
+   `NOTE:' If you have specified the `-S' option for mpeg2enc mplex
+will automatically split the files if there is in the output filename a
+%d (looks like: -o test%d.mpg) The files generated this way are
+separate stand-alone MPEG steams!
 
-   `NOTE2:'xine might have a problem with seeking through videos.
+   `NOTE2:' xine might have a problem with seeking through videos.
 mplayer has a problem with the "seek backward/forward" with variable
 bitrate streams. Because it goes forward in the file the amount of data
 for a constant bitrate stream. And that amount might be significant more
@@ -1129,8 +1174,8 @@ of 400K.
 
    `> mplex -V -r 1740 audio.mp2 video_vbr.m1v -o vbr_stream.mpg'
 
-   Here we multiplex a variabel bitrate stream. mplex is now a single
-pass multiplexer so it can't dedect the maximal bitrate and we have to
+   Here we multiplex a variable bitrate stream. mplex is now a single
+pass multiplexer so it can't detect the maximal bitrate and we have to
 specify it. The data rate for the output stream is: audio bitrate +
 peak videobitrate + 1-2% for mplex information. If audio (-b 224) has
 224kBit, video has 1500kBit (was encoded with -b 1500 -q 9) then we
@@ -1140,6 +1185,10 @@ have 1724 * 1.01 or about 1740kBit.
 
    `> plaympeg my_video.mpg'
 
+   oder
+
+   `> gtv my_video.mpg'
+
 
 File: mjpeg-howto.info,  Node: Creating MPEG1 Videos,  Next: Creating MPEG2 Videos,  Prev: Putting the streams together,  Up: Converting the stream to MPEG or DIVx videos
 
@@ -1147,10 +1196,10 @@ Creating MPEG1 Videos
 =====================
 
    For MPEG1 you can use mpeg layer 2 Audio and mpeg1 video. A subset of
-MPEG1 Movis are VCD's. You can use VBR (Variable BitRate) for the
+MPEG1 Movies are VCD's. You can use VBR (Variable BitRate) for the
 Video, but the Audio has to be CBR (Constant BitRate).
 
-   MPEG1 is recomended for picture sizes up to 352x288 for PAL and
+   MPEG1 is recommended for picture sizes up to 352x288 for PAL and
 352x240 for NTSC for larger sizes MPEG2 is the better choice.  There is
 no exact line till where MPEG1 is better than MPEG2.
 
@@ -1168,8 +1217,8 @@ MPEG1 Audio creation Example
 
    `> lav2wav editlist.eli | mp2enc -o sound.mp2'
 
-   This wil fit the MPEG1 quite well. You can save some Bit when telling
-to use a lower bitrate (-b option) like 160 or 192 kBit/s
+   This will fit the MPEG1 quite well. You can save some Bit when
+telling to use a lower bitrate (-b option) like 160 or 192 kBit/s
 
    `> lav2wav editlist.eli | mp2enc -b 128 -m -o sound.mp2'
 
@@ -1185,12 +1234,11 @@ File: mjpeg-howto.info,  Node: MPEG1 Video creation Example,  Next: MPEG1 Multip
 MPEG1 Video creation Example
 ----------------------------
 
-   `> lav2yuv -n 1 editlist.eli | mpeg2enc -b 2000 -r 24 -q 6 -o
-video.m1v'
+   `> lav2yuv editlist.eli | mpeg2enc -b 2000 -r 24 -q 6 -o video.m1v'
 
    There lav2yuv applies a low-pass noise filter to the images. Then
 mpeg2enc creates an video with an bitrate of 2000kBit/s (or
-2000000Bit/s) but the -q flag activates the variable bitrate and an
+2048000Bit/s) but the -q flag activates the variable bitrate and an
 quality factor of 6. It uses a search radius of 24.  An editlistfile
 used.
 
@@ -1229,7 +1277,7 @@ active window extract one frame to the jpeg format:
 
    `> lavtrans -f i -i 100 -o frame.jpg test.avi'
 
-   Than use your favourite grafic programm to determine the active size.
+   Than use your favorite grafic program to determine the active size.
 The -4 1 and -2 1 options improves the quality about 10% but conversion
 is slower.
 
@@ -1284,28 +1332,4 @@ specifies the non-video (audio and mplex information) bitrate. The `-B'
 value of 260 should be fine for audio with 224kBit and mplex
 information. For further information take a look at the encoding
 scripts in the scripts directory.
-
-
-File: mjpeg-howto.info,  Node: MPEG1 Multiplexing Example,  Prev: MPEG1 Video creation Example,  Up: Creating MPEG1 Videos
-
-MPEG1 Multiplexing Example
---------------------------
-
-   Example
-
-   ` >mplex sound.mp2 video.m1v -o my_video.mpg'
-
-   Puts the sound.mp2 and the video.m1v stream together to my_video.mpg.
-It only works that easy if you have CBR (not used the -q option).
-
-   Example
-
-   `mplex -V -r 1740 audio.mp2 video_vbr.m1v -o vbr_stream.mpg'
-
-   Here we multiplex a variable bitrate stream. mplex is now a single
-pass multiplexer so it can't detect the maximal bitrate and we have to
-specify it. The data rate for the output stream is: `audio bitrate +
-peak videobitrate + 1-2% for mplex information'. If audio (-b 224) has
-224kBit, video has 1500kBit (was encoded with -b 1500 -q 9) then we
-have 1724 * 1.01 or about 1740kBit.
 

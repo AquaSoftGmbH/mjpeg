@@ -1,7 +1,31 @@
-This is mjpeg-howto.info, produced by makeinfo version 4.2 from
-/tmp/linuxdoc-dir-4578/sgmltmp.mjpeg-howto.info.2.
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.2 aus
+/tmp/linuxdoc-dir-1894/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
+
+
+File: mjpeg-howto.info,  Node: MPEG1 Multiplexing Example,  Prev: MPEG1 Video creation Example,  Up: Creating MPEG1 Videos
+
+MPEG1 Multiplexing Example
+--------------------------
+
+   Example
+
+   ` >mplex sound.mp2 video.m1v -o my_video.mpg'
+
+   Puts the sound.mp2 and the video.m1v stream together to my_video.mpg.
+It only works that easy if you have CBR (not used the -q option).
+
+   Example
+
+   `mplex -V -r 1740 audio.mp2 video_vbr.m1v -o vbr_stream.mpg'
+
+   Here we multiplex a variable bitrate stream. mplex is now a single
+pass multiplexer so it can't detect the maximal bitrate and we have to
+specify it. The data rate for the output stream is: `audio bitrate +
+peak videobitrate + 1-2% for mplex information'. If audio (-b 224) has
+224kBit, video has 1500kBit (was encoded with -b 1500 -q 9) then we
+have 1724 * 1.01 or about 1740kBit.
 
 
 File: mjpeg-howto.info,  Node: Creating MPEG2 Videos,  Next: Creating Video-CD's,  Prev: Creating MPEG1 Videos,  Up: Converting the stream to MPEG or DIVx videos
@@ -79,7 +103,7 @@ of the frames you encode is larger than the VCD size for you TV Norm.
 do motion estimation for interlaced material. You have to set the
 mpeg2enc -I 0 option to tell that the frames are already deinterlaced.
 This will save a lot of time when encoding. If you don't do it it will
-cause no other drawbacks.
+cause no other drawbacks, execpt that it needs more time.
 
    You can also use scaling an options that optimize (denoise) the
 images, to get smaller streams. But this options are explained in deep
@@ -141,7 +165,7 @@ be interlaced or progressive. It depends on the source Film or
 broadcast. And on the viewing device.
 
    If you encode a Film both fields should be the same. Deinterlace the
-stream with yuvdenose -F, or if you have a high quality source, and
+stream with yuvdenoise -F, or if you have a high quality source, and
 don't need to use the denoiser, with yuvscaler -O NOT_INTERLACED. Also
 set the mpeg2enc interlace-mode (-I) option to 0. This means that there
 is no interlacing.  We do here not really need deinterlacing because
@@ -157,14 +181,14 @@ progressive stream. If you deinterlace it with yuvdenoise -F, you will
 lose details.  But if you plan to play the recorded stream on your DVD
 player and you TV. It would not be wise to do that. But if you only
 want to play it back on the Monitor (progressive display) the picture
-lookes better when playing it back if it is deinterlaced. If the player
+looks better when playing it back if it is deinterlaced. If the player
 you use, can do deinterlacing it does not matter if your encoded video
 has interlaced frames or progressive frames.
 
    If you plan to deinterlace the stream you can only do this with
-yuvdenose -F, and set the mpeg2enc -I 0. If you do not want do
-deinterlace th stream, yo do not need to set any special option.(Do not
-use yuvscaler -F, and mpeg2enc -I 0)
+yuvdenoise -F, and set the mpeg2enc -I 0. If you do not want do
+deinterlace th stream, you do not need to set any special option.(Do
+not use yuvscaler -F, and mpeg2enc -I 0)
 
    If you like to pause the stream and look on the still you should
 deinterlace. Because then the image is flicker free when pausing.
@@ -204,7 +228,7 @@ Creating Video-CD's
 
    VCD is a cut down version of MEPG1 streams.  VCD format was defined
 by Philips. The goal was to use a single speed CD-drive, and other
-cheap hardware (=no that flexibel) to have a rather cheap HW-Player.
+cheap hardware (=no that flexible) to have a rather cheap HW-Player.
 The spec for VCD has Philips, but they are not aviable for everyone.
 Because of that there are some limitations on VCD's.  Like bitrate for
 video 1152kBit and for audio layer 2 audio with 224kBit stereo. You are
@@ -330,11 +354,9 @@ use vcdimager to do this and vcdxrip (part of the vcdimager package) to
 extract ("rip") the resulting files. For better Quality there are SVCD
 and XVCD and DVD.
 
-   Currently only SVCD is fully supported with a pre-set format in mplex
-and tools to create disks. MPEG streams that can be played by DVD
-player hardware and software can readily produced using mpeg2enc/mplex
-but there is currently no means to make a properly structured disk
-image.
+   Currently SVCD is fully supported with a pre-set format in mplex and
+tools to create disks. MPEG streams that can be played by DVD player
+hardware and software can readily produced using mpeg2enc/mplex
 
    If your player doesn't support SVCD you may well find it can handle
 VCD streams that have much higher than standard bit-rates. Often as
@@ -358,7 +380,7 @@ File: mjpeg-howto.info,  Node: Creating SVCD,  Next: Creating DVD's,  Prev: Crea
 Creating SVCD
 =============
 
-   SVCD is a cut down version of MEPG2 streams. SVCD format was defined
+   SVCD is a cut down version of MPEG2 streams. SVCD format was defined
 by Philips. The spec for SVCD has Philips, but they are not aviable for
 everyone. Record at full TV resolution (means: -d 1 for PAL this is
 720x576) The resolution is for NTSC is 480x480 of PAL 480x576, so you
@@ -491,7 +513,7 @@ The limitations I mention here might not exist in the current version.
 
    You need obviously a DVD writer. I own a Ricoh DVD+RW that works,
 and I know of a DVD-RAM writer that is able to to burn DVD-R. That
-disks also work with a DVD-Player. Which programs you use for buring
+disks also work with a DVD-Player. Which programs you use for burning
 depends on the DVD writer drive.
 
    For the creation and writing of the VOB, IFO and BUP files we use
@@ -562,19 +584,19 @@ File: mjpeg-howto.info,  Node: DVD creation Example,  Prev: DVD Mplex Example,  
 DVD creation Example
 --------------------
 
-   This topic will be coverd by the documentation of the dvdauthor
-programm. For questions please ask there. But it will work like that:
+   This topic will be covered by the documentation of the dvdauthor
+program. For questions please ask there. But it will work like that:
 
    `> makedvd stream1.mpg stream2.mpg ... my_dvdlikestream.mpg'
 
-   You will get a directoy with an AUDIO_TS and VIDEO_TS directory with
-the data you can burn. Burning the data to the disk lookes for
+   You will get a directory with an AUDIO_TS and VIDEO_TS directory
+with the data you can burn. Burning the data to the disk looks for
 DVD+R/+RW writer like that:
 
    `growisofs -Z /dev/scd2 -dvd-video mydvd/'
 
    If you own a DVD+RW/+R drive like me a good start would be at
-DVD+RW/+R for Linux page. You also need a version of the cdrootls with
+DVD+RW/+R for Linux page. You also need a version of the cdrtools with
 `dvd-video' support.  The cdrtools 1.11a27 is known to work, but newer
 versions already exists.
 
@@ -731,14 +753,14 @@ README in the yuvfilters directory.
    If you want to know now the optimal settings for the denoiser, scaler
 and so on. Replace the mpeg2enc or yuv2divx with yuvplay. yuvplay
 playes back the yuv frames. So you can see if the options you have
-choosen are making the thing better or worse.
+chosen are making the thing better or worse.
 
    A command would look like this:
 
    `> lav2yuv stream.eli | yuvdenoise -options | yuvscaler -options |
 yuvplay'
 
-   If you are looking for a hardware device that can make the vide to
+   If you are looking for a hardware device that can make the video to
 look better before you record it. We currently know about two firms
 that produce such boxes.
 
@@ -756,7 +778,7 @@ Transcoding of existing MPEG-2
 
    For transcoding existing MPEG-2 streams from digital TV cards or DVD
 a still lower data-rate than for broadcast will give good results.
-Standard VCD 1152 Kbps typically works just fine for MPEG1. The
+Standard VCD 1152 kbps typically works just fine for MPEG1. The
 difference is in the Signal/Noise ratio of the original. The noise in
 the analog stuff makes it much harder to compress.
 
@@ -950,7 +972,7 @@ NOT_INTERLACED | mpeg2enc -o strange_video.m1v'
    If you want to reedit mpeg streams, this also works, but in a
 slightly different way. For demultiplexing you can use bbdmux, from the
 bbtools package. Splits out either video or audio very cleanly.  You
-can't get it any more from the hompage from Brent Beyler, it can still
+can't get it any more from the homepage from Brent Beyler, it can still
 be found when you search for it using that keywords " bbtools linux
 -suse -blackbox". Currenty it can be found at:
 http://www.nop.org/inkling/
@@ -1111,7 +1133,7 @@ be fast enough to avoid becoming a bottleneck. For Pentium-III class
 machines or above you will need a 100Mbps Ethernet.
 
    For really fast machines a switched 100MBps Ethernet (or better!) may
-be needed.Setting up the rshd ("Remote SHell Daemon" needed for rsh to
+be needed.Setting up the rshd ("Remote Shell Daemon" needed for rsh to
 do its work and configuring "rsh" is beyond the scope of this document,
 but its a standard package and should be easily installed and activated
 on any Linux or BSD distribution.
