@@ -230,20 +230,15 @@ void init_predict(void)
 {
 	int cpucap = cpu_accel();
 
-	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
-	{
-		ppred_comp = pred_comp;
-	}
+    /* Default to reference implementation ... */
+    ppred_comp = pred_comp;
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-    else
+    if ( cpucap != 0 )
     {
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
         init_x86_predict(cpucap);
-    }
 #endif
 #ifdef HAVE_ALTIVEC
-    else
-	{
 #  if ALTIVEC_TEST_PREDICT
 #    if defined(ALTIVEC_BENCHMARK)
 	    mjpeg_info("SETTING AltiVec BENCHMARK for PREDICTION!");
@@ -259,8 +254,9 @@ void init_predict(void)
 #  else
 	    ppred_comp = ALTIVEC_SUFFIX(pred_comp);
 #  endif
-	}
 #endif /* HAVE_ALTIVEC */
+    }
+
 }
 
 
