@@ -23,6 +23,8 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR motion_search_radius ]
 .RB [ -Q | --quantisation-reduction
 .IR 0.0..4.0 ]
+.RB [ -X | --quant-reduction-max-var
+.IR 0.0 .. 2500.0]
 .RB [ -p | --3-2-pulldown ]
 .RB [ -I | --interlace-mode
 .IR 0|1|2 ]
@@ -473,10 +475,13 @@ Several common MPEG-1 decoders can't handle streams where less than
 This flag sets the amount quantisation is reduced for
 blocks containing unusually large amounts of sharp image detail.
 Setting this value 0.0 produces the most efficient use of bits but may
-cause visible/artefacting around detailed sections.  A larger value
+cause visible/artifacting around detailed sections.  A larger value
 may help suppress artefacts, however, on noisy source material this may cause
 a "swimming" effect on textured backgrounds as the noise cause blocks to
 be boosted at random.  The default is 0.0 (off).
+.PP
+.BR -X|--quant-reduction-max-var \ 0.0..2500.0
+Luma variance below which quantisation boost (-Q) is activated.
 .PP
 .BR -r|--motion-search-radius \ num
 .PP
