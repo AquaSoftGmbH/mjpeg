@@ -55,8 +55,9 @@ possible overlaps are checked).  Using pixel-groups helps to establish
 a minimum standard for what may be considered a match, in order to
 avoid finding lots of really small (and really useless) matches.
 The flood-fill still extends the matches out to pixel accuracy,
-so the only details lost are the ones smaller than a pixel-group,
-which is not a bad sacrifice for performance's sake.
+so the only details that can't be found by motion-detection are the ones
+smaller than a pixel-group, which is not a bad sacrifice for
+performance's sake.
 
 .SH OPTIONS
 \fBy4mdenoise\fP accepts the following options:
@@ -65,7 +66,7 @@ which is not a bad sacrifice for performance's sake.
 .BI \-r " [4..] search radius"
 The search radius, i.e. the maximum distance that a pixel can move and
 still be found by motion-detection.  The default is 16.
-There are no particular limitations on the search radius, e.g. it
+There are no particular restrictions on the search radius, e.g. it
 doesn't have to be an even multiple of 4.
 
 .TP 4
@@ -123,7 +124,8 @@ Set interlacing type.  Default is taken from the YUV4MPEG2 stream.
 bottom-field interlaced.  This is useful when the signal is more
 naturally of some other interlacing type than its current representation
 (e.g. if the original was shot on film and then later it was transferred
-to interlaced video).
+to interlaced video, it may denoise better if treated as film, i.e.
+non-interlaced).
 
 .SH TYPICAL USAGE AND TIPS
 Keep in mind that all of this advice was gained through experience.
@@ -139,20 +141,20 @@ get blurrier, you may see topographical-like bands in the relatively
 flat areas of the video, and small parts of the video that should
 be moving will be stuck in place.  Additionally, just because the
 video came to you from a clean source (digital cable TV, LaserDisc,
-etc.) doesn't mean the video itself is clean; y4mdenoise is capable
-of picking up on noise in the original recording.  You will have to
-generate small clips of representative parts of your video, denoise
-them with various error thresholds, and see what looks the best.  As you
-gain experience with the tool, you may know what error threshold
-generally works with various types of sources, but you'll still want to
-double-check your assumptions.
+etc.) doesn't mean the video itself is clean; \fBy4mdenoise\fP is
+capable of picking up on noise in the original recording.  You will
+have to generate small clips of representative parts of your video,
+denoise them with various error thresholds, and see what looks the best.
+As you gain experience with the tool, you may know what error threshold
+generally works with various types of sources, but you'll still want
+to double-check your assumptions.
 
-Animation seems to require a higher error threshold than most other
-types of video, e.g. 50% higher and up.
+Animation seems to require a higher error threshold than comparable
+live-action video, e.g. 50% higher and up.
 
-y4mdenoise only removes temporal noise, i.e. noise that occurs over
-time.  And it tends to do such a good job of this, that the spatial
-noise (i.e. noise that occurs in nearby areas of the same frame)
+\fBy4mdenoise\fP only removes temporal noise, i.e. noise that occurs
+over time.  And it tends to do such a good job of this, that the
+spatial noise (i.e. noise that occurs in nearby areas of the same frame)
 tends to become very distinct.  Therefore, always pipe the output of
 \fBy4mdenoise\fP through a spatial filter such as \fBy4mspatialfilter\fP
 or \fByuvmedianfilter\fP.

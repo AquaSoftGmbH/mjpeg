@@ -18,22 +18,23 @@
   in the previous frame, within a given search-radius, and any pixels
   that are equal within the given error tolerance are assumed to be the
   same pixel.  It builds contiguous regions of matched pixels, with
-  the motion vector that's common to the region.  If there are too many
-  matches for a particular area of the image, or if the largest
-  contiguous match in the area is too large, it's applied to the image
-  right then, and then searching continues.  Applying a region means
-  to flood-fill the region (to make it the largest size possible,
-  and to flesh out its borders to pixel accuracy), then hooking up
-  the corresponding reference-frame pixels to the new frame at their new
-  location, and incorporating the values of all the new pixels into the
-  corresponding reference pixels.  Doing this before the end of
-  searching the frame means the affected areas don't have to be part
-  of the search any more, helping to reduce the amount of work needed
-  to search the rest of the frame.  At the end of the frame, matches
-  are applied to the new frame, from the largest to the smallest,
-  discounting any areas that have already been resolved.  Any new-frame
-  pixels not resolved by now are considered to be new information,
-  and a new reference-pixel is generated for each one.
+  the motion vector that's common to the region.
+<p>If there are too many matches for a particular area of the image, or
+  if the largest contiguous match in the area is too large, it's applied
+  to the image right then, and then searching continues.  Applying a
+  region means to flood-fill the region (to make it the largest size
+  possible, and to flesh out its borders to pixel accuracy), then
+  hooking up the corresponding reference-frame pixels to the new frame
+  at their new location, and incorporating the values of all the new
+  pixels into the corresponding reference pixels.  Doing this before
+  the end of searching the frame means the affected areas don't have
+  to be part of the search any more, helping to reduce the amount of
+  work needed to search the rest of the frame.
+<p>At the end of the frame, matches are applied to the new frame, from
+  the largest to the smallest, discounting any areas that have
+  already been resolved.  Any new-frame pixels not resolved by now
+  are considered to be new information, and a new reference-pixel is
+  generated for each one.
 <p>The search is not actually done one pixel at a time; it's done in
   terms of pixel groups.  An entire pixel-group has to match for any
   match to be found, but all possible pixel-groups are tested (i.e. all
@@ -41,8 +42,9 @@
   a minimum standard for what may be considered a match, in order to
   avoid finding lots of really small (and really useless) matches.
   The flood-fill still extends the matches out to pixel accuracy,
-  so the only details lost are the ones smaller than a pixel-group,
-  which is not a bad sacrifice for performance's sake.
+  so the only details that can't be found by motion-detection are the
+  ones smaller than a pixel-group, which is not a bad sacrifice for
+  performance's sake.
 <p><br>Table of contents:
 <ul>
   <li><a href="#Overview">Overview</a>
@@ -92,7 +94,7 @@
 The new denoiser's command-line options are:
 <ul>
   <li><b>-r num</b> - The search radius.  Default is 16.
-    <br>There are no particular limitations on the search radius, e.g.
+    <br>There are no particular restrictions on the search radius, e.g.
 	  it doesn't have to be an even multiple of 4.  The denoiser code,
 	  as implemented internally, allows it to be rectangular.
   <li><b>-R num</b> - The color search-radius.  Default is whatever the
