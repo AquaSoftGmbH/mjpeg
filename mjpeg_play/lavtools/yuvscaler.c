@@ -37,11 +37,17 @@
 // Keywords concerning interlacing/preprocessing now under INPUT case
 // October 2002: yuvscaler functionnalities not related to image rescaling now part of yuvcorrect
 // January 2003: reimplementation of the bicubic algorithm => goes faster
-//  
+// December-January 2004: First MMX subroutine for bicubic calculus => speed x2
+// This first MMX version showed the limits of the use of cspline_w and cspline_h pointers => second
+// MMX version will implement dedicated cspline_w and cspline_h pointers for MMX treatment
+// 
+// 
 // TODO:
 // no more global variables for librarification
-// a really working MMX subroutine for bicubic
 // reading field per field when interlaced in the bicubic case
+
+// Remove file reading/writing
+// treat the interlace case + specific cases
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -61,15 +67,17 @@
 #include "mjpeg_types.h"
 #include "yuvscaler.h"
 #include "mpegconsts.h"
-// #include "config.h"
 #include "attributes.h"
+
+#ifdef HAVE_ASM_MMX
+#include <fcntl.h>
 #include "../utils/mmx.h"
+#endif
 
-
-
-#define yuvscaler_VERSION "10-02-2003"
+#define yuvscaler_VERSION "31-12-2003"
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
+#define MAXWIDTHNEIGHBORS 16
 
 float PI = 3.141592654;
 
@@ -126,7 +134,6 @@ unsigned int black = 0, black_line = 0, black_col = 0;	// =1 if black lines must
 unsigned int skip = 0, skip_line = 0, skip_col = 0;	// =1 if lines or columns from the active output will not be displayed on output frames
 // NB: as these number may not be multiple of output_[height,width]_slice, it is not possible to remove the corresponding pixels in
 // the input frame, a solution that could speed up things. 
-int output_fd = 1;		// frames are written to stdout
 unsigned int vcd = 0;		//=1 if vcd output was selected
 unsigned int svcd = 0;		//=1 if svcd output was selected
 unsigned int dvd = 0;		//=1 if dvd output was selected
@@ -162,6 +169,7 @@ const char RESAMPLE[] = "RESAMPLE";
 const char BICUBIC[] = "BICUBIC";
 const char ACTIVE[] = "ACTIVE";
 const char NO_HEADER[] = "NO_HEADER";
+const char NOMMX[] = "NOMMX";
 
 // Specific to BICUBIC algorithm
 // 2048=2^11
@@ -189,6 +197,11 @@ uint8_t blacky = 16;
 uint8_t blackuv = 128;
 uint8_t no_header = 0;		// =1 for no stream header output 
 
+#ifdef HAVE_ASM_MMX
+int16_t *mmx_padded, *mmx_cubic;
+int32_t *mmx_res;
+int mmx = 1;			// =1 for mmx activated, =0 for deactivated/not available
+#endif
 
 // *************************************************************************************
 void
@@ -260,7 +273,6 @@ yuvscaler_print_information (y4m_stream_info_t in_streaminfo,
    const char PROGRESSIVE[] = "PROGRESSIVE";
 
   y4m_log_stream_info (LOG_INFO, "input: ", &in_streaminfo);
-  //  y4m_print_stream_info(output_fd,streaminfo);
 
   switch (interlaced)
     {
@@ -746,12 +758,19 @@ handle_args_dependent (int argc, char *argv[])
 	  // *************
 	case 'M':
 	  mode = 0;
-	  if (strcmp (optarg, WIDE2STD_KEYWORD) == 0)
+
+	   
+	   if (strcmp (optarg, WIDE2STD_KEYWORD) == 0)
 	    {
 	      wide = 1;
 	      mode = 1;
 	    }
-
+	   // developper's Testing purpose only
+	   if (strcmp (optarg, NOMMX) == 0)
+	    {
+	      mmx = 0;
+	      mode = 1;
+	    }
 	  if (strcmp (optarg, RESAMPLE) == 0)
 	    {
 	      mode = 1;
@@ -1133,9 +1152,16 @@ handle_args_dependent (int argc, char *argv[])
 int
 main (int argc, char *argv[])
 {
+  int input_fd = 0;
+  int output_fd = 1;
+
+//  DDD use
+// int input_fd  = open("./yuvscaler.input",O_RDONLY);
+// int output_fd = open("./yuvscaler.output",O_WRONLY);
+// DDD use
+
   int err = Y4M_OK, nb;
   unsigned long int i, j, h, w;
-//  char sar[]="nnn:ddd";
 
   long int frame_num = 0;
   unsigned int *height_coeff = NULL, *width_coeff = NULL;
@@ -1186,7 +1212,7 @@ main (int argc, char *argv[])
   // Get video stream informations (size, framerate, interlacing, sample aspect ratio).
   // The in_streaminfo structure is filled in accordingly 
   // ***************************************************************
-  if (y4m_read_stream_header (0, &in_streaminfo) != Y4M_OK)
+  if (y4m_read_stream_header (input_fd, &in_streaminfo) != Y4M_OK)
     mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
   input_width = y4m_si_get_width (&in_streaminfo);
   input_height = y4m_si_get_height (&in_streaminfo);
@@ -1425,40 +1451,25 @@ main (int argc, char *argv[])
   // BICUBIC BICUBIC BICUBIC  
   if (algorithm == 1)
     {
+       
+       
 
       // SPECIFIC
       // Is a specific downscaling speed enhanced treatment available?
        
-       // We only downscale on height, not width
+       // We only downscale on height, not width.
+       // Ex: 16/9 to 4/3 conversion
       if ((output_width_slice == 1) && (input_width_slice == 1))
 	specific = 5;
-       // 16/9 to 4/3 conversion
-//      if ((output_width_slice == 1) && (input_width_slice == 1)
-//	  && (input_height_slice == 4) && (output_height_slice == 3))
-//	specific = 7;
 
        // We only downscale on width, not height
+       // Ex: Full size to SVCD 
       if ((output_height_slice == 1) && (input_height_slice == 1))
 	specific = 1;
-      // Full size to SVCD 
-//      if ((output_height_slice == 1) && (input_height_slice == 1)
-//	  && (output_width_slice == 2) && (input_width_slice == 3))
-//	specific = 6;
-       
-       
-//       if ((input_height_slice == 2) && (output_height_slice == 1))
-//	 specific = 3;
-       // Full size to VCD
-//      if ((input_height_slice == 2) && (output_height_slice == 1)
-//	  && (input_width_slice == 2) && (output_width_slice == 1))
-//	specific = 2;
-//      if ((input_height_slice == 8) && (output_height_slice == 3))
-//	specific = 9;
-//      if ((input_height_slice == 8) && (output_height_slice == 3)
-//	  && (input_width_slice == 2) && (output_width_slice == 1))
-//	specific = 8;
+
        if (specific)
 	 mjpeg_info ("Specific downscaling routing number %u", specific);
+       
 //       specific=0;
        // Let us tabulate several values which are explained below:
        // 
@@ -1547,8 +1558,54 @@ main (int argc, char *argv[])
        height_pad=height_neighbors - 1;
        bottom_offset=height_neighbors/2;
 
-       mjpeg_debug("height_scale=%f, width_scale=%f, width_neighbors=%d, height_neighbors=%d\n",height_scale,width_scale,width_neighbors,height_neighbors);
+       mjpeg_debug("height_scale=%f, width_scale=%f, width_neighbors=%d, height_neighbors=%d",height_scale,width_scale,width_neighbors,height_neighbors);
       // Memory allocations
+      
+#ifdef HAVE_ASM_MMX
+      if (!
+	  (mmx_padded =
+	   (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
+	  || !(mmx_cubic =
+	       (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
+	  || !(mmx_res =
+	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
+	mjpeg_error_exit1
+	  ("Could not allocate memory for mmx registers. STOP!");
+      // alignement instructions
+      if (((unsigned long int) mmx_padded % ALIGNEMENT) != 0)
+	mmx_padded =
+	  (int16_t *) ((((unsigned long int) mmx_padded / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      if (((unsigned long int) mmx_cubic % ALIGNEMENT) != 0)
+	mmx_cubic =
+	  (int16_t *) ((((unsigned long int) mmx_cubic / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      if (((unsigned long int) mmx_res % ALIGNEMENT) != 0)
+	mmx_res =
+	  (int32_t *) ((((unsigned long int) mmx_res / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+       // Developper's testing purpose only
+       if (mmx==1)
+	 {
+	    if (width_neighbors <= MAXWIDTHNEIGHBORS)
+	      {
+		 mjpeg_info("MMX accelerated treatment activated");
+		 mmx = 1;
+	      }
+	    else 
+	      {
+		 mmx=0;
+		 mjpeg_warn("MMX accelerated treatment not available for downscaling ratio larger than 4 to 1");
+		 mjpeg_warn("If you still want to use an MMX treatment (not really useful for such a large downscaling ratio");
+		 mjpeg_warn("please use multiple yuvscaler downscaling to achieve the desired downscaling ratio");
+	      }
+	 }
+       
+#endif
+
+
+// Il faudrait peut-être aligner correctement tous ces pointeurs, en particulier cspline_w_neighbors et cspline_h_neighbors
+// qui sont amplement utilisés dans les routines de scaling => il faut aussi aligner cspline_w et cspline_h
       if (
 	  !(cspline_w =            (int16_t *) malloc ( width_neighbors  * output_active_width  * sizeof (int16_t))) ||
 	  !(cspline_h =            (int16_t *) malloc ( height_neighbors * output_active_height * sizeof (int16_t))) ||
@@ -1563,7 +1620,7 @@ main (int argc, char *argv[])
 	  )
 	mjpeg_error_exit1
 	  ("Could not allocate memory for bicubic tables. STOP!");
-     
+
        // Initialisation of bicubic tables
        for (w=0;w<width_neighbors;w++) 
 	 csw[w]=cspline_w_neighbors[w]=cspline_w+w*output_active_width;
@@ -1579,16 +1636,21 @@ main (int argc, char *argv[])
 	    somme=0;
 	    for (h=0;h<height_neighbors;h++)
 	      {
-//		 mjpeg_debug("out_line=%d,h=%d",out_line,h);
 		 cspline_value=cubic_spline ((a[out_line] + height_offset -h)*height_scale, bicubic_div_height)*height_scale;
+//		 mjpeg_debug("cspline_value=%d,cspline=%d,a[%u]=%g,height_offset=%d,height_scale=%g,h=%lu",cspline_value,cubic_spline ((a[out_line] + height_offset -h)*height_scale, bicubic_div_height),out_line,a[out_line],height_offset,height_scale,h);
 		 somme+=cspline_value;
 		 // Normalisation test and normalisation of cspline 
 		 if ((h==(height_neighbors-1)) && (somme != bicubic_div_height))
-		   cspline_value -= somme - bicubic_div_height;
+		   cspline_value += bicubic_div_height-somme;
 		 *(csh[h]++)=cspline_value;
 	      }
 	 }
-       
+
+/*       for (h=0;h<height_neighbors;h++) 
+	 csh[h]=cspline_h_neighbors[h];
+       for (w=0;w<output_active_height;w++)
+	 mjpeg_info("*(csh[0,1,2,3]++)=%d %d %d %d",*(csh[0]++),*(csh[1]++),*(csh[2]++),*(csh[3]++));
+*/       
        for (out_col = 0; out_col < output_active_width; out_col++)
 	 {
 	    in_col[out_col] = (out_col * input_width_slice) / output_width_slice;
@@ -1598,6 +1660,7 @@ main (int argc, char *argv[])
 	    somme=0;
 	    for (w=0;w<width_neighbors;w++)
 	      {
+//		 mjpeg_debug("b[%u]=%g,width_offset=%d,width_scale=%g,w=%lu",out_col,b[out_col],width_offset,width_scale,w);
 		 cspline_value=cubic_spline ((b[out_col] + width_offset -w)*width_scale, bicubic_div_width)*width_scale;
 		 somme+=cspline_value;
 		 // Normalisation test and normalisation of cspline 
@@ -1607,12 +1670,12 @@ main (int argc, char *argv[])
 	      }
 	}
        
-       
+// Added +2*ALIGNEMENT for MMX scaling routines that loads a higher number of pixels than necessary (memory overflow) 
       if (interlaced == Y4M_ILACE_NONE)
 	{
 	  if (!(padded_input =
 		(uint8_t *) malloc ((input_useful_width + width_neighbors) *
-				    (input_useful_height + height_neighbors))))
+				    (input_useful_height + height_neighbors)+2*ALIGNEMENT)))
 	    mjpeg_error_exit1
 	      ("Could not allocate memory for padded_input table. STOP!");
 	}
@@ -1620,10 +1683,10 @@ main (int argc, char *argv[])
 	{
 	  if (!(padded_top =
 		(uint8_t *) malloc ((input_useful_width + width_neighbors) *
-				    (input_useful_height / 2 + height_neighbors))) ||
+				    (input_useful_height / 2 + height_neighbors)+2*ALIGNEMENT)) ||
 	      !(padded_bottom =
 		(uint8_t *) malloc ((input_useful_width + width_neighbors) *
-				    (input_useful_height / 2 + height_neighbors))))
+				    (input_useful_height / 2 + height_neighbors)+2*ALIGNEMENT)))
 	    mjpeg_error_exit1
 	      ("Could not allocate memory for padded_top|bottom tables. STOP!");
 	}
@@ -1807,7 +1870,7 @@ main (int argc, char *argv[])
 
   // Master loop : continue until there is no next frame in stdin
   while ((err = yuvscaler_y4m_read_frame
-	  (0, &frameinfo, nb_pixels, input)) == Y4M_OK)
+	  (input_fd, &frameinfo, nb_pixels, input)) == Y4M_OK)
     {
       mjpeg_info ("Frame number %ld", frame_num);
 
@@ -2015,6 +2078,47 @@ pgcd (unsigned int num1, unsigned int num2)
 }
 
 // *************************************************************************************
+
+//      if ((output_width_slice == 1) && (input_width_slice == 1)
+//	  && (input_height_slice == 4) && (output_height_slice == 3))
+//	specific = 7;
+
+//      if ((output_height_slice == 1) && (input_height_slice == 1)
+//	  && (output_width_slice == 2) && (input_width_slice == 3))
+//	specific = 6;
+       
+       
+//       if ((input_height_slice == 2) && (output_height_slice == 1))
+//	 specific = 3;
+       // Full size to VCD
+//      if ((input_height_slice == 2) && (output_height_slice == 1)
+//	  && (input_width_slice == 2) && (output_width_slice == 1))
+//	specific = 2;
+//      if ((input_height_slice == 8) && (output_height_slice == 3))
+//	specific = 9;
+//      if ((input_height_slice == 8) && (output_height_slice == 3)
+//	  && (input_width_slice == 2) && (output_width_slice == 1))
+//	specific = 8;
+
+     
+      // alignement instructions
+/*       if (((unsigned int) cspline_w % ALIGNEMENT) != 0)
+	 cspline_w =
+	 (int16_t *) ((((unsigned int) cspline_w / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+       if (((unsigned int) cspline_h % ALIGNEMENT) != 0)
+	 cspline_h =
+	 (int16_t *) ((((unsigned int) cspline_h / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+       if (((unsigned int) cspline_w_neighbors % ALIGNEMENT) != 0)
+	 cspline_w_neighbors =
+	 (int16_t **) ((((unsigned int) cspline_w_neighbors / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+       if (((unsigned int) cspline_h_neighbors % ALIGNEMENT) != 0)
+	 cspline_h_neighbors =
+	 (int16_t **) ((((unsigned int) cspline_h_neighbors / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+*/
 
 
 /* 

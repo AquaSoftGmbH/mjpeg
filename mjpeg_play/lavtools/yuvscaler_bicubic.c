@@ -15,7 +15,11 @@
 */
 // Version of the 25/05/2003
 // Copyright X. Biquard xbiquard@free.fr
-
+// Great speed Warning : function mjpeg_debug implies an implicit test => may slow down a lot the execution
+// of the program.
+// SIMD accelerated multiplications with csplineh not possible since value to be multiply do not stand
+// in int16_t, but in int32_t
+// Maybe possible in SSE since xmm registers of 128 bits available
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -48,6 +52,15 @@ extern unsigned int specific;
 #define FLOAT2INTEGERPOWER 11
 extern long int FLOAT2INTOFFSET;
 
+// MMX test
+#ifdef HAVE_ASM_MMX
+extern int16_t *mmx_padded, *mmx_cubic;
+extern int32_t *mmx_res;
+extern long int max_lint_neg;	// maximal negative number available for long int
+extern int mmx;			// =1 for mmx activated
+#endif
+// MMX test
+
 
 // *************************************************************************************
 int
@@ -64,231 +77,1154 @@ cubic_scale (uint8_t * padded_input, uint8_t * output,
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_padded_width = local_input_useful_width + width_neighbors -1;
   unsigned int out_line, out_col,w,h;
-  unsigned long int in_line_offset;
+  uint32_t in_line_offset;
   int16_t output_offset;
 
   uint8_t *output_p,*line,*line_start[height_neighbors];
   int16_t *csplinew[width_neighbors],*csplineh[height_neighbors];
-  long int value,value1,value2;
+  int32_t value=0,value1=0,value2=0;
 
-   mjpeg_debug ("Start of cubic_scale ");
+//   mjpeg_debug ("Start of cubic_scale ");
 
    output_p = output;
    output_offset = local_output_width-local_output_active_width;
-
- switch(specific) {
+   
    /* *INDENT-OFF* */
-  case 0: 
-      {
-	 for (h=0;h<height_neighbors;h++)
-	   csplineh[h]=cspline_h_neighbors[h];
-	 for (out_line = 0; out_line < local_output_active_height; out_line++)
-	   {
-	      for (w=0;w<width_neighbors;w++)
-		csplinew[w]=cspline_w_neighbors[w];
-	      in_line_offset = in_line[out_line] * local_padded_width;
-	      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	       {
-		  line_start[0]=padded_input + in_col[out_col] + in_line_offset;
-		  for (h=1;h<height_neighbors;h++)
-		    line_start[h]=line_start[h-1]+local_padded_width;
-		  value1=0;
-		  for (w=0;w<width_neighbors;w++) 
-		    {
-		       value2=0;
-		       for (h=0;h<height_neighbors;h++)
-			 value2+=(*(line_start[h]++))*(*csplineh[h]);
-		       value1+=value2*(*csplinew[w]);
-		    }
-		  if (value1 < 0)
-		    *(output_p++) = 0;
-		  else 
-		    {
-		       value =
-			 (value1 +
-			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-		       
-		       if (value > 255) 
-			 *(output_p++) = 255;
-		       else
-			 *(output_p++) = (uint8_t) value;
-		    }
-		  for (w=0;w<width_neighbors;w++)
-		    csplinew[w]++;
-	       }
-	      // a line on output is now finished. We jump to the beginning of the next line
-	      output_p+=output_offset;
+   
+   switch(specific) {
+    case 0: 
+	{
+#ifdef HAVE_ASM_MMX
+	   if (mmx==1) 
+	     {
+		emms();
+		// fill mm7 with zeros
+		pxor_r2r(mm7,mm7);
+		// MMX ROUTINE
+		for (h=0;h<height_neighbors;h++)
+		  csplineh[h]=cspline_h_neighbors[h];
+		for (out_line = 0; out_line < local_output_active_height; out_line++)
+		  {
+		     in_line_offset = in_line[out_line] * local_padded_width;
+		     // csplinew values in mmx registers
+		     // Impossible de copier un segment mémoire de csplinew dans mmx_cubic
+		     // En effet, si les pointeurs csplinew[w] sont contigus en mémoire,
+		     // ce n'est pas le cas pour les valeurs pointées par ces pointeurs.
+		     // Et comme c'est les valeurs qu'ils faut copier ...
+		     switch(width_neighbors)
+		       {
+			case 4:
+			  // csplinew dans mm0
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  break;
+			case 6:
+			  // csplinew dans mm0 et mm1
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  break;
+			case 8:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  // csplinew dans mm0 et mm1
+			  break;
+			case 10:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 12:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 14:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			case 16:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			default:
+			  mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			  break;
+		       }
+		     for (out_col = 0; out_col < local_output_active_width; out_col++)
+		       {
+			  line_start[0]=padded_input + in_col[out_col] + in_line_offset;
+			  for (h=1;h<height_neighbors;h++) 
+			    line_start[h]=line_start[h-1]+local_padded_width;
+			  value1=0;
+			  for (h=0;h<height_neighbors;h++) 
+			    {
+			       // pixels values are put in mm6. Comme c'est des uint8_t,
+			       // on en copie 8 puis on les interleave avec des zéros de mm7
+			       // Ensuite, on multiplie par les csplinew
+			       // SUPER WARNING: DON'T FORGET TO PUT A (mmx_t *) when using a "register2memory"
+			       // mmx instruction. Otherwise, you will get nasty side effect on calculations
+			       // involving mmx_res[0] or mmx_res[1] with gcc -O2, that is value1 and value2 here ...
+			       switch(width_neighbors)
+				 {
+				  case 4:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value1+=(mmx_res[0]+mmx_res[1])*(*csplineh[h]);
+				    break;
+				  case 6:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 8:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 10:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 12:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 14:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 16:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  default:
+				    mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+				    break;
+				 }
+			    }
+			  // Mise à jour des valeurs de csplinew
+			  switch(width_neighbors)
+			    {
+			     case 4:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       break;
+			     case 6:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 8:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 10:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 12:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 14:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     case 16:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       mmx_cubic[2]=*(++csplinew[14]);  mmx_cubic[3]=*(++csplinew[15]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     default:
+			       mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			       break;
+			    }
+			  if (value1 < 0) 
+			    *(output_p++) = 0;
+			  else 
+			    {
+			       value =
+				 (value1 +
+				  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			       
+			       if (value > 255) 
+				 *(output_p++) = 255;
+			       else
+				 *(output_p++) = (uint8_t) value;
+			    }
+		       }
+		     // a line on output is now finished. We jump to the beginning of the next line
+		     output_p+=output_offset;
+		     for (h=0;h<height_neighbors;h++)
+		       csplineh[h]++;
+		  }
+	     }
+	   // END OF MMX ROUTINE
+	   else
+#endif
+	     {
+//	      mjpeg_info("NOT-MMX ROUTINE");
+	      // NOT-MMX ROUTINE
 	      for (h=0;h<height_neighbors;h++)
-		csplineh[h]++;
+		csplineh[h]=cspline_h_neighbors[h];
+	      for (out_line = 0; out_line < local_output_active_height; out_line++)
+		{
+		   in_line_offset = in_line[out_line] * local_padded_width;
+		   for (w=0;w<width_neighbors;w++)
+		     csplinew[w]=cspline_w_neighbors[w];
+		   for (out_col = 0; out_col < local_output_active_width; out_col++)
+		     {
+			line_start[0]=padded_input + in_col[out_col] + in_line_offset;
+			for (h=1;h<height_neighbors;h++) 
+			  {
+			     line_start[h]=line_start[h-1]+local_padded_width;
+			  }
+			value1=0;
+			for (h=0;h<height_neighbors;h++) 
+			  {
+			     // Please note that width_neighbors and height_neighbors are even and superior to 4
+			     value2=0;
+			     for (w=0;w<width_neighbors;w++)
+			       value2+=(*(line_start[h]++))*(*csplinew[w]);
+			     value1+=value2*(*csplineh[h]);
+			  }
+			if (value1 < 0)
+			  *(output_p++) = 0;
+			else 
+			  {
+			     value =
+			       (value1 +
+				(1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			     
+			     if (value > 255) 
+			       *(output_p++) = 255;
+			     else
+			       *(output_p++) = (uint8_t) value;
+			  }
+			for (w=0;w<width_neighbors;w++)
+			  csplinew[w]++;
+		     }
+		   // a line on output is now finished. We jump to the beginning of the next line
+		   output_p+=output_offset;
+		   for (h=0;h<height_neighbors;h++)
+		     csplineh[h]++;
+		}
+	      // END OF NOT-MMX ROUTINE
 	   }
       }
     break;
     
   case 1:
     // We only downscale on width, not height
-      {
-	 for (out_line = 0; out_line < local_output_active_height; out_line++)
+	{
+#ifdef HAVE_ASM_MMX
+	   if (mmx==1) 
 	   {
-	      for (w=0;w<width_neighbors;w++)
-		csplinew[w]=cspline_w_neighbors[w];
-	      in_line_offset = in_line[out_line] * local_padded_width;
-	      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	       {
-		  line = padded_input + in_col[out_col] + in_line_offset;
-		  value1=0;
-		  for (w=0;w<width_neighbors;w++) 
-		    {
-		       value1+=*(line++)*(*csplinew[w]);
-		    }
-		  if (value1 < 0)
-		    *(output_p++) = 0;
-		  else 
-		    {
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       
-		       if (value > 255) 
-			 *(output_p++) = 255;
-		       else
-			 *(output_p++) = (uint8_t) value;
-		    }
-		  for (w=0;w<width_neighbors;w++)
-		    csplinew[w]++;
-	       }
-	      // a line on output is now finished. We jump to the beginning of the next line
-	      output_p+=output_offset;
+	      emms();
+	      // fill mm7 with zeros
+	      pxor_r2r(mm7,mm7);
+	      for (out_line = 0; out_line < local_output_active_height; out_line++)
+		{
+		   in_line_offset = in_line[out_line] * local_padded_width;
+		   switch(width_neighbors)
+		     {
+		      case 4:
+			// csplinew dans mm0
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			break;
+		      case 6:
+			// csplinew dans mm0 et mm1
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			movq_m2r(*mmx_cubic,mm1);
+			break;
+		      case 8:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			// csplinew dans mm0 et mm1
+			break;
+		      case 10:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 12:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 14:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      case 16:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      default:
+			mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			break;
+		     }
+		   // csplinew dans mm0, mm1, mm2 & mm3
+		   for (out_col = 0; out_col < local_output_active_width; out_col++)
+		     {
+			line = padded_input + in_col[out_col] + in_line_offset;
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 6:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);    punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);       movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 8:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 10:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 12:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 14:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 16:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			// Mise à jour des valeurs de csplinew
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     break;
+			   case 6:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 8:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 10:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 12:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 14:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   case 16:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     mmx_cubic[2]=*(++csplinew[14]);     mmx_cubic[3]=*(++csplinew[15]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			if (value1 < 0)
+			  *(output_p++) = 0;
+			else 
+			  {
+			     value =
+			       (value1 +
+				(1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			     
+			     if (value > 255) 
+			       *(output_p++) = 255;
+			     else
+			       *(output_p++) = (uint8_t) value;
+			  }
+		     }
+		   // a line on output is now finished. We jump to the beginning of the next line
+		   output_p+=output_offset;
+		}
+	   }
+	 else
+#endif
+	   {
+	      for (out_line = 0; out_line < local_output_active_height; out_line++)
+		{
+		   for (w=0;w<width_neighbors;w++)
+		     csplinew[w]=cspline_w_neighbors[w];
+		   in_line_offset = in_line[out_line] * local_padded_width;
+		   for (out_col = 0; out_col < local_output_active_width; out_col++)
+		     {
+			line = padded_input + in_col[out_col] + in_line_offset;
+			value1=0;
+			for (w=0;w<width_neighbors;w++) 
+			  {
+			     value1+=*(line++)*(*csplinew[w]);
+			  }
+			if (value1 < 0)
+			  *(output_p++) = 0;
+			else 
+			  {
+			     value =
+			       (value1 +
+				(1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			     
+			     if (value > 255) 
+			       *(output_p++) = 255;
+			     else
+			       *(output_p++) = (uint8_t) value;
+			  }
+			for (w=0;w<width_neighbors;w++)
+			  csplinew[w]++;
+		     }
+		   // a line on output is now finished. We jump to the beginning of the next line
+		   output_p+=output_offset;
+		}
 	   }
       }
-    break;
+      break;
 
    
 
   case 5:
-    // We only downscale on height, not width
-      {
-	 for (h=0;h<height_neighbors;h++)
-	   csplineh[h]=cspline_h_neighbors[h];
-	 for (out_line = 0; out_line < local_output_active_height; out_line++)
-	   {
-	      in_line_offset = in_line[out_line] * local_padded_width;
-	      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	       {
-		  line_start[0]=padded_input + in_col[out_col] + in_line_offset;
-		  for (h=1;h<height_neighbors;h++)
-		    line_start[h]=line_start[h-1]+local_padded_width;
-		  value1 = *(line_start[0])*(*csplineh[0]);
-		  for (h=1;h<height_neighbors;h++)
-		    value1+=(*(line_start[h]))*(*csplineh[h]);
-
-		  if (value1 < 0)
-		    *(output_p++) = 0;
-		  else 
-		    {
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       
-		       if (value > 255) 
-			 *(output_p++) = 255;
-		       else
-			 *(output_p++) = (uint8_t) value;
-		    }
-		  for (w=0;w<width_neighbors;w++)
-		    csplinew[w]++;
-	       }
-	      // a line on output is now finished. We jump to the beginning of the next line
-	      output_p+=output_offset;
-	      for (h=0;h<height_neighbors;h++)
-		csplineh[h]++;
-	   }
-      }
-    break;
- }
-   
-    
-// 6 : SVCD downscaling, height not scaled, 3 to 2 on width => width_neighbors=6
-   /*
-  else 
-     {
-
-	if (specific==6) 
-	  {  
-	     output_offset=local_output_width-local_output_active_width;
-	     for (out_line = 0; out_line < local_output_active_height; out_line++)
-	       {
-		  in_line_offset = in_line[out_line] * local_padded_width;
-		  csplinew0 = cspline_w_neighbors[0];
-		  csplinew1 = cspline_w_neighbors[1];
-		  csplinew2 = cspline_w_neighbors[2];
-		  csplinew3 = cspline_w_neighbors[3];
-		  csplinew4 = cspline_w_neighbors[4];
-		  csplinew5 = cspline_w_neighbors[5];
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       adresse1 = padded_input + in_col[out_col] + in_line_offset + local_padded_width;
-		       value1  = *(adresse1++) * (*(csplinew0++));
-		       value1 += *(adresse1++) * (*(csplinew1++));
-		       value1 += *(adresse1++) * (*(csplinew2++));
-		       value1 += *(adresse1++) * (*(csplinew3++));
-		       value1 += *(adresse1++) * (*(csplinew4++));
-		       value1 += *(adresse1  ) * (*(csplinew5++));
-		       if (value1 < 0)
-			 *(output_p++) = 0;
-		       else 
-			 {
-			    value =
-			      (value1 +
-			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
-			    
-			    if (value > 255) 
-			      *(output_p++) = 255;
-			    else
-			      *(output_p++) = (uint8_t) value;
-			 }
-		    }
-		  output_p+=output_offset;
-	       }
-	  }
-
-
-	if (specific == 5) 
-	  {
-	     for (out_line = 0; out_line < local_output_active_height; out_line++)
-	       {
-		  csm0 = cubic_spline_m_0[out_line];
-		  csm1 = cubic_spline_m_1[out_line];
-		  csm2 = cubic_spline_m_2[out_line];
-		  csm3 = cubic_spline_m_3[out_line];
-		  in_line_offset = in_line[out_line] * local_padded_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       adresse3 = adresse2 + local_padded_width;
-		       value1 = (*adresse0) * csm0 + (*adresse1) * csm1 + (*adresse2) * csm2 + (*adresse3) * csm3 ;
-		       if (value1 < 0)
-			 *(output_p++) = 0;
-		       else 
-			 {
-			    value =
-			      (value1 +
-			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
-			    
-			    if (value > 255) 
-			      *(output_p++) = 255;
-			    else
-			      *(output_p++) = (uint8_t) value;
-			 }
-		    }
-		  output_p+=local_output_width-local_output_active_width;
-	       }
-	  }
-     }
+      // We only downscale on height, not width
+      // MMX version doesn't go faster than NOMMX version
+	{
+/*	   
+#ifdef HAVE_ASM_MMX
+	   if (mmx==1) 
+	     {
+		emms();
+		switch(height_neighbors)
+		  {
+		   case 4:
+		     // csplineh dans mm0
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     break;
+		   case 6:
+		     // csplineh dans mm0 et mm1
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     break;
+		   case 8:
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     mmx_cubic[2]=*(csplineh[6]=cspline_h_neighbors[6]);
+		     mmx_cubic[3]=*(csplineh[7]=cspline_h_neighbors[7]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     // csplineh dans mm0 et mm1
+		     break;
+		   case 10:
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     mmx_cubic[2]=*(csplineh[6]=cspline_h_neighbors[6]);
+		     mmx_cubic[3]=*(csplineh[7]=cspline_h_neighbors[7]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     mmx_cubic[0]=*(csplineh[8]=cspline_h_neighbors[8]);
+		     mmx_cubic[1]=*(csplineh[9]=cspline_h_neighbors[9]);
+		     movq_m2r(*mmx_cubic,mm2);
+		     // csplineh dans mm0, mm1 & mm2
+		     break;
+		   case 12:
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     mmx_cubic[2]=*(csplineh[6]=cspline_h_neighbors[6]);
+		     mmx_cubic[3]=*(csplineh[7]=cspline_h_neighbors[7]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     mmx_cubic[0]=*(csplineh[8]=cspline_h_neighbors[8]);
+		     mmx_cubic[1]=*(csplineh[9]=cspline_h_neighbors[9]);
+		     mmx_cubic[2]=*(csplineh[10]=cspline_h_neighbors[10]);
+		     mmx_cubic[3]=*(csplineh[11]=cspline_h_neighbors[11]);
+		     movq_m2r(*mmx_cubic,mm2);
+		     // csplineh dans mm0, mm1 & mm2
+		     break;
+		   case 14:
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     mmx_cubic[2]=*(csplineh[6]=cspline_h_neighbors[6]);
+		     mmx_cubic[3]=*(csplineh[7]=cspline_h_neighbors[7]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     mmx_cubic[0]=*(csplineh[8]=cspline_h_neighbors[8]);
+		     mmx_cubic[1]=*(csplineh[9]=cspline_h_neighbors[9]);
+		     mmx_cubic[2]=*(csplineh[10]=cspline_h_neighbors[10]);
+		     mmx_cubic[3]=*(csplineh[11]=cspline_h_neighbors[11]);
+		     movq_m2r(*mmx_cubic,mm2);
+		     mmx_cubic[0]=*(csplineh[12]=cspline_h_neighbors[12]);
+		     mmx_cubic[1]=*(csplineh[13]=cspline_h_neighbors[13]);
+		     movq_m2r(*mmx_cubic,mm3);
+		     // csplineh dans mm0, mm1, mm2 & mm3
+		     break;
+		   case 16:
+		     mmx_cubic[0]=*(csplineh[0]=cspline_h_neighbors[0]);
+		     mmx_cubic[1]=*(csplineh[1]=cspline_h_neighbors[1]);
+		     mmx_cubic[2]=*(csplineh[2]=cspline_h_neighbors[2]);
+		     mmx_cubic[3]=*(csplineh[3]=cspline_h_neighbors[3]);
+		     movq_m2r(*mmx_cubic,mm0);
+		     mmx_cubic[0]=*(csplineh[4]=cspline_h_neighbors[4]);
+		     mmx_cubic[1]=*(csplineh[5]=cspline_h_neighbors[5]);
+		     mmx_cubic[2]=*(csplineh[6]=cspline_h_neighbors[6]);
+		     mmx_cubic[3]=*(csplineh[7]=cspline_h_neighbors[7]);
+		     movq_m2r(*mmx_cubic,mm1);
+		     mmx_cubic[0]=*(csplineh[8]=cspline_h_neighbors[8]);
+		     mmx_cubic[1]=*(csplineh[9]=cspline_h_neighbors[9]);
+		     mmx_cubic[2]=*(csplineh[10]=cspline_h_neighbors[10]);
+		     mmx_cubic[3]=*(csplineh[11]=cspline_h_neighbors[11]);
+		     movq_m2r(*mmx_cubic,mm2);
+		     mmx_cubic[0]=*(csplineh[12]=cspline_h_neighbors[12]);
+		     mmx_cubic[1]=*(csplineh[13]=cspline_h_neighbors[13]);
+		     mmx_cubic[2]=*(csplineh[14]=cspline_h_neighbors[14]);
+		     mmx_cubic[3]=*(csplineh[15]=cspline_h_neighbors[15]);
+		     movq_m2r(*mmx_cubic,mm3);
+		     // csplineh dans mm0, mm1, mm2 & mm3
+		     break;
+		   default:
+		     mjpeg_warn("height neighbors = %d, is not supported inside cubic-scale function",height_neighbors);
+		     break;
+		  }
+		//	 for (h=0;h<height_neighbors;h++)
+		//	   csplineh[h]=cspline_h_neighbors[h];
+		for (out_line = 0; out_line < local_output_active_height; out_line++)
+		  {
+		     in_line_offset = in_line[out_line] * local_padded_width;
+		     for (out_col = 0; out_col < local_output_active_width; out_col++)
+		       {
+ 
+			  line_start[0]=padded_input + in_col[out_col] + in_line_offset;
+			  for (h=1;h<height_neighbors;h++)
+			    line_start[h]=line_start[h-1]+local_padded_width;
+			  switch(height_neighbors)
+			    {
+			     case 4:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+			       break;
+			     case 6:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0];
+			       break;
+			     case 8:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+                               mmx_padded[2]=*(line_start[6]);
+                               mmx_padded[3]=*(line_start[7]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+			       break;
+			     case 10:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+                               mmx_padded[2]=*(line_start[6]);
+                               mmx_padded[3]=*(line_start[7]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[8]);
+                               mmx_padded[1]=*(line_start[9]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm2,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0];
+			       break;
+			     case 12:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+                               mmx_padded[2]=*(line_start[6]);
+                               mmx_padded[3]=*(line_start[7]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[8]);
+                               mmx_padded[1]=*(line_start[9]);
+                               mmx_padded[2]=*(line_start[10]);
+                               mmx_padded[3]=*(line_start[11]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm2,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+			       break;
+			     case 14:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+                               mmx_padded[2]=*(line_start[6]);
+                               mmx_padded[3]=*(line_start[7]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[8]);
+                               mmx_padded[1]=*(line_start[9]);
+                               mmx_padded[2]=*(line_start[10]);
+                               mmx_padded[3]=*(line_start[11]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm2,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[12]);
+                               mmx_padded[1]=*(line_start[13]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm3,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0];
+			       break;
+			     case 16:
+                               mmx_padded[0]=*(line_start[0]);
+                               mmx_padded[1]=*(line_start[1]);
+                               mmx_padded[2]=*(line_start[2]);
+                               mmx_padded[3]=*(line_start[3]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm0,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[4]);
+                               mmx_padded[1]=*(line_start[5]);
+                               mmx_padded[2]=*(line_start[6]);
+                               mmx_padded[3]=*(line_start[7]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm1,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[8]);
+                               mmx_padded[1]=*(line_start[9]);
+                               mmx_padded[2]=*(line_start[10]);
+                               mmx_padded[3]=*(line_start[11]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm2,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+                               mmx_padded[0]=*(line_start[12]);
+                               mmx_padded[1]=*(line_start[13]);
+                               mmx_padded[2]=*(line_start[14]);
+                               mmx_padded[3]=*(line_start[15]);
+			       movq_m2r(*mmx_padded,mm7);
+			       pmaddwd_r2r(mm3,mm7);
+			       movq_r2m(mm7,*(mmx_t *)mmx_res);
+			       value1+=mmx_res[0]+mmx_res[1];
+			       break;
+			     default:
+			       mjpeg_warn("height neighbors = %d, is not supported inside cubic-scale function",height_neighbors);
+			       break;
+			    }
+			  if (value1 < 0)
+			    *(output_p++) = 0;
+			  else 
+			    {
+			       value =
+				 (value1 +
+				  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			       
+			       if (value > 255) 
+				 *(output_p++) = 255;
+			       else
+				 *(output_p++) = (uint8_t) value;
+			    }
+		       }
+		     // a line on output is now finished. We jump to the beginning of the next line
+		     output_p+=output_offset;
+		     // Mise à jour des valeurs de csplineh
+		     switch(height_neighbors)
+		       {
+			case 4:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  break;
+			case 6:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  break;
+			case 8:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  mmx_cubic[2]=*(++csplineh[6]);
+			  mmx_cubic[3]=*(++csplineh[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  break;
+			case 10:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  mmx_cubic[2]=*(++csplineh[6]);
+			  mmx_cubic[3]=*(++csplineh[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(++csplineh[8]);
+			  mmx_cubic[1]=*(++csplineh[9]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  break;
+			case 12:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  mmx_cubic[2]=*(++csplineh[6]);
+			  mmx_cubic[3]=*(++csplineh[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(++csplineh[8]);
+			  mmx_cubic[1]=*(++csplineh[9]);
+			  mmx_cubic[2]=*(++csplineh[10]);
+			  mmx_cubic[3]=*(++csplineh[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  break;
+			case 14:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  mmx_cubic[2]=*(++csplineh[6]);
+			  mmx_cubic[3]=*(++csplineh[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(++csplineh[8]);
+			  mmx_cubic[1]=*(++csplineh[9]);
+			  mmx_cubic[2]=*(++csplineh[10]);
+			  mmx_cubic[3]=*(++csplineh[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(++csplineh[12]);
+			  mmx_cubic[1]=*(++csplineh[13]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  break;
+			case 16:
+			  mmx_cubic[0]=*(++csplineh[0]);
+			  mmx_cubic[1]=*(++csplineh[1]);
+			  mmx_cubic[2]=*(++csplineh[2]);
+			  mmx_cubic[3]=*(++csplineh[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(++csplineh[4]);
+			  mmx_cubic[1]=*(++csplineh[5]);
+			  mmx_cubic[2]=*(++csplineh[6]);
+			  mmx_cubic[3]=*(++csplineh[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(++csplineh[8]);
+			  mmx_cubic[1]=*(++csplineh[9]);
+			  mmx_cubic[2]=*(++csplineh[10]);
+			  mmx_cubic[3]=*(++csplineh[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(++csplineh[12]);
+			  mmx_cubic[1]=*(++csplineh[13]);
+			  mmx_cubic[2]=*(++csplineh[14]);
+			  mmx_cubic[3]=*(++csplineh[15]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  break;
+			default:
+			  mjpeg_warn("height neighbors = %d, is not supported inside cubic-scale function",height_neighbors);
+			  break;
+		       }
+		  }
+	     }
+	   else
+#endif	 
 */
+	     {
+		for (h=0;h<height_neighbors;h++)
+		  csplineh[h]=cspline_h_neighbors[h];
+		for (out_line = 0; out_line < local_output_active_height; out_line++)
+		  {
+		     in_line_offset = in_line[out_line] * local_padded_width;
+		     for (out_col = 0; out_col < local_output_active_width; out_col++)
+		       {
+			  line_start[0]=padded_input + in_col[out_col] + in_line_offset;
+			  for (h=1;h<height_neighbors;h++)
+			    line_start[h]=line_start[h-1]+local_padded_width;
+			  
+			  value1 = *(line_start[0])*(*csplineh[0]);
+			  for (h=1;h<height_neighbors;h++)
+			    value1+=(*(line_start[h]))*(*csplineh[h]);
+			  
+			  if (value1 < 0)
+			    *(output_p++) = 0;
+			  else 
+			    {
+			       value =
+				 (value1 +
+				  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			       
+			       if (value > 255) 
+				 *(output_p++) = 255;
+			       else
+				 *(output_p++) = (uint8_t) value;
+			    }
+			  //		  for (w=0;w<width_neighbors;w++)
+			  //		    csplinew[w]++;
+		       }
+		     // a line on output is now finished. We jump to the beginning of the next line
+		     output_p+=output_offset;
+		     for (h=0;h<height_neighbors;h++)
+		       csplineh[h]++;
+		  }
+	     }
+	}
+      break;
+   }
+
    /* *INDENT-ON* */
-   mjpeg_debug ("End of cubic_scale");
+//   mjpeg_debug ("End of cubic_scale");
    return (0);
 }
 
@@ -315,25 +1251,574 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 
   uint8_t *output_p,*line,*line_start[height_neighbors];
   int16_t *csplinew[width_neighbors],*csplineh[height_neighbors];
-  long int value,value1,value2;
+  long int value=0,value1=0,value2=0;
 
-   mjpeg_debug ("Start of cubic_scale_interlaced");
-   
    output_p = output ;
    output_offset = local_output_width-local_output_active_width;
 
    /* *INDENT-OFF* */
- switch(specific) {
+
+  switch(specific) {
   case 0: 
       {
+#ifdef HAVE_ASM_MMX
+	 if (mmx==1)
+	   {
+		emms();
+		// fill mm7 with zeros
+		pxor_r2r(mm7,mm7);
+		// MMX ROUTINE
+		for (h=0;h<height_neighbors;h++)
+		  csplineh[h]=cspline_h_neighbors[h];
+		for (out_line = 0; out_line < (local_output_active_height>>1); out_line++)
+		  {
+		     in_line_offset = in_line[out_line] * local_padded_width;
+		     // Top line
+		     switch(width_neighbors)
+		       {
+			case 4:
+			  // csplinew dans mm0
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  break;
+			case 6:
+			  // csplinew dans mm0 et mm1
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  break;
+			case 8:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  // csplinew dans mm0 et mm1
+			  break;
+			case 10:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 12:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 14:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			case 16:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			default:
+			  mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			  break;
+		       }
+		     for (out_col = 0; out_col < local_output_active_width; out_col++)
+		       {
+			  line_start[0]=padded_top + in_col[out_col] + in_line_offset;
+			  for (h=1;h<height_neighbors;h++) 
+			    line_start[h]=line_start[h-1]+local_padded_width;
+			  value1=0;
+			  for (h=0;h<height_neighbors;h++) 
+			    {
+			       switch(width_neighbors)
+				 {
+				  case 4:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value1+=(mmx_res[0]+mmx_res[1])*(*csplineh[h]);
+				    break;
+				  case 6:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 8:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 10:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 12:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 14:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 16:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  default:
+				    mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+				    break;
+				 }
+			    }
+			  // Mise à jour des valeurs de csplinew
+			  switch(width_neighbors)
+			    {
+			     case 4:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       break;
+			     case 6:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 8:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 10:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 12:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 14:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     case 16:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       mmx_cubic[2]=*(++csplinew[14]);  mmx_cubic[3]=*(++csplinew[15]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     default:
+			       mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			       break;
+			    }
+			  if (value1 < 0) 
+			    *(output_p++) = 0;
+			  else 
+			    {
+			       value =
+				 (value1 +
+				  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			       
+			       if (value > 255) 
+				 *(output_p++) = 255;
+			       else
+				 *(output_p++) = (uint8_t) value;
+			    }
+		       }
+		     // a top line on output is now finished. We jump to the beginning of the next bottom line
+		     output_p+=output_offset;
+		     // Bottom line
+		     switch(width_neighbors)
+		       {
+			case 4:
+			  // csplinew dans mm0
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  break;
+			case 6:
+			  // csplinew dans mm0 et mm1
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  break;
+			case 8:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  // csplinew dans mm0 et mm1
+			  break;
+			case 10:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 12:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  // csplinew dans mm0, mm1 & mm2
+			  break;
+			case 14:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			case 16:
+			  mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			  mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			  movq_m2r(*mmx_cubic,mm0);
+			  mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			  mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			  movq_m2r(*mmx_cubic,mm1);
+			  mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			  mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			  movq_m2r(*mmx_cubic,mm2);
+			  mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			  mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			  movq_m2r(*mmx_cubic,mm3);
+			  // csplinew dans mm0, mm1, mm2 & mm3
+			  break;
+			default:
+			  mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			  break;
+		       }
+		     for (out_col = 0; out_col < local_output_active_width; out_col++)
+		       {
+			  line_start[0]=padded_bottom + in_col[out_col] + in_line_offset;
+			  for (h=1;h<height_neighbors;h++) 
+			    line_start[h]=line_start[h-1]+local_padded_width;
+			  value1=0;
+			  for (h=0;h<height_neighbors;h++) 
+			    {
+			       switch(width_neighbors)
+				 {
+				  case 4:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value1+=(mmx_res[0]+mmx_res[1])*(*csplineh[h]);
+				    break;
+				  case 6:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 8:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 10:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 12:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 14:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  case 16:
+				    movq_m2r(*(line_start[h]),mm6);    punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm0,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+4),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm1,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+8),mm6);  punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm2,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    movq_m2r(*(line_start[h]+12),mm6); punpcklbw_r2r(mm7,mm6);
+				    pmaddwd_r2r(mm3,mm6);              movq_r2m(mm6,*(mmx_t *)mmx_res);
+				    value2+=mmx_res[0]+mmx_res[1];
+				    value1+=value2*(*csplineh[h]);
+				    break;
+				  default:
+				    mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+				    break;
+				 }
+			    }
+			  // Mise à jour des valeurs de csplinew
+			  switch(width_neighbors)
+			    {
+			     case 4:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       break;
+			     case 6:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 8:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       break;
+			     case 10:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 12:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       break;
+			     case 14:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     case 16:
+			       mmx_cubic[0]=*(++csplinew[0]);   mmx_cubic[1]=*(++csplinew[1]);
+			       mmx_cubic[2]=*(++csplinew[2]);   mmx_cubic[3]=*(++csplinew[3]);
+			       movq_m2r(*mmx_cubic,mm0);
+			       mmx_cubic[0]=*(++csplinew[4]);   mmx_cubic[1]=*(++csplinew[5]);
+			       mmx_cubic[2]=*(++csplinew[6]);   mmx_cubic[3]=*(++csplinew[7]);
+			       movq_m2r(*mmx_cubic,mm1);
+			       mmx_cubic[0]=*(++csplinew[8]);   mmx_cubic[1]=*(++csplinew[9]);
+			       mmx_cubic[2]=*(++csplinew[10]);  mmx_cubic[3]=*(++csplinew[11]);
+			       movq_m2r(*mmx_cubic,mm2);
+			       mmx_cubic[0]=*(++csplinew[12]);  mmx_cubic[1]=*(++csplinew[13]);
+			       mmx_cubic[2]=*(++csplinew[14]);  mmx_cubic[3]=*(++csplinew[15]);
+			       movq_m2r(*mmx_cubic,mm3);
+			       break;
+			     default:
+			       mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			       break;
+			    }
+			  if (value1 < 0) 
+			    *(output_p++) = 0;
+			  else 
+			    {
+			       value =
+				 (value1 +
+				  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			       
+			       if (value > 255) 
+				 *(output_p++) = 255;
+			       else
+				 *(output_p++) = (uint8_t) value;
+			    }
+		       }
+		     // a bottom line on output is now finished. We jump to the beginning of the next top line
+		     output_p+=output_offset;
+		     for (h=0;h<height_neighbors;h++)
+		       csplineh[h]++;
+		  }
+	   }
+	 else
+#endif	   
+	   {
+	      // NON MMX treatment
 	 for (h=0;h<height_neighbors;h++)
 	   csplineh[h]=cspline_h_neighbors[h];
 	 for (out_line = 0; out_line < (local_output_active_height>>1); out_line++)
 	   {
 	      in_line_offset = in_line[out_line] * local_padded_width;
+	      // Top line
 	      for (w=0;w<width_neighbors;w++)
 		csplinew[w]=cspline_w_neighbors[w];
-	      // Top line
 	      for (out_col = 0; out_col < local_output_active_width; out_col++)
 	       {
 		  line_start[0]=padded_top + in_col[out_col] + in_line_offset;
@@ -403,11 +1888,534 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		csplineh[h]++;
 	   }
       }
+      }
     break;
     
   case 1:
     // We only downscale on width, not height
       {
+#ifdef HAVE_ASM_MMX
+	   if (mmx==1) 
+	   {
+	      emms();
+	      // fill mm7 with zeros
+	      pxor_r2r(mm7,mm7);
+	      for (out_line = 0; out_line < (local_output_active_height>>1); out_line++)
+		{
+		   in_line_offset = in_line[out_line] * local_padded_width;
+		   switch(width_neighbors)
+		     {
+		      case 4:
+			// csplinew dans mm0
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			break;
+		      case 6:
+			// csplinew dans mm0 et mm1
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			movq_m2r(*mmx_cubic,mm1);
+			break;
+		      case 8:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			// csplinew dans mm0 et mm1
+			break;
+		      case 10:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 12:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 14:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      case 16:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      default:
+			mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			break;
+		     }
+		   // csplinew dans mm0, mm1, mm2 & mm3
+		   for (out_col = 0; out_col < local_output_active_width; out_col++)
+		     {
+			line = padded_top + in_col[out_col] + in_line_offset;
+			// Top line
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 6:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);    punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);       movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 8:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 10:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 12:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 14:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 16:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			// Mise à jour des valeurs de csplinew
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     break;
+			   case 6:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 8:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 10:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 12:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 14:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   case 16:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     mmx_cubic[2]=*(++csplinew[14]);     mmx_cubic[3]=*(++csplinew[15]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			if (value1 < 0)
+			  *(output_p++) = 0;
+			else 
+			  {
+			     value =
+			       (value1 +
+				(1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			     
+			     if (value > 255) 
+			       *(output_p++) = 255;
+			     else
+			       *(output_p++) = (uint8_t) value;
+			  }
+		     }
+		   // a top line on output is now finished. We jump to the beginning of the next bottom line
+		   output_p+=output_offset;
+		   // Bottom line
+		   switch(width_neighbors)
+		     {
+		      case 4:
+			// csplinew dans mm0
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			break;
+		      case 6:
+			// csplinew dans mm0 et mm1
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			movq_m2r(*mmx_cubic,mm1);
+			break;
+		      case 8:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			// csplinew dans mm0 et mm1
+			break;
+		      case 10:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 12:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			// csplinew dans mm0, mm1 & mm2
+			break;
+		      case 14:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      case 16:
+			mmx_cubic[0]=*(csplinew[0]=cspline_w_neighbors[0]);  mmx_cubic[1]=*(csplinew[1]=cspline_w_neighbors[1]);
+			mmx_cubic[2]=*(csplinew[2]=cspline_w_neighbors[2]);  mmx_cubic[3]=*(csplinew[3]=cspline_w_neighbors[3]);
+			movq_m2r(*mmx_cubic,mm0);
+			mmx_cubic[0]=*(csplinew[4]=cspline_w_neighbors[4]);  mmx_cubic[1]=*(csplinew[5]=cspline_w_neighbors[5]);
+			mmx_cubic[2]=*(csplinew[6]=cspline_w_neighbors[6]);  mmx_cubic[3]=*(csplinew[7]=cspline_w_neighbors[7]);
+			movq_m2r(*mmx_cubic,mm1);
+			mmx_cubic[0]=*(csplinew[8]=cspline_w_neighbors[8]);  mmx_cubic[1]=*(csplinew[9]=cspline_w_neighbors[9]);
+			mmx_cubic[2]=*(csplinew[10]=cspline_w_neighbors[10]);mmx_cubic[3]=*(csplinew[11]=cspline_w_neighbors[11]);
+			movq_m2r(*mmx_cubic,mm2);
+			mmx_cubic[0]=*(csplinew[12]=cspline_w_neighbors[12]);mmx_cubic[1]=*(csplinew[13]=cspline_w_neighbors[13]);
+			mmx_cubic[2]=*(csplinew[14]=cspline_w_neighbors[14]);mmx_cubic[3]=*(csplinew[15]=cspline_w_neighbors[15]);
+			movq_m2r(*mmx_cubic,mm3);
+			// csplinew dans mm0, mm1, mm2 & mm3
+			break;
+		      default:
+			mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			break;
+		     }
+		   // csplinew dans mm0, mm1, mm2 & mm3
+		   for (out_col = 0; out_col < local_output_active_width; out_col++)
+		     {
+			line = padded_bottom + in_col[out_col] + in_line_offset;
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 6:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);      movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);    punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);       movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 8:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 10:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 12:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   case 14:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0];
+			     break;
+			   case 16:
+			     movq_m2r(*(line),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm0,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+4),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm1,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+8),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm2,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     movq_m2r(*(line+12),mm6);     punpcklbw_r2r(mm7,mm6);
+			     pmaddwd_r2r(mm3,mm6);     movq_r2m(mm6,*(mmx_t *)mmx_res);
+			     value1+=mmx_res[0]+mmx_res[1];
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			// Mise à jour des valeurs de csplinew
+			switch(width_neighbors)
+			  {
+			   case 4:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     break;
+			   case 6:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 8:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     break;
+			   case 10:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 12:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     break;
+			   case 14:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   case 16:
+			     mmx_cubic[0]=*(++csplinew[0]);     mmx_cubic[1]=*(++csplinew[1]);
+			     mmx_cubic[2]=*(++csplinew[2]);     mmx_cubic[3]=*(++csplinew[3]);
+			     movq_m2r(*mmx_cubic,mm0);
+			     mmx_cubic[0]=*(++csplinew[4]);     mmx_cubic[1]=*(++csplinew[5]);
+			     mmx_cubic[2]=*(++csplinew[6]);     mmx_cubic[3]=*(++csplinew[7]);
+			     movq_m2r(*mmx_cubic,mm1);
+			     mmx_cubic[0]=*(++csplinew[8]);     mmx_cubic[1]=*(++csplinew[9]);
+			     mmx_cubic[2]=*(++csplinew[10]);     mmx_cubic[3]=*(++csplinew[11]);
+			     movq_m2r(*mmx_cubic,mm2);
+			     mmx_cubic[0]=*(++csplinew[12]);     mmx_cubic[1]=*(++csplinew[13]);
+			     mmx_cubic[2]=*(++csplinew[14]);     mmx_cubic[3]=*(++csplinew[15]);
+			     movq_m2r(*mmx_cubic,mm3);
+			     break;
+			   default:
+			     mjpeg_warn("width neighbors = %d, is not supported inside cubic-scale function",width_neighbors);
+			     break;
+			  }
+			if (value1 < 0)
+			  *(output_p++) = 0;
+			else 
+			  {
+			     value =
+			       (value1 +
+				(1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+			     
+			     if (value > 255) 
+			       *(output_p++) = 255;
+			     else
+			       *(output_p++) = (uint8_t) value;
+			  }
+		     }
+		   // a bottom line on output is now finished. We jump to the beginning of the next top line
+		   output_p+=output_offset;
+		}
+	   }
+	 else
+#endif
+	   {
 	 for (out_line = 0; out_line < (local_output_active_height>>1); out_line++)
 	   {
 	      in_line_offset = in_line[out_line] * local_padded_width;
@@ -470,6 +2478,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 	      // a line on output is now finished. We jump to the beginning of the next top line
 	      output_p+=output_offset;
 	   }
+	   }
       }
     break;
 
@@ -477,6 +2486,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 
   case 5:
     // We only downscale on height, not width
+    // MMX treatment doesn't go much faster than non-mmx one => keep it simple !
       {
 	 for (h=0;h<height_neighbors;h++)
 	   csplineh[h]=cspline_h_neighbors[h];
@@ -506,8 +2516,6 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       else
 			 *(output_p++) = (uint8_t) value;
 		    }
-		  for (w=0;w<width_neighbors;w++)
-		    csplinew[w]++;
 	       }
 	      // a line on output is now finished. We jump to the beginning of the next bottom line
 	      output_p+=output_offset;
@@ -534,8 +2542,6 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       else
 			 *(output_p++) = (uint8_t) value;
 		    }
-		  for (w=0;w<width_neighbors;w++)
-		    csplinew[w]++;
 	       }
              // a bottom line on output is now finished. We jump to the beginning of the next top line
 	      output_p+=output_offset;
@@ -546,7 +2552,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
     break;
  }
    /* *INDENT-ON* */
-   mjpeg_debug ("End of cubic_scale_interlaced");
+   // mjpeg_debug ("End of cubic_scale_interlaced");
    return (0);
 }
 
@@ -609,8 +2615,8 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half,
   uint8_t black,*uint8_pad,*uint8_inp;
   unsigned long int nb_top=top_offset*local_padded_width;
 
-  mjpeg_debug ("Start of padding, left_offset=%d,top_offset=%d,right_offset=%d,bottom_offset=%d,width_pad=%d",
-	       left_offset,top_offset,right_offset,bottom_offset,width_pad);
+  // mjpeg_debug ("Start of padding, left_offset=%d,top_offset=%d,right_offset=%d,bottom_offset=%d,width_pad=%d",
+//	       left_offset,top_offset,right_offset,bottom_offset,width_pad);
   if (half)
      black=128;
   else
@@ -636,7 +2642,7 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half,
 	uint8_pad+=right_offset;
      }
   memset(uint8_pad,black,bottom_offset*local_padded_width);
-  mjpeg_debug ("End of padding");
+  // mjpeg_debug ("End of padding");
 
   return (0);
 }
@@ -658,8 +2664,8 @@ padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t * inp
   unsigned long int nb_top=top_offset*local_padded_width;
   unsigned long int nb_bot=bottom_offset*local_padded_width;
 
-  mjpeg_debug ("Start of padding_interlaced, left_offset=%d,top_offset=%d,right_offset=%d,bottom_offset=%d,width_pad=%d",
-	       left_offset,top_offset,right_offset,bottom_offset,width_pad);
+  // mjpeg_debug ("Start of padding_interlaced, left_offset=%d,top_offset=%d,right_offset=%d,bottom_offset=%d,width_pad=%d",
+//	       left_offset,top_offset,right_offset,bottom_offset,width_pad);
   if (half)
      black=128;
   else
@@ -696,10 +2702,40 @@ padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t * inp
   memset(uint8_ptop,black,nb_bot);
   memset(uint8_pbot,black,nb_bot);
 
-  mjpeg_debug ("End of padding_interlaced");
+  // mjpeg_debug ("End of padding_interlaced");
   return (0);
 
 }
 
 // *************************************************************************************
 
+				  // THE FOLLOWING LINE "if (!mmx) mmx=0;" DOES NO USEFUL CALCULATION BUT
+				  // it is necessary when gcc compilation with -O2 flag 
+				  // to calculate correct values for value1+=(mmx_res[0]+mmx_res[1])*(*csplineh[h]);
+				  // I know this sounds incredible, but believe me, it is true !
+				  // On the other hand, using only gcc -O1, this line is no more necessary.
+				  // And in both case, mmx_res[0],mmx_res[1] and *csplineh[h] have the same values
+				  // Indeed, the corresponding machine code is totally different with or without
+				  // this line with gcc -O2.
+				  // The line value1+=(mmx_res[0]+mmx_res[1])*(*csplineh[h]) is compiled into
+				  // (From DDD):
+				  // Right calculation, that is including the "if (!mmx) mmx=0;" line
+				  // --> 0x804f07f <cubic_scale+1615>:pmaddwd %mm0,%mm6
+				  // --> 0x804f082 <cubic_scale+1618>:movq   %mm6,(%ecx)
+				  //     0x804f085 <cubic_scale+1621>:mov    (%ecx),%edx
+				  //     0x804f087 <cubic_scale+1623>:mov    0x4(%ecx),%eax
+				  //     0x804f08a <cubic_scale+1626>:mov    0xffffffbc(%ebp),%ebx
+				  //     0x804f08d <cubic_scale+1629>:add    %edx,%eax
+				  //     0x804f08f <cubic_scale+1631>:mov    (%ebx,%edi,4),%edx
+				  // --> 0x804f092 <cubic_scale+1634>:inc    %edi
+				  // Wrong calculation, that is not including the "if (!mmx) mmx=0;" line
+				  // --> 0x804f062 <cubic_scale+1586>:pmaddwd %mm0,%mm6
+				  // --> 0x804f065 <cubic_scale+1589>:movq   %mm6,(%ecx)
+				  //     0x804f068 <cubic_scale+1592>:mov    0xffffffbc(%ebp),%ebx
+				  //     0x804f06b <cubic_scale+1595>:mov    (%ecx),%eax
+				  //     0x804f06d <cubic_scale+1597>:mov    (%ebx,%edi,4),%edx
+				  //     0x804f070 <cubic_scale+1600>:add    %esi,%eax
+				  // --> 0x804f072 <cubic_scale+1602>:inc    %edi
+				  
+//				  if (!mmx)
+//				    mmx=0;
