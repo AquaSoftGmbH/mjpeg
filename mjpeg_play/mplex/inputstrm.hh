@@ -242,6 +242,8 @@ protected:
 	virtual void InitAUbuffer();
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
 	void ScanFirstSeqHeader();
+    uint8_t NewAUTimestamps( int AUtype );
+    bool NewAUBuffers( int AUtype );
 
 public:	
     unsigned int num_sequence 	;
@@ -316,7 +318,7 @@ private:
 	unsigned int SizeFrame( int bit_rate, int padding_bit );
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 	virtual void InitAUbuffer();
-
+    
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
     unsigned int skip;

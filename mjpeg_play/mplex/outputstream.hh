@@ -49,6 +49,8 @@ public:
 	bool sector_align_iframeAUs;
 	bool split_at_seq_end;
 	bool seg_starts_with_video;
+	bool timestamp_iframe_only;
+	bool video_buffers_iframe_only;
 	unsigned int audio_buffer_size;
 	unsigned int video_buffer_size;
 

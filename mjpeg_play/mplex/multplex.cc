@@ -101,7 +101,7 @@ void OutputStream::InitSyntaxParameters()
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
-		always_buffers_in_audio = 1;
+		always_buffers_in_audio = 0;
 		vcd_zero_stuffing = 20;
 		dtspts_for_all_vau = 1;
 		sector_align_iframeAUs = false;
@@ -125,6 +125,8 @@ void OutputStream::InitSyntaxParameters()
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = false;
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		vbr = opt_VBR;
 		break;
 
@@ -155,6 +157,8 @@ void OutputStream::InitSyntaxParameters()
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = true;
 		seg_starts_with_video = true;
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -170,12 +174,12 @@ void OutputStream::InitSyntaxParameters()
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
-		always_buffers_in_audio = 1;
+		always_buffers_in_audio = 0;
 		vcd_zero_stuffing = 20;
 		dtspts_for_all_vau = 1;
 		sector_align_iframeAUs = true;
-		/* TODO: Really need to allow mixed streams to each have different
-		   buffer sizes. */
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		if( opt_buffer_size == 0 )
 			opt_buffer_size = 46;
 		else if( opt_buffer_size > 220 )
@@ -211,7 +215,33 @@ void OutputStream::InitSyntaxParameters()
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = true;
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		break;
+
+    case MPEG_FORMAT_DVD :
+		mjpeg_info( "Selecting DVD output profile (INCOMEPLETE!!!!)\n");
+        opt_VBR = true;
+        opt_data_rate = 1260000;
+		opt_mpeg = 2;
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = false;
+	  	always_sys_header_in_pack = false;
+	  	sector_transport_size = 2048;
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2048;
+	  	video_buffer_size = 232*1024;
+		buffers_in_video = true;
+		always_buffers_in_video = true;
+		buffers_in_audio = true;
+		always_buffers_in_audio = true;
+		vcd_zero_stuffing = 0;
+        dtspts_for_all_vau = 0;
+		sector_align_iframeAUs = true;
+        timestamp_iframe_only = true;
+        video_buffers_iframe_only = true;
+		vbr = opt_VBR;
+        break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile\n");
@@ -235,6 +265,8 @@ void OutputStream::InitSyntaxParameters()
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = false;
+        timestamp_iframe_only = false;
+        video_buffers_iframe_only = false;
 		break;
 	}
 	
@@ -1012,6 +1044,36 @@ bool VideoStream::RunOutComplete()
 			  au->type == IFRAME && au->PTS >= muxinto.runout_PTS));
 }
 
+
+/*********************************
+ * Work out the timestamps to be set in the header of sectors starting
+ * new AU's.
+ *********************************/
+
+uint8_t VideoStream::NewAUTimestamps( int AUtype )
+{
+	uint8_t timestamps;
+    if( AUtype == BFRAME)
+        timestamps=TIMESTAMPBITS_PTS;
+    else 
+        timestamps=TIMESTAMPBITS_PTS_DTS;
+
+    if( muxinto.timestamp_iframe_only && AUtype != IFRAME)
+        timestamps=TIMESTAMPBITS_NO;
+    return timestamps;
+}
+
+/*********************************
+ * Work out the buffer records to be set in the header of sectors
+ * starting new AU's.
+ *********************************/
+
+bool VideoStream::NewAUBuffers( int AUtype )
+{
+    return buffers_in_header & 
+        !(muxinto.video_buffers_iframe_only && AUtype != IFRAME);
+}
+
 /******************************************************************
 	Output_Video
 	generiert Pack/Sys_Header/Packet Informationen aus dem
@@ -1028,11 +1090,11 @@ void VideoStream::OutputSector ( )
 	unsigned int max_packet_payload; 	 
 	unsigned int actual_payload;
 	unsigned int prev_au_tail;
-	unsigned char timestamps;
 	VAunit *vau;
 	unsigned int old_au_then_new_payload;
 	clockticks  DTS,PTS;
-  
+    int autype;
+
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
 	   We're now in the last AU of a segment. 
@@ -1049,7 +1111,7 @@ void VideoStream::OutputSector ( )
 	{
 		max_packet_payload = au_unsent;
 	}
-	
+
 	/* Figure out the threshold payload size below which we can fit more
 	   than one AU into a packet N.b. because fitting more than one in
 	   imposses an overhead of additional header fields so there is a
@@ -1064,22 +1126,19 @@ void VideoStream::OutputSector ( )
 	PTS = au->PTS + timestamp_delay;
 	DTS = au->DTS + timestamp_delay;
 
+
 	/* CASE: Packet starts with new access unit			*/
 	if (new_au_next_sec  )
 	{
 		if( dtspts_for_all_au && max_packet_payload == 0 )
 			max_packet_payload = au_unsent;
-
-		if (AUType() == BFRAME)
-			timestamps=TIMESTAMPBITS_PTS;
-		else
-			timestamps=TIMESTAMPBITS_PTS_DTS;
-
+        autype = AUType();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
 								  *this,
-								  buffers_in_header, PTS, DTS,
-								  timestamps );
+								  NewAUBuffers(autype), 
+                                  PTS, DTS,
+								  NewAUTimestamps(autype) );
 		Muxed( actual_payload);
 
 	}
@@ -1092,7 +1151,7 @@ void VideoStream::OutputSector ( )
 		actual_payload = 
 			muxinto.WritePacket( au_unsent,
 								  *this,
-								  buffers_in_header, 0, 0,
+								  false, 0, 0,
 								  TIMESTAMPBITS_NO );
 		Muxed ( actual_payload );
 
@@ -1104,30 +1163,26 @@ void VideoStream::OutputSector ( )
 			(au_unsent < old_au_then_new_payload)) */
 	{
 		prev_au_tail = au_unsent;
-		//bufmodel.queued (au_unsent, DTS);
+
 		Muxed( au_unsent );
 		/* is there a new access unit anyway? */
 		if( !MuxCompleted() )
 		{
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
 				max_packet_payload = au_unsent+prev_au_tail;
-
-			/* Set time-stamp bits appropriately if new AU
-			   starts in packet */
-			if( max_packet_payload > 0 )
-				timestamps = TIMESTAMPBITS_NO;
-			else if (AUType() == BFRAME)
-				timestamps=TIMESTAMPBITS_PTS;
-			else
-				timestamps=TIMESTAMPBITS_PTS_DTS;
 			new_au_next_sec = true;
 			PTS = au->PTS + timestamp_delay;
 			DTS = au->DTS + timestamp_delay;
-	
+
+            autype = AUType();
+            uint8_t timestamps = 
+                max_packet_payload > 0 ? TIMESTAMPBITS_NO 
+                                       : NewAUTimestamps(autype) ;
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
 									  *this,
-									  buffers_in_header, PTS, DTS,
+									  NewAUBuffers(autype), 
+                                      PTS, DTS,
 									  timestamps );
 			Muxed( actual_payload - prev_au_tail );
 		} 
@@ -1135,7 +1190,7 @@ void VideoStream::OutputSector ( )
 		{
 			(void) muxinto.WritePacket ( 0,
 										 *this,
-										 buffers_in_header, 0, 0,
+										 false, 0, 0,
 										 TIMESTAMPBITS_NO);
 		};
 
