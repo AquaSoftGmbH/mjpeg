@@ -1129,9 +1129,9 @@ lav_file_t *lav_open_input_file(char *filename)
                strncasecmp(frame + jpeg_app0_offset + 4,"AVI1",4)==0 )
             {
                 if (frame[jpeg_app0_offset+8]==1)
-                   lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
-                else
                    lav_fd->interlacing = LAV_INTER_ODD_FIRST;
+                else
+                   lav_fd->interlacing = LAV_INTER_EVEN_FIRST;
             }
             else
             {

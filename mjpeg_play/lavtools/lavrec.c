@@ -1349,8 +1349,8 @@ int main(int argc, char ** argv)
 	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
 
 	if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
-	bparm.input = input;
-	bparm.norm = norm;
+	/*bparm.input = input;
+	  bparm.norm = norm;*/
 	bparm.decimation = 0;
 	bparm.quality    = quality;
 

@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <setjmp.h>
 #include <jpeglib.h>
+#include "lav_io.h"
 
 /*******************************************************************
  *                                                                 *
@@ -334,8 +335,8 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
       {
          switch(itype)
          {
-            case 1:  yl=yc=(1-field); break;
-            case 2:  yl=yc=field;     break;
+            case LAV_INTER_EVEN_FIRST :  yl=yc=(1-field); break;
+            case LAV_INTER_ODD_FIRST :  yl=yc=field;     break;
             default:
                fprintf(stderr,"Input is interlaced but no interlacing set\n");
                goto ERR_EXIT;
