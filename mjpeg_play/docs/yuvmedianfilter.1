@@ -1,0 +1,67 @@
+.TH "yuvmedianfilter" "1" "8 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH "NAME"
+yuvmedianfilter \- A filter for yuv images produced by the mjpeg tools
+
+.SH "SYNOPSIS"
+.B yuvmedianfilter
+.RB [ \-r
+.IR num ]
+.RB [ \-t
+.IR num ]
+.RB [ \-v
+.IR num ]
+.RB [ \-h ]
+
+.SH "DESCRIPTION"
+\fByuvmedianfilter\fP is designet to enhance/filter images. It takes the input of STDIN and take the output do STDOUT.  
+.br
+This filter look around the current point for a radius and averages this values that fall inside a threshold.
+So the image is softend and the edges become more sharp. If the input material is noisy (it is always noisy but you do not always see it) the images are better.
+The encoder spends less bandwith for encoding artefactes for the source.
+The more sophisticated version of image filtering is yuvdenoise. But you can use both programms in the encoding procces.
+It cannot procces a recorded file and write the improved version to a other file. 
+
+.SH "OPTIONS"
+\fByuvdenoise\fP accepts the following options:
+
+.TP 5
+.BI \-r " num"
+Radius for median (default: 2 pixels)
+.TP 5
+.BI \-t " num"
+Trigger threshold (default: 2)
+.TP 5
+.BI \-v " num"
+Verbosity level (0, 1 or 2)
+.TP 5
+.BI \-h 
+Print out a help message
+
+.SH BUGS
+yuvmedianfilter produces at some image sizes a vertical green bar on the left and right side of the image. These bars are 4 pixles wide. 
+If you do not want this bar, you can remove it with yuvscaler's -I ACTIVE_ option.
+
+.SH "AUTHOR"
+This man page was written by Bernhard Praschinger.
+.br
+The yuvmedianfilter programm was written by Mike Bernson, and adapted to the yuv4mpeg2 stream header format by Steven M. Schultz.
+
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR mjpegtools (1),
+.BR jpeg2yuv (1),
+.BR lav2yuv (1),
+.BR mpeg2enc (1),
+.BR ppmtoy4m (1),
+.BR yuv2lav (1),
+.BR yuvdenoise (1),
+.BR yuvscaler (1)
