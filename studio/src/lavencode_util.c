@@ -158,16 +158,14 @@ void calc_area ()
 struct rect norm;
 int i; /** counts if we have a problem in the calculation, if 0 it is ok */
 
-/* Here we set the image Size to something predefined, but the size should be
-   set by the actual image size */ 
-imgsize.x = 720;
-imgsize.y = 576;
+imgsize.x = width;
+imgsize.y = height;
 
 /* First of all we check if we have valid values */
-if ((raw_points.p1.x > imgsize.x) && (raw_points.p1.x < 0) &&
-    (raw_points.p1.y > imgsize.y) && (raw_points.p1.y < 0) &&
-    (raw_points.p2.x > imgsize.x) && (raw_points.p2.x < 0) &&
-    (raw_points.p2.y > imgsize.y) && (raw_points.p2.y < 0)   )
+if ((raw_points.p1.x > imgsize.x) || (raw_points.p1.x < 0) ||
+    (raw_points.p1.y > imgsize.y) || (raw_points.p1.y < 0) ||
+    (raw_points.p2.x > imgsize.x) || (raw_points.p2.x < 0) ||
+    (raw_points.p2.y > imgsize.y) || (raw_points.p2.y < 0)   )
   i++;
 else 
   {
@@ -276,6 +274,7 @@ void accept_changes(GtkWidget *widget, gpointer data)
    {
      sprintf(area_size, "%s", gtk_entry_get_text(GTK_ENTRY(actfield_s)));
      printf("\n button S: %s \n", area_size);
+     gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),area_size);
    }
  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_l)) == TRUE )
    {

@@ -186,6 +186,7 @@ GtkWidget *create_lavencode_layout(void);
 
 /* lavencode_mpeg.c */
 void open_mpeg_window(GtkWidget *widget, gpointer data);
+GtkWidget *combo_entry_scalerinput;
 
 /* lavencode_distributed.c */
 void open_distributed_window(GtkWidget *widget, gpointer data);
@@ -213,7 +214,8 @@ void create_command_mplex(char* mplex_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 
 /* lavencode_util.c */
-void create_window_select(char filename[LONGOPT], char *size[LONGOPT]);
+void create_window_select(char filename[FILELEN]);
+char area_size[LONGOPT];
 
 /* studio.c */
 void global_open_location(char *location);

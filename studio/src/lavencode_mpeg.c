@@ -33,9 +33,10 @@
 #include <string.h>
 #include <gtk/gtk.h>
 #include <glib.h>
+#include <sys/stat.h>
 
 #include "studio.h"
-
+#include "gtkfunctions.h"
 
 /* Forward declarations */
 void open_mpeg_window(GtkWidget *widget, gpointer data);
@@ -104,7 +105,7 @@ struct encodingoptions tempenco;
 struct encodingoptions *point;    /* points to the encoding struct to change */
 int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
 
-GtkWidget *combo_entry_active, *combo_entry_scalerinput, *combo_entry_scaleroutput;
+GtkWidget *combo_entry_active, *combo_entry_scaleroutput;
 GtkWidget *combo_entry_scalermode;
 GtkWidget *combo_entry_samples, *combo_entry_audiobitrate;
 GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
@@ -1256,6 +1257,7 @@ void input_select (GtkWidget *widget, gpointer data)
   char command[200];
   FILE *fp;
   int i;
+  struct stat stbuf;
 
 for (i= 1; i < 200; i++)
    command[i]='\0'; 
@@ -1264,8 +1266,10 @@ if (strcmp((char*)data,"inputwindow") == 0)
   {
    if ((fp = fopen(enc_inputfile, "r")) == NULL)
      {
-        printf("\n File does not exist \n");
-        // make a gui version
+        fclose(fp);
+        gtk_show_text_window(STUDIO_ERROR,"The editlistfile you specified does not exist. Choose a valid file in the Input file selection");
+        if (verbose)
+          printf("\n File does not exist \n");
      }
    else 
      {
@@ -1273,20 +1277,23 @@ if (strcmp((char*)data,"inputwindow") == 0)
 
         sprintf(command, "lav2yuv -f 1 %s | y4mtoppm -L >%s/.studio/frame.ppm",
         enc_inputfile, getenv("HOME"));
-//        lav2yuv -f 1 paul.eli | y4mtoppm -L >test.ppm
         if (verbose)
           printf("Command creating input window pic : %s \n",command);
        
         fp = popen(command, "w");
         fflush(fp);
         pclose(fp);
- 
-        sprintf(filename,"%s/.studio/frame.ppm",getenv("HOME"));
-   
-        create_window_select(filename);
-        printf(" wert von area : %s \n", area_size);
-   //   gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput), area_size);
 
+        sprintf(filename,"%s/.studio/frame.ppm",getenv("HOME"));
+ 
+        /* Here we check if the file created has a size larger than 0 bytes
+           If it has 0 bytes something went wrong with the generation of the
+           pic we show. And we show a nice message box. Else we go on. */
+        stat(filename, &stbuf);
+        if (stbuf.st_size == 0)
+            gtk_show_text_window(STUDIO_ERROR,"Something went wrong with the creation of the image for the preview. Check the input file !!");
+        else
+            create_window_select(filename);
      }
   }
 
@@ -1485,11 +1492,6 @@ GList *output_window = NULL;
   output_window = g_list_append (output_window, "VCD");
   output_window = g_list_append (output_window, "SVCD");
   output_window = g_list_append (output_window, "352x240");
-
-//  label1 = gtk_label_new("  Input window: ");
-//  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-//  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-//  gtk_widget_show (label1);
 
   button_input = gtk_button_new_with_label(" Input window: ");
   gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
