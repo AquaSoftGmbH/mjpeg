@@ -2,6 +2,9 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
+y4mdenoise_CFLAGS = -DNDEBUG
+y4mdenoise_CXXFLAGS = -DNDEBUG
+
 INCLUDES =  -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
