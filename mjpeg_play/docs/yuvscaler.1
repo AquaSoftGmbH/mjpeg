@@ -14,7 +14,7 @@ specified format (to stdout)
 .IR output_keyword ]
 .RB [ -n\ p | s | n ]
 .RB [ -v\ 0 - 2 ]
-.RB [ -h | -? ]
+.RB [ -h ]
 .RI [ mjpegfiles ]
 
 .SH DESCRIPTION
@@ -34,15 +34,19 @@ of yuvscaler was designed to be straithforward.
 
 \fBVCD encoding:
 .br
-\fPyuvscaler -O VCD my-file.avi | mpeg2enc -o vcd.%d.m1v
+\fPyuvscaler -O VCD my-file.avi | mpeg2enc -f 1 -o vcd.%d.m1v
 
 \fBSVCD encoding:
 .br
-\fPyuvscaler -O SVCD my-file.mov | mpeg2enc -m 2 -F 3 -o svcd.%d.m2v
+\fPyuvscaler -O SVCD my-file.mov | mpeg2enc -f 4 -o svcd.%d.m2v
 
 \fBEncoding anamorphic 16:9 as letterboxed VCD:
 .br
-\fPyuvscaler -M WIDE2VCD my-ana16-9.eli | mpeg2enc -o letterboxvcd.%d.m1v
+\fPyuvscaler -M WIDE2VCD my-ana16-9.eli | mpeg2enc -f 1 -o letterbox_vcd.%d.m1v
+
+\fBEncoding anamorphic 16:9 as letterboxed SVCD:
+.br
+\fPyuvscaler -M WIDE2STD -O SVCD  my-ana16-9.eli | mpeg2enc -f 4 -o letterbox_svcd.%d.m1v
 
 .SH OPTIONS
 
@@ -53,8 +57,13 @@ Specifies input processing options.  Input options may be combined by using
 multiple \fB-I\fP flags. Possible \fIinput_keyword\fPs are:
 
 .IP
-\fBUSE_WidthxHeight+WidthOffset+HeightOffset\fP - select the area of
-input frames to be processed (the rest is ignored).
+\fBUSE_WidthxHeight+WidthOffset+HeightOffset\fP to select a useful area of
+the input frame (all multiple of 2, Height and HeightOffset multiple of 4 if interlaced), the rest
+of the image being discarded
+.IP
+\fBACTIVE_WidthxHeight+WidthOffset+HeightOffset\fP to select an active area
+of the input frame (all multiple of 2, Height and HeightOffset multiple of 4 if interlaced), the rest
+of the image being made black
 
 .TP 
 .B -M \fImode_keyword\fP
@@ -96,15 +105,20 @@ VCD format (equivalent to -M WIDE2STD -O VCD).
 \fBFAST_WIDE2VCD\fP to transcode full-sized anamorphic (16:9) frames to 
 letter-boxed VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see below).
 .IP
-\fBLINE_SWITCH\fP to preprocess frames by switching lines two by two
-.IP
-\fBBOTT_FORWARD\fP to preprocess frames by moving bottom field one frame forward
-.IP
-\fBTOP_FORWARD\fP  to preprocess frames by moving top field one frame forward
-.IP
 \fBNO_HEADER\fP to suppress stream header generation on output
 .IP
 \fBMMX\fP to use MMX functions for BICUBIC scaling (experimental feature!!)
+.IP
+If you suspect that your video capture was given a wrong interlacing type,
+please use and combine:
+.IP
+\fBLINE_SWITCH\fP to preprocess frames by switching lines two by two
+(spatial reordering)
+.IP
+\fBBOTT_FORWARD\fP to preprocess frames by moving bottom field one frame
+forward (time reordering)
+.IP
+\fBTOP_FORWARD\fP to preprocess frames by moving top field one frame forward (time reordering)
 
 .TP 
 .B -O \fIoutput_keyword\fP
@@ -126,15 +140,15 @@ show annonying chrominance artefacts unless this is done.
 PAL and NTSC standards). Non-interlaced output.
 .IP
 \fBSVCD\fP to generate SVCD compliant frames on output (taking care of
-PAL and NTSC standards). Bottom-field-first interlaced frames.
+PAL and NTSC standards). Top-field-first interlaced frames.
 .IP
 \fBSIZE_WidthxHeight\fP to generate frames of size WidthxHeight on
 output (multiple of 4)
 .IP
-If output interlacing is not specified, it is taken of the same type
-as input if coherent, top_first by default.
+If VCD or SVCD keywords are not used, output interlacing is taken of the
+same type as input. By default, output frames size will be the same as input
+frame size.
 .IP
-
 
 .TP 
 .B -n p|s|n
@@ -146,7 +160,7 @@ for VCD/SVCD (p=pal,s=secam,n=ntsc).
 Specifies the degree of verbosity: 0=quiet, 1=normal, 2=verbose/debug
 
 .TP
-.B -h | -?
+.B -h
 Prints a summary of command line syntax.
 
 
