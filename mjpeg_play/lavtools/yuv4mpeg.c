@@ -139,6 +139,8 @@ main(int argc, char **argv)
 	if	(height <= 0)
 		mjpeg_error_exit1("Invalid Height: %d", height);
 
+	y4m_accept_extensions(1);
+
 	y4m_init_stream_info(&ostream);
 	y4m_init_frame_info(&oframe);
 	y4m_si_set_width(&ostream, width);
