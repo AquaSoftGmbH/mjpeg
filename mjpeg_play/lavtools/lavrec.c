@@ -10,12 +10,16 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <string.h>
+#include <pthread.h>
 
-lavrec_t *info;
-int show_stats = 0;
-int verbose;
-int wait_for_start = 0;
-char input_source;
+static lavrec_t *info;
+static int show_stats = 0;
+static int state;
+static int verbose;
+static int wait_for_start = 0;
+static char input_source;
+static pthread_cond_t state_cond;
+static pthread_mutex_t state_mutex;
 
 static void Usage(char *progname)
 {
@@ -42,6 +46,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -b/--mjpeg-buffer-size num  Size of MJPEG buffers [Kb] (default: 256)\n");
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
+	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
 	fprintf(stderr, "Environment variables recognized:\n");
 	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
@@ -242,29 +247,58 @@ static void input(int type, char *message)
   }
 }
 
-static void statechanged(int new)
+static void *input_thread(void *arg)
 {
   char input_buffer[256];
+
+  do
+  {
+    pthread_mutex_lock(&state_mutex);
+    pthread_cond_wait(&state_cond, &state_mutex);
+    pthread_mutex_unlock(&state_mutex);
+    if (state == LAVREC_STATE_PAUSED)
+    {
+      if (!info->single_frame) printf("Press enter for more capturing>");
+      fflush(stdout);
+      if (!wait_for_start && !info->single_frame)
+      {
+        lavrec_start(info);
+        break;
+      }
+      else
+      {
+        while (show_stats == 0)
+        {
+          usleep(10000);
+          if (read(0, input_buffer, sizeof(input_buffer))>0)
+          {
+            lavrec_start(info);
+            break;
+          }
+        }
+      }
+    }
+  }
+  while (state != LAVREC_STATE_STOP);
+  pthread_exit(NULL);
+}
+
+static void statechanged(int new)
+{
+  state = new;
 
   switch (new)
   {
   case LAVREC_STATE_PAUSED:
     show_stats = 0;
-    if (!info->single_frame) printf("Press enter for more capturing>");
-    fflush(stdout);
-    if (!wait_for_start && !info->single_frame)
-      lavrec_start(info);
-    else
+    if (wait_for_start)
     {
-      while (show_stats == 0) {
-        usleep(10000);
-        if (read(0, input_buffer, sizeof(input_buffer))>0)
-        {
-          lavrec_start(info);
-          break;
-        }
-      }
+      pthread_mutex_lock(&state_mutex);
+      pthread_cond_broadcast(&state_cond);
+      pthread_mutex_unlock(&state_mutex);
     }
+    else
+      lavrec_start(info);
     break;
   case LAVREC_STATE_RECORDING:
     show_stats = 1;
@@ -519,6 +553,15 @@ static int set_option(const char *name, char *value)
 		  }
 
 		if (nerr==0) 
+			while (strcmp((chanlists[chlist].list)[chan].name,  &(value[colin+1]))!=0)
+			{
+				if ((chanlists[chlist].list)[chan++].name==NULL)
+				{
+					mjpeg_error("bad channel spec\n");
+					nerr++;
+				}
+			}
+		if (nerr==0)
 		  {
 		   printf("Ok, found channel %s with frequency %d\n", 
 			   (chanlists[chlist].list)[chan].name, 
@@ -526,6 +569,10 @@ static int set_option(const char *name, char *value)
 
 		    info->tuner_frequency=(chanlists[chlist].list)[chan].freq;
 		  }
+	}
+	else if (strcmp(name, "software-encoding")==0)
+	{
+		info->software_encoding = 1;
 	}
 	else nerr++; /* unknown option - error */
 
@@ -560,7 +607,8 @@ static void check_command_line_options(int argc, char *argv[])
 		{"mjpeg-buffers"    ,1,0,0},   /* -n/--mjpeg_buffers     */
 		{"mjpeg-buffer-size",1,0,0},   /* -b/--mjpeg-buffer-size */
 		{"channel"          ,1,0,0},   /* -C/--channel           */
-		{"use-read"         ,0,0,0},   /* --use-read           */
+		{"use-read"         ,0,0,0},   /* --use-read             */
+		{"software-encoding",0,0,0},   /* --software-encoding    */
 		{0,0,0,0}
 	};
 #endif
@@ -678,9 +726,7 @@ static void lavrec_print_properties()
 
 int main(int argc, char **argv)
 {
-  char* files[1];
-  files[0] = "/tmp/bla.avi";
-
+  pthread_t msg_thr;
   fcntl(0,F_SETFL,O_NONBLOCK);
   signal(SIGINT,SigHandler);
 
@@ -690,10 +736,19 @@ int main(int argc, char **argv)
   info->output_statistics = output_stats;
   check_command_line_options(argc, argv);
   lavrec_print_properties();
-
+  if (wait_for_start)
+  {
+    pthread_mutex_init(&state_mutex, NULL);
+    pthread_cond_init(&state_cond, NULL);
+    pthread_create(&msg_thr, NULL, input_thread, NULL);
+  }
   lavrec_main(info);
   lavrec_busy(info);
   lavrec_free(info);
-
+  if (wait_for_start)
+  {
+    pthread_cancel(msg_thr);
+    pthread_join(msg_thr, NULL);
+  }
   return 0;
 }

@@ -79,6 +79,7 @@ typedef struct {
    char video_format;           /* [aAqm] a/A = AVI, q = Quicktime, m = movtar */
    int  video_norm;             /* [0-3] 0 = PAL, 1 = NTSC, 2 = SECAM, 3 = auto */
    int  video_src;              /* [0-3] 0 = Composite, 1 = S-video, 2 = TV-tuner, 3 = auto */
+   int  software_encoding;      /* [0-1] 0 = hardware MJPEG encoding (zoran), 1 = software MJPEG encoding */
    int  record_time;            /* time to record (in seconds). Default: -1 (unlimited) */
    int  horizontal_decimation;  /* [1,2,4] horizontal decimation */
    int  vertical_decimation;    /* [1,2,4] vertical decimation */

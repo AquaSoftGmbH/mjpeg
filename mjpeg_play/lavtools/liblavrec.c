@@ -53,15 +53,19 @@
 
 #include <videodev_mjpeg.h>
 #include <pthread.h>
+
 #include "mjpeg_types.h"
 #include "liblavrec.h"
 #include "lav_io.h"
 #include "audiolib.h"
+#include "jpegutils.h"
 
 /* On some systems MAP_FAILED seems to be missing */
 #ifndef MAP_FAILED
 #define MAP_FAILED ( (caddr_t) -1 )
 #endif
+
+#define MJPEG_MAX_BUF 64
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
@@ -77,6 +81,8 @@
                                      free in the filesystem when opening a new file */
 #define CHECK_INTERVAL 50         /* Interval for checking free space on file system */
 
+#define VALUE_NOT_FILLED -10000
+
 
 typedef struct {
    int    interlaced;                         /* is the video interlaced (even/odd-first)? */
@@ -85,7 +91,10 @@ typedef struct {
    double spvf;                               /* seconds per video frame */
    int    video_fd;                           /* file descriptor of open("/dev/video") */
    struct mjpeg_requestbuffers breq;          /* buffer requests */
+   struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
    char   *MJPG_buff;                         /* the MJPEG buffer */
+   struct video_mmap mm;                      /* software (YUV) capture info */
+   unsigned char *YUV_buff;                   /* in case of software encoding: the YUV buffer */
    lav_file_t *video_file;                    /* current lav_io.c file we're recording to */
    lav_file_t *video_file_old;                /* previous lav_io.c file we're recording to (finish audio/close) */
    int    num_frames_old;
@@ -107,6 +116,12 @@ typedef struct {
    int    mixer_volume_saved;                 /* saved recording volume before setting mixer */
    int    mixer_recsrc_saved;                 /* saved recording source before setting mixer */
    int    mixer_inplev_saved;                 /* saved output volume before setting mixer */
+
+   pthread_t encoding_thread;                 /* for software encoding recording */
+   pthread_mutex_t valid_mutex;               /* for software encoding recording */
+   int buffer_valid[MJPEG_MAX_BUF];           /* Non-zero if buffer has been filled */
+   pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
+   int currently_encoded_frame;
 
    int    output_status;
    int    state;                              /* recording, paused or stoppped */
@@ -174,8 +189,9 @@ static void lavrec_change_state(lavrec_t *info, int new_state)
 
    settings->state = new_state;
    if (info->state_changed)
-      info->state_changed(new_state);
+      info->state_changed(settings->state);
 }
+
 
 /******************************************************
  * set_mixer()
@@ -319,6 +335,13 @@ static int lavrec_autodetect_signal(lavrec_t *info)
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    lavrec_msg(LAVREC_MSG_INFO, info, "Auto detecting input and norm ...");
+
+   if (info->software_encoding && (info->video_norm==3 || info->video_src==3))
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Autodetection of input or norm not supported for non-MJPEG-cards");
+      return 0;
+   }
 
    if (info->video_src == 3) /* detect video_src && norm */
    {
@@ -773,6 +796,407 @@ static int audio_captured(lavrec_t *info, char *buff, long samps)
 
 
 /******************************************************
+ * lavrec_encoding_thread()
+ *   The software encoding thread
+ ******************************************************/
+#if 0
+static void *lavrec_encoding_thread(void* arg)
+{
+   lavrec_t *info = (lavrec_t *) info;
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+   int jpegsize;
+   unsigned char *bwbuff;
+   char *y_buff;
+   int n;
+
+   lavrec_msg(LAVREC_MSG_DEBUG, info,
+      "Starting software encoding thread");
+
+   /* Allow easy shutting down by other processes... */
+   pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
+   pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
+
+   settings->currently_encoded_frame = 0;
+
+   bwbuff = (unsigned char*)malloc(settings->width*settings->height/4);
+   for (n=0;n<settings->width*settings->height/4;n++)
+      bwbuff[n] = 128;
+   y_buff = (char *) malloc(sizeof(char)*settings->width*settings->height);
+
+   while (settings->state != LAVREC_STATE_STOP)
+   {
+      pthread_mutex_lock(&(settings->valid_mutex));
+      while (settings->buffer_valid[settings->currently_encoded_frame] == 0)
+      {
+         lavrec_msg(LAVREC_MSG_DEBUG, info,
+            "Encoding thread: sleeping for new frames (waiting for frame %d)", 
+            settings->currently_encoded_frame);
+         pthread_cond_wait(&(settings->buffer_filled[settings->currently_encoded_frame]),
+            &(settings->valid_mutex));
+         if (settings->state == LAVREC_STATE_STOP)
+         {
+            /* Ok, we shall exit, that's the reason for the wakeup */
+            lavrec_msg(LAVREC_MSG_DEBUG, info,
+               "Encoding thread: was told to exit");
+            pthread_exit(NULL);
+         }
+      }
+      pthread_mutex_unlock(&(settings->valid_mutex));
+
+      /* TEST: move Y-pixels over */
+      for (n=0;n<settings->width*settings->height;n++)
+      {
+         y_buff[n] = settings->YUV_buff[n*2];
+      }
+
+      /* encode frame to JPEG and write it out */
+      jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+
+         (settings->breq.size*settings->currently_encoded_frame)),
+         settings->breq.size, info->quality, settings->interlaced,
+         CHROMA420, settings->width, settings->height,
+         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]*/ (unsigned char*) y_buff,
+         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]+
+         settings->width*settings->height*/ bwbuff,
+         /*settings->YUV_buff+settings->softreq.offsets[settings->mm.frame]+
+         settings->width*settings->height*5/4*/ bwbuff);
+      if (jpegsize<0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error encoding frame to JPEG");
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+
+      if (!video_captured(info,
+         settings->MJPG_buff+(settings->breq.size*settings->currently_encoded_frame), jpegsize,
+         settings->buffer_valid[settings->currently_encoded_frame]))
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error writing the frame");
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+
+      pthread_mutex_lock(&(settings->valid_mutex));
+      settings->buffer_valid[settings->currently_encoded_frame] = 0;
+      pthread_mutex_unlock(&(settings->valid_mutex));
+
+      settings->currently_encoded_frame = (settings->currently_encoded_frame + 1) % settings->breq.count;
+   }
+
+   pthread_exit(NULL);
+}
+#endif
+
+/******************************************************
+ * lavrec_software_init()
+ *   Some software-MJPEG encoding specific initialization
+ *
+ * return value: 1 on success, 0 on error
+ ******************************************************/
+
+static int lavrec_software_init(lavrec_t *info)
+{
+   struct video_capability vc;
+   //int i;
+
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+
+   if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+   /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
+   if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;
+
+   /* set some "subcapture" options - cropping is done later on (during capture) */
+   if(!info->geometry->w)
+      info->geometry->w = ((vc.maxwidth==720&&info->horizontal_decimation!=1)?704:vc.maxwidth);
+   if(!info->geometry->h)
+      info->geometry->h = info->video_norm==1 ? 480 : 576;
+
+   if (info->geometry->w + info->geometry->x > vc.maxwidth)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Image width+offset (%d) bigger than maximum (%d)!",
+         info->geometry->w + info->geometry->x, vc.maxwidth);
+      return 0;
+   }
+   if ((info->geometry->w%(info->horizontal_decimation*16))!=0) 
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Image width not multiple of %d (required for JPEG encoding)!",
+	 info->horizontal_decimation*16);
+      return 0;
+   }
+   if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Image height+offset (%d) bigger than maximum (%d)!",
+         info->geometry->h + info->geometry->y, (info->video_norm==1 ? 480 : 576));
+      return 0;
+   }
+
+   /* RJ: Image height must only be a multiple of 8, but geom_height
+    * is double the field height
+    */
+   if ((info->geometry->h%(info->vertical_decimation*16))!=0) 
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Image height not multiple of %d (required for JPEG encoding)!",
+         info->vertical_decimation*16);
+      return 0;
+   }
+
+   settings->width = info->geometry->w / info->horizontal_decimation;
+   settings->height = info->geometry->h / info->vertical_decimation;
+
+   if (info->geometry->x == VALUE_NOT_FILLED)
+      info->geometry->x = (vc.maxwidth - info->geometry->w)/2;
+   if (info->geometry->y == VALUE_NOT_FILLED)
+      info->geometry->y = ((info->video_norm==1?480:576)-info->geometry->h)/2;
+
+   /* now, set the h/w/x/y to what they will *really* be */
+   info->geometry->w /= info->horizontal_decimation;
+   info->geometry->x /= info->horizontal_decimation;
+   info->geometry->h /= info->vertical_decimation;
+   info->geometry->y /= info->vertical_decimation;
+
+   settings->interlaced = LAV_NOT_INTERLACED; /* VERY doubtable - just a guess for now (yikes!) */
+
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Image size will be %dx%d, %d field(s) per buffer",
+      info->geometry->w, info->geometry->h,
+      (settings->interlaced==LAV_NOT_INTERLACED)?1:2);
+
+   /* request buffer info */
+   if (ioctl(settings->video_fd, VIDIOCGMBUF, &(settings->softreq)) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error getting buffer information: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Got %d YUV-buffers of size %d KB", settings->softreq.frames,
+      settings->softreq.size/(1024*settings->softreq.frames));
+
+   /* Map the buffers */
+   settings->YUV_buff = mmap(0, settings->softreq.size, 
+      PROT_READ, MAP_SHARED, settings->video_fd, 0);
+   if (settings->YUV_buff == MAP_FAILED)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+
+   /* set up buffers for software encoding thread */
+   if (info->MJPG_numbufs > MJPEG_MAX_BUF)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Too many buffers (%d) requested, maximum is %d",
+         info->MJPG_numbufs, MJPEG_MAX_BUF);
+      return 0;
+   }
+   settings->breq.count = info->MJPG_numbufs;
+   settings->breq.size = info->MJPG_bufsize*1024;
+   settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size); // *settings->breq.count);
+   if (!settings->MJPG_buff)
+   {
+      lavrec_msg (LAVREC_MSG_ERROR, info,
+         "Malloc error, you\'re probably out of memory");
+      return 0;
+   }
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Created %ld MJPEG-buffers of size %ld KB",
+      settings->breq.count, settings->breq.size/1024);
+
+   /* set up thread */
+#if 0
+   pthread_mutex_init(&(settings->valid_mutex), NULL);
+   for (i=0;i<MJPEG_MAX_BUF;i++)
+   {
+      settings->buffer_valid[i] = 0;
+      pthread_cond_init(&(settings->buffer_filled[i]), NULL);
+   }
+   if ( pthread_create( &(settings->encoding_thread), NULL,
+      lavrec_encoding_thread, (void *) info ) )
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Failed to create software encoding thread");
+      return 0;
+   }
+#endif
+
+   return 1;
+}
+
+
+/******************************************************
+ * lavrec_hardware_init()
+ *   Some hardware-MJPEG encoding specific initialization
+ *
+ * return value: 1 on success, 0 on error
+ ******************************************************/
+
+static int lavrec_hardware_init(lavrec_t *info)
+{
+   struct video_capability vc;
+   struct mjpeg_params bparm;
+
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+
+   if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+   /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
+   if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;
+
+   /* Query and set params for capture */
+   if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, &bparm) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error getting video parameters: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+   bparm.input = info->video_src;
+   bparm.norm = info->video_norm;
+   bparm.quality = info->quality;
+
+   /* Set decimation and image geometry params - only if we have weird options */
+   if (info->geometry->x != VALUE_NOT_FILLED ||
+      info->geometry->y != VALUE_NOT_FILLED ||
+      (info->geometry->h != 0 && info->geometry->h != info->video_norm==1 ? 480 : 576) ||
+      (info->geometry->w != 0 && info->geometry->w != vc.maxwidth) ||
+      info->horizontal_decimation != info->vertical_decimation)
+   {
+      bparm.decimation = 0;
+      if(!info->geometry->w) info->geometry->w = ((vc.maxwidth==720&&info->horizontal_decimation!=1)?704:vc.maxwidth);
+      if(!info->geometry->h) info->geometry->h = info->video_norm==1 ? 480 : 576;
+      bparm.HorDcm = info->horizontal_decimation;
+      bparm.VerDcm = (info->vertical_decimation==4) ? 2 : 1;
+      bparm.TmpDcm = (info->vertical_decimation==1) ? 1 : 2;
+      bparm.field_per_buff = (info->vertical_decimation==1) ? 2 : 1;
+
+      if (info->geometry->w + info->geometry->x > vc.maxwidth)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Image width+offset (%d) bigger than maximum (%d)!",
+            info->geometry->w + info->geometry->x, vc.maxwidth);
+         return 0;
+      }
+      if ((info->geometry->w%(bparm.HorDcm*16))!=0) 
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Image width not multiple of %d (required for JPEG)!",
+            bparm.HorDcm*16);
+         return 0;
+      }
+      if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Image height+offset (%d) bigger than maximum (%d)!",
+            info->geometry->h + info->geometry->y,
+            (info->video_norm==1 ? 480 : 576));
+         return 0;
+      }
+
+      /* RJ: Image height must only be a multiple of 8, but geom_height
+       * is double the field height
+       */
+      if ((info->geometry->h%(bparm.VerDcm*16))!=0) 
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Image height not multiple of %d (required for JPEG)!",
+            bparm.VerDcm*16);
+         return 0;
+      }
+
+      bparm.img_width  = info->geometry->w;
+      bparm.img_height = info->geometry->h/2;
+
+      if (info->geometry->x != VALUE_NOT_FILLED)
+         bparm.img_x = info->geometry->x;
+      else
+         bparm.img_x = (vc.maxwidth - bparm.img_width)/2;
+
+      if (info->geometry->y != VALUE_NOT_FILLED)
+         bparm.img_y = info->geometry->y/2;
+      else
+         bparm.img_y = ( (info->video_norm==1 ? 240 : 288) - bparm.img_height)/2;
+   }
+   else
+   {
+      bparm.decimation = info->horizontal_decimation;
+   }
+
+   /* Care about field polarity and APP Markers which are needed for AVI
+    * and Quicktime and may be for other video formats as well
+    */
+   if(info->vertical_decimation > 1)
+   {
+      /* for vertical decimation > 1 no known video format needs app markers,
+       * we need also not to care about field polarity
+       */
+      bparm.APP_len = 0; /* No markers */
+   }
+   else
+   {
+      int n;
+      bparm.APPn = lav_query_APP_marker(info->video_format);
+      bparm.APP_len = lav_query_APP_length(info->video_format);
+
+      /* There seems to be some confusion about what is the even and odd field ... */
+      /* madmac: 20010810: According to Ronald, this is wrong - changed now to EVEN */
+      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_EVEN_FIRST;
+      for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
+   }
+
+   if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, &bparm) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error setting video parameters: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+
+   settings->width = bparm.img_width/bparm.HorDcm;
+   settings->height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
+   settings->interlaced = (bparm.field_per_buff>1);
+
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Image size will be %dx%d, %d field(s) per buffer",
+      settings->width, settings->height, bparm.field_per_buff);
+
+   /* Request buffers */
+   settings->breq.count = info->MJPG_numbufs;
+   settings->breq.size = info->MJPG_bufsize*1024;
+   if (ioctl(settings->video_fd, MJPIOC_REQBUFS,&(settings->breq)) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error requesting video buffers: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Got %ld buffers of size %ld KB", settings->breq.count, settings->breq.size/1024);
+
+   /* Map the buffers */
+   settings->MJPG_buff = mmap(0, settings->breq.count*settings->breq.size, 
+      PROT_READ, MAP_SHARED, settings->video_fd, 0);
+   if (settings->MJPG_buff == MAP_FAILED)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
+      return 0;
+   }
+
+   return 1;
+}
+
+
+/******************************************************
  * lavrec_init()
  *   initialize, open devices and start streaming
  *
@@ -782,9 +1206,7 @@ static int audio_captured(lavrec_t *info, char *buff, long samps)
 static int lavrec_init(lavrec_t *info)
 {
 #ifndef IRIX
-   struct video_capability vc;
    struct video_channel vch;
-   struct mjpeg_params bparm;
 #endif
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
@@ -919,161 +1341,21 @@ static int lavrec_init(lavrec_t *info)
       }
    }
 
-   if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
+   /* set state to paused... ugly, but we need it for the software thread */
+   settings->state = LAVREC_STATE_PAUSED;
+
+   /* set up some hardware/software-specific stuff */
+   if (info->software_encoding)
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-
-   /* Query and set params for capture */
-   if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, &bparm) < 0)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting video parameters: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-
-
-   bparm.input = info->video_src;
-   bparm.norm = info->video_norm;
-   bparm.decimation = 0;
-   bparm.quality = info->quality;
-
-   /* Set decimation and image geometry params */
-   if(info->geometry->w == 0) 
-     info->geometry->w = (info->horizontal_decimation != 1 
-			  && vc.maxwidth==720) ? 704 : vc.maxwidth;
-   //vc.maxwidth;
-   if(info->geometry->h == 0) info->geometry->h = info->video_norm==1 ? 480 : 576;
-   bparm.HorDcm = info->horizontal_decimation;
-   bparm.VerDcm = (info->vertical_decimation==4) ? 2 : 1;
-   bparm.TmpDcm = (info->vertical_decimation==1) ? 1 : 2;
-   bparm.field_per_buff = (info->vertical_decimation==1) ? 2 : 1;
-
-   /* if it's not a DC10(+), change the width to make it a multiple of 16 */
-   if (vc.maxwidth == 768 || vc.maxwidth == 640)
-      bparm.img_width = vc.maxwidth;
-   else
-      bparm.img_width = (info->horizontal_decimation==1) ? 720 : 704;
-	
-   bparm.img_height = (info->video_src==1) ? 240 : 288;
-
-   if (info->geometry->w > vc.maxwidth)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image width too big! Exiting.");
-      return 0;
-   }
-   if ((info->geometry->w%(bparm.HorDcm*16))!=0) 
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image width not multiple of %d! Exiting",bparm.HorDcm*16);
-      return 0;
-   }
-   if (info->geometry->h > (info->video_norm==1 ? 480 : 576)) 
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image height too big! Exiting.");
-      return 0;
-   }
-
-   /* RJ: Image height must only be a multiple of 8, but geom_height
-    * is double the field height
-    */
-   if ((info->geometry->h%(bparm.VerDcm*16))!=0) 
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image height not multiple of %d! Exiting",bparm.VerDcm*16);
-      return 0;
-   }
-
-   /* madmac: vc.maxwidth is 1024 on the Marvel driver, 
-      wrong for our calculations -> correcting it to 720, that's the Zoran max capability */
-   if (vc.maxwidth == 1024)
-     {
-       printf("20010810 Marvel driver workaround: Setting vc.maxwidth to 720 !\n");
-       vc.maxwidth = 720;
-     }
-
-   bparm.img_width  = info->geometry->w;
-   bparm.img_height = info->geometry->h/2;
-
-   if(info->geometry->x)
-      bparm.img_x = info->geometry->x;
-   else
-      bparm.img_x = (vc.maxwidth - bparm.img_width)/2;
-
-   if(info->geometry->y)
-      bparm.img_y = info->geometry->y/2;
-   else
-      bparm.img_y = ( (info->video_norm==1 ? 240 : 288) - bparm.img_height)/2;
-
-   /* Care about field polarity and APP Markers which are needed for AVI
-    * and Quicktime and may be for other video formats as well
-    */
-   if(info->vertical_decimation > 1)
-   {
-      /* for vertical decimation > 1 no known video format needs app markers,
-       * we need also not to care about field polarity
-       */
-      bparm.APP_len = 0; /* No markers */
+      if (!lavrec_software_init(info)) return 0;
    }
    else
    {
-      int n;
-      bparm.APPn = lav_query_APP_marker(info->video_format);
-      bparm.APP_len = lav_query_APP_length(info->video_format);
-
-      /* There seems to be some confusion about what is the even and odd field ... */
-      /* madmac: 20010810: According to Ronald, this is wrong - changed now to EVEN */
-      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_EVEN_FIRST;
-      for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
-   }
+      if (!lavrec_hardware_init(info)) return 0;
+   }   
 #else 
    fprintf(stderr, "FATAL: Can't make necessary videosettings in IRIX !\n");
 #endif
-
-#ifndef IRIX
-   if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, &bparm) < 0)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error setting video parameters: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-
-   settings->width = bparm.img_width/bparm.HorDcm;
-   settings->height = bparm.img_height/bparm.VerDcm*bparm.field_per_buff;
-   settings->interlaced = (bparm.field_per_buff>1);
-
-   lavrec_msg(LAVREC_MSG_INFO, info,
-      "Image size will be %dx%d, %d field(s) per buffer",
-      settings->width, settings->height, bparm.field_per_buff);
-
-   /* Request buffers */
-   settings->breq.count = info->MJPG_numbufs;
-   settings->breq.size = info->MJPG_bufsize*1024;
-   if (ioctl(settings->video_fd, MJPIOC_REQBUFS,&(settings->breq)) < 0)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error requesting video buffers: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-   lavrec_msg(LAVREC_MSG_INFO, info,
-      "Got %ld buffers of size %ld KB", settings->breq.count, settings->breq.size/1024);
-
-   /* Map the buffers */
-   settings->MJPG_buff = mmap(0, settings->breq.count*settings->breq.size, 
-      PROT_READ, MAP_SHARED, settings->video_fd, 0);
-   if (settings->MJPG_buff == MAP_FAILED)
-   {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
-      return 0;
-   }
-#else
-   fprintf(stderr, "FATAL: Can't make necessary MJPEG videosettings in IRIX !\n");
-#endif 
 
    /* Try to get a reliable timestamp for Audio */
    if (info->audio_size && info->sync_correction > 1)
@@ -1142,7 +1424,7 @@ static void lavrec_wait_for_start(lavrec_t *info)
    while(settings->state == LAVREC_STATE_PAUSED)
    {
       usleep(10000);
-      printf("b");
+
       /* Audio (if on) is allready running, empty buffer to avoid overflow */
       if (info->audio_size)
       {
@@ -1162,13 +1444,73 @@ static void lavrec_wait_for_start(lavrec_t *info)
 
 
 /******************************************************
+ * lavrec_queue_buffer()
+ *   queues a buffer (either MJPEG or YUV)
+ *
+ * return value: 1 on success, 0 on error
+ ******************************************************/
+
+static int lavrec_queue_buffer(lavrec_t *info, int *num)
+{
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+
+   if (info->software_encoding)
+   {
+      settings->mm.frame = *num;
+      if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
+         return 0;
+   }
+   else
+   {
+      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, num) < 0)
+         return 0;
+   }
+
+   return 1;
+}
+
+
+/******************************************************
+ * lavrec_sync_buffer()
+ *   sync on a buffer (either MJPIOC_SYNC or VIDIOCSYNC)
+ *
+ * return value: 1 on success, 0 on error
+ ******************************************************/
+
+static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
+{
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+
+   if (info->software_encoding)
+   {
+      bsync->frame = (settings->mm.frame+1)%settings->softreq.frames;
+      bsync->seq++;
+      if (ioctl(settings->video_fd, VIDIOCSYNC, &(bsync->frame)) < 0)
+      {
+         return 0;
+      }
+      gettimeofday( &(bsync->timestamp), NULL );
+   }
+   else
+   {
+      if (ioctl(settings->video_fd, MJPIOC_SYNC, bsync) < 0)
+      {
+         return 0;
+      }
+   }
+
+   return 1;
+}
+
+
+/******************************************************
  * lavrec_record()
  *   record and process video and audio
  ******************************************************/
 
 static void lavrec_record(lavrec_t *info)
 {
-   int n, write_frame, nerr, nfout;
+   int x, y, write_frame, nerr, nfout, jpegsize=0;
    video_capture_stats stats;
    unsigned int first_lost;
    long audio_offset = 0;
@@ -1177,17 +1519,39 @@ static void lavrec_record(lavrec_t *info)
    struct mjpeg_sync bsync;
    struct timeval audio_tmstmp;
 
+   unsigned char *y_buff = NULL, *u_buff = NULL, *v_buff = NULL;
+   unsigned char *YUV;
+
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    settings->stats = &stats;
 
 #ifndef IRIX
    /* Queue all buffers, this also starts streaming capture */
-   for(n=0;n<settings->breq.count;n++)
+   if (info->software_encoding)
    {
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &n) < 0)
+      x = 1;
+      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+      settings->mm.width = settings->width;
+      settings->mm.height = settings->height;
+      settings->mm.format = VIDEO_PALETTE_YUV422; /* UYVY, only format supported by the zoran-driver */
+
+      y_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
+      u_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
+      v_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
+   }
+   for (x=0;x<(info->software_encoding?settings->softreq.frames:settings->breq.count);x++)
+   {
+      if (!lavrec_queue_buffer(info, &x))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error queuing buffers: %s", (char *)sys_errlist[errno]);
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+         break;
       }
    }
 #else
@@ -1216,7 +1580,7 @@ static void lavrec_record(lavrec_t *info)
    {
 #ifndef IRIX
       /* sync on a frame */
-      if (ioctl(settings->video_fd, MJPIOC_SYNC, &bsync) < 0)
+      if (!lavrec_sync_buffer(info, &bsync))
       {
          if (info->files)
             lavrec_close_files_on_error(info);
@@ -1225,6 +1589,7 @@ static void lavrec_record(lavrec_t *info)
          nerr++;
       }
       stats.num_syncs++;
+
       gettimeofday( &(stats.cur_sync), NULL );
       if(stats.num_syncs==1)
       {
@@ -1266,11 +1631,11 @@ static void lavrec_record(lavrec_t *info)
       {
 
          nfout = 1;
-         n = bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
+         x = bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
          if (info->sync_correction > 0) 
-            nfout += n - stats.num_lost; /* lost since last sync */
-         stats.stats_changed = (stats.num_lost != n);
-         stats.num_lost = n;
+            nfout += x - stats.num_lost; /* lost since last sync */
+         stats.stats_changed = (stats.num_lost != x);
+         stats.num_lost = x;
 
          /* Check if we have to insert/delete frames to stay in sync */
          if (info->sync_correction > 1)
@@ -1295,13 +1660,57 @@ static void lavrec_record(lavrec_t *info)
       /* write it out */
       if(write_frame && nfout > 0)
       {
-         if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
-            bsync.length, nfout) != 1)
-            nerr++; /* Done or error occured */
+#if 0
+         if (info->software_encoding)
+         {
+            pthread_mutex_lock(&(settings->valid_mutex));
+            settings->buffer_valid[settings->currently_encoded_frame] = nfout;
+            pthread_cond_broadcast(&(settings->buffer_filled[settings->currently_encoded_frame]));
+            pthread_mutex_unlock(&(settings->valid_mutex));
+         }
+#endif
+         /* TEST: move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
+         YUV = settings->YUV_buff + (settings->softreq.offsets[bsync.frame]);
+
+         /* sit down for this - it's really easy except if you try to understand it :-) */
+         for (x=0;x<settings->width;x++)
+            if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
+               for (y=0;y<settings->height;y++)
+                  if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
+                     y_buff[(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
+                        YUV[(y*settings->width+x)*2 + 1];
+
+         for (x=0;x<settings->width/2;x++)
+            if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
+               for (y=0;y<settings->height/2;y++)
+                  if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
+                  {
+                     u_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        YUV[(y*settings->width+x)*4];
+                     v_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                        YUV[(y*settings->width+x)*4 + 2];
+                  }
+
+         jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
+            settings->breq.size, info->quality, settings->interlaced,
+            CHROMA420, info->geometry->w, info->geometry->h,
+            y_buff,u_buff, v_buff);
+         if (jpegsize<0)
+         {
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Error encoding frame to JPEG");
+            lavrec_change_state(info, LAVREC_STATE_STOP);
+         }
+         //else
+         //{
+            if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
+               info->software_encoding?jpegsize:bsync.length, nfout) != 1)
+               nerr++; /* Done or error occured */
+         //}
       }
 
       /* Re-queue the buffer */
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &bsync.frame) < 0)
+      if (!lavrec_queue_buffer(info, &(bsync.frame)))
       {
          if (info->files)
             lavrec_close_files_on_error(info);
@@ -1321,11 +1730,11 @@ static void lavrec_record(lavrec_t *info)
             settings->audio_bps) * settings->spas)
             break;
 
-         n = audio_read(settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
+         x = audio_read(settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
             0, &audio_tmstmp, &(settings->astat));
 
-         if (n == 0) break;
-         if (n < 0)
+         if (x == 0) break;
+         if (x < 0)
          {
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error reading audio: %s", audio_strerror());
@@ -1342,15 +1751,15 @@ static void lavrec_record(lavrec_t *info)
          }
 
          /* Adjust for difference at start */
-         if (audio_offset >= n)
+         if (audio_offset >= x)
          {
-            audio_offset -= n;
+            audio_offset -= x;
             continue;
          }
-         n -= audio_offset;
+         x -= audio_offset;
 
          /* Got an audio sample, write it out */
-         if (audio_captured(info, settings->AUDIO_buff+audio_offset, n/settings->audio_bps) != 1)
+         if (audio_captured(info, settings->AUDIO_buff+audio_offset, x/settings->audio_bps) != 1)
             break; /* Done or error occured */
          audio_offset = 0;
 
@@ -1409,7 +1818,7 @@ static void lavrec_recording_cycle(lavrec_t *info)
  *   the video/audio capture thread
  ******************************************************/
 
-static void lavrec_capture_thread(void *arg)
+static void *lavrec_capture_thread(void *arg)
 {
    int n;
    lavrec_t *info = (lavrec_t*)arg;
@@ -1460,11 +1869,24 @@ static void lavrec_capture_thread(void *arg)
 
 #ifndef IRIX
    /* stop streaming capture */
-   n = -1;
-   if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &n) < 0)
+   if (info->software_encoding)
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
+      n = 0;
+      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &n) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+   }
+   else
+   {
+      n = -1;
+      if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &n) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
+      }
    }
 #else
    fprintf(stderr, "Can't stop capturing in IRIX !\n");
@@ -1476,6 +1898,8 @@ static void lavrec_capture_thread(void *arg)
    /* just to be sure */
    if (settings->state != LAVREC_STATE_STOP)
       lavrec_change_state(info, LAVREC_STATE_STOP);
+
+   pthread_exit(NULL);
 }
 
 
@@ -1502,6 +1926,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_format = 'a';
    info->video_norm = 3;
    info->video_src = 3;
+   info->software_encoding = 0;
    info->horizontal_decimation = 4;
    info->vertical_decimation = 4;
    info->geometry = (rect *)malloc(sizeof(rect));
@@ -1511,8 +1936,8 @@ lavrec_t *lavrec_malloc(void)
          "Malloc error, you\'re probably out of memory");
       return NULL;
    }
-   info->geometry->x = 0;
-   info->geometry->y = 0;
+   info->geometry->x = VALUE_NOT_FILLED;
+   info->geometry->y = VALUE_NOT_FILLED;
    info->geometry->w = 0;
    info->geometry->h = 0;
    info->quality = 50;
