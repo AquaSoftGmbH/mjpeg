@@ -472,7 +472,7 @@ void text_changed(GtkWidget *widget, gpointer data)
 void reset_lavrec_tv()
 {
 	gtk_widget_set_usize(GTK_WIDGET(tv), tv_width_capture, tv_height_capture);
-	draw_tv(GTK_WIDGET(tv), port);
+	gtk_tvplug_set(GTK_WIDGET(tv), "port", port);
 }
 
 void file_ok_sel1( GtkWidget *w, GtkFileSelection *fs )

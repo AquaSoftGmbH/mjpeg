@@ -28,6 +28,7 @@
 #include <gdk/gdkx.h>
 #include <X11/extensions/Xv.h>
 #include <X11/extensions/Xvlib.h>
+#include <gtk/gtk.h>
 #include <string.h>
 
 #include "gtktvplug.h"
@@ -97,6 +98,7 @@ static void gtk_tvplug_init (GtkTvPlug *tvplug)
 	tvplug->saturation_adj = NULL;
 	tvplug->contrast_adj = NULL;
 	tvplug->frequency_adj = NULL;
+	tvplug->encoding_list = NULL;
 }
 
 int guess_port(int v)
@@ -154,6 +156,7 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 	}
 	else for (j=0;j<encodings;j++)
 	{
+		tvplug->encoding_list = g_list_append(tvplug->encoding_list, g_strdup(ei[j].name));
 		if (j==0)
 		{
 			tvplug->height_min = tvplug->height_max = ei[j].height;
@@ -174,16 +177,22 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 	}
 	XvFreeEncodingInfo(ei);
 
-	if ( Success != XvQueryBestSize(GDK_DISPLAY(), tvplug->port, 1,
-		tvplug->width_max*2, tvplug->height_max*2, tvplug->width_max*2, tvplug->height_max*2,
-		&(tvplug->width_best), &(tvplug->height_best)) )
-	{
-		g_print("XvQueryBestSize() failed\n");
-	}
+//	if ( Success != XvQueryBestSize(GDK_DISPLAY(), tvplug->port, 1,
+//		tvplug->width_max*2, tvplug->height_max*2, tvplug->width_max*2, tvplug->height_max*2,
+//		&(tvplug->width_best), &(tvplug->height_best)) )
+//	{
+//		g_print("XvQueryBestSize() failed\n");
+//	}
 
 	at = XvQueryPortAttributes(GDK_DISPLAY(),tvplug->port,&attributes);
 	for (j = 0; j < attributes; j++)
 	{
+		if (strcmp(at[j].name, "XV_BRIGHTNESS") &&
+		    strcmp(at[j].name, "XV_CONTRAST") &&
+		    strcmp(at[j].name, "XV_SATURATION") &&
+		    strcmp(at[j].name, "XV_HUE") &&
+		    strcmp(at[j].name, "XV_FREQ"))
+			continue;
 		attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
 		XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &cur);
 		min = at[j].min_value;
@@ -243,6 +252,25 @@ void gtk_tvplug_set(GtkWidget *widget, char *what, int value)
 	else if (strcmp(what, "mute") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_MUTE", False);
+	}
+	else if (strcmp(what, "encoding") == 0)
+	{
+		XvEncodingInfo *ei;
+		gint encodings;
+		atom = XInternAtom(GDK_DISPLAY(), "XV_ENCODING", False);
+		if (Success != XvQueryEncodings(GDK_DISPLAY(), tvplug->port, &encodings, &ei))
+			puts("Oops: XvQueryEncodings failed");
+		else
+		{
+			tvplug->width_best = ei[value].width;
+			tvplug->height_best = ei[value].height;
+		}
+	}
+	else if (strcmp(what, "port") == 0)
+	{
+		tvplug->port = value;
+		gtk_tvplug_redraw(widget);
+		return;
 	}
 	else
 	{
@@ -320,7 +348,7 @@ void show_info()
 			at = XvQueryPortAttributes(GDK_DISPLAY(),p,&attributes);
 			for (j = 0; j < attributes; j++)
 			{
-				fprintf(stderr,"    %s%s%s, %i -> %i",
+				printf("    %s%s%s, %i -> %i",
 				at[j].name,
 				(at[j].flags & XvGettable) ? " get" : "",
 				(at[j].flags & XvSettable) ? " set" : "",
@@ -330,9 +358,9 @@ void show_info()
 				if (at[j].flags & XvGettable)
 				{
 					XvGetPortAttribute(GDK_DISPLAY(), p, attr, &val);
-					fprintf(stderr,", val=%d",val);
+					printf(", val=%d",val);
 				}
-				fprintf(stderr,"\n");
+				printf("\n");
 			}
 			if (at)
 				XFree(at);
@@ -341,7 +369,7 @@ void show_info()
 			printf("  image format list for port %d\n",p);
 			for(j = 0; j < formats; j++)
 			{
-				fprintf(stderr, "    0x%x (%4.4s) %s\n",
+				printf("    0x%x (%4.4s) %s\n",
 				fo[j].id,
 				(char*)&fo[j].id,
 				(fo[j].format == XvPacked) ? "packed" : "planar");
@@ -484,44 +512,22 @@ static void gtk_tvplug_size_allocate (GtkWidget *widget, GtkAllocation *allocati
 	}
 }
 
-void draw_tv(GtkWidget *widget, int port)
+void gtk_tvplug_redraw(GtkWidget *widget)
 {
 	GdkGC *gc;
 	GtkTvPlug *tvplug;
 	int w,h,x,y;
 
+	g_return_if_fail (widget != NULL);
+	g_return_if_fail (GTK_IS_TVPLUG (widget));
+
 	tvplug = GTK_TVPLUG(widget);
 
-	tvplug->port = port;
-
-	w = widget->allocation.width;
-	h = widget->allocation.height;
-	x = 0;
-	y = 0;
-
-	/* draw TV */
+	//XvStopVideo(GDK_DISPLAY(),
+	//	tvplug->port,
+	//	GDK_WINDOW_XWINDOW(widget->window));
 	gc = gdk_gc_new(GTK_WIDGET(tvplug)->window);
 	XvSelectPortNotify(GDK_DISPLAY(), tvplug->port, 1);
-	XvSelectVideoNotify(GDK_DISPLAY(), GDK_WINDOW_XWINDOW(widget->window), 1);
-	XvPutVideo(GDK_DISPLAY(),tvplug->port,GDK_WINDOW_XWINDOW(widget->window),
-		GDK_GC_XGC(gc),x,y,w,h,x,y,w,h);
-	gdk_gc_destroy(gc);
-}
-
-static gint gtk_tvplug_expose (GtkWidget *widget, GdkEventExpose *event)
-{
-	GtkTvPlug *tvplug;
-	GdkGC *gc;
-	int w,h, x, y;
-
-	g_return_val_if_fail (widget != NULL, FALSE);
-	g_return_val_if_fail (GTK_IS_TVPLUG (widget), FALSE);
-	g_return_val_if_fail (event != NULL, FALSE);
-
-	if (event->count > 0)
-		return FALSE;
- 
-	tvplug = GTK_TVPLUG (widget);
 
 	gdk_window_clear_area (widget->window,
 		0, 0,
@@ -538,12 +544,22 @@ static gint gtk_tvplug_expose (GtkWidget *widget, GdkEventExpose *event)
 	x = 0;
 	y = 0;
 
-	gc = gdk_gc_new(GTK_WIDGET(tvplug)->window);
-	XvSelectPortNotify(GDK_DISPLAY(), tvplug->port, 1);
 	XvSelectVideoNotify(GDK_DISPLAY(), GDK_WINDOW_XWINDOW(widget->window), 1);
 	XvPutVideo(GDK_DISPLAY(),tvplug->port,GDK_WINDOW_XWINDOW(widget->window),
 		GDK_GC_XGC(gc),x,y,w,h,x,y,w,h);
 	gdk_gc_destroy(gc);
+}
+
+static gint gtk_tvplug_expose (GtkWidget *widget, GdkEventExpose *event)
+{
+	g_return_val_if_fail (widget != NULL, FALSE);
+	g_return_val_if_fail (GTK_IS_TVPLUG (widget), FALSE);
+	g_return_val_if_fail (event != NULL, FALSE);
+
+	if (event->count > 0)
+		return FALSE;
+ 
+	gtk_tvplug_redraw(widget);
 
 	return FALSE;
 }

@@ -47,6 +47,7 @@ struct _GtkTvPlug
 	GtkAdjustment *saturation_adj;
 	GtkAdjustment *contrast_adj;
 	GtkAdjustment *frequency_adj;
+	GList *encoding_list;
 
 	int width_min;
 	int width_best;
@@ -65,7 +66,7 @@ struct _GtkTvPlugClass
 
 GtkWidget* gtk_tvplug_new (int port);
 guint gtk_tvplug_get_type (void);
-void draw_tv(GtkWidget *widget, int port);
+void gtk_tvplug_redraw(GtkWidget *widget);
 void gtk_tvplug_set(GtkWidget *widget, char *what, int value);
 
 #ifdef __cplusplus

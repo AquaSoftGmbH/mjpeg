@@ -258,7 +258,7 @@ void play_file(GtkWidget *widget, gpointer data)
 void reset_lavplay_tv()
 {
 	gtk_widget_set_usize(GTK_WIDGET(lavplay_tv), tv_width_process, tv_height_process);
-	draw_tv(GTK_WIDGET(lavplay_tv), port);
+	gtk_tvplug_set(GTK_WIDGET(lavplay_tv), "port", port);
 }
 
 void file_ok_sel2( GtkWidget *w, GtkFileSelection *fs )

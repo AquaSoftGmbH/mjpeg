@@ -2,7 +2,7 @@
 .SH NAME
 Linux Video Studio TV - a TV application
 .SH SYNOPSIS
-stv [\-h] [\-v] [\-p num] [\-t] [\-d] [\-c name] [\-s NxN]
+stv [\-h] [\-v] [\-p num] [\-t] [\-d] [\-c name] [\-g WxH+X+Y] [\l device] [\m device]
 .SH DESCRIPTION
 \fBLinux Video Studio TV\fP is a simple TV-app for linux, based
 on Gtk+. It works, that's all. It has no fancy special features,
@@ -24,11 +24,19 @@ By default (if you omit this option or if you give 0 as an argument),
 Linux Video Studio will try to select one automatically. You can select
 another one with this option or in the Options window.
 .TP 8
+.B \-l device
+The Linux Infrared Remote Control device file (default: /dev/lircd)
+.TP 8
+.B \-m device
+The audio device to use for volume control
+.TP 8
 .B \-t
 Prints Video4Linux Xvideo ports information and quits.
 .TP 8
-.B \-s NxN
-The preferred size of the video window (width x height)
+.B \-g WxH+X+Y
+The preferred size of the video window (width x height), with the offset
+in pixels (X and Y) which define the top left position of where to place
+the window.
 .TP 8
 .B \-d
 Enables verbose/debugging mode.
