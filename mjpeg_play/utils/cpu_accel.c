@@ -112,7 +112,7 @@ static int x86_accel (void)
 	/* Slightly weirdified cpuid that preserves the ebx and edi required
 	   by gcc for PIC offset table and frame pointer */
 
-#ifdef ARCH_X86_64
+#ifdef __LP64__
 #  define REG_b "rbx"
 #  define REG_S "rsi"
 #else
