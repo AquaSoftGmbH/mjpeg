@@ -8,6 +8,9 @@ stamp-h.in
 configure
 config.log
 config.cache
+config.guess
 config.status
+config.sub
 .deps
 confdefs.h
+ltmain.sh
