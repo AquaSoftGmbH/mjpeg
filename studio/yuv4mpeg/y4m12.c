@@ -90,7 +90,7 @@ y4m12_read_header (y4m12_t *y4m12, int fd)
           fprintf(stderr, "Failed to write 1.5 pipe info to fake pipe\n");
           return -1;
         }
-        if (y4m_read_stream_header(fake_fd[0], y4m12->v_150_streaminfo) < 0)
+        if (y4m_read_stream_header(fake_fd[0], y4m12->v_150_streaminfo) != Y4M_OK)
         {
           fprintf(stderr, "Failed to read 1.f pipe info from fake pipe\n");
           return -1;
@@ -132,7 +132,7 @@ y4m12_read_frame (y4m12_t *y4m12, int fd)
   {
     y4m12->v_140_width = y4m12->width;
     y4m12->v_140_height = y4m12->height;
-    if (yuv_read_frame(fd, y4m12->buffer, y4m12->v_140_width, y4m12->v_140_height) < 0)
+    if (yuv_read_frame(fd, y4m12->buffer, y4m12->v_140_width, y4m12->v_140_height) < 1)
     {
       fprintf(stderr, "Failed to read 1.4 frame\n");
       return -1;
@@ -144,7 +144,7 @@ y4m12_read_frame (y4m12_t *y4m12, int fd)
   {
     y4m_si_set_height(y4m12->v_150_streaminfo, y4m12->height);
     y4m_si_set_width(y4m12->v_150_streaminfo, y4m12->width);
-    if (y4m_read_frame(fd, y4m12->v_150_streaminfo, y4m12->v_150_frameinfo, y4m12->buffer) < 0)
+    if (y4m_read_frame(fd, y4m12->v_150_streaminfo, y4m12->v_150_frameinfo, y4m12->buffer) != Y4M_OK)
     {
       fprintf(stderr, "Failed to read 1.5 frame\n");
       return -1;
@@ -177,7 +177,7 @@ y4m12_write_header(y4m12_t *y4m12, int fd)
   {
     y4m_si_set_height(y4m12->v_150_streaminfo, y4m12->height);
     y4m_si_set_width(y4m12->v_150_streaminfo, y4m12->width);
-    if (y4m_write_stream_header(fd, y4m12->v_150_streaminfo) < 0)
+    if (y4m_write_stream_header(fd, y4m12->v_150_streaminfo) != Y4M_OK)
     {
       fprintf(stderr, "Failed to write 1.5 header\n");
       return -1;
@@ -218,7 +218,7 @@ y4m12_write_frame (y4m12_t *y4m12, int fd)
   {
     y4m_si_set_height(y4m12->v_150_streaminfo, y4m12->height);
     y4m_si_set_width(y4m12->v_150_streaminfo, y4m12->width);
-    if (y4m_write_frame(fd, y4m12->v_150_streaminfo, y4m12->v_150_frameinfo, y4m12->buffer) < 0)
+    if (y4m_write_frame(fd, y4m12->v_150_streaminfo, y4m12->v_150_frameinfo, y4m12->buffer) != Y4M_OK)
     {
       fprintf(stderr, "Failed to write 1.5 frame\n");
       return -1;
