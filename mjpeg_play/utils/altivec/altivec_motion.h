@@ -47,7 +47,7 @@
 extern "C" {
 #endif
 
-void enable_altivec_motion();
+void enable_altivec_motion(void);
 
 ALTIVEC_FUNCTION(build_sub44_mests, int,
   (
