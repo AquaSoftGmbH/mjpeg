@@ -30,6 +30,7 @@
 #include "yuv4mpeg_intern.h"
 #include "mjpeg_logging.h"
 
+
 static int _y4mparam_allow_unknown_tags = 1;  /* default is forgiveness */
 
 static void *(*_y4m_alloc)(size_t bytes) = malloc;
