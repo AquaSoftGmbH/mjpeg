@@ -26,7 +26,7 @@ bitrate=""
 sleep=0
 sync="-s"
 decode="YUVh"
-while getopts ":o:b:s:STXh" opt
+while getopts ":o:b:s:VSTXh" opt
 do
 case $opt in
 s) sleep=$OPTARG
@@ -70,6 +70,7 @@ done
 shift $[$OPTIND-1]
 sleep $[$sleep*60]
 #cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
+cat $* |  mpeg2dec -s -o $decode |  ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
 fifo=/tmp/tcfifo$$
 sync=/tmp/sync$$
 mkfifo $fifo
