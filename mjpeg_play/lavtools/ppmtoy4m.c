@@ -228,10 +228,32 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
  *          -1 - failure
  */
 
+
+#define DO_READ_NUMBER(var)                                     \
+  do {                                                          \
+    if (!isdigit(s[0]))                                         \
+      mjpeg_error_exit1("PPM read error:  bad char\n");         \
+    (var) = ((var) * 10) + (s[0] - '0');                        \
+  } while (((n = read(fd, s, 1)) == 1) && (!isspace(s[0])));    \
+  if (n <= 0) return -1;                                        
+
+
+
+#define DO_SKIP_WHITESPACE()                                     \
+  incomment = 0;                                                 \
+  while ( ((n = read(fd, s, 1)) == 1) &&                         \
+	  ((isspace(s[0])) || (s[0] == '#') || (incomment)) ) {  \
+    if (s[0] == '#') incomment = 1;                              \
+    if (s[0] == '\n') incomment = 0;                             \
+  }                                                              \
+  if (n <= 0) return -1;                                         
+
+
 static
 int read_ppm_header(int fd, int *width, int *height)
 {
   char s[6];
+  int incomment;
   int n;
   int maxval = 0;
   
@@ -246,38 +268,13 @@ int read_ppm_header(int fd, int *width, int *height)
   if ((n < 0) || (strncmp(s, "P6", 2)))
     mjpeg_error_exit1("Bad Raw PPM magic!\n");
 
-  /* skip whitespace */
-  while (((n = read(fd, s, 1)) == 1) && (isspace(s[0]))) {}
-  if (n <= 0) return -1;
-
-  /* read width */
-  do {
-    if (!isdigit(s[0]))
-      mjpeg_error_exit1("PPM read error:  bad char\n");
-    *width = (*width * 10) + (s[0] - '0');
-  } while (((n = read(fd, s, 1)) == 1) && (!isspace(s[0])));
-
-  /* skip whitespace */
-  while (((n = read(fd, s, 1)) == 1) && (isspace(s[0]))) {}
-  if (n <= 0) return -1;
-
-  /* read height */
-  do {
-    if (!isdigit(s[0]))
-      mjpeg_error_exit1("PPM read error:  bad char\n");
-    *height = (*height * 10) + (s[0] - '0');
-  } while (((n = read(fd, s, 1)) == 1) && (!isspace(s[0])));
-
-  /* skip whitespace */
-  while (((n = read(fd, s, 1)) == 1) && (isspace(s[0]))) {}
-  if (n <= 0) return -1;
-
-  /* read maxval */
-  do {
-    if (!isdigit(s[0]))
-      mjpeg_error_exit1("PPM read error:  bad char\n");
-    maxval = (maxval * 10) + (s[0] - '0');
-  } while (((n = read(fd, s, 1)) == 1) && (!isspace(s[0])));
+  incomment = 0;
+  DO_SKIP_WHITESPACE();
+  DO_READ_NUMBER(*width);
+  DO_SKIP_WHITESPACE();
+  DO_READ_NUMBER(*height);
+  DO_SKIP_WHITESPACE();
+  DO_READ_NUMBER(maxval);
 
   if (maxval != 255)
     mjpeg_error_exit1("Expecting maxval == 255, not %d!\n", maxval);
