@@ -204,7 +204,6 @@ static int y4m_snprint_xtags(char *s, int maxn, y4m_xtag_list_t *xtags)
 {
   int i, room;
   
-  fprintf(stderr, "print xtags\n");
   for (i = 0, room = maxn - 1; i < xtags->count; i++) {
     int n = snprintf(s, room + 1, " %s", xtags->tags[i]);
     if ((n < 0) || (n > room)) return Y4M_ERR_HEADER;
@@ -234,14 +233,11 @@ const char *y4m_xtag_get(const y4m_xtag_list_t *xtags, int n)
 
 int y4m_xtag_add(y4m_xtag_list_t *xtags, const char *tag)
 {
-  fprintf(stderr, "add tag '%s'  count= %d  tagptr = %p\n",
-	  tag, xtags->count, xtags->tags[xtags->count]);
   if (xtags->count >= Y4M_MAX_XTAGS) return Y4M_ERR_XXTAGS;
   if (xtags->tags[xtags->count] == NULL) 
     xtags->tags[xtags->count] = y4m_new_xtag();
   strncpy(xtags->tags[xtags->count], tag, Y4M_MAX_XTAG_SIZE);
   (xtags->count)++;
-  fprintf(stderr, "add tag done '%s'\n", tag);
   return Y4M_OK;
 }
 
@@ -477,7 +473,6 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
   if( i->width == Y4M_UNKNOWN || i->height == Y4M_UNKNOWN )
 	  return Y4M_ERR_HEADER;
   /* ta da!  done. */
-  fprintf(stderr, "parsetags done.\n");
   return Y4M_OK;
 }
 
