@@ -85,6 +85,8 @@ int despeckle_filter = 1;       /* set to 0 if despeckle filter should not be us
 int verbose = 0;                /* set to 1 and it's very noisy on stderr... */
 int CPU_CAP = 0;                /* 0== no Accel - see cpu_accel.h  */
 int BW_mode = 0;                /* normaly use color mode */
+float luma_contrast=100;
+float chroma_contrast=100;
 
 /*****************************************************************************
  * some global variables needed for handling the YUV planar frames.          *
@@ -121,7 +123,7 @@ int matrix[1024][768][2];
 uint32_t SAD_matrix[1024][768];
 
 /* allways keep a few possibilities */
-int save_population=3;             // This should be sufficient for 
+int save_population=4;             // This should be sufficient for 
                                    // nearly every type of image&motion
 int best_match_44_x[16];
 int best_match_44_y[16];
@@ -153,6 +155,7 @@ uint32_t mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_fra
 void copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3]);
 void calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3]);
 void transform_frame (uint8_t * avg[3]);
+void contrast_frame (uint8_t * yuv[3]);
 
 /* SAD functions */
 uint32_t
@@ -288,7 +291,7 @@ main (int argc, char *argv[])
 
   /* process commandline */
 
-  while ((c = getopt (argc, argv, "?hvBb:r:fDI")) != -1)
+  while ((c = getopt (argc, argv, "?hvb:r:fDIL:C:B")) != -1)
     {
       switch (c)
         {
@@ -335,6 +338,14 @@ main (int argc, char *argv[])
 	case 'B':
 	  BW_mode=true;
           mjpeg_log (LOG_INFO, "Using B&W mode. This kills all chroma.\n");
+	  break;
+	case 'L':
+          sscanf( optarg, "%f", &luma_contrast);
+          mjpeg_log (LOG_INFO, "Luminance-contrast: %3.0f%% \n",luma_contrast);
+	  break;
+	case 'C':
+          sscanf( optarg, "%f", &chroma_contrast);
+          mjpeg_log (LOG_INFO, "Chrominance-contrast: %3.0f%% \n",luma_contrast);
 	  break;
         }
     }
@@ -481,24 +492,21 @@ main (int argc, char *argv[])
 
       /* if needed, deinterlace frame */
 
+	if(luma_contrast!=100 || chroma_contrast!=100)
+	    contrast_frame (yuv);
+
 	if (deinterlace)
 	    (*deinterlace_frame) (yuv);
-
+	
 	if (BW_mode)
 	    kill_chroma (yuv);
 
-      //debug stuff
-      //memcpy(yuv2[0],yuv[0],width*height);
-
       /* should we only deinterlace frames ? */
-      if (!deinterlace_only)
-      {
-	  /* despeckling */
-	  //despeckle_frame_soft (yuv);
-
-	  /* main denoise processing */
-	  denoise_frame (yuv);
-      }
+	if (!deinterlace_only)
+	{
+	    /* main denoise processing */
+	    denoise_frame (yuv);
+	}
 
 #if 0
       {
@@ -612,9 +620,25 @@ display_help ()
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n -B  B&W mode. This helps a lot for old films ...            ");
+  fprintf (stderr,"\n     It just kills all chrominance information before any    ");
+  fprintf (stderr,"\n     processing takes place.                                 ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -L  Luminance contrast.                                     ");
+  fprintf (stderr,"\n -C  Chrominance contrast.                                   ");
+  fprintf (stderr,"\n     These options can be useful if you have recorded some   ");
+  fprintf (stderr,"\n     neat material, but with slightly wrong contrast settings");
+  fprintf (stderr,"\n     (Happens most often with BTTV-Cards...) and you don't   ");
+  fprintf (stderr,"\n     want to record it again (which would be better...).     ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     yuvdenoise -L 100 -C 100                                ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     This leaves color and brightnes untouched. Sensfull     ");
+  fprintf (stderr,"\n     values range from 50...150 (= 50%% ... 150%% contrast).   ");
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n -I  Deinterlace only. Switch off any other processing.      ");
+  fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n");
   fprintf (stderr,"\n");
   exit (0);
@@ -1934,7 +1958,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 
         if (d < SAD) // find some good matches...
           {
-	      for(i=1;i<2;i++)
+	      for(i=1;i<save_population ;i++)
 	      {
 		  best_match_44_x[i] = best_match_44_x[i-1];
 		  best_match_44_y[i] = best_match_44_y[i-1];
@@ -1969,7 +1993,7 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
     
     nr_of_22_matches=0;
 
-    i=2;
+    i=save_population;
     while(i--)
     {
 	// Use the four best matches from 4x4 search
@@ -2000,7 +2024,7 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 		    int j;
 		    nr_of_22_matches++;
 
-		    for(j=1;j<2;j++)
+		    for(j=1;j<save_population;j++)
 		    {
 			best_match_22_x[j] = best_match_22_x[j-1];
 			best_match_22_y[j] = best_match_22_y[j-1];
@@ -2031,7 +2055,7 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
     dr=dx + dy* width;
     dr_uv=dr>>2;
 
-    i=2;
+    i=save_population/2;
     while(i--)
     {
 	// Use the best matches from 2x2 search
@@ -2375,6 +2399,7 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 			       (x) + (y) * width, 2);
 #endif
 
+#if 0
         vector_SAD += calc_SAD_uv (target[1],
                                    ref_frame[1],
                                    ((x + dx) >>1) + ((y + dy)>>1) * uv_width,
@@ -2384,6 +2409,17 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    ref_frame[2],
                                    ((x + dx) >>1) + ((y + dy)>>1) * uv_width,
                                    ((x)      >>1) + ((y)     >>1) * uv_width, 2);
+#else
+        vector_SAD += calc_SAD_uv (sub_t4[1],
+                                   sub_r4[1],
+                                   ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<1;
+
+        vector_SAD += calc_SAD_uv (sub_t4[2],
+                                   sub_r4[2],
+                                   ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<1;
+#endif
 
 #if 0
 	if(vector_SAD>center_SAD)
@@ -2401,8 +2437,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 2000 + avrg_SAD * 100;
-  mean_SAD /= 2100;
+  mean_SAD = mean_SAD * 1000 + avrg_SAD * 100;
+  mean_SAD /= 1100;
 
   if (mean_SAD < 50)            /* don't go too low !!! */
       mean_SAD = 50;            /* a SAD of 100 is nearly noisefree source material */
@@ -2502,7 +2538,7 @@ void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]
   for(dy=0;dy<BY0;dy++)
     for(dx=0;dx<width;dx++)
     {
-      *(frame[0]+dx+dy*width)=0;
+      *(frame[0]+dx+dy*width)=16;
       *(frame[1]+dx/2+dy/2*uv_width)=128;
       *(frame[2]+dx/2+dy/2*uv_width)=128;
     }
@@ -2510,7 +2546,7 @@ void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]
   for(dy=BY1;dy<height;dy++)
     for(dx=0;dx<width;dx++)
     {
-      *(frame[0]+dx+dy*width)=0;
+      *(frame[0]+dx+dy*width)=16;
       *(frame[1]+dx/2+dy/2*uv_width)=128;
       *(frame[2]+dx/2+dy/2*uv_width)=128;
     }
@@ -2518,7 +2554,7 @@ void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]
   for(dy=0;dy<height;dy++)
     for(dx=0;dx<BX0;dx++)
     {
-      *(frame[0]+dx+dy*width)=0;
+      *(frame[0]+dx+dy*width)=16;
       *(frame[1]+dx/2+dy/2*uv_width)=128;
       *(frame[2]+dx/2+dy/2*uv_width)=128;
     }
@@ -2526,7 +2562,7 @@ void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]
   for(dy=0;dy<height;dy++)
     for(dx=BX1;dx<width;dx++)
     {
-      *(frame[0]+dx+dy*width)=0;
+      *(frame[0]+dx+dy*width)=16;
       *(frame[1]+dx/2+dy/2*uv_width)=128;
       *(frame[2]+dx/2+dy/2*uv_width)=128;
     }
@@ -2612,11 +2648,54 @@ kill_chroma (uint8_t * avg[3])
     
 }
 
+void contrast_frame (uint8_t * yuv[3])
+{
+    int c;
+    int value;
+    uint8_t * p;
 
+    p=yuv[0];
 
+    for(c=0;c<(width*height);c++)
+    {
+	value=*(p);
 
+	value-=128;
+	value*=luma_contrast/100;
+	value+=128;
 
+	value=(value>235)? 235:value;
+	value=(value<16)?   16:value;
 
+	*(p++)=value;
+    }
 
+    p=yuv[1];
+    for(c=0;c<(uv_width*uv_height);c++)
+    {
+	value=*(p);
 
+	value-=128;
+	value*=chroma_contrast/100;
+	value+=128;
 
+	value=(value>235)? 235:value;
+	value=(value<16)?   16:value;
+
+	*(p++)=value;
+    }
+    p=yuv[2];
+    for(c=0;c<(uv_width*uv_height);c++)
+    {
+	value=*(p);
+
+	value-=128;
+	value*=chroma_contrast/100;
+	value+=128;
+
+	value=(value>235)? 235:value;
+	value=(value<16)?   16:value;
+
+	*(p++)=value;
+    }
+}
