@@ -24,6 +24,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <string.h>
 #include <lav_io.h>
 #include <editlist.h>
 #include <math.h>
