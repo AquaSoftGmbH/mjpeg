@@ -171,7 +171,8 @@ void frame_YUV422_to_YUV420P(uint8_t **, uint8_t *, int , int );
  */
 
 /*
- * Unpack libdv's 4:2:2-packed into our 4:2:0-planar
+ * Unpack libdv's 4:2:2-packed into our 4:2:0-planar,
+ *  treating each interlaced field independently
  *
  */
 void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
@@ -185,8 +186,17 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
     cb = output[1];
     cr = output[2];
 
-    for (i=0; i<height; i+=2) {
+    for (i=0; i<height; i+=4) {
 	/* process two scanlines (one from each field, interleaved) */
+        /* ...top-field scanline */
+        for (j=0; j<w2; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);
+        }
+        /* ...bottom-field scanline */
         for (j=0; j<w2; j++) {
             /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
             *(y++) =  *(input++);
@@ -195,6 +205,15 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
             *(cr++) = *(input++);
         }
 	/* process next two scanlines (one from each field, interleaved) */
+        /* ...top-field scanline */
+	for (j=0; j<w2; j++) {
+	  /* skip every second line for U and V */
+	  *(y++) = *(input++);
+	  input++;
+	  *(y++) = *(input++);
+	  input++;
+	}
+        /* ...bottom-field scanline */
 	for (j=0; j<w2; j++) {
 	  /* skip every second line for U and V */
 	  *(y++) = *(input++);
