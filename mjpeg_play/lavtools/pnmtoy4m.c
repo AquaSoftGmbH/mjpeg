@@ -627,11 +627,12 @@ void read_pnm_data(int fd, uint8_t *planes[],
       break;
     case TUPL_RGB_ALPHA:
       read_rgba_raw(fd, planes, rowbuffer, pnm->width, pnm->height);
+      break;
     case TUPL_GRAY_ALPHA:
     case TUPL_BW:
     case TUPL_BW_ALPHA:
     case TUPL_UNKNOWN:
-      assert(0);
+      mjpeg_error_exit1("Unknown/unhandled PAM tuple/format.");
       break;
     }
     break;
@@ -639,7 +640,7 @@ void read_pnm_data(int fd, uint8_t *planes[],
   case FMT_PGM_PLAIN:
   case FMT_PPM_PLAIN:
   case FMT_UNKNOWN:
-    assert(0);
+    mjpeg_error_exit1("Unknown/unhandled PNM format.");
     break;
   }
 }
@@ -666,8 +667,11 @@ int read_pnm_frame(int fd, pnm_info_t *pnm,
   err = read_pnm_header(fd, &new_pnm); //&format, &width, &height);
   if (err > 0) return 1;  /* EOF */
   if (err < 0) return -1; /* error */
-  mjpeg_debug("Got PNM header:  [%s] %dx%d",
-              magics[new_pnm.format], new_pnm.width, new_pnm.height);
+  mjpeg_debug("Got PNM header:  [%s%s%s] %dx%d",
+              magics[new_pnm.format],
+              (new_pnm.format == FMT_PAM) ? " " : "",
+              (new_pnm.format == FMT_PAM) ? tupls[new_pnm.tupl].tag : "",
+              new_pnm.width, new_pnm.height);
 
   if (pnm->width == 0) { /* first time */
     mjpeg_debug("Initializing PNM read_frame");
