@@ -60,7 +60,6 @@ AC_ARG_WITH(jpeg-mmx,
             AC_HELP_STRING([--with-jpeg-mmx=PFX],
                            [Prefix where jpeg-mmx is installed (optional).]))
 
-
 AC_GNU_SOURCE
 
 dnl Initialize libtool
@@ -82,7 +81,6 @@ dnl configure AS and ASFLAGS... a pity nasm doesn't take  flags similar to cc
 dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
-
 
 dnl maddog:  What about CHECK-ALLOCA????
 AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
@@ -162,9 +160,6 @@ dnl Figure out how to build with POSIX threads.
 dnl (Creates PTHREAD_LIBS, PTHREAD_CFLAGS, PTHREAD_CC,
 dnl  and defines HAVE_PTHREAD.)
 dnl *********************************************************************
-dnl ACX_PTHREAD([have_pthread=true
-dnl              AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix threads are available])],
-dnl             [have_pthread=false])
 ACX_PTHREAD
 dnl maddog: The following matches the original pthread-checking behavior
 dnl         in this script, i.e. "If a CFLAG is necessary, use it for 
@@ -173,7 +168,6 @@ dnl         The other option is to stick PTHREAD_CFLAGS/CC in Makefile.am....
 CFLAGS="$CFLAGS $PTHREAD_CFLAGS"
 CXXFLAGS="$CXXFLAGS $PTHREAD_CFLAGS"
 CC="$PTHREAD_CC"
-
 
 oldLIBS="$LIBS"
 LIBS="$LIBS $PTHREAD_LIBS"
@@ -230,25 +224,6 @@ if test x$have_jpeg = xfalse ; then
       have_jpeg=true ],,)
 fi
 
-dnl *********************************************************************
-dnl Check for the libquicktime library
-dnl   (creates LIBQUICKTIME_CFLAGS, LIBQUICKTIME_LIBS;
-dnl    defines HAVE_LIBQUICKTIME)
-dnl *********************************************************************
-dnl have_quicktime=false
-dnl if test x$with_quicktime != xno ; then
-dnl   AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
-dnl   AC_MSG_CHECKING([for libquicktime])
-dnl   if test x"$LQT_CONFIG" = x"no" ; then
-dnl     AC_MSG_RESULT(no)
-dnl   else
-dnl     have_quicktime=true
-dnl     QUICKTIME_LIBS=`$LQT_CONFIG --libs`
-dnl     QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
-dnl     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
-dnl     AC_MSG_RESULT(yes)
-dnl   fi
-dnl fi
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
   AC_PATH_LIB_LIBCONFIG
@@ -256,7 +231,6 @@ if test x$with_libquicktime != xno ; then
               [have_libquicktime=true
                AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
 fi
-
 
 dnl *********************************************************************
 dnl Check for PNG library
@@ -268,17 +242,10 @@ if test x$with_libpng != xno ; then
 fi
 AM_CONDITIONAL(HAVE_LIBPNG, test x$have_libpng = xtrue)
 
-
 dnl *********************************************************************
 dnl Check for libdv
 dnl   (creates LIBDV_CFLAGS, LIBDV_LIBS; defines HAVE_LIBDV)
 dnl *********************************************************************
-dnl PKG_CHECK_MODULES(DV, [libdv >= 0.9],
-dnl                  [AC_CHECK_LIB(dv, dv_decoder_free,
-dnl                                [have_dv=true
-dnl                                 AC_DEFINE(HAVE_DV, 1, [libdv is present])],
-dnl                                [have_dv=false])],
-dnl                  [have_dv=false])
 have_libdv=false
 if test x$with_libdv != xno ; then
   PKG_CHECK_MODULES(LIBDV, [libdv >= 0.9],
@@ -287,7 +254,6 @@ if test x$with_libdv != xno ; then
                     [have_libdv=false])
 fi
 
-
 dnl *********************************************************************
 dnl  Look for X Window System.
 dnl   (creates X_CFLAGS, X_PRE_LIBS, X_EXTRA_LIBS, X_LIBS;
@@ -295,33 +261,8 @@ dnl    defines X_DISPLAY_MISSING if no X)
 dnl *********************************************************************
 AC_PATH_XTRA
 
-dnl maddog: the old way...
-dnl have_x=false
-dnl if test x"-DX_DISPLAY_MISSING" = x"$X_CFLAGS"; then
-dnl   AC_MSG_WARN(can not find X11)
-dnl else
-dnl   have_x=true
-dnl   AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
-dnl fi
-dnl AM_CONDITIONAL(HAVE_X, test x$have_x = xtrue)
-
-dnl maddog: a better way...
-dnl if test x"$no_x" = xyes ; then
-dnl if test x"$have_x" != xyes ; then
-dnl   AC_MSG_WARN([can not find X11])
-dnl else
-dnl   AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
-dnl fi
-dnl AM_CONDITIONAL(HAVE_X, test x$no_x != xyes)
-
 dnl maddog:  even better -- all that other stuff was unnecessary.
 AM_CONDITIONAL(HAVE_X, test x$have_x = xyes)
-
-dnl AC-_SUBST(X_CFLAGS)
-dnl AC-_SUBST(X_PRE_LIBS)
-dnl AC-_SUBST(X_EXTRA_LIBS)
-dnl AC-_SUBST(X_LIBS)
-dnl AC_SUBST(x_libraries)
 
 dnl ********************************************************************
 dnl Check to see if __progname is provided by the system
@@ -392,25 +333,6 @@ case $host_cpu in
     AC_MSG_RESULT(no)
     ;;
 esac
-
-dnl #maddog  cache-happy version of above:
-dnl AC_CACHE_CHECK([for host x86 architecture (IA32)],
-dnl                [mjt_cv_host_arch_x86],
-dnl                [case $host_cpu in
-dnl                   i[[3-7]]86)  mjt_cv_host_arch_x86=true  ;;
-dnl                   *)           mjt_cv_host_arch_x86=false ;;
-dnl                 esac])
-dnl 
-dnl AC_CACHE_CHECK([for host PowerPC architecture],
-dnl                [mjt_cv_host_arch_ppc],
-dnl                [case $host_cpu in
-dnl                   powerpc)  mjt_cv_host_arch_ppc=true  ;;
-dnl                   *)        mjt_cv_host_arch_ppc=false ;;
-dnl                 esac])
-dnl #if test x$mjt_cv_extern___progname = xyes ; then
-dnl #  AC_DEFINE([HAVE___PROGNAME], 1, [Is __progname defined by system?])
-dnl #fi
-
 
 AC_MSG_CHECKING([for PowerPC architecture])
 if test "$host_cpu" = "powerpc" ; then
@@ -526,10 +448,8 @@ if test x$have_x86cpu = xtrue -o x$have_ppccpu = xtrue; then
   AC_MSG_RESULT($ARCHFLAGS)
 fi
 
-
 dnl *********************************************************************
 dnl Check if Z/Alpha has been enabled. 
-dnl 
 
 use_zalpha=false
 if test "x$enable_zalpha" = "xyes" ; then
@@ -539,7 +459,7 @@ AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
 
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles
-dnl
+
 AM_CONDITIONAL(HAVE_ASM_MMX, test x$have_asm_mmx = xtrue)
 AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
@@ -559,7 +479,6 @@ dnl *********************************************************************
 dnl Check for what warnings we want gcc to use and adjust the CFLAGS
 dnl as needed. This only works for GCC.
 dnl We do this last as it can screw up library detection etc...
-dnl 
 
 dnl maddog:  check out AC-COMPILE-WARNINGS ???????
 
@@ -634,7 +553,6 @@ AC_CONFIG_FILES([
      mjpegtools.spec
      ])
 AC_OUTPUT
-
 
 dnl ************************************************************************
 dnl Summarize the config for the user.
