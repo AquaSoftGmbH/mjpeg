@@ -235,10 +235,10 @@ fi
 
 have_libquicktime=false
 if test x$with_libquicktime != xno ; then
-  AC_PATH_LIB_LIBCONFIG
-  AC_PATH_LIB(libquicktime, [], [], [lqt-config], [],
-              [have_libquicktime=true
-               AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
+  PKG_CHECK_MODULES(LIBQUICKTIME, [libquicktime >= 0.9.4],
+                    [have_libquicktime=true
+                     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime >= 0.9.4 present])],
+                    [have_libquicktime=false])
 fi
 
 dnl *********************************************************************
