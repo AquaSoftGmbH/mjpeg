@@ -32,6 +32,6 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 
 mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libmjpegutils.a $(top_srcdir)/utils/libmotion.a
 
-mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lmjpegutils @PTHREAD_LIBS@ $(LIBM_LIBS)
+mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lmjpegutils @PTHREAD_LIBS@ @LIBGETOPT_LIB@ $(LIBM_LIBS)
 
 %.o: %.s ; 	$(AS) $(ASFLAGS) -o $@ $<

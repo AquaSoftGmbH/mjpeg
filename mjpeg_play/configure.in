@@ -63,7 +63,13 @@ dnl Initialize libtool
 AM_PROG_LIBTOOL
 
 AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h getopt.h alloca.h sys/soundcard.h)
-AC_CHECK_FUNCS(getopt_long)
+
+AC_CHECK_FUNC(getopt_long,[AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
+[ # FreeBSD and BSD/OS have a gnugetopt library for this:
+  AC_CHECK_LIB([gnugetopt],[getopt_long],
+  [AC_DEFINE(HAVE_GETOPT_LONG,1,getopt support) LIBGETOPT_LIB="-lgnugetopt"])])
+AC_SUBST(LIBGETOPT_LIB)
+
 AC_TYPE_SIGNAL
 
 OS_ARCH=`uname -s | sed -e 's|/|_|g'`
