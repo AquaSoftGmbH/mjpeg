@@ -32,7 +32,11 @@ make
 make install
 
 %setup -b 0 -n mjpegtools-1.4.0
-./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch --with-jpeg-mmx=`pwd`/../jpeg-mmx --with-movtar-prefix=`pwd`/../libmovtar-0.1.2 --with-movtar-exec-prefix=/usr/local
+./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch \
+	--with-jpeg-mmx=`pwd`/../jpeg-mmx \
+	--with-movtar-prefix=`pwd`/../libmovtar-0.1.2 \
+	--with-movtar-exec-prefix=/usr/local \
+	--enable-large-file --enable-cmov-extension
 
 %build
 make
@@ -62,6 +66,7 @@ make install
 /usr/local/bin/matteblend.flt
 /usr/local/bin/lavpipe
 /usr/local/bin/yuvscaler
+/usr/local/bin/yuvplay
 /usr/local/bin/mp2enc
 /usr/local/bin/mplex
 /usr/local/bin/mpeg2enc
