@@ -498,7 +498,7 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
   if ((*point).muxvbr[0] == '-')
     fprintf(fp,"Encode_Mux_VBR = %s\n", (*point).muxvbr);
   else
-    fprintf(fp,"Encode_Mux_VBR = %s\n", "as is");
+    fprintf(fp,"Encode_Mux_VBR = %s\n", "from stream");
 
   fprintf(fp,"Encode_Stream_Datarate = %i\n", (*point).streamdatarate);
   fprintf(fp,"Encode_Decoder_Buffer = %i\n", (*point).decoderbuffer);
