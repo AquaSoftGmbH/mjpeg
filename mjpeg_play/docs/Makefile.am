@@ -6,8 +6,11 @@ man_MANS = lavplay.1  lavrec.1  mjpegtools.1  mpeg2enc.1  mplex.1 \
         ppmtoy4m.1 y4mtoppm.1 y4mcolorbars.1 \
         yuvkineco.1 yuvycsnoise.1 yuvmedianfilter.1 \
 	lav2mpeg.1 yuv4mpeg.5 yuvfps.1 img2mpg.1
+#We need those 2 hooks to install and deinstall the info doku properly
 install-exec-hook:
 	./install-info.sh $(infodir)
+uninstall-local:
+	./uninstall-info.sh $(infodir)
 EXTRA_DIST = $(man_MANS) authors.sgml lavtools.sgml .cvsignore
 
 MAINTAINERCLEANFILES = Makefile.in
