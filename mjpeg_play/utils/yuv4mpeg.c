@@ -634,10 +634,13 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
   /*      - Width and Height are required. */
   if ((i->width == Y4M_UNKNOWN) || (i->height == Y4M_UNKNOWN))
     return Y4M_ERR_HEADER;
-  /*      - Non-420jpeg chroma and mixed interlace require level >= 1 */
+  /*      - Non-420 chroma and mixed interlace require level >= 1 */
   if (_y4mparam_feature_level < 1) {
-    if ((i->chroma != Y4M_CHROMA_420JPEG) ||
-	(i->interlace == Y4M_ILACE_MIXED))
+    if ((i->chroma != Y4M_CHROMA_420JPEG) &&
+	(i->chroma != Y4M_CHROMA_420MPEG2) &&
+	(i->chroma != Y4M_CHROMA_420PALDV))
+      return Y4M_ERR_FEATURE;
+    if (i->interlace == Y4M_ILACE_MIXED)
       return Y4M_ERR_FEATURE;
   }
 
@@ -793,7 +796,11 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
   if ((i->chroma == Y4M_UNKNOWN) || (chroma_keyword == NULL))
     return Y4M_ERR_HEADER;
   if (_y4mparam_feature_level < 1) {
-    if ((i->chroma != Y4M_CHROMA_420JPEG) || (i->interlace == Y4M_ILACE_MIXED))
+    if ((i->chroma != Y4M_CHROMA_420JPEG) &&
+	(i->chroma != Y4M_CHROMA_420MPEG2) &&
+	(i->chroma != Y4M_CHROMA_420PALDV))
+      return Y4M_ERR_FEATURE;
+    if (i->interlace == Y4M_ILACE_MIXED)
       return Y4M_ERR_FEATURE;
   }
   y4m_ratio_reduce(&rate);
