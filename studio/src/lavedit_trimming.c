@@ -42,7 +42,6 @@
 #include "editor_fast_i.xpm"
 
 extern int verbose;
-extern int encoding_syntax_style;
 extern int tv_width_edit, tv_height_edit;
 GtkWidget *tv_trimming, *pop_window;
 char command_to_lavplay_trimming[256];
@@ -290,13 +289,10 @@ void create_lavplay_trimming_child()
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;
 	lavplay_command[n] = "1"; n++;
-	if (encoding_syntax_style != 140)
-	{
-		lavplay_command[n] = "--size"; n++;
-		sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
-		lavplay_command[n] = temp2; n++;
-	}
-	lavplay_command[n] = encoding_syntax_style==140?"-S":"-pS"; n++;
+	lavplay_command[n] = "--size"; n++;
+	sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
+	lavplay_command[n] = temp2; n++;
+	lavplay_command[n] = "-pS"; n++;
 	sprintf(temp1, "%s/.studio/%s", getenv("HOME"), "trimming.eli");
 	lavplay_command[n] = temp1; n++;
 	lavplay_command[n] = NULL;

@@ -402,13 +402,10 @@ void create_lavplay_edit_child()
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++;
 	lavplay_command[n] = "1"; n++;
-	if (encoding_syntax_style != 140)
-	{
-		lavplay_command[n] = "--size"; n++;
-		sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
-		lavplay_command[n] = temp2; n++;
-	}
-	lavplay_command[n] = encoding_syntax_style==140?"-S":"-pS"; n++;
+	lavplay_command[n] = "--size"; n++;
+	sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
+	lavplay_command[n] = temp2; n++;
+        lavplay_command[n] = "-pS"; n++;
 	sprintf(temp1, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 	lavplay_command[n] = temp1; n++;
 	lavplay_command[n] = NULL;

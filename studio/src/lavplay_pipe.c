@@ -257,7 +257,7 @@ void create_lavplay_child()
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++; lavplay_command[n] = "2"; n++;
-	lavplay_command[n] = encoding_syntax_style==140?"-C":"-pC"; n++;
+	lavplay_command[n] = "-pC"; n++;
 	lavplay_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield2)); n++;
 	lavplay_command[n] = NULL;
 
