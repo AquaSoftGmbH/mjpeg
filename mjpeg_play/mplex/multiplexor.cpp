@@ -210,7 +210,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     case MPEG_FORMAT_DVD :
     case MPEG_FORMAT_DVD_NAV :
 		mjpeg_info( "Selecting DVD output profile (INCOMPLETE!!!!)");
-        data_rate = 1260000;
+        if( data_rate == 0 )
+            data_rate = 1260000;
 		mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = false; // Handle by control packets
