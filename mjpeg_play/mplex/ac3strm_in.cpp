@@ -407,15 +407,12 @@ Reads the bytes neccessary to complete the current packet payload.
 unsigned int 
 AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
-    static unsigned int aus = 0;
-    static unsigned int rd = 0; 
     bitcount_t read_start = bs.GetBytePos();
     // Remember to change StreamHeaderLen if you write a different
     // length re-using this code...
     unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );
     assert( bytes_read > 0 );   // Should never try to read nothing
     bs.Flush( read_start );
-    rd += bytes_read;
 	clockticks   decode_time;
 
     unsigned int first_header = 
@@ -456,7 +453,6 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 		bytes_muxed -= au_unsent;
         if( new_au_next_sec )
             ++syncwords;
-        aus += au->length;
 		if( !NextAU() )
         {
             goto completion;
@@ -484,7 +480,6 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 		bufmodel.Queued(bytes_muxed, decode_time);
         if( new_au_next_sec )
             ++syncwords;
-        aus += au->length;
         new_au_next_sec = NextAU();
 	}	   
 completion:

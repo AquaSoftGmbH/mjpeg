@@ -54,12 +54,7 @@ int main (int argc, char* argv[])
 	MultiplexJob job;
 
 	job.SetFromCmdLine(argc, argv);
-
-	mjpeg_info( "Found %d video streams %d MPEG audio streams %d LPCM audio streams and %d AC3 streams",
-				job.video_files.size(),
-				job.mpa_files.size(),
-				job.lpcm_files.size(),
-				job.ac3_files.size());
+	
 
 	Multiplexor mux(job);
 	mux.Multiplex();

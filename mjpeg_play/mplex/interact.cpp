@@ -47,6 +47,22 @@
 vector<LpcmParams *> opt_lpcm_param;
 vector<VideoParams *> opt_video_param;
 
+
+static const char *KindNames[] =
+{
+    "MPEG audio",
+    "AC3 audio",
+    "LPCM audio",
+    "DTS audio",
+    "MPEG video",
+    "Z Alpha channel"
+};
+
+const char *JobStream::NameOfKind()
+{
+    return KindNames[kind];
+}
+
 MultiplexJob::MultiplexJob()
 {
     verbose = 1;
@@ -66,6 +82,22 @@ MultiplexJob::MultiplexJob()
     max_segment_size = 0;
     outfile_pattern = 0;
     packets_per_pack = 1;
+
+    audio_tracks = 0;
+    video_tracks = 0;
+    lpcm_tracks = 0;
+#ifdef ZALPHA
+    z_alpha_tracks = 0;
+#endif
+
+}
+
+
+MultiplexJob::~MultiplexJob()
+{
+    vector<JobStream *>::iterator i;
+    for( i = streams.begin(); i < streams.end(); ++i )
+        delete *i;
 }
 
 /*************************************************************************
@@ -336,53 +368,74 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
     {
         bs = new IFileBitStream( argv[i] );
         // Remember the streams initial state...
-        bs->PrepareUndo( undo);
+        bs->PrepareUndo( undo );
         if( MPAStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Audio stream." ,argv[i]);
-            bs->UndoChanges( undo);
-            mpa_files.push_back( bs );
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs, MPEG_AUDIO) );
+            ++audio_tracks;
             continue;
         }
 
-        bs->UndoChanges( undo);
+        bs->UndoChanges( undo );
         if( AC3Stream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an AC3 Audio stream.",
                         argv[i]);
-            bs->UndoChanges( undo);
-            ac3_files.push_back( bs );
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs, AC3_AUDIO) );
+            ++audio_tracks;
             continue;
         }
-        bs->UndoChanges( undo);
-        if( VideoStream::Probe( *bs ) )
+
+        bs->UndoChanges( undo );
+        if( DTSStream::Probe( *bs ) )
         {
-            mjpeg_info ("File %s looks like an MPEG Video stream.",
+            mjpeg_info ("File %s looks like a dts Audio stream.",
                         argv[i]);
             bs->UndoChanges( undo);
-            video_files.push_back( bs );
+            streams.push_back( new JobStream( bs, DTS_AUDIO) );
+            ++audio_tracks;
             continue;
         }
-        bs->UndoChanges( undo);
-#ifdef ZALPHA
-        if( ZAlphaStream::Probe( *bs ) )
-        {
-            mjpeg_info ("File %s looks like an Z/Alpha Video stream.",
-                        argv[i]);
-            bs->UndoChanges( undo);
-            z_alpha_files.push_back( bs );
-            continue;
-        }
-#endif
+
         bs->UndoChanges( undo);
         if( LPCMStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an LPCM Audio stream.",
                         argv[i]);
-            bs->UndoChanges( undo);
-            lpcm_files.push_back( bs );
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs,  LPCM_AUDIO) );
+            ++audio_tracks;
+            ++lpcm_tracks;
             continue;
         }
+        bs->UndoChanges( undo );
+
+        if( VideoStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an MPEG Video stream.",
+                        argv[i]);
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs, MPEG_VIDEO) );
+            ++video_tracks;
+            continue;
+        }
+
+        bs->UndoChanges( undo );
+#ifdef ZALPHA
+        if( ZAlphaStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an Z/Alpha Video stream.",
+                        argv[i]);
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs, Z_ALPHA) );
+            ++video_tracks;
+            ++z_alpha_tracks;
+            continue;
+        }
+#endif
         bad_file = true;
         delete bs;
         mjpeg_error ("File %s unrecogniseable!", argv[i]);
@@ -399,11 +452,11 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
 	// we're muxing of course...)
 	//
 
-	for( i = video_param.size(); i < video_files.size(); ++i )
+	for( i = video_param.size(); i < video_tracks; ++i )
 	{
 		video_param.push_back(VideoParams::Default( mux_format ));
 	}
-	for( i = lpcm_param.size(); i < lpcm_files.size(); ++i )
+	for( i = lpcm_param.size(); i < lpcm_tracks; ++i )
 	{
 		lpcm_param.push_back(LpcmParams::Default(mux_format));
 	}
@@ -411,15 +464,42 @@ void MultiplexJob::InputStreamsFromCmdLine (unsigned int argc, char* argv[] )
 	//
 	// Set standard values if the selected profile implies this...
 	//
-	for( i = 0; i < video_files.size(); ++i )
+	for( i = 0; i <video_tracks; ++i )
 	{
 		if( video_param[i]->Force(mux_format) )
 		{
-			mjpeg_info( "Video stream %d: profile %d selected - ignoring non-srtandard options!", i, mux_format );
+			mjpeg_info( "Video stream %d: profile %d selected - ignoring non-standard options!", i, mux_format );
 		}
 	}
+
+	mjpeg_info( "Found %d audio streams and %d video streams",
+                audio_tracks,
+				video_tracks
+        );
         
 }
+
+unsigned int MultiplexJob::NumberOfTracks( StreamKind kind )
+{
+    unsigned int count = 0;
+    vector<JobStream *>::iterator i;
+    for( i = streams.begin(); i < streams.end(); ++i )
+        if( (*i)->kind == kind )
+            ++count;
+    return count;
+    
+}
+
+void MultiplexJob::GetJobStreams( vector<JobStream *> &streams,
+                                  StreamKind kind )
+{
+    streams.erase( streams.begin(), streams.end() );
+    vector<JobStream *>::iterator i;
+    for( i = streams.begin(); i < streams.end(); ++i )
+        if( (*i)->kind == kind )
+            streams.push_back( *i );
+}
+
 
 PS_Stream *MultiplexJob::GetOutputStream(
 			   unsigned mpeg,

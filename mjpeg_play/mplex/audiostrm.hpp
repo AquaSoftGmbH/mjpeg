@@ -114,6 +114,33 @@ private:
     unsigned int header_skip;
 }; 	
 
+class DTSStream : public AudioStream
+{
+public:   
+    DTSStream(IBitStream &ibs,Multiplexor &into );
+    virtual void Init(const int stream_num);
+    static bool Probe(IBitStream &bs);
+    virtual void Close();
+    virtual unsigned int NominalBitRate();
+
+    virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
+    virtual unsigned int StreamHeaderSize() { return 4; }
+    
+
+private:
+	void OutputHdrInfo();
+    void DisplayDtsHeaderInfo();
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+    
+    static const unsigned int default_buffer_size;
+	/* State variables for scanning source bit-stream */
+    unsigned int framesize;
+    unsigned int samples_per_second;
+    unsigned int bit_rate;
+    unsigned int stream_num;
+    unsigned int header_skip;
+}; 	
+
 class LPCMStream : public AudioStream
 {
 public:   

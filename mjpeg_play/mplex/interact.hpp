@@ -71,11 +71,39 @@ public:
  *
  **********************************************************************/
 
+enum StreamKind
+  {
+    MPEG_AUDIO,
+    AC3_AUDIO,
+    LPCM_AUDIO,
+    DTS_AUDIO,
+    MPEG_VIDEO
+#ifdef ZALPHA
+    ,
+    Z_ALPHA
+#endif
+  };
+
+class JobStream
+{
+public:
+
+  JobStream( IBitStream *_bs,  StreamKind _kind ) :
+    bs(_bs),
+    kind(_kind)
+  {
+  }
+
+  const char *NameOfKind();
+  IBitStream *bs;
+  StreamKind kind;
+};
+
 class MultiplexJob : public MultiplexParams
 {
 public:
   MultiplexJob();
-  virtual ~MultiplexJob() {}
+  virtual ~MultiplexJob();
   virtual void SetFromCmdLine( unsigned int argc, char *argv[]);
   virtual PS_Stream *GetOutputStream(
 			   unsigned mpeg,
@@ -83,6 +111,8 @@ public:
                const char *filename_pat,
                off_t max_segment_size // 0 = No Limit
 			   );
+  unsigned int NumberOfTracks( StreamKind kind );
+  void GetJobStreams( vector<JobStream *> &streams, StreamKind kind );
 
 private:
   virtual void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
@@ -91,13 +121,16 @@ private:
   virtual bool ParseLpcmOpt( const char *optarg );
 
 public:  
-  vector<IBitStream *> mpa_files;
-  vector<IBitStream *> ac3_files;
-  vector<IBitStream *> lpcm_files;
-  vector<IBitStream *> video_files;
-  vector<IBitStream *> z_alpha_files;
+  vector<JobStream *> streams;
   vector<LpcmParams *> lpcm_param;
   vector<VideoParams *> video_param;
+  unsigned int audio_tracks;
+  unsigned int video_tracks;
+  unsigned int lpcm_tracks;
+#ifdef ZALPHA
+  unsigned int z_alpha_tracks;
+#endif
+
 };
 
 

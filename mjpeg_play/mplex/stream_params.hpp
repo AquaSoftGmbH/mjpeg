@@ -23,6 +23,7 @@
 #ifndef __STREAM_PARAMS_HH__
 #define __STREAM_PARAMS_HH__
 
+
 class LpcmParams
 {
 public:

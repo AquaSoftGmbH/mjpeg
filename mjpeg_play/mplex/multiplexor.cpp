@@ -275,24 +275,30 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
 	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
     unsigned int frame_interval;
     unsigned int i;
+    vector<JobStream *> video_strms;
+    job.GetJobStreams( video_strms, MPEG_VIDEO );
+    vector<JobStream *> mpa_strms;
+    job.GetJobStreams( mpa_strms, MPEG_AUDIO );
 
     switch( job.mux_format )
     {
     case MPEG_FORMAT_VCD_STILL :
         mjpeg_info( "Multiplexing VCD stills program stream!" );
-
-        frame_interval = 30; // 30 Frame periods
-        if( job.mpa_files.size() > 0 && job.video_files.size() > 2  )
-            mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible");
         {
-            VCDStillsStream *str[2];
+            
+            frame_interval = 30; // 30 Frame periods
+            if( mpa_strms.size() > 0 && video_strms.size() > 2  )
+                mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible");
 
-            for( i = 0; i<job.video_files.size(); ++i )
+
+            VCDStillsStream *str[2];
+            
+            for( i = 0; i< video_strms.size(); ++i )
             {
                 FrameIntervals *ints = 
                     new ConstantFrameIntervals( frame_interval );
                 str[i] = 
-                    new VCDStillsStream( *job.video_files[i],
+                    new VCDStillsStream( *(video_strms[i]->bs),
                                          new StillsParams( *vidparm, ints),
                                          *this );
                 estreams.push_back( str[i] );
@@ -300,7 +306,7 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
                 str[i]->Init();
                 ++vidparm;
             }
-            if( job.video_files.size() == 2 )
+            if( video_strms.size() == 2 )
             {
                 str[0]->SetSibling(str[1]);
                 str[1]->SetSibling(str[0]);
@@ -310,26 +316,25 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
     case MPEG_FORMAT_SVCD_STILL :
         mjpeg_info( "Multiplexing SVCD stills program stream!" );
         frame_interval = 30;
-
-        if( job.video_files.size() > 1 )
+        if( video_strms.size() > 1 )
         {
             mjpeg_error_exit1("SVCD stills streams may only contain a single video stream");
         }
-        else if(  job.video_files.size() > 0 )
+        else if( video_strms.size() > 0 )
         {
             ConstantFrameIntervals *intervals;
             StillsStream *str;
             intervals = new ConstantFrameIntervals( frame_interval );
-            str = new StillsStream( *job.video_files[0],
+            str = new StillsStream( *(video_strms[0]->bs),
                                     new StillsParams( *vidparm, intervals ),
                                     *this );
             estreams.push_back( str );
             vstreams.push_back( str );
             str->Init();
         }
-        for( i = 0 ; i < job.mpa_files.size() ; ++i )
+        for( i = 0 ; i < mpa_strms.size() ; ++i )
         {
-            AudioStream *audioStrm = new MPAStream( *job.mpa_files[i], *this);
+            AudioStream *audioStrm = new MPAStream( *(mpa_strms[i]->bs), *this);
             audioStrm->Init ( i);
             estreams.push_back(audioStrm);
             astreams.push_back(audioStrm);
@@ -345,71 +350,91 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
 {
     mjpeg_info( "Multiplexing video program stream!" );
 
+    unsigned int audio_track = 0;
+    unsigned int video_track = 0;
 	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
 	std::vector<LpcmParams *>::iterator lpcmparm = job.lpcm_param.begin();
-    unsigned int i;
 
-    if( job.video_files.size() < 1 	&& job.mux_format == MPEG_FORMAT_VCD )
+    if( job.video_tracks < 1 && job.mux_format == MPEG_FORMAT_VCD )
     {
         mjpeg_warn( "Multiplexing audio-only for a standard VCD is very inefficient");
     }
 
-    for( i = 0 ; i < job.video_files.size() ; ++i )
+    std::vector<JobStream *>::iterator i;
+    for( i = job.streams.begin() ; i < job.streams.end() ; ++i )
     {
-        VideoStream *videoStrm;
-        //
-        // The first DVD video stream is made the master stream...
-        //
-        if( i == 0 && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
-                        || job.mux_format ==  MPEG_FORMAT_DVD ) )
-            videoStrm = new DVDVideoStream( *job.video_files[i], 
-                                            *vidparm,
-                                            *this);
-        else
-            videoStrm = new VideoStream( *job.video_files[i],
-                                         *vidparm,
-                                         *this);
-        videoStrm->Init( i );
-        estreams.push_back( videoStrm );
-        vstreams.push_back( videoStrm );
-        ++vidparm;
-    }
-    for( i = 0 ; i < job.mpa_files.size() ; ++i )
-    {
-        AudioStream *audioStrm = 
-            new MPAStream( *job.mpa_files[i], *this);
-        audioStrm->Init ( i );
-        estreams.push_back(audioStrm);
-        astreams.push_back(audioStrm);
-        
-    }
-    for( i = 0 ; i < job.ac3_files.size() ; ++i )
-    {
-        AudioStream *audioStrm = 
-            new AC3Stream( *job.ac3_files[i], *this);
-        audioStrm->Init ( i );
-        estreams.push_back(audioStrm);
-        astreams.push_back(audioStrm);
-    }
-    for( i = 0 ; i < job.lpcm_files.size() ; ++i )
-    {
-        AudioStream *audioStrm = 
-            new LPCMStream( *job.lpcm_files[i], *lpcmparm, *this);
-        audioStrm->Init ( i );
-        estreams.push_back(audioStrm);
-        astreams.push_back(audioStrm);
-        ++lpcmparm;
-    }
+        switch( (*i)->kind )
+        {
+            
+        case MPEG_VIDEO :
+        {
+            VideoStream *videoStrm;
+            //
+            // The first DVD video stream is made the master stream...
+            //
+            if( i == 0 && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
+                            || job.mux_format ==  MPEG_FORMAT_DVD ) )
+                videoStrm = new DVDVideoStream( *(*i)->bs, 
+                                                *vidparm,
+                                                *this);
+            else
+                    videoStrm = new VideoStream( *(*i)->bs,
+                                                 *vidparm,
+                                                 *this);
+            videoStrm->Init( video_track );
+            ++video_track;
+            ++vidparm;
+            estreams.push_back( videoStrm );
+            vstreams.push_back( videoStrm );
+        }
+        break;
+        case MPEG_AUDIO :
+        {
+            AudioStream *audioStrm = new MPAStream( *(*i)->bs, *this);
+            audioStrm->Init ( audio_track );
+            ++audio_track;
+        }
+        break;
+        case AC3_AUDIO :
+        {
+            AudioStream *audioStrm =  new AC3Stream( *(*i)->bs, *this);
+            audioStrm->Init ( audio_track );
+            estreams.push_back(audioStrm);
+            astreams.push_back(audioStrm);
+            ++audio_track;
+        }
+        break;
+        case DTS_AUDIO :
+        {
+            AudioStream *audioStrm = new DTSStream( *(*i)->bs, *this);
+            audioStrm->Init ( audio_track );
+            estreams.push_back(audioStrm);
+            astreams.push_back(audioStrm);
+            ++audio_track;
+        }
+        break;
+        case LPCM_AUDIO :
+        {
+            AudioStream *audioStrm =  new LPCMStream( *(*i)->bs, *lpcmparm, *this);
+            audioStrm->Init ( audio_track );
+            estreams.push_back(audioStrm);
+            astreams.push_back(audioStrm);
+            ++lpcmparm;
+            ++audio_track;
+        }
+        break;
 #ifdef ZALPHA
-    for( i = 0 ; i < job.z_alpha_files.size() ; ++i )
-    {
-        ZAlphaStream *zalphaStrm = new ZAlphaStream( *job.z_alpha_files[i], *vidparm, *this);
-        zalphaStrm->Init ( i );
-        estreams.push_back(zalphaStrm);
-        vstreams.push_back(zalphaStrm);
-        ++lpcmparm;
-    }
+        case Z_ALPHA :
+        {
+            ZAlphaStream *zalphaStrm = new ZAlphaStream( *(*i)->bs, *vidparm, *this);
+            zalphaStrm->Init ( i );
+            estreams.push_back(zalphaStrm);
+            vstreams.push_back(zalphaStrm);
+            ++vidparm;
+        }
 #endif		
+        }
+    }
 }
 
 

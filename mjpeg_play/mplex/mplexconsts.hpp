@@ -64,6 +64,7 @@
 #define PRIVATE_STR_1   0xbd            /* private stream 1 */
 #define PRIVATE_STR_2   0xbf            /* private stream 2 */
 #define AC3_SUB_STR_0   0x80            /* AC3 substream id 0 */
+#define DTS_SUB_STR_0   0x88            /* DTS substream id 0 */
 
 #define LPCM_SUB_STR_0  0xa0	        /* LPCM substream id 0 */
 

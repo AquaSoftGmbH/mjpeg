@@ -22,6 +22,7 @@ mplex_SOURCES = \
 	videostrm.hpp	audiostrm.hpp	padstrm.hpp \
 	videostrm_in.cpp	 padstrm.cpp \
 	lpcmstrm_in.cpp mpastrm_in.cpp	ac3strm_in.cpp \
+	dtsstrm_in.cpp \
 	videostrm_out.cpp	audiostrm_out.cpp	\
 	multiplexor.cpp	multiplexor.hpp	\
 	systems.cpp		systems.hpp \
