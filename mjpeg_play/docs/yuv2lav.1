@@ -10,6 +10,12 @@ yuv2lav \- encodes lavtool's raw YUV frame streams into MJPEG files
 .IR num ]
 .RB [ -b
 .IR num ]
+.RB [ -I
+.IR num ]
+.RB [ -m
+.IR num ]
+.RB [ -v
+.IR num ]
 .B -o
 .I output-file
 
@@ -29,7 +35,10 @@ will be allocated for JPEG compressed data.
 .TP
 .BI -o \ output-file
 This (compulsorary) option sets the name of the file that
-yuv2lav will write its output to.
+yuv2lav will write its output to. If the output file contains
+a % (e.g. file%02d.avi), the output will be written to multiple
+files in case this is necessary (file00.avi, file01.avi and so
+on).
 
 .TP
 .BR -f \| \ a | A | q | m
@@ -70,6 +79,21 @@ but if you want to compress Super-Mega-HDTV or if you are low on memory,
 you can use this option to suit your needs.
 
 .TP
+.BI -m \ num
+This is the maximum size (in MB) per file. Normally, this depends on
+the output file type.
+
+.TP
+.BI -I \ num
+Force a specific interlacing type. 0 means no interlacing, 1 means
+top-field-first, 2 means bottom-field-first.
+
+.TP
+.BI -v \ num
+Verbosity level. 0 means only print error messages, 2 prints full
+debug output.
+
+.TP
 .B -?
 Display a synopsis of the command syntax.
 
@@ -83,18 +107,6 @@ lavpipe input.pli | yuv2lav -q80 output.avi
 would save the movie assembled by lavpipe as a single AVI file.
 
 .SH "BUGS"
-As far as I can remember, there's still no file size checking
-implemented, and as the current lavtools AVI routines don't
-support AVI files > 2 GB (btw. it could be possible that your
-file system doesn't support files > 2 GB either), you should
-not try to compress very long YUV streams that will result
-in such large files at the moment.
-.br
-An option to write to multiple files one after another as
-implemented by
-.BR lavrec "(1) or " mpeg2enc "(1)"
-should be added to this tool, too.
-.br
 If you experience any problems with this tool, please feel
 free to contact the developers (see below).
 
@@ -103,11 +115,13 @@ This man page was written by pHilipp Zabel.
 .br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
-  \fImjpeg\-users@lists.sourceforge.net\fP
-
-.TP
+.br
+    \fImjpeg\-users@lists.sourceforge.net\fP
+.br
+.br
 For more info, see our website at
-.I http://mjpeg.sourceforge.net
+.br
+    \fIhttp://mjpeg.sourceforge.net/\fP
 
 .SH "SEE ALSO"
 .BR lav2yuv "(1), " lavpipe "(1), " lavplay "(1),"
