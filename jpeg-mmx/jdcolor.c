@@ -123,9 +123,16 @@ build_ycc_rgb_table (j_decompress_ptr cinfo)
 #if defined(__GNUC__)
 #define int64 unsigned long long
 #endif
+
+#if defined(HAVE_MMX_INTEL_MNEMONICS)
+static const int64 bpte0 = 0x0080008000800080; // 128
+static const int64 bpte1 = 0x7168e9f97168e9f9; // for cb (Cb/b, Cb/g, Cb/b, Cb/g)
+static const int64 bpte2 = 0xd21a59bad21a59ba; // for cr (Cr/g, Cr/r, Cr/g, Cr/r)
+#else
 static const int64 te0 = 0x0200020002000200; // -128 << 2
-static const int64 te1 = 0xe9fa7168e9fa7168; // for cb 
+static const int64 te1 = 0xe9fa7168e9fa7168; // for cb
 static const int64 te2 = 0x59bad24d59bad24d; // for cr
+#endif
 //static const int64 te2 = 0x59ba524b59ba524b; // for cr
 /* How to calculate the constants (see constants from above for YCbCr->RGB):
    trunc(-0.34414*16384) << 16 + trunc(1.772 * 16348) || mind that negative numbers are in 2-complement form (2^32+x+1) */
@@ -155,7 +162,103 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
     num_cols/=4;    for (col = 0; col < num_cols; col++) {
 
 #if defined(HAVE_MMX_INTEL_MNEMONICS)
-#error "jdcolor's MMX routines haven't been converted to INTEL assembler yet - contact JPEGlib/MMX"
+// implemented by Brian Potetz <bpotetz@cs.cmu.edu> - thanks for that ! /gz :-) 
+// #error "jdcolor's MMX routines haven't been converted to INTEL assembler yet - contact JPEGlib/MMX"
+    _asm {
+      // :"=m"(outptr[0])
+      // :"m"(inptr0),"m"(inptr1),"m"(inptr2) //y cb cr
+      // :"eax", "ebx", "ecx", "st"
+      mov eax, inptr0     // mov %1, %%eax
+      mov ebx, inptr1     // mov %2, %%ebx
+      mov ecx, inptr2     // mov %3, %%ecx
+      mov edx, outptr     // -------------              keep output pointer in register.
+      movd mm0, [eax]     // movd (%%eax),%%mm0         mm0: 0 0 0 0 y3 y2 y1 y0 - 8 bit
+      movd mm1, [ebx]     // movd (%%ebx),%%mm1         mm1: 0 0 0 0 cb3 cb2 cb1 cb0
+      movd mm2, [ecx]     // movd (%%ecx),%%mm2         mm2: 0 0 0 0 cr3 cr2 cr1 cr0
+
+      pxor mm7, mm7       // pxor %%mm7,%%mm7           mm7 = 0
+      punpcklbw mm0, mm7  // punpcklbw %%mm7,%%mm0      mm0: y3 y2 y1 y0 - expand to 16 bit
+      punpcklbw mm1, mm7  // punpcklbw %%mm7,%%mm1      mm1: cb3 cb2 cb1 cb0
+      punpcklbw mm2, mm7  // punpcklbw %%mm7,%%mm2      mm2: cr3 cr2 cr1 cr0
+      psubw mm1, bpte0    // psubw te0,%%mm1            minus 128 for cb and cr
+      psubw mm2, bpte0    // psubw te0,%%mm2
+      psllw mm1, 2        // psllw $2,%%mm1             shift left 2 bits for Cr and Cb to fit the mult constants
+      psllw mm2, 2        // psllw $2,%%mm2
+
+      //-------------------------------------
+      // prepare for RGB 1 & 0
+      movq mm3, mm1       // movq %%mm1,%%mm3           mm3_16: cb3 cb2 cb1 cb0
+      movq mm4, mm2       // movq %%mm2,%%mm4           mm4_16: cr3 cr2 cr1 cr0
+      punpcklwd mm3, mm3  // punpcklwd %%mm3,%%mm3      expand to 32 bit: mm3: cb1 cb1 cb0 cb0
+      punpcklwd mm4, mm4  // punpcklwd %%mm4,%%mm4      mm4: cr1 cr1 cr0 cr0
+
+      // Y    Y     Y    Y
+      // CD*b CB*g  0    0
+      // 0    CR*g  CR*r 0
+      //------------------
+      // B    G     R
+
+      // Multiply in the constants:
+      pmulhw mm3, bpte1   // pmulhw te1,%%mm3           mm3: cb1/b cb1/g cb0/b cb0/g
+      pmulhw mm4, bpte2   // pmulhw te2,%%mm4           mm4: cr1/g cb1/r cr0/g cr0/r
+
+      movq mm5, mm0       // movq %%mm0,%%mm5           mm5: y3 y2 y1 y0
+      punpcklwd mm5, mm5  // punpcklwd %%mm5,%%mm5      expand to 32 bit: y1 y1 y0 y0
+      movq mm6, mm5       // movq %%mm5,%%mm6           mm6: y1 y1 y0 y0
+      punpcklwd mm5, mm5  // punpcklwd %%mm5,%%mm5      mm5: y0 y0 y0 y0
+      punpckhwd mm6, mm6  // punpckhwd %%mm6,%%mm6      mm6: y1 y1 y1 y1
+
+      // RGB 0
+      movq mm7, mm3       // movq %%mm3,%%mm7           mm7: cb1/g cb1/b cb0/g cb0/b
+      psllq mm7, 32       // psllq $32,%%mm7            shift left 32 bits: mm7: cb0/b cb0/g 0 0
+      paddw mm5, mm7      // paddw %%mm7,%%mm5          add: mm7: y+cb
+      movq mm7, mm4       // movq %%mm4,%%mm7           mm7 = cr1 cr1 cr0 cr0
+      psllq mm7, 32       // psllq $32,%%mm7            shift left 32 bits: mm7: cr0/g cr0/r 0 0
+      psrlq mm7, 16       // psrlq $16,%%mm7            mm7 = 0 cr0/g cr0/r 0
+      paddw mm5, mm7      // paddw %%mm7,%%mm5          y+cb+cr->mm5= r g b ?
+
+      // RGB 1
+      psrlq mm4, 32       // psrlq $32,%%mm4            mm4: 0 0 cr1/g cr1/r
+      paddw mm6, mm4      // paddw %%mm4,%%mm6          y+cr
+      psrlq mm3, 32       // psrlq $32,%%mm3            mm3: 0 0 cb1/b cb1/g
+      psllq mm3, 16       // psllq $16,%%mm4            mm4: 0 cr1/b cr1/g 0
+      paddw mm6, mm3      // paddw %%mm3,%%mm6          y+cr+cb->mm6 = ? r g b
+
+      packuswb mm5, mm6   // packuswb %%mm6,%%mm5       mm5 = ? r1 g1 b1 r0 g0 b0 ?
+      psrlq mm5, 8        // psrlq $8,%%mm5             mm5: 0 ? r1 g1 b1 r0 g0 b0
+      movq [edx], mm5     // movq %%mm5,%0              store mm5
+
+      // prepare for RGB 2 & 3
+      punpckhwd mm0, mm0  // punpckhwd %%mm0,%%mm0      mm0 = y3 y3 y2 y2
+      punpckhwd mm1, mm1  // punpckhwd %%mm1,%%mm1      mm1 = cb3 cb3 cb2 cb2
+      punpckhwd mm2, mm2  // punpckhwd %%mm2,%%mm2      mm2 = cr3 cr3 cr2 cr2
+      pmulhw mm1, bpte1   // pmulhw te1,%%mm1           mm1 = cb * ?
+      pmulhw mm2, bpte2   // pmulhw te2,%%mm2           mm2 = cr * ?
+      movq mm3, mm0       // movq %%mm0,%%mm3           mm3 = y3 y3 y2 y2
+      punpcklwd mm3, mm3  // punpcklwd %%mm3,%%mm3      mm3 = y2 y2 y2 y2
+      punpckhwd mm0, mm0  // punpckhwd %%mm0,%%mm0      mm0 = y3 y3 y3 y3
+
+      // RGB 2
+      movq mm4, mm1       // movq %%mm1,%%mm4           mm4 = cb3 cb3 cb2 cb2
+      movq mm5, mm2       // movq %%mm2,%%mm5           mm5 = cr3 cr3 cr2 cr2
+      psllq mm4, 32       // psllq $32,%%mm4            mm4 = cb2/b cb2/g 0 0
+      psllq mm5, 32       // psllq $32,%%mm5            mm5 = cr2/g cr2/r 0 0
+      psrlq mm5, 16       // psrlq $16,%%mm4            mm5 = 0 cr2/g cr2/g 0
+      paddw mm3, mm4      // paddw %%mm4,%%mm3          y+cb
+      paddw mm3, mm5      // paddw %%mm5,%%mm3          mm3 = y+cb+cr
+
+      // RGB 3
+      psrlq mm2, 32       // psrlq $32,%%mm2            mm2 = 0 0 cr3/g cr3/r
+      psrlq mm1, 32       // psrlq $32,%%mm1            mm1 = 0 0 cb3/b cb3/g
+      psllq mm1, 16       // psllq $16,%%mm2            mm1 = 0 cb3/b cb3/g 0
+      paddw mm0, mm2      // paddw %%mm2,%%mm0          y+cr
+      paddw mm0, mm1      // paddw %%mm1,%%mm0          y+cb+cr
+
+      packuswb mm3, mm0   // packuswb %%mm0,%%mm3       pack in a quadword
+      psrlq mm3, 8        // psrlq $8,%%mm3             shift to the right corner
+      movq [edx+6], mm3   // movq %%mm3,6%0             save two more RGB pixels
+    }
+#endif
 #endif
 #if defined(HAVE_MMX_ATT_MNEMONICS)
       __asm__(
