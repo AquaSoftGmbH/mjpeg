@@ -40,9 +40,9 @@ struct DNSR_GLOBAL denoiser;
 int disable_accel = 0;
 int param_skip = 0;
 
-extern uint32_t (*calc_SAD)         (uint8_t * , uint8_t * );
-extern uint32_t (*calc_SAD_uv)      (uint8_t * , uint8_t * );
-extern uint32_t (*calc_SAD_half)    (uint8_t * , uint8_t * ,uint8_t *);
+extern uint32_t (*calc_SAD)         (uint8_t * , uint8_t *, int);
+extern uint32_t (*calc_SAD_uv)      (uint8_t * , uint8_t *, int);
+extern uint32_t (*calc_SAD_half)    (uint8_t * , uint8_t * ,uint8_t *, int);
 extern void     (*deinterlace)      (void);
 
 /***********************************************************

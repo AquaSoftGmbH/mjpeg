@@ -6,14 +6,15 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <math.h>
+#include <limits.h>
 #include "mjpeg_types.h"
 #include "global.h"
 #include "motion.h"
 
 /* pointers on SAD functions */
-uint32_t (*calc_SAD)         (uint8_t * , uint8_t * );
-uint32_t (*calc_SAD_uv)      (uint8_t * , uint8_t * );
-uint32_t (*calc_SAD_half)    (uint8_t * , uint8_t * ,uint8_t *);
+uint32_t (*calc_SAD)         (uint8_t * , uint8_t * , int);
+uint32_t (*calc_SAD_uv)      (uint8_t * , uint8_t *, int);
+uint32_t (*calc_SAD_half)    (uint8_t * , uint8_t * ,uint8_t *, int);
 
 /* global denoiser structure defined in main.c and global.h */
 extern struct DNSR_GLOBAL denoiser;
@@ -113,7 +114,7 @@ subsample_frame (uint8_t * dst[3], uint8_t * src[3], int w, int h)
  *********************************************************************/
 
 uint32_t
-calc_SAD_noaccel (uint8_t *frm, uint8_t *ref)
+calc_SAD_noaccel (uint8_t *frm, uint8_t *ref, int limit)
 {
 uint32_t d = 0;
 uint32_t adj = denoiser.frame.w - 8;
@@ -123,6 +124,8 @@ d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
 d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
 d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
 d += abs(*frm++ - *ref++); d += abs(*frm++ - *ref++); \
+if (d > limit) \
+return INT_MAX; \
 frm += adj; ref += adj
 LINE; LINE; LINE; LINE;
 LINE; LINE; LINE; LINE;
@@ -137,7 +140,7 @@ return d;
  *********************************************************************/
 
 uint32_t
-calc_SAD_mmx (uint8_t * frm, uint8_t * ref)
+calc_SAD_mmx (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint16_t a[4];
   
@@ -184,7 +187,7 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_mmxe (uint8_t * frm, uint8_t * ref)
+calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint32_t a;
   
@@ -221,7 +224,7 @@ calc_SAD_mmxe (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv_noaccel (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv_noaccel (uint8_t * frm, uint8_t * ref, int limit)
 {
   register uint8_t dx = 0;
   register uint8_t dy = 0;
@@ -242,7 +245,7 @@ calc_SAD_uv_noaccel (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint16_t a[4];
   
@@ -289,7 +292,7 @@ calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv422_mmx (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv422_mmx (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint16_t a[4];
   
@@ -336,7 +339,7 @@ calc_SAD_uv422_mmx (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv411_mmx (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv411_mmx (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint16_t a[8];
   
@@ -385,7 +388,7 @@ calc_SAD_uv411_mmx (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint32_t a;
 
@@ -424,7 +427,7 @@ calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv422_mmxe (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv422_mmxe (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint32_t a;
 
@@ -462,7 +465,7 @@ calc_SAD_uv422_mmxe (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref)
+calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref, int limit)
 {
   static uint32_t a;
 
@@ -501,7 +504,7 @@ calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref)
  *********************************************************************/
 
 uint32_t
-calc_SAD_half_noaccel(uint8_t*ref, uint8_t*frm1, uint8_t*frm2)
+calc_SAD_half_noaccel(uint8_t*ref, uint8_t*frm1, uint8_t*frm2, int limit)
 {
 uint32_t d = 0;
 uint32_t adj = denoiser.frame.w - 8;
@@ -515,6 +518,8 @@ d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
 d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
 d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
 d += abs(((*frm1++ + *frm2++) >> 1) - *ref++); \
+if (d > limit) \
+return INT_MAX; \
 frm1 += adj; frm2 += adj; ref += adj
 LINE; LINE; LINE; LINE;
 LINE; LINE; LINE; LINE;
@@ -529,7 +534,7 @@ return d;
  *********************************************************************/
 
 uint32_t
-calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2) 
+calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2, int limit) 
 {
   static uint32_t a;
 #ifdef HAVE_ASM_MMX
@@ -579,7 +584,7 @@ calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2)
  *********************************************************************/
 
 uint32_t
-calc_SAD_half_mmxe (uint8_t * ref, uint8_t * frm1, uint8_t * frm2) 
+calc_SAD_half_mmxe (uint8_t * ref, uint8_t * frm1, uint8_t * frm2, int limit)
 {
   static uint32_t a;
 
@@ -622,9 +627,9 @@ calc_SAD_half_mmxe (uint8_t * ref, uint8_t * frm1, uint8_t * frm2)
 void 
 mb_search_44 (uint16_t x, uint16_t y)
 {
-  uint32_t best_SAD=0x00ffffff;
-  uint32_t SAD=0x00ffffff; 
-  uint32_t SAD_uv=0x00ffffff; 
+  uint32_t best_SAD = INT_MAX;
+  uint32_t SAD = INT_MAX; 
+  uint32_t SAD_uv = INT_MAX; 
   uint8_t  radius = denoiser.radius>>2;       /* search radius /4 in pixels */
   int32_t  MB_ref_offset = denoiser.frame.w * (y>>2) + (x>>2);
   int32_t  MB_avg_offset;
@@ -634,15 +639,6 @@ mb_search_44 (uint16_t x, uint16_t y)
   int16_t  xx;
   int16_t  yy;
 
-  SAD = calc_SAD ( denoiser.frame.sub4ref[0]+MB_ref_offset, 
-                   denoiser.frame.sub4avg[0]+MB_ref_offset );
-#if 0      
-  SAD += calc_SAD_uv ( denoiser.frame.sub4ref[1]+MB_ref_offset_uv, 
-                       denoiser.frame.sub4avg[1]+MB_ref_offset_uv );
-  SAD += calc_SAD_uv ( denoiser.frame.sub4ref[2]+MB_ref_offset_uv, 
-                       denoiser.frame.sub4avg[2]+MB_ref_offset_uv );
-#endif
-  
   for(yy=-radius;yy<=radius;yy++)
     for(xx=-radius;xx<=radius;xx++)
     {
@@ -650,16 +646,16 @@ mb_search_44 (uint16_t x, uint16_t y)
       MB_avg_offset_uv = MB_ref_offset_uv+(xx/SS_H)+((yy/SS_V)*denoiser.frame.Cw);
       
       SAD = calc_SAD ( denoiser.frame.sub4ref[0]+MB_ref_offset, 
-                       denoiser.frame.sub4avg[0]+MB_avg_offset );
+                       denoiser.frame.sub4avg[0]+MB_avg_offset, best_SAD);
 
 #if 0
       if(MB_ref_offset_uv != last_uv_offset)
         {
           last_uv_offset=MB_ref_offset_uv;
           SAD_uv = calc_SAD_uv ( denoiser.frame.sub4ref[1]+MB_ref_offset_uv, 
-                                 denoiser.frame.sub4avg[1]+MB_avg_offset_uv );
+                                 denoiser.frame.sub4avg[1]+MB_avg_offset_uv,INT_MAX);
           SAD_uv += calc_SAD_uv ( denoiser.frame.sub4ref[2]+MB_ref_offset_uv, 
-                                  denoiser.frame.sub4avg[2]+MB_avg_offset_uv );
+                                  denoiser.frame.sub4avg[2]+MB_avg_offset_uv,INT_MAX);
         }
         SAD += SAD_uv;
       
@@ -685,9 +681,9 @@ mb_search_44 (uint16_t x, uint16_t y)
 void 
 mb_search_22 (uint16_t x, uint16_t y)
 {
-  uint32_t best_SAD=0x00ffffff;
-  uint32_t SAD=0x00ffffff; 
-  uint32_t SAD_uv=0x00ffffff; 
+  uint32_t best_SAD = INT_MAX;
+  uint32_t SAD = INT_MAX; 
+  uint32_t SAD_uv = INT_MAX; 
   int32_t  MB_ref_offset = denoiser.frame.w * (y>>1) + (x>>1);
   int32_t  MB_avg_offset;
   int32_t  MB_ref_offset_uv = (denoiser.frame.Cw) * (y>>1)/SS_V + (x>>1)/SS_H;
@@ -708,16 +704,16 @@ mb_search_22 (uint16_t x, uint16_t y)
       MB_avg_offset_uv = MB_ref_offset_uv+((xx+vx)/SS_H)+((yy+vy)/SS_V)*(denoiser.frame.Cw);
       
       SAD = calc_SAD ( denoiser.frame.sub2ref[0]+MB_ref_offset, 
-                       denoiser.frame.sub2avg[0]+MB_avg_offset );
+                       denoiser.frame.sub2avg[0]+MB_avg_offset, best_SAD);
 
 #if 0      
       if(MB_ref_offset_uv != last_uv_offset)
       {
         last_uv_offset=MB_ref_offset_uv;
         SAD_uv = calc_SAD_uv ( denoiser.frame.sub2ref[1]+MB_ref_offset_uv, 
-                               denoiser.frame.sub2avg[1]+MB_avg_offset_uv );
+                               denoiser.frame.sub2avg[1]+MB_avg_offset_uv, INT_MAX);
         SAD_uv += calc_SAD_uv ( denoiser.frame.sub2ref[2]+MB_ref_offset_uv, 
-                                denoiser.frame.sub2avg[2]+MB_avg_offset_uv );
+                                denoiser.frame.sub2avg[2]+MB_avg_offset_uv, INT_MAX);
       }
       SAD += SAD_uv;
 #endif
@@ -748,9 +744,9 @@ mb_search_22 (uint16_t x, uint16_t y)
 void 
 mb_search_11 (uint16_t x, uint16_t y)
 {
-  uint32_t best_SAD = 0x00ffffff;
-  uint32_t SAD=0x00ffffff; 
-  uint32_t SAD_uv=0x00ffffff; 
+  uint32_t best_SAD = INT_MAX;
+  uint32_t SAD = INT_MAX; 
+  uint32_t SAD_uv= INT_MAX; 
   int32_t  MB_ref_offset = denoiser.frame.w * (y) + (x);
   int32_t  MB_avg_offset;
   int32_t  MB_ref_offset_uv = (denoiser.frame.Cw) * y/SS_V + x/SS_H;
@@ -770,15 +766,15 @@ mb_search_11 (uint16_t x, uint16_t y)
       MB_avg_offset_uv = MB_ref_offset_uv+((xx+vx)/SS_H)+((yy+vy)/SS_V)*(denoiser.frame.Cw);
       
         SAD = calc_SAD ( denoiser.frame.ref[0]+MB_ref_offset, 
-                         denoiser.frame.avg[0]+MB_avg_offset );
+                         denoiser.frame.avg[0]+MB_avg_offset, best_SAD);
 #if 0 
       if(MB_ref_offset_uv != last_uv_offset)
       {
         last_uv_offset=MB_ref_offset_uv;
         SAD_uv = calc_SAD_uv ( denoiser.frame.sub2ref[1]+MB_ref_offset_uv, 
-                               denoiser.frame.sub2avg[1]+MB_avg_offset_uv );
+                               denoiser.frame.sub2avg[1]+MB_avg_offset_uv, INT_MAX);
         SAD_uv += calc_SAD_uv ( denoiser.frame.sub2ref[2]+MB_ref_offset_uv, 
-                                denoiser.frame.sub2avg[2]+MB_avg_offset_uv );
+                                denoiser.frame.sub2avg[2]+MB_avg_offset_uv, INT_MAX);
       }
       SAD += SAD_uv;
 #endif
@@ -795,7 +791,7 @@ mb_search_11 (uint16_t x, uint16_t y)
   /* finally do a zero check against the found vector */
 #if 0    
   SAD = calc_SAD ( denoiser.frame.ref[0]+MB_ref_offset, 
-                   denoiser.frame.avg[0]+MB_ref_offset );
+                   denoiser.frame.avg[0]+MB_ref_offset, best_SAD);
   
   if(SAD<=best_SAD)
   {
@@ -816,7 +812,7 @@ mb_search_11 (uint16_t x, uint16_t y)
 void 
 mb_search_00 (uint16_t x, uint16_t y)
 {
-  uint32_t best_SAD = 0x00ffffff;
+  uint32_t best_SAD = INT_MAX;
   uint32_t SAD;
   int32_t  MB_ref_offset = denoiser.frame.w * (y) + (x);
   int32_t  MB_avg_offset1;
@@ -835,7 +831,7 @@ mb_search_00 (uint16_t x, uint16_t y)
       
       SAD = calc_SAD_half  (denoiser.frame.ref[0]+MB_ref_offset, 
                             denoiser.frame.avg[0]+MB_avg_offset1,
-                            denoiser.frame.avg[0]+MB_avg_offset2);
+                            denoiser.frame.avg[0]+MB_avg_offset2, best_SAD);
 
       if(SAD<best_SAD)
       {
