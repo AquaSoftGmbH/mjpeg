@@ -193,6 +193,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		break;
 
     case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
 		mjpeg_info( "Selecting DVD output profile (INCOMPLETE!!!!)");
         data_rate = 1260000;
 		mpeg = 2;
@@ -345,7 +346,7 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         //
         // The first DVD video stream is made the master stream...
         //
-        if( i == 0 && job.mux_format ==  MPEG_FORMAT_DVD )
+        if( i == 0 && job.mux_format ==  MPEG_FORMAT_DVD_NAV )
             videoStrm = new DVDVideoStream( *job.video_files[i], 
                                             *vidparm,
                                             *this);
@@ -798,14 +799,18 @@ void Multiplexor::OutputPrefix( )
 	  	OutputPadding( false);		
 		break;
 
-    case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
         /* A DVD System header is a weird thing.  We seem to need to
            include buffer info about streams 0xb8, 0xb9, 0xbf even if
            they're not physically present but the buffers for the actual
            video streams aren't included.  
         */
     {
-        DummyMuxStream dvd_0xb9_strm_dummy( 0xb9, 1, 230 );
+        // MANY DVD streams appear not to include system headers
+        // and some tools have weak parsers that can't handle all
+        // the possible variations. Soooo probably best not to generate
+        // them
+        DummyMuxStream dvd_0xb9_strm_dummy( 0xb9, 1, 232*1024 );
         DummyMuxStream dvd_0xb8_strm_dummy( 0xb8, 0, 4096 );
         DummyMuxStream dvd_0xbf_strm_dummy( 0xbf, 1, 2048 );
         vector<MuxStream *> dvdmux;

@@ -167,7 +167,7 @@ static void Usage(char *str)
 "    Set pre-defined mux format fmt.\n"
 "    [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n"
 "     3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
-"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
+"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8,9 = DVD]\n"
 "--aspect|-a num\n"
 "    Set displayed image aspect ratio image (default: 2 = 4:3)\n"
 "    [1 = 1:1, 2 = 4:3, 3 = 16:9, 4 = 2.21:1]\n"
@@ -1297,6 +1297,7 @@ static void init_mpeg_parms(void)
     case MPEG_FORMAT_SVCD_NSR :
     case MPEG_FORMAT_SVCD_STILL :
     case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
         opt_prog_seq = 0;
         break;
     default :
@@ -1398,6 +1399,7 @@ static void init_mpeg_parms(void)
 	case MPEG_FORMAT_SVCD_NSR :
 	case MPEG_FORMAT_SVCD :
     case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
         /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
            for 4:3 aspect video. However, many players expect 480 and go weird
            if this isn't set...

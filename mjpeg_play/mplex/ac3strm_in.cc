@@ -300,6 +300,8 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     static unsigned int rd = 0; 
     bitcount_t read_start = bs.GetBytePos();
     unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );
+    if( to_read < 5 )
+        mjpeg_warn( "Oooops whacky shit !\n" );
     assert( bytes_read > 0 );   // Should never try to read nothing
     bs.Flush( read_start );
     rd += bytes_read;
