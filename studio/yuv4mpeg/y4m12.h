@@ -3,6 +3,7 @@
 
 #include "yuv4mpeg-1.4.h"
 #ifdef HAVE_MJPEGTOOLS_15
+#include <stdint.h>
 #include <yuv4mpeg.h>
 #endif
 
