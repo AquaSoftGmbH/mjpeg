@@ -28,7 +28,7 @@
 static int   param_quality = 80;
 static char  param_format = 'a';
 static char *param_output = 0;
-static int   param_bufsize = 1024*1024; /* 256 kBytes */
+static int   param_bufsize = 256*1024; /* 256 kBytes */
 
 static int got_sigint = 0;
 
@@ -40,7 +40,7 @@ static void usage (){
                     "   -q num      JPEG encoding quality [%d%%]\n"
                     "   -b num      size of MJPEG buffer [%d kB]\n"
                     "   -o file     output mjpeg file (REQUIRED!) \n",
-                    param_format, param_bufsize/1024, param_quality);
+                    param_format, param_quality, param_bufsize/1024);
 
 }
 
@@ -113,8 +113,16 @@ int main(int argc, char *argv[])
       fprintf (stderr, "Could'nt read YUV4MPEG header!\n");
       exit (1);
    }
+   
+   /* how to determine if input is interlaced? at the moment, we can do this
+      via the input frame height, but this relies on PAL/NTSC standard input: */
+   if (((height >  288) && (frame_rate_code == 3)) ||  /* PAL */
+       ((height >  240) && (frame_rate_code == 4))) {  /* NTSC */
+       n = (param_format == 'A') ? LAV_INTER_EVEN_FIRST : LAV_INTER_ODD_FIRST;
+   } else                                              /* 24fps movie, etc. */
+       n = LAV_NOT_INTERLACED;
 
-   output = lav_open_output_file (param_output, param_format, width, height, 0 /* not interlaced */,
+   output = lav_open_output_file (param_output, param_format, width, height, n,
                                   yuv_mpegcode2fps (frame_rate_code),
                                   0, 0, 0);
 //                                audio_bits, audio_chans, audio_rate);
@@ -136,7 +144,7 @@ int main(int argc, char *argv[])
       fprintf (stdout, "frame %d\r", frame);
       fflush (stdout);
       jpegsize = encode_jpeg_raw (jpeg, param_bufsize, param_quality,
-                                  0 /*itype*/, 0/*ctype*/,
+                                  n /* itype */, 0 /* ctype */,
                                   width, height, yuv[0], yuv[1], yuv[2]);
       if (jpegsize==-1) {
          fprintf (stderr, "Couldn't compress YUV to JPEG\n");
