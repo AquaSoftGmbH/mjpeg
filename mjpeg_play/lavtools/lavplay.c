@@ -1218,12 +1218,14 @@ int main(int argc, char ** argv)
 					   beginframe=-1 means whole file */
 					char movie[256];
 					char *arguments[1];
-					int nc1, nc2;
+					int nc1, nc2, x, nc3, nc4;
 
-					min_frame_num = 0;
 					play_speed = 0;
 					nframe = 0;
-					sscanf(input_buffer+2, "%s %d %d", movie, &nc1, &nc2);
+					/* nc1-nc2 = movie, nc3-nc4 is part of movie that should be seen
+					   nc3=-1 means just see nc1-nc2, nc3/nc4 can also be omitted */
+					x = sscanf(input_buffer+2, "%s %d %d %d %d", movie, &nc1, &nc2, &nc3, &nc4);
+
 					arguments[0] = movie;
 					printf("Opening %s", movie);
 					if (nc1!=-1) printf(" (frames %d-%d)", nc1, nc2);
@@ -1231,9 +1233,27 @@ int main(int argc, char ** argv)
 					read_video_files(arguments, 1, &el);
 					if (nc2>=el.video_frames || nc1 == -1) nc2=el.video_frames-1;
 					if (nc1<0) nc1=0;
+					if (nc4>nc2) nc4=nc2;
+					if (nc3<nc1 && nc3!=-1) nc3=nc1;
+
+					if (x == 3)
+					{
+						min_frame_num = 0;
+						max_frame_num = nc2 - nc1;
+					}
+					else if (nc3 == -1)
+					{
+						min_frame_num = 0;
+						max_frame_num = nc2 - nc1;
+					}
+					else
+					{
+						min_frame_num = nc3 - nc1;
+						max_frame_num = el.video_frames - 1 + nc4 - nc2;
+					}
+
 					for(i=0;i<nc1;i++) el.frame_list[i] = el.frame_list[i+nc1];
 					el.video_frames = nc2-nc1+1;
-					max_frame_num = el.video_frames-1;
 				}
 
 				break;
