@@ -158,7 +158,7 @@ void calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3]);
 void transform_frame (uint8_t * avg[3]);
 void contrast_frame (uint8_t * yuv[3]);
 void draw_line (int x0, int y0, int x1, int y1);
-int contrast_block (int x, int y, uint8_t * yuv[3]);
+int contrast_block (int x, int y, uint8_t * yuv[3], uint8_t * yuv2[3]);
 
 /* SAD functions */
 uint32_t
@@ -2381,27 +2381,53 @@ despeckle_frame_soft (uint8_t * frame[3])
   }
 }
 
-int contrast_block(int x, int y, uint8_t * yuv[0])
+int contrast_block(int x, int y, uint8_t * yuv1[0], uint8_t * yuv2[0])
 {
+    /* it doesn't seem to make sense to do a motion search 
+     * on some kinds of Blocks. This seems to be the case if 
+     * they have a bad contrast and change little from one
+     * frame to the next... This seems to give another little
+     * quality boost (and it costs only a few percent and 
+     * sometimes it even makes things go faster...)
+     */
+
     int min=255;
     int max=0;
 
     int cx,cy;
-    uint8_t * addr=yuv[0]+y*width+x;
-    
+    int diff,d;
+
+    uint8_t * addr=yuv1[0]+y*width+x;
+    uint8_t * addf=yuv2[0]+y*width+x;
+    uint8_t Y;
+
+    diff=0;
     for(cy=0;cy<4;cy++)
     {
 	for(cx=0;cx<4;cx++)
 	{
-	    min=(min < *(addr))? min:*(addr);
-	    max=(max > *(addr))? max:*(addr);
+	    /* find maximum Difference between
+	     * both blocks reference and target
+	     */
+
+	    d=*(addr)-*(addf++);
+	    d=(d>0)? d:-d;
+	    diff=(diff<d)? d:diff;
+
+	    /* get reference's block-contrast
+	     */
+	    
+	    Y=*(addr++);
+	    min=(min < Y)? min:Y;
+	    max=(max > Y)? max:Y;
 	    addr++;
 	}
 	addr+=width-4;
+	addf+=width-4;
     }
     min=max-min;
 
-    if(min<8)
+    if(min<8 && diff<8)
 	return(0);
     else
 	return(1);
@@ -2465,7 +2491,7 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 	matrix[x][y][1]=0;
 
 
-	if(contrast_block(x, y, ref_frame))
+	if(contrast_block(x, y, ref_frame, target))
 	{
 	    /* search best matching block in the 4x4 subsampled
 	     * image and store the result in best_match_44_x/y[0..3]
@@ -2507,12 +2533,12 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
         vector_SAD += calc_SAD_uv (sub_t4[1],
                                    sub_r4[1],
                                    ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
-                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2);
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<2;
 
         vector_SAD += calc_SAD_uv (sub_t4[2],
                                    sub_r4[2],
                                    ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
-                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2);
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<2;
 #endif
 
 #if 0
