@@ -43,6 +43,9 @@
  *
  * NOTE: Obviously when catenating multiple files together they ALL must have 
  *       the same attributes (dimensions,  framerate, etc)!
+ *
+ * NOTE: The "-x" option, if used, specifies the chroma format of the INPUT
+ *       and places in the output stream the correct 'C' tag.
 */
 
 #ifdef	HAVE_CONFIG_H
@@ -60,12 +63,13 @@
 extern	char	*__progname;
 
 static	void	usage(void);
+static	void	chroma_usage(void);
 
 int
 main(int argc, char **argv)
 	{
-	int	sts, c, width = 720, height = 480, swapuv = 0, uvlen;
-	int	xcss411 = 0;
+	int	sts, c, width = 720, height = 480, swapuv = 0, ylen, uvlen;
+	int	chroma_mode = Y4M_CHROMA_420MPEG2;
 	y4m_ratio_t	rate_ratio = y4m_fps_NTSC;
 	y4m_ratio_t	aspect_ratio = y4m_sar_NTSC_CCIR601;
 	u_char	*yuv[3];
@@ -75,12 +79,18 @@ main(int argc, char **argv)
 
 	opterr = 0;
 
-	while	((c = getopt(argc, argv, "kw:h:r:i:a:x")) != EOF)
+	while	((c = getopt(argc, argv, "kw:h:r:i:a:x:")) != EOF)
 		{
 		switch	(c)
 			{
 			case	'x':
-				xcss411 = 1;
+				chroma_mode = y4m_chroma_parse_keyword(optarg);
+				if	(chroma_mode == Y4M_UNKNOWN)
+					{
+					if	(strcmp(optarg, "help") != 0)
+						mjpeg_error("Invalid -x arg '%s'", optarg);
+					chroma_usage();
+					}
 				break;
 			case	'k':
 				swapuv = 1;
@@ -136,22 +146,26 @@ main(int argc, char **argv)
 	y4m_si_set_interlace(&ostream, interlace);
 	y4m_si_set_framerate(&ostream, rate_ratio);
 	y4m_si_set_sampleaspect(&ostream, aspect_ratio);
-	if	(xcss411)
-		y4m_si_set_chroma(&ostream, Y4M_CHROMA_411);
+	y4m_si_set_chroma(&ostream, chroma_mode);
+
+	if	(y4m_si_get_plane_count(&ostream) != 3)
+		mjpeg_error_exit1("Only the 3 plane formats supported");
 
 /*
- *                    Y                    U                      V
- * YUV size = (height * width) + (height/2 * width/2) + (height/2 * width/2)
+ * The assumption is made that the two chroma planes are the same size - can't
+ * see how it would be anything else...
 */
-	uvlen = (height / 2) * (width / 2);
-	yuv[0] = malloc(height * width);
+	ylen= y4m_si_get_plane_length(&ostream, 0);
+	uvlen = y4m_si_get_plane_length(&ostream, 1);
+
+	yuv[0] = malloc(ylen);
 	yuv[1] = malloc(uvlen);
 	yuv[2] = malloc(uvlen);
 
 	y4m_write_stream_header(fileno(stdout), &ostream);
 	while	(1)
 		{
-		if	(y4m_read(fileno(stdin), yuv[0], height * width))
+		if	(y4m_read(fileno(stdin), yuv[0], ylen))
 			break;
 		if	(swapuv)
 			{
@@ -186,7 +200,21 @@ static void usage()
 	fprintf(stderr, "  Interlace codes [-i X]: p (none) t (top first) b (bottom first)\n");
 	fprintf(stderr, "  Rate (as ratio) [-r N:M] (30000:1001):\n");
 	fprintf(stderr, "  Pixel aspect (as ratio) [-a N:M] (10:11):\n");
-	fprintf(stderr, "  4:1:1 data [-x]\n");
+	fprintf(stderr, "  Specify chroma format [-x string] (420mpeg2)\n");
+	fprintf(stderr, "     -x help for list of formats\n");
+	fprintf(stderr, "     NOTE: Only the 3 plane formats supported");
 	fprintf(stderr, "\n");
+	exit(1);
+	}
+
+void chroma_usage(void)
+	{
+	int mode = 0;
+	char *keyword;
+
+	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
+		__progname);
+	for	(mode = 0; (keyword = y4m_chroma_keyword(mode)) != NULL; mode++)
+		fprintf(stderr, "\t%s - %s\n", keyword, y4m_chroma_description(mode));
 	exit(1);
 	}
