@@ -437,6 +437,12 @@ int y4m_write_fields(int fd, const y4m_stream_info_t *si,
 void y4m_log_stream_info(log_level_t level, const char *prefix,
 			 const y4m_stream_info_t *i);
 
+/* Get the horizontal and vertical chroma subsampling factors - useful for
+ * programs which need to make sure that shifts are a proper multiple of the
+ * subsampling factors
+*/
+int y4m_get_chroma_ss(int chroma, int *horiz, int *vert);
+
 /* convert a Y4M_ERR_* error code into mildly explanatory string */
 const char *y4m_strerr(int err);
 

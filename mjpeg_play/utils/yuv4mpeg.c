@@ -1101,6 +1101,33 @@ void y4m_log_stream_info(log_level_t level, const char *prefix,
 	      i->sampleaspect.n, i->sampleaspect.d);
 }
 
+int y4m_get_chroma_ss(int chroma, int *horiz, int *vert)
+{
+  switch(chroma) {
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+       *horiz = 2;
+       *vert = 2;
+       return Y4M_OK;
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+  case Y4M_CHROMA_444ALPHA:
+       *horiz = 1;
+       *vert = 1;
+       return Y4M_OK;
+  case Y4M_CHROMA_422:
+       *horiz = 2;
+       *vert = 1;
+       return Y4M_OK;
+  case Y4M_CHROMA_411:
+       *horiz = 4;
+       *vert = 1;
+       return Y4M_OK;
+  default:
+       return Y4M_ERR_SYSTEM;
+  }
+}
 
 /*************************************************************************
  *
