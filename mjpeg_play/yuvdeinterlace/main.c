@@ -162,11 +162,10 @@ main (int argc, char *argv[])
 	int fd_in = 0;
 	int fd_out = 1;
 	int errno = 0;
-
-	blend_fields = &blend_fields_non_accel;
-
 	y4m_frame_info_t frameinfo;
 	y4m_stream_info_t streaminfo;
+
+	blend_fields = &blend_fields_non_accel;
 
 	mjpeg_log (LOG_INFO,
 		   "-------------------------------------------------");
