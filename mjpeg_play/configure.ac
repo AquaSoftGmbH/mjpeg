@@ -339,6 +339,13 @@ case $host_cpu in
     have_x86cpu=true
     PROGRAM_NOPIC="-fno-PIC"
     ;;
+  x86_64*)
+    AC_MSG_RESULT(x86_64)
+    AC_DEFINE(HAVE_X86CPU,1, [Compiling for x86-64 architecture CPU])
+    have_x86cpu=true
+    have_x86_64cpu=true
+    PROGRAM_NOPIC="-fno-PIC"
+    ;;
   powerpc | powerpc64)
     AC_MSG_RESULT(PowerPC)
     AC_DEFINE(HAVE_PPCCPU,1, [Compiling for PowerPC CPU])
@@ -381,7 +388,9 @@ then
       fi
 
       AC_PATH_PROGS(AS, nasm nasmw)
-      if test x$AS = x; then
+      if test x$have_x86_64cpu = xtrue; then
+ 	 AC_MSG_WARN(*** nasm can not be used for 64 bit code ***)     
+      elif test x$AS = x; then
 	 AC_MSG_WARN(*** nasm not found PERFORMANCE WILL BE CRAP ***)
       else
 	 have_asm_nasm=true
