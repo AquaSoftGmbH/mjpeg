@@ -938,8 +938,8 @@ static void init_mpeg_parms(void)
 	}
 	
 	{ 
-		int radius_x = ((param_searchrad+4)/8)*8;
-		int radius_y = ((param_searchrad*opt_vertical_size/opt_horizontal_size+4)/8)*8;
+		int radius_x = param_searchrad;
+		int radius_y = param_searchrad*opt_vertical_size/opt_horizontal_size;
 
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
@@ -952,21 +952,35 @@ static void init_mpeg_parms(void)
 		{
 			if(i==0)
 			{
-				opt_motion_data[i].sxf = MAX(1,radius_x*ctl_M);
+				opt_motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
 				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = MAX(1,radius_y*ctl_M);
+				opt_motion_data[i].syf = round_search_radius(radius_y*ctl_M);
 				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
 			}
 			else
 			{
-				opt_motion_data[i].sxf = MAX(1,radius_x*ctl_M);
+				opt_motion_data[i].sxf = round_search_radius(radius_x*i);
 				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = MAX(1,radius_y*ctl_M);
+				opt_motion_data[i].syf = round_search_radius(radius_y*i);
 				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
-				opt_motion_data[i].sxb = MAX(1,radius_x*(ctl_M-i));
+				opt_motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
 				opt_motion_data[i].back_hor_f_code  = f_code(opt_motion_data[i].sxb);
-				opt_motion_data[i].syb = MAX(1,radius_y*(ctl_M-i));
+				opt_motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
 				opt_motion_data[i].back_vert_f_code  = f_code(opt_motion_data[i].syb);
+			}
+
+			/* MPEG-1 demands f-codes for vertical and horizontal axes are
+			   identical!!!!
+			*/
+			if( opt_mpeg1 )
+			{
+				opt_motion_data[i].syf = opt_motion_data[i].sxf;
+				opt_motion_data[i].syb  = opt_motion_data[i].sxb;
+				opt_motion_data[i].forw_vert_f_code  = 
+					opt_motion_data[i].forw_hor_f_code;
+				opt_motion_data[i].back_vert_f_code  = 
+					opt_motion_data[i].back_hor_f_code;
+				
 			}
 		}
 		

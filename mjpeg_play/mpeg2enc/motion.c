@@ -392,7 +392,7 @@ void init_motion()
 
 int round_search_radius( int radius )
 {
-	return ((radius+4) /8)*8;
+	return intmax(8,((radius+4) /8)*8);
 }
 
 
