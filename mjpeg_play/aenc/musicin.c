@@ -476,11 +476,11 @@ static unsigned int crc;
                           ((double)bitrate[info.lay-1][info.bitrate_index] /
                            (double)bitsPerSlot);
     whole_SpF = (int) avg_slots_per_frame;
-	mjpeg_info("slots/frame = %d",whole_SpF);
     frac_SpF  = avg_slots_per_frame - (double)whole_SpF;
     slot_lag  = -frac_SpF;
-	mjpeg_info("frac SpF=%.3f, tot bitrate=%d kbps, s freq=%.1f kHz",
-           frac_SpF, bitrate[info.lay-1][info.bitrate_index],
+	mjpeg_info("SpF=%d, frac SpF=%.3f, bitrate=%d kbps, sfreq=%.1f kHz",
+	   whole_SpF, frac_SpF,
+           bitrate[info.lay-1][info.bitrate_index],
            s_freq[info.sampling_frequency]);
  
     if (frac_SpF != 0)
@@ -488,7 +488,7 @@ static unsigned int crc;
     else info.padding = 0;
  
     while (get_audio(musicin, buffer, num_samples, stereo, info.lay) != 0) {
-
+       frameNum++;
        win_buf[0] = &buffer[0][0];
        win_buf[1] = &buffer[1][0];
        if (frac_SpF != 0) {
@@ -606,16 +606,16 @@ static unsigned int crc;
                   frameBits, frameBits/bitsPerSlot,
                   frameBits%bitsPerSlot);
        sentBits += frameBits;
-
     }
 
     close_bit_stream_w(&bs);
 
-	mjpeg_info("Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps",
+	mjpeg_info("Num frames %ld Avg slots/frame = %.3f; b/smp = %.2f; br = %.3f kbps",
+	   frameNum,
            (FLOAT) sentBits / (frameNum * bitsPerSlot),
            (FLOAT) sentBits / (frameNum * samplesPerFrame),
            (FLOAT) sentBits / (frameNum * samplesPerFrame) *
-           s_freq[info.sampling_frequency]);
+                               s_freq[info.sampling_frequency]);
 
 	mjpeg_info("Encoding with psychoacoustic model %d is finished", model);
 	mjpeg_info("The MPEG encoded output file name is \"%s\"",
