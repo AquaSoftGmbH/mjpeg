@@ -124,9 +124,9 @@ else
     AC_MSG_RESULT([no])
 fi
 
-# FreeBSD has neither -lpthread nor integrated pthreads in libc, instead
-# -pthread is used to the compiler/linker to get pthreads working right.
-if test x$OS_ARCH = xFreeBSD; then
+# FreeBSD and OpenBSD have neither -lpthread nor integrated pthreads in libc.
+# Instead -pthread is used to the compiler/linker to get pthreads working right.
+if test x$OS_ARCH = xFreeBSD -o x$OS_ARCH = xOpenBSD; then
    CFLAGS="$CFLAGS -pthread"
    CXXFLAGS="$CXXFLAGS -pthread"
 fi
