@@ -135,16 +135,14 @@ char *userdata;
  *
  * uses tc0 (timecode of first frame) and frame0 (number of first frame)
  */
-void putgophdr(frame,closed_gop)
-int frame,closed_gop;
+void putgophdr(int frame,int closed_gop, int seq_header )
 {
   int tc;
 
   /* Some VCD players, it seems, need sequence headers every GOP
      to do fast forward, fast rev.
    */
-  alignbits();
-  if( seq_header_every_gop )
+  if( seq_header )
   {
 	  putseqhdr();
   }

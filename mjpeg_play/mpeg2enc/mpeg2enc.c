@@ -505,7 +505,7 @@ static void readparmfile()
 	static double ratetab[8]=
     {24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
 
-	sprintf(id_string,"Converted by aq2mpeg v0.1");
+	sprintf(id_string,"Converted by mjpegtools mpeg2enc 1.3");
 	strcpy(tplorg,"%8d"); /* Name of input files */
 	strcpy(tplref,"-");
 	strcpy(iqname,"-");

@@ -92,7 +92,7 @@ void putseqhdr (void);
 void putseqext (void);
 void putseqdispext (void);
 void putuserdata (char *userdata);
-void putgophdr (int frame, int closed_gop);
+void putgophdr (int frame, int closed_gop, int seq_header);
 void putpicthdr (pict_data_s *picture);
 void putpictcodext (pict_data_s *picture);
 void putseqend (void);

@@ -51,10 +51,8 @@ void putseq()
 	   start of the sequence.
 	*/
 	
-	if( ! seq_header_every_gop )
-	{
-		putseqhdr();
-	}
+	putseqhdr();
+
 
 	/* optionally output some text data (description, copyright or whatever) */
 	if (strlen(id_string) > 1)
@@ -141,8 +139,12 @@ void putseq()
 				nb = n - np - 1;
 
 				rc_init_GOP(np,nb);
-
-				putgophdr(f0,i==0); /* set closed_GOP in first GOP only */
+				
+				/* set closed_GOP in first GOP only 
+				   No need for per-GOP seqhdr in first GOP as one
+				   has already been created.
+				 */
+				putgophdr(f0,i==0, i!=0 && seq_header_every_gop);
 
 
 			}
