@@ -2,10 +2,32 @@ YUVFILTER =\
  libyuvthru.la\
  #
 
+# for buggy version of libtools, link $(YSTMEDIA) if not USE_DLFCN_H
+
+if USE_MEDIA_FILE
+YSTFILE = $(top_srcdir)/mjpegtools/libystfile.la
+else
+YSTFILE =
+endif
+
+if USE_MEDIA_STACK
+YSTSTACK = $(top_srcdir)/mjpegtools/libyststack.la
+else
+YSTSTACK =
+endif
+
+if USE_MEDIA_GST
+YSTGST = $(top_srcdir)/mjpegtools/libystgst.la
+else
+YSTGST =
+endif
+
+YSTMEDIA = $(YSTFILE) $(YSTSTACK) $(YSTGST)
+
 if USE_DLFCN_H
 YSTLIBRARIES = $(top_srcdir)/mjpegtools/libyst.la
 else
-YSTLIBRARIES = $(YUVFILTER) $(top_srcdir)/mjpegtools/libyst.la
+YSTLIBRARIES = $(YUVFILTER) $(top_srcdir)/mjpegtools/libyst.la $(YSTMEDIA)
 endif
 
 LIBLDFLAGS = -release $(VERSION)
