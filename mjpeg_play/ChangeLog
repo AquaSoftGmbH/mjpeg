@@ -1,9 +1,37 @@
 2000-08-15  Gernot Ziegler  <gz@lysator.liu.se>
 
-* Created intial automake & autoconf files (still lot of bugs, I guess ;) )
-* Created libmovtar (read/write support not complete yet)
-* Created libmjpeg
+	* Created intial automake & autoconf files (still lot of bugs, I
+	guess ;) )
+
+	* Created libmovtar (read/write support not complete yet)
+
+	* Created libmjpeg
+
+2000-12-07
+
+Summary of changes since 2000-08-15
+
+	* Initial support for Software-only mjpeg playback.
+
+	* Seperated mpeg encoding tools from tools used to extract raw
+	audio/video from mjpeg.
+
+	* Initial support for transcoding using patched mpeg2dec and
+	ac3dec packages.
+
+	* Further speed and quality improvements to MPEG-1 encoding with
+	mpeg2enc. Bugs fixed. Run-time selection of MMX/extended
+	MMX/SSE/3D-Now! routines as appropriate.
+
+	* mplex now much faster, debugged, and supports correct VCD
+	compatible multiplexing and splitting of streams into multiple files.
+	Initial MPEG-2 support.
 
 	
 CVS log:
 $Log$
+Revision 1.2  2000/12/05 09:34:05  wackston
+
+
+Put Log substiution into ChangeLog
+

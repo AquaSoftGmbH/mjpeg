@@ -13,9 +13,10 @@ Required Software
 
 1) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
 
-The configure scripts look for this in /usr/local/src/quicktime by default.
-You can specify another directory using the --with-quicktime flag to
-the ./configure script.
+The configure scripts look for this in /usr/local/src/quicktime or
+/usr/local/src/quicktime4linux-1.2 by default.  You can specify
+another directory using the --with-quicktime flag to the ./configure
+script.
 
 N.b. it would seem that quicktime-1.2 is a little picky about the
 compilers it is built under.  You may get complaints about missing
@@ -31,9 +32,12 @@ pre-hacked version downloadable from where you got this package.
 
 The file is called "quicktime4linux-1.2njpg.tar.gz"
 
-Either way: compile the library.  The best place to put the directory
-is /usr/local/src or in the same directory as this one, as that's where
-the configuration scripts will search for it.
+./configure
+make
+
+No need (or sense) in "make install"-ing as: (a) Its a hacked version
+and you don't want to muddle it up with the original and then abuse
+the original author for deficiencies we introduced.  (b) The configure scripts for expect to look for the source anyway.
 
 2) The MMX enhanced jpeg library from the same place you got this package.
 
@@ -64,6 +68,7 @@ settings (which are those expected by the scripts for lavtools)
 install only simple static libraries in /usr/local named jpeg-mmx to
 prevent clashes.
 
+
 3) The libmovtar library for handling audio/video streams in "movtar" format.
 Very handy for hacking around, moving between formats, and experimentation.
 
@@ -79,9 +84,9 @@ You'll need to be able to write to /usr/local/lib and /usr/local/include
 for the install.
 
 
-
 3) The GLib library - http://www.gtk.org
 (libglib .... is included in the standard distributions)
+
 
 4) The SDL library -  http://www.libsdl.org/
    I used SDL 1.1.6 for development, please tell me if the 
@@ -94,6 +99,7 @@ for the install.
 
 5) A reasonably up-to-date installation of the "xforms" library.
 In RedHat land xforms-0.88.1-1 (you need the -devel too) is known to work.
+
 
 6) If you wish to recompile the mpeg encoder you'll need a recent version
 of the "nasm" assembler.

@@ -32,3 +32,25 @@ mjpeg:
 .) Hardware YUV-RGB-conversion ? 
 
 .) jpeg compression
+
+
+(Andrew Stevens speaking)
+
+.) Get MPEG-2 encoding and multiplexing working to the standard where
+correct SVCD output can be produced.
+
+.) Proper integration of the output patches into the ac3dec and
+mpeg2dec code-bases.  Construction of a title extraction tool for
+reading DVD's (based on dxr2 code-base)?
+
+.) Support for SSE instructions on Pentium-III. 
+
+.) Scene change detection and dynamic GOP structure adjustment.
+
+.) Support for multiplexing DVD VOB streams.
+
+.) Support for parallel encoding on multi-CPU machines.
+
+.) Optimisation of	DCT/iDCT to avoid unnecessary transpositions?
+
+

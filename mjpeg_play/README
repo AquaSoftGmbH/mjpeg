@@ -1,19 +1,19 @@
 REMINDER: You are currently required to have Quicktime installed !
 See "REQUIRED_SOFTWARE"...
 
-lavtools: Linux Motion JPEG and MPEG Audio and Video TOOLS
-==========================================================
+REMINDER: For info on how to compile and install see "INSTALL"...
+
+lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
+==============================================================
 
 Programs for MJPEG recording and playback and simple cut-and-paste
 editting and MPEG compression of audio and video under Linux.
 
-N.b. Only the "lav" programs have been written from scratch.  The
-rest are from diverse open source sources, modified slightly to work
-with the lav tools edit lists and AVI and quicktime files.  Some
-(especially the MPEG tools) have had also more major perfomance 
-and functionality enhancements.   They're all bundled together here to
-save you the tedious hunting around we have to go through ;-)
-
+N.b. Only the "lav" programs have been written whooly from scratch.
+The rest are from diverse open source originals, modified to work with
+the lav tools edit lists and AVI and quicktime files.  Some
+(especially the MPEG tools) have had also more major perfomance and
+functionality enhancements.  
 
 * The lavtools, xlav and utils directories
 
@@ -80,7 +80,7 @@ corresponding singleAVI or Quicktime file.
 	See the README for further details.
 	In the current beta release MPEG-2 is untested and variable
 	bit-rate probably won't work.  HOWEVER: speed and quality for
-	MPEG-1 are really rather good. Encoding at 15 fps on a 700Mhz
+	MPEG-1 are really rather good. Encoding at 16 fps on a 700Mhz
 	Duron or 10fps on a 450Mhz P-III.
 
 * The aenc directory - 
@@ -94,7 +94,8 @@ corresponding singleAVI or Quicktime file.
 	In general, however, you'd be better off with the faster and more
 	capable "toolame" encoder.  For transcoding applications the good old
 	stand-by "sox" will convert sampling rates very nicely (albeit it'll 
-	moan a bit about incorrect headers if you use it in a pipeline).
+	print a few warnings about incorrect headers if you use it in a
+	pipeline).
 
 	You may wish to try  using your favourite MPEG 1 layer 3 "MP3" 
 	encoder for better quality results.  However, make sure you 
@@ -107,10 +108,12 @@ corresponding singleAVI or Quicktime file.
 	Contains for the source files the "mplex" multiplexer.
 	This multiplexes (interleaves) MPEG-1/2 video and audio streams
   into a combined "system stream" that can be played back smoothly.
-  This is *not* as trivial a task as it might seem (see the original
-  authors paper on the subject - copy is in the documentation). Note that
-  the program has been fairly heavily modified since then.
+  This is *not* quite as trivial a task as it might seem (see the
+  original authors paper on the subject - copy is in the
+  documentation). Note that the program has been pretty heavily
+  modified since then.
   MPEG-2 multiplexing is implemented but is currently untested.
+  DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
 
 
 

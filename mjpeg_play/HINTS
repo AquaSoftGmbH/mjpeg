@@ -2,27 +2,25 @@
 
 (1) If you want to play on hardware decoders don't build variable
 bit-rate video streams.  If you intend to use software players they're
-a *much* better bet.  The variable bit-rate support in "mplex" is new
-so there could be bugs.  Let us know!
-	 
+a *much* better bet. HOWEVER: The variable bit-rate support in "mplex"
+is new so there could be bugs. Similarly, modifications to mpeg2enc
+may also have broken that side of things. They're next on the "get
+fixed" list. Let us know if/when you encounter problems.
+
 	 Buffer sizes.  For hardware players experimentation is the order
 	 of the day.  My DXR2 seems to use a nice big > 100K buffer for
 	 VCD as well as DVD streams and be happy too read MPEG-1 streams
 	 *much* faster than the official VCD 170K/sec.  300K seems fine.
 	 
-	 Generally, given the current slightly lame rate control code in
-	 mpeg2enc you'll probably need a buffer size of around 1/4
-	 data-rate to avoid buffer underflows (signalled
-	 as "time out"'s by mplex).
+	 Generally, you'll probably need a buffer size of around 1/4
+	 data-rate to avoid buffer underflows (signalled as "time out"'s
+	 by mplex).
 	 
 (2)  If you want to play MPEG-1 stuff on hardware decoders stick to
      44.1 Stereo layer-2 audio.   
 
 (3)  Use the noise filters when MPEG compressing broadcast material
-     unless it is *very* good or you like Artefacts.   Use a motion
-     compensation search setting around 15 or 20.  It is, I believe,
-     currently possible to set motion compensation search too
-     high.  You'll get warnings about violating the MPEG-1 standard.
+     unless it is *very* good or you like Artefacts. 
 
 (4) If you want to compress MPEG-2: feel free to try it, however, its
 	not tested.  Fully tested version coming next...
@@ -34,18 +32,31 @@ so there could be bugs.  Let us know!
 	to do this.  I'll try to incorporate suitable patches through their
 	developers before you read this!
  
-(6) For encoding a typical (45 minute runnig time) show to 90 odd
-minute movie from an analog broadcastI have found a CBR bit-rate of
-2200 to be ideal.  The resulting files are around 700M for 45 minutes
+(6) For encoding a typical (45 minute running time) show or 90 odd
+minute movie from an analog broadcast I have found a CBR bit-rate of
+1900 to be ideal.  The resulting files are around 700M for 45 minutes
 which fits nicely as a raw XA MODE2 data track on a CD-R.  (I use
 cdrdao to write such CD's and a hacked version of vcdread - soon to be
 included to extract them).
 
-(7) For transcoding existing MPEG-2 streams a much lower data-rate
-than for broadcast analog will give good results. Standard VCD 1152
-Kbps works fine.  The difference is in the Signal/Noise ratio of the
-original.  The noise in the analog stuff makes it much harder to
-compress.
+Update: I've now got a digital cable provider.  Digital TV sources
+(even when captured via an analog interface) give *much* better
+results.  There doesn't seem much point going above 1400 or 1500Kbps.
+Often even VCD 1152 works fine.  However, IMHO that rate is silly 'cos
+it means every movie still needs two CD's but the second is mostly
+empty.  Might as well crank the rate (and quality) up until you come
+in at just under 2 CD's.
+
+On modern 400Mhz+ CPU's there is *no point* running with a motion
+compensation setting less than 16.  The speed gains aren't huge as
+other parts of the encoder take a significant fraction of the
+time. See the mpeg2enc README.
+
+(7) For transcoding existing MPEG-2 streams a still lower data-rate
+than for broadcast will give good results. Standard VCD 1152 Kbps
+typically works just fine.  The difference is in the Signal/Noise
+ratio of the original.  The noise in the analog stuff makes it much
+harder to compress.
 
 
 
