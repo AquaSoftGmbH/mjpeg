@@ -23,12 +23,14 @@ Laurens - images:
 
 Bernhards Problems:
 ===================
-* add more options
-* make option screens for video encoding and mplex
-* make the setting of the values file based. 
+* never ending: add more options
 * split it to more files ??
 * make the imput fields more secure
 * make test for the input and output files
 * remove beginning mistakes
 * make some kind of batch productions 
+* Make the "out of order" buttons working again
+* write a description for the thing. 
+* Long term: make it look better
+* Long term: add the dix output
 * Very long therm: add the transcoding stuff (maybe)
