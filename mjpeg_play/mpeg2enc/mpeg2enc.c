@@ -63,6 +63,10 @@
 #include "format_codes.h"
 #include "mpegconsts.h"
 #include "fastintfns.h"
+#ifdef HAVE_ALTIVEC
+/* needed for ALTIVEC_BENCHMARK and print_benchmark_statistics() */
+#include "../utils/altivec/altivec_conf.h"
+#endif
 int verbose = 1;
 
 /* private prototypes */
@@ -1020,6 +1024,9 @@ static struct option long_options[]={
 	if( statfile != NULL )
 		fclose(statfile);
 #endif
+#ifdef ALTIVEC_BENCHMARK
+	print_benchmark_statistics();
+#endif
 	return 0;
 }
 
@@ -1137,10 +1144,18 @@ static void init_encoder(void)
 	mb_height2 = opt_fieldpic ? mb_height>>1 : mb_height; /* for field pictures */
 	opt_enc_width = 16*mb_width;
 	opt_enc_height = 16*mb_height;
-    /* James: here's the place to do that padding!! */
-    /* The values here are just for testing.        */
-    opt_phy_width = opt_enc_width+16;
-    opt_phy_height = opt_enc_height+8;
+
+#ifdef HAVE_ALTIVEC
+	/* Pad opt_phy_width to 64 so that the rowstride of 4*4
+	 * sub-sampled data will be a multiple of 16 (ideal for AltiVec)
+	 * and the rowstride of 2*2 sub-sampled data will be a multiple
+	 * of 32. Height does not affect rowstride, no padding needed.
+	 */
+	opt_phy_width = (opt_enc_width + 63) & (~63);
+#else
+	opt_phy_width = opt_enc_width;
+#endif
+	opt_phy_height = opt_enc_height;
 
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
@@ -1704,6 +1719,13 @@ static void init_quantmat(void)
 	int i,v, q;
 	opt_load_iquant = 0;
 	opt_load_niquant = 0;
+
+	/* bufalloc to ensure alignment */
+	opt_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+	opt_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+	i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+	i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+
 	if( param_hf_quant == 2)
 	{
 		opt_load_iquant |= 1;
