@@ -152,11 +152,9 @@ void sub_mean_reduction( me_result_set *matchset,
 	int i,j;
 	int weight_sum;
 	int mean_weight;
-	int min_weight = 100000;
-	if( len == 0 )
+	if( len <= 1 )
 	{
-		*minweight_res = 100000;
-		matchset->len = 0;
+		*minweight_res = (len==0) ? 100000 : matches[0].weight;
 		return;
 	}
 
@@ -175,10 +173,6 @@ void sub_mean_reduction( me_result_set *matchset,
 		{
 			if( matches[i].weight <= mean_weight )
 			{
-				if( times == 1)
-				{
-					min_weight = matches[i].weight ;
-				}
 				matches[j] = matches[i];
 				++j;
 			}
