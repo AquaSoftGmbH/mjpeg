@@ -295,7 +295,7 @@ static void Usage(char *str)
 "    0 = Display frame rate code table\n"
 "--video-bitrate|-b num\n"
 "    Set Bitrate of compressed video in KBit/sec\n"
-"    (default: 1152 for VCD, 2500 for SVCD, 3800 for DVD)\n"
+"    (default: 1152 for VCD, 2500 for SVCD, 7500 for DVD)\n"
 "--nonvideo-birate|-B num\n"
 "    Non-video data bitrate to assume for sequence splitting\n"
 "    calculations (see also --sequence-length).\n"
