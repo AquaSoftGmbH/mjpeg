@@ -651,10 +651,10 @@ static void readparmfile()
 		/* TODO: These f-codes should really be adjust for each
 		   picture type... */
 		c=5;
-		if( radius_x*M <64) c = 4;
-		if( radius_x*M < 32) c = 32;
-		if( radius_x*M <16) c = 2;
-		if(radius_x*M < 8) c = 1;
+		if( radius_x*M < 64) c = 4;
+		if( radius_x*M < 32) c = 3;
+		if( radius_x*M < 16) c = 2;
+		if( radius_x*M < 8) c = 1;
 
 		motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
 		if (!motion_data)
@@ -956,6 +956,7 @@ static void readquantmat()
 		if( param_hires_quant )
 		{
 			load_iquant |= 1;
+			printf( "Setting hi-res intra Quantisation matrix\n" );
 			for (i=0; i<64; i++)
 			{
 				intra_q[i] = hires_intra_quantizer_matrix[i];
@@ -1004,6 +1005,7 @@ static void readquantmat()
 
 		if( param_hires_quant )
 		{
+			printf( "Setting hi-res non-intra quantiser matrix\n" );
 			for (i=0; i<64; i++)
 			{
 				inter_q[i] = hires_nonintra_quantizer_matrix[i];

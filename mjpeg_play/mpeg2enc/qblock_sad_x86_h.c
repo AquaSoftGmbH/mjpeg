@@ -54,16 +54,16 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 									 int threshold,
 									 mc_result_s *resvec)
 {
-	uint32_t x,y;
+	int32_t x,y;
 	uint8_t *currowblk = blk;
 	uint8_t *curblk;
 	mc_result_s *cres = resvec;
-	int      gridrowstride = rowstride<<1;
+	int      gridrowstride = (rowstride);
 
-	for( y=jlow; y <= jhigh ; y+=8)
+	for( y=jlow; y <= jhigh ; y+=4)
 	{
 		curblk = currowblk;
-		for( x = ilow; x <= ihigh; x += 8)
+		for( x = ilow; x <= ihigh; x += 4)
 		{
 			int weight;
 			if( (x & 15) == 0 )
@@ -82,8 +82,8 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 				cres->blk = curblk;
 				++cres;
 			}
-			curblk += 2;
-			shift_blk(16);
+			curblk += 1;
+			shift_blk(8);
 		}
 		currowblk += gridrowstride;
 	}

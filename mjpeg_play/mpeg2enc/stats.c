@@ -442,9 +442,9 @@ void stats()
   fprintf(statfile,"\nmacroblock info dump:\n");
 
   k=0;
- for (j=8; j<10; j++)
+ for (j=10; j<mb_height2; j++)
   {
-    for (i=14; i<17; i++)
+    for (i=0; i<mb_width; i++)
     {
 			  k = j*mb_width+i;
       fprintf(statfile,"(%d,%d): %02x %1.1f %d %3.1f %02x %d\n",
@@ -458,7 +458,7 @@ void stats()
 	}
   }
 
-
+#if 0
  k=0;
   for (j=8; j<10; j++)
   {
@@ -486,6 +486,6 @@ void stats()
     }
   }
 
-
+#endif
 #endif
 }

@@ -41,7 +41,8 @@ MMX routines from the bbmpeg project for windows (see
 www.delphi.com/bbmpeg_ug) to accelerate a few "second line" but
 nonetheless significantly time-consuming functions.
 
-Andrew Stevens added a new much faster MMX based quantization routine.
+Andrew Stevens added a new much faster MMX / 3Dnow / ISSE 
+based quantization routines.
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
@@ -52,24 +53,35 @@ typical broadcast quality sources.
 USAGE:
 
 Output file name (-o option) is required!
-Usage: ./mpeg2enc [params] inputfiles
+
+Usage: ./mpeg2enc [params]
    where possible params are:
    -m num     MPEG level (1 or 2) default: 1
    -b num     Bitrate in KBit/sec (default: 1152 KBit/s)
    -q num     Quality factor [1..31] (1 is best, no default)
-	      This option selects a simple form of variable-bit-rate encoding
-	      -q and -b are mutually exclusive.
+              Bitrate and Quality are mutually exclusive!
    -o name    Outputfile name (REQUIRED!!!)
+   -F num     only for MPEG 2 output:
+               0 = progressive output (no field pictures)
+               1 = field pictures, bottom field first
+               2 = field pictures, top field first
    -r num     Search radius [0..32] (default 0: don't search at all)
-   -s num     Special output format option:
-                 0 output like input, nothing special
-                 1 create half height/width output from interlaced input
-                 2 create 480 wide output from 720 wide input (for SVCD)
-   -d num     Drop lsbs of samples [0..3] (default: 0)
-   -n num     Noise filter (low-pass) [0..2] (default: 0) Bigger numbers stronger smoothing.
-   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)
-   -t         Activate dynamic thresholding of motion compensation window size 
-
+   -4 num     (default: 2)
+			  Threshold  to divide 4*4 sub-sampled motion search by.
+				1 will guarantee practically no match likely to lead to
+			 and optimum will be discarded but is slow.  4 is fast but
+			will cause the odd match to be missed.
+   -2 num     (default: 2)
+				Same as -4 but for the 2*2 sub-sampled stage of motion
+			 compensation search.
+   -Q num     Amount quantisation of highly active blocks is 
+			  reduced by [0.1 .. 10.0] [2.0]
+(default: 2.5)   -v num     Target video buffer size in KB (default 46)
+   -t         Activate dynamic thresholding of motion compensation window size
+   -N         Noise filter via quantisation adjustment (experimental)
+   -h         Maximise high-frequency resolution (useful for high 
+			  quality sources)
+   -o         Use old style lag rate control (not recommended, probably buggy) 
 
 FAST MOTION COMPENSATION:
 
@@ -84,52 +96,44 @@ coarsely first comparing sums of 4*4 pixel groups and then 2*2 pixel
 groups rather than individual pixels. Technically: we do an initial
 search using sub-sampled data and use this to choose the places to
 search for detail single pixel and sub-pixel matches.
-This reduces the amount of search *dramatically*. 
+This reduces the amount of search *dramatically*.  
 
-Since a good exact matches (down to half-pixels) will also give a
-good 2*2 match we know the best match should be in amoungst the best
-2*2 matches.  However, there may be some false positives.  So we
-can't just work with the very best.  Instead we choose some fraction
-(the default is 1/10) and look for the best exact match corresponding
-to these good 2*2 matches.  Experiments and a bit of simple
+
+Since a good exact matches (down to half-pixels) will also give a good
+2*2 match we know the best match should be in amoungst the best 2*2
+matches. Similarly for the 2*2 in the 4*4 matches.  However, there may
+be some false positives.  So we can't just work with the very best 4*4
+and the best 2*2 near that.  Instead we discard those above some
+threshold these good 2*2 matches.  Experiments and a bit of simple
 statistics revealed that it was exceedingly rare to miss the best
 match doing this, and even when we did miss the match found was
-*almost* as good.
+*almost* as good.  You can adjust the threshold with the -4 and -2
+flags.
 
+Between the settings
 
-Obviously, your mileage may vary so you may want to fiddle with the -f
+-4 1 -2 1  (highest quality)
+
+-4 4 -2 4	(fastest)
+
+Quality is impacted by about 10% quantisation (typically around 0.2 of
+a bit precision in texture coefficients).  Speed is impacted by a
+factor of 2.  For most purposes the default settings will be fine.
+However, even in the fastest mode all but sequences on the verge of
+what is possible should encode fine.
+
+Anyway, motion compensation is now fast enough on modern CPU's that it
+is only a fraction of total run-time even with big search radii set.
+There's very little point going below a radius of 16 as the speed gains
+are pretty limited.
+
+Obviously, your mileage may vary so you may want to fiddle with the
 setting if you're getting rotten results.  Contact
 Andrew.Stevens@comlab.ox.ac.uk if you think you have found a case
 where the fast compensation fails!
 
-In case you're wondering: the performance gain is a factor of around 2-3.
-
-SEARCH THRESHOLDING
-
-Its a pain to watch the encoder grinding its way through huge motion
-compensation search radii that are really only needed on the fastest
-moving of scenes.  As a way around this the encoder now supports
-thresholding of  motion compensation search.  It first searches within
-a small radius (half the specified).  If this already yields a result
-that is better than average (in terms of absolute difference) it aborts
-the search there.  Only if the best match found initially is poor does
-the program bother searching more widely.  The net result is motion
-compensation is speeded by another factor of two for near zero quality
-loss.
-
-UPDATE: Actually, this currently doesn't happen instead the thresholding
-takes place as 2*2 pel matches are evaluated in order of closeness.  It may 
-be re-instated if the performance gains look worthwhile.
-N.b. because it is possible (if very unlikely) that non-trivial quality
-losses may occur (and the gains in terms of total run-time
-are not huge) thresholding defaults *off*.  Use "-t" to turn it on.
-
-As an aside to prevent short patches of very rapidly changing scenes
-with poor matching after motion compensation making the encoder "lazy"
-by skewing the average, the system uses *two* averages on long-term
-one short-term.  It uses the *smaller* of the two when deciding whether
-or not to bother searching further.   
-
+In case you're wondering: the performance gain over brute force search
+is something like a factor of 5.
 
 NOISE FILTERING and BIT DROPPING
 
@@ -140,15 +144,16 @@ source this assumption isn't really true.  The noise introduces lots
 of spurious differences betwen actually very similar pictures.  The
 end result is ugly "artifacted" results where MPEG has dropped real
 information in favour of spurious noise.  The solution is to try to
-filter the noise out of the source.   Currently, nothing terribly
-clever is done: just simple smoothing. -n 1 smooths gently and is almost
-imperceptible, -n 2 is rather stronger and is noticeable if you compare
-source video.  -n3 is really brutal and probably only sensible for material
-captured at high resolution. However, if you really have noisy sources then -n 2 
-or -n 3 is infinitely preferable to the swimming sea of artefacts MPEG otherwise
-generates.
+filter the noise out of the source.  kav2yuv allows this.  Currently,
+nothing terribly clever is done: just simple smoothing. -n 1 smooths
+gently and is almost imperceptible, -n 2 is rather stronger and is
+noticeable if you compare source video.  -n3 is really brutal and
+probably only sensible for material captured at high
+resolution. However, if you really have noisy sources then -n 2 or -n
+3 is infinitely preferable to the swimming sea of artefacts MPEG
+otherwise generates.
 
-SMARTER BIT ALLOCATION (A.Stevens Aug 2000)
+SMARTER BIT ALLOCATION (A.Stevens Aug and Nov 2000)
 
 The original source code makes heavy use of the variance of
 blocks as a measure of their information content.  This is actually
@@ -172,30 +177,30 @@ These modifications appear to give noticeable better results, greatly
 reducing fringes around sharp contrasts (e.g. titles) whilst still
 ensuring no significant bit-rate overshoots.
 
-PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul/Aug 2000)
+The encoder now also tries to predict the likely bit-demand for each
+frame so it can set quantisation roughly right so that there isn't a
+"ramping" of quality down a frame with the top (too) good and the bottom
+(excessively) poor.
 
-In addition to improved fast motion compensation the updated code
-also has x86 assembly language MMX/SSE routines for key motion
-compensation calculations (8*8 and 16*16 block absolute difference sums).
+PERFORMANCE: MMX/MMXEXT/SSE/3D-NOW (A.Stevens Jul/Aug 2000)
 
-Unfortunately, the original MMX (MMX1) instruction set is somewhat
-deficient in a couple of key areas.  In particular there's no way of
-preserving carries. In this case: computing a 16 bit sum of packed 8
-bit unsigned differences or averaging 8 bit values are greatly
-complicated by this.  Thus the performance gains from moving to MMX aren't as
-spectacular as one might expect: only around 50% speed up.
+In addition to improved fast motion compensation the updated code also
+has x86 assembly language routines for key calculations: 4*4. 8*8 and
+16*16 block absolute difference sums, interpolated and simple
+prediction variances, prediction addition and subtraction, foward and
+inverse discrete cosine transforms, and quantisation and inverse
+quantisation.
 
+Unfortunately, the original MMX (MMX1) instruction set on the Pentium
+MMX is somewhat deficient in a couple of key areas (it has obvious
+"gaps").  Subsequent CPU's all started to fill these gaps in.  Thus
+there is core MMX plus MMX extensions from one or all of: K6,
+Athlon/Duron, P-III and now even P-IV.  Where relevant routines come
+in several versions to make the most of what is available. As an
+extra-special bonus for AMD owners some of the quantisation
+calculations are done (much faster) with the 3D-Now! instructions.
+Similar stuff for P-III/P-IV SSE instructions is being written.
 
-Fortunately, MMX2 as found on Athlon's and Intel chips with SSE adds
-some *really* handy instructions.  Yep, you guessed it, an instruction
-for computing a sum of absolute differences of 8-bit packed data.  They
-might as well have gone the whole hog and called it "MPEGMOTIONCOMP"...
-Chris Atenasio's code works like lightning and was also adapted for
-fast motion compensation search by yours truly.  Speed up is better than
-100% (more than twice as fast).  Its even a bit quicker now due
-to some tuning by yours truly.  Unfortunately, the current auto-detection code
-probably doesn't select the right MMX2 routines on Athlon's.   This should be
-fixed soon...
 
 There have also been some gross-me-out hacky optimisations made
 to the non-MMX code to make it run better on modern pipelined CPU's.
@@ -211,43 +216,25 @@ merrily abuses data alignment constraints.
 STILL MORE PERFORMANCE?
 
 Not easy to see how big improvements can be made without radical
-rebuilding of the code.  The program still spends around 50% of its
-time in motion compesation search.  Further speed ups would require
-more aggressive algoriths. A partial best-first search with row/column sums
-might be worth investigating for a "quick and dirty" compression mode
-with real-time pretensions.  However, to get the additional factor of
-2-3 needed to allow real-time compression on a single modern GHz CPU
-other parts of the program would need to be investigated too...
-
-One possibility it sliding search windows based on previous motion
-compensations to keep search *small*...
-
-A small step would be to precalculate some of the quantisation calculations
-and/or add 3D-Now and SSE support for DCT/IDCT and Quantisation.
+rebuilding of the code.  The program now spends around 50% of its
+time in routines that are already aggressively implement in MMX (etc).
 
 BETTER QUALITY?
 
 - There is still a lot of room for improvements to bit-allocation.
-The most interesting issue would be to find a reasonable quality
-metric and allow constant quality (variable bit-rate) encoding.
-The current "Quality factor"  method is just constant quantisation
-which is only a coarse approximation to constant quality.  One
-possibility would be to compare reconstructed blocks with the
-originals and take a second pass, reducing quantisation on those
-with unacceptably low SNR's.
+The most interesting issue would be to detect scene changes and adjust
+GOP's accordingly.   I-frames are *big*...
 
-- It would probably be smart to replace the current pre-processor
-filtering with filtering based on modifications of the DCT quantisation
-matrices.   Strong suppression of HF coefficients would work wonders
-on noise I suspect.  Update: either I'm doing it wrong or it doesn't
-work too well.  One problem is the lack of filtering messing up 
-motion compensation.
+- It should also be possible to intelligently use switching of
+quantisation matrices to suppress mosaicing in very active scenes. I.e.
+to "blur" rather than "mosaic".
 
-- Pre-processing of the input to suppress mosaicing is a tantalising 
-possibility.
+- Some minor gains could be made by intelligently selecting f-code's
 
-- Scene change detection to allow smart GOP length determination would
-probably help quality in "extreme" situations.
+- There are easy gains to be made (for people intending to use
+software decoders or suitable hardware) by gettting veriable-bit-rate
+encoding working once again.  This is one of the next things on the
+list and should be pretty easy.
 
 INPUT FORMAT
 

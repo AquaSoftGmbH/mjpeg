@@ -26,7 +26,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 
 INCLUDES = 
 CPPFLAGS = @MTYPEFLAGS@
-CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized
+CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized -DDEBUG -DOUTPUT_STAT
 ASM = nasm
 
 

@@ -74,18 +74,14 @@ corresponding singleAVI or Quicktime file.
 
 * The mpeg2enc directory
 
-- "mpeg2enc" for encoding AVI/Quicktime files and Edit Lists
-  to MPEG-1/2 video streams.   It creates two programs.
-  mpeg2enc (the encoder proper) and "lav2yuv".  mpeg2enc expects
-  a simple "raw" YUV video format on its standard input (see README in
-  the directory for details of the format).  Typically you'd therefore
-  pipe the output of lav2yuv into mpeg2enc.  This two-program approach
-  is chosen for primarily for flexibility.  Using appropriate filter
-  programs other than lav2yuv it is easy to use mpeg2enc to compress
-  other types of video stream.  For example, the "livid" MPEG-2
-  decoder/DVD player can produce the output expected by "mpeg2enc" so
-  that in combination they can be used to reduce high bit-rate
-  MPEG-2 formats to smaller MPEG-2 or MPEG-1 formats.
+- "mpeg2enc" for encoding the output of lav2yuv or suitable
+	output plugins in mpeg2dec to MPEG-1/2 video streams.
+
+	See the README for further details.
+	In the current beta release MPEG-2 is untested and variable
+	bit-rate probably won't work.  HOWEVER: speed and quality for
+	MPEG-1 are really rather good. Encoding at 15 fps on a 700Mhz
+	Duron or 10fps on a 450Mhz P-III.
 
 * The aenc directory - 
 

@@ -126,7 +126,7 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO DEBUG */
-static double avg_KI = 10.0;	/* These values empirically determined 		*/
+static double avg_KI = 5.0;	/* These values empirically determined 		*/
 static double avg_KB = 8.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 8.0;
 static double avgsq_KI = 8.0*8.0;
@@ -371,6 +371,7 @@ void rc_init_pict(pict_data_s *picture)
 			d = d0i;
 			avg_K = avg_KI;
 			Si = (Xi + 3.0*avg_K*actsum)/4.0;
+						printf( "Si = %.2f\n", Si );
 			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		}
 		else
@@ -422,7 +423,7 @@ void rc_init_pict(pict_data_s *picture)
 #ifdef DEBUG
 	if( !quiet )
 	{
-		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, T/8, avg_K  );
+		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  );
 	}
 #endif	
 	if( pred_ratectl )
@@ -952,6 +953,15 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	/* VBV checks */
 
+	/*
+	   TODO: This is currently disabled because it is hopeless wrong
+	   most of the time. It generates 20 warnings for frames with small
+	   predecessors (small bitcnt_EOP) that in reality would be padded
+	   away by the multiplexer for every realistic warning for an
+	   oversize packet.
+	*/
+
+#ifdef CRIES_WOLF
 
 	/* check for underflow (previous picture).
 	*/
@@ -967,19 +977,14 @@ void calc_vbv_delay(pict_data_s *picture)
 	/* when to decode current frame */
 	decoding_time += picture_delay;
 
-	picture->vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
-
 
 	/* check for overflow (current picture).  Unless verbose warn
 	   only if overflow must be at least in part due to an oversize
 	   frame (rather than undersize predecessor).
-	   TODO: This is currently disabled because it is hopeless wrong
-	   most of the time. It generates 20 warnings for frames with small
-	   predecessors (small bitcnt_EOP) that in reality would be padded
-	   away by the multiplexer for every realistic warning for an
-	   oversize packet.
-	*/
-#ifdef CRIES_WOLF
+	   	*/
+
+	picture->vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
+
 	if ( decoding_time * ((double)bit_rate  / 90000.0) - ((double)bitcnt_EOP)
 		> vbv_buffer_size )
 	{
@@ -991,7 +996,7 @@ void calc_vbv_delay(pict_data_s *picture)
 					oversize / 8.0
 				);
 	}
-#endif
+
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,
@@ -1005,9 +1010,9 @@ void calc_vbv_delay(pict_data_s *picture)
 			fprintf(stderr,"vbv_delay underflow: %d\n",picture->vbv_delay);
 		picture->vbv_delay = 0;
 	}
-	
-	/* TODO THIS NEEDS TO BE GOT WORKING! */
-#ifdef NOT_WORKING_CORRECTLY_YET
+
+
+
 	if (picture->vbv_delay>65535)
 	{
 		fprintf(stderr,"vbv_delay frame %d exceeds permissible range: %d\n",

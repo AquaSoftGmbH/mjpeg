@@ -277,18 +277,6 @@ void init_motion()
  */
 
 
-
-/*
-  4*4 subsampled pel sad threshold below which initial 8*8 grid
-  motion compensations are discarded.
-  Intended only to filter out manifestly absurd matches.
-  Starts *very* generous.  Then simply held as 3/2*mean match
-  from the previous match.
- */
-
-int sub44_coarse_threshold;
-
-
 /* 
    Reset the match accuracy threshhold used to decide whether to
    restrict the size of the the fast motion compensation search window.
@@ -296,7 +284,6 @@ int sub44_coarse_threshold;
 
 void reset_thresholds(int macroblocks_per_frame)
 {
-	sub44_coarse_threshold = COARSE_44_SAD_THRESHOLD;
 }
 
 
@@ -1581,13 +1568,16 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 		return;
 	}
 
-	while( times > 0)
+	for(;;)
 	{
 		weight_sum = 0;
 		for( i = 0; i < len ; ++i )
 			weight_sum += matches[i].weight;
 		mean_weight = weight_sum / len;
-
+		
+		if( times <= 0)
+			break;
+			
 		j = 0;
 		for( i =0; i < len; ++i )
 		{
@@ -1604,9 +1594,8 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 		len = j;
 		--times;
 	}
-
 	*newlen_res = len;
-	*minweight_res = min_weight;
+	*minweight_res = mean_weight;
 }
 
 /*
@@ -1641,8 +1630,9 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 */
 
 
-static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh, 
+static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh, 
 							int i0, int j0,
+								int null_mc_sad,
 							uint8_t *s44org, uint8_t *s44blk, int qlx, int qh )
 {
 	uint8_t *s44orgblk;
@@ -1653,10 +1643,13 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 	int mean_weight;
 
 #ifdef X86_CPU
-	int k;
-	int rangex, rangey;
+
+	int threshold;
+	/*int rangex, rangey;
 	static int rough_num_mcomps;
-	static mc_result_s rough_mcomps[MAX_44_MATCHES/4];
+	static mc_result_s rough_mcomps[MAX_44_MATCHES];
+	int k;
+	*/
 #else
 	int i,j;
 	int s1;
@@ -1671,15 +1664,16 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 
 
 	sub44_num_mcomps = 0;
+	
+	threshold = 6*null_mc_sad / (4*4*mc_44_red);
+	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
+	
+	/* Exhaustive search on 4*4 sub-sampled data.  This is affordable because
+		(a)	it is only 16th of the size of the real 1-pel data 
+		(b) we ignore those matches with an sad above our threshold.	
+	*/
 #ifndef X86_CPU
-		/* Exhaustive search on 4*4 sub-sampled data.  This is affordable because
-		it is only 16th of the size of the real 1-pel data */
-		
-		/* TODO: Really this should do a 2-stage search first on 8*8 grid for a coarse
-		scan and then expanding the best of the 8* matches to 4*4 grid matches. However,
-		since pretty much any actual use for the moment will be using the X86 stuff below
-		its not a high priority */
-		
+
 		/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
 		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 		for( j = jstrt; j <= jend; j += 4 )
@@ -1688,7 +1682,7 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 			for( i = istrt; i <= iend; i += 4 )
 			{
 				s1 = ((*pqdist1)( s44orgblk,s44blk,qlx,qh) & 0xffff) + intabs(i-i0) + intabs(j-j0);
-				if( s1 < sub44_coarse_threshold )
+				if( s1 < threshold )
 				{
 					sub44_mcomps[sub44_num_mcomps].x = i;
 					sub44_mcomps[sub44_num_mcomps].y = j;
@@ -1701,53 +1695,23 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 			s44orgblk = old_s44orgblk + qlx;
 		}
 			
-		sub_mean_reduction( sub44_mcomps, rough_num_mcomps, 1,
-							&rough_num_mcomps, &mean_weight);
-		sub44_coarse_threshold = 
-			intmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
-		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, mc_44_red,
-								     &sub44_num_mcomps, &mean_weight);
 #else
-		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
-		rough_num_mcomps
+
+		sub44_num_mcomps
 			= (*pqblock_8grid_dists)( s44orgblk, s44blk,
 								  istrt, jstrt,
 								  iend, jend, 
 								  qh, qlx, 
-								  sub44_coarse_threshold,
-								  rough_mcomps);
-		
-		/* If the initial thresholding didn't filter out much (very self-similar image)
-			we reduce twice, otherwise only once */
+								  threshold,
+								  sub44_mcomps);
+
+#endif	
+		/* If we're really pushing quality we reduce once otherwise twice. */
 			
-		sub_mean_reduction( rough_mcomps, rough_num_mcomps, 1,
-							&rough_num_mcomps, &mean_weight);
-		sub44_coarse_threshold = 
-			intmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
-		/* 
-		   We now use the good matches on 8-pel boundaries 
-		   as starting points for matches on 4-pel boundaries...
-		*/
+		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, 1+(mc_44_red>1),
+						    &sub44_num_mcomps, &mean_weight);
 
-		sub44_num_mcomps = 0;
-		for( k = 0; k < rough_num_mcomps; ++k )
-		{
-			sub44_mcomps[sub44_num_mcomps] = rough_mcomps[k];
-			rangex = (rough_mcomps[k].x < iend);
-			rangey = (rough_mcomps[k].y < jend);
-			++sub44_num_mcomps;
-			sub44_num_mcomps +=
-				(*pqblock_near_dist)( rough_mcomps[k].blk, s44blk, 
-									 rough_mcomps[k].x, rough_mcomps[k].y,
-									 rangex, rangey,
-									 mean_weight,
-									 qh, qlx, sub44_mcomps+sub44_num_mcomps);
-		}
 
-		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, mc_44_red,
-								     &sub44_num_mcomps, &mean_weight);
-
-#endif
 	return sub44_num_mcomps;
 }
 
@@ -1762,18 +1726,18 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 
 
 static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh, 
-						   uint8_t *s22org,  uint8_t *s22blk, 
-						   int flx, int fh,  int searched_sub44_size )
+								int null_mc_sad,
+						   		uint8_t *s22org,  uint8_t *s22blk, 
+						   		int flx, int fh,  int searched_sub44_size )
 {
 	int i,k,s;
-
+	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
 
 	int min_weight;
 	int ilim = ihigh-i0;
 	int jlim = jhigh-j0;
 	blockxy matchrec;
 	uint8_t *s22orgblk;
-	int dist_sum  = 0;
   
 	sub22_num_mcomps = 0;
 	for( k = 0; k < searched_sub44_size; ++k )
@@ -1786,13 +1750,15 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
-			{
+			{	
 				s = (*pfdist1)( s22orgblk,s22blk,flx,fh);
-				sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
-				sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
-				sub22_mcomps[sub22_num_mcomps].weight = s;
-				++sub22_num_mcomps;
-				dist_sum += s;
+				if( s < threshold )
+				{
+					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
+					sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
+					sub22_mcomps[sub22_num_mcomps].weight = s;
+					++sub22_num_mcomps;
+				}
 			}
 
 			if( i == 1 )
@@ -1812,7 +1778,7 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 	}
 
 	
-	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, mc_22_red,
+	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, 2,
 						&sub22_num_mcomps, &min_weight );
 	return sub22_num_mcomps;
 }
@@ -1849,10 +1815,10 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	init_size = sub22_num_mcomps;
 	for( k = 0; k < searched_size; ++k )
 	{	
-		matchrec.x = ilow + sub22_mcomps[k].x;
-		matchrec.y = jlow + sub22_mcomps[k].y;
+		matchrec.x = i0 + sub22_mcomps[k].x;
+		matchrec.y = j0 + sub22_mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
-		penalty = abs(matchrec.x-i0)+abs(matchrec.y-j0);
+		penalty = abs(matchrec.x)+abs(matchrec.y);
 	  
 		if( matchrec.x <= xmax && matchrec.y <= ymax )
 		{
@@ -1970,9 +1936,22 @@ static void fullsearch(
 	ihigh =  i0+sx;
 	ihigh = ihigh > xmax ? xmax : ihigh;
 
+	/*
+ 	   Very rarely this may fail to find matchs due to all the good
+	   looking ones being "off the edge".... hence we make sure we
+	   fall back to a 0 motion compensation in this case.
+	   
+		 The sad for the 0 motion compensation is also very useful as
+		 a basis for setting thresholds for rejecting really dud 4*4
+		 and 2*2 sub-sampled matches.
+	*/
+	best.sad = (*pdist1_00)(ref+i0+j0*lx,ssblk->mb,lx,h,best.sad);
+	best.pos.x = i0;
+	best.pos.y = j0;
 
-	sub44_num_mcomps = build_sub44_mcomps( ilow, ihigh, jlow, jhigh, 
+	sub44_num_mcomps = build_sub44_mcomps( ilow, jlow, ihigh, jhigh,
 									  i0, j0,
+									  best.sad,
 									  s44org, 
 									  ssblk->qmb, qlx, qh );
 
@@ -1983,20 +1962,17 @@ static void fullsearch(
 	   only coarsely... on 4-pel boundaries...  */
 
 	sub22_num_mcomps = build_sub22_mcomps( i0, j0, ihigh,  jhigh, 
+										best.sad,
 									  s22org, ssblk->fmb, flx, fh, 
 									  sub44_num_mcomps );
 
+		
     /* Now choose best 1-pel match from what approximates (not exact
 	   due to the pre-processing trick with the mean) the top 1/2 of
 	   the 2*2 matches 
+	*/
+	
 
- 	   Very rarely this may fail to find matchs due to all the good
-	   looking ones being "off the edge".... hence we make sure we
-	   fall back to a 0 motion compensation in this case.	   
-	   */
-	best.sad = INT_MAX;
-	best.pos.x = i0;
-	best.pos.y = j0;
 	find_best_one_pel( org, ssblk->mb, sub22_num_mcomps,
 					   i0, j0,
 					   ilow, jlow, xmax, ymax, 

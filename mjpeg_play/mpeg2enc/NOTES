@@ -1,5 +1,4 @@
-Some notes on the maths of Quantization...
-
+SOME NOTES IN AND AROUND MPEG ENCODING
 
 (1) The importance of precision...
 
@@ -97,6 +96,15 @@ interlaced (field MC case) which is where you'd really want the speed gains.
 	starts blurring the results by killing off h.f. components.
 
 
+(5)	Spares and Sub-sampled matching.
+
+	You get *good* results searching for sub-sampled matches at sub-sampling resolution.
+	
+	However, if you go below the sampling resolution you *will* miss the odd good match.
+	
+	Furthermore, the sad of sub-sampled match leading (eventually) to an optimal
+	1-pel match can be surprisingly much higher than you'd expect. 6*sad scaled for
+	sampling density can occasionally be observed.  I was amazed...
 
 	Andrew
 
