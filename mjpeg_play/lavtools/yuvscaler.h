@@ -5,4 +5,6 @@ int average_along_width(unsigned char *,unsigned int *,unsigned char *,int);
 int average_along_height(unsigned char *,unsigned int *,unsigned char *,int);
 int average_Y(unsigned char *,unsigned char *, unsigned int *, unsigned int *);
 int average_UV(unsigned char *,unsigned char *, unsigned int *, unsigned int *);
+int average_Y_specific(unsigned char *,unsigned char *, unsigned int *, unsigned int *);
+int average_UV_specific(unsigned char *,unsigned char *, unsigned int *, unsigned int *);
 unsigned int pgcd(unsigned int,unsigned int);
