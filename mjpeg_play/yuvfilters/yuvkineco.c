@@ -37,15 +37,17 @@
 static void
 buf_debug(char *buf, FILE *fp, const char *format, ...)
 {
+  size_t n;
   va_list ap;
   va_start(ap, format);
   vsprintf(buf + strlen(buf), format, ap);
   va_end(ap);
-  if (buf[strlen(buf) - 1] == '\n') {
+  if (buf[(n = strlen(buf) - 1)] == '\n') {
     if (fp) {
       fputs(buf, fp);
     } else {
 #ifdef MJPEGTOOLS
+      buf[n] = '\0';
       mjpeg_debug(buf);
 #else
       fputs(buf, stderr);
@@ -149,15 +151,15 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     }
   }
   if (cytype != 'N' && (h0->fpscode < 3 || 5 < h0->fpscode)) {
-    WERROR("unsupported input fps\n");
+    WERROR("unsupported input fps");
     return NULL;
   }
   if (fpscode < 1 || h0->fpscode < fpscode) {
-    WERROR("illeagal output fpscode\n");
+    WERROR("illeagal output fpscode");
     return NULL;
   }
   if (y4m_si_get_interlace(&h0->si) == Y4M_ILACE_BOTTOM_FIRST) {
-    WERROR("unsupported field order\n");
+    WERROR("unsupported field order");
     return NULL;
   }
   if (ycsthres) {
@@ -282,17 +284,17 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 		 &width, &height, &oldfps, &newfps) == 4) {
 	if (width != h0->width || height != h0->height ||
 	    ((h->cytype == 'O')? oldfps: newfps) != h0->fpscode) {
-	  WERROR("input and cycle list not match.\n");
+	  WERROR("input and cycle list not match.");
 	  goto ERROR;
 	}
 	if (h->cytype == 'O' && newfps < fpscode) {
-	  WERROR("output fpscode greater than specified at 1st try.\n");
+	  WERROR("output fpscode greater than specified at 1st try.");
 	  goto ERROR;
 	}
 	goto RETURN;
       }
     }
-    WERROR("broken cycle list.\n");
+    WERROR("broken cycle list.");
   ERROR:
     fclose(h->cyfp);
     goto ERROR_RETURN;
@@ -668,9 +670,14 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	idrp = h->iget - h->iuse - 1;
       while (0 <= idrp && notdrop[idrp] != '0')
 	idrp--;
+      if (idrp < 0) {
+	idrp = (h->nframes / 2) + 1;
+	while (0 <= idrp && (notdrop[idrp] & 1))
+	  idrp--;
+      }
       if (idrp < 0 && (h->nframes / 2) + 1 < h->iget - h->iuse - 1) {
 	idrp = (h->nframes / 2) + 1;
-	while (idrp < h->iget - h->iuse - 1 && notdrop[idrp] != '0')
+	while (idrp < h->iget - h->iuse - 1 && (notdrop[idrp] & 1))
 	  idrp++;
 	if (idrp == h->iget - h->iuse - 1) {
 	  idrp = h->nframes / 2;
@@ -805,7 +812,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  break;
 	if (isalpha(c) || (c == '_' && h->cytype == 'O')) {
 	  if (h->u.cy.buff + 30 <= d) {
-	    WWARN("too long line in cycle list.\n");
+	    WWARN("too long line in cycle list.");
 	    break;
 	  }
 	  *d++ = c;
