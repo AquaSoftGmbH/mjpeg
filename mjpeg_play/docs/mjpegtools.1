@@ -71,11 +71,11 @@ The 8 * 1024 convert the value from bit/sec to kByte/sec
 
 Video: (width * height * framerate * quality )/ (200*1024)
 .br
-PAL VCD Size  : (352*288*25*80) / (200*1024) = 990  kB/sec
+PAL HALF Size : (352*288*25*80) / (200*1024) = 990  kB/sec
 .br
 PAL FULL size : (786*576*25*80) / (200*1024) = 4260 kB/sec
 .br
-NTSC VCD size : (320*200*30*80) / (200*1024) = 750  kB/sec
+NTSC HALF size: (320*200*30*80) / (200*1024) = 750  kB/sec
 .br
 NTSC FULL size: (640*480*30*80) / (200*1024) = 3600 kB/sec
 
@@ -210,6 +210,37 @@ visually "perfect".  \-d 2 is already better than VHS video (a *lot*!).
 If you're aiming to create VCD's then there is little to be gained recording
 at full resolution as you need to reduce to \-d 2 resolution later anyway.
 
+.B Some information about the typical lavrec output while recording:
+.br
+0.06.14:22 int: 00040 lst:0  ins:0  del:0  ae:0  td1=0.014 td2=0.029
+
+It should look like this. The fist part shows the time lavrec is recording.
+.B int: 
+the interval between two frames. lst: the number of lost frames.
+.B ins and del: 
+are the number of frames inserted and deleted for sync correction. 
+.B ae: 
+number of audio errors. 
+.B td1 and td2:
+ are the audio/video time-difference.
+
+.TP 5 
+.B (int) frame interval
+should be around 33 (NTSC) or 40 (PAL/SECAM). If it is very different, you'll likely get a bad recording and/or many lost frames
+.TP 5 
+.B (lst) lost frames
+are bad and mean that something is not working very well during recording (too slow HD, too high CPU usage, ...) Try recording at a with a greater declimation, and a lower quality
+.TP 5
+.B (ins, del) inserted OR deleted frames
+of them are normal -> sync. If you have many lost AND inserted frames, you're asking too much, your machine can't handle it. Take less demanding options, try to use an other sound card.
+.TP 5
+.B (ae) audio errors
+are never good. Should be 0
+.TP 5
+.B (td1, td2) time difference
+is always floating around 0, unless sync correction  is disabled (--synchronization!=2, 2 is default).
+.TP 0
+
 .B Notes about: "interlace field order - what can go wrong and how to fix it"
 
 Firstly, what does it mean for interlace field order to be wrong.
@@ -254,10 +285,7 @@ bottom fields a second time. lav2yuv and yuvscaler can do this.
 Use the lav2yuv -x switch or yuvscaler -M LINE_SWITCH.
 
 3.   To fix this one the fields need to be "shifted" through the frames.
-Sadly unless someone has recently beefed up the tools there isn't a tool that
-can correct it.   The only cure is to get the capture right.   For PAL
-"bottom first" capture for AVI should be correct.  I believe the same applies
-to NTSC.
+Use lav2yuv's -F option can help here. I believe the same applies to NTSC.
 
 .B Hey, what about NTSC movies?
 
@@ -733,6 +761,13 @@ everything that is not in the described area to black, but the imagesize
 .br
 So you have a real black border the encoder only uses a few bits for encoding
 them. You are still compatible to VCD's for this example.
+.br
+To determine the active window extract one frame to the jpeg format: 
+.br
+.B > lavtrans \-f i \-i 100 \-o frame.jpg test.avi
+
+Edit it with an grafic programm, and cut out the borders, and you have the active size.
+
 .br
 The \-4 1 and \-2 1 options improve the quality about 10% but conversion is
 slower.
