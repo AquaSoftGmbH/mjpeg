@@ -57,7 +57,7 @@
 
 #include "global.h"
 
-int verbose = 2;
+int verbose = 1;
 
 /* private prototypes */
 static void init (void);
@@ -231,7 +231,6 @@ static void Usage(char *str)
 }
 
 
-static int verbosity = 1;
 
 int main(argc,argv)
 	int argc;
@@ -352,7 +351,7 @@ int main(argc,argv)
 			break;
 
 		case 'v':
-			verbosity = LOG_WARN-atoi(optarg);
+			verbose = atoi(optarg);
 			if( verbose < 0 || verbose > 2 )
 				++nerr;
 			break;

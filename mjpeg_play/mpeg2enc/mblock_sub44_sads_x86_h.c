@@ -81,7 +81,7 @@ int SIMD_SUFFIX(mblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 				   as otherwise the sub-mean filtering won't work on very
 				   uniform images.
 				 */
-				cres->weight = (uint16_t)weight+((intabs(x)+intabs(y))>>3);
+				cres->weight = (uint16_t)weight+(intabs(x)+intabs(y));
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
 				++cres;

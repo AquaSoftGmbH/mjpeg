@@ -154,7 +154,7 @@ static void read_chunk()
       if(strncmp(magic,"FRAME\n",6))
       {
 		  magic[6]='\0';
-		  mjpeg_error_exit1("Start of frame %d is not \"FRAME<NL>\"\n",n);
+		  mjpeg_error_exit1("Start of frame %d is not \"FRAME<NL>\"\n",frames_read);
       }
       v = vertical_size;
       h = horizontal_size;
@@ -181,6 +181,7 @@ static void read_chunk()
    return;
 
    EOF_MARK:
+   mjpeg_debug( "End of input stream detected\n" );
    last_frame = frames_read-1;
    nframes = frames_read;
 }
