@@ -96,10 +96,13 @@ void PictureReader::Init()
     pthread_mutex_init( &input_imgs_buf_lock, p_attr );
     /* Allocate the frame data buffers: if we're not going to scan ahead
        for GOP size we can save a *lot* of memory... */
-    if( encparams.N_max == encparams.N_min )
-        input_imgs_buf_size = max(2*encparams.M,1)+READ_CHUNK_SIZE;
-    else
-        input_imgs_buf_size = 2*encparams.N_max+READ_CHUNK_SIZE;
+    input_imgs_buf_size = 
+        max( 2*READ_CHUNK_SIZE,
+             ( encparams.N_max == encparams.N_min )
+             ? ( READ_CHUNK_SIZE +
+                 (encparams.max_encoding_frames/encparams.M+1)*encparams.M )
+             : 2*encparams.N_max+READ_CHUNK_SIZE
+             );
 
     mjpeg_info( "Buffering %d frames", input_imgs_buf_size );
     input_imgs_buf = new ImagePlanes[input_imgs_buf_size];
