@@ -26,7 +26,7 @@ VCD_TYPE="dvd"
 OUT_NORM="pal"
 ENC_TOOL="mpeg2enc"
 QUALITY="best"
-VERSION="3"
+VERSION="4"
 
 BFR="bfr"
 FFMPEG="ffmpeg"
@@ -41,6 +41,12 @@ Y4MSPATIALFILTER="y4mspatialfilter"
 YUVDENOISE="yuvdenoise"
 YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
+
+probe_ffmpeg_version ()
+{
+    echo "`${FFMPEG} 2>&1 | \
+    awk '$4 == "build" {print $5}' | sed s/,// | head -1`"
+}
 
 probe_aud_fmt ()
 {
@@ -89,6 +95,7 @@ show_help ()
 {
     echo "----------------------------------"
     echo "-a    audio track number (1)      "
+    echo "-A    force input pixel aspect ratio (X:Y)"
     echo "-b    blind mode (no video)       "
     echo "-d    don't scale video           "
     echo "-e    video encoder tool          "
@@ -105,7 +112,7 @@ show_help ()
     echo "      with non-standard framerate "
     echo "      pal (default) or ntsc       "
     echo "-p    output type (default = dvd) "
-    echo "      avail. : cvd, dvd, dvd_wide,"
+    echo "      avail. : cvd, dvd, dvd_wide, mvcd,"
     echo "               svcd and vcd       "
     echo "-q    quality (default = best)    "
     echo "      avail. : best, good, fair   "
@@ -135,10 +142,11 @@ for BIN in ${FFMPEG} ${MPEG2ENC} ${MPLEX} ${PGMTOY4M} ${TRANSCODE}; do
 
 done
 
-while getopts a:bde:f:i:I:mn:p:q:t:v OPT
+while getopts a:A:bde:f:i:I:mn:p:q:t:v OPT
 do
     case ${OPT} in
     a)    AUD_TRACK="${OPTARG}";;
+    A)    VID_SAR_SRC="${OPTARG}";;
     b)    BLIND_MODE="1";;
     d)    SCALING="none";;
     e)    ENC_TOOL="${OPTARG}";;
@@ -150,7 +158,7 @@ do
     p)    VCD_TYPE="${OPTARG}";;
     q)    QUALITY="${OPTARG}";;
     t)    FILTER_TYPE="${OPTARG}";;
-    v)    echo "${VERSION}"; exit 0;;
+    v)    echo "$0 version ${VERSION}"; exit 0;;
     \?)   show_help; exit 0;;
     esac
 done
@@ -163,10 +171,11 @@ if test "${VIDEO_SRC}" == "" || ! test -r "${VIDEO_SRC}"; then
 
 fi
 
+FFMPEG_VERSION="`probe_ffmpeg_version`"
+
 AUD_FMT_SRC="`probe_aud_fmt "${AUDIO_SRC}" ${AUD_TRACK}`"
 AUD_FREQ_SRC="`probe_aud_freq "${AUDIO_SRC}" ${AUD_TRACK}`"
 VID_FPS_SRC="`probe_vid_fps "${VIDEO_SRC}"`"
-VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
 VID_FMT_SRC="`probe_vid_fmt "${VIDEO_SRC}"`"
 
 # input interlacing
@@ -188,14 +197,23 @@ else
 
 fi
 
+# input pixel/sample aspect ratio
+if test "${VID_SAR_SRC}" == ""; then
+
+    VID_SAR_SRC="`probe_vid_sar "${VIDEO_SRC}"`"
+
+fi
+
 if test "${VID_SAR_SRC}" == "0:0"; then
+
     VID_SAR_SRC="1:1"
+
 fi
 
 FF_ENC="${FFMPEG} -v 0 -f yuv4mpegpipe -i /dev/stdin -bf 2"
 MPEG2ENC="${MPEG2ENC} -v 0 -M 0 -R 2 -P -s -2 1 -E -5"
 PGMTOY4M="${PGMTOY4M} -r ${VID_FPS_SRC} -i ${VID_ILACE_SRC} -a ${VID_SAR_SRC}"
-Y4MSCALER="${Y4MSCALER} -v 0"
+Y4MSCALER="${Y4MSCALER} -v 0 -S option=cubicCR"
 
 # filtering method(s)
 if test "${FILTERING}" == "none"; then
@@ -234,6 +252,30 @@ else
 
 fi
 
+# quality presets
+if test "${QUALITY}" == "best"; then
+
+    MATRICES="default"
+    QUANT="4"
+
+elif test "${QUALITY}" == "good"; then
+
+    MATRICES="tmpgenc"
+    QUANT="5"
+
+elif test "${QUALITY}" == "fair"; then
+
+    MATRICES="kvcd"
+    QUANT="6"
+
+else
+
+    echo "Error : the specified quality preset is inexistant."
+    show_help
+    exit 2
+
+fi
+
 # profile(s)
 if test "${VCD_TYPE}" == "cvd"; then
 
@@ -241,12 +283,14 @@ if test "${VCD_TYPE}" == "cvd"; then
     AUDIO_OUT="out.ac3"
     MPEG_OUT="out.mpg"
 
-    FF_ENC="${FF_ENC} -target dvd -f rawvideo"
+    FF_ENC="${FF_ENC} -vcodec mpeg2video -f rawvideo -bufsize 224"
     MPEG2ENC="${MPEG2ENC} -f 8"
-    Y4MSCALER="${Y4MSCALER} -O preset=cvd -S option=cubicCR"
+    Y4MSCALER="${Y4MSCALER} -O preset=cvd"
     MPLEX="${MPLEX} -f 8"
     
     VID_ILACE_OUT="${VID_ILACE_SRC}"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="7500"
 
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
@@ -260,11 +304,13 @@ elif test "${VCD_TYPE}" == "dvd"; then
     MPEG_OUT="out.mpg"
 
     FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
-    MPEG2ENC="${MPEG2ENC} -f 8 -b 8000 -D 10"
-    Y4MSCALER="${Y4MSCALER} -O preset=dvd -S option=cubicCR"
+    MPEG2ENC="${MPEG2ENC} -f 8 -D 10"
+    Y4MSCALER="${Y4MSCALER} -O preset=dvd"
     MPLEX="${MPLEX} -f 8"
 
     VID_ILACE_OUT="${VID_ILACE_SRC}"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="8000"
     
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
@@ -278,15 +324,38 @@ elif test "${VCD_TYPE}" == "dvd_wide"; then
     MPEG_OUT="out.mpg"
 
     FF_ENC="${FF_ENC} -target dvd -f rawvideo -dc 10"
-    MPEG2ENC="${MPEG2ENC} -f 8 -b 8000 -D 10"
-    Y4MSCALER="${Y4MSCALER} -O preset=dvd_wide -S option=cubicCR"
+    MPEG2ENC="${MPEG2ENC} -f 8 -D 10"
+    Y4MSCALER="${Y4MSCALER} -O preset=dvd_wide"
     MPLEX="${MPLEX} -f 8"
 
     VID_ILACE_OUT="${VID_ILACE_SRC}"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="8000"
     
     AUD_FMT_OUT="ac3"
     AUD_BITRATE_OUT="192"
     AUD_FREQ_OUT="48000"
+    AUD_CHANNELS_OUT="2"
+
+elif test "${VCD_TYPE}" == "mvcd"; then
+
+    VIDEO_OUT="out.m1v"
+    AUDIO_OUT="out.mp2"
+    MPEG_OUT="out-%d.mpg"
+
+    FF_ENC="${FF_ENC} -vcodec mpeg1video -f rawvideo -bufsize 40 -me_range 64"
+    MPEG2ENC="${MPEG2ENC} -f 2 -g 12 -G 24 -B 256 -S 797"
+    Y4MSCALER="${Y4MSCALER} -O preset=vcd"
+    MPLEX="${MPLEX} -f 2 -r 1400 -V"
+
+    MATRICES="kvcd"
+    VID_ILACE_OUT="p"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="1152"
+    
+    AUD_FMT_OUT="mp2"
+    AUD_BITRATE_OUT="224"
+    AUD_FREQ_OUT="44100"
     AUD_CHANNELS_OUT="2"
 
 elif test "${VCD_TYPE}" == "svcd"; then
@@ -297,10 +366,12 @@ elif test "${VCD_TYPE}" == "svcd"; then
 
     FF_ENC="${FF_ENC} -target svcd -f rawvideo"
     MPEG2ENC="${MPEG2ENC} -f 4 -B 256 -S 797"
-    Y4MSCALER="${Y4MSCALER} -O preset=svcd -S option=cubicCR"
+    Y4MSCALER="${Y4MSCALER} -O preset=svcd"
     MPLEX="${MPLEX} -f 4"
 
     VID_ILACE_OUT="${VID_ILACE_SRC}"
+    VID_MINRATE_OUT="0"
+    VID_MAXRATE_OUT="2500"
     
     AUD_FMT_OUT="mp2"
     AUD_BITRATE_OUT="224"
@@ -315,7 +386,7 @@ elif test "${VCD_TYPE}" == "vcd"; then
 
     FF_ENC="${FF_ENC} -target vcd -f rawvideo -me_range 64"
     MPEG2ENC="${MPEG2ENC} -f 1 -B 256 -S 797"
-    Y4MSCALER="${Y4MSCALER} -O preset=vcd -S option=cubic"
+    Y4MSCALER="${Y4MSCALER} -O preset=vcd"
     MPLEX="${MPLEX} -f 1"
 
     VID_ILACE_OUT="p"
@@ -324,12 +395,6 @@ elif test "${VCD_TYPE}" == "vcd"; then
     AUD_BITRATE_OUT="224"
     AUD_FREQ_OUT="44100"
     AUD_CHANNELS_OUT="2"
-
-    if test "${VID_ILACE_SRC}" == "b"; then
-        Y4MSCALER="${Y4MSCALER} -I ilace=bottom_only"
-    elif test "${VID_ILACE_SRC}" == "t"; then
-        Y4MSCALER="${Y4MSCALER} -I ilace=top_only"
-    fi
 
 else
 
@@ -365,33 +430,6 @@ else
 
 fi
 
-# quality preset(s)
-if test "${VCD_TYPE}" == "vcd"; then
-
-    # when using -q with mpeg2enc, variable bitrate is selected.
-    # it's not ok for vcds...
-    MPEG2ENC="${MPEG2ENC}"
-
-elif test "${QUALITY}" == "best"; then
-
-    MPEG2ENC="${MPEG2ENC} -q 4 -K kvcd"
-
-elif test "${QUALITY}" == "good"; then
-
-    MPEG2ENC="${MPEG2ENC} -q 5 -K tmpgenc"
-    
-elif test "${QUALITY}" == "fair"; then
-
-    MPEG2ENC="${MPEG2ENC} -q 6 -K kvcd -N 0.4"
-
-else
-
-    echo "Error : the specified quality preset is inexistant."
-    show_help
-    exit 2
-
-fi
-
 # pipe buffer
 if which ${BFR} >/dev/null; then
 
@@ -403,6 +441,10 @@ fi
 if test "${VID_FMT_SRC}" == "mpeg2video" || test "${VID_FMT_SRC}" == "mpeg1video" && which ${MPEG2DEC} >/dev/null; then
 
     DECODER="${MPEG2DEC} -s -o pgmpipe \"${VIDEO_SRC}\" | ${PGMTOY4M} |"
+
+elif test "${FFMPEG_VERSION}" -ge "4731"; then
+
+    DECODER="${FFMPEG} -i \"${VIDEO_SRC}\" -f image2pipe -vcodec pgmyuv -y /dev/stdout | ${PGMTOY4M} |"
 
 else
 
@@ -455,6 +497,13 @@ else
 
 fi
 
+# video "deinterlacer"
+if test "${VID_ILACE_SRC}" != "p" && test "${VID_ILACE_OUT}" == "p"; then
+
+    Y4MSCALER="${Y4MSCALER} -I ilace=top_only"
+
+fi
+
 # video scaler
 if test "${SCALING}" == "none"; then
 
@@ -464,6 +513,31 @@ else
 
     test_bin ${Y4MSCALER}
     SCALER="${Y4MSCALER} |"
+
+fi
+
+# quantisation matrices
+if test "${MATRICES}" == "kvcd"; then
+
+    MPEG2ENC="${MPEG2ENC} -K kvcd"
+
+elif test "${MATRICES}" == "tmpgenc"; then
+
+    MPEG2ENC="${MPEG2ENC} -K tmpgenc"
+
+fi
+
+# video encoding mode
+if test "${VCD_TYPE}" == "vcd"; then
+
+    # when using -q with mpeg2enc, variable bitrate is selected.
+    # it's not ok for vcds...
+    MPEG2ENC="${MPEG2ENC}"
+
+else
+
+    FF_ENC="${FF_ENC} -maxrate ${VID_MAXRATE_OUT} -qscale ${QUANT}"
+    MPEG2ENC="${MPEG2ENC} -b ${VID_MAXRATE_OUT} -q ${QUANT}"
 
 fi
 
