@@ -52,8 +52,8 @@ static void Usage(char *str)
 	"--format|-f fmt\n"
     "  Set defaults for particular MPEG profiles\n"
 	"  [0 = Generic MPEG1, 1 = VCD, 2 = user-rate VCD, 3 = Generic MPEG2,\n"
-    "   4 = SVCD, 5 = user-rate SVCD\n",
-	"   6 = VCD Stills, 7 = SVCD Stills, 8 = DVD\n"
+    "   4 = SVCD, 5 = user-rate SVCD\n"
+	"   6 = VCD Stills, 7 = SVCD Stills, 8 = DVD]\n"
     "--mux-bitrate|-r num\n"
     "  Specify data rate of output stream in kbit/sec\n"
 	"    (default 0=Compute from source streams)\n"

@@ -4,6 +4,10 @@
 #include <sys/param.h>
 #include "inputstrm.hh"
 
+#include <vector>
+
+using std::vector;
+
 /* Buffer size parameters */
 
 #define MAX_SECTOR_SIZE         16384

@@ -33,6 +33,7 @@
     Entry points...
 *************************************************************************/
 
+using std::vector;
     
 int intro_and_options( int, char **, char**);
 

@@ -709,8 +709,7 @@ static int set_option(const char *name, char *value)
 		info->record_time = atoi(value);
 		if(info->record_time<=0)
 		{
-			mjpeg_error("record_time (-t/--time) = %d
-				invalid\n",info->record_time);
+			mjpeg_error("record_time (-t/--time) = %d invalid\n",info->record_time);
 			nerr++;
 		}
 	}
