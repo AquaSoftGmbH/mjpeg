@@ -143,9 +143,11 @@ const char BICUBIC[] = "BICUBIC";
 const char LINESWITCH[] = "LINE_SWITCH";
 const char ACTIVE[] = "ACTIVE";
 const char NO_HEADER[] = "NO_HEADER";
+#ifdef HAVE_ASM_MMX
 const char MMX[] = "MMX";
-const char BOTT_FORWARD[]  = "BOTT_FORWARD";
-const char BOTT_BACKWARD[] = "BOTT_BACKWARD";
+#endif
+const char TOP_FORWARD[]  = "TOP_FORWARD";
+const char BOTT_FORWARD[] = "BOTT_FORWARD";
 
 // Special BICUBIC algorithm
 // 2048=2^11
@@ -168,20 +170,19 @@ unsigned int out_nb_col_slice, out_nb_line_slice;
 static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
 int verbose = 1;
 #define PARAM_LINE_MAX 256
-float framerates[] =
-  { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
-
 
 uint8_t blacky = 16;
 uint8_t blackuv = 128;
 uint8_t no_header = 0;		// =1 for no stream header output 
+int8_t field_move = 0;          // =1 to move bottom field one frame forward, =-1 to move top field forward one frame
 
+#ifdef HAVE_ASM_MMX
 // MMX
 int16_t *mmx_padded, *mmx_cubic;
 int32_t *mmx_res;
 long int max_lint_neg = -2147483647;	// maximal negative number available for long int
 int mmx = 0;			// =1 for mmx activated
-
+#endif
 
 // *************************************************************************************
 int
@@ -256,6 +257,8 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 }
 
 // *************************************************************************************
+// PREPROCESSING
+// *************************************************************************************
 int
 line_switch (uint8_t * input, uint8_t * line)
 {
@@ -280,6 +283,201 @@ line_switch (uint8_t * input, uint8_t * line)
   return (0);
 }
 
+// *************************************************************************************
+// PREPROCESSING
+// *************************************************************************************
+int bottom_field_storage(uint8_t *input,int numframe,uint8_t *field1,uint8_t *field2) 
+{
+   int ligne;
+   // This function stores the current bottom field into tabular field[1 or 2] 
+   input+=input_width;
+   if (numframe%2==0)
+     {
+	// field1
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field1,input,input_width);
+	     input += (input_width << 1);
+	     field1 += input_width;
+	  }
+	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field1,input,(input_width>>1));
+	     input += input_width;
+	     field1 += (input_width>>1);
+	  }
+     }
+   else
+     {
+	// field2
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field2,input,input_width);
+	     input += (input_width << 1);
+	     field2 += input_width;
+	  }
+	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field2,input,(input_width>>1));
+	     input += input_width;
+	     field2 += (input_width>>1);
+	  }
+     }
+   return(0);   
+}
+
+// *************************************************************************************
+// PREPROCESSING
+// *************************************************************************************
+int top_field_storage(uint8_t *input,int numframe,uint8_t *field1,uint8_t *field2) 
+{
+   int ligne;
+   // This function stores the current top field into tabular field[1 or 2] 
+//   input+=input_width;
+   if (numframe%2==0)
+     {
+	// field1
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field1,input,input_width);
+	     input += (input_width << 1);
+	     field1 += input_width;
+	  }
+//	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field1,input,(input_width>>1));
+	     input += input_width;
+	     field1 += (input_width>>1);
+	  }
+     }
+   else
+     {
+	// field2
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field2,input,input_width);
+	     input += (input_width << 1);
+	     field2 += input_width;
+	  }
+//	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(field2,input,(input_width>>1));
+	     input += input_width;
+	     field2 += (input_width>>1);
+	  }
+     }
+   return(0);   
+}
+
+// *************************************************************************************
+// PREPROCESSING
+// *************************************************************************************
+int bottom_field_replace(uint8_t *input,int numframe,uint8_t *field1,uint8_t *field2)
+{
+   int ligne;
+   // This function stores the current bottom field into tabular field[1 or 2] 
+   input+=input_width;
+   // This function replaces the current bottom field with tabular field[1 or 2] 
+   if (numframe%2==0)
+     {
+	// field2
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field2,input_width);
+	     input += (input_width << 1);
+	     field2 += input_width;
+	  }
+	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field2,(input_width>>1));
+	     input += input_width;
+	     field2 += (input_width>>1);
+	  }
+     }
+   else
+     {
+	// field1
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field1,input_width);
+	     input += (input_width << 1);
+	     field1 += input_width;
+	  }
+	input-=(input_width>>1);
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field1,(input_width>>1));
+	     input += input_width;
+	     field1 += (input_width>>1);
+	  }
+     }
+   return(0);   
+}
+// *************************************************************************************
+// PREPROCESSING
+// *************************************************************************************
+int top_field_replace(uint8_t *input,int numframe,uint8_t *field1,uint8_t *field2)
+{
+   int ligne;
+   // This function stores the current top field into tabular field[1 or 2] 
+   if (numframe%2==0)
+     {
+	// field2
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field2,input_width);
+	     input += (input_width << 1);
+	     field2 += input_width;
+	  }
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field2,(input_width>>1));
+	     input += input_width;
+	     field2 += (input_width>>1);
+	  }
+     }
+   else
+     {
+	// field1
+	// Y Component
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field1,input_width);
+	     input += (input_width << 1);
+	     field1 += input_width;
+	  }
+	// U and V COMPONENTS
+	for (ligne = 0; ligne < input_height; ligne += 2)
+	  {
+	     memcpy(input,field1,(input_width>>1));
+	     input += input_width;
+	     field1 += (input_width>>1);
+	  }
+     }
+   return(0);   
+}
+
+// *************************************************************************************
+// PREPROCESSING
 // *************************************************************************************
 int
 blackout (uint8_t * input_y, uint8_t * input_u, uint8_t * input_v)
@@ -359,9 +557,9 @@ print_usage (char *argv[])
 	   "\n" "%s is keyword driven :\n"
 	   "\t inputfiles selects yuv frames coming from Editlist files\n"
 	   "\t -I for keyword concerning INPUT  frame characteristics\n"
-	   "\t -M for keyword concerning the downscaling MODE of yuvscaler\n"
+	   "\t -M for keyword concerning the scaling MODE of yuvscaler\n"
 	   "\t -O for keyword concerning OUTPUT frame characteristics\n"
-	   "\t ((the former syntax with -k and -w is still supported but depreciated))\n"
+	   "\t ((the former syntax with -k and -w is still supported but will soonly be suppressed))\n"
 	   "\n" "Possible input keyword are:\n"
 	   "\t USE_WidthxHeight+WidthOffset+HeightOffset to select a useful area of the input frame (all multiple of 2,\n"
 	   "\t    Height and HeightOffset multiple of 4 if interlaced), the rest of the image being discarded\n"
@@ -382,9 +580,13 @@ print_usage (char *argv[])
 	   "\t WIDE2VCD to transcode wide (16:9) frames  to VCD (equivalent to -M WIDE2STD -O VCD)\n"
 	   "\t FASTVCD to transcode full sized frames to VCD (equivalent to -M RATIO_2_1_2_1 -O VCD, see after)\n"
 	   "\t FAST_WIDE2VCD to transcode full sized wide (16:9) frames to VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see after)\n"
-	   "\t LINE_SWITCH to switch lines two by two between input and output, no line switching by default\n"
+	   "\t LINE_SWITCH to preprocess frames by switching lines two by two\n"
+	   "\t BOTT_FORWARD to preprocess frames by moving bott field one frame forward\n"
+	   "\t TOP_FORWARD  to preprocess frames by moving top  field one frame forward\n"
 	   "\t NO_HEADER to suppress stream header generation on output\n"
+#ifdef HAVE_ASM_MMX
 	   "\t MMX to use MMX functions for BICUBIC scaling (experimental feature!!)\n"
+#endif	   
 	   "\n"
 	   "Possible output keywords are:\n"
 	   "\t MONOCHROME to generate monochrome frames on output\n"
@@ -618,12 +820,27 @@ handle_args_dependent (int argc, char *argv[])
 	      algorithm = 0;
 	    }
 
+	  if (strcmp (optarg, BOTT_FORWARD) == 0)
+	    {
+	      field_move = 1;
+	      mode = 1;
+	    }
+	   
+	  if (strcmp (optarg, TOP_FORWARD) == 0)
+	    {
+	      field_move = -1;
+	      mode = 1;
+	    }
+
+#ifdef HAVE_ASM_MMX
+
 	  if (strcmp (optarg, MMX) == 0)
 	    {
 	      mode = 1;
 	      mmx = 1;
 	    }
-
+#endif
+	   
 	  if (strcmp (optarg, BICUBIC) == 0)
 	    {
 	      mode = 1;
@@ -1037,7 +1254,7 @@ main (int argc, char *argv[])
 //  const uint8_t key[] = "FRAME\n";
 //   uint8_t header[] = "YUV4MPEG XXX XXX X\n";
   unsigned int *height_coeff = NULL, *width_coeff = NULL;
-  uint8_t *input, *output, *line, *padded_input = NULL, *padded_bottom =
+  uint8_t *input, *output, *line, *field1, *field2, *padded_input = NULL, *padded_bottom =
     NULL, *padded_top = NULL;
   uint8_t *input_y, *input_u, *input_v;
   uint8_t *input_y_infile, *input_u_infile, *input_v_infile;	// when input frames come from files
@@ -1098,13 +1315,8 @@ main (int argc, char *argv[])
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = mpeg_conform_framerate (el.video_fps);
-       
       input_interlaced = el.video_inter;
       // this will be  eventually overrided by user's specification
-      // Let's determine the frame rate code
-//      frame_rate_code = 0;
-//      while ((framerates[++frame_rate_code] != frame_rate)
-//           && (frame_rate_code <= 8));
       y4m_si_set_width (&streaminfo, input_width);
       y4m_si_set_height (&streaminfo, input_height);
       y4m_si_set_interlace (&streaminfo, input_interlaced);
@@ -1634,6 +1846,7 @@ main (int argc, char *argv[])
        bicubic_div_width=FLOAT2INTEGER;
 */
 
+#ifdef HAVE_ASM_MMX
 
       if (!
 	  (mmx_padded =
@@ -1669,7 +1882,8 @@ main (int argc, char *argv[])
       mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
 		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
 
-
+#endif
+       
       // Then, we can also tabulate several values
       // To the output pixel of coordinates (out_col,out_line) corresponds the input pixel (in_col,in_line), in_col and in_line being the nearest smaller values.
       in_col =
@@ -1777,6 +1991,8 @@ main (int argc, char *argv[])
 //  input = alloca ((input_width * input_height * 3) / 2);
 //  output = alloca ((output_width * output_height * 3) / 2);
   line = alloca (input_width);
+  field1 = alloca (3*(input_width/2) * (input_height/2));
+  field2 = alloca (3*(input_width/2) * (input_height/2));
   input = alloca (((input_width * input_height * 3) / 2) + ALIGNEMENT);
   output = alloca (((output_width * output_height * 3) / 2) + ALIGNEMENT);
 //  fprintf (stderr, "%p %p\n", input, output);
@@ -1934,12 +2150,45 @@ main (int argc, char *argv[])
       // Master loop : continue until there is no next frame in stdin
       // Je sais pas pourquoi, mais y4m_read_frame merde, y4m_read_frame_header suivi de y4m_read marche !!!!!!!
       // Line switch if necessary
-      while ( (err=my_y4m_read_frame(0, &frameinfo, nb_pixels, 
-                                     input, line_switching)) == Y4M_OK)
+      while ((err=my_y4m_read_frame
+	     (0, &frameinfo, nb_pixels, input, line_switching)) == Y4M_OK)
 	{
-	  frame_num++;
 	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
-
+	  
+	  // PREPROCESSING
+	  if (field_move!=0) 
+	     {
+		if (field_move==1)
+		  {
+		     // Bottom field one frame forward
+		     if (frame_num==0)
+		       {
+			  bottom_field_storage(input,frame_num,field1,field2);
+			  if (my_y4m_read_frame(0, &frameinfo, nb_pixels, input, line_switching) != Y4M_OK)
+			    exit(1);
+			  frame_num++;
+			  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+		       }
+		     bottom_field_storage(input,frame_num,field1,field2);
+		     bottom_field_replace(input,frame_num,field1,field2);
+		  }
+		else
+		  {
+		     // Top field one frame forward
+		     if (frame_num==0)
+		       {
+			  top_field_storage(input,frame_num,field1,field2);
+			  if (my_y4m_read_frame(0, &frameinfo, nb_pixels, input, line_switching) != Y4M_OK)
+			    exit(1);
+			  frame_num++;
+			  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+		       }
+		     top_field_storage(input,frame_num,field1,field2);
+		     top_field_replace(input,frame_num,field1,field2);
+		  }
+	     }
+	  frame_num++;
+	   
 	  // Output Frame Header
 	  if (y4m_write_frame_header (output_fd, &frameinfo) != Y4M_OK)
 	    goto out_error;
@@ -2119,7 +2368,7 @@ main (int argc, char *argv[])
       input_y_infile = input;
       input_u_infile = input + input_width * input_height;
       input_v_infile = input + (input_width * input_height * 5) / 4;
-      for (frame_num = 1; frame_num <= el.video_frames; frame_num++)
+      for (frame_num = 0; frame_num < el.video_frames; frame_num++)
 	{
 	  // Read frame, taken from lav2yuv
 	  len = el_get_video_frame (jpeg_data, frame_num, &el);
@@ -2136,6 +2385,55 @@ main (int argc, char *argv[])
 	  // Line switch if necessary
 	  if (line_switching)
 	    line_switch (input, line);
+	   	  // PREPROCESSING
+	  if (field_move!=0) 
+	     {
+		if (field_move==1)
+		  {
+		     // Bottom field one frame forward
+		     if (frame_num==0)
+		       {
+			  bottom_field_storage(input,frame_num,field1,field2);
+			  frame_num++;
+			  len = el_get_video_frame (jpeg_data, frame_num, &el);
+			  if ((res =
+			       decode_jpeg_raw (jpeg_data, len, input_interlaced,
+						chroma_format, input_width, input_height,
+						input_y_infile, input_u_infile,
+						input_v_infile)))
+			    mjpeg_error_exit1 ("Frame %ld read failed\n", frame_num);
+			  // Line switch if necessary
+			  if (line_switching)
+			    line_switch (input, line);
+			  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+		       }
+		     bottom_field_storage(input,frame_num,field1,field2);
+		     bottom_field_replace(input,frame_num,field1,field2);
+		  }
+		else
+		  {
+		     // Top field one frame forward
+		     if (frame_num==0)
+		       {
+			  top_field_storage(input,frame_num,field1,field2);
+			  frame_num++;
+			  len = el_get_video_frame (jpeg_data, frame_num, &el);
+			  if ((res =
+			       decode_jpeg_raw (jpeg_data, len, input_interlaced,
+						chroma_format, input_width, input_height,
+						input_y_infile, input_u_infile,
+						input_v_infile)))
+			    mjpeg_error_exit1 ("Frame %ld read failed\n", frame_num);
+			  // Line switch if necessary
+			  if (line_switching)
+			    line_switch (input, line);
+			  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+		       }
+		     top_field_storage(input,frame_num,field1,field2);
+		     top_field_replace(input,frame_num,field1,field2);
+		  }
+	     }
+
 	  // Output Frame Header
 	  if (y4m_write_frame_header (output_fd, &frameinfo) != Y4M_OK)
 	    goto out_error;
@@ -2363,7 +2661,7 @@ Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlace
        "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom first frame output stream\n"
        "\t NOT_INTERLACED to select not interlaced output frames\n"
 */
-
+
 /* 
  * Local variables:
  *  tab-width: 8
