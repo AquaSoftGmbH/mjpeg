@@ -1,3 +1,4 @@
+#!/bin/bash
 # A script that converts the data from input to 
 # Mpeg Streams
 #
