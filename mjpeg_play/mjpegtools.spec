@@ -1,10 +1,10 @@
 Summary: Tools for recording, editing, playing back and mpeg-encoding video under linux
 Name: mjpegtools
-Version: 1.4pre1
+Version: 1.4pre3
 Release: 1
 Copyright: GPL
 Group: Applications/Multimedia
-Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.4pre1.tar.gz
+Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.4pre3.tar.gz
 Source1: http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.3-patched.tar.gz
 Source2: http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2.tar.gz
 Source3: http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
@@ -31,7 +31,7 @@ make
 make
 make install
 
-%setup -b 0 -n mjpegtools-1.4pre1
+%setup -b 0 -n mjpegtools-1.4pre3
 ./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch --with-jpeg-mmx=`pwd`/../jpeg-mmx --with-movtar-prefix=`pwd`/../libmovtar-0.1.2 --with-movtar-exec-prefix=/usr/local
 
 %build
@@ -58,7 +58,6 @@ make install
 /usr/local/bin/ypipe
 /usr/local/bin/yuv2lav
 /usr/local/bin/testrec
-/usr/local/bin/v4l-conf
 /usr/local/bin/transist.flt
 /usr/local/bin/matteblend.flt
 /usr/local/bin/lavpipe
@@ -72,7 +71,6 @@ make install
 /usr/local/bin/movtar_index
 /usr/local/bin/movtar_setinfo
 /usr/local/bin/movtar_yuv422
-/usr/local/bin/movtar-config
 
 %changelog
 * Tue Apr 24 2001 Ronald Bultje <rbultje@ronald.bitfreak.net>
