@@ -31,10 +31,10 @@ LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 lib_LTLIBRARIES = libmpeg2encpp.la
 
 if HAVE_ASM_MMX
+SIMD_INLINE = $(mpeg2encpp_MMXSSE_INLINE)
 if HAVE_ASM_NASM
 noinst_LTLIBRARIES = libmmxsseasm.la
 libmmxsseasm_la_SOURCES = $(mpeg2encpp_MMXSSE_ASM)
-SIMD_INLINE = $(mpeg2encpp_MMXSSE_INLINE)
 LIBSIMDASM_LIB = libmmxsseasm.la
 endif # HAVE_ASM_NASM
 endif # HAVE_ASM_MMX

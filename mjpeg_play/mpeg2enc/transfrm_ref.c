@@ -194,7 +194,7 @@ void init_transform(void)
 	pfield_dct_best = field_dct_best;
 
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+#if defined(HAVE_ASM_MMX)
 	if( flags &  ACCEL_X86_MMX )
 	{
 		init_x86_transform();

@@ -268,7 +268,9 @@ void init_x86_transform()
         char *opt_type1="";
         int flags = cpu_accel();
 
+#ifdef HAVE_ASM_NASM
 	pfdct = fdct_mmx;
+#endif
 	pidct = idct_mmx;
 	padd_pred = add_pred_mmx;
 	psub_pred = sub_pred_mmx;
