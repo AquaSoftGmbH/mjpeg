@@ -100,7 +100,7 @@ main(int argc, char **argv)
 			}
 		}
 
-	uvlen = (height / ss_h) * (width / ss_v);
+	uvlen = (width / ss_h) * (height / ss_v);
 
 	yuv[0] = malloc(height * width);
 	yuv[1] = malloc(uvlen);
