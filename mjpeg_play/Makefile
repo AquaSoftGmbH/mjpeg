@@ -2,7 +2,8 @@
 
 M_OBJS       = lavrec lavplay movtar_play
 
-QT_LIBS= mjpeg/libmjpeg.a quicktime/libquicktime.a jpeg-6b-mmx/libjpeg.a -lpthread -lpng -lz
+LIBS= mjpeg/libmjpeg.a quicktime/quicktime/libquicktime.a jpeg-6b-mmx/libjpeg.a 
+LIBS_AND_OPT= $(LIBS) -lpthread -lpng -lz
 
 # uncomment if you want to use ALSA, 
 # the Advanced Linux Sound Architecture (http://alsa.jcu.cz) 
@@ -12,8 +13,8 @@ QT_LIBS= mjpeg/libmjpeg.a quicktime/libquicktime.a jpeg-6b-mmx/libjpeg.a -lpthre
 L_FLAGS  = -lpthread -lSDL 
 L_FLAGS_MOV = -lpthread -lSDL `glib-config glib --libs` 
 
-CFLAGS= -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime -I mjpeg
-CFLAGS_MOV =  -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime -I mjpeg -I movtar `glib-config glib --cflags`
+CFLAGS= -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime/quicktime -I mjpeg
+CFLAGS_MOV =  -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime/quicktime -I mjpeg -I movtar 
 
 all:		lavrec lavplay
 
@@ -24,34 +25,33 @@ all:		lavrec lavplay
 	./jpeg-6b-mmx/jdcolor.c ./jpeg-6b-mmx/jdsample.c
 	cd jpeg-6b-mmx; make
 
-./quicktime/libquicktime.a: 
-	cd quicktime; make
+./quicktime/quicktime/libquicktime.a: 
+	cd quicktime/quicktime; make
 
 ./mjpeg/libmjpeg.a: mjpeg/mjpeg.c mjpeg/mjpeg.h mjpeg/jpeg_dec.c
 	cd mjpeg; make
 
-lavrec:		lavrec.o avilib.o audiolib.o lav_io.o movtar/movtar.c ./quicktime/libquicktime.a ./mjpeg/libmjpeg.a
-		cc -o lavrec lavrec.o avilib.o audiolib.o lav_io.o $(QT_LIBS) \
-                $(L_FLAGS) $(CFLAGS)
+lavrec:		lavrec.o avilib.o audiolib.o lav_io.o movtar/movtar.c $(LIBS)
+		cc -o lavrec lavrec.o avilib.o audiolib.o lav_io.o \
+		$(LIBS_AND_OPT) $(L_FLAGS) $(CFLAGS)
 
-lavplay:	lavplay.c avilib.o audiolib.o lav_io.o editlist.o \
-	          ./quicktime/libquicktime.a ./mjpeg/libmjpeg.a ./jpeg-6b-mmx/libjpeg.a
-		cc -g -o lavplay lavplay.c avilib.o audiolib.o lav_io.o editlist.o $(QT_LIBS) \
-                $(L_FLAGS) $(CFLAGS)
+lavplay:	lavplay.c avilib.o audiolib.o lav_io.o editlist.o $(LIBS)
+		cc -g -o lavplay lavplay.c avilib.o audiolib.o lav_io.o \
+		editlist.o $(LIBS_AND_OPT) $(L_FLAGS) $(CFLAGS)
 
-movtar_play: movtar/movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a
-	gcc movtar/movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a $(CFLAGS_MOV) \
-	$(L_FLAGS_MOV) -o movtar_play
+movtar_play: movtar/libmovtar.a movtar_play.c ./jpeg-6b-mmx/libjpeg.a
+	gcc movtar_play.c ./jpeg-6b-mmx/libjpeg.a movtar/libmovtar.a \
+	$(CFLAGS_MOV) $(L_FLAGS_MOV) -o movtar_play
 
 install:
 	su -c "cp -v $(M_OBJS) /usr/local/bin/"
 
 clean:
-		rm -f *.o lavplay lavrec
+		rm -f *.o lavplay lavrec movtar_play
 
 realclean:
 		rm -f *.o lavplay lavrec
-		cd quicktime; make clean
+		cd quicktime/quicktime; make clean
 		cd jpeg-6b-mmx; make clean
 		cd mjpeg; make clean
 #		cd utils; make clean
