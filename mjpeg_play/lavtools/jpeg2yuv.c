@@ -339,13 +339,13 @@ static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, 
   int x,y;
   for (y = 0; y < height; y++)
     for (x = 0; x < width; x++)
-      yp[x+y*width] = (float)(yp[x+y*width])/255.0 * (235.0 - 16.0) + 16.0;
+      yp[x+y*width] = (float)(yp[x+y*width]) * ((235.0 - 16.0)/255.0) + 16.0;
 
   for (y = 0; y < height/2; y++)
     for (x = 0; x < width/2; x++)
       {
-	up[x+y*width/2] = (float)(up[x+y*width/2])/255.0 * (240.0 - 16.0) + 16.0;
-	vp[x+y*width/2] = (float)(vp[x+y*width/2])/255.0 * (240.0 - 16.0) + 16.0;
+	up[x+y*width/2] = (float)(up[x+y*width/2]) * ((240.0 - 16.0)/255.0) + 16.0;
+	vp[x+y*width/2] = (float)(vp[x+y*width/2]) * ((240.0 - 16.0)/255.0) + 16.0;
       }
 }
 
