@@ -153,12 +153,20 @@ used for still images on SVCDs.  Both standard (480 wide) and high
 resolution (704 wide) images are supported. As with VCD stills you
 select how big each compressed still should be using the -T flag.
 .PP
-.BR -f|--format \ 8|9
+.BR -f|--format \ 8
 	-	DVD MPEG-2. 
 .PP
 Just a very basic implementation. Useful with DXR2 board and similar
 hardware that can decode MPEG-2 only if it is presented in a DVD like
 form.  Bit-rate defaults to 7500kbps, buffer sizes to the maximum
+permitted by the DVD specification.
+.PP
+.BR -f|--format \ 9
+	-	DVD MPEG-2 for 'dvdauthor'
+.PP
+This version adds special dummy navigation packets into the output stream
+that the dvdauthor tool fills in to make a proper .VOB for authoring.
+Bit-rate defaults to 10200kbps, buffer sizes to the maximum
 permitted by the DVD specification.
 
 .SH "GENERAL FUNCTION LETTERS"
