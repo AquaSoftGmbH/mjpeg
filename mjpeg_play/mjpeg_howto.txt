@@ -1735,7 +1735,7 @@
 
   7.8.1.  DVD Audio creation Example
 
-  > lav2way stream.eli | mp2enc -r 48000 -o sound.mp2
+  > lav2wav stream.eli | mp2enc -r 48000 -o sound.mp2
 
 
      -r 48000

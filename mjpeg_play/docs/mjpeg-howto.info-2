@@ -1,5 +1,5 @@
 Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
-/tmp/linuxdoc-dir-3622/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-1473/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -542,7 +542,7 @@ File: mjpeg-howto.info,  Node: DVD Audio creation Example,  Next: DVD Video crea
 DVD Audio creation Example
 --------------------------
 
-   `> lav2way stream.eli | mp2enc -r 48000 -o sound.mp2'
+   `> lav2wav stream.eli | mp2enc -r 48000 -o sound.mp2'
 
 `-r 48000'
      The sample rate has to be 48kHz. The mp2enc -r option forces the
