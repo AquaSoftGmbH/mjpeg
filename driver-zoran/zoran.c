@@ -3273,7 +3273,11 @@ static int zoran_open(struct video_device *dev, int flags)
                         zoran_init_hardware(zr);
 
 			btor(ZR36057_ICR_IntPinEn, ZR36057_ICR);
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,4,19)
 			dev->busy = 0;	/* Allow second open */
+#else
+			dev->users = 0; /* allow second open */
+#endif
 		}
 
 		break;
@@ -3325,6 +3329,9 @@ static void zoran_close(struct video_device *dev)
 	}
 
 	zr->user--;
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2,4,19)
+	dev->users = 0;
+#endif
 
 	MOD_DEC_USE_COUNT;
 	DEBUG2(printk(KERN_INFO "%s: zoran_close done\n", zr->name));
@@ -4247,7 +4254,11 @@ static struct video_device zoran_template =
 	mmap:		zoran_mmap,
 	initialize:	zoran_init_done,
 	priv:		NULL,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(2,4,19)
 	busy:		0,
+#else
+	users:		0,
+#endif
 	minor:		0
 };
 
