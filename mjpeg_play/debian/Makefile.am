@@ -7,8 +7,6 @@ EXTRA_DIST = \
 	mjpegtools.files \
 	mjpegtools.info \
 	mjpegtools.manpages \
-	mjpegtools.postinst \
-	mjpegtools.prerm \
 	rules
 
 dist_noinst_DATA = control
