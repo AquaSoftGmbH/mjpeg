@@ -42,7 +42,7 @@ hardware. With the rest of the tools, this video can be edited and
 encoded into mpeg1/2 or divx video.
 
 %prep
-%setup -q -n %{name}-%{version} -a 1 -a 2
+%setup -q -n %{name}-%{version} -a 1
 
 mv jpeg-mmx-* jpeg-mmx
 
@@ -122,6 +122,8 @@ of the mjpegtools package.
 %files devel
 %{_bindir}/*-config
 %{_includedir}/mjpegtools/*.h
+%{_includedir}/mjpegtools/mpeg2enc/*.hh
+%{_includedir}/mjpegtools/mpeg2enc/*.h
 %{_prefix}/share/aclocal/*.m4
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a

@@ -1,11 +1,9 @@
 # Process this file with Automake to produce Makefile.in
 
-CC = g++
-
 EXTRA_DIST = \
-	README  	INSTRUCT	TODO \
-	.cvsignore
-
+	README \
+	INSTRUCT \
+	TODO
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -22,25 +20,44 @@ else
 endif
 
 mplex_SOURCES = \
-    Makefile.am \
-	main.cpp	\
-	interact.cpp		interact.hpp \
-	bits.cpp			bits.hpp	\
-	buffer.cpp		buffer.hpp \
-	videostrm.hpp	audiostrm.hpp	padstrm.hpp \
-	videostrm_in.cpp	 padstrm.cpp \
-	lpcmstrm_in.cpp mpastrm_in.cpp	ac3strm_in.cpp \
+	ac3strm_in.cpp \
+	audiostrm_out.cpp \
+	bits.cpp \
+	buffer.cpp \
 	dtsstrm_in.cpp \
-	videostrm_out.cpp	audiostrm_out.cpp	\
-	multiplexor.cpp	multiplexor.hpp	\
-	systems.cpp		systems.hpp \
-	vector.cpp	vector.hpp	mplexconsts.hpp \
-	inputstrm.cpp inputstrm.hpp aunit.hpp \
-	stillsstream.cpp stillsstream.hpp \
-	stream_params.cpp stream_params.hpp \
-        $(ZALPHA_FILES)
+	inputstrm.cpp \
+	interact.cpp \
+	lpcmstrm_in.cpp \
+	main.cpp \
+	mpastrm_in.cpp \
+	multiplexor.cpp \
+	padstrm.cpp \
+	stillsstream.cpp \
+	stream_params.cpp \
+	systems.cpp \
+	vector.cpp \
+	videostrm_in.cpp \
+	videostrm_out.cpp \
+	$(ZALPHA_FILES)
 
-mplex_LDADD = $(top_builddir)/utils/libmjpegutils.a \
-		@LIBGETOPT_LIB@ $(LIBM_LIBS) 
+noinst_HEADERS = \
+	audiostrm.hpp \
+	aunit.hpp \
+	bits.hpp \
+	buffer.hpp \
+	inputstrm.hpp \
+	interact.hpp \
+	mplexconsts.hpp \
+	multiplexor.hpp \
+	padstrm.hpp \
+	stillsstream.hpp \
+	stream_params.hpp \
+	systems.hpp \
+	vector.hpp \
+	videostrm.hpp
+
+mplex_LDADD = \
+	$(top_builddir)/utils/libmjpegutils.a \
+	@LIBGETOPT_LIB@ $(LIBM_LIBS) 
 
 mplex_CXXFLAGS = $(ZALPHA_FLAGS)

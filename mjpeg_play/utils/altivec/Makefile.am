@@ -2,55 +2,51 @@
 
 INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
-COMPILE = $(CC) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(AM_CPPFLAGS) \
-	$(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS) $(ALTIVEC_CFLAGS)
-
 noinst_LIBRARIES = libaltivec.a
 
 libaltivec_a_SOURCES = \
-  detect.c \
-  motion.c \
-  quantize.c \
-  benchmark.c \
-  amber.c \
-  sad_00.c \
-  sad_01.c \
-  sad_10.c \
-  sad_11.c \
-  bsad.c \
-  sub_mean_reduction.c \
-  sub_mean_reduction_ppc.S \
-  sumsq.c \
-  sumsq_sub22.c \
-  bsumsq.c \
-  bsumsq_sub22.c \
-  build_sub44_mests.c \
-  build_sub22_mests.c \
-  field_dct_best.c \
-  find_best_one_pel.c \
-  fdct_idct.c \
-  fdct.c \
-  idct.c \
-  quant_non_intra.c \
-  quant_weight_coeff_sum.c \
-  iquant_non_intra.c \
-  iquant_intra.c \
-  variance.c \
-  sub_pred.c \
-  add_pred.c \
-  pred_comp.c \
-  subsample_image.c \
-  altivec_conf.h \
-  altivec_motion.h \
-  altivec_predict.h \
-  altivec_quantize.h \
-  altivec_transform.h \
-  benchmark.h \
-  amber.h \
-  vectorize.h \
-  verify.h
+	add_pred.c \
+	amber.c \
+	benchmark.c \
+	bsad.c \
+	bsumsq.c \
+	bsumsq_sub22.c \
+	build_sub22_mests.c \
+	build_sub44_mests.c \
+	detect.c \
+	fdct.c \
+	fdct_idct.c \
+	field_dct_best.c \
+	find_best_one_pel.c \
+	idct.c \
+	iquant_intra.c \
+	iquant_non_intra.c \
+	motion.c \
+	pred_comp.c \
+	quant_non_intra.c \
+	quant_weight_coeff_sum.c \
+	quantize.c \
+	sad_00.c \
+	sad_01.c \
+	sad_10.c \
+	sad_11.c \
+	sub_mean_reduction.c \
+	sub_mean_reduction_ppc.S \
+	sub_pred.c \
+	subsample_image.c \
+	sumsq.c \
+	sumsq_sub22.c \
+	variance.c
 
-EXTRA_DIST = .cvsignore
+noinst_HEADERS = \
+	altivec_conf.h \
+	altivec_motion.h \
+	altivec_predict.h \
+	altivec_quantize.h \
+	altivec_transform.h \
+	amber.h \
+	benchmark.h \
+	vectorize.h \
+	verify.h
 
 MAINTAINERCLEANFILES = Makefile.in
-

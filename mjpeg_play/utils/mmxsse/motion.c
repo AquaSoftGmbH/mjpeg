@@ -4,7 +4,7 @@
 #include "cpu_accel.h"
 
 #include "mmxsse_motion.h"
-#include "../mjpeg_logging.h"
+#include "mjpeg_logging.h"
 
 void enable_mmxsse_motion(int cpucap)
 {

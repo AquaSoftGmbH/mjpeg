@@ -47,10 +47,15 @@ AC_ARG_ENABLE(large-file,
 AC_ARG_ENABLE(zalpha,
   [  --enable-zalpha,                  include MPEG Z/Alpha support in mplex (www.geofront.se/products_software_mza.php)])
 
-dnl Checks for programs.
 AC_GNU_SOURCE
+
+dnl Initialize libtool
+AM_PROG_LIBTOOL
+
+dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
+AM_PROG_CC_STDC
 AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LN_S
@@ -63,9 +68,6 @@ dnl configure AS and ASFLAGS... a pity nasm doesn't take  flags similar to cc
 dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
-
-dnl Initialize libtool
-AM_PROG_LIBTOOL
 
 AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h)
 

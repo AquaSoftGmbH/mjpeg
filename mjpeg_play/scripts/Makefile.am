@@ -1,5 +1,16 @@
 # Process this file with Automake to produce Makefile.in
 
-bin_SCRIPTS = lav2mpeg mpegtranscode
-EXTRA_DIST = $(bin_SCRIPTS) codiere berechne aufnahme frameber .cvsignore
+bin_SCRIPTS = \
+	lav2avi.sh \
+	lav2mpeg \
+	mpegtranscode
+
+EXTRA_DIST = \
+	$(bin_SCRIPTS) \
+	makePLI.py \
+	codiere \
+	berechne \
+	aufnahme \
+	frameber
+
 MAINTAINERCLEANFILES = Makefile.in

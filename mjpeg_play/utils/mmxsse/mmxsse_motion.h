@@ -19,7 +19,7 @@
  *
  */
 
-#include "../motionsearch.h"
+#include "motionsearch.h"
 #include "mblock_sub44_sads_x86.h"
 
 void enable_mmxsse_motion(int);

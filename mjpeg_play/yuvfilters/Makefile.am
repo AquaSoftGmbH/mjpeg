@@ -1,16 +1,26 @@
-EXTRA_DIST = README.2-3pulldown .cvsignore
+EXTRA_DIST = README.2-3pulldown
+
 MAINTAINERCLEANFILES = Makefile.in
 
 bin_PROGRAMS = yuvycsnoise yuvkineco
+
 noinst_LIBRARIES = libyuvfilters.a
 
 AM_CPPFLAGS = -I$(top_srcdir)/utils
 MJPEGLIB = $(top_builddir)/utils/libmjpegutils.a
 
 libyuvfilters_a_SOURCES = \
-	yuvfilters.h \
-	addtask.c alloctask.c initframe.c putframe.c yuvstdin.c yuvstdout.c \
-	yuvycsnoise.c yuvkineco.c
+	addtask.c \
+	alloctask.c \
+	initframe.c \
+	putframe.c \
+	yuvkineco.c \
+	yuvstdin.c \
+	yuvstdout.c \
+	yuvycsnoise.c
+
+noinst_HEADERS = \
+	yuvfilters.h
 
 yuvkineco_SOURCES = main.c
 yuvkineco_CFLAGS = -DFILTER=yuvkineco
