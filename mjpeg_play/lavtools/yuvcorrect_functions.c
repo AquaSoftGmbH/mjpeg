@@ -382,7 +382,8 @@ void initialisation1(int fd,frame_t * frame, general_correction_t * gen_correct,
                SS_H = 4;
                SS_V = 1;
              } 
-           else if (!strcmp("420", tag))
+	   else if (!strcmp(tag, "420") || !strcmp(tag, "420MPEG2") || 
+                    !strcmp(tag, "420PALDV") || !strcmp(tag,"420JPEG"))
              {
                SS_H = 2;
                SS_V = 2;

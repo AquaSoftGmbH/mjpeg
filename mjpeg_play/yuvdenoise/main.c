@@ -132,7 +132,8 @@ int main(int argc, char *argv[])
 		  denoiser.frame.ss_v=1;
 		}
 	    } 
-	  else if (!strcmp("420", tag))
+	  else if (!strcmp("420MPEG2", tag) || !strcmp(tag, "420JPEG") || 
+		   !strcmp("420PALDV", tag) || !strcmp(tag, "420"))
 	    {
 	      denoiser.frame.ss_h=2;
 	      denoiser.frame.ss_v=2;
