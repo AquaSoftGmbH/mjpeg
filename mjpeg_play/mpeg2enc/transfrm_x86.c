@@ -22,10 +22,12 @@
 
 
 #include <config.h>
+#include <math.h>
 #include "mjpeg_types.h"
 #include "syntaxparams.h"
 #include "attributes.h"
 #include "mmx.h"
+#include "simd.h"
 
 static __inline__ void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )

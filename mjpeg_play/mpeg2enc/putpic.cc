@@ -52,17 +52,11 @@
 #include "simd.h"
 
 
-
 /* output motion vectors (6.2.5.2, 6.3.16.2)
  *
  * this routine also updates the predictions for motion vectors (PMV)
  */
-static void putmvs(
-	pict_data_s *picture,
-	MacroBlock *mb,
-	int PMV[2][2][2],
-	int back
-	)
+void Picture::PutMVs( MacroBlock *mb, bool back )
 
 {
 	int hor_f_code;
@@ -70,16 +64,16 @@ static void putmvs(
 
 	if( back )
 	{
-		hor_f_code = picture->back_hor_f_code;
-		vert_f_code = picture->back_vert_f_code;
+		hor_f_code = back_hor_f_code;
+		vert_f_code = back_vert_f_code;
 	}
 	else
 	{
-		hor_f_code = picture->forw_hor_f_code;
-		vert_f_code = picture->forw_vert_f_code;
+		hor_f_code = forw_hor_f_code;
+		vert_f_code = forw_vert_f_code;
 	}
 
-	if (picture->pict_struct==FRAME_PICTURE)
+	if (pict_struct==FRAME_PICTURE)
 	{
 		if (mb->motion_type==MC_FRAME)
 		{
@@ -155,33 +149,205 @@ static void putmvs(
 	}
 }
 
+void MacroBlock::PutBlocks( )
+{
+    int comp;
+    int cc;
+    for (comp=0; comp<block_count; comp++)
+    {
+        /* block loop */
+        if( cbp & (1<<(block_count-1-comp)))
+        {
+            if (mb_type & MB_INTRA)
+            {
+                // TODO: 420 Only?
+                cc = (comp<4) ? 0 : (comp&1)+1;
+                putintrablk(picture, qdctblocks[comp],cc);
+            }
+            else
+            {
+                putnonintrablk(picture,qdctblocks[comp]);
+            }
+        }
+    }
+}
+
+void MacroBlock::SkippedCoding( bool slice_begin_end )
+{
+    skipped = false;
+    if( slice_begin_end || cbp )
+    {
+        /* there's no VLC for 'No MC, Not Coded':
+         * we have to transmit (0,0) motion vectors
+         */
+        if (picture->pict_type==P_TYPE && !cbp)
+            mb_type|= MB_FORWARD;
+        return;
+    }
+
+    MacroBlock *prev_mb = picture->prev_mb;
+    /* P picture, no motion vectors -> skip */
+    if (picture->pict_type==P_TYPE && !(mb_type&MB_FORWARD))
+    {
+        /* reset predictors */
+        picture->Reset_DC_DCT_Pred();
+        picture->Reset_MV_Pred();
+        skipped = true;
+        return;
+    }
+    
+    if(picture->pict_type==B_TYPE )
+    {
+        /* B frame picture with same prediction type
+         * (forward/backward/interp.)  and same active vectors
+         * as in previous macroblock -> skip
+         */
+
+        if (  picture->pict_struct==FRAME_PICTURE
+              && motion_type==MC_FRAME
+              && ((prev_mb->mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
+              && (!(mb_type&MB_FORWARD) ||
+                  (picture->PMV[0][0][0]==MV[0][0][0] &&
+                   picture->PMV[0][0][1]==MV[0][0][1]))
+              && (!(mb_type&MB_BACKWARD) ||
+                  (picture->PMV[0][1][0]==MV[0][1][0] &&
+                   picture->PMV[0][1][1]==MV[0][1][1])))
+        {
+            skipped = true;
+            return;
+        }
+
+        /* B field picture macroblock with same prediction
+         * type (forward/backward/interp.) and active
+         * vectors as previous macroblock and same
+         * vertical field selects as current field -> skio
+         */
+
+        if (picture->pict_struct!=FRAME_PICTURE
+            && motion_type==MC_FIELD
+            && ((prev_mb->mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
+            && (!(mb_type&MB_FORWARD) ||
+                (picture->PMV[0][0][0]==MV[0][0][0] &&
+                 picture->PMV[0][0][1]==MV[0][0][1] &&
+                 mv_field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
+            && (!(mb_type&MB_BACKWARD) ||
+                (picture->PMV[0][1][0]==MV[0][1][0] &&
+                 picture->PMV[0][1][1]==MV[0][1][1] &&
+                 mv_field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
+        {
+            skipped = true;
+            return;
+        }
+    }
+
+}
+
+
+/* generate picture header (6.2.3, 6.3.10) */
+void Picture::PutHeader()
+{
+	alignbits();
+	putbits(PICTURE_START_CODE,32); /* picture_start_code */
+	putbits(temp_ref,10); /* temporal_reference */
+	putbits(pict_type,3); /* picture_coding_type */
+	putbits(vbv_delay,16); /* vbv_delay */
+
+	if (pict_type==P_TYPE || pict_type==B_TYPE)
+	{
+		putbits(0,1); /* full_pel_forward_vector */
+		if (opt_mpeg1)
+			putbits(forw_hor_f_code,3);
+		else
+			putbits(7,3); /* forward_f_code */
+	}
+
+	if (pict_type==B_TYPE)
+	{
+		putbits(0,1); /* full_pel_backward_vector */
+		if (opt_mpeg1)
+			putbits(back_hor_f_code,3);
+		else
+			putbits(7,3); /* backward_f_code */
+	}
+
+
+	putbits(0,1); /* extra_bit_picture */
+	if ( !opt_mpeg1 )
+	{
+		PutCodingExt();
+	}
+
+}
+
+/* generate picture coding extension (6.2.3.1, 6.3.11)
+ *
+ * composite display information (v_axis etc.) not implemented
+ */
+void Picture::PutCodingExt()
+{
+	alignbits();
+	putbits(EXT_START_CODE,32); /* extension_start_code */
+	putbits(CODING_ID,4); /* extension_start_code_identifier */
+	putbits(forw_hor_f_code,4); /* forward_horizontal_f_code */
+	putbits(forw_vert_f_code,4); /* forward_vertical_f_code */
+	putbits(back_hor_f_code,4); /* backward_horizontal_f_code */
+	putbits(back_vert_f_code,4); /* backward_vertical_f_code */
+	putbits(dc_prec,2); /* intra_dc_precision */
+	putbits(pict_struct,2); /* picture_structure */
+	putbits((pict_struct==FRAME_PICTURE)?topfirst : 0, 1); /* top_field_first */
+	putbits(frame_pred_dct,1); /* frame_pred_frame_dct */
+	putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
+	putbits(q_scale_type,1); /* q_scale_type */
+	putbits(intravlc,1); /* intra_vlc_format */
+	putbits(altscan,1); /* alternate_scan */
+	putbits(repeatfirst,1); /* repeat_first_field */
+
+	putbits(prog_frame,1); /* chroma_420_type */
+	putbits(prog_frame,1); /* progressive_frame */
+	putbits(0,1); /* composite_display_flag */
+}
+
+
+void Picture::PutSliceHdr( int slice_mb_y )
+{
+    /* slice header (6.2.4) */
+    alignbits();
+    
+    if (opt_mpeg1 || opt_vertical_size<=2800)
+        putbits(SLICE_MIN_START+slice_mb_y,32); /* slice_start_code */
+    else
+    {
+        putbits(SLICE_MIN_START+(slice_mb_y&127),32); /* slice_start_code */
+        putbits(slice_mb_y>>7,3); /* slice_vertical_position_extension */
+    }
+    
+    /* quantiser_scale_code */
+    putbits(q_scale_type 
+            ? map_non_linear_mquant[mquant_pred] 
+            : mquant_pred >> 1, 5);
+    
+    putbits(0,1); /* extra_bit_slice */
+    
+    /* reset predictors */
+    Reset_DC_DCT_Pred();
+    Reset_MV_Pred();
+} 
+
+
+
 /* *****************
  *
- * putpict - Quantisation and coding of picture.
+ * putpict - Quantise and encode picture with Sequence and GOP headers
+ * as required.
  *
- * ARGS:
- * picture - The transformed picture data (DCT blocks and motion comp. data)
- * quant_blocks - Buffer for quantised DCT blocks for the picture.
  *
- * NOTE: It may seem perverse to quantise in the sample as coding. However,
- * actually makes (limited) sense: feedback from the *actual* bit-allocation
- * may be used to adjust quantisation "on the fly".  We, of course, need the
- * quantised DCT blocks to constructed the reference picture for future
- * motion compensation etc.
+ * TODO: Really we should seperate the Sequence start / GOP start logic
+ * out.
  *
  ******************/
 
 void putpict(Picture *picture )
 {
-	int i, j, k, comp, cc;
-	int mb_type;
-	int PMV[2][2][2];
-	int prev_mquant;
-	int cbp, MBAinc;
-	MacroBlock *cur_mb;
-	int cur_mb_blocks;
-	short (*quant_blocks)[64] = picture->qblocks;
-	MBAinc = 0;          /* Annoying warning otherwise... */
 
 	/* Handle splitting of output stream into sequences of desired size */
 	if( picture->new_seq )
@@ -203,8 +369,7 @@ void putpict(Picture *picture )
        do fast forward, rewind etc.
 	*/
 
-    if( picture->new_seq ||
-        picture->decode == 0 ||
+    if( picture->new_seq || picture->decode == 0 ||
         (picture->gop_start && opt_seq_hdr_every_gop) )
     {
 		putseqhdr();
@@ -218,267 +383,137 @@ void putpict(Picture *picture )
 		putgophdr( picture->decode,
 				   picture->decode == 0 );
 	}
+    
+    picture->QuantiseAndPutEncoding();
+}
+
+/* ************************************************
+ *
+ * QuantiseAndEncode - Quantise and Encode a picture.
+ *
+ * NOTE: It may seem perverse to quantise in the sample as
+ * coding. However, actually makes (limited) sense: feedback from the
+ * *actual* bit-allocation may be used to adjust quantisation "on the
+ * fly".  We, of course, need the quantised DCT blocks to construct
+ * the reference picture for future motion compensation etc.
+ *
+ * *********************************************** */
+
+void Picture::QuantiseAndPutEncoding()
+{
+	int i, j, k;
+	int MBAinc;
+	MacroBlock *cur_mb = 0;
 
 	/* picture header and picture coding extension */
-	putpicthdr(picture);
+    PutHeader();
 
-	if ( !opt_mpeg1 )
-	{
-		putpictcodext(picture);
-	}
-	if( opt_svcd_scan_data && picture->pict_type == I_TYPE )
+    /* TODO: This should really be a member of the picture object */
+	if( opt_svcd_scan_data && pict_type == I_TYPE )
 	{
 		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
 	}
-	prev_mquant = rc_start_mb(picture); /* initialize quantization parameter */
+
+	mquant_pred = rc_start_mb(this); /* initialize quantization parameter */
 
 	k = 0;
+    
+    /* TODO: We're currently hard-wiring each macroblock row as a
+       slice.  For MPEG-2 we could do this better and reduce slice
+       start code coverhead... */
 
 	for (j=0; j<mb_height2; j++)
 	{
-		/* macroblock row loop */
 
+        PutSliceHdr(j);
+        MBAinc = 1; /* first MBAinc denotes absolute position */
+
+        /* Slice macroblocks... */
 		for (i=0; i<mb_width; i++)
 		{
-			cur_mb = &picture->mbinfo[k];
-			cur_mb_blocks = k*block_count;
-			/* macroblock loop */
-			if (i==0)
-			{
-				/* slice header (6.2.4) */
-				alignbits();
-
-				if (opt_mpeg1 || opt_vertical_size<=2800)
-					putbits(SLICE_MIN_START+j,32); /* slice_start_code */
-				else
-				{
-					putbits(SLICE_MIN_START+(j&127),32); /* slice_start_code */
-					putbits(j>>7,3); /* slice_vertical_position_extension */
-				}
-  
-				/* quantiser_scale_code */
-				putbits(picture->q_scale_type ? 
-						map_non_linear_mquant[prev_mquant]
-						: prev_mquant >> 1, 5);
-  
-				putbits(0,1); /* extra_bit_slice */
-  
-				/* reset predictors */
-
-				for (cc=0; cc<3; cc++)
-					dc_dct_pred[cc] = 0;
-
-				PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
-				PMV[0][1][0]=PMV[0][1][1]=PMV[1][1][0]=PMV[1][1][1]=0;
-  
-				MBAinc = i + 1; /* first MBAinc denotes absolute position */
-
-			}
-
-
-			mb_type = cur_mb->mb_type;
+            prev_mb = cur_mb;
+			cur_mb = &mbinfo[k];
 
 
 			/* determine mquant (rate control) */
-            cur_mb->SelectQuantization();
-			//cur_mb->mquant = rc_calc_mquant(picture,k);
+            cur_mb->SelectQuantization( );
 
-			/* quantize macroblock */
-			if (mb_type & MB_INTRA)
-			{
-				quant_intra( picture->blocks[cur_mb_blocks],
-							 quant_blocks[cur_mb_blocks],
-                             picture->q_scale_type,
-                             picture->dc_prec,
-							 cur_mb->mquant, 
-							 &cur_mb->mquant );
-		
-				cur_mb->cbp = cbp = (1<<block_count) - 1;
-			}
-			else
-			{
-				cbp = (*pquant_non_intra)(  picture->blocks[cur_mb_blocks],
-                                            quant_blocks[cur_mb_blocks],
-                                            picture->q_scale_type,
-                                            cur_mb->mquant,
-                                            &cur_mb->mquant );
-				cur_mb->cbp = cbp;
-				if (cbp)
-					mb_type|= MB_PATTERN;
-			}
+			/* quantize macroblock : N.b. the MB_PATTERN bit may be
+               set as a side-effect of this call. */
+            cur_mb->Quantize();
 
 			/* output mquant if it has changed */
-			if (cbp && prev_mquant!=cur_mb->mquant)
-				mb_type|= MB_QUANT;
+			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)
+				cur_mb->mb_type|= MB_QUANT;
 
-			/* check if macroblock can be skipped */
-			if (i!=0 && i!=mb_width-1 && !cbp)
-			{
-				/* no DCT coefficients and neither first nor last macroblock of slice */
+            /* Check to see if Macroblock is skippable, this may set
+               the MB_FORWARD bit... */
+            bool slice_begin_or_end = (i==0 || i==mb_width-1);
+            cur_mb->SkippedCoding(slice_begin_or_end);
+            if( cur_mb->skipped )
+            {
+                ++MBAinc;
+            }
+            else
+            {
+                putaddrinc(MBAinc); /* macroblock_address_increment */
+                MBAinc = 1;
+                
+                putmbtype(pict_type,cur_mb->mb_type); /* macroblock type */
 
-				if (picture->pict_type==P_TYPE && !(mb_type&MB_FORWARD))
-				{
-					/* P picture, no motion vectors -> skip */
+                if ( (cur_mb->mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
+                    putbits(cur_mb->motion_type,2);
 
-					/* reset predictors */
+                if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
+                    putbits(cur_mb->field_dct,1);
 
-					for (cc=0; cc<3; cc++)
-						dc_dct_pred[cc] = 0;
-
-					PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
-					PMV[0][1][0]=PMV[0][1][1]=PMV[1][1][0]=PMV[1][1][1]=0;
-
-					cur_mb->mb_type = mb_type;
-					cur_mb->skipped = 1;
-					MBAinc++;
-					k++;
-					continue;
-				}
-
-				if (picture->pict_type==B_TYPE &&
-					picture->pict_struct==FRAME_PICTURE
-					&& cur_mb->motion_type==MC_FRAME
-					&& ((picture->mbinfo[k-1].mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-					&& (!(mb_type&MB_FORWARD) ||
-						(PMV[0][0][0]==cur_mb->MV[0][0][0] &&
-						 PMV[0][0][1]==cur_mb->MV[0][0][1]))
-					&& (!(mb_type&MB_BACKWARD) ||
-						(PMV[0][1][0]==cur_mb->MV[0][1][0] &&
-						 PMV[0][1][1]==cur_mb->MV[0][1][1])))
-				{
-					/* conditions for skipping in B frame pictures:
-					 * - must be frame predicted
-					 * - must be the same prediction type (forward/backward/interp.)
-					 *   as previous macroblock
-					 * - relevant vectors (forward/backward/both) have to be the same
-					 *   as in previous macroblock
-					 */
-
-					cur_mb->mb_type = mb_type;
-					cur_mb->skipped = 1;
-					MBAinc++;
-					k++;
-					continue;
-				}
-
-				if (picture->pict_type==B_TYPE 
-					&& picture->pict_struct!=FRAME_PICTURE
-					&& cur_mb->motion_type==MC_FIELD
-					&& ((picture->mbinfo[k-1].mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-					&& (!(mb_type&MB_FORWARD) ||
-						(PMV[0][0][0]==cur_mb->MV[0][0][0] &&
-						 PMV[0][0][1]==cur_mb->MV[0][0][1] &&
-						 cur_mb->mv_field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
-					&& (!(mb_type&MB_BACKWARD) ||
-						(PMV[0][1][0]==cur_mb->MV[0][1][0] &&
-						 PMV[0][1][1]==cur_mb->MV[0][1][1] &&
-						 cur_mb->mv_field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
-				{
-					/* conditions for skipping in B field pictures:
-					 * - must be field predicted
-					 * - must be the same prediction type (forward/backward/interp.)
-					 *   as previous macroblock
-					 * - relevant vectors (forward/backward/both) have to be the same
-					 *   as in previous macroblock
-					 * - relevant motion_vertical_field_selects have to be of same
-					 *   parity as current field
-					 */
-
-					cur_mb->mb_type = mb_type;
-					cur_mb->skipped = 1;
-					MBAinc++;
-					k++;
-					continue;
-				}
-			}
-
-			/* macroblock cannot be skipped */
-			cur_mb->skipped = 0;
-
-			/* there's no VLC for 'No MC, Not Coded':
-			 * we have to transmit (0,0) motion vectors
-			 */
-			if (picture->pict_type==P_TYPE && !cbp && !(mb_type&MB_FORWARD))
-				mb_type|= MB_FORWARD;
-
-			putaddrinc(MBAinc); /* macroblock_address_increment */
-			MBAinc = 1;
-
-			putmbtype(picture->pict_type,mb_type); /* macroblock type */
-
-			if ( (mb_type & (MB_FORWARD|MB_BACKWARD)) && !picture->frame_pred_dct)
-				putbits(cur_mb->motion_type,2);
-
-			if (picture->pict_struct==FRAME_PICTURE 
-				&& cbp && !picture->frame_pred_dct)
-				putbits(cur_mb->field_dct,1);
-
-			if (mb_type & MB_QUANT)
-			{
-				putbits(picture->q_scale_type ? 
-						map_non_linear_mquant[cur_mb->mquant]
-						: cur_mb->mquant>>1,5);
-				prev_mquant = cur_mb->mquant;
-			}
+                if (cur_mb->mb_type & MB_QUANT)
+                {
+                    putbits(q_scale_type 
+                            ? map_non_linear_mquant[cur_mb->mquant]
+                            : cur_mb->mquant>>1,5);
+                    mquant_pred = cur_mb->mquant;
+                }
 
 
-			if (mb_type & MB_FORWARD)
-			{
-				/* forward motion vectors, update predictors */
-				putmvs(picture, cur_mb, PMV,  0 );
-			}
+                if (cur_mb->mb_type & MB_FORWARD)
+                {
+                    /* forward motion vectors, update predictors */
+                    PutMVs( cur_mb, false );
+                }
 
-			if (mb_type & MB_BACKWARD)
-			{
-				/* backward motion vectors, update predictors */
-				putmvs(picture,  cur_mb, PMV, 1 );
-			}
+                if (cur_mb->mb_type & MB_BACKWARD)
+                {
+                    /* backward motion vectors, update predictors */
+                    PutMVs( cur_mb,  true );
+                }
 
-			if (mb_type & MB_PATTERN)
-			{
-				putcbp((cbp >> (block_count-6)) & 63);
-				if (opt_chroma_format!=CHROMA420)
-					putbits(cbp,block_count-6);
-			}
+                if (cur_mb->mb_type & MB_PATTERN)
+                {
+                    putcbp((cur_mb->cbp >> (block_count-6)) & 63);
+                    if (opt_chroma_format!=CHROMA420)
+                        putbits(cur_mb->cbp,block_count-6);
+                }
+            
+                /* Output VLC DCT Blocks for Macroblock */
 
-			for (comp=0; comp<block_count; comp++)
-			{
+                cur_mb->PutBlocks( );
+                /* reset predictors */
+                if (!(cur_mb->mb_type & MB_INTRA))
+                    Reset_DC_DCT_Pred();
 
-				/* block loop */
-				if (cbp & (1<<(block_count-1-comp)))
-				{
+                if (cur_mb->mb_type & MB_INTRA || 
+                    (pict_type==P_TYPE && !(cur_mb->mb_type & MB_FORWARD)))
+                {
+                    Reset_MV_Pred();
+                }
+            }
+            ++k;
+        } /* Slice MB loop */
+    } /* Slice loop */
 
-					if (mb_type & MB_INTRA)
-					{
-						cc = (comp<4) ? 0 : (comp&1)+1;
-						putintrablk(picture,quant_blocks[cur_mb_blocks+comp],cc);
-					}
-					else
-					{
-						putnonintrablk(picture,quant_blocks[cur_mb_blocks+comp]);
-					}
-				}
-			}
-
-			/* reset predictors */
-			if (!(mb_type & MB_INTRA))
-				for (cc=0; cc<3; cc++)
-					dc_dct_pred[cc] = 0;
-
-			if (mb_type & MB_INTRA || 
-				(picture->pict_type==P_TYPE && !(mb_type & MB_FORWARD)))
-			{
-				PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
-				PMV[0][1][0]=PMV[0][1][1]=PMV[1][1][0]=PMV[1][1][1]=0;
-			}
-
-			cur_mb->mb_type = mb_type;
-			k++;
-		}
-	}
-
-	rc_update_pict(picture);
-	vbv_end_of_picture(picture);
+	rc_update_pict(this);
+	vbv_end_of_picture(this);
 }
 
 

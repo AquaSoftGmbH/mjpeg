@@ -78,10 +78,13 @@ public:
     void FrameME();            // In motionest.cc
     void FieldME();
     void Predict();            // In predict.cc
+    void Quantize();            // In quantize.cc
+    void IQuantize();
     void Transform();          // In transfrm.cc
     void ITransform();
     void SelectQuantization();  // In ratectl.cc
-    
+    void PutBlocks();           // In putpic.cc
+    void SkippedCoding( bool slice_begin_end );
 
     inline const Picture &ParentPicture() const { return *picture; }
     inline const int TopleftX() const { return i; }
@@ -110,7 +113,7 @@ public:
 	int motion_type; /* frame/field/16x8/dual_prime */
 	int mquant; /* quantization parameter */
 	int cbp; /* coded block pattern */
-	int skipped; /* skipped macroblock */
+	bool skipped; /* skipped macroblock */
 	int MV[2][2][2]; /* motion vectors */
 	int mv_field_sel[2][2]; /* motion vertical field select */
 	int dmvector[2]; /* dual prime vectors */

@@ -75,13 +75,13 @@
  
 int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 							int q_scale_type,
-							int mquant,
 							int *nonsat_mquant)
 {
 	int saturated;
 	int satlim = opt_dctsatlim;
 	float *i_quant_matf; 
 	int   coeff_count = 64*block_count;
+	int mquant = *nonsat_mquant;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
 	float *piqf;
@@ -190,7 +190,7 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra( src, dst, mquant, 
+					return quant_non_intra( src, dst, 
 											q_scale_type,
 											nonsat_mquant);
 				}
@@ -216,12 +216,12 @@ static int trunc_mxcsr = 0x7f80;
  
 int quant_non_intra_sse( int16_t *src, int16_t *dst,
 						 int q_scale_type,
-						 int mquant,
 						 int *nonsat_mquant)
 {
 	int saturated;
 	int satlim = opt_dctsatlim;
 	float *i_quant_matf; 
+	int mquant = *nonsat_mquant;
 	int   coeff_count = 64*block_count;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
@@ -326,7 +326,7 @@ restart:
 				else
 				{
 					return quant_non_intra(src, dst, q_scale_type,
-										   mquant, nonsat_mquant);
+										   nonsat_mquant);
 				}
 			}
 
@@ -355,7 +355,6 @@ restart:
 																							     											     
 int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 						 int q_scale_type,
-						 int mquant,
 						 int *nonsat_mquant)
 {
 
@@ -363,6 +362,7 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
+	int mquant = *nonsat_mquant;
 	uint16_t *quant_mat = opt_inter_q;
 	int comp;
 	uint16_t *i_quant_mat = i_inter_q;
@@ -372,7 +372,7 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	/* MMX routine does not work right for MQ=2 ... (no unsigned mult) */
 	if( mquant == 2 )
 	{
-		return quant_non_intra(src, dst, q_scale_type,mquant, nonsat_mquant);
+		return quant_non_intra(src, dst, q_scale_type, nonsat_mquant);
 	}
 	/* If available use the fast MMX quantiser.  It returns
 	   flags to signal if coefficients are outside its limited range or
@@ -434,7 +434,7 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	fall back to the original 32-bit int version: this is rare */
 	if(  (flags & 0xff) != 0 || saturated)
 	{
-		return quant_non_intra( src, dst, q_scale_type, mquant, nonsat_mquant);
+		return quant_non_intra( src, dst, q_scale_type, nonsat_mquant);
 	}
 
 	*nonsat_mquant = mquant;

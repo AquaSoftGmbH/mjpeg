@@ -153,11 +153,6 @@ EXTERN int frame_num;			/* Useful for triggering debug information */
 
 
  
-/* prediction values for DCT coefficient (0,0) 
-   TODO: This is a per-picture value and thus should be part of
-   a picture record.
-*/
-EXTERN int dc_dct_pred[3];
 
 
 /* 1 if maxval->hor_size, maxval->vert_size and maxval->samp_rate in conform.c should not be checked */					    EXTERN int opt_ignore_constraints;			

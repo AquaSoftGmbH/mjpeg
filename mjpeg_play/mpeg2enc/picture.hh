@@ -1,3 +1,24 @@
+
+/*  (C) 2000/2001/2002 Andrew Stevens */
+
+/*  This is free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+
+
 #ifndef _PICTURE_HH
 #define _PICTURE_HH
 /* picture.hh picture class... */
@@ -6,6 +27,35 @@
 using namespace std;
 
 /* Transformed per-picture data  */
+
+typedef int MotionVecPred[2][2][2];
+typedef int DC_DctPred[3];
+
+class CodingPredictors
+{
+public:
+
+    void Reset_DC_DCT_Pred()
+        {
+            int cc;
+            for (cc=0; cc<3; cc++)
+                dc_dct_pred[cc] = 0;
+                
+        }
+    void Reset_MV_Pred()
+        {
+            int *base=&PMV[0][0][0];
+            int v;
+            for( v = 0; v < 2*2*2; ++v)
+                base[v]=0;
+        }
+
+    DC_DctPred dc_dct_pred;
+    MotionVecPred PMV;
+    MacroBlock *prev_mb;
+    int mquant_pred;
+    
+};
 
 class pict_data_s
 {
@@ -48,10 +98,10 @@ public:
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */
-	int16_t (*blocks)[64];
-	int16_t (*qblocks)[64];
+	DCTblock *blocks;
+	DCTblock *qblocks;
 
-	/* macroblock side information array */
+	/* Macroblocks of picture */
 	vector<MacroBlock> mbinfo;
 
 	/* Information for GOP start frames */
@@ -67,61 +117,20 @@ public:
 	double SQ;
 	double avg_act;
 	double sum_avg_act;
+
 };
 
-class Picture : public pict_data_s
+
+class Picture : public pict_data_s, public CodingPredictors
 {
-
+public:
+    void QuantiseAndPutEncoding();
+    void PutHeader(); 
+private:
+    void PutSliceHdr( int slice_mb_y );
+    void PutMVs( MacroBlock *mb, bool back );
+    void PutCodingExt();
 };
-
-
-/* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
-
-/*
- * Disclaimer of Warranty
- *
- * These software programs are available to the user without any license fee or
- * royalty on an "as is" basis.  The MPEG Software Simulation Group disclaims
- * any and all warranties, whether express, implied, or statuary, including any
- * implied warranties or merchantability or of fitness for a particular
- * purpose.  In no event shall the copyright-holder be liable for any
- * incidental, punitive, or consequential damages of any kind whatsoever
- * arising from the use of these programs.
- *
- * This disclaimer of warranty extends to the user of these programs and user's
- * customers, employees, agents, transferees, successors, and assigns.
- *
- * The MPEG Software Simulation Group does not represent or warrant that the
- * programs furnished hereunder are free of infringement of any third-party
- * patents.
- *
- * Commercial implementations of MPEG-1 and MPEG-2 video, including shareware,
- * are subject to royalty fees to patent holders.  Many of these patents are
- * general enough such that they are unavoidable regardless of implementation
- * design.
- *
- */
-
-/*  (C) 2000/2001 Andrew Stevens */
-
-/* These modifications are free software; you can redistribute it
- *  and/or modify it under the terms of the GNU General Public License
- *  as published by the Free Software Foundation; either version 2 of
- *  the License, or (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- *  General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
- * 02111-1307, USA.
- *
- */
-
-
 
 
 /* 

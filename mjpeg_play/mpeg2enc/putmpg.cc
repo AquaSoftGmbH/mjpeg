@@ -33,13 +33,13 @@
 #include "global.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
-void putintrablk(Picture *picture,int16_t *blk, int cc)
+void putintrablk(Picture *picture, int16_t *blk, int cc)
 {
   int n, dct_diff, run, signed_level;
 
   /* DC coefficient (7.2.1) */
-  dct_diff = blk[0] - dc_dct_pred[cc]; /* difference to previous block */
-  dc_dct_pred[cc] = blk[0];
+  dct_diff = blk[0] - picture->dc_dct_pred[cc]; /* difference to previous block */
+  picture->dc_dct_pred[cc] = blk[0];
 
   if (cc==0)
     putDClum(dct_diff);
@@ -48,10 +48,11 @@ void putintrablk(Picture *picture,int16_t *blk, int cc)
 
   /* AC coefficients (7.2.2) */
   run = 0;
+  const uint8_t *scan_tbl = (picture->altscan ? alternate_scan : zig_zag_scan);
   for (n=1; n<64; n++)
   {
     /* use appropriate entropy scanning pattern */
-    signed_level = blk[(picture->altscan ? alternate_scan : zig_zag_scan)[n]];
+    signed_level = blk[scan_tbl[n]];
     if (signed_level!=0)
     {
       putAC(run,signed_level,picture->intravlc);

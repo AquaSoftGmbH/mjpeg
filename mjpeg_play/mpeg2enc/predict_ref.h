@@ -24,13 +24,17 @@
 #ifndef _PREDICT_H
 #define _PREDICT_H
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 extern void (*ppred_comp)( uint8_t *src, uint8_t *dst,
 						   int lx, int w, int h, int x, int y, int dx, int dy,
 						   int addflag);
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+void pred_comp( uint8_t *src, uint8_t *dst,
+                int lx, int w, int h, int x, int y, int dx, int dy,
+                int addflag);
 
 void calc_DMV( int picture_struct, bool topfirst,
 			   int DMV[][2], 
@@ -39,6 +43,7 @@ void calc_DMV( int picture_struct, bool topfirst,
 void clearblock ( int picture_struct, uint8_t *cur[], int i0, int j0);
 
 void init_predict(void);
+
 
 #ifdef  __cplusplus
 }

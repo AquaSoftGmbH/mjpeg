@@ -55,13 +55,13 @@ extern "C"
 	
 int quant_non_intra_3dnow( int16_t *src, int16_t *dst,
 						   int q_scale_type,
-						   int mquant, int *nonsat_mquant);
+						   int *mquant);
 int quant_non_intra_sse( int16_t *src, int16_t *dst,
 						 int q_scale_type,
-						 int mquant, int *nonsat_mquant);
+						 int *mquant);
 int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 						 int q_scale_type,
-						 int mquant, int *nonsat_mquant);
+						 int *mquant);
 	
 int quantize_ni_mmx(int16_t *dst, int16_t *src, 
 					uint16_t *quant_mat, 
@@ -118,7 +118,7 @@ void pred_comp_mmx(
 
 extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
 						 int q_scale_type, 
-						 int mquant, int *nonsat_mquant);
+						 int *nonsat_mquant);
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );

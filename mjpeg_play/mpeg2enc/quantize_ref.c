@@ -67,7 +67,7 @@ void enable_altivec_quantization(int opt_mpeg1);
 
 int (*pquant_non_intra)( int16_t *src, int16_t *dst,
                                 int q_scale_type, 
-                                int mquant, int *nonsat_mquant);
+                                int *nonsat_mquant);
 int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
@@ -151,7 +151,6 @@ int next_larger_quant( int q_scale_type, int quant )
 void quant_intra( int16_t *src, 
 				  int16_t *dst,
 				  int q_scale_type, int dc_prec,
-				  int mquant,
 				  int *nonsat_mquant
 	)
 {
@@ -159,6 +158,7 @@ void quant_intra( int16_t *src,
   int i,comp;
   int x, y, d;
   int clipping;
+  int mquant = *nonsat_mquant;
   int clipvalue  = opt_dctsatlim;
   uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
 
@@ -258,13 +258,10 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
  *
  * RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
  *
- * TODO: A candidate for use of efficient abs and "intsamesign". If only gcc understood
- * PPro conditional moves...
  */
 																							     											     
 int quant_non_intra( int16_t *src, int16_t *dst,
 					 int q_scale_type,
-					 int mquant,
 					 int *nonsat_mquant)
 {
 	int i;
@@ -274,6 +271,7 @@ int quant_non_intra( int16_t *src, int16_t *dst,
 	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
+    int mquant = *nonsat_mquant;
 	uint16_t *quant_mat = inter_q_tbl[mquant]; /* inter_q */
 	
 	coeff_count = 64*block_count;

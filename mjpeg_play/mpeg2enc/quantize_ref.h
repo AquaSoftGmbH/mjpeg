@@ -29,7 +29,7 @@
 
 extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
                                 int q_scale_type, 
-                                int mquant, int *nonsat_mquant);
+                                int *nonsat_mquant);
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
@@ -45,10 +45,10 @@ int next_larger_quant( int q_scale_type, int quant );
 int quant_code(  int q_scale_type, int mquant );
 void quant_intra( int16_t *src, int16_t *dst, 
 				  int q_scale_type, int dc_prec,
-				  int mquant, int *nonsat_mquant);
+				  int *nonsat_mquant);
 int quant_non_intra( int16_t *src, int16_t *dst,
 					 int q_scale_type,
-					 int mquant, int *nonsat_mquant);
+					 int *nonsat_mquant);
 void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
 void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
 

@@ -51,6 +51,10 @@
 #include "mjpeg_types.h"
 
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 /*
   Pointers to version of transform and prediction manipulation
   routines to be used..
@@ -64,11 +68,20 @@ extern void (*psub_pred) (uint8_t *pred, uint8_t *cur,
 				   int lx, int16_t *blk);
 extern int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
 
-#ifdef  __cplusplus
-extern "C" {
-#endif
+int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
+
+void add_pred (uint8_t *pred, uint8_t *cur,
+               int lx, int16_t *blk);
+void sub_pred (uint8_t *pred, uint8_t *cur,
+               int lx, int16_t *blk);
 
 void init_transform(void);
+
+
+void fdct( int16_t *blk );
+void idct( int16_t *blk );
+void init_fdct (void);
+void init_idct (void);
 
 #ifdef  __cplusplus
 }
