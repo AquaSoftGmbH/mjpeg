@@ -57,7 +57,7 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+#if defined(HAVE_ASM_MMX)
 extern void init_x86_transform();
 #endif
 
