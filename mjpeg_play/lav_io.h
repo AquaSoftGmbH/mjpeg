@@ -3,7 +3,11 @@
 
 #ifdef COMPILE_LAV_IO_C
 #include <avilib.h>
+
+#ifdef BUILD_QUICKTIME
 #include <quicktime.h>
+#endif
+
 #include <movtar.h>
 #else
 typedef void avi_t;
@@ -19,7 +23,9 @@ typedef void movtar_t;
 typedef struct
 {
    avi_t       *avi_fd;
+#ifdef BUILD_QUICKTIME
    quicktime_t *qt_fd;
+#endif
    movtar_t    *movtar_fd;
    int         format;
    int         interlacing;

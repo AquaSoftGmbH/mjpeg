@@ -257,7 +257,9 @@ lav_file_t *lav_open_output_file(char *filename, char format,
    /* Set lav_fd */
 
    lav_fd->avi_fd      = 0;
+#ifdef BUILD_QUICKTIME
    lav_fd->qt_fd       = 0;
+#endif
    lav_fd->format      = format;
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
                                       LAV_NOT_INTERLACED;
@@ -281,6 +283,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
 
       case 'q':
 
+#ifdef BUILD_QUICKTIME
          /* open quicktime output file */
 
          /* since the documentation says that the file should be empty,
@@ -298,6 +301,10 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          if (asize) quicktime_set_audio(lav_fd->qt_fd, achans, arate,
                              asize, (asize==8) ? QUICKTIME_RAW : QUICKTIME_TWOS);
          return lav_fd;
+#else
+	 internal_error = ERROR_FORMAT;
+	 return 0;
+#endif
 
       case 'm':
 
@@ -327,9 +334,11 @@ int lav_close(lav_file_t *lav_file)
       case 'A':
          res = AVI_close( lav_file->avi_fd );
          break;
+#ifdef BUILD_QUICKTIME
       case 'q':
          res = quicktime_close( lav_file->qt_fd );
          break;
+#endif
       case 'm':
          res = movtar_close( lav_file->movtar_fd );
          break;
@@ -390,6 +399,7 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
             }
             break;
 
+#ifdef BUILD_QUICKTIME
          case 'q':
 
             jpgdata = buff;
@@ -424,7 +434,7 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
                jpglen  -= jpeg_padded_len;
             }
             break;
-
+#endif
          case 'm':
 
             jpgdata = buff;
@@ -447,9 +457,11 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
             else
                res = AVI_dup_frame( lav_file->avi_fd );
             break;
+#ifdef BUILD_QUICKTIME
          case 'q':
             res = quicktime_write_frame( lav_file->qt_fd, buff, size, 0 );
             break;
+#endif
          case 'm':
             res = movtar_write_frame( lav_file->movtar_fd, buff, size);
             break;
@@ -475,6 +487,7 @@ int lav_write_audio(lav_file_t *lav_file, char *buff, long samps)
       case 'A':
          res = AVI_write_audio( lav_file->avi_fd, buff, samps*lav_file->bps);
          break;
+#ifdef BUILD_QUICKTIME
       case 'q':
          if(lav_audio_bits(lav_file)==16)
          {
@@ -489,7 +502,7 @@ int lav_write_audio(lav_file_t *lav_file, char *buff, long samps)
          else
             res = quicktime_write_audio( lav_file->qt_fd, buff, samps, 0 );
          break;
-
+#endif
       case 'm':
          res = movtar_write_audio( lav_file->movtar_fd, buff, samps);
 	 break;
@@ -511,8 +524,10 @@ long lav_video_frames(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_video_frames(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_video_length(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_video_length(lav_file->movtar_fd);
    }
@@ -526,8 +541,10 @@ int lav_video_width(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_video_width(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_video_width(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_video_width(lav_file->movtar_fd);
    }
@@ -541,8 +558,10 @@ int lav_video_height(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_video_height(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_video_height(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_video_height(lav_file->movtar_fd);
    }
@@ -556,8 +575,10 @@ double lav_frame_rate(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_frame_rate(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_frame_rate(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_frame_rate(lav_file->movtar_fd);
    }
@@ -586,8 +607,10 @@ char *lav_video_compressor(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_video_compressor(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_video_compressor(lav_file->qt_fd,0);
+#endif
       case 'm':
          return "N/A";
    }
@@ -602,8 +625,10 @@ int lav_audio_channels(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_audio_channels(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_track_channels(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_track_channels(lav_file->movtar_fd);
    }
@@ -618,8 +643,10 @@ int lav_audio_bits(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_audio_bits(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_audio_bits(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_audio_bits(lav_file->movtar_fd);
    }
@@ -634,8 +661,10 @@ long lav_audio_rate(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_audio_rate(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_sample_rate(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_sample_rate(lav_file->movtar_fd);
    }
@@ -650,8 +679,10 @@ long lav_audio_samples(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_audio_bytes(lav_file->avi_fd)/lav_file->bps;
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_audio_length(lav_file->qt_fd,0);
+#endif
       case 'm':
          return movtar_audio_length(lav_file->movtar_fd);
    }
@@ -665,8 +696,10 @@ long lav_frame_size(lav_file_t *lav_file, long frame)
       case 'a':
       case 'A':
          return AVI_frame_size(lav_file->avi_fd,frame);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_frame_size(lav_file->qt_fd,frame,0);
+#endif
       case 'm':
          return movtar_frame_size(lav_file->movtar_fd,frame);
    }
@@ -680,8 +713,10 @@ int lav_seek_start(lav_file_t *lav_file)
       case 'a':
       case 'A':
          return AVI_seek_start(lav_file->avi_fd);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_seek_start(lav_file->qt_fd);
+#endif
       case 'm':
          return movtar_seek_start(lav_file->movtar_fd);
    }
@@ -695,8 +730,10 @@ int lav_set_video_position(lav_file_t *lav_file, long frame)
       case 'a':
       case 'A':
          return AVI_set_video_position(lav_file->avi_fd,frame);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_set_video_position(lav_file->qt_fd,frame,0);
+#endif
       case 'm':
          return movtar_set_video_position(lav_file->movtar_fd,frame);
    }
@@ -710,8 +747,10 @@ int lav_read_frame(lav_file_t *lav_file, char *vidbuf)
       case 'a':
       case 'A':
          return AVI_read_frame(lav_file->avi_fd,vidbuf);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_read_frame(lav_file->qt_fd,vidbuf,0);
+#endif
       case 'm':
          return movtar_read_frame(lav_file->movtar_fd,vidbuf);
    }
@@ -727,8 +766,10 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
       case 'a':
       case 'A':
          return AVI_set_audio_position(lav_file->avi_fd,sample*lav_file->bps);
+#ifdef BUILD_QUICKTIME
       case 'q':
          return quicktime_set_audio_position(lav_file->qt_fd,sample,0);
+#endif
       case 'm':
          return movtar_set_audio_position(lav_file->movtar_fd,sample);
    }
@@ -749,6 +790,7 @@ long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
       case 'a':
       case 'A':
          return AVI_read_audio(lav_file->avi_fd,audbuf,samps*lav_file->bps)/lav_file->bps;
+#ifdef BUILD_QUICKTIME
       case 'q':
          res = quicktime_read_audio(lav_file->qt_fd,audbuf,samps,0)/lav_file->bps;
          if(res<=0) return res;
@@ -762,6 +804,7 @@ long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
             }
          }
          return res;
+#endif
       case 'm':
          return movtar_read_audio(lav_file->movtar_fd,audbuf,samps)/lav_file->bps;
    }
@@ -788,7 +831,9 @@ lav_file_t *lav_open_input_file(char *filename)
    /* Set lav_fd */
 
    lav_fd->avi_fd      = 0;
+#ifdef BUILD_QUICKTIME
    lav_fd->qt_fd       = 0;
+#endif
    lav_fd->movtar_fd   = 0;
    lav_fd->format      = 0;
    lav_fd->interlacing = LAV_INTER_UNKNOWN;
@@ -805,7 +850,9 @@ lav_file_t *lav_open_input_file(char *filename)
    if(lav_fd->avi_fd)
    {
       /* It is an AVI file */
+#ifdef BUILD_QUICKTIME
       lav_fd->qt_fd  = 0;
+#endif
       lav_fd->movtar_fd  = 0;
       lav_fd->format = 'a';
       lav_fd->has_audio = (AVI_audio_bits(lav_fd->avi_fd)>0 &&
@@ -814,7 +861,9 @@ lav_file_t *lav_open_input_file(char *filename)
    }
    else if( AVI_errno==AVI_ERR_NO_AVI )
    {
+#ifdef BUILD_QUICKTIME
       if(!quicktime_check_sig(filename))
+#endif
       {
 	movtar_init(FALSE, FALSE);
 	if (!movtar_check_sig(filename))
@@ -831,7 +880,9 @@ lav_file_t *lav_open_input_file(char *filename)
 	    video_format = 'm'; /* for error messages */
 	    if(!lav_fd->movtar_fd) { free(lav_fd); return 0; }
 	    lav_fd->avi_fd = 0;
+#ifdef BUILD_QUICKTIME
 	    lav_fd->qt_fd = 0;
+#endif
 	    lav_fd->format = 'm';
 	    video_comp = "mjpg"; /* nothing else possible */
 	    /* We want at least one video track */
@@ -849,6 +900,7 @@ lav_file_t *lav_open_input_file(char *filename)
 	    movtar_show_fake_frames(lav_fd->movtar_fd, 0); 
 	  }
       }
+#ifdef BUILD_QUICKTIME
       else
 	{
 	  /* It is a quicktime file */
@@ -883,6 +935,7 @@ lav_file_t *lav_open_input_file(char *filename)
 		}
 	    }
 	}
+#endif
    }
    else
    {
@@ -1066,11 +1119,13 @@ char *lav_strerror()
       case 'a':
       case 'A':
          return AVI_strerror();
+#ifdef BUILD_QUICKTIME
       case 'q':
          /* The quicktime documentation doesn't say much about error codes,
             we hope that strerror may give some info */
          sprintf(error_string,"Quicktime error, possible(!) reason: %s",strerror(errno));
          return error_string;
+#endif
       case 'm':
          sprintf(error_string,"No detailed movtar error information available (yet) !");
          return error_string;

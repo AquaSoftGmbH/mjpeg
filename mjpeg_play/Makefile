@@ -70,7 +70,7 @@ MAINT = #
 MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
 PACKAGE = lavtools
 QUICKTIME_LD = 
-QUICKTIME_PATH = /usr/src/qui
+QUICKTIME_PATH = 
 RANLIB = ranlib
 SDL = -lSDL -lpthread
 SDL_CFLAGS = -I/usr/include/SDL -D_REENTRANT
@@ -83,16 +83,16 @@ X_LIBS =  -L/usr/X11R6/lib
 X_PRE_LIBS =  -lSM -lICE
 x_libraries = /usr/X11R6/lib
 
-INCLUDES = -I./mjpeg -I./movtar -I/usr/src/qui -I/usr/X11R6/lib -I/usr/lib/glib/include 
-SUBDIRS = mjpeg movtar /usr/src/qui . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I -I/usr/X11R6/lib -I/usr/lib/glib/include 
+SUBDIRS = mjpeg movtar  . aenc mpegjoin mplex utils xlav
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/src/qui -L/usr/lib -lglib
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L -L/usr/lib -lglib
 lavplay_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -lSDL -lpthread -ljpeg 
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/src/qui -L/usr/lib -lglib
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L -L/usr/lib -lglib
 lavrec_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -ljpeg 
 
 lavvideo_SOURCES = lavvideo.c

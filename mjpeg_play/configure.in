@@ -51,8 +51,6 @@ fi
 
 
 dnl -- Quicktime checks --
-AC_SUBST(QUICKTIME_LD)
-AC_SUBST(QUICKTIME_PATH)
 export QUICKTIME_PATH=./quicktime
 AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime source dir [./quicktime] ], \
     QUICKTIME_PATH=$withval)
@@ -65,13 +63,15 @@ if test -f $QUICKTIME_PATH/quicktime.h; then
 else
     echo "*** quicktime library source not found in $QUICKTIME_PATH."
     echo "    No quicktime support will be built." 
-    export -n QUICKTIME_PATH
+    export QUICKTIME_PATH=
     have_quicktime="no"
 fi
 
 if test "$have_quicktime" = "yes"; then
     AC_DEFINE(BUILD_QUICKTIME)
 fi
+AC_SUBST(QUICKTIME_LD)
+AC_SUBST(QUICKTIME_PATH)
 
 if test "$have_jpeg" = "yes"; then
 if test "$have_SDL" = "yes"; then
