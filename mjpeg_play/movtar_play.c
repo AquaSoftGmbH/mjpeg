@@ -13,6 +13,8 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
 
+#include <Hermes/Hermes.h>
+
 #define readbuffsize 200000
 
 #define dprintf(x) if (debug) fprintf(stderr, x);
@@ -29,6 +31,8 @@ char *readbuffer;
 char **imglines;
 struct movtarinfotype movtarinfo;
 SDL_Surface *screen;
+SDL_Surface *jpeg;
+HermesHandle YUV2MyRGB; /* conversion routine handle */
 
 int debug = 1;
 
@@ -232,7 +236,8 @@ void readpicfrommem(void *inbuffer,int size)
   if(img == NULL)
     {
       img = screen->pixels;
-      if((imglines = (char **)malloc(cinfo.output_height * sizeof(char *)))==NULL)
+      /* and WHERE are they deallocated ?? */
+      if((imglines = (char **)calloc(cinfo.output_height, sizeof(char *)))==NULL)
 	{
 	  fprintf(stderr, "couldn't allocate memory for imglines\n");
 	  exit(0);
@@ -246,6 +251,7 @@ void readpicfrommem(void *inbuffer,int size)
       /* try to save the picture directly */
       jpeg_read_scanlines(&cinfo, (JSAMPARRAY) &imglines[cinfo.output_scanline], 10);
     }
+
 
   /* need to convert all pixels - ugh ! */
   if (screen->format->BytesPerPixel != 3)
@@ -297,7 +303,7 @@ int main(int argc,char** argv)
   char wintitle[255];
   int frame =0;
 
-  /* Initialize SDL */
+  /* Initialize SDL library */
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) 
     ComplainAndExit();
   
@@ -306,11 +312,21 @@ int main(int argc,char** argv)
   
   /* Set the video mode (800x600 at native depth) */
   screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN*/);
+
   if ( screen == NULL )  
     ComplainAndExit(); 
 
   /* init the movtar library */
   initmovtar(argv[1]);
+
+  /* init the Hermes pixel conversion library */
+  //if (!Hermes_Init()) 
+  //  ComplainAndExit();
+
+  //YUV2MyRGB = Hermes_ConverterInstance(0);
+  //Hermes_ConverterRequest(YUV2MyRGB, HermesFormat *source, HermesFormat *dest);
+
+
   sprintf(wintitle, "movtar_play %s", argv[1]);
   SDL_WM_SetCaption(wintitle, "0000000");  
 
@@ -327,11 +343,14 @@ int main(int argc,char** argv)
     {
       readnext();
       frame++;
-//           SDL_Delay(5000);
     }
   while((frame < 200) && !movtar_eof(movtarfile));
 
   //SDL_Delay(1000);        /* Wait x seconds */
+
+  /* Deinitialize Hermes functions */
+  //Hermes_ConverterReturn(YUV2MyRGB);
+  //Hermes_Done();
                          
   return 0;
 }
