@@ -46,7 +46,7 @@
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently always 420 and hence ignored.
+ *                  Currently only CHROMA420 and CHROMA422 are available
  * raw0             buffer with input / output raw Y channel
  * raw1             buffer with input / output raw U/Cb channel
  * raw2             buffer with input / output raw V/Cr channel
@@ -431,7 +431,7 @@ static void guarantee_huff_tables(j_decompress_ptr dinfo)
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently always 420 and hence ignored.
+ *                  Currently only CHROMA420 and CHROMA422 are available
  */
 
 int decode_jpeg_raw (unsigned char *jpeg_data, int len,
@@ -648,29 +648,62 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
                }
          }
 
-	 /* Vertical downsampling of chroma */
+	 /* Vertical resampling of chroma */
 
-         if (vsf[0] == 1) {
-	   /* Really downsample */
-	   for (y = 0; y < 8 /*&& yc < height/2*/; y += 2, yc += numfields) {
-               xd = yc * width / 2;
-               for (x = 0; x < width / 2; x++, xd++) {
+	 switch (ctype) {
+	 case CHROMA422:
+	   if (vsf[0] == 1) {
+	     /* Just copy */
+	     for (y = 0; y < 8 /*&& yc < height */; y++, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = chr1[y][x];
+		 raw2[xd] = chr2[y][x];
+	       }
+	     }
+	   } else {
+	     /* upsample */
+	     for (y = 0; y < 8 /*&& yc < height */; y++) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = chr1[y][x];
+		 raw2[xd] = chr2[y][x];
+	       }
+	       yc += numfields;
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = chr1[y][x];
+		 raw2[xd] = chr2[y][x];
+	       }
+	       yc += numfields;
+	     }
+	   }
+	   break;
+	 default:
+	 /* should be case CHROMA420: but use default: for compatibility of liblavjpeg.so */
+	   if (vsf[0] == 1) {
+	     /* Really downsample */
+	     for (y = 0; y < 8 /*&& yc < height/2*/; y += 2, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
 		 assert(xd < (width * height / 4));
 		 raw1[xd] = (chr1[y][x] + chr1[y + 1][x]) >> 1;
 		 raw2[xd] = (chr2[y][x] + chr2[y + 1][x]) >> 1;
-               }
-            }
+	       }
+	     }
 
-         } else {
-	   /* Just copy */
-	   for (y = 0; y < 8 /*&& yc < height/2 */; y++, yc += numfields) {
-               xd = yc * width / 2;
-               for (x = 0; x < width / 2; x++, xd++) {
+	   } else {
+	     /* Just copy */
+	     for (y = 0; y < 8 /*&& yc < height/2 */; y++, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
 		 raw1[xd] = chr1[y][x];
-                 raw2[xd] = chr2[y][x];
-               }
-            }
-         }
+		 raw2[xd] = chr2[y][x];
+	       }
+	     }
+	   }
+	   break;
+	 }
       }
 
       (void) jpeg_finish_decompress (&dinfo);
@@ -703,7 +736,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently always 420 and hence ignored.
+ *                  Currently only CHROMA420 and CHROMA422 are available
  */
 
 
@@ -883,26 +916,59 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
 
          //mjpeg_info("/* Vertical downsampling of chroma, line %d, max %d */", dinfo.output_scanline, dinfo.output_height);
 
-         if (vsf[0] == 1) {
-            /* Really downsample */
-            for (y = 0; y < 8; y += 2, yc += numfields) {
-               xd = yc * width / 2;
-               for (x = 0; x < width / 2; x++, xd++) {
+	 switch (ctype) {
+	 case CHROMA422:
+	   if (vsf[0] == 1) {
+	     /* Just copy */
+	     for (y = 0; y < 8 /*&& yc < height */; y++, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = 127; //chr1[y][x];
+		 raw2[xd] = 127; //chr2[y][x];
+	       }
+	     }
+	   } else {
+	     /* upsample */
+	     for (y = 0; y < 8 /*&& yc < height */; y++) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = 127; //chr1[y][x];
+		 raw2[xd] = 127; //chr2[y][x];
+	       }
+	       yc += numfields;
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = 127; //chr1[y][x];
+		 raw2[xd] = 127; //chr2[y][x];
+	       }
+	       yc += numfields;
+	     }
+	   }
+	   break;
+	 default:
+	 /* should be case CHROMA420: but use default: for compatibility of liblavjpeg.so */
+	   if (vsf[0] == 1) {
+	     /* Really downsample */
+	     for (y = 0; y < 8; y += 2, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
 		 raw1[xd] = 127; //(chr1[y][x] + chr1[y + 1][x]) >> 1;
-                 raw2[xd] = 127; //(chr2[y][x] + chr2[y + 1][x]) >> 1;
-               }
-            }
-         } else {
-            /* Just copy */
+		 raw2[xd] = 127; //(chr2[y][x] + chr2[y + 1][x]) >> 1;
+	       }
+	     }
+	   } else {
+	     /* Just copy */
 
-            for (y = 0; y < 8; y++, yc += numfields) {
-               xd = yc * width / 2;
-               for (x = 0; x < width / 2; x++, xd++) {
-                 raw1[xd] = 127; //chr1[y][x];
-                 raw2[xd] = 127; //chr2[y][x];
-               }
-            }
-         }
+	     for (y = 0; y < 8; y++, yc += numfields) {
+	       xd = yc * width / 2;
+	       for (x = 0; x < width / 2; x++, xd++) {
+		 raw1[xd] = 127; //chr1[y][x];
+		 raw2[xd] = 127; //chr2[y][x];
+	       }
+	     }
+	   }
+	   break;
+	 }
       }
 
       (void) jpeg_finish_decompress (&dinfo);
@@ -933,7 +999,7 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
  *                  1: Interlaced, Top field first
  *                  2: Interlaced, Bottom field first
  * ctype            Chroma format for decompression.
- *                  Currently always 420 and hence ignored.
+ *                  Currently only CHROMA420 and CHROMA422 are available
  */
 
 int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
@@ -1053,7 +1119,8 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
          for (y = 0; y < 8; y++) {
             row1[y] = &raw1[yc * width / 2];
             row2[y] = &raw2[yc * width / 2];
-            if (y%2) yc += numfields;
+            if ((ctype == CHROMA422) || (y%2))
+               yc += numfields;
          }
 
          jpeg_write_raw_data (&cinfo, scanarray,

@@ -92,14 +92,12 @@
 
 #ifdef	HAVE_LIBDV
 #include <libdv/dv.h>
-
-dv_decoder_t *decoder;
-int pitches[3];
-uint8_t *dv_frame[3] = {NULL,NULL,NULL};
+#endif
 
 /* Prototypes to avoid compile time warning errors */
 
 void frame_YUV422_to_YUV420P(uint8_t **, uint8_t *, int , int );
+int frame_planar_to_packed(uint8_t *, uint8_t **, int, int, int, int, int);
 
 /*
  * As far as I (maddog) can tell, this is what is going on with libdv-0.9
@@ -224,7 +222,79 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
     }
 }
 
-#endif
+#define FOURCC_I420 0x30323449
+#define FOURCC_I422 0x32323449
+
+int frame_planar_to_packed(uint8_t *output, uint8_t **input,
+			   int width, int height, int ofmt, int ifmt, int interlaced)
+{
+  uint8_t *y, *u, *v, *sy, *su, *sv, *sye, *su0, *sv0;
+  int dy, dc, cw, scw, ch, scdv, scdh, ln, sln, px, spx;
+
+  ch = height;
+  cw = scw = width;
+#define DIV_MAX 4
+  scdv = scdh = DIV_MAX;
+  switch (ofmt) {
+  case SDL_YUY2_OVERLAY:
+    scdh /= 2;
+    cw   /= 2;
+    y = output;     dy = 2;
+    u = output + 1;
+    v = output + 3; dc = 4;
+    break;
+  case SDL_UYVY_OVERLAY:
+    scdh /= 2;
+    cw   /= 2;
+    y = output + 1; dy = 2;
+    u = output;
+    v = output + 2; dc = 4;
+    break;
+  case SDL_YVYU_OVERLAY:
+    scdh /= 2;
+    cw   /= 2;
+    y = output;     dy = 2;
+    u = output + 3;
+    v = output + 1; dc = 4;
+    break;
+  default:
+    return 1;
+  }
+  switch (ifmt) {
+  case FOURCC_I420:
+    scdv *= 2;
+  case FOURCC_I422:
+    scdh *= 2;
+    scw  /= 2;
+    sy  = input[0];
+    su0 = input[1];
+    sv0 = input[2];
+    break;
+  default:
+    return 1;
+  }
+  sye = sy + (width * height);
+
+  while (sy < sye) {
+    *y = *sy++; y += dy;
+  }
+  for (ln = 0; ln < ch; ln++) {
+    sln = ln * DIV_MAX / scdv;
+    if (interlaced) {
+      sln &= ~1;
+      sln |= (ln & 1);
+    }
+    su = su0 + (sln * scw);
+    sv = sv0 + (sln * scw);
+    for (px = 0; px < cw; px++) {
+      spx = px * DIV_MAX / scdh;
+      *u = su[spx]; u += dc;
+      *v = sv[spx]; v += dc;
+    }
+  }
+
+  return 0;
+}
 
 
 /* On some systems MAP_FAILED seems to be missing */
@@ -270,6 +340,13 @@ typedef struct {
    pthread_mutex_t syncinfo_mutex;
    long buffer_entry[MJPEG_MAX_BUF];
    long currently_processed_entry;
+
+   int yuvformat;
+   uint8_t *yuvbuff[3];
+# ifdef	HAVE_LIBDV
+   dv_decoder_t *decoder;
+   int pitches[3];
+# endif
 #endif
 
    int data_format[MJPEG_MAX_BUF];
@@ -664,9 +741,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 			      int buf_len)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-# ifdef HAVE_LIBDV
    uint8_t *output[3];
-#endif
    EditList *editlist = info->editlist;
 
 
@@ -675,30 +750,30 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    /* decode frame to yuv */
    switch (data_format) {
    case DATAFORMAT_MJPG:
-   decode_jpeg_raw (jpeg_buffer, buf_len,
-      editlist->video_inter>0&&info->exchange_fields?(editlist->video_inter+1)%2+1:editlist->video_inter,
-      CHROMA420,
-      editlist->video_width, editlist->video_height, 
-      settings->yuv_overlay->pixels[0], 
-      settings->yuv_overlay->pixels[2],
-      settings->yuv_overlay->pixels[1]);
+      decode_jpeg_raw(jpeg_buffer, buf_len,
+		      editlist->video_inter>0&&info->exchange_fields?(editlist->video_inter+1)%2+1:editlist->video_inter,
+		      CHROMA422,
+		      editlist->video_width, editlist->video_height,
+		      settings->yuvbuff[0],
+		      settings->yuvbuff[1],
+		      settings->yuvbuff[2]);
+      frame_planar_to_packed(settings->yuv_overlay->pixels[0], settings->yuvbuff,
+			     editlist->video_width, editlist->video_height,
+			     settings->yuvformat, FOURCC_I422, 1);
       break;
    case DATAFORMAT_YUV420:
-      memcpy(settings->yuv_overlay->pixels[0],
-	     jpeg_buffer,
-	     editlist->video_width * editlist->video_height);
-      memcpy(settings->yuv_overlay->pixels[2],
-	     jpeg_buffer + (editlist->video_width * editlist->video_height),
-	     (editlist->video_width * editlist->video_height / 4));
-      memcpy(settings->yuv_overlay->pixels[1],
-	     jpeg_buffer + (editlist->video_width * editlist->video_height * 5 / 4),
-	     (editlist->video_width * editlist->video_height / 4));
+      output[0] = jpeg_buffer;
+      output[1] = jpeg_buffer + (editlist->video_width * editlist->video_height);
+      output[2] = jpeg_buffer + (editlist->video_width * editlist->video_height * 5 / 4);
+      frame_planar_to_packed(settings->yuv_overlay->pixels[0], output,
+			     editlist->video_width, editlist->video_height,
+			     settings->yuvformat, FOURCC_I420, 1);
       break;
 
 # ifdef HAVE_LIBDV
    case DATAFORMAT_DV2:
-      dv_parse_header(decoder, jpeg_buffer);
-      switch(decoder->sampling) {
+      dv_parse_header(settings->decoder, jpeg_buffer);
+      switch(settings->decoder->sampling) {
       /* FIXME: not implemented, do default: */
       case e_dv_sample_420:
 	  break;
@@ -710,18 +785,12 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
           * transformed to planar 420 (YV12 or 4CC 0x32315659).
           * For NTSC DV this transformation is lossy.
           */
-         pitches[0] = decoder->width * 2;
-         pitches[1] = 0;
-         pitches[2] = 0;
+         settings->pitches[0] = settings->decoder->width * 2;
+         settings->pitches[1] = 0;
+         settings->pitches[2] = 0;
 
-	 dv_decode_full_frame(decoder, jpeg_buffer, e_dv_color_yuv,
-		dv_frame, pitches);
-
-	 output[0] = settings->yuv_overlay->pixels[0];
-	 output[1] = settings->yuv_overlay->pixels[2];
-	 output[2] = settings->yuv_overlay->pixels[1];
-	 frame_YUV422_to_YUV420P(output, dv_frame[0],
-		decoder->width,	decoder->height);
+	 dv_decode_full_frame(settings->decoder, jpeg_buffer, e_dv_color_yuv,
+		settings->yuv_overlay->pixels, settings->pitches);
 	 break;
       case e_dv_sample_none:
 	 /* FIXME */
@@ -787,9 +856,10 @@ static int lavplay_SDL_init(lavplay_t *info)
     *  except for ordering of Cb and Cr planes...
     * we swap those when we copy the data to the display buffer...
     */
+   /* FIXME: Is YUY2 best 422? */
    settings->yuv_overlay = SDL_CreateYUVOverlay(editlist->video_width,
 						editlist->video_height,
-						SDL_YV12_OVERLAY,
+						settings->yuvformat,
 						settings->screen);
    if (!settings->yuv_overlay)
    {
@@ -799,13 +869,17 @@ static int lavplay_SDL_init(lavplay_t *info)
    }
    lavplay_msg(LAVPLAY_MSG_INFO, info,
       "SDL YUV overlay: %s", settings->yuv_overlay->hw_overlay ? "hardware" : "software" );
-   if(settings->yuv_overlay->pitches[0] != settings->yuv_overlay->pitches[1]*2 ||
-      settings->yuv_overlay->pitches[0] != settings->yuv_overlay->pitches[2]*2 )
+#if 0
+   if(settings->yuv_overlay->pitches[0] != settings->yuv_overlay->pitches[1] ||
+      settings->yuv_overlay->pitches[0] != settings->yuv_overlay->pitches[2] )
    {
       lavplay_msg(LAVPLAY_MSG_ERROR, info,
-         "SDL returned non-YUV420 overlay!");
+         "SDL returned pitches[] = { %d, %d, %d }", settings->yuv_overlay->pitches[0], settings->yuv_overlay->pitches[1], settings->yuv_overlay->pitches[2]);
+      lavplay_msg(LAVPLAY_MSG_ERROR, info,
+         "SDL returned non-YUV422 overlay!");
       return 0;
    }
+#endif
 
    settings->jpegdims.x = 0; /* This is not going to work with interlaced pics !! */
    settings->jpegdims.y = 0;
@@ -1565,19 +1639,27 @@ static int lavplay_init(lavplay_t *info)
    /* init SDL if we want SDL */
    if (info->playback_mode == 'S')
    {
+      char *env = getenv("LAVPLAY_VIDEO_FORMAT");
+      settings->yuvformat = (env? ((env[0])|(env[1]<<8)|(env[2]<<16)|(env[3]<<24)): SDL_YUY2_OVERLAY);
       if (!info->sdl_width) info->sdl_width = editlist->video_width;
       if (!info->sdl_height) info->sdl_height = editlist->video_height;
       if (!lavplay_SDL_init(info))
          return 0;
-   }
-#endif
 
-#ifdef	HAVE_LIBDV
-   decoder = dv_decoder_new(0,0,0);
-   decoder->quality = DV_QUALITY_BEST;
-   dv_frame[0] = (uint8_t *)malloc(3 * /*param->output_width * param->output_height */ 720 * 480 * 4);
-   dv_frame[1] = NULL;
-   dv_frame[2] = NULL;
+      settings->yuvbuff[0] = (uint8_t *)malloc(editlist->video_width * editlist->video_height * 2);
+      if (!settings->yuvbuff[0])
+      {
+         lavplay_msg (LAVPLAY_MSG_ERROR, info,
+            "Malloc error, you\'re probably out of memory");
+         return 0;
+      }
+      settings->yuvbuff[1] = settings->yuvbuff[0] + (editlist->video_width * editlist->video_height);
+      settings->yuvbuff[2] = settings->yuvbuff[0] + (editlist->video_width * editlist->video_height * 3 / 2);
+# ifdef	HAVE_LIBDV
+      settings->decoder = dv_decoder_new(0,0,0);
+      settings->decoder->quality = DV_QUALITY_BEST;
+# endif
+   }
 #endif
 
 
@@ -1979,6 +2061,7 @@ static void *lavplay_playback_thread(void *data)
    {
       SDL_FreeYUVOverlay(settings->yuv_overlay);
       SDL_Quit();
+      free(settings->yuvbuff[0]);
    }
 #endif
 

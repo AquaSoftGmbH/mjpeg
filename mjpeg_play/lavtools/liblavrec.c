@@ -955,10 +955,10 @@ static void *lavrec_encoding_thread(void* arg)
 
          jpegsize = encode_jpeg_raw((unsigned char*)(settings->MJPG_buff+current_frame*settings->breq.size),
             settings->breq.size, info->quality, settings->interlaced,
-            CHROMA420, info->geometry->w, info->geometry->h,
+            CHROMA422, info->geometry->w, info->geometry->h,
             settings->YUV_buff+settings->softreq.offsets[current_frame],
             settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h),
-            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h*5/4));
+            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h*3/2));
 
          if (jpegsize<0)
          {
@@ -1105,7 +1105,7 @@ static int lavrec_software_init(lavrec_t *info)
 
    settings->mm.width = settings->width = info->geometry->w;
    settings->mm.height = settings->height = info->geometry->h;
-   settings->mm.format = VIDEO_PALETTE_YUV420P;
+   settings->mm.format = VIDEO_PALETTE_YUV422P;
 
    if (info->geometry->h > (info->video_norm==1?320:384))
       settings->interlaced = LAV_INTER_TOP_FIRST; /* all interlaced BT8x8 capture seems top-first ?? */
