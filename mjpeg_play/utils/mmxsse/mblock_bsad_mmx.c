@@ -190,18 +190,9 @@ int bsad_mmx(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, in
     return s;
 }
 
-static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h)
+static int bsad_2quad_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h)
 {
-    uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
     int s;
-
-    pfa = pf + hxf;
-    pfb = pf + lx * hyf;
-    pfc = pfb + hxf;
-
-    pba = pb + hxb;
-    pbb = pb + lx * hyb; 
-    pbc = pbb + hxb;
 
     s = 0; /* the accumulator */
 
@@ -216,9 +207,9 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
 		
         do {
             BSAD_LOAD(pf[0],mm0,mm1);
-            BSAD_LOAD_ACC(pfa[0],mm2,mm3,mm0,mm1);
-            BSAD_LOAD_ACC(pfb[0],mm2,mm3,mm0,mm1);
-            BSAD_LOAD_ACC(pfc[0],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[1],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+1],mm2,mm3,mm0,mm1);
             paddw_r2r(mm6, mm0);
             paddw_r2r(mm6, mm1);
             psrlw_i2r(2, mm0);
@@ -226,9 +217,9 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
             packuswb_r2r(mm1, mm0);
 			
             BSAD_LOAD(pb[0],mm1,mm2);
-            BSAD_LOAD_ACC(pba[0],mm3,mm4,mm1,mm2);
-            BSAD_LOAD_ACC(pbb[0],mm3,mm4,mm1,mm2);
-            BSAD_LOAD_ACC(pbc[0],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[1],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[lx],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[lx+1],mm3,mm4,mm1,mm2);
             paddw_r2r(mm6, mm1);
             paddw_r2r(mm6, mm2);
             psrlw_i2r(2, mm1);
@@ -240,9 +231,9 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
             paddd_r2r(mm0,mm5);
 
             BSAD_LOAD(pf[8],mm0,mm1);
-            BSAD_LOAD_ACC(pfa[8],mm2,mm3,mm0,mm1);
-            BSAD_LOAD_ACC(pfb[8],mm2,mm3,mm0,mm1);
-            BSAD_LOAD_ACC(pfc[8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[9],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+9],mm2,mm3,mm0,mm1);
             paddw_r2r(mm6, mm0);
             paddw_r2r(mm6, mm1);
             psrlw_i2r(2, mm0);
@@ -250,9 +241,9 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
             packuswb_r2r(mm1, mm0);
 			
             BSAD_LOAD(pb[8],mm1,mm2);
-            BSAD_LOAD_ACC(pba[8],mm3,mm4,mm1,mm2);
-            BSAD_LOAD_ACC(pbb[8],mm3,mm4,mm1,mm2);
-            BSAD_LOAD_ACC(pbc[8],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[9],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[lx+8],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pb[lx+9],mm3,mm4,mm1,mm2);
             paddw_r2r(mm6, mm1);
             paddw_r2r(mm6, mm2);
             psrlw_i2r(2, mm1);
@@ -265,13 +256,73 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
 			
             p2  += lx;
             pf  += lx;
-            pfa += lx;
-            pfb += lx;
-            pfc += lx;
             pb  += lx;
-            pba += lx;
-            pbb += lx;
-            pbc += lx;
+
+            h--;
+        } while (h > 0);	
+	
+    }
+    movd_r2g(mm5,s);
+	
+    emms();
+
+    return s;
+}
+
+static int bsad_1quad_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *pb2, uint8_t *p2, int lx, int h)
+{
+    int s;
+
+    s = 0; /* the accumulator */
+
+    if (h > 0)
+    {
+        pcmpeqw_r2r(mm6, mm6);
+        psrlw_i2r(15, mm6);
+        paddw_r2r(mm6, mm6);
+
+        pxor_r2r(mm7, mm7);
+        pxor_r2r(mm5, mm5);
+		
+        do {
+            BSAD_LOAD(pf[0],mm0,mm1);
+            BSAD_LOAD_ACC(pf[1],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+1],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
+            packuswb_r2r(mm1, mm0);
+			
+            movq_m2r(pb2[0],mm1);
+            pavgb_m2r(pb[0],mm1);
+
+            pavgb_r2r(mm1, mm0);
+            psadbw_m2r(p2[0],mm0);
+            paddd_r2r(mm0,mm5);
+
+            BSAD_LOAD(pf[8],mm0,mm1);
+            BSAD_LOAD_ACC(pf[9],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pf[lx+9],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
+            packuswb_r2r(mm1, mm0);
+			
+            movq_m2r(pb2[8],mm1);
+            pavgb_m2r(pb[8],mm1);
+						
+            pavgb_r2r(mm1, mm0);
+            psadbw_m2r(p2[8],mm0);
+            paddd_r2r(mm0,mm5);
+			
+            p2  += lx;
+            pf  += lx;
+            pb  += lx;
+            pb2 += lx;
 
             h--;
         } while (h > 0);	
@@ -287,7 +338,7 @@ static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int h
 /* For a 16*h block, this computes
    (((((*pf + *pf2 + 1)>>1) + ((*pb + *pb2 + 1)>>1) + 1)>>1) + *p2 + 1)>>1
 */
-static int bsad_2param_mmxe(uint8_t *pf,uint8_t *pf2,uint8_t *pb,uint8_t *pb2,uint8_t *p2,int lx,int h)
+static int bsad_0quad_mmxe(uint8_t *pf,uint8_t *pf2,uint8_t *pb,uint8_t *pb2,uint8_t *p2,int lx,int h)
 {
     int32_t s=0;
 
@@ -321,17 +372,24 @@ static int bsad_2param_mmxe(uint8_t *pf,uint8_t *pf2,uint8_t *pb,uint8_t *pb2,ui
     return s;
 }
 
+
 int bsad_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h)
 {
     uint8_t *pf2,*pb2;
+#if 0
+    static int c0=0,c1=0,c2=0,ct=0;
 
-    // if either pf or pb have half pels in BOTH directions, then
-    // use the slow routine
-    if( (hxf & hyf) | (hxb & hyb) )
-        return bsad_4param_mmxe(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h);
+    if( hxf & hyf & hxb & hyb )
+        c2++;
+    else if( (hxf & hyf) | (hxb & hyb) )
+        c1++;
+    else 
+        c0++;
+    ct++;
+    if( !(ct&65535) )
+        fprintf(stderr,"bsad_mmxe: c0=%d%%, c1=%d%%, c2=%d%%\n",c0*100/ct,c1*100/ct,c2*100/ct);
+#endif
 
-    // otherwise, for pf and pb, we only have at most one half pel
-    // so we can use pavgb!
     if( hyf )
         pf2=pf+lx;
     else
@@ -342,5 +400,17 @@ int bsad_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, i
     else
         pb2=pb+hxb;
 
-    return bsad_2param_mmxe(pf,pf2,pb,pb2,p2,lx,h);
+    // if either pf or pb have half pels in BOTH directions, then
+    // use the slow routine
+    if( (hxf & hyf) ) {
+        if( (hxb & hyb) )
+            return bsad_2quad_mmxe(pf,pb,p2,lx,h);
+        else
+            return bsad_1quad_mmxe(pf,pb,pb2,p2,lx,h);
+    } else {
+        if( (hxb & hyb) )
+            return bsad_1quad_mmxe(pb,pf,pf2,p2,lx,h);
+        else
+            return bsad_0quad_mmxe(pf,pf2,pb,pb2,p2,lx,h);
+    }
 }
