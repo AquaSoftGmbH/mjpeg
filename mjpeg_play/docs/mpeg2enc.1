@@ -290,26 +290,29 @@ This flag deactivates all constraints for the maximum video samplerate or video 
 .PP
 .BR -z|--playback-field-order b|t
 .PP
-This flag forces the playback field order to bottom or top first. And sets
-which field is shown first on a TV. You only need that option when you
-notice some weird "juddering" effects when playing back the stream on a TV.
-You should not need that option because it would point to a problem in the
-capturing/encoding process where the order in time of the two fields in each
-frame can get mislabeled somehow. Also check the mjpeg-howto for
-more information about interlacing problems. 
+This flag overrides the field-order specified in the interlacing tag of
+the input stream header.
+(If you need this option, it indicates a problem in the
+capturing/encoding process where the temporal order of the two fields in each
+frame has been mislabeled.  The effect of this is weird "juddering"
+when playing back the stream on a TV.  Check the mjpeg-howto for
+more information about interlacing problems.)
 .PP
 
 .SH "OPTION LETTERS CONTROLLING VIDEO PARAMETERS"
 .PP
 .BR -n|--video-norm\ n | p | s
+.PP
 Force the input stream to be treated as NTSC|PAL|SECAM regardless of
 what the stream header might suggest.  Basically this just sets the
 defaults for a bunch of other options.
 .PP
 .BR -F|--frame-rate \ num
-Set the frame-rate of the output-stream.  Currently only the standard
-MPEG rates are supported.  Eventually more-or-less arbitrary rates
-will be possible.
+.PP
+Set the frame-rate of the output-stream.  By default, this value is
+inferred from the input header.  Currently only the standard MPEG
+rates are supported.  Eventually more-or-less arbitrary rates will be
+possible.
 .br
  0 - illegal
 .br
@@ -331,7 +334,9 @@ will be possible.
 .br
 .PP
 .BR -a|--aspect \ num
-Set the playback aspect ratio code of the encoded video.
+.PP
+Set the playback aspect ratio code of the encoded video.  By default, this
+value is inferred from the input header.
 .br
  1 - 1  - 1:1 display
 .br
@@ -402,23 +407,20 @@ quantisation is fixed at the specified value.
 .PP
 .BR -I|--interlace-mode\ 0 | 1 | 2
 .PP
-This sets the sequences picture structure and block encoding type for
-MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
-interlaced video turned off.  This is the most efficient option for
-encoding material that is not interlaced (e.g. movies in PAL 25
-frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
-produces rotten results for interlaced video material.  For such
-material use -I 1 which encodes frame-by-frame with interlace-adapted
-motion compensation and block encoding.  Alternatively, for highly
-textured interlaced material with lots of motion you may with to try
--I 2 which switches to field-by-field encoding.  This is generally
-less efficient than frame-by-frame encoding but will produce more
-accurate results.   
+Set the sequence picture structure and block encoding type for MPEG-2 streams.
+By default, this value is inferred from the interlacing 
+tag of the input stream.
+Setting 0 encodes frame-by-frame with support for interlaced video turned off,
+and specifies that progressive chroma subsampling has been used.
+Setting 1 encodes frame-by-frame with interlace-adapted
+motion compensation and block encoding, and specifies that interlaced
+chroma subsampling has been used.
+Setting 2 encodes interlaced material field-by-field, which will produce
+more accurate results for highly textured interlaced material with lots
+of motion, at the expense of generally less efficiency.
 .IP
-Note that setting -I 1 for non-interlaced material will not do any
-harm but the encoder will waste a lot of time on calculations that
-aren't needed.  
-
+This setting should match the interlaced-ness of the input stream, otherwise
+chroma artifacts may be generated when the MPEG stream is played back.
 
 .PP
 .BR -g|--min-gop-size " num "
