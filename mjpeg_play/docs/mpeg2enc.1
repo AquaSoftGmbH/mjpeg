@@ -20,7 +20,7 @@ mpeg2enc \- MPEG 1/2 encoder
 .IR motion_search_radius]
 .RB [ -Q | --quantisation-reduction\ 0.0 - 4.0 ]
 .RB [ -p | --3-2-pulldown ]
-.RB [ -I | --interlace-mode\ 0..1]
+.RB [ -I | --interlace-mode\ 0..2]
 .RB [ -s | --sequence-header-every-gop ]
 .RB [ -g | --min-gop-size
 .IR min_gop_size ]
@@ -335,7 +335,7 @@ decoder you'd be insane not to use variable bit-rate.
 If this option is set without a maximum bit-rate being specified then
 quantisation is fixed at the specified value.
 .PP
-.BR -I|--interlace-mode\ 0 | 1
+.BR -I|--interlace-mode\ 0 | 1 | 2
 .PP
 This sets the sequences picture structure and block encoding type for
 MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
@@ -343,8 +343,12 @@ interlaced video turned off.  This is the most efficient option for
 encoding material that is not interlaced (e.g. movies in PAL 25
 frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
 produces rotten results for interlaced video material.  For such
-material use -I 1 which encodes with interlace-adapted
-motion compensation and block encoding.  
+material use -I 1 which encodes frame-by-frame with interlace-adapted
+motion compensation and block encoding.  Alternatively, for highly
+textured interlaced material with lots of motion you may with to try
+-I 2 which switches to field-by-field encoding.  This is generally
+less efficient than frame-by-frame encoding but will produce more
+accurate results.   
 .IP
 Note that setting -I 1 for non-interlaced material will not do any
 harm but the encoder will waste a lot of time on calculations that
