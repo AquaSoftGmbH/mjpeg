@@ -163,6 +163,14 @@ ftp://mjpeg.sourceforge.net/pub/mjpeg
 
 If you're building from cvs rather than the distribution tarball do :
 
+> aclocal
+
+Performs a search for macros that are used, and generates the aclocal.m4 
+that ist used for the configure process. 
+If you encounter Problem run it with --verbose, and search for the missing 
+files add the paths with -I . Defaut searched in /usr/share/aclocal 
+For SUSE 7.2 it seems that you have to add "-I /usr/local/share/aclocal/"
+
 ./autogen.sh
 
 (This sets up the configuration script ./configure, 
@@ -207,4 +215,4 @@ the internals history and source-code layout
 /Andrew <as@comlab.ox.ac.uk>
 /Gernot <gz@lysator.liu.se>
 /Ronald <rbultje@ronald.bitfreak.net>
-
+/Bernhard <praschinger@netway.at>
