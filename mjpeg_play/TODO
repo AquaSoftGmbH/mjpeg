@@ -5,9 +5,12 @@ Fix all the BUGS (see BUGS) of course!
 
 TASKS OUTSTANDING
 
+- Modify yuvscaler to generate MPEG aspect ratio codes if desired?
+
 Code hygiene  basically: GNU guidelines!
 Basically if you want a nice example of how it should be done take
 a look at the source code for vcdimager!
+
 
 - A lot of the code is in fairly poor shape layout and stylistically.
 	Minimally, some needs running through a C prettifier and having

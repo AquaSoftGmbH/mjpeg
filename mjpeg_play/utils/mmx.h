@@ -19,6 +19,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#include "attributes.h"
+
 /*
  * The type of an value that fits in an MMX register (note that long
  * long constant values MUST be suffixed by LL and unsigned long long
