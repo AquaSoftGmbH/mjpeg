@@ -164,11 +164,11 @@ idct_mmx:
 
 	lea OUT,   [qwTemp_PIC];
 	lea round_inv_row,   [idct_r_inv_row_PIC]
-    jmp lpa
+    jmp .lpa
 				
 	; for ( x = 0; x < 8; ++x )  ; transform one row per iteration
 align 32		
-lpa:
+.lpa:
 	movq mm0,   [INP] 		; 0 ; x3 x2 x1 x0
 
 	movq mm1,   [INP+8] 	; 1 ; x7 x6 x5 x4
@@ -256,7 +256,7 @@ lpa:
 
 	add OUT, 16;					; increment OUTPUT pointer -> row 1
 	cmp edi, 0x08;
-	jl near lpa;		; end for ( x = 0; x < 8; ++x )  
+	jl near .lpa;		; end for ( x = 0; x < 8; ++x )  
 
 	; done with the iDCT row-transformation
 
@@ -456,11 +456,11 @@ lpa:
 ;	 mov OUT, INP;	; algorithm writes data in-place  -> row 0
 
 	lea round_inv_col,   [idct_r_inv_col_PIC]
-    jmp acc_idct_colloop1
+    jmp .acc_idct_colloop1
 			
 	; for ( x = 0; x < 8; ++x )  ; transform one row per iteration
 align 32		
-acc_idct_colloop1:
+.acc_idct_colloop1:
 
 	movq mm0,   [INP] ;		; 0 ; x3 x2 x1 x0
 
@@ -552,7 +552,7 @@ acc_idct_colloop1:
 	add OUT, 16;
 	cmp edi, 0x08;	; compare x <> 8
 
-	jl near  acc_idct_colloop1;	; end for ( x = 0; x < 8; ++x )  
+	jl near  .acc_idct_colloop1;	; end for ( x = 0; x < 8; ++x )  
 
 	; done with the iDCT column-transformation
 

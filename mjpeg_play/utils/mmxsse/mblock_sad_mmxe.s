@@ -283,55 +283,50 @@ sad_10_mmxe:
 	mov ebp, esp
 
 	push ebx
-	push edi
 
 	pxor mm0, mm0		; zero acculumator
 
 	mov eax, [ebp+8]	; get p1
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
-	mov edi, eax
-	add edi, edx
 	mov ecx, [ebp+20]	; get rowsleft
+	movq	mm4, [eax]
+	movq	mm6, [eax+8]
+	add	eax, edx
 	jmp .loop		; snap to it
 align 16
 .loop:
-	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
-	pavgb mm4, [edi]			; Interpolate...
-	psadbw mm4, [ebx]			; compare to first 8 bytes of p2 (row 1)
-	paddd mm0, mm4				; accumulate difference
+	movq	mm5, [eax]	; load first 8 bytes of p1 (row 1)
+	pavgb	mm4, mm5	; Interpolate...
+	psadbw	mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
+	paddd	mm0, mm4	; accumulate difference
 
-	movq mm5, [eax+8]			; load next 8 bytes of p1 (row 1)
-	pavgb mm5, [edi+8]			; Interpolate
-	psadbw mm5, [ebx+8]			; compare to next 8 bytes of p2 (row 1)
-	paddd mm0, mm5				; accumulate difference
-
-	add eax, edx				; update pointer to next row
-	add ebx, edx				; ditto
-	add edi, edx
-
-	movq mm6, [eax]				; load first 8 bytes of p1 (row 2)
-	pavgb mm6, [edi]			; Interpolate
-	psadbw mm6, [ebx]	; compare to first 8 bytes of p2 (row 2)
-	paddd mm0, mm6		; accumulate difference
-	
-	movq mm7, [eax+8]	; load next 8 bytes of p1 (row 2)
-	pavgb mm7, [edi+8]
-	psadbw mm7, [ebx+8]	; compare to next 8 bytes of p2 (row 2)
-	paddd mm0, mm7		; accumulate difference
-
-	psubd mm2, mm3		; decrease rowsleft
+	movq	mm7, [eax+8]	; load next 8 bytes of p1 (row 1)
+	pavgb	mm6, mm7	; Interpolate
+	psadbw	mm6, [ebx+8]	; compare to next 8 bytes of p2 (row 1)
+	paddd	mm0, mm6	; accumulate difference
 
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
-	add edi, edx
+
+	movq	mm4, [eax]	; load first 8 bytes of p1 (row 2)
+	pavgb	mm5, mm4	; Interpolate
+	psadbw	mm5, [ebx]	; compare to first 8 bytes of p2 (row 2)
+	paddd	mm0, mm5	; accumulate difference
 	
-	sub ecx, 2			; check rowsleft (we're doing 2 at a time)
+	movq	mm6, [eax+8]	; load next 8 bytes of p1 (row 2)
+	pavgb	mm7, mm6
+	psadbw	mm7, [ebx+8]	; compare to next 8 bytes of p2 (row 2)
+	paddd	mm0, mm7	; accumulate difference
+
+	add eax, edx		; update pointer to next row
+	add ebx, edx		; ditto
+	
+	sub ecx, 2		; check rowsleft (we're doing 2 at a time)
 	jnz .loop		; rinse and repeat
 
 	movd eax, mm0		; store return value
 	
-	pop edi
 	pop ebx	
 
 	pop ebp			; restore stack pointer
@@ -358,73 +353,142 @@ global	sad_11_mmxe:function
 ; mm5 = temp
 ; mm6 = temp
 
-
+	
 align 64
 sad_11_mmxe:
 	push ebp		; save stack pointer
-	mov ebp, esp		; so that we can do this
 
 	push ebx		; save the pigs
-	push edi
+	mov ebp, esp		; so that we can do this
+
+	sub	esp, 8
+	and	esp, -8
 
 	pxor mm0, mm0		; zero acculumator
+	pxor	mm1, mm1	; zero reg
+	
+	mov	eax, 2+2*65536	; load 2 into all words
+	mov	[esp], eax
+	mov	[esp+4], eax
 
-	mov eax, [ebp+8]	; get p1
-	mov ebx, [ebp+12]	; get p2
-	mov edx, [ebp+16]	; get lx
-	mov edi, eax
-	add edi, edx
-	mov ecx, [ebp+20]	; get rowsleft
+	mov edx, [ebp+20]	; get lx
+
+	mov eax, [ebp+12]	; get p1
+	mov ebx, [ebp+16]	; get p2
+	mov ecx, [ebp+24]	; get rowsleft
+	
+	movq	mm6, [eax]	; load first 8 bytes of p1 (row 1)
+	movq	mm7, mm6
+	punpcklbw mm6, mm1
+	punpckhbw mm7, mm1
+	movq	mm2, [eax+1]
+	movq	mm3, mm2
+	punpcklbw mm2, mm1
+	punpckhbw mm3, mm1
+	paddw	mm6, mm2
+	paddw	mm7, mm3
+	
+	add	eax, edx
 	jmp .loop		; snap to it
 align 16
 .loop:
-	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
-	pavgb mm4, [edi]			; Interpolate...
-	movq mm5, [eax+1]
-	pavgb mm5, [edi+1]
-	pavgb mm4, mm5
-	psadbw mm4, [ebx]			; compare to first 8 bytes of p2 (row 1)
-	paddd mm0, mm4				; accumulate difference
+	movq	mm2, [eax]
+	movq	mm3, mm2
+	punpcklbw mm2, mm1
+	punpckhbw mm3, mm1
 
-	movq mm6, [eax+8]			; load next 8 bytes of p1 (row 1)
-	pavgb mm6, [edi+8]			; Interpolate
-	movq mm7, [eax+9]
-	pavgb mm7, [edi+9]
-	pavgb mm6, mm7
-	psadbw mm6, [ebx+8]			; compare to next 8 bytes of p2 (row 1)
-	paddd mm0, mm6				; accumulate difference
+	movq	mm4, [eax+1]
+	movq	mm5, mm4
+	punpcklbw mm4, mm1
+	punpckhbw mm5, mm1
 
-	add eax, edx				; update pointer to next row
-	add ebx, edx				; ditto
-	add edi, edx
+	paddw	mm6, [esp]
+	paddw	mm7, [esp]
 
-	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
-	pavgb mm4, [edi]			; Interpolate...
-	movq mm5, [eax+1]
-	pavgb mm5, [edi+1]
-	pavgb mm4, mm5
-	psadbw mm4, [ebx]			; compare to first 8 bytes of p2 (row 1)
-	paddd mm0, mm4				; accumulate difference
+	paddw	mm2, mm4
+	paddw	mm3, mm5
 
-	movq mm6, [eax+8]			; load next 8 bytes of p1 (row 1)
-	pavgb mm6, [edi+8]			; Interpolate
-	movq mm7, [eax+9]
-	pavgb mm7, [edi+9]
-	pavgb mm6, mm7
-	psadbw mm6, [ebx+8]			; compare to next 8 bytes of p2 (row 1)
-	paddd mm0, mm6				; accumulate difference
-		
-	add eax, edx		; update pointer to next row
-	add ebx, edx		; ditto
-	add edi, edx
+	paddw	mm6, mm2
+	paddw	mm7, mm3
 
-			
-	sub ecx, 2				; check rowsleft
-	jnz .loop			; rinse and repeat
+	psrlw	mm6, 2
+	psrlw	mm7, 2
 
-	movd eax, mm0				; store return value
+	packuswb mm6, mm7
+	psadbw	mm6, [ebx]
+
+	paddd	mm0, mm6
+
+	movq	mm6, mm2
+	movq	mm7, mm3
 	
-	pop edi
+	add	eax, edx
+	add	ebx, edx
+
+	sub	ecx, 1				; check rowsleft
+	jnz	.loop				; rinse and repeat
+
+	mov eax, [ebp+12]	; get p1
+	mov ebx, [ebp+16]	; get p2
+	mov ecx, [ebp+24]	; get rowsleft
+
+	add	eax, 8
+	add	ebx, 8
+	
+	movq	mm6, [eax]	; load first 8 bytes of p1 (row 1)
+	movq	mm7, mm6
+	punpcklbw mm6, mm1
+	punpckhbw mm7, mm1
+	movq	mm2, [eax+1]
+	movq	mm3, mm2
+	punpcklbw mm2, mm1
+	punpckhbw mm3, mm1
+	paddw	mm6, mm2
+	paddw	mm7, mm3
+	
+	add	eax, edx
+	jmp .loop2		; snap to it
+align 16
+.loop2:
+	movq	mm2, [eax]
+	movq	mm3, mm2
+	punpcklbw mm2, mm1
+	punpckhbw mm3, mm1
+
+	movq	mm4, [eax+1]
+	movq	mm5, mm4
+	punpcklbw mm4, mm1
+	punpckhbw mm5, mm1
+
+	paddw	mm6, [esp]
+	paddw	mm7, [esp]
+
+	paddw	mm2, mm4
+	paddw	mm3, mm5
+
+	paddw	mm6, mm2
+	paddw	mm7, mm3
+
+	psrlw	mm6, 2
+	psrlw	mm7, 2
+
+	packuswb mm6, mm7
+	psadbw	mm6, [ebx]
+
+	paddd	mm0, mm6
+
+	movq	mm6, mm2
+	movq	mm7, mm3
+	
+	add	eax, edx
+	add	ebx, edx
+
+	sub	ecx, 1				; check rowsleft
+	jnz	.loop2				; rinse and repeat
+
+	movd	eax, mm0			; store return value
+
+	mov	esp, ebp
 	pop ebx			
 	
 	pop ebp			; restore stack pointer
