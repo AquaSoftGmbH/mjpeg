@@ -192,6 +192,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
 #endif
