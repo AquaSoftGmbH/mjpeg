@@ -32,4 +32,4 @@ mplex_SOURCES = \
 	stream_params.cpp stream_params.hpp
 
 mplex_LDADD = $(top_builddir)/utils/libmjpegutils.a \
-		-lstdc++ @LIBGETOPT_LIB@ $(LIBM_LIBS) 
+		@LIBGETOPT_LIB@ $(LIBM_LIBS) 

@@ -10,7 +10,7 @@ const unsigned int AUStream::BUF_SIZE = 128;
 
 AUStream::AUStream() : 
 	cur_rd( 0 ), cur_wr(0), totalctr(0), size(0), 
-	buf(new AunitPtr[AUStream::BUF_SIZE])
+	buf(AUStream::BUF_SIZE)
 {
 }
 

@@ -2,7 +2,7 @@
 #define __AUSTREAM_H__
 
 #include <config.h>
-#include <memory>
+#include <vector>
 #include "mjpeg_logging.h"
 #include "aunit.hpp"
 
@@ -70,7 +70,7 @@ private:
 	unsigned int cur_wr;
 	unsigned int totalctr;
 	unsigned int size;
-	AunitPtr *buf;
+	std::vector<AunitPtr> buf;
 };
 
 
