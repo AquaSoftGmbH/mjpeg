@@ -103,6 +103,15 @@ case "$pvendor" in
 				proc=athlon
 			   fi
 			   ;;
+			15) 
+			   if test "$pmodel" -eq 4; then
+				proc=athlon64
+			   elif test "$pmodel" -eq 5; then
+				proc=opteron
+			   else
+				proc=k8
+			   fi		   
+			   ;;
 			*) proc=athlon-xp
 			   ;;
 		esac
