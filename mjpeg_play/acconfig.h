@@ -26,6 +26,7 @@
 
 /* Define if the quicktime for linux library is present */
 #undef HAVE_LIBQUICKTIME
+#undef HAVE_OPENQUICKTIME
 
 /* Define if the libXxf86dga library is available */
 #undef HAVE_LIBXXF86DGA

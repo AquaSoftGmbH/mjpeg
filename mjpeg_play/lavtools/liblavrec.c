@@ -932,7 +932,6 @@ static void *lavrec_encoding_thread(void* arg)
 static int lavrec_software_init(lavrec_t *info)
 {
    struct video_capability vc;
-   int i;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
