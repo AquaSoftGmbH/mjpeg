@@ -5,6 +5,9 @@ Fix all the BUGS (see BUGS) of course!
 
 TASKS OUTSTANDING
 
+- yuvdenoiser needs to be tidied up with redundant scaffolding code
+removed once we're sure everything is working correctly.
+	
 - Modify yuvscaler to generate MPEG aspect ratio codes if desired?
 
 Code hygiene  basically: GNU guidelines!
@@ -16,8 +19,6 @@ a look at the source code for vcdimager!
 	Minimally, some needs running through a C prettifier and having
 	stuff like "unsigned char" replaced with appropriate types from
 	stdint.h via utils/mjpeg_types.h.
-
-- Need to tidy the mplex code.
 
 - Need to test and build scripts for in-line multiplexing.
 

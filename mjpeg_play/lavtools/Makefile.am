@@ -174,3 +174,5 @@ divxdec_SOURCES = divxdec.cpp riffinfo.h
 divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) \
 	liblavfile.la liblavplay.la liblavjpeg.la
+
+

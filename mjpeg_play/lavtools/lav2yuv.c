@@ -529,9 +529,10 @@ int main(argc, argv)
 
 	param.interlace = el.video_inter;
 	/* exchange fields if wanted */
+	source_inter = el.video_inter;
+
 	if ( param_exchange_fields || param_shift_fields )
 	{
-		source_inter = el.video_inter;
 		if( param_shift_fields &&
 			el.video_inter != LAV_INTER_TOP_FIRST &&
 			el.video_inter != LAV_INTER_BOTTOM_FIRST )
@@ -544,7 +545,7 @@ int main(argc, argv)
 			el.video_inter ^= (LAV_INTER_BOTTOM_FIRST^LAV_INTER_TOP_FIRST);
 		}
 		
-		if( param_exchange_fields )
+		if( param_shift_fields )
 		{
 			param.interlace ^= (LAV_INTER_BOTTOM_FIRST^LAV_INTER_TOP_FIRST);
 		}
