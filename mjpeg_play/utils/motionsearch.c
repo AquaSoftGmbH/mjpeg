@@ -32,6 +32,7 @@
 
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+
 #include "mblock_sub44_sads_x86.h"
 
 static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
@@ -39,6 +40,8 @@ static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 							int ihigh, int jhigh, 
 							int h, int rowstride, 
 							int threshold,
+							me_result_s *resvec);
+
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
 				     int frowstride,int fh, int* resvec) 
