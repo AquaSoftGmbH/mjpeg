@@ -107,14 +107,17 @@ int run,signed_level,vlcformat;
   int level, len;
   VLCtable *ptab = NULL;
 
-  level = (signed_level<0) ? -signed_level : signed_level; /* abs(signed_level) */
+  level = abs(signed_level);
 
   /* make sure run and level are valid */
   if (run<0 || run>63 || level==0 || level>2047 || (mpeg1 && level>255))
   {
-    sprintf(errortext,"AC value out of range (run=%d, signed_level=%d)\n",
-      run,signed_level);
-    error(errortext);
+	  if( signed_level != -2048 && !(mpeg1 && signed_level == -256 ))
+	  {
+		  sprintf(errortext,"AC value out of range (run=%d, signed_level=%d)\n",
+				  run,signed_level);
+		  error(errortext);
+	  }
   }
 
   len = 0;

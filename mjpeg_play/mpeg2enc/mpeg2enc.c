@@ -1018,10 +1018,10 @@ static void readquantmat()
 			inter_q_tbl[q][i] = inter_q[i] * q;
 			intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
 			inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
-			i_intra_q_tblf[q][i] = 1.0f/ ( intra_q_tblf[q][i]);
+			i_intra_q_tblf[q][i] = 1.0f/ ( intra_q_tblf[q][i] * 0.98);
 			i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
-			i_inter_q_tblf[q][i] =  1.0f/ (inter_q_tblf[q][i]);
-			i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
+			i_inter_q_tblf[q][i] =  1.0f/ (inter_q_tblf[q][i] * 0.98);
+			i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i] );
 		}
 	}
   

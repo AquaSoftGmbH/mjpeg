@@ -57,6 +57,12 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst,
 								uint16_t *quant_mat);
 static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
 
+int quant_non_intra(
+	pict_data_s *picture,
+	int16_t *src, int16_t *dst,
+	int mquant,
+	int *nonsat_mquant);
+
 /*
   Initialise quantization routines.
   Currently just setting up MMX routines if available...
@@ -242,7 +248,7 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
  * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
  */
 																							     											     
-int quant_non_intra(
+int quant_non_intra_mmx(
 	pict_data_s *picture,
 	int16_t *src, int16_t *dst,
 	int mquant,
@@ -291,8 +297,6 @@ int quant_non_intra(
 		  if( (flags & 0xff00) != 0 )
 		  {
 			  int new_mquant = next_larger_quant( picture, mquant );
-			  if( frame_num == 157 )
-				  printf("*S");
 			  if( new_mquant != mquant )
 			  {
 				  mquant = new_mquant;
