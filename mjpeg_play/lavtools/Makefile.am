@@ -115,6 +115,7 @@ bin_PROGRAMS = \
 	y4mcolorbars \
 	lavinfo \
 	y4mshift \
+	y4mspatialfilter \
 	yuvfps \
 	y4mblack \
 	y4mtoyuv \
@@ -228,6 +229,9 @@ lavinfo_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 
 y4mshift_SOURCES = y4mshift.c
 y4mshift_LDADD = $(top_builddir)/utils/libmjpegutils.a
+
+y4mspatialfilter_SOURCES = y4mspatialfilter.c
+y4mspatialfilter_LDADD = $(top_builddir)/utils/libmjpegutils.a -lm
 
 y4mblack_SOURCES = y4mblack.c
 y4mblack_LDADD = $(top_builddir)/utils/libmjpegutils.a
