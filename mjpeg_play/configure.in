@@ -188,7 +188,7 @@ AC_ARG_ENABLE(x86-cpu,
 case "${hwaretype}" in
 i686) 
 	x86cpu="yes"
-    AC_DEFINE(X86_CPU)
+    AC_DEFINE(HAVE_X86CPU)
 	AC_DEFINE(P6_CPU)
     MTYPEFLAGS="-march=i586 -mcpu=i686 -mpentiumpro"
 	echo "Compiling in MMX/SSE support for Pentium Pro (or better) CPU"
@@ -196,7 +196,7 @@ i686)
 ;;
 i586) 
 	x86cpu="yes"
-    AC_DEFINE(X86_CPU)
+    AC_DEFINE(HAVE_X86CPU)
 	MTYPEFLAGS="-march=i586 -mcpu=i586 -mpentium"
 	echo "Compiling in MMX/SSE support for Pentium CPU"
 ;;

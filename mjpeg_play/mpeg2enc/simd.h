@@ -29,7 +29,7 @@
 #include <inttypes.h>
 
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU
 
 
 int mblock_sub44_dists_mmxe( uint8_t *blk,  uint8_t *ref,

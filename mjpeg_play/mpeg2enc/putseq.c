@@ -351,7 +351,7 @@ void putseq()
 
 			/* f: frame number in sequence display order */
 			temp_ref = (i == 0 ) ? i : g+(bigrp_length);
-			if (temp_ref+gop_start_frame >= (nframes-gop_start_frame))
+			if (temp_ref >= (nframes-gop_start_frame))
 				temp_ref = (nframes-gop_start_frame) - 1;
 
 			if (g==0) /* first displayed frame in GOP is I */

@@ -312,7 +312,6 @@ void get_info_video (char *video_file,
 				AU_pict_data = 0;
 				break;
 			case SEQUENCE_END:
-				fprintf( stderr, "DEBUG seq end detected!\n" );
 
 				/* Do we have a sequence split in the video stream? */
 				if( !end_bs(&video_bs) && 
@@ -326,11 +325,13 @@ void get_info_video (char *video_file,
 					AU_start = stream_length;
 					AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
-
+					if( opt_multifile_segment )
+						fprintf( stderr, "+++ WARNING: Sequence end marker found in video stream but single-segment splitting specified!\n" );
 				}
 				else
 				{
-					fprintf (stderr,"DEBUG: No seq. header starting new sequence after seq. end!\n");
+					if( ! opt_multifile_segment )
+						fprintf (stderr,"+++ WARNING: No seq. header starting new sequence after seq. end!\n");
 				}
 					
 				video_info->num_seq_end++;
