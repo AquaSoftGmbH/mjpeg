@@ -35,12 +35,15 @@ int sync_corr;
 int MJPG_nbufs;
 int MJPG_bufsize;
 /* used for the encoding configuratione */
-char enc_inputfile [100];
-char enc_outputfile[100];
-char enc_audiofile [100];
-char enc_videofile [100];
+#define FILELEN 100
+char enc_inputfile [FILELEN];
+char enc_outputfile[FILELEN];
+char enc_audiofile [FILELEN];
+char enc_videofile [FILELEN];
 int  use_yuvplay_pipe;                          /* Encoding Preview on/off */
 int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
+int  fourpelmotion;             /* Common Quality setting */
+int  twopelmotion;              /* Common Quality setting */
 
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
@@ -59,7 +62,12 @@ struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
                         char forcestereo[SHORTOPT];
                         char forcemono[SHORTOPT];
                         char forcevcd[SHORTOPT];
-                        int  bitrate;
+                        int  bitrate;              /* mpeg2enc options */
+                        int  qualityfactor;
+                        int  minGop;
+                        int  maxGop;
+                        int  sequencesize;
+                        int  nonvideorate;
                         int  searchradius;
                         int  muxformat;              /* mplex options */
                         char muxvbr[SHORTOPT];
