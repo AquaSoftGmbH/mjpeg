@@ -11,11 +11,13 @@ Installation - Actually: creation of Debian binary packages
 
     Get the latest CVS versions.
 
-2.  Rename the directories to the *above* names 
+2.  Copy jpeg-makefile.cfg over jpeg-mmx/makefile.cfg
+
+3.  Rename the directories to the *above* names 
 
 	(get rid of the version numbers etc!).
 
-3.  aclocal
+4.  aclocal
     autoconf
     automake --add-missing
 
