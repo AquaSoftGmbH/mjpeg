@@ -46,6 +46,7 @@
 #include "blend_fields.h"
 #include "transform_block.h"
 
+int BLKthreshold=32*32*16;
 int search_radius=8;
 int verbose = 0;
 int fast_mode = 0;
@@ -103,7 +104,22 @@ uint8_t *frame6[3] = { f6y, f6cr, f6cb };
 uint8_t f7y[1024 * 768];
 uint8_t f7cr[512 * 384];
 uint8_t f7cb[512 * 384];
-uint8_t *frame7[3] = { f7y, f7cr, f7cb };
+uint8_t *frame_sub22[3] = { f7y, f7cr, f7cb };
+
+uint8_t f8y[1024 * 768];
+uint8_t f8cr[512 * 384];
+uint8_t f8cb[512 * 384];
+uint8_t *frame_sub44[3] = { f8y, f8cr, f8cb };
+
+uint8_t f9y[1024 * 768];
+uint8_t f9cr[512 * 384];
+uint8_t f9cb[512 * 384];
+uint8_t *frame_sub22_[3] = { f9y, f9cr, f9cb };
+
+uint8_t fay[1024 * 768];
+uint8_t facr[512 * 384];
+uint8_t facb[512 * 384];
+uint8_t *frame_sub44_[3] = { fay, facr, facb };
 
 struct
 {
@@ -111,6 +127,20 @@ struct
 	int y;
 	uint32_t SAD;
 } mv_table[1024][1024];
+
+struct
+{
+	int x;
+	int y;
+	uint32_t SAD;
+} mv_table2[1024][1024];
+
+struct vector
+{
+	int x;
+	int y;
+	uint32_t sad;
+};
 
 /***********************************************************
  * helper-functions                                        *
@@ -310,78 +340,113 @@ main (int argc, char *argv[])
 	return (0);
 }
 
+void subsample_frame ( uint8_t * a1, uint8_t * a2 )
+{
+	int x,y;
+	uint8_t * b1 = a2;
+	uint8_t * c1 = a2;
+
+	for(y=0;y<(height/2);y++)
+	{
+		for(x=0;x<width;x+=2)
+		{
+			*(a1 + (x>>1) ) = (	*( b1 + x     ) +
+								*( b1 + x + 1 ) +
+								*( c1 + x     ) +
+								*( c1 + x + 1 ) ) >>2;
+		}
+	a1 += width;
+	b1 += width*2;
+	c1 += width*2;
+	}
+	
+}
+
+struct vector
+search_forward_vector( int x, int y )
+{
+	struct vector v;
+	int vx,vy;
+	int r=search_radius;
+	uint32_t min;
+	uint32_t SAD;
+
+	min=0x00ffffff;
+	for(vy = -r ; vy <= r ; vy += 2)
+		for(vx = -r ; vx <= r ; vx += 2)
+		{
+			SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+vx)+(y+vy)*width, width, 32, 0 );
+			SAD += psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
+			if(SAD<min)
+			{
+				min   = SAD;
+				v.x   = vx/2;
+				v.y   = vy/2;
+				v.sad = SAD;
+			}
+		}
+	return v;
+}
+
+struct vector
+search_backward_vector( int x, int y )
+{
+	struct vector v;
+	int vx,vy;
+	int r=search_radius;
+	uint32_t min;
+	uint32_t SAD;
+
+	min=0x00ffffff;
+	for(vy = -r ; vy <= r ; vy += 2)
+		for(vx = -r ; vx <= r ; vx += 2)
+		{
+			SAD  = psad_00( frame20[0]+x+y*width, frame30[0]+(x+vx)+(y+vy)*width, width, 32, 0 );
+			SAD += psad_00( frame20[0]+x+y*width+16, frame30[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
+			if(SAD<min)
+			{
+				min   = SAD;
+				v.x   = vx/2;
+				v.y   = vy/2;
+				v.sad = SAD;
+			}
+		}
+	return v;
+}
 
 void
 motion_compensate_field (void)
 {
-	int vx, vy;
-	int xx, yy;
-	int x1, y1;
-	uint32_t SAD;
-	uint32_t min;
-	int addr1 = 0;
-	int addr2 = 0;
-	int w = width, h = height;
-
-	//search-radius
-	int r = search_radius;
-
-	for (yy = 0; yy < h; yy += 32)  
-		for (xx = 0; xx < w; xx += 32)
+	int x,y;
+	struct vector fv;
+	struct vector bv;
+	
+	for(y=0;y<height;y+=32)
+		for(x=0;x<width;x+=32)
 		{
-			/* center ... */
+			fv = search_forward_vector(x,y);
+			bv = search_backward_vector(x,y);
 
-			addr1 = (xx) + (yy) * w;
-			min  = psad_00 (frame20[0] + addr1, frame10[0] + addr1, w, 32, 0);
-			min += psad_00 (frame20[0] + addr1+16, frame10[0] + addr1+16, w, 32, 0);
-			min >>= 4;
-
-			mv_table[xx][yy].x = 0;
-			mv_table[xx][yy].y = 0;
-			mv_table[xx][yy].SAD = min;
-
-			/* begin the search */
-			for (vy = -r; vy < r; vy += 1 )
-				for (vx = -r; vx < r; vx +=1)
-				{
-					/* match luma */
-					addr1 = (xx) + (yy) * w;
-					addr2 = (xx + vx) + (yy +
-								 vy) * w;
-
-					SAD  = psad_00 (frame20[0] + addr1, frame21[0] + addr2, w, 32, 0);
-					SAD += psad_00 (frame20[0] + addr1+16, frame21[0] + addr2+16, w, 32, 0);
-					SAD >>= 4;
-
-					if (SAD < min )
-					{
-						min = SAD;
-						mv_table[xx][yy].x = vx;
-						mv_table[xx][yy].y = vy;
-					}
-				}
-			mv_table[xx][yy].SAD = min;
-	}
-
-	/* transform the sourceblocks by the found vectors */
-	for (yy = 0; yy < h; yy += 32)
-		for (xx = 0; xx < w; xx += 32)
-		{
-			x1=mv_table[xx][yy].x;
-			y1=mv_table[xx][yy].y;
-
+			if(fv.sad < BLKthreshold || bv.sad < BLKthreshold)
 			{
-			transform_block_Y  ( frame5[0]+xx+yy*width, frame21[0]+(xx+x1)+(yy+y1)*width, width);
-			xx /= 2;
-			yy /= 2;
-			x1 /= 2;
-			y1 /= 2;
-			width /= 2;
-			transform_block_UV ( frame5[1]+xx+yy*width, frame21[1]+(xx+x1)+(yy+y1)*width, width);
-			transform_block_UV ( frame5[2]+xx+yy*width, frame21[2]+(xx+x1)+(yy+y1)*width, width);
-			xx *= 2;
-			yy *= 2;
-			width *= 2;
+				if(fv.sad < bv.sad)
+				{
+					transform_block_Y  (frame5[0]+x+y*width , frame21[0]+(x+fv.x)+(y+fv.y)*width, width );
+					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame21[1]+(x+fv.x)/2+(y+fv.y)/2*width/2, width/2 );
+					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame21[2]+(x+fv.x)/2+(y+fv.y)/2*width/2, width/2 );
+				}
+				else
+				{
+					transform_block_Y  (frame5[0]+x+y*width , frame31[0]+(x+bv.x)+(y+bv.y)*width, width );
+					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame31[1]+(x+bv.x)/2+(y+bv.y)/2*width/2, width/2 );
+					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame31[2]+(x+bv.x)/2+(y+bv.y)/2*width/2, width/2 );
+				}
+			}
+			else
+			{
+				transform_block_Y  (frame5[0]+x+y*width , frame20[0]+x+y*width, width );
+				transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame20[1]+x/2+y/2*width/2, width/2 );
+				transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame20[2]+x/2+y/2*width/2, width/2 );
 			}
 		}
 }
