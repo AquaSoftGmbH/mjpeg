@@ -130,6 +130,8 @@ void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el);
 void writeoutframeinYUV4MPEG(int out_fd, uint8_t *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, y4m_frame_info_t *frame_info);
 void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer);
 
+y4m_ratio_t guess_sar(int width, int height);
+
 #ifdef SUPPORT_READ_DV2
 #include <libdv/dv.h>
 void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input, int width, int height, LavParam *param);

@@ -1,3 +1,7 @@
+#ifndef EDITLIST_H
+
+#define EDITLIST_H
+
 /* If changing MAX_EDIT_LIST_FILES, the macros below
    also have to be adapted. */
 
@@ -45,3 +49,5 @@ void read_video_files(char **filename, int num_files, EditList *el, int preserve
 int write_edit_list(char *name, long n1, long n2, EditList *el);
 int open_video_file(char *filename, EditList *el, int preserve_pathname);
 int el_video_frame_data_format(long nframe, EditList *el);
+
+#endif /* ifndef EDITLIST_H */

@@ -496,7 +496,7 @@ int readframe(	int numframe,
     display aspect ratio.
 */
 
-static y4m_ratio_t guess_sar(int width, int height)
+y4m_ratio_t guess_sar(int width, int height)
 {
   if ((height > 470) && (height < 490)) {
     if ((width > 700) && (width < 724))       /* 704x480 or 720x480 */
