@@ -1189,6 +1189,12 @@ which specifies the non-video (audio and mplex information) bitrate.  The
 For further information take a look at the encoding scripts in the scripts
 directory. So the multiplexed streams should easily fit on a CD with 650MB. 
 
+The default value (-B) is 700MB for the video. mpeg2enc marks automatically 
+every stream at that size if the -B does not set anything else. If you have a 
+CD where you can write more MB like 800, you have to set the -S option else 
+mpeg2enc will mark the stream at 700 MB, and mplex will split the stream there.
+Which might not be what you want.
+
 .B Multiplexing Example
 .br
 .B > mplex \-f 1 sound.mp2 video.m1v \-o vcd_out.mpg
@@ -1481,6 +1487,15 @@ yuvycsnoise works only correct when we have NTSC with:
 
 For more information about the yuvkineco and yuvycsnoise read the README
 in the yuvfilters directory.
+
+If you want to know now the optimal settings for the denoiser, scaler and so on.Replace the mpeg2enc or yuv2divx with yuvplay. yuvplay playes back the yuv
+frames. So you can see if the options you have choosen are making the
+thing better or worse.
+
+A command would look like this:
+.br
+\fB> lav2yuv stream.eli | yuvdenoise -options | yuvscaler -options | yuvplay\fR
+
 
 .SH "TRANSCODING OF EXISTING MPEG\-2 STREAMS"
 .br
