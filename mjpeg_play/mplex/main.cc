@@ -42,8 +42,6 @@ int main (int argc, char* argv[])
     char        *multi_file = NULL;	
 
 	int     optargs;
-    VideoStream videoStrm(0);
-    AudioStream audioStrm(0);
 	OutputStream ostrm;
 
     off_t audio_bytes, video_bytes;
@@ -58,7 +56,7 @@ int main (int argc, char* argv[])
 		//vector<const char *> stills;
 		//check_stills(argc-optargs, argv+optargs, stills);
 		ostrm.InitSyntaxParameters();
-		VideoStream stillStrm(0);
+		VideoStream stillStrm(ostrm,0);
 		//stillStrm.Init( stills[0] );
 		//outputstream( stillStrm, audioStrm, multi_file );
 	}
@@ -66,6 +64,8 @@ int main (int argc, char* argv[])
 	{
 		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
 		ostrm.InitSyntaxParameters();
+        VideoStream videoStrm(ostrm,0);
+        AudioStream audioStrm(ostrm,0);
 
 		if (video_file) {
 			videoStrm.Init( video_file);

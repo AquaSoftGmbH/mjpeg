@@ -221,19 +221,6 @@ void check_files (int argc,
 
 void VideoStream::Init (const char *video_file )
 {
-	prev_offset=0;
-    decoding_order=0;
-	fields_presented=0;
-    group_order=0;
-    group_start_pic=0;
-	group_start_field=0;
-    temporal_reference=0;
-	pulldown_32 = 0;
-	last_buffered_AU=0;
-
-	max_bits_persec = 0;
-	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
-	
     mjpeg_info( "Scanning Video stream %d for access units information.\n",
 				 stream_id-VIDEO_STR_0);
 	InitAUbuffer();
@@ -605,6 +592,7 @@ void AudioStream::Init (char *audio_file)
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
 			static_cast<clockticks>(samples [3-layer]) * 
 			static_cast<clockticks>(CLOCKS)	/ samples_per_second;
+		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
 		++decoding_order;
 		aunits.append( access_unit );
@@ -697,7 +685,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
 			/ samples_per_second;
-
+		access_unit.DTS = access_unit.PTS;
 		decoding_order++;
 		aunits.append( access_unit );
 		num_frames[padding_bit]++;

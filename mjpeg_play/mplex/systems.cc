@@ -57,11 +57,12 @@ PS_Stream::NextFile( )
 	
 		
 unsigned int 
-PS_Stream::PacketPayload( Sys_header_struc *sys_header, 
+PS_Stream::PacketPayload( MuxStream &strm,
+						  Sys_header_struc *sys_header, 
 						  Pack_struc *pack_header, 
 						  int buffers, int PTSstamp, int DTSstamp )
 {
-  int payload = sector_size - PACKET_HEADER_SIZE ;
+  int payload = sector_size - (PACKET_HEADER_SIZE + strm.zero_stuffing);
 	if( sys_header != NULL )
 		payload -= sys_header->length;
 	if( mpeg_version == 2 )
@@ -229,7 +230,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	uint8_t 	 type = strm.stream_id;
 	uint8_t 	 buffer_scale = strm.buffer_scale;
 	unsigned int buffer_size = strm.BufferSizeCode();
-
+	bool zero_stuff = false;
 	index = sector_buf;
 
     /* soll ein Pack Header mit auf dem Sektor gespeichert werden? */
@@ -337,18 +338,18 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
 	/* MPEG-1, MPEG-2: data available to be filled is packet_size less header and MPEG-1 trailer... */
 
-	target_packet_data_size = sector_size - (index - sector_buf);
+	target_packet_data_size = sector_size - (index + strm.zero_stuffing - sector_buf );
 	
 		
 	/* DEBUG: A handy consistency check when we're messing around */
 #ifndef NDEBUG		
-	if( target_packet_data_size != PacketPayload( sys_header, pack, buffers,
+	if( target_packet_data_size != PacketPayload( strm, sys_header, pack, buffers,
 												  timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
 		printf("\nPacket size calculation error %d S%d P%d B%d %d %d!\n ", timestamps,
 			   sys_header!=0, pack!=0, buffers,
 			   target_packet_data_size , 
-			   PacketPayload( sys_header, pack, buffers,
+			   PacketPayload( strm, sys_header, pack, buffers,
 							  timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
 		exit(1);
 	}
@@ -476,7 +477,9 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		bytes_short = 0;
 	}
 	  
-
+	for (i = 0; i < strm.zero_stuffing; i++)
+		*(index++) = static_cast<uint8_t>(0);
+	
 
 	/* At this point padding or stuffing will have ensured the packet
 		is filled to target_packet_data_size

@@ -76,31 +76,32 @@ protected:
 
 };
 
+//
+// Abstract forward reference...
+//
 
-//
-// TODO: This is really very unnecessary templating.  If we 
-// encapsulate the AU buffering code so it doesn't generate
-// lots of memory requests even though it only
-// works with points this could be handled *far* more elegantly
-// through inheritance.  
-//
+class OutputStream;
 
 class MuxStream
 {
 public:
-	MuxStream(const int strm_id, const int buf_scale) : 
+	MuxStream( const int strm_id, const int buf_scale,
+		       const unsigned int _zero_stuffing ) : 
 		stream_id(strm_id), 
 		new_au_next_sec(true),
 		buffer_scale( buf_scale ),
-		init(false)
+		init(false),
+		nsec(0),
+		zero_stuffing( _zero_stuffing )
 		{
-
+			mjpeg_info( "MUX STREAM %02x set to %d\n", strm_id, zero_stuffing);
 		}
 
+	// TODO This functionality really belongs to Elementary stream
 	void SetMuxParams( unsigned int buf_size );
 	void SetSyncOffset( clockticks timestamp_delay );
 	unsigned int BufferSizeCode();
-
+	// END TODO
 	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
 
 public:  // TODO should go protected once encapsulation complete
@@ -113,8 +114,10 @@ public:  // TODO should go protected once encapsulation complete
 	unsigned int 	buffer_size;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
+	unsigned int    zero_stuffing;
 	clockticks timestamp_delay;
 	bool       init;
+	unsigned int nsec;
 };
 
 
@@ -128,49 +131,27 @@ protected:
 	AUStream aunits;
     static const int FRAME_CHUNK = 4;
 public:
-	ElementaryStream( const int stream_id,
-					  const int buf_scale ) : 
-		MuxStream( stream_id, buf_scale )
-		{
-		}
-
-	bool NextAU()
-		{
-			Aunit *p_au = next();
-			if( p_au != NULL )
-			{
-				au = p_au;
-				au_unsent = p_au->length;
-				return true;
-			}
-			else
-			{
-				au_unsent = 0;
-				return false;
-			}
-		}
-
-
-	Aunit *Lookahead( unsigned int i )
-		{
-			assert( i < FRAME_CHUNK-1 );
-			return aunits.lookahead(i);
-		}
-
-	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size)
-		{
-			return (au_unsent/min_packet_data)*sector_transport_size +
-				(au_unsent%min_packet_data)+(sector_transport_size-min_packet_data);
-		}
+	ElementaryStream( OutputStream &into, const int stream_id,
+					  const unsigned int _zero_stuff,
+					  const int buf_scale,
+					  bool bufs_in_first, bool bufs_always
+					  );
+	bool NextAU();
+	Aunit *Lookahead( unsigned int i );
+	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
+	bool MuxCompleted();
+	bool MuxPossible();
+	void Muxed( unsigned int bytes_muxed );
+	void DemuxedTo( clockticks SCR );
+	clockticks RequiredDTS();
+	void SetTSOffset( clockticks baseTS );
+	void AllDemuxed();
 
 	//
 	//  Read the (parsed and spliced) stream data from the stream
 	//  buffer.
 	//
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read)
-		{
-			return bs.read_buffered_bytes( dst, to_read );
-		}
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
 
 
 public:  // TODO should go protected once encapsulation complete
@@ -179,34 +160,19 @@ public:  // TODO should go protected once encapsulation complete
 	     // au itself should simply disappear
 	Aunit *au;
 	unsigned int au_unsent;
-private:
-	Aunit *next()
-		{
-			if( !eoscan && aunits.current()+FRAME_CHUNK > last_buffered_AU  )
-			{
-				FillAUbuffer(FRAME_CHUNK);
-			}
-			
-			return aunits.next();
-		}
-	
+protected:
+	Aunit *next();
+	OutputStream &muxinto;
+	bool buffers_in_header;
+	bool always_buffers_in_header;
+
 };
 
 
 class VideoStream : public ElementaryStream
 {
 public:
-	VideoStream(const int stream_num) :
-		ElementaryStream(VIDEO_STR_0+stream_num,1),
-		num_sequence(0),
-		num_seq_end(0),
-		num_pictures(0),
-		num_groups(0)
-		{
-			for( int i =0; i<4; ++i )
-				num_frames[i] = avg_frames[i] = 0;
-		}
-
+	VideoStream(OutputStream &into, const int stream_num);
 	void Init(const char *input_file);
 	void Close();
 
@@ -220,7 +186,7 @@ public:
 			return au->end_seq;
 		}
 
-	int NextAUType()
+	inline int NextAUType()
 		{
 			VAunit *p_au = Lookahead(1);
 			if( p_au != NULL )
@@ -229,15 +195,16 @@ public:
 				return NOFRAME;
 		}
 
-	bool SeqHdrNext()
+	inline bool SeqHdrNext()
 		{
 			VAunit *p_au = Lookahead(1);
 			return p_au != NULL && p_au->seq_header;
 		}
 
 
-	unsigned int NominalBitRate() { return bit_rate * 50; }
+	inline unsigned int NominalBitRate() { return bit_rate * 50; }
 
+	void OutputSector();
 private:
 	void OutputSeqhdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
@@ -253,7 +220,7 @@ public:
     
     unsigned int horizontal_size;
     unsigned int vertical_size 	;
-    unsigned int aspect_ratio	;
+     unsigned int aspect_ratio	;
     unsigned int picture_rate	;
     unsigned int bit_rate 	;
     unsigned int comp_bit_rate	;
@@ -262,7 +229,9 @@ public:
     unsigned int CSPF 		;
     double secs_per_frame;
 
-	
+
+	bool dtspts_for_all_au;
+
 private:
 
 	/* State variables for scanning source bit-stream */
@@ -282,23 +251,16 @@ private:
 	int AU_hdr;
 	clockticks max_PTS;
 
-	// State variables for multiplexed sub-stream...
-public:							// TODO make private once encapsulation comple
-	int next_sec_AU_type;
+	
 }; 		
 
 class AudioStream : public ElementaryStream
 {
 public:   
-	AudioStream(const int stream_num) : 
-		ElementaryStream( AUDIO_STR_0 + stream_num, 0),
-		num_syncword(0)
-		{
-			for( int i = 0; i <2 ; ++i )
-				num_frames[i] = size_frames[i] = 0;
-		}
+	AudioStream(OutputStream &into, const int stream_num);
 
 	void Init(char *audio_file);
+	void OutputSector();
 
 	void Close();
 
@@ -329,14 +291,25 @@ private:
     unsigned int skip;
     unsigned int samples_per_second;
     AAunit access_unit;
-
 }; 	
 
 class PaddingStream : public MuxStream
 {
 public:
 	PaddingStream() :
-		MuxStream( PADDING_STR, 0 )
+		MuxStream( PADDING_STR, 0, 0 )
+		{
+			init = true;
+		}
+
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+};
+
+class VCDAPadStream : public MuxStream
+{
+public:
+	VCDAPadStream() :
+		MuxStream( PADDING_STR, 0, 20 )
 		{
 			init = true;
 		}
@@ -348,7 +321,7 @@ class EndMarkerStream : public MuxStream
 {
 public:
 	EndMarkerStream() :
-		MuxStream( PADDING_STR, 0 )
+		MuxStream( PADDING_STR, 0, 0 )
 		{
 			init = true;
 		}

@@ -20,6 +20,16 @@ public:
 
 	void InitSyntaxParameters();
 
+	unsigned int PacketPayload(	MuxStream &strm,
+								bool buffers, bool PTSstamp, bool DTSstamp );
+	unsigned int WritePacket( unsigned int     max_packet_data_size,
+							  MuxStream        &strm,
+							  bool 	 buffers,
+							  clockticks   	 PTS,
+							  clockticks   	 DTS,
+							  uint8_t 	 timestamps
+		);
+
 	/* Syntax control parameters */
 
 	bool always_sys_header_in_pack;
@@ -30,7 +40,7 @@ public:
 	bool buffers_in_audio;
 	bool always_buffers_in_audio;
 	bool sector_align_iframeAUs;
-
+	bool segment_runout;
 /* In some situations the system/PES packets are embedded with
    external transport data which has to be taken into account for SCR
    calculations to be correct.  E.g. VCD streams. Where each 2324 byte
@@ -40,10 +50,8 @@ public:
 
 	unsigned int	sector_transport_size;
 	unsigned int    transport_prefix_sectors; 
-	unsigned int 	audio_packet_data_limit; /* Needed for VCD which wastes 20 bytes */
-	
 	unsigned int 	sector_size;
-	bool 			zero_stuffing;	/* Pad short sectors with 0's not padding packets */
+	unsigned int	vcd_zero_stuffing;	/* VCD audio sectors have 20 0 bytes :-( */
 	
 	int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
 	int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
@@ -53,7 +61,10 @@ public:
     /* Stream packet component buffers */
 	
 	Sys_header_struc 	sys_header;
-	
+	Pack_struc          pack_header;
+	Pack_struc *pack_header_ptr;
+	Sys_header_struc *sys_header_ptr;
+
 	/* Output stream... */
 	bitcount_t bytes_output;
 	clockticks current_SCR;
@@ -77,8 +88,6 @@ private:
 
 	void OutputSuffix();
 
-	void NextVideoAU( unsigned int bytes_muxed,
-					  VideoStream  &vstrm );
 
 	void OutputVideo ( VideoStream &vstrm,
 					   bool marker_pack,
@@ -98,10 +107,13 @@ private:
 						 bool start_of_new_pack,
 						 bool include_sys_header,
 						 bool pseudo_VBR,
-						 int packet_data_limit
+						 bool vcd_audio_pad
 		);
 
 	
 };
+
+	void NextVideoAU( unsigned int bytes_muxed,
+					  VideoStream  &vstrm );
 
 #endif //__OUTPUTSTREAM_H__

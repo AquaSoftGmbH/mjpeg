@@ -34,13 +34,10 @@ class PS_Stream
 {
 public:
 	PS_Stream( unsigned _mpeg,
-			   unsigned int _sector_size, 
-			   bool _zero_stuffing // Pad with 0's not a padding packet
-			   
+			   unsigned int _sector_size
 		)
 		: mpeg_version( _mpeg),
 		  sector_size( _sector_size ),
-		  zero_stuffing( _zero_stuffing),
 		  segment_num( 1 ),
 		  max_segment_size( 2040 * 1024 * 1024 )
 		{
@@ -52,7 +49,8 @@ public:
 		);
 	bool FileLimReached( );
 	void NextFile();
-	unsigned int PacketPayload( Sys_header_struc *sys_header, 
+	unsigned int PacketPayload( MuxStream &strm,
+								Sys_header_struc *sys_header, 
 								Pack_struc *pack_header, 
 								int buffers, int PTSstamp, int DTSstamp );
 
