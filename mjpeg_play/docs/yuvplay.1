@@ -4,9 +4,15 @@ yuvplay \- Play YUV data using SDL
 .SH SYNOPSIS
 lavpipe/lav2yuv [options] [file(s)] | yuvplay [\-s NxN]
 .SH DESCRIPTION
-\fByuvplay\fP can be used to playback YUV data which is provided to the
-stdin, mostly through piping this data from the stdout of lavpipe,
-lav2yuv, mpeg2dec or a similar program into the stdin of yuvplay.
+\fByuvplay\fP can be used to playback YUV data which is provided to
+the stdin, mostly through piping this data from the stdout of
+\fBlavpipe\fP(1), \fBlav2yuv\fP(1), \fBmpeg2dec\fP(1) or a similar
+program into the stdin of yuvplay.  It should be noted that for pure
+playback lavplay should be a superior option. Yuvplay is intended
+primarily as a debugging or diagnostic utility when setting up image
+processing / encoding pipelines.  
+
+
 .SH OPTIONS
 \fByuvplay\fP accepts the following options:
 .TP 8
@@ -15,9 +21,11 @@ The size of the SDL window. By default, it takes the size of the video,
 but through software YUV scaling, you can specify any size you want.
 NxN is the width x height of the scaled window.
 .SH SEE ALSO
-.BR mjpeg (1),
+.BR mjpegtools (1),
 .BR lavpipe (1),
 .BR lav2yuv (1)
+.BR lavplay (1)
+
 .SH CONTACTING
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:

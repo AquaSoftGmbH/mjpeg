@@ -1,0 +1,63 @@
+.TH "xlav" "1" "V 1.4" "Andrew Stevens" "description"
+.SH NAME
+xlav \- Video editting and interactive playback front-end to \fBlavplay\fP(1)
+.SH SYNOPSIS
+xlav [options] [filename(s)]
+.SH DESCRIPTION
+\fBxlavy\fP acts as a front-end to the \fBlavplay\fP(1) tool to allow
+interactive editting or browsing/playback of a video stream.  All the
+actual work of playback and editting is done by the underlying
+\fBlavplay\fP with command line options being passed through also.
+xlav therefore accepts precisely the same flags and file formats as
+lavplay, the only difference is that a window offering VCR-style
+interactive controls and edit functions is opened.  Thus the video
+sequence to be editting / played may comprise any number and mixture
+of AVI, Quicktime, and movtar MJPEG video files or edit list files
+pointing to such files.  The only constraint is that the format of
+video contained in all files must be identical.
+
+Xlav's primary purpose is to support non-destructive editting of video
+by creating edit list files.  Editting operations leave the specified
+video files intact. Save operations generate an \fIedit list\fP file
+specifying the sequence and source of frames in the editted version
+rather than an actual editted file. Provided the original source files
+are unmodified this edit list can then be used as a proxy for the
+editted sequence.  All \fBmjpegtools\fP(1) will accept an edit list in
+any context where an actual video file or sequence of files would be
+acceptable.  For example: to play a favourite TV show without
+advertisements it would be first recorded using \fBlavrec\fP(1) (or
+perhaps a software MJPEG encoder).  The Ads would then be editted out
+using xlav and the result record as an editlist.  The Ad-less sequence
+could then be played back at some later stage by running lavplay (or,
+of course, xlav) with edit list file as input argument. Alternatively,
+the Ad-less show could be compressed to MPEG video by running \fBlav2yuv\fP(1)
+on the edit list and piping the resulting decompressed stream
+through \fBmpeg2enc\fP(1).
+
+It is also possible to create a new video file containing a
+stand-alone copy of the editted sequence by applying the
+\fBlavtrans\fP(1) utility to the edit list.
+
+.SH OPTIONS
+See \fBlavplay\fP(1).
+.SH SEE ALSO
+.BR mjpegtools (1),
+.BR lavrec (1),
+.BR lavplay (1),
+.BR lavtrans (1)
+
+.SH BUGS
+Editlists are really record absolute pathnames.  This more
+or less forces manual editting of the pathnames in them if it is desired
+to move editlists and source video files.
+
+xlav really is rather spartan and uses the now obsolescent "xforms"
+library.  Superior replacements are currently under development.
+
+
+.SH CONTACT
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at \fIhttp://mjpeg.sourceforge.net/

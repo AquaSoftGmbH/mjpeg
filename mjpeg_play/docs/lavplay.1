@@ -1,13 +1,20 @@
 .TH "lavplay" "1" "V 1.4" "Ronald Bultje" "description"
 .SH NAME
-lavplay \- Playback MJPEG video
+lav \- Playback and edit MJPEG video
 .SH SYNOPSIS
 lavplay [options] [filename(s)]
 .SH DESCRIPTION
+
 \fBlavplay\fP can be used to playback video in MJPEG format (either
 quicktime, movtar or AVI) on a zoran video-capture device, such as
 the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33,
 or in software mode (using SDL).
+
+It also provides mechanisms for non-destructive editting video using
+an interactive front-end such as \fBxlav\fP(1).  See "SEARCHING AND
+EDITTING" below for details.
+
+
 .SH OPTIONS
 \fBlavplay\fP accepts the following options:
 .TP 8
@@ -29,7 +36,9 @@ Enables (1) or disables (0) audio playback.
 Zooms the video to fit the screen as good as possible.
 .TP 8
 .B \-x
-Exchange fileds of an interlaced video. Try this if the video looks weird.
+Exchange fields of an interlaced video. Try this if the video looks weird.
+It shouldn't be necessary with stuff captured using lavrec(1) but could be
+needed for other sources.
 .TP 8
 .B \-s num
 Skip <num> seconds of video at the beginning.
@@ -39,7 +48,9 @@ Forces the use of PAL (p) or NTSC (n). By default, the use of either PAL
 or NTSC is guessed from the framerate of the first input video.
 .TP 8
 .B \-c [01]
-Enables (1) or disables (0) the use of sync corrections.
+Enables (1) or disables (0) the use of sync corrections. Basically,
+you almost certainly want this.  Disabling is really there for
+diagnostic purposes and not much else.
 .TP 8
 .B \-X num, \-Y num
 Horizontal (-X) and vertical (-Y) offset when using hardware-playback of
@@ -71,10 +82,33 @@ The video device. Default is /dev/video
 .B LAV_AUDIO_DEV
 The audio device. Default is /dev/dsp
 .SH SEARCHING AND EDITING
-\fBlavplay\fP can do more than simple plain playback. On the command-
-line, while playing back, one can type commands to search through the
-video or perform simple editing (NLE) functions. The following commands
-are recognized by lavplay:
+\fBlavplay\fP can do more than simple plain playback. It is also intended
+to be controlled using commands sent via stdin from a front-end like
+.BR xlav(1)
+or similar, more sophisticated tools.  The most significant aspect of
+this functionality is the ability to create \fIedit list\fP files
+giving the playback sequence of an editted version of the input video.
+The edit list file can be read by any of the mjpegtools(1) (including
+lavplay!) wherever an actual video file would be acceptable.  Such
+edit lists record only the original source file and start and stop
+frames of the components of the editted video editting rather than the
+video itself.  As such editting leaves the original files unchanged
+and requires only tiny amounts of data-movement.  The drawback is that
+for the edit list to work the original files must remain unchanged,
+and that interactive play may be jumpy due to the playback sequence
+"skipping about" between different parts of the original video sequence.
+
+
+If a stand-alone consolidated versions of editted video is required it
+can be produced by running the lavtrans(1) utility on the edit list.
+
+Edit list files are plain text with a very simple syntax to allow easy
+manual editting using a text-editor or writing of scripted editting tools.
+
+.SH "STDIN COMMANDS"
+The commands accepted on standard input sre as follows (and can of
+course be entered directly by command-line junkies):
+
 .TP 8
 .B +, \-
 Goes to next/previous frame. Only makes sense when the video is paused.
@@ -123,9 +157,24 @@ N1=-1 means to add the whole video.
 Sets the current viewable frames within the whole video to N1-N2. This
 is useful for trimming.
 .SH SEE ALSO
-.BR mjpeg (1),
-.BR lavrec (1)
-.SH CONTACTING
+.BR mjpegtools (1),
+.BR lavrec (1),
+.BR xlav (1)
+
+.SH BUGS
+Editlists record absolute pathnames.  This more or less forces manual
+editting of the pathnames in them if it is desired to move editlists
+and source video files.
+
+lavplay currently uses a modified version of the JPEG library to
+perform colour-space conversion in software.  Although using MMX
+on x86 CPU's performance is not what it should be.  Future releases
+will utilise the X server for colour space conversion to allow
+hardware acceleration and improve stability and portability.
+
+
+
+.SH CONTACT
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP

@@ -1,20 +1,26 @@
-.TH "lavrec" "1" "V 1.4" "Bernhard Praschinger" "description"
+.TH "lav2yuv" "1" "V 1.4" "Bernhard Praschinger" "description"
 .SH "NAME"
 lav2yuv \- Convert a MJPEG file to raw yuv
 .SH "SYNOPSIS"
 lav2uv [params] [filename(s)]
 .SH "DESCRIPTION"
-\fBlav2yuv\fP can be used to create a YUV stream of the recorded video. 
-This output goes to stdout and can be feed (piped) into yuvscaler, mpeg2enc, 
-yuv2lav, yuvplay and yuvmedianfilter for example. 
+\fBlav2yuv\fP converts an MJPEG video sequence described by a sequence
+of MJPEG video files and/or edit lists pointing to such files into the
+simple uncompressed planar YUV format expected by the used by the
+\fBmpeg2enc\fP(1) MPEG encoder and image processing filters like
+\fByuvscaler\f(1) or \fByuv2dfilter\fP(1).
 
-It is used to create from the recorded MJPEG streams in AVI, quicktime or 
-movtar the YUV data that is needed for encoding with mpeg2enc. 
+Output is to stdout so that by piping the output of lav2yuv into a
+suitable pipeline it is possible to process and then encode or play
+back video recorded in any of the mjpegtools MJPEG container formats:
+AVI, quicktime or movtar or edit lists describing editted versions of
+videon held in such files.
 
-It can do scaling but for this you can also use yuvscaler. 
+For historical reasons lav2yuv has simple scaling and cropping facilities
+built-in although superior facilities are also available through the
+\fByuvscaler\fP(1) filter.
 
-As input sources you can use serveral files, mixing up with editlistfiles. 
-Mixing differnt sizes of videos is not allowed. 
+Mixing differnt files with different video formats is currently not possible.
 
 The \-S \-T \-D options are used for scene detection, which is used by linuxvideosstudio.
 .SH "OPTIONS"
@@ -63,7 +69,7 @@ Only num frames are written to stdout. 0 means that all frames aure procced.
 .BR yuvscaler (1),
 .BR yuv2lav (1),
 .BR yuvplay (1)
-.SH "CONTACTING"
+.SH "CONTACT"
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP

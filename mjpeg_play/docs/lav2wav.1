@@ -25,10 +25,23 @@ Extract (num) frames of audio
 .B \-v num
 Verbosity level (0, 1 or 2)
 .SH "SEE ALSO"
-.BR mjpeg (1),
+.BR mjpegtools (1),
 .BR mp2enc (1),
+.BR sox(1)
 
-.SH "CONTACTING"
+.SH BUGS
+
+The "WAV" file format (technically: RIFF) is really very much less
+than ideal for a tool intended to be used in pipelines as lav2wav is.
+The Problem is that the header includes a field specifying the length
+of the file.  This can't be filled in except by seeking back to the
+begining and over-writing.  If the output is unseek-able (e.g. pipe
+lav2wav simply writes a large length into the header and leaves it at
+that).  Most tools like sox(1) or mp2enc(1) either ignore the length
+field anyway or only give a warning.
+
+
+.SH "CONTACT"
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP

@@ -4,11 +4,19 @@ lavtrans \- Convert MJPEG videos to other MJPEG video formats
 .SH "SYNOPSIS"
 lavtrans \-o <outputfile> \-f [aqiw] filenames [<\-i num>]
 .SH "DESCRIPTION"
-\fBlavtrans\fP can be used to convert the recorded videos from MJPEG format to an other "container" format. It can also be used to split the streams, or do destructive edits. 
+\fBlavtrans\fP can be used to convert the recorded videos from MJPEG
+one "container" format  to another. It can also be used to split
+the streams, or do destructive edits.
 
-An valid input source is also the editlist generated with lavplay or xlav. Using this as input will generate an video stream that has all the changes applied. 
+Like all the other \fBmjpegtools\fP(1) lavtrans can also accept an
+edit list file in place of actual video files. This allows it to be
+used to construct a stand-alone copy of the editted video sequence
+described in the editlist.
 
-It cannot change the size of the video during conversation. Conversation of different sized streams to a single stream is also not supported. 
+Note that lavtrans can only change the container type of MJPEG video,
+no its format.  As such it is not possible to use it combine streams of
+different format.
+
 .SH "OPTIONS"
 \fBlavtrans\fP accepts the following options:
 
@@ -31,9 +39,9 @@ If you want as output single JPEG images the output filestring must be a valid f
 .B filenames
 Multiple filenames as input are acceped, also mixing of editlistfiles and other in video files.
 .SH "SEE ALSO"
-.BR mjpeg (1),
+.BR mjpegtools (1),
 .BR lavplay (1)
-.SH "CONTACTING"
+.SH "CONTACT"
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
