@@ -83,6 +83,7 @@ ElementaryStream::NextAU()
 	Aunit *p_au = next();
 	if( p_au != NULL )
 	{
+        mjpeg_info( "NEXT: %d %d\n", stream_id, p_au->dorder );
 		au = p_au;
 		au_unsent = p_au->length;
 		return true;
@@ -98,10 +99,7 @@ ElementaryStream::NextAU()
 Aunit *
 ElementaryStream::Lookahead( )
 {
-	if( eoscan )
-		return 0;
-	else
-		return aunits.lookahead();
+    return aunits.lookahead();
 }
 
 unsigned int 
@@ -170,11 +168,9 @@ ElementaryStream::SetSyncOffset( clockticks sync_offset )
 
 Aunit *ElementaryStream::next()
 {
-	if( eoscan )
-		return 0;
-	else if( aunits.current()+FRAME_CHUNK > last_buffered_AU  )
+    if( aunits.current()+FRAME_CHUNK > last_buffered_AU  )
 	{
-		FillAUbuffer(FRAME_CHUNK);
+        FillAUbuffer(FRAME_CHUNK);
 	}
 			
 	return aunits.next();

@@ -775,6 +775,9 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			}
 			else if( master != 0 && master->EndSeq() )
 			{
+                mjpeg_info( "Reached end of sequence at frame  %d\n",
+                            master->au->dorder
+                            );
 				if(  split_at_seq_end && master->Lookahead( ) != 0 )
 				{
 					if( ! master->SeqHdrNext() || 
@@ -901,7 +904,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_debug( "STREAM %02x completed.\n", (*str)->stream_id );
+				mjpeg_info( "STREAM %02x completed @ %d.\n", (*str)->stream_id, (*str)->au->dorder );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}

@@ -169,6 +169,9 @@ void VideoStream::Init ( const int stream_num,
 
 void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 {
+    if( eoscan )
+        return;
+
 	last_buffered_AU += frames_to_buffer;
 	mjpeg_debug( "Scanning %d video frames to frame %d\n", 
 				 frames_to_buffer, last_buffered_AU );
