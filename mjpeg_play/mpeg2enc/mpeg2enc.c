@@ -58,6 +58,7 @@
 #include "global.h"
 #include "motionsearch.h"
 #include <format_codes.h>
+#include <mpegconsts.h>
 
 int verbose = 1;
 
@@ -110,71 +111,13 @@ static int param_vbv_buffer_still_size = 0;
 int param_422 = 0;
 
 
-
-static double framerates[]=
-    {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
-
-#define num_frame_rates (sizeof(framerates)/sizeof(double))
-
-static char *frame_rate_definitions[num_frame_rates] =
-{
-    "illegal", 
-	"24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
-	"24.0 (NATIVE FILM)",
-	"25.0 (PAL/SECAM VIDEO / converted FILM)",
-	"30000.0/1001.0 (NTSC VIDEO)",
-	"30.0",
-	"50.0 (PAL FIELD RATE)",
-	"60000.0/1001.0 (NTSC FIELD RATE)",
-	"60.0"
-};
-
-
-static char * mpeg1_aspect_ratio_definitions[] =
-{
-	"1:1 (square pixels)",
-	"1:0.6735",
-	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
-    "1:0.7615",
-	"1:0.8055",
-	"1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)",
-	"1:0.8935",
-	"1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)",
-	"1:0.9815",
-	"1:1.0255",
-	"1:1:0695",
-	"1:1.125  (4:3 NTSC for 720x480/352x240 images)",
-	"1:1575",
-	"1:1.2015"
-};
-
-static char *mpeg2_aspect_ratio_definitions[] = 
-{
-	"1:1 display",
-	"4:3 display",
-	"16:9 display",
-	"2.21:1 display"
-};
-
-static char **aspect_ratio_definitions[2] = 
-{
-	mpeg1_aspect_ratio_definitions,
-	mpeg2_aspect_ratio_definitions
-};
-
-static const int num_aspect_ratios[2] = 
-{
-	sizeof(mpeg1_aspect_ratio_definitions)/sizeof(char *),
-     sizeof(mpeg2_aspect_ratio_definitions)/sizeof(char *)
-};
-
 static void DisplayFrameRates()
 {
  	int i;
 	printf("Frame-rate codes:\n");
-	for( i = 0; i < num_frame_rates; ++i )
+	for( i = 0; i < mpeg_num_frame_rates; ++i )
 	{
-		printf( "%2d - %s\n", i, frame_rate_definitions[i]);
+		printf( "%2d - %s\n", i, mpeg_frame_rate_code_definition(i));
 	}
 	exit(0);
 }
@@ -183,14 +126,14 @@ static void DisplayAspectRatios()
 {
  	int i;
 	printf("MPEG1 pixel aspect ratio codes:\n");
-	for( i = 0; i < num_aspect_ratios[0]; ++i )
+	for( i = 0; i < mpeg_num_aspect_ratios[0]; ++i )
 	{
-		printf( "%2d - %s\n", i+1, aspect_ratio_definitions[0][i]);
+		printf( "%2d - %s\n", i+1, mpeg_aspect_code_definition(0,i));
 	}
 	printf("\nMPEG2 display aspect ratio codes:\n");
-	for( i = 0; i < num_aspect_ratios[1]; ++i )
+	for( i = 0; i < mpeg_num_aspect_ratios[1]; ++i )
 	{
-		printf( "%2d - %s\n", i+1, aspect_ratio_definitions[1][i]);
+		printf( "%2d - %s\n", i+1, mpeg_aspect_code_definition(1,i));
 	}
 	exit(0);
 }
@@ -418,10 +361,13 @@ static int infer_default_params()
 	if( param_frame_rate != 0 )
 	{
 		if( opt_frame_rate_code != param_frame_rate && 
-			opt_frame_rate_code > 0 && opt_frame_rate_code < num_frame_rates )
+			opt_frame_rate_code > 0 && 
+			opt_frame_rate_code < mpeg_num_frame_rates )
 		{
-			mjpeg_warn( "Specified output frame-rate %3.2f will over-ride\n", framerates[param_frame_rate]);
-			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n", framerates[opt_frame_rate_code]);
+			mjpeg_warn( "Specified output frame-rate %3.2f will over-ride\n", 
+						mpeg_frame_rate(param_frame_rate));
+			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n",
+						mpeg_frame_rate(opt_frame_rate_code));
 		}
 		opt_frame_rate_code = param_frame_rate;
 	}
@@ -464,11 +410,11 @@ static int check_param_constraints()
 	
 
 
-	if(  param_aspect_ratio > num_aspect_ratios[param_mpeg-1] ) 
+	if(  param_aspect_ratio > mpeg_num_aspect_ratios[param_mpeg-1] ) 
 	{
 		mjpeg_error("For MPEG-%d aspect ratio code  %d > %d illegal\n", 
-				 param_mpeg, param_aspect_ratio, 
-					num_aspect_ratios[param_mpeg-1]);
+					param_mpeg, param_aspect_ratio, 
+					mpeg_num_aspect_ratios[param_mpeg-1]);
 		++nerr;
 	}
 		
@@ -558,10 +504,11 @@ int main(argc,argv)
 			param_frame_rate = atoi(optarg);
             if( param_frame_rate == 0 )
 				DisplayFrameRates();
-			if( param_frame_rate < 0 || param_frame_rate > num_frame_rates-1)
+			if( param_frame_rate < 0 || 
+				param_frame_rate >= mpeg_num_frame_rates)
 			{
 				mjpeg_error( "-F option must be [0..%d]\n", 
-						 num_frame_rates-1);
+						 mpeg_num_frame_rates-1);
 				++nerr;
 			}
 			break;
@@ -765,10 +712,10 @@ int main(argc,argv)
 	mjpeg_info("Vertical size: %d pel\n",opt_vertical_size);
 	mjpeg_info("Aspect ratio code: %d = %s\n", 
 			param_aspect_ratio,
-			aspect_ratio_definitions[param_mpeg-1][param_aspect_ratio-1]);
+			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
 	mjpeg_info("Frame rate code:   %d = %s\n",
 			opt_frame_rate_code,
-			frame_rate_definitions[opt_frame_rate_code]);
+			mpeg_frame_rate_code_definition(opt_frame_rate_code));
 
 	if(param_bitrate) 
 		mjpeg_info("Bitrate: %d KBit/s\n",param_bitrate/1000);
@@ -1128,7 +1075,7 @@ static void init_mpeg_parms(void)
 	/* make sure MPEG specific parameters are valid */
 	range_checks();
 
-	opt_frame_rate = framerates[opt_frame_rate_code];
+	opt_frame_rate = mpeg_frame_rate(opt_frame_rate_code);
 
 
 	if ( !opt_mpeg1)
@@ -1239,7 +1186,8 @@ static void init_mpeg_parms(void)
 	}
 
 
-	if( ( (opt_vertical_size+15) / 16)%2 != 0 )
+	if( (!opt_prog_seq || !opt_prog_frame ) &&
+		( (opt_vertical_size+15) / 16)%2 != 0 )
 	{
 		mjpeg_warn( "Frame height won't split into two equal field pictures...\n");
 		mjpeg_warn( "forcing encoding as progressive video\n");

@@ -57,20 +57,20 @@ bin_PROGRAMS = \
 	transist.flt matteblend.flt lavpipe yuvscaler yuvplay \
 	$(AVIFILE_BIN)
 
-lav_headers = lav_io.h editlist.h glav.h avilib.h yuv4mpeg.h jpegutils.h \
+lav_headers = lav_io.h editlist.h glav.h avilib.h oldyuv4mpeg.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h
 
-ypipe_SOURCES = ypipe.c yuv4mpeg.c $(lav_headers)
+ypipe_SOURCES = ypipe.c oldyuv4mpeg.c $(lav_headers)
 ypipe_LDADD = -L$(top_srcdir)/utils -lutils
 
-yuv2lav_SOURCES = yuv2lav.c yuv4mpeg.c $(lav_headers)
+yuv2lav_SOURCES = yuv2lav.c oldyuv4mpeg.c $(lav_headers)
 yuv2lav_LDADD = -L$(top_srcdir)/utils -lutils \
 		 liblavfile.la liblavjpeg.la
 
-transist_flt_SOURCES = transist.flt.c yuv4mpeg.c ${lav_headers}
+transist_flt_SOURCES = transist.flt.c oldyuv4mpeg.c ${lav_headers}
 transist_flt_LDADD = -L$(top_srcdir)/utils -lutils
 
-matteblend_flt_SOURCES = matteblend.flt.c yuv4mpeg.c ${lav_headers}
+matteblend_flt_SOURCES = matteblend.flt.c oldyuv4mpeg.c ${lav_headers}
 matteblend_flt_LDADD = -L$(top_srcdir)/utils -lutils
 
 lavplay_SOURCES = lavplay.c ${lav_headers}
@@ -86,16 +86,16 @@ lavrec_LDADD = -L$(top_srcdir)/utils -lutils \
 testrec_SOURCES = testrec.c  audiolib.c  $(lav_headers)
 testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
 
-lav2yuv_SOURCES = lav2yuv.c yuv4mpeg.c lav_common.c $(lav_headers)
+lav2yuv_SOURCES = lav2yuv.c oldyuv4mpeg.c lav_common.c $(lav_headers)
 lav2yuv_LDADD = -L$(top_srcdir)/utils -lutils \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
 
-lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c yuv4mpeg.c $(lav_headers)
+lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c oldyuv4mpeg.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
 	$(AVIPLAY_LIBS)
 
-lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c pipelist.h $(lav_headers)
+lavpipe_SOURCES = lavpipe.c oldyuv4mpeg.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lutils 
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c $(lav_headers)
@@ -122,9 +122,9 @@ yuvscaler_SOURCES = yuvscaler.c $(lav_headers)
 yuvscaler_LDADD = -L$(top_builddir)/utils -lutils -lm \
 	 liblavfile.la liblavjpeg.la
 
-yuvplay_SOURCES = yuvplay.c yuv4mpeg.h yuv4mpeg.c
+yuvplay_SOURCES = yuvplay.c oldyuv4mpeg.h oldyuv4mpeg.c
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
 
-yuv2divx_SOURCES = yuv2divx.cpp yuv4mpeg.h yuv4mpeg.c
+yuv2divx_SOURCES = yuv2divx.cpp oldyuv4mpeg.h oldyuv4mpeg.c
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils \
 	$(AVIPLAY_LIBS)
