@@ -458,12 +458,14 @@ static void
 motion0 (u_char *y0, u_char *y1, int w, int ri, int rj, vec *dij)
 {
 uint32_t SAD, best_SAD = INT_MAX;
+int adjw;
 int i = dij->x, j = dij->y;
 int ii, jj;
 u_char *y1r = y1 + j*w + i;
+
 y0 += rj*w + ri;
 y1 += (j-1)*w + i - 1;
-int adjw = w - 3;
+adjw = w - 3;
 for (jj = -1; jj <= 1; jj++, y1 += adjw)
 for (ii = -1; ii <= 1; ii++, y1++)
 {
