@@ -579,15 +579,15 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
 {
   if (verbose)
     {
-      printf ("\nThe OK button in the Encoding Options was pressed, changing options:\n");
+      printf ("\nThe OK button in the Options was pressed, changing options that effect the encoding:\n");
       if (t_use_yuvplay_pipe != use_yuvplay_pipe)
-        printf(" Encoding Preview set to %i \n ",t_use_yuvplay_pipe);
+        printf(" Encoding Preview set to %i \n",t_use_yuvplay_pipe);
 
       if (t_addoutputnorm != encoding.addoutputnorm)
-        printf(" Output norm is added %i \n ",t_addoutputnorm);
+        printf(" Output norm is added %i \n",t_addoutputnorm);
 
       if (strcmp(t_ininterlace_type, encoding.ininterlace_type) != 0 )
-        printf(" yuvscaler interlace type set to %s \n ", t_ininterlace_type);
+        printf(" yuvscaler interlace type set to %s \n", t_ininterlace_type);
     
       if (t_encoding_syntax_style != encoding_syntax_style)
         printf(" Encoding Syntax set to %i \n", t_encoding_syntax_style);
@@ -871,74 +871,8 @@ table_line = 0;
   gtk_entry_set_text(GTK_ENTRY(player_field), selected_player); 
   gtk_signal_connect(GTK_OBJECT(player_field), "changed",
                      GTK_SIGNAL_FUNC(player_callback), player_field);
-  gtk_widget_set_usize (player_field, 100, -2);
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              player_field, 1, 2, table_line, table_line+1);
   gtk_widget_show (player_field);
 }
-
-/* Encoding options dialog */
-void open_encoptions_window(GtkWidget *widget, gpointer data)
-{
-        GtkWidget *options_window, *table, *button, *options_notebook;
-        GtkWidget *vbox, *hbox;
-
-
-        options_window = gtk_window_new(GTK_WINDOW_DIALOG);
-        vbox = gtk_vbox_new (FALSE, 10);
-        options_notebook = gtk_notebook_new ();
-
-        gtk_window_set_title (GTK_WINDOW(options_window), 
-                            "Linux Video Studio - Encoding Options");
-        gtk_container_set_border_width (GTK_CONTAINER (options_window), 15);
-
-        hbox = gtk_hbox_new(FALSE, 20);
-        table = gtk_table_new (Encoptions_Table_x, Encoptions_Table_y, FALSE);
-        create_encoding_layout(table);
-        gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
-        gtk_widget_show(table);
-        gtk_notebook_append_page (GTK_NOTEBOOK (options_notebook), hbox, 
-                                  gtk_label_new("Encoding Options"));
-        gtk_widget_show (hbox);
-
-/* Maybe needed if there are more options needed *
- *       hbox = gtk_hbox_new(TRUE, 20);
- *       table = gtk_table_new (2,8, FALSE);
- *       gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
- *       gtk_widget_show(table);
- *       gtk_notebook_append_page (GTK_NOTEBOOK (options_notebook), hbox, 
- *                                     gtk_label_new("More Options"));
- *       gtk_widget_show (hbox);
- * ***********************************************/
-
-        gtk_notebook_set_tab_pos (GTK_NOTEBOOK (options_notebook), GTK_POS_TOP);        gtk_box_pack_start (GTK_BOX (vbox), options_notebook, FALSE, FALSE, 0);
-        gtk_widget_show(options_notebook);
-
-/* Create the OK and CANCEL buttons */
-        hbox = gtk_hbox_new(TRUE, 20);
-
-        button = gtk_button_new_with_label("OK");
-        gtk_signal_connect(GTK_OBJECT(button), "clicked", 
-                           GTK_SIGNAL_FUNC (accept_encoptions), NULL);
-        gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                gtk_widget_destroy, GTK_OBJECT(options_window));
-        gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
-        gtk_widget_show(button);
-
-        button = gtk_button_new_with_label("Cancel");
-        gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                gtk_widget_destroy, GTK_OBJECT(options_window));
-        gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
-        gtk_widget_show(button);
-
-        gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
-        gtk_widget_show (hbox);
-
-        gtk_container_add (GTK_CONTAINER (options_window), vbox);
-        gtk_widget_show(vbox);
-
-        gtk_widget_show(options_window);
-
-}
-
 

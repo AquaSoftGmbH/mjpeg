@@ -1719,6 +1719,14 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	gtk_notebook_append_page (GTK_NOTEBOOK (options_notebook), hbox, gtk_label_new("TV Screen Options"));
 	gtk_widget_show (hbox);
 
+        hbox = gtk_hbox_new(TRUE, 20);
+        table = gtk_table_new (2,4, FALSE);
+        create_encoding_layout(table);
+        gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, TRUE, 20);
+        gtk_widget_show(table);
+        gtk_notebook_append_page (GTK_NOTEBOOK (options_notebook), hbox, gtk_label_new("Encoding Options"));
+        gtk_widget_show (hbox);
+
 	gtk_notebook_set_tab_pos (GTK_NOTEBOOK (options_notebook), GTK_POS_TOP);
 	gtk_box_pack_start (GTK_BOX (vbox), options_notebook, FALSE, FALSE, 0);
 	gtk_widget_show(options_notebook);
@@ -1727,6 +1735,7 @@ void open_options_window(GtkWidget *widget, gpointer data)
 
 	button = gtk_button_new_with_label("OK");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_options), NULL);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_encoptions), NULL);
 	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
 		gtk_widget_destroy, GTK_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
