@@ -34,3 +34,10 @@ typedef struct
    long last_apos;
 }
 EditList;
+
+int el_get_video_frame(char *vbuff, long nframe, EditList *el);  
+void read_video_files(char **filename, int num_files, EditList *el); 
+int el_get_video_frame(char *vbuff, long nframe, EditList *el);
+int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute);
+void read_video_files(char **filename, int num_files, EditList *el);
+int write_edit_list(char *name, long n1, long n2, EditList *el);

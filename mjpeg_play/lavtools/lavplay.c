@@ -127,11 +127,6 @@ char *audio_strerror();
 int  verbose = 2;
 
 static EditList el;
-/* forward definitions for editlist.c */
-int el_get_video_frame(char *vbuff, long nframe, EditList *el);
-int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute);
-void read_video_files(char **filename, int num_files, EditList *el);
-int write_edit_list(char *name, long n1, long n2, EditList *el);
 
 /* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
 void audio_shutdown();

@@ -229,7 +229,7 @@ char    **argv;
 	/* Stream out audio wav-style... in per-frame chunks */
 	for( f = 0; f < el.video_frames; ++f )
 	{
-		n = el_get_audio_data(audio_buff, f, &el, 0);
+		n = el_get_audio_data((char *)audio_buff, f, &el, 0);
 		if( n < 0 )
 		{
 			fprintf( stderr, "%s: Error: Couldn't get audio for frame %d!\n", argv[0], f );

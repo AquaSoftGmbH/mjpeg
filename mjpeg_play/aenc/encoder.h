@@ -311,8 +311,11 @@ extern void        psycho_anal();
 /* The following functions are in the file "subs.c" */
 
 #ifdef     PROTO_ARGS
+void fft(FLOAT *x_real, FLOAT *x_imag, FLOAT *energy, FLOAT *phi, int N);
+#ifdef ORIGINAL_CODE
 extern void        fft(FLOAT[BLKSIZE], FLOAT[BLKSIZE], FLOAT[BLKSIZE],
                            FLOAT[BLKSIZE], int );
+#endif
 #else
 extern void        fft();
 #endif

@@ -1,7 +1,9 @@
 Linux Audio/Video tools - LAVTOOLS
 ==================================
 
-The lavtools stand for "Linux/Audio video tools" and are released under the General GNU Public Licence, see the COPYING file for details.
+The lavtools stand for "Linux/Audio video tools" and are released
+under the General GNU Public Licence, see the COPYING file for
+details.
 
 Installation:
 -------------
@@ -17,7 +19,9 @@ Then (with root privileges if needed) :
 
 make install
 
-You should now be able to run the lavtools, at least. 
+If you have installed Quicktime4Linux and/or the jpeg libraries in unusual places you may need to use some options to persuade ./configure to find them.
+
+You should now be able to run the lavtools and MPEG compressors at least.
 
 Have a look at the README to see how the lavtools (ought to ;) ) work ...
 

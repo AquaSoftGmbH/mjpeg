@@ -46,7 +46,7 @@ subs.c
  *****************************************************************************/
 #define      BLKSIZE_S   256
 #define      LOGBLKSIZE_S 8
-
+#ifdef ORIGINAL_CODE
 void fft(x_real,x_imag, energy, phi, N)
 FLOAT x_real[BLKSIZE], x_imag[BLKSIZE], energy[BLKSIZE], phi[BLKSIZE];
 int	N;
@@ -160,3 +160,4 @@ int	N;
     j = j+k;
  }
 }
+#endif

@@ -23,6 +23,7 @@
  */
 
 #include <errno.h>
+#include <string.h>
 #define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
@@ -876,7 +877,7 @@ int lav_filetype(lav_file_t *lav_file)
 
 lav_file_t *lav_open_input_file(char *filename)
 {
-   int res, n;
+   int n;
    char *video_comp, *audio_comp;
    unsigned char *frame;
    long len;

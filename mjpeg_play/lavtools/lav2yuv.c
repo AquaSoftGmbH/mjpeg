@@ -25,10 +25,6 @@
 #include <lav_io.h>
 #include <editlist.h>
 
-/* These should be in the headers!! */
-
-int el_get_video_frame(char *vbuff, long nframe, EditList *el);  
-void read_video_files(char **filename, int num_files, EditList *el); 
 
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
                     int itype, int ctype, int width, int height,

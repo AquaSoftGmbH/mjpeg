@@ -262,6 +262,9 @@ typedef struct {
     int         stereo;         /* 1 for mono, 2 for stereo */
     int         jsbound;        /* first band of joint stereo coding */
     int         sblimit;        /* total number of sub bands */
+	int         in_freq;		/* Freq. input in Hz */
+	int         down_freq;		/* Freq. to downsample input to for encoding
+								   in Hz */
 } frame_params;
 
 /* Double and SANE Floating Point Type Definitions */

@@ -9,7 +9,7 @@
 
 ## EXTRA-DIST = README PLANS
 INCLUDES = -I../mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
-CFLAGS=-Wall -g
+CFLAGS=-Wall -Werror -g
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
