@@ -279,7 +279,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     mjpeg_info("Opened WAV file, freq = %d Hz, channels = %d, bits = %d",
            freq_in, chans_in, audio_bits);
-    mjpeg_info("format = 0x%x, audio length = %lu bytes",audio_format,(unsigned long)audio_bytes);
+    mjpeg_info("format = 0x%x, audio length = %d bytes",audio_format,audio_bytes);
 
     if(audio_format!=1)
     {
