@@ -1,0 +1,76 @@
+# -*- mode:Text -*-
+
+These are YUV4MPEG stream filters.
+All of them read YUV4MPEG stream from stdin, write to stdout.
+
+yuvkineco
+  Usage:
+    yuvkineco [-S threshold] [-F OutputFPSCODE] [-C OutputCycleListName] # auto/1st try
+    yuvkineco [-S threshold] [-F OutputFPSCODE] -[ON] InputCycleListName # retry
+  revert to original non-interlaced frames, from NTSC video which was
+  film sourced and 2-3 pulled down.
+  Input fps code must be 4(29.97fps), output fps code can be selected
+  from 1(23.97fps) to 4(29.97fps). If 2, 3 or 4 selected, duplicated 
+  frames remain but their are also reverted to non-interlaced.
+  If input was non-interlaced, only do remove duplicated frames.
+  Interlaced frame detection can fail in conditions like:
+    Pull down cycle changed (video editing).
+    Low quality pull down.
+    Motionless scene.
+  if -C OutputCycleListName was specified, yuvkineco output 2-3 pull down
+  cycle list to the file.  You can edit this file by hand and feed it
+  to yuvkineco with -O or -N option to correct mistake of 1st yuvkineco.
+  Try -C and see cycle list.
+  Options:
+    -F FPSCODE		(default: same as input).
+		Set output fps code.
+    -C PATH	Specify 2-3 pull down cycle list file name to write.
+    -O PATH	Specify cycle list name to read with old yuv stream to retry.
+    -N PATH	Specify cycle list name to read with new yuv stream to repair.
+    -S MIN	Use yuvycsnoise as preprocessor and specify minimum threshold.
+  EXAMPLE #1: for 24p movie / automatically
+    lav2yuv 60i.eli | yuvkineco -F 1 | yuv2lav -f a -I 0 -o 24p.avi
+  EXAMPLE #2: for 30p/24p mix / automatically
+    lav2yuv 60i.eli | yuvkineco -F 4 | yuv2lav -f a -I 0 -o 30p.avi
+  EXAMPLE #3: for 24p movie / check and repair
+    lav2yuv 60i.eli   | yuvkineco -F 1 -C 60i.23c | yuv2lav -f a -I 1 -o take1.avi
+    glav -F take1.avi # check and edit 60i.23c
+    lav2yuv take1.avi | yuvkineco -F 1 -N 60i.23c | yuv2lav -f a -I 0 -o take2.avi
+  EXAMPLE #4: for 24p movie / check and retry
+    lav2yuv 60i.eli | yuvkineco -F 1 -C 60i.23c | yuv2lav -f a -I 0 -o take1.avi
+    glav -F take1.avi # check and edit 60i.23c
+    lav2yuv 60i.eli | yuvkineco -F 1 -O 60i.23c | yuv2lav -f a -I 0 -o take2.avi
+
+yuvycsnoise
+  Usage:
+    yuvycsnoise [-t] [-m {tbic}] [-S min]
+		[-T errt,maxt] [-B errb,maxb] [-I erri,maxi] [-C errc,maxc]
+  Noise filter specialized for NTSC Y/C separation noise.
+  If video capture hardware has only a poor Y/C separator,
+  at vertical stripe (especialy red/blue), noises appear
+  which seem checker flag and bright/dark invert per 1 frame.
+  yuvycsnoise reduces noises of this type.
+  Only Y noise reduced because UV noise should be
+  removed when convert to 4:2:0 from 4:2:2.
+  Options:
+    -t		test. Instead of noise reduction, noises will be
+		marked as black pixel.
+    -m METHOD		(default: tbic).
+		Select method.
+		METHOD is string in which each charactor mean method.
+		t: 'triframe' method of luma noise reduction.
+		b: 'biframe' method of luma noise reduction.
+		i: 'infield' method of luma noise reduction.
+		c: chroma noise reduction. use 3 frames as 'triframe'.
+    -S MIN		(default: 4).
+		Set minimum threshold of luma/chroma difference
+		which   is treated as noise.
+    -T ERRT[,MAXT]	(default: 32,255).
+    -B ERRB[,MAXB]	(default: 32,255).
+    -I ERRI[,MAXI]	(default: 16,255).
+    -C ERRC[,MAXC]	(default: 12,255).
+		Set threshold of luma/chroma difference of each methods.
+		ERRx is maximum error of luma/chroma of pixels arround
+		target pixel, which should be same if target contain noise.
+		MAXx is maximum threshold of luma/chroma difference of
+		target pixel from luma/chroma after noise reduced.
