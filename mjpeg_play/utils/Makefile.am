@@ -3,10 +3,8 @@
 if HAVE_ALTIVEC
 SUBDIRS = altivec
 endif
-if HAVE_ASM_NASM
 if HAVE_ASM_MMX
 SUBDIRS = mmxsse
-endif
 endif
 
 DIST_SUBDIRS = altivec mmxsse
@@ -44,10 +42,8 @@ noinst_HEADERS = \
 if HAVE_ALTIVEC
 altivec_lib = $(top_builddir)/utils/altivec/libaltivec.la
 endif
-if HAVE_ASM_NASM
 if HAVE_ASM_MMX
 mmxsse_lib = $(top_builddir)/utils/mmxsse/libmmxsse.la
-endif
 endif
 
 pkginclude_HEADERS = \

@@ -30,28 +30,20 @@ void sub_mean_reduction( me_result_set *matchset,
 
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
-                                    int frowstride,int fh, int* resvec
-	) __asm__ ("mblock_sub22_nearest4_sads_mmxe" );
+                                    int frowstride,int fh, int32_t *resvec);
 	
 int mblock_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2, 
-								   int rowstride, int h, int *resvec, int peakerror
-	) __asm__ ("mblock_nearest4_sads_mmxe");
+                              int rowstride, int h, int32_t *resvec, int peakerror);
 
 int sad_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, 
-				int h, int distlim
-	) __asm__ ("sad_00_mmxe");
-int sad_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h
-	) __asm__ ("sad_01_mmxe");
-int sad_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h
-	) __asm__ ("sad_10_mmxe");
-int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h
-	) __asm__ ("sad_11_mmxe");
+                int h, int distlim);
+int sad_01_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_10_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
+int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
 
 
-int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh
-	) __asm__ ("sad_sub22_mmxe");
-int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh
-	) __asm__ ("sad_sub44_mmxe");
+int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
+int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
 int sumsq_mmx( uint8_t *blk1, uint8_t *blk2,
 			   int rowstride, int hx, int hy, int h
 	) __asm__ ("sumsq_mmx");

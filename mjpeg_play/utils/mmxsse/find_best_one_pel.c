@@ -23,7 +23,7 @@ void find_best_one_pel_mmxe( me_result_set *sub22set,
 	uint8_t *orgblk;
 	int penalty;
 	me_result_s matchrec;
-	int resvec[4];
+	int32_t resvec[4];
 
 	for( k = 0; k < sub22set->len; ++k )
 	{

@@ -20,7 +20,7 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 	int jlim = jhigh-j0;
 	int x,y;
 	uint8_t *s22orgblk;
-	int resvec[4];
+	int32_t resvec[4];
 
 	/* TODO: The calculation of the lstrow offset really belongs in
        asm code... */

@@ -996,7 +996,7 @@ void init_motion_search(void)
 	pbuild_sub44_mests = build_sub44_mests;
 	psubsample_image = subsample_image;
 
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+#if defined(HAVE_ASM_MMX)
 	enable_mmxsse_motion(cpucap);
 #endif
 #ifdef HAVE_ALTIVEC
