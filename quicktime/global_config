@@ -1,9 +1,0 @@
-# DO NOT EDIT.  EDIT ./configure INSTEAD AND RERUN IT.
-CFLAGS = -O2 -fomit-frame-pointer -malign-loops=2 -malign-jumps=2 -malign-functions=2 -I/usr/local/include
-CFLAGS += -DUSE_MMX
-CFLAGS += -I. -Ijpeg -Ilibdv $(shell glib-config --cflags)
-export CFLAGS
-CC = gcc
-DVMMXOBJS = 	libdv/idct_block_mmx.o 	libdv/quant_x86.o 	libdv/vlc_x86.o
-
-DVMMX_OBJS2 = idct_block_mmx.o 	quant_x86.o 	vlc_x86.o
