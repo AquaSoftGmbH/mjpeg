@@ -7,7 +7,7 @@ mpeg2enc \- MPEG-1/2 encoder
 .B mpeg2enc
 .RB [ -v | --verbose
 .IR num ]
-.RB [ -M | --multithread
+.RB [ -M | --multi-thread
 .IR num_CPU ]
 .RB [ -f | --format
 .IR mpeg_profile ]
@@ -402,7 +402,7 @@ into NTSC (see the -f flag).
 
 .SH "OPTION LETTERS FOR CONTROLLING COMPRESSION AND SPEED"
 .PP
-.BR -M|--multithread \ num_CPU
+.BR -M|--multi-thread \ num_CPU
 .PP
 MPEG encoding is a task that can be split over a small number of CPU's
 quite efficiently.  Mpeg2enc can be internally set to split major
