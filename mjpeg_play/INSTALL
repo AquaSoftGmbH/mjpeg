@@ -11,9 +11,33 @@ Required Software
 
 *** Software you *must* have installed
 
-1) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
+1) The GLib library - http://www.gtk.org
+(libglib .... is included in the standard distributions)
 
-The configure scripts look for this in /usr/local/src/quicktime or
+
+2) The SDL library -  http://www.libsdl.org/
+   I used SDL 1.1.6 for development, please tell me if the 
+   new SDL versions won't compile with this software ! 
+
+	Some rather tricky and difficult to repeat problems centred around the
+	use of pre-compiled versions of this library.  If software
+	playback crashes out on you immediately try compiling and
+	installing SDL from source-code.
+
+3) A reasonably up-to-date installation of the "xforms" library.  For
+RedHat systems the xforms-0.88.1-1 rpm's (you need the -devel too) on
+the RedHat rpm mirrors are known to work.
+
+Irritatingly some older installation make the header "X11/forms.h" whilst
+more recent ones use "forms.h".  If compilation stops with one of these
+files missing make sure you have forms installed.  The 0.88.1-1 rpm's
+for RedHat seem to work fine.
+
+
+4) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
+
+The configure scripts look for this in same parent directory as the
+directory containing this file, /usr/local/src/quicktime or
 /usr/local/src/quicktime4linux-1.2 by default.  You can specify
 another directory using the --with-quicktime flag to the ./configure
 script.
@@ -40,7 +64,12 @@ No need (or sense) in "make install"-ing as: (a) Its a hacked version
 and you don't want to muddle it up with the original and then abuse
 the original author for deficiencies we introduced.  (b) The configure scripts for expect to look for the source anyway.
 
-2) The MMX enhanced jpeg library from the same place you got this package.
+5) The MMX enhanced jpeg library from the same place you got this package.
+
+The configure scripts look for this in same parent directory as the
+directory containing this file, /usr/local/src/jpeg-mmx by default.
+You can specify another directory using the --with-jpeg-mmx flag to
+the ./configure script.
 
 O.k. actually, you *don't* need this.libjpeg6 (libjpeg6a or 6b is
 included in the standard distributions) along with the corresponding
@@ -53,23 +82,20 @@ version that can be found with where you obtained this software.
 
 http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.2.tar.gz
 
-Compile and install: 
+Compile: 
 
 ./configure
 make
-make install     
 
-You'll need to have write permission to /usr/local/lib and /usr/local/include
-for the install.
-
-It is *strongly* recommended you compile and install this.  Don't
-worry about it messing up your precious system jpeg libs.  Its default
-settings (which are those expected by the scripts for lavtools)
-install only simple static libraries in /usr/local named jpeg-mmx to
-prevent clashes.
+It is *strongly* recommended you use this version of jpeg lib.  Don't
+worry about it messing up your precious system jpeg libs - you *don't*
+install it. The compiled static library is expected by the configure
+scripts in the same parent directory as the mjpegtools source code or
+/usr/local/src.
 
 
-3) The libmovtar library for handling audio/video streams in "movtar" format.
+
+5) The libmovtar library for handling audio/video streams in "movtar" format.
 Very handy for hacking around, moving between formats, and experimentation.
 
 
@@ -85,35 +111,11 @@ You'll need to be able to write to /usr/local/lib and /usr/local/include
 for the install.
 
 
-3) The GLib library - http://www.gtk.org
-(libglib .... is included in the standard distributions)
-
-
-4) The SDL library -  http://www.libsdl.org/
-   I used SDL 1.1.6 for development, please tell me if the 
-   new SDL versions won't compile with this software ! 
-
-	Some rather tricky and difficult to repeat problems centred around the
-	use of pre-compiled versions of this library.  If software
-	playback crashes out on you immediately try compiling and
-	installing SDL from source-code.
-
-5) A reasonably up-to-date installation of the "xforms" library.  For
-RedHat systems the xforms-0.88.1-1 rpm's (you need the -devel too) on
-the RedHat rpm mirrors are known to work.
-
-
 6) If you wish to recompile the mpeg encoder you'll need a recent version
 of the "nasm" assembler.
 
 
 *** Software you'll find useful
-
-
-Irritatingly some older installation make the header "X11/forms.h" whilst
-more recent ones use "forms.h".  If compilation stops with one of these
-files missing make sure you have forms installed.  The 0.88.1-1 rpm's
-for RedHat seem to work fine.
 
 
 1) The "toolame" MP2 encoder and the "sox" audio processing tool.
@@ -138,14 +140,21 @@ ftp://mjpeg.sourceforge.net/pub/mjpeg
 
 
 
-*** How to it...
+*** How to build and install it...
 
-To build the package just type :
+If you're building from cvs rather than the distribution tarball do :
 
 ./autogen.sh
 
 (This sets up the configuration script ./configure, 
  and runs it to autoconfigure and create the Makefile's)
+
+Next configure
+
+./configure
+
+(Obviously you may want to pass flags if you're installing in
+non-default places etc).
 
 make
 
@@ -156,7 +165,7 @@ Then (with root privileges if needed) :
 make install
 
 
-(This installs them in /usr/local/bin).
+(This installs them in /usr/local/bin by default).
 
 If you have installed Quicktime4Linux and/or the jpeg libraries in
 unusual places you may need to run ./configure manually with
@@ -171,7 +180,9 @@ threads with real-time priority.  Its not done by the installer as it
 is a bit risky and we'd prefer people to be able to try it under
 controlled conditions.
 
-Have a look at the README to see how the lavtools (ought to ;) ) work ...
+Have a look at the HINTS file to see how the lavtools (ought to ;) )
+work ...  Have a look at the README for more detailed explanation of
+the internals history and source-code layout
 
 /Andrew <as@comlab.ox.ac.uk>
 /Gernot <gz@lysator.liu.se>

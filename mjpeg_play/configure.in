@@ -44,12 +44,60 @@ AM_PATH_GLIB(1.2.0)
 dnl AC_SUBST(GLIB_CFLAGS)
 dnl AC_SUBST(GLIB_LIBS)
 
+dnl No jpeg yet... try for a local jpeg-mmx first!
+
+if test -r ../jpeg-mmx
+then
+  DEFAULT_JPEGDIR=`pwd`/../jpeg-mmx
+else
+  if test -r /usr/local/src/jpeg-mmx
+    then
+      DEFAULT_JPEGDIR=/usr/local/src/jpeg-mmx
+    else
+      DEFAULT_JPEGDIR=/usr/local/src/quicktime4linux-1.2
+    fi
+fi
+
+AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source dir [../jpeg-mmx:/usr/local/src/jpeg-mmx] ], 
+    JPEGDIR="$withval", 
+    JPEGDIR="$DEFAULT_JPEGDIR")
+
+OLDLIBS="$LIBS"
+AC_SUBST(JPEG_INCLUDE)
+LIBS="$LIBS -L $JPEGDIR"
+AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
+             	[	 
+  			   		have_jpeg="yes"
+					JPEG_INCLUDE="-I $JPEGDIR"
+					jpeg_lib="-L $JPEGDIR -ljpeg-mmx"
+ 		     	],
+             	[
+             		have_jpeg="no"
+					JPEG_INCLUDE=""
+		     	]
+			)
+LIBS=$OLDLIBS
+
+
+
+dnl If that can't be found fall back to the system jpeg lib...
+if test ${have_jpeg} = "no"
+then
+AC_CHECK_LIB( jpeg, jpeg_start_compress,
+             	[	 
+  			   		have_jpeg="yes"
+					jpeg_lib="-ljpeg"
+ 		     	],
+             	[
+             		have_jpeg="no"
+		     	]
+			)
+fi
+
 
 dnl -- Quicktime checks --
-dnl N.b. quicktime currently embeds an mmx jpeg, so we don't
-dnl bother looking for an external one if we link it in.
-
-have_jpeg="no"
+dnl A bit of funny business w.r.t. the jpeg lib as it has to come after
+dnl quicktime in link order...
 
 if test -r ../quicktime
 then
@@ -68,53 +116,24 @@ AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime sour
     QUICKTIME_LIBDIR="$DEFAULT_QUICKTIME_LIBDIR")
 
 OLDLIBS="$LIBS"
-LIBS="-L /usr/local/lib -L $QUICKTIME_LIBDIR $LIBS"
+LIBS="-L $QUICKTIME_LIBDIR $LIBS"
 AC_SUBST(QUICKTIME_INCLUDE)
 AC_SUBST(JPEG_INCLUDE)
 AC_CHECK_LIB( quicktime, quicktime_open,
 	          [ 
 		        AC_DEFINE(BUILD_QUICKTIME)
-				LIBS="$LIBS -lquicktime"
+				LIBS="$LIBS -lquicktime $jpeg_lib"
 			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
-				#JPEG_INCLUDE="${QUICKTIME_INCLUDE}/jpeg"	
 			    have_quicktime="yes"
-				#have_jpeg="yes"	
 			    
 		      ],
 			  [ 
-	            LIBS="$OLDLIBS"
+	            LIBS="$OLDLIBS $jpeg_lib"
 				have_quicktime="no"
 			  ],
-			  -lm -lz -lpng -lpthread -ljpeg `glib-config --libs --cflags`
+			  -lm -lz -lpng -lpthread $jpeg_lib `glib-config --libs --cflags`
 			 )
 
-dnl No jpeg yet... try for a local jpeg-mmx first!
-if test ${have_jpeg} = "no"
-then
-AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
-             	[	 
-  			   		have_jpeg="yes"
-					LIBS="$LIBS -ljpeg-mmx"
-					JPEG_INCLUDE="-I /usr/local/include"
- 		     	],
-             	[
-             		have_jpeg="no"
-		     	]
-			)
-fi
-
-dnl If that can't be found fall back to the system jpeg lib...
-if test ${have_jpeg} = "no"
-then
-AC_CHECK_LIB( jpeg, jpeg_start_compress,
-             	[	 
-  			   		have_jpeg="yes"
- 		     	],
-             	[
-             		have_jpeg="no"
-		     	]
-			)
-fi
 
 
 dnl Check for SDL

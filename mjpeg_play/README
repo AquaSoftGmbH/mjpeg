@@ -1,10 +1,17 @@
+Documentation Files
+===================
+
+INSTALL - How to install this package
+
+HINTS - How to use this package and avoid common pitfalls.  See the
+project homepage and the buz-linux homepage for the drivers and FAQ's
+on using and installing the hardware
+
 REMINDER: You are currently required to have Quicktime installed !
-See "REQUIRED_SOFTWARE"...
+See "INSTALL"...
 
 REMINDER: For info on how to compile and install see "INSTALL"...
 
-See the HINTS file for tips on practical usage and how to avoid
-common pit-falls.
 
 lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
 ==============================================================
