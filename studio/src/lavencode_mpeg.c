@@ -63,6 +63,9 @@ void show_data(gpointer task);
 void set_decoderbuffer(GtkWidget *widget, gpointer data);
 void set_datarate (GtkWidget *widget, gpointer data);
 void set_vbr (GtkWidget *widget, gpointer data);
+void set_qualityfa (GtkWidget *widget, gpointer data);
+void set_minGop (GtkWidget *widget, gpointer data);
+void set_maxGop (GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL;
@@ -77,7 +80,8 @@ GtkWidget *combo_entry_samples, *combo_entry_noisefilter, *combo_entry_audiobitr
 GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
 GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
-GtkWidget *combo_entry_streamrate;
+GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
+GtkWidget *combo_entry_maxGop;
 /* =============================================================== */
 /* Start of the code */
 
@@ -115,6 +119,11 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.forcemono,"%s",(*point).forcemono);
   sprintf(tempenco.forcevcd,"%s",(*point).forcevcd);
   tempenco.bitrate=(*point).bitrate;
+  tempenco.qualityfactor=(*point).qualityfactor;
+  tempenco.minGop=(*point).minGop;
+  tempenco.maxGop=(*point).maxGop;
+  tempenco.sequencesize=(*point).sequencesize;
+  tempenco.nonvideorate=(*point).nonvideorate;
   tempenco.searchradius=(*point).searchradius;
   tempenco.muxformat=(*point).muxformat;
   sprintf(tempenco.muxvbr,"%s",(*point).muxvbr);
@@ -163,6 +172,22 @@ char val[LONGOPT];
 
   sprintf(val,"%i",tempenco.bitrate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
+
+  if (tempenco.minGop == 12)
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_minGop),"default 12");
+  else
+    {
+       sprintf(val,"%i",tempenco.minGop);
+       gtk_entry_set_text(GTK_ENTRY(combo_entry_minGop),val);
+    }
+
+  if (tempenco.maxGop == 12)
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_maxGop),"default 12");
+  else
+    {
+       sprintf(val,"%i",tempenco.maxGop);
+       gtk_entry_set_text(GTK_ENTRY(combo_entry_maxGop),val);
+    }
 
   sprintf(val,"%i",tempenco.searchradius);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),val);
@@ -400,13 +425,86 @@ void set_scalerstrings (GtkWidget *widget, gpointer data)
 void set_videobit (GtkWidget *widget, gpointer data)
 {
 char *test;
+int i;
+i=0;
 
   test = gtk_entry_get_text(GTK_ENTRY(widget));
 
-  tempenco.bitrate = atoi ( test );
+  if ( strcmp(test, "disabled") == 0 )
+    tempenco.bitrate = 0;
+  else
+    tempenco.bitrate = atoi ( test );
 
   if (verbose)
     printf(" selected video bitrate: %i \n", tempenco.bitrate);
+}
+
+/* Set the quality factor for the stream VBR */
+void set_qualityfa (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+ 
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if ( strcmp(test, "disabled") == 0 )
+    tempenco.qualityfactor = 0;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 31) && (i >= 1) )
+        tempenco.qualityfactor = i;
+    }
+
+  if (verbose)
+    printf(" selected quality factor: %i \n", tempenco.qualityfactor);
+}
+
+/* Set the min GOP */
+void set_minGop (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  i = atoi (test);
+
+  if ( strncmp(test, "default", 7) == 0)
+    tempenco.minGop = 12;
+  else 
+    {
+      i = atoi (test);
+      if ( (i <= 28) && (i >= 6) )
+        tempenco.minGop = i;
+    }
+
+  if (verbose)
+    printf(" selected Minimum Gop size: %i \n", tempenco.minGop);
+}
+
+/* Set the max GOP */
+void set_maxGop (GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if ( strncmp(test, "default", 7) == 0)
+    tempenco.maxGop = 12;
+  else 
+    {
+      i = atoi (test);
+      if ( (i <= 28) && (i >= 6) )
+        tempenco.maxGop = i;
+    }
+
+  if (verbose)
+    printf(" selected Maximum Gop size: %i \n", tempenco.maxGop);
 }
 
 /* set output bitrate for the video */
@@ -419,7 +517,7 @@ char *test;
   tempenco.searchradius = atoi ( test );
 
   if (verbose)
-    printf("\n selected searchradius : %i \n", tempenco.searchradius);
+    printf(" selected searchradius : %i \n", tempenco.searchradius);
 }
 
 /* creating the options for mplex */
@@ -830,10 +928,15 @@ GList *output_window = NULL;
 /* create the video conversation  the mpeg2enc options */
 void create_video_layout (GtkWidget *table, int *tx, int *ty)
 {
-GtkWidget *label1, *combo_videobit, *combo_searchradius; 
+GtkWidget *label1, *combo_videobit, *combo_qualityfa, *combo_searchradius; 
+GtkWidget *combo_minGop, *combo_maxGop;
 GList *vbitrate = NULL;
 GList *searchrad = NULL;
+GList *qualityfactors = NULL;
+GList *minGop = NULL;
+GList *maxGop = NULL;
 
+   vbitrate = g_list_append (vbitrate, "disabled");
    vbitrate = g_list_append (vbitrate, "1152");
    vbitrate = g_list_append (vbitrate, "1300");
    vbitrate = g_list_append (vbitrate, "1500");
@@ -847,11 +950,28 @@ GList *searchrad = NULL;
    searchrad = g_list_append (searchrad, "24");
    searchrad = g_list_append (searchrad, "32");
 
+   qualityfactors = g_list_append (qualityfactors, "disabled");
+   qualityfactors = g_list_append (qualityfactors, "1");
+   qualityfactors = g_list_append (qualityfactors, "7");
+   qualityfactors = g_list_append (qualityfactors, "9");
+   qualityfactors = g_list_append (qualityfactors, "15");
+   qualityfactors = g_list_append (qualityfactors, "31");
+
+   minGop = g_list_append (minGop, "6");
+   minGop = g_list_append (minGop, "default 12");
+   minGop = g_list_append (minGop, "18");
+   minGop = g_list_append (minGop, "28");
+
+   maxGop = g_list_append (maxGop, "6");
+   maxGop = g_list_append (maxGop, "default 12");
+   maxGop = g_list_append (maxGop, "18");
+   maxGop = g_list_append (maxGop, "28");
+
   label1 = gtk_label_new ("  Bitrate: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-
   gtk_widget_show (label1);
+
   combo_videobit = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_videobit), vbitrate);
   combo_entry_videobitrate = GTK_COMBO (combo_videobit)->entry;
@@ -863,10 +983,26 @@ GList *searchrad = NULL;
   gtk_widget_show (combo_videobit);
   (*ty)++;
 
+  label1 = gtk_label_new ("  Quality factor: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1); 
+ 
+  combo_qualityfa = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_qualityfa), qualityfactors);
+  combo_entry_qualityfa = GTK_COMBO (combo_qualityfa)->entry;
+  gtk_signal_connect(GTK_OBJECT(combo_entry_qualityfa), "changed",
+                      GTK_SIGNAL_FUNC (set_qualityfa), NULL);
+  gtk_widget_set_usize (combo_qualityfa, 80,-2);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_qualityfa,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_qualityfa);
+  (*ty)++;
+
   label1 = gtk_label_new ("  Searchradius: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_widget_show (label1);
   gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
 
   combo_searchradius = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_searchradius), searchrad);
@@ -878,6 +1014,39 @@ GList *searchrad = NULL;
                                              *tx+1,*tx+2,*ty,*ty+1);
   gtk_widget_show (combo_searchradius);
   (*ty)++;
+
+  label1 = gtk_label_new ("  Minimal GOP: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_minGop = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_minGop), minGop);
+  combo_entry_minGop = GTK_COMBO (combo_minGop)->entry;
+  gtk_widget_set_usize (combo_minGop, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_minGop), "changed",
+                      GTK_SIGNAL_FUNC (set_minGop), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_minGop,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_minGop);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Maximal GOP: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_maxGop = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_maxGop), maxGop);
+  combo_entry_maxGop = GTK_COMBO (combo_maxGop)->entry;
+  gtk_widget_set_usize (combo_maxGop, 50, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_maxGop), "changed",
+                      GTK_SIGNAL_FUNC (set_maxGop), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_maxGop,
+                                             *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_maxGop);
+  (*ty)++;
+
 }
 
 
@@ -958,6 +1127,11 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).forcemono,"%s",tempenco.forcemono);
   sprintf((*point).forcevcd,"%s",tempenco.forcevcd);
   (*point).bitrate=tempenco.bitrate;
+  (*point).qualityfactor=tempenco.qualityfactor;
+  (*point).minGop=tempenco.minGop;
+  (*point).maxGop=tempenco.maxGop;
+  (*point).sequencesize=tempenco.sequencesize;
+  (*point).nonvideorate=tempenco.nonvideorate;
   (*point).searchradius=tempenco.searchradius;
   (*point).muxformat=tempenco.muxformat;
   sprintf((*point).muxvbr,"%s",tempenco.muxvbr);
