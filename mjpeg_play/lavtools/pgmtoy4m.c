@@ -21,11 +21,6 @@
 
 #if defined(HAVE_CONFIG_H)
 #include "config.h"
-#else
-/* If we're building outside the mjpegtools source tree we need to 
- * this define to keep yuv4mpeg.h happy.
-*/
-#define HAVE_STDINT_H
 #endif
 
 #include <stdio.h>
@@ -35,7 +30,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include <yuv4mpeg.h>
+#include "yuv4mpeg.h"
 
 extern	char	*__progname;
 
