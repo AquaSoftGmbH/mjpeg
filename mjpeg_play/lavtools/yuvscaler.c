@@ -1684,8 +1684,9 @@ average_specific (uint8_t * input, uint8_t * output,
 		    line_index) % 2)) * local_output_width;
       for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
 	   out_col_slice++) {
-	*(out_line_p++) = divide[2 * (*in_line_p++) + (*in_line_p)];
-	*(out_line_p++) = divide[(*in_line_p++) + 2 * (*in_line_p++)];
+		  *(out_line_p++) = divide[2 * in_line_p[0] + in_line_p[1]];
+		  *(out_line_p++) = divide[in_line_p[1] + 2 * in_line_p[2]];
+		  in_line_p += 3;
       }
     }
   }
