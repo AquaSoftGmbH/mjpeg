@@ -98,20 +98,22 @@ main(int argc, char **argv)
 #ifdef MJPEGTOOLS
     int verbose = 1;
 #endif
+#ifdef USE_LIBYST
     const static char fmts[] =
-#ifdef USE_Y4M_PLAIN_FIELD
+# ifdef USE_Y4M_PLAIN_FIELD
 		   ",plain"
-#endif
-#ifdef USE_Y4M_TAGGED_FIELD
+# endif
+# ifdef USE_Y4M_TAGGED_FIELD
 		   ",tag"
-#endif
-#ifdef USE_Y4M_NAMED_FIELD
+# endif
+# ifdef USE_Y4M_NAMED_FIELD
 		   ",name"
-#endif
-#ifdef USE_VIDEO_RAW
+# endif
+# ifdef USE_VIDEO_RAW
 		   ",raw"
-#endif
+# endif
       ;
+#endif
     const static char opts_short[] =
 #ifdef USE_DLFCN_H
       "a"
@@ -119,7 +121,10 @@ main(int argc, char **argv)
 #ifdef MJPEGTOOLS
       "v"
 #endif
-      "hVp:f:";
+#ifdef USE_LIBYST
+      "p:f:"
+#endif
+      "hV";
 #ifdef HAVE_GETOPT_LONG
     const static struct option opts_long[] = {
 # ifdef USE_DLFCN_H
@@ -128,10 +133,12 @@ main(int argc, char **argv)
 # ifdef MJPEGTOOLS
       { "verbose",    required_argument, NULL, 'v', },
 # endif
-      { "help",       no_argument,       NULL, 'h', },
-      { "version",    no_argument,       NULL, 'V', },
+# ifdef USE_LIBYST
       { "property",   required_argument, NULL, 'p', },
       { "format",     required_argument, NULL, 'f', },
+# endif
+      { "help",       no_argument,       NULL, 'h', },
+      { "version",    no_argument,       NULL, 'V', },
       { NULL, 0, NULL, 0, },
     };
 #else
@@ -152,33 +159,35 @@ main(int argc, char **argv)
 	verbose = atoi(optarg);
 	break;
 #endif
-      case 'h':
-	print_help = 1;
-	break;
-      case 'V':
-	print_version = 1;
-	break;
+#ifdef USE_LIBYST
       case 'p':
 	yst_stream_property_parse(optarg, &sinfodata, &xsinfo);
 	break;
       case 'f':
 	if      (!strcmp(optarg, "default")) format = YST_F_FMT_WRITE;
-#ifdef USE_Y4M_PLAIN_FIELD
+# ifdef USE_Y4M_PLAIN_FIELD
 	else if (!strcmp(optarg, "plain"))   format = YST_F_FMT_Y_PLAIN;
-#endif
-#ifdef USE_Y4M_TAGGED_FIELD
+# endif
+# ifdef USE_Y4M_TAGGED_FIELD
 	else if (!strcmp(optarg, "tag"))     format = YST_F_FMT_Y_TAG;
-#endif
-#ifdef USE_Y4M_NAMED_FIELD
+# endif
+# ifdef USE_Y4M_NAMED_FIELD
 	else if (!strcmp(optarg, "name"))    format = YST_F_FMT_Y_NAME;
-#endif
-#ifdef USE_VIDEO_RAW
+# endif
+# ifdef USE_VIDEO_RAW
 	else if (!strcmp(optarg, "raw"))     format = YST_F_FMT_V_RAW;
-#endif
+# endif
 	else {
 	  ERROR("invalid format\n");
 	  print_help = 1;
 	}
+	break;
+#endif
+      case 'h':
+	print_help = 1;
+	break;
+      case 'V':
+	print_version = 1;
 	break;
       default:
 	goto OPTS_END;
@@ -198,8 +207,12 @@ main(int argc, char **argv)
       return 0;
     }
     if (print_help || argc <= 0) {
-      INFO("Usage: [yuvfilter [OPTION]...] "
-	   "COMMAND [OPTION]... ['|' COMMAND [OPTION]...]...\n");
+#ifdef USE_LIBYST
+# define PIPEHELP " ['|' COMMAND [OPTION]...]..."
+#else
+# define PIPEHELP
+#endif
+      INFO("Usage: [yuvfilter [OPTION]...] COMMAND [OPTION]..." PIPEHELP "\n");
       INFO("Options:\n");
       INFO("  -h, --help            print this help\n");
       INFO("  -V, --version         print version\n");
@@ -210,13 +223,15 @@ main(int argc, char **argv)
       INFO("  -v, --verbose LEVEL   set verbosity level {0,1,2} "
 	   "(default: 1)\n");
 #endif
+#ifdef USE_LIBYST
       INFO("  -p, --property STRING set default property of input stream\n");
       INFO1("  -f, --format FORMAT   set output header format {default%s}\n",
 	    fmts);
-#ifdef WRITE_Y4M_NAMED_FIELD
+# ifdef WRITE_Y4M_NAMED_FIELD
       INFO("                        (default: name)\n");
-#else
+# else
       INFO("                        (default: tag)\n");
+# endif
 #endif
       return 1;
     }

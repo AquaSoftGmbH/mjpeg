@@ -131,6 +131,10 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     WERROR("illeagal output fpscode\n");
     return NULL;
   }
+  if (h0->interlace == Y4M_ILACE_BOTTOM_FIRST) {
+    WERROR("unsupported field order\n");
+    return NULL;
+  }
   if (ycsthres) {
     char ycssopt[] = "-S";
     char *ycsargv[] = { argv[0], ycssopt, ycsthres, NULL, };
@@ -149,10 +153,12 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 		   (hycs? hycs: h0));
   if (!h)
     return NULL;
+  h->_.interlace = Y4M_ILACE_NONE;
   h->_.fpscode = fpscode;
   h->fpscode0  = h0->fpscode;
   h->cytype    = cytype;
-  h->nfields   = (MAXHALFHEIGHT < h0->height) + 1;
+  h->nfields   = ((h0->interlace == Y4M_UNKNOWN)?
+		  (MAXHALFHEIGHT < h0->height): h0->interlace) + 1;
   h->nframes   = nframes;
   h->frame     = (YfFrame_t *)(h->framestat +
 			     (nframes * (!cytype || cytype == 'C')));

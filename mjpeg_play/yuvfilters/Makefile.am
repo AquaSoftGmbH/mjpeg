@@ -51,7 +51,7 @@ FILTERS		= yuvycsnoise$X yuvkineco$X
 COREOBJS	= addtask$O
 STDOBJS		= $(COREOBJS) alloctask$O initframe$O putframe$O yuvstdin$O yuvstdout$O
 CORECFLAGS	= $(DEBUG) -O2 -Wall -Wpointer-arith -Wcast-align -Wwrite-strings
-CPPFLAGS	= $(INCLUDES) -DPKGLIBDIR=\"$(pkglibdir)\"
+CPPFLAGS	= $(INCLUDES) -DPKGLIBDIR=\"$(pkglibdir)\" -DUSE_LIBYST=1
 CFLAGS		= $(CORECFLAGS) -Wcast-qual
 L		= libyuvfilters.a
 BINARIES	= $(READERS) $(WRITERS) $(FILTERS)

@@ -26,6 +26,7 @@
 # include <errno.h>
 # include <mjpeg_logging.h>
 #endif
+#include <yuv4mpeg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,6 +59,8 @@ typedef struct YfTaskCore_tag {
   struct YfTaskCore_tag *handle_outgoing;
   /* protected: filter must set */
   int width, height, fpscode;
+  int interlace;
+  y4m_ratio_t aspectratio;
 } YfTaskCore_t;
 
 typedef struct YfTaskClass_tag {

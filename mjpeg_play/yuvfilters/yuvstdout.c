@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <mpegconsts.h>
 #include "yuvfilters.h"
 
 DEFINE_STD_YFTASKCLASS(yuvstdout);
@@ -34,17 +35,22 @@ static YfTaskCore_t *
 do_init(int argc, char **argv, const YfTaskCore_t *h0)
 {
   YfTaskCore_t *h;
-  char idline[24];
+  y4m_stream_info_t si;
 
   --argc; ++argv;
   if (!(h = YfAllocateTask(&yuvstdout, sizeof *h, h0)))
     return NULL;
-  sprintf(idline, "YUV4MPEG %d %d %d\n", h0->width, h0->height, h0->fpscode);
-  if (write(1, idline, strlen(idline)) <= 0) {
-    perror("(stdout)");
+  y4m_init_stream_info(&si);
+  si.width       = h0->width;
+  si.height      = h0->height;
+  si.framerate   = mpeg_framerate(h0->fpscode);
+  si.interlace   = h0->interlace;
+  si.aspectratio = h0->aspectratio;
+  if (y4m_write_stream_header(1, &si) != Y4M_OK) {
     YfFreeTask(h);
-    return NULL;
+    h = NULL;
   }
+  y4m_fini_stream_info(&si);
   return h;
 }
 

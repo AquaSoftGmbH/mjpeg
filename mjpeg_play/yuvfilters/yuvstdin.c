@@ -20,6 +20,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <mpegconsts.h>
 #include "yuvfilters.h"
 
 DEFINE_STD_YFTASKCLASS(yuvstdin);
@@ -33,50 +34,26 @@ do_usage()
 static YfTaskCore_t *
 do_init(int argc, char **argv, const YfTaskCore_t *h0)
 {
-  int n, framebytes;
-  char *p;
+  int framebytes;
   YfTaskCore_t *h;
-  int width, height, fpscode;
-  int idbytes;
-  char *buf;
-  char idline[24];
+  y4m_stream_info_t si;
 
   --argc; ++argv;
-  n = read(0, idline, sizeof "YUV4MPEG 9990 9990 0\n" - 1);
-  if (n <= 0) {
-    if (!n)
-      WERROR("(stdin): no data\n");
-    else
-      perror("(stdin)");
-    return NULL;
-  }
-  idline[n] = '\0';
-  p = strchr(idline, '\n');
-  if (!p || sscanf(idline, "YUV4MPEG %d %d %d ",
-		   &width, &height, &fpscode) != 3) {
-    WERROR("(stdin): illeagal stream ID\n");
-    return NULL;
-  }
-  p++;
-  idbytes = p - idline;
-  framebytes = FRAMEBYTES(width, height);
+  h = NULL;
+  y4m_init_stream_info(&si);
+  if (y4m_read_stream_header(0, &si) != Y4M_OK)
+    goto FINI_SI;
+  framebytes = FRAMEBYTES(si.width, si.height);
   h = YfAllocateTask(&yuvstdin, sizeof *h + framebytes, h0);
   if (!h)
-    return NULL;
-  h->width   = width;
-  h->height  = height;
-  h->fpscode = fpscode;
-  buf = (char *)(h + 1);
-  n -= idbytes;
-  if (0 < n)
-    memcpy(buf, p, n);
-  if (n < sizeof ((YfFrame_t *)0)->id)
-    n += read(0, buf + n, sizeof ((YfFrame_t *)0)->id - n);
-  if (n != sizeof ((YfFrame_t *)0)->id) {
-    perror("(stdin): no frame");
-    YfFreeTask(h);
-    return NULL;
-  }
+    goto FINI_SI;
+  h->width       = si.width;
+  h->height      = si.height;
+  h->fpscode     = mpeg_framerate_code(si.framerate);
+  h->interlace   = si.interlace;
+  h->aspectratio = si.aspectratio;
+ FINI_SI:
+  y4m_fini_stream_info(&si);
   return h;
 }
 
@@ -97,7 +74,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame)
   framebytes = FRAMEBYTES(h->width, h->height);
   ret = 0;
   warning = 0;
-  n = sizeof ((YfFrame_t *)0)->id;
+  n = 0;
   p = (char *)(h + 1);
   for (;;) {
     while (n < framebytes) {

@@ -120,6 +120,10 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     WERROR("illeagal error\n");
     return NULL;
   }
+  if (h0->interlace == Y4M_ILACE_BOTTOM_FIRST) {
+    WERROR("unsupported field order\n");
+    return NULL;
+  }
   if (h0->height != 480 || h0->fpscode != 4)
     WWARN("input doesn't seem NTSC full height / full motion video\n");
   h = (YfTask_t *)
