@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # A convenient front-end for the various mpeg encoding tools.
 # Allows "1 command" production of a video stream...
@@ -69,7 +69,7 @@ NICE="nice -n $NICEVAL"
 
 
 # functions
-function logIt () {
+logIt() {
    if [ $LOGDATE -ne 0 ]; then
       NOW=$(date $LOGDATESTR)
       NOW="$NOW - "
@@ -84,7 +84,7 @@ function logIt () {
    fi
 }
 
-function cleanExit() {
+cleanExit() {
    # delete raw files if sawraw is 0 or exiting with non-zero
    if [ $saveraw -eq 0 -a "$1" = "0" ]; then
       rm -f $audio $video
@@ -92,7 +92,7 @@ function cleanExit() {
    exit $1
 }
 
-function getTimeDiff() {
+getTimeDiff() {
    if [ $# -lt 2 ]; then
       return
    fi
@@ -105,7 +105,7 @@ function getTimeDiff() {
    printf "%i:%02d:%02d\n" "$hours" "$minutes" "$sec"
 }
 
-function doStep() {
+doStep() {
    if [ "$LOGCOMMANDS" == "0" ]; then
       echo "COMMAND=${step[$count]}"
    fi
@@ -115,7 +115,7 @@ function doStep() {
 }
 
 
-function usage ()
+usage()
 {
   name=`basename $0`
   cat << END
@@ -161,7 +161,7 @@ END
 exit 1
 }
 
-function printDebugInfo () {
+printDebugInfo() {
    logIt "going from ${video_width}x${video_height} ($video_norm) to ${output_width}x${output_height} in $mode with quality=$quality, bitrate=$bitrate and encodequal=${encode_quality}"
    logIt "outfile=$outfile audio=$audio video=$video"
    logIt "lav2yuv_flags=$lav2yuv_flags"
@@ -253,7 +253,7 @@ do
     esac
 done
 let MOPTIND=OPTIND-LAVRC_COUNT
-shift $[$MOPTIND-1]
+shift `expr $MOPTIND-1`
 
 if [ "${QUIETLOG}" != "" ]; then
    logfile=${QUIETLOG}
