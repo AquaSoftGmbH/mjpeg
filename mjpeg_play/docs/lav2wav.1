@@ -1,0 +1,36 @@
+.TH "lavrec" "1" "V 1.4" "Bernhard Praschinger" "description"
+.SH "NAME"
+lav2wav \- Extract the audio out of MJPEG container files to stdout
+.SH "SYNOPSIS"
+lav2wav [params] [filename(s)]
+.SH "DESCRIPTION"
+\fBlav2wav\fP can be used to extract the audio to stdout.
+This output goes to stdout and can be saved as a wav file, or piped to an 
+other sound processing tool, that is able to handle wave. 
+This can be mp2enc and toolame for mpeg layer 2 audio, 
+or for example lame for mpeg layer 3 audio. 
+
+As input sources you can use serveral files, mixing up with editlistfiles. 
+
+.SH "OPTIONS"
+\fBlav2wav\fP accepts the following options:
+
+.TP 5
+.B \-s num
+Start extracting at video frame (num)
+.TP 5
+.B \-c num
+Extract (num) frames of audio
+.TP 5
+.B \-v num
+Verbosity level (0, 1 or 2)
+.SH "SEE ALSO"
+.BR mjpeg (1),
+.BR mp2enc (1),
+
+.SH "CONTACTING"
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at \fIhttp://mjpeg.sourceforge.net/

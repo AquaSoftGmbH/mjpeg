@@ -1,0 +1,41 @@
+.TH "lavrec" "1" "V 1.4" "Bernhard Praschinger" "description"
+.SH "NAME"
+lavtrans \- Convert MJPEG videos to other MJPEG video formats
+.SH "SYNOPSIS"
+lavtrans \-o <outputfile> \-f [aqiw] filenames [<\-i num>]
+.SH "DESCRIPTION"
+\fBlavtrans\fP can be used to convert the recorded videos from MJPEG format to an other "container" format. It can also be used to split the streams, or do destructive edits. 
+
+An valid input source is also the editlist generated with lavplay or xlav. Using this as input will generate an video stream that has all the changes applied. 
+
+It cannot change the size of the video during conversation. Conversation of different sized streams to a single stream is also not supported. 
+.SH "OPTIONS"
+\fBlavtrans\fP accepts the following options:
+
+.TP 5
+.B \-f [aqmiw]
+Specifies the output format that should be saved.
+  a \- output to AVI file
+  q \- output to Qicktime file
+  m \- output to movtar file
+  i \- output single JPEG images,
+  w \- output WAV file (sound only!)
+.TP 5
+.B \-i num
+Convert a single frame to a JPEG file.
+.TP 5
+.B \-o outputfile
+Specifies the name of the output file
+If you want as output single JPEG images the output filestring must be a valid format string
+.TP 5
+.B filenames
+Multiple filenames as input are acceped, also mixing of editlistfiles and other in video files.
+.SH "SEE ALSO"
+.BR mjpeg (1),
+.BR lavplay (1)
+.SH "CONTACTING"
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
