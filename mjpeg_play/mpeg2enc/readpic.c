@@ -106,7 +106,6 @@ static void read_chunk()
 
    unsigned char magic[7];
 
-   fprintf( stderr,"\nREADING FORWARD TO %d\n", frames_read+READ_CHUNK_SIZE);
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
 	   n = frames_read % FRAME_BUFFER_SIZE;
