@@ -115,6 +115,8 @@ static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
 static int param_input_interlacing;
 static int param_hack_svcd_hds_bug = 1;
+static int param_hack_altscan_bug = 0;
+static int param_mpeg2_dc_prec = 1;
 
 /* Input Stream parameter values that have to be further processed to
    set encoding options */
@@ -214,6 +216,8 @@ static void Usage(char *str)
 "    data that will be multiplexed with this video stream\n"
 "--3-2-pulldown|-p\n"
 "    Generate header flags for 3-2 pull down of 24fps movie material\n"
+"--intra_dc_prec|-D [8..10]\n"
+"    Set number of bits precision for DC (base colour) of blocks in MPEG-2\n"
 "--reduce-hf|-N\n"
 "    Reduce high frequency resolution - useful as a mild noise reduction\n"
 "--keep-hf|-h\n"
@@ -232,6 +236,9 @@ static void Usage(char *str)
 "--correct-svcd-hds|-C\n"
 "    Force SVCD horizontal_display_size to be 480 - standards say 540 or 720\n"
 "    But many DVD/SVCD players screw up with these values.\n"
+"--no-altscan-mpeg2\n"
+"    Force MPEG2 *not* to use alternate block scanning.  This may allow some\n"
+"    buggy players to play SVCD streams\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
@@ -635,7 +642,7 @@ int main(argc,argv)
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpdsZNhOCP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:D:g:G:v:V:F:tpdsZNhOCP";
 
 static struct option long_options[]={
      { "verbose",           1, 0, 'v' },
@@ -644,6 +651,7 @@ static struct option long_options[]={
      { "frame-rate",        1, 0, 'F' },
      { "video-bitrate",     1, 0, 'b' },
      { "nonvideo-bitrate",  1, 0, 'B' },
+     { "intra_dc_prec",     1, 0, 'D' },
      { "quantisation",      1, 0, 'q' },
      { "output",            1, 0, 'o' },
      { "vcd-still-size",    1, 0, 'T' },
@@ -664,6 +672,7 @@ static struct option long_options[]={
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
      { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
+     { "no-altscan-mpeg2", 0, &param_hack_altscan_bug, 1},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
      { "help",              0, 0, '?' },
@@ -699,6 +708,15 @@ static struct option long_options[]={
 				++nerr;
 			}
 			break;
+
+        case 'D':
+            param_mpeg2_dc_prec = atoi(optarg)-8;
+            if( param_mpeg2_dc_prec < 0 || param_mpeg2_dc_prec > 2 )
+            {
+                mjpeg_error( "-D requires arg [8..10]\n" );
+                ++nerr;
+            }
+            break;
         case 'C':
             param_hack_svcd_hds_bug = 0;
             break;
@@ -1297,7 +1315,7 @@ static void init_mpeg_parms(void)
 		break;
 	}
 
-	opt_dc_prec         = 1;  /* 9 bits */
+	opt_dc_prec         = param_mpeg2_dc_prec;  /* 9 bits */
     opt_topfirst = 0;
 	if( ! opt_prog_seq )
 	{
@@ -1336,7 +1354,7 @@ static void init_mpeg_parms(void)
 	opt_altscan_tab[2]  
 		= opt_altscan_tab[1]  
 		= opt_altscan_tab[0]  
-		= param_mpeg == 1 ? 0 : 1;
+		= (param_mpeg == 1 || param_hack_altscan_bug) ? 0 : 1;
 	
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8

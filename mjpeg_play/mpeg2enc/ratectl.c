@@ -535,8 +535,9 @@ void rc_init_pict(pict_data_s *picture)
 
 	T = intmin( T, ctl_video_buffer_size*3/4 );
 
+	/* Really only useful for author messing with rate control
 	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
-
+	*/
 
 	/* 
 	   To account for the wildly different sizes of frames
@@ -805,11 +806,13 @@ void rc_update_pict(pict_data_s *picture)
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
+	/* Really only useful for authors messing with rate control
 	mjpeg_debug( "D=%d R=%d GC=%d\n", 
 				 buffer_variation/8,
 				 (int)R/8,
 				 gop_buffer_correction/8  );
-	
+	*/
+
 	/* Xi are used as a guesstimate of *typical* frame activities
 	   based on the past.  Thus we don't want anomalous outliers due
 	   to scene changes swinging things too much (this is handled by

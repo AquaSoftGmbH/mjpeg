@@ -842,15 +842,15 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			for( str = estreams->begin(); str < estreams->end(); ++str )
 				(*str)->nsec = 0;
 			seg_state = mid_segment;
-            for( str = estreams->begin(); str < estreams->end(); ++str )
-            {
-                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
-                           (*str)->stream_id,
-                           current_SCR /300,
-                           (*str)->MuxPossible(current_SCR),
-                           (*str)->RequiredDTS()/300
-                    );
-            }
+            //for( str = estreams->begin(); str < estreams->end(); ++str )
+            //{
+            //mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+            //(*str)->stream_id,
+            //current_SCR /300,
+            //(*str)->MuxPossible(current_SCR),
+            //(*str)->RequiredDTS()/300
+            //);
+            //}
 			break;
 
 		case mid_segment :
