@@ -103,111 +103,112 @@ lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
 	yuvscaler.h yuvcorrect.h frequencies.h lav_common.h lav2wav.h
 
 ypipe_SOURCES = ypipe.c $(lav_headers)
-ypipe_LDADD = -L$(top_builddir)/utils -lmjpegutils
+ypipe_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuv2lav_SOURCES = yuv2lav.c $(lav_headers)
-yuv2lav_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+yuv2lav_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 		 liblavfile.la liblavjpeg.la
 
 transist_flt_SOURCES = transist.flt.c ${lav_headers}
-transist_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
+transist_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 matteblend_flt_SOURCES = matteblend.flt.c ${lav_headers}
-matteblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
+matteblend_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 multiblend_flt_SOURCES = multiblend.flt.c ${lav_headers}
-multiblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
+multiblend_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 lavplay_SOURCES = lavplay.c ${lav_headers}
-lavplay_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lavplay_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	liblavplay.la liblavjpeg.la liblavfile.la \
 	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS} -lX11
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
-lavrec_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lavrec_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	liblavrec.la liblavfile.la liblavjpeg.la \
 	@LIBGETOPT_LIB@ $(PTHREAD_LIBS)
 
 testrec_SOURCES = testrec.c  audiolib.c  $(lav_headers)
-testrec_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils
+testrec_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a
 
 lav2yuv_SOURCES = lav2yuv.c lav_common.c $(lav_headers)
-lav2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lav2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
 
 jpeg2yuv_SOURCES = jpeg2yuv.c $(lav_headers)
-jpeg2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
+jpeg2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a \
+		liblavjpeg.la ${GTK_LIBS}
 
 png2yuv_SOURCES = png2yuv.c colorspace.h colorspace.c subsample.h subsample.c
-png2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils -lpng -lz -lm
+png2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a -lpng -lz -lm
 
 lav2divx_SOURCES = lav2divx.cpp libavifile.h lav_common.c $(lav_headers)
-lav2divx_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lav2divx_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS)
 
 lavpipe_SOURCES = lavpipe.c pipelist.c pipelist.h $(lav_headers)
-lavpipe_LDADD = -L$(top_builddir)/utils -lmjpegutils 
+lavpipe_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuvmedianfilter_SOURCES = yuvmedianfilter.c $(lav_headers)
-yuvmedianfilter_LDADD = -L$(top_builddir)/utils -lmjpegutils
+yuvmedianfilter_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 lav2wav_SOURCES = lav2wav.c  $(lav_headers)
-lav2wav_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lav2wav_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	 liblavfile.la
 
 lavtrans_SOURCES = lavtrans.c $(lav_headers)
-lavtrans_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lavtrans_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	 liblavfile.la
 
 lavaddwav_SOURCES = lavaddwav.c $(lav_headers)
-lavaddwav_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lavaddwav_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	 liblavfile.la
 
 glav_SOURCES = glav.c glav_main.c  $(lav_headers)
-glav_LDADD = -L$(top_builddir)/utils -lmjpegutils ${GTK_LIBS}
+glav_LDADD = $(top_builddir)/utils/libmjpegutils.a ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c frequencies.c $(lav_headers)
 
 yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c $(lav_headers)
-yuvscaler_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
+yuvscaler_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
 	 liblavfile.la liblavjpeg.la
 
 yuvcorrect_SOURCES = yuvcorrect.c yuvcorrect_functions.c $(lav_headers)
-yuvcorrect_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
+yuvcorrect_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
         liblavfile.la liblavjpeg.la
 
 yuvcorrect_tune_SOURCES = yuvcorrect_tune.c yuvcorrect_functions.c $(lav_headers)
-yuvcorrect_tune_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
+yuvcorrect_tune_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
         liblavfile.la liblavjpeg.la
 
 yuvplay_SOURCES = yuvplay.c $(lav_headers)
-yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils
+yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a
 
 yuv2divx_SOURCES = yuv2divx.cpp libavifile.h $(lav_headers)
-yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
+yuv2divx_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) liblavfile.la
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
-ppmtoy4m_LDADD = -L$(top_builddir)/utils -lmjpegutils
+ppmtoy4m_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 y4mtoppm_SOURCES = y4mtoppm.c colorspace.h colorspace.c subsample.h subsample.c
-y4mtoppm_LDADD = -L$(top_builddir)/utils -lmjpegutils
+y4mtoppm_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
-y4mcolorbars_LDADD = -L$(top_builddir)/utils -lmjpegutils
+y4mcolorbars_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 divxdec_SOURCES = divxdec.cpp riffinfo.h libavifile.h lav_common.c
-divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
+divxdec_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) ${SDL_LIBS} ${X_LIBS} -lX11 \
 	liblavfile.la liblavplay.la liblavjpeg.la
 
 lavinfo_SOURCES = lavinfo.c $(lav_headers)
-lavinfo_LDADD = -L$(top_builddir)/utils -lmjpegutils \
+lavinfo_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	liblavfile.la
 
 y4mshift_SOURCES = y4mshift.c $(lav_headers)
-y4mshift_LDADD = -L$(top_builddir)/utils -lmjpegutils
+y4mshift_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuvfps_SOURCES = yuvfps.c ${lav_headers}
-yuvfps_LDADD = -L${top_builddir}/utils -lmjpegutils
+yuvfps_LDADD = ${top_builddir}/utils/libmjpegutils.a

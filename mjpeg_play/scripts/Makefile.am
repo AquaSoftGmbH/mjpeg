@@ -3,4 +3,3 @@
 bin_SCRIPTS = lav2mpeg mpegtranscode img2mpg
 EXTRA_DIST = $(bin_SCRIPTS) codiere berechne aufnahme frameber .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
-

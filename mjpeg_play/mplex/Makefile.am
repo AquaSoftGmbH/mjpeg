@@ -30,6 +30,5 @@ mplex_SOURCES = \
 	stillsstream.cpp stillsstream.hpp \
 	stream_params.cpp stream_params.hpp
 
-mplex_LDADD = -L$(top_builddir)/utils -lmjpegutils -lstdc++ @LIBGETOPT_LIB@ $(LIBM_LIBS) 
-
-
+mplex_LDADD = $(top_builddir)/utils/libmjpegutils.a \
+		-lstdc++ @LIBGETOPT_LIB@ $(LIBM_LIBS) 
