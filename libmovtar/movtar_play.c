@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -12,7 +13,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
 
-#ifndef IRIX
+#ifdef __i386__
 #define JPEG_INTERNALS
 #include <jinclude.h>
 #endif
@@ -28,8 +29,6 @@
 #define readbuffsize 200000
 
 #define dprintf(x) if (debug) fprintf(stderr, x);
-
-//#define IRIX
 
 /* the usual code continuing here */
 char *img=NULL;
@@ -135,15 +134,15 @@ jpeg_mem_src_reset (j_decompress_ptr cinfo, int size)
 
 /* end of data source manager */
 
-#ifndef IRIX 
+#ifdef __i386__
 /* Colorspace conversion */
 /* RGB, 32 bits, 8bits each: (Junk), R, G, B */ 
-#if defined(__GNUC__)
-#define int64 unsigned long long
+#if defined(__GNUC__) && !defined(int64_t)
+#define int64_t unsigned long long
 #endif
-static const int64 te0 = 0x0080008000800080; // -128 << 2
-static const int64 te1 = 0xe9fa7168e9fa7168; // for cb 
-static const int64 te2 = 0x59bad24d59bad24d; // for cr
+static const int64_t te0 = 0x0080008000800080; // -128 << 2
+static const int64_t te1 = 0xe9fa7168e9fa7168; // for cb 
+static const int64_t te2 = 0x59bad24d59bad24d; // for cr
 
 METHODDEF(void)
 ycc_rgb32_convert_mmx (j_decompress_ptr cinfo,
@@ -261,32 +260,6 @@ ycc_rgb32_convert_mmx (j_decompress_ptr cinfo,
   }
 
   asm ("emms");
-}
-
-static int64 rb16mask = 0x00f800f800f800f8; // just red and blue remain
-static int64 rb16mult = 0x2000000820000008; // mult/Add factor (see intel appnote 553)
-static int64 g16mask = 0x0000f8000000f800; // just green remains
-static int64 rgb16offset = 6; // shift right after the whole stuff
-static const int64 shiftmask = 0xffff; // shift right after the whole stuff
-
-void calc_rgb16_params(struct SDL_PixelFormat *format)
-{
-  rb16mask = ((0xff >> format->Rloss) << (16 + format->Rloss)) 
-            | (0xff >> format->Bloss) << format->Bloss;
-  rb16mask = rb16mask | (rb16mask << 32); // two pixels at once (see default long above)
-  
-  g16mask = (0xff >> format->Gloss) << (8 + format->Gloss);
-  g16mask = g16mask | (g16mask << 32);
-  
-  rgb16offset = 8 + format->Gloss - format->Gshift; // shift right after the whole stuff
-  rb16mult = (1 << (rgb16offset + format->Bshift - format->Bloss)) | 
-             (1 << (16 + rgb16offset + format->Rshift - format->Rloss));
-  rb16mult = rb16mult | (rb16mult << 32);
-
-  //printf("rb16mask = 0x%llx\n", rb16mask);
-  //printf("rb16offset = 0x%llx\n", rgb16offset);
-  //printf("g16mask = 0x%llx\n", g16mask);
-  //printf("rb16mult = 0x%llx\n", rb16mult);
 }
 
 /* RGB, 15/16 bits, 5-6bits each: (Junk), R, G, B */ 
@@ -462,7 +435,34 @@ ycc_rgb16_convert_mmx (j_decompress_ptr cinfo,
 
   asm ("emms");
 }
-#endif // ifndef IRIX
+#endif
+
+static int64_t rb16mask = 0x00f800f800f800f8; // just red and blue remain
+static int64_t rb16mult = 0x2000000820000008; // mult/Add factor (see intel appnote 553)
+static int64_t g16mask = 0x0000f8000000f800; // just green remains
+static int64_t rgb16offset = 6; // shift right after the whole stuff
+static const int64_t shiftmask = 0xffff; // shift right after the whole stuff
+
+void calc_rgb16_params(struct SDL_PixelFormat *format)
+{
+  rb16mask = ((0xff >> format->Rloss) << (16 + format->Rloss)) 
+            | (0xff >> format->Bloss) << format->Bloss;
+  rb16mask = rb16mask | (rb16mask << 32); // two pixels at once (see default long above)
+  
+  g16mask = (0xff >> format->Gloss) << (8 + format->Gloss);
+  g16mask = g16mask | (g16mask << 32);
+  
+  rgb16offset = 8 + format->Gloss - format->Gshift; // shift right after the whole stuff
+  rb16mult = (1 << (rgb16offset + format->Bshift - format->Bloss)) | 
+             (1 << (16 + rgb16offset + format->Rshift - format->Rloss));
+  rb16mult = rb16mult | (rb16mult << 32);
+
+  //printf("rb16mask = 0x%llx\n", rb16mask);
+  //printf("rb16offset = 0x%llx\n", rgb16offset);
+  //printf("g16mask = 0x%llx\n", g16mask);
+  //printf("rb16mult = 0x%llx\n", rb16mult);
+}
+
 
 /* end of custom color deconverter */
 
@@ -556,7 +556,7 @@ void inline readpicfrommem(void *inbuffer, long size)
   jpeg_mem_src_reset(&cinfo, size);
   jpeg_read_header(&cinfo, TRUE);
 
-#ifndef IRIX
+#ifdef __i386__
   cinfo.dct_method = JDCT_IFAST;
   cinfo.out_color_space = JCS_RGB;
 #else
@@ -568,20 +568,20 @@ void inline readpicfrommem(void *inbuffer, long size)
   switch (screen->format->BytesPerPixel)
     {
     case 4:
-#ifndef IRIX
+#ifdef __i386__
       //printf("Choosing MMX color convert\n");
       cconvert = cinfo.cconvert;
       //cconvert->color_convert = ycc_rgb32_convert_mmx;
 #else
-      fprintf(stderr, "32 bits per pixel can't be decoded by libjpeg on IRIX !\n");
+      fprintf(stderr, "32 bits per pixel can't be decoded by libjpeg on non-i386!\n");
 #endif
       break;
     case 2:
-#ifndef IRIX
+#ifdef __i386__
       cconvert = cinfo.cconvert;
       cconvert->color_convert = ycc_rgb16_convert_mmx;
 #else
-      fprintf(stderr, "15/16 bits per pixel can't be decoded by libjpeg on IRIX!");
+      fprintf(stderr, "15/16 bits per pixel can't be decoded by libjpeg on non-i386!");
 #endif
       break;
     default: break;
@@ -777,7 +777,7 @@ int main(int argc,char** argv)
   printf("wxh: %dx%d@%f fr/s\n", width, height, movtar_frame_rate(movtar));
 
   /* Set the video mode (at least the movtar resolution, with native bitdepth) */
-#ifndef IRIX /* let the hardware choose its mode */
+#ifdef __i386__ /* let the hardware choose its mode */
   screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 #else /* must force it to a mode */
   screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /* | SDL_FULLSCREEN */ );
@@ -795,7 +795,7 @@ int main(int argc,char** argv)
 
   dump_pixel_format(screen->format);
 
-#ifdef IRIX
+#ifdef __i386__
   fprintf(stderr, "Screen parameters haven't been determined yet !\n");
 #else
   calc_rgb16_params(screen->format);
