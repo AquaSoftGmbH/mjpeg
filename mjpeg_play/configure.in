@@ -62,6 +62,7 @@ dnl Initialize libtool
 AM_PROG_LIBTOOL
 
 AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h getopt.h alloca.h)
+AC_CHECK_FUNCS(getopt_long)
 AC_TYPE_SIGNAL
 
 OS_ARCH=`uname -s | sed -e 's|/|_|g'`
