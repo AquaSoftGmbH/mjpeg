@@ -101,7 +101,7 @@ static __inline__ int qblock_sad_mmxe(uint8_t *refblk,
 								  uint32_t h,
 								  uint32_t rowstride)
 {
-	int res,res2,foo;
+	int res;
 
         /* On input,
            mm0 = first row
@@ -128,7 +128,7 @@ static __inline__ int qblock_sad_mmxe(uint8_t *refblk,
             psadbw_r2r   (mm7,mm5);
             paddw_r2r    (mm5,mm4);
 	}
-	movd_r2m      ( mm4, res );
+	movd_r2g      ( mm4, res );
 
 	return res;
 }
@@ -216,7 +216,7 @@ static __inline__ int qblock_sad_mmx(uint8_t *refblk,
 	movq_r2r      ( mm4, mm6 );
     psrlq_i2r     ( 16, mm6 );
     paddw_r2r     ( mm6, mm4 );
-	movd_r2m      ( mm4, res );
+	movd_r2g      ( mm4, res );
 
 	return res & 0xffff;
 }
