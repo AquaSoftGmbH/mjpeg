@@ -366,7 +366,7 @@ int
 disable_simd(char *name)
 	{
 	int	foundit;
-	char	*cp, *simd_env;
+	char	*cp, *simd_env, *dup_backup;
 	const char **dft;
 
 	if	((cp = getenv("MJPEGTOOLS_SIMD_DISABLE")) == NULL)
@@ -400,8 +400,7 @@ disable_simd(char *name)
  * Next compare the function name passed as input to the comma separated
  * names in the environment variable.  If a match is found then return 1
 */
-	simd_env = strdup(cp);
-	cp = simd_env;
+	dup_backup = simd_env = strdup(cp);
 	while	((cp = parse_next(&simd_env, ",")))
 		{
 		foundit = 0;
@@ -411,7 +410,7 @@ disable_simd(char *name)
 			break;
 			}
 		}
-	free(simd_env);
+	free(dup_backup);
 	return(foundit);
 	}
 
