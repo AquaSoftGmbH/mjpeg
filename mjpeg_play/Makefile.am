@@ -6,7 +6,8 @@ SUBDIRS    = utils mjpeg lavtools aenc mplex mpeg2enc scripts docs
 # Add any non autoconf'd files here, extra readmes and other misc 
 # info to be copied into the dist
 #
-EXTRA_DIST = HINTS README README.lavpipe README.transist TODO BUGS CHANGES mjpeg_howto.txt
+EXTRA_DIST = HINTS README.avilib TODO BUGS CHANGES
+
 
 ## make rpms
 rpm: Makefile

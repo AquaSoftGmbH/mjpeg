@@ -29,6 +29,12 @@ typedef void movtar_t;
 #define CHROMA422 2
 #define CHROMA444 3
 
+/* raw data format of a single frame */
+#define DATAFORMAT_MJPG     0
+#define DATAFORMAT_DV2      1
+#define DATAFORMAT_YUV420   2
+#define DATAFORMAT_YUV422   3
+
 typedef struct
 {
    avi_t       *avi_fd;

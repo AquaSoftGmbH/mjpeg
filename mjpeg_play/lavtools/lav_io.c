@@ -62,6 +62,13 @@ static unsigned long jpeg_app1_offset    = 0;
 
 #define QUICKTIME_MJPG_TAG 0x6d6a7067  /* 'mjpg' */
 
+#ifdef SUPPORT_READ_YUV420
+static int check_YUV420_input(lav_file_t *lav_fd);
+#endif
+#ifdef SUPPORT_READ_DV2
+static int check_DV2_input(lav_file_t *lav_fd);
+#endif
+
 
 /*
    put_int4:
@@ -1034,6 +1041,41 @@ lav_file_t *lav_open_input_file(char *filename)
       strncasecmp(video_comp,"mjpa",4)!=0 &&
       strncasecmp(video_comp,"jpeg",4)!=0 )
    {
+#ifdef SUPPORT_READ_DV2
+   if(strncasecmp(video_comp,"dvsd",4)==0
+#ifdef HAVE_LIBQUICKTIME
+      || strncasecmp(video_comp,QUICKTIME_DV,4)==0
+#endif
+      || strncasecmp(video_comp,"dv",2)==0) {
+       ierr = check_DV2_input(lav_fd);
+#ifdef LIBDV_PAL_YV12
+       lav_fd->MJPG_chroma = CHROMA420;
+#else
+       lav_fd->MJPG_chroma = CHROMA422;
+#endif
+       if (ierr) goto ERREXIT;
+   }
+#endif // SUPPORT_READ_DV2
+#ifdef SUPPORT_READ_YUV420
+   if(strncasecmp(video_comp,"yuv",3)==0
+#ifdef HAVE_LIBQUICKTIME
+/*    || strncasecmp(video_comp,QUICKTIME_YUV4,4)==0 */
+      || strncasecmp(video_comp,QUICKTIME_YUV420,4)==0
+#endif
+      ) {
+       ierr = check_YUV420_input(lav_fd);
+#ifdef HAVE_LIBQUICKTIME
+       /* check for YUV format if quicktime file */
+       if (strncasecmp(video_comp,QUICKTIME_YUV420,4)==0)
+           lav_fd->MJPG_chroma = CHROMA420;
+       else if (strncasecmp(video_comp,QUICKTIME_YUV4,4)==0)
+           lav_fd->MJPG_chroma = CHROMA422;
+#else
+   lav_fd->MJPG_chroma = CHROMA420;
+#endif
+       if (ierr) goto ERREXIT;
+   }
+#endif // SUPPORT_READ_YUV420
       return lav_fd;
    }
 
@@ -1230,6 +1272,69 @@ char *lav_strerror(void)
          return error_string;
    }
 }
+
+
+
+#ifdef SUPPORT_READ_DV2
+static int check_DV2_input(lav_file_t *lav_fd)
+{
+   int ierr = 0;
+   double len = 0;
+   unsigned char *frame = NULL;
+
+   lav_fd->is_MJPG = 0;
+
+   /* Make some checks on the video source, we read the first frame for that */
+
+   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
+   if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
+   if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+
+   if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
+   /* reset video position to 0 */
+   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
+   return 0;
+
+ERREXIT:
+   lav_close(lav_fd);
+   if(frame) free(frame);
+   if (ierr) internal_error = ierr;
+   return 1;
+}
+#endif
+
+
+
+#ifdef SUPPORT_READ_YUV420
+static int check_YUV420_input(lav_file_t *lav_fd)
+{
+   int ierr = 0;
+   double len = 0;
+   unsigned char *frame = NULL;
+
+   lav_fd->is_MJPG = 0;
+
+   /* Make some checks on the video source, we read the first frame for that */
+
+   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
+   if ( (len = lav_frame_size(lav_fd,0)) <=0 ) goto ERREXIT;
+   if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
+
+   if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
+   /* reset video position to 0 */
+   if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
+   return 0;
+
+ERREXIT:
+   lav_close(lav_fd);
+   if(frame) free(frame);
+   if (ierr) internal_error = ierr;
+   return 1;
+}
+#endif
+
+
+
 
 
 

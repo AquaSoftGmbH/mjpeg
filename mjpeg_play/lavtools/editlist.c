@@ -23,6 +23,7 @@
 #include "mjpeg_logging.h"
 #include "lav_io.h"
 #include "editlist.h"
+#include <math.h>
 
 extern	int	verbose;
 
@@ -168,7 +169,7 @@ int open_video_file(char *filename, EditList *el)
 					  filename,lav_video_interlacing(el->lav_fd[n]),el->video_inter);
 		  nerr++;
       }
-      if( el->video_fps != lav_frame_rate(el->lav_fd[n]))
+      if( fabs(el->video_fps - lav_frame_rate(el->lav_fd[n])) > 0.0000001)
       {
 		  mjpeg_error("File %s: fps is %3.2f should be %3.2f\n",
 					  filename,
@@ -487,4 +488,22 @@ int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute)
    el->last_apos  = ns1;
 
    return asamps*el->audio_bps;
+}
+
+int el_video_frame_data_format(long nframe, EditList *el)
+{
+   int n;
+   char *comp;
+
+   if(nframe<0) nframe = 0;
+   if(nframe>el->video_frames) nframe = el->video_frames;
+   n = N_EL_FILE(el->frame_list[nframe]);
+   comp = lav_video_compressor(el->lav_fd[n]);
+
+   if      (strncasecmp(comp,"yv12",4)==0) return DATAFORMAT_YUV420;
+   else if (strncasecmp(comp,"yuv2",4)==0) return DATAFORMAT_YUV422;
+   else if (strncasecmp(comp,"dv",2)==0) return DATAFORMAT_DV2;
+   else if (strncasecmp(comp,"mjp",3)==0 || strncasecmp(comp,"jpeg",4)==0)
+       return DATAFORMAT_MJPG;
+   else return -1;
 }

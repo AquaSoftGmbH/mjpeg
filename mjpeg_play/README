@@ -1,19 +1,17 @@
 Documentation Files
 ===================
 
-INSTALL         - How to install this package
-mjpeg_howto.txt - An introduction on how to use the MJPEG-tools/lavtools
-README          - This document, describing whtat the MJPEG-tools are and
-                  how to contact the developers (see bottom of this file)
+INSTALL - How to install this package
 
 
-mjpegtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
+
+lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG
 ==============================================================
 
 Programs for MJPEG recording and playback and simple cut-and-paste
 editting and MPEG compression of audio and video under Linux.
 
-N.b. Only the "lav" and "yuv" programs have been written wholly from scratch.
+N.b. Only the "lav" programs have been written whooly from scratch.
 The rest are from diverse open source originals, modified to work with
 the lav tools edit lists and AVI and quicktime files.  Some
 (especially the MPEG tools) have had also more major perfomance and
@@ -51,7 +49,7 @@ compression tools.
 
 - "lav2yuv" decodes AVI and Quicktime MJPEG and edit lists video and
   outputs it to standard out the simple raw YUV video format expected
-  by the MPEG compressor "mpeg2enc" (see Appendix below).
+  by the MPEG compressor "mpeg2enc" (see below).
 
 - "lav2wav" decodes AVI and Quicktime MJPEG and edit lists video and
   outputs it to standard out the WAV format expected by the MPEG layer
@@ -60,26 +58,17 @@ compression tools.
   streams will  work fine with this, ending cleanly when they reach the
   actual end.
 
-There are also some handy image processing and automated processing
-filter utilities for raw video.
+- "lav2dfilter".  A median filter for noise reduction.  Useful when MPEG
+  encoding TV material.
 
-- "yuvmedianfilter".  A median filter for noise reduction.  Used between
-	lav2yuv and mpeg2enc
+- "v4l-conf" is used in X to set up your video framebuffer address
 
-- "yuvplay".  Simply displays YUV onscreen.  Astonishingly useful for checking
-	what your processing pipeline is up to!
-
-- "yuvscaler". A flexible image scaling utility.  If you want to squeeze
-   letterbox video to fit a 4:3 frame for encoding to MPEG
-	 or similar things this is 	the tool for you. 
-
-
-- "yuv2lav", "ypipe", "matteblend.flt" and "transist.flt" 
-	for  putting the data of more than 
-    one yuv stream together (ypipe), making a transition between the two
-    input streams (*.flt) and for making an mjpeg file out of the 
-    resulting yuv data (yuv2lav). Read README.transist for more info on
-    how to use this.
+- "yuv2lav", "ypipe" and "transist.flt" for (first decode an mjpeg 
+  input file into raw yuv data (lav2yuv)) putting the data of more than 
+  one yuv stream together (ypipe), making a transition between the two
+  input streams (transist.flt) and for making an mjpeg file out of the 
+  resulting yuv data (yuv2lav). Read README.transist for more info on
+  how to use this.
 
 * The scripts directory
 
@@ -96,7 +85,11 @@ intended as examples of typical uses.
 - "mpeg2enc" for encoding the output of lav2yuv or suitable
   output plugins in mpeg2dec to MPEG-1/2 video streams.
 
-	See the mpeg2enc/README for further details.
+See the README for further details.
+In the current beta release MPEG-2 is untested and variable
+bit-rate probably won't work.  HOWEVER: speed and quality for
+MPEG-1 are really rather good. Encoding 352x288 PAL at 18
+fps on a 700Mhz Duron or 11ps on a 450Mhz P-III.
 
 * The aenc directory - 
 
@@ -117,7 +110,7 @@ You may wish to try  using your favourite MPEG 1 layer 3 "MP3"
 encoder for better quality results.  However, make sure you 
 use constant bit-rate  and turn of any extensions to the format.  
 I have no idea how many players actually cope with layer 3.  Drop
-andrew.stevens@planet-interkom.de an email if you get it to work!
+as@comlab.ox.ac.uk an email if you get it to work!
 
 * The mplex directory
 
@@ -128,13 +121,12 @@ This is *not* quite as trivial a task as it might seem (see the
 original authors paper on the subject - copy is in the
 documentation). Note that the program has been pretty heavily
 modified since then.
-MPEG-2 multiplexing is implemented but is currently tested only for
-SVCD.
+MPEG-2 multiplexing is implemented but is currently untested.
 DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
 
 
 
-* The mjpeg and utils director
+* The mjpeg directory
 
 Contains libraries to handle the new MJPEG movtar video format and a
 library to simplify MJPEG software and hardware playback,
@@ -153,21 +145,6 @@ lavplay!!!  (see http://dix.euro.ru for such codecs) The reason is
 that lavplay only handles AVI that use an MJPG codec, all other files
 don't use that codec and can therefore not be played back by the BUZ.
 
-* Appendix: The "YUV4MPEG" format
-
-The files for raw video information have to following layout:
-
-YUV4MPEG\n
-<horizonal size> <vertical size> <frame_rate_code>\n
-[FRAME\n<Y-data><U-data><V-data> ...]
-
-The sizes and frame rate code are in string form.  The Y section
-for each frame are exactly <veritical size>*<vertical size> bytes.
-The U and V sections are 1/4 the size.  I.e.  YUV420 video is assumed.
-Interlaced video is held with field lines interlaced as they would be
-during display.
-
-
 * Contact
 
 You reach us by email.
@@ -179,11 +156,6 @@ the developers, the main mailing list for the MJPEG-tools is:
 Although little bits have been done by everyone the main work was
 roughly as follows:
 
-lav* : Ronald Bultje <rbultje@ronald.bitfreak.net>, 
-	Gernot Ziegler <gz@lysator.liu.se> and of course the original
-mpeg2enc mplex misc : andrew.stevens@planet-interkom.de
-libmjpeg, libmovtar: Gernot Ziegler <gz@lysator.liu.se>
-
-
-Many thanks and Kudos to Rainer Johanni the original author who
-started this all and did most of the hard work in the lavtools.
+lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
+mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
+libmjpeg: Gernot Ziegler <gz@lysator.liu.se>

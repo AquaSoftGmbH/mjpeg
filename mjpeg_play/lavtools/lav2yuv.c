@@ -29,9 +29,14 @@
 #include <lav_io.h>
 #include <editlist.h>
 #include <math.h>
-#include "yuv4mpeg.h"
 
-#include "mjpeg_logging.h"
+#ifdef SUPPORT_READ_DV2
+#include <libdv/dv.h>
+static dv_decoder_t *decoder;
+gint pitches[3];
+unsigned char *dv_frame[3];
+unsigned char *previous_Y;
+#endif
 
 int luminance_mean(unsigned char *frame, int w, int h);
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
@@ -46,11 +51,10 @@ void writeoutYUV4MPEGheader(void);
 void writeoutframeinYUV4MPEG(unsigned char *frame[]);
 void streamout(void);
 
-
 EditList el;
 
 #define MAX_EDIT_LIST_FILES 256
-#define MAX_JPEG_LEN (512*1024)
+#define MAX_JPEG_LEN (3*576*768/2)
 
 int out_fd;
 static unsigned char jpeg_data[MAX_JPEG_LEN];
@@ -77,6 +81,12 @@ static int param_noise_filt = 0;
 static int param_special = 0;
 static int param_mono = 0;
 static char *param_scenefile = NULL;
+
+static int param_YUV_swap_lines = 0;
+static int param_DV_deinterlace = 0;
+static int param_spatial_tolerance = 440;
+static int param_temporal_tolerance = 220;
+static int temporal_tolerance = -1;
 
 static unsigned int delta_lum_threshold = 4;
 static unsigned int scene_detection_decimation = 2;
@@ -107,46 +117,179 @@ int chroma_left_size;
 int chroma_right_size;
 int chroma_right_offset;
 
+const int num_mpeg2_framerates = 9;
+static float mpeg2_framerates[] =
+    { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
+
 unsigned char *frame_buf[3];    /* YUV... */
 unsigned char *read_buf[3];
 unsigned char *double_buf[3];
 
-unsigned char luma_blank[768 * 480];
-unsigned char chroma_blank[768 * 480];
+unsigned char luma_blank[720 * 480];
+unsigned char chroma_blank[720 * 480];
 
-int verbose = 1;
+int verbose = 2;
 
 EditList el;
+
+void error(char *text)
+{
+   fprintf(stderr, text);
+   putc('\n', stderr);
+   exit(1);
+}
 
 
 
 void Usage(char *str)
 {
-   fprintf(stderr,"Usage: %s [params] inputfiles\n", str);
-   fprintf(stderr,"   where possible params are:\n");
-   fprintf(stderr,"   -a widthxhight+x+y\n");
-   fprintf(stderr,"   -s num     Special output format option:\n");
-   fprintf(stderr,"                 0 output like input, nothing special\n");
-   fprintf(stderr,
-		   "                 1 create half height/width output from interlaced input\n");
-   fprintf(stderr,
-		   "                 2 create 480 wide output from 720 wide input (for SVCD)\n");
-   fprintf(stderr,
-		   "                 3 create 352 wide output from 720 wide input (for vcd)\n");
-   fprintf(stderr,
-		   "                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
-   fprintf(stderr,"   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
-   fprintf(stderr,"   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
-   fprintf(stderr,"   -m         Force mono-chrome\n");
-   fprintf(stderr,"   -S list.el Output a scene list with scene detection\n");
-   fprintf(stderr,"   -T num     Set scene detection threshold to num (default: 4)\n");
-   fprintf(stderr,"   -D num     Width decimation to use for scene detection (default: 2)\n");
-   fprintf(stderr,"   -o num     Frame offset - skip num frames in the beginning\n");
-   fprintf(stderr,"              if num is negative, all but the last num frames are skipped\n");
-   fprintf(stderr,"   -f num     Only num frames are written to stdout (0 means all frames)\n");
+   printf("Usage: %s [params] inputfiles\n", str);
+   printf("   where possible params are:\n");
+   printf("   -a widthxhight+x+y\n");
+   printf("   -s num     Special output format option:\n");
+   printf("                 0 output like input, nothing special\n");
+   printf
+       ("                 1 create half height/width output from interlaced input\n");
+   printf
+       ("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
+   printf
+       ("                 3 create 352 wide output from 720 wide input (for vcd)\n");
+   printf
+       ("                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
+   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
+   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
+   printf("   -m         Force mono-chrome\n");
+   printf("   -S list.el Output a scene list with scene detection\n");
+   printf("   -T num     Set scene detection threshold to num (default: 4)\n");
+   printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
+   printf("   -o num     Frame offset - skip num frames in the beginning\n");
+   printf("              if num is negative, all but the last num frames are skipped\n");
+   printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
+   printf("   -I num     De-Interlacing mode for DV input (0,1,2,3)\n");
+   printf("   -i num     De-Interlacing spatial threshold (default: 440)\n");
+   printf("   -j num     De-Interlacing temporal threshold (default: 220)\n");
+   printf("   -Y         switch field order in DV input\n");
    exit(0);
 }
 
+#ifdef SUPPORT_READ_DV2
+static void frame_YUV422_to_YUV420P(unsigned char **output,
+        unsigned char *input, int width, int height)
+{
+    int i,j,w2,w4;
+    char *y, *u, *v, *inp, *ym;
+
+    w2 = width/2;
+    y = output[0];
+    u = output[1];
+    v = output[2];
+
+    w4 = 4*width;
+    if (param_YUV_swap_lines) inp = input+2*width;
+    else inp = input;
+
+    for (i=0; i<height; i+=2) {
+        ym = y;
+        for (j=0; j<w2; j++) {
+            /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
+            *(y++) = *(inp++);
+            *(u++) = *(inp++);
+            *(y++) = *(inp++);
+            *(v++) = *(inp++);
+        }
+        if (param_YUV_swap_lines) inp -= w4;
+        switch (param_DV_deinterlace) {
+        case 0:
+        case 1:
+            for (j=0; j<w2; j++) {
+                /* skip every second line for U and V */
+                *(y++) = *(inp++);
+                inp++;
+                *(y++) = *(inp++);
+                inp++;
+            }
+            break;
+        case 2:
+            /* average over the adjacent Y lines */
+            inp += 2*width;
+            y += width;
+            break;
+        default:
+            /* just duplicate the last Y line */
+            memcpy(y,ym,width);
+            inp += 2*width;
+            y += width;
+            break;
+        }
+        if (param_YUV_swap_lines) inp += w4;
+    }
+}
+                    
+static void frame_YUV420P_deinterlace(unsigned char **frame, 
+        unsigned char *previous_Y, int width, int height,
+        int SpatialTolerance, int TemporalTolerance, int mode)
+{
+    int i,j,weave;
+    int cnt = 0;
+    unsigned char *M0, *T0, *B0, *M1, *T1, *B1;
+
+    switch (mode) {
+    case 1:
+        for (i=1; i<height-1; i+=2) {
+            M1 = frame[0] + i*width;
+            T1 = M1 - width;
+            B1 = M1 + width;
+            M0 = previous_Y + i*width;
+            T0 = M0 - width;
+            B0 = M0 + width;
+            for (j=0; j<width; j++, M0++, T0++, B0++, M1++, T1++, B1++) {
+                register int f;
+                f = *T1 - *M1;
+                f *= f;
+                weave = (f < SpatialTolerance);
+                if (!weave) {
+                    f = *B1 - *M1;
+                    f *= f;
+                    weave = (f < SpatialTolerance);
+                    if (!weave) {
+                        f = *M0 - *M1;
+                        f *= f;
+                        weave = (f < TemporalTolerance);
+                        f = *T0 - *T1;
+                        f *= f;
+                        weave = (f < TemporalTolerance) && weave;
+                        f = *B0 - *B1;
+                        f *= f;
+                        weave = (f < TemporalTolerance) && weave;
+                        if (!weave) {
+                            f = *T1 + *B1;
+                            *M1 = f>>1;
+                            cnt++;
+                        }
+                    }
+                }
+            }
+        }
+        if (verbose > 1) fprintf(stderr,"De-Interlace mode 1, bob count = %d\n",cnt);
+        break;
+    case 2:
+        for (i=1; i<height-1; i+=2) {
+            M1 = frame[0] + i*width;
+            T1 = M1 - width;
+            B1 = M1 + width;
+            for (j=0; j<width; j++, M1++, T1++, B1++) {
+                register int f = *T1 + *B1;
+                *M1 = f>>1;
+            }
+        }
+        break;
+    }
+    /* just copy the last line */
+    M1 = frame[0] + (height - 1)*width;
+    T1 = M1 - width;
+    memcpy(M1,T1,width);
+}
+#endif
 
 int luminance_mean(unsigned char *frame, int w, int h )
 {
@@ -242,25 +385,116 @@ static void init()
       double_buf[i] = bufalloc(size);
    }
 
+#ifdef SUPPORT_READ_DV2
+   previous_Y  = bufalloc(output_width * output_height);
+   dv_frame[0] = bufalloc(3 * output_width * output_height);
+   dv_frame[1] = NULL;
+   dv_frame[2] = NULL;
+#endif
+
    filter_buf = bufalloc(output_width * output_height);
 }
 
 
 int readframe(int numframe, unsigned char *frame[])
 {
-   int len, i, res;
+   int len, i, res, data_format;
+   unsigned char *frame_tmp;
 
    frame[0] = read_buf[0];
    frame[1] = read_buf[1];
    frame[2] = read_buf[2];
 
    if (MAX_JPEG_LEN < el.max_frame_size) {
-      mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
-						 el.max_frame_size);
+      fprintf(stderr, "Max size of JPEG frame = %ld: too big\n",
+              el.max_frame_size);
+      exit(1);
    }
 
    len = el_get_video_frame(jpeg_data, numframe, &el);
 
+   data_format = el_video_frame_data_format(numframe, &el);
+   switch(data_format) {
+   case DATAFORMAT_DV2 :
+#ifndef SUPPORT_READ_DV2
+       fprintf(stderr,"DV input was not configured at compile time\n");
+       res = 1;
+#else
+       if (verbose > 1) fprintf(stderr,"DV frame %ld   len %d\n",numframe,len);
+       res = 0;
+       dv_parse_header(decoder, jpeg_data);
+       switch(decoder->sampling) {
+            case e_dv_sample_420:
+#ifdef LIBDV_PAL_YV12
+                /* libdv decodes PAL DV directly as planar YUV 420
+                 * (YV12 or 4CC 0x32315659) if configured with the flag
+                 * --with-pal-yuv=YV12 which is not (!) the default
+                 */
+                pitches[0] = decoder->width;
+                pitches[1] = decoder->width / 2;
+                pitches[2] = decoder->width / 2;
+                if (pitches[0] != output_width ||
+                    pitches[1] != chroma_output_width) {
+                        fprintf(stderr,"for DV 4:2:0 only full width output is supported\n");
+                        res = 1;
+                } else {
+                    dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+                                                (guchar **) frame, pitches);
+                    /* swap the U and V components */
+                    frame_tmp = frame[2];
+                    frame[2] = frame[1];
+                    frame[1] = frame_tmp;
+                }
+                break;
+#endif
+            case e_dv_sample_411:
+            case e_dv_sample_422:
+                /* libdv decodes NTSC DV (native 411) and by default also PAL
+                 * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+                 * where the U and V information is repeated.  This can be
+                 * transformed to planar 420 (YV12 or 4CC 0x32315659).
+                 * For NTSC DV this transformation is lossy.
+                 */
+                pitches[0] = decoder->width * 2;
+                pitches[1] = 0;
+                pitches[2] = 0;
+                if (pitches[0] != 2*output_width) {
+                        fprintf(stderr,"for DV only full width output is supported\n");
+                        res = 1;
+                } else {
+                    dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+                                        (guchar **) dv_frame, pitches);
+                    frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
+                                        decoder->height);
+
+                }
+                break;
+            default:
+                res = 1;
+                break;
+       }
+       if (res == 0 && (param_DV_deinterlace == 1 || param_DV_deinterlace == 2)) {
+           frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
+                               decoder->height, param_spatial_tolerance,
+                               temporal_tolerance, param_DV_deinterlace);
+           if (temporal_tolerance < 0)
+               temporal_tolerance = param_temporal_tolerance;
+           memcpy(previous_Y, frame[0], decoder->width * decoder->height);
+       }
+#endif
+       break;
+   case DATAFORMAT_YUV420 :
+       if (verbose > 1) fprintf(stderr,"YUV420 frame %d   len %d\n",numframe,len);
+       frame_tmp = jpeg_data;
+       memcpy(frame[0], frame_tmp, output_width*output_height);
+       frame_tmp += output_width*output_height;
+       memcpy(frame[1], frame_tmp, output_width*output_height/4);
+       frame_tmp += output_width*output_height/4;
+       memcpy(frame[2], frame_tmp, output_width*output_height/4);
+       res = 0;
+       break;
+   default:
+       if (verbose > 1) fprintf(stderr,"MJPEG frame %d   len %d\n",numframe,len);
    if (param_special == 4) {
       res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
                             chroma_format, output_width, output_height / 2,
@@ -295,10 +529,11 @@ int readframe(int numframe, unsigned char *frame[])
       frame[1] = double_buf[1];
       frame[2] = double_buf[2];
    }
+   }
 
 
    if (res) {
-      mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
+      fprintf(stderr, "Warning: Decoding of Frame %d failed\n", numframe);
       /* TODO: Selective exit here... */
       return 1;
    }
@@ -395,15 +630,53 @@ int readframe(int numframe, unsigned char *frame[])
 
 }
 
+/*
+  Raw write does *not* guarantee to write the entire buffer load if it
+  becomes possible to do so.  This does...
+ */
+
+static size_t do_write(int fd, void *buf, size_t count)
+{
+   char *cbuf = buf;
+   size_t count_left = count;
+   size_t written;
+   while (count_left > 0) {
+      written = write(fd, cbuf, count_left);
+      if (written < 0) {
+         perror("Error writing: ");
+         exit(1);
+      }
+      count_left -= written;
+      cbuf += written;
+   }
+   return count;
+}
+
 void writeoutYUV4MPEGheader(void)
 {
-   int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
-
-   if (frame_rate_code == 0) {
-      mjpeg_warn("unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
+   char str[256];
+   int i;
+   int frame_rate_code = 0;
+   /* RJ: Framerate specification should be based on
+      something more reliable than height */
+   for (i = 0; i < num_mpeg2_framerates; ++i) {
+      if (fabs(mpeg2_framerates[i] - el.video_fps) / mpeg2_framerates[i]
+          < 0.001) {
+         frame_rate_code = i;
+         break;
+      }
    }
 
-   yuv_write_header (1, output_width, output_height, frame_rate_code);
+   fprintf(stderr, "DEBUG: frame rate code %d set!\n", frame_rate_code);
+   fprintf(stderr, "DEBUG: 24fps = 2, PAL = 3, NTSC = 4\n");
+   if (frame_rate_code == 0) {
+      fprintf(stderr,
+              "+++ WARNING: unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
+   }
+
+   sprintf(str, "YUV4MPEG %d %d %d\n", output_width, output_height,
+           frame_rate_code);
+   do_write(out_fd, str, strlen(str));
 }
 
 void writeoutframeinYUV4MPEG(unsigned char *frame[])
@@ -412,7 +685,7 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
    int i;
    char *ptr;
 
-   pipewrite(out_fd, "FRAME\n", 6);
+   do_write(out_fd, "FRAME\n", 6);
 
    for (i = 0; i < active_height; i++) {
       ptr = &frame[0][luma_offset + (i * output_width)];
@@ -446,28 +719,28 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
    }
 
    if (luma_top_size) {
-      n += pipewrite(out_fd, luma_blank, luma_top_size);
+      n += do_write(out_fd, luma_blank, luma_top_size);
    }
-   n += pipewrite(out_fd, &frame[0][luma_offset], luma_size);
+   n += do_write(out_fd, &frame[0][luma_offset], luma_size);
    if (luma_bottom_size) {
-      n += pipewrite(out_fd, luma_blank, luma_bottom_size);
+      n += do_write(out_fd, luma_blank, luma_bottom_size);
    }
 
 
    if (chroma_top_size) {
-      n += pipewrite(out_fd, chroma_blank, chroma_top_size);
+      n += do_write(out_fd, chroma_blank, chroma_top_size);
    }
-   n += pipewrite(out_fd, &frame[1][chroma_offset], chroma_size);
+   n += do_write(out_fd, &frame[1][chroma_offset], chroma_size);
    if (chroma_bottom_size) {
-      n += pipewrite(out_fd, chroma_blank, chroma_bottom_size);
+      n += do_write(out_fd, chroma_blank, chroma_bottom_size);
    }
 
    if (chroma_top_size) {
-      n += pipewrite(out_fd, chroma_blank, chroma_top_size);
+      n += do_write(out_fd, chroma_blank, chroma_top_size);
    }
-   n += pipewrite(out_fd, &frame[2][chroma_offset], chroma_size);
+   n += do_write(out_fd, &frame[2][chroma_offset], chroma_size);
    if (chroma_bottom_size) {
-      n += pipewrite(out_fd, chroma_blank, chroma_bottom_size);
+      n += do_write(out_fd, chroma_blank, chroma_bottom_size);
    }
 }
 
@@ -499,7 +772,8 @@ void streamout(void)
       fd = fopen(param_scenefile,"w");
       if(fd==0)
       {
-         mjpeg_error_exit1("Can not open %s - no edit list written!\n",param_scenefile);
+         fprintf(stderr,"Can not open %s - no edit list written!\n",param_scenefile);
+         exit(0);
       }
       fprintf(fd,"LAV Edit List\n");
       fprintf(fd,"%s\n",el.video_norm=='n'?"NTSC":"PAL");
@@ -526,8 +800,8 @@ void streamout(void)
             delta_lum = abs(lum_mean - last_lum_mean);
          last_lum_mean = lum_mean;
 
-		 mjpeg_debug( "frame %d/%ld, lum_mean %d, delta_lum %d        \n", framenum,
-		    el.video_frames, lum_mean, delta_lum);
+         fprintf (stderr, "frame %d/%ld, lum_mean %d, delta_lum %d\r",
+            framenum, el.video_frames, lum_mean, delta_lum);
 
          if (delta_lum > delta_lum_threshold || index[N_EL_FILE(el.frame_list[framenum])] != movie_num ||
                oldframe+1 != N_EL_FRAME(el.frame_list[framenum])) {
@@ -537,6 +811,7 @@ void streamout(void)
             sprintf(temp,"%d %ld",index[N_EL_FILE(el.frame_list[framenum])], N_EL_FRAME(el.frame_list[framenum]));
             scene_start = framenum;
             scene_num++;
+            fprintf(stderr, "\n");
          }
 
          oldframe = N_EL_FRAME(el.frame_list[framenum]);
@@ -547,9 +822,9 @@ void streamout(void)
    }
    if (param_scenefile)
    {
+      fprintf(stderr, "\nEditlist written to %s\n", param_scenefile);
       fprintf(fd, "%s %ld\n", temp, N_EL_FRAME(el.video_frames-1));
       fclose(fd);
-      mjpeg_info( "Editlist written to %s\n", param_scenefile);
    }
 }
 
@@ -561,14 +836,14 @@ char *argv[];
    char *geom;
    char *end;
 
-   while ((n = getopt(argc, argv, "mv:a:s:d:n:S:T:D:o:f:")) != EOF) {
+   while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:")) != EOF) {
       switch (n) {
 
       case 'a':
          geom = optarg;
          active_width = strtol(geom, &end, 10);
          if (*end != 'x' || active_width < 100) {
-			 mjpeg_error("Bad width parameter\n");
+            fprintf(stderr, "Bad width parameter\n");
             nerr++;
             break;
          }
@@ -576,7 +851,7 @@ char *argv[];
          geom = end + 1;
          active_height = strtol(geom, &end, 10);
          if ((*end != '+' && *end != '\0') || active_height < 100) {
-            mjpeg_error( "Bad height parameter\n");
+            fprintf(stderr, "Bad height parameter\n");
             nerr++;
             break;
          }
@@ -587,7 +862,7 @@ char *argv[];
          geom = end + 1;
          active_x = strtol(geom, &end, 10);
          if ((*end != '+' && *end != '\0') || active_x > 720) {
-            mjpeg_error( "Bad x parameter\n");
+            fprintf(stderr, "Bad x parameter\n");
             nerr++;
             break;
          }
@@ -596,7 +871,7 @@ char *argv[];
          geom = end + 1;
          active_y = strtol(geom, &end, 10);
          if (*end != '\0' || active_y > 240) {
-            mjpeg_error( "Bad y parameter\n");
+            fprintf(stderr, "Bad y parameter\n");
             nerr++;
             break;
          }
@@ -606,23 +881,19 @@ char *argv[];
       case 's':
          param_special = atoi(optarg);
          if (param_special < 0 || param_special > 4) {
-            mjpeg_error( "-s option requires arg 0, 1, 2 or 3\n");
+            fprintf(stderr, "-s option requires arg 0, 1, 2 or 3\n");
             nerr++;
          }
          break;
 
       case 'v':
          verbose = atoi(optarg);
-         if (verbose < 0 ||verbose > 2) {
-            mjpeg_error( "-v option requires arg 0, 1, or 2\n");
-            nerr++;
-         }
          break;
 
       case 'd':
          param_drop_lsb = atoi(optarg);
          if (param_drop_lsb < 0 || param_drop_lsb > 3) {
-            mjpeg_error( "-d option requires arg 0..3\n");
+            fprintf(stderr, "-d option requires arg 0..3\n");
             nerr++;
          }
          break;
@@ -630,10 +901,39 @@ char *argv[];
       case 'n':
          param_noise_filt = atoi(optarg);
          if (param_noise_filt < 0 || param_noise_filt > 2) {
-            mjpeg_error( "-n option requires arg 0..2\n");
+            fprintf(stderr, "-n option requires arg 0..2\n");
             nerr++;
          }
          break;
+
+      case 'I':
+         param_DV_deinterlace = atoi(optarg);
+         if (param_DV_deinterlace < 0 || param_DV_deinterlace > 3) {
+            fprintf(stderr, "-I option requires arg 0, 1, 2 or 3\n");
+            nerr++;
+         }
+         break;
+
+      case 'i':
+         param_spatial_tolerance = atoi(optarg);
+         if (param_spatial_tolerance < 0 || param_spatial_tolerance > 65025) {
+            fprintf(stderr, "-i option requires a spatial tolerance between 0 and 65025\n");
+            nerr++;
+         }
+         break;
+
+      case 'j':
+         param_temporal_tolerance = atoi(optarg);
+         if (param_temporal_tolerance < 0 || param_temporal_tolerance > 65025) {
+            fprintf(stderr, "-i option requires a temporal tolerance between 0 and 65025\n");
+            nerr++;
+         }
+         break;
+
+      case 'Y':
+         param_YUV_swap_lines = 1;
+         break;
+
       case 'm':
          param_mono = 1;
          break;
@@ -663,8 +963,6 @@ char *argv[];
    if (nerr)
       Usage(argv[0]);
 
-   (void)mjpeg_default_handler_verbosity(verbose);
-
 
    /* Open editlist */
 
@@ -677,11 +975,12 @@ char *argv[];
       param_offset = el.video_frames + param_offset;
    }
    if (param_offset >= el.video_frames) {
-      mjpeg_error_exit1("offset greater than # of frames in input\n");
+      fprintf (stderr, "error: offset greater than # of frames in input\n");
+      exit (1);
    }
    if ((param_offset + param_frames) > el.video_frames) {
-	   mjpeg_warn("input too short for -f %d\n", param_frames);
-	   param_frames = el.video_frames - param_offset;
+      fprintf (stderr, "warning: input too short for -f %d\n", param_frames);
+      param_frames = el.video_frames - param_offset;
    }
    if (param_frames == 0) {
       param_frames = el.video_frames - param_offset;
@@ -694,7 +993,7 @@ char *argv[];
          output_width = (el.video_width / 2) & 0xfffffff0;
          output_height = el.video_height / 2;
       } else {
-         mjpeg_error(
+         fprintf(stderr,
                  "-s 1 may only be set for interlaced video sources\n");
          Usage(argv[0]);
       }
@@ -704,7 +1003,7 @@ char *argv[];
       if (el.video_width > 700) {
          output_width = 480;
       } else {
-         mjpeg_error(
+         fprintf(stderr,
                  "-s 2 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -714,7 +1013,7 @@ char *argv[];
       if (el.video_width > 700) {
          output_width = 352;
       } else {
-         mjpeg_error(
+         fprintf(stderr,
                  "-s 3 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -725,7 +1024,7 @@ char *argv[];
          output_width = 480;
          output_height = 480;
       } else {
-         mjpeg_error(
+         fprintf(stderr,
                  "-s 4 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -746,18 +1045,24 @@ char *argv[];
 
 
    if (active_width + active_x > output_width) {
-      mjpeg_error( "active offset + acitve width > image size\n");
+      fprintf(stderr, "active offset + acitve width > image size\n");
       Usage(argv[0]);
    }
 
    if (active_height + active_y > output_height) {
-      mjpeg_error( "active offset + active height > image size\n");
+      fprintf(stderr, "active offset + active height > image size\n");
       Usage(argv[0]);
    }
 
    out_fd = 1;                  /* stdout */
    init();
+#ifdef SUPPORT_READ_DV2
+   decoder = dv_decoder_new();
+   dv_init();
+   decoder->quality = DV_QUALITY_BEST;
+#endif
    if (delta_lum_threshold != -1) streamout();
    else write_edit_list(param_scenefile, 0, el.video_frames, &el);
+
    return 0;
 }

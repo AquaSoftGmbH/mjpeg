@@ -1,11 +1,10 @@
 #define _GNU_SOURCE 1			/* We make some use of C9X and POSIX and GNU
 								 facilities... */
 
-
 @TOP@
 #define VERSION   "x.x.x"		/* Mjpeg tools release version */
 
-/* Lagre file support ? */
+/* Large file support ? */
 #undef _FILE_OFFSET_BITS
 
 /* Define pthread lib stack size */
@@ -41,3 +40,7 @@
 /* Define for software MJPEG playback */
 #undef BUILD_MJPEG
 
+/* Define for libDV and possibly YV12 support */
+#undef LIBDV_PAL_YV12
+#undef SUPPORT_READ_DV2
+#undef SUPPORT_READ_YUV420

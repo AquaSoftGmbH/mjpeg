@@ -53,12 +53,7 @@ writes a yuv stream to stdout as lav2yuv does).
 
 The first line of trans.pli must be "LAV Pipe List".
 
-The second line contains either the string "PAL" or the string "NTSC",
-depending on what video standard you are using. This of course affects
-the meaning of frame numbers (PAL: 25 frames = 1 second, NTSC: 30 frames
-= 1 second).
-
-The third line contains one single number, the number of input
+The second line contains one single number, the number of input
 streams that we will use. (In our case: "2")
 
 Now for each of the two input streams a line containing the
@@ -115,7 +110,6 @@ Finally, our Pipe List file should look like this:
 
 --------------------< trans.pli >--------------------------
 LAV Pipe List
-PAL
 2
 lav2yuv -o $o -f $n -n 1 intro.avi
 lav2yuv -o $o -f $n epilogue.mov
@@ -175,7 +169,6 @@ And write the pipe list:
 
 --------------------< title.pli >--------------------------
 LAV Pipe List
-PAL
 3
 lav2yuv -o $o -f $n input.avi
 foreveryuv pic.yuv
