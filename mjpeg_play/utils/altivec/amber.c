@@ -17,7 +17,21 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <limits.h>
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+#include <sys/errno.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "../mjpeg_logging.h"
 
@@ -61,4 +75,45 @@ long amber_stop(const char *file, int line, int *trace_count, int max_traces,
     }
 
     return value;
+}
+
+
+void amber_symtrace(const char *name) {
+    DIR *dp;
+    struct dirent *dir;
+    struct stat sb;
+    char tracename[PATH_MAX], sympath[PATH_MAX], symname[PATH_MAX];
+    int found = 0;
+
+    if ((dp = opendir(".")) == NULL)
+	mjpeg_error_exit1("can't open current directory");
+
+    while ((dir = readdir(dp)) != NULL) {
+	if (dir->d_ino == 0)
+	    continue;
+
+	if (strncmp(dir->d_name, "trace_", 6) == 0) {
+	    if (!found) {
+		found = 1;
+		strncpy(tracename, dir->d_name, PATH_MAX);
+	    } else {
+		if (strncmp(dir->d_name, tracename, PATH_MAX) > 0)
+		    strncpy(tracename, dir->d_name, PATH_MAX);
+	    }
+	}
+    }
+    closedir(dp);
+
+    if (found) {
+	if (stat(name, &sb) != 0 && errno == ENOENT) {
+	    if (mkdir(name, 0777) != 0)
+		mjpeg_error_exit1("can't make directory %s", name);
+	}
+	snprintf(sympath, PATH_MAX, "../%s", tracename);
+	snprintf(symname, PATH_MAX, "%s/%s", name, tracename);
+	if (symlink(sympath, symname) != 0)
+	    mjpeg_error_exit1("can't symlink %s to %s", tracename, symname);
+    } else {
+	mjpeg_error_exit1("trace not found");
+    }
 }

@@ -17,6 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>
 #endif
@@ -29,17 +33,8 @@
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
+/* #define AMBER_MAX_TRACES 10 */
 #include "amber.h"
-
-#if 0
-/* addition benchmark info {{{ */
-#if defined(ALTIVEC_BENCHMARK) && ALTIVEC_TEST_FUNCTION(find_best_one_pel)
-#define FIND_BEST_ONE_PEL_BENCHMARK
-static int benchmark_len;
-static int benchmark_dmin;
-static int benchmark_skipped;
-#endif /* }}} */
-#endif
 
 
 /*
@@ -86,14 +81,11 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 {
     int i;
     uint8_t *orgblk;
-    me_result_s *sub22mests = sub22set->mests;
-    int len = sub22set->len;
+    me_result_s *sub22mests;
+    int len;
     uint8_t *pblk, *pref;
     int x, y;
     me_result_s mres;
-#ifdef ALTIVEC_DST
-    int dst;
-#endif
     vector unsigned char t0, t1, t2;
     vector unsigned char l0, l1;
     vector unsigned char perm0, perm1;
@@ -101,25 +93,26 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     vector unsigned char vref;
     vector unsigned int zero;
     vector unsigned int sad00, sad10, sad01, sad11;
-    vector signed int sads;
-    vector signed int penalty;
-    vector signed int minsad;
+    vector unsigned int sads;
+    vector unsigned int minsad;
     vector bool int minsel;
     vector signed char xy;
     vector signed char xylim;
-    vector bool int xyclip;
     vector signed char minxy;
     vector signed char xy11;
-    vector unsigned int viov; /* vector scalar input */
+    vector unsigned char xint,
+			 yint;
     union {
-	vector unsigned int align16;
+	vector unsigned int _align16;
 	struct {
-	    me_result_s xy;
 	    me_result_s xylim;
-	    signed int penalty;
-	} s;
+	} init;
+	me_result_s xy;
 	me_result_s best;
     } vio;
+#ifdef ALTIVEC_DST
+    DataStreamControl dsc;
+#endif
 #ifdef VERIFY_FIND_BEST_ONE_PEL
     vector signed int versads;
 #endif
@@ -139,49 +132,47 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     mjpeg_error_exit1("find_best_one_pel: h != [8|16], (%d)", h);
 #endif /* }}} */
 
-/* #define RETURN {{{ */
-#ifdef FIND_BEST_ONE_PEL_BENCHMARK
-#define RETURN {                                                             \
-    benchmark_dmin = dmin;                                                   \
-    benchmark_len = len;                                                     \
-    benchmark_skipped = 0;                                                   \
-    best_so_far->weight = 255*255;                                           \
-    return;                                                                  \
-  }
-#else
-#define RETURN {                                                             \
-    best_so_far->weight = 255*255;                                           \
-    return;                                                                  \
-  }
-#endif /* }}} */
+    AMBER_START;
 
-  AMBER_START;
-
-  if (len < 1) /* sub22set->len is sometimes zero. we can */
-    RETURN;    /* save a lot of effort if we stop short.  */
+    len = sub22set->len;
+    if (len < 1) {			/* sub22set->len is sometimes zero.  */
+	best_so_far->weight = 255*255;	/* we can save a lot of effort if we */
+	return;				/* stop short.                       */
+    }
 
 #ifdef ALTIVEC_DST
-    dst = DSTCB(1,h,rowstride);
-    vec_dst(ref, dst, 0);
-    dst += (1<<24)+(1<<16); /* increase size to 2 and increment count */
+    dsc.control = DATA_STREAM_CONTROL(1,0,0);
+    dsc.block.count = h;
+    dsc.block.stride = rowstride;
+    vec_dst(ref, dsc.control, 0);
+
+    /* increase size to 2 and increment count */
+    dsc.control += DATA_STREAM_CONTROL(1,1,0);
 #endif
 
     xy11 = (vector signed char)(0,0,0,0, 0,0,1,0, 0,0,0,1, 0,0,1,1);
 
+    mres.weight = 0;		/* weight must be zero */
     mres.x = ihigh - i0;	/* x <= xylim.x */
     mres.y = jhigh - j0;	/* y <= xylim.y */
-    mres.weight = 0;		/* clear weight, not needed */
-    vio.s.xylim = mres;
+    vio.init.xylim = mres;
+
+    yint = vec_lvsl(0, (unsigned char*)0);
+    vu32(xint) = vec_splat_u32(0xf);
+    xint = vec_add(xint, yint /* lvsl */ );
+    vu32(yint) = vec_splat_u32(1);
+    yint = vec_add(yint, xint);
 
     /* initialize to zero */
     zero = vec_splat_u32(0);
 
-    /* minsad = (2147483647, 2147483647, 2147483647, 2147483647) {{{ */
-    vu32(t0) = vec_splat_u32(1);
+    xylim = vec_ld(0, (signed char*) &vio.init.xylim);
+    vu32(xylim) = vec_splat(vu32(xylim), 0);
+
     vs8(minsad) = vec_splat_s8(-1);
-    vu32(minsad) = vec_sr(vu32(minsad), vu32(t0) /* (1) */ );
-    /* }}} */
     
+    sub22mests = sub22set->mests;
+
     do {
 	mres = *sub22mests;
 	x = mres.x;
@@ -189,11 +180,11 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 
 	orgblk = org + (i0 + x) + rowstride*(j0 + y);
 #ifdef ALTIVEC_DST
-	vec_dst(orgblk, dst, 1);
+	vec_dst(orgblk, dsc.control, 1);
 #endif
 
-	mres.weight = 0; /* clear weight, not needed */
-	vio.s.xy = mres;
+	mres.weight = 0; /* weight must be zero */
+	vio.xy = mres;
 	sub22mests++;
     
 
@@ -205,14 +196,6 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	    mjpeg_warn("find_best_one_pel: orgblk %% 2 != 0 (0x%X)", orgblk);
 #endif
 
-
-#if 1
-	/* current penalty calculation */
-	vio.s.penalty = intmax(intabs(x),intabs(y)) << 5;
-#else
-	/* old penalty calculation */
-	vio.s.penalty = intabs(x) + intabs(y);
-#endif
     
 	/* calculate SAD for macroblocks:
 	 * orgblk(0, 0), orgblk(+1, 0),
@@ -306,7 +289,6 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	sad11  = vec_sum4s(t2, sad11);         
 
 
-
 	/* calculate final sums {{{ */
 	vs32(sad00) = vec_sums(vs32(sad00), vs32(zero));         
 	vs32(sad10) = vec_sums(vs32(sad10), vs32(zero));         
@@ -322,43 +304,78 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 
 #ifdef VERIFY_FIND_BEST_ONE_PEL /* {{{ */
 	if (verify) {
-	    vec_st(sads, 0, (signed int*)&versads);
+	    vec_st(sads, 0, (unsigned int*)&versads);
 	    verify_sads(orgblk, ref, rowstride, h, (signed int*)&versads, 4);
 	}
 #endif /* }}} */
 
-	viov = vec_ld(0, (unsigned int*)&vio);
+	/* add penalty, clip xy, arrange into me_result_s ... {{{ */
+	{
+	    xy = vec_ld(0, (signed char*) &vio.xy);
+	    vu32(xy) = vec_splat(vu32(xy), 0); /* splat vio.xy */
 
-	penalty = vec_splat(vs32(viov), 2);  /* splat vio.s.penalty */
-	sads = vec_add(sads, penalty);
+	    /* add distance penalty {{{ */
+	    /* penalty = (max(abs(x),abs(y))<<5) */
+	    {
+		vector signed char  xyabs;
+		vector unsigned int xxxx, yyyy;
+		vector unsigned int xymax, penalty;
 
-	/* update minsad & minxy {{{ */
-	/* mask sads  x <= ilim && y <= jlim {{{ */
-	/* the first cmpgt (u8) will flag any x and/or y coordinates ... {{{
-	 * as out of bounds. the second cmpgt (u32) will complete the
-	 * mask if the x or y flag for that result is set.
-	 *
-	 * Example:
-	 *        X  Y         X  Y         X  Y         X  Y
-	 * [0  0  <  <] [0  0  <  <] [0  0  >  <] [0  0  <  >]
-	 * vu8(xymask)  = vec_cmpgt(vu8(xy), xymax)
-	 * [0  0  0  0] [0  0  0  0] [0  0  1  0] [0  0  0  1]
-	 * vu32(xymask) = vec_cmpgt(vu32(xymask), vu32(zero))
-	 * [0  0  0  0] [0  0  0  0] [1  1  1  1] [1  1  1  1]
-	 *
-	 * Legend: 0=0x00  (<)=(xy[n] <= xymax[n])
-	 *         1=0xff  (>)=(xy[n] >  xymax[n])
-	 */ /* }}} */
-	vu32(xy) = vec_splat(viov, 0);	/* splat vio.s.xy */
-	/* adjust values of xy[1-3] */
-	xy = vec_add(xy, xy11);
-	vu32(xylim) = vec_splat(viov, 1);   /* splat vio.s.xylim */
-	vb8(xyclip) = vec_cmpgt(xy, xylim);
-	xyclip = vec_cmpgt(vu32(xyclip), vu32(zero));
-	/* }}} */
+		/* (abs(x),abs(y)) */
+		xyabs = vec_subs(vs8(zero), xy);
+		xyabs = vec_max(xyabs, xy);
 
-	/* set the sad of x/y clipped blocks to not less than minsad */
-	sads = vec_sel(sads, minsad, xyclip);
+		/* xxxx = (x, x, x, x), yyyy = (y, y, y, y)
+		 * (0,0,x,y, 0,0,x,y, 0,0,x,y, 0,0,x,y) |/- permute vector  -\|
+		 * (0,0,0,x, 0,0,0,x, 0,0,0,x, 0,0,0,x) |lvsl+(0x0000000F,...)| 
+		 * (0,0,0,y, 0,0,0,y, 0,0,0,y, 0,0,0,y) |lvsl+(0x00000010,...)|
+		 */
+		vs8(xxxx) = vec_perm(vs8(zero), xyabs, xint);
+		vs8(yyyy) = vec_perm(vs8(zero), xyabs, yint);
+
+		/* penalty = max(abs(x),abs(y)) << 5  */
+		xymax = vec_max(xxxx, yyyy);
+		penalty = vec_splat_u32(5);
+		penalty = vec_sl(xymax, penalty /* (5,...) */ );
+
+		sads = vec_add(sads, penalty);
+	    } /* }}} */
+
+
+	    /* original version adds same penalty for each sad
+	     * so xy adjustment must be after penalty calc.
+	     */
+	    xy = vec_add(xy, xy11); /* adjust xy values for elements 1-3 */
+
+	    /* mask sads  x <= (ihigh - i0) && y <= (jhigh - j0) {{{ */
+	    /* the first cmpgt (s8) will flag any x and/or y coordinates... {{{
+	     * as out of bounds. the second cmpgt (u32) will complete the
+	     * mask if the x or y flag for that result is set.
+	     *
+	     * Example: {{{ 
+	     *        X  Y         X  Y         X  Y         X  Y
+	     * [0  0  <  <] [0  0  <  <] [0  0  >  <] [0  0  <  >]
+	     * vb8(xymask)  = vec_cmpgt(vu8(xy), xylim)
+	     * [0  0  0  0] [0  0  0  0] [0  0  1  0] [0  0  0  1]
+	     * vb32(xymask) = vec_cmpgt(vu32(xymask), vu32(zero))
+	     * [0  0  0  0] [0  0  0  0] [1  1  1  1] [1  1  1  1]
+	     *
+	     * Legend: 0=0x00  (<)=(xy[n] <= xymax[n])
+	     *         1=0xff  (>)=(xy[n] >  xymax[n])
+	     * }}}
+	     */ /* }}} */
+	    {
+		vector bool int xymask;
+
+		vb8(xymask) = vec_cmpgt(xy, xylim);
+		xymask = vec_cmpgt(vu32(xymask), zero);
+
+		/* 'or' xymask to sads thereby forcing
+		 * masked values above the threshold.
+		 */
+		sads = vec_or(sads, vu32(xymask));
+	    } /* }}} */
+	} /* }}} */
 
 	/* find sads lower than minsad */
 	minsel = vec_cmplt(sads, minsad);
@@ -366,7 +383,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 	minsad = vec_sel(minsad, sads, minsel);
 	minxy = vec_sel(minxy, xy, vb8(minsel));
 
-#define minsad32 vs32(t0)
+#define minsad32 vu32(t0)
 #define minxy32  vs8(t1)
 	vu32(minsad32) = vec_sld(vu32(zero), vu32(minsad), 12);
 	vu32(minxy32) = vec_sld(vu32(zero), vu32(minxy), 12);
@@ -377,7 +394,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
 #undef minsad32 /* t0 */
 #undef minxy32  /* t1 */
 
-#define minsad64 vs32(t0)
+#define minsad64 vu32(t0)
 #define minxy64  vs8(t1)
 	vu32(minsad64) = vec_sld(vu32(zero), vu32(minsad), 8);
 	vu32(minxy64) = vec_sld(vu32(zero), vu32(minxy), 8);
@@ -409,19 +426,13 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     /* }}} */
 
     /* store mests to vo for scalar access */
-    vec_st(minsad, 0, (signed int*) &vio);
+    vec_st(minsad, 0, (unsigned int*) &vio.best);
 
     mres = vio.best;
     if (mres.weight > 255*255)
 	mres.weight = 255*255;
 
     *best_so_far = mres;
-
-/* update additional benchmark info {{{ */
-#ifdef FIND_BEST_ONE_PEL_BENCHMARK
-  benchmark_dmin = dmin;
-  benchmark_len = len;
-#endif /* }}} */
 
   AMBER_STOP;
 
@@ -497,15 +508,8 @@ static void verify_sads(uint8_t *blk1, uint8_t *blk2, int stride,
 #define BENCHMARK_FREQUENCY 543
 
 #undef BENCHMARK_EPILOG
-#ifdef FIND_BEST_ONE_PEL_BENCHMARK
-#define BENCHMARK_EPILOG                                                     \
-  mjpeg_info("find_best_one_pel: sub22set->len=%d", sub22set->len);          \
-  mjpeg_info("find_best_one_pel: dmin=%d len=%d skipped=%d",                 \
-             benchmark_dmin, benchmark_len, benchmark_skipped);
-#else
 #define BENCHMARK_EPILOG                                                     \
   mjpeg_info("find_best_one_pel: sub22set->len=%d", sub22set->len);
-#endif
 
 ALTIVEC_TEST(find_best_one_pel, void, (FIND_BEST_ONE_PEL_PDECL),
     FIND_BEST_ONE_PEL_PFMT, FIND_BEST_ONE_PEL_ARGS);

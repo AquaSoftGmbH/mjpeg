@@ -18,10 +18,14 @@
  */
 
 /*
- * This AltiVec detection code relies on the operating system to provide and
+ * This AltiVec detection code relies on the operating system to provide an
  * illegal instruction signal if AltiVec is not present. It is known to work
  * on Mac OS X and Linux.
  */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>

@@ -40,6 +40,15 @@
 #define vfp(v)  ((vector float)(v))
 
 
-#define DSTCB(size,count,stride) \
-    ((((size)<<24)&0x1F000000)|(((count)<<16)&0x00FF0000)|((stride)&0xFFFF))
+typedef union {
+    unsigned int control;
+    struct {
+        unsigned char size;  /* 0 to 31, (size & 0x1F) */
+        unsigned char count; /* 0 to 255 */
+        signed short stride; /* -32768 to +32768 */
+    } block;
+} DataStreamControl;
+
+#define DATA_STREAM_CONTROL(size,count,stride) \
+    ((((size)&0x1F)<<24)|(((count)&0xFF)<<16)|((stride)&0xFFFF))
 

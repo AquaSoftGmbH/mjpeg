@@ -17,6 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>
 #endif
@@ -27,7 +31,8 @@
 
 extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
                                int mquant, int *nonsat_mquant);
-extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t *i_quant_mat);
+extern void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst, uint16_t *qmat);
 
 
 void enable_altivec_quantization()
@@ -52,5 +57,11 @@ void enable_altivec_quantization()
     pquant_weight_coeff_sum = ALTIVEC_TEST_SUFFIX(quant_weight_coeff_sum);
 #else
     pquant_weight_coeff_sum = ALTIVEC_SUFFIX(quant_weight_coeff_sum);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
+    piquant_non_intra_m1 = ALTIVEC_TEST_SUFFIX(iquant_non_intra_m1);
+#else
+    piquant_non_intra_m1 = ALTIVEC_SUFFIX(iquant_non_intra_m1);
 #endif
 }

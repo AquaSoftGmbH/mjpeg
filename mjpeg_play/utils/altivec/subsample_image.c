@@ -17,6 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>
 #endif
@@ -29,7 +33,6 @@
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
-
 
 extern int opt_enc_width, opt_enc_height;
 extern int opt_phy_width, opt_phy_height;
@@ -47,13 +50,16 @@ extern int opt_phy_width, opt_phy_height;
 
 void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 {
-    int i, ii, j, jstride, jstride2;
-    unsigned char *pB, *pB2, *pB4, *pN;
+    int i, ii, j, stride1, stride2, stride3, stride4, halfstride;
+    unsigned char *pB, *pB2, *pB4;
     vector unsigned char l0, l1, l2, l3;
     vector unsigned short s0, s1, s2, s3;
     vector unsigned short s22_0, s22_1, s22_2, s22_3;
     vector unsigned short s44, s44_0, s44_1;
     vector unsigned short zero, two;
+#ifdef ALTIVEC_DST
+    DataStreamControl dsc;
+#endif
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
     if (NOT_VECTOR_ALIGNED(image))
@@ -75,29 +81,42 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 
     AMBER_START;
 
-    zero = vec_splat_u16(0);
-    two = vec_splat_u16(2);
-
     pB = image;
+
+#ifdef ALTIVEC_DST
+    dsc.control = DATA_STREAM_CONTROL(6,4,0);
+    dsc.block.stride = rowstride;
+
+    vec_dst(pB, dsc.control, 0);
+#endif
+
     pB2 = sub22_image;
     pB4 = sub44_image;
 
-    jstride = rowstride * 3;
-    jstride2 = rowstride >> 1; /* /2 */
-
     j = ((unsigned long)(pB2 - pB) / rowstride) >> 2; /* height/4 */
+
+    stride1 = rowstride;
+    stride2 = stride1 + stride1;
+    stride3 = stride2 + stride1;
+    stride4 = stride2 + stride2;
+    halfstride = stride1 >> 1; /* /2 */
+
     ii = rowstride >> 6; /* rowstride/16/4 */
+
+    zero = vec_splat_u16(0);
+    two = vec_splat_u16(2);
+
     do {
 	i = ii;
 	do {
 	    l0 = vec_ld(0, pB);
-	    pN = pB + rowstride;
-	    l1 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l2 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l3 = vec_ld(0, pN);
+	    l1 = vec_ld(stride1, pB);
+	    l2 = vec_ld(stride2, pB);
+	    l3 = vec_ld(stride3, pB);
 	    pB += 16;
+#ifdef ALTIVEC_DST
+	    vec_dst(pB + (16 * 3), dsc.control, 0);
+#endif
 
 	    /* l0 = 0x[00,01,02,03,04,05,06,07,08,09,0A,0B,0C,0D,0E,0F] */
 	    /* l1 = 0x[10,11,12,13,14,15,16,17,18,19,1A,1B,1C,1D,1E,1F] */
@@ -130,14 +149,10 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 
 	    /* start loading next block */
 	    l0 = vec_ld(0, pB);
-	    pN = pB + rowstride;
-	    l1 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l2 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l3 = vec_ld(0, pN);
+	    l1 = vec_ld(stride1, pB);
+	    l2 = vec_ld(stride2, pB);
+	    l3 = vec_ld(stride3, pB);
 	    pB += 16;
-
 
 	    /* s0 = 0x[00+01+10+11, 02+03+12+13, 04+05+14+15, 06+07+16+17] */
 	    /* s1 = 0x[08+09+18+19, 0A+0B+1A+1B, 0C+0D+1C+1D, 0E+0F+1E+1F] */
@@ -167,7 +182,6 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 	    /* s44_0 = 0x[00+20+02+22, 04+24+06+26, 08+28+0A+2A, 0C+2C+0E+2E] */
 	    vs32(s44_0) = vec_sum4s(vs16(s44_0), vs32(zero));
 
-
 	    /* - - - - - - - - - - - - - - - - - - - */
 	    vu16(s0) = vec_mergeh(vu16(l0), vu16(l1));
 	    vu32(s0) = vec_sum4s(vu8(s0), vu32(zero));
@@ -178,15 +192,11 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 	    vu16(s3) = vec_mergel(vu16(l2), vu16(l3));
 	    vu32(s3) = vec_sum4s(vu8(s3), vu32(zero));
 
-
 	    /* start loading next l[0-3] */
 	    l0 = vec_ld(0, pB);
-	    pN = pB + rowstride;
-	    l1 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l2 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l3 = vec_ld(0, pN);
+	    l1 = vec_ld(stride1, pB);
+	    l2 = vec_ld(stride2, pB);
+	    l3 = vec_ld(stride3, pB);
 	    pB += 16;
 
 
@@ -208,10 +218,8 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 	    vu8(s22_0) = vec_packsu(s22_0, s22_2);
 	    vu8(s22_1) = vec_packsu(s22_1, s22_3);
 	    vec_st(vu8(s22_0), 0, pB2);
-	    pN = pB2 + jstride2;
-	    vec_st(vu8(s22_1), 0, pN);
+	    vec_st(vu8(s22_1), halfstride, pB2);
 	    pB2 += 16;
-
 
 	    /* - - - - - - - - - - - - - - - - - - - */
 	    vu16(s0) = vec_mergeh(vu16(l0), vu16(l1));
@@ -225,13 +233,11 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 
 	    /* starting loading next l[0-3] */
 	    l0 = vec_ld(0, pB);
-	    pN = pB + rowstride;
-	    l1 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l2 = vec_ld(0, pN);
-	    pN += rowstride;
-	    l3 = vec_ld(0, pN);
+	    l1 = vec_ld(stride1, pB);
+	    l2 = vec_ld(stride2, pB);
+	    l3 = vec_ld(stride3, pB);
 	    pB += 16;
+
 
 	    s22_0 = vec_packsu(vu32(s0), vu32(s1));
 	    s22_1 = vec_packsu(vu32(s2), vu32(s3));
@@ -279,8 +285,7 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 	    vu8(s22_0) = vec_packsu(s22_0, s22_2);
 	    vu8(s22_1) = vec_packsu(s22_1, s22_3);
 	    vec_st(vu8(s22_0), 0, pB2);
-	    pN = pB2 + jstride2;
-	    vec_st(vu8(s22_1), 0, pN);
+	    vec_st(vu8(s22_1), halfstride, pB2);
 	    pB2 += 16;
 
 	    /* pack all four s44 chunks */
@@ -294,10 +299,14 @@ void subsample_image_altivec(SUBSAMPLE_IMAGE_PDECL)
 
 	} while (--i);
 
-	pB += jstride;
-	pB2 += jstride2;
+	pB += stride3;
+	pB2 += halfstride;
 
     } while (--j);
+
+#ifdef ALTIVEC_DST
+    vec_dss(0);
+#endif
 
     AMBER_STOP;
 }
@@ -350,7 +359,6 @@ static void imgcmp(const char *ss, uint8_t *a, uint8_t *b,
 
 void subsample_image_altivec_verify(SUBSAMPLE_IMAGE_PDECL)
 {
-    int i, j;
     int width, height;
     unsigned long checksum44_1, checksum44_2;
     unsigned long checksum22_1, checksum22_2;

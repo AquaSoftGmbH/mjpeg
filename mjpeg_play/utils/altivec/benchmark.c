@@ -17,6 +17,10 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #ifdef HAVE_ALTIVEC_H
 #include <altivec.h>
 #endif
@@ -87,6 +91,9 @@ extern struct benchmark_stats n##_altivec_benchmark_stats
 #if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_sum)
   EXTERN_STATS(quant_weight_coeff_sum);
 #endif
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
+  EXTERN_STATS(iquant_non_intra_m1);
+#endif
 #if ALTIVEC_TEST_FUNCTION(variance)
   EXTERN_STATS(variance);
 #endif
@@ -154,6 +161,9 @@ struct benchmark_info benchmarktab[] = {
 #endif
 #if ALTIVEC_TEST_FUNCTION(quant_weight_coeff_sum)
   BENCHMARK_INFO(quant_weight_coeff_sum)
+#endif
+#if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
+  BENCHMARK_INFO(iquant_non_intra_m1)
 #endif
 #if ALTIVEC_TEST_FUNCTION(variance)
   BENCHMARK_INFO(variance)

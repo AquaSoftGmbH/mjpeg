@@ -28,7 +28,8 @@ void enable_altivec_quantization();
 #define ALTIVEC_TEST_QUANTIZE /* {{{ */                                      \
     ( ( defined(ALTIVEC_BENCHMARK) || defined(ALTIVEC_VERIFY) ) &&           \
       ( ALTIVEC_TEST_FUNCTION(quant_non_intra) ||                            \
-        ALTIVEC_TEST_FUNCTION(quant_wieght_coeff_sum) ) )                    \
+        ALTIVEC_TEST_FUNCTION(quant_weight_coeff_sum) ||                     \
+        ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) ) )                       \
     /* }}} */
 
 ALTIVEC_FUNCTION(quant_non_intra, int,
@@ -37,3 +38,6 @@ ALTIVEC_FUNCTION(quant_non_intra, int,
 
 ALTIVEC_FUNCTION(quant_weight_coeff_sum, int,
 	(int16_t *blk, uint16_t *i_quant_mat));
+
+ALTIVEC_FUNCTION(iquant_non_intra_m1, void,
+	(int16_t *src, int16_t *dst, uint16_t *qmat));

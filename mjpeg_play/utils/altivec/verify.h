@@ -25,6 +25,6 @@ ret name##_altivec_verify defargs {                                          \
   if (verify != correct)                                                     \
     mjpeg_debug(AVFMT(ret) " != " AVFMT(ret) "=" #name "(" pfmt ")",         \
                 verify, correct, args);                                      \
-  AVRET(ret,correct);                                                        \
+  return correct;                                                            \
 }
 

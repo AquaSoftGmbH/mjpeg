@@ -67,7 +67,7 @@ void print_benchmark_statistics();
 
 
 #define ALTIVEC_TEST_BENCHMARK(name,ret,defargs,pfmt,args)                   \
-extern ret ALTIVEC_TEST_WITH(name) defargs;                                  \
+ret ALTIVEC_TEST_WITH(name) defargs;                                         \
 struct benchmark_stats name##_altivec_benchmark_stats;                       \
 ret name##_altivec_benchmark defargs {                                       \
   int i, j, passes, done;                                                    \
@@ -76,6 +76,7 @@ ret name##_altivec_benchmark defargs {                                       \
   ret (*pfuncs[2]) defargs;                                                  \
   ret (*pfunc) defargs;                                                      \
   int iterations, calibration[2];                                            \
+  AVRETDECL(ret,retval);                                                     \
                                                                              \
   if (name##_altivec_benchmark_stats.counter % BENCHMARK_FREQUENCY == 0 &&   \
       name##_altivec_benchmark_stats.benchmark_runs < BENCHMARK_MAX_RUNS)    \
@@ -140,5 +141,6 @@ ret name##_altivec_benchmark defargs {                                       \
   }                                                                          \
   name##_altivec_benchmark_stats.counter++;                                  \
                                                                              \
-  AVRET(ret,name##_altivec(args));                                           \
+  AVRETSET(ret,retval,name##_altivec(args));                                 \
+  AVRETURN(ret,retval);                                                      \
 }

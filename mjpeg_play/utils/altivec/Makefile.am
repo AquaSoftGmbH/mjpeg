@@ -19,6 +19,7 @@ libaltivec_a_SOURCES = \
   sad_11.c \
   bsad.c \
   sub_mean_reduction.c \
+  sub_mean_reduction_ppc.S \
   sumsq.c \
   sumsq_sub22.c \
   bsumsq.c \
@@ -29,6 +30,7 @@ libaltivec_a_SOURCES = \
   fdct_idct.c \
   quant_non_intra.c \
   quant_weight_coeff_sum.c \
+  iquant_non_intra_m1.c \
   variance.c \
   sub_pred.c \
   add_pred.c \

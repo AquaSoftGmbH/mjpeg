@@ -17,7 +17,32 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifdef AMBER_ENABLE
+#ifdef ALTIVEC_AMBER
+
+#ifndef AMBER_MAX_TRACES
+#define AMBER_MAX_TRACES 1
+#endif
+
+void amber_symtrace(const char *name);
+
+#define ALTIVEC_TEST_AMBER(name,ret,defargs,pfmt,args) /* {{{ */             \
+ret name##_altivec_amber defargs {                                           \
+    static int trace_count = 0;                                              \
+    register long sigreg;                                                    \
+    AVRETDECL(ret,retval);                                                   \
+    if (trace_count < AMBER_MAX_TRACES) {                                    \
+        trace_count++;                                                       \
+        asm volatile ("mfspr %0, 1023" : "=r" (sigreg)); /* start amber */   \
+        AVRETSET(ret,retval,ALTIVEC_TEST_WITH(name)(args));                  \
+        asm volatile ("mfspr %0, 1023" : "=r" (sigreg)); /* stop amber */    \
+        amber_symtrace(AVSTR(ALTIVEC_TEST_WITH(name)));                      \
+    } else {                                                                 \
+        AVRETSET(ret,retval,ALTIVEC_TEST_WITH(name)(args));                  \
+    }                                                                        \
+    AVRETURN(ret,retval);                                                    \
+} /* }}} */
+
+#elif defined(AMBER_ENABLE) && !defined(ALTIVEC_VERIFY)
 
 #ifndef AMBER_MAX_TRACES
 #define AMBER_MAX_TRACES 1
@@ -38,9 +63,12 @@ static int amber_trace_count = 0;
                                 AMBER_MAX_TRACES)
 #define AMBER_STOP  amber_stop(__FILE__, __LINE__, &amber_trace_count, \
                                AMBER_MAX_TRACES, AMBER_MAX_EXIT)
-#else
+#endif
 
-#define AMBER_START
-#define AMBER_STOP
 
+#ifndef AMBER_START
+#  define AMBER_START
+#endif
+#ifndef AMBER_STOP
+#  define AMBER_STOP
 #endif
