@@ -20,7 +20,7 @@ EXTRA_DIST = \
  CHANGES\
  PLANS\
  mjpeg_howto.txt \
- mjpegtools.spec \
+ mjpegtools.spec.in \
  mjpegtools.pc.in \
  autogen.sh\
  depcomp\

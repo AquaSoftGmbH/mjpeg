@@ -85,7 +85,8 @@ endif
 bin_PROGRAMS = \
 	$(LAVPLAY_BIN) $(LAVREC_BIN) lav2wav  lav2yuv \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
-	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
+	ypipe yuv2lav transist.flt matteblend.flt \
+	multiblend.flt lavpipe \
 	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
 	ppmtoy4m y4mtoppm y4mcolorbars lavinfo
 
@@ -104,6 +105,9 @@ transist_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
 
 matteblend_flt_SOURCES = matteblend.flt.c ${lav_headers}
 matteblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
+
+multiblend_flt_SOURCES = multiblend.flt.c ${lav_headers}
+multiblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
 
 lavplay_SOURCES = lavplay.c ${lav_headers}
 lavplay_LDADD = -L$(top_builddir)/utils -lmjpegutils \
@@ -175,7 +179,7 @@ y4mcolorbars_LDADD = -L$(top_builddir)/utils -lmjpegutils
 
 divxdec_SOURCES = divxdec.cpp riffinfo.h libavifile.h lav_common.c
 divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
-	$(AVIPLAY_LIBS) $(LIBM_LIBS) \
+	$(AVIPLAY_LIBS) $(LIBM_LIBS) ${SDL_LIBS} ${X_LIBS} -lX11 \
 	liblavfile.la liblavplay.la liblavjpeg.la
 
 lavinfo_SOURCES = lavinfo.c $(lav_headers)

@@ -3,6 +3,7 @@
 
 srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
+test -z "$automake" && automake=automake
 
 PKG_NAME="The Linux Audio Video tools"
 ACLOCAL_FLAGS=""
@@ -46,7 +47,7 @@ grep "^AM_GNU_GETTEXT" $srcdir/configure.in >/dev/null && {
   }
 }
 
-(automake --version) < /dev/null > /dev/null 2>&1 || {
+($automake --version) < /dev/null > /dev/null 2>&1 || {
   echo
   echo "**Error**: You must have \`automake' installed to compile pinfo."
   echo "Get ftp://ftp.gnu.org/pub/gnu/automake"
@@ -54,7 +55,7 @@ grep "^AM_GNU_GETTEXT" $srcdir/configure.in >/dev/null && {
   NO_AUTOMAKE=yes
 }
 
-automakevermin=`(automake --version|head -n 1|sed 's/^.* //;s/\./ /g;';echo "1 5")|sort -n|head -n 1`
+automakevermin=`($automake --version|head -n 1|sed 's/^.* //;s/\./ /g;';echo "1 5")|sort -n|head -n 1`
 if test "x$automakevermin" != "x1 5"; then
 # version is less than 1.5, the minimum suitable version
   echo
@@ -129,8 +130,8 @@ do
 	echo "Running autoheader..."
 	autoheader
       fi
-      echo "Running automake --gnu $am_opt ..."
-      automake --add-missing --gnu $am_opt
+      echo "Running $automake --gnu $am_opt ..."
+      $automake --add-missing --gnu $am_opt
       echo "Running autoconf ..."
       autoconf
     )

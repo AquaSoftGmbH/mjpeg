@@ -62,7 +62,7 @@ is, of course, better achieved using MPEG layer III "MP3" audio
 encoding or AAC.
 
 .TP
-.BI -l \ sampling_rate
+.BI -r \ sampling_rate
 Sets the audio sampling rate of the reconstructed output signal in Hz.
 Legal values are 32000, 44100 and 48000Hz.   mp2enc will automatically
 sample-rate convert the input signal if necessary.
@@ -77,6 +77,9 @@ which simply can't handle a non-stero signal.
 Force mono output.  A stereo input signal is down-mixed before encoding.
 Useful if you've captured a mono signal in stereo and your player can
 handle mono MPEG.
+.TP
+.BI -V
+Force VCD comaptible output. Same as -r 224 -r 44100 -s.
 
 .SH AUTHOR
 This man page was written by Andrew Stevens.

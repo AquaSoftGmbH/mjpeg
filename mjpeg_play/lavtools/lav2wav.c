@@ -147,8 +147,9 @@ void Usage(char *str)
 {
    fprintf(stderr, "Usage: %s [options] inputfiles\n",str);
    fprintf(stderr, "where options are:\n");
-   fprintf(stderr, "-s num        Start extracting at video frame (num)\n");
-   fprintf(stderr, "-c num        Extract (num) frames of audio\n");
+   fprintf(stderr, "-o num        Start extracting at video frame (num)\n");
+   fprintf(stderr, "-f num        Extract (num) frames of audio\n");
+   fprintf(stderr, "-s/-c         Backwards compatibility options for -o/-f\n");
    fprintf(stderr, "-v num        verbose level [0..2]\n");
    fprintf(stderr, "-I            Ignore unsupported bitrates/bits per sample\n");
  
@@ -169,7 +170,7 @@ char    **argv;
 	int num_frames = -1;
         int ignore_bitrate = 0;
 
-    while( (n=getopt(argc,argv,"v:s:c:I")) != EOF)
+    while( (n=getopt(argc,argv,"v:s:c:o:f:I")) != EOF)
     {
         switch(n) {
 
@@ -178,9 +179,11 @@ char    **argv;
 		if( verbose < 0 || verbose > 2 )
 			Usage(argv[0]);
 		break;
+           case 'o':
 	   case 's':
 		start_frame = atoi(optarg);
 		break;
+           case 'f':
 	   case 'c':
 		num_frames = atoi(optarg);
 		break;

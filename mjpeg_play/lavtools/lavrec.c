@@ -1148,7 +1148,6 @@ int main(int argc, char **argv)
      pthread_create(&input_thread, NULL, user_input_thread, NULL);
 
   lavrec_busy(info);
-  lavrec_free(info);
 
   pthread_cancel(signal_thread);
   pthread_join(signal_thread, 0);
@@ -1161,6 +1160,7 @@ int main(int argc, char **argv)
   sem_destroy(&state_changed);
   fprintf(stderr, "\n");
   print_summary();
+  lavrec_free(info);
 
   return 0;
 }
