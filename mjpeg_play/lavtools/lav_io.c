@@ -322,7 +322,6 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                                       LAV_NOT_INTERLACED;
    lav_fd->has_audio   = (asize>0 && achans>0);
    lav_fd->bps         = (asize*achans+7)/8;
-   lav_fd->is_MJPG     = 1;
    lav_fd->MJPG_chroma = CHROMAUNKNOWN;
 
    switch(format)
@@ -655,11 +654,6 @@ void lav_video_sampleaspect(lav_file_t *lav_file, int *sar_w, int *sar_h)
   return;
 }
 
-int lav_video_is_MJPG(lav_file_t *lav_file)
-{
-   return lav_file->is_MJPG;
-}
-
 int lav_video_MJPG_chroma(lav_file_t *lav_file)
 {
 	return lav_file->MJPG_chroma;
@@ -894,7 +888,6 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->sar_h       = 0; 
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
-   lav_fd->is_MJPG     = 0;
    lav_fd->MJPG_chroma = CHROMAUNKNOWN;
 
    /* open video file, try AVI first */
@@ -1021,8 +1014,6 @@ lav_file_t *lav_open_input_file(char *filename)
    }
       return lav_fd;
    }
-
-   lav_fd->is_MJPG = 1;
 
    /* Make some checks on the video source, we read the first frame for that */
 
@@ -1221,8 +1212,6 @@ static int check_DV2_input(lav_file_t *lav_fd)
    double len = 0;
    unsigned char *frame = NULL;
 
-   lav_fd->is_MJPG = 0;
-
    /* Make some checks on the video source, we read the first frame for that */
 
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
@@ -1280,8 +1269,6 @@ static int check_YUV420_input(lav_file_t *lav_fd)
    int ierr = 0;
    double len = 0;
    unsigned char *frame = NULL;
-
-   lav_fd->is_MJPG = 0;
 
    /* Make some checks on the video source, we read the first frame for that */
 
