@@ -44,6 +44,7 @@ int  use_yuvplay_pipe;                          /* Encoding Preview on/off */
 int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 int  fourpelmotion;             /* Common Quality setting */
 int  twopelmotion;              /* Common Quality setting */
+int  use_bicubic;               /* Use bicubic algorithmus for the scaling */
 
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
