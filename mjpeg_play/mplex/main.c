@@ -100,8 +100,7 @@ char* argv[];
     check_files (argc-optargs, argv+optargs, 
                  &audio_file, &video_file, &multi_file,
 		 &audio_bytes, &video_bytes);
-	init_stream_syntax_parameters();
-    empty_video_struc (&video_info);
+	empty_video_struc (&video_info);
     empty_audio_struc (&audio_info);
 
     if (which_streams & STREAMS_AUDIO) {
@@ -114,9 +113,9 @@ char* argv[];
 			  video_bytes, &vaunits_info);
     }
 
+	init_stream_syntax_parameters(&video_info,&audio_info);
 
-    outputstream (video_file, &video_info,
-		  audio_file,  &audio_info, multi_file, vaunits_info, aaunits_info );
+    outputstream (video_file,  audio_file,  multi_file, vaunits_info, aaunits_info );
 
     return (0);	
 }

@@ -235,8 +235,7 @@ char *argv[];
   fix_mquant = param_quant;
   act_boost = param_act_boost;
   
-  if(param_bitrate==0 && param_quant==0) param_bitrate = 1152;
-
+  if(param_bitrate==0 && param_quant==0) param_bitrate = 1152; /* Or 1150? */
   if(param_searchrad==0) do_not_search = 1;
 
   /* Read stdin until linefeed is seen */

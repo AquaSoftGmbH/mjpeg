@@ -66,6 +66,8 @@ int Xi, Xp, Xb, r, d0i, d0p, d0b;
 static bitcount_t R;
 static int d;
 static bitcount_t T;
+static bitcount_t CarryR;
+static bitcount_t CarryRLim;
 
 /*
   actsum - Total activity (sum block variances) in frame
@@ -104,8 +106,14 @@ void rc_init_seq()
 
   /* remaining # of bits in GOP */
   R = 0;
-
-
+  
+  /* Heuristic: In constant bit-rate streams we assume buffering will allow us to 
+  	 pre-load some (probably small) fraction of the buffers size worth of following
+	 data if earlier data was undershot its bit-rate allocation
+	 
+	 */
+  CarryR = 0;
+  CarryRLim = vbv_buffer_size / 5;
   /* global complexity (Chi! not X!) measure of different frame types */
   /* These are just some sort-of sensible initial values for start-up */
   if (Xi==0) Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
@@ -151,20 +159,20 @@ int np,nb;
 	/* A.Stevens Aug 2000: at last I've found the wretched rate-control overshoot bug...
 		Simply "topping up" R here means that we can accumulate an indefinately large
 		pool of bits "saved" from previous low-activity frames.  For CBR this is of course
-		nonsense. Even if the recieve buffer is large enough to avoid the "saved" bits
-		simply being thrown away by padding we can't send arbitrarily huge frames  because
-		they won't arrive in time for display.
+		nonsense. Typically the specified buffer sizes are actually quite small compared
+		with the size of a GOP. Thus only an undershoot occuring right at the end of a GOP
+		would actually allow the next GOP to be loaded early.  Earlier undershoot would simply be
+		padded away.
 		
-		Thus unless VBR (fixed quantisation) has been set we "decay" saved bits  and
-		never allow more than a frames worth of carry over.
+		Hence we (rather pessimisitcally) allow carry over of bits in the event 
+		of an undershoot only when the buffer is larger than the GOP.
+		TODO: This should be dealt with more elegantly...
 	*/		
    
-  if ( R > per_gop_bits / 16 )
-  {
-  	printf( "R carry-over overshoot = %lld\n", R);
-  	R = per_gop_bits / 16;
-  }
-  R += per_gop_bits;
+  if( R < 0 || per_gop_bits < vbv_buffer_size )
+  	R += per_gop_bits;
+  else
+  	R = per_gop_bits;
   Np = fieldpic ? 2*np+1 : np;
   Nb = fieldpic ? 2*nb : nb;
 

@@ -415,7 +415,7 @@ void create_sys_header (
     }
 
 	/* Special-case VCD headers do not specify the video buffer... */
-    if ( opt_mux_format != MPEG_VCD && (which_streams & STREAMS_VIDEO) ) {
+    if ( which_streams & STREAMS_VIDEO ) {
 		*(index++) = stream2;
 		*(index++) = (unsigned char) (0xc0 |
 									  (buffer2_scale << 5) | (buffer2_size >> 8));

@@ -25,12 +25,20 @@ Timecode_struc *time_original, *time_copy;
 	time_copy->thetime=time_original->thetime;
 }
 
+/* Find the timecode corresponding to given position in the system stream
+   (assuming the SCR starts at 0 at the beginning of the stream 
+   */
+
+void bytepos_timecode(long long bytepos, Timecode_struc *ts)
+{
+	 ts->thetime = (bytepos*CLOCKS)/((long long)dmux_rate);
+}
+
+
 void make_timecode (timestamp, pointer)
 double timestamp;
 Timecode_struc *pointer;
 {
-  /* Work-around for a tricky compiler bug.... */
-
   pointer->thetime = (clockticks) timestamp;
 }
 

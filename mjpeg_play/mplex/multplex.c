@@ -19,13 +19,19 @@ unsigned int    which_streams;
 int				pack_header_size;
 int 			system_header_size;
 int 			sector_size;
-int				sector_transport_size;
+
+int 		dmux_rate;	/* Actual data mux-rate for calculations always a multiple of 50  */
+int 		mux_rate;		/* TODO: remove MPEG mux rate (50 byte/sec units      */
+
+
 				/* In some situations the system/PES packets are embedded with external
 				   transport data which has to be taken into account for SCR calculations
 				   to be correct.
 				   E.g. VCD streams. Where each 2324 byte system packet is embedded in a
-				   2352 byte CD sector.
+				   2352 byte CD sector and the actual MPEG data is preceded by 30 empty sectors.
 				*/
+int				sector_transport_size;
+int             transport_prefix_sectors; 
 
 
 /* 
@@ -41,13 +47,13 @@ static unsigned int video_buffer_size;
 static int last_scr_byte_in_pack;
 static int rate_restriction_flag;
 static int always_sys_header_in_pack;
+static int sys_header_in_pack1;
 static int trailing_pad_pack;
 
 static int audio_max_packet_data;
 static int video_max_packet_data;
 
-static double dmux_rate;	/* Actual data mux-rate for calculations */
-static double mux_rate;		/* MPEG mux rate (50 byte/sec units      */
+
 
 	/* Stream packet component buffers */
 
@@ -69,17 +75,28 @@ static  FILE *ostream;					/* Outputstream MPEG	*/
 	user options.
 ******************************************************************/
 
-void init_stream_syntax_parameters(	)
+void init_stream_syntax_parameters(	Video_struc 	*video_info,
+									Audio_struc 	*audio_info	)
 {
 
+	unsigned int video_rate=0;
+	unsigned int audio_rate=0;
+	
   if ( opt_mux_format == MPEG_VCD )
     {
+ /* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
+	 fixed bitrate=1150000.0, packets_per_pack=1,
+	 sys_headers only in first two sector(s?)... all timestamps...
+	 program end code needs to be appended.
+  */
 
 	  packets_per_pack = 1;
+	  sys_header_in_pack1 = 0;
 	  always_sys_header_in_pack = 0;
 	  trailing_pad_pack = 1;
 	  opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
+	  transport_prefix_sectors = 30;
 	  sector_size = 2324;
 	  opt_mpeg = 1;
 	  opt_VBR = 0;
@@ -90,8 +107,10 @@ void init_stream_syntax_parameters(	)
 	{
 	  packets_per_pack = 20;
 	  always_sys_header_in_pack = 1;
+	  sys_header_in_pack1 = 1;
 	  trailing_pad_pack = 0;
   	  sector_transport_size = opt_sector_size;
+	  transport_prefix_sectors = 0;
 	  sector_size = opt_sector_size;
   	  video_buffer_size = opt_buffer_size * 1024;
 	}
@@ -100,27 +119,7 @@ void init_stream_syntax_parameters(	)
   audio_buffer_size = 4 * 1024;
   printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
     
-  /* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
-	 fixed bitrate=1150000.0, packets_per_pack=1,
-	 sys_headers only in first sector(s?)... all timestamps...
-	 program end code needs to be appended.
-  */
-  if( opt_interactive_mode ) 
-	{
-	  do 
-		{
-		  printf ("\nsector size (CD-ROM 2324 bytes)          : ");
-		  scanf ("%d", &sector_size);
-		} while (sector_size>MAX_SECTOR_SIZE);
-
-	  printf   ("packs to packets ratio                 1 : ");
-	  scanf ("%d", &packets_per_pack);
-	  printf ("\nSTD video buffer in kB (CSPS: max 46 kB) : ");
-	  scanf ("%d", &video_buffer_size);
-	  printf   ("STD audio buffer in kB (CSPS: max  4 kB) : ");
-	  scanf ("%d", &audio_buffer_size);
-
-	}
+ 
 
 	
   /* These are used to make (conservative) decisions
@@ -164,6 +163,63 @@ void init_stream_syntax_parameters(	)
   /* Only meaningful for MPEG-2 un-used at present, always 0 */
   rate_restriction_flag = 0;
      
+  /* Set the mux rate depending on flags and the paramters of the specified streams */
+     
+  	if (which_streams & STREAMS_VIDEO) 
+    {
+		if( opt_VBR )
+		{
+			video_rate = video_info->peak_bit_rate *50;
+			video_buffer_size = video_rate * 4 / 25 ;  
+			/* > 3 frames out of 25 or 30 */
+			printf( "VBR set - pseudo bit rate = %d vbuffer = %d\n",
+					video_rate, video_buffer_size );
+		}
+		else
+		{
+			if (video_info->bit_rate > video_info->comp_bit_rate)
+				video_rate = video_info->bit_rate * 50;
+			else
+				video_rate = video_info->comp_bit_rate * 50;
+		}
+    }
+	if (which_streams & STREAMS_AUDIO)
+		audio_rate = bitrate_index[3-audio_info->layer][audio_info->bit_rate]*128;
+
+    
+	/* Attempt to guess a sensible mux rate for the given video and audio streams 	*/
+	/* TODO: This is a pretty inexact guess and may need tweaking for different stream formats	 */
+	 
+	dmux_rate = video_rate + audio_rate;
+	dmux_rate = ((double)dmux_rate) * 
+				( 1.0                          *   ((double)sector_size)/((double)min_packet_data) +
+			      ((double)(packets_per_pack-1)) * ((double)sector_size)/((double)(max_packet_data))
+			    )
+			     / ((double)packets_per_pack);
+	dmux_rate = (dmux_rate/50 + 25)*50;
+
+		printf ("\nbest-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
+		if( opt_data_rate != 0 )
+			printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
+		if( opt_data_rate == 0 )
+		{
+			printf( "Setting best-guess data rate.\n");
+		}
+		else if ( opt_data_rate >= dmux_rate)
+		{
+			printf( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
+			dmux_rate = opt_data_rate;
+		}
+		else if ( opt_data_rate < dmux_rate )
+		{
+			printf( "Warning: Target data rate lower than computed requirement!\n");
+			printf( "N.b. a *small* discrepancy is	common and harmless.\n"); 
+			dmux_rate = opt_data_rate;
+		}
+
+	/* TODO: redundant ? */
+	mux_rate = dmux_rate/50;
+	
  
 }
 
@@ -173,8 +229,37 @@ void init_stream_syntax_parameters(	)
    
 ******************************************************************/
 
-void outputstreamprefix()
+void outputstreamprefix( Timecode_struc *current_SCR)
 {
+
+	/* VCD: Two padding packets with video and audio system headers */
+	
+	if ( opt_mux_format == MPEG_VCD )
+	{
+		/* First packet carries audio-info-only sys_header */
+		create_sys_header (&sys_header, mux_rate, 1, 0, 0, 0, 0, 0,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   which_streams  & STREAMS_AUDIO );
+	  	output_padding( current_SCR, ostream,
+					  	TRUE,
+					 	 TRUE,
+					 	 FALSE);
+		bytes_output += sector_transport_size;
+		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, current_SCR);
+		
+		/* Second packet carries video-info-only sys_header */
+		create_sys_header (&sys_header, mux_rate,0, 0, 0, 0, 0, 1,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   which_streams  & STREAMS_VIDEO);
+	  	output_padding( current_SCR, ostream,
+					  	TRUE,
+					 	 TRUE,
+					 	 FALSE);					 
+		bytes_output += sector_transport_size;			 
+		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, current_SCR);
+	}
 }
 
 /******************************************************************
@@ -200,7 +285,7 @@ void outputstreamsuffix(Timecode_struc *SCR,
   /* TODO: MPEG-2 variant...??? */
   /* ISO 11172 END CODE schreiben				*/
   /* write out ISO 11172 END CODE				*/
-  /* TODO: VCD/SVCD/DVD support should generate a nice end packet here */
+  /* TODO: should VCD/SVCD/DVD support  generate a nice end packet here? */
   index = cur_sector.buf;
 
   *(index++) = (unsigned char)((ISO11172_END)>>24);
@@ -235,9 +320,7 @@ void outputstreamsuffix(Timecode_struc *SCR,
 ******************************************************************/
 
 void outputstream ( char 		*video_file,
-					Video_struc 	*video_info,
 					char 		*audio_file,
-					Audio_struc 	*audio_info,
 					char 		*multi_file,
 					Vector	   vaunit_info_vec,
 					Vector     aaunit_info_vec
@@ -248,14 +331,9 @@ void outputstream ( char 		*video_file,
 	Vaunit_struc video_au;		/* Video Access Unit	*/
 	Aaunit_struc audio_au;		/* Audio Access Unit	*/
 
-	unsigned int data_rate=0;		/* AudioVideo Byterate	*/
-	unsigned int video_rate=0;
-	unsigned int audio_rate=0;
 	double delay,audio_delay,video_delay;
-	double clock_cycles;
-	double audio_next_clock_cycles;
-	double video_next_clock_cycles;
-	unsigned int sectors_delay,video_delay_ms,audio_delay_ms;
+
+	unsigned int sectors_delay;
 	unsigned char picture_start;
 	unsigned char audio_frame_start;
 	unsigned int audio_bytes;
@@ -306,164 +384,72 @@ void outputstream ( char 		*video_file,
 		picture_start = TRUE;
 	}
 
-	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
 
-	packets_left_in_pack = packets_per_pack;
-	picture_start     = FALSE;
-	audio_frame_start = FALSE;
-	include_sys_header = TRUE;
- 
-
-  /*	DTS ist in den ersten Units i.d.R. gleich null. Damit
-		kein Bufferunterlauf passiert, muss berechnet werden, 
-		wie lange es dauert, bis alle Daten sowohl des ersten
-		Video- als auch des ersten Audio-Access units ankommen.
-		Diesen Wert dann als Art Startup-Delay zu den Time-
-		stamps dazurechnen. Um etwas Spielraum zu haben, wird
-		als Wert einfach die Anzahl der zu uebertragenden
-		Sektoren aufgerundet.					*/
-  /*  DTS of the first units is supposed to be zero. To avoid
-	  Buffer underflow, we have to compute how long it takes for
-	  all first Video and Audio access units to arrive at the 
-	  system standard decoder buffer. This delay is added as a 
-	  kind of startup delay to all of the TimeStamps. We compute
-	  a ceiling based on the number of sectors we will have
-	  to transport for the first access units */
-
-	if (which_streams & STREAMS_VIDEO) 
-    {
-		if( opt_VBR )
-		{
-			video_rate = video_info->peak_bit_rate *50;
-			video_buffer_size = video_rate * 4 / 25 ;  
-			/* > 3 frames out of 25 or 30 */
-			printf( "VBR set - pseudo bit rate = %d vbuffer = %d\n",
-					video_rate, video_buffer_size );
-		}
-		else
-		{
-			if (video_info->bit_rate > video_info->comp_bit_rate)
-				video_rate = video_info->bit_rate * 50;
-			else
-				video_rate = video_info->comp_bit_rate * 50;
-		}
-    }
-	if (which_streams & STREAMS_AUDIO)
-		audio_rate = bitrate_index[3-audio_info->layer][audio_info->bit_rate]*128;
-
-	data_rate = video_rate + audio_rate;
-    
 	/* Bufferstrukturen Initialisieren				*/
 	/* initialize buffer structure				*/
 
 	init_buffer_struc (&video_buffer,video_buffer_size);
 	init_buffer_struc (&audio_buffer,audio_buffer_size);
+	
+	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
 
-	/* TODO: This is a pretty inexact guess and may need tweaking once we
-	 allow more dynamic allocation of space in sectors */
-	dmux_rate =  ceil((double)(data_rate) *
-					  ((double)(sector_size)/(double)(min_packet_data) +
-					   ((double)(sector_size)/(double)(max_packet_data) *
-						(double)(packets_per_pack-1.))) / (double)(packets_per_pack) );
-	data_rate = ceil(dmux_rate/50.)*50;
-
-	if( opt_interactive_mode )
-	{
-		printf ("target data rate (e.g. %6u)           : ",data_rate);
-		scanf  ("%lf", &dmux_rate);
-		printf ("\nstartup sectors_delay                    : ");
-		scanf  ("%u", &sectors_delay);
-		printf ("video stream startup offset (ms)         : ");
-		scanf  ("%u", &video_delay_ms);
-		printf ("audio stream startup offset (ms)         : ");
-		scanf  ("%u", &audio_delay_ms);
-		
-	}
-	else
-	{
-		printf ("\ncomputed multiplexed stream data rate    : %07d\n",data_rate * 8);
-		if( opt_data_rate != 0 )
-			printf ("\ntarget data-rate specified               : %7d\n", opt_data_rate*8 );
-		if( opt_data_rate == 0 )
-		{
-			printf( "Setting best-guess data rate:%7d\n", data_rate*8 );
-			dmux_rate = (double)data_rate;
-		}
-		else if ( opt_data_rate >= data_rate)
-		{
-			printf( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
-			dmux_rate = (double)opt_data_rate;
-		}
-		else if ( opt_data_rate < data_rate )
-		{
-			printf( "Warning: Target data rate lower than computed requirement!\n");
-			printf( "N.b. a *small* discrepancy is	common and harmless.\n"); 
-			dmux_rate = (double)opt_data_rate;
-		}
-
-
-		if( opt_VBR )
-			sectors_delay = video_buffer_size / ( 4 * sector_size );
-		else
-			sectors_delay = video_buffer_size / ( 2* sector_size);
-		video_delay_ms = opt_video_offset;
-		audio_delay_ms = opt_audio_offset;
-		  
-	}
-
-	video_delay = (double)video_delay_ms*(double)(CLOCKS/1000);
-	audio_delay = (double)audio_delay_ms*(double)(CLOCKS/1000);
-
-	if( opt_interactive_mode )
-	{
-		verbose=ask_verbose();
-		printf ("\n");
-	}
-
-#ifdef TIMER
-	gettimeofday (&tp_global_start,NULL);
-#endif
-
-	mux_rate = ceil(dmux_rate/50.);
-	dmux_rate= mux_rate * 50.;
-
-	/* Wir generieren den System Header				*/
-	/* let's generate the system header				*/
-	create_sys_header (&sys_header, mux_rate, 1, 1, 1, 1, 1, 1,
-					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
+	packets_left_in_pack = packets_per_pack;
+	picture_start     = FALSE;
+	audio_frame_start = FALSE;
+	include_sys_header = sys_header_in_pack1;
  
+	/* Set the SCR to the appropriate time for the first payload sector of the eventual transport
+		stream
+	*/
+
+	bytes_output = transport_prefix_sectors*sector_transport_size;
+	bytepos_timecode ( bytes_output+last_scr_byte_in_pack, &current_SCR);
+
+    /*  DTS of the first units is supposed to be zero. To avoid
+	  Buffer underflow, we have to compute how long it takes for
+	  all first Video and Audio access units to arrive at the 
+	  system standard decoder buffer. This delay is added as a 
+	  kind of startup delay to all of the TimeStamps. We compute
+	  a ceiling based on size of the initial AU plus an fudge factor to get
+	  the buffer decently filled up in advance */
+
 	/* Calculate start delay in SCR units */
+	if( opt_VBR )
+		sectors_delay = video_buffer_size / ( 4 * sector_size );
+	else
+		sectors_delay = video_buffer_size / ( 2* sector_size);
 
 	delay = ((double)sectors_delay +
 			 ceil((double)video_au.length/(double)min_packet_data)  +
 			 ceil((double)audio_au.length/(double)min_packet_data )) *
 		(double)sector_size/dmux_rate*(double)CLOCKS;
 
+	video_delay = (double)opt_video_offset*(double)(CLOCKS/1000);
+	audio_delay = (double)opt_audio_offset*(double)(CLOCKS/1000);
 	audio_delay += delay;
 	video_delay += delay;
 
+	/* Compute correction for PTS/DTS time-stamps - allowing for SCR that might not start at 0 */
 	make_timecode (audio_delay, &SCR_audio_delay);
 	make_timecode (video_delay, &SCR_video_delay);
+	add_to_timecode( &current_SCR,  &SCR_audio_delay);
+	add_to_timecode( &current_SCR,  &SCR_video_delay);
 
+	/* Apply correction for initial AU's */
 	add_to_timecode	(&SCR_video_delay, &video_au.DTS);
 	add_to_timecode	(&SCR_video_delay, &video_au.PTS);
 	add_to_timecode	(&SCR_audio_delay, &audio_au.PTS);
 
-	bytes_output = 0;
+	
+	/* Output any special prefix packets required by the specified stream format 	*/
+	/* bytes_output and current_SCR will be correctly updated...                  	*/
+	outputstreamprefix( &current_SCR );
 
-  /* 	Jetzt probieren wir mal, Unit fuer Unit auszulesen und 
-		ins Outputstream auszuschreiben. Die Schwierigkeit liegt
-		darin, dass die Buffer konstant ueberprueft werden muessen
-		und dass die jeweilige Access Unit auch innerhalb des DTS
-		eintreten muss. Es kann passieren, dass z.B. im Video-
-		Buffer noch ein altes Picture liegt, das noch dekodiert
-		werden muss, wir jetzt schon das naechste schicken, aber
-		nach einigen Packets der Buffer voll ist. Da darf nichts
-		mehr geschickt werden, bis die DTS des alten Bildes
-		eingetreten ist und damit der Buffer kleiner geworden ist.
-		In der Zwischenzeit kann ein Audio-Packet geschickt werden
-		und/oder ein Padding-Packet generiert werden.		*/
+	/* In-stream system header (if required)									*/
+	create_sys_header (&sys_header, mux_rate, 1, 1, 1, 1, 1, 1,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
+	
   /*  Let's try to read in unit after unit and to write it out into
 	  the outputstream. The only difficulty herein lies into the 
 	  buffer management, and into the fact the the actual access
@@ -501,21 +487,17 @@ void outputstream ( char 		*video_file,
 			(video_au.length%min_packet_data)+(sector_transport_size-min_packet_data);
 
 
-		clock_cycles = ((double)(bytes_output+last_scr_byte_in_pack))*CLOCKS/dmux_rate;
 	
 		/* Calculate when the the next AU's will finish arriving under the assumption
 		   that the next sector carries a *different* payload.  Using
 		   this time we can see if a stream will definately under-run
 		   if no sector is sent immediately. 		   
 		*/
-		audio_next_clock_cycles = 
-			((double)(bytes_output+(sector_transport_size+audio_bytes)))*CLOCKS/dmux_rate;
-		video_next_clock_cycles = 
-			((double)(bytes_output+(sector_transport_size+video_bytes)))*CLOCKS/dmux_rate;
-
-		make_timecode (clock_cycles, &current_SCR);
-		make_timecode (audio_next_clock_cycles, &audio_next_SCR);
-		make_timecode (video_next_clock_cycles, &video_next_SCR);
+		
+		
+		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, &current_SCR);
+		bytepos_timecode (bytes_output+(sector_transport_size+audio_bytes), &audio_next_SCR);
+		bytepos_timecode (bytes_output+(sector_transport_size+video_bytes), &video_next_SCR);
 
 		if (which_streams & STREAMS_AUDIO) 
 			buffer_clean (&audio_buffer, &current_SCR);
@@ -553,8 +535,7 @@ void outputstream ( char 		*video_file,
 			)
 		{
 			/* Calculate actual time current AU is likely to arrive. */
-			audio_next_clock_cycles = ((double)(bytes_output+audio_bytes))*CLOCKS/dmux_rate;
-			make_timecode (audio_next_clock_cycles, &audio_next_SCR);
+			bytepos_timecode (bytes_output+audio_bytes, &audio_next_SCR);
 			if( ! comp_timecode (&audio_next_SCR, &audio_au.PTS) )
 				status_message (STATUS_AUDIO_TIME_OUT);
 
@@ -577,8 +558,7 @@ void outputstream ( char 		*video_file,
 			)
 		{
 			/* Calculate actual time current AU is likely to arrive. */
-			video_next_clock_cycles = ((double)(bytes_output+video_bytes))*CLOCKS/dmux_rate;
-			make_timecode (video_next_clock_cycles, &video_next_SCR);
+			bytepos_timecode (bytes_output+video_bytes, &video_next_SCR);
 			if( ! comp_timecode (&video_next_SCR, &video_au.DTS) )
 				status_message (STATUS_VIDEO_TIME_OUT);
 			output_video (&current_SCR, &SCR_video_delay, 

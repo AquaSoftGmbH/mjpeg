@@ -2,7 +2,22 @@
 	I have no easy way of testing them and they take forever to
 	encode...
 
-2.	You can't current easily steal your friend's Windows Athlon
+
+2.      VCD multiplexing is currently subtly broken.  Calculated data-rates
+	in mplex are too tight (probably not leaving enough head-room for
+	the system stream overhead).
+
+3.	You can't current easily steal your friend's Windows Athlon
 	for your evil purposes 	using cygwin32 as the quicktime lib
 	demands pthreads.
 
+
+4.	Bit-rate control in the encoder is currently a little too loose.
+	The current code is a comprise approximation between compressing
+	un-necessarily hard after a number of frames have under-shot their
+	target and guaranteeing never to exceed the target bit-rate.
+
+	Eventually new code based on monitoring the VBV state will give accurate	results.
+
+	The current problem is compounded by a somewhat naive method of 
+	calculating necessary bit-rate in the multiplexer.

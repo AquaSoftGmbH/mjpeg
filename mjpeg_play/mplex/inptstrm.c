@@ -352,7 +352,6 @@ void get_info_video (char *video_file,
     output_info_video (video_info);
 
 	*vid_info_vec = vaunits;
-    ask_continue ();
  	
 }
 
@@ -635,7 +634,6 @@ void get_info_audio (
     audio_info->stream_length = offset_bits >> 3;
     finish_getbits (&audio_bs);
     output_info_audio (audio_info);
-    ask_continue ();
     
     *audio_info_vec = aaunits;
 

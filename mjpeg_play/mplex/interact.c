@@ -14,7 +14,6 @@ static void Usage(char *str)
 	fprintf( stderr, "Usage: %s [params] [<input stream1> [<input stream2>] <output system stream>\n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
-	fprintf( stderr, " -i      Interactive mode for user intervention\n" );
 	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
 	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
@@ -30,7 +29,6 @@ static void Usage(char *str)
 }
 
 int verbose = 1;
-int opt_interactive_mode = 0;
 int opt_buffer_size = 46;
 int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
 int opt_video_offset = 0;
@@ -79,9 +77,6 @@ int intro_and_options(int argc, char *argv[])
 	    opt_VBR = 1;
 	    break;
 	  
-	  case 'i' :
-		opt_interactive_mode = 1;
-		break;
 
 	  case 'b':
 		opt_buffer_size = atoi(optarg);
@@ -158,56 +153,6 @@ unsigned int *bytes;
 }
 
 
-/*************************************************************************
-	ask_continue
-	Nach Anzeige der Streaminformationen Abfrage, ob weiter
-	gearbeitet werden soll.
-
-	After displaying Stream informations there is a check, wether
-	we should continue computing or not.
-*************************************************************************/
-
-void ask_continue ()
-{
-    char input[20];
-	
-	if( ! opt_interactive_mode )
-	  return;
-
-    printf ("\nContinue processing (y/n) : ");
-    do fgets (input,20,stdin);
-    while (input[0]!='N'&&input[0]!='n'&&input[0]!='y'&&input[0]!='Y');
-
-    if (input[0]=='N' || input[0]=='n')
-    {
-	printf ("\nStop processing.\n\n");
-	exit (0);
-
-    }
-
-}
-
-/*************************************************************************
-	ask_verbose
-	Soll die letzte, MPEG/SYSTEM Tabelle vollstaendig ausgegeben
-	werden?
-
-	Should we print the MPEG/SYSTEM table very verbose or not?
-*************************************************************************/
-
-int ask_verbose ()
-{
-    char input[20];
-
-	if( ! opt_interactive_mode )
-	  return FALSE;
-
-    printf ("\nVery verbose mode (y/n) : ");
-    do fgets (input,20,stdin);
-    while (input[0]!='N'&&input[0]!='n'&&input[0]!='y'&&input[0]!='Y');
-
-    if (input[0]=='N' || input[0]=='n') return (FALSE); else return (TRUE);
-}
 
 /******************************************************************
 	Status_Info

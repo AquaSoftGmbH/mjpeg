@@ -84,7 +84,7 @@ typedef __uint64_t clockticks;
 
 #define MAX_FFFFFFFF		4294967295.0 	/* = 0xffffffff in dec.	*/
 
-#define CLOCKS			(300.0 *90000.0)		/* MPEG-2 System Clock Hertz - we divide down by 300.0 for MPEG-1*/
+#define CLOCKS			(300 *90000)		/* MPEG-2 System Clock Hertz - we divide down by 300.0 for MPEG-1*/
 
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
@@ -247,7 +247,9 @@ typedef struct buffer_struc	/* Simuliert STD Decoder Buffer		*/
 
 int intro_and_options( int, char **);	/* Anzeigen des Introbildschirmes und	*/
 										/* Ueberpruefen der Argumente			*/
-void init_stream_syntax_parameters();	/* Initialisation of syntax paramters 	*/
+void init_stream_syntax_parameters(Video_struc 	*video_info,
+							    	Audio_struc 	*audio_info );	
+										/* Initialisation of syntax paramters 	*/
 										/* based on (checked) options 			*/
 										
 void check_files          ();	/* Kontrolliert ob Files vorhanden und	*/
@@ -278,6 +280,7 @@ void init_buffer_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 
 void offset_timecode      (Timecode_struc *time1,Timecode_struc *time2,Timecode_struc *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
 void copy_timecode        (Timecode_struc *,Timecode_struc *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
+void bytepos_timecode(long long bytepos, Timecode_struc *ts);
 void make_timecode        (double, Timecode_struc *);	/* rechnet aus double einen TimeC.	*/
 				/* und schreibt ihn in Timecode_struc   */
 void add_to_timecode      (Timecode_struc *,Timecode_struc *);	/* addiert 1tes TimeC. zum 2ten		*/ 
@@ -382,9 +385,7 @@ int  buffer_space         ();	/* Anzahl freier Bytes in Buffer	*/
 void queue_buffer         ();	/* An Bufferliste anhaengen		*/
 
 void outputstream ( char 		*video_file,
-					Video_struc 	*video_info,
 					char 		*audio_file,
-					Audio_struc 	*audio_info,
 					char 		*multi_file,
 					Vector	   vaunit_info_vec,
 					Vector     aaunit_info_vec
@@ -396,8 +397,7 @@ void status_header	  ();	/* Titelzeilen Statusblock		*/
 void status_message	  ();	/* Event (end, time_out) mitteilen	*/
 void status_footer	  ();	/* Endzeile				*/
 
-void ask_continue	  ();	/* Soll weiter gearbeitet werden ?	*/
-int ask_verbose ();	/* Soll verbose gearbeitet werden ?	*/
+
 
 
 
@@ -437,4 +437,6 @@ extern int rate_restriction_flag;
 extern int pack_header_size;
 extern int system_header_size;
 extern int sector_size;
+extern int mux_rate;
+extern int dmux_rate;
 
