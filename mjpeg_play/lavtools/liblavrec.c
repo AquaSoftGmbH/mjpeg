@@ -1404,6 +1404,17 @@ static int lavrec_init(lavrec_t *info)
    if( getpriority(PRIO_PROCESS, 0) > -5 )
       setpriority(PRIO_PROCESS, 0, -5 );
 
+   /* after setting priority and pthread real-time scheduling, there's
+    * no need for SUID anymore, so if we have it, kick it out (the result
+    * is that the files created by lavrec will be owned by the actual user
+    * calling lavrec instead of by root if we're set SUID
+    */
+   if (getuid() != geteuid())
+      if (setuid(getuid()))
+         lavrec_msg(LAVREC_MSG_WARNING, info,
+            "Failed to set real user ID: %s",
+            sys_errlist[errno]);
+
    /* Seconds per video frame: */
    settings->spvf = (info->video_norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
    settings->sync_lim = settings->spvf*1.5;
