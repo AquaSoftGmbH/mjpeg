@@ -169,8 +169,7 @@ lav2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
-jpeg2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a \
-		liblavjpeg.la ${GTK_LIBS}
+jpeg2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a liblavjpeg.la
 
 png2yuv_SOURCES = png2yuv.c colorspace.c subsample.c
 png2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a -lpng -lz -lm
@@ -199,16 +198,13 @@ glav_LDADD = $(top_builddir)/utils/libmjpegutils.a ${GTK_LIBS}
 lavvideo_SOURCES = lavvideo.c frequencies.c
 
 yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c
-yuvscaler_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
-	 liblavfile.la liblavjpeg.la
+yuvscaler_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS)
 
 yuvcorrect_SOURCES = yuvcorrect.c yuvcorrect_functions.c
-yuvcorrect_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
-        liblavfile.la liblavjpeg.la
+yuvcorrect_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS)
 
 yuvcorrect_tune_SOURCES = yuvcorrect_tune.c yuvcorrect_functions.c
-yuvcorrect_tune_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
-        liblavfile.la liblavjpeg.la
+yuvcorrect_tune_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS)
 
 yuvplay_SOURCES = yuvplay.c
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a

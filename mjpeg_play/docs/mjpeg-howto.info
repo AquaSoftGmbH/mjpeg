@@ -1,6 +1,11 @@
 Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
 /tmp/linuxdoc-dir-3079/sgmltmp.mjpeg-howto.info.2.
 
+INFO-DIR-SECTION Miscellaneous
+START-INFO-DIR-ENTRY
+* MJPEG HOWTO: (mjpeg-howto.info).	MJPEG capture/editting/replay and MPEG encoding toolset
+END-INFO-DIR-ENTRY
+
    \input texinfo
 
 

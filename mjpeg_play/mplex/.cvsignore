@@ -3,4 +3,5 @@ Makefile.in
 mplex
 .deps
 .libs
-
+*.la
+*.lo

@@ -1,5 +1,6 @@
 .deps
-lavtrans
-lavaddwav
+.libs
+*.lo
+*.la
 Makefile
 Makefile.in
