@@ -1,5 +1,5 @@
 This is mjpeg-howto.info, produced by makeinfo version 4.2 from
-/tmp/linuxdoc-dir-2692/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-4578/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -10,7 +10,7 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 ************************************************
 
      Praschinger Bernhard
-     v1.31
+     v1.32
 
    MJPEG capture/editting/replay and MPEG encoding toolset description
 
@@ -147,6 +147,9 @@ overflows can happen. The maximal value is 512kB.
 
    How video works, and the difference between the video type is
 explained here: http://www.mir.com/DMG/
+
+   A other nice description of DV (Digital Video) can be found here:
+http://www.iki.fi/znark/video/conversion/
 
    There you also find how to create MPEG Still Images for VCD/SVCD.
 
@@ -916,7 +919,7 @@ below.
 
    The creation of MPEG1 movies is explained with more examples, and
 with more details because most things that can be used for MPEG1 also
-fit for the other output formats
+work for the other output formats
 
    For the creation of of VCD/SVCD Stills sequences (-f 6, -f 7 in
 mpeg2enc) you have to look at: http://www.mir.com/DMG/ Still sequences
@@ -932,6 +935,7 @@ is described in the doku of vcdimager.
 * Creating MPEG2 Videos::
 * Creating Video-CD's::
 * Creating SVCD::
+* Creating DVD's::
 * Creating DIVX Videos::
 
 

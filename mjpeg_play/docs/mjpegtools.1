@@ -2,7 +2,7 @@
 .TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.31MJPEG capture/editting/replay and MPEG encoding toolset description
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.32MJPEG capture/editting/replay and MPEG encoding toolset description
 
 .Pp
 Introduction
@@ -139,6 +139,9 @@ buffer overflows can happen. The maximal value is 512kB.
 
 .Pp
 How video works, and the difference between the video type is explained here:
+
+.Pp
+A other nice description of DV (Digital Video) can be found here:
 
 .Pp
 There you also find how to create MPEG Still Images for VCD/SVCD.
@@ -1201,7 +1204,7 @@ and find out which one works best for you. These are discussed below.
 
 .Pp
 The creation of MPEG1 movies is explained with more examples, and with
-more details because most things that can be used for MPEG1 also fit 
+more details because most things that can be used for MPEG1 also work 
 for the other output formats
 
 .Pp
@@ -1907,7 +1910,7 @@ VCD Audio creation Example
 
 
 .Pp
-\f(CR> lav2wav stream.avi \(br mp2enc -V -o sound.mpg\fP
+\f(CR> lav2wav stream.avi \(br mp2enc -V -o sound.mp2\fP
 
 .Pp
 \fB-V\fP force VCD compatible output (same as: -b 224 -r 44100 -s). For
@@ -2195,6 +2198,131 @@ need to use the mplex -f 2 and -f 5 switches.
 \fBNOTE:\fPThe VCD SVCD stuff may work on your HW player or not. There
 are many reports that it works quite well. Don't be worried if it does
 not work. Nor am I responsible for unusable CDs. (\(rqcoasters\(rq)
+.SH Creating DVD's
+
+
+.Pp
+Everything in this section is very new. So it can change every day.
+The limitations I mention here might not exist in the current version.
+
+.Pp
+You need obviously a DVD writer. I own a Ricoh DVD+RW that works, and I know
+of a DVD-RAM writer that is able to to burn DVD-R. That disks also work with
+a DVD-Player. Which programs you use for buring depends on the DVD writer
+drive. 
+
+.Pp
+
+.Pp
+For the creation and writing of the VOB, IFO and BUP files we use
+dvdauthor. Aviable from Sourceforge (you might have guessed it)
+\&.
+
+.Pp
+DVD Audio creation Example
+
+
+.Pp
+\f(CR> lav2way stream.eli \(br mp2enc -r 48000 -o sound.mp2\fP
+
+.Pp
+.nr ll +1
+.nr t\n(ll 2
+.if \n(ll>1 .RS
+.IP "-r 48000"
+.nr bi 1
+
+.Pp
+The sample rate has to be 48kHz. The mp2enc -r option forces the sample rate to 48kHz. If it is not a 48kHz mp2enc will resample the audio to get the sample rate
+.if \n(ll>1 .RE
+.nr ll -1
+
+.Pp
+DVD Video creation Example
+
+
+.Pp
+\f(CR> lav2yuv stream.eli \(br mpeg2enc -f 8 -o video.m2v\fP
+
+.Pp
+.nr ll +1
+.nr t\n(ll 2
+.if \n(ll>1 .RS
+.IP "-f 8"
+.nr bi 1
+
+.Pp
+This sets the options right for a MPEG-2 Video that is close to the 
+DVD standart. The bitrate is set to 7500kBps, and the maximal allowed video
+buffer for DVD. And a quality factor of 8. mpeg2enc sets currenty no automatic
+sequence length like it does for VCD/SVCD. 
+.if \n(ll>1 .RE
+.nr ll -1
+
+.Pp
+All the other options to get a low bitrate and high quality stream can
+also be used. You can also use yuvscaler and yuvdenoise to get a good picture.
+So your command will look like that:
+
+.Pp
+\f(CRlav2yuv moby.eli \(br yuvdenoise -F -f \(br mpeg2enc -f 8 -q 7 -4 1 -2 1 -P -I 0 -N -o video_DVD.m2v\fP
+
+.Pp
+DVD Mplex Example
+
+
+.Pp
+\f(CR> mplex -f 8 sound.mp2 video.m2v -o my_dvdlikestream.mpg\fP
+
+.Pp
+
+.Pp
+.nr ll +1
+.nr t\n(ll 2
+.if \n(ll>1 .RS
+.IP "-f 8"
+.nr bi 1
+
+.Pp
+Here again we specify that we want to have DVD like MPEG stream. 
+mplex cannot do all the fancy things allowed for a DVD, but it is close enough
+that the HW-DVD players accept it.
+.IP "-o"
+.nr bi 1
+
+.Pp
+there we specify the output filename. 
+.if \n(ll>1 .RE
+.nr ll -1
+
+.Pp
+DVD creation Example
+
+
+.Pp
+This topic will be coverd by the documentation of the dvdauthor
+programm. For questions please ask there. But it will work like that:
+
+.Pp
+\f(CR> makedvd stream1.mpg stream2.mpg ... my_dvdlikestream.mpg\fP
+
+.Pp
+You will get a directoy with an AUDIO_TS and VIDEO_TS directory with the data
+you can burn. Burning the data to the disk lookes for DVD+R/+RW writer like
+that:
+
+.Pp
+\f(CRgrowisofs -Z /dev/scd2 -dvd-video mydvd/\fP
+
+.Pp
+If you own a DVD+RW/+R drive like me a good start would be at 
+
+page. You also need a version of the cdrootls with \fBdvd-video\fP support.
+The cdrtools 1.11a27 is known to work, but newer versions already exists. 
+
+.Pp
+For other writers it will look different. You get more information in the
+dvdauthor package. There is no guarantee that it will work at all !!!
 .SH Creating DIVX Videos
 
 
@@ -2949,6 +3077,10 @@ the Zoran hardware currently supported. Videos recorded with
 can also be processed with the mjpeg tools.
 
 .Pp
+
+.Pp
+If you have a Macintosh (MAC) and want to use the mjpeg tools look there:
+and 
 
 .Pp
 MPEG files produced using the tools are know to play back correctly on:
