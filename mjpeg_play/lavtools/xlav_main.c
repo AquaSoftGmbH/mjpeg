@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
-#include "forms.h"
+#include "X11/forms.h"
 #include "xlav.h"
 
 #define PLAY_PROG "lavplay"

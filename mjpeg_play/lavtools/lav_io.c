@@ -24,6 +24,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 #define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
@@ -249,8 +250,6 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                     int width, int height, int interlaced, double fps,
                     int asize, int achans, long arate)
 {
-   int res;
-
    lav_file_t *lav_fd = (lav_file_t*) malloc(sizeof(lav_file_t));
 
    if(lav_fd==0) { internal_error=ERROR_MALLOC; return 0; }
@@ -293,7 +292,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          /* since the documentation says that the file should be empty,
             we try to remove it first */
 
-         res = remove(filename);
+         remove(filename);
 
          lav_fd->qt_fd = quicktime_open(filename, 1, 1);
          if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
@@ -491,8 +490,11 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
 
 int lav_write_audio(lav_file_t *lav_file, char *buff, long samps)
 {
-   int res, nb, n;
+   int res;
+#ifdef	BUILD_QUICKTIME
+   int	n, nb;
    char *hbuff;
+#endif
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
 
@@ -835,7 +837,9 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
 
 long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
 {
+#ifdef	BUILD_QUICKTIME
    long res, n, t;
+#endif
 
    if(!lav_file->has_audio)
    {
@@ -879,7 +883,10 @@ int lav_filetype(lav_file_t *lav_file)
 lav_file_t *lav_open_input_file(char *filename)
 {
    int n;
-   char *video_comp, *audio_comp;
+   char *video_comp;
+#ifdef	BUILD_QUICKTIME
+   char **audio_comp;
+#endif
    unsigned char *frame;
    long len;
    int jpg_height, jpg_width, ncomps, hf[3], vf[3];
