@@ -30,11 +30,12 @@
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include "global.h"
 #include "vlc.h"
 
 /* private prototypes */
-static void putDC (sVLCtable *tab, int val);
+static void putDC (const sVLCtable *tab, int val);
 
 /* generate variable length code for luminance DC coefficient */
 void putDClum(val)
@@ -51,9 +52,7 @@ int val;
 }
 
 /* generate variable length code for DC coefficient (7.2.1) */
-static void putDC(tab,val)
-sVLCtable *tab;
-int val;
+static void putDC(const sVLCtable *tab, int val)
 {
   int absval, size;
 
@@ -104,7 +103,7 @@ void putAC(run,signed_level,vlcformat)
 int run,signed_level,vlcformat;
 {
   int level, len;
-  VLCtable *ptab = NULL;
+  const VLCtable *ptab = NULL;
 
   level = abs(signed_level);
 
@@ -178,7 +177,7 @@ int addrinc;
     putbits(0x08,11); /* macroblock_escape */
     addrinc-= 33;
   }
-
+  assert( addrinc >= 1 && addrinc <= 33 );
   putbits(addrinctab[addrinc-1].code,addrinctab[addrinc-1].len);
 }
 

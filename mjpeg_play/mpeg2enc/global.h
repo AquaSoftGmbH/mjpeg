@@ -356,7 +356,6 @@ EXTERN const char *statname
  * global flags controlling MPEG syntax
  ************************************ */
 
-EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
 
 EXTERN int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
 
@@ -470,7 +469,8 @@ EXTERN int istrm_fd;
  * Encoder internal derived values and parameters
  *************************** */
 
-/* Miscellaneous derived values and internal parameters */
+
+EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
 
 EXTERN int lum_buffer_size, chrom_buffer_size;
 

@@ -134,10 +134,10 @@ static void set_pic_params( int decode,
 		break;
 	}
 
-		picture->frame_pred_dct = opt_frame_pred_dct_tab[picture->pict_type-1];
-		picture->q_scale_type = opt_qscale_tab[picture->pict_type-1];
-		picture->intravlc = opt_intravlc_tab[picture->pict_type-1];
-		picture->altscan = opt_altscan_tab[picture->pict_type-1];
+	picture->frame_pred_dct = opt_frame_pred_dct_tab[picture->pict_type-1];
+	picture->q_scale_type = opt_qscale_tab[picture->pict_type-1];
+	picture->intravlc = opt_intravlc_tab[picture->pict_type-1];
+	picture->altscan = opt_altscan_tab[picture->pict_type-1];
 
 #ifdef OUTPUT_STAT
 		fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
@@ -697,7 +697,7 @@ static void stencodeworker(pict_data_s *picture)
 		reconstruct(picture);
 
 		/* Handle second field of a frame that is being field encoded */
-		if( fieldpic )
+		if( opt_fieldpic )
 		{
 			set_2nd_field_params(picture);
 			mjpeg_info("Field %s (%d)\n",

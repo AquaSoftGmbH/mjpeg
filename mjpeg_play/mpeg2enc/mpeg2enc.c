@@ -70,12 +70,6 @@ static void init_quantmat (void);
 
 
 
-/*
- * RJ: Introduced the possiblity to not search at all.
- * Saves time at the cost of quality
- */
-
-int do_not_search = 0;
 
 /* Command Parameter values.  These are checked and processed for
    defaults etc after parsing.  The resulting values then set the opt_

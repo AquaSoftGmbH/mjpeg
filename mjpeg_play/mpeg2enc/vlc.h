@@ -51,7 +51,7 @@ typedef struct
  * 'macroblock_escape' is treated elsewhere
  */
 
-static VLCtable addrinctab[33]=
+const static VLCtable addrinctab[33]=
 {
   {0x01,1},  {0x03,3},  {0x02,3},  {0x03,4},
   {0x02,4},  {0x03,5},  {0x02,5},  {0x07,7},
@@ -70,7 +70,7 @@ static VLCtable addrinctab[33]=
  * indexed by [macroblock_type]
  */
 
-static VLCtable mbtypetab[3][32]=
+const static VLCtable mbtypetab[3][32]=
 {
  /* I */
  {
@@ -107,7 +107,7 @@ static VLCtable mbtypetab[3][32]=
  * indexed by [coded_block_pattern]
  */
 
-static VLCtable cbptable[64]=
+const static VLCtable cbptable[64]=
 {
   {0x01,9}, {0x0b,5}, {0x09,5}, {0x0d,6}, 
   {0x0d,4}, {0x17,7}, {0x13,7}, {0x1f,8}, 
@@ -134,7 +134,7 @@ static VLCtable cbptable[64]=
  * sign of motion_code is treated elsewhere
  */
 
-static VLCtable motionvectab[17]=
+const static VLCtable motionvectab[17]=
 {
   {0x01,1},  {0x01,2},  {0x01,3},  {0x01,4},
   {0x03,6},  {0x05,7},  {0x04,7},  {0x03,7},
@@ -154,7 +154,7 @@ static VLCtable motionvectab[17]=
  * indexed by [dct_dc_size_luminance]
  */
 
-static sVLCtable DClumtab[12]=
+const static sVLCtable DClumtab[12]=
 {
   {0x0004,3}, {0x0000,2}, {0x0001,2}, {0x0005,3}, {0x0006,3}, {0x000e,4},
   {0x001e,5}, {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x01ff,9}
@@ -166,7 +166,7 @@ static sVLCtable DClumtab[12]=
  * indexed by [dct_dc_size_chrominance]
  */
 
-static sVLCtable DCchromtab[12]=
+const static sVLCtable DCchromtab[12]=
 {
   {0x0000,2}, {0x0001,2}, {0x0002,2}, {0x0006,3}, {0x000e,4}, {0x001e,5},
   {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x03fe,10},{0x03ff,10}
@@ -181,7 +181,7 @@ static sVLCtable DCchromtab[12]=
  * codes do not include s (sign bit)
  */
 
-static VLCtable dct_code_tab1[2][40]=
+const static VLCtable dct_code_tab1[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -211,7 +211,7 @@ static VLCtable dct_code_tab1[2][40]=
  }
 };
 
-static VLCtable dct_code_tab2[30][5]=
+const static VLCtable dct_code_tab2[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 4}, {0x04, 7}, {0x0b,10}, {0x14,12}, {0x14,13}},
@@ -255,7 +255,7 @@ static VLCtable dct_code_tab2[30][5]=
  * codes do not include s (sign bit)
  */
 
-static VLCtable dct_code_tab1a[2][40]=
+const static VLCtable dct_code_tab1a[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -285,7 +285,7 @@ static VLCtable dct_code_tab1a[2][40]=
  }
 };
 
-static VLCtable dct_code_tab2a[30][5]=
+const static VLCtable dct_code_tab2a[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 5}, {0x07, 7}, {0xfc, 8}, {0x0c,10}, {0x14,13}},
