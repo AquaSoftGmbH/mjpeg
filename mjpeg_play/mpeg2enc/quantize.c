@@ -66,11 +66,11 @@ int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 /* Local functions pointers for SIMD-dependent functions */
 
-static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant_mat);
+/* static */ void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant_mat);
 
 
 /* static */ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
-static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
+/* static */ void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
 
 #ifdef HAVE_ALTIVEC
 extern void enable_altivec_quantization();
@@ -402,7 +402,7 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 }
 
 
-static void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
+/* static */ void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
 {
   int i, val;
 
