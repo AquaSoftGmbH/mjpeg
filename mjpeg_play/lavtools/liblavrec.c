@@ -77,10 +77,11 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
+#define FIFTEEN_HUNDRED 1500
 #if _FILE_OFFSET_BITS == 64
-#define MAX_MBYTES_PER_FILE ((0x7fffffffffffffffL >> 20) * 3/4)
+#define MAX_MBYTES_PER_FILE ((uint32_t)((0x7fffffffffffffffLL >> 20) * 3/4))
 #else
-#define MAX_MBYTES_PER_FILE ((0x7fffffff >> 20) * 3 / 4)
+#define MAX_MBYTES_PER_FILE FIFTEEN_HUNDRED
                                   /* Maximum number of Mbytes per file.
                                      We make a conservative guess since we
                                      only count the number of bytes output
@@ -558,7 +559,7 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* Check if we have to open a new output file */
-   if (settings->output_status > 0 && (uint64_t)(settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
+   if (settings->output_status > 0 && (uint32_t)(settings->bytes_output_cur>>20) > info->max_file_size_mb)
    {
       lavrec_msg(LAVREC_MSG_INFO, info,
          "Max filesize reached, opening next output file");
@@ -1247,6 +1248,12 @@ static int lavrec_init(lavrec_t *info)
    /* are there files to capture to? */
    if (info->files) /* yes */
    {
+	   /* Handle the limitations of AVI that can only do MAX 2G Byte
+		  files */
+	   if( info->video_format == 'a' || info->video_format == 'A' )
+		   info->max_file_size_mb = FIFTEEN_HUNDRED;
+	   else
+		   info->max_file_size_mb = MAX_MBYTES_PER_FILE;
       if (info->video_captured || info->audio_captured)
       {
          lavrec_msg(LAVREC_MSG_DEBUG, info,
@@ -2014,7 +2021,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_captured = NULL;
    info->msg_callback = NULL;
    info->state_changed = NULL;
-
+   info->max_file_size_mb = (0x4000000>>20); /* Safety first ;-) */
    info->settings = (void *)malloc(sizeof(video_capture_setup));
    if (!(info->settings))
    {

@@ -106,6 +106,7 @@ typedef struct {
 
    char **files;                /* the files where to capture the video to */
    int  num_files;              /* number of files in the files[]-array */
+	int max_file_size_mb;
 
    void (*output_statistics)(video_capture_stats *stats);      /* speaks for itself */
    void (*audio_captured)(char *audio, long sampes);           /* callback when audio has been grabbed */
