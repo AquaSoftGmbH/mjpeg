@@ -3,6 +3,10 @@
 
     Usage: lavaddwav AVI_or_QT_file WAV_file Output_file
 
+    Multiple output file version by Nicholas Redgrave 
+    <baron@bologrew.demon.co.uk> 8th January 2005
+    Use "%d" style output filenames for multiple files.
+    
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation; either version 2 of the License, or
@@ -34,6 +38,8 @@
 #define FOURCC_FMT      FOURCC ('f', 'm', 't', ' ')
 #define FOURCC_DATA     FOURCC ('d', 'a', 't', 'a')
 
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
+
 int verbose = 1;
 
 int main(int argc, char **argv)
@@ -53,10 +59,17 @@ int main(int argc, char **argv)
    int wav_fd;
    long data[64];
 
+   char chOutFile[128] = "\0";
+   int iOutNum = 1;
+   unsigned long ulOutputBytes = 0;
+   
    if(argc != 4)
    {
       fprintf(stderr,"Usage:\n\n");
       fprintf(stderr,"   %s AVI_or_QT_file WAV_file Output_file\n\n",argv[0]);
+      fprintf(stderr,"   If the output file is to large for one AVI use %%0xd in\n");
+      fprintf(stderr,"   the output filename so %s creates several files.\n",argv[0]);
+      fprintf(stderr,"   The comannd lookes than like: %s video.avi sound.wav output%%02d.avi\n",argv[0]);
       exit(1);
    }
 
@@ -154,54 +167,105 @@ int main(int argc, char **argv)
       mjpeg_error_exit1("Out of Memory - malloc failed");
    }
 
-   lav_out = lav_open_output_file(argv[3],
-                                  lav_fd->format,
-                                  lav_video_width (lav_fd),
-                                  lav_video_height(lav_fd),
-                                  lav_video_interlacing(lav_fd),
-                                  fps,
-                                  audio_bits,
-                                  audio_chans,
-                                  audio_rate);
-   if(!lav_out)
-   {
-      mjpeg_error_exit1("Error opening %s: %s",argv[3],lav_strerror());
-   }
-   
    lav_seek_start(lav_fd);
 
    na_out = 0;
-
-   for(i=0;i<lav_video_frames(lav_fd);i++)
+   i = 0;
+   
+   /* check for enough string space for output filename */
+   if( strlen(argv[3]) > (sizeof(chOutFile)-2) )
    {
-      res = lav_read_frame(lav_fd,vbuff);
-      if(res<0)
+      mjpeg_error_exit1("Insufficient string space to create output filename");
+   }
+
+   
+   /* outer loop */
+   while(1)
+   {
+      
+      /* rough check for "%d" style filename */
+      if( strchr(argv[3], 37) != NULL )
       {
-         mjpeg_error("Reading video frame: %s",lav_strerror());
-         lav_close(lav_out);
-         exit(1);
+         /* build output filename */
+         sprintf(chOutFile, argv[3], iOutNum++);
       }
-      res = lav_write_frame(lav_out,vbuff,lav_frame_size(lav_fd,i),1);
-      if(res<0)
+      else
       {
-        mjpeg_error("Writing video frame: %s", lav_strerror());
-         lav_close(lav_out);
-         exit(1);
+         strncpy(chOutFile, argv[3], sizeof(chOutFile)-1);
+         chOutFile[sizeof(chOutFile)-1] = 0;
       }
-      n = read(wav_fd,abuff,absize);
-      if(n>0)
+      
+      lav_out = lav_open_output_file(chOutFile,
+                                     lav_fd->format,
+                                     lav_video_width (lav_fd),
+                                     lav_video_height(lav_fd),
+                                     lav_video_interlacing(lav_fd),
+                                     fps,
+                                     audio_bits,
+                                     audio_chans,
+                                     audio_rate);
+      if(!lav_out)
       {
-         na_out += n/audio_bps;
-         res = lav_write_audio(lav_out,abuff,n/audio_bps);
+         mjpeg_error_exit1("Error opening %s: %s", chOutFile, lav_strerror());
+      }
+   
+
+      while( i < lav_video_frames(lav_fd) )
+      {
+         res = lav_read_frame(lav_fd,vbuff);
          if(res<0)
          {
-            mjpeg_error("Error writing audio: %s",lav_strerror());
+            mjpeg_error("Reading video frame: %s",lav_strerror());
             lav_close(lav_out);
             exit(1);
          }
-      }
-   }
+         res = lav_write_frame(lav_out,vbuff,lav_frame_size(lav_fd,i),1);
+         if(res<0)
+         {
+            mjpeg_error("Writing video frame: %s", lav_strerror());
+            lav_close(lav_out);
+            exit(1);
+         }
+         ulOutputBytes += (unsigned long)lav_frame_size(lav_fd,i);
+         
+         n = read(wav_fd,abuff,absize);
+         if(n>0)
+         {
+            na_out += n/audio_bps;
+            res = lav_write_audio(lav_out,abuff,n/audio_bps);
+            if(res<0)
+            {
+               mjpeg_error("Error writing audio: %s",lav_strerror());
+               lav_close(lav_out);
+               exit(1);
+            }
+            ulOutputBytes += (unsigned long)n;
+         }
+         
+         i++;
+         /* check for exceeding maximum output file size */
+         if( (ulOutputBytes >> 20) >= (unsigned long)MAX_MBYTES_PER_FILE_32 )
+         {
+            ulOutputBytes = 0;
+            break;
+         }
+      
+      } /* end of while( i < lav_video_frames(lav_fd) ) */
 
+      
+      if( ulOutputBytes == 0 )
+      {
+         lav_close(lav_out);
+      }
+      else
+      {
+         break;
+      }
+      
+   } /* end of while(1) */
+   
+
+      
    /* copy remaining audio */
    
    do
@@ -222,9 +286,9 @@ int main(int argc, char **argv)
    while(n>0);
    
    if(na_out != audio_samps)
-	   mjpeg_warn("audio samples expected: %ld, written: %ld",
-				  audio_samps, na_out);
+      mjpeg_warn("audio samples expected: %ld, written: %ld",
+                 audio_samps, na_out);
    
    lav_close(lav_out);
    return 0;
-   }
+}
