@@ -113,8 +113,8 @@ int main(int argc, char *argv[])
          framerate = 25.0;
          break;
       case 4:
-         time_between_frames = 1000000 * 1.0 / 29.997;
-         framerate = 29.997;
+         time_between_frames = 1000000 * 1.0 / 29.97;
+         framerate = 29.97;
          break;
      default:
          mjpeg_log(LOG_ERROR, "Unknown format!!\n");

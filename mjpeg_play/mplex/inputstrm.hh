@@ -147,6 +147,8 @@ protected:
     static const int FRAME_CHUNK = frame_chunk;
 
 public:  // TODO should go protected once encapsulation complete
+	     // N.b. currently length=0 is used to indicate an ended
+	     // stream.
 	T au;
 
 };

@@ -544,12 +544,6 @@ void outputstream ( VideoStream &vstrm,
 
 {
 	segment_state seg_state;
-#ifdef REDUNDANT
-	VAunit video_au;		/* Video Access Unit	*/
-	AAunit astrm.au;		/* Audio Access Unit	*/
-	unsigned int AU_starting_next_sec; 
-	bool audio_frame_start;
-#endif
 	VAunit *next_vau;
 	static clockticks delay,audio_delay,video_delay;
 
@@ -610,13 +604,14 @@ void outputstream ( VideoStream &vstrm,
 
 
 	/*  Let's try to read in unit after unit and to write it out into
-		the outputstream. The only difficulty herein lies into the 
+		the outputstream. The only difficulty herein lies into the
 		buffer management, and into the fact the the actual access
 		unit *has* to arrive in time, that means the whole unit
 		(better yet, packet data), has to arrive before arrival of
 		DTS. If both buffers are full we'll generate a padding packet
 	  
-		Of course, when we start we're starting a new segment with no bytes output...
+		Of course, when we start we're starting a new segment with no
+		bytes output...
 	*/
 
 	

@@ -230,8 +230,8 @@ void VideoStream::Init (const char *video_file )
 	max_bits_persec = 0;
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
-    mjpeg_info ("Scanning Video stream %d for access units information.\n",
-				stream_id-VIDEO_STR_0);
+    mjpeg_debug( "Scanning Video stream %d for access units information.\n",
+				 stream_id-VIDEO_STR_0);
 
 	InputStream::Init( video_file );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
@@ -278,7 +278,7 @@ void VideoStream::Init (const char *video_file )
 void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
 {
 	last_buffered_AU += frames_to_buffer;
-	mjpeg_info( "Scanning %d video frames to frame %d\n", 
+	mjpeg_debug( "Scanning %d video frames to frame %d\n", 
 				 frames_to_buffer, last_buffered_AU );
 
 	while(!bs.eos() && 
@@ -602,7 +602,6 @@ void AudioStream::Init (char *audio_file)
 		original_copy 	= bs.get1bit ();
 		emphasis		= bs.getbits( 2);
 
-		/* TODO: I'll be the slots counts have changed in the newer versions too... */
 		framesize =
 			bitrate_index[version_id][3-layer][bit_rate]  * 
 			slots [3-layer] *1000 /
@@ -764,11 +763,8 @@ void AudioStream::close()
 
 void AudioStream::output_audio_info ()
 {
-    unsigned int layer;
     unsigned int bitrate;
-
-    layer=3-layer;
-    bitrate = bitrate_index[version_id][layer][bit_rate];
+    bitrate = bitrate_index[version_id][3-layer][bit_rate];
 
 
 	mjpeg_info("AUDIO STREAM:\n");
