@@ -96,12 +96,14 @@ void init_transform()
 }
 
 /* subtract prediction and transform prediction error */
-void transform(pred,cur,mbi,blocks)
-unsigned char *pred[], *cur[];
-struct mbinfo *mbi;
-short blocks[][64];
+void transform(
+	pict_data_s *picture,
+	unsigned char *pred[], unsigned char *cur[]
+	)
 {
   int i, j, i1, j1, k, n, cc, offs, lx;
+  mbinfo_s *mbi = picture->mbinfo;
+  short (*blocks)[64] = picture->blocks;
 
   k = 0;
 
@@ -117,7 +119,7 @@ short blocks[][64];
 		  /* We'll use this for quantisation calculations                    */
 		  mbi[k].dctblocks = &blocks[k*block_count+n][0];
           /* luminance */
-          if ((pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
+          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
           {
             /* field DCT */
             offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
@@ -130,7 +132,7 @@ short blocks[][64];
             lx = width2;
           }
 
-          if (pict_struct==BOTTOM_FIELD)
+          if (picture->pict_struct==BOTTOM_FIELD)
             offs += width;
         }
         else
@@ -141,7 +143,7 @@ short blocks[][64];
           i1 = (chroma_format==CHROMA444) ? i : i>>1;
           j1 = (chroma_format!=CHROMA420) ? j : j>>1;
 
-          if ((pict_struct==FRAME_PICTURE) && mbi[k].dct_type
+          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
               && (chroma_format!=CHROMA420))
           {
             /* field DCT */
@@ -155,7 +157,7 @@ short blocks[][64];
             lx = chrom_width2;
           }
 
-          if (pict_struct==BOTTOM_FIELD)
+          if (picture->pict_struct==BOTTOM_FIELD)
             offs += chrom_width;
         }
 
@@ -168,11 +170,12 @@ short blocks[][64];
 }
 
 /* inverse transform prediction error and add prediction */
-void itransform(pred,cur,mbi,blocks)
-unsigned char *pred[],*cur[];
-struct mbinfo *mbi;
-short blocks[][64];
+void itransform(
+	pict_data_s *picture,
+	unsigned char *pred[], unsigned char *cur[],
+	short blocks[][64])
 {
+    mbinfo_s *mbi = picture->mbinfo;
   int i, j, i1, j1, k, n, cc, offs, lx;
 
   k = 0;
@@ -187,7 +190,7 @@ short blocks[][64];
         if (cc==0)
         {
           /* luminance */
-          if ((pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
+          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
           {
             /* field DCT */
             offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
@@ -200,7 +203,7 @@ short blocks[][64];
             lx = width2;
           }
 
-          if (pict_struct==BOTTOM_FIELD)
+          if (picture->pict_struct==BOTTOM_FIELD)
             offs += width;
         }
         else
@@ -211,7 +214,7 @@ short blocks[][64];
           i1 = (chroma_format==CHROMA444) ? i : i>>1;
           j1 = (chroma_format!=CHROMA420) ? j : j>>1;
 
-          if ((pict_struct==FRAME_PICTURE) && mbi[k].dct_type
+          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
               && (chroma_format!=CHROMA420))
           {
             /* field DCT */
@@ -225,7 +228,7 @@ short blocks[][64];
             lx = chrom_width2;
           }
 
-          if (pict_struct==BOTTOM_FIELD)
+          if (picture->pict_struct==BOTTOM_FIELD)
             offs += chrom_width;
         }
 
@@ -280,10 +283,15 @@ short *blk;
  *
  * preliminary version: based on inter-field correlation
  */
-void dct_type_estimation(pred,cur,mbi)
-unsigned char *pred,*cur;
-struct mbinfo *mbi;
+
+void dct_type_estimation(
+	pict_data_s *picture,
+	unsigned char *pred, unsigned char *cur
+	)
 {
+
+	struct mbinfo *mbi = picture->mbinfo;
+
   short blk0[128], blk1[128];
   int i, j, i0, j0, k, offs, s0, s1, sq0, sq1, s01;
   double d, r;
@@ -293,7 +301,7 @@ struct mbinfo *mbi;
   for (j0=0; j0<height2; j0+=16)
     for (i0=0; i0<width; i0+=16)
     {
-      if (frame_pred_dct || pict_struct!=FRAME_PICTURE)
+      if (picture->frame_pred_dct || picture->pict_struct!=FRAME_PICTURE)
         mbi[k].dct_type = 0;
       else
       {

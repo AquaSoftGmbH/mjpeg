@@ -32,333 +32,356 @@
 #include "config.h"
 #include "global.h"
 
+
+static	unsigned char *neworg[3], *newref[3];
+static	unsigned char *prevframe[3];
+
+
 void putseq()
 {
-  /* this routine assumes (N % M) == 0 */
-  int i, j, k, f, f0, n, np, nb;
-  int ipflag;
-  int sxf = 0, sxb = 0, syf = 0, syb = 0;
-  unsigned char *neworg[3], *newref[3];
-  unsigned char *prevframe[3];
-  char fkind;
+	/* this routine assumes (N % M) == 0 */
+	int i, j, k, f, f0, n, np, nb;
+	int ipflag;
+	int sxf = 0, sxb = 0, syf = 0, syb = 0;
+	motion_comp_s mc_data;
 
-  rc_init_seq(); /* initialize rate control */
+	rc_init_seq(); /* initialize rate control */
 
   /* sequence header, sequence extension and sequence display extension */
-  putseqhdr();
-  if (!mpeg1)
-  {
-    putseqext();
-    putseqdispext();
-  }
+	putseqhdr();
+	if (!mpeg1)
+	{
+		putseqext();
+		putseqdispext();
+	}
 
-  /* optionally output some text data (description, copyright or whatever) */
-  if (strlen(id_string) > 1)
-    putuserdata(id_string);
+	/* optionally output some text data (description, copyright or whatever) */
+	if (strlen(id_string) > 1)
+		putuserdata(id_string);
 
   /* A.Stevens Jul 2000 - we initialise sliding motion 
 	 compensation window thresholding values - we need to
 	 know how many macroblocks per frame to choose sensible
 	 parameters. */
 
-  reset_thresholds( mb_height2*mb_width );
+	reset_thresholds( mb_height2*mb_width );
 
-  /* Initialise sane values for neworg in case 1st frame of source sequence is
-	 corrupted and we use its "predecessor" */
-  neworg[0]=neworgframe[0];
-  neworg[1]=neworgframe[1];
-  neworg[2]=neworgframe[2];
-  /* loop through all frames in encoding/decoding order */
-  for (i=0; i<nframes; i++)
-  {
+	/* Initialise sane values for neworg in case 1st frame of source
+	 sequence is corrupted and we use its "predecessor" */
+	neworg[0]=neworgframe[0];
+	neworg[1]=neworgframe[1];
+	neworg[2]=neworgframe[2];
+	/* loop through all frames in encoding/decoding order */
+	for (i=0; i<nframes; i++)
+	{
 		frame_num = i;
 		/* We keep track of the previously read frame in case source material
-	 	has occasional corrupt frames */
+		   has occasional corrupt frames */
 		prevframe[0]=neworg[0];
 		prevframe[1]=neworg[1];
 		prevframe[2]=neworg[2];
 
-    /* f0: lowest frame number in current GOP
-     *
-     * first GOP contains N-(M-1) frames,
-     * all other GOPs contain N frames
-     */
-    f0 = N*((i+(M-1))/N) - (M-1);
+		/* f0: lowest frame number in current GOP
+		 *
+		 * first GOP contains N-(M-1) frames,
+		 * all other GOPs contain N frames
+		 */
+		f0 = N*((i+(M-1))/N) - (M-1);
 
-    if (f0<0)
-      f0=0;
+		if (f0<0)
+			f0=0;
 
-    if (i==0 || (i-1)%M==0)
-    {
+		if (i==0 || (i-1)%M==0)
+		{
 
-      /* I or P frame */
-      for (j=0; j<3; j++)
-      {
-        /* shuffle reference frames */
-        neworg[j] = oldorgframe[j];
-        newref[j] = oldrefframe[j];
-        oldorgframe[j] = neworgframe[j];
-        oldrefframe[j] = newrefframe[j];
-        neworgframe[j] = neworg[j];
-        newrefframe[j] = newref[j];
-      }
-
-
-      /* f: frame number in display order */
-      f = (i==0) ? 0 : i+M-1;
-      if (f>=nframes)
-        f = nframes - 1;
-
-      if (i==f0) /* first displayed frame in GOP is I */
-      {
-        /* I frame */
-		fkind = 'I';
-        pict_type = I_TYPE;
+			/* I or P frame */
+			for (j=0; j<3; j++)
+			{
+				/* shuffle reference frames */
+				neworg[j] = oldorgframe[j];
+				newref[j] = oldrefframe[j];
+				oldorgframe[j] = neworgframe[j];
+				oldrefframe[j] = newrefframe[j];
+				neworgframe[j] = neworg[j];
+				newrefframe[j] = newref[j];
+			}
 
 
-        forw_hor_f_code = forw_vert_f_code = 15;
-        back_hor_f_code = back_vert_f_code = 15;
+			/* f: frame number in display order */
+			f = (i==0) ? 0 : i+M-1;
+			if (f>=nframes)
+				f = nframes - 1;
 
-        /* n: number of frames in current GOP
-         *
-         * first GOP contains (M-1) less (B) frames
-         */
-        n = (i==0) ? N-(M-1) : N;
+			if (i==f0) /* first displayed frame in GOP is I */
+			{
+				/* I frame */
+				cur_picture.pict_type = I_TYPE;
 
-        /* last GOP may contain less frames */
-        if (n > nframes-f0)
-          n = nframes-f0;
 
-        /* number of P frames */
-        if (i==0)
-          np = (n + 2*(M-1))/M - 1; /* first GOP */
-        else
-          np = (n + (M-1))/M - 1;
+				cur_picture.forw_hor_f_code = 
+					cur_picture.forw_vert_f_code = 15;
+				cur_picture.back_hor_f_code = 
+					cur_picture.back_vert_f_code = 15;
 
-        /* number of B frames */
-        nb = n - np - 1;
+				/* n: number of frames in current GOP
+				 *
+				 * first GOP contains (M-1) less (B) frames
+				 */
+				n = (i==0) ? N-(M-1) : N;
 
-        rc_init_GOP(np,nb);
+				/* last GOP may contain less frames */
+				if (n > nframes-f0)
+					n = nframes-f0;
 
-        putgophdr(f0,i==0); /* set closed_GOP in first GOP only */
+				/* number of P frames */
+				if (i==0)
+					np = (n + 2*(M-1))/M - 1; /* first GOP */
+				else
+					np = (n + (M-1))/M - 1;
 
-      }
-      else
-      {
-        /* P frame */
-		fkind = 'P';
-        pict_type = P_TYPE;
-        forw_hor_f_code = motion_data[0].forw_hor_f_code;
-        forw_vert_f_code = motion_data[0].forw_vert_f_code;
-        back_hor_f_code = back_vert_f_code = 15;
-        sxf = motion_data[0].sxf;
-        syf = motion_data[0].syf;
-      }
-    }
-    else
-    {
-      /* B frame */
-      fkind = 'B';
-      for (j=0; j<3; j++)
-      {
-        neworg[j] = auxorgframe[j];
-        newref[j] = auxframe[j];
-      }
+				/* number of B frames */
+				nb = n - np - 1;
 
-      /* f: frame number in display order */
-      f = i - 1;
-      pict_type = B_TYPE;
-      n = (i-2)%M + 1; /* first B: n=1, second B: n=2, ... */
-      forw_hor_f_code = motion_data[n].forw_hor_f_code;
-      forw_vert_f_code = motion_data[n].forw_vert_f_code;
-      back_hor_f_code = motion_data[n].back_hor_f_code;
-      back_vert_f_code = motion_data[n].back_vert_f_code;
-      sxf = motion_data[n].sxf;
-      syf = motion_data[n].syf;
-      sxb = motion_data[n].sxb;
-      syb = motion_data[n].syb;
-    }
+				rc_init_GOP(np,nb);
 
-    temp_ref = f - f0;
-    frame_pred_dct = frame_pred_dct_tab[pict_type-1];
-    q_scale_type = qscale_tab[pict_type-1];
-    intravlc = intravlc_tab[pict_type-1];
-    altscan = altscan_tab[pict_type-1];
+				putgophdr(f0,i==0); /* set closed_GOP in first GOP only */
+
+			}
+			else
+			{
+				/* P frame */
+				cur_picture.pict_type = P_TYPE;
+				cur_picture.forw_hor_f_code = motion_data[0].forw_hor_f_code;
+				cur_picture.forw_vert_f_code = motion_data[0].forw_vert_f_code;
+				cur_picture.back_hor_f_code = 
+					cur_picture.back_vert_f_code = 15;
+				sxf = motion_data[0].sxf;
+				syf = motion_data[0].syf;
+			}
+		}
+		else
+		{
+			/* B frame */
+			for (j=0; j<3; j++)
+			{
+				neworg[j] = auxorgframe[j];
+				newref[j] = auxframe[j];
+			}
+
+			/* f: frame number in display order */
+			f = i - 1;
+			cur_picture.pict_type = B_TYPE;
+			n = (i-2)%M + 1; /* first B: n=1, second B: n=2, ... */
+			cur_picture.forw_hor_f_code = motion_data[n].forw_hor_f_code;
+			cur_picture.forw_vert_f_code = motion_data[n].forw_vert_f_code;
+			cur_picture.back_hor_f_code = motion_data[n].back_hor_f_code;
+			cur_picture.back_vert_f_code = motion_data[n].back_vert_f_code;
+			sxf = motion_data[n].sxf;
+			syf = motion_data[n].syf;
+			sxb = motion_data[n].sxb;
+			syb = motion_data[n].syb;
+		}
+
+		cur_picture.temp_ref = f - f0;
+		cur_picture.frame_pred_dct = 
+			frame_pred_dct_tab[cur_picture.pict_type-1];
+		cur_picture.q_scale_type = qscale_tab[cur_picture.pict_type-1];
+		cur_picture.intravlc = intravlc_tab[cur_picture.pict_type-1];
+		cur_picture.altscan = altscan_tab[cur_picture.pict_type-1];
 
 #ifdef OUTPUT_STAT
-    fprintf(statfile,"\nFrame %d (#%d in display order):\n",i,f);
-    fprintf(statfile," picture_type=%c\n",fkind);
-    fprintf(statfile," temporal_reference=%d\n",temp_ref);
-    fprintf(statfile," frame_pred_frame_dct=%d\n",frame_pred_dct);
-    fprintf(statfile," q_scale_type=%d\n",q_scale_type);
-    fprintf(statfile," intra_vlc_format=%d\n",intravlc);
-    fprintf(statfile," alternate_scan=%d\n",altscan);
+		fprintf(statfile,"\nFrame %d (#%d in display order):\n",i,f);
+		fprintf(statfile," picture_type=%c\n",pict_type_char[cur_picture.pict_type]);
+		fprintf(statfile," temporal_reference=%d\n",cur_picture.temp_ref);
+		fprintf(statfile," frame_pred_frame_dct=%d\n",cur_picture.frame_pred_dct);
+		fprintf(statfile," q_scale_type=%d\n",cur_picture.q_scale_type);
+		fprintf(statfile," intra_vlc_format=%d\n",cur_picture.intravlc);
+		fprintf(statfile," alternate_scan=%d\n",cur_picture.altscan);
 
-    if (pict_type!=I_TYPE)
-    {
-      fprintf(statfile," forward search window: %d...%d / %d...%d\n",
-        -sxf,sxf,-syf,syf);
-      fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-        -(4<<forw_hor_f_code),(4<<forw_hor_f_code)-1,
-        -(4<<forw_vert_f_code),(4<<forw_vert_f_code)-1);
-    }
+		if (cur_picture.pict_type!=I_TYPE)
+		{
+			fprintf(statfile," forward search window: %d...%d / %d...%d\n",
+					-sxf,sxf,-syf,syf);
+			fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
+					-(4<<cur_picture.forw_hor_f_code),(4<<cur_picture.forw_hor_f_code)-1,
+					-(4<<cur_picture.forw_vert_f_code),(4<<cur_picture.forw_vert_f_code)-1);
+		}
 
-    if (pict_type==B_TYPE)
-    {
-      fprintf(statfile," backward search window: %d...%d / %d...%d\n",
-        -sxb,sxb,-syb,syb);
-      fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-        -(4<<back_hor_f_code),(4<<back_hor_f_code)-1,
-        -(4<<back_vert_f_code),(4<<back_vert_f_code)-1);
-    }
+		if (cur_picture.pict_type==B_TYPE)
+		{
+			fprintf(statfile," backward search window: %d...%d / %d...%d\n",
+					-sxb,sxb,-syb,syb);
+			fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
+					-(4<<cur_picture.back_hor_f_code),(4<<cur_picture.back_hor_f_code)-1,
+					-(4<<cur_picture.back_vert_f_code),(4<<cur_picture.back_vert_f_code)-1);
+		}
 #endif
-     if (!quiet)
-    {
-      printf("Frame %d %c ",i, fkind);
-      fflush(stdout);
-    }
+		if (!quiet)
+		{
+			printf("Frame %d %d %c ",i, cur_picture.pict_type,  pict_type_char[cur_picture.pict_type]);
+			fflush(stdout);
+		}
 
 
-    if( readframe(f+frame0,neworg) )
-	  {
+		if( readframe(f+frame0,neworg) )
+		{
 			/* Corrupt source frame, re-use predecessor! */
 			neworg[0] = prevframe[0];
 			neworg[1] = prevframe[1];
 			neworg[2] = prevframe[2];
 			printf( "Warning... corrupt data re-using previous frame\n" );
-	  }
+		}
+
+		mc_data.oldorg = oldorgframe[0];
+		mc_data.neworg = neworgframe[0];
+		mc_data.oldref = oldrefframe[0];
+		mc_data.newref = newrefframe[0];
+		mc_data.cur    = neworg[0];
+		mc_data.curref = newref[0];
+		mc_data.sxf = sxf;
+		mc_data.syf = syf;
+		mc_data.sxb = sxb;
+		mc_data.syb = syb;
 
         if (fieldpic)
-    {
-      if (!quiet)
-      {
-        fprintf(stderr,"\nfirst field  (%s) ",topfirst ? "top" : "bot");
-        fflush(stderr);
-      }
+		{
+			if (!quiet)
+			{
+				fprintf(stderr,"\nfirst field  (%s) ",
+						cur_picture.topfirst ? "top" : "bot");
+				fflush(stderr);
+			}
 
-      pict_struct = topfirst ? TOP_FIELD : BOTTOM_FIELD;
+			cur_picture.pict_struct = cur_picture.topfirst ? TOP_FIELD : BOTTOM_FIELD;
 			/* A.Stevens 2000: Append fast motion compensation data for new frame */
-			fast_motion_data(neworg[0], pict_struct);
-      motion_estimation(oldorgframe[0],neworgframe[0],
-                        oldrefframe[0],newrefframe[0],
-                        neworg[0],newref[0],
-                        sxf,syf,sxb,syb,mbinfo,0,0);
+			fast_motion_data(neworg[0], cur_picture.pict_struct);
+			motion_estimation(&cur_picture, &mc_data,0,0);
 
-      predict(oldrefframe,newrefframe,predframe,0,mbinfo);
-      dct_type_estimation(predframe[0],neworg[0],mbinfo);
-      transform(predframe,neworg,mbinfo,blocks);
+			predict(&cur_picture,oldrefframe,newrefframe,predframe,0);
+			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
+			transform(&cur_picture,predframe,neworg);
 
-      putpict(neworg[0]);		/* Quantisation: blocks -> qblocks */
+			putpict(&cur_picture, qblocks);		/* Quantisation: blocks -> qblocks */
 
-      for (k=0; k<mb_height2*mb_width; k++)
-      {
-        if (mbinfo[k].mb_type & MB_INTRA)
-          for (j=0; j<block_count; j++)
-            iquant_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                         dc_prec,intra_q, i_intra_q, mbinfo[k].mquant);
-        else
-          for (j=0;j<block_count;j++)
-            iquant_non_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                             inter_q,  i_inter_q,  mbinfo[k].mquant);
-      }
+			for (k=0; k<mb_height2*mb_width; k++)
+			{
+				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
+					for (j=0; j<block_count; j++)
+						iquant_intra(qblocks[k*block_count+j],
+									 qblocks[k*block_count+j],
+									 cur_picture.dc_prec,intra_q, 
+									 i_intra_q, cur_picture.mbinfo[k].mquant);
+				else
+					for (j=0;j<block_count;j++)
+						iquant_non_intra(qblocks[k*block_count+j],
+										 qblocks[k*block_count+j],
+										 inter_q,  i_inter_q, 
+										 cur_picture.mbinfo[k].mquant);
+			}
 
-      itransform(predframe,newref,mbinfo,qblocks);
-      calcSNR(neworg,newref);
-      stats();
+			itransform(&cur_picture,predframe,newref,qblocks);
+			fast_motion_data(newref[0], cur_picture.pict_struct);
+			calcSNR(neworg,newref);
+			stats();
 
-      if (!quiet)
-      {
-        fprintf(stderr,"second field (%s) ",topfirst ? "bot" : "top");
-        fflush(stderr);
-      }
+			if (!quiet)
+			{
+				fprintf(stderr,"second field (%s) ",cur_picture.topfirst ? "bot" : "top");
+				fflush(stderr);
+			}
 
-      pict_struct = topfirst ? BOTTOM_FIELD : TOP_FIELD;
+			cur_picture.pict_struct = cur_picture.topfirst ? BOTTOM_FIELD : TOP_FIELD;
 
-      ipflag = (pict_type==I_TYPE);
-      if (ipflag)
-      {
-        /* first field = I, second field = P */
-        pict_type = P_TYPE;
-        forw_hor_f_code = motion_data[0].forw_hor_f_code;
-        forw_vert_f_code = motion_data[0].forw_vert_f_code;
-        back_hor_f_code = back_vert_f_code = 15;
-        sxf = motion_data[0].sxf;
-        syf = motion_data[0].syf;
-      }
+			ipflag = (cur_picture.pict_type==I_TYPE);
+			if (ipflag)
+			{
+				/* first field = I, second field = P */
+				cur_picture.pict_type = P_TYPE;
+				cur_picture.forw_hor_f_code = motion_data[0].forw_hor_f_code;
+				cur_picture.forw_vert_f_code = motion_data[0].forw_vert_f_code;
+				cur_picture.back_hor_f_code = 
+					cur_picture.back_vert_f_code = 15;
+				sxf = motion_data[0].sxf;
+				syf = motion_data[0].syf;
+			}
 
-      motion_estimation(oldorgframe[0],neworgframe[0],
-                        oldrefframe[0],newrefframe[0],
-                        neworg[0],newref[0],
-                        sxf,syf,sxb,syb,mbinfo,1,ipflag);
+			motion_estimation(&cur_picture, &mc_data ,1,ipflag);
 
-      predict(oldrefframe,newrefframe,predframe,1,mbinfo);
-      dct_type_estimation(predframe[0],neworg[0],mbinfo);
-      transform(predframe,neworg,mbinfo,blocks);
+			predict(&cur_picture,oldrefframe,newrefframe,predframe,1);
+			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
+			transform(&cur_picture,predframe,neworg);
 
-      putpict(neworg[0]);	/* Quantisation: blocks -> qblocks */
+			putpict(&cur_picture, qblocks);	/* Quantisation: blocks -> qblocks */
 
-      for (k=0; k<mb_height2*mb_width; k++)
-      {
-        if (mbinfo[k].mb_type & MB_INTRA)
-          for (j=0; j<block_count; j++)
-            iquant_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                         dc_prec,intra_q, i_intra_q, mbinfo[k].mquant);
-        else
-          for (j=0;j<block_count;j++)
-            iquant_non_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                             inter_q,  i_intra_q, mbinfo[k].mquant);
-      }
+			for (k=0; k<mb_height2*mb_width; k++)
+			{
+				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
+					for (j=0; j<block_count; j++)
+						iquant_intra(qblocks[k*block_count+j],
+									 qblocks[k*block_count+j],
+									 cur_picture.dc_prec,intra_q, i_intra_q, 
+									 cur_picture.mbinfo[k].mquant);
+				else
+					for (j=0;j<block_count;j++)
+						iquant_non_intra(qblocks[k*block_count+j],
+										 qblocks[k*block_count+j],
+										 inter_q,  i_intra_q, 
+										 cur_picture.mbinfo[k].mquant);
+			}
 
-      itransform(predframe,newref,mbinfo,qblocks);
-      calcSNR(neworg,newref);
-      stats();
-    }
-    else
-    {
-      pict_struct = FRAME_PICTURE;
-	  fast_motion_data(neworg[0], pict_struct);
+			itransform(&cur_picture,predframe,newref,qblocks);
+			fast_motion_data(newref[0], cur_picture.pict_struct);
+			calcSNR(neworg,newref);
+			stats();
+		}
+		else
+		{
+			cur_picture.pict_struct = FRAME_PICTURE;
+			fast_motion_data(neworg[0], cur_picture.pict_struct);
 
-      /* do motion_estimation
-       *
-       * uses source frames (...orgframe) for full pel search
-       * and reconstructed frames (...refframe) for half pel search
-       */
+			/* do motion_estimation
+			 *
+			 * uses source frames (...orgframe) for full pel search
+			 * and reconstructed frames (...refframe) for half pel search
+			 */
+
+			motion_estimation(&cur_picture,&mc_data,0,0);
+
+			predict(&cur_picture, oldrefframe,newrefframe,predframe,0);
+			dct_type_estimation(&cur_picture,predframe[0],neworg[0]);
+
+			transform(&cur_picture,predframe,neworg);
+
+			putpict(&cur_picture,qblocks);	/* Quantisation: blocks -> qblocks */
+
+			for (k=0; k<mb_height*mb_width; k++)
+			{
+				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
+					for (j=0; j<block_count; j++)
+						iquant_intra(qblocks[k*block_count+j],
+									 qblocks[k*block_count+j],
+									 cur_picture.dc_prec,
+									 intra_q, i_intra_q,  
+									 cur_picture.mbinfo[k].mquant);
+				else
+					for (j=0;j<block_count;j++)
+						iquant_non_intra(qblocks[k*block_count+j],
+										 qblocks[k*block_count+j],
+										 inter_q,  i_inter_q, 
+										 cur_picture.mbinfo[k].mquant);
+			}
+
+			itransform(&cur_picture,predframe,newref,qblocks);
+			fast_motion_data(newref[0], cur_picture.pict_struct); 
+			calcSNR(neworg,newref);
+
+			stats();
+		}
 
 
-      motion_estimation(oldorgframe[0],neworgframe[0],
-                        oldrefframe[0],newrefframe[0],
-                        neworg[0],newref[0],
-                        sxf,syf,sxb,syb,mbinfo,0,0);
+		writeframe(f+frame0,newref);
 
-      predict(oldrefframe,newrefframe,predframe,0,mbinfo);
-      dct_type_estimation(predframe[0],neworg[0],mbinfo);
+	}
 
-      transform(predframe,neworg,mbinfo,blocks);
-
-      putpict(neworg[0]);	/* Quantisation: blocks -> qblocks */
-
-      for (k=0; k<mb_height*mb_width; k++)
-      {
-        if (mbinfo[k].mb_type & MB_INTRA)
-          for (j=0; j<block_count; j++)
-            iquant_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                         dc_prec,intra_q, i_intra_q,  mbinfo[k].mquant);
-        else
-          for (j=0;j<block_count;j++)
-            iquant_non_intra(qblocks[k*block_count+j],qblocks[k*block_count+j],
-                             inter_q,  i_inter_q,  mbinfo[k].mquant);
-      }
-
-      itransform(predframe,newref,mbinfo,qblocks);
-      calcSNR(neworg,newref);
-
-      stats();
-    }
-
-
-    writeframe(f+frame0,newref);
-
-  }
-
-  putseqend();
+	putseqend();
 }

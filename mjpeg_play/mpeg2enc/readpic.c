@@ -180,7 +180,7 @@ static void read_gop()
 
    for(n=s;n<s+N;n++)
    {
-      if(piperead(0,magic,6)!=6) goto EOF_MARK;
+      if(piperead(input_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
       {
          fprintf(stderr,"\n\nStart of new frame is not \"FRAME<NL>\"\n");
@@ -190,16 +190,16 @@ static void read_gop()
       v = vertical_size;
       h = horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(0,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
+         if(piperead(input_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
 
       border_extend(frame_buffers[n][0],h,v,width,height);
 
       v = chroma_format==CHROMA420 ? vertical_size/2 : vertical_size;
       h = chroma_format!=CHROMA444 ? horizontal_size/2 : horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(0,frame_buffers[n][1]+i*cwidth,h)!=h) goto EOF_MARK;
+         if(piperead(input_fd,frame_buffers[n][1]+i*cwidth,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(0,frame_buffers[n][2]+i*cwidth,h)!=h) goto EOF_MARK;
+         if(piperead(input_fd,frame_buffers[n][2]+i*cwidth,h)!=h) goto EOF_MARK;
 
       border_extend(frame_buffers[n][1],h,v,cwidth,cheight);
       border_extend(frame_buffers[n][2],h,v,cwidth,cheight);

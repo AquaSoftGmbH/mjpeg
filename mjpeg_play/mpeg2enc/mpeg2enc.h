@@ -88,25 +88,52 @@
 #define T_YUV   1
 #define T_PPM   2
 
+/* Per frame Motion estimation data set 
+ * oldorg: original frame for forward prediction (P and B frames)
+ * neworg: original frame for backward prediction (B frames only)
+ * oldref: reconstructed frame for forward prediction (P and B frames)
+ * newref: reconstructed frame for backward prediction (B frames only)
+ * cur:    current original frame (the one for which the prediction is formed)
+ * curref: current reconstructed frame (to predict second field from first)
+ * sxf,syf: forward search window (frame coordinates)
+ * sxb,syb: backward search window (frame coordinates)
+*/
+
+struct motion_comp
+{
+	unsigned char *oldorg, *neworg;
+	unsigned char *oldref, *newref;
+	unsigned char *cur, *curref;
+	int sxf, syf,  sxb, syb;
+};
+
+typedef struct motion_comp motion_comp_s;
+
+
 /* macroblock information */
 struct mbinfo {
-  int mb_type; /* intra/forward/backward/interpolated */
-  int motion_type; /* frame/field/16x8/dual_prime */
-  int dct_type; /* field/frame DCT */
-  int mquant; /* quantization parameter */
-  int cbp; /* coded block pattern */
-  int skipped; /* skipped macroblock */
-  int MV[2][2][2]; /* motion vectors */
-  int mv_field_sel[2][2]; /* motion vertical field select */
-  int dmvector[2]; /* dual prime vectors */
-  double act; /* activity measure */
-  int var; /* for debugging */
-  short *dctblocks;
+	int mb_type; /* intra/forward/backward/interpolated */
+	int motion_type; /* frame/field/16x8/dual_prime */
+	int dct_type; /* field/frame DCT */
+	int mquant; /* quantization parameter */
+	int cbp; /* coded block pattern */
+	int skipped; /* skipped macroblock */
+	int MV[2][2][2]; /* motion vectors */
+	int mv_field_sel[2][2]; /* motion vertical field select */
+	int dmvector[2]; /* dual prime vectors */
+	double act; /* activity measure */
+	int i_act;  /* Activity measure if intra coded (I/P-frame) */
+	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
+	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
+	int var; 	/* Macroblock luminance variance (measure of activity) */
+	short *dctblocks;
 #ifdef OUTPUT_STAT
   double N_act;
 #endif
 
 };
+
+typedef struct mbinfo mbinfo_s;
 
 /* motion data */
 struct motion_data {
@@ -115,6 +142,44 @@ struct motion_data {
   int back_hor_f_code,back_vert_f_code;
   int sxb,syb;
 };
+
+/* Transformed per-picture data  */
+
+struct pict_data
+{
+
+	/* picture structure (header) data */
+
+	int temp_ref; /* temporal reference */
+	int pict_type; /* picture coding type (I, P or B) */
+	int vbv_delay; /* video buffering verifier delay (1/90000 seconds) */
+	int forw_hor_f_code, forw_vert_f_code;
+	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
+	int dc_prec;				/* DC coefficient prec for intra blocks */
+	int pict_struct;			/* picture structure (frame, top / bottom) */
+	int topfirst;				/* display top field first */
+	int frame_pred_dct;			/* Use only frame prediction... */
+	int q_scale_type;			/* Quantisation linear/non-lin */
+	int intravlc;				/* Intra VLC format */
+	int altscan;				/* Alternate scan  */
+	int repeatfirst;			/* repeat first field after second field */
+	int prog_frame;				/* progressive frame */
+
+
+	/* 8*8 block data, raw (unquantised) and quantised */
+	short (*blocks)[64];
+	/* macroblock side information array */
+	struct mbinfo *mbinfo;
+	/* motion estimation parameters */
+	/* struct motion_data *motion_data; */
+};
+
+typedef struct pict_data pict_data_s;
+
+
+/* Type for fast motion compensation search integers */
+
+typedef unsigned char mcompuint;
 
 
 /* SCale factor for fast integer arithmetic routines */

@@ -80,9 +80,9 @@ void init_quantizer()
  */
  
 
-static int next_larger_quant( int quant )
+static int next_larger_quant( pict_data_s *picture, int quant )
 {
-	if( q_scale_type )
+	if( picture->q_scale_type )
 		{
 			if( map_non_linear_mquant[quant]+1 > 31 )
 				return quant;
@@ -108,15 +108,18 @@ static int next_larger_quant( int quant )
 	PRECONDITION: src dst point to *disinct* memory buffers...
 		          of block_count *adjact* short[64] arrays... 
  *
+ * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
  */
 
-void quant_intra(src,dst,dc_prec,quant_mat,i_quant_mat, mquant, nonsat_mquant)
-short *src, *dst;
-int dc_prec;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
-int *nonsat_mquant;
+void quant_intra(
+	pict_data_s *picture,
+	short *src, 
+	short *dst,
+	unsigned short *quant_mat,
+	unsigned short *i_quant_mat,
+	int mquant,
+	int *nonsat_mquant
+	)
 {
   short *psrc,*pbuf;
   int i,comp;
@@ -136,7 +139,7 @@ int *nonsat_mquant;
 	  for( comp = 0; comp<block_count && !clipping; ++comp )
 	  {
 		x = psrc[0];
-		d = 8>>dc_prec; /* intra_dc_mult */
+		d = 8>>picture->dc_prec; /* intra_dc_mult */
 		pbuf[0] = (x>=0) ? (x+(d>>1))/d : -((-x+(d>>1))/d); /* round(x/d) */
 
 
@@ -163,9 +166,7 @@ int *nonsat_mquant;
 			if ( y > clipvalue )
 			  {
 				clipping = 1;
-				mquant = next_larger_quant( mquant );
-				if( !quiet )
-					printf("*I");
+				mquant = next_larger_quant( picture, mquant );
 				break;
 			  }
 #endif
@@ -211,18 +212,20 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
  * this quantizer has a bias of 1/8 stepsize towards zero
  * (except for the DC coefficient)
  *
-	PRECONDITION: src dst point to *disinct* memory buffers...
-	              of block_count *adjacent* short[64] arrays...
+ *	PRECONDITION: src dst point to *disinct* memory buffers...
+ *	              of block_count *adjacent* short[64] arrays...
  *
+ * RETURN: 1 If non-zero coefficients left after quantisaiont 0 otherwise
  */
 
 																							     											     
-int quant_non_intra(src,dst,quant_mat, i_quant_mat, mquant, nonsat_mquant)
-short *src, *dst;
-unsigned short *quant_mat;
-unsigned short *i_quant_mat;
-int mquant;
-int *nonsat_mquant;
+int quant_non_intra(
+	pict_data_s *picture,
+	short *src, short *dst,
+	unsigned short *quant_mat,
+	unsigned short *i_quant_mat,
+	int mquant,
+	int *nonsat_mquant)
 {
   unsigned short *psrc, *pdst;
   int i,comp;
@@ -263,7 +266,7 @@ int *nonsat_mquant;
 		  
 		  if( (flags & 0xff00) != 0 )
 			{
-			  int new_mquant = next_larger_quant( mquant );
+			  int new_mquant = next_larger_quant( picture, mquant );
 			  if( new_mquant != mquant )
 			  	mquant = new_mquant;
 			  else
@@ -293,8 +296,6 @@ int *nonsat_mquant;
   if( (flags & 0xff) != 0 || saturated) /* Coefficient out of range or can't avoid saturation */
 #endif
 	{
-	  if( !quiet )
-	    printf("*O");
 
 	  coeff_count = 64*block_count;
 
@@ -317,7 +318,7 @@ restart:
 			}
 			else
 			{
-			  int new_mquant = next_larger_quant( mquant );
+			  int new_mquant = next_larger_quant( picture, mquant );
 			  if( new_mquant != mquant )
 			  	mquant = new_mquant;
 			  else
@@ -325,8 +326,6 @@ restart:
 			    saturated = 1;
 			  }
 			  i=0;
-			  if( !quiet )
-				printf("*N");
 			  goto restart;
 			}
 		  }

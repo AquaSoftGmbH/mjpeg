@@ -32,7 +32,7 @@
 #include "config.h"
 #include "global.h"
 
-#ifdef OUTPUT_STATS
+#ifdef OUTPUT_STAT
 static void calcSNR1(org,rec,lx,w,h,pv,pe)
 unsigned char *org;
 unsigned char *rec;
@@ -80,11 +80,11 @@ unsigned char *rec[3];
 #ifdef OUTPUT_STAT
   int w,h,offs;
   double v,e;
-  int d;
+
 
   w = horizontal_size;
-  h = (pict_struct==FRAME_PICTURE) ? vertical_size : (vertical_size>>1);
-  offs = (pict_struct==BOTTOM_FIELD) ? width : 0;
+  h = (cur_picture.pict_struct==FRAME_PICTURE) ? vertical_size : (vertical_size>>1);
+  offs = (cur_picture.pict_struct==BOTTOM_FIELD) ? width : 0;
 
   calcSNR1(org[0]+offs,rec[0]+offs,width2,w,h,&v,&e);
   fprintf(statfile,"Y: variance=%4.4g, MSE=%3.3g (%3.3g dB), SNR=%3.3g dB\n",
@@ -118,9 +118,6 @@ void stats()
   int n_skipped, n_intra, n_ncoded, n_blocks, n_interp, n_forward, n_backward;
   struct mbinfo *mbi;
 
-	/* TODO: DELETE Restricted range for my own tests... */
-	if( frame_num > 4  )
-		return;
 
   nmb = mb_width*mb_height2;
 
@@ -128,7 +125,7 @@ void stats()
 
   for (k=0; k<nmb; k++)
   {
-    mbi = mbinfo+k;
+    mbi = cur_picture.mbinfo+k;
     if (mbi->skipped)
       n_skipped++;
     else if (mbi->mb_type & MB_INTRA)
@@ -175,7 +172,7 @@ void stats()
   {
     for (i=0; i<mb_width; i++)
     {
-      mbi = mbinfo + k;
+      mbi = cur_picture.mbinfo + k;
       mb_type = mbi->mb_type;
       if (mbi->skipped)
         putc('S',statfile);
@@ -218,8 +215,8 @@ void stats()
   {
     for (i=0; i<mb_width; i++)
     {
-      if (i==0 || mbinfo[k].mquant!=mbinfo[k-1].mquant)
-        fprintf(statfile,"%3d",mbinfo[k].mquant);
+      if (i==0 || cur_picture.mbinfo[k].mquant!=cur_picture.mbinfo[k-1].mquant)
+        fprintf(statfile,"%3d",cur_picture.mbinfo[k].mquant);
       else
         fprintf(statfile,"   ");
 
@@ -265,7 +262,7 @@ void stats()
   }
 #endif
 
-  if (pict_type!=I_TYPE )
+  if (cur_picture.pict_type!=I_TYPE )
   {
     fprintf(statfile,"\nforward motion vectors (first vector, horizontal):\n");
 
@@ -274,8 +271,8 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_FORWARD)
-          fprintf(statfile,"%4d",mbinfo[k].MV[0][0][0]);
+        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD)
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][0][0]);
         else
           fprintf(statfile,"   .");
   
@@ -291,8 +288,8 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_FORWARD)
-          fprintf(statfile,"%4d",mbinfo[k].MV[0][0][1]);
+        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD)
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][0][1]);
         else
           fprintf(statfile,"   .");
   
@@ -308,10 +305,10 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_FORWARD
-            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
-                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",mbinfo[k].MV[1][0][0]);
+        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD
+            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
+                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][0][0]);
         else
           fprintf(statfile,"   .");
   
@@ -327,10 +324,10 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_FORWARD
-            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
-                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",mbinfo[k].MV[1][0][1]);
+        if (cur_picture.mbinfo[k].mb_type & MB_FORWARD
+            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
+                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][0][1]);
         else
           fprintf(statfile,"   .");
   
@@ -342,7 +339,7 @@ void stats()
 
   }
    
-  if (pict_type==B_TYPE)
+  if (cur_picture.pict_type==B_TYPE)
   {
     fprintf(statfile,"\nbackward motion vectors (first vector, horizontal):\n");
 
@@ -351,8 +348,8 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_BACKWARD)
-          fprintf(statfile,"%4d",mbinfo[k].MV[0][1][0]);
+        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD)
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][1][0]);
         else
           fprintf(statfile,"   .");
   
@@ -368,8 +365,8 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_BACKWARD)
-          fprintf(statfile,"%4d",mbinfo[k].MV[0][1][1]);
+        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD)
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[0][1][1]);
         else
           fprintf(statfile,"   .");
   
@@ -385,10 +382,10 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_BACKWARD
-            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
-                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",mbinfo[k].MV[1][1][0]);
+        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD
+            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
+                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][1][0]);
         else
           fprintf(statfile,"   .");
   
@@ -404,10 +401,10 @@ void stats()
     {
       for (i=0; i<mb_width; i++)
       {
-        if (mbinfo[k].mb_type & MB_BACKWARD
-            && ((pict_struct==FRAME_PICTURE && mbinfo[k].motion_type==MC_FIELD) ||
-                (pict_struct!=FRAME_PICTURE && mbinfo[k].motion_type==MC_16X8)))
-          fprintf(statfile,"%4d",mbinfo[k].MV[1][1][1]);
+        if (cur_picture.mbinfo[k].mb_type & MB_BACKWARD
+            && ((cur_picture.pict_struct==FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_FIELD) ||
+                (cur_picture.pict_struct!=FRAME_PICTURE && cur_picture.mbinfo[k].motion_type==MC_16X8)))
+          fprintf(statfile,"%4d",cur_picture.mbinfo[k].MV[1][1][1]);
         else
           fprintf(statfile,"   .");
   

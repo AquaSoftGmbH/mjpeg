@@ -40,61 +40,118 @@ yet....
 #define TEST_GRAD_DESCENT
 */
 
+/* Macro-block Motion compensation results record */
+
+typedef struct _blockcrd {
+	short x;
+	short y;
+} blockxy;
+
+struct mb_motion
+{
+	blockxy pos;        // Half-pel co-ordinates of source block
+	int sad;			// Sum of absolute difference
+	int var;
+	mcompuint *blk;		// Source block data (in luminace data array)
+	int hx, hy;			// Half-pel offsets
+	int fieldsel;		// 0 = top 1 = bottom
+};
+
+typedef struct mb_motion mb_motion_s;
+
+struct subsampled_mb
+{
+	mcompuint *mb;		// One pel
+	mcompuint *fmb;		// Two-pel subsampled
+	mcompuint *qmb;		// Four-pel subsampled
+};
+
+typedef struct subsampled_mb subsampled_mb_s;
+
+
 /* RJ: parameter if we should not search at all */
 extern int do_not_search;
 
 /* private prototypes */
 
-static void frame_ME _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg,
-  unsigned char *oldref, unsigned char *newref, unsigned char *cur,
-  int i, int j, int sxf, int syf, int sxb, int syb, struct mbinfo *mbi));
+static void frame_ME _ANSI_ARGS_((pict_data_s *picture,
+								  motion_comp_s *mc,
+								  int mboffset,
+								  int i, int j, struct mbinfo *mbi));
 
-static void field_ME _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg,
-  unsigned char *oldref, unsigned char *newref, unsigned char *cur,
-  unsigned char *curref, int i, int j, int sxf, int syf, int sxb, int syb,
-  struct mbinfo *mbi, int secondfield, int ipflag));
+static void field_ME _ANSI_ARGS_((pict_data_s *picture,
+								  motion_comp_s *mc,
+								  int mboffset,
+								  int i, int j, 
+								  struct mbinfo *mbi, 
+								  int secondfield, 
+								  int ipflag));
 
-static void frame_estimate _ANSI_ARGS_((unsigned char *org,
-										unsigned char *ref, unsigned char *mb,
-										mcompuint* fmb,
-										mcompuint* qmb,
-  int i, int j,
-  int sx, int sy, int *iminp, int *jminp, int *imintp, int *jmintp,
-  int *iminbp, int *jminbp, int *dframep, int *dfieldp,
-  int *tselp, int *bselp, int imins[2][2], int jmins[2][2]));
+static void frame_estimate _ANSI_ARGS_(
+	(unsigned char *org,
+	 unsigned char *ref, 
+	 subsampled_mb_s *ssmb,
+	 int i, int j,
+	 int sx, int sy, 
+	 /* int *iminp, int *jminp, */ mb_motion_s *bestfr,
+	 /* int *imintp,int *jmintp, */ mb_motion_s *besttop,
+	 /* int *iminbp, int *jminbp, */ mb_motion_s *bestbot,
+	 /*  int *dframep, int *dfieldp, 
+		 int *tselp, int *bselp, */
+	 int imins[2][2], int jmins[2][2]));
 
-static void field_estimate _ANSI_ARGS_((unsigned char *toporg,
-  unsigned char *topref, unsigned char *botorg, unsigned char *botref,
-										unsigned char *mb, 
-										mcompuint *fmb,
-										mcompuint* qmb,
-  int i, int j, int sx, int sy, int ipflag,
-  int *iminp, int *jminp, int *imin8up, int *jmin8up, int *imin8lp,
-  int *jmin8lp, int *dfieldp, int *d8p, int *selp, int *sel8up, int *sel8lp,
-  int *iminsp, int *jminsp, int *dsp));
+static void field_estimate 
+_ANSI_ARGS_((pict_data_s *picture,
+	         unsigned char *toporg,
+			 unsigned char *topref, 
+			 unsigned char *botorg, 
+			 unsigned char *botref,
+			 subsampled_mb_s *ssmb,
+			 int i, int j, int sx, int sy, int ipflag,
+			 /* int *iminp, int *jminp, */ mb_motion_s *bestfr,
+			 /* int *imin8up, int *jmin8up, */ mb_motion_s *best8u,
+			 /* int *imin8lp, int *jmin8lp, */ mb_motion_s *best8l,
+			 /* int *dfieldp,  int *d8p, 
+			 int *selp, int *sel8up, int *sel8lp,
+			 int *iminsp, int *jminsp, int *dsp, */ mb_motion_s *bestsp));
 
-static void dpframe_estimate _ANSI_ARGS_((unsigned char *ref,
-										  unsigned char *mb, 
-										  mcompuint *fmb,
-										  mcompuint* qmb,
+static void dpframe_estimate 
+_ANSI_ARGS_((pict_data_s *picture,
+			 unsigned char *ref,
+			 subsampled_mb_s *ssmb,
+			 int i, int j, int iminf[2][2], int jminf[2][2],
+			 /* int *iminp, int *jminp, */ mb_motion_s *dpbest,
+			 int *imindmvp, int *jmindmvp, 
+			 /* int *dmcp, */ int *vmcp));
 
-  int i, int j, int iminf[2][2], int jminf[2][2],
-  int *iminp, int *jminp, int *imindmvp, int *jmindmvp,
-  int *dmcp, int *vmcp));
+static void dpfield_estimate 
+_ANSI_ARGS_((pict_data_s *picture,
+			 unsigned char *topref,
+			 unsigned char *botref, 
+			 unsigned char *mb,
+			 int i, int j, 
+			 int imins, int jmins, 
+			 /* int *imindmvp, int *jmindmvp, */ mb_motion_s *dpbest,
+			 /* int *dmcp, */ int *vmcp));
 
-static void dpfield_estimate _ANSI_ARGS_((unsigned char *topref,
-  unsigned char *botref, unsigned char *mb,
-  int i, int j, int imins, int jmins, int *imindmvp, int *jmindmvp,
-  int *dmcp, int *vmcp));
+static void fullsearch _ANSI_ARGS_( (unsigned char *org, unsigned char *ref,
+									 subsampled_mb_s *ssblk,
+									 int lx, int i0, int j0, 
+									 int sx, int sy, int h, 
+									 int xmax, int ymax,
+									 /* int *iminp, int *jminp, int *sadp, */
+									 mb_motion_s *motion ));
 
-static int fullsearch _ANSI_ARGS_( (unsigned char *org, unsigned char *ref,
-								   unsigned char *blk, 
-									mcompuint *fblk,
-									mcompuint* qblk,
-  int lx, int i0, int j0, int sx, int sy, int h, int xmax, int ymax,
-  int *iminp, int *jminp));
+static int unidir_pred_var( const mb_motion_s *motion, 
+							mcompuint *mb,  int lx, int h);
+static int bidir_pred_var( const mb_motion_s *motion_f,  
+						   const mb_motion_s *motion_b, 
+						   mcompuint *mb,  int lx, int h);
+static int bidir_pred_sad( const mb_motion_s *motion_f,  
+						   const mb_motion_s *motion_b, 
+						   mcompuint *mb,  int lx, int h);
 
-
+static int variance(  mcompuint *mb, int lx);
 
 #ifdef X86_CPU
 
@@ -105,11 +162,11 @@ int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int fdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 int qdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
-                 int lx, int hx, int hy, int h);
+			   int lx, int hx, int hy, int h);
 int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+							unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+							unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
 
 int dist1_00_MMX ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
@@ -119,11 +176,11 @@ int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
 int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
-                 int lx, int hx, int hy, int h);
+			   int lx, int hx, int hy, int h);
 int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+							unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+							unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
 #endif
 
@@ -134,12 +191,11 @@ static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist2 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
-  int lx, int hx, int hy, int h));
+							  int lx, int hx, int hy, int h));
 static int bdist2 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
+							   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 static int bdist1 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-
+							   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
 static int (*pfdist1) ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 static int (*pqdist1) ( mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
@@ -153,10 +209,10 @@ static int (*pdist2) (unsigned char *blk1, unsigned char *blk2,
   
   
 static int (*pbdist2) (unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
-  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 static int nodual_qdist;	/* Can the qdist function return two adjacent
 							   quad-pel distances in one call? */
@@ -168,54 +224,54 @@ static int nodual_qdist;	/* Can the qdist function return two adjacent
 
 void init_motion()
 {
-  int cpuid;
+	int cpuid;
 #ifdef X86_CPU
-  cpuid = cpuid_flags();
+	cpuid = cpuid_flags();
 #else
-  cpuid = 0;
+	cpuid = 0;
 #endif
 
-  if( (cpuid & (1 << 23)) == 0 )	/* No MMX/SSE support available */
+	if( (cpuid & (1 << 23)) == 0 )	/* No MMX/SSE support available */
 	{
-	  pfdist1 = fdist1;
-	  pqdist1 = qdist1;
-	  pdist1_00 = dist1_00;
-	  pdist1_01 = dist1_01;
-	  pdist1_10 = dist1_10;
-	  pdist1_11 = dist1_11;
-	  pbdist1 = bdist1;
-	  pdist2 = dist2;
-	  pbdist2 = bdist2;
-	  nodual_qdist = 1;
+		pfdist1 = fdist1;
+		pqdist1 = qdist1;
+		pdist1_00 = dist1_00;
+		pdist1_01 = dist1_01;
+		pdist1_10 = dist1_10;
+		pdist1_11 = dist1_11;
+		pbdist1 = bdist1;
+		pdist2 = dist2;
+		pbdist2 = bdist2;
+		nodual_qdist = 1;
 	}
-  else if((cpuid & (1 << 25)) == 0  ) /* Ordinary MMX no SSE... */
+	else if((cpuid & (1 << 25)) == 0  ) /* Ordinary MMX no SSE... */
 	{
-	  fprintf( stderr, "SETTING MMX for MOTION!\n");
+		fprintf( stderr, "SETTING MMX for MOTION!\n");
 
-	  pfdist1 = fdist1_MMX;
-	  pqdist1 = qdist1_MMX;
-	  pdist1_00 = dist1_00_MMX;
-	  pdist1_01 = dist1_01_MMX;
-	  pdist1_10 = dist1_10_MMX;
-	  pdist1_11 = dist1_11_MMX;
-	  pbdist1 = bdist1_mmx;
-	  pdist2 = dist2_mmx;
-	  pbdist2 = bdist2_mmx;
-	  nodual_qdist = 0;
+		pfdist1 = fdist1_MMX;
+		pqdist1 = qdist1_MMX;
+		pdist1_00 = dist1_00_MMX;
+		pdist1_01 = dist1_01_MMX;
+		pdist1_10 = dist1_10_MMX;
+		pdist1_11 = dist1_11_MMX;
+		pbdist1 = bdist1_mmx;
+		pdist2 = dist2_mmx;
+		pbdist2 = bdist2_mmx;
+		nodual_qdist = 0;
 	}
-  else								/* SSE CPU */
+	else								/* SSE CPU */
 	{
-	  fprintf( stderr, "SETTING SSE for MOTION!\n");
-	  pfdist1 = fdist1_SSE;
-	  pqdist1 = qdist1_SSE;
-	  pdist1_00 = dist1_00_SSE;
-	  pdist1_01 = dist1_01_SSE;
-	  pdist1_10 = dist1_10_SSE;
-	  pdist1_11 = dist1_11_SSE;
-	  pbdist1 = bdist1_mmx;
-	  pdist2 = dist2_mmx;
-	  pbdist2 = bdist2_mmx;
-	  nodual_qdist = 0;
+		fprintf( stderr, "SETTING SSE for MOTION!\n");
+		pfdist1 = fdist1_SSE;
+		pqdist1 = qdist1_SSE;
+		pdist1_00 = dist1_00_SSE;
+		pdist1_01 = dist1_01_SSE;
+		pdist1_10 = dist1_10_SSE;
+		pdist1_11 = dist1_11_SSE;
+		pbdist1 = bdist1_mmx;
+		pdist2 = dist2_mmx;
+		pbdist2 = bdist2_mmx;
+		nodual_qdist = 0;
 	}
 
 }
@@ -230,10 +286,6 @@ void init_motion()
 #define fabsshift ((8*sizeof(unsigned int))-1)
 #define fastabs(x) (((x)-(((unsigned int)(x))>>fabsshift)) ^ ((x)>>fabsshift))
 
-
-
-
-static int variance _ANSI_ARGS_((unsigned char *p, int lx));
 
 
 /* 
@@ -261,7 +313,7 @@ typedef struct _thresholdrec
 	double slow_average;
 	int updates_for_valid_slow;
 	int threshold;
-	} thresholdrec;
+} thresholdrec;
 	
 thresholdrec twopel_threshold;
 thresholdrec onepel_threshold;
@@ -270,20 +322,20 @@ thresholdrec quadpel_threshold;
 static void update_threshold( thresholdrec *rec, int match_dist )
 {
   
-  rec->fast_average = (fast_motion_weighting * rec->fast_average +
-						   ((double) match_dist)) / (fast_motion_weighting+1);
-	  /* We initialise the slow with the fast avergage */
-  if ( rec->updates_for_valid_slow )
+	rec->fast_average = (fast_motion_weighting * rec->fast_average +
+						 ((double) match_dist)) / (fast_motion_weighting+1);
+	/* We initialise the slow with the fast avergage */
+	if ( rec->updates_for_valid_slow )
 	{
-	  --rec->updates_for_valid_slow;
-	  rec->slow_average = rec->fast_average;
+		--rec->updates_for_valid_slow;
+		rec->slow_average = rec->fast_average;
 	}
 
-  rec->slow_average = (100.0 *  rec->slow_average +
-						    rec->fast_average) / 101.0;
-  if ( rec->slow_average < rec->fast_average )
+	rec->slow_average = (100.0 *  rec->slow_average +
+						 rec->fast_average) / 101.0;
+	if ( rec->slow_average < rec->fast_average )
 		rec->threshold = (int) (0.90 *  rec->slow_average);
-  else
+	else
 		rec->threshold = (int) (0.90 * rec->fast_average);
 
 }
@@ -295,16 +347,16 @@ static void update_threshold( thresholdrec *rec, int match_dist )
 
 void reset_thresholds(int macroblocks_per_frame)
 {
-  onepel_threshold.fast_average = 5.0;
-  twopel_threshold.fast_average = 5.0;
-  quadpel_threshold.fast_average = 5.0;
-  onepel_threshold.threshold = 5;
-  twopel_threshold.threshold = 5;
-  quadpel_threshold.threshold = 5;
-  onepel_threshold.updates_for_valid_slow = 4*macroblocks_per_frame;
-  twopel_threshold.updates_for_valid_slow = macroblocks_per_frame;
-  quadpel_threshold.updates_for_valid_slow = macroblocks_per_frame;
-  fast_motion_weighting = (double)2*macroblocks_per_frame;
+	onepel_threshold.fast_average = 5.0;
+	twopel_threshold.fast_average = 5.0;
+	quadpel_threshold.fast_average = 5.0;
+	onepel_threshold.threshold = 5;
+	twopel_threshold.threshold = 5;
+	quadpel_threshold.threshold = 5;
+	onepel_threshold.updates_for_valid_slow = 4*macroblocks_per_frame;
+	twopel_threshold.updates_for_valid_slow = macroblocks_per_frame;
+	quadpel_threshold.updates_for_valid_slow = macroblocks_per_frame;
+	fast_motion_weighting = (double)2*macroblocks_per_frame;
 }
 
 
@@ -341,387 +393,508 @@ static int test_cnt;
 static int dist_cnt;
 #endif
 
-void motion_estimation(oldorg,neworg,oldref,newref,cur,curref,
-  sxf,syf,sxb,syb,mbi,secondfield,ipflag)
-unsigned char *oldorg,*neworg,*oldref,*newref,*cur,*curref;
-int sxf,syf,sxb,syb;
-struct mbinfo *mbi;
-int secondfield,ipflag;
+void motion_estimation(
+	pict_data_s *picture,
+	motion_comp_s *mc_data,
+	int secondfield,
+	int ipflag
+	)
 {
-  int i, j;
+	mbinfo_s *mbi = picture->mbinfo;
+	int i, j;
+	int mb_row_incr;			/* Offset increment to go down 1 row of mb's */
+	int mb_row_start;
 #ifdef TEST_GRAD_DESCENT
-  worst_seq = 0.0;
-  seq_sum = 0.0;
-  ratio_sum = 0.0;
-  seq_cnt = 0;
-  miss_cnt = 0;
-  test_cnt = 0;
-  dist_cnt = 0;
+	worst_seq = 0.0;
+	seq_sum = 0.0;
+	ratio_sum = 0.0;
+	seq_cnt = 0;
+	miss_cnt = 0;
+	test_cnt = 0;
+	dist_cnt = 0;
 #endif
 
-  /* loop through all macroblocks of the picture */
-  for (j=0; j<height2; j+=16)
-  {
-    for (i=0; i<width; i+=16)
-    {
-      if (pict_struct==FRAME_PICTURE)
-        frame_ME(oldorg,neworg,oldref,newref,cur,i,j,sxf,syf,sxb,syb,mbi);
-      else
-        field_ME(oldorg,neworg,oldref,newref,cur,curref,i,j,sxf,syf,sxb,syb,
-          mbi,secondfield,ipflag);
-      mbi++;
-    }
-  }
+	mb_row_start = 0;
+	if (picture->pict_struct==FRAME_PICTURE)
+	{			
+		mb_row_incr = 16*width;
+		/* loop through all macroblocks of a frame picture */
+		for (j=0; j<height2; j+=16)
+		{
+			for (i=0; i<width; i+=16)
+			{
+				frame_ME(picture, mc_data, mb_row_start,i,j,mbi);
+				mbi++;
+				
+			}
+			mb_row_start += mb_row_incr;
+		}
+	}
+	else
+	{		
+		mb_row_incr = (16 * 2) * width;
+		/* loop through all macroblocks of a field picture */
+		for (j=0; j<height2; j+=16)
+		{
+			for (i=0; i<width; i+=16)
+			{
+				field_ME(picture, mc_data, mb_row_start, i,j,
+						 mbi,secondfield,ipflag);
+				mbi++;
+			}
+			mb_row_start += mb_row_incr;
+		}
+	}
+
 
 #ifdef TEST_GRAD_DESCENT
-  if( seq_cnt != 0 )
+	if( seq_cnt != 0 )
 	{
-	  printf( "\nMISSES=%d TESTS=%d DISTS=%d AS=%04f RS=%04f WS=%04f\n", 
-	  		miss_cnt,
+		printf( "\nMISSES=%d TESTS=%d DISTS=%d AS=%04f RS=%04f WS=%04f\n", 
+				miss_cnt,
 				test_cnt / seq_cnt,
 				dist_cnt / seq_cnt,
-			  seq_sum  / miss_cnt, 
-			  ratio_sum/ seq_cnt, 
-			  worst_seq);
+				seq_sum  / miss_cnt, 
+				ratio_sum/ seq_cnt, 
+				worst_seq);
 	} else
 #endif
 
-}
+		}
 
-static void frame_ME(oldorg,neworg,oldref,newref,cur,i,j,sxf,syf,sxb,syb,mbi)
-unsigned char *oldorg,*neworg,*oldref,*newref,*cur;
-int i,j,sxf,syf,sxb,syb;
-struct mbinfo *mbi;
+static void frame_ME(pict_data_s *picture,
+					 motion_comp_s *mc,
+					 int mb_row_start,
+					 int i, int j, 
+					 mbinfo_s *mbi)
 {
-  int imin,jmin,iminf,jminf,iminr,jminr;
-  int imint,jmint,iminb,jminb;
-  int imintf,jmintf,iminbf,jminbf;
-  int imintr,jmintr,iminbr,jminbr;
-  int var,v0;
-  int dmc,dmcf,dmcr,dmci,vmc,vmcf,vmcr,vmci;
-  int dmcfield,dmcfieldf,dmcfieldr,dmcfieldi;
-  int tsel,bsel,tself,bself,tselr,bselr;
-  unsigned char *mb;
-  mcompuint  *fmb;
-  mcompuint  *qmb;
-  int imins[2][2],jmins[2][2];
-  int imindp,jmindp,imindmv,jmindmv,dmc_dp,vmc_dp;
+	mb_motion_s framef_mc;
+	mb_motion_s frameb_mc;
+	mb_motion_s dualpf_mc;
+	mb_motion_s topfldf_mc;
+	mb_motion_s botfldf_mc;
+	mb_motion_s topfldb_mc;
+	mb_motion_s botfldb_mc;
 
-  mb = cur + i + width*j;
-  /* A.Stevens fast motion estimation data is appended to actual
-	 luminance information 
-  */
-  fmb = ((mcompuint*)(cur + fsubsample_offset)) + ((i>>1) + (width>>1)*(j>>1));
-  qmb = ((mcompuint*)(cur + qsubsample_offset)) + ((i>>2) + (width>>2)*(j>>2));
-  var = variance(mb,width);
+	/* int imin,jmin; */
+	/* int iminf,jminf,iminr,jminr;*/
+	/* int imint,jmint,iminb,jminb; */
+	/*int imintf,jmintf,iminbf,jminbf;
+	  int imintr,jmintr,iminbr,jminbr;*/
+	int var,v0;
+	int dmc,dmcf,dmcr,dmci,vmc,vmcf,vmcr,vmci;
+	int dmcfield,dmcfieldf,dmcfieldr,dmcfieldi;
+	/*int tsel,bsel,tself,bself,tselr,bselr;*/
+	subsampled_mb_s ssmb;
+	int imins[2][2],jmins[2][2];
+	/*int imindp,jmindp;*/
+	int imindmv,jmindmv,dmc_dp,vmc_dp;
+	
 
-  if (pict_type==I_TYPE)
+	/* A.Stevens fast motion estimation data is appended to actual
+	   luminance information 
+	*/
+	ssmb.mb = mc->cur + mb_row_start + i;
+	ssmb.fmb = (mcompuint*)(mc->cur + fsubsample_offset + (i>>1) + (mb_row_start>>2));
+	ssmb.qmb = (mcompuint*)(mc->cur + qsubsample_offset + (i>>2) + (mb_row_start>>4));
+	var = variance(ssmb.mb,width);
+
+	if (picture->pict_type==I_TYPE)
 	{
-	  mbi->mb_type = MB_INTRA;
+		mbi->mb_type = MB_INTRA;
 	}
-  else if (pict_type==P_TYPE)
-  {
-    if (frame_pred_dct)
-    {
-      dmc = fullsearch(oldorg,oldref,mb, fmb, qmb,
-                       width,i,j,sxf,syf,16,width,height,&imin,&jmin);
-      vmc = (*pdist2)(oldref+(imin>>1)+width*(jmin>>1),mb,
-                  width,imin&1,jmin&1,16);
-      mbi->motion_type = MC_FRAME;
-    }
-    else
-    {
-      frame_estimate(oldorg,oldref,mb,fmb,qmb, i,j,sxf,syf,
-        &imin,&jmin,&imint,&jmint,&iminb,&jminb,
-        &dmc,&dmcfield,&tsel,&bsel,imins,jmins);
+	else if (picture->pict_type==P_TYPE)
+	{
+		if (picture->frame_pred_dct)
+		{
+			fullsearch(mc->oldorg,mc->oldref,&ssmb,
+					   width,i,j,mc->sxf,mc->syf,16,width,height,
+					    &framef_mc);
+			dmc = framef_mc.sad;
+			vmc = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+			/* TODO DELETE
+			vmc = (*pdist2)(mc->oldref+(imin>>1)+width*(jmin>>1),mb,
+			  width,imin&1,jmin&1,16);
+			*/
 
-      if (M==1)
-        dpframe_estimate(oldref,mb,fmb,qmb, i,j>>1,imins,jmins,
-          &imindp,&jmindp,&imindmv,&jmindmv,&dmc_dp,&vmc_dp);
+			mbi->motion_type = MC_FRAME;
+		}
+		else
+		{
+			frame_estimate(mc->oldorg,mc->oldref,&ssmb,
+						   i,j,mc->sxf,mc->syf,
+						   /* &iminf,&jminf,*/ &framef_mc,
+						   /*&imintf,&jmintf,*/ &topfldf_mc,
+						   /*&iminbf,&jminbf,*/ &botfldf_mc,
+						   /* &dmc,&dmcfield, 
+							  &tsel,&bsel,*/imins,jmins);
+			dmc = framef_mc.sad;
+			dmcfield = topfldf_mc.sad + botfldf_mc.sad;
+			
+			if (M==1)
+				dpframe_estimate(picture,mc->oldref,&ssmb,
+								 i,j>>1,imins,jmins,
+								 /* &imindp,&jmindp, */ &dualpf_mc,
+								 &imindmv,&jmindmv,
+								 /* &dmc_dp, */ &vmc_dp);
+			dmc_dp = dualpf_mc.sad;
+			/* select between dual prime, frame and field prediction */
+			if (M==1 && dmc_dp<dmc && dmc_dp<dmcfield)
+			{
+				mbi->motion_type = MC_DMV;
+				dmc = dmc_dp;
+				vmc = vmc_dp;
+			}
+			else if (dmc<=dmcfield)
+			{
+				mbi->motion_type = MC_FRAME;
+				vmc = unidir_pred_var( &framef_mc, ssmb.mb, width,16);
 
-      /* select between dual prime, frame and field prediction */
-      if (M==1 && dmc_dp<dmc && dmc_dp<dmcfield)
-      {
-        mbi->motion_type = MC_DMV;
-        dmc = dmc_dp;
-        vmc = vmc_dp;
-      }
-      else if (dmc<=dmcfield)
-      {
-        mbi->motion_type = MC_FRAME;
-        vmc = (*pdist2)(oldref+(imin>>1)+width*(jmin>>1),mb,
-                    width,imin&1,jmin&1,16);
-      }
-      else
-      {
-        mbi->motion_type = MC_FIELD;
-        dmc = dmcfield;
-        vmc = (*pdist2)(oldref+(tsel?width:0)+(imint>>1)+(width<<1)*(jmint>>1),
-                    mb,width<<1,imint&1,jmint&1,8);
-        vmc+= (*pdist2)(oldref+(bsel?width:0)+(iminb>>1)+(width<<1)*(jminb>>1),
-                    mb+width,width<<1,iminb&1,jminb&1,8);
-      }
-    }
+				/* TODO DELETE
+				vmc = (*pdist2)(mc->oldref+(imin>>1)+width*(jmin>>1),mb,
+								width,imin&1,jmin&1,16)
+				*/
+			}
+			else
+			{
+				mbi->motion_type = MC_FIELD;
+				dmc = dmcfield;
+				vmc =  unidir_pred_var( &topfldf_mc, ssmb.mb, width<<1, 8);
+				vmc += unidir_pred_var( &botfldf_mc, ssmb.mb, width<<1, 8);
 
-    /* select between intra or non-intra coding:
-     *
-     * selection is based on intra block variance (var) vs.
-     * prediction error variance (vmc)
-     *
-     * Used to be: blocks with small prediction error are always 
-	 * coded non-intra even if variance is smaller (is this reasonable?
-	 *
-	 * TODO: A.Stevens Jul 2000
-	 * The bbmpeg guys have found this to be *unreasonable*.
-	 * I'm not sure I buy their solution using vmc*2.  It is probabably
-	 * the vmc>= 9*256 test that is suspect.
-	 * 
-     */
+				/* TODO DELETE
+				vmc = (*pdist2)(mc->oldref+(tsel?width:0)+(imint>>1)+(width<<1)*(jmint>>1),
+								mb,width<<1,imint&1,jmint&1,8);
+				vmc+= (*pdist2)(mc->oldref+(bsel?width:0)+(iminb>>1)+(width<<1)*(jminb>>1),
+								mb+width,width<<1,iminb&1,jminb&1,8);
+				*/
+			}
+		}
 
-    if (vmc>var /* && vmc>=9*256 */)
-      mbi->mb_type = MB_INTRA;
-    else
-    {
-      /* select between MC / No-MC
-       *
-       * use No-MC if var(No-MC) <= 1.25*var(MC)
-       * (i.e slightly biased towards No-MC)
-       *
-       * blocks with small prediction error are always coded as No-MC
-       * (requires no motion vectors, allows skipping)
-       */
-      v0 = (*pdist2)(oldref+i+width*j,mb,width,0,0,16);
-      if (4*v0>5*vmc && v0>=9*256)
-      {
-        /* use MC */
-        var = vmc;
-        mbi->mb_type = MB_FORWARD;
-        if (mbi->motion_type==MC_FRAME)
-        {
-          mbi->MV[0][0][0] = imin - (i<<1);
-          mbi->MV[0][0][1] = jmin - (j<<1);
-        }
-        else if (mbi->motion_type==MC_DMV)
-        {
-          /* these are FRAME vectors */
-          /* same parity vector */
-          mbi->MV[0][0][0] = imindp - (i<<1);
-          mbi->MV[0][0][1] = (jmindp<<1) - (j<<1);
 
-          /* opposite parity vector */
-          mbi->dmvector[0] = imindmv;
-          mbi->dmvector[1] = jmindmv;
-        }
-        else
-        {
-          /* these are FRAME vectors */
-          mbi->MV[0][0][0] = imint - (i<<1);
-          mbi->MV[0][0][1] = (jmint<<1) - (j<<1);
-          mbi->MV[1][0][0] = iminb - (i<<1);
-          mbi->MV[1][0][1] = (jminb<<1) - (j<<1);
-          mbi->mv_field_sel[0][0] = tsel;
-          mbi->mv_field_sel[1][0] = bsel;
-        }
-      }
-      else
-      {
-        /* No-MC */
-        var = v0;
-        mbi->mb_type = 0;
-        mbi->motion_type = MC_FRAME;
-        mbi->MV[0][0][0] = 0;
-        mbi->MV[0][0][1] = 0;
-      }
-    }
-  }
-  else /* if (pict_type==B_TYPE) */
-  {
-    if (frame_pred_dct)
-    {
-      /* forward */
-      dmcf = fullsearch(oldorg,oldref,mb,fmb, qmb,
-                        width,i,j,sxf,syf,16,width,height,&iminf,&jminf);
-      vmcf = (*pdist2)(oldref+(iminf>>1)+width*(jminf>>1),mb,
-                   width,iminf&1,jminf&1,16);
+		/* select between intra or non-intra coding:
+		 *
+		 * selection is based on intra block variance (var) vs.
+		 * prediction error variance (vmc)
+		 *
+		 * Used to be: blocks with small prediction error are always 
+		 * coded non-intra even if variance is smaller (is this reasonable?
+		 *
+		 * TODO: A.Stevens Jul 2000
+		 * The bbmpeg guys have found this to be *unreasonable*.
+		 * I'm not sure I buy their solution using vmc*2.  It is probabably
+		 * the vmc>= 9*256 test that is suspect.
+		 * 
+		 */
 
-      /* backward */
-      dmcr = fullsearch(neworg,newref,mb,fmb,qmb,
-                        width,i,j,sxb,syb,16,width,height,&iminr,&jminr);
-      vmcr = (*pdist2)(newref+(iminr>>1)+width*(jminr>>1),mb,
-                   width,iminr&1,jminr&1,16);
+		if (vmc>var /* && vmc>=9*256 */)
+		{
+			mbi->mb_type = MB_INTRA;
+			mbi->var = var;
+		}
+		
+		else
+		{
+			/* select between MC / No-MC
+			 *
+			 * use No-MC if var(No-MC) <= 1.25*var(MC)
+			 * (i.e slightly biased towards No-MC)
+			 *
+			 * blocks with small prediction error are always coded as No-MC
+			 * (requires no motion vectors, allows skipping)
+			 */
+			v0 = (*pdist2)(mc->oldref+i+width*j,ssmb.mb,width,0,0,16);
 
-      /* interpolated (bidirectional) */
-      vmci = (*pbdist2)(oldref+(iminf>>1)+width*(jminf>>1),
-                    newref+(iminr>>1)+width*(jminr>>1),
-                    mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
+			if (4*v0>5*vmc && v0>=9*256)
+			{
+				/* use MC */
+				var = vmc;
+				mbi->mb_type = MB_FORWARD;
+				if (mbi->motion_type==MC_FRAME)
+				{
+					mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
+				}
+				else if (mbi->motion_type==MC_DMV)
+				{
+					/* these are FRAME vectors */
+					/* same parity vector */
+					mbi->MV[0][0][0] = dualpf_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = (dualpf_mc.pos.y<<1) - (j<<1);
 
-      /* decisions */
+					/* opposite parity vector */
+					mbi->dmvector[0] = imindmv;
+					mbi->dmvector[1] = jmindmv;
+				}
+				else
+				{
+					/* these are FRAME vectors */
+					mbi->MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
+					mbi->MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
+					mbi->MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
+					mbi->mv_field_sel[0][0] = topfldf_mc.fieldsel;
+					mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
+				}
+			}
+			else
+			{
+				/* No-MC */
+				var = v0;
+				mbi->mb_type = 0;
+				mbi->motion_type = MC_FRAME;
+				mbi->MV[0][0][0] = 0;
+				mbi->MV[0][0][1] = 0;
+			}
+		}
+	}
+	else /* if (pict_type==B_TYPE) */
+	{
+		if (picture->frame_pred_dct)
+		{
+			/* forward */
+			fullsearch(mc->oldorg,mc->oldref,&ssmb,
+					   width,i,j,mc->sxf,mc->syf,
+					   16,width,height,
+					   &framef_mc
+					   );
+			dmcf = framef_mc.sad;
+			vmcf = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+			/* TODO DELETE 
+			   vmcf = (*pdist2)(mc->oldref+(iminf>>1)+width*(jminf>>1),mb,
+							 width,iminf&1,jminf&1,16);
+			*/
 
-      /* select between forward/backward/interpolated prediction:
-       * use the one with smallest mean sqaured prediction error
-       */
-      if (vmcf<=vmcr && vmcf<=vmci)
-      {
-        vmc = vmcf;
-        mbi->mb_type = MB_FORWARD;
-      }
-      else if (vmcr<=vmci)
-      {
-        vmc = vmcr;
-        mbi->mb_type = MB_BACKWARD;
-      }
-      else
-      {
-        vmc = vmci;
-        mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-      }
 
-      mbi->motion_type = MC_FRAME;
-    }
-    else
-    {
-      /* forward prediction */
-      frame_estimate(oldorg,oldref,mb,fmb,qmb,i,j,sxf,syf,
-        &iminf,&jminf,&imintf,&jmintf,&iminbf,&jminbf,
-        &dmcf,&dmcfieldf,&tself,&bself,imins,jmins);
+			/* backward */
+			fullsearch(mc->neworg,mc->newref,&ssmb,
+					   width,i,j,mc->sxb,mc->syb,
+					   16,width,height,
+					   &frameb_mc);
+			dmcr = frameb_mc.sad;
+			vmcr = unidir_pred_var( &frameb_mc, ssmb.mb, width, 16 );
+			/* TODO DELETE 
+			vmcr = (*pdist2)(mc->newref+(iminr>>1)+width*(jminr>>1),mb,
+							 width,iminr&1,jminr&1,16);
+			*/
 
-      /* backward prediction */
-      frame_estimate(neworg,newref,mb,fmb, qmb, i,j,sxb,syb,
-        &iminr,&jminr,&imintr,&jmintr,&iminbr,&jminbr,
-        &dmcr,&dmcfieldr,&tselr,&bselr,imins,jmins);
+			/* interpolated (bidirectional) */
 
-      /* calculate interpolated distance */
-      /* frame */
-      dmci = (*pbdist1)(oldref+(iminf>>1)+width*(jminf>>1),
-                    newref+(iminr>>1)+width*(jminr>>1),
-                    mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
+			vmci = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16 );
 
-      /* top field */
-      dmcfieldi = (*pbdist1)(
-                    oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
-                    newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
-                    mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
+			/* TODO DELETE
+			vmci = (*pbdist2)(mc->oldref+(iminf>>1)+width*(jminf>>1),
+							  mc->newref+(iminr>>1)+width*(jminr>>1),
+							  mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
+			*/
 
-      /* bottom field */
-      dmcfieldi+= (*pbdist1)(
-                    oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
-                    newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
-                    mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
+			/* decisions */
 
-      /* select prediction type of minimum distance from the
-       * six candidates (field/frame * forward/backward/interpolated)
-       */
-      if (dmci<dmcfieldi && dmci<dmcf && dmci<dmcfieldf
-          && dmci<dmcr && dmci<dmcfieldr)
-      {
-        /* frame, interpolated */
-        mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-        mbi->motion_type = MC_FRAME;
-        vmc = (*pbdist2)(oldref+(iminf>>1)+width*(jminf>>1),
-                     newref+(iminr>>1)+width*(jminr>>1),
-                     mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
-      }
-      else if (dmcfieldi<dmcf && dmcfieldi<dmcfieldf
-               && dmcfieldi<dmcr && dmcfieldi<dmcfieldr)
-      {
-        /* field, interpolated */
-        mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-        mbi->motion_type = MC_FIELD;
-        vmc = (*pbdist2)(oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
-                     newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
-                     mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
-        vmc+= (*pbdist2)(oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
-                     newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
-                     mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
-      }
-      else if (dmcf<dmcfieldf && dmcf<dmcr && dmcf<dmcfieldr)
-      {
-        /* frame, forward */
-        mbi->mb_type = MB_FORWARD;
-        mbi->motion_type = MC_FRAME;
-        vmc = (*pdist2)(oldref+(iminf>>1)+width*(jminf>>1),mb,
-                    width,iminf&1,jminf&1,16);
-      }
-      else if (dmcfieldf<dmcr && dmcfieldf<dmcfieldr)
-      {
-        /* field, forward */
-        mbi->mb_type = MB_FORWARD;
-        mbi->motion_type = MC_FIELD;
-        vmc = (*pdist2)(oldref+(tself?width:0)+(imintf>>1)+(width<<1)*(jmintf>>1),
-                    mb,width<<1,imintf&1,jmintf&1,8);
-        vmc+= (*pdist2)(oldref+(bself?width:0)+(iminbf>>1)+(width<<1)*(jminbf>>1),
-                    mb+width,width<<1,iminbf&1,jminbf&1,8);
-      }
-      else if (dmcr<dmcfieldr)
-      {
-        /* frame, backward */
-        mbi->mb_type = MB_BACKWARD;
-        mbi->motion_type = MC_FRAME;
-        vmc = (*pdist2)(newref+(iminr>>1)+width*(jminr>>1),mb,
-                    width,iminr&1,jminr&1,16);
-      }
-      else
-      {
-        /* field, backward */
-        mbi->mb_type = MB_BACKWARD;
-        mbi->motion_type = MC_FIELD;
-        vmc = (*pdist2)(newref+(tselr?width:0)+(imintr>>1)+(width<<1)*(jmintr>>1),
-                    mb,width<<1,imintr&1,jmintr&1,8);
-        vmc+= (*pdist2)(newref+(bselr?width:0)+(iminbr>>1)+(width<<1)*(jminbr>>1),
-                    mb+width,width<<1,iminbr&1,jminbr&1,8);
-      }
-    }
+			/* select between forward/backward/interpolated prediction:
+			 * use the one with smallest mean sqaured prediction error
+			 */
+			if (vmcf<=vmcr && vmcf<=vmci)
+			{
+				vmc = vmcf;
+				mbi->mb_type = MB_FORWARD;
+			}
+			else if (vmcr<=vmci)
+			{
+				vmc = vmcr;
+				mbi->mb_type = MB_BACKWARD;
+			}
+			else
+			{
+				vmc = vmci;
+				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+			}
 
-    /* select between intra or non-intra coding:
-     *
-     * selection is based on intra block variance (var) vs.
-     * prediction error variance (vmc)
-     *
-     * Used to be: blocks with small prediction error are always 
-	 * coded non-intra even if variance is smaller (is this reasonable?
-	 *
-	 * TODO: A.Stevens Jul 2000
-	 * The bbmpeg guys have found this to be *unreasonable*.
-	 * I'm not sure I buy their solution using vmc*2 in the first comparison.
-	 * It is probabably the vmc>= 9*256 test that is suspect.
-     *
-	 */
-    if (vmc>var && vmc>=9*256)
-      mbi->mb_type = MB_INTRA;
-    else
-    {
-      var = vmc;
-      if (mbi->motion_type==MC_FRAME)
-      {
-        /* forward */
-        mbi->MV[0][0][0] = iminf - (i<<1);
-        mbi->MV[0][0][1] = jminf - (j<<1);
-        /* backward */
-        mbi->MV[0][1][0] = iminr - (i<<1);
-        mbi->MV[0][1][1] = jminr - (j<<1);
-      }
-      else
-      {
-        /* these are FRAME vectors */
-        /* forward */
-        mbi->MV[0][0][0] = imintf - (i<<1);
-        mbi->MV[0][0][1] = (jmintf<<1) - (j<<1);
-        mbi->MV[1][0][0] = iminbf - (i<<1);
-        mbi->MV[1][0][1] = (jminbf<<1) - (j<<1);
-        mbi->mv_field_sel[0][0] = tself;
-        mbi->mv_field_sel[1][0] = bself;
-        /* backward */
-        mbi->MV[0][1][0] = imintr - (i<<1);
-        mbi->MV[0][1][1] = (jmintr<<1) - (j<<1);
-        mbi->MV[1][1][0] = iminbr - (i<<1);
-        mbi->MV[1][1][1] = (jminbr<<1) - (j<<1);
-        mbi->mv_field_sel[0][1] = tselr;
-        mbi->mv_field_sel[1][1] = bselr;
-      }
-    }
-  }
+			mbi->motion_type = MC_FRAME;
+		}
+		else
+		{
+			/* forward prediction */
+			frame_estimate(mc->oldorg,mc->oldref,&ssmb,
+						   i,j,mc->sxf,mc->syf,
+						   /* &iminf,&jminf,*/ &framef_mc,
+							  /* &imintf,&jmintf,*/ &topfldf_mc,
+						   /* &iminbf,&jminbf,*/ &botfldf_mc,
+						   /* &dmcf,&dmcfieldf, 
+							  &tself,&bself,*/ imins,jmins);
+			dmcf = framef_mc.sad;
+			dmcfieldf = topfldf_mc.sad + botfldf_mc.sad;
+			/* backward prediction */
+			frame_estimate(mc->neworg,mc->newref,&ssmb,
+						   i,j,mc->sxb,mc->syb,
+						   /* &iminr,&jminr,*/ &frameb_mc,
+						   /*&imintr,&jmintr,*/ &topfldb_mc,
+						   /*&iminbr,&jminbr,*/ &botfldb_mc,
+						   /*&dmcr,&dmcfieldr, 
+							 &tselr,&bselr, */ imins,jmins);
+			dmcr = frameb_mc.sad;
+			dmcfieldr = topfldb_mc.sad + botfldb_mc.sad;
 
-  mbi->var = var;
+			/* calculate interpolated distance */
+			/* frame */
+			dmci = bidir_pred_sad( &framef_mc, &frameb_mc, ssmb.mb, width, 16);
+			/* TODO DELETE
+			dmci = (*pbdist1)(mc->oldref+(iminf>>1)+width*(jminf>>1),
+							  mc->newref+(iminr>>1)+width*(jminr>>1),
+							  mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
+			*/
+			/* top and bottom fields */
+			dmcfieldi = bidir_pred_sad( &topfldf_mc, &topfldb_mc, ssmb.mb, 
+										width<<1, 8);
+			dmcfieldi+= bidir_pred_sad( &botfldf_mc, &botfldb_mc, ssmb.mb, 
+										width<<1, 8);
+			/* TODO DELETE
+			dmcfieldi = (*pbdist1)(
+				mc->oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
+				mc->newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
+				mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
+			dmcfieldi+= (*pbdist1)(
+				mc->oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
+				mc->newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
+				mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
+			*/
+
+			/* select prediction type of minimum distance from the
+			 * six candidates (field/frame * forward/backward/interpolated)
+			 */
+			if (dmci<dmcfieldi && dmci<dmcf && dmci<dmcfieldf
+				&& dmci<dmcr && dmci<dmcfieldr)
+			{
+				/* frame, interpolated */
+				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+				mbi->motion_type = MC_FRAME;
+				vmc = bidir_pred_var( &framef_mc, &frameb_mc, ssmb.mb, width, 16);
+				/* TODO DELETE
+				vmc = (*pbdist2)(mc->oldref+(iminf>>1)+width*(jminf>>1),
+								 mc->newref+(iminr>>1)+width*(jminr>>1),
+								 mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
+				*/
+			}
+			else if (dmcfieldi<dmcf && dmcfieldi<dmcfieldf
+					 && dmcfieldi<dmcr && dmcfieldi<dmcfieldr)
+			{
+				/* field, interpolated */
+				mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+				mbi->motion_type = MC_FIELD;
+				vmc =  bidir_pred_var( &topfldf_mc, &topfldb_mc, ssmb.mb, width<<1, 8);
+				vmc += bidir_pred_var( &botfldf_mc, &botfldb_mc, ssmb.mb, width<<1, 8);
+				/* TODO DELETE
+				vmc = (*pbdist2)(mc->oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
+								 mc->newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
+								 mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
+				vmc+= (*pbdist2)(mc->oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
+								 mc->newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
+								 mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
+				*/
+			}
+			else if (dmcf<dmcfieldf && dmcf<dmcr && dmcf<dmcfieldr)
+			{
+				/* frame, forward */
+				mbi->mb_type = MB_FORWARD;
+				mbi->motion_type = MC_FRAME;
+				vmc = unidir_pred_var( &framef_mc, ssmb.mb, width, 16);
+				/* TODO DELETE
+				vmc = (*pdist2)(mc->oldref+(iminf>>1)+width*(jminf>>1),mb,
+								width,iminf&1,jminf&1,16);
+				*/
+			}
+			else if (dmcfieldf<dmcr && dmcfieldf<dmcfieldr)
+			{
+				/* field, forward */
+				mbi->mb_type = MB_FORWARD;
+				mbi->motion_type = MC_FIELD;
+				vmc =  unidir_pred_var( &topfldf_mc, ssmb.mb, width<<1, 8);
+				vmc += unidir_pred_var( &botfldf_mc, ssmb.mb, width<<1, 8);
+
+				/* TODO DEELETE
+				vmc = (*pdist2)(mc->oldref+(tself?width:0)+(imintf>>1)+(width<<1)*(jmintf>>1),
+								mb,width<<1,imintf&1,jmintf&1,8);
+				vmc+= (*pdist2)(mc->oldref+(bself?width:0)+(iminbf>>1)+(width<<1)*(jminbf>>1),
+								mb+width,width<<1,iminbf&1,jminbf&1,8);
+				*/
+			}
+			else if (dmcr<dmcfieldr)
+			{
+				/* frame, backward */
+				mbi->mb_type = MB_BACKWARD;
+				mbi->motion_type = MC_FRAME;
+				vmc = unidir_pred_var( &frameb_mc, ssmb.mb, width, 16);
+				/* TODO DELETE
+				vmc = (*pdist2)(mc->newref+(iminr>>1)+width*(jminr>>1),mb,
+								width,iminr&1,jminr&1,16);
+				*/
+			}
+			else
+			{
+				/* field, backward */
+				mbi->mb_type = MB_BACKWARD;
+				mbi->motion_type = MC_FIELD;
+				vmc =  unidir_pred_var( &topfldb_mc, ssmb.mb, width<<1, 8);
+				vmc += unidir_pred_var( &botfldb_mc, ssmb.mb, width<<1, 8);
+
+				/* TODO DEELETE				
+				vmc = (*pdist2)(mc->newref+(tselr?width:0)+(imintr>>1)+(width<<1)*(jmintr>>1),
+								mb,width<<1,imintr&1,jmintr&1,8);
+				vmc+= (*pdist2)(mc->newref+(bselr?width:0)+(iminbr>>1)+(width<<1)*(jminbr>>1),
+								mb+width,width<<1,iminbr&1,jminbr&1,8);
+				*/
+			}
+		}
+
+		/* select between intra or non-intra coding:
+		 *
+		 * selection is based on intra block variance (var) vs.
+		 * prediction error variance (vmc)
+		 *
+		 * Used to be: blocks with small prediction error are always 
+		 * coded non-intra even if variance is smaller (is this reasonable?
+		 *
+		 * TODO: A.Stevens Jul 2000
+		 * The bbmpeg guys have found this to be *unreasonable*.
+		 * I'm not sure I buy their solution using vmc*2 in the first comparison.
+		 * It is probabably the vmc>= 9*256 test that is suspect.
+		 *
+		 */
+		if (vmc>var && vmc>=9*256)
+			mbi->mb_type = MB_INTRA;
+		else
+		{
+			var = vmc;
+			if (mbi->motion_type==MC_FRAME)
+			{
+				/* forward */
+				mbi->MV[0][0][0] = framef_mc.pos.x - (i<<1);
+				mbi->MV[0][0][1] = framef_mc.pos.y - (j<<1);
+				/* backward */
+				mbi->MV[0][1][0] = frameb_mc.pos.x - (i<<1);
+				mbi->MV[0][1][1] = frameb_mc.pos.y - (j<<1);
+			}
+			else
+			{
+				/* these are FRAME vectors */
+				/* forward */
+				mbi->MV[0][0][0] = topfldf_mc.pos.x - (i<<1);
+				mbi->MV[0][0][1] = (topfldf_mc.pos.y<<1) - (j<<1);
+				mbi->MV[1][0][0] = botfldf_mc.pos.x - (i<<1);
+				mbi->MV[1][0][1] = (botfldf_mc.pos.y<<1) - (j<<1);
+				mbi->mv_field_sel[0][0] = topfldf_mc.fieldsel;
+				mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
+				/* backward */
+				mbi->MV[0][1][0] = topfldb_mc.pos.x - (i<<1);
+				mbi->MV[0][1][1] = (topfldb_mc.pos.x<<1) - (j<<1);
+				mbi->MV[1][1][0] = botfldb_mc.pos.x - (i<<1);
+				mbi->MV[1][1][1] = (botfldb_mc.pos.y<<1) - (j<<1);
+				mbi->mv_field_sel[0][1] = topfldb_mc.fieldsel;
+				mbi->mv_field_sel[1][1] = botfldb_mc.fieldsel;
+			}
+		}
+	}
+
+	mbi->var = var;
 
 
 }
@@ -729,14 +902,6 @@ struct mbinfo *mbi;
 /*
  * motion estimation for field pictures
  *
- * oldorg: original frame for forward prediction (P and B frames)
- * neworg: original frame for backward prediction (B frames only)
- * oldref: reconstructed frame for forward prediction (P and B frames)
- * newref: reconstructed frame for backward prediction (B frames only)
- * cur:    current original frame (the one for which the prediction is formed)
- * curref: current reconstructed frame (to predict second field from first)
- * sxf,syf: forward search window (frame coordinates)
- * sxb,syb: backward search window (frame coordinates)
  * mbi:    pointer to macroblock info structure
  * secondfield: indicates second field of a frame (in P fields this means
  *              that reference field of opposite parity is in curref instead
@@ -754,296 +919,378 @@ struct mbinfo *mbi;
  *
  * uses global vars: pict_type, pict_struct
  */
-static void field_ME(oldorg,neworg,oldref,newref,cur,curref,i,j,
-  sxf,syf,sxb,syb,mbi,secondfield,ipflag)
-unsigned char *oldorg,*neworg,*oldref,*newref,*cur,*curref;
-int i,j,sxf,syf,sxb,syb;
-struct mbinfo *mbi;
-int secondfield,ipflag;
+static void field_ME(
+	pict_data_s *picture,
+	motion_comp_s *mc,
+	int mb_row_start,
+	int i, int j, 
+	mbinfo_s *mbi, 
+	int secondfield, int ipflag)
 {
-  int w2;
-  unsigned char *mb, *toporg, *topref, *botorg, *botref;
-  mcompuint *fmb;
-  mcompuint *qmb;
-  int var,vmc,v0,dmc,dmcfieldi,dmc8i;
-  int imin,jmin,imin8u,jmin8u,imin8l,jmin8l,dmcfield,dmc8,sel,sel8u,sel8l;
-  int iminf,jminf,imin8uf,jmin8uf,imin8lf,jmin8lf,dmcfieldf,dmc8f,self,sel8uf,sel8lf;
-  int iminr,jminr,imin8ur,jmin8ur,imin8lr,jmin8lr,dmcfieldr,dmc8r,selr,sel8ur,sel8lr;
-  int imins,jmins,ds,imindmv,jmindmv,vmc_dp,dmc_dp;
+	int w2;
+	unsigned char *toporg, *topref, *botorg, *botref;
+	subsampled_mb_s ssmb;
+	mb_motion_s fields_mc, dualp_mc;
+	mb_motion_s fieldf_mc, fieldb_mc;
+	mb_motion_s field8uf_mc, field8lf_mc;
+	mb_motion_s field8ub_mc, field8lb_mc;
+	int var,vmc,v0,dmc,dmcfieldi,dmcfield,dmcfieldf,dmcfieldr,dmc8i;
+	/* int imin,jmin,imin8u,jmin8u,imin8l,jmin8l,sel,sel8u,sel8l;
+	int iminf,jminf,imin8uf,jmin8uf,imin8lf,jmin8lf,dmc8f,self,sel8uf,sel8lf;
+	int iminr,jminr,imin8ur,jmin8ur,imin8lr,jmin8lr,dmc8rdmc8r,selr,sel8ur,sel8lr; */
+	int imins,jmins;
+	int dmc8f,dmc8r,ds;
+	/* int imindmv,jmindmv;*/
+	int vmc_dp,dmc_dp;
 
-  w2 = width<<1;
-
-  mb = cur + i + w2*j;
-  /* Fast motion data sits at the end of the luminance buffer */
-  fmb = ((mcompuint*)(cur + fsubsample_offset))+(i>>1)+(w2>>1)*(j>>1);
-  qmb = ((mcompuint*)(cur + qsubsample_offset))+ (i>>2)+(w2>>2)*(j>>2);
-  if (pict_struct==BOTTOM_FIELD)
+	w2 = width<<1;
+	if( (mb_row_start >> 4) != (w2>>2)*(j>>2) )
 	{
-	  mb += width;
-	  fmb += (width >> 1);
-	  qmb += (width >> 2);
+		fprintf( stderr, "FAIL field_ME fmb\n");
+		exit(1);
+	}
+						/* TODO: DEBUG */
+	if( (mb_row_start >> 2) != (w2>>1)*(j>>1) )
+	{
+		fprintf( stderr, "FAIL field_ME fmb\n");
+		exit(1);
+	}
+						/* TODO: DEBUG */
+	if( w2 * j != mb_row_start )
+	{
+		fprintf( stderr, "FAIL field_ME mb\n");
+		exit(1);
+	}
+
+	/* Fast motion data sits at the end of the luminance buffer */
+	ssmb.mb = mc->cur + i + w2*j;
+	ssmb.fmb = ((mcompuint*)(mc->cur + fsubsample_offset))+(i>>1)+(w2>>1)*(j>>1);
+	ssmb.qmb = ((mcompuint*)(mc->cur + qsubsample_offset))+ (i>>2)+(w2>>2)*(j>>2);
+	if (picture->pict_struct==BOTTOM_FIELD)
+	{
+		ssmb.mb += width;
+		ssmb.fmb += (width >> 1);
+		ssmb.qmb += (width >> 2);
 	}
 
 
-  var = variance(mb,w2);
+	var = variance(ssmb.mb,w2);
 
-  if (pict_type==I_TYPE)
-    mbi->mb_type = MB_INTRA;
-  else if (pict_type==P_TYPE)
-  {
-    toporg = oldorg;
-    topref = oldref;
-    botorg = oldorg + width;
-    botref = oldref + width;
+	if (picture->pict_type==I_TYPE)
+		mbi->mb_type = MB_INTRA;
+	else if (picture->pict_type==P_TYPE)
+	{
+		toporg = mc->oldorg;
+		topref = mc->oldref;
+		botorg = mc->oldorg + width;
+		botref = mc->oldref + width;
 
-    if (secondfield)
-    {
-      /* opposite parity field is in same frame */
-      if (pict_struct==TOP_FIELD)
-      {
-        /* current is top field */
-        botorg = cur + width;
-        botref = curref + width;
-      }
-      else
-      {
-        /* current is bottom field */
-        toporg = cur;
-        topref = curref;
-      }
-    }
+		if (secondfield)
+		{
+			/* opposite parity field is in same frame */
+			if (picture->pict_struct==TOP_FIELD)
+			{
+				/* current is top field */
+				botorg = mc->cur + width;
+				botref = mc->curref + width;
+			}
+			else
+			{
+				/* current is bottom field */
+				toporg = mc->cur;
+				topref = mc->curref;
+			}
+		}
 
-    field_estimate(toporg,topref,botorg,botref,mb,fmb,qmb,i,j,sxf,syf,ipflag,
-                   &imin,&jmin,&imin8u,&jmin8u,&imin8l,&jmin8l,
-                   &dmcfield,&dmc8,&sel,&sel8u,&sel8l,&imins,&jmins,&ds);
+		field_estimate(picture,
+					   toporg,topref,botorg,botref,&ssmb,
+					   i,j,mc->sxf,mc->syf,ipflag,
+					   /* &imin,&jmin,*/ &fieldf_mc,
+					   /* &imin8u,&jmin8u,*/ &field8uf_mc,
+					   /* &imin8l,&jmin8l,*/ &field8lf_mc,
+					   /* &dmcfield,&dmc8,&sel,&sel8u,&sel8l, 
+					   &imins,&jmins,&ds,*/ &fields_mc);
+		dmcfield = fieldf_mc.sad;
+		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
+		ds = fields_mc.sad;
 
-    if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
-      dpfield_estimate(topref,botref,mb,i,j,imins,jmins,&imindmv,&jmindmv,
-        &dmc_dp,&vmc_dp);
+		if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
+		{
+			dpfield_estimate(picture,
+				topref,botref,ssmb.mb,i,j,imins,jmins,
+							 /* &imindmv,&jmindmv,*/ &dualp_mc,
+							 /* &dmc_dp, */ &vmc_dp);
+			dmc_dp = dualp_mc.sad;
+		}
+		
+		/* select between dual prime, field and 16x8 prediction */
+		if (M==1 && !ipflag && dmc_dp<dmc8f && dmc_dp<dmcfield)
+		{
+			/* Dual Prime prediction */
+			mbi->motion_type = MC_DMV;
+			dmc = dualp_mc.sad;     /* L1 metric */
+			vmc = vmc_dp;     /* we already calculated L2 error for Dual */
 
-    /* select between dual prime, field and 16x8 prediction */
-    if (M==1 && !ipflag && dmc_dp<dmc8 && dmc_dp<dmcfield)
-    {
-      /* Dual Prime prediction */
-      mbi->motion_type = MC_DMV;
-      dmc = dmc_dp;     /* L1 metric */
-      vmc = vmc_dp;     /* we already calculated L2 error for Dual */
+		}
+		else if (dmc8f<dmcfield)
+		{
+			/* 16x8 prediction */
+			mbi->motion_type = MC_16X8;
+			/* upper and lower half blocks */
+			vmc =  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
+			vmc += unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
+			/* TODO DELETE
+			vmc = (*pdist2)((sel8u?botref:topref) + (imin8u>>1) + w2*(jmin8u>>1),
+							ssmb.mb,w2,imin8u&1,jmin8u&1,8);
+			vmc+= (*pdist2)((sel8l?botref:topref) + (imin8l>>1) + w2*(jmin8l>>1),
+							ssmb.mb+8*w2,w2,imin8l&1,jmin8l&1,8);
+			*/
+		}
+		else
+		{
+			/* field prediction */
+			mbi->motion_type = MC_FIELD;
+			vmc = unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16 );
+			/* TODO DELETE
+			vmc = (*pdist2)((sel?botref:topref) + (imin>>1) + w2*(jmin>>1),
+							ssmb.mb,w2,imin&1,jmin&1,16);
+			*/
+		}
 
-    }
-    else if (dmc8<dmcfield)
-    {
-      /* 16x8 prediction */
-      mbi->motion_type = MC_16X8;
-      /* upper half block */
-      vmc = (*pdist2)((sel8u?botref:topref) + (imin8u>>1) + w2*(jmin8u>>1),
-                  mb,w2,imin8u&1,jmin8u&1,8);
-      /* lower half block */
-      vmc+= (*pdist2)((sel8l?botref:topref) + (imin8l>>1) + w2*(jmin8l>>1),
-                  mb+8*w2,w2,imin8l&1,jmin8l&1,8);
-    }
-    else
-    {
-      /* field prediction */
-      mbi->motion_type = MC_FIELD;
-      vmc = (*pdist2)((sel?botref:topref) + (imin>>1) + w2*(jmin>>1),
-                  mb,w2,imin&1,jmin&1,16);
-    }
+		/* select between intra and non-intra coding */
+		if (vmc>var && vmc>=9*256)
+			mbi->mb_type = MB_INTRA;
+		else
+		{
+			/* zero MV field prediction from same parity ref. field
+			 * (not allowed if ipflag is set)
+			 */
+			if (!ipflag)
+				v0 = (*pdist2)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
+							   ssmb.mb,w2,0,0,16);
+			if (ipflag || (4*v0>5*vmc && v0>=9*256))
+			{
+				var = vmc;
+				mbi->mb_type = MB_FORWARD;
+				if (mbi->motion_type==MC_FIELD)
+				{
+					mbi->MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
+					mbi->mv_field_sel[0][0] = fieldf_mc.fieldsel;
+				}
+				else if (mbi->motion_type==MC_DMV)
+				{
+					/* same parity vector */
+					mbi->MV[0][0][0] = imins - (i<<1);
+					mbi->MV[0][0][1] = jmins - (j<<1);
 
-    /* select between intra and non-intra coding */
-    if (vmc>var && vmc>=9*256)
-      mbi->mb_type = MB_INTRA;
-    else
-    {
-      /* zero MV field prediction from same parity ref. field
-       * (not allowed if ipflag is set)
-       */
-      if (!ipflag)
-        v0 = (*pdist2)(((pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
-                   mb,w2,0,0,16);
-      if (ipflag || (4*v0>5*vmc && v0>=9*256))
-      {
-        var = vmc;
-        mbi->mb_type = MB_FORWARD;
-        if (mbi->motion_type==MC_FIELD)
-        {
-          mbi->MV[0][0][0] = imin - (i<<1);
-          mbi->MV[0][0][1] = jmin - (j<<1);
-          mbi->mv_field_sel[0][0] = sel;
-        }
-        else if (mbi->motion_type==MC_DMV)
-        {
-          /* same parity vector */
-          mbi->MV[0][0][0] = imins - (i<<1);
-          mbi->MV[0][0][1] = jmins - (j<<1);
+					/* opposite parity vector */
+					mbi->dmvector[0] = dualp_mc.pos.x;
+					mbi->dmvector[1] = dualp_mc.pos.y;
+				}
+				else
+				{
+					mbi->MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
+					mbi->MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
+					mbi->MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
+					mbi->mv_field_sel[0][0] = field8uf_mc.fieldsel;
+					mbi->mv_field_sel[1][0] = field8lf_mc.fieldsel;
+				}
+			}
+			else
+			{
+				/* No MC */
+				var = v0;
+				mbi->mb_type = 0;
+				mbi->motion_type = MC_FIELD;
+				mbi->MV[0][0][0] = 0;
+				mbi->MV[0][0][1] = 0;
+				mbi->mv_field_sel[0][0] = (picture->pict_struct==BOTTOM_FIELD);
+			}
+		}
+	}
+	else /* if (pict_type==B_TYPE) */
+	{
+		/* forward prediction */
+		field_estimate(picture,
+					   mc->oldorg,mc->oldref,
+					   mc->oldorg+width,mc->oldref+width,&ssmb,
+					   i,j,mc->sxf,mc->syf,0,
+					   /* &iminf,&jminf, */ &fieldf_mc,
+					   /* &imin8uf,&jmin8uf, */&field8uf_mc,
+					   /* &imin8lf,&jmin8lf, */ &field8lf_mc,
+					   /* &dmcfieldf,&dmc8f,&self,&sel8uf,&sel8lf,
+					   &imins,&jmins,&ds, */ &fields_mc);
+		dmcfieldf = fieldf_mc.sad;
+		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
+		/* TODO: ds is probably a dummy in this case... */
+		ds = fields_mc.sad;
 
-          /* opposite parity vector */
-          mbi->dmvector[0] = imindmv;
-          mbi->dmvector[1] = jmindmv;
-        }
-        else
-        {
-          mbi->MV[0][0][0] = imin8u - (i<<1);
-          mbi->MV[0][0][1] = jmin8u - (j<<1);
-          mbi->MV[1][0][0] = imin8l - (i<<1);
-          mbi->MV[1][0][1] = jmin8l - ((j+8)<<1);
-          mbi->mv_field_sel[0][0] = sel8u;
-          mbi->mv_field_sel[1][0] = sel8l;
-        }
-      }
-      else
-      {
-        /* No MC */
-        var = v0;
-        mbi->mb_type = 0;
-        mbi->motion_type = MC_FIELD;
-        mbi->MV[0][0][0] = 0;
-        mbi->MV[0][0][1] = 0;
-        mbi->mv_field_sel[0][0] = (pict_struct==BOTTOM_FIELD);
-      }
-    }
-  }
-  else /* if (pict_type==B_TYPE) */
-  {
-    /* forward prediction */
-    field_estimate(oldorg,oldref,oldorg+width,oldref+width,mb,fmb,qmb,
-                   i,j,sxf,syf,0,
-                   &iminf,&jminf,&imin8uf,&jmin8uf,&imin8lf,&jmin8lf,
-                   &dmcfieldf,&dmc8f,&self,&sel8uf,&sel8lf,&imins,&jmins,&ds);
+		/* backward prediction */
+		field_estimate(picture,
+					   mc->neworg,mc->newref,mc->neworg+width,mc->newref+width,
+					   &ssmb,
+					   i,j,mc->sxb,mc->syb,0,
+					   /* &iminr,&jminr, */ &fieldb_mc,
+					   /* &imin8ur,&jmin8ur, */ &field8ub_mc,
+					   /* &imin8lr,&jmin8lr, */ &field8lb_mc,
+					   /* &dmcfieldr,&dmc8r,&selr,&sel8ur,&sel8lr,
+					   &imins,&jmins,&ds,  */ &fields_mc);
+		dmcfieldr = fieldb_mc.sad;
+		dmc8r = field8ub_mc.sad + field8lb_mc.sad;
+		ds = fields_mc.sad;
 
-    /* backward prediction */
-    field_estimate(neworg,newref,neworg+width,newref+width,mb,fmb,qmb,
-                   i,j,sxb,syb,0,
-                   &iminr,&jminr,&imin8ur,&jmin8ur,&imin8lr,&jmin8lr,
-                   &dmcfieldr,&dmc8r,&selr,&sel8ur,&sel8lr,&imins,&jmins,&ds);
+		/* calculate distances for bidirectional prediction */
+		/* field */
+		dmcfieldi = bidir_pred_sad( &fieldf_mc, &fieldb_mc, ssmb.mb, w2, 16);
 
-    /* calculate distances for bidirectional prediction */
-    /* field */
-    dmcfieldi = (*pbdist1)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
-                       newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
-                       mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
+		/* TODO DELETE
+		dmcfieldi = (*pbdist1)(mc->oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+							   mc->newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
+							   ssmb.mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
+		*/
 
-    /* 16x8 upper half block */
-    dmc8i = (*pbdist1)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
-                   newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
-                   mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
+		/* 16x8 upper and lower half blocks */
+		dmc8i =  bidir_pred_sad( &field8uf_mc, &field8ub_mc, ssmb.mb, w2, 16 );
+		dmc8i += bidir_pred_sad( &field8lf_mc, &field8lb_mc, ssmb.mb, w2, 16 );
 
-    /* 16x8 lower half block */
-    dmc8i+= (*pbdist1)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
-                   newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
-                   mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
+		/* TODO DELETE
+		dmc8i = (*pbdist1)(mc->oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+						   mc->newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
+						   ssmb.mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
 
-    /* select prediction type of minimum distance */
-    if (dmcfieldi<dmc8i && dmcfieldi<dmcfieldf && dmcfieldi<dmc8f
-        && dmcfieldi<dmcfieldr && dmcfieldi<dmc8r)
-    {
-      /* field, interpolated */
-      mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-      mbi->motion_type = MC_FIELD;
-      vmc = (*pbdist2)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
-                   newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
-                   mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
-    }
-    else if (dmc8i<dmcfieldf && dmc8i<dmc8f
-             && dmc8i<dmcfieldr && dmc8i<dmc8r)
-    {
-      /* 16x8, interpolated */
-      mbi->mb_type = MB_FORWARD|MB_BACKWARD;
-      mbi->motion_type = MC_16X8;
+		dmc8i+= (*pbdist1)(mc->oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+						   mc->newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
+						   ssmb.mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
+		*/
+		/* select prediction type of minimum distance */
+		if (dmcfieldi<dmc8i && dmcfieldi<dmcfieldf && dmcfieldi<dmc8f
+			&& dmcfieldi<dmcfieldr && dmcfieldi<dmc8r)
+		{
+			/* field, interpolated */
+			mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+			mbi->motion_type = MC_FIELD;
+			vmc = bidir_pred_var( &fieldf_mc, &fieldb_mc, ssmb.mb, w2, 16);
+			/* TODO DELETE
+			vmc = (*pbdist2)(mc->oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+							 mc->newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
+							 ssmb.mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
+			*/
+		}
+		else if (dmc8i<dmcfieldf && dmc8i<dmc8f
+				 && dmc8i<dmcfieldr && dmc8i<dmc8r)
+		{
+			/* 16x8, interpolated */
+			mbi->mb_type = MB_FORWARD|MB_BACKWARD;
+			mbi->motion_type = MC_16X8;
 
-      /* upper half block */
-      vmc = (*pbdist2)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
-                   newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
-                   mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
+			/* upper and lower half blocks */
+			vmc =  bidir_pred_var( &field8uf_mc, &field8ub_mc, ssmb.mb, w2, 8);
+			vmc += bidir_pred_var( &field8lf_mc, &field8lb_mc, ssmb.mb, w2, 8);
+			/* TODO DELETE
+			vmc = (*pbdist2)(mc->oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+							 mc->newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
+							 ssmb.mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
 
-      /* lower half block */
-      vmc+= (*pbdist2)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
-                   newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
-                   mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
-    }
-    else if (dmcfieldf<dmc8f && dmcfieldf<dmcfieldr && dmcfieldf<dmc8r)
-    {
-      /* field, forward */
-      mbi->mb_type = MB_FORWARD;
-      mbi->motion_type = MC_FIELD;
-      vmc = (*pdist2)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
-                  mb,w2,iminf&1,jminf&1,16);
-    }
-    else if (dmc8f<dmcfieldr && dmc8f<dmc8r)
-    {
-      /* 16x8, forward */
-      mbi->mb_type = MB_FORWARD;
-      mbi->motion_type = MC_16X8;
+			vmc+= (*pbdist2)(mc->oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+							 mc->newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
+							 ssmb.mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
+			*/
+		}
+		else if (dmcfieldf<dmc8f && dmcfieldf<dmcfieldr && dmcfieldf<dmc8r)
+		{
+			/* field, forward */
+			mbi->mb_type = MB_FORWARD;
+			mbi->motion_type = MC_FIELD;
+			vmc = unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16);
+			/* TODO DELETE
+			vmc = (*pdist2)(mc->oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+							ssmb.mb,w2,iminf&1,jminf&1,16);
+			*/
+		}
+		else if (dmc8f<dmcfieldr && dmc8f<dmc8r)
+		{
+			/* 16x8, forward */
+			mbi->mb_type = MB_FORWARD;
+			mbi->motion_type = MC_16X8;
 
-      /* upper half block */
-      vmc = (*pdist2)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
-                  mb,w2,imin8uf&1,jmin8uf&1,8);
+			/* upper and lower half blocks */
+			vmc =  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
+			vmc += unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
+			/* TODO DELETE
+			vmc = (*pdist2)(mc->oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+							ssmb.mb,w2,imin8uf&1,jmin8uf&1,8);
+			vmc+= (*pdist2)(mc->oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+							ssmb.mb+8*w2,w2,imin8lf&1,jmin8lf&1,8);
+			*/
+		}
+		else if (dmcfieldr<dmc8r)
+		{
+			/* field, backward */
+			mbi->mb_type = MB_BACKWARD;
+			mbi->motion_type = MC_FIELD;
+			vmc = unidir_pred_var( &fieldb_mc, ssmb.mb, w2, 16 );
+			/* TODO DELETE
+			vmc = (*pdist2)(mc->newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
+							ssmb.mb,w2,iminr&1,jminr&1,16);
+			*/
+		}
+		else
+		{
+			/* 16x8, backward */
+			mbi->mb_type = MB_BACKWARD;
+			mbi->motion_type = MC_16X8;
 
-      /* lower half block */
-      vmc+= (*pdist2)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
-                  mb+8*w2,w2,imin8lf&1,jmin8lf&1,8);
-    }
-    else if (dmcfieldr<dmc8r)
-    {
-      /* field, backward */
-      mbi->mb_type = MB_BACKWARD;
-      mbi->motion_type = MC_FIELD;
-      vmc = (*pdist2)(newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
-                  mb,w2,iminr&1,jminr&1,16);
-    }
-    else
-    {
-      /* 16x8, backward */
-      mbi->mb_type = MB_BACKWARD;
-      mbi->motion_type = MC_16X8;
+			/* upper and lower half blocks */
+			vmc =  unidir_pred_var( &field8ub_mc, ssmb.mb, w2, 8);
+			vmc += unidir_pred_var( &field8lb_mc, ssmb.mb, w2, 8);
 
-      /* upper half block */
-      vmc = (*pdist2)(newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
-                  mb,w2,imin8ur&1,jmin8ur&1,8);
+			/* TODO DELETE
+			vmc = (*pdist2)(mc->newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
+							ssmb.mb,w2,imin8ur&1,jmin8ur&1,8);
+			vmc+= (*pdist2)(mc->newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
+							ssmb.mb+8*w2,w2,imin8lr&1,jmin8lr&1,8);
+			*/
+		}
 
-      /* lower half block */
-      vmc+= (*pdist2)(newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
-                  mb+8*w2,w2,imin8lr&1,jmin8lr&1,8);
-    }
-
-    /* select between intra and non-intra coding */
-    if (vmc>var && vmc>=9*256)
-      mbi->mb_type = MB_INTRA;
-    else
-    {
-      var = vmc;
-      if (mbi->motion_type==MC_FIELD)
-      {
-        /* forward */
-        mbi->MV[0][0][0] = iminf - (i<<1);
-        mbi->MV[0][0][1] = jminf - (j<<1);
-        mbi->mv_field_sel[0][0] = self;
-        /* backward */
-        mbi->MV[0][1][0] = iminr - (i<<1);
-        mbi->MV[0][1][1] = jminr - (j<<1);
-        mbi->mv_field_sel[0][1] = selr;
-      }
-      else /* MC_16X8 */
-      {
-        /* forward */
-        mbi->MV[0][0][0] = imin8uf - (i<<1);
-        mbi->MV[0][0][1] = jmin8uf - (j<<1);
-        mbi->mv_field_sel[0][0] = sel8uf;
-        mbi->MV[1][0][0] = imin8lf - (i<<1);
-        mbi->MV[1][0][1] = jmin8lf - ((j+8)<<1);
-        mbi->mv_field_sel[1][0] = sel8lf;
-        /* backward */
-        mbi->MV[0][1][0] = imin8ur - (i<<1);
-        mbi->MV[0][1][1] = jmin8ur - (j<<1);
-        mbi->mv_field_sel[0][1] = sel8ur;
-        mbi->MV[1][1][0] = imin8lr - (i<<1);
-        mbi->MV[1][1][1] = jmin8lr - ((j+8)<<1);
-        mbi->mv_field_sel[1][1] = sel8lr;
-      }
-    }
-  }
-
-
-  mbi->var = var;
+		/* select between intra and non-intra coding */
+		if (vmc>var && vmc>=9*256)
+			mbi->mb_type = MB_INTRA;
+		else
+		{
+			var = vmc;
+			if (mbi->motion_type==MC_FIELD)
+			{
+				/* forward */
+				mbi->MV[0][0][0] = fieldf_mc.pos.x - (i<<1);
+				mbi->MV[0][0][1] = fieldf_mc.pos.y - (j<<1);
+				mbi->mv_field_sel[0][0] = fieldf_mc.fieldsel;
+				/* backward */
+				mbi->MV[0][1][0] = fieldb_mc.pos.x - (i<<1);
+				mbi->MV[0][1][1] = fieldb_mc.pos.y - (j<<1);
+				mbi->mv_field_sel[0][1] = fieldb_mc.fieldsel;
+			}
+			else /* MC_16X8 */
+			{
+				/* forward */
+				mbi->MV[0][0][0] = field8uf_mc.pos.x - (i<<1);
+				mbi->MV[0][0][1] = field8uf_mc.pos.y - (j<<1);
+				mbi->mv_field_sel[0][0] = field8uf_mc.fieldsel;
+				mbi->MV[1][0][0] = field8lf_mc.pos.x - (i<<1);
+				mbi->MV[1][0][1] = field8lf_mc.pos.y - ((j+8)<<1);
+				mbi->mv_field_sel[1][0] = field8lf_mc.fieldsel;
+				/* backward */
+				mbi->MV[0][1][0] = field8ub_mc.pos.x - (i<<1);
+				mbi->MV[0][1][1] = field8ub_mc.pos.y - (j<<1);
+				mbi->mv_field_sel[0][1] = field8ub_mc.fieldsel;
+				mbi->MV[1][1][0] = field8lb_mc.pos.x - (i<<1);
+				mbi->MV[1][1][1] = field8lb_mc.pos.y - ((j+8)<<1);
+				mbi->mv_field_sel[1][1] = field8lb_mc.fieldsel;
+			}
+		}
+	}
+	mbi->var = var;
 }
 
 /*
@@ -1056,81 +1303,121 @@ int secondfield,ipflag;
  * quad:  " (4*4 sub-sampled)
  * i,j: location of mb relative to ref (=center of search window)
  * sx,sy: half widths of search window
- * iminp,jminp,dframep: location and value of best frame prediction
+ * iminp,jminp,dframep: location and SAD of best frame prediction
  * imintp,jmintp,tselp: location of best field pred. for top field of mb
  * iminbp,jminbp,bselp: location of best field pred. for bottom field of mb
- * dfieldp: value of field prediction
+ * dfieldp: SAD of field prediction
  */
-static void frame_estimate(org,ref,mb,fmb,qmb,i,j,sx,sy,
-  iminp,jminp,imintp,jmintp,iminbp,jminbp,dframep,dfieldp,tselp,bselp,
-  imins,jmins)
-unsigned char *org,*ref,*mb;
-mcompuint *fmb;
-mcompuint *qmb;
-int i,j,sx,sy;
-int *iminp,*jminp;
-int *imintp,*jmintp,*iminbp,*jminbp;
-int *dframep,*dfieldp;
-int *tselp,*bselp;
-int imins[2][2],jmins[2][2];
+
+static void frame_estimate(
+	unsigned char *org,
+	unsigned char *ref,
+	subsampled_mb_s *ssmb,
+	int i, int j, int sx, int sy,
+	/* int *iminp, int *jminp, */ mb_motion_s *bestfr,
+	/* int *imintp, int *jmintp, */ mb_motion_s *besttop,
+	/* int *iminbp, int *jminbp, */ mb_motion_s *bestbot,
+	/* int *dframep, int *dfieldp, 
+	   int *tselp, int *bselp, */
+	int imins[2][2],
+	int jmins[2][2]
+	)
 {
-  int dt,db,dmint,dminb;
-  int imint,iminb,jmint,jminb;
+	subsampled_mb_s  botssmb;
+	mb_motion_s topfld_mc;
+	mb_motion_s botfld_mc;
+	/* int dt,db;*/
+	/* TODO DELETE
+	   int dmint,dminb;
+	*/
+	/*int imint,iminb,jmint,jminb;*/
 
-  /* frame prediction */
-  *dframep = fullsearch(org,ref,mb,fmb,qmb,width,i,j,sx,sy,16,width,height,
-                        iminp,jminp);
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
+	botssmb.mb = ssmb->mb+width;
+	botssmb.fmb = ssmb->mb+(width>>1);
+	botssmb.qmb = ssmb->qmb+(width>>2);
+	
+	/* frame prediction */
+	fullsearch(org,ref,ssmb,width,i,j,sx,sy,16,width,height,
+						  bestfr );
 
-  /* predict top field from top field */
-  dt = fullsearch(org,ref,mb,fmb,qmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-                  &imint,&jmint);
+	/* predict top field from top field */
+	fullsearch(org,ref,ssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+			   &topfld_mc);
 
-  /* predict top field from bottom field */
-  db = fullsearch(org+width,ref+width,mb,fmb,qmb, width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-                  &iminb,&jminb);
+	/* predict top field from bottom field */
+	fullsearch(org+width,ref+width,ssmb, width<<1,i,j>>1,sx,sy>>1,8,
+			   width,height>>1, &botfld_mc);
 
-  imins[0][0] = imint;
-  jmins[0][0] = jmint;
-  imins[1][0] = iminb;
-  jmins[1][0] = jminb;
+	imins[0][0] = topfld_mc.pos.x;
+	jmins[0][0] = topfld_mc.pos.y;
+	imins[1][0] = botfld_mc.pos.x;
+	jmins[1][0] = botfld_mc.pos.y;
 
-  /* select prediction for top field */
-  if (dt<=db)
-  {
-    dmint=dt; *imintp=imint; *jmintp=jmint; *tselp=0;
-  }
-  else
-  {
-    dmint=db; *imintp=iminb; *jmintp=jminb; *tselp=1;
-  }
+	/* select prediction for top field */
+	if (topfld_mc.sad<=botfld_mc.sad)
+	{
+		*besttop = topfld_mc;
+		/* TODO DELETE
+		dmint=topfld_mc.sad; 
+		*imintp=topfld_mc.pos.x; 
+		*jmintp=topfld_mc.pos.y; 
+		*tselp=0;
+		*/
+	}
+	else
+	{
+		*besttop = botfld_mc;
+		/* TODO DELETE
+		dmint=botfld_mc.sad; 
+		*imintp=botfld_mc.pos.x; 
+		*jmintp=botfld_mc.pos.y; 
+		*tselp=1;
+		*/
+	}
 
-  /* predict bottom field from top field */
-  dt = fullsearch(org,ref,mb+width,fmb+(width>>1),qmb+(width>>2), 
-				  width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-                  &imint,&jmint);
+	/* predict bottom field from top field */
+	fullsearch(org,ref,&botssmb,
+					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+					&topfld_mc);
 
-  /* predict bottom field from bottom field */
-  db = fullsearch(org+width,ref+width,mb+width,fmb+(width>>1),qmb+(width>>2), 
-				  width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
-                  &iminb,&jminb);
+	/* predict bottom field from bottom field */
+	fullsearch(org+width,ref+width,&botssmb,
+					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+					&botfld_mc);
 
-  imins[0][1] = imint;
-  jmins[0][1] = jmint;
-  imins[1][1] = iminb;
-  jmins[1][1] = jminb;
+	imins[0][1] = topfld_mc.pos.x;
+	jmins[0][1] = topfld_mc.pos.y;
+	imins[1][1] = botfld_mc.pos.x;
+	jmins[1][1] = botfld_mc.pos.y;
 
-  /* select prediction for bottom field */
-  if (db<=dt)
-  {
-    dminb=db; *iminbp=iminb; *jminbp=jminb; *bselp=1;
-  }
-  else
-  {
-    dminb=dt; *iminbp=imint; *jminbp=jmint; *bselp=0;
-  }
+	/* select prediction for bottom field */
+	if (botfld_mc.sad<=topfld_mc.sad)
+	{
+		*bestbot = botfld_mc;
+		/* TODO DELETE
+		dminb=botfld_mc.sad; 
+		*iminbp=botfld_mc.pos.x; 
+		*jminbp=botfld_mc.pos.y; 
+		*bselp=1;
+		*/
 
-  *dfieldp=dmint+dminb;
+	}
+	else
+	{
+		*bestbot = topfld_mc;
+		/* TODO DELETE
+		*iminbp=topfld_mc.pos.x; 
+		*jminbp=topfld_mc.pos.y; 
+		dminb=topfld_mc.sad; 
+		*bselp=0;
+		*/
+	}
 
+	/* TODO DELETE
+	*dfieldp=dmint+dminb;
+	*/
 
 }
 
@@ -1154,389 +1441,455 @@ int imins[2][2],jmins[2][2];
  *                    prediction (needed for dual prime, only valid if
  *                    ipflag==0)
  */
-static void field_estimate(toporg,topref,botorg,botref,mb,fmb,qmb,i,j,sx,sy,ipflag,
-  iminp,jminp,imin8up,jmin8up,imin8lp,jmin8lp,dfieldp,d8p,selp,sel8up,sel8lp,
-  iminsp,jminsp,dsp)
-unsigned char *toporg, *topref, *botorg, *botref, *mb;
-mcompuint *fmb;
-mcompuint *qmb;
-int i,j,sx,sy;
-int ipflag;
-int *iminp, *jminp;
-int *imin8up, *jmin8up, *imin8lp, *jmin8lp;
-int *dfieldp,*d8p;
-int *selp, *sel8up, *sel8lp;
-int *iminsp, *jminsp, *dsp;
+
+static void field_estimate (
+	pict_data_s *picture,
+	unsigned char *toporg,
+	unsigned char *topref, 
+	unsigned char *botorg, 
+	unsigned char *botref,
+	subsampled_mb_s *ssmb,
+	int i, int j, int sx, int sy, int ipflag,
+	/* int *iminp, int *jminp, */  mb_motion_s *bestfld,
+	/* int *imin8up, int *jmin8up, */ mb_motion_s *best8u,
+	/* int *imin8lp, int *jmin8lp, */ mb_motion_s *best8l,
+	/* int *dfieldp,  int *d8p, 
+	int *selp, int *sel8up, int *sel8lp,
+	   int *iminsp, int *jminsp, int *dsp, */ mb_motion_s *bestsp)
+	
+
 {
-  int dt, db, imint, jmint, iminb, jminb, notop, nobot;
+	mb_motion_s topfld_mc;
+	mb_motion_s botfld_mc;
+	int dt, db;
+	/* int imint, jmint, iminb, jminb; */
+	int notop, nobot;
+	subsampled_mb_s botssmb;
 
-  /* if ipflag is set, predict from field of opposite parity only */
-  notop = ipflag && (pict_struct==TOP_FIELD);
-  nobot = ipflag && (pict_struct==BOTTOM_FIELD);
+	botssmb.mb = ssmb->mb+width;
+	botssmb.fmb = ssmb->fmb+(width>>1);
+	botssmb.qmb = ssmb->qmb+(width>>2);
+	
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
+	/* if ipflag is set, predict from field of opposite parity only */
+	notop = ipflag && (picture->pict_struct==TOP_FIELD);
+	nobot = ipflag && (picture->pict_struct==BOTTOM_FIELD);
 
-  /* field prediction */
+	/* field prediction */
 
-  /* predict current field from top field */
-  if (notop)
-    dt = 65536; /* infinity */
-  else
-    dt = fullsearch(toporg,topref,mb,fmb,qmb,width<<1,
-                    i,j,sx,sy>>1,16,width,height>>1,
-                    &imint,&jmint);
+	/* predict current field from top field */
+	if (notop)
+		topfld_mc.sad = dt = 65536; /* infinity */
+	else
+		fullsearch(toporg,topref,ssmb,width<<1,
+				   i,j,sx,sy>>1,16,width,height>>1,
+				   /* &imint,&jmint, &dt, */ &topfld_mc);
+	dt = topfld_mc.sad;
+	/* predict current field from bottom field */
+	if (nobot)
+		botfld_mc.sad = db = 65536; /* infinity */
+	else
+		fullsearch(botorg,botref,ssmb,width<<1,
+				   i,j,sx,sy>>1,16,width,height>>1,
+				   /* &iminb,&jminb, &db,*/ &botfld_mc);
+	db = botfld_mc.sad;
 
-  /* predict current field from bottom field */
-  if (nobot)
-    db = 65536; /* infinity */
-  else
-    db = fullsearch(botorg,botref,mb,fmb,qmb,width<<1,
-                    i,j,sx,sy>>1,16,width,height>>1,
-                    &iminb,&jminb);
+	/* same parity prediction (only valid if ipflag==0) */
+	if (picture->pict_struct==TOP_FIELD)
+	{
+		*bestsp = topfld_mc;
+		/* TODO DELETE
+		*iminsp = topfld_mc.pos.x; 
+		*jminsp = topfld_mc.pos.x;
+		*dsp = topfld_mc.sad;
+		*/
+	}
+	else
+	{
+		*bestsp = botfld_mc;
+		/* TODO DELETE
+		*iminsp = botfld_mc.pos.x; 
+		*jminsp = botfld_mc.pos.y; 
+		*dsp = botfld_mc.sad;
+		*/
+	}
 
-  /* same parity prediction (only valid if ipflag==0) */
-  if (pict_struct==TOP_FIELD)
-  {
-    *iminsp = imint; *jminsp = jmint; *dsp = dt;
-  }
-  else
-  {
-    *iminsp = iminb; *jminsp = jminb; *dsp = db;
-  }
+	/* select field prediction */
+	if (dt<=db)
+	{
+		*bestfld = topfld_mc;
+		/* TODO DELETE
+		*dfieldp = topfld_mc.sad;
+		*iminp = topfld_mc.pos.x;
+		*jminp = topfld_mc.pos.y;
+		*selp = 0;
+		*/
+	}
+	else
+	{
+		*bestfld = botfld_mc;
+		/* TODO DELETE
+		*dfieldp = botfld_mc.sad;
+		*iminp = botfld_mc.pos.x;
+		*jminp = botfld_mc.pos.y;
+		*selp = 1;
+		*/
+	}
 
-  /* select field prediction */
-  if (dt<=db)
-  {
-    *dfieldp = dt; *iminp = imint; *jminp = jmint; *selp = 0;
-  }
-  else
-  {
-    *dfieldp = db; *iminp = iminb; *jminp = jminb; *selp = 1;
-  }
 
+	/* 16x8 motion compensation */
 
-  /* 16x8 motion compensation */
+	/* predict upper half field from top field */
+	if (notop)
+		topfld_mc.sad = dt = 65536;
+	else
+		fullsearch(toporg,topref,ssmb,width<<1,
+				   i,j,sx,sy>>1,8,width,height>>1,
+				   /* &imint,&jmint, &dt,*/ &topfld_mc);
+	dt = topfld_mc.sad;
+	/* predict upper half field from bottom field */
+	if (nobot)
+		botfld_mc.sad = db = 65536;
+	else
+		fullsearch(botorg,botref,ssmb,width<<1,
+				   i,j,sx,sy>>1,8,width,height>>1,
+				   /* &iminb,&jminb, &db, */ &botfld_mc);
+	db = botfld_mc.sad;
+	/* select prediction for upper half field */
+	if (dt<=db)
+	{
+		*best8u = topfld_mc;
+		/* TODO DELETE
+		*d8p = topfld_mc.sad;
+		*imin8up = topfld_mc.pos.x; 
+		*jmin8up = topfld_mc.pos.y; 
+		*sel8up = 0;
+		*/
+	}
+	else
+	{
+		*best8u = botfld_mc;
+		/* TODO DELETE
+		*d8p = botfld_mc.sad; 
+		*imin8up = botfld_mc.pos.x; 
+		*jmin8up = botfld_mc.pos.y; 
+		*sel8up = 1;
+		*/
+	}
 
-  /* predict upper half field from top field */
-  if (notop)
-    dt = 65536;
-  else
-    dt = fullsearch(toporg,topref,mb,fmb,qmb,width<<1,
-                    i,j,sx,sy>>1,8,width,height>>1,
-                    &imint,&jmint);
-
-  /* predict upper half field from bottom field */
-  if (nobot)
-    db = 65536;
-  else
-    db = fullsearch(botorg,botref,mb,fmb,qmb,width<<1,
-                    i,j,sx,sy>>1,8,width,height>>1,
-                    &iminb,&jminb);
-
-  /* select prediction for upper half field */
-  if (dt<=db)
-  {
-    *d8p = dt; *imin8up = imint; *jmin8up = jmint; *sel8up = 0;
-  }
-  else
-  {
-    *d8p = db; *imin8up = iminb; *jmin8up = jminb; *sel8up = 1;
-  }
-
-  /* predict lower half field from top field */
-  /*
-	 N.b. For interlaced data width<<4 (width*16) takes us 8 rows
-	 down in the same field.  
-	 Thus for the fast motion data (2*2
-	 sub-sampled) we need to go 4 rows down in the same field.
-	 This requires adding width*4 = (width<<2).
-	 For the 4*4 sub-sampled motion data we need to go down 2 rows.
-	 This requires adding width = width
+	/* predict lower half field from top field */
+	/*
+	  N.b. For interlaced data width<<4 (width*16) takes us 8 rows
+	  down in the same field.  
+	  Thus for the fast motion data (2*2
+	  sub-sampled) we need to go 4 rows down in the same field.
+	  This requires adding width*4 = (width<<2).
+	  For the 4*4 sub-sampled motion data we need to go down 2 rows.
+	  This requires adding width = width
 	 
-  */
-  if (notop)
-    dt = 65536;
-  else
-    dt = fullsearch(toporg,topref,mb+(width<<4),fmb+(width<<2), qmb+width,
-					width<<1,
-                    i,j+8,sx,sy>>1,8,width,height>>1,
-                    &imint,&jmint);
-
-  /* predict lower half field from bottom field */
-  if (nobot)
-    db = 65536;
-  else
-    db = fullsearch(botorg,botref,mb+(width<<4),fmb+(width<<2),qmb+width,width<<1,
-                    i,j+8,sx,sy>>1,8,width,height>>1,
-                    &iminb,&jminb);
-
-  /* select prediction for lower half field */
-  if (dt<=db)
-  {
-    *d8p += dt; *imin8lp = imint; *jmin8lp = jmint; *sel8lp = 0;
-  }
-  else
-  {
-    *d8p += db; *imin8lp = iminb; *jmin8lp = jminb; *sel8lp = 1;
-  }
+	*/
+	if (notop)
+		topfld_mc.sad = dt = 65536;
+	else
+		fullsearch(toporg,topref,&botssmb,
+						width<<1,
+						i,j+8,sx,sy>>1,8,width,height>>1,
+				   /* &imint,&jmint, &dt,*/ &topfld_mc);
+	dt = topfld_mc.sad;
+	/* predict lower half field from bottom field */
+	if (nobot)
+		botfld_mc.sad = db = 65536;
+	else
+		fullsearch(botorg,botref,&botssmb,width<<1,
+						i,j+8,sx,sy>>1,8,width,height>>1,
+				   /* &iminb,&jminb, &db,*/ &botfld_mc);
+	db = botfld_mc.sad;
+	/* select prediction for lower half field */
+	if (dt<=db)
+	{
+		*best8l = topfld_mc;
+		/* TODO DELETE
+		*d8p += topfld_mc.sad; 
+		*imin8lp = topfld_mc.pos.x; 
+		*jmin8lp = topfld_mc.pos.y; 
+		*sel8lp = 0;
+		*/
+	}
+	else
+	{
+		*best8l = botfld_mc;
+		/* TODO DELETE
+		*d8p += botfld_mc.sad; 
+		*imin8lp = botfld_mc.pos.x; 
+		*jmin8lp = botfld_mc.pos.y; 
+		*sel8lp = 1;
+		*/
+	}
 }
 
-static void dpframe_estimate(ref,mb,fmb,qmb,i,j,iminf,jminf,
-  iminp,jminp,imindmvp, jmindmvp, dmcp, vmcp)
-unsigned char *ref, *mb;
-mcompuint *fmb;
-mcompuint *qmb;
-int i,j;
-int iminf[2][2], jminf[2][2];
-int *iminp, *jminp;
-int *imindmvp, *jmindmvp;
-int *dmcp,*vmcp;
+static void dpframe_estimate (
+	pict_data_s *picture,
+	unsigned char *ref,
+	subsampled_mb_s *ssmb,
+	
+	int i, int j, int iminf[2][2], int jminf[2][2],
+	/* int *iminp, int *jminp, */ mb_motion_s *best_mc,
+	int *imindmvp, int *jmindmvp,
+	/* int *dmcp,*/ int *vmcp)
 {
-  int pref,ppred,delta_x,delta_y;
-  int is,js,it,jt,ib,jb,it0,jt0,ib0,jb0;
-  int imins,jmins,imint,jmint,iminb,jminb,imindmv,jmindmv;
-  int vmc,local_dist;
+	int pref,ppred,delta_x,delta_y;
+	int is,js,it,jt,ib,jb,it0,jt0,ib0,jb0;
+	int imins,jmins,imint,jmint,iminb,jminb,imindmv,jmindmv;
+	int vmc,local_dist;
 
-  /* Calculate Dual Prime distortions for 9 delta candidates
-   * for each of the four minimum field vectors
-   * Note: only for P pictures!
-   */
+	/* Calculate Dual Prime distortions for 9 delta candidates
+	 * for each of the four minimum field vectors
+	 * Note: only for P pictures!
+	 */
 
-  /* initialize minimum dual prime distortion to large value */
-  vmc = INT_MAX;
+	/* initialize minimum dual prime distortion to large value */
+	vmc = INT_MAX;
 
-  for (pref=0; pref<2; pref++)
-  {
-    for (ppred=0; ppred<2; ppred++)
-    {
-      /* convert Cartesian absolute to relative motion vector
-       * values (wrt current macroblock address (i,j)
-       */
-      is = iminf[pref][ppred] - (i<<1);
-      js = jminf[pref][ppred] - (j<<1);
+	for (pref=0; pref<2; pref++)
+	{
+		for (ppred=0; ppred<2; ppred++)
+		{
+			/* convert Cartesian absolute to relative motion vector
+			 * values (wrt current macroblock address (i,j)
+			 */
+			is = iminf[pref][ppred] - (i<<1);
+			js = jminf[pref][ppred] - (j<<1);
 
-      if (pref!=ppred)
-      {
-        /* vertical field shift adjustment */
-        if (ppred==0)
-          js++;
-        else
-          js--;
+			if (pref!=ppred)
+			{
+				/* vertical field shift adjustment */
+				if (ppred==0)
+					js++;
+				else
+					js--;
 
-        /* mvxs and mvys scaling*/
-        is<<=1;
-        js<<=1;
-        if (topfirst == ppred)
-        {
-          /* second field: scale by 1/3 */
-          is = (is>=0) ? (is+1)/3 : -((-is+1)/3);
-          js = (js>=0) ? (js+1)/3 : -((-js+1)/3);
-        }
-        else
-          continue;
-      }
+				/* mvxs and mvys scaling*/
+				is<<=1;
+				js<<=1;
+				if (picture->topfirst == ppred)
+				{
+					/* second field: scale by 1/3 */
+					is = (is>=0) ? (is+1)/3 : -((-is+1)/3);
+					js = (js>=0) ? (js+1)/3 : -((-js+1)/3);
+				}
+				else
+					continue;
+			}
 
-      /* vector for prediction from field of opposite 'parity' */
-      if (topfirst)
-      {
-        /* vector for prediction of top field from bottom field */
-        it0 = ((is+(is>0))>>1);
-        jt0 = ((js+(js>0))>>1) - 1;
+			/* vector for prediction from field of opposite 'parity' */
+			if (picture->topfirst)
+			{
+				/* vector for prediction of top field from bottom field */
+				it0 = ((is+(is>0))>>1);
+				jt0 = ((js+(js>0))>>1) - 1;
 
-        /* vector for prediction of bottom field from top field */
-        ib0 = ((3*is+(is>0))>>1);
-        jb0 = ((3*js+(js>0))>>1) + 1;
-      }
-      else
-      {
-        /* vector for prediction of top field from bottom field */
-        it0 = ((3*is+(is>0))>>1);
-        jt0 = ((3*js+(js>0))>>1) - 1;
+				/* vector for prediction of bottom field from top field */
+				ib0 = ((3*is+(is>0))>>1);
+				jb0 = ((3*js+(js>0))>>1) + 1;
+			}
+			else
+			{
+				/* vector for prediction of top field from bottom field */
+				it0 = ((3*is+(is>0))>>1);
+				jt0 = ((3*js+(js>0))>>1) - 1;
 
-        /* vector for prediction of bottom field from top field */
-        ib0 = ((is+(is>0))>>1);
-        jb0 = ((js+(js>0))>>1) + 1;
-      }
+				/* vector for prediction of bottom field from top field */
+				ib0 = ((is+(is>0))>>1);
+				jb0 = ((js+(js>0))>>1) + 1;
+			}
 
-      /* convert back to absolute half-pel field picture coordinates */
-      is += i<<1;
-      js += j<<1;
-      it0 += i<<1;
-      jt0 += j<<1;
-      ib0 += i<<1;
-      jb0 += j<<1;
+			/* convert back to absolute half-pel field picture coordinates */
+			is += i<<1;
+			js += j<<1;
+			it0 += i<<1;
+			jt0 += j<<1;
+			ib0 += i<<1;
+			jb0 += j<<1;
 
-      if (is >= 0 && is <= (width-16)<<1 &&
-          js >= 0 && js <= (height-16))
-      {
-        for (delta_y=-1; delta_y<=1; delta_y++)
-        {
-          for (delta_x=-1; delta_x<=1; delta_x++)
-          {
-            /* opposite field coordinates */
-            it = it0 + delta_x;
-            jt = jt0 + delta_y;
-            ib = ib0 + delta_x;
-            jb = jb0 + delta_y;
+			if (is >= 0 && is <= (width-16)<<1 &&
+				js >= 0 && js <= (height-16))
+			{
+				for (delta_y=-1; delta_y<=1; delta_y++)
+				{
+					for (delta_x=-1; delta_x<=1; delta_x++)
+					{
+						/* opposite field coordinates */
+						it = it0 + delta_x;
+						jt = jt0 + delta_y;
+						ib = ib0 + delta_x;
+						jb = jb0 + delta_y;
 
-            if (it >= 0 && it <= (width-16)<<1 &&
-                jt >= 0 && jt <= (height-16) &&
-                ib >= 0 && ib <= (width-16)<<1 &&
-                jb >= 0 && jb <= (height-16))
-            {
-              /* compute prediction error */
-              local_dist = (*pbdist2)(
-                ref + (is>>1) + (width<<1)*(js>>1),
-                ref + width + (it>>1) + (width<<1)*(jt>>1),
-                mb,             /* current mb location */
-                width<<1,       /* adjacent line distance */
-                is&1, js&1, it&1, jt&1, /* half-pel flags */
-                8);             /* block height */
-              local_dist += (*pbdist2)(
-                ref + width + (is>>1) + (width<<1)*(js>>1),
-                ref + (ib>>1) + (width<<1)*(jb>>1),
-                mb + width,     /* current mb location */
-                width<<1,       /* adjacent line distance */
-                is&1, js&1, ib&1, jb&1, /* half-pel flags */
-                8);             /* block height */
+						if (it >= 0 && it <= (width-16)<<1 &&
+							jt >= 0 && jt <= (height-16) &&
+							ib >= 0 && ib <= (width-16)<<1 &&
+							jb >= 0 && jb <= (height-16))
+						{
+							/* compute prediction error */
+							local_dist = (*pbdist2)(
+								ref + (is>>1) + (width<<1)*(js>>1),
+								ref + width + (it>>1) + (width<<1)*(jt>>1),
+								ssmb->mb,             /* current mb location */
+								width<<1,       /* adjacent line distance */
+								is&1, js&1, it&1, jt&1, /* half-pel flags */
+								8);             /* block height */
+							local_dist += (*pbdist2)(
+								ref + width + (is>>1) + (width<<1)*(js>>1),
+								ref + (ib>>1) + (width<<1)*(jb>>1),
+								ssmb->mb + width,     /* current mb location */
+								width<<1,       /* adjacent line distance */
+								is&1, js&1, ib&1, jb&1, /* half-pel flags */
+								8);             /* block height */
 
-              /* update delta with least distortion vector */
-              if (local_dist < vmc)
-              {
-                imins = is;
-                jmins = js;
-                imint = it;
-                jmint = jt;
-                iminb = ib;
-                jminb = jb;
-                imindmv = delta_x;
-                jmindmv = delta_y;
-                vmc = local_dist;
-              }
-            }
-          }  /* end delta x loop */
-        } /* end delta y loop */
-      }
-    }
-  }
+							/* update delta with least distortion vector */
+							if (local_dist < vmc)
+							{
+								imins = is;
+								jmins = js;
+								imint = it;
+								jmint = jt;
+								iminb = ib;
+								jminb = jb;
+								imindmv = delta_x;
+								jmindmv = delta_y;
+								vmc = local_dist;
+							}
+						}
+					}  /* end delta x loop */
+				} /* end delta y loop */
+			}
+		}
+	}
 
-  /* Compute L1 error for decision purposes */
-  local_dist = (*pbdist1)(
-    ref + (imins>>1) + (width<<1)*(jmins>>1),
-    ref + width + (imint>>1) + (width<<1)*(jmint>>1),
-    mb,
-    width<<1,
-    imins&1, jmins&1, imint&1, jmint&1,
-    8);
-  local_dist += (*pbdist1)(
-    ref + width + (imins>>1) + (width<<1)*(jmins>>1),
-    ref + (iminb>>1) + (width<<1)*(jminb>>1),
-    mb + width,
-    width<<1,
-    imins&1, jmins&1, iminb&1, jminb&1,
-    8);
+	/* Compute L1 error for decision purposes */
+	local_dist = (*pbdist1)(
+		ref + (imins>>1) + (width<<1)*(jmins>>1),
+		ref + width + (imint>>1) + (width<<1)*(jmint>>1),
+		ssmb->mb,
+		width<<1,
+		imins&1, jmins&1, imint&1, jmint&1,
+		8);
+	local_dist += (*pbdist1)(
+		ref + width + (imins>>1) + (width<<1)*(jmins>>1),
+		ref + (iminb>>1) + (width<<1)*(jminb>>1),
+		ssmb->mb + width,
+		width<<1,
+		imins&1, jmins&1, iminb&1, jminb&1,
+		8);
 
-  *dmcp = local_dist;
-  *iminp = imins;
-  *jminp = jmins;
-  *imindmvp = imindmv;
-  *jmindmvp = jmindmv;
-  *vmcp = vmc;
+	best_mc->sad = local_dist;
+	best_mc->pos.x = imins;
+	best_mc->pos.y = jmins;
+	*vmcp = vmc;
+	*imindmvp = imindmv;
+	*jmindmvp = jmindmv;
+
 }
 
-static void dpfield_estimate(topref,botref,mb,i,j,imins,jmins,
-  imindmvp, jmindmvp, dmcp, vmcp)
-unsigned char *topref, *botref, *mb;
-int i,j;
-int imins, jmins;
-int *imindmvp, *jmindmvp;
-int *dmcp,*vmcp;
+static void dpfield_estimate(
+	pict_data_s *picture,
+	unsigned char *topref,
+	unsigned char *botref, 
+	unsigned char *mb,
+	int i, int j, int imins, int jmins, 
+	/* int *imindmvp, int *jmindmvp, */ mb_motion_s *bestdp_mc,
+	/* int *dmcp, */ int *vmcp
+	)
+
 {
-  unsigned char *sameref, *oppref;
-  int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
-  int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
+	unsigned char *sameref, *oppref;
+	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
+	int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
 
-  /* Calculate Dual Prime distortions for 9 delta candidates */
-  /* Note: only for P pictures! */
+	/* Calculate Dual Prime distortions for 9 delta candidates */
+	/* Note: only for P pictures! */
 
-  /* Assign opposite and same reference pointer */
-  if (pict_struct==TOP_FIELD)
-  {
-    sameref = topref;    
-    oppref = botref;
-  }
-  else 
-  {
-    sameref = botref;
-    oppref = topref;
-  }
+	/* Assign opposite and same reference pointer */
+	if (picture->pict_struct==TOP_FIELD)
+	{
+		sameref = topref;    
+		oppref = botref;
+	}
+	else 
+	{
+		sameref = botref;
+		oppref = topref;
+	}
 
-  /* convert Cartesian absolute to relative motion vector
-   * values (wrt current macroblock address (i,j)
-   */
-  mvxs = imins - (i<<1);
-  mvys = jmins - (j<<1);
+	/* convert Cartesian absolute to relative motion vector
+	 * values (wrt current macroblock address (i,j)
+	 */
+	mvxs = imins - (i<<1);
+	mvys = jmins - (j<<1);
 
-  /* vector for prediction from field of opposite 'parity' */
-  mvxo0 = (mvxs+(mvxs>0)) >> 1;  /* mvxs // 2 */
-  mvyo0 = (mvys+(mvys>0)) >> 1;  /* mvys // 2 */
+	/* vector for prediction from field of opposite 'parity' */
+	mvxo0 = (mvxs+(mvxs>0)) >> 1;  /* mvxs / / */
+	mvyo0 = (mvys+(mvys>0)) >> 1;  /* mvys / / 2*/
 
-  /* vertical field shift correction */
-  if (pict_struct==TOP_FIELD)
-    mvyo0--;
-  else
-    mvyo0++;
+			/* vertical field shift correction */
+	if (picture->pict_struct==TOP_FIELD)
+		mvyo0--;
+	else
+		mvyo0++;
 
-  /* convert back to absolute coordinates */
-  io0 = mvxo0 + (i<<1);
-  jo0 = mvyo0 + (j<<1);
+			/* convert back to absolute coordinates */
+	io0 = mvxo0 + (i<<1);
+	jo0 = mvyo0 + (j<<1);
 
-  /* initialize minimum dual prime distortion to large value */
-  vmc_dp = 1 << 30;
+			/* initialize minimum dual prime distortion to large value */
+	vmc_dp = 1 << 30;
 
-  for (delta_y = -1; delta_y <= 1; delta_y++)
-  {
-    for (delta_x = -1; delta_x <=1; delta_x++)
-    {
-      /* opposite field coordinates */
-      io = io0 + delta_x;
-      jo = jo0 + delta_y;
+	for (delta_y = -1; delta_y <= 1; delta_y++)
+	{
+		for (delta_x = -1; delta_x <=1; delta_x++)
+		{
+			/* opposite field coordinates */
+			io = io0 + delta_x;
+			jo = jo0 + delta_y;
 
-      if (io >= 0 && io <= (width-16)<<1 &&
-          jo >= 0 && jo <= (height2-16)<<1)
-      {
-        /* compute prediction error */
-        local_dist = (*pbdist2)(
-          sameref + (imins>>1) + width2*(jmins>>1),
-          oppref  + (io>>1)    + width2*(jo>>1),
-          mb,             /* current mb location */
-          width2,         /* adjacent line distance */
-          imins&1, jmins&1, io&1, jo&1, /* half-pel flags */
-          16);            /* block height */
+			if (io >= 0 && io <= (width-16)<<1 &&
+				jo >= 0 && jo <= (height2-16)<<1)
+			{
+				/* compute prediction error */
+				local_dist = (*pbdist2)(
+					sameref + (imins>>1) + width2*(jmins>>1),
+					oppref  + (io>>1)    + width2*(jo>>1),
+					mb,             /* current mb location */
+					width2,         /* adjacent line distance */
+					imins&1, jmins&1, io&1, jo&1, /* half-pel flags */
+					16);            /* block height */
 
-        /* update delta with least distortion vector */
-        if (local_dist < vmc_dp)
-        {
-          imino = io;
-          jmino = jo;
-          imindmv = delta_x;
-          jmindmv = delta_y;
-          vmc_dp = local_dist;
-        }
-      }
-    }  /* end delta x loop */
-  } /* end delta y loop */
+				/* update delta with least distortion vector */
+				if (local_dist < vmc_dp)
+				{
+					imino = io;
+					jmino = jo;
+					imindmv = delta_x;
+					jmindmv = delta_y;
+					vmc_dp = local_dist;
+				}
+			}
+		}  /* end delta x loop */
+	} /* end delta y loop */
 
-  /* Compute L1 error for decision purposes */
-  *dmcp = (*pbdist1)(
-    sameref + (imins>>1) + width2*(jmins>>1),
-    oppref  + (imino>>1) + width2*(jmino>>1),
-    mb,             /* current mb location */
-    width2,         /* adjacent line distance */
-    imins&1, jmins&1, imino&1, jmino&1, /* half-pel flags */
-    16);            /* block height */
+	/* Compute L1 error for decision purposes */
+	bestdp_mc->sad =
+		(*pbdist1)(
+			sameref + (imins>>1) + width2*(jmins>>1),
+			oppref  + (imino>>1) + width2*(jmino>>1),
+			mb,             /* current mb location */
+			width2,         /* adjacent line distance */
+			imins&1, jmins&1, imino&1, jmino&1, /* half-pel flags */
+			16);            /* block height */
 
-  *imindmvp = imindmv;
-  *jmindmvp = jmindmv;
-  *vmcp = vmc_dp;
+	bestdp_mc->pos.x = imindmv;
+	bestdp_mc->pos.x = imindmv;
+	*vmcp = vmc_dp;
 }
 
 /*
@@ -1546,17 +1899,13 @@ int *dmcp,*vmcp;
 /* A.Stevens 2000: WARNING: distance measures must fit into short 
    or bad things will happen! */
 struct _sortelt 
- {
-   unsigned short weight;
-   unsigned short index;
+{
+	unsigned short weight;
+	unsigned short index;
 };
 
 typedef struct _sortelt sortelt;
 
-typedef struct _soln {
-  short dx;
-  short dy;
-} matchelt;
 
 
 
@@ -1571,17 +1920,17 @@ typedef struct _soln {
 
 void heap_insert( sortelt heap[], int *heapsize, sortelt *newelt )
 {
-  int i;
+	int i;
 
-  ++(*heapsize);
-  i = (*heapsize);
+	++(*heapsize);
+	i = (*heapsize);
 
-  while( i > 0 && heap[parent(i)].weight > newelt->weight)
+	while( i > 0 && heap[parent(i)].weight > newelt->weight)
 	{
-	  heap[i] = heap[parent(i)];
-	  i = parent(i);
+		heap[i] = heap[parent(i)];
+		i = parent(i);
 	}
-  heap[i] = *newelt;
+	heap[i] = *newelt;
 }
 
 
@@ -1591,41 +1940,41 @@ void heap_insert( sortelt heap[], int *heapsize, sortelt *newelt )
  */
 void heap_extract( sortelt *heap, int *heapsize, sortelt *extelt )
 {
-  int i,j,s;
-  s = (*heapsize);
+	int i,j,s;
+	s = (*heapsize);
 
 
-  if( s == 0 )
-	abort();
-  --(*heapsize);
-  *extelt = heap[0];
-  s = s - 1;
+	if( s == 0 )
+		abort();
+	--(*heapsize);
+	*extelt = heap[0];
+	s = s - 1;
 
-  i = 0; 
-  j = childl(i); 
-  while( j < s )
+	i = 0; 
+	j = childl(i); 
+	while( j < s )
 	{
-	  register int w = s;
-	  /* ORIGINAL slow branchy code
-	  N.b. childl(x) = x + (x+1) childr(x) = x + (x+2)
-	  if( heap[w].weight > heap[j].weight )
-		w = j;
-	  if( j+1 < s && heap[w].weight > heap[j+1].weight )
-		w = j+1;
-		   */
+		register int w = s;
+		/* ORIGINAL slow branchy code
+		   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2)
+		   if( heap[w].weight > heap[j].weight )
+		   w = j;
+		   if( j+1 < s && heap[w].weight > heap[j+1].weight )
+		   w = j+1;
+		*/
 
-	  w += (j-w)&(-(heap[w].weight > heap[j].weight));
-	  ++j;
-	  w += (j-w)&-(((j < s) & (heap[w].weight > heap[j].weight )));
+		w += (j-w)&(-(heap[w].weight > heap[j].weight));
+		++j;
+		w += (j-w)&-(((j < s) & (heap[w].weight > heap[j].weight )));
 
-	  if( w == s )
-		break;
-	  heap[i] = heap[w];
-	  i = w;
-	  j = childl(i);
+		if( w == s )
+			break;
+		heap[i] = heap[w];
+		i = w;
+		j = childl(i);
 	}  
   
-  heap[i] = heap[s];
+	heap[i] = heap[s];
 }
 
 /*
@@ -1635,71 +1984,71 @@ void heap_extract( sortelt *heap, int *heapsize, sortelt *extelt )
 
 void heapify( sortelt *heap, int heapsize )
 {
-  int base = 0;
-  sortelt tmp;
-  int i;
-  if( heapsize == 0)
-	return;
-  do
+	int base = 0;
+	sortelt tmp;
+	int i;
+	if( heapsize == 0)
+		return;
+	do
 	{
-	  base = childl(base);
+		base = childl(base);
 	} 
-  while( childl(base) < heapsize );
+	while( childl(base) < heapsize );
   
-  do {
-	base = parent(base);
-	for( i = base; i < childl(base); ++i )
-	  {
-		int j = i;
-		int k = childl(i);
+	do {
+		base = parent(base);
+		for( i = base; i < childl(base); ++i )
+		{
+			int j = i;
+			int k = childl(i);
 
-		while( k < heapsize )
-		  {
-			register int w = j;
-			/* ORIGINAL slow branchy code 
-			   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2) 
-			if( heap[j].weight > heap[k].weight )
-			  w = k;
-			if( k+1 < heapsize && heap[w].weight > heap[k+1].weight )
-			  w = k+1;
-			*/
+			while( k < heapsize )
+			{
+				register int w = j;
+				/* ORIGINAL slow branchy code 
+				   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2) 
+				   if( heap[j].weight > heap[k].weight )
+				   w = k;
+				   if( k+1 < heapsize && heap[w].weight > heap[k+1].weight )
+				   w = k+1;
+				*/
 
-			w += (k-w)&(-(heap[j].weight > heap[k].weight));
-			++k;
-			w += ((k)-w)&-(((k < heapsize) & (heap[w].weight > heap[k].weight )));
+				w += (k-w)&(-(heap[j].weight > heap[k].weight));
+				++k;
+				w += ((k)-w)&-(((k < heapsize) & (heap[w].weight > heap[k].weight )));
 
-			if( w == j )
-			  break;
-			tmp = heap[j];
-			heap[j] = heap[w];
-			heap[w] = tmp;
+				if( w == j )
+					break;
+				tmp = heap[j];
+				heap[j] = heap[w];
+				heap[w] = tmp;
 
-			j = w;
-			k = childl(j);
-		  }
-	  }
-  } while( base != 0 );
+				j = w;
+				k = childl(j);
+			}
+		}
+	} while( base != 0 );
 
 }
 
 void test_heap( sortelt *heap, int heapsize, char *mesg, int n )
 {
-  int i = 0;
-  while( childr(i) < heapsize )
+	int i = 0;
+	while( childr(i) < heapsize )
 	{
-	  if( heap[childr(i)].weight < heap[i].weight ||
-		  heap[childl(i)].weight < heap[i].weight )
+		if( heap[childr(i)].weight < heap[i].weight ||
+			heap[childl(i)].weight < heap[i].weight )
 		{
-		  printf( "Fails I heap property: %s at %d pw=%d cl=%d cr=%d!\n", mesg, i,
-				  heap[i].weight, heap[childl(i)].weight, heap[childr(i)].weight );
-		  exit(1);
+			printf( "Fails I heap property: %s at %d pw=%d cl=%d cr=%d!\n", mesg, i,
+					heap[i].weight, heap[childl(i)].weight, heap[childr(i)].weight );
+			exit(1);
 		}
-	  ++i;
+		++i;
 	}
-  if( childl(i) < heapsize && heap[childl(i)].weight < heap[i].weight )
+	if( childl(i) < heapsize && heap[childl(i)].weight < heap[i].weight )
 	{
-	  printf( "Fails L heap property: %s!\n", mesg );
-	  exit(1);
+		printf( "Fails L heap property: %s!\n", mesg );
+		exit(1);
 	}
 }
 
@@ -1714,13 +2063,13 @@ static int thin_vector( sortelt vec[], int threshold, int len )
  	int i;
 	int j = 0;
 	for( i = 0; i < len; ++i )
-	  {
-			if( vec[i].weight <= threshold )
-		  {
+	{
+		if( vec[i].weight <= threshold )
+		{
 			vec[j] = vec[i];
 			++j;
-		  }
-	  }
+		}
+	}
 	return j;
 }
 
@@ -1742,10 +2091,10 @@ static int thin_vector( sortelt vec[], int threshold, int len )
 #define SEARCH_TABLE_SIZE (MAX_SEARCH_RADIUS*MAX_SEARCH_RADIUS)
 
 typedef struct _searchtablerec 
-	{
-		short tag;
-		short weight;
-	} searchtablerec;
+{
+	short tag;
+	short weight;
+} searchtablerec;
 	
 static short searchtable_fresh_ctr = 0xac45;
 
@@ -1777,16 +2126,16 @@ static int rcdist( unsigned char *org, unsigned short* blksums, int lx, int h )
 	for( i = 0; i <16; ++i )
 		colsums[i] = 0;
 	for( j = 0; j < h; ++j )
+	{
+		rowsum = 0;
+		for( i = 0; i < 16; ++i )
 		{
-		    rowsum = 0;
-			for( i = 0; i < 16; ++i )
-			{
-				rowsum += porg[i];
-				colsums[i] += porg[i];
-			}
-			dist += abs(rowsum-blkrowsums[j]);
-			porg += lx;
+			rowsum += porg[i];
+			colsums[i] += porg[i];
 		}
+		dist += abs(rowsum-blkrowsums[j]);
+		porg += lx;
+	}
 	
 	
 	for( i = 0; i < 16; ++i )
@@ -1799,7 +2148,7 @@ static int rcdist1( unsigned short *orgrsums, unsigned short *orgcsums,
                     unsigned short *blkrsums, unsigned short *blkcsums, int h )
 {
 	/* BUG: We ignore h and assume it is 16 since the code doesn't work for
-	non 16 h anyway. THus, *THIS CODE WILL NOT WORK FOR FIELD BASED DATA
+	   non 16 h anyway. THus, *THIS CODE WILL NOT WORK FOR FIELD BASED DATA
 	*/
 	int i;
 	int dist = 0;
@@ -1823,16 +2172,16 @@ static void rcsums( unsigned char *org, unsigned short *sums, int lx, int h)
 		colsums[i] = 0;
 	porg = org;
 	for( j = 0; j < h; ++j )
+	{
+		rowsum = 0;
+		for( i = 0; i < 16; ++i )
 		{
-			rowsum = 0;
-			for( i = 0; i < 16; ++i )
-			{
-				rowsum += porg[i];
-				colsums[i] += porg[i];
-			}
-			rowsums[j] = rowsum;
-			porg += lx;
+			rowsum += porg[i];
+			colsums[i] += porg[i];
 		}
+		rowsums[j] = rowsum;
+		porg += lx;
+	}
 }
 
 
@@ -1866,20 +2215,20 @@ static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int l
 	for( i = 0; i <16; ++i )
 		cso[i] = csb[i] = 0;
 	for( j = 0; j < h; ++j )
+	{
+		rso = rsb = 0;
+		for( i = 0; i < 16; ++i )
 		{
-			rso = rsb = 0;
-			for( i = 0; i < 16; ++i )
-			{
-				rso += porg[i];
-				cso[i] += porg[i];
-				rsb += pblk[i];
-				csb[i] += pblk[i];
+			rso += porg[i];
+			cso[i] += porg[i];
+			rsb += pblk[i];
+			csb[i] += pblk[i];
 				
-			}
-			dist += abs(rso-rsb);
-			porg += lx;
-			pblk += lx;
 		}
+		dist += abs(rso-rsb);
+		porg += lx;
+		pblk += lx;
+	}
 		
 	for( i = 0; i < 16; ++i )
 		dist += abs(cso[i]-csb[i]);
@@ -1891,129 +2240,129 @@ static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int l
 }
 
 static void local_optimum( unsigned char *org, unsigned char *blk, 
-								   int initx, int inity,
-								   int xlow, int xhigh,
-								   int ylow, int yhigh,
-								   int threshold,
-	                 int lx, int h, int *pbestd, int *pbestx, int *pbesty )
+						   int initx, int inity,
+						   int xlow, int xhigh,
+						   int ylow, int yhigh,
+						   int threshold,
+						   int lx, int h, int *pbestd, int *pbestx, int *pbesty )
 {
-		unsigned char *porg;
-		int deltax = 16 / 2;
-		int deltay = h /2;
-		int bestdx;
-		int bestdy;
-		int x = initx;
-		int y = inity;
-		int bestdist = 1234567; 
-		int dist;
-		int allstale,stale;
+	unsigned char *porg;
+	int deltax = 16 / 2;
+	int deltay = h /2;
+	int bestdx;
+	int bestdy;
+	int x = initx;
+	int y = inity;
+	int bestdist = 1234567; 
+	int dist;
+	int allstale,stale;
 		
-		porg = org+(x)+lx*(y);
+	porg = org+(x)+lx*(y);
 			
-		allstale = rcdist( porg, blk, x, y, lx, h, &bestdist);
-		while( (deltax+deltay > 2))  /* zero in to the 1*1 pel match level */
+	allstale = rcdist( porg, blk, x, y, lx, h, &bestdist);
+	while( (deltax+deltay > 2))  /* zero in to the 1*1 pel match level */
+	{
+		/*
+		  We've already covered the "no movement" option in the previous iteration or during
+		  initialisation.
+		*/
+		bestdx = 0;
+		bestdy = 0;
+			
+		/* Try the four quadrants and choose the best 
+		 */
+		if( deltax > 1 )
 		{
-				/*
-				We've already covered the "no movement" option in the previous iteration or during
-				initialisation.
-			  */
-			bestdx = 0;
-			bestdy = 0;
-			
-				/* Try the four quadrants and choose the best 
-					*/
-			if( deltax > 1 )
+			stale = rcdist_table( porg + deltax, blk, x+deltax, y, lx, h, &dist );
+			allstale &= stale;
+			if( !stale && dist < bestdist && x+deltax <= xhigh)
 			{
-				stale = rcdist_table( porg + deltax, blk, x+deltax, y, lx, h, &dist );
-				allstale &= stale;
-				if( !stale && dist < bestdist && x+deltax <= xhigh)
-				{
-					bestdist = dist;
-					bestdx = deltax;
-					bestdy = 0;
-				}
-				stale = rcdist( porg - deltax, blk, x-deltax, y, lx, h, &dist );
-				allstale &= stale;	
-				if( !stale && dist < bestdist && x-deltax >= xlow)
-				{
-					bestdist = dist;
-					bestdx = -deltax;
-					bestdy = 0;
-				}
-
+				bestdist = dist;
+				bestdx = deltax;
+				bestdy = 0;
 			}
-			
-			if( deltay > 1 )	
+			stale = rcdist( porg - deltax, blk, x-deltax, y, lx, h, &dist );
+			allstale &= stale;	
+			if( !stale && dist < bestdist && x-deltax >= xlow)
 			{
-				stale = rcdist_table( porg + deltay*lx, blk, x, y+deltay, lx, h, &dist );
-				allstale &= stale;	
-				if( !stale && dist < bestdist && y+deltay <= yhigh)
-				{
-					bestdist = dist;
-					bestdx = 0;
-					bestdy = deltay;
-				}
-				stale = rcdist_table( porg - deltay*lx, blk, x, y-deltay, lx, h, &dist );
-				allstale &= stale;
-				if( !stale && dist < bestdist && x-deltay >= ylow )
-				{
-					bestdist = dist;
-					bestdx = 0;
-					bestdy = -deltay;
-				}
-
-			
-			}
-			
-
-			/*printf( "SEARCH X=%d Y=%d DX=%d DY=%d BDX=%d BDY=%d D=%d\n",
-						 x, y, deltax, deltay, bestdx, bestdy, bestdist );
-			*/
-			/* Heuristic: if neither quadrant works we simply assume they're overshoots.  We assume
-				 diagonals need not be considered because it would make a quadrant better than the current....
-			*/
-			
-			x += bestdx;
-			porg += bestdx;
-			y += bestdy;
-			porg += lx*bestdy;
-			
-			/* Look closer if not different position is better */
-			if( bestdx == 0 && bestdy == 0 )
-			{
-				/* int unchangeable_x, unchangeable_y; */
-				deltax /= 2;
-				deltay /= 2;
-				/* As a a rule of thumb, once the search narrows we are stuck with some of the match.
-					 If both delta's 1/2 of match block then we're stuck with 1/4.
-					 If both delta's are 1/4 then we're stuck with 3/4's
-					 However, since its a fudge we add a 25% safety margin to allow for multi-step shifts.
-					 We don't actually bother doing any hard sums since we hit here when we're already at the
-					 1/4 stage which is good enough for an approximation...
-					 */
-				/* unchangeable_x = 16 - deltax;
-			  unchangeable_y = h - deltay; */
-				if( bestdist / 4 > threshold+(threshold>>2) )
-				{
-					/*printf("Threshold abort!\n");*/
-					break;
-				}
+				bestdist = dist;
+				bestdx = -deltax;
+				bestdy = 0;
 			}
 
-			/* If we have considered no fresh locations we also abort the search early  
-				One refinement might be to take into account search radius...
-			*/
-			if( allstale )
+		}
+			
+		if( deltay > 1 )	
+		{
+			stale = rcdist_table( porg + deltay*lx, blk, x, y+deltay, lx, h, &dist );
+			allstale &= stale;	
+			if( !stale && dist < bestdist && y+deltay <= yhigh)
 			{
-				/*printf( "Staleness abort\n" );*/
+				bestdist = dist;
+				bestdx = 0;
+				bestdy = deltay;
+			}
+			stale = rcdist_table( porg - deltay*lx, blk, x, y-deltay, lx, h, &dist );
+			allstale &= stale;
+			if( !stale && dist < bestdist && x-deltay >= ylow )
+			{
+				bestdist = dist;
+				bestdx = 0;
+				bestdy = -deltay;
+			}
+
+			
+		}
+			
+
+		/*printf( "SEARCH X=%d Y=%d DX=%d DY=%d BDX=%d BDY=%d D=%d\n",
+		  x, y, deltax, deltay, bestdx, bestdy, bestdist );
+		*/
+		/* Heuristic: if neither quadrant works we simply assume they're overshoots.  We assume
+		   diagonals need not be considered because it would make a quadrant better than the current....
+		*/
+			
+		x += bestdx;
+		porg += bestdx;
+		y += bestdy;
+		porg += lx*bestdy;
+			
+		/* Look closer if not different position is better */
+		if( bestdx == 0 && bestdy == 0 )
+		{
+			/* int unchangeable_x, unchangeable_y; */
+			deltax /= 2;
+			deltay /= 2;
+			/* As a a rule of thumb, once the search narrows we are stuck with some of the match.
+			   If both delta's 1/2 of match block then we're stuck with 1/4.
+			   If both delta's are 1/4 then we're stuck with 3/4's
+			   However, since its a fudge we add a 25% safety margin to allow for multi-step shifts.
+			   We don't actually bother doing any hard sums since we hit here when we're already at the
+			   1/4 stage which is good enough for an approximation...
+			*/
+			/* unchangeable_x = 16 - deltax;
+			   unchangeable_y = h - deltay; */
+			if( bestdist / 4 > threshold+(threshold>>2) )
+			{
+				/*printf("Threshold abort!\n");*/
 				break;
 			}
-			allstale = 1;
 		}
 
-		*pbestx = x;
-		*pbesty = y;
-		*pbestd = bestdist;
+		/* If we have considered no fresh locations we also abort the search early  
+		   One refinement might be to take into account search radius...
+		*/
+		if( allstale )
+		{
+			/*printf( "Staleness abort\n" );*/
+			break;
+		}
+		allstale = 1;
+	}
+
+	*pbestx = x;
+	*pbesty = y;
+	*pbestd = bestdist;
 			
 }
 
@@ -2030,163 +2379,163 @@ static void local_optimum( unsigned char *org, unsigned char *blk,
 
 
 static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh, 
-								  unsigned char *org, mcompuint *forg, 
-								  unsigned char *blk,  mcompuint *fblk, 
-								  int lx, int h, 
-								  int *pdmin, int *pimin, int *pjmin )
+								 unsigned char *org, mcompuint *forg, 
+								 unsigned char *blk,  mcompuint *fblk, 
+								 int lx, int h, 
+								 int *pdmin, int *pimin, int *pjmin )
 {
   	unsigned char *orgblk;
-		int i,j;
-		int bestrcdist = 256*255;		/* Can't be lazy and use INT_MAX as it gets used in a thresholding
-															calculation and we don't want to cause overflows */
-		int bestdist = 7891011;
-		int bestx, besty;
-		int dist,x,y;
-		int d;
-		int onepel_radius;
+	int i,j;
+	int bestrcdist = 256*255;		/* Can't be lazy and use INT_MAX as it gets used in a thresholding
+									   calculation and we don't want to cause overflows */
+	int bestdist = 7891011;
+	int bestx, besty;
+	int dist,x,y;
+	int d;
+	int onepel_radius;
 		
-		freshensearchtable;		/* Ensure we can recognise fresh entries in the search cache */
+	freshensearchtable;		/* Ensure we can recognise fresh entries in the search cache */
 
-		/* Find the most promising starting point in the search box */
+	/* Find the most promising starting point in the search box */
 
-		for( j = jlow+8; j <= jhigh; j += 24 )
+	for( j = jlow+8; j <= jhigh; j += 24 )
+	{
+		for( i = ilow+8; i <= ihigh; i += 24 )
 		{
-			for( i = ilow+8; i <= ihigh; i += 24 )
+			/*printf( "Starting candidate %d %d \n", i, j );*/
+			local_optimum( org, 	blk, i, j, ilow, ihigh, jlow, jhigh, bestrcdist, lx, h, &dist, &x, &y );
+			if( dist < bestrcdist )
 			{
-				/*printf( "Starting candidate %d %d \n", i, j );*/
-			  local_optimum( org, 	blk, i, j, ilow, ihigh, jlow, jhigh, bestrcdist, lx, h, &dist, &x, &y );
-				if( dist < bestrcdist )
+				bestrcdist = dist;
+			}
+			/* Now compute 1*1 pel distance measure (we could even try a DCT here  for real accuracy... *) 
+			   And use that as the basis for our final selection of the best match position.
+			*/
+			dist = (*pdist1_)00(org+x+y*lx, blk, lx, h, bestdist);
+			if ( dist < bestdist  )
+			{
+				bestdist = dist;
+				bestx = x;
+				besty = y;
+				if( bestdist < onepel_threshold.threshold )
 				{
-					bestrcdist = dist;
-				}
-				/* Now compute 1*1 pel distance measure (we could even try a DCT here  for real accuracy... *) 
-					 And use that as the basis for our final selection of the best match position.
-				*/
-				dist = (*pdist1_)00(org+x+y*lx, blk, lx, h, bestdist);
-				if ( dist < bestdist  )
-				{
-					bestdist = dist;
-					bestx = x;
-					besty = y;
-					if( bestdist < onepel_threshold.threshold )
-						{
-							i = ihigh;
-							j = jhigh;
-						}
+					i = ihigh;
+					j = jhigh;
 				}
 			}
 		}
+	}
 		
-		/* We now try to figure out how hard to look for alternative matches based on the crumminess of
-			 the results we have obtained...
-		*/
-		onepel_radius = bestdist / onepel_threshold.threshold ;
+	/* We now try to figure out how hard to look for alternative matches based on the crumminess of
+	   the results we have obtained...
+	*/
+	onepel_radius = bestdist / onepel_threshold.threshold ;
 		
-		/* We're already good we simply look for a bit of polish */
-		if( onepel_radius < 1 )
-			onepel_radius = 1;
+	/* We're already good we simply look for a bit of polish */
+	if( onepel_radius < 1 )
+		onepel_radius = 1;
 		
-		/* If its really bad we simply search the whole box using a coarse 2*2 pel search first and pick out 
-			 the best local area and then zero in with 1*1 pel search.
-		*/
+	/* If its really bad we simply search the whole box using a coarse 2*2 pel search first and pick out 
+	   the best local area and then zero in with 1*1 pel search.
+	*/
 		
-		if( onepel_radius > 3 )
-			{
-					int flx = lx / 2;
-					int fh = h / 2;
-					mcompuint *forgblk;
-					int bestfdist;
-					int filow = bestx - 16  /* ilow */;
-					int fihigh = bestx + 16  /*ihigh */;
-					int fjlow =  besty - 10 /*jlow  */;
-					int fjhigh = besty + 10 /*jhigh*/;
+	if( onepel_radius > 3 )
+	{
+		int flx = lx / 2;
+		int fh = h / 2;
+		mcompuint *forgblk;
+		int bestfdist;
+		int filow = bestx - 16  /* ilow */;
+		int fihigh = bestx + 16  /*ihigh */;
+		int fjlow =  besty - 10 /*jlow  */;
+		int fjhigh = besty + 10 /*jhigh*/;
 					
-					if( filow < ilow )
-						filow = ilow;
-					if( fihigh > ihigh )
-						fihigh = ihigh;
-					if( fjlow < jlow )
-						fjlow = jlow;
-					if( fjhigh > jhigh )
-						fjhigh = jhigh;
+		if( filow < ilow )
+			filow = ilow;
+		if( fihigh > ihigh )
+			fihigh = ihigh;
+		if( fjlow < jlow )
+			fjlow = jlow;
+		if( fjhigh > jhigh )
+			fjhigh = jhigh;
 						
-				/* Now find the best 2*2 pel match in the neighbourhood.  This is probably overkill.
-					 TODO: There is almost invariably *some* locality so should be tuned later... */
+		/* Now find the best 2*2 pel match in the neighbourhood.  This is probably overkill.
+		   TODO: There is almost invariably *some* locality so should be tuned later... */
 	
-				bestfdist = INT_MAX;
-				forgblk = forg+ (fjlow>>1)*flx;
-				for( j = fjlow; j <= fjhigh; j += 2 )
-				{
-					for( i = filow; i <= fihigh; i += 2 )
-						{
-							dist = *pfdist1( forgblk+(i>>1), fblk, flx, fh );	
-							if( dist < bestfdist )
-							{
-								bestfdist = dist;
-								bestx = i;
-								besty = j;
-							}
-						}
-						forgblk += flx;
-				}
-
-				/* The best 1*1 based on it... going upward only */
-				onepel_radius = 1;   
-				bestdist = INT_MAX;
-				
-				ilow =bestx;
-				jlow =besty;
-			}
-		else
+		bestfdist = INT_MAX;
+		forgblk = forg+ (fjlow>>1)*flx;
+		for( j = fjlow; j <= fjhigh; j += 2 )
 		{
-			/* Now the best 1*1 pel match... down as well as up */
-			if ( bestx-onepel_radius > 0 )
-				 ilow = bestx-onepel_radius;
-			if( besty-onepel_radius > 0 )
-				jlow = besty-onepel_radius;
-				
-		}
-			
-			
-		if (bestx+onepel_radius <= width-16 )
-				ihigh = bestx+onepel_radius;
-
-		if( besty+onepel_radius <= height-16 )
-				jhigh = besty+onepel_radius;
-
-		orgblk = org +jlow*lx;
-		for( j = jlow; j <= jhigh; ++j )
-		{
-			for( i = ilow; i <= ihigh; ++i)
-				{
-					dist = (*pdist1_)00( orgblk+i, blk, lx, h, bestdist );	
-					if( dist < bestdist )
-					{
-						/*
-						printf("Correction to estimate %d %d dist %d (%d %d dist %d )\n", 
-							i,j, dist, bestx, besty, bestdist );
-							*/
-						bestdist = dist;
-						bestx = i;
-						besty = j;
-					}
-				}
-			orgblk += lx;
-		}
-
-		if( bestdist > 65000 )
+			for( i = filow; i <= fihigh; i += 2 )
 			{
-				printf( "Screwed bestdist %d %d %d %d!\n", ilow, ihigh, jlow, jhigh );
-				exit(1);
+				dist = *pfdist1( forgblk+(i>>1), fblk, flx, fh );	
+				if( dist < bestfdist )
+				{
+					bestfdist = dist;
+					bestx = i;
+					besty = j;
+				}
 			}
+			forgblk += flx;
+		}
 
-		/*printf( "RC local minimum at %d %d rcdist %d dist %d\n", bestx, besty, bestrcdist, bestdist );
-		*/
+		/* The best 1*1 based on it... going upward only */
+		onepel_radius = 1;   
+		bestdist = INT_MAX;
+				
+		ilow =bestx;
+		jlow =besty;
+	}
+	else
+	{
+		/* Now the best 1*1 pel match... down as well as up */
+		if ( bestx-onepel_radius > 0 )
+			ilow = bestx-onepel_radius;
+		if( besty-onepel_radius > 0 )
+			jlow = besty-onepel_radius;
+				
+	}
+			
+			
+	if (bestx+onepel_radius <= width-16 )
+		ihigh = bestx+onepel_radius;
+
+	if( besty+onepel_radius <= height-16 )
+		jhigh = besty+onepel_radius;
+
+	orgblk = org +jlow*lx;
+	for( j = jlow; j <= jhigh; ++j )
+	{
+		for( i = ilow; i <= ihigh; ++i)
+		{
+			dist = (*pdist1_)00( orgblk+i, blk, lx, h, bestdist );	
+			if( dist < bestdist )
+			{
+				/*
+				  printf("Correction to estimate %d %d dist %d (%d %d dist %d )\n", 
+				  i,j, dist, bestx, besty, bestdist );
+				*/
+				bestdist = dist;
+				bestx = i;
+				besty = j;
+			}
+		}
+		orgblk += lx;
+	}
+
+	if( bestdist > 65000 )
+	{
+		printf( "Screwed bestdist %d %d %d %d!\n", ilow, ihigh, jlow, jhigh );
+		exit(1);
+	}
+
+	/*printf( "RC local minimum at %d %d rcdist %d dist %d\n", bestx, besty, bestrcdist, bestdist );
+	 */
 		
-		update_threshold( &onepel_threshold, bestdist );
-		*pimin = bestx;
-		*pjmin = besty;
-		*pdmin = bestdist;
+	update_threshold( &onepel_threshold, bestdist );
+	*pimin = bestx;
+	*pjmin = besty;
+	*pdmin = bestdist;
 
 
 }														
@@ -2213,8 +2562,8 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 extern int rcdist_mmx( unsigned char *org, unsigned short *sums, int lx, int h );
   
 static int build_rcquad_heap( int ilow, int ihigh, int jlow, int jhigh, 
-							  unsigned char *org, unsigned char *blk, 
-							  unsigned short *blkcsums, *blkrsums,
+unsigned char *org, unsigned char *blk, 
+unsigned short *blkcsums, *blkrsums,
 							  int lx, int h )
 {
 	int i,j;
@@ -2260,7 +2609,7 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 {
   int k,s;
   sortelt distrec;
-  matchelt matchrec;
+  blockxy matchrec;
   mcompuint *orgblk;
   int dist_sum  = 0;
   int best_fast_dist = INT_MAX;
@@ -2328,12 +2677,12 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 
 
 	  /* If we're thresholding check  got a match below the threshold. 
-	  	*and* .. stop looking... we've already found a good candidate...
-		*/
+	*and* .. stop looking... we've already found a good candidate...
+	*/
 	  if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
-		{ 
+	  { 
 		  break;
-		}
+	  }
 	}
 
   /* Since heapification is relatively expensive we do a swift
@@ -2364,13 +2713,13 @@ static int build_rchalf_heap(int ihigh, int jhigh,
 #define MAX_COARSE_HEAP_SIZE 100*100
 
 static sortelt half_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt half_matches[MAX_COARSE_HEAP_SIZE];
+static blockxy half_matches[MAX_COARSE_HEAP_SIZE];
 static int half_heap_size;
 static sortelt quad_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt quad_matches[MAX_COARSE_HEAP_SIZE];
+static blockxy quad_matches[MAX_COARSE_HEAP_SIZE];
 static int quad_heap_size;
 static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
-static matchelt rough_matches[MAX_COARSE_HEAP_SIZE];
+static blockxy rough_matches[MAX_COARSE_HEAP_SIZE];
 static int rough_heap_size;
 
 
@@ -2391,142 +2740,142 @@ static int rough_heap_size;
 static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh, 
 							mcompuint *qorg, mcompuint *qblk, int qlx, int qh )
 {
-  mcompuint *qorgblk;
-  mcompuint *old_qorgblk;
-  sortelt distrec;
-  matchelt matchrec;
-  int i,j,k;
-  int s1,s2;
-  int dist_sum;
-  int searched_rough_size;
-  int best_quad_dist;
+	mcompuint *qorgblk;
+	mcompuint *old_qorgblk;
+	sortelt distrec;
+	blockxy matchrec;
+	int i,j,k;
+	int s1,s2;
+	int dist_sum;
+	int searched_rough_size;
+	int best_quad_dist;
 
-  /* N.b. we may ignore the right hand block of the pair going over the
-	 right edge as we have carefully allocated the buffer oversize to ensure
-	 no memory faults.  The later motion compensation calculations
-	 performed on the results of this pass will filter out
-	 out-of-range blocks...
-  */
+	/* N.b. we may ignore the right hand block of the pair going over the
+	   right edge as we have carefully allocated the buffer oversize to ensure
+	   no memory faults.  The later motion compensation calculations
+	   performed on the results of this pass will filter out
+	   out-of-range blocks...
+	*/
 
-  rough_heap_size = 0;
-  dist_sum = 0;
-  if( nodual_qdist )
+	rough_heap_size = 0;
+	dist_sum = 0;
+	if( nodual_qdist )
 	{
-	  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
-	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-	  for( j = jlow; j <= jhigh; j += 4 )
+		/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+		for( j = jlow; j <= jhigh; j += 4 )
 		{
-		  old_qorgblk = qorgblk;
-		  for( i = ilow; i <= ihigh; i += 4 )
+			old_qorgblk = qorgblk;
+			for( i = ilow; i <= ihigh; i += 4 )
 			{
-			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
-			  quad_matches[quad_heap_size].dx = i;
-			  quad_matches[quad_heap_size].dy = j;
-			  quad_match_heap[quad_heap_size].index = quad_heap_size;
-			  quad_match_heap[quad_heap_size].weight =s1;
-			  dist_sum += s1;
-			  ++quad_heap_size;
-			  qorgblk += 1;
+				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
+				quad_matches[quad_heap_size].x = i;
+				quad_matches[quad_heap_size].y = j;
+				quad_match_heap[quad_heap_size].index = quad_heap_size;
+				quad_match_heap[quad_heap_size].weight =s1;
+				dist_sum += s1;
+				++quad_heap_size;
+				qorgblk += 1;
 			}
-		  qorgblk = old_qorgblk + qlx;
+			qorgblk = old_qorgblk + qlx;
 		}
 	}
-  else
+	else
 	{
 	
-	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-	  for( j = jlow; j <= jhigh; j += 8 )
+		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+		for( j = jlow; j <= jhigh; j += 8 )
 		{
-		  old_qorgblk = qorgblk;
-		  k = 0;
-		  for( i = ilow; i <= ihigh; i+= 8  )
+			old_qorgblk = qorgblk;
+			k = 0;
+			for( i = ilow; i <= ihigh; i+= 8  )
 			{
 
-			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
-			  s2 = (s1 >> 16) & 0xffff;
-			  s1 = s1 & 0xffff;
-			  dist_sum += s1+s2;
-			  rough_match_heap[rough_heap_size].weight = s1;
-			  rough_match_heap[rough_heap_size].index = rough_heap_size;	
-			  rough_match_heap[rough_heap_size+1].weight = s2;
-			  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
-			  rough_matches[rough_heap_size].dx = i;
-			  rough_matches[rough_heap_size].dy = j;
-			  rough_matches[rough_heap_size+1].dx = i+16;
-			  rough_matches[rough_heap_size+1].dy = j;
-			  /* A sneaky fast way way of discarding out-of-limits estimates ... */
-			  rough_heap_size += 1 + (i+16 <= ihigh);
+				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
+				s2 = (s1 >> 16) & 0xffff;
+				s1 = s1 & 0xffff;
+				dist_sum += s1+s2;
+				rough_match_heap[rough_heap_size].weight = s1;
+				rough_match_heap[rough_heap_size].index = rough_heap_size;	
+				rough_match_heap[rough_heap_size+1].weight = s2;
+				rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
+				rough_matches[rough_heap_size].x = i;
+				rough_matches[rough_heap_size].y = j;
+				rough_matches[rough_heap_size+1].x = i+16;
+				rough_matches[rough_heap_size+1].y = j;
+				/* A sneaky fast way way of discarding out-of-limits estimates ... */
+				rough_heap_size += 1 + (i+16 <= ihigh);
 
-			  /* NOTE:  If you change the grid size you *must* adjust this code... too */
+				/* NOTE:  If you change the grid size you *must* adjust this code... too */
 	
-			  qorgblk+=2;
-			  k = (k+2)&3;
-			  /* Original branchy code... so you can see what this stuff is meant to
-				 do!!!!
-				 if( k == 0 )
-				 {
-				 qorgblk += 4;
-				 i += 16;
-				 }
-			  */
-			  qorgblk += (k==0)<<2;
-			  i += (k==0)<<4;
+				qorgblk+=2;
+				k = (k+2)&3;
+				/* Original branchy code... so you can see what this stuff is meant to
+				   do!!!!
+				   if( k == 0 )
+				   {
+				   qorgblk += 4;
+				   i += 16;
+				   }
+				*/
+				qorgblk += (k==0)<<2;
+				i += (k==0)<<4;
 		  
 			}
-		  qorgblk = old_qorgblk + (qlx<<1);
+			qorgblk = old_qorgblk + (qlx<<1);
 		}
 	
-	  heapify( rough_match_heap, rough_heap_size );
+		heapify( rough_match_heap, rough_heap_size );
 
-	  best_quad_dist = rough_match_heap[0].weight;	
+		best_quad_dist = rough_match_heap[0].weight;	
 
-	  /* 
-		 We now use the good matches on 8-pel boundaries 
-		 as starting points for matches on 4-pel boundaries...
-	  */
-	  quad_heap_size = 0;
-	  searched_rough_size = 1+rough_heap_size / 3;
+		/* 
+		   We now use the good matches on 8-pel boundaries 
+		   as starting points for matches on 4-pel boundaries...
+		*/
+		quad_heap_size = 0;
+		searched_rough_size = 1+rough_heap_size / 3;
 
-	  dist_sum = 0;
-	  for( k = 0; k < searched_rough_size; ++k )
+		dist_sum = 0;
+		for( k = 0; k < searched_rough_size; ++k )
 		{
-		  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
-		  matchrec = rough_matches[distrec.index];
-		  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
-		  quad_matches[quad_heap_size].dx = matchrec.dx;
-		  quad_matches[quad_heap_size].dy = matchrec.dy;
-		  quad_match_heap[quad_heap_size].index = quad_heap_size;
-		  quad_match_heap[quad_heap_size].weight = distrec.weight;
-		  dist_sum += distrec.weight;	
-		  ++quad_heap_size;	  
+			heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+			matchrec = rough_matches[distrec.index];
+			qorgblk =  qorg + (matchrec.y>>2)*qlx +(matchrec.x>>2);
+			quad_matches[quad_heap_size].x = matchrec.x;
+			quad_matches[quad_heap_size].y = matchrec.y;
+			quad_match_heap[quad_heap_size].index = quad_heap_size;
+			quad_match_heap[quad_heap_size].weight = distrec.weight;
+			dist_sum += distrec.weight;	
+			++quad_heap_size;	  
 
-		  for( i = 1; i < 4; ++i )
+			for( i = 1; i < 4; ++i )
 			{
-			  int x, y;
-			  x = matchrec.dx + (i & 0x1)*4;
-			  y = matchrec.dy + (i >>1)*4;
-			  s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
-			  dist_sum += s1;
-			  if( s1 < best_quad_dist )
-		  		best_quad_dist = s1;
+				int x, y;
+				x = matchrec.x + (i & 0x1)*4;
+				y = matchrec.y + (i >>1)*4;
+				s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
+				dist_sum += s1;
+				if( s1 < best_quad_dist )
+					best_quad_dist = s1;
 
-			  quad_match_heap[quad_heap_size].weight = s1;
-			  quad_match_heap[quad_heap_size].index = quad_heap_size;
-			  quad_matches[quad_heap_size].dx = x;
-			  quad_matches[quad_heap_size].dy = y;
-			  quad_heap_size += (x <= ihigh && y <= jhigh);
+				quad_match_heap[quad_heap_size].weight = s1;
+				quad_match_heap[quad_heap_size].index = quad_heap_size;
+				quad_matches[quad_heap_size].x = x;
+				quad_matches[quad_heap_size].y = y;
+				quad_heap_size += (x <= ihigh && y <= jhigh);
 
-			  if( i == 2 )
-				qorgblk += qlx;
+				if( i == 2 )
+					qorgblk += qlx;
 			}
 
 		}
 	}
 
 
-  heapify( quad_match_heap, quad_heap_size );
+	heapify( quad_match_heap, quad_heap_size );
 
-  return quad_heap_size;
+	return quad_heap_size;
 }
 
 
@@ -2540,97 +2889,97 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 
 
 static int build_half_heap(int ihigh, int jhigh, 
-					        mcompuint *forg,  mcompuint *fblk, 
-							int flx, int fh,  int searched_quad_size )
+						   mcompuint *forg,  mcompuint *fblk, 
+						   int flx, int fh,  int searched_quad_size )
 {
-  int k,s;
-  sortelt distrec;
-  matchelt matchrec;
-  mcompuint *forgblk;
-  int dist_sum  = 0;
-  int best_fast_dist = INT_MAX;
+	int k,s;
+	sortelt distrec;
+	blockxy matchrec;
+	mcompuint *forgblk;
+	int dist_sum  = 0;
+	int best_fast_dist = INT_MAX;
   
-  half_heap_size = 0;
-  for( k = 0; k < searched_quad_size; ++k )
+	half_heap_size = 0;
+	for( k = 0; k < searched_quad_size; ++k )
 	{
-	  heap_extract( quad_match_heap, &quad_heap_size, &distrec );
-	  matchrec = quad_matches[distrec.index];
-	  forgblk =  forg + (matchrec.dy>>1)*flx +(matchrec.dx>>1);
+		heap_extract( quad_match_heap, &quad_heap_size, &distrec );
+		matchrec = quad_matches[distrec.index];
+		forgblk =  forg + (matchrec.y>>1)*flx +(matchrec.x>>1);
 		  
 
-	  s = (*pfdist1)( forgblk,fblk,flx,fh);
-	  half_matches[half_heap_size].dx = matchrec.dx;
-	  half_matches[half_heap_size].dy = matchrec.dy;
-	  half_match_heap[half_heap_size].index = half_heap_size;
-	  half_match_heap[half_heap_size].weight = s;
-	  if( s < best_fast_dist )
-		  best_fast_dist = s;
-	  ++half_heap_size;
-	  dist_sum += s;
+		s = (*pfdist1)( forgblk,fblk,flx,fh);
+		half_matches[half_heap_size].x = matchrec.x;
+		half_matches[half_heap_size].y = matchrec.y;
+		half_match_heap[half_heap_size].index = half_heap_size;
+		half_match_heap[half_heap_size].weight = s;
+		if( s < best_fast_dist )
+			best_fast_dist = s;
+		++half_heap_size;
+		dist_sum += s;
 	  
 		  
-	 if(  matchrec.dy+2 <= jhigh )
-	   {
-		  s = (*pfdist1)( forgblk+flx,fblk,flx,fh);
-		  half_matches[half_heap_size].dx = matchrec.dx;
-		  half_matches[half_heap_size].dy = matchrec.dy+2;
-		  half_match_heap[half_heap_size].index = half_heap_size;
-		  half_match_heap[half_heap_size].weight = s;
-		  if( s < best_fast_dist )
+		if(  matchrec.y+2 <= jhigh )
+		{
+			s = (*pfdist1)( forgblk+flx,fblk,flx,fh);
+			half_matches[half_heap_size].x = matchrec.x;
+			half_matches[half_heap_size].y = matchrec.y+2;
+			half_match_heap[half_heap_size].index = half_heap_size;
+			half_match_heap[half_heap_size].weight = s;
+			if( s < best_fast_dist )
 				best_fast_dist = s;
-		  ++half_heap_size;
-		  dist_sum += s;
+			++half_heap_size;
+			dist_sum += s;
 		} 
 		  
-	  if( matchrec.dx+2 <= ihigh )
-		  {
-			  s = (*pfdist1)( forgblk+1,fblk,flx,fh);
-			  half_matches[half_heap_size].dx = matchrec.dx+2;
-			  half_matches[half_heap_size].dy = matchrec.dy;
-			  half_match_heap[half_heap_size].index = half_heap_size;
-			  half_match_heap[half_heap_size].weight = s;
-			  if( s < best_fast_dist )
-					best_fast_dist = s;
-			  ++half_heap_size;
-			  dist_sum += s;
+		if( matchrec.x+2 <= ihigh )
+		{
+			s = (*pfdist1)( forgblk+1,fblk,flx,fh);
+			half_matches[half_heap_size].x = matchrec.x+2;
+			half_matches[half_heap_size].y = matchrec.y;
+			half_match_heap[half_heap_size].index = half_heap_size;
+			half_match_heap[half_heap_size].weight = s;
+			if( s < best_fast_dist )
+				best_fast_dist = s;
+			++half_heap_size;
+			dist_sum += s;
 			  
-			 if( matchrec.dy+2 <= jhigh )
-				{
-				    s = (*pfdist1)( forgblk+flx+1,fblk,flx,fh);
-					half_matches[half_heap_size].dx = matchrec.dx+2;
-					half_matches[half_heap_size].dy = matchrec.dy+2;
-					half_match_heap[half_heap_size].index = half_heap_size;
-					half_match_heap[half_heap_size].weight = s;
-					if( s < best_fast_dist )
-						  best_fast_dist = s;
-					++half_heap_size;
-					dist_sum += s;
-				}
-		 }
+			if( matchrec.y+2 <= jhigh )
+			{
+				s = (*pfdist1)( forgblk+flx+1,fblk,flx,fh);
+				half_matches[half_heap_size].x = matchrec.x+2;
+				half_matches[half_heap_size].y = matchrec.y+2;
+				half_match_heap[half_heap_size].index = half_heap_size;
+				half_match_heap[half_heap_size].weight = s;
+				if( s < best_fast_dist )
+					best_fast_dist = s;
+				++half_heap_size;
+				dist_sum += s;
+			}
+		}
 
 
-	  /* If we're thresholding check  got a match below the threshold. 
-	  	*and* .. stop looking... we've already found a good candidate...
-		*/
-	  if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
+		/* If we're thresholding check  got a match below the threshold. 
+		 *and* .. stop looking... we've already found a good candidate...
+		 */
+		if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
 		{ 
-		  break;
+			break;
 		}
 	}
 
-  /* Since heapification is relatively expensive we do a swift
-	 pre-processing step throwing out all candidates that
-	 are heavier than the heap average */
+	/* Since heapification is relatively expensive we do a swift
+	   pre-processing step throwing out all candidates that
+	   are heavier than the heap average */
 
-  half_heap_size = thin_vector(  half_match_heap, 
-                                 dist_sum / half_heap_size, half_heap_size );
+	half_heap_size = thin_vector(  half_match_heap, 
+								   dist_sum / half_heap_size, half_heap_size );
 
-  heapify( half_match_heap, half_heap_size );
+	heapify( half_match_heap, half_heap_size );
   
-  /* Update the fast motion match average using the best 2*2 match */
-  update_threshold( &twopel_threshold, half_match_heap[0].weight );
+	/* Update the fast motion match average using the best 2*2 match */
+	update_threshold( &twopel_threshold, half_match_heap[0].weight );
 
-  return half_heap_size;
+	return half_heap_size;
 }
 
 /*
@@ -2643,76 +2992,73 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 							   int searched_size,
 							   int xmax, int ymax,
 							   int lx, int h, 
-							   int *pdmin, int *pimin, int *pjmin )
+							   mb_motion_s *res
+	)
+
 {
-  int k;
-  int d;
-  int imin = *pimin;
-  int jmin = *pjmin;
-  int dmin = INT_MAX;
-  mcompuint *orgblk;
-  sortelt distrec;
-  matchelt matchrec;
+	int k;
+	int d;
+	blockxy minpos = res->pos;
+	int dmin = INT_MAX;
+	mcompuint *orgblk;
+	sortelt distrec;
+	blockxy matchrec;
   
  
-  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
-  /* It can happen (rarely) that the best matches are actually illegal.
-	  In that case we have to carry on looking... */
-  do {
-	  for( k = 0; k < searched_size; ++k )
-	  {	
+	/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+	/* It can happen (rarely) that the best matches are actually illegal.
+	   In that case we have to carry on looking... */
+	do {
+		for( k = 0; k < searched_size; ++k )
+		{	
 
-		  heap_extract( half_match_heap, &half_heap_size, &distrec );
-		  matchrec = half_matches[distrec.index];
-		  orgblk = org + matchrec.dx+lx*matchrec.dy;
+			heap_extract( half_match_heap, &half_heap_size, &distrec );
+			matchrec = half_matches[distrec.index];
+			orgblk = org + matchrec.x+lx*matchrec.y;
 		  
-		  if( matchrec.dx <= xmax && matchrec.dy <= ymax )
-		  {
-			  d = (*pdist1_00)(orgblk,blk,lx,h, dmin);
-			  if (d<dmin)
-			  {
-				  dmin = d;
-				  imin = matchrec.dx;
-				  jmin = matchrec.dy;
+			if( matchrec.x <= xmax && matchrec.y <= ymax )
+			{
+				d = (*pdist1_00)(orgblk,blk,lx,h, dmin);
+				if (d<dmin)
+				{
+					dmin = d;
+					minpos = matchrec;
+				}
+				d = (*pdist1_00)(orgblk+1,blk,lx,h, dmin);
+				if (d<dmin && (matchrec.x < xmax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x+1;
+					minpos.y = matchrec.y;
+				}
 
-			  }
-			  d = (*pdist1_00)(orgblk+1,blk,lx,h, dmin);
-			  if (d<dmin && (matchrec.dx < xmax))
-			  {
-				  dmin = d;
-				  imin = matchrec.dx+1;
-				  jmin = matchrec.dy;
+				d = (*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
+				if( (d<dmin) && (matchrec.y < ymax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x;
+					minpos.y = matchrec.y+1;
+				}
+				d = (*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
+				if ( (d<dmin) && (matchrec.y < ymax) && (matchrec.x < xmax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x+1;
+					minpos.y = matchrec.y+1;
+				}      
+			}
 
-			  }
+		}
 
-			  d = (*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
-			  if( (d<dmin) && (matchrec.dy < ymax))
-			  {
-				  dmin = d;
-				  imin = matchrec.dx;
-				  jmin = matchrec.dy+1;
-  
-			  }
-			  d = (*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
-			  if ( (d<dmin) && (matchrec.dy < ymax) && (matchrec.dx < xmax))
-			  {
-				  dmin = d;
-				  imin = matchrec.dx+1;
-				  jmin = matchrec.dy+1;
+		searched_size = half_heap_size;
 
-			  }      
-		  }
+	} while (half_heap_size>0 && dmin == INT_MAX);
 
-	  }
+	res->pos = minpos;
+	res->blk = org+minpos.x+lx*minpos.y;
+	res->sad = dmin;
 
-	  searched_size = half_heap_size;
-
-  } while (half_heap_size>0 && dmin == INT_MAX);
-
-  *pimin = imin;
-  *pjmin = jmin;
-  *pdmin = dmin;
- }
+}
  
 /*
  * full search block matching
@@ -2736,27 +3082,37 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
  */
 
 
-static int fullsearch(org,ref,blk,fblk,qblk,lx,i0,j0,sx,sy,h,xmax,ymax,iminp,jminp)
-unsigned char *org,*ref,*blk;
-mcompuint *fblk;
-mcompuint *qblk;
-int lx,i0,j0,sx,sy,h,xmax,ymax;
-int *iminp,*jminp;
+static void fullsearch(
+	unsigned char *org,
+	unsigned char *ref,
+	subsampled_mb_s *ssblk,
+	int lx, int i0, int j0, 
+	int sx, int sy, int h,
+	int xmax, int ymax,
+	/* int *iminp, int *jminp, int *sadminp, */
+	mb_motion_s *res
+	)
 {
-  int i,j,imin,jmin,ilow,ihigh,jlow,jhigh;
-  int d,dmin;
-  int sxy;
-  int searched_size;
+	mb_motion_s best;
+	/* int imin, jmin, dmin */
+	int i,j,ilow,ihigh,jlow,jhigh;
+	int d;
+	int sxy;
+	int searched_size;
 #ifdef ORIGINAL_CODE
-  int s,k,l;
+	int s,k,l;
 #else
-  mcompuint *forg = (mcompuint*)(org+fsubsample_offset);
-  mcompuint *qorg = (mcompuint*)(org+qsubsample_offset);
-  mcompuint *orgblk;
-  int flx = lx >> 1;
-  int qlx = lx >> 2;
-  int fh = h >> 1;
-  int qh = h >> 2;
+	/* NOTE: Surprisingly, the initial motion compensation search
+	   works better when the original image not the reference (reconstructed)
+	   image is used. 
+	*/
+	mcompuint *forg = (mcompuint*)(org+fsubsample_offset);
+	mcompuint *qorg = (mcompuint*)(org+qsubsample_offset);
+	mcompuint *orgblk;
+	int flx = lx >> 1;
+	int qlx = lx >> 2;
+	int fh = h >> 1;
+	int qh = h >> 2;
 #endif
 #ifdef TEST_GRAD_DESCENT
 	int seq = 0;
@@ -2765,114 +3121,116 @@ int *iminp,*jminp;
 	double opt_ratio;
 #endif
 
-  sxy = (sx>sy) ? sx : sy;
+	sxy = (sx>sy) ? sx : sy;
 
-  /* xmax and ymax into more useful form... */
-  xmax -= 16;
-  ymax -= h;
+	/* xmax and ymax into more useful form... */
+	xmax -= 16;
+	ymax -= h;
 
-  imin = i0;
-  jmin = j0;
+	best.pos.x = i0;
+	best.pos.y = j0;
   
 #ifdef ORIGINAL_CODE
 	
-  ilow = i0 - sx;
-  ihigh = i0 + sx;
+	ilow = i0 - sx;
+	ihigh = i0 + sx;
 
-  if (ilow<0)
-    ilow = 0;
+	if (ilow<0)
+		ilow = 0;
 
-  if (ihigh>xmax)
-    ihigh = xmax;
+	if (ihigh>xmax)
+		ihigh = xmax;
 
-  jlow = j0 - sy;
-  jhigh = j0 + sy;
+	jlow = j0 - sy;
+	jhigh = j0 + sy;
 
-  if (jlow<0)
-    jlow = 0;
+	if (jlow<0)
+		jlow = 0;
 
-  if (jhigh>ymax)
-    jhigh = ymax;
+	if (jhigh>ymax)
+		jhigh = ymax;
 
-  if(do_not_search)
-  {
-    *iminp = 2*i0;
-    *jminp = 2*j0;
-    return dmin;
-  }
+	dmin = (*pdist1)(org+imin+lx*jmin,ssblk->mb,lx,0,0,h,65536);
+	if(do_not_search)
+	{
+		res->imin = 2*i0;
+		res->jmin = 2*j0;
+		res->dmin = dmin;
+	}
 
 
-  /* full pel search, spiraling outwards */
+	/* full pel search, spiraling outwards */
 
-  dmin = (*pdist1)(org+imin+lx*jmin,blk,lx,0,0,h,65536);
 
-  for (l=1; l<=sxy; l++)
-  {
-    i = i0 - l;
-    j = j0 - l;
-    for (k=0; k<8*l; k++)
-    {
-      if (i>=ilow && i<=ihigh && j>=jlow && j<=jhigh)
-      {
-        /* d = (*pdist1)(org+i+lx*j,blk,lx,0,0,h, dmin); */
+	for (l=1; l<=sxy; l++)
+	{
+		i = i0 - l;
+		j = j0 - l;
+		for (k=0; k<8*l; k++)
+		{
+			if (i>=ilow && i<=ihigh && j>=jlow && j<=jhigh)
+			{
+				/* d = (*pdist1)(org+i+lx*j,blk,lx,0,0,h, dmin); */
 				d = (*pdist1_)00(org+i+lx*j,blk,lx,h, dmin); 
-        if (d<dmin)
-        {
-          dmin = d;
-          imin = i;
-          jmin = j;
-        }
+				if (d<dmin)
+				{
+					dmin = d;
+					imin = i;
+					jmin = j;
+				}
 
-      }
+			}
 
-      if      (k<2*l) i++;
-      else if (k<4*l) j++;
-      else if (k<6*l) i--;
-      else            j--;
-    }
-  }
+			if      (k<2*l) i++;
+			else if (k<4*l) j++;
+			else if (k<6*l) i--;
+			else            j--;
+		}
+	}
 #else
   
   	/* The search radii are *always* multiples of 4 to avoid messiness in the initial
-	4*4 pel search.  This is handled by the parameter checking/processing code in readparmfile()
-	 */
+	   4*4 pel search.  This is handled by the parameter checking/processing code in readparmfile()
+	*/
   
- if( (sx>>1)*(sy>>1) > MAX_COARSE_HEAP_SIZE )
+	if( (sx>>1)*(sy>>1) > MAX_COARSE_HEAP_SIZE )
 	{
-	  fprintf( stderr, "Search radius %d too big for search heap!\n", sxy );
-	  exit(1);
+		fprintf( stderr, "Search radius %d too big for search heap!\n", sxy );
+		exit(1);
 	}
 
-  /*
+	/*
 	  Create a distance-order heap of possible motion
+	  compensations based on the fast estimation data  -
+	  4*4 pel sums (4*4 sub-sampled) rather than actual pel's.  
+	  1/16 the size...
+	*/
+	jlow = j0-sy;
+	jlow = jlow < 0 ? 0 : jlow;
+	jhigh =  j0+sy;
+	jhigh = jhigh > ymax ? ymax : jhigh;
+	ilow = i0-sx;
+	ilow = ilow < 0 ? 0 : ilow;
+	ihigh =  i0+sx;
+	ihigh = ihigh > xmax ? xmax : ihigh;
+
+
+
+	quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, qorg, 
+									  ssblk->qmb, qlx, qh );
+
+	/* Now create a distance-ordered heap of possible motion
 	   compensations based on the fast estimation data  -
-	   4*4 pel sums (4*4 sub-sampled) rather than actual pel's.  
-	   1/16 the size...
-	*/
-  jlow = j0-sy;
-  jlow = jlow < 0 ? 0 : jlow;
-  jhigh =  j0+sy;
-  jhigh = jhigh > ymax ? ymax : jhigh;
-  ilow = i0-sx;
-  ilow = ilow < 0 ? 0 : ilow;
-  ihigh =  i0+sx;
-  ihigh = ihigh > xmax ? xmax : ihigh;
-
-
-
-  quad_heap_size = build_quad_heap( ilow, ihigh, jlow, jhigh, qorg, qblk, qlx, qh );
-
-      /* Now create a distance-ordered heap of possible motion
-	 compensations based on the fast estimation data  -
-	 2*2 pel sums using the best fraction of the 4*4 estimates
-	 However we cover only coarsely... on 4-pel boundaries...
+	   2*2 pel sums using the best fraction of the 4*4 estimates
+	   However we cover only coarsely... on 4-pel boundaries...
 	*/
 
-  searched_size = 1 + quad_heap_size / 8 /*3  TEST */ ;
-  if( searched_size > quad_heap_size )
+	searched_size = 1 + quad_heap_size / 8 /*3  TEST */ ;
+	if( searched_size > quad_heap_size )
 		searched_size = quad_heap_size;
 	
-	half_heap_size = build_half_heap( ihigh, jhigh, forg, fblk, flx, fh, searched_size );
+	half_heap_size = build_half_heap( ihigh, jhigh, forg, 
+									  ssblk->fmb, flx, fh, searched_size );
 
     /* Now choose best 1-pel match from what approximates (not exact due
 	   to the pre-processing trick with the mean) 
@@ -2881,57 +3239,56 @@ int *iminp,*jminp;
   
 
 #ifdef TEST_GRAD_DESCENT
-  searched_size = half_heap_size;
+	searched_size = half_heap_size;
 #else
-  searched_size = 1+ (half_heap_size / fast_mc_frac);
-  if( searched_size > half_heap_size )
-  	searched_size = half_heap_size;
+	searched_size = 1+ (half_heap_size / fast_mc_frac);
+	if( searched_size > half_heap_size )
+		searched_size = half_heap_size;
 
 #endif
 
-	dmin = INT_MAX;
+	best.sad = INT_MAX;
   
- 	/* Very rarely this may fail to find matchs due to all the good looking ones
-		being "off the edge".... I ignore this as its so rare and the necessary tests
-		costing significant time
-		*/
-  find_best_one_pel( org, blk, searched_size,
-					           ihigh, jhigh, lx, h, &dmin, &imin, &jmin );
+ 	/* Very rarely this may fail to find matchs due to all the good
+	   looking ones being "off the edge".... I ignore this as its so
+	   rare and the necessary tests costing significant time */
+	find_best_one_pel( ref, ssblk->mb, searched_size,
+					   ihigh, jhigh, lx, h, &best );
 
 #ifdef TEST_GRAD_DESCENT
 	{
 		int rcimin, rcjmin;
 		int rfrcdist, rcrcdist, rcdmin ;
 		best_graddesc_match( ilow, ihigh, jlow, jhigh, org, forg, blk, fblk, lx, h, &rcdmin, &rcimin, &rcjmin);
-	  if( rcimin != imin || rcjmin != jmin )
+		if( rcimin != imin || rcjmin != jmin )
 		{
 			++miss_cnt;
 			/* Subtlety here... these calls will use info from the search table unless it has been previously
-				freshened (purged) 
-				*/
+			   freshened (purged) 
+			*/
 	
 			/*rcdist( org+imin+lx*jmin, blk, imin, jmin, lx, h, &rfrcdist );
-			rcdist( org+rcimin+lx*rcjmin, blk, rcimin, rcjmin, lx, h, &rcrcdist  );
+			  rcdist( org+rcimin+lx*rcjmin, blk, rcimin, rcjmin, lx, h, &rcrcdist  );
 			*/
 			/*
-			 printf( "Disagreement! %d/%d REF %d %d %d  GD  %d %d %d \n", 
-				miss_cnt, seq_cnt, imin, jmin, dmin, 
-				rcimin, rcjmin, rcdmin );
+			  printf( "Disagreement! %d/%d REF %d %d %d  GD  %d %d %d \n", 
+			  miss_cnt, seq_cnt, imin, jmin, dmin, 
+			  rcimin, rcjmin, rcdmin );
 			*/
 			seq_sum += abs(rcimin-imin) + abs(rcjmin-jmin);
 	
 		}
 		if( rcimin == imin && rcjmin == jmin && dmin != rcdmin && dmin != INT_MAX )
-			{
-				printf( "\n****A %d %d dmin=%d rcdmin=%d!\n", imin, jmin, dmin, rcdmin);
-			}
+		{
+			printf( "\n****A %d %d dmin=%d rcdmin=%d!\n", imin, jmin, dmin, rcdmin);
+		}
 		if( (*pdist1_)00(org+rcimin+lx*rcjmin, blk, lx, h, INT_MAX ) != rcdmin )
-			{
-				printf( "INCONSISTENT DISTANCE MEASURE B!\n");
-			}
-  	opt_ratio = ((double)(rcdmin))/((double)dmin);
-  	ratio_sum += opt_ratio;
-  	if( opt_ratio > worst_seq )
+		{
+			printf( "INCONSISTENT DISTANCE MEASURE B!\n");
+		}
+		opt_ratio = ((double)(rcdmin))/((double)dmin);
+		ratio_sum += opt_ratio;
+		if( opt_ratio > worst_seq )
 			worst_seq = opt_ratio;
 		++seq_cnt;
   
@@ -2942,87 +3299,93 @@ int *iminp,*jminp;
 
 
 #ifdef TESTING_MOTION_COMP
-		if( (*pdist1_)00(org+imin+lx*jmin, blk, lx, h, INT_MAX ) != dmin )
-			{
-				printf( "INCONSISTENT DISTANCE MEASURE @ %d %d!\n", i0, j0);
-			}
+	if( (*pdist1_)00(org+imin+lx*jmin, blk, lx, h, INT_MAX ) != dmin )
+	{
+		printf( "INCONSISTENT DISTANCE MEASURE @ %d %d!\n", i0, j0);
+	}
 
 	/* TEST reference motion compensation... just search all 1-pel matches and compare */
 	dmin = INT_MAX;
 	for( j = jlow; j <= jhigh; ++j )
   		for( i = ilow; i <= ihigh; ++i )
+		{
+			d = (*pdist1_)00(org+i+lx*j, blk, lx, h, dmin );
+			if( d < dmin )
 			{
-				d = (*pdist1_)00(org+i+lx*j, blk, lx, h, dmin );
-				if( d < dmin )
-					{
-						dmin = d;
-						imin = i;
-						jmin = j;
-					}			
+				dmin = d;
+				imin = i;
+				jmin = j;
+			}			
 			
-			}
+		}
 #endif
 
-  /* Final polish: half-pel search of best candidate against reconstructed
-   image.
-  A.Stevens 2000: Why don't we do the rest of the motion comp search against
-  the reconstructed image? Weird...
-  */
+	/* Final polish: half-pel search of best candidate against reconstructed
+	   image.
+	   A.Stevens 2000: Why don't we do the rest of the motion comp search against
+	   the reconstructed image? Weird...
+	*/
 
-  imin <<= 1;
-  jmin <<= 1;
+	best.pos.x <<= 1; 
+	best.pos.y <<= 1;
+	best.hx = 0;
+	best.hy = 0;
 
-  ilow = imin - (imin>0);
-  ihigh = imin + (imin<((xmax)<<1));
-  jlow = jmin - (jmin>0);
-  jhigh = jmin + (jmin<((ymax)<<1));
+	ilow = best.pos.x - (best.pos.x>0);
+	ihigh = best.pos.x + (best.pos.x<((xmax)<<1));
+	jlow = best.pos.y - (best.pos.y>0);
+	jhigh =  best.pos.y+ (best.pos.y<((ymax)<<1));
 
-  for (j=jlow; j<=jhigh; j++)
+	for (j=jlow; j<=jhigh; j++)
 	{
-	  for (i=ilow; i<=ihigh; i++)
+		for (i=ilow; i<=ihigh; i++)
 		{
-		  orgblk = org+(i>>1)+((j>>1)*lx);
-		  /* ORIGINALLY: d = (*pdist1)(orgblk,blk,lx,(i&1),(j&1),h,dmin);
-			 However, this provokes a bug in egcs 1.1.2...
-		  */
-		  if( i&1 )
+			orgblk = ref+(i>>1)+((j>>1)*lx);
+			if( i&1 )
 			{
-			  if( j & 1 )
-				d = (*pdist1_11)(orgblk,blk,lx,h);
-			  else
-				d = (*pdist1_01)(orgblk,blk,lx,h);
+				if( j & 1 )
+					d = (*pdist1_11)(orgblk,ssblk->mb,lx,h);
+				else
+					d = (*pdist1_01)(orgblk,ssblk->mb,lx,h);
 			}
-		  else
+			else
 			{
-			  if( j & 1 )
-				d = (*pdist1_10)(orgblk,blk,lx,h);
-			  else
-				d = (*pdist1_00)(orgblk,blk,lx,h,dmin);
+				if( j & 1 )
+					d = (*pdist1_10)(orgblk,ssblk->mb,lx,h);
+				else
+					d = (*pdist1_00)(orgblk,ssblk->mb,lx,h,best.sad);
 			}
-		  if (d<dmin)
+			if (d<best.sad)
 			{
-			  dmin = d;
-			  imin = i;
-			  jmin = j;
+				best.sad = d;
+				best.pos.x = i;
+				best.pos.y = j;
+				best.blk = orgblk;
+				best.hx = i&1;
+				best.hy = j&1;
 			}
 		}
 	}
+
+	/* TODO: DEBUG, DELETE */
   
-  if( imin < 0 || imin > xmax*2 || jmin > ymax*2 || jmin < 0 )
+	if( best.pos.x < 0 || best.pos.x > xmax*2 || 
+		best.pos.y > ymax*2 || best.pos.y < 0 )
 	{
-	  printf( "WARNING: Out of bounds suggestions B %d %d %d  %d %d %d %d X%d Y%d!\n", 
-			  imin, jmin, dmin,
-			  ilow, ihigh, jlow, jhigh,
-				  xmax*2, ymax*2
-			  );
-	  exit(0);
+		printf( "WARNING: Out of bounds suggestions B %d %d %d  %d %d %d %d X%d Y%d!\n", 
+				best.pos.x, best.pos.y, best.sad,
+				ilow, ihigh, jlow, jhigh,
+				xmax*2, ymax*2
+			);
+		exit(0);
 	}
 
-
-  *iminp = imin;
-  *jminp = jmin;
-
-  return dmin;
+	*res = best;
+	/*
+	*iminp = best.pos.x;
+	*jminp = best.pos.y;
+	*sadminp = best.sad;
+	*/
 }
 
 /*
@@ -3045,152 +3408,152 @@ int *iminp,*jminp;
 static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h,int distlim)
 {
-  unsigned char *p1,*p2;
-  int j;
-  int s;
-  register int v;
+	unsigned char *p1,*p2;
+	int j;
+	int s;
+	register int v;
 
-  s = 0;
-  p1 = blk1;
-  p2 = blk2;
+	s = 0;
+	p1 = blk1;
+	p2 = blk2;
 #ifndef ORIGINAL_CODE
-  for (j=0; j<h; j++)
+	for (j=0; j<h; j++)
 	{
-	  if ((v = p1[0]  - p2[0])<0)  v = -v; s+= v;
-	  if ((v = p1[1]  - p2[1])<0)  v = -v; s+= v;
-	  if ((v = p1[2]  - p2[2])<0)  v = -v; s+= v;
-	  if ((v = p1[3]  - p2[3])<0)  v = -v; s+= v;
-	  if ((v = p1[4]  - p2[4])<0)  v = -v; s+= v;
-	  if ((v = p1[5]  - p2[5])<0)  v = -v; s+= v;
-	  if ((v = p1[6]  - p2[6])<0)  v = -v; s+= v;
-	  if ((v = p1[7]  - p2[7])<0)  v = -v; s+= v;
-	  if ((v = p1[8]  - p2[8])<0)  v = -v; s+= v;
-	  if ((v = p1[9]  - p2[9])<0)  v = -v; s+= v;
-	  if ((v = p1[10] - p2[10])<0) v = -v; s+= v;
-	  if ((v = p1[11] - p2[11])<0) v = -v; s+= v;
-	  if ((v = p1[12] - p2[12])<0) v = -v; s+= v;
-	  if ((v = p1[13] - p2[13])<0) v = -v; s+= v;
-	  if ((v = p1[14] - p2[14])<0) v = -v; s+= v;
-	  if ((v = p1[15] - p2[15])<0) v = -v; s+= v;
+		if ((v = p1[0]  - p2[0])<0)  v = -v; s+= v;
+		if ((v = p1[1]  - p2[1])<0)  v = -v; s+= v;
+		if ((v = p1[2]  - p2[2])<0)  v = -v; s+= v;
+		if ((v = p1[3]  - p2[3])<0)  v = -v; s+= v;
+		if ((v = p1[4]  - p2[4])<0)  v = -v; s+= v;
+		if ((v = p1[5]  - p2[5])<0)  v = -v; s+= v;
+		if ((v = p1[6]  - p2[6])<0)  v = -v; s+= v;
+		if ((v = p1[7]  - p2[7])<0)  v = -v; s+= v;
+		if ((v = p1[8]  - p2[8])<0)  v = -v; s+= v;
+		if ((v = p1[9]  - p2[9])<0)  v = -v; s+= v;
+		if ((v = p1[10] - p2[10])<0) v = -v; s+= v;
+		if ((v = p1[11] - p2[11])<0) v = -v; s+= v;
+		if ((v = p1[12] - p2[12])<0) v = -v; s+= v;
+		if ((v = p1[13] - p2[13])<0) v = -v; s+= v;
+		if ((v = p1[14] - p2[14])<0) v = -v; s+= v;
+		if ((v = p1[15] - p2[15])<0) v = -v; s+= v;
 #else
 #define pipestep(o) v = p1[o]-p2[o]; s+= fastabs(v);
-	  pipestep(0);  pipestep(1);  pipestep(2);  pipestep(3);
-	  pipestep(4);  pipestep(5);  pipestep(6);  pipestep(7);
-	  pipestep(8);  pipestep(9);  pipestep(10); pipestep(11);
-	  pipestep(12); pipestep(13); pipestep(14); pipestep(15);
+		pipestep(0);  pipestep(1);  pipestep(2);  pipestep(3);
+		pipestep(4);  pipestep(5);  pipestep(6);  pipestep(7);
+		pipestep(8);  pipestep(9);  pipestep(10); pipestep(11);
+		pipestep(12); pipestep(13); pipestep(14); pipestep(15);
 #undef pipestep
 #endif
 
-	  if (s >= distlim)
-		break;
+		if (s >= distlim)
+			break;
 			
-	  p1+= lx;
-	  p2+= lx;
+		p1+= lx;
+		p2+= lx;
 	}
-  return s;
+	return s;
 }
 
 static int dist1_01(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h)
 {
-  unsigned char *p1,*p2;
-  int i,j;
-  int s;
-  register int v;
+	unsigned char *p1,*p2;
+	int i,j;
+	int s;
+	register int v;
 
-  s = 0;
-  p1 = blk1;
-  p2 = blk2;
-	  for (j=0; j<h; j++)
+	s = 0;
+	p1 = blk1;
+	p2 = blk2;
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<16; i++)
 		{
-		  for (i=0; i<16; i++)
-			{
 
-			  v = ((unsigned int)(p1[i]+p1[i+1])>>1) - p2[i];
-		  /*
+			v = ((unsigned int)(p1[i]+p1[i+1])>>1) - p2[i];
+			/*
 			  v = ((p1[i]>>1)+(p1[i+1]>>1)>>1) - (p2[i]>>1);
-		  */
+			*/
 #ifdef ORIGINAL_CODE
-			  if (v>=0)
+			if (v>=0)
 				s+= v;
-			  else
+			else
 				s-= v;
 #else
-			  s+=fastabs(v);
+			s+=fastabs(v);
 #endif
-			}
-		  p1+= lx;
-		  p2+= lx;
 		}
-  return s;
+		p1+= lx;
+		p2+= lx;
+	}
+	return s;
 }
 
 static int dist1_10(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h)
 {
-  unsigned char *p1,*p1a,*p2;
-  int i,j;
-  int s;
-  register int v;
+	unsigned char *p1,*p1a,*p2;
+	int i,j;
+	int s;
+	register int v;
 
-  s = 0;
-  p1 = blk1;
-  p2 = blk2;
-	  p1a = p1 + lx;
-	  for (j=0; j<h; j++)
+	s = 0;
+	p1 = blk1;
+	p2 = blk2;
+	p1a = p1 + lx;
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<16; i++)
 		{
-		  for (i=0; i<16; i++)
-			{
-			  v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
+			v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
 #ifdef ORIGINAL_CODE
-			  if (v>=0)
+			if (v>=0)
 				s+= v;
-			  else
+			else
 				s-= v;
 #else
-			  s+=fastabs(v);
+			s+=fastabs(v);
 #endif
-			}
-		  p1 = p1a;
-		  p1a+= lx;
-		  p2+= lx;
 		}
+		p1 = p1a;
+		p1a+= lx;
+		p2+= lx;
+	}
 
-  return s;
+	return s;
 }
 
 static int dist1_11(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h)
 {
-  unsigned char *p1,*p1a,*p2;
-  int i,j;
-  int s;
-  register int v;
+	unsigned char *p1,*p1a,*p2;
+	int i,j;
+	int s;
+	register int v;
 
-  s = 0;
-  p1 = blk1;
-  p2 = blk2;
-  p1a = p1 + lx;
+	s = 0;
+	p1 = blk1;
+	p2 = blk2;
+	p1a = p1 + lx;
 	  
-  for (j=0; j<h; j++)
+	for (j=0; j<h; j++)
 	{
-	  for (i=0; i<16; i++)
+		for (i=0; i<16; i++)
 		{
-		  v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
+			v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
 #ifdef ORIGINAL_CODE
-		  if (v>=0)
-			s+= v;
-		  else
-			s-= v;
+			if (v>=0)
+				s+= v;
+			else
+				s-= v;
 #else
-		  s+=fastabs(v);
+			s+=fastabs(v);
 #endif
 		}
-	  p1 = p1a;
-	  p1a+= lx;
-	  p2+= lx;
+		p1 = p1a;
+		p1a+= lx;
+		p2+= lx;
 	}
-  return s;
+	return s;
 }
 
 /* USED only during debugging...
@@ -3245,122 +3608,122 @@ void check_fast_motion_data(unsigned char *blk, char *label )
 
 void fast_motion_data(unsigned char *blk, int picture_struct )
 {
-  unsigned char *b, *nb;
-  mcompuint *pb;
-  mcompuint *qb;
-  mcompuint *start_fblk, *start_qblk;
-  unsigned short *start_rowblk, *start_colblk;
-  int i;
-  int nextfieldline;
+	unsigned char *b, *nb;
+	mcompuint *pb;
+	mcompuint *qb;
+	mcompuint *start_fblk, *start_qblk;
+	unsigned short *start_rowblk, *start_colblk;
+	int i;
+	int nextfieldline;
 #ifdef TEST_RCSEARCH
-  unsigned short *pc, *pr,*p;
-  int rowsum;
-  int j,s;
-  int down16 = width*16;
-  unsigned short sums[32];
-  unsigned short rowsums[2048];
-  unsigned short colsums[2048];  /* TODO: BUG: should resize with width */
+	unsigned short *pc, *pr,*p;
+	int rowsum;
+	int j,s;
+	int down16 = width*16;
+	unsigned short sums[32];
+	unsigned short rowsums[2048];
+	unsigned short colsums[2048];  /* TODO: BUG: should resize with width */
 #endif 
   
 
-  /* In an interlaced field the "next" line is 2 width's down 
-     rather than 1 width down                                 */
+	/* In an interlaced field the "next" line is 2 width's down 
+	   rather than 1 width down                                 */
 
-  if (picture_struct==FRAME_PICTURE)
+	if (picture_struct==FRAME_PICTURE)
 	{
-	  nextfieldline = width;
+		nextfieldline = width;
 	}
-  else
+	else
 	{
-	  nextfieldline = 2*width;
+		nextfieldline = 2*width;
 	}
 
-  start_fblk   = blk+fsubsample_offset;
-  start_qblk   = blk+qsubsample_offset;
-  start_rowblk = (unsigned short *)blk+rowsums_offset;
-  start_colblk = (unsigned short *)blk+colsums_offset;
-  b = blk;
-  nb = (blk+nextfieldline);
-  /* Sneaky stuff here... we can do lines in both fields at once */
-  pb = (mcompuint *) start_fblk;
+	start_fblk   = blk+fsubsample_offset;
+	start_qblk   = blk+qsubsample_offset;
+	start_rowblk = (unsigned short *)blk+rowsums_offset;
+	start_colblk = (unsigned short *)blk+colsums_offset;
+	b = blk;
+	nb = (blk+nextfieldline);
+	/* Sneaky stuff here... we can do lines in both fields at once */
+	pb = (mcompuint *) start_fblk;
 
-  while( nb < start_fblk )
+	while( nb < start_fblk )
 	{
-	  for( i = 0; i < nextfieldline/4; ++i ) /* We're doing 4 pels horizontally at once */
+		for( i = 0; i < nextfieldline/4; ++i ) /* We're doing 4 pels horizontally at once */
 		{
-		  /* TODO: A.Stevens this has to be the most word-length dependent
-			 code in the world.  Better than MMX assembler though I guess... */
+			/* TODO: A.Stevens this has to be the most word-length dependent
+			   code in the world.  Better than MMX assembler though I guess... */
 			pb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			pb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;	
-		  pb += 2;
-		  b += 4;
-		  nb += 4;
+			pb += 2;
+			b += 4;
+			nb += 4;
 		}
 		b += nextfieldline;
 		nb = b + nextfieldline;
 	}
 
 
-  /* Now create the 4*4 sub-sampled data from the 2*2 
-	 N.b. the 2*2 sub-sampled motion data preserves the interlace structure of the
-	 original.  Albeit half as many lines and pixels...
-  */
+	/* Now create the 4*4 sub-sampled data from the 2*2 
+	   N.b. the 2*2 sub-sampled motion data preserves the interlace structure of the
+	   original.  Albeit half as many lines and pixels...
+	*/
 
-  nextfieldline = nextfieldline >> 1;
+	nextfieldline = nextfieldline >> 1;
 
-  qb = start_qblk;
-  b  = start_fblk;
-  nb = (start_fblk+nextfieldline);
+	qb = start_qblk;
+	b  = start_fblk;
+	nb = (start_fblk+nextfieldline);
 
-  while( nb < start_qblk )
+	while( nb < start_qblk )
 	{
-	  for( i = 0; i < nextfieldline/4; ++i )
+		for( i = 0; i < nextfieldline/4; ++i )
 		{
-		  /* TODO: BRITTLE: A.Stevens - this only works for mcompuint = unsigned char */
-		  qb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
+			/* TODO: BRITTLE: A.Stevens - this only works for mcompuint = unsigned char */
+			qb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			qb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;
-		  qb += 2;
-		  b += 4;
-		  nb += 4;
+			qb += 2;
+			b += 4;
+			nb += 4;
 		}
-	  b += nextfieldline;
-	  nb = b + nextfieldline;
+		b += nextfieldline;
+		nb = b + nextfieldline;
 	}
 
 #ifdef TEST_RCSEARCH
-  /* TODO: BUG: THIS CODE DOES NOT YET ALLOW FOR INTERLACED FIELDS.... */
+	/* TODO: BUG: THIS CODE DOES NOT YET ALLOW FOR INTERLACED FIELDS.... */
   
-  /*
-  	Initial row sums....
+	/*
+	  Initial row sums....
 	*/
-  pb = blk;
-  for(j = 0; j < height; ++j )
-  {
-  	rowsum = 0;
-   	for( i = 0; i < 16; ++ i )
-  	{
-		rowsum += pb[i];
-	}
-	rowsums[j] = rowsum;
-	pb += width;
-  }
-  
-  /*
-  	Initial column sums
-	*/
-  for( i = 0; i < width; ++i )
-  {
-	colsums[i] = 0;
-  }
-  pb = blk;
-  for( j = 0; j < 16; ++j )
-  {
-  	for( i = 0; i < width; ++i )
+	pb = blk;
+	for(j = 0; j < height; ++j )
 	{
-		colsums[i] += *pb;
-		++pb;
+		rowsum = 0;
+		for( i = 0; i < 16; ++ i )
+		{
+			rowsum += pb[i];
+		}
+		rowsums[j] = rowsum;
+		pb += width;
 	}
-  }
+  
+	/*
+	  Initial column sums
+	*/
+	for( i = 0; i < width; ++i )
+	{
+		colsums[i] = 0;
+	}
+	pb = blk;
+	for( j = 0; j < 16; ++j )
+	{
+		for( i = 0; i < width; ++i )
+		{
+			colsums[i] += *pb;
+			++pb;
+		}
+	}
   
 	/* Now fill in the row/column sum tables...
 	   Note: to allow efficient construction of sum/col differences for a
@@ -3369,49 +3732,49 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 	   the col sums are held in a *row major* array
 	*/
   
-  pb = blk;
-  pc = start_colblk;
-  for(j = 0; j <32; ++j )
-  {
-    pr = start_rowblk;
-  	rowsum = rowsums[j];
-  	for( i = 0; i < width-16; ++i )
+	pb = blk;
+	pc = start_colblk;
+	for(j = 0; j <32; ++j )
 	{
-		pc[i] = colsums[i];
-		pr[j] = rowsum;
-		colsums[i] = (colsums[i] + pb[down16] )-pb[0];
-		rowsum = (rowsum + pb[16]) - pb[0];
-		++pb;
-		pr += height;
+		pr = start_rowblk;
+		rowsum = rowsums[j];
+		for( i = 0; i < width-16; ++i )
+		{
+			pc[i] = colsums[i];
+			pr[j] = rowsum;
+			colsums[i] = (colsums[i] + pb[down16] )-pb[0];
+			rowsum = (rowsum + pb[16]) - pb[0];
+			++pb;
+			pr += height;
+		}
+		pb += 16;   /* move pb on to next row... rememember we only did width-16! */
+		pc += width;
 	}
-	pb += 16;   /* move pb on to next row... rememember we only did width-16! */
-	pc += width;
-  }
 #endif 		
 }
 
 
 static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 {
-  mcompuint *p1 = fblk1;
-  mcompuint *p2 = fblk2;
-  int s = 0;
-  int j;
+	mcompuint *p1 = fblk1;
+	mcompuint *p2 = fblk2;
+	int s = 0;
+	int j;
 
-  for( j = 0; j < fh; ++j )
+	for( j = 0; j < fh; ++j )
 	{
-	  register int diff;
+		register int diff;
 #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff)
-	  pipestep(0); pipestep(1);
-	  pipestep(2); pipestep(3);
-	  pipestep(4); pipestep(5);
-	  pipestep(6); pipestep(7);
-	  p1 += flx;
-	  p2 += flx;
+		pipestep(0); pipestep(1);
+		pipestep(2); pipestep(3);
+		pipestep(4); pipestep(5);
+		pipestep(6); pipestep(7);
+		p1 += flx;
+		p2 += flx;
 #undef pipestep
 	}
 
-  return s;
+	return s;
 }
 
 
@@ -3426,29 +3789,29 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 
 static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
 {
-  register mcompuint *p1 = qblk1;
-  register mcompuint *p2 = qblk2;
-  int s = 0;
-  register int diff;
+	register mcompuint *p1 = qblk1;
+	register mcompuint *p2 = qblk2;
+	int s = 0;
+	register int diff;
 
-  /* #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff) */
+	/* #define pipestep(o) diff = p1[o]-p2[o]; s += fastabs(diff) */
 #define pipestep(o) diff = p1[o]-p2[o]; s += diff < 0 ? -diff : diff;
-  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
-  if( qh > 1 )
+	pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+	if( qh > 1 )
 	{
-	  p1 += qlx; p2 += qlx;
-	  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
-	  if( qh > 2 )
+		p1 += qlx; p2 += qlx;
+		pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+		if( qh > 2 )
 		{
-		  p1 += qlx; p2 += qlx;
-		  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
-		  p1 += qlx; p2 += qlx;
-		  pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+			p1 += qlx; p2 += qlx;
+			pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
+			p1 += qlx; p2 += qlx;
+			pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
 		}
 	}
 
 
-  return s;
+	return s;
 }
 
 
@@ -3463,70 +3826,70 @@ static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
  
 
 static int dist2(blk1,blk2,lx,hx,hy,h)
-unsigned char *blk1,*blk2;
-int lx,hx,hy,h;
+	unsigned char *blk1,*blk2;
+	int lx,hx,hy,h;
 {
-  unsigned char *p1,*p1a,*p2;
-  int i,j;
-  int s,v;
+	unsigned char *p1,*p1a,*p2;
+	int i,j;
+	int s,v;
 
-  s = 0;
-  p1 = blk1;
-  p2 = blk2;
-  if (!hx && !hy)
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = p1[i] - p2[i];
-        s+= v*v;
-      }
-      p1+= lx;
-      p2+= lx;
-    }
-  else if (hx && !hy)
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1[i+1]+1)>>1) - p2[i];
-        s+= v*v;
-      }
-      p1+= lx;
-      p2+= lx;
-    }
-  else if (!hx && hy)
-  {
-    p1a = p1 + lx;
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1a[i]+1)>>1) - p2[i];
-        s+= v*v;
-      }
-      p1 = p1a;
-      p1a+= lx;
-      p2+= lx;
-    }
-  }
-  else /* if (hx && hy) */
-  {
-    p1a = p1 + lx;
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1]+2)>>2) - p2[i];
-        s+= v*v;
-      }
-      p1 = p1a;
-      p1a+= lx;
-      p2+= lx;
-    }
-  }
+	s = 0;
+	p1 = blk1;
+	p2 = blk2;
+	if (!hx && !hy)
+		for (j=0; j<h; j++)
+		{
+			for (i=0; i<16; i++)
+			{
+				v = p1[i] - p2[i];
+				s+= v*v;
+			}
+			p1+= lx;
+			p2+= lx;
+		}
+	else if (hx && !hy)
+		for (j=0; j<h; j++)
+		{
+			for (i=0; i<16; i++)
+			{
+				v = ((unsigned int)(p1[i]+p1[i+1]+1)>>1) - p2[i];
+				s+= v*v;
+			}
+			p1+= lx;
+			p2+= lx;
+		}
+	else if (!hx && hy)
+	{
+		p1a = p1 + lx;
+		for (j=0; j<h; j++)
+		{
+			for (i=0; i<16; i++)
+			{
+				v = ((unsigned int)(p1[i]+p1a[i]+1)>>1) - p2[i];
+				s+= v*v;
+			}
+			p1 = p1a;
+			p1a+= lx;
+			p2+= lx;
+		}
+	}
+	else /* if (hx && hy) */
+	{
+		p1a = p1 + lx;
+		for (j=0; j<h; j++)
+		{
+			for (i=0; i<16; i++)
+			{
+				v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1]+2)>>2) - p2[i];
+				s+= v*v;
+			}
+			p1 = p1a;
+			p1a+= lx;
+			p2+= lx;
+		}
+	}
  
-  return s;
+	return s;
 }
 
 
@@ -3543,51 +3906,51 @@ int lx,hx,hy,h;
  
 
 static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-unsigned char *pf,*pb,*p2;
-int lx,hxf,hyf,hxb,hyb,h;
+	unsigned char *pf,*pb,*p2;
+	int lx,hxf,hyf,hxb,hyb,h;
 {
-  unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
-  int i,j;
-  int s,v;
+	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	int i,j;
+	int s,v;
 
-  pfa = pf + hxf;
-  pfb = pf + lx*hyf;
-  pfc = pfb + hxf;
+	pfa = pf + hxf;
+	pfb = pf + lx*hyf;
+	pfc = pfb + hxf;
 
-  pba = pb + hxb;
-  pbb = pb + lx*hyb;
-  pbc = pbb + hxb;
+	pba = pb + hxb;
+	pbb = pb + lx*hyb;
+	pbc = pbb + hxb;
 
-  s = 0;
+	s = 0;
 
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<16; i++)
-    {
-      v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
-            ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
-           - *p2++;
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<16; i++)
+		{
+			v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
+				  ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
+				- *p2++;
 #ifdef ORIGINAL_CODE
-      if (v>=0)
-        s+= v;
-      else
-        s-= v;
+			if (v>=0)
+				s+= v;
+			else
+				s-= v;
 #else
-	  s += fastabs(v);
+			s += fastabs(v);
 #endif
-    }
-    p2+= lx-16;
-    pf+= lx-16;
-    pfa+= lx-16;
-    pfb+= lx-16;
-    pfc+= lx-16;
-    pb+= lx-16;
-    pba+= lx-16;
-    pbb+= lx-16;
-    pbc+= lx-16;
-  }
+		}
+		p2+= lx-16;
+		pf+= lx-16;
+		pfa+= lx-16;
+		pfb+= lx-16;
+		pfc+= lx-16;
+		pb+= lx-16;
+		pba+= lx-16;
+		pbb+= lx-16;
+		pbc+= lx-16;
+	}
 
-  return s;
+	return s;
 }
 
 /*
@@ -3603,44 +3966,44 @@ int lx,hxf,hyf,hxb,hyb,h;
  
 
 static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-unsigned char *pf,*pb,*p2;
-int lx,hxf,hyf,hxb,hyb,h;
+	unsigned char *pf,*pb,*p2;
+	int lx,hxf,hyf,hxb,hyb,h;
 {
-  unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
-  int i,j;
-  int s,v;
+	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	int i,j;
+	int s,v;
 
-  pfa = pf + hxf;
-  pfb = pf + lx*hyf;
-  pfc = pfb + hxf;
+	pfa = pf + hxf;
+	pfb = pf + lx*hyf;
+	pfc = pfb + hxf;
 
-  pba = pb + hxb;
-  pbb = pb + lx*hyb;
-  pbc = pbb + hxb;
+	pba = pb + hxb;
+	pbb = pb + lx*hyb;
+	pbc = pbb + hxb;
 
-  s = 0;
+	s = 0;
 
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<16; i++)
-    {
-      v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
-            ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
-          - *p2++;
-      s+=v*v;
-    }
-    p2+= lx-16;
-    pf+= lx-16;
-    pfa+= lx-16;
-    pfb+= lx-16;
-    pfc+= lx-16;
-    pb+= lx-16;
-    pba+= lx-16;
-    pbb+= lx-16;
-    pbc+= lx-16;
-  }
+	for (j=0; j<h; j++)
+	{
+		for (i=0; i<16; i++)
+		{
+			v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
+				  ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
+				- *p2++;
+			s+=v*v;
+		}
+		p2+= lx-16;
+		pf+= lx-16;
+		pfa+= lx-16;
+		pfb+= lx-16;
+		pfc+= lx-16;
+		pb+= lx-16;
+		pba+= lx-16;
+		pbb+= lx-16;
+		pbc+= lx-16;
+	}
 
-  return s;
+	return s;
 }
 
 
@@ -3650,23 +4013,70 @@ int lx,hxf,hyf,hxb,hyb,h;
  * lx: distance (in bytes) of vertically adjacent pels
  */
 static int variance(p,lx)
-unsigned char *p;
-int lx;
+	unsigned char *p;
+	int lx;
 {
-  int i,j;
-  unsigned int v,s,s2;
+	int i,j;
+	unsigned int v,s,s2;
 
-  s = s2 = 0;
+	s = s2 = 0;
 
-  for (j=0; j<16; j++)
-  {
-    for (i=0; i<16; i++)
-    {
-      v = *p++;
-      s+= v;
-      s2+= v*v;
-    }
-    p+= lx-16;
-  }
-  return s2 - (s*s)/256;
+	for (j=0; j<16; j++)
+	{
+		for (i=0; i<16; i++)
+		{
+			v = *p++;
+			s+= v;
+			s2+= v*v;
+		}
+		p+= lx-16;
+	}
+	return s2 - (s*s)/256;
+}
+
+/*
+  Compute the variance of the residual of uni-directionally motion
+  compensated block.
+ */
+
+static int unidir_pred_var( const mb_motion_s *motion,
+							mcompuint *mb,  
+							int lx, 
+							int h)
+{
+	return (*pdist2)(motion->blk, mb, lx, motion->hx, motion->hy, h);
+}
+
+
+/*
+  Compute the variance of the residual of bi-directionally motion
+  compensated block.
+ */
+
+static int bidir_pred_var( const mb_motion_s *motion_f, 
+						   const mb_motion_s *motion_b,
+						   mcompuint *mb,  
+						   int lx, int h)
+{
+	return (*pbdist2)( motion_f->blk, motion_b->blk,
+					   mb, lx, 
+					   motion_f->hx, motion_f->hy,
+					   motion_b->hx, motion_b->hy,
+					   h);
+}
+
+/*
+  Compute SAD for bi-directionally motion compensated blocks...
+ */
+
+static int bidir_pred_sad( const mb_motion_s *motion_f, 
+						   const mb_motion_s *motion_b,
+						   mcompuint *mb,  
+						   int lx, int h)
+{
+	return (*pbdist1)(motion_f->blk, motion_b->blk, 
+					 mb, lx, 
+					 motion_f->hx, motion_f->hy,
+					 motion_b->hx, motion_b->hy,
+					 h);
 }

@@ -61,10 +61,10 @@ void init_idct _ANSI_ARGS_((void));
 
 void init_motion ();
 
-void motion_estimation _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg,
-  unsigned char *oldref, unsigned char *newref, unsigned char *cur,
-  unsigned char *curref, int sxf, int syf, int sxb, int syb,
-  struct mbinfo *mbi, int secondfield, int ipflag));
+void motion_estimation _ANSI_ARGS_((
+	pict_data_s *picture,
+	motion_comp_s *mc_data,
+	int secondfield, int ipflag));
 
 void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
 void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
@@ -74,8 +74,10 @@ void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 void error _ANSI_ARGS_((char *text));
 
 /* predict.c */
-void predict _ANSI_ARGS_((unsigned char *reff[], unsigned char *refb[],
-  unsigned char *cur[3], int secondfield, struct mbinfo *mbi));
+void predict _ANSI_ARGS_((pict_data_s *picture,
+						  unsigned char *reff[], unsigned char *refb[],
+						  unsigned char *cur[3], 
+						  int secondfield));
 
 /* putbits.c */
 void initbits _ANSI_ARGS_((void));
@@ -89,17 +91,17 @@ void putseqext _ANSI_ARGS_((void));
 void putseqdispext _ANSI_ARGS_((void));
 void putuserdata _ANSI_ARGS_((char *userdata));
 void putgophdr _ANSI_ARGS_((int frame, int closed_gop));
-void putpicthdr _ANSI_ARGS_((void));
-void putpictcodext _ANSI_ARGS_((void));
+void putpicthdr _ANSI_ARGS_((pict_data_s *picture));
+void putpictcodext _ANSI_ARGS_((pict_data_s *picture));
 void putseqend _ANSI_ARGS_((void));
 
 /* putmpg.c */
-void putintrablk _ANSI_ARGS_((short *blk, int cc));
-void putnonintrablk _ANSI_ARGS_((short *blk));
+void putintrablk _ANSI_ARGS_((pict_data_s *picture, short *blk, int cc));
+void putnonintrablk _ANSI_ARGS_((pict_data_s *picture,short *blk));
 void putmv _ANSI_ARGS_((int dmv, int f_code));
 
 /* putpic.c */
-void putpict _ANSI_ARGS_((unsigned char *frame));
+void putpict _ANSI_ARGS_((pict_data_s *picture, short (*quant_blocks)[64]));
 
 /* putseq.c */
 void putseq _ANSI_ARGS_((void));
@@ -117,9 +119,15 @@ void putcbp _ANSI_ARGS_((int cbp));
 
 /* quantize.c */
 
-void quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
-int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
+void quant_intra _ANSI_ARGS_((
+	pict_data_s *picture,
+	short *src, short *dst, 
+	unsigned short *quant_mat,
+	unsigned short *iquant_mat, 
+	int mquant, int *nonsat_mquant));
+int quant_non_intra _ANSI_ARGS_((
+	pict_data_s *picture,
+	short *src, short *dst,
   unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
 void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned short *quant_mat,  unsigned short *i_quant_mat, int mquant));
@@ -145,12 +153,12 @@ int quant_weight_coeff_sum(short *blk, unsigned short*i_quant_mat );
 /* ratectl.c */
 void rc_init_seq _ANSI_ARGS_((void));
 void rc_init_GOP _ANSI_ARGS_((int np, int nb));
-void rc_init_pict _ANSI_ARGS_((unsigned char *frame));
-void rc_update_pict _ANSI_ARGS_((void));
-int rc_start_mb _ANSI_ARGS_((void));
-int rc_calc_mquant _ANSI_ARGS_((int j));
-void vbv_end_of_picture _ANSI_ARGS_((void));
-void calc_vbv_delay _ANSI_ARGS_((void));
+void rc_init_pict _ANSI_ARGS_((pict_data_s *picture));
+void rc_update_pict _ANSI_ARGS_((pict_data_s *picture));
+int rc_start_mb _ANSI_ARGS_((pict_data_s *picture));
+int rc_calc_mquant _ANSI_ARGS_((pict_data_s *picture,int j));
+void vbv_end_of_picture _ANSI_ARGS_((pict_data_s *picture));
+void calc_vbv_delay _ANSI_ARGS_((pict_data_s *picture));
 
 /* readpic.c */
 int readframe _ANSI_ARGS_((int frame_num, unsigned char *frame[]));
@@ -160,12 +168,19 @@ void calcSNR _ANSI_ARGS_((unsigned char *org[3], unsigned char *rec[3]));
 void stats _ANSI_ARGS_((void));
 
 /* transfrm.c */
-void transform _ANSI_ARGS_((unsigned char *pred[], unsigned char *cur[],
-  struct mbinfo *mbi, short blocks[][64]));
-void itransform _ANSI_ARGS_((unsigned char *pred[], unsigned char *cur[],
-  struct mbinfo *mbi, short blocks[][64]));
-void dct_type_estimation _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
-  struct mbinfo *mbi));
+void transform _ANSI_ARGS_((
+	pict_data_s *picture,
+	unsigned char *pred[], 
+	unsigned char *cur[]));
+
+void itransform _ANSI_ARGS_((
+	pict_data_s *picture,
+	unsigned char *pred[], unsigned char *cur[],
+	short blocks[][64]));
+void dct_type_estimation _ANSI_ARGS_((
+	pict_data_s *picture,
+	unsigned char *pred, unsigned char *cur
+	));
 
 void init_transform();
 
@@ -279,7 +294,13 @@ EXTERN unsigned char map_non_linear_mquant[113]
 #endif
 ;
 
-/* picture data arrays */
+EXTERN char pict_type_char[6]
+#ifdef GLOBAL
+= {'X', 'I', 'P', 'B', 'D', 'X'}
+#endif
+;
+
+EXTERN pict_data_s cur_picture;
 
 /* reconstructed frames */
 EXTERN unsigned char *newrefframe[3], *oldrefframe[3], *auxframe[3];
@@ -289,19 +310,24 @@ EXTERN unsigned char *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
 EXTERN unsigned char *predframe[3];
 /* Buffer for filter pre-processing */
 EXTERN unsigned char *filter_buf;
+
+#ifdef DELETE_SOON
 /* 8*8 block data, raw (unquantised) and quantised */
 EXTERN short (*blocks)[64];
+
+/* macroblock side information array */
+EXTERN struct mbinfo *mbinfo;
+/* motion estimation parameters */
+#endif
+EXTERN struct motion_data *motion_data;
 EXTERN short (*qblocks)[64];
+
 /* intra / non_intra quantization matrices */
 EXTERN unsigned short intra_q[64], inter_q[64];
 EXTERN unsigned short i_intra_q[64], i_inter_q[64];
 EXTERN unsigned short chrom_intra_q[64],chrom_inter_q[64];
 /* prediction values for DCT coefficient (0,0) */
 EXTERN int dc_dct_pred[3];
-/* macroblock side information array */
-EXTERN struct mbinfo *mbinfo;
-/* motion estimation parameters */
-EXTERN struct motion_data *motion_data;
 /* clipping (=saturation) table */
 EXTERN unsigned char *clp;
 
@@ -373,33 +399,23 @@ EXTERN int matrix_coefficients; /* Eg,Eb,Er / Y,Cb,Cr matrix coefficients */
 EXTERN int display_horizontal_size, display_vertical_size; /* display size */
 
 
-/* picture specific data (picture header) */
-
-EXTERN int temp_ref; /* temporal reference */
-EXTERN int pict_type; /* picture coding type (I, P or B) */
-EXTERN int vbv_delay; /* video buffering verifier delay (1/90000 seconds) */
 
 
-/* picture specific data (picture coding extension) */
+/* picture specific data (currently control by global flags) */
 
-EXTERN int forw_hor_f_code, forw_vert_f_code;
-EXTERN int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
-EXTERN int dc_prec; /* DC coefficient precision for intra coded blocks */
-EXTERN int pict_struct; /* picture structure (frame, top / bottom field) */
-EXTERN int topfirst; /* display top field first */
-/* use only frame prediction and frame DCT (I,P,B,current) */
-EXTERN int frame_pred_dct_tab[3], frame_pred_dct;
-EXTERN int conceal_tab[3]; /* use concealment motion vectors (I,P,B) */
-EXTERN int qscale_tab[3], q_scale_type; /* linear/non-linear quantizaton table */
-EXTERN int intravlc_tab[3], intravlc; /* intra vlc format (I,P,B,current) */
-EXTERN int altscan_tab[3], altscan; /* alternate scan (I,P,B,current) */
-EXTERN int repeatfirst; /* repeat first field after second field */
-EXTERN int prog_frame; /* progressive frame */
+EXTERN int opt_dc_prec;
+EXTERN int opt_prog_frame;
+EXTERN int opt_repeatfirst;
+EXTERN int opt_topfirst;
 
+/* use only frame prediction and frame DCT (I,P,B) */
+EXTERN int frame_pred_dct_tab[3];
+EXTERN int qscale_tab[3]; 	/* linear/non-linear quantizaton table */
+EXTERN int intravlc_tab[3]; /* intra vlc format (I,P,B) */
+EXTERN int altscan_tab[3]; 	/* alternate scan (I,P,B */
 
-/* Type for fast motion compensation search */
-
-typedef unsigned char mcompuint;
+/* Currently unused... */
+EXTERN int conceal_tab[3]; 	/* use concealment motion vectors (I,P,B) */
 
 /* Global flags controlling encoding behaviour */
 
@@ -411,3 +427,4 @@ EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 
 EXTERN int frame_num;			
 
+EXTERN int input_fd;

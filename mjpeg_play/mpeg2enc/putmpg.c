@@ -32,9 +32,7 @@
 #include "global.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
-void putintrablk(blk,cc)
-short *blk;
-int cc;
+void putintrablk(pict_data_s *picture,short *blk, int cc)
 {
   int n, dct_diff, run, signed_level;
 
@@ -52,10 +50,10 @@ int cc;
   for (n=1; n<64; n++)
   {
     /* use appropriate entropy scanning pattern */
-    signed_level = blk[(altscan ? alternate_scan : zig_zag_scan)[n]];
+    signed_level = blk[(picture->altscan ? alternate_scan : zig_zag_scan)[n]];
     if (signed_level!=0)
     {
-      putAC(run,signed_level,intravlc);
+      putAC(run,signed_level,picture->intravlc);
       run = 0;
     }
     else
@@ -63,15 +61,14 @@ int cc;
   }
 
   /* End of Block -- normative block punctuation */
-  if (intravlc)
+  if (picture->intravlc)
     putbits(6,4); /* 0110 (Table B-15) */
   else
     putbits(2,2); /* 10 (Table B-14) */
 }
 
 /* generate variable length codes for a non-intra-coded block (6.2.6, 6.3.17) */
-void putnonintrablk(blk)
-short *blk;
+void putnonintrablk(pict_data_s *picture, short *blk)
 {
   int n, run, signed_level, first;
 
@@ -81,7 +78,7 @@ short *blk;
   for (n=0; n<64; n++)
   {
     /* use appropriate entropy scanning pattern */
-    signed_level = blk[(altscan ? alternate_scan : zig_zag_scan)[n]];
+    signed_level = blk[(picture->altscan ? alternate_scan : zig_zag_scan)[n]];
 
     if (signed_level!=0)
     {

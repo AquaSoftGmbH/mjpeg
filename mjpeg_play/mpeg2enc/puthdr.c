@@ -165,29 +165,29 @@ int frame;
 }
 
 /* generate picture header (6.2.3, 6.3.10) */
-void putpicthdr()
+void putpicthdr(pict_data_s *picture)
 {
   alignbits();
   putbits(PICTURE_START_CODE,32); /* picture_start_code */
-  calc_vbv_delay();
-  putbits(temp_ref,10); /* temporal_reference */
-  putbits(pict_type,3); /* picture_coding_type */
-  putbits(vbv_delay,16); /* vbv_delay */
+  calc_vbv_delay(picture);
+  putbits(picture->temp_ref,10); /* temporal_reference */
+  putbits(picture->pict_type,3); /* picture_coding_type */
+  putbits(picture->vbv_delay,16); /* vbv_delay */
 
-  if (pict_type==P_TYPE || pict_type==B_TYPE)
+  if (picture->pict_type==P_TYPE || picture->pict_type==B_TYPE)
   {
     putbits(0,1); /* full_pel_forward_vector */
     if (mpeg1)
-      putbits(forw_hor_f_code,3);
+      putbits(picture->forw_hor_f_code,3);
     else
       putbits(7,3); /* forward_f_code */
   }
 
-  if (pict_type==B_TYPE)
+  if (picture->pict_type==B_TYPE)
   {
     putbits(0,1); /* full_pel_backward_vector */
     if (mpeg1)
-      putbits(back_hor_f_code,3);
+      putbits(picture->back_hor_f_code,3);
     else
       putbits(7,3); /* backward_f_code */
   }
@@ -199,26 +199,26 @@ void putpicthdr()
  *
  * composite display information (v_axis etc.) not implemented
  */
-void putpictcodext()
+void putpictcodext(pict_data_s *picture)
 {
   alignbits();
   putbits(EXT_START_CODE,32); /* extension_start_code */
   putbits(CODING_ID,4); /* extension_start_code_identifier */
-  putbits(forw_hor_f_code,4); /* forward_horizontal_f_code */
-  putbits(forw_vert_f_code,4); /* forward_vertical_f_code */
-  putbits(back_hor_f_code,4); /* backward_horizontal_f_code */
-  putbits(back_vert_f_code,4); /* backward_vertical_f_code */
-  putbits(dc_prec,2); /* intra_dc_precision */
-  putbits(pict_struct,2); /* picture_structure */
-  putbits((pict_struct==FRAME_PICTURE)?topfirst:0,1); /* top_field_first */
-  putbits(frame_pred_dct,1); /* frame_pred_frame_dct */
+  putbits(picture->forw_hor_f_code,4); /* forward_horizontal_f_code */
+  putbits(picture->forw_vert_f_code,4); /* forward_vertical_f_code */
+  putbits(picture->back_hor_f_code,4); /* backward_horizontal_f_code */
+  putbits(picture->back_vert_f_code,4); /* backward_vertical_f_code */
+  putbits(picture->dc_prec,2); /* intra_dc_precision */
+  putbits(picture->pict_struct,2); /* picture_structure */
+  putbits((picture->pict_struct==FRAME_PICTURE)?picture->topfirst:0,1); /* top_field_first */
+  putbits(picture->frame_pred_dct,1); /* frame_pred_frame_dct */
   putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
-  putbits(q_scale_type,1); /* q_scale_type */
-  putbits(intravlc,1); /* intra_vlc_format */
-  putbits(altscan,1); /* alternate_scan */
-  putbits(repeatfirst,1); /* repeat_first_field */
-  putbits(prog_frame,1); /* chroma_420_type */
-  putbits(prog_frame,1); /* progressive_frame */
+  putbits(picture->q_scale_type,1); /* q_scale_type */
+  putbits(picture->intravlc,1); /* intra_vlc_format */
+  putbits(picture->altscan,1); /* alternate_scan */
+  putbits(picture->repeatfirst,1); /* repeat_first_field */
+  putbits(picture->prog_frame,1); /* chroma_420_type */
+  putbits(picture->prog_frame,1); /* progressive_frame */
   putbits(0,1); /* composite_display_flag */
 }
 

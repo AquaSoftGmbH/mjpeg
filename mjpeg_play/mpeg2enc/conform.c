@@ -112,7 +112,7 @@ void range_checks()
   if (display_vertical_size<0 || display_vertical_size>16383)
     error("display_vertical_size must be in range 0...16383");
 
-  if (dc_prec<0 || dc_prec>3)
+  if (opt_dc_prec<0 || opt_dc_prec>3)
     error("intra_dc_precision must be in range 0...3");
 
   for (i=0; i<M; i++)
@@ -232,13 +232,13 @@ void profile_and_level_checks()
 
   if (profile>=MP) /* SP, MP: constrained repeat_first_field */
   {
-    if (frame_rate_code<=2 && repeatfirst)
+    if (frame_rate_code<=2 && opt_repeatfirst)
       error("repeat_first_first must be zero");
-    if (frame_rate_code<=6 && prog_seq && repeatfirst)
+    if (frame_rate_code<=6 && prog_seq && opt_repeatfirst)
       error("repeat_first_first must be zero");
   }
 
-  if (profile!=HP && dc_prec==3)
+  if (profile!=HP && opt_dc_prec==3)
     error("11 bit DC precision only allowed in High Profile");
 
 
