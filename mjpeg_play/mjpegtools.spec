@@ -1,10 +1,10 @@
 Summary: Tools for recording, editing, playing back and mpeg-encoding video under linux
 Name: mjpegtools
-Version: 1.3.0
+Version: 1.4pre1
 Release: 1
 Copyright: GPL
 Group: Applications/Multimedia
-Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.3.0.tar.gz
+Source0: http://prdownloads.sourceforge.net/mjpeg/mjpegtools-1.4pre1.tar.gz
 Source1: http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.3-patched.tar.gz
 Source2: http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2.tar.gz
 Source3: http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
@@ -22,35 +22,35 @@ encoded into mpeg1/2 video.
 ./configure
 make libjpeg-mmx.a
 
-%setup -D -b 1 -n quicktime4linux-1.3-patch
+%setup -b 1 -n quicktime4linux-1.3-patch
 ./configure
 make
 
-%setup -D -b 2 -n libmovtar-0.1.2
+%setup -b 2 -n libmovtar-0.1.2
 ./configure
 make
 make install
 
-%setup -b 0 -D -n mjpeg_play
-./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch --with-jpeg-mmx=`pwd`/../jpeg-mmx --with-movtar-prefix=`pwd`/../libmovtar-0.1.2
-make
-make install
+%setup -b 0 -n mjpegtools-1.4pre1
+./configure --with-quicktime=`pwd`/../quicktime4linux-1.3-patch --with-jpeg-mmx=`pwd`/../jpeg-mmx --with-movtar-prefix=`pwd`/../libmovtar-0.1.2 --with-movtar-exec-prefix=/usr/local
 
 %build
+make
 
 %install
+make install
 
 %clean
 
 %files
 %defattr(-,root,root)
-%doc README README.lavpipe
+%doc README
 
 /usr/local/bin/lavplay
 /usr/local/bin/lavrec
 /usr/local/bin/lav2wav
 /usr/local/bin/lav2yuv
-/usr/local/bin/lav2dfilter
+/usr/local/bin/yuvmedianfilter
 /usr/local/bin/lavaddwav
 /usr/local/bin/lavvideo
 /usr/local/bin/lavtrans
