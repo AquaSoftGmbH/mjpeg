@@ -358,7 +358,8 @@ void OutputStream::Init( char *multi_file)
 	ByteposTimecode( 
 		static_cast<bitcount_t>(sectors_delay*sector_transport_size),
 		delay );
-
+	
+	mjpeg_info( "VO = %d AO = %d\n", opt_video_offset, opt_audio_offset );
 	video_delay = delay + 
 		static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
 	audio_delay = delay + 
@@ -641,8 +642,6 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 				runout_incomplete |= !(*str)->RunOutComplete();
 			}
 
-			running_out = false;
-
 			if( runout_incomplete )
 				break;
 
@@ -651,7 +650,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			OutputSuffix();
 			psstrm->NextFile();
 
-
+			running_out = false;
 			seg_state = start_segment;
 
 			/* Start a new segment... */
@@ -722,8 +721,10 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 					{
 						seg_state = runout_segment;
 						runout_PTS = master->Lookahead()->PTS;
-						mjpeg_info(" Runninng out to %lld\n", runout_PTS );
+						mjpeg_info("Running out to %lld SCR=%lld\n", 
+								   runout_PTS/300, current_SCR/300 );
 						running_out = true;
+						seg_state = runout_segment;
 					}
 				}
 			}
@@ -769,70 +770,6 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 		else
 			pack_header_ptr = NULL;
 
-#ifdef ORIGINAL_CODE
-
-		/* CASE: Audio Buffer OK, Audio Data ready
-		   SEND An audio packet
-		*/
-
-		/* Heuristic... if we can we prefer to send audio rather than vstrm. 
-		   Even a few uSec under-run are audible and in any case the data-rate
-		   is trivial compared wth video. The only exception is if not
-		   sending video would cause it to under-run but there's no danger of
-		   and audio under-run
-		   	   
-		*/
-		if ( (astrm->bufmodel.space()/*-AUDIO_BUFFER_FILL_MARGIN*/
-			  > astrm->max_packet_data)
-			 && !astrm->MuxCompleted()
-			 && !(running_out && astrm->RunOutComplete())
-			 && vstrm->nsec != 0
-			 &&  ! (  !vstrm->MuxCompleted() &&
-					  video_next_SCR >= vstrm->au->DTS+vstrm->timestamp_delay &&
-					  audio_next_SCR < astrm->au->PTS+astrm->timestamp_delay
-				 )
-			)
-		{
-			/* Calculate actual time current AU is likely to arrive. */
-			ByteposTimecode (bytes_output+audio_bytes, audio_next_SCR);
-			if( audio_next_SCR >= astrm->au->PTS+astrm->timestamp_delay )
-				timeout_error (STATUS_AUDIO_TIME_OUT,astrm->au->dorder);
-			astrm->OutputSector();
-			NextPosAndSCR();
-
-
-		}
-
-		/* CASE: Video Buffer OK, Video Data ready  (implicitly -  no audio packet to send 
-		   SEND a video packet.
-		*/
-
-		else if( vstrm->bufmodel.space() >= vstrm->max_packet_data
-				 && !vstrm->MuxCompleted() 
-				 && !(running_out && vstrm->RunOutComplete())
-			)
-		{
-
-			/* Calculate actual time current AU is likely to arrive. */
-			ByteposTimecode (bytes_output+video_bytes, video_next_SCR);
-			if( video_next_SCR >= vstrm->au->DTS+vstrm->timestamp_delay )
-				timeout_error (STATUS_VIDEO_TIME_OUT,vstrm->au->dorder);
-			vstrm->OutputSector ( );
-			NextPosAndSCR();
-
-		}
-
-		/* CASE: Audio Buffer and Video Buffers NOT OK (too full to send)
-		   SEND padding packet */
-		else
-		{
-
-			OutputPadding (current_SCR, 
-							start_of_new_pack, include_sys_header, vbr,
-							false);
-			padding_packet =true;
-		}
-#else
 		
 		//
 		// Find the ready-to-mux stream with the most urgent DTS
@@ -897,7 +834,6 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			padding_packet =true;
 		}
 
-#endif
 		/* Update the counter for pack packets.  VBR is a tricky 
 		   case as here padding packets are "virtual" */
 		
@@ -947,7 +883,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	
 	OutputSuffix( );
 	psstrm->Close();
-	mjpeg_info( "Multiplex completion.\n");
+	mjpeg_info( "Multiplex completion at SCR=%lld.\n", current_SCR/300);
 	MuxStatus( LOG_INFO );
 	for( str = estreams.begin(); str < estreams.end(); ++str )
 	{

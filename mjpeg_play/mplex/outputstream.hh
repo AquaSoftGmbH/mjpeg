@@ -91,7 +91,9 @@ private:
 	/* Output data stream... */
 	PS_Stream *psstrm;
 	bitcount_t bytes_output;
+public:
 	clockticks current_SCR;
+private:
 	clockticks audio_delay;
 	clockticks video_delay;
 	bool vbr;

@@ -61,7 +61,7 @@ bool opt_ignore_underrun = false;
 bool opt_split_at_seq_end = true;
 
 /* Should fit nicely on an ordinary CD ... */
-off_t opt_max_segment_size =  2000*1024*1024;
+off_t opt_max_segment_size = 0;
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {

@@ -138,7 +138,9 @@ ElementaryStream::SetSyncOffset( clockticks sync_offset )
 
 Aunit *ElementaryStream::next()
 {
-	if( !eoscan && aunits.current()+FRAME_CHUNK > last_buffered_AU  )
+	if( eoscan )
+		return 0;
+	else if( aunits.current()+FRAME_CHUNK > last_buffered_AU  )
 	{
 		FillAUbuffer(FRAME_CHUNK);
 	}

@@ -308,9 +308,6 @@ void VideoStream::Init ( const int stream_num,
 	AU_start = 0LL;
 
     OutputSeqhdrInfo();
-	//TODO: Delete 
-	//FillAUbuffer(FRAME_CHUNK);
-	//(void)NextAU();
 }
 
 
@@ -786,8 +783,6 @@ void AudioStream::Init ( const int stream_num,
     }
 
 
-	//FillAUbuffer(FRAME_CHUNK);
-	//(void)NextAU();
 	OutputHdrInfo();
 }
 
