@@ -32,10 +32,8 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	simd.h $(mpeg2enc_SIMD)
 
 
+mpeg2enc_LDADD=-lm
 
-INCLUDES = 
-CPPFLAGS = @MTYPEFLAGS@ 
-CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized -DDEBUG
 ASM = nasm
 
 
