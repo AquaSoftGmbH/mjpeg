@@ -459,7 +459,7 @@ int main(argc,argv)
 		}
 	    else if( param_norm == 'n' )
 		{
-			param_aspect_ratio = param_mpeg == 1 ? 12 : 1;
+			param_aspect_ratio = param_mpeg == 1 ? 12 : 2;
 		}
 		else
 		{
