@@ -173,7 +173,9 @@
 #include <unistd.h>
 #include <signal.h>
 #include <fcntl.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #include <string.h>
 #include <pthread.h>
 

@@ -321,6 +321,7 @@ private:
     unsigned int framesize;
     unsigned int skip;
     unsigned int samples_per_second;
+    unsigned long long int length_sum;
     AAunit access_unit;
 }; 	
 

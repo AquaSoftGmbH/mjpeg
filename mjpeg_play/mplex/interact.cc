@@ -1,7 +1,9 @@
 #include <config.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #include <sys/stat.h>
 
 #include <mjpeg_logging.h>

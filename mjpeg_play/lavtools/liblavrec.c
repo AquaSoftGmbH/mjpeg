@@ -51,7 +51,6 @@
 
 #include <sys/vfs.h>
 #include <stdlib.h>
-#include <getopt.h>
 
 #ifndef IRIX
 #include <linux/videodev.h>

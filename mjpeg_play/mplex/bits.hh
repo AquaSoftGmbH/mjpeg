@@ -8,7 +8,8 @@ typedef uint64_t bitcount_t;
 
 class BitStreamUndo
 {
-protected:
+//protected:
+public:
 	uint8_t outbyte;
 	unsigned int byteidx;
 	int bitidx;

@@ -191,10 +191,12 @@ char            encoded_file_name[MAX_NAME_SIZE];
 			
 		case 's':
 			stereo = 1;
+			mono = 0;
 			break;
 			
 		case 'm':
 			mono = 1;
+			stereo = 0;
 			break;
 			
 		case 'V':

@@ -1248,7 +1248,7 @@ void AudioStream::OutputSector ( )
 		
     }
 
-		++nsec;
+    ++nsec;
 
 	buffers_in_header = always_buffers_in_header;
 	

@@ -224,8 +224,11 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 	memcpy( dst, 
 			bfr+(static_cast<unsigned int>(readpos-buffer_start)), 
 			to_read);
-	readpos += to_read;
+	// We only ever flush up to the start of a read as we
+	// have only scanned up to a header *beginning* a block that is then
+	// read
 	flush( readpos );
+	readpos += to_read;
 	return to_read;
 }
 

@@ -512,9 +512,20 @@ void AudioStream::Init ( const int stream_num,
                     slots [3-layer] *1000,
                     freq_table[version_id][frequency],
                     framesize );
+        
+        int frame_length;
+        if( layer == 1 )
+            frame_length = 
+               12 *1000 * bitrates_kbps[version_id][3-layer][bit_rate_code] / freq_table[version_id][frequency];
+        else
+            frame_length = 
+            144 *1000 * bitrates_kbps[version_id][3-layer][bit_rate_code] / freq_table[version_id][frequency];
 
+        /* DEBUGGING!!!! */
+        if( frame_length != framesize )
+            mjpeg_error_exit1( "INTERNAL: just found an inconsistent frame length %d(%d)\n", frame_length, framesize );
 		size_frames[0] = framesize;
-		size_frames[1] = framesize+1;
+		size_frames[1] = framesize+( layer == 1 ? 4 : 1);
 		num_frames[padding_bit]++;
 	
 		access_unit.length = size_frames[padding_bit];
@@ -613,7 +624,6 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		padding_bit=bs.get1bit();
 		access_unit.start = AU_start;
 		access_unit.length = SizeFrame( rate_code, padding_bit );
-
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
 			/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;

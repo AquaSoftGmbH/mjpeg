@@ -20,7 +20,9 @@
 #include <config.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #ifdef USE_DLFCN_H
 # include <dlfcn.h>
 #endif

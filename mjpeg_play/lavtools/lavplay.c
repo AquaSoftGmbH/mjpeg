@@ -126,7 +126,9 @@
 #include "liblavplay.c"
 #include "mjpeg_logging.h"
 #include <signal.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 #include <fcntl.h>
 
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
