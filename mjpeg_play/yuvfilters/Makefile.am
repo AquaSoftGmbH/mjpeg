@@ -18,8 +18,8 @@ MAINS		= $(BINARIES:$X=_main$O)
 
 bin_SCRIPTS	= $(BINARIES)
 INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/utils
-DEPENDENCIES	= $(top_srcdir)/utils/libmjpegutils.a
-LDADD		= -L$(top_srcdir)/utils -lmjpegutils
+DEPENDENCIES	= $(top_builddir)/utils/libmjpegutils.a
+LDADD		= -L$(top_builddir)/utils -lmjpegutils
 CLEANFILES	= $(BINARIES) $(MAINS) $L
 YFSOURCES	= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
 EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore $(YFSOURCES)

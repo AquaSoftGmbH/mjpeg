@@ -7,4 +7,4 @@ AM_CFLAGS = -funroll-all-loops -finline-functions -ffast-math -frerun-cse-after-
 
 bin_PROGRAMS       = yuvdenoise
 yuvdenoise_SOURCES = yuvdenoise.c 
-yuvdenoise_LDADD = $(top_srcdir)/utils/libmjpegutils.a @LIBM_LIBS@
+yuvdenoise_LDADD = -L$(top_builddir)/utils -lmjpegutils @LIBM_LIBS@
