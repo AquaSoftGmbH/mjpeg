@@ -89,13 +89,12 @@ search_forward_vector (int x, int y)
   x -= 4;
   y -= 4;
 
-  min = psad_00
+  min = 100*psad_00
     (frame2[0] + (x) + (y) * width,
      frame1[0] + (x) + (y) * width, width, 16, 0x00ffffff);
   v.x = v.y = 0;
-  min *= 10;
-  min /= 9;
-
+  min /= 125;
+  
   if (min > mean_SAD)
     for (i = 1; i < pattern_length; i++)
       {
@@ -108,12 +107,12 @@ search_forward_vector (int x, int y)
 
 	if (SAD < min)
 	  {
-	    min = SAD*10;
-        min /= 9;
+	    min = SAD*100;
+        min /= 125;
 	    v.x = dx;
 	    v.y = dy;
 	  }
-	if (min < mean_SAD)
+	if (min <= mean_SAD)
 	  {
 	    break;
 	  }
@@ -134,12 +133,11 @@ search_backward_vector (int x, int y)
   x -= 4;
   y -= 4;
 
-  min = psad_00
+  min = 100*psad_00
     (frame2[0] + (x) + (y) * width,
      frame3[0] + (x) + (y) * width, width, 16, 0x00ffffff);
   v.x = v.y = 0;
-  min *= 10;
-  min /= 9;
+  min /= 125;
   
   if (min > mean_SAD)
     for (i = 1; i <= pattern_length; i++)
@@ -153,12 +151,12 @@ search_backward_vector (int x, int y)
 
 	if (SAD < min)
 	  {
-	    min = SAD*10;
-        min /= 9;
+	    min = SAD*100;
+        min /= 125;
 	    v.x = dx;
 	    v.y = dy;
 	  }
-	if (min < mean_SAD)
+	if (min <= mean_SAD)
 	  {
 	    break;
 	  }
