@@ -7,8 +7,9 @@
  * Note: mpeg2dec uses a perversion of the PGM format - they're really not
  * "Grey Maps" but rather a catenation of the 420P data (commonly called
  * "YUV").    The type is P5 ("raw") and the number of rows is really
- * the total of the Y', Cr and Cb heights.   The U and V data is "joined"
- * together - you have 1 row of U and 1 row of V per "row" of PGM data.
+ * the total of the Y', Cr and Cb heights.   The Cr and Cb data is "joined"
+ * together.  After the Y' rows you have 1 row of Cr and 1 row of Cb per 
+ * "row" of PGM data.
  *
  * NOTE: You MAY need to know the field order (top or bottom field first),
  *	sample aspect ratio and frame rate because the PGM format makes
