@@ -183,6 +183,29 @@ long int max_lint_neg = -2147483647;	// maximal negative number available for lo
 int mmx = 0;			// =1 for mmx activated
 #endif
 
+
+
+/* 
+   calculate the sample aspect ratio (SAR) for the output stream,
+    given the input->output scale factors, and the input SAR.
+*/
+static y4m_ratio_t calculate_output_sar(int out_w, int out_h,
+                                        int in_w,  int in_h,
+                                        y4m_ratio_t in_sar)
+{
+  y4m_ratio_t out_sar;
+  /*
+      out_SAR_w     in_SAR_w    input_W   output_H
+      ---------  =  -------- *  ------- * --------
+      out_SAR_h     in_SAR_h    input_H   output_W
+  */
+  out_sar.n = in_sar.n * in_w * out_h;
+  out_sar.d = in_sar.d * in_h * out_w;
+  y4m_ratio_reduce(&out_sar);
+  return out_sar;
+}
+
+
 // *************************************************************************************
 int
 my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
@@ -1275,7 +1298,8 @@ main (int argc, char *argv[])
   // SPECIFIC TO YUV4MPEG 
   unsigned long int nb_pixels;
   y4m_frame_info_t frameinfo;
-  y4m_stream_info_t streaminfo;
+  y4m_stream_info_t in_streaminfo;
+  y4m_stream_info_t out_streaminfo;
 
 
   mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
@@ -1285,22 +1309,23 @@ main (int argc, char *argv[])
 
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
-  y4m_init_stream_info (&streaminfo);
+  y4m_init_stream_info (&in_streaminfo);
+  y4m_init_stream_info (&out_streaminfo);
   y4m_init_frame_info (&frameinfo);
 
 
   if (infile == 0)
     {
       // INPUT comes from stdin, we check for a correct file header
-      if (y4m_read_stream_header (0, &streaminfo) != Y4M_OK)
+      if (y4m_read_stream_header (0, &in_streaminfo) != Y4M_OK)
 	{
 	  mjpeg_error ("Could'nt read YUV4MPEG header!\n");
 	  exit (1);
 	}
-      input_width = y4m_si_get_width (&streaminfo);
-      input_height = y4m_si_get_height (&streaminfo);
-      frame_rate = y4m_si_get_framerate (&streaminfo);
-      input_interlaced = y4m_si_get_interlace (&streaminfo);
+      input_width = y4m_si_get_width (&in_streaminfo);
+      input_height = y4m_si_get_height (&in_streaminfo);
+      frame_rate = y4m_si_get_framerate (&in_streaminfo);
+      input_interlaced = y4m_si_get_interlace (&in_streaminfo);
        
 //     input_aspectratio=streaminfo->aspectratio;  
     }
@@ -1316,11 +1341,11 @@ main (int argc, char *argv[])
       frame_rate = mpeg_conform_framerate (el.video_fps);
       input_interlaced = el.video_inter;
       // this will be  eventually overrided by user's specification
-      y4m_si_set_width (&streaminfo, input_width);
-      y4m_si_set_height (&streaminfo, input_height);
-      y4m_si_set_interlace (&streaminfo, input_interlaced);
-      y4m_si_set_framerate (&streaminfo, frame_rate);
-      y4m_si_set_sampleaspect (&streaminfo, y4m_sar_UNKNOWN);
+      y4m_si_set_width (&in_streaminfo, input_width);
+      y4m_si_set_height (&in_streaminfo, input_height);
+      y4m_si_set_interlace (&in_streaminfo, input_interlaced);
+      y4m_si_set_framerate (&in_streaminfo, frame_rate);
+      y4m_si_set_sampleaspect (&in_streaminfo, y4m_sar_UNKNOWN);
     }
 
   // INITIALISATIONS
@@ -1359,7 +1384,7 @@ main (int argc, char *argv[])
 
   // USER'S INFORMATION OUTPUT
 
-  y4m_log_stream_info (LOG_INFO, "yuvscaler: ", &streaminfo);
+  y4m_log_stream_info (LOG_INFO, "yuvscaler input: ", &in_streaminfo);
   //  y4m_print_stream_info(output_fd,streaminfo);
 
   switch (input_interlaced)
@@ -2132,12 +2157,19 @@ main (int argc, char *argv[])
   // END OF INITIALISATION
 
   // Output file header
-  // Should use functions y4m_copy, but I didn't find them inside yuv4mpeg.c (16 Sept 2001)
-  y4m_si_set_width (&streaminfo, display_width);
-  y4m_si_set_height (&streaminfo, display_height);
-  y4m_si_set_interlace (&streaminfo, output_interlaced);
+  y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
+  y4m_si_set_width (&out_streaminfo, display_width);
+  y4m_si_set_height (&out_streaminfo, display_height);
+  y4m_si_set_interlace (&out_streaminfo, output_interlaced);
+  y4m_si_set_sampleaspect(&out_streaminfo, 
+                          calculate_output_sar(output_width_slice,
+                                               output_height_slice,
+                                               input_width_slice,
+                                               input_height_slice,
+                                               y4m_si_get_sampleaspect(&in_streaminfo)));
   if (no_header == 0)
-    y4m_write_stream_header (output_fd, &streaminfo);
+    y4m_write_stream_header (output_fd, &out_streaminfo);
+  y4m_log_stream_info (LOG_INFO, "yuvscaler output: ", &out_streaminfo);
 
 //   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
 //   if (!fwrite_complete (header, 19, out_file))
@@ -2601,7 +2633,8 @@ main (int argc, char *argv[])
 	}
       // End of master loop
     }
-  y4m_fini_stream_info (&streaminfo);
+  y4m_fini_stream_info (&in_streaminfo);
+  y4m_fini_stream_info (&out_streaminfo);
   y4m_fini_frame_info (&frameinfo);
   return 0;
 
