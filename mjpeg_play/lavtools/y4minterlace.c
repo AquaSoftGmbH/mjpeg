@@ -9,20 +9,19 @@
  * is 1280x720p at the NTSC field rate of 60000/1001 frames/sec.  It was desired
  * to recode a captured file to a format suitable for placement on a DVD.  Of
  * course 1280x720 is too large and more importantly 59.94 frames/sec is far 
- * too high to put on a DVD (DVDs are use a subset of MP@ML MPEG-2).
- (and HDTV uses 1:1 pixels, not 40:33 for wide-screen DVD),
+ * too high to put on a DVD (DVDs use a subset of MP@ML, not MP@HL  MPEG-2).
  *
  * The decoding (using mpeg2dec) and rescaling (using y4mscaler and taking into
  * account that HD uses 1:1 pixels of course) of the data was easily done but 
  * what to do about the frame rate?   Not only is 60000/1001 too high for a 
  * DVD but even if the target was not DVD the higher frame rates (-F 6 and 
- * above) belong to the higher MPEG-2 profile/levels and mpeg2enc at present 
- * doesn't handle those.  Ah, create interlaced frames comprised of lines from 
- * each of two progressive frames and then change the rate from 60000/1001 to 
- * 30000/1001.
+ * above) belong to a higher MPEG-2 profile/level than mpeg2enc implements.
+ * Ah ha, create interlaced frames comprised of lines from each of two 
+ * progressive frames and then change the rate from 60000/1001 to 30000/1001.
  *
  * Options are provided to force the frame rate (-r) and to specify which
- * field dominance is desired (-i).
+ * field dominance is desired (-i).  These options should rarely, if ever,
+ * be needed.
 */
 
 #ifdef	HAVE_CONFIG_H
