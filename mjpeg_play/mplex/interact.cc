@@ -1,7 +1,6 @@
 #include "main.hh"
 #include <stdlib.h>
 #include <unistd.h>
-#include <sys/stat.h>
 #include <format_codes.h>
 
 
@@ -177,7 +176,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
     File found?
 *************************************************************************/
 
-bool open_file(const char *name, off_t &bytes)			
+bool open_file(const char *name)			
 {
     FILE* datei;
 	struct stat stb;
@@ -189,8 +188,6 @@ bool open_file(const char *name, off_t &bytes)
 		mjpeg_error("File %s not found.\n", name);
 		return (true);
     }
-    fstat (fileno(datei), &stb);
-    bytes = stb.st_size;
     fclose(datei);
     return (false);
 }

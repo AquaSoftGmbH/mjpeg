@@ -62,15 +62,14 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		check_files (argc-optargs, argv+optargs, 
-					 &audio_file, &video_file,
-					 audio_bytes, video_bytes);
-		if (which_streams & STREAMS_VIDEO) {
+		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
+
+		if (video_file) {
 			videoStrm.Init( video_file, 0);
 		}
     
-		if (which_streams & STREAMS_AUDIO) {
-			audioStrm.Init (audio_file, audio_bytes);
+		if (audio_file) {
+			audioStrm.Init (audio_file, 0);
 		}
 
 	init_stream_syntax_parameters(videoStrm,audioStrm);

@@ -99,14 +99,9 @@ void check_stills( const int argc, char *argv[], vector<const char *>stills )
 	off_t file_length;
 	while( i < argc )
 	{
-		if( open_file( argv[i], file_length ) )
+		if( open_file( argv[i] ) )
 		{
-			mjpeg_info( "Still image: %s of %lld bytes\n", argv[i], file_length);
-			if( file_length > opt_buffer_size*1024 )
-			{
-				mjpeg_warn( "Still image %s: size exceeds specified video buffer size - discarding!\n", argv[i] );
-			}
-			else
+			mjpeg_info( "Still image: %s\n", argv[i], file_length);
 				stills.push_back(argv[i]);
 		}
 		else
@@ -126,21 +121,17 @@ void check_stills( const int argc, char *argv[], vector<const char *>stills )
 void check_files (int argc,
 				  char* argv[],
 				  char* *audio_file,
-				  char* *video_file,
-				  off_t &audio_bytes,
-				  off_t &video_bytes
+				  char* *video_file
 	)
 {
     IBitStream bs1, bs2, undo;
-    off_t bytes_1, bytes_2;
 	
 	/* As yet no streams determined... */
-	which_streams = 0;
     if (argc == 2) {
-		if (open_file(argv[1],bytes_1))
+		if (open_file(argv[1]))
 			exit (1); }
     else if (argc == 3) {
-		if (open_file(argv[1],bytes_1) || open_file(argv[2],bytes_2))
+		if (open_file(argv[1]) || open_file(argv[2]))
 			exit (1); }
 	    
     bs1.open(argv[1]);
@@ -148,20 +139,11 @@ void check_files (int argc,
     if (argc == 3)
 		bs2.open(argv[2]);
 
-	/* Das Bitstreampaket kuemmert sich bei einem look_ahead nicht
-       darum, den Buffer vorzubereiten, weil es davon ausgeht, dass
-       vorher mindestens einmal ein getbits () gemacht wurde. Da das
-       hier nicht zutrifft, muss manuell das erledigt werden, was 
-       sonst getbits () macht, d.h. ein Buffer eingelesen werden und
-       bestimmte Werte in der Struktur gesetzt werden. */
-
 	bs1.prepareundo( undo);
 	if (bs1.getbits( 12 )  == 0xfff)
     {
 		*audio_file = argv[1];
-		audio_bytes= bytes_1;
 		mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[1]);
-		which_streams |= STREAMS_AUDIO;
 		if (argc == 3 ) {
 			if (  bs2.getbits( 32) != 0x1b3)
 			{
@@ -173,9 +155,7 @@ void check_files (int argc,
 			else
 			{
 				mjpeg_info ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
-				which_streams |= STREAMS_VIDEO;
 				*video_file = argv[2];
-				video_bytes= bytes_2;
 			}
 		}
 
@@ -186,9 +166,7 @@ void check_files (int argc,
 		if (  bs1.getbits( 32)  == 0x1b3)
 		{
 			*video_file = argv[1];
-			video_bytes= bytes_1;
 			mjpeg_info ("File %s is an MPEG-1/2 Video stream.\n",argv[1]);
-			which_streams |= STREAMS_VIDEO;
 			if (argc == 3 ) {
 				if ( bs2.getbits( 12 ) != 0xfff)
 				{
@@ -200,9 +178,7 @@ void check_files (int argc,
 				else
 				{
 					mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[2]);
-					which_streams |= STREAMS_AUDIO;
 					*audio_file = argv[2];
-					audio_bytes= bytes_2;
 				}
 			}
 		}
@@ -259,7 +235,7 @@ void VideoStream::Init (const char *video_file, int stream_num )
     mjpeg_info ("Scanning Video stream %d for access units information.\n",
 				stream_num);
 
-	InputStream<VAunit,FRAME_CHUNK>::Init( video_file, 
+	InputStream::Init( video_file, 
 										   VIDEO_STR_0 + stream_num ); 
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
@@ -267,7 +243,7 @@ void VideoStream::Init (const char *video_file, int stream_num )
 		horizontal_size	= bs.getbits( 12);
 		vertical_size	= bs.getbits( 12);
 		aspect_ratio	= bs.getbits(  4);
-		pict_rate 			= bs.getbits(  4);
+		pict_rate 		= bs.getbits(  4);
 		picture_rate	= pict_rate;
 		bit_rate		= bs.getbits( 18);
 		marker_bit( bs, 1);
@@ -616,8 +592,8 @@ void AudioStream::Init (
     unsigned int i;
    
     mjpeg_info ("Scanning Audio stream for access units information. \n");
-	InputStream<AAunit,FRAME_CHUNK>::Init( audio_file, 
-										   AUDIO_STR_0 + stream_num );
+	InputStream::Init( audio_file, 
+					   AUDIO_STR_0 + stream_num );
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
@@ -777,7 +753,7 @@ AAunit *AudioStream::lookahead( unsigned int i )
 void AudioStream::close()
 {
 
-    mjpeg_info ("Done, stream bit offset %lld.\n",AU_start);
+    mjpeg_info ("Audio stream length %lld.\n",AU_start);
 	
     stream_length = AU_start >> 3;
     bs.close();
