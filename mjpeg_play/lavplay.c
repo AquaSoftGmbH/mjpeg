@@ -720,7 +720,8 @@ int main(int argc, char ** argv)
        bp.field_per_buff = 1;
        bp.TmpDcm = 2;
        
-       if (/*!screen_output && */ ( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
+       if (!soft_play && !screen_output &&  
+	   ( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
 	 {
 	   sprintf(infostring,"Video dimensions (not interlaced) too large: %ld x %ld\n",
 		   el.video_width,el.video_height);
@@ -746,6 +747,7 @@ int main(int argc, char ** argv)
    
    /* calculate height, width and offsets from the above settings */
    
+   bp.quality = 100;
    bp.img_width  = bp.HorDcm*el.video_width;
    bp.img_height = bp.VerDcm*el.video_height/bp.field_per_buff;
    bp.img_x = (720  - bp.img_width )/2 + h_offset;
