@@ -571,7 +571,7 @@ static void save_list(GtkWidget *widget, GtkCList *clist)
       mixer_dev = g_strdup(gtk_entry_get_text(GTK_ENTRY(mixer_device_entry)));
       sound_init();
    }
-   for (i=0;i<g_list_length(audio_src_list);i++)
+   for (i=0;(uint)i<g_list_length(audio_src_list);i++)
    {
       if (!strcmp((char *)g_list_nth_data(audio_src_list, i),
          gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(audio_src_combo)->entry))))
@@ -587,7 +587,7 @@ static void save_list(GtkWidget *widget, GtkCList *clist)
       gtk_tvplug_set(tv, "port", port);
    }
 
-   for (i=0;i<g_list_length(GTK_TVPLUG(tv)->encoding_list);i++)
+   for (i=0;(uint)i<g_list_length(GTK_TVPLUG(tv)->encoding_list);i++)
    {
       if (!strcmp(gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(v4lxv_encoding_combo)->entry)),
          (char *) g_list_nth_data(GTK_TVPLUG(tv)->encoding_list, i)))
@@ -1106,7 +1106,7 @@ static void sound_init()
    if (mixer_id<=0)
    {
       g_print("**ERROR: opening mixer device (%s): %s\n",
-         mixer_dev, sys_errlist[errno]);
+         mixer_dev, strerror(errno));
    }
    else
    {

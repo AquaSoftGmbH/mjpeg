@@ -144,7 +144,7 @@ static void remote_button_pressed(gpointer data, gint source,
    if (n < 0)
    {
       printf("**ERROR: error reading the remote control button: %s\n",
-         (char *)sys_errlist[errno]);
+         (char *)strerror(errno));
       return;
    }
    if (n == 0)
@@ -198,14 +198,14 @@ gint lirc_init()
    if (fd == -1)
    {
       printf("**ERROR: LIRC socket init failed: %s\n",
-         (char *)sys_errlist[errno]);
+         (char *)strerror(errno));
       return 0;
    }
 
    if(connect(fd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
    {
       printf("**ERROR: LIRC connect init failed: %s\n",
-         (char *)sys_errlist[errno]);
+         (char *)strerror(errno));
       return 0;
    }
    gdk_input_add (fd, GDK_INPUT_READ, remote_button_pressed, NULL);

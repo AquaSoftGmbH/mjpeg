@@ -166,7 +166,7 @@ int number_of_frames(char *editlist)
    }
 
    fgets(buffer,255,fd);
-   for(i=0;i<strlen(buffer);i++)
+   for(i=0;i< (int)strlen(buffer);i++)
    {
       if(buffer[i]=='\n')
       {
