@@ -14,8 +14,6 @@ SUBDIRS = \
 	y4mdenoise \
 	debian
 
-bin_SCRIPTS = mjpegtools-config
-
 #
 # Add any non autoconf'd files here, extra readmes and other misc 
 # info to be copied into the dist
@@ -36,7 +34,6 @@ EXTRA_DIST = \
 	mjpeg_howto.txt \
 	mjpegtools.spec \
 	mjpegtools.spec.in \
-	mjpegtools-config.in \
 	mjpegtools.pc.in \
 	autogen.sh \
 	strip_fPIC.sh
@@ -46,7 +43,6 @@ pkgconfig_DATA = mjpegtools.pc
 
 DISTCLEANFILES = \
 	mjpegtools.pc \
-	mjpegtools-config \
 	confdefs.h \
 	config.cache \
 	config.status \

@@ -1,5 +1,5 @@
 dnl Process this file with autoconf to produce a configure script.
-AC_INIT([mjpegtools],[1.6.3],[mjpeg-developer@mjpeg.sourceforge.net])
+AC_INIT([mjpegtools],[1.6.3],[mjpeg-developer@lists.sourceforge.net])
 AC_PREREQ(2.57)
 AC_CONFIG_SRCDIR([lavtools/lav_io.c])
 
@@ -42,14 +42,13 @@ AC_ARG_ENABLE(zalpha,
                              [include MPEG Z/Alpha support in mplex (see
                               http://www.geofront.se/products_software_mza.php)]))
 AC_ARG_WITH(quicktime,
-            AC_HELP_STRING([--with-quicktime],
-                           [quicktime support for record/playback]))
+            AC_HELP_STRING([--without-quicktime],
+                           [Do not use libquicktime.]),
+            [], [with_quicktime=yes])
 AC_ARG_WITH(dv,
-            AC_HELP_STRING([--with-dv],
-                           [libDV (digital video) support]))
-AC_ARG_WITH(dv-yv12,
-            AC_HELP_STRING([--with-dv-yv12],
-                           [libDV PAL YV12 read-support]))
+            AC_HELP_STRING([--without-dv],
+                           [Do not use libdv.]),
+            [], [with_dv=yes])
 
 
 AC_GNU_SOURCE
@@ -74,82 +73,89 @@ dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
 
-AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h)
+
+dnl maddog:  What about CHECK-ALLOCA????
+AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
 
 dnl sizeof PRId64 etc...
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
 AC_CHECK_SIZEOF(long long)
-case 8 in
-$ac_cv_sizeof_int)
-  PRID64_STRING_FORMAT="d"
-  ;;
-$ac_cv_sizeof_long)
-  PRID64_STRING_FORMAT="ld"
-  ;;
-$ac_cv_sizeof_long_long)
-  PRID64_STRING_FORMAT="lld"
-  ;;
-*)
-  AC_MSG_WARN(No suitable variant for 64bits integers found)
-  ;;
-esac
-AC_DEFINE_UNQUOTED(PRID64_STRING_FORMAT, "$PRID64_STRING_FORMAT",
-				   [Format string for 64 bit integers]
-				  )
-AC_SUBST(PRID64_STRING_FORMAT)
 
-AC_CHECK_FUNC(getopt_long,[AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
-[ # FreeBSD and BSD/OS have a gnugetopt library for this:
-  AC_CHECK_LIB([gnugetopt],[getopt_long],
-  [AC_DEFINE(HAVE_GETOPT_LONG,1,getopt support) LIBGETOPT_LIB="-lgnugetopt"])])
+AC_CACHE_CHECK([the string format of PRId64],
+               [mjt_cv_format_prid64],
+               [case 8 in
+	        $ac_cv_sizeof_int)        mjt_cv_format_prid64="d"   ;;
+                $ac_cv_sizeof_long)       mjt_cv_format_prid64="ld"  ;;
+                $ac_cv_sizeof_long_long)  mjt_cv_format_prid64="lld" ;;
+                *)
+                  AC_MSG_WARN([No suitable variant for 64bits integers found])
+                  mjt_cv_format_prid64=""
+                  ;;
+                esac])
+AC_DEFINE_UNQUOTED(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64",
+                   [Format string for 64 bit integers])
+#maddog:  Is this AC-SUBST actually necessary????
+#  (And, is the result quoted properly????)
+AC_SUBST(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64")
+
+#maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
+#maddog:  (How does this interact with cpml stuff below???????)
+AC_CHECK_LIB([m],[sin])
+AC_CHECK_FUNCS([posix_memalign memalign fmax lround])
+
+
+#maddog:  FIX UP?????????????
+AC_CHECK_FUNC(getopt_long,
+              [AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
+              [ # FreeBSD and BSD/OS have a gnugetopt library for this:
+               AC_CHECK_LIB([gnugetopt],[getopt_long],
+                            [AC_DEFINE(HAVE_GETOPT_LONG,1,getopt support)
+                             LIBGETOPT_LIB="-lgnugetopt"])
+              ])
 AC_SUBST(LIBGETOPT_LIB)
 
-AC_CHECK_FUNCS([posix_memalign memalign fmax])
 
-
-AC_CHECK_LIB([m],[lround], [AC_DEFINE(HAVE_LROUND,1,lround support)])
 
 AC_TYPE_SIGNAL
 
-OS_ARCH=`uname -s | sed -e 's|/|_|g'`
-OS_RELEASE=`uname -r`
-OS_CPU=`uname -m`
+AC_MSG_NOTICE([The host is $host  $host_cpu  $host_vendor  $host_os .])
 
 dnl test for alpha architecture, and Compaq Math Library (cpml) -- much faster
 dnl than GNU libm on this arch.
 LIBM_LIBS="-lm "
 AC_SUBST(LIBM_LIBS)
 AC_MSG_CHECKING([for alpha architecture])
-if test x$OS_ARCH = xLinux && test x$OS_CPU = xalpha ; then
-    AC_MSG_RESULT([yes])
-    AC_CHECK_LIB(cpml, asin,
-      [ LIBM_LIBS="-lcpml"
-        have_cpml=true ],,)
-else
-    AC_MSG_RESULT([no])
-fi
-
-# FreeBSD and OpenBSD have neither -lpthread nor integrated pthreads in libc.
-# Instead -pthread is used to the compiler/linker to get pthreads working right.
-if test x$OS_ARCH = xFreeBSD -o x$OS_ARCH = xOpenBSD; then
-   CFLAGS="$CFLAGS -pthread"
-   CXXFLAGS="$CXXFLAGS -pthread"
-fi
+case $host in
+	alpha*-*-linux-*)
+	    AC_MSG_RESULT([yes])
+	    AC_CHECK_LIB(cpml, asin,
+                         [ LIBM_LIBS="-lcpml"
+                           have_cpml=true ],,)
+            ;;
+        *)
+            AC_MSG_RESULT([no])
+            ;;
+esac
 
 dnl *********************************************************************
-dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
-dnl
-dnl It defines a tag called "IRIX" to circumvent all the Linux video device code (and its includes)
-dnl and defines WORD_BIGENDIAN to flag a big iron system ;-) 
+dnl FreeBSD and OpenBSD have neither -lpthread nor integrated pthreads in libc.
+dnl Instead -pthread is used to the compiler/linker to get pthreads working right.
+dnl *********************************************************************
+case $host in
+	*-*-*freebsd* | *-*-openbsd*)
+	   CFLAGS="$CFLAGS -pthread"
+	   CXXFLAGS="$CXXFLAGS -pthread"
+	   ;;
+esac
 
-case "$HOSTTYPE" in
-  mips*) 
-   echo NEW: Activating IRIX architecture flags:IRIX and WORD_BIGENDIAN !
-   CFLAGS="$CFLAGS -DIRIX -DWORD_BIGENDIAN"
-   ;;
-  Darwin)
-   echo Adding -no-cpp-precomp to CFLAGS for Darwin to avoid compile errors
+
+dnl *********************************************************************
+dnl Some host-specific tweaks:
+dnl  o OS-X/Darwin needs "-no-cpp-precomp" to avoid compile errors.
+dnl *********************************************************************
+case $host in
+  *-apple-darwin*)
    CFLAGS="$CFLAGS -no-cpp-precomp"
    ;;
 esac
@@ -159,38 +165,34 @@ dnl Test whether we're linux or not. If so, define HAVE_V4L and build the
 dnl video4linux/hardware dependent tools. Else, undefine HAVE_V4L
 
 have_video4linux=false
-if test x$OS_ARCH = xLinux; then
+case $host in
+  *-*-linux*)
   AC_CHECK_HEADER(linux/videodev.h,
-    have_video4linux=true
-    AC_DEFINE(HAVE_V4L,1,
-		      [Building for Linux - using the video4linux API]),
-    AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])
-    )
-else
+                  [have_video4linux=true
+                   AC_DEFINE(HAVE_V4L,1,
+		             [Building for Linux - using the video4linux API])],
+                  [AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])])
+   ;;
+  *)
   AC_MSG_WARN([Did not find linux platform - video4linux functionality will be disabled])
-fi
-
-dnl *********************************************************************
-dnl Check for the various libraries we depend on.
-dnl
-dnl First lets see if glib is present on this machine
-
-AM_PATH_GLIB(1.2.0)
+   ;;
+esac
 
 dnl *********************************************************************
 dnl Check for the pthread lib
 dnl
 AC_SUBST(PTHREAD_LIBS)
-have_pthread=false
 AC_CHECK_LIB(pthread, pthread_create,
-  [ PTHREAD_LIBS="-lpthread" 
-    AC_DEFINE(HAVE_LIBPTHREAD,1, [Posix pththreads lib present])
-    have_pthread=true ],,)
+             [PTHREAD_LIBS="-lpthread" 
+              AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix pthreads lib present])
+              have_pthread=true],
+             [have_pthread=false])
 
 oldLIBS="$LIBS"
 LIBS="$LIBS $PTHREAD_LIBS"
 AC_CHECK_FUNC(pthread_attr_getstacksize,
-	          [AC_DEFINE(HAVE_PTHREADSTACKSIZE,1, [pthread stack sizes accesible])])
+              [AC_DEFINE(HAVE_PTHREADSTACKSIZE, 1,
+                         [pthread stack sizes accesible])])
 LIBS="$oldLIBS"
 
 dnl *********************************************************************
@@ -245,74 +247,51 @@ fi
 
 dnl *********************************************************************
 dnl Check for the libquicktime library
+dnl *********************************************************************
 AC_SUBST(QUICKTIME_LIBS)
 AC_SUBST(QUICKTIME_CFLAGS)
-if test x$with_quicktime = x -o x$with_quicktime = xyes ; then
-   lqt-config --version >/dev/null 2>/dev/null
-   if test $? != 0; then
-     have_quicktime=false
-   else
-     QUICKTIME_LIBS=`lqt-config --libs`
-     QUICKTIME_CFLAGS=`lqt-config --cflags`
-     AC_DEFINE(HAVE_LIBQUICKTIME,1,
-			   [libquicktime is present])
-     have_quicktime=true
-   fi
-else
-     have_quicktime=false
+have_quicktime=false
+if test x$with_quicktime != xno ; then
+  AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
+  AC_MSG_CHECKING([for libquicktime])
+  if test x"$LQT_CONFIG" = x"no" ; then
+    AC_MSG_RESULT(no)
+  else
+    have_quicktime=true
+    QUICKTIME_LIBS=`$LQT_CONFIG --libs`
+    QUICKTIME_CFLAGS=`$LQT_CONFIG --cflags`
+    AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
+    AC_MSG_RESULT(yes)
+  fi
 fi
 
-dnl test for PNG lib, moved out of Quicktime checks because of png2yuv /gz
-have_png=false
-OLD_LIBS="$LIBS"
-LIBS="$LIBS -lz $LIBM_LIBS"
-AC_CHECK_LIB(png, png_read_info, [have_png=true])
-LIBS="$OLD_LIBS"
 
-dnl some more libs which are probably needed.  Don't add -ldl unconditionally
-dnl Some systems lack -ldl and adding it here breaks things.
-EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS"
-if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS="$EXTRA_LIBS $PTHREAD_LIBS"
-fi
 
-AC_CHECK_LIB([dl],[dlopen],
-    [AC_DEFINE(HAVE_LIBDL,1,dlopen support) LIBDL_LIB="-ldl"])
-AC_SUBST(LIBDL_LIB)
+dnl *********************************************************************
+dnl Check for PNG library
+dnl *********************************************************************
+AC_SUBST(PNG_LIBS)
+AC_SUBST(PNG_CFLAGS)
+PKG_CHECK_MODULES(PNG, [libpng], [have_png=true], [have_png=false])
+
+
 
 dnl *********************************************************************
 dnl Check for libdv
-dnl At the end of this DV_LIBS will contain the libraries and 
-dnl flags needed for linking and DV_CFLAGS will have the flags for compilation.
+dnl *********************************************************************
 AC_SUBST(DV_LIBS)
 AC_SUBST(DV_CFLAGS)
-if test x$with_dv = xyes ; then
-  AC_MSG_ERROR([
-*** A directory must be specified for the --with-dv option.])
-fi
-
-if test x$with_dv = x ; then
-  with_dv=/usr/local
-fi
-
+dnl PKG_CHECK_MODULES(DV, [libdv >= 0.9],
+dnl                  [AC_CHECK_LIB(dv, dv_decoder_free,
+dnl                                [have_dv=true
+dnl                                 AC_DEFINE(HAVE_DV, 1, [libdv is present])],
+dnl                                [have_dv=false])],
+dnl                  [have_dv=false])
 have_dv=false
-EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS"
-AC_CHECK_LIB(dv, dv_decoder_free,
-  [ DV_LIBS="-L${with_dv}/lib -ldv ${EXTRA_LIBS}"
-    DV_CFLAGS="-I${with_dv}/include"
-    AC_DEFINE(HAVE_LIBDV,1,
-			  [libdv is present])
-    have_dv=true],, 
-    -L${with_dv}/lib -ldv ${EXTRA_LIBS})
-
-dnl *********************************************************************
-dnl Check for libDV YV12 read-support
-have_dv_yv12=false
-if test x$with_dv_yv12 = xyes -a $have_dv = true; then
-    AC_DEFINE(LIBDV_PAL_YV12,1,
-		      [YV12 support in libdv])
-    have_dv_yv12=true
+if test x$with_dv != xno ; then
+  PKG_CHECK_MODULES(DV, [libdv >= 0.9], [have_dv=true], [have_dv=false])
 fi
+
 
 dnl *********************************************************************
 dnl  Lets find where xwindows lives on this machine. Punt if not found.
@@ -336,18 +315,15 @@ AC_SUBST(x_libraries)
 dnl ********************************************************************
 dnl Check to see if __progname is provided by the system
 dnl ********************************************************************
-AC_MSG_CHECKING(for __progname)
-AC_CACHE_VAL(ac_cv_extern__progname,
-             AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
-                                             [[extern char *__progname;
-                                               puts(__progname);]])],
-                            [ac_cv_extern__progname=yes],
-			    [ac_cv_extern__progname=no]))
-if test x$ac_cv_extern___progname = xyes ; then
-	AC_DEFINE(HAVE___PROGNAME,,[Is __progname defined by system?])
-	AC_MSG_RESULT(yes)
-else
-	AC_MSG_RESULT(no)
+AC_CACHE_CHECK([for __progname],
+               [mjt_cv_extern___progname],
+               [AC_LINK_IFELSE([AC_LANG_PROGRAM([[]],
+                                                [[extern char *__progname;
+                                                  puts(__progname);]])],
+                               [mjt_cv_extern___progname=yes],
+			       [mjt_cv_extern___progname=no])])
+if test x$mjt_cv_extern___progname = xyes ; then
+  AC_DEFINE(HAVE___PROGNAME, 1, [Is __progname defined by system?])
 fi
 
 dnl ********************************************************************
@@ -358,24 +334,24 @@ AC_CHECK_LIB(Xxf86dga, XF86DGAQueryExtension,
 	V4LCONF_LIBS="$X_LIBS -lXxf86dga" 
 	AC_DEFINE(HAVE_LIBXXF86DGA,1, [libxf86dga is present]),,
 	$X_LIBS $X_PRE_LIBS -lXext -lX11 $X_EXTRA_LIBS)
+
 dnl ********************************************************************
 dnl Check for Gtk+/glib (for glav)
+dnl   (defines GTK_CFLAGS and GTK_LIBS)
 dnl ********************************************************************
-have_gtk=false
-ifdef([AM_PATH_GTK],
-      [AM_PATH_GTK(1.2.0, [ have_gtk=true AC_DEFINE(HAVE_GTK,1, [Gtk library present])],,)])
+AM_PATH_GTK(1.2.0,
+            [have_gtk=true
+             AC_DEFINE(HAVE_GTK, 1, [Gtk library present]) ],
+            [have_gtk=false])
 
 dnl ********************************************************************
 dnl Check for the SDL library (for software playback)
-dnl
-dnl AM_PATH_SDL defines SDL_CFLAGS and SDL_LIBS for us..
-have_sdl=false
-if test x$have_jpeg = xtrue ; then
-ifdef([AM_PATH_SDL],
-	[AM_PATH_SDL(1.1.3,[AC_DEFINE(BUILD_MJPEG,1, [Build MJPEG software playback])
-	have_sdl=true
-	AC_DEFINE(HAVE_SDL,1, [SDL library present])],,)])
-fi
+dnl   (defines SDL_CFLAGS and SDL_LIBS)
+dnl ********************************************************************
+AM_PATH_SDL(1.1.3,
+            [have_sdl=true
+             AC_DEFINE(HAVE_SDL, 1, [SDL library present]) ],
+            [have_sdl=false])
 
 dnl ********************************************************************
 dnl Test for MMX support if an IA32 platform.  If on a PPC then look for
@@ -393,15 +369,17 @@ have_asm_nasm=false
 have_x86cpu=false
 have_altivec=false
 AC_MSG_CHECKING([for Intel Pentium architecture (IA32)])
-if test "$host_cpu" = "i386" -o "$host_cpu" = "i486" \
-   -o "$host_cpu" = "i586" -o "$host_cpu" = "i686" \
-   -o "$host_cpu" = "i786" ; then
-  AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_X86CPU,1, [Compiling for x86 architecture CPU])
-  have_x86cpu=true
-else
-  AC_MSG_RESULT(no)
-fi
+case $host_cpu in
+  i[[3-7]]86)
+    AC_MSG_RESULT(yes)
+    AC_DEFINE(HAVE_X86CPU,1, [Compiling for x86 architecture CPU])
+    have_x86cpu=true
+    ;;
+  *)
+    AC_MSG_RESULT(no)
+    ;;
+esac
+
 
 AC_MSG_CHECKING([for PowerPC architecture])
 if test "$host_cpu" = "powerpc" ; then
@@ -535,7 +513,6 @@ AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
 AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
-AM_CONDITIONAL(BUILD_MJPEG, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
@@ -606,7 +583,7 @@ esac
 
 dnl **********************************************************************
 dnl Output a Makefile or two and the lib/header descriptor script
-dnl
+dnl **********************************************************************
 AC_CONFIG_FILES([
      Makefile
      debian/Makefile
@@ -624,19 +601,15 @@ AC_CONFIG_FILES([
      utils/altivec/Makefile
      utils/mmxsse/Makefile
      y4mdenoise/Makefile
-     mjpegtools-config
      mjpegtools.pc
      mjpegtools.spec
      ])
 AC_OUTPUT
 
 
-AC_DEFINE(VERSION, ${VERSION}, 
-		  [Version of this build])
-
 dnl ************************************************************************
 dnl Summarize the config for the user.
-dnl
+dnl ************************************************************************
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([ MJPEG tools ${VERSION} build configuration :])
 AC_MSG_NOTICE([])
@@ -649,7 +622,7 @@ if test "$have_ppccpu" = "true" ; then
   AC_MSG_NOTICE([    - AltiVec enabled             : ${have_altivec}])
 fi
 if test x"$ARCHFLAGS" != x; then
-  AC_MSG_NOTICE([  - arch/cpu compiler flags:      : ${ARCHFLAGS}])
+  AC_MSG_NOTICE([  - arch/cpu compiler flags       : ${ARCHFLAGS}])
 fi
 AC_MSG_NOTICE([  - video4linux recording/playback: ${have_video4linux}])
 AC_MSG_NOTICE([  - software MJPEG playback       : ${have_sdl}])
@@ -658,6 +631,5 @@ AC_MSG_NOTICE([  - Quicktime playback/recording  : ${have_quicktime}])
 AC_MSG_NOTICE([  - PNG input support             : ${have_png}])
 AC_MSG_NOTICE([  - AVI MJPEG playback/recording  : true (always)])
 AC_MSG_NOTICE([  - libDV (digital video) support : ${have_dv} ])
-AC_MSG_NOTICE([  - libDV PAL YV12 read support   : ${have_dv_yv12} ])
 AC_MSG_NOTICE([  - Gtk+ support for glav         : ${have_gtk}])
 AC_MSG_NOTICE([])
