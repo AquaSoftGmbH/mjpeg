@@ -78,7 +78,7 @@ MultiplexJob::MultiplexJob()
     max_timeouts = 10;
     max_PTS = 0;
     emul_vcdmplex = 0;
-    max_segment_size = 2000; // MB, Safe default suitable for DVD etc...
+    max_segment_size = 0; // MB, default is unlimited (suitable for DVD)
     outfile_pattern = 0;
     packets_per_pack = 1;
 
