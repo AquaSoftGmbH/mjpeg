@@ -40,6 +40,12 @@ Verbosity level (0, 1 or 2)
 .TP 5
 .BI \-I 
 Ignore unsupported bitrates/bits per sample
+.TP 5
+.BI \-r " sr,bs,ch"
+If the file does not contain any sound. lav2wav will generate silence. If you
+add the samplerate (sr), audio-bitsize (bs) and channel (ch). It will create 
+a audio output with that carateristics. If you don't provide any option the
+default options sr 44100, bs 16, ch 2 will be used.  
 
 .SH BUGS
 The "WAV" file format (technically: RIFF) is really very much less
@@ -50,6 +56,10 @@ begining and over-writing.  If the output is unseek-able (e.g. pipe
 lav2wav simply writes a large length into the header and leaves it at
 that).  Most tools like sox(1) or mp2enc(1) either ignore the length
 field anyway or only give a warning.
+.br
+The audio length is inacurate calculated when lav2wav generates silence.
+This happens only if you have NTSC framerate and than it creates for every
+hour of video 1.1498sec too less of silence. 
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.
