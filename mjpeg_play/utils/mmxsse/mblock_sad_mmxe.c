@@ -420,21 +420,19 @@ void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2,
 
         psadbw_r2r(mm5, mm2);
         psadbw_r2r(mm5, mm3);
-        paddd_r2r(mm2, mm1);
-        pshufw_r2ri(mm3,mm3,SHUFFLEMAP(2,3,0,1));
-        paddd_r2r(mm3, mm1);
+        packssdw_r2r(mm3,mm2);
+        paddd_r2r(mm2,mm1);
 
-        movq_m2r(blk1[0], mm6);
+        movq_m2r(blk1[0], mm2);
         movq_m2r(blk1[1], mm3);
         blk1-=rowstride;
         blk2-=rowstride;
 
-        movq_r2r(mm6, mm2);
-        psadbw_r2r(mm5, mm6);
-        psadbw_r2r(mm3, mm5);
-        paddd_r2r(mm6, mm0);
-        pshufw_r2ri(mm5, mm5, SHUFFLEMAP(2,3,0,1));
-        paddd_r2r(mm5, mm0);
+        movq_r2r(mm5, mm6);
+        psadbw_r2r(mm2, mm5);
+        psadbw_r2r(mm3, mm6);
+        packssdw_r2r(mm6,mm5);
+        paddd_r2r(mm5,mm0);
 
         h--;
     } while(h);
