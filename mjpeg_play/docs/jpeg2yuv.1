@@ -15,6 +15,8 @@ jpeg2yuv \- Convert jpeg images to the yuv format.
 .IR num ]
 .RB [ \-n 
 .RB num ]
+.RB [ \-l 
+.RB num ]
 .RB [ \-j
 .IR filename ]
 
@@ -50,6 +52,11 @@ No default, this option has to be specified.
 0 = non-interleaved (two successive fields per JPEG file)
 .br
 1 = interleaved fields
+.TP 5
+.BI \-l " num"
+Specifies the nummber of loops (default: 0 loops )
+.br
+When this option is not used the given range of images is only processed once. If you use this option and as number 1, jpeg2yv will loop forever writing the image to stdout. When you use n > 1 it will loop. n-time till it finishes.  
 .TP 5
 .BI \-n " num"
 Specifies the nummber of frames to process. (default: all = -1)
