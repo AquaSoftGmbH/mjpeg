@@ -1534,13 +1534,13 @@ static void lavrec_record(lavrec_t *info)
    /* Queue all buffers, this also starts streaming capture */
    if (info->software_encoding)
    {
-      frame_cnt = 1;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
-         //lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
+      //frame_cnt = 1;
+      //if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
+      //{
+      //   lavrec_msg(LAVREC_MSG_WARNING, info,
+      //      "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
+      //   //lavrec_change_state(info, LAVREC_STATE_STOP);
+      //}
       settings->mm.width = settings->width;
       settings->mm.height = settings->height;
       settings->mm.format = VIDEO_PALETTE_YUV420P;
@@ -1775,17 +1775,18 @@ retry:
    }
 
    /* stop streaming capture */
-   if (info->software_encoding)
-   {
-      x = 0;
-      if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
-      {
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
-         //lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
-   }
-   else
+   //if (info->software_encoding)
+   //{
+   //   x = 0;
+   //   if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
+   //   {
+   //      lavrec_msg(LAVREC_MSG_WARNING, info,
+   //         "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
+   //      //lavrec_change_state(info, LAVREC_STATE_STOP);
+   //   }
+   //}
+   //else
+   if (!info->software_encoding)
    {
       x = -1;
       if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &x) < 0)
