@@ -127,20 +127,22 @@ int mquant;
 double quant_weight_coeff_sum( short *blk, unsigned char * quant_mat )
 {
   int i;
-  /* double sum = 1000.0; */
-  int sum = 1000;    /* TODO: This base weight ought to be exposed.... */
-  for( i = 0; i < 64; i+=2 )
+  double sum = 2000.0;
+ /* int sum = 2000; */   /* TODO: This base weight ought to be exposed.... */
+   for( i = 0; i < 64; i+=2 )
 	{
+		sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]) +
+	  ((double)(fastabs(blk[i+1]) * 16)) / ((double) quant_mat[i+1]);
+/*
 	  register int abs1, abs2;
 	  abs1 = (fastabs(blk[i]) <<(4+8)) / quant_mat[i];
 	  abs2 = (fastabs(blk[i+1]) <<(4+8)) ;
 	  sum += abs1+abs2/ quant_mat[i+1];
+	 */
 	}
   /*
-	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]) +
-	  ((double)(fastabs(blk[i+1]) * 16)) / ((double) quant_mat[i+1]);
-	  sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
-  */
+	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
+ */
 	  
   return (double) (sum / 256);
 }

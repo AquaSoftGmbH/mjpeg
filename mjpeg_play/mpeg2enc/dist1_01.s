@@ -45,12 +45,12 @@ global dist1_01_SSE
 
 align 32
 dist1_01_SSE:
-	push ebp		; save stack pointer
-	mov ebp, esp		; so that we can do this
+	push ebp	
+	mov ebp, esp
 
-	push ebx		; save the pigs
-	push ecx		; make them squeal
-	push edx		; lets have pigs for every meal
+	push ebx
+	push ecx
+	push edx
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -102,9 +102,9 @@ nextrow01:
 
 	movd eax, mm0		; store return value
 	
-	pop edx			; pop pop
-	pop ecx			; fizz fizz
-	pop ebx			; ia86 needs a fizz instruction
+	pop edx	
+	pop ecx		
+	pop ebx	
 
 	pop ebp			; restore stack pointer
 

@@ -184,11 +184,11 @@ returnmm00:
 
 	pop edi
 	pop esi	
-	pop edx			; pop pop
-	pop ecx			; fizz fizz
-	pop ebx			; ia86 needs a fizz instruction
+	pop edx	
+	pop ecx	
+	pop ebx	
 
-	pop ebp			; restore stack pointer
+	pop ebp	
 
 	emms			; clear mmx registers
-	ret			; we now return you to your regular programming
+	ret	

@@ -52,6 +52,7 @@ dist1_11_SSE:
 	push ebx		; save the pigs
 	push ecx		; make them squeal
 	push edx		; lets have pigs for every meal
+	push edi
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -119,10 +120,11 @@ nextrow11:
 
 	movd eax, mm0				; store return value
 	
-	pop edx			; pop pop
-	pop ecx			; fizz fizz
-	pop ebx			; ia86 needs a fizz instruction
-
+	pop edi
+	pop edx	
+	pop ecx		
+	pop ebx			
+	
 	pop ebp			; restore stack pointer
 
 	emms			; clear mmx registers

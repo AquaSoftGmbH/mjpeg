@@ -98,6 +98,7 @@ int dist1_00_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int di
 int dist1_01_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_10_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+
 #define dist1_00 dist1_00_SSE
 #define dist1_01 dist1_01_SSE
 #define dist1_10 dist1_10_SSE
@@ -131,9 +132,13 @@ int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
 #else
 
 static int fdist1 ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-#define dist1_00( blk1, blk2, lx,  h, distlim ) \
-        dist1( blk1, blk2, lx,  0,0,h,distlim)
+/*#define dist1_00( blk1, blk2, lx,  h, distlim ) \
+        dist1( blk1, blk2, lx,  0,0,h,distlim) */
 static int qdist1 ( mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
+static int dist1_00( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
+static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 
 #endif
 #endif
@@ -1708,21 +1713,18 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	}
 #endif
 
-  num_first_pass = thin_vector( first_pass_h, dist_sum/num_first_pass,
+  searched_first_pass = thin_vector( first_pass_h, dist_sum/num_first_pass,
 								num_first_pass);
-  /*heapify( first_pass_h, num_first_pass);*/
-
   /* 
 	 We now use the best 1/4  of the matches on 8-pel boundaries 
 	 as starting points for matches on 4-pel boundaries...
   */
-  searched_first_pass =  num_first_pass;
+
   quad_heap_size = 0;
   dist_sum = 0;
   for( k = 0; k < searched_first_pass; ++k )
 	{
-	  /*heap_extract( first_pass_h, &num_first_pass, &distrec );*/
-	  distrec = first_pass_h[num_first_pass--];
+	  distrec = first_pass_h[k];
 	  i = first_pass_v[distrec.index].dx;
 	  j = first_pass_v[distrec.index].dy;
 	  qorgblk =  qorg + (matchrec.dy>>2)*qlx + (matchrec.dx>>2);
@@ -1757,10 +1759,13 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	  dist_sum += s1;
 	  ++quad_heap_size;
 	}
+
   
   quad_heap_size = thin_vector( quad_match_heap, dist_sum/quad_heap_size,
 								quad_heap_size);
+
   heapify( quad_match_heap, quad_heap_size );
+
   return quad_heap_size;
 }
 
@@ -1795,8 +1800,13 @@ static int build_half_heap( mcompuint *forg,  mcompuint *fblk,
   half_heap_size = 0;
   for( k = 0; k < searched_quad_size; ++k )
 	{
+	  matchrec = quad_matches[quad_match_heap[0].index];
 	  heap_extract( quad_match_heap, &quad_heap_size, &distrec );
-	  matchrec = quad_matches[distrec.index];
+	  if( matchrec.dx < 0 || matchrec.dx > 342 || 
+		  matchrec.dy < 0 || matchrec.dy > 276 )
+		printf( "\nH %d %d %d %d\n", matchrec.dx, matchrec.dy, k, searched_quad_size  );
+	  
+		  /* matchrec = quad_matches[distrec.index]; */
 	  forgblk =  forg + (matchrec.dy>>1)*flx;
 	  for( j = 0; j < lim; j+=inc )
 		{
@@ -2191,7 +2201,7 @@ int *iminp,*jminp;
    That 1970's heritage...
 */
 
-#if !defined(SSE) && !defined(MMX)
+#if  !defined(SSE) && !defined(MMX)
 static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h,int distlim)
 {
@@ -2432,7 +2442,7 @@ void fast_motion_data(unsigned char *blk )
 {
   unsigned int *b, *nb;
   mcompuint *pb;
-  mcompuint *qb,*p;
+  mcompuint *qb;
   unsigned int *start_fblk, *start_qblk;
   int i;
   unsigned int sums;
@@ -2511,8 +2521,8 @@ void fast_motion_data(unsigned char *blk )
 
 }
 
-#ifndef SSE
-#ifndef MMX
+#if !defined(SSE) && !defined(MMX)
+
 static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 {
   mcompuint *p1 = fblk1;
@@ -2534,7 +2544,7 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 
   return s;
 }
-#endif
+
 #endif
 
 /*

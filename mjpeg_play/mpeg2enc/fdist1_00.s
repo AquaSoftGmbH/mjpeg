@@ -63,9 +63,9 @@ fdist1_SSE:
 	jmp nextrowfd		; snap to it
 align 32
 nextrowfd:
-	movq mm4, [eax]		; load first 8 bytes of p1 (row 1)
+	movq   mm4, [eax]	 ; load first 8 bytes of p1 (row 1) 
 	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
-	paddd mm0, mm4		; accumulate difference
+	paddd  mm0, mm4		; accumulate difference
 	
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
