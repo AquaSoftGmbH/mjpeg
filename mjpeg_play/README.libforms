@@ -1,0 +1,69 @@
+---------- Forwarded message ----------
+Date: Sun, 11 Feb 2001 03:21:36 +0100 (MET)
+From: Amir Akhavan <ac.akhavan@gmx.de>
+To: gz@lysator.liu.se,
+    as@comlabs.ox.ac.uk
+Cc: ac.akhavan@gmx.de
+Subject: mjpeg tools - libforms issue
+
+Dear Gernot and dear Andrew,
+
+(If this mail is sent to you twice, I have to apologize, but my ppp connect 
+just broke down temporarily while sending it the first time) 
+
+I just wanted to report some sort of "fix" for a compilation problem that 
+might be worth mentioning in your README or INSTALL. 
+
+During compilation (BTW, after I removed all the -Werror flags) 
+I got this error:
+
+gcc  -Wall -Wno-uninitialized -O3 -DLAVPLAY_VERSION=\"1.3\"  -o xlav -L 
+movtar -L /usr/X11R6/lib  xlav.o xlav_main.o editlist.o lav_io.o avilib.o 
+-lmovtar -lforms -lX11 -lm -lglib -lpthread  -L 
+/home/amir/mjpegtools-1.3b3/../jpeg-mmx -ljpeg-mmx -lSDL -lpng -lz
+/usr/X11R6/lib/libforms.so: undefined reference to `XpmCreatePixmapFromData'
+/usr/X11R6/lib/libforms.so: undefined reference to `XpmFreeAttributes'
+/usr/X11R6/lib/libforms.so: undefined reference to `XpmAttributesSize'
+/usr/X11R6/lib/libforms.so: undefined reference to `XpmReadFileToPixmap'
+/usr/X11R6/lib/libforms.so: undefined reference to `XpmLibraryVersion'
+collect2: ld returned 1 exit status
+make[2]: *** [xlav] Error 1
+make[2]: Leaving directory `/home/amir/mjpegtools-1.3b3/lavtools'
+make[1]: *** [all-recursive] Error 1
+make[1]: Leaving directory `/home/amir/mjpegtools-1.3b3'
+make: *** [all-recursive-am] Error 2
+
+
+The problem is that there seems to be a reference to libforms.so while 
+libforms.a would be appropriate. So I replaced my libforms.so pointing to 
+         /usr/X11R6-4.0.2/lib/libforms.so.0 
+         /usr/X11R6-4.0.2/lib/libforms.so.0.88
+by 
+         ln -sf  /usr/X11R6-4.0.2/lib/libforms.a 
+/usr/X11R6-4.0.2/lib/libforms.so
+
+and the compile could go on. 
+
+This is on:
+i386 (dual celeron)
+RedHat 7.0 (Kernel 2.4.1) completely patched/fixed (glibc 2.2.12 et al.)
+XFree86 4.0.2
+rpm -q xforms
+         xforms-0.88-15
+rpm -q xforms-devel
+         xforms-devel-0.88-15
+
+xforms has obviously been rebuilt by redhat (it is linked against libsafe), 
+so it is a recent version and should work out of the box (a rather naive 
+assumption I know ;-)
+
+So far I haven't touched the xforms stuff and I bet I'm not the only one 
+stumbling over this. 
+
+I hope this was useful
+
+cheers,
+Amir C. Akhavan
+
+P.S. ... and of course I still have to try out the software I got now ;-)
+
