@@ -215,6 +215,7 @@ void check_files (int argc,
         if( MPAStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Audio stream.\n" ,argv[i]);
+            bs->undochanges( undo);
             mpa_files.push_back( bs );
             continue;
         }
@@ -224,6 +225,7 @@ void check_files (int argc,
         {
             mjpeg_info ("File %s looks like an AC3 Audio stream.\n",
                         argv[i]);
+            bs->undochanges( undo);
             ac3_files.push_back( bs );
             continue;
         }
@@ -232,6 +234,7 @@ void check_files (int argc,
         {
             mjpeg_info ("File %s looks like an MPEG Video stream.\n",
                         argv[i]);
+            bs->undochanges( undo);
             video_files.push_back( bs );
             continue;
         }
