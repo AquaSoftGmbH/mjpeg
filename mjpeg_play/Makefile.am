@@ -8,18 +8,22 @@
 ##	gcc $(INCLUDES) -c v4l-conf.c
 
 ## EXTRA-DIST = README PLANS
-INCLUDES = -I./mjpeg -I./movtar -I@QUICKTIME_PATH@ -I/usr/X11R6/lib @GLIB_CFLAGS@ 
-SUBDIRS = mjpeg movtar @QUICKTIME_PATH@ . aenc mpegjoin mplex utils xlav
-## mpeg2enc taken out temporarily
+INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib @GLIB_CFLAGS@  @QUICKTIME_INCLUDE@
+SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav
+## mpeg2enc taken out temporarily, definately *don't* want to include
+## quicktime link here...
 
+##
+## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
+##
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L@QUICKTIME_PATH@ @GLIB_LIBS@
-lavplay_LDADD = -lmovtar -lmjpeg @QUICKTIME_LD@ -lpng -lpthread @SDL@ @JPEG@ 
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/  @GLIB_LIBS@
+lavplay_LDADD = -lmovtar -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L@QUICKTIME_PATH@ @GLIB_LIBS@
-lavrec_LDADD = -lmovtar -lmjpeg @QUICKTIME_LD@ -lpng -lpthread @JPEG@ 
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ @GLIB_LIBS@
+lavrec_LDADD = -lmovtar -lmjpeg 
 
 lavvideo_SOURCES = lavvideo.c
 

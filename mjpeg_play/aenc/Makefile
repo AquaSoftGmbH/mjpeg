@@ -2,7 +2,7 @@
 CFLAGS =  -O3 -m486 -ffast-math -I..
 LDFLAGS=
 
-QT_LIBS= ../quicktime/quicktime/libquicktime.a ../jpeg-6b-mmx/libjpeg.a ../movtar/libmovtar.a \
+QT_LIBS= ../quicktime/libquicktime.a ../jpeg-6b-mmx/libjpeg.a ../movtar/libmovtar.a \
 	-lpthread -lpng -lz `glib-config --libs` `glib-config --cflags`
 
 

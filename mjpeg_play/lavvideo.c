@@ -32,6 +32,7 @@ Copyright by Gernot Ziegler.
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
+#include <linux/types.h>
 #include <linux/videodev.h>
 #include <videodev_mjpeg.h>
 

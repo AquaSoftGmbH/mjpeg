@@ -20,7 +20,6 @@
 #include <linux/vt.h>
 #include <linux/fb.h>
 
-#include "config.h"
 #include <linux/videodev.h>
 
 #include <X11/Xlib.h>

@@ -65,14 +65,11 @@ CC = gcc
 GLIB_CFLAGS = -I/usr/lib/glib/include
 GLIB_CONFIG = /usr/bin/glib-config
 GLIB_LIBS = -L/usr/lib -lglib
-JPEG = -ljpeg
 MAINT = #
-MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
+MAKEINFO = makeinfo
 PACKAGE = lavtools
-QUICKTIME_LD = 
-QUICKTIME_PATH = 
+QUICKTIME_INCLUDE = -I /usr/local/src/quicktime
 RANLIB = ranlib
-SDL = -lSDL -lpthread
 SDL_CFLAGS = -I/usr/include/SDL -D_REENTRANT
 SDL_CONFIG = /usr/bin/sdl-config
 SDL_LIBS = -L/usr/lib -Wl,-rpath,/usr/lib -lSDL -lpthread
@@ -83,17 +80,17 @@ X_LIBS =  -L/usr/X11R6/lib
 X_PRE_LIBS =  -lSM -lICE
 x_libraries = /usr/X11R6/lib
 
-INCLUDES = -I./mjpeg -I./movtar -I -I/usr/X11R6/lib -I/usr/lib/glib/include 
-SUBDIRS = mjpeg movtar  . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib -I/usr/lib/glib/include  -I /usr/local/src/quicktime
+SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L -L/usr/lib -lglib
-lavplay_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -lSDL -lpthread -ljpeg 
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/  -L/usr/lib -lglib
+lavplay_LDADD = -lmovtar -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L -L/usr/lib -lglib
-lavrec_LDADD = -lmovtar -lmjpeg  -lpng -lpthread -ljpeg 
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/lib -lglib
+lavrec_LDADD = -lmovtar -lmjpeg 
 
 lavvideo_SOURCES = lavvideo.c
 
@@ -106,10 +103,10 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(bin_PROGRAMS)
 
 
-DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DBUILD_MJPEG=1  -I. -I$(srcdir) 
+DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DHAVE_LIBJPEG=1 -DBUILD_MJPEG=1 -DHAVE_LIBPTHREAD=1 -DHAVE_LIBPNG=1 -DHAVE_LIBJPEG=1 -DBUILD_QUICKTIME=1  -I. -I$(srcdir) 
 CPPFLAGS = 
 LDFLAGS = 
-LIBS = 
+LIBS = -L /usr/local/src/quicktime -ljpeg -lpng -lpthread -ljpeg  -lSDL -lquicktime
 lavplay_OBJECTS =  lavplay.o avilib.o audiolib.o lav_io.o editlist.o
 lavplay_DEPENDENCIES = 
 lavrec_OBJECTS =  lavrec.o avilib.o audiolib.o lav_io.o
@@ -351,7 +348,7 @@ distdir: $(DISTFILES)
 	@for file in $(DISTFILES); do \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
-	    cp -pr $$/$$file $(distdir)/$$file; \
+	    cp -pr $$d/$$file $(distdir)/$$file; \
 	  else \
 	    test -f $(distdir)/$$file \
 	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \
