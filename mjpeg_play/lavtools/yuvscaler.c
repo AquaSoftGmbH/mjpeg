@@ -1934,8 +1934,8 @@ main (int argc, char *argv[])
       // Master loop : continue until there is no next frame in stdin
       // Je sais pas pourquoi, mais y4m_read_frame merde, y4m_read_frame_header suivi de y4m_read marche !!!!!!!
       // Line switch if necessary
-      while (my_y4m_read_frame
-	     (0, &frameinfo, nb_pixels, input, line_switching) == Y4M_OK)
+      while ( (err=my_y4m_read_frame(0, &frameinfo, nb_pixels, 
+                                     input, line_switching)) == Y4M_OK)
 	{
 	  frame_num++;
 	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
@@ -2363,3 +2363,10 @@ Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlace
        "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom first frame output stream\n"
        "\t NOT_INTERLACED to select not interlaced output frames\n"
 */
+
+/* 
+ * Local variables:
+ *  tab-width: 8
+ *  indent-tabs-mode: nil
+ * End:
+ */
