@@ -4,12 +4,13 @@
 # Allows "1 command" production of a video stream...
 # 
 
-# Licensed under GPL
-# Scott Moser
+# Licensed under GPL (see http://www.fsf.org/licenses/gpl.html or contact
+# the Free Software Foundation for a copy)
+# Copyright Scott Moser
 
 
 # these can be changed with env variables, just set and export to override
-niceval=${niceval:-19}
+NICEVAL=${NICEVAL:-19}
 
 LAV2YUV=${LAV2YUV:-"lav2yuv"}
 YUVSCALER=${YUVSCALER:-"yuvscaler"}
@@ -18,16 +19,17 @@ LAV2WAV=${LAV2WAV:-"lav2wav"}
 AUDIOENC=${AUDIOENC:-"toolame"}       # can be "toolame" or "mp2enc"
 MPLEX=${MPLEX:-"mplex"}
 YUVDENOISE=${YUVDENOISE:-"yuvdenoise"}
+LAVINFO=${LAVINFO:-"lavinfo"}
 
-NOISYLOGFILE=""                       # if not set, will be outputfilename.log -- only used if -l flag sent
+NOISYLOGFILE=""                       # if not set, will be outputfilename.log -- only used if -L flag sent
 QUIETLOG=${QUIETLOG:-"lav2mpeg.log"}  # if set to not "" will log all normal messages to this file as well as stdout
 LOGDATE=${LOGDATE:-1}                 # whether or not to output the date in log messages
 LOGDATESTR=${LOGDATESTR:-"+%H:%M:%S"} # format for the date - only used if logdate!=0
 LOGCOMMANDS=${LOGCOMMANDS:-0};        # if non-zero, will output the commands it runs.  commands are always logged to NOISYLOGFILE if used
 LOGONLY=${LOGONLY:-""}                # will only log the commands it would use if set  (for example useage/testing)
-LAVRC=${LAVRC:-"$HOME/.lav2mpegrc"}   # set this to contain your lav2mpeg rc file -- in bash sourceable syntax.
+LAV2MPEGRC=${LAV2MPEGRC:-"$HOME/.lav2mpegrc"}   # set this to contain your lav2mpeg rc file -- in bash sourceable syntax.
                                       # it can modify any ENV vars in this script
-                                      # or set a "LAVRC_OPTIONS" ENV to prepend default options that will be overridden by explicit command line options.
+                                      # or set a "LAV2MPEG_OPTIONS" ENV to prepend default options that will be overridden by explicit command line options.
 if [ "$LOGONLY" != "" ]; then
    LOGCOMMANDS=1
 fi
@@ -60,9 +62,10 @@ noisy=0
 logall=0
 aencbpr_stereo=224
 aencbpr_mono=112
+use_fifo=0
 
 # -- shouldn't have to change below here
-NICE="nice -n $niceval"
+NICE="nice -n $NICEVAL"
 
 
 # functions
@@ -116,38 +119,40 @@ function usage ()
 {
   name=`basename $0`
   cat << END
-Usage: $name [ -o mode ] [ -e 0|1|2 ] [ -O outputFile ] [ -b bitrate ] [ -q 0-30 ] [ -k ] [ -l ] [ -n ] [ -d XxY ] srcfile...
-  o - one of MODES (see below) (defaults to $mode)
-  e - encoding quality : 0, 1, or 2
-  O - output file ( defaults to firstInputFileName.mpg )
-  s - stereo : non-zero is stereo, zero is mono
-  k - keep raw output files (.m1v, .m2v, .mp2)
-  l - log all encoding
-  n - be noisy : don't hide output of encoding process
-  y - yuvdenoise : 1=use it 0=don't .  default e=1|2, do it e=0 don't
+Usage: $name [ -s/S -k/K -f/F -l/L -n/N -y/Y ] [ -m mode ] [ -e 0|1|2 ] [ -o outputFile ] [ -b vidbitrate ] [ -a audbitrate ] [ -q 0-30 ] [ -d XxY ] srcfile...
+  s/S - stereo : -s=off -S=on                                    (default auto)
+  k/K - keep raw output files (.m1v, .m2v, .mp2) : -k=no -K=yes  (default no)
+  f/F - use fifos : -f=no -F=yes                                 (default no)
+  l/L - log all encoding : -l=no -L=yes                          (default no)
+  n/N - be noisy (don't hide output of tools) : -n=no -N=yes     (default no)
+  y/Y - yuvdenoise : -y=don't use -Y=use           (default e=1|2 use e=0 dont)
+  m - one of MODES (see below)                                   (default $mode)
+  e - encoding quality : 0, 1, or 2                              (default $encode_quality)
+  o - output file ( defaults to firstInputFileName.mpg )
   b - video bitrate in kbps  ( only used when -o is "mpeg1" or "mpeg2" )
   a - audio bitrate in kpbs  ( only used when -o is not "vcd*" )
   q - quality for mpeg2enc   ( only used when -o is "mpeg1" or "mpeg2" )
   d - dimensions XxY         ( only used when -o is "mpeg1" or "mpeg2" )
                                defaults to same as input
+
   MODES:
-      vcd          -- standard VCD        (352x240 or 352x288)
-      vcd_mediaum  -- ${VCD_MEDIUM_BR}kbps video VCD  (352x240 or 352x288)
-      vcd_high     -- ${VCD_HIGH_BR}bps video VCD  (352x240 or 352x288)
-      svcd         -- standard SVCD       (480x480 or 480x576)
-      svcd_high    -- High bitrate SVCD (480x480 VBR max=${SVCD_HIGH_BR} qual=${SVCD_HIGH_QUAL})
-      mpeg1        -- honor -b -q flags default resolution same as input
-      mpeg2        -- honor -b -q flags default resolution same as input
+      vcd          -- standard VCD                    (352x240 or 352x288)
+      vcd_medium   -- ${VCD_MEDIUM_BR}kbps video VCD              (352x240 or 352x288)
+      vcd_high     -- ${VCD_HIGH_BR}kbps video VCD              (352x240 or 352x288)
+      svcd         -- standard SVCD                   (480x480 or 480x576)
+      svcd_high    -- ${SVCD_HIGH_BR}kbps(max) vbr @qual=${SVCD_HIGH_QUAL}       (480x480 or 480x576)
+      mpeg1        -- honor -a -b -q -d flags default resolution same as input
+      mpeg2        -- honor -a -b -q -d flags default resolution same as input
 
    EXAMPLE:
       VCD:  $name file.avi
               - will create a VCD compatible mpeg named file.mpg
-      mpeg2: $name -o mpeg2 -O output.mpg file.edl
+      mpeg2: $name -m mpeg2 -o output.mpg file.edl
               - will create a mpeg2 with default bitrate in same res as input
-      mpeg1: $name -a 160 -b 2110 -d 320x240 -o mpeg1 -O output.mpg file.edl
+      mpeg1: $name -a 160 -b 2110 -d 320x240 -m mpeg1 -o output.mpg file.edl
               - will create a mpeg2 with videobitrate=2110 and audio=160
               - and resolution 320x240
-      debug: export LOGONLY=1; $name -o mpeg2 -O output.mpg file.edl
+      debug: export LOGONLY=1; $name -m mpeg2 -o output.mpg file.edl
               - will print out the commands it would use to do this, but
               - not do anything
 
@@ -175,33 +180,51 @@ if [ $# -eq 0 -o "$1" == "--help" -o "$1" = "-h" ]; then
 fi
 
 LAVRC_COUNT=0
-if [ -e $LAVRC ]; then
-   logIt "Sourcing lav2mpgrc file $LAVRC"
-   . $LAVRC
-   LAVRC_COUNT=$(echo $LAVRC_OPTIONS | wc -w )
+if [ -e $LAV2MPEGRC ]; then
+   logIt "Sourcing lav2mpgrc file $LAV2MPEGRC (this can change defaults!)"
+   . $LAV2MPEGRC
+   LAVRC_COUNT=$(echo $LAV2MPEG_OPTIONS | wc -w )
 fi
 
 infostr=""
-while getopts ":o:e:O:b:s:a:q:y:d:knl" opt $LAVRC_OPTIONS $@
+while getopts "sSkKfFlLnNyYb:a:q:d:m:e:o:" opt  $LAV2MPEG_OPTIONS $@
 do
    case $opt in
-      o) mode=$OPTARG
-         infostr="${infostr} mode=$mode -"
+      s) userstereo=0
+         infostr="${infostr} using mono -"
          ;;
-      e) encode_quality=$OPTARG
-         infostr="${infostr} encode_quality=$encode_quality -"
+      S) userstereo=1
+         infostr="${infostr} using stereo -"
          ;;
-      O) outfile=$OPTARG
-         infostr="${infostr} outfile=$outfile -"
+      k) saveraw=0
+         infostr="${infostr} not saving raw files -"
          ;;
-      k) saveraw=1
+      K) saveraw=1
          infostr="${infostr} saving raw files -"
          ;;
-      n) noisy=1
+      f) use_fifo=0
+         infostr="${infostr} not using fifos-"
+         ;;
+      F) use_fifo=1
+         infostr="${infostr} using fifos-"
+         ;;
+      l) logall=0
+         infostr="${infostr} not logging all -"
+         ;;
+      L) logall=1
+         infostr="${infostr} logging all -"
+         ;;
+      n) noisy=0
+         infostr="${infostr} not being noisy -"
+         ;;
+      N) noisy=1
          infostr="${infostr} being noisy -"
          ;;
-      l) logall=1
-         infostr="${infostr} logging all -"
+      y) userdenoise=0
+         infostr="${infostr} not using yuvdenoise -"
+         ;;
+      Y) userdenoise=1
+         infostr="${infostr} using yuvdenoise -"
          ;;
       b) bitrate=$OPTARG
          infostr="${infostr} using video bitrate=$bitrate -"
@@ -215,11 +238,14 @@ do
       d) outputres=$OPTARG
          infostr="${infostr} using outputres=$outputres -"
          ;;
-      s) userstereo=$OPTARG
-         infostr="${infostr} using stereo=$userstereo-"
+      m) mode=$OPTARG
+         infostr="${infostr} mode=$mode -"
          ;;
-      y) userdenoise=$OPTARG
-         infostr="${infostr} using userdenoise=$userdenoise-"
+      e) encode_quality=$OPTARG
+         infostr="${infostr} encode_quality=$encode_quality -"
+         ;;
+      o) outfile=$OPTARG
+         infostr="${infostr} outfile=$outfile -"
          ;;
       ?)
          usage
@@ -234,15 +260,14 @@ if [ "${QUIETLOG}" != "" ]; then
 else
    logfile="/dev/null"
 fi
-
-# comment to not blank the logfile
-echo "" > $logfile
+#uncomment to blank logfile
+#echo "" > $logfile
 
 logIt "$infostr"
 
 # lavinfo should set up video_frames, video_width
-# video_height, video_inter, video_norm
-eval $(lavinfo $@)
+# video_height, video_inter, video_norm, audio_chans
+eval $($LAVINFO $@ | grep "=")  # grep for = to remove Warnings
 if [ "$video_frames" == "" ]; then
    logIt "'lavinfo $@' died! exiting"
    logIt " maybe you don't have lavinfo. or your input flags were wrong"
@@ -285,6 +310,12 @@ esac
 
 
 # hopefully sane input has been checked, lets start setting things up
+
+# simple check for logonly mode
+if [ "$LOGONLY" != "" -a "$LOGONLY" != "0" -a $use_fifo -eq 1 ]; then
+   use_fifo=0
+   logIt "can't do logonly with fifos, turning fifos off"
+fi
 
 # set up extra flags as possibly given by user
 lav2yuv_flags=$EXTRA_LAV2YUV
@@ -431,7 +462,7 @@ case ${mode} in
       ;;
    svcd_high)
       yuvscaler_flags="-O SVCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 5 -b ${SVCD_HIGH_BR} -V ${SVCD_HIGH_BUFFSIZE} ${mpeg2enc_flags}"
+      mpeg2enc_flags="-f 5 -b ${SVCD_HIGH_BR} -V ${SVCD_HIGH_BUFFSIZE} -q ${SVCD_HIGH_QUAL} ${mpeg2enc_flags}"
       mplex_flags="-f 5 ${mplex_flags}"
       aencbpr=$useraencbpr
       ;;
@@ -471,7 +502,11 @@ stepdesc[$count]="audio encoding"
 step[$count]="$NICE $LAV2WAV $lav2wav_flags | $NICE $AUDIOENC $audioenc_flags"
 
 count=3;
-stepdesc[$count]="multiplexing"
+if [ $use_fifo -eq 1 ]; then
+   stepdesc[$count]="encoding with fifos"
+else
+   stepdesc[$count]="multiplexing"
+fi
 step[$count]="$NICE $MPLEX $mplex_flags"
 
 output_noisy=""
@@ -487,6 +522,15 @@ if [ $noisy -eq 0 ]; then
    output_noisy=">>$noisylog 2>&1"
 fi
 
+detach=""
+if [ $use_fifo -ne 0 ]; then
+   detach="&";
+   saveraw=0
+   rm -f $video $audio
+   mkfifo $video
+   mkfifo $audio
+fi
+
 logIt "using mode=$mode, stereo=$stereo audio bpr=$aencbpr"
 if [ $logall -ne 0 ]; then
    logIt "logging everything to $noisylog"
@@ -499,21 +543,29 @@ for stepnum in 1 2 3
 do
    count=$stepnum
    START=$SECONDS
-   logIt "beginning ${stepdesc[$count]}" 
-   if [ $LOGCOMMANDS != "0" ]; then
-      logIt "COMMAND=${step[$count]}"
+   if [ $stepnum -eq 3 -o $use_fifo -ne 1 ]; then
+      logIt "beginning ${stepdesc[$count]}" 
+      if [ $LOGCOMMANDS != "0" ]; then
+         logIt "COMMAND=${step[$count]}"
+      fi
    fi
-   eval doStep $output_noisy
+   if [ $stepnum -eq 3 ]; then
+      detach="" # don't detach the last stem (mplex)
+   fi
+   eval doStep $output_noisy $detach
    RET=$?
    if [ $RET -ne 0 ]; then
-      logIt "ugh! ${stepdesc[$count]} failed, bailing" 
+      logIt "ugh! ${stepdesc[$count]} failed, bailing. used command:" 
+      logIt "${step[$count]}"
       cleanExit $RET
    fi
-   diff=$(getTimeDiff $START $SECONDS)
-   logIt "finished ${stepdesc[$count]} ( took $diff )"
+   if [ $stepnum -eq 3 -o $use_fifo -ne 1 ]; then
+      diff=$(getTimeDiff $START $SECONDS)
+      logIt "finished ${stepdesc[$count]} ( took $diff )"
+   fi
 done
-END=$SECONDS
 
+END=$SECONDS
 diff=$(getTimeDiff $STARTALL $SECONDS)
 temp=$(expr $SECONDS - $STARTALL)
 if [ "$LOGONLY" == "" ]; then  # avoid divide by zero possibility
