@@ -565,8 +565,10 @@ void MPEG2EncCmdLineOptions::Usage()
 "    Force MPEG2 *not* to use alternate block scanning.  This may allow some\n"
 "    buggy players to play SVCD streams\n"
 "--no-dualprime-mpeg2\n"
-"    Turn off the use of dual-prime motion compensation.  This is a\n"
-"    work-around for a Bug in some software players.\n"
+"    Turn OFF dual-prime motion compensation.  This is the default.\n"
+"--dualprime-mpeg2\n"
+"    Turn ON the use of dual-prime motion compensation.  This is not the\n"
+"    default because artifacting has been observed (bug).  See mpeg2enc(1).\n"
 "--no-constraints\n"
 "    Deactivate the constraints for maximum video resolution and sample rate.\n"
 "    Could expose bugs in the software at very high resolutions!\n"
@@ -664,6 +666,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "no-constraints", 0, &ignore_constraints, 1},
         { "no-altscan-mpeg2", 0, &hack_altscan_bug, 1},
         { "no-dualprime-mpeg2", 0, &hack_nodualprime, 1},
+        { "dualprime-mpeg2", 0, &hack_nodualprime, 0},
         { "playback-field-order", 1, 0, 'z'},
         { "multi-thread",      1, 0, 'M' },
         { "custom-quant-matrices", 1, 0, 'K'},
