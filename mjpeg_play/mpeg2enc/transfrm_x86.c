@@ -36,9 +36,10 @@ extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
 extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
 
 extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk) __asm__ ("add_pred_mmx");
+						  int lx, int16_t *blk);
 extern  void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk) __asm__ ("sub_pred_mmx");
+						  int lx, int16_t *blk);
+
 
 static __inline__ void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )

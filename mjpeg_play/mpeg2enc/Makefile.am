@@ -10,12 +10,12 @@ mpeg2encpp_MMXSSE_ASM = \
 	fdctdata.c \
 	idct_mmx.s \
 	idctdata.c \
-	predict_mmx.s \
 	predcomp_mmxe.s \
 	predcomp_mmx.s \
 	quant_mmx.s
 
 mpeg2encpp_MMXSSE_INLINE = \
+	predict_mmx.c \
 	predict_x86.c \
 	quantize_x86.c \
 	transfrm_x86.c
