@@ -78,9 +78,14 @@
 // system, but not on some others with different versions of win32 codecs in
 // avifile.
 //
+// 2002/01/15
+//
+// Fixed compilation problems under g++-3.0.  Also removed another possible
+// segfault (overzealous 'delete's).
+//
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.25"
-#define LastChanged "2002/01/11"
+#define APPVERSION "0.0.26"
+#define LastChanged "2002/01/15"
 //#define DEBUG_DIVXDEC 1
 
 #include <vector>
@@ -407,7 +412,7 @@ struct InputData
 
 	struct timezone tz; // = { 0, 0 };
 	struct timeval tv;
-	vector<FileData> files; // = NULL;
+	std::vector<FileData> files; // = NULL;
 };
 static InputData input = 
 	{ 0,-1,-1, 0,0,0,0,0, 0,0,0,0,0,0,0,0,
@@ -1237,23 +1242,14 @@ freeAll ()
 		delete currentFrame.audio ;
 	}
 	
-	if ( input.invstream != NULL ) 
+	if ( ( input.invstream != NULL ) && ( input.invstream->IsStreaming () ) )
 	{
-		if ( input.invstream->IsStreaming () )
-		{
-			input.invstream->StopStreaming () ;
-		}
-		delete input.invstream ;
+		input.invstream->StopStreaming () ;
 	}
-	if ( input.inastream != NULL )
+	if ( ( input.inastream != NULL ) && ( input.inastream->IsStreaming () ) )
 	{
-		if ( input.inastream->IsStreaming () )
-		{
-			input.inastream->StopStreaming () ;
-		}
-		delete input.inastream ;
+		input.inastream->StopStreaming () ;
 	}
-	// this appears to segfault!?
 	if ( input.file != NULL ) 
 	{
 		delete input.file;
@@ -1289,17 +1285,25 @@ sigkill_handler ( int signal )
 	exit (1);
 }
 
-FILE real_stdout;
+FILE* real_stdout;
 
 int
 main (int argc, char **argv)
 {
 	// redirect stdout, so that avifile log messages don't appear in normal std out, but go
 	// to stderr where they SHOULD be.
-	cout = cerr;		// this could be naughty.
-	real_stdout = * ( stdout );
+	// the better way to do it than cout = cerr;
+	// 1. retain the original streambuf for later reassignment
+	streambuf * real_cout = std::cout.rdbuf ();
+	// 2. reset the output buffer so that nothing buffered before now
+	//    (avifile initialisation) is output.  
+	real_cout->pubseekpos ( 0, ios::out );
+	// 3. use cerr's streambuf for cout.
+	std::cout.rdbuf ( std::cerr.rdbuf () );
+	// 4. keep old stdout FILE, and use stderr in its place (for printf ("...") ; )
+	real_stdout = stdout ;
 	stdout = stderr;
-	
+
 	displayGreeting();
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
@@ -1313,12 +1317,12 @@ main (int argc, char **argv)
 	signal ( SIGINT, sigint_handler );
 	signal ( SIGKILL, sigkill_handler );
 
+
 	int copt;		// getopt switch variable
 
 	char *filenameWAVE = NULL;
 	char *filenameYUV = NULL;
 	char *filenameLAV = NULL;
-//	char optLavFormat = 'a';
 
 	input.currentFile = -1;
 	input.currentFrame = -1;
@@ -1661,17 +1665,18 @@ main (int argc, char **argv)
 			}
 			if ( inastream != NULL )
 			{
-/*				StreamInfo *si = inastream->GetStreamInfo();
-		
+#ifdef DEBUG_DIVXDEC
+				StreamInfo *si = inastream->GetStreamInfo();
 				mjpeg_debug ( "AUDIO: stream->bps: %f\n", si->GetBps () );
 				mjpeg_debug ( "AUDIO: stream->fps: %f\n", si->GetFps () );
 				mjpeg_debug ( "AUDIO: stream->lt: %f\n", si->GetLengthTime () );
 				mjpeg_debug ( "AUDIO: stream->ss: %i\n", si->GetStreamSize () );
 				mjpeg_debug ( "AUDIO: stream->sf: %u\n", si->GetStreamFrames () );
-				mjpeg_debug ( "AUDIO==samples per frame->%f\n", (double) si->GetStreamSize() / (double) si->GetStreamFrames() );
+				mjpeg_debug ( "AUDIO: samples per frame->%f\n", (double) si->GetStreamSize() / (double) si->GetStreamFrames() );
 				mjpeg_debug ( "AUDIO: stream->vbr: %i\n", si->IsAudioVbr() );
-				cerr << "*********" << si->GetString() << "\n" ;
-				delete si;*/
+				// cerr << "*********" << si->GetString() << "\n" ;
+				delete si;
+#endif
 				delete inastream ;
 			}
 			//delete file ;
@@ -1713,7 +1718,7 @@ main (int argc, char **argv)
 		if ( 0 == strcmp ( "-", filenameYUV ) )
 		{
 			//output.fdYUV = FD_STDOUT;
-			output.fdYUV = fileno ( &real_stdout );
+			output.fdYUV = fileno ( real_stdout );
 		}
 		else
 		{
@@ -2002,6 +2007,9 @@ main (int argc, char **argv)
 	}
 
 	freeAll ();
+	// reassign cout, stdout to their original values.
+	std::cout.rdbuf ( real_cout );
+	stdout = real_stdout;
 
 	mjpeg_info ( "\n" );
 	mjpeg_info ( "Done. %i frames\n", output.processedFrames );
