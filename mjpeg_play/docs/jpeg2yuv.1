@@ -27,14 +27,6 @@ Any JPEG format supported by libjpeg can be read.
 stdout will be filled with the YUV4MPEG2 movie data stream,
 so be prepared to pipe it on to mpeg2enc or to write it into a file.
 
-\fBThis is not the utility you are looking for.\fP  This program is
-primarily a diagnostic utility for debugging MJPEG recordings, not for
-making movies from standard graphics JPEG images.  It does
-not make any attempt to convert the full-range pixel data from standard
-JPEG's into the padded-range pixel data used in digital video.
-The utility you are probably looking for is \fBppmtoy4m\fP(1), which
-is also included in MJPEGtools.
-
 .SH "OPTIONS"
 \fBjpeg2yuv\fP accepts the following options:
 
@@ -74,6 +66,9 @@ Read JPEG frames with the name components as follows:
  {2} Counting placeholder (like in C, printf, eg 06 ))
  {3} File extension. Something like this: .jpg
 A correct description of the files could look like this: picture_%06d.jpg
+.TP 5
+.BI \-R " 1 or 0"
+rescale YUV color values from 0-255 to 16-235 (default: 1)
 .TP 5
 .BI \-v " num"
 Verbosity level (0, 1 or 2)
