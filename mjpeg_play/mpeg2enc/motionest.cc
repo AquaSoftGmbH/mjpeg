@@ -360,6 +360,8 @@ void FieldMotionCands(
                   &fieldmcs[Parity::bot][Parity::top]);
     
 	/* set correct field selectors... */
+    // TODO fieldset and fieldoff are redundant.  Use only fieldoff
+    // and derive fieldset as fieldoff != 0
 	fieldmcs[Parity::top][Parity::top].fieldsel = 0;
 	fieldmcs[Parity::bot][Parity::top].fieldsel = 1;
 	fieldmcs[Parity::top][Parity::top].fieldoff = 0;
@@ -417,49 +419,50 @@ typedef int (*DualPrimeMeasure)( uint8_t *sameref,
     );
 
 
-void DualPrimeMetric( const Picture &picture,
+bool DualPrimeMetric( const Picture &picture,
                       DualPrimeMeasure meas,
                       const Coord &same,
                       const Coord (&crossblks)[Parity::dim], // Cross-field ref
-                      const Coord &dmv,
+                      const MotionVector &dmv,
                       uint8_t *ref,
                       uint8_t *pred_mb,
                       int stride,
-                      int &measure,
-                      bool &legal
+                      int &measure
     )
 {
     bool all_legal = true;
     Coord cross;
     int part_meas = 0;
-    for( int ppred = Parity::top; ppred < Parity::bot; ++ppred )
+
+    // Base MV is out-of-range
+    if( ! picture.InRangeFieldMVRef( same ) )
+        return false;
+
+    for( int ppred = Parity::top; ppred <= Parity::bot; ++ppred )
     {
         int same_fieldoff = (ppred == Parity::top ? 0 : stride);
-        Coord cross = crossblks[Parity::Invert(ppred)];
-        cross.x += dmv.x;
-        cross.y += dmv.y;
+        Coord cross(crossblks[Parity::Invert(ppred)],dmv);
+        
         int cross_fieldoff = stride - same_fieldoff;
-        all_legal &=  picture.InRangeFieldMVRef( cross );
-        if( all_legal  )
-        {
-            uint8_t *sameref = ref + same_fieldoff
-                + (same.x>>1) + (stride<<1)*(same.y>>1);
-            uint8_t *crossref = ref + cross_fieldoff
-                + (cross.x>>1) + (stride<<1)*(cross.y>>1);
-            /* compute prediction error */
-            part_meas += meas( sameref, crossref,
-                               pred_mb,
-                               stride<<1,
-                               same.x&1,
-                               same.y&1,
-                               cross.x&1,
-                               cross.y&1,
-                               8
-                );
-        }
+        if( ! picture.InRangeFieldMVRef( cross ) )
+            return false;
+        uint8_t *sameref = ref + same_fieldoff
+            + (same.x>>1) + (stride<<1)*(same.y>>1);
+        uint8_t *crossref = ref + cross_fieldoff
+            + (cross.x>>1) + (stride<<1)*(cross.y>>1);
+        /* compute prediction error */
+        part_meas += meas( sameref, crossref,
+                           pred_mb,
+                           stride<<1,
+                           same.x&1,
+                           same.y&1,
+                           cross.x&1,
+                           cross.y&1,
+                           8
+            );
     }
     measure = part_meas;
-    legal = all_legal;
+    return true; // All vectors legal...
 }
 
 
@@ -468,11 +471,12 @@ MacroBlock::FrameDualPrimeCand (uint8_t *ref,
                                 const SubSampledImg &ssmb,
                                 const MotionCand (&best_fieldmcs)[Parity::dim][Parity::dim], 
                                 MotionCand &best_mc,
-                                Coord &min_dpmv)
+                                MotionVector &min_dpmv)
 {
 	int local_dist;
     int stride = picture->encparams.phy_width;
     bool dpmvfound = false;
+    // Tricky here we need half-pel field co-ordinates so hpel won't do!
     const Coord mb( Coord::HalfPel(Coord::Field(pel)) );
 
 	/* Calculate Dual Prime distortions for 9 delta candidates
@@ -521,8 +525,6 @@ MacroBlock::FrameDualPrimeCand (uint8_t *ref,
                vectors for the cross-polarity predictions */
             
             Coord same( mb, base );
-            //same.x = base[Dim::X] + mb.x;
-            //same.y = base[Dim::Y] + mb.y;
             Coord cross[Parity::dim /* ref polarity */];
             for( int pref = Parity::top; pref < Parity::dim; ++pref )
             {
@@ -537,23 +539,20 @@ MacroBlock::FrameDualPrimeCand (uint8_t *ref,
                cross-polarity predictions 
             */
 
-            Coord dmv;
-            for (dmv.y=-1; dmv.y<=1; ++dmv.y)
+            MotionVector dmv;
+            for (dmv[Dim::Y]=-1; dmv[Dim::Y]<=1; ++dmv[Dim::Y])
             {
-                for (dmv.x=-1; dmv.x<=1; ++dmv.x)
+                for (dmv[Dim::X]=-1; dmv[Dim::X]<=1; ++dmv[Dim::X])
                 {
                     local_dist = 0;
-                    bool legal = true;
-
-                    DualPrimeMetric( *picture,
-                                     pbsad,
-                                     same, cross,
-                                     dmv,
-                                     ref,
-                                     ssmb.mb,
-                                     stride,
-                                     local_dist,
-                                     legal );
+                    bool legal =
+                        DualPrimeMetric( *picture, pbsad,
+                                         same, cross,
+                                         dmv,
+                                         ref,
+                                         ssmb.mb,
+                                         stride,
+                                         local_dist );
 
                     /* update best legal MV with smallest distortion
                      * distortion */
@@ -574,14 +573,12 @@ MacroBlock::FrameDualPrimeCand (uint8_t *ref,
     
     if( dpmvfound )
     {
-        bool legal;
         DualPrimeMetric( *picture, pbsumsq,
                          min_same, min_cross, min_dpmv,
                          ref,
                          ssmb.mb,
                          stride,
-                         best_mc.var,
-                         legal );
+                         best_mc.var );
         best_mc.sad = best_sad + mv_coding_penalty( min_same.x-mb.x, 
                                                     min_same.y-mb.y );
         best_mc.pos = min_same;
@@ -743,7 +740,7 @@ void MacroBlock::FrameMEs()
 	SubSampledImg  botssmb;
 
 	MotionCand best_fieldmcs[2][2];
-    Coord min_dpmv;
+    MotionVector min_dpmv;
 
     int mb_row_start = j*eparams.phy_width;
 	
@@ -875,9 +872,10 @@ void MacroBlock::FrameMEs()
                     me.mb_type = MB_FORWARD;
                     me.motion_type = MC_DMV;
                     me.MV[0][0] = MotionVector::Field(dualpf_mc.pos, hpel);
-                    me.dualprimeMV[0] = min_dpmv.x;
-                    me.dualprimeMV[1] = min_dpmv.y;
-                    me.var = dualpf_mc.var + 7*dualpf_mc.var/8;
+                    me.dualprimeMV = min_dpmv;
+                    // TODO: No actual calculation of chroma variances
+                    // just assumed identical per block as luma.
+                    me.var = dualpf_mc.var + dualpf_mc.var/2;
                     best_of_kind_me.push_back( me );
             }
         }

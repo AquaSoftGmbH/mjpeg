@@ -127,7 +127,7 @@ private:
                             const SubSampledImg &ssmb,
                             const MotionCand (&best_fieldmcs)[2][2], 
                             MotionCand &best_mc,
-                            Coord &min_dpmv);
+                            MotionVector &min_dpmv);
 
 private:
 

@@ -371,10 +371,7 @@ void Picture::EncodeMacroBlocks()
 
 	for( mbi = mbinfo.begin(); mbi < mbinfo.end(); ++mbi)
 	{
-        mbi->MotionEstimate();
-        mbi->SelectCodingModeOnVariance();
-        mbi->Predict();
-        mbi->Transform();
+        mbi->Encode();
 	}
 
 }
