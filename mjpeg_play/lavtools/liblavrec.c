@@ -941,7 +941,10 @@ static int lavrec_init(lavrec_t *info)
    bparm.quality = info->quality;
 
    /* Set decimation and image geometry params */
-   if(info->geometry->w == 0) info->geometry->w = vc.maxwidth;
+   if(info->geometry->w == 0) 
+     info->geometry->w = (info->horizontal_decimation != 1 
+			  && vc.maxwidth==720) ? 704 : vc.maxwidth;
+   //vc.maxwidth;
    if(info->geometry->h == 0) info->geometry->h = info->video_norm==1 ? 480 : 576;
    bparm.HorDcm = info->horizontal_decimation;
    bparm.VerDcm = (info->vertical_decimation==4) ? 2 : 1;
@@ -985,6 +988,14 @@ static int lavrec_init(lavrec_t *info)
       return 0;
    }
 
+   /* madmac: vc.maxwidth is 1024 on the Marvel driver, 
+      wrong for our calculations -> correcting it to 720, that's the Zoran max capability */
+   if (vc.maxwidth == 1024)
+     {
+       printf("20010810 Marvel driver workaround: Setting vc.maxwidth to 720 !\n");
+       vc.maxwidth = 720;
+     }
+
    bparm.img_width  = info->geometry->w;
    bparm.img_height = info->geometry->h/2;
 
@@ -1015,7 +1026,8 @@ static int lavrec_init(lavrec_t *info)
       bparm.APP_len = lav_query_APP_length(info->video_format);
 
       /* There seems to be some confusion about what is the even and odd field ... */
-      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_ODD_FIRST;
+      /* madmac: 20010810: According to Ronald, this is wrong - changed now to EVEN */
+      bparm.odd_even = lav_query_polarity(info->video_format) == LAV_INTER_EVEN_FIRST;
       for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
    }
 #else 
