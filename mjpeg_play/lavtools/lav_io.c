@@ -75,7 +75,7 @@ static int check_DV2_input(lav_file_t *lav_fd);
 
 #define TMP_EXTENSION ".tmp"
 
-
+#ifdef HAVE_LIBQUICKTIME
 /*
    put_int4:
    Put a 4 byte integer value into a character array as big endian number
@@ -88,6 +88,7 @@ static void put_int4(unsigned char *buf, int val)
 	buf[2] = (val >> 8 );
 	buf[3] = (val      );
 }
+#endif
 
 /*
    get_int2:

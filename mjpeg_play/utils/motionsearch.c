@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include <limits.h>
+#include <stdlib.h>
 #include <math.h>
 #include "cpu_accel.h"
 #include "fastintfns.h"

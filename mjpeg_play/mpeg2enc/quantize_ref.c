@@ -50,6 +50,7 @@
 
 #include "config.h"
 #include <math.h>
+#include <stdlib.h>
 #ifdef HAVE_FENV_H
 #include <fenv.h>
 #endif

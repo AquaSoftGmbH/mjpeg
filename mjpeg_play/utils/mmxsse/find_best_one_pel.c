@@ -1,4 +1,5 @@
 #include "config.h"
+#include <stdlib.h>
 #include <limits.h>
 #include <math.h>
 #include "mmxsse_motion.h"

@@ -699,6 +699,9 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 	 frame_YUV422_to_YUV420P(output, dv_frame[0],
 		decoder->width,	decoder->height);
 	 break;
+      case e_dv_sample_none:
+	 /* FIXME */
+	 break;
      }
      break;
 	

@@ -531,7 +531,6 @@ static int check_selection(void)
 void selection_cb(GtkWidget *ob, long data)
 {
    char str[256];
-   const char *name;
 
    switch(data)
    {

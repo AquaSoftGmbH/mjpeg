@@ -70,6 +70,7 @@ piperead(int fd, u_char *buf, int len)
 	return(r);
 	}
 
+int
 main(int argc, char **argv)
 	{
 	int	width, height, uvlen, verbose = 1, fdout, fdin, c, i;
@@ -254,7 +255,8 @@ main(int argc, char **argv)
 		}
 	y4m_fini_frame_info(&oframe);
 	y4m_fini_stream_info(&ostream);
-	exit(0);
+
+	return 0;
 	}
 
 static void
