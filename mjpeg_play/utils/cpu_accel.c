@@ -31,7 +31,7 @@ extern int detect_altivec();
 
 #ifdef HAVE_X86CPU 
 
-#include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 
 /* Some miscelaneous stuff to allow checking whether SSE instructions cause
    illegal instruction errors.
@@ -147,15 +147,15 @@ static int x86_accel (void)
 }
 #endif
 
-int cpu_accel (void)
+int32_t cpu_accel (void)
 {
 #ifdef HAVE_X86CPU 
     static int got_accel = 0;
     static int accel;
 
     if (!got_accel) {
-	got_accel = 1;
-	accel = x86_accel ();
+		got_accel = 1;
+		accel = x86_accel ();
     }
 
     return accel;
@@ -164,4 +164,33 @@ int cpu_accel (void)
 #else
     return 0;
 #endif
+}
+
+/*****************************
+ *
+ * Allocate memory aligned to suit SIMD 
+ *
+ ****************************/
+
+
+void *bufalloc( size_t size )
+{
+	static size_t simd_alignment = 16;
+	static bool bufalloc_init = false;
+	void *buf;
+
+	if( !bufalloc_init )
+	{
+#ifdef HAVE_X86CPU 
+		if( (cpu_accel() &  (ACCEL_X86_SSE|ACCEL_X86_3DNOW)) != 0 )
+		{
+			simd_alignment = 64;
+			bufalloc_init = true;
+		}
+#endif		
+	}
+		
+	if( posix_memalign( &buf, simd_alignment, size ) !=0 )
+		mjpeg_error_exit1("malloc failed");
+	return buf;
 }

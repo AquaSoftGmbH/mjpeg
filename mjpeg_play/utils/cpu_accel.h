@@ -18,7 +18,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
+#ifndef _CPU_ACCEL_HH
+#define _CPU_ACCEL_HH
 
+#include <config.h>
+#include <stdlib.h>
+#include "mjpeg_types.h"
 
 
 // x86 accelerations
@@ -31,8 +36,11 @@
 extern "C" {
 #endif
 
-int cpu_accel (void);
+	int32_t cpu_accel (void);
+	void *bufalloc( size_t size );
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif
