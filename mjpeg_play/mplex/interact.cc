@@ -8,7 +8,7 @@
 #include <format_codes.h>
 
 #include "interact.hh"
-#include "mpegconsts.hh"
+#include "mplexconsts.hh"
 
 
 int opt_verbosity = 1;

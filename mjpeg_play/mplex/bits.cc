@@ -136,19 +136,19 @@ void OBitStream::alignbits()
 
 bool IBitStream::refill_buffer()
 {
-	unsigned int i;
+	size_t i;
 	if( bufcount == BUFFER_SIZE )
 	{
 		mjpeg_error_exit1("INTERNAL ERROR: additional data required but
  no free space in input buffer\n");
 	}
 	i = fread(bfr+bufcount, sizeof(uint8_t), BUFFER_SIZE-bufcount, fileh);
-	if (i == 0)
+	bufcount += i;
+	if ( i == 0 )
 	{
 		eobs = true;
 		return false;
 	}
-	bufcount += i;
 	return true;
 }
 
@@ -205,8 +205,9 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 
 	if( readpos-buffer_start+length > bufcount )
 	{
-		if( !eobs )
-			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%d + %d bytes", bufcount, readpos-buffer_start,length  );
+		if( !feof(fileh) )
+			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%lld + %d bytes\n", 
+							  bufcount, readpos-(bitcount_t)buffer_start,length  );
 		to_read = static_cast<unsigned int>(totbits/8-readpos);
 	}
 	memcpy( dst, 
@@ -232,7 +233,7 @@ void IBitStream::open( char *bs_filename)
   eobs = false;
   if (!refill_buffer())
   {
-    if (eobs)
+    if (bufcount==0)
     {
 		mjpeg_error_exit1( "Unable to read from file %s.\n", bs_filename);
     }
@@ -273,8 +274,6 @@ uint32_t IBitStream::get1bit()
     {
 		unsigned int org_bufcount=bufcount;
 		refill_buffer();
-		if (bufcount == org_bufcount)
-			eobs = true;
     }
   }
 
@@ -303,8 +302,6 @@ uint32_t IBitStream::getbits(int N)
 	  {
 		  unsigned int org_bufcount=bufcount;
 		  refill_buffer();
-		  if (bufcount == org_bufcount)
-			  eobs = true;
 	  }
       i--;
     }
@@ -327,8 +324,6 @@ uint32_t IBitStream::getbits(int N)
 		{
 			unsigned int org_bufcount=bufcount;
 			refill_buffer();
-			if (bufcount == org_bufcount)
-				eobs = true;
 		}
       }
       val = (val << 1) | j;

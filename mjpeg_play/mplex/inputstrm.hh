@@ -30,9 +30,11 @@
 #include <sys/stat.h>
 
 #include "mjpeg_types.h"
-#include "mpegconsts.hh"
+#include "mpegconsts.h"
+#include "format_codes.h"
 #include "mjpeg_logging.h"
 
+#include "mplexconsts.hh"
 #include "bits.hh"
 #include "aunit.hh"
 #include "vector.hh"

@@ -27,7 +27,7 @@
 
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "format_codes.h"
+#include "mpegconsts.h"
 
 #include "interact.hh"
 #include "bits.hh"

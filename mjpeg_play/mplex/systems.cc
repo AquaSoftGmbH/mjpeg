@@ -5,7 +5,7 @@
 #include <sys/param.h>
 #include <sys/stat.h>
 #include "systems.hh"
-#include "mpegconsts.hh"
+#include "mplexconsts.hh"
 
 uint8_t dummy_buf[8000];
 void

@@ -1,5 +1,5 @@
-#ifndef __MPEGCONSTS_H__
-#define __MPEGCONSTS_H__
+#ifndef __MPLEXCONSTS_H__
+#define __MPLEXCONSTS_H__
 
 
 #define SEQUENCE_HEADER 	0x000001b3
@@ -68,4 +68,4 @@
 #define MARKER_NO_TIMESTAMPS	0x0f	/* Marker NO timestamps	*/
 
 
-#endif // __INPUTSTRM_H__
+#endif // __MPLEXCONSTS_H__

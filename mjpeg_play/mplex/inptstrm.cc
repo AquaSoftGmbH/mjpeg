@@ -24,14 +24,10 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "format_codes.h"
-
 #include "inputstrm.hh"
 #include "interact.hh"
 #include "outputstream.hh"
-
-static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
-									30000./1001., 30., 50., 60000./1001., 60. };
+#include "mpegconsts.h"
 
 char *audio_version[4] =
 {
@@ -64,49 +60,6 @@ unsigned int bitrates_kbps [4][3][16] =
 		{0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0}
 	}
 
-};
-
-static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
-							 0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
-							 1.2015, 0.};
-
-
-static char * mpeg1_aspect_ratio_definitions[] =
-{
-	"1:1 (square pixels)",
-	"1:0.6735",
-	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
-    "1:0.7615",
-	"1:0.8055",
-	"1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)",
-	"1:0.8935",
-	"1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)",
-	"1:0.9815",
-	"1:1.0255",
-	"1:1:0695",
-	"1:1.125  (4:3 NTSC for 720x480/352x240 images)",
-	"1:1575",
-	"1:1.2015"
-};
-
-static char *mpeg2_aspect_ratio_definitions[] = 
-{
-	"1:1 display",
-	"4:3 display",
-	"16:9 display",
-	"2.21:1 display"
-};
-
-static char **aspect_ratio_definitions[2] = 
-{
-	mpeg1_aspect_ratio_definitions,
-	mpeg2_aspect_ratio_definitions
-};
-
-static const int num_aspect_ratios[2] = 
-{
-	sizeof(mpeg1_aspect_ratio_definitions)/sizeof(char *),
-     sizeof(mpeg2_aspect_ratio_definitions)/sizeof(char *)
 };
 
 
@@ -165,9 +118,9 @@ void VideoStream::ScanFirstSeqHeader()
 		exit (1);
     }
 
-	if (pict_rate >0 && pict_rate<9)
+	if (pict_rate >0 && pict_rate <= mpeg_num_frame_rates)
     {
-		frame_rate = picture_rates[pict_rate];
+		frame_rate = mpeg_frame_rate(pict_rate);
 		film_rate = 1;
 	}
     else
@@ -423,13 +376,13 @@ void VideoStream::Close()
 
 void VideoStream::OutputSeqhdrInfo ()
 {
-	char *str;
+	const char *str;
 	mjpeg_info("VIDEO STREAM: %02x\n", stream_id);
 
     mjpeg_info ("Frame width    : %8u\n",horizontal_size);
     mjpeg_info ("Frame height   : %8u\n",vertical_size);
-	if( aspect_ratio >= num_aspect_ratios[opt_mpeg] )
-		str =  aspect_ratio_definitions[opt_mpeg-1][aspect_ratio-1];
+	if( aspect_ratio >= mpeg_num_aspect_ratios[opt_mpeg-1] )
+		str =  mpeg_aspect_code_definition(opt_mpeg,aspect_ratio);
 	else
 		str = "forbidden";
     mjpeg_info   ("Aspect ratio    :   %s\n", str );
@@ -437,9 +390,9 @@ void VideoStream::OutputSeqhdrInfo ()
 
     if (picture_rate == 0)
 		mjpeg_info( "Picture rate    : forbidden\n");
-    else if (picture_rate <9)
+    else if (picture_rate <=mpeg_num_frame_rates)
 		mjpeg_info( "Picture rate    :   %2.3f frames/sec\n",
-					picture_rates[picture_rate]);
+					mpeg_frame_rate(picture_rate) );
     else
 		mjpeg_info( "Picture rate    : %x reserved\n",picture_rate);
 
@@ -553,6 +506,12 @@ void AudioStream::Init ( const int stream_num,
 			bitrates_kbps[version_id][3-layer][bit_rate_code]  * 
 			slots [3-layer] *1000 /
 			freq_table[version_id][frequency];
+
+        mjpeg_info( "rate %d slots %d freq %d size = %d\n",
+                    bitrates_kbps[version_id][3-layer][bit_rate_code],
+                    slots [3-layer] *1000,
+                    freq_table[version_id][frequency],
+                    framesize );
 
 		size_frames[0] = framesize;
 		size_frames[1] = framesize+1;
