@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+int open_file(char *name, unsigned int *bytes);
+
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
 
@@ -177,9 +179,7 @@ int intro_and_options(int argc, char *argv[])
     File found?
 *************************************************************************/
 
-int open_file(name, bytes)			
-char *name;
-unsigned int *bytes;				
+int open_file(char *name, unsigned int *bytes)			
 {
     FILE* datei;
 

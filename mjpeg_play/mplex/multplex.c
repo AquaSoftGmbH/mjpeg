@@ -76,6 +76,20 @@ typedef enum { start_segment, mid_segment,
 			   last_vau_segment, last_aaus_segment }
      segment_state;
 
+void outputstreamsuffix(clockticks *SCR,
+	FILE *ostream, unsigned long long  *bytes_output);
+void next_video_access_unit (Buffer_struc *buffer,
+	Vaunit_struc *video_au, unsigned int bytes_muxed, 
+	unsigned int *AU_starting_next_sec, clockticks SCR_delay,
+	Vector vaunit_info_vec);
+void next_audio_access_unit (Buffer_struc *buffer,
+	Aaunit_struc *audio_au, unsigned int bytes_muxed,
+	unsigned char *audio_frame_start, clockticks SCR_delay,
+	Vector aaunit_info_vec);
+void outputstreamprefix( clockticks *current_SCR);
+
+
+
 /******************************************************************
 
 	Initialisation of stream syntax paramters based on selected
@@ -178,7 +192,6 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		break;
 	}
 	
-
   audio_buffer_size = 4 * 1024;
   printf("\n+------------------ MPEG/SYSTEMS INFORMATION -----------------+\n");
     
@@ -197,6 +210,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 					   VIDEO_STR_0, 1, video_buffer_size/1024, 
 					   which_streams);
   create_pack (&dummy_pack, 0, mux_rate);
+
   if( always_sys_header_in_pack )
   {
   	video_min_packet_data = 
@@ -328,7 +342,6 @@ void outputstreamprefix( clockticks *current_SCR)
 		break;
 		
 		case MPEG_SVCD :
-
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,1, 0, 1, 1, 1, 1,
 					   AUDIO_STR_0, 1, audio_buffer_size/128,
@@ -339,6 +352,7 @@ void outputstreamprefix( clockticks *current_SCR)
 					 	 TRUE,
 					 	 FALSE);					 
 		bytes_output += sector_transport_size;			 
+
 		bytepos_timecode ( bytes_output, current_SCR);
 		break;
 
@@ -586,7 +600,7 @@ void outputstream ( char 		*video_file,
 				outputstreamprefix( &current_SCR );
 				/* (Re)construct 
 				   In-stream system header ( in case required)									*/
-				create_sys_header (&sys_header, mux_rate, 1, 1, 1, 1, 1, 1,
+				create_sys_header (&sys_header, mux_rate, 1, 0, 1, 1, 1, 1,
 								   AUDIO_STR_0, 0, audio_buffer_size/128,
 								   VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
 

@@ -99,7 +99,7 @@ typedef uint64_t clockticks;
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
 
-#define BUFFERINFO_LENGTH 2
+#define BUFFERINFO_LENGTH 3
 #define DTS_PTS_TIMESTAMP_LENGTH 5
 #define MPEG2_AFTER_PACKET_LENGTH_MIN    3
 #define MPEG1_AFTER_PACKET_LENGTH_MIN    (0+1)

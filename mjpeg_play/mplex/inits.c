@@ -4,10 +4,14 @@
 
 	Initialize structs for S*N cc compiler.
 *************************************************************************/
+void empty_video_struc (Video_struc *pointer);
+void empty_audio_struc (Audio_struc *pointer);
+void empty_vaunit_struc (Vaunit_struc *pointer);
+void empty_aaunit_struc (Aaunit_struc *pointer);
+void empty_sector_struc (Sector_struc *pointer);
+void init_buffer_struc (Buffer_struc *pointer, unsigned int size);
 
-void empty_video_struc (pointer)
-
-Video_struc *pointer;
+void empty_video_struc (Video_struc *pointer)
 {
     int i;
 
@@ -31,9 +35,7 @@ Video_struc *pointer;
     pointer->CSPF		= 0;
 }
 
-void empty_audio_struc (pointer)
-
-Audio_struc *pointer;
+void empty_audio_struc (Audio_struc *pointer)
 {   
     int i;
 
@@ -55,8 +57,7 @@ Audio_struc *pointer;
     pointer->emphasis		= 0;
 }
 
-void empty_vaunit_struc (pointer)
-Vaunit_struc *pointer;
+void empty_vaunit_struc (Vaunit_struc *pointer)
 {
     pointer->length = 0;
     pointer->type   = 0;
@@ -64,24 +65,20 @@ Vaunit_struc *pointer;
    	pointer->PTS = 0;
 }
 
-void empty_aaunit_struc (pointer)
-Aaunit_struc *pointer;
+void empty_aaunit_struc (Aaunit_struc *pointer)
 {
     pointer->length = 0;
     pointer->PTS = 0;
 }
 
-void empty_sector_struc (pointer)
-Sector_struc *pointer;
+void empty_sector_struc (Sector_struc *pointer)
 {
     pointer->length_of_packet_data  = 0;
     pointer->TS = 0;
 }
 
 
-void init_buffer_struc (pointer, size)
-Buffer_struc *pointer;
-unsigned int size;
+void init_buffer_struc (Buffer_struc *pointer, unsigned int size)
 {
     pointer->max_size = size;
     pointer->first = NULL;

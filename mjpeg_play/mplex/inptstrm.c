@@ -67,15 +67,26 @@ static unsigned int slots [4] = {12, 144, 144, 0};
 static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
+void marker_bit (Bit_stream_struc *bs, unsigned int what);
+void check_files (int argc,
+				  char* argv[],
+				  char** audio_file,
+				  char** video_file,
+				  char** multi_file,
+				  unsigned int *audio_bytes,
+				  unsigned int *video_bytes
+	);
+void output_info_video (Video_struc *video_info);
+void output_info_audio (Audio_struc *audio_info);
+
+
 /*************************************************************************
     MPEG Streams Kontrolle
 
     Basic Checks on MPEG Streams
 *************************************************************************/
 
-void marker_bit (bs, what)
-	Bit_stream_struc *bs;
-	unsigned int what;
+void marker_bit (Bit_stream_struc *bs, unsigned int what)
 {
     if (what != get1bit(bs))
     {
@@ -431,9 +442,7 @@ void get_info_video (char *video_file,
 	Prints information on video access units
 *************************************************************************/
 
-void output_info_video (video_info)
-
-	Video_struc *video_info;
+void output_info_video (Video_struc *video_info)
 {
 	printf("\n+------------------ VIDEO STREAM INFORMATION -----------------+\n");
 
@@ -497,9 +506,7 @@ void output_info_video (video_info)
 	Prints information on audio access units
 *************************************************************************/
 
-void output_info_audio (audio_info)
-
-	Audio_struc *audio_info;
+void output_info_audio (Audio_struc *audio_info)
 {
     unsigned int layer;
     unsigned int bitrate;
