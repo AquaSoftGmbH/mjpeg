@@ -37,7 +37,7 @@
 
 void sync_guard_init( sync_guard_t *guard, int init )
 {
-#ifdef __linux__
+#ifdef PTHREAD_MUTEX_ERRORCHECK
 	pthread_mutexattr_t mu_attr;
 	pthread_mutexattr_t *p_attr = &mu_attr;
 	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
@@ -71,7 +71,7 @@ void sync_guard_update( sync_guard_t *guard, int predicate )
 
 void mp_semaphore_init( mp_semaphore_t *sema, int init_count )
 {
-#ifdef __linux__
+#ifdef _PTHREAD_MUTEX_ERRORCHECK
 	pthread_mutexattr_t mu_attr;
 	pthread_mutexattr_t *p_attr = &mu_attr;
 	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );

@@ -39,10 +39,10 @@ public:
 		producers_waiting(0),
 		consumers_waiting(0)
 		{
-#ifdef __linux__
+#ifdef PTHREAD_MUTEX_ERRORCHECK
 			pthread_mutexattr_t mu_attr;
 			pthread_mutexattr_t *p_attr = &mu_attr;
-			pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK_NP );
+			pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
 #else
 			pthread_mutexattr_t *p_attr = NULL;		
 #endif		

@@ -83,7 +83,7 @@ static void border_mark( uint8_t *frame,
 
 void PictureReader::Init()
 {
-#ifdef __linux__
+#ifdef PTHREAD_MUTEX_ERRORCHECK
     pthread_mutexattr_t mu_attr;
     pthread_mutexattr_t *p_attr = &mu_attr;
     pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
