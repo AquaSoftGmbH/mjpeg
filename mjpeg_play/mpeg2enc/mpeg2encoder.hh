@@ -21,9 +21,77 @@
  *
  */
 
-
+#include <config.h>
+#include "mpegconsts.h"
 #include "syntaxparams.h"
 #include "quantize_ref.h"
+
+
+struct MPEG2EncInVidParams
+{
+    int horizontal_size;
+    int vertical_size;
+    mpeg_aspect_code_t aspect_ratio_code;
+    mpeg_framerate_code_t frame_rate_code;
+    int interlacing_code;
+};
+
+class MPEG2EncOptions
+{
+public:
+    MPEG2EncOptions();
+    void SetFormatPresets(  const MPEG2EncInVidParams &strm );
+    int InferStreamDataParams( const MPEG2EncInVidParams &strm );
+    int CheckBasicConstraints();
+    int in_img_width;
+    int in_img_height;
+    int format;
+    int bitrate;
+    int nonvid_bitrate;
+    int quant;
+    int searchrad;
+    int mpeg;
+    unsigned int aspect_ratio;
+    unsigned int frame_rate;
+    int fieldenc; /* 0: progressive, 
+                     1 = frame pictures, 
+                     interlace frames with field
+                     MC and DCT in picture 
+                     2 = field pictures
+                  */
+    int norm;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
+    int me44_red	;
+    int me22_red	;	
+    int hf_quant;
+    double hf_q_boost;
+    double act_boost;
+    double boost_var_ceil;
+    int video_buffer_size;
+    int seq_length_limit;
+    int min_GOP_size;
+    int max_GOP_size;
+    int closed_GOPs;
+    int preserve_B;
+    int Bgrp_size;
+    int num_cpus;
+    int vid32_pulldown;
+    int svcd_scan_data;
+    int seq_hdr_every_gop;
+    int seq_end_every_gop;
+    int still_size;
+    int pad_stills_to_vbv_buffer_size;
+    int vbv_buffer_still_size;
+    int force_interlacing;
+    unsigned int input_interlacing;
+    int hack_svcd_hds_bug;
+    int hack_altscan_bug;
+    int mpeg2_dc_prec;
+    int ignore_constraints;
+    int unit_coeff_elim;
+
+    uint16_t custom_intra_quantizer_matrix[64];
+    uint16_t custom_nonintra_quantizer_matrix[64];
+};
  
 class EncoderParams;
 class PictureReader;
@@ -32,11 +100,13 @@ class SeqEncoder;
 class Quantizer;
 class Transformer;
 
+
 class MPEG2Encoder
 {
 public:
-    MPEG2Encoder( int istrm_fd );
+    MPEG2Encoder( int istrm_fd, MPEG2EncOptions &options );
     ~MPEG2Encoder();
+    MPEG2EncOptions &options;
     EncoderParams &parms;
     PictureReader &reader;
     Quantizer &quantizer;

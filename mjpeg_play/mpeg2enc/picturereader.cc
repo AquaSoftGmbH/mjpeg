@@ -445,11 +445,7 @@ Y4MPipeReader::Y4MPipeReader( MPEG2Encoder &encoder, int istrm_fd ) :
 {
 }
 
-void Y4MPipeReader::StreamPictureParams( unsigned int &hsize, 
-                                             unsigned int &vsize, 
-                                             unsigned int &frame_rate_code,
-                                             unsigned int &interlacing_code,
-                                             unsigned int &aspect_ratio_code)
+void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
 {
    int n;
    y4m_ratio_t sar;
@@ -457,20 +453,32 @@ void Y4MPipeReader::StreamPictureParams( unsigned int &hsize,
 
    y4m_init_stream_info (&si);  
    if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
-       mjpeg_log(LOG_ERROR, "Could not read YUV4MPEG2 header: %s!",
-                 y4m_strerr(n));
+       mjpeg_log( LOG_ERROR, 
+                  "Could not read YUV4MPEG2 header: %s!",
+                  y4m_strerr(n));
       exit (1);
    }
 
-   hsize = y4m_si_get_width(&si);
-   vsize = y4m_si_get_height(&si);
-   frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
-   interlacing_code = y4m_si_get_interlace(&si);
+   strm.horizontal_size = y4m_si_get_width(&si);
+   strm.vertical_size = y4m_si_get_height(&si);
+   strm.frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
+   strm.interlacing_code = y4m_si_get_interlace(&si);
 
    /* Deduce MPEG aspect ratio from stream's frame size and SAR...
       (always as an MPEG-2 code; that's what caller expects). */
    sar = y4m_si_get_sampleaspect(&si);
-   aspect_ratio_code = mpeg_guess_mpeg_aspect_code(2, sar, hsize, vsize);
+   strm.aspect_ratio_code = 
+       mpeg_guess_mpeg_aspect_code(2, sar, 
+                                   strm.horizontal_size, 
+                                   strm.vertical_size);
+   if(strm.horizontal_size <= 0)
+   {
+       mjpeg_error_exit1("Horizontal size from input stream illegal");
+   }
+   if(strm.vertical_size <= 0)
+   {
+       mjpeg_error("Vertical size from input stream illegal");
+   }
 }
 
 /*****************************

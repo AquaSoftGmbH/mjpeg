@@ -28,6 +28,7 @@
 #include "picture.hh"
 
 class MPEG2Encoder;
+struct MPEG2EncInVidParams;
 
 class PictureReader
 {
@@ -37,11 +38,7 @@ public:
     void Init();
     void ReadPictureData( int num_frame, uint8_t **frame);
     int FrameLumMean( int num_frame );
-    virtual void StreamPictureParams( unsigned int &hsize, 
-                              unsigned int &vsize, 
-                              unsigned int &frame_rate_code,
-                              unsigned int &interlacing_code,
-                              unsigned int &aspect_ratio_code) = 0;
+    virtual void StreamPictureParams( MPEG2EncInVidParams &strm ) = 0;
     void ReadFrame( int num_frame, uint8_t *frame[] );
 protected:
     int LumMean(uint8_t *frame );
@@ -79,11 +76,7 @@ class Y4MPipeReader : public PictureReader
 {
 public:
     Y4MPipeReader( MPEG2Encoder &encoder, int pipe_fd );
-    void StreamPictureParams( unsigned int &hsize, 
-                              unsigned int &vsize, 
-                              unsigned int &frame_rate_code,
-                              unsigned int &interlacing_code,
-                              unsigned int &aspect_ratio_code);
+    void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:
     bool LoadFrame( );
 private:

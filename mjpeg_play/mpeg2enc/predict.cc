@@ -134,12 +134,14 @@ void pred (	uint8_t *src[], int sfield,
 void MacroBlock::Predict()
 {
 	const Picture &picture = ParentPicture();
+	const 
 	int bx = TopleftX();
 	int by = TopleftY();
 	uint8_t **oldref = picture.oldref;	// Forward prediction
 	uint8_t **newref = picture.newref;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
-	int lx = enc->parms.phy_width;
+	int lx = picture.encparams->phy_width;
+	int lx2 = picture.encparams->phy_width;
 
 	bool addflag;
 	int currentfield;
@@ -149,8 +151,8 @@ void MacroBlock::Predict()
 	if (final_me.mb_type&MB_INTRA)
 	{
 		clearblock( cur,bx,by, 
-				   ((picture.pict_struct==BOTTOM_FIELD) ? enc->parms.phy_width : 0),
-					enc->parms.phy_width2);
+					picture.pict_struct==BOTTOM_FIELD ? lx : 0,
+					lx2);
 		return;
 	}
 

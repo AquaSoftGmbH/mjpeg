@@ -24,10 +24,13 @@
 #include "mjpeg_types.h"
 
 class MacroBlock;
+class MPEG2Encoder;
+class EncoderParams;
 
 class RateCtl
 {
 public:
+    RateCtl( MPEG2Encoder &encoder );
 	virtual void InitSeq( bool reinit ) = 0;
 	virtual void InitGOP( int nb, int np ) = 0;
 	virtual void InitPict (Picture &picture)= 0;
@@ -36,12 +39,15 @@ public:
 	virtual int  InitialMacroBlockQuant(Picture &picture) = 0;
 	virtual void VbvEndOfPict (Picture &picture) = 0;
 	virtual void CalcVbvDelay (Picture &picture) = 0;
+protected:
+    MPEG2Encoder &encoder;
+    EncoderParams &encparams;
 };
 
 class OnTheFlyRateCtl : public RateCtl
 {
 public:
-	OnTheFlyRateCtl();
+	OnTheFlyRateCtl( MPEG2Encoder &encoder );
 	virtual void InitSeq( bool reinit );
 	virtual void InitGOP( int nb, int np );
 	virtual void InitPict (Picture &picture);

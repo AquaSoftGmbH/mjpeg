@@ -45,7 +45,27 @@
  * design.
  *
  */
+
+/* Modifications and enhancements (C) 2000,2001,2002,2003 Andrew Stevens */
+
+/* These modifications are free software; you can redistribute it
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
 
+
 
 
 /*
@@ -152,13 +172,24 @@ EXTERN int istrm_nframes;				/* total number of frames to encode
 EXTERN int istrm_fd;
 
 struct RateCtl;
+class MPEG2EncOptions;
 
-
-struct EncoderParams
+class EncoderParams
 {
+public:
+	EncoderParams();
+	void Init(const class MPEG2EncOptions &options);
+
+private:
+	void InitQuantMatrices(const class MPEG2EncOptions &options);
+	void InitEncodingControls(const class MPEG2EncOptions &options);
+	void RangeChecks();
+	void ProfileAndLevelChecks();
+public:
+
 	/**************
 	 *
-	 * Global encoding parameters (set by supplied stream, never
+	 * Global MPEG parameters (set by supplied stream, never
 	 * change in a run) 
 	 *
      *************/
@@ -274,3 +305,11 @@ struct EncoderParams
 
 
 #endif
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */
