@@ -61,7 +61,7 @@ void motion_estimation _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg
   struct mbinfo *mbi, int secondfield, int ipflag));
 
 void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata));
-
+void reset_fast_motion_threshold _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
 void error _ANSI_ARGS_((char *text));
 
@@ -295,6 +295,9 @@ EXTERN int    drop_lsb; /* Drop lsb's of samples */
 EXTERN int    noise_filt; /* Do a crude Gaussian noise filter on samples */
 EXTERN int    fast_mc_frac; /* inverse proportion of fast motion estimates
 							   consider in detail */
+EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
+									dynamical adjust motion compensation
+									window size */
 EXTERN int vbv_buffer_size; /* size of VBV buffer (* 16 kbit) */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
 EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */

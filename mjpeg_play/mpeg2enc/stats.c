@@ -41,6 +41,7 @@ void calcSNR(org,rec)
 unsigned char *org[3];
 unsigned char *rec[3];
 {
+
 #ifdef OUTPUT_STAT
   int w,h,offs;
   double v,e;

@@ -56,6 +56,12 @@ void putseq()
   if (strlen(id_string) > 1)
     putuserdata(id_string);
 
+  /* A.Stevens Jul 2000 - we initialise sliding motion 
+	 compensation window thresholding values - we need to
+	 know how many macroblocks per frame to choose sensible
+	 parameters. */
+  reset_fast_motion_threshold( mb_height2*mb_width );
+
   /* loop through all frames in encoding/decoding order */
   for (i=0; i<nframes; i++)
   {
@@ -98,6 +104,8 @@ void putseq()
       {
         /* I frame */
         pict_type = I_TYPE;
+
+
         forw_hor_f_code = forw_vert_f_code = 15;
         back_hor_f_code = back_vert_f_code = 15;
 
@@ -123,6 +131,7 @@ void putseq()
         rc_init_GOP(np,nb);
 
         putgophdr(f0,i==0); /* set closed_GOP in first GOP only */
+
       }
       else
       {

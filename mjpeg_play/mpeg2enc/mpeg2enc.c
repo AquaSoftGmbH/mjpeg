@@ -77,6 +77,7 @@ static int param_special    = 0;
 static int param_drop_lsb   = 0;
 static int param_noise_filt = 0;
 static int param_fastmc     = 10;
+static int param_threshold  = 0;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -100,6 +101,7 @@ void Usage(char *str)
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
+  printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
   exit(0);
 }
 
@@ -110,7 +112,7 @@ char *argv[];
   char *outfilename=0;
   int n, nerr = 0;
 
-  while( (n=getopt(argc,argv,"m:b:q:o:r:s:f:d:n:")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:r:s:f:d:n:t")) != EOF)
   {
     switch(n) {
 
@@ -185,8 +187,12 @@ char *argv[];
           nerr++;
         }
         break;
-      default:
-          nerr++;
+
+	case 't':
+	  param_threshold = 1;
+	  break;
+	default:
+	  nerr++;
     }
   }
 
@@ -403,6 +409,7 @@ static void readparmfile()
   drop_lsb        = param_drop_lsb;
   noise_filt	  = param_noise_filt;
   fast_mc_frac    = param_fastmc;
+  fast_mc_threshold = param_threshold;
   vbv_buffer_size = mpeg1 ? 20 : 112;
   low_delay       = 0;
   constrparms     = mpeg1;             /* Will be reset, if not coompliant */
