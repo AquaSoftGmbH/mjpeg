@@ -80,14 +80,15 @@ int main(int argc, char *argv[])
 
    int frame;
    int fd_in;
-   int n, width, height;
+   int n;
    lav_file_t *output = 0;
-   int frame_rate_code;
    
    char *jpeg;
    int   jpegsize = 0;
    unsigned char *yuv[3];
 
+   y4m_frame_info_t *frameinfo = NULL;
+   y4m_stream_info_t *streaminfo = NULL;
 
    while ((n = getopt(argc, argv, "v:f:I:q:b:o:")) != -1) {
       switch (n) {
@@ -166,28 +167,23 @@ int main(int argc, char *argv[])
    (void)mjpeg_default_handler_verbosity(verbose);   
    fd_in = 0;                   /* stdin */
 
-   if (yuv_read_header(fd_in, &width, &height, &frame_rate_code)) {
+   streaminfo = y4m_init_stream_info(NULL);
+   frameinfo = y4m_init_frame_info(NULL);
+   if (y4m_read_stream_header(fd_in, streaminfo) != Y4M_OK) {
       mjpeg_error( "Could'nt read YUV4MPEG header!\n");
       exit (1);
    }
-   
-   if (0 <= param_interlace) {
-       n = param_interlace;
-   } else
-   /* how to determine if input is interlaced? at the moment, we can do this
-      via the input frame height, but this relies on PAL/NTSC standard input: */
-   if (((height >  288) && (frame_rate_code == 3)) ||  /* PAL */
-       ((height >  240) && (frame_rate_code == 4))) {  /* NTSC */
-       n = (param_format == 'A') ? LAV_INTER_BOTTOM_FIRST : LAV_INTER_TOP_FIRST;
-   } else                                              /* 24fps movie, etc. */
-       n = LAV_NOT_INTERLACED;
-   if      (n == LAV_INTER_TOP_FIRST  && param_format == 'A')
+
+   if (param_interlace < 0) param_interlace = streaminfo->interlace;
+   if (param_interlace == LAV_INTER_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
-   else if (n == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
+   else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
 
-   output = lav_open_output_file (param_output, param_format, width, height, n,
-                                  yuv_mpegcode2fps (frame_rate_code),
+   output = lav_open_output_file (param_output, param_format,
+                                  streaminfo->width, streaminfo->height,
+                                  param_interlace,
+                                  streaminfo->framerate,
                                   0, 0, 0);
 //                                audio_bits, audio_chans, audio_rate);
    if (!output) {
@@ -195,21 +191,22 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
-   yuv[0] = malloc(width * height * sizeof(unsigned char));
-   yuv[1] = malloc(width * height * sizeof(unsigned char) / 4);
-   yuv[2] = malloc(width * height * sizeof(unsigned char) / 4);
+   yuv[0] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char));
+   yuv[1] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
+   yuv[2] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
    jpeg = malloc(param_bufsize);
    
    signal (SIGINT, sigint_handler);
 
    frame = 0;
-   while ((yuv_read_frame(fd_in, yuv, width, height)) && (!got_sigint)) {
+   while (y4m_read_frame(fd_in, streaminfo, frameinfo, yuv)==Y4M_OK && (!got_sigint)) {
 
       fprintf (stdout, "frame %d\r", frame);
       fflush (stdout);
       jpegsize = encode_jpeg_raw (jpeg, param_bufsize, param_quality,
-                                  n /* itype */, 0 /* ctype */,
-                                  width, height, yuv[0], yuv[1], yuv[2]);
+                                  streaminfo->interlace, 0 /* ctype */,
+                                  streaminfo->width, streaminfo->height,
+                                  yuv[0], yuv[1], yuv[2]);
       if (jpegsize==-1) {
          mjpeg_error( "Couldn't compress YUV to JPEG\n");
          exit(1);
@@ -230,6 +227,9 @@ int main(int argc, char *argv[])
    for (n=0; n<3; n++) {
       free(yuv[n]);
    }
+
+   y4m_free_frame_info(frameinfo);
+   y4m_free_stream_info(streaminfo);
 
    return 0;
 }

@@ -73,7 +73,7 @@
 
 extern "C" 
 {
-#include "oldyuv4mpeg.h"
+#include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 }
 
@@ -208,7 +208,7 @@ main (int argc, char **argv)
 
   FILE* fd_audio;
   char* audio_buffer;
-  int audioexist;
+  int audioexist=0;
   int audio_bytesperframe;
   int audio_bytes;
 
@@ -219,6 +219,10 @@ main (int argc, char **argv)
   char* arg_geom;
   char* arg_end;
 //#endif
+
+   /* for the new YUV4MPEG streaming */
+   y4m_frame_info_t *frameinfo = NULL;
+   y4m_stream_info_t *streaminfo = NULL;
 
 //  static char x1, x2;
 //  static unsigned int NewY1, NewY2, NewX1, NewX2, Size, x, y, c;
@@ -450,32 +454,18 @@ main (int argc, char **argv)
 	double framerate = 0;
 	int frame_rate_code = 0;
 
-	if (yuv_read_header(fd_in, &width, &height, &frame_rate_code)) 
+	streaminfo = y4m_init_stream_info(NULL);
+	if (y4m_read_stream_header(fd_in, streaminfo) != Y4M_OK)
 	{
 		mjpeg_error_exit1("Couldn't read YUV4MPEG header!\n");
 	}
+	frameinfo = y4m_init_frame_info(NULL);
 
-	width = ( opt_outputwidth > 0) ? opt_outputwidth : width ;
-	height = ( opt_outputheight > 0) ? opt_outputheight : height ;
+	width = ( opt_outputwidth > 0) ? opt_outputwidth : streaminfo->width ;
+	height = ( opt_outputheight > 0) ? opt_outputheight : streaminfo->height ;
 	double time_between_frames ;
 
-	switch (frame_rate_code)
-	{
-		case 2:
-			framerate = 24.0;
-			time_between_frames = 1000000 * (1.0 / framerate);
-			break;
-		case 3:
-			framerate = 25.0;
-			time_between_frames = 1000000 * (1.0 / framerate);
-			break;
-		case 4:
-			framerate = 30000.0/1001.0;
-			time_between_frames = 1000000 * (1.0 / framerate);
-			break;
-		default:
-			mjpeg_error_exit1("Unknown format!!\n");
-	}
+	time_between_frames = 1000000 * (1.0 / streaminfo->framerate);
 
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
@@ -673,7 +663,7 @@ main (int argc, char **argv)
 
 	int currentframe = 0;
 
-	while ((yuv_read_frame(fd_in, yuv, width, height)) && (!got_sigint)) 
+	while (y4m_read_frame(fd_in, streaminfo, frameinfo, yuv)==Y4M_OK && (!got_sigint)) 
 	{
 		if (opt_endframe > 0 && currentframe >= opt_endframe)
 		{
@@ -818,6 +808,9 @@ finished:
 	free (yuv[0]) ;
 	free (yuv[1]) ;
 	free (yuv[2]) ;
+
+	y4m_free_frame_info(frameinfo);
+	y4m_free_stream_info(streaminfo);
 
 	if (audioexist > 0)
 	{
