@@ -265,7 +265,7 @@ unsigned int OutputStream::RunInSectors()
 		else if( vbr )
 			sectors_delay += 3*(*str)->BufferSize() / ( 4 * sector_size );
 		else
-			sectors_delay = 5 *(*str)->BufferSize() / ( 6 * sector_size );
+			sectors_delay += 5 *(*str)->BufferSize() / ( 6 * sector_size );
 	}
 	return sectors_delay;
 }

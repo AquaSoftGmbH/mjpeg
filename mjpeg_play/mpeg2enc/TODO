@@ -1,3 +1,7 @@
+0.	Add some facilities to adapt I-gain in rate control to different streams /
+	buffer sizes.
+
+
 1.  	Bring field sequence MC/prediction to same level as progressive	
 	sequence.
 	

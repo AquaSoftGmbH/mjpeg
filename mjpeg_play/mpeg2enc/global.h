@@ -131,7 +131,7 @@ extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 /* ratectl.c */
 void rc_init_seq (int reinit);
-void rc_init_GOP (int np, int nb);
+void rc_init_GOP ( int np, int nb);
 void rc_init_pict (pict_data_s *picture);
 void rc_update_pict (pict_data_s *picture);
 int rc_start_mb (pict_data_s *picture);

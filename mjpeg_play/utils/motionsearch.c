@@ -562,6 +562,8 @@ static void find_best_one_pel( me_result_set *sub22set,
 	int d;
 	me_result_s minpos = *best_so_far;
 	int dmin = INT_MAX;
+	int ilim = ihigh-i0;
+	int jlim = jhigh-j0;
 	uint8_t *orgblk;
 	int penalty;
 	me_result_s matchrec;
@@ -575,7 +577,7 @@ static void find_best_one_pel( me_result_set *sub22set,
 
 		for( i = 0; i < 4; ++i )
 		{
-			if( matchrec.x <= ihigh && matchrec.y <= jhigh )
+			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{
 		
 				d = penalty+(*psad_00)(orgblk,blk,rowstride,h, dmin);
@@ -599,7 +601,7 @@ static void find_best_one_pel( me_result_set *sub22set,
 		}
 	}
 
-	minpos.weight = intmin(255*255, dmin);
+	minpos.weight = (uint16_t)intmin(255*255, dmin);
 	*best_so_far = minpos;
 }
 
@@ -616,6 +618,8 @@ static void find_best_one_pel_mmxe( me_result_set *sub22set,
 	int i,k;
 	int d;
 	me_result_s minpos = *best_so_far;
+	int ilim = ihigh-i0;
+	int jlim = jhigh-j0;
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
 	int penalty;
@@ -637,7 +641,7 @@ static void find_best_one_pel_mmxe( me_result_set *sub22set,
 
 		for( i = 0; i < 4; ++i )
 		{
-			if( matchrec.x <= ihigh && matchrec.y <= jhigh )
+			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{
 		
 				d = penalty+resvec[i];
@@ -661,7 +665,7 @@ static void find_best_one_pel_mmxe( me_result_set *sub22set,
 		}
 	}
 
-	minpos.weight = intmin(255*255, dmin);
+	minpos.weight = (uint16_t)intmin(255*255, dmin);
 	*best_so_far = minpos;
 
 }

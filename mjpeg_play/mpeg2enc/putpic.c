@@ -195,7 +195,7 @@ void putpict(pict_data_s *picture )
 	/* Handle start of GOP stuff... */
 	if( picture->gop_start )
 	{
-		rc_init_GOP(picture->np, picture->nb);
+		rc_init_GOP( picture->np, picture->nb);
 	}
 
 	calc_vbv_delay(picture);
