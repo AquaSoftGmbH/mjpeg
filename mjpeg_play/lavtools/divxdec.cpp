@@ -1797,10 +1797,10 @@ main (int argc, char **argv)
 		}
 		else
 		{
-			// GUESS!  Assume that the image_aspect_code is "2" (4:3).
+			// GUESS!  Assume that the approx. display aspect ratio is 4:3.
 			// If there's a way to derive this that doesn't more directly derive
 			// the pixel aspect ratio itself, I'm not sure of it.
-			y4m_ratio_t y4m_aspect = y4m_guess_sample_ratio ( input.width, input.height, 2 );
+			y4m_ratio_t y4m_aspect = y4m_guess_sar ( input.width, input.height, y4m_dar_4_3 );
 			if ( ( y4m_aspect.n == 0 ) || ( y4m_aspect.d == 0 ) )
 			{
 				mjpeg_warn ( "could not guess aspect ratio\n" );

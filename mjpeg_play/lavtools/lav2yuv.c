@@ -48,11 +48,11 @@ void Usage(char *str)
    "   -S list.el Output a scene list with scene detection\n"
    "   -T num     Set scene detection threshold to num (default: 4)\n"
    "   -D num     Width decimation to use for scene detection (default: 2)\n"
-   "   -A w:h     Set output sample aspect ratio (default is to guess)\n"
-   "   -P [1..4]  Label output with intended display (picture) aspect ratio code\n"
-   "              1 = square pixels, 2 = 4:3, 2=16:9, 3=2.21:1\n"
-   "              Not setting this option = unknown display aspect ratio\n"
-   "               and/or guess from the first input frame)\n"
+   "   -A w:h     Set output sample aspect ratio\n"
+   "              (default:  read from DV files, or guess for MJPEG)\n"
+   "   -P w:h     Declare the intended display aspect ratio (used to guess\n"
+   "              the sample aspect ratio).  Common values are 4:3 and 16:9.\n"
+   "              (default:  read from DV files, or assume 4:3 for MJPEG)\n"
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
    "   -f num     Only num frames are written to stdout (0 means all frames)\n"
@@ -186,7 +186,7 @@ int main(argc, argv)
 	memset(&bounds, 0, sizeof(LavBounds));
 
 	param.sar = y4m_sar_UNKNOWN;
-	param.dar_code = 2;
+	param.dar = y4m_dar_4_3;
 	while ((n = getopt(argc, argv, "mYv:a:n:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
 		switch (n) {
 
@@ -300,9 +300,10 @@ int main(argc, argv)
 		  }
 		  break;
 		case 'P':
-			param.dar_code = atoi(optarg);
-			if( param.dar_code < 0 || param.dar_code > 3 )
-				nerr++;
+		  if (y4m_parse_ratio(&(param.dar), optarg)) {
+		    mjpeg_error("Couldn't parse ratio '%s'\n", optarg);
+		    nerr++;
+		  }
 			break;
 		default:
 			nerr++;

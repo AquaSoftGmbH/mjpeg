@@ -38,10 +38,10 @@ const y4m_ratio_t y4m_fps_PAL_FIELD  = Y4M_FPS_PAL_FIELD;
 const y4m_ratio_t y4m_fps_NTSC_FIELD = Y4M_FPS_NTSC_FIELD;
 const y4m_ratio_t y4m_fps_60         = Y4M_FPS_60;
 
-/* useful list of standard pixel aspect ratios */
+/* useful list of standard sample aspect ratios */
 const y4m_ratio_t y4m_sar_UNKNOWN        = Y4M_SAR_UNKNOWN;
 const y4m_ratio_t y4m_sar_SQUARE         = Y4M_SAR_SQUARE;
-const y4m_ratio_t y4m_sar_SQANA_16_9     = Y4M_SAR_SQANA_16_9;
+const y4m_ratio_t y4m_sar_SQR_ANA_16_9   = Y4M_SAR_SQR_ANA_16_9;
 const y4m_ratio_t y4m_sar_NTSC_CCIR601   = Y4M_SAR_NTSC_CCIR601;
 const y4m_ratio_t y4m_sar_NTSC_16_9      = Y4M_SAR_NTSC_16_9;
 const y4m_ratio_t y4m_sar_NTSC_SVCD_4_3  = Y4M_SAR_NTSC_SVCD_4_3;
@@ -51,6 +51,10 @@ const y4m_ratio_t y4m_sar_PAL_16_9       = Y4M_SAR_PAL_16_9;
 const y4m_ratio_t y4m_sar_PAL_SVCD_4_3   = Y4M_SAR_PAL_SVCD_4_3;
 const y4m_ratio_t y4m_sar_PAL_SVCD_16_9  = Y4M_SAR_PAL_SVCD_16_9;
 
+/* useful list of standard display aspect ratios */
+const y4m_ratio_t y4m_dar_4_3            = Y4M_DAR_4_3;
+const y4m_ratio_t y4m_dar_16_9           = Y4M_DAR_16_9;
+const y4m_ratio_t y4m_dar_221_100        = Y4M_DAR_221_100;
 
 /*
  *  Euler's algorithm for greatest common divisor
@@ -111,78 +115,42 @@ int y4m_parse_ratio(y4m_ratio_t *r, const char *s)
 }
 
 
-/********************************************************************
- *
- *  Take a wild guess at the SAR (sample aspect ratio) by checking the
- *  frame width and height for common values.  
- *  There is, of course, no way to tell a 16:9 anamorphic frame from a
- *  good old 4:3 frame.  So we have top rely on a code set by the user :-(
- *  For familiarity we use the MPEG2 codes.
- *
- *********************************************************************/
 
-y4m_ratio_t y4m_guess_sample_ratio(int width, 
-								   int height, 
-								   mpeg_aspect_code_t image_aspect_code)
+/*************************************************************************
+ *
+ * Guess the true SAR (sample aspect ratio) from a list of commonly 
+ * encountered values, given the "suggested" display aspect ratio, and
+ * the true frame width and height.
+ *
+ * Returns y4m_sar_UNKNOWN if no match is found.
+ *
+ *************************************************************************/
+
+/* this is big enough to accommodate the difference between 720 and 704 */
+#define GUESS_ASPECT_TOLERANCE 0.03
+
+y4m_ratio_t y4m_guess_sar(int width, int height, y4m_ratio_t dar)
 {
-	y4m_ratio_t sar;
-	y4m_ratio_t ccir601_ntsc;
-	y4m_ratio_t ccir601_pal;
-	y4m_ratio_t square;
-	y4m_ratio_t svcd_pal;
-	y4m_ratio_t svcd_ntsc;
-	
-	if( image_aspect_code == 1)	/* 1:1 Image*/
-	{
-		sar.n = width;
-		sar.d = height;
-		y4m_ratio_reduce( &sar );
-		return sar;
-	} else if( image_aspect_code == 2 ) /* 4:3 image */
-	{
-		square =  y4m_sar_SQUARE;
-		ccir601_ntsc = y4m_sar_NTSC_CCIR601;
-		ccir601_pal = y4m_sar_PAL_CCIR601;
-		svcd_ntsc = y4m_sar_NTSC_SVCD_4_3;
-		svcd_pal = y4m_sar_PAL_SVCD_4_3;
-	}
-	else if( image_aspect_code == 3 ) /* 16:9 image */
-	{
-		square =  y4m_sar_SQANA_16_9;
-		ccir601_ntsc = y4m_sar_NTSC_16_9;
-		ccir601_pal = y4m_sar_PAL_16_9;
-		svcd_ntsc = y4m_sar_NTSC_SVCD_16_9;
-		svcd_pal = y4m_sar_PAL_SVCD_16_9;
-	}
-	else
-		return y4m_sar_UNKNOWN;
-
-	sar = y4m_sar_UNKNOWN;
-	if ((height > 470) && (height < 490)) {
-		if ((width > 700) && (width < 724))       /* 704x480 or 720x480 */
-			sar = ccir601_ntsc;
-		else if ((width > 630) && (width < 650))  /* 640x480 */
-			sar = square;
-		else if ((width > 470) && (width < 490))  /* 480x480 */
-			sar = svcd_ntsc;
-	} else if ((height > 230) && (height < 250)) {
-		if ((width > 350) && (width < 362))       /* 352x240 or 360x240 */
-			sar =  ccir601_ntsc;
-		else if ((width > 310) && (width < 330))
-			sar =  square;                  /* 320x240 */
-	} else if ((height > 565) && (height < 585)) {
-		if ((width > 700) && (width < 724))       /* 704x576 or 720x576 */
-			sar =  ccir601_pal;
-		else if ((width > 760) && (width < 780))  /* 768x576 */
-			sar =  square;
-		else if ((width > 470) && (width < 490))  /* 480x576 */
-			sar = svcd_pal;
-	} else if ((height > 280) && (height < 300)) {
-		if ((width > 350) && (width < 362))       /* 352x288 */
-			sar =  ccir601_pal;
-		else if ((width > 380) && (width < 390))  /* 386x288 */
-			sar = square;
-	}
-
-	return sar;
-}
+  int i;
+  double implicit_sar = (double)(dar.n * height) / (double)(dar.d * width);
+  y4m_ratio_t sarray[] =
+    {
+      y4m_sar_SQUARE,
+      y4m_sar_NTSC_CCIR601,
+      y4m_sar_NTSC_16_9,
+      y4m_sar_NTSC_SVCD_4_3,
+      y4m_sar_NTSC_SVCD_16_9,
+      y4m_sar_PAL_CCIR601,
+      y4m_sar_PAL_16_9,
+      y4m_sar_PAL_SVCD_4_3,
+      y4m_sar_PAL_SVCD_16_9,
+      y4m_sar_UNKNOWN
+    };
+  for (i = 0; !(Y4M_RATIO_EQL(sarray[i],y4m_sar_UNKNOWN)); i++) {
+    double ratio = implicit_sar / Y4M_RATIO_DBL(sarray[i]);
+    if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
+	 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
+      return sarray[i];
+  }
+  return y4m_sar_UNKNOWN;
+} 

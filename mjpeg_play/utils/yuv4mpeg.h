@@ -58,14 +58,6 @@ typedef struct _y4m_ratio {
   int d;  /* denominator */
 } y4m_ratio_t;
 
-/************************************************************************
- *
- * 'aspect_code' datatype for holding codes for common display (whole image)
- * aspect ratios in the form used by MPEG2.
- *
- ***********************************************************************/
-
-typedef unsigned int mpeg_aspect_code_t;
 
 /************************************************************************
  *  useful standard framerates (as ratios)
@@ -85,10 +77,6 @@ extern const y4m_ratio_t y4m_fps_60;         /* 60fps                      */
  ************************************************************************/
 extern const y4m_ratio_t y4m_sar_UNKNOWN; 
 extern const y4m_ratio_t y4m_sar_SQUARE;        /* square pixels */
-extern const y4m_ratio_t y4m_sar_SQANA_16_9;    /* anamorphic 16:9
-												 * sampled from 4:3
-												 * with square
-												 * pixels */
 extern const y4m_ratio_t y4m_sar_NTSC_CCIR601;  /* 525-line (NTSC) Rec.601 */
 extern const y4m_ratio_t y4m_sar_NTSC_16_9;     /* 16:9 NTSC/Rec.601       */
 extern const y4m_ratio_t y4m_sar_NTSC_SVCD_4_3; /* NTSC SVCD 4:3           */
@@ -97,6 +85,16 @@ extern const y4m_ratio_t y4m_sar_PAL_CCIR601;   /* 625-line (PAL) Rec.601  */
 extern const y4m_ratio_t y4m_sar_PAL_16_9;      /* 16:9 PAL/Rec.601        */
 extern const y4m_ratio_t y4m_sar_PAL_SVCD_4_3;  /* PAL SVCD 4:3            */
 extern const y4m_ratio_t y4m_sar_PAL_SVCD_16_9; /* PAL SVCD 16:9           */
+extern const y4m_ratio_t y4m_sar_SQR_ANA16_9;   /* anamorphic 16:9 sampled */
+                                            /* from 4:3 with square pixels */
+
+/************************************************************************
+ *  useful standard display aspect ratios (W:H)
+ ************************************************************************/
+extern const y4m_ratio_t y4m_dar_UNKNOWN; 
+extern const y4m_ratio_t y4m_dar_4_3;     /* standard TV   */
+extern const y4m_ratio_t y4m_dar_16_9;    /* widescreen TV */
+extern const y4m_ratio_t y4m_dar_221_100; /* word-to-your-mother TV */
 
 
 /************************************************************************
@@ -174,18 +172,22 @@ void y4m_ratio_reduce(y4m_ratio_t *r);
 /* parse "nnn:ddd" into a ratio (returns Y4M_OK or Y4M_ERR_RANGE) */
 int y4m_parse_ratio(y4m_ratio_t *r, const char *s);
 
-/* Guesses a sample aspect ratio for common image formats based on the
-   pixel grid dimensations and the original image aspect ratio
-*/
-
-y4m_ratio_t y4m_guess_sample_ratio(int width, int height, 
-								   mpeg_aspect_code_t image_aspect_code);
-
 /* quick test of two ratios for equality (i.e. identical components) */
 #define Y4M_RATIO_EQL(a,b) ( ((a).n == (b).n) && ((a).d == (b).d) )
 
 /* quick conversion of a ratio to a double (no divide-by-zero check!) */
 #define Y4M_RATIO_DBL(r) ((double)(r).n / (double)(r).d)
+
+/*************************************************************************
+ *
+ * Guess the true SAR (sample aspect ratio) from a list of commonly 
+ * encountered values, given the "suggested" display aspect ratio (DAR),
+ * and the true frame width and height.
+ *
+ * Returns y4m_sar_UNKNOWN if no match is found.
+ *
+ *************************************************************************/
+y4m_ratio_t y4m_guess_sar(int width, int height, y4m_ratio_t dar);
 
 
 

@@ -25,7 +25,6 @@
 #include "mpegconsts.h"
 #include "yuv4mpeg.h"
 #include "yuv4mpeg_intern.h"
-#include <stdio.h>
 
 static y4m_ratio_t
 mpeg_framerates[] = {
@@ -359,31 +358,8 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 		}
 		else if ((code >= 2) && (code <= 4))
 		{
-			int i;
-			y4m_ratio_t mpeg_far = mpeg2_aspect_ratios[code-1];
-			double mpeg_sar = 
-				(double)(mpeg_far.d * frame_width) /
-				(double)(mpeg_far.n * frame_height);
-			y4m_ratio_t sarray[9] =
-				{
-					y4m_sar_SQUARE,
-					y4m_sar_NTSC_CCIR601,
-					y4m_sar_NTSC_16_9,
-					y4m_sar_NTSC_SVCD_4_3,
-					y4m_sar_NTSC_SVCD_16_9,
-					y4m_sar_PAL_CCIR601,
-					y4m_sar_PAL_16_9,
-					y4m_sar_PAL_SVCD_4_3,
-					y4m_sar_PAL_SVCD_16_9
-				};
-			for (i = 0; i < 9; i++)
-			{
-				double ratio = mpeg_sar / Y4M_RATIO_DBL(sarray[i]);
-				if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
-					 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
-					return sarray[i];
-			}
-			return y4m_sar_UNKNOWN;
+            return y4m_guess_sar(frame_width, frame_height,
+                                 mpeg2_aspect_ratios[code-1]);
 		} 
 		else
 		{

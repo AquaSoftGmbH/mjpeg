@@ -26,7 +26,7 @@ Recording videos
 .br
 Creating videos from images
 .br
-Checking if recording was succesful
+Checking if recording was successful
 .br
 Edit the video
 .br
@@ -62,13 +62,13 @@ Interoperability
 
 .SH "DESCRIPTION"
 .br 
-The mjpetools are a set of programs that can do recording,
+The mjpegtools are a set of programs that can do recording,
 playback,  editing and eventual MPEG compression of
 audio and video under Linux.  
 
 Although primarily intended for use with capture / playback boards
-based on the Zoran ZR36067 MJPEG codec chip the mjpegtools can easily
-be used to process and compres MJPEG video streams captured using
+based on the Zoran ZR36067 MJPEG codec chip, the mjpegtools can easily
+be used to process and compress MJPEG video streams captured using
 xawtv or bcast2000 using simple frame\-buffer devices.
 
 
@@ -80,7 +80,8 @@ HOWTO for the tools intended to give an an introduction to the
 MJPEG\-tools and the creation of MPEG 1/2 videos. VCD and SVCD, and
 the transcoding of existing mpeg streams.
 
-For more information about the programms read the corresponding manpage. You find mor information about the other man pages in the SEE ALSO section.
+For more information about the programs read the corresponding man-page. 
+You'll find more information about the other man pages in the SEE ALSO section.
 
 You will usually have to load the drivers for the Buz or DC10(+) or LML33
 cards. So you have to run the update script providing as option the name 
@@ -88,12 +89,13 @@ of your card you have. The script is usually in /usr/src/driver\-zoran/
 
 If you compile the tools on a P6 based computer (PPro, P\-II, P\-III, P\-4,
 Athlon,Duron) then never try to let them run on a P5 based computer 
-(Pentium, Pentium\-MMX, K6, K6\-x, Cyrix, Via, Winchip). You'll get a 
-"illegal instruction" and the programm won't work.
+(Pentium, Pentium\-MMX, K6, K6\-x, Cyrix, Via, Winchip). You'll get an
+"illegal instruction" and the program won't work.
 
-If you compile the tools on a other platform, not all tools might work. The v4l (video4linux) stuff will very likely fail to work.
+If you compile the tools on another platform, not all tools might work.
+The v4l (video4linux) stuff will very likely fail to work.
 
-Start xawtv to see if you get an picture. If you want to use HW\-playback of
+Start xawtv to see if you get a picture. If you want to use HW\-playback of
 the recorded streams you have to start xawtv (any TV application works) 
 once to get the streams played back. You should also check the settings of 
 your mixer in the sound card.
@@ -104,9 +106,9 @@ get "frozen".
 
 One last thing about the data you get before we start:
 .br
-Audio: ( Samlperate * Channels * Bitsize ) / (8 * 1024)
+Audio: ( Samplerate * Channels * Bitsize ) / (8 * 1024)
 .br
-CD Quality : (44100 Samples/sec * 2 Chanels * 16 Bit ) / (8 * 1024) = 172,2 kB/sec
+CD Quality : (44100 Samples/sec * 2 Channels * 16 Bit ) / (8 * 1024) = 172,2 kB/sec
 .br
 The 8 * 1024 convert the value from bit/sec to kByte/sec
 
@@ -127,26 +129,26 @@ mentioned. The Buz an Marvel G400 for example can only record a size of 720x576
 when using -d 1 , the DC10 records a size of 384x288 when using -d 2.
 
 .br
-When you add audio and video datarate, this is what your hard disk has  
+When you add the audio and video data rates, this is what your hard disk has  
 to be able to write constantly streaming, else you will have lost frames.
 
 .br
-If you want to play with the --mjpeg-buffer-size. Remember the value should be 
+If you want to play with the --mjpeg-buffer-size, remember the value should be 
 at least so big that one frame fits into it. The size of one frame is:       
 (width * height * quality ) / (200 * 1024) = kB
-If the buffer is to small the rate calculation doesn't match any more and 
+If the buffer is too small the rate calculation doesn't match any more and 
 buffer overflows can happen.
 
-How video works, and the difference between the video type is explained here:
+How video works, and the difference between the video types is explained here:
 .br
 http://www.mir.com/DMG/
 
-There you also find how to create MPEG Still Images for VCD/SVCD
+There you will also find how to create MPEG Still Images for VCD/SVCD
 
 .SH "RECORDING VIDEOS"
 .br 
 
-Recording with lavrec look's like this:
+Recording with lavrec looks like this:
 .br 
 .B > lavrec \-f a \-i P \-d 2 record.avi
 
@@ -154,7 +156,7 @@ Should start recording now,
 .br 
 \-f a: use AVI as output format,
 .br 
-\-i P: use as input source the SVHS\-In with PAL format,
+\-i P: use as input source the S\-Video input with PAL format,
 .br 
 \-d 2: the size of the pictures are half size (352x288)
 .br 

@@ -473,13 +473,13 @@ void read_stream_params( int *hsize, int *vsize,
 			 unsigned int *aspect_ratio_code)
 {
    int n;
-   int ar_code;
    y4m_ratio_t sar;
    y4m_stream_info_t si;
 
    y4m_init_stream_info (&si);  
    if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
-      mjpeg_log (LOG_ERROR, "Could not read YUV4MPEG header: %s!\n", y4m_strerr (n));
+       mjpeg_log(LOG_ERROR, "Could not read YUV4MPEG header: %s!\n",
+                 y4m_strerr(n));
       exit (1);
    }
 
@@ -488,14 +488,11 @@ void read_stream_params( int *hsize, int *vsize,
    *frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
    *interlacing_code = y4m_si_get_interlace(&si);
 
-   ar_code = 0;
    /* Deduce MPEG aspect ratio from stream's frame size and SAR...
       (always as an MPEG-2 code; that's what caller expects). */
    sar = y4m_si_get_sampleaspect(&si);
-   ar_code = mpeg_guess_mpeg_aspect_code(2, sar,
-                                         *hsize, *vsize);
-   /* ...but an explicit xtag overrides the above guess... */
-   *aspect_ratio_code = ar_code;
+   *aspect_ratio_code = mpeg_guess_mpeg_aspect_code(2, sar,
+                                                    *hsize, *vsize);
 }
 
 

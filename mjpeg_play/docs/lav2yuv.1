@@ -82,23 +82,15 @@ switch field order in DV input
 .TP 5
 .BI \-A \ width:height
 Set/override the sample aspect ratio (SAR) emitted in the output stream
-header.  (Currently, the SAR is only auto-detected for DV files.)
+header.  (Currently, the SAR is only auto-detected for DV files, and
+guessed otherwise.)
 .TP 5
-.BI \-P \ code
-Label the output stream with an intended display aspect ratio - that
-is a code identifying aspect ratio of the hwole the picture when it is
-displayed.  This is primarily intended for MPEG encoders.
-.IP
-1 indicates
-square pixels (the aspect ratio is given by the dimensions of the
-sampling grid).
-.IP
-2 indicates a 4:3 aspect ratio.
-.IP
-3 indicates a 16:9 aspect ratio.
-.IP
-4 indicates a 2.21:1 aspect ratio.
-
+.BI \-P \ width:height
+Set the intended/approximate display aspect ratio (DAR) for the stream.
+This value is only used to guess the SAR when it cannot be detected 
+from the input stream.  The default DAR is '4:3' (corresponding to a
+standard TV screen); another useful value is '16:9' (corresponding to
+widescreen TV).
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.

@@ -519,9 +519,9 @@ void writeoutYUV4MPEGheader(
      /* no idea! ...eh, just guess. */
      mjpeg_warn("unspecified sample-aspect-ratio --- taking a guess...\n");
      y4m_si_set_sampleaspect(&stream_info,
-							  y4m_guess_sample_ratio(param->output_width, 
-													 param->output_height,
-													 param->dar_code));
+			     y4m_guess_sar(param->output_width, 
+					   param->output_height,
+					   param->dar));
    }
 
    n = y4m_write_stream_header(out_fd, &stream_info);

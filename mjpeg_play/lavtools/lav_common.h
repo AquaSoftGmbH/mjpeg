@@ -81,7 +81,7 @@ typedef struct {
    int output_height;
    int interlace;
    y4m_ratio_t sar; /* sample aspect ratio (default 0:0 == unspecified) */
-	int dar_code;				/* MPEG-2 Display aspect ratio code */
+   y4m_ratio_t dar; /* 'suggested' display aspect ratio */
 } LavParam;
 //=
 //{ 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 } ;
