@@ -76,6 +76,11 @@
  *
  *   -w/--wait --- Wait for user confirmation to start
  *
+ *   -B/--batch --- Batch mode recording.  Minimal error logging, no
+ *              interaction, works when output is redirected to files.
+ *              Intended for use when doing unattended script-controlled
+ *              recording.
+ *
  *   --software-encoding --- encode frames in software-mode:
  *      Mainly intended to make it possible to use lavrec with BTTV
  *      cards too. Should work for V4L-capture with zoran cards too
@@ -177,6 +182,7 @@ static int show_stats = 0;
 static int state;
 static int verbose = 0;
 static int wait_for_start = 0;
+static int batch_mode = 0;
 static char input_source;
 static pthread_cond_t state_cond;
 static int cond_done = 0;
@@ -196,6 +202,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -S/--single-frame           Single frame capture mode\n");
 	fprintf(stderr, "  -T/--time-lapse num         Time lapse, capture only every <num>th frame\n");
 	fprintf(stderr, "  -w/--wait                   Wait for user confirmation to start\n");
+	fprintf(stderr, "  -b/--batch                  Batch mode for recording non-interactively\n");
 	fprintf(stderr, "  -a/--audio-bitsize num      Audio size, 0 for no audio, 8 or 16\n");
 	fprintf(stderr, "  -r/--audio-bitrate num      Audio rate [Hz]\n");
 	fprintf(stderr, "  -s/--stereo                 Stereo (default: mono)\n");
@@ -409,6 +416,29 @@ static void input(int type, char *message)
   }
 }
 
+static void *batch_control_thread(void *arg)
+{
+
+  do
+  {
+	  while (!cond_done)
+	  {
+		  pthread_mutex_lock(&state_mutex);
+		  pthread_cond_wait(&state_cond, &state_mutex);
+		  pthread_mutex_unlock(&state_mutex);
+	  }
+	  cond_done = 0;
+	  if (state == LAVREC_STATE_PAUSED )
+	  {
+          usleep(10000);
+		  lavrec_start(info);
+	  }
+  }
+  while (state != LAVREC_STATE_STOP);
+  mjpeg_debug("Control thread finished\n");
+  pthread_exit(NULL);
+}
+
 static void *input_thread(void *arg)
 {
   char input_buffer[256];
@@ -481,6 +511,51 @@ static void statechanged(int new)
     show_stats = -1;
     break;
   }
+}
+
+static void batch_stats(video_capture_stats *stats)
+{
+    int nf, ns, nm, nh;
+	static int first_stats = 1;
+	static video_capture_stats prev_stats;
+	return;
+	if( first_stats )
+	{
+		first_stats = 0;
+		prev_stats = *stats;
+		return;
+	}
+
+	
+	if( stats->num_lost == prev_stats.num_lost &&
+        stats->num_ins == prev_stats.num_ins &&
+		stats->num_del == prev_stats.num_del &&
+		stats->num_aerr == prev_stats.num_aerr )
+	{
+		return;
+	}
+
+	prev_stats = *stats;
+    if(info->video_norm!=1)
+    {
+      nf = stats->num_frames % 25;
+      ns = stats->num_frames / 25;
+    }
+    else
+    {
+      nf = stats->num_frames % 30;
+      ns = stats->num_frames / 30;
+    }
+    nm = ns / 60;
+    ns = ns % 60;
+    nh = nm / 60;
+    nm = nm % 60;
+	printf("%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
+		   "ae:%3d td1=%.3f td2=%.3f\n",
+		   nh, nm, ns, nf, 
+		   (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
+        stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);
+
 }
 
 static void output_stats(video_capture_stats *stats)
@@ -598,6 +673,10 @@ static int set_option(const char *name, char *value)
 				invalid\n",info->record_time);
 			nerr++;
 		}
+	}
+	else if (strcmp(name, "batch")==0 || strcmp(name, "B")==0)
+	{
+		batch_mode = 1;
 	}
 	else if (strcmp(name, "single-frame")==0 || strcmp(name, "S")==0)
 	{
@@ -776,6 +855,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"single-frame"     ,1,0,0},   /* -S/--single-frame      */
 		{"time-lapse"       ,1,0,0},   /* -T/--time-lapse        */
 		{"wait"             ,0,0,0},   /* -w/--wait              */
+		{"batch"            ,0,0,0},   /* -b/--batch             */
 		{"audio-bitsize"    ,1,0,0},   /* -a/--audio-size        */
 		{"audio-bitrate"    ,1,0,0},   /* -r/--audio-rate        */
 		{"stereo"           ,0,0,0},   /* -s/--stereo            */
@@ -799,10 +879,10 @@ static void check_command_line_options(int argc, char *argv[])
 	/* Get options */
 	nerr = 0;
 #ifndef IRIX
-	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUR:c:n:b:C:",
+	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:",
 		long_options, &option_index)) != EOF)
 #else
-	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUR:c:n:b:C:")) != EOF)
+	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:")) != EOF)
 #endif
 	{
 		switch(n)
@@ -959,14 +1039,21 @@ int main(int argc, char **argv)
   info = lavrec_malloc();
   info->state_changed = statechanged;
   info->msg_callback = input;
-  info->output_statistics = output_stats;
   check_command_line_options(argc, argv);
   lavrec_print_properties();
 
+  if( batch_mode )
+	  info->output_statistics = batch_stats;
+  else
+	  info->output_statistics = output_stats;
+
   pthread_mutex_init(&state_mutex, NULL);
   pthread_cond_init(&state_cond, NULL);
-  pthread_create(&msg_thr, NULL, input_thread, NULL);
-
+  if( batch_mode )
+	  pthread_create(&msg_thr, NULL, batch_control_thread, NULL);
+  else
+	  pthread_create(&msg_thr, NULL, input_thread, NULL);
+	  
   lavrec_main(info);
   lavrec_busy(info);
   lavrec_free(info);
