@@ -559,15 +559,23 @@ do
    fi
    if [ $stepnum -eq 3 -o $use_fifo -ne 1 ]; then
       diff=$(getTimeDiff $START $SECONDS)
-      logIt "finished ${stepdesc[$count]} ( took $diff )"
+      elapsed=$(expr $SECONDS - $START)
+      if [ "$elapsed" != "0" ]; then
+         fps=$(echo "scale=3; $video_frames / $elapsed " | bc)
+         logIt "finished ${stepdesc[$count]} ( took $diff - $fps fps)"
+      else
+         logIt "finished ${stepdesc[$count]} ( took $diff )"
+      fi
    fi
 done
 
 END=$SECONDS
 diff=$(getTimeDiff $STARTALL $SECONDS)
 temp=$(expr $SECONDS - $STARTALL)
-if [ "$LOGONLY" == "" ]; then  # avoid divide by zero possibility
+if [ "$temp" != "0" ]; then  # avoid divide by zero possibility
    fps=$(echo "scale=3; $video_frames / $temp" | bc)
    logIt "finished encoding (took $diff - $fps fps)"
+else
+   logIt "finished encoding (took $diff)"
 fi
 cleanExit 0
