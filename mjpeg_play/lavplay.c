@@ -548,8 +548,6 @@ main(int argc, char ** argv)
        SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
        SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
-       //dump_pixel_format(screen->format);
-       
        if (screen->format->BytesPerPixel == 2)
 	 calc_rgb16_params(screen->format->Rloss, screen->format->Gloss, screen->format->Bloss,
 			   screen->format->Rshift, screen->format->Gshift, screen->format->Bshift);

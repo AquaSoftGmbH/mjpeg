@@ -10,10 +10,10 @@ QT_LIBS= mjpeg/libmjpeg.a quicktime/libquicktime.a jpeg-6b-mmx/libjpeg.a -lpthre
 
 #this is for software MJPEG playback, and GLib is used by movtarlib
 L_FLAGS  = -lpthread -lSDL 
-#`glib-config glib --libs` 
+L_FLAGS_MOV = -lpthread -lSDL `glib-config glib --libs` 
 
-CFLAGS= -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime -I mjpeg -g -pg 
-#`glib-config glib --cflags`
+CFLAGS= -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime -I mjpeg
+CFLAGS_MOV =  -O2 -I . -I buz -I jpeg-6b-mmx -I quicktime -I mjpeg -I movtar `glib-config glib --cflags`
 
 all:		lavrec lavplay
 
@@ -40,8 +40,8 @@ lavplay:	lavplay.c avilib.o audiolib.o lav_io.o editlist.o \
                 $(L_FLAGS) $(CFLAGS)
 
 movtar_play: movtar/movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a
-	gcc movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a $(C_FLAGS) \
-	$(L_FLAGS) -o movtar_play
+	gcc movtar/movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a $(CFLAGS_MOV) \
+	$(L_FLAGS_MOV) -o movtar_play
 
 install:
 	su -c "cp -v $(M_OBJS) /usr/local/bin/"
