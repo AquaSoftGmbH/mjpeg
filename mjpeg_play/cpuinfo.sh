@@ -104,21 +104,7 @@ case "$pvendor" in
 			   fi
 			   ;;
 			15) 
-			   if test "$pmodel" -eq 4; then
-				proc=athlon64
-			   elif test "$pmodel" -eq 5; then
-				proc=x86-64
-			   elif test "$pmodel" -eq 7; then
-				proc=athlon64
-			   elif test "$pmodel" -eq 12 -o "$pmodel" -eq 14; then
-				proc=athlon64
-			   elif test "$pmodel" -eq 15; then
-				proc=athlon64
-			   elif test "$pmodel" -eq 31; then
-				proc=athlon64
-			   else
-				proc=k8
-			   fi		   
+			   proc=k8
 			   ;;
 			*) proc=athlon-xp
 			   ;;
