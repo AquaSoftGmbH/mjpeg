@@ -60,7 +60,7 @@ static void set_pic_params( int decode,
 {
 	picture->decode = decode;
 	picture->dc_prec = opt_dc_prec;
-	picture->secondfield = 0;
+	picture->secondfield = false;
 	picture->ipflag = 0;
 
 		
@@ -185,8 +185,8 @@ static void set_pic_params( int decode,
 
 static void set_2nd_field_params(Picture *picture)
 {
-	picture->secondfield = 1;
-    picture->gop_start = 0;
+	picture->secondfield = true;
+    picture->gop_start = false;
 	if( picture->pict_struct == TOP_FIELD )
 		picture->pict_struct =  BOTTOM_FIELD;
 	else
@@ -354,8 +354,8 @@ struct _stream_state
 	int np;					/* P frames in current GOP */
 	int nb;					/* B frames in current GOP */
 	double next_b_drop;		/* When next B frame drop is due in GOP */
-	int new_seq;				/* Current GOP/frame starts new sequence */
-    int closed_gop;             /* Current GOP is closed */
+	bool new_seq;				/* Current GOP/frame starts new sequence */
+    bool closed_gop;            /* Current GOP is closed */
 	uint64_t next_split_point;
 	uint64_t seq_split_length;
 };
@@ -406,7 +406,7 @@ static void gop_start( stream_state_s *ss )
 			
 	ss->g = 0;
 	ss->b = 0;
-	ss->new_seq = 0;
+	ss->new_seq = false;
 	
 	if( opt_pulldown_32 )
 		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
@@ -437,7 +437,7 @@ static void gop_start( stream_state_s *ss )
 		   order in  the new sequence */
 		ss->seq_start_frame += ss->i;
 		ss->i = 0;
-		ss->new_seq = 1;
+		ss->new_seq = true;
 	}
 
     ss->closed_gop = ss->i == 0 || ctl_closed_GOPs;
@@ -547,15 +547,17 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 	/* Start of GOP - set GOP data for picture */
 	if( ss->g == 0 )
 	{
-		picture->gop_start = 1;
+		picture->gop_start = true;
+        picture->closed_gop = ss->closed_gop;
+		picture->new_seq = ss->new_seq;
 		picture->nb = ss->nb;
 		picture->np = ss->np;
-		picture->new_seq = ss->new_seq;
 	}		
 	else
 	{
-		picture->gop_start = 0;
-		picture->new_seq = 0;
+		picture->gop_start = false;
+        picture->closed_gop = false;
+		picture->new_seq = false;
 	}
 }
 
@@ -566,8 +568,8 @@ static void B_frame_struct(  stream_state_s *ss,
 	picture->temp_ref = ss->g - 1;
 	picture->present = ss->i-1;
 	picture->pict_type = B_TYPE;
-	picture->gop_start = 0;
-	picture->new_seq = 0;
+	picture->gop_start = false;
+	picture->new_seq = false;
 }
 
 /*

@@ -378,7 +378,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 		*/
         
 		putgophdr( decode,
-				   decode == 0 );
+				   closed_gop );
 	}
     
     QuantiseAndPutEncoding(ratecontrol);

@@ -77,7 +77,7 @@ public:
 	uint8_t **pred;			/* Prediction based on MC (if any) */
 	int sxf, syf, sxb, syb;		/* MC search limits. */
 	bool secondfield;			/* Second field of field frame */
-	bool ipflag;					/* P pict in IP frame (FIELD pics only)*/
+	bool ipflag;				/* P pict in IP frame (FIELD pics only)*/
 
 	/* picture structure (header) data */
 
@@ -105,10 +105,11 @@ public:
 	vector<MacroBlock> mbinfo;
 
 	/* Information for GOP start frames */
-	int gop_start;
+	bool gop_start;             /* GOP Start frame */
+    bool closed_gop;            /* GOP is closed   */
 	int nb;						/* B frames in GOP */
 	int np;						/* P frames in GOP */
-	int new_seq;				/* GOP starts new sequence */
+	bool new_seq;				/* GOP starts new sequence */
 
 	/* Statistics... */
 	int pad;
