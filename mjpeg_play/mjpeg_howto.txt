@@ -13,6 +13,7 @@ Creating movie transitions
 Converting the stream to MPEG videos:
 Creating sound:
 Converting video:
+Optimizing the stream: 
 Putting the streams together:
 Transcoding
 Trading Quality/Speed
@@ -70,7 +71,7 @@ record.avi: name of the created file.
 Recording is finished by pressing Crtl-C (nowadays: Strg-C).
 
 Other example:
->lavrec -f q -i n -d 1 -q 80 -s -l 80 -R l record.mov
+>lavrec -f q -i n -d 1 -q 80 -s -l 80 -R l -U record.mov
 
 Should start recording now,
 -f q : use Quicktime as output format,
@@ -80,14 +81,9 @@ Should start recording now,
 -s   : use stereo mode (default mono)
 -l 80: set the recording level to 80% of the max during recording
 -R l : set the recording source to Line-In
+-U   : With this lavrec usese the read instead of mmap for recording this 
+is needed if your sound card does not support the mmap for recording. 
 
-There are more options, but with this you should be able to start.
-
-How about some hints as to sensible settings. I habitually turn quality to
-80% or more for -d 2 capture. At full resolution as low as 40% seems to be
-visually "perfect".  -d 2 is already better than VHS video (a *lot*!).
-If you're aiming to create VCD's then there is little to be gained recording
-at full resolution as you need to reduce to -d 2 resolution later anyway.
 
 Other example:
 >lavrec -w -f a -i S -d 2 -l -1 record%02d.avi
@@ -102,10 +98,40 @@ the file has reached a size of 1.6GB (after about 20 Minutes recording) it
 starts a new sequence named record01.avi and so on, till the recording is 
 stopped, or the disk ist full. 
 
+Other example:
+lavrec -f a -i t -q 80 -d 2 -C europe-west:SE20 test.avi
+Should start recording now,
+-f a : use AVI as output format,
+-i t : use tuner input
+-q 80: set the quality to 80% of the captured image
+-d 2 : the size of the pictures are half size (352x288)
+-C ..: choose TV channels, and the corresponding -it and -iT 
+(video source: TV tuner) can currently be used on the Marvel G200/G400 and 
+the Matrox Millenium G200/G400 with Rainbow Runner extension (BTTV-Support 
+is under construction).  For more information on how to make the TV tuner 
+parts of these cards work, see the Marvel/Linux project on: 
+http://marvel.sourceforge.net .
+
+Last example:
+lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi
+The only not known option is --software-encoding, this enables the software
+encoding of the recorded images. With this option you can also record from
+a bttv based card. The processor load is high. It also works with zoran based
+cards but only with -d 4.
+
 All lavtools accept the %02d file description, so you do not have to name each 
 file, but that would also be a posibillity to do. 
 
-Note: More options are described in the lavrec.c file.
+Note: More options are described in the lavrec.c file or take a look at the
+man-page.
+
+There are more options, but with this you should be able to start.
+
+How about some hints as to sensible settings. I habitually turn quality to
+80% or more for -d 2 capture. At full resolution as low as 40% seems to be
+visually "perfect".  -d 2 is already better than VHS video (a *lot*!).
+If you're aiming to create VCD's then there is little to be gained recording
+at full resolution as you need to reduce to -d 2 resolution later anyway.
 
 
 CHECKING IF RECORDING WAS SUCCESFUL
@@ -317,10 +343,11 @@ different Winxx Versions have great problems with this too) are not able to
 play MPEG2-Video an MPEG1-Layer3 sound.
 
 Example:
-> lav2wav stream.avi | mp2enc -o sound.mp2
+> lav2wav stream.avi stream1.avi | mp2enc -o sound.mp2
 
 This creates a mpeg-2 sound file out of the stream.avi with 224kBit/sec
-bitrate.
+bitrate. You can specifie more files, and also us the placeholder %nd.
+Where n describes the numbers. 
 
 Example:
 > lav2wav editlist.eli | mp2enc -b 128 -m -o sound.mp2
@@ -448,16 +475,6 @@ with the -B option the non video (audio and mplex information) bitrate. 260
 should be fine for audio with 224kBit and mplex information. For further 
 information take a look at the encoding scripts in the scripts directory.
 
-Example:
-> lav2yuv stream.avi | lav2dfilter | mpeg2enc -o video.m1v
-Here the lav2filter programm is used enhance the image. This has the effect of
-remove some of low freqence noice in the images. It also sharpens the 
-image a little. It takes a center pointer avg the pixels around it that 
-fall with the threshold. It then replaces the center pixel with this new 
-value. You can also use the -r (radius) option for an other search radius 
-, and -t is used to control the threshold of what pixel count in the agv.
-But the defaults -r 2 and -t 2 look good.
-
 Scaling:
 using yuvscaler, one can now also scale the video before encoding it. This can
 be useful for, for example, users with a DC10+ card, which captures at 
@@ -493,13 +510,54 @@ most of them together, to create high quality videos, with the lowest
 possible bitrate. 
 Note2: The higher you set the search radius, the longer the converstation will 
 take. In common you can say the more options used the longer it takes. 
-Note3: Maybe you should give better names than video.m1v . 
+Note3: MPEG1 was not designed to be a VBR (variable bitrate stream) !!
+So if you encode with -q 15 mpeg2enc sets the maximal bitrate -b to 1152.
+If you want a VBR MPEG1 you have to set -b very high (2500).
+Note4: Maybe you should give better names than video.m1v . 
 A good idea would be if you see the filename you know the options you've used. 
 (Ex: video_b1500_r16_41_21.m1v) 
 An other possibility is to call all the layer 2 files ".mp2" all the MPEG-1 
 video files ".m1v" and all MPEG-2 video files ".m2v".  Easy to see what's 
 happening then.
 And reserve .mpg for multiplexed MPEG-1/2 streams.
+
+OPTIMIZING THE STREAM:
+=====================================
+
+Using Filters helps to increase the image Quality on fixes bitrate streams. Or reduces the filesize when using varibale Bitrate Streams. 
+
+Example:
+> lav2yuv stream.avi | yuvmedianfilter | mpeg2enc -o video.m1v
+Here the yuvmedianfilter programm is used enhance the image. This has the 
+effect of remove some of low freqence noice in the images. It also sharpens 
+the image a little. It takes a center pointer avg the pixels around it that 
+fall with the threshold. It then replaces the center pixel with this new 
+value. You can also use the -r (radius) option for an other search radius 
+, and -t is used to control the threshold of what pixel count in the agv.
+But the defaults -r 2 and -t 2 look good.
+
+Example:
+> lav2yuv stream.avi | yuvdenoise | mpeg2enc -o video.m1v
+Now we are using yuvdenoise to enhance the image. The filter mainly reduces
+color- and luminance-noise and flickering due to phase errors.
+
+Example:
+> lav2yuv stream.avi | yuvkineco -F 4 -S | mpeg2enc -o video.m1v
+yuvkineco ist used for NTSC sources. The -F 4 flag sets yuvkineco to autodedect
+the framreate. With -S you can use an other threshold than the default. It can 
+also do the conversation from 29.97 fps to 23.97fps. yuvkineco does only 
+remove NTSC specific problems. So if you want to enhance the image you should 
+also use yuvdenoise:
+> lav2yuv stream.avi | yuvkineco | yuvdenoise | mpeg2enc -o video.m1v 
+
+Example: 
+> lav2yuv stream.avi | yuvycsnoise | mpeg2enc -o video.m1v
+yuvycsnoise is also used for NTSC and is specialized for NTSC Y/C separation 
+noise. If video capture hardware has only a poor Y/C separator,at vertical 
+stripe (especialy red/blue), noises appear which seem checker flag and 
+bright/dark invert per 1 frame. yuvycsnoise reduces noises of this type.
+You can also use different thresholds for luma/chroma, and the optimizing 
+method. 
 
 PUTTING THE STREAMS TOGETHER
 =====================================
@@ -809,6 +867,13 @@ fits nicely as a raw XA MODE2 data track on a CD-R.
 
 For pure digital sources (DTV or DVD streams and similar) VCD 1152 works
 fine.
+
+Note: If you encode VBR MPEG1 (-q) remember the Hardware was not bulit do 
+the playback because it is not in the specifications. If it works be very
+happy. I've notices that it helps when you have an MPEG1 Stream to tell
+vcdimager that it ist an svcd. vcdimager complains, but you should be able
+to burn it. This could convince the player to use a other firmware an play
+it back correct, but there is no guarantie for that. 
 
 Storing MPEG's.
 If you record the data as XA mode 2 tracks you can fit appreciably more
