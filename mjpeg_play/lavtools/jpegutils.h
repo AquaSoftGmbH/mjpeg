@@ -44,7 +44,10 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
                      int itype, int ctype, int width, int height,
                      unsigned char *raw0, unsigned char *raw1,
                      unsigned char *raw2);
-
+int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
+			  int itype, int ctype, int width, int height,
+			  unsigned char *raw0, unsigned char *raw1,
+			  unsigned char *raw2);
 int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
                      int itype, int ctype, int width, int height,
                      unsigned char *raw0, unsigned char *raw1,

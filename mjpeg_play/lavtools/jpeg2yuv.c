@@ -58,6 +58,7 @@ typedef struct _parameters {
 
   int width;
   int height;
+  int colorspace;
   int loop;
 } parameters_t;
 
@@ -238,17 +239,37 @@ static int init_parse_files(parameters_t *param)
   jpeg_create_decompress(&dinfo);
   jpeg_stdio_src(&dinfo, jpegfile);
   jpeg_read_header(&dinfo, 1);
-  dinfo.out_color_space = JCS_YCbCr;      
+  switch (dinfo.jpeg_color_space)
+    {
+    case JCS_YCbCr:
+      mjpeg_info("YUV colorspace detected.\n"); 
+      dinfo.out_color_space = JCS_YCbCr;      
+      break;
+    case JCS_GRAYSCALE:
+      mjpeg_info("Grayscale colorspace detected.\n"); 
+      dinfo.out_color_space = JCS_GRAYSCALE;      
+      break;
+    default:
+      mjpeg_error("Unsupported colorspace detected.\n"); break;
+    }
+
+  mjpeg_info("Starting decompression");
+
   jpeg_start_decompress(&dinfo);
   
-  if (dinfo.output_components != 3)
-    mjpeg_error_exit1("Output components of JPEG image = %d, must be 3.",
-		      dinfo.output_components);
+  if (dinfo.output_components != 3 && dinfo.out_color_space == JCS_YCbCr)
+    mjpeg_error_exit1("Output components of color JPEG image = %d, must be 3.",
+  		      dinfo.output_components);
+
+  if (dinfo.output_components != 1 && dinfo.out_color_space == JCS_GRAYSCALE)
+    mjpeg_error_exit1("Output components of grayscale JPEG image = %d, must be 1.",
+  		      dinfo.output_components);
   
   mjpeg_info("Image dimensions are %dx%d",
 	     dinfo.image_width, dinfo.image_height);
   param->width = dinfo.image_width;
   param->height = dinfo.image_height;
+  param->colorspace = dinfo.jpeg_color_space;
   
   jpeg_destroy_decompress(&dinfo);
   fclose(jpegfile);
@@ -355,26 +376,43 @@ static int generate_YUV4MPEG(parameters_t *param)
          if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
            mjpeg_info("Processing non-interlaced/interleaved %s, size %ul.", 
                       jpegname, jpegsize);
-           decode_jpeg_raw(jpegdata, jpegsize,
-                           0, 420, param->width, param->height,
-                           yuv[0], yuv[1], yuv[2]);
+	   if (param->colorspace == JCS_GRAYSCALE)
+	     decode_jpeg_gray_raw(jpegdata, jpegsize,
+				  0, 420, param->width, param->height,
+				  yuv[0], yuv[1], yuv[2]);
+	   else
+	     decode_jpeg_raw(jpegdata, jpegsize,
+			     0, 420, param->width, param->height,
+			     yuv[0], yuv[1], yuv[2]);
          } else {
            switch (param->interlace) {
            case Y4M_ILACE_TOP_FIRST:
              mjpeg_info("Processing interlaced, top-first %s, size %ul.",
                         jpegname, jpegsize);
-             decode_jpeg_raw(jpegdata, jpegsize,
-                             LAV_INTER_TOP_FIRST,
-                             420, param->width, param->height,
-                             yuv[0], yuv[1], yuv[2]);
+	     if (param->colorspace == JCS_GRAYSCALE)
+	       decode_jpeg_gray_raw(jpegdata, jpegsize,
+				    LAV_INTER_TOP_FIRST, 
+				    420, param->width, param->height,
+				    yuv[0], yuv[1], yuv[2]);
+	     else
+	       decode_jpeg_raw(jpegdata, jpegsize,
+			       LAV_INTER_TOP_FIRST,
+			       420, param->width, param->height,
+			       yuv[0], yuv[1], yuv[2]);
              break;
            case Y4M_ILACE_BOTTOM_FIRST:
              mjpeg_info("Processing interlaced, bottom-first %s, size %ul.", 
                         jpegname, jpegsize);
-             decode_jpeg_raw(jpegdata, jpegsize,
-                             LAV_INTER_BOTTOM_FIRST,
-                             420, param->width, param->height,
-                             yuv[0], yuv[1], yuv[2]);
+	     if (param->colorspace == JCS_GRAYSCALE)
+	       decode_jpeg_gray_raw(jpegdata, jpegsize,
+				    LAV_INTER_BOTTOM_FIRST, 
+				    420, param->width, param->height,
+				    yuv[0], yuv[1], yuv[2]);
+	     else
+	       decode_jpeg_raw(jpegdata, jpegsize,
+			       LAV_INTER_BOTTOM_FIRST,
+			       420, param->width, param->height,
+			       yuv[0], yuv[1], yuv[2]);
              break;
            default:
              mjpeg_error_exit1("FATAL logic error?!?");
