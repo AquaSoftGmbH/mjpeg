@@ -492,10 +492,7 @@ void video_convert()
    /* Here the command for the yuvdenoise pipe may be added */
    if ((*pointenc).use_yuvdenoise == 1)
      {
-      n = 0;
-      yuvdenoise_command[n] = "yuvdenoise"; n++;
-      yuvdenoise_command[n] = NULL;
-
+      create_command_yuvdenoise(yuvdenoise_command,0,pointenc,&machine4mpeg1);
       start_pipe_command(yuvdenoise_command, YUVDENOISE);
       use_yuvdenoise_pipe = 1;
      }

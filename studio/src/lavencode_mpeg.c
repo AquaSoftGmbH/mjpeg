@@ -83,13 +83,17 @@ void set_nonvideorate (GtkWidget *widget, gpointer data);
 void update_vbr(void);
 void set_interlacing (GtkWidget *widget, gpointer data);
 void set_use_yuvdenoise(GtkWidget *widget, gpointer data);
+void set_use_deinterlace(GtkWidget *widget, gpointer data);
 void set_divxaudio (GtkWidget *widget, gpointer data);
 void set_divxvideo (GtkWidget *widget, gpointer data);
 void set_divxcodec (GtkWidget *widget, gpointer data);
 void set_2lav_interlacing (GtkWidget *widget, gpointer data);
+void set_sharpen (GtkWidget *widget, gpointer data);
+void set_thhold (GtkWidget *widget, gpointer data);
+void set_average (GtkWidget *widget, gpointer data);
 
 /* Some variables */
-GList *samples = NULL; 
+GList *samples = NULL;            /**< holds the possible audio sample rates */
 GList *muxformat = NULL;
 GList *streamdata = NULL;
 GList *interlace_correct = NULL;
@@ -110,7 +114,13 @@ GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
 GtkWidget *combo_streamrate, *combo_entry_interlacecorr, *switch_yuvdenoise;
 GtkWidget *combo_entry_divxaudio, *combo_entry_divxvideo, *combo_entry_quality; 
 GtkWidget *combo_entry_divxcodec, *combo_entry_format,*combo_entry_maxfilesize;
-GtkWidget *combo_entry_interlace;
+GtkWidget *combo_entry_interlace, *switch_deinterlace, *combo_entry_sharp;
+GtkWidget *combo_entry_thhold, *combo_entry_average;
+
+/* some constant values */
+#define thhold_def "5, default"
+#define average_def "3, default"
+
 /* =============================================================== */
 /* Start of the code */
 
@@ -129,6 +139,10 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.forcemono,"%s",(*point).forcemono);
   sprintf(tempenco.forcevcd,"%s",(*point).forcevcd);
   tempenco.use_yuvdenoise=(*point).use_yuvdenoise;
+  tempenco.deinterlace=(*point).deinterlace;
+  tempenco.sharpness=(*point).sharpness;
+  tempenco.denois_thhold=(*point).denois_thhold;
+  tempenco.average_frames=(*point).average_frames;
   tempenco.bitrate=(*point).bitrate;
   tempenco.qualityfactor=(*point).qualityfactor;
   tempenco.minGop=(*point).minGop;
@@ -170,6 +184,8 @@ void show_data_lav2yuv(gpointer task)
 /* setting the values of the GTK_ENTRY's for the yuvtools options */
 void show_data_yuvtools(gpointer task)
 {
+char val[LONGOPT];
+
   /* yuvscaler options */
   gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),tempenco.input_use);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_scaleroutput), tempenco.output_size);
@@ -178,6 +194,36 @@ void show_data_yuvtools(gpointer task)
   /* denoise options */
   if (tempenco.use_yuvdenoise == 1 )
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(switch_yuvdenoise),TRUE);
+
+  if (tempenco.deinterlace == 1 )
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(switch_deinterlace),TRUE);
+
+  if (tempenco.sharpness == 125)
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_sharp), "125, default");
+  else if (tempenco.sharpness == 0)
+    gtk_entry_set_text(GTK_ENTRY(combo_entry_sharp), "0, disabled");
+  else
+    {
+      sprintf(val,"%i",tempenco.sharpness);
+      gtk_entry_set_text(GTK_ENTRY(combo_entry_sharp), val);
+    }
+ 
+ if (tempenco.denois_thhold == 5)
+   gtk_entry_set_text(GTK_ENTRY(combo_entry_thhold), thhold_def);
+ else 
+   {
+     sprintf(val,"%i", tempenco.denois_thhold);
+     gtk_entry_set_text(GTK_ENTRY(combo_entry_thhold), val);
+   } 
+
+ if (tempenco.average_frames == 3)
+   gtk_entry_set_text(GTK_ENTRY(combo_entry_average), average_def);
+ else
+   {
+     sprintf(val,"%i", tempenco.average_frames);
+     gtk_entry_set_text(GTK_ENTRY(combo_entry_average), val);
+   }
+
 }
 
 /* setting the values of the GTK_ENTRY's for the mpeg2enc options */
@@ -1100,7 +1146,7 @@ if (!samples)
   (*tx)--;
 }
 
-/* set the yuvdenoise flag for the Encoding */
+/** set the yuvdenoise flag for the Encoding */
 void set_use_yuvdenoise(GtkWidget *widget, gpointer data)
 {
   if (GTK_TOGGLE_BUTTON (widget)->active)
@@ -1109,15 +1155,128 @@ void set_use_yuvdenoise(GtkWidget *widget, gpointer data)
        tempenco.use_yuvdenoise=0;
 
   if (verbose)
-    printf(" Set the use of yuvdenoise to : %s \n",tempenco.muxvbr);
+    printf(" set the use of yuvdenoise to : %i \n",tempenco.use_yuvdenoise);
 }
-  
-/* create the denoise encoding options */
-/* now only with yuvdenoise,           */
-/* but later maybe with: yuvkineco, yuvycsnoise, yuvmedinafilter */
+ 
+/** set the deinterlace flag for the encoding 
+ @param widget there we get the data
+ @param data   unused                         */
+void set_use_deinterlace(GtkWidget *widget, gpointer data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+       tempenco.deinterlace=1;
+  else
+       tempenco.deinterlace=0;
+
+  if (verbose)
+    printf(" set the use of the deinterlacer to : %i \n",tempenco.deinterlace);
+}
+
+/** Set the value for the yuvdenoise sharpen option
+ @param widget there we get the data
+ @param data   unused                         */
+void set_sharpen (GtkWidget *widget, gpointer data)
+{
+  char *test;
+  int i;
+
+  i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if (strcmp(test,"125, default") == 0)
+    tempenco.sharpness = 125;
+  else if (strcmp(test,"0, disabled") == 0)
+    tempenco.sharpness = 0;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 255) && (i >= 1) )
+        tempenco.sharpness = i;
+    }
+
+  if (verbose)
+    printf (" Setting sharpness to : %i\n", tempenco.sharpness);
+}
+
+/** Set the value for the yuvdenoise Denoiser threshold 
+ @param widget there we get the data
+ @param data   unused                         */
+void set_thhold (GtkWidget *widget, gpointer data)
+{
+  char *test;
+  int i;
+
+  i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if (strcmp(test,thhold_def) == 0)
+    tempenco.denois_thhold = 5;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 255) && (i >= 0) )
+        tempenco.denois_thhold = i;
+    }
+
+  if (verbose)
+    printf (" Setting Denoiser threshold to : %i\n", tempenco.denois_thhold);
+}
+
+/** Set number of frames used for time-lowpassed pixel
+ @param widget there we get the data
+ @param data   unused                         */
+void set_average (GtkWidget *widget, gpointer data)
+{
+  char *test;
+  int i;
+
+  i=0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if (strcmp(test,average_def) == 0)
+    tempenco.average_frames = 3;
+  else
+    {
+      i = atoi (test);
+      if ( (i <= 255) && (i >= 0) )
+        tempenco.average_frames = i;
+    }
+
+  if (verbose)
+    printf (" Setting Denoiser threshold to : %i\n", tempenco.average_frames);
+}
+ 
+/** create the denoise encoding options now only with yuvdenoise,           
+    but later maybe with: yuvkineco, yuvycsnoise, yuvmedianfilter
+ @param table the table in which we insert the widgets
+ @param tx    the x coodinate where start to insert the widgets
+ @param ty    the y coodinate where start to insert the widgets */
 void create_denoise_layout (GtkWidget *table, int *tx, int *ty)
 {
-GtkWidget *label1;
+GtkWidget *label1, *combo_sharp, *combo_thhold, *combo_average;
+GList *sharp_val = NULL;
+GList *thhold = NULL;
+GList *faverag = NULL;
+
+  sharp_val = g_list_append (sharp_val, "125, default"); 
+  sharp_val = g_list_append (sharp_val, "0, disabled"); 
+  sharp_val = g_list_append (sharp_val, "100"); 
+  sharp_val = g_list_append (sharp_val, "110"); 
+  sharp_val = g_list_append (sharp_val, "135"); 
+
+  thhold = g_list_append (thhold, "3");
+  thhold = g_list_append (thhold, thhold_def);
+  thhold = g_list_append (thhold, "7");
+  thhold = g_list_append (thhold, "9");
+
+  faverag = g_list_append (faverag, "2");
+  faverag = g_list_append (faverag, average_def);
+  faverag = g_list_append (faverag, "5");
+  faverag = g_list_append (faverag, "7");
+
 
   label1 = gtk_label_new ("  Noise reduction : ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
@@ -1131,6 +1290,68 @@ GtkWidget *label1;
   gtk_table_attach_defaults (GTK_TABLE(table),
                                     switch_yuvdenoise,*tx+1,*tx+2,*ty,*ty+1);
   gtk_widget_show (switch_yuvdenoise);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Deinterlace  : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  switch_deinterlace = gtk_check_button_new_with_label ("  when denoising");
+  gtk_widget_ref (switch_deinterlace);
+  gtk_signal_connect (GTK_OBJECT (switch_deinterlace), "toggled",
+                      GTK_SIGNAL_FUNC (set_use_deinterlace), NULL);
+  gtk_table_attach_defaults (GTK_TABLE(table),
+                                    switch_deinterlace,*tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (switch_deinterlace);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Sharpen  : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_sharp = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_sharp), sharp_val);
+  combo_entry_sharp = GTK_COMBO (combo_sharp)->entry;
+  gtk_widget_set_usize (combo_sharp, 200, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_sharp), "changed",
+                                       GTK_SIGNAL_FUNC (set_sharpen), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_sharp,
+                                        *tx+1, *tx+2, *ty, *ty+1);
+  gtk_widget_show (combo_sharp);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Denoiser threshold : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_thhold = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_thhold), thhold);
+  combo_entry_thhold = GTK_COMBO (combo_thhold)->entry;
+  gtk_widget_set_usize (combo_thhold, 200, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_thhold), "changed",
+                                       GTK_SIGNAL_FUNC (set_thhold), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_thhold,
+                                        *tx+1, *tx+2, *ty, *ty+1);
+  gtk_widget_show (combo_thhold);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Average frames : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  combo_average = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_average), faverag);
+  combo_entry_average = GTK_COMBO (combo_average)->entry;
+  gtk_widget_set_usize (combo_average, 200, -2 );
+  gtk_signal_connect(GTK_OBJECT(combo_entry_average), "changed",
+                                       GTK_SIGNAL_FUNC (set_average), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table), combo_average,
+                                        *tx+1, *tx+2, *ty, *ty+1);
+  gtk_widget_show (combo_average);
   (*ty)++;
 
 }
@@ -1686,6 +1907,10 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).forcemono,"%s",tempenco.forcemono);
   sprintf((*point).forcevcd,"%s",tempenco.forcevcd);
   (*point).use_yuvdenoise=tempenco.use_yuvdenoise;
+  (*point).deinterlace=tempenco.deinterlace;
+  (*point).sharpness=tempenco.sharpness;
+  (*point).denois_thhold=tempenco.denois_thhold;
+  (*point).average_frames=tempenco.average_frames;
   (*point).bitrate=tempenco.bitrate;
   (*point).qualityfactor=tempenco.qualityfactor;
   (*point).minGop=tempenco.minGop;

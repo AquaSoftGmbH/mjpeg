@@ -58,31 +58,36 @@ int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
 #define LONGOPT 25
-struct encodingoptions{ char notblacksize[LONGOPT];    /**< yuvscaler options */
-                        char input_use[LONGOPT];     /**< yuvscaler options */
-                        char output_size[LONGOPT];
-                        char mode_keyword[LONGOPT];
-                        char interlacecorr[LONGOPT];
-                        int  addoutputnorm;
-                        int  audiobitrate;               /**< audio options */
-                        int  outputbitrate;
-                        char forcestereo[SHORTOPT];
-                        char forcemono[SHORTOPT];
-                        char forcevcd[SHORTOPT];
-                        int  use_yuvdenoise;            /**< filter options */
-                        int  bitrate;                 /**< mpeg2enc options */
-                        int  qualityfactor;
-                        int  minGop;
-                        int  maxGop;
-                        int  sequencesize;
-                        int  nonvideorate;
-                        int  searchradius;
-                        int  muxformat;                  /**< mplex options */
-                        char muxvbr[SHORTOPT];
-                        int  streamdatarate;
-			int  decoderbuffer;     /**< also used for mpeg2enc */
-                        char codec[LONGOPT];           /**< yuv2divx option */
-          /* for the other options needed for divx, other fields are used */
+struct encodingoptions{
+        char notblacksize[LONGOPT];           /**< yuvscaler: -I ACTIVE_size */
+        char input_use[LONGOPT];                 /**< yuvscaler: -I USE_size */
+        char output_size[LONGOPT];  /**< yuvscaler: -O SIZE_ or VCD/SVCD/DVD */
+        char mode_keyword[LONGOPT];               /**< yuvscaler: -M various */
+        char interlacecorr[LONGOPT];    /**< yuvscaler: interlacing optionis */
+        int  addoutputnorm;         /**< yuvscaler adds the output norm here */
+        int  use_yuvdenoise;                /**< filter: if we should use it */
+        int  deinterlace;                  /**< filter: if we deinterlace -F */
+        int  sharpness;             /**< filter: set sharpenss in percent -S */
+        int  denois_thhold;       /**< filter: set the Denoiser threshold -t */
+        int  average_frames;              /**< filter: Average 'n' frames -l */
+        int  audiobitrate;                               /**< audio: bitrate */
+        int  outputbitrate;           /**< audio: sample rate 32 44.1 48 kHz */
+        char forcestereo[SHORTOPT];          /**< audio: force stereo output */
+        char forcemono[SHORTOPT];              /**< audio: force mono output */
+        char forcevcd[SHORTOPT];     /**< audio: force vcd compatible output */
+        int  bitrate;                           /**< mpeg2enc: video bitrate */
+        int  qualityfactor;                 /**< mpeg2enc: quality factor -q */
+        int  minGop;                      /**< mpeg2enc: minimum GOP size -g */
+        int  maxGop;                      /**< mpeg2enc: maximum GOX size -G */
+        int  sequencesize;         /**< mpeg2enc,mplex: Sequence Lenght -S,  */
+        int  nonvideorate;        /**< mpeg2enc,mplex: Nonvideo bitrate -B,  */
+        int  searchradius;                   /**< mpeg2enc: Search Radius -r */
+        int  muxformat;                          /**< mplex: multiple format */
+        char muxvbr[SHORTOPT];        /**< mplex: If we have a VBR Stream -V */
+        int  streamdatarate;          /**< mplex: VBR Stream max Datarate -r */
+        int  decoderbuffer;    /**< mpeg2enc,mplex decoder Buffer size -V,-B */
+        char codec[LONGOPT];                 /**< yuv2divx: codec to be used */
+             /* for the other options needed for divx, other fields are used */
                       };
 /************************* END *********************/
 struct encodingoptions encoding;  /* for mpeg1 */
@@ -187,6 +192,8 @@ void create_command_lav2wav(char *lav2wav_command[256], int use_rsh,
 void create_command_lav2yuv(char *lav2yuv_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
 void create_command_yuvscaler(char *lav2yuv_command[256], int use_rsh,
+          struct encodingoptions *option, struct machine *machine4);
+void create_command_yuvdenoise(char *yuvdenoise_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
 void create_command_mpeg2enc(char* mpeg2enc_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);

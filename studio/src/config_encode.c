@@ -124,7 +124,9 @@ enhanced_settings = 0; /* used in the distributed setup */
 
 }
 
-/* set the structs to default values */
+/**
+    Set the struct (encodingoptions) to default values
+ @param point points to the struct to set to the defaults */
 void set_structs_default(struct encodingoptions *point)
 {
 int i;
@@ -151,6 +153,10 @@ int i;
   (*point).audiobitrate   = 224;
   (*point).outputbitrate  = 0;
   (*point).use_yuvdenoise = 0;
+  (*point).deinterlace    = 0;
+  (*point).sharpness      = 125;
+  (*point).denois_thhold  = 5;
+  (*point).average_frames = 3;
   (*point).bitrate        = 1152;
   (*point).searchradius   = 0;
   (*point).muxformat      = 0;
@@ -459,6 +465,18 @@ int i;
   if (-1 != (i = cfg_get_int(section,"Encode_Use_Yuvdenoise")))
         (*point).use_yuvdenoise = i;
 
+  if (-1 != (i = cfg_get_int(section,"Encode_Denoise_Deinterlace")))
+        (*point).deinterlace = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Denoise_Sharpness")))
+        (*point).sharpness = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Denoise_Threshold")))
+        (*point).denois_thhold = i;
+
+  if (-1 != (i = cfg_get_int(section,"Encode_Denoise_Average")))
+        (*point).average_frames = i;
+
   if (-1 != (i = cfg_get_int(section,"Encode_Video_Bitrate")))
         (*point).bitrate = i;
 
@@ -602,6 +620,10 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Audio force mono : \'%s\' \n",         (*point).forcemono);
   printf("Encoding Audio force VCD : \'%s\' \n",           (*point).forcevcd);
   printf("Encoding Use yuvdenoise : \'%i\' \n",      (*point).use_yuvdenoise);
+  printf("Encoding Deinterlace : \'%i\' \n",            (*point).deinterlace);
+  printf("Encoding Denoise sharpness : \'%i\' \n",        (*point).sharpness);
+  printf("Encoding Denoise threshold : \'%i\' \n",    (*point).denois_thhold);
+  printf("Encoding Denoise average : \'%i\' \n",     (*point).average_frames);
   printf("Encoding Video Bitrate : \'%i\' \n",              (*point).bitrate);
   printf("Encoding Quality Factor : \'%i\' \n",       (*point).qualityfactor);
   printf("Encoding Minimum GOP size : \'%i\' \n",            (*point).minGop);
@@ -837,6 +859,10 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
     fprintf(fp,"Encode_Force_Vcd = %s\n", "as is");
 
   fprintf(fp,"Encode_Use_Yuvdenoise = %i\n", (*point).use_yuvdenoise);
+  fprintf(fp,"Encode_Denoise_Deinterlace = %i\n", (*point).deinterlace);
+  fprintf(fp,"Encode_Denoise_Sharpness = %i\n", (*point).sharpness);
+  fprintf(fp,"Encode_Denoise_Threshold = %i\n", (*point).denois_thhold);
+  fprintf(fp,"Encode_Denoise_Average = %i\n", (*point).average_frames);
   fprintf(fp,"Encode_Video_Bitrate = %i\n", (*point).bitrate);
   fprintf(fp,"Encode_Quality_Factor = %i\n", (*point).qualityfactor);
   fprintf(fp,"Encode_Minimum_GOP_Size = %i\n", (*point).minGop);

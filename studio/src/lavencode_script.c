@@ -62,6 +62,8 @@ void create_command_lav2yuv(char *lav2yuv_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
 void create_command_yuvscaler(char *yuvscaler_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4);
+void create_command_yuvdenoise(char *yuvdenoise_command[256], int use_rsh,
+          struct encodingoptions *option, struct machine *machine4);
 void create_command_mp2enc(char *mp2enc_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 void create_command_yuv2divx(char* yuv2divx_command[256], int use_rsh,
@@ -527,6 +529,60 @@ if((*option).muxformat >= 3)
 }
 
 /* Here we create the yuvscaler command */
+void create_command_yuvdenoise(char *yuvdenoise_command[256], int use_rsh,
+          struct encodingoptions *option, struct machine *machine4)
+{
+static int n;
+static char temp1[4], temp2[4], temp3[4];
+n = 0;
+
+  if((use_rsh==1)&&((machine4mpeg1.yuvdenoise!=0)||((*machine4).yuvdenoise!=0)))    {
+      yuvdenoise_command[n] = "rsh"; n++;
+      if (enhanced_settings == 0)
+        {
+           yuvdenoise_command[n] = (char*)
+                g_list_nth_data(machine_names, machine4mpeg1.yuvdenoise); n++;
+        }
+      else
+        {
+          yuvdenoise_command[n] = (char*)
+                g_list_nth_data(machine_names, (*machine4).yuvdenoise); n++;
+        }
+    }
+
+  yuvdenoise_command[n] = "yuvdenoise"; n++;
+
+  if ((*option).deinterlace == 1)
+    {
+      yuvdenoise_command[n] = "-F"; n++;
+    }
+ 
+  if ((*option).sharpness != 125)
+    {
+      yuvdenoise_command[n] = "-S"; n++;
+      sprintf(temp1,"%i",(*option).sharpness);
+      yuvdenoise_command[n] = temp1; n++;
+    } 
+
+  if ((*option).denois_thhold != 5)
+    {
+      yuvdenoise_command[n] = "-t"; n++;
+      sprintf(temp2,"%i",(*option).denois_thhold);
+      yuvdenoise_command[n] = temp2; n++;
+    }
+
+  if ((*option).average_frames != 3)
+    {
+      yuvdenoise_command[n] = "-l"; n++;
+      sprintf(temp3,"%i",(*option).average_frames);
+      yuvdenoise_command[n] = temp3; n++;
+    }
+ 
+  yuvdenoise_command[n] = NULL;
+
+}
+
+/* Here we create the yuvscaler command */
 void create_command_yuvscaler(char *yuvscaler_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4)
 {
@@ -677,23 +733,25 @@ char lav2wav_string[256];
 
 /* Here we create the command for the video encoding */
 void create_video(FILE *fp, struct encodingoptions *option,
-                            struct machine *machine4, char ext[LONGOPT])
+		struct machine *machine4, char ext[LONGOPT])
 {
 char *lav2yuv_command[256];
 char *yuvscaler_command[256];
+char *yuvdenoise_command[256];
 char *mpeg2enc_command[256];
 char *yuv2divx_command[256];
 char *yuv2lav_command[256];
 char lav2yuv_string[800];
 char yuvscaler_string[256];
+char yuvdenoise_string[256];
 char mpeg2enc_string[256];
 char yuv2divx_string[256];
 char yuv2lav_string[256];
 
-  create_command_lav2yuv(lav2yuv_command,temp_use_distributed,option, machine4);
-  command_2string(lav2yuv_command, lav2yuv_string);
+create_command_lav2yuv(lav2yuv_command,temp_use_distributed,option, machine4);
+command_2string(lav2yuv_command, lav2yuv_string);
 
- /* Here, the command for the pipe for yuvscaler may be added */
+/* Here, the command for the pipe for yuvscaler may be added */
   if (  (strcmp((*option).input_use,"as is") != 0)   ||
         (strcmp((*option).output_size,"as is") != 0) ||
         (strcmp((*option).mode_keyword,"as is") != 0) ||
@@ -702,13 +760,21 @@ char yuv2lav_string[256];
           strcmp((*option).interlacecorr,"not needed") != 0 ) ||
         ( strlen((*option).notblacksize) > 0 &&
           strcmp((*option).notblacksize,"as is") != 0 )          )
+   {
+
+     create_command_yuvscaler (yuvscaler_command, temp_use_distributed,
+                                                      option, machine4);
+     command_2string(yuvscaler_command, yuvscaler_string);
+     sprintf(lav2yuv_string,"%s |%s", lav2yuv_string, yuvscaler_string);
+   }   
+
+  if ( (*option).use_yuvdenoise == 1)
     {
-  
-      create_command_yuvscaler (yuvscaler_command, temp_use_distributed,
-                                                          option, machine4);
-      command_2string(yuvscaler_command, yuvscaler_string);
-      sprintf(lav2yuv_string,"%s |%s", lav2yuv_string, yuvscaler_string);
-    }   
+       create_command_yuvdenoise(yuvdenoise_command, temp_use_distributed,
+                                                         option, machine4);
+       command_2string(yuvdenoise_command, yuvdenoise_string);
+       sprintf(lav2yuv_string,"%s |%s", lav2yuv_string, yuvdenoise_string);
+    }
 
   if ( (strcmp(ext,"mpeg1") == 0) || (strcmp(ext,"mpeg2") == 0) || 
        (strcmp(ext,"vcd")   == 0) || (strcmp(ext,"svcd")  == 0))
