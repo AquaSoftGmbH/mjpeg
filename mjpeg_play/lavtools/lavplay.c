@@ -130,9 +130,11 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <inttypes.h>
+#include <getopt.h>
 #include <SDL/SDL.h>
 #include <mjpeg.h>
-#include <getopt.h>
+
 #include "jpegutils.h" 
 #include "lav_io.h"
 #include "editlist.h"
@@ -165,7 +167,7 @@ void sig_cont(int sig);
 int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr);
 void Usage(char *progname);
 void lock_screen(void);
-void update_screen(void);
+void update_screen(uint8_t *jpeg_buffer, int buf_len);
 void unlock_screen(void);
 void x_shutdown(int a);
 void add_new_frames(char *movie, int nc1, int nc2, int dest);
@@ -246,8 +248,7 @@ static int max_frame_num;
 SDL_Surface *screen;
 SDL_Rect jpegdims;
 SDL_Overlay *yuv_overlay;
-static unsigned char *yuv[3];
-static unsigned char *jpeg_data;
+static uint8_t *jpeg_data;
 int soft_width=0, soft_height=0;
 
 /************************** PROGRAM CODE **************************/
@@ -348,7 +349,8 @@ int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr)
       else
       {
          res = el_get_video_frame(vbuff, nframe, &el);
-         if(res<0) return -1;
+         if(res<0) 
+			 return -1;
          old_field_len = 0;
       }
 
@@ -433,30 +435,21 @@ void unlock_screen(void)
 	SDL_UnlockYUVOverlay(yuv_overlay);
 }
 
-void update_screen(void)
+void update_screen(uint8_t *jpeg_buffer, int buf_len)
 {
-	int len;
-
-	/* lock screen */
-	lock_screen();
-
 	/* get frame into jpeg_data (length len) */
-	len = el_get_video_frame(jpeg_data, nframe, &el);
+	//len = el_get_video_frame(jpeg_data, nframe, &el);
 
+	SDL_LockYUVOverlay( yuv_overlay );
 	/* decode frame to yuv[] */
-	decode_jpeg_raw (jpeg_data, len, el.video_inter, CHROMA420,
-		el.video_width, el.video_height, yuv[0], yuv[1], yuv[2]);
+	decode_jpeg_raw (jpeg_buffer, buf_len, el.video_inter, CHROMA420,
+					 el.video_width, el.video_height, 
+					 yuv_overlay->pixels[0], 
+					 yuv_overlay->pixels[1],
+					 yuv_overlay->pixels[2]);
 
-	/* set yuv data */
-	yuv_overlay->pixels = yuv;
-
-	/* unlock it again */
-	unlock_screen();
-	// printf("Updating rectangle with w=%d, h=%d", jpegdims.w, jpegdims.h);
-
-	/* Show, baby, show! */
+	SDL_UnlockYUVOverlay( yuv_overlay );
 	SDL_DisplayYUVOverlay(yuv_overlay, &jpegdims);
-	SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
 }
 
 void initialize_SDL_window()
@@ -480,35 +473,29 @@ void initialize_SDL_window()
 	else
 		screen = SDL_SetVideoMode(soft_width==0?el.video_width:soft_width, 
 			soft_height==0?el.video_height:soft_height, 0,
-			SDL_SWSURFACE);
-
-	SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
-	SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
-
-	/* yuv/jpeg frames - memory allocation */
-	yuv[0] = malloc(el.video_width * el.video_height * sizeof(unsigned char));
-	yuv[1] = malloc(el.video_width * el.video_height * sizeof(unsigned char) / 4);
-	yuv[2] = malloc(el.video_width * el.video_height * sizeof(unsigned char) / 4);
-	jpeg_data = malloc(3 * el.video_height * el.video_width * sizeof(unsigned char)/2);
-
-	if (jpeg_data == NULL || yuv[0] == NULL || yuv[1] == NULL || yuv[2] == NULL)
-		malloc_error();
-
-	yuv_overlay = SDL_CreateYUVOverlay(el.video_width,
-		el.video_height, SDL_IYUV_OVERLAY, screen);
-	if ( yuv_overlay == NULL )
-	{
-		mjpeg_error_exit1("SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
-	}
+			SDL_HWSURFACE);
 	if ( screen == NULL )  
 	{
 		mjpeg_error_exit1("SDL: Output screen error: %s\n", SDL_GetError());
 	}
-       
-	if (screen->format->BytesPerPixel == 2)
-		mjpeg_calc_rgb16_params(screen->format->Rloss, screen->format->Gloss,
-			screen->format->Bloss, screen->format->Rshift,
-			screen->format->Gshift, screen->format->Bshift);
+
+	SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
+	SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
+
+	/* jpeg frames - memory allocation */
+	jpeg_data = malloc(3 * el.video_height * el.video_width * sizeof(uint8_t)/2);
+
+	yuv_overlay = SDL_CreateYUVOverlay(el.video_width, el.video_height, 
+									   SDL_IYUV_OVERLAY, screen);
+	if ( yuv_overlay == NULL )
+	{
+		mjpeg_error_exit1("SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
+	}
+	mjpeg_info( "SDL YUV overlay: %s\n",
+				yuv_overlay->hw_overlay ? "hardware" : "software" );
+	if( yuv_overlay->pitches[0] != yuv_overlay->pitches[1]*2 ||
+		yuv_overlay->pitches[0] != yuv_overlay->pitches[2]*2 )
+		mjpeg_error_exit1( "SDL returned non-YUV420 overlay!\n");
 
 	jpegdims.x = 0; // This is not going to work with interlaced pics !!
 	jpegdims.y = 0;
@@ -527,7 +514,7 @@ void initialize_SDL_window()
 		sbuffer += screen->pitch;
 	}
 
-	/* Set up the necessary callbacks for the decompression process */
+	/* Set up the necessary callbacks for the synchronisation thread */
 	mjpeg->update_screen_callback = update_screen;
 
 	/* Set the windows title (currently simply the first file name) */
@@ -542,8 +529,6 @@ void initialize_SDL_window()
 static int reentry = 0;
 void x_shutdown(int a)
 {
-	int n;
-
 	if( reentry )		/* Not perfect but good enough... */
 		return;
 	reentry = 1;
@@ -556,10 +541,6 @@ void x_shutdown(int a)
 
 	if (soft_play)
 	{
-		for (n=0; n<3; n++)
-		{
-			free(yuv[n]);
-		}
 		free(jpeg_data);
 		SDL_FreeYUVOverlay(yuv_overlay);
 		SDL_Quit();
@@ -1102,7 +1083,7 @@ int main(int argc, char ** argv)
 	struct timeval time_now;
 	long nb_out, nb_err;
 	long audio_buffer_size = 0;
-	unsigned char * buff;
+	uint8_t * buff;
 	int n, skipv, skipa, skipi;
 	double tdiff, tdiff1, tdiff2;
 	char input_buffer[256];
@@ -1331,7 +1312,7 @@ int main(int argc, char ** argv)
 
 	for(n = 0; n < nqueue; n++)
 	{
-		mjpeg_queue_buf(mjpeg, n);
+		mjpeg_queue_buf(mjpeg, n, 1);
 	}
 
 	/* Playback loop */
@@ -1391,7 +1372,7 @@ int main(int argc, char ** argv)
 		}
 
 		tdiff = tdiff1-tdiff2;
-
+		//mjpeg_warn( "ns =%ld TD =%f\n", nsync, tdiff );
       /* Fill and queue free buffers again */
 
 		res = 0;
@@ -1435,7 +1416,7 @@ int main(int argc, char ** argv)
 
 			/* Queue the frame */
 
-			mjpeg_queue_buf(mjpeg, frame);
+			mjpeg_queue_buf(mjpeg, frame, 1);
 
 			nqueue++;
 			n++;
@@ -1466,10 +1447,6 @@ int main(int argc, char ** argv)
 	mjpeg_close(mjpeg);
 	if (soft_play)
 	{
-		for (n=0; n<3; n++)
-		{
-			free(yuv[n]);
-		}
 		free(jpeg_data);
 		SDL_FreeYUVOverlay(yuv_overlay);
 		SDL_Quit();

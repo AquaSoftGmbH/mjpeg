@@ -42,7 +42,7 @@ void sigillhandler(int sig )
 int testsseill()
 {
 	int illegal;
-	sighandler_t old_handler = signal( SIGILL, sigillhandler);
+	sig_t old_handler = signal( SIGILL, sigillhandler);
 	if( sigsetjmp( sigill_recover, 1 ) == 0 )
 	{
 		asm ( "movups %xmm0, %xmm0" );

@@ -641,7 +641,7 @@ uint8_t *bufalloc( size_t size )
 
 	if( buf == NULL )
 	{
-		error("malloc failed\n");
+		mjpeg_error_exit1("malloc failed\n");
 	}
 	adjust = BUFFER_ALIGN-((int)buf)%BUFFER_ALIGN;
 	if( adjust == BUFFER_ALIGN )
@@ -716,7 +716,7 @@ static void init()
 
 	/* clip table */
 	if (!(clp = (uint8_t *)malloc(1024)))
-		error("malloc failed\n");
+		mjpeg_error_exit1("malloc failed\n");
 	clp+= 384;
 	for (i=-384; i<640; i++)
 		clp[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
