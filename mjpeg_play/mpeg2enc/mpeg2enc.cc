@@ -310,7 +310,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    data that will be multiplexed with this video stream\n"
 "--3-2-pulldown|-p\n"
 "    Generate header flags for 3-2 pull down of 24fps movie material\n"
-"--intra_dc_prec|-D [8..10]\n"
+"--intra_dc_prec|-D [8..11]\n"
 "    Set number of bits precision for DC (base colour) of blocks in MPEG-2\n"
 "--reduce-hf|-N num\n"
 "    [0.0..2.0] Reduce hf resolution (increase quantization) by num (default: 0.0)\n"
@@ -474,9 +474,9 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 
         case 'D':
             mpeg2_dc_prec = atoi(optarg)-8;
-            if( mpeg2_dc_prec < 0 || mpeg2_dc_prec > 2 )
+            if( mpeg2_dc_prec < 0 || mpeg2_dc_prec > 3 )
             {
-                mjpeg_error( "-D requires arg [8..10]" );
+                mjpeg_error( "-D requires arg [8..11]" );
                 ++nerr;
             }
             break;
