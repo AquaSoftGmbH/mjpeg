@@ -50,6 +50,7 @@
 #include "videocodec.h"
 #include "zoran.h"
 #include "zoran_device.h"
+#include "zoran-i2c-compat.h"
 
 #define IRQ_MASK ( ZR36057_ISR_GIRQ0 | \
 		   ZR36057_ISR_GIRQ1 | \
