@@ -18,6 +18,8 @@ mp2enc \- Simple MPEG-2 layer-II audio encoder
 ]
 .RB [ -m
 ]
+.RB [ -e
+]
 .RB [ -V
 ]
 .RB [ -? ]
@@ -78,10 +80,13 @@ Force mono output.  A stereo input signal is down-mixed before encoding.
 Useful if you've captured a mono signal in stereo and your player can
 handle mono MPEG.
 .TP
+.BI -e
+Use CRC error protection.
+.TP
 .BI -V
 Force VCD comaptible output. Same as -b 224 -r 44100 -s.
 .TP
-.BI -o outputpathname
+.BI -o \ outputpathname
 The name of the output file to generate.  If '-' is given as the pathname output is written to standard output.
 .SH AUTHOR
 This man page was written by Andrew Stevens.

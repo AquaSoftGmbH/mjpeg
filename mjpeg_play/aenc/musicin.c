@@ -134,6 +134,7 @@ static void Usage(char *str)
   printf("              num must be one of 32000, 44100, 48000\n");
   printf("   -s         Force stereo output (default)\n");
   printf("   -m         Force mono output\n");
+  printf("   -e         Use CRC error protection\n");
   printf("   -V         Force VCD compatible output (same as: -b 224 -r 44100 -s)\n");
   printf("   -?         Print this lot out\n");
   exit(0);
@@ -167,7 +168,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
     info->lay = 2;
     info->emphasis = 0;
     info->extension = 0;
-    info->error_protection = FALSE;
+    info->error_protection = 0;
     info->copyright = 0;
     info->original = 0;
 
@@ -177,7 +178,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     brt = 0;
 
-    while( (n=getopt(argc,argv,"b:o:r:smv:V")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:r:smeVv:")) != EOF)
     {
         switch(n) {
 
@@ -201,6 +202,10 @@ char            encoded_file_name[MAX_NAME_SIZE];
 		case 'm':
 			mono = 1;
 			stereo = 0;
+			break;
+
+		case 'e':
+                        info->error_protection = 1;
 			break;
 			
 		case 'V':
@@ -241,7 +246,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     if(stereo && mono)
     {
-       mjpeg_error("Options -s and -m are mutally exclusive!");
+       mjpeg_error("Options -s and -m are mutually exclusive!");
        Usage(argv[0]);
     }
     if(mono)   chans_out = 1;
@@ -249,19 +254,25 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     if(video_cd && mono)
     {
-		mjpeg_error("Options -v and -m are mutally exclusive!");
+		mjpeg_error("Options -V and -m are mutually exclusive!");
        Usage(argv[0]);
     }
 
     if(video_cd && freq_out!=0 && freq_out!=44100)
     {
-       mjpeg_error("Option -v requires sample rate 44100!");
+       mjpeg_error("Option -V requires sample rate 44100!");
        Usage(argv[0]);
     }
 
     if(video_cd && brt!=0 && brt!=224)
     {
-       mjpeg_error("Option -v requires bit rate 224 KBit/s!");
+       mjpeg_error("Option -V requires bit rate 224 KBit/s!");
+       Usage(argv[0]);
+    }
+
+    if(video_cd && info->error_protection )
+    {
+       mjpeg_error("Options -V and -e are mutually exclusive!");
        Usage(argv[0]);
     }
 
