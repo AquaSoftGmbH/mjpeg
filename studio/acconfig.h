@@ -34,6 +34,3 @@
 /* png/jpeg support */
 #undef HAVE_JPEG
 #undef HAVE_PNG
-
-/* mjpegtools-1.5 support */
-#undef HAVE_MJPEGTOOLS_15

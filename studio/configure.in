@@ -2,7 +2,7 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(src/studio.h)
 
 PACKAGE="Linux Video Studio"
-VERSION="0.1.5-dev"
+VERSION="0.1.5"
 
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(${PACKAGE},${VERSION})
@@ -69,17 +69,21 @@ AC_CHECK_HEADER(jpeglib.h,HAVE_JPEG=1,HAVE_JPEG=0)
 
 dnl glib
 AM_PATH_GLIB(1.2.0,,AC_MSG_ERROR(Could not find glib-config))
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
 
 dnl gtk+
 AM_PATH_GTK(1.2.0,,AC_MSG_ERROR(Could not find gtk-config), gthread)
+AC_SUBST(GTK_CFLAGS)
+AC_SUBST(GTK_LIBS)
 
 dnl gdk-pixbuf
 AC_PATH_PROG(GDK_PIXBUF_CONFIG, gdk-pixbuf-config, no)
 if test x$GDK_PIXBUF_CONFIG = xno; then
   AC_MSG_ERROR(Could not find gdk-pixbuf-config)
 else
-  GDK_PIXBUF_LIBS=`gdk-pixbuf-config --libs`
-  GDK_PIXBUF_CFLAGS=`gdk-pixbuf-config --cflags`
+  GDK_PIXBUF_LIBS=`$GDK_PIXBUF_CONFIG --libs`
+  GDK_PIXBUF_CFLAGS=`$GDK_PIXBUF_CONFIG --cflags`
   HAVE_GDK_PIXBUF=yes
 fi
 AC_SUBST(GDK_PIXBUF_LIBS)
@@ -88,12 +92,11 @@ AC_SUBST(GDK_PIXBUF_CFLAGS)
 dnl mjpegtools
 AC_PATH_PROG(MJPEGTOOLS_CONFIG, mjpegtools-config, no)
 if test x$MJPEGTOOLS_CONFIG = xno; then
-  HAVE_MJPEGTOOLS_15=0
+  AC_MSG_ERROR(mjpegtools-1.6 is required to run this version of LVS. Please download it from http://www.sf.net/projects/mjpeg/)
 else
-  MJPEGTOOLS_LIBS=`mjpegtools-config --libs`
-  MJPEGTOOLS_CFLAGS=`mjpegtools-config --cflags`
-  MJPEGTOOLS_PREFIX=`mjpegtools-config --prefix`
-  HAVE_MJPEGTOOLS_15=1
+  MJPEGTOOLS_LIBS=`$MJPEGTOOLS_CONFIG --libs`
+  MJPEGTOOLS_CFLAGS=`$MJPEGTOOLS_CONFIG --cflags`
+  MJPEGTOOLS_PREFIX=`$MJPEGTOOLS_CONFIG --prefix`
 fi
 AC_SUBST(MJPEGTOOLS_LIBS)
 AC_SUBST(MJPEGTOOLS_CFLAGS)
@@ -258,9 +261,6 @@ AC_SUBST(HAVE_PNG)
 AC_DEFINE_UNQUOTED(HAVE_JPEG, ${HAVE_JPEG})
 AM_CONDITIONAL(HAVE_JPEG, test ${HAVE_JPEG} = 1)
 AC_SUBST(HAVE_JPEG)
-AC_DEFINE_UNQUOTED(HAVE_MJPEGTOOLS_15, ${HAVE_MJPEGTOOLS_15})
-AM_CONDITIONAL(HAVE_MJPEGTOOLS_15, test ${HAVE_MJPEGTOOLS_15} = 1)
-AC_SUBST(HAVE_MJPEGTOOLS_15)
 
 dnl **********************************************************************
 dnl we use OSS, ALSA doesn't work yet

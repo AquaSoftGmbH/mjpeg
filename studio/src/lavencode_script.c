@@ -624,6 +624,7 @@ n = 0;
         }
     }
 
+   lav2yuv_command[n] = "lav2yuv"; n++;
    lav2yuv_command[n] = enc_inputfile; n++;
    lav2yuv_command[n] = NULL;
 }

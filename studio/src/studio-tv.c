@@ -1259,7 +1259,7 @@ int main(int argc, char *argv[])
    set_background_color(window, 0, 0, 0);
 
    input_init();
-
+#if 0
    geom.min_width = GTK_TVPLUG(tv)->width_best/16;
    geom.min_height = GTK_TVPLUG(tv)->height_best/16;
    geom.max_width = GTK_TVPLUG(tv)->width_best;
@@ -1272,7 +1272,7 @@ int main(int argc, char *argv[])
       GDK_HINT_MIN_SIZE | GDK_HINT_MAX_SIZE | GDK_HINT_ASPECT | GDK_HINT_RESIZE_INC);
    if (w>0 && h>0) gtk_widget_set_usize(window, w, h);
    if (x!=-1000000 && y!=-1000000) gtk_widget_set_uposition(window, x, y);
-
+#endif
 #ifdef HAVE_LIRC
    lirc_init();
 #endif

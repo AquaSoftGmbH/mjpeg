@@ -7,20 +7,14 @@ INCLUDES = -I../yuv4mpeg ${MJPEGTOOLS_CFLAGS} \
 
 bin_PROGRAMS = blend.flt wipe.flt overlay.flt
 
-bin_SCRIPTS = foreveryuv forevery4m2
-
-if HAVE_MJPEGTOOLS_15
-  MJPG15LIBS = ${MJPEGTOOLS_PREFIX}/lib/libmjpegutils.a
-else
-  MJPG15LIBS=
-endif
+bin_SCRIPTS = forevery4m2
 
 blend_flt_SOURCES = blend.flt.c
 blend_flt_LDADD = $(top_srcdir)/yuv4mpeg/libyuv4mpeg.a \
-	$(MJPG15LIBS)
+	${MJPEGTOOLS_LIBS}
 wipe_flt_SOURCES = wipe.flt.c
 wipe_flt_LDADD = $(top_srcdir)/yuv4mpeg/libyuv4mpeg.a \
-	$(MJPG15LIBS)
+	${MJPEGTOOLS_LIBS}
 overlay_flt_SOURCES = overlay.flt.c
 overlay_flt_LDADD = $(top_srcdir)/yuv4mpeg/libyuv4mpeg.a \
-	$(MJPG15LIBS)
+	${MJPEGTOOLS_LIBS}

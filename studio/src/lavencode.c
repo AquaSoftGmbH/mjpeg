@@ -493,7 +493,7 @@ void video_convert()
    if ((*pointenc).use_yuvdenoise == 1)
      {
       n = 0;
-      yuvdenoise_command[n] = YUVDENOISE_LOCATION; n++;
+      yuvdenoise_command[n] = "yuvdenoise"; n++;
       yuvdenoise_command[n] = NULL;
 
       start_pipe_command(yuvdenoise_command, YUVDENOISE);

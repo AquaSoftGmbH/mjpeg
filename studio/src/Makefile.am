@@ -16,16 +16,10 @@ bin_PROGRAMS = studio stv
 studio_headers = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
 	mixer.h gtkfunctions.h gtkscenelist.h gdkpixbuf_write.h
 
-if HAVE_MJPEGTOOLS_15
-  MJPG15LIBS = ${MJPEGTOOLS_PREFIX}/lib/libmjpegutils.a
-else
-  MJPG15LIBS=
-endif
-
 studio_SOURCES = ${studio_headers} ${OBJS}
 studio_LDADD = ${X_LIBS} -lXv \
 	$(top_srcdir)/yuv4mpeg/libyuv4mpeg.a \
-	$(MJPG15LIBS)
+	${MJPEGTOOLS_LIBS}
 studio_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS} ${GDK_PIXBUF_LIBS}
 
 if HAVE_PNG
