@@ -112,8 +112,8 @@ unsigned char *frame_buf[3];    /* YUV... */
 unsigned char *read_buf[3];
 unsigned char *double_buf[3];
 
-unsigned char luma_blank[720 * 480];
-unsigned char chroma_blank[720 * 480];
+unsigned char luma_blank[768 * 480];
+unsigned char chroma_blank[768 * 480];
 
 int verbose = 2;
 

@@ -1,8 +1,10 @@
 Documentation Files
 ===================
 
-INSTALL - How to install this package
-
+INSTALL         - How to install this package
+mjpeg_howto.txt - An introduction on how to use the MJPEG-tools/lavtools
+README          - This document, describing whtat the MJPEG-tools are and
+                  how to contact the developers (see bottom of this file)
 
 
 lavtools: Linux Audio and Video TOOLS for Motion JPEG and MPEG

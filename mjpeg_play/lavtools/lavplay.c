@@ -687,7 +687,7 @@ int main(int argc, char ** argv)
 			soft_play = 0;
             break;
 		case 'C':
-			printf("Choosing hardware MJPEG playback (on-screen)\n");
+			printf("Choosing hardware MJPEG playback (on-card)\n");
             screen_output = 0;
 			soft_play = 0;
             break;
