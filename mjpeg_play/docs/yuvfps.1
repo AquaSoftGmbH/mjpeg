@@ -10,6 +10,7 @@ yuvfps \- Converts to a different frame rate
 .RB [ -s 
 .IR Num:Den ]
 .RB [ -c ]
+.RB [ -n ]
 .RB [ -v\ 0 - 2 ]
 .RB [ -h ]
 
@@ -44,12 +45,27 @@ Specifies the resulting stream frame rate.
 .IP
 Changes the stream header frame rate in the output stream, but copies withouth
 changing the frames from the original stream. with the -r option you tell yuvfps which framerate should be set. 
-
 .TP 
 .B -s \fBNum:Den\fP
 .IP
 Ignores the frame rate in the input stream and assumes this frame rate for the 
 input stream. 
+.TP
+.B -n 
+.IP
+By default yuvfps tries to find a normalized framerate. Some programs create 
+framerates like: 29969909:1000000 which is actually th typical NTSC framerate
+of 30000:1001. yuvfps prints out the normalizes values and the original when
+it starts. If you think the normalized value is not correct and want 
+yuvfps to use the original given number you have to add that option. So 
+yuvfps does not try to normalize the values. 
+.TP
+.B \-v " [0,1,2]"
+.IP
+Set verbosity level.
+ 0 = warnings and error messages only. 
+ 1 = add informative messages, like the framerate conversation information.
+ 2 = add chatty debugging message, too.
 
 .SH AUTHOR
 This man page was written by Alfonso García-Patiño Barbolani.

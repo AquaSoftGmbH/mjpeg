@@ -30,6 +30,7 @@
 #include <signal.h>
 
 #include "yuv4mpeg.h"
+#include "mpegconsts.h"
 
 #define YUVFPS_VERSION "0.1"
 
@@ -75,6 +76,7 @@ static void resample(  int fdIn
                       , int fdOut
                       , y4m_stream_info_t  *outStrInfo
                       , y4m_ratio_t frame_rate
+                      , int not_normalize 
                     )
 {
   y4m_frame_info_t   in_frame ;
@@ -88,6 +90,7 @@ static void resample(  int fdIn
   long long          srcInc ;
   long long          dstInc ;
   long long          currCount ;
+  y4m_ratio_t        normalized_ratio;
 
   // Allocate memory for the YUV channels
   frame_data_size = y4m_si_get_height(inStrInfo) * y4m_si_get_width(inStrInfo);
@@ -97,10 +100,21 @@ static void resample(  int fdIn
 
   if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] )
     mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+ 
+  if (not_normalize == 0)
+    { /* Trying to normalize the values */
+      normalized_ratio = mpeg_conform_framerate( 
+                          (double)src_frame_rate.n/(double)src_frame_rate.d );
+      mjpeg_warn( "Original framerate: %d:%d, Normalized framerate: %d:%d", 
+ src_frame_rate.n, src_frame_rate.d, normalized_ratio.n, normalized_ratio.d );
+      src_frame_rate.n = normalized_ratio.n;
+      src_frame_rate.d = normalized_ratio.d;
+    }
+  
+  mjpeg_warn( "Converting from %d:%d to %d:%d", 
+               src_frame_rate.n,src_frame_rate.d,frame_rate.n,frame_rate.d  );
 
-  // Initialize counters
-  mjpeg_info( "Converting from %d:%d to %d:%d",  src_frame_rate.n,src_frame_rate.d,frame_rate.n,frame_rate.d  );
-
+  /* Initialize counters */
   srcInc = (long long)src_frame_rate.n * (long long)frame_rate.d ;
   dstInc = (long long)frame_rate.n * (long long)src_frame_rate.d ;
 
@@ -146,12 +160,13 @@ int main (int argc, char *argv[])
 
   int verbose = LOG_ERROR ;
   int change_header_only = 0 ;
+  int not_normalize = 0;
   int fdIn = 0 ;
   int fdOut = 1 ;
   y4m_stream_info_t in_streaminfo, out_streaminfo ;
   y4m_ratio_t frame_rate, src_frame_rate ;
 
-  const static char *legal_flags = "r:s:cv:h";
+  const static char *legal_flags = "r:s:cnv:h";
   int c ;
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -171,7 +186,7 @@ int main (int argc, char *argv[])
   }
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
-  
+
   // Initialize input streams
   y4m_init_stream_info (&in_streaminfo);
   y4m_init_stream_info (&out_streaminfo);
@@ -208,7 +223,9 @@ int main (int argc, char *argv[])
         // Only change header frame-rate, not the stream itself
         case 'c':
           change_header_only = 1 ;
-          break;
+        case 'n':
+          not_normalize = 1;
+        break;
         }
   }
   
@@ -216,14 +233,16 @@ int main (int argc, char *argv[])
   mjpeg_info ("yuv2fps (version " YUVFPS_VERSION
               ") is a general frame resampling utility for yuv streams");
   mjpeg_info ("(C) 2002 Alfonso Garcia-Patino Barbolani <barbolani@jazzfree.com>");
-  mjpeg_info ("yuv2fps -h for help, or man yuv2fps");
+  mjpeg_info ("yuvfps -h for help, or man yuvfps");
 
   y4m_si_set_framerate( &out_streaminfo, frame_rate );                
   y4m_write_stream_header(fdOut,&out_streaminfo);
   if( change_header_only )
     frame_rate = src_frame_rate ;
     
-  resample( fdIn,&in_streaminfo,src_frame_rate,fdOut,&out_streaminfo,frame_rate );
+  /* in that function we do all the important work */
+  resample( fdIn,&in_streaminfo, src_frame_rate, fdOut,&out_streaminfo,
+            frame_rate, not_normalize );
 
   y4m_fini_stream_info (&in_streaminfo);
   y4m_fini_stream_info (&out_streaminfo);
