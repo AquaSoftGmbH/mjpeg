@@ -103,6 +103,7 @@ AC_SUBST(LIBGETOPT_LIB)
 AC_CHECK_FUNC(posix_memalign,[AC_DEFINE(HAVE_POSIX_MEMALIGN,1,posix_memalign support)])
 AC_CHECK_FUNC(memalign,[AC_DEFINE(HAVE_MEMALIGN,1,memalign support)])
 AC_CHECK_FUNC(fmax,[AC_DEFINE(HAVE_FMAX,1,fmax support)])
+AC_CHECK_FUNC(lround,[AC_DEFINE(HAVE_LROUND,1,lround support)])
 
 AC_TYPE_SIGNAL
 
