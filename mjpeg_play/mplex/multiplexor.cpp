@@ -85,8 +85,8 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     max_segment_size = static_cast<off_t>(job.max_segment_size)
                        * static_cast<off_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
-	video_delay = static_cast<clockticks>(job.video_offset)*CLOCKS/1000;
-	audio_delay = static_cast<clockticks>(job.audio_offset)*CLOCKS/1000;
+	video_delay = static_cast<clockticks>(job.video_offset);
+	audio_delay = static_cast<clockticks>(job.audio_offset);
  	switch( mux_format  )
 	{
 	case MPEG_FORMAT_VCD :
@@ -647,7 +647,7 @@ void Multiplexor::Init()
 	 formats. */
 	   
 	 
-	dmux_rate = static_cast<int>(1.025 * nominal_rate_sum);
+	dmux_rate = static_cast<int>(1.0205 * nominal_rate_sum);
 	dmux_rate = (dmux_rate/50 + 25)*50/8;
 	
 	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d", dmux_rate*8 );

@@ -51,8 +51,9 @@ class MultiplexParams
 public:
   unsigned int data_rate;
   unsigned int packets_per_pack;
-  int video_offset;
-  int audio_offset;
+  int video_offset;             // A/V sync offset. Always one 0 and the
+                                // other positive. Specified in 
+  int audio_offset;             // MPEG-2 CLOCKS: 1/(90000*300)-th sec
   unsigned int sector_size;
   bool VBR;
   int mpeg;

@@ -37,7 +37,7 @@
 #include <sys/param.h>
 #endif
 #include <ctype.h>
-
+#include <math.h>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "mpegconsts.h"
@@ -239,6 +239,7 @@ private:
 	bool ParseVideoOpt( const char *optarg );
 	bool ParseLpcmOpt( const char *optarg );
 	bool ParseWorkaroundOpt( const char *optarg );
+	bool  ParseTimeOffset( const char *optarg );
 	
 
 	static const char short_options[];
@@ -333,11 +334,10 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
 			break;
 
 		case 'O':
-			video_offset = atoi(optarg);
-			if( video_offset < 0 )
+			if( ! ParseTimeOffset(optarg) )
 			{
-				audio_offset = - video_offset;
-				video_offset = 0;
+				mjpeg_error( "Time offset units if specified must: ms|s|pts" );
+				Usage(argv[0]);
 			}
 			break;
           
@@ -559,6 +559,30 @@ bool CmdLineMultiplexJob::ParseVideoOpt( const char *optarg )
     } 
     while( *endptr != '\0' );
     return true;
+}
+
+bool CmdLineMultiplexJob::ParseTimeOffset(const char *optarg)
+{
+    double f;
+    double persecond=1000.0;
+    char *e;
+
+    f=strtod(optarg,&e);
+    if( e ) {
+        while(isspace(*e)) e++;
+        if(!strcmp(e,"ms")) persecond=1000.0;
+        else if(!strcmp(e,"s")) persecond=1.0;
+        else if(!strcmp(e,"pts")) persecond=90000.0;
+		else
+			return false;
+    }
+    video_offset = lround(f*CLOCKS/(persecond));
+	if( video_offset < 0 )
+	{
+		audio_offset = - video_offset;
+		video_offset = 0;
+	}
+	return true;
 }
 
 void CmdLineMultiplexJob::InputStreamsFromCmdLine(unsigned int argc, char* argv[] )
