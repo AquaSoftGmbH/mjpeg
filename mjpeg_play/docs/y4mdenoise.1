@@ -5,7 +5,25 @@ y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
 
 .SH SYNOPSIS
 .B y4mdenoise
-.RI [ options ]
+.RB [ -r
+.IR motion-search_radius ]
+.RB [ -R
+.IR color_motion-search_radius ]
+.RB [ -t
+.IR error_tolerance ]
+.RB [ -T
+.IR color_error_tolerance ]
+.RB [ -m
+.IR match-count_throttle ]
+.RB [ -M
+.IR match-size_throttle ]
+.RB [ -s
+.IR frames_to_skip ]
+.RB [ -f
+.IR reference_frames ]
+.RB [ -B ]
+.RB [ -I
+.IR interlacing_type ]
 .RI "< /dev/stdin > /dev/stdout"
 
 .SH DESCRIPTION
@@ -25,35 +43,28 @@ produces an average value for the pixel.  The oldest reference frame,
 therefore, gets a pretty good idea of the real value of every pixel,
 but of course output is delayed by the number of reference frames.
 
-It compares every pixel in the current frame with all pixels in the
-previous frame, within a given search-radius, and any pixels that are
-equal within the given error-tolerance are assumed to be the same pixel.
-It builds contiguous regions of matched pixels, with the motion vector
-that's common to the region.
-
-If there are too many matches for a particular area of the image, or if
-the largest contiguous match in the area is too large, it's applied to
-the image right then, and then searching continues.  Applying a region
-means to flood-fill the region (to make it the largest size possible,
-and to flesh out its borders to pixel accuracy), then hooking up the
-corresponding reference-frame pixels to the new frame at their new
-location, and incorporating the values of all the new pixels into the
-corresponding reference pixels.  Doing this before the end of searching
-the frame means the affected areas don't have to be part of the search
-any more, helping to reduce the amount of work needed to search the
-rest of the frame.
-
-At the end of the frame, matches are applied to the new frame, from the
-largest to the smallest, discounting any areas that have already been
-resolved.  Any new-frame pixels not resolved by now are considered to
-be new information, and a new reference-pixel is generated for each one.
-
 The search is not actually done one pixel at a time; it's done in
 terms of pixel groups.  An entire pixel-group has to match for any
 match to be found, but all possible pixel-groups are tested (i.e. all
 possible overlaps are checked).  Using pixel-groups helps to establish
 a minimum standard for what may be considered a match, in order to
 avoid finding lots of really small (and really useless) matches.
+Presently, intensity pixel-groups are 4x2 (i.e. 4 across and 2 down),
+and color pixel-groups are 2x2.
+
+It compares every pixel-group in the current frame with all
+pixel-groups in the previous frame, within a given search-radius,
+and sorts them based on how close the match was, keeping the
+top contenders.  It then flood-fills each pixel-group in turn, to
+determine the size of the actual match.  The first match found to
+be big enough is applied to the image.  The number of contenders
+to consider, and the minimum size of a match, can be specified on
+the command line.
+
+At the end of the frame, any new-frame pixels not resolved yet
+are considered to be new information, and a new reference-pixel is
+generated for each one.
+
 The flood-fill still extends the matches out to pixel accuracy,
 so the only details that can't be found by motion-detection are the ones
 smaller than a pixel-group, which is not a bad sacrifice for
@@ -80,9 +91,9 @@ stream.
 .BI \-t " [0..255] Error tolerance"
 The largest difference between two pixels that's accepted for the two
 pixels to be considered equal.  The default is 3, which is good for
-medium-noise material like analog cable TV.  (This value will have to
-be changed to whatever is appropriate for your YUV4MPEG2 stream.
-See the instructions below.)
+medium-noise material like analog cable TV.  (This value will have
+to be changed to whatever is appropriate for your YUV4MPEG2 stream
+in order to avoid undesirable results.  See the instructions below.)
 
 .TP 4
 .BI \-T " [0..255] Error tolerance for color"
@@ -90,15 +101,15 @@ The default is whatever the main error-tolerance was set to.
 
 .TP 4
 .BI \-m " [num] Match-count throttle"
-If the denoiser finds more than this many regions in the area being
-searched, the search is short-circuited, and the best region in the area
-is applied right then.  Default is 5.
+The maximum number of pixel-group matches (within the search radius)
+to consider.  If more are found, only the closest matches are kept.
+Default is 5.
 
 .TP 4
 .BI \-M " [num] Match-size throttle"
-If the biggest region in the being searched for is greater than this
-many pixel-groups, the search is short-circuited, and the best region in
-the area is applied right then.  Default is 5.
+The minimum size of the flood-filled region generated from a match
+necessary to use the match.  Matches smaller than this are thrown
+away.  Specified in terms of pixel-groups.  Default is 2.
 
 .TP 4
 .BI \-s " num"
@@ -142,15 +153,30 @@ flat areas of the video, and small parts of the video that should
 be moving will be stuck in place.  Additionally, just because the
 video came to you from a clean source (digital cable TV, LaserDisc,
 etc.) doesn't mean the video itself is clean; \fBy4mdenoise\fP is
-capable of picking up on noise in the original recording.  You will
-have to generate small clips of representative parts of your video,
-denoise them with various error thresholds, and see what looks the best.
-As you gain experience with the tool, you may know what error threshold
-generally works with various types of sources, but you'll still want
-to double-check your assumptions.
+capable of picking up on noise in the original recording, and
+sampling error from the video-capture device.  You will have
+to generate small clips of representative parts of your video,
+denoise them with various error thresholds, and see what looks
+the best.  As you gain experience with the tool, you may know what
+error threshold generally works with various types of sources,
+but you'll still want to double-check your assumptions.
+
+Interlaced video that was made from non-interlaced video (e.g. a
+videotape or LaserDisc of a film) must be denoised as non-interlaced.
+Otherwise the result tends to be grainy.
 
 Animation seems to require a higher error threshold than comparable
-live-action video, e.g. 50% higher and up.
+live-action video, e.g. 50% higher and up.  Flat, shiny surfaces, like
+gloss-painted walls, or the polished wood floor of an indoor gymnasium,
+seem to require a lower error threshold.
+
+Here is the author's experience:
+
+ -t 1 : Digital cable TV, LaserDisc, DV camcorder video
+ -t 2 : VHS camcorder video, commercially-produced videotapes
+ -t 3 : Analog cable TV, VHS videotape (at the 2-hour speed)
+ -t 4 : VHS videotape (at the 6-hour speed)
+ -t 5 : Flat animation
 
 \fBy4mdenoise\fP only removes temporal noise, i.e. noise that occurs
 over time.  And it tends to do such a good job of this, that the
@@ -158,6 +184,11 @@ spatial noise (i.e. noise that occurs in nearby areas of the same frame)
 tends to become very distinct.  Therefore, always pipe the output of
 \fBy4mdenoise\fP through a spatial filter such as \fBy4mspatialfilter\fP
 or \fByuvmedianfilter\fP.
+
+When producing very low bitrate video (e.g. VCD-compatible video
+less than 900 kbps), raising the error threshold slightly, even to
+the point where artifacts would be visible in higher-bitrate video,
+tends to improve the results of low-bitrate encodings.
 
 JPEG compression of your video frames, even 100% compression, seems to
 be inaccurate enough to affect MPEG encoding.  Therefore, if you're
@@ -171,8 +202,8 @@ you should still use the spatial-filter (e.g. \fBy4mspatialfilter\fP,
 away JPEG encoding artifacts.
 
 .SH AUTHOR
-The bulk of the \fBy4mdenoise\fP code, and this man page, was written by
-Steven Boswell <ulatec@users.sourceforge.net>.
+The bulk of the \fBy4mdenoise\fP code, and this manual page, was
+written by Steven Boswell <ulatec@users.sourceforge.net>.
 
 .SH FURTHER INFO
 If you have questions, remarks, problems or you just want to contact
