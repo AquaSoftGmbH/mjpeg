@@ -1,0 +1,16 @@
+This is the required software for compiling the buz_tools:
+
+.) The precompiled binaries are for glibc2.0/libjpeg6/Kernel 2.2.10
+
+.) A 2.2.x kernel (the driver needs it). 
+
+.) libjpeg6
+(libjpeg .... is included in RedHat)
+
+.) The GLib library - http://www.gtk.org
+(libglib .... is included in RedHat)
+
+And for people who want to use ALSA support (optional):
+.) ALSA driver/lib (http://alsa.jcu.cz)
+
+/Gernot (gz@lysator.liu.se)

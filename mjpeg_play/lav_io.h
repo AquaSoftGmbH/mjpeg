@@ -4,9 +4,11 @@
 #ifdef COMPILE_LAV_IO_C
 #include <avilib.h>
 #include <quicktime.h>
+#include <movtar.h>
 #else
 typedef void avi_t;
 typedef void quicktime_t;
+typedef void movtar_t;
 #endif
 
 #define LAV_NOT_INTERLACED      0
@@ -18,6 +20,7 @@ typedef struct
 {
    avi_t       *avi_fd;
    quicktime_t *qt_fd;
+   movtar_t    *movtar_fd;
    int         format;
    int         interlacing;
    int         has_audio;

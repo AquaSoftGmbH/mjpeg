@@ -1,0 +1,17 @@
+These are some of my new ideas, I don't know if I am going to realize them - ever:
+
+.) movtar_avi, movtar_index, movtar_enpack
+
+.) Plugins for GIMP
+
+.) Blender output plugin or at least a movtar enpacking program
+
+.) mpeg2encode directly from movtar files
+   (if this is reasonably easy)
+  -> 22 kHz, 11kHz reading functions ... 
+  -> multiplexing functions
+  -> JPEG reading acceleration with MMX
+  -> integrate all other external patches for mpeg2encode
+
+.) 
+
