@@ -38,7 +38,9 @@ WRITERMAINS	= $(WRITERS:$X=_main$O)
 FILTERMAINS	= $(FILTERS:$X=_main$O)
 MAINS		= $(BINARIES:$X=_main$O)
 
-bin_SCRIPTS	= $(BINARIES)
+SYMLINKS        = $(YUVFILTER:lib%.la=%)
+bin_SCRIPTS	= $(BINARIES) $(SYMLINKS)
+INSTALL_SCRIPT  = cp -f -d
 INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/mjpegtools -I$(top_srcdir)/utils
 DEPENDENCIES	= $(top_srcdir)/utils/libmjpegutils.a
 LDADD		= -L$(top_srcdir)/utils -lmjpegutils
@@ -46,6 +48,7 @@ CLEANFILES	= $(BINARIES) $(MAINS) $L
 YFSOURCES	= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
 EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore $(YFSOURCES)
 MAINTAINERCLEANFILES = Makefile.in
+CLEANFILES      = $(SYMLINKS)
 
 #%$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)
 #	$(CC) $(LDFLAGS) -o $@ $< $L $(LDADD)
@@ -55,6 +58,7 @@ yuvkineco$X: yuvkineco_main$O $L(yuvkineco$O $(STDOBJS)) $(DEPENDENCIES)
 	$(CC) $(LDFLAGS) -o $@ $< $L $(LDADD)
 yuvkineco$X: $L(yuvkineco$O)
 yuvycsnoise$X: $L(yuvycsnoise$O)
+$(SYMLINKS): yuvfilter ; $(LN_S) yuvfilter $@
 
 $(MAINS): main.c yuvfilters.h
 	$(CC) $(CPPFLAGS) $(CFLAGS) -o $@ -c $<
