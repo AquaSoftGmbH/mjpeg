@@ -112,8 +112,8 @@ int main(int argc, char *argv[])
   y4m_write_stream_header (fd_out, &streaminfo); 
 
   /* allocate memory for frames */
-  if (denoiser.threads != 2)
-	  alloc_buffers();
+  if (denoiser.threads == 0)
+  	alloc_buffers();
 	
   /* set interlacing, if it hasn't been yet. */
   if (denoiser.interlaced == -1)
@@ -213,20 +213,21 @@ int main(int argc, char *argv[])
 		if (bInputStreamEnded && errno == 1)
 			break;
 	      
-		/* if b/w was selected, set the frame color to white */
-		if (denoiser.bwonly)
-		{
-			int i, iExtent = denoiser.frame.Cw * denoiser.frame.Ch;
-
-			for (i = 0; i < iExtent; ++i)
-				denoiser.frame.out[1][i] = 128;
-			for (i = 0; i < iExtent; ++i)
-				denoiser.frame.out[2][i] = 128;
-		}
-
 		/* if there was some output from the denoiser, write it. */
 		if (errno == 0)
 		{
+			/* if b/w was selected, set the frame color to white */
+			if (denoiser.bwonly)
+			{
+				int i, iExtent = denoiser.frame.Cw * denoiser.frame.Ch;
+	
+				for (i = 0; i < iExtent; ++i)
+					denoiser.frame.out[1][i] = 128;
+				for (i = 0; i < iExtent; ++i)
+					denoiser.frame.out[2][i] = 128;
+			}
+
+			/* Write the frame. */
 			if (denoiser.threads == 0)
 	    		errno = y4m_write_frame ( fd_out, &streaminfo,
 					&frameinfo, denoiser.frame.out);

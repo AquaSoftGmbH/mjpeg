@@ -162,10 +162,10 @@ protected:
 	void Shutdown (void);
 		// Stop the thread.
 
-private:
 	pthread_t m_oThreadInfo;
 		// OS-level thread state.
 	
+private:
 	ThreadMutex m_oMutex;
 		// A mutex to guard the following conditions.
 
@@ -179,6 +179,7 @@ protected:
 	bool m_bWaitingForInput, m_bWaitingForOutput;
 		// true if we're waiting for input/output (i.e. if they need
 		// to be signaled).
+
 	bool m_bWorkLoop;
 		// true if WorkLoop() should continue running, false if it
 		// should exit.
@@ -194,6 +195,10 @@ protected:
 // A class to run denoisers in a separate thread.
 class DenoiserThread : public BasicThread
 {
+private:
+	typedef BasicThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	DenoiserThread();
 		// Default constructor.
@@ -229,6 +234,10 @@ protected:
 // A class to run the intensity denoiser in a separate thread.
 class DenoiserThreadY : public DenoiserThread
 {
+private:
+	typedef DenoiserThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	DenoiserThreadY();
 		// Default constructor.
@@ -246,6 +255,9 @@ public:
 	int WaitForAddFrame (void);
 		// Get the next denoised frame, if any.
 		// Returns the result of Work().
+	
+	void Shutdown (void);
+		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -260,6 +272,10 @@ private:
 // A class to run the color denoiser in a separate thread.
 class DenoiserThreadCbCr : public DenoiserThread
 {
+private:
+	typedef DenoiserThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	DenoiserThreadCbCr();
 		// Default constructor.
@@ -279,6 +295,9 @@ public:
 	int WaitForAddFrame (void);
 		// Get the next denoised frame, if any.
 		// Returns the result of Work().
+	
+	void Shutdown (void);
+		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -295,6 +314,10 @@ private:
 // A class to read/write raw-video in a separate thread.
 class ReadWriteThread : public BasicThread
 {
+private:
+	typedef BasicThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	ReadWriteThread();
 		// Default constructor.
@@ -306,9 +329,6 @@ public:
 			y4m_frame_info_t *a_pFrameInfo, int a_nWidthY,
 			int a_nHeightY, int a_nWidthCbCr, int a_nHeightCbCr);
 		// Start the thread.
-	
-	void Shutdown (void);
-		// Stop the thread.
 
 protected:
 	int m_nFD;
@@ -355,6 +375,10 @@ protected:
 // A class to read raw-video in a separate thread.
 class DenoiserThreadRead : public ReadWriteThread
 {
+private:
+	typedef ReadWriteThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	DenoiserThreadRead();
 		// Default constructor.
@@ -368,6 +392,9 @@ public:
 		// the next call to ReadFrame().
 		// Returns Y4M_OK if it succeeds, Y4M_ERR_EOF at the end of
 		// the stream.  (Returns other errors too.)
+	
+	void Shutdown (void);
+		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -377,6 +404,10 @@ protected:
 // A class to write raw-video in a separate thread.
 class DenoiserThreadWrite : public ReadWriteThread
 {
+private:
+	typedef ReadWriteThread BaseClass;
+		// Keep track of who our base class is.
+
 public:
 	DenoiserThreadWrite();
 		// Default constructor.
@@ -393,6 +424,9 @@ public:
 		// Write a frame to output.  The a_apPlanes[] previously set up
 		// by GetSpaceToWriteFrame() must be filled with video data by
 		// the client.
+	
+	void Shutdown (void);
+		// Stop the thread.
 
 protected:
 	virtual int Work (void);
@@ -506,7 +540,7 @@ int
 newdenoise_shutdown (void)
 {
 	// If color was denoised in a separate thread, shut that down.
-	if (denoiser.threads == 2)
+	if (g_bMotionSearcherCbCr && denoiser.threads == 2)
 		g_oDenoiserThreadCbCr.Shutdown();
 	if (denoiser.threads >= 1)
 	{
@@ -1618,13 +1652,6 @@ BasicThread::Initialize (void)
 		mjpeg_error_exit1 ("pthread_attr_init() failed: %s",
 			strerror (nErr));
 
-	// Detach it from the main thread.
-	nErr = pthread_attr_setdetachstate (&sThreadAttributes,
-		PTHREAD_CREATE_DETACHED);
-	if (nErr != 0)
-		mjpeg_error_exit1 ("pthread_attr_setdetachstate() failed: %s",
-			strerror (nErr));
-
 	// Inherit scheduling parameters from the main thread.
 	nErr = pthread_attr_setinheritsched (&sThreadAttributes,
 		PTHREAD_INHERIT_SCHED);
@@ -1724,8 +1751,8 @@ BasicThread::WaitForOutput (void)
 void
 BasicThread::Shutdown (void)
 {
-	// Make sure the thread is working.
-	assert (m_bWorkLoop);
+	// Make sure we have exclusive access.
+	assert (m_oMutex.m_bLocked);
 
 	// Tell the thread to stop looping.
 	m_bWorkLoop = false;
@@ -1767,6 +1794,9 @@ BasicThread::WorkLoop (void)
 		if (m_nWorkRetval != Y4M_OK)
 			break;
 	}
+
+	// Remember that the work loop has stopped.
+	m_bWorkLoop = false;
 }
 
 
@@ -1795,12 +1825,16 @@ DenoiserThread::~DenoiserThread()
 void
 DenoiserThread::Shutdown (void)
 {
+	// Get exclusive access.
+	Lock();
+
 	// Call the base class version.
-	BasicThread::Shutdown();
+	BaseClass::Shutdown();
 
 	// Wake up the thread from waiting for input.
-	Lock();
 	SignalInput();
+
+	// Release exclusive access.
 	Unlock();
 }
 
@@ -1830,6 +1864,9 @@ DenoiserThread::WorkLoop (void)
 		SignalOutput();
 		Unlock();
 	}
+
+	// Remember that the work loop has stopped.
+	m_bWorkLoop = false;
 }
 
 
@@ -1862,7 +1899,7 @@ void
 DenoiserThreadY::Initialize (void)
 {
 	// Let the base class initialize itself.
-	DenoiserThread::Initialize();
+	BaseClass::Initialize();
 }
 
 
@@ -1893,6 +1930,22 @@ DenoiserThreadY::WaitForAddFrame (void)
 	WaitForOutput();
 	Unlock();
 	return m_nWorkRetval;
+}
+
+
+
+// Stop the thread.
+void
+DenoiserThreadY::Shutdown (void)
+{
+	// Call the base class version.
+	BaseClass::Shutdown();
+
+	// Wait for the loop to stop.
+	int nErr = pthread_join (m_oThreadInfo, NULL);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
+			"failed: %s", strerror (nErr));
 }
 
 
@@ -1939,7 +1992,7 @@ void
 DenoiserThreadCbCr::Initialize (void)
 {
 	// Let the base class initialize itself.
-	DenoiserThread::Initialize();
+	BaseClass::Initialize();
 }
 
 
@@ -1973,6 +2026,22 @@ DenoiserThreadCbCr::WaitForAddFrame (void)
 	WaitForOutput();
 	Unlock();
 	return m_nWorkRetval;
+}
+
+
+
+// Stop the thread.
+void
+DenoiserThreadCbCr::Shutdown (void)
+{
+	// Call the base class version.
+	BaseClass::Shutdown();
+
+	// Wait for the loop to stop.
+	int nErr = pthread_join (m_oThreadInfo, NULL);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
+			"failed: %s", strerror (nErr));
 }
 
 
@@ -2051,13 +2120,26 @@ ReadWriteThread::Initialize (int a_nFD,
 	// frame buffers at 4.
 	m_apFrames = new Frame[4];
 	nSizeY = a_nWidthY * a_nHeightY;
+	assert (nSizeY > 0);
 	nSizeCbCr = a_nWidthCbCr * a_nHeightCbCr;
 	for (i = 0; i < 4; ++i)
 	{
-		// Allocate space for each frame.
+		// Allocate space for each frame.  Don't allocate space for
+		// color unless we're denoising color.
 		m_apFrames[i].planes[0] = new uint8_t[nSizeY];
-		m_apFrames[i].planes[1] = new uint8_t[nSizeCbCr];
-		m_apFrames[i].planes[2] = new uint8_t[nSizeCbCr];
+		if (nSizeCbCr > 0)
+		{
+			m_apFrames[i].planes[1] = new uint8_t[nSizeCbCr];
+			m_apFrames[i].planes[2] = new uint8_t[nSizeCbCr];
+		}
+		else
+		{
+			// This is a hack just to see if this solves the problem.
+			m_apFrames[i].planes[1] = new uint8_t[denoiser.frame.Cw
+				* denoiser.frame.Ch];
+			m_apFrames[i].planes[2] = new uint8_t[denoiser.frame.Cw
+				* denoiser.frame.Ch];
+		}
 
 		// Put each new frame into the free list.
 		m_apFrames[i].next = m_pFreeFramesHead;
@@ -2065,22 +2147,7 @@ ReadWriteThread::Initialize (int a_nFD,
 	}
 
 	// Let the base class initialize.  The thread will start.
-	BasicThread::Initialize();
-}
-
-
-
-// Stop the thread.
-void
-ReadWriteThread::Shutdown (void)
-{
-	// Call the base class version.
-	BasicThread::Shutdown();
-
-	// Wake up the thread from waiting for output.
-	Lock();
-	SignalOutput();
-	Unlock();
+	BaseClass::Initialize();
 }
 
 
@@ -2279,8 +2346,9 @@ DenoiserThreadRead::ReadFrame (uint8_t **a_apPlanes)
 			SignalInput();
 	}
 	
-	// If there are no valid frames, wait for some valid output.
-	if (m_pValidFramesHead == NULL)
+	// If there are no valid frames, and the thread is still reading
+	// frames, then wait for some valid output.
+	if (m_pValidFramesHead == NULL && m_bWorkLoop)
 		WaitForOutput();
 
 	// Make the next valid frame the current frame.  If there are no
@@ -2306,6 +2374,28 @@ DenoiserThreadRead::ReadFrame (uint8_t **a_apPlanes)
 
 	// Return whatever error we got at the end of the stream.
 	return m_nWorkRetval;
+}
+
+
+
+// Stop the thread.
+void
+DenoiserThreadRead::Shutdown (void)
+{
+	// Get exclusive access.
+	Lock();
+
+	// Call the base class version.
+	BaseClass::Shutdown();
+
+	// Release exclusive access.
+	Unlock();
+
+	// Wait for the loop to stop.
+	int nErr = pthread_join (m_oThreadInfo, NULL);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
+			"failed: %s", strerror (nErr));
 }
 
 
@@ -2424,7 +2514,7 @@ DenoiserThreadWrite::GetSpaceToWriteFrame (uint8_t **a_apPlanes)
 	{
 		MoveFreeFrameToCurrent();
 
-		// Backpatch the frame info.
+		// Backpatch the frame info, for all the info we're denoising.
 		a_apPlanes[0] = m_pCurrentFrame->planes[0];
 		a_apPlanes[1] = m_pCurrentFrame->planes[1];
 		a_apPlanes[2] = m_pCurrentFrame->planes[2];
@@ -2464,6 +2554,31 @@ DenoiserThreadWrite::WriteFrame (void)
 
 
 
+// Stop the thread.
+void
+DenoiserThreadWrite::Shutdown (void)
+{
+	// Get exclusive access.
+	Lock();
+
+	// Call the base class version.
+	BaseClass::Shutdown();
+
+	// Wake up the thread from waiting for output.
+	SignalOutput();
+
+	// Release exclusive access.
+	Unlock();
+
+	// Wait for the loop to stop.
+	int nErr = pthread_join (m_oThreadInfo, NULL);
+	if (nErr != 0)
+		mjpeg_error_exit1 ("DenoiserThreadRead pthread_join() "
+			"failed: %s", strerror (nErr));
+}
+
+
+
 // Write frames to the raw-video stream.
 int
 DenoiserThreadWrite::Work (void)
@@ -2482,23 +2597,31 @@ DenoiserThreadWrite::Work (void)
 	// Get exclusive access.
 	Lock();
 
-	// If there are no frames to write out, wait for some.
+	// Are there no frames to write out?
 	if (m_pValidFramesHead == NULL)
-		WaitForOutput();
+	{
+		// If we've been asked to quit, do so.
+		if (!m_bWorkLoop)
+			nErr = Y4M_ERR_EOF;
+
+		// Otherwise, wait for some frames to write out.
+		else
+			WaitForOutput();
+	}
 	
 	// If there are still no frames to write out, we're done.
-	if (m_pValidFramesHead == NULL)
+	if (nErr == Y4M_OK && m_pValidFramesHead == NULL)
 		nErr = Y4M_ERR_EOF;
 	
 	// Otherwise, fetch a frame to write to output.
-	else
+	if (nErr == Y4M_OK)
 		pFrame = GetFirstValidFrame();
 	
 	// Release exclusive access.
 	Unlock();
 
 	// If there's a frame to write to output, do so.
-	if (pFrame != NULL)
+	if (nErr == Y4M_OK && pFrame != NULL)
 	{
 		// Write the frame to output.
 		nErr = y4m_write_frame (m_nFD, m_pStreamInfo, m_pFrameInfo,
@@ -2533,4 +2656,7 @@ DenoiserThreadWrite::WorkLoop (void)
 		if (m_nWorkRetval != Y4M_OK)
 			break;
 	}
+
+	// Remember that the work loop has stopped.
+	m_bWorkLoop = false;
 }
