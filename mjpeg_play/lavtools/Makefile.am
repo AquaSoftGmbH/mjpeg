@@ -101,7 +101,7 @@ ypipe_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuv2lav_SOURCES = yuv2lav.c $(lav_headers)
 yuv2lav_LDADD = $(top_builddir)/utils/libmjpegutils.a \
-		 liblavfile.la liblavjpeg.la
+		 liblavfile.la liblavjpeg.la ${LIBM_LIBS}
 
 transist_flt_SOURCES = transist.flt.c ${lav_headers}
 transist_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
