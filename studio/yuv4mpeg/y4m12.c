@@ -2,6 +2,7 @@
    as well as yuv4mpeg2 (mjpegtools-1.5) */
 
 #ifdef HAVE_CONFIG_H
+#define HAVE_STDINT_H
 #include "config.h"
 #endif
 #include <stdio.h>

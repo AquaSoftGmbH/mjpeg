@@ -175,10 +175,12 @@ char *app_location(int number)
 
 static int read_lav2yuv_data(gint source)
 {
+int n;
    /* read lav2yuv data and write() it to mpeg2enc/yuvscaler and yuvplay */
    extern int use_yuvdenoise_pipe;
    extern int use_yuvscaler_pipe;
    extern int use_yuvplay_pipe;
+n=0;
 
    if (!active[LAV2YUV_DATA])
    {
@@ -196,7 +198,6 @@ static int read_lav2yuv_data(gint source)
       }
       else
       {
-         int n;
 
          l2y_y4m12->buffer[0] = malloc(l2y_y4m12->width * l2y_y4m12->height
                            * sizeof(unsigned char));
@@ -260,6 +261,7 @@ static int read_lav2yuv_data(gint source)
       else
       {
          int n;
+         n=0;
 
          if (use_yuvdenoise_pipe)
             n = pipe_out[YUVDENOISE];
@@ -663,7 +665,7 @@ void start_pipe_command(char *command[], int number)
 
          /* uh oh, app does not exist */
          fprintf(stderr, "**ERROR: %s (\'%s\') could not be started: %s\n",
-            app_name(number), app_location(number), sys_errlist[errno]);
+            app_name(number), app_location(number), strerror(errno));
 
          _exit(1);
       }

@@ -461,7 +461,7 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 	if (fd == NULL)
 	{
 		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
-			file, sys_errlist[errno]);
+			file, strerror(errno));
 		return;
 	}
 
@@ -982,7 +982,7 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 		return;
 	}
 
-	if (GTK_SCENELIST(scenelist)->selected_scene+1 == g_list_length(GTK_SCENELIST(scenelist)->scene))
+	if (GTK_SCENELIST(scenelist)->selected_scene+1 == (int)g_list_length(GTK_SCENELIST(scenelist)->scene))
 	{
 		gtk_show_text_window(STUDIO_WARNING,
 			"Cannot do transition on the last scene - "
@@ -1305,7 +1305,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	  if (fd == NULL)
 	    {
 	      gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
-				   yuv_file, sys_errlist[errno]);
+				   yuv_file, strerror(errno));
 	      return;
 	    }
 	  write_yuv_to_file(fd, yuv, options->movie_width, options->movie_height);
@@ -1316,7 +1316,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	  if (fd == NULL)
 	    {
 	      gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
-				   yuv_blend_file, sys_errlist[errno]);
+				   yuv_blend_file, strerror(errno));
 	      return;
 	    }
 	  write_yuv_to_file(fd, yuv_blend, options->movie_width,
@@ -1338,7 +1338,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	if (fd == NULL)
 	{
 		gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
-			file, sys_errlist[errno]);
+			file, strerror(errno));
 		return;
 	}
 
@@ -1395,7 +1395,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 		if (fd == NULL)
 		{
 			gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
-				soundfile, sys_errlist[errno]);
+				soundfile, strerror(errno));
 			return;
 		}
 		fprintf(fd, "LAV Edit List\n");
@@ -1982,7 +1982,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	fclose(fdd);
 	unlink(tempfile);
 
-	for (i=0;i<strlen(syscall);i++)
+	for (i=0;i<(int)strlen(syscall);i++)
 		if (syscall[i] == '\n' || syscall[i] == '\0')
 		{
 			syscall[i] = '\0';
@@ -1991,17 +1991,17 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	if (verbose) printf("lav2yuv gave us the following header: \'%s\'\n",
 		syscall);
 	/* Here we assume that the header is correct! */
-	for (i = 0; i < strlen(syscall); i++)
+	for (i = 0; i < (int)strlen(syscall); i++)
 	  if (!strncmp(syscall+i," W",2)) {
 	    sscanf(syscall+i+2,"%d",&(options->movie_width));
 	    break;
 	  }
-	for (i = 0; i < strlen(syscall); i++)
+	for (i = 0; i < (int)strlen(syscall); i++)
 	  if (!strncmp(syscall+i," H",2)) {
 	    sscanf(syscall+i+2,"%d",&(options->movie_height));
 	    break;
 	  }
-	for (i = 0; i < strlen(syscall); i++)
+	for (i = 0; i < (int)strlen(syscall); i++)
 		if (!strncmp(syscall+i, " I", 2))
 		{
 			options->interlacing_info = syscall[i+2];
@@ -2010,7 +2010,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	/* If no aspect ration present, use A1:1 */
 	options->aspect_enu = 1;
 	options->aspect_den = 1;
-	for (i = 0; i < strlen(syscall); i++)
+	for (i = 0; i < (int)strlen(syscall); i++)
 	  if (!strncmp(syscall+i, " A", 2)){
 	    sscanf(syscall+i+2,"%d:%d",&(options->aspect_enu),
 		   &(options->aspect_den));

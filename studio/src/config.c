@@ -93,7 +93,7 @@ int chk_dir(char *name)
 		if (mkdir(name, DIR_MODE) != 0) {
 			gtk_show_text_window(STUDIO_ERROR,
 				"Unable to create directory config directory \'%s\': %s",
-				name, sys_errlist[errno]);
+				name, strerror(errno));
 			return 0;
 		};
 	};
@@ -674,7 +674,7 @@ void save_config()
 	{
 		gtk_show_text_window(STUDIO_ERROR,
 			"Can't open config file \'%s\': %s",
-			filename, sys_errlist[errno]);
+			filename, strerror(errno));
 		return;
 	}
 

@@ -136,7 +136,7 @@ char *check_editlist(char *editlist)
 		printf("Not an editlist!!!\n");
 		fclose(fp);
 
-		for (x=0;x<strlen(editlist);x++)
+		for (x=0;x<(int)strlen(editlist);x++)
 		{
 			if (editlist[x] == '/')
 				i=x;
@@ -307,7 +307,7 @@ void set_lavplay_edit_log(int norm, int cur_pos, int cur_speed)
 	sprintf(temp, "%2d:%2.2d:%2.2d:%2.2d",h,m,s,f); 
 	gtk_label_set_text(GTK_LABEL(label_lavedit_time), temp);
 
-	for (i=0;i<g_list_length(GTK_SCENELIST(scenelist)->scene);i++)
+	for (i=0;i<(int)g_list_length(GTK_SCENELIST(scenelist)->scene);i++)
 	{
 		scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist), i);
 		if (cur_pos >= scene->start_total &&
@@ -533,7 +533,7 @@ void add_scene_movie_change_page(GtkWidget *widget, char *direction)
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
 		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
 			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
-			sys_errlist[errno]);
+			strerror(errno));
 	}
 }
 
@@ -587,7 +587,7 @@ int open_add_movie_scene_editlist()
 	/* get rid of '\n's */
 	for(x=0;x<num_movs;x++)
 	{
-		for(y=0;y<strlen(movies[x]);y++)
+		for(y=0; y<(int)strlen(movies[x]);y++)
 			if (movies[x][y] == '\n')
 			{
 				movies[x][y] = '\0';
@@ -677,7 +677,7 @@ void set_add_scene_movie_selection(GtkWidget *widget, gpointer data)
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
 		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
 			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
-			sys_errlist[errno]);
+			strerror(errno));
 	}
 }
 
@@ -829,7 +829,7 @@ void save_eli_file(char *target)
 	if (!gtk_scenelist_write_editlist(GTK_SCENELIST(scenelist), target))
 		gtk_show_text_window(STUDIO_INFO,
 			"Error saving editlist to file \'%s\': %s",
-			target, (char *) sys_errlist[errno]);
+			target, (char *) strerror(errno));
 }
 
 void save_eli_temp_file()
@@ -868,7 +868,7 @@ void scene_move(GtkWidget *widget, gpointer data)
 
 	if ((what == -1 && GTK_SCENELIST(scenelist)->selected_scene==0) ||
 		(what == 1 && GTK_SCENELIST(scenelist)->selected_scene ==
-		g_list_length(GTK_SCENELIST(scenelist)->scene)-1))
+		(int)g_list_length(GTK_SCENELIST(scenelist)->scene)-1))
 	{
 		gtk_show_text_window(STUDIO_INFO,
 			"Cannot move image to the %s, image is already there!",

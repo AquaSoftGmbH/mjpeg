@@ -55,7 +55,7 @@ void gtk_show_text_window(int type, char *format, ...)
 	n = 0;
 nextline:
 	n += LINE_LENGTH;
-	if (n > strlen(message))
+	if (n > (int)strlen(message))
 		goto done;
 
 	/* check for spaces */
@@ -73,7 +73,7 @@ nextline:
 	m = n;
 	while(1)
 	{
-		if (m > strlen(message))
+		if (m > (int)strlen(message))
 			goto done;
 		if (message[m] == ' ' || message[m] == '\n')
 		{

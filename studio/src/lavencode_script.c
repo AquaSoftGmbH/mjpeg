@@ -120,7 +120,7 @@ int chk_dir(char *name);
 /* =============================================================== */
 /* Start of the code */
 
-/* Here we set up the values in the boxes*/
+/** Here we set up the values in the boxes*/
 void set_up_defaults(void)
 {
   gtk_entry_set_text(GTK_ENTRY(script_filename), script_name);
@@ -268,7 +268,7 @@ for ( i = 0; i < 100; i++)
    temp2[i]='\0';
  
   i = strlen(enc_audiofile);
-  for( i=0; i < strlen(filename); i++)
+  for( i=0; i < (int)strlen(filename); i++)
     {
       if (filename[i] == '/')
         j = i+1;
@@ -276,7 +276,7 @@ for ( i = 0; i < 100; i++)
   if (j != 0)
     {
        strncpy(temp1,filename,j);
-       for (i = j; i < strlen(filename); i++)
+       for (i = j; i < (int)strlen(filename); i++)
           sprintf(temp2,"%s%c",temp2,filename[i]);
        sprintf(extended_name,"%s%s.%s", temp1, ext, temp2);
          }
@@ -1099,7 +1099,9 @@ void accept_changes(GtkWidget *widget, gpointer data)
   script.yuv2lav= t_script.yuv2lav;
 }
 
-/* Here we create the OK and Cancel Button */
+/** Here we create the OK and Cancel Button
+    @param in this Box is the ok an cancel button packed
+    @param the Box is packed into this window */
 void create_ok_cancel(GtkWidget *hbox, GtkWidget *script_window)
 {
 GtkWidget *button;
@@ -1175,7 +1177,7 @@ void set_dvd(GtkWidget *widget, gpointer data)
   if (GTK_TOGGLE_BUTTON (widget)->active)
     t_script.dvd = (t_script.dvd | ((gint)data));
   else
-    t_script.generic = (t_script.dvd & (~(gint)data));
+    t_script.dvd = (t_script.dvd & (~(gint)data));
 }
  
 /* Here we have the callback for the divx settings */
@@ -1234,7 +1236,8 @@ int tx, ty;
 
 }
 
-/* Here we create the check boxes for the field mpeg2 */
+/** Here we create the check boxes for the field mpeg2
+    @param The table where we mount in the widgets */
 void create_checkbox_mpeg2(GtkWidget *table)
 {
 int tx, ty;

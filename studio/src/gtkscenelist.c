@@ -296,7 +296,7 @@ static void gtk_scenelist_destroy (GtkObject *object)
 	scenelist = GTK_SCENELIST (object);
 
 	/* delete the scenes */
-	for (i=0;i<g_list_length(scenelist->scene);i++)
+	for (i=0; i < (int)g_list_length(scenelist->scene);i++)
 		gtk_scene_destroy(gtk_scenelist_get_scene(scenelist, i));
 	g_list_free(scenelist->scene);
 
@@ -307,7 +307,7 @@ static void gtk_scenelist_destroy (GtkObject *object)
 	//g_list_free(scenelist->transition);
 
 	/* delete the movies */
-	for (i=0;i<g_list_length(scenelist->movie);i++)
+	for (i=0; i< (int)g_list_length(scenelist->movie);i++)
 		free(g_list_nth_data(scenelist->movie, i));
 	g_list_free(scenelist->movie);
 
@@ -419,7 +419,7 @@ static gint gtk_scenelist_button_press (GtkWidget *widget, GdkEventButton *event
 			event->x < xleft+(i+1)*gdk_pixbuf_get_width(scenelist->background))
 		{
 			selected_scene = i+scenelist->current_scene;
-			if (selected_scene >= g_list_length(scenelist->scene))
+			if (selected_scene >= (int)g_list_length(scenelist->scene))
 				selected_scene = -1;
 			if (selected_scene < 0)
 				selected_scene = -1;
@@ -451,7 +451,7 @@ void gtk_scenelist_select(GtkSceneList *scenelist, gint scene)
 {
 	gint drawn;
 
-	if (scene < 0 || scene >= g_list_length(scenelist->scene))
+	if (scene < 0 || scene >= (gint)g_list_length(scenelist->scene))
 		scene = -1;
 	scenelist->selected_scene = scene;
 	gtk_scenelist_get_num_drawn(scenelist, &drawn, NULL);
@@ -504,7 +504,7 @@ void gtk_scenelist_draw(GtkWidget *widget)
 				y_off-1, SCENE_IMAGE_WIDTH+2, SCENE_IMAGE_HEIGHT+2);
 		}
 
-		if (i+scenelist->current_scene >= 0 && i+scenelist->current_scene < g_list_length(scenelist->scene))
+		if (i+scenelist->current_scene >= 0 && i+scenelist->current_scene < (gint)g_list_length(scenelist->scene))
 		{
 #if 0
 			scene = (GtkScene *) g_list_nth_data(scenelist->items,
@@ -552,7 +552,7 @@ void gtk_scenelist_view(GtkSceneList *scenelist, gint num)
 	gtk_scenelist_get_num_drawn(scenelist, &num_seen, NULL);
 	scenelist->current_scene = num;
 
-	if (scenelist->current_scene > g_list_length(scenelist->scene) - num_seen)
+	if (scenelist->current_scene > (gint)g_list_length(scenelist->scene) - num_seen)
 		scenelist->current_scene = g_list_length(scenelist->scene) - num_seen;
 	if (scenelist->current_scene < 0)
 		scenelist->current_scene = 0;
@@ -576,11 +576,11 @@ gint gtk_scenelist_write_editlist(GtkSceneList *scenelist, gchar *filename)
 	fprintf(fd, "%s\n", scenelist->norm=='p'?"PAL":"NTSC");
 	fprintf(fd, "%d\n", g_list_length(scenelist->movie));
 
-	for (i=0;i<g_list_length(scenelist->movie);i++)
+	for (i=0;i< (gint)g_list_length(scenelist->movie);i++)
 		fprintf(fd, "%s\n", (char *) g_list_nth_data(scenelist->movie, i));
 
 	/* TODO: transition info, blablabla, etc. etc. etc. */
-	for (i=0;i<g_list_length(scenelist->scene);i++)
+	for (i=0; i < (gint)g_list_length(scenelist->scene);i++)
 	{
 #if 0
 		scene = (GtkScene *) g_list_nth_data(scenelist->items,
@@ -612,7 +612,7 @@ void gtk_scenelist_new_editlist(GtkSceneList *scenelist)
 
 GtkScene *gtk_scenelist_get_scene(GtkSceneList *scenelist, gint scene)
 {
-	if (scene < 0 || scene >= g_list_length(scenelist->scene)) return NULL;
+	if (scene < 0 || scene >= (gint)g_list_length(scenelist->scene)) return NULL;
 	return (GtkScene *) g_list_nth_data(scenelist->items,
 		(gint) g_list_nth_data(scenelist->scene, scene));
 }
@@ -620,7 +620,7 @@ GtkScene *gtk_scenelist_get_scene(GtkSceneList *scenelist, gint scene)
 char *gtk_scenelist_get_movie(GtkSceneList *scenelist, gint scene_num)
 {
 	GtkScene *scene;
-	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return NULL;
+	if (scene_num < 0 || scene_num >= (gint)g_list_length(scenelist->scene)) return NULL;
 	scene = gtk_scenelist_get_scene(scenelist, scene_num);
 	return (char *) g_list_nth_data(scenelist->movie, scene->movie_num);
 }
@@ -647,9 +647,9 @@ void gtk_scenelist_edit_move(GtkSceneList *scenelist, gint scene_num, gint direc
 
 	if (direction != 1 && direction != -1) return;
 
-	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return;
+	if (scene_num < 0 || scene_num >= (gint)g_list_length(scenelist->scene)) return;
 	if ((scene_num == 0 && direction == -1) ||
-		(scene_num  == g_list_length(scenelist->scene)-1 && direction == 1))
+		(scene_num  == (gint)g_list_length(scenelist->scene)-1 && direction == 1))
 		return;
 	scene1 = gtk_scenelist_get_scene(scenelist, scene_num);
 	scene2 = gtk_scenelist_get_scene(scenelist, scene_num + direction);
@@ -689,9 +689,9 @@ void gtk_scenelist_edit_add(GtkSceneList *scenelist, char *movie, gint view_star
 	GtkScene *scene, *scene1;
 	int i;
 
-	if (scene_num < 0 || scene_num > g_list_length(scenelist->scene)) return;
+	if (scene_num < 0 || scene_num > (gint)g_list_length(scenelist->scene)) return;
 	scene1 = gtk_scenelist_get_scene(scenelist, scene_num);
-	for (i=0;i<g_list_length(scenelist->movie);i++)
+	for (i=0;i< (int)g_list_length(scenelist->movie);i++)
 	{
 		if (!strcmp(movie, (char *)g_list_nth_data(scenelist->movie, i)))
 			goto no_insert;
@@ -710,11 +710,11 @@ no_insert:
 	scenelist->scene = g_list_insert(scenelist->scene,
 		g_list_nth_data(scenelist->scene, scene_num),
 		scene_num);
-	for (i=scene_num+1;i<g_list_length(scenelist->scene);i++)
+	for (i=scene_num+1; i < (int)g_list_length(scenelist->scene);i++)
 		((gint) g_list_nth(scenelist->scene, i)->data)++;
 
 	/* change the starting point frame.nr. of each scene and move it */
-	for (i=scene_num+1;i<g_list_length(scenelist->scene);i++)
+	for (i=scene_num+1; i < (int)g_list_length(scenelist->scene);i++)
 	{
 		scene1 = gtk_scenelist_get_scene(scenelist, i);
 		scene1->start_total += (view_end - view_start + 1);
@@ -730,7 +730,7 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 	GtkScene *scene;
 	int i, diff, movie_num;
 
-	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return;
+	if (scene_num < 0 || scene_num >= (gint)g_list_length(scenelist->scene)) return;
 	scene = gtk_scenelist_get_scene(scenelist, scene_num);
 	diff = scene->view_end - scene->view_start + 1;
 	scenelist->items = g_list_remove_link(scenelist->items, g_list_nth(scenelist->items,
@@ -738,7 +738,7 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 	scenelist->scene = g_list_remove_link(scenelist->scene, g_list_nth(scenelist->scene, scene_num));
 	movie_num = scene->movie_num;
 	free(scene);
-	for (i=scene_num;i<g_list_length(scenelist->scene);i++)
+	for (i=scene_num; i < (int)g_list_length(scenelist->scene);i++)
 	{
 		((gint)(g_list_nth(scenelist->scene, i)->data))--;
 		scene = gtk_scenelist_get_scene(scenelist, i);
@@ -746,25 +746,25 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 	}
 
 	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
-	if (scenelist->selected_scene >= g_list_length(scenelist->scene))
+	if (scenelist->selected_scene >= (gint)g_list_length(scenelist->scene))
 		gtk_scenelist_select(scenelist, scenelist->selected_scene - 1);
 	else
 		gtk_scenelist_draw(GTK_WIDGET(scenelist));
 
 	/* clean up the list of movies */
-	for (i=0;i<g_list_length(scenelist->scene);i++)
+	for (i=0; i < (int)g_list_length(scenelist->scene);i++)
 	{
 		scene = gtk_scenelist_get_scene(scenelist, i);
 		if (movie_num == scene->movie_num)
 			break;
 	}
-	if (i == g_list_length(scenelist->scene))
+	if (i == (int)g_list_length(scenelist->scene))
 	{
 		/* the movie is not reffed anymore */
 		scenelist->movie = g_list_remove_link(scenelist->movie,
 			g_list_nth(scenelist->movie, movie_num));
 		/* and decrease the referrals to subsequent movies */
-		for (i=0;i<g_list_length(scenelist->scene);i++)
+		for (i=0; i < (int)g_list_length(scenelist->scene);i++)
 		{
 			scene = gtk_scenelist_get_scene(scenelist, i);
 			if (scene->movie_num > movie_num)
@@ -779,7 +779,7 @@ void gtk_scenelist_edit_split(GtkSceneList *scenelist, gint scene_num, gint fram
 	GtkScene *scene1, *scene2;
 	gint i;
 
-	if (scene_num < 0 || scene_num >= g_list_length(scenelist->scene)) return;
+	if (scene_num < 0 || scene_num >= (gint)g_list_length(scenelist->scene)) return;
 	scene1 = gtk_scenelist_get_scene(scenelist, scene_num);
 	if (framenum <= 0 || framenum > (scene1->view_end - scene1->view_start)) return;
 
@@ -796,7 +796,7 @@ void gtk_scenelist_edit_split(GtkSceneList *scenelist, gint scene_num, gint fram
 	scene1->scene_end = scene1->view_start + framenum - 1;
 	scene1->view_end = scene1->view_start + framenum - 1;
 
-	for (i=scene_num+2;i<g_list_length(scenelist->scene);i++)
+	for (i=scene_num+2; i < (gint)g_list_length(scenelist->scene);i++)
 	{
 		((gint)(g_list_nth(scenelist->scene, i)->data))++;
 	}

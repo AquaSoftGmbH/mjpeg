@@ -128,7 +128,7 @@ do_not_insert = 0;
   {
     temp_mnames= g_list_first(temp_mnames);
 
-    for ( i = 0; i < g_list_length(temp_mnames); i++)
+    for ( i = 0; i < (int)g_list_length(temp_mnames); i++)
       {
         if (strcmp(val,g_list_nth_data(temp_mnames, i)) == 0)
           do_not_insert = 1;
@@ -146,7 +146,7 @@ do_not_insert = 0;
 
   if (verbose)
     {
-      for(i=0; i<g_list_length(temp_mnames); i++)
+      for(i=0; i < (int)g_list_length(temp_mnames); i++)
         printf("Maschine = %s \n", (char*) g_list_nth_data(temp_mnames, i));
     }
 }
@@ -205,7 +205,7 @@ int i;
   {
   temp_mnames= g_list_first(temp_mnames);
   
-  for ( i = 0; i < (g_list_length(temp_mnames)); i++)
+  for ( i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       if (strcmp(remove_name ,(char*) g_list_nth_data(temp_mnames,i)) == 0)
         {
@@ -230,15 +230,15 @@ int i;
   }
 }
 
-/* Here we create the menu entries for the field where we can select the 
- * machine we want to remove */
+/** Here we create the menu entries for the field where we can select the 
+    machine we want to remove */
 void removename()
 {
 int i;
 
   menu = gtk_menu_new();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       menu_item = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -251,13 +251,13 @@ int i;
   gtk_widget_show_all(menu);
 }
 
-/* Here we create the menu entries for lav2wav */
+/**  Here we create the menu entries for lav2wav */
 void menu_lav2wav()
 {
 int i;
 
   menulav2wav = gtk_menu_new();
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_lav2wav = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -277,7 +277,7 @@ int i;
 
   menump2enc = gtk_menu_new();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_mp2enc = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -297,7 +297,7 @@ int i;
 
   menumpeg2enc = gtk_menu_new();
   
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_mpeg2enc = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -317,7 +317,7 @@ int i;
 
   menuyuv2lav = gtk_menu_new();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_yuv2lav = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -336,7 +336,7 @@ int i;
 
   menuyuvdenoise = gtk_menu_new ();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_yuvdenoise = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -355,7 +355,7 @@ int i;
 
   menuyuvscaler = gtk_menu_new();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_yuvscaler = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -374,7 +374,7 @@ int i;
 
   menuyuv2divx = gtk_menu_new();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_yuv2divx = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -394,7 +394,7 @@ int i;
 
   menulav2yuv = gtk_menu_new ();
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     {
       item_lav2yuv = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
@@ -421,7 +421,7 @@ void set_lav2wav (GtkWidget *menu_item, gpointer data)
 {
 int i;
  
-  for(i=0; i < g_list_length(temp_mnames); i++)
+  for(i=0; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0 )
       {
         tempmach.lav2wav = i;
@@ -438,7 +438,7 @@ void set_mp2enc (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for (i=0 ; i < g_list_length(temp_mnames); i++)
+  for (i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0 )
       {
         tempmach.mp2enc = i;
@@ -455,7 +455,7 @@ void set_mpeg2enc (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.mpeg2enc = i;
@@ -472,7 +472,7 @@ void set_yuv2lav (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.yuv2lav = i;
@@ -489,7 +489,7 @@ void set_lav2yuv (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.lav2yuv = i;
@@ -506,7 +506,7 @@ void set_yuvdenoise (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.yuvdenoise = i;
@@ -523,7 +523,7 @@ void set_yuvscaler (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.yuvscaler = i;
@@ -540,7 +540,7 @@ void set_yuv2divx (GtkWidget *menu_item, gpointer data)
 {
 int i;
 
-  for ( i=0 ; i < g_list_length(temp_mnames); i++)
+  for ( i=0 ; i < (int)g_list_length(temp_mnames); i++)
     if ((strcmp(g_list_nth_data(temp_mnames,i), (char*)data)) == 0)
       {
         tempmach.yuv2divx = i;
@@ -850,7 +850,7 @@ int i;
   g_list_free(temp_mnames); 
   temp_mnames = NULL;
 
-  for (i = 0; i < g_list_length(machine_names); i++)
+  for (i = 0; i < (int)g_list_length(machine_names); i++)
     temp_mnames = g_list_append(temp_mnames, g_list_nth_data(machine_names,i));
 
   if (verbose)
@@ -897,7 +897,7 @@ int i;
   g_list_free(machine_names); 
   machine_names = NULL;
 
-  for (i = 0; i < g_list_length(temp_mnames); i++)
+  for (i = 0; i < (int)g_list_length(temp_mnames); i++)
     machine_names = g_list_append(machine_names,g_list_nth_data(temp_mnames,i));
 }
 

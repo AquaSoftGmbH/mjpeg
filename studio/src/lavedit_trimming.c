@@ -332,9 +332,9 @@ void save_trimming_changes(GtkWidget *widget, gpointer data)
 	scene->view_end = new_stop;
 
 	if (diff != 0 && GTK_SCENELIST(scenelist)->selected_scene <
-		g_list_length(GTK_SCENELIST(scenelist)->scene) - 1)
+		(int)g_list_length(GTK_SCENELIST(scenelist)->scene) - 1)
 		for (i=GTK_SCENELIST(scenelist)->selected_scene+1;
-			i<g_list_length(GTK_SCENELIST(scenelist)->scene);i++)
+	  	  i<(int)g_list_length(GTK_SCENELIST(scenelist)->scene);i++)
 		{
 			scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist), i);
 			scene->start_total += diff;

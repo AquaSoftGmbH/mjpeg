@@ -19,6 +19,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
+#define HAVE_STDINT_H
 #include "config.h"
 #endif
 #include <stdio.h>
@@ -169,8 +170,8 @@ static void overlay (unsigned char *src0[3], unsigned char *src1[3],
    }
 
    for (i=0;i<len;i++) {
-      if (i%width >= pos_x && i%width < pos_x + second_w &&
-         i/width >= pos_y && i/width < pos_y + second_h) {
+      if (i%width >= (uint)pos_x && i%width < (uint)pos_x + second_w &&
+         i/width >= (uint)pos_y && i/width < (uint)pos_y + second_h) {
          dst[0][i] = dynamic_src[0][use_scale?(i/width - pos_y)*second_w + i%width - pos_x:i];
       } else {
          dst[0][i] = static_src[0][i];
@@ -183,8 +184,8 @@ static void overlay (unsigned char *src0[3], unsigned char *src1[3],
    pos_x/=2; pos_y/=2;
 
    for (i=0;i<len;i++) {
-      if (i%width >= pos_x && i%width < pos_x + second_w &&
-         i/width >= pos_y && i/width < pos_y + second_h) {
+      if (i%width >= (uint)pos_x && i%width < (uint)pos_x + second_w &&
+         i/width >= (uint)pos_y && i/width < (uint)pos_y + second_h) {
          dst[1][i] = dynamic_src[1][use_scale?(i/width - pos_y)*second_w + i%width - pos_x:i];
          dst[2][i] = dynamic_src[2][use_scale?(i/width - pos_y)*second_w + i%width - pos_x:i];
       } else {
@@ -262,7 +263,7 @@ int main (int argc, char *argv[])
 
    y4m12_write_header (y4m12, out_fd);
 
-   for (frame=0;frame<param_duration;frame++)
+   for (frame=0;frame < (int)param_duration;frame++)
    {
       y4m12->buffer[0] = yuv0[0];
       y4m12->buffer[1] = yuv0[1];
@@ -277,8 +278,8 @@ int main (int argc, char *argv[])
       if (i<0) exit (1);
 
       overlay (yuv0, yuv1,
-         ((param_inverse?frame:(param_duration-frame))/(double)param_duration)*param_start_x,
-         ((param_inverse?frame:(param_duration-frame))/(double)param_duration)*param_start_y,
+         ((param_inverse?frame:((int)param_duration-frame))/(double)param_duration)*param_start_x,
+         ((param_inverse?frame:((int)param_duration-frame))/(double)param_duration)*param_start_y,
          y4m12, param_scale, param_inverse, frame/(double)param_duration,
          y4m12->width, y4m12->height, yuv);
 

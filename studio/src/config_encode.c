@@ -598,11 +598,11 @@ int i;
 for (i=0;i<1024;i++)
   machnames[i] = '\0';
 
-  for(i=0; i<g_list_length(machine_names); i++)
+  for(i=0; i < (int)g_list_length(machine_names); i++)
     {
       sprintf(machnames, "%s%i=%s%s", machnames, i,
       (char*) g_list_nth_data(machine_names, i),
-      (i==g_list_length(machine_names)-1)?"":", ");
+      (i == (int)g_list_length(machine_names)-1)?"":", ");
     }
 
   machine_names = g_list_first (machine_names);

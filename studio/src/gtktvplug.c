@@ -164,14 +164,14 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 		}
 		else
 		{
-			if (ei[j].height < tvplug->height_min)
+			if ((int)ei[j].height < tvplug->height_min)
 				tvplug->height_min = ei[j].height;
-			if (ei[j].height > tvplug->height_max)
+			if ((int)ei[j].height > tvplug->height_max)
 				tvplug->height_max = ei[j].height;
 
-			if (ei[j].width < tvplug->width_min)
+			if ((int)ei[j].width < tvplug->width_min)
 				tvplug->width_min = ei[j].width;
-			if (ei[j].width > tvplug->width_max)
+			if ((int)ei[j].width > tvplug->width_max)
 				tvplug->width_max = ei[j].width;
 		}
 	}
@@ -320,14 +320,14 @@ void show_info()
 		ai[i].base_id);
 		printf("  format list\n");
 
-		for (j = 0; j < ai[i].num_formats; j++)
+		for (j = 0; j < (int)ai[i].num_formats; j++)
 		{
 			printf("    depth=%d, visual=%ld\n",
 			ai[i].formats[j].depth,
 			ai[i].formats[j].visual_id);
 		}
 
-		for (p = ai[i].base_id; p < ai[i].base_id+ai[i].num_ports; p++)
+		for (p = ai[i].base_id; p < (int)ai[i].base_id+(int)ai[i].num_ports; p++)
 		{
 			printf("  encoding list for port %d\n",p);
 			if (Success != XvQueryEncodings(GDK_DISPLAY(), p, &encodings, &ei))
