@@ -424,9 +424,9 @@ int frame_lum_mean( int num_frame )
 
 
 void read_stream_params( int *hsize, int *vsize, 
-						 int *frame_rate_code,
-						 int *interlacing_code,
-						 unsigned int *aspect_ratio_code)
+			 int *frame_rate_code,
+			 int *interlacing_code,
+			 unsigned int *aspect_ratio_code)
 {
    int i,n;
    int num_xtags, ar_code;
@@ -443,10 +443,16 @@ void read_stream_params( int *hsize, int *vsize,
    *vsize = y4m_si_get_height(&si);
    *frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
    *interlacing_code = y4m_si_get_interlace(&si);
-   
-   /* If an MPEG aspect ratio is known it is encoded as a xtag */
-   /* "M1AR" for MPEG1 aspect ratio (unused), "M2AR" for MPEG2          */
+
    ar_code = 0;
+   /* Deduce MPEG aspect ratio from stream's frame size and SAR...
+      (always as an MPEG-2 code; that's what caller expects). */
+   ar_code = mpeg_guess_mpeg_aspect_code(2, y4m_si_get_sampleaspect(&si),
+					 *hsize, *vsize);
+   /* ...but an explicit xtag overrides the above guess... */
+
+   /* If an MPEG aspect ratio is known it is encoded as a xtag */
+   /* "M1AR" for MPEG1 aspect ratio (unused), "M2AR" for MPEG2 */
    num_xtags =  y4m_xtag_count(y4m_si_xtags(&si));
    for( i = 0; i < num_xtags; ++i )
    {

@@ -113,6 +113,33 @@ mpeg_framerate_code_definition( mpeg_framerate_code_t code  );
 const char *
 mpeg_interlace_code_definition( int yuv4m_interlace_code );
 
+
+/*
+ * Guess the correct MPEG aspect ratio code,
+ *  given the true sample aspect ratio and frame size of a video stream
+ *  (and the MPEG version, 1 or 2).
+ *
+ * Returns 0 if it has no good answer.
+ *
+ */
+const mpeg_aspect_code_t 
+mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
+			    int frame_width, int frame_height);
+
+/*
+ * Guess the true sample aspect ratio of a video stream,
+ *  given the MPEG aspect ratio code and the actual frame size
+ *  (and the MPEG version, 1 or 2).
+ *
+ * Returns y4m_sar_UNKNOWN if it has no good answer.
+ *
+ */
+const y4m_ratio_t 
+mpeg_guess_sample_aspect_ratio(int mpeg_version,
+			       mpeg_aspect_code_t code,
+			       int frame_width, int frame_height);
+
+
 #ifdef __cplusplus
 };
 #endif

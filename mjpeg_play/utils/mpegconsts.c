@@ -27,8 +27,6 @@
 #include "yuv4mpeg_intern.h"
 
 
-#define Y4M_ASPECT_MULT (1<<20)   /* temporary! until aspect fixed up (mdog) */
-
 static y4m_ratio_t
 mpeg_framerates[] = {
   Y4M_FPS_UNKNOWN,
@@ -66,7 +64,7 @@ static const char *mpeg1_aspect_ratio_definitions[] =
 	"1:1 (square pixels)",
 	"1:0.6735",
 	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
-    "1:0.7615",
+	"1:0.7615",
 	"1:0.8055",
 	"1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)",
 	"1:0.8935",
@@ -99,7 +97,7 @@ static const y4m_ratio_t mpeg1_aspect_ratios[] =
 
 static const char *mpeg2_aspect_ratio_definitions[] = 
 {
-	"1:1 display",
+	"1:1 pixels",
 	"4:3 display",
 	"16:9 display",
 	"2.21:1 display"
@@ -110,7 +108,7 @@ static const y4m_ratio_t mpeg2_aspect_ratios[] =
 {
 	Y4M_DAR_MPEG2_1,
 	Y4M_DAR_MPEG2_2,
-	Y4M_DAR_MPEG2_3,
+ 	Y4M_DAR_MPEG2_3,
 	Y4M_DAR_MPEG2_4
 };
 
@@ -128,8 +126,8 @@ static const y4m_ratio_t *mpeg_aspect_ratios[2] =
 
 const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] = 
 {
-	sizeof(mpeg1_aspect_ratios)/sizeof(double),
-    sizeof(mpeg2_aspect_ratios)/sizeof(double)
+  sizeof(mpeg1_aspect_ratios)/sizeof(mpeg1_aspect_ratios[0]),
+  sizeof(mpeg2_aspect_ratios)/sizeof(mpeg2_aspect_ratios[0])
 };
 
 /*
@@ -211,8 +209,7 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
 }
 
 /*
- * Look-up MPEG frame rate code for a frame rate - tolerance
- * is Y4M_FPS_MULT used by YUV4MPEG (see yuv4mpeg_intern.h)
+ * Look-up corresponding MPEG aspect ratio code given an exact aspect ratio.
  *
  * WARNING: The semantics of aspect ratio coding *changed* between
  * MPEG1 and MPEG2.  In MPEG1 it is the *pixel* aspect ratio. In
@@ -240,6 +237,143 @@ mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 	return 0;
 			
 }
+
+
+
+/*
+ * Guess the correct MPEG aspect ratio code,
+ *  given the true sample aspect ratio and frame size of a video stream
+ *  (and the MPEG version, 1 or 2).
+ *
+ * Returns 0 if it has no good guess.
+ *
+ */
+
+
+/* this is big enough to accommodate the difference between 720 and 704 */
+#define GUESS_ASPECT_TOLERANCE 0.03
+
+const mpeg_aspect_code_t 
+mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
+			    int frame_width, int frame_height)
+{
+  if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_UNKNOWN))
+    return 0;
+  switch (mpeg_version) {
+  case 1:
+    if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE)) {
+      return 1;
+    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_CCIR601)) {
+      return 12;
+    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_NTSC_16_9)) {
+      return 6;
+    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_CCIR601)) {
+      return 8;
+    } else if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_PAL_16_9)) {
+      return 3;
+    } 
+    return 0;
+    break;
+  case 2:
+    if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE)) {
+      return 1;  /* '1' means square *pixels* in MPEG-2; go figure. */
+    } else {
+      int i;
+      double true_far;  /* true frame aspect ratio */
+      true_far = 
+	(double)(sampleaspect.n * frame_width) /
+	(double)(sampleaspect.d * frame_height);
+      /* start at '2'... */
+      for (i = 2; i < mpeg_num_aspect_ratios[mpeg_version-1]; i++) {
+	double ratio = 
+	  true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i-1]);
+	if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
+	     (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
+	  return i;
+      }
+      return 0;
+    }
+    break;
+  default:
+    return 0;
+    break;
+  }
+}
+
+
+
+
+/*
+ * Guess the true sample aspect ratio of a video stream,
+ *  given the MPEG aspect ratio code and the actual frame size
+ *  (and the MPEG version, 1 or 2).
+ *
+ * Returns y4m_sar_UNKNOWN if it has no good guess.
+ *
+ */
+const y4m_ratio_t 
+mpeg_guess_sample_aspect_ratio(int mpeg_version,
+			       mpeg_aspect_code_t code,
+			       int frame_width, int frame_height)
+{
+  switch (mpeg_version) {
+  case 1:
+    /* MPEG-1 codes turn into SAR's, just not quite the right ones.
+       For the common/known values, we provide the ratio used in practice,
+       otherwise say we don't know.*/
+    switch (code) {
+    case 1:  return y4m_sar_SQUARE;        break;
+    case 3:  return y4m_sar_PAL_16_9;      break;
+    case 6:  return y4m_sar_NTSC_16_9;     break;
+    case 8:  return y4m_sar_PAL_CCIR601;   break;
+    case 12: return y4m_sar_NTSC_CCIR601;  break;
+    default:
+      return y4m_sar_UNKNOWN;       break;
+    }
+    break;
+  case 2:
+    /* MPEG-2 codes turn into Frame Aspect Ratios, though not exactly the
+       FAR's used in practice.  For common/standard frame sizes, we provide
+       the original SAR; otherwise, we say we don't know. */
+    if (code == 1) {
+      return y4m_sar_SQUARE; /* '1' means square *pixels* in MPEG-2 */
+    } else if ((code >= 2) && (code <= 4)) {
+      int i;
+      y4m_ratio_t mpeg_far = mpeg2_aspect_ratios[code-1];
+      double mpeg_sar = 
+	(double)(mpeg_far.d * frame_width) /
+	(double)(mpeg_far.n * frame_height);
+      y4m_ratio_t sarray[9] = {
+	y4m_sar_SQUARE,
+	y4m_sar_NTSC_CCIR601,
+	y4m_sar_NTSC_16_9,
+	y4m_sar_NTSC_SVCD_4_3,
+	y4m_sar_NTSC_SVCD_16_9,
+	y4m_sar_PAL_CCIR601,
+	y4m_sar_PAL_16_9,
+	y4m_sar_PAL_SVCD_4_3,
+	y4m_sar_PAL_SVCD_16_9
+      };
+      for (i = 0; i < 9; i++) {
+	double ratio = mpeg_sar / Y4M_RATIO_DBL(sarray[i]);
+	if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
+	     (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
+	  return sarray[i];
+      }
+      return y4m_sar_UNKNOWN;
+    } else {
+      return y4m_sar_UNKNOWN;
+    }
+    break;
+  default:
+    return y4m_sar_UNKNOWN;
+    break;
+  }
+}
+
+
+
+
 
 /*
  * Look-up MPEG explanatory definition string for frame rate code

@@ -33,13 +33,14 @@
  *  error codes returned by y4m_* functions
  ************************************************************************/
 #define Y4M_OK          0
-#define Y4M_ERR_RANGE   1
-#define Y4M_ERR_SYSTEM  2
-#define Y4M_ERR_HEADER  3
-#define Y4M_ERR_BADTAG  4
-#define Y4M_ERR_MAGIC   5
-#define Y4M_ERR_EOF     6
-#define Y4M_ERR_XXTAGS  7
+#define Y4M_ERR_RANGE   1  /* argument or tag value out of range */
+#define Y4M_ERR_SYSTEM  2  /* failed system call, check errno */
+#define Y4M_ERR_HEADER  3  /* illegal/malformed header */
+#define Y4M_ERR_BADTAG  4  /* illegal tag character */
+#define Y4M_ERR_MAGIC   5  /* bad header magic */
+#define Y4M_ERR_EOF     6  /* end-of-file (clean) */
+#define Y4M_ERR_XXTAGS  7  /* too many xtags */
+#define Y4M_ERR_BADEOF  8  /* unexpected end-of-file */
 
 
 /* generic 'unknown' value for integer parameters (e.g. interlace, height) */
@@ -71,7 +72,7 @@ extern const y4m_ratio_t y4m_fps_NTSC_FIELD; /* 60000/1001 NTSC field rate */
 extern const y4m_ratio_t y4m_fps_60;         /* 60fps                      */
 
 /************************************************************************
- *  useful standard sample (pixel) aspect ratios
+ *  useful standard sample (pixel) aspect ratios (W:H)
  ************************************************************************/
 extern const y4m_ratio_t y4m_sar_UNKNOWN; 
 extern const y4m_ratio_t y4m_sar_SQUARE;        /* square pixels */

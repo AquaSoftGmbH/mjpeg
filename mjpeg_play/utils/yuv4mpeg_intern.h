@@ -2,6 +2,7 @@
  *  yuv4mpeg_intern.h:  Internal constants for "new" YUV4MPEG streams
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *  Copyright (C) 2001 Matthew J. Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
