@@ -270,12 +270,6 @@ char            encoded_file_name[MAX_NAME_SIZE];
        Usage(argv[0]);
     }
 
-    if(video_cd && info->error_protection )
-    {
-       mjpeg_error("Options -V and -e are mutually exclusive!");
-       Usage(argv[0]);
-    }
-
     if(video_cd)
     {
        freq_out=44100;
