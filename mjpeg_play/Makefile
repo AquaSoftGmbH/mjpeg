@@ -66,6 +66,7 @@ GLIB_CFLAGS = -I/usr/lib/glib/include
 GLIB_CONFIG = /usr/bin/glib-config
 GLIB_LIBS = -L/usr/lib -lglib
 JPEG = -ljpeg
+MAINT = #
 MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
 PACKAGE = lavtools
 RANLIB = ranlib
@@ -97,7 +98,7 @@ lavvideo_SOURCES = lavvideo.c
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 
-LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
+v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
@@ -123,6 +124,7 @@ v4l_conf_LDFLAGS =
 CFLAGS = -g -O2
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
 DIST_COMMON =  README AUTHORS COPYING ChangeLog INSTALL Makefile.am \
 Makefile.in NEWS TODO aclocal.m4 configure configure.in install-sh \
 missing mkinstalldirs
@@ -141,19 +143,19 @@ OBJECTS = $(lavplay_OBJECTS) $(lavrec_OBJECTS) $(lavvideo_OBJECTS) $(v4l_conf_OB
 all: all-redirect
 .SUFFIXES:
 .SUFFIXES: .S .c .o .s
-$(srcdir)/Makefile.in: Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
+$(srcdir)/Makefile.in: # Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
 	cd $(top_srcdir) && $(AUTOMAKE) --gnu Makefile
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status $(BUILT_SOURCES)
 	cd $(top_builddir) \
 	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
-$(ACLOCAL_M4):  configure.in 
+$(ACLOCAL_M4): # configure.in 
 	cd $(srcdir) && $(ACLOCAL)
 
 config.status: $(srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
-$(srcdir)/configure: $(srcdir)/configure.in $(ACLOCAL_M4) $(CONFIGURE_DEPENDENCIES)
+$(srcdir)/configure: #$(srcdir)/configure.in $(ACLOCAL_M4) $(CONFIGURE_DEPENDENCIES)
 	cd $(srcdir) && $(AUTOCONF)
 
 mostlyclean-binPROGRAMS:
@@ -211,7 +213,7 @@ lavvideo: $(lavvideo_OBJECTS) $(lavvideo_DEPENDENCIES)
 
 v4l-conf: $(v4l_conf_OBJECTS) $(v4l_conf_DEPENDENCIES)
 	@rm -f v4l-conf
-	$(LINK) $(v4l_conf_LDFLAGS) $(v4l_conf_OBJECTS) $(v4l_conf_LDADD) $(LIBS)
+	$(v4l_conf_LINK) $(v4l_conf_LDFLAGS) $(v4l_conf_OBJECTS) $(v4l_conf_LDADD) $(LIBS)
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.

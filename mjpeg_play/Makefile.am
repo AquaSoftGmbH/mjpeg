@@ -28,7 +28,7 @@ v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib
 ## What an AWFUL HACK ! v4l-conf.o needs to stand where it does now, but automake always wants
 ## to add v4l-conf.o in the end (which causes multiple function linkage errors), so I declare
 ## the last v4l-conf.o as an _INCLUDE DIRECTORY_ :-/ :-/ 
-LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
+v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4l-conf.o -L/usr/X11R6/lib -lXdpms -lXxf86vm -lXxf86dga -lXext -lX11 -I
 ## DON'T add any new programs below here, only above ! (because of the hack)
 
 ## make rpms

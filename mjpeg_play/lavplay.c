@@ -612,8 +612,9 @@ main(int argc, char ** argv)
 
    mjpeg_get_params(mjpeg, &bp);
    
-   /* Set norm */
-       
+   bp.input = 0;
+
+   /* Set norm */       
    bp.norm = (el.video_norm == 'n') ? 1 : 0;
    sprintf(infostring,"Output norm: %s",bp.norm?"NTSC":"PAL");
    lavplay_msg(LAVPLAY_INFO,infostring,"");
@@ -623,7 +624,7 @@ main(int argc, char ** argv)
    bp.decimation = 0; /* we will set proper params ourselves */
    
    /* Check dimensions of video, select decimation factors */
-   if (!soft_play)
+   if (!soft_play && !screen_output)
      if( el.video_width > 720 || el.video_height > hn )
        {
 	 /* This is definitely too large */
@@ -674,7 +675,7 @@ main(int argc, char ** argv)
        bp.field_per_buff = 1;
        bp.TmpDcm = 2;
        
-       if( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) )
+       if (/*!screen_output && */ ( el.video_height > hn/2 || (!zoom_to_fit && el.video_width>360) ))
 	 {
 	   sprintf(infostring,"Video dimensions (not interlaced) too large: %d x %d\n",
 		   el.video_width,el.video_height);
