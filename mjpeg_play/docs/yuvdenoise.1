@@ -30,7 +30,7 @@ with the according pixel of the reference image.
 Average 'n' frames for a time-lowpassed pixel. Values
 below 2 will lead to a good response to the reference
 frame, while larger values will cut out more noise (and
-as a drawback will lead to noticable artefacts on high
+as a drawback will lead to noticable artifacts on high
 motion scenes.) Values above 8 are allowed but rather
 useless. (default=3)
 
@@ -88,7 +88,7 @@ low to very low noise material. (default off)
 .TP 4
 .BI \-p " [0..255] Pass II threshold"
 Pass II threshold (same as -t). WARNING: If set to values greater than 8 
-you *will* see artefacts...(default=4)
+you *will* see artifacts...(default=4)
 
 
 .SH HOW IT WORKS
@@ -123,8 +123,8 @@ movie as downscaling reduces noise, too (and at no cost to
 image-quality and/or sharpness in that case).
 
 2. First denoise, then scale! There are some rare situations where the
-denoiser itself may introduce artefacts (blocks, etc...). The
-perceptibilty of these artefacts is reduced by this processing order.
+denoiser itself may introduce artifacts (blocks, etc...). The
+perceptibilty of these artifacts is reduced by this processing order.
 
 3. If your movie contains black borders use the -b option to turn them
 into real black. This helps the encoder a lot.
