@@ -75,8 +75,8 @@
     a line consisting of 3 numbers: file-number start-frame end-frame
 
     If you are a real command line hardliner, you may try to entering the following
-    commands during playing (normally used by xlav, just type the command and press
-    enter):
+    commands during playing (normally used by xlav/Studio, just type the command and
+    press enter):
 
     p<num>    Set playback speed, num may also be 0 (=pause) and negative (=reverse)
     s<num>    Skip to frame <num>
@@ -85,7 +85,12 @@
     +         1 frame forward (makes only sense when paused)
     -         1 frame backward (makes only sense when paused)
     q         quit
-
+    em        Move scene (arg1->arg2) to position (arg3)
+    eu/eo     Cut (u) or Copy (o) scene (arg1->arg2) into memory
+    ep        Paste selection into current position of video
+    ed        Delete scene (arg1->arg2) from video
+    wa        Save current movie into edit list (arg1)
+    ws        Save current selection into memory into edit list (arg1)
 
 
    *** Environment variables ***
@@ -135,6 +140,8 @@ void Usage(char *progname);
 void lock_screen(void);
 void unlock_update_screen(void);
 void x_shutdown(int a);
+void cut_copy_frames(int nc1, int nc2, char cut_or_copy);
+void paste_frames();
 
 
 int  verbose = 6;
@@ -452,6 +459,60 @@ void x_shutdown(int a)
   _exit(1);
 }
 
+
+/* Moved editing part here to make adding some new functions based on
+   these easier. Think about a move a scene (nc1, nc2) to position nc3,
+   delete a scene (nc1, nc2), etc. */
+
+void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
+{
+	int i,k;
+
+	if(nc1>=0 && nc2>=nc1 && nc2<el.video_frames)
+	{
+		/* Save Selection */
+
+		if(save_list) free(save_list);
+		save_list = (long*) malloc((nc2-nc1+1)*sizeof(long));
+		if(save_list==0) malloc_error();
+		k = 0;
+		for(i=nc1;i<=nc2;i++) save_list[k++] = el.frame_list[i];
+		save_list_len = k;
+
+		/* Cut Frames */
+
+		if(cut_or_copy=='u')
+		{
+			if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
+			if(nframe>nc2) nframe -= k;
+			for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
+			el.video_frames -= k;
+		}
+		printf("Cut/Copy done ---- !!!!\n");
+	}
+	else
+	{
+		printf("Error: Cut/Copy %d %d params are wrong!\n",nc1,nc2);
+	}
+}
+
+void paste_frames()
+{
+	/* We should output a warning if save_list is empty,
+	   we just insert nothing */
+	int k,i;
+
+	el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
+	if(el.frame_list==0) malloc_error();
+	k = save_list_len;
+	for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
+	k = nframe+1;
+	for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
+	el.video_frames += save_list_len;
+	printf("Paste done ---- !!!!\n");
+}
+
+
 #define stringify( str ) #str
 
 int main(int argc, char ** argv)
@@ -463,7 +524,7 @@ int main(int argc, char ** argv)
 	long nb_out, nb_err;
 	long audio_buffer_size = 0;
 	unsigned char * buff;
-	int nerr, n, i, k, skipv, skipa, skipi, nskip;
+	int nerr, n, i, skipv, skipa, skipi, nskip;
 	double tdiff, tdiff1, tdiff2;
 	char input_buffer[256];
 	long frame_number[256]; /* Must be at least as big as the number of buffers used */
@@ -1000,50 +1061,41 @@ int main(int argc, char ** argv)
 
 				if(input_buffer[1]=='u'||input_buffer[1]=='o')
 				{
+					/* Cut/Copy scene (nc1->nc2) into memory */
 					int nc1, nc2;
 					sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
-					if(nc1>=0 && nc2>=nc1 && nc2<el.video_frames)
-					{
-						/* Save Selection */
-
-						if(save_list) free(save_list);
-						save_list = (long*) malloc((nc2-nc1+1)*sizeof(long));
-						if(save_list==0) malloc_error();
-						k = 0;
-						for(i=nc1;i<=nc2;i++) save_list[k++] = el.frame_list[i];
-						save_list_len = k;
-
-						/* Cut Frames */
-
-						if(input_buffer[1]=='u')
-						{
-							if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
-							if(nframe>nc2) nframe -= k;
-							for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
-							el.video_frames -= k;
-						}
-						printf("Cut/Copy done ---- !!!!\n");
-					}
-					else
-					{
-						printf("Cut/Copy %d %d params are wrong!\n",nc1,nc2);
-					}
+					cut_copy_frames(nc1, nc2, input_buffer[1]);
 				}
 
 				if(input_buffer[1]=='p')
 				{
-					/* We should output a warning if save_list is empty,
-					   we just insert nothing */
-
-					el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
-					if(el.frame_list==0) malloc_error();
-					k = save_list_len;
-					for(i=el.video_frames-1;i>nframe;i--) el.frame_list[i+k] = el.frame_list[i];
-					k = nframe+1;
-					for(i=0;i<save_list_len;i++) el.frame_list[k++] = save_list[i];
-					el.video_frames += save_list_len;
-					printf("Paste done ---- !!!!\n");
+					/* Paste current selection in current position */
+					paste_frames();
 				}
+
+				if(input_buffer[1]=='m')
+				{
+					/* Move scene(nc1->nc2) to position (nc3) */
+					int nc1, nc2, nc3;
+					sscanf(input_buffer+2,"%d %d %d",&nc1,&nc2, &nc3);
+					cut_copy_frames(nc1, nc2, 'u');
+					inc_frames(nc3-1-nframe);
+					paste_frames();
+					inc_frames(1);
+				}
+
+				if(input_buffer[1]=='d')
+				{
+					/* Delete scene(nc1->nc2) */
+					int k, nc1, nc2;
+					sscanf(input_buffer+2,"%d %d",&nc1,&nc2);
+					k = nc2 - nc1;
+					if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
+					if(nframe>nc2) nframe -= k;
+					for(i=nc2+1;i<el.video_frames;i++) el.frame_list[i-k] = el.frame_list[i];
+					el.video_frames -= k;
+				}
+
 				break;
 
 			case 'w':
@@ -1096,6 +1148,7 @@ int main(int argc, char ** argv)
 
 	exit(0);
 }
+
 
 
 
