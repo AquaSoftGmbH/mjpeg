@@ -50,14 +50,27 @@ class TvGuideParser(sgmllib.SGMLParser):
 		self.titleid = None
 		self.svcid = None
 		self.start_time=None
+		self.starting_time = None
 		self.event_time=None
 		self.event_hour = None
 		self.event_date = None
 		self.starting_point = 973728000.0
-		self.starting_point = 973728000.0 + (120 * 60)
+		self.starting_point = 973728000.0 + (4 * 60 * 60)
+		self.prime_start_time = 0;
 		self.guide = Guide();
 		sgmllib.SGMLParser.__init__(self)
+#		self.zone_offset = time.timezone
 
+
+	def translate(self, translate_data):
+		self.translate_data = translate_data
+
+	def filter(self, filter_data):
+		self.filter_data = filter_data
+
+	def set_event_time(self, event_time):
+		self.event_time = event_time
+		self.starting_time = None
 
 	#
 	# convert tvguide time to unix time
@@ -77,22 +90,6 @@ class TvGuideParser(sgmllib.SGMLParser):
 		return start_time
 
 
-	def start_input(self, attributes):
-		found = 0
-		for name, value in attributes:
-			if name == 'name':
-				if value == 'event_date':
-					found = 1
-				if value == 'event_hour':
-					found = 2
-			if name == 'value':
-				if found == 1:
-					self.event_date = atof(value)
-				if found == 2:
-					self.event_hour = atof(value)
-					self.event_time = self.event_date + self.event_hour
-					self.start_time = self.event_time
-
 	def start_td(self, attributes):
 		for name, value in attributes:
 			if name == 'colspan':
@@ -105,6 +102,7 @@ class TvGuideParser(sgmllib.SGMLParser):
 	def start_a(self, attributes):
 		self.svcid = None
 		self.titleid = None
+#		self.print_attrib("start_a", attributes)
 
 		for name, value in attributes:
 			if (name == 'href'):
@@ -123,14 +121,26 @@ class TvGuideParser(sgmllib.SGMLParser):
 					reutrn
 				self.titleid = value[start:end]
 
+	def start_b(self, attributes):
+		if self.starting_time == None:
+			self.prime_start_time = 1;
+
+	def end_b(self):
+		self.prime_start_time = 0;
+
 	def end_a(self):
 		if self.svcid != None and self.titleid != None and self.title != None:
-#			print "found titleid=",self.titleid, "title=",self.title, "runtime=",self.runtime, "time=",self.start_time, "channel=",self.channel
-			curr_time = self.tvguide_seconds(self.start_time)
+			if self.translate_data.has_key(self.channel):
+				self.channel = self.translate_data[self.channel]
 
-			self.guide.append([curr_time, self.channel,
-				self.runtime, self.title,
-				self.svcid +','+self.titleid])
+			if self.filter_data.has_key(self.channel):
+#				print "found titleid=",self.titleid, "title=",self.title, "runtime=",self.runtime, "time=",self.start_time, "channel=",self.channel
+				curr_time = self.tvguide_seconds(self.start_time)
+
+				self.guide.append([curr_time, self.channel,
+					self.runtime, self.title,
+					self.svcid +','+self.titleid])
+	
 
 			self.start_time = self.start_time + float(self.runtime)/(24.0 * 60.0)
 
@@ -141,8 +151,14 @@ class TvGuideParser(sgmllib.SGMLParser):
 		
 
 	def handle_data(self, data):
+		if self.starting_time == None:
+			if self.prime_start_time == 1:
+#				print "start time: ", data, "starting_time=", self.starting_time
+				self.prime_start_time = 0
+
 		if self.channel == None:
 			self.channel = data
+			self.start_time = self.event_time
 			return
 
 		if self.svcid != None and self.titleid != None:
@@ -157,14 +173,6 @@ class TvGuideParser(sgmllib.SGMLParser):
 		print msg
 		for name, value in attributes:
 			print name, "->",value
-
-
-
-#fd = open("out");
-#html_data = fd.read();
-	
-#parser = MyHTMLParser()
-#parser.feed(html_data)
 
 
 
@@ -198,46 +206,47 @@ class TvGuide(Guide):
 			signal.alarm(240)
 			signal.signal(signal.SIGALRM, http_timeout)
 
-			try:
+#			try:
 #				print "host='%s' seconds=%f url='%s'" % (host, day, url)
-				http = httplib.HTTP(host)
-				http.putrequest('GET',  url)
-				ref = 'http://' + host + url
-				http.putheader("Referer", ref)
-				http.putheader("Connection", 'Keep-Alive')
-				http.putheader("User-Agent", 'Mozilla/4.76 [en] (X11; U; Linux 2.4.2-XFS i686)')
-				http.putheader("Host", host)
-				http.putheader("Accept",'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, image/png, */*')
-				http.putheader("Accept-Encoding", "gzip")
-				http.putheader("Accept-Language", "en")
-				http.putheader("Accept-Charset", 'iso-8859-1,*,utf-8')
-				http.putheader("Cookie",'sid=20; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=20');
-				http.endheaders()
-				errcode, errmsg, headers = http.getreply()
+			http = httplib.HTTP(host)
+			http.putrequest('GET',  url)
+			ref = 'http://' + host + url
+			http.putheader("Referer", ref)
+			http.putheader("Connection", 'Keep-Alive')
+			http.putheader("User-Agent", 'Mozilla/4.76 [en] (X11; U; Linux 2.4.2-XFS i686)')
+			http.putheader("Host", host)
+			http.putheader("Accept",'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, image/png, */*')
+			http.putheader("Accept-Encoding", "gzip")
+			http.putheader("Accept-Language", "en")
+			http.putheader("Accept-Charset", 'iso-8859-1,*,utf-8')
+			http.putheader("Cookie",'sid=20; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=20');
+			http.endheaders()
+			self.parser.set_event_time(day)
+			errcode, errmsg, headers = http.getreply()
+			if errcode != 200:
+				print
+				print "http://%s%s" % (host, url)
+				print "Error Code %d: %s" % (errcode, errmsg)
+				return
+			data = http.getfile()
+			while(1):
+				guide_data = data.readline()
+#				print guide_data
 
-				if errcode != 200:
-					print
-					print "http://%s%s" % (host, url)
-					print "Error Code %d: %s" % (errcode, errmsg)
+				self.parser.feed(guide_data)
+				if find(guide_data, "</html>") > -1:
+					signal.alarm(0);
 					return
 
-				data = http.getfile()
-				while(1):
-					guide_data = data.readline()
-#					self.parse_tvguide_data(guide_data, translate, filter)
-					self.parser.feed(guide_data)
-					if find(guide_data, "</html>") > -1:
-						signal.alarm(0);
-						return
-
-			except:
-				http_loop = http_loop + 1
-				print
-				print "retry get %d" % http_loop
+#			except Exception, error:
+#				http_loop = http_loop + 1
+#				print error
+#				print				
+#				print "retry get %d" % http_loop
 				signal.alarm(0);
-				stdout.flush()
-				sleep(10)
-				continue
+#				sys.stdout.flush()
+#				sleep(10)
+#				continue
 
 			break
 
@@ -257,7 +266,10 @@ class TvGuide(Guide):
 				filter_data = range(1, 1000)
 			for data in filter_data:
 				filter[data] = 1
-		
+
+			self.parser.filter(filter)
+			self.parser.translate(translate)
+
 			host = self.config_string(id, "host")
 			if host == None:
 				print "No host found for ", id

@@ -24,7 +24,7 @@ import ConfigParser
 import Pmw
 import re
 import guidedbm
-from table import *
+#from table import *
 
 dbm = guidedbm.guide_dbm()
 

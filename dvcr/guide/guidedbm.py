@@ -24,7 +24,7 @@ import sys
 import ConfigParser
 import Pmw
 import re
-from table import *
+#from table import *
 
 def TicksDateTime(DateTime):
 	aDateTime = "%s" % DateTime
