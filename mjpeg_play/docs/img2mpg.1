@@ -10,11 +10,11 @@ img2mpg [\fI options \fP] \fB\-o\fR <\fIoutput MPEG file\fP> \fB\-i\fR <\fIinput
 .LP 
 This script use this packages :
 .LP   
-ImageMagick ver >= 5.2.0 [ http://www.imagemagick.org/ ]
+ImageMagick version >= 5.2.0 [ http://www.imagemagick.org/ ]
 .br 
-MjpegTools  ver >= 1.6.0 [ http://mjpeg.sourceforge.net/ ]
+MjpegTools  version >= 1.6.0 [ http://mjpeg.sourceforge.net/ ]
 .LP 
-With this packages, 'img2mpeg' used this externals binary programs :
+With this packages, 'img2mpg' use this externals binary programs :
 
 \- 'montage' from ImageMagick for resize the images for the TV screen size.
 .br 
@@ -32,14 +32,14 @@ With this packages, 'img2mpeg' used this externals binary programs :
 .br 
 \- 'mp2enc' from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
 .br 
-\- 'mplex' from MjpegTools for multiplexe the MPEG file and the MP2 sound and converte the final MPEG file to a X/S/VCD format compatible with vcdimager program.
+\- 'mplex' from MjpegTools for multiplex the MPEG file and the MP2 sound and convert the final MPEG file to a XVCD/SVCD/VCD format compatible with vcdimager program.
 .SH "DESCRIPTION"
 .LP 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific duration and merge all images on an single MPEG file. It use the MjpegTools and ImageMagick packages.
 .LP 
-Between the images, you can insert a basic transition. You can also add an audio track with the image sequence from MP2 or WAV file.
+Between the images, you can insert a basic transition. You can also add an audio track on the images sequence with a MP2 or WAV file.
 .LP 
-All images will be automaticly scaling to the good size for the video format. Also a specific background color or a image file could be used.
+All images will be automatically scaling to the good size for the video format. Also a specific background color or a image file could be used.
 .LP 
 You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
 .LP 
@@ -85,6 +85,8 @@ Note : The XVCD resolution is the same of DVD !
 .SH "OPTIONS"
 .LP 
 \fB\-v\fR <\fInum\fP> : verbose level on the console. The possible values are  '0' for none (default), '1' for informations and warnings, or '2' for debug messages.
+
+\fB\-\-with\-gui\fR : running with the 'kimg2mpg' KDE GUI frontend. No messages will be showing on the console.
 
 \fB\-t\fR <\fInum\fP> : enable transition between images with a specific speed. The possible speed values are '1' for slow, '2', '4', '5', '10', or '20' for fast. When you enable this option, the script make with ImageMagick package a beautiful merging transition between images. Warning : it's a long calculating process.
 
