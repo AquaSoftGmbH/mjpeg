@@ -27,6 +27,9 @@ yuvscaler
 jpeg2yuv
 ppmtoy4m
 y4mtoppm
+y4mtoyuv
+y4minterlace
+y4mblack
 y4mcolorbars
 lavinfo
 y4mshift
