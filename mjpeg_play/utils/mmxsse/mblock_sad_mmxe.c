@@ -408,31 +408,29 @@ int mblock_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,int lx,int h,int32_t *
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2,
                                      int rowstride, int h, int32_t *resvec)
 {
-    // ugh, this works backwards for some reason
-
     pxor_r2r(mm0, mm0);
     pxor_r2r(mm1, mm1);
 
-    movq_m2r(blk1[rowstride], mm2);
-    movq_m2r(blk1[rowstride+1], mm3);
+    movq_m2r(blk1[0], mm2);
+    movq_m2r(blk1[1], mm3);
     do {
         movq_m2r(blk2[0], mm5);
 
         psadbw_r2r(mm5, mm2);
         psadbw_r2r(mm5, mm3);
         packssdw_r2r(mm3,mm2);
-        paddd_r2r(mm2,mm1);
+        paddd_r2r(mm2,mm0);
 
+        blk1+=rowstride;
+        blk2+=rowstride;
         movq_m2r(blk1[0], mm2);
         movq_m2r(blk1[1], mm3);
-        blk1-=rowstride;
-        blk2-=rowstride;
 
         movq_r2r(mm5, mm6);
         psadbw_r2r(mm2, mm5);
         psadbw_r2r(mm3, mm6);
         packssdw_r2r(mm6,mm5);
-        paddd_r2r(mm5,mm0);
+        paddd_r2r(mm5,mm1);
 
         h--;
     } while(h);

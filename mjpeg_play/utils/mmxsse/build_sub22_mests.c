@@ -22,10 +22,6 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 	uint8_t *s22orgblk;
 	int32_t resvec[4];
 
-	/* TODO: The calculation of the lstrow offset really belongs in
-       asm code... */
-	int lstrow=(fh-1)*frowstride;
-
 	sub22set->len = 0;
 	for( k = 0; k < sub44set->len; ++k )
 	{
@@ -39,7 +35,7 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 		  orgblk(0,+2), and orgblk(+2,+2) Done all in one go to reduce
 		  memory bandwidth demand
 		*/
-		mblock_sub22_nearest4_sads_mmxe(s22orgblk+lstrow, s22blk+lstrow, frowstride, fh, resvec);
+		mblock_sub22_nearest4_sads_mmxe(s22orgblk, s22blk, frowstride, fh, resvec);
 		for( i = 0; i < 4; ++i )
 		{
 			if( x <= ilim && y <= jlim )
