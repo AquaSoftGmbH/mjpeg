@@ -1,4 +1,4 @@
-.TH "yuvdenoise" "1" "30 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvdenoise" "1" "20th of January 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
@@ -39,21 +39,6 @@ yuvdenoise -r 16
 This sets the maximum search radius to 16 pixels.            
 
 .TP 8
-.BR \-h
-Fixed Search Radius
-
-By adding this option you may advise the filter to use a fixed radius
-for searching block matches. This disables the internal radius
-optimization/reduction.  
-
-.TP 8
-.BR \-D
-Disable Despeckle Filter
-
-This option allows you to turn off the second pass of the
-noisefilter.
-
-.TP 8
 .BR \-I
 Deinterlace Only
 
@@ -61,6 +46,16 @@ This turns off the denoiser completly. Only the deinterlacer (if
 needed) and the black-border-code remain functional. This gives a
 great speed-boost if you don't want to denoise but only to turn
 borders black and/or to deinterlace.
+
+.TP 8
+.BR \-B
+B&W Mode
+
+This is usefull if your material is (our should be) B&W only. This
+flag does turn color-MC and all Chroma off. This should help the
+encoder to save a few bits when such material is used. Especially if
+your recording does come from an old videotape or a bad
+TV-transmission.
 
 .TP 8
 .BR \-?
@@ -92,16 +87,20 @@ turn the same area into black.
 
 .SH HOW IT WORKS
 Yuvdenoise works by temporal lowpass filtering. To avoid
-motion-blurr it transforms the previous image with a
+motion-blur it transforms the previous image with a
 motion-compensation as close as possible to the present frame. This
 motion-compensation is performed on 4x4 pixel blocks. The result is
 wightened and a block of the transformed previous frame is (depending
 on a matching coefficient) either taken in full, blended with the
 present image-block or discarded if the match is to bad.
-.BR
-Additionally it uses an adaptive (classic) despeckle filter on the
-image to remove (or milden) block-artefacts and noise left by the
-temporal filter.
+
+This procedure implies that the motion-compensation is very exact. If
+a video-encoder misses a transformed block it's not that bad, it only
+encodes a difference block there. If the denoiser fails to find a good
+matching block, the only solution is to exchange the found block with
+the original frame block. Therefor a great amount of time is spent to
+find good matches. This is the main reason why the denoiser does not
+run at full framerate at CIF resolution as you might have wished.
 
 .SH TYPICAL USAGE AND TIPS
 As it is self-adapting to the noise-situation found in the stream you
@@ -129,6 +128,8 @@ cables. Only use HF-in (the antenna-cable ...) if you really can't
 connect your VCR/Camcorder by other means (Composite, S-Video or best
 SCART-RGB).
 
+5. If your movie is B&W only, then try the -B switch.
+
 Having that sayed, I normaly use a command-line like this one:
 
 lav2yuv movie.avi | yuvdenoise -b 8,64,-8,-64 | yuvscaler -O
@@ -137,7 +138,7 @@ SIZE_352x288 | mpeg2enc -f 1 -o movie.m1v
 Have a lot of fun! ;-)
 
 .SH AUTHOR
-This man page was written by Stefan Fendt.
+This man page was written by Stefan Fendt <stefan@lionfish.ping.de>.
 
 .SH FURTHER INFOS
 If you have questions, remarks, problems or you just want to contact
@@ -154,5 +155,3 @@ For more info, see our website at
 .BR mpeg2enc (1)
 .BR lavrec (1)
 .BR lav2yuv (1)
-
-
