@@ -154,6 +154,9 @@ public:
 	void SetTSOffset( clockticks baseTS );
 	void AllDemuxed();
 	inline stream_kind Kind() { return kind; }
+    inline int BufferMin() { return buffer_min; }
+    inline int BufferMax() { return buffer_max; }
+    void UpdateBufferMinMax();
 
 	void SetSyncOffset( clockticks timestamp_delay );
 
@@ -180,6 +183,8 @@ protected:
 	Aunit *next();
 	OutputStream &muxinto;
 	stream_kind kind;
+    int buffer_min;
+    int buffer_max;
 									
 };
 

@@ -77,6 +77,8 @@
 #include <errno.h>
 #include "global.h"
 
+#include "mpegconsts.h"
+#include "yuv4mpeg.h"
  
    /* NOTE: access toframes_read *must* be read-only in other threads
 	  once the chunk-reading worker thread has been started.
@@ -153,19 +155,19 @@ static int piperead(int fd, char *buf, int len)
 
 static void read_chunk()
 {
-   int n, v, h, i,j;
-
-   unsigned char magic[7];
+   int n, v, h, i,j, y;
+   y4m_frame_info_t fi;
 
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
       n = frames_read % FRAME_BUFFER_SIZE;
-      if(piperead(istrm_fd,magic,6)!=6) goto EOF_MARK;
-      if(strncmp(magic,"FRAME\n",6))
-      {
-		  magic[6]='\0';
-		  mjpeg_error_exit1("Start of frame %d is not \"FRAME<NL>\"\n",frames_read);
+
+      y4m_init_frame_info (&fi);
+      if ((y = y4m_read_frame_header (istrm_fd, &fi)) != Y4M_OK) {
+         mjpeg_log (LOG_WARN, "Couldn't read FRAME header: %s!\n", y4m_errstr (n));
+         goto EOF_MARK;
       }
+      
       v = opt_vertical_size;
       h = opt_horizontal_size;
       for(i=0;i<v;i++)
@@ -365,37 +367,16 @@ int frame_lum_mean( int num_frame )
 
 void read_stream_params( int *hsize, int *vsize, int *frame_rate_code )
 {
-	const int PARAM_LINE_MAX=256;
-	int n;
-	char param_line[PARAM_LINE_MAX];
-	for(n=0;n<PARAM_LINE_MAX;n++)
-	{
-		if(!read(istrm_fd,param_line+n,1))
-		{
-			fprintf(stderr,"Error reading header from input stream\n");
-			exit(1);
-		}
-		if(param_line[n]=='\n') break;
-	}
-	if(n==PARAM_LINE_MAX)
-	{
-		fprintf(stderr,"Didn't get linefeed in first %d characters of input stream\n",
-				PARAM_LINE_MAX);
-		exit(1);
-	}
-	param_line[n] = 0; /* Replace linefeed by end of string */
+   int n;
+   y4m_stream_info_t si;
 
-	if(strncmp(param_line,"YUV4MPEG",8))
-	{
-		fprintf(stderr,"Input starts not with \"YUV4MPEG\"\n");
-		fprintf(stderr,"This is not a valid input for me\n");
-		exit(1);
-	}
+   y4m_init_stream_info (&si);   
+   if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_errstr (n));
+      exit (1);
+   }
 
-
-	if( sscanf(param_line+8,"%d %d %d",hsize,vsize,frame_rate_code) != 3)
-	{
-		fprintf(stderr,"Could not get image dimenstion and frame rate from input stream\n");
-		exit(1);
-	}
+   *hsize = si.width;
+   *vsize = si.height;
+   *frame_rate_code = mpeg_frame_rate_code (si.framerate);
 }

@@ -23,6 +23,7 @@
 
 #include <config.h>
 #include <assert.h>
+#include "fastintfns.h"
 #include "inputstrm.hh"
 #include "outputstream.hh"
 
@@ -69,7 +70,9 @@ ElementaryStream::ElementaryStream( OutputStream &into,
 									stream_kind _kind) : 
 //	MuxStream( stream_id,  buf_scale, buf_size, zero_stuffing ),
 	muxinto( into ),
-	kind(_kind)
+	kind(_kind),
+    buffer_min(INT_MAX),
+    buffer_max(1)
 {
 }
 
@@ -123,6 +126,15 @@ bool ElementaryStream::MuxPossible()
 	return (!RunOutComplete() &&
 			bufmodel.space() > max_packet_data);
 }
+
+void ElementaryStream::UpdateBufferMinMax()
+{
+    buffer_min =  buffer_min < bufmodel.space() ? 
+        buffer_min : bufmodel.space();
+    buffer_max = buffer_max > bufmodel.space() ? 
+        buffer_max : bufmodel.space();
+}
+
 
 
 clockticks ElementaryStream::RequiredDTS()

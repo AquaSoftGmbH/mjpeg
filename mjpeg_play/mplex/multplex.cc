@@ -833,6 +833,9 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					mjpeg_error_exit1("Too many frame drops -exiting\n" );
 				}
 			}
+            if( despatch->nsec > 50 &&
+                despatch->Lookahead( ) != 0 && ! running_out)
+                despatch->UpdateBufferMinMax();
 			padding_packet = false;
 
 		}
@@ -883,6 +886,10 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		(*str)->Close();
+        mjpeg_info( "BUFFERING min %d Buf max %d\n",
+                    (*str)->BufferMin(),
+                    (*str)->BufferMax() 
+            );
 	}
 
     if( underruns> 0 )

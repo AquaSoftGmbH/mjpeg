@@ -108,7 +108,7 @@ static int32_t P_frame_base_bits;
 
 static int64_t bitcnt_EOP = 0;
 static int frame_overshoot_margin = 0;
-static int overshoot_carry;
+static int undershoot_carry;
 static double undershoot_gain;
 static double overshoot_gain;
 
@@ -283,20 +283,20 @@ void rc_init_seq(int reinit)
 	*/
 	if( opt_still_size > 0 )
 	{
-		overshoot_carry = 0;
+		undershoot_carry = 0;
 		undershoot_gain = 1.0;
 		overshoot_gain = 1.0;
 	}
 	else
 	{
 		int buffer_safe = 4 * per_frame_bits ;
-		overshoot_carry = (ctl_video_buffer_size - buffer_safe);
-		if( overshoot_carry < per_frame_bits/2 )
-			mjpeg_error_exit1( "Buffer appears to be set too small (< a frames variation possible)\n" );
-		overshoot_gain =  0.5*opt_bit_rate / ctl_video_buffer_size;
+		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/6;
+		if( undershoot_carry < 0 )
+			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals\n");
+		overshoot_gain =  opt_bit_rate / (ctl_video_buffer_size-buffer_safe);
 		mjpeg_info( "vb=%d UC = %d pfb=%d OSG=%f\n", 
 					(int)ctl_video_buffer_size/8,
-					(int)overshoot_carry/8, (int)per_frame_bits/8,
+					(int)undershoot_carry/8, (int)per_frame_bits/8,
 					overshoot_gain);
 
 		
@@ -748,10 +748,10 @@ void rc_update_pict(pict_data_s *picture)
 			bits_transported = bits_used;
 			buffer_variation = 0;	
 		}
-		else
+		else if( buffer_variation > undershoot_carry )
 		{
-			bits_used = bits_transported;
-			buffer_variation = 0;
+			bits_used = bits_transported + undershoot_carry;
+			buffer_variation = undershoot_carry;
 		}
 	}
 
