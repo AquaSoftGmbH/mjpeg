@@ -3,7 +3,7 @@ bin_PROGRAMS = @MOVTAR_PLAY@ movtar_split movtar_unify movtar_index movtar_setin
 bin_SCRIPTS = movtar-config
 lib_LIBRARIES = libmovtar.a
 libmovtar_a_SOURCES = movtar.c tar.c
-INCLUDES = @GLIB_CFLAGS@ -I ../jpeg-6b-mmx
+INCLUDES = @GLIB_CFLAGS@ -I ../jpeg-mmx
 include_HEADERS = movtar.h
 
 movtar_play_LDFLAGS = -lSDL -lpthread -ljpeg
