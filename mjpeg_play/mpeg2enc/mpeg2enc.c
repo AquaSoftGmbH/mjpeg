@@ -114,7 +114,6 @@ static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
 static int param_input_interlacing;
-static int param_hack_dxr2_bug = 0;
 static int param_hack_svcd_hds_bug = 0;
 
 /* Input Stream parameter values that have to be further processed to
@@ -230,8 +229,6 @@ static void Usage(char *str)
 "    Force setting of playback field order to bottom or top first\n"
 "--multi-thread|-M num\n"
 "    Activate multi-threading to optimise through on a system with num CPU's\n""    [0..32], 0=no multithreading, (default: 1)\n"
-"--hack-dxr2-bug\n"
-"    Work-around DXR2 playback bug for progressive streams\n)"
 "--hack-svcd-hds-bug\n"
 "    Force SVCD horizontal_display_size to be 480 - standards say 540 or 720\n"
 "    But many DVD/SVCD players screw up with these values.\n"
@@ -650,7 +647,6 @@ static struct option long_options[]={
      { "reduce-hf",         0, &param_hf_quant, 1 },
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
-     { "hack-dxr2-bug",     0, &param_hack_dxr2_bug, 1},
      { "hack-svcd-hds-bug", 0, &param_hack_svcd_hds_bug, 1},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
@@ -1054,7 +1050,6 @@ static void init_encoder()
 		break;
 	}
 
-	ctl_progonly_dct_me = param_hack_dxr2_bug;
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;
 	
@@ -1304,6 +1299,7 @@ static void init_mpeg_parms(void)
 		= opt_frame_pred_dct_tab[2] 
         = (param_mpeg == 1 || param_fieldenc == 0) ? 1 : 0;
 
+    mjpeg_info( "Progressive format frames = %d\n", 	opt_frame_pred_dct_tab[0] );
 	opt_qscale_tab[0] 
 		= opt_qscale_tab[1] 
 		= opt_qscale_tab[2] 

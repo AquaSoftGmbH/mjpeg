@@ -155,17 +155,10 @@ void putuserdata(const uint8_t *userdata, int len)
  *
  * uses tc0 (timecode of first frame) and frame0 (number of first frame)
  */
-void putgophdr(int frame,int closed_gop, int seq_header )
+void putgophdr(int frame,int closed_gop )
 {
 	int tc;
 
-	/* (S)VCD mandates sequence headers every GOP
-	   to do fast forward, rewind etc.
-	*/
-	if( seq_header )
-	{
-		putseqhdr();
-	}
 	alignbits();
 	putbits(GOP_START_CODE,32); /* group_start_code */
 	tc = frametotc(frame);

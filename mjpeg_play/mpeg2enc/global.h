@@ -82,7 +82,7 @@ void putseqhdr (void);
 void putseqext (void);
 void putseqdispext (void);
 void putuserdata (const uint8_t *userdata, int len);
-void putgophdr (int frame, int closed_gop, int seq_header);
+void putgophdr (int frame, int closed_gop);
 void putpicthdr (pict_data_s *picture);
 void putpictcodext (pict_data_s *picture);
 void putseqend (void);
@@ -481,15 +481,6 @@ EXTERN bool ctl_parallel_read; /* Does the input reader / bufferer
 								 run as a seperate thread?
 							  */
 
-EXTERN bool ctl_progonly_dct_me; /* Do no only progressive frame
-									motion estimation and DCT modes
-									even if frame_pred_frame_dct is 0
-									This is used to allow fast
-									encoding whilst working around a
-									bug in the DXR2 decoders firmware
-									which can't handle PAL streams
-									with frame_pred_frame_dct=1!
-									 */
 
 /* *************************
  * input stream attributes

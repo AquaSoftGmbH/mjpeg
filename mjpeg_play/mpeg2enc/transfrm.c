@@ -411,8 +411,7 @@ void transform(
 			mbi[k].dctblocks = &blocks[k*block_count];
 			mbi[k].dct_type =
 				(picture->frame_pred_dct || 
-				 picture->pict_struct != FRAME_PICTURE ||
-				 ctl_progonly_dct_me
+				 picture->pict_struct != FRAME_PICTURE 
 				 ) 
 				? 0	: (*pselect_dct_type)( &cur[0][introwstart+i], 
 										   &pred[0][introwstart+i]);

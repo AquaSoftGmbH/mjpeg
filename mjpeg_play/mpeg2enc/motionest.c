@@ -532,7 +532,7 @@ static void frame_ME(pict_data_s *picture,
 		   provides much better performance at scene changes */
 		var += chrom_var_sum(&ssmb,16,width);
 
-		if (picture->frame_pred_dct || ctl_progonly_dct_me )
+		if (picture->frame_pred_dct )
 		{
 			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,16,width,height,
@@ -673,7 +673,7 @@ static void frame_ME(pict_data_s *picture,
 	}
 	else /* if (pict_type==B_TYPE) */
 	{
-		if (picture->frame_pred_dct || ctl_progonly_dct_me)
+		if (picture->frame_pred_dct )
 		{
 
 

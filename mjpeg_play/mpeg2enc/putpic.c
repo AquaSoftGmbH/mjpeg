@@ -190,7 +190,6 @@ void putpict(pict_data_s *picture )
 	{
 		putseqend();
 		rc_init_seq(1);
-		putseqhdr();
 	}
 	/* Handle start of GOP stuff... */
 	if( picture->gop_start )
@@ -201,15 +200,27 @@ void putpict(pict_data_s *picture )
 	calc_vbv_delay(picture);
 	rc_init_pict(picture); /* set up rate control */
 
+	/* Sequence header if new sequence or we're generating for a
+       format like (S)VCD that mandates sequence headers every GOP to
+       do fast forward, rewind etc.
+       The first sequence header of the first sequence is generated
+       elsewhere...
+	*/
+
+    if( picture->decode != 0 &&
+        (picture->new_seq || (picture->gop_start && opt_seq_hdr_every_gop)) )
+    {
+		putseqhdr();
+    }
+
 	if( picture->gop_start )
 	{
 		/* set closed_GOP in first GOP only No need for per-GOP seqhdr
 		   in first GOP as one has already been created.
 		*/
-
+        
 		putgophdr( picture->decode,
-				   picture->decode == 0,
-				   picture->decode == 0 || opt_seq_hdr_every_gop);
+				   picture->decode == 0 );
 	}
 
 	/* picture header and picture coding extension */
