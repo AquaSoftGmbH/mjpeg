@@ -127,10 +127,12 @@ typedef struct {
    int    mixer_recsrc_saved;                 /* saved recording source before setting mixer */
    int    mixer_inplev_saved;                 /* saved output volume before setting mixer */
 
+#if 0
    pthread_t encoding_thread;                 /* for software encoding recording */
    pthread_mutex_t valid_mutex;               /* for software encoding recording */
    int buffer_valid[MJPEG_MAX_BUF];           /* Non-zero if buffer has been filled */
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
+#endif
 
    int    output_status;
    int    state;                              /* recording, paused or stoppped */
@@ -923,61 +925,50 @@ static int lavrec_software_init(lavrec_t *info)
 
    /* set some "subcapture" options - cropping is done later on (during capture) */
    if(!info->geometry->w)
-      info->geometry->w = ((vc.maxwidth==720&&info->horizontal_decimation!=1)?704:vc.maxwidth);
+      info->geometry->w = ((vc.maxwidth==720&&info->horizontal_decimation!=1)?704:vc.maxwidth)/4;
    if(!info->geometry->h)
-      info->geometry->h = info->video_norm==1 ? 480 : 576;
+      info->geometry->h = (info->video_norm==1 ? 480 : 576)/4;
 
-   if (info->geometry->w + info->geometry->x > vc.maxwidth)
+   if (info->geometry->w > vc.maxwidth)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image width+offset (%d) bigger than maximum (%d)!",
-         info->geometry->w + info->geometry->x, vc.maxwidth);
+         "Image width (%d) bigger than maximum (%d)!",
+         info->geometry->w, vc.maxwidth);
       return 0;
    }
-   if ((info->geometry->w%(info->horizontal_decimation*16))!=0) 
+   if ((info->geometry->w%16)!=0) 
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image width (%d) not multiple of %d (required for JPEG encoding)!",
-	 info->geometry->w, info->horizontal_decimation*16);
+         "Image width (%d) not multiple of 16 (required for JPEG encoding)!",
+	 info->geometry->w);
       return 0;
    }
-   if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
+   if (info->geometry->h > (info->video_norm==1 ? 480 : 576)) 
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image height+offset (%d) bigger than maximum (%d)!",
-         info->geometry->h + info->geometry->y, (info->video_norm==1 ? 480 : 576));
+         "Image height (%d) bigger than maximum (%d)!",
+         info->geometry->h, (info->video_norm==1 ? 480 : 576));
       return 0;
    }
 
    /* RJ: Image height must only be a multiple of 8, but geom_height
     * is double the field height
     */
-   if ((info->geometry->h%(info->vertical_decimation*16))!=0) 
+   if ((info->geometry->h%16)!=0) 
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Image height (%d) not multiple of %d (required for JPEG encoding)!",
-         info->geometry->h, info->vertical_decimation*16);
+         "Image height (%d) not multiple of 16 (required for JPEG encoding)!",
+         info->geometry->h);
       return 0;
    }
 
-   settings->width = info->geometry->w / info->horizontal_decimation;
-   settings->height = info->geometry->h / info->vertical_decimation;
+   settings->width = info->geometry->w;
+   settings->height = info->geometry->h;
 
-   if (info->geometry->x == VALUE_NOT_FILLED)
-      info->geometry->x = (vc.maxwidth - info->geometry->w)/2;
-   if (info->geometry->y == VALUE_NOT_FILLED)
-      info->geometry->y = ((info->video_norm==1?480:576)-info->geometry->h)/2;
-
-   /* now, set the h/w/x/y to what they will *really* be */
-   info->geometry->w /= info->horizontal_decimation;
-   info->geometry->x /= info->horizontal_decimation;
-   info->geometry->h /= info->vertical_decimation;
-   info->geometry->y /= info->vertical_decimation;
-
-   if (info->vertical_decimation == 1)
-      settings->interlaced = LAV_INTER_TOP_FIRST;
+   if (info->geometry->h > (info->video_norm==1?320:384))
+      settings->interlaced = LAV_INTER_TOP_FIRST; /* all interlaced BT8x8 capture seems top-first ?? */
    else
-      settings->interlaced = LAV_NOT_INTERLACED; /* VERY doubtable - just a guess for now (yikes!) */
+      settings->interlaced = LAV_NOT_INTERLACED;
 
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Image size will be %dx%d, %d field(s) per buffer",
@@ -1025,6 +1016,7 @@ static int lavrec_software_init(lavrec_t *info)
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Created %ld MJPEG-buffers of size %ld KB",
       settings->breq.count, settings->breq.size/1024);
+
 #if 0
    /* set up thread */
    pthread_mutex_init(&(settings->valid_mutex), NULL);
@@ -1041,6 +1033,7 @@ static int lavrec_software_init(lavrec_t *info)
       return 0;
    }
 #endif
+
    return 1;
 }
 
@@ -1323,7 +1316,7 @@ static int lavrec_init(lavrec_t *info)
    }
 
    /* set channel if we're tuning */
-   if (info->video_src == 2 && info->tuner_frequency)
+   if ((info->video_src == 2 || info->software_encoding) && info->tuner_frequency)
    {
       unsigned long outfreq;
       outfreq = info->tuner_frequency*16/1000;
@@ -1338,7 +1331,7 @@ static int lavrec_init(lavrec_t *info)
    /* Set up tuner audio if this is a tuner. I think this should be done
     * AFTER the tuner device is selected
     */
-   if (info->video_src == 2) 
+   if (info->video_src == 2 || info->software_encoding) 
    {
       struct video_audio vau;
 
@@ -1535,17 +1528,13 @@ static void lavrec_record(lavrec_t *info)
    struct mjpeg_sync bsync;
    struct timeval audio_tmstmp;
 
-   /* until the threads work - we need this */
-   unsigned char *yuv_endbuff[3];
-   unsigned char *YUV;
-
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    settings->stats = &stats;
 
    /* Queue all buffers, this also starts streaming capture */
    if (info->software_encoding)
    {
-	   frame_cnt = 1;
+      frame_cnt = 1;
       if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
       {
          lavrec_msg(LAVREC_MSG_WARNING, info,
@@ -1554,18 +1543,7 @@ static void lavrec_record(lavrec_t *info)
       }
       settings->mm.width = settings->width;
       settings->mm.height = settings->height;
-      settings->mm.format = VIDEO_PALETTE_YUV422; /* UYVY, only format supported by the zoran-driver */
-      /* until the threads work, we need this */
-      yuv_endbuff[0] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
-      yuv_endbuff[1] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-      yuv_endbuff[2] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-
-      if (!yuv_endbuff[0] || !yuv_endbuff[1] || !yuv_endbuff[2])
-      {
-         lavrec_msg (LAVREC_MSG_ERROR, info,
-            "Malloc error, you\'re probably out of memory");
-         lavrec_change_state(info, LAVREC_STATE_STOP);
-      }
+      settings->mm.format = VIDEO_PALETTE_YUV420P;
    }
    for (frame_cnt=0; 
 		frame_cnt<(info->software_encoding?settings->softreq.frames:settings->breq.count);
@@ -1688,33 +1666,13 @@ static void lavrec_record(lavrec_t *info)
             pthread_cond_broadcast(&(settings->buffer_filled[settings->mm.frame]));
             pthread_mutex_unlock(&(settings->valid_mutex));
 #endif
-            /* until the threads work, we need this */
-            /* move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
-            YUV = settings->YUV_buff + (settings->softreq.offsets[bsync.frame]);
-
-            /* sit down for this - it's really easy except if you try to understand it :-) */
-            for (x=0;x<settings->width;x++)
-               if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
-                  for (y=0;y<settings->height;y++)
-                     if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
-                        yuv_endbuff[0][(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
-                           YUV[(y*settings->width+x)*2];
-
-            for (x=0;x<settings->width/2;x++)
-               if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
-                  for (y=0;y<settings->height/2;y++)
-                     if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
-                     {
-                        yuv_endbuff[1][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                           YUV[(y*settings->width+x)*4 + 1];
-                        yuv_endbuff[2][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                           YUV[(y*settings->width+x)*4 + 3];
-                     }
 
             jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
                settings->breq.size, info->quality, settings->interlaced,
                CHROMA420, info->geometry->w, info->geometry->h,
-               yuv_endbuff[0], yuv_endbuff[1], yuv_endbuff[2]);
+               settings->YUV_buff,
+               settings->YUV_buff+(info->geometry->w*info->geometry->h),
+               settings->YUV_buff+(info->geometry->w*info->geometry->h*5/4));
             if (jpegsize<0)
             {
                lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1722,16 +1680,19 @@ static void lavrec_record(lavrec_t *info)
                lavrec_change_state(info, LAVREC_STATE_STOP);
             }
          }
-         //else
-         //{
+#if 0
+         else
+         {
+#endif
             if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
                info->software_encoding?jpegsize:bsync.length, nfout) != 1)
                nerr++; /* Done or error occured */
-         //}
+#if 0
+         }
+#endif
       }
 
       /* Re-queue the buffer */
-      //if (!info->software_encoding)
       if (!lavrec_queue_buffer(info, &(bsync.frame)))
       {
          if (info->files)
@@ -1891,7 +1852,7 @@ static void *lavrec_capture_thread(void *arg)
       lavrec_set_mixer(info, 0);
 
    /* Re-mute tuner audio if this is a tuner */
-   if (info->video_src == 2) {
+   if (info->video_src == 2 || info->software_encoding) {
       struct video_audio vau;
          
       lavrec_msg(LAVREC_MSG_INFO, info,

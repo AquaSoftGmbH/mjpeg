@@ -40,12 +40,12 @@
  *      in horizontal and vertical direction (mostly used) or a
  *      two digit letter with the first digit specifying horizontal
  *      decimation and the second digit specifying vertical decimation
- *      (more exotic usages).
+ *      (more exotic usages). Not supported for BTTV.
  *
  *   -g/--geometry WxH+X+Y --- An X-style geometry string (capturing area):
  *      Even if a decimation > 1 is used, these values are always
  *      coordinates in the undecimated frame.  
- *                For DC10: 768x{576 or 480}.
+ *                For DC10: 768/640x{576 or 480}.
  *                For others: 720x{576 or 480}.
  *      Also, unlike in X-Window, negative values for X and Y
  *      really mean negative offsets (if this feature is enabled
@@ -58,6 +58,10 @@
  *
  *      If not offset (X and Y values) is given, the capture area
  *      is centered in the frame.
+ *
+ *      For BTTV-capuring (--software-encoding), X and Y are omitted
+ *      and W and H are the video-capture-size (so decimation is omitted)
+ *      too). BTTV does not support subframe-capture.
  *
  *   -q/--quality num --- quality:
  *      must be between 0 and 100, default is 50
@@ -77,9 +81,9 @@
  *   -w/--wait --- Wait for user confirmation to start
  *
  *   -B/--batch --- Batch mode recording.  Minimal error logging, no
- *              interaction, works when output is redirected to files.
- *              Intended for use when doing unattended script-controlled
- *              recording.
+ *      interaction, works when output is redirected to files.
+ *      Intended for use when doing unattended script-controlled
+ *      recording.
  *
  *   --software-encoding --- encode frames in software-mode:
  *      Mainly intended to make it possible to use lavrec with BTTV
@@ -145,7 +149,7 @@
  *    LAV_AUDIO_DEV: Name of audio device (default: "/dev/dsp")
  *    LAV_MIXER_DEV: Name of mixer device (default: "/dev/mixer")
  *
- * To overcome the AVI (and ext2fs) 2 GB filesize limit, you can:
+ * To overcome the AVI (and linux-2.2 ext2fs) 2 GB filesize limit, you can:
  *   - give multiple filenames on the command-line
  *   - give one filename which contains a '%' sign. This name is then
  *     interpreted as the format argument to sprintf() to form multiple
@@ -1024,14 +1028,14 @@ static void lavrec_print_properties()
 		(info->video_format=='m'?"Movtar":"AVI"));
 	switch(input_source)
 	{
-		case 'p': source = "Composite PAL\n"; break;
+		case 'p': source = info->software_encoding?"BT8x8 PAL\n":"Composite PAL\n"; break;
 		case 'P': source = "S-Video PAL\n"; break;
-		case 'n': source = "Composite NTSC\n"; break;
+		case 'n': source = info->software_encoding?"BT8x8 NTSC\n":"Composite NTSC\n"; break;
 	        case 'N': source = "S-Video NTSC\n"; break;
-		case 's': source = "Composite SECAM\n"; break;
+		case 's': source = info->software_encoding?"BT8x8 SECAM\n":"Composite SECAM\n"; break;
 		case 'S': source = "S-Video SECAM\n"; break;
-		case 't': source = "PAL TV tuner\n"; break;
-		case 'T': source = "NTSC TV tuner\n"; break;
+		case 't': source = "PAL TV-tuner\n"; break;
+		case 'T': source = "NTSC TV-tuner\n"; break;
 		default:  source = "Auto detect\n";
 	}
 	mjpeg_info("Input Source:       %s\n", source);
