@@ -58,6 +58,14 @@ typedef struct _y4m_ratio {
   int d;  /* denominator */
 } y4m_ratio_t;
 
+/************************************************************************
+ *
+ * 'aspect_code' datatype for holding codes for common display (whole image)
+ * aspect ratios in the form used by MPEG2.
+ *
+ ***********************************************************************/
+
+typedef unsigned int mpeg_aspect_code_t;
 
 /************************************************************************
  *  useful standard framerates (as ratios)
@@ -77,6 +85,10 @@ extern const y4m_ratio_t y4m_fps_60;         /* 60fps                      */
  ************************************************************************/
 extern const y4m_ratio_t y4m_sar_UNKNOWN; 
 extern const y4m_ratio_t y4m_sar_SQUARE;        /* square pixels */
+extern const y4m_ratio_t y4m_sar_SQANA_16_9;    /* anamorphic 16:9
+												 * sampled from 4:3
+												 * with square
+												 * pixels */
 extern const y4m_ratio_t y4m_sar_NTSC_CCIR601;  /* 525-line (NTSC) Rec.601 */
 extern const y4m_ratio_t y4m_sar_NTSC_16_9;     /* 16:9 NTSC/Rec.601       */
 extern const y4m_ratio_t y4m_sar_NTSC_SVCD_4_3; /* NTSC SVCD 4:3           */
@@ -161,6 +173,13 @@ void y4m_ratio_reduce(y4m_ratio_t *r);
 
 /* parse "nnn:ddd" into a ratio (returns Y4M_OK or Y4M_ERR_RANGE) */
 int y4m_parse_ratio(y4m_ratio_t *r, const char *s);
+
+/* Guesses a sample aspect ratio for common image formats based on the
+   pixel grid dimensations and the original image aspect ratio
+*/
+
+y4m_ratio_t y4m_guess_sample_ratio(int width, int height, 
+								   mpeg_aspect_code_t image_aspect_code);
 
 /* quick test of two ratios for equality (i.e. identical components) */
 #define Y4M_RATIO_EQL(a,b) ( ((a).n == (b).n) && ((a).d == (b).d) )

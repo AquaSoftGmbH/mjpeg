@@ -186,7 +186,7 @@ int main(argc, argv)
 	memset(&bounds, 0, sizeof(LavBounds));
 
 	param.sar = y4m_sar_UNKNOWN;
-
+	param.dar_code = 2;
 	while ((n = getopt(argc, argv, "mYv:a:n:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
 		switch (n) {
 

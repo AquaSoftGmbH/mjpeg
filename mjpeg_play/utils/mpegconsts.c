@@ -25,7 +25,7 @@
 #include "mpegconsts.h"
 #include "yuv4mpeg.h"
 #include "yuv4mpeg_intern.h"
-
+#include <stdio.h>
 
 static y4m_ratio_t
 mpeg_framerates[] = {
@@ -259,7 +259,9 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
 							int frame_width, int frame_height)
 {
 	if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_UNKNOWN))
+    {
 		return 0;
+    }
 	switch (mpeg_version) {
 	case 1:
 		if (Y4M_RATIO_EQL(sampleaspect, y4m_sar_SQUARE))

@@ -48,6 +48,7 @@
 #define Y4M_SAR_SQUARE         {   1, 1  }
 #define Y4M_SAR_NTSC_CCIR601   {  10, 11 }
 #define Y4M_SAR_NTSC_16_9      {  40, 33 }
+#define Y4M_SAR_SQANA_16_9     {  4, 3   }
 #define Y4M_SAR_NTSC_SVCD_4_3  {  15, 11 }
 #define Y4M_SAR_NTSC_SVCD_16_9 {  20, 11 }
 #define Y4M_SAR_PAL_CCIR601    {  59, 54 }

@@ -472,9 +472,9 @@ void read_stream_params( int *hsize, int *vsize,
 			 int *interlacing_code,
 			 unsigned int *aspect_ratio_code)
 {
-   int i,n;
-   int num_xtags, ar_code;
-
+   int n;
+   int ar_code;
+   y4m_ratio_t sar;
    y4m_stream_info_t si;
 
    y4m_init_stream_info (&si);  
@@ -491,25 +491,11 @@ void read_stream_params( int *hsize, int *vsize,
    ar_code = 0;
    /* Deduce MPEG aspect ratio from stream's frame size and SAR...
       (always as an MPEG-2 code; that's what caller expects). */
-   ar_code = mpeg_guess_mpeg_aspect_code(2, y4m_si_get_sampleaspect(&si),
-					 *hsize, *vsize);
+   sar = y4m_si_get_sampleaspect(&si);
+   ar_code = mpeg_guess_mpeg_aspect_code(2, sar,
+                                         *hsize, *vsize);
    /* ...but an explicit xtag overrides the above guess... */
-
-   /* If an MPEG aspect ratio is known it is encoded as a xtag */
-   /* "M1AR" for MPEG1 aspect ratio (unused), "M2AR" for MPEG2 */
-   num_xtags =  y4m_xtag_count(y4m_si_xtags(&si));
-   for( i = 0; i < num_xtags; ++i )
-   {
-	   const char *tag = y4m_xtag_get(y4m_si_xtags(&si),i);
-	   if( strncmp(tag+1, "M2AR",4) == 0 )
-	   {
-		   ar_code = atoi(tag+5);
-		   break;
-	   }
-   }
-
    *aspect_ratio_code = ar_code;
-
 }
 
 

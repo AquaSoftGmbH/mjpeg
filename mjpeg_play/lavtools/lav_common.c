@@ -42,13 +42,12 @@ gint pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 uint8_t *previous_Y;
 
-void frame_YUV422_to_YUV420P(
-	uint8_t **output
-        , uint8_t *input
-        , int width
-        , int height
-        , LavParam *param
-        )
+void frame_YUV422_to_YUV420P( uint8_t **output
+							  , uint8_t *input
+							  , int width
+							  , int height
+							  , LavParam *param
+	)
 {
     int i,j,w2,w4;
     char *y, *u, *v, *inp, *ym;
@@ -488,44 +487,6 @@ int readframe(	int numframe,
 }
 
 
-/*
-   Take a wild guess at the SAR (sample aspect ratio) by checking the
-    frame width and height for common values.  
-   There is, of course, no way to tell a 16:9 anamorphic frame from a
-    good old 4:3 frame.  This function assumes a 'roughly' 4:3 intended
-    display aspect ratio.
-*/
-
-y4m_ratio_t guess_sar(int width, int height)
-{
-  if ((height > 470) && (height < 490)) {
-    if ((width > 700) && (width < 724))       /* 704x480 or 720x480 */
-      return y4m_sar_NTSC_CCIR601;
-    else if ((width > 630) && (width < 650))  /* 640x480 */
-      return y4m_sar_SQUARE;
-    else if ((width > 470) && (width < 490))  /* 480x480 */
-      return y4m_sar_NTSC_SVCD_4_3;
-  } else if ((height > 230) && (height < 250)) {
-    if ((width > 350) && (width < 362))       /* 352x240 or 360x240 */
-      return y4m_sar_NTSC_CCIR601;
-    else if ((width > 310) && (width < 330))
-      return y4m_sar_SQUARE;                  /* 320x240 */
-  } else if ((height > 565) && (height < 585)) {
-    if ((width > 700) && (width < 724))       /* 704x576 or 720x576 */
-      return y4m_sar_PAL_CCIR601;
-    else if ((width > 760) && (width < 780))  /* 768x576 */
-      return y4m_sar_SQUARE;
-    else if ((width > 470) && (width < 490))  /* 480x576 */
-      return y4m_sar_PAL_SVCD_4_3;
-  } else if ((height > 280) && (height < 300)) {
-    if ((width > 350) && (width < 362))       /* 352x288 */
-      return y4m_sar_PAL_CCIR601;
-    else if ((width > 380) && (width < 390))  /* 386x288 */
-      return y4m_sar_SQUARE;
-  }
-  return y4m_sar_UNKNOWN;
-}
-
 void writeoutYUV4MPEGheader(
 	int out_fd
 	, LavParam *param
@@ -558,15 +519,9 @@ void writeoutYUV4MPEGheader(
      /* no idea! ...eh, just guess. */
      mjpeg_warn("unspecified sample-aspect-ratio --- taking a guess...\n");
      y4m_si_set_sampleaspect(&stream_info,
-			     guess_sar(param->output_width,
-				       param->output_height));
-   }
-
-   if( param->dar_code != 0 )
-   {
-	   char buf[20];
-	   snprintf( buf, 19, "XM2AR%03d", param->dar_code );
-	   y4m_xtag_add( y4m_si_xtags(&stream_info), buf );
+							  y4m_guess_sample_ratio(param->output_width, 
+													 param->output_height,
+													 param->dar_code));
    }
 
    n = y4m_write_stream_header(out_fd, &stream_info);
