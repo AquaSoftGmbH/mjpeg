@@ -630,6 +630,7 @@ int audio_write(uint8_t *buf, int size, int swap)
  * The audio task
  */
 
+#ifdef HAVE_SYS_SOUNDCARD_H
 static void system_error(const char *str, int fd, int use_strerror)
 {
    if(use_strerror)
@@ -645,7 +646,7 @@ static void system_error(const char *str, int fd, int use_strerror)
 #else
 	  pthread_exit(NULL);
 #endif
-}
+#endif /* HAVE_SYS_SOUNDCARD_H */}
 
 #ifdef HAVE_SYS_SOUNDCARD_H
 void do_audio(void)
