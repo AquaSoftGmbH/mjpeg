@@ -40,10 +40,6 @@ reading DVD's (based on dxr2 code-base)?
 
 .) Scene change detection and dynamic GOP structure adjustment.
 
-.) Support for multiplexing DVD VOB streams.
-
 .) Support for parallel encoding on multi-CPU machines.
 
 .) Optimisation of	DCT/iDCT to avoid unnecessary transpositions?
-
-
