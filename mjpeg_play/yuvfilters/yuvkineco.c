@@ -619,6 +619,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  dthr += 15;		/* round up */
 	  dthr >>= 4;		/* /= 16 */
 	  dthr += dmin;
+	  dthr += h->u.noise.level0;
 	}
       }
       /* search frame to drop */
