@@ -128,7 +128,6 @@ class ElementaryStream : public InputStream,
 protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;
-
 	AUStream aunits;
     static const int FRAME_CHUNK = 4;
 public:
@@ -141,6 +140,9 @@ public:
 					  bool bufs_in_first, bool bufs_always,
 					  stream_kind kind
 					  );
+	virtual void Init( const char *input_file) = 0;
+	virtual void Close() = 0;
+
 	bool NextAU();
 	Aunit *Lookahead();
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
@@ -270,17 +272,6 @@ private:
 	
 }; 	
 
-#ifdef GAGAGAGA
-class VideoStream : public PictureStream
-{
-public:
-	VideoStream(OutputStream &into, const int stream_num) :
-		PictureStream( into, stream_num )
-		{}
-private:
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS ) = 0;
-};
-#endif
 
 class FrameIntervals
 {
@@ -332,7 +323,7 @@ class AudioStream : public ElementaryStream
 public:   
 	AudioStream(OutputStream &into, const int stream_num);
 
-	void Init(char *audio_file);
+	void Init(const char *audio_file);
 	void OutputSector();
 
 	void Close();

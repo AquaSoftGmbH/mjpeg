@@ -24,6 +24,7 @@ public:
 
 
 	void InitSyntaxParameters();
+	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
 
 	unsigned int PacketPayload(	MuxStream &strm,
 								bool buffers, bool PTSstamp, bool DTSstamp );
@@ -107,7 +108,6 @@ private:
 private:
 	void Init( char *multi_file );
 	
-	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
 
 	void NextPosAndSCR();
 	void SetPosAndSCR( bitcount_t bytepos );

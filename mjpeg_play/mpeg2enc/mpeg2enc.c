@@ -101,6 +101,9 @@ static int param_32_pulldown = 0;
 static int param_svcd_scan_data = 0;
 static int param_seq_hdr_every_gop = 0;
 static int param_seq_end_every_gop = 0;
+static int param_still_size = 40*1024;
+static int param_pad_stills_to_vbv_buffer_size = 0;
+static int param_vbv_buffer_still_size = 0;
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -278,6 +281,7 @@ void set_format_presets()
 		param_min_GOP_size = 6;
 		param_max_GOP_size = 18;
 		param_video_buffer_size = 230;
+
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
 		param_mpeg = 2;
@@ -295,9 +299,46 @@ void set_format_presets()
 		   to fill the frame-buffer in less than one PAL/NTSC frame
 		   period though...*/
 		param_bitrate = 8000000;
-		param_video_buffer_size = 46;
-		if( param_quant == 0 )
-			param_quant = 4;
+
+		/* Now we select normal/hi-resolution based on the input stream
+		   resolution. 
+		*/
+		
+		if( opt_horizontal_size == 352 && 
+			(opt_vertical_size == 240 || opt_vertical_size == 288 ) )
+		{
+			/* VCD normal resolution still */
+			if( param_still_size < 20*1024 || param_still_size > 42*1024 )
+			{
+				mjpeg_error_exit1( "VCD normal-resolution stills must be >= 20KB and <= 42KB each\n");
+			}
+			/* VBV delay encoded normally */
+			param_vbv_buffer_still_size = 46*1024;
+			param_video_buffer_size = 46;
+			param_pad_stills_to_vbv_buffer_size = 0;
+		}
+		else if( opt_horizontal_size == 704 &&
+				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
+		{
+			/* VCD high-resolution stills: only these use vbv_delay
+			 to encode picture size...
+			*/
+			if( param_still_size < 70*1024 || param_still_size > 210*1024 )
+			{
+				mjpeg_error_exit1( "VCD high-resolution stills should be > 70KB and must be <= 210KB each\n");
+			}
+
+			param_vbv_buffer_still_size = param_still_size;
+			param_video_buffer_size = 224;
+			param_pad_stills_to_vbv_buffer_size = 1;			
+		}
+		else
+		{
+			mjpeg_error("VCD normal resolution stills must be 352x288 (PAL) or 352x240 (NTSC)\n");
+			mjpeg_error_exit1( "VCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)\n");
+		}
+		param_quant = 0;		/* We want to try and hit our size target */
+		
 		param_seq_hdr_every_gop = 1;
 		param_seq_end_every_gop = 1;
 		param_min_GOP_size = 1;
@@ -418,12 +459,21 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpNhO?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpNhO?")) != EOF)
 	{
 		switch(n) {
 
 		case 'b':
 			param_bitrate = atoi(optarg)*1000;
+			break;
+
+		case 'T' :
+			param_still_size = atoi(optarg)*1024;
+			if( param_still_size < 20*1024 || param_still_size > 500*1024 )
+			{
+				mjpeg_error( "-T requires arg 20..500\n" );
+				++nerr;
+			}
 			break;
 
 		case 'B':
@@ -881,10 +931,13 @@ static void init_mpeg_parms(void)
 		mjpeg_error_exit1( "Generic format - must specify bit-rate!\n" );
 	}
 
-	if( param_format == MPEG_FORMAT_VCD_STILL )
+	opt_still_size = 0;
+	if( MPEG_STILLS_FORMAT(param_format) )
 	{
-		opt_vbv_buffer_code = 23;
+		opt_vbv_buffer_code = param_vbv_buffer_still_size / 2048;
+		opt_vbv_buffer_still_size = param_pad_stills_to_vbv_buffer_size;
 		opt_bit_rate = param_bitrate;
+		opt_still_size = param_still_size;
 	}
 	else if( param_mpeg == 1 )
 	{

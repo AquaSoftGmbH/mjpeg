@@ -106,6 +106,7 @@ static double T;
 
 static int64_t bitcnt_EOP = 0;
 static int gop_undershoot = 0;
+static int frame_overshoot_margin = 0;
 static int undershoot_carry;
 
 /*
@@ -117,9 +118,9 @@ static int undershoot_carry;
 */
 static double actsum;
 static double actcovered;
-double sum_avg_act = 0.0;
-double avg_act;
-double peak_act;
+static double sum_avg_act = 0.0;
+static double avg_act;
+
 
 static int Np, Nb;
 static int64_t S;
@@ -135,16 +136,16 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO EXPERIMENT */
-static double avg_KI = 2.5;	/* TODO: These values empirically determined 		*/
-static double avg_KB = 10.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
-static double avg_KP = 10.0;
+static double avg_KI = 5.0;	/* TODO: These values empirically determined 		*/
+static double avg_KB = 10.0*2.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KP = 10.0*2.0;
 #define K_AVG_WINDOW_I 4.0		/* TODO: MPEG-1, hard-wired settings */
 #define K_AVG_WINDOW_P   10.0
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
 
 static double SQ = 0.0;
-static double AQ = 0.0;
+static double sum_vbuf_Q = 0.0;
 
 
 /* Scaling and clipping of quantisation factors
@@ -153,7 +154,6 @@ static double AQ = 0.0;
    actual stream...
 */
 
-#ifdef REDUNDANT_BUT_MAY_COME_ION_HANDY
 
 static double scale_quantf( pict_data_s *picture, double quant )
 {
@@ -171,14 +171,21 @@ static double scale_quantf( pict_data_s *picture, double quant )
 		iquanth = iquantl+1;
 		/* clip to legal (linear) range */
 		if (iquantl<1)
+		{
 			iquantl = 1;
-		if (iquanth>112)
+			iquanth = 1;
+		}
+		
+		if (iquantl>111)
+		{
+			iquantl = 112;
 			iquanth = 112;
+		}
 		
 		quantf = (double)
 		  wl * (double)non_linear_mquant_table[map_non_linear_mquant[iquantl]] 
 			+ 
-		  wh * (double)non_linear_mquant_table[map_non_linear_mquant[iquantl]]
+		  wh * (double)non_linear_mquant_table[map_non_linear_mquant[iquanth]]
 			;
 	}
 	else
@@ -192,8 +199,6 @@ static double scale_quantf( pict_data_s *picture, double quant )
 	}
 	return quantf;
 }
-
-#endif
 
 static int scale_quant( pict_data_s *picture, double quant )
 {
@@ -238,11 +243,27 @@ void rc_init_seq(int reinit)
 	/* No bits unused from previous GOP....*/
 	R = 0;
 
+	/* If its stills with a size we have to hit then make the
+	   guesstimates of for initial quantisation pessimistic...
+	*/
+	if( opt_still_size > 0 )
+	{
+		avg_KI *= 1.5;
+	}
+
 	/* Everything else already set or adaptive */
 	if( reinit )
 		return;
 
-    undershoot_carry = ctl_video_buffer_size / 5;
+	/* If its stills with a size we have to hit then make then
+	   we have to pad every byte undershot...
+	*/
+	if( opt_vbv_buffer_still_size )
+	{
+		undershoot_carry = 0;
+	}
+	else
+		undershoot_carry = ctl_video_buffer_size / 5;
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
@@ -255,8 +276,6 @@ void rc_init_seq(int reinit)
 	Ki = 1.2;
 	Kb = 1.4;
 	Kp = 1.1;
-
-
 
 	/* Heuristic: In constant bit-rate streams we assume buffering
 	   will allow us to pre-load some (probably small) fraction of the
@@ -272,8 +291,8 @@ void rc_init_seq(int reinit)
 	Xi = 1500*mb_per_pict;   /* Empirically derived values */
 	Xp = 550*mb_per_pict;
 	Xb = 170*mb_per_pict;
-	d0i = -1;				/* Force initial Quant prediction */
-	d0pb = -1;
+	d0i = 0;					/* Force initial quuantisation to be */
+	d0pb = 0;					/* predice from image complexity */
 
 
 #ifdef OUTPUT_STAT
@@ -293,9 +312,14 @@ static double T_sum;
 
 void rc_init_GOP(int np, int nb)
 {
-	/* TODO This will be very stingy for stills as they can be VBR */
-	double per_gop_bits = 
-		(double)(1 + np + nb) * opt_bit_rate / opt_frame_rate;
+	double per_gop_bits;
+
+	if( opt_still_size > 0)		/* > 0 means encode a stills stream */
+	{
+		per_gop_bits = opt_still_size * 8;
+	}
+	else
+		per_gop_bits = 	(double)(1 + np + nb) * opt_bit_rate / opt_frame_rate;
 
 	/* A.Stevens Aug 2000: at last I've found the wretched
 	   rate-control overshoot bug...  Simply "topping up" R here means
@@ -379,7 +403,7 @@ void rc_init_pict(pict_data_s *picture)
 	avg_act = (double)actsum/(double)(mb_per_pict);
 	sum_avg_act += avg_act;
 	actcovered = 0.0;
-
+	sum_vbuf_Q = 0.0;
 	/* Allocate target bits for frame based on frames numbers in GOP
 	   weighted by:
 	   - global complexity averages
@@ -415,23 +439,24 @@ void rc_init_pict(pict_data_s *picture)
 
 		d = d0i;
 		avg_K = avg_KI;
-		Si = (Xi + 3.0*avg_K*actsum)/4.0;
+		Si = avg_K*actsum; /* TODO TEST (Xi + 3.0*avg_K*actsum)/4.0;*/
 		T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 
 		break;
 	case P_TYPE:
 		d = d0pb;
 		avg_K = avg_KP;
-		Sp = (Xp + avg_K*actsum) / 2.0;
+		Sp = avg_K * actsum; /* TODO TEST: (Xp + avg_K*actsum) / 2.0; */
 		T =  R/(Np+Nb*Kp*Xb/(Kb*Sp)) + 0.5;
 		break;
 	case B_TYPE:
 		d = d0pb;            // B and P frame share ratectl virtual buffer
 		avg_K = avg_KB;
-		Sb = Xb;
+		Sb = avg_K * actsum; /* TODO TEST: Xb; */
 		T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
 		break;
 	}
+
 
 	/* Undershot bits have been "returned" via R */
 	if( d < 0 )
@@ -446,18 +471,36 @@ void rc_init_pict(pict_data_s *picture)
 		T = 4000.0;
 	}
 
+	if( opt_still_size > 0 && opt_vbv_buffer_still_size )
+	{
+		/* If stills size must match then target low to ensure no
+		   overshoot.
+		*/
+		frame_overshoot_margin = (int)(T/16.0);
+		T -= frame_overshoot_margin;
+	}
+
+		
+
 	T_sum += T;
-	target_Q = scale_quant(picture, 
-						   avg_K * avg_act *(mb_per_pict) / T);
+	target_Q = scale_quantf(picture, 
+							avg_K * avg_act *(mb_per_pict) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
 	picture->avg_act = avg_act;
 	picture->sum_avg_act = sum_avg_act;
+
+	/*  If guesstimated target quantisation requirement is much bigger
+		than that suggested by the virtual buffer we reset the virtual
+		buffer to set the guesstimate as initial quantisation.
+
+		This effectively speeds up makes rate control response
+		on initialisation or after very heavy undershooting where the
+		virtual buffers probably don't give useful information.
+	*/
+
 	
-	if ( current_Q < 3 && target_Q > 12 )
+	if ( 62.0*d / r  < target_Q / 4.0  )
 	{
-		/* We're undershooting and a serious surge in the data_flow
-		   due to lagging adjustment is possible...
-		*/
 		d = (int) (target_Q * r / 62.0);
 	}
 
@@ -540,6 +583,7 @@ void rc_update_pict(pict_data_s *picture)
 {
 	double X;
 	double K;
+	double AQ;
 	int64_t AP,PP;		/* Actual and padded picture bit counts */
 	int    i;
 	int    Qsum;
@@ -548,6 +592,22 @@ void rc_update_pict(pict_data_s *picture)
 	
 	AP = bitcount() - S;
 	frame_overshoot = (int)AP-(int)T;
+
+	/* Warn if it looks like we've busted the safety margins in stills
+	   size specification.  Adjust padding to account for safety
+	   margin if we're padding to suit stills whose size has to be
+	   specified in advance in vbv_buffer_size.
+	*/
+
+	if( opt_still_size > 0 && opt_vbv_buffer_still_size)
+	{
+		if( frame_overshoot > frame_overshoot_margin )
+		{
+			mjpeg_warn( "Rate overshoot: hi-res still %d bytes too large! \n", 
+						((int)AP)/8-opt_still_size);
+		}
+		frame_overshoot -= frame_overshoot_margin;
+	}
 
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot that counts, not what's left after padding
@@ -572,6 +632,9 @@ void rc_update_pict(pict_data_s *picture)
 		}
 		else
 		{
+			if( opt_still_size > 0 )
+				mjpeg_debug( "Padding still to size: %d extra bytes\n",
+							 padding_bytes );
 			picture->pad = 1;
 			alignbits();
 			for( i = 0; i < padding_bytes/2; ++i )
@@ -609,9 +672,12 @@ void rc_update_pict(pict_data_s *picture)
 	   padding too!
 	*/
 	SQ += AQ;
-	X = (double)AP*(AQ/2.0);
 	
-	K = X / actsum;
+	/* AQ is good for X but too coarse for computing K due to
+	   quantisation of mquant */
+	/*TODO TEST: X = (double)AP*AQ;*/
+	X = AP * sum_vbuf_Q / mb_per_pict;
+	K = AP * sum_vbuf_Q / (mb_per_pict*actsum);
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
@@ -630,31 +696,32 @@ void rc_update_pict(pict_data_s *picture)
 
 	*/
 	
-	/* Xi are used as a guesstimate of *typical* frame
-	   activities based on the past.  Thus we don't want anomalous outliers
-	   due to scene changes swinging things too much (this is handled
-	   by the predictive complexity measure stuff) so we use moving
-	   averages.
-	   The weightings are intended so all 3 averages have similar real-time
-	   decay periods based on an assumption of 20-30Hz frame rates.
+	/* Xi are used as a guesstimate of *typical* frame activities
+	   based on the past.  Thus we don't want anomalous outliers due
+	   to scene changes swinging things too much (this is handled by
+	   the predictive complexity measure stuff) so we use moving
+	   averages.  The weightings are intended so all 3 averages have
+	   similar real-time decay periods based on an assumption of
+	   20-30Hz frame rates.
 	*/
+
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
 		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		d0i = d;
-		Xi = (X + 3.0*Xi)/4.0;
+		Xi = (X + 2.0*Xi)/3.0;
 		break;
 	case P_TYPE:
 		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
 		d0pb = d;
-		Xp = (X + Xp*12.0)/13.0;
+		Xp = (X + Xp*10.0)/11.0;
 		Np--;
 		break;
 	case B_TYPE:
 		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
 		d0pb = d;
-		Xb = (X + Xb*24.0)/25.0;
+		Xb = (X + Xb*20.0)/21.0;
 		Nb--;
 		break;
 	}
@@ -742,7 +809,8 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	N_actj =  ( actj < avg_act || picture->pict_type == B_TYPE ) ? 
 		1.0 : 
 		(actj + ctl_act_boost*avg_act)/(ctl_act_boost*actj +  avg_act);
-   
+
+	sum_vbuf_Q += scale_quantf(picture,Qj*N_actj);
 	mquant = scale_quant(picture,Qj*N_actj);
 
 
@@ -964,7 +1032,7 @@ void calc_vbv_delay(pict_data_s *picture)
 		picture->vbv_delay = 65535;
 	}
 #else
-	if( !opt_mpeg1 || ctl_quant_floor != 0)
+	if( !opt_mpeg1 || ctl_quant_floor != 0 || opt_still_size > 0)
 		picture->vbv_delay =  0xffff;
 	else 
 		picture->vbv_delay =  90000.0/opt_frame_rate/4;

@@ -1,10 +1,9 @@
 TODO
 
-- See if audio and video OutputSector routines can be telescoped.
-
-- Update VCD to VCD2.0 (SVCD style access sectors).
-
-- Replace despatch loop.
+- Rebuild initial delay / sequence splitting DTS adjustment stuff so
+	different streams can have different starting delays based on
+	*stream* parameters.  I.e. delay should be delegated to the elementary
+	streams with only a sector_prefix offset set centrally.
 
 - Add basic DVD support ( needs predecessor really).
 

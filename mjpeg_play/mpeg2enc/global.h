@@ -328,6 +328,7 @@ EXTERN const uint8_t dummy_svcd_scan_data[14]
 ;
 
 
+
 EXTERN const char *statname
 #ifdef GLOBAL
  = "mpeg2enc.stat"
@@ -364,10 +365,20 @@ EXTERN int opt_dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double opt_frame_rate;		/* frames per second */
 EXTERN double opt_bit_rate;			/* bits per second */
 EXTERN int opt_seq_hdr_every_gop;
-EXTERN int opt_seq_end_every_gop;   /* Useful for Stills sequences... */
+EXTERN int opt_seq_end_every_gop;   /* Useful for Stills
+									 * sequences... */
 EXTERN int opt_svcd_scan_data;
-EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (* 16 kbit) */
+EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (*
+									  * 16 kbit) */
 EXTERN double opt_vbv_buffer_size;
+EXTERN int opt_still_size;		     /* If non-0 encode a stills
+									  * sequence: 1 I-frame per
+									  * sequence pseudo VBR. Each
+									  * frame sized to opt_still_size
+									  * KB */
+EXTERN int opt_vbv_buffer_still_size;  /* vbv_buffer_size holds still
+										  size.  Ensure still size
+										  matches. */
 
 EXTERN int opt_constrparms;         /* constrained parameters flag (MPEG-1 only) */
 EXTERN int opt_load_iquant, 
@@ -444,7 +455,8 @@ EXTERN int ctl_seq_length_limit;
 EXTERN double ctl_nonvid_bit_rate;	/* Bit-rate for non-video to assume for
 								   sequence splitting calculations */
 
-EXTERN double ctl_quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
+EXTERN double ctl_quant_floor;    /* quantisation floor [1..10] (0 for
+										 * CBR) */
 
 
 EXTERN double ctl_act_boost;		/* Quantisation reduction for highly active blocks */

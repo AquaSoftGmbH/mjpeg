@@ -263,9 +263,10 @@ void VideoStream::Init (const char *video_file )
 	AU_pict_data = 0;
 	AU_start = 0LL;
 
-	FillAUbuffer(FRAME_CHUNK);
     OutputSeqhdrInfo();
-	(void)NextAU();
+	//TODO: Delete 
+	//FillAUbuffer(FRAME_CHUNK);
+	//(void)NextAU();
 }
 
 
@@ -453,8 +454,8 @@ void VideoStream::Close()
 	
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
-	mjpeg_info ("\nVIDEO_STATISTICS: %02x\n", stream_id); 
-    mjpeg_info ("Video Stream length: %11llu\n",stream_length);
+	mjpeg_info ("VIDEO_STATISTICS: %02x\n", stream_id); 
+    mjpeg_info ("Video Stream length: %11llu bytes\n",stream_length/8);
     mjpeg_info ("Sequence headers: %8u\n",num_sequence);
     mjpeg_info ("Sequence ends   : %8u\n",num_seq_end);
     mjpeg_info ("No. Pictures    : %8u\n",num_pictures);
@@ -577,9 +578,14 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 {
 	clockticks interval = static_cast<clockticks>
 		(intervals->NextFrameInterval() * CLOCKS);
-	DTS = current_PTS + 1200;	// This frame decoded just after
-	                            // Predecessor completed.
-	PTS = current_PTS + interval;
+	clockticks time_for_xfer;
+	muxinto.ByteposTimecode( 
+		static_cast<bitcount_t>(vbv_buffer_size * (2048*8)),
+		time_for_xfer );
+		
+	DTS = current_PTS + time_for_xfer;	// This frame decoded just after
+	                                    // Predecessor completed.
+	PTS = current_PTS + time_for_xfer + interval;
 	current_PTS = PTS;
 	current_DTS = DTS;
 }
@@ -591,7 +597,7 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 *************************************************************************/
 
 
-void AudioStream::Init (char *audio_file)
+void AudioStream::Init (const char *audio_file)
 
 {
     unsigned int i;
@@ -649,8 +655,8 @@ void AudioStream::Init (char *audio_file)
     }
 
 
-	FillAUbuffer(FRAME_CHUNK);
-	(void)NextAU();
+	//FillAUbuffer(FRAME_CHUNK);
+	//(void)NextAU();
 	OutputHdrInfo();
 }
 
@@ -759,8 +765,8 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 void AudioStream::Close()
 {
     stream_length = AU_start >> 3;
-	mjpeg_info ("\nAUDIO_STATISTICS: %02x\n", stream_id); 
-    mjpeg_info ("Audio stream length %lld.\n",AU_start);
+	mjpeg_info ("AUDIO_STATISTICS: %02x\n", stream_id); 
+    mjpeg_info ("Audio stream length %lld bytes.\n", stream_length);
     mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
     mjpeg_info   ("Frames         : %8u padded\n",  num_frames[0]);
     mjpeg_info   ("Frames         : %8u unpadded\n", num_frames[1]);

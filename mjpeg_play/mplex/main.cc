@@ -96,8 +96,6 @@ int main (int argc, char* argv[])
 		ostrm.OutputMultiplex( video_file ? &videoStrm : NULL, 
 							   audio_file ? &audioStrm : NULL, 
 							   multi_file);
-		videoStrm.Close();
-		audioStrm.Close();
 	}
     return (0);	
 }

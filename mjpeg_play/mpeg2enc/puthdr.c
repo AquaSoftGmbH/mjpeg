@@ -74,7 +74,7 @@ void putseqhdr()
 	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
 	   sent 
 	*/
-	if(opt_mpeg1 && ctl_quant_floor != 0) {
+	if(opt_mpeg1 && (ctl_quant_floor != 0 || opt_still_size > 0) ) {
 		putbits(-1,18);
 	} else {
 		putbits((int)ceil(opt_bit_rate/400.0),18); /* bit_rate_value */
