@@ -38,19 +38,18 @@
 #include <string.h>
 #include <math.h>
 #include <signal.h>
+#include "mjpeg_types.h"
 #include "lav_io.h"
 #include "editlist.h"
 #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
-#include "inttypes.h"
 #include "yuvscaler.h"
 #include "mpegconsts.h"
 // #include "config.h"
 #include "attributes.h"
 #include "../utils/mmx.h"
 #include "../utils/yuv4mpeg.h"
-
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
 // For pointer adress alignement
@@ -59,7 +58,6 @@
 // For input
 unsigned int input_width;
 unsigned int input_height;
-y4m_ratio_t  input_sar; // see yuv4mpeg.h and yuv4mpeg_intern.h for possible values
 unsigned int input_useful = 0;	// =1 if specified
 unsigned int input_useful_width = 0;
 unsigned int input_useful_height = 0;
@@ -93,7 +91,6 @@ unsigned int display_width;
 unsigned int display_height;
 unsigned int output_width;
 unsigned int output_height;
-y4m_ratio_t  output_sar; // see yuv4mpeg.h and yuv4mpeg_intern.h for possible values
 unsigned int output_active_width;
 unsigned int output_active_height;
 unsigned int output_black_line_above = 0;
@@ -180,7 +177,7 @@ unsigned long int diviseur;
 uint8_t *divide;
 unsigned short int *u_i_p;
 unsigned int out_nb_col_slice, out_nb_line_slice;
-static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
+const static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
 int verbose = 1;
 #define PARAM_LINE_MAX 256
 
@@ -197,6 +194,33 @@ long int max_lint_neg = -2147483647;	// maximal negative number available for lo
 int mmx = 0;			// =1 for mmx activated
 #endif
 
+
+
+/* 
+   calculate the sample aspect ratio (SAR) for the output stream,
+    given the input->output scale factors, and the input SAR.
+*/
+static y4m_ratio_t calculate_output_sar(int out_w, int out_h,
+                                        int in_w,  int in_h,
+                                        y4m_ratio_t in_sar)
+{
+  if (Y4M_RATIO_EQL(in_sar, y4m_sar_UNKNOWN)) {
+    return y4m_sar_UNKNOWN;
+  } else {
+    y4m_ratio_t out_sar;
+    /*
+      out_SAR_w     in_SAR_w    input_W   output_H
+      ---------  =  -------- *  ------- * --------
+      out_SAR_h     in_SAR_h    input_H   output_W
+    */
+    out_sar.n = in_sar.n * in_w * out_h;
+    out_sar.d = in_sar.d * in_h * out_w;
+    y4m_ratio_reduce(&out_sar);
+    return out_sar;
+  }
+}
+
+
 // *************************************************************************************
 int
 my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
@@ -211,7 +235,7 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	{
 	  if ((err = y4m_read (fd, buf, buflen)) != Y4M_OK)
 	    {
-	      mjpeg_info ("yuvscaler: Couldn't read FRAME content: %s!\n",
+	      mjpeg_info ("Couldn't read FRAME content: %s!\n",
 			  y4m_strerr (err));
 	      return (err);
 	    }
@@ -225,14 +249,14 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      buf += input_width;	// buf points to next line on output, store input line there
 	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
-		  mjpeg_info ("yuvscaler: Couldn't read FRAME content line %d : %s!\n",
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line, y4m_strerr (err));
 		  return (err);
 		}
 	      buf -= input_width;	// buf points to former line on output, store input line there
 	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
-		  mjpeg_info ("yuvscaler: Couldn't read FRAME content line %d : %s!\n",
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line + 1, y4m_strerr (err));
 		  return (err);
 		}
@@ -244,14 +268,14 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	      buf += input_width / 2;	// buf points to next line on output, store input line there
 	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
-		  mjpeg_info ("yuvscaler: Couldn't read FRAME content line %d : %s!\n",
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line, y4m_strerr (err));
 		  return (err);
 		}
 	      buf -= input_width / 2;	// buf points to former line on output, store input line there
 	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
-		  mjpeg_info ("yuvscaler: Couldn't read FRAME content line %d : %s!\n",
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line + 1, y4m_strerr (err));
 		  return (err);
 		}
@@ -262,9 +286,9 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
   else
     {
       if (err != Y4M_ERR_EOF)
-	mjpeg_info ("yuvscaler: Couldn't read FRAME header: %s!\n", y4m_strerr (err));
+	mjpeg_info ("Couldn't read FRAME header: %s!\n", y4m_strerr (err));
       else
-	mjpeg_info ("yuvscaler: End of stream!\n");
+	mjpeg_info ("End of stream!\n");
       return (err);
     }
   return Y4M_OK;
@@ -726,17 +750,17 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("yuvscaler: VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm\n");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
-		  mjpeg_info ("yuvscaler: VCD output format requested in NTSC norm\n");
+		  mjpeg_info ("VCD output format requested in NTSC norm\n");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("yuvscaler: No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 
 	    }
 	  if (strcmp (optarg, SVCD_KEYWORD) == 0)
@@ -748,17 +772,17 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("yuvscaler: SVCD output format requested in PAL/SECAM norm\n");
+		    ("SVCD output format requested in PAL/SECAM norm\n");
 		  display_height = 576;
 		}
 	      else if (norm == 1)
 		{
-		  mjpeg_info ("yuvscaler: SVCD output format requested in NTSC norm\n");
+		  mjpeg_info ("SVCD output format requested in NTSC norm\n");
 		  display_height = 480;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("yuvscaler: No norm specified, cannot determine SVCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine SVCD output size. Please use the -n option!\n");
 	    }
 	  if (strncmp (optarg, SIZE_KEYWORD, 5) == 0)
 	    {
@@ -774,12 +798,12 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("yuvscaler: Unconsistent SIZE keyword, not multiple of 2: %s\n",
+		      ("Unconsistent SIZE keyword, not multiple of 2: %s\n",
 		       optarg);
 		  // A second check will eventually be done when output interlacing is finally known
 		}
 	      else
-		mjpeg_error_exit1 ("yuvscaler: Uncorrect SIZE keyword: %s\n", optarg);
+		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s\n", optarg);
 	    }
 	  if (strcmp (optarg, TOP_FIRST) == 0)
 	    {
@@ -877,7 +901,7 @@ handle_args_dependent (int argc, char *argv[])
 		  output_height_slice = ui4;
 		}
 	      if (ratio == 0)
-		mjpeg_error_exit1 ("yuvscaler: Unconsistent RATIO keyword: %s\n",
+		mjpeg_error_exit1 ("Unconsistent RATIO keyword: %s\n",
 				   optarg);
 	    }
 
@@ -896,17 +920,17 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("yuvscaler: VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm\n");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
-		  mjpeg_info ("yuvscaler: VCD output format requested in NTSC norm\n");
+		  mjpeg_info ("VCD output format requested in NTSC norm\n");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("yuvscaler: No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 	    }
 
 	  if (strcmp (optarg, WIDE2VCD) == 0)
@@ -919,17 +943,17 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("yuvscaler: VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm\n");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
-		  mjpeg_info ("yuvscaler: VCD output format requested in NTSC norm\n");
+		  mjpeg_info ("VCD output format requested in NTSC norm\n");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("yuvscaler: No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 	    }
 
 	  if (strcmp (optarg, FASTVCD) == 0)
@@ -946,21 +970,21 @@ handle_args_dependent (int argc, char *argv[])
 	      if (norm == 0)
 		{
 		  mjpeg_info
-		    ("yuvscaler: VCD output format requested in PAL/SECAM norm\n");
+		    ("VCD output format requested in PAL/SECAM norm\n");
 		  display_height = 288;
 		}
 	      else if (norm == 1)
 		{
-		  mjpeg_info ("yuvscaler: VCD output format requested in NTSC norm\n");
+		  mjpeg_info ("VCD output format requested in NTSC norm\n");
 		  display_height = 240;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("yuvscaler: No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 	    }
 
 	  if (mode == 0)
-	    mjpeg_error_exit1 ("yuvscaler: Uncorrect mode keyword: %s\n", optarg);
+	    mjpeg_error_exit1 ("Uncorrect mode keyword: %s\n", optarg);
 	  break;
 
 
@@ -995,35 +1019,37 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("yuvscaler: Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size\n",
+		      ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size\n",
 		       optarg);
 		  if (input_interlaced != Y4M_ILACE_NONE)
 		    {
 		      if ((input_useful_height % 4 != 0)
 			  || (input_discard_line_above % 4 != 0))
 			mjpeg_error_exit1
-			  ("yuvscaler: Unconsistent USE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
+			  ("Unconsistent USE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
 			   optarg);
 		    }
 
 		}
 	    }
-	  if (strcmp (optarg, TOP_FIRST) == 0)
-	    {
-	      input = 1;
-	      input_interlaced = Y4M_ILACE_TOP_FIRST;
-	    }
 
-	  if (strcmp (optarg, BOT_FIRST) == 0)
-	    {
-	      input = 1;
-	      input_interlaced = Y4M_ILACE_BOTTOM_FIRST;
-	    }
-	  if ((strcmp (optarg, NOT_INTER) == 0) || (strcmp (optarg, PROGRESSIVE) == 0))
-	    {
-	      input = 1;
-	      input_interlaced = Y4M_ILACE_NONE;
-	    }
+ 	  if (strcmp (optarg, TOP_FIRST) == 0)
+ 	    {
+ 	      input = 1;
+ 	      input_interlaced = Y4M_ILACE_TOP_FIRST;
+ 	    }
+  
+ 	  if (strcmp (optarg, BOT_FIRST) == 0)
+ 	    {
+ 	      input = 1;
+ 	      input_interlaced = Y4M_ILACE_BOTTOM_FIRST;
+ 	    }
+ 	  if ((strcmp (optarg, NOT_INTER) == 0) || (strcmp (optarg, PROGRESSIVE) == 0))
+ 	    {
+ 	      input = 1;
+ 	      input_interlaced = Y4M_ILACE_NONE;
+ 	    }
+
 	  if (strncmp (optarg, ACTIVE, 6) == 0)
 	    {
 	      input = 1;
@@ -1051,24 +1077,24 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("yuvscaler: Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size\n",
+		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size\n",
 		       optarg);
 		  if (input_interlaced != Y4M_ILACE_NONE)
 		    {
 		      if ((input_active_height % 4 != 0)
 			  || (input_black_line_above % 4 != 0))
 			mjpeg_error_exit1
-			  ("yuvscaler: Unconsistent ACTIVE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
+			  ("Unconsistent ACTIVE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
 			   optarg);
 		    }
 
 		}
 	      else
-		mjpeg_error_exit1 ("yuvscaler: Uncorrect input flag argument: %s\n",
+		mjpeg_error_exit1 ("Uncorrect input flag argument: %s\n",
 				   optarg);
 	    }
 	  if (input == 0)
-	    mjpeg_error_exit1 ("yuvscaler: Uncorrect input keyword: %s\n", optarg);
+	    mjpeg_error_exit1 ("Uncorrect input keyword: %s\n", optarg);
 	  break;
 
 	default:
@@ -1097,12 +1123,12 @@ handle_args_dependent (int argc, char *argv[])
       mjpeg_warn
         ("yuvscaler: Interlaced input frames will be downscaled to non-interlaced VCD frames\nIf quality is an issue, please consider deinterlacing input frames with yuvdenoise -I\n");
     }
-   else
+      else
      {
 	// Output may be of any kind of interlacing : svcd, size or simply same size as input
 	// First case: output interlacing type has not been specified. By default, same as input
-	if (output_interlaced == -1)
-	  output_interlaced = input_interlaced;
+  if (output_interlaced == -1)
+    output_interlaced = input_interlaced;
 	else 
 	  {
 	     // Second case: output interlacing has been specified and it is different from input => do necessary preprocessing
@@ -1134,7 +1160,7 @@ handle_args_dependent (int argc, char *argv[])
      field_move=1;
    if (field_move<0)
      field_move=-1;
-   
+
    // END OF Interlacing and line-switching
    
 	
@@ -1145,7 +1171,7 @@ handle_args_dependent (int argc, char *argv[])
 	  mjpeg_error_exit1
 	  ("yuvscaler: Unconsistent SIZE keyword, Height is not multiple of 4 but output interlaced!!");
      }
-   
+
   // Unspecified input variables specification
   if (input_useful_width == 0)
     input_useful_width = input_width;
@@ -1226,7 +1252,7 @@ handle_args_dependent (int argc, char *argv[])
   if ((output_active_width % 4 != 0) || (output_active_height % 4 != 0)
       || (display_width % 4 != 0) || (display_height % 4 != 0))
     mjpeg_error_exit1
-      ("yuvscaler: Output sizes are not multiple of 4! %ux%u, %ux%u being displayed\n",
+      ("Output sizes are not multiple of 4! %ux%u, %ux%u being displayed\n",
        output_active_width, output_active_height, display_width,
        display_height);
 
@@ -1302,60 +1328,51 @@ main (int argc, char *argv[])
   // SPECIFIC TO YUV4MPEG 
   unsigned long int nb_pixels;
   y4m_frame_info_t frameinfo;
-  y4m_stream_info_t streaminfo;
+  y4m_stream_info_t in_streaminfo;
+  y4m_stream_info_t out_streaminfo;
 
-  // Information output
   mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
 	      ") is a general scaling utility for yuv frames\n");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
   mjpeg_info ("yuvscaler -h for help, or man yuvscaler\n");
 
-  // Initialisation of global variables that are independent of the input stream, input_file in particular
   handle_args_global (argc, argv);
-   
-  // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
-  y4m_init_stream_info (&streaminfo);
+  y4m_init_stream_info (&in_streaminfo);
+  y4m_init_stream_info (&out_streaminfo);
   y4m_init_frame_info (&frameinfo);
 
-   
-  // ***************************************************************
-  // Get video stream informations (size, framerate, interlacing, aspect ratio).
-  // The streaminfo structure is filled in 
-  // ***************************************************************
+
   if (infile == 0)
     {
       // INPUT comes from stdin, we check for a correct file header
-      if (y4m_read_stream_header (0, &streaminfo) != Y4M_OK)
-	 mjpeg_error_exit1 ("yuvscaler: Could'nt read YUV4MPEG header!\n");
-      input_width = y4m_si_get_width (&streaminfo);
-      input_height = y4m_si_get_height (&streaminfo);
-      frame_rate = y4m_si_get_framerate (&streaminfo);
-      header_interlaced = input_interlaced = y4m_si_get_interlace (&streaminfo);
-      input_sar = y4m_si_get_sampleaspect (&streaminfo);
+      if (y4m_read_stream_header (0, &in_streaminfo) != Y4M_OK)
+        mjpeg_error_exit1 ("yuvscaler: Could'nt read YUV4MPEG header!\n");
+      input_width = y4m_si_get_width (&in_streaminfo);
+      input_height = y4m_si_get_height (&in_streaminfo);
+      frame_rate = y4m_si_get_framerate (&in_streaminfo);
+      header_interlaced = input_interlaced = y4m_si_get_interlace (&in_streaminfo);
+       
+//     input_aspectratio=streaminfo->aspectratio;  
     }
   else
     {
       // INPUT comes from FILES
-      read_video_files (filename, infile, &el,0);
+      read_video_files (filename, infile, &el, 0);
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
-	mjpeg_error_exit1 ("yuvscaler: Editlist not in chroma 422 format, exiting...\n");
+	mjpeg_error_exit1 ("Editlist not in chroma 422 format, exiting...\n");
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = mpeg_conform_framerate (el.video_fps);
       header_interlaced = input_interlaced = el.video_inter;
-      input_sar.n=el.video_sar_width;
-      input_sar.d=el.video_sar_height;
-      // Fill-in the streaminfo structure
-      y4m_si_set_width (&streaminfo, input_width);
-      y4m_si_set_height (&streaminfo, input_height); 
-      y4m_si_set_interlace (&streaminfo, header_interlaced);
-      y4m_si_set_framerate (&streaminfo, frame_rate);
-      y4m_si_set_sampleaspect (&streaminfo, input_sar);
-}
-  // ***************************************************************
-  
+      // this will be  eventually overrided by user's specification
+      y4m_si_set_width (&in_streaminfo, input_width);
+      y4m_si_set_height (&in_streaminfo, input_height);
+      y4m_si_set_interlace (&in_streaminfo, header_interlaced);
+      y4m_si_set_framerate (&in_streaminfo, frame_rate);
+      y4m_si_set_sampleaspect (&in_streaminfo, y4m_sar_UNKNOWN);
+    }
 
   // INITIALISATIONS
   // Norm determination from header (this has precedence over user's specification through the -n flag)
@@ -1366,7 +1383,7 @@ main (int argc, char *argv[])
   if (norm < 0)
     {
       mjpeg_warn
-	("yuvscaler: Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%d:%d fps)!!\n",
+	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%d:%d fps)!!\n",
 	 input_width, input_height, frame_rate.n, frame_rate.d);
     }
 
@@ -1384,7 +1401,7 @@ main (int argc, char *argv[])
 	{
 	  if (algorithm == 0)
 	    mjpeg_info
-	      ("yuvscaler: Resampling algorithm can only downscale, not upscale => switching to bicubic algorithm\n");
+	      ("Resampling algorithm can only downscale, not upscale => switching to bicubic algorithm\n");
 	  algorithm = 1;
 	}
       else
@@ -1393,7 +1410,7 @@ main (int argc, char *argv[])
 
   // USER'S INFORMATION OUTPUT
 
-  y4m_log_stream_info (LOG_INFO, "yuvscaler: ", &streaminfo);
+  y4m_log_stream_info (LOG_INFO, "yuvscaler input: ", &in_streaminfo);
   //  y4m_print_stream_info(output_fd,streaminfo);
 
   switch (input_interlaced)
@@ -1440,22 +1457,22 @@ main (int argc, char *argv[])
   switch (output_interlaced)
     {
     case Y4M_ILACE_NONE:
-      mjpeg_info ("yuvscaler: scale to %ux%u, %ux%u being displayed, %s/%s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
 		  output_active_width, output_active_height, display_width,
-		  display_height, NOT_INTER,PROGRESSIVE);
+		  display_height, NOT_INTER);
       break;
     case Y4M_ILACE_TOP_FIRST:
-      mjpeg_info ("yuvscaler: scale to %ux%u, %ux%u being displayed, %s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
 		  output_active_width, output_active_height, display_width,
 		  display_height, TOP_FIRST);
       break;
     case Y4M_ILACE_BOTTOM_FIRST:
-      mjpeg_info ("yuvscaler: scale to %ux%u, %ux%u being displayed, %s\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
 		  output_active_width, output_active_height, display_width,
 		  display_height, BOT_FIRST);
       break;
     default:
-      mjpeg_info ("yuvscaler: scale to %ux%u, %ux%u being displayed\n",
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
 		  output_active_width, output_active_height, display_width,
 		  display_height);
     }
@@ -1472,19 +1489,19 @@ main (int argc, char *argv[])
       mjpeg_error_exit1 ("yuvscaler: Unknown algorithm %d\n", algorithm);
     }
 
-   switch (line_switching)
-     {
-      case 0:
+  switch (line_switching)
+    {
+    case 0:
 	mjpeg_info ("without line switching, ");
-	break;
-      case 1:
+      break;
+    case 1:
 	mjpeg_info ("with line switching, ");
-	break;
-      default:
+      break;
+    default:
 	mjpeg_error_exit1 ("yuvscaler: Unknown line switching status: %d\n",
-			   line_switching);
-     }
-   
+			 line_switching);
+    }
+
    switch (field_move)
      {
       case 0:
@@ -1500,7 +1517,7 @@ main (int argc, char *argv[])
 	mjpeg_error_exit1 ("yuvscaler: Unknown time reordering  status: %d\n",
 			   field_move);
      }
-   
+
 
   if (black == 1)
     {
@@ -1531,18 +1548,18 @@ main (int argc, char *argv[])
   input_height_slice = input_useful_height / divider;
   output_height_slice = output_active_height / divider;
 #ifdef DEBUG
-  mjpeg_debug ("yuvscaler: divider,i_w_s,o_w_s = %d,%d,%d\n",
+  mjpeg_debug ("divider,i_w_s,o_w_s = %d,%d,%d\n",
 	       divider, input_height_slice, output_height_slice);
 #endif
 
   diviseur = input_height_slice * input_width_slice;
 #ifdef DEBUG
-  mjpeg_debug ("yuvscaler: Diviseur=%ld\n", diviseur);
+  mjpeg_debug ("Diviseur=%ld\n", diviseur);
 #endif
 
-  mjpeg_info ("yuvscaler: Scaling ratio for width is %u to %u\n", input_width_slice,
+  mjpeg_info ("Scaling ratio for width is %u to %u\n", input_width_slice,
 	      output_width_slice);
-  mjpeg_info ("yuvscaler: and is %u to %u for height\n", input_height_slice,
+  mjpeg_info ("and is %u to %u for height\n", input_height_slice,
 	      output_height_slice);
 
 
@@ -1726,7 +1743,7 @@ main (int argc, char *argv[])
 	  mjpeg_error_exit1 ("yuvscaler: Unknown line switching status: %d\n",
 			     line_switching);
 	}
-       
+
       switch (field_move)
 	{
 	case 0:
@@ -1916,11 +1933,11 @@ main (int argc, char *argv[])
 	  || !(mmx_res =
 	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
 	mjpeg_error_exit1
-	  ("yuvscaler: Could not allocate memory for mmx registers. STOP!\n");
+	  ("Could not allocate memory for mmx registers. STOP!\n");
 
-      mjpeg_info ("yuvscaler: Before alignement\n");
-      mjpeg_info ("yuvscaler: %p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
-      mjpeg_info ("yuvscaler: %u %u %u\n", (unsigned int) mmx_padded,
+      mjpeg_info ("Before alignement\n");
+      mjpeg_info ("%p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
+      mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
 		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
 
       // alignement instructions
@@ -2036,7 +2053,7 @@ main (int argc, char *argv[])
 	}
 
       if ((output_interlaced == Y4M_ILACE_NONE)
-	  || (input_interlaced == Y4M_ILACE_NONE)) 
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	 {
 	    if (!(padded_input =
 		  (uint8_t *) malloc ((input_useful_width + 3) *
@@ -2208,16 +2225,23 @@ main (int argc, char *argv[])
     }
 
   nb_pixels = (input_width * input_height * 3) / 2;
-  mjpeg_debug ("yuvscaler: End of Initialisation\n");
+  mjpeg_debug ("End of Initialisation\n");
   // END OF INITIALISATION
 
   // Output file header
-  // Should use functions y4m_copy, but I didn't find them inside yuv4mpeg.c (16 Sept 2001)
-  y4m_si_set_width (&streaminfo, display_width);
-  y4m_si_set_height (&streaminfo, display_height);
-  y4m_si_set_interlace (&streaminfo, output_interlaced);
+  y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
+  y4m_si_set_width (&out_streaminfo, display_width);
+  y4m_si_set_height (&out_streaminfo, display_height);
+  y4m_si_set_interlace (&out_streaminfo, output_interlaced);
+  y4m_si_set_sampleaspect(&out_streaminfo, 
+                          calculate_output_sar(output_width_slice,
+                                               output_height_slice,
+                                               input_width_slice,
+                                               input_height_slice,
+                                               y4m_si_get_sampleaspect(&in_streaminfo)));
   if (no_header == 0)
-    y4m_write_stream_header (output_fd, &streaminfo);
+    y4m_write_stream_header (output_fd, &out_streaminfo);
+  y4m_log_stream_info (LOG_INFO, "yuvscaler output: ", &out_streaminfo);
 
 //   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
 //   if (!fwrite_complete (header, 19, out_file))
@@ -2232,7 +2256,7 @@ main (int argc, char *argv[])
       while ((err=my_y4m_read_frame
 	     (0, &frameinfo, nb_pixels, input, line_switching)) == Y4M_OK)
 	{
-	  mjpeg_info ("yuvscaler: Frame number %ld\r", frame_num);
+	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
 	  
 	  // PREPROCESSING
 	  if (field_move!=0) 
@@ -2437,9 +2461,9 @@ main (int argc, char *argv[])
 	}
       // End of master loop
       if (err != Y4M_ERR_EOF)
-	mjpeg_info ("yuvscaler: Couldn't read FRAME number %ld!\n", frame_num);
+	mjpeg_info ("Couldn't read FRAME number %ld!\n", frame_num);
       else
-	mjpeg_info ("yuvscaler: End of stream with FRAME number %ld!\n", frame_num);
+	mjpeg_info ("End of stream with FRAME number %ld!\n", frame_num);
     }
   else
     {
@@ -2681,12 +2705,13 @@ main (int argc, char *argv[])
 	}
       // End of master loop
     }
-  y4m_fini_stream_info (&streaminfo);
+  y4m_fini_stream_info (&in_streaminfo);
+  y4m_fini_stream_info (&out_streaminfo);
   y4m_fini_frame_info (&frameinfo);
   return 0;
 
 out_error:
-  mjpeg_error_exit1 ("yuvscaler: Unable to write to output - aborting!\n");
+  mjpeg_error_exit1 ("Unable to write to output - aborting!\n");
   return 1;
 }
 
@@ -2747,5 +2772,3 @@ Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlace
  *  indent-tabs-mode: nil
  * End:
  */
-
-
