@@ -82,37 +82,82 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	unsigned int video_rate=0;
 	unsigned int audio_rate=0;
 	
-  if ( opt_mux_format == MPEG_VCD )
-    {
- /* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
-	 fixed bitrate=1150000.0, packets_per_pack=1,
-	 sys_headers only in first two sector(s?)... all timestamps...
-	 program end code needs to be appended.
-  */
-
-	  packets_per_pack = 1;
-	  sys_header_in_pack1 = 0;
-	  always_sys_header_in_pack = 0;
-	  trailing_pad_pack = 1;
-	  opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
-	  sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
-	  transport_prefix_sectors = 30;
-	  sector_size = 2324;
-	  opt_mpeg = 1;
-	  opt_VBR = 0;
-	  video_buffer_size = 46*1024;
-
-	}
-  else /* MPEG_MPEG1 - auto format MPEG1 */
+	
+	switch( opt_mux_format  )
 	{
-	  packets_per_pack = 20;
-	  always_sys_header_in_pack = 1;
-	  sys_header_in_pack1 = 1;
-	  trailing_pad_pack = 0;
-  	  sector_transport_size = opt_sector_size;
-	  transport_prefix_sectors = 0;
-	  sector_size = opt_sector_size;
-  	  video_buffer_size = opt_buffer_size * 1024;
+		case 1 : /* MPEG_VCD */ 
+ 		/* VCD: sector_size=VIDEOCD_SECTOR_SIZE, 
+	 	fixed bitrate=1150000.0, packets_per_pack=1,
+	 	sys_headers only in first two sector(s?)... all timestamps...
+	 	program end code needs to be appended.
+  	*/
+
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 1;
+	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 30;
+	  	sector_size = 2324;
+	  	opt_mpeg = 1;
+	  	opt_VBR = 0;
+	  	video_buffer_size = 46*1024;
+		break;
+	
+		case 2 : 
+		packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 1;
+	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2324;
+	  	opt_mpeg = 1;
+	  	opt_VBR = 0;
+	  	video_buffer_size = 46*1024;
+		break;
+		
+		case 3 :   /* alternate VCD 2 */
+		packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 1;
+	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
+	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 30;
+	  	sector_size = 2324;
+	  	opt_mpeg = 1;
+	  	opt_VBR = 0;
+	  	video_buffer_size = 46*1024;	
+		break;
+		
+		case 4 : /* Atlernate VCD 3 */
+		packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 1;
+	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
+	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2324;
+	  	opt_mpeg = 1;
+	  	opt_VBR = 0;
+	  	video_buffer_size = 46*1024;
+		
+		break;
+	 
+	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
+	  	packets_per_pack = 20;
+	  	always_sys_header_in_pack = 1;
+		sys_header_in_pack1 = 1;
+		trailing_pad_pack = 0;
+		sector_transport_size = opt_sector_size;
+		transport_prefix_sectors = 0;
+		sector_size = opt_sector_size;
+		video_buffer_size = opt_buffer_size * 1024;
+		break;
 	}
 	
 
@@ -126,8 +171,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	 about whether a packet should fit into the recieve buffers... 
 	 Audio packets always have PTS fields, video packets needn't.	
   */ 
-  audio_max_packet_data = packet_payload( FALSE, FALSE, FALSE, TRUE, FALSE );
-  video_max_packet_data = packet_payload( FALSE, FALSE, FALSE, FALSE, FALSE );
+  audio_max_packet_data = packet_payload( NULL, NULL, FALSE, TRUE, FALSE );
+  video_max_packet_data = packet_payload( NULL, NULL, FALSE, FALSE, FALSE );
 
   if( opt_mpeg == 2 )
 	{	
@@ -771,10 +816,10 @@ void output_video ( Timecode_struc *SCR,
   if( next_vau != NULL )
 	{
 	  old_au_then_new_payload = 
-		packet_payload( sys_header_ptr!=0, pack_ptr!=0, TRUE, TRUE, next_vau->type != BFRAME );
+		packet_payload( sys_header_ptr, pack_ptr, TRUE, TRUE, next_vau->type != BFRAME );
 	}
   else
-	old_au_then_new_payload = packet_payload( sys_header_ptr!=0, pack_ptr!=0, TRUE, FALSE, FALSE );
+	old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE );
   /* Wir generieren das Packet				*/
   /* let's generate packet					*/
 
@@ -1031,7 +1076,7 @@ void output_audio ( Timecode_struc *SCR,
   /* CASE: packet starts with old access unit, no new one	*/
   /*       starts in this very same packet			*/
   else if (!(*audio_frame_start) && 
-		   (audio_au->length >= packet_payload( sys_header_ptr!=0, pack_ptr!=0, TRUE, FALSE, FALSE )))
+		   (audio_au->length >= packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE )))
     {
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 0,
@@ -1050,7 +1095,7 @@ void output_audio ( Timecode_struc *SCR,
   /* CASE: packet starts with old access unit, a new one	*/
   /*       starts in this very same packet			*/
   else if (!(*audio_frame_start) && 
-		   (audio_au->length < packet_payload( sys_header_ptr!=0, pack_ptr!=0, TRUE, TRUE, FALSE )))
+		   (audio_au->length < packet_payload( sys_header_ptr, pack_ptr, TRUE, TRUE, FALSE )))
     {
 	  temp = audio_au->length;
 	  queue_buffer (buffer, audio_au->length, &audio_au->PTS);

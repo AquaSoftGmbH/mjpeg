@@ -7,18 +7,18 @@
 	
 		/* TODO: are the packet payload calculations correct if some stream is missing? */
 		
-int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, int DTSstamp )
+int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp )
 {
 	int payload = sector_size - PACKET_HEADER_SIZE ;
-	if( sys_header )
-		payload -= system_header_size;
+	if( sys_header != NULL )
+		payload -= sys_header->length;
 	if( buffers )
 		payload -=  BUFFERINFO_LENGTH;
 	if( opt_mpeg == 2 )
 	{
 		payload -= MPEG2_AFTER_PACKET_LENGTH_MIN;
-		if( pack_header )
-			payload -= MPEG2_PACK_HEADER_SIZE;
+		if( pack_header != NULL )
+			payload -= pack_header->length;
 		if( DTSstamp )
 			payload -= DTS_PTS_TIMESTAMP_LENGTH;
 		if ( PTSstamp )
@@ -27,8 +27,8 @@ int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, 
 	else
 	{
 		payload -= MPEG1_AFTER_PACKET_LENGTH_MIN;
-		if( pack_header )
-			payload -= MPEG1_PACK_HEADER_SIZE;
+		if( pack_header != NULL )
+			payload -= pack_header->length;
 		if( DTSstamp )
 			payload -= DTS_PTS_TIMESTAMP_LENGTH;
 		if (PTSstamp )
@@ -105,9 +105,9 @@ void create_sector (Sector_struc 	 *sector,
 
     if (sys_header != NULL)
     {
-		bcopy (sys_header->buf, index, system_header_size);
-		index += system_header_size;
-		sector->length_of_sector += system_header_size;
+		bcopy (sys_header->buf, index, sys_header->length);
+		index += sys_header->length;
+		sector->length_of_sector += sys_header->length;
     }
 
     /* konstante Packet Headerwerte eintragen */
@@ -211,13 +211,13 @@ void create_sector (Sector_struc 	 *sector,
 
 
 	/* TODO DEBUG: */		
-	if( target_packet_data_size != packet_payload( sys_header!=0, pack!=0, buffers,
+	if( target_packet_data_size != packet_payload( sys_header, pack, buffers,
 												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
 		printf("\nPacket size calculation error %d S%d P%d B%d %d %d!\n ", timestamps,
 			   sys_header!=0, pack!=0, buffers,
 			   target_packet_data_size , 
-			   packet_payload( sys_header!=0, pack!=0, buffers,
+			   packet_payload( sys_header, pack, buffers,
 							   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
 		exit(1);
 	}
@@ -344,6 +344,8 @@ void create_pack (
 		*(index++) = (unsigned char)(0x01 | ((mux_rate & 0x7f) << 1));
     }
     copy_timecode(SCR, &pack->SCR);
+    /* TODO: Replace with dynamic calculation */
+    pack->length = pack_header_size;
 }
 
 
@@ -356,6 +358,7 @@ void create_pack (
 	writes specifical system header information into a buffer
 	later this will be copied from the sector routine into
 	the sector buffer
+	RETURN: Length of header created...
 *************************************************************************/
 
 void create_sys_header (
@@ -379,7 +382,8 @@ void create_sys_header (
 
 {
     unsigned char *index;
-
+	unsigned char *len_index;
+	int system_header_size;
     index = sys_header->buf;
 
     /* if we are not using both streams, we should clear some
@@ -395,8 +399,8 @@ void create_sys_header (
     *(index++) = (unsigned char)((SYS_HEADER_START & 0x0000ff00)>>8);
     *(index++) = (unsigned char)(SYS_HEADER_START & 0x000000ff);
 
-	*(index++) = (unsigned char)((system_header_size-6) >> 8);
-	*(index++) = (unsigned char)((system_header_size-6) & 0xff);
+	len_index = index;	/* Skip length field for now... */
+	index +=2;
 
     *(index++) = (unsigned char)(0x80 | (rate_bound >>15));
     *(index++) = (unsigned char)(0xff & (rate_bound >> 7));
@@ -422,4 +426,8 @@ void create_sys_header (
 		*(index++) = (unsigned char) (buffer2_size & 0xff);
     }
 
+	system_header_size = (index - sys_header->buf);
+	len_index[0] = (unsigned char)((system_header_size-6) >> 8);
+	len_index[1] = (unsigned char)((system_header_size-6) & 0xff);
+	sys_header->length = system_header_size;
 }

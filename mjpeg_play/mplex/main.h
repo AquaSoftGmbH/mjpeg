@@ -221,11 +221,13 @@ typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
 
 typedef struct pack_struc	/* Pack Info				*/
 {   unsigned char  buf [MPEG2_PACK_HEADER_SIZE];
+	int length;
     Timecode_struc SCR;
 } Pack_struc;
 
 typedef struct sys_header_struc	/* System Header Info			*/
 {   unsigned char  buf [SYS_HEADER_SIZE];
+	int length;
 } Sys_header_struc;
 
 typedef struct buffer_queue	/* FIFO-Queue fuer STD Buffer		*/
@@ -292,7 +294,7 @@ void buffer_mpeg2scr_timecode( Timecode_struc *pointer,
 							 );
 
 int  comp_timecode        (Timecode_struc *,Timecode_struc *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
-int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, int DTSstamp );
+int packet_payload(  Sys_header_struc *sys_header,  Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp );
 	/* Compute available packet payload in a sector... */
 void create_sector (Sector_struc 	 *sector,
 					Pack_struc	 *pack,
@@ -435,7 +437,6 @@ extern unsigned int which_streams;
 extern int packet_overhead;
 extern int rate_restriction_flag;
 extern int pack_header_size;
-extern int system_header_size;
 extern int sector_size;
 extern int mux_rate;
 extern int dmux_rate;

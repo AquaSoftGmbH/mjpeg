@@ -106,7 +106,7 @@ int intro_and_options(int argc, char *argv[])
 	  
 	  case 'f' :
 	    opt_mux_format = atoi(optarg);
-	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_VCD )
+	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > 4 )
 	    	Usage(argv[0]);
 		break;
 	  case 's' :
