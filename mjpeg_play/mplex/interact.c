@@ -38,7 +38,7 @@ static void Usage(char *str)
 	exit (1);
 }
 
-log_level_t verbose = LOG_INFO;
+int verbose = 1;
 int opt_buffer_size = 46;
 int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
 int opt_video_offset = 0;

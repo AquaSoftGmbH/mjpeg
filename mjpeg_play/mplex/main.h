@@ -456,7 +456,7 @@ extern int opt_packets_per_pack;
 extern clockticks opt_max_PTS;
 extern int opt_emul_vcdmplex;
 
-extern log_level_t verbose;
+extern int verbose;
 extern unsigned int which_streams;
 
 extern int packet_overhead;
