@@ -620,7 +620,7 @@ char *argv[];
 
   if(param_special==2)
   {
-    if(el.video_width==720)
+    if(el.video_width > 700)
     {
       output_width  = 480;
     }
@@ -633,7 +633,7 @@ char *argv[];
 
   if(param_special==3)
   {
-    if(el.video_width == 720)
+    if(el.video_width > 700)
     {
       output_width  = 352;
     }
