@@ -258,20 +258,21 @@ void y4m_init_stream_info(y4m_stream_info_t *i);
 void y4m_fini_stream_info(y4m_stream_info_t *i);
 
 /* make one stream_info into a copy of another */
-void y4m_copy_stream_info(y4m_stream_info_t *dest, y4m_stream_info_t *src);
+void y4m_copy_stream_info(y4m_stream_info_t *dest,
+			  const y4m_stream_info_t *src);
 
 /* access or set stream_info fields */
 void y4m_si_set_width(y4m_stream_info_t *si, int width);
-int y4m_si_get_width(y4m_stream_info_t *si);
+int y4m_si_get_width(const y4m_stream_info_t *si);
 void y4m_si_set_height(y4m_stream_info_t *si, int height);
-int y4m_si_get_height(y4m_stream_info_t *si);
+int y4m_si_get_height(const y4m_stream_info_t *si);
 void y4m_si_set_interlace(y4m_stream_info_t *si, int interlace);
-int y4m_si_get_interlace(y4m_stream_info_t *si);
+int y4m_si_get_interlace(const y4m_stream_info_t *si);
 void y4m_si_set_framerate(y4m_stream_info_t *si, y4m_ratio_t framerate);
-y4m_ratio_t y4m_si_get_framerate(y4m_stream_info_t *si);
+y4m_ratio_t y4m_si_get_framerate(const y4m_stream_info_t *si);
 void y4m_si_set_sampleaspect(y4m_stream_info_t *si, y4m_ratio_t sar);
-y4m_ratio_t y4m_si_get_sampleaspect(y4m_stream_info_t *si);
-int y4m_si_get_framelength(y4m_stream_info_t *si);
+y4m_ratio_t y4m_si_get_sampleaspect(const y4m_stream_info_t *si);
+int y4m_si_get_framelength(const y4m_stream_info_t *si);
 
 /* access stream_info xtag_list */
 y4m_xtag_list_t *y4m_si_xtags(y4m_stream_info_t *si);
@@ -284,7 +285,8 @@ void y4m_init_frame_info(y4m_frame_info_t *i);
 void y4m_fini_frame_info(y4m_frame_info_t *i);
 
 /* make one frame_info into a copy of another */
-void y4m_copy_frame_info(y4m_frame_info_t *dest, y4m_frame_info_t *src);
+void y4m_copy_frame_info(y4m_frame_info_t *dest,
+			 const y4m_frame_info_t *src);
 
 /* access frame_info xtag_list */
 y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi);
@@ -306,7 +308,7 @@ y4m_xtag_list_t *y4m_fi_xtags(y4m_frame_info_t *fi);
 ssize_t y4m_read(int fd, void *buf, size_t len);
 
 /* write len bytes from fd into buf */
-ssize_t y4m_write(int fd, void *buf, size_t len);
+ssize_t y4m_write(int fd, const void *buf, size_t len);
 
 
 
@@ -326,7 +328,7 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i);
 int y4m_read_stream_header(int fd, y4m_stream_info_t *i);
 
 /* write a stream header to file descriptor fd */
-int y4m_write_stream_header(int fd,  y4m_stream_info_t *i);
+int y4m_write_stream_header(int fd, const y4m_stream_info_t *i);
 
 
 
@@ -343,17 +345,17 @@ int y4m_write_stream_header(int fd,  y4m_stream_info_t *i);
 int y4m_read_frame_header(int fd, y4m_frame_info_t *i);
 
 /* write a frame header to file descriptor fd */
-int y4m_write_frame_header(int fd, y4m_frame_info_t *i);
+int y4m_write_frame_header(int fd, const y4m_frame_info_t *i);
 
 /* read a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
-int y4m_read_frame(int fd, y4m_stream_info_t *si, 
+int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
 		   y4m_frame_info_t *fi, uint8_t *yuv[3]);
 
 /* write a complete frame (header + data)
    o yuv[3] points to three buffers, one each for Y, U, V planes */
-int y4m_write_frame(int fd, y4m_stream_info_t *si, 
-		    y4m_frame_info_t *fi, uint8_t *yuv[3]);
+int y4m_write_frame(int fd, const y4m_stream_info_t *si, 
+		    const y4m_frame_info_t *fi, const uint8_t *yuv[3]);
 
 
 /* read a complete frame (header + data), but de-interleave fields
@@ -361,7 +363,8 @@ int y4m_write_frame(int fd, y4m_stream_info_t *si,
    o upper_field[3] same as yuv[3] above, but for upper field
    o lower_field[3] same as yuv[3] above, but for lower field
 */
-int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
+int y4m_read_fields(int fd, const y4m_stream_info_t *si, 
+		    y4m_frame_info_t *fi,
 		    uint8_t *upper_field[3], 
 		    uint8_t *lower_field[3]);
 
@@ -370,9 +373,10 @@ int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
    o upper_field[3] same as yuv[3] above, but for upper field
    o lower_field[3] same as yuv[3] above, but for lower field
 */
-int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
-		     uint8_t *upper_field[3], 
-		     uint8_t *lower_field[3]);
+int y4m_write_fields(int fd, const y4m_stream_info_t *si, 
+		     const y4m_frame_info_t *fi,
+		     const uint8_t *upper_field[3], 
+		     const uint8_t *lower_field[3]);
 
 
 
@@ -384,7 +388,7 @@ int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
  *  - each logged/printed line is prefixed by 'prefix'
  */
 void y4m_log_stream_info(log_level_t level, const char *prefix,
-			 y4m_stream_info_t *i);
+			 const y4m_stream_info_t *i);
 
 /* convert a Y4M_ERR_* error code into mildly explanatory string */
 const char *y4m_strerr(int err);
