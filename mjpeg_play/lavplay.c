@@ -512,22 +512,6 @@ main(int argc, char ** argv)
       exit(1);
    }
 
-   if (el.has_audio)
-   {
-      res = audio_init(0,(el.audio_chans>1),el.audio_bits,
-                       (int)(el.audio_rate*test_factor));
-      if(res)
-      {
-         lavplay_msg(LAVPLAY_ERROR,"Error initializing Audio",audio_strerror());
-         exit(1);
-      }
-
-      audio_buffer_size = audio_get_buffer_size();
-
-      /* Ensure proper exit processing for audio */
-      atexit(audio_shutdown);
-   }
-
    /* allocate auxiliary video buffer for flicker reduction */
 
    tmpbuff[0] = (char*) malloc(el.max_frame_size);
@@ -547,15 +531,31 @@ main(int argc, char ** argv)
    if (soft_play)
      {
        char wintitle[255];
+	   printf( "Initialising SDL\n" );
+	   if (SDL_Init (SDL_INIT_VIDEO) < 0)
+		 {
+		   fprintf( stderr, "SDL Failed to initialise...\n" );
+		   exit(1);
+		 }
+#ifdef ODFOFOFFO
+	   int video_flags;
 
+	   video_flags = SDL_SWSURFACE;
+	   printf( "SETTING SDL VIDEO MODE %d %d %d\n", el.video_width, el.video_height, soft_fullscreen);
+
+		screen = SDL_SetVideoMode( 640, 480, 0, video_flags);
+	   printf( "GOT PAST SDL VIDEO MODE SET\n");
+	   exit(0);
+#endif
        /* Now initialize SDL */
        /* Set the video mode, and rely on SDL to find a nice mode */
        if (soft_fullscreen)
-	 screen = SDL_SetVideoMode(el.video_width, 
+		 screen = SDL_SetVideoMode(el.video_width, 
 				   el.video_height, 0, SDL_HWSURFACE | SDL_FULLSCREEN);
        else
-	 screen = SDL_SetVideoMode(el.video_width, 
-				   el.video_height, 0, SDL_HWSURFACE);
+		 screen = SDL_SetVideoMode(el.video_width, 
+								   el.video_height, 0, SDL_SWSURFACE);
+
        SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
        SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
        
@@ -599,6 +599,22 @@ main(int argc, char ** argv)
 
        unlock_update_screen();
      }
+   if (el.has_audio)
+   {
+      res = audio_init(0,(el.audio_chans>1),el.audio_bits,
+                       (int)(el.audio_rate*test_factor));
+      if(res)
+      {
+         lavplay_msg(LAVPLAY_ERROR,"Error initializing Audio",audio_strerror());
+         exit(1);
+      }
+
+      audio_buffer_size = audio_get_buffer_size();
+
+      /* Ensure proper exit processing for audio */
+      atexit(audio_shutdown);
+   }
+
 
    /* Fill all buffers first */
 

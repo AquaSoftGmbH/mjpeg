@@ -215,8 +215,8 @@ void putseq()
 #endif
      if (!quiet)
     {
-      fprintf(stderr,"Frame %d %c ",i, fkind);
-      fflush(stderr);
+      printf("Frame %d %c ",i, fkind);
+      fflush(stdout);
     }
 
 

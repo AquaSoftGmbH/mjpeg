@@ -32,7 +32,6 @@
 #include "config.h"
 #include "global.h"
 
-extern int fix_mquant;
 
 /* private prototypes */
 static int frametotc _ANSI_ARGS_((int frame));

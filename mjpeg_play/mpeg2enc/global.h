@@ -40,6 +40,8 @@
 #define EXTERN
 #endif
 
+#define BITCOUNT_OFFSET  800000000LL
+
 /* prototypes of global functions */
 
 /* conform.c */
@@ -78,7 +80,7 @@ void predict _ANSI_ARGS_((unsigned char *reff[], unsigned char *refb[],
 void initbits _ANSI_ARGS_((void));
 void putbits _ANSI_ARGS_((int val, int n));
 void alignbits _ANSI_ARGS_((void));
-int bitcount _ANSI_ARGS_((void));
+bitcount_t bitcount _ANSI_ARGS_((void));
 
 /* puthdr.c */
 void putseqhdr _ANSI_ARGS_((void));

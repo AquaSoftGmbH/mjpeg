@@ -29,19 +29,20 @@
 
 #include <stdio.h>
 #include "config.h"
+#include "global.h"
 
 extern FILE *outfile; /* the only global var we need here */
 
 /* private data */
 static unsigned char outbfr;
 static int outcnt;
-static int bytecnt;
+static bitcount_t bytecnt;
 
 /* initialize buffer, call once before first putbits or alignbits */
 void initbits()
 {
   outcnt = 8;
-  bytecnt = 0;
+  bytecnt = BITCOUNT_OFFSET/8LL;
 }
 
 /* write rightmost n (0<=n<=32) bits of val to outfile */
@@ -81,7 +82,7 @@ void alignbits()
 }
 
 /* return total number of generated bits */
-int bitcount()
+bitcount_t bitcount()
 {
-  return 8*bytecnt + (8-outcnt);
+  return 8LL*bytecnt + (8-outcnt);
 }

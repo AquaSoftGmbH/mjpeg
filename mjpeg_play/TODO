@@ -5,8 +5,6 @@ Minor
 - Tidy up linkage to quicktime, sort out whether lavtools and the
   MPEG stuff is going to be embedded or not... 
 
-- A proper co-ordinate autoconf/automake environment for the whole shebang!
-
 Medium
 
 - Modify mplex to improve speed and remove the need for mpegjoin
@@ -18,9 +16,24 @@ Medium
   working with these programs to achieve the best results in typical
   scenarios.
 
+
+-	The new quantizer is only used on the most crucial (non-intra frame) routine.
+	It needs to be converted into a more efficient fully table-driven
+	form and adapted for intra frames too.
+
+-	The code is still full of a "scaffolding" to support the forthcoming
+	addition of gradient-descent based motion compensation.
+	Lots of "Code hygiene" improvements to be undertaken to modernise the code
+	base and allow better compiler checking...
+
 Major
 
 - Improve quality of mpeg2enc's output to the level of the best commercial
   encoders.  Make it go *still faster*  ;-)
+
+
+- 	THE BIGGY: Brent Byeler's hard work to support variable bit-rate SVCD
+	and DVD properly in the mpeg2enc / aenc / mplex derived "bbmpeg"
+	for windows should be merged in.  It's next on my list.
 
 

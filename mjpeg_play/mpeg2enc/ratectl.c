@@ -60,7 +60,9 @@ int Xi, Xp, Xb, r, d0i, d0p, d0b;
    T - Target bits for current frame 
    d - Current d for quantisation purposes updated using 
    scaled difference of target bit usage and actual usage */
-static int R, T, d;
+static bitcount_t R;
+static int d;
+static bitcount_t T;
 
 /*
   actsum - Total activity (sum block variances) in frame
@@ -74,10 +76,10 @@ static double actcovered;
 double avg_act;
 double peak_act;
 
-static int Np, Nb, S, Q;
+static int Np, Nb, Q;
+static bitcount_t S;
 static int prev_mquant;
 
-extern int fix_mquant;
 
 /* Note: eventually we may wish to tweak these to suit image content */
 static double Ki = 1.0;    	/* Down-scaling of I/B/P-frame complexity */
@@ -141,6 +143,25 @@ void rc_init_seq()
 void rc_init_GOP(np,nb)
 int np,nb;
 {
+
+	/* A.Stevens Aug 2000: at last I've found the wretched rate-control overshoot bug...
+		Simply "topping up" R here means that we can accumulate an indefinately large
+		pool of bits "saved" from previous low-activity frames.  For CBR this is of course
+		nonsense. Even if the recieve buffer is large enough to avoid the "saved" bits
+		simply being thrown away by padding we can't send arbitrarily huge frames  because
+		they won't arrive in time for display.
+		
+		Thus unless VBR (fixed quantisation) has been set we "decay" saved bits  and
+		never allow more than a frames worth of carry over.
+	*/		
+   
+  if(fix_mquant==0 && R > 0)
+  {
+  	R = R / 2;
+ 	 if( R > bit_rate / frame_rate )
+	 	R = (int) (bit_rate / frame_rate);
+  }
+
   R += (int) floor((1 + np + nb) * bit_rate / frame_rate + 0.5);
   Np = fieldpic ? 2*np+1 : np;
   Nb = fieldpic ? 2*nb : nb;
@@ -178,15 +199,15 @@ unsigned char *frame;
 	   account for with the remaining pool of bits R.
 	*/
 
-    T = (int) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
+    T = (bitcount_t) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
     d = d0i;
     break;
   case P_TYPE:
-    T = (int) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
+    T = (bitcount_t) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
     d = d0p;
     break;
   case B_TYPE:
-    T = (int) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
+    T = (bitcount_t) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
     d = d0b;
     break;
   }
@@ -304,12 +325,13 @@ unsigned char *frame;
 void rc_update_pict()
 {
   double X;
+  bitcount_t OLD_S = S;
   S = bitcount() - S; /* total # of bits in picture */
   R-= S; /* remaining # of bits in GOP */
-  X = (int) floor(S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
-  d+= S - T;
+  X = (int) floor((double)S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
+  d += (int) (S - T);
 
-  /* Bts that never got used in the past can't be resurrected now... 
+  /* Bits that never got used in the past can't be resurrected now... 
    */
   /* TODO: The actual minimum D setting should be some number tuned
 	 to ensure sensible response once activity picks up...
@@ -340,7 +362,7 @@ void rc_update_pict()
   fprintf(statfile," actual number of bits: S=%d\n",S);
   fprintf(statfile," average quantization parameter Q=%.1f\n",
     (double)Q/(mb_width*mb_height2));
-  fprintf(statfile," remaining number of bits in GOP: R=%d\n",R);
+  fprintf(statfile," remaining number of bits in GOP: R=%lld\n",R);
   fprintf(statfile,
     " global complexity measures (I,P,B): Xi=%d, Xp=%d, Xb=%d\n",
     Xi, Xp, Xb);
@@ -352,9 +374,15 @@ void rc_update_pict()
   fprintf(statfile," average activity: avg_act=%.1f \n", avg_act );
 #endif
   if( !quiet )
-  	fprintf( stderr, "avg_act=%.2f avg_Q = %.2f (dI=%d,dP=%d,dB=%d) \n", 
-		avg_act, ((double)Q) / (double) (mb_width*mb_height2),
-		d0i, d0p, d0b  );
+  {
+  	printf( "S=%lld T=%lld S-T=%d Xi=%d, Xp=%d, Xb=%d\n",
+    S, T, ((int) (S - T)),
+    Xi, Xp, Xb);
+  	printf( "AA=%.1f AQ=%.1f  L=%.0f dI=%d,dP=%d,dB=%d\n", 
+		avg_act, ((double)Q) / (double) (mb_width*mb_height2), 
+		(double)(bitcount()-OLD_S),
+		d0i, d0p, d0b   );
+	}
  }
 
 /* compute initial quantization stepsize (at the beginning of picture) */
@@ -420,12 +448,13 @@ int j;
 
   */
 	
-  dj = d + (bitcount()-S) - actcovered * T / actsum;
+  dj = ((double)d) + ( (double)(bitcount()-S) - actcovered * ((double)T) / actsum);
 
-
+  if( (double)(bitcount()-S) < 100.0 )
+  	printf( "BS double conv...%f\n", (double)(bitcount()-S) );
 #else
   /* measure virtual buffer discrepancy from uniform distribution model */
-	dj = d + (bitcount()-S) - j*(T/(mb_width*mb_height2));
+	dj = d + (double)(bitcount()-S) - j*(T/(mb_width*mb_height2));
 
 #endif
 
@@ -470,6 +499,7 @@ int j;
       mquant = 112;
 
     /* map to legal quantization level */
+    if(fix_mquant>0) mquant = 2*fix_mquant;
     mquant = non_linear_mquant_table[map_non_linear_mquant[mquant]];
   }
   else
@@ -543,11 +573,11 @@ int lx;
  * - assumes there is no byte stuffing prior to the next start code
  */
 
-static int bitcnt_EOP;
+static bitcount_t bitcnt_EOP;
 
 void vbv_end_of_picture()
 {
-  bitcnt_EOP = bitcount();
+  bitcnt_EOP = bitcount() - BITCOUNT_OFFSET;
   bitcnt_EOP = (bitcnt_EOP + 7) & ~7; /* account for bit stuffing */
 }
 
@@ -657,7 +687,7 @@ void calc_vbv_delay()
 
   /* VBV checks */
 
-#ifdef OUTPUT_STAT
+
   /* check for underflow (previous picture) */
   if (!low_delay && (decoding_time < bitcnt_EOP*90000.0/bit_rate))
   {
@@ -666,43 +696,40 @@ void calc_vbv_delay()
       fprintf(stderr,"vbv_delay underflow! (decoding_time=%.1f, t_EOP=%.1f\n)",
         decoding_time, bitcnt_EOP*90000.0/bit_rate);
   }
-#endif
+
 
   /* when to decode current frame */
   decoding_time += picture_delay;
 
   /* warning: bitcount() may overflow (e.g. after 9 min. at 8 Mbit/s */
-  vbv_delay = (int)(decoding_time - bitcount()*90000.0/bit_rate);
+  vbv_delay = (int)(decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate);
 
-#ifdef OUTPUT_STAT
+
   /* check for overflow (current picture) */
-  if ((decoding_time - bitcnt_EOP*90000.0/bit_rate)
+  if ((decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate)
       > (vbv_buffer_size*16384)*90000.0/bit_rate)
   {
     if (!quiet)
       fprintf(stderr,"vbv_delay overflow!\n");
   }
 
+#ifdef OUTPUT_STAT
   fprintf(statfile,
-    "\nvbv_delay=%d (bitcount=%d, decoding_time=%.2f, bitcnt_EOP=%d)\n",
+    "\nvbv_delay=%d (bitcount=%d, decoding_time=%.2f, bitcnt_EOP=%lld)\n",
     vbv_delay,bitcount(),decoding_time,bitcnt_EOP);
 #endif
 
   if (vbv_delay<0)
   {
-#ifdef OUTPUT_STAT
     if (!quiet)
       fprintf(stderr,"vbv_delay underflow: %d\n",vbv_delay);
-#endif
     vbv_delay = 0;
   }
 
   if (vbv_delay>65535)
   {
-#ifdef OUTPUT_STAT
     if (!quiet)
       fprintf(stderr,"vbv_delay overflow: %d\n",vbv_delay);
-#endif
     vbv_delay = 65535;
   }
 }

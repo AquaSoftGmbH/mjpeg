@@ -35,3 +35,8 @@
 #else
 #define _ANSI_ARGS_(x) x
 #endif
+
+
+typedef long long  bitcount_t;
+
+

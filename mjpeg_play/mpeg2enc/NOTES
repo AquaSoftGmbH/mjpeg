@@ -11,7 +11,7 @@ combined quantisation / fdct matrix with the multipliers set up
 else it saves accumulating numeric errors in the intermediate
 results of the coefficients!
 
-That guy was *smart*...
+That mp1e guy was *smart*...
 
 (2)
 

@@ -24,7 +24,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 
 INCLUDES =  -I ..
 CPPFLAGS = -DX86_CPU @MTYPEFLAGS@
-CFLAGS =  -O6
+CFLAGS =  -O6 -Wall
 ASM = nasm
 
 

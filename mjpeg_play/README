@@ -51,7 +51,11 @@ for more information.
   to MPEG-1/2 video streams
 
 - "aenc" for encoding AVI/Quicktime files and Edit Lists
-  to MPEG-1/2 audio streams
+  to MPEG-1/2 layer 2 audio streams.   You may wish to try
+  using your favourite mpeg-1 layer 3 "MP3" encoder for better
+  quality results.  However, make sure you use constant bit-rate
+  and turn of any extensions to the format.  Even then not all video
+  players will work.
 
 - mplex multiplexes (interleaves) MPEG-1 video and audio streams
   into a combined "system stream" that can be played back smoothly.

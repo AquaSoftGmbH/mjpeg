@@ -10,7 +10,7 @@
 ## EXTRA-DIST = README PLANS
 INCLUDES = -I./mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
 SUBDIRS = mjpeg . aenc mpegjoin mplex utils xlav mpeg2enc
-CFLAGS=-Wall
+CFLAGS=-Wall -g
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation

@@ -158,8 +158,6 @@ int *nonsat_mquant;
 			  {
 				clipping = 1;
 				mquant = next_larger_quant( mquant );
-				if( ! quiet )
-					fprintf( stderr, "I" );
 				break;
 			  }
 #endif
@@ -277,8 +275,6 @@ int *nonsat_mquant;
 #endif
 	{
 	  coeff_count = 64*block_count;
-	  fprintf( stderr, "O" );
-
 
 	  nzflag = 0;
 	  pdst = dst;
@@ -293,7 +289,6 @@ int *nonsat_mquant;
 		  nzflag |= (*pdst=samesign(src[i],y));
 		  if (y > clipvalue)
 			{
-			  fprintf( stderr, "C");
 			  mquant = next_larger_quant( mquant );
 			  i=0;
 			  pdst = dst;
