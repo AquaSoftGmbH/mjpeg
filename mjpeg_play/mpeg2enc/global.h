@@ -440,12 +440,18 @@ EXTERN int ctl_M;					/* distance between I/P frames */
 
 EXTERN int ctl_M_min;			    /* Minimum distance between I/P frames */
 
+EXTERN bool ctl_closed_GOPs;	    /* Force all GOPs to be closed -
+									 * useful for satisfying
+									 * requirements for multi-angle
+									 * DVD authoring */
+
 EXTERN bool ctl_refine_from_rec;	/* Is final refinement of motion
-								   compensation computed from
-								   reconstructed reference frame image
-								   (slightly higher quality, bad for
-								   multi-threading) or original
-								   reference frame (opposite) */
+									 * compensation computed from
+									 * reconstructed reference frame
+									 * image (slightly higher quality,
+									 * bad for multi-threading) or
+									 * original reference frame
+									 * (opposite) */
 
 EXTERN int ctl_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
 EXTERN int ctl_22_red;			/* Motion compensation stages						*/

@@ -109,6 +109,7 @@ static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 0;
 static int param_min_GOP_size = -1;
 static int param_max_GOP_size = -1;
+static bool param_closed_GOPs = false;
 static int param_preserve_B = 0;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
@@ -201,11 +202,13 @@ static void Usage(char *str)
 "    Reduction factor for 2x2 subsampled candidate motion estimates\n"
 "    [1..4] [1 = max quality, 4 = max. speed] (default: 3)\n"
 "--min-gop-size|-g num\n"
-"    Minimum size Group-of-Pictures (default 12)\n"
+"    Minimum size Group-of-Pictures (default depends on selected format)\n"
 "--max-gop-size|-G num\n"
-"    Maximum size Group-of-Pictures (default 12)\n"
+"    Maximum size Group-of-Pictures (default depends on selected format)\n"
 "    If min-gop is less than  max-gop, mpeg2enc attempts to place GOP\n"
 "    boundaries to coincide with scene changes\n"
+"--closed-gop|-c\n"
+"    All Group-of-Pictures are closed.  Useful for authoring multi-angle DVD\n"
 "--force-b-b-p|-P\n"
 "    Preserve two B frames between I/P frames when placing GOP boundaries\n"
 "--quantisation-reduction|-Q num\n"
@@ -642,7 +645,7 @@ int main(argc,argv)
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:D:g:G:v:V:F:tpdsZNhOCP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:D:g:G:v:V:F:tpdsZNhOcCP";
 
 #ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
@@ -662,6 +665,7 @@ static struct option long_options[]={
      { "reduction-2x2",  1, 0, '2'},
      { "min-gop-size",      1, 0, 'g'},
      { "max-gop-size",      1, 0, 'G'},
+     { "closed-gop",        1, 0, 'c'},
      { "force-b-b-p", 0, &param_preserve_B, 1},
      { "quantisation-reduction", 1, 0, 'Q' },
      { "video-buffer",      1, 0, 'V' },
@@ -874,6 +878,9 @@ static struct option long_options[]={
 		case 'G' :
 			param_max_GOP_size = atoi(optarg);
 			break;
+        case 'c' :
+            param_closed_GOPs = true;
+            break;
 		case 'P' :
 			param_preserve_B = true;
 			break;
@@ -1266,7 +1273,11 @@ static void init_mpeg_parms(void)
 
 	ctl_N_min = param_min_GOP_size;      /* I frame distance */
 	ctl_N_max = param_max_GOP_size;
-	mjpeg_info( "GOP SIZE RANGE %d TO %d", ctl_N_min, ctl_N_max );
+    ctl_closed_GOPs = param_closed_GOPs;
+	mjpeg_info( "GOP SIZE RANGE %d TO %d %s", 
+                ctl_N_min, ctl_N_max,
+                ctl_closed_GOPs ? "(all GOPs closed)" : "" 
+                );
 	ctl_M = param_Bgrp_size;             /* I or P frame distance */
 	ctl_M_min = param_preserve_B ? ctl_M : 1;
 	if( ctl_M >= ctl_N_min )

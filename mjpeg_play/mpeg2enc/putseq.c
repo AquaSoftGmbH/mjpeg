@@ -354,6 +354,7 @@ struct _stream_state
 	int nb;					/* B frames in current GOP */
 	double next_b_drop;		/* When next B frame drop is due in GOP */
 	int new_seq;				/* Current GOP/frame starts new sequence */
+    int closed_gop;             /* Current GOP is closed */
 	int64_t next_split_point;
 	int64_t seq_split_length;
 };
@@ -437,7 +438,8 @@ static void gop_start( stream_state_s *ss )
 		ss->i = 0;
 		ss->new_seq = 1;
 	}
-			
+
+    ss->closed_gop = ss->i == 0 || ctl_closed_GOPs;
 	ss->gop_start_frame = ss->seq_start_frame + ss->i;
 	
 	/*
@@ -450,7 +452,7 @@ static void gop_start( stream_state_s *ss )
 	
     ss->gop_length =  
         find_gop_length( ss->gop_start_frame, 
-                         (ss->i == 0 ? 0 : ctl_M-1), 
+                         ss->closed_gop ? 0 : ctl_M-1, 
                          ctl_N_min, ctl_N_max,
                          ctl_M_min);
 			
@@ -483,10 +485,10 @@ static void gop_start( stream_state_s *ss )
 		ss->bigrp_length = 0;
 		np = 0;
 	}
-	else if (ss->i == 0 )
+	else if (ss->closed_gop )
 	{
 		ss->bigrp_length = 1;
-		np = (ss->gop_length + 2*(ctl_M-1))/ctl_M - 1; /* first GOP */
+		np = (ss->gop_length + 2*(ctl_M-1))/ctl_M - 1; /* Closed GOP */
 	}
 	else
 	{
@@ -516,12 +518,12 @@ static void gop_start( stream_state_s *ss )
 static void I_or_P_frame_struct( stream_state_s *ss,
 								 pict_data_s *picture )
 {
-	/* Temp ref of I frame in initial closed GOP of sequence is 0 
-	   We have to be a little careful with the end of stream special-case.
+	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
+	   be a little careful with the end of stream special-case.
 	*/
-	if( ss->i == 0 )
+	if( ss->g == 0 && ss->closed_gop )
 	{
-		picture->temp_ref =  ss->i;
+		picture->temp_ref = 0;
 	}
 	else 
 	{
