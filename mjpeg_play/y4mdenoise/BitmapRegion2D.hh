@@ -23,8 +23,8 @@
 
 // Part of BitmapRegion2D<> breaks gcc 2.95.  An earlier arrangement of
 // the code also broke gcc 3.3, but that seems to be in remission now.
-#if defined(__GNUC_MAJOR__) && defined(__GNUC_MINOR__)
-#if __GNUC_MANOR__ == 2 && __GNUC_MINOR__ < 96
+#if defined(__GNUC__) && defined(__GNUC_MINOR__)
+#if __GNUC__ == 2 && __GNUC_MINOR__ < 96
 #define GCC_295_WORKAROUND
 #endif
 #endif
