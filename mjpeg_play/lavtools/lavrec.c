@@ -225,7 +225,7 @@ static void Usage(char *progname)
 #ifdef HAVE_LIBQUICKTIME
            "q"
 #else
-           " "
+           ""
 #endif
            "]         Format AVI/Quicktime\n");
 	fprintf(stderr, "  -i/--input [pPnNsStTfa]     Input Source\n");
