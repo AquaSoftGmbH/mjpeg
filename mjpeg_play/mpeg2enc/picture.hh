@@ -63,12 +63,11 @@ public:
     
 };
 
-class MPEG2Encoder;
 class RateCtl;
-class MPEG2Coder;
 class Quantizer;
 class StreamState;
-
+class ElemStrmWriter;
+class MPEG2CodingBuf;
 
 // TODO: Nasty hack to keep interface to some old routines the same
 // Allocation should be done with ImagePlaneArray
@@ -79,7 +78,7 @@ class Picture : public CodingPredictors
 {
 public:
     Picture( EncoderParams &_encparams, 
-             MPEG2Coder &_coder, 
+             ElemStrmWriter &writer, 
              Quantizer &_quantizer );
     ~Picture();
 
@@ -93,7 +92,8 @@ public:
     void CalcSNR();
     void Stats();
     void Reconstruct();
-
+    void Commit();
+    
     void SetEncodingParams(  const StreamState &ss, int last_frame );
     void Adjust2ndField();
 
@@ -149,9 +149,9 @@ public:
      **************/
 
     EncoderParams &encparams;
-    MPEG2Coder &coder;
     Quantizer &quantizer;
-
+    MPEG2CodingBuf *coding;
+    
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */
 	DCTblock *blocks;

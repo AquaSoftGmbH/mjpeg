@@ -37,6 +37,7 @@
 #include "cpu_accel.h"
 #include "simd.h"
 #include "mmx.h"
+#include "xmmintrin.h"
 #include "tables.h"
 #include "quantize_precomp.h"
 #include "quantize_ref.h"
@@ -65,7 +66,96 @@ void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
  *RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
  */
 	
+#if 0
 
+/*
+ * SSE version: simply truncates to zero, however, the tables have a 2% bias
+ * upwards which partly compensates.
+ */
+ 
+static int quant_non_intra_sse( struct QuantizerWorkSpace *wsp,
+				int16_t *src, int16_t *dst,
+				int q_scale_type,
+				int satlim,
+				int *nonsat_mquant)
+{
+  __m64 saturated;
+  float *i_quant_matf; 
+  int mquant = *nonsat_mquant;
+  const int coeff_count = 64*BLOCK_COUNT;
+  uint32_t nzflag;
+  uint64_t flags;
+  __m64 *psrc, *pdst;
+  __m128 *piqf;
+  int i;
+  uint32_t tmp;
+  // Set truncation as rounding mode...
+  uint32_t oldcsr = _mmgetcsr();
+  
+  _mm_setcsr( (oldcsr & ~_MM_ROUND_MASK        0x6000) | _MM_ROUND_TOWARD_ZERO );
+  __m64 zero = _mm_setzero_si64();
+  __m64 satlim_0123 = _mm_set1_pi16( (int16_t)satlim);
+  __m64 neg_satlim_0123 = _mm_set1_pi16( (int16_t)-satlim);
+
+restart:
+  i_quant_matf = (__m128 *)wsp->i_inter_q_tblf[mquant];
+  flags = 0;
+  piqf = i_quant_matf;
+  saturated = _mm_setzero_si64();
+  nzflag = 0;
+  psrc = (__m64 *)src;
+  pdst = (__m64 *)dst;
+  for (i=0; i < coeff_count/(2*4) ; i += 2)
+    {
+      int j = i&63;
+      // Sign extend psrc[i] to double words
+      __m128 psrc_i_0_01234 = _mm_cvtpi16_ps( psrc[i] );
+      
+      __m128 psrc_i_4_01234 = _mm_cvtpi16_ps( psrc[i+4] );
+      
+      // "Divide" by multiplying by inverse quantisation
+      psrc_i_0_01234 = _mm_mul_ps( psrc_i_0_01234, piqf[j] );
+      psrc_i_4_01234 = _mm_mul_ps( psrc_i_4_01234, piqf[j] );
+      
+      // Accumulate saturation
+      __m64 rawquant_0_0123 = _mm_cvtps_pi16(psrc_i_0_01234);
+      __m64 rawquant_4_0123 = _mm_cvtps_pi16(psrc_i_4_01234);
+      saturated = _mm_or_si64( saturated, _mm_cmpgt_pi16( rawquant_0_0123, satlim_0123 ) );
+      saturated = _mm_or_si64( saturated, _mm_cmpgt_pi16( rawquant_4_0123, satlim_0123 ) );
+      saturated = _mm_or_si64( saturated, _mm_cmpgt_pi16( rawquant_0_0123, neg_satlim_0123 ));
+      saturated = _mm_or_si64( saturated, _mm_cmpgt_pi16( rawquant_4_0123, neg_satlim_0123 ));
+      pdst[i] = rawquant_0_0123;
+      pdst[i+4] = rawquant_4_0123;
+      
+      // Accumulate zero flags...
+      flags = (uint64_t)_mm_or_si64( _mm_set_pi64x(flags), _mm_or_si64( rawquant_0_0123, rawquant_4_0123 ));
+      
+      // Check if we saturated every block (every 16 grou
+      if( (i & (64/8-1)) == (64/8-1) )
+	{
+	  if( (uint64_t)saturated != (uint64_t)0 )
+	    {
+	      int new_mquant = next_larger_quant( q_scale_type, mquant );
+	      if( new_mquant != mquant )
+		{
+		  mquant = new_mquant;
+		  goto restart;
+		}
+	      else
+		{
+		  return quant_non_intra(wsp, src, dst, 
+					 q_scale_type,
+					 satlim,
+					 nonsat_mquant);
+		}
+	    }
+	  nzflag =  (nzflag<<1) | ((uint64_t)flags != (uint64_t)0 );
+	  flags = 0;
+	}
+      _mm_empty();
+      return nzflag;
+}
+#endif
 
 /* MMX version, that is 100% accurate
    It works by multiplying by the inverse of the quant factor.  However

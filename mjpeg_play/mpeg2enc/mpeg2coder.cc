@@ -59,7 +59,7 @@
 #include "mpeg2encoder.hh"
 #include "picture.hh"
 
-MPEG2Coder::MPEG2Coder( EncoderParams &_encparams, ElemStrmWriter &_writer ) :
+MPEG2CodingBuf::MPEG2CodingBuf( EncoderParams &_encparams, ElemStrmWriter &_writer ) :
     ElemStrmFragBuf( _writer ),
     encparams( _encparams )
 {
@@ -69,7 +69,7 @@ MPEG2Coder::MPEG2Coder( EncoderParams &_encparams, ElemStrmWriter &_writer ) :
  *
  * drop_frame not implemented
  */
-int MPEG2Coder::FrameToTimeCode(int gop_timecode0_frame)
+int MPEG2CodingBuf::FrameToTimeCode(int gop_timecode0_frame)
 {
 	int frame = gop_timecode0_frame;
 	int fps, pict, sec, minute, hour, tc;
@@ -96,7 +96,7 @@ int MPEG2Coder::FrameToTimeCode(int gop_timecode0_frame)
  *
  ***************/
 
-void MPEG2Coder::PutSeqHdr()
+void MPEG2CodingBuf::PutSeqHdr()
 {
 	int i;
     assert( Aligned() );
@@ -143,7 +143,7 @@ void MPEG2Coder::PutSeqHdr()
  *
  *************************/
 
-void MPEG2Coder::PutSeqExt()
+void MPEG2CodingBuf::PutSeqExt()
 {
 	assert( Aligned() );
 	PutBits(EXT_START_CODE,32); /* extension_start_code */
@@ -168,7 +168,7 @@ void MPEG2Coder::PutSeqExt()
  *
  ****************************/
 
-void MPEG2Coder::PutSeqDispExt()
+void MPEG2CodingBuf::PutSeqDispExt()
 {
 	assert(Aligned() );
 	PutBits(EXT_START_CODE,32); /* extension_start_code */
@@ -192,7 +192,7 @@ void MPEG2Coder::PutSeqDispExt()
  *
  *******************************/
 
-void MPEG2Coder::PutUserData(const uint8_t *userdata, int len)
+void MPEG2CodingBuf::PutUserData(const uint8_t *userdata, int len)
 {
 	int i;
 	assert( Aligned() );
@@ -205,7 +205,7 @@ void MPEG2Coder::PutUserData(const uint8_t *userdata, int len)
  *
  * uses tc0 (timecode of first frame) and frame0 (number of first frame)
  */
-void MPEG2Coder::PutGopHdr(int frame,int closed_gop )
+void MPEG2CodingBuf::PutGopHdr(int frame,int closed_gop )
 {
 	int tc;
 
@@ -220,7 +220,7 @@ void MPEG2Coder::PutGopHdr(int frame,int closed_gop )
 
 
 /* generate sequence_end_code (6.2.2) */
-void MPEG2Coder::PutSeqEnd(void)
+void MPEG2CodingBuf::PutSeqEnd(void)
 {
 	AlignBits();
 	PutBits(SEQ_END_CODE,32);
@@ -229,7 +229,7 @@ void MPEG2Coder::PutSeqEnd(void)
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
 
-void MPEG2Coder::PutIntraBlk(Picture *picture, int16_t *blk, int cc)
+void MPEG2CodingBuf::PutIntraBlk(Picture *picture, int16_t *blk, int cc)
 {
 	int n, dct_diff, run, signed_level;
 
@@ -266,7 +266,7 @@ void MPEG2Coder::PutIntraBlk(Picture *picture, int16_t *blk, int cc)
 }
 
 /* generate variable length codes for a non-intra-coded block (6.2.6, 6.3.17) */
-void  MPEG2Coder::PutNonIntraBlk(Picture *picture, int16_t *blk)
+void  MPEG2CodingBuf::PutNonIntraBlk(Picture *picture, int16_t *blk)
 {
 	int n, run, signed_level, first;
 
@@ -300,7 +300,7 @@ void  MPEG2Coder::PutNonIntraBlk(Picture *picture, int16_t *blk)
 }
 
 /* generate variable length code for a motion vector component (7.6.3.1) */
-void  MPEG2Coder::PutMV(int dmv, int f_code)
+void  MPEG2CodingBuf::PutMV(int dmv, int f_code)
 {
   int r_size, f, vmin, vmax, dv, temp, motion_code, motion_residual;
 
@@ -338,7 +338,7 @@ void  MPEG2Coder::PutMV(int dmv, int f_code)
 
 
 /* generate variable length code for DC coefficient (7.2.1) */
-void MPEG2Coder::PutDC(const sVLCtable *tab, int val)
+void MPEG2CodingBuf::PutDC(const sVLCtable *tab, int val)
 {
 	int absval, size;
 
@@ -369,7 +369,7 @@ void MPEG2Coder::PutDC(const sVLCtable *tab, int val)
 }
 
 /* generate variable length code for DC coefficient (7.2.1) */
-int MPEG2Coder::DC_bits(const sVLCtable *tab, int val)
+int MPEG2CodingBuf::DC_bits(const sVLCtable *tab, int val)
 {
 	int absval, size;
 
@@ -391,7 +391,7 @@ int MPEG2Coder::DC_bits(const sVLCtable *tab, int val)
 
 /* generate variable length code for first coefficient
  * of a non-intra block (7.2.2.2) */
-void MPEG2Coder::PutACfirst(int run, int val)
+void MPEG2CodingBuf::PutACfirst(int run, int val)
 {
 	if (run==0 && (val==1 || val==-1)) /* these are treated differently */
 		PutBits(2|(val<0),2); /* generate '1s' (s=sign), (Table B-14, line 2) */
@@ -400,7 +400,7 @@ void MPEG2Coder::PutACfirst(int run, int val)
 }
 
 /* generate variable length code for other DCT coefficients (7.2.2) */
-void MPEG2Coder::PutAC(int run, int signed_level, int vlcformat)
+void MPEG2CodingBuf::PutAC(int run, int signed_level, int vlcformat)
 {
 	int level, len;
 	const VLCtable *ptab = NULL;
@@ -464,7 +464,7 @@ void MPEG2Coder::PutAC(int run, int signed_level, int vlcformat)
 }
 
 /* generate variable length code for other DCT coefficients (7.2.2) */
-int MPEG2Coder::AC_bits(int run, int signed_level, int vlcformat)
+int MPEG2CodingBuf::AC_bits(int run, int signed_level, int vlcformat)
 {
 	int level;
 	const VLCtable *ptab;
@@ -498,7 +498,7 @@ int MPEG2Coder::AC_bits(int run, int signed_level, int vlcformat)
 }
 
 /* generate variable length code for macroblock_address_increment (6.3.16) */
-void MPEG2Coder::PutAddrInc(int addrinc)
+void MPEG2CodingBuf::PutAddrInc(int addrinc)
 {
 	while (addrinc>33)
 	{
@@ -509,7 +509,7 @@ void MPEG2Coder::PutAddrInc(int addrinc)
 	PutBits(addrinctab[addrinc-1].code,addrinctab[addrinc-1].len);
 }
 
-int MPEG2Coder::AddrInc_bits(int addrinc)
+int MPEG2CodingBuf::AddrInc_bits(int addrinc)
 {
 	int bits = 0;
 	while (addrinc>33)
@@ -521,19 +521,19 @@ int MPEG2Coder::AddrInc_bits(int addrinc)
 }
 
 /* generate variable length code for macroblock_type (6.3.16.1) */
-void MPEG2Coder::PutMBType(int pict_type, int mb_type)
+void MPEG2CodingBuf::PutMBType(int pict_type, int mb_type)
 {
 	PutBits(mbtypetab[pict_type-1][mb_type].code,
 				   mbtypetab[pict_type-1][mb_type].len);
 }
 
-int MPEG2Coder::MBType_bits( int pict_type, int mb_type)
+int MPEG2CodingBuf::MBType_bits( int pict_type, int mb_type)
 {
 	return mbtypetab[pict_type-1][mb_type].len;
 }
 
 /* generate variable length code for motion_code (6.3.16.3) */
-void MPEG2Coder::PutMotionCode(int motion_code)
+void MPEG2CodingBuf::PutMotionCode(int motion_code)
 {
 	int abscode;
 
@@ -543,14 +543,14 @@ void MPEG2Coder::PutMotionCode(int motion_code)
 		PutBits(motion_code<0,1); /* sign, 0=positive, 1=negative */
 }
 
-int MPEG2Coder::MotionCode_bits( int motion_code )
+int MPEG2CodingBuf::MotionCode_bits( int motion_code )
 {
 	int abscode = (motion_code>=0) ? motion_code : -motion_code; 
 	return 1+motionvectab[abscode].len;
 }
 
 /* generate variable length code for dmvector[t] (6.3.16.3), Table B-11 */
-void MPEG2Coder::PutDMV(int dmv)
+void MPEG2CodingBuf::PutDMV(int dmv)
 {
 	if (dmv==0)
 		PutBits(0,1);
@@ -560,7 +560,7 @@ void MPEG2Coder::PutDMV(int dmv)
 		PutBits(3,2);
 }
 
-int MPEG2Coder::DMV_bits(int dmv)
+int MPEG2CodingBuf::DMV_bits(int dmv)
 {
 	return dmv == 0 ? 1 : 2;
 }
@@ -569,19 +569,19 @@ int MPEG2Coder::DMV_bits(int dmv)
  *
  * 4:2:2, 4:4:4 not implemented
  */
-void MPEG2Coder::PutCPB(int cbp)
+void MPEG2CodingBuf::PutCPB(int cbp)
 {
 	PutBits(cbptable[cbp].code,cbptable[cbp].len);
 }
 
-int MPEG2Coder::CBP_bits(int cbp)
+int MPEG2CodingBuf::CBP_bits(int cbp)
 {
 	return cbptable[cbp].len;
 }
 
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::addrinctab[33]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::addrinctab[33]=
 {
   {0x01,1},  {0x03,3},  {0x02,3},  {0x03,4},
   {0x02,4},  {0x03,5},  {0x02,5},  {0x07,7},
@@ -600,8 +600,8 @@ MPEG2Coder::addrinctab[33]=
  * indexed by [macroblock_type]
  */
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::mbtypetab[3][32]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::mbtypetab[3][32]=
 {
  /* I */
  {
@@ -638,8 +638,8 @@ MPEG2Coder::mbtypetab[3][32]=
  * indexed by [coded_block_pattern]
  */
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::cbptable[64]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::cbptable[64]=
 {
   {0x01,9}, {0x0b,5}, {0x09,5}, {0x0d,6}, 
   {0x0d,4}, {0x17,7}, {0x13,7}, {0x1f,8}, 
@@ -666,8 +666,8 @@ MPEG2Coder::cbptable[64]=
  * sign of motion_code is treated elsewhere
  */
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::motionvectab[17]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::motionvectab[17]=
 {
   {0x01,1},  {0x01,2},  {0x01,3},  {0x01,4},
   {0x03,6},  {0x05,7},  {0x04,7},  {0x03,7},
@@ -687,8 +687,8 @@ MPEG2Coder::motionvectab[17]=
  * indexed by [dct_dc_size_luminance]
  */
 
-const MPEG2Coder::sVLCtable 
-MPEG2Coder::DClumtab[12]=
+const MPEG2CodingBuf::sVLCtable 
+MPEG2CodingBuf::DClumtab[12]=
 {
   {0x0004,3}, {0x0000,2}, {0x0001,2}, {0x0005,3}, {0x0006,3}, {0x000e,4},
   {0x001e,5}, {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x01ff,9}
@@ -700,8 +700,8 @@ MPEG2Coder::DClumtab[12]=
  * indexed by [dct_dc_size_chrominance]
  */
 
-const MPEG2Coder::sVLCtable 
-MPEG2Coder::DCchromtab[12]=
+const MPEG2CodingBuf::sVLCtable 
+MPEG2CodingBuf::DCchromtab[12]=
 {
   {0x0000,2}, {0x0001,2}, {0x0002,2}, {0x0006,3}, {0x000e,4}, {0x001e,5},
   {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x03fe,10},{0x03ff,10}
@@ -716,8 +716,8 @@ MPEG2Coder::DCchromtab[12]=
  * codes do not include s (sign bit)
  */
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::dct_code_tab1[2][40]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::dct_code_tab1[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -747,8 +747,8 @@ MPEG2Coder::dct_code_tab1[2][40]=
  }
 };
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::dct_code_tab2[30][5]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::dct_code_tab2[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 4}, {0x04, 7}, {0x0b,10}, {0x14,12}, {0x14,13}},
@@ -792,8 +792,8 @@ MPEG2Coder::dct_code_tab2[30][5]=
  * codes do not include s (sign bit)
  */
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::dct_code_tab1a[2][40]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::dct_code_tab1a[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -823,8 +823,8 @@ MPEG2Coder::dct_code_tab1a[2][40]=
  }
 };
 
-const MPEG2Coder::VLCtable 
-MPEG2Coder::dct_code_tab2a[30][5]=
+const MPEG2CodingBuf::VLCtable 
+MPEG2CodingBuf::dct_code_tab2a[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 5}, {0x07, 7}, {0xfc, 8}, {0x0c,10}, {0x14,13}},

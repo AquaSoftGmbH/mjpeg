@@ -59,11 +59,11 @@
 #include "tables.h"
 
 Picture::Picture( EncoderParams &_encparams, 
-                  MPEG2Coder &_coder, 
+                  ElemStrmWriter &writer, 
                   Quantizer &_quantizer ) :
     encparams( _encparams ),
-    coder( _coder ),
-    quantizer( _quantizer )
+    quantizer( _quantizer ),
+    coding( new MPEG2CodingBuf( _encparams, writer) )
 {
 	int i,j;
 	/* Allocate buffers for picture transformation */
@@ -114,6 +114,7 @@ Picture::~Picture()
     delete rec_img;
     delete org_img;
     delete pred;
+    delete coding;
 }
 
 /*
@@ -315,6 +316,9 @@ void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
 		temp_ref = ss.g_idx+(ss.bigrp_length-1);
 	}
 
+    // We don't want to look-ahead unnecessarily so
+    // stream may end before the planned GOP length
+    // We handle this here...
 	if (temp_ref >= (num_frames-ss.gop_start_frame))
 		temp_ref = (num_frames-ss.gop_start_frame) - 1;
 
@@ -517,9 +521,9 @@ void Picture::MotionSubSampledLum( )
  * QuantiseAndEncode - Quantise and Encode a picture.
  *
  * NOTE: It may seem perverse to quantise at the same time as
- * coding. However, actually makes (limited) sense
+ * coding-> However, actually makes (limited) sense
  * - feedback from the *actual* bit-allocation may be used to adjust 
- * quantisation "on the fly". This is good for fast 1-pass no-look-ahead coding.
+ * quantisation "on the fly". This is good for fast 1-pass no-look-ahead coding->
  * - The coded result is in any even only buffered not actually written
  * out. We can back off and try again with a different quantisation
  * easily.
@@ -536,7 +540,7 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
     
     PutHeaders();
 
-    /* Now the actual quantisation and encoding... */     
+    /* Now the actual quantisation and encoding->.. */     
  
     int i, j, k;
     int MBAinc;
@@ -586,20 +590,20 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
             }
             else
             {
-                coder.PutAddrInc(MBAinc); /* macroblock_address_increment */
+                coding->PutAddrInc(MBAinc); /* macroblock_address_increment */
                 MBAinc = 1;
                 
-                coder.PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
+                coding->PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
 
                 if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
-                    coder.PutBits(cur_mb->final_me.motion_type,2);
+                    coding->PutBits(cur_mb->final_me.motion_type,2);
 
                 if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
-                    coder.PutBits(cur_mb->field_dct,1);
+                    coding->PutBits(cur_mb->field_dct,1);
 
                 if (cur_mb->final_me.mb_type & MB_QUANT)
                 {
-                    coder.PutBits(q_scale_type 
+                    coding->PutBits(q_scale_type 
                             ? map_non_linear_mquant[cur_mb->mquant]
                             : cur_mb->mquant>>1,5);
                 }
@@ -619,7 +623,7 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
 
                 if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
-                    coder.PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
+                    coding->PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */
@@ -641,21 +645,21 @@ void Picture::QuantiseAndEncode(RateCtl &ratectl)
 	int padding_needed;
     bool recoding_suggested;
     ratectl.UpdatePict( *this, padding_needed);
-    coder.AlignBits();
+    coding->AlignBits();
     if( padding_needed > 0 )
     {
         mjpeg_debug( "Padding coded picture to size: %d extra bytes", 
                      padding_needed );
         for( i = 0; i < padding_needed; ++i )
         {
-            coder.PutBits(0, 8);
+            coding->PutBits(0, 8);
         }
     }
     
     /* Handle splitting of output stream into sequences of desired size */
     if( end_seq )
     {
-        coder.PutSeqEnd();
+        coding->PutSeqEnd();
     }
     
 }
@@ -693,9 +697,20 @@ void Picture::InitRateControl( RateCtl &ratecontrol )
 
 int Picture::SizeCodedMacroBlocks() const
 { 
-    return coder.ByteCount() * 8; 
+    return coding->ByteCount() * 8; 
 }
 
+/* *********************
+ *
+ * Commit   -   Commit to the current encoding of the frame
+ * flush the coder buffer content to the elementary stream output.
+ *
+ * *********************/
+ 
+ void Picture::Commit()
+ {
+    coding->FlushBuffer();
+ }
 
 /* 
  * Local variables:

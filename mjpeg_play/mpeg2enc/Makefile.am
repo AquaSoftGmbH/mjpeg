@@ -47,8 +47,7 @@ mpeg2enc_noinst_header_REF = \
 mpeg2enc_inst_header_REF = \
 	predict_ref.h
 
-mpeg2enc_SOURCES = \
-	mpeg2enc.cc 
+mpeg2enc_SOURCES = mpeg2enc.cc streamstate.cc
 
 libmpeg2encpp_la_SOURCES = \
 	conform.cc \
@@ -63,7 +62,8 @@ libmpeg2encpp_la_SOURCES = \
 	picturereader.cc \
 	predict.cc \
 	putpic.cc \
-	putseq.cc \
+    streamstate.cc \
+	seqencoder.cc \
 	quantize.cc \
 	ratectl.cc \
 	pass1ratectl.cc \
@@ -75,13 +75,8 @@ libmpeg2encpp_la_SOURCES = \
 	$(mpeg2enc_REF) \
 	$(SIMD_INLINE)
 
-noinst_HEADERS = \
-	channel.hh \
-	mpeg2syntaxcodes.h \
-	quantize_precomp.h \
-	simd.h \
-	tables.h \
-	$(mpeg2enc_noinst_header_REF)
+noinst_HEADERS = channel.hh 	mpeg2syntaxcodes.h 	quantize_precomp.h 	simd.h \
+		tables.h 	$(mpeg2enc_noinst_header_REF) streamstate.h
 
 libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 
@@ -99,6 +94,7 @@ libmpeg2encpp_include_HEADERS = \
 	quantize.hh \
 	quantize_ref.h \
 	ratectl.hh \
+    streamstate.h \
 	seqencoder.hh \
 	synchrolib.h \
 	syntaxconsts.h \

@@ -1,7 +1,8 @@
-#ifndef _MPEG2CODER_HH
-#define _MPEG2CODER_HH
+#ifndef _MPEG2CODING_HH
+#define _MPEG2CODING_HH
 
-/* mpeg2coder.hh - MPEG2 packed bit / VLC syntax coding engine */
+// TODO should be renamed to mpeg2codingbuf.hh
+/* mpeg2encoding.hh - (Partial) MPEG2 packed bit / VLC syntax encoding of a Picture  */
 
 /*  (C) 2003 Andrew Stevens */
 
@@ -30,10 +31,11 @@
 
 class Picture;
 
-class MPEG2Coder : public ElemStrmFragBuf
+
+class MPEG2CodingBuf : public ElemStrmFragBuf
 {
 public:
-	MPEG2Coder( EncoderParams &encoder, ElemStrmWriter &writer );
+    MPEG2CodingBuf( EncoderParams &encoder, ElemStrmWriter &writer );
 
 	void PutUserData( const uint8_t *userdata, int len);
 	void PutGopHdr(int frame, int closed_gop );

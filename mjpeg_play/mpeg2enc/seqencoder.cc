@@ -1,7 +1,4 @@
-/* putseq.c MPEG1/2 Sequence encoding loop */
-
-//#define SEQ_DEBUG 1
-/* (C) Andrew Stevens 2000, 2001
+/* (C) 2000, 2001, 2005 Andrew Stevens 
  *  This file is free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
  *  as published by the Free Software Foundation; either version 2 of
@@ -51,16 +48,19 @@
 #include <cassert>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "simd.h"
 #include "mpeg2syntaxcodes.h"
 #include "mpeg2encoder.hh"
+#include "elemstrmwriter.hh"
 #include "picturereader.hh"
-#include "mpeg2coder.hh"
 #include "seqencoder.hh"
 #include "ratectl.hh"
 #include "tables.h"
-
 #include "channel.hh"
+
+
+// --------------------------------------------------------------------------------
+//  Striped Encoding Job parallel despatch classes
+
 
 struct EncoderJob
 {
@@ -79,6 +79,8 @@ public:
             shutdown = true;
         }
 };
+
+
 
 class Despatcher
 {
@@ -243,17 +245,24 @@ void Despatcher::WaitForCompletion()
 
 
 
+
+
+
+// --------------------------------------------------------------------------------
+//  Sequence Encoder top-level class.
+//
+
+
+
 SeqEncoder::SeqEncoder( EncoderParams &_encparams,
                         PictureReader &_reader,
                         Quantizer &_quantizer,
                         ElemStrmWriter &_writer,
-                        MPEG2Coder &_coder,
                         RateCtl    &_ratecontroller ) :
     encparams( _encparams ),
     reader( _reader ),
     quantizer( _quantizer ),
     writer( _writer ),
-    coder( _coder ),
     ratecontroller( _ratecontroller ),
     despatcher( *new Despatcher ),
     ss( _encparams )
@@ -265,193 +274,6 @@ SeqEncoder::~SeqEncoder()
 {
     delete &despatcher;
 }
-
-StreamState::StreamState( EncoderParams &_encparams ) :
-    encparams(_encparams)
-{
-}
-
-void StreamState::SeqStart( )
-{
-	s_idx = 0;
-	g_idx = 0;
-	b_idx = 0;
-	gop_length = 0;             // Forces new GOP start 1st sequence.
-	seq_start_frame = 0;
-	gop_start_frame = 0;
-	seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
-	next_split_point = BITCOUNT_OFFSET + seq_split_length;
-}
-
-
-void StreamState::GopStart()
-{
-	//int nb, np;
-	uint64_t bits_after_mux;
-	double frame_periods;
-	/* If	we're starting a GOP and have gone past the current
-	   sequence splitting point split the sequence and
-	   set the next splitting point.
-	*/
-			
-	g_idx = 0;
-	b_idx = 0;
-    frame_type = I_TYPE;
-    /* Sequence ended at previous frame so this one starts a new sequence */
-    if( end_seq )
-    {
-          /* We split sequence last frame.This is the input stream display 
-           * order sequence number of the frame that will become frame 0 in display
-           * order in  the new sequence 
-           */
-          seq_start_frame += s_idx;
-          s_idx = 0;
-          new_seq = true;
-    }
-    
-
-    /* Normally set closed_GOP in first GOP only...   */
-
-    closed_gop = s_idx == 0 || encparams.closed_GOPs;
-	gop_start_frame = seq_start_frame + s_idx;
-	
-
-    // 
-    // GOPs initially always start out maximum length - short GOPs occur when we notice
-    // a P frame occurring after the minimum GOP lengthhas been reached
-    //
-
-    gop_length =  encparams.N_max;
-			
-	/* First figure out how many B frames we're short from
-	   being able to achieve an even M-1 B's per I/P frame.
-	   
-	   To avoid peaks in necessary data-rate we try to
-	   lose the B's in the middle of the GOP. We always
-	   *start* with M-1 B's (makes choosing I-frame breaks simpler).
-	   A complication is the extra I-frame in the initial
-	   closed GOP of a sequence.
-	*/
-	if( encparams.M-1 > 0 )
-	{
-        int pics_in_bigrps = 
-            closed_gop ? gop_length - 1 : gop_length;
-		bs_short = (encparams.M - pics_in_bigrps % encparams.M)%encparams.M;
-		next_b_drop = ((double)gop_length) / (double)(bs_short+1)-1.0 ;
-	}
-	else
-	{
-		bs_short = 0;
-		next_b_drop = 0.0;
-	}
-	
-	/* We aim to spread the dropped B's evenly across the GOP */
-	bigrp_length = (encparams.M-1);
-	
-    if (closed_gop )
-	{
-		bigrp_length = 1;
-		np = (gop_length + 2*(encparams.M-1))/encparams.M - 1; /* Closed GOP */
-	}
-	else
-	{
-		bigrp_length = encparams.M;
-		np = (gop_length + (encparams.M-1))/encparams.M - 1;
-	}
-	/* number of B frames */
-	nb = gop_length - np - 1;
-
-	//np = np;
-	//nb = nb;
-	if( np+nb+1 != gop_length )
-	{
-		mjpeg_error_exit1( "****INTERNAL: inconsistent GOP %d %d %d", 
-						   gop_length, np, nb);
-	}
-
-}
-
-
-/*
-  Update ss to the next sequence state.
-*/
-
-void SeqEncoder::NextSeqState( StreamState *ss )
-{
-	++(ss->s_idx);
-	++(ss->g_idx);
-	++(ss->b_idx);	
-
-    ss->new_seq = false;
-	/* Are we starting a new B group */
-	if( ss->b_idx >= ss->bigrp_length )
-	{
-		ss->b_idx = 0;
-		/* Does this need to be a short B group to make the GOP length
-		   come out right ? */
-		if( ss->bs_short != 0 && ss->g_idx > (int)ss->next_b_drop )
-		{
-			ss->bigrp_length = encparams.M - 1;
-			if( ss->bs_short )
-				ss->next_b_drop += ((double)ss->gop_length) / (double)(ss->bs_short+1) ;
-		}
-		else
-			ss->bigrp_length = encparams.M;
-
-        // Are we starting a new GOP
-        if( ss->g_idx == ss->gop_length )
-        {
-            ss->GopStart();
-            // Sets frame_type == I_TYPE
-        }
-        else
-        {
-            ss->frame_type = P_TYPE;
-        }
-	}
-    else
-    {
-        ss->frame_type = B_TYPE;
-    }
-
-    ++frame_num;
-    ss->end_seq = false;
-    if( frame_num == reader.NumberOfFrames()-1 )
-    {
-        ss->end_seq = true;
-    }
-    else if( ss->g_idx == ss->gop_length-1 ) /* Last frame GOP: sequence split? */
-    {
-        if( encparams.pulldown_32 )
-            frame_periods = (double)(ss->seq_start_frame + ss->s_idx)*(5.0/4.0);
-        else
-            frame_periods = (double)(ss->seq_start_frame + ss->s_idx);
-        
-        /*
-          For VBR we estimate total bits based on actual stream size and
-          an estimate for the other streams based on time.
-          For CBR we do *both* based on time to account for padding during
-          muxing.
-        */
-        
-        if( encparams.quant_floor > 0.0 ) bits_after_mux = writer.BitCount() + 
-            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
-        else
-            bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
-                                        (encparams.nonvid_bit_rate + encparams.bit_rate));
-        if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
-            || (ss->s_idx != 0 && encparams.seq_end_every_gop)
-            )
-        {
-            mjpeg_info( "Splitting sequence this GOP start" );
-            ss->next_split_point += ss->seq_split_length;
-            ss->end_seq = true;
-        }
-    }
-
-}
-
-
 
 
 
@@ -508,8 +330,9 @@ void SeqEncoder::EncodePicture(Picture *picture)
 	}
 
 
-	mjpeg_info("Frame %d %c quant=%3.2f total act=%8.5f %s", 
+	mjpeg_info("Frame %5d %5d %c q=%3.2f sum act=%8.5f %s", 
                picture->decode, 
+               picture->input,
 			   pict_type_char[picture->pict_type],
                picture->AQ,
                picture->sum_avg_act,
@@ -549,65 +372,110 @@ void SeqEncoder::Init()
                      encparams.mb_height2, 
                      encparams.encoding_parallelism );
 
-    // Allocate the Buffers for pictures active when encoding...
-    int i;
-    b_pictures = new Picture *[encparams.max_active_b_frames];
-    for( i = 0; i < encparams.max_active_b_frames; ++i )
-    {
-        b_pictures[i] = new Picture(encparams, coder, quantizer);
-    }
-    ref_pictures = new Picture *[encparams.max_active_ref_frames];
-    for( i = 0; i < encparams.max_active_ref_frames; ++i )
-    {
-        ref_pictures[i] = new Picture(encparams, coder, quantizer);
-    }
-
-
-	/* Initialize image dependencies and synchronisation.  The
-	   first frame encoded has no predecessor whose completion it
-	   must wait on.
-	*/
-
-	old_ref_picture = ref_pictures[encparams.max_active_ref_frames-1];
-	new_ref_picture = ref_pictures[0];
-    cur_ref_idx = 0;
-    cur_b_idx = 0;
-	cur_picture = new_ref_picture;
-	
+	old_ref_picture = 0;
+    new_ref_picture = GetPicture();
+	ReleasePicture( new_ref_picture );
+	seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
+    next_split_point = BITCOUNT_OFFSET + seq_split_length;
 	ratecontroller.InitSeq(false);
 	
-    ss.SeqStart();
-	mjpeg_debug( "Split len = %lld", ss.seq_split_length );
-
-    frame_num = 0;
-	ss.GopStart();
+    ss.Init( );
+	mjpeg_debug( "Split len = %lld", seq_split_length );
 }
 
 
-
-bool SeqEncoder::EncodeFrame()
+/*********************
+ *
+ * EncodeStream - Where it all happens.  This is the top-level loop
+ * that despatches all the encoding work.  Encoding is always performed
+ * two-pass. 
+ * Pass 1: a first encoding that determines the GOP
+ * structure, but may only do rough-and-ready bit allocatino that is 
+ * visually sub-optimal and/or may violate the specified maximum bit-rate.
+ * 
+ * Pass 2: Pictures from Pass1 are, if necessary, re-quantised and the results
+ * coded to accurate achieve good bit-allocation and satisfy bit-rate limits.
+ * 
+ * In 'single-pass mode' pass 2 re-encodes only if it 'has to'.
+ * In 'look-ahead mode' pass 2 always re-encodes.
+ * In 'Pass 1 of two-pass mode' Pass-2 simply dumps frame complexity and motion
+ * estimation data from Pass-1.
+ * In 'Pass 2 of two-pass mode' Pass-1 rebuilds frames based on ME and complexity
+ * data from  a 'Pass 1 of two-pass mode' run and Pass-2 does some final optimisation.
+ *
+ * N.b. almost all the interesting stuff occurs in the Pass1 encoding. If selected:
+ * - A GOP may be low-passed and re-encoded if it looks like excessive quantisation 
+ * is needed. 
+ * - GOP length is determined (P frames with mostly intra-coded blocks are turned
+ * into I-frames.
+ *
+ * NOTE: Eventually there will be support for Pass2 to occur in seperate threads...
+ * 
+ ********************/
+ 
+void SeqEncoder::EncodeStream()
 {
+    //
+    // Repeated calls to TransformFrame build up the queue of
+    // Encoded with quantisation controlled by the
+    // pass1 rate controller.
+    do 
+    {
+        // If we have Pass2 work to do
+        if( pass2queue.size() != 0 )
+        {
+            Pass2EncodeFrame();
+        }
+        else
+        {
+            Pass1EncodeFrame();
+         }
+    } while( pass2queue.size() != 0 ||  ss.FrameInStream() < reader.NumberOfFrames() );
+    StreamEnd();
+}
 
-	if( frame_num >= reader.NumberOfFrames() )
-        return false;
 
-	/* loop through all frames in encoding/decoding order */
+Picture *SeqEncoder::GetPicture()
+{
+    if( free_pictures.size() == 0 )
+        return new Picture(encparams,  writer , quantizer);
+    else
+    {
+        Picture *free = free_pictures.back();
+        free_pictures.pop_back();
+        return free;
+    }
+}
 
+void SeqEncoder::ReleasePicture( Picture *picture )
+{
+    free_pictures.push_back( picture );
+}
+/*********************
+ *
+ * Pass1EncodeFrame - Do a unit of work in building up a queue of
+ * Pass-1 encoded frame's.
+ *
+ * A Picture is encoded based on a normal (maximum) length GOP with quantisation
+ * determined by Pass1 rate controller.
+ * 
+ * If the Picture is a P-frame and is almost entirely intra-coded the picture is
+ * converted to an I-frame and the current GOP ended early.
+ *
+ * Once a GOP is succesfully completed its Picture's are transferred to the
+ * pass2queue for Pass-2 encoding.
+ *
+ *********************/
+ 
+  
+void SeqEncoder::Pass1EncodeFrame()
+{
     old_picture = cur_picture;
     
-    // TODO: Eventually the encoder should allow the picture type B/R
-    //
-   /* Each bigroup starts once all the B frames of its predecessor
-       have finished.
-    */
-
-    if ( ss.b_idx == 0 ) // I or P Frame
+    if ( ss.b_idx == 0 ) // I or P Frame (First frame in B-group)
     {
-        cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
         old_ref_picture = new_ref_picture;
-        new_ref_picture = ref_pictures[cur_ref_idx];
-        cur_picture = new_ref_picture;
-        
+        new_ref_picture = cur_picture = GetPicture();
         cur_picture->fwd_org = old_ref_picture->org_img;
         cur_picture->fwd_rec = old_ref_picture->rec_img;
         cur_picture->fwd_ref_frame = old_ref_picture;
@@ -615,28 +483,18 @@ bool SeqEncoder::EncodeFrame()
     }
     else
     {
-        Picture *new_b_picture;
-        /* B frame: no need to change the reference frames.
-           The current frame data pointers are a 3rd set
-           seperate from the reference data pointers.
-        */
-        cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
-        new_b_picture = b_pictures[cur_b_idx];
-        cur_picture = new_b_picture;
-        
+        cur_picture = GetPicture();
         cur_picture->fwd_org = old_ref_picture->org_img;
         cur_picture->fwd_rec = old_ref_picture->rec_img;
         cur_picture->bwd_org = new_ref_picture->org_img;
         cur_picture->bwd_rec = new_ref_picture->rec_img;
-        cur_picture->fwd_ref_frame = new_ref_picture;
-        cur_picture->bwd_ref_frame = old_ref_picture;
+        cur_picture->fwd_ref_frame = old_ref_picture;
+        cur_picture->bwd_ref_frame = new_ref_picture;
     }
-   cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
 
     
-    reader.ReadFrame( cur_picture->input /*cur_picture->temp_ref+ss.gop_start_frame*/,
-                      cur_picture->org_img );
-
+    reader.ReadFrame( cur_picture->input, cur_picture->org_img );
     EncodePicture( cur_picture );
 
     if( cur_picture->end_seq )
@@ -644,42 +502,114 @@ bool SeqEncoder::EncodeFrame()
 #ifdef DEBUG
     writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->rec_img);
 #endif
-
-    NextSeqState( &ss );
-
-    // Hard-wired simple 1-pass encoder!!!
-    coder.FlushBuffer();
-    if( frame_num < reader.NumberOfFrames() )
-        return true;
-        
-    // DEBUG
-	if( encparams.pulldown_32 )
-		frame_periods = (double)(ss.seq_start_frame + ss.s_idx)*(5.0/4.0);
-	else
-		frame_periods = (double)(ss.seq_start_frame + ss.s_idx);
-    if( encparams.quant_floor > 0.0 )
-        bits_after_mux = writer.BitCount() + 
-            (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
+    uint64_t bits_after_mux = BitsAfterMux();
+    bool split_seq;                      
+    if( (next_split_point != 0ULL && bits_after_mux > next_split_point)
+        || (ss.FrameInSeq() != 0 && encparams.seq_end_every_gop)
+        )
+    {
+        mjpeg_info( "Splitting sequence this GOP start" );
+        next_split_point += seq_split_length;
+        split_seq = true;
+    }
     else
-        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
-                                    (encparams.nonvid_bit_rate + encparams.bit_rate));
-
-    mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
+        split_seq = false;
+ 
+    // Hard-wired simple 1-pass encoder!!!
+    //cur_picture->Commit();
+    pass1coded.push_back( cur_picture );
     
-    // END DEBUG
-
+    // Figure out how many pictures can be queued on to pass 2 encoding
+    int to_queue = 0;
     int i;
-    for( i = 0; i < encparams.max_active_b_frames; ++i )
+    if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
     {
-        delete b_pictures[i];
+        // We have a new fwd reference picture: anything decoded before
+        // will no longer be referenced and can be passed on.
+        for( i = 0; i < pass1coded.size();  ++i )
+        {
+            if( pass1coded[i] == old_ref_picture) 
+                break;
+        }
+        to_queue = i == pass1coded.size() ? 0 : i;
     }
-    for( i = 0; i < encparams.max_active_ref_frames; ++i )
+    else if( cur_picture->end_seq )
     {
-        delete ref_pictures[i];
+        to_queue = pass1coded.size();
     }
-    delete [] b_pictures;
-    delete [] ref_pictures;
-    return false;
+
+    for( i = 0; i < to_queue; ++i )
+    {
+        pass2queue.push_back( pass1coded.front() );
+        pass1coded.pop_front();
+    }
+    
+    ss.Next( reader.NumberOfFrames()-1, split_seq ); 
+
+
+}
+
+/*********************
+*
+*   BitsAfterMux    -   Estimate the size of the multiplexed stream based
+*                   on video stream size and estimate overheads for other
+*                   components
+*
+*********************/
+
+uint64_t    SeqEncoder::BitsAfterMux() const
+{
+    double frame_periods;
+    uint64_t bits_after_mux;
+    if( encparams.pulldown_32 )
+        frame_periods = (double)ss.FrameInStream()*(5.0/4.0);
+    else
+        frame_periods = (double)ss.FrameInStream();
+    //
+    //    For VBR we estimate total bits based on actual stream size and
+    //    an estimate for the other streams based on time.
+    //    For CBR we do *both* based on time to account for padding during
+    //    muxing.
+    
+    if( encparams.quant_floor > 0.0 )       // VBR
+        bits_after_mux = 
+            writer.BitCount() +  (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
+    else                                    // CBR
+        bits_after_mux = 
+            (uint64_t)((frame_periods / encparams.frame_rate) * (encparams.nonvid_bit_rate + encparams.bit_rate));
+    return bits_after_mux;
+}   
+
+/*********************
+ *
+ * Pass2EncodeFrame - Take a frame from pass2queue if necessary
+ * requantize and re-encode then commit the result.
+ *
+ *********************/
+ 
+  
+void SeqEncoder::Pass2EncodeFrame()
+{
+    Picture *cur_pass2_picture = pass2queue.front();
+    pass2queue.pop_front();
+    // Simple single-pass encoding (look-ahead coming soon)
+    cur_pass2_picture->Commit();
+    ReleasePicture( cur_pass2_picture );
+}
+
+void SeqEncoder::StreamEnd()
+{
+    uint64_t bits_after_mux = BitsAfterMux();
+    mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
+
+    assert( pass1coded.size() == 0 );
+    assert( pass2queue.size() == 0 );
+    
+    int i;
+    for( i = 0; i < free_pictures.size(); ++i )
+    {
+        delete free_pictures[i];
+    }
 }
 
 

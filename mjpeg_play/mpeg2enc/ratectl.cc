@@ -458,7 +458,7 @@ void OnTheFlyRateCtl::InitNewPict(Picture &picture)
 
 	target_bits = min( target_bits, encparams.video_buffer_size*3/4 );
 
-	mjpeg_debug( "Frame %c T=%05d A=%06d  Xi=%.2f Xp=%.2f Xb=%.2f", 
+ 	mjpeg_debug( "Frame %c T=%05d A=%06d  Xi=%.2f Xp=%.2f Xb=%.2f", 
                  pict_type_char[picture.pict_type],
                  (int)target_bits/8, (int)available_bits/8, 
                  Xhi[I_TYPE], Xhi[P_TYPE],Xhi[B_TYPE] );
@@ -627,7 +627,6 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int &padding_needed)
 	int frame_overshoot;
 	actual_bits = picture.SizeCodedMacroBlocks();
 	frame_overshoot = (int)actual_bits-(int)target_bits;
-
 	/* For the virtual buffers for quantisation feedback it is the
 	   actual under/overshoot *including* padding.  Otherwise the
 	   buffers go zero.
@@ -705,7 +704,6 @@ void OnTheFlyRateCtl::UpdatePict( Picture &picture, int &padding_needed)
 			buffer_variation = undershoot_carry;
 		}
 	}
-
 
 	Qsum = 0;
 	for( i = 0; i < encparams.mb_per_pict; ++i )

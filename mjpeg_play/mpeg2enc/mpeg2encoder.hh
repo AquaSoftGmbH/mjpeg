@@ -34,7 +34,7 @@ class RateController;
 class SeqEncoder;
 class Quantizer;
 class Transformer;
-class MPEG2Coder;
+class MPEG2CodingBuf;
 class BitStreamWriter;
 class ElemStrmWriter;
 
@@ -51,7 +51,7 @@ public:
     PictureReader *reader;
     ElemStrmWriter *writer;
     Quantizer     *quantizer;
-    MPEG2Coder    *coder;
+    MPEG2CodingBuf    *coder;
     RateCtl       *bitrate_controller;
     SeqEncoder    *seqencoder;
 };

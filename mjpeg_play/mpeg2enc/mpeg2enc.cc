@@ -989,7 +989,6 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
 
     writer = new FILE_StrmWriter( parms, cmd_options.outfilename );
     quantizer = new Quantizer( parms );
-    coder = new MPEG2Coder( parms, *writer );
     
     if( cmd_options.rate_control == 0 )
     {
@@ -1005,9 +1004,9 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
     */
 
     seqencoder = new SeqEncoder( parms, *reader, *quantizer,
-                                 *writer, *coder, *bitrate_controller);
+                                 *writer, *bitrate_controller);
 
-    
+    // This order is important! Don't change...
     parms.Init( options );
     reader->Init();
     quantizer->Init();
@@ -1018,10 +1017,8 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
 void YUV4MPEGEncoder::Encode( )
 {
     bool more;
-    do
-    {
-        more = seqencoder->EncodeFrame();
-    } while( more );
+    seqencoder->EncodeStream();
+    //while( seqencoder->EncodeFrame() );
 }
 
 int main( int argc,	char *argv[] )
