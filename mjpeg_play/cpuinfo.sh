@@ -68,6 +68,30 @@ pmodel=`$_cpuinfo | grep -v 'model name' | grep 'model' | cut -d':' -f2 | cut -d
 pstep=`$_cpuinfo | grep 'stepping' | cut -d':' -f2 | cut -d' ' -f2 | head -1`
 pparam=`$_cpuinfo | grep 'features' | cut -d':' -f2 | head -1`
 
+if test -z "$pparam" ; then
+ pparam=`$_cpuinfo | grep 'flags' | cut -d ':' -f 2 | head -1`
+fi
+
+_mmx=no
+_3dnow=no
+_3dnowex=no
+_mmx2=no
+_sse=no
+_sse2=no
+_mtrr=no
+
+for i in $pparam ; do
+ case "$i" in
+  3dnow)        _3dnow=yes               ;;
+  3dnowext)     _3dnow=yes  _3dnowex=yes ;;
+  mmx)          _mmx=yes                 ;;
+  mmxext)       _mmx2=yes                ;;
+  mtrr|k6_mtrr|cyrix_arr)   _mtrr=yes    ;;
+  xmm|sse|kni)  _sse=yes    _mmx2=yes    ;;
+  sse2)         _sse2=yes                ;;
+ esac
+done
+
 case "$pvendor" in
 	AuthenticAMD)
 		case "$pfamily" in
