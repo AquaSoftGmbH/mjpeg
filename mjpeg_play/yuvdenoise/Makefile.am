@@ -1,5 +1,6 @@
 # Makefile.am for yuvdenoise (lavtools)
 
+@LIBM_LIBS@
 EXTRA_DIST = .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
 INCLUDES = -I $(top_srcdir)/utils -I $(top_srcdir)
