@@ -27,6 +27,7 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "synchrolib.h"
 
 /*********
@@ -52,20 +53,20 @@ void sync_guard_init( sync_guard_t *guard, int init )
 
 void sync_guard_test( sync_guard_t *guard)
 {
-	pthread_mutex_lock( &guard->mutex );
+	if (pthread_mutex_lock( &guard->mutex ) != 0) abort();
 	while( !guard->predicate )
 	{
 		pthread_cond_wait( &guard->cond, &guard->mutex );
 	}
-	pthread_mutex_unlock( &guard->mutex );
+	if (pthread_mutex_unlock( &guard->mutex ) != 0) abort();
 }
 
 void sync_guard_update( sync_guard_t *guard, int predicate )
 {
-	pthread_mutex_lock( &guard->mutex );
+	if (pthread_mutex_lock( &guard->mutex ) != 0) abort();
 	guard->predicate = predicate;
 	pthread_cond_broadcast( &guard->cond );
-	pthread_mutex_unlock( &guard->mutex );
+	if (pthread_mutex_unlock( &guard->mutex ) != 0) abort();
 }
 
 
@@ -87,27 +88,27 @@ void mp_semaphore_init( mp_semaphore_t *sema, int init_count )
 
 void mp_semaphore_wait( mp_semaphore_t *sema)
 {
-	pthread_mutex_lock( &sema->mutex );
+	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
 	while( sema->count == 0 )
 	{
 		pthread_cond_wait( &sema->raised, &sema->mutex );
 	}
 	--(sema->count);
-	pthread_mutex_unlock( &sema->mutex );
+	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
 }
 
 void mp_semaphore_signal( mp_semaphore_t *sema, int count )
 {
-	pthread_mutex_lock( &sema->mutex );
+	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
 	sema->count += count;
 	pthread_cond_broadcast( &sema->raised );
-	pthread_mutex_unlock( &sema->mutex );
+	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
 }
 
 void mp_semaphore_set( mp_semaphore_t *sema )
 {
-	pthread_mutex_lock( &sema->mutex );
+	if (pthread_mutex_lock( &sema->mutex ) != 0) abort();
 	sema->count = 1;
 	pthread_cond_broadcast( &sema->raised );
-	pthread_mutex_unlock( &sema->mutex );
+	if (pthread_mutex_unlock( &sema->mutex ) != 0) abort();
 }

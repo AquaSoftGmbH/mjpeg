@@ -206,14 +206,14 @@ void PictureReader::ReadChunk()
 		   // starting the other.
 		   //mjpeg_info( "PRO:  releasing frame buf lock @ %d ", frames_read);
 
-		   pthread_mutex_unlock( &input_imgs_buf_lock );
+		   if (pthread_mutex_unlock(&input_imgs_buf_lock) != 0) abort();
 	   }
       if( LoadFrame() )
       {
           mjpeg_debug( "End of input stream detected" );
           if( encparams.parallel_read )
           {
-              pthread_mutex_lock( &input_imgs_buf_lock );
+              if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
           }
           last_frame = frames_read-1;
           istrm_nframes = frames_read;
@@ -235,7 +235,7 @@ void PictureReader::ReadChunk()
 		  // unavailable
 		  //
 		  //mjpeg_info( "PRO:  waiting for frame buf lock @ %d ", frames_read);
-		  pthread_mutex_lock( &input_imgs_buf_lock );
+		  if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
 	  }
 	  ++frames_read;
 
@@ -267,7 +267,7 @@ void PictureReader::ReadChunksWorker( )
 	//mjpeg_info( "PRO: requesting frame buf lock" );
     //mjpeg_info( "PRO: has frame buf lock @ %d ", frames_read );
     //mjpeg_info( "PRO: Initial fill of frame buf" );
-    pthread_mutex_lock( &input_imgs_buf_lock );
+    if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
     ReadChunk();
 	for(;;)
 	{
@@ -350,7 +350,7 @@ void PictureReader::ReadChunkSequential( int num_frame )
 void PictureReader::ReadChunkParallel( int num_frame)
 {
 	//mjpeg_info( "CON: requesting frame buf lock");
-	pthread_mutex_lock( &input_imgs_buf_lock);
+	if (pthread_mutex_lock( &input_imgs_buf_lock) != 0) abort();
 	for(;;)
 	{
 		//mjpeg_info( "CON: has frame buf lock @ %d (%d recorded read)", frames_read,  num_frame );
@@ -366,7 +366,7 @@ void PictureReader::ReadChunkParallel( int num_frame)
 			frames_read >= istrm_nframes )
 		{
 			//mjpeg_info( "CON:  releasing frame buf lock - enough frames to go on with...");
-			pthread_mutex_unlock( &input_imgs_buf_lock );
+			if (pthread_mutex_unlock(&input_imgs_buf_lock) != 0) abort();
 			return;
 		}
 		//mjpeg_info( "CON: waiting for new_chunk_ack - too few frames" );

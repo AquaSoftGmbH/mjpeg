@@ -54,7 +54,7 @@ public:
 
 	void Put( const T &in )
 		{
-			pthread_mutex_lock( &atomic);
+			if (pthread_mutex_lock( &atomic) != 0) abort();
 			if( fullness == size )
 			{
 				++producers_waiting;
@@ -70,12 +70,12 @@ public:
 			buffer[write] = in;
 			write = (write + 1) % size;
 			pthread_cond_signal( &addition );
-			pthread_mutex_unlock( &atomic );
+			if (pthread_mutex_unlock( &atomic ) != 0) abort();
 		}
 	
 	void Get( T &out )
 		{
-			pthread_mutex_lock( &atomic);
+			if (pthread_mutex_lock( &atomic) != 0) abort();
 			if( fullness == 0 )
 			{
 				++consumers_waiting;
@@ -90,27 +90,27 @@ public:
 			out = buffer[read];
 			read = (read + 1) % size;
 			pthread_cond_signal( &removal );
-			pthread_mutex_unlock( &atomic );
+			if (pthread_mutex_unlock( &atomic ) != 0) abort();
 		}
 
 	void WaitUntilConsumersWaitingAtLeast( unsigned int wait_for )
 		{
-			pthread_mutex_lock( &atomic);
+			if (pthread_mutex_lock( &atomic) != 0) abort();
 			while( fullness > 0 || consumers_waiting < wait_for )
 			{
 				pthread_cond_wait( &waiting, &atomic);
 			}
-			pthread_mutex_unlock( &atomic );
+			if (pthread_mutex_unlock( &atomic ) != 0) abort();
 		}
 
 	void WaitUntilProducersWaitingAtLeast( unsigned int wait_for )
 		{
-			pthread_mutex_lock( &atomic);
+			if (pthread_mutex_lock( &atomic) != 0) abort();
 			while( fullness < size || producers_waiting < wait_for )
 			{
 				pthread_cond_wait( &waiting, &atomic);
 			}
-			pthread_mutex_unlock( &atomic );
+			if (pthread_mutex_unlock( &atomic ) != 0) abort();
 		}
 private:
 	pthread_cond_t addition;
