@@ -1,3 +1,20 @@
+#
+#    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program; if not, write to the Free Software
+#    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
 import fcntl, struct, V4L
 
 class V4l:
@@ -89,8 +106,49 @@ class V4l:
 
 	def set_audio(self, channel, volume, bass, treble, flags, mode, balance, step):
 		buffer = struct.pack(V4L.VIDIOCSAUDIO, "ihhhi16shhh", channel, volume, bass, treble, flags, "", mode, blance, step)
-	
 
-test = V4l()
-print test.query_capability()
+	def decode_cap_types(self, types):
+		string = ""
+		if types & V4L.VID_TYPE_CAPTURE:
+			string = string + "capture "
+		if types & V4L.VID_TYPE_TUNER:
+			string = string + "tuner "
+		if types & V4L.VID_TYPE_TELETEXT:
+			string = string + "teletext "
+		if types & V4L.VID_TYPE_OVERLAY:
+			string = string + "overlay "
+		if types & V4L.VID_TYPE_CHROMAKEY:
+			string = string + "chromakey "
+		if types & V4L.VID_TYPE_CLIPPING:
+			string = string + "clipping "
+		if types & V4L.VID_TYPE_FRAMERAM:
+			string = string + "frameram "
+		if types & V4L.VID_TYPE_SCALES:
+			string = string + "scales "
+		if types & V4L.VID_TYPE_MONOCHROME:
+			string = string + "monochrome "
+		if types & V4L.VID_TYPE_SUBCAPTURE:
+			string = string + "subcapture "
+		return string
+
+
+	def decode_chan(self, name, tuner, flags, type, norm):
+		string = name
+		if flags & V4L.VIDEO_VC_TUNER:
+			string = string + " tuner=%d" % tuner
+		if flags & V4L.VIDEO_VC_AUDIO:
+			string = string + " audio"
+		if type == V4L.VIDEO_TYPE_TV:
+			string = string + " type=tv"
+		elif type == V4L.VIDEO_TYPE_CAMERA:
+			string = string + " type=camera"
+		if norm == V4L.VIDEO_MODE_PAL:
+	                string = string + " norm=PAL"
+	   	elif norm == V4L.VIDEO_MODE_NTSC:
+        	        string = string + " norm=NTSC"
+	  	elif norm == V4L.VIDEO_MODE_SECAM:
+        	        string = string + " norm=SECAM"
+		elif norm == V4L.VIDEO_MODE_AUTO:
+        	        string = string + " norm=AUTO"
+		return string
 

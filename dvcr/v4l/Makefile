@@ -1,3 +1,6 @@
+BIN_DIR = /usr/local/bin
+LIB_DIR = /usr/lib/site-python
+
 all: ioctl V4L.py
 
 ioctl: ioctl.c
