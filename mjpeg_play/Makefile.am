@@ -14,6 +14,7 @@ EXTRA_DIST = \
  README.transist\
  README.DV\
  README.glav\
+ README.AltiVec\
  HINTS\
  TODO\
  BUGS\
