@@ -33,27 +33,11 @@
 #include "subsample.h"
 
 
-const char *ssm_id[SSM_COUNT] = {
-  "unknown",
-  "420_jpeg",
-  "420_mpeg2",
-#if 0
-  "420_dv_pal",
-  "411_dv_ntsc"
-#endif
-};
 
 
-const char *ssm_description[SSM_COUNT] = {
-  "unknown/illegal",
-  "4:2:0, JPEG/MPEG-1, interstitial siting",
-  "4:2:0, MPEG-2, horizontal cositing",
-#if 0
-  "4:2:0, DV-PAL, cosited, Cb/Cr line alternating",
-  "4:1:1, DV-NTSC"
-  "4:2:2",
-#endif
-};
+
+
+
 
 
 /*************************************************************************
@@ -344,15 +328,36 @@ static void ss_444_to_420mpeg2(uint8_t *buffer, int width, int height)
 
 
 
-void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
-		      int width, int height)
+int chroma_sub_implemented(int mode)
 {
   switch (mode) {
-  case SSM_420_JPEG:
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_444:
+    return 1; /* yes, supported */
+  case Y4M_CHROMA_420PALDV:
+  case Y4M_CHROMA_422:
+  case Y4M_CHROMA_411:
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_MONO:
+  default:
+    return 0; /* no, unsupported */
+  }
+}
+
+
+void chroma_subsample(int mode, uint8_t *ycbcr[], int width, int height)
+{
+  switch (mode) {
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_MONO:
+    break;
+  case Y4M_CHROMA_420JPEG:
     ss_444_to_420jpeg(ycbcr[1], width, height);
     ss_444_to_420jpeg(ycbcr[2], width, height);
     break;
-  case SSM_420_MPEG2:
+  case Y4M_CHROMA_420MPEG2:
     ss_444_to_420mpeg2(ycbcr[1], width, height);
     ss_444_to_420mpeg2(ycbcr[2], width, height);
     break;
@@ -362,19 +367,41 @@ void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
 }
 
 
-void chroma_supersample(subsample_mode_t mode, uint8_t *ycbcr[],
-			int width, int height)
+
+int chroma_super_implemented(int mode)
 {
   switch (mode) {
-  case SSM_420_JPEG:
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_444:
+    return 1; /* yes, supported */
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+  case Y4M_CHROMA_422:
+  case Y4M_CHROMA_411:
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_MONO:
+  default:
+    return 0; /* no, unsupported */
+  }
+}
+
+
+void chroma_supersample(int mode, uint8_t *ycbcr[], int width, int height)
+{
+  switch (mode) {
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_MONO:
+    break;
+  case Y4M_CHROMA_420JPEG:
     ss_420jpeg_to_444(ycbcr[1], width, height);
     ss_420jpeg_to_444(ycbcr[2], width, height);
     break;
-  case SSM_420_MPEG2:
+  case Y4M_CHROMA_420MPEG2:
     //    ss_420mpeg2_to_444(ycbcr[1], width, height);
     //    ss_420mpeg2_to_444(ycbcr[2], width, height);
-    exit(4);
-    break;
+    //    exit(4);
+    //    break;
   default:
     break;
   }

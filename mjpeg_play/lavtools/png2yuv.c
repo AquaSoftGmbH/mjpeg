@@ -11,7 +11,7 @@ png2yuv
   Based on rpf2yuv.c.
 
   Copyright (C) 1999, 2002 Gernot Ziegler (gz@lysator.liu.se)
-  Copyright (C) 2001 Matthew Marjanovic (maddog@mir.com)
+  Copyright (C) 2001, 2004 Matthew Marjanovic (maddog@mir.com)
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -50,6 +50,8 @@ png2yuv
 #include "subsample.h"
 #include "colorspace.h"
 //#include "mplexconsts.hh"
+
+#define DEFAULT_CHROMA_MODE Y4M_CHROMA_420JPEG
 
 #define MAXPIXELS (2800*1152)  /**< Maximum size of final image */
 
@@ -129,7 +131,7 @@ static void usage(char *prog)
 	  "    abc_0001.png, etc...) and pipes it to mpeg2enc which encodes\n"
 	  "    an MPEG2-file called out.m2v out of it\n"
 	  "\n",
-	  prog, ssm_id[SSM_420_JPEG], prog, prog, prog);
+	  prog, y4m_chroma_keyword(DEFAULT_CHROMA_MODE), prog, prog, prog);
 }
 
 
@@ -140,7 +142,7 @@ static void usage(char *prog)
  */
 static void parse_commandline(int argc, char ** argv, parameters_t *param)
 {
-  int c, i;
+  int c;
   
   param->pngformatstr = NULL;
   param->begin = 0;
@@ -149,7 +151,7 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   param->interlace = Y4M_UNKNOWN;
   param->interleave = -1;
   param->verbose = 1;
-  param->ss_mode = SSM_420_JPEG;
+  param->ss_mode = DEFAULT_CHROMA_MODE;
   //param->mza_filename = NULL;
   //param->make_z_alpha = 0;
 
@@ -173,13 +175,11 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       break;
 #endif
     case 'S':
-      for (i = 0; i < SSM_COUNT; i++) {
-	if (!(strcmp(optarg, ssm_id[i]))) break;
-      }
-      if (i < SSM_COUNT)
-	param->ss_mode = i;
-      else {
-	param->ss_mode = -1;
+      param->ss_mode = y4m_chroma_parse_keyword(optarg);
+      if (param->ss_mode == Y4M_UNKNOWN) {
+	mjpeg_error_exit1("Unknown subsampling mode option:  %s", optarg);
+      } else if (!chroma_sub_implemented(param->ss_mode)) {
+	mjpeg_error_exit1("Unsupported subsampling mode option:  %s", optarg);
       }
       break;
     case 'b':
@@ -227,12 +227,6 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
     { 
       mjpeg_error("%s:  input format string not specified. (Use -j option.)",
 		  argv[0]); 
-      usage(argv[0]); 
-      exit(1);
-    }
-  if (param->ss_mode == -1) 
-    { 
-      mjpeg_error("Unknown subsampling mode option:  %s", optarg);
       usage(argv[0]); 
       exit(1);
     }
@@ -491,6 +485,7 @@ static int generate_YUV4MPEG(parameters_t *param)
   y4m_si_set_height(&streaminfo, param->height);
   y4m_si_set_interlace(&streaminfo, param->interlace);
   y4m_si_set_framerate(&streaminfo, param->framerate);
+  y4m_si_set_chroma(&streaminfo, param->ss_mode);
 
   yuv[0] = (uint8_t *)malloc(param->new_width * param->height * sizeof(yuv[0][0]));
   yuv[1] = (uint8_t *)malloc(param->new_width * param->height * sizeof(yuv[1][0]));
@@ -617,7 +612,9 @@ int main(int argc, char ** argv)
 { 
   parameters_t param;
   sh_param = &param;
-  
+
+  y4m_accept_extensions(1);
+
   parse_commandline(argc, argv, &param);
   mjpeg_default_handler_verbosity(param.verbose);
 

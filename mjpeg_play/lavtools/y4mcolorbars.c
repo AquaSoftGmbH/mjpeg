@@ -3,7 +3,7 @@
  *                   (where "POG" == "YUV4MPEG2 stream").
  *
  *
- *  Copyright (C) 2001 Matthew J. Marjanovic <maddog@mir.com>
+ *  Copyright (C) 2004 Matthew J. Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -36,6 +36,8 @@
 #include "subsample.h"
 #include "colorspace.h"
 
+#define DEFAULT_CHROMA_MODE Y4M_CHROMA_444
+
 
 typedef struct _cl_info {
   y4m_ratio_t aspect;
@@ -53,8 +55,6 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  int i;
-
   fprintf(stdout, "usage: %s [options]\n", progname);
   fprintf(stdout, "\n");
   fprintf(stdout, "Creates a YUV4MPEG2 stream consisting of frames containing a standard\n");
@@ -73,10 +73,19 @@ void usage(const char *progname)
   fprintf(stdout, "             t = top-field-first\n");
   fprintf(stdout, "             b = bottom-field-first\n");
   fprintf(stdout, "\n");
-  fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
-	  ssm_id[SSM_420_JPEG]);
-  for (i = 1; i < SSM_COUNT; i++)
-  fprintf(stdout, "            '%s' -> %s\n", ssm_id[i], ssm_description[i]);
+  {
+    int m;
+    const char *keyword;
+
+    fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
+	    y4m_chroma_keyword(DEFAULT_CHROMA_MODE));
+    for (m = 0;
+	 (keyword = y4m_chroma_keyword(m)) != NULL;
+	 m++)
+      if (chroma_sub_implemented(m))
+	fprintf(stdout, "            '%s' -> %s\n",
+		keyword, y4m_chroma_description(m));
+  }
   fprintf(stdout, "\n");
   fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
 }
@@ -86,16 +95,16 @@ void usage(const char *progname)
 static
 void parse_args(cl_info_t *cl, int argc, char **argv)
 {
-  int i;
   int c;
 
   cl->interlace = Y4M_ILACE_NONE;
   cl->framerate = y4m_fps_NTSC;
   cl->framecount = 1;
-  cl->ss_mode = SSM_420_JPEG;
+  cl->ss_mode = DEFAULT_CHROMA_MODE;
   cl->width = 720;
   cl->height = 480;
   cl->aspect = y4m_sar_NTSC_CCIR601;
+  cl->verbosity = 1;
 
   while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:v:h")) != -1) {
     switch (c) {
@@ -141,13 +150,12 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       }
       break;
     case 'S':
-      for (i = 0; i < SSM_COUNT; i++) {
-	if (!(strcmp(optarg, ssm_id[i]))) break;
-      }
-      if (i < SSM_COUNT)
-	cl->ss_mode = i;
-      else {
+      cl->ss_mode = y4m_chroma_parse_keyword(optarg);
+      if (cl->ss_mode == Y4M_UNKNOWN) {
 	mjpeg_error("Unknown subsampling mode option:  %s", optarg);
+	goto ERROR_EXIT;
+      } else if (!chroma_sub_implemented(cl->ss_mode)) {
+	mjpeg_error("Unsupported subsampling mode option:  %s", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -177,7 +185,8 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   mjpeg_info("             interlace:  %s",
 	     mpeg_interlace_code_definition(cl->interlace));
   mjpeg_info("           # of frames:  %d", cl->framecount);
-  mjpeg_info("    chroma subsampling:  %s", ssm_description[cl->ss_mode]);
+  mjpeg_info("    chroma subsampling:  %s",
+	     y4m_chroma_description(cl->ss_mode));
   return;
 
  ERROR_EXIT:
@@ -366,10 +375,12 @@ int main(int argc, char **argv)
   cl_info_t cl;
   y4m_stream_info_t sinfo;
   y4m_frame_info_t finfo;
-  uint8_t *planes[3];  /* Y'CbCr frame buffer */
+  uint8_t *planes[Y4M_MAX_NUM_PLANES];  /* Y'CbCr frame buffer */
   int fdout = 1;  /* stdout file descriptor */
   int i;
+  int err;
 
+  y4m_accept_extensions(1);
   y4m_init_stream_info(&sinfo);
   y4m_init_frame_info(&finfo);
 
@@ -381,7 +392,9 @@ int main(int argc, char **argv)
   y4m_si_set_sampleaspect(&sinfo, cl.aspect);
   y4m_si_set_interlace(&sinfo, cl.interlace);
   y4m_si_set_framerate(&sinfo, cl.framerate);
-  y4m_write_stream_header(fdout, &sinfo);
+  y4m_si_set_chroma(&sinfo, cl.ss_mode);
+  if ((err = y4m_write_stream_header(fdout, &sinfo)) != Y4M_OK)
+    mjpeg_error_exit1("Write header failed: %s", y4m_strerr(err));
   mjpeg_info("Colorbar Stream parameters:");
   y4m_log_stream_info(LOG_INFO, "  ", &sinfo);
 
@@ -392,8 +405,10 @@ int main(int argc, char **argv)
   chroma_subsample(cl.ss_mode, planes, cl.width, cl.height);
 
   /* We're on the air! */
-  for (i = 0; i < cl.framecount; i++)
-      y4m_write_frame(fdout, &sinfo, &finfo, planes);
+  for (i = 0; i < cl.framecount; i++) {
+    if ((err = y4m_write_frame(fdout, &sinfo, &finfo, planes)) != Y4M_OK)
+      mjpeg_error_exit1("Write frame failed: %s", y4m_strerr(err));
+  }
 
   /* We're off the air. :( */
   for (i = 0; i < 3; i++)

@@ -5,7 +5,7 @@
  *               performs 4:2:0 chroma subsampling.
  *
  *
- *  Copyright (C) 2001 Matthew J. Marjanovic <maddog@mir.com>
+ *  Copyright (C) 2004 Matthew J. Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -42,6 +42,9 @@
 # define O_BINARY 0
 #endif
 
+#define DEFAULT_CHROMA_MODE Y4M_CHROMA_444
+
+
 /* command-line parameters */
 typedef struct _cl_info {
   y4m_ratio_t aspect;    
@@ -68,7 +71,6 @@ typedef struct _ppm_info {
 static
 void usage(const char *progname)
 {
-  int i;
   fprintf(stdout, "\n");
   fprintf(stdout, "usage:  %s [options] [ppm-file]\n", progname);
   fprintf(stdout, "\n");
@@ -90,10 +92,19 @@ void usage(const char *progname)
   fprintf(stdout, "             b = bottom-field-first\n");
   fprintf(stdout, "  -L       treat PPM images as 2-field interleaved\n");
   fprintf(stdout, "  -r       repeat last input frame\n");
-  fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
-	  ssm_id[SSM_420_JPEG]);
-  for (i = 1; i < SSM_COUNT; i++)
-  fprintf(stdout, "            '%s' -> %s\n", ssm_id[i], ssm_description[i]);
+  {
+    int m;
+    const char *keyword;
+
+    fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
+	    y4m_chroma_keyword(DEFAULT_CHROMA_MODE));
+    for (m = 0;
+	 (keyword = y4m_chroma_keyword(m)) != NULL;
+	 m++)
+      if (chroma_sub_implemented(m))
+	fprintf(stdout, "            '%s' -> %s\n",
+		keyword, y4m_chroma_description(m));
+  }
   /*  fprintf(stdout, "  -R type  subsampling filter type\n");*/
   fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
 }
@@ -103,7 +114,6 @@ void usage(const char *progname)
 static
 void parse_args(cl_info_t *cl, int argc, char **argv)
 {
-  int i;
   int c;
 
   cl->offset = 0;
@@ -113,7 +123,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->framerate = y4m_fps_NTSC;
   cl->interleave = 0;
   cl->repeatlast = 0;
-  cl->ss_mode = SSM_420_JPEG;
+  cl->ss_mode = DEFAULT_CHROMA_MODE;
   cl->verbosity = 1;
   cl->fdin = 0; /* default to stdin */
 
@@ -157,13 +167,12 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       cl->repeatlast = 1;
       break;
     case 'S':
-      for (i = 0; i < SSM_COUNT; i++) {
-	if (!(strcmp(optarg, ssm_id[i]))) break;
-      }
-      if (i < SSM_COUNT)
-	cl->ss_mode = i;
-      else {
+      cl->ss_mode = y4m_chroma_parse_keyword(optarg);
+      if (cl->ss_mode == Y4M_UNKNOWN) {
 	mjpeg_error("Unknown subsampling mode option:  %s", optarg);
+	goto ERROR_EXIT;
+      } else if (!chroma_sub_implemented(cl->ss_mode)) {
+	mjpeg_error("Unsupported subsampling mode option:  %s", optarg);
 	goto ERROR_EXIT;
       }
       break;
@@ -213,7 +222,8 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 	       cl->framecount,
 	       (cl->repeatlast) ? ", repeat last frame until done" :
 	       ", or until input exhausted");
-  mjpeg_info("    chroma subsampling:  %s", ssm_description[cl->ss_mode]);
+  mjpeg_info("    chroma subsampling:  %s",
+	     y4m_chroma_description(cl->ss_mode));
 
   /* DONE! */
   return;
@@ -450,16 +460,20 @@ void setup_output_stream(int fdout, cl_info_t *cl,
 			 y4m_stream_info_t *sinfo, ppm_info_t *ppm,
 			 int *field_height) 
 {
-  if ((ppm->width % 2) != 0) {
-    mjpeg_error("PPM width (%d) is not a multiple of 2!", ppm->width);
-    exit(1);
+  int err;
+  int x_alignment = y4m_chroma_ss_x_ratio(cl->ss_mode).d;
+  int y_alignment = y4m_chroma_ss_y_ratio(cl->ss_mode).d;
+    
+  if (cl->interlace != Y4M_ILACE_NONE) 
+    y_alignment *= 2;
+
+  if ((ppm->width % x_alignment) != 0) {
+    mjpeg_error_exit1("PPM width (%d) is not a multiple of %d!",
+		      ppm->width, x_alignment);
   }
-  if (((ppm->height % 2) != 0) && (cl->interlace == Y4M_ILACE_NONE)) {
-    mjpeg_error("PPM height (%d) is not a multiple of 2!", ppm->height);
-    exit(1);
-  } else if (((ppm->height % 4) != 0) && (cl->interlace != Y4M_ILACE_NONE)) {
-    mjpeg_error("PPM height (%d) is not a multiple of 4!", ppm->height);
-    exit(1);
+  if ((ppm->height % y_alignment) != 0) {
+    mjpeg_error_exit1("PPM height (%d) is not a multiple of %d!",
+		      ppm->height, y_alignment);
   }
 
   y4m_si_set_width(sinfo, ppm->width);
@@ -476,8 +490,10 @@ void setup_output_stream(int fdout, cl_info_t *cl,
   y4m_si_set_sampleaspect(sinfo, cl->aspect);
   y4m_si_set_interlace(sinfo, cl->interlace);
   y4m_si_set_framerate(sinfo, cl->framerate);
+  y4m_si_set_chroma(sinfo, cl->ss_mode);
 
-  y4m_write_stream_header(fdout, sinfo);
+  if ((err = y4m_write_stream_header(fdout, sinfo)) != Y4M_OK)
+    mjpeg_error_exit1("Write header failed:  %s", y4m_strerr(err));
 
   mjpeg_info("Output Stream parameters:");
   y4m_log_stream_info(LOG_INFO, "  ", sinfo);
@@ -491,14 +507,15 @@ int main(int argc, char **argv)
   cl_info_t cl;
   y4m_stream_info_t sinfo;
   y4m_frame_info_t finfo;
-  uint8_t *buffers[3];  /* R'G'B' or Y'CbCr */
-  uint8_t *buffers2[3]; /* R'G'B' or Y'CbCr */
+  uint8_t *buffers[Y4M_MAX_NUM_PLANES];  /* R'G'B' or Y'CbCr */
+  uint8_t *buffers2[Y4M_MAX_NUM_PLANES]; /* R'G'B' or Y'CbCr */
   ppm_info_t ppm;
   int field_height;
 
   int fdout = 1;
   int err, i, count, repeating_last;
 
+  y4m_accept_extensions(1);
   y4m_init_stream_info(&sinfo);
   y4m_init_frame_info(&finfo);
 
@@ -564,13 +581,18 @@ int main(int argc, char **argv)
     if (count >= cl.offset) {
       switch (cl.interlace) {
       case Y4M_ILACE_NONE:
-	y4m_write_frame(fdout, &sinfo, &finfo, buffers);
+	if ((err = y4m_write_frame(fdout, &sinfo, &finfo, buffers)) != Y4M_OK)
+	  mjpeg_error_exit1("Write frame failed: %s", y4m_strerr(err));
 	break;
       case Y4M_ILACE_TOP_FIRST:
-	y4m_write_fields(fdout, &sinfo, &finfo, buffers, buffers2);
+	if ((err = y4m_write_fields(fdout, &sinfo, &finfo, buffers, buffers2))
+	    != Y4M_OK)
+	  mjpeg_error_exit1("Write fields failed: %s", y4m_strerr(err));
 	break;
       case Y4M_ILACE_BOTTOM_FIRST:
-	y4m_write_fields(fdout, &sinfo, &finfo, buffers2, buffers);
+	if ((err = y4m_write_fields(fdout, &sinfo, &finfo, buffers2, buffers))
+	    != Y4M_OK)
+	  mjpeg_error_exit1("Write fields failed: %s", y4m_strerr(err));
 	break;
       default:
 	mjpeg_error_exit1("Unknown ilace type!   %d", cl.interlace);

@@ -1,5 +1,5 @@
 .\" 
-.TH "y4mcolorbars" "1" "13 November 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "y4mcolorbars" "1" "28 April 2004" "MJPEG Linux Square" "MJPEG tools manual"
 .SH "NAME"
 y4mcolorbars \- Create a YUV4MPEG2 stream containing a colorbar test pattern
 
@@ -10,9 +10,7 @@ y4mcolorbars \- Create a YUV4MPEG2 stream containing a colorbar test pattern
 .SH "DESCRIPTION"
 \fBy4mcolorbars\fP creates a YUV4MPEG2 stream consisting entirely of frames
 containing a colorbar test pattern.  This stream is
-ready for further processing by the \fBmpeg2enc\fP(1) 
-MPEG encoder and image processing filters like
-\fByuvscaler\fP(1).
+ready for further processing by other video tools.
 
 Output is to stdout to facilitate piping to other MJPEG tools.
 
@@ -55,12 +53,14 @@ in output stream.  (default:  'p')
  b - bottom/lower-field-first interlaced
 .TP 5
 .BI \-S " mode"
-Set chroma subsampling mode.  (default:  420_jpeg)
-  420_jpeg - 4:2:0 JPEG/MPEG-1, interstitial cositing 
- 420_mpeg2 - 4:2:0 MPEG-2, horizontal cositing
+Set chroma subsampling mode.  (default:  444)
+       444 - 4:4:4 (no subsampling)
+   420jpeg - 4:2:0 JPEG/MPEG-1, interstitial cositing 
+  420mpeg2 - 4:2:0 MPEG-2, horizontal cositing
 
-Changing the subsampling mode from the default won't necessarily
-make anything better.  This option is just for experimenting.
+The supported subsampled modes use a lousy subsampling filter;
+better results will be achieved by passing the default 4:4:4 output to
+a scaler which supports subsampling, such as \fBy4mscaler\fP(1).
 .TP 5
 .BI \-v " [0,1,2]"
 Set verbosity level.  
@@ -98,6 +98,6 @@ For more info, see our website at
 .SH "SEE ALSO"
 .BR mjpegtools (1),
 .BR mpeg2enc (1),
-.BR yuvscaler (1),
+.BR y4mscaler (1),
 .BR yuv2lav (1),
 .BR yuvplay (1)

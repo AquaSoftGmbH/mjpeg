@@ -23,27 +23,11 @@
 
 
 
+#include "yuv4mpeg.h"
 
 
-typedef enum subsample_mode {
-  SSM_UNKNOWN = 0,
-  SSM_420_JPEG,
-  SSM_420_MPEG2,
-#if 0
-  SSM_420_DV_PAL,
-  SSM_411_DV_NTSC,
-  SSM_422,
-#endif
-  SSM_COUNT
-} subsample_mode_t;
+int chroma_sub_implemented(int mode);
+void chroma_subsample(int mode, uint8_t *ycbcr[], int width, int height);
 
-
-
-extern const char *ssm_id[SSM_COUNT];
-extern const char *ssm_description[SSM_COUNT];
-
-void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
-		      int width, int height);
-
-void chroma_supersample(subsample_mode_t mode, uint8_t *ycbcr[],
-			int width, int height);
+int chroma_super_implemented(int mode);
+void chroma_supersample(int mode, uint8_t *ycbcr[], int width, int height);

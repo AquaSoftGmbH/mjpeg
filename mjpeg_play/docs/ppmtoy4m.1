@@ -1,5 +1,5 @@
 .\" 
-.TH "ppmtoy4m" "1" "28 October 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "ppmtoy4m" "1" "28 April 2004" "MJPEG Linux Square" "MJPEG tools manual"
 .SH "NAME"
 ppmtoy4m \- Convert PPM images to YUV4MPEG2 stream
 
@@ -10,22 +10,21 @@ ppmtoy4m \- Convert PPM images to YUV4MPEG2 stream
 
 .SH "DESCRIPTION"
 \fBppmtoy4m\fP converts one or more raw PPM images into a YUV4MPEG2 stream
-ready for further processing by the \fBmpeg2enc\fP(1) 
-MPEG encoder and image processing filters like
-\fByuvscaler\fP(1).
+ready for further processing by other video tools.
 
 Output is to stdout to facilitate piping to other MJPEG tools.
 The size of the output frame(s) is determined from the (first) input image.
 
 Input is a 'raw' format PPM image, read from stdin or from the optional
 filename.  The input may contain multiple PPM images concatenated together;
-ppmtoy4m will read and process them sequentially.  All images must have
+\fBppmtoy4m\fP will read and process them sequentially.  All images must have
 identical size and format.  Input images can be interpreted as whole
 progressive frames, interleaved fields, or (in pairs) as sequential fields.
 The input images must have 8 bits per channel (i.e. 'maxval' must be 255).
 
 Input images should be in the usual R'G'B' colorspace.  They are converted
-to the Y'CbCr colorspace (ITU-R BT.601) and chroma subsampled before output.
+to the Y'CbCr colorspace (ITU-R BT.601) (and chroma subsampled, if desired)
+before output.
 
 \fBppmtoy4m\fP and \fBy4mtoppm\fP are inverses of each other; you can
 pipe the output of one into the other, and vice-versa.  Note that the
@@ -79,12 +78,14 @@ Repeat last input frame until output is complete.  If '-n 0' is also specified,
 last input frame will be repeated forever.
 .TP 5
 .BI \-S " mode"
-Set chroma subsampling mode.  (default:  420_jpeg)
-  420_jpeg - 4:2:0 JPEG/MPEG-1, interstitial cositing 
- 420_mpeg2 - 4:2:0 MPEG-2, horizontal cositing
+Set chroma subsampling mode.  (default:  444)
+       444 - 4:4:4 (no subsampling)
+   420jpeg - 4:2:0 JPEG/MPEG-1, interstitial cositing 
+  420mpeg2 - 4:2:0 MPEG-2, horizontal cositing
 
-Changing the subsampling mode from the default won't necessarily
-make anything better.  This option is just for experimenting.
+The subsampled modes use a lousy subsampling filter;
+better results will be achieved by passing the default 4:4:4 output to
+a scaler which supports subsampling, such as \fBy4mscaler\fP(1).
 .TP 5
 .BI \-v " [0,1,2]"
 Set verbosity level.  
@@ -124,6 +125,6 @@ For more info, see our website at
 .BR y4mtoppm (1),
 .BR mjpegtools (1),
 .BR mpeg2enc (1),
-.BR yuvscaler (1),
+.BR y4mscaler (1),
 .BR yuv2lav (1),
 .BR yuvplay (1)

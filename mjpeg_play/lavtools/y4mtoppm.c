@@ -5,7 +5,7 @@
  *               converts ITU-Rec.601 Y'CbCr to R'G'B' colorspace.
  *
  *
- *  Copyright (C) 2002 Matthew J. Marjanovic <maddog@mir.com>
+ *  Copyright (C) 2004 Matthew J. Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -24,7 +24,7 @@
  *
  */
 
-#include <config.h>
+#include "config.h"
 
 #include <stdio.h>
 #include <unistd.h>
@@ -42,7 +42,6 @@
 /* command-line parameters */
 typedef struct _cl_info {
   int interleave;
-  int ss_mode;
   int verbosity;
   FILE *outfp;
 } cl_info_t;
@@ -52,7 +51,6 @@ typedef struct _cl_info {
 static
 void usage(const char *progname)
 {
-  int i;
   fprintf(stdout, "\n");
   fprintf(stdout, "usage:  %s [options]\n", progname);
   fprintf(stdout, "\n");
@@ -63,10 +61,6 @@ void usage(const char *progname)
   fprintf(stdout, " options:  (defaults specified in [])\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "  -L       interleave fields into single PPM image\n");
-  fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
-	  ssm_id[SSM_420_JPEG]);
-  for (i = 1; i < SSM_COUNT; i++)
-  fprintf(stdout, "            '%s' -> %s\n", ssm_id[i], ssm_description[i]);
   fprintf(stdout, "  -v n     verbosity (0,1,2) [1]\n");
 }
 
@@ -75,29 +69,16 @@ void usage(const char *progname)
 static
 void parse_args(cl_info_t *cl, int argc, char **argv)
 {
-  int i;
   int c;
 
   cl->interleave = 0;
-  cl->ss_mode = SSM_420_JPEG;
   cl->verbosity = 1;
   cl->outfp = stdout; /* default to stdout */
 
-  while ((c = getopt(argc, argv, "LS:v:h")) != -1) {
+  while ((c = getopt(argc, argv, "Lv:h")) != -1) {
     switch (c) {
     case 'L':
       cl->interleave = 1;
-      break;
-    case 'S':
-      for (i = 0; i < SSM_COUNT; i++) {
-	if (!(strcmp(optarg, ssm_id[i]))) break;
-      }
-      if (i < SSM_COUNT)
-	cl->ss_mode = i;
-      else {
-	mjpeg_error("Unknown subsampling mode option:  %s", optarg);
-	goto ERROR_EXIT;
-      }
       break;
     case 'v':
       cl->verbosity = atoi(optarg);
@@ -114,15 +95,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
       break;
     }
   }
-  /* optional remaining argument is a filename */
-#if 0
-  if (optind == (argc - 1)) {
-    if ((cl->fdin = open(argv[optind], O_RDONLY | O_BINARY)) == -1)
-      mjpeg_error_exit1("Failed to open '%s':  %s",
-			argv[optind], strerror(errno));
-  } else 
-#endif
-    if (optind != argc) 
+  if (optind != argc) 
     goto ERROR_EXIT;
 
 
@@ -213,13 +186,14 @@ int main(int argc, char **argv)
   cl_info_t cl;
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
-  uint8_t *buffers[3];  /* R'G'B' or Y'CbCr */
-  uint8_t *buffers2[3]; /* R'G'B' or Y'CbCr */
+  uint8_t *buffers[Y4M_MAX_NUM_PLANES];  /* R'G'B' or Y'CbCr */
+  uint8_t *buffers2[Y4M_MAX_NUM_PLANES]; /* R'G'B' or Y'CbCr */
   int err, i;
   int width, height;
-  int interlace;
+  int interlace, chroma, planes;
   uint8_t *rowbuffer;
 
+  y4m_accept_extensions(1); /* allow non-4:2:0 chroma */
   y4m_init_stream_info(&streaminfo);
   y4m_init_frame_info(&frameinfo);
 
@@ -235,13 +209,22 @@ int main(int argc, char **argv)
   width = y4m_si_get_width(&streaminfo);
   height = y4m_si_get_height(&streaminfo);
   interlace = y4m_si_get_interlace(&streaminfo);
+  chroma = y4m_si_get_chroma(&streaminfo);
+  planes = y4m_si_get_plane_count(&streaminfo);
 
+  if (interlace == Y4M_ILACE_MIXED) {
+    mjpeg_error("Cannot (yet) handle 'mixed' interlacing mode!");
+    exit(1);
+  }
+  if (!chroma_super_implemented(chroma))
+    mjpeg_error_exit1("Cannot handle stream's chroma mode!");
+    
   /*** Allocate buffers ***/
   mjpeg_debug("allocating buffers...");
-  rowbuffer = malloc(width * 3 * sizeof(rowbuffer[0]));
+  rowbuffer = malloc(width * planes * sizeof(rowbuffer[0]));
   mjpeg_debug("  rowbuffer %p", rowbuffer);
   /* allocate buffers big enough for 4:4:4 supersampled components */
-  for (i = 0; i < 3; i++) {
+  for (i = 0; i < planes; i++) {
     if (interlace == Y4M_ILACE_NONE) {
       buffers[i] = malloc(width * height * sizeof(buffers[i][0]));
       buffers2[i] = NULL;
@@ -260,8 +243,10 @@ int main(int argc, char **argv)
       mjpeg_debug("reading noninterlaced frame...");
       err = y4m_read_frame(in_fd, &streaminfo, &frameinfo, buffers);
       if (err != Y4M_OK) break;
-      mjpeg_debug("supersampling noninterlaced frame...");
-      chroma_supersample(cl.ss_mode, buffers, width, height);
+      if (chroma != Y4M_CHROMA_444) {
+	mjpeg_debug("supersampling noninterlaced frame...");
+	chroma_supersample(chroma, buffers, width, height);
+      }
       mjpeg_debug("color converting noninterlaced frame...");
       convert_YCbCr_to_RGB(buffers, width * height);
       write_ppm_from_one_buffer(cl.outfp, buffers, rowbuffer, width, height);
@@ -269,10 +254,12 @@ int main(int argc, char **argv)
       err = y4m_read_fields(in_fd, &streaminfo, &frameinfo, 
 			    buffers, buffers2);
       if (err != Y4M_OK) break;
-      mjpeg_debug("supersampling top field...");
-      chroma_supersample(cl.ss_mode, buffers, width, height / 2);
-      mjpeg_debug("supersampling bottom field...");
-      chroma_supersample(cl.ss_mode, buffers2, width, height / 2);
+      if (chroma != Y4M_CHROMA_444) {
+	mjpeg_debug("supersampling top field...");
+	chroma_supersample(chroma, buffers, width, height / 2);
+	mjpeg_debug("supersampling bottom field...");
+	chroma_supersample(chroma, buffers2, width, height / 2);
+      }
       mjpeg_debug("color converting top field...");
       convert_YCbCr_to_RGB(buffers, width * height / 2);
       mjpeg_debug("color converting bottom field...");
