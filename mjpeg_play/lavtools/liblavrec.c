@@ -1103,6 +1103,9 @@ static int lavrec_software_init(lavrec_t *info)
          return 0;
       }
    }
+   lavrec_msg(LAVREC_MSG_INFO, info,
+      "Created %d software JPEG-encoding process(es)\n",
+      info->num_encoders);
 
    /* queue setup */
    pthread_mutex_init(&(settings->queue_mutex), NULL);
@@ -2058,7 +2061,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_norm = 3;
    info->video_src = 3;
    info->software_encoding = 0;
-   info->num_encoders = 1; /* this should be set to the number of processors */
+   info->num_encoders = 0; /* this should be set to the number of processors */
    info->horizontal_decimation = 4;
    info->vertical_decimation = 4;
    info->geometry = (rect *)malloc(sizeof(rect));

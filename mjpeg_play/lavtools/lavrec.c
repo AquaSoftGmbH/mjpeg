@@ -865,6 +865,9 @@ static int set_option(const char *name, char *value)
 	else if (strcmp(name, "software-encoding")==0)
 	{
 		info->software_encoding = 1;
+		/* set the number of enoding processes to the number of processors */
+		if (info->num_encoders == 0)
+			info->num_encoders = sysconf(_SC_NPROCESSORS_ONLN);
 	}
 	else if (strcmp(name, "num-procs")==0)
 	{
