@@ -26,12 +26,12 @@
 #endif
 
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <gtk/gtk.h>
 #include <glib.h>
-/* #include <gnome.h>   Seems that I do not need that. */
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <gdk-pixbuf/gdk-pixbuf-loader.h>
 
@@ -55,11 +55,15 @@ static void show_selected_points (GtkWidget *hbox);
 static void show_selection(void);
 static void show_selected_points(GtkWidget *hbox);
 static void set_defaults(void);
-
+static void calc_area(void); 
+static void show_active_points (GtkWidget *hbox);
+static void update_text_fields(void);
 
 /* Some common variables */
 /* Visible drawing surface */
 GtkWidget *drawing_area, *picture_window, *point1_entry, *point2_entry;
+GtkWidget *button_s, *button_l, *button_m, *actfield_p1s, *actfield_p1l;
+GtkWidget *actfield_p2s, *actfield_p2l, *actfield_s, *actfield_l, *actfield_m;
 
 struct point {
              int x;
@@ -74,6 +78,7 @@ struct rect {
 struct rect raw_points;   /** holds the mouse selected points */
 struct rect small_points; /** holds the smaller area calc from the raw points */
 struct rect large_points; /** holds the larger area calc from the raw points */
+struct point imgsize; /** Holds the size of the image */
 
 /* Raw pixel buffer */
 static guchar drawbuf[WIDTH * HEIGHT * 6];
@@ -95,18 +100,163 @@ void set_defaults()
 {
 raw_points.p1.x = 0;
 raw_points.p1.y = 0;
-raw_points.p1.x = 0;
+raw_points.p2.x = 0;
 raw_points.p2.y = 0;
 
 small_points.p1.x = 0;
 small_points.p1.y = 0;
-small_points.p1.x = 0;
+small_points.p2.x = 0;
 small_points.p2.y = 0;
 
 large_points.p1.x = 0;
 large_points.p1.y = 0;
-large_points.p1.x = 0;
+large_points.p2.x = 0;
 large_points.p2.y = 0;
+
+imgsize.x = 0;
+imgsize.y = 0;
+
+}
+
+/** Here we update the fields showing the active area */
+void update_text_fields()
+{
+char val [LONGOPT], val2[LONGOPT], val3[LONGOPT], val4[LONGOPT], val5[LONGOPT];
+char val6[LONGOPT];
+
+  sprintf(val,"%ix%i+%i+%i", small_points.p2.x-small_points.p1.x,
+    small_points.p2.y-small_points.p1.y, small_points.p1.x, small_points.p1.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_s), val);
+
+  sprintf(val2,"%ix%i+%i+%i", large_points.p2.x-large_points.p1.x,
+    large_points.p2.y-large_points.p1.y, large_points.p1.x, large_points.p1.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_l), val2);
+
+  sprintf(val3,"%i / %i", small_points.p1.x, small_points.p1.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p1s), val3);
+
+  sprintf(val4,"%i / %i", small_points.p2.x, small_points.p2.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p2s), val4);
+
+  sprintf(val5,"%i / %i", large_points.p1.x, large_points.p1.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p1l), val4);
+
+  sprintf(val6,"%i / %i", large_points.p2.x, large_points.p2.y);
+  gtk_entry_set_text(GTK_ENTRY(actfield_p2l), val5);
+}
+
+
+/** Here we calculate the various active areas */
+void calc_area ()
+{
+struct rect norm;
+int i; /** counts if we have a problem in the calculation, if 0 it is ok */
+
+/* Here we set the image Size to something predefined, but the size shoul be
+   set by the actual image size */ 
+imgsize.x = 720;
+imgsize.y = 576;
+
+/* First of all we check if we have valid values */
+if ((raw_points.p1.x > imgsize.x) && (raw_points.p1.x < 0) &&
+    (raw_points.p1.y > imgsize.y) && (raw_points.p1.y < 0) &&
+    (raw_points.p2.x > imgsize.x) && (raw_points.p2.x < 0) &&
+    (raw_points.p2.y > imgsize.y) && (raw_points.p2.y < 0)   )
+  i++;
+else 
+  {
+  /* First we order the points to one top left and the 2nd right bottom */
+  if ( raw_points.p1.x > raw_points.p2.x)
+    {
+      norm.p1.x = raw_points.p2.x;
+      norm.p2.x = raw_points.p1.x;
+    }
+  else 
+    {
+      norm.p1.x = raw_points.p1.x;
+      norm.p2.x = raw_points.p2.x;
+    }
+
+  if ( raw_points.p1.y > raw_points.p2.y )
+    {
+      norm.p1.y = raw_points.p2.y;
+      norm.p2.y = raw_points.p1.y;
+    }
+  else
+    {
+      norm.p1.y = raw_points.p1.y;
+      norm.p2.y = raw_points.p2.y;
+    }
+
+  if (verbose)
+    printf("Point 1 top-left %i/%i, Point 2 bottom-right %i/%i\n",
+            norm.p1.x, norm.p1.y, norm.p2.x, norm.p2.y);
+
+  small_points.p1.x = norm.p1.x;
+  small_points.p1.y = norm.p1.y;
+  small_points.p2.x = norm.p2.x;
+  small_points.p2.y = norm.p2.y;
+
+  if ((small_points.p1.x > 0) && ( (small_points.p1.x+8) < small_points.p2.x))
+    while ((fmod( small_points.p1.x, 4)) != 0)
+        small_points.p1.x++;
+  else if (small_points.p1.x != 0)
+    i++;
+   
+  if ((small_points.p1.y > 0) && ( (small_points.p1.y+8) < small_points.p2.y))
+    while ((fmod( small_points.p1.y, 4)) != 0)
+        small_points.p1.y++;
+  else if (small_points.p1.y != 0)
+    i++;
+   
+  if((small_points.p2.x < imgsize.x)&&((small_points.p1.x+4)<small_points.p2.x))
+    while ((fmod( small_points.p2.x, 4)) != 0)
+        small_points.p2.x--;
+   
+  if((small_points.p2.y < imgsize.y)&&((small_points.p1.y+4)<small_points.p2.y))
+    while ((fmod( small_points.p2.y, 4)) != 0)
+        small_points.p2.y--;
+
+  large_points.p1.x = norm.p1.x;
+  large_points.p1.y = norm.p1.y;
+  large_points.p2.x = norm.p2.x;
+  large_points.p2.y = norm.p2.y;
+
+  if ( (large_points.p1.x >= 4) && ((large_points.p1.x+4) < large_points.p2.x) )
+    while ((fmod( large_points.p1.x, 4)) != 0)
+        large_points.p1.x--;
+  else if (large_points.p1.x < 4)
+        large_points.p1.x = 0;
+  else 
+    i++;
+   
+  if ( (large_points.p1.y >= 4) && ((large_points.p1.y+4) < large_points.p2.y) )
+    while ((fmod( large_points.p1.y, 4)) != 0)
+        large_points.p1.y--;
+  else if (large_points.p1.y < 4)
+        large_points.p1.y = 0;
+  else 
+    i++;
+
+  if ( large_points.p2.x < (imgsize.x-4) )
+    while ((fmod( large_points.p2.x, 4)) != 0)
+        large_points.p2.x++;
+  else if (large_points.p2.x > (imgsize.x-4) )
+        large_points.p2.x = imgsize.x;
+  else 
+    i++;
+   
+  if ( large_points.p2.y < (imgsize.y-4) )
+    while ((fmod( large_points.p2.y, 4)) != 0)
+        large_points.p2.y++;
+  else if (large_points.p2.y > (imgsize.y-4) )
+        large_points.p2.y = imgsize.y;
+  else 
+    i++;
+
+  update_text_fields();
+
+  }   
 
 }
 
@@ -193,6 +343,7 @@ int found = FALSE;
       raw_points.p2.y = bevent->y;
       sprintf(val2, " %g / %g ",bevent->x, bevent->y);
       gtk_entry_set_text(GTK_ENTRY(point2_entry), val2);
+      calc_area(); /* lets do some math */
       break;
   }
 
@@ -256,6 +407,7 @@ GtkWidget *label;
 
   point1_entry = gtk_entry_new();
   gtk_widget_set_usize(point1_entry, 70, -2);
+  gtk_widget_set_sensitive(point1_entry, FALSE);
   gtk_box_pack_start(GTK_BOX(hbox), point1_entry, FALSE, FALSE, 0);
   gtk_widget_show(point1_entry);
 
@@ -265,10 +417,105 @@ GtkWidget *label;
 
   point2_entry = gtk_entry_new();
   gtk_widget_set_usize(point2_entry, 70, -2);
+  gtk_widget_set_sensitive(point2_entry, FALSE);
   gtk_box_pack_start(GTK_BOX(hbox), point2_entry, FALSE, FALSE, 0);
   gtk_widget_show(point2_entry);
 
+}
 
+/** Here we create the boxes containing the active size strings */
+void show_active_points (GtkWidget *hbox)
+{
+GtkWidget *table1, *label;
+GSList *group;
+int i, j;
+
+  i = 0;
+  j = 1; /*starting in the second row */
+
+  table1 = gtk_table_new (4, 4, FALSE);
+
+  button_s = gtk_radio_button_new(NULL);
+  gtk_table_attach_defaults (GTK_TABLE(table1), button_s, i, i+1, j, j+1);
+  group = gtk_radio_button_group(GTK_RADIO_BUTTON(button_s)); 
+  gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (button_s), TRUE);
+  gtk_widget_show(button_s);
+  j++;
+
+  button_l = gtk_radio_button_new(group);
+  gtk_table_attach_defaults (GTK_TABLE(table1), button_l, i, i+1, j, j+1);
+  group = gtk_radio_button_group(GTK_RADIO_BUTTON(button_l)); 
+  gtk_widget_show(button_l);
+  j++;
+
+  button_m = gtk_radio_button_new(group);
+  gtk_table_attach_defaults (GTK_TABLE(table1), button_m, i, i+1, j, j+1);
+  group = gtk_radio_button_group(GTK_RADIO_BUTTON(button_m)); 
+  gtk_widget_show(button_m);
+
+  j=0; /* going to the first line */
+  i++; /* second second row */
+  label = gtk_label_new("Active String");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  actfield_s = gtk_entry_new();
+  gtk_widget_set_usize(actfield_s, 120, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_s, i, i+1, j, j+1);
+  gtk_widget_show(actfield_s);
+  j++;
+
+  actfield_l = gtk_entry_new();
+  gtk_widget_set_usize(actfield_l, 120, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_l, i, i+1, j, j+1);
+  gtk_widget_show(actfield_l);
+  j++;
+
+  actfield_m = gtk_entry_new();
+  gtk_widget_set_usize(actfield_m, 120, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_m, i, i+1, j, j+1);
+  gtk_widget_show(actfield_m);
+
+  j=0; /* again the first line */
+  i++; /* 3rd row */
+  label = gtk_label_new("P1 x/y");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  actfield_p1s = gtk_entry_new();
+  gtk_widget_set_usize(actfield_p1s, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p1s, i, i+1, j, j+1);
+  gtk_widget_show(actfield_p1s);
+  j++;
+
+  actfield_p1l = gtk_entry_new();
+  gtk_widget_set_usize(actfield_p1l, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p1l, i, i+1, j, j+1);
+  gtk_widget_show(actfield_p1l);
+
+  j=0; /* again the first line */
+  i++; /* 4th row */
+  label = gtk_label_new("P2 x/y");
+  gtk_table_attach_defaults (GTK_TABLE(table1), label, i, i+1, j, j+1);
+  gtk_widget_show(label);
+  j++;
+
+  actfield_p2s = gtk_entry_new();
+  gtk_widget_set_usize(actfield_p2s, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p2s, i, i+1, j, j+1);
+  gtk_widget_show(actfield_p2s);
+  j++;
+ 
+  actfield_p2l = gtk_entry_new();
+  gtk_widget_set_usize(actfield_p2l, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table1), actfield_p2l, i, i+1, j, j+1);
+  gtk_widget_show(actfield_p2l);
+  j++;
+
+  gtk_box_pack_start(GTK_BOX(hbox), table1, FALSE, FALSE, 0); 
+  gtk_widget_show(table1);
 }
 
 /** Here we create the 1rst window with the controls */
@@ -285,6 +532,11 @@ GtkWidget *control_window, *vbox, *hbox;
 
   hbox = gtk_hbox_new (TRUE, 5);
   show_selected_points (hbox);
+  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 5);
+  gtk_widget_show (hbox);
+
+  hbox = gtk_hbox_new (TRUE, 5);
+  show_active_points (hbox);
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 5);
   gtk_widget_show (hbox);
 
@@ -305,8 +557,6 @@ void show_selection()
 {
 GtkWidget *vbox, *hbox;
 GdkPixbuf *pixbuf;
-
-printf("\n in lavencode_util.c \n");
 
   gtk_widget_push_visual(gdk_rgb_get_visual(  ));
   gtk_widget_push_colormap(gdk_rgb_get_cmap(  ));
