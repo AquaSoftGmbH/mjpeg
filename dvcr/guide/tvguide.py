@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 #    Copyright (C) 2000-2001 Mike Bernson <mike@mlb.org>
 #
@@ -16,12 +16,16 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from httplib import *
+
 from string import *
 from time import *
+import httplib
+import sgmllib
 import ConfigParser
-from os import *
-from sys import *
+#from os import *
+#from sys import *
+import os
+import sys
 import re
 import signal
 from guide import Guide
@@ -30,10 +34,145 @@ def http_timeout(signum, frame):
 	print "http timeout!";
 	raise IOError, "Host not responding."
 
+VERBOSE=1
+
+class TvGuideParser(sgmllib.SGMLParser):
+
+ 
+	def __init__(self, verbose=VERBOSE, checker=None):
+		self.myverbose = verbose # now unused
+		self.checker = checker
+		self.base = None
+		self.links = {}
+		self.runtime = None
+		self.channel = None
+		self.title = None
+		self.titleid = None
+		self.svcid = None
+		self.start_time=None
+		self.event_time=None
+		self.event_hour = None
+		self.event_date = None
+		self.starting_point = 973728000.0
+		self.starting_point = 973728000.0 + (120 * 60)
+		self.guide = Guide();
+		sgmllib.SGMLParser.__init__(self)
+
+
+	#
+	# convert tvguide time to unix time
+	#
+	def tvguide_seconds(self, start_time):
+		# 86400 = 1800 * 48
+		time_sec = start_time - 36839.2083333333
+		temp = self.starting_point + time_sec * 86400 + 290
+		temp = temp - (temp % 300)
+		return temp
+	#
+	# convret unix time to tvguide time
+	#
+	def seconds_tvguide(self, start_time):
+		start_time = (start_time - self.starting_point) / 86400
+		start_time = start_time + 36839.2083333333333
+		return start_time
+
+
+	def start_input(self, attributes):
+		found = 0
+		for name, value in attributes:
+			if name == 'name':
+				if value == 'event_date':
+					found = 1
+				if value == 'event_hour':
+					found = 2
+			if name == 'value':
+				if found == 1:
+					self.event_date = atof(value)
+				if found == 2:
+					self.event_hour = atof(value)
+					self.event_time = self.event_date + self.event_hour
+					self.start_time = self.event_time
+
+	def start_td(self, attributes):
+		for name, value in attributes:
+			if name == 'colspan':
+				self.runtime = atoi(value) * 5
+
+	def start_tr(self, attributes):
+		self.start_time = self.event_time
+		self.channel = None
+
+	def start_a(self, attributes):
+		self.svcid = None
+		self.titleid = None
+
+		for name, value in attributes:
+			if (name == 'href'):
+				start = find(value, "cl(")
+				if start < 0:
+					return
+				start = start + 3
+				end = find(value, ",")
+				if end < 0:
+					return
+				self.svcid = value[start:end]
+				start = end + 1
+				end = find(value, ')');
+				if end < 0:
+					self.svcid = None
+					reutrn
+				self.titleid = value[start:end]
+
+	def end_a(self):
+		if self.svcid != None and self.titleid != None and self.title != None:
+#			print "found titleid=",self.titleid, "title=",self.title, "runtime=",self.runtime, "time=",self.start_time, "channel=",self.channel
+			curr_time = self.tvguide_seconds(self.start_time)
+
+			self.guide.append([curr_time, self.channel,
+				self.runtime, self.title,
+				self.svcid +','+self.titleid])
+
+			self.start_time = self.start_time + float(self.runtime)/(24.0 * 60.0)
+
+		self.svcid = None
+		self.titleid = None
+		self.title = None
+		self.runtime = None
+		
+
+	def handle_data(self, data):
+		if self.channel == None:
+			self.channel = data
+			return
+
+		if self.svcid != None and self.titleid != None:
+			if self.title == None:
+				self.title = data
+			else:
+				self.title = self.title + data
+
+	def print_attrib(self, msg, attributes):
+		print
+		print
+		print msg
+		for name, value in attributes:
+			print name, "->",value
+
+
+
+#fd = open("out");
+#html_data = fd.read();
+	
+#parser = MyHTMLParser()
+#parser.feed(html_data)
+
+
+
 class TvGuide(Guide):
 
 	def __init__(self):
 		Guide.__init__(self)
+		self.parser = TvGuideParser()
 		self.starting_point = 973728000.0
 	#
 	# convert tvguide time to unix time
@@ -51,175 +190,55 @@ class TvGuide(Guide):
 		start_time = (start_time - self.starting_point) / 86400
 		start_time = start_time + 36839.2083333333333
 		return start_time
-	#
-	# need to parse cl('svcid','titleid')
-	#
-	def parse_cl(self, line):
-		empty = None, None, None
-		start = find(line, "cl('")
-		if (start < 0):
-			return empty
 
-		start = start + 4
-		end = find(line[start:], "'") 
-		if (end < 0):
-			return empty
-		end = end + start
-
-		svcid = line[start:end]
-
-		start = find(line[end:], ",'")
-		if (start < 0):
-			return empty
-		start = start + end + 2
-
-		end = find(line[start:], "'")
-		if (end < 0):
-			return empty
-		end = end + start
-
-		titleid = line[start:end]
-
-		return end, svcid, titleid
-	#
-	#
-	#	parseing view=chan&i=svcid&S=??&ST=start_time&N=station>name</a>
-	#
-	def parse_station(self, line):
-		empty = None, None
-
-		start = find(line,"view=chan")
-		if start < 0:
-			return empty
-
-		start_time = find(line[start:], "ST=")
-		if start_time < 0:
-			return empty
-		start_time = start_time + start + 3
-		end_time = find(line[start_time:], "&")
-		if end_time < 0:
-			return empty
-		end_time = start_time + end_time
-		time_start = line[start_time:end_time]
-
-		chan_start = end_time + 3
-		chan_end = find(line[chan_start:], "&")
-		if chan_end < 0:
-			return empty
-		chan_end = chan_end + chan_start
-		channel = line[chan_start:chan_end]
-
-		st = self.tvguide_seconds(atof(time_start))
-
-		return st, channel
-	#
-	#
-	#
-	def parse_show(self, line):
-		empty = None, None, None, None
-
-		start = find(line, "colspan=") + 8;
-		if start <= 8:
-			return empty
-		if line[start:start+1] == '"':
-			start = start + 1
-		end = start + 1
-		if find("0123456789", line[end:end+1]) >= 0:
-			end = end + 1
-
-		span = atoi(line[start:end])
-
-		start_href = find(line[end:], "<a href=")
-		if start_href < 0:
-			return empty
-
-		end, svcid, titleid = self.parse_cl(line[start_href:])
-		if end == None:
-			return empty
-		end = end + start_href
-
-		start_show = find(line[end:], ">")
-		if start_show < 0:
-			return empty
-
-		start_show = start_show + end + 1
-		end_show = find(line[start_show:], "</a>")
-		if end_show < 0:
-			return empty
-
-		end_show = end_show + start_show
-		data = line[start_show:end_show]
-		runtime = span * 5
-
-		return runtime, svcid, titleid, data
-
-
-	def parse_tvguide_data(self, guide_data, translate, filter):
-		for line in guide_data:
-			channel = None
-			name = None
-			lines = split(line, "</TD>")
-
-			for data in lines:
-				new_time,new_channel = self.parse_station(data)
-				run_time, svcid, titleid, show_name = \
-					self.parse_show(data)
-
-				if new_time != None:
-					curr_time = new_time
-					channel = new_channel
-
-					if translate.has_key(channel):
-						channel = translate[channel]
-					continue
-
-
-				if not filter.has_key(channel):
-					continue
-		
-				if run_time == None:
-					continue
-
-				self.append([curr_time, channel,
-					run_time, show_name,
-					svcid +','+titleid])
-				curr_time = curr_time + run_time * 60
-
-	def  guide_url(self,  url, host, translate, filter):
+	def  guide_url(self,  url, host, day, translate, filter):
 		http_loop = 0
 
 		while http_loop < 20:
-			signal.alarm(240);
-			signal.signal(signal.SIGALRM, http_timeout);
-			try:
-				http = HTTP(host)
-				http.putrequest("GET", url)
-				http.putheader("Host", host)
-				http.putheader("Accept", "*/*")
-				http.endheaders()
+			signal.alarm(240)
+			signal.signal(signal.SIGALRM, http_timeout)
 
+			try:
+#				print "host='%s' seconds=%f url='%s'" % (host, day, url)
+				http = httplib.HTTP(host)
+				http.putrequest('GET',  url)
+				ref = 'http://' + host + url
+				http.putheader("Referer", ref)
+				http.putheader("Connection", 'Keep-Alive')
+				http.putheader("User-Agent", 'Mozilla/4.76 [en] (X11; U; Linux 2.4.2-XFS i686)')
+				http.putheader("Host", host)
+				http.putheader("Accept",'image/gif, image/x-xbitmap, image/jpeg, image/pjpeg, image/png, */*')
+				http.putheader("Accept-Encoding", "gzip")
+				http.putheader("Accept-Language", "en")
+				http.putheader("Accept-Charset", 'iso-8859-1,*,utf-8')
+				http.putheader("Cookie",'sid=20; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=20');
+				http.endheaders()
 				errcode, errmsg, headers = http.getreply()
 
+				if errcode != 200:
+					print
+					print "http://%s%s" % (host, url)
+					print "Error Code %d: %s" % (errcode, errmsg)
+					return
+
 				data = http.getfile()
-				guide_data = split(data.read(), "\n")
-				self.parse_tvguide_data(guide_data, translate, filter)
-				stdout.flush()
-				signal.alarm(0);
+				while(1):
+					guide_data = data.readline()
+#					self.parse_tvguide_data(guide_data, translate, filter)
+					self.parser.feed(guide_data)
+					if find(guide_data, "</html>") > -1:
+						signal.alarm(0);
+						return
 
 			except:
 				http_loop = http_loop + 1
 				print
 				print "retry get %d" % http_loop
+				signal.alarm(0);
 				stdout.flush()
-				sleep(60)
+				sleep(10)
 				continue
 
-			if errcode != 200:
-				print
-				print "http://%s%s" % (host, url)
-				print "Error Code %d: %s" % (errcode, errmsg)
-				stdout.flush()
-				return
 			break
 
 
@@ -240,20 +259,23 @@ class TvGuide(Guide):
 				filter[data] = 1
 		
 			host = self.config_string(id, "host")
+			if host == None:
+				print "No host found for ", id
+				return
 
 			s = start
 			while s < end:
 				time_st = "%f" % s
-				url = "/listings/index.asp?I=" + id + "&ST=" + time_st
-				self.guide_url(url, host, translate, filter)
-				s = s + 1.0/12.0
+				url = "/listings/index.asp?I="+id+"&Style=&Dyn=&GB=24&FC=0&FG=0&ST="+time_st+"&view=&width=635"
+				self.guide_url(url, host, s, translate, filter)
+				s = s + 2.0/24.0
 
 	def guide_whole_day(self, days):
 		current = time() - timezone
-		current = int(current/(24*60*60)) * (24*60*60)
+		current = int(current/(24*60*60)) * (24*60*60) 
 		
-		start = self.seconds_tvguide(current)
-		end = self.seconds_tvguide(current + days * 24 * 60 * 60)
+		start = int(self.seconds_tvguide(current))
+		end = int(self.seconds_tvguide(current + days * 24 * 60 * 60))
 		self.tvguide_url(start, end)
 
 

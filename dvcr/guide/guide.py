@@ -13,9 +13,6 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
-from os import *
-
 from string import *
 from Tkinter import *
 from events import *
@@ -24,6 +21,7 @@ from DateTime import Date, Time, Timestamp, ISO, \
 import MySQLdb
 import time
 import sys
+import os
 import ConfigParser
 import Pmw
 import re
@@ -149,11 +147,14 @@ class Guide:
 #	record is not already loaded.
 #		
 	def append(self, new_entry):
-		start_time = new_entry[0] + self.zone_offset;
+		start_time = new_entry[0] + self.zone_offset
 		end_time = start_time + (new_entry[2] * 60)
-		length = new_entry[2];
+		length = new_entry[2]
 		station_id = new_entry[1]
-		title = re.escape(new_entry[3]);
+		title = re.escape(new_entry[3])
+		title_id = re.escape(new_entry[4])
+
+		
 		#
 		# check to see if entry already exists 
 		#
@@ -161,8 +162,8 @@ class Guide:
 				From listings Where 
 				(start_time=FROM_UNIXTIME(%d) or
 				  end_time=FROM_UNIXTIME(%d)) and
-				station='%s'""" % \
-				(start_time, end_time, station_id)
+				station='%s' and title_id='%s' """ % \
+				(start_time, end_time, station_id, title_id)
 		self.cursor.execute(stmt);
 		if self.cursor.rowcount > 0:
 			return;
@@ -172,28 +173,32 @@ class Guide:
 		stmt = """Select id, start_time, end_time, length, station, title
 				From listings Where 
 				end_time=FROM_UNIXTIME(%d) and
-				station='%s' and title='%s'""" % \
-				(start_time, station_id, title)
+				station='%s' and title_id='%s'""" % \
+				(start_time, station_id, title_id)
 		self.cursor.execute(stmt);
 		if self.cursor.rowcount > 0:
 			id, s_time, etime, len, ch, t = self.cursor.fetchone()
+			if find(t, "..") > 0:
+				t = title
 			length = length + len;
+
+			t = re.escape(t)
 			stmt = """Update listings Set length=%d,
-					end_time=FROM_UNIXTIME(%d)
+					end_time=FROM_UNIXTIME(%d),
+					title='%s'
 					Where id=%d""" % \
-					(length, end_time, id)
+					(length, end_time, t, id)
 			self.cursor.execute(stmt)
 			return
 		#
 		# New data record add to data base.
 		#
 		stmt = """Insert  into listings (start_time, end_time, length, 
-			station, title) 
+			station, title, title_id) 
 			Values (FROM_UNIXTIME(%d),
 				FROM_UNIXTIME(%d),
-				%d, '%s', '%s')""" % (start_time, end_time,
-				length, station_id, title)
-
+				%d, '%s', '%s', '%s')""" % (start_time, end_time,
+				length, station_id, title, title_id)
 		self.cursor.execute(stmt)
 		
 	def info(self, key):
@@ -410,9 +415,9 @@ class Guide:
 			self.station_button(station, current_row)
 			col = 1
 			index = 0
-			while col <= self.columns:
+			while col <= self.columns and len(data) > index:
 				id, channel, start_time, end_time, length, title = data[index]
-				index += 1
+				index = index + 1
 				if end_time <= sec:
 					continue
 

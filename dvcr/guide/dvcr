@@ -12,9 +12,9 @@ channel: /usr/local/bin/channel
 channel_params: %station
 
 [tvguide]
-serviceid: 63892, 63598
+serviceid: 63891, 63598
 
-[63892]
+[63891]
 filter: 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
 host: www.tvguide.com
 

@@ -17,10 +17,13 @@ stmt = """CREATE TABLE listings (
 	length smallint not null,
 	station char(12) not null,
 	title varchar(80) not null,
+	title_id varchar(20) not null,
+	description varchar(255),
 	primary key (id),
 	key start_time (start_time),
 	key end_time (end_time),
-	key time_station (start_time, station)
+	key time_station (start_time, station),
+	key title_id (title_id)
 )"""
 cursor.execute(stmt)
 
