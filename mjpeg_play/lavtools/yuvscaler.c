@@ -67,7 +67,7 @@
 
 
 
-#define yuvscaler_VERSION "17-01-2003"
+#define yuvscaler_VERSION "08-01-2003"
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
@@ -1346,51 +1346,61 @@ main (int argc, char *argv[])
     {
 
       // SPECIFIC
-      // Is a specific speed enhanced treatment available?
-      if ((output_height_slice == 1) && (input_height_slice == 1))
-	{
-	  specific = 1;
-	  // en height, bicubic coefficients cubic_spline_m are 1/18, 16/18, 1/18 et 0 => one multiplication may be suppressed
-	}
-      if ((output_width_slice == 1) && (input_width_slice == 1))
-	{
-	  // Specific to the 16/9 to 4/3 conversion
-	  specific = 5;
-	  // on width, bicubic coefficient cubic_spline_n are 1/18, 16/18, 1/18 et 0 => one multiplication may be suppressed
-	}
-
-      if ((output_height_slice == 1) && (input_height_slice == 1)
-	  && (output_width_slice == 2) && (input_width_slice == 3))
-	{
-	  specific = 6;
+//      if ((output_height_slice == 1) && (input_height_slice == 1)
+//	  && (output_width_slice == 2) && (input_width_slice == 3))
+//	{
+//	  specific = 6;
 	  // Specific to the DVD to SVCD conversion
-	  // Given the reasonnable number of possible value for the numerator of the bicubic calculations (18*144*1.1*255=700kBytes), 
-	  // we pretabulate evry possible values
-	  // en hauteur, les coefficients bicubic cubic_spline_m valent 1/18, 16/18, 1/18 et 0 (a=0)
+	  // We only downscale pixels along the width, not the height
 	  // en largeur, les coefficients bicubic cubic_spline_n valent pour les numéros de colonnes impaires (b=0.5) :
-	  // -5/144, 77/144, 77/144 et -5/144. Même chose qu'en hauteur pour les numéros de colonnes paires 
-	  bicubic_div_height = 18;
-	  bicubic_div_width = 144;
+	  // -5/144, 77/144, 77/144 et -5/144. 1/18, 16/18 et 1/18 pour les numéros de colonnes paires 
+/*	  bicubic_div_width = 144;
+	  bicubic_div_height = 1;
 	  bicubic_offset =
 	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
 				      bicubic_negative_max * 255.0);
 	  bicubic_max =
 	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
 				      bicubic_positive_max * 255.0);
-
+*/
 //          fprintf(stderr,"%ld %ld %ld %ld\n",bicubic_div_height,bicubic_div_width,bicubic_offset,bicubic_max);
-	}
+//	}
+//       else
+//	 {
+	    if ((output_width_slice == 1) && (input_width_slice == 1))
+	      {
+		 // applicable to the 16/9 to 4/3 conversion
+		 // We only downscale on height, not width
+		 specific = 5;
+/*		 bicubic_div_width = 1;
+		 bicubic_div_height = FLOAT2INTEGER;
+		 bicubic_offset =
+		   (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+					     bicubic_negative_max * 255.0);
+		 bicubic_max =
+		   (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+					     bicubic_positive_max * 255.0);
+*/	      }
+	    
+	    if ((output_height_slice == 1) && (input_height_slice == 1))
+	      {
+		 // We only downscale on width, not height
+		 specific = 1;
+/*		 bicubic_div_width = FLOAT2INTEGER;
+		 bicubic_div_height = 1;
+		 bicubic_offset =
+		   (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+					     bicubic_negative_max * 255.0);
+		 bicubic_max =
+		   (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+					     bicubic_positive_max * 255.0);
+*/	      }
+//	 }
       
        if (specific) 
 	 mjpeg_info ("Specific downscaling routing number %u", specific);
-
-       if (specific == 1)
-	 bicubic_div_height = 18;
-       
-       if (specific == 5)
-	 bicubic_div_width = 18;
-
-       if (specific == 6)
+/*
+       if (specific)
 	{
 	  if (!
 	      (divide =
@@ -1409,8 +1419,8 @@ main (int argc, char *argv[])
 	    {
 	      value =
 		(lint - bicubic_offset +
-		 (long int) (bicubic_div_height * bicubic_div_width / 2)) /
-		(long int) (bicubic_div_height * bicubic_div_width);
+		 (long int) (bicubic_div_width * bicubic_div_height / 2)) /
+		(long int) (bicubic_div_width * bicubic_div_height);
 	      if (value < 0)
 		value = 0;
 	      if (value > 255)
@@ -1418,7 +1428,7 @@ main (int argc, char *argv[])
 	      *(u_c_p++) = (uint8_t) value;
 	    }
 	}
-       
+*/       
       // END OF SPECIFIC
 //	  specific = 0;
 //	  bicubic_div_height = FLOAT2INTEGER;

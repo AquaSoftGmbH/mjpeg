@@ -44,7 +44,8 @@ extern long int bicubic_offset;
 // Defines
 #define FLOAT2INTEGERPOWER 11
 extern long int FLOAT2INTOFFSET;
-#define bicubic_VERSION "17-01-2003"
+const float specific_ratio = 2048.0/18.0;
+
 
 // *************************************************************************************
 int
@@ -98,16 +99,19 @@ cubic_scale (uint8_t * padded_input, uint8_t * output,
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
 		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
-		  value =
-		    (value1 +
-		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  
-		  if (value > 255) 
-		    value = 255;
-		  
-		  *(output_p++) = (uint8_t) value;
+		  if (value1 < 0)
+		    *(output_p++) = 0;
+		  else 
+		    {
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		       
+		       if (value > 255) 
+			 *(output_p++) = 255;
+		       else
+			 *(output_p++) = (uint8_t) value;
+		    }
 	       }
 	     // a line on output is now finished. We jump to the beginning of the next line
 	     output_p+=local_output_width-local_output_active_width;
@@ -115,34 +119,6 @@ cubic_scale (uint8_t * padded_input, uint8_t * output,
      }
    else 
      {
-	if (specific==6) 
-	  {  
-	     for (out_line = 0; out_line < local_output_active_height; out_line++)
-	       {
-		  in_line_offset = in_line[out_line] * local_padded_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       csn0 =  cubic_spline_n_0[out_col];
-		       csn1 =  cubic_spline_n_1[out_col];
-		       csn2 =  cubic_spline_n_2[out_col];
-		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
-		    }
-		  output_p+=local_output_width-local_output_active_width;
-	       }
-	  }
-
 	if (specific==1) 
 	  {  
 	     for (out_line = 0; out_line < local_output_active_height; out_line++)
@@ -154,33 +130,30 @@ cubic_scale (uint8_t * padded_input, uint8_t * output,
 		       csn1 =  cubic_spline_n_1[out_col];
 		       csn2 =  cubic_spline_n_2[out_col];
 		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
+		       adresse1 = padded_input + in_col[out_col] + in_line_offset + local_padded_width;
+		       value1  = *(adresse1++) * csn0;
+		       value1 += *(adresse1++) * csn1;
+		       value1 += *(adresse1++) * csn2;
+		       value1 += *(adresse1  ) * csn3;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
-		  // a line on output is now finished. We jump to the beginning of the next line
 		  output_p+=local_output_width-local_output_active_width;
 	       }
 	  }
+
+
 	if (specific == 5) 
 	  {
 	     for (out_line = 0; out_line < local_output_active_height; out_line++)
@@ -196,20 +169,20 @@ cubic_scale (uint8_t * padded_input, uint8_t * output,
 		       adresse1 = adresse0 + local_padded_width;
 		       adresse2 = adresse1 + local_padded_width;
 		       adresse3 = adresse2 + local_padded_width;
-		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
-		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
-		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
+		       value1 = (*adresse0) * csm0 + (*adresse1) * csm1 + (*adresse2) * csm2 + (*adresse3) * csm3 ;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
 		  output_p+=local_output_width-local_output_active_width;
 	       }
@@ -274,16 +247,19 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
 		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
-		  value =
-		    (value1 +
-		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  
-		  if (value > 255) 
-		    value = 255;
-		  
-		  *(output_p++) = (uint8_t) value;
+		  if (value1 < 0)
+		    *(output_p++) = 0;
+		  else 
+		    {
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		       
+		       if (value > 255) 
+			 *(output_p++) = 255;
+		       else
+			 *(output_p++) = (uint8_t) value;
+		    }
 	       }
 	     // a top line on output is now finished. We jump to the beginning of the next bottom line
 	     output_p+=local_output_width-local_output_active_width;
@@ -301,16 +277,19 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
 		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
 		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
-		  value =
-		    (value1 +
-		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  
-		  if (value > 255) 
-		    value = 255;
-		  
-		  *(output_p++) = (uint8_t) value;
+		  if (value1 < 0)
+		    *(output_p++) = 0;
+		  else 
+		    {
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2* FLOAT2INTEGERPOWER);
+		       
+		       if (value > 255) 
+			 *(output_p++) = 255;
+		       else
+			 *(output_p++) = (uint8_t) value;
+		    }
 	       }
 	     // a bottom line on output is now finished. We jump to the beginning of the next top line
 	     output_p+=local_output_width-local_output_active_width;
@@ -318,8 +297,7 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
      }
    else
      {
-
- if (specific==6) 
+	if (specific==1)
 	  {  
 	     for (out_line = 0; out_line < local_output_active_height /2 ; out_line++)
 	       {
@@ -330,18 +308,24 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       csn1 =  cubic_spline_n_1[out_col];
 		       csn2 =  cubic_spline_n_2[out_col];
 		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_top + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
+		       adresse1 = padded_top + in_col[out_col] + in_line_offset + local_padded_width;
+		       value1  = (int16_t)*(adresse1++) * csn0;
+		       value1 += (int16_t)*(adresse1++) * csn1;
+		       value1 += (int16_t)*(adresse1++) * csn2;
+		       value1 += (int16_t)*(adresse1  ) * csn3;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
 		  output_p+=local_output_width-local_output_active_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
@@ -350,93 +334,31 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       csn1 =  cubic_spline_n_1[out_col];
 		       csn2 =  cubic_spline_n_2[out_col];
 		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
+		       adresse1 = padded_top + in_col[out_col] + in_line_offset + local_padded_width;
+		       value1  = (int16_t)*(adresse1++) * csn0;
+		       value1 += (int16_t)*(adresse1++) * csn1;
+		       value1 += (int16_t)*(adresse1++) * csn2;
+		       value1 += (int16_t)*(adresse1  ) * csn3;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
 		  // a bottom line on output is now finished. We jump to the beginning of the next top line
 		  output_p+=local_output_width-local_output_active_width;
 	       }
         }
 
-	if (specific==1) 
-	  {  
-	     for (out_line = 0; out_line < local_output_active_height /2 ; out_line++)
-	       {
-		  in_line_offset = in_line[out_line] * local_padded_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       csn0 =  cubic_spline_n_0[out_col];
-		       csn1 =  cubic_spline_n_1[out_col];
-		       csn2 =  cubic_spline_n_2[out_col];
-		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_top + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
-		    }
-		  // a top line on output is now finished. We jump to the beginning of the bottom line
-		  output_p+=local_output_width-local_output_active_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       csn0 =  cubic_spline_n_0[out_col];
-		       csn1 =  cubic_spline_n_1[out_col];
-		       csn2 =  cubic_spline_n_2[out_col];
-		       csn3 =  cubic_spline_n_3[out_col];
-		       adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
-		       adresse1 = adresse0 + local_padded_width;
-		       adresse2 = adresse1 + local_padded_width;
-		       value1 =
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
-		       value1 += 
-			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
-		       value1 += 
-			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
-		    }
-		  // a bottom line on output is now finished. We jump to the beginning of the next top line
-		  output_p+=local_output_width-local_output_active_width;
-	       }
-	  }
+	
 	if (specific == 5) 
 	  {
 	     for (out_line = 0; out_line < local_output_active_height/2; out_line++)
@@ -452,20 +374,20 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       adresse1 = adresse0 + local_padded_width;
 		       adresse2 = adresse1 + local_padded_width;
 		       adresse3 = adresse2 + local_padded_width;
-		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
-		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
-		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
+		       value1 = (*adresse0) * csm0 + (*adresse1) * csm1 + (*adresse2) * csm2 + (*adresse3) * csm3 ;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
 		  output_p+=local_output_width-local_output_active_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
@@ -474,20 +396,20 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t *
 		       adresse1 = adresse0 + local_padded_width;
 		       adresse2 = adresse1 + local_padded_width;
 		       adresse3 = adresse2 + local_padded_width;
-		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
-		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
-		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
-		       value1 = (9 + value1)/18;
-		       value =
-			 (value1 +
-			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
-		       if (value < 0)
-			 value = 0;
-		       
-		       if (value > 255) 
-			 value = 255;
-		       
-		       *(output_p++) = (uint8_t) value;
+		       value1 = (*adresse0) * csm0 + (*adresse1) * csm1 + (*adresse2) * csm2 + (*adresse3) * csm3 ;
+		       if (value1 < 0)
+			 *(output_p++) = 0;
+		       else 
+			 {
+			    value =
+			      (value1 +
+			       (1 << (FLOAT2INTEGERPOWER - 1))) >> FLOAT2INTEGERPOWER;
+			    
+			    if (value > 255) 
+			      *(output_p++) = 255;
+			    else
+			      *(output_p++) = (uint8_t) value;
+			 }
 		    }
 		  output_p+=local_output_width-local_output_active_width;
 	       }
