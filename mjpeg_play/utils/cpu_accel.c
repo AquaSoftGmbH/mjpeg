@@ -45,6 +45,12 @@ typedef RETSIGTYPE (*__sig_t)(int);
 static int testsseill()
 {
 	int illegal;
+#if defined(__CYGWIN__)
+	// SSE causes a crash on CYGWIN, apparently.
+	// Perhaps the wrong signal is being caught or something along
+	// those line ;-) or maybe SSE itself won't work...
+	illegal = 1;
+#else
 	__sig_t old_handler = signal( SIGILL, sigillhandler);
 	if( sigsetjmp( sigill_recover, 1 ) == 0 )
 	{
@@ -55,6 +61,7 @@ static int testsseill()
 		illegal = 1;
 	signal( SIGILL, old_handler );
 	return illegal;
+#endif
 }
 
 static int x86_accel (void)
