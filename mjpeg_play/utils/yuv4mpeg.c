@@ -258,6 +258,7 @@ void y4m_copy_stream_info(y4m_stream_info_t *dest,
   dest->interlace = src->interlace;
   dest->framerate = src->framerate;
   dest->sampleaspect = src->sampleaspect;
+  dest->framelength = src->framelength;
   y4m_copy_xtag_list(&(dest->x_tags), &(src->x_tags));
 }
 
