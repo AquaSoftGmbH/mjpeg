@@ -330,6 +330,25 @@ int y4m_write_frame(int fd, y4m_stream_info_t *si,
 		    y4m_frame_info_t *fi, unsigned char *yuv[3]);
 
 
+/* read a complete frame (header + data), but de-interleave fields
+    into two separate buffers
+   o upper_field[3] same as yuv[3] above, but for upper field
+   o lower_field[3] same as yuv[3] above, but for lower field
+*/
+int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
+		    unsigned char *upper_field[3], 
+		    unsigned char *lower_field[3]);
+
+/* write a complete frame (header + data), but interleave fields
+    from two separate buffers
+   o upper_field[3] same as yuv[3] above, but for upper field
+   o lower_field[3] same as yuv[3] above, but for lower field
+*/
+int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
+		     unsigned char *upper_field[3], 
+		     unsigned char *lower_field[3]);
+
+
 
 /************************************************************************
  *  miscellaneous functions

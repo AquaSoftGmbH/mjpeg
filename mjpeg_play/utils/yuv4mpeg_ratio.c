@@ -1,5 +1,5 @@
 /*
- *  yuv4mpeg.c:  Functions for reading and writing "new" YUV4MPEG streams
+ *  yuv4mpeg_ratio.c:  Functions for dealing with y4m_ratio_t datatype.
  *
  *  Copyright (C) 2001 Matthew J. Marjanovic <maddog@mir.com>
  *
@@ -22,6 +22,7 @@
 
 #include <config.h>
 
+#include <string.h>
 #include "yuv4mpeg.h"
 #include "yuv4mpeg_intern.h"
 

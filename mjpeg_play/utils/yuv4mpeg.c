@@ -21,6 +21,7 @@
  */
 
 #include <config.h>
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -613,6 +614,77 @@ int y4m_write_frame(int fd, y4m_stream_info_t *si,
       y4m_write(fd, yuv[1], w*h/4) ||
       y4m_write(fd, yuv[2], w*h/4))
     return Y4M_ERR_SYSTEM;
+  return Y4M_OK;
+}
+
+
+
+/*************************************************************************
+ *
+ * Read/Write entire frame, (de)interleaved (to)from two separate fields
+ *
+ *************************************************************************/
+
+
+int y4m_read_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
+                    unsigned char *upper_field[3], 
+                    unsigned char *lower_field[3])
+{
+  int i, y, err;
+  int width = si->width;
+  int height = si->height;
+  
+  /* Read frame header */
+  if ((err = y4m_read_frame_header(fd, fi)) != Y4M_OK) return err;
+  /* Read Y', Cb, and Cr planes */
+  for (i = 0; i < 3; i++) {
+    unsigned char *srctop = upper_field[i];
+    unsigned char *srcbot = lower_field[i];
+    /* alternately write one line from each */
+    for (y = 0; y < height; y += 2) {
+      if (y4m_read(fd, srctop, width)) return Y4M_ERR_SYSTEM;
+      srctop += width;
+      if (y4m_read(fd, srcbot, width)) return Y4M_ERR_SYSTEM;
+      srcbot += width;
+    }
+    /* for chroma, width/height are half as big */
+    if (i == 0) {
+      width /= 2;
+      height /= 2;
+    }
+  }
+  return Y4M_OK;
+}
+
+
+
+int y4m_write_fields(int fd, y4m_stream_info_t *si, y4m_frame_info_t *fi,
+                     unsigned char *upper_field[3], 
+                     unsigned char *lower_field[3])
+{
+  int i, y, err;
+  int width = si->width;
+  int height = si->height;
+
+  /* Write frame header */
+  if ((err = y4m_write_frame_header(fd, fi)) != Y4M_OK) return err;
+  /* Write Y', Cb, and Cr planes */
+  for (i = 0; i < 3; i++) {
+    unsigned char *srctop = upper_field[i];
+    unsigned char *srcbot = lower_field[i];
+    /* alternately write one line from each */
+    for (y = 0; y < height; y += 2) {
+      if (y4m_write(fd, srctop, width)) return Y4M_ERR_SYSTEM;
+      srctop += width;
+      if (y4m_write(fd, srcbot, width)) return Y4M_ERR_SYSTEM;
+      srcbot += width;
+    }
+    /* for chroma, width/height are half as big */
+    if (i == 0) {
+      width /= 2;
+      height /= 2;
+    }
+  }
   return Y4M_OK;
 }
 
