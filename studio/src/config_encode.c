@@ -62,6 +62,7 @@ void do_preset_vcd(struct encodingoptions *point);
 void do_preset_svcd(struct encodingoptions *point);
 void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
+void set_bicubicuse(GtkWidget *widget, gpointer data);
 
 /* config.c */
 int chk_dir(char *name);
@@ -76,7 +77,7 @@ int chk_dir(char *name);
 #define Encoptions_Table_x 2
 #define Encoptions_Table_y 8
 int t_use_yuvplay_pipe, t_encoding_syntax_style, t_addoutputnorm;
-int t_fourpelmotion, t_twopelmotion;
+int t_fourpelmotion, t_twopelmotion, t_use_bicubic;
 char t_ininterlace_type[LONGOPT];
 GtkWidget *fourpel_scale, *twopel_scale;
 
@@ -99,7 +100,7 @@ use_yuvplay_pipe = 0;
 encoding_syntax_style = 0;
 fourpelmotion = 2;
 twopelmotion  = 3;
-
+use_bicubic   = 0;
 }
 
 /* set the structs to default values */
@@ -199,7 +200,7 @@ int i;
     else 
         use_yuvplay_pipe = 0;
 
-  if (-1 != (i = cfg_get_int("Studio","Encoding_Syntax_style")))
+  if (-1 != (i = cfg_get_int("Studio","Encoding_Syntax_Style")))
     encoding_syntax_style = i;
   else
     encoding_syntax_style = 140;
@@ -210,6 +211,11 @@ int i;
   if (-1 != (i = cfg_get_int("Studio","Encoding_two_pel_motion_compensation")))
     twopelmotion = i;
 
+  if (NULL != (val = cfg_get_str("Studio","Encode_Bicubic_Scaling")))
+    if ( 0 == strcmp(val,"yes"))
+        use_yuvplay_pipe = 1;
+    else 
+        use_yuvplay_pipe = 0;
 }
 
 void load_section(char section[LONGOPT],struct encodingoptions *point)
@@ -423,11 +429,15 @@ void save_common(FILE *fp)
   else
     fprintf(fp,"Encode_Video_Preview = %s\n", "no");
 
-  fprintf(fp,"Encoding_Syntax_style = %i\n", encoding_syntax_style);
+  fprintf(fp,"Encoding_Syntax_Style = %i\n", encoding_syntax_style);
 
   fprintf(fp,"Encoding_four_pel_motion_compensation = %i\n", fourpelmotion);
   fprintf(fp,"Encoding_two_pel_motion_compensation = %i\n", twopelmotion);
 
+  if (use_bicubic == 1)
+    fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "yes");
+  else
+    fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "no");
 }
 
 void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT])
@@ -560,15 +570,19 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
       if (t_encoding_syntax_style != encoding_syntax_style)
         printf(" Encoding Syntax set to %i \n", t_encoding_syntax_style);
 
+      if (t_use_bicubic != use_bicubic)
+        printf(" For scaling use bicubic %i \n", t_use_bicubic);
+
       if (t_fourpelmotion != fourpelmotion)
-        printf("\n 4*4-pel subsampled motion compensation : %i \n", t_fourpelmotion);
+        printf(" 4*4-pel subsampled motion compensation : %i \n", t_fourpelmotion);
       if (t_twopelmotion != twopelmotion)
-        printf("\n 2*2-pel subsampled motion compensation : %i \n", twopelmotion);
+        printf(" 2*2-pel subsampled motion compensation : %i \n", twopelmotion);
     }
-  
+ 
   use_yuvplay_pipe = t_use_yuvplay_pipe;
   encoding.addoutputnorm = t_addoutputnorm;
   strcpy(encoding.ininterlace_type, t_ininterlace_type);
+  use_bicubic = t_use_bicubic;
   encoding_syntax_style = t_encoding_syntax_style;  
   fourpelmotion = t_fourpelmotion;
   twopelmotion = t_twopelmotion;
@@ -619,6 +633,17 @@ int i;
     sprintf(t_ininterlace_type,"%s",(char*)data);
 }
 
+/* Set if the bicubis rescaling algorithm is used */ 
+void set_bicubicuse(GtkWidget *widget, gpointer data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    t_use_bicubic = 1;
+  else
+    t_use_bicubic = 0;
+}
+
+/* Set if the output norm is added */
+
 /* Set the encoding syntax syle */
 void set_encoding_syntax(GtkWidget *widget, gpointer data)
 {
@@ -630,6 +655,7 @@ void create_encoding_layout(GtkWidget *table)
 {
 GtkWidget *preview_button, *label, *addnorm_button, *int_asis_button;
 GtkWidget *int_odd_button, *int_even_button, *style_14x, *style_15x;
+GtkWidget *bicubic_button;
 GSList *interlace_type, *encoding_style;
 GtkObject *adjust_scale, *adjust_scale_n;
 int table_line;
@@ -639,13 +665,15 @@ table_line = 0;
   t_use_yuvplay_pipe = use_yuvplay_pipe;
   t_addoutputnorm = encoding.addoutputnorm;
   strcpy(t_ininterlace_type, encoding.ininterlace_type);
+  t_use_bicubic = use_bicubic; 
   t_encoding_syntax_style = encoding_syntax_style;
   t_fourpelmotion = fourpelmotion;
   t_twopelmotion = twopelmotion;
 
-  label = gtk_label_new ("Show video while encoding ");
+  label = gtk_label_new ("Show video while encoding : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
   preview_button = gtk_check_button_new();
   gtk_widget_ref (preview_button);
@@ -658,9 +686,10 @@ table_line = 0;
   gtk_widget_show (preview_button);
   table_line++;
 
-  label = gtk_label_new ("Add norm when using yuvscaler ");
+  label = gtk_label_new ("Add norm when using yuvscaler : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
   addnorm_button = gtk_check_button_new();
   gtk_widget_ref (addnorm_button);
@@ -673,9 +702,10 @@ table_line = 0;
   gtk_widget_show (addnorm_button);
   table_line++;
 
-  label = gtk_label_new ("Interlacing type for yuvscaler ");
+  label = gtk_label_new ("Interlacing type for yuvscaler : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
   int_asis_button = gtk_radio_button_new_with_label (NULL, " from header");
   gtk_signal_connect (GTK_OBJECT (int_asis_button), "toggled",
@@ -688,6 +718,11 @@ table_line = 0;
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(int_asis_button), TRUE);
   table_line++;
 
+  label = gtk_label_new ("only for yuvscaler 1.4.x");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+  gtk_widget_show (label);
   int_odd_button=gtk_radio_button_new_with_label(interlace_type," odd frame first");
   gtk_signal_connect (GTK_OBJECT (int_odd_button), "toggled",
       GTK_SIGNAL_FUNC (set_interlacein_type), (gpointer) "INTERLACED_ODD_FIRST");
@@ -710,9 +745,26 @@ table_line = 0;
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(int_even_button), TRUE);
   table_line++;
 
-  label = gtk_label_new ("Syntax style for encoding ");
+  label = gtk_label_new ("Always use bicubic for scaling : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+  gtk_widget_show (label);
+  bicubic_button = gtk_check_button_new();
+//  gtk_widget_ref (bicubic_button);
+  if (use_bicubic)  /* <- Does the preset of the values -v */
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (bicubic_button), TRUE);
+  gtk_signal_connect (GTK_OBJECT (bicubic_button), "toggled",
+                      GTK_SIGNAL_FUNC (set_bicubicuse), NULL );
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             bicubic_button, 1, 2, table_line, table_line+1);
+  gtk_widget_show (bicubic_button);
+  table_line++;
+
+  label = gtk_label_new ("Syntax style for encoding : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
 
   style_14x = gtk_radio_button_new_with_label (NULL, " 1.4.x");
@@ -740,6 +792,7 @@ table_line = 0;
   label = gtk_label_new (" 4*4-pel subsampled motion comp : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
 
   adjust_scale = gtk_adjustment_new (1.0, 1.0, 5.0, 1, 1.0, 1.0);
@@ -758,6 +811,7 @@ table_line = 0;
   label = gtk_label_new (" 2*2-pel subsampled motion comp : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
   gtk_widget_show (label);
 
   adjust_scale_n = gtk_adjustment_new (1.0, 1.0, 5.0, 1, 1.0, 1.0);
