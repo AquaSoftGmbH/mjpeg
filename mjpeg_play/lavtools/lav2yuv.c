@@ -1,7 +1,7 @@
 /* lav2yuv - stream any lav input file to stdout as YUV4MPEG data */
 
 /* Copyright (C) 2000, Rainer Johanni, Andrew Stevens */
-/* ADDED SCENE CHANGE DETECTION CODE 2001, pHilipp Zabel */
+/* added scene change detection code 2001, pHilipp Zabel */
 
 /*
    This program is free software; you can redistribute it and/or modify
@@ -150,6 +150,7 @@ void Usage(char *str)
    printf("   -T num     Set scene detection threshold to num (default: 4)\n");
    printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
    printf("   -o num     Frame offset - skip num frames in the beginning\n");
+   printf("              if num is negative, all but the last num frames are skipped\n");
    printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
    exit(0);
 }
@@ -714,6 +715,9 @@ char *argv[];
    output_width = el.video_width;
    output_height = el.video_height;
 
+   if (param_offset < 0) {
+      param_offset = el.video_frames + param_offset;
+   }
    if (param_offset >= el.video_frames) {
       fprintf (stderr, "error: offset greater than # of frames in input\n");
       exit (1);

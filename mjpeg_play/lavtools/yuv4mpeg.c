@@ -60,7 +60,7 @@ size_t piperead (int fd, char *buf, size_t len)
 
    while (r < len) {
       n = read (fd, buf + r, len - r);
-      if (n == 0)
+      if (n <= 0)
          return r;
       r += n;
    }
@@ -79,10 +79,8 @@ size_t pipewrite (int fd, char *buf, size_t len)
 
    while (r < len) {
       n = write (fd, buf + r, len - r);
-      if (n < 0) {
-         perror ("Error writing: ");
-         exit (1);
-      }
+      if (n < 0)
+         return n;
       r += n;
    }
    return r;
@@ -100,9 +98,9 @@ yuv_read_frame (int fd, unsigned char *yuv[3], int width, int height)
       return 0;
    if (strncmp (magic, "FRAME\n", 6)) {
       magic[6] = '\0';
-      fprintf (stderr, "\n\nStart of frame X is not \"FRAME<NL>\n");
-      fprintf (stderr, "Exiting!!!!\n");
-      exit (1);
+      fprintf (stderr, "\nStart of frame is not \"FRAME\\n\"\n");
+      return 0;
+      /* should we return -1 and set errno = EBADMSG instead? */
    }
 
    h = width;
@@ -134,13 +132,14 @@ int
 yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
 				 int *frame_rate_code)
 {
-   int n, nerr = 0;
+   int n, nerr;
    char param_line[PARAM_LINE_MAX];
 
    for (n = 0; n < PARAM_LINE_MAX; n++) {
-      if (!read (fd_in, param_line + n, 1)) {
+      if ((nerr = read (fd_in, param_line + n, 1)) < 1) {
          fprintf (stderr, "Error reading header from stdin\n");
-         exit (1);
+         /* set errno if nerr == 0 ? */
+         return -1;
       }
       if (param_line[n] == '\n')
          break;
@@ -149,38 +148,41 @@ yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
       fprintf (stderr,
                "Didn't get linefeed in first %d characters of data\n",
                PARAM_LINE_MAX);
-      exit (1);
+      /* set errno to EBADMSG? */
+      return -1;
    }
    param_line[n] = 0;           /* Replace linefeed by end of string */
 
    if (strncmp (param_line, "YUV4MPEG", 8)) {
-      fprintf (stderr, "Input starts not with \"YUV4MPEG\"\n");
+      fprintf (stderr, "Input does not start with \"YUV4MPEG\"\n");
       fprintf (stderr, "This is not a valid input for me\n");
-      exit (1);
+      /* set errno to EBADMSG? */
+      return -1;
    }
-
 
    sscanf (param_line + 8, "%d %d %d", horizontal_size, vertical_size,
            frame_rate_code);
 
    nerr = 0;
-   fprintf (stderr, "Horizontal size: %d\n", *horizontal_size);
    if (*horizontal_size <= 0) {
       fprintf (stderr, "Horizontal size illegal\n");
       nerr++;
    }
-   fprintf (stderr, "Vertical size: %d\n", *vertical_size);
    if (*vertical_size <= 0) {
-      fprintf (stderr, "Vertical size size illegal\n");
+      fprintf (stderr, "Vertical size illegal\n");
       nerr++;
    }
 
    /* Ignore frame rate code */
-
-   return nerr;
+/*
+   if (verbose > 1)
+      fprintf (stderr, "YUV4MPEG %d %d %d\n",
+               *horizontal_size, *vertical_size, *frame_rate_code);
+*/
+   return nerr ? -1 : 0;
 }
 
-void 
+void
 yuv_write_header (int fd, int width, int height, int frame_rate_code)
 {
    char str[256];
