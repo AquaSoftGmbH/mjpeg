@@ -74,16 +74,16 @@ AC_CHECK_LIB( quicktime, quicktime_open,
 		        AC_DEFINE(BUILD_QUICKTIME)
 				LIBS="$LIBS -lquicktime"
 			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
-				JPEG_INCLUDE="${QUICKTIME_INCLUDE}/jpeg"	
+				#JPEG_INCLUDE="${QUICKTIME_INCLUDE}/jpeg"	
 			    have_quicktime="yes"
-				have_jpeg="yes"	
+				#have_jpeg="yes"	
 			    
 		      ],
 			  [ 
 	            LIBS="$OLDLIBS"
 				have_quicktime="no"
 			  ],
-			  -lm -lz -lpng -lpthread `glib-config --libs --cflags`
+			  -lm -lz -lpng -lpthread -ljpeg `glib-config --libs --cflags`
 			 )
 
 dnl No jpeg yet... try for a local jpeg-mmx first!
@@ -92,6 +92,7 @@ then
 AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
+					LIBS="$LIBS -ljpeg-mmx"
 					JPEG_INCLUDE="-I /usr/local/include"
  		     	],
              	[

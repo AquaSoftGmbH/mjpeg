@@ -5,11 +5,86 @@ The lavtools stand for "Linux/Audio video tools" and are released
 under the General GNU Public Licence, see the COPYING file for
 details.
 
-Installation:
--------------
+Required Software
+-----------------
 
-Please see REQUIRED_SOFTWARE to find out which software you will need
-to compile and install this package.
+
+*** Software you *must* have installed
+
+1) Quicktime4Linux 1.2.0 - http://heroine.linuxave.net/quicktime.html
+
+The configure scripts look for this in /usr/local/src/quicktime by default.
+You can specify another directory using the --with-quicktime flag to
+the ./configure script.
+
+N.b. it would seem that quicktime-1.2 is a little picky about the
+compilers it is built under.  You may get complaints about missing
+functions.  If so you need to try a more up-to-date gcc or egcs or an
+older quicktime library that doesn't include the offending code
+(support for digital video that makes heavy use of inline's). If this
+is the case a hacked version of Q4L can be found where you found this.
+Furthermore, in its original form the Quicktime library includes a
+built-in jpeg library.  This prevents full use being made of the
+somewhat faster MMX version available (see 2. below).  It is easy to
+hack out the jpeg stuff but if you don't fancy that you can use a
+pre-hacked version downloadable from where you got this package.
+
+The file is called "quicktime4linux-1.2njpg.tar.gz"
+
+Either way: compile and install/
+
+2) The MMX enhanced jpeg library from the same place you got this package.
+
+O.k. actually, you *don't* need this.libjpeg6 (libjpeg6a or 6b is
+included in the standard distributions) along with the corresponding
+"jpegint.h" header file from the source code wiil do. This header file
+is needed so that the colour-space conversion routines to be used by
+the jpeg library can be correctly set for the state of the X display.
+
+However, by far the simplest solution is to the faster patched MMX
+version that can be found with where you obtained this software.  The
+file is called:
+
+"jpeg-mxx-0.1.1.tar.gz"
+
+It is *strongly* recommended you compile and install this.  Don't
+worry about it messing up your precious system jpeg libs.  Its default
+settings (which are those expected by the scripts for lavtools)
+install only simple static libraries in /usr/local named jpeg-mmx to
+prevent clashes.
+
+3) The libmovtar library for handling audio/video streams in "movtar" format.
+Very handy for hacking around, moving between formats, and experimentation.
+
+The file is called: "libmovtar-0.1.1.tar.gz".
+
+Compile and install.
+
+
+
+3) The GLib library - http://www.gtk.org
+(libglib .... is included in the standard distributions)
+
+4) The SDL library -  http://www.libsdl.org/
+   I used SDL 1.1.6 for development, please tell me if the 
+   new SDL versions won't compile with this software ! 
+
+	Some rather tricky and difficult to repeat problems centred around the
+	use of pre-compiled versions of this library.  If software
+	playback crashes out on you immediately try compiling and
+	installing SDL from source-code.
+
+*** Software you'll find useful
+
+
+1) The "toolame" MP2 encoder and the "sox" audio processing tool.
+
+A remark regarding RPM packages: If you want to install RPM packages
+instead, always keep in mind that you need to install the developer
+versions.
+
+(www.freshmeat.net is also a good source for all kind of Linux soft !)
+
 
 To build the package just type :
 
@@ -26,5 +101,6 @@ You should now be able to run the lavtools and MPEG compressors at least.
 
 Have a look at the README to see how the lavtools (ought to ;) ) work ...
 
+/Andrew <as@comlab.ox.ac.uk>
 /Gernot <gz@lysator.liu.se>
 

@@ -1,11 +1,16 @@
 1.	mpeg2enc has only been tested cursorarily on MPEG-2 streams.
 	It was hard enough to make sure the MPEG-1 stuff worked really
-	reliably ;-)
+	reliably ;-).  Last test seemed to suggest recent improvements in the
+	motion compensation code have *broken* MPEG2 encoding. Don't worry
+	its next on the list for work!
 
 2.  The bit-rate control algorithm in mpeg2enc is relatively new and must
 	therefore be regarded with some suspicion.  It *looks* to have corrected
-	some annoying problems with overshoots in the pre-release version and
+	some annoying problems with overshoots in earlier versions and
 	poor handling of unusually active blocks but I'd want more evidence...
+
+3.	The lacplay / xlav apps fail rather than automatically switch to software
+	decoding if no MJPEG hardware is present.
 
 4.	At least for my install of SDL software playback MJPEG function sizes
 	its window inconsistently with what it claims it is going to do.
@@ -13,3 +18,16 @@
 
 5.  The option for switching to a high-res DCT matrix is broken (segfaults) in
 	mpeg2enc is broken.
+
+6.	Variable bit-rate (fixed quantisation) mode in mpeg2enc is currently not
+	really useable since the VBV buffer code and a few bits and pieces in
+	the rate control code do not yet have the necessary code to handle
+	it correctly. The headers of the produced MPEG must also be
+	regarded as "probably wrong".
+
+7.	The sourcecode needs to be updated a little to permit the full use of the
+	autoconf scriptology.  E.g. You can't not include libmovtar because the
+	#ifdef-ing isn't quite right and some movtar only stuff is referred to in
+	places compiled when libmovtar isn't present.
+
+
