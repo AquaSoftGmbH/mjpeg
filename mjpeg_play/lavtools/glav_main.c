@@ -122,6 +122,7 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data ) {
    switch (event->keyval) {
       case GDK_Home: // go to beginning of file
       case GDK_0:
+      case GDK_asciicircum:  // a.k.a "carat" (shift-6 on us keyboards)
          gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
          break;
       case GDK_End: // go to end of file
