@@ -504,6 +504,7 @@ void file_ok_sel_add_scene_to_glist( GtkWidget *w, GtkFileSelection *fs )
 		for (i=0;i<4;i++)
 			sprintf(current_open_movies[i], current_open_movies[i+1]);
 	}
+	current_open_movies[4][0] = '\0';
 
 	for(i=0;i<5;i++)
 	{

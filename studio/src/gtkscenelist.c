@@ -643,7 +643,7 @@ void gtk_scenelist_get_num_drawn(GtkSceneList *scenelist, gint *num, gint *left_
 void gtk_scenelist_edit_move(GtkSceneList *scenelist, gint scene_num, gint direction)
 {
 	GtkScene *scene1, *scene2;
-	gint diff, n;
+	gint n;
 
 	if (direction != 1 && direction != -1) return;
 
@@ -656,15 +656,13 @@ void gtk_scenelist_edit_move(GtkSceneList *scenelist, gint scene_num, gint direc
 
 	if (direction == -1)
 	{
-		diff = scene1->start_total - scene2->start_total;
-		scene1->start_total -= diff;
-		scene2->start_total += diff;
+		scene1->start_total -= (scene2->view_end - scene2->view_start + 1);
+		scene2->start_total += (scene1->view_end - scene1->view_start + 1);
 	}
 	else
 	{
-		diff = scene2->start_total - scene1->start_total;
-		scene1->start_total += diff;
-		scene2->start_total -= diff;
+		scene1->start_total += (scene2->view_end - scene2->view_start + 1);
+		scene2->start_total -= (scene1->view_end - scene1->view_start + 1);
 	}
 
 	n = (gint) g_list_nth_data(scenelist->scene, scene_num);
@@ -680,7 +678,8 @@ void gtk_scenelist_edit_move(GtkSceneList *scenelist, gint scene_num, gint direc
 		(gpointer)scene1, n);
 
 	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
-	gtk_scenelist_draw(GTK_WIDGET(scenelist));
+	//gtk_scenelist_draw(GTK_WIDGET(scenelist));
+	gtk_scenelist_select(scenelist, scene_num+direction);
 }
 
 
