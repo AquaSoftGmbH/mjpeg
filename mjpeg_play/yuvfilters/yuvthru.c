@@ -71,8 +71,8 @@ yuvthru_frame(void *appdata, yst_frame_t *frame_in)
 
     yst_frame_info_get(       frame_in,  &finfodata, &xfinfo);
     frame_out = yst_frame_new(priv->out, &finfodata, &xfinfo);
-    size_in  = yst_frame_data(frame_in,  yuv_in,  NULL);
-    size_out = yst_frame_data(frame_out, yuv_out, NULL);
+    size_in  = yst_frame_data(frame_in,  3, yuv_in,  NULL);
+    size_out = yst_frame_data(frame_out, 3, yuv_out, NULL);
     memcpy(yuv_out[0], yuv_in[0], size_out);
     yst_frame_release(frame_in);
     yst_frame_send(priv->out, frame_out);
