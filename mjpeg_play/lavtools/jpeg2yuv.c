@@ -149,7 +149,6 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   for (;;) {
     if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:")))
       break;
-    mjpeg_info("Parsing char %c\n", c);
     switch (c) {
 
     case 'j':
@@ -460,11 +459,10 @@ static int generate_YUV4MPEG(parameters_t *param)
    
        y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
      }
- 
      if (param->loop != 1)
        loops--;
  
-  } while(loops);
+  } while(loops >=1 );
   
   y4m_fini_stream_info(&streaminfo);
   y4m_fini_frame_info(&frameinfo);
@@ -485,7 +483,6 @@ int main(int argc, char ** argv)
 { 
   parameters_t param;
 
-  mjpeg_info("Wp1\n");
   parse_commandline(argc, argv, &param);
   mjpeg_default_handler_verbosity(param.verbose);
 
