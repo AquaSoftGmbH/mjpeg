@@ -41,7 +41,7 @@ off_t opt_max_segment_size = 0;
 static void Usage(char *str)
 {
 	fprintf( stderr, "mjpegtools mplex version " VERSION "\n" );
-	fprintf( stderr, "Usage: %s [params] -o <output file> [<input file1> [<input file2>] \n\n", str);
+	fprintf( stderr, "Usage: %s [params] -o <output file> <input file>... \n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
 	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
@@ -62,7 +62,7 @@ static void Usage(char *str)
 	fprintf( stderr, "         (N.b only 0 .. 7 currently implemented!*)\n" ); 
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 2000) (0 = no limit)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program per\n"
-			         "sequence rather a program per file\n");
+			         "         sequence rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
 	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
 	fprintf( stderr, " -?      Print this lot out!\n");

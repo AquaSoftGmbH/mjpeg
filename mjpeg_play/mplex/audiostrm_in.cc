@@ -122,7 +122,7 @@ void AudioStream::Init ( const int stream_num,
     {
 		num_syncword++;
 		version_id = bs.getbits( 2);
-		layer 		= bs.getbits( 2);
+		layer 		= 3-bs.getbits( 2); /* 0..2 not 1..3!! */
 		protection 		= bs.get1bit();
 		bit_rate_code	= bs.getbits( 4);
 		frequency 		= bs.getbits( 2);
@@ -135,29 +135,12 @@ void AudioStream::Init ( const int stream_num,
 		emphasis		= bs.getbits( 2);
 
 		framesize =
-			bitrates_kbps[version_id][3-layer][bit_rate_code]  * 
-			slots[3-layer] *1000 /
+			bitrates_kbps[version_id][layer][bit_rate_code]  * 
+			slots[layer] *1000 /
 			freq_table[version_id][frequency];
 
-        mjpeg_info( "rate %d slots %d freq %d size = %d\n",
-                    bitrates_kbps[version_id][3-layer][bit_rate_code],
-                    slots [3-layer] *1000,
-                    freq_table[version_id][frequency],
-                    framesize );
-        
-        int frame_length;
-        if( layer == 1 )
-            frame_length = 
-               12 *1000 * bitrates_kbps[version_id][3-layer][bit_rate_code] / freq_table[version_id][frequency];
-        else
-            frame_length = 
-            144 *1000 * bitrates_kbps[version_id][3-layer][bit_rate_code] / freq_table[version_id][frequency];
-
-        /* DEBUGGING!!!! */
-        if( frame_length != framesize )
-            mjpeg_error_exit1( "INTERNAL: just found an inconsistent frame length %d(%d)\n", frame_length, framesize );
 		size_frames[0] = framesize;
-		size_frames[1] = framesize+( layer == 1 ? 4 : 1);
+		size_frames[1] = framesize+( layer == 0 ? 4 : 1);
 		num_frames[padding_bit]++;
 	
 		access_unit.length = size_frames[padding_bit];
@@ -166,7 +149,7 @@ void AudioStream::Init ( const int stream_num,
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
-			static_cast<clockticks>(samples [3-layer]) * 
+			static_cast<clockticks>(samples [layer]) * 
 			static_cast<clockticks>(CLOCKS)	/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
@@ -185,14 +168,14 @@ void AudioStream::Init ( const int stream_num,
 
 unsigned int AudioStream::NominalBitRate()
 { 
-	return bitrates_kbps[version_id][3-layer][bit_rate_code]*128;
+	return bitrates_kbps[version_id][layer][bit_rate_code]*128;
 }
 
 
 unsigned int AudioStream::SizeFrame( int rate_code, int padding )
 {
-	return bitrates_kbps[version_id][3-layer][rate_code]  * 
-		slots [3-layer] *1000 /
+	return bitrates_kbps[version_id][layer][rate_code]  * 
+		slots [layer] *1000 /
 		freq_table[version_id][frequency] + padding;
 }
 
@@ -246,7 +229,6 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 				/* No catenated stream... finished! */
 				break;
 		}
-
 		// Skip version_id:2, layer:2, protection:1
 		(void) bs.getbits( 5);
 		int rate_code	= bs.getbits( 4);
@@ -256,7 +238,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		padding_bit=bs.get1bit();
 		access_unit.start = AU_start;
 		access_unit.length = SizeFrame( rate_code, padding_bit );
-		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
+		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[layer]) * static_cast<clockticks>(CLOCKS)
 			/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
@@ -268,7 +250,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		
 		num_syncword++;
 
-		if (num_syncword >= old_frames+1000 )
+		if (num_syncword >= old_frames+10 )
 		{
 			mjpeg_debug ("Got %d frame headers.\n", num_syncword);
 			old_frames=num_syncword;
@@ -307,12 +289,12 @@ void AudioStream::Close()
 void AudioStream::OutputHdrInfo ()
 {
     unsigned int bitrate;
-    bitrate = bitrates_kbps[version_id][3-layer][bit_rate_code];
+    bitrate = bitrates_kbps[version_id][layer][bit_rate_code];
 
 
 	mjpeg_info("AUDIO STREAM:\n");
-	mjpeg_info ("Audio version  : %s\n", audio_version[version_id]);
-    mjpeg_info   ("Layer          : %8u\n",4-layer);
+	mjpeg_info("Audio version  : %s\n", audio_version[version_id]);
+    mjpeg_info("Layer          : %8u\n",4-layer);
 
     if (protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
     else  mjpeg_info ("CRC checksums  :       no\n");
