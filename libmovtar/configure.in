@@ -118,7 +118,9 @@ then
 AC_CHECK_LIB( jpeg, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
+					LIBS="$OLDLIBS"
 					JPEG_LIBS="$LIBS -ljpeg"
+					JPEG_INCLUDE=""
  		     	],
              	[
              		have_jpeg="no"
