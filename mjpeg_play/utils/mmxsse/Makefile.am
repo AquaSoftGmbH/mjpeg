@@ -25,10 +25,3 @@ EXTRA_DIST = \
 	mblock_sub44_sads_x86_h.c 
 
 MAINTAINERCLEANFILES = Makefile.in
-
-NO_FPIC = $(SHELL) $(top_srcdir)/strip_fPIC.sh
-CCASCOMPILE = $(AS) $(ASFLAGS)
-LTCCASCOMPILE = $(LIBTOOL) --mode=compile --tag=CC $(NO_FPIC) $(CCASCOMPILE)
-
-%.lo: %.s
-	$(LTCCASCOMPILE) -o $@ $<
