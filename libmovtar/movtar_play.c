@@ -1,6 +1,9 @@
 #include <unistd.h>
 #include <stdio.h>
+
+#ifndef IRIX
 #include <stdint.h>
+#endif
 
 #include <sys/mman.h>
 #include <sys/types.h>
