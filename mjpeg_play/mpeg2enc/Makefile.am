@@ -42,7 +42,7 @@ endif # HAVE_ASM_MMX
 # dependent (usually SIMD) implementations
 
 mpeg2enc_REF = \
-	fdctref.c \
+	fdct.c \
 	idct.c \
 	predict_ref.c \
 	quantize_ref.c \

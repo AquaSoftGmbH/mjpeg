@@ -50,9 +50,12 @@
 #include <config.h>
 #include <math.h>
 #include <stdio.h>
+#include <string.h>
 #include "mjpeg_types.h"
 
 static double aanscales[64];
+
+#define FDCTTEST
 
 #define NC_COS6      0.382683432365089771728459984030399//cos(6*pi/16)
 
@@ -67,11 +70,15 @@ static double aanscales[64];
 #define NC_COS6SQRT2 0.541196100146196984399723205366389//cos(6*pi/16)*sqrt(2)
 #define NC_COS7SQRT2 0.275899379282943012335957563669373//cos(7*pi/16)*sqrt(2)
 
-void init_fdctdaan( void );
-void fdctdaan(int16_t *block);
+void init_fdct_daan( void );
+void fdct_daan(int16_t *block);
 
+void init_fdct (void);
+void fdct (int16_t *block);
 
-void init_fdctdaan( void )
+extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+
+void init_fdct_daan( void )
 {
 	int i, j;
 	static const double aansf[8] = {
@@ -94,7 +101,7 @@ void init_fdctdaan( void )
  * Perform a floating point forward DCT on one block of samples.
  */
 
-void fdctdaan(int16_t *block)
+void fdct_daan(int16_t *block)
 {
 	double tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
 	double tmp10, tmp11, tmp12, tmp13;
@@ -140,10 +147,6 @@ void fdctdaan(int16_t *block)
 		tmp12 = tmp6 + tmp7;
 
 		/* The rotator is modified from fig 4-8 to avoid extra negations. */
-//    z5 = (tmp10 - tmp12) * ((double) 0.382683433); /* c6 */
-//    z2 = ((double) 0.541196100) * tmp10 + z5; /* c2-c6 */
-//    z4 = ((double) 1.306562965) * tmp12 + z5; /* c2+c6 */
-//    z3 = tmp11 * ((double) 0.707106781); /* c4 */
 		z5 = (tmp10 - tmp12) * ((double) NC_COS6); /* c6 */
 		z2 = ((double) NC_COS6SQRT2) * tmp10 + z5; /* c2-c6 */
 		z4 = ((double) NC_COS2SQRT2) * tmp12 + z5; /* c2+c6 */
@@ -196,10 +199,6 @@ void fdctdaan(int16_t *block)
 		tmp12 = tmp6 + tmp7;
 
 		/* The rotator is modified from fig 4-8 to avoid extra negations. */
-//    z5 = (tmp10 - tmp12) * ((double) 0.382683433); /* c6 */
-//    z2 = ((double) 0.541196100) * tmp10 + z5; /* c2-c6 */
-//    z4 = ((double) 1.306562965) * tmp12 + z5; /* c2+c6 */
-//    z3 = tmp11 * ((double) 0.707106781); /* c4 */
 		z5 = (tmp10 - tmp12) * ((double) NC_COS6); /* c6 */
 		z2 = ((double) NC_COS6SQRT2) * tmp10 + z5; /* c2-c6 */
 		z4 = ((double) NC_COS2SQRT2) * tmp12 + z5; /* c2+c6 */
@@ -221,6 +220,92 @@ void fdctdaan(int16_t *block)
 		block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.5);
 }
 
+#ifdef FDCTTEST
+struct dct_test {
+    int bounds,maxerr,iter;
+    int me[64],mse[64];
+};
+
+extern void dct_test_and_print(struct dct_test *dt,int range,int16_t *origblock,int16_t *block);
+
+static struct dct_test fdct_res;
+
+/* reference fdct taken from "ieeetest.c"
+ * Written by Tom Lane (tgl@cs.cmu.edu).
+ * Released to public domain 11/22/93.
+ */
+
+/* The cosine lookup table */
+/* coslu[a][b] = C(b)/2 * cos[(2a+1)b*pi/16] */
+static double coslu[8][8];
+
+void init_fdct_ref(void)
+{
+    int a,b;
+    double tmp;
+
+    for(a=0;a<8;a++)
+        for(b=0;b<8;b++) {
+            tmp = cos((double)((a+a+1)*b) * (3.14159265358979323846 / 16.0));
+            if(b==0)
+                tmp /= sqrt(2.0);
+            coslu[a][b] = tmp * 0.5;
+        }
+}
+
+void fdct_ref (int16_t *block)
+{
+    int x,y,u,v;
+    double tmp, tmp2;
+    double res[8][8];
+
+    for (v=0; v<8; v++) {
+        for (u=0; u<8; u++) {
+            tmp = 0.0;
+            for (y=0; y<8; y++) {
+                tmp2 = 0.0;
+                for (x=0; x<8; x++) {
+                    tmp2 += (double) block[y*8+x] * coslu[x][u];
+                }
+                tmp += coslu[y][v] * tmp2;
+            }
+            res[v][u] = tmp;
+        }
+    }
+
+    for (v=0; v<8; v++) {
+        for (u=0; u<8; u++) {
+            tmp = res[v][u];
+            if (tmp < 0.0) {
+                x = - ((int) (0.5 - tmp));
+            } else {
+                x = (int) (tmp + 0.5);
+            }
+            block[v*8+u] = (int16_t) x;
+        }
+    }
+}
+
+void fdct_test(int16_t *block)
+{
+    int16_t origblock[64];
+
+    memcpy(origblock,block,64*sizeof(int16_t));
+
+    fdct_ref(origblock);
+    // fdct(origblock);
+
+    // fdct(block);
+    fdct_daan(block);
+    // fdct_mmx(block);
+    // fdct_sse(block);
+
+    dct_test_and_print(&fdct_res,2048,origblock,block);
+}
+
+
+#endif
+
 #ifndef PI
 # ifdef M_PI
 #  define PI M_PI
@@ -229,12 +314,13 @@ void fdctdaan(int16_t *block)
 # endif
 #endif
 
-/* global declarations */
-void init_fdct (void);
-void fdct (int16_t *block);
-
 /* private data */
 static int c[8][8]; /* transform coefficients */
+
+#define FDCT_COS_BITS 9
+#define FDCT_COS_MUL (1<<FDCT_COS_BITS)
+#define FDCT_RES_SHIFT (2*FDCT_COS_BITS)
+#define FDCT_RES_ROUND (1<<(FDCT_RES_SHIFT-1))
 
 void init_fdct(void)
 {
@@ -245,8 +331,13 @@ void init_fdct(void)
 	{
 		s = (i==0) ? sqrt(0.125) : 0.5;
 		for (j=0; j<8; j++)
-			c[i][j] = (s * cos((PI/8.0)*i*(j+0.5))*512 + 0.5);
+			c[i][j] = (s * cos((PI/8.0)*i*(j+0.5))*FDCT_COS_MUL + 0.5);
 	}
+#ifdef FDCTTEST
+    init_fdct_daan();
+    init_fdct_ref();
+    memset(&fdct_res,0,sizeof(fdct_res));
+#endif
 }
 
 
@@ -283,7 +374,7 @@ void fdct(int16_t *block)
 				+ c[i][6] * tmp[8*6+j]
 				+ c[i][7] * tmp[8*7+j];
 
-			block[8*i+j] = s>>18;
+			block[8*i+j] = (s+FDCT_RES_ROUND)>>FDCT_RES_SHIFT;
 		}
 
 }

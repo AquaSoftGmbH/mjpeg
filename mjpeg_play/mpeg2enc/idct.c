@@ -215,6 +215,10 @@ extern void idct_sse(int16_t *blk);
 
 static double coslu[8][8];
 
+/* reference idct taken from "ieeetest.c"
+ * Written by Tom Lane (tgl@cs.cmu.edu).
+ * Released to public domain 11/22/93.
+ */   
 void idct_ref(int16_t *block)
 {
     int x,y,u,v;
@@ -267,7 +271,7 @@ struct dct_test {
     int me[64],mse[64];
 };
 
-void dct_test_and_print(struct dct_test *dt,int16_t *origblock,int16_t *block)
+void dct_test_and_print(struct dct_test *dt,int range,int16_t *origblock,int16_t *block)
 {
     int b,m,i;
 
@@ -280,9 +284,9 @@ void dct_test_and_print(struct dct_test *dt,int16_t *origblock,int16_t *block)
         dt->mse[i]+=x*x;
         if( ax>m )
             m=ax;
-        if( block[i]<-256 || block[i]>255 )
+        if( block[i]<-range || block[i]>=range )
             b++;
-        if( origblock[i]<-256 || origblock[i]>255 ) {
+        if( origblock[i]<-range || origblock[i]>=range ) {
             // mjpeg_info("*********** REFERENCE VERSION OUT OF BOUNDS\n");
         }
     }
@@ -297,7 +301,7 @@ void dct_test_and_print(struct dct_test *dt,int16_t *origblock,int16_t *block)
             sme+=dt->me[i];
             srms+=dt->mse[i];
         }
-        mjpeg_info("idct_test[%d]: max error=%d, mean error=%.8f, rms error=%.8f; bounds err=%d\n",
+        mjpeg_info("dct_test[%d]: max error=%d, mean error=%.8f, rms error=%.8f; bounds err=%d\n",
                    dt->iter,dt->maxerr,
                    sme/(dt->iter*64.),
                    srms/(dt->iter*64.),
@@ -329,7 +333,7 @@ void idct_test(int16_t *block)
     // idct_mmx(block);
     // idct_sse(block);
 
-    dct_test_and_print(&idct_res,origblock,block);
+    dct_test_and_print(&idct_res,256,origblock,block);
 }
 #endif
 

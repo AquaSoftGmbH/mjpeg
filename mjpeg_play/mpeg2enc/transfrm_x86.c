@@ -33,6 +33,8 @@
 /* Routines written  in pure (NASM) assembler */
 
 extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+extern void fdct_test( int16_t * blk );
+
 extern void idct_mmx( int16_t * blk );
 extern void idct_sse( int16_t * blk );
 extern void idct_test( int16_t * blk );
