@@ -296,7 +296,6 @@ void sig_cont(int sig)
 static int inc_frames(long num)
 {
    nframe += num;
-
    if(nframe<min_frame_num)
    {
       nframe = min_frame_num;
@@ -561,15 +560,33 @@ void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 
 		if(cut_or_copy=='u')
 		{
+
 			if(nframe>=nc1 && nframe<=nc2) nframe = nc1-1;
-			if(nframe>nc2) nframe -= k;
+			if(nframe>nc2) nframe -= save_list_len;
+
 			for(i=nc2+1;i<el.video_frames;i++)
 			{
-				el.frame_list[i-k] = el.frame_list[i];
-				if(i-k < min_frame_num) min_frame_num--;
-				if(i-k <= max_frame_num) max_frame_num--;
+				el.frame_list[i-save_list_len] = el.frame_list[i];
 			}
-			el.video_frames -= k;
+
+			/* Update min and max frame_num's to reflect the removed section
+			 */
+			if( nc1-1 < min_frame_num )
+			{
+				if( nc2 <= min_frame_num )
+					min_frame_num -= (nc2-nc1)+1;
+				else
+					min_frame_num = nc1-1;
+			}
+			if( nc1-1 < max_frame_num )
+			{
+				if( nc2 <= max_frame_num )
+					max_frame_num -= (nc2-nc1)+1;
+				else
+					max_frame_num = nc1-1;
+			}
+
+			el.video_frames -= save_list_len;
 			check_min_max();
 		}
 		printf("Cut/Copy done ---- !!!!\n");
