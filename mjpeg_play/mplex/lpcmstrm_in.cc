@@ -56,12 +56,12 @@ bool LPCMStream::Probe(IBitStream &bs )
  *************************************************************************/
 
 
-void LPCMStream::Init ( const int stream_num)
+void LPCMStream::Init ( const int _stream_num)
 
 {
     unsigned int i;
     unsigned int framesize_code;
-
+    stream_num = _stream_num;
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
@@ -130,8 +130,10 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
         {
-            mjpeg_warn("Last sector LPCM audio stream %02x appears incomplete",
-                       stream_id);
+            mjpeg_warn("Discarding incomplete fnial frame LPCM  stream %d",
+                       stream_num);
+            aunits.droplast();
+            --decoding_order;
             break;
         }
 

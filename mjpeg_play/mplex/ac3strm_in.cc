@@ -80,12 +80,12 @@ bool AC3Stream::Probe(IBitStream &bs )
  *************************************************************************/
 
 
-void AC3Stream::Init ( const int stream_num)
+void AC3Stream::Init ( const int _stream_num)
 
 {
     unsigned int i;
     unsigned int framesize_code;
-
+    stream_num = _stream_num;
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
@@ -118,9 +118,9 @@ void AC3Stream::Init ( const int stream_num)
 		num_frames[0]++;
         access_unit.start = AU_start;
 		access_unit.length = framesize;
+        mjpeg_info( "AC3 frame size = %d\n", framesize );
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];
-        
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
@@ -154,13 +154,13 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int framesize_code;
 
 	last_buffered_AU += frames_to_buffer;
-	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
+	mjpeg_debug( "Scanning %d AC3 audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
     IBitStream undo;
     static int header_skip = 5;        // Initially skipped past  5 bytes of header 
     int skip;
-
+    bool cleanexit = false;
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
@@ -171,8 +171,10 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
         {
-            mjpeg_warn("Last sector AC3 audio stream %02x appears incomplete",
-                       stream_id);
+            mjpeg_warn( "Discarding incomplete final frame AC3 stream %d!",
+                       stream_num);
+            aunits.droplast();
+            --decoding_order;
             break;
         }
 
@@ -298,8 +300,8 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
     static unsigned int rd = 0; 
     bitcount_t read_start = bs.GetBytePos();
     unsigned int bytes_read = bs.GetBytes( dst+4, to_read-4 );
+    assert( bytes_read > 0 );   // Should never try to read nothing
     bs.Flush( read_start );
-
     rd += bytes_read;
 	clockticks   decode_time;
 	VAunit *vau;
@@ -381,7 +383,6 @@ completion:
     dst[1] = syncwords;
     dst[2] = (first_header+1)>>8;
     dst[3] = (first_header+1)&0xff;
-
 	return bytes_read+4;
 }
 

@@ -299,13 +299,17 @@ bool IBitStream::SeekFwdBits( unsigned int bytes_to_seek_fwd)
 { 
     assert(bitidx == 8);
     unsigned int req_byteidx = byteidx + bytes_to_seek_fwd;
+    unsigned int org_buffered = buffered;
     while( req_byteidx >= buffered && !eobs)
     {
-        ReadIntoBuffer( req_byteidx + 1 - buffered );
+        ReadIntoBuffer( req_byteidx - (buffered-1) );
     }
     
     eobs = ( req_byteidx >= buffered );
-    bitreadpos += bytes_to_seek_fwd*8;
+    if( eobs )
+        bitreadpos += (buffered-org_buffered)*8;
+    else
+        bitreadpos += bytes_to_seek_fwd*8;
     byteidx = req_byteidx;
 }
 

@@ -41,6 +41,16 @@ public:
 		}
 	}
 
+	inline void droplast()
+		{
+			if( size == 0 )
+				mjpeg_error_exit1( "INTERNAL ERROR: droplast empty AU buffer" );
+			--size;
+			if( cur_wr == 0 )
+				cur_wr = BUF_SIZE ;
+			--cur_wr;
+		}
+
 	inline Aunit *lookahead( )
 	{
 		return size == 0 ? 0 : buf[cur_rd];
@@ -55,7 +65,7 @@ public:
 	static const int BUF_SIZE = 128;
 
 	inline unsigned int current() { return totalctr; }
-//private:
+private:
 	unsigned int cur_rd;
 	unsigned int cur_wr;
 	unsigned int totalctr;

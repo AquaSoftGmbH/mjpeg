@@ -212,10 +212,11 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
         {
-            mjpeg_warn("Last sector MPEG audio stream %02x appears incomplete",
+            mjpeg_warn("Discarding incomplete final frame MPEG audio stream %02x!",
                        stream_id
                        );
-            exit(1);
+            aunits.droplast();
+            --decoding_order;
             break;
         }
 		/* Check we have reached the end of have  another catenated 
