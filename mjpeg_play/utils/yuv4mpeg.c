@@ -502,7 +502,7 @@ int y4m_fi_get_temporal(const y4m_frame_info_t *fi)
 { return fi->temporal; }
 
 void y4m_fi_set_spatial(y4m_frame_info_t *fi, int sampling)
-{ fi->temporal = sampling; }
+{ fi->spatial = sampling; }
 
 int y4m_fi_get_spatial(const y4m_frame_info_t *fi)
 { return fi->spatial; }
@@ -716,6 +716,13 @@ static int y4m_parse_frame_tags(char *s, const y4m_stream_info_t *si,
     /* T and P are required if stream "Im" */
     if ((fi->presentation == Y4M_UNKNOWN) || (fi->temporal == Y4M_UNKNOWN))
       return Y4M_ERR_HEADER;
+    /* and S is required if stream is also 4:2:0 */
+    if ( ((si->chroma == Y4M_CHROMA_420JPEG) ||
+          (si->chroma == Y4M_CHROMA_420MPEG2) ||
+          (si->chroma == Y4M_CHROMA_420PALDV)) &&
+         (fi->spatial == Y4M_UNKNOWN) )
+      return Y4M_ERR_HEADER;
+    break;
   case Y4M_ILACE_NONE:
     /* stream "Ip" --> equivalent to frame "I1pp" */
     fi->spatial = Y4M_SAMPLING_PROGRESSIVE;
@@ -928,14 +935,12 @@ int y4m_write_frame_header(int fd,
  *
  *************************************************************************/
 
-int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
-		   y4m_frame_info_t *fi, uint8_t * const *frame)
+int y4m_read_frame_data(int fd, const y4m_stream_info_t *si, 
+                        y4m_frame_info_t *fi, uint8_t * const *frame)
 {
   int planes = y4m_si_get_plane_count(si);
-  int err, p;
+  int p;
   
-  /* Read frame header */
-  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
   /* Read each plane */
   for (p = 0; p < planes; p++) {
     int w = y4m_si_get_plane_width(si, p);
@@ -943,6 +948,19 @@ int y4m_read_frame(int fd, const y4m_stream_info_t *si,
     if (y4m_read(fd, frame[p], w*h)) return Y4M_ERR_SYSTEM;
   }
   return Y4M_OK;
+}
+
+
+
+int y4m_read_frame(int fd, const y4m_stream_info_t *si, 
+		   y4m_frame_info_t *fi, uint8_t * const *frame)
+{
+  int err;
+  
+  /* Read frame header */
+  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
+  /* Read date */
+  return y4m_read_frame_data(fd, si, fi, frame);
 }
 
 
@@ -974,15 +992,14 @@ int y4m_write_frame(int fd, const y4m_stream_info_t *si,
  *************************************************************************/
 
 
-int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
-                    uint8_t * const *upper_field, 
-                    uint8_t * const *lower_field)
+int y4m_read_fields_data(int fd, const y4m_stream_info_t *si,
+                         y4m_frame_info_t *fi,
+                         uint8_t * const *upper_field, 
+                         uint8_t * const *lower_field)
 {
-  int p, err;
+  int p;
   int planes = y4m_si_get_plane_count(si);
   
-  /* Read frame header */
-  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
   /* Read each plane */
   for (p = 0; p < planes; p++) {
     uint8_t *dsttop = upper_field[p];
@@ -999,6 +1016,18 @@ int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
     }
   }
   return Y4M_OK;
+}
+
+
+int y4m_read_fields(int fd, const y4m_stream_info_t *si, y4m_frame_info_t *fi,
+                    uint8_t * const *upper_field, 
+                    uint8_t * const *lower_field)
+{
+  int err;
+  /* Read frame header */
+  if ((err = y4m_read_frame_header(fd, si, fi)) != Y4M_OK) return err;
+  /* Read data */
+  return y4m_read_fields_data(fd, si, fi, upper_field, lower_field);
 }
 
 
