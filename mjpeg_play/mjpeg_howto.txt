@@ -80,7 +80,12 @@ using -d 1 , the DC10 records a size of 384x288 when using -d 2.
 
 When you add audio and video datarate, this is what your hard disk has 
 to be able to write constantly streaming, else you will have lost frames.
+
+How video works, and the difference between the video type is explained here:
+http://www.mir.com/DMG/
  
+There you also find how to create MPEG Still Images for VCD/SVCD.
+
 RECORDING VIDEOS
 =====================================
 
@@ -195,13 +200,31 @@ yuvmedianfilter should be used or not.
 
 You can use the -b option to set the number of the image to start with. 
 For example, if your first image is image01.jpg rather than image00.jpg, type:
-> jpeg2yuv -b 1 -j image%02d.jpg | yuv2lav -o stream_without_sound.avi
+> jpeg2yuv -b 1 -f 25 -j image%02d.jpg | yuv2lav -o stream_without_sound.avi
 
 Adding the sound to the stream then:
 > lavaddwav stream_without_sound.avi sound.wav stream_with_sound.avi
 
 The number of images to be processed can be specified with the -n number.
 
+For ppm input there is the ppmtoy4m util, there is also a manpage for ppmtoy4m.
+
+So to create a mpeg video try this:
+> cat *.ppm | ppmtoy4m -o 75 -n 60 -F 25:1 | mpeg2enc -o output.m1v
+
+Cat's each *.ppm file to ppmtoy4m, there the first 75 frames (pictures) are 
+ignored, and next 60 are encoded by mpeg2enc to output.m1v .You can run it
+without the -o and -n option. The -F options setes the frame rate, default is
+NTSC (30000:1001) for PAL you have to use -F 25:1.  
+
+Other picture formats can also be used if there is a converter to ppm. 
+> ls *.tga | xargs -n1 tgatoppm | ppmtoy4m | yuvplay
+
+A list of filenames (ls *.tga) is given to xargs that executes the tgatoppm 
+with one (-n 1) argument per call, and feeds the output into ppmtoy4m. This 
+time the video is only shown on the screen. 
+The xargs is only needed if the converter (tgatoppm), can only operate on a
+ single image at a time.
 
 CHECKING IF RECORDING WAS SUCCESFUL
 =====================================
