@@ -372,11 +372,11 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 			 (
  			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_0
-			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_1
-			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_2
-			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_3
 			   );
 		       value =
@@ -910,11 +910,11 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 			 (
  			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_0
-			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_1
-			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_2
-			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_3
 			   );
 		       value =
@@ -973,11 +973,11 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 			 (
 			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_0
-			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_1
-			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_2
-			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
 			   * cubic_spline_n_3
 			   );
 		       value =
