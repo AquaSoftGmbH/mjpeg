@@ -25,6 +25,9 @@ LOGDATE=${LOGDATE:-1}                 # whether or not to output the date in log
 LOGDATESTR=${LOGDATESTR:-"+%H:%M:%S"} # format for the date - only used if logdate!=0
 LOGCOMMANDS=${LOGCOMMANDS:-0};        # if non-zero, will output the commands it runs.  commands are always logged to NOISYLOGFILE if used
 LOGONLY=${LOGONLY:-""}                # will only log the commands it would use if set  (for example useage/testing)
+LAVRC=${LAVRC:-"$HOME/.lav2mpegrc"}   # set this to contain your lav2mpeg rc file -- in bash sourceable syntax.
+                                      # it can modify any ENV vars in this script
+                                      # or set a "LAVRC_OPTIONS" ENV to prepend default options that will be overridden by explicit command line options.
 if [ "$LOGONLY" != "" ]; then
    LOGCOMMANDS=1
 fi
@@ -171,8 +174,15 @@ if [ $# -eq 0 -o "$1" == "--help" -o "$1" = "-h" ]; then
    exit 1
 fi
 
+LAVRC_COUNT=0
+if [ -e $LAVRC ]; then
+   logIt "Sourcing lav2mpgrc file $LAVRC"
+   . $LAVRC
+   LAVRC_COUNT=$(echo $LAVRC_OPTIONS | wc -w )
+fi
+
 infostr=""
-while getopts ":o:e:O:b:s:a:q:d:knly" opt
+while getopts ":o:e:O:b:s:a:q:y:d:knl" opt $LAVRC_OPTIONS $@
 do
    case $opt in
       o) mode=$OPTARG
@@ -216,13 +226,16 @@ do
          ;;
     esac
 done
-shift $[$OPTIND-1]
+let MOPTIND=OPTIND-LAVRC_COUNT
+shift $[$MOPTIND-1]
 
 if [ "${QUIETLOG}" != "" ]; then
    logfile=${QUIETLOG}
 else
    logfile="/dev/null"
 fi
+
+# comment to not blank the logfile
 echo "" > $logfile
 
 logIt "$infostr"
