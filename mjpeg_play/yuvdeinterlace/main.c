@@ -168,8 +168,6 @@ main (int argc, char *argv[])
 	y4m_frame_info_t frameinfo;
 	y4m_stream_info_t streaminfo;
 
-	y4m_accept_extensions(1);
-
 	blend_fields = &blend_fields_non_accel;
 
 	mjpeg_log (LOG_INFO,
