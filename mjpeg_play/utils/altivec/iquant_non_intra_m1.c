@@ -21,22 +21,22 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
-#ifdef ALTIVEC_VERIFY
-#  if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1))
-#    include <stdlib.h>
-#  endif
-#endif
-
 #include "altivec_quantize.h"
+
+#if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1)
+#  include <stdlib.h>
+#endif
+
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 
 #define IQUANT_NON_INTRA_M1_PDECL int16_t *src, int16_t *dst, uint16_t *qmat

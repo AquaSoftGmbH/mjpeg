@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_motion.h"
 #include "vectorize.h"
 #include "../fastintfns.h"
@@ -33,10 +29,16 @@
 /* #define AMBER_ENABLE */
 #include "amber.h"
 
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
+
 #define USE_SMR_PPC
 #ifdef USE_SMR_PPC
 extern int sub_mean_reduction_ppc(int len, me_result_set *set, int reduction);
 #endif
+
 
 /*
  * Get SAD for 2*2 subsampled macroblocks:
@@ -198,7 +200,7 @@ int build_sub22_mests_altivec(BUILD_SUB22_MESTS_PDECL)
     vio.init.xylim = mres;
     threshold = 6 * null_ctl_sad / (reduction << 2);
     vio.init.threshold = threshold;
-    xy22 = (vector signed char)(0,0,0,0, 0,0,2,0, 0,0,0,2, 0,0,2,2);
+    xy22 = (vector signed char)VCONST(0,0,0,0, 0,0,2,0, 0,0,0,2, 0,0,2,2);
     vu32(xint) = vec_splat_u32(0xf);
     xint = vec_add(xint, lvsl);
     vu32(yint) = vec_splat_u32(1);

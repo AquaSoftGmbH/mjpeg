@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_conf.h"
 
 #include "../mjpeg_logging.h"

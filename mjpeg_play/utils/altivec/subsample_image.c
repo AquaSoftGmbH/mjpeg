@@ -21,18 +21,23 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
+#include "altivec_motion.h"
+
+#if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(subsample_image)
+#include <stdlib.h>
 #endif
 
-#include <stdlib.h>
-
-#include "altivec_motion.h"
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
+
 
 extern int opt_enc_width, opt_enc_height;
 extern int opt_phy_width, opt_phy_height;

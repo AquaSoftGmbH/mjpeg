@@ -27,13 +27,15 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include <stdio.h>
 #include <signal.h>
 #include <setjmp.h>
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
+
 
 int detect_altivec(void);	/* placate OS/X's compiler with a prototype */
 

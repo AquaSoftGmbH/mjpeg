@@ -52,3 +52,10 @@ typedef union {
 #define DATA_STREAM_CONTROL(size,count,stride) \
     ((((size)&0x1F)<<24)|(((count)&0xFF)<<16)|((stride)&0xFFFF))
 
+#ifdef HAVE_ALTIVEC_H
+/* GNU GCC3 style vector constants */
+#define VCONST(v...) {v}
+#else
+/* Motorola style vector constants */
+#define VCONST(v...) (v)
+#endif

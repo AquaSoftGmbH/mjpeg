@@ -21,16 +21,17 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_quantize.h"
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 
 #define QUANT_WEIGHT_COEFF_SUM_PDECL int16_t *blk, uint16_t *i_quant_mat

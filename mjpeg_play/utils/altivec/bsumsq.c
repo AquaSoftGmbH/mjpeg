@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_motion.h"
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
@@ -32,6 +28,10 @@
 /* #define AMBER_ENABLE */
 #include "amber.h"
 
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 /*
  * squared error between a (16*h) block and a bidirectional

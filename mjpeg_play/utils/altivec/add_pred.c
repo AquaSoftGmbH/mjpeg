@@ -21,16 +21,18 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_transform.h"
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
+
 
 #define ADD_PRED_PDECL uint8_t *pred, uint8_t *cur, int lx, int16_t *blk
 #define ADD_PRED_ARGS pred, cur, lx, blk
@@ -73,7 +75,7 @@ void add_pred_altivec(ADD_PRED_PDECL)
 		pred, cur);
 #ifdef ALTIVEC_DST
     if (lx & (~0xffff) != 0)
-	mjpeg_error_exit1("add_pred: lx > vec_dst range", lx);
+	mjpeg_error_exit1("add_pred: lx=%d > vec_dst range", lx);
 #endif
 #endif /* }}} */
 

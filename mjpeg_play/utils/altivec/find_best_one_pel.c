@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include <limits.h>
 
 #include "altivec_motion.h"
@@ -35,6 +31,11 @@
 /* #define AMBER_ENABLE */
 /* #define AMBER_MAX_TRACES 10 */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 
 /*
@@ -150,7 +151,7 @@ void find_best_one_pel_altivec(FIND_BEST_ONE_PEL_PDECL)
     dsc.control += DATA_STREAM_CONTROL(1,1,0);
 #endif
 
-    xy11 = (vector signed char)(0,0,0,0, 0,0,1,0, 0,0,0,1, 0,0,1,1);
+    xy11 = (vector signed char)VCONST(0,0,0,0, 0,0,1,0, 0,0,0,1, 0,0,1,1);
 
     mres.weight = 0;		/* weight must be zero */
     mres.x = ihigh - i0;	/* x <= xylim.x */

@@ -33,7 +33,10 @@
 #include <config.h>
 #endif
 
+#include "vectorize.h"
+
 #ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
 #include <altivec.h>
 #endif
 
@@ -173,15 +176,15 @@ static inline void Matrix_Transpose ( vector signed short *input,
   vy[3] = vec_mradds( t7, ma2, t2 );   /* y3 = t7 * (-a2) + t2 */
 
 /* Post-scaling matrix -- scaled by 1 */
-static vector signed short PostScale[8] = {
-    (vector signed short)( 4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681 ),
-    (vector signed short)( 5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880 ),
-    (vector signed short)( 5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422 ),
-    (vector signed short)( 4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680 ),
-    (vector signed short)( 4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681 ),
-    (vector signed short)( 4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680 ),
-    (vector signed short)( 5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422 ),
-    (vector signed short)( 5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880 )
+static const vector signed short PostScale[8] = {
+    (vector signed short)VCONST(4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681),
+    (vector signed short)VCONST(5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880),
+    (vector signed short)VCONST(5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422),
+    (vector signed short)VCONST(4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680),
+    (vector signed short)VCONST(4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681),
+    (vector signed short)VCONST(4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680),
+    (vector signed short)VCONST(5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422),
+    (vector signed short)VCONST(5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880)
 };
 
 /***************************************************************
@@ -211,6 +214,13 @@ static vector signed short PostScale[8] = {
  *
  ***************************************************************/
 
+/* Note: these constants could all be loaded directly, but using the
+ * SpecialConstants approach causes vsplth instructions to be generated instead
+ * of lvx which is more efficient given the remainder of the instruction mix.
+ */
+static const vector signed short SpecialConstants =
+  (vector signed short)VCONST(23170, 13573, 6518, 21895, -23170, -21895, 0, 0);
+
 #ifdef ORIGINAL_SOURCE
 void DCT(short *input, short *output) {
 #else
@@ -225,13 +235,13 @@ void fdct_altivec(short *blocks) {
                                     signed short array.  */
 
   /* load the multiplication constants */
-  c4   = (vector signed short)(23170);   /* c4 = cos(4*pi/16)  */
-  a0   = (vector signed short)(13573);   /* a0 = c6/c2         */
-  a1   = (vector signed short)(6518);    /* a1 = c7/c1         */
-  a2   = (vector signed short)(21895);   /* a2 = c5/c3         */
-  mc4   = (vector signed short)(-23170); /* -c4                */
-  ma2   = (vector signed short)(-21895); /* -a2                */
-  zero = (vector signed short)(0);       /* 0                  */
+  c4   = vec_splat( SpecialConstants, 0 );  /* c4 = cos(4*pi/16)  */
+  a0   = vec_splat( SpecialConstants, 1 );  /* a0 = c6/c2         */
+  a1   = vec_splat( SpecialConstants, 2 );  /* a1 = c7/c1         */
+  a2   = vec_splat( SpecialConstants, 3 );  /* a2 = c5/c3         */
+  mc4  = vec_splat( SpecialConstants, 4 );  /* -c4                */
+  ma2  = vec_splat( SpecialConstants, 5 );  /* -a2                */
+  zero = vec_splat_s16(0);
 
   /* copy the rows of input data */
 #ifdef ORIGINAL_SOURCE
@@ -353,16 +363,17 @@ void fdct_altivec(short *blocks) {
 
 
 /* Pre-Scaling matrix -- scaled by 1 */
-static vector signed short PreScale[8] = {
-    (vector signed short)( 4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681 ),
-    (vector signed short)( 5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880 ),
-    (vector signed short)( 5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422 ),
-    (vector signed short)( 4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680 ),
-    (vector signed short)( 4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681 ),
-    (vector signed short)( 4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680 ),
-    (vector signed short)( 5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422 ),
-    (vector signed short)( 5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880 )
+static const vector signed short PreScale[8] = {
+    (vector signed short)VCONST(4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681),
+    (vector signed short)VCONST(5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880),
+    (vector signed short)VCONST(5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422),
+    (vector signed short)VCONST(4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680),
+    (vector signed short)VCONST(4095, 5681, 5351, 4816, 4095, 4816, 5351, 5681),
+    (vector signed short)VCONST(4816, 6680, 6292, 5663, 4816, 5663, 6292, 6680),
+    (vector signed short)VCONST(5351, 7422, 6992, 6292, 5351, 6292, 6992, 7422),
+    (vector signed short)VCONST(5681, 7880, 7422, 6680, 5681, 6680, 7422, 7880)
 };
+
 
 /***************************************************************
  *
@@ -405,23 +416,14 @@ void idct_altivec(short *block) {
                                     signed short array.  */
 
 
-  /* Load the multiplication constants.  Note: these constants
-   * could all be loaded directly ( like zero case ), but using the
-   * SpecialConstants approach causes vsplth instructions to be
-   * generated instead of lvx which is more efficient given the remainder
-   * of the instruction mix.
-   */
-  vector signed short SpecialConstants =
-     (vector signed short)( 23170, 13573, 6518, 21895, -23170, -21895, 0 , 0
-);
-
+  /* Load the multiplication constants. */
   c4   = vec_splat( SpecialConstants, 0 );  /* c4 = cos(4*pi/16)  */
   a0   = vec_splat( SpecialConstants, 1 );  /* a0 = c6/c2         */
   a1   = vec_splat( SpecialConstants, 2 );  /* a1 = c7/c1         */
   a2   = vec_splat( SpecialConstants, 3 );  /* a2 = c5/c3         */
   mc4  = vec_splat( SpecialConstants, 4 );  /* -c4                */
   ma2  = vec_splat( SpecialConstants, 5 );  /* -a2                */
-  zero = (vector signed short)(0);
+  zero = vec_splat_s16(0);
 
   /* Load the rows of input data and Pre-Scale them. */
 #ifdef ORIGINAL_SOURCE

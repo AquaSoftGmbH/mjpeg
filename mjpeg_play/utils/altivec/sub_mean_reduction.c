@@ -21,14 +21,13 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
+#include "altivec_motion.h"
 
+#if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(sub_mean_reduction)
 #include <stdlib.h> /* malloc */
 #include <string.h> /* memcpy */
+#endif
 
-#include "altivec_motion.h"
 #include "vectorize.h"
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"

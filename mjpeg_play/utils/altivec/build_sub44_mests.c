@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_motion.h"
 #include "vectorize.h"
 #include "../fastintfns.h"
@@ -33,6 +29,11 @@
 /* #define AMBER_ENABLE */
 /* #define AMBER_MAX_TRACES 10 */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 #define USE_SMR_PPC
 #ifdef USE_SMR_PPC

@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_quantize.h"
 
 #if defined(ALTIVEC_VERIFY) && ALTIVEC_TEST_FUNCTION(quant_non_intra)
@@ -37,6 +33,11 @@
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 
 extern uint16_t *opt_inter_q;

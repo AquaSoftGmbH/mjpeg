@@ -21,10 +21,6 @@
 #include <config.h>
 #endif
 
-#ifdef HAVE_ALTIVEC_H
-#include <altivec.h>
-#endif
-
 #include "altivec_motion.h"
 #include "vectorize.h"
 #include "../fastintfns.h"
@@ -32,6 +28,11 @@
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
+
+#ifdef HAVE_ALTIVEC_H
+/* include last to ensure AltiVec type semantics, especially for bool. */
+#include <altivec.h>
+#endif
 
 
 #define SUB_PRED_PDECL uint8_t *pred, uint8_t *cur, int lx, int16_t *blk
