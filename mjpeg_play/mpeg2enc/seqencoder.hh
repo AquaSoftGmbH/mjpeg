@@ -23,6 +23,12 @@
 
 #include "mjpeg_types.h"
 #include "synchrolib.h"
+#include "elemstrmwriter.hh"
+#include "mpeg2coder.hh"
+#include "mpeg2encparams.h"
+#include "picturereader.hh"
+#include "ratectl.hh"
+#include "quantize.hh"
 #include "picture.hh"
 
 class MPEG2Encoder;
