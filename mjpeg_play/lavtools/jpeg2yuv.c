@@ -60,6 +60,7 @@ typedef struct _parameters {
   int height;
   int colorspace;
   int loop;
+  int rescale_YUV;
 } parameters_t;
 
 
@@ -101,6 +102,7 @@ static void usage(char *prog)
 	  "  -L x  interleaving mode:  0 = non-interleaved (two successive\n"
 	  "                                 fields per JPEG file)\n"
 	  "                            1 = interleaved fields\n"
+	  "  -R 1/0 ... 1: rescale YUV color values from 0-255 to 16-235 (default: 1)\n"
 	  "\n"
 	  "%s pipes a sequence of JPEG files to stdout,\n"
 	  "making the direct encoding of MPEG files possible under mpeg2enc.\n"
@@ -141,12 +143,15 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   param->interleave = -1;
   param->verbose = 1;
   param->loop = 0;
+  param->rescale_YUV = 1;
 
   /* parse options */
   for (;;) {
-    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:")))
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:")))
       break;
+    mjpeg_info("Parsing char %c\n", c);
     switch (c) {
+
     case 'j':
       param->jpegformatstr = strdup(optarg);
       break;
@@ -156,23 +161,27 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
     case 'n':
       param->numframes = atol(optarg);
       break;
+    case 'R':
+      param->rescale_YUV = atoi(optarg);
+      break;
     case 'f':
       param->framerate = mpeg_conform_framerate(atof(optarg));
       break;
     case 'I':
-      switch (optarg[0]) {
-      case 'p':
-	param->interlace = Y4M_ILACE_NONE;
-	break;
-      case 't':
-	param->interlace = Y4M_ILACE_TOP_FIRST;
-	break;
-      case 'b':
-	param->interlace = Y4M_ILACE_BOTTOM_FIRST;
-	break;
-      default:
-	mjpeg_error_exit1 ("-I option requires arg p, t, or b");
-      }
+      switch (optarg[0]) 
+	{
+	case 'p':
+	  param->interlace = Y4M_ILACE_NONE;
+	  break;
+	case 't':
+	  param->interlace = Y4M_ILACE_TOP_FIRST;
+	  break;
+	case 'b':
+	  param->interlace = Y4M_ILACE_BOTTOM_FIRST;
+	  break;
+	default:
+	  mjpeg_error_exit1 ("-I option requires arg p, t, or b");
+	}
       break;
     case 'L':
       param->interleave = atoi(optarg);
@@ -192,6 +201,8 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       break;     
     case 'h':
     default:
+      mjpeg_info("Wp x, char %c\n", c);
+
       usage(argv[0]);
       exit(1);
     }
@@ -304,7 +315,26 @@ static int init_parse_files(parameters_t *param)
   return 0;
 }
 
+/**
+  Rescales the YUV values from the range 0..255 to the range 16..235 
+  @param yp: buffer for Y plane of decoded JPEG 
+  @param up: buffer for U plane of decoded JPEG 
+  @param vp: buffer for V plane of decoded JPEG 
+*/
+static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, uint8_t *vp) 
+{
+  int x,y;
+  for (y = 0; y < height; y++)
+    for (x = 0; x < width; x++)
+      yp[x+y*width] = (float)(yp[x+y*width])/255.0 * (235.0 - 16.0) + 16.0;
 
+  for (y = 0; y < height/2; y++)
+    for (x = 0; x < width/2; x++)
+      {
+	up[x+y*width/2] = (float)(up[x+y*width/2])/255.0 * (235.0 - 16.0) + 16.0;
+	vp[x+y*width/2] = (float)(vp[x+y*width/2])/255.0 * (235.0 - 16.0) + 16.0;
+      }
+}
 
 static int generate_YUV4MPEG(parameters_t *param)
 {
@@ -377,9 +407,9 @@ static int generate_YUV4MPEG(parameters_t *param)
            mjpeg_info("Processing non-interlaced/interleaved %s, size %ul.", 
                       jpegname, jpegsize);
 	   if (param->colorspace == JCS_GRAYSCALE)
-	     decode_jpeg_gray_raw(jpegdata, jpegsize,
-				  0, 420, param->width, param->height,
-				  yuv[0], yuv[1], yuv[2]);
+	       decode_jpeg_gray_raw(jpegdata, jpegsize,
+				    0, 420, param->width, param->height,
+				    yuv[0], yuv[1], yuv[2]);
 	   else
 	     decode_jpeg_raw(jpegdata, jpegsize,
 			     0, 420, param->width, param->height,
@@ -419,7 +449,13 @@ static int generate_YUV4MPEG(parameters_t *param)
              break;
            }
          }
-         mjpeg_debug("Frame decoded, now writing to output stream.");
+
+	 if (param->rescale_YUV)
+	   {
+	     mjpeg_info("Rescaling color values.");
+	     rescale_color_vals(param->width, param->height, yuv[0], yuv[1], yuv[2]);
+	   }
+	 mjpeg_debug("Frame decoded, now writing to output stream.");
        }
    
        y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
@@ -449,6 +485,7 @@ int main(int argc, char ** argv)
 { 
   parameters_t param;
 
+  mjpeg_info("Wp1\n");
   parse_commandline(argc, argv, &param);
   mjpeg_default_handler_verbosity(param.verbose);
 
