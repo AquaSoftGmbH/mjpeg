@@ -28,6 +28,7 @@ EditList el;
 
 int main(int argc, char *argv[])
 {
+char *p;
 
    if(argc <=1) {
       printf("Usage: %s file1 [ file2 file3 ... ]\n",argv[0]);
@@ -42,13 +43,31 @@ int main(int argc, char *argv[])
    printf("video_frames=%li\n",el.video_frames);
    printf("video_width=%li\n",el.video_width);
    printf("video_height=%li\n",el.video_height);
-   printf("video_inter=%li\n",el.video_inter);
-	printf("video_norm=%s\n",el.video_norm=='n'?"NTSC":"PAL");
+   switch (el.video_inter)
+          {
+          case Y4M_ILACE_NONE:
+	       p = "p";
+	       break;
+	  case Y4M_ILACE_BOTTOM_FIRST:
+	       p = "b";
+	       break;
+	  case Y4M_ILACE_TOP_FIRST:
+	       p = "t";
+	       break;
+	  case Y4M_ILACE_MIXED:
+	       p = "m";
+	       break;
+	  default:
+	       p = "***BOGUS/UNKNOWN*** interlacing";
+	       break;
+	  }
+   printf("video_inter=%s\n", p);
+   printf("video_norm=%s\n",el.video_norm=='n'?"NTSC":"PAL");
    printf("video_fps=%f\n",el.video_fps);
    printf("video_sar_width=%i\n",el.video_sar_width);
    printf("video_sar_height=%i\n",el.video_sar_height);
    printf("max_frame_size=%li\n",el.max_frame_size);
-   printf("MJPG_chroma=%i\n",el.MJPG_chroma);
+   printf("MJPG_chroma=%s\n", y4m_chroma_keyword(el.MJPG_chroma));
    /* Audio */
    printf("has_audio=%i\n",el.has_audio);
    printf("audio_bps=%i\n",el.audio_bps);
