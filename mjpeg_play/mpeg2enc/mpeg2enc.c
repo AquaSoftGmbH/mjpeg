@@ -323,11 +323,6 @@ void set_format_presets()
 			/* VCD high-resolution stills: only these use vbv_delay
 			 to encode picture size...
 			*/
-			if( param_still_size < 70*1024 || param_still_size > 210*1024 )
-			{
-				mjpeg_error_exit1( "VCD high-resolution stills should be > 70KB and must be <= 210KB each\n");
-			}
-
 			param_vbv_buffer_still_size = param_still_size;
 			param_video_buffer_size = 224;
 			param_pad_stills_to_vbv_buffer_size = 1;			
@@ -339,6 +334,49 @@ void set_format_presets()
 		}
 		param_quant = 0;		/* We want to try and hit our size target */
 		
+		param_seq_hdr_every_gop = 1;
+		param_seq_end_every_gop = 1;
+		param_min_GOP_size = 1;
+		param_max_GOP_size = 1;
+		break;
+
+	case MPEG_FORMAT_SVCD_STILL :
+		mjpeg_info( "Selecting SVCD Stills output profile\n");
+		param_mpeg = 2;
+		param_fieldenc = 3;
+		/* We choose a generous nominal bit-rate as its VBR anyway
+		   there's only one frame per sequence ;-). It *is* too small
+		   to fill the frame-buffer in less than one PAL/NTSC frame
+		   period though...*/
+
+		param_bitrate = 2500000;
+		param_video_buffer_size = 230;
+		param_vbv_buffer_still_size = 220*1024;
+		param_pad_stills_to_vbv_buffer_size = 0;
+
+		/* Now we select normal/hi-resolution based on the input stream
+		   resolution. 
+		*/
+		
+		if( opt_horizontal_size == 480 && 
+			(opt_vertical_size == 240 || opt_vertical_size == 288 ) )
+		{
+			mjpeg_info( "SVCD normal-resolution stills selected.\n" );
+		}
+		else if( opt_horizontal_size == 704 &&
+				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
+		{
+			mjpeg_info( "SVCD high-resolution stills selected.\n" );
+		}
+		else
+		{
+			mjpeg_error("SVCD normal resolution stills must be 480x288 (PAL) or 480x240 (NTSC)\n");
+			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)\n");
+		}
+		if( param_still_size < 30*1024 || param_still_size > 200*1024 )
+		{
+			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each\n");
+		}
 		param_seq_hdr_every_gop = 1;
 		param_seq_end_every_gop = 1;
 		param_min_GOP_size = 1;

@@ -1034,7 +1034,7 @@ void calc_vbv_delay(pict_data_s *picture)
 #else
 	if( !opt_mpeg1 || ctl_quant_floor != 0 || opt_still_size > 0)
 		picture->vbv_delay =  0xffff;
-	else 
+	else if( opt_still_size > 0 )
 		picture->vbv_delay =  90000.0/opt_frame_rate/4;
 #endif
 
