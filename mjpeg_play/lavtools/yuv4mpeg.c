@@ -23,6 +23,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
+#include <math.h>
+
+#include "yuv4mpeg.h"
 
 const int num_mpeg2_framerates = 9;
 static double mpeg2_framerates[] = { 00.000, 23.976,
@@ -86,7 +89,8 @@ size_t pipewrite (int fd, char *buf, size_t len)
 }
 
 
-int yuv_read_frame (int fd, unsigned char *yuv[3], int width, int height)
+int 
+yuv_read_frame (int fd, unsigned char *yuv[3], int width, int height)
 {
 
    int v, h, i;
@@ -126,8 +130,9 @@ int yuv_read_frame (int fd, unsigned char *yuv[3], int width, int height)
 
 #define PARAM_LINE_MAX 256
 
-int yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
-                     int *frame_rate_code)
+int 
+yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
+				 int *frame_rate_code)
 {
    int n, nerr = 0;
    char param_line[PARAM_LINE_MAX];
@@ -175,9 +180,9 @@ int yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
    return nerr;
 }
 
-void yuv_write_header (int fd, int width, int height, int *frame_rate_code)
+void 
+yuv_write_header (int fd, int width, int height, int frame_rate_code)
 {
-   int i;
    char str[256];
 
    snprintf (str, sizeof (str), "YUV4MPEG %d %d %d\n",
@@ -188,9 +193,6 @@ void yuv_write_header (int fd, int width, int height, int *frame_rate_code)
 void yuv_write_frame (int fd, unsigned char *yuv[], int width,
                       int height)
 {
-   int n = 0;
-   int i;
-   char *ptr;
 
    pipewrite (fd, "FRAME\n", 6);
 

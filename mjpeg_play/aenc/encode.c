@@ -192,7 +192,7 @@ static void read_and_resample()
    }
 }
 
-int get_samples(short *abuff, int num, int stereo)
+static int get_samples(short *abuff, int num, int stereo)
 {
    int n;
 

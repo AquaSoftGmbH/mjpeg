@@ -5,11 +5,11 @@
 #ifdef COMPILE_LAV_IO_C
 #include <avilib.h>
 
-#ifdef BUILD_QUICKTIME
+#ifdef HAVE_LIBQUICKTIME
 #include <quicktime.h>
 #endif
 
-#ifdef BUILD_MOVTAR
+#ifdef HAVE_LIBMOVTAR
 #include <movtar.h>
 #endif
 #else
@@ -32,10 +32,10 @@ typedef void movtar_t;
 typedef struct
 {
    avi_t       *avi_fd;
-#ifdef BUILD_QUICKTIME
+#ifdef HAVE_LIBQUICKTIME
    quicktime_t *qt_fd;
 #endif
-#ifdef BUILD_MOVTAR
+#ifdef HAVE_LIBMOVTAR
    movtar_t    *movtar_fd;
 #endif
    int         format;

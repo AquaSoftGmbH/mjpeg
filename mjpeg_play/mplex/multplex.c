@@ -51,6 +51,8 @@ static int dtspts_for_all_vau;
 static int sys_header_in_pack1;
 static int buffers_in_video;
 static int always_buffers_in_video;	
+static int buffers_in_audio;
+static int always_buffers_in_audio;
 static int trailing_pad_pack;		/* Stick a padding packet at the end			*/
 static unsigned int audio_max_packet_data;
 static unsigned int video_max_packet_data;
@@ -131,8 +133,9 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	video_buffer_size = 46*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		zero_stuffing = 0;
-		audio_packet_data_limit = 2279;		/* Ugh... what *were* they thinking of? */
+		buffers_in_audio = 1;
+		always_buffers_in_audio = 1;
+		zero_stuffing = 1;
 		dtspts_for_all_vau = 1;
 		break;
 		
@@ -150,6 +153,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	video_buffer_size = 234*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
+		buffers_in_audio = 1;
+		always_buffers_in_audio = 1;
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
@@ -161,17 +166,19 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		/* TODO should test specified data-rate is < 2*CD
 		   = 150 sectors/sec * (mode 2 XA payload) */ 
 	 	packets_per_pack = 1;
-	  	sys_header_in_pack1 = 1;
+	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	trailing_pad_pack = 0;
-	  	sector_transport_size = 2324;	      /* Each 2352 bytes with 2324 bytes payload */
+	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 		opt_data_rate = 150*2324;
 	  	opt_VBR = 1;
 	  	video_buffer_size = 230*1024;
-		buffers_in_video = 1;
-		always_buffers_in_video = 1;
+		buffers_in_video = 0;
+		always_buffers_in_video = 0;
+		buffers_in_audio = 0;
+		always_buffers_in_audio = 0;
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
@@ -190,7 +197,9 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		video_buffer_size = opt_buffer_size * 1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
-		zero_stuffing = 0;
+		buffers_in_audio = 0;
+		always_buffers_in_audio = 1;
+		zero_stuffing = 1;
 		audio_packet_data_limit = 0;		/* Fill packet completely */
         dtspts_for_all_vau = 0;
 		break;
@@ -1234,7 +1243,8 @@ void output_audio ( clockticks SCR,
   int old_au_then_new_payload;
   
   PTS = audio_au->PTS + SCR_delay;
-  old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE );
+  old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr,
+											buffers_in_audio, FALSE, FALSE );
 
   max_packet_data= audio_packet_data_limit;
   if( last_au_segment )
@@ -1272,7 +1282,7 @@ void output_audio ( clockticks SCR,
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 audio_packet_data_limit,
 					 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-					 TRUE, PTS, 0,
+					 buffers_in_audio, PTS, 0,
 					 TIMESTAMPBITS_PTS);
 
 	  next_audio_access_unit (buffer, audio_au, cur_sector.length_of_packet_data, 
@@ -1289,7 +1299,7 @@ void output_audio ( clockticks SCR,
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 audio_packet_data_limit,
 					 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-					 TRUE, 0, 0,
+					 buffers_in_audio, 0, 0,
 					 TIMESTAMPBITS_NO );
 
 	  next_audio_access_unit (buffer, audio_au, cur_sector.length_of_packet_data,
@@ -1316,7 +1326,7 @@ void output_audio ( clockticks SCR,
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 audio_packet_data_limit,
 						 istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-						 TRUE, PTS, 0,
+						 buffers_in_audio, PTS, 0,
 						 TIMESTAMPBITS_PTS );
 
 		  next_audio_access_unit (buffer, audio_au,
@@ -1329,7 +1339,7 @@ void output_audio ( clockticks SCR,
 			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						   0,
 						   istream_a, AUDIO_STR_0, 0, audio_buffer_size/128,
-						   TRUE, 0, 0,
+						   buffers_in_audio, 0, 0,
 						   TIMESTAMPBITS_NO );
 		  };
 #ifdef TIMER
@@ -1352,6 +1362,8 @@ void output_audio ( clockticks SCR,
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
   total_usec += (tp_end.tv_usec - tp_start.tv_usec);
 #endif
+
+  buffers_in_audio = always_buffers_in_audio;
 	
 }
 

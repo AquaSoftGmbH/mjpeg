@@ -58,21 +58,17 @@ void init_idct (void);
 
 /* motion.c */
 
-void init_motion ();
-
-
-void motion_estimation (
-	pict_data_s *picture
-	);
-
+void init_motion (void);
+void motion_estimation (pict_data_s *picture);
 void fast_motion_data (pict_data_s *picture);
+int round_search_radius(int);
 
 /* mpeg2enc.c */
 void error (char *text);
 uint8_t *bufalloc( size_t size );
 
 /* predict.c */
-void init_predict();
+void init_predict(void);
 
 void predict (pict_data_s *picture);
 
@@ -125,7 +121,7 @@ int quant_non_intra( pict_data_s *picture,
 							int mquant, int *nonsat_mquant);
 void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
 void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
-void init_quantizer();
+void init_quantizer(void);
 int  next_larger_quant( pict_data_s *picture, int quant );
 
 extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
@@ -159,7 +155,7 @@ void transform (pict_data_s *picture);
 void itransform ( pict_data_s *picture);
 void dct_type_estimation (pict_data_s *picture );
 
-void init_transform();
+void init_transform(void);
 
 /* writepic.c */
 void writeframe (int frame_num, uint8_t *frame[]);

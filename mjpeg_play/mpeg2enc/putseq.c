@@ -175,7 +175,7 @@ static void set_pic_params( int decode,
  *
  */
 
-void set_2nd_field_params(pict_data_s *picture)
+static void set_2nd_field_params(pict_data_s *picture)
 {
 	picture->secondfield = 1;
 	if( picture->pict_struct == TOP_FIELD )
@@ -223,9 +223,9 @@ void set_2nd_field_params(pict_data_s *picture)
 
 #define SCENE_CHANGE_THRESHOLD 4
 
-int find_gop_length( int gop_start_frame, 
-					 int I_frame_temp_ref,
-					 int gop_min_len, int gop_max_len )
+static int find_gop_length( int gop_start_frame, 
+							int I_frame_temp_ref,
+							int gop_min_len, int gop_max_len )
 {
 	int i,j;
 
@@ -317,12 +317,31 @@ struct _stream_state
 
 typedef struct _stream_state stream_state_s;
 
-void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
+static void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
 {
 	int i;
+	pthread_attr_t *pattr = NULL;
+
+	/* For some Unixen we get a ridiculously small default stack size.
+	   Hence we need to beef this up if we can.
+	*/
+#ifdef HAVE_PTHREADSTACKSIZE
+#define MINSTACKSIZE 200000
+       pthread_attr_t attr;
+       size_t stacksize;
+
+       pthread_attr_init(&attr);
+       pthread_attr_getstacksize(&attr, &stacksize);
+
+       if (stacksize < MINSTACKSIZE) {
+		   pthread_attr_setstacksize(&attr, MINSTACKSIZE);
+       }
+
+       pattr = &attr;
+#endif
 	for(i = 0; i < num; ++i )
 	{
-		if( pthread_create( &threads[i], NULL, start_routine, NULL ) != 0 )
+		if( pthread_create( &threads[i], pattr, start_routine, NULL ) != 0 )
 		{
 			perror( "worker thread creation failed: " );
 			exit(1);
@@ -331,7 +350,7 @@ void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *)
 }
 
 
-void gop_start( stream_state_s *ss )
+static void gop_start( stream_state_s *ss )
 {
 
 	int nb, np;
@@ -429,47 +448,13 @@ void gop_start( stream_state_s *ss )
 }
 
 
-void flip_ref_images( pict_data_s *picture )
-{
-	uint8_t **tmp;
-
-	/* I or P frame: Somewhat complicated buffer handling! 
-
-	   The "current frame" is simply an alias
-	  for the new new reference frame. Saves the need to copy
-	  stuff around once the frame has been processed.
-
-	  The original reference frame image data is actually held in
-	  the frame input buffers.  In input read-ahead buffer
-	  management code worries about rotating them for use.
-	  So to make the new old one the current new one we
-	  simply move the pointers. However it is *not* enough
-	  to move the pointer to the pointer block. This would
-	  cause us to lose track of one pointer block so that next time
-	  around the pointers would be over-written.
-	  
-	*/
-
-	tmp = picture->oldorg;
-	picture->oldorg = picture->neworg;
-	picture->neworg = tmp;
-
-	tmp = picture->oldref;
-	picture->oldref = picture->newref;
-	picture->newref = tmp;
-
-	picture->curorg = picture->neworg;
-	picture->curref = picture->newref;
-
-}
-
 
 /* Set the sequencing structure information
    of a picture (type and temporal reference)
    based on the specified sequence state
 */
 
-void I_or_P_frame_struct( stream_state_s *ss,
+static void I_or_P_frame_struct( stream_state_s *ss,
                          pict_data_s *picture )
 {
 	/* Temp ref of I frame in initial closed GOP of sequence is 0 
@@ -505,7 +490,7 @@ void I_or_P_frame_struct( stream_state_s *ss,
 }
 
 
-void B_frame_struct(  stream_state_s *ss,
+static void B_frame_struct(  stream_state_s *ss,
 					  pict_data_s *picture )
 {
 	picture->temp_ref = ss->g - 1;
@@ -519,7 +504,7 @@ void B_frame_struct(  stream_state_s *ss,
   Update ss to the next sequence state.
  */
 
-void next_seq_state( stream_state_s *ss )
+static void next_seq_state( stream_state_s *ss )
 {
 	++(ss->i);
 	++(ss->g);
@@ -551,7 +536,7 @@ void next_seq_state( stream_state_s *ss )
 
 
 
-void init_pict_data( pict_data_s *picture )
+static void init_pict_data( pict_data_s *picture )
 {
 	int i;
 		/* Allocate buffers for picture transformation */
@@ -601,7 +586,7 @@ void init_pict_data( pict_data_s *picture )
 #define R_PICS (MAX_WORKER_THREADS+2)
 #define B_PICS (MAX_WORKER_THREADS+2)
 
-void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
+static void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
 {
 
 	int i,j;
@@ -633,7 +618,7 @@ void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures )
  */
 
 
-void reconstruct( pict_data_s *picture)
+static void reconstruct( pict_data_s *picture)
 {
 
 #ifndef OUTPUT_STAT
@@ -654,7 +639,8 @@ semaphore_t picture_available = SEMAPHORE_INITIALIZER;
 semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 static volatile pict_data_s *picture_to_encode;
 
-void stencodeworker(pict_data_s *picture)
+#ifdef SINGLE_THREADED_FOR_DEBUG
+static void stencodeworker(pict_data_s *picture)
 {
 		/* ALWAYS do-able */
 		if (!quiet )
@@ -729,9 +715,9 @@ void stencodeworker(pict_data_s *picture)
 #endif
 			
 }
+#endif
 
-
-void *parencodeworker(void *start_arg)
+static void *parencodeworker(void *start_arg)
 {
 	pict_data_s *picture;
 	printf( "Worker thread started\n" );
@@ -826,7 +812,7 @@ void *parencodeworker(void *start_arg)
 	return NULL;
 }
 
-void parencodepict( pict_data_s *picture )
+static void parencodepict( pict_data_s *picture )
 {
 
 	semaphore_wait( &worker_available );

@@ -306,7 +306,7 @@ int end_bs(bitstream *bs)
   places the bit stream pointer right after the sync.
   This function returns 1 if the sync was found otherwise it returns 0  */
 
-int seek_sync(bitstream *bs, unsigned int sync, int N)
+int seek_sync(bitstream *bs, unsigned int sync, int N, int lim)
 {
   unsigned int val, val1;
   unsigned int maxi = ((1U<<N)-1); /* pow(2.0, (double)N) - 1 */;
@@ -320,7 +320,7 @@ int seek_sync(bitstream *bs, unsigned int sync, int N)
   if( bs->eobs )
   	return FALSE;
 
-  while ((val & maxi) != sync)
+  while ((val & maxi) != sync && --lim)
   {
     val <<= 8;
     val1 = getbits( bs, 8 );
@@ -329,5 +329,6 @@ int seek_sync(bitstream *bs, unsigned int sync, int N)
     	return FALSE;
   }
   
-  return TRUE;
+  return (!!lim);
 }
+

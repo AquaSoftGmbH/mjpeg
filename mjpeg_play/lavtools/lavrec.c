@@ -884,8 +884,8 @@ static int output_video_frame(char *buff, long size, long count)
 	/* Update counters. Maybe frame its written only once,
 	   but size*count is the save guess */
 
-	bytes_output_cur += size*count;+
-		num_frames += count;
+	bytes_output_cur += size*count; 
+	num_frames += count;
 
 		return 0;
 }
@@ -995,6 +995,7 @@ int main(int argc, char ** argv)
 	struct timeval first_time;
 	struct timeval audio_t0;
 	struct timeval audio_tmstmp;
+	struct timeval prev_sync, cur_sync;
 	struct video_capability vc;
 	struct video_channel vch;
 	char * MJPG_buff;
@@ -1568,7 +1569,7 @@ int main(int argc, char ** argv)
 
 	tdiff1 = 0.;
 	tdiff2 = 0.;
-
+	gettimeofday( &prev_sync, NULL );
 	while (1)
 	{
 		/* sync on a frame */
@@ -1579,7 +1580,7 @@ int main(int argc, char ** argv)
 			system_error("syncing on a buffer","ioctl MJPIOC_SYNC");
 		}
 		num_syncs++;
-
+		gettimeofday( &cur_sync, NULL );
 		if(num_syncs==1)
 		{
 			first_time = bsync.timestamp;
@@ -1622,7 +1623,8 @@ int main(int argc, char ** argv)
 		{
 			nfout = 1;
 			n = bsync.seq - num_syncs - first_lost + 1; /* total lost frames */
-			if(sync_corr>0) nfout += n - num_lost; /* lost since last sync */
+			if(sync_corr>0) 
+				nfout += n - num_lost; /* lost since last sync */
 			stats_changed = (num_lost != n);
 			num_lost = n;
 
@@ -1664,53 +1666,6 @@ int main(int argc, char ** argv)
 			system_error("re-queuing buffer","ioctl MJPIOC_QBUF_CAPT");
 		}
    
-		/* Output statistics */
-
-		if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
-		{
-			int nf, ns, nm, nh;
-			if(norm!=VIDEO_MODE_NTSC)
-			{
-				nf = num_frames % 25;
-				ns = num_frames / 25;
-			}
-			else
-			{
-				nf = num_frames % 30;
-				ns = num_frames / 30;
-			}
-			nm = ns / 60;
-			ns = ns % 60;
-			nh = nm / 60;
-			nm = nm % 60;
-			sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d lost:%4lu ins:%3lu del:%3lu "
-					"audio errs:%3lu tdiff=%10.6f",
-					nh, nm, ns, nf, num_lost, num_ins, num_del, num_aerr, tdiff1-tdiff2);
-			lavrec_msg(LAVREC_PROGRESS,infostring,"");
-			stats_changed = 0;
-		}
-
-#ifdef	NEVER
-		{
-			static int last_ins;
-			static int last_del;
-			static double time_diff;
-			static double diff;
-			if (num_ins != last_ins || num_del != last_del) {
-				fprintf(stderr, "\n%d seq ins = %d del = %d\n", bsync.seq,
-						num_ins, num_del);
-				last_ins = num_ins;
-				last_del = num_del;
-			}
-			diff = time_diff - (tdiff1 - tdiff2);
-			if (diff < 0)
-				diff = -diff;
-			if (diff > 0.001000) {
-				fprintf(stderr, "\n%d seq video diff %10.6f\n", bsync.seq, time_diff - (tdiff1 - tdiff2));
-			}
-			time_diff = tdiff1 - tdiff2;
-		}
-#endif
 
 		/* Care about audio */
 
@@ -1767,6 +1722,40 @@ int main(int argc, char ** argv)
 					+ (bsync.timestamp.tv_usec-audio_tmstmp.tv_usec)*1.e-6;
 			}
 		}
+
+		/* Output statistics */
+
+		if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
+		{
+			int nf, ns, nm, nh;
+			if(norm!=VIDEO_MODE_NTSC)
+			{
+				nf = num_frames % 25;
+				ns = num_frames / 25;
+			}
+			else
+			{
+				nf = num_frames % 30;
+				ns = num_frames / 30;
+			}
+			nm = ns / 60;
+			ns = ns % 60;
+			nh = nm / 60;
+			nm = nm % 60;
+			if( prev_sync.tv_usec > cur_sync.tv_usec )
+				prev_sync.tv_usec -= 1000000;
+			sprintf(infostring,"time:%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4lu ins:%3lu del:%3lu "
+					"aerrs:%3lu td1=%.3f td2=%.3f",
+					nh, nm, ns, nf, 
+					(cur_sync.tv_usec-prev_sync.tv_usec)/1000, num_lost, num_ins, num_del, num_aerr, tdiff1,tdiff2);
+			lavrec_msg(LAVREC_PROGRESS,infostring,"");
+			if( stats_changed )
+				printf("\n");
+			stats_changed = 0;
+		}
+		prev_sync = cur_sync;
+
+
 		if (res) break;
 	}
 

@@ -63,8 +63,8 @@ int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int b
 	}
 	else
 	{
-	        if( buffers )
-	          payload -= MPEG1_BUFFERINFO_LENGTH;
+		if( buffers )
+			payload -= MPEG1_BUFFERINFO_LENGTH;
 
 		payload -= MPEG1_AFTER_PACKET_LENGTH_MIN;
 		if( pack_header != NULL )
@@ -314,7 +314,7 @@ void create_sector (Sector_struc 	 *sector,
 			   <program_packet_sequence_counter=0>
 			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
 			*(index++) = (unsigned char) 0x1e;
-			*(index++) = (unsigned char) (0x40 | (buffer_scale << 5) | 
+			*(index++) = (unsigned char) (0x40 | (buffer_scale << 4) | 
 										  (buffer_size >> 8));
 			*(index++) = (unsigned char) (buffer_size & 0xff);
 		}

@@ -1,7 +1,8 @@
 /* idct.c, inverse fast discrete cosine transform                           */
 
 #include <config.h>
-#include "mpeg2enc.h"
+#include <stdio.h>
+#include "global.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -54,8 +55,6 @@
 #define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
 
 /* global declarations */
-void init_idct (void);
-void idct (int16_t *block);
 
 /* private data */
 static int16_t iclip[1024]; /* clipping table */
@@ -201,7 +200,7 @@ void idct(int16_t *block)
     idctcol(block+i);
 }
 
-void init_idct()
+void init_idct(void)
 {
   int i;
 

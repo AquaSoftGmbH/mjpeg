@@ -440,22 +440,3 @@ int quant_non_intra_mmx(
 	return nzflag;
 }
 
-
-void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
-{
-  int i, val;
-  uint16_t *quant_mat = intra_q;
-
-  dst[0] = src[0] << (3-dc_prec);
-  for (i=1; i<64; i++)
-  {
-    val = (int)(src[i]*quant_mat[i]*mquant)/16;
-
-    /* mismatch control */
-    if ((val&1)==0 && val!=0)
-      val+= (val>0) ? -1 : 1;
-
-    /* saturation */
-    dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-  }
-}

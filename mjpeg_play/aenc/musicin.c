@@ -101,6 +101,7 @@ musicin.c
 #include <stdlib.h>
 #include "common.h"
 #include "encoder.h"
+#include "wav_io.h"
 
 /* Global variable definitions for "musicin.c" */
 
@@ -118,7 +119,7 @@ int chans_out=0;
 int audio_bits=0;
 unsigned long audio_bytes=0;
 
-void Usage(char *str)
+static void Usage(char *str)
 {
   printf("Usage: %s [params] < input.wav\n",str);
   printf("   where possible params are:\n");
@@ -133,7 +134,7 @@ void Usage(char *str)
 }
 
 
-void
+static void
 get_params(argc, argv,fr_ps,psy,num_samples,encoded_file_name)
 int             argc;
 char**          argv;

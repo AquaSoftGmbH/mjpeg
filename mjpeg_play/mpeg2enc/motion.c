@@ -534,12 +534,12 @@ static int unidir_var_sum( mb_motion_s *lum_mc,
  *
  */
 
-int bidir_var_sum( mb_motion_s *lum_mc_f, 
-				   mb_motion_s *lum_mc_b, 
-				   uint8_t **ref_f, 
-				   uint8_t **ref_b,
-				   subsampled_mb_s *ssblk,
-				   int lx, int h )
+static int bidir_var_sum( mb_motion_s *lum_mc_f, 
+						  mb_motion_s *lum_mc_b, 
+						  uint8_t **ref_f, 
+						  uint8_t **ref_b,
+						  subsampled_mb_s *ssblk,
+						  int lx, int h )
 {
 	int uvlx = (lx>>1);
 	int uvh = (h>>1);

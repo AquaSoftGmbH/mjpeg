@@ -30,35 +30,6 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_RANLIB
-dnl *********************************************************************
-dnl Check for what warnings we want gcc to use and adjust the CFLAGS
-dnl as needed. This only works for GCC.
-dnl 
-
-if test "x${GCC}" != "xyes" ; then
-  enable_compile_warnings=no
-fi
-AC_MSG_CHECKING(what warning flags to pass to the C compiler)
-warnCFLAGS=
-if test "x$enable_compile_warnings" != "xno" ; then
- if test "x$GCC" = "xyes" ; then
-    case "$CFLAGS" in
-     *[\ \	]-Wall[\ \	]*) ;;
-     *) warnCFLAGS="-Wall -Wunused" ;;
-    esac
-  if test "x$enable_compile_warnings" = "xyes" ; then
-    warnCFLAGS="$warnCFLAGS -Wmissing-prototypes -Wmissing-declarations"
-  fi
-  if test "x$enable_warnings_as_errors" = "xyes" ; then
-    warnCFLAGS="$warnCFLAGS -Werror"
-  fi
- fi
-fi
-AC_MSG_RESULT($warnCFLAGS)
-if test "x$cflags_set" != "xyes" ; then
-  CFLAGS="$CFLAGS $warnCFLAGS"
-  cflags_set=yes
-fi
 
 dnl *********************************************************************
 dnl Check for the various libraries we depend on.
@@ -76,6 +47,12 @@ AC_CHECK_LIB(pthread, pthread_create,
   [ PTHREAD_LIBS="-lpthread" 
     AC_DEFINE(HAVE_LIBPTHREAD)
     have_pthread=true ],,)
+
+AC_CHECK_FUNC(pthread_attr_getstacksize,
+	          [
+				AC_DEFINE(HAVE_PTHREADSTACKSIZE)
+			  ] )
+
 
 dnl *********************************************************************
 dnl Check for the special mmx accelerated jpeg library
@@ -135,20 +112,24 @@ AC_SUBST(QUICKTIME_CFLAGS)
 if test x$with_quicktime = xyes ; then
   AC_MSG_ERROR([
 *** A directory must be specified for the --with-quicktime option.])
+else if test x$with_quicktime = x ; then
+  with_quicktime=/usr/local/src/quicktime
+fi
 fi
 have_quicktime=false
 AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
 if test "$PNG" = "found" ; then
   if test x$have_pthread = xtrue ; then
-    EXTRA_LIBS="$GLIB_LIBS $JPEG_LIBS $PTHREAD_LIBS -lpng -ldl"
+    EXTRA_LIBS=" $GLIB_LIBS  $PTHREAD_LIBS  -lpng -ldl"
   else
-    EXTRA_LIBS="$GLIB_LIBS $JPEG_LIBS -lpng -ldl"
+    EXTRA_LIBS="-L$with_quicktime$GLIB_LIBS -lpng -ldl"
   fi
   AC_CHECK_LIB(quicktime, quicktime_open,
-    [ QUICKTIME_LIBS="$EXTRA_LIBS"
+    [ QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
+	  QUICKTIME_CFLAGS="-I $with_quicktime"
       AC_DEFINE(HAVE_LIBQUICKTIME)
       have_quicktime=true],, 
-      $EXTRA_LIBS)
+      -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
   EXTRA_LIBS=""
 else
   AC_MSG_WARN([
@@ -314,6 +295,38 @@ AM_CONDITIONAL(HAVE_ASM_3DNOW, test x$have_asm_3dnow = xtrue)
 AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(BUILD_MJPEG, test x$have_sdl = xtrue)
+
+dnl *********************************************************************
+dnl Check for what warnings we want gcc to use and adjust the CFLAGS
+dnl as needed. This only works for GCC.
+dnl We do this last as it can screw up library detection etc...
+dnl 
+
+if test "x${GCC}" != "xyes" ; then
+  enable_compile_warnings=no
+fi
+AC_MSG_CHECKING(what warning flags to pass to the C compiler)
+warnCFLAGS=
+if test "x$enable_compile_warnings" != "xno" ; then
+ if test "x$GCC" = "xyes" ; then
+    case "$CFLAGS" in
+     *-Wall*) ;;
+     *) warnCFLAGS="-Wall -Wunused" ;;
+    esac
+  if test "x$enable_compile_warnings" = "xyes" ; then
+    warnCFLAGS="$warnCFLAGS -Wmissing-prototypes -Wmissing-declarations"
+  fi
+  if test "x$enable_warnings_as_errors" = "xyes" ; then
+    warnCFLAGS="$warnCFLAGS -Werror"
+  fi
+ fi
+fi
+AC_MSG_RESULT($warnCFLAGS)
+if test "x$cflags_set" != "xyes" ; then
+  CFLAGS="$CFLAGS $warnCFLAGS"
+  cflags_set=yes
+fi
+
 
 dnl **********************************************************************
 dnl Output a Makefile or two

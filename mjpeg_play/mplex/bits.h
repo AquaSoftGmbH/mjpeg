@@ -35,4 +35,4 @@ void prepareundo(bitstream *bs, bitstream *undo);
 void undochanges(bitstream *bs, bitstream *old);
 bitcount_t bitcount(bitstream *bs);
 int end_bs(bitstream *bs);
-int seek_sync(bitstream *bs, unsigned int sync, int N);
+int seek_sync(bitstream *bs, unsigned int sync, int N, int lim);

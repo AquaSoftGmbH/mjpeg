@@ -4,6 +4,9 @@
 @TOP@
 #define VERSION   "x.x.x"		/* Mjpeg tools release version */
 
+/* Define pthread lib stack size */
+#undef HAVE_PTHREADSTACKSIZE
+
 /* Define if the installed GCC tool chain can generate MMX instructions */
 #undef HAVE_ASM_MMX
 

@@ -240,10 +240,15 @@ void get_info_video (char *video_file,
     Vaunit_struc access_unit;
     unsigned int syncword;
     unsigned int decoding_order=0;
+	unsigned int fields_presented=0;
     unsigned int group_order=0;
     unsigned int group_start_pic=0;
+	unsigned int group_start_field=0;
     unsigned long temporal_reference=0;
     unsigned short pict_rate;
+	int pulldown_32 = 0;
+	int repeat_first_field;
+	int film_rate;
     int i;
     unsigned int prozent = 0;
     unsigned int old_prozent=0;
@@ -281,19 +286,22 @@ void get_info_video (char *video_file,
     if (pict_rate >0 && pict_rate<9)
     {
 		frame_rate = picture_rates[pict_rate];
+		film_rate = 1;
 	}
     else
     {
 		frame_rate = 25.0;
+		film_rate = 0;
 	}
-	
+
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
 	*/
 	*ret_first_frame_PTS = 0.0;
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
 	AU_start = 0LL;
-	while(!end_bs(&video_bs) && seek_sync (&video_bs, SYNCWORD_START, 24) &&
+	while(!end_bs(&video_bs) && 
+		  seek_sync (&video_bs, SYNCWORD_START, 24, 100000) &&
 	      ( !opt_max_PTS || access_unit.PTS < opt_max_PTS   ) )
 	{
 		syncword = (SYNCWORD_START<<8) + getbits (&video_bs, 8);
@@ -368,6 +376,28 @@ void get_info_video (char *video_file,
 			
 			temporal_reference = getbits (&video_bs, 10);
 			access_unit.type   = getbits (&video_bs, 3);
+
+			/* Now scan forward a little for an MPEG-2 picture coding extension
+			   so we can get pulldown info (if present) */
+
+			if( film_rate &&
+				seek_sync (&video_bs,EXT_START_CODE, 32, 10) &&
+				getbits(&video_bs,4) == CODING_EXT_ID )
+			{
+				/* Skip: 4 F-codes (4)... */
+				(void)getbits(&video_bs,16); 
+                /* Skip: DC Precision(2), pict struct (2) topfirst (1)
+				   frame pred dct (1), q_scale_type (1), intravlc (1)*/
+				(void)getbits(&video_bs,8);	
+				/* Skip: altscan (1) */
+				(void)getbits(&video_bs,1);	
+				repeat_first_field = getbits(&video_bs,1);
+				pulldown_32 |= repeat_first_field;
+			}
+			else
+			{
+				repeat_first_field = 0;
+			}
 			
 			if( access_unit.type == IFRAME )
 			{
@@ -381,11 +411,38 @@ void get_info_video (char *video_file,
 				}
 				prev_stream_length = stream_length;
 				group_start_pic = decoding_order;
+				group_start_field = fields_presented;
 			}
-			access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
+
+			if( pulldown_32 )
+			{
+				int frames2field;
+				int frames3field;
+				access_unit.DTS =  (clockticks) (fields_presented * (double)(CLOCKS/2) / frame_rate);
+				access_unit.dorder = decoding_order;
+				if( repeat_first_field )
+				{
+					frames2field = (temporal_reference+1) / 2;
+					frames3field = temporal_reference / 2;
+					fields_presented += 3;
+				}
+				else
+				{
+					frames2field = (temporal_reference) / 2;
+					frames3field = (temporal_reference+1) / 2;
+					fields_presented += 2;
+				}
+				access_unit.PTS =  (clockticks) 
+					((frames2field*2 + frames3field*3 + group_start_field) * (double)(CLOCKS/2) / frame_rate);
+				access_unit.porder = temporal_reference + group_start_pic;
+			}
+			else
+			{
+				access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
+				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS / frame_rate);
+			}
+
 			access_unit.dorder = decoding_order;
-			access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
-											 / frame_rate);
 			access_unit.porder = temporal_reference + group_start_pic;
 			access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
 

@@ -76,6 +76,7 @@ typedef uint64_t clockticks;
 #define SEQUENCE_HEADER 	0x000001b3
 #define SEQUENCE_END		0x000001b7
 #define PICTURE_START		0x00000100
+#define EXT_START_CODE 0x000001b5
 #define GROUP_START		0x000001b8
 #define SYNCWORD_START		0x000001
 #define OLDFRAME				0
@@ -84,6 +85,7 @@ typedef uint64_t clockticks;
 #define BFRAME                  3
 #define DFRAME                  4
 
+#define CODING_EXT_ID       8
 #define AUDIO_SYNCWORD		0x7ff
 
 

@@ -53,11 +53,11 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
                      unsigned char *raw0, unsigned char *raw1,
                      unsigned char *raw2);
 
-void jpeg_buffer_src  (j_decompress_ptr cinfo, unsigned char *buffer,
+static void jpeg_buffer_src  (j_decompress_ptr cinfo, unsigned char *buffer,
                        long num);
-void jpeg_buffer_dest (j_compress_ptr cinfo,   unsigned char *buffer,
+static void jpeg_buffer_dest (j_compress_ptr cinfo,   unsigned char *buffer,
                        long len);
-void jpeg_skip_ff (j_decompress_ptr cinfo);
+static void jpeg_skip_ff (j_decompress_ptr cinfo);
 
 /*******************************************************************
  *                                                                 *
@@ -130,7 +130,7 @@ static void term_source (j_decompress_ptr cinfo)
  * Prepare for input from a data buffer.
  */
 
-void
+static void
 jpeg_buffer_src (j_decompress_ptr cinfo, unsigned char *buffer, long num)
 {
    /* The source object and input buffer are made permanent so that a series
@@ -162,7 +162,8 @@ jpeg_buffer_src (j_decompress_ptr cinfo, unsigned char *buffer, long num)
  * It should be called to skip padding 0xff bytes beetween images.
  */
 
-void jpeg_skip_ff (j_decompress_ptr cinfo)
+static void 
+jpeg_skip_ff (j_decompress_ptr cinfo)
 {
    fprintf (stderr, "Starting skip with %d bytes left\n",
             cinfo->src->bytes_in_buffer);
@@ -233,7 +234,7 @@ static void term_destination (j_compress_ptr cinfo)
  * for closing it after finishing compression.
  */
 
-void
+static void
 jpeg_buffer_dest (j_compress_ptr cinfo, unsigned char *buf, long len)
 {
 

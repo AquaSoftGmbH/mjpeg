@@ -61,7 +61,7 @@ int verbose = 2;
 
 /* private prototypes */
 static void init (void);
-static void init_encoding_parms();
+static void init_encoding_parms(void);
 static void init_quantmat (void);
 
 
@@ -186,7 +186,7 @@ static void DisplayAspectRatios()
 	exit(0);
 }
 
-void Usage(char *str)
+static void Usage(char *str)
 {
 	printf("mjpegtools mpeg2enc version " VERSION "\n" );
 	printf("Usage: %s [params]\n",str);
@@ -743,7 +743,7 @@ void error(text)
 
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
 
-static void init_encoding_parms()
+static void init_encoding_parms(void)
 {
 	int i;
 	int c;

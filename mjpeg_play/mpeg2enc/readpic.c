@@ -124,7 +124,7 @@ static void border_extend(unsigned char *frame,
   }
 }
 
-int piperead(int fd, char *buf, int len)
+static int piperead(int fd, char *buf, int len)
 {
    int n, r;
 
@@ -187,7 +187,7 @@ static void read_chunk()
    nframes = frames_read;
 }
 
-void load_frame( int num_frame, int look_ahead )
+static void load_frame( int num_frame, int look_ahead )
 {
 
    if( frames_read == 0)
@@ -197,7 +197,7 @@ void load_frame( int num_frame, int look_ahead )
 		   read_chunk();
    }
 
-   if(last_frame>=0 && num_frame>last_frame)
+   if(last_frame>=0 && num_frame>last_frame &&num_frame<nframes)
    {
       fprintf(stderr,"readframe: internal error reading beyond end of frames\n");
       exit(1);
