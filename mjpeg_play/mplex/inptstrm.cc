@@ -46,6 +46,46 @@ static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
 							 0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
 							 1.2015, 0.};
 
+
+static char * mpeg1_aspect_ratio_definitions[] =
+{
+	"1:1 (square pixels)",
+	"1:0.6735",
+	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
+    "1:0.7615",
+	"1:0.8055",
+	"1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)",
+	"1:0.8935",
+	"1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)",
+	"1:0.9815",
+	"1:1.0255",
+	"1:1:0695",
+	"1:1.125  (4:3 NTSC for 720x480/352x240 images)",
+	"1:1575",
+	"1:1.2015"
+};
+
+static char *mpeg2_aspect_ratio_definitions[] = 
+{
+	"1:1 display",
+	"4:3 display",
+	"16:9 display",
+	"2.21:1 display"
+};
+
+static char **aspect_ratio_definitions[2] = 
+{
+	mpeg1_aspect_ratio_definitions,
+	mpeg2_aspect_ratio_definitions
+};
+
+static const int num_aspect_ratios[2] = 
+{
+	sizeof(mpeg1_aspect_ratio_definitions)/sizeof(char *),
+     sizeof(mpeg2_aspect_ratio_definitions)/sizeof(char *)
+};
+
+
 static int freq_table [4][4] = 
 {
 	/* MPEG audio V2.5 */
@@ -494,19 +534,12 @@ void VideoStream::OutputSeqhdrInfo ()
 
     mjpeg_info ("Frame width    : %8u\n",horizontal_size);
     mjpeg_info ("Frame height   : %8u\n",vertical_size);
-
-    switch (aspect_ratio)
-    {
-	case  0: str = "forbidden\n"; break;
-	case  1: str = "VGA etc\n"; break;
-	case  3: str = "16:9, 625 line\n"; break;
-	case  6: str = "16:9, 525 line\n"; break;
-	case  8: str = "CCIR601, 625 line\n"; break;
-	case 12: str = "CCIR601, 525 line\n"; break;
-	case 15: str = "reserved\n"; break;
-	default: str = "\n";
-    }
-    mjpeg_info   ("Aspect ratio    :   %1.4f %s",ratio[aspect_ratio], str);
+	if( aspect_ratio >= num_aspect_ratios[opt_mpeg] )
+		str =  aspect_ratio_definitions[opt_mpeg-1][aspect_ratio-1];
+	else
+		str = "forbidden";
+    mjpeg_info   ("Aspect ratio    :   %s\n", str );
+				
 
     if (picture_rate == 0)
 		mjpeg_info( "Picture rate    : forbidden\n");
@@ -607,7 +640,7 @@ void StillsStream::Init ( const char *video_file )
 		}
 		break;
 	case MPEG_FORMAT_SVCD_STILL :
-		if( horizontal_size > 352 )
+		if( horizontal_size > 480 )
 		{
 			stream_id = VIDEO_STR_0+1;
 			buffer_size = 230*1024;

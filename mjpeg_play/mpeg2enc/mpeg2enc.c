@@ -150,10 +150,10 @@ static char * mpeg1_aspect_ratio_definitions[] =
 
 static char *mpeg2_aspect_ratio_definitions[] = 
 {
-	"1  - 1:1 display",
-	"2  - 4:3 display",
-	"3  - 16:9 display",
-	"4  - 2.21:1 display"
+	"1:1 display",
+	"4:3 display",
+	"16:9 display",
+	"2.21:1 display"
 };
 
 static char **aspect_ratio_definitions[2] = 
@@ -290,6 +290,10 @@ void set_format_presets()
 			param_quant = 12;
 		param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
+		if( param_aspect_ratio == 0 )
+			param_aspect_ratio = 2;
+		else if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
+			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -360,7 +364,7 @@ void set_format_presets()
 		*/
 		
 		if( opt_horizontal_size == 480 && 
-			(opt_vertical_size == 240 || opt_vertical_size == 288 ) )
+			(opt_vertical_size == 480 || opt_vertical_size == 576 ) )
 		{
 			mjpeg_info( "SVCD normal-resolution stills selected.\n" );
 		}
@@ -371,13 +375,19 @@ void set_format_presets()
 		}
 		else
 		{
-			mjpeg_error("SVCD normal resolution stills must be 480x288 (PAL) or 480x240 (NTSC)\n");
+			mjpeg_error("SVCD normal resolution stills must be 480x576 (PAL) or 480x480 (NTSC)\n");
 			mjpeg_error_exit1( "SVCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)\n");
 		}
 		if( param_still_size < 30*1024 || param_still_size > 200*1024 )
 		{
 			mjpeg_error_exit1( "SVCD resolution stills must be >= 30KB and <= 200KB each\n");
 		}
+
+		if( param_aspect_ratio == 0 )
+			param_aspect_ratio = 2;
+		else if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
+			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
+
 		param_seq_hdr_every_gop = 1;
 		param_seq_end_every_gop = 1;
 		param_min_GOP_size = 1;
