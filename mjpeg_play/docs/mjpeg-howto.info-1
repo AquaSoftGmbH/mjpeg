@@ -1,5 +1,5 @@
 This is mjpeg-howto.info, produced by makeinfo version 4.5 from
-/tmp/linuxdoc-dir-5041/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-3776/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -586,18 +586,20 @@ for anything else.
 
    Saving an yuv stream can be done like this:
 
-   `> jpeg2yuv -f 25 -j image%05d.jpg > result.yuv'
+   `> jpeg2yuv -f 25 -I p -j image%05d.jpg > result.yuv'
 
    Creates the file result.yuv containing the yuv video data with 25
 FPS. The -f option is used to set the frame rate. Note that
 image%05d.jpg means that the jpeg files are named image00000.jpg,
 image00001.jpg and so on. (05 means five digits, 04 means four digits,
-etc.)
+etc.) The -I p is needed for specifing the interlacing. You have to
+check which type you have.  If you don't have interlacing just choose p
+for progressive
 
    If you want to encode a mpeg video directly from jpeg images without
 saving a separate video file type:
 
-   `> jpeg2yuv -f 25 -j image%05d.jpg | mpeg2enc -o mpegfile.m1v'
+   `> jpeg2yuv -f 25 -I p -j image%05d.jpg | mpeg2enc -o mpegfile.m1v'
 
    Does the same as above but saves a mpeg video rather than a yuv
 video. See mpeg2enc section for details on how to use mpeg2enc.
@@ -605,15 +607,15 @@ video. See mpeg2enc section for details on how to use mpeg2enc.
    You can also use yuvscaler between jpeg2yuv and mpeg2enc. If you
 want to create a SVCD from your source images:
 
-   `> jpeg2yuv -f 25 -j image%05d.jpg | yuvscaler -O SVCD |  mpeg2enc
--f 4 -o video.m2v'
+   `> jpeg2yuv -f 25 -I p -j image%05d.jpg | yuvscaler -O SVCD |
+mpeg2enc -f 4 -o video.m2v'
 
    You can use the -b option to set the number of the image to start
 with. The number of images to be processed can be specified with the -n
 number. For example, if your first image is image01.jpg rather than
 image00.jpg, and you only want 60 images to be processed type:
 
-   `>jpeg2yuv -b 1 -f 25 -n 60 -j image*.jpg | yuv2lav -o
+   `>jpeg2yuv -b 1 -f 25 -I p -n 60 -j image*.jpg | yuv2lav -o
 stream_without_sound.avi'
 
    Adding the sound to the stream then:
