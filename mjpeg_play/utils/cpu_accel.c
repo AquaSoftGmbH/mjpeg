@@ -215,7 +215,7 @@ fmax(double x, double y)
 void *bufalloc( size_t size )
 {
 	static size_t simd_alignment = 16;
-	static bool bufalloc_init = false;
+	static int bufalloc_init = 0;
 	void *buf;
 
 	if( !bufalloc_init )
@@ -224,7 +224,7 @@ void *bufalloc( size_t size )
 		if( (cpu_accel() &  (ACCEL_X86_SSE|ACCEL_X86_3DNOW)) != 0 )
 		{
 			simd_alignment = 64;
-			bufalloc_init = true;
+			bufalloc_init = 1;
 		}
 #endif		
 	}
