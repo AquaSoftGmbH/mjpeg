@@ -108,7 +108,8 @@ int chk_dir(char *name);
 /* config_encode.c */
 void load_config_encode(void);
 void save_config_encode(void);
-void open_encoptions_window(GtkWidget *widget, gpointer data);
+void create_encoding_layout(GtkWidget *table);
+void accept_encoptions(GtkWidget *widget, gpointer data);
 
 /* lavrec_pipe.c */
 void table_set_text(int h, int m, int s, int f, int l, int ins, int del, int aerr);
