@@ -16,7 +16,7 @@ public:
 	void append( Aunit &rec )
 	{
 		if( size == BUF_SIZE )
-			mjpeg_error_exit1( "INTERNAL ERROR: AU buffer overflow\n" );
+			mjpeg_error_exit1( "INTERNAL ERROR: AU buffer overflow" );
 		*buf[cur_wr] = rec;
 		++size;
 		++cur_wr;

@@ -33,7 +33,7 @@ extern "C" {
 #endif
 
 #ifdef MJPEGTOOLS
-# define perror(MSG) mjpeg_error("%s: %s\n", MSG, strerror(errno))
+# define perror(MSG) mjpeg_error("%s: %s", MSG, strerror(errno))
 # define WERROR(MSG) mjpeg_error(MSG)
 # define WERRORL(MSG) mjpeg_error(MSG)
 # define WWARN(MSG) mjpeg_warn(MSG)
