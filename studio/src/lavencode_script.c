@@ -72,6 +72,8 @@ void create_command_yuv2lav(char* yuv2divx_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 void create_command_mplex(char* mplex_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
+void filename_ext(char ext[LONGOPT], char *extended_name, char filename[100]);
+
 
 /* Only for this file, same names used in other files */ 
 static void set_up_defaults(void);
@@ -224,6 +226,41 @@ GtkWidget *label, *script_select;
 }
 
 /**
+   Here we add to the correct part of a filename the extension.
+   @param the extension to add
+   @param the extended filename
+   @param the original filename                                   */
+void filename_ext(char ext[LONGOPT], char *extended_name, char filename[100])
+{
+char temp1[200], temp2[100];
+int i,j;
+
+i = 0;
+j = 0;
+ 
+for ( i = 0; i < 200; i++)
+   temp1[i]='\0';
+for ( i = 0; i < 100; i++)
+   temp2[i]='\0';
+ 
+  i = strlen(enc_audiofile);
+  for( i=0; i < strlen(filename); i++)
+    {
+      if (filename[i] == '/')
+        j = i+1;
+    }
+  if (j != 0)
+    {
+       strncpy(temp1,filename,j);
+       for (i = j; i < strlen(filename); i++)
+          sprintf(temp2,"%s%c",temp2,filename[i]);
+       sprintf(extended_name,"%s%s.%s", temp1, ext, temp2);
+         }
+  else
+    sprintf(extended_name,"%s.%s", ext, filename);
+}
+
+/**
    Here we create a sting out of the command given
    @param command The ** means that we can change the pointer to the char 
    pointer. 
@@ -243,9 +280,11 @@ i=0;
 void create_command_mp2enc(char *mp2enc_command[256], int use_rsh,
    struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT])
 {
-int n;
+int i,j,n;
 static char temp1[16], temp2[16], temp3[200];
 
+i = 0;
+j = 0;
 n = 0;
 
   if ((use_rsh ==1) && ((machine4mpeg1.mp2enc !=0) || ((*machine4).mp2enc !=0)))
@@ -291,9 +330,10 @@ n = 0;
      }
   mp2enc_command[n] = "-o"; n++;         /* Setting output file name */
   if (strlen(ext) != 0)
-    sprintf(temp3,"%s.%s", ext, enc_audiofile);
+       filename_ext(ext, temp3, enc_audiofile);
   else 
     sprintf(temp3,"%s",enc_audiofile);
+
   mp2enc_command[n] = temp3; n++;
   mp2enc_command[n] = NULL;
 }
@@ -361,7 +401,7 @@ if ( (*option).sequencesize != 0)
 
   yuv2lav_command[n] = "-o"; n++;
   if (strlen(ext) != 0)
-    sprintf(temp4,"%s.%s", ext, enc_videofile);
+    filename_ext(ext, temp4, enc_videofile);
   else
     sprintf(temp4,"%s",enc_videofile);
   yuv2lav_command[n] = temp4; n++;
@@ -415,7 +455,7 @@ n=0;
 
   yuv2divx_command[n] = "-o"; n++;
   if (strlen(ext) != 0)
-    sprintf(temp3,"%s.%s", ext, enc_videofile);
+    filename_ext(ext, temp3, enc_videofile);
   else
     sprintf(temp3,"%s",enc_videofile);
   yuv2divx_command[n] = temp3; n++;
@@ -520,7 +560,7 @@ if((*option).muxformat >= 3)
 /* And here again some common stuff */
   mpeg2enc_command[n] = "-o"; n++;
   if (strlen(ext) != 0)
-    sprintf(temp12,"%s.%s", ext, enc_videofile);
+    filename_ext(ext, temp12, enc_videofile);
   else 
     sprintf(temp12,"%s",enc_videofile);
   mpeg2enc_command[n] = temp12; n++;
@@ -850,14 +890,15 @@ n=0;
 
   if (strlen(ext) != 0)
     {
-      sprintf(temp5,"%s.%s", ext, enc_audiofile);
+      filename_ext(ext, temp5, enc_audiofile);
       mplex_command[n] = temp5; n++;
 
+      filename_ext(ext, temp6, enc_videofile);
       sprintf(temp6,"%s.%s", ext, enc_videofile);
       mplex_command[n] = temp6; n++;
 
       mplex_command[n] = "-o"; n++;
-      sprintf(temp7,"%s.%s", ext, enc_outputfile);
+      filename_ext(ext, temp7, enc_outputfile);
       mplex_command[n] = temp7; n++;
     }
   else
