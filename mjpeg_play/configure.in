@@ -206,6 +206,7 @@ AC_OUTPUT(Makefile
 	mpeg2enc/Makefile
 	aenc/Makefile
 	mplex/Makefile
+    scripts/Makefile
     )
 
 AC_DEFINE(VERSION, ${VERSION})

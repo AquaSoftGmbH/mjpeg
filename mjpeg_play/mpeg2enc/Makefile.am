@@ -17,7 +17,7 @@ EXTRA_DIST = \
     fdct_mmx.o idct_mmx.o  qdist1_mmx.o quant_mmx.o dist2_mmx.o bdist2_mmx.o\
 	bdist1_mmx.o predict_mmx.o \
 	fdist1_00.o dist1_00.o dist1_01.o dist1_10.o dist1_11.o \
-    qdist1_sse.o predcomp_mmxe.o qblock_sad_x86_h.c
+    qdist1_sse.o predcomp_mmxe.o predcomp_mmx.o qblock_sad_x86_h.c
 
 if X86CPU
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)

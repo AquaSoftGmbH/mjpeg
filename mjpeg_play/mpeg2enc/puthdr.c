@@ -134,10 +134,12 @@ int frame,closed_gop;
 {
   int tc;
 
-  /* Hack need to make panasonic and philips dvd player handle
-     fast forward, fast rev.
+  /* Some VCD players, it seems, need sequence headers every GOP
+     to do fast forward, fast rev.
    */
-  putseqhdr();
+  alignbits();
+  if( seq_header_every_gop )
+	  putseqhdr();
   alignbits();
   putbits(GOP_START_CODE,32); /* group_start_code */
   tc = frametotc(tc0+frame);

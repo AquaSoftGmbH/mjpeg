@@ -6,6 +6,9 @@ Minor
 
 - Diff the plug-in's with the livid source-base and send it to the developers.
 
+- Mention transcoding in the Documentation.  Mention the stuff relating to
+  seq headers and similar VCD tricker too...
+
 - Change the build structure to seperate the MPEG from the lav tools.
 
 - Turn the crappy "HINTS" file into nice introductory documentation on

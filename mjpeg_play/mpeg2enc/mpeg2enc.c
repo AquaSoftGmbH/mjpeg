@@ -69,7 +69,6 @@ static int param_mpeg       = 1;
 static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, field MC and DCT in picture */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_fastmc     = 10;
-static int param_threshold  = 0;
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
 static int param_hfnoise_quant = 0;
@@ -77,6 +76,7 @@ static int param_hires_quant = 0;
 static double param_act_boost = 2.0;
 static int param_pred_ratectl = 1;
 static int param_video_buffer_size = 46;
+static int param_seq_hdr_every_gop = 0;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
 
@@ -104,6 +104,7 @@ void Usage(char *str)
 	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
+	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources)\n" );
@@ -120,7 +121,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:Q:v:tNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:Q:v:stNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -196,9 +197,10 @@ int main(argc,argv)
 			}
 			break;
 
-		case 't':
-			param_threshold = 1;
+		case 's' :
+			param_seq_hdr_every_gop = 1;
 			break;
+
 
 		case 'N':
 			param_hfnoise_quant = 1;
@@ -327,6 +329,9 @@ int main(argc,argv)
 	printf("\nEncoding MPEG-%d video to %s\n",param_mpeg,outfilename);
 	if(param_bitrate) printf("Bitrate: %d KBit/s\n",param_bitrate);
 	if(param_quant) printf("Quality factor: %d (1=best, 31=worst)\n",param_quant);
+	if(param_seq_hdr_every_gop ) printf("Sequence header for every GOP\n");
+	else printf( "Sequence header only for first GOP\n");
+		
 	printf("Search radius: %d\n",param_searchrad);
 
 	/* set params */
@@ -555,14 +560,13 @@ static void readparmfile()
 		vbv_buffer_code = 112;
 	}
 	vbv_buffer_size = vbv_buffer_code*16384;
-				
+	
 	fast_mc_frac    = param_fastmc;
-	fast_mc_threshold = param_threshold;
 	mc_44_red		= param_44_red;
 	mc_22_red		= param_22_red;
 	video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
-
+	seq_header_every_gop = param_seq_hdr_every_gop;
 	low_delay       = 0;
 	constrparms     = mpeg1;       /* Will be reset, if not coompliant */
 	constrparms = 1;

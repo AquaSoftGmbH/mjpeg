@@ -111,8 +111,6 @@ nextrow00sse:
 global block_dist1_SSE
 
 ; void block_dist1_SSE(char *blk1,char *blk2,int lx,int h,int *weightvec);
-; distlim unused - costs more to check than the savings of
-; aborting the computation early from time to time...
 ; eax = p1
 ; ebx = p2
 ; ecx = unused
@@ -253,8 +251,7 @@ firstrow1:
 global block_dist1_MMXE
 
 ; void block_dist1_MMXE(char *blk1,char *blk2,int lx,int h,int *weightvec);
-; distlim unused - costs more to check than the savings of
-; aborting the computation early from time to time...
+
 ; eax = p1
 ; ebx = p2
 ; ecx = unused

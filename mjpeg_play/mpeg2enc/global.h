@@ -412,9 +412,10 @@ EXTERN int    fast_mc_frac;		/* inverse proportion of fast motion estimates
 EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 									dynamical adjust motion compensation
 									window size */
-EXTERN int mc_44_red;			/* Sub-mean [opulation reduction passes for 4x4 and 2x2 */
+EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
 EXTERN int mc_22_red;			/* Motion compensation stages						*/
 
+EXTERN int seq_header_every_gop;
 EXTERN int vbv_buffer_code;   /* Code for size of VBV buffer (* 16 kbit) */
 EXTERN double vbv_buffer_size; /* Size code codes for... */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
