@@ -77,7 +77,6 @@ dnl CCAS=nasm
 dnl CCASFLAGS=
 AM_PROG_AS
 
-
 dnl maddog:  What about CHECK-ALLOCA????
 AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
 
@@ -119,8 +118,6 @@ AC_CHECK_FUNC(getopt_long,
                              LIBGETOPT_LIB="-lgnugetopt"])
               ])
 AC_SUBST(LIBGETOPT_LIB)
-
-
 
 AC_TYPE_SIGNAL
 
@@ -194,7 +191,7 @@ unset SAVE_CFLAGS
 AC_SUBST(PTHREAD_LIBS)
 AC_CHECK_LIB(pthread, pthread_create,
              [PTHREAD_LIBS="-lpthread"
-	     AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix pthreads lib present])
+	     AC_DEFINE(HAVE_LIBPTHREAD, 1, [Posix threads lib present])
 	     have_pthread=true],
 	     [have_pthread=false])
 
@@ -221,8 +218,6 @@ if test x$with_jpeg_mmx = x ; then
   dnl Special case for building .deb's
   if test -d ../jpeg-mmx ; then
     with_jpeg_mmx=`pwd`/../jpeg-mmx
-  elif test -d ../jpeg-mmx-0.1.4 ; then
-    with_jpeg_mmx=`pwd`/../jpeg-mmx-0.1.4
   else
     with_jpeg_mmx=/usr/local/src/jpeg-mmx
   fi
