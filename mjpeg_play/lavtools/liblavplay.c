@@ -117,6 +117,8 @@ typedef struct {
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
    pthread_cond_t buffer_done[MJPEG_MAX_BUF];
    pthread_mutex_t syncinfo_mutex;
+   long buffer_entry[MJPEG_MAX_BUF];
+   long currently_processed_entry;
 #endif
 
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
@@ -758,7 +760,8 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
       pthread_mutex_unlock(&(settings->valid_mutex));
 
       /* There is one buffer to play - get ready to rock ! */
-      if (!lavplay_SDL_update(info, settings->buff+settings->currently_processed_frame*settings->br.size,
+      if (settings->currently_processed_entry != settings->buffer_entry[settings->currently_processed_frame] &&
+	  !lavplay_SDL_update(info, settings->buff+settings->currently_processed_frame*settings->br.size,
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
          settings->data_format[settings->currently_processed_frame],
 #endif
@@ -768,6 +771,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
          lavplay_msg(LAVPLAY_MSG_WARNING, info,
             "Error playing a frame");
       }
+      settings->currently_processed_entry = settings->buffer_entry[settings->currently_processed_frame];
 
       /* Synchronise and timestamp current frame after sync */
       lavplay_mjpeg_software_frame_sync(info, settings->valid[settings->currently_processed_frame]);
@@ -875,6 +879,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
 
          /* Now do the thread magic */
          settings->currently_processed_frame = 0;
+         settings->currently_processed_entry = -1;
          settings->show_top = 1; /* start with top frames as default, change with mjpeg_set_params */
        
          if (pthread_create(&(settings->software_playback_thread), NULL, 
@@ -1716,6 +1721,9 @@ static void lavplay_playback_cycle(lavplay_t *info)
          /* Read one frame, break if EOF is reached */
          frame = n % settings->br.count;
          frame_number[frame] = settings->current_frame_num;
+#ifdef HAVE_SDL
+	 settings->buffer_entry[frame] = editlist->frame_list[settings->current_frame_num];
+#endif
          if (!lavplay_queue_next_frame(info, settings->buff+frame*settings->br.size,
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 				       (settings->data_format[frame] =
