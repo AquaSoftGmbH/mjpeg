@@ -52,6 +52,7 @@ typedef struct _parameters {
   uint32_t begin;       /* the video frame start */
   int32_t numframes;   /* -1 means: take all frames */
   y4m_ratio_t framerate;
+  y4m_ratio_t aspect_ratio;
   int interlace;   /* will the YUV4MPEG stream be interlaced? */
   int interleave;  /* are the JPEG frames field-interleaved? */
   int verbose; /* the verbosity of the program (see mjpeg_logging.h) */
@@ -92,6 +93,7 @@ static void usage(char *prog)
 	  "  -v num        verbosity (0,1,2)                  [1]\n"
 	  "  -b framenum   starting frame number              [0]\n"
 	  "  -f framerate  framerate for output stream (fps)     \n"
+          "  -a sar        output sample aspect ratio         [1:1]\n" 
 	  "  -n numframes  number of frames to process        [-1 = all]\n"
 	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
 	  "               {1} JPEG filename prefix (e g rendered_ )\n"
@@ -133,13 +135,14 @@ static void usage(char *prog)
  */
 static void parse_commandline(int argc, char ** argv, parameters_t *param)
 {
-  int c;
+  int c, sts;
   
   param->jpegformatstr = NULL;
   param->begin = 0;
   param->numframes = -1;
   param->framerate = y4m_fps_UNKNOWN;
   param->interlace = Y4M_UNKNOWN;
+  param->aspect_ratio = y4m_sar_SQUARE;
   param->interleave = -1;
   param->verbose = 1;
   param->loop = 1;
@@ -147,10 +150,15 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
 
   /* parse options */
   for (;;) {
-    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:")))
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:R:a:")))
       break;
     switch (c) {
 
+    case 'a':
+      sts = y4m_parse_ratio(&param->aspect_ratio, optarg);
+      if (sts != Y4M_OK)
+         mjpeg_error_exit1("Invalid aspect ratio: %s", optarg);
+      break;
     case 'j':
       param->jpegformatstr = strdup(optarg);
       break;
@@ -364,6 +372,7 @@ static int generate_YUV4MPEG(parameters_t *param)
   y4m_si_set_height(&streaminfo, param->height);
   y4m_si_set_interlace(&streaminfo, param->interlace);
   y4m_si_set_framerate(&streaminfo, param->framerate);
+  y4m_si_set_sampleaspect(&streaminfo, param->aspect_ratio);
 
   yuv[0] = malloc(param->width * param->height * sizeof(yuv[0][0]));
   yuv[1] = malloc(param->width * param->height / 4 * sizeof(yuv[1][0]));
