@@ -136,7 +136,15 @@ extern void (*psubsample_image) ( uint8_t *image, int rowstride,
 					  uint8_t *sub22_image, 
 					  uint8_t *sub44_image);
 
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
 void init_motion_search(void);
 int round_search_radius( int radius );
+
+#ifdef  __cplusplus
+}
+#endif
 
 #endif  /* __MOTIONSEARCH_H__ */

@@ -27,4 +27,12 @@
 #define ACCEL_X86_MMXEXT 0x20000000
 #define ACCEL_X86_SSE   0x10000000
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int cpu_accel (void);
+
+#ifdef __cplusplus
+}
+#endif
