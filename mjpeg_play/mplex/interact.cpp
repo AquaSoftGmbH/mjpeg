@@ -76,7 +76,6 @@ MultiplexJob::MultiplexJob()
     packets_per_pack = 1;
     max_timeouts = 10;
     max_PTS = 0;
-    emul_vcdmplex = 0;
     max_segment_size = 0; // MB, default is unlimited (suitable for DVD)
     outfile_pattern = 0;
     packets_per_pack = 1;
@@ -146,7 +145,7 @@ void MultiplexJob::Usage(char *str)
 	exit (1);
 }
 
-static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:L:VXMeh";
+static const char short_options[] = "o:b:r:O:v:f:l:s:S:p:L:VMh";
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] = 
@@ -250,12 +249,6 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 		case 'o' :
 			outfile_pattern = optarg;
 			break;
-		case 'm' :
-			mpeg = atoi(optarg);
-			if( mpeg < 1 || mpeg > 2 )
-				Usage(argv[0]);
-  	
-			break;
 		case 'v' :
 			verbose = atoi(optarg);
 			if( verbose < 0 || verbose > 2 )
@@ -334,9 +327,6 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 			break;
 		case 'M' :
 			multifile_segment = true;
-			break;
-		case 'e' :
-			emul_vcdmplex = 1;
 			break;
 		case '?' :
 		default :
