@@ -110,10 +110,10 @@ uint32_t mean_SAD=100;          /* mean sum of absolute differences */
 int mod_radius=RADIUS;          /* initial modulated radius */
 int radius=RADIUS;              /* initial fixed radius */
 float block_quality;
-int BX0=0;
-int BY0=0;
-int BX1=0;
-int BY1=0;
+int BX0=4;
+int BY0=4;
+int BX1=-4;
+int BY1=-4;
 
 
 /*****************************************************************************
@@ -124,7 +124,7 @@ int matrix[1024][768][2];
 uint32_t SAD_matrix[1024][768];
 
 /* allways keep a few possibilities */
-int save_population=4;             // This should be sufficient for 
+int save_population=3;             // This should be sufficient for 
                                    // nearly every type of image&motion
 int best_match_44_x[16];
 int best_match_44_y[16];
@@ -157,6 +157,8 @@ void copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3]);
 void calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3]);
 void transform_frame (uint8_t * avg[3]);
 void contrast_frame (uint8_t * yuv[3]);
+void draw_line (int x0, int y0, int x1, int y1);
+int contrast_block (int x, int y, uint8_t * yuv[3]);
 
 /* SAD functions */
 uint32_t
@@ -512,24 +514,30 @@ main (int argc, char *argv[])
 	    denoise_frame (yuv);
 	}
 
-#if 0
-      {
-	  int ix,iy;
-
-	      for (iy=0;iy<height;iy++)
-		  for (ix=0;ix<width;ix++)
-		  {
-		      *(yuv2[0]+ix+iy*width)=
-			  (*(yuv2[0]+ix+iy*width)-
-			   *(avrg[0]+ix+iy*width))*32+128;
-		      *(yuv2[1]+((ix+iy*width)>>2))=128;
-		      *(yuv2[2]+((ix+iy*width)>>2))=128;
-		  }
-      }
-#endif
-
       generate_black_border(BX0,BY0,BX1,BY1,yuv);
 
+/* show motion vectors for debugging */
+#if(0)
+      memcpy (sub_t2[0],yuv[0],width*height);
+      memcpy (sub_t2[1],yuv[1],width*height>>2);
+      memcpy (sub_t2[2],yuv[2],width*height>>2);
+
+      {
+	  int x,y;
+	  int x0,y0,x1,y1;
+
+	  for (y=0;y<height;y+=16)
+	      for (x=0;x<width;x+=16)
+	      {
+		  x0=x;
+		  y0=y;
+		  x1=-(matrix[x][y][0]>>1)+x;
+		  y1=-(matrix[x][y][1]>>1)+y;
+
+		  draw_line(x0,y0,x1,y1);
+	      }
+      }
+#endif
       /* write the frame */
       y4m_write_frame (fd_out, &streaminfo, &frameinfo, yuv);
     }
@@ -557,6 +565,66 @@ main (int argc, char *argv[])
   return (0);
 }
 
+void draw_line (int x0, int y0, int x1, int y1)
+{
+    float dx;
+    float dy;
+    float s;
+    int y;
+    int x;
+    int yd;
+    int xd;
+
+
+    if(y0<y1) // Need swapping ?
+    {
+	y=y0;
+	y0=y1;
+	y1=y;
+
+	y=x0;
+	x0=x1;
+	x1=y;
+    }
+
+    dx=x0-x1;
+    dy=y0-y1;
+    s=dx/dy;
+
+    for(y=0;y<dy;y++)
+    {
+	xd=x0+s*y;
+	yd=y0+y;
+	//fprintf(stderr,"xd:%d , yd:%d\n",xd,yd);
+	if(xd>0 && xd<width && yd>0 && yd<height)
+	    *(sub_t2[0]+xd+yd*width)=255;
+    }
+
+    if(x0<x1) // Need swapping ?
+    {
+	y=y0;
+	y0=y1;
+	y1=y;
+
+	y=x0;
+	x0=x1;
+	x1=y;
+    }
+
+    dx=x0-x1;
+    dy=y0-y1;
+    s=dy/dx;
+
+    for(x=0;x<dx;x++)
+    {
+	yd=y0+s*x;
+	xd=x0+x;
+	//fprintf(stderr,"xd:%d , yd:%d\n",xd,yd);
+	if(xd>0 && xd<width && yd>0 && yd<height)
+	    *(sub_t2[0]+xd+yd*width)=255;
+    }
+
+}
 
 
 /*****************************************************************************
@@ -1299,10 +1367,10 @@ average_frames (uint8_t * ref[3], uint8_t * avg[3])
 void
 subsample_frame (uint8_t * dst[3], uint8_t * src[3])
 {
-  int __attribute__ ((aligned (32))) x, y;
-  uint8_t __attribute__ ((aligned (32))) *s  = src[0];
-  uint8_t __attribute__ ((aligned (32))) *s2 = src[0]+width;
-  uint8_t __attribute__ ((aligned (32))) *d  = dst[0];
+  int x, y;
+  uint8_t *s  = src[0];
+  uint8_t *s2 = src[0]+width;
+  uint8_t *d  = dst[0];
 
   /* subsample Y component */
 
@@ -1418,7 +1486,7 @@ calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t re
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
   uint8_t *rs = ref + ref_offs;
-  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+  static uint16_t a[4] = { 0, 0, 0, 0 };
 
   asm volatile
       (
@@ -1429,10 +1497,11 @@ calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t re
 	  " movl         %4    , %%edx;          /* load width       into edx                          */"
 	  "                           ;          /*                                                    */"
 	  " .rept 8                   ;          /*                                                    */"
-	  " movq        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-	  " movq        (%%ebx), %%mm2;          /* 4 Pixels from filtered frame to mm1 (displaced)    */"
+	  " movq        (%%eax), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
+	  " movq        (%%ebx), %%mm2;          /* 8 Pixels from filtered frame to mm2 (displaced)    */"
+	  " movq        (%%ecx), %%mm3;          /* 8 Pixels from reference frame to mm3               */"
 	  " pavgb        %%mm2 , %%mm1;          /* average source pixels                              */"
-	  " psadbw      (%%ecx), %%mm1;          /* 4 Pixels difference to mm1                         */"
+	  " psadbw       %%mm3 , %%mm1;          /* 8 Pixels difference to mm1                         */"
 	  " paddusw      %%mm1 , %%mm0;          /* add result to mm0                                  */"
 	  " addl         %%edx , %%eax;          /* add framewidth to frameaddress                     */"
 	  " addl         %%edx , %%ebx;          /* add framewidth to frameaddress                     */"
@@ -1449,7 +1518,7 @@ calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t re
 }
 
 /*****************************************************************************
- * halfpel-SAD-function for Y with MMXext                                    *
+ * halfpel-SAD-function for Y with MMX                                       *
  *****************************************************************************/
 
 uint32_t
@@ -1458,8 +1527,8 @@ calc_SAD_half_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
   uint8_t *rs = ref + ref_offs;
-  static uint8_t bit_mask[4] __attribute__ ((aligned (32))) = { 127,127,127,127 };
-  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+  static uint8_t bit_mask[4] = { 127,127,127,127 };
+  static uint16_t a[4] = { 0, 0, 0, 0 };
 
   asm volatile
       (
@@ -1622,9 +1691,9 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
 uint32_t
 calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
-  uint8_t *fs __attribute__ ((aligned (32))) = frm + frm_offs;
-  uint8_t *rs __attribute__ ((aligned (32))) = ref + ref_offs;
-  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+  uint8_t *fs = frm + frm_offs;
+  uint8_t *rs = ref + ref_offs;
+  static uint16_t a[4] = { 0, 0, 0, 0 };
     
       switch (div)
         { 
@@ -1831,10 +1900,10 @@ uint32_t
 calc_SAD_uv_mmxe (uint8_t * frm,
                  uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
-  uint32_t d __attribute__ ((aligned (32))) = 0;
-  uint8_t *fs __attribute__ ((aligned (32))) = frm + frm_offs;
-  uint8_t *rs __attribute__ ((aligned (32))) = ref + ref_offs;
-  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+  uint32_t d = 0;
+  uint8_t *fs = frm + frm_offs;
+  uint8_t *rs = ref + ref_offs;
+  static uint16_t a[4] = { 0, 0, 0, 0 };
     
   switch (div)
     {
@@ -2274,12 +2343,12 @@ despeckle_frame_hard (uint8_t * frame[3])
 void
 despeckle_frame_soft (uint8_t * frame[3])
 {
-  int __attribute__ ((aligned (32))) x, y;
-  long int __attribute__ ((aligned (32))) v1, v2;
-  int __attribute__ ((aligned (32))) delta;
-  uint8_t * __attribute__ ((aligned (32))) s0=frame[0];
-  uint8_t * __attribute__ ((aligned (32))) s1=frame[0]+width;
-  uint8_t * __attribute__ ((aligned (32))) s2=frame[0]+2*width;
+  int  x, y;
+  long int  v1, v2;
+  int  delta;
+  uint8_t * s0=frame[0];
+  uint8_t * s1=frame[0]+width;
+  uint8_t * s2=frame[0]+2*width;
 
   for (y = 1; y < (height - 1); y++)
   {
@@ -2312,6 +2381,31 @@ despeckle_frame_soft (uint8_t * frame[3])
   }
 }
 
+int contrast_block(int x, int y, uint8_t * yuv[0])
+{
+    int min=255;
+    int max=0;
+
+    int cx,cy;
+    uint8_t * addr=yuv[0]+y*width+x;
+    
+    for(cy=0;cy<4;cy++)
+    {
+	for(cx=0;cx<4;cx++)
+	{
+	    min=(min < *(addr))? min:*(addr);
+	    max=(max > *(addr))? max:*(addr);
+	    addr++;
+	}
+	addr+=width-4;
+    }
+    min=max-min;
+
+    if(min<8)
+	return(0);
+    else
+	return(1);
+}
 
 /*********************************************************** 
  *                                                         * 
@@ -2370,36 +2464,34 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 	matrix[x][y][0]=0;
 	matrix[x][y][1]=0;
 
-	/* search best matching block in the 4x4 subsampled
-	 * image and store the result in best_match_44_x/y[0..3]
-	 */
 
-	mb_search_44 (x, y, sub_r4, sub_t4);
+	if(contrast_block(x, y, ref_frame))
+	{
+	    /* search best matching block in the 4x4 subsampled
+	     * image and store the result in best_match_44_x/y[0..3]
+	     */
+	    mb_search_44 (x, y, sub_r4, sub_t4);
 	
-	/* search best matching block in the 2x2 subsampled
-	 * image and store the result in best_match_22_x/y[0..3]
-	 */
-	
-	mb_search_22 (x, y, sub_r2, sub_t2);
-	
-	/* based on that 2x2 search we start a search in the
-	 * real frame and store the result in matrix[x][y][d]
-	 */
+	    /* search best matching block in the 2x2 subsampled
+	     * image and store the result in best_match_22_x/y[0..3]
+	     */
+	    mb_search_22 (x, y, sub_r2, sub_t2);
 
-	mb_search (x, y, ref_frame, target);
+	    /* based on that 2x2 search we start a search in the
+	     * real frame and store the result in matrix[x][y][d]
+	     */
+	    mb_search (x, y, ref_frame, target);
+	}
 	
 	vector_SAD=
 	    mb_search_half (x, y, ref_frame, target)>>2;
 	
+	/* vector_SAD is devided by 4 because of being calculated on 8x8
+         * and not on 4x4 basis
+	 */
+
 	dx = matrix[x][y][0] >>1;
 	dy = matrix[x][y][1] >>1;
-
-#if 0
-        vector_SAD = calc_SAD (target[0],
-                               ref_frame[0], 
-			       (x) + (y) * width, 
-			       (x) + (y) * width, 2);
-#endif
 
 #if 0
         vector_SAD += calc_SAD_uv (target[1],
@@ -2415,12 +2507,12 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
         vector_SAD += calc_SAD_uv (sub_t4[1],
                                    sub_r4[1],
                                    ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
-                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<1;
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2);
 
         vector_SAD += calc_SAD_uv (sub_t4[2],
                                    sub_r4[2],
                                    ((x + dx) >>3) + ((y + dy)>>3) * uv_width,
-                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2)<<1;
+                                   ((x)      >>3) + ((y)     >>3) * uv_width, 2);
 #endif
 
 #if 0
@@ -2439,17 +2531,17 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 5000 + avrg_SAD * 100;
-  mean_SAD /= 5100;
+  mean_SAD = mean_SAD * 10000 + avrg_SAD * 100;
+  mean_SAD /= 10100;
 
   if (mean_SAD < 50)            /* don't go too low !!! */
-      mean_SAD = 50;            /* a SAD of 100 is nearly noisefree source material */
+      mean_SAD = 50;            /* a SAD of 50 is really nearly noisefree source material */
 
   framenr++;                     /* Allow a scenechange every 6 frames */
-  if ((avrg_SAD > (mean_SAD*2)) && framenr>10)
+  if ((avrg_SAD > (mean_SAD*2)) && framenr>6)
     {
 	mean_SAD = last_mean_SAD;
-	//framenr=0;
+	framenr=0;
 	scene_change = 1;
 	if (verbose)
         {
@@ -2473,10 +2565,10 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 
   if (verbose)
   {
-    mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
-               mean_SAD, ((float) mean_SAD / 16.0 / 3.0));
-    mjpeg_log (LOG_INFO, "lMSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
-               last_mean_SAD, ((float) last_mean_SAD / 16.0 / 3.0));
+    mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel below +/-%03d per Pixel (approximate) \n",
+               mean_SAD, mean_SAD / 48 );
+    mjpeg_log (LOG_INFO, "lMSAD : %d  --- Noiselevel below +/-%03d per Pixel (approximate) \n",
+               last_mean_SAD, last_mean_SAD / 48 );
     mjpeg_log (LOG_INFO, " ASAD : %d  \n\n",avrg_SAD);
   }
 }
