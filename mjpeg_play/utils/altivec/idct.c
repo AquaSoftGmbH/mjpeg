@@ -63,7 +63,6 @@ static vector float idctconsts[3] = {
 
 
 
-
 #define IDCTROW(b0,b1,b2,b3,b4,b5,b6,b7) /* {{{ */                   \
     x0 = b0;                                                         \
     x1 = b4;                                                         \
@@ -126,7 +125,6 @@ static vector float idctconsts[3] = {
     b6 = vec_sub(x3, x2);               /* x3-x2 */                  \
     b7 = vec_sub(x7, x1);               /* x7-x1 */                  \
     /* }}} */
-
 
 
 #define IDCTCOL(b0,b1,b2,b3,b4,b5,b6,b7) /* {{{ */                   \
@@ -196,10 +194,14 @@ static vector float idctconsts[3] = {
     /* }}} */
 
 
+#define IDCT_PDECL short *block
+#define IDCT_ARGS block
+#define IDCT_PFMT "block=0x%X"
+
 
 /* two dimensional inverse discrete cosine transform */
 
-void idct_altivec(short *block)
+void idct_altivec(IDCT_PDECL)
 {
     vector signed short *bp;
     vector float *cp;
@@ -382,5 +384,26 @@ void idct_altivec(short *block)
 
     AMBER_STOP;
 }
+
+
+#if ALTIVEC_TEST_FUNCTION(idct) /* {{{ */
+#ifdef ALTIVEC_VERIFY
+void idct_altivec_verify(IDCT_PDECL)
+{
+    int i;
+
+    idct_altivec(IDCT_ARGS);
+
+    for (i = 0; i < 64; i++) {
+	if (block[i] < -256)
+	    mjpeg_warn("idct: block[%d]=%d < -256\n", i, block[i]);
+	else if (block[i] > 255)
+	    mjpeg_warn("idct: block[%d]=%d > 255\n", i, block[i]);
+    }
+}
+#else
+ALTIVEC_TEST(idct, void, (IDCT_PDECL), IDCT_PFMT, IDCT_ARGS);
+#endif
+#endif /* }}} */
 
 /* vim:set foldmethod=marker foldlevel=0: */

@@ -34,14 +34,14 @@
 #endif
 
 
-#define C1     0.98078525066375732421875000
-#define C2     0.92387950420379638671875000
-#define C3     0.83146959543228149414062500
-#define C4     0.70710676908493041992187500
-#define C5     0.55557024478912353515625000
-#define C6     0.38268342614173889160156250
-#define C7     0.19509032368659973144531250
-#define SQRT_2 1.41421353816986083984375000
+#define C1     0.98078525066375732421875000 /* cos(1*PI/16) */
+#define C2     0.92387950420379638671875000 /* cos(2*PI/16) */
+#define C3     0.83146959543228149414062500 /* cos(3*PI/16) */
+#define C4     0.70710676908493041992187500 /* cos(4*PI/16) */
+#define C5     0.55557024478912353515625000 /* cos(5*PI/16) */
+#define C6     0.38268342614173889160156250 /* cos(6*PI/16) */
+#define C7     0.19509032368659973144531250 /* cos(7*PI/16) */
+#define SQRT_2 1.41421353816986083984375000 /* sqrt(2)      */
 
 
 #define W0 -(2 * C2)
@@ -196,9 +196,14 @@ static vector float fdctconsts[3] = {
     /* }}} */
 
 
+#define FDCT_PDECL short *block
+#define FDCT_ARGS block
+#define FDCT_PFMT "block=0x%X"
+
+
 /* two dimensional discrete cosine transform */
 
-void fdct_altivec(short *block)
+void fdct_altivec(FDCT_PDECL)
 {
     vector signed short *bp;
     vector float *cp;
@@ -508,5 +513,26 @@ void fdct_altivec(short *block)
 
     AMBER_STOP;
 }
+
+
+#if ALTIVEC_TEST_FUNCTION(fdct) /* {{{ */
+#ifdef ALTIVEC_VERIFY
+void fdct_altivec_verify(FDCT_PDECL)
+{
+    int i;
+
+    fdct_altivec(FDCT_ARGS);
+
+    for (i = 0; i < 64; i++) {
+	if (block[i] < -2048)
+	    mjpeg_warn("fdct: block[%d]=%d < -2048\n", i, block[i]);
+	else if (block[i] > 2047)
+	    mjpeg_warn("fdct: block[%d]=%d > 2047\n", i, block[i]);
+    }
+}
+#else
+ALTIVEC_TEST(fdct, void, (FDCT_PDECL), FDCT_PFMT, FDCT_ARGS);
+#endif
+#endif /* }}} */
 
 /* vim:set foldmethod=marker foldlevel=0: */

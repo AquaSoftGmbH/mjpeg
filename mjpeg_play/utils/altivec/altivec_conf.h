@@ -59,6 +59,8 @@
 #define ALTIVEC_TEST_sub_pred_WITH                  sub_pred 
 #define ALTIVEC_TEST_pred_comp_WITH                 pred_comp 
 #define ALTIVEC_TEST_field_dct_best_WITH            field_dct_best
+#define ALTIVEC_TEST_fdct_WITH                      /* output range test */    
+#define ALTIVEC_TEST_idct_WITH                      /* output range test */    
 
 #  include "verify.h"
 #  define ALTIVEC_TEST_SUFFIX(name) name##_altivec_verify
@@ -96,11 +98,13 @@
 #undef  ALTIVEC_TEST_build_sub22_mests_WITH         build_sub22_mests
 /* can't benchmark the following functions since they modify their input */
 #undef  ALTIVEC_TEST_sub_mean_reduction_WITH        sub_mean_reduction 
-/* iquant_(non_)?intra_m[12] modifies it's input but it shouldn't affect timing */
+/* the following functions modify their input but it shouldn't affect timing */
 #undef  ALTIVEC_TEST_iquant_non_intra_m1_WITH       iquant_non_intra_m1
 #undef  ALTIVEC_TEST_iquant_non_intra_m2_WITH       iquant_non_intra_m2
 #undef  ALTIVEC_TEST_iquant_intra_m1_WITH           iquant_intra_m1
 #undef  ALTIVEC_TEST_iquant_intra_m2_WITH           iquant_intra_m2
+#undef  ALTIVEC_TEST_fdct_WITH                      fdct
+#undef  ALTIVEC_TEST_idct_WITH                      idct
 
 /* turn off (undef) DST during benchmarking, it only slows the function down
  * since everything will be cached due to the benchmark loop.
@@ -162,6 +166,8 @@
 #define ALTIVEC_TEST_pred_comp_WITH              pred_comp_altivec
 #define ALTIVEC_TEST_subsample_image_WITH        subsample_image_altivec
 #define ALTIVEC_TEST_field_dct_best_WITH         field_dct_best_altivec
+#define ALTIVEC_TEST_fdct_WITH                   fdct_altivec
+#define ALTIVEC_TEST_idct_WITH                   idct_altivec
 #else /* the following call other amber functions, must amber separately */
 #define ALTIVEC_TEST_build_sub44_mests_WITH      build_sub44_mests_altivec
 #define ALTIVEC_TEST_build_sub22_mests_WITH      build_sub22_mests_altivec
@@ -193,6 +199,8 @@
 #define ALTIVEC_TEST_pred_comp_WITH              pred_comp 
 #define ALTIVEC_TEST_subsample_image_WITH        subsample_image 
 #define ALTIVEC_TEST_field_dct_best_WITH         field_dct_best
+#define ALTIVEC_TEST_fdct_WITH                   fdct
+#define ALTIVEC_TEST_idct_WITH                   idct
 #else /* the following call other amber functions, must amber separately */
 #define ALTIVEC_TEST_build_sub44_mests_WITH      build_sub44_mests
 #define ALTIVEC_TEST_build_sub22_mests_WITH      build_sub22_mests

@@ -117,7 +117,12 @@ extern struct benchmark_stats n##_altivec_benchmark_stats
 #if ALTIVEC_TEST_FUNCTION(sub_mean_reduction)
   EXTERN_STATS(sub_mean_reduction);
 #endif
-
+#if ALTIVEC_TEST_FUNCTION(fdct)
+  EXTERN_STATS(fdct);
+#endif
+#if ALTIVEC_TEST_FUNCTION(idct)
+  EXTERN_STATS(idct);
+#endif
 
 
 #define BENCHMARK_INFO(n) \
@@ -196,6 +201,12 @@ struct benchmark_info benchmarktab[] = {
 #endif
 #if ALTIVEC_TEST_FUNCTION(sub_mean_reduction)
   BENCHMARK_INFO(sub_mean_reduction)
+#endif
+#if ALTIVEC_TEST_FUNCTION(fdct)
+  BENCHMARK_INFO(fdct)
+#endif
+#if ALTIVEC_TEST_FUNCTION(idct)
+  BENCHMARK_INFO(idct)
 #endif
 };
 
