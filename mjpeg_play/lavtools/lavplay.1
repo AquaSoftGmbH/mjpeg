@@ -1,0 +1,133 @@
+.TH "lavplay" "1" "V 1.4" "Ronald Bultje" "description"
+.SH NAME
+lavplay \- Playback MJPEG video
+.SH SYNOPSIS
+lavplay [options] [filename(s)]
+.SH DESCRIPTION
+\fBlavplay\fP can be used to playback video in MJPEG format (either
+quicktime, movtar or AVI) on a zoran video-capture device, such as
+the Miro/Pinnacle DC10(+), the Iomega Buz or Linux Media Labs' LML33,
+or in software mode (using SDL).
+.SH OPTIONS
+\fBlavplay\fP accepts the following options:
+.TP 8
+.B  \-S, -H or -C
+The playback mode to be used. \-S means software\-playback using SDL.
+\-H means hardware\-playback on the monitor (full\-screen). \-C means
+hardware\-playback to the video-out of the zoran video-capture device.
+Obviously, \-C and \-H only work on computers with zoran video\-capture
+devices.
+.TP 8
+.B \-Z
+Software full-screen playback. This only works if SDL-playback is chosen
+(-S), and will playback the video full-screen instead of in a window.
+.TP 8
+.B \-a [01]
+Enables (1) or disables (0) audio playback.
+.TP 8
+.B \-z
+Zooms the video to fit the screen as good as possible.
+.TP 8
+.B \-x
+Exchange fileds of an interlaced video. Try this if the video looks weird.
+.TP 8
+.B \-s num
+Skip <num> seconds of video at the beginning.
+.TP 8
+.B \-o [np]
+Forces the use of PAL (p) or NTSC (n). By default, the use of either PAL
+or NTSC is guessed from the framerate of the first input video.
+.TP 8
+.B \-c [01]
+Enables (1) or disables (0) the use of sync corrections.
+.TP 8
+.B \-X num, \-Y num
+Horizontal (-X) and vertical (-Y) offset when using hardware-playback of
+a video which does not cover the full video hardware-resolution.
+.TP 8
+.B \-q
+Makes lavplay stay alive at the end of the video (lavplay won't quit).
+Use 'q<enter>' on the command line to quit (see below, \fBSEARCHING
+AND EDITING\fP).
+.TP 8
+.B \-g
+Enables GUI-mode. This is used by xlav and Linux Video Studio. It will
+output the current position in the video each frame, so that the xlav
+or LVS can keep track of where we are in the video which is being played
+back.
+.TP 8
+.B \-n num
+Number of MJPEG-buffers. Default is 32. Try changing this number if you
+have many lost frames.
+.TP 8
+.B \-v num
+Verbosity level (0, 1 or 2)
+.SH ENVIRONMENT VARIABLES
+The following environment variables can be recognized by lavrec:
+.TP 8
+.B LAV_VIDEO_DEV
+The video device. Default is /dev/video
+.TP 8
+.B LAV_AUDIO_DEV
+The audio device. Default is /dev/dsp
+.SH SEARCHING AND EDITING
+\fBlavplay\fP can do more than simple plain playback. On the command-
+line, while playing back, one can type commands to search through the
+video or perform simple editing (NLE) functions. The following commands
+are recognized by lavplay:
+.TP 8
+.B +, \-
+Goes to next/previous frame. Only makes sense when the video is paused.
+.TP 8
+.B pN
+Sets playback speed to N (N=..., -1, 0, 1, ...)
+.TP 8
+.B a[01]
+Enables/disables audio playback
+.TP 8
+.B sN
+if N is a number, this means to go to frame N. if N is prefixed by a +
+or -, this means to go N frames back- or forward.
+.TP 8
+.B om editlist [N1 N2 [N3 N4]]
+Opens a movie or editlist. A second and third argument can specify to
+only open a specific range of frames from this video (N1=-1 means whole
+video). N3 and N4 can specify to show only a specific range of frames
+from the frames which were just opened (useful for trimming).
+.TP 8
+.B w[as] file
+Save the current editlist (a) or the current selection (s) to a file.
+.TP 8
+.B q
+Quit lavplay.
+.TP 8
+.B e[ou] N1 N2
+Cuts (u) or copies (o) frames N1-N2 from the current editlist into an
+internal selection.
+.TP 8
+.B ep
+Pastes the contents of the selection into the current position in the
+editlist.
+.TP 8
+.B em N1 N2 N3
+Moves frames N1-N2 to position N3 in the video.
+.TP 8
+.B ed N1 N2
+Deletes frames N1-N2 from the editlist.
+.TP 8
+.B ea video N1 N2 N3
+Adds frames N1-N2 of the video into position N3 within the editlist.
+N1=-1 means to add the whole video.
+.TP 8
+.B es N1 N2
+Sets the current viewable frames within the whole video to N1-N2. This
+is useful for trimming.
+.SH SEE ALSO
+.BR mjpeg (1),
+.BR lavrec (1)
+.SH CONTACTING
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at \fIhttp://mjpeg.sourceforge.net/
