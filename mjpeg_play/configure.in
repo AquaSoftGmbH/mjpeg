@@ -601,6 +601,7 @@ scripts/Makefile
 utils/Makefile
 utils/altivec/Makefile
 utils/mmxsse/Makefile
+y4mdenoise/Makefile
 mjpegtools-config
 mjpegtools.pc
 mjpegtools.spec

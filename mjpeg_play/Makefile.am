@@ -11,6 +11,7 @@ SUBDIRS = \
 	yuvdenoise \
 	yuvfilters \
 	yuvdeinterlace \
+	y4mdenoise \
 	debian
 
 bin_SCRIPTS = mjpegtools-config
