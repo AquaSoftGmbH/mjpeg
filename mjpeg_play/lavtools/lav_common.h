@@ -68,6 +68,7 @@ typedef struct {
    int interlace;
    y4m_ratio_t sar; /* sample aspect ratio (default 0:0 == unspecified) */
    y4m_ratio_t dar; /* 'suggested' display aspect ratio */
+   int chroma;
   
   int chroma_width;
   int chroma_height;
@@ -91,7 +92,7 @@ void init(LavParam *param, uint8_t *frame[]);
 
 #include <libdv/dv.h>
 
-void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
-			     int width, int height);
+void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
+			    int width, int height, int chroma422);
 void lav_init_dv_decoder(void);
 #endif

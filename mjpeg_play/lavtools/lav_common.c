@@ -118,12 +118,12 @@ uint8_t *dv_frame[3] = {NULL,NULL,NULL};
  */
 
 /*
- * Unpack libdv's 4:2:2-packed into our 4:2:0-planar,
+ * Unpack libdv's 4:2:2-packed into our 4:2:0-planar or 4:2:2-planar,
  *  treating each interlaced field independently
  *
  */
-void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
-			     int width, int height)
+void frame_YUV422_to_planar(uint8_t **output, uint8_t *input,
+			    int width, int height, int chroma422)
 {
     int i, j, w2;
     uint8_t *y, *cb, *cr;
@@ -133,7 +133,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
     cb = output[1];
     cr = output[2];
 
-    for (i=0; i<height; i+=4) {
+    for (i=0; i<height;) {
 	/* process two scanlines (one from each field, interleaved) */
         /* ...top-field scanline */
         for (j=0; j<w2; j++) {
@@ -143,6 +143,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
             *(y++) =  *(input++);
             *(cr++) = *(input++);
         }
+	i++;
         /* ...bottom-field scanline */
         for (j=0; j<w2; j++) {
             /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
@@ -151,6 +152,9 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
             *(y++) =  *(input++);
             *(cr++) = *(input++);
         }
+	i++;
+	if (chroma422)
+	  continue;
 	/* process next two scanlines (one from each field, interleaved) */
         /* ...top-field scanline */
 	for (j=0; j<w2; j++) {
@@ -160,6 +164,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
 	  *(y++) = *(input++);
 	  input++;
 	}
+	i++;
         /* ...bottom-field scanline */
 	for (j=0; j<w2; j++) {
 	  /* skip every second line for U and V */
@@ -168,6 +173,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
 	  *(y++) = *(input++);
 	  input++;
 	}
+	i++;
     }
 }
 
@@ -247,8 +253,23 @@ static uint8_t *bufalloc(size_t size)
 void init(LavParam *param, uint8_t *buffer[])
 {
    param->luma_size = param->output_width * param->output_height;
-   param->chroma_width = param->output_width / 2;
-   param->chroma_height = param->output_height / 2;
+   switch (param->chroma) {
+   default:
+     mjpeg_warn("unsupported chroma (%d), assume '420jpeg'", param->chroma);
+     param->chroma = Y4M_UNKNOWN; /* will update in writeoutYUV4MPEGheader() */
+     /* and do same as case Y4M_CHROMA_420JPEG... */
+   case Y4M_UNKNOWN:
+   case Y4M_CHROMA_420JPEG:
+   case Y4M_CHROMA_420MPEG2:
+   case Y4M_CHROMA_420PALDV:
+     param->chroma_width  = param->output_width  / 2;
+     param->chroma_height = param->output_height / 2;
+     break;
+   case Y4M_CHROMA_422:
+     param->chroma_width  = param->output_width  / 2;
+     param->chroma_height = param->output_height;
+     break;
+   }
    param->chroma_size = param->chroma_height * param->chroma_width;
 
    buffer[0] = bufalloc(param->luma_size);
@@ -288,7 +309,7 @@ int readframe(int numframe,
     mjpeg_error("DV input was not configured at compile time");
     res = 1;
 #else
-    mjpeg_info("DV frame %d   len %d",numframe,len);
+    mjpeg_debug("DV frame %d   len %d",numframe,len);
     res = 0;
     dv_parse_header(decoder, jpeg_data);
     switch(decoder->sampling) {
@@ -332,9 +353,9 @@ int readframe(int numframe,
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     dv_frame, pitches);
-	frame_YUV422_to_YUV420P(frame, dv_frame[0],
-				decoder->width,	decoder->height);
-	
+	frame_YUV422_to_planar(frame, dv_frame[0],
+			       decoder->width,	decoder->height,
+			       (param->chroma == Y4M_CHROMA_422));
       }
       break;
     default:
@@ -345,25 +366,25 @@ int readframe(int numframe,
     break;
 
   case DATAFORMAT_YUV420 :
-    mjpeg_info("YUV420 frame %d   len %d",numframe,len);
+  case DATAFORMAT_YUV422 :
+    mjpeg_debug("raw YUV frame %d   len %d",numframe,len);
     frame_tmp = jpeg_data;
-    memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
-    frame_tmp += param->output_width * param->output_height;
-    memcpy(frame[1], frame_tmp, param->output_width * param->output_height/4);
-    frame_tmp += param->output_width * param->output_height/4;
-    memcpy(frame[2], frame_tmp, param->output_width * param->output_height/4);
+    memcpy(frame[0], frame_tmp, param->luma_size);
+    frame_tmp += param->luma_size;
+    memcpy(frame[1], frame_tmp, param->chroma_size);
+    frame_tmp += param->chroma_size;
+    memcpy(frame[2], frame_tmp, param->chroma_size);
     res = 0;
     break;
 
   default:
     mjpeg_debug("MJPEG frame %d   len %d",numframe,len);
     res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-			  CHROMA420,
+			  ((param->chroma == Y4M_CHROMA_422)? CHROMA422:
+			   CHROMA420),
 			  param->output_width, param->output_height,
 			  frame[0], frame[1], frame[2]);
-    
   }
-  
   
   if (res) {
     mjpeg_warn( "Decoding of Frame %d failed", numframe);
@@ -411,6 +432,94 @@ void writeoutYUV4MPEGheader(int out_fd,
 					   param->output_height,
 					   param->dar));
    }
+
+   switch (el_video_frame_data_format(0, &el)) { /* FIXME: checking only 0-th frame. */
+   case DATAFORMAT_YUV420:
+     switch (param->chroma) {
+     case Y4M_UNKNOWN:
+     case Y4M_CHROMA_420JPEG:
+       break;
+     case Y4M_CHROMA_420MPEG2:
+     case Y4M_CHROMA_420PALDV:
+       mjpeg_warn("4:2:0 chroma should be '420jpeg' with this input");
+       break;
+     default:
+       mjpeg_error_exit1("must specify 4:2:0 chroma (should be '420jpeg') with this input");
+       break;
+     }
+     break;
+
+   case DATAFORMAT_YUV422:
+     switch (param->chroma) {
+     case Y4M_CHROMA_422:
+       break;
+     default:
+       mjpeg_error_exit1("must specify chroma '422' with this input");
+       break;
+     }
+     break;
+
+   case DATAFORMAT_DV2:
+#ifndef HAVE_LIBDV
+     mjpeg_error_exit1("DV input was not configured at compile time");
+#else
+     el_get_video_frame(jpeg_data, 0, &el); /* FIXME: checking only 0-th frame. */
+     dv_parse_header(decoder, jpeg_data);
+     switch(decoder->sampling) {
+     case e_dv_sample_420:
+# ifndef LIBDV_PAL_YV12
+       mjpeg_error_exit1("DV PAL YV12 input was not configured at compile time");
+# else
+       switch (param->chroma) {
+       case Y4M_UNKNOWN:
+	 mjpeg_info("set chroma '420paldv' from imput");
+	 param->chroma = Y4M_CHROMA_420PALDV;
+	 break;
+       case Y4M_CHROMA_420PALDV:
+	 break;
+       case Y4M_CHROMA_420JPEG:
+       case Y4M_CHROMA_420MPEG2:
+	 mjpeg_warn("4:2:0 chroma should be '420paldv' with this input");
+	 break;
+       default:
+	 mjpeg_error_exit1("must specify 4:2:0 chroma (should be '420paldv') with this input");
+	 break;
+       }
+       break;
+# endif
+     case e_dv_sample_411:
+     case e_dv_sample_422:
+       if (param->chroma != Y4M_CHROMA_422)
+	 mjpeg_info("chroma '422' recommended with this input");
+       switch (param->chroma) {
+       case Y4M_CHROMA_420MPEG2:
+       case Y4M_CHROMA_420PALDV:
+	 mjpeg_warn("4:2:0 chroma should be '420jpeg' with this input");
+	 break;
+       }
+       break;
+     default:
+       break;
+     }
+#endif
+     break;
+
+   case DATAFORMAT_MJPG:
+     if (param->chroma != Y4M_CHROMA_422 && el.MJPG_chroma == CHROMA422)
+       mjpeg_info("chroma '422' recommended with this input");
+     switch (param->chroma) {
+     case Y4M_CHROMA_420MPEG2:
+     case Y4M_CHROMA_420PALDV:
+       mjpeg_warn("4:2:0 chroma should be '420jpeg' with this input");
+       break;
+     }
+     break;
+   }
+   if (param->chroma == Y4M_UNKNOWN) {
+     mjpeg_info("set default chroma '420jpeg'");
+     param->chroma = Y4M_CHROMA_420JPEG;
+   }
+   y4m_si_set_chroma(streaminfo, param->chroma);
 
    n = y4m_write_stream_header(out_fd, streaminfo);
    if (n != Y4M_OK)

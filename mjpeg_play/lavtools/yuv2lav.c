@@ -217,11 +217,35 @@ int main(int argc, char *argv[])
    (void)mjpeg_default_handler_verbosity(verbose);   
    fd_in = 0;                   /* stdin */
 
+   y4m_accept_extensions(1);
+
    y4m_init_stream_info(&streaminfo);
    y4m_init_frame_info(&frameinfo);
    if (y4m_read_stream_header(fd_in, &streaminfo) != Y4M_OK) {
       mjpeg_error( "Couldn't read YUV4MPEG header!");
       exit (1);
+   }
+
+   switch (y4m_si_get_interlace(&streaminfo)) {
+   case Y4M_ILACE_NONE:
+   case Y4M_ILACE_TOP_FIRST:
+   case Y4M_ILACE_BOTTOM_FIRST:
+     break;
+   default:
+     mjpeg_error_exit1("unsupported input interlace");
+   }
+
+   switch (y4m_si_get_chroma(&streaminfo)) {
+   case Y4M_CHROMA_420JPEG:
+   case Y4M_CHROMA_422:
+     break;
+   case Y4M_CHROMA_420MPEG2:
+   case Y4M_CHROMA_420PALDV:
+     mjpeg_warn("unsupported input chroma, assume '420jpeg'");
+     y4m_si_set_chroma(&streaminfo, Y4M_CHROMA_420JPEG);
+     break;
+   default:
+     mjpeg_error_exit1("unsupported input chroma");
    }
 
    if (param_interlace < 0) {
@@ -338,10 +362,12 @@ int main(int argc, char *argv[])
 		   sizeof(unsigned char));
    yuv[1] = malloc(y4m_si_get_width(&streaminfo) * 
 		   y4m_si_get_height(&streaminfo) *
-		   sizeof(unsigned char) / 4);
+		   sizeof(unsigned char) /
+		   ((y4m_si_get_chroma(&streaminfo) == Y4M_CHROMA_422)? 2: 4));
    yuv[2] = malloc(y4m_si_get_width(&streaminfo) * 
 		   y4m_si_get_height(&streaminfo) *
-		   sizeof(unsigned char) / 4);
+		   sizeof(unsigned char) /
+		   ((y4m_si_get_chroma(&streaminfo) == Y4M_CHROMA_422)? 2: 4));
    jpeg = (uint8_t*)malloc(param_bufsize);
    
    signal (SIGINT, sigint_handler);
@@ -353,7 +379,8 @@ int main(int argc, char *argv[])
       fflush (stdout);
       jpegsize = encode_jpeg_raw (jpeg, param_bufsize, param_quality,
                                   param_interlace,
-				  0 /* ctype */,
+				  ((y4m_si_get_chroma(&streaminfo) == Y4M_CHROMA_422)? CHROMA422:
+				   CHROMA420),
                                   y4m_si_get_width(&streaminfo),
 				  y4m_si_get_height(&streaminfo),
                                   yuv[0], yuv[1], yuv[2]);

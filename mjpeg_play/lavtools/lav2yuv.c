@@ -57,6 +57,8 @@ void Usage(char *str)
    "   -P w:h     Declare the intended display aspect ratio (used to guess\n"
    "              the sample aspect ratio).  Common values are 4:3 and 16:9.\n"
    "              (default:  read from DV files, or assume 4:3 for MJPEG)\n"
+   "   -C chroma  Set output chroma (default: '420jpeg')\n"
+   "              '420jpeg', '420mpeg2', '420paldv', '422' are available\n"
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
    "   -f num     Only num frames are written to stdout (0 means all frames)\n",
@@ -186,6 +188,8 @@ int main(argc, argv)
 {
 	int n, nerr = 0;
 
+	y4m_accept_extensions(1);
+
 	param.offset = 0;
 	param.frames = 0;
 	param.mono = 0;
@@ -197,8 +201,9 @@ int main(argc, argv)
 	param.interlace = -1;
 	param.sar = y4m_sar_UNKNOWN;
 	param.dar = y4m_dar_4_3;
+	param.chroma = Y4M_UNKNOWN;
 
-	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:P:A:")) != EOF) {
+	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:P:A:C:")) != EOF) {
 		switch (n) {
 
 		case 'v':
@@ -239,6 +244,20 @@ int main(argc, argv)
 		    nerr++;
 		  }
 			break;
+		case 'C':
+		  param.chroma = y4m_chroma_parse_keyword(optarg);
+		  switch (param.chroma) {
+		  case Y4M_CHROMA_420JPEG:
+		  case Y4M_CHROMA_420MPEG2:
+		  case Y4M_CHROMA_420PALDV:
+		  case Y4M_CHROMA_422:
+		    break;
+		  default:
+		    mjpeg_error("Unsupported chroma '%s'", optarg);
+		    nerr++;
+		    break;
+		  }
+		  break;
 		default:
 			nerr++;
 		}
