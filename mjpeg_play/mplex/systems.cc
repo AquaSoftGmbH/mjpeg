@@ -43,7 +43,9 @@ char filename[MAXPATHLEN];
 **************************************************************/
 	
 		
-int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp )
+unsigned int packet_payload( Sys_header_struc *sys_header, 
+							 Pack_struc *pack_header, 
+							 int buffers, int PTSstamp, int DTSstamp )
 {
   int payload = sector_size - PACKET_HEADER_SIZE ;
 	if( sys_header != NULL )
@@ -206,8 +208,8 @@ void create_sector (Sector_struc 	 *sector,
     unsigned char *size_offset;
 	unsigned char *fixed_packet_header_end;
 	unsigned char *pes_header_len_offset = 0; /* Silence compiler... */
-	int target_packet_data_size;
-	int actual_packet_data_size;
+	unsigned int target_packet_data_size;
+	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
 	int bytes_short;
 

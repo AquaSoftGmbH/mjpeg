@@ -59,7 +59,7 @@ void buffer_flush (Buffer_struc  *buffer)
 	returns free space in the buffer
 ******************************************************************/
 
-int buffer_space (Buffer_struc *buffer)
+unsigned int buffer_space (Buffer_struc *buffer)
 {
     unsigned int used_bytes;
     Buffer_queue *pointer;

@@ -58,8 +58,7 @@ Sector_struc 		cur_sector;
 
 	/* Stream parameters */
 static  unsigned long long bytes_output;
-static  FILE *istream_v =NULL;			/* Inputstream Video	*/
-static  FILE *istream_a =NULL;			/* Inputstream Audio	*/
+
 static  FILE *ostream;				/* Outputstream MPEG	*/
 
 
@@ -67,19 +66,19 @@ typedef enum { start_segment, mid_segment,
 	       last_vau_segment, last_aaus_segment }
 segment_state;
 
-void outputstreamsuffix(clockticks *SCR, FILE *ostream, 
+static void outputstreamsuffix(clockticks *SCR, FILE *ostream, 
 			unsigned long long  *bytes_output);
-void next_video_access_unit (Buffer_struc *buffer,
-			     VAunit *video_au, unsigned int bytes_muxed, 
-			     unsigned int *AU_starting_next_sec, 
-			      clockticks SCR_delay,
-			     Vector vaunit_info_vec);
-void next_audio_access_unit (Buffer_struc *buffer,
-			     AAunit *audio_au, 
-			     unsigned int bytes_muxed,
-			     unsigned char *audio_frame_start, 
-			     clockticks SCR_delay,
-			     Vector aaunit_info_vec);
+static void next_video_access_unit (Buffer_struc *buffer,
+									VAunit *video_au, unsigned int bytes_muxed, 
+									unsigned int *AU_starting_next_sec, 
+									clockticks SCR_delay,
+									VideoStream &vstrm);
+static void next_audio_access_unit (Buffer_struc *buffer,
+									AAunit *audio_au, 
+									unsigned int bytes_muxed,
+									unsigned char *audio_frame_start, 
+									clockticks SCR_delay,
+									AUStream<AAunit> &aaunit_info_vec);
 void outputstreamprefix( clockticks *current_SCR);
 
 
@@ -90,7 +89,7 @@ void outputstreamprefix( clockticks *current_SCR);
 	user options.
 ******************************************************************/
 
-void init_stream_syntax_parameters(	Video_struc 	*video_info,
+void init_stream_syntax_parameters(	VideoStream 	*video_info,
 									Audio_struc 	*audio_info	)
 {
 
@@ -245,24 +244,9 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
      
   	if (which_streams & STREAMS_VIDEO) 
     {
-		if( opt_VBR )
-		{
-			video_rate = video_info->peak_bit_rate *50;
-			if( video_buffer_size < video_rate / 2 )
-			{
-				mjpeg_warn( "VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
-			}
-			mjpeg_info( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
-						video_rate*8, video_buffer_size/1024 );
-		}
-		else
-		{
-			if (video_info->bit_rate > video_info->comp_bit_rate)
-				video_rate = video_info->bit_rate * 50;
-			else
-				video_rate = video_info->comp_bit_rate * 50;
-		}
+		video_rate = video_info->bit_rate * 50;
     }
+
 	if (which_streams & STREAMS_AUDIO)
 		audio_rate = bitrate_index[audio_info->version_id][3-audio_info->layer][audio_info->bit_rate]*128;
 
@@ -282,6 +266,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	mjpeg_info ("best-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
 	if( opt_data_rate != 0 )
 		mjpeg_info ("target data-rate specified               : %7d\n", opt_data_rate*8 );
+
 	if( opt_data_rate == 0 )
 	{
 		mjpeg_info( "Setting best-guess data rate.\n");
@@ -470,11 +455,10 @@ void outputstreamsuffix(clockticks *SCR,
 
 int frame_cnt=0;
 	
-void outputstream ( char 		*video_file,
+void outputstream ( VideoStream &vstrm,
 					char 		*audio_file,
 					char 		*multi_file,
-					Vector	   vaunit_info_vec,
-					Vector     aaunit_info_vec
+					AUStream<AAunit>   &aaunit_info_vec
 					)
 
 {
@@ -512,10 +496,11 @@ void outputstream ( char 		*video_file,
 	unsigned char start_of_new_pack;
 	unsigned char include_sys_header = 0; /* Suppress warning */
 
-  /* Oeffne alle Ein- und Ausgabefiles			*/
-  /* Open in- and outputstream				*/
+	static  FILE *istream_a =NULL;			/* Inputstream Audio	*/
 
-	if (which_streams & STREAMS_VIDEO) istream_v = fopen (video_file, "rb");
+	/* Oeffne alle Ein- und Ausgabefiles			*/
+	/* Open in- and outputstream				*/
+
 	if (which_streams & STREAMS_AUDIO) istream_a = fopen (audio_file, "rb");
 
 	ostream	= system_open_init(multi_file);
@@ -530,11 +515,11 @@ void outputstream ( char 		*video_file,
 	AU_starting_next_sec = OLDFRAME;
 	
 	if (which_streams & STREAMS_AUDIO) {
-		audio_au = *(AAunit*)VectorNext( aaunit_info_vec );
+		audio_au = *aaunit_info_vec.next();
 		audio_frame_start = true;
 	}
 	if (which_streams & STREAMS_VIDEO) {
-		video_au = *(VAunit*)VectorNext( vaunit_info_vec );
+		video_au = *vstrm.next();;
 		AU_starting_next_sec = video_au.type;
 	}
 
@@ -667,14 +652,14 @@ void outputstream ( char 		*video_file,
 						ostream = system_next_file( ostream, multi_file );
 					else
 					{
-						next_vau = (VAunit*)VectorLookAhead(vaunit_info_vec, 1);
+						next_vau = vstrm.lookahead( 1);
 						if( next_vau->type != IFRAME)
 							seg_state = last_vau_segment;
 					}
 				}
 				else if( video_au.end_seq )
 				{
-					next_vau = (VAunit*)VectorLookAhead(vaunit_info_vec, 1);
+					next_vau = vstrm.lookahead( 1);
 					if( next_vau  )
 					{
 						if( ! next_vau->seq_header || next_vau->type != IFRAME)
@@ -742,6 +727,7 @@ void outputstream ( char 		*video_file,
 		   and audio under-run
 		   	   
 		*/
+
 		if ( (buffer_space (&audio_buffer)-AUDIO_BUFFER_FILL_MARGIN
 			  > audio_max_packet_data)
 			 && (audio_au.length>0)
@@ -775,15 +761,15 @@ void outputstream ( char 		*video_file,
 				 && video_au.length>0 && seg_state != last_aaus_segment
 			)
 		{
-		
+
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+video_bytes, &video_next_SCR);
 			if( video_next_SCR >= video_au.DTS+SCR_video_delay )
 				timeout_error (STATUS_VIDEO_TIME_OUT,video_au.dorder);
 			output_video ( current_SCR, SCR_video_delay, 
-						  istream_v, ostream, 
+						  vstrm, ostream, 
 						  &video_buffer, &video_au, 
-						  vaunit_info_vec, &AU_starting_next_sec,
+						  &AU_starting_next_sec,
 						  start_of_new_pack,
 						  include_sys_header);
 
@@ -854,7 +840,6 @@ void outputstream ( char 		*video_file,
 
 	fclose (ostream);
 	if (which_streams & STREAMS_AUDIO) fclose (istream_a);
-	if (which_streams & STREAMS_VIDEO) fclose (istream_v);
 
 
     
@@ -877,7 +862,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 							 unsigned int bytes_muxed,
 							 unsigned int *AU_starting_next_sec,
 							 clockticks SCR_delay,
-							 Vector vaunit_info_vec
+							 VideoStream  &vstrm
 							 )
 {
   clockticks   decode_time;
@@ -899,7 +884,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 
 	  queue_buffer (buffer, video_au->length, decode_time);
 	  bytes_muxed -= video_au->length;
-	  vau = (VAunit*)VectorNext( vaunit_info_vec );
+	  vau = vstrm.next();
 	  if( vau != NULL )
 		*video_au = *vau;
 	  else
@@ -925,7 +910,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 		{
 		  queue_buffer (buffer, bytes_muxed, decode_time);
 
-		  vau = (VAunit*)VectorNext( vaunit_info_vec );
+		  vau = vstrm.next();
 		  if( vau != NULL )
 			*video_au = *vau;
 		  else
@@ -950,11 +935,10 @@ void next_video_access_unit (Buffer_struc *buffer,
 
 void output_video ( clockticks SCR,
 					clockticks SCR_delay,
-					FILE *istream_v,
+					VideoStream &vstrm,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					VAunit *video_au,
-					Vector vaunit_info_vec,
 					unsigned int *AU_starting_next_sec,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header
@@ -1013,6 +997,7 @@ void output_video ( clockticks SCR,
 	  if(  dtspts_for_all_vau && max_packet_payload == 0 )
 	  	max_packet_payload = video_au->length;
 
+  if( video_au->dorder == 1499 )
 		
 	  if (video_au->type == BFRAME)
 		timestamps=TIMESTAMPBITS_PTS;
@@ -1021,11 +1006,11 @@ void output_video ( clockticks SCR,
 
 	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 					  max_packet_payload,
-					  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
+					  vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
 					  buffers_in_video, PTS, DTS,
 					  timestamps );
 	  next_video_access_unit (buffer, video_au, cur_sector.length_of_packet_data, 
-							  AU_starting_next_sec, SCR_delay, vaunit_info_vec);
+							  AU_starting_next_sec, SCR_delay, vstrm);
 
 	}
 
@@ -1038,11 +1023,11 @@ void output_video ( clockticks SCR,
 	{
 	  create_sector( &cur_sector, pack_ptr, sys_header_ptr,
 					 video_au->length,
-					 istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
+					 vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
 					 buffers_in_video, 0, 0,
 					 TIMESTAMPBITS_NO );
 	  next_video_access_unit (buffer, video_au, cur_sector.length_of_packet_data, 
-							  AU_starting_next_sec, SCR_delay, vaunit_info_vec);
+							  AU_starting_next_sec, SCR_delay, vstrm);
 
 	}
 
@@ -1059,7 +1044,7 @@ void output_video ( clockticks SCR,
 	  /* is there a new access unit anyway? */
 
  
-	  vau = (VAunit*)VectorNext( vaunit_info_vec );
+	  vau = vstrm.next();
 	  if( vau != NULL )
 		{
 		  *video_au = *vau;
@@ -1077,19 +1062,19 @@ void output_video ( clockticks SCR,
 	
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 max_packet_payload,
-						 istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
+						 vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
 						 buffers_in_video, PTS, DTS,
 						 timestamps );
 		  next_video_access_unit (buffer, video_au, 
 		  						  cur_sector.length_of_packet_data - prev_au_tail, 
-								  AU_starting_next_sec, SCR_delay, vaunit_info_vec);
+								  AU_starting_next_sec, SCR_delay, vstrm);
 		} 
 	  else
 		{
 		  video_au->markempty();
 		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 						  0,
-						  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
+						  vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
 						  buffers_in_video, 0, 0,
 						  TIMESTAMPBITS_NO);
 		};
@@ -1121,7 +1106,7 @@ void next_audio_access_unit (Buffer_struc *buffer,
 							 unsigned int bytes_muxed,
 							 unsigned char *audio_frame_start,
 							 clockticks SCR_delay,
-							 Vector aaunit_info_vec							 )
+							 AUStream<AAunit> &aaunit_info_vec							 )
 
 {
   AAunit *aau;
@@ -1135,7 +1120,7 @@ void next_audio_access_unit (Buffer_struc *buffer,
 	{
 	  queue_buffer (buffer, audio_au->length, decode_time);
 	  bytes_muxed -= audio_au->length;
-	  aau = (AAunit*)VectorNext( aaunit_info_vec );
+	  aau = aaunit_info_vec.next();
 	  if( aau != NULL )
 		*audio_au = *aau;
 	  else
@@ -1156,7 +1141,7 @@ void next_audio_access_unit (Buffer_struc *buffer,
 	  if (audio_au->length == bytes_muxed)
 		{
 		  queue_buffer (buffer, bytes_muxed, decode_time);
-		  aau = (AAunit*)VectorNext( aaunit_info_vec );
+		  aau = aaunit_info_vec.next();
 		  if( aau != NULL )
 			*audio_au = *aau;
 		  else
@@ -1184,7 +1169,7 @@ void output_audio ( clockticks SCR,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					AAunit *audio_au,
-					Vector aaunit_info_vec,
+					AUStream<AAunit> &aaunit_info_vec,
 					unsigned char *audio_frame_start,
 					unsigned char start_of_new_pack,
 					unsigned char include_sys_header,
@@ -1199,7 +1184,7 @@ void output_audio ( clockticks SCR,
   Sys_header_struc *sys_header_ptr = NULL;
   AAunit *aau;
   Pack_struc pack;
-  int old_au_then_new_payload;
+  unsigned int old_au_then_new_payload;
   
   PTS = audio_au->PTS + SCR_delay;
   old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr,
@@ -1276,7 +1261,7 @@ void output_audio ( clockticks SCR,
 
 	  /* gibt es ueberhaupt noch eine Access Unit ? */
 	  /* is there another access unit anyway ? */
-	  aau = (AAunit*)VectorNext( aaunit_info_vec );
+	  aau = aaunit_info_vec.next();
 	  if( aau != NULL )
 		{
 		  *audio_au = *aau;

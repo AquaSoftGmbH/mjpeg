@@ -73,36 +73,35 @@ int main (int argc, char* argv[])
     char        *multi_file = NULL;	
 
 	int     optargs;
-    Video_struc video_info;
+    VideoStream videoStrm;
     Audio_struc audio_info;
-    unsigned int audio_bytes, video_bytes;
+    off_t audio_bytes, video_bytes;
     clockticks first_frame_PTS = 0;
-    Vector  vaunits_info, aaunits_info;
+    AUStream<VAunit>  vaunits_info;
+	AUStream<AAunit>  aaunits_info;
 
     optargs = intro_and_options (argc, argv, &multi_file);
     check_files (argc-optargs, argv+optargs, 
                  &audio_file, &video_file,
-				 &audio_bytes, &video_bytes);
+				 audio_bytes, video_bytes);
 #ifdef REDUNDANT
-	empty_video_struc (&video_info);
+	empty_video_struc (&videoStrm);
     empty_audio_struc (&audio_info);
 #endif
     if (which_streams & STREAMS_VIDEO) {
-	  get_info_video (video_file, &video_info, &first_frame_PTS,
-			  video_bytes, &vaunits_info);
+		videoStrm.Init( video_file, &first_frame_PTS,video_bytes);
     }
     
     if (which_streams & STREAMS_AUDIO) {
 	  get_info_audio (audio_file, &audio_info, first_frame_PTS,
-			  audio_bytes, &aaunits_info);
+			  audio_bytes, aaunits_info);
     }
 
 
 
-	init_stream_syntax_parameters(&video_info,&audio_info);
-
-    outputstream (video_file,  audio_file,  multi_file, vaunits_info, aaunits_info );
-
+	init_stream_syntax_parameters(&videoStrm,&audio_info);
+    outputstream (videoStrm,  audio_file,  multi_file,  aaunits_info );
+	videoStrm.close();
     return (0);	
 }
 

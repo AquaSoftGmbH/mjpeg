@@ -64,9 +64,22 @@
 	* Man pages.
 	
 	* Binary packages.
+
+2001-06-21 Andrew Stevens (as@comlab.ox.ac.uk)
 	
+        * 1.5 series
+
+        * Single pass multiplexer.
+
+        * Splitting mpeg encoder into re-entrant library and front-end(s).
+
+	* Switch to multi-frame ppm
+
 CVS log:
 $Log$
+Revision 1.12  2001/05/26 12:37:50  wackston
+Tidying doco for packaging...
+
 Revision 1.11  2001/05/10 19:52:36  wackston
 Tidyings and fixing up to the 1.4 release.
 

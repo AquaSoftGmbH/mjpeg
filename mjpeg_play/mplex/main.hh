@@ -148,8 +148,40 @@
 
 
 
-typedef struct video_struc	/* Informationen ueber Video Stream	*/
-{   bitcount_t stream_length  ;
+class VideoStream
+{
+public:
+	VideoStream() :
+		eoscan(false),
+		stream_length(0),
+		num_sequence(0),
+		num_seq_end(0),
+		num_pictures(0),
+		num_groups(0)
+		{
+			for( int i =0; i<4; ++i )
+				num_frames[i] = avg_frames[i] = 0;
+		}
+
+
+	void Init(char *video_file,	
+			  clockticks *ret_first_frame_PTS,
+			  off_t length);
+	
+	void close();
+	VAunit *next();
+	VAunit *lookahead( unsigned int lookahead );
+
+
+private:
+	static const unsigned int FRAME_CHUNK = 256;
+	void fillAUbuffer(int frames_to_buffer);
+	void output_seqhdr_info();
+	bool eoscan;
+
+public:	
+	off_t      file_length;
+    bitcount_t stream_length  ;
     unsigned int num_sequence 	;
     unsigned int num_seq_end	;
     unsigned int num_pictures 	;
@@ -167,10 +199,51 @@ typedef struct video_struc	/* Informationen ueber Video Stream	*/
     unsigned int vbv_buffer_size;
     unsigned int CSPF 		;
     double secs_per_frame;
-} Video_struc; 		
 
-typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
-{   bitcount_t stream_length ;
+	FILE *rawstrm;				// Elementary input stream
+	                            // Eventually to be encapsulated
+	
+private:
+	AUStream<VAunit> aunits;
+	
+	unsigned int last_buffered_AU;		// decode seq num of last buffered frame + 1
+
+	/* State variables for scanning source bit-stream */
+    IBitStream bs;
+   	bitcount_t AU_start;
+    bitcount_t prev_stream_length;
+    VAunit access_unit;
+    unsigned int syncword;
+    unsigned int decoding_order;
+	unsigned int fields_presented;
+    unsigned int group_order;
+    unsigned int group_start_pic;
+	unsigned int group_start_field;
+    unsigned long temporal_reference;
+    unsigned short pict_rate;
+	int pulldown_32;
+	int repeat_first_field;
+	int film_rate;
+    unsigned int prozent;
+    unsigned int old_prozent;
+    double frame_rate;
+	unsigned int max_bits_persec;
+	int AU_pict_data;
+	int AU_hdr;
+
+}; 		
+
+struct Audio_struc	/* Informationen ueber Audio Stream	*/
+{   
+	Audio_struc() : 
+		stream_length(0),
+		num_syncword(0)
+		{
+			for( int i = 0; i <2 ; ++i )
+				num_frames[i] = size_frames[i] = 0;
+		}
+		
+	bitcount_t stream_length ;
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
     unsigned int size_frames[2] ;
@@ -184,7 +257,7 @@ typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
     unsigned int copyright      ;
     unsigned int original_copy  ;
     unsigned int emphasis	;
-} Audio_struc; 	
+}; 	
 
 typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
 				/* und Packet enthalten.		*/
@@ -225,29 +298,24 @@ int intro_and_options( int, char **, char**);
 /* Anzeigen des Introbildschirmes und	*/
 /* Ueberpruefen der Argumente			*/
 
-void init_stream_syntax_parameters(Video_struc 	*video_info,
+void init_stream_syntax_parameters(VideoStream 	*video_info,
 							    	Audio_struc 	*audio_info );	
 										/* Initialisation of syntax paramters 	*/
 										/* based on (checked) options 			*/
 										
 void check_files (int argc,
 				  char* argv[],
-				  char** audio_file,
-				  char** video_file,
-				  unsigned int *audio_bytes,
-				  unsigned int *video_bytes
+				  char**audio_file,
+				  char**video_file,
+				  off_t &audio_bytes,
+				  off_t &video_bytes
 	);
-bool  open_file(char *name, unsigned int *bytes);
-void get_info_video (char *video_file,	
-					Video_struc *video_info,
-					 clockticks *first_frame_PTS,
-					unsigned int length,
-					Vector *vid_info_vec);
+bool open_file(const char *name, off_t &size);
 void get_info_audio (char *audio_file,
 					  Audio_struc *audio_info,
 					  clockticks first_frame_PTS,
 					  unsigned int length,
-					  Vector *audio_info_vec
+					  AUStream<AAunit> &audio_info_vec
 
 					  );
 
@@ -278,7 +346,9 @@ void buffer_mpeg2scr_timecode( clockticks timecode,
 							 );
 
 int  comp_timecode        (clockticks *,clockticks *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
-int packet_payload(  Sys_header_struc *sys_header,  Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp );
+unsigned int packet_payload(  Sys_header_struc *sys_header,  
+							  Pack_struc *pack_header, 
+							  int buffers, int PTSstamp, int DTSstamp );
 	/* Compute available packet payload in a sector... */
 void create_sector (Sector_struc 	 *sector,
 					Pack_struc	     *pack,
@@ -321,11 +391,10 @@ void create_pack (
 
 void output_video ( clockticks SCR,
 					clockticks SCR_delay,
-					FILE *istream_v,
+					VideoStream &vstrm,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					VAunit *video_au,
-					Vector vaunit_info_vec,
 					unsigned int *new_picture_type,
 					unsigned char marker_pack,
 					unsigned char include_sys_header
@@ -336,7 +405,7 @@ void output_audio ( clockticks SCR,
 					FILE *ostream,
 					Buffer_struc *buffer,
 					AAunit *audio_au,
-					Vector aaunit_info_vec,
+					AUStream<AAunit> &aaunit_info_vec,
 					unsigned char *audio_frame_start,
 					unsigned char marker_pack,
 					unsigned char include_sys_header,
@@ -353,16 +422,15 @@ void output_padding       (
 
 void buffer_clean	  (Buffer_struc *buffer, clockticks timenow);
 void buffer_flush     (Buffer_struc *buffer);
-int  buffer_space     (Buffer_struc *buffer);	/* Anzahl freier Bytes in Buffer	*/
+unsigned int  buffer_space     (Buffer_struc *buffer);	/* Anzahl freier Bytes in Buffer	*/
 void queue_buffer     (Buffer_struc *buffer,
 						unsigned int bytes,
 						clockticks removaltime);	/* An Bufferliste anhaengen		*/
 
-void outputstream ( char 		*video_file,
+void outputstream ( VideoStream &vstrm,
 					char 		*audio_file,
 					char 		*multi_file,
-					Vector	   vaunit_info_vec,
-					Vector     aaunit_info_vec
+					AUStream<AAunit>   &aaunit_info_vec
 				 );
 FILE *system_open_init( const char *filename_pat );
 int system_file_lim_reached(  FILE *cur_system_strm );
@@ -410,7 +478,7 @@ extern int opt_mux_format;
 extern int opt_multifile_segment;
 extern int opt_always_system_headers;
 extern int opt_packets_per_pack;
-extern clockticks opt_max_PTS;
+extern bitcount_t opt_max_PTS;
 extern int opt_emul_vcdmplex;
 
 extern int verbose;

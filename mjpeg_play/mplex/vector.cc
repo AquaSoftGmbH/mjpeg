@@ -1,10 +1,11 @@
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <inttypes.h>
 #include "vector.hh"
 
-
+#ifdef REDUNDANT
 struct VectorStrct {
 	uint8_t *buf;
 	size_t end;
@@ -75,3 +76,5 @@ void *VectorLookAhead( Vector v, int lookahead )
 	loc = &v->buf[v->ptr+look];
 	return loc;
 }
+
+#endif

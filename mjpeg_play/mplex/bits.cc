@@ -27,22 +27,23 @@
  *
  */
 
+#include <config.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
-#include "bits.hh"
 #include "mjpeg_logging.h"
+#include "bits.hh"
 
 /* initialize buffer, call once before first putbits or alignbits */
 void OBitStream::open(char *bs_filename)
 {
-  if ((bitfile = fopen(bs_filename, "wb")) == NULL)
+  if ((fileh = fopen(bs_filename, "wb")) == NULL)
   {
 	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
 						 bs_filename, sys_errlist[sys_nerr]);
   }
   // Save multiple buffering...
-  setvbuf(bitfile, 0, _IONBF, 0 );
+  setvbuf(fileh, 0, _IONBF, 0 );
   bitidx = 8;
   byteidx = 0;
   totbits = 0LL;
@@ -51,12 +52,12 @@ void OBitStream::open(char *bs_filename)
 
 void OBitStream::close()
 {
-  if (bitfile)
+  if (fileh)
   {
     if (byteidx != 0)
-      fwrite(bfr, sizeof(uint8_t), byteidx, bitfile);
-    fclose(bitfile);
-    bitfile = NULL;
+      fwrite(bfr, sizeof(uint8_t), byteidx, fileh);
+    fclose(fileh);
+    fileh = NULL;
   }
 }
 
@@ -65,7 +66,7 @@ void OBitStream::putbyte()
     bfr[byteidx++] = outbyte;
     if (byteidx == BUFFER_SIZE)
     {
-		if (fwrite(bfr, sizeof(unsigned char), BUFFER_SIZE, bitfile) != BUFFER_SIZE)
+		if (fwrite(bfr, sizeof(unsigned char), BUFFER_SIZE, fileh) != BUFFER_SIZE)
 			mjpeg_error_exit1( "Write failed: %s\n", sys_errlist[sys_nerr]);
 		byteidx = 0;
     }
@@ -107,7 +108,7 @@ void OBitStream::put1bit(int val)
 /* Prepare a upcoming undo at the beginning of a GOP */
 void IBitStream::prepareundo( BitStream &undo)
 {
-  fgetpos(bitfile, &actpos);
+  fgetpos(fileh, &actpos);
   undo = *(static_cast<BitStream*>(this));
 }
 
@@ -115,7 +116,7 @@ void IBitStream::prepareundo( BitStream &undo)
 void IBitStream::undochanges( BitStream &undo)
 {
 	*(static_cast<BitStream *>(this)) = undo;
-	fsetpos(bitfile, &actpos);
+	fsetpos(fileh, &actpos);
 }
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
@@ -128,9 +129,9 @@ void OBitStream::alignbits()
 
 bool IBitStream::refill_buffer()
 {
-  int i;
+	unsigned int i;
 
-  i = fread(bfr, sizeof(uint8_t), BUFFER_SIZE, bitfile);
+  i = fread(bfr, sizeof(uint8_t), BUFFER_SIZE, fileh);
   if (!i)
   {
     eobs = true;
@@ -144,7 +145,7 @@ bool IBitStream::refill_buffer()
 void IBitStream::open( char *bs_filename)
 {
 
-  if ((bitfile = fopen(bs_filename, "rb")) == NULL)
+  if ((fileh = fopen(bs_filename, "rb")) == NULL)
   {
 	  mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
   }
@@ -162,12 +163,26 @@ void IBitStream::open( char *bs_filename)
   }
 }
 
+
+/* open the device to read the bit stream from it */
+void IBitStream::rewind()
+{
+
+  byteidx = 0;
+  bitidx = 8;
+  totbits = 0LL;
+  bufcount = 0;
+  eobs = false;
+  ::rewind(fileh);
+  (void) refill_buffer();
+}
+
 /*close the device containing the bit stream after a read process*/
 void IBitStream::close()
 {
-  if (bitfile)
-    fclose(bitfile);
-  bitfile = NULL;
+  if (fileh)
+    fclose(fileh);
+  fileh = NULL;
 }
 
 

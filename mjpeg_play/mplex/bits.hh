@@ -10,19 +10,20 @@ typedef uint64_t bitcount_t;
 
 class BitStream 
 {
-protected:	
+public:
+	FILE *fileh;
+//protected:	
 	uint8_t outbyte;
-	int byteidx;
+	unsigned int byteidx;
 	int bitidx;
-	int bufcount;
+	unsigned int bufcount;
 	fpos_t actpos;
 	bitcount_t totbits;
-	FILE *bitfile;
 	bool eobs;
-	static const int BUFFER_SIZE=4096;
+	static const unsigned int BUFFER_SIZE=8192;
 	uint8_t bfr[BUFFER_SIZE];
 public:
-	BitStream() : bitfile(0), totbits(0LL), eobs(true) {}
+	BitStream() : fileh(0), totbits(0LL), eobs(true) {}
 	inline bitcount_t bitcount() { return totbits; }
 	inline bool eos() { return eobs; }
 };
@@ -32,6 +33,7 @@ class IBitStream : public BitStream {
 public:
 	void open( char *bs_filename);
 	void close();
+	void rewind();
 	uint32_t get1bit();
 	uint32_t getbits(int N);
 	void prepareundo(BitStream &undobuf);

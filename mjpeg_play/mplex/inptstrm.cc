@@ -68,7 +68,6 @@ static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
 
-static void output_info_video (Video_struc *video_info);
 static void output_info_audio (Audio_struc *audio_info);
 
 
@@ -97,22 +96,22 @@ static void marker_bit (IBitStream &bs, unsigned int what)
 
 void check_files (int argc,
 				  char* argv[],
-				  char** audio_file,
-				  char** video_file,
-				  unsigned int *audio_bytes,
-				  unsigned int *video_bytes
+				  char* *audio_file,
+				  char* *video_file,
+				  off_t &audio_bytes,
+				  off_t &video_bytes
 	)
 {
     IBitStream bs1, bs2, undo;
-    unsigned int bytes_1, bytes_2;
+    off_t bytes_1, bytes_2;
 	
 	/* As yet no streams determined... */
 	which_streams = 0;
     if (argc == 2) {
-		if (open_file(argv[1],&bytes_1))
+		if (open_file(argv[1],bytes_1))
 			exit (1); }
     else if (argc == 3) {
-		if (open_file(argv[1],&bytes_1) || open_file(argv[2],&bytes_2))
+		if (open_file(argv[1],bytes_1) || open_file(argv[2],bytes_2))
 			exit (1); }
 	    
     bs1.open(argv[1]);
@@ -131,7 +130,7 @@ void check_files (int argc,
 	if (bs1.getbits( 12 )  == 0xfff)
     {
 		*audio_file = argv[1];
-		*audio_bytes= bytes_1;
+		audio_bytes= bytes_1;
 		mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[1]);
 		which_streams |= STREAMS_AUDIO;
 		if (argc == 3 ) {
@@ -147,7 +146,7 @@ void check_files (int argc,
 				mjpeg_info ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
 				which_streams |= STREAMS_VIDEO;
 				*video_file = argv[2];
-				*video_bytes= bytes_2;
+				video_bytes= bytes_2;
 			}
 		}
 
@@ -158,8 +157,8 @@ void check_files (int argc,
 		if (  bs1.getbits( 32)  == 0x1b3)
 		{
 			*video_file = argv[1];
-			*video_bytes= bytes_1;
-			mjpeg_info ("File %s is a 11172-2 Video stream.\n",argv[1]);
+			video_bytes= bytes_1;
+			mjpeg_info ("File %s is an MPEG-1/2 Video stream.\n",argv[1]);
 			which_streams |= STREAMS_VIDEO;
 			if (argc == 3 ) {
 				if ( bs2.getbits( 12 ) != 0xfff)
@@ -174,7 +173,7 @@ void check_files (int argc,
 					mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[2]);
 					which_streams |= STREAMS_AUDIO;
 					*audio_file = argv[2];
-					*audio_bytes= bytes_2;
+					audio_bytes= bytes_2;
 				}
 			}
 		}
@@ -213,59 +212,55 @@ void check_files (int argc,
 *************************************************************************/
 
 
-void get_info_video (char *video_file,	
-					 Video_struc *video_info,
-					 clockticks *ret_first_frame_PTS,
-					 unsigned int length,
-					 Vector *vid_info_vec)
+void VideoStream::Init (char *video_file,	
+						clockticks *ret_first_frame_PTS,
+						off_t length
+	                   )
 {
-    IBitStream video_bs;
-   	bitcount_t AU_start;
-    bitcount_t stream_length=0LL; 
-    bitcount_t prev_stream_length=0LL;
-    VAunit access_unit;
-    unsigned int syncword;
-    unsigned int decoding_order=0;
-	unsigned int fields_presented=0;
-    unsigned int group_order=0;
-    unsigned int group_start_pic=0;
-	unsigned int group_start_field=0;
-    unsigned long temporal_reference=0;
-    unsigned short pict_rate;
-	int pulldown_32 = 0;
-	int repeat_first_field;
-	int film_rate;
-    int i;
-    unsigned int prozent = 0;
-    unsigned int old_prozent=0;
-    double frame_rate;
-	unsigned int max_bits_persec = 0;
-	Vector vaunits = NewVector( sizeof(VAunit));
-	int AU_pict_data;
-	int AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
-	
-  
-    mjpeg_info ("Scanning Video stream for access units information.\n");
-    video_bs.open( video_file);
+	file_length = length;
+	prev_stream_length=0;
+    decoding_order=0;
+	fields_presented=0;
+    group_order=0;
+    group_start_pic=0;
+	group_start_field=0;
+    temporal_reference=0;
+	pulldown_32 = 0;
+	last_buffered_AU=0;
 
-    if (video_bs.getbits( 32)==SEQUENCE_HEADER)
+    prozent = 0;
+    old_prozent=0;
+	max_bits_persec = 0;
+	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
+
+    mjpeg_info ("Scanning Video stream for access units information.\n");
+
+	/* We actually maintain *two* file-handles one is used for scanning
+	   ahead to pick-up access unit information the other for the reading
+	   done to shuffle data into the multiplexed output file */
+	rawstrm = fopen( video_file, "rb" );
+	if( rawstrm == NULL )
+		mjpeg_error_exit1( "Cannot open for scan and read: %s\n", video_file );
+    bs.open( video_file );
+    if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
-		video_info->num_sequence++;
-		video_info->horizontal_size	= video_bs.getbits( 12);
-		video_info->vertical_size	= video_bs.getbits( 12);
-		video_info->aspect_ratio	= video_bs.getbits(  4);
-		pict_rate 			= video_bs.getbits(  4);
-		video_info->picture_rate	= pict_rate;
-		video_info->bit_rate		= video_bs.getbits( 18);
-		marker_bit( video_bs, 1);
-		video_info->vbv_buffer_size	= video_bs.getbits( 10);
-		video_info->CSPF		= video_bs.get1bit();
+		num_sequence++;
+		horizontal_size	= bs.getbits( 12);
+		vertical_size	= bs.getbits( 12);
+		aspect_ratio	= bs.getbits(  4);
+		pict_rate 			= bs.getbits(  4);
+		picture_rate	= pict_rate;
+		bit_rate		= bs.getbits( 18);
+		marker_bit( bs, 1);
+		vbv_buffer_size	= bs.getbits( 10);
+		CSPF		= bs.get1bit();
 
     } else
     {
 		mjpeg_error ("Invalid MPEG Video stream header.\n");
 		exit (1);
     }
+
 #ifdef REDUNDANT
     empty_vaunit_struc (&access_unit);
 #endif
@@ -287,12 +282,25 @@ void get_info_video (char *video_file,
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
 	AU_start = 0LL;
-	while(!video_bs.eos() && 
-		  video_bs.seek_sync( SYNCWORD_START, 24, 100000) &&
-	      ( !opt_max_PTS || access_unit.PTS < opt_max_PTS   ) )
+
+	fillAUbuffer(FRAME_CHUNK);
+    output_seqhdr_info();
+
+}
+
+void VideoStream::fillAUbuffer(int frames_to_buffer)
+{
+	last_buffered_AU += frames_to_buffer;
+	mjpeg_info( "Scanning %d video frames to frame %d\n", 
+				 frames_to_buffer, last_buffered_AU );
+
+	while(!bs.eos() && 
+		  bs.seek_sync( SYNCWORD_START, 24, 100000) &&
+	      decoding_order < last_buffered_AU  &&
+		  (!opt_max_PTS || access_unit.PTS < opt_max_PTS ) 
+		)
 	{
-		syncword = (SYNCWORD_START<<8) + video_bs.getbits( 8);
-		
+		syncword = (SYNCWORD_START<<8) + bs.getbits( 8);
 		if( AU_pict_data )
 		{
 			
@@ -303,7 +311,7 @@ void get_info_video (char *video_file,
 			   start a new AU.  I.e. sequence and gop headers count as
 			   part of the AU of the corresponding picture
 			*/
-			stream_length = video_bs.bitcount()-32LL;
+			stream_length = bs.bitcount()-32LL;
 			switch (syncword) 
 			{
 			case SEQUENCE_HEADER :
@@ -311,8 +319,8 @@ void get_info_video (char *video_file,
 			case PICTURE_START :
 				access_unit.length = (int) (stream_length - AU_start)>>3;
 				access_unit.end_seq = 0;
-				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
-				VectorAppend( vaunits, &access_unit );					
+				avg_frames[access_unit.type-1]+=access_unit.length;
+				aunits.append( access_unit );					
 				AU_hdr = syncword;
 				AU_start = stream_length;
 				AU_pict_data = 0;
@@ -320,14 +328,14 @@ void get_info_video (char *video_file,
 			case SEQUENCE_END:
 				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
-				VectorAppend( vaunits, &access_unit );
-				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
+				aunits.append( access_unit );
+				avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
-				if( !video_bs.eos() && 
-					video_bs.getbits( 32) ==SEQUENCE_HEADER )
+				if( !bs.eos() && 
+					bs.getbits( 32) ==SEQUENCE_HEADER )
 				{
-					stream_length = video_bs.bitcount()-32LL;
+					stream_length = bs.bitcount()-32LL;
 					AU_start = stream_length;
 					AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
@@ -336,11 +344,11 @@ void get_info_video (char *video_file,
 				}
 				else
 				{
-					if( !video_bs.eos() && ! opt_multifile_segment )
+					if( !bs.eos() && ! opt_multifile_segment )
 						mjpeg_warn("No seq. header starting new sequence after seq. end!\n");
 				}
 					
-				video_info->num_seq_end++;
+				num_seq_end++;
 				break;
 			}
 		}
@@ -349,11 +357,11 @@ void get_info_video (char *video_file,
 		switch (syncword) 
 		{
 		case SEQUENCE_HEADER:
-			video_info->num_sequence++;
+			num_sequence++;
 			break;
 			
 		case GROUP_START:
-			video_info->num_groups++;
+			num_groups++;
 			group_order=0;
 			break;
 			
@@ -361,24 +369,24 @@ void get_info_video (char *video_file,
 			/* We have reached AU's picture data... */
 			AU_pict_data = 1;
 			
-			temporal_reference = video_bs.getbits( 10);
-			access_unit.type   = video_bs.getbits( 3);
+			temporal_reference = bs.getbits( 10);
+			access_unit.type   = bs.getbits( 3);
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
 			   so we can get pulldown info (if present) */
 
 			if( film_rate &&
-				video_bs.seek_sync(EXT_START_CODE, 32, 10) &&
-				video_bs.getbits(4) == CODING_EXT_ID )
+				bs.seek_sync(EXT_START_CODE, 32, 10) &&
+				bs.getbits(4) == CODING_EXT_ID )
 			{
 				/* Skip: 4 F-codes (4)... */
-				(void)video_bs.getbits(16); 
+				(void)bs.getbits(16); 
                 /* Skip: DC Precision(2), pict struct (2) topfirst (1)
 				   frame pred dct (1), q_scale_type (1), intravlc (1)*/
-				(void)video_bs.getbits(8);	
+				(void)bs.getbits(8);	
 				/* Skip: altscan (1) */
-				(void)video_bs.getbits(1);	
-				repeat_first_field = video_bs.getbits(1);
+				(void)bs.getbits(1);	
+				repeat_first_field = bs.getbits(1);
 				pulldown_32 |= repeat_first_field;
 			}
 			else
@@ -439,10 +447,10 @@ void get_info_video (char *video_file,
 
 			if ((access_unit.type>0) && (access_unit.type<5))
 			{
-				video_info->num_frames[access_unit.type-1]++;
+				num_frames[access_unit.type-1]++;
 			}
 
-			prozent =(int) (((float)video_bs.bitcount()/8/(float)length)*100);
+			prozent =static_cast<int>(bs.bitcount()/8*100/file_length);
 			if ( prozent > old_prozent && verbose > 0 )
 			{
 				mjpeg_debug("Got %d picture headers. %2d%%\n",
@@ -456,28 +464,74 @@ void get_info_video (char *video_file,
 				
 		}
 	}
+	last_buffered_AU = decoding_order;
+	num_pictures = decoding_order;	
+	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS < opt_max_PTS);
 
-	video_info->num_pictures = decoding_order;	
+}
 
-    video_info->stream_length = (unsigned int)(AU_start / 8);
-    for (i=0; i<4; i++)
-		if (video_info->num_frames[i]!=0)
-			video_info->avg_frames[i] /= video_info->num_frames[i];
+VAunit *VideoStream::next()
+{
 
-    video_info->comp_bit_rate = (unsigned int)
+
+	if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
+	{
+		if( aunits.curpos() > FRAME_CHUNK )
+		{
+			aunits.flush(128);
+		}
+		fillAUbuffer(FRAME_CHUNK);
+	}
+
+	return aunits.next();
+}
+
+VAunit *VideoStream::lookahead( unsigned int i )
+{
+	assert( i < FRAME_CHUNK-1 );
+	return aunits.lookahead(i);
+}
+
+void VideoStream::close()
+{
+
+	bs.close();
+	fclose( rawstrm );
+    stream_length = (unsigned int)(AU_start / 8);
+    for (int i=0; i<4; i++)
+	{
+		avg_frames[i] /= num_frames[i] == 0 ? 1 : num_frames[i];
+	}
+
+    comp_bit_rate = (unsigned int)
 		(
-			(((double)video_info->stream_length) / ((double) video_info->num_pictures)) 
+			(((double)stream_length) / ((double) num_pictures)) 
 			* ((double)frame_rate)  + 25.0
 			) / 50;
 	
 	/* Peak bit rate in 50B/sec units... */
-	video_info->peak_bit_rate = ((max_bits_persec / 8) / 50);
-    video_bs.close();
-    output_info_video (video_info);
+	peak_bit_rate = ((max_bits_persec / 8) / 50);
 
-	*vid_info_vec = vaunits;
-
+    mjpeg_info ("Video Stream length: %11llu\n",stream_length);
+    mjpeg_info ("Sequence headers: %8u\n",num_sequence);
+    mjpeg_info ("Sequence ends   : %8u\n",num_seq_end);
+    mjpeg_info ("No. Pictures    : %8u\n",num_pictures);
+    mjpeg_info ("No. Groups      : %8u\n",num_groups);
+    mjpeg_info ("No. I Frames    : %8u avg. size%6u bytes\n",
+			  num_frames[0],avg_frames[0]);
+    mjpeg_info ("No. P Frames    : %8u avg. size%6u bytes\n",
+			  num_frames[1],avg_frames[1]);
+    mjpeg_info ("No. B Frames    : %8u avg. size%6u bytes\n",
+			  num_frames[2],avg_frames[2]);
+    mjpeg_info ("No. D Frames    : %8u avg. size%6u bytes\n",
+			  num_frames[3],avg_frames[3]);
+    mjpeg_info("Average bit-rate : %8u bits/sec\n",comp_bit_rate*400);
+    mjpeg_info("Peak bit-rate    : %8u  bits/sec\n",peak_bit_rate*400);
+	
 }
+	
+
+
 
 /*************************************************************************
 	Output_Info_Video
@@ -486,29 +540,15 @@ void get_info_video (char *video_file,
 	Prints information on video access units
 *************************************************************************/
 
-static void output_info_video (Video_struc *video_info)
+void VideoStream::output_seqhdr_info ()
 {
 	char *str;
 	mjpeg_info("VIDEO STREAM:\n");
 
-    mjpeg_info ("Stream length  : %11llu\n",video_info->stream_length);
-    mjpeg_info ("Sequence start : %8u\n",video_info->num_sequence);
-    mjpeg_info ("Sequence end   : %8u\n",video_info->num_seq_end);
-    mjpeg_info ("No. Pictures   : %8u\n",video_info->num_pictures);
-    mjpeg_info ("No. Groups     : %8u\n",video_info->num_groups);
-    mjpeg_info ("No. I Frames   : %8u avg. size%6u bytes\n",
-			  video_info->num_frames[0],video_info->avg_frames[0]);
-    mjpeg_info ("No. P Frames   : %8u avg. size%6u bytes\n",
-			  video_info->num_frames[1],video_info->avg_frames[1]);
-    mjpeg_info ("No. B Frames   : %8u avg. size%6u bytes\n",
-			  video_info->num_frames[2],video_info->avg_frames[2]);
-    mjpeg_info ("No. D Frames   : %8u avg. size%6u bytes\n",
-			  video_info->num_frames[3],video_info->avg_frames[3]);
+    mjpeg_info ("Frame width    : %8u\n",horizontal_size);
+    mjpeg_info ("Frame height   : %8u\n",vertical_size);
 
-    mjpeg_info ("Horizontal size: %8u\n",video_info->horizontal_size);
-    mjpeg_info ("Vertical size  : %8u\n",video_info->vertical_size);
-
-    switch (video_info->aspect_ratio)
+    switch (aspect_ratio)
     {
 	case  0: str = "forbidden\n"; break;
 	case  1: str = "VGA etc\n"; break;
@@ -519,31 +559,29 @@ static void output_info_video (Video_struc *video_info)
 	case 15: str = "reserved\n"; break;
 	default: str = "\n";
     }
-    mjpeg_info   ("Aspect ratio   :   %1.4f %s",ratio[video_info->aspect_ratio], str);
+    mjpeg_info   ("Aspect ratio    :   %1.4f %s",ratio[aspect_ratio], str);
 
-    if (video_info->picture_rate == 0)
-		mjpeg_info( "Picture rate   : forbidden\n");
-    else if (video_info->picture_rate <9)
-		mjpeg_info( "Picture rate   :   %2.3f frames/sec\n",
-					picture_rates[video_info->picture_rate]);
+    if (picture_rate == 0)
+		mjpeg_info( "Picture rate    : forbidden\n");
+    else if (picture_rate <9)
+		mjpeg_info( "Picture rate    :   %2.3f frames/sec\n",
+					picture_rates[picture_rate]);
     else
-		mjpeg_info( "Picture rate   : %x reserved\n",video_info->picture_rate);
+		mjpeg_info( "Picture rate    : %x reserved\n",picture_rate);
 
-    if (video_info->bit_rate == 0x3ffff)
+    if (bit_rate == 0x3ffff)
 		{
-			video_info->bit_rate = 0;
-			mjpeg_info( "Bit rate       : variable\n"); 
+			bit_rate = 0;
+			mjpeg_info( "Bit rate        : variable\n"); 
 		}
-    else if (video_info->bit_rate == 0)
-		mjpeg_info( "Bit rate      : forbidden\n");
+    else if (bit_rate == 0)
+		mjpeg_info( "Bit rate       : forbidden\n");
     else
-		mjpeg_info( "Bit rate       : %7u bits/sec\n",
-					video_info->bit_rate*400);
+		mjpeg_info( "Bit rate        : %7u bits/sec\n",
+					bit_rate*400);
 
-    mjpeg_info("Computed rate  : %8u bits/sec\n",video_info->comp_bit_rate*400);
-    mjpeg_info("Peak     rate  : %8u  bits/sec\n",video_info->peak_bit_rate*400);
-    mjpeg_info("Vbv buffer size: %8u bytes\n",video_info->vbv_buffer_size*2048);
-    mjpeg_info("CSPF           : %8u\n",video_info->CSPF);
+    mjpeg_info("Vbv buffer size : %8u bytes\n",vbv_buffer_size*2048);
+    mjpeg_info("CSPF            : %8u\n",CSPF);
 }
 
 /*************************************************************************
@@ -564,7 +602,7 @@ static void output_info_audio (Audio_struc *audio_info)
 
 	mjpeg_info("AUDIO STREAM:\n");
 	mjpeg_info ("Audio version  : %s\n", audio_version[audio_info->version_id]);
-    mjpeg_info (" Stream length  : %11llu\n",audio_info->stream_length);
+    mjpeg_info ("Stream length  : %11llu\n",audio_info->stream_length);
     mjpeg_info   ("Syncwords      : %8u\n",audio_info->num_syncword);
     mjpeg_info   ("Frames         : %8u size %6u bytes\n",
 			  audio_info->num_frames[0],audio_info->size_frames[0]);
@@ -612,7 +650,7 @@ void get_info_audio (
 	Audio_struc *audio_info,
 	clockticks first_frame_PTS,
 	unsigned int length,
-	Vector *audio_info_vec
+	AUStream<AAunit> &audio_info_vec
 	)
 
 {
@@ -626,16 +664,17 @@ void get_info_audio (
     unsigned int samples_per_second;
     AAunit access_unit;
     unsigned long syncword;
-    int i;
+    unsigned int i;
     unsigned int prozent;
     unsigned int old_prozent=0;
-    Vector aaunits = NewVector(sizeof(AAunit));
+    AUStream<AAunit> &aaunits = audio_info_vec;
    
     mjpeg_info ("Scanning Audio stream for access units information. \n");
     audio_bs.open( audio_file);
 #ifdef REDUNDANT
     empty_aaunit_struc (&access_unit);
 #endif
+
 
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
@@ -675,7 +714,7 @@ void get_info_audio (
 			static_cast<clockticks>(CLOCKS)	/ samples_per_second + first_frame_PTS;
 		access_unit.dorder = decoding_order;
 		++decoding_order;
-		VectorAppend( aaunits, &access_unit );
+		aaunits.append( access_unit );
 
     } else
     {
@@ -727,7 +766,7 @@ void get_info_audio (
 		}
 
 		audio_bs.getbits( 11); /* Skip version, layer, protection, bitrate,sampling */
-		prozent =(int) (((float) audio_bs.bitcount()/8/(float)length)*100);
+		prozent =(int) audio_bs.bitcount()*100/8/length;
 		audio_info->num_syncword++;
 
 		if ((prozent > old_prozent && verbose > 0))
@@ -746,7 +785,7 @@ void get_info_audio (
 			/ samples_per_second +first_frame_PTS;
 
 		decoding_order++;
-		VectorAppend( aaunits, &access_unit );
+		aaunits.append( access_unit );
 		audio_info->num_frames[padding_bit]++;
 
 		audio_bs.getbits( 9);
@@ -759,8 +798,6 @@ void get_info_audio (
     audio_info->stream_length = AU_start >> 3;
     audio_bs.close();
     output_info_audio (audio_info);
-    
-    *audio_info_vec = aaunits;
 
 }
 

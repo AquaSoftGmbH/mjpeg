@@ -52,7 +52,7 @@ int opt_multifile_segment = 0;
 int opt_always_system_headers = 0;
 int opt_packets_per_pack = 20;
 int opt_max_timeouts = 10;
-clockticks opt_max_PTS = 0LL;
+bitcount_t opt_max_PTS = 0;
 int opt_emul_vcdmplex = 0;
 
 /* Should fit nicely on an ordinary CD ... */
@@ -113,8 +113,8 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 			break;
           
 		case 'l' : 
-			opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
-			if( opt_max_PTS < 1  )
+ 			opt_max_PTS = (clockticks)atoi(optarg) * (clockticks)CLOCKS;
+			if( opt_max_PTS < 1LL  )
 				Usage(argv[0]);
 			break;
 		
@@ -170,7 +170,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
     File found?
 *************************************************************************/
 
-bool open_file(char *name, unsigned int *bytes)			
+bool open_file(const char *name, off_t &bytes)			
 {
     FILE* datei;
 
@@ -180,8 +180,8 @@ bool open_file(char *name, unsigned int *bytes)
 		mjpeg_error("File %s not found.\n", name);
 		return (true);
     }
-    fseek (datei, 0, 2);
-    *bytes = ftell(datei);
+    fseeko (datei, 0, 2);
+    bytes = ftello(datei);
     fclose(datei);
     return (false);
 }

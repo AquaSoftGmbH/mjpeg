@@ -46,9 +46,9 @@ AC_CHECK_HEADERS(fenv.h)
 dnl Set up the usual compiler infos...
 if test ! x$disable_large_file = xyes
 then
-AC_DEFINE(_FILE_OFFSET_BITS,32)
-else
 AC_DEFINE(_FILE_OFFSET_BITS,64)
+else
+AC_DEFINE(_FILE_OFFSET_BITS,32)
 fi
 
 #

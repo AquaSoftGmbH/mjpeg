@@ -293,16 +293,8 @@ d2top01:
     paddd     mm0, mm1
 	paddd	  mm0, mm2
 
-	;; Accumulate in "s" - we use mm5 for the purpose
-	;;
-	;movd	  ecx, mm0
-    ;add       s, ecx
-	;psrlq	  mm0, 32
-	;movd	  ecx, mm0
-	;add	  	  s, ecx
 	paddd     mm5, mm0
 
-	;; Originally this moved 
 	mov       eax, ebx    ; eax = eax + lx
 	add       edx, esi    ; edx = edx + lx
 	add       ebx, esi    ; ebx = ebx + lx
@@ -341,10 +333,6 @@ d2top11:
 	paddw	  mm3, mm6
 	paddw	  mm0, mm2
 	paddw	  mm1, mm3
-	;pxor	      mm6, mm6    ; mm6 = 0
-	;pcmpeqw	  mm5, mm5    ; mm5 = -1
-	;psubw	      mm6, mm5    ; mm6 = 1
-	;paddw	      mm6, mm6    ; mm6 = 2
 	movq      mm6, [twos]
 	paddw	  mm0, mm6    ; round mm0
 	paddw	  mm1, mm6    ; round mm1
@@ -390,12 +378,6 @@ d2top11:
 	paddw	  mm1, mm3
 	paddw	  mm2, mm4
 
-	;pxor	  mm6, mm6    ; Zero mm6
-	;pcmpeqw	  mm5, mm5    ; mm5 = -1
-	;psubw	  mm6, mm5    ; mm6 = 1
-	;paddw	  mm6, mm6    ; mm6 = 2
-	;paddw	  mm1, mm6    ; round mm1 and mm2
-	;paddw    mm2, mm6
 	movq      mm6, [twos]
 	paddw     mm1, mm6
 	paddw	  mm2, mm6
@@ -418,11 +400,6 @@ d2top11:
 	
 	;;
 	;; Accumulate the result in "s" we use mm6 for the purpose...
-	;movd	  ecx, mm0
-    ;    add       s, ecx
-	;psrlq	  mm0, 32
-	;movd	  ecx, mm0
-	;add	  s, ecx
 	paddd     mm5, mm0
 
 	mov       eax, ebx    ; ahem ebx = eax at start of loop and wasn't changed...
