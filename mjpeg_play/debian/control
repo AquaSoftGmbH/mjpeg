@@ -1,4 +1,5 @@
 Source: mjpegtools
+Section: graphics
 Priority: extra
 Maintainer: KAWAMATA Hitoshi <hitoshi.kawamata@nifty.com>
 Build-Depends: debhelper (>> 3.4.4), nasm (>= 0.94.34) [i386], libpopt-dev,

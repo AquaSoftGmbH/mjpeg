@@ -1,9 +1,11 @@
+mjpegtools (1.6.1.93-0) unstable; urgency=low
+
+  * New upstream release.
+
+ -- KAWAMATA Hitoshi <hitoshi.kawamata@nifty.com>  Tue, 23 Dec 2003 15:00:33 +0900
+
 mjpegtools (1.6.1.92-0) unstable; urgency=low
 
   * Initial Release.
 
  -- KAWAMATA Hitoshi <hitoshi.kawamata@nifty.com>  Sat, 20 Dec 2003 09:00:00 +0900
-
-Local variables:
-mode: debian-changelog
-End:
