@@ -1,3 +1,9 @@
+mjpegtools (1.6.1.93-3) unstable; urgency=low
+
+  * remove libquicktime4linux-dev from Build-Depends, need libquicktime-dev even on woody.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Thu, 29 Jan 2004 10:50:16 +0900
+
 mjpegtools (1.6.1.93-2) unstable; urgency=low
 
   * Using libtool -release, rename package libmjpegtools0 to libmjpegtools-1.6.
