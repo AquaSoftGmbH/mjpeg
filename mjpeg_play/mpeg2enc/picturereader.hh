@@ -34,12 +34,13 @@ class PictureReader
 {
 public:
 	PictureReader(MPEG2Encoder &encoder );
-    ~PictureReader();
+    virtual ~PictureReader();
     void Init();
     void ReadPictureData( int num_frame, uint8_t **frame);
     int FrameLumMean( int num_frame );
     virtual void StreamPictureParams( MPEG2EncInVidParams &strm ) = 0;
     void ReadFrame( int num_frame, uint8_t *frame[] );
+    inline int NumberOfFrames() { return istrm_nframes; }
 protected:
     int LumMean(uint8_t *frame );
     void ReadChunk();
@@ -70,12 +71,14 @@ protected:
 	int last_frame;
     ImagePlanes *input_imgs_buf;
     int input_imgs_buf_size;
+    int istrm_nframes;
 };
 
 class Y4MPipeReader : public PictureReader
 {
 public:
     Y4MPipeReader( MPEG2Encoder &encoder, int pipe_fd );
+    ~Y4MPipeReader() {}
     void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:
     bool LoadFrame( );

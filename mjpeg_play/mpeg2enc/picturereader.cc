@@ -41,6 +41,7 @@ PictureReader::PictureReader(MPEG2Encoder &_encoder ) :
 	frames_read = 0;
 	last_frame = -1;
     lum_mean = 0;
+    istrm_nframes = INT_MAX;
 }
 
 
@@ -189,10 +190,7 @@ int PictureReader::LumMean( uint8_t *frame )
 
 void PictureReader::ReadChunk()
 {
-   int n, v, h, i,j, y;
-   y4m_frame_info_t fi;
-
-
+    int j;
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
 	   if( encparams.parallel_read )
@@ -452,7 +450,7 @@ void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
    y4m_stream_info_t si;
 
    y4m_init_stream_info (&si);  
-   if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
+   if ((n = y4m_read_stream_header (pipe_fd, &si)) != Y4M_OK) {
        mjpeg_log( LOG_ERROR, 
                   "Could not read YUV4MPEG2 header: %s!",
                   y4m_strerr(n));
@@ -497,7 +495,7 @@ bool Y4MPipeReader::LoadFrame( )
    int buffer_slot = frames_read % input_imgs_buf_size;
 
 
-   if ((y = y4m_read_frame_header (istrm_fd, &fi)) != Y4M_OK) 
+   if ((y = y4m_read_frame_header (pipe_fd, &fi)) != Y4M_OK) 
    {
        if( y != Y4M_ERR_EOF )
            mjpeg_log (LOG_WARN, 

@@ -1,7 +1,7 @@
 #ifndef _MPEG2ENCODER_HH
 #define _MPEG2ENCODER_HH
 
-/* readpic.h Picture reader base class and basic file I/O based reader */
+/* mpeg2encoder.hh Picture reader base class and basic file I/O based reader */
 /*  (C) 2000/2001 Andrew Stevens */
 
 /*  This Software is free software; you can redistribute it
@@ -22,6 +22,7 @@
  */
 
 #include <config.h>
+#include <stdio.h>
 #include "mpegconsts.h"
 #include "syntaxparams.h"
 
@@ -99,22 +100,26 @@ class SeqEncoder;
 class Quantizer;
 class Transformer;
 class MPEG2Coder;
+class BitStreamWriter;
 class ElemStrmWriter;
 
 class MPEG2Encoder
 {
 public:
-    MPEG2Encoder( int istrm_fd, MPEG2EncOptions &options );
+    MPEG2Encoder( int istrm_fd, MPEG2EncOptions &options, FILE *ostrm_fd );
     ~MPEG2Encoder();
+
+    static void SIMDInitOnce();
+    static bool simd_init;
     MPEG2EncOptions &options;
     EncoderParams &parms;
     // TODO: SHOULD be called YUVPictStrmReader!!
     PictureReader &reader;
     Quantizer     &quantizer;
+    ElemStrmWriter &writer;
+    MPEG2Coder    &coder;
     RateCtl       &bitrate_controller;
     SeqEncoder    &seqencoder;
-    MPEG2Coder    &coder;
-    ElemStrmWriter &writer;
 };
 
 extern MPEG2Encoder *enc;

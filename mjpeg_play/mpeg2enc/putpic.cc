@@ -48,11 +48,14 @@
 
 #include <config.h>
 #include <stdio.h>
-#include "global.h"
+#include "mpeg2enc.h"
+#include "tables.h"
 #include "simd.h"
 #include "mpeg2encoder.hh"
 #include "mpeg2coder.hh"
 #include "ratectl.hh"
+#include "macroblock.hh"
+#include "picture.hh"
 
 /* output motion vectors (6.2.5.2, 6.3.16.2)
  *
@@ -80,8 +83,8 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		if (me.motion_type==MC_FRAME)
 		{
 			/* frame prediction */
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutMV(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
 			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
@@ -89,12 +92,12 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		{
 			/* field prediction */
 
-			putbits(me.field_sel[0][back],1);
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
-			putbits(me.field_sel[1][back],1);
-			putmv(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
-			putmv((me.MV[1][back][1]>>1)-(PMV[1][back][1]>>1),vert_f_code);
+			coder.PutBits(me.field_sel[0][back],1);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutMV((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
+			coder.PutBits(me.field_sel[1][back],1);
+			coder.PutMV(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
+			coder.PutMV((me.MV[1][back][1]>>1)-(PMV[1][back][1]>>1),vert_f_code);
 			PMV[0][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=me.MV[0][back][1];
 			PMV[1][back][0]=me.MV[1][back][0];
@@ -104,10 +107,10 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		else
 		{
 			/* dual prime prediction */
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putdmv(me.dualprimeMV[0]);
-			putmv((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
-			putdmv(me.dualprimeMV[1]);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutDMV(me.dualprimeMV[0]);
+			coder.PutMV((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
+			coder.PutDMV(me.dualprimeMV[1]);
 			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
@@ -118,21 +121,21 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		if (me.motion_type==MC_FIELD)
 		{
 			/* field prediction */
-			putbits(me.field_sel[0][back],1);
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			coder.PutBits(me.field_sel[0][back],1);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutMV(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
 			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
 		else if (me.motion_type==MC_16X8)
 		{
 			/* 16x8 prediction */
-			putbits(me.field_sel[0][back],1);
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			putbits(me.field_sel[1][back],1);
-			putmv(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
-			putmv(me.MV[1][back][1]-PMV[1][back][1],vert_f_code);
+			coder.PutBits(me.field_sel[0][back],1);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutMV(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			coder.PutBits(me.field_sel[1][back],1);
+			coder.PutMV(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
+			coder.PutMV(me.MV[1][back][1]-PMV[1][back][1],vert_f_code);
 			PMV[0][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=me.MV[0][back][1];
 			PMV[1][back][0]=me.MV[1][back][0];
@@ -141,10 +144,10 @@ void Picture::PutMVs( MotionEst &me, bool back )
 		else
 		{
 			/* dual prime prediction */
-			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putdmv(me.dualprimeMV[0]);
-			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			putdmv(me.dualprimeMV[1]);
+			coder.PutMV(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			coder.PutDMV(me.dualprimeMV[0]);
+			coder.PutMV(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			coder.PutDMV(me.dualprimeMV[1]);
 			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
 			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
@@ -164,11 +167,11 @@ void MacroBlock::PutBlocks( )
             {
                 // TODO: 420 Only?
                 cc = (comp<4) ? 0 : (comp&1)+1;
-                putintrablk(picture, qdctblocks[comp],cc);
+                picture->coder.PutIntraBlk(picture, qdctblocks[comp],cc);
             }
             else
             {
-                putnonintrablk(picture,qdctblocks[comp]);
+                picture->coder.PutNonIntraBlk(picture,qdctblocks[comp]);
             }
         }
     }
@@ -248,32 +251,32 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
 /* generate picture header (6.2.3, 6.3.10) */
 void Picture::PutHeader()
 {
-	alignbits();
-	putbits(PICTURE_START_CODE,32); /* picture_start_code */
-	putbits(temp_ref,10); /* temporal_reference */
-	putbits(pict_type,3); /* picture_coding_type */
-	putbits(vbv_delay,16); /* vbv_delay */
+	coder.AlignBits();
+	coder.PutBits(PICTURE_START_CODE,32); /* picture_start_code */
+	coder.PutBits(temp_ref,10); /* temporal_reference */
+	coder.PutBits(pict_type,3); /* picture_coding_type */
+	coder.PutBits(vbv_delay,16); /* vbv_delay */
 
 	if (pict_type==P_TYPE || pict_type==B_TYPE)
 	{
-		putbits(0,1); /* full_pel_forward_vector */
+		coder.PutBits(0,1); /* full_pel_forward_vector */
 		if (encparams.mpeg1)
-			putbits(forw_hor_f_code,3);
+			coder.PutBits(forw_hor_f_code,3);
 		else
-			putbits(7,3); /* forward_f_code */
+			coder.PutBits(7,3); /* forward_f_code */
 	}
 
 	if (pict_type==B_TYPE)
 	{
-		putbits(0,1); /* full_pel_backward_vector */
+		coder.PutBits(0,1); /* full_pel_backward_vector */
 		if (encparams.mpeg1)
-			putbits(back_hor_f_code,3);
+			coder.PutBits(back_hor_f_code,3);
 		else
-			putbits(7,3); /* backward_f_code */
+			coder.PutBits(7,3); /* backward_f_code */
 	}
 
 
-	putbits(0,1); /* extra_bit_picture */
+	coder.PutBits(0,1); /* extra_bit_picture */
 	if ( !encparams.mpeg1 )
 	{
 		PutCodingExt();
@@ -287,48 +290,48 @@ void Picture::PutHeader()
  */
 void Picture::PutCodingExt()
 {
-	alignbits();
-	putbits(EXT_START_CODE,32); /* extension_start_code */
-	putbits(CODING_ID,4); /* extension_start_code_identifier */
-	putbits(forw_hor_f_code,4); /* forward_horizontal_f_code */
-	putbits(forw_vert_f_code,4); /* forward_vertical_f_code */
-	putbits(back_hor_f_code,4); /* backward_horizontal_f_code */
-	putbits(back_vert_f_code,4); /* backward_vertical_f_code */
-	putbits(dc_prec,2); /* intra_dc_precision */
-	putbits(pict_struct,2); /* picture_structure */
-	putbits((pict_struct==FRAME_PICTURE)?topfirst : 0, 1); /* top_field_first */
-	putbits(frame_pred_dct,1); /* frame_pred_frame_dct */
-	putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
-	putbits(q_scale_type,1); /* q_scale_type */
-	putbits(intravlc,1); /* intra_vlc_format */
-	putbits(altscan,1); /* alternate_scan */
-	putbits(repeatfirst,1); /* repeat_first_field */
+	coder.AlignBits();
+	coder.PutBits(EXT_START_CODE,32); /* extension_start_code */
+	coder.PutBits(CODING_ID,4); /* extension_start_code_identifier */
+	coder.PutBits(forw_hor_f_code,4); /* forward_horizontal_f_code */
+	coder.PutBits(forw_vert_f_code,4); /* forward_vertical_f_code */
+	coder.PutBits(back_hor_f_code,4); /* backward_horizontal_f_code */
+	coder.PutBits(back_vert_f_code,4); /* backward_vertical_f_code */
+	coder.PutBits(dc_prec,2); /* intra_dc_precision */
+	coder.PutBits(pict_struct,2); /* picture_structure */
+	coder.PutBits((pict_struct==FRAME_PICTURE)?topfirst : 0, 1); /* top_field_first */
+	coder.PutBits(frame_pred_dct,1); /* frame_pred_frame_dct */
+	coder.PutBits(0,1); /* concealment_motion_vectors  -- currently not implemented */
+	coder.PutBits(q_scale_type,1); /* q_scale_type */
+	coder.PutBits(intravlc,1); /* intra_vlc_format */
+	coder.PutBits(altscan,1); /* alternate_scan */
+	coder.PutBits(repeatfirst,1); /* repeat_first_field */
 
-	putbits(prog_frame,1); /* chroma_420_type */
-	putbits(prog_frame,1); /* progressive_frame */
-	putbits(0,1); /* composite_display_flag */
+	coder.PutBits(prog_frame,1); /* chroma_420_type */
+	coder.PutBits(prog_frame,1); /* progressive_frame */
+	coder.PutBits(0,1); /* composite_display_flag */
 }
 
 
 void Picture::PutSliceHdr( int slice_mb_y )
 {
     /* slice header (6.2.4) */
-    alignbits();
+    coder.AlignBits();
     
     if (encparams.mpeg1 || encparams.vertical_size<=2800)
-        putbits(SLICE_MIN_START+slice_mb_y,32); /* slice_start_code */
+        coder.PutBits(SLICE_MIN_START+slice_mb_y,32); /* slice_start_code */
     else
     {
-        putbits(SLICE_MIN_START+(slice_mb_y&127),32); /* slice_start_code */
-        putbits(slice_mb_y>>7,3); /* slice_vertical_position_extension */
+        coder.PutBits(SLICE_MIN_START+(slice_mb_y&127),32); /* slice_start_code */
+        coder.PutBits(slice_mb_y>>7,3); /* slice_vertical_position_extension */
     }
     
     /* quantiser_scale_code */
-    putbits(q_scale_type 
+    coder.PutBits(q_scale_type 
             ? map_non_linear_mquant[mquant_pred] 
             : mquant_pred >> 1, 5);
     
-    putbits(0,1); /* extra_bit_slice */
+    coder.PutBits(0,1); /* extra_bit_slice */
     
 } 
 
@@ -456,20 +459,20 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
             }
             else
             {
-                putaddrinc(MBAinc); /* macroblock_address_increment */
+                coder.PutAddrInc(MBAinc); /* macroblock_address_increment */
                 MBAinc = 1;
                 
-                putmbtype(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
+                coder.PutMBType(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
 
                 if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
-                    putbits(cur_mb->final_me.motion_type,2);
+                    coder.PutBits(cur_mb->final_me.motion_type,2);
 
                 if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
-                    putbits(cur_mb->field_dct,1);
+                    coder.PutBits(cur_mb->field_dct,1);
 
                 if (cur_mb->final_me.mb_type & MB_QUANT)
                 {
-                    putbits(q_scale_type 
+                    coder.PutBits(q_scale_type 
                             ? map_non_linear_mquant[cur_mb->mquant]
                             : cur_mb->mquant>>1,5);
                     mquant_pred = cur_mb->mquant;
@@ -490,9 +493,9 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
                 if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
-                    putcbp((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
+                    coder.PutCPB((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
                     if (CHROMA420!=CHROMA420)
-                        putbits(cur_mb->cbp,BLOCK_COUNT-6);
+                        coder.PutBits(cur_mb->cbp,BLOCK_COUNT-6);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */

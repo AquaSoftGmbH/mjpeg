@@ -26,6 +26,7 @@
 class MacroBlock;
 class MPEG2Encoder;
 class EncoderParams;
+class ElemStrmWriter;
 
 class RateCtl
 {
@@ -58,6 +59,7 @@ public:
 	virtual void CalcVbvDelay (Picture &picture);
 private:
 
+    ElemStrmWriter &writer;
    /* X's measure global complexity (Chi! not X!) of frame types.
 	* Actually: X = average quantisation * bits allocated in *previous* frame
 	* N.b. the choice of measure is *not* arbitrary.  The feedback bit

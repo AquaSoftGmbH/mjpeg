@@ -78,7 +78,7 @@ public:
 
     void SetSeqPos( int decode, int b_index );
     void Set2ndField();
-    void Set_IP_Frame( StreamState *ss );
+    void Set_IP_Frame( StreamState *ss, int num_frames );
     void Set_B_Frame( StreamState *ss );
 
     // In putpic..c

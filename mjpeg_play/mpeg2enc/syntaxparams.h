@@ -94,19 +94,6 @@ struct motion_data {
 };
 
 
-
-
-/* *************************
- * input stream attributes
- ************************* */
-
-EXTERN int istrm_nframes;				/* total number of frames to encode
-								   Note: this may start enormous and shrink
-								   down later if the input stream length is
-								   unknown at the start of encoding.
-								   */
-EXTERN int istrm_fd;
-
 struct RateCtl;
 class MPEG2EncOptions;
 
@@ -161,10 +148,10 @@ public:
 
 
 
-	unsigned int profile, level; /* syntax / parameter constraints */
+    int profile, level;         /* syntax / parameter constraints */
 	bool ignore_constraints;	/* Disabled conformance checking of
-									 * hor_size, vert_size and
-									 * samp_rate */
+								 * hor_size, vert_size and
+								 * samp_rate */
 			
 
 	bool prog_seq; /* progressive sequence */

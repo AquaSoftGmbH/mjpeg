@@ -26,7 +26,9 @@
 #include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "global.h"
+#include "macroblock.hh"
+#include "picture.hh"
+#include "syntaxparams.h"
 #include "transfrm_ref.h"
 
 

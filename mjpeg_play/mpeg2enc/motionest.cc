@@ -57,6 +57,7 @@
 #include "fastintfns.h"
 #include "motionsearch.h"
 #include "mjpeg_logging.h"
+#include "syntaxparams.h"
 
 /* Macro-block Motion estimation results record */
 
@@ -476,7 +477,7 @@ static bool dpframe_estimate (
     BlockXY botblk, botblk0;
 
     BlockXY minsrc, mintop, minbot;
-	int vmc,local_dist;
+	int local_dist;
     int stride = picture.encparams.phy_width;
     int max_x_tgt = (picture.encparams.enc_width-16)<<1;
     int max_y_tgt = picture.encparams.enc_height-16;
@@ -788,7 +789,6 @@ void MacroBlock::FrameMEs()
 
 	BlockXY best_fieldmvs[2][2];
     BlockXY min_dpmv;
-	int vmc_dp;
 
     int mb_row_start = j*eparams.phy_width;
 	
@@ -1151,8 +1151,6 @@ void MacroBlock::FieldME()
 				toporg = picture.curorg[0];
 				topref = picture.curref[0];
 			}
-			if( frame_num > 8 )
-				frame_num = (frame_num + 1) - 1 ;
 		}
 		field_estimate(picture,
 					   toporg,topref,botorg,botref,&ssmb,

@@ -56,6 +56,7 @@
 #include "mpeg2coder.hh"
 #include "seqencoder.hh"
 #include "ratectl.hh"
+#include "tables.h"
 
 Picture::Picture( MPEG2Encoder &_encoder ) :
     encoder( _encoder ),
@@ -318,7 +319,7 @@ void Picture::Set2ndField()
    based on the specified sequence state
 */
 
-void Picture::Set_IP_Frame( StreamState *ss )
+void Picture::Set_IP_Frame( StreamState *ss, int num_frames )
 {
 	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
 	   be a little careful with the end of stream special-case.
@@ -332,8 +333,8 @@ void Picture::Set_IP_Frame( StreamState *ss )
 		temp_ref = ss->g+(ss->bigrp_length-1);
 	}
 
-	if (temp_ref >= (istrm_nframes-ss->gop_start_frame))
-		temp_ref = (istrm_nframes-ss->gop_start_frame) - 1;
+	if (temp_ref >= (num_frames-ss->gop_start_frame))
+		temp_ref = (num_frames-ss->gop_start_frame) - 1;
 
 	present = (ss->i-ss->g)+temp_ref;
 	if (ss->g==0) /* first displayed frame in GOP is I */
@@ -433,11 +434,6 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
                                int min_b_grp)
 {
 	int i,j;
-    /*
-      Checking the luminance mean of the frame also updates
-      istrm_nframes if the number of frames in the stream if the end
-      of stream has is reached before this frame...
-    */
     int max_change = 0;
     int gop_len;
 	int pred_lum_mean;
@@ -528,6 +524,7 @@ int SeqEncoder::FindGopLength( int gop_start_frame,
         }
     }
 	/* last GOP may contain less frames! */
+    int istrm_nframes = encoder.reader.NumberOfFrames();
 	if (gop_len > istrm_nframes-gop_start_frame)
 		gop_len = istrm_nframes-gop_start_frame;
 	mjpeg_info( "GOP start (%d frames)", gop_len);
@@ -597,10 +594,10 @@ void SeqEncoder::GopStart( StreamState *ss )
       an estimate for the other streams based on time.
       For CBR we do *both* based on time to account for padding during
       muxing.
+      TODO: This should be placed in the bitrate controller....
     */
     
-    if( encparams.quant_floor > 0.0 )
-        bits_after_mux = bitcount() + 
+    if( encparams.quant_floor > 0.0 ) bits_after_mux = encoder.writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
         bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
@@ -1057,12 +1054,12 @@ void SeqEncoder::Encode()
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
 	mjpeg_debug( "Split len = %" PRId64 "", ss.seq_split_length );
 
-	frame_num = 0;              /* Encoding number */
+	int frame_num = 0;              /* Encoding number */
 
 	GopStart( &ss);
 
 	/* loop through all frames in encoding/decoding order */
-	while( frame_num<istrm_nframes )
+	while( frame_num< encoder.reader.NumberOfFrames() )
 	{
 		old_picture = cur_picture;
 
@@ -1080,7 +1077,7 @@ void SeqEncoder::Encode()
 			new_ref_picture = ref_pictures[cur_ref_idx];
 			new_ref_picture->ref_frame = old_ref_picture;
 			new_ref_picture->prev_frame = cur_picture;
-			new_ref_picture->Set_IP_Frame(&ss);
+			new_ref_picture->Set_IP_Frame(&ss, encoder.reader.NumberOfFrames());
 			cur_picture = new_ref_picture;
 		}
 		else
@@ -1137,8 +1134,9 @@ void SeqEncoder::Encode()
 		frame_periods = (double)(ss.seq_start_frame + ss.i);
     
     
+    // TODO Belongs in BitRateCtl
     if( encparams.quant_floor > 0.0 )
-        bits_after_mux = bitcount() + 
+        bits_after_mux = encoder.writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);
     else
         bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 

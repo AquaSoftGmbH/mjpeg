@@ -45,11 +45,6 @@
  *
  */
 
-#include "stdio.h"
-#include "syntaxparams.h"
-#include "mpeg2enc.h"
-#include "tables.h"
-
 #include "macroblock.hh"
 #include "picture.hh"
 
@@ -57,9 +52,6 @@ class MPEG2Encoder;
 
 /* prototypes of global functions */
 
-/* conform.c */
-void range_checks (void);
-void profile_and_level_checks (void);
 
 /* motionest.c */
 
@@ -72,30 +64,10 @@ void motion_subsampled_lum( Picture *picture );
 
 void predict (Picture *picture);
 
-/* putbits.c */
-void initbits (void);
-void putbits (uint32_t val, int n);
-void alignbits (void);
-int64_t bitcount (void);
-
-
-/* putmpg.c */
-void putintrablk (Picture *picture, int16_t *blk, int cc);
-void putnonintrablk (Picture *picture,int16_t *blk);
-void putmv (int dmv, int f_code);
 
 
 
-/* putvlc.c */
-void putDClum (int val);
-void putDCchrom (int val);
-void putACfirst (int run, int val);
-void putAC (int run, int signed_level, int vlcformat);
-void putaddrinc (int addrinc);
-void putmbtype (int pict_type, int mb_type);
-void putmotioncode (int motion_code);
-void putdmv (int dmv);
-void putcbp (int cbp);
+
 
 /* quantize.c */
 
@@ -105,14 +77,6 @@ void iquantize( Picture *picture );
 double inv_scale_quant( int q_scale_type, int raw_code );
 int scale_quant( int q_scale_type, double quant );
 
-/* readpic.c */
-//void init_reader();
-//int readframe (int frame_num, uint8_t *frame[]);
-//int frame_lum_mean(int frame_num);
-//void read_stream_params( unsigned int *hsize, unsigned int *vsize, 
-//						 unsigned int *frame_rate_code,
-//						 unsigned int  *interlacing_code, 
-//						 unsigned int *aspect_code );
 
 /* stats.c */
 void calcSNR (Picture *picture);
@@ -127,13 +91,6 @@ void itransform ( Picture *picture);
 /* writepic.c */
 void writeframe (int frame_num, uint8_t *frame[]);
 
-
-
-
-EXTERN FILE *outfile, *statfile; /* file descriptors */
-EXTERN int inputtype; /* format of input frames */
-
-EXTERN int frame_num;			/* Useful for triggering debug information */
 
 
 /* 

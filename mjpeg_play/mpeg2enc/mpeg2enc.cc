@@ -58,7 +58,6 @@
 
 
 #define GLOBAL /* used by global.h */
-
 #include "global.h"
 #include "simd.h"
 #include "motionsearch.h"
@@ -78,19 +77,26 @@ int verbose = 1;
 #include "ratectl.hh"
 #include "seqencoder.hh"
 #include "mpeg2coder.hh"
+#include "tables.h"
 
 
-MPEG2Encoder::MPEG2Encoder( int istrm_fd, MPEG2EncOptions &_options ) :
+
+MPEG2Encoder::MPEG2Encoder( int istrm_fd, MPEG2EncOptions &_options,
+                            FILE *ostrm_fd ) :
     options( _options ),
     parms( *new EncoderParams ),
     reader( *new Y4MPipeReader( *this, istrm_fd ) ),
-    // TODO: Concrete type for writing to fd...
-    writer( *new ElemStrmWriter( *this ) ),
+    // TODO: Concrete types for writing to fd...
     quantizer( *new Quantizer( *this ) ),
+    writer( *new FILE_StrmWriter( *this, ostrm_fd ) ),
+    coder( *new MPEG2Coder( *this ) ),
     bitrate_controller( *new OnTheFlyRateCtl( *this ) ),
-    seqencoder( *new SeqEncoder( *this ) ),
-    coder( *new MPEG2Coder( *this ) )
-{}
+    seqencoder( *new SeqEncoder( *this ) )
+{
+    if( !simd_init )
+        SIMDInitOnce();
+    simd_init = true;
+}
 
 MPEG2Encoder::~MPEG2Encoder()
 {
@@ -101,10 +107,16 @@ MPEG2Encoder::~MPEG2Encoder()
     delete &reader;
     delete &parms;
 }
-    
-    
 
-MPEG2Encoder *enc;
+bool MPEG2Encoder::simd_init = false;
+    
+void MPEG2Encoder::SIMDInitOnce()
+{
+	init_motion();
+	init_transform();
+	init_predict();
+}    
+
 
 
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
@@ -1172,7 +1184,6 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 
 int main( int argc,	char *argv[] )
 {
-	int n;
 
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
@@ -1182,10 +1193,15 @@ int main( int argc,	char *argv[] )
 
 	mjpeg_default_handler_verbosity(verbose);
 
+	/* open output file */
+    FILE *outfile;
+	if (!(outfile=fopen(options.outfilename,"wb")))
+	{
+		mjpeg_error_exit1("Couldn't create output file %s",options.outfilename);
+	}
 
-    MPEG2Encoder encoder( options.istrm_fd, options );
-    istrm_fd = options.istrm_fd;
-    enc = &encoder;
+    MPEG2Encoder encoder( options.istrm_fd, options, outfile );
+    //istrm_fd = options.istrm_fd;
 
 	/* Read parameters of input stream used for infering MPEG parameters */
     MPEG2EncInVidParams strm;
@@ -1240,24 +1256,17 @@ int main( int argc,	char *argv[] )
 
 	mjpeg_info("Search radius: %d",options.searchrad);
 
-	/* open output file */
-	if (!(outfile=fopen(options.outfilename,"wb")))
-	{
-		mjpeg_error_exit1("Couldn't create output file %s",options.outfilename);
-	}
 
 
     encoder.parms.Init( options );
 
-	initbits(); 
 
     encoder.reader.Init();
     encoder.quantizer.Init();
-	init_motion();
-	init_transform();
-	init_predict();
+	//init_motion();
+	//init_transform();
+	//init_predict();
     encoder.seqencoder.Encode();
-
 	fclose(outfile);
 #ifdef OUTPUT_STAT
 	if( statfile != NULL )
@@ -1288,8 +1297,6 @@ EncoderParams::EncoderParams()
 
 void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 {
-	int i;
-    unsigned int n;
 
 	/* Tune threading and motion compensation for specified number of CPU's 
 	   and specified speed parameters.
@@ -1428,8 +1435,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	int i;
     const char *msg;
 
-	inputtype = 0;  /* doesnt matter */
-	istrm_nframes = 999999999; /* determined by EOF of stdin */
+	//istrm_nframes = 999999999; /* determined by EOF of stdin */
 
 	N_min = options.min_GOP_size;      /* I frame distance */
 	N_max = options.max_GOP_size;
@@ -1892,9 +1898,10 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos, double hf_q_boost )
 
 void EncoderParams::InitQuantMatrices( const MPEG2EncOptions &options )
 {
-    int i, v, q;
+    int i, v;
     const char *msg = NULL;
-    const uint16_t *qmat, *niqmat;
+    const uint16_t *qmat = 0;
+    const uint16_t *niqmat = 0;
     load_iquant = 0;
     load_niquant = 0;
 

@@ -56,52 +56,61 @@ ElemStrmWriter::ElemStrmWriter( MPEG2Encoder &_encoder ) :
 	encoder( _encoder ),
 	encparams( _encoder.parms )
 {
-}
-
-extern FILE *outfile; /* the only global var we need here */
-/* private data */
-static unsigned int outbfr;
-
-static int outcnt;
-static int64_t bytecnt;
-
-/* initialize buffer, call once before first putbits or alignbits */
-void initbits(void)
-{
-
   outcnt = 8;
   bytecnt = BITCOUNT_OFFSET/8LL;
 }
 
 
-/* write rightmost n (0<=n<=32) bits of val to outfile */
-void putbits(uint32_t val, int n)
-{
-  val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
-  while( n >= outcnt )
-  {
-	  outbfr = (outbfr << outcnt ) | (val >> (n-outcnt));
-	  putc( outbfr, outfile );
-	  n -= outcnt;
-	  outcnt = 8;
-	  ++bytecnt;
-  }
-  if( n != 0 )
-  {
-	  outbfr = (outbfr<<n) | val;
-	  outcnt -= n;
-  }
-}
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
-void alignbits(void)
+void ElemStrmWriter::AlignBits()
 {
-  if (outcnt!=8)
-    putbits(0,outcnt);
+	if (outcnt!=8)
+		PutBits(0,outcnt);
 }
 
-/* return total number of generated bits */
-int64_t bitcount(void)
+
+
+FILE_StrmWriter::FILE_StrmWriter( MPEG2Encoder &encoder, FILE *ofile_ptr ) :
+	ElemStrmWriter( encoder ),
+	outfile( ofile_ptr )
 {
-  return 8LL*bytecnt + (8-outcnt);
 }
+
+
+/**************
+ *
+ * Write rightmost n (0<=n<=32) bits of val to outfile 
+ *
+ *************/
+void FILE_StrmWriter::PutBits(uint32_t val, int n)
+{
+	val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
+	while( n >= outcnt )
+	{
+		outbfr = (outbfr << outcnt ) | (val >> (n-outcnt));
+		putc( outbfr, outfile );
+		n -= outcnt;
+		outcnt = 8;
+		++bytecnt;
+	}
+	if( n != 0 )
+	{
+		outbfr = (outbfr<<n) | val;
+		outcnt -= n;
+	}
+}
+
+
+void FILE_StrmWriter::FrameBegin()
+{
+}
+
+void FILE_StrmWriter::FrameFlush()
+{
+}
+
+void FILE_StrmWriter::FrameDiscard()
+{
+}
+    

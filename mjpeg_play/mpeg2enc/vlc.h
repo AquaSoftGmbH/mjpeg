@@ -27,22 +27,26 @@
  *
  */
 
-/* type definitions for variable length code table entries */
+/*  (C) 2000/2001 Andrew Stevens */
 
-typedef struct
-{
-  unsigned char code; /* right justified */
-  char len;
-} VLCtable;
-
-/* for codes longer than 8 bits (excluding leading zeroes) */
-typedef struct
-{
-  unsigned short code; /* right justified */
-  char len;
-} sVLCtable;
-
-
+/*  These modifications are free software; you can redistribute them
+ *  and/or modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version 2 of
+ *  the License, or (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
+ * 02111-1307, USA.
+ *
+ */
+
+#include "mpeg2coder.hh"
 /* data from ISO/IEC 13818-2 DIS, Annex B, variable length code tables */
 
 /* Table B-1, variable length codes for macroblock_address_increment
@@ -51,7 +55,8 @@ typedef struct
  * 'macroblock_escape' is treated elsewhere
  */
 
-const static VLCtable addrinctab[33]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::addrinctab[33]=
 {
   {0x01,1},  {0x03,3},  {0x02,3},  {0x03,4},
   {0x02,4},  {0x03,5},  {0x02,5},  {0x07,7},
@@ -70,7 +75,8 @@ const static VLCtable addrinctab[33]=
  * indexed by [macroblock_type]
  */
 
-const static VLCtable mbtypetab[3][32]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::mbtypetab[3][32]=
 {
  /* I */
  {
@@ -107,7 +113,8 @@ const static VLCtable mbtypetab[3][32]=
  * indexed by [coded_block_pattern]
  */
 
-const static VLCtable cbptable[64]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::cbptable[64]=
 {
   {0x01,9}, {0x0b,5}, {0x09,5}, {0x0d,6}, 
   {0x0d,4}, {0x17,7}, {0x13,7}, {0x1f,8}, 
@@ -134,7 +141,8 @@ const static VLCtable cbptable[64]=
  * sign of motion_code is treated elsewhere
  */
 
-const static VLCtable motionvectab[17]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::motionvectab[17]=
 {
   {0x01,1},  {0x01,2},  {0x01,3},  {0x01,4},
   {0x03,6},  {0x05,7},  {0x04,7},  {0x03,7},
@@ -154,7 +162,8 @@ const static VLCtable motionvectab[17]=
  * indexed by [dct_dc_size_luminance]
  */
 
-const static sVLCtable DClumtab[12]=
+const MPEG2Coder::sVLCtable 
+MPEG2Coder::DClumtab[12]=
 {
   {0x0004,3}, {0x0000,2}, {0x0001,2}, {0x0005,3}, {0x0006,3}, {0x000e,4},
   {0x001e,5}, {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x01ff,9}
@@ -166,7 +175,8 @@ const static sVLCtable DClumtab[12]=
  * indexed by [dct_dc_size_chrominance]
  */
 
-const static sVLCtable DCchromtab[12]=
+const MPEG2Coder::sVLCtable 
+MPEG2Coder::DCchromtab[12]=
 {
   {0x0000,2}, {0x0001,2}, {0x0002,2}, {0x0006,3}, {0x000e,4}, {0x001e,5},
   {0x003e,6}, {0x007e,7}, {0x00fe,8}, {0x01fe,9}, {0x03fe,10},{0x03ff,10}
@@ -181,7 +191,8 @@ const static sVLCtable DCchromtab[12]=
  * codes do not include s (sign bit)
  */
 
-const static VLCtable dct_code_tab1[2][40]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::dct_code_tab1[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -211,7 +222,8 @@ const static VLCtable dct_code_tab1[2][40]=
  }
 };
 
-const static VLCtable dct_code_tab2[30][5]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::dct_code_tab2[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 4}, {0x04, 7}, {0x0b,10}, {0x14,12}, {0x14,13}},
@@ -255,7 +267,8 @@ const static VLCtable dct_code_tab2[30][5]=
  * codes do not include s (sign bit)
  */
 
-const static VLCtable dct_code_tab1a[2][40]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::dct_code_tab1a[2][40]=
 {
  /* run = 0, level = 1...40 */
  {
@@ -285,7 +298,8 @@ const static VLCtable dct_code_tab1a[2][40]=
  }
 };
 
-const static VLCtable dct_code_tab2a[30][5]=
+const MPEG2Coder::VLCtable 
+MPEG2Coder::dct_code_tab2a[30][5]=
 {
   /* run = 2...31, level = 1...5 */
   {{0x05, 5}, {0x07, 7}, {0xfc, 8}, {0x0c,10}, {0x14,13}},

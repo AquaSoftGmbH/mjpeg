@@ -30,81 +30,85 @@
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "global.h"
+#include "mpeg2coder.hh"
+#include "picture.hh"
+#include "elemstrmwriter.hh"
+#include "tables.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
-void putintrablk(Picture *picture, int16_t *blk, int cc)
+
+void MPEG2Coder::PutIntraBlk(Picture *picture, int16_t *blk, int cc)
 {
-  int n, dct_diff, run, signed_level;
+	int n, dct_diff, run, signed_level;
 
-  /* DC coefficient (7.2.1) */
-  dct_diff = blk[0] - picture->dc_dct_pred[cc]; /* difference to previous block */
-  picture->dc_dct_pred[cc] = blk[0];
+	/* DC coefficient (7.2.1) */
+	dct_diff = blk[0] - picture->dc_dct_pred[cc]; /* difference to previous block */
+	picture->dc_dct_pred[cc] = blk[0];
 
-  if (cc==0)
-    putDClum(dct_diff);
-  else
-    putDCchrom(dct_diff);
+	if (cc==0)
+		PutDClum(dct_diff);
+	else
+		PutDCchrom(dct_diff);
 
-  /* AC coefficients (7.2.2) */
-  run = 0;
-  const uint8_t *scan_tbl = (picture->altscan ? alternate_scan : zig_zag_scan);
-  for (n=1; n<64; n++)
-  {
-    /* use appropriate entropy scanning pattern */
-    signed_level = blk[scan_tbl[n]];
-    if (signed_level!=0)
-    {
-      putAC(run,signed_level,picture->intravlc);
-      run = 0;
-    }
-    else
-      run++; /* count zero coefficients */
-  }
+	/* AC coefficients (7.2.2) */
+	run = 0;
+	const uint8_t *scan_tbl = (picture->altscan ? alternate_scan : zig_zag_scan);
+	for (n=1; n<64; n++)
+	{
+		/* use appropriate entropy scanning pattern */
+		signed_level = blk[scan_tbl[n]];
+		if (signed_level!=0)
+		{
+			PutAC(run,signed_level,picture->intravlc);
+			run = 0;
+		}
+		else
+			run++; /* count zero coefficients */
+	}
 
-  /* End of Block -- normative block punctuation */
-  if (picture->intravlc)
-    putbits(6,4); /* 0110 (Table B-15) */
-  else
-    putbits(2,2); /* 10 (Table B-14) */
+	/* End of Block -- normative block punctuation */
+	if (picture->intravlc)
+		writer.PutBits(6,4); /* 0110 (Table B-15) */
+	else
+		writer.PutBits(2,2); /* 10 (Table B-14) */
 }
 
 /* generate variable length codes for a non-intra-coded block (6.2.6, 6.3.17) */
-void putnonintrablk(Picture *picture, int16_t *blk)
+void  MPEG2Coder::PutNonIntraBlk(Picture *picture, int16_t *blk)
 {
-  int n, run, signed_level, first;
+	int n, run, signed_level, first;
 
-  run = 0;
-  first = 1;
+	run = 0;
+	first = 1;
 
-  for (n=0; n<64; n++)
-  {
-    /* use appropriate entropy scanning pattern */
-    signed_level = blk[(picture->altscan ? alternate_scan : zig_zag_scan)[n]];
+	for (n=0; n<64; n++)
+	{
+		/* use appropriate entropy scanning pattern */
+		signed_level = blk[(picture->altscan ? alternate_scan : zig_zag_scan)[n]];
 
-    if (signed_level!=0)
-    {
-      if (first)
-      {
-        /* first coefficient in non-intra block */
-        putACfirst(run,signed_level);
-        first = 0;
-      }
-      else
-        putAC(run,signed_level,0);
+		if (signed_level!=0)
+		{
+			if (first)
+			{
+				/* first coefficient in non-intra block */
+				PutACfirst(run,signed_level);
+				first = 0;
+			}
+			else
+				PutAC(run,signed_level,0);
 
-      run = 0;
-    }
-    else
-      run++; /* count zero coefficients */
-  }
+			run = 0;
+		}
+		else
+			run++; /* count zero coefficients */
+	}
 
-  /* End of Block -- normative block punctuation  */
-  putbits(2,2);
+	/* End of Block -- normative block punctuation  */
+	writer.PutBits(2,2);
 }
 
 /* generate variable length code for a motion vector component (7.6.3.1) */
-void putmv(int dmv, int f_code)
+void  MPEG2Coder::PutMV(int dmv, int f_code)
 {
   int r_size, f, vmin, vmax, dv, temp, motion_code, motion_residual;
 
@@ -134,8 +138,8 @@ void putmv(int dmv, int f_code)
     motion_code = -motion_code;
   motion_residual = temp & (f-1);
 
-  putmotioncode(motion_code); /* variable length code */
+  PutMotionCode(motion_code); /* variable length code */
 
   if (r_size!=0 && motion_code!=0)
-    putbits(motion_residual,r_size); /* fixed length code */
+    writer.PutBits(motion_residual,r_size); /* fixed length code */
 }

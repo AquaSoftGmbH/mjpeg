@@ -30,6 +30,7 @@
 
 /* global syntax look-up tables */
 
+#include "mpeg2enc.h"
 
 #ifdef __cplusplus
 #define CLINKAGE "C"

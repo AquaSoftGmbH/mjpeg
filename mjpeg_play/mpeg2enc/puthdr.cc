@@ -49,13 +49,16 @@
 #include <config.h>
 #include <stdio.h>
 #include <math.h>
-#include "global.h"
+#include "tables.h"
 #include "mpeg2coder.hh"
+#include "elemstrmwriter.hh"
 #include "mpeg2encoder.hh"
+
 
 MPEG2Coder::MPEG2Coder( MPEG2Encoder &_encoder ) :
     encoder(_encoder),
-    encparams( encoder.parms )
+    encparams( encoder.parms ),
+    writer( encoder.writer )
 {
 }
 
@@ -94,35 +97,35 @@ void MPEG2Coder::PutSeqHdr()
 {
 	int i;
 
-	alignbits();
-	putbits(SEQ_START_CODE,32); /* sequence_header_code */
-	putbits(encparams.horizontal_size,12); /* horizontal_size_value */
-	putbits(encparams.vertical_size,12); /* vertical_size_value */
-	putbits(encparams.aspectratio,4); /* aspect_ratio_information */
-	putbits(encparams.frame_rate_code,4); /* frame_rate_code */
+	writer.AlignBits();
+	writer.PutBits(SEQ_START_CODE,32); /* sequence_header_code */
+	writer.PutBits(encparams.horizontal_size,12); /* horizontal_size_value */
+	writer.PutBits(encparams.vertical_size,12); /* vertical_size_value */
+	writer.PutBits(encparams.aspectratio,4); /* aspect_ratio_information */
+	writer.PutBits(encparams.frame_rate_code,4); /* frame_rate_code */
 
 	/* MPEG-1 VBR is FFFF rate code. 
 	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
 	   sent 
 	*/
 	if(encparams.mpeg1 && (encparams.quant_floor != 0 || encparams.still_size > 0) ) {
-		putbits(0xfffff,18);
+		writer.PutBits(0xfffff,18);
 	} else {
-		putbits((int)ceil(encparams.bit_rate/400.0),18); /* bit_rate_value */
+		writer.PutBits((int)ceil(encparams.bit_rate/400.0),18); /* bit_rate_value */
 	}
-	putbits(1,1); /* marker_bit */
-	putbits(encparams.vbv_buffer_code,10); /* vbv_buffer_size_value */
-	putbits(encparams.constrparms,1); /* constrained_parameters_flag */
+	writer.PutBits(1,1); /* marker_bit */
+	writer.PutBits(encparams.vbv_buffer_code,10); /* vbv_buffer_size_value */
+	writer.PutBits(encparams.constrparms,1); /* constrained_parameters_flag */
 
-	putbits(encparams.load_iquant,1); /* load_intra_quantizer_matrix */
+	writer.PutBits(encparams.load_iquant,1); /* load_intra_quantizer_matrix */
 	if (encparams.load_iquant)
 		for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
-			putbits(encparams.intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
+			writer.PutBits(encparams.intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
 
-	putbits(encparams.load_niquant,1); /* load_non_intra_quantizer_matrix */
+	writer.PutBits(encparams.load_niquant,1); /* load_non_intra_quantizer_matrix */
 	if (encparams.load_niquant)
 		for (i=0; i<64; i++)
-			putbits(encparams.inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
+			writer.PutBits(encparams.inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
 	if (!encparams.mpeg1)
 	{
 		PutSeqExt();
@@ -139,20 +142,20 @@ void MPEG2Coder::PutSeqHdr()
 
 void MPEG2Coder::PutSeqExt()
 {
-	alignbits();
-	putbits(EXT_START_CODE,32); /* extension_start_code */
-	putbits(SEQ_ID,4); /* extension_start_code_identifier */
-	putbits((encparams.profile<<4)|encparams.level,8); /* profile_and_level_indication */
-	putbits(encparams.prog_seq,1); /* progressive sequence */
-	putbits(CHROMA420,2); /* chroma_format */
-	putbits(encparams.horizontal_size>>12,2); /* horizontal_size_extension */
-	putbits(encparams.vertical_size>>12,2); /* vertical_size_extension */
-	putbits(((int)ceil(encparams.bit_rate/400.0))>>18,12); /* bit_rate_extension */
-	putbits(1,1); /* marker_bit */
-	putbits(encparams.vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
-	putbits(0,1); /* low_delay  -- currently not implemented */
-	putbits(0,2); /* frame_rate_extension_n */
-	putbits(0,5); /* frame_rate_extension_d */
+	writer.AlignBits();
+	writer.PutBits(EXT_START_CODE,32); /* extension_start_code */
+	writer.PutBits(SEQ_ID,4); /* extension_start_code_identifier */
+	writer.PutBits((encparams.profile<<4)|encparams.level,8); /* profile_and_level_indication */
+	writer.PutBits(encparams.prog_seq,1); /* progressive sequence */
+	writer.PutBits(CHROMA420,2); /* chroma_format */
+	writer.PutBits(encparams.horizontal_size>>12,2); /* horizontal_size_extension */
+	writer.PutBits(encparams.vertical_size>>12,2); /* vertical_size_extension */
+	writer.PutBits(((int)ceil(encparams.bit_rate/400.0))>>18,12); /* bit_rate_extension */
+	writer.PutBits(1,1); /* marker_bit */
+	writer.PutBits(encparams.vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
+	writer.PutBits(0,1); /* low_delay  -- currently not implemented */
+	writer.PutBits(0,2); /* frame_rate_extension_n */
+	writer.PutBits(0,5); /* frame_rate_extension_d */
 }
 
 /*****************************
@@ -163,17 +166,17 @@ void MPEG2Coder::PutSeqExt()
 
 void MPEG2Coder::PutSeqDispExt()
 {
-	alignbits();
-	putbits(EXT_START_CODE,32); /* extension_start_code */
-	putbits(DISP_ID,4); /* extension_start_code_identifier */
-	putbits(encparams.video_format,3); /* video_format */
-	putbits(1,1); /* colour_description */
-	putbits(encparams.color_primaries,8); /* colour_primaries */
-	putbits(encparams.transfer_characteristics,8); /* transfer_characteristics */
-	putbits(encparams.matrix_coefficients,8); /* matrix_coefficients */
-	putbits(encparams.display_horizontal_size,14); /* display_horizontal_size */
-	putbits(1,1); /* marker_bit */
-	putbits(encparams.display_vertical_size,14); /* display_vertical_size */
+	writer.AlignBits();
+	writer.PutBits(EXT_START_CODE,32); /* extension_start_code */
+	writer.PutBits(DISP_ID,4); /* extension_start_code_identifier */
+	writer.PutBits(encparams.video_format,3); /* video_format */
+	writer.PutBits(1,1); /* colour_description */
+	writer.PutBits(encparams.color_primaries,8); /* colour_primaries */
+	writer.PutBits(encparams.transfer_characteristics,8); /* transfer_characteristics */
+	writer.PutBits(encparams.matrix_coefficients,8); /* matrix_coefficients */
+	writer.PutBits(encparams.display_horizontal_size,14); /* display_horizontal_size */
+	writer.PutBits(1,1); /* marker_bit */
+	writer.PutBits(encparams.display_vertical_size,14); /* display_vertical_size */
 }
 
 /********************************
@@ -187,10 +190,10 @@ void MPEG2Coder::PutSeqDispExt()
 void MPEG2Coder::PutUserData(const uint8_t *userdata, int len)
 {
 	int i;
-	alignbits();
-	putbits(USER_START_CODE,32); /* user_data_start_code */
+	writer.AlignBits();
+	writer.PutBits(USER_START_CODE,32); /* user_data_start_code */
 	for( i =0; i < len; ++i )
-		putbits(userdata[i],8);
+		writer.PutBits(userdata[i],8);
 }
 
 /* generate group of pictures header (6.2.2.6, 6.3.9)
@@ -201,20 +204,20 @@ void MPEG2Coder::PutGopHdr(int frame,int closed_gop )
 {
 	int tc;
 
-	alignbits();
-	putbits(GOP_START_CODE,32); /* group_start_code */
+	writer.AlignBits();
+	writer.PutBits(GOP_START_CODE,32); /* group_start_code */
 	tc = FrameToTimeCode(frame);
-	putbits(tc,25); /* time_code */
-	putbits(closed_gop,1); /* closed_gop */
-	putbits(0,1); /* broken_link */
+	writer.PutBits(tc,25); /* time_code */
+	writer.PutBits(closed_gop,1); /* closed_gop */
+	writer.PutBits(0,1); /* broken_link */
 }
 
 
 /* generate sequence_end_code (6.2.2) */
 void MPEG2Coder::PutSeqEnd(void)
 {
-	alignbits();
-	putbits(SEQ_END_CODE,32);
+	writer.AlignBits();
+	writer.PutBits(SEQ_END_CODE,32);
 }
 
 

@@ -21,6 +21,8 @@
  */
 
 #include <config.h>
+#include "stdio.h"
+#include "mjpeg_types.h"
 
 class MPEG2Encoder;
 class EncoderParams;
@@ -29,9 +31,43 @@ class ElemStrmWriter
 {
 public:
 	ElemStrmWriter( MPEG2Encoder &encoder );
-private:
+    // TODO eventually byte write will be virtual and buffering
+    // TODO will be part of base class...
+
+    /**************
+     *
+     * Write rightmost n (0<=n<=32) bits of val to outfile 
+     *
+     *************/
+    virtual void PutBits( uint32_t val, int n) = 0;
+    virtual void FrameBegin() = 0;
+    virtual void FrameFlush() = 0;
+    virtual void FrameDiscard() = 0;
+    void AlignBits();
+    inline int64_t BitCount() { return 8LL*bytecnt + (8-outcnt); }
+
+protected:
 	MPEG2Encoder &encoder;
 	EncoderParams &encparams;
+    uint32_t outbfr;
+    int64_t bytecnt;
+    int outcnt;
+
+};
+
+
+class FILE_StrmWriter : public ElemStrmWriter
+{
+public:
+    FILE_StrmWriter( MPEG2Encoder &encoder, FILE *ofile_ptr );
+        
+    void PutBits( uint32_t val, int n);
+    void FrameBegin();
+    void FrameFlush();
+    void FrameDiscard();
+    
+private:
+    FILE *outfile;
 };
 
 /* 
