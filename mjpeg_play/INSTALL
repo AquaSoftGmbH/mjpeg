@@ -62,12 +62,11 @@ where /path/to/jpeg-mmx is the directory where you just
 compiled JPEG-MMX.  If you do NOT want to include quicktime support you may
 specify '--with-quicktime=no', otherwise the presence of libquicktime will 
 be autodetected.  You can possibly use other options, such as 
-'--enable-cmov-extensions' or '--enable-large-file' to enable CMOV CPU 
-extensions or > 2GB file support. Please note that CMOV-binaries will *not* 
-run on CPUs that lack CMOV support!  Binaries compiled with large file 
-support will *not* run on systems lacking large file support!  Next, run 
-'make' and 'make install'. You're now ready to use the mjpegtools!  The MJPEG 
-HOWTO (mjpeg_howto.txt or 'man mjpegtools') is probably a good place to start.
+'--enable-large-file' to enable support for > 2GB file support.
+Binaries compiled with large file support will *not* run on systems lacking 
+large file support!  Next, run 'make' and 'make install'. You're now ready 
+to use the mjpegtools!  The MJPEG HOWTO (mjpeg_howto.txt or 'man mjpegtools') 
+is probably a good place to start.
 
 HELP
 ====

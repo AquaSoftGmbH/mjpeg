@@ -43,13 +43,9 @@ config-stamp: configure
 #	./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info
 	for cpu in $(HOST_CPUS); do \
 		mkdir debian/build-$$cpu; \
-		case $$cpu in \
-		i686)	cmov=enable ;; \
-		*)	cmov=disable ;; \
-		esac; \
 		cd debian/build-$$cpu; \
 		../../configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info \
-				--srcdir=../.. --with-dv-yv12 --enable-zalpha --$$cmov-cmov-extension; \
+				--srcdir=../.. --with-dv-yv12 --enable-zalpha; \
 		cd ../..; \
 	done
 	touch config-stamp
