@@ -25,3 +25,5 @@
 #else
 #define ATTR_ALIGN(align)
 #endif
+
+#define ATTR_NOINLINE __attribute__ ((noinline))

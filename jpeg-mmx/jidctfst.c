@@ -1445,6 +1445,7 @@ jpeg_idct_ifast_mmx (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 
   __asm__ (
 
+        "pushl           %%ebx\n\t"
         "movl            %0, %%edi \n\t"
         "movl            %1, %%ebx \n\t"
         "movl            %2, %%esi \n\t"
@@ -2467,12 +2468,13 @@ jpeg_idct_ifast_mmx (j_decompress_ptr cinfo, jpeg_component_info * compptr,
         "movq            %%mm3,(%%ebx) \n\t"
 
         "emms                        \n\t"
+        "popl            %%ebx\n\t"
 
 	: // no output regs
 	//      %0           %1             %2       %3            %4
 	: "m"(quantptr), "m"(inptr), "m"(wsptr), "m"(outptr), "m"(output_col)
 
-	: "eax", "ebx", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
+	: "eax", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
         );
 
 #endif

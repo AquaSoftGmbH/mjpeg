@@ -816,6 +816,8 @@ do_next16:
   fprintf(stderr, "Using accelerated MMX code for merge !\n");
 
           __asm__ (
+          "pushl %%ebx            \n\t"
+
           "movl %0, %%esi         \n\t"
 
           "movl %1, %%eax         \n\t"
@@ -1174,11 +1176,13 @@ do_next16:
 
 	  "emms                        \n\t"
 
+          "popl %%ebx                  \n\t"
+
 	  : //"=m"(&cols_asm) 
 
 	  : "m"(inptr00), "m"(inptr01), "m"(inptr2), "m"(inptr1), "m"(outptr1), 
 	  "m"(outptr0),"m"(cols_asm) /* was (&cols_asm) */ 
-	  : "eax", "ebx", "ecx", "edx", "edi", "esi", "st", "cc", "memory"
+	  : "eax", "ecx", "edx", "edi", "esi", "st", "cc", "memory"
           );
 #if 0
           "movl $inptr00, %%esi         \n\t"

@@ -269,6 +269,7 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 #endif
 #if defined(HAVE_MMX_ATT_MNEMONICS)
       __asm__(
+	  "pushl %%ebx\n"
 	      "mov %1, %%eax\n"  
 	      "mov %2, %%ebx\n"  
 	      "mov %3, %%ecx\n"  
@@ -279,8 +280,8 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 	  "punpcklbw %%mm7,%%mm0\n" // mm0: y3 y2 y1 y0 - expand to 16 bit
 	  "punpcklbw %%mm7,%%mm1\n" // mm1: cb3 cb2 cb1 cb0
 	  "punpcklbw %%mm7,%%mm2\n" // mm2: cr3 cr2 cr1 cr0
-	  "psubw te0,%%mm1\n"       // minus 128 for cb and cr
-	  "psubw te0,%%mm2\n"
+	  "psubw %4,%%mm1\n"       // minus 128 for cb and cr
+	  "psubw %4,%%mm2\n"
 	  "psllw $2,%%mm1\n"        // shift left 2 bits for Cr and Cb to fit the mult constants
 	  "psllw $2,%%mm2\n"
 
@@ -296,8 +297,8 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 	  //------------------
 	  // R    G     B  
 
-	  "pmulhw te1,%%mm3\n"// multiplicate in the constants: mm3: cb1/green cb1/blue cb0/green cb0/blue
-	  "pmulhw te2,%%mm4\n"// mm4: cr1/red cb1/green cr0/red cr0/green
+	  "pmulhw %5,%%mm3\n"// multiplicate in the constants: mm3: cb1/green cb1/blue cb0/green cb0/blue
+	  "pmulhw %6,%%mm4\n"// mm4: cr1/red cb1/green cr0/red cr0/green
 
 	  "movq %%mm0,%%mm5\n"      // mm5: y3 y2 y1 y0
 	  "punpcklwd %%mm5,%%mm5\n" // expand to 32 bit: y1 y1 y0 y0
@@ -329,8 +330,8 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 	  "punpckhwd %%mm0,%%mm0\n" //mm0 = y3 y3 y2 y2
 	  "punpckhwd %%mm1,%%mm1\n" //mm1 = cb3 cb3 cb2 cb2
 	  "punpckhwd %%mm2,%%mm2\n" //mm2 = cr3 cr3 cr2 cr2
-	  "pmulhw te1,%%mm1\n"      //mm1 = cb * ?
-	  "pmulhw te2,%%mm2\n"      //mm2 = cr * ?
+	  "pmulhw %5,%%mm1\n"      //mm1 = cb * ?
+	  "pmulhw %6,%%mm2\n"      //mm2 = cr * ?
 	  "movq %%mm0,%%mm3\n"      //mm3 = y3 y3 y2 y2
 	  "punpcklwd %%mm3,%%mm3\n" //mm3 = y2 y2 y2 y2
 	  "punpckhwd %%mm0,%%mm0\n" //mm0 = y3 y3 y3 y3
@@ -356,7 +357,8 @@ ycc_rgb_convert_mmx (j_decompress_ptr cinfo,
 	  "movq %%mm3,6%0\n"       //  save two more RGB pixels
 
 	  :"=m"(outptr[0])
-	  :"m"(inptr0),"m"(inptr1),"m"(inptr2) //y cb cr
+	  :"m"(inptr0),"m"(inptr1),"m"(inptr2), //y cb cr
+	   "m"(te0),"m"(te1),"m"(te2)
 	  :"eax", "ebx", "ecx", "st");
 #endif
 

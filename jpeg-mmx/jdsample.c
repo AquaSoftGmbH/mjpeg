@@ -713,7 +713,7 @@ h2v1_fancy_upsample_mmx (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 	//      %0           %1       %2       %3            %4
 	: "m"(hsize), "m"(inptr), "m"(outptr)
 
-	: "eax", "ebx", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
+	: "eax", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
       );
 #endif
   }
@@ -1732,7 +1732,7 @@ h2v2_fancy_upsample_mmx (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 			 : "m"(dsamp), "m"(inptr0), "m"(inptr1), "m"(outptr),  "m"(save_val), "m"(inptr2),
 			 "m"(outptr2) /* %6 */
 
-			 : "eax", "ebx", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
+			 : "eax", "ecx", "edx", "esi", "edi", "memory", "cc", "st"
 			 );
 #endif
     inrow++;

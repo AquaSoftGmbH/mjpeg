@@ -178,32 +178,33 @@
 #define USED
 #endif
 #define __int64 unsigned long long
-	static	__int64 USED fix_029_n089n196	= 0x098ea46e098ea46eULL;
-	static	__int64 USED fix_n196_n089	= 0xc13be333c13be333ULL;
-	static	__int64 USED fix_205_n256n039	= 0x41b3a18141b3a181ULL;
-	static	__int64 USED fix_n039_n256	= 0xf384adfdf384adfdULL;
-	static	__int64 USED fix_307n256_n196	= 0x1051c13b1051c13bULL;
-	static	__int64 USED fix_n256_n196	= 0xadfdc13badfdc13bULL;
-	static	__int64 USED fix_150_n089n039	= 0x300bd6b7300bd6b7ULL;
-	static	__int64 USED fix_n039_n089	= 0xf384e333f384e333ULL;
-	static	__int64 USED fix_117_117	= 0x25a125a125a125a1ULL;
-	static	__int64 USED fix_054_054p076	= 0x115129cf115129cfULL;
-	static	__int64 USED fix_054n184_054	= 0xd6301151d6301151ULL;
+      static const    __int64 fix_029_n089n196         = 0x098ea46e098ea46eLL;
+       static const    __int64 fix_n196_n089           = 0xc13be333c13be333LL;
+       static const    __int64 fix_205_n256n039        = 0x41b3a18141b3a181LL;
+       static const    __int64 fix_n039_n256           = 0xf384adfdf384adfdLL;
+       static const    __int64 fix_307n256_n196        = 0x1051c13b1051c13bLL;
+       static const    __int64 fix_n256_n196           = 0xadfdc13badfdc13bLL;
+       static const    __int64 fix_150_n089n039        = 0x300bd6b7300bd6b7LL;
+       static const    __int64 fix_n039_n089           = 0xf384e333f384e333LL;
+       static const    __int64 fix_117_117             = 0x25a125a125a125a1LL;
+       static const    __int64 fix_054_054p076         = 0x115129cf115129cfLL;
+       static const    __int64 fix_054n184_054         = 0xd6301151d6301151LL;
 
-	static	__int64 USED fix_054n184 	= 0xd630d630d630d630ULL;
-	static	__int64 USED fix_054		= 0x1151115111511151ULL;
-	static	__int64 USED fix_054p076	= 0x29cf29cf29cf29cfULL;
-	static	__int64 USED fix_n196p307n256	= 0xd18cd18cd18cd18cULL;
-	static	__int64 USED fix_n089n039p150	= 0x06c206c206c206c2ULL;
-	static	__int64 USED fix_n256		= 0xadfdadfdadfdadfdULL;
-	static	__int64 USED fix_n039		= 0xf384f384f384f384ULL;
-	static	__int64 USED fix_n256n039p205	= 0xe334e334e334e334ULL;
-	static	__int64 USED fix_n196		= 0xc13bc13bc13bc13bULL;
-	static	__int64 USED fix_n089		= 0xe333e333e333e333ULL;
-	static	__int64 USED fixn089n196p029	= 0xadfcadfcadfcadfcULL;
+       static const    __int64 fix_054n184             = 0xd630d630d630d630LL;
+       static const    __int64 fix_054                 = 0x1151115111511151LL;
+       static const    __int64 fix_054p076             = 0x29cf29cf29cf29cfLL;
+       static const    __int64 fix_n196p307n256        = 0xd18cd18cd18cd18cLL;
+       static const    __int64 fix_n089n039p150        = 0x06c206c206c206c2LL;
+       static const    __int64 fix_n256                = 0xadfdadfdadfdadfdLL;
+       static const    __int64 fix_n039                = 0xf384f384f384f384LL;
+       static const    __int64 fix_n256n039p205        = 0xe334e334e334e334LL;
+       static const    __int64 fix_n196                = 0xc13bc13bc13bc13bLL;
+       static const    __int64 fix_n089                = 0xe333e333e333e333LL;
+       static const    __int64 fix_n089n196p029        = 0xadfcadfcadfcadfcLL;
+                                                                                
+       static const  __int64 const_0x2xx8              = 0x0000010000000100LL;
+       static const  __int64 const_0x0808              = 0x0808080808080808LL;
 
-	static  __int64 USED const_0x2xx8	= 0x0000010000000100ULL;
-	static  __int64 USED const_0x0808	= 0x0808080808080808ULL;
 #undef USED
 
 __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
@@ -1541,6 +1542,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 #if defined(HAVE_MMX_ATT_MNEMONICS) 
         __asm__ (
 
+        "pushl           %%ebx\n\t"
         "movl            %0, %%edi \n\t"
         "movl            %1, %%ebx \n\t"
         "movl            %2, %%esi \n\t"
@@ -1570,16 +1572,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "movq            %%mm0,%%mm4 \n\t"                      //p1(3,2)
         "punpckhwd       %%mm1,%%mm2 \n\t"                      //p1(3,4)
 
-        "pmaddwd         fix_054n184_054,%%mm0 \n\t" //p1(3,3)
+        "pmaddwd         %5,%%mm0 \n\t" //p1(3,3)
         "movq            %%mm2,%%mm5 \n\t"                      //p1(3,5)
 
-        "pmaddwd         fix_054n184_054,%%mm2 \n\t" //p1(3,6)
+        "pmaddwd         %5,%%mm2 \n\t" //p1(3,6)
         "pxor            %%mm1,%%mm1 \n\t" //p1(7,0)
 
-        "pmaddwd         fix_054_054p076,%%mm4 \n\t"   //p1(4,0)
+        "pmaddwd         %6,%%mm4 \n\t"   //p1(4,0)
         "punpcklwd   %%mm6,%%mm1     \n\t" //p1(7,1)
 
-        "pmaddwd         fix_054_054p076,%%mm5 \n\t"   //p1(4,1)
+        "pmaddwd         %6,%%mm5 \n\t"   //p1(4,1)
         "psrad           $3,%%mm1    \n\t" //p1(7,2)
 
         "pxor            %%mm3,%%mm3 \n\t" //p1(7,3)
@@ -1675,16 +1677,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "pmullw          8*2(%%edi),%%mm3 \n\t" //p1(13,1)
         "movq            %%mm2,%%mm6 \n\t"              //p1(14,0)
 
-        "pmaddwd         fix_117_117,%%mm4 \n\t" //p1(11,3)
+        "pmaddwd         %7,%%mm4 \n\t" //p1(11,3)
         "movq            %%mm2,%%mm7 \n\t"              //p1(14,1)
 
-        "pmaddwd         fix_117_117,%%mm5 \n\t" //p1(11,5)
+        "pmaddwd         %7,%%mm5 \n\t" //p1(11,5)
         "punpcklwd       %%mm3,%%mm6 \n\t"              //p1(14,2)
 
-        "pmaddwd         fix_117_117,%%mm6 \n\t" //p1(14,3)
+        "pmaddwd         %7,%%mm6 \n\t" //p1(14,3)
         "punpckhwd       %%mm3,%%mm7 \n\t"              //p1(14,4)
 
-        "pmaddwd         fix_117_117,%%mm7 \n\t" //p1(14,5)
+        "pmaddwd         %7,%%mm7 \n\t" //p1(14,5)
         "paddd           %%mm6,%%mm4 \n\t"              //p1(15,0)
 
         "paddd           %%mm7,%%mm5 \n\t"              //p1(15,1)
@@ -1697,16 +1699,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm6 \n\t"                      //p1(16,1)
 
         "punpcklwd       %%mm3,%%mm7 \n\t"                      //p1(16,4)
-        "pmaddwd         fix_n039_n089,%%mm6 \n\t"     //p1(16,2)
+        "pmaddwd         %8,%%mm6 \n\t"     //p1(16,2)
 
-        "pmaddwd         fix_150_n089n039,%%mm7 \n\t" //p1(16,5)
+        "pmaddwd         %9,%%mm7 \n\t" //p1(16,5)
         "movq            %%mm0,%%mm4 \n\t"                      //p1(16,12)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(16,6)
         "punpckhwd       %%mm2,%%mm4 \n\t"                      //p1(16,13)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(16,7)
-        "pmaddwd         fix_n039_n089,%%mm4 \n\t"     //p1(16,14)
+        "pmaddwd         %8,%%mm4 \n\t"     //p1(16,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(16,8)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(16,18)
@@ -1715,10 +1717,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "paddd           8*16(%%esi),%%mm6 \n\t"        //p1(16,9)
 
         "punpckhwd       %%mm3,%%mm5 \n\t"                      //p1(16,16)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(16,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(16,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(16,11)
-        "pmaddwd         fix_150_n089n039,%%mm5 \n\t" //p1(16,17)
+        "pmaddwd         %9,%%mm5 \n\t" //p1(16,17)
 
         "paddd           %%mm5,%%mm4 \n\t"                      //p1(16,19)
 
@@ -1726,7 +1728,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*17(%%esi),%%mm4 \n\t"        //p1(16,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(16,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(16,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(16,23)
 
@@ -1739,16 +1741,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(16,27)
         "movq            8*17(%%esi),%%mm6 \n\t"        //p1(16,30)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(16,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(16,28)
         "movq            %%mm1,%%mm7 \n\t"                      //p1(17,3)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(16,29)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(16,31)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(16,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(16,32)
         "punpcklwd       %%mm1,%%mm7 \n\t"                      //p1(17,4)
 
-        "pmaddwd         fix_307n256_n196,%%mm7 \n\t" //p1(17,5)
+        "pmaddwd         %11,%%mm7 \n\t" //p1(17,5)
         "psrad           $9,%%mm6    \n\t"                      //p1(16,33)
 
         "packssdw        %%mm6,%%mm4 \n\t"                      //p1(16,34)
@@ -1760,21 +1762,21 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm6 \n\t"                      //p1(17,1)
         "punpckhwd       %%mm2,%%mm4 \n\t"                      //p1(17,13)
 
-        "pmaddwd         fix_n256_n196,%%mm6 \n\t"     //p1(17,2)
+        "pmaddwd         %12,%%mm6 \n\t"     //p1(17,2)
         "movq            %%mm1,%%mm5 \n\t"                      //p1(17,15)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(17,6)
         "punpckhwd       %%mm1,%%mm5 \n\t"                      //p1(17,16)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(17,7)
-        "pmaddwd         fix_n256_n196,%%mm4 \n\t"     //p1(17,14)
+        "pmaddwd         %12,%%mm4 \n\t"     //p1(17,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(17,8)
-        "pmaddwd         fix_307n256_n196,%%mm5 \n\t" //p1(17,17)
+        "pmaddwd         %11,%%mm5 \n\t" //p1(17,17)
 
         "paddd           8*18(%%esi),%%mm6 \n\t"        //p1(17,9)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(17,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(17,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(17,11)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(17,18)
@@ -1785,7 +1787,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*19(%%esi),%%mm4 \n\t"        //p1(17,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(17,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(17,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(17,23)
 
@@ -1798,11 +1800,11 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "movq            8*19(%%esi),%%mm6 \n\t"        //p1(17,30)
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(17,27)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(17,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(17,28)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(17,31)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(17,29)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(17,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(17,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(17,33)
         "movq            %%mm2,%%mm7 \n\t"                      //p1(18,3)
@@ -1814,16 +1816,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm7 \n\t"                      //p1(18,4)
 
         "punpcklwd       %%mm3,%%mm6 \n\t"                      //p1(18,1)
-        "pmaddwd         fix_205_n256n039,%%mm7 \n\t" //p1(18,5)
+        "pmaddwd         %13,%%mm7 \n\t" //p1(18,5)
 
-        "pmaddwd         fix_n039_n256,%%mm6 \n\t"     //p1(18,2)
+        "pmaddwd         %14,%%mm6 \n\t"     //p1(18,2)
         "movq            %%mm1,%%mm4 \n\t"                      //p1(18,12)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(18,6)
         "punpckhwd       %%mm3,%%mm4 \n\t"                      //p1(18,13)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(18,7)
-        "pmaddwd         fix_n039_n256,%%mm4 \n\t"     //p1(18,14)
+        "pmaddwd         %14,%%mm4 \n\t"     //p1(18,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(18,8)
         "movq            %%mm2,%%mm5 \n\t"                      //p1(18,15)
@@ -1831,10 +1833,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "paddd           8*20(%%esi),%%mm6 \n\t"        //p1(18,9)
         "punpckhwd       %%mm2,%%mm5 \n\t"                      //p1(18,16)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(18,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(18,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(18,11)
-        "pmaddwd         fix_205_n256n039,%%mm5 \n\t" //p1(18,17)
+        "pmaddwd         %13,%%mm5 \n\t" //p1(18,17)
 
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(18,18)
 
@@ -1844,7 +1846,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*21(%%esi),%%mm4 \n\t"        //p1(18,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(18,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(18,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(18,23)
 
@@ -1856,7 +1858,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(18,27)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(18,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(18,28)
         "movq            %%mm0,%%mm7 \n\t"                      //p1(19,3)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(18,29)
@@ -1865,10 +1867,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(18,31)
         "punpcklwd       %%mm0,%%mm7 \n\t"                      //p1(19,4)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(18,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(18,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(18,33)
-        "pmaddwd         fix_029_n089n196,%%mm7 \n\t" //p1(19,5)
+        "pmaddwd         %15,%%mm7 \n\t" //p1(19,5)
 
         "packssdw        %%mm6,%%mm4 \n\t"                      //p1(18,34)
 
@@ -1878,7 +1880,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm1,%%mm6 \n\t"                      //p1(19,1)       
         "movq            %%mm0,%%mm5 \n\t"                      //p1(19,15)
 
-        "pmaddwd         fix_n196_n089,%%mm6 \n\t"     //p1(19,2)
+        "pmaddwd         %16,%%mm6 \n\t"     //p1(19,2)
         "punpckhwd       %%mm0,%%mm5 \n\t"                      //p1(19,16)
 
 
@@ -1890,13 +1892,13 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(19,8)
-        "pmaddwd         fix_n196_n089,%%mm4 \n\t" //p1(19,14)
+        "pmaddwd         %16,%%mm4 \n\t" //p1(19,14)
 
         "paddd           8*22(%%esi),%%mm6 \n\t"        //p1(19,9)
 
-        "pmaddwd         fix_029_n089n196,%%mm5 \n\t" //p1(19,17)
+        "pmaddwd         %15,%%mm5 \n\t" //p1(19,17)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(19,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(19,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(19,11)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(19,18)
@@ -1905,7 +1907,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            %%mm4,%%mm5 \n\t"                      //p1(19,20)
         "paddd           8*23(%%esi),%%mm4 \n\t"        //p1(19,21)
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(19,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(19,22)
         "psrad           $9,%%mm4    \n\t"                      //p1(19,23)
 
         "packssdw        %%mm4,%%mm6 \n\t"                      //p1(19,24)
@@ -1916,11 +1918,11 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(19,27)
         "movq            8*23(%%esi),%%mm6 \n\t"        //p1(19,30)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(19,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(19,28)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(19,31)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(19,29)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(19,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(19,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(19,33)
 
@@ -1951,16 +1953,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "movq            %%mm0,%%mm4 \n\t"                      //p1(3,2)
         "punpckhwd       %%mm1,%%mm2 \n\t"                      //p1(3,4)
 
-        "pmaddwd         fix_054n184_054,%%mm0 \n\t" //p1(3,3)
+        "pmaddwd         %5,%%mm0 \n\t" //p1(3,3)
         "movq            %%mm2,%%mm5 \n\t"                      //p1(3,5)
 
-        "pmaddwd         fix_054n184_054,%%mm2 \n\t" //p1(3,6)
+        "pmaddwd         %5,%%mm2 \n\t" //p1(3,6)
         "pxor            %%mm1,%%mm1 \n\t" //p1(7,0)
 
-        "pmaddwd         fix_054_054p076,%%mm4 \n\t"   //p1(4,0)
+        "pmaddwd         %6,%%mm4 \n\t"   //p1(4,0)
         "punpcklwd   %%mm6,%%mm1     \n\t" //p1(7,1)
 
-        "pmaddwd         fix_054_054p076,%%mm5 \n\t"   //p1(4,1)
+        "pmaddwd         %6,%%mm5 \n\t"   //p1(4,1)
         "psrad           $3,%%mm1    \n\t" //p1(7,2)
 
         "pxor            %%mm3,%%mm3 \n\t" //p1(7,3)
@@ -2056,16 +2058,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "pmullw          8*2(%%edi),%%mm3 \n\t" //p1(13,1)
         "movq            %%mm2,%%mm6 \n\t"              //p1(14,0)
 
-        "pmaddwd         fix_117_117,%%mm4 \n\t" //p1(11,3)
+        "pmaddwd         %7,%%mm4 \n\t" //p1(11,3)
         "movq            %%mm2,%%mm7 \n\t"              //p1(14,1)
 
-        "pmaddwd         fix_117_117,%%mm5 \n\t" //p1(11,5)
+        "pmaddwd         %7,%%mm5 \n\t" //p1(11,5)
         "punpcklwd       %%mm3,%%mm6 \n\t"              //p1(14,2)
 
-        "pmaddwd         fix_117_117,%%mm6 \n\t" //p1(14,3)
+        "pmaddwd         %7,%%mm6 \n\t" //p1(14,3)
         "punpckhwd       %%mm3,%%mm7 \n\t"              //p1(14,4)
 
-        "pmaddwd         fix_117_117,%%mm7 \n\t" //p1(14,5)
+        "pmaddwd         %7,%%mm7 \n\t" //p1(14,5)
         "paddd           %%mm6,%%mm4 \n\t"              //p1(15,0)
 
         "paddd           %%mm7,%%mm5 \n\t"              //p1(15,1)
@@ -2078,16 +2080,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm6 \n\t"                      //p1(16,1)
 
         "punpcklwd       %%mm3,%%mm7 \n\t"                      //p1(16,4)
-        "pmaddwd         fix_n039_n089,%%mm6 \n\t"     //p1(16,2)
+        "pmaddwd         %8,%%mm6 \n\t"     //p1(16,2)
 
-        "pmaddwd         fix_150_n089n039,%%mm7 \n\t" //p1(16,5)
+        "pmaddwd         %9,%%mm7 \n\t" //p1(16,5)
         "movq            %%mm0,%%mm4 \n\t"                      //p1(16,12)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(16,6)
         "punpckhwd       %%mm2,%%mm4 \n\t"                      //p1(16,13)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(16,7)
-        "pmaddwd         fix_n039_n089,%%mm4 \n\t"     //p1(16,14)
+        "pmaddwd         %8,%%mm4 \n\t"     //p1(16,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(16,8)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(16,18)
@@ -2096,10 +2098,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "paddd           8*16(%%esi),%%mm6 \n\t"        //p1(16,9)
 
         "punpckhwd       %%mm3,%%mm5 \n\t"                      //p1(16,16)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(16,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(16,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(16,11)
-        "pmaddwd         fix_150_n089n039,%%mm5 \n\t" //p1(16,17)
+        "pmaddwd         %9,%%mm5 \n\t" //p1(16,17)
 
         "paddd           %%mm5,%%mm4 \n\t"                      //p1(16,19)
 
@@ -2107,7 +2109,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*17(%%esi),%%mm4 \n\t"        //p1(16,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(16,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(16,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(16,23)
 
@@ -2120,16 +2122,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(16,27)
         "movq            8*17(%%esi),%%mm6 \n\t"        //p1(16,30)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(16,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(16,28)
         "movq            %%mm1,%%mm7 \n\t"                      //p1(17,3)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(16,29)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(16,31)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(16,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(16,32)
         "punpcklwd       %%mm1,%%mm7 \n\t"                      //p1(17,4)
 
-        "pmaddwd         fix_307n256_n196,%%mm7 \n\t" //p1(17,5)
+        "pmaddwd         %11,%%mm7 \n\t" //p1(17,5)
         "psrad           $9,%%mm6    \n\t"                      //p1(16,33)
 
         "packssdw        %%mm6,%%mm4 \n\t"                      //p1(16,34)
@@ -2141,21 +2143,21 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm6 \n\t"                      //p1(17,1)
         "punpckhwd       %%mm2,%%mm4 \n\t"                      //p1(17,13)
 
-        "pmaddwd         fix_n256_n196,%%mm6 \n\t"     //p1(17,2)
+        "pmaddwd         %12,%%mm6 \n\t"     //p1(17,2)
         "movq            %%mm1,%%mm5 \n\t"                      //p1(17,15)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(17,6)
         "punpckhwd       %%mm1,%%mm5 \n\t"                      //p1(17,16)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(17,7)
-        "pmaddwd         fix_n256_n196,%%mm4 \n\t"     //p1(17,14)
+        "pmaddwd         %12,%%mm4 \n\t"     //p1(17,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(17,8)
-        "pmaddwd         fix_307n256_n196,%%mm5 \n\t" //p1(17,17)
+        "pmaddwd         %11,%%mm5 \n\t" //p1(17,17)
 
         "paddd           8*18(%%esi),%%mm6 \n\t"        //p1(17,9)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(17,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(17,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(17,11)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(17,18)
@@ -2166,7 +2168,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*19(%%esi),%%mm4 \n\t"        //p1(17,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(17,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(17,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(17,23)
 
@@ -2179,11 +2181,11 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "movq            8*19(%%esi),%%mm6 \n\t"        //p1(17,30)
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(17,27)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(17,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(17,28)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(17,31)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(17,29)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(17,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(17,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(17,33)
         "movq            %%mm2,%%mm7 \n\t"                      //p1(18,3)
@@ -2195,16 +2197,16 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm2,%%mm7 \n\t"                      //p1(18,4)
 
         "punpcklwd       %%mm3,%%mm6 \n\t"                      //p1(18,1)
-        "pmaddwd         fix_205_n256n039,%%mm7 \n\t" //p1(18,5)
+        "pmaddwd         %13,%%mm7 \n\t" //p1(18,5)
 
-        "pmaddwd         fix_n039_n256,%%mm6 \n\t"     //p1(18,2)
+        "pmaddwd         %14,%%mm6 \n\t"     //p1(18,2)
         "movq            %%mm1,%%mm4 \n\t"                      //p1(18,12)
 
         "paddd           8*24(%%esi),%%mm6 \n\t"        //p1(18,6)
         "punpckhwd       %%mm3,%%mm4 \n\t"                      //p1(18,13)
 
         "paddd           %%mm7,%%mm6 \n\t"                      //p1(18,7)
-        "pmaddwd         fix_n039_n256,%%mm4 \n\t"     //p1(18,14)
+        "pmaddwd         %14,%%mm4 \n\t"     //p1(18,14)
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(18,8)
         "movq            %%mm2,%%mm5 \n\t"                      //p1(18,15)
@@ -2212,10 +2214,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "paddd           8*20(%%esi),%%mm6 \n\t"        //p1(18,9)
         "punpckhwd       %%mm2,%%mm5 \n\t"                      //p1(18,16)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(18,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(18,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(18,11)
-        "pmaddwd         fix_205_n256n039,%%mm5 \n\t" //p1(18,17)
+        "pmaddwd         %13,%%mm5 \n\t" //p1(18,17)
 
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(18,18)
 
@@ -2225,7 +2227,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "paddd           8*21(%%esi),%%mm4 \n\t"        //p1(18,21)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(18,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(18,22)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(18,23)
 
@@ -2237,7 +2239,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(18,27)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(18,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(18,28)
         "movq            %%mm0,%%mm7 \n\t"                      //p1(19,3)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(18,29)
@@ -2246,10 +2248,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(18,31)
         "punpcklwd       %%mm0,%%mm7 \n\t"                      //p1(19,4)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(18,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(18,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(18,33)
-        "pmaddwd         fix_029_n089n196,%%mm7 \n\t" //p1(19,5)
+        "pmaddwd         %15,%%mm7 \n\t" //p1(19,5)
 
         "packssdw        %%mm6,%%mm4 \n\t"                      //p1(18,34)
 
@@ -2259,7 +2261,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpcklwd       %%mm1,%%mm6 \n\t"                      //p1(19,1)       
         "movq            %%mm0,%%mm5 \n\t"                      //p1(19,15)
 
-        "pmaddwd         fix_n196_n089,%%mm6 \n\t"     //p1(19,2)
+        "pmaddwd         %16,%%mm6 \n\t"     //p1(19,2)
         "punpckhwd       %%mm0,%%mm5 \n\t"                      //p1(19,16)
 
 
@@ -2271,13 +2273,13 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
 
         "movq            %%mm6,%%mm7 \n\t"                      //p1(19,8)
-        "pmaddwd         fix_n196_n089,%%mm4 \n\t" //p1(19,14)
+        "pmaddwd         %16,%%mm4 \n\t" //p1(19,14)
 
         "paddd           8*22(%%esi),%%mm6 \n\t"        //p1(19,9)
 
-        "pmaddwd         fix_029_n089n196,%%mm5 \n\t" //p1(19,17)
+        "pmaddwd         %15,%%mm5 \n\t" //p1(19,17)
 
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(19,10)
+        "paddd           %10,%%mm6 \n\t"      //p1(19,10)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(19,11)
         "paddd           8*25(%%esi),%%mm4 \n\t"        //p1(19,18)
@@ -2286,7 +2288,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            %%mm4,%%mm5 \n\t"                      //p1(19,20)
         "paddd           8*23(%%esi),%%mm4 \n\t"        //p1(19,21)
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(19,22)
+        "paddd           %10,%%mm4 \n\t"      //p1(19,22)
         "psrad           $9,%%mm4    \n\t"                      //p1(19,23)
 
         "packssdw        %%mm4,%%mm6 \n\t"                      //p1(19,24)
@@ -2297,11 +2299,11 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubd           %%mm7,%%mm4 \n\t"                      //p1(19,27)
         "movq            8*23(%%esi),%%mm6 \n\t"        //p1(19,30)
 
-        "paddd           const_0x2xx8,%%mm4 \n\t"      //p1(19,28)
+        "paddd           %10,%%mm4 \n\t"      //p1(19,28)
         "psubd           %%mm5,%%mm6 \n\t"                      //p1(19,31)
 
         "psrad           $9,%%mm4    \n\t"                      //p1(19,29)
-        "paddd           const_0x2xx8,%%mm6 \n\t"      //p1(19,32)
+        "paddd           %10,%%mm6 \n\t"      //p1(19,32)
 
         "psrad           $9,%%mm6    \n\t"                      //p1(19,33)
 
@@ -2377,21 +2379,21 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpckldq       %%mm4,%%mm1 \n\t"              //tran(34)
         "movq            8*2(%%esi),%%mm5 \n\t"         //p2(3,0)
 
-        "pmulhw          fix_117_117,%%mm2 \n\t" //p2(1,5)
+        "pmulhw          %7,%%mm2 \n\t" //p2(1,5)
         "movq            %%mm7,%%mm4 \n\t"                      //p2(2,0)
 
-        "pmulhw          fixn089n196p029,%%mm4 \n\t" //p2(2,1)
+        "pmulhw          %17,%%mm4 \n\t" //p2(2,1)
         "movq            %%mm6,%%mm3 \n\t"                              //p2(6,0)
 
-        "pmulhw          fix_n256n039p205,%%mm3 \n\t"  //p2(6,1)
+        "pmulhw          %18,%%mm3 \n\t"  //p2(6,1)
 
-        "pmulhw          fix_n089,%%mm5 \n\t"          //p2(3,1)
+        "pmulhw          %19,%%mm5 \n\t"          //p2(3,1)
 
         "movq            %%mm2,8*24(%%eax) \n\t" //p2(1,6)
 
         "movq            8*6(%%esi),%%mm2 \n\t" //p2(4,0)
 
-        "pmulhw          fix_n196,%%mm2 \n\t"  //p2(4,1)
+        "pmulhw          %20,%%mm2 \n\t"  //p2(4,1)
 
         "paddw           8*24(%%eax),%%mm4 \n\t"                //p2(5,0)
 
@@ -2401,33 +2403,33 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*2(%%esi),%%mm2 \n\t"         //p2(7,0)
         "paddw           %%mm4,%%mm5 \n\t"                              //p2(5,2)
-        "pmulhw          fix_n039,%%mm2 \n\t"          //p2(7,1)
+        "pmulhw          %21,%%mm2 \n\t"          //p2(7,1)
 
         "movq            %%mm5,8*1(%%esi) \n\t"                 //p2(5,3)
 
         "movq            8*6(%%esi),%%mm4 \n\t" //p2(8,0)
         "movq            %%mm6,%%mm5 \n\t"              //p2(10,0)
 
-        "pmulhw          fix_n256,%%mm4 \n\t"  //p2(8,1)
+        "pmulhw          %22,%%mm4 \n\t"  //p2(8,1)
 
-        "pmulhw          fix_n039,%%mm5 \n\t"  //p2(10,1)
+        "pmulhw          %21,%%mm5 \n\t"  //p2(10,1)
 
-        "pmulhw          fix_n256,%%mm6 \n\t"          //p2(15,0)
+        "pmulhw          %22,%%mm6 \n\t"          //p2(15,0)
 
         "paddw           %%mm4,%%mm2 \n\t"                      //p2(9,1)
 
         "movq            %%mm7,%%mm4 \n\t"              //p2(11,0)
 
-        "pmulhw          fix_n089,%%mm4 \n\t"  //p2(11,1)
+        "pmulhw          %19,%%mm4 \n\t"  //p2(11,1)
         "paddw           %%mm3,%%mm2 \n\t"                      //p2(9,2)
 
         "movq            %%mm2,8*3(%%esi) \n\t"         //p2(9,3)
 
         "movq            8*2(%%esi),%%mm3 \n\t"         //p2(13,0)
 
-        "pmulhw          fix_n196,%%mm7 \n\t"          //p2(16,0)
+        "pmulhw          %20,%%mm7 \n\t"          //p2(16,0)
 
-        "pmulhw          fix_n089n039p150,%%mm3 \n\t" //p2(13,1)
+        "pmulhw          %23,%%mm3 \n\t" //p2(13,1)
         "paddw           %%mm4,%%mm5 \n\t"              //p2(12,0)
 
 
@@ -2435,7 +2437,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*6(%%esi),%%mm2 \n\t"         //p2(18,0)
 
-        "pmulhw          fix_n196p307n256,%%mm2 \n\t" //p2(18,1)
+        "pmulhw          %24,%%mm2 \n\t" //p2(18,1)
         "paddw           %%mm3,%%mm5 \n\t"                      //p2(14,1)
 
         "movq            %%mm5,8*5(%%esi) \n\t"         //p2(14,2)
@@ -2452,19 +2454,19 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*0(%%esi),%%mm7 \n\t"         //p2(26,0)
 
-        "pmulhw          fix_054p076,%%mm4 \n\t"       //p2(20,2)       
+        "pmulhw          %25,%%mm4 \n\t"       //p2(20,2)       
         "psubw           %%mm0,%%mm7 \n\t"                      //p2(27,0)
 
-        "pmulhw          fix_054,%%mm3 \n\t"           //p2(21,1)
+        "pmulhw          %26,%%mm3 \n\t"           //p2(21,1)
         "movq            %%mm0,%%mm2 \n\t"                      //p2(26,1)
 
-        "pmulhw          fix_054,%%mm5 \n\t"           //p2(23,0)
+        "pmulhw          %26,%%mm5 \n\t"           //p2(23,0)
         "psraw           $3,%%mm7    \n\t"                      //p2(27,1)
 
         "paddw           8*0(%%esi),%%mm2 \n\t"         //p2(26,2)
         "movq            %%mm7,%%mm6 \n\t"                      //p2(28,0)
 
-        "pmulhw          fix_054n184,%%mm1 \n\t"       //p2(24,0)
+        "pmulhw          %27,%%mm1 \n\t"       //p2(24,0)
         "psraw           $3,%%mm2    \n\t"                      //p2(26,3)                       
 
         "paddw           %%mm3,%%mm4 \n\t"                      //p2(22,0)       
@@ -2485,9 +2487,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubw           8*5(%%esi),%%mm2 \n\t"         //p2(32,2)
         "movq            %%mm6,%%mm4 \n\t"                      //p2(34,0)
 
-        "paddw           const_0x0808,%%mm1 \n\t"      //p2(32,3)
+        "paddw           %28,%%mm1 \n\t"      //p2(32,3)
 
-        "paddw           const_0x0808,%%mm2 \n\t"      //p2(32,4)
+        "paddw           %28,%%mm2 \n\t"      //p2(32,4)
         "psraw           $4,%%mm1    \n\t"                      //p2(32,5)
 
         "psraw           $4,%%mm2    \n\t"                      //p2(32,6)
@@ -2496,9 +2498,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "packuswb        %%mm2,%%mm1 \n\t"                      //p2(32,7)
         "psubw           8*7(%%esi),%%mm0 \n\t"         //p2(33,2)
 
-        "paddw           const_0x0808,%%mm7 \n\t"      //p2(33,3)
+        "paddw           %28,%%mm7 \n\t"      //p2(33,3)
 
-        "paddw           const_0x0808,%%mm0 \n\t"      //p2(33,4)
+        "paddw           %28,%%mm0 \n\t"      //p2(33,4)
         "psraw           $4,%%mm7    \n\t"                      //p2(33,5)
 
         "psraw           $4,%%mm0    \n\t"                      //p2(33,6)
@@ -2507,10 +2509,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "packuswb        %%mm0,%%mm7 \n\t"                      //p2(33,7)
         "psubw           8*3(%%esi),%%mm6 \n\t"         //p2(34,2)
 
-        "paddw           const_0x0808,%%mm4 \n\t"      //p2(34,3)
+        "paddw           %28,%%mm4 \n\t"      //p2(34,3)
         "movq            %%mm3,%%mm5 \n\t"                      //p2(35,0)
 
-        "paddw           const_0x0808,%%mm6 \n\t"      //p2(34,4)
+        "paddw           %28,%%mm6 \n\t"      //p2(34,4)
         "psraw           $4,%%mm4    \n\t"                      //p2(34,5)
 
         "psraw           $4,%%mm6    \n\t"                      //p2(34,6)
@@ -2520,9 +2522,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubw           8*1(%%esi),%%mm5 \n\t"         //p2(35,2)
 
         "movq            %%mm1,%%mm0 \n\t"                      //p2(36,0)
-        "paddw           const_0x0808,%%mm3 \n\t"      //p2(35,3)
+        "paddw           %28,%%mm3 \n\t"      //p2(35,3)
 
-        "paddw           const_0x0808,%%mm5 \n\t"      //p2(35,4)
+        "paddw           %28,%%mm5 \n\t"      //p2(35,4)
         "punpcklbw       %%mm7,%%mm0 \n\t"                      //p2(36,1)
 
         "psraw           $4,%%mm3    \n\t"                      //p2(35,5)
@@ -2644,21 +2646,21 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "punpckldq       %%mm4,%%mm1 \n\t"              //tran(34)
         "movq            8*2(%%esi),%%mm5 \n\t"         //p2(3,0)
 
-        "pmulhw          fix_117_117,%%mm2 \n\t" //p2(1,5)
+        "pmulhw          %7,%%mm2 \n\t" //p2(1,5)
         "movq            %%mm7,%%mm4 \n\t"                      //p2(2,0)
 
-        "pmulhw          fixn089n196p029,%%mm4 \n\t" //p2(2,1)
+        "pmulhw          %17,%%mm4 \n\t" //p2(2,1)
         "movq            %%mm6,%%mm3 \n\t"                              //p2(6,0)
 
-        "pmulhw          fix_n256n039p205,%%mm3 \n\t"  //p2(6,1)
+        "pmulhw          %18,%%mm3 \n\t"  //p2(6,1)
 
-        "pmulhw          fix_n089,%%mm5 \n\t"          //p2(3,1)
+        "pmulhw          %19,%%mm5 \n\t"          //p2(3,1)
 
         "movq            %%mm2,8*24(%%eax) \n\t" //p2(1,6)
 
         "movq            8*6(%%esi),%%mm2 \n\t" //p2(4,0)
 
-        "pmulhw          fix_n196,%%mm2 \n\t"  //p2(4,1)
+        "pmulhw          %20,%%mm2 \n\t"  //p2(4,1)
 
         "paddw           8*24(%%eax),%%mm4 \n\t"                //p2(5,0)
 
@@ -2668,33 +2670,33 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*2(%%esi),%%mm2 \n\t"         //p2(7,0)
         "paddw           %%mm4,%%mm5 \n\t"                              //p2(5,2)
-        "pmulhw          fix_n039,%%mm2 \n\t"          //p2(7,1)
+        "pmulhw          %21,%%mm2 \n\t"          //p2(7,1)
 
         "movq            %%mm5,8*1(%%esi) \n\t"                 //p2(5,3)
 
         "movq            8*6(%%esi),%%mm4 \n\t" //p2(8,0)
         "movq            %%mm6,%%mm5 \n\t"              //p2(10,0)
 
-        "pmulhw          fix_n256,%%mm4 \n\t"  //p2(8,1)
+        "pmulhw          %22,%%mm4 \n\t"  //p2(8,1)
 
-        "pmulhw          fix_n039,%%mm5 \n\t"  //p2(10,1)
+        "pmulhw          %21,%%mm5 \n\t"  //p2(10,1)
 
-        "pmulhw          fix_n256,%%mm6 \n\t"          //p2(15,0)
+        "pmulhw          %22,%%mm6 \n\t"          //p2(15,0)
 
         "paddw           %%mm4,%%mm2 \n\t"                      //p2(9,1)
 
         "movq            %%mm7,%%mm4 \n\t"              //p2(11,0)
 
-        "pmulhw          fix_n089,%%mm4 \n\t"  //p2(11,1)
+        "pmulhw          %19,%%mm4 \n\t"  //p2(11,1)
         "paddw           %%mm3,%%mm2 \n\t"                      //p2(9,2)
 
         "movq            %%mm2,8*3(%%esi) \n\t"         //p2(9,3)
 
         "movq            8*2(%%esi),%%mm3 \n\t"         //p2(13,0)
 
-        "pmulhw          fix_n196,%%mm7 \n\t"          //p2(16,0)
+        "pmulhw          %20,%%mm7 \n\t"          //p2(16,0)
 
-        "pmulhw          fix_n089n039p150,%%mm3 \n\t" //p2(13,1)
+        "pmulhw          %23,%%mm3 \n\t" //p2(13,1)
         "paddw           %%mm4,%%mm5 \n\t"              //p2(12,0)
 
 
@@ -2702,7 +2704,7 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*6(%%esi),%%mm2 \n\t"         //p2(18,0)
 
-        "pmulhw          fix_n196p307n256,%%mm2 \n\t" //p2(18,1)
+        "pmulhw          %24,%%mm2 \n\t" //p2(18,1)
         "paddw           %%mm3,%%mm5 \n\t"                      //p2(14,1)
 
         "movq            %%mm5,8*5(%%esi) \n\t"         //p2(14,2)
@@ -2719,19 +2721,19 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
         "movq            8*0(%%esi),%%mm7 \n\t"         //p2(26,0)
 
-        "pmulhw          fix_054p076,%%mm4 \n\t"       //p2(20,2)       
+        "pmulhw          %25,%%mm4 \n\t"       //p2(20,2)       
         "psubw           %%mm0,%%mm7 \n\t"                      //p2(27,0)
 
-        "pmulhw          fix_054,%%mm3 \n\t"           //p2(21,1)
+        "pmulhw          %26,%%mm3 \n\t"           //p2(21,1)
         "movq            %%mm0,%%mm2 \n\t"                      //p2(26,1)
 
-        "pmulhw          fix_054,%%mm5 \n\t"           //p2(23,0)
+        "pmulhw          %26,%%mm5 \n\t"           //p2(23,0)
         "psraw           $3,%%mm7    \n\t"                      //p2(27,1)
 
         "paddw           8*0(%%esi),%%mm2 \n\t"         //p2(26,2)
         "movq            %%mm7,%%mm6 \n\t"                      //p2(28,0)
 
-        "pmulhw          fix_054n184,%%mm1 \n\t"       //p2(24,0)
+        "pmulhw          %27,%%mm1 \n\t"       //p2(24,0)
         "psraw           $3,%%mm2    \n\t"                      //p2(26,3)                       
 
         "paddw           %%mm3,%%mm4 \n\t"                      //p2(22,0)       
@@ -2752,9 +2754,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubw           8*5(%%esi),%%mm2 \n\t"         //p2(32,2)
         "movq            %%mm6,%%mm4 \n\t"                      //p2(34,0)
 
-        "paddw           const_0x0808,%%mm1 \n\t"      //p2(32,3)
+        "paddw           %28,%%mm1 \n\t"      //p2(32,3)
 
-        "paddw           const_0x0808,%%mm2 \n\t"      //p2(32,4)
+        "paddw           %28,%%mm2 \n\t"      //p2(32,4)
         "psraw           $4,%%mm1    \n\t"                      //p2(32,5)
 
         "psraw           $4,%%mm2    \n\t"                      //p2(32,6)
@@ -2763,9 +2765,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "packuswb        %%mm2,%%mm1 \n\t"                      //p2(32,7)
         "psubw           8*7(%%esi),%%mm0 \n\t"         //p2(33,2)
 
-        "paddw           const_0x0808,%%mm7 \n\t"      //p2(33,3)
+        "paddw           %28,%%mm7 \n\t"      //p2(33,3)
 
-        "paddw           const_0x0808,%%mm0 \n\t"      //p2(33,4)
+        "paddw           %28,%%mm0 \n\t"      //p2(33,4)
         "psraw           $4,%%mm7    \n\t"                      //p2(33,5)
 
         "psraw           $4,%%mm0    \n\t"                      //p2(33,6)
@@ -2774,10 +2776,10 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "packuswb        %%mm0,%%mm7 \n\t"                      //p2(33,7)
         "psubw           8*3(%%esi),%%mm6 \n\t"         //p2(34,2)
 
-        "paddw           const_0x0808,%%mm4 \n\t"      //p2(34,3)
+        "paddw           %28,%%mm4 \n\t"      //p2(34,3)
         "movq            %%mm3,%%mm5 \n\t"                      //p2(35,0)
 
-        "paddw           const_0x0808,%%mm6 \n\t"      //p2(34,4)
+        "paddw           %28,%%mm6 \n\t"      //p2(34,4)
         "psraw           $4,%%mm4    \n\t"                      //p2(34,5)
 
         "psraw           $4,%%mm6    \n\t"                      //p2(34,6)
@@ -2787,9 +2789,9 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
         "psubw           8*1(%%esi),%%mm5 \n\t"         //p2(35,2)
 
         "movq            %%mm1,%%mm0 \n\t"                      //p2(36,0)
-        "paddw           const_0x0808,%%mm3 \n\t"      //p2(35,3)
+        "paddw           %28,%%mm3 \n\t"      //p2(35,3)
 
-        "paddw           const_0x0808,%%mm5 \n\t"      //p2(35,4)
+        "paddw           %28,%%mm5 \n\t"      //p2(35,4)
         "punpcklbw       %%mm7,%%mm0 \n\t"                      //p2(36,1)
 
         "psraw           $4,%%mm3    \n\t"                      //p2(35,5)
@@ -2845,8 +2847,23 @@ __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 
 	:
 	//      %0           %1             %2       %3            %4
-	: "m"(quantptr), "m"(inptr), "m"(wsptr), "m"(outptr), "g"(output_col)
-
+	: "m"(quantptr), "m"(inptr), "m"(wsptr), "m"(outptr), "g"(output_col),
+	//    %5                    %6                    %7
+	  "m"(fix_054n184_054), "m"(fix_054_054p076), "m"(fix_117_117),
+	//    %8                  %9                     %10
+	  "m"(fix_n039_n089), "m"(fix_150_n089n039), "m"(const_0x2xx8),
+	//    %11                    %12                 %13
+	  "m"(fix_307n256_n196), "m"(fix_n256_n196), "m"(fix_205_n256n039),
+	//    %14                 %15                    %16
+	  "m"(fix_n039_n256), "m"(fix_029_n089n196), "m"(fix_n196_n089),
+	//    %17                    %18                    %19
+	  "m"(fix_n089n196p029), "m"(fix_n256n039p205), "m"(fix_n089),
+	//    %20            %21            %22            %23
+	  "m"(fix_n196), "m"(fix_n039), "m"(fix_n256), "m"(fix_n089n039p150),
+	//    %24                    %25               %26           %27
+	  "m"(fix_n196p307n256), "m"(fix_054p076), "m"(fix_054), "m"(fix_054n184),
+	//    %28
+	  "m"(const_0x0808)
 	: "eax", "ebx", "ecx", "edx", "edi", "esi", "cc", "memory", "st"
         );
 #endif /* ATT style assembler */

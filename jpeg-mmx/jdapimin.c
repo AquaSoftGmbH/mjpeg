@@ -19,10 +19,11 @@
 #define JPEG_INTERNALS
 #include "jinclude.h"
 #include "jpeglib.h"
+#include "attributes.h"
 
 #if defined(HAVE_MMX_INTEL_MNEMONICS) || defined(HAVE_MMX_ATT_MNEMONICS)
 int MMXAvailable;
-int mmxsupport();
+int mmxsupport() ATTR_NOINLINE;
 #endif
 
 /*
@@ -412,9 +413,9 @@ jpeg_finish_decompress (j_decompress_ptr cinfo)
 }
 
 
-static int mmx_supported = 0;
 int mmxsupport()
 {
+	int mmx_supported = 0;
 
 #ifdef HAVE_MMX_INTEL_MNEMONICS
 	_asm {
@@ -461,6 +462,7 @@ NOT_SUPPORTED:
 
 #if defined(HAVE_MMX_ATT_MNEMONICS)
         __asm__ (
+                "pushl %%ebx                 \n\t" //Save ebx that can serve as the PIC base
                 "pushfl                      \n\t"      //Save Eflag to stack
                 "popl %%eax                   \n\t"      //Get Eflag from stack into eax
                 "movl %%eax,%%ecx              \n\t" //Make another copy of Eflag in ecx
@@ -479,8 +481,8 @@ NOT_SUPPORTED:
 
                 "cpuid                       \n\t" //CPUID instruction  (two bytes opcode)
 
-                "cmpl $1,%%eax                \n\t"      //make sure eax return non-zero value
-                "jl NOT_SUPPORTED            \n\t" //If eax is zero, mmx not supported
+                "orl %%eax,%%eax               \n\t"      //make sure eax return non-zero value
+                "jz NOT_SUPPORTED            \n\t" //If eax is zero, mmx not supported
 
                 "xorl %%eax,%%eax              \n\t" //set eax to zero
                 "incl %%eax                   \n\t"      //Now increment eax to 1.  This instruction is 
@@ -488,20 +490,19 @@ NOT_SUPPORTED:
                 "cpuid                       \n\t"
 
                 "andl $0x00800000,%%edx       \n\t" //mask out all bits but mmx bit(24)
-                "cmpl $0,%%edx                \n\t"      // 0 = mmx not supported
                 "jz      NOT_SUPPORTED       \n\t" // non-zero = Yes, mmx IS supported
 
-                 "movl   $1,  mmx_supported  \n\t"
+                "movl   $1,%0                \n\t"
 
                 "NOT_SUPPORTED:              \n\t"
-                "movl    $mmx_supported, %%eax" //move return value to eax      
+                "popl %%ebx                  \n\t" // restore ebx saved earlier
 
 
-           : "=m" (mmx_supported) // FIXASM: output regs/vars go here, e.g.:  "=m" (memory_var)
+           : "=g" (mmx_supported)
 
            : // FIXASM: input regs, e.g.:  "c" (count), "S" (src), "D" (dest)
 
-	   : "eax", "ebx", "ecx", "edx", "cc", "memory");
+	   : "eax", "ecx", "edx", "cc");
 #endif
 
         return mmx_supported;           

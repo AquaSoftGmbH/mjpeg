@@ -36,9 +36,12 @@ static int x86_accel (void)
     INT32 caps;
 
 #define cpuid(op,eax,ebx,ecx,edx)	\
-    asm ("cpuid"			\
+    asm ("pushl %%ebx\n\t"		\
+	 "cpuid\n\t"			\
+	 "movl %%ebx,%1\n\t"		\
+	 "popl %%ebx\n\t"		\
 	 : "=a" (eax),			\
-	   "=b" (ebx),			\
+	   "=g" (ebx),			\
 	   "=c" (ecx),			\
 	   "=d" (edx)			\
 	 : "a" (op)			\
@@ -53,7 +56,7 @@ static int x86_accel (void)
 	 "pushfl\n\t"
 	 "popl %0"
          : "=a" (eax),
-	       "=b" (ebx)
+	   "=g" (ebx)
 	 :
 	 : "cc");
 
