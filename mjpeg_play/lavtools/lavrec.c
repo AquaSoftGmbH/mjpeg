@@ -621,7 +621,7 @@ static unsigned long num_frames_old; /* Number of frames output when we switched
 
 static double spvf;   /* seconds per video frame */
 static double spas;   /* seconds per audio sample */
-
+static double sync_lim;
 
 static void get_free_space()
 {
@@ -1560,7 +1560,7 @@ int main(int argc, char ** argv)
 
 	/* Seconds per video frame: */
 	spvf = (norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
-
+	sync_lim = spvf*1.5;
 	/* Seconds per audio sample: */
 	if(audio_size)
 		spas = 1.0/audio_rate;
@@ -1632,14 +1632,14 @@ int main(int argc, char ** argv)
 
 			if(sync_corr>1)
 			{
-				if( tdiff1-tdiff2 < -spvf)
+				if( tdiff1-tdiff2 < -sync_lim)
 				{
 					nfout++;
 					num_ins++;
 					stats_changed = 1;
 					tdiff1 += spvf;
 				}
-				if( tdiff1-tdiff2 > spvf)
+				if( tdiff1-tdiff2 > sync_lim)
 				{
 					nfout--;
 					num_del++;

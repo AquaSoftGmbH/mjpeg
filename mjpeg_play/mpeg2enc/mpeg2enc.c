@@ -390,7 +390,7 @@ int main(argc,argv)
 				mjpeg_error("-n option requires arg n or p, or s.\n");
 				++nerr;
 			}
-
+			break;
 		case 'g' :
 			param_min_GOP_size = atoi(optarg);
 			break;
