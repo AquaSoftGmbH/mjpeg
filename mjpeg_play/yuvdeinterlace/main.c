@@ -512,7 +512,7 @@ search_forward_vector( int x, int y )
 	uint32_t cmin;
 
 	/* subsampled full-search with radius 16*4=64 */
-	min = psad_sub44 ( frame1_sub2[0]+(x4-1)+(y4-1)*width, frame2_sub2[0]+(x4-1)+(y4-1)*width, width, 4 );
+	min = psad_sub44 ( frame1_sub2[0]+(x4)+(y4)*width, frame2_sub2[0]+(x4)+(y4)*width, width, 4 );
 	me_candidates1[0].x = 0;
 	me_candidates1[0].y = 0;
 	cc1 = 1;
@@ -555,8 +555,8 @@ search_forward_vector( int x, int y )
 	cc2 = 1;
 	while(cc1>-1)
 	{
-		for(dy=(me_candidates1[cc1].y*2-1);dy<=(me_candidates1[cc1].y*2+1);dy++)
-			for(dx=(me_candidates1[cc1].x*2-1);dx<=(me_candidates1[cc1].x*2+1);dx++)
+		for(dy=(me_candidates1[cc1].y*2-2);dy<=(me_candidates1[cc1].y*2+2);dy++)
+			for(dx=(me_candidates1[cc1].x*2-2);dx<=(me_candidates1[cc1].x*2+2);dx++)
 			{
 				SAD  = psad_sub22 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2+dx)+(y2+dy)*width, width, 8 );
 
@@ -591,22 +591,26 @@ search_forward_vector( int x, int y )
 
 	/* reduced full-search arround sub22 candidates */
 
-	min  = psad_00 ( frame1[0]+(x)+(y)*width, frame2[0]+(x)+(y)*width, width, 16, 0x00ffffff );
+	min  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x-8)+(y)*width, width, 32, 0x0000ffff );
+	min += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+8)+(y)*width, width, 32, 0x0000ffff );
 	v.x = 0;
 	v.y = 0;
 
 	while(cc2>-1)
 	{
-		for(dy=(me_candidates2[cc2].y*2-1);dy<=(me_candidates2[cc2].y*2+1);dy++)
-			for(dx=(me_candidates2[cc2].x*2-1);dx<=(me_candidates2[cc2].x*2+1);dx++)
+		for(dy=(me_candidates2[cc2].y*2-2);dy<=(me_candidates2[cc2].y*2+2);dy++)
+			for(dx=(me_candidates2[cc2].x*2-2);dx<=(me_candidates2[cc2].x*2+2);dx++)
 			{
-				SAD  = psad_00 ( frame1[0]+(x)+(y)*width, frame2[0]+(x+dx)+(y+dy)*width, width, 16, 0x00ffffff );
+				SAD  = psad_00 ( frame1[0]+(x-8)+(y-8)*width, frame2[0]+(x+dx-8)+(y+dy-8)*width, width, 32, 0x0000ffff );
+				SAD += psad_00 ( frame1[0]+(x+8)+(y-8)*width, frame2[0]+(x+dx+8)+(y+dy-8)*width, width, 32, 0x0000ffff );
+
 				if( SAD<min )
 				{
 					min   = SAD;
 					v.x = dx;
 					v.y = dy;
 				}
+
 			}
 		cc2--;
     }
@@ -633,7 +637,7 @@ motion_compensate_field (void)
 
 			/* clip vectors */
 			if(y==0 && dy<0) dy=0;
-			if(y==(height-16) && dy>0) dy=0;
+			if(y==(height-4) && dy>0) dy=0;
 
 			transform_block  (reconstructed[0]+x+y*width,
 							   frame2[0]+(x+dx)+(y+dy)*width, width );
