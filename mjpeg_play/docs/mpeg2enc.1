@@ -4,41 +4,46 @@
 mpeg2enc \- MPEG 1/2 encoder
 .SH "SYNOPSIS"
 .B mpeg2enc
-.RB [ -v
+.RB [ -v | --verbose
 .IR num ]
-.RB [ -f
+.RB [ -M | --multithread
+.IR num_CPU ]
+.RB [ -f | --format
 .IR mpeg_profile ]
-
-.RB [ -b
+.RB [ -b | --video-bitrate
 .IR bitrate_kbps ]
-.RB [ -V
+.RB [ -V | --video-buffer
 .IR video_buf_size_kB ]
-.RB [ -q
+.RB [ -q | --quantisation
 .IR quantization ]
-.RB [ -r
+.RB [ -r | --motion-search-radius
 .IR motion_search_radius]
-.RB [ -Q\ 0.0 - 4.0 ]
-.RB [ -p ]
-.RB [ -I\ 0..3]
-.RB [ -s ]
-.RB [ -g
+.RB [ -Q | --quantisation-reduction\ 0.0 - 4.0 ]
+.RB [ -p | --3-2-pulldown ]
+.RB [ -I | --interlace-mode\ 0..1]
+.RB [ -s | --sequence-header-every-gop ]
+.RB [ -g | --min-gop-size
 .IR min_gop_size ]
-.RB [ -G
+.RB [ -G | --max-gop-size
 .IR max_gop_size ]
-.RB [ -n\ n | p | s ]
-.RB [ -F
-.IR frame_rate_code]
-.RB [ -a\ aspect_ratio_code ]
-.RB [ -z\ b|t]
-.RB [ -4\ 1 .. 4 ]
-.RB [ -2\ 1 .. 4 ]
-.RB [ -S
+.RB [ -P | --force-b-b-p ]
+.RB [ -n | --video-norm \ n | p | s ]
+.RB [ -F | --frame-rate
+.IR frame_rate_code ]
+.RB [ -a | --aspect\ aspect_ratio_code ]
+.RB [ -z | --playback-field-order\ b|t]
+.RB [ -4 | --reduction-4x4\ 1..4 ]
+.RB [ -2 | --reduction-2x2\ 1..4 ]
+.RB [ -S | --sequence-length
 .IR size_MB ]
-.RB [ -B
--IR bitrate_kbps ]
-.RB [ -N ]
-.RB [ -h ]
-.RB [ -? ]
+.RB [ -B | --nonvideo-bitrate
+.IR bitrate_kbps ]
+.RB [ -N | --reduce-hf]
+.RB [ -h | --keep-hf ]
+.RB [ -d | --no-dummy-svcd-SOF]
+.RB [ --hack-dxr2-bug]
+.RB [ --hack-svcd-hds-bug]
+.RB [ -? | --help ]
 .BI -o \ output_filename
 .SH "DESCRIPTION"
 mpeg2enc is heavily enhanced derivative of the MPEG Software
@@ -52,7 +57,7 @@ progressive and interlaced frame MPEG-2 streams.  Field encoded MPEG-2
 is also possible but is not currently maintained or supported.
 
 For most purposes this elementary stream output will need to be
-multiplexed with layer-II MPEG audio into a program/systems stream
+multiplexed with one or more audio streams into a program/systems stream
 using the
 .BR mplex (1)
 tool.
@@ -71,180 +76,170 @@ on the mjpegtools web-site:
 .br
 .IP
 \fBhttp://mjpeg.sourceforge.net\fP
-.TP
+
 .SH "SELECTING THE MPEG PROFILE"
-.BR -f\ 1,2,3,4,5,6,7,8
+.PP
+
 Set the MPEG profile to use.  The MPEG standards support a vast number
-of options.  In practice, different applications of the MPEG format place
-additional constraints of the form the MPEG stream.   Setting this flag
-selects the kind of stream to produce.
-.IP
-.BR 0 
-- Generic MPEG1.  A basic MPEG-1 profile that lets most parameters
-	be adjusted
-	for particular applications using the other flags.  Typical
-	applications would be to produce a variable bit-rate MPEG-1
+of options.  In practice, different applications of the MPEG format
+place additional constraints of the form the MPEG stream.  Setting
+this flag selects the kind of stream to produce.
+
+.PP
+.BR -f|--format \ 0
+	-	Generic MPEG1.
+.PP
+	A basic MPEG-1 profile that lets most parameters
+	be adjusted for particular applications using the other flags.
+	Typical	applications would be to produce a variable bit-rate MPEG-1
 	stream with big buffers and a high data-rate software playback
 	on a computer.
-.IP
-.BR 1 
-		- Standard VCD.  An MPEG1 profile exactly to the VCD2.0 specification.
-		Flag settings that would result in a non-standard stream structure 
-		are simply ignored.
+.PP
+.BR -f|--format \ 1 
+	-	Standard VCD.
+.PP
+An MPEG1 profile exactly to the VCD2.0 specification.
+Flag settings that would result in a non-standard
+stream structure are simply ignored.
 
-.IP
-.BR 2 
-		- User VCD.  As for profile 2 but bit-rate and video buffer size can
-		be set to non-standard values. Frame size may also be non-standard.
-.IP
-.BR 3
-		- Generic MPEG2. A basic MPEG-1 profile that lets most parameters
-	be adjusted
-	for particular applications using the other flags.  Typical
-	applications would be to produce a MPEG-2 stream with big buffers
-	and long GOP's for software playback on a computer.
+.PP
+.BR -f|--format \ 2 
+	-	User VCD.
+As for profile 2 but bit-rate and video buffer size can
+be set to non-standard values. Frame size may also be non-standard.
+.PP
+.BR -f|--format \ 3
+	-	Generic MPEG2.
+.PP
 
-.IP
-.BR 4
-		- Standard VCD.  An MPEG-2 profile exactly to the SVCD2.0
-		specification. Flag settings that would result in a
-		non-standard stream structure are simply ignored.
-.BR 5
-		- Non-standard SVCD. As for profile 4 but bit-rate, video
-		buffer size, GOP sizes and structure can be set to
-		non-standard values. Frame size may also be non-standard.
-.BR 6
-		- VCD Stills sequence. Encodes the special style of MPEG stream
-		used for still images on VCDs.  To use this profile you must
-		set the target size you wish to compress the images to using the
-		-T flag.   Reasonable values are around 35KB for standard resolution
-		stills (352 wide) and 120KB for high resolution stills (704 wide).
-.BR 7
-		- VCD Stills sequence. Encodes the special style of MPEG stream
-		used for still images on SVCDs.  Both standard (480 wide) and high
-		resolution (704 wide) images are supported.
-.BR 8
-		- DVD MPEG-2. Just a very basic implementation.
+A basic MPEG-1 profile that lets most parameters be adjusted for
+particular applications using the other flags.  Typical applications
+would be to produce a MPEG-2 stream with big buffers and long GOP's
+for software playback on a computer.
+
+.PP
+.BR -f|--format \ 4
+	-	Standard VCD.
+.PP
+An MPEG-2 profile exactly to the SVCD2.0
+specification. Flag settings that would result in a
+non-standard stream structure are simply ignored.
+.PP
+.BR -f|--format \ 5
+	-	Non-standard SVCD.
+.PP
+As for profile 4 but bit-rate, video
+buffer size, GOP sizes and structure can be set to
+non-standard values. Frame size may also be non-standard.
+.PP
+.BR -f|--format \ 6
+	-	VCD Stills sequence.
+.PP
+Encodes the special style of MPEG stream
+used for still images on VCDs.  To use this profile you must
+set the target size you wish to compress the images to using the
+-T flag.   Reasonable values are around 35KB for standard resolution
+stills (352 wide) and 120KB for high resolution stills (704 wide).
 .TP
 .BI -T \ num
-
 Set the target size for VCD still images in KB.
+.PP
+.BR -f|--format \ 7
+	-	SVCD Stills sequence.
+.PP
+Encodes the special style of MPEG stream
+used for still images on SVCDs.  Both standard (480 wide) and high
+resolution (704 wide) images are supported.
+.PP
+.BR -f|--format \ 8
+	-	DVD MPEG-2. 
+.PP
+Just a very basic implementation. Useful with DXR2 board and similar
+hardware that can decode MPEG-2 only if it is presented in a DVD like
+form.
 
 .SH "GENERAL FUNCTION LETTERS"
-.TP
-.BI -v \ num
+.PP
+.BR -v|--verbose \ num
+.PP
 Set verbosity level to num.  0 = warnings and errors only, 1 =
 information as well, 2=really verbose.
-.TP
-.B -?
+.PP
+.BR -?|--help
+.PP
 Display a synopsis of the command syntax.
-.SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
+.SH "FUNCTION LETTERS ADJUSTING THE SELECTED PROFILE"
 
-.TP
-.BI -b \ num
+N.b. If the profile you have selected sets particular values
+for these parameters it will over-ride these adjustment flags.
+In particular, there is almost \fInothing\fP that can be 
+adjusted for the standard VCD and SVCD profiles.
+
+.PP
+.BR -b|--video-bitrate \ num 
+.PP
 The bit-rate of the output video stream in k Bits/sec.  The default is
 exactly the bit-rate required for VCD streams. A sensible bit-rate to
 set for SVCD is 2500.  If variable bit-rate mode has been selected (see the -q option) this
 is the 
 .I maximum
 bit-rate of the stream.
-.TP
-.BI -V \ num
+.PP
+.BR -V|--video-buffer \ num
+.PP
 The maximum video buffer usage required to decode the stream in
 KBytes.  The default is 46KB the (tiny) size specified for VCD.  The
 size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
-.TP
-.BR -q\ 2 .. 31
-Minimum quantisation of the output stream.  Quantisation controls the
-precision with which image information is encoded.  The lower the
-number the higher the quality but the greater the required data-rate.
-For VCD resolution anything below 8 or so produces pretty good quality
-video.  For SVCD the equivalent level is around 10. If this option is
-set a 
-.I variable bit rate 
-stream is produced.  This is more efficient
-overall but variable bit-rate MPEG-1 cannot be played by many hardware
-decoders and/or DVD/(S)VCD drives.  If you intend to use a software
-decoder you'd be insane not to use variable bit-rate.
 
-If this option is set without a maximum bit-rate being specified then
-quantisation is fixed at the specified value.
-.TP
-.BR -I\ 0 | 1 | 2 | 3
-This sets the sequences picture structure and block encoding type for
-MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
-interlaced video turned off.  This is the most efficient option for
-encoding material that is not interlaced (e.g. movies in PAL 25
-frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
-produces rotten results for interlaced video material.  For such
-material use -F 3 which encodes frame-by-frame with interlace-adapted
-motion compensation and block encoding.  Setting 1 or 2 will encode
-field-by-field (2 is "top field first", 3 is "bottom field first").
-Its use is deprecated as implementation is somewhat less refined than
-frame-by-frame and results, even if implemented to the same level, are
-inferior.
-.IP
-It should be noted that encoding -F 3 takes appreciably longer than -F 0.
-.TP
-.B -p
-Setting -p only makes sense for 24frame/sec Movie source material.  It sets
-flags in the output stream that tell the decoder to play the movie as
-NTSC 60field/sec video using "3:2 pulldown".  This is vastly more
-efficient than encoding as 60field/sec video.  The classic application
-is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
-into NTSC (see the -f flag).
-.TP
-.BI -g " num " -G \ num
-These flags set the minimum and maximum group-of-picture (GOP) size
-for the output MPEG stream.  By default both are set to 12 to suit VCD
-encoding.  If the two values are not identical mpeg2enc applies a
-simple scene-change detection procedure to try to select GOP sizes
-that ensure big changes of image coincide with the fully-encoded
-I-frame starting a new GOP.  This can help prevent transient
-"blockiness".  For SVCD the largest GOP size is 15 for PAL or 18 for
-NTSC.  Reasonable minimum GOP sizes are 6 or 9.  A larger GOP size can
-help reduce the bit-rate required for a given quality.  However, this
-really only applies to high-quality source material with little noise
-(e.g. digital video).  For broadcast material there is little point
-setting GOP size much beyond 21 or 24.  Even with good source material
-diminishing returns set in quite rapidly.
 
-Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
-each I/P frame unless the GOP size forces less.  This is reasonable
-for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
-low-bit-rate encoding.
-.TP
-.BI -P
-	This flag forces the GOP size selection to choose sizes 
-	that ensure 2 B frames appear between adjacent I/P frames.
-	Several common MPEG-1 decoders can't handle streams where less than
-	2 B-frames appear between I/P frames.
-.TP
-.BR -Q\ 0.0 .. 4.0 
-This flag sets the amount quantisation is reduced for
-blocks containing unusually large amounts of sharp image detail.
-Setting this value 0.0 produces the most efficient use of bits but may
-cause visible/artefacting around detailed sections.  A larger value
-may help suppress artefacts, however, on noisy source material this may cause
-a "swimming" effect on textured backgrounds as the noise cause blocks to
-be boosted at random.  The default is 1.0 (which is actually pretty mild)
-if swimminess occurs turn set to 0.0.
-.TP
-.B -s
+.PP
+.BR -s|--sequence-header-every-gop
+.PP
 This flag forces the encoder to generate a "sequence header" at the start
 of every group-of-pictures.  This is needed by some player hardware to
 support fast forward/rewind/random access functions but is a waste of bits
 otherwise.
-.SH "OPTION LETTERS CONTROLLING FORMAT OF DECODED VIDEO"
-.TP
-.BR -n\ n | p | s
+
+.PP
+.BR -d|--no-dummy-svcd-SOF
+.PP
+The SVCD MPEG-2 profile demands that special "Scan OFfset" which are
+(in effect) pointers to the place on the final SVCD disk where the
+video for 0.5 and around 5-10 seconds behind and ahead in the stream
+is located.  The intended use of this information is to support"Fast
+forward/Rewind" functions.  Unfortunately, at the time mpeg2enc
+encodes the video it doesn't know where the video is going to finally
+end up.  So special dummy "Scan OFfset" values are written which are
+intended to be filled in during the creation of the SVCD
+image. Currently the GNU vcdimager tool handles this task.  However,
+in some circumstances the dummy offsets can cause problems.   This
+flags stops mpeg2enc generating them.
+.PP
+.BR --hack-dxr2-bug
+.PP
+This flag, as its name suggests, works around what appears to be a bug
+in MPEG-2 decoding in the firmware of the DXR2 board. Useful for
+encoding DVD-like streams for playback using a DXR2.
+.PP
+.BR --hack-svcd-hds-bug
+.PP
+This flag, works around a common issue in SVCD playback in DVD/SVCD
+players.  In the official standards the field in the MPEG-2 header
+information that passes on the encoders "recommended" horizontal
+resolution to decode the stream to is supposed to take the values 540
+or 720.  In practice many players don't work unless the value is 480.
+This flag forces 480 to be used.
+
+.SH "OPTION LETTERS CONTROLLING VIDEO PARAMETERS"
+.PP
+.BR -n|--video-norm\ n | p | s
 Force the input stream to be treated as NTSC|PAL|SECAM regardless of
 what the stream header might suggest.  Basically this just sets the
 defaults for a bunch of other options.
-.TP
-.BI -f \ num
+.PP
+.BI -F|--frame-rate \ num
 Set the frame-rate of the output-stream.  Currently only the standard
 MPEG rates are supported.  Eventually more-or-less arbitrary rates
 will be possible.
@@ -267,8 +262,8 @@ will be possible.
 .br
  8 - 60.0
 .br
-.TP
-.BI -a \ num
+.PP
+.BI -a|--aspect \ num
 Set the playback aspect ratio code of the encoded video.
 .br
  1 - 1  - 1:1 display
@@ -283,66 +278,190 @@ For MPEG-2 the specified aspect ratios are used directly. For MPEG-1
 mpeg2enc infers the MPEG-1 pixel aspect code from the video norm
 specified and the specified playback aspect ratio.
 
-.SH "OPTION LETTERS FOR QUALITY TUNING"
-.TP
-.BI -r \ num
-This flag sets the motion compensation search radius.  For most
+.PP
+.BR -p|--3-2-pulldown
+.PP
+Setting -p only makes sense for 24frame/sec Movie source material.  It sets
+flags in the output stream that tell the decoder to play the movie as
+NTSC 60field/sec video using "3:2 pulldown".  This is vastly more
+efficient than encoding as 60field/sec video.  The classic application
+is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
+into NTSC (see the -f flag).
+
+.SH "OPTION LETTERS FOR CONTROLLING COMPRESSION AND SPEED"
+
+.PP
+.BR -M|--multithread " num_cpu "
+.PP
+MPEG encoding is a task that can be split over a small number of CPU's
+quite efficiently.  Mpeg2enc can be internally set to split major
+processing tasks between a number of concurrent threads.   This flag
+adjusts the multi-threading to the optimum to utilise the specified
+number of CPU's.
+.PP
+It should be noted that even with 1 CPU present \fIsome\fR
+multi-threading is performed: frame input takes place in parallel with
+encoding.  This allows good performance to be achieved when when a
+seperate machine is being used for pre-processing (decoding from
+MJPEG, scaling, denoising etc) with the final result pipe to mpeg2enc
+(e.g. using rsh or ssh).
+.PP
+Setting -M 0 disables all multithreading.  This is sometimes useful
+for debugging or to achieve maximum CPU efficiency on a shared
+machine. Setting -M 3 on a dual-CPU machine will produce slightly
+faster results than -M 2 at the price of slightly less CPU efficiency.
+This is useful if nothing else needs to be done on the encoding
+machine.  In practice there is little point setting -M greater than 4
+even if the CPU's are available due to the fairly coarse-grained
+parallelism used.
+
+.PP
+.BR -q|--quantisation\ 2 .. 31
+.PP
+Minimum quantisation of the output stream.  Quantisation controls the
+precision with which image information is encoded.  The lower the
+number the higher the quality but the greater the required data-rate.
+For VCD resolution anything below 8 or so produces pretty good quality
+video.  For SVCD the equivalent level is around 10. If this option is
+set a 
+.I variable bit rate 
+stream is produced.  This is more efficient
+overall but variable bit-rate MPEG-1 cannot be played by many hardware
+decoders and/or DVD/(S)VCD drives.  If you intend to use a software
+decoder you'd be insane not to use variable bit-rate.
+
+If this option is set without a maximum bit-rate being specified then
+quantisation is fixed at the specified value.
+.PP
+.BR -I|--interlace-mode\ 0 | 1
+.PP
+This sets the sequences picture structure and block encoding type for
+MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
+interlaced video turned off.  This is the most efficient option for
+encoding material that is not interlaced (e.g. movies in PAL 25
+frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
+produces rotten results for interlaced video material.  For such
+material use -I 1 which encodes with interlace-adapted
+motion compensation and block encoding.  
+.IP
+Note that setting -I 1 for non-interlaced material will not do any
+harm but the encoder will waste a lot of time on calculations that
+aren't needed.  
+
+.PP
+.BR -g|--min-gop-size " num "
+.PP
+.BR -G|--max-gop-size " num "
+.PP
+These flags set the minimum and maximum group-of-picture (GOP) size
+for the output MPEG stream.  By default both are set to 12 to suit VCD
+encoding.  If the two values are not identical mpeg2enc applies a
+simple scene-change detection procedure to try to select GOP sizes
+that ensure big changes of image coincide with the fully-encoded
+I-frame starting a new GOP.  This can help prevent transient
+"blockiness".  For VCD/SVCD/DVD the largest GOP size is 15 for PAL or 18 for
+NTSC.  Reasonable minimum GOP sizes are 6 or 9.  A larger GOP size can
+help reduce the bit-rate required for a given quality.  However, this
+really only applies to high-quality source material with little noise
+(e.g. digital video).  For broadcast material there is little point
+setting GOP size much beyond 21 or 24.  Even with good source material
+diminishing returns set in quite rapidly.
+
+Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
+each I/P frame unless the GOP size forces less.  This is reasonable
+for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
+low-bit-rate encoding.
+.PP
+.BR -P|--force-b-b-p
+.PP
+This flag forces the GOP size selection to choose sizes 
+that ensure 2 B frames appear between adjacent I/P frames.
+Several common MPEG-1 decoders can't handle streams where less than
+2 B-frames appear between I/P frames.
+.PP
+.BR -Q|--quantisation-reduction\ 0.0 .. 4.0 
+.PP
+This flag sets the amount quantisation is reduced for
+blocks containing unusually large amounts of sharp image detail.
+Setting this value 0.0 produces the most efficient use of bits but may
+cause visible/artefacting around detailed sections.  A larger value
+may help suppress artefacts, however, on noisy source material this may cause
+a "swimming" effect on textured backgrounds as the noise cause blocks to
+be boosted at random.  The default is 0.0 (off).
+
+
+.PP
+.BI -r|--motion-search-radius \ num
+.PP
+This flag sets the motion estimation search radius.  For most
 purposes the default (16) should be just fine.  For high-resolution
 MPEG-2 and active scenes it may be worth bumping it up.  However, this
 will make encoding significantly slower.  There is little point
 reducing the radius.  Speed gains are not huge and the impact on quality
 can be marked.
-.TP
-.BR -4 | -2\ 1 .. 4
+.PP
+.BR -4|--reduction-4x4 " 1 .. 4 "
+.PP
+.BR -2|--reduction-2x2 " 1 .. 4 "
+.PP
 These options control how radical the encoder is in throwing away
-apparently poor candidate blocks during motion compensation.  A
+apparently poor candidate estimates during motion estimation.  A
 setting of 1 means very few blocks are discarded early which makes for
-slow encoding but quality as good as it gets a setting of 4 makes for
+slow encoding but quality as good as it gets. A setting of 4 makes for
 fast encoding but can impact quality.  The -4 flag controls discarding
-during the initial 4*4 search stage, the -2 flag controls discarding
-during the secondary 2*2 stage.  
+during the initial 4*4 sub-sampled search stage, the -2 flag controls
+discarding during the secondary 2*2 sub-sampled stage.
 .IP
 These flags are useful as the speed quality trade-off is markedly
 different depending on which CPU you have.  On modern machines the
-impact of speed is around a factor 2 on older machines a factor 3.
+impact on speed is around a factor 2 on older machines a factor 3.
 The impact on quality is around 10% quantisation (0.2 of a bit of
 precision in encoding textures).  For most purposes the default
 settings will be fine.  However on P-III Katmai etc -4 2 -2 1 gives a
 good near-optimum quality setting with reasonably speed.
-.TP
-.B  -N
+.PP
+.B  -N|--reduce-HF
+.PP
 Setting this flag adjusts the way texture detail is quantised to
-reduce the maount of high-frequency information encoded. This is very
-useful for 
+reduce the precision with which of high-frequency information
+encoded. This is very useful for
 .I mildy
 noisy sources.  If you have really noisy material the filtering tools
 available in mjpegtools are a much better bet.
-.TP
-.B -h
+.PP
+.B -h|--keep-hf
+.PP
 Setting this flag makes the encoder encode as much high-frequency information
 as possible.   This is a good setting for maximising quality at VCD
 resolution with good quality low-noise source material.  It can also help
 with "swimmy" material if you can spare the bit-rate!
+
 .SH "OPTION LETTERS FOR CHUNKING THE OUTPUT STREAM"
-.TP
-.BI -S \ num
+.PP
+.BI -S|--sequence-length \ num
+.PP
 This flag allows the target size of individual sequences in the final
 multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
-of how large the eventual stream is likely to be and inserts a sequence
+of how large the eventual stream is getting and inserts a sequence
 split (actually: sequence end / sequence start) into the output stream
 each time it reaches the specified limit.  The multiplexor \fBmplex\fP(1) can
 recognise these splits and start a new multiplexed output file each time
 it encounters one.   In this way it is easy to automatically ensure
 each component sequence file can be burnt onto a CD-R and still be
 played as a stand-alone MPEG sequence.
-.TP
-.BI -B \ num
+.PP
+.BI -B|-nonvideo-bitrate \ num
+.PP
 Since mpeg2enc can't read minds it cannot know in advance what other
 material will be multiplexed with the output video stream.  Thus to
 get its calculations of where to insert split point right it needs to be
 told the combined data-rate of the other material that is eventually to
 be multiplexed with the video.
 This flag allows this rate to be specified in K bits/sec.
+
+A good rule of thumb is to use the total rate of all the other streams
+plus 1% of the total rate including video.
+
 .SH "SSE, 3D-Now!, MMX"
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
@@ -374,4 +493,4 @@ For more info, see our website at
 
 .SH "SEE ALSO"
 .BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
-.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1), " mjpegtools "(1)"
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1), " yuvdenoise "(1)," mjpegtools "(1)"

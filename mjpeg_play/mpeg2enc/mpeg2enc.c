@@ -1153,7 +1153,20 @@ static void init_mpeg_parms(void)
 		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);
 	opt_fieldpic        = 0;
-	opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
+
+    // SVCD and probably DVD? mandate progressive_sequence = 0 
+    switch( param_format )
+    {
+    case MPEG_FORMAT_SVCD :
+    case MPEG_FORMAT_SVCD_NSR :
+    case MPEG_FORMAT_SVCD_STILL :
+    case MPEG_FORMAT_DVD :
+        opt_prog_seq = 0;
+        break;
+    default :
+        opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
+        break;
+    }
 	opt_pulldown_32     = param_32_pulldown;
 
 	opt_aspectratio     = param_aspect_ratio;

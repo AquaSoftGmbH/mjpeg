@@ -34,10 +34,17 @@ Major
 
 -	Continuation of frozen encoding sessions.
 
+- 	Use the fast (M)JPEG routines from ffmpeg's libavcodec instead of the
+	hack libjpeg.
+
+- 	Try switching to the somewhat faster transposed fDCT from libavcodec.
+
+-	"Back-up and try again" and/or "two pass" bit-allocation / quantisation 
+	control on a frame by frame basis.   
 
 Maybe sometime
 
-- Find a proper SSE DCT and iDCT.
+- Find a proper SSE fDCT and iDCT.
 
 - Test support for field pictures to mplex. Not urgent since for most
   sources frame pictures with field DCT/motion compensation seems to
