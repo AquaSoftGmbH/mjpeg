@@ -685,8 +685,8 @@ main (int argc, char *argv[])
   uint8_t magic[] = "123456";	// : the last character of magic is the string termination character
   const uint8_t key[] = "FRAME\n";
    uint8_t header[] = "YUV4MPEG XXX XXX X\n";
-  unsigned int *height_coeff, *width_coeff;
-  uint8_t *input, *output, *padded_input, *padded_odd, *padded_even;
+  unsigned int *height_coeff=NULL, *width_coeff=NULL;
+  uint8_t *input, *output, *padded_input=NULL, *padded_odd=NULL, *padded_even=NULL;
   uint8_t *input_y, *input_u, *input_v;
   uint8_t *input_y_infile, *input_u_infile, *input_v_infile;	// when input frames come from files
   uint8_t *output_y, *output_u, *output_v;
@@ -699,11 +699,11 @@ main (int argc, char *argv[])
   char *info_str="If you see this, please report to the author that info_str was faulty used unitialized <xbiquard@free.fr>\n";
 
    // SPECIFIC TO BICUBIC
-  unsigned int *in_line, *in_col, out_line, out_col;
+  unsigned int *in_line=NULL, *in_col=NULL, out_line, out_col;
   unsigned long int somme;
   int m;
-  float *a, *b;
-  long int *cubic_spline_m, *cubic_spline_n;
+  float *a=NULL, *b=NULL;
+  long int *cubic_spline_m=NULL, *cubic_spline_n=NULL;
 
   mjpeg_info ("yuvscaler is a general scaling utility for yuv frames\n");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
