@@ -7,43 +7,58 @@ extern int width;
 extern int height;
 extern int bttv_hack;
 
-extern uint8_t * frame1[3];
-extern uint8_t * frame2[3];
-extern uint8_t * frame3[3];
-extern uint8_t * frame4[3];
-extern uint8_t * inframe[3];
-extern uint8_t * outframe[3];
+void
+mux_fields (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
+{
+	int x, y;
+
+	for (y = 0; y < height; y+=2)
+	{
+		for (x = 0; x < width; x++)
+		{
+			*(dst[0]+x+y*width)=*(src1[0]+x+y*width);
+			*(dst[0]+x+(y+1)*width)=
+				(
+					*(src2[0]+x+(y+1)*width)+
+					*(src2[0]+x+(y  )*width)
+				)/2;
+		}
+	}
+}
 
 void
-blend_fields_non_accel (void)
+blend_fields_non_accel (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
 {
-	int w2 = width/2;
-	int h2 = height/2;
 	int x, y;
-	int offs1 = width*height;
-	int offs2 = offs1/4;
+	int offs = width*height;
 
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			*(outframe[0]) = ( *(outframe[0]) + *(frame4[0]) )>>1;
-			frame4[0]++;
-			outframe[0]++;
+			*(dst[0]) = ( *(src1[0]) + *(src2[0]) )>>1;
+			dst[0]++;
+			src1[0]++;
+			src2[0]++;
 
-			*(outframe[1]) = ( *(outframe[1]) + *(frame4[1]) )>>1;
-			frame4[1]++;
-			outframe[1]++;
+			*(dst[1]) = ( *(src1[1]) + *(src2[1]) )>>1;
+			dst[1]++;
+			src1[1]++;
+			src2[1]++;
 
-			*(outframe[2]) = ( *(outframe[2]) + *(frame4[2]) )>>1;
-			frame4[2]++;
-			outframe[2]++;
+			*(dst[2]) = ( *(src1[2]) + *(src2[2]) )>>1;
+			dst[2]++;
+			src1[2]++;
+			src2[2]++;
 		}
-	frame4[0] -= offs1;
-	outframe[0] -= offs1;
-	frame4[1] -= offs1;
-	outframe[1] -= offs1;
-	frame4[2] -= offs1;
-	outframe[2] -= offs1;
+	dst[0]  -= offs;
+	src1[0] -= offs;
+	src2[0] -= offs;
+	dst[1]  -= offs;
+	src1[1] -= offs;
+	src2[1] -= offs;
+	dst[2]  -= offs;
+	src1[2] -= offs;
+	src2[2] -= offs;
 
 #if 0
 	for (y = 0; y < h2; y++)
