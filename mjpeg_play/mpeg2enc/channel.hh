@@ -54,7 +54,14 @@ public:
 
 	void Put( const T &in )
 		{
-			if (pthread_mutex_lock( &atomic) != 0) abort();
+		int e;
+
+			e = pthread_mutex_lock( &atomic);
+			if ( e != 0)
+			   {
+			   fprintf(stderr, "1 pthread_mutex_lock=%d\n", e);
+			   abort();
+			   }
 			if( fullness == size )
 			{
 				++producers_waiting;
@@ -70,12 +77,24 @@ public:
 			buffer[write] = in;
 			write = (write + 1) % size;
 			pthread_cond_signal( &addition );
-			if (pthread_mutex_unlock( &atomic ) != 0) abort();
+			e  = pthread_mutex_unlock( &atomic );
+			if (e != 0)
+			   {
+			   fprintf(stderr, "1 pthread_mutex_unlock=%d\n", e);
+			   abort();
+			   }
 		}
 	
 	void Get( T &out )
 		{
-			if (pthread_mutex_lock( &atomic) != 0) abort();
+		int e;
+
+			e = pthread_mutex_lock( &atomic);
+			if ( e != 0)
+			   {
+			   fprintf(stderr, "2 pthread_mutex_lock=%d\n", e);
+			   abort();
+			   }
 			if( fullness == 0 )
 			{
 				++consumers_waiting;
@@ -90,27 +109,56 @@ public:
 			out = buffer[read];
 			read = (read + 1) % size;
 			pthread_cond_signal( &removal );
-			if (pthread_mutex_unlock( &atomic ) != 0) abort();
+			e  = pthread_mutex_unlock( &atomic );
+			if (e != 0)
+			   {
+			   fprintf(stderr, "2 pthread_mutex_unlock=%d\n", e);
+			   abort();
+			   }
 		}
 
 	void WaitUntilConsumersWaitingAtLeast( unsigned int wait_for )
 		{
-			if (pthread_mutex_lock( &atomic) != 0) abort();
+		int e;
+
+			e = pthread_mutex_lock( &atomic);
+			if ( e != 0)
+			   {
+			   fprintf(stderr, "3 pthread_mutex_lock=%d\n", e);
+			   abort();
+			   }
 			while( fullness > 0 || consumers_waiting < wait_for )
 			{
 				pthread_cond_wait( &waiting, &atomic);
 			}
-			if (pthread_mutex_unlock( &atomic ) != 0) abort();
+			e  = pthread_mutex_unlock( &atomic );
+			if (e != 0)
+			   {
+			   fprintf(stderr, "3 pthread_mutex_unlock=%d\n", e);
+			   abort();
+			   }
 		}
 
 	void WaitUntilProducersWaitingAtLeast( unsigned int wait_for )
 		{
-			if (pthread_mutex_lock( &atomic) != 0) abort();
+		int e;
+
+			e = pthread_mutex_lock( &atomic);
+			if ( e != 0)
+			   {
+			   fprintf(stderr, "4 pthread_mutex_lock=%d\n", e);
+			   abort();
+			   }
 			while( fullness < size || producers_waiting < wait_for )
 			{
 				pthread_cond_wait( &waiting, &atomic);
 			}
-			if (pthread_mutex_unlock( &atomic ) != 0) abort();
+			e  = pthread_mutex_unlock( &atomic );
+			if (e != 0)
+			   {
+			   fprintf(stderr, "4 pthread_mutex_unlock=%d\n", e);
+			   abort();
+			   }
 		}
 private:
 	pthread_cond_t addition;
