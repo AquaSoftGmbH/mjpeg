@@ -74,7 +74,7 @@ int	d0i = 0, d0pb = 0, d0p = 0, d0b = 0;
 
 
 /* R - Remaining bits available in the next one second period.
-   T - Target bits for current frame 
+   T - Target bits for current frame q
    d - Current d for quantisation purposes updated using 
    scaled difference of target bit usage and actual usage
    NOTE: We use double's for these as 48 bits will suffice and
@@ -82,17 +82,21 @@ int	d0i = 0, d0pb = 0, d0p = 0, d0b = 0;
 
 */
 static int32_t R;
-static int64_t R_cum = 0.0;
-static int64_t e_R_cum = 0.0;
-static int64_t gop_start;
-static int64_t gop_bits = 0;
 static int32_t per_frame_bits;
-static int32_t per_gop_bits;
-static int64_t bits_transported;
-static int64_t bits_used;
+static int     fields_in_gop;
+static double  field_rate;
+static int     fields_per_pict;
 static int32_t buffer_variation = 0;
 static int d;
 static int32_t T;
+static int64_t bits_transported = 0LL;
+static int64_t bits_used = 0LL;
+static int32_t gop_buffer_correction;
+static int32_t frame_base_bits;
+
+static int32_t I_frame_base_bits;
+static int32_t B_frame_base_bits;
+static int32_t P_frame_base_bits;
 
 /* bitcnt_EOP - Position in generated bit-stream for latest
 				end-of-picture Comparing these values with the
@@ -104,7 +108,7 @@ static int32_t T;
 
 static int64_t bitcnt_EOP = 0;
 static int frame_overshoot_margin = 0;
-static int undershoot_carry;
+static int overshoot_carry;
 static double undershoot_gain;
 static double overshoot_gain;
 
@@ -121,7 +125,7 @@ static double sum_avg_act = 0.0;
 static double avg_act;
 
 
-static int Np, Nb;
+static int Ni, Np, Nb;
 static int64_t S;
 
 /* Note: eventually we may wish to tweak these to suit image content */
@@ -242,13 +246,10 @@ static int scale_quant( pict_data_s *picture, double quant )
 void rc_init_seq(int reinit)
 {
 
-	/* No bits unused from previous GOP....*/
-	gop_start = 0;
-	bits_transported = 0;
-	bits_used = 0;
 	/* If its stills with a size we have to hit then make the
 	   guesstimates of for initial quantisation pessimistic...
 	*/
+	bits_transported = bits_used = 0;
 	if( opt_still_size > 0 )
 	{
 		avg_KI *= 1.5;
@@ -259,47 +260,45 @@ void rc_init_seq(int reinit)
 	{
 		per_frame_bits = opt_bit_rate / opt_frame_rate;
 		R = opt_bit_rate;
-		/* We assume buffer is nicely topped up when we start */
-		bits_transported += undershoot_carry;
 	}
 
-	e_R_cum += (gop_start+per_gop_bits-bitcount());
-
-
+	field_rate = 2*opt_frame_rate;
+	fields_per_pict = opt_fieldpic ? 1 : 2;
 	/* Everything else already set or adaptive */
 	if( reinit )
 		return;
 
 	first_gop = 1;
 
-	/* Calculate reasonable margins for variation in the decoder buffer.
-	   we assume that having less than 5 frame intervals worth buffered
-	   is cutting it fine for avoiding under-runs.
+	/* Calculate reasonable margins for variation in the decoder
+	   buffer.  we assume that having less than 5 frame intervals
+	   worth buffered is cutting it fine for avoiding under-runs.
 
 	   The gain values represent the fraction of the under/over shoot
-	   to be recovered during one second.  Gain is decreased if the buffer margin
-	   is large, gain is higher for avoiding overshoot.
+	   to be recovered during one second.  Gain is decreased if the
+	   buffer margin is large, gain is higher for avoiding overshoot.
 
 	   Currently, for a 1-frame sized margin gain is set to recover
 	   an undershoot in half a second
 	*/
 	if( opt_still_size > 0 )
 	{
-		undershoot_carry = 0;
+		overshoot_carry = 0;
 		undershoot_gain = 1.0;
 		overshoot_gain = 1.0;
 	}
 	else
 	{
-		int buffer_safe = 6 * per_frame_bits ;
-		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/2;
-		mjpeg_info( "vb=%d UC = %d pfb=%d\n", 
-					(int)ctl_video_buffer_size/8,
-					(int)undershoot_carry/8, (int)per_frame_bits/8 );
-		if( undershoot_carry < per_frame_bits/2 )
+		int buffer_safe = 4 * per_frame_bits ;
+		overshoot_carry = (ctl_video_buffer_size - buffer_safe);
+		if( overshoot_carry < per_frame_bits/2 )
 			mjpeg_error_exit1( "Buffer appears to be set too small (< a frames variation possible)\n" );
-		undershoot_gain = 3.0 * (46*1024 * 8) / ctl_video_buffer_size;
-		overshoot_gain = 2.0 * undershoot_gain;
+		overshoot_gain =  0.5*opt_bit_rate / ctl_video_buffer_size;
+		mjpeg_info( "vb=%d UC = %d pfb=%d OSG=%f\n", 
+					(int)ctl_video_buffer_size/8,
+					(int)overshoot_carry/8, (int)per_frame_bits/8,
+					overshoot_gain);
+
 		
 	}
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
@@ -345,45 +344,20 @@ static double T_sum;
 
 void rc_init_GOP( int np, int nb)
 {
-	Np = opt_fieldpic ? 2*np+1 : np;
-	Nb = opt_fieldpic ? 2*nb : nb;
+	Np = opt_fieldpic ? 2*np+1 : 2*np;
+	Nb = opt_fieldpic ? 2*nb : 2*nb;
+	Ni = opt_fieldpic ? 1 : 2;
+	fields_in_gop = Ni + Nb + Np;
 
-	if( opt_still_size > 0 )
-		per_gop_bits = per_frame_bits;
-	else
-		per_gop_bits = (double)(1 + np + nb) * per_frame_bits;
-
-	
-	/* A.Stevens Aug 2000: at last I've found the wretched
-	   rate-control overshoot bug...  Simply "topping up" R here means
-	   that we can accumulate an indefinately large pool of bits
-	   "saved" from previous low-activity frames.  This is of
-	   course nonsense.
-
-	   In CBR we can only accumulate as much as our buffer allows,
-	   after that the eventual system stream will have to be padded.
-	   The automatic padding will make this calculation fairly
-	   reasonable but since that's based on estimates we again impose
-	   our rough and ready heuristic that we can't accumulate more
-	   than approximately half a video buffer full.
-
-	   In VBR we actually do nothing different.  Here the bitrate is
-	   simply a ceiling rate which we expect to undershoot a lot as
-	   our quantisation floor cuts in. We specify a great big buffer
-	   and simply don't pad when we undershoot.
-
-	   However, we don't want to carry over absurd undershoots as when it
-	   does get hectic we'll breach our maximum.
-		
-	   TODO: For CBR we should do a proper video buffer model and use
-	   it to make bit allocation decisions.
-
+	/*
+	  At the start of a GOP before any frames have gone the
+	  actual buffer state represents a long term average. Any
+	  undershoot due to the I_frame of the previous GOP
+	  should by now have been caught up.
 	*/
 
+	gop_buffer_correction = 0;
 	T_sum = 0.0;
-	R_cum = (R-per_gop_bits);
-
-	gop_start = bitcount();
 
 
 	if( first_gop )
@@ -391,11 +365,25 @@ void rc_init_GOP( int np, int nb)
 		fast_tune = 1;
 		first_I = first_B = first_P = 1;
 		first_gop = 0;
+		I_frame_base_bits = per_frame_bits;
+		B_frame_base_bits = per_frame_bits;
+		P_frame_base_bits = per_frame_bits;
 	}
 	else
 	{
+		double recovery_fraction = field_rate/(overshoot_gain * fields_in_gop);
+		double recovery_gain = 
+			recovery_fraction > 1.0 ? 1.0 : overshoot_gain * recovery_fraction;
+		int available_bits = 
+			( opt_bit_rate+buffer_variation*recovery_gain)*fields_in_gop/field_rate;
+		double Xsum = Ni*Xi+Np*Xp+Nb*Xb;
+		I_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xi/Xsum);
+		P_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xp/Xsum);
+		B_frame_base_bits = (int32_t)(fields_per_pict*available_bits*Xb/Xsum);
 		fast_tune = 0;
+
 	}
+
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: new group of pictures (GOP)\n");
 	fprintf(statfile," target number of bits for GOP: R=%.0f\n",R);
@@ -413,7 +401,8 @@ void rc_init_pict(pict_data_s *picture)
 	double current_Q;
 	double Si, Sp, Sb;
 	int available_bits;
-	int frames_in_gop = Nb+Np+1;
+	double Xsum;
+
 	/* TODO: A.Stevens  Nov 2000 - This modification needs testing visually.
 
 	   Weird.  The original code used the average activity of the
@@ -460,22 +449,21 @@ void rc_init_pict(pict_data_s *picture)
 	   bit-pool a one-GOP bit-pool.
 	*/
 
-
+	
 	if( opt_still_size > 0 )
 		available_bits = per_frame_bits;
-	else if( buffer_variation > 0 )
-	{
-		available_bits = 
-			(R+buffer_variation*undershoot_gain)*frames_in_gop/opt_frame_rate;
-	}
 	else
 	{
+		int feedback_correction = 
+			fast_tune ?	buffer_variation * overshoot_gain
+			: (buffer_variation+gop_buffer_correction) * overshoot_gain;
 		available_bits = 
-			(R+buffer_variation*overshoot_gain)*frames_in_gop/opt_frame_rate;
+			( opt_bit_rate+feedback_correction)*fields_in_gop/field_rate;
 	}
 
 	min_q = min_d = INT_MAX;
 	max_q = max_d = INT_MIN;
+    Xsum = Ni*Xi+Np*Xp+Nb*Xb;
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
@@ -490,36 +478,66 @@ void rc_init_pict(pict_data_s *picture)
 		Si = avg_K*actsum;
 		if( first_I )
 		{
-			T = (int32_t)(available_bits/(1.0+(Np/1.7)+Nb/(2.0*1.7)));
-			first_I = 0;
+			T = (int32_t)(fields_per_pict*available_bits/(Ni+(Np/1.7)+Nb/(2.0*1.7)));
 		}
 		else
-			T =(int32_t)(available_bits/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb)));
+		{
+			T =(int32_t)(fields_per_pict*available_bits*Si/Xsum);
+		}
+		frame_base_bits = I_frame_base_bits;
 		break;
 	case P_TYPE:
 		d = d0p;
 		avg_K = avg_KP;
-		Sp = avg_K * actsum;
+		Sp = (2*Xp + avg_K * actsum)/3.0;	 /* Damp P-frame response a little
+											as really big jumps will probably
+											make avg_K inaccurate */
 		if( first_P )
 		{
-			T = (int32_t)(available_bits/(Np+Nb/2.0));
+			T = (int32_t)(fields_per_pict*available_bits/(Np+Nb/2.0));
 		}
 		else
-			T =  (int32_t)(available_bits/(Np+Nb*Kp*Xb/(Kb*Sp)));
+		{
+			T = (int32_t)(fields_per_pict*available_bits*Sp/Xsum);
+		}
+		frame_base_bits = P_frame_base_bits;
 		break;
 	case B_TYPE:
 		d = d0b;
 		avg_K = avg_KB;
-		Sb = avg_K * actsum;
+		Sb = Xb;				/* We don't want B-frames to be too
+								   responsive...*/
 		if( first_B )
 		{
-			T =  (int32_t)(available_bits/(Nb+Np*2.0));
+			T =  (int32_t)(fields_per_pict*available_bits/(Nb+Np*2.0));
 		}
 		else
-			T =  (int32_t)(available_bits/(Nb+Np*Kb*Xp/(Kp*Sb)));
+		{
+			T =  (int32_t)(fields_per_pict*available_bits*Sb/Xsum);
+		}
+		frame_base_bits = B_frame_base_bits;
+
 		break;
 	}
 
+	mjpeg_info( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
+
+
+	/* 
+	   To account for the wildly different sizes of frames
+	   we compute a correction to the current instantaneous
+	   buffer state that accounts for the fact that all other
+	   thing being equal buffer to go down a lot after the I-frame
+	   decode but fill up again through the B and P frames.
+
+	   For this we use the base bit allocations of the frame
+	   "frame_base_bits" which will pretty accurately add up to a
+	   GOP-length's of bits not the more dynamic predictive T target
+	   bit-allocation (which *won't* add up very well).
+	*/
+
+	gop_buffer_correction += (frame_base_bits-per_frame_bits);
+		
 
 	/* Undershot bits have been "returned" via R */
 	if( d < 0 )
@@ -541,7 +559,6 @@ void rc_init_pict(pict_data_s *picture)
 		T -= frame_overshoot_margin;
 	}
 
-	//printf( "(%d,%d):R=%d T=%d ", Nb, Np,R/8, T/8);
 
 	T_sum += T;
 	target_Q = scale_quantf(picture, 
@@ -649,11 +666,12 @@ void rc_update_pict(pict_data_s *picture)
 	double X;
 	double K;
 	double AQ;
-	int64_t AP,PP;		/* Actual and padded picture bit counts */
+	int32_t AP;		/* Actual (including padding) picture bit counts */
 	int    i;
 	int    Qsum;
 	int frame_overshoot;
-	
+	static int64_t prev_bitcount = 0LL;
+
 	AP = bitcount() - S;
 	frame_overshoot = (int)AP-(int)T;
 
@@ -699,44 +717,44 @@ void rc_update_pict(pict_data_s *picture)
 				putbits(0, 16);
 			}
 		}
-		AP = bitcount() - S;			/* total # of bits in picture */
+		AP += padding_bytes*8 ;			/* total # of bits in picture */
+		frame_overshoot += padding_bytes*8;
 	}
+
+
+	/*
+	  Compute the estimate of the current decoder buffer state.  We
+	  use this to feedback-correct the available bit-pool with a
+	  fraction of the current buffer state estimate.  If we're ahead
+	  of the game we allow a small increase in the pool.  If we
+	  dropping towards a dangerously low buffer we decrease the pool
+	  (rather more vigorously).
+	  
+	  Note that since we cannot hold more than a buffer-full if we have
+	  a positive buffer_variation in CBR we assume it was padded away
+	  and in VBR we assume we only sent until the buffer was full.
+	*/
+
 	
-	bits_used += AP;
+	bits_used += (bitcount()-prev_bitcount);
+	prev_bitcount = bitcount();
 	bits_transported += per_frame_bits;
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
 
-	/* In VBR we simply stop reading once our buffer is filled up */
-	   
-	if( ctl_quant_floor != 0 && buffer_variation > undershoot_carry )
+	if( buffer_variation > 0 )
 	{
-		bits_transported = bits_used + undershoot_carry;
-		buffer_variation = undershoot_carry;	
+		if( ctl_quant_floor > 0 )
+		{
+			bits_transported = bits_used;
+			buffer_variation = 0;	
+		}
+		else
+		{
+			bits_used = bits_transported;
+			buffer_variation = 0;
+		}
 	}
 
-	/* Anything more than the buffer is likely to be able to hold
-	   will be simply padded away by the multiplexer. 
-	*/
-
-	if( buffer_variation > undershoot_carry )
-	{
-		bits_used += (buffer_variation -undershoot_carry);
-		PP = AP;
-		buffer_variation = undershoot_carry;
-	}
-
-	else
-		PP = AP;
-
-	
-	   
-	R = (R-PP)+per_frame_bits;		/* remaining # of bits over a  GOP length*/
-
-	/* Make sure our 1-second bit-pool never grows larger than our nominal
-	   bit-rate plus our maximum carry margin
-	*/
-
-	R = intmin( opt_bit_rate+undershoot_carry, R );
 
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
@@ -768,11 +786,10 @@ void rc_update_pict(pict_data_s *picture)
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
-	gop_bits += per_frame_bits;
-
-	mjpeg_debug( "D=%lld R=%d dB=%d\n", 
-				(gop_bits - bitcount())/8, (int)R/8,
-				buffer_variation/8  );
+	mjpeg_debug( "D=%d R=%d GC=%d\n", 
+				 buffer_variation/8,
+				 (int)R/8,
+				 gop_buffer_correction/8  );
 	
 	/* Xi are used as a guesstimate of *typical* frame activities
 	   based on the past.  Thus we don't want anomalous outliers due
@@ -789,7 +806,10 @@ void rc_update_pict(pict_data_s *picture)
 		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		d0i = d;
 		if( first_I )
+		{
 			Xi = X;
+			first_I = 0;
+		}
 		else
 			Xi = (X + 2.0*Xi)/3.0;
 		break;
