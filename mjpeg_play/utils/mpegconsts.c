@@ -245,7 +245,7 @@ const char *
 mpeg_framerate_code_definition(   mpeg_framerate_code_t code  )
 {
 	if( code <= 0 || code >=  mpeg_num_framerates )
-		return "UNDEFINED: illegal/reserved frame-rate ratio code\n";
+		return "UNDEFINED: illegal/reserved frame-rate ratio code";
 
 	return framerate_definitions[code];
 }
@@ -263,7 +263,7 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  )
 		return "UNDEFINED: illegal MPEG version";
 	
 	if( code < 1 || code >  mpeg_num_aspect_ratios[mpeg_version-1] )
-		return "UNDEFINED: illegal aspect ratio code\n";
+		return "UNDEFINED: illegal aspect ratio code";
 
 	return aspect_ratio_definitions[mpeg_version-1][code-1];
 }
