@@ -1,6 +1,6 @@
 %define name    mjpegtools
 %define version 1.6.0
-%define release beta1
+%define release beta2
 %define prefix  /usr
 
 Name:           %name
@@ -25,41 +25,65 @@ be done with zoran-based MJPEG-boards (LML33, Iomega Buz, Pinnacle
 DC10(+), Marvel G200/G400), these can also playback video using the
 hardware. With the rest of the tools, this video can be edited and
 encoded into mpeg1/2 or divx video.
-  
+
 %prep
- [ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
- && rm -rf ${RPM_BUILD_ROOT}/
-%setup -b 3 -n jpeg-mmx-0.1.4
-%configure
-make libjpeg-mmx.a
+%setup -q -n %{name}-%{version}-%{release} -a 1 -a 2 -a 3
 
-%setup -b 1 -n quicktime4linux-1.4-patch
-%configure
-make
+mv jpeg-mmx-* jpeg-mmx
+mv quicktime4linux-* quicktime4linux
+mv libmovtar-* libmovtar
 
-%setup -b 2 -n libmovtar-0.1.3
-%configure --prefix=%{prefix}
-make
-make DESTDIR=${RPM_BUILD_ROOT} install  
+mkdir usr
 
-%setup -b 0 -n mjpegtools-%{version}-%{release}
-./configure --prefix=%{prefix} \
-	--with-quicktime=`pwd`/../quicktime4linux-1.4-patch \
-	--with-jpeg-mmx=`pwd`/../jpeg-mmx-0.1.4 \
-	--with-movtar-prefix=`pwd`/../libmovtar-0.1.3 \
-	--with-movtar-exec-prefix=${RPM_BUILD_ROOT}%{prefix} \
-	--enable-large-file --enable-cmov-extension
 %build
+
+tmp_prefix="`pwd`/usr"
+mkdir -p $tmp_prefix/{include,lib,bin,share}
+
+CFLAGS="${CFLAGS:-%optflags}" ; export CFLAGS
+CXXFLAGS="${CXXFLAGS:-%optflags}" ; export CXXFLAGS
+
+(cd jpeg-mmx && ./configure)
+make -C jpeg-mmx libjpeg-mmx.a
+
+(cd quicktime4linux && ./configure)
+make -C quicktime4linux
+
+CONF_ARGS="--with-jpeg-mmx=`pwd`/jpeg-mmx"
+
+(cd libmovtar && 
+   ./configure --prefix="$tmp_prefix" \
+	--with-m4data-prefix="$tmp_prefix/share/aclocal" \
+	$CONF_ARGS )
+
+make -C libmovtar
+make -C libmovtar install
+
+CONF_ARGS="$CONF_ARGS --prefix=%{prefix}"
+
+(cd libmovtar&& ./configure $CONF_ARGS)
+make -C libmovtar
+
+CONF_ARGS="$CONF_ARGS --with-quicktime=`pwd`/quicktime4linux"
+CONF_ARGS="$CONF_ARGS --with-movtar-prefix=$tmp_prefix"
+
+MOVTAR_CONFIG=$tmp_prefix/bin/movtar-config; export MOVTAR_CONFIG
+./configure $CONF_ARGS --enable-large-file --enable-cmov-extension
 make
 
 %install
+[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
+ && rm -rf ${RPM_BUILD_ROOT}/
+
+make -C libmovtar DESTDIR=${RPM_BUILD_ROOT} install
+
 make prefix=${RPM_BUILD_ROOT}%{prefix} install
 
 %post
 /sbin/ldconfig
 
 %clean
- [ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
+[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
  && rm -rf ${RPM_BUILD_ROOT}/
 
 %files
@@ -86,7 +110,6 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} install
 %package devel
 Summary: Development headers and libraries for the mjpegtools
 Group: Development/Libraries
-Requires: %{name} = %{version}
 
 %description devel
 This package contains static libraries and C system header files
@@ -102,6 +125,9 @@ of the mjpegtools package.
 %{_libdir}/*.a
 
 %changelog
+* Tue Feb 12 2002 Geoffrey T. Dairiki <dairiki@dairiki.org>
+- Fix spec file to build in one directory, etc...
+
 * Thu Dec 06 2001 Ronald Bultje <rbultje@ronald.bitfreak.net>
 - separated mjpegtools and mjpegtools-devel
 - added changes by Marcel Pol <mpol@gmx.net> for cleaner RPM build
