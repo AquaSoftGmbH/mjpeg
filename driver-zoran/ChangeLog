@@ -1,0 +1,96 @@
+Version 0.9.4 -> 0.9.5
+----------------------
+* don't ignore return value of videocodec_register()
+* call videocodec_unregister() no matter what on module unload
+* remove duplicate MOD_INC/DEC_USE_COUNT from i2c clients (oops)
+* a successful call to try_module_get() returns 1, not 0
+* change I2C ID probing/scanning to what's used in 2.5.x
+* some small documentation updates
+* VPX32XX->VPX3220
+* add LML33R10 PCI subvendor/-device ID
+* fix LML33R10
+* fix hang when open()/close() is called while waiting in a sync
+* fix MJPEG recording on zr36016/zr36050 cards. -d4 doesn't work,
+* s/debug/zr_debug/ to fix symbol conflict for in-kernel code
+* Add pci_disable_device() in card release function
+* fix memleaks in i2c client error cases
+* fix DC30 field order problem and +/- 64 lines noise at top
+* fix DC30 quality (by Kieran Morrissey <linux@mgpenguin.net>)
+* fix module counting in videocodec modules (patch by Christoph Hellwig
+    <hch@lst.de>) and add some sort of emulation of module_put/get for 2.4.x
+* fix potential integer overflow (bug detected by Ken Ashcraft
+    <kash@stanford.edu>)
+* change subfrequency carrier (patch by Douglas Fraser
+    <ds-fraser@comcast.net>)
+* use msleep() instead of schedule_timeout() (patch by Nishanth Aravamudan
+    <nacc@us.ibm.com>)
+* fix JPEG COM/APP marker writeing in zr360[56]0
+
+Version 0.9.3 -> 0.9.4
+----------------------
+* Add YUY2 overlay (fullscreen/hardware-scaled)
+* use __stringify() for array insmod options
+* fix stupid flaw in open() logic (could result in oops)
+* fix 2.5.x build
+* remove lots of 'dead' includes from zoran_driver.c
+* remove DataErr from the zr36060 IRQ Mask, this autoresets the chip when
+    it loses sync, which means we don't get a timeout. Much better than
+    all the manual restart handling (which only worked partly).
+* introduce workaround for kfree-in-munmap-handler oops
+* implement support for bitmaps rather than clips for overlay
+* use try_module_get()/module_put() instead of MOD_INC/DEC_USE_COUNT
+    in 2.5.x... Also implement i2c_driver->owner for all i2c clients
+
+Version 0.9.2 -> 0.9.3
+----------------------
+* Fix missing check for channel < 0 in VIDIOCGCHAN (results in oops)
+
+Version 0.9.1 -> 0.9.2
+----------------------
+* change default debug level 0 -> 1 ('display errors')
+* add autodetect norm support to bt819
+* fix all sort of lml33 problems
+* changed zr->card into a non-pointer so its changeable per card entry
+* add SECAM support to vpx3220
+* add encoder=X/decoder=X insmod options to zoran.o (for varying cards
+    such as the DC10old (mse3000/adv7175) and the DC30/DC30+ (vpx32xx))
+* add "make release" feature to Makefile
+* re-add some line that mysteriously got lost during VIDIOCGMBUF (fixes
+    SIGFPE in xawtv)
+* fix oops where semaphore wasn't down()'ed on v4l_fbuffer_free() -> double
+    kfree() -> oops (please, use >= 2.4.20 only!)
+* added linux/init.h everywhere for __devinit
+
+Version 0.9.0 -> 0.9.1
+----------------------
+* Started ChangeLog
+* Fixed VIDIOCGCHAN bug: it always returned the first input
+* Fixed svideo channel bug in zoran.c
+* Renamed SVHS to S-Video
+* change initialization order for JPEG capture (DC10old/DC30)
+* Add some raw I2C commands to I2C clients for more efficient block writes
+* Fix up coding style in zoran.c
+* standardize all dmesg output by our driver
+* added a FAQ (to replace the current kernel documentation)
+* added semaphores
+* use pci_pci_problems instead of detecting PCI chipsets ourselves, and
+    remove triton/natoma insmod options
+* add a PCI device template, in preparation for moveover to new PCI subsystem
+* add video_nr insmod option
+* use get_zeroed_page() instead of get_free_page()
+* proper use of __init/__exit and related macros
+* proper use of module_init()/module_exit() for module initialization
+* removed XAWTV_HACK code (obsolete/unused)
+* removed videobus_enable() code (obsolete/unused)
+* use struct bla bla = { .item = value, }; for struct initialization instead
+    of struct bla bla = { item: value, };
+* added saa7174/adv7170 modules for LML33R10
+* added cropping/streamparm ioctl()s to zoran (v4l2)
+* changes card structs into something else
+* separated zoran.c/zoran_procfs.c into zoran_{procfs,driver,device,card}.c
+* s/DEBUGX/dprintk(x,/
+* added debug options to all i2c clients
+* identd'ed all files to kernel style (linux/Documentation/CodingStyle)
+* added a fix to not list SECAM or AUTO norms if not supported
+* added card= option (which autoloads all modules)
+* many random fixes that don't matter at all

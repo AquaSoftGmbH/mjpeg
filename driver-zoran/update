@@ -11,77 +11,160 @@
 LINUX_VERSION=`uname -r`
 sync;sync
 
+#change to NTSC or SECAM or PAL
+norm=PAL
+
+if echo $LINUX_VERSION | grep '2\.4' > /dev/null
+then
+mod_ext=o
+else
+mod_ext=ko
+fi
+
 # Unload everything
 $SUDO /sbin/rmmod dc10 > /dev/null 2>&1     # Just in case if old driver was loaded
 $SUDO /sbin/rmmod zoran > /dev/null 2>&1
-# If you don't have DC10 or DC10plus card comment out next two lines
+$SUDO /sbin/rmmod zr36067 > /dev/null 2>&1
+# If you don't have DC10 or DC10plus card comment out next three lines
 $SUDO /sbin/rmmod adv7175 > /dev/null 2>&1
 $SUDO /sbin/rmmod saa7110 > /dev/null 2>&1
-# If you don't have BUZ card comment out next two lines
+$SUDO /sbin/rmmod zr36060 > /dev/null 2>&1
+# If you don't have BUZ card comment out next three lines
 $SUDO /sbin/rmmod saa7111 > /dev/null 2>&1
 $SUDO /sbin/rmmod saa7185 > /dev/null 2>&1
-# If you don't have LML33 card comment out next two lines
+$SUDO /sbin/rmmod zr36060 > /dev/null 2>&1
+# If you don't have LML33 card comment out next three lines
 $SUDO /sbin/rmmod bt819 > /dev/null 2>&1
 $SUDO /sbin/rmmod bt856 > /dev/null 2>&1
-if echo $LINUX_VERSION | grep '2\.4' > /dev/null
-then
-    $SUDO /sbin/rmmod i2c-old > /dev/null 2>&1
-else
-    $SUDO /sbin/rmmod i2c > /dev/null 2>&1
-fi
+$SUDO /sbin/rmmod zr36060 > /dev/null 2>&1
+# If you don't have a dc30/dc30plus, you don't need the next four lines
+$SUDO /sbin/rmmod adv7175 > /dev/null 2>&1
+$SUDO /sbin/rmmod vpx3220 > /dev/null 2>&1
+$SUDO /sbin/rmmod zr36016 > /dev/null 2>&1
+$SUDO /sbin/rmmod zr36050 > /dev/null 2>&1
+# bla lml33r10 bla etc.
+$SUDO /sbin/rmmod adv7170 > /dev/null 2>&1
+$SUDO /sbin/rmmod saa7114 > /dev/null 2>&1
+$SUDO /sbin/rmmod zr36060 > /dev/null 2>&1
+
+$SUDO /sbin/rmmod videocodec > /dev/null 2>&1
+
+$SUDO /sbin/rmmod i2c-old > /dev/null 2>&1
+$SUDO /sbin/rmmod i2c-algo-bit > /dev/null 2>&1
+$SUDO /sbin/rmmod i2c-core > /dev/null 2>&1
 $SUDO /sbin/rmmod videodev > /dev/null 2>&1
 
 # Load driver
 
 sync;sync
-$SUDO /sbin/insmod -f videodev
+$SUDO /sbin/modprobe videodev
 
 # I2COPTS="scan=1"
 
-if echo $LINUX_VERSION | grep '2\.4' > /dev/null
-then
-    $SUDO /sbin/insmod -f i2c-old $I2COPTS
-else
-    $SUDO /sbin/insmod -f i2c $I2COPTS
-fi
+$SUDO /sbin/modprobe i2c-core $I2CCOREOPTS
+$SUDO /sbin/modprobe i2c-algo-bit $I2CALGOBITOPTS
+
+$SUDO /sbin/insmod ./videocodec.$mod_ext
 
 incompat=""
 cards=""
+cardnum=""
+decnum=""
+encnum=""
+
+function addcardnum {
+    if test x$cardnum = x; then
+        cardnum="$1"
+        decnum="$2"
+        encnum="$3"
+    else
+        cardnum="$cardnum,$1"
+        decnum="$decnum,$2"
+        encnum="$encnum,$3"
+    fi
+}
 
 while [ "$1" != "" ]
 do
     case "$1" in
     
-        'dc10'|'dc10plus')
-            $SUDO /sbin/insmod -f ./saa7110.o
-            $SUDO /sbin/insmod -f ./adv7175.o
+        'dc10new')
+            $SUDO /sbin/insmod ./saa7110.$mod_ext
+            $SUDO /sbin/insmod ./adv7175.$mod_ext
+            $SUDO /sbin/insmod ./zr36060.$mod_ext
             cards="$cards $1"
+            addcardnum 1 -1 -1
+            ;;
+        'dc10plus')
+            $SUDO /sbin/insmod ./saa7110.$mod_ext
+            $SUDO /sbin/insmod ./adv7175.$mod_ext
+            $SUDO /sbin/insmod ./zr36060.$mod_ext
+            cards="$cards $1"
+            addcardnum 2 -1 -1
             ;;
         'lml33')
-            if [ "$incompat" = "buz" ]
-            then
-                echo "Using of Buz and LML33 cards in the same system is not yet supported"
-                echo "Installation aborted."
-                exit 1
-            fi
-            $SUDO /sbin/insmod -f ./bt819.o
-            $SUDO /sbin/insmod -f ./bt856.o
+            $SUDO /sbin/insmod ./bt819.$mod_ext
+            $SUDO /sbin/insmod ./bt856.$mod_ext
+            $SUDO /sbin/insmod ./zr36060.$mod_ext
             cards="$cards $1"
-            incompat="lml33"
+            addcardnum 5 -1 -1
             ;;
         'buz')
-            if [ "$incompat" = "lml33" ]
-            then
-                echo "Using of Buz and LML33 cards in the same system is not yet supported"
-                echo "Installation aborted."
-                exit 1
-            fi
-            $SUDO /sbin/insmod -f ./saa7111.o
-            $SUDO /sbin/insmod -f ./saa7185.o
+            $SUDO /sbin/insmod ./saa7111.$mod_ext
+            $SUDO /sbin/insmod ./saa7185.$mod_ext
+            $SUDO /sbin/insmod ./zr36060.$mod_ext low_bitrate=1
             cards="$cards $1"
-            incompat="buz"
+            addcardnum 7 -1 -1
+            ;;
+        'dc30')
+            $SUDO /sbin/insmod ./vpx3220.$mod_ext
+            $SUDO /sbin/insmod ./adv7175.$mod_ext
+            $SUDO /sbin/insmod ./zr36016.$mod_ext
+            $SUDO /sbin/insmod ./zr36050.$mod_ext
+            cards="$cards $1"
+            addcardnum 3 -1 -1
+            ;;
+        'dc30plus')
+            $SUDO /sbin/insmod ./vpx3220.$mod_ext
+            $SUDO /sbin/insmod ./adv7175.$mod_ext
+            $SUDO /sbin/insmod ./zr36016.$mod_ext
+            $SUDO /sbin/insmod ./zr36050.$mod_ext
+            cards="$cards $1"
+            addcardnum 4 -1 -1
+            ;;
+        'dc10old')
+            $SUDO /sbin/insmod ./vpx3220.$mod_ext
+            #$SUDO /sbin/insmod ./mse3000.$mod_ext
+            echo "playback on card $1 disabled, because we don't have a TV encoder module (mse3000) yet"
+            $SUDO /sbin/insmod ./zr36016.$mod_ext
+            $SUDO /sbin/insmod ./zr36050.$mod_ext
+            cards="$cards $1"
+            addcardnum 0 -1 -1
+            ;;
+        'dc10old_vpxadv')
+            $SUDO /sbin/insmod ./vpx3220.$mod_ext
+            $SUDO /sbin/insmod ./adv7175.$mod_ext
+            $SUDO /sbin/insmod ./zr36016.$mod_ext
+            $SUDO /sbin/insmod ./zr36050.$mod_ext
+            cards="$cards $1"
+            addcardnum 0 -1 48
+            ;;
+        'lml33r10')
+            $SUDO /sbin/insmod ./saa7114.$mod_ext
+            $SUDO /sbin/insmod ./adv7170.$mod_ext
+            $SUDO /sbin/insmod ./zr36060.$mod_ext
+            cards="$cards $1"
+            addcardnum 6 -1 -1
+            ;;
+        'PAL'|'SECAM'|'NTSC')
+            norm=$1
             ;;
         *)
+            echo "Usage: ./update card [card [..]] norm"
+            echo "  Norm can be PAL, NTSC or SECAM"
+            echo "  Card can be any combination of dc10old, dc10old_vpxadv, dc10new, dc10plus, dc30, dc30plus, lml33, lml33r10 or buz"
+            echo "  See the documentation for more information on these cards"
+            exit 1
             ;;
     esac
     shift
@@ -97,5 +180,23 @@ sync;sync
 sleep 1
 # For information about options, please, check file README.
 # If you have PAL signal in you country, change to default_norm=0 in the next line
-$SUDO /sbin/insmod -f ./zoran.o default_norm=1 lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
+normnum=0
+case "$norm" in
+    'PAL')
+        normnum=0
+        ;;
+    'NTSC')
+        normnum=1
+        ;;
+    'SECAM')
+        normnum=2
+        ;;
+    *)
+        echo "No norm given - please edit this script!"
+        echo "You can also give the norm as parameter to this script"
+        exit 1
+        ;;
+esac
+$SUDO /sbin/insmod ./zoran.$mod_ext debug=3 card=$cardnum encoder=$encnum decoder=$decnum default_norm=$normnum lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
 sync;sync
+echo "Drivers for '$cards' with norm '$norm' loaded"
