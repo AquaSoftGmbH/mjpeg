@@ -122,7 +122,7 @@ static void init_YCbCr_to_RGB_tables(void)
 
   /* clip Y values under 16 */
   for (i = 0; i < 16; i++) {
-    RGB_Y[i] = myround((1.0 * (double)(16) 
+    RGB_Y[i] = myround((1.0 * (double)(16 - 16) 
 		     * 255.0 / 219.0 * (double)(1<<FP_BITS))
 		    + (double)(1<<(FP_BITS-1)));
   }
@@ -133,7 +133,7 @@ static void init_YCbCr_to_RGB_tables(void)
   }
   /* clip Y values above 235 */
   for (i = 236; i < 256; i++) {
-    RGB_Y[i] = myround((1.0 * (double)(235) 
+    RGB_Y[i] = myround((1.0 * (double)(235 - 16) 
 		     * 255.0 / 219.0 * (double)(1<<FP_BITS))
 		    + (double)(1<<(FP_BITS-1)));
   }
@@ -234,3 +234,102 @@ void convert_YCbCr_to_RGB(uint8_t *planes[], int length)
   
 }
 
+
+#if 0
+
+/* This stuff ain't ready for prime-time yet,
+   mostly because I haven't figured out if JPEG Y' is scaled to 255,
+   or clipped to 255...
+     - Matto
+*/
+
+static uint8_t JPEG_TO_R601_Y[256];
+static uint8_t JPEG_TO_R601_C[256];
+static uint8_t R601_TO_JPEG_Y[256];
+static uint8_t R601_TO_JPEG_C[256];
+static int conv_YJR_inited = 0;
+static int conv_YRJ_inited = 0;
+
+#define CONVERT_Y  1
+#define CONVERT_CB 2
+#define CONVERT_CR 3
+
+static void init_YCbCr_JPEG_to_Rec601_tables()
+{
+  int i;
+  for (i = 0; i < 255; i++) {
+
+    JPEG_TO_R601_Y[i] =   i * 219.0 / 256.0 + 16;
+    JPEG_TO_R601_C[i] =   (i - 128) * 224.0 / 256.0 + 128;
+
+  }
+}
+
+static void init_YCbCr_Rec601_to_JPEG_tables()
+{
+  int i;
+  for (i = 0; i < 255; i++) {
+
+    R601_TO_JPEG_Y[i] =   (i - 16) / 219.0 * 256.0;
+    R601_TO_JPEG_C[i] =   (i - 128) / 224.0 * 256.0 + 128;
+
+  }
+}
+
+/* 
+ * in-place conversion JPEG [Y', Cb, Cr] --> CCIR-601 [Y', Cb, Cr]
+ *
+ */
+
+void convert_YCbCr_JPEG_to_Rec601(int plane_type,
+				  uint8_t data[], int length)
+{
+  int i;
+
+  if (!conv_YJR_inited) init_YCbCr_JPEG_to_Rec601_tables();
+
+  switch (plane_type) {
+  case CONVERT_Y:
+    for (i = 0; i < length; i++, data++) {
+      *data = JPEG_TO_R601_Y[*data];
+    }
+    break;
+  case CONVERT_CB:
+  case CONVERT_CR:
+    for (i = 0; i < length; i++, data++) {
+      *data = JPEG_TO_R601_C[*data];
+    }
+    break;
+  }
+}
+
+
+
+/* 
+ * in-place conversion JPEG [Y', Cb, Cr] --> CCIR-601 [Y', Cb, Cr]
+ *
+ */
+
+void convert_YCbCr_Rec601_to_JPEG(int plane_type,
+				  uint8_t data[], int length)
+{
+  int i;
+
+  if (!conv_YRJ_inited) init_YCbCr_Rec601_to_JPEG_tables();
+
+  switch (plane_type) {
+  case CONVERT_Y:
+    for (i = 0; i < length; i++, data++) {
+      *data = R601_TO_JPEG_Y[*data];
+    }
+    break;
+  case CONVERT_CB:
+  case CONVERT_CR:
+    for (i = 0; i < length; i++, data++) {
+      *data = R601_TO_JPEG_C[*data];
+    }
+    break;
+  }
+}
+
+#endif
