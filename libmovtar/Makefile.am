@@ -18,10 +18,24 @@ movtar_yuv422_LDADD = @JPEG_LIBS@
 
 LDADD = ./libmovtar.a @GLIB_LIBS@
 
-EXTRA_DIST = README.movtar.implement movtar.m4
+EXTRA_DIST = README.movtar.implement movtar.m4 autogen.sh .cvsignore
 
 m4datadir = ${prefix}/share/aclocal
 m4data_DATA = movtar.m4
 
+MAINTAINERCLEANFILES = \
+Makefile.in \
+aclocal.m4 \
+config.cache \
+config.guess \
+config.log \
+config.status \
+config.sub \
+configure \
+depcomp \
+install-sh \
+ltmain.sh \
+missing \
+mkinstalldirs
 
 
