@@ -114,7 +114,7 @@ static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
 static int param_input_interlacing;
-static int param_hack_svcd_hds_bug = 0;
+static int param_hack_svcd_hds_bug = 1;
 
 /* Input Stream parameter values that have to be further processed to
    set encoding options */
@@ -229,7 +229,7 @@ static void Usage(char *str)
 "    Force setting of playback field order to bottom or top first\n"
 "--multi-thread|-M num\n"
 "    Activate multi-threading to optimise through on a system with num CPU's\n""    [0..32], 0=no multithreading, (default: 1)\n"
-"--hack-svcd-hds-bug\n"
+"--correct-svcd-hds|-C\n"
 "    Force SVCD horizontal_display_size to be 480 - standards say 540 or 720\n"
 "    But many DVD/SVCD players screw up with these values.\n"
 "--help|-?\n"
@@ -635,7 +635,7 @@ int main(argc,argv)
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpdsZNhOP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpdsZNhOCP";
 
 static struct option long_options[]={
      { "verbose",           1, 0, 'v' },
@@ -663,7 +663,7 @@ static struct option long_options[]={
      { "reduce-hf",         0, &param_hf_quant, 1 },
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
-     { "hack-svcd-hds-bug", 0, &param_hack_svcd_hds_bug, 1},
+     { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
      { "help",              0, 0, '?' },
@@ -699,6 +699,10 @@ static struct option long_options[]={
 				++nerr;
 			}
 			break;
+        case 'C':
+            param_hack_svcd_hds_bug = 0;
+            break;
+
 		case 'q':
 			param_quant = atoi(optarg);
 			if(param_quant<1 || param_quant>32)

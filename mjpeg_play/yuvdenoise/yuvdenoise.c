@@ -197,11 +197,11 @@ calc_SAD_half_mmx (uint8_t * frm,
 		     int yy);
 unsigned long
 calc_SAD_half_mmxe (uint8_t * frm, 
-		     uint8_t * ref, 
-		     unsigned long frm_offs, 
-		     unsigned long ref_offs, 
-		     int xx, 
-		     int yy);
+					uint8_t * ref, 
+					unsigned long frm_offs, 
+					unsigned long ref_offs, 
+					int xx, 
+					int yy);
 #endif
 
 /* pointer on them */
@@ -1483,8 +1483,10 @@ calc_SAD_half_noaccel (uint8_t * frm, uint8_t * ref, unsigned long frm_offs, uns
  *****************************************************************************/
 #ifdef HAVE_ASM_MMX
 
-uint32_t
-calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
+unsigned long
+calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, 
+					unsigned long frm_offs, unsigned long ref_offs, 
+					int xx, int yy)
 {
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
@@ -1524,8 +1526,10 @@ calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t re
  * halfpel-SAD-function for Y with MMX                                       *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_half_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
+unsigned long
+calc_SAD_half_mmx (uint8_t * frm, uint8_t * ref, 
+				   unsigned long frm_offs, unsigned long ref_offs, 
+				   int xx, int yy)
 {
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
@@ -1605,8 +1609,10 @@ calc_SAD_noaccel (uint8_t * frm, uint8_t * ref, unsigned long frm_offs, unsigned
  * SAD-function for Y with MMX                                               *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+unsigned long
+calc_SAD_mmx (uint8_t * frm, uint8_t * ref, 
+			  unsigned long frm_offs, unsigned long ref_offs, 
+			  int div)
 {
   uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
@@ -1691,8 +1697,10 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
  * SAD-function for Y with SSE                                               *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+unsigned long
+calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, 
+			   unsigned long frm_offs, unsigned long ref_offs, 
+			   int div)
 {
   uint8_t *fs = frm + frm_offs;
   uint8_t *rs = ref + ref_offs;
@@ -1793,9 +1801,10 @@ calc_SAD_uv_noaccel (uint8_t * frm,
  * SAD-function for U+V with MMX                                             *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_uv_mmx (uint8_t * frm,
-                 uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+unsigned long
+calc_SAD_uv_mmx (uint8_t * frm, uint8_t * ref, 
+				 unsigned long frm_offs, unsigned long ref_offs, 
+				 int div)
 {
   uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
@@ -1899,9 +1908,9 @@ calc_SAD_uv_mmx (uint8_t * frm,
  * SAD-function for U+V with SSE                                             *
  *****************************************************************************/
 
-uint32_t
-calc_SAD_uv_mmxe (uint8_t * frm,
-                 uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+unsigned long
+calc_SAD_uv_mmxe (uint8_t * frm, uint8_t * ref, 
+				  unsigned long frm_offs, unsigned long ref_offs, int div)
 {
   uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
