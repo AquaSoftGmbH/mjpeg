@@ -465,12 +465,12 @@ main (int argc, char **argv)
 	height = ( opt_outputheight > 0) ? opt_outputheight : y4m_si_get_height(&streaminfo) ;
 	double time_between_frames ;
 
-	time_between_frames = 1000000 * (1.0 / y4m_si_get_framerate(&streaminfo);
+	time_between_frames = 1000000 * (1.0 / Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)));
 
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
 
-	double framespersec = y4m_si_get_framerate(&streaminfo);
+	double framespersec = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
 
 	BITMAPINFOHEADER bh;
 	memset (&bh, 0, sizeof(BITMAPINFOHEADER));
