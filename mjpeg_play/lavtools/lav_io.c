@@ -1140,7 +1140,7 @@ lav_file_t *lav_open_input_file(char *filename)
        /* DV is always interlaced, bottom first */
        lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 
    }
-#endif // SUPPORT_READ_DV2
+#endif /* SUPPORT_READ_DV2 */
 #ifdef SUPPORT_READ_YUV420
    if(strncasecmp(video_comp,"yuv",3)==0
 #ifdef HAVE_LIBQUICKTIME
@@ -1160,7 +1160,7 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
        if (ierr) goto ERREXIT;
    }
-#endif // SUPPORT_READ_YUV420
+#endif /* SUPPORT_READ_YUV420 */
       return lav_fd;
    }
 

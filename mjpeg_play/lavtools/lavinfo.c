@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	(void)mjpeg_default_handler_verbosity(verbose);
 	read_video_files(argv+1, argc-1, &el,0);
 
-   // Video 
+   /* Video  */
    printf("video_frames=%li\n",el.video_frames);
    printf("video_width=%li\n",el.video_width);
    printf("video_height=%li\n",el.video_height);
@@ -33,13 +33,13 @@ int main(int argc, char *argv[])
    printf("video_sar_height=%i\n",el.video_sar_height);
    printf("max_frame_size=%li\n",el.max_frame_size);
    printf("MJPG_chroma=%i\n",el.MJPG_chroma);
-   // Audio
+   /* Audio */
    printf("has_audio=%i\n",el.has_audio);
    printf("audio_bps=%i\n",el.audio_bps);
    printf("audio_chans=%i\n",el.audio_chans);
    printf("audio_bits=%i\n",el.audio_bits);
    printf("audio_rate=%ld\n",el.audio_rate);
-   // Misc
+   /* Misc */
    printf("num_video_files=%li\n",el.num_video_files);
    exit(0);
 }

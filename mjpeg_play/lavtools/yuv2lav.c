@@ -33,9 +33,9 @@
 
 
 /* max_file_size stuff */
-#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        // 4Tb.  (Most filesystems have 
-                                                            // fundamental limitations around ~Tb)
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)// Is less than 2^31 and 2*10^9
+#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        /* 4Tb.  (Most filesystems have  */
+                                                            /* fundamental limitations around ~Tb) */
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
 #if _FILE_OFFSET_BITS == 64
 #define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
 #else
@@ -241,7 +241,7 @@ int main(int argc, char *argv[])
 				  param_interlace,
                                   Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
                                   0, 0, 0);
-//                                audio_bits, audio_chans, audio_rate);
+/*                                audio_bits, audio_chans, audio_rate); */
       if (!output) {
          mjpeg_error( "Error opening output file %s: %s\n", param_output, lav_strerror ());
          exit(1);

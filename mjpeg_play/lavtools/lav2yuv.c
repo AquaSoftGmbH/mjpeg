@@ -76,7 +76,7 @@ void streamout(void)
 	long int oldframe=N_EL_FRAME(el.frame_list[0])-1;
 	FILE *fd=NULL;
 
-	int fd_out = 1; // stdout.
+	int fd_out = 1; /* stdout. */
    
 	char temp[32];
 	
@@ -98,7 +98,7 @@ void streamout(void)
 		param.output_width = 
 			param.output_width / param.scene_detection_decimation;
 		
-		//  Output file
+		/*  Output file */
 
 		unlink(param.scenefile);
 		fd = fopen(param.scenefile,"w");

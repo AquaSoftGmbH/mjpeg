@@ -123,7 +123,7 @@ static void wav_close(int fd)
 	}
 	mjpeg_debug("Writing WAV header\n");
 
-	// Fill out our wav-header with some information. 
+	/* Fill out our wav-header with some information.  */
 	size -= 8;
 	wave.riff.len = size;
 	size -= 20+sizeof(struct common_struct);

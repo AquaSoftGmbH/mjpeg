@@ -74,9 +74,9 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
-#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        // 4Tb.  (Most filesystems have 
-                                                            // fundamental limitations around ~Tb)
-#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)// Is less than 2^31 and 2*10^9
+#define MAX_MBYTES_PER_FILE_64 ((0x3fffff) * 93/100)        /* 4Tb.  (Most filesystems have  */
+                                                            /* fundamental limitations around ~Tb) */
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 85/100)/* Is less than 2^31 and 2*10^9 */
 #if _FILE_OFFSET_BITS == 64
 #define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
 #else
@@ -2244,7 +2244,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_captured = NULL;
    info->msg_callback = NULL;
    info->state_changed = NULL;
-   info->max_file_size_mb = -1; //(0x4000000>>20); /* Safety first ;-) */
+   info->max_file_size_mb = -1; /*(0x4000000>>20);*/ /* Safety first ;-) */
    info->settings = (void *)malloc(sizeof(video_capture_setup));
    if (!(info->settings))
    {

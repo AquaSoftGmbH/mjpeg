@@ -18,4 +18,4 @@ void audio_start(void);
 char *audio_strerror(void);
 
 
-#endif // __AUDIOLIB_H__
+#endif /* __AUDIOLIB_H__ */

@@ -234,8 +234,8 @@ filter_buffer(int width, int height, int row_stride,
 
 	count = 0;
 
-	offset = radius*row_stride+radius;	// Offset top-left of processing
-	                                // Window to its centre
+	offset = radius*row_stride+radius;	/* Offset top-left of processing */
+	                                /* Window to its centre */
 	refpix = &input[offset];
 	outpix = &output[offset];
 	for(y=radius; y < height-radius; y++)
@@ -266,10 +266,10 @@ filter_buffer(int width, int height, int row_stride,
 			}
 			++avg_replace[count];
 
-			//
-			// If we don't have enough samples to make a decent 
-			// pseudo-median use a simple mean
-			//
+			/*
+			 * If we don't have enough samples to make a decent
+			 * pseudo-median use a simple mean
+			 */
 			if (count <= min_count)
 			{
 				*outpix =  

@@ -771,7 +771,7 @@ static int set_option(const char *name, char *value)
 			while (strncmp(chanlists[chlist].name,value,colin)!=0)
 			{
 			  chlist++;
-			  // madmac debug: printf("Searching for channel list: chlist = %d, value=%s\n", chlist, value);
+			  /* madmac debug: printf("Searching for channel list: chlist = %d, value=%s\n", chlist, value); */
 			  if (chanlists[chlist].name==NULL)
 			    {
 			      mjpeg_error("bad frequency map\n");
@@ -782,7 +782,7 @@ static int set_option(const char *name, char *value)
 
 		if (nerr==0) /* channel list - get the channel spec */
 		  {
-		    //printf("channel list count is %d\n", chanlists[chlist].count);
+		    /*printf("channel list count is %d\n", chanlists[chlist].count); */
 		    while (strcmp((chanlists[chlist].list)[chan].name,  &(value[colin+1]))!=0)
 		      {
 			chan++;
@@ -1111,9 +1111,9 @@ int main(int argc, char **argv)
   check_command_line_options(argc, argv);
   lavrec_print_properties();
 
-//  if( batch_mode )
-//	  info->output_statistics = batch_stats;
-//  else
+/*  if( batch_mode ) */
+/*	  info->output_statistics = batch_stats; */
+/*  else */
 	  info->output_statistics = output_stats;
 
   sem_init(&state_changed, 0, 0);

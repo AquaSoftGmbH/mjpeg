@@ -7,7 +7,7 @@
 extern void timeslider_cb(GtkAdjustment *, gpointer );
 extern void timehscale_button_pressed_cb(GtkAdjustment *, gpointer );
 extern void timehscale_button_released_cb(GtkAdjustment *, gpointer );
-// extern void timeslider_cb(GtkWidget*, long);
+/* extern void timeslider_cb(GtkWidget*, long); */
 extern void button_cb(GtkWidget*, long);
 extern void rb_cb(GtkWidget *, long);
 extern void Exit_cb(GtkWidget *, long);

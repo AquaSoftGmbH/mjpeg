@@ -63,8 +63,8 @@ typedef struct {
    int frames;
    int mono;
    char *scenefile;
-   int delta_lum_threshold; // = 4;
-   unsigned int scene_detection_decimation; // = 2;
+   int delta_lum_threshold; /* = 4; */
+   unsigned int scene_detection_decimation; /* = 2; */
    int output_width;
    int output_height;
    int interlace;

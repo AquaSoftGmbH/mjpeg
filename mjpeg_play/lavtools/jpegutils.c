@@ -201,7 +201,7 @@ static void init_destination (j_compress_ptr cinfo)
 
 static boolean empty_output_buffer (j_compress_ptr cinfo)
 {
-   //FIXME:
+   /*FIXME: */
    mjpeg_error( "Given jpeg buffer was too small!\n");
    ERREXIT (cinfo, JERR_BUFFER_SIZE);	/* shouldn't be FILE_WRITE but BUFFER_OVERRUN! */
    return TRUE;

@@ -369,9 +369,9 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
       
       for (j = segnum + 1; j < pl->segment_count; j++) {
 	PipeSegment *other = pl->segments[j];
-	//	mjpeg_debug("checking  i %d   j %d\n", i, j);
+	/*	mjpeg_debug("checking  i %d   j %d\n", i, j); */
 	for (k = 0; k < other->input_count; k++) {
-	  //	  mjpeg_debug("checking  i %d   j %d  k %d\n", i, j, k);
+	  /*	  mjpeg_debug("checking  i %d   j %d  k %d\n", i, j, k); */
 	  if (in_index == other->input_index[k]) {
 	    if ((offset + count) == other->input_offset[k]) {
 	      count += other->frame_count; /* add another sequence */
@@ -383,7 +383,7 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
 	}
       }
     FINISH_CHECK:
-      //      mjpeg_debug("finish-check  i %d   j %d  k %d\n", i, j, k);
+      /*      mjpeg_debug("finish-check  i %d   j %d  k %d\n", i, j, k); */
       if (count > cl->frames - total_frames) {
 	count = cl->frames - total_frames;
       }

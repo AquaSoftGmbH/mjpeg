@@ -38,7 +38,7 @@ GTK_xlav *create_form_xlav(void)
     GTK_SIGNAL_FUNC (key_press_cb), (gpointer)0);
 
   vbox = gtk_vbox_new(TRUE,4);
-  // first row
+  /* first row */
   temphbox = gtk_hbox_new(FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), temphbox, TRUE, TRUE, 0);
   gui->timeslider=gtk_adjustment_new (0.0, 0.0, 100.0, 0.01, 2.0, .10);
@@ -54,12 +54,12 @@ GTK_xlav *create_form_xlav(void)
        GTK_SIGNAL_FUNC (timehscale_button_pressed_cb), (gpointer)0);
   gtk_widget_show(temphbox);
 
-  // second row
+  /* second row */
   tempbighbox=gtk_hbox_new(FALSE,0);
   gtk_box_pack_start(GTK_BOX(vbox), tempbighbox, TRUE, TRUE, 0);
   temphbox = gtk_hbox_new(TRUE, 0);
   gtk_box_pack_start(GTK_BOX(tempbighbox), temphbox, TRUE, TRUE, 0);
-  // gtk_box_pack_start(GTK_BOX(vbox), temphbox, TRUE, TRUE, 0);
+  /* gtk_box_pack_start(GTK_BOX(vbox), temphbox, TRUE, TRUE, 0); */
 
    gui->ss = obj = glav_create_button(temphbox,"|<","Skip to Start",GTK_SIGNAL_FUNC(button_cb),(gpointer)1);
    gui->fr = obj = glav_create_button(temphbox,"<<","Fast Reverse",GTK_SIGNAL_FUNC(rb_cb),(gpointer)1);
@@ -69,11 +69,11 @@ GTK_xlav *create_form_xlav(void)
    gui->ff = obj = glav_create_button(temphbox,">>","Fast Forward",GTK_SIGNAL_FUNC(rb_cb),(gpointer)5);
    gui->se = obj = glav_create_button(temphbox,">|","Skip to End",GTK_SIGNAL_FUNC(button_cb),(gpointer)2);
    gui->stepr = obj = glav_create_button(temphbox,"<|","Frame Reverse",GTK_SIGNAL_FUNC(rb_cb),(gpointer)0);
-     // unmap the click, map press and release
+     /* unmap the click, map press and release */
     gtk_signal_connect(GTK_OBJECT(obj),"pressed",GTK_SIGNAL_FUNC(frame_skip_pressed),(gpointer)3);
     gtk_signal_connect(GTK_OBJECT(obj),"released",GTK_SIGNAL_FUNC(frame_skip_released),(gpointer)3);
   gui->stepf = obj = glav_create_button(temphbox,"|>","Frame Forward",GTK_SIGNAL_FUNC(button_cb),(gpointer)0);
-     // unmap the click, map press and release
+     /* unmap the click, map press and release */
     gtk_signal_connect(GTK_OBJECT(obj),"pressed",GTK_SIGNAL_FUNC(frame_skip_pressed),(gpointer)4);
     gtk_signal_connect(GTK_OBJECT(obj),"released",GTK_SIGNAL_FUNC(frame_skip_released),(gpointer)4);
 
@@ -86,13 +86,13 @@ GTK_xlav *create_form_xlav(void)
   gui->StatDisp = obj = glav_create_label(tempbighbox,"Play");
   gui->Timer = obj = glav_create_label(tempbighbox,"0:00:00:00");
 
-  // temphbox = gtk_hbox_new(TRUE, 0);
-  // gtk_box_pack_start(GTK_BOX(tempbighbox), temphbox, TRUE, TRUE, 0);
+  /* temphbox = gtk_hbox_new(TRUE, 0); */
+  /* gtk_box_pack_start(GTK_BOX(tempbighbox), temphbox, TRUE, TRUE, 0); */
 
-  // gui->Exit = obj = glav_create_button(temphbox,"Exit","Exit Glav",GTK_SIGNAL_FUNC(Exit_cb),(gpointer)1);
+  /* gui->Exit = obj = glav_create_button(temphbox,"Exit","Exit Glav",GTK_SIGNAL_FUNC(Exit_cb),(gpointer)1); */
   gui->Exit = obj = glav_create_button(tempbighbox,"Exit","Exit Glav",GTK_SIGNAL_FUNC(Exit_cb),(gpointer)1);
 
-  // third row 
+  /* third row  */
   gtk_widget_show(temphbox);
   gtk_widget_show(tempbighbox);
   temphbox = gtk_hbox_new(FALSE, 0);
@@ -114,7 +114,7 @@ GTK_xlav *create_form_xlav(void)
   gui->BSaveAll = obj = glav_create_button(temphbox,"Save all ...","Save All",GTK_SIGNAL_FUNC(selection_cb),(gpointer)7);
   gui->BSaveSel = obj = glav_create_button(temphbox,"Save ...","Save Selected",GTK_SIGNAL_FUNC(selection_cb),(gpointer)8);
 
-  // end
+  /* end */
 
   gtk_widget_show(temphbox);
   gtk_container_add(GTK_CONTAINER(gui->xlav),vbox);

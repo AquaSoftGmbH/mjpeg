@@ -71,8 +71,8 @@
 #include "mjpeg_types.h"
 #include "liblavplay.h"
 #include "audiolib.h"
-//#include "lav_io.h"
-//#include "editlist.h"
+/*#include "lav_io.h" */
+/*#include "editlist.h" */
 #include "jpegutils.h"
 
 
@@ -197,7 +197,7 @@ static void lavplay_msg(int type, lavplay_t *info, const char format[], ...)
 static void lavplay_change_state(lavplay_t *info, int new_state)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    settings->state = new_state;
 
@@ -216,7 +216,7 @@ static void lavplay_change_state(lavplay_t *info, int new_state)
 int lavplay_set_speed(lavplay_t *info, int speed)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
    int changed = 0;
 
    if ((settings->current_frame_num == settings->max_frame_num && speed > 0) ||
@@ -255,7 +255,7 @@ int lavplay_set_speed(lavplay_t *info, int speed)
 int lavplay_increase_frame(lavplay_t *info, long num)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    settings->current_frame_num += num;
    if (settings->current_frame_num < settings->min_frame_num)
@@ -284,7 +284,7 @@ int lavplay_increase_frame(lavplay_t *info, long num)
 int lavplay_set_frame(lavplay_t *info, long framenum)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    return lavplay_increase_frame(info, framenum - settings->current_frame_num);
 }
@@ -684,7 +684,7 @@ static void lavplay_mjpeg_software_frame_sync(lavplay_t *info, int frame_periods
    struct timeval now;
    struct timespec nsecsleep;
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    /* I really *wish* the timer was higher res on x86 Linux... 10mSec
     * is a *pain*.  Sooo wasteful here...
@@ -732,7 +732,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
 {
    lavplay_t *info = (lavplay_t *)arg;
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    lavplay_msg(LAVPLAY_MSG_DEBUG, info,
       "Starting software playback thread");
@@ -920,7 +920,7 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
    int i;
 #endif
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    switch (info->playback_mode)
    {
@@ -971,7 +971,7 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
 static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
   
 #ifdef HAVE_V4L
    if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
@@ -1117,7 +1117,7 @@ static int lavplay_mjpeg_set_playback_rate(lavplay_t *info, double video_fps, in
    int norm_usec_per_frame = 0;
    int target_usec_per_frame;
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    switch (norm)
    {
@@ -1166,7 +1166,7 @@ static int lavplay_mjpeg_set_playback_rate(lavplay_t *info, double video_fps, in
 static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    switch (info->playback_mode)
    {
@@ -1210,7 +1210,7 @@ static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods
 static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    switch (info->playback_mode)
    {
@@ -1265,7 +1265,7 @@ static int lavplay_mjpeg_close(lavplay_t *info)
 {
    int n;
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    lavplay_msg(LAVPLAY_MSG_DEBUG, info,
       "Closing down the %s", info->playback_mode=='S'?"threading system":"video device");
@@ -1573,8 +1573,8 @@ static int lavplay_init(lavplay_t *info)
    
    /* Set field polarity for interlaced video */
    bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
-   //if (info->exchange_fields) bp.odd_even = !bp.odd_even;
-   //this is already done by the open_files() function
+   /*if (info->exchange_fields) bp.odd_even = !bp.odd_even; */
+   /*this is already done by the open_files() function */
 
    /* Set these settings */
    if (!lavplay_mjpeg_set_params(info, &bp))
@@ -1764,11 +1764,11 @@ FINISH:
     * the codec since it is played over and over again
     */
    /* NOTE: this causes lockup for some reason - so just leave it */
-   //while (stats.nqueue > stats.nsync + 1)
-   //{
-   //   lavplay_mjpeg_sync_buf(info, &bs);
-   //   stats.nsync++;
-   //}
+   /*while (stats.nqueue > stats.nsync + 1) */
+   /*{ */
+   /*   lavplay_mjpeg_sync_buf(info, &bs); */
+   /*   stats.nsync++; */
+   /*} */
    /* and we also don't need audio anymore */
    if (editlist->has_audio && info->audio) 
       audio_shutdown();
@@ -1784,7 +1784,7 @@ static void *lavplay_playback_thread(void *data)
 {
    lavplay_t *info = (lavplay_t *)data;
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    lavplay_playback_cycle(info);
 
@@ -1940,7 +1940,7 @@ int lavplay_main(lavplay_t *info)
 int lavplay_stop(lavplay_t *info)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-   //EditList *editlist = info->editlist;
+   /*EditList *editlist = info->editlist; */
 
    if (settings->state == LAVPLAY_STATE_STOP)
    {
@@ -1951,7 +1951,7 @@ int lavplay_stop(lavplay_t *info)
 
    lavplay_change_state(info, LAVPLAY_STATE_STOP);
 
-   //pthread_cancel( settings->playback_thread );
+   /*pthread_cancel( settings->playback_thread ); */
    pthread_join( settings->playback_thread, NULL );
 
    return 1;
@@ -2166,7 +2166,7 @@ int lavplay_edit_paste(lavplay_t *info, long destination)
 
 int lavplay_edit_move(lavplay_t *info, long start, long end, long destination)
 {
-   //video_playback_setup *settings = (video_playback_setup *)info->settings;
+   /*video_playback_setup *settings = (video_playback_setup *)info->settings; */
    EditList *editlist = info->editlist;
    long dest_real;
 
@@ -2340,7 +2340,7 @@ int lavplay_toggle_audio(lavplay_t *info, int audio)
 
 int lavplay_save_selection(lavplay_t *info, char *filename, long start, long end)
 {
-   //video_playback_setup *settings = (video_playback_setup *)info->settings;
+   /*video_playback_setup *settings = (video_playback_setup *)info->settings; */
    EditList *editlist = info->editlist;
 
    if (write_edit_list(filename, start, end, editlist))
@@ -2362,7 +2362,7 @@ int lavplay_save_selection(lavplay_t *info, char *filename, long start, long end
 
 int lavplay_save_all(lavplay_t *info, char *filename)
 {
-   //video_playback_setup *settings = (video_playback_setup *)info->settings;
+   /*video_playback_setup *settings = (video_playback_setup *)info->settings; */
    EditList *editlist = info->editlist;
 
    if (write_edit_list(filename, 0, editlist->video_frames - 1, editlist))

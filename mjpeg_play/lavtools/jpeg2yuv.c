@@ -284,7 +284,7 @@ static int generate_YUV4MPEG(parameters_t *param)
   unsigned char jpegname[FILENAME_MAX];
   FILE *jpegfile;
   unsigned char *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
-  static unsigned char jpegdata[MAXPIXELS]; // that ought to be enough
+  static unsigned char jpegdata[MAXPIXELS]; /* that ought to be enough */
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
 
