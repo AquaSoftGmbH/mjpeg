@@ -36,3 +36,4 @@ int yuv_fps2mpegcode (double fps);
 double yuv_mpegcode2fps (unsigned int code);
 
 #endif
+
