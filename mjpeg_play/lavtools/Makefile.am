@@ -139,7 +139,7 @@ jpeg2yuv_SOURCES = jpeg2yuv.c $(lav_headers)
 jpeg2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
 
 png2yuv_SOURCES = png2yuv.c colorspace.h colorspace.c subsample.h subsample.c
-png2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils -lpng -lz
+png2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils -lpng -lz -lm
 
 lav2divx_SOURCES = lav2divx.cpp libavifile.h lav_common.c $(lav_headers)
 lav2divx_LDADD = -L$(top_builddir)/utils -lmjpegutils \

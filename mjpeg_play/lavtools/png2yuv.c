@@ -108,7 +108,6 @@ static void usage(char *prog)
 	  "  -L x  interleaving mode:  0 = non-interleaved (two successive\n"
 	  "                                 fields per PNG file)\n"
 	  "                            1 = interleaved fields\n"
-	  "  -R 1/0 ... 1: rescale YUV color values from 0-255 to 16-235 (default: 1)\n"
           "  -S mode  chroma subsampling mode [%s]\n"
 	  "\n"
 	  "%s pipes a sequence of PNG files to stdout,\n"
