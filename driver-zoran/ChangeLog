@@ -25,6 +25,8 @@ Version 0.9.4 -> 0.9.5
 * use msleep() instead of schedule_timeout() (patch by Nishanth Aravamudan
     <nacc@us.ibm.com>)
 * fix JPEG COM/APP marker writeing in zr360[56]0
+* reduce zoran_do_ioctl() stack size usage (patch by Randy Dunlap
+    <rddunlap@osdl.org>)
 
 Version 0.9.3 -> 0.9.4
 ----------------------
