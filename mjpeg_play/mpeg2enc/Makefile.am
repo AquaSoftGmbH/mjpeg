@@ -60,7 +60,6 @@ mpeg2enc_REF = \
 	transfrm_ref.c
 
 mpeg2enc_noinst_header_REF = \
-	quantize_ref.h \
 	transfrm_ref.h
 
 mpeg2enc_inst_header_REF = \
@@ -113,6 +112,7 @@ libmpeg2encpp_include_HEADERS = \
 	picture.hh \
 	picturereader.hh \
 	quantize.hh \
+	quantize_ref.h \
 	ratectl.hh \
 	seqencoder.hh \
 	synchrolib.h \
