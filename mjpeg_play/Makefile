@@ -31,6 +31,9 @@ all:		lavrec lavplay
 ./mjpeg/libmjpeg.a: mjpeg/mjpeg.c mjpeg/mjpeg.h mjpeg/jpeg_dec.c
 	cd mjpeg; make
 
+./movtar/libmovtar.a: movtar/movtar.c movtar/movtar.h 
+	cd movtar; make
+
 lavrec:		lavrec.o avilib.o audiolib.o lav_io.o movtar/movtar.c $(LIBS)
 		cc -o lavrec lavrec.o avilib.o audiolib.o lav_io.o \
 		$(LIBS_AND_OPT) $(L_FLAGS) $(CFLAGS)
