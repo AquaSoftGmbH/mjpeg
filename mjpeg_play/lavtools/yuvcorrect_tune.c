@@ -40,6 +40,8 @@
 extern const uint16_t ALIGNEMENT;		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 extern const char *legal_opt_flags;
 
+const float gamma_increment=0.01;
+
 const char FULL[]           = "FULL";
 const char HALF_LEFT[]      = "HALF_LEFT";
 const char HALF_RIGHT[]     = "HALF_RIGHT";
@@ -55,6 +57,7 @@ void yuvcorrect_tune_print_usage (void);
 void add_reference_part(frame_t *frame,uint8_t *final_ref,uint8_t type);
 void yuvcorrect_tune_handle_args (int argc, char *argv[], overall_t *overall, 
 				  general_correction_t *gen_correct);
+
 
 // *************************************************************************************
 void
@@ -118,7 +121,7 @@ yuvcorrect_tune_print_usage (void)
 	   "Pressing Y, U, V, R, G, B or M will tell yuvcorrect_tune that all following keystrokes refer to corrections applied to\n"
 	   "Y values, UV values, UV values, R values, G values, B values, Mode of yuvcorrect_tune ; until ESCAPE is pressed\n"
 	   "To define corrections, use Capital letter to increase and minor letter to decrease\n"
-	   "Gamma values, Ufactor and Vfactor are changed by amount of 0.05; UVrotation by amount of 1 degree; Integer values by 1\n"
+	   "Gamma values are changed by amount of 0.01, Ufactor and Vfactor by 0.05; UVrotation by amount of 1 degree; Integer values by 1\n"
 	   "To modify the 1st, 2nd, 3rd, 4th, 5th, 6th or 7th parameter, use respectively e/E, r/R, t/T, y/Y, u/U, i/I, o/O\n"
 	   "To modify yuvcorrect_tune mode, use keypad values 0, 1, 2, 3, 4, 5, 6, 7, 8, 9\n"
 	   "For status, press S. To go back to default, press D. To quit, press Q.\n"
@@ -509,6 +512,12 @@ main (int argc, char *argv[])
      }
    
    
+   mjpeg_info("Y_%f_%u_%u_%u_%u",yuv_correct->Gamma,yuv_correct->InputYmin,yuv_correct->InputYmax,yuv_correct->OutputYmin,yuv_correct->OutputYmax);
+   mjpeg_info("UV_%f_%f_%u_%f_%u_%u_%u",yuv_correct->UVrotation,yuv_correct->Ufactor,yuv_correct->Urotcenter,
+	      yuv_correct->Vfactor,yuv_correct->Vrotcenter,yuv_correct->UVmin,yuv_correct->UVmax);
+   mjpeg_info("R_%f_%u_%u_%u_%u",rgb_correct->RGamma,rgb_correct->InputRmin,rgb_correct->InputRmax,rgb_correct->OutputRmin,rgb_correct->OutputRmax);
+   mjpeg_info("G_%f_%u_%u_%u_%u",rgb_correct->GGamma,rgb_correct->InputGmin,rgb_correct->InputGmax,rgb_correct->OutputGmin,rgb_correct->OutputGmax);
+   mjpeg_info("B_%f_%u_%u_%u_%u",rgb_correct->BGamma,rgb_correct->InputBmin,rgb_correct->InputBmax,rgb_correct->OutputBmin,rgb_correct->OutputBmax);
    if (overall->rgbfirst == 1)
      yuvcorrect_RGB_treatment (frame, rgb_correct);
    // luminance correction
@@ -519,7 +528,7 @@ main (int argc, char *argv[])
      yuvcorrect_RGB_treatment (frame, rgb_correct);
    
    y4m_write_stream_header (1, &gen_correct->streaminfo);
-   // Now, frame->y points on the image frame
+   // Now, frame->y points on the corrected frame. Store it inside image_frame
    memcpy(image_frame,frame->y,frame->length);
    // Output Frame Header
    if (y4m_write_frame_header (1, &frame->info) != Y4M_OK)
@@ -542,6 +551,7 @@ main (int argc, char *argv[])
 		case 'Y' :
 		  // Activate Luminance corrections
 		  current_correction=1;
+		  mjpeg_info("Luminance corrections activated");
 		  break;
 		
 		case 'u' :
@@ -550,30 +560,35 @@ main (int argc, char *argv[])
 		case 'V' :
 		  // Activate Chrominance corrections
 		  current_correction=2;
+		  mjpeg_info("Chrominance corrections activated");
 		  break;
 		 
 		case 'r' :
 		case 'R' :
 		  // Activate RED corrections
 		  current_correction=3;
+		  mjpeg_info("RED corrections activated");
 		  break;
 		  
 		case 'g' :
 		case 'G' :
 		  // Activate GREEN corrections
 		  current_correction=4;
+		  mjpeg_info("GREEN corrections activated");
 		  break;
 		  
 		case 'b' :
 		case 'B' :
 		  // Activate BLUE corrections
 		  current_correction=5;
+		  mjpeg_info("BLUE corrections activated");
 		  break;
 		
 		case 'm' :
 		case 'M' :
 		  // Activate MODE corrections
 		  current_correction=6;
+		  mjpeg_info("MODE corrections activated");
 		  break;
 	       }
 	       c = '\n';
@@ -581,7 +596,7 @@ main (int argc, char *argv[])
 	if (c=='\e') 
 	  {
 	     current_correction=0;
-	     mjpeg_info("ESCAPE!!!");
+	     mjpeg_info("ESCAPE!!! => next (valid) keystroke defined which correction type will be activated");
 	  }
 	
 	
@@ -657,14 +672,14 @@ main (int argc, char *argv[])
 		  switch(c) 
 		    {
 		     case 'E':  // Increase first parameter
-		       yuv_correct->Gamma+=0.05;
+		       yuv_correct->Gamma+=gamma_increment;
 		       break;
 		  
 		     case 'e':  // Decrease first parameter
-		       if (yuv_correct->Gamma<=0.05)
+		       if (yuv_correct->Gamma<=gamma_increment)
 			 mjpeg_info("Gamma value would become negative!! Ignoring");
 		       else
-			 yuv_correct->Gamma-=0.05;
+			 yuv_correct->Gamma-=gamma_increment;
 		       break;
 		  
 		     case 'R':  // Increase Second parameter
@@ -733,14 +748,14 @@ main (int argc, char *argv[])
 		  switch(c) 
 		    {
 		     case 'E':  // Increase first parameter
-		       rgb_correct->RGamma+=0.05;
+		       rgb_correct->RGamma+=gamma_increment;
 		       break;
 		  
 		     case 'e':  // Decrease first parameter
-		       if (rgb_correct->RGamma<=0.05)
+		       if (rgb_correct->RGamma<=gamma_increment)
 			 mjpeg_info("RGamma value would become negative!! Ignoring");
 		       else
-			 rgb_correct->RGamma-=0.05;
+			 rgb_correct->RGamma-=gamma_increment;
 		       break;
 		  
 		     case 'R':  // Increase Second parameter
@@ -809,14 +824,14 @@ main (int argc, char *argv[])
 		  switch(c) 
 		    {
 		     case 'E':  // Increase first parameter
-		       rgb_correct->GGamma+=0.05;
+		       rgb_correct->GGamma+=gamma_increment;
 		       break;
 		  
 		     case 'e':  // Decrease first parameter
-		       if (rgb_correct->GGamma<=0.05)
+		       if (rgb_correct->GGamma<=gamma_increment)
 			 mjpeg_info("GGamma value would become negative!! Ignoring");
 		       else
-			 rgb_correct->GGamma-=0.05;
+			 rgb_correct->GGamma-=gamma_increment;
 		       break;
 		  
 		     case 'R':  // Increase Second parameter
@@ -885,14 +900,14 @@ main (int argc, char *argv[])
 		  switch(c) 
 		    {
 		     case 'E':  // Increase first parameter
-		       rgb_correct->BGamma+=0.05;
+		       rgb_correct->BGamma+=gamma_increment;
 		       break;
 		  
 		     case 'e':  // Decrease first parameter
-		       if (rgb_correct->BGamma<=0.05)
+		       if (rgb_correct->BGamma<=gamma_increment)
 			 mjpeg_info("BGamma value would become negative!! Ignoring");
 		       else
-			 rgb_correct->BGamma-=0.05;
+			 rgb_correct->BGamma-=gamma_increment;
 		       break;
 		  
 		     case 'R':  // Increase Second parameter
