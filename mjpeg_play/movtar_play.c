@@ -32,7 +32,6 @@ char *readbuffer;
 char **imglines;
 struct movtarinfotype movtarinfo;
 SDL_Surface *screen;
-SDL_Surface *jpeg;
 SDL_Rect jpegdims;
 struct jpeg_decompress_struct cinfo; 
 
@@ -544,6 +543,7 @@ void inline readpicfrommem(void *inbuffer,int size)
   jpeg_mem_src_reset(&cinfo, size);
   jpeg_read_header(&cinfo, TRUE);
 
+  cinfo.dct_method = JDCT_IFAST;
   jpeg_start_decompress(&cinfo);
 
   switch (screen->format->BytesPerPixel)
@@ -679,7 +679,7 @@ int main(int argc,char** argv)
     }
   while((frame < 250) && !movtar_eof(movtarfile) && !SDL_PollEvent(&event));
 
-  SDL_CloseAudio();
+  //  SDL_CloseAudio();
 
   return 0;
 }

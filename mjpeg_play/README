@@ -1,0 +1,98 @@
+lavtools: Linux Audio and Video TOOLS
+
+Programs for recording and playback of audio and video under Linux.
+Currently only the Iomega Buz is supported - more hardware can follow
+if somebody wants that.
+
+
+- "lavrec" is a program to record AVI and Quicktime files with
+   the Iomega BUZ including sound recording from the soundcard.
+
+- "lavplay" plays back AVI and Quicktime files with the Iomega BUZ
+  (including sound).
+
+- "xlav" in the directory xlav is a GUI for lavplay which permits
+  fast forward/reverse, single frame stepping and simple editing
+
+- "lavtrans" (in directory utils) converts a mixture of AVI files,
+  Quicktime files  or Edit Lists into a single AVI or Quicktime file
+  into single images or into WAV files.
+
+- "lavaddwav" (in directory utils) lets you add another soundtrack
+  (a WAV file) to an AVI/Quicktime file
+
+- "mpeg2enc" for encoding AVI/Quicktime files and Edit Lists
+  to MPEG-1/2 video streams
+
+- "aenc" for encoding AVI/Quicktime files and Edit Lists
+  to MPEG-1/2 audio streams
+
+
+Attention: lavplay is mainly intended to play back files created by lavrec and
+should also be able to play back AVI files created from the Iomega BUZ
+under Win98.
+The vast majority of AVI/Quicktime files will not be played by lavplay!!!
+The reason is that lavplay needs specialy coded AVI files (MJPG codec),
+all other files don't have that codec and can not be used by the BUZ.
+
+
+
+Compile:
+
+I know its complicated, but follow exactly the steps below!
+
+Quicktime4linux needs jpeg-6b, since my system (SuSE 6.3) still provides
+jpeg-6a, I have included jpeg-6b here.
+If jpeg-6b is allready installed on your system, you may want to remove
+that directory and change the Makefiles accordingly.
+
+- go into directory jpeg-6b, do
+
+  ./configure
+  make libjpeg.a
+
+- go into directory quicktime, type make
+
+- type make in the main directory
+
+- go into directory xlav, type make
+  xlav needs the xforms toolkit, you may have to get it from the net
+  and you may have to change the Makefile
+
+- go into directory utils, type make
+
+- go into directory mpeg2enc, type make
+
+- go into directory mpeg2audio, type make
+
+
+
+Run:
+
+
+Look at the headers of lavrec.c and lavplay.c for the available options.
+
+lavtrans.c and lavaddwav.c also have short description of usage.
+(See below!)
+
+xlav is started using the same params as lavplay, lavplay is internally called
+by xlav and therefore has to be in the search path. Make sure the proper
+version of lavplay is found!
+
+Read the 'README' in mpeg2eng!
+
+Read the 'README' in mpegaudio!
+
+UTILS:
+
+lavtrans -o <outputfile> -f [aqiw] filenames
+          -f a    output AVI file
+          -f q    output Quicktime file
+          -f i    output single JPEG images, -o option mut be a valid format string
+          -f w    output WAV file (sound only!)
+
+lavaddwav AVI_or_QT_file WAV_file Output_file
+
+
+
+You reach me per email: Rainer@Johanni.de
