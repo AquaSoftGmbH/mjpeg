@@ -40,8 +40,8 @@ mpeg2enc \- MPEG 1/2 encoder
 .IR size_MB ]
 .RB [ -B | --nonvideo-bitrate
 .IR bitrate_kbps ]
-.RB [ -N | --reduce-hf]
-.RB [ -h | --keep-hf ]
+.RB [ -N | --reduce-hf] 0.0 .. 2.0
+.RB [ -H | --keep-hf ]
 .RB [ -d | --no-dummy-svcd-SOF]
 .RB [ -C | --correct-svcd-hds]
 .RB [ --hack-dxr2-bug]
@@ -440,14 +440,16 @@ precision in encoding textures).  For most purposes the default
 settings will be fine.  However on P-III Katmai etc -4 2 -2 1 gives a
 good near-optimum quality setting with reasonably speed.
 .PP
-.B  -N|--reduce-HF
+.B  -N|--reduce-HF num
 .PP
 Setting this flag adjusts the way texture detail is quantised to
 reduce the precision with which of high-frequency information
 encoded. This is very useful for
 .I mildy
 noisy sources.  If you have really noisy material the filtering tools
-available in mjpegtools are a much better bet.
+available in mjpegtools are a much better bet.  The specified number
+must be in the range 0.0 to 2.0 gives the maxium quantisation boost.
+A useful number to use would be 1.5 or 1.0.
 .PP
 .B -h|--keep-hf
 .PP

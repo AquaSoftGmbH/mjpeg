@@ -109,6 +109,7 @@ static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspe
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
 static int param_hf_quant = 0;
+static double param_hf_q_boost = 0.0;
 static double param_act_boost = 0.0;
 static double param_boost_var_ceil = 10*10;
 static int param_video_buffer_size = 0;
@@ -235,9 +236,9 @@ static void Usage(char *str)
 "    Generate header flags for 3-2 pull down of 24fps movie material\n"
 "--intra_dc_prec|-D [8..10]\n"
 "    Set number of bits precision for DC (base colour) of blocks in MPEG-2\n"
-"--reduce-hf|-N\n"
-"    Reduce high frequency resolution - useful as a mild noise reduction\n"
-"--keep-hf|-h\n"
+"--reduce-hf|-N num\n"
+"    [0.0..2.0] Reduce hf resolution (increase quantization) by num (default: 0.0)\n"
+"--keep-hf|-H\n"
 "    Maximise high-frequency resolution - useful for high quality sources\n"
 "    and/or high bit-rates)\n"
 "--sequence-header-every-gop|-s\n"
@@ -660,7 +661,7 @@ int main( int argc,	char *argv[] )
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:tpdsZNhOcCP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCP";
 
 #ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
@@ -688,8 +689,8 @@ static struct option long_options[]={
      { "video-norm",        1, 0, 'n' },
      { "sequence-length",   1, 0, 'S' },
      { "3-2-pulldown",      1, &param_32_pulldown, 1 },
-     { "keep-hf",           0, &param_hf_quant, 2 },
-     { "reduce-hf",         0, &param_hf_quant, 1 },
+     { "keep-hf",           0, 0, 'H' },
+     { "reduce-hf",         0, 0, 'N' },
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
      { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
@@ -903,10 +904,16 @@ static struct option long_options[]={
 			break;
 		case 'N':
 			param_hf_quant = 1;
+            param_hf_q_boost = atof(optarg);
+            if( param_hf_q_boost <0.0 || param_hf_q_boost > 2.0 )
+            {
+                mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
+                ++nerr;
+            }
 			break;
-		case 'h':
+		case 'H':
 			param_hf_quant = 2;
-			break;
+            break;
 		case 's' :
 			param_seq_hdr_every_gop = 1;
 			break;
@@ -1736,27 +1743,28 @@ static void init_mpeg_parms(void)
 }
 
 /*
-  If the use has selected suppression of hf noise via
-  quantisation then we boost quantisation of hf components
-  EXPERIMENTAL: currently a linear ramp from 0 at 4pel to 
-  50% increased quantisation...
+  If the use has selected suppression of hf noise via quantisation
+  then we boost quantisation of hf components EXPERIMENTAL: currently
+  a linear ramp from 0 at 4pel to param_hf_q_boost increased
+  quantisation...
+
 */
 
 static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 {
 	int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
-	int qboost = 1024;
+	double qboost;
 
 	if( param_hf_quant != 1)
 	{
 		return orgquant;
 	}
 
-	/* Maximum 150% quantisation boost for HF components... */
-	qboost = 256+(384/8)*orgdist;
+    /* Maximum param_hf_q_boost quantisation boost for HF
+     * components.. */
+    qboost = 1.0+param_hf_q_boost*orgdist/8;
 
-
-	return (orgquant * qboost)/ 256;
+	return static_cast<int>(orgquant * qboost);
 }
 
 static void init_quantmat(void)
