@@ -745,7 +745,7 @@ void do_audio(void)
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
 
-   maxdiff = TIME_STAMP_TOL*audio_byte_rate/1000000;
+   maxdiff = audio_byte_rate / (1000000/TIME_STAMP_TOL);
 
 /*
  * Check that the device has capability to do mmap and trigger
