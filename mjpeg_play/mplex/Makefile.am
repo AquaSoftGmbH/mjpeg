@@ -18,7 +18,9 @@ mplex_SOURCES = \
 	interact.cc		interact.hh \
 	bits.cc			bits.hh	\
 	buffer.cc		buffer.hh \
-	inptstrm.cc		\
+	videostrm.hh	audiostrm.hh	padstrm.hh \
+	videostrm_in.cc	audiostrm_in.cc	padstrm.cc \
+	videostrm_out.cc	audiostrm_out.cc	\
 	multplex.cc	outputstream.hh	\
 	systems.cc		systems.hh \
 	vector.cc	vector.hh	mplexconsts.hh \

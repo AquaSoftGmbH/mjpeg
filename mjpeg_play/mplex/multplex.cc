@@ -9,7 +9,7 @@
 #include <format_codes.h>
 
 #include "interact.hh"
-#include "inputstrm.hh"
+#include "videostrm.hh"
 #include "outputstream.hh"
 
 
@@ -27,6 +27,12 @@ void OutputStream::ByteposTimecode(bitcount_t bytepos, clockticks &ts)
 
 /**********
  *
+ * UpdateSectorHeaders - Update the sector headers after a change in stream
+ *                     position / SCR
+ **********
+
+/**********
+ *
  * NextPosAndSCR - Update nominal (may be >= actual) byte count
  * and SCR to next output sector.
  *
@@ -36,6 +42,18 @@ void OutputStream::NextPosAndSCR()
 {
 	bytes_output += sector_transport_size;
 	ByteposTimecode( bytes_output, current_SCR );
+    if (start_of_new_pack)
+    {
+        psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
+        pack_header_ptr = &pack_header;
+        if( include_sys_header )
+            sys_header_ptr = &sys_header;
+        else
+            sys_header_ptr = NULL;
+        
+    }
+    else
+        pack_header_ptr = NULL;
 }
 
 
@@ -50,6 +68,18 @@ void OutputStream::SetPosAndSCR( bitcount_t bytepos )
 {
 	bytes_output = bytepos;
 	ByteposTimecode( bytes_output, current_SCR );
+    if (start_of_new_pack)
+    {
+        psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
+        pack_header_ptr = &pack_header;
+        if( include_sys_header )
+            sys_header_ptr = &sys_header;
+        else
+            sys_header_ptr = NULL;
+        
+    }
+    else
+        pack_header_ptr = NULL;
 }
 
 /* 
@@ -228,7 +258,7 @@ void OutputStream::InitSyntaxParameters()
         opt_data_rate = 1260000;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
-	  	sys_header_in_pack1 = false;
+	  	sys_header_in_pack1 = false; // Handle by control packets
 	  	always_sys_header_in_pack = false;
 	  	sector_transport_size = 2048;
 	  	transport_prefix_sectors = 0;
@@ -330,7 +360,6 @@ void OutputStream::Init( char *multi_file)
 	psstrm->CreatePack (&dummy_pack, 0, mux_rate);
 	if( always_sys_header_in_pack )
 	{
-		// TODO: I don't think the locks should always be set...
 		psstrm->CreateSysHeader (&dummy_sys_header, mux_rate,  
 								 !vbr, 1,  true, true, estreams);
 		sys_hdr = &dummy_sys_header;
@@ -488,7 +517,6 @@ void OutputStream::MuxStatus(log_level_t level)
 	Note: *must* leave a sensible in-stream system header in
 	sys_header.
 	TODO: get rid of this grotty sys_header global.
-    TODO: VIDEO_STR_0 should depend on video stream!
 ******************************************************************/
 
 void OutputStream::OutputPrefix( )
@@ -498,8 +526,6 @@ void OutputStream::OutputPrefix( )
 	/* Deal with transport padding */
 	SetPosAndSCR( bytes_output + 
 				  transport_prefix_sectors*sector_transport_size );
-	/* Pack header for system header packs */
-	psstrm->CreatePack (&pack_header, 0, mux_rate);
 	
 	/* VCD: Two padding packets with video and audio system headers */
 	split_at_seq_end = true;
@@ -559,14 +585,24 @@ void OutputStream::OutputPrefix( )
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( current_SCR,  true, true, false,  false);		
-
-
 		break;
+
+    case MPEG_FORMAT_DVD :
+        /* TODO: This is *not* accurate.  The DVD's I've seen write weird
+           shit involving streams b8 and b9 instead e0 and c0... very odd.
+
+        */
+        psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
+                                 true, true, estreams );
+        break;
+    default :
+        /* Create the in-stream header in case it is needed */
+        psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
+                                 true, true, estreams );
+
+
 	}
 
-	/* Create the in-stream header if needed */
-	psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, true, 
-					   true, true, estreams );
 
 
 }
@@ -625,8 +661,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	bool padding_packet;
-	bool start_of_new_pack;
-	bool include_sys_header = false; /* Suppress warning */
 	bool video_first = seg_starts_with_video;
 
 	estreams = strms;
@@ -720,6 +754,11 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 				(*str)->AllDemuxed();
 			}
 
+			packets_left_in_pack = packets_per_pack;
+            start_of_new_pack = true;
+			include_sys_header = sys_header_in_pack1;
+			buffers_in_video = always_buffers_in_video;
+			video_first = seg_starts_with_video;
 			OutputPrefix();
 
 			/* The starting PTS/DTS of AU's may of course be
@@ -734,10 +773,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			for( str = astreams.begin(); str < astreams.end(); ++str )
 				(*str)->SetTSOffset(audio_delay + current_SCR );
  
-			packets_left_in_pack = packets_per_pack;
-			include_sys_header = sys_header_in_pack1;
-			buffers_in_video = always_buffers_in_video;
-			video_first = seg_starts_with_video;
 			pstrm.nsec = 0;
 			for( str = estreams->begin(); str < estreams->end(); ++str )
 				(*str)->nsec = 0;
@@ -803,18 +838,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			(*str)->DemuxedTo(current_SCR);
 		}
 
-		if (start_of_new_pack)
-		{
-			psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
-			pack_header_ptr = &pack_header;
-			if( include_sys_header )
-				sys_header_ptr = &sys_header;
-			else
-				sys_header_ptr = NULL;
-				
-		}
-		else
-			pack_header_ptr = NULL;
 
 		
 		//
@@ -852,7 +875,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		{
 			despatch->OutputSector();
 			video_first = false;
-			NextPosAndSCR();
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{
 				mjpeg_warn( "Stream %02x: Frame data under-run SCR=%lld DTS=%d (data will arrive too late to be useful)!\n", 
@@ -950,25 +972,63 @@ unsigned int OutputStream::PacketPayload( MuxStream &strm, bool buffers,
 								  PTSstamp, DTSstamp);
 }
 
+/***************************************************
 
-unsigned int OutputStream::WritePacket( unsigned int     max_packet_data_size,
-										MuxStream        &strm,
-										bool 	 buffers,
-										clockticks   	 PTS,
-										clockticks   	 DTS,
-										uint8_t 	 timestamps
+  WritePacket - Write out a normal packet carrying data from one of
+              the elementary stream being muxed.
+
+***************************************************/
+
+unsigned int 
+OutputStream::WritePacket( unsigned int     max_packet_data_size,
+                           MuxStream        &strm,
+                           bool 	 buffers,
+                           clockticks   	 PTS,
+                           clockticks   	 DTS,
+                           uint8_t 	 timestamps
 	)
 {
-	return psstrm->CreateSector ( pack_header_ptr,
-								  sys_header_ptr,
-								  max_packet_data_size,
-								  strm,
-								  buffers,
-								  false,
-								  PTS,
-								  DTS,
-								  timestamps );
+    unsigned int written =
+        psstrm->CreateSector ( pack_header_ptr,
+                               sys_header_ptr,
+                               max_packet_data_size,
+                               strm,
+                               buffers,
+                               false,
+                               PTS,
+                               DTS,
+                               timestamps );
+    NextPosAndSCR();
+    return written;
 }
+
+/***************************************************
+
+  WriteControlPacket - Write out a packet carrying data for
+                     a control packet with irregular content.
+                     E.g. the control packet preceding each GOP
+                     in a DVD systems stream.
+***************************************************/
+
+void
+OutputStream::WriteRawSector(  Sys_header_struc *system_header,
+                               uint8_t *rawpackets,
+                               unsigned int     length
+	)
+{
+    //
+    // Write raw sectors when packs stretch over multiple sectors
+    // is a reciped for disaster!
+    //
+    assert( packets_per_pack == 1 );
+	psstrm->CreateRawSector ( pack_header_ptr,
+                              system_header,
+                              rawpackets,
+                              length );
+	NextPosAndSCR();
+
+}
+
 
 
 /******************************************************************
@@ -1035,290 +1095,9 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 
 }
 
-/*********************************
- * Signals when video stream has completed mux run-out specified
- * in associated mux stream.   Run-out is always to complete GOP's.
- *********************************/
-
-bool VideoStream::RunOutComplete()
-{
-	return (au_unsent == 0 || 
-			( muxinto.running_out &&
-			  au->type == IFRAME && au->PTS >= muxinto.runout_PTS));
-}
-
-
-/*********************************
- * Work out the timestamps to be set in the header of sectors starting
- * new AU's.
- *********************************/
-
-uint8_t VideoStream::NewAUTimestamps( int AUtype )
-{
-	uint8_t timestamps;
-    if( AUtype == BFRAME)
-        timestamps=TIMESTAMPBITS_PTS;
-    else 
-        timestamps=TIMESTAMPBITS_PTS_DTS;
-
-    if( muxinto.timestamp_iframe_only && AUtype != IFRAME)
-        timestamps=TIMESTAMPBITS_NO;
-    return timestamps;
-}
-
-/*********************************
- * Work out the buffer records to be set in the header of sectors
- * starting new AU's.
- *********************************/
-
-bool VideoStream::NewAUBuffers( int AUtype )
-{
-    return buffers_in_header & 
-        !(muxinto.video_buffers_iframe_only && AUtype != IFRAME);
-}
-
-/******************************************************************
-	Output_Video
-	generiert Pack/Sys_Header/Packet Informationen aus dem
-	Video Stream und speichert den so erhaltenen Sektor ab.
-
-	generates Pack/Sys_Header/Packet information from the
-	video stream and writes out the new sector
-******************************************************************/
-
-void VideoStream::OutputSector ( )
-
-{
-
-	unsigned int max_packet_payload; 	 
-	unsigned int actual_payload;
-	unsigned int prev_au_tail;
-	VAunit *vau;
-	unsigned int old_au_then_new_payload;
-	clockticks  DTS,PTS;
-    int autype;
-
-	max_packet_payload = 0;	/* 0 = Fill sector */
-  	/* 	
-	   We're now in the last AU of a segment. 
-		So we don't want to go beyond it's end when filling
-		sectors. Hence we limit packet payload size to (remaining) AU length.
-		The same applies when we wish to ensure sequence headers starting
-		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
-	*/
-	int nextAU = NextAUType();
-	if( (muxinto.running_out && nextAU == IFRAME && 
-		 Lookahead()->PTS >= muxinto.runout_PTS) ||
-		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
-		) 
-	{
-		max_packet_payload = au_unsent;
-	}
-
-	/* Figure out the threshold payload size below which we can fit more
-	   than one AU into a packet N.b. because fitting more than one in
-	   imposses an overhead of additional header fields so there is a
-	   dead spot where we *have* to stuff the packet rather than start
-	   fitting in an extra AU.  Slightly over-conservative in the case
-	   of the last packet...  */
-
-	old_au_then_new_payload = muxinto.PacketPayload( *this,
-													 buffers_in_header, 
-													 true, true);
-	PTS = au->PTS + timestamp_delay;
-	DTS = au->DTS + timestamp_delay;
-
-
-	/* CASE: Packet starts with new access unit			*/
-	if (new_au_next_sec  )
-	{
-		if( dtspts_for_all_au && max_packet_payload == 0 )
-			max_packet_payload = au_unsent;
-        autype = AUType();
-		actual_payload =
-			muxinto.WritePacket ( max_packet_payload,
-								  *this,
-								  NewAUBuffers(autype), 
-                                  PTS, DTS,
-								  NewAUTimestamps(autype) );
-		Muxed( actual_payload);
-
-	}
-
-	/* CASE: Packet begins with old access unit, no new one	*/
-	/*	     begins in the very same packet					*/
-
-	else if ( ! new_au_next_sec &&
-			  (au_unsent >= old_au_then_new_payload))
-	{
-		actual_payload = 
-			muxinto.WritePacket( au_unsent,
-								  *this,
-								  false, 0, 0,
-								  TIMESTAMPBITS_NO );
-		Muxed ( actual_payload );
-
-	}
-
-	/* CASE: Packet begins with old access unit, a new one	*/
-	/*	     could begin in the very same packet			*/
-	else /* if ( !new_au_next_sec  && 
-			(au_unsent < old_au_then_new_payload)) */
-	{
-		prev_au_tail = au_unsent;
-
-		Muxed( au_unsent );
-		/* is there a new access unit anyway? */
-		if( !MuxCompleted() )
-		{
-            autype = AUType();
-            /* No timestamps if sector restricted to only current */
-            /* AU (new Au though possible is not muxed)           */
-            uint8_t timestamps = 
-                max_packet_payload != 0 && prev_au_tail >= max_packet_payload
-                ? TIMESTAMPBITS_NO 
-                : NewAUTimestamps(autype) ;
-
-			if(  dtspts_for_all_au  && max_packet_payload == 0 )
-				max_packet_payload = prev_au_tail + au_unsent;
-
-			PTS = au->PTS + timestamp_delay;
-			DTS = au->DTS + timestamp_delay;
-
-			actual_payload = 
-				muxinto.WritePacket ( max_packet_payload,
-									  *this,
-									  NewAUBuffers(autype), 
-                                      PTS, DTS,
-									  timestamps );
-			Muxed( actual_payload - prev_au_tail );
-		} 
-		else
-		{
-			(void) muxinto.WritePacket ( 0,
-										 *this,
-										 false, 0, 0,
-										 TIMESTAMPBITS_NO);
-		};
-
-
-	}
-	++nsec;
-	buffers_in_header = always_buffers_in_header;
-}
-
-/*********************************
- * Signals when audio stream has completed mux run-out specified
- * in associated mux stream. 
- *********************************/
-
-bool AudioStream::RunOutComplete()
-{
-	return (au_unsent == 0 || 
-			( muxinto.running_out && au->PTS >= muxinto.runout_PTS));
-}
-
-
-/******************************************************************
-	Output_Audio
-	generates Pack/Sys Header/Packet information from the
-	audio stream and saves them into the sector
-******************************************************************/
-
-void AudioStream::OutputSector ( )
-
-{
-	clockticks   PTS;
-	unsigned int max_packet_data; 	 
-	unsigned int actual_payload;
-	unsigned int bytes_sent;
-	AAunit *aau;
-	Pack_struc pack;
-	unsigned int old_au_then_new_payload;
-
-	PTS = au->DTS + timestamp_delay;
-	old_au_then_new_payload = 
-		muxinto.PacketPayload( *this, buffers_in_header, false, false );
-
-	max_packet_data = 0;
-	if( muxinto.running_out && 
-		(Lookahead() != 0 && Lookahead()->PTS > muxinto.runout_PTS) )
-	{
-		/* We're now in the last AU of a segment.  So we don't want to
-		   go beyond it's end when writing sectors. Hence we limit
-		   packet payload size to (remaining) AU length.
-		*/
-		max_packet_data = au_unsent;
-	}
-  
-    
-	/* CASE: packet starts with new access unit			*/
-	
-	if (new_au_next_sec)
-    {
-		actual_payload = 
-			muxinto.WritePacket ( max_packet_data,
-								  *this,
-								  buffers_in_header, PTS, 0,
-								  TIMESTAMPBITS_PTS);
-
-		Muxed( actual_payload );
-    }
-
-
-	/* CASE: packet starts with old access unit, no new one	*/
-	/*       starts in this very same packet			*/
-	else if (!(new_au_next_sec) && 
-			 (au_unsent >= old_au_then_new_payload))
-    {
-		actual_payload = 
-			muxinto.WritePacket ( max_packet_data,
-								  *this,
-								  buffers_in_header, 0, 0,
-								  TIMESTAMPBITS_NO );
-		Muxed( actual_payload );
-    }
-
-
-	/* CASE: packet starts with old access unit, a new one	*/
-	/*       starts in this very same packet			*/
-	else /* !(new_au_next_sec) &&  (au_unsent < old_au_then_new_payload)) */
-    {
-		bytes_sent = au_unsent;
-		Muxed(bytes_sent);
-		/* gibt es ueberhaupt noch eine Access Unit ? */
-		/* is there another access unit anyway ? */
-		if( !MuxCompleted()  )
-		{
-			PTS = au->DTS + timestamp_delay;
-			actual_payload = 
-				muxinto.WritePacket ( max_packet_data,
-									  *this,
-									  buffers_in_header, PTS, 0,
-									  TIMESTAMPBITS_PTS );
-
-			Muxed( actual_payload - bytes_sent );
-		} 
-		else
-		{
-			muxinto.WritePacket ( 0,
-								  *this,
-								  buffers_in_header, 0, 0,
-								  TIMESTAMPBITS_NO );
-		};
-		
-    }
-
-    ++nsec;
-
-	buffers_in_header = always_buffers_in_header;
-	
-}
 
 /******************************************************************
 	OutputPadding
-	erstellt Pack/Sys_Header/Packet Informationen zu einem
-	Padding-Stream und speichert den so erhaltenen Sector ab.
 
 	generates Pack/Sys Header/Packet information for a 
 	padding stream and saves the sector

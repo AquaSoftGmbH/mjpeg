@@ -21,7 +21,7 @@
  */
 
 
-#include "inputstrm.hh"
+#include "videostrm.hh"
 
 class FrameIntervals
 {

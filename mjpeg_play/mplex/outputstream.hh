@@ -7,6 +7,7 @@
 #include "mjpeg_types.h"
 
 #include "inputstrm.hh"
+#include "padstrm.hh"
 #include "systems.hh"
 
 
@@ -24,6 +25,8 @@ public:
 
 	void InitSyntaxParameters();
 	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
+	
+	inline Sys_header_struc *SystemHeader() { return &sys_header; }
 
 	unsigned int PacketPayload(	MuxStream &strm,
 								bool buffers, bool PTSstamp, bool DTSstamp );
@@ -33,6 +36,11 @@ public:
 							  clockticks   	 PTS,
 							  clockticks   	 DTS,
 							  uint8_t 	 timestamps
+		);
+
+	void WriteRawSector( Sys_header_struc *system_header,
+						 uint8_t *rawpackets,
+						 unsigned int     length
 		);
 
 	/* Syntax control parameters, public becaus they're partly referenced
@@ -84,6 +92,8 @@ private:
 	Pack_struc          pack_header;
 	Pack_struc *pack_header_ptr;
 	Sys_header_struc *sys_header_ptr;
+	bool start_of_new_pack;
+	bool include_sys_header;
 
 	/* Under-run error messages */
 	unsigned int underruns;

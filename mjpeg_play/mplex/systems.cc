@@ -183,26 +183,60 @@ PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
       *((*buffer)++)=temp;
 }
 
+/*************************************************************************
+
+BufferPaddingPacket - Insert a padding packet of the desired length
+                      into the specified Program/System stream buffer
+
+**************************************************************************/
+
+
+void PS_Stream::BufferPaddingPacket( int padding,  uint8_t *&buffer  )
+{
+    uint8_t *index = buffer;
+    int i;
+
+    assert( (mpeg_version == 2 && padding >= 6) ||
+            (mpeg_version == 1 && padding >= 7) );
+
+    *(index++) = static_cast<uint8_t>(PACKET_START)>>16;
+    *(index++) = static_cast<uint8_t>(PACKET_START & 0x00ffff)>>8;
+    *(index++) = static_cast<uint8_t>(PACKET_START & 0x0000ff);
+    *(index++) = PADDING_STR;
+    *(index++) = static_cast<uint8_t>((padding - 6) >> 8);
+    *(index++) = static_cast<uint8_t>((padding - 6) & 0xff);
+    if (mpeg_version == 2)
+        {
+            for (i = 0; i < padding - 6; i++)
+                *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
+        }
+        else
+        {
+            *(index++) = 0x0F;
+            for (i = 0; i < padding - 7; i++)
+                *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
+        }
+
+    buffer = index;
+}
 
 
 /*************************************************************************
 	Create_Sector
-	erstellt einen gesamten Sektor.
-	Kopiert in dem Sektorbuffer auch die eventuell vorhandenen
-	Pack und Sys_Header Informationen und holt dann aus der
-	Inputstreamdatei einen Packet voll von Daten, die im
-	Sektorbuffer abgelegt werden.
+	creates a complete sector to carry a padding packet or
+    a packet from one of the elementary streams.
+    Pack and System headers are prepended if required.
 
-	creates a complete sector.
-	Also copies Pack and Sys_Header informations into the
-	sector buffer, then reads a packet full of data from
-	the input stream into the sector buffer.
-	
-	N.b. note that we allow for situations where want to
+    We allow for situations where want to
 	deliberately reduce the payload carried by stuffing.
 	This allows us to deal with tricky situations where the
 	header overhead of adding in additional information
 	would exceed the remaining payload capacity.
+
+    Header stuffing and/or a padding packet is appended if the sector is
+    unfilled.   Zero stuffing after the end of a packet is also supported
+    to allow thos wretched audio packets from VCD's to be handled.
+
 *************************************************************************/
 
 
@@ -237,8 +271,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	sector_pack_area = sector_size - strm.zero_stuffing;
 	if( end_marker )
 		sector_pack_area -= 4;
-    /* soll ein Pack Header mit auf dem Sektor gespeichert werden? */
-    /* Should we copy Pack Header information ? */
+    /* Pack header if present */
 
     if (pack != NULL)
     {
@@ -246,8 +279,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 		index += pack->length;
     }
 
-    /* soll ein System Header mit auf dem Sektor gespeichert werden? */
-    /* Should we copy System Header information ? */
+    /* System header if present */
 
     if (sys_header != NULL)
     {
@@ -369,8 +401,9 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     }
 #endif	
               
-    /* If a maximum payload data size is specified (!=0) and is smaller than the space available
-       thats all we read (the remaining space is stuffed) */
+    /* If a maximum payload data size is specified (!=0) and is
+       smaller than the space available thats all we read (the
+       remaining space is stuffed) */
     if( max_packet_data_size != 0 && 
         max_packet_data_size < target_packet_data_size )
     {
@@ -469,6 +502,62 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     RawWrite(sector_buf, sector_size);
     return actual_packet_data_size;
 }
+
+
+/*************************************************************************
+	CreateRawSector
+	creates a complete sector to carry pre-construct packet data
+    Usually used for "control" sectors that don't carry padding
+    or elementary stream data.
+    Pack and System headers are prepended if required.
+
+
+    A padding packet is appended if the sector is unfilled.
+
+*************************************************************************/
+
+void
+PS_Stream::CreateRawSector (Pack_struc	 	 *pack,
+                            Sys_header_struc *sys_header,
+                            uint8_t *rawpackets,
+                            unsigned int length)
+{
+    uint8_t *index = sector_buf;
+    int i;
+
+    /* Pack header if present */
+
+    if (pack != NULL)
+    {
+		memcpy ( index, pack->buf, pack->length);
+		index += pack->length;
+    }
+
+    /* System header if present */
+
+    if (sys_header != NULL)
+    {
+		memcpy (index, sys_header->buf, sys_header->length);
+		index += sys_header->length;
+    }
+
+    if( sector_buf + sector_size < index + length )
+    {
+        mjpeg_error_exit1("INTERNAL ERROR: CreateRawSector attempted to over-fill sector!\n" );
+    }
+
+    memcpy( index, rawpackets, length );
+    index += length;
+
+    int bytes_short = (sector_buf + sector_size) - index;
+    if( bytes_short != 0 )
+    {
+        BufferPaddingPacket( bytes_short, index );
+    }
+
+    RawWrite( sector_buf, sector_size );
+}
+
 
 /*************************************************************************
 	Create_Pack

@@ -31,10 +31,12 @@
 
 #include "interact.hh"
 #include "bits.hh"
-#include "inputstrm.hh"
-#include "outputstream.hh"
-#include "stillsstream.hh"
 
+#include "videostrm.hh"
+#include "stillsstream.hh"
+#include "audiostrm.hh"
+
+#include "outputstream.hh"
 /*************************************************************************
     Main
 *************************************************************************/
@@ -129,7 +131,14 @@ int main (int argc, char* argv[])
 		ostrm.InitSyntaxParameters();
 		for( i = 0 ; i < video_files.size() ; ++i )
 		{
-			VideoStream *videoStrm = new VideoStream(ostrm);
+			VideoStream *videoStrm;
+			//
+			// The first DVD video stream is made the master stream...
+			//
+			if( i == 0 && opt_mux_format ==  MPEG_FORMAT_DVD )
+				videoStrm = new DVDVideoStream(ostrm);
+			else
+				videoStrm = new VideoStream(ostrm);
 			videoStrm->Init( i, video_files[i] );
 			strms.push_back( videoStrm );
 		}

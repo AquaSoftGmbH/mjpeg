@@ -1,7 +1,7 @@
 
 /*
- *  inptstrm.c:  Members of input stream classes related to muxing out into
- *               the output stream.
+ *  inputstrm.c:  Base classes related to muxing out input streams into
+ *                the output stream.
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
@@ -175,76 +175,6 @@ Aunit *ElementaryStream::next()
 	return aunits.next();
 }
 
-
-
-VideoStream::VideoStream(OutputStream &into )
-	:
-	ElementaryStream(into, ElementaryStream::video ),
-	num_sequence(0),
-	num_seq_end(0),
-	num_pictures(0),
-	num_groups(0),
-	dtspts_for_all_au( into.dtspts_for_all_vau )
-{
-	prev_offset=0;
-    decoding_order=0;
-	fields_presented=0;
-    group_order=0;
-    group_start_pic=0;
-	group_start_field=0;
-    temporal_reference=0;
-	pulldown_32 = 0;
-	last_buffered_AU=0;
-	max_bits_persec = 0;
-	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
-	for( int i =0; i<4; ++i )
-		num_frames[i] = avg_frames[i] = 0;
-    FRAME_CHUNK = 6;
-		
-}
-
-void VideoStream::InitAUbuffer()
-{
-	int i;
-	for( i = 0; i < aunits.BUF_SIZE; ++i )
-		aunits.init( new VAunit );
-}
-
-
-
-
-AudioStream::AudioStream(OutputStream &into) : 
-	ElementaryStream( into,  ElementaryStream::audio ),
-	num_syncword(0)
-{
-    FRAME_CHUNK = 24;
-	for( int i = 0; i <2 ; ++i )
-		num_frames[i] = size_frames[i] = 0;
-}
-
-void AudioStream::InitAUbuffer()
-{
-	int i;
-	for( i = 0; i < aunits.BUF_SIZE; ++i )
-		aunits.init( new AAunit );
-}
-
-//
-// Generator for padding packets in a padding stream...
-//
-
-
-unsigned int PaddingStream::ReadStrm(uint8_t *dst, unsigned int to_read)
-{
-	memset( dst, STUFFING_BYTE, to_read );
-	return to_read;
-}
-
-unsigned int VCDAPadStream::ReadStrm(uint8_t *dst, unsigned int to_read)
-{
-	memset( dst, STUFFING_BYTE, to_read );
-	return to_read;
-}
 
 
 

@@ -39,9 +39,6 @@
 #include "aunit.hh"
 #include "vector.hh"
 #include "buffer.hh"
- //
- // TODO: Put into own source file...
- //
 
 
 class InputStream
@@ -113,6 +110,8 @@ public:
 		}
 	inline unsigned int MaxPacketData() { return max_packet_data; }
 	inline unsigned int MinPacketData() { return min_packet_data; }
+    inline bool NewAUNextSector() { return new_au_next_sec; }
+
 
 	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
 
@@ -194,162 +193,6 @@ protected:
     int FRAME_CHUNK;
 									
 };
-
-
-class VideoStream : public ElementaryStream
-{
-public:
-	VideoStream(OutputStream &into);
-	void Init( const int stream_num,
-			   const char *input_file);
-	void Close();
-
-	inline int AUType()
-		{
-			return au->type;
-		}
-
-	inline bool EndSeq()
-		{
-			return au->end_seq;
-		}
-
-	inline int NextAUType()
-		{
-			VAunit *p_au = Lookahead();
-			if( p_au != NULL )
-				return p_au->type;
-			else
-				return NOFRAME;
-		}
-
-	inline bool SeqHdrNext()
-		{
-			VAunit *p_au = Lookahead();
-			return  p_au != NULL && p_au->seq_header;
-		}
-
-	virtual unsigned int NominalBitRate() 
-		{ 
-			return bit_rate * 50;
-		}
-	bool RunOutComplete();
-
-	void OutputSector();
-protected:
-	void OutputSeqhdrInfo();
-	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-	virtual void InitAUbuffer();
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
-	void ScanFirstSeqHeader();
-    uint8_t NewAUTimestamps( int AUtype );
-    bool NewAUBuffers( int AUtype );
-
-public:	
-    unsigned int num_sequence 	;
-    unsigned int num_seq_end	;
-    unsigned int num_pictures 	;
-    unsigned int num_groups 	;
-    unsigned int num_frames[4] 	;
-    unsigned int avg_frames[4]  ;
-    
-    unsigned int horizontal_size;
-    unsigned int vertical_size 	;
-     unsigned int aspect_ratio	;
-    unsigned int picture_rate	;
-    unsigned int bit_rate 	;
-    unsigned int comp_bit_rate	;
-    unsigned int peak_bit_rate  ;
-    unsigned int vbv_buffer_size;
-    unsigned int CSPF 		;
-    double secs_per_frame;
-
-	
-	bool dtspts_for_all_au;
-
-protected:
-
-	/* State variables for scanning source bit-stream */
-    VAunit access_unit;
-	unsigned int fields_presented;
-    unsigned int group_order;
-    unsigned int group_start_pic;
-	unsigned int group_start_field;
-    unsigned long temporal_reference;
-    unsigned short pict_rate;
-	int pulldown_32;
-	int repeat_first_field;
-	int film_rate;
-    double frame_rate;
-	unsigned int max_bits_persec;
-	int AU_pict_data;
-	int AU_hdr;
-	clockticks max_PTS;
-}; 	
-
-class AudioStream : public ElementaryStream
-{
-public:   
-  AudioStream(OutputStream &into );
-  void Init(const int stream_num, const char *audio_file);
-  void OutputSector();
-  
-  void Close();
-
-  virtual unsigned int NominalBitRate();
-  bool RunOutComplete();
-
-  unsigned int num_syncword	;
-  unsigned int num_frames [2]	;
-  unsigned int size_frames[2] ;
-	unsigned int version_id ;
-    unsigned int layer		;
-    unsigned int protection	;
-    unsigned int bit_rate_code;
-    unsigned int frequency	;
-    unsigned int mode		;
-    unsigned int mode_extension ;
-    unsigned int copyright      ;
-    unsigned int original_copy  ;
-    unsigned int emphasis	;
-
-private:
-	void OutputHdrInfo();
-	unsigned int SizeFrame( int bit_rate, int padding_bit );
-	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-	virtual void InitAUbuffer();
-    
-	/* State variables for scanning source bit-stream */
-    unsigned int framesize;
-    unsigned int skip;
-    unsigned int samples_per_second;
-    unsigned long long int length_sum;
-    AAunit access_unit;
-}; 	
-
-class PaddingStream : public MuxStream
-{
-public:
-	PaddingStream()
-		{
-			MuxStream::Init( PADDING_STR, 0, 0,  0, false,false );
-		}
-
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
-};
-
-class VCDAPadStream : public MuxStream
-{
-public:
-	VCDAPadStream()
-		{
-			Init( PADDING_STR, 0, 0, 20, false, false );
-
-		}
-
-	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
-};
-
 
 
 #endif // __INPUTSTRM_H__
