@@ -50,6 +50,8 @@ Copyright by Gernot Ziegler.
 #include <linux/videodev.h>
 
 #include <videodev_mjpeg.h>
+#include <frequencies.h>
+#include <termios.h>
 
 #define DEVNAME "/dev/video0"
 
@@ -59,6 +61,7 @@ int v4ldev;
 int file;
 int res;
 int frame;
+int chlist = -1;
 struct video_window vw;
 struct video_channel vc;
 struct video_mbuf vb;
@@ -80,6 +83,32 @@ static int debug = 0;
 
 void usage(char *prog);
 int doIt(void);
+void tune_to_channel(int channel);
+
+void tune_to_channel(int channel)
+{
+  unsigned long outfreq;
+
+  /* if we are a tuner set the channel */
+  if (vc.flags & VIDEO_VC_TUNER)
+  {
+	if (chlist >= 0)
+	{
+		outfreq = (chanlists[chlist].list)[channel-1].freq*16/1000;
+		fprintf(stdout, "Setting channel to %d frequency %d\n", channel, (chanlists[chlist].list)[channel-1].freq);
+  		/* Tune to channel */
+		if (ioctl(v4ldev, VIDIOCSFREQ, &outfreq) < 0)
+		{
+			perror("VIDIOCSFREQ failed.");
+			exit(1);
+		}
+	}
+	else
+		fprintf(stderr, "No channel list selected!\n");
+  }
+  else
+	  fprintf(stderr, "Not a tunable device!\n");
+}
 
 void usage(char *prog)
 {
@@ -105,6 +134,7 @@ void usage(char *prog)
             "  -b pixbits  Bits per pixel (15,16,24,32) [%d]\n"
 	    "  -n tvnorm   set pal/ntsc/secam          [pal]\n"
 	    "  -i input    set input source (int)      [%d]\n"
+	    "  -C chanlist channel list			\n"
 	    "\n"
 	    "NOTE: lavvideo makes your V4L card write _directly_ into the frame buffer, "
             "ignoring\n _everything_ that lies under it. It is far from being as "
@@ -151,8 +181,11 @@ int doIt(void)
   vc.norm = norm;
   res = ioctl(v4ldev, VIDIOCSCHAN, &vc);
   if (res < 0) 
-    { perror("VIDIOCSCHAN failed."); exit(1); }
-  
+  {
+    perror("VIDIOCSCHAN failed.");
+    exit(1);
+  }
+
   if (verbose) printf("Choosing window width [%dx%d] and offset [%dx%d]\n, "
 		      "bitdepth %d", 
 		      width, height, xoffset, yoffset, pixbits);
@@ -192,12 +225,64 @@ int doIt(void)
   if (res < 0) { perror("v4l: VIDIOCCAPTURE"); exit(1); }
 
   if (wait == -1) 
-  { if (verbose) printf("Alright, infinite loop (interrupt with Ctrl-C).");
-    for(;;);
+  {
+	unsigned char input;
+	struct timeval tv;
+	fd_set rfds;
+	int channel = 2;
+  	struct termios modes, savemodes;
+
+	if (verbose) printf("Changing keyboard mode.\n");
+
+	/* save old keyboard mode and set new one */
+	tcgetattr(0,&modes);
+	savemodes = modes;
+	modes.c_lflag &= ~ICANON;
+	modes.c_lflag &= ~ECHO;
+	tcsetattr(0,0,&modes);
+
+	printf("Entering read loop, press q or [ESC] to quit.\n");
+        while(read(0, &input, 1) > 0)
+        {
+		if (input == 'q')
+			break;
+		if (input == 0x1B) /* ESC */
+		{
+			/* Since up and down are escaped, we have to read again */
+			FD_ZERO(&rfds);
+			FD_SET(0, &rfds);
+			tv.tv_sec= 0;
+			tv.tv_usec = 500;
+			if (select(1, &rfds, NULL, NULL, &tv))
+			{
+				if (read(0, &input, 1) < 0)
+					break;
+				if (read(0, &input, 1) < 0)
+					break;
+				if (input == 0x41)
+  					tune_to_channel(++channel);
+				else
+				if (input == 0x42)
+				{
+					if (channel > 2)
+  						tune_to_channel(--channel);
+				}
+			}
+			else /* If the just hit escape, then exit */
+				break;
+		}
+	}
+
+	if (verbose) printf("Restoring keyboard mode.\n");
+
+	/* restore keyboard mode */
+	tcsetattr(0,0,&savemodes);
   }
   else
-  if (verbose) printf("Alright, waiting %d seconds.", wait);
-  usleep(wait*1000000);
+  {
+  	if (verbose) printf("Alright, waiting %d seconds.", wait);
+  	usleep(wait*1000000);
+  }
 
   if (verbose) printf("Turning off the video window.\n");
   turnon = 0;
@@ -213,7 +298,7 @@ int main(int argc,char *argv[])
   /* parse options */
   for (;;) 
   {
-    if (-1 == (c = getopt(argc, argv, "Svds:o:m:c:n:i:t:b:x:h")))
+    if (-1 == (c = getopt(argc, argv, "Svds:o:m:c:n:i:t:b:x:C:h")))
       break;
 
     switch (c) {
@@ -259,6 +344,18 @@ int main(int argc,char *argv[])
     case 'x':
       xres = atoi(optarg);
 	    break;
+    case 'C':
+      chlist = 0;
+      while (strcmp(chanlists[chlist].name, optarg)!=0)
+      {
+	      chlist++;
+	      if (chanlists[chlist].name == NULL)
+	      {
+		      fprintf(stderr, "unable to find channel list for %s\n", optarg);
+		      exit(1);
+	      }
+      }
+      	    break;
     case 'h':
     default:
       usage(argv[0]);
