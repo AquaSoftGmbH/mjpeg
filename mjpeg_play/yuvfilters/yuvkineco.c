@@ -1,16 +1,57 @@
+/*
+ *  Copyright (C) 2001 Kawamata/Hitoshi <hitoshi.kawamata@nifty.ne.jp>
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+#include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <mpegtimecode.h>
 #include "yuvfilters.h"
-#include "timecode.h"
 
 #define STILLRATIO(N) ((N)*3/2)
 #define NOISERATIO(N) ((N)/8*7)
 #define MAXHALFHEIGHT 288
 #define NOISEMAX 31
 #define NOISEINIT 5
+
+static void
+buf_debug(char *buf, FILE *fp, const char *format, ...)
+{
+  va_list ap;
+  va_start(ap, format);
+  vsprintf(buf + strlen(buf), format, ap);
+  va_end(ap);
+  if (buf[strlen(buf) - 1] == '\n') {
+    if (fp) {
+      fputs(buf, fp);
+    } else {
+#ifdef MJPEGTOOLS
+      mjpeg_debug(buf);
+#else
+      fputs(buf, stderr);
+#endif
+    }
+    buf[0] = '\0';
+  }
+}
 
 typedef struct {
   YfTaskCore_t _;
@@ -172,7 +213,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 #
 SIZE:%dx%d OLD_FPS:%d NEW_FPS:%d # DON'T CHANGE THIS LINE!!!",
 	    (ycsthres? " -S ": ""), (ycsthres? ycsthres: ""),
-	    fpscode, cyname, cyname, cyname, cyname, cyname, cyname, cyname,
+	    fpscode, cyname, cyname, cyname, cyname, cyname,
 	    h0->width, h0->height, h0->fpscode, fpscode);
   } else {
     int width, height, oldfps, newfps;
@@ -209,15 +250,19 @@ static void
 dumpnoise(YfTask_t *h, FILE *fp)
 {
   int i;
+  char buf[256];
   if (!h->u.noise.total)
     return;
-  fprintf(fp, "#\n# noise level: %u (# of sample: %lu);  noise distribution:\n#",
-	  h->u.noise.level, h->u.noise.total);
+  buf[0] = '\0';
+  buf_debug(buf, fp, "#\n");
+  buf_debug(buf, fp, "# noise level: %u (# of sample: %lu);  noise distribution:\n",
+	    h->u.noise.level, h->u.noise.total);
+  buf_debug(buf, fp, "#");
   for (i = 0; i <= NOISEMAX; i++)
-    fprintf(fp, " %lu",
-	    (unsigned long)((((unsigned long long)h->u.noise.dist[i] * 1000) +
-			     h->u.noise.total - 1) / h->u.noise.total));
-  putc('\n', fp);
+    buf_debug(buf, fp, " %lu",
+	      (unsigned long)((((unsigned long long)h->u.noise.dist[i] * 1000) +
+			       h->u.noise.total - 1) / h->u.noise.total));
+  buf_debug(buf, fp, "\n");
 }
 
 static void
@@ -227,7 +272,7 @@ do_fini(YfTaskCore_t *handle)
   while (h->iuse < h->iget)
     do_frame((YfTaskCore_t *)h, NULL, NULL);
   if (1 < verbose)
-    dumpnoise(h, stderr);
+    dumpnoise(h, NULL);
   if (h->cytype == 'C') {
     putc('\n', h->cyfp);
     dumpnoise(h, h->cyfp);
@@ -241,7 +286,7 @@ putcy(YfTask_t *h, int c)
 {
   MPEG_timecode_t tc;
   int f;
-  f = mpeg_timecode(&tc, h->iuse, h->fpscode0);
+  f = mpeg_timecode(&tc, h->iuse, h->fpscode0, 0.);
   if (f <= 0) {
     putc('\n', h->cyfp);
     if (tc.s == 0) {
@@ -253,7 +298,7 @@ putcy(YfTask_t *h, int c)
 	    h->cyfp);
     }
     fprintf(h->cyfp, "%06d/%02d:%02d:%02d:%02d ", h->iuse, tc.h, tc.m, tc.s, tc.f);
-    mpeg_timecode(&tc, h->iput, h->_.fpscode);
+    mpeg_timecode(&tc, h->iput, h->_.fpscode, 0.);
     fprintf(h->cyfp, "%06d/%02d:%02d:%02d:%02d", h->iput, tc.h, tc.m, tc.s, tc.f);
   }
   if (f < 0) {
@@ -364,18 +409,20 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
       int b = h->iuse % h->nframes;
       int i, imin = -1, i2nd = -1;
       unsigned long dmin = 0xffffffffUL, d2nd = 0xffffffffUL, d3rd = 0xffffffffUL;
+      char debugbuf[256];
+      debugbuf[0] = '\0';
       if (1 < verbose) {
-	fprintf(stderr, "%5d%5d ", h->iuse, h->iput);
+	buf_debug(debugbuf, NULL, "%5d%5d ", h->iuse, h->iput);
 	if (0 < iadjust)
-	  fprintf(stderr, "%8s:%-7s", "-", "-");
+	  buf_debug(debugbuf, NULL, "%8s:%-7s", "-", "-");
       }
 
       /* search still frame (min diff) */
       for (i = (0 < iadjust); i < h->iget - h->iuse - (h->nframes / 4) + 1; i++) {
 	unsigned long odiff = h->framestat[(b + i) % h->nframes].odiff;
 	if (1 < verbose)
-	  fprintf(stderr, "%8ld:%-7lu",
-		  h->framestat[(b + i) % h->nframes].eoediff, odiff);
+	  buf_debug(debugbuf, NULL, "%8ld:%-7lu",
+		    h->framestat[(b + i) % h->nframes].eoediff, odiff);
 	if (odiff < dmin) {
 	  d3rd = d2nd;
 	  d2nd = dmin;
@@ -442,8 +489,8 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  imin--;
       }
       if (1 < verbose)
-	fprintf(stderr, "%3d%3d%8lu%8lu%4lu", iadjust, imin, d3rd, dmin,
-		(dmin? (d3rd / STILLRATIO(dmin)): 9999));
+	buf_debug(debugbuf, NULL, "%3d%3d%8lu%8lu%4lu", iadjust, imin, d3rd, dmin,
+		  (dmin? (d3rd / STILLRATIO(dmin)): 9999));
 
       /* search frames field merged */
       if (1 < h->nfields) {
@@ -477,7 +524,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  imin = i;
       }
       if (1 < verbose)
-	fprintf(stderr, "%2d", imin);
+	buf_debug(debugbuf, NULL, "%2d", imin);
 
       /* reconstruct frame field merged */
       if (1 < h->nfields) {
@@ -502,16 +549,16 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 		     &fsrc->data[i * h->_.width / 2],
 		     h->_.width / 2);
 	    if (1 < verbose)
-	      fprintf(stderr, "%2d", isrc + 1);
+	      buf_debug(debugbuf, NULL, "%2d", isrc + 1);
 	    h->framestat[bdst].eoediff = 99999999;
 	  } else {
 	    if (1 < verbose)
-	      fprintf(stderr, " -");
+	      buf_debug(debugbuf, NULL, " -");
 	  }
 	}
       }
       if (1 < verbose)
-	fprintf(stderr, "\n");
+	buf_debug(debugbuf, NULL, "\n");
 
       /* output frames */
       for (i = 0; i < imin; i++) {
@@ -557,7 +604,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	  break;
 	if (isalpha(c) || (c == '_' && h->cytype == 'O')) {
 	  if (h->u.cy.buff + 30 <= d) {
-	    WERROR("warning: too long line in cycle list.\n");
+	    WWARN("too long line in cycle list.\n");
 	    break;
 	  }
 	  *d++ = c;
