@@ -1,0 +1,21 @@
+Requirements:
+----------------
+* computer with TV-card (Marvel G200/G400 with Rainbow Runner G-series,
+   DC10(+), Iomega Buz, Linux Media Labs LML33, BTTV) which is supported 
+   by video4linux drivers
+* gdk-pixbuf, gtk+ 1.2.x, glib 1.2.x, XFree 4.x with the Xv-extension
+
+Installation:
+----------------
+# ./configure
+# make
+# su -c "make install"
+
+Running:
+-----------
+Run 'stv' to start Linux Video Studio TV. Make sure the V4L/Xv-extension 
+is loaded. If not, stv will not start. To enable V4L/Xv, add the line 
+'Load "v4l"' to the modules-section of your XF86Config. You need XFree 4.x 
+for V4L/Xv to work correctly. You might also need to install the Xv-module 
+if you don't have it already. For example, Redhat 7.0 has the Xv-module in 
+a separate RPM (XFree86-V4L-4.0.1.<arch>.rpm)

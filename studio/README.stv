@@ -1,0 +1,75 @@
+                 Linux Video Studio TV README
+================================================================
+
+Introduction
+---------------
+Linux Video Studio TV ('stv') is a simple TV-app for linux, based
+on Gtk+. It works, that's all. It has no fancy special features,
+like video capturing, image grabbing, bladiebla. Nothing of this
+all. It just shows TV. Because that's all it needs to do.
+
+If you want to capture video or grab images, look at Gerd Knorr's
+wonderful and fully-featured XawTV (http://www.bytesex.org/xawtv/)
+or try Linux Video Studio, a simple video editor based on the MJPEG-
+tools (and on which this TV-app is based).
+
+How it works
+--------------
+First, read INSTALL for installation instructions.
+Start it (doh!). It will probably autodetect the video4linux port. If not, 
+you will be notified in the terminal and you will have to start it and 
+provide the port number manually (see "stv -t"). Do "stv -p <portnum>" and 
+have fun. If you don't see any port, be sure that you have read the 
+installation instructions, especially these about making a change to the 
+X-configuration.
+Right-click for a control-window (choose channel and change picture 
+properties). Press the "settings" button to get to the Channel Editor and 
+the Remote Control configuration window.
+In the channel editor, you can (doh!) make a selection of channels. In the 
+remote control editor, you can specify which buttons should take which 
+action.
+Now, use the remote control, keyboard or mouse to control the app.
+
+Remote control buttons
+-------------------------
+You can specify your own button configuration since each remote control 
+has different signals. A "general configuration" would be impossible to 
+create.
+
+Keyboard keys
+----------------
+arrows right/down - next channel
+arrows left/up    - previous channel
+q                 - quit
+a                 - toggle audio
+0-9               - choose a channel by number
+enter/escape      - toggle fullscreen
+
+Mouse control
+----------------
+Wheel down        - next channel
+Wheel up          - previous channel
+Middle button     - toggle fullscreen
+Left mouse button - control window
+
+Credits
+----------
+Thanks to Gerd Knorr <kraxel@bytesex.org> for the help on the brightness,
+saturation etc. sliders.
+Thanks to Edwin Versteegen <ir-ontvanger@gmx.net> for providing me with a 
+LIRC-infrared module to test and develop LIRC support in this app. See 
+http://home.wanadoo.nl/novh/ for more info.
+
+Disclaimer
+-------------
+If it doesn't work, if it formats your hard disk, if it does something 
+it shouldn't do, if you see a bird flying by, don't blame me. This is test 
+software in alpa/development state, it can do anything or nothing at all. 
+I'd be happy if you reported bugs to me, though :-) (see contacting).
+
+Contacting
+-------------
+This application was created by:
+	Ronald Bultje <rbultje@ronald.bitfreak.net>
+For bug reports, please make sure you're using the newest version. The newest
+version can always be downloaded from http://ronald.bitfreak.net/
