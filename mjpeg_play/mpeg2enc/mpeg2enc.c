@@ -633,10 +633,11 @@ int main(argc,argv)
 
 	nerr += check_param_constraints();
 
-	if(nerr) Usage(argv[0]);
-
-
-	if(nerr) exit(1);
+	if(nerr) 
+	{
+		Usage(argv[0]);
+		exit(1);
+	}
 
 
 	mjpeg_info("Encoding MPEG-%d video to %s\n",param_mpeg,outfilename);
@@ -839,6 +840,7 @@ static void init_mpeg_parms(void)
 	ctl_M = param_Bgrp_size;             /* I or P frame distance */
 	opt_mpeg1           = (param_mpeg == 1);
 	opt_fieldpic        = (param_fieldenc!=0 && param_fieldenc != 3);
+	opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
 	opt_pulldown_32     = param_32_pulldown;
 
 	opt_aspectratio     = param_aspect_ratio;
@@ -884,7 +886,6 @@ static void init_mpeg_parms(void)
 	opt_constrparms     = param_mpeg == 1;       /* Will be reset, if not coompliant */
 	opt_profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
 	opt_level           = 8;                 /* Main Level      CCIR 601 rates */
-	opt_prog_seq        = param_mpeg == 1;
 	opt_chroma_format   = param_422 ? CHROMA422 : CHROMA420;
 	switch(param_norm)
 	{
@@ -1100,6 +1101,16 @@ static void init_mpeg_parms(void)
 		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0\n");
 		opt_constrparms = 0;
 	}
+
+	if( ( (opt_vertical_size+15) / 16)%2 != 0 )
+	{
+		mjpeg_warn( "Frame height won't split into two equal field pictures...\n");
+		mjpeg_warn( "forcing encoding as progressive video\n");
+		opt_prog_seq = 1;
+		opt_fieldpic = 0;
+		opt_prog_frame = 1;
+	}
+
 
 	if (opt_prog_seq && !opt_prog_frame)
 	{
