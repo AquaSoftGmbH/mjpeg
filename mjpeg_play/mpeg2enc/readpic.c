@@ -159,7 +159,7 @@ static void read_chunk()
 
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
-	   n = frames_read % FRAME_BUFFER_SIZE;
+      n = frames_read % FRAME_BUFFER_SIZE;
       if(piperead(istrm_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
       {
@@ -334,7 +334,6 @@ int readframe( int num_frame,
 
    load_frame( num_frame ); 
    n = num_frame % FRAME_BUFFER_SIZE;
-
    frame[0] = frame_buffers[n][0];
    frame[1] = frame_buffers[n][1];
    frame[2] = frame_buffers[n][2];

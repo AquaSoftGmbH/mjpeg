@@ -339,7 +339,7 @@ EXTERN const char *statname
 */
 
 #define READ_CHUNK_SIZE 20
-#define FRAME_BUFFER_SIZE READ_CHUNK_SIZE*4
+#define FRAME_BUFFER_SIZE (READ_CHUNK_SIZE*4)
 
 /*
   How many frames encoding may be concurrently under way.
