@@ -170,25 +170,10 @@ int main (int argc, char *argv[])
   const static char *legal_flags = "r:s:cnv:h";
   int c ;
 
-  while ((c = getopt (argc, argv, legal_flags)) != -1) {
-    switch (c) {
-      case 'v':
-        verbose = atoi (optarg);
-        if (verbose < 0 || verbose > 2)
-          mjpeg_error_exit1 ("Verbose level must be [0..2]");
-        break;
-        
-        case 'h':
-        case '?':
-          print_usage (argv);
-          return 0 ;
-          break;
-    }
-  }
-  // mjpeg tools global initialisations
+  /* mjpeg tools global initialisations */
   mjpeg_default_handler_verbosity (verbose);
 
-  // Initialize input streams
+  /* Initialize input streams */
   y4m_init_stream_info (&in_streaminfo);
   y4m_init_stream_info (&out_streaminfo);
 
@@ -200,37 +185,46 @@ int main (int argc, char *argv[])
   if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
     mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
-  // Prepare output stream
+  /* Prepare output stream */
   src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
   frame_rate = src_frame_rate ;
   y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-
-  optind = 0;
   
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
         switch (c)
         {
-        // New frame rate
+        /* New frame rate */
         case 'r':
           if( Y4M_OK != y4m_parse_ratio(&frame_rate, optarg) )
               mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
           break;
-        // Assumed frame rate for source (useful when the header contains an
-        // invalid frame rate)
+        /* Assumed frame rate for source (useful when the header contains an
+           invalid frame rate) */
         case 's':
           if( Y4M_OK != y4m_parse_ratio(&src_frame_rate,optarg) )
               mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
           break ;
-        // Only change header frame-rate, not the stream itself
+        /* Only change header frame-rate, not the stream itself */
         case 'c':
           change_header_only = 1 ;
         case 'n':
           not_normalize = 1;
         break;
+        case 'v':
+          verbose = atoi (optarg);
+          if (verbose < 0 || verbose > 2)
+            mjpeg_error_exit1 ("Verbose level must be [0..2]");
+          break;
+        
+        case 'h':
+        case '?':
+          print_usage (argv);
+          return 0 ;
+          break;
         }
   }
   
-  // Information output
+  /* Information output */
   mjpeg_info ("yuv2fps (version " YUVFPS_VERSION
               ") is a general frame resampling utility for yuv streams");
   mjpeg_info ("(C) 2002 Alfonso Garcia-Patino Barbolani <barbolani@jazzfree.com>");
