@@ -98,24 +98,6 @@ typedef uint64_t clockticks;
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
 
-#ifdef OBSOLETE_CODE_DELETE_TODO
-
-
-#define MPEG2_LAST_SCR_BYTE_IN_PACK  10			/* No of bytes in pack	*/
-#define MPEG1_LAST_SCR_BYTE_IN_PACK   9         /* preceding, and 	*/
-												/* including, the SCR	*/
-
-#define MPEG2_AFTER_PACKET_LENGTH_MAX    \
-	   (MPEG2_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH)
-#define MPEG1_AFTER_PACKET_LENGTH_MAX    \
-		(MPEG1_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH-1)
-		
-		#define SYS_HEADER_SIZE		18		/* incl. start code and	*/
-                                    /* length field, 2 streams		*/
-#define MPEG2_PACK_HEADER_SIZE	14
-#define MPEG1_PACK_HEADER_SIZE  12
-#endif
-
 #define BUFFERINFO_LENGTH 2
 #define DTS_PTS_TIMESTAMP_LENGTH 5
 #define MPEG2_AFTER_PACKET_LENGTH_MIN    3
@@ -174,16 +156,6 @@ typedef uint64_t clockticks;
 /*************************************************************************
     Typ- und Strukturdefinitionen
 *************************************************************************/
-
-/* TODO: Eventually this should be dealt with as a union... */
-
-#ifdef ORIGINAL_CODE
-typedef struct clockticks	/* Time_code Struktur laut MPEG		*/
-{  
-  clockticks thetime;  /* The actual time... (for comparisons)*/
-} clockticks;	
-typedef uint64_t clockticks;
-#endif
 
 
 
@@ -448,6 +420,8 @@ extern int opt_VBR;
 extern int opt_mpeg;
 extern int opt_mux_format;
 extern int opt_multifile_segment;
+extern int opt_always_system_headers;
+extern int opt_packets_per_pack;
 extern clockticks opt_max_PTS;
 
 extern int verbose;

@@ -334,11 +334,6 @@ void get_info_video (char *video_file,
 				* ((double)frame_rate)  + 25.0
 				) / 50;
 	
-		/* TODO DELETEME	
-	printf( "Original calc would give video rate of %f\n",
-			ceil ((double)(video_info->stream_length)/
-				  (double)(video_info->num_pictures)/first_frame_PTS/1250.)*25);
-		*/
 	/* Peak bit rate in 50B/sec units... */
 	video_info->peak_bit_rate = ((max_bits_persec / 8) / 50);
     finish_getbits (&video_bs);
@@ -549,7 +544,7 @@ void get_info_audio (
 		exit (1);
     }
 
-	printf( "Starting...\n" );
+
     do {
     
 
@@ -621,7 +616,6 @@ void get_info_audio (
 		audio_info->num_frames[padding_bit]++;
 
 		getbits (&audio_bs, 9);
-		/* TODO: should be handled cleanly through PTS */
 
     } while (!end_bs(&audio_bs) && 
     		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));

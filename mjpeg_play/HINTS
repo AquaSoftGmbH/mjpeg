@@ -1,4 +1,4 @@
-(0)  Read the README!  There's a lot of useful info buried in there...
+(0)  Read the README's.  There's a lot of useful info buried in there...
 
 (1) If you want to play on hardware decoders don't build variable
 bit-rate video streams.  If you intend to use software players they're
@@ -25,13 +25,15 @@ so there could be bugs.  Let us know!
      high.  You'll get warnings about violating the MPEG-1 standard.
 
 (4) If you want to compress MPEG-2: feel free to try it, however, its
-not tested.  Fully tested version coming next...
+	not tested.  Fully tested version coming next...
 
-(5) If you want to compress MPEG: buy reasonably fast CPU's.
-	 Currently my Celeron-366 and K6-2-500 run at about 1/4
-	 playing-time.  My PIII-450's around 1/3 playing time. I expect
-	 Coppermine and Athlon based CPU's will *fly* on this work.
-	 
+(5) Storing MPEG's.  If you record the data as XA mode 2 tracks you
+	can fit appreciably more on a CD (at the expense of error
+	correction/detection).  You need to slightly hack mkvcdfs or vcdimager
+	to stop them prepending/appending lots of null sectors if you use them
+	to do this.  I'll try to incorporate suitable patches through their
+	developers before you read this!
+ 
 (6) For encoding a typical (45 minute runnig time) show to 90 odd
 minute movie from an analog broadcastI have found a CBR bit-rate of
 2200 to be ideal.  The resulting files are around 700M for 45 minutes

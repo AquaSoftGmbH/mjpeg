@@ -35,11 +35,12 @@ char filename[MAXPATHLEN];
 	return fopen( filename, "wb" );
 }
 
-/* Packet payload
-	compute how much payload a sector-sized packet with the specified headers could carry...
-	*/
+/**************************************************************
+
+ 	 Packet payload compute how much payload a sector-sized packet with the 
+	 specified headers can carry...
+**************************************************************/
 	
-		/* TODO: are the packet payload calculations correct if some stream is missing? */
 		
 int packet_payload( Sys_header_struc *sys_header, Pack_struc *pack_header, int buffers, int PTSstamp, int DTSstamp )
 {
@@ -206,7 +207,6 @@ void create_sector (Sector_struc 	 *sector,
 	int bytes_short;
 
     index = sector->buf;
-    sector->length_of_sector=0;
 
     /* soll ein Pack Header mit auf dem Sektor gespeichert werden? */
     /* Should we copy Pack Header information ? */
@@ -321,7 +321,8 @@ void create_sector (Sector_struc 	 *sector,
 	target_packet_data_size = sector_size - (index - sector->buf);
 	
 		
-	/* TODO DEBUG: */		
+	/* DEBUG: A handy consistency check when we're messing around */
+#ifndef NDEBUG		
 	if( target_packet_data_size != packet_payload( sys_header, pack, buffers,
 												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
@@ -332,7 +333,7 @@ void create_sector (Sector_struc 	 *sector,
 							   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
 		exit(1);
 	}
-	
+#endif	
 	/* If a maximum payload data size is specified (!=0) and is smaller than the space available
 	   thats all we read (the remaining space is stuffed) */
 	if( max_packet_data_size != 0 && max_packet_data_size < target_packet_data_size )
@@ -365,7 +366,8 @@ void create_sector (Sector_struc 	 *sector,
 	   the packet size fully ...
 	   Small shortfalls are dealt with by stuffing, big ones by inserting
 	   padding packets.
-	   
+	   TODO: Certain stream types may not like zero stuffing so we may need
+	   to be able to selectively insert padding packets...
 	*/
 
 
@@ -439,7 +441,6 @@ void create_sector (Sector_struc 	 *sector,
 	/* At this point padding or stuffing will have ensured the packet
 		is filled to target_packet_data_size
 	*/ 
-    sector->length_of_sector = sector_size - bytes_short;
     sector->length_of_packet_data = actual_packet_data_size;
 
 }

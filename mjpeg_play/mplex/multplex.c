@@ -56,8 +56,6 @@ static unsigned int audio_min_packet_data;
 static unsigned int video_min_packet_data;
 static int audio_packet_data_limit; /* Needed for VCD which wastes 20 bytes */
 
-/* TODO: DEBUG */
-static int audio_buf_margin = 0;
 
 	/* Stream packet component buffers */
 
@@ -90,6 +88,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	Pack_struc 			dummy_pack;
 	Sys_header_struc 	dummy_sys_header;	
 	
+
 	switch( opt_mux_format  )
 	{
 		case 1 : /* MPEG_VCD */ 
@@ -113,7 +112,6 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		zero_stuffing = 1;
-		audio_buf_margin = 128;
 		audio_packet_data_limit = 2279;		/* Ugh... what *were* they thinking of? */
 		break;
 		
@@ -133,15 +131,14 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		zero_stuffing = 1;
-		audio_buf_margin = 128;
 		audio_packet_data_limit = 0;		/* Ugh... what *were* they thinking of? */
 
 		break;
 			 
 	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
 		opt_mpeg = 1;
-	  	packets_per_pack = 20;
-	  	always_sys_header_in_pack = 1;
+	  	packets_per_pack = opt_packets_per_pack;
+	  	always_sys_header_in_pack = opt_always_system_headers;
 		sys_header_in_pack1 = 1;
 		trailing_pad_pack = 0;
 		sector_transport_size = opt_sector_size;
@@ -194,37 +191,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 						TRUE, TRUE, FALSE );
 
   }
- 
-#ifdef OBSOLETE_CODE_TODO_DELETE 
-  if( opt_mpeg == 2 )
-	{	
-	  min_packet_data = sector_size - MPEG2_PACK_HEADER_SIZE - 
-		PACKET_HEADER_SIZE - MPEG2_AFTER_PACKET_LENGTH_MAX;
-	  max_packet_data = sector_size - PACKET_HEADER_SIZE - MPEG2_AFTER_PACKET_LENGTH_MAX;
-	  last_scr_byte_in_pack = MPEG2_LAST_SCR_BYTE_IN_PACK;
-    }
-  else
-    {
-	  min_packet_data = sector_size - MPEG1_PACK_HEADER_SIZE -
-		PACKET_HEADER_SIZE - MPEG1_AFTER_PACKET_LENGTH_MAX;
-	  max_packet_data = sector_size - PACKET_HEADER_SIZE - MPEG1_AFTER_PACKET_LENGTH_MAX;
-	  last_scr_byte_in_pack = MPEG1_LAST_SCR_BYTE_IN_PACK;
- 	}
-
-  system_header_size = SYS_HEADER_SIZE;
-  if( which_streams != STREAMS_BOTH )
-	  system_header_size -= 3;
-
-  if( always_sys_header_in_pack )
-	min_packet_data -= SYS_HEADER_SIZE;
-
-  /* if we have only one stream, we have 3 more bytes in the sys header free */
-
-  if (which_streams != STREAMS_BOTH) { 
-	min_packet_data += 3; 
-  } 	
-#endif
-     
+      
   /* Only meaningful for MPEG-2 un-used at present, always 0 */
   rate_restriction_flag = 0;
      
@@ -369,9 +336,8 @@ void outputstreamsuffix(clockticks *SCR,
   index = cur_sector.buf;
     
   /* TODO: MPEG-2 variant...??? */
-  /* ISO 11172 END CODE schreiben				*/
+
   /* write out ISO 11172 END CODE				*/
-  /* TODO: should VCD/SVCD/DVD support  generate a nice end packet here? */
   index = cur_sector.buf;
 
   *(index++) = (unsigned char)((ISO11172_END)>>24);
@@ -542,7 +508,6 @@ void outputstream ( char 		*video_file,
 		switch( seg_state )
 		{
 			case start_segment :
-					printf( "\nSTART\n" );
 					buffer_flush (&video_buffer);
 					buffer_flush (&audio_buffer);
 					status_header ();
@@ -588,10 +553,8 @@ void outputstream ( char 		*video_file,
 				*/
 			case last_gop_segment :
 				next_vau = (Vaunit_struc*)VectorLookAhead(vaunit_info_vec, 1);
-				printf( "\nLAST GOP %d %d\n", video_au.type, next_vau->type);
 				if( next_vau && next_vau->type == IFRAME )
 				{
-					printf( "I frame next!\n" );
 					seg_state = last_au_segment;
 				}
 				break;
@@ -601,11 +564,9 @@ void outputstream ( char 		*video_file,
 				segment and it is time to end the current segment and start a new one.
 				We send the segment suffix, switch segments, send the segment prefix,
 				reset the buffers, and twiddle the SCR to allow the buffers to refill...
-				TODO: Really we should start with a 0 SCR again, but the way we handle timestamps
-				at present precludes this...
+
 				*/
 			case last_au_segment :
-				printf( "\nLAST AU %d L=%d\n", video_au.type, video_au.length  );
 				if( video_au.type == IFRAME )
 				{
 					/* End current segment... */
@@ -661,7 +622,7 @@ void outputstream ( char 		*video_file,
 		   and audio under-run
 		   	   
 		*/
-		if ( (buffer_space (&audio_buffer)-audio_buf_margin >= audio_max_packet_data)
+		if ( (buffer_space (&audio_buffer) > audio_max_packet_data)
 			 && (audio_au.length>0)
 			 && ! (  video_au.length !=0 &&
 					 video_next_SCR >= video_au.DTS+SCR_video_delay &&
@@ -816,12 +777,10 @@ void next_video_access_unit (Buffer_struc *buffer,
 
 
   /* What's left of the current AU and any prefix remaining of the next AU.
- 	NOTE: TODO: This loop case should never actually iterate for normal MPEG streams.
-	Any MPEG stream carrying PTS/DTS data in packet headers won't really make sense 
-	if a second complete packet is squeezed in as there won't be any place to put its PTS/DTS.
-	
-	The current implementation uses bounds on maximum sector sizes to prevent this happening...
-	
+	NOTE: It *is* possible for this loop to iterate. MPEG specifically says the
+	DTS/PTS field for a packet carrying multiple AU's refers to the first to start
+	in the packet.  Whether Joe-Blow's hardware VCD player handles this properly is
+	another matter of course!
 	*/
   decode_time = video_au->DTS + SCR_delay;
   while (video_au->length < bytes_muxed)
@@ -1030,20 +989,14 @@ void output_video ( clockticks SCR,
 #ifdef TIMER
   gettimeofday (&tp_start,NULL);
 #endif 
-  fwrite (cur_sector.buf, cur_sector.length_of_sector, 1, ostream);
+  fwrite (cur_sector.buf, sector_size, 1, ostream);
 #ifdef TIMER
   gettimeofday (&tp_end,NULL);
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
   total_usec += (tp_end.tv_usec - tp_start.tv_usec);
 #endif
 
-	/* TODO DEBUG */
-  if( cur_sector.length_of_sector != sector_size )
-  {
-  	fprintf(stderr, "Sector generated %d bytes actual size %d bytes\n", 
-	cur_sector.length_of_sector,sector_size  );
-	exit(1);
-  }
+
   
   buffers_in_video = always_buffers_in_video;
 	
