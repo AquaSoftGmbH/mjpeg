@@ -135,6 +135,7 @@ int i;
   (*point).noisefilter    = 0;
   (*point).audiobitrate   = 0;
   (*point).outputbitrate  = 0;
+  (*point).use_yuvdenoise = 0;
   (*point).bitrate        = 1152;
   (*point).searchradius   = 0;
   (*point).muxformat      = 0;
@@ -292,6 +293,9 @@ int i;
     if ( 0 != strcmp(val,"as is"))
       sprintf((*point).forcevcd, val);
 
+  if (-1 != (i = cfg_get_int(section,"Encode_Use_Yuvdenoise")))
+        (*point).use_yuvdenoise = i;
+
   if (-1 != (i = cfg_get_int(section,"Encode_Video_Bitrate")))
         (*point).bitrate = i;
 
@@ -347,6 +351,7 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Audio force stereo : \'%s\' \n",     (*point).forcestereo);
   printf("Encoding Audio force mono : \'%s\' \n",         (*point).forcemono);
   printf("Encoding Audio force VCD : \'%s\' \n",           (*point).forcevcd);
+  printf("Encoding Use yuvdenoise : \'%i\' \n",      (*point).use_yuvdenoise);
   printf("Encoding Video Bitrate : \'%i\' \n",              (*point).bitrate);
   printf("Encoding Quality Factor : \'%i\' \n",       (*point).qualityfactor);
   printf("Encoding Minimum GOP size : \'%i\' \n",            (*point).minGop);
@@ -507,6 +512,7 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
   else
     fprintf(fp,"Encode_Force_Vcd = %s\n", "as is");
 
+  fprintf(fp,"Encode_Use_Yuvdenoise = %i\n", (*point).use_yuvdenoise);
   fprintf(fp,"Encode_Video_Bitrate = %i\n", (*point).bitrate);
   fprintf(fp,"Encode_Quality_Factor = %i\n", (*point).qualityfactor);
   fprintf(fp,"Encode_Minimum_GOP_Size = %i\n", (*point).minGop);
