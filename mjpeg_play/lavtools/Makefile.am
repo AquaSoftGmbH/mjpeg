@@ -112,10 +112,14 @@ matteblend_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
 multiblend_flt_SOURCES = multiblend.flt.c ${lav_headers}
 multiblend_flt_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
+if HAVE_X
+  LAVPLAY_X_LIBS = $(X_LIBS) -lX11
+endif
+
 lavplay_SOURCES = lavplay.c ${lav_headers}
 lavplay_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS} -lX11
+	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} $(LAVPLAY_X_LIBS)
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
 lavrec_LDADD = $(top_builddir)/utils/libmjpegutils.a \
