@@ -21,6 +21,8 @@ dnl AC_ARG_ENABLE(warnings_as_errors,
 dnl  [  --enable-warnings_as_errors,      Compiler warnings are errors.])
 AC_ARG_WITH(max-num-scenes,
   [  --with-max-num-scenes,  The maximum number of scenes for the editor.])
+AC_ARG_WITH(lircd,
+  [  --with-lircd,          Enable Linux Infrared Remote Control support])
 dnl Checks for programs.
 AC_PROG_CC
 AC_PROG_INSTALL
@@ -83,67 +85,67 @@ AC_SUBST(GDK_PIXBUF_CFLAGS)
 dnl Let's search for the lavtools and their versions
 AC_PATH_PROG(LAVPLAY_LOCATION, lavplay, no)
 if test x$LAVPLAY_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavplay)
+  AC_MSG_ERROR(Could not find lavplay - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAVREC_LOCATION, lavrec, no)
 if test x$LAVREC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavrec)
+  AC_MSG_ERROR(Could not find lavrec - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAV2YUV_LOCATION, lav2yuv, no)
 if test x$LAV2YUV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lav2yuv)
+  AC_MSG_ERROR(Could not find lav2yuv - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAV2WAV_LOCATION, lav2wav, no)
 if test x$LAV2WAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lav2wav)
+  AC_MSG_ERROR(Could not find lav2wav - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(MPEG2ENC_LOCATION, mpeg2enc, no)
 if test x$MPEG2ENC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mpeg2enc)
+  AC_MSG_ERROR(Could not find mpeg2enc - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(MP2ENC_LOCATION, mp2enc, no)
 if test x$MP2ENC_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mp2enc)
+  AC_MSG_ERROR(Could not find mp2enc - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(YUVSCALER_LOCATION, yuvscaler, no)
 if test x$YUVSCALER_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuvscaler)
+  AC_MSG_ERROR(Could not find yuvscaler - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(MPLEX_LOCATION, mplex, no)
 if test x$MPLEX_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find mplex)
+  AC_MSG_ERROR(Could not find mplex - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAVTRANS_LOCATION, lavtrans, no)
 if test x$LAVTRANS_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavtrans)
+  AC_MSG_ERROR(Could not find lavtrans - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAVPIPE_LOCATION, lavpipe, no)
 if test x$LAVPIPE_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavpipe)
+  AC_MSG_ERROR(Could not find lavpipe - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(YUVPLAY_LOCATION, yuvplay, no)
 if test x$YUVPLAY_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuvplay)
+  AC_MSG_ERROR(Could not find yuvplay - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(YUV2LAV_LOCATION, yuv2lav, no)
 if test x$YUV2LAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find yuv2lav)
+  AC_MSG_ERROR(Could not find yuv2lav - please reinstall the MJPEG-tools)
 fi
 
 AC_PATH_PROG(LAVADDWAV_LOCATION, lavaddwav, no)
 if test x$LAVADDWAV_LOCATION = xno; then
-  AC_MSG_ERROR(Could not find lavaddwav)
+  AC_MSG_ERROR(Could not find lavaddwav - please reinstall the MJPEG-tools)
 fi
 
 dnl The maximum number of scenes to be opened in the editor
@@ -152,6 +154,24 @@ if test x$with_max_num_scenes = xyes ; then
 fi
 if test x$with_max_num_scenes = x ; then
     with_max_num_scenes=256
+fi
+
+dnl **********************************************************************
+dnl Test for LIRCD
+dnl
+have_lirc=0
+if test x$with_lircd = xyes ; then
+  AC_MSG_ERROR(--with-lircd option requires an argument)
+fi
+if ! test x$with_lircd = x ; then
+  if test -z ${with_lircd}; then
+    have_lirc=1
+  fi
+else
+  AC_PATH_PROG(LIRCD_LOCATION, lircd, no)
+  if ! test x$LIRCD_LOCATION = xno; then
+    have_lirc=1
+  fi
 fi
 
 dnl **********************************************************************
@@ -191,6 +211,8 @@ AC_DEFINE_UNQUOTED(DEFAULT_AUDIO, "/dev/dsp")
 AC_SUBST(DEFAULT_AUDIO)
 AC_DEFINE_UNQUOTED(MAX_NUM_SCENES, ${with_max_num_scenes})
 AC_SUBST(MAX_NUM_SCENES)
+AC_DEFINE_UNQUOTED(HAVE_LIRC, ${have_lirc})
+AC_SUBST(HAVE_LIRC)
 
 dnl **********************************************************************
 dnl we use OSS, ALSA doesn't work yet

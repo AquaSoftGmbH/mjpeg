@@ -28,3 +28,6 @@
 
 /* The maximum number of scenes that the editor can open */
 #undef MAX_NUM_SCENES
+
+/* Have lirc? */
+#undef HAVE_LIRC
