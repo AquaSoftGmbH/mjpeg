@@ -229,22 +229,28 @@ EXTERN unsigned short default_intra_quantizer_matrix[64]
 #endif
 ;
 
-/* default non intra quantization matrix */
+EXTERN unsigned short hires_intra_quantizer_matrix[64]
+#ifdef GLOBAL
+=
+{
+   8, 16, 18, 20, 24, 25, 26, 30,
+  16, 16, 20, 23, 25, 26, 30, 30,
+  18, 20, 22, 24, 26, 28, 29, 31,
+  20, 21, 23, 24, 26, 28, 31, 31,
+  21, 23, 24, 25, 28, 30, 30, 33,
+  23, 24, 25, 28, 30, 30, 33, 36,
+  24, 25, 26, 29, 29, 31, 34, 38,
+  25, 26, 28, 29, 31, 34, 38, 42
+}
+#endif
+;
+
+/* Our default non intra quantization matrix
+	This is *not* the MPEG default
+	 */
 EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
-/* The real default... we're using something else...
-{
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16,
-	16, 16, 16, 16, 16, 16, 16, 16
-}
-*/
 
 {
   16, 17, 18, 19, 20, 21, 22, 23,
@@ -257,6 +263,24 @@ EXTERN unsigned short default_nonintra_quantizer_matrix[64]
   23, 24, 25, 27, 28, 30, 31, 33
  
 }   
+#endif
+;
+
+/* Hires non intra quantization matrix.  THis *is*
+	the MPEG default...	 */
+EXTERN unsigned short hires_nonintra_quantizer_matrix[64]
+#ifdef GLOBAL
+=
+{
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16,
+	16, 16, 16, 16, 16, 16, 16, 16
+}
 #endif
 ;
 

@@ -78,20 +78,20 @@ nextrowqd:
 	psubusw mm6, mm4
 	
 	add eax, edx		        ; update a pointer to next row
-	punpckhbw mm3, mm2			; mm3 = 2nd 4 bytes of p1 in words
+;	punpckhbw mm3, mm2			; mm3 = 2nd 4 bytes of p1 in words
 
 	paddw   mm7, mm6
 	paddw mm0, mm7				; Add absolute differences to left block accumulators
 		
-	movq mm7,mm3
-	psubusw mm7, mm5
-	psubusw mm5, mm3
+;	movq mm7,mm3
+;	psubusw mm7, mm5
+;	psubusw mm5, mm3
 
 	add ebx, edx		; update a pointer to next row
 	sub   esi, 1
 
-	paddw   mm7, mm5
-	paddw mm1, mm7				; Add absolute differences to right block accumulators
+;	paddw   mm7, mm5
+;	paddw mm1, mm7				; Add absolute differences to right block accumulators
 	
 
 		
@@ -107,17 +107,17 @@ nextrowqd:
 	paddw mm0, mm6
 	movd eax, mm0		; store return value
 
-	movq  mm4, mm1
-	psrlq mm4, 32
-	paddw mm1, mm4
-	movq  mm6, mm1
-	psrlq mm6, 16
-	paddw mm1, mm6
-	movd ebx, mm1
+;	movq  mm4, mm1
+;	psrlq mm4, 32
+;	paddw mm1, mm4
+;	movq  mm6, mm1
+;	psrlq mm6, 16
+;	paddw mm1, mm6
+;	movd ebx, mm1
 
 	and  eax, 0xffff		
-	sal  ebx, 16
-	or   eax, ebx
+;	sal  ebx, 16
+;	or   eax, ebx
 		
 	pop esi
 	pop edx

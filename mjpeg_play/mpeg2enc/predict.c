@@ -200,7 +200,6 @@ static void predict_mb (
       else
       {
         /* invalid motion_type in frame picture */
-        if (!quiet)
           fprintf(stderr,"invalid motion_type\n");
       }
     }
@@ -266,7 +265,6 @@ static void predict_mb (
       else
       {
         /* invalid motion_type in field picture */
-        if (!quiet)
           fprintf(stderr,"invalid motion_type\n");
       }
     }
@@ -331,7 +329,6 @@ static void predict_mb (
       else
       {
         /* invalid motion_type in field picture */
-        if (!quiet)
           fprintf(stderr,"invalid motion_type\n");
       }
     }

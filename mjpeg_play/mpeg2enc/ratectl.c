@@ -419,11 +419,12 @@ void rc_init_pict(pict_data_s *picture)
 	target_Q = scale_quant(picture, 
 						   avg_K * avg_act *(mb_width*mb_height2) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
+#ifdef DEBUG
 	if( !quiet )
 	{
 		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, T/8, avg_K  );
 	}
-	
+#endif	
 	if( pred_ratectl )
 	{
 		/* We can only carry over as much total undershoot as
@@ -437,9 +438,6 @@ void rc_init_pict(pict_data_s *picture)
 			*/
 			d = (int) (target_Q * r / 62.0);
 		}
-		printf( "td=%6d ",  d );
-
-
 	}
 	else
 	{
@@ -594,12 +592,12 @@ void rc_update_pict(pict_data_s *picture)
 	
 	d += frame_overshoot;
 	K = X / actsum;
-
+#ifdef DEBUG
 	if( !quiet )
 	{
 		printf( "AQ=%.1f SQ=%.2f",  AQ,SQ);
 	}
-
+#endif
 	/* Bits that never got used in the past can't be resurrected
 	   now...  We use an average of past (positive) virtual buffer
 	   fullness in the event of an under-shoot as otherwise we will
@@ -654,10 +652,16 @@ void rc_update_pict(pict_data_s *picture)
 		Nb--;
 		break;
 	}
-
+#ifdef DEBUG
 	if( !quiet )
 		printf( "\n" );
-
+#else
+	if( !quiet )
+	{
+		printf( "\r" );
+		fflush( stdout );
+	}	
+#endif
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
 	fprintf(statfile," actual number of bits: S=%lld\n",S);
@@ -1001,12 +1005,17 @@ void calc_vbv_delay(pict_data_s *picture)
 			fprintf(stderr,"vbv_delay underflow: %d\n",picture->vbv_delay);
 		picture->vbv_delay = 0;
 	}
-
+	
+	/* TODO THIS NEEDS TO BE GOT WORKING! */
+#ifdef NOT_WORKING_CORRECTLY_YET
 	if (picture->vbv_delay>65535)
 	{
 		fprintf(stderr,"vbv_delay frame %d exceeds permissible range: %d\n",
 				frame_num, picture->vbv_delay);
 		picture->vbv_delay = 65535;
 	}
+#else
+	picture->vbv_delay =  90000.0/frame_rate/4;
+#endif
 
 }

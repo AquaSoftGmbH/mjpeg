@@ -55,6 +55,9 @@
 #include "cpu_accel.h"
 #include "simd.h"
 
+#define HEAPS !defined(X86_CPU)
+#define HALF_HEAPS !defined(X86_CPU)
+
 
 /* Macro-block Motion compensation results record */
 
@@ -164,6 +167,8 @@ static int bidir_pred_sad( const mb_motion_s *motion_f,
 
 static int variance(  uint8_t *mb, int lx);
 
+static int nodual_qdist;	/* Can the qdist function return two adjacent
+							   quad-pel distances in one call? */
 static int qdist1 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
 static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
@@ -213,7 +218,11 @@ static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
   Initialise motion compensation - currently purely selection of which
   versions of the various low level computation routines to use
   
-  */
+  TODO: The MMX/SSE heaps code is still active (for now) so
+  there is some un-necessary updating of function pointers.
+  Not much point removing it while the not-X86 code is tied to the
+  Mk.I heap based sub-sampling search.
+ */
 
 void init_motion()
 {
@@ -230,6 +239,7 @@ void init_motion()
 		pbdist1 = bdist1;
 		pdist2 = dist2;
 		pbdist2 = bdist2;
+		nodual_qdist = 1;
 	}
 #ifdef X86_CPU
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
@@ -246,6 +256,7 @@ void init_motion()
 		pbdist2 = bdist2_mmx;
 		pqblock_8grid_dists = qblock_8grid_dists_sse;
 		pqblock_near_dist = qblock_near_dist_sse;
+		nodual_qdist = 0;
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
@@ -261,6 +272,7 @@ void init_motion()
 		pbdist2 = bdist2_mmx;
 		pqblock_8grid_dists = qblock_8grid_dists_mmx;
 		pqblock_near_dist = qblock_near_dist_mmx;
+		nodual_qdist = 0;
 	}
 #endif
 }
@@ -276,7 +288,12 @@ void init_motion()
    the user-specified radius to see if we can do better.
  */
 
-
+/*
+  Weighting of moving average relative to new data.  Currently set to
+  around  1/2 the number of macroblocks in a frame.
+ */
+ 
+static double fast_motion_weighting;
 
 /*
   4*4 subsampled pel sad threshold below which initial 8*8 grid
@@ -286,8 +303,47 @@ void init_motion()
   from the previous match.
  */
 
-int sub44_coarse_threshold;
+int sub44_coarse_threshold = COARSE_44_SAD_THRESHOLD;
 
+/* 
+   Reset the match accuracy threshhold used to decide whether to
+   restrict the size of the the fast motion compensation search window.
+ */
+
+typedef struct _thresholdrec
+{
+	double fast_average;
+	double slow_average;
+	int updates_for_valid_slow;
+	int threshold;
+} thresholdrec;
+	
+thresholdrec twopel_threshold;
+thresholdrec onepel_threshold;
+thresholdrec quadpel_threshold;
+
+#if HALF_HEAPS
+static void update_threshold( thresholdrec *rec, int match_dist )
+{
+  
+	rec->fast_average = (fast_motion_weighting * rec->fast_average +
+						 ((double) match_dist)) / (fast_motion_weighting+1);
+	/* We initialise the slow with the fast avergage */
+	if ( rec->updates_for_valid_slow )
+	{
+		--rec->updates_for_valid_slow;
+		rec->slow_average = rec->fast_average;
+	}
+
+	rec->slow_average = (100.0 *  rec->slow_average +
+						 rec->fast_average) / 101.0;
+	if ( rec->slow_average < rec->fast_average )
+		rec->threshold = (int) (0.90 *  rec->slow_average);
+	else
+		rec->threshold = (int) (0.90 * rec->fast_average);
+
+}
+#endif
 
 /* 
    Reset the match accuracy threshhold used to decide whether to
@@ -296,7 +352,13 @@ int sub44_coarse_threshold;
 
 void reset_thresholds(int macroblocks_per_frame)
 {
-	sub44_coarse_threshold = COARSE_44_SAD_THRESHOLD;
+	onepel_threshold.fast_average = 5.0;
+	twopel_threshold.fast_average = 5.0;
+	onepel_threshold.threshold = 5;
+	twopel_threshold.threshold = 5;
+	onepel_threshold.updates_for_valid_slow = 4*macroblocks_per_frame;
+	twopel_threshold.updates_for_valid_slow = macroblocks_per_frame;
+	fast_motion_weighting = (double)2*macroblocks_per_frame;
 }
 
 
@@ -1549,23 +1611,854 @@ static void dpfield_estimate(
 	*vmcp = vmc_dp;
 }
 
-
-/* 
- *   Vectors of motion compensations 
+/*
+ * Heaps of distance estimates for motion compensation search
  */
 
-#define MAX_44_MATCHES (127*127/(4*4))
+/* A.Stevens 2000: WARNING: distance measures must fit into int16_t 
+   or bad things will happen! */
+struct _sortelt 
+{
+	uint16_t weight;
+	uint16_t index;
+};
 
-static int sub22_num_mcomps;
-static int sub44_num_mcomps;
-static mc_result_s sub44_mcomps[MAX_44_MATCHES];
-static mc_result_s sub22_mcomps[MAX_44_MATCHES*4];
+typedef struct _sortelt sortelt;
+
+
+
+
+#define childl(x) (x+x+1)
+#define childr(x) (x+x+2)
+#define parent(x) ((x-1)>>1)
 
 /*
-	Take a vector of motion compensations and repeatedly make passes
-	discarding all elements whose sad "weight" is above the current mean weight.
+ *   Insert a new element into an existing heap.  Included only for
+ * completeness.  Not used.
+ */
+
+void heap_insert( sortelt heap[], int *heapsize, sortelt *newelt )
+{
+	int i;
+
+	++(*heapsize);
+	i = (*heapsize);
+
+	while( i > 0 && heap[parent(i)].weight > newelt->weight)
+	{
+		heap[i] = heap[parent(i)];
+		i = parent(i);
+	}
+	heap[i] = *newelt;
+}
+
+
+/*
+ *  Standard extract-smallest-element from heap and maintain heap property
+ *  procedure.
+ */
+void heap_extract( sortelt *heap, int *heapsize, sortelt *extelt )
+{
+	int i,j,s;
+	s = (*heapsize);
+
+
+	if( s == 0 )
+		abort();
+	--(*heapsize);
+	*extelt = heap[0];
+	s = s - 1;
+
+	i = 0; 
+	j = childl(i); 
+	while( j < s )
+	{
+		register int w = s;
+		/* ORIGINAL slow branchy code
+		   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2)
+		   if( heap[w].weight > heap[j].weight )
+		   w = j;
+		   if( j+1 < s && heap[w].weight > heap[j+1].weight )
+		   w = j+1;
+		*/
+
+		w += (j-w)&(-(heap[w].weight > heap[j].weight));
+		++j;
+		w += (j-w)&-(((j < s) & (heap[w].weight > heap[j].weight )));
+
+		if( w == s )
+			break;
+		heap[i] = heap[w];
+		i = w;
+		j = childl(i);
+	}  
+  
+	heap[i] = heap[s];
+}
+
+/*
+ *   Why bother studying Comp. Sci.?  Well maybe building a heap in linear
+ *   time might convince some...
+ */
+
+void heapify( sortelt *heap, int heapsize )
+{
+	int base = 0;
+	sortelt tmp;
+	int i;
+	if( heapsize == 0)
+		return;
+	do
+	{
+		base = childl(base);
+	} 
+	while( childl(base) < heapsize );
+  
+	do {
+		base = parent(base);
+		for( i = base; i < childl(base); ++i )
+		{
+			int j = i;
+			int k = childl(i);
+
+			while( k < heapsize )
+			{
+				register int w = j;
+				/* ORIGINAL slow branchy code 
+				   N.b. childl(x) = x + (x+1) childr(x) = x + (x+2) 
+				   if( heap[j].weight > heap[k].weight )
+				   w = k;
+				   if( k+1 < heapsize && heap[w].weight > heap[k+1].weight )
+				   w = k+1;
+				*/
+
+				w += (k-w)&(-(heap[j].weight > heap[k].weight));
+				++k;
+				w += ((k)-w)&-(((k < heapsize) & (heap[w].weight > heap[k].weight )));
+
+				if( w == j )
+					break;
+				tmp = heap[j];
+				heap[j] = heap[w];
+				heap[w] = tmp;
+
+				j = w;
+				k = childl(j);
+			}
+		}
+	} while( base != 0 );
+
+}
+
+void test_heap( sortelt *heap, int heapsize, char *mesg, int n )
+{
+	int i = 0;
+	while( childr(i) < heapsize )
+	{
+		if( heap[childr(i)].weight < heap[i].weight ||
+			heap[childl(i)].weight < heap[i].weight )
+		{
+			printf( "Fails I heap property: %s at %d pw=%d cl=%d cr=%d!\n", mesg, i,
+					heap[i].weight, heap[childl(i)].weight, heap[childr(i)].weight );
+			exit(1);
+		}
+		++i;
+	}
+	if( childl(i) < heapsize && heap[childl(i)].weight < heap[i].weight )
+	{
+		printf( "Fails L heap property: %s!\n", mesg );
+		exit(1);
+	}
+}
+
+
+#undef childl
+#undef childr
+#undef parent
+
+#if HALF_HEAPS
+
+static int thin_vector( sortelt vec[], int threshold, int len )
+{
+ 	int i;
+	int j = 0;
+	for( i = 0; i < len; ++i )
+	{
+		if( vec[i].weight <= threshold )
+		{
+			vec[j] = vec[i];
+			++j;
+		}
+	}
+	return j;
+}
+#endif
+
+
+
+
+#ifdef TEST_GRAD_DESCENT
+
+/*
+	A table for cacheing already searched locations to allow search to be aborted once
+	existing descent paths have been found
+	CAUTION: Depends on maximum search radius permitted...
+	*/
+
+/* TODO: BUG: CAUTION: Presupposes motion compensation radii of > 256 don't occur */
+
+
+#define LG_MAX_SEARCH_RADIUS 8
+#define MAX_SEARCH_RADIUS (1<<LG_MAX_SEARCH_RADIUS)
+#define SEARCH_TABLE_SIZE (MAX_SEARCH_RADIUS*MAX_SEARCH_RADIUS)
+
+typedef struct _searchtablerec 
+{
+	int16_t tag;
+	int16_t weight;
+} searchtablerec;
+	
+static int16_t searchtable_fresh_ctr = 0xac45;
+
+static searchtablerec searchtable[SEARCH_TABLE_SIZE];
+#define searchentry(x,y) ( searchtable[(x + (y<<LG_MAX_SEARCH_RADIUS)) & (SEARCH_TABLE_SIZE-1)])
+#define isfreshentry(x,y) ( searchentry(x,y).tag == searchtable_fresh_ctr  )
+#define freshensearchtable searchtable_fresh_ctr++
+#define freshsearchtableentry(x,y,w) { searchentry(x,y).tag = searchtable_fresh_ctr;\
+                                       searchentry(x,y).weight = w; }
+                                        
+
+/*
+	Shiny new distance measure absolute difference sum of row/col sums
+
 */
 
+static int rcdist( unsigned char *org, uint16_t* blksums, int lx, int h )
+{
+	int i,j;
+	unsigned char *porg; 
+	int dist = 0;
+	int rowsum;
+	uint16_t *blkrowsums = &blksums[0];
+	uint16_t *blkcolsums = &blksums[h];
+	int colsums[16];
+	
+
+	porg = org;
+	for( i = 0; i <16; ++i )
+		colsums[i] = 0;
+	for( j = 0; j < h; ++j )
+	{
+		rowsum = 0;
+		for( i = 0; i < 16; ++i )
+		{
+			rowsum += porg[i];
+			colsums[i] += porg[i];
+		}
+		dist += abs(rowsum-blkrowsums[j]);
+		porg += lx;
+	}
+	
+	
+	for( i = 0; i < 16; ++i )
+		dist += abs(colsums[i]-blkcolsums[i]);
+
+	return dist;
+}
+
+static int rcdist1( uint16_t *orgrsums, uint16_t *orgcsums, 
+                    uint16_t *blkrsums, uint16_t *blkcsums, int h )
+{
+	/* BUG: We ignore h and assume it is 16 since the code doesn't work for
+	   non 16 h anyway. THus, *THIS CODE WILL NOT WORK FOR FIELD BASED DATA
+	*/
+	int i;
+	int dist = 0;
+	for( i = 0; i < 16; ++i )
+	{
+		dist += abs(orgrsums[i]-blkrsums[i]) + abs(orgcsums[i]-blkcsums[i]);
+	}
+	return dist;
+}
+
+static void rcsums( unsigned char *org, uint16_t *sums, int lx, int h)
+{
+	int i,j;
+	unsigned char *porg;
+	int rowsum;
+	uint16_t *rowsums = &sums[0];
+	uint16_t *colsums = &sums[h];
+	
+
+	for( i = 0; i <16; ++i )
+		colsums[i] = 0;
+	porg = org;
+	for( j = 0; j < h; ++j )
+	{
+		rowsum = 0;
+		for( i = 0; i < 16; ++i )
+		{
+			rowsum += porg[i];
+			colsums[i] += porg[i];
+		}
+		rowsums[j] = rowsum;
+		porg += lx;
+	}
+}
+
+
+/*
+	local_optimum
+	Do a 2D binary search for a locally optimal row/column sum difference 
+	distance match in the 16-pel box right/below initx inity
+	
+	TODO: Lots of performance tweaks in the code's structure not all documented...
+
+*/
+
+
+static int rcdist_table( unsigned char *org, int16_t* blksums, 
+						 int x, int y, int lx, int h, int (*pdist) )
+{
+	int i,j;
+	unsigned char *porg, *pblk;
+	int dist = 0;
+	int rso, rsb;
+	int cso[16], csb[16];
+	
+	if( isfreshentry(x,y) )
+	{
+		(*pdist) = searchentry(x,y).weight;
+		return 1;
+	}
+	porg = org;
+	pblk = blk;
+	for( i = 0; i <16; ++i )
+		cso[i] = csb[i] = 0;
+	for( j = 0; j < h; ++j )
+	{
+		rso = rsb = 0;
+		for( i = 0; i < 16; ++i )
+		{
+			rso += porg[i];
+			cso[i] += porg[i];
+			rsb += pblk[i];
+			csb[i] += pblk[i];
+				
+		}
+		dist += abs(rso-rsb);
+		porg += lx;
+		pblk += lx;
+	}
+		
+	for( i = 0; i < 16; ++i )
+		dist += abs(cso[i]-csb[i]);
+	
+	freshsearchtableentry(x,y, dist);
+	(*pdist) = dist;
+	return 0;
+
+}
+
+static void local_optimum( unsigned char *org, unsigned char *blk, 
+						   int initx, int inity,
+						   int xlow, int xhigh,
+						   int ylow, int yhigh,
+						   int threshold,
+						   int lx, int h, int *pbestd, int *pbestx, int *pbesty )
+{
+	unsigned char *porg;
+	int deltax = 16 / 2;
+	int deltay = h /2;
+	int bestdx;
+	int bestdy;
+	int x = initx;
+	int y = inity;
+	int bestdist = 1234567; 
+	int dist;
+	int allstale,stale;
+		
+	porg = org+(x)+lx*(y);
+			
+	allstale = rcdist( porg, blk, x, y, lx, h, &bestdist);
+	while( (deltax+deltay > 2))  /* zero in to the 1*1 pel match level */
+	{
+		/*
+		  We've already covered the "no movement" option in the previous iteration or during
+		  initialisation.
+		*/
+		bestdx = 0;
+		bestdy = 0;
+			
+		/* Try the four quadrants and choose the best 
+		 */
+		if( deltax > 1 )
+		{
+			stale = rcdist_table( porg + deltax, blk, x+deltax, y, lx, h, &dist );
+			allstale &= stale;
+			if( !stale && dist < bestdist && x+deltax <= xhigh)
+			{
+				bestdist = dist;
+				bestdx = deltax;
+				bestdy = 0;
+			}
+			stale = rcdist( porg - deltax, blk, x-deltax, y, lx, h, &dist );
+			allstale &= stale;	
+			if( !stale && dist < bestdist && x-deltax >= xlow)
+			{
+				bestdist = dist;
+				bestdx = -deltax;
+				bestdy = 0;
+			}
+
+		}
+			
+		if( deltay > 1 )	
+		{
+			stale = rcdist_table( porg + deltay*lx, blk, x, y+deltay, lx, h, &dist );
+			allstale &= stale;	
+			if( !stale && dist < bestdist && y+deltay <= yhigh)
+			{
+				bestdist = dist;
+				bestdx = 0;
+				bestdy = deltay;
+			}
+			stale = rcdist_table( porg - deltay*lx, blk, x, y-deltay, lx, h, &dist );
+			allstale &= stale;
+			if( !stale && dist < bestdist && x-deltay >= ylow )
+			{
+				bestdist = dist;
+				bestdx = 0;
+				bestdy = -deltay;
+			}
+
+			
+		}
+			
+
+		/*printf( "SEARCH X=%d Y=%d DX=%d DY=%d BDX=%d BDY=%d D=%d\n",
+		  x, y, deltax, deltay, bestdx, bestdy, bestdist );
+		*/
+		/* Heuristic: if neither quadrant works we simply assume they're overshoots.  We assume
+		   diagonals need not be considered because it would make a quadrant better than the current....
+		*/
+			
+		x += bestdx;
+		porg += bestdx;
+		y += bestdy;
+		porg += lx*bestdy;
+			
+		/* Look closer if not different position is better */
+		if( bestdx == 0 && bestdy == 0 )
+		{
+			/* int unchangeable_x, unchangeable_y; */
+			deltax /= 2;
+			deltay /= 2;
+			/* As a a rule of thumb, once the search narrows we are stuck with some of the match.
+			   If both delta's 1/2 of match block then we're stuck with 1/4.
+			   If both delta's are 1/4 then we're stuck with 3/4's
+			   However, since its a fudge we add a 25% safety margin to allow for multi-step shifts.
+			   We don't actually bother doing any hard sums since we hit here when we're already at the
+			   1/4 stage which is good enough for an approximation...
+			*/
+			/* unchangeable_x = 16 - deltax;
+			   unchangeable_y = h - deltay; */
+			if( bestdist / 4 > threshold+(threshold>>2) )
+			{
+				/*printf("Threshold abort!\n");*/
+				break;
+			}
+		}
+
+		/* If we have considered no fresh locations we also abort the search early  
+		   One refinement might be to take into account search radius...
+		*/
+		if( allstale )
+		{
+			/*printf( "Staleness abort\n" );*/
+			break;
+		}
+		allstale = 1;
+	}
+
+	*pbestx = x;
+	*pbesty = y;
+	*pbestd = bestdist;
+			
+}
+
+/*
+	best_graddesc_match
+	
+	Find a good motion compensation search based on local optima in row-col sums.
+	
+	TODO: This *not* the right way to do this.  A priority queue based approach
+	"seeded" with the start 24-pitch grid would probably work much better
+	as it would allow a much efficient means of increasing precision in the event
+	of no good match being found first time around... 
+*/
+
+
+static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh, 
+								 unsigned char *org, uint8_t *forg, 
+								 unsigned char *blk,  uint8_t *fblk, 
+								 int lx, int h, 
+								 int *pdmin, int *pimin, int *pjmin )
+{
+  	unsigned char *orgblk;
+	int i,j;
+	int bestrcdist = 256*255;		/* Can't be lazy and use INT_MAX as it gets used in a thresholding
+									   calculation and we don't want to cause overflows */
+	int bestdist = 7891011;
+	int bestx, besty;
+	int dist,x,y;
+	int d;
+	int onepel_radius;
+		
+	freshensearchtable;		/* Ensure we can recognise fresh entries in the search cache */
+
+	/* Find the most promising starting point in the search box */
+
+	for( j = jlow+8; j <= jhigh; j += 24 )
+	{
+		for( i = ilow+8; i <= ihigh; i += 24 )
+		{
+			/*printf( "Starting candidate %d %d \n", i, j );*/
+			local_optimum( org, 	blk, i, j, ilow, ihigh, jlow, jhigh, bestrcdist, lx, h, &dist, &x, &y );
+			if( dist < bestrcdist )
+			{
+				bestrcdist = dist;
+			}
+			/* Now compute 1*1 pel distance measure (we could even try a DCT here  for real accuracy... *) 
+			   And use that as the basis for our final selection of the best match position.
+			*/
+			dist = (*pdist1_)00(org+x+y*lx, blk, lx, h, bestdist);
+			if ( dist < bestdist  )
+			{
+				bestdist = dist;
+				bestx = x;
+				besty = y;
+				if( bestdist < onepel_threshold.threshold )
+				{
+					i = ihigh;
+					j = jhigh;
+				}
+			}
+		}
+	}
+		
+	/* We now try to figure out how hard to look for alternative matches based on the crumminess of
+	   the results we have obtained...
+	*/
+	onepel_radius = bestdist / onepel_threshold.threshold ;
+		
+	/* We're already good we simply look for a bit of polish */
+	if( onepel_radius < 1 )
+		onepel_radius = 1;
+		
+	/* If its really bad we simply search the whole box using a coarse 2*2 pel search first and pick out 
+	   the best local area and then zero in with 1*1 pel search.
+	*/
+		
+	if( onepel_radius > 3 )
+	{
+		int flx = lx / 2;
+		int fh = h / 2;
+		uint8_t *forgblk;
+		int bestfdist;
+		int filow = bestx - 16  /* ilow */;
+		int fihigh = bestx + 16  /*ihigh */;
+		int fjlow =  besty - 10 /*jlow  */;
+		int fjhigh = besty + 10 /*jhigh*/;
+					
+		if( filow < ilow )
+			filow = ilow;
+		if( fihigh > ihigh )
+			fihigh = ihigh;
+		if( fjlow < jlow )
+			fjlow = jlow;
+		if( fjhigh > jhigh )
+			fjhigh = jhigh;
+						
+		/* Now find the best 2*2 pel match in the neighbourhood.  This is probably overkill.
+		   TODO: There is almost invariably *some* locality so should be tuned later... */
+	
+		bestfdist = INT_MAX;
+		forgblk = forg+ (fjlow>>1)*flx;
+		for( j = fjlow; j <= fjhigh; j += 2 )
+		{
+			for( i = filow; i <= fihigh; i += 2 )
+			{
+				dist = *pfdist1( forgblk+(i>>1), fblk, flx, fh );	
+				if( dist < bestfdist )
+				{
+					bestfdist = dist;
+					bestx = i;
+					besty = j;
+				}
+			}
+			forgblk += flx;
+		}
+
+		/* The best 1*1 based on it... going upward only */
+		onepel_radius = 1;   
+		bestdist = INT_MAX;
+				
+		ilow =bestx;
+		jlow =besty;
+	}
+	else
+	{
+		/* Now the best 1*1 pel match... down as well as up */
+		if ( bestx-onepel_radius > 0 )
+			ilow = bestx-onepel_radius;
+		if( besty-onepel_radius > 0 )
+			jlow = besty-onepel_radius;
+				
+	}
+			
+			
+	if (bestx+onepel_radius <= width-16 )
+		ihigh = bestx+onepel_radius;
+
+	if( besty+onepel_radius <= height-16 )
+		jhigh = besty+onepel_radius;
+
+	orgblk = org +jlow*lx;
+	for( j = jlow; j <= jhigh; ++j )
+	{
+		for( i = ilow; i <= ihigh; ++i)
+		{
+			dist = (*pdist1_)00( orgblk+i, blk, lx, h, bestdist );	
+			if( dist < bestdist )
+			{
+				/*
+				  printf("Correction to estimate %d %d dist %d (%d %d dist %d )\n", 
+				  i,j, dist, bestx, besty, bestdist );
+				*/
+				bestdist = dist;
+				bestx = i;
+				besty = j;
+			}
+		}
+		orgblk += lx;
+	}
+
+	if( bestdist > 65000 )
+	{
+		printf( "Screwed bestdist %d %d %d %d!\n", ilow, ihigh, jlow, jhigh );
+		exit(1);
+	}
+
+	/*printf( "RC local minimum at %d %d rcdist %d dist %d\n", bestx, besty, bestrcdist, bestdist );
+	 */
+		
+	update_threshold( &onepel_threshold, bestdist );
+	*pimin = bestx;
+	*pjmin = besty;
+	*pdmin = bestdist;
+
+
+}														
+
+#endif
+
+
+#ifdef TEST_RCSUM_SEARCH
+
+/*
+  Build a distance based heap of the 4*4 sub-sampled motion compensations.
+
+  N.b. You'd think it would be worth exploiting the fact that using
+  MMX/SSE you can do two adjacent 4*4 blocks of 4*4 sums in about the
+  same as one.  Well it does save some time but its really very little...
+  
+  Similarly, you might think it worth collecting first on 8*8
+  boundaries and then considering neighbours of the better ones.
+  This makes stuff faster but apprecieably reduces the quality of the
+  matches found so its a no-no in my book...
+
+*/
+
+extern int rcdist_mmx( unsigned char *org, uint16_t *sums, int lx, int h );
+  
+static int build_rcsub44_heap( int ilow, int ihigh, int jlow, int jhigh, 
+unsigned char *org, unsigned char *blk, 
+uint16_t *blkcsums, *blkrsums,
+							  int lx, int h )
+{
+	int i,j;
+	unsigned char *orgblk, *old_orgblk;
+	uint16_t *orgcsums, *orgrsums,;
+	uint16_t blksums[32];
+	
+	
+	rcsums( blk, blksums, lx, h );
+	sub44_heap_size = 0;
+    /* Invariant:  orgblk = org+(i)+qlx*(j) */
+    orgblk = org+(ilow)+lx*(jlow);
+
+	for( j = jlow; j <= jhigh; j += 4 )
+	  {
+		old_orgblk = orgblk;
+		for( i = ilow; i <= ihigh; i += 4 )
+		  {
+		    sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+		    sub44_match_heap[sub44_heap_size].weight = rcdist_mmx( orgblk,blksums,lx,h);
+		    sub44_matches[sub44_heap_size].dx = i;
+		    sub44_matches[sub44_heap_size].dy = j;
+		    ++sub44_heap_size;
+			orgblk += 4;
+		  }
+		orgblk = old_orgblk + lx*4;
+	  }
+	  
+	heapify( sub44_match_heap, sub44_heap_size );
+	return sub44_heap_size;
+
+}
+
+
+/* Build a distance based heap of absolute row-col sum differences
+ on a 2*2 grid...
+*/
+
+
+static int build_rcsub22_heap(int ihigh, int jhigh, 
+					        unsigned char *org,  unsigned char *blk, 
+							int lx, int h,  int searched_sub44_size )
+{
+  int k,s;
+  sortelt distrec;
+  blockxy matchrec;
+  uint8_t *orgblk;
+  int dist_sum  = 0;
+  int best_fast_dist = INT_MAX;
+  uint16_t blksums[32];
+	
+  rcsums( blk, blksums, lx, h ); 
+  
+  sub22_heap_size = 0;
+  for( k = 0; k < searched_sub44_size; ++k )
+	{
+	  heap_extract( sub44_match_heap, &sub44_heap_size, &distrec );
+	  matchrec = sub44_matches[distrec.index];
+	  orgblk =  org + (matchrec.dy>>1)*lx +(matchrec.dx);
+		  
+	  sub22_matches[sub22_heap_size].dx = matchrec.dx;
+	  sub22_matches[sub22_heap_size].dy = matchrec.dy;
+	  s = rcdist_mmx( orgblk,blksums,lx,h);
+	  sub22_match_heap[sub22_heap_size].weight = s;
+	  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+
+	  if( s < best_fast_dist )
+		  best_fast_dist = s;
+	  ++sub22_heap_size;
+	  dist_sum += s;
+	  
+		  
+	 if(  matchrec.dy+2 <= jhigh )
+	   {
+	   	  sub22_matches[sub22_heap_size].dx = matchrec.dx;
+		  sub22_matches[sub22_heap_size].dy = matchrec.dy+2;
+		  s = rcdist_mmx( orgblk+lx,blksums,lx,h);
+		  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+		  sub22_match_heap[sub22_heap_size].weight = s;
+		  if( s < best_fast_dist )
+				best_fast_dist = s;
+		  ++sub22_heap_size;
+		  dist_sum += s;
+		} 
+		  
+	  if( matchrec.dx+2 <= ihigh )
+		  {
+		  	  sub22_matches[sub22_heap_size].dx = matchrec.dx+2;
+			  sub22_matches[sub22_heap_size].dy = matchrec.dy;
+			  s = rcdist_mmx( orgblk+1,blksums,lx,h);
+			  sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+			  sub22_match_heap[sub22_heap_size].weight = s;
+			  if( s < best_fast_dist )
+					best_fast_dist = s;
+			  ++sub22_heap_size;
+			  dist_sum += s;
+			  
+			 if( matchrec.dy+2 <= jhigh )
+				{
+					sub22_matches[sub22_heap_size].dx = matchrec.dx+2;
+					sub22_matches[sub22_heap_size].dy = matchrec.dy+2;
+				    s = rcdist_mmx( orgblk+lx+1,blk,lx,h);
+					sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+					sub22_match_heap[sub22_heap_size].weight = s;
+					if( s < best_fast_dist )
+						  best_fast_dist = s;
+					++sub22_heap_size;
+					dist_sum += s;
+				}
+		 }
+
+	  /* If we're thresholding check  got a match below the threshold. 
+	*and* .. stop looking... we've already found a good candidate...
+	*/
+	  if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
+	  { 
+		  break;
+	  }
+	}
+
+  /* Since heapification is relatively expensive we do a swift
+	 pre-processing step throwing out all candidates that
+	 are heavier than the heap average */
+
+  sub22_heap_size = thin_vector(  sub22_match_heap, 
+                                 dist_sum / sub22_heap_size, sub22_heap_size );
+
+  heapify( sub22_match_heap, sub22_heap_size );
+  /* Update the fast motion match average using the best 2*2 match */
+  update_threshold( &twopel_threshold, smallest_weight );
+
+  return sub22_heap_size;
+}
+#endif
+
+
+
+/* 
+ *   Vector of motion compensations plus a heap of the associated
+ *   weights (macro-block distances).
+ *  TODO: Should be put into nice tidy records...
+ */
+
+#define MAX_COARSE_HEAP_SIZE 100*100
+
+#if HALF_HEAPS
+static sortelt sub22_match_heap[MAX_COARSE_HEAP_SIZE];
+static blockxy sub22_matches[MAX_COARSE_HEAP_SIZE];
+#endif
+#if HEAPS
+static sortelt sub44_match_heap[MAX_COARSE_HEAP_SIZE];
+static blockxy sub44_matches[MAX_COARSE_HEAP_SIZE];
+
+static sortelt rough_match_heap[MAX_COARSE_HEAP_SIZE];
+static blockxy rough_matches[MAX_COARSE_HEAP_SIZE];
+#endif
+static int rough_heap_size;
+static int sub22_heap_size;
+static int sub44_heap_size;
+
+/*
+  Build a distance based heap of the 4*4 sub-sampled motion compensations.
+
+  N.b. You'd think it would be worth exploiting the fact that using
+  MMX/SSE you can do two adjacent 4*4 blocks of 4*4 sums in about the
+  same as one.  Well it does save some time but its really very little...
+  
+  Similarly, you might think it worth collecting first on 8*8
+  boundaries and then considering neighbours of the better ones.
+  This makes stuff faster but appreciably reduces the quality of the
+  matches found so it is a no-no in my book...
+
+*/
+#if ! HEAPS || ! HALF_HEAPS
 static void sub_mean_reduction( mc_result_s *matches, int len, 
 								int times,
 							    int *newlen_res, int *minweight_res)
@@ -1609,59 +2502,38 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 	*minweight_res = min_weight;
 }
 
-/*
-  Build a vector of the top   4*4 sub-sampled motion compensations in the box
-  (ilow,jlow) to (ihigh,jhigh).
+static mc_result_s finalres[100*100];
+#endif
+#if ! HALF_HEAPS
+static mc_result_s halfres[100*100];
+#endif
 
-	The algorithm is as follows:
-	1. coarse matches on an 8*8 grid of positions are collected that fall below
-	a (very conservative) sad threshold (basically 50% more than moving average of
-	the mean sad of such matches).
-	
-	2. The worse than-average matches are discarded.
-	
-	3. The remaining coarse matches are expanded with the left/lower neighbouring
-	4*4 grid matches. Again only those better than a threshold (this time the mean
-	of the 8*8 grid matches are retained.
-	
-	4. Multiple passes are made discarding worse than-average matches.  The number of
-	passes is specified by the user.  The default it 2 (leaving roughly 1/4 of the matches).
-	
-	The net result is very fast and find good matches if they're to be found.  I.e. the
-	penalty over exhaustive search is pretty low.
-	
-	NOTE: The "discard below average" trick depends critically on having some variation in
-	the matches.  The slight penalty imposed for distant matches (reasonably since the 
-	motion vectors have to be encoded) is *vital* as otherwise pathologically bad
-	performance results on highly uniform images.
-	
-	TODO: We should probably allow the user to eliminate the initial thinning of 8*8
-	grid matches if ultimate quality is demanded (e.g. for low bit-rate applications).
-
-*/
-
-
-static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh, 
+static int build_sub44_heap( int ilow, int ihigh, int jlow, int jhigh, 
 							int i0, int j0,
-							uint8_t *s44org, uint8_t *s44blk, int qlx, int qh )
+							uint8_t *qorg, uint8_t *qblk, int qlx, int qh )
 {
-	uint8_t *s44orgblk;
+	uint8_t *qorgblk;
+	int k;
+	int dist_sum;
+#if HEAPS
+	int i,j;
+	uint8_t *old_qorgblk;
+	int s1,s2;
+	int best_sub44_dist;
+	sortelt distrec;
+	blockxy matchrec;
+	int searched_rough_size;
+#else
 	int istrt = ilow-i0;
 	int jstrt = jlow-j0;
 	int iend = ihigh-i0;
 	int jend = jhigh-j0;
+	
 	int mean_weight;
-
-#ifdef X86_CPU
-	int k;
 	int rangex, rangey;
-	static int rough_num_mcomps;
-	static mc_result_s rough_mcomps[MAX_44_MATCHES/4];
-#else
-	int i,j;
-	int s1;
-	uint8_t *old_s44orgblk;
+	static mc_result_s roughres[50*50];
 #endif
+
 	/* N.b. we may ignore the right hand block of the pair going over the
 	   right edge as we have carefully allocated the buffer oversize to ensure
 	   no memory faults.  The later motion compensation calculations
@@ -1669,59 +2541,157 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 	   out-of-range blocks...
 	*/
 
+	dist_sum = 0;
+	sub44_heap_size = 0;
 
-	sub44_num_mcomps = 0;
-#ifndef X86_CPU
-		/* Exhaustive search on 4*4 sub-sampled data.  This is affordable because
-		it is only 16th of the size of the real 1-pel data */
-		
-		/* TODO: Really this should do a 2-stage search first on 8*8 grid for a coarse
-		scan and then expanding the best of the 8* matches to 4*4 grid matches. However,
-		since pretty much any actual use for the moment will be using the X86 stuff below
-		its not a high priority */
-		
-		/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
-		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
-		for( j = jstrt; j <= jend; j += 4 )
+#if HEAPS
+	if(  nodual_qdist )
+	{
+		/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+		for( j = jlow; j <= jhigh; j += 4 )
 		{
-			old_s44orgblk = s44orgblk;
-			for( i = istrt; i <= iend; i += 4 )
+			old_qorgblk = qorgblk;
+			for( i = ilow; i <= ihigh; i += 4 )
 			{
-				s1 = ((*pqdist1)( s44orgblk,s44blk,qlx,qh) & 0xffff) + intabs(i-i0) + intabs(j-j0);
-				if( s1 < sub44_coarse_threshold )
-				{
-					sub44_mcomps[sub44_num_mcomps].x = i;
-					sub44_mcomps[sub44_num_mcomps].y = j;
-					sub44_mcomps[sub44_num_mcomps].blk = s44orgblk;
-					sub44_mcomps[sub44_num_mcomps].weight = s1 ;
-					++sub44_num_mcomps;
-				}
-				s44orgblk += 1;
+				s1 = ((*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff)
+					+ intabs(i-i0) + intabs(j-j0);
+				sub44_matches[sub44_heap_size].x = i;
+				sub44_matches[sub44_heap_size].y = j;
+				sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+				sub44_match_heap[sub44_heap_size].weight = s1 ;
+				dist_sum += s1;
+				++sub44_heap_size;
+				qorgblk += 1;
 			}
-			s44orgblk = old_s44orgblk + qlx;
+			qorgblk = old_qorgblk + qlx;
 		}
-			
-		sub_mean_reduction( sub44_mcomps, rough_num_mcomps, 1,
-							&rough_num_mcomps, &mean_weight);
-		sub44_coarse_threshold = 
-			intmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
-		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, mc_44_red,
-								     &sub44_num_mcomps, &mean_weight);
+		heapify( sub44_match_heap, sub44_heap_size );
+	}
+	else
+	{
+		rough_heap_size = 0;
+		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+		for( j = jlow; j <= jhigh; j += 8 )
+		{
+			old_qorgblk = qorgblk;
+			k = 0;
+			for( i = ilow; i <= ihigh; i+= 8  )
+			{
+				s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
+				s2 = ((s1 >> 16) & 0xffff);
+				s1 = (s1 & 0xffff);
+				s2 += intabs(i+8-i0) + intabs(j-j0);
+				s1 += intabs(i-i0) + intabs(j-j0);
+				dist_sum += s1+s2;
+				rough_match_heap[rough_heap_size].weight = s1;
+				rough_match_heap[rough_heap_size].index = rough_heap_size;	
+				rough_match_heap[rough_heap_size+1].weight = s2;
+				rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
+				rough_matches[rough_heap_size].x = i;
+				rough_matches[rough_heap_size].y = j;
+				rough_matches[rough_heap_size+1].x = i+16;
+				rough_matches[rough_heap_size+1].y = j;
+				/* A sneaky fast way way of discarding out-of-limits estimates ... */
+				rough_heap_size += 1 + (i+16 <= ihigh);
+
+				/* NOTE:  If you change the grid size you *must* adjust this code... too */
+	
+				qorgblk+=2;
+				k = (k+2)&3;
+				/* Original branchy code... so you can see what this stuff is meant to
+				   do!!!!
+				   if( k == 0 )
+				   {
+				   qorgblk += 4;
+				   i += 16;
+				   }
+				*/
+				qorgblk += (k==0)<<2;
+				i += (k==0)<<4;
+		  
+			}
+			qorgblk = old_qorgblk + (qlx<<1);
+		}
+
+		/* Statistically thin the rough matches to roughly the upper quartile */
+		/*
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		dist_sum = 0;
+		for( i = 0; i < rough_heap_size; ++i )
+			dist_sum += rough_match_heap[i].weight;
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		dist_sum = 0;
+		for( i = 0; i < rough_heap_size; ++i )
+			dist_sum += rough_match_heap[i].weight;
+		rough_heap_size = thin_vector(  rough_match_heap, 
+										dist_sum / rough_heap_size, rough_heap_size );
+		searched_rough_size = rough_heap_size;
+		*/
+
+
+		heapify( rough_match_heap, rough_heap_size );
+		best_sub44_dist = rough_match_heap[0].weight;	
+		searched_rough_size = 1+rough_heap_size / 6;
+		best_sub44_dist = rough_match_heap[0].weight;	
+
+		/* 
+		   We now use the good matches on 8-pel boundaries 
+		   as starting points for matches on 4-pel boundaries...
+		*/
+
+		dist_sum = 0;
+		sub44_heap_size = 0;
+		for( k = 0; k < searched_rough_size; ++k )
+		{
+			heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+			matchrec = rough_matches[distrec.index];
+			qorgblk =  qorg + (matchrec.y>>2)*qlx +(matchrec.x>>2);
+			sub44_matches[sub44_heap_size].x = matchrec.x;
+			sub44_matches[sub44_heap_size].y = matchrec.y;
+			sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+			sub44_match_heap[sub44_heap_size].weight = distrec.weight;
+			dist_sum += distrec.weight;	
+			++sub44_heap_size;	  
+
+			for( i = 0; i < 4; ++i )
+			{
+				int x, y;
+				x = matchrec.x + (i & 0x1)*4;
+				y = matchrec.y + (i >>1)*4;
+				s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
+				dist_sum += s1;
+				if( s1 < best_sub44_dist )
+					best_sub44_dist = s1;
+				sub44_match_heap[sub44_heap_size].weight = s1;
+				sub44_match_heap[sub44_heap_size].index = sub44_heap_size;
+				sub44_matches[sub44_heap_size].x = x;
+				sub44_matches[sub44_heap_size].y = y;
+				sub44_heap_size += (x <= ihigh && y <= jhigh);
+
+				if( i == 2 )
+					qorgblk += qlx;
+			}
+		}
+		heapify( sub44_match_heap, sub44_heap_size );
+	}
 #else
-		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
-		rough_num_mcomps
-			= (*pqblock_8grid_dists)( s44orgblk, s44blk,
+		qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+		rough_heap_size
+			= (*pqblock_8grid_dists)( qorgblk, qblk,
 								  istrt, jstrt,
 								  iend, jend, 
 								  qh, qlx, 
 								  sub44_coarse_threshold,
-								  rough_mcomps);
+								  roughres);
 		
 		/* If the initial thresholding didn't filter out much (very self-similar image)
 			we reduce twice, otherwise only once */
 			
-		sub_mean_reduction( rough_mcomps, rough_num_mcomps, 1,
-							&rough_num_mcomps, &mean_weight);
+		sub_mean_reduction( roughres, rough_heap_size, 1,
+							&rough_heap_size, &mean_weight);
 		sub44_coarse_threshold = 
 			intmin( COARSE_44_SAD_THRESHOLD, 3/2*mean_weight );
 		/* 
@@ -1729,30 +2699,30 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 		   as starting points for matches on 4-pel boundaries...
 		*/
 
-		sub44_num_mcomps = 0;
-		for( k = 0; k < rough_num_mcomps; ++k )
+		sub44_heap_size = 0;
+		for( k = 0; k < rough_heap_size; ++k )
 		{
-			sub44_mcomps[sub44_num_mcomps] = rough_mcomps[k];
-			rangex = (rough_mcomps[k].x < iend);
-			rangey = (rough_mcomps[k].y < jend);
-			++sub44_num_mcomps;
-			sub44_num_mcomps +=
-				(*pqblock_near_dist)( rough_mcomps[k].blk, s44blk, 
-									 rough_mcomps[k].x, rough_mcomps[k].y,
+			finalres[sub44_heap_size] = roughres[k];
+			rangex = (roughres[k].x < iend);
+			rangey = (roughres[k].y < jend);
+			++sub44_heap_size;
+			sub44_heap_size +=
+				(*pqblock_near_dist)( roughres[k].blk, qblk, 
+									 roughres[k].x, roughres[k].y,
 									 rangex, rangey,
 									 mean_weight,
-									 qh, qlx, sub44_mcomps+sub44_num_mcomps);
+									 qh, qlx, finalres+sub44_heap_size);
 		}
 
-		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, mc_44_red,
-								     &sub44_num_mcomps, &mean_weight);
+		sub_mean_reduction( finalres, sub44_heap_size, mc_44_red,
+								     &sub44_heap_size, &mean_weight);
 
 #endif
-	return sub44_num_mcomps;
+	return sub44_heap_size;
 }
 
 
-/* Build a vector of the best 2*2 sub-sampled motion
+/* Build a distance based heap of the 2*2 sub-sampled motion
   compensations using the best 4*4 matches as starting points.  As
   with with the 4*4 matches We don't collect them densely as they're
   just search starting points for 1-pel search and ones that are 1 out
@@ -1761,67 +2731,113 @@ static int build_sub44_mcomps( int ilow, int ihigh, int jlow, int jhigh,
 */
 
 
-static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh, 
-						   uint8_t *s22org,  uint8_t *s22blk, 
+static int build_sub22_heap( int i0,  int j0, int ihigh, int jhigh, 
+						   uint8_t *forg,  uint8_t *fblk, 
 						   int flx, int fh,  int searched_sub44_size )
 {
 	int i,k,s;
-
-
+#if HEAPS
+	sortelt distrec;
+#endif
+#if ! HALF_HEAPS
 	int min_weight;
 	int ilim = ihigh-i0;
 	int jlim = jhigh-j0;
+#else
+	int ilim = ihigh;
+	int jlim = jhigh;
+	int best_fast_dist = 100000;
+#endif
 	blockxy matchrec;
-	uint8_t *s22orgblk;
+	uint8_t *forgblk;
 	int dist_sum  = 0;
   
-	sub22_num_mcomps = 0;
+	sub22_heap_size = 0;
 	for( k = 0; k < searched_sub44_size; ++k )
 	{
-
-		matchrec.x = sub44_mcomps[k].x;
-		matchrec.y = sub44_mcomps[k].y;
-		s22orgblk =  s22org + ((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
+#if HEAPS
+		heap_extract( sub44_match_heap, &sub44_heap_size, &distrec );
+		matchrec = sub44_matches[distrec.index];
+		forgblk =  forg + ((matchrec.y)>>1)*flx +((matchrec.x)>>1);
+#else
+#if HALF_HEAPS
+		matchrec.x = ilow+finalres[k].x;
+		matchrec.y = jlow+finalres[k].y;
+		forgblk =  forg + ((matchrec.y)>>1)*flx +((matchrec.x)>>1);
+#else
+		matchrec.x = finalres[k].x;
+		matchrec.y = finalres[k].y;
+		forgblk =  forg + ((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
+#endif
+#endif
 		  
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{
-				s = (*pfdist1)( s22orgblk,s22blk,flx,fh);
-				sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
-				sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
-				sub22_mcomps[sub22_num_mcomps].weight = s;
-				++sub22_num_mcomps;
+				s = (*pfdist1)( forgblk,fblk,flx,fh);
+#if HALF_HEAPS
+				sub22_matches[sub22_heap_size] = matchrec;
+				sub22_match_heap[sub22_heap_size].weight = s;
+				sub22_match_heap[sub22_heap_size].index = sub22_heap_size;
+				best_fast_dist = fastmin( s, best_fast_dist );
+#else
+				halfres[sub22_heap_size].x = (int8_t)matchrec.x;
+				halfres[sub22_heap_size].y = (int8_t)matchrec.y;
+				halfres[sub22_heap_size].weight = s;
+#endif
+
+				++sub22_heap_size;
 				dist_sum += s;
 			}
 
 			if( i == 1 )
 			{
-				s22orgblk += flx-1;
+				forgblk += flx-1;
 				matchrec.x -= 2;
 				matchrec.y += 2;
 			}
 			else
 			{
-				s22orgblk += 1;
+				forgblk += 1;
 				matchrec.x += 2;
 				
 			}
 		}
 
+
+		/* If we're thresholding check  got a match below the threshold. 
+		 *and* .. stop looking... we've already found a good candidate...
+		 */
+#if HALF_HEAPS
+		if( fast_mc_threshold && best_fast_dist < twopel_threshold.threshold )
+		{ 
+			break;
+		}
+#endif
 	}
 
 	
-	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, mc_22_red,
-						&sub22_num_mcomps, &min_weight );
-	return sub22_num_mcomps;
+	/* Since heapification is relatively expensive we do a swift
+	   pre-processing step throwing out all candidates that
+	   are heavier than the heap average */
+#if HALF_HEAPS	
+	sub22_heap_size = thin_vector(  sub22_match_heap, 
+								   dist_sum / sub22_heap_size, sub22_heap_size );
+	heapify( sub22_match_heap, sub22_heap_size );
+	update_threshold( &twopel_threshold, sub22_match_heap[0].weight );
+#else
+	sub_mean_reduction( halfres, sub22_heap_size, mc_22_red,
+						&sub22_heap_size, &min_weight );
+#endif  
+	/* Update the fast motion match average using the best 2*2 match */
+	return sub22_heap_size;
 }
 
 /*
-  Search for the best 1-pel match within 1-pel of a good 2*2-pel match.
-	TODO: Its a bit silly to cart around absolute M/C co-ordinates that
-	eventually get turned into relative ones anyway...
+  Search for the best 1-pel match with 1-pel of a good 2*2-pel match.
 */
+
 
 
 static void find_best_one_pel( uint8_t *org, uint8_t *blk,
@@ -1839,56 +2855,74 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	blockxy minpos = res->pos;
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
+#if HALF_HEAPS
+	sortelt distrec;
+#endif
 	int penalty;
 	int init_search;
 	int init_size;
 	blockxy matchrec;
   
  
-	init_search = searched_size;
-	init_size = sub22_num_mcomps;
-	for( k = 0; k < searched_size; ++k )
-	{	
-		matchrec.x = ilow + sub22_mcomps[k].x;
-		matchrec.y = jlow + sub22_mcomps[k].y;
-		orgblk = org + matchrec.x+lx*matchrec.y;
-		penalty = abs(matchrec.x-i0)+abs(matchrec.y-j0);
-	  
-		if( matchrec.x <= xmax && matchrec.y <= ymax )
-		{
+	/* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+	/* It can happen (rarely) that the best matches are actually illegal.
+	   In that case we have to carry on looking... */
+#if HALF_HEAPS
+	do {
+#endif
+		init_search = searched_size;
+		init_size = sub22_heap_size;
+		for( k = 0; k < searched_size; ++k )
+		{	
+#if HALF_HEAPS
+			heap_extract( sub22_match_heap, &sub22_heap_size, &distrec );
+			matchrec = sub22_matches[distrec.index];
+#else
+			matchrec.x = ilow + halfres[k].x;
+			matchrec.y = jlow + halfres[k].y;
+#endif
+			orgblk = org + matchrec.x+lx*matchrec.y;
+			penalty = abs(matchrec.x-i0)+abs(matchrec.y-j0);
+		  
+			if( matchrec.x <= xmax && matchrec.y <= ymax )
+			{
 
-			d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
-			if (d<dmin)
-			{
-				dmin = d;
-				minpos = matchrec;
-			}
-			d = penalty+(*pdist1_00)(orgblk+1,blk,lx,h, dmin);
-			if (d<dmin && (matchrec.x < xmax))
-			{
-				dmin = d;
-				minpos.x = matchrec.x+1;
-				minpos.y = matchrec.y;
+				d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
+				if (d<dmin)
+				{
+					dmin = d;
+					minpos = matchrec;
+				}
+				d = penalty+(*pdist1_00)(orgblk+1,blk,lx,h, dmin);
+				if (d<dmin && (matchrec.x < xmax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x+1;
+					minpos.y = matchrec.y;
+				}
+
+				d = penalty+(*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
+				if( (d<dmin) && (matchrec.y < ymax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x;
+					minpos.y = matchrec.y+1;
+				}
+				d = penalty+(*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
+				if ( (d<dmin) && (matchrec.y < ymax) && (matchrec.x < xmax))
+				{
+					dmin = d;
+					minpos.x = matchrec.x+1;
+					minpos.y = matchrec.y+1;
+				}      
 			}
 
-			d = penalty+(*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
-			if( (d<dmin) && (matchrec.y < ymax))
-			{
-				dmin = d;
-				minpos.x = matchrec.x;
-				minpos.y = matchrec.y+1;
-			}
-			d = penalty+(*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
-			if ( (d<dmin) && (matchrec.y < ymax) && (matchrec.x < xmax))
-			{
-				dmin = d;
-				minpos.x = matchrec.x+1;
-				minpos.y = matchrec.y+1;
-			}      
 		}
+#if HALF_HEAPS
+		searched_size = sub22_heap_size;
 
-	}
-
+	} while (sub22_heap_size>0 && dmin == INT_MAX);
+#endif
 	res->pos = minpos;
 	res->blk = org+minpos.x+lx*minpos.y;
 	res->sad = dmin;
@@ -1903,7 +2937,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
  * optimal and almost always very close or optimal.
  *
  * blk: top left pel of (16*h) block
- * s22blk: top element of fast motion compensation block corresponding to blk
+ * fblk: top element of fast motion compensation block corresponding to blk
  * h: height of block
  * lx: distance (in bytes) of vertically adjacent pels in ref,blk
  * org: top left pel of source reference picture
@@ -1932,19 +2966,22 @@ static void fullsearch(
 	/* int imin, jmin, dmin */
 	int i,j,ilow,ihigh,jlow,jhigh;
 	int d;
+	int sxy;
+	int searched_size;
 
 	/* NOTE: Surprisingly, the initial motion compensation search
 	   works better when the original image not the reference (reconstructed)
 	   image is used. 
 	*/
-	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset);
-	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset);
+	uint8_t *forg = (uint8_t*)(org+fsubsample_offset);
+	uint8_t *qorg = (uint8_t*)(org+qsubsample_offset);
 	uint8_t *orgblk;
 	int flx = lx >> 1;
 	int qlx = lx >> 2;
 	int fh = h >> 1;
 	int qh = h >> 2;
 
+	sxy = (sx>sy) ? sx : sy;
 
 	/* xmax and ymax into more useful form... */
 	xmax -= 16;
@@ -1958,7 +2995,7 @@ static void fullsearch(
 	   in the initial 4*4 pel search.  This is handled by the
 	   parameter checking/processing code in readparmfile() */
   
-	/* Create a distance-order mcomps of possible motion compensations
+	/* Create a distance-order heap of possible motion compensations
 	  based on the fast estimation data - 4*4 pel sums (4*4
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
 	jlow = j0-sy;
@@ -1971,33 +3008,64 @@ static void fullsearch(
 	ihigh = ihigh > xmax ? xmax : ihigh;
 
 
-	sub44_num_mcomps = build_sub44_mcomps( ilow, ihigh, jlow, jhigh, 
+	sub44_heap_size = build_sub44_heap( ilow, ihigh, jlow, jhigh, 
 									  i0, j0,
-									  s44org, 
+									  qorg, 
 									  ssblk->qmb, qlx, qh );
-
+	/* DELETE
+	if( frame_num == 16 && i0 == 16*15 && j0 == 16*8 )
+	{
+		for( i = 0; i < sub44_heap_size; ++ i )
+		{
+			printf( "Q%03d: %03d %03d %d\n", i,
+					ilow-i0+finalres[i].x, jlow-j0+finalres[i].y, finalres[i].weight );
+		}
+	}	
+	*/
 	
-	/* Now create a distance-ordered mcomps of possible motion
+	/* Now create a distance-ordered heap of possible motion
 	   compensations based on the fast estimation data - 2*2 pel sums
 	   using the best fraction of the 4*4 estimates However we cover
 	   only coarsely... on 4-pel boundaries...  */
 
-	sub22_num_mcomps = build_sub22_mcomps( i0, j0, ihigh,  jhigh, 
-									  s22org, ssblk->fmb, flx, fh, 
-									  sub44_num_mcomps );
+
+#if HEAPS
+	searched_size = 1 + sub44_heap_size / 8;
+	if( searched_size > sub44_heap_size )
+		searched_size = sub44_heap_size;
+#else
+	searched_size = sub44_heap_size;
+#endif
+
+	sub22_heap_size = build_sub22_heap( i0, j0, ihigh,  jhigh, 
+									  forg, ssblk->fmb, flx, fh, 
+									  searched_size );
 
     /* Now choose best 1-pel match from what approximates (not exact
 	   due to the pre-processing trick with the mean) the top 1/2 of
-	   the 2*2 matches 
+	   the 2*2 matches */
+#if HALF_HEAPS  
+	searched_size = 1+ (sub22_heap_size / fast_mc_frac);
+	if( searched_size > sub22_heap_size )
+		searched_size = sub22_heap_size;
+#else
+	searched_size = sub22_heap_size;
+#endif
 
- 	   Very rarely this may fail to find matchs due to all the good
-	   looking ones being "off the edge".... hence we make sure we
-	   fall back to a 0 motion compensation in this case.	   
-	   */
+/*
+	if( i0 != sub22_matches[sub22_match_heap[0].index].x ||
+		j0 != 	sub22_matches[sub22_match_heap[0].index].y )
+	printf( "BEST HALF FROM %d %d is %d %d\n", i0, j0, 
+			sub22_matches[sub22_match_heap[0].index].x,
+			sub22_matches[sub22_match_heap[0].index].y );
+*/
 	best.sad = INT_MAX;
 	best.pos.x = i0;
 	best.pos.y = j0;
-	find_best_one_pel( org, ssblk->mb, sub22_num_mcomps,
+ 	/* Very rarely this may fail to find matchs due to all the good
+	   looking ones being "off the edge".... I ignore this as its so
+	   rare and the necessary tests costing significant time */
+	find_best_one_pel( org, ssblk->mb, searched_size,
 					   i0, j0,
 					   ilow, jlow, xmax, ymax, 
 					   lx, h, &best );
@@ -2185,12 +3253,12 @@ void check_fast_motion_data(unsigned char *blk, char *label )
   unsigned char *b, *nb;
   uint8_t *pb,*p;
   uint8_t *qb;
-  uint8_t *start_s22blk, *start_s44blk;
+  uint8_t *start_fblk, *start_qblk;
   int i;
   unsigned int mismatch;
   int nextfieldline;
-  start_s22blk = (blk+height*width);
-  start_s44blk = (blk+height*width+(height>>1)*(width>>1));
+  start_fblk = (blk+height*width);
+  start_qblk = (blk+height*width+(height>>1)*(width>>1));
 
   if (pict_struct==FRAME_PICTURE)
 	{
@@ -2202,8 +3270,8 @@ void check_fast_motion_data(unsigned char *blk, char *label )
 	}
 
 	mismatch = 0;
-	pb = start_s22blk;
-	qb = start_s44blk;
+	pb = start_fblk;
+	qb = start_qblk;
 	p = blk;
 	while( pb < qb )
 	{
@@ -2234,7 +3302,7 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 	unsigned char *b, *nb;
 	uint8_t *pb;
 	uint8_t *qb;
-	uint8_t *start_s22blk, *start_s44blk;
+	uint8_t *start_fblk, *start_qblk;
 	uint16_t *start_rowblk, *start_colblk;
 	int i;
 	int nextfieldline;
@@ -2261,16 +3329,16 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 		nextfieldline = 2*width;
 	}
 
-	start_s22blk   = blk+fsubsample_offset;
-	start_s44blk   = blk+qsubsample_offset;
+	start_fblk   = blk+fsubsample_offset;
+	start_qblk   = blk+qsubsample_offset;
 	start_rowblk = (uint16_t *)blk+rowsums_offset;
 	start_colblk = (uint16_t *)blk+colsums_offset;
 	b = blk;
 	nb = (blk+nextfieldline);
 	/* Sneaky stuff here... we can do lines in both fields at once */
-	pb = (uint8_t *) start_s22blk;
+	pb = (uint8_t *) start_fblk;
 
-	while( nb < start_s22blk )
+	while( nb < start_fblk )
 	{
 		for( i = 0; i < nextfieldline/4; ++i ) /* We're doing 4 pels horizontally at once */
 		{
@@ -2294,11 +3362,11 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 
 	nextfieldline = nextfieldline >> 1;
 
-	qb = start_s44blk;
-	b  = start_s22blk;
-	nb = (start_s22blk+nextfieldline);
+	qb = start_qblk;
+	b  = start_fblk;
+	nb = (start_fblk+nextfieldline);
 
-	while( nb < start_s44blk )
+	while( nb < start_qblk )
 	{
 		for( i = 0; i < nextfieldline/4; ++i )
 		{
@@ -2377,10 +3445,10 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 }
 
 
-static int fdist1( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
+static int fdist1( uint8_t *fblk1, uint8_t *fblk2,int flx,int fh)
 {
-	uint8_t *p1 = s22blk1;
-	uint8_t *p2 = s22blk2;
+	uint8_t *p1 = fblk1;
+	uint8_t *p2 = fblk2;
 	int s = 0;
 	int j;
 
@@ -2410,10 +3478,10 @@ static int fdist1( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
  */
 
 
-static int qdist1( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
+static int qdist1( uint8_t *qblk1, uint8_t *qblk2,int qlx,int qh)
 {
-	register uint8_t *p1 = s44blk1;
-	register uint8_t *p2 = s44blk2;
+	register uint8_t *p1 = qblk1;
+	register uint8_t *p2 = qblk2;
 	int s = 0;
 	register int diff;
 

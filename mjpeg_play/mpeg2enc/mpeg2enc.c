@@ -103,8 +103,6 @@ void Usage(char *str)
 	printf("               1 = field pictures, bottom field first\n");
 	printf("               2 = field pictures, top field first\n");
 	printf("   -r num     Search radius [0..32] (default 0: don\'t search at all)\n");
-	printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
-	printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
 	printf("   -4 num     (default: 2)\n");
 	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
 	printf("   -2 num     (default: 3)\n");
@@ -129,7 +127,7 @@ int main(argc,argv)
 
 	printf( "%d %d\n", (int)(1.0f/1.99f+0.5), (int) (-1.0f / 1.99f+0.5f) );
 
-	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:d:n:Q:v:tNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:Q:v:tNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -732,7 +730,7 @@ static void readparmfile()
 				|| frame_rate>30.0)
 			{
 				if (!quiet)
-					fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+					fprintf(stderr,"Warning: size - setting constrained_parameters_flag = 0\n");
 				constrparms = 0;
 			}
 		}
@@ -744,7 +742,7 @@ static void readparmfile()
 				if (motion_data[i].forw_hor_f_code>4)
 				{
 					if (!quiet)
-						fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+						fprintf(stderr,"Warning: hor motion search setting constrained_parameters_flag = 0\n");
 					constrparms = 0;
 					break;
 				}
@@ -752,7 +750,7 @@ static void readparmfile()
 				if (motion_data[i].forw_vert_f_code>4)
 				{
 					if (!quiet)
-						fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+						fprintf(stderr,"Warning: ver motion search setting constrained_parameters_flag = 0\n");
 					constrparms = 0;
 					break;
 				}
@@ -762,7 +760,7 @@ static void readparmfile()
 					if (motion_data[i].back_hor_f_code>4)
 					{
 						if (!quiet)
-							fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+							fprintf(stderr,"Warning: hor motion search setting constrained_parameters_flag = 0\n");
 						constrparms = 0;
 						break;
 					}
@@ -770,7 +768,7 @@ static void readparmfile()
 					if (motion_data[i].back_vert_f_code>4)
 					{
 						if (!quiet)
-							fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+							fprintf(stderr,"Warning: ver motion search setting constrained_parameters_flag = 0\n");
 						constrparms = 0;
 						break;
 					}
@@ -786,21 +784,21 @@ static void readparmfile()
 		if (!prog_seq)
 		{
 			if (!quiet)
-				fprintf(stderr,"Warning: setting progressive_sequence = 1\n");
+				fprintf(stderr,"Warning: mpeg1 - setting progressive_sequence = 1\n");
 			prog_seq = 1;
 		}
 
 		if (chroma_format!=CHROMA420)
 		{
 			if (!quiet)
-				fprintf(stderr,"Warning: setting chroma_format = 1 (4:2:0)\n");
+				fprintf(stderr,"Warning: mpeg1 - forcing chroma_format = 1 (4:2:0) - others not supported\n");
 			chroma_format = CHROMA420;
 		}
 
 		if (opt_dc_prec!=0)
 		{
 			if (!quiet)
-				fprintf(stderr,"Warning: setting intra_dc_precision = 0\n");
+				fprintf(stderr,"Warning: mpeg1 - setting intra_dc_precision = 0\n");
 			opt_dc_prec = 0;
 		}
 
@@ -808,7 +806,7 @@ static void readparmfile()
 			if (qscale_tab[i])
 			{
 				if (!quiet)
-					fprintf(stderr,"Warning: setting qscale_tab[%d] = 0\n",i);
+					fprintf(stderr,"Warning: mpeg1 - setting qscale_tab[%d] = 0\n",i);
 				qscale_tab[i] = 0;
 			}
 
@@ -816,7 +814,7 @@ static void readparmfile()
 			if (intravlc_tab[i])
 			{
 				if (!quiet)
-					fprintf(stderr,"Warning: setting intravlc_tab[%d] = 0\n",i);
+					fprintf(stderr,"Warning: mpeg1 - setting intravlc_tab[%d] = 0\n",i);
 				intravlc_tab[i] = 0;
 			}
 
@@ -824,7 +822,7 @@ static void readparmfile()
 			if (altscan_tab[i])
 			{
 				if (!quiet)
-					fprintf(stderr,"Warning: setting altscan_tab[%d] = 0\n",i);
+					fprintf(stderr,"Warning: mpeg1 - setting altscan_tab[%d] = 0\n",i);
 				altscan_tab[i] = 0;
 			}
 	}
@@ -832,28 +830,28 @@ static void readparmfile()
 	if (!mpeg1 && constrparms)
 	{
 		if (!quiet)
-			fprintf(stderr,"Warning: setting constrained_parameters_flag = 0\n");
+			fprintf(stderr,"Warning: not mpeg1 - setting constrained_parameters_flag = 0\n");
 		constrparms = 0;
 	}
 
 	if (prog_seq && !opt_prog_frame)
 	{
 		if (!quiet)
-			fprintf(stderr,"Warning: setting progressive_frame = 1\n");
+			fprintf(stderr,"Warning: prog sequence - setting progressive_frame = 1\n");
 		opt_prog_frame = 1;
 	}
 
 	if (opt_prog_frame && fieldpic)
 	{
 		if (!quiet)
-			fprintf(stderr,"Warning: setting field_pictures = 0\n");
+			fprintf(stderr,"Warning: prog frame - setting field_pictures = 0\n");
 		fieldpic = 0;
 	}
 
 	if (!opt_prog_frame && opt_repeatfirst)
 	{
 		if (!quiet)
-			fprintf(stderr,"Warning: setting repeat_first_field = 0\n");
+			fprintf(stderr,"Warning: not prog frame setting repeat_first_field = 0\n");
 		opt_repeatfirst = 0;
 	}
 
@@ -863,7 +861,7 @@ static void readparmfile()
 			if (!frame_pred_dct_tab[i])
 			{
 				if (!quiet)
-					fprintf(stderr,"Warning: setting frame_pred_frame_dct[%d] = 1\n",i);
+					fprintf(stderr,"Warning: prog frame - setting frame_pred_frame_dct[%d] = 1\n",i);
 				frame_pred_dct_tab[i] = 1;
 			}
 	}
@@ -871,7 +869,7 @@ static void readparmfile()
 	if (prog_seq && !opt_repeatfirst && opt_topfirst)
 	{
 		if (!quiet)
-			fprintf(stderr,"Warning: setting top_field_first = 0\n");
+			fprintf(stderr,"Warning: prog sequence setting top_field_first = 0\n");
 		opt_topfirst = 0;
 	}
 
@@ -951,16 +949,16 @@ static void readquantmat()
 {
 	int i,v, q;
 	FILE *fd;
-
+	load_iquant = 0;
+	load_niquant = 0;
 	if (iqname[0]=='-')
 	{
 		if( param_hires_quant )
 		{
-			load_iquant = 1;
-			intra_q[0] = 8;
-			for (i=1; i<64; i++)
+			load_iquant |= 1;
+			for (i=0; i<64; i++)
 			{
-				intra_q[i] = 16;
+				intra_q[i] = hires_intra_quantizer_matrix[i];
 			}	
 		}
 		else
@@ -1006,17 +1004,16 @@ static void readquantmat()
 
 		if( param_hires_quant )
 		{
-			load_niquant = 0;
 			for (i=0; i<64; i++)
 			{
-				intra_q[i] = 16;
+				inter_q[i] = hires_nonintra_quantizer_matrix[i];
 			}	
 		}
 		else
 		{
-			/* default non-intra matrix is all 16's. OFr our default we use something
+			/* default non-intra matrix is all 16's. For *our* default we use something
 			   more suitable for domestic analog sources... which is non-standard...*/
-			load_niquant = 1;
+			load_niquant |= 1;
 			for (i=0; i<64; i++)
 			{
 				v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);

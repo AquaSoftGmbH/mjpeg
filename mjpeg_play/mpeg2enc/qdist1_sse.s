@@ -72,22 +72,22 @@ nextrowqd:
 	psadbw mm4, mm5	    		; compare to left block
 	add ebx, edx		; ditto
 
-	punpckhbw mm6, mm2          ; mm6 = bytes 4..7 p1 (spaced out)
+;	punpckhbw mm6, mm2          ; mm6 = bytes 4..7 p1 (spaced out)
 
 	paddd mm0, mm4				; accumulate difference left block
 
-	psadbw mm6,mm5				; compare to right block
+;	psadbw mm6,mm5				; compare to right block
 	
 
-	paddd mm1, mm6				; accumulate difference right block
+;	paddd mm1, mm6				; accumulate difference right block
 		
 	sub esi, 1
 	jnz nextrowqd
 
 	movd eax, mm0
-	movd ebx, mm1				
-	sal  ebx, 16
-	or   eax, ebx
+;	movd ebx, mm1				
+;	sal  ebx, 16
+;	or   eax, ebx
 	
 	pop esi
 	pop edx
