@@ -338,7 +338,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
-		mpeg = 2;
 		mjpeg_info( "Selecting generic MPEG2 output profile");
 		mpeg = 2;
 		if( video_buffer_size == 0 )
