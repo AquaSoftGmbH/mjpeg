@@ -510,16 +510,25 @@ void turn_on_accels(void)
     ) /* MMX+SSE */
   {
     calc_SAD    = &calc_SAD_mmxe;
-    if (denoiser.frame.Cw==denoiser.frame.w/4 && denoiser.frame.Ch==denoiser.frame.h)
+    if (denoiser.frame.ss_h==4 && denoiser.frame.ss_v==1)
       {
 	mjpeg_log (LOG_INFO, "Using 4:1:1 extended MMX SIMD optimisations.");
 	calc_SAD_uv = &calc_SAD_uv411_mmxe;
       }
-    else
+    else if (denoiser.frame.ss_h==2 && denoiser.frame.ss_v==2)
       {
 	mjpeg_log (LOG_INFO, "Using 4:2:0 extended MMX SIMD optimisations.");
 	calc_SAD_uv = &calc_SAD_uv420_mmxe;
       }
+    else if (denoiser.frame.ss_h==1 && denoiser.frame.ss_v==1)
+	{
+	    mjpeg_log (LOG_INFO, "Using 4:4:4 extended MMX SIMD optimisations.");
+	    calc_SAD_uv = &calc_SAD_mmxe;
+	}
+    else
+	{
+	    mjpeg_error_exit1("This chroma subsampling mode not supported. :(");
+	}
     calc_SAD_half = &calc_SAD_half_mmxe;
     deinterlace = &deinterlace_mmx;
   }
@@ -527,15 +536,24 @@ void turn_on_accels(void)
     if ( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
     {
       calc_SAD    = &calc_SAD_mmx;
-      if (denoiser.frame.Cw==denoiser.frame.w/4 && denoiser.frame.Ch==denoiser.frame.h)
+      if (denoiser.frame.ss_h==4 && denoiser.frame.ss_v==1)
 	{
 	  mjpeg_log (LOG_INFO, "Using 4:1:1 MMX SIMD optimisations.");
 	  calc_SAD_uv = &calc_SAD_uv411_mmx;
 	}
-      else
+      else if (denoiser.frame.ss_h==2 && denoiser.frame.ss_v==2)
 	{
 	  mjpeg_log (LOG_INFO, "Using 4:2:0 MMX SIMD optimisations.");
 	  calc_SAD_uv = &calc_SAD_uv420_mmx;
+	}
+    else if (denoiser.frame.ss_h==1 && denoiser.frame.ss_v==1)
+	{
+	    mjpeg_log (LOG_INFO, "Using 4:4:4 MMX SIMD optimisations.");
+	    calc_SAD_uv = &calc_SAD_mmx;
+	}
+    else
+	{
+	    mjpeg_error_exit1("This chroma subsampling mode not supported. :(");
 	}
       calc_SAD_half = &calc_SAD_half_mmx;
       deinterlace = &deinterlace_mmx;
