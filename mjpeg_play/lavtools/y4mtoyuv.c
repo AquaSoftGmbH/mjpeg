@@ -48,6 +48,8 @@ int main(int argc, char **argv)
 			}
 		}
 
+	y4m_accept_extensions(1);
+
 	y4m_init_stream_info(&istream);
 	y4m_init_frame_info(&iframe);
 
