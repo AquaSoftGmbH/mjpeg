@@ -661,6 +661,7 @@ debian/control
 docs/Makefile
 lavtools/Makefile
 yuvdenoise/Makefile
+yuvdeinterlace/Makefile
 yuvfilters/Makefile
 mpeg2enc/Makefile
 aenc/Makefile

@@ -6,8 +6,8 @@ Makefile.in
 config.*
 configure
 configure.in
-yuvdenoise
-yuvdenoise.o
+yuvdeinterlace
+yuvdeinterlace.o
 gmon.out
 *.m1v
 *.nuv
