@@ -35,8 +35,9 @@
 
 
 
-// Define this to expand regions, instead of using the pixel-sorter,
-// when there are too many regions in the area already.
+// Define this to expand existing search-border regions, instead of
+// using the pixel-sorter, when there are too many regions in the area
+// already.
 //#define EXPAND_REGIONS
 
 
@@ -75,6 +76,11 @@
 // used-reference-pixel region.  Don't define it to use a set-based
 // region to implement the used-reference-pixel region.
 #define USED_REFERENCE_PIXELS_REGION_IS_BITMAP
+
+
+
+// Define this to include the code for using the search-border.
+//#define USE_SEARCH_BORDER
 
 
 
@@ -298,6 +304,11 @@ private:
 #endif // USED_REFERENCE_PIXELS_REGION_IS_BITMAP
 		// The region describing all parts of the reference frame that
 		// have been found in the new frame, in the zero-motion pass.
+
+	MovedRegion m_oMatchThrottleRegion;
+		// The region that's applied to the frame before motion
+		// detection is done.  Allocated here to avoid lots of
+		// creation & destruction.
 	
 	void ApplyRegionToNewFrame (Status_t &a_reStatus,
 			const MovedRegion &a_rRegion);
@@ -350,6 +361,8 @@ private:
 
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 
+#ifdef USE_SEARCH_BORDER
+
 	// The search-border, specialized to put completed regions into
 	// m_setRegions.
 	class SearchBorder : public SearchBorder_t
@@ -379,6 +392,8 @@ private:
 		// except for the best one.  Expand it as far as it can go,
 		// i.e. flood-fill in its area.  Then apply it to the new
 		// frame now.  Returns the number of points flood-filled.
+
+#endif // USE_SEARCH_BORDER
 
 	// A class that helps implement the zero-motion flood-fill.
 	class ZeroMotionFloodFillControl
@@ -492,7 +507,9 @@ template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
 		REFERENCEFRAME>::MotionSearcher()
+#ifdef USE_SEARCH_BORDER
 	: m_oSearchBorder (m_setRegions)
+#endif // USE_SEARCH_BORDER
 {
 	// No frames yet.
 	m_nFrames = 0;
@@ -665,10 +682,19 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	m_oUsedReferencePixels.SetDebug (false);
 #endif // USED_REFERENCE_PIXELS_REGION_IS_BITMAP && DEBUG_REGION2D
 
+	// Initialize our match-throttle region.
+	m_oMatchThrottleRegion.Init (a_reStatus);
+	if (a_reStatus != g_kNoError)
+		return;
+
+#ifdef USE_SEARCH_BORDER
+
 	// Initialize the search-border.
 	m_oSearchBorder.Init (a_reStatus, a_tnWidth, a_tnHeight, PGW, PGH);
 	if (a_reStatus != g_kNoError)
 		return;
+
+#endif // USE_SEARCH_BORDER
 
 	// Finally, store our parameters.  (Convert the tolerance value to
 	// the format used internally.)
@@ -1062,7 +1088,8 @@ noMatch:
 
 		// Find all search-window cells that contain used reference
 		// pixels, and invalidate them.
-		m_oSearchWindow.Prune (m_oUsedReferencePixels);
+		m_oSearchWindow.Prune (m_oUsedReferencePixels, PIXELINDEX (0),
+			PIXELINDEX (0));
 
 		// Now do the motion-compensated denoising.  Start in the
 		// upper-left corner of the frame, and zigzag down the frame
@@ -1080,7 +1107,9 @@ noMatch:
 			tnLastX = m_tnWidth - PGW;
 			tnLastY = m_tnHeight - PGH;
 			m_tnStepX = 1;
+#ifdef USE_SEARCH_BORDER
 			m_oSearchBorder.StartFrame (a_reStatus);
+#endif // USE_SEARCH_BORDER
 			if (a_reStatus != g_kNoError)
 				return;
 			for (;;)
@@ -1249,7 +1278,10 @@ noMatch:
 									int (rCell.m_tnX - m_tnX),
 									int (rCell.m_tnY - m_tnY));
 #endif
-		
+
+#ifndef USE_SEARCH_BORDER
+	#error Expand-regions code needs the search-border
+#endif // USE_SEARCH_BORDER
 								// Add this match to our growing set of
 								// moved regions.
 								FRAMESIZE tnThisMatch
@@ -1271,7 +1303,7 @@ noMatch:
 						}
 					}
 				}
-#endif
+#endif // EXPAND_REGIONS
 	
 				// If the expanding-regions code couldn't run, or if it
 				// didn't find any matches, then use the pixel-sorter to
@@ -1281,12 +1313,18 @@ noMatch:
 					// HACK
 					//fprintf (stderr, ", consulting pixel-sorter.\n");
 	
+#ifndef THROTTLE_PIXELSORTER_WITH_SAD
+					PIXELINDEX tnBestMotionX, tnBestMotionY;
+					FRAMESIZE tnBestMotionXXYY;
+						// The best match found, and its length.
+#endif // THROTTLE_PIXELSORTER_WITH_SAD
+
 					// Set up the search-window in a radius around the
 					// current pixel-group.
 					m_oSearchWindow.PrepareForSearch (a_reStatus, true);
 					if (a_reStatus != g_kNoError)
 						return;
-		
+					
 					// Search for matches for the current pixel-group
 					// within the search radius.
 					m_oSearchWindow.StartSearch (itMatch,
@@ -1296,6 +1334,12 @@ noMatch:
 					while (pMatch = m_oSearchWindow.FoundNextMatch
 						(itMatch, tnSAD), pMatch != NULL)
 #else // THROTTLE_PIXELSORTER_WITH_SAD
+					tnBestMotionX = m_tnSearchRadiusX + 1;
+					tnBestMotionY = m_tnSearchRadiusY + 1;
+					tnBestMotionXXYY = FRAMESIZE (tnBestMotionX)
+						* FRAMESIZE (tnBestMotionX)
+						+ FRAMESIZE (tnBestMotionY)
+						* FRAMESIZE (tnBestMotionY);
 					while (pMatch = m_oSearchWindow.FoundNextMatch
 						(itMatch), pMatch != NULL)
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
@@ -1307,7 +1351,7 @@ noMatch:
 							int (m_tnX), int (m_tnY),
 							int (pMatch->m_tnX - m_tnX),
 							int (pMatch->m_tnY - m_tnY));
-#endif
+#endif // PRINT_SEARCHBORDER
 		
 						// Make sure this match is within the search
 						// radius.
@@ -1321,8 +1365,7 @@ noMatch:
 						// If this match is better than our worst so
 						// far, get rid of our worst & use the new one
 						// instead.
-						if (setMatches.Size()
-							== int (m_nMatchCountThrottle * 1))
+						if (setMatches.Size() == m_nMatchCountThrottle)
 						{
 							typename MatchedPixelGroupSet::Iterator
 									itWorst;
@@ -1342,8 +1385,7 @@ noMatch:
 		
 						// If this match is close enough to the current
 						// pixel-group, make a note of it.
-						if (setMatches.Size()
-							< int (m_nMatchCountThrottle * 1))
+						if (setMatches.Size() < m_nMatchCountThrottle)
 						{
 							setMatches.Insert (a_reStatus,
 								MatchedPixelGroup (tnSAD, pMatch));
@@ -1353,6 +1395,8 @@ noMatch:
 
 #else // THROTTLE_PIXELSORTER_WITH_SAD
 
+#ifdef USE_SEARCH_BORDER
+
 						// Add this match to our growing set of moved
 						// regions.
 						FRAMESIZE tnThisMatch
@@ -1360,34 +1404,72 @@ noMatch:
 								*pMatch);
 						if (a_reStatus != g_kNoError)
 							return;
-	
-						// That's one more match.
-						++tnMatches;
-	
+
 						// Keep track of the smallest/largest region.
 						tnSmallestMatch = Min (tnSmallestMatch,
 							tnThisMatch);
 						tnLargestMatch = Max (tnLargestMatch,
 							tnThisMatch);
+
+#else // USE_SEARCH_BORDER
+
+						PIXELINDEX tnMotionX, tnMotionY;
+						FRAMESIZE tnMotionXXYY;
+							// The motion vector of this match.
+
+						// Calculate the motion vector of this match.
+						tnMotionX = pMatch->m_tnX - m_tnX;
+						tnMotionY = pMatch->m_tnY - m_tnY;
+						tnMotionXXYY = FRAMESIZE (tnMotionX)
+							* FRAMESIZE (tnMotionX)
+							+ FRAMESIZE (tnMotionY)
+							* FRAMESIZE (tnMotionY);
+
+						// If this is the best match so far (i.e. the
+						// one closest to the origin), use it.  (This
+						// isn't a great test, but it's the one that
+						// was accidentally being used for a long time,
+						// and the results seemed OK, so what the heck.)
+						if (tnBestMotionXXYY > tnMotionXXYY)
+						{
+							tnBestMotionXXYY = tnMotionXXYY;
+							tnBestMotionX = tnMotionX;
+							tnBestMotionY = tnMotionY;
+						}
+
+#endif // USE_SEARCH_BORDER
+	
+						// That's one more match.
+						++tnMatches;
+
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 					}
 		
 #ifdef THROTTLE_PIXELSORTER_WITH_SAD
-					// Now loop through all the good matches found, and
-					// use them.
+
+					// Now loop through all the good matches found,
+					// flood-fill each one, and use the first one that
+					// fills a large enough area.
 					for (itBestMatch = setMatches.Begin();
 						 itBestMatch != setMatches.End();
 						 ++itBestMatch)
 					{
+						PIXELINDEX tnMotionX, tnMotionY;
+							// The motion vector of this match.
+
 						// Get the current match.
 						const MatchedPixelGroup &rMatch = *itBestMatch;
-		
+
+						// Calculate its motion vector.
+						tnMotionX = rMatch.m_pGroup->m_tnX - m_tnX;
+						tnMotionY = rMatch.m_pGroup->m_tnY - m_tnY;
+
+#ifdef USE_SEARCH_BORDER
 						// Add this match to our growing set of moved
 						// regions.
 						FRAMESIZE tnThisMatch
 							= m_oSearchBorder.AddNewMatch (a_reStatus,
-								rMatch.m_pGroup->m_tnX - m_tnX,
-								rMatch.m_pGroup->m_tnY - m_tnY);
+								tnMotionX, tnMotionY);
 						if (a_reStatus != g_kNoError)
 							return;
 	
@@ -1399,7 +1481,126 @@ noMatch:
 							tnThisMatch);
 						tnLargestMatch = Max (tnLargestMatch,
 							tnThisMatch);
+#else // USE_SEARCH_BORDER
+						// Set up a region describing the current
+						// pixel-group.
+						m_oMatchThrottleRegion.Clear();
+						{
+							PIXELINDEX tnY;
+								// Used to loop through the
+								// pixel-group's lines.
+
+							for (tnY = m_tnY;
+								 tnY < m_tnY + PGH;
+								 ++tnY)
+							{
+								m_oMatchThrottleRegion.Merge
+									(a_reStatus, tnY, m_tnX,
+									m_tnX + PGW);
+								if (a_reStatus != g_kNoError)
+									return;
+							}
+						}
+		
+						// Set its motion vector.
+						m_oMatchThrottleRegion.SetMotionVector
+							(tnMotionX, tnMotionY);
+
+						// Flood-fill this match, so as to get its full
+						// extent.
+						m_oMatchThrottleFloodFillControl
+							.SetupForFloodFill (tnMotionX, tnMotionY);
+						m_oMatchThrottleRegion.FloodFill (a_reStatus,
+							m_oMatchThrottleFloodFillControl, false);
+						if (a_reStatus != g_kNoError)
+							return;
+
+						// Get the size of the flood-filled region.
+						FRAMESIZE tnThisMatch
+							= m_oMatchThrottleRegion.NumberOfPoints();
+
+						// If this match is big enough, keep it.
+						if (tnThisMatch
+							>= m_nMatchSizeThrottle * PGH * PGW)
+						{
+							ApplyRegionToNewFrame (a_reStatus,
+								m_oMatchThrottleRegion);
+							if (a_reStatus != g_kNoError)
+								return;
+		
+							// That's one more match.
+							++tnMatches;
+
+							// That's more pixels found by
+							// flood-filling.
+							if (tnMotionX == 0 && tnMotionY == 0)
+								tnNotMovedFloodedPixels
+									+= tnThisMatch;
+							else
+								tnFloodedPixels += tnThisMatch;
+		
+							// Stop looking.
+							break;
+						}
+#endif // USE_SEARCH_BORDER
 					}
+
+#else // THROTTLE_PIXELSORTER_WITH_SAD
+
+#ifndef USE_SEARCH_BORDER
+
+					// Now flood-fill the best match and apply it to
+					// the new frame.
+					if (tnMatches > 0)
+					{
+						PIXELINDEX tnY;
+							// Used to loop through the pixel-group
+							// lines.
+	
+						// Set up the region with the current
+						// pixel-group.
+						m_oMatchThrottleRegion.Clear();
+						for (tnY = m_tnY;
+							 tnY < m_tnY + PGH;
+							 ++tnY)
+						{
+							m_oMatchThrottleRegion.Union (a_reStatus,
+								tnY, m_tnX, m_tnX + PGW);
+							if (a_reStatus != g_kNoError)
+								return;
+						}
+			
+						// Set its motion vector.
+						m_oMatchThrottleRegion.SetMotionVector
+							(tnBestMotionX, tnBestMotionY);
+	
+						// Flood-fill this match, so as to get its full
+						// extent.
+						m_oMatchThrottleFloodFillControl
+							.SetupForFloodFill (tnBestMotionX,
+								tnBestMotionY);
+						m_oMatchThrottleRegion.FloodFill (a_reStatus,
+							m_oMatchThrottleFloodFillControl, false);
+						if (a_reStatus != g_kNoError)
+							return;
+	
+						// Get the size of the flood-filled region.
+						FRAMESIZE tnThisMatch
+							= m_oMatchThrottleRegion.NumberOfPoints();
+	
+						// Apply the match to the new frame right now.
+						ApplyRegionToNewFrame (a_reStatus,
+							m_oMatchThrottleRegion);
+						if (a_reStatus != g_kNoError)
+							return;
+	
+						// That's more pixels found by flood-filling.
+						if (tnBestMotionX == 0 && tnBestMotionY == 0)
+							tnNotMovedFloodedPixels += tnThisMatch;
+						else
+							tnFloodedPixels += tnThisMatch;
+					}
+#endif // !USE_SEARCH_BORDER
 #endif // THROTTLE_PIXELSORTER_WITH_SAD
 				}
 	
@@ -1411,7 +1612,10 @@ noMatch:
 				// impacts quality.  Flood-fills are allowed to override
 				// the result, though.
 				if (tnMatches == 0
-					&& m_oSearchBorder.NumberOfActiveRegions() == 0)
+#ifdef USE_SEARCH_BORDER
+					&& m_oSearchBorder.NumberOfActiveRegions() == 0
+#endif // USE_SEARCH_BORDER
+																   )
 				{
 					PIXELINDEX tnX, tnY;
 
@@ -1434,10 +1638,12 @@ noMatch:
 					}
 				}
 
+#ifdef USE_SEARCH_BORDER
+
 				// If it's time to flood-fill, do so.
-				if (tnMatches >= FRAMESIZE (m_nMatchCountThrottle
+				if (tnMatches >= FRAMESIZE (m_nMatchCountThrottle)
 					|| tnLargestMatch >= FRAMESIZE
-						(m_nMatchSizeThrottle * PGH * PGW)))
+						(m_nMatchSizeThrottle * PGH * PGW))
 				{
 					FRAMESIZE tnFlooded;
 					PIXELINDEX tnMotionX, tnMotionY;
@@ -1466,7 +1672,9 @@ noMatch:
 					else
 						tnFloodedPixels += tnFlooded;
 				}
-	
+
+#endif // USE_SEARCH_BORDER
+
 nextGroup:
 				// Move to the next pixel-group.
 				if (m_tnStepX == 1 && m_tnX == tnLastX
@@ -1479,7 +1687,9 @@ nextGroup:
 	
 					// Move down a line.
 					m_oSearchWindow.MoveDown();
+#ifdef USE_SEARCH_BORDER
 					m_oSearchBorder.MoveDown (a_reStatus);
+#endif // USE_SEARCH_BORDER
 					if (a_reStatus != g_kNoError)
 						return;
 					++m_tnY;
@@ -1495,7 +1705,9 @@ nextGroup:
 				{
 					// Move right one pixel.
 					m_oSearchWindow.MoveRight();
+#ifdef USE_SEARCH_BORDER
 					m_oSearchBorder.MoveRight (a_reStatus);
+#endif // USE_SEARCH_BORDER
 					if (a_reStatus != g_kNoError)
 						return;
 					++m_tnX;
@@ -1505,13 +1717,17 @@ nextGroup:
 					// Move left one pixel.
 					assert (m_tnStepX == -1);
 					m_oSearchWindow.MoveLeft();
+#ifdef USE_SEARCH_BORDER
 					m_oSearchBorder.MoveLeft (a_reStatus);
+#endif // USE_SEARCH_BORDER
 					if (a_reStatus != g_kNoError)
 						return;
 					--m_tnX;
 				}
 			}
+#ifdef USE_SEARCH_BORDER
 			m_oSearchBorder.FinishFrame (a_reStatus);
+#endif // USE_SEARCH_BORDER
 			if (a_reStatus != g_kNoError)
 				return;
 	
@@ -1582,6 +1798,11 @@ nextGroup:
 		
 				// Apply this region to the new frame.
 				ApplyRegionToNewFrame (a_reStatus, *pRegion);
+				if (a_reStatus != g_kNoError)
+				{
+					delete pRegion;
+					return;
+				}
 	
 				// That's more moved pixels.
 				tnMovedPixels += pRegion->NumberOfPoints();
@@ -1642,7 +1863,7 @@ nextGroup:
 	{
 		int16_t nRefs = m_pNewFrame->GetPixel (i)->GetFrameReferences();
 		assert (nRefs > 0);
-		//assert (nRefs <= m_nFrames);		Why???
+		assert (nRefs <= m_nFrames);
 	}
 #endif // NDEBUG
 
@@ -1652,21 +1873,29 @@ nextGroup:
 
 	// HACK: print the pixel statistics.
 	fprintf (stderr, "Frame %d: %.1f%% not-moved, "
-		"%.1f%%+%.1f%% flood, %.1f%% moved, %.1f%%+%.1f%% new\n",
+		//"%.1f%%+%.1f%% flood, %.1f%% moved, %.1f%%+%.1f%% new\n",
+		"%.1f%%+%.1f%% moved, %.1f%%+%.1f%% new\n",
 		frame,
 		(float (tnNotMovedPixels) * 100.0f / float (m_tnPixels)),
 		(float (tnNotMovedFloodedPixels) * 100.0f / float (m_tnPixels)),
 		(float (tnFloodedPixels) * 100.0f / float (m_tnPixels)),
-		(float (tnMovedPixels) * 100.0f / float (m_tnPixels)),
+		//(float (tnMovedPixels) * 100.0f / float (m_tnPixels)),
 		(float (tnNoMatchNewPixels) * 100.0f / float (m_tnPixels)),
 		(float (tnNewPixels) * 100.0f / float (m_tnPixels)));
 	
 #ifndef NDEBUG
 	// Print the allocation totals.
-	fprintf (stderr, "%lu regions, %lu pixel-sorters, %lu RUCs\n",
+	fprintf (stderr, "%lu regions, %lu pixel-sorters, "
+#ifdef USE_SEARCH_BORDER
+													 "%lu RUCs"
+#endif // USE_SEARCH_BORDER
+															 "\n",
 		MovedRegion::GetInstances(),
-		m_oSearchWindow.GetPixelSorterNodeCount(),
-		m_oSearchBorder.GetRegionUnderConstructionCount());
+		m_oSearchWindow.GetPixelSorterNodeCount()
+#ifdef USE_SEARCH_BORDER
+		, m_oSearchBorder.GetRegionUnderConstructionCount()
+#endif // USE_SEARCH_BORDER
+														   );
 #endif // NDEBUG
 }
 
@@ -1831,7 +2060,9 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		for (x = rExtent.m_tnXStart; x < rExtent.m_tnXEnd; ++x)
 		{
 #ifdef PRINT_SEARCHBORDER
-			if (m_pNewFrame->GetPixel (x, rExtent.m_tnY) != NULL)
+			if (m_pNewFrame->GetPixel (x, rExtent.m_tnY) != NULL
+				&& m_pNewFrame->GetPixel (x, rExtent.m_tnY)
+					->GetFrameReferences() != 1)
 			{
 				fprintf (stderr, "Pixel (%d,%d) already resolved\n",
 					int (x), int (rExtent.m_tnY));
@@ -1841,7 +2072,9 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			// Make sure this new-frame pixel hasn't been
 			// resolved yet.
 			assert (m_pNewFrame->GetPixel (x, rExtent.m_tnY)
-				== NULL);
+				== NULL
+			|| m_pNewFrame->GetPixel (x, rExtent.m_tnY)
+				->GetFrameReferences() == 1);
 	
 			// Get the corresponding reference-frame pixel.
 			ReferencePixel_t *pReferencePixel
@@ -1887,9 +2120,15 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	}
 
 #endif // USE_REFERENCEFRAMEPIXELS_ONCE
+
+	// Remove all pixel-groups containing used reference pixels from
+	// the search window.
+	m_oSearchWindow.Prune (a_rRegion, tnMotionX, tnMotionY);
 }
 
 
+
+#ifdef USE_SEARCH_BORDER
 
 // Default constructor.
 template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
@@ -2005,16 +2244,13 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		}
 	}
 
-	// Remove all pixel-groups containing used reference pixels from the
-	// search window.
-	if (pSurvivor->NumberOfPoints() > 0)
-		m_oSearchWindow.Prune (*pSurvivor);
-
 	// Clean up the region, return the number of points it had.
 	FRAMESIZE tnPoints = pSurvivor->NumberOfPoints();
 	delete pSurvivor;
 	return tnPoints;
 }
+
+#endif // USE_SEARCH_BORDER
 
 
 
@@ -2335,12 +2571,6 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 			if (rNewPixel.IsWithinTolerance (pRefPixel->GetValue(),
 				 m_pMotionSearcher->m_tnTolerance))
 			{
-				// If there was a new pixel here, we'll be overwriting
-				// it.
-				if (pNewPixel != NULL)
-					m_pMotionSearcher->m_pNewFrame->SetPixel (a_tnX,
-						a_tnY, NULL);
-				
 				// Let our caller know the point is in the region.
 				return true;
 			}
