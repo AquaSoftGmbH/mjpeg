@@ -148,7 +148,7 @@ stopped, or the disk ist full.
 
 Other example:
 .br
-.B lavrec -f a -i t -q 80 -d 2 -C europe-west:SE20 test.avi
+.B > lavrec -f a -i t -q 80 -d 2 -C europe-west:SE20 test.avi
 .br
 Should start recording now,
 .br
@@ -169,7 +169,7 @@ http://marvel.sourceforge.net
 
 Last example:
 .br
-.B lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi 
+.B > lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi 
 .br
 The only not known option is 
 .B --software-encoding, 
@@ -182,7 +182,7 @@ All lavtools accept the %02d file description, so you do not have to name each
 file, but that would also be a posibillity to do. 
 .br
 
-Note: More options are described in the lavrec.c file.
+Note: More options are described in the lavrec man-page. 
 .br
 
 There are more options, but with this you should be able to start.
@@ -252,6 +252,14 @@ You can use lavplay or glav.
 You should see the recorded video and hear the sound. But the decoding of the
 video is done by the CPU. Your system has quite a heavy load. You don't need
 xawtv or anything, though.
+
+When you record with -d 1 somtimes it happend that the field were described 
+wrong top first, but it was a bottom first video. You notice this effect easily
+when you look at the logo of a tv company. Then try to play it back with 
+the -x option. This changes the field order and fix the problem. But you also have to use the -x switch in lav2yuv.
+.br
+But also try next time recording try to change the -f option to the opposite 
+used before (a/A) this should change the field order while recording.
 
 The better way:
 .br 
@@ -624,7 +632,7 @@ broadcast material you should try the noise filters. This are for lav2yuv:
 
 Example:
 .br
-.B > lav2yuv stream.avi | mpeg2enc \-b 1500 \-n s \-g 5 \-G 20 \-o video.m1v
+.B > lav2yuv stream.avi | mpeg2enc \-b 1500 \-n s \-g 6 \-G 20 \-o video.m1v
 .br
 
 Here the stream.avi will be encoded with:
@@ -1021,11 +1029,9 @@ Mplex with:
 .TP 10
 .B \\-f 4 : 
 generate an SVCD stream
-.TP 0 
 .TP 10
 .B \\-V : 
 Multiplex variable bit-rate video
-.TP 0
 .TP 10
 .B \\-r 2755: 
 Specify data rate of output stream in kbit/sec
@@ -1284,8 +1290,21 @@ rather than letting mpeg2enc do that.
 
 Multiplex with:
  
-.B > mplex \-f 4 sound.mp2 video.m2v \-o vcd_out.mpg
-.br
+.B > mplex \-f 4 \-V \-b 400 \-r 2750 sound.mp2 video.m2v \-o vcd_out.mpg
+
+.TP 8
+.B \\-f 4 
+tells mplex to encode a SVCD,
+.TP 8
+.B \\-V 
+with a variable Bitrate
+.TP 8
+.B \\-r 2750 
+is the calculated Audio + Video Bitrate + 1-2% multiplex information
+.TP 8
+.B \\-b 400
+is the Buffer aviable on the plaback device, the same used for the video encoding (there the -V option).
+.TP 0
 
 Creating the CD:
 
@@ -1297,6 +1316,9 @@ Creates an videocd.bin, the data file, an a videocd.cue which is used as
 controllfile for cdrdao.
 
 In Linux use cdrdao to burn the image.
+
+Note: If you want to build "custom" VCD/SVCD you should try the 
+mplex -f 2 and -f 5 switches.
 
 Note: The VCD SVCD stuff may work on your HW player or not. There are
 many reports that it works quite well. Don't be woried if it does not
@@ -1411,7 +1433,9 @@ The lavtools:
 .BR mp2enc(1),
 .BR mpeg2enc(1),
 .BR mplex(1),
-.BR xlav(1),
 .BR yuv2lav(1),
-.BR lavplay(1),
+.BR yuvplay(1),
 .BR yuvscaler(1),
+
+.br
+Tools without a man page: jpeg2yuv, yuvdenoise, lavaddwaw, glav, yuvmedianfilter, yuvdenoise, yuvkineco, yuvycsnoise
