@@ -1580,7 +1580,7 @@ main (int argc, char **argv)
 		y4m_aspect.n = input.width;
 		y4m_aspect.d = input.height;
 
-		y4m_si_set_aspectratio ( &output.y4m_info, y4m_aspect );
+		y4m_si_set_sampleaspect ( &output.y4m_info, y4m_aspect );
 		y4m_write_stream_header ( output.fdYUV, &output.y4m_info);
 
 	}
