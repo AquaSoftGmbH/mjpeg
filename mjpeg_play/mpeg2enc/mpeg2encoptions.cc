@@ -54,15 +54,7 @@ MPEG2EncOptions::MPEG2EncOptions()
     closed_GOPs = 0;
     preserve_B = 0;
     Bgrp_size = 1;
-#ifdef _SC_NPROCESSORS_ONLN
-    num_cpus = sysconf (_SC_NPROCESSORS_ONLN);
-#else
     num_cpus = 1;
-#endif
-    if (num_cpus < 0)
-      num_cpus = 1;
-    if (num_cpus > 32)
-      num_cpus = 32;
     vid32_pulldown = 0;
     svcd_scan_data = -1;
     seq_hdr_every_gop = 0;

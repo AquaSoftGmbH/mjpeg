@@ -403,7 +403,6 @@ is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
 into NTSC (see the -f flag).
 
 .SH "OPTION LETTERS FOR CONTROLLING COMPRESSION AND SPEED"
-
 .PP
 .BR -M|--multithread \ num_CPU
 .PP
@@ -415,7 +414,8 @@ number of CPU's.
 .PP
 It should be noted that even with 1 CPU present \fIsome\fR
 multi-threading is performed: frame input takes place in parallel with
-encoding.  This allows good performance to be achieved when when a
+encoding.  The default -M value is 1.  This allows good performance to 
+be achieved when when a
 seperate machine is being used for pre-processing (decoding from
 MJPEG, scaling, denoising etc) with the final result pipe to mpeg2enc
 (e.g. using rsh or ssh).
@@ -427,8 +427,7 @@ faster results than -M 2 at the price of slightly less CPU efficiency.
 This is useful if nothing else needs to be done on the encoding
 machine.  In practice there is little point setting -M greater than 4
 even if the CPU's are available due to the fairly coarse-grained
-parallelism used.
-
+parallelism used.  Indeed there is a hardcoded limit of 4 worker threads.
 .PP
 .BR -q|--quantization \ 1 .. 31
 .PP
