@@ -1,3 +1,9 @@
+mjpegtools (1.6.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Wed,  4 Feb 2004 10:19:29 +0900
+
 mjpegtools (1.6.1.93-3) unstable; urgency=low
 
   * remove libquicktime4linux-dev from Build-Depends, need libquicktime-dev even on woody.
