@@ -12,6 +12,7 @@ SUBDIRS = \
 	yuvfilters \
 	yuvdeinterlace \
 	y4mdenoise \
+	y4munsharp \
 	debian
 
 #

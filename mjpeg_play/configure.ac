@@ -556,6 +556,7 @@ AC_CONFIG_FILES([
      lavtools/Makefile
      yuvdenoise/Makefile
      yuvdeinterlace/Makefile
+     y4munsharp/Makefile
      yuvfilters/Makefile
      mpeg2enc/Makefile
      aenc/Makefile
