@@ -30,7 +30,7 @@
 #ifdef TIMER
 #include <sys/time.h>
 #endif
-
+#include <vector>
 
 #include "vector.hh"
 #include "aunit.hh"
@@ -164,9 +164,7 @@ public:
 		}
 
 
-	void Init(char *video_file,	
-			  clockticks *ret_first_frame_PTS,
-			  off_t length);
+	void Init(const char *video_file, int stream_num);
 	
 	void close();
 	VAunit *next();
@@ -180,6 +178,7 @@ private:
 	bool eoscan;
 
 public:	
+	int        stream_id;
 	off_t      file_length;
     bitcount_t stream_length  ;
     unsigned int num_sequence 	;
@@ -295,14 +294,16 @@ typedef struct buffer_struc	/* Simuliert STD Decoder Buffer		*/
 *************************************************************************/
 
 int intro_and_options( int, char **, char**);
-/* Anzeigen des Introbildschirmes und	*/
-/* Ueberpruefen der Argumente			*/
 
-void init_stream_syntax_parameters(VideoStream 	*video_info,
+void init_stills_syntax_parameters();
+void init_stream_syntax_parameters(VideoStream 	&vstrm,
 							    	Audio_struc 	*audio_info );	
 										/* Initialisation of syntax paramters 	*/
 										/* based on (checked) options 			*/
-										
+
+void check_stills( const int argc, char *argv[], 
+				   vector<const char *>stills );
+
 void check_files (int argc,
 				  char* argv[],
 				  char**audio_file,
@@ -480,7 +481,7 @@ extern int opt_always_system_headers;
 extern int opt_packets_per_pack;
 extern bitcount_t opt_max_PTS;
 extern int opt_emul_vcdmplex;
-
+extern bool opt_stills;
 extern int verbose;
 extern unsigned int which_streams;
 

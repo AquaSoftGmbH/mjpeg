@@ -130,7 +130,7 @@ global idct_mmx
 idct_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp
-
+		
 	push ebx		
 	push ecx		
 	push edx

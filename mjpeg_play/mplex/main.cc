@@ -1,27 +1,3 @@
-/*************************************************************************
-*  MPEG SYSTEMS MULTIPLEXER                                              *
-*  Erzeugen einer MPEG/SYSTEMS                           		 *
-*  MULTIPLEXED VIDEO/AUDIO DATEI					 *
-*  aus zwei MPEG Basis Streams						 *
-*  Christoph Moar							 *
-*  SIEMENS ZFE ST SN 11 / T SN 6					 *
-*  (C) 1994 1995    							 *
-**************************************************************************
-*  Generating a MPEG/SYSTEMS						 *
-*  MULTIPLEXED VIDEO/AUDIO STREAM					 *
-*  from two MPEG source streams						 *
-*  Christoph Moar							 *
-*  SIEMENS CORPORATE RESEARCH AND DEVELOPMENT ST SN 11 / T SN 6		 *
-*  (C) 1994 1995							 *
-**************************************************************************
-*  Einschraenkungen vorhanden. Unterstuetzt nicht gesamten MPEG/SYSTEMS  *
-*  Standard. Haelt sich i.d.R. an den CSPF-Werten, zusaetzlich (noch)    *
-*  nur fuer ein Audio- und/oder ein Video- Stream. Evtl. erweiterbar.    *
-**************************************************************************
-*  Restrictions apply. Will not support the whole MPEG/SYSTEM Standard.  *
-*  Basically, will generate Constrained System Parameter Files.		 *
-*  Mixes only one audio and/or one video stream. Might be expanded.	 *
-*************************************************************************/
 
 /*************************************************************************
 *  mplex - MPEG/SYSTEMS multiplexer					 *
@@ -32,6 +8,8 @@
 *       (Christoph Moar)			 			 *
 *  klee@heaven.zfe.siemens.de						 *
 *       (Christian Kleegrewe, Siemens only requests)			 *
+* Modifications and enhancements (C) 2000, 2001 Andrew Stevens
+* andrew.stevens@philips.com
 *									 *
 *  This program is free software; you can redistribute it and/or modify	 *
 *  it under the terms of the GNU General Public License as published by	 *	
@@ -48,15 +26,6 @@
 *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.		 *
 *************************************************************************/
 
-/*************************************************************************
-*  Notwendige Systemmittel:						 *
-*  Festplattenspeicher fuer Quell- und Zielstreams, pro Minute 		 *
-*  MPEG/SYSTEMS Stream noch zusaetzlich 50-100 kByte tmp Plattenspeicher *
-**************************************************************************
-*  Necessary resources:							 *
-*  Hard Disk space for source and destination streams, per Minute	 *
-*  MPEG/SYSTEM stream an additional 50-100 kByte tmp Diskspace		 *
-*************************************************************************/
 
 #include "main.hh"
 #include "mjpeg_logging.h"
@@ -81,27 +50,35 @@ int main (int argc, char* argv[])
 	AUStream<AAunit>  aaunits_info;
 
     optargs = intro_and_options (argc, argv, &multi_file);
-    check_files (argc-optargs, argv+optargs, 
-                 &audio_file, &video_file,
-				 audio_bytes, video_bytes);
-#ifdef REDUNDANT
-	empty_video_struc (&videoStrm);
-    empty_audio_struc (&audio_info);
-#endif
-    if (which_streams & STREAMS_VIDEO) {
-		videoStrm.Init( video_file, &first_frame_PTS,video_bytes);
-    }
+	// For the moment everything is such a mess that we can't really cleanly
+	// handle stills. We'll get there in the end though...
+	if(  opt_stills )
+	{
+		vector<const char *> stills;
+		check_stills(argc-optargs, argv+optargs, stills);
+		init_stream_syntax_parameters(videoStrm,&audio_info);
+		VideoStream stillStrm;
+		stillStrm.Init( stills[0], 1 );
+		outputstream( stillStrm, NULL, multi_file, aaunits_info );
+	}
+	else
+	{
+		check_files (argc-optargs, argv+optargs, 
+					 &audio_file, &video_file,
+					 audio_bytes, video_bytes);
+		if (which_streams & STREAMS_VIDEO) {
+			videoStrm.Init( video_file, 0);
+		}
     
-    if (which_streams & STREAMS_AUDIO) {
-	  get_info_audio (audio_file, &audio_info, first_frame_PTS,
-			  audio_bytes, aaunits_info);
-    }
+		if (which_streams & STREAMS_AUDIO) {
+			get_info_audio (audio_file, &audio_info, first_frame_PTS,
+							audio_bytes, aaunits_info);
+		}
 
-
-
-	init_stream_syntax_parameters(&videoStrm,&audio_info);
+	init_stream_syntax_parameters(videoStrm,&audio_info);
     outputstream (videoStrm,  audio_file,  multi_file,  aaunits_info );
 	videoStrm.close();
+	}
     return (0);	
 }
 

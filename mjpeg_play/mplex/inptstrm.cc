@@ -86,6 +86,34 @@ static void marker_bit (IBitStream &bs, unsigned int what)
     }
 }
 
+/************************************************************************
+Pick out and check MPEG stills files.
+TODO: Do more than just collect the files can be opened!
+
+************************************************************************/
+
+void check_stills( const int argc, char *argv[], vector<const char *>stills )
+{
+	int i;
+	off_t file_length;
+	while( i < argc )
+	{
+		if( open_file( argv[i], file_length ) )
+		{
+			mjpeg_info( "Still image: %s of %lld bytes\n", argv[i], file_length);
+			if( file_length > opt_buffer_size*1024 )
+			{
+				mjpeg_warn( "Still image %s: size exceeds specified video buffer size - discarding!\n", argv[i] );
+			}
+			else
+				stills.push_back(argv[i]);
+		}
+		else
+		{
+			mjpeg_error_exit1( "Could not open file: %s\n", argv[i]);
+		}
+	}
+}
 
 
 /*************************************************************************
@@ -212,12 +240,8 @@ void check_files (int argc,
 *************************************************************************/
 
 
-void VideoStream::Init (char *video_file,	
-						clockticks *ret_first_frame_PTS,
-						off_t length
-	                   )
+void VideoStream::Init (const char *video_file, int stream_num )
 {
-	file_length = length;
 	prev_stream_length=0;
     decoding_order=0;
 	fields_presented=0;
@@ -232,8 +256,10 @@ void VideoStream::Init (char *video_file,
     old_prozent=0;
 	max_bits_persec = 0;
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
-
-    mjpeg_info ("Scanning Video stream for access units information.\n");
+	stream_id = VIDEO_STR_0 + stream_num;
+	
+    mjpeg_info ("Scanning Video stream %d for access units information.\n",
+				stream_num);
 
 	/* We actually maintain *two* file-handles one is used for scanning
 	   ahead to pick-up access unit information the other for the reading
@@ -241,7 +267,11 @@ void VideoStream::Init (char *video_file,
 	rawstrm = fopen( video_file, "rb" );
 	if( rawstrm == NULL )
 		mjpeg_error_exit1( "Cannot open for scan and read: %s\n", video_file );
-    bs.open( video_file );
+    fseeko (rawstrm, 0, SEEK_END);
+    file_length = ftello(rawstrm);
+	fseek(rawstrm,0,SEEK_SET);
+
+    bs.open( const_cast<char *>(video_file) );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
 		num_sequence++;
@@ -278,7 +308,6 @@ void VideoStream::Init (char *video_file,
 
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
 	*/
-	*ret_first_frame_PTS = 0;
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
 	AU_start = 0LL;
@@ -472,8 +501,6 @@ void VideoStream::fillAUbuffer(int frames_to_buffer)
 
 VAunit *VideoStream::next()
 {
-
-
 	if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
 	{
 		if( aunits.curpos() > FRAME_CHUNK )

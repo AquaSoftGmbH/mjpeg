@@ -79,8 +79,7 @@ static void next_audio_access_unit (Buffer_struc *buffer,
 									unsigned char *audio_frame_start, 
 									clockticks SCR_delay,
 									AUStream<AAunit> &aaunit_info_vec);
-void outputstreamprefix( clockticks *current_SCR);
-
+void outputstreamprefix( clockticks *current_SCR, VideoStream &vstrm);
 
 
 /******************************************************************
@@ -89,7 +88,7 @@ void outputstreamprefix( clockticks *current_SCR);
 	user options.
 ******************************************************************/
 
-void init_stream_syntax_parameters(	VideoStream 	*video_info,
+void init_stream_syntax_parameters(	VideoStream 	&vstrm,
 									Audio_struc 	*audio_info	)
 {
 
@@ -176,6 +175,26 @@ void init_stream_syntax_parameters(	VideoStream 	*video_info,
         dtspts_for_all_vau = 0;
 
 		break;
+
+	case MPEG_FORMAT_VCD_STILL :
+		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
+	  	video_buffer_size = 46*1024;
+	  	opt_VBR = 0;
+		opt_mpeg = 1;
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 1;
+	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 30;
+	  	sector_size = 2324;
+		buffers_in_video = 1;
+		always_buffers_in_video = 0;
+		buffers_in_audio = 1;
+		always_buffers_in_audio = 1;
+		zero_stuffing = 1;
+		dtspts_for_all_vau = 1;
+		break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile\n");
@@ -217,7 +236,7 @@ void init_stream_syntax_parameters(	VideoStream 	*video_info,
   {
 	  create_sys_header (&dummy_sys_header, mux_rate, 1, !opt_VBR, 1, 1, 1, 1,
 						 AUDIO_STR_0, 0, audio_buffer_size/128,
-						 VIDEO_STR_0, 1, video_buffer_size/1024, 
+						 vstrm.stream_id, 1, video_buffer_size/1024, 
 						 which_streams  & STREAMS_AUDIO );
 
   	video_min_packet_data = 
@@ -244,7 +263,7 @@ void init_stream_syntax_parameters(	VideoStream 	*video_info,
      
   	if (which_streams & STREAMS_VIDEO) 
     {
-		video_rate = video_info->bit_rate * 50;
+		video_rate = vstrm.bit_rate * 50;
     }
 
 	if (which_streams & STREAMS_AUDIO)
@@ -296,9 +315,10 @@ void init_stream_syntax_parameters(	VideoStream 	*video_info,
 	Note: *must* leave a sensible in-stream system header in
 	sys_header.
 	TODO: get rid of this grotty sys_header global.
+    TODO: VIDEO_STR_0 should depend on video stream!
 ******************************************************************/
 
-void outputstreamprefix( clockticks *current_SCR)
+void outputstreamprefix( clockticks *current_SCR, VideoStream &vstrm)
 {
 	int vcd_2nd_syshdr_data_limit;
 	Pack_struc 			dummy_pack;
@@ -312,11 +332,11 @@ void outputstreamprefix( clockticks *current_SCR)
 	switch (opt_mux_format)
 		{
 		case MPEG_FORMAT_VCD :
-
+		case MPEG_FORMAT_VCD_NSR :
 		/* First packet carries video-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   vstrm.stream_id, 1, video_buffer_size/1024, 
 					   which_streams  & STREAMS_VIDEO);
 	  	output_padding( *current_SCR, ostream,
 					  	true,
@@ -329,7 +349,7 @@ void outputstreamprefix( clockticks *current_SCR)
 				/* Second packet carries audio-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate, 1, 0, 1, 1, 1, 0,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   vstrm.stream_id, 1, video_buffer_size/1024, 
 					   which_streams  & STREAMS_AUDIO );
 		create_pack (&dummy_pack, 0, mux_rate);
 
@@ -353,11 +373,11 @@ void outputstreamprefix( clockticks *current_SCR)
 		break;
 		
 		case MPEG_FORMAT_SVCD :
-
+		case MPEG_FORMAT_SVCD_NSR :
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,1, !opt_VBR, 1, 1, 1, 1,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   vstrm.stream_id, 1, video_buffer_size/1024, 
 					   which_streams  );
 	  	output_padding( *current_SCR, ostream,
 					  	true,
@@ -368,12 +388,43 @@ void outputstreamprefix( clockticks *current_SCR)
 		bytepos_timecode ( bytes_output, current_SCR);
 		break;
 
+		case MPEG_FORMAT_VCD_STILL :
+
+			/* First packet carries small-still sys_header */
+			create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
+							   AUDIO_STR_0, 0, audio_buffer_size/128,
+							   vstrm.stream_id, 1, 46, 
+							   which_streams  & STREAMS_VIDEO);
+			output_padding( *current_SCR, ostream,
+							true,
+							true,
+							false,
+							0);					
+			bytes_output += sector_transport_size;			 
+			bytepos_timecode ( bytes_output, current_SCR);
+			/* Second packet carries large-still sys_header */
+			create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
+							   AUDIO_STR_0, 0, audio_buffer_size/128,
+							   vstrm.stream_id+1, 1, 117, 
+							   which_streams  & STREAMS_VIDEO);
+			output_padding( *current_SCR, ostream,
+							true,
+							true,
+							false,
+							0);					 
+			bytes_output += sector_transport_size;			 
+			bytepos_timecode ( bytes_output, current_SCR);
+			break;
+			
+		case MPEG_FORMAT_SVCD_STILL :
+			mjpeg_error_exit1("SVCD STILLS NOT YET IMPLEMENTED!\n");
+			break;
 	}
 
    /* Create the in-stream header if needed */
 	create_sys_header (&sys_header, mux_rate,1, !opt_VBR, 1, 1, 1, 1,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   vstrm.stream_id, 1, video_buffer_size/1024, 
 					   which_streams);
 
 
@@ -466,9 +517,9 @@ void outputstream ( VideoStream &vstrm,
 	VAunit video_au;		/* Video Access Unit	*/
 	AAunit audio_au;		/* Audio Access Unit	*/
 	VAunit *next_vau;
-	clockticks delay,audio_delay,video_delay;
+	static clockticks delay,audio_delay,video_delay;
 
-	unsigned int sectors_delay;
+	static unsigned int sectors_delay;
 	unsigned int AU_starting_next_sec; 
 	unsigned char audio_frame_start;
 	unsigned int audio_bytes;
@@ -485,8 +536,8 @@ void outputstream ( VideoStream &vstrm,
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
 
-	Buffer_struc video_buffer;
-	Buffer_struc audio_buffer;
+	static Buffer_struc video_buffer;
+	static Buffer_struc audio_buffer;
 
 	int video_ended = 0;
 	int audio_ended = 0;
@@ -500,23 +551,18 @@ void outputstream ( VideoStream &vstrm,
 
 	/* Oeffne alle Ein- und Ausgabefiles			*/
 	/* Open in- and outputstream				*/
-
+		
 	if (which_streams & STREAMS_AUDIO) istream_a = fopen (audio_file, "rb");
-
+	
 	ostream	= system_open_init(multi_file);
-
+		
 	/* Einlesen erster Access Unit Informationen		*/
-	/* read in first access unit information			*/
-#ifdef REDUNDANT
-	empty_vaunit_struc (&video_au);
-	empty_aaunit_struc (&audio_au);
-#endif
 	audio_frame_start = false;
 	AU_starting_next_sec = OLDFRAME;
 	
 	if (which_streams & STREAMS_AUDIO) {
-		audio_au = *aaunit_info_vec.next();
-		audio_frame_start = true;
+			audio_au = *aaunit_info_vec.next();
+			audio_frame_start = true;
 	}
 	if (which_streams & STREAMS_VIDEO) {
 		video_au = *vstrm.next();;
@@ -531,10 +577,10 @@ void outputstream ( VideoStream &vstrm,
 	init_buffer_struc (&audio_buffer,audio_buffer_size);
 	
 
-    /* To avoid Buffer underflow, the DTS of the first video and audio AU's
-    	must be offset sufficiently	forward of the SCR to allow the buffer 
-		time to fill before decoding starts. Calculate the necessary delays...
-    */
+	/* To avoid Buffer underflow, the DTS of the first video and audio AU's
+	   must be offset sufficiently	forward of the SCR to allow the buffer 
+	   time to fill before decoding starts. Calculate the necessary delays...
+	*/
 
 	/* Calculate start delay in SCR units */
 	if( opt_VBR )
@@ -590,7 +636,8 @@ void outputstream ( VideoStream &vstrm,
 		case last_aaus_segment :
 			if( audio_au.length>0 && audio_au.PTS >= video_au.PTS )
 				{
-					/* Current segment has been written out... */
+					/* Current segment has been written out... 
+					*/
 					outputstreamsuffix( &current_SCR, ostream, &bytes_output);
 					ostream = system_next_file( ostream, multi_file );
 					seg_state = start_segment;
@@ -618,7 +665,7 @@ void outputstream ( VideoStream &vstrm,
 				
 				buffer_flush (&video_buffer);
 				buffer_flush (&audio_buffer);
-				outputstreamprefix( &current_SCR );
+				outputstreamprefix( &current_SCR, vstrm );
 
 				/* The starting PTS/DTS of AU's may of course be
 				   non-zero since this might not be the first segment
@@ -832,16 +879,11 @@ void outputstream ( VideoStream &vstrm,
 		}
 	}
 
-
+	// Tidy up
+	
 	outputstreamsuffix( &current_SCR, ostream, &bytes_output);
-
-  /* Schliesse alle Ein- und Ausgabefiles			*/
-  /* close all In- and Outputfiles				*/
-
 	fclose (ostream);
 	if (which_streams & STREAMS_AUDIO) fclose (istream_a);
-
-
     
 }
 
@@ -1006,7 +1048,8 @@ void output_video ( clockticks SCR,
 
 	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 					  max_packet_payload,
-					  vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
+					  vstrm.rawstrm, vstrm.stream_id,
+					  1, video_buffer_size/1024,
 					  buffers_in_video, PTS, DTS,
 					  timestamps );
 	  next_video_access_unit (buffer, video_au, cur_sector.length_of_packet_data, 
@@ -1023,7 +1066,7 @@ void output_video ( clockticks SCR,
 	{
 	  create_sector( &cur_sector, pack_ptr, sys_header_ptr,
 					 video_au->length,
-					 vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
+					 vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
 					 buffers_in_video, 0, 0,
 					 TIMESTAMPBITS_NO );
 	  next_video_access_unit (buffer, video_au, cur_sector.length_of_packet_data, 
@@ -1062,7 +1105,7 @@ void output_video ( clockticks SCR,
 	
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 max_packet_payload,
-						 vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
+						 vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
 						 buffers_in_video, PTS, DTS,
 						 timestamps );
 		  next_video_access_unit (buffer, video_au, 
@@ -1074,7 +1117,7 @@ void output_video ( clockticks SCR,
 		  video_au->markempty();
 		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 						  0,
-						  vstrm.rawstrm, VIDEO_STR_0, 1, video_buffer_size/1024,
+						  vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
 						  buffers_in_video, 0, 0,
 						  TIMESTAMPBITS_NO);
 		};

@@ -30,7 +30,7 @@
 		;;		Macros for code-readability...
 		;; 
 %define INP eax		;	 pointer to (short *blk) 
-%define OUT ecx		;	 pointer to output (temporary store space qwTemp[])
+%define OUT ecx		;	 pointer to output
 %define TABLE ebx	; pointer to tab_frw_01234567[]
 %define TABLEF ebx  ; pointer to tg_all_16
 %define round_frw_row edx

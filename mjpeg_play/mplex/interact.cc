@@ -54,6 +54,7 @@ int opt_packets_per_pack = 20;
 int opt_max_timeouts = 10;
 bitcount_t opt_max_PTS = 0;
 int opt_emul_vcdmplex = 0;
+bool opt_stills = false;
 
 /* Should fit nicely on an ordinary CD ... */
 intmax_t max_system_segment_size =  2000*1024*1024;
@@ -62,7 +63,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
 	char *outfile = NULL;
-	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:q:p:VMeh")) != EOF)
+	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:q:p:VXMeh")) != EOF)
 	{
 		switch(n)
 		{
@@ -146,6 +147,9 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 			break;
 		case 'e' :
 			opt_emul_vcdmplex = 1;
+			break;
+		case 'X' :
+			opt_stills = true;
 			break;
 		case '?' :
 		default :
