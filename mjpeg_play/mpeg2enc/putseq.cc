@@ -1,5 +1,5 @@
 /* putseq.c, sequence level routines                                        */
-
+//#define SEQ_DEBUG 1
 /* (C) Andrew Stevens 2000, 2001
  *  This file is free software; you can redistribute it
  *  and/or modify it under the terms of the GNU General Public License
@@ -1080,8 +1080,8 @@ void putseq(void)
 
 #ifdef SEQ_DEBUG
         printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
-		sync_guard_update( &cur_picture->completion, 0 );
 #endif
+		sync_guard_update( &cur_picture->completion, 0 );
 		if( readframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curorg) )
 		{
 		    mjpeg_error_exit1("Corrupt frame data in frame %d aborting!",
@@ -1103,7 +1103,6 @@ void putseq(void)
 		++frame_num;
 	}
 	
-        
 	/* Wait for final frame's encoding to complete */
 	if( ctl_max_encoding_frames > 1 )
 		sync_guard_test( &cur_picture->completion );

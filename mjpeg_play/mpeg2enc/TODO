@@ -1,5 +1,6 @@
 IN PROGRESS
 
+	- Fix segfault on exit with -M 2
 	- Tidy up the source code placement of the Picture, StreamState etc classes
 	- Probably need to create an 'Encoder' object
 	- MotionEst should be called 'MacroBlockCodingMode'
