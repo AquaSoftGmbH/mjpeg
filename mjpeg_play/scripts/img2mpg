@@ -6,7 +6,7 @@
 # IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD/DVD portfolio (with vcdimager)
 #
 # This script use this packages :  'ImageMagick' ver >= 5.4.8 [http://www.imagemagick.org/]
-#                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/' bash script]
+#                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
 #
 # You give the images files names on the command line (see the options '--help').
 # The images formats must be reconized by ImageMagick program.
@@ -23,6 +23,8 @@
 # - 'mp2enc'    from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
 # - 'mplex'     from MjpegTools for multiplexe the MPEG file and the MP2 sound and convert
 #               the final MPEG file to a DVD/XVCD/SVCD/VCD format compatible with vcdimager program.
+#
+# You can use the 'Kimg2mpg' KDE frontend with this script. Look this URL : http://kvcdtools.free.fr
 #
 # Return value : 0 -> Process finish succefuly.
 #                1 -> Error.
@@ -134,6 +136,7 @@
 #                 Add DVD video format option.
 #                 Change trap fonction.
 #                 Change some console messages for the KDE GUI.
+# February 2003 : Update 'Kimg2mpg' KDE frontend  WEB site URL.
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -417,7 +420,7 @@ Usage: img2mpg [options] -o <output MPEG file> -i <input image files>
 
 Options:
    -v <num>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
-   --with-gui              : running with 'kimg2mpg' KDE GUI frontend.
+   --with-gui              : running with 'kimg2mpg' KDE GUI frontend [see http://kvcdtools.free.fr].
    -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
    -T <Temporary folder>   : use a specific folder for creating the temporary files (ex: '/tmp').
    -f <Video format>       : video format  [DVD, XVCD=default, SVCD, VCD].
