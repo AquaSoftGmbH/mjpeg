@@ -144,7 +144,7 @@ static void ss_420jpeg_to_444(uint8_t *buffer, int width, int height)
 
   for (y = height; y > 0; y -= 2) {
     if (y == 2) {
-      in0 = saveme + width/2 - 1;
+      in0 = saveme + width/2 - 2;
       inp = in0 + width/2;
     }
     for (x = width; x > 0; x -= 2) {
