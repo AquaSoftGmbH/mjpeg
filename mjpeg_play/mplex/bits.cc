@@ -214,12 +214,12 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 	if( readpos < buffer_start)
 		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)\n", readpos, buffer_start );
 
-	if( readpos-buffer_start+length > bufcount )
+	if( readpos+length > buffer_start+bufcount )
 	{
 		if( !feof(fileh) )
 			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%lld + %d bytes\n", 
 							  bufcount, readpos-(bitcount_t)buffer_start,length  );
-		to_read = static_cast<unsigned int>( bufcount );
+		to_read = static_cast<unsigned int>( (buffer_start+bufcount)-readpos );
 	}
 	memcpy( dst, 
 			bfr+(static_cast<unsigned int>(readpos-buffer_start)), 
