@@ -25,4 +25,89 @@ Have a look at the README to see how the lavtools (ought to ;) ) work ...
 /Gernot <gz@lysator.liu.se>
 
 
+Since there seem to be quite some trouble to run the system, I'll provide you with some step-by-step instruction by Xavier (thanks !):
+
+---------- Forwarded message ----------
+Date: Thu, 07 Sep 2000 10:06:33 +0200
+From: Xavier Biquard <biquard@labs.polycnrs-gre.fr>
+Reply-To: buz-linux@webmages.com
+To: buz-linux@webmages.com
+Subject: Compiling Mjpeg tools
+
+Gernot Ziegler a écrit :
+
+> > I've just downloaded the mjpeg tools on cvs, and I was trying to compile
+> > them, but it failed !
+> > I did an "./autogen.sh" and then "make" in the main directory.
+> > The offending message is
+> > >cd . && aclocal
+> > >aclocal: configure.in: 148: macro `AM_PATH_MOVTAR' not found in library
+> I hope I have fixed it now - added "-I movtar" to the aclocal parameters
+> ... :-)
+
+Well, it doesn't really work yet but I was able to fix the problem anyway.
+As a help for others; here is the procedure I did to compile and install all
+mjpeg tools. The main difficulty for me was to compile these mjpeg tools
+including Quicktime, Software Playback and Movtar support.
+
+First Step
+- download Gernot's corrected version of quicktime-1.2 from
+ftp://mjpeg.sourceforge.net/pub/mjpeg/
+- compile it : "tar xvzf Quicktime4Linux-1.2.tar.gz ; make ; cp
+libquicktime.a /usr/local/lib ; ldconfig" (be sure /usr/local/lib is included
+into your /etc/ld.so.conf file). You can pass optimizations parameter for
+compilation using the CFLAGS variable. On my Athlon system, I did setenv
+CFLAGS "-O6 -march=i686 -ffast-math -fexpensive-optimizations" before running
+make.
+
+Second Step
+- dowload the mjpeg-tools for the CVS server :
+"cvs -d:pserver:anonymous@cvs.mjpeg.sourceforge.net:/cvsroot/mjpeg login"
+(press return when asked for a password)
+"cvs -z3 -d:pserver:anonymous@cvs.mjpeg.sourceforge.net:/cvsroot/mjpeg co
+mjpeg_play"
+"cvs -d:pserver:anonymous@cvs.mjpeg.sourceforge.net:/cvsroot/mjpeg logout"
+- go it the newly created mjpeg_play directory
+- link quicktime sources using "ln -s <Your directory location>/quicktime-1.2
+./quicktime"
+- Generate Makefiles issuing the command "./autogen.sh"
+- At the end, you are informed that quicktime is supported, as well as avi
+(always). If you had installed SDL and SDL-devel >= 1.13, software playback
+is also supported. And most probably, movtar is not supported.
+
+Third Step : we want to include movtar support is the lavtools
+- "cd movtar" ; ./configure && make && make install
+
+Forth Step : we have to regenerate Makefiles of step two, now including
+movatr support
+- "cd .. ; rm config.cache ; ./autogen.sh", and now the movatr support will
+be included !
+- two minors corrections to the file Makefile :
+  around line 90, change the in the line beginning with INCLUDES =, "-I/
+usr/src/quicktime-1.1.9" by "-I quicktime" to include the correct quicktime
+source directory (for completeness, this should also be changed recursively
+in every directory)
+  and around line 170 :  add -I movtar to have the following instructions :
+    $(ACLOCAL_M4):  configure.in
+        cd $(srcdir) && $(ACLOCAL) -I movtar
+- make
+- make install
+- the install stops complaining about nothing to do for "install" in mpegjoin
+: no problem, just copy by hand the executables files found in the mpegjoin,
+mplex and mpeg2enc directories to /usr/local/bin
+ You're all set : lavplay, lavrec, mpeg2enc, aenc, movtar_play, xlav etc..
+are all yours ! (don't forget the "rehash" command for tcsh users)
+
+Happy buz !
+
+Xavier
+
+--
+-------------------------------------------------------------------
+Biquard Xavier                       Tél CEA  : 0476885413
+CEA-Grenoble                         Fax      : 0476885138
+DSM/DRFMC/SP2M/IRS                   mailto:xbiquard@cea.fr
+17, av des Martyrs                   Tél CNRS : 0476887811
+38054 Grenoble Cedex 9               Fax CNRS : 0476881038
+-------------------------------------------------------------------
 
