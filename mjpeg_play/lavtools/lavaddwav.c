@@ -58,11 +58,12 @@ int main(int argc, char **argv)
    lav_file_t *lav_fd, *lav_out;
    int wav_fd;
    long data[64];
+   int have_percent_n = 0;
 
    char chOutFile[128] = "\0";
    int iOutNum = 1;
    unsigned long ulOutputBytes = 0;
-   
+
    if(argc != 4)
    {
       fprintf(stderr,"Usage:\n\n");
@@ -188,6 +189,7 @@ int main(int argc, char **argv)
       {
          /* build output filename */
          sprintf(chOutFile, argv[3], iOutNum++);
+         have_percent_n = 1;
       }
       else
       {
@@ -246,8 +248,16 @@ int main(int argc, char **argv)
          /* check for exceeding maximum output file size */
          if( (ulOutputBytes >> 20) >= (unsigned long)MAX_MBYTES_PER_FILE_32 )
          {
-            ulOutputBytes = 0;
-            break;
+	    if (have_percent_n)
+              {
+	         mjpeg_debug("  Starting new sequence");
+                 ulOutputBytes = 0;
+                 break;
+              }
+            else
+              {
+                 mjpeg_error_exit1("Max file size reaced use %%0xd in your output filename");
+              }
          }
       
       } /* end of while( i < lav_video_frames(lav_fd) ) */
