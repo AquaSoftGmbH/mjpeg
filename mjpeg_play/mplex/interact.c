@@ -61,7 +61,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
     int n;
 	char *outfile = NULL;
-	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:qiVnMe")) != EOF)
+	while( (n=getopt(argc,argv,"o:b:r:O:v:m:f:l:s:S:qiVnMeh")) != EOF)
 	{
 		switch(n)
 		{
