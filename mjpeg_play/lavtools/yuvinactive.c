@@ -421,15 +421,18 @@ void set_darker(struct area_s inarea, int horz, int vert, uint8_t *frame[],
 int i, n, hoffset_pix; 
 uint8_t *plane_l;
 unsigned char *temp_pix;
+unsigned char *pix;
 float dark;
 
 dark  = 1 - (darker* 0.01);
 
 temp_pix = (unsigned char *)malloc(1);
+pix = (unsigned char *)malloc(1);
 *temp_pix=0;
+*pix=0;
 
+/* First we do the luma */
 plane_l  = frame[0];
-
 hoffset_pix = (horz * inarea.voffset) + inarea.hoffset;
 
 for (i = 0; i < inarea.height; i++)
@@ -437,15 +440,54 @@ for (i = 0; i < inarea.height; i++)
     for (n = 0; n < inarea.width; n++)
       {
          memcpy( temp_pix, (plane_l+hoffset_pix), 1);
-         *temp_pix = (int)((*temp_pix - 16) * dark + 16);
-         memset( (plane_l + hoffset_pix), *temp_pix, 1);
+         *pix = 16 + (int)((*temp_pix - 16) * dark);
+
+         if (*pix < 16 ) /* We take care that we don't produce values */
+           *pix = 16;    /* which should not be used */
+
+         memset( (plane_l + hoffset_pix), *pix, 1);
+
          hoffset_pix++;
       }
     hoffset_pix += (horz - inarea.width) ;
   }
 
+
+/* And then the Cr and Cb */
+plane_l  = frame[1];
+hoffset_pix = ((horz/2) * (inarea.voffset/2)) + (inarea.hoffset/2);
+
+for (i = 0; i < (inarea.height/2); i++)
+  {
+    for (n = 0; n < (inarea.width/2); n++)
+      {
+         memcpy( temp_pix, (plane_l+hoffset_pix), 1);
+         *pix = 128 + (int)((*temp_pix - 128) * dark);
+         memset( (plane_l + hoffset_pix), *pix, 1);
+         hoffset_pix++;
+      }
+    hoffset_pix += ((horz - inarea.width) /2) ;
+  }
+
+plane_l  = frame[2];
+hoffset_pix = ((horz/2) * (inarea.voffset/2)) + (inarea.hoffset/2);
+
+for (i = 0; i < (inarea.height/2); i++)
+  {
+    for (n = 0; n < (inarea.width/2); n++)
+      {
+         memcpy( temp_pix, (plane_l+hoffset_pix), 1);
+         *pix = 128 + (int)((*temp_pix - 128) * dark);
+         memset( (plane_l + hoffset_pix), *pix, 1);
+         hoffset_pix++;
+      }
+    hoffset_pix += ((horz - inarea.width) /2) ;
+  }
+
 free(temp_pix);
 temp_pix=NULL;
+free(pix);
+pix=NULL;
 }
 
 /** Here is the first stage of setting the stream to black */
