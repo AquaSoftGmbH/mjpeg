@@ -772,9 +772,6 @@ void do_audio()
       system_error("Could not get enough audio buffers",0);
    }
 
-   /* TODO: Remove this... its a test top to force only two buffers to
-	see how well it works.*/
-   /* info.fragstotal = 2; */
    tmp = info.fragstotal*info.fragsize;
 //   fprintf( stderr, "Attempting to map %d byte buffer space\n", tmp );
    if (audio_capt)

@@ -127,11 +127,31 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_transport_size = 2048;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2048;
-	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
-	  	video_buffer_size = 46*1024;
+	  	video_buffer_size = 234*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
+		zero_stuffing = 0;
+		audio_packet_data_limit = 0;
+        dtspts_for_all_vau = 0;
+		break;
+
+		case  MPEG_SVCD : 
+		fprintf( stderr, "WARNING: SVCD support experimental!\n" );
+		opt_mpeg = 2;
+		/* TODO should test specified data-rate is < 2*CD
+		   = 150 sectors/sec * (mode 2 XA payload) */ 
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = 1;
+	  	always_sys_header_in_pack = 0;
+	  	trailing_pad_pack = 0;
+	  	sector_transport_size = 2324;	      /* Each 2352 bytes with 2324 bytes payload */
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2324;
+	  	opt_VBR = 1;
+	  	video_buffer_size = 234*1024;
+		buffers_in_video = 1;
+		always_buffers_in_video = 1;
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
@@ -275,9 +295,11 @@ void outputstreamprefix( clockticks *current_SCR)
 	bytepos_timecode ( bytes_output, current_SCR);
 	
 	/* VCD: Two padding packets with video and audio system headers */
-	
-	if ( opt_mux_format != MPEG_MPEG1 )
-	{
+
+	switch (opt_mux_format)
+		{
+		case MPEG_VCD :
+
 		/* First packet carries video-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
@@ -301,9 +323,26 @@ void outputstreamprefix( clockticks *current_SCR)
 					 	 FALSE);
 		bytes_output += sector_transport_size;
 		bytepos_timecode ( bytes_output, current_SCR);
+		break;
 		
+		case MPEG_SVCD :
 
+		/* First packet carries sys_header */
+		create_sys_header (&sys_header, mux_rate,1, 0, 1, 1, 1, 1,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   which_streams  );
+	  	output_padding( *current_SCR, ostream,
+					  	TRUE,
+					 	 TRUE,
+					 	 FALSE);					 
+		bytes_output += sector_transport_size;			 
+		bytepos_timecode ( bytes_output, current_SCR);
+		break;
+
+		default:
 	}
+
 }
 
 

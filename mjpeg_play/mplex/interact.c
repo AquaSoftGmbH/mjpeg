@@ -24,10 +24,10 @@ static void Usage(char *str)
 	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
 	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
 	fprintf( stderr, " -p num  Number of packets per pack (default: 20) [1..100]\n"  );
-	fprintf( stderr, " -h      System header in every pack rather than just in first" );
+	fprintf( stderr, " -h      System header in every pack rather than just in first\n" );
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = Auto MPEG2, 3 = SVCD, 4 = DVD]\n");
-	fprintf( stderr, "         (N.b only 0 .. 2 currently implemented!*)\n" ); 
+	fprintf( stderr, "         (N.b only 0 .. 3 currently implemented!*)\n" ); 
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
@@ -138,7 +138,7 @@ int intro_and_options(int argc, char *argv[])
 	  
 	  case 'f' :
 	    opt_mux_format = atoi(optarg);
-	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_MPEG2 )
+	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_SVCD )
 	    	Usage(argv[0]);
 		break;
 	  case 's' :

@@ -1,21 +1,16 @@
 TODO
 
-- Tidy up the timecode code... (now only need to strip to old #ifdef-ed stuff
+
+- Replace the hardwired two-stream mux-despatcher loop with a general-purpose
+one table-driven affair for n-streams.
+
+- Add basic DVD support ( needs predecessor really).
+
 
 - Make VBR more efficient.
 
-- Need to get rid of crappy code that hard-wires sizes at top leve rather than
-  deriving them from included headers when sectors are created...
 
-- Need to add facility to drop sys headers
+Eventually:
 
-- The checking for VBV underflow/overflow is horribly naive.  The messages are essentially
-	meaningless in typical use of the encoder where the results are later multiplexed
-	into a system stream.
+- Full SVCD (MPEG audio extension) support.
 
-- Tidy up the #ifdef Spaghetti around the removal of temporary files.
-
-- Merge in stuff to deal with MPEG2 from bbmpeg
-
-- Merge in stuff to deal with VCD/DVD's additional bits and pieces
-  from bbmpeg.

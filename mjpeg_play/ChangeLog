@@ -28,10 +28,22 @@
 	Initial MPEG-2 video support.  Supports layer 3 audio and (hopefully)
 	MPEG audio V2 and V2.5 though these don't look too useful...
 
-        * Bug fixes and support for software-only playback of mjpeg.	
+        * Bug fixes and support for software-only playback of mjpeg.
+
+2001-01-25 Andrew Stevens (as@comlab.ox.ac.uk)
+
+	* 1.3b3 release.  Tag (forthcoming): Rel1_3Beta3
+
+	* Refinement if field based motion compensation type selection.
+	Replacing sad with variance as selection criterion.
        
+	* Initial SVCD support.
+	
 CVS log:
 $Log$
+Revision 1.7  2000/12/19 14:34:06  wackston
+*** empty log message ***
+
 Revision 1.6  2000/12/19 14:29:14  wackston
 Tagging for beta2 release.
 

@@ -4,6 +4,10 @@ TASKS OUTSTANDING
 
 Minor
 
+- The filtering / decimation code in the lav* utilities should be seperated 
+	from the stream extraction.  An extractor is needed for the favoured
+	format of the mpeg2dec developer.
+
 - Diff the plug-in's with the livid source-base and send it to the developers.
 
 - Mention transcoding in the Documentation.  Mention the stuff relating to
@@ -17,8 +21,9 @@ Minor
 
 Medium
 
-- Modify mplex to a decent job at mpeg stream splitting.  Its *almost* there, just needs
-  to be able to regenerate headers...
+- Modify mplex to a decent job at mpeg stream splitting.  The solution
+	would be to get mpeg2enc to insert regular sequence headers at the
+	start of GOP's.  mplex could then simply split at these points.
 
 - Beef up xlav to make splitting an editted stream set into multiple
   edit lists for parallel compression less tedious.

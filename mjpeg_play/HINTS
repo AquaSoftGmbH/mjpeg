@@ -128,5 +128,13 @@
 	script is already set-up to allow multiple machines (or processes)
 	to work on a set of encoding jobs simultaneously.
 
+11) SVCD images.  An SVCD video stream is variable bit-rate MPEG-2
+	with a maximum rate of 2788Kbps and a video buffer size of 234KB.
+	Currently I recommend encoding -m 2 -F 3 or (for progressive
+	material like PAL films) -m 2 -F 0.  -F 1 and -F 2 will work but
+	are currently handicapped by rather dumb code to choose the type
+	of motion compensation.  I have some suspicions that the rate control
+	code needs adjusting for field sequences (-m 2 -F 1 and -F 2) also.
+
 Andrew
 

@@ -151,7 +151,7 @@ typedef uint64_t clockticks;
 #define TIMESTAMPBITS_PTS_DTS	(TIMESTAMPBITS_DTS|TIMESTAMPBITS_PTS)		/* Flag BOTH timestamps	*/
 
 #define MARKER_MPEG1_SCR		2		/* Marker SCR		*/
-#define MARKER_MPEG2_SCR        2		/* These don't need to be distinct! */
+#define MARKER_MPEG2_SCR        1		/* These don't need to be distinct! */
 #define MARKER_JUST_PTS			2		/* Marker only PTS	*/
 #define MARKER_PTS				3		/* Marker PTS		*/
 #define MARKER_DTS				1		/* Marker DTS		*/

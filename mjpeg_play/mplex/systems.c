@@ -234,7 +234,7 @@ void create_sector (Sector_struc 	 *sector,
     *(index++) = (unsigned char)(PACKET_START & 0x0000ff);
     *(index++) = type;	
 
-    /* wir merken uns diese Position, falls sich an der Paketlaenge noch was tut */
+
     /* we remember this offset so we can fill in the packet size field once
 	   we know the actual size... */
     size_offset = index;   

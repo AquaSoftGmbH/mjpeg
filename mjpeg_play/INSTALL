@@ -99,7 +99,7 @@ scripts in the same parent directory as the mjpegtools source code or
 Very handy for hacking around, moving between formats, and experimentation.
 
 
-http://download.sourceforge.net/mjpeg/libmovtar-0.1.1.tar.gz
+http://download.sourceforge.net/mjpeg/libmovtar-0.1.2.tar.gz
 
 Compile and install: 
 
