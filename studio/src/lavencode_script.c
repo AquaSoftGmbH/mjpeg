@@ -468,7 +468,7 @@ void create_command_mpeg2enc(char* mpeg2enc_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT])
 {
 int n;
-static char temp1[4], temp2[4], temp3[4], temp4[4], temp5[4], temp6[4];
+static char temp1[6], temp2[4], temp3[4], temp4[4], temp5[4], temp6[4];
 static char temp7[4], temp8[4], temp9[4], temp10[4], temp11[4], temp12[256];
 
 n=0;
@@ -627,7 +627,7 @@ void create_command_yuvscaler(char *yuvscaler_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4)
 {
 static int n;
-static char temp2[24] /* , temp1[4] */;
+static char temp1[24], temp2[24];
 n = 0;
 
   if ((use_rsh ==1)&&((machine4mpeg1.yuvscaler!=0)||((*machine4).yuvscaler!=0)))    {
@@ -650,7 +650,8 @@ n = 0;
         strcmp((*option).input_use,"as is") )
       {
          yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = (*option).input_use; n++;
+         sprintf(temp1,"USE_%s", (*option).input_use);
+         yuvscaler_command[n] = temp1; n++;
       }
     if (strlen((*option).notblacksize) > 0 &&
         strcmp((*option).notblacksize,"as is") != 0)
