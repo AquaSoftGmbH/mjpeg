@@ -14,10 +14,8 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 {
 	int x,vx,y,v;
 	int min;
-	int delta,d,d1,d2,d3;
-	int line1,line2;
+	int delta, d;
 	int iv;
-	int i0;
 	int a,b;
 
 	memcpy ( frame, inframe, width*height );
