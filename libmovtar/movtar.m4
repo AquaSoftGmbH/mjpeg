@@ -86,7 +86,6 @@ else
     MOVTAR_CFLAGS=`$MOVTAR_CONFIG $movtar_config_args --cflags`
     MOVTAR_LIBS=`$MOVTAR_CONFIG $movtar_config_args --libs`
     MOVTAR_VERSION=`$MOVTAR_CONFIG $movtar_config_args --version`
-    MOVTAR_DATA_DIR=`$MOVTAR_CONFIG $movtar_config_args --data-dir`
 
     MOVTAR_TEST_VERSION($MOVTAR_VERSION, $min_movtar_version, ,no_movtar=version)
 fi
