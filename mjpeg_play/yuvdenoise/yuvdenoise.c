@@ -2202,12 +2202,17 @@ mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   ds=(x + bx - BLOCKOFFSET) + (y + by - BLOCKOFFSET) * width;
   dr=(x - BLOCKOFFSET) + (y - BLOCKOFFSET) * width;
 
+  if (ds < 0) return (0x00ffffff);
+
   for (qy = -1; qy <= +1; qy++)
     for (qx = -1; qx <= +1; qx++)
       {
-        d = calc_SAD_half (tgt_frame[0],
-			   ref_frame[0],
-			   ds, dr, qx, qy );
+	  if((x+qx)>0 && (y+qy)>0)
+	      d = calc_SAD_half (tgt_frame[0],
+				 ref_frame[0],
+				 ds, dr, qx, qy );
+	  else
+	      d = 0x00ffffff;
 
         if (d < SAD)
           {
