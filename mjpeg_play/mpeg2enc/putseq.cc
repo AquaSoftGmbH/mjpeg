@@ -114,6 +114,10 @@ void Despatcher::Init( unsigned int _mb_width,
     parallelism = _parallelism;
     mb_width = _mb_width;
     mb_height = _mb_height;
+
+    if( !parallelism )
+        return;
+
     unsigned int mb_in_stripe = 0;
     int i = 0;
     unsigned int pitch = mb_width / parallelism;
@@ -172,9 +176,8 @@ Despatcher::~Despatcher()
         {
             pthread_join( worker_threads[i], NULL );
         }
-
+        delete [] worker_threads;
     }
-    delete [] worker_threads;
 }
 
 void *Despatcher::ParallelPerformWrapper(void *despatcher)
