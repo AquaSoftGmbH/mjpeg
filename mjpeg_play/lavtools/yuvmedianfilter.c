@@ -28,26 +28,20 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 
-#define PIXEL_AVG                                    \
-        diff = reference - *++pixel;                 \
-        if (diff < threshold && diff > -threshold) { \
-          total += *pixel;                           \
-          count++;                                   \
-        }
 
 int verbose = 1;
-unsigned char	*input_frame[3];
-unsigned char	*output_frame[3];
+uint8_t	*input_frame[3];
+uint8_t	*output_frame[3];
 
-void	filter(int width, int height, unsigned char *input[], unsigned char *output[]);
-void	filter_buffer(int width, int height, int radus, int threshold, unsigned char *input, unsigned char *output);
+void	filter(int width, int height, uint8_t *input[], uint8_t *output[]);
+void	filter_buffer(int width, int height, int stride, int radius, int threshold, uint8_t *input, uint8_t *output);
 
 int	threshold_luma = 2;
 int	threshold_chroma = 2;
 
-int	radus_luma = 2;
-int	radus_chroma = 2;
-
+int	radius_luma = 2;
+int	radius_chroma = 2;
+int interlace = 0;
 int	avg_replace[1024];
 int	ovr_replace = 0;
 int	chg_replace = 0;
@@ -73,17 +67,21 @@ main(int argc, char *argv[])
 	int	vert;
 	int	c;
 	int	frame_count;
+
 	y4m_stream_info_t istream, ostream;
 	y4m_frame_info_t iframe;
 
-	while((c = getopt(argc, argv, "r:t:v:h")) != EOF) {
+	while((c = getopt(argc, argv, "r:t:v:hI")) != EOF) {
 		switch(c) {
 			case 'r':
-				radus_luma = radus_chroma = atoi(optarg);
+				radius_luma = radius_chroma = atoi(optarg);
 				break;
 			case 't':
 				threshold_luma = threshold_chroma = atoi(optarg);
 				break;
+		case 'I' :
+			interlace = 1;
+			break;
 		case 'v':
 			verbose = atoi (optarg);
 			if( verbose < 0 || verbose >2 )
@@ -110,30 +108,34 @@ main(int argc, char *argv[])
 	if (i != Y4M_OK)
 		mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(i));
 
+	if( interlace && istream.height % 2 != 0 )
+	{
+		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!\n" );
+	}
 	horz = istream.width;
 	vert = istream.height;
 	mjpeg_debug( "width=%d height=%d\n", horz, vert);
 
 	y4m_copy_stream_info(&ostream, &istream);
 
-	input_frame[0] = alloca(horz * vert);
-	input_frame[1] = alloca((horz / 2) * (vert / 2));
-	input_frame[2] = alloca((horz / 2) * (vert / 2));
+	input_frame[0] = malloc(horz * vert);
+	input_frame[1] = malloc((horz / 2) * (vert / 2));
+	input_frame[2] = malloc((horz / 2) * (vert / 2));
 
-	output_frame[0] = alloca(horz * vert);
-	output_frame[1] = alloca((horz / 2) * (vert / 2));
-	output_frame[2] = alloca((horz / 2) * (vert / 2));
+	output_frame[0] = malloc(horz * vert);
+	output_frame[1] = malloc((horz / 2) * (vert / 2));
+	output_frame[2] = malloc((horz / 2) * (vert / 2));
 
 
 	y4m_write_stream_header(output_fd, &ostream);
 
 	frame_count = 0;
 	while (y4m_read_frame(input_fd, &istream, &iframe, input_frame) == Y4M_OK)
-		{ 
+	{ 
 		frame_count++;
-		filter(horz, vert, input_frame, output_frame);
+		filter(horz, vert,  input_frame, output_frame);
 		y4m_write_frame(output_fd, &ostream, &iframe, output_frame);
-		}
+	}
 
 	for (avg=0, i=0; i < 64; i++)
 		avg += avg_replace[i];
@@ -150,67 +152,143 @@ main(int argc, char *argv[])
 }
 
 void
-filter(int width, int height, unsigned char *input[], unsigned char *output[])
+filter(int width, int height, uint8_t *input[], uint8_t *output[])
 {
-	filter_buffer(width, height, radus_luma, threshold_luma, input[0], output[0]);
-	filter_buffer(width/2, height/2, radus_chroma, threshold_chroma, input[1], output[1]);
-	filter_buffer(width/2, height/2, radus_chroma, threshold_chroma, input[2], output[2]);
+	if( interlace )
+	{
+		filter_buffer(width, height/2, width*2, 
+					  radius_luma, threshold_luma, 
+					  input[0], output[0]);
+		filter_buffer(width, height/2, width*2, 
+					  radius_luma, threshold_luma, 
+					  input[0]+width, output[0]+width);
+		filter_buffer(width/2, height/4, width, 
+					  radius_chroma, threshold_chroma, 
+					  input[1], output[1]);
+		filter_buffer(width/2, height/4, width, 
+					  radius_chroma, threshold_chroma, 
+					  input[1]+width/2, output[1]+width/2);
+		filter_buffer(width/2, height/4, width, radius_chroma, 
+					  threshold_chroma, 
+					  input[2], output[2]);
+		filter_buffer(width/2, height/4, width, radius_chroma, 
+					  threshold_chroma, 
+					  input[2]+width/2, output[2]+width/2);
+	}
+	else
+	{
+		filter_buffer(width, height, width, 
+						  radius_luma, threshold_luma, 
+						  input[0], output[0]);
+		filter_buffer(width/2, height/2, width/2, 
+					  radius_chroma, threshold_chroma, 
+					  input[1], output[1]);
+		filter_buffer(width/2, height/2, width/2, 
+					  radius_chroma, threshold_chroma, 
+					  input[2], output[2]);
+	}
 }
 
 void
-filter_buffer(int width, int height, int radus, int threshold, unsigned char *input, unsigned char *output)
+filter_buffer(int width, int height, int row_stride,
+			  int radius, int threshold, uint8_t *input, uint8_t *output)
 {
 	int	reference;
 	int	diff;
 	int	a;
 	int	b;
-	unsigned char *pixel;
+	uint8_t *pixel;
 	int	total;
 	int	count;
-	int	radus_count;
+	int	radius_count;
 	int	x;
 	int	y;
 	int	offset;
 	int	min_count;
-
-	radus_count = radus + radus + 1;
-	min_count = (radus_count * radus_count + 2)/3;
+	uint8_t *inpix, *refpix;
+	uint8_t *outpix;
+	radius_count = radius + radius + 1;
+	min_count = (radius_count * radius_count + 2)/3;
 	
 
-	for(y=0; y < radus; y++)
-		memcpy(&output[y * width], &input[width * radus], width);
+	for(y=0; y < radius; y++)
+		memcpy(&output[y * row_stride], &input[y * row_stride], width);
 
-	for(y=height - radus; y < height; y++)
-		memcpy(&output[y* width], &input[width * (height - radus-1)], width);
+	for(y=height - radius; y < height; y++)
+		memcpy(&output[y* row_stride], &input[y*row_stride], width);
+	
+	inpix = &input[0];
+	outpix = &output[0];
+	for(y=0; y < height; ++y)
+	{
+		a = 0;
+		while(a<radius)
+		{
+			outpix[a] = inpix[a];
+			++a;
+			outpix[width-a] = inpix[width-a];
+		}
+		inpix += row_stride;
+		outpix += row_stride;
+	}
+
 	count = 0;
 
-	for(y=radus; y < height-radus; y++) {
-		for(x=radus; x < width - radus; x++) {
-			reference = input[offset = width * y + x];
+	offset = radius*row_stride+radius;	// Offset top-left of processing
+	                                // Window to its centre
+	refpix = &input[offset];
+	outpix = &output[offset];
+	for(y=radius; y < height-radius; y++)
+	{
+		for(x=radius; x < width - radius; x++)
+		{
+			reference = *refpix;
 			total = 0;
 			count = 0;
-			pixel = &input[(y - radus) * width + x - radus - 1];
-			for(b=radus_count; b--;) {
-				for(a = radus_count; a--;) {
-					diff = reference - *++pixel;
-					if (diff < threshold && diff > -threshold) {
+			pixel = refpix-offset;
+			b = radius_count;
+			while( b > 0 )
+			{
+				a = radius_count;
+				--b;
+				while( a > 0 )
+				{
+					diff = reference - *pixel;
+					--a;
+					if (diff < threshold && diff > -threshold)
+					{
 						total += *pixel;
 						count++;
 					}
+					++pixel;
 				}
-				pixel += (width - radus_count);
-
+				pixel += (row_stride - radius_count);
 			}
-			avg_replace[count]++;
-			if (count <= min_count) {
-				 output[offset] = 
-					(input[offset - 1] +
-					input[offset + 1] +
-					input[offset - width] +
-					input[offset + width]) >> 2;
+			++avg_replace[count];
+
+			//
+			// If we don't have enough samples to make a decent 
+			// pseudo-median use a simple mean
+			//
+			if (count <= min_count)
+			{
+				*outpix =  
+					( ( (refpix[-row_stride-1] + refpix[-row_stride]) + 
+						(refpix[-row_stride+1] +  refpix[-1]) 
+						) 
+					  + 
+					  ( ((refpix[0]<<3) + 8 + refpix[1]) +
+						(refpix[row_stride-1] + refpix[row_stride]) + 
+						refpix[row_stride+1]
+						  )
+					 ) >> 4;
 			} else {
-				output[offset] = total / count;
+				*outpix = total / count;
  			}
+			++refpix;
+			++outpix;
 		}
+		refpix += (row_stride-width+(radius*2));
+		outpix += (row_stride-width+(radius*2));
 	}
 }
