@@ -760,14 +760,14 @@ File: mjpeg-howto.info,  Node: Unify videos,  Next: Separate sound,  Prev: Edit 
 Unify videos
 ============
 
-   `> lavtrans -o stream.movtar -f m record_1.avi record_2.avi ...
+   `> lavtrans -o stream.qt -f m record_1.avi record_2.avi ...
 record_n.avi'
 
 `-o'
      specifies the outputfile name
 
 `-f m'
-     specifies the output format, movtar in this case
+     specifies the output format, quicktime in this case
 
 
    This is usually not needed. Keep in your mind that there is the 2GB

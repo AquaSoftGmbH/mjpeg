@@ -21,7 +21,6 @@
  *      'A': AVI with fields exchanged
  *      'j': JPEG image(s)
  *      'q': quicktime (if compiled with quicktime support)
- *      'm': movtar (if compiled with movtar support)
  *      Hint: If your AVI video looks strange, try 'A' instead 'a'
  *      and vice versa.
  *		 
@@ -228,12 +227,7 @@ static void Usage(char *progname)
 #else
            " "
 #endif
-#ifdef HAVE_LIBMOVTAR
-           "m"
-#else
-           " "
-#endif
-           "]         Format AVI/Quicktime/movtar\n");
+           "]         Format AVI/Quicktime\n");
 	fprintf(stderr, "  -i/--input [pPnNsStTfa]     Input Source\n");
 	fprintf(stderr, "  -d/--decimation num         Decimation (either 1,2,4 or two digit number)\n");
 	fprintf(stderr, "  -g/--geometry WxH+X+Y       X-style geometry string (part of 768/720x576/480)\n");
@@ -587,31 +581,14 @@ static int set_option(const char *name, char *value)
 #ifdef HAVE_LIBQUICKTIME
                    && value[0]!='q'
 #endif
-#ifdef HAVE_LIBMOVTAR
-                   && value[0]!='m'
-#endif
                    )
 		{
-			mjpeg_error("Format (-f/--format) must be j, a"
-#if !defined(HAVE_LIBMOVTAR) && !defined(HAVE_LIBQUICKTIME)
-                           " or"
+#ifdef	HAVE_LIBQUICKTIME
+		mjpeg_error("Format (-f/--format) must be j, a, A or q");
 #else
-                           ","
+		mjpeg_error("Format (-f/--format) must be j, a or A");
 #endif
-                           " A"
-#ifdef HAVE_LIBQUICKTIME
-#ifdef HAVE_LIBMOVTAR
-                           ","
-#else
-                           " or"
-#endif
-                           " q"
-#endif
-#ifdef HAVE_LIBMOVTAR
-                           " or m"
-#endif
-                           );
-			nerr++;
+		nerr++;
 		}
 	}
 	else if (strcmp(name, "input")==0 || strcmp(name, "i")==0)
@@ -982,10 +959,6 @@ static void check_command_line_options(int argc, char *argv[])
         /* Try to guess the file type by looking at the extension. */
         if(info->video_format == '\0') {
             if((dotptr = strrchr(argv[optind], '.'))) {
-#ifdef HAVE_LIBMOVTAR
-                if(!strcasecmp(dotptr+1, "tar") || !strcasecmp(dotptr+1, "movtar"))
-                    info->video_format = 'm';
-#endif
 #ifdef HAVE_LIBQUICKTIME
                 if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
                     || !strcasecmp(dotptr+1, "moov")) info->video_format = 'q';
@@ -1001,9 +974,16 @@ static void check_command_line_options(int argc, char *argv[])
 static void lavrec_print_properties(void)
 {
 	const char *source;
+	char *tmsg;
 	mjpeg_info("Recording parameters:");
-	mjpeg_info("Output format:      %s",info->video_format=='q'?"Quicktime":
-		(info->video_format=='m'?"Movtar":(info->video_format=='j'?"JPEG":"AVI")));
+	if (info->video_format=='q')
+	   tmsg = "Quicktime";
+	else if (info->video_format=='j')
+	   tmsg = "JPEG";
+	else
+	   tmsg = "AVI";
+	mjpeg_info("Output format:      %s", tmsg);
+
 	switch(input_source)
 	{
 		case 'p': source = info->software_encoding?"BT8x8 1st input PAL\n":"Composite PAL\n"; break;

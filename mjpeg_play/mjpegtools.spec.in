@@ -13,8 +13,7 @@ License:	GPL
 Url:		http://mjpeg.sourceforge.net/
 Group:		Video
 Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}.tar.gz
-Source1:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3.tar.gz
-Source2:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
+Source1:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 
 Requires:	XFree86 SDL
@@ -46,7 +45,6 @@ encoded into mpeg1/2 or divx video.
 %setup -q -n %{name}-%{version} -a 1 -a 2
 
 mv jpeg-mmx-* jpeg-mmx
-mv libmovtar-* libmovtar
 
 mkdir usr
 
@@ -63,30 +61,12 @@ make -C jpeg-mmx libjpeg-mmx.a
 
 CONF_ARGS="--with-jpeg-mmx=`pwd`/jpeg-mmx"
 
-(cd libmovtar && 
-   ./configure --prefix="$tmp_prefix" \
-	--with-m4data-prefix="$tmp_prefix/share/aclocal" \
-	$CONF_ARGS )
-
-make -C libmovtar
-make -C libmovtar install
-
-CONF_ARGS="$CONF_ARGS --prefix=%{prefix}"
-
-(cd libmovtar&& ./configure $CONF_ARGS)
-make -C libmovtar
-
-CONF_ARGS="$CONF_ARGS --with-movtar-prefix=$tmp_prefix"
-
-MOVTAR_CONFIG=$tmp_prefix/bin/movtar-config; export MOVTAR_CONFIG
 ./configure $CONF_ARGS --enable-large-file --enable-cmov-extension
 make
 
 %install
 [ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
  && rm -rf ${RPM_BUILD_ROOT}/
-
-make -C libmovtar DESTDIR=${RPM_BUILD_ROOT} install
 
 make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 
@@ -123,7 +103,6 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} INSTALL_INFO= install
 %{_bindir}/pgmtoy4m
 %{_bindir}/png2yuv
 %{_bindir}/*.flt
-%{_bindir}/movtar_*
 %{_bindir}/pnm2rtj
 %{_bindir}/rtjshow
 %{_libdir}/*.so.*
@@ -143,7 +122,6 @@ of the mjpegtools package.
 %files devel
 %{_bindir}/*-config
 %{_includedir}/mjpegtools/*.h
-%{_includedir}/movtar.h
 %{_prefix}/share/aclocal/*.m4
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a

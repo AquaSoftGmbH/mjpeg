@@ -6,8 +6,6 @@ INSTALL - How to install this package
 Prerequisites
 =============
 
-libmovtar (optional): allows the lavtools to handle a special, simple video format based on tar.
-
 jpeg-mmx (optional): 
 Acts as a local replacement (not system-wide !) for libjpeg and allows it
 to decode JPEGs with Intels MMX instructions. 
@@ -136,14 +134,6 @@ modified since then.
 MPEG-2 multiplexing is implemented but is currently untested.
 DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
 
-
-
-* The mjpeg directory
-
-Contains libraries to handle the new MJPEG movtar video format and a
-library to simplify MJPEG software and hardware playback,
-respectively.  Please read the accompanying README files in these
-directories for more information.
 
 See the README's of the various programs for further details
 of authorship, usage, and implementation/compilation details.

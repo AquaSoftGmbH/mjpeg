@@ -1,6 +1,6 @@
 /*
     lavtrans - takes file arguments like lavplay
-               (AVI/Quicktime/movtar files and Edit Lists)
+               (AVI/Quicktime files and Edit Lists)
                and produces a new file or a bunch of
                JPEG images from that.
 
@@ -22,7 +22,6 @@
                a: AVI (no selection of bottom/top frame first possible)
                q: Quicktime (if the input is interlaced, then all input files
                              must be Quicktime, too)
-               m: movtar format
                i: single images, "name" in the -o option must be a vaild
                   format string for sprintf!
                w: WAV file (of sound only)
@@ -33,7 +32,7 @@
                (you need -f i for this!)
 
     Filename options like in lavplay (optional +p/+n followed by
-    an arbitrary number of AVI / Quicktime / movtar files or edit lists).
+    an arbitrary number of AVI / Quicktime files or edit lists).
 
 
 
@@ -110,7 +109,6 @@ void Usage(char *str)
    fprintf(stderr,"Usage: %s -o <outputfile> -f [aqiw] filenames [<-i num>]\n",str);
    fprintf(stderr,"          -f a    output AVI file\n");
    fprintf(stderr,"          -f q    output Quicktime file\n");
-   fprintf(stderr,"          -f m    output movtar file\n");
    fprintf(stderr,"          -f i    output single JPEG images, "
                   "-o option mut be a valid format string\n");
    fprintf(stderr,"          -f w    output WAV file (sound only!)\n");
@@ -173,10 +171,6 @@ int main(int argc, char ** argv)
    if(optind>=argc) Usage(argv[0]);
    if(outfile != 0 && format == 0) {
       if((dotptr = strrchr(outfile, '.'))) {
-#ifdef HAVE_LIBMOVTAR
-         if(!strcasecmp(dotptr+1, "tar") || !strcasecmp(dotptr+1, "movtar"))
-            format = 'm';
-#endif
 #ifdef HAVE_LIBQUICKTIME
             if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
                || !strcasecmp(dotptr+1, "moov")) format = 'q';
@@ -202,7 +196,7 @@ int main(int argc, char ** argv)
 
    if((format == 'q' || format == 'm') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
    {
-      mjpeg_error_exit1("Output is Quicktime/movtar - wrong interlacing order");
+      mjpeg_error_exit1("Output is Quicktime - wrong interlacing order");
    }
 
    if(format == 'q' || format == 'a' || format == 'A' || format == 'm')

@@ -24,8 +24,7 @@ yuv2lav is a simple MJPEG encoder for raw YUV frame
 streams as they are emitted by
 .BR lav2yuv "(1) or " lavpipe "(1),"
 for example. It reads its input from stdin and is capable of
-writing AVI, Quicktime and Gernot Ziegler's movtar format,
-at the time being.
+writing AVI and Quicktime.
 
 .SH "OPTIONS"
 The command line options allow to specify the output file
@@ -52,9 +51,6 @@ This sets the output file format, which has to be one of
 .br
 .B \ q
 - for Quicktime output or
-.br
-.B \ m
-- for movtar output.
 .br
 AVI with reversed field of course only makes sense if yuv2lav's
 feed is an interlaced video source and should only be needed if

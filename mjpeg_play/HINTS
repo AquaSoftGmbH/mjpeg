@@ -9,7 +9,7 @@
 
 	The scripts directory contains shell scripts that provide
 	a convenient interface for common tasks.  
-	E.g. lav file (editlist, avi, quicktime, movtar) -> MPEG for disk
+	E.g. lav file (editlist, avi, quicktime) -> MPEG for disk
 	storage, VCD or SVCD.
 
 	

@@ -264,17 +264,6 @@ if test x$have_jpeg = xfalse ; then
       JPEG_CFLAGS=""
       have_jpeg=true ],,)
 fi
-dnl *********************************************************************
-dnl Check for the libmovtar library
-AC_SUBST(MOVTAR_CFLAGS)
-AC_SUBST(MOVTAR_LIBS)
-have_movtar=false
-ifdef([AM_PATH_MOVTAR],
-      [ AM_PATH_MOVTAR(0.0.2, 
-					[ AC_DEFINE(HAVE_LIBMOVTAR,1,
-			                    [libmovtar installed]) 
-					  have_movtar=true ],,) 
-      ])
 
 dnl *********************************************************************
 dnl Check for the libquicktime library
@@ -735,7 +724,6 @@ echo "      - AltiVec enabled             : ${have_altivec}"
 fi
 echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
-echo "    - movtar playback/recording     : ${have_movtar}"
 echo "    - MPEG Z/Alpha                  : ${use_zalpha}"
 echo "    - Quicktime playback/recording  : ${have_quicktime}"
 echo "    - PNG input support             : ${have_png}"

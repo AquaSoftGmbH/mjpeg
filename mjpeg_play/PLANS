@@ -1,14 +1,10 @@
 (Gernot Ziegler speaking)
 These are some of my new ideas, I don't know if I am going to realize them - ever:
 
-for the movtar directory:
-
 .) Plugins for GIMP
 
-.) Blender output plugin or at least a movtar enpacking program
+.) Blender output plugin
 
-.) mpeg2encode directly from movtar files
-   (if this is reasonably easy)
   -> 22 kHz, 11kHz reading functions ... 
   -> multiplexing functions
 

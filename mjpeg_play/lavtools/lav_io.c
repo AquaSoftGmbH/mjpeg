@@ -1,6 +1,6 @@
 /*
  *  Some routines for handling I/O from/to different video
- *  file formats (currently AVI, Quicktime and movtar).
+ *  file formats (currently AVI, Quicktime)
  *
  *  These routines are isolated here in an extra file
  *  in order to be able to handle more formats in the future.
@@ -33,6 +33,10 @@
 
 #ifdef HAVE_LIBDV
 #include <libdv/dv.h>
+#endif
+
+#ifdef HAVE_LIBQUICKTIME
+#include <quicktime.h>
 #endif
 
 extern int AVI_errno;
@@ -277,12 +281,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
    /* Set lav_fd */
 
    lav_fd->avi_fd      = 0;
-#ifdef HAVE_LIBQUICKTIME
    lav_fd->qt_fd       = 0;
-#endif
-#ifdef HAVE_LIBMOVTAR
-   lav_fd->movtar_fd       = 0;
-#endif
    lav_fd->format      = format;
    /* Sanity check: do not create a quicktime file that is named with .avi */
    if(rindex(filename, '.') != NULL)
@@ -302,7 +301,6 @@ lav_file_t *lav_open_output_file(char *filename, char format,
         return 0;
       }
    }
-   /* does movtar have a default extension? */
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
                                       LAV_NOT_INTERLACED;
    lav_fd->has_audio   = (asize>0 && achans>0);
@@ -360,23 +358,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
 	 internal_error = ERROR_FORMAT;
 	 return 0;
 #endif
-
-      case 'm':
-
-#ifdef HAVE_LIBMOVTAR
-         /* Open movtar output file */
-         lav_fd->movtar_fd = movtar_open(filename, 0, 1, 0x0);
-         if(!lav_fd->movtar_fd) { free(lav_fd); return 0; }
-         movtar_set_video(lav_fd->movtar_fd, 1, width, height, fps, "MJPG", 0); /* BUUUUUUG !! interlaced !*/
-         if (asize) movtar_set_audio(lav_fd->movtar_fd, achans, arate, asize, "LPCM");
-         return lav_fd;
-#else
-	 internal_error = ERROR_FORMAT;
-	 return 0;
-#endif
-
       default:
-
          return 0;
    }
 }
@@ -405,11 +387,6 @@ int lav_close(lav_file_t *lav_file)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          res = quicktime_close( lav_file->qt_fd );
-         break;
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         res = movtar_close( lav_file->movtar_fd );
          break;
 #endif
       default:
@@ -511,16 +488,6 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
             }
             break;
 #endif
-#ifdef HAVE_LIBMOVTAR
-         case 'm':
-
-            jpgdata = buff;
-            jpglen  = size;
-
-	    /* No APP markers needed, since movtar _requires_ the fields to be in a certain order
-	       (even first, then odd) */
-            break;
-#endif
       }
    }
    
@@ -543,11 +510,6 @@ int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 #ifdef HAVE_LIBQUICKTIME
          case 'q':
             res = quicktime_write_frame( lav_file->qt_fd, buff, size, 0 );
-            break;
-#endif
-#ifdef HAVE_LIBMOVTAR
-         case 'm':
-            res = movtar_write_frame( lav_file->movtar_fd, buff, size);
             break;
 #endif
          default:
@@ -591,11 +553,6 @@ int lav_write_audio(lav_file_t *lav_file, uint8_t *buff, long samps)
             res = quicktime_write_audio( lav_file->qt_fd, (char*)buff, samps, 0 );
          break;
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         res = movtar_write_audio( lav_file->movtar_fd, (char*)buff, samps);
-	 break;
-#endif
       default:
          res = -1;
    }
@@ -617,10 +574,6 @@ long lav_video_frames(lav_file_t *lav_file)
       case 'q':
          return quicktime_video_length(lav_file->qt_fd,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_video_length(lav_file->movtar_fd);
-#endif
    }
    return -1;
 }
@@ -636,10 +589,6 @@ int lav_video_width(lav_file_t *lav_file)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_video_width(lav_file->qt_fd,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_video_width(lav_file->movtar_fd);
 #endif
    }
    return -1;
@@ -657,10 +606,6 @@ int lav_video_height(lav_file_t *lav_file)
       case 'q':
          return quicktime_video_height(lav_file->qt_fd,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_video_height(lav_file->movtar_fd);
-#endif
    }
    return -1;
 }
@@ -676,10 +621,6 @@ double lav_frame_rate(lav_file_t *lav_file)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_frame_rate(lav_file->qt_fd,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_frame_rate(lav_file->movtar_fd);
 #endif
    }
    return -1;
@@ -720,10 +661,6 @@ const char *lav_video_compressor(lav_file_t *lav_file)
       case 'q':
          return quicktime_video_compressor(lav_file->qt_fd,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return "jpeg";
-#endif
    }
    return "N/A";
 }
@@ -740,10 +677,6 @@ int lav_audio_channels(lav_file_t *lav_file)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_track_channels(lav_file->qt_fd,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_track_channels(lav_file->movtar_fd);
 #endif
    }
    return -1;
@@ -762,10 +695,6 @@ int lav_audio_bits(lav_file_t *lav_file)
       case 'q':
          return quicktime_audio_bits(lav_file->qt_fd,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_audio_bits(lav_file->movtar_fd);
-#endif
    }
    return -1;
 }
@@ -782,10 +711,6 @@ long lav_audio_rate(lav_file_t *lav_file)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_sample_rate(lav_file->qt_fd,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_sample_rate(lav_file->movtar_fd);
 #endif
    }
    return -1;
@@ -804,10 +729,6 @@ long lav_audio_samples(lav_file_t *lav_file)
       case 'q':
          return quicktime_audio_length(lav_file->qt_fd,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_audio_length(lav_file->movtar_fd);
-#endif
    }
    return -1;
 }
@@ -823,10 +744,6 @@ long lav_frame_size(lav_file_t *lav_file, long frame)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_frame_size(lav_file->qt_fd,frame,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_frame_size(lav_file->movtar_fd,frame);
 #endif
    }
    return -1;
@@ -844,10 +761,6 @@ int lav_seek_start(lav_file_t *lav_file)
       case 'q':
          return quicktime_seek_start(lav_file->qt_fd);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_seek_start(lav_file->movtar_fd);
-#endif
    }
    return -1;
 }
@@ -864,10 +777,6 @@ int lav_set_video_position(lav_file_t *lav_file, long frame)
       case 'q':
          return quicktime_set_video_position(lav_file->qt_fd,frame,0);
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_set_video_position(lav_file->movtar_fd,frame);
-#endif
    }
    return -1;
 }
@@ -883,10 +792,6 @@ int lav_read_frame(lav_file_t *lav_file, uint8_t *vidbuf)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_read_frame(lav_file->qt_fd,vidbuf,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_read_frame(lav_file->movtar_fd,vidbuf);
 #endif
    }
    return -1;
@@ -905,10 +810,6 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          return quicktime_set_audio_position(lav_file->qt_fd,sample,0);
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_set_audio_position(lav_file->movtar_fd,sample);
 #endif
    }
    return -1;
@@ -946,10 +847,6 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
          }
          return res;
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         return movtar_read_audio(lav_file->movtar_fd,(char*)audbuf,samps)/lav_file->bps;
-#endif
    }
    return -1;
 }
@@ -978,12 +875,7 @@ lav_file_t *lav_open_input_file(char *filename)
    /* Set lav_fd */
 
    lav_fd->avi_fd      = 0;
-#ifdef HAVE_LIBQUICKTIME
    lav_fd->qt_fd       = 0;
-#endif
-#ifdef HAVE_LIBMOVTAR
-   lav_fd->movtar_fd   = 0;
-#endif
    lav_fd->format      = 0;
    lav_fd->interlacing = LAV_INTER_UNKNOWN;
    lav_fd->sar_w       = 0; /* (0,0) == unknown */
@@ -1001,12 +893,7 @@ lav_file_t *lav_open_input_file(char *filename)
    if(lav_fd->avi_fd)
    {
       /* It is an AVI file */
-#ifdef HAVE_LIBQUICKTIME
       lav_fd->qt_fd  = 0;
-#endif
-#ifdef HAVE_LIBMOVTAR
-      lav_fd->movtar_fd  = 0;
-#endif
       lav_fd->format = 'a';
       lav_fd->has_audio = (AVI_audio_bits(lav_fd->avi_fd)>0 &&
                            AVI_audio_format(lav_fd->avi_fd)==WAVE_FORMAT_PCM);
@@ -1017,18 +904,10 @@ lav_file_t *lav_open_input_file(char *filename)
 #ifdef HAVE_LIBQUICKTIME
       if(!quicktime_check_sig(filename))
 #endif
-#ifdef HAVE_LIBMOVTAR
-      {
-	movtar_init(FALSE, FALSE);
-	if (!movtar_check_sig(filename))
-#endif
 	  {
 	    /* None of the known formats */
             char errmsg[1024];
 	    sprintf(errmsg, "Unable to identify file (not a supported format - avi");
-#ifdef HAVE_LIBMOVTAR
-            strcat(errmsg, ", movtar");
-#endif
 #ifdef HAVE_LIBQUICKTIME
             strcat(errmsg, ", quicktime");
 #endif
@@ -1038,35 +917,6 @@ lav_file_t *lav_open_input_file(char *filename)
 	    internal_error = ERROR_FORMAT; /* Format not recognized */
 	    return 0;
 	  }
-#ifdef HAVE_LIBMOVTAR
-	else
-	  {
-	    /* It is a movtar file */
-	    lav_fd->movtar_fd = movtar_open(filename, 1, 0, 0x0);
-	    video_format = 'm'; /* for error messages */
-	    if(!lav_fd->movtar_fd) { free(lav_fd); return 0; }
-	    lav_fd->avi_fd = 0;
-#ifdef HAVE_LIBQUICKTIME
-	    lav_fd->qt_fd = 0;
-#endif
-	    lav_fd->format = 'm';
-	    video_comp = "mjpg"; /* nothing else possible */
-	    /* We want at least one video track */
-	    if(movtar_video_tracks(lav_fd->movtar_fd) < 1)
-	      {
-		lav_close(lav_fd);
-		internal_error = ERROR_FORMAT;
-		return 0;
-	      }
-	    /* Check for audio tracks */
-	    lav_fd->has_audio = 0;
-	    if (movtar_audio_tracks(lav_fd->movtar_fd)) /* movtar audio is always readable */
-		    lav_fd->has_audio = 1;
-	    /* don't show us fake frames, too tedious to implement */
-	    movtar_show_fake_frames(lav_fd->movtar_fd, 0); 
-	  }
-      }
-#endif
 #ifdef HAVE_LIBQUICKTIME
       else
 	{
@@ -1075,9 +925,6 @@ lav_file_t *lav_open_input_file(char *filename)
 	  video_format = 'q'; /* for error messages */
 	  if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
 	  lav_fd->avi_fd = 0;
-#ifdef HAVE_LIBMOVTAR
-	  lav_fd->movtar_fd = 0;
-#endif
 	  lav_fd->format = 'q';
 	  video_comp = quicktime_video_compressor(lav_fd->qt_fd,0);
 	  /* We want at least one video track */
@@ -1345,11 +1192,6 @@ const char *lav_strerror(void)
          sprintf(error_string,"Quicktime error, possible(!) reason: %s",strerror(errno));
          return error_string;
 #endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-         sprintf(error_string,"No detailed movtar error information available (yet) !");
-         return error_string;
-#endif
       default:
          /* No or unknown video format */
          if(errno) strerror(errno);
@@ -1461,12 +1303,7 @@ int lav_fileno(lav_file_t *lav_file)
          break;
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
-         res = fileno(lav_file->qt_fd->stream);
-         break;
-#endif
-#ifdef HAVE_LIBMOVTAR
-      case 'm':
-		  res = fileno( lav_file->movtar_fd->file );
+         res = fileno(((quicktime_t *)lav_file->qt_fd)->stream);
          break;
 #endif
       default:

@@ -20,18 +20,8 @@
 
 #ifdef COMPILE_LAV_IO_C
 #include <avilib.h>
-
-#ifdef HAVE_LIBQUICKTIME
-#include <quicktime.h>
-#endif
-
-#ifdef HAVE_LIBMOVTAR
-#include <movtar.h>
-#endif
 #else
 typedef void avi_t;
-typedef void quicktime_t;
-typedef void movtar_t;
 #endif
 
 #include "yuv4mpeg.h"
@@ -59,12 +49,7 @@ typedef struct
    avi_t       *avi_fd;
    int         jpeg_fd;
    char        *jpeg_filename;
-#ifdef HAVE_LIBQUICKTIME
-   quicktime_t *qt_fd;
-#endif
-#ifdef HAVE_LIBMOVTAR
-   movtar_t    *movtar_fd;
-#endif
+   void        *qt_fd;
    int         format;
    int         interlacing;
    int         sar_w;  /* "sample aspect ratio" width  */

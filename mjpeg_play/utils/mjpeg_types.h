@@ -22,12 +22,13 @@
 #define __MJPEG_TYPES_H__
 //#include <config.h>
 
+#include <sys/types.h> /* FreeBSD, others - ssize_t */
+
 #if defined(HAVE_STDINT_H)
 # include <stdint.h>
 #elif defined(HAVE_INTTYPES_H)
 # include <inttypes.h>
 #elif defined(__CYGWIN__)
-# include <sys/types.h>
 typedef u_int8_t uint8_t;
 typedef u_int16_t uint16_t;
 typedef u_int32_t uint32_t;
@@ -58,9 +59,6 @@ script is a good example of how to do this. You need to check for \
 PRId64, stdbool.h, inttypes.h, stdint.h and sys/types.h
 #endif /* HAVE_STDINT_H */
 
-#if defined(__FreeBSD__)
-#include <sys/types.h> /* FreeBSD - ssize_t */
-#endif
 
 #if defined(HAVE_STDBOOL_H) && !defined(__cplusplus)
 #include <stdbool.h>

@@ -78,7 +78,7 @@ typedef struct {
 
 
 typedef struct {
-   char video_format;           /* [aAqm] a/A = AVI, j = JPEG, q = Quicktime, m = movtar */
+   char video_format;           /* [aAqm] a/A = AVI, j = JPEG, q = Quicktime */
    int  video_norm;             /* [0-3] 0 = PAL, 1 = NTSC, 2 = SECAM, 3 = auto */
    int  video_src;              /* [0-3] 0 = Composite, 1 = S-video, 2 = TV-tuner, 3 = auto */
    int  software_encoding;      /* [0-1] 0 = hardware MJPEG encoding (zoran), 1 = software MJPEG encoding */

@@ -9,10 +9,7 @@ rigorously defined standard like MPEG.  For a start MJPEG really only
 says frames of video are encoded as JPEG.  To package them together
 into a sequence with audio and synchronisation information a "carrier"
 format is needed.  This is typically either Microsoft's "AVI" or
-Apple's Quicktime format, although the mjpegtools also support a
-special "movtar" format in which the stream of JPEG images is stored
-in an ordinary tar archive for easy manipulation and unpacking into
-individual images.
+Apple's Quicktime format.
 
 1.2 I've created an MJPEG AVI or Quicktime file with mjpegtools but it
 won't play on my Windows/MacOS machine (or vice versa!).

@@ -749,14 +749,14 @@
 
   6.2.  Unify videos
 
-  > lavtrans -o stream.movtar -f m record_1.avi record_2.avi ...
+  > lavtrans -o stream.qt -f m record_1.avi record_2.avi ...
   record_n.avi
 
 
      -o specifies the outputfile name
 
      -f m
-        specifies the output format, movtar in this case
+        specifies the output format, quicktime in this case
 
   This is usually not needed. Keep in your mind that there is the 2GB
   file-size-limit on 32Bit systems with an older glibc.

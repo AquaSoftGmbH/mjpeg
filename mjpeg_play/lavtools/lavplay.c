@@ -6,7 +6,7 @@
  *                Ronald Bultje   <rbultje@ronald.bitfreak.net>
  *              & many others
  *
- * Plays back MJPEG AVI, Quicktime or movtar files using the
+ * Plays back MJPEG AVI or Quicktime files using the
  * hardware of the zoran card or using SDL (software playback)
  *
  * Usage: lavplay [options] filename [filename ...]
@@ -101,7 +101,7 @@
  *    eu/eo     Cut (u) or Copy (o) scene (arg1->arg2) into memory
  *    ep        Paste selection into current position of video
  *    ed        Delete scene (arg1->arg2) from video
- *    ea        Add movie (arg1, be sure that it's mov/avi/movtar!!!)
+ *    ea        Add movie (arg1, be sure that it's mov/avi!!)
  *                frame arg2-arg3 (if arg2=-1, whole movie) to position arg4
  *    es        Set a lowest/highest possible frame (max/min = trimming)
  *    om        Open movie (arg1) frame arg2-arg3 (arg2=-1 means whole

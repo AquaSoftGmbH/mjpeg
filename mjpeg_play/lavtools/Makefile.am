@@ -5,7 +5,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(MOVTAR_CFLAGS) $(DV_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
+	$(DV_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
         -I /usr/X11R6/include -I$(top_srcdir)/utils \
 	${GTK_CFLAGS} $(JPEG_CFLAGS)
 
@@ -38,7 +38,7 @@ LAV_ALL_LIB_OPTS = \
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS) $(DV_LIBS)
+	$(QUICKTIME_LIBS) $(JPEG_LIBS) $(DV_LIBS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)

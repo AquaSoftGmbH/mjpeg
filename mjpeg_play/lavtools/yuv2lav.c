@@ -82,17 +82,10 @@ static void usage(void)
 #else
                    " "
 #endif
-#ifdef HAVE_LIBMOVTAR
-                    "m"
-#else
                     " "
-#endif
                      "]   output format (AVI"
 #ifdef HAVE_LIBQUICKTIME
                                            "/Quicktime"
-#endif
-#ifdef HAVE_LIBMOVTAR
-                                                     "/movtar"
 #endif
                                                             ") [%c]\n"
 	  "   -I num      force output interlacing 0:no 1:top 2:bottom field first\n"
@@ -157,18 +150,12 @@ int main(int argc, char *argv[])
 #ifdef HAVE_LIBQUICKTIME
          case 'q':
 #endif
-#ifdef HAVE_LIBMOVTAR
-         case 'm':
-#endif
             /* do interlace setting here? */
             continue;
          default:
             mjpeg_error( "-f parameter must be one of [aA"
 #ifdef HAVE_LIBQUICKTIME
                                                         "q"
-#endif
-#ifdef HAVE_LIBMOVTAR
-                                                         "m"
 #endif
                                                           "]");
             usage ();
