@@ -3,7 +3,7 @@
 EXTRA_DIST = .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
 
-INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
+INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
 	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) -I /usr/X11R6/include/X11 \
         $(DV_CFLAGS) -I /usr/X11R6/include -I$(top_srcdir)/utils \
