@@ -105,6 +105,7 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} install
 %{_bindir}/rtjshow
 %{_libdir}/*.so.*
 %{prefix}/man/man1/*
+%{prefix}/man/man5/*
 
 %package devel
 Summary: Development headers and libraries for the mjpegtools
