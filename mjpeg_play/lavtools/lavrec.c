@@ -1349,7 +1349,8 @@ int main(int argc, char ** argv)
 	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
 
 	if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
-
+	bparm.input = input;
+	bparm.norm = norm;
 	bparm.decimation = 0;
 	bparm.quality    = quality;
 
@@ -1366,8 +1367,10 @@ int main(int argc, char ** argv)
 	 */
 	if (device_width == 768 || device_width == 640)
 		bparm.img_width      = (hordcm==1) ? device_width : (device_width-64);
-	else
+	else {
 		bparm.img_width      = (hordcm==1) ? 720 : 704;
+		device_width = 720;
+	}
 	
 	
 		
