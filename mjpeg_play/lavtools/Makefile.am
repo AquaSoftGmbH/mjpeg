@@ -1,6 +1,5 @@
 # Makefile for lavtools
 
-<<<<<<< Makefile.am
 INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
 	$(MOVTAR_CFLAGS)
@@ -14,9 +13,8 @@ libavio_a_SOURCES = editlist.c lav_io.c avilib.c
 # The tools themselves
 
 bin_PROGRAMS = \
-	lavplay	lavrec 	 lavvideo  lav2wav 	\
-	lav2yuv lavtrans lavaddwav xlav 	\
-	testrec v4l-conf
+	lavplay   lavrec   lav2wav  lav2yuv lav2dfilter  lavaddwav \
+	lavvideo  lavtrans xlav     testrec v4l-conf
 
 lav_headers = lav_io.h editlist.h xlav.h avilib.h
 
@@ -37,7 +35,7 @@ lav2yuv_LDADD = -L$(top_builddir)/lavtools -lavio $(MOVTAR_LIBS) \
 	$(JPEG_LIBS)
 
 lav2dfilter_SOURCES = lav2dfilter.c $(lav_headers)
-lav2dfilter_LDFLAGS = 
+lav2dfilter_LDFLAGS = -L$(top_builddir)/lavtools 
 lav2dfilter_LDADD = 
 
 lav2wav_SOURCES = lav2wav.c  $(lav_headers)
