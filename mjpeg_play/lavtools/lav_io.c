@@ -275,14 +275,17 @@ lav_file_t *lav_open_output_file(char *filename, char format,
 #endif
    lav_fd->format      = format;
    /* Sanity check: do not create a quicktime file that is named with .avi */
-   if((format == 'a' || format == 'A') && strcmp(rindex(filename, '.')+1, "avi")) {
-     internal_error = ERROR_FORMAT;
-     return 0;
-   }
-   if(format == 'q' && (strcmp(rindex(filename, '.')+1, "qt") 
-        && strcmp(rindex(filename, '.')+1, "mov") && strcmp(rindex(filename, '.')+1,"moov"))) {
-     internal_error = ERROR_FORMAT;
-     return 0;
+   if(rindex(filename, '.') != NULL)
+   {
+      if((format == 'a' || format == 'A') && strcmp(rindex(filename, '.')+1, "avi")) {
+        internal_error = ERROR_FORMAT;
+        return 0;
+      }
+      if(format == 'q' && (strcmp(rindex(filename, '.')+1, "qt") 
+           && strcmp(rindex(filename, '.')+1, "mov") && strcmp(rindex(filename, '.')+1,"moov"))) {
+        internal_error = ERROR_FORMAT;
+        return 0;
+      }
    }
    /* does movtar have a default extension? */
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
