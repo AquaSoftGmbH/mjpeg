@@ -131,6 +131,18 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
         bs = inputs[i];
         // Remember the streams initial state...
         bs->PrepareUndo( undo );
+        if( LPCMStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an LPCM Audio stream.",
+                        bs->StreamName());
+            bs->UndoChanges( undo );
+            streams.push_back( new JobStream( bs,  LPCM_AUDIO) );
+            ++audio_tracks;
+            ++lpcm_tracks;
+            continue;
+        }
+
+        bs->UndoChanges( undo );
         if( MPAStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Audio stream.", 
@@ -163,19 +175,7 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
             continue;
         }
 
-        bs->UndoChanges( undo);
-        if( LPCMStream::Probe( *bs ) )
-        {
-            mjpeg_info ("File %s looks like an LPCM Audio stream.",
-                        bs->StreamName());
-            bs->UndoChanges( undo );
-            streams.push_back( new JobStream( bs,  LPCM_AUDIO) );
-            ++audio_tracks;
-            ++lpcm_tracks;
-            continue;
-        }
         bs->UndoChanges( undo );
-
         if( VideoStream::Probe( *bs ) )
         {
             mjpeg_info ("File %s looks like an MPEG Video stream.",
