@@ -61,7 +61,6 @@ int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, 
 	would exceed the remaining payload capacity.
 *************************************************************************/
 
-
 void create_sector (Sector_struc 	 *sector,
 					Pack_struc	 *pack,
 					Sys_header_struc *sys_header,

@@ -638,7 +638,8 @@ void outputstream ( char 		*video_file,
 		   packets are "virtual" */
 		if( ! opt_VBR || !padding_packet )
 		{
-			if (packets_left_in_pack-- == 0) 
+			--packets_left_in_pack;
+			if (packets_left_in_pack == 0) 
 				packets_left_in_pack = packets_per_pack;
 		}
 		/* Unless sys headers are always required we turn them off after the first
