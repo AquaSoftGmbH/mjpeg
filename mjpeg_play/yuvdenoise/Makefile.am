@@ -25,5 +25,5 @@ noinst_HEADERS = \
 
 yuvdenoise_LDADD = \
 	$(top_builddir)/utils/libcpuaccel.la \
-	$(top_builddir)/utils/libmjpegutils.a \
+	$(top_builddir)/utils/libmjpegutils.la \
 	@LIBM_LIBS@

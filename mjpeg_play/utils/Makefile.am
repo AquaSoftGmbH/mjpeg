@@ -15,10 +15,14 @@ INCLUDES = -I$(top_srcdir) -I$(top_srcdir)/utils
 
 noinst_LTLIBRARIES = libmotion.la libcpuaccel.la
 
-# FIXME: make this libtool (but static-only!) too
-lib_LIBRARIES = libmjpegutils.a
+lib_LTLIBRARIES = libmjpegutils.la
 
-libmjpegutils_a_SOURCES = \
+libmjpegutils_la_LDFLAGS = \
+	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+	-release $(LT_RELEASE) \
+	-export-dynamic
+
+libmjpegutils_la_SOURCES = \
 	mjpeg_logging.c \
 	mpegconsts.c \
 	mpegtimecode.c \

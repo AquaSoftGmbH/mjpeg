@@ -32,8 +32,8 @@ int main(int argc, char **argv)
     int    ywidth, yheight, uvwidth, uvheight, ylen, uvlen;
     int    verbose = 0, fdin;
     int    SS_H = 2, SS_V = 2;
-    int    NlumaX = 3, NlumaY = 3, NchromaX = 0, NchromaY = 0;
-    float  BWlumaX = 0.7, BWlumaY = 0.7, BWchromaX = 1.0, BWchromaY = 1.0;
+    int    NlumaX = 4, NlumaY = 4, NchromaX = 4, NchromaY = 4;
+    float  BWlumaX = 0.75, BWlumaY = 0.75, BWchromaX = 0.6, BWchromaY = 0.6;
     float  **lumaXtaps, **lumaYtaps, **chromaXtaps, **chromaYtaps;
     u_char *yuvinout[3], *yuvtmp[3];
     y4m_stream_info_t istream, ostream;

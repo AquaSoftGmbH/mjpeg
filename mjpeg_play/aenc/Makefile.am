@@ -27,4 +27,4 @@ noinst_HEADERS = \
 	table_th.h \
 	wav_io.h
 
-mp2enc_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS)
+mp2enc_LDADD = $(top_builddir)/utils/libmjpegutils.la $(LIBM_LIBS)

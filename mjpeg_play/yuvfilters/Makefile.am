@@ -7,7 +7,7 @@ bin_PROGRAMS = yuvycsnoise yuvkineco
 noinst_LTLIBRARIES = libyuvfilters.la
 
 AM_CPPFLAGS = -I$(top_srcdir)/utils
-MJPEGLIB = $(top_builddir)/utils/libmjpegutils.a
+MJPEGLIB = $(top_builddir)/utils/libmjpegutils.la
 
 libyuvfilters_la_SOURCES = \
 	addtask.c \

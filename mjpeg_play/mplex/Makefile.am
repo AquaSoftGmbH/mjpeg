@@ -67,7 +67,7 @@ libmplex2_la_LDFLAGS =  \
 	-export-dynamic 
 
 libmplex2_la_LIBADD = \
-	$(top_builddir)/utils/libmjpegutils.a
+	$(top_builddir)/utils/libmjpegutils.la
 
 libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
 
