@@ -382,6 +382,7 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 	++(ss->g_idx);
 	++(ss->b_idx);	
 
+    ss->new_seq = false;
 	/* Are we starting a new B group */
 	if( ss->b_idx >= ss->bigrp_length )
 	{
@@ -413,12 +414,12 @@ void SeqEncoder::NextSeqState( StreamState *ss )
         ss->frame_type = B_TYPE;
     }
 
-    ss->new_seq = false;
-  
     ++frame_num;
     ss->end_seq = false;
-    if( frame_num >= reader.NumberOfFrames() )
+    if( frame_num == reader.NumberOfFrames()-1 )
+    {
         ss->end_seq = true;
+    }
     else if( ss->g_idx == ss->gop_length-1 ) /* Last frame GOP: sequence split? */
     {
         if( encparams.pulldown_32 )
@@ -679,12 +680,13 @@ bool SeqEncoder::EncodeFrame()
 
     EncodePicture( cur_picture );
 
+    if( cur_picture->end_seq )
+        mjpeg_info( "Sequence end inserted");
 #ifdef DEBUG
     writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->rec_img);
 #endif
 
     NextSeqState( &ss );
-
 
     // Hard-wired simple 1-pass encoder!!!
     coder.FlushBuffer();

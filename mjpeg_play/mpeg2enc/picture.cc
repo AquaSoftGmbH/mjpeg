@@ -148,6 +148,8 @@ void Picture::Reconstruct()
 
 void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 {
+    new_seq = ss.new_seq;
+    end_seq = ss.end_seq;
     if( ss.b_idx == 0 )             // Start of a B-group: I or P frame
     {
         Set_IP_Frame(ss, frames_available);
@@ -331,8 +333,6 @@ void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
 	{
 		gop_start = true;
         closed_gop = ss.closed_gop;
-		new_seq = ss.new_seq;
-        end_seq = ss.end_seq;
 		nb = ss.nb;
 		np = ss.np;
 	}		
