@@ -23,9 +23,9 @@ extern  char    *__progname;
 #define MIN(a,b) ((a)<(b))?(a):(b)
 #define MAX(a,b) ((a)>(b))?(a):(b)
 
-void *my_malloc(size_t);
-void get_coeff(float **, int, float);
-void convolve1D(u_char [], int, int, float **, int, u_char []);
+static void *my_malloc(size_t);
+static void get_coeff(float **, int, float);
+static void convolve2D(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy);
 static void usage(void);
 
 int main(int argc, char **argv)
@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     int    NlumaX = 4, NlumaY = 4, NchromaX = 4, NchromaY = 4;
     float  BWlumaX = 0.75, BWlumaY = 0.75, BWchromaX = 0.6, BWchromaY = 0.6;
     float  **lumaXtaps, **lumaYtaps, **chromaXtaps, **chromaYtaps;
-    u_char *yuvinout[3], *yuvtmp[3];
+    u_char *yuvinout[3], *yuvtmp;
     y4m_stream_info_t istream, ostream;
     y4m_frame_info_t iframe;
 
@@ -129,9 +129,7 @@ int main(int argc, char **argv)
     yuvinout[0] = my_malloc(ylen*sizeof(u_char));
     yuvinout[1] = my_malloc(uvlen*sizeof(u_char));
     yuvinout[2] = my_malloc(uvlen*sizeof(u_char));
-    yuvtmp[0] = my_malloc(ylen*sizeof(u_char));
-    yuvtmp[1] = my_malloc(uvlen*sizeof(u_char));
-    yuvtmp[2] = my_malloc(uvlen*sizeof(u_char));
+    yuvtmp = my_malloc(MAX(ylen,uvlen)*sizeof(u_char));
 
     /* allocate filters */
     lumaXtaps = my_malloc((NlumaX+1)*sizeof(float *));
@@ -161,42 +159,10 @@ int main(int argc, char **argv)
 	    if (verbose && ((frames % 100) == 0))
 		mjpeg_log(LOG_INFO, "Frame %d\n", frames);
 	    
-	    /* do the horizontal filtering */
-	    for(n=0;n<yheight;n++)
-		convolve1D(yuvinout[0]+n*ywidth, ywidth, 1, lumaXtaps, NlumaX, yuvtmp[0]+n*ywidth);
-	    for(n=0;n<uvheight;n++)
-		{
-		    convolve1D(yuvinout[1]+n*uvwidth, uvwidth, 1, chromaXtaps, NchromaX, yuvtmp[1]+n*uvwidth);
-		    convolve1D(yuvinout[2]+n*uvwidth, uvwidth, 1, chromaXtaps, NchromaX, yuvtmp[2]+n*uvwidth);
-		}
-		
-	    /* do the vertical filtering */
-	    if(interlace)
-		{
-		    for(n=0;n<ywidth;n++)
-			{
-			    convolve1D(yuvtmp[0]+n, yheight/2, 2*ywidth, lumaYtaps, NlumaY, yuvinout[0]+n);
-			    convolve1D(yuvtmp[0]+ywidth+n, yheight/2, 2*ywidth, lumaYtaps, NlumaY, yuvinout[0]+ywidth+n);
-			}
-		    for(n=0;n<uvwidth;n++)
-			{
-			    convolve1D(yuvtmp[1]+n, uvheight/2, 2*uvwidth, chromaYtaps, NchromaY, yuvinout[1]+n);
-			    convolve1D(yuvtmp[1]+uvwidth+n, uvheight/2, 2*uvwidth, chromaYtaps, NchromaY, yuvinout[1]+uvwidth+n);
-			    convolve1D(yuvtmp[2]+n, uvheight/2, 2*uvwidth, chromaYtaps, NchromaY, yuvinout[2]+n);
-			    convolve1D(yuvtmp[2]+uvwidth+n, uvheight/2, 2*uvwidth, chromaYtaps, NchromaY, yuvinout[2]+uvwidth+n);
-			}
-		}
-	    else
-		{
-		    for(n=0;n<ywidth;n++)
-			convolve1D(yuvtmp[0]+n, yheight, ywidth, lumaYtaps, NlumaY, yuvinout[0]+n);
-		    for(n=0;n<uvwidth;n++)
-			{
-			    convolve1D(yuvtmp[1]+n, uvheight, uvwidth, chromaYtaps, NchromaY, yuvinout[1]+n);
-			    convolve1D(yuvtmp[2]+n, uvheight, uvwidth, chromaYtaps, NchromaY, yuvinout[2]+n);
-			}
-		}
-	    
+            convolve2D(yuvinout[0],yuvtmp,ywidth,yheight,interlace,lumaXtaps,NlumaX,lumaYtaps,NlumaY);
+            convolve2D(yuvinout[1],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
+            convolve2D(yuvinout[2],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
+
 	    y4m_write_frame(fileno(stdout), &ostream, &iframe, yuvinout);
 
 	}
@@ -210,7 +176,7 @@ int main(int argc, char **argv)
 
 
 /* Move memory allocation error checking here to clean up code */
-void *my_malloc(size_t size)
+static void *my_malloc(size_t size)
 {
     void *tmp = malloc(size);
     if (tmp == NULL)
@@ -223,7 +189,7 @@ void *my_malloc(size_t size)
 /* To minimize artifacts at the boundaries, compute filters of all sizes */
 /* from 1 to length and use shorter filters near the edge of the frame */
 /* Also, normalize to a DC gain of 1 */
-void get_coeff(float **taps, int length, float bandwidth)
+static void get_coeff(float **taps, int length, float bandwidth)
 {
     int n,k;
     float sum;
@@ -263,7 +229,7 @@ static inline void convolveitem(u_char *data,int stride,float *filter,int flen,u
     out[0]=MIN(MAX(r,0),255);
 }
 
-void convolve1D(u_char *data, int datalength, int datastride, float **filter, int filterlength, u_char *output)
+static void convolve1D(u_char *data, int datalength, int datastride, float **filter, int filterlength, u_char *output)
 {
 
     int   n;
@@ -291,6 +257,21 @@ void convolve1D(u_char *data, int datalength, int datastride, float **filter, in
 	}
 }
 
+static void convolve2D(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy)
+{
+    int n;
+
+    for( n=0; n<h; n++ )
+        convolve1D(src+n*w,w,1,xtap,numx,tmp+n*w);
+
+    if (interlace ) {
+        w<<=1;
+        h>>=1;
+    }
+
+    for( n=0; n<w; n++ )
+        convolve1D(tmp+n,h,w,ytap,numy,src+n);
+}
 
 static void usage(void)
 {
