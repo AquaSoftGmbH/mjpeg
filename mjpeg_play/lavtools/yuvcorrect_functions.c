@@ -1283,64 +1283,127 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
   u_p = frame->u;
   v_p = frame->v;
 
-  for (i = 0; i < frame->uv_height; i++)
+  if (frame->y_height==2*frame->uv_height) // 4:2:0
     {
-      for (j = 0; j < frame->uv_width; j++)
-	{
-	  R_UV = rgb_correct->RUV_v[*v_p];
-	  G_UV = rgb_correct->GUV_v[*v_p] + rgb_correct->GUV_u[*u_p];
-	  B_UV = rgb_correct->BUV_u[*u_p];
-//         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
-	  // Calculate the value of the four pixels concerned by the single (u,v) values
-	  // Upper Left
-	  R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
-	  G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
-	  B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
-	  // Compute new y value
-//         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
-//                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
-	  *line1++ = clip_0_255 ((uint16_t) rgb_correct->luma_r[R1]
-				 + rgb_correct->luma_g[G1] +
-				 rgb_correct->luma_b[B1]);
-
-	  R2 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
-	  G2 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
-	  B2 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
-
-	  // Compute new y value
-	  *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R2]
-				 + (int16_t) rgb_correct->luma_g[G2] +
-				 (int16_t) rgb_correct->luma_b[B2]);
-
-	  R3 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
-	  G3 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
-	  B3 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
-	  // Compute new y value
-	  *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R3]
-				 + (int16_t) rgb_correct->luma_g[G3] +
-				 (int16_t) rgb_correct->luma_b[B3]);
-
-	  R4 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
-	  G4 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
-	  B4 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
-	  // Compute new y value
-	  *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R4]
-				 + (int16_t) rgb_correct->luma_g[G4] +
-				 (int16_t) rgb_correct->luma_b[B4]);
-
-	  moy_r = clip_0_255 (((int16_t) 2 + R1 + R2 + R3 + R4) >> 2);
-	  moy_g = clip_0_255 (((int16_t) 2 + G1 + G2 + G3 + G4) >> 2);
-	  moy_b = clip_0_255 (((int16_t) 2 + B1 + B2 + B3 + B4) >> 2);
-//        mjpeg_info("B : %u %u %u %u moyennes %u %u %u",B1,B2,B3,B4,moy_r,moy_g,moy_b);
-	  *u_p++ =
-	    clip_0_255 ((int16_t) 128 + rgb_correct->u_r[moy_r] +
-			rgb_correct->u_g[moy_g] + rgb_correct->u_b[moy_b]);
-	  *v_p++ =
-	    clip_0_255 ((int16_t) 128 + rgb_correct->v_r[moy_r] +
-			rgb_correct->v_g[moy_g] + rgb_correct->v_b[moy_b]);
-	}
-      line1 += frame->y_width;
-      line2 += frame->y_width;
+      for (i = 0; i < frame->uv_height; i++)
+        {
+          for (j = 0; j < frame->uv_width; j++)
+            {
+              R_UV = rgb_correct->RUV_v[*v_p];
+              G_UV = rgb_correct->GUV_v[*v_p] + rgb_correct->GUV_u[*u_p];
+              B_UV = rgb_correct->BUV_u[*u_p];
+              //         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
+              // Calculate the value of the four pixels concerned by the single (u,v) values
+              // Upper Left
+              R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              //         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
+              //                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
+              *line1++ = clip_0_255 ((uint16_t) rgb_correct->luma_r[R1]
+                                     + rgb_correct->luma_g[G1] +
+                                     rgb_correct->luma_b[B1]);
+              
+              R2 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G2 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B2 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              
+              // Compute new y value
+              *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R2]
+                                     + (int16_t) rgb_correct->luma_g[G2] +
+                                     (int16_t) rgb_correct->luma_b[B2]);
+              
+              R3 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
+              G3 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
+              B3 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
+              // Compute new y value
+              *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R3]
+                                     + (int16_t) rgb_correct->luma_g[G3] +
+                                     (int16_t) rgb_correct->luma_b[B3]);
+              
+              R4 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
+              G4 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
+              B4 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
+              // Compute new y value
+              *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R4]
+                                     + (int16_t) rgb_correct->luma_g[G4] +
+                                     (int16_t) rgb_correct->luma_b[B4]);
+              
+              moy_r = clip_0_255 (((int16_t) 2 + R1 + R2 + R3 + R4) >> 2);
+              moy_g = clip_0_255 (((int16_t) 2 + G1 + G2 + G3 + G4) >> 2);
+              moy_b = clip_0_255 (((int16_t) 2 + B1 + B2 + B3 + B4) >> 2);
+              //        mjpeg_info("B : %u %u %u %u moyennes %u %u %u",B1,B2,B3,B4,moy_r,moy_g,moy_b);
+              *u_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->u_r[moy_r] +
+                            rgb_correct->u_g[moy_g] + rgb_correct->u_b[moy_b]);
+              *v_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->v_r[moy_r] +
+                            rgb_correct->v_g[moy_g] + rgb_correct->v_b[moy_b]);
+            }
+          line1 += frame->y_width;
+          line2 += frame->y_width;
+        }
+    }
+  else // 4:1:1
+    {
+      for (i = 0; i < frame->uv_height; i++)
+        {
+          for (j = 0; j < frame->uv_width; j++)
+            {
+              R_UV = rgb_correct->RUV_v[*v_p];
+              G_UV = rgb_correct->GUV_v[*v_p] + rgb_correct->GUV_u[*u_p];
+              B_UV = rgb_correct->BUV_u[*u_p];
+              //         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
+              // Calculate the value of the four pixels concerned by the single (u,v) values
+              // Upper Left
+              R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              //         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
+              //                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
+              *line1++ = clip_0_255 ((uint16_t) rgb_correct->luma_r[R1]
+                                     + rgb_correct->luma_g[G1] +
+                                     rgb_correct->luma_b[B1]);
+              
+              R2 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G2 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B2 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              
+              // Compute new y value
+              *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R2]
+                                     + (int16_t) rgb_correct->luma_g[G2] +
+                                     (int16_t) rgb_correct->luma_b[B2]);
+              
+              R3 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G3 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B3 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R3]
+                                     + (int16_t) rgb_correct->luma_g[G3] +
+                                     (int16_t) rgb_correct->luma_b[B3]);
+              
+              R4 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G4 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B4 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R4]
+                                     + (int16_t) rgb_correct->luma_g[G4] +
+                                     (int16_t) rgb_correct->luma_b[B4]);
+              
+              moy_r = clip_0_255 (((int16_t) 2 + R1 + R2 + R3 + R4) >> 2);
+              moy_g = clip_0_255 (((int16_t) 2 + G1 + G2 + G3 + G4) >> 2);
+              moy_b = clip_0_255 (((int16_t) 2 + B1 + B2 + B3 + B4) >> 2);
+              //        mjpeg_info("B : %u %u %u %u moyennes %u %u %u",B1,B2,B3,B4,moy_r,moy_g,moy_b);
+              *u_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->u_r[moy_r] +
+                            rgb_correct->u_g[moy_g] + rgb_correct->u_b[moy_b]);
+              *v_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->v_r[moy_r] +
+                            rgb_correct->v_g[moy_g] + rgb_correct->v_b[moy_b]);
+            }
+        }
     }
   return (0);
 }
