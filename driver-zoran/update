@@ -35,11 +35,14 @@ $SUDO /sbin/rmmod videodev > /dev/null 2>&1
 
 sync;sync
 $SUDO /sbin/insmod -f videodev
+
+# I2COPTS="scan=1"
+
 if echo $LINUX_VERSION | grep '2\.4' > /dev/null
 then
-    $SUDO /sbin/insmod -f i2c-old
+    $SUDO /sbin/insmod -f i2c-old $I2COPTS
 else
-    $SUDO /sbin/insmod -f i2c
+    $SUDO /sbin/insmod -f i2c $I2COPTS
 fi
 
 incompat=""
@@ -94,5 +97,5 @@ sync;sync
 sleep 1
 # For information about options, please, check file README.
 # If you have PAL signal in you country, change to default_norm=0 in the next line
-$SUDO /sbin/insmod -f ./zoran.o default_norm=1 lock_norm=0 pass_through=1 lml33dpath=0 # v4l_bufsize=1280
+$SUDO /sbin/insmod -f ./zoran.o default_norm=1 lock_norm=0 pass_through=0 lml33dpath=1 # v4l_bufsize=1280
 sync;sync

@@ -208,6 +208,7 @@ static const unsigned char init_ntsc[] = {
    0x06, 0x1a,   /* subc. phase */
 };
 
+
 static int adv7175_attach(struct i2c_device *device)
 {
    int i;
@@ -265,6 +266,12 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
 
    switch (cmd) {
 
+   case 0:  // This is just for testing!!!
+           adv7175_write_block(encoder, init_common, sizeof(init_common));
+           adv7175_write(encoder, 0x07, TR0MODE | TR0RST);
+           adv7175_write(encoder, 0x07, TR0MODE);
+        break;
+        
    case ENCODER_GET_CAPABILITIES:
       {
          struct video_encoder_capability *cap = arg;
@@ -283,8 +290,9 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
    case ENCODER_SET_NORM:
       {
          int iarg =  *(int *)arg;
-
-         if(encoder->norm != iarg) {
+         
+         //adv7175_write_block(encoder, init_common, sizeof(init_common));
+         //if(encoder->norm != iarg) {
             switch (iarg) {
 
                 case VIDEO_MODE_NTSC:
@@ -321,7 +329,7 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
             }
             DEBUG(printk(KERN_INFO "%s: switched to %s\n",device->name, norms[iarg]));
             encoder->norm = iarg;
-         }
+         //}
       }
       break;
 
@@ -333,7 +341,7 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
                 *iarg = 1: input is from ZR36060
                 *iarg = 2: color bar */
 
-         if(encoder->input != iarg) {
+         //if(encoder->input != iarg) {
              switch (iarg) {
 
              case 0:
@@ -372,7 +380,7 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
              }
              DEBUG(printk(KERN_INFO "%s: switched to %s\n",device->name, inputs[iarg]));
              encoder->input = iarg;
-         }
+         //}
       }
       break;
 
@@ -392,7 +400,6 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
          int * iarg = arg;
 
          encoder->enable = !!*iarg;
-         adv7175_write(encoder, 0x61, (encoder->reg[0x61] & 0xbf) | (encoder->enable? 0x00: 0x40));
       }
       break;
 
@@ -406,23 +413,25 @@ static int adv7175_command(struct i2c_device *device, unsigned int cmd, void * a
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_adv7175 = {
-   "adv7175",      /* name */
-   I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   I2C_ADV7175, I2C_ADV7175+3,
+   name:       "adv7175",      /* name */
+   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
+   addr_l:     I2C_ADV7175,
+   addr_h:     I2C_ADV7175+3,
 
-   adv7175_attach,
-   adv7175_detach,
-   adv7175_command
+   attach:     adv7175_attach,
+   detach:     adv7175_detach,
+   command:    adv7175_command
 };
 
 struct i2c_driver i2c_driver_adv7176 = {
-   "adv7175",      /* name */
-   I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   I2C_ADV7176, I2C_ADV7176+3,
+   name:       "adv7175",      /* name */
+   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
+   addr_l:     I2C_ADV7176,
+   addr_h:     I2C_ADV7176+3,
 
-   adv7175_attach,
-   adv7175_detach,
-   adv7175_command
+   attach:     adv7175_attach,
+   detach:     adv7175_detach,
+   command:    adv7175_command
 };
 
 EXPORT_NO_SYMBOLS;

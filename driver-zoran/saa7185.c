@@ -272,6 +272,21 @@ static int saa7185_command(struct i2c_device *device, unsigned int cmd, void * a
 
    switch (cmd) {
 
+   case 0:
+         saa7185_write_block(encoder, init_common, sizeof(init_common));
+         switch (encoder->norm) {
+
+         case VIDEO_MODE_NTSC:
+            saa7185_write_block(encoder, init_ntsc, sizeof(init_ntsc));
+            break;
+
+         case VIDEO_MODE_PAL:
+            saa7185_write_block(encoder, init_pal, sizeof(init_pal));
+            break;
+            }
+   
+        break;
+        
    case ENCODER_GET_CAPABILITIES:
       {
          struct video_encoder_capability *cap = arg;
@@ -290,6 +305,8 @@ static int saa7185_command(struct i2c_device *device, unsigned int cmd, void * a
       {
          int * iarg = arg;
 
+         //saa7185_write_block(encoder, init_common, sizeof(init_common));
+         
          switch (*iarg) {
 
          case VIDEO_MODE_NTSC:
@@ -375,13 +392,14 @@ static int saa7185_command(struct i2c_device *device, unsigned int cmd, void * a
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_saa7185 = {
-   "saa7185",      /* name */
-   I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   I2C_SAA7185, I2C_SAA7185+1,
+   name:       "saa7185",      /* name */
+   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
+   addr_l:     I2C_SAA7185,
+   addr_h:     I2C_SAA7185+1,
 
-   saa7185_attach,
-   saa7185_detach,
-   saa7185_command
+   attach:     saa7185_attach,
+   detach:     saa7185_detach,
+   command:    saa7185_command
 };
 
 EXPORT_NO_SYMBOLS;

@@ -1,3 +1,4 @@
+#define DEBUGLEVEL 0
 /* 
     bt819 - BT819A VideoStream Decoder (Rockwell Part)
 
@@ -54,7 +55,11 @@
 #endif
 #include <linux/video_decoder.h>
 
+#if (DEBUGLEVEL > 0)
 #define DEBUG(x)       x /* Debug driver */   
+#else
+#define DEBUG(x)
+#endif
 
 /* ----------------------------------------------------------------------- */
 
@@ -267,6 +272,10 @@ static int bt819_command(struct i2c_device * device, unsigned int cmd, void * ar
    
    switch (cmd) {
 
+   case 0:  // This is just for testing!!!
+        bt819_init(device);
+        break;
+        
    case DECODER_GET_CAPABILITIES:
       {
          struct video_decoder_capability *cap = arg;
@@ -467,13 +476,14 @@ static int bt819_command(struct i2c_device * device, unsigned int cmd, void * ar
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_bt819 = {
-   "bt819",      /* name */
-   I2C_DRIVERID_VIDEODECODER,   /* ID */
-   I2C_BT819, I2C_BT819+1,
+   name:       "bt819",      /* name */
+   id:         I2C_DRIVERID_VIDEODECODER,   /* ID */
+   addr_l:     I2C_BT819,
+   addr_h:     I2C_BT819+1,
 
-   bt819_attach,
-   bt819_detach,
-   bt819_command
+   attach:     bt819_attach,
+   detach:     bt819_detach,
+   command:    bt819_command
 };
 
 EXPORT_NO_SYMBOLS;

@@ -1,3 +1,4 @@
+#define DEBUGLEVEL 0
 /*
     saa7110 - Philips SAA7110(A) video decoder driver
 
@@ -40,7 +41,11 @@
 #include <linux/videodev.h>
 #include <linux/video_decoder.h>
 
-#define DEBUG(x...)			/* remove when no long debugging */
+#if (DEBUGLEVEL > 0)
+#define DEBUG(x...)	x		/* remove when no long debugging */
+#else
+#define DEBUG(x...) 
+#endif
 
 #define SAA7110_MAX_INPUT	9	/* 6 CVBS, 3 SVHS */
 #define SAA7110_MAX_OUTPUT	0	/* its a decoder only */
@@ -165,12 +170,12 @@ static	const unsigned char modes[9][8] = {
 
 static	const unsigned char initseq[] = {
   	   0, 0x4C, 0x3C, 0x0D, 0xEF, 0xBD, 0xF2, 0x03, 0x00,
-  	      0xF8, 0xF8, 0x60, 0x60, 0x00, 0x86, 0x18, 0x90,
-  	      0x00, 0x59, 0x40, 0x46, 0x42, 0x1A, 0xFF, 0xDA,
-  	      0xF2, 0x8B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-  	      0xD9, 0x16, 0x40, 0x41, 0x80, 0x41, 0x80, 0x4F,
-  	      0xFE, 0x01, 0xCF, 0x0F, 0x03, 0x01, 0x03, 0x0C,
-  	      0x44, 0x71, 0x02, 0x8C, 0x02};
+  /* 0x08 */  0xF8, 0xF8, 0x60, 0x60, 0x00, 0x86, 0x18, 0x90,
+  /* 0x10 */  0x00, 0x59, 0x40, 0x46, 0x42, 0x1A, 0xFF, 0xDA,
+  /* 0x18 */  0xF2, 0x8B, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  /* 0x20 */  0xD9, 0x16, 0x40, 0x41, 0x80, 0x41, 0x80, 0x4F,
+  /* 0x28 */  0xFE, 0x01, 0xCF, 0x0F, 0x03, 0x01, 0x03, 0x0C,
+  /* 0x30 */  0x44, 0x71, 0x02, 0x8C, 0x02};
 
 static
 int determine_norm(struct i2c_device* device)
@@ -302,7 +307,11 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 	int	v;
 
 	switch (cmd) {
-	 case DECODER_GET_CAPABILITIES:
+	 case 0:
+                //saa7110_write_block(decoder, initseq, sizeof(initseq));
+                break;
+                
+         case DECODER_GET_CAPABILITIES:
 		{
 			struct video_decoder_capability *dc = arg;
 			dc->flags = VIDEO_DECODER_PAL
@@ -457,14 +466,15 @@ int saa7110_command(struct i2c_device *device, unsigned int cmd, void *arg)
 
 struct i2c_driver i2c_driver_saa7110 =
 {
-	"saa7110",			/* name */
+	name:       "saa7110",			/* name */
 
-	I2C_DRIVERID_VIDEODECODER,		/* in i2c.h */
-	I2C_SAA7110, I2C_SAA7110+3,	/* Addr range */
+	id:         I2C_DRIVERID_VIDEODECODER,	/* in i2c.h */
+	addr_l:     I2C_SAA7110,
+        addr_h:     I2C_SAA7110+3,	/* Addr range */
 
-	saa7110_attach,
-	saa7110_detach,
-	saa7110_command
+	attach:     saa7110_attach,
+	detach:     saa7110_detach,
+	command:    saa7110_command
 };
 
 EXPORT_NO_SYMBOLS;

@@ -1,3 +1,4 @@
+#define DEBUGLEVEL 0
 /* 
     bt856 - BT856A Digital Video Encoder (Rockwell Part)
 
@@ -54,15 +55,21 @@
 #endif
 #include <linux/video_encoder.h>
 
-#define DEBUG(x)   x   /* Debug driver */   
+#if (DEBUGLEVEL > 0)
+#define DEBUG(x)  x   /* Debug driver */
+#else
+#define DEBUG(x)
+#endif
 
 /* ----------------------------------------------------------------------- */
+
+#define REG_OFFSET  0xCE
 
 struct bt856
 {
    struct i2c_bus   *bus;
    int      addr;
-   unsigned char   reg[128];
+   unsigned char   reg[32];
 
    int      norm;
    int      enable;
@@ -88,7 +95,7 @@ static int bt856_write(struct bt856 *dev, unsigned char subaddr, unsigned char d
    i2c_sendbyte(dev->bus, dev->addr, I2C_DELAY);
    i2c_sendbyte(dev->bus, subaddr, I2C_DELAY);
    ack = i2c_sendbyte(dev->bus, data, I2C_DELAY);
-   dev->reg[subaddr] = data;
+   dev->reg[subaddr-REG_OFFSET] = data;
    i2c_stop(dev->bus);
    UNLOCK_I2C_BUS(dev->bus);
    return ack;
@@ -97,9 +104,20 @@ static int bt856_write(struct bt856 *dev, unsigned char subaddr, unsigned char d
 static int bt856_setbit(struct bt856 *dev, int subaddr, int bit, int data)
 {
 	return bt856_write(dev, subaddr, 
-		(dev->reg[subaddr] & ~(1 << bit)) | (data ? (1 << bit) : 0));
+		(dev->reg[subaddr-REG_OFFSET] & ~(1 << bit)) | (data ? (1 << bit) : 0));
 
 }
+
+#if (DEBUGLEVEL > 0)
+static void bt856_dump(struct bt856 *encoder)
+{
+        int i;
+        printk(KERN_INFO "%s-bt856: register dump:", encoder->bus->name);
+        for (i = 0xd6; i <= 0xde; i += 2)
+                printk(" %02x", encoder->reg[i-REG_OFFSET]);
+        printk("\n");
+}
+#endif
 
 /* ----------------------------------------------------------------------- */
 
@@ -151,6 +169,7 @@ static int bt856_attach(struct i2c_device *device)
    bt856_setbit(encoder, 0xdc, 1, 1);
    bt856_setbit(encoder, 0xde, 4, 0);
    bt856_setbit(encoder, 0xde, 3, 1);
+   DEBUG(bt856_dump(encoder));
    return 0;
 }
 
@@ -168,6 +187,34 @@ static int bt856_command(struct i2c_device *device, unsigned int cmd, void * arg
 
    switch (cmd) {
 
+   case 0:  // This is just for testing!!!
+           
+           DEBUG(printk(KERN_INFO "%s-bt856: init\n", encoder->bus->name));
+           bt856_write(encoder, 0xdc, 0x18);
+           bt856_write(encoder, 0xda, 0);
+           bt856_write(encoder, 0xde, 0);
+
+           bt856_setbit(encoder, 0xdc, 3, 1);
+           //bt856_setbit(encoder, 0xdc, 6, 0);
+           bt856_setbit(encoder, 0xdc, 4, 1);
+
+           switch(encoder->norm) {
+
+           case VIDEO_MODE_NTSC:
+	        bt856_setbit(encoder, 0xdc, 2, 0);
+	        break;
+
+           case VIDEO_MODE_PAL:
+	        bt856_setbit(encoder, 0xdc, 2, 1);
+	        break;	
+           }
+
+           bt856_setbit(encoder, 0xdc, 1, 1);
+           bt856_setbit(encoder, 0xde, 4, 0);
+           bt856_setbit(encoder, 0xde, 3, 1);
+           DEBUG(bt856_dump(encoder));
+        break;
+   
    case ENCODER_GET_CAPABILITIES:
       {
          struct video_encoder_capability *cap = arg;
@@ -191,8 +238,6 @@ static int bt856_command(struct i2c_device *device, unsigned int cmd, void * arg
 	 DEBUG(printk(KERN_INFO "%s-bt856: set norm %d\n", 
 		encoder->bus->name, *iarg));
 	
-//#ifdef	NEVER
-
          switch (*iarg) {
 
          case VIDEO_MODE_NTSC:
@@ -209,8 +254,8 @@ static int bt856_command(struct i2c_device *device, unsigned int cmd, void * arg
             return -EINVAL;
 
          }
-//#endif
          encoder->norm = *iarg;
+         DEBUG(bt856_dump(encoder));
       }
       break;
 
@@ -247,6 +292,7 @@ static int bt856_command(struct i2c_device *device, unsigned int cmd, void * arg
             return -EINVAL;
 
          }
+         DEBUG(bt856_dump(encoder));
       }
       break;
 
@@ -285,12 +331,14 @@ static int bt856_command(struct i2c_device *device, unsigned int cmd, void * arg
 /* ----------------------------------------------------------------------- */
 
 struct i2c_driver i2c_driver_bt856 = {
-   "bt856",      /* name */
-   I2C_DRIVERID_VIDEOENCODER,   /* ID */
-   I2C_BT856, I2C_BT856+1,
-   bt856_attach,
-   bt856_detach,
-   bt856_command
+   name:       "bt856",      /* name */
+   id:         I2C_DRIVERID_VIDEOENCODER,   /* ID */
+   addr_l:     I2C_BT856,
+   addr_h:     I2C_BT856+1,
+ 
+   attach:     bt856_attach,
+   detach:     bt856_detach,
+   command:    bt856_command
 };
 
 EXPORT_NO_SYMBOLS;
