@@ -598,3 +598,11 @@ void writeoutframeinYUV4MPEG(
    }
 }
 
+#ifdef SUPPORT_READ_DV2
+void lav_init_dv_decoder()
+{
+   decoder = dv_decoder_new();
+   dv_init();
+   decoder->quality = DV_QUALITY_BEST;
+}
+#endif

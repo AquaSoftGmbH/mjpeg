@@ -35,11 +35,6 @@ int verbose = 1;
 
 EditList el;
 
-// was extern
-#ifdef SUPPORT_READ_DV2
-extern dv_decoder_t *decoder;
-#endif
-
 void Usage(char *str)
 {
    printf("Usage: %s [params] inputfiles\n", str);
@@ -400,9 +395,7 @@ char *argv[];
    init(&bounds, &param, &buffer);
 
 #ifdef SUPPORT_READ_DV2
-   decoder = dv_decoder_new();
-   dv_init();
-   decoder->quality = DV_QUALITY_BEST;
+   lav_init_dv_decoder();
 #endif
    if (param.delta_lum_threshold != -1) 
    {

@@ -134,7 +134,7 @@ void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer);
 #include <libdv/dv.h>
 void frame_YUV422_to_YUV420P(unsigned char **output, unsigned char *input, int width, int height, LavParam *param);
 void frame_YUV420P_deinterlace(unsigned char **frame, unsigned char *previous_Y, int width, int height, int SpatialTolerance, int TemporalTolerance, int mode);
-
+void lav_init_dv_decoder(void);
 
 #endif // SUPPORT_READ_DV2
 

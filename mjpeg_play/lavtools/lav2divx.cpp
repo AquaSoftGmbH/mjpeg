@@ -200,10 +200,6 @@ main (int argc, char **argv)
 	LavBounds bounds;
 	LavBuffers buffer;
 
-#ifdef SUPPORT_READ_DV2
-	extern dv_decoder_t	*decoder;
-#endif
-
 	memset (&bounds, 0, sizeof(LavBounds));
 
   // double PI      = 3.14159265359f;    
@@ -614,9 +610,7 @@ main (int argc, char **argv)
 	init(&bounds, &param, &buffer); // initialize lav2yuv code.
 
 #ifdef SUPPORT_READ_DV2
-	decoder = dv_decoder_new();
-	dv_init();
-	decoder->quality = DV_QUALITY_BEST;
+	lav_init_dv_decoder();
 #endif
 
 	int yplane = bh.biWidth * bh.biHeight;
