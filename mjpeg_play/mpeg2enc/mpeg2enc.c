@@ -77,7 +77,9 @@ static double param_act_boost = 2.0;
 static int param_video_buffer_size = 46;
 static int param_seq_hdr_every_gop = 0;
 
-static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
+static double framerates[9]=
+    {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
+
 
 /* reserved: for later use */
 int param_422 = 0;
@@ -104,6 +106,7 @@ void Usage(char *str)
 	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
+	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
@@ -120,7 +123,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:Q:v:stNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:n:b:q:o:F:r:4:2:Q:v:stNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -200,6 +203,18 @@ int main(argc,argv)
 			param_seq_hdr_every_gop = 1;
 			break;
 
+		case 'n' :
+			switch( optarg[0] )
+			{
+			case 'p' :
+			case 'n' :
+			case 's' :
+				param_norm = optarg[0];
+				break;
+			default :
+				fprintf(stderr,"-n option requires arg n or p, or s.\n");
+				++nerr;
+			}
 
 		case 'N':
 			param_hfnoise_quant = 1;
@@ -307,16 +322,16 @@ int main(argc,argv)
 		nerr++;
 	}
 	else
-		fprintf(stderr," = %.3f fps\n",framerates[frame_rate_code]);
+		fprintf(stderr," = %2.3f fps\n",framerates[frame_rate_code]);
 
 	if(nerr) exit(1);
 
-	if(frame_rate_code==3)
+	if(!param_norm && frame_rate_code==3)
 	{
 		fprintf(stderr,"Assuming norm PAL\n");
 		param_norm = 'p';
 	}
-	if(frame_rate_code==4)
+	if(!param_norm && frame_rate_code==4)
 	{
 		fprintf(stderr,"Assuming norm NTSC\n");
 		param_norm = 'n';
@@ -497,8 +512,6 @@ static void readparmfile()
 	int i;
 	int h,m,s,f;
 	int c;
-	static double ratetab[8]=
-    {24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
 
 	sprintf(id_string,"Converted by mjpegtools mpeg2enc 1.3");
 	strcpy(tplorg,"%8d"); /* Name of input files */
@@ -703,7 +716,7 @@ static void readparmfile()
 	/* make sure MPEG specific parameters are valid */
 	range_checks();
 
-	frame_rate = ratetab[frame_rate_code-1];
+	frame_rate = framerates[frame_rate_code-1];
 
 	/* timecode -> frame number */
 	tc0 = h;

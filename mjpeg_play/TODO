@@ -4,6 +4,10 @@ TASKS OUTSTANDING
 
 Minor
 
+- Go through MJPEG lib and add proper error returns.  Go through lavplay
+	and lavrec and add proper error handling and break up those oversize
+	functions.
+
 - The filtering / decimation code in the lav* utilities should be seperated 
 	from the stream extraction.  An extractor is needed for the favoured
 	format of the mpeg2dec developer.

@@ -1006,6 +1006,7 @@ void output_video ( clockticks SCR,
 	  if( vau != NULL )
 		{
 		  *video_au = *vau;
+
 		  if(  dtspts_for_all_vau )
 	  		max_packet_payload = video_au->length+prev_au_tail;
 

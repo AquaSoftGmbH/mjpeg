@@ -175,6 +175,7 @@ typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
     clockticks PTS		;
     int        dorder;
     int		   porder;
+	int		   seq_header;
 } Vaunit_struc;
 
 typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/

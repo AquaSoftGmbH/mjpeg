@@ -214,6 +214,7 @@ void check_files (int argc,
 	processing. We need it for building the multiplex file.
 *************************************************************************/
 
+
 void get_info_video (char *video_file,	
 					 Video_struc *video_info,
 					 double *ret_first_frame_PTS,
@@ -221,7 +222,7 @@ void get_info_video (char *video_file,
 					 Vector *vid_info_vec)
 {
     Bit_stream_struc video_bs;
-   	bitcount_t offset_bits=0LL;
+   	bitcount_t AU_start=0LL;
     bitcount_t stream_length=0LL; 
     bitcount_t prev_stream_length=0LL;
     Vaunit_struc access_unit;
@@ -238,7 +239,7 @@ void get_info_video (char *video_file,
 	unsigned int max_bits_persec = 0;
 	Vector vaunits = NewVector( sizeof(Vaunit_struc));
 	int first_pic_header;
-
+	int AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
   
     printf ("\nScanning Video stream for access units information.\n");
@@ -285,16 +286,23 @@ void get_info_video (char *video_file,
 		switch (syncword) 
 		{
 			case SEQUENCE_HEADER:
+				AU_hdr = SEQUENCE_HEADER;
+				AU_start = bitcount (&video_bs)-32LL;
 				video_info->num_sequence++;
 				break;
 
 			case GROUP_START:
+				if( AU_hdr != SEQUENCE_HEADER )
+				{
+					AU_start = bitcount (&video_bs)-32LL;
+					AU_hdr = GROUP_START;
+				}
 				video_info->num_groups++;
 				group_order=0;
 				break;
 
 			case PICTURE_START:
-				/* We only know length once we reach the *next* AU */
+				/* We only know AU length once we reach the *next* AU */
 				stream_length = bitcount (&video_bs)-32LL;
 				if( first_pic_header )
 				{
@@ -302,8 +310,16 @@ void get_info_video (char *video_file,
 				}
 				else
 				{
-				  	access_unit.length = (int) (stream_length - offset_bits)>>3;
-				  	offset_bits = stream_length;
+				  	access_unit.length = (int) (stream_length - AU_start)>>3;
+					/* We count sequence and gop headers as if they
+					   were part of the following picture. Hence this
+					   AU's length starts from preceding gop or seq
+					   hdr (if present).
+					*/
+					if( AU_hdr != GROUP_START && AU_hdr != SEQUENCE_HEADER)
+					{
+						AU_start = stream_length;
+					}
 				  	video_info->avg_frames[access_unit.type-1]+=access_unit.length;
 				    VectorAppend( vaunits, &access_unit );					
 				}
@@ -330,8 +346,12 @@ void get_info_video (char *video_file,
 				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
 												 / frame_rate);
 				access_unit.porder = temporal_reference + group_start_pic;
+				access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
+				if( AU_hdr == SEQUENCE_HEADER)
+					fprintf( stderr, "SEQ HEADER LABELLED\n" );
 				decoding_order++;
 				group_order++;
+				AU_hdr = -1;
 
 				if ((access_unit.type>0) && (access_unit.type<5))
 				{
@@ -351,10 +371,10 @@ void get_info_video (char *video_file,
 
 			case SEQUENCE_END:
 				stream_length = bitcount (&video_bs);
-				access_unit.length = (stream_length - offset_bits)>>3;
+				access_unit.length = (stream_length - AU_start)>>3;
 				VectorAppend( vaunits, &access_unit );
 				video_info->avg_frames[access_unit.type-1]+=access_unit.length;
-				offset_bits = stream_length;
+				AU_start = stream_length;
 				video_info->num_seq_end++;
 				break;		    
 
@@ -363,7 +383,7 @@ void get_info_video (char *video_file,
 
 	video_info->num_pictures = decoding_order;	
 
-    video_info->stream_length = (unsigned int)(offset_bits / 8);
+    video_info->stream_length = (unsigned int)(AU_start / 8);
     for (i=0; i<4; i++)
 		if (video_info->num_frames[i]!=0)
 			video_info->avg_frames[i] /= video_info->num_frames[i];
@@ -522,7 +542,7 @@ void get_info_audio (
 
 {
     Bit_stream_struc audio_bs;
-    bitcount_t offset_bits=0;
+    bitcount_t AU_start=0;
 	bitcount_t prev_offset;
     unsigned int framesize;
 	unsigned int padding_bit;
@@ -599,8 +619,8 @@ void get_info_audio (
 		{
 			getbits (&audio_bs, 32);
 		}
-		prev_offset = offset_bits;
-		offset_bits = bitcount(&audio_bs);
+		prev_offset = AU_start;
+		AU_start = bitcount(&audio_bs);
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
@@ -608,22 +628,22 @@ void get_info_audio (
 	
 		if ( (syncword = getbits (&audio_bs, 11))!=AUDIO_SYNCWORD )
 		{
-			int bits_to_end = length*8 - offset_bits;
+			int bits_to_end = length*8 - AU_start;
 			if( bits_to_end > 1024*8  )
 			{
 				/* There appears to be another catenated stream... */
 				int next;
 				printf( "\nEnd of component bit-stream ... seeking next\n" );
 				/* Catenated stream must start on byte boundary */
-				syncword = (syncword<<(8-offset_bits % 8));
-				next = getbits( &audio_bs,8-(offset_bits % 8) );
+				syncword = (syncword<<(8-AU_start % 8));
+				next = getbits( &audio_bs,8-(AU_start % 8) );
 				syncword = syncword | next;
 				/*
 				  printf( "syncword offset = %d syncword = %03x, next = %08x\n",
-				  offset_bits % 8, syncword, next ); */
+				  AU_start % 8, syncword, next ); */
 				if( syncword != AUDIO_SYNCWORD )
 				{
-					printf( "Warning: Failed to find start of next stream at %lld prev %lld !\n", offset_bits/8, prev_offset/8 );
+					printf( "Warning: Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
 					break;
 				}
 			}
@@ -661,9 +681,9 @@ void get_info_audio (
     } while (!end_bs(&audio_bs) && 
     		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));
 
-    printf ("\nDone, stream bit offset %lld.\n",offset_bits);
+    printf ("\nDone, stream bit offset %lld.\n",AU_start);
 
-    audio_info->stream_length = offset_bits >> 3;
+    audio_info->stream_length = AU_start >> 3;
     finish_getbits (&audio_bs);
     output_info_audio (audio_info);
     
