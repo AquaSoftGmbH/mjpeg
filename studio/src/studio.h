@@ -212,6 +212,9 @@ void create_command_yuv2lav(char* yuv2divx_command[256], int use_rsh,
 void create_command_mplex(char* mplex_command[256], int use_rsh,
   struct encodingoptions *option, struct machine *machine4, char ext[LONGOPT]);
 
+/* lavencode_util.c */
+void create_window_select(char filename[LONGOPT], char *size[LONGOPT]);
+
 /* studio.c */
 void global_open_location(char *location);
 

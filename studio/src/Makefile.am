@@ -10,7 +10,7 @@ OBJS = studio.c config.c parseconfig.c gtktvplug.c lavrec_pipe.c \
 	lavplay_pipe.c gtkimageplug.c lavedit.c mixer.c lavencode.c \
 	pipes.c gtkenhancedscale.c lavedit_trimming.c gtkfunctions.c \
 	config_encode.c lavedit_effects.c lavencode_mpeg.c gtkscenelist.c \
-        lavencode_distributed.c lavencode_script.c
+        lavencode_distributed.c lavencode_script.c lavencode_util.c
 
 bin_PROGRAMS = studio stv
 
