@@ -467,3 +467,12 @@ void read_stream_params( int *hsize, int *vsize,
    *aspect_ratio_code = ar_code;
 
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

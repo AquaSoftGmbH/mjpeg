@@ -1235,8 +1235,12 @@ static void init_mpeg_parms(void)
 	{
 	case MPEG_FORMAT_SVCD_STILL :
 	case MPEG_FORMAT_SVCD_NSR :
-	case MPEG_FORMAT_SVCD : 
-		opt_display_horizontal_size  = 720;
+	case MPEG_FORMAT_SVCD :
+    case MPEG_FORMAT_DVD :
+        /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
+           for 4:3 aspect video.
+        */
+		opt_display_horizontal_size  = opt_aspectratio == 2 ? 540 : 720;
 		opt_display_vertical_size    = opt_vertical_size;
 		break;
 	default:
