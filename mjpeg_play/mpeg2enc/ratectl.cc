@@ -371,7 +371,6 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb)
 /* Step 1: compute target bits for current picture being coded */
 void OnTheFlyRateCtl::InitPict(Picture &picture, int64_t bitcount_SOP)
 {
-	double target_Q;
 	double current_Q;
 	int available_bits;
 	double Xsum,varsum;
