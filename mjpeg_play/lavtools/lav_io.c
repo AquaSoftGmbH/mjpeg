@@ -958,7 +958,7 @@ lav_file_t *lav_open_input_file(char *filename)
 	  if (quicktime_audio_tracks(lav_fd->qt_fd))
 	     {
 	     audio_comp = quicktime_audio_compressor(lav_fd->qt_fd,0);
-	     if (strncasecmp(audio_comp, QUICKTIME_TWOS,4)==0 ))
+	     if (strncasecmp(audio_comp, QUICKTIME_TWOS,4)==0)
 		lav_fd->has_audio = 1;
 	      }
 	 }
