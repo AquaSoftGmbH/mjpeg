@@ -52,6 +52,7 @@
 #include <mjpeg_types.h>
 
 #include "global.h"
+#include "simd.h"
 #include "fastintfns.h"
 
 /* private prototypes */

@@ -2,7 +2,7 @@
 
 #include <config.h>
 #include <stdio.h>
-#include "global.h"
+#include "mjpeg_types.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 

@@ -5,8 +5,8 @@ bin_PROGRAMS = mpeg2enc
 
 mpeg2enc_MMXSSE = \
     fdct_mmx.s fdctdata.c idct_mmx.s idctdata.c \
-    quant_mmx.s quantize_x86.cc predict_mmx.s \
-    predcomp_mmxe.s predcomp_mmx.s
+    quant_mmx.s quantize_x86.c predict_mmx.s \
+    predcomp_mmxe.s predcomp_mmx.s transfrm_x86.c
 
 
 EXTRA_DIST = NOTES .ccvsignore
@@ -29,12 +29,18 @@ mpeg2enc_SIMD =
 libmotion_SIMD = 
 endif
 
+# Reference implementations of lowlevel routines that may have Architecture
+# dependent (usually SIMD) implementations
+
+mpeg2enc_REF = quantize_ref.c  quantize_ref.h transfrm_ref.c transfrm_ref.h \
+			fdctref.c idct.c
+
 mpeg2enc_SOURCES = mpeg2enc.cc conform.cc putseq.cc putpic.cc puthdr.cc putmpg.cc \
 	 putvlc.cc putbits.cc motionest.cc predict.cc readpic.cc writepic.cc transfrm.cc \
-	fdctref.cc idct.cc quantize.cc ratectl.cc stats.cc synchrolib.cc \
+	quantize.cc ratectl.cc stats.cc synchrolib.cc \
 	macroblock.hh macroblock.cc picture.hh \
 	global.hh mpeg2enc.hh vlc.hh \
-	simd.hh synchrolib.hh $(mpeg2enc_SIMD)
+	simd.hh synchrolib.hh $(mpeg2enc_REF) $(mpeg2enc_SIMD)
 
 mpeg2enc_DEPENDENCIES = $(top_builddir)/utils/libmjpegutils.a $(top_builddir)/utils/libmotion.a
 

@@ -120,12 +120,6 @@ struct motion_data {
 
 #define COARSE_44_SAD_THRESHOLD 4*4*64
 
-/* SCale factor for fast integer arithmetic routines */
-/* Changed this and you *must* change the quantisation routines as they depend on its absolute
-	value */
-#define IQUANT_SCALE_POW2 16
-#define IQUANT_SCALE (1<<IQUANT_SCALE_POW2)
-#define COEFFSUM_SCALE (1<<16)
 
 /* Byte alignment of buffers for picture data.  Very important for
 	performance with MMX etc 

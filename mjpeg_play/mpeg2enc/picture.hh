@@ -3,8 +3,7 @@
 /* picture.hh picture class... */
 
 #include <vector>
-
-class MacroBlock;
+using namespace std;
 
 /* Transformed per-picture data  */
 

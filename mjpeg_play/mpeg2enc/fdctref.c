@@ -1,6 +1,5 @@
 /* fdctref.c, forward discrete cosine transform, double precision           */
 
-#include "mpeg2enc.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -51,7 +50,7 @@
 #include <config.h>
 #include <math.h>
 #include <stdio.h>
-
+#include "mjpeg_types.h"
 
 static double aanscales[64];
 /*
@@ -258,7 +257,7 @@ void init_fdct(void)
 	{
 		s = (i==0) ? sqrt(0.125) : 0.5;
 		for (j=0; j<8; j++)
-			c[i][j] = static_cast<int>(s * cos((PI/8.0)*i*(j+0.5))*512 + 0.5);
+			c[i][j] = (s * cos((PI/8.0)*i*(j+0.5))*512 + 0.5);
 	}
 }
 

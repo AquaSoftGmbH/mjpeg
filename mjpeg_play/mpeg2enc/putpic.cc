@@ -49,7 +49,7 @@
 #include <config.h>
 #include <stdio.h>
 #include "global.h"
-
+#include "simd.h"
 
 
 
@@ -285,9 +285,10 @@ void putpict(Picture *picture )
 			/* quantize macroblock */
 			if (mb_type & MB_INTRA)
 			{
-				quant_intra( picture,
-					         picture->blocks[cur_mb_blocks],
+				quant_intra( picture->blocks[cur_mb_blocks],
 							 quant_blocks[cur_mb_blocks],
+                             picture->q_scale_type,
+                             picture->dc_prec,
 							 cur_mb->mquant, 
 							 &cur_mb->mquant );
 		
@@ -295,11 +296,11 @@ void putpict(Picture *picture )
 			}
 			else
 			{
-				cbp = (*pquant_non_intra)(picture,
-									  picture->blocks[cur_mb_blocks],
-									  quant_blocks[cur_mb_blocks],
-									  cur_mb->mquant,
-									  &cur_mb->mquant );
+				cbp = (*pquant_non_intra)(  picture->blocks[cur_mb_blocks],
+                                            quant_blocks[cur_mb_blocks],
+                                            picture->q_scale_type,
+                                            cur_mb->mquant,
+                                            &cur_mb->mquant );
 				cur_mb->cbp = cbp;
 				if (cbp)
 					mb_type|= MB_PATTERN;

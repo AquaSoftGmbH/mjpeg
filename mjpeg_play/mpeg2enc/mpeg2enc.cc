@@ -1120,8 +1120,6 @@ static void init_encoder(void)
 	static int block_count_tab[3] = {6,8,12};
     int enc_chrom_width, enc_chrom_height;
 	initbits(); 
-	init_fdct();
-	init_idct();
 
 	/* Tune threading and motion compensation for specified number of CPU's 
 	   and specified speed parameters.
@@ -1222,13 +1220,6 @@ static void init_encoder(void)
 	mb_per_pict = mb_width*mb_height2;
 
 
-	/* clip table */
-	if (!(clp_0_255 = (uint8_t *)malloc(1024)))
-		mjpeg_error_exit1("malloc failed");
-	clp_0_255 += 384;
-	for (i=-384; i<640; i++)
-		clp_0_255[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
-	
 	/* Allocate the frame data buffers */
     frame_buffer_size = 2*param_max_GOP_size+param_Bgrp_size+READ_CHUNK_SIZE+1;
     mjpeg_info( "Buffering %d frames", frame_buffer_size );

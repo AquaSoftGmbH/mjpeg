@@ -30,30 +30,64 @@
 #include <config.h>
 #include "mjpeg_types.h"
 
-
-#ifdef HAVE_X86CPU
-
+#ifdef __cplusplus
 extern "C" 
 {
+#endif
 
-int quant_non_intra_3dnow( Picture *picture,int16_t *src, int16_t *dst,
+/*
+ * Reference / Architecture neutral implementations of functions which
+ * may have architecture-specific implementations.
+ *
+ * N.b. linkage and implemenations of such functions is C not C++!
+ * N.b. some of these refewrence implementations may be invoked by
+ * architecture specific routines as fall-backs. Hence their inclusion here...
+ *
+ */
+
+
+#include "quantize_ref.h"
+#include "transfrm_ref.h"
+
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+
+	
+int quant_non_intra_3dnow( int16_t *src, int16_t *dst,
+						   int q_scale_type,
 						   int mquant, int *nonsat_mquant);
-int quant_non_intra_sse( Picture *picture,int16_t *src, int16_t *dst,
+int quant_non_intra_sse( int16_t *src, int16_t *dst,
+						 int q_scale_type,
 						 int mquant, int *nonsat_mquant);
-int quant_non_intra_mmx( Picture *picture,int16_t *src, int16_t *dst,
+int quant_non_intra_mmx( int16_t *src, int16_t *dst,
+						 int q_scale_type,
 						 int mquant, int *nonsat_mquant);
-							
+	
 int quantize_ni_mmx(int16_t *dst, int16_t *src, 
 					uint16_t *quant_mat, 
 					uint16_t *i_quant_mat, 
 					int imquant, int mquant, 
 					int sat_limit) __asm__ ("quantize_ni_mmx");
+
 int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
 int cpuid_flags();
 
-void iquant_non_intra_m1_sse(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_sse");
+void iquant_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_extmmx");
 void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_mmx");
+void iquant_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_extmmx");
+void iquant_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_mmx");
 
+void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, int mquant );
+void iquant_non_intra_mmx(int16_t *src, int16_t *dst, int mquant );
+
+extern int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
+
+extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
+
+extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk) __asm__ ("add_pred_mmx");
+extern  void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk) __asm__ ("sub_pred_mmx");
 
 void predcomp_00_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmxe");
 void predcomp_10_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmxe");
@@ -65,8 +99,23 @@ void predcomp_10_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag
 void predcomp_11_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
 void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
 
-}
+#endif
 
+
+/*
+ * Global function pointers to functions with architecture-specific
+ * implementations 
+ */
+
+extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
+						 int q_scale_type, 
+						 int mquant, int *nonsat_mquant);
+extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+
+extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* __SIMD_H__ */
