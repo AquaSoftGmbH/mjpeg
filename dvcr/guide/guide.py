@@ -17,6 +17,7 @@
 from string import *
 from time import *
 from Tkinter import *
+from events import *
 import marshal 
 import ConfigParser
 import Pmw
@@ -168,10 +169,13 @@ class Guide:
 		self.list_dict = marshal.load(file)
 
 	def info(self, key):
-		print "key=%s" % key
+		print "key=",key
 		listing = self.list_dict[key]
-		print listing
-
+		print "listing=", listing
+		stop = listing[0] + listing[3] * 60;
+#		self.events.addit(key,  listing[2], listing[0], stop,
+#			"aa", listing[4])
+		self.events.display_events()
 
 	def info_in(self, key, aa):
 		listing = self.list_dict[key]
@@ -184,6 +188,9 @@ class Guide:
 	def info_out(self, key, aa):
 		self.info_time.configure(text=" ")
 
+
+	def event_add(self, data):
+		print event_add
 
 	def time_button(self, time_index, col):
 		label = Button(self.listing_frame, 
@@ -249,6 +256,9 @@ class Guide:
 
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
+
+		self.events = EventList(self.root)
+		self.events.load()
 
 		self.load(seconds)
 

@@ -15,22 +15,149 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 from Tkinter import *
-from guide import Guide
 from time import *
 import marshal 
 import Pmw
 import ConfigParser
 
+class Event:
+	def __init__(self):
+		self.channel = StringVar()
+		self.title = StringVar()
+		self.start_hour = IntVar()
+		self.start_min = IntVar()
+		self.start_ampm = StringVar()
+		self.stop_hour = IntVar()
+		self.stop_min = IntVar()
+		self.stop_ampm = StringVar()
+		self.day= IntVar()
+		self.month = IntVar()
+		self.year = IntVar()
+
+	def set_start(self, time_value):
+		self.start_hour.set(strftime("%l",gmtime(time_value)))
+		self.start_min.set(strftime("%M",gmtime(time_value)))
+		self.start_ampm.set(strftime("%p",gmtime(time_value)))
+
+		self.day.set(strftime("%d",gmtime(time_value)))
+		self.month.set(strftime("%m",gmtime(time_value)))
+		self.year.set(strftime("%g",gmtime(time_value)))
+
+
+	def set_stop(self, time_value):
+		self.stop_hour.set(strftime("%l",gmtime(time_value)))
+		self.stop_min.set(strftime("%M",gmtime(time_value)))
+		self.stop_ampm.set(strftime("%p",gmtime(time_value)))
+
+	def set_title(self, title):
+		self.title.set(title)
+
+	def set_channel(self, channel):
+		self.channel.set(channel)
+
+	def group(self, root):
+		self.group_data = Pmw.Group(root, tag_text=" ")
+		self.group_frame = self.group_data.interior()
+
+		date_frame = Frame(self.group_frame)
+
+		month = Entry(date_frame,
+			textvariable = self.month,
+			width = 2)
+		
+		day = Entry(date_frame, 
+			textvariable = self.day,
+			width = 2)
+
+		year = Entry(date_frame, 
+			textvariable = self.year,
+			width = 2)
+
+		label1 = Label(date_frame, text="/", width=1)
+		label2 = Label(date_frame, text="/", width=1)
+
+		month.grid(row=0, column=0)
+		label1.grid(row=0, column=1)
+		day.grid(row=0, column=2)
+		label2.grid(row=0, column=3)
+		year.grid(row=0, column=4)
+
+		start_time_frame = Frame(self.group_frame)
+
+		hour = Entry(start_time_frame,
+			textvariable = self.start_hour,
+			width = 2)
+		
+		min = Entry(start_time_frame, 
+			textvariable = self.start_min,
+			width = 2)
+
+		ampm = Entry(start_time_frame,
+			textvariable = self.start_ampm,
+			width = 2)
+
+		hour.grid(row=0, column=0, padx=3)
+		min.grid(row=0, column=2, padx=3)
+		ampm.grid(row=0, column=3, padx=3, ipadx=3)
+
+		stop_time_frame = Frame(self.group_frame)
+
+		hour = Entry(stop_time_frame,
+			textvariable = self.stop_hour,
+			width = 2)
+		
+		min = Entry(stop_time_frame, 
+			textvariable = self.stop_min,
+			width = 2)
+
+		ampm = Entry(stop_time_frame,
+			textvariable = self.stop_ampm,
+			width = 2)
+
+		hour.grid(row=0, column=0, padx=3)
+		min.grid(row=0, column=2, padx=3)
+		ampm.grid(row=0, column=3, padx=3, ipadx=3)
+
+		dash = Label(self.group_frame,
+			text = " - ",
+			width = 3)
+
+		date_frame.grid(row=0, column=0)
+		start_time_frame.grid(row = 0, column=1)
+		dash.grid(row=0, column = 2, sticky="NSEW")
+		stop_time_frame.grid(row=0, column=3)
+
+		channel = Entry(self.group_frame,
+			textvariable=self.channel,
+			width = 8)
+
+		title = Entry(self.group_frame,
+			textvariable=self.title,
+			width=30)
+
+		channel.grid(row=1, column=0, sticky="NSW")
+		title.grid(row=1, column = 1, columnspan=3, sticky="NSW")
+
+		self.group_data.pack(expand=1, fill=BOTH, ipadx=4, ipady=4)
 
 class EventList:
-	def __init__(self, device):
+	def __init__(self, root):
 		self.config_data = ConfigParser.ConfigParser()
 		self.config_data.read("/etc/dvcr")
 
 		self.record_event = {}
+		self.event_groups = {}
+		self.dialog = Pmw.Dialog(root,
+			title="Reording Events",
+			buttons=("OK", "Add", "Cancel"),
+			defaultbutton='OK')
+
+		self.scroll_area = Pmw.ScrolledFrame(self.dialog.interior(),
+			hscrollmode = 'dynamic')
+		self.scroll_area.pack(fill=BOTH, expand=1, pady=4, padx=4)
 
 		dir = self.config_string("global", "recorddir") + "/"
-		self.file_name = dir + device
+		self.file_name = dir + "directtv"
 
 	def load(self):
 		try:
@@ -40,6 +167,19 @@ class EventList:
 			return
 
 		self.record_event = marshal.load(file)
+
+		for tag in self.tags():
+			start, end, channel, title = \
+				self.event(tag)
+			current = Event()
+			self.event_groups[tag] = current
+			current.set_start(start)
+			current.set_stop(end)
+			current.set_title(title)
+			current.set_channel(channel)
+			current.group(self.scroll_area.interior())
+		self.dialog.deactivate()
+
 
 	def save(self):
 		try:
@@ -84,117 +224,6 @@ class EventList:
 			return self.config_data.get(section, name)
 		except:
 			return None
-#
-#	channel,start,length,show title
-#
-class	Events:
-	def __init__(self):
-		self.config_data = ConfigParser.ConfigParser()
-		self.config_data.read("/etc/dvcr")
-		self.device = "directtv"
 
-		self.record_list = EventList(self.device)
-		self.record_list.load()
-
-	def record_frame(self):
-		self.root = Tk()
-		self.root.title("Recording Events")
-
-	def build_time(self, time_value, root, row, column):
-		time_frame = Frame(root)
-		time_frame.grid(row=row, column=column)
-
-		time_hour = strftime("%l",gmtime(time_value))
-		time_min = strftime("%M",gmtime(time_value))
-		time_ampm = strftime("%p",gmtime(time_value))
-		
-		hour = Pmw.EntryField(time_frame, 
-			value=time_hour,
-			)
-		entry = hour.component("entry")
-		entry.configure(width=2)
-
-		min = Pmw.EntryField(time_frame, 
-			value=time_min
-			)
-		entry = min.component("entry")
-		entry.configure(width=2)
-
-		ampm = Pmw.EntryField(time_frame, 
-			value=time_ampm
-			)
-		entry = ampm.component("entry")
-		entry.configure(width=2)
-
-	
-		hour.grid(row=0, column=1, padx=3)
-		min.grid(row=0, column=2, padx=3)
-		ampm.grid(row=0, colum=3, padx=3, ipadx=3)
-
-		return time_frame
-
-	def record_event(self, root, item, start, stop, channel, title):
-		group = Pmw.Group(root, tag_text=item)
-
-		today = strftime("%m/%d/%y",gmtime(start))
-
-		month = Pmw.Counter(group.interior(),
-			entryfield_value = today,
-			entryfield_validate = { 
-				'validator' : 'date', 
-				'format' : 'mdy'},
-			datatype = { 
-				'counter' : 'date',
-				'format' : 'mdy' }
-			)
-		month.component("entry").configure(width=8)
-
-		month.grid(row=0, column=0)
-				
-
-		self.build_time(start, group.interior(), row=0, column=1)
-
-		label = Label(group.interior(), text=" - ", width=3)
-		label.grid(row=0, column=2, sticky="NSEW")
-
-		self.build_time(stop, group.interior(), row=0, column=3)
-
-		channel_w = Pmw.EntryField(group.interior(),
-			value=channel,
-			)
-		entry = channel_w.component("entry")
-		entry.configure(width=8)
-
-		title_w = Pmw.EntryField(group.interior(),
-			value=title,
-			)
-		entry = title_w.component("entry")
-		entry.configure(width=30)
-
-		channel_w.grid(row=1, column=0, sticky="NSW")
-		title_w.grid(row=1, column=1, columnspan=3, sticky="NSW")
-		
-		group.pack(expand=1, fill=BOTH)
-		return group
-
-	def edit_events(self):
-		self.record_frame()
-
-		frame = Frame(self.root)
-		frame.pack(fill='both', expand=1)
-
-		scroll_area = Pmw.ScrolledFrame(frame,
-			hscrollmode = 'dynamic')
-		scroll_area.pack(fill='both', expand=1)
-
-		frame_events = scroll_area.interior();
-
-		for tag in self.record_list.tags():
-			start, end, channel, title = \
-				self.record_list.event(tag)
-			print start, end, channel, title
-			self.record_event(frame_events, tag, start, 
-				end, channel, title)
-
-
-		self.root.mainloop()
+	def display_events(self):
+		self.dialog.activate()
