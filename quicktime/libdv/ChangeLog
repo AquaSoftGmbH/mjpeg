@@ -1,0 +1,34 @@
+2000-05-08  Charlie Krasic  <krasic@cse.ogi.edu>
+
+	* Moved to macroblock at a time color conversion, based on the work
+ 	  of Scott F. Johnston <scott@fleetingimage.com>.  I rewrote his
+ 	  shuffle code.  Partly so I could understand it better (I added
+ 	  lots of comments), and also I did the PAL version too.  I decided
+ 	  to leave mapping between dif blocks/segments and superblock
+ 	  row/columns to the parse code.  I took his block at a time ycrcb
+ 	  conversion directly, except for making clamp_y lookup based.
+
+2000-05-05  Charles 'Buck' Krasic  <krasic@acm.org>
+
+	* New idct code for 2-4-8.  It's an integer version, based on an
+ 	approach like that of the AAN algorithm.  Next step will be to MMX
+ 	it.
+
+2000-04-20  Charles 'Buck' Krasic  <krasic@acm.org>
+
+	* place.c: Fixes to 4:2:0 placement.  Color resembles something
+ 	like correct now. :}
+
+	* Add initial macroblock placement for 4:2:0 (IEC61834).  Initial
+ 	  test shows luma is OK, but color isn't working correctly.
+ 
+2000-04-19  Erik Walthinnsen (Omega)  <omega@cse.ogi.edu>
+
+	* Added rudimentary PAL decoding, as well as a way to
+ 	  differentiate between IEC61834 and SMPTE314M video, which is
+ 	  critical for dealing with PAL data.
+
+2000-04-18  Charles 'Buck' Krasic  <krasic@acm.org>
+
+	* Version 0.1 - first release at libdv.sourceforge.net
+

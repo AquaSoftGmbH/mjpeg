@@ -1,0 +1,130 @@
+Libdv defines two objects: the dv_t object and the dv_grabber_t object.
+
+The dv_grabber_t object
+
+1) Grabs DV frames from a firewire device, determines the size of each
+frame, and hence the conformance.
+
+The dv_t object
+
+1) Decodes video data from a DV frame
+2) Decodes audio data from a DV frame
+
+DV stores audio and video in each frame.  You can either read DV frames
+produced by the dv_grabber_t object or from an arbitrary file.  The
+dv_t object merely needs an input data buffer and a buffer size.  Both
+objects should exist at the same time if you want to decode frames
+simultaneous with grabbing.
+
+
+// ========================== Using the dv_grabber_t object =======================
+Step 1:
+
+#include libdv.h and create a new grabber object.  Only one instance of
+dv_grabber_t may exist in an executable.
+
+	dv_grabber_t *grabber = dv_grabber_new();
+
+Step 2:
+
+Start the grabber reading in the background.
+
+	dv_start_grabbing(grabber, firewire_port, firewire_channel, buffers);
+
+The grabber reads frames continuously until buffers number of buffers
+have been filled, then waits until a buffer becomes available before
+continuing to read.  While it's reading you can call
+
+	dv_grab_frame(grabber, &frame, &size);
+
+to grab a frame.  This points unsigned char *frame to a buffer and long
+size to the size of the buffer.  You must now either write the frame to
+disk or decode it in a dv_t object.  The size value is synonymous with
+the dimensions of the frame.  A size of 120000 is an NTSC frame and
+hence 720x480.  A size of 140000 is a PAL frame and hence 720x576.
+
+After you're done with the buffer call
+
+	dv_unlock_frame(grabber);
+
+to allow the grabber to continue grabbing into the buffer you just read.
+
+Step 3:
+
+When you're finished grabbing call
+
+	dv_stop_grabbing(grabber);
+
+to stop the background process.  Follow this with
+
+	dv_grabber_delete(dv);
+
+to delete the grabber object.
+
+Step 4:
+
+Incidentally, the Linux firewire interface has no hot swapping.  If you
+disconnect a firewire device or turn it off while grabbing the grabber
+will lock up.  The solution to Linux firewire is the following.  
+
+If
+
+	dv_grabber_crashed(grabber);
+
+returns 1 you need to override the kernel with 
+
+	dv_interrupt_grabber(grabber);
+
+before stopping the grabber with
+
+	dv_stop_grabbing(grabber);
+	dv_grabber_delete(dv);
+
+
+// ============================= Using the dv_t object =============================
+Step 1:
+
+#include libdv.h and create a new dv decoder.
+
+	dv_t *dv = dv_new();
+
+Step 2:
+
+Read video frames.  Call dv_read_video for each frame read.
+
+	dv_read_video(dv, rgb_rows, buffer, size, color_model);
+
+dv is the dv decoding object.
+
+rgb_rows is an array of pointers, one pointer to each row of a frame. 
+Each row must have enough memory allocated to store a row of the
+specified color model.  The dimensions of the frame must be determined
+by whatever procedure grabs the data from the device.
+
+buffer is the compressed data.
+
+size is the size of the compressed data.  This can be the size value
+returned by dv_grab_frame or a #define from libdv.h.
+
+color_model is the color model to generate.  It can be any of the color
+model #defines in libdv.h
+
+Step 3:
+
+Read audio frames.  This procedure only works for 2 channel 16 bit
+encoding.  Call dv_read_audio for each frame to extract the audio from.
+
+	dv_read_audio(dv, samples, data, size);
+
+dv is the dv pointer.  Samples is a preallocated buffer of 4096 bytes. 
+Data is the compressed DV frame.  Size is the number of bytes in the DV
+frame.
+
+This function returns the number of 16 bit twos complement samples
+deposited in *samples.
+
+Step 4:
+
+Delete the dv object when finished reading frames.
+
+	dv_delete(dv);
