@@ -199,33 +199,43 @@ int number_of_frames(char *editlist)
 
 void lavencode_callback(int number, char *input) 
 {
-   if (progress_status_label)
-   {
-      int n1, n2;
-      char c;
-      if (number == MPEG2ENC && sscanf(input, "   INFO: Frame %d %c %d", &n1, &c, &n2)==3)
+  if (progress_status_label)
+  {
+    int n1, n2;
+    char c;
+    if (number == MPEG2ENC)
+    {
+      if ( (encoding_syntax_style == 140) && 
+           (sscanf(input, "   INFO: Frame %d %c %d", &n1, &c, &n2)==3) )
       {
-         gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-         if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
+       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
+       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
       }
-      else if (number == MP2ENC && sscanf(input, "--DEBUG: %d seconds done", &n1)==1)
+      
+      if ( (encoding_syntax_style == 150) && 
+           (sscanf(input, "    INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
       {
-         gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
-         if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), standard=='p'?25*n1:30*n1);
+       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
+       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
       }
-   }
+    }
+    else if (number == MP2ENC && sscanf(input, "--DEBUG: %d seconds done", &n1)==1)
+    {
+       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
+       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), standard=='p'?25*n1:30*n1);
+    }
+  }
 
-   if (strncmp(input, "**ERROR:", 8) == 0)
-   {
-      char temp[256];
+  if (strncmp(input, "**ERROR:", 8) == 0)
+  {
+     char temp[256];
 
-      /* Error handling */
-      if (!error) stop_encoding_process(NULL, (gpointer)progress_window);
-      sprintf(temp, "%s returned an error:", app_name(number));
-      gtk_show_text_window(STUDIO_ERROR,
-		temp, input+9);
-      error++;
-   }
+     /* Error handling */
+     if (!error) stop_encoding_process(NULL, (gpointer)progress_window);
+     sprintf(temp, "%s returned an error:", app_name(number));
+     gtk_show_text_window(STUDIO_ERROR, temp, input+9);
+     error++;
+  }
 }
 
 void continue_encoding() 
