@@ -6,8 +6,7 @@ yuvplay \- Play YUV data using SDL
 .SH SYNOPSIS
 lavpipe/lav2yuv [options] [file(s)] |
 .B yuvplay
-.RB [ \-s
-.IR NxN ]
+.RB [ options ]
 
 .SH DESCRIPTION
 \fByuvplay\fP can be used to playback YUV data which is provided to
@@ -25,6 +24,16 @@ processing / encoding pipelines.
 The size of the SDL window. By default, it takes the size of the video,
 but through software YUV scaling, you can specify any size you want.
 NxN is the width x height of the scaled window.
+
+.TP 8
+.BI \-f " num"
+Override the framerate of the input YUV stream (header)
+
+.TP 8
+.BI \-c
+By default, yuvplay will try to play at the framerate of the input movie.
+With this option, yuvplay will just play all the frames at the rate in
+which they're provided through the stdin.
 
 .SH AUTHOR
 This man page was written by Ronald Bultje.
