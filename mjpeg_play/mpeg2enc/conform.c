@@ -266,7 +266,7 @@ void profile_and_level_checks(void)
     mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level\n");
 
   if (opt_vertical_size > maxval->vert_size)
-    mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level\n");
+    mjpeg_error_exit1("Vertical size is greater than permitted in specified Level\n");
 
   /* Table 8-11 */
   if (opt_horizontal_size*opt_vertical_size*opt_frame_rate > 
