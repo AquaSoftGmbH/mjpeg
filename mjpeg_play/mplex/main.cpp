@@ -239,7 +239,7 @@ private:
 	bool ParseVideoOpt( const char *optarg );
 	bool ParseLpcmOpt( const char *optarg );
 	bool ParseWorkaroundOpt( const char *optarg );
-	bool  ParseTimeOffset( const char *optarg );
+	bool ParseTimeOffset( const char *optarg );
 	
 
 	static const char short_options[];
@@ -336,7 +336,7 @@ CmdLineMultiplexJob::CmdLineMultiplexJob(unsigned int argc, char *argv[]) :
 		case 'O':
 			if( ! ParseTimeOffset(optarg) )
 			{
-				mjpeg_error( "Time offset units if specified must: ms|s|pts" );
+				mjpeg_error( "Time offset units if specified must: ms|s|mpt" );
 				Usage(argv[0]);
 			}
 			break;
@@ -422,7 +422,7 @@ void CmdLineMultiplexJob::Usage(char *str)
     "--lpcm-params | -L samppersec:chan:bits [, samppersec:chan:bits]\n"
 	"--mux-limit|-l num\n"
     "  Multiplex only num seconds of material (default 0=multiplex all)\n"
-	"--sync-offset|-O num\n"
+	"--sync-offset|-O num ms|s|mpt\n"
     "  Specify offset of timestamps (video-audio) in mSec\n"
 	"--sector-size|-s num\n"
     "  Specify sector size in bytes for generic formats [256..16384]\n"
@@ -572,7 +572,7 @@ bool CmdLineMultiplexJob::ParseTimeOffset(const char *optarg)
         while(isspace(*e)) e++;
         if(!strcmp(e,"ms")) persecond=1000.0;
         else if(!strcmp(e,"s")) persecond=1.0;
-        else if(!strcmp(e,"pts")) persecond=90000.0;
+        else if(!strcmp(e,"mpt")) persecond=90000.0;
 		else
 			return false;
     }
