@@ -25,16 +25,24 @@ non_linear_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 		{
 			d = *(frame+x+(y-1)*width) - *(frame+x+(y+1)*width) ;
 			min = d < 0 ? -d:d;
+			d = *(frame+x+(y-1)*width-1) - *(frame+x+(y+1)*width-1) ;
+			min += d < 0 ? -d:d;
+			d = *(frame+x+(y-1)*width+1) - *(frame+x+(y+1)*width+1) ;
+			min += d < 0 ? -d:d;
 			v = 0;
 
 			/* search best diagonal pixel-match */
 			a  = *(frame+x  +(y+1)*width);
 			b  = *(frame+x  +(y-1)*width);
-			//if( (a-b)>5 || (b-a)>5 )
-			for(vx=-11;vx<=11;vx++)
+
+			for(vx=-5;vx<=5;vx++)
 			{
 				d = *(frame+x+vx+(y-1)*width) - *(frame+x-vx+(y+1)*width) ;
 				delta = d < 0 ? -d:d;
+				d = *(frame+x+vx+(y-1)*width-1) - *(frame+x-vx+(y+1)*width-1) ;
+				delta += d < 0 ? -d:d;
+				d = *(frame+x+vx+(y-1)*width+1) - *(frame+x-vx+(y+1)*width+1) ;
+				delta += d < 0 ? -d:d;
 
 				if(delta<min)
 				{

@@ -10,26 +10,51 @@ extern int bttv_hack;
 void
 blend_fields_non_accel (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
 {
-	int x, y;
+	int x, y, diff;
 	int offs = width*height;
 
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			*(dst[0]) = ( *(src1[0]) + *(src2[0]) +1 )>>1;
-			dst[0]++;
-			src1[0]++;
-			src2[0]++;
+			diff = 	*(src1[0])-*(src2[0]);
+			diff = diff<0? -diff:diff;
 
-			*(dst[1]) = ( *(src1[1]) + *(src2[1]) +1 )>>1;
-			dst[1]++;
-			src1[1]++;
-			src2[1]++;
+//			if(diff<=32)
+			{
+				*(dst[0]) = ( *(src1[0]) + *(src2[0]) +1 )>>1;
+				dst[0]++;
+				src1[0]++;
+				src2[0]++;
 
-			*(dst[2]) = ( *(src1[2]) + *(src2[2]) +1 )>>1;
-			dst[2]++;
-			src1[2]++;
-			src2[2]++;
+				*(dst[1]) = ( *(src1[1]) + *(src2[1]) +1 )>>1;
+				dst[1]++;
+				src1[1]++;
+				src2[1]++;
+
+				*(dst[2]) = ( *(src1[2]) + *(src2[2]) +1 )>>1;
+				dst[2]++;
+				src1[2]++;
+				src2[2]++;
+			}
+#if 0
+			else
+			{
+				*(dst[0]) = ( *(src1[0]) );
+				dst[0]++;
+				src1[0]++;
+				src2[0]++;
+
+				*(dst[1]) = ( *(src1[1]) );
+				dst[1]++;
+				src1[1]++;
+				src2[1]++;
+
+				*(dst[2]) = ( *(src1[2]) );
+				dst[2]++;
+				src1[2]++;
+				src2[2]++;
+			}
+#endif
 		}
 	dst[0]  -= offs;
 	src1[0] -= offs;
