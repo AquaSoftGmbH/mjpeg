@@ -2,7 +2,7 @@
 #
 #  anytovcd.sh
 #
-#  Copyright (C) 2004 Nicolas Boos <nicolaxx@free.fr>
+#  Copyright (C) 2004,2005 Nicolas Boos <nicolaxx@free.fr>
 # 
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ YUVFPS="yuvfps"
 YUVMEDIANFILTER="yuvmedianfilter"
 
 SCRIPT_NAME="anytovcd.sh"
-SCRIPT_VERSION="7"
+SCRIPT_VERSION="8"
 
 # custom quant. matrices
 INTRA_KVCD="8,9,12,22,26,27,29,34,9,10,14,26,27,29,34,37,12,14,18,27,29,34,37,38,22,26,27,31,36,37,38,40,26,27,29,36,39,38,40,48,27,29,34,37,38,40,48,58,29,34,37,38,40,48,58,69,34,37,38,40,48,58,69,79"
@@ -169,8 +169,8 @@ range_check ()
 mpeg2enc_statfile_analyse ()
 {
     # calculate average quant value from pseudo statfile (mpeg2enc output)
-    echo "`awk '/quant=/ {print $7}' "$1" | \
-    awk -F= '{iquant=$2; \
+    echo "`awk -F= '/quant=/ {print $2}' "$1" | \
+    awk '{iquant=$1; \
     oquant=iquant; \
     if (iquant>=  10) {oquant=9}; \
     if (iquant>=  12) {oquant=10}; \
