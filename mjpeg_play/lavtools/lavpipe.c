@@ -98,14 +98,12 @@ static pid_t fork_child_sub (char *child, int *fd_in, int *fd_out) {
 
    if (fd_in) {
       if (pipe (pipe_in)) {
-         fprintf (stderr, "Couldn't create input pipe from %s\n", child);
-         exit (1);
+         mjpeg_error_exit1( "Couldn't create input pipe from %s\n", child);
       }
    }
    if (fd_out) {
       if (pipe (pipe_out)) {
-         fprintf (stderr, "Couldn't create output pipe to %s\n", child);
-         exit (1);
+         mjpeg_error_exit1( "Couldn't create output pipe to %s\n", child);
       }
    }         
    if ((pid = fork ())<0) {

@@ -14,7 +14,7 @@ libavio_a_SOURCES = editlist.c lav_io.c avilib.c
 # The tools themselves
 
 bin_PROGRAMS = \
-	lavplay   lavrec   lav2wav  lav2yuv lav2dfilter  lavaddwav \
+	lavplay   lavrec   lav2wav  lav2yuv yuvmedianfilter  lavaddwav \
 	lavvideo  lavtrans xlav  ypipe yuv2lav testrec \
 	transist.flt matteblend.flt lavpipe yuvscaler yuvplay
 
@@ -55,9 +55,8 @@ lav2yuv_LDADD = -L$(top_srcdir)/utils -lutils \
 lavpipe_SOURCES = lavpipe.c yuv4mpeg.c pipelist.c $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lutils 
 
-lav2dfilter_SOURCES = lav2dfilter.c $(lav_headers)
-lav2dfilter_LDFLAGS = -L$(top_srcdir)/utils -lutils -L$(top_builddir)/lavtools 
-lav2dfilter_LDADD = 
+yuvmedianfilter_SOURCES = yuvmedianfilter.c $(lav_headers)
+yuvmedianfilter_LDADD = -L$(top_srcdir)/utils -lutils -L$(top_builddir)/lavtools 
 
 lav2wav_SOURCES = lav2wav.c  $(lav_headers)
 lav2wav_LDADD = -L$(top_srcdir)/utils -lutils \

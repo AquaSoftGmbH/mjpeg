@@ -559,8 +559,7 @@ main (int argc, char *argv[])
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
 	{
-	  fprintf (stderr, "Editlist not in chroma 422 format, exiting...\n");
-	  exit (1);
+	  mjpeg_error_exit1( "Editlist not in chroma 422 format, exiting...\n");
 	}
       input_width = el.video_width;
       input_height = el.video_height;
