@@ -91,7 +91,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 	{
 	case MPEG_FORMAT_VCD :
 		data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
-	  	vbr = false;
  
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile");
@@ -113,6 +112,11 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		sector_align_iframeAUs = false;
         timestamp_iframe_only = false;
 		seg_starts_with_video = true;
+        if( job.video_tracks == 0 )
+        {
+            mjpeg_info( "Audio-only VCD track - variable-bit-rate (VCD2.0)");
+            vbr = true;
+        }
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -372,10 +376,6 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
 	std::vector<VideoParams *>::iterator vidparm = job.video_param.begin();
 	std::vector<LpcmParams *>::iterator lpcmparm = job.lpcm_param.begin();
 
-    if( job.video_tracks < 1 && job.mux_format == MPEG_FORMAT_VCD )
-    {
-        mjpeg_warn( "Multiplexing audio-only for a standard VCD is very inefficient");
-    }
 
     std::vector<JobStream *>::iterator i;
     for( i = job.streams.begin() ; i < job.streams.end() ; ++i )
@@ -824,6 +824,9 @@ void Multiplexor::OutputPrefix( )
 		{
 				mjpeg_error_exit1("VCD man only have max. 1 audio and 1 video stream");
 		}
+
+        if( vstreams.size() > 0 )
+        {
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
 								 false, true, 
@@ -831,15 +834,20 @@ void Multiplexor::OutputPrefix( )
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( false);		
+        }
 
-		/* Second packet carries audio-info-only sys_header */
-		psstrm->CreateSysHeader (&sys_header, mux_rate,  
-                                 false, true, 
-								 true, true, amux );
-		sys_header_ptr = &sys_header;
-		pack_header_ptr = &pack_header;
-	  	OutputPadding( true );
-		break;
+        if( astreams.size() > 0 )
+        {
+
+            /* Second packet carries audio-info-only sys_header */
+            psstrm->CreateSysHeader (&sys_header, mux_rate,  
+                                     false, true, 
+                                     true, true, amux );
+            sys_header_ptr = &sys_header;
+            pack_header_ptr = &pack_header;
+            OutputPadding( true );
+        }
+        break;
 		
 	case MPEG_FORMAT_SVCD :
 	case MPEG_FORMAT_SVCD_NSR :
