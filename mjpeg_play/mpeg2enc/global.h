@@ -138,6 +138,8 @@ int rc_start_mb (pict_data_s *picture);
 int rc_calc_mquant (pict_data_s *picture,int j);
 void vbv_end_of_picture (pict_data_s *picture);
 void calc_vbv_delay (pict_data_s *picture);
+double inv_scale_quant( int q_scale_type, int raw_code );
+int scale_quant( int q_scale_type, double quant );
 
 /* readpic.c */
 int readframe (int frame_num, uint8_t *frame[]);

@@ -305,7 +305,7 @@ void MPAStream::OutputHdrInfo ()
 
 	mjpeg_info("AUDIO STREAM:");
 	mjpeg_info("Audio version  : %s", mpa_audio_version[version_id]);
-    mjpeg_info("Layer          : %8u",4-layer);
+    mjpeg_info("Layer          : %8u",layer+1);
 
     if (protection == 0) mjpeg_info ("CRC checksums  :      yes");
     else  mjpeg_info ("CRC checksums  :       no");

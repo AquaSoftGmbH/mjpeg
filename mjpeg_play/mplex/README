@@ -1,15 +1,11 @@
 
-*  mplex - MPEG1/SYSTEMS multiplexer
+*  mplex-2 - MPEG1/2 SYSTEMS/PROGRAM stream multiplexer
 *
+* Orginally based on mplex
 *  Copyright (C) 1994 1995 Christoph Moar 
-*  Additional portions and modifications 
-*  Copyright (C) 2000 Andrew Stevens
-*  Research at Siemens ZFE ST SN 11 / T SN 6
+* Reengineered version in C++
+*  Copyright (C) 2000,2001, 2002 Andrew Stevens
 *
-*  TECHNICAL UNIVERSITY OF MUNICH, GERMANY
-*
-*  moar@informatik.tu-muenchen.de
-*       (Christoph Moar)
 *  as@comlab.ox.ac.uk
 		(Andrew Stevens)
 *  This program is free software; you can redistribute it and/or modify
@@ -50,10 +46,13 @@ Novermber 2000 Andrew Stevens
 	Support for splitting output streams (not yet completely implemented)
 	Support for multiplexing for VCD.
 
-Jan-Jul 2001
+Jan 2001-
 	
+	Reengineered in C++
 	Support for SVCD.
+	Support for basic DVD
 	VBR Audio as well as video.
 	Clean stream splitting support.
+	Class structure to simplify adding new stream types
 
 	Encapsulation and modularistion

@@ -578,9 +578,9 @@ static int check_param_constraints(void)
 				++nerr;
 			}
 		}
-		if( param_fieldenc != 0 )
+		if( param_fieldenc == 2 )
 		{
-			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0)");
+			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 1 or -I 0)");
 			++nerr;
 		}
 	}
@@ -985,7 +985,11 @@ static struct option long_options[]={
 	else
 		mjpeg_info( "Bitrate: VCD");
 	if(param_quant) 
-		mjpeg_info("Quality factor: %d (1=best, 31=worst)",param_quant);
+		mjpeg_info("Quality factor: %d (Quantisation = %d) (1=best, 31=worst)",
+                   param_quant, 
+                   (int)(inv_scale_quant( param_mpeg == 1 ? 0 : 1, 
+                                          param_quant)+0.5)
+            );
 
 	mjpeg_info("Field order for input: %s", 
 			   mpeg_interlace_code_definition(param_input_interlacing) );
@@ -1320,7 +1324,8 @@ static void init_mpeg_parms(void)
 
 	if( param_quant )
 	{
-		ctl_quant_floor = (double)param_quant;
+		ctl_quant_floor = inv_scale_quant( param_mpeg == 1 ? 0 : 1, 
+                                           param_quant );
 	}
 	else
 	{

@@ -891,7 +891,7 @@ static void parencodepict( pict_data_s *picture )
 
 /*********************
  *
- *  Multi-threading putseq 
+ *  Multi-threading capable putseq 
  *
  *  N.b. It is *critical* that the reference and b picture buffers are
  *  at least two larger than the number of encoding worker threads.
@@ -906,6 +906,10 @@ static void parencodepict( pict_data_s *picture )
  
 void putseq(void)
 {
+    /* DEBUG */
+	uint64_t bits_after_mux;
+	double frame_periods;
+    /* END DEBUG */
 	stream_state_s ss;
 	int cur_ref_idx = 0;
 	int cur_b_idx = 0;
@@ -1009,6 +1013,24 @@ void putseq(void)
 	if( ctl_max_encoding_frames > 1 )
 		sync_guard_test( &cur_picture->completion );
 	putseqend();
+
+	if( opt_pulldown_32 )
+		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);
+	else
+		frame_periods = (double)(ss.seq_start_frame + ss.i);
+    
+    /* DEBUG */
+    
+    if( ctl_quant_floor > 0.0 )
+        bits_after_mux = bitcount() + 
+            (uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
+    else
+        bits_after_mux = (uint64_t)((frame_periods / opt_frame_rate) * 
+                                    (ctl_nonvid_bit_rate + opt_bit_rate));
+
+    mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
+    /* END DEBUG */
+
 }
 
 

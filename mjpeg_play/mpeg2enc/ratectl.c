@@ -163,11 +163,11 @@ static bool first_I = false;
 */
 
 
-static double scale_quantf( pict_data_s *picture, double quant )
+static double scale_quantf( int q_scale_type, double quant )
 {
 	double quantf;
 
-	if ( picture->q_scale_type )
+	if ( q_scale_type )
 	{
 		int iquantl, iquanth;
 		double wl, wh;
@@ -208,11 +208,12 @@ static double scale_quantf( pict_data_s *picture, double quant )
 	return quantf;
 }
 
-static int scale_quant( pict_data_s *picture, double quant )
+
+int scale_quant( int q_scale_type , double quant )
 {
 	int iquant;
 	
-	if ( picture->q_scale_type  )
+	if ( q_scale_type  )
 	{
 		iquant = (int) floor(quant+0.5);
 
@@ -237,6 +238,21 @@ static int scale_quant( pict_data_s *picture, double quant )
 	}
 	return iquant;
 }
+
+double inv_scale_quant( int q_scale_type, int raw_code )
+{
+	int i;
+	if( q_scale_type )
+	{
+		i = 112;
+		while( 1 < i && map_non_linear_mquant[i] != raw_code )
+			--i;
+		return ((double)i+0.5);
+	}
+	else
+		return ((double)raw_code)+0.5;
+}
+
 
 /*********************
 
@@ -586,11 +602,11 @@ void rc_init_pict(pict_data_s *picture)
 
 
 	T_sum += T;
-	current_Q = scale_quant(picture,62.0*d / r);
+	current_Q = scale_quant(picture->q_scale_type,62.0*d / r);
 	if( no_avg_K )
 		target_Q = current_Q;
 	else
-		target_Q = scale_quantf(picture, 
+		target_Q = scale_quantf(picture->q_scale_type, 
 								avg_K * avg_act *(mb_per_pict) / T);
 
 	picture->avg_act = avg_act;
@@ -925,7 +941,7 @@ static int init_quant;
 int rc_start_mb(pict_data_s *picture)
 {
 	
-	int mquant = scale_quant( picture, d*62.0/r );
+	int mquant = scale_quant( picture->q_scale_type, d*62.0/r );
 	init_quant = mquant = intmax(mquant, ctl_quant_floor);
 
 /*
@@ -990,8 +1006,8 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 	if( N_actj < 0.7 )
 		N_actj = 0.7;
 #endif	
-	sum_vbuf_Q += scale_quantf(picture,Qj*N_actj);
-	mquant = scale_quant(picture,Qj*N_actj);
+	sum_vbuf_Q += scale_quantf(picture->q_scale_type,Qj*N_actj);
+	mquant = scale_quant(picture->q_scale_type,Qj*N_actj);
 
 #ifdef PER_FRAME_STEARING
 	if( j % 23 == 0 )
