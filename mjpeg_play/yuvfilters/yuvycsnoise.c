@@ -166,23 +166,23 @@ uvnoise(YfTask_t *h, char *dfpr2_u, char *dfprv, char *dfnow,
       i1 = h->_.width * ((y * 2) + 2);
     }
     for (x = 0; x < uw; x++, i++, i0 +=2, i1 += 2) {
-      int d0 = dfnow_u[i];
-      if (d0 &&
-	  dfnow_v[i] && dfnow_v[i] != d0 &&
-	  dfprv_u[i] && dfprv_u[i] != d0 &&
-	  dfprv_v[i] && dfprv_v[i] == d0 &&
-	  dfpr2_u[i] && dfpr2_u[i] == d0 &&
-	  dfpr2_v[i] && dfpr2_v[i] != d0 &&
-	  frprv_u[i]  - h->errc < frnxt_u[i]  && frnxt_u[i]  < frprv_u[i]  + h->errc &&
-	  frprv_v[i]  - h->errc < frnxt_v[i]  && frnxt_v[i]  < frprv_v[i]  + h->errc &&
-	  frprv[i0]   - h->errc < frnow[i0]   && frnow[i0]   < frprv[i0]   + h->errc &&
-	  frnxt[i0]   - h->errc < frnow[i0]   && frnow[i0]   < frnxt[i0]   + h->errc &&
-	  frprv[i1]   - h->errc < frnow[i1]   && frnow[i1]   < frprv[i1]   + h->errc &&
-	  frnxt[i1]   - h->errc < frnow[i1]   && frnow[i1]   < frnxt[i1]   + h->errc &&
-	  frprv[i0+1] - h->errc < frnow[i0+1] && frnow[i0+1] < frprv[i0+1] + h->errc &&
-	  frnxt[i0+1] - h->errc < frnow[i0+1] && frnow[i0+1] < frnxt[i0+1] + h->errc &&
-	  frprv[i1+1] - h->errc < frnow[i1+1] && frnow[i1+1] < frprv[i1+1] + h->errc &&
-	  frnxt[i1+1] - h->errc < frnow[i1+1] && frnow[i1+1] < frnxt[i1+1] + h->errc) {
+      int d0;
+      if ((((d0 = dfnow_u[i]) &&
+	    dfprv_u[i] && dfprv_u[i] != d0 &&
+	    dfpr2_u[i] && dfpr2_u[i] == d0) ||
+	   ((d0 = dfnow_v[i]) &&
+	    dfprv_v[i] && dfprv_v[i] != d0 &&
+	    dfpr2_v[i] && dfpr2_v[i] == d0)) &&
+	  frprv_u[i] - h->errc < frnxt_u[i] && frnxt_u[i] < frprv_u[i] + h->errc &&
+	  frprv_v[i] - h->errc < frnxt_v[i] && frnxt_v[i] < frprv_v[i] + h->errc &&
+	  frnow[i0]   - (h->errc + h->min) < frprv[i0]   && frprv[i0]   < frnow[i0]   + (h->errc + h->min) &&
+	  frnxt[i0]   - (h->errc)          < frprv[i0]   && frprv[i0]   < frnxt[i0]   + (h->errc)          &&
+	  frnow[i1]   - (h->errc + h->min) < frprv[i1]   && frprv[i1]   < frnow[i1]   + (h->errc + h->min) &&
+	  frnxt[i1]   - (h->errc)          < frprv[i1]   && frprv[i1]   < frnxt[i1]   + (h->errc)          &&
+	  frnow[i0+1] - (h->errc + h->min) < frprv[i0+1] && frprv[i0+1] < frnow[i0+1] + (h->errc + h->min) &&
+	  frnxt[i0+1] - (h->errc)          < frprv[i0+1] && frprv[i0+1] < frnxt[i0+1] + (h->errc)          &&
+	  frnow[i1+1] - (h->errc + h->min) < frprv[i1+1] && frprv[i1+1] < frnow[i1+1] + (h->errc + h->min) &&
+	  frnxt[i1+1] - (h->errc)          < frprv[i1+1] && frprv[i1+1] < frnxt[i1+1] + (h->errc)) {
 	d0 = (frprv_u[i] + frnxt_u[i]) / 2;
 	d0 -= frnow_u[i];
 	d0 /= 2;
