@@ -4,10 +4,24 @@ typedef struct
   uint8_t verbose;
   uint8_t mode;			// =0 for non-interactive mode, =1 for interactive corrections in full mode, =2 in half mode
   uint8_t stat;			// =1 if statistics informations are to be displayed
+  int ImgFrame;			// Only useful for yuvcorrect_tune
   int RefFrame;			// Only useful for yuvcorrect_tune
   uint8_t rgbfirst;		// =1 if rgb corrections are to be applied before yuv ones
 }
 overall_t;
+
+// Data type for yuvcorrect_tune reference frame
+typedef struct
+{
+  unsigned int width;
+  unsigned int height;
+  uint8_t *ref;
+  y4m_frame_info_t info;
+  y4m_stream_info_t streaminfo;
+}
+ref_frame_t;
+
+
 
 // Data type for yuvcorrect frame characteristics
 typedef struct
@@ -27,6 +41,8 @@ typedef struct
   unsigned int uv_width;
   unsigned int uv_height;
   unsigned long int nb_uv;
+  // Two fields
+  uint8_t *field1, *field2;
 }
 frame_t;
 
@@ -38,7 +54,7 @@ typedef struct
   y4m_stream_info_t streaminfo;
   // Frame corrections
   uint8_t line_switch;		// =0 by default, =1 if line switching is activated
-  short int field_move;		// =0 by default, =1 if bottom field is moved one frame forward, =-1 if it is the top field 
+  int8_t  field_move;		// =0 by default, =1 if bottom field is moved one frame forward, =-1 if it is the top field 
 }
 general_correction_t;
 
@@ -101,14 +117,8 @@ typedef struct
 rgb_correction_t;
 
 // Functions Prototypes
-void yuvcorrect_print_usage (void);
 void handle_args_overall (int argc, char *argv[], overall_t * overall);
-// void handle_args (int argc, char *argv[], overall_t *overall, general_correction_t *gen_correct, yuv_correction_t *yuv_correct, rgb_correction_t *rgb_correct);
-void yuvcorrect_print_information (general_correction_t * gen_correct,
-				   yuv_correction_t * yuv_correct,
-				   rgb_correction_t * rgb_correct);
-int yuvcorrect_y4m_read_frame (int fd, frame_t * frame,
-			       general_correction_t * gen_correct);
+int yuvcorrect_y4m_read_frame (int fd, frame_t * frame, uint8_t line_switch);
 int yuvcorrect_luminance_init (yuv_correction_t * yuv_correct);
 int yuvcorrect_chrominance_init (yuv_correction_t * yuv_correct);
 int yuvcorrect_luminance_treatment (frame_t * frame,
@@ -131,3 +141,10 @@ uint8_t yuvcorrect_nearest_integer_division (unsigned long int p,
 int yuvcorrect_RGB_treatment (frame_t * frame,
 			      rgb_correction_t * rgb_correct);
 int yuvcorrect_RGB_init (rgb_correction_t * rgb_correct);
+
+void
+handle_args_yuv_rgb (int argc, char *argv[], yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct);
+void initialisation1(int, frame_t * frame, general_correction_t * gen_correct,
+		     yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct);
+void initialisation2(yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct);
+void ref_frame_init(int fd,ref_frame_t *ref_frame);

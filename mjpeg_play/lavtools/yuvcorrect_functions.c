@@ -33,18 +33,504 @@
 #include "yuv4mpeg.h"
 #include "yuvcorrect.h"
 
-#define yuvcorrect_VERSION LAVPLAY_VERSION
 // For pointer adress alignement
-#define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
+const uint16_t ALIGNEMENT = 16 ;   // 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
 const float PI = 3.141592654;
+
+const char *legal_opt_flags = "I:F:M:T:Y:R:v:h";
+const char LUMINANCE[] = "LUMINANCE_";
+const char CHROMINANCE[] = "CHROMINANCE_";
+const char Y[] = "Y_";
+const char UV[] = "UV_";
+const char CONFORM[] = "CONFORM";
+const char R[] = "R_";
+const char G[] = "G_";
+const char B[] = "B_";
+
+// Possible capacity over or under flow for the RGB to YUV conversion and vice-versa
+const uint16_t OFFSET = 256;
+
+// *************************************************************************************
+void
+handle_args_yuv_rgb (int argc, char *argv[], yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct)
+{
+  // This function handles argument passing on the command line
+  int c;
+  unsigned int ui1, ui2, ui3, ui4;
+  int k_yuv, k_rgb;
+  float f1, f2, f3;
+
+  // Ne pas oublier de mettre la putain de ligne qui suit, sinon, plus d'argument à la ligne de commande, ils auront été bouffés par l'appel précédent à getopt!!
+  optind = 1;
+  while ((c = getopt (argc, argv, legal_opt_flags)) != -1)
+    {
+      switch (c)
+	{
+
+	  // **************            
+	  // yuv KEYOWRD
+	  // **************
+	case 'Y':
+	  k_yuv = 0;
+	  if (strncmp (optarg, LUMINANCE, 10) == 0)
+	    {
+	      k_yuv = 1;
+	      if (sscanf
+		  (optarg, "LUMINANCE_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
+		{
+		  // Coherence check:
+		  if ((f1 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent luminance correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  yuv_correct->luma = 1;
+		  yuv_correct->Gamma = f1;
+		  yuv_correct->InputYmin = (uint8_t) ui1;
+		  yuv_correct->InputYmax = (uint8_t) ui2;
+		  yuv_correct->OutputYmin = (uint8_t) ui3;
+		  yuv_correct->OutputYmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to LUMINANCE keyword: %s\n",
+		   optarg);
+	    }
+	  if (strncmp (optarg, Y, 2) == 0)
+	    {
+	      k_yuv = 1;
+	      if (sscanf
+		  (optarg, "Y_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
+		{
+		  // Coherence check:
+		  if ((f1 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent luminance correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  yuv_correct->luma = 1;
+		  yuv_correct->Gamma = f1;
+		  yuv_correct->InputYmin = (uint8_t) ui1;
+		  yuv_correct->InputYmax = (uint8_t) ui2;
+		  yuv_correct->OutputYmin = (uint8_t) ui3;
+		  yuv_correct->OutputYmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to Y keyword: %s\n", optarg);
+	    }
+	  if (strncmp (optarg, CHROMINANCE, 12) == 0)
+	    {
+	      k_yuv = 1;
+	      if (sscanf
+		  (optarg, "CHROMINANCE_%f_%f_%u_%f_%u_%u_%u", &f1, &f2, &ui1,
+		   &f3, &ui2, &ui3, &ui4) == 7)
+		{
+		  // Coherence check:
+		  if ((f2 <= 0.0) || (f3 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) ||
+		      (ui3 > ui4) || (ui1 > ui4) || (ui2 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent chrominance correction (0<>255, small, large): UVrotation=%f, Ufactor=%f, Ucenter=%u, Vfactor=%f, Vcenter=%u, UVmin=%u, UVmax=%u, \n",
+		       f1, f2, ui1, f3, ui2, ui3, ui4);
+		  yuv_correct->chroma = 1;
+		  yuv_correct->UVrotation = f1;
+		  yuv_correct->Urotcenter = (uint8_t) ui1;
+		  yuv_correct->Vrotcenter = (uint8_t) ui2;
+		  yuv_correct->Ufactor = f2;
+		  yuv_correct->Vfactor = f3;
+		  yuv_correct->UVmin = (uint8_t) ui3;
+		  yuv_correct->UVmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to CHROMINANCE keyword: %s\n",
+		   optarg);
+	    }
+	  if (strncmp (optarg, UV, 3) == 0)
+	    {
+	      k_yuv = 1;
+	      if (sscanf
+		  (optarg, "UV_%f_%f_%u_%f_%u_%u_%u", &f1, &f2, &ui1,
+		   &f3, &ui2, &ui3, &ui4) == 7)
+		{
+		  // Coherence check:
+		  if ((f2 <= 0.0) || (f3 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) ||
+		      (ui3 > ui4) || (ui1 > ui4) || (ui2 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent chrominance correction (0<>255, small, large): UVrotation=%f, Ufactor=%f, Ucenter=%u, Vfactor=%f, Vcenter=%u, UVmin=%u, UVmax=%u, \n",
+		       f1, f2, ui1, f3, ui2, ui3, ui4);
+		  yuv_correct->chroma = 1;
+		  yuv_correct->UVrotation = f1;
+		  yuv_correct->Urotcenter = (uint8_t) ui1;
+		  yuv_correct->Vrotcenter = (uint8_t) ui2;
+		  yuv_correct->Ufactor = f2;
+		  yuv_correct->Vfactor = f3;
+		  yuv_correct->UVmin = (uint8_t) ui3;
+		  yuv_correct->UVmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to UV keyword: %s\n", optarg);
+	    }
+	  if (strncmp (optarg, CONFORM, 7) == 0)
+	    {
+	      k_yuv = 1;
+	      yuv_correct->luma = 1;
+	      yuv_correct->Gamma = 1.0;
+	      yuv_correct->InputYmin = 16;
+	      yuv_correct->InputYmax = 235;
+	      yuv_correct->OutputYmin = 16;
+	      yuv_correct->OutputYmax = 235;
+	      yuv_correct->chroma = 1;
+	      yuv_correct->UVrotation = 0.0;
+	      yuv_correct->Urotcenter = 128;
+	      yuv_correct->Vrotcenter = 128;
+	      yuv_correct->Ufactor = 1.0;
+	      yuv_correct->Vfactor = 1.0;
+	      yuv_correct->UVmin = 16;
+	      yuv_correct->UVmax = 240;
+	    }
+	  if (k_yuv == 0)
+	    mjpeg_error_exit1 ("Unrecognized yuv keyword: %s", optarg);
+	  break;
+	  // *************
+
+
+
+	  // **************            
+	  // RGB KEYOWRD
+	  // **************
+	case 'R':
+	  k_rgb = 0;
+	  if (strncmp (optarg, R, 2) == 0)
+	    {
+	      k_rgb = 1;
+	      if (sscanf
+		  (optarg, "R_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
+		{
+		  // Coherence check:
+		  if ((f1 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent RED correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  rgb_correct->rgb = 1;
+		  rgb_correct->RGamma = f1;
+		  rgb_correct->InputRmin = (uint8_t) ui1;
+		  rgb_correct->InputRmax = (uint8_t) ui2;
+		  rgb_correct->OutputRmin = (uint8_t) ui3;
+		  rgb_correct->OutputRmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to R keyword: %s\n", optarg);
+	    }
+	  if (strncmp (optarg, G, 2) == 0)
+	    {
+	      k_rgb = 1;
+	      if (sscanf
+		  (optarg, "G_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
+		{
+		  // Coherence check:
+		  if ((f1 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent GREEN correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  rgb_correct->rgb = 1;
+		  rgb_correct->GGamma = f1;
+		  rgb_correct->InputGmin = (uint8_t) ui1;
+		  rgb_correct->InputGmax = (uint8_t) ui2;
+		  rgb_correct->OutputGmin = (uint8_t) ui3;
+		  rgb_correct->OutputGmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to G keyword: %s\n", optarg);
+	    }
+	  if (strncmp (optarg, B, 2) == 0)
+	    {
+	      k_rgb = 1;
+	      if (sscanf
+		  (optarg, "B_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
+		{
+		  // Coherence check:
+		  if ((f1 <= 0.0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
+		      (ui2 < 0) || (ui2 > 255) ||
+		      (ui3 < 0) || (ui3 > 255) ||
+		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
+		    mjpeg_error_exit1
+		      ("Uncoherent BLUE correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  rgb_correct->rgb = 1;
+		  rgb_correct->BGamma = f1;
+		  rgb_correct->InputBmin = (uint8_t) ui1;
+		  rgb_correct->InputBmax = (uint8_t) ui2;
+		  rgb_correct->OutputBmin = (uint8_t) ui3;
+		  rgb_correct->OutputBmax = (uint8_t) ui4;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("Wrong number of argument to B keyword: %s\n", optarg);
+	    }
+	  if (k_rgb == 0)
+	    mjpeg_error_exit1 ("Unrecognized rgb keyword: %s", optarg);
+	  break;
+	  // *************
+
+	default:
+	  break;
+	}
+    }
+
+
+}
+// *************************************************************************************
+
+
+
+// *************************************************************************************
+void ref_frame_init(int fd,ref_frame_t *ref_frame)
+{
+   unsigned long int length;
+   uint8_t *u_c_p;
+   
+   y4m_init_stream_info (&ref_frame->streaminfo);
+   if (y4m_read_stream_header (fd,&ref_frame->streaminfo) != Y4M_OK)
+     mjpeg_error_exit1 ("Could not read RefFrame yuv4mpeg header!");
+   ref_frame->width = y4m_si_get_width(&ref_frame->streaminfo);
+   ref_frame->height=y4m_si_get_height(&ref_frame->streaminfo);
+   
+   
+   length=(ref_frame->width>>1)*ref_frame->height*3;
+   if (!(u_c_p = malloc (length + ALIGNEMENT)))
+     mjpeg_error_exit1 ("Could not allocate memory for ref frame. STOP!");
+   mjpeg_debug ("before alignement: %p", u_c_p);
+   if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+     u_c_p =
+     (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) * ALIGNEMENT);
+   mjpeg_debug ("after alignement: %p", u_c_p);
+   ref_frame->ref = u_c_p;
+   y4m_init_frame_info (&ref_frame->info);
+   return;
+}
+
+// *************************************************************************************
+
+
+
+// *************************************************************************************
+void initialisation1(int fd,frame_t * frame, general_correction_t * gen_correct,
+		     yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct)
+		    
+{
+   uint8_t *u_c_p;		//u_c_p = uint8_t pointer
+   
+  // gen_correct 
+  gen_correct->no_header = gen_correct->line_switch =
+  gen_correct->field_move = 0;
+
+   y4m_init_stream_info (&gen_correct->streaminfo);
+   if (y4m_read_stream_header (fd, &gen_correct->streaminfo) != Y4M_OK)
+     mjpeg_error_exit1 ("Could'nt read yuv4mpeg header!");
+
+   // frame
+  frame->y_width = y4m_si_get_width (&gen_correct->streaminfo);
+  frame->y_height = y4m_si_get_height (&gen_correct->streaminfo);
+  frame->nb_y = frame->y_width * frame->y_height;
+  frame->uv_width = frame->y_width >> 1;	// /2
+  frame->uv_height = frame->y_height >> 1;	// /2
+  frame->nb_uv = frame->nb_y >> 2;	// /4
+  frame->length = (frame->nb_y * 3) >> 1;	// * 3/2
+  if (!(u_c_p = malloc (frame->length + ALIGNEMENT)))
+    mjpeg_error_exit1 ("Could not allocate memory for frame table. STOP!");
+  mjpeg_debug ("before alignement: %p", u_c_p);
+  if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+    u_c_p =
+      (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) * ALIGNEMENT);
+  mjpeg_debug ("after alignement: %p", u_c_p);
+  frame->y = u_c_p;
+  frame->u = frame->y + frame->nb_y;
+  frame->v = frame->u + frame->nb_uv;
+  frame->field1 = frame->field2 = NULL;
+  y4m_init_frame_info (&frame->info);
+
+
+  // yuv_correct
+  yuv_correct->luma = yuv_correct->chroma = 0;
+  yuv_correct->luminance = yuv_correct->chrominance = NULL;
+  yuv_correct->InputYmin = yuv_correct->OutputYmin = yuv_correct->UVmin = 0;
+  yuv_correct->InputYmax = yuv_correct->OutputYmax = yuv_correct->UVmax = 255;
+  yuv_correct->Gamma = yuv_correct->Ufactor = yuv_correct->Vfactor = 1.0;
+  yuv_correct->UVrotation = 0.0;
+  yuv_correct->Urotcenter = yuv_correct->Vrotcenter = 128;
+
+  // rgb_correct 
+  rgb_correct->rgb = 0;
+  rgb_correct->new_red = rgb_correct->new_green = rgb_correct->new_blue =
+    NULL;
+  rgb_correct->RGamma = rgb_correct->GGamma = rgb_correct->BGamma = 1.0;
+  rgb_correct->InputRmin = rgb_correct->InputGmin = rgb_correct->InputBmin =
+    0;
+  rgb_correct->InputRmax = rgb_correct->InputGmax = rgb_correct->InputBmax =
+    255;
+  rgb_correct->OutputRmin = rgb_correct->OutputGmin =
+    rgb_correct->OutputBmin = 0;
+  rgb_correct->OutputRmax = rgb_correct->OutputGmax =
+    rgb_correct->OutputBmax = 255;
+  rgb_correct->luma_r = rgb_correct->luma_g = rgb_correct->luma_b = NULL;
+  rgb_correct->u_r = rgb_correct->u_g = rgb_correct->u_b = NULL;
+  rgb_correct->v_r = rgb_correct->v_g = rgb_correct->v_b = NULL;
+  rgb_correct->RUV_v = rgb_correct->GUV_v = rgb_correct->GUV_u =
+    rgb_correct->BUV_u = NULL;
+   return ;
+}
+// *************************************************************************************
+
+
+// *************************************************************************************
+void initialisation2(yuv_correction_t * yuv_correct, rgb_correction_t * rgb_correct)
+{
+   uint8_t *u_c_p;		//u_c_p = uint8_t pointer
+   int8_t *si;			// si = int8_t pointer
+   int16_t *sii;			// sii = int16_t pointer
+
+  // Luminance correction initialisation
+  if (yuv_correct->luma == 1)
+    {
+      // Memory allocation for the luminance vector
+      if (!(u_c_p = (uint8_t *) malloc (256 * sizeof (uint8_t) + ALIGNEMENT)))
+	mjpeg_error_exit1
+	  ("Could not allocate memory for luminance table. STOP!");
+      if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+	u_c_p =
+	  (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      yuv_correct->luminance = u_c_p;
+      // Filling in the luminance vectors
+      yuvcorrect_luminance_init (yuv_correct);
+    }
+  // Chrominance correction initialisation
+  if (yuv_correct->chroma == 1)
+    {
+      // Memory allocation for the UVchroma vector
+      if (!(u_c_p =
+	    (uint8_t *) malloc (2 * 256 * 256 * sizeof (uint8_t) +
+				ALIGNEMENT)))
+	mjpeg_error_exit1
+	  ("Could not allocate memory for UVchroma vector. STOP!");
+      // memory alignement of the 2 chroma vectors
+      if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+	u_c_p =
+	  (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      yuv_correct->chrominance = u_c_p;
+      // Filling in the UVchroma vector
+      yuvcorrect_chrominance_init (yuv_correct);
+    }
+  // RGB correction initialisation
+  if (rgb_correct->rgb == 1)
+    {
+      // Memory allocation for the rgb vectors
+      if (!
+	  (u_c_p =
+	   (uint8_t *) malloc (3 * (256 + (OFFSET << 1))* sizeof (uint8_t) + ALIGNEMENT)))
+	mjpeg_error_exit1 ("Could not allocate memory for rgb table. STOP!");
+      if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+	u_c_p =
+	  (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      rgb_correct->new_red = u_c_p;
+      u_c_p += (256 + (OFFSET<<1));
+      rgb_correct->new_green = u_c_p;
+      u_c_p += (256 + (OFFSET<<1));
+      rgb_correct->new_blue = u_c_p;
+      // Accélération
+      if (!
+	  (u_c_p =
+	   (uint8_t *) malloc (3 * 256 * sizeof (uint8_t) + ALIGNEMENT)))
+	mjpeg_error_exit1 ("Could not allocate memory for rgb table. STOP!");
+      if (((unsigned long) u_c_p % ALIGNEMENT) != 0)
+	u_c_p =
+	  (uint8_t *) ((((unsigned long) u_c_p / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      rgb_correct->luma_r = u_c_p;
+      u_c_p += 256;
+      rgb_correct->luma_g = u_c_p;
+      u_c_p += 256;
+      rgb_correct->luma_b = u_c_p;
+      if (!(si = (int8_t *) malloc (3 * 256 * sizeof (int8_t) + ALIGNEMENT)))
+	mjpeg_error_exit1 ("Could not allocate memory for rgb table. STOP!");
+      if (((unsigned long) si % ALIGNEMENT) != 0)
+	si =
+	  (int8_t *) ((((unsigned long) si / ALIGNEMENT) + 1) * ALIGNEMENT);
+      rgb_correct->u_r = si;
+      si += 256;
+      rgb_correct->u_g = si;
+      si += 256;
+      rgb_correct->u_b = si;
+      if (!(si = (int8_t *) malloc (3 * 256 * sizeof (int8_t) + ALIGNEMENT)))
+	mjpeg_error_exit1 ("Could not allocate memory for rgb table. STOP!");
+      if (((unsigned long) si % ALIGNEMENT) != 0)
+	si =
+	  (int8_t *) ((((unsigned long) si / ALIGNEMENT) + 1) * ALIGNEMENT);
+      rgb_correct->v_r = si;
+      si += 256;
+      rgb_correct->v_g = si;
+      si += 256;
+      rgb_correct->v_b = si;
+      if (!
+	  (sii =
+	   (int16_t *) malloc (4 * 256 * sizeof (int16_t) + ALIGNEMENT)))
+	mjpeg_error_exit1 ("Could not allocate memory for rgb table. STOP!");
+      if (((unsigned long) sii % ALIGNEMENT) != 0)
+	sii =
+	  (int16_t *) ((((unsigned long) sii / ALIGNEMENT) + 1) * ALIGNEMENT);
+      rgb_correct->RUV_v = sii;
+      sii += 256;
+      rgb_correct->GUV_v = sii;
+      sii += 256;
+      rgb_correct->GUV_u = sii;
+      sii += 256;
+      rgb_correct->BUV_u = sii;
+      // Filling in the RGB vectors
+      yuvcorrect_RGB_init (rgb_correct);
+    }
+}
+// *************************************************************************************
 
 
 
 // *************************************************************************************
 int
-yuvcorrect_y4m_read_frame (int fd, frame_t * frame,
-			   general_correction_t * gen_correct)
+yuvcorrect_y4m_read_frame (int fd, frame_t * frame, uint8_t line_switch)
 {
   // This function reads a frame from input stream. 
   // It is the same as the y4m_read_frame function (from y4mpeg.c) except that line switching
@@ -56,7 +542,7 @@ yuvcorrect_y4m_read_frame (int fd, frame_t * frame,
 
   if ((err = y4m_read_frame_header (fd, &frame->info)) == Y4M_OK)
     {
-      if (!gen_correct->line_switch)
+      if (!line_switch)
 	{
 	  if ((err = y4m_read (fd, buf, frame->length)) != Y4M_OK)
 	    {
@@ -627,18 +1113,18 @@ yuvcorrect_RGB_init (rgb_correction_t * rgb_correct)
 
   // Filling in R vector
   u_c_p = rgb_correct->new_red;
-  for (i = 0; i < 256; i++)
+  for (i = 0; i < 256+(OFFSET<<1); i++)
     {
-      if (i <= rgb_correct->InputRmin)
+      if ((i-OFFSET) <= rgb_correct->InputRmin)
 	*(u_c_p++) = rgb_correct->OutputRmin;
       else
 	{
-	  if (i >= rgb_correct->InputRmax)
+	  if ((i-OFFSET) >= rgb_correct->InputRmax)
 	    *(u_c_p++) = rgb_correct->OutputRmax;
 	  else
 	    *(u_c_p++) = rgb_correct->OutputRmin +
 	      floor (0.5 +
-		     pow ((float) (i - rgb_correct->InputRmin) /
+		     pow ((float) ((i-OFFSET) - rgb_correct->InputRmin) /
 			  (float) (rgb_correct->InputRmax -
 				   rgb_correct->InputRmin),
 			  (float) 1 / rgb_correct->RGamma) *
@@ -649,18 +1135,18 @@ yuvcorrect_RGB_init (rgb_correction_t * rgb_correct)
 
   // Filling in G vector
   u_c_p = rgb_correct->new_green;
-  for (i = 0; i < 256; i++)
+  for (i = 0; i < 256+(OFFSET<<1); i++)
     {
-      if (i <= rgb_correct->InputGmin)
+      if ((i-OFFSET) <= rgb_correct->InputGmin)
 	*(u_c_p++) = rgb_correct->OutputGmin;
       else
 	{
-	  if (i >= rgb_correct->InputGmax)
+	  if ((i-OFFSET) >= rgb_correct->InputGmax)
 	    *(u_c_p++) = rgb_correct->OutputGmax;
 	  else
 	    *(u_c_p++) = rgb_correct->OutputGmin +
 	      floor (0.5 +
-		     pow ((float) (i - rgb_correct->InputGmin) /
+		     pow ((float) ((i-OFFSET) - rgb_correct->InputGmin) /
 			  (float) (rgb_correct->InputGmax -
 				   rgb_correct->InputGmin),
 			  (float) 1 / rgb_correct->GGamma) *
@@ -668,20 +1154,21 @@ yuvcorrect_RGB_init (rgb_correction_t * rgb_correct)
 	}
       mjpeg_debug ("G[%u]=%u", i, rgb_correct->new_green[i]);
     }
+
   // Filling in B vector
   u_c_p = rgb_correct->new_blue;
-  for (i = 0; i < 256; i++)
+  for (i = 0; i < 256+(OFFSET<<1); i++)
     {
-      if (i <= rgb_correct->InputBmin)
+      if ((i-OFFSET) <= rgb_correct->InputBmin)
 	*(u_c_p++) = rgb_correct->OutputBmin;
       else
 	{
-	  if (i >= rgb_correct->InputBmax)
+	  if ((i-OFFSET) >= rgb_correct->InputBmax)
 	    *(u_c_p++) = rgb_correct->OutputBmax;
 	  else
 	    *(u_c_p++) = rgb_correct->OutputBmin +
 	      floor (0.5 +
-		     pow ((float) (i - rgb_correct->InputBmin) /
+		     pow ((float) ((i-OFFSET) - rgb_correct->InputBmin) /
 			  (float) (rgb_correct->InputBmax -
 				   rgb_correct->InputBmin),
 			  (float) 1 / rgb_correct->BGamma) *
@@ -689,6 +1176,7 @@ yuvcorrect_RGB_init (rgb_correction_t * rgb_correct)
 	}
       mjpeg_debug ("B[%u]=%u", i, rgb_correct->new_blue[i]);
     }
+   
   // Filling the luma_(r,g,b) vectors
   u_c_p = rgb_correct->luma_r;
   for (i = 0; i < 256; i++)
@@ -776,9 +1264,9 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
 //         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
 	  // Calculate the value of the four pixels concerned by the single (u,v) values
 	  // Upper Left
-	  R1 = rgb_correct->new_red[clip_0_255 (*line1 + R_UV)];
-	  G1 = rgb_correct->new_green[clip_0_255 (*line1 + G_UV)];
-	  B1 = rgb_correct->new_blue[clip_0_255 (*line1 + B_UV)];
+	  R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+	  G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+	  B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
 	  // Compute new y value
 //         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
 //                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
@@ -786,25 +1274,26 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
 				 + rgb_correct->luma_g[G1] +
 				 rgb_correct->luma_b[B1]);
 
-	  R2 = rgb_correct->new_red[clip_0_255 (*line1 + R_UV)];
-	  G2 = rgb_correct->new_green[clip_0_255 (*line1 + G_UV)];
-	  B2 = rgb_correct->new_blue[clip_0_255 (*line1 + B_UV)];
+	  R2 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+	  G2 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+	  B2 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+
 	  // Compute new y value
 	  *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R2]
 				 + (int16_t) rgb_correct->luma_g[G2] +
 				 (int16_t) rgb_correct->luma_b[B2]);
 
-	  R3 = rgb_correct->new_red[clip_0_255 (*line2 + R_UV)];
-	  G3 = rgb_correct->new_green[clip_0_255 (*line2 + G_UV)];
-	  B3 = rgb_correct->new_blue[clip_0_255 (*line2 + B_UV)];
+	  R3 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
+	  G3 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
+	  B3 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
 	  // Compute new y value
 	  *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R3]
 				 + (int16_t) rgb_correct->luma_g[G3] +
 				 (int16_t) rgb_correct->luma_b[B3]);
 
-	  R4 = rgb_correct->new_red[clip_0_255 (*line2 + R_UV)];
-	  G4 = rgb_correct->new_green[clip_0_255 (*line2 + G_UV)];
-	  B4 = rgb_correct->new_blue[clip_0_255 (*line2 + B_UV)];
+	  R4 = rgb_correct->new_red  [OFFSET + *line2 + R_UV];
+	  G4 = rgb_correct->new_green[OFFSET + *line2 + G_UV];
+	  B4 = rgb_correct->new_blue [OFFSET + *line2 + B_UV];
 	  // Compute new y value
 	  *line2++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R4]
 				 + (int16_t) rgb_correct->luma_g[G4] +
