@@ -161,7 +161,7 @@ static struct option long_options[] =
      { "system-headers",    1, 0, 'h' },
      { "split-segment",     0, 0, 'M' },
      { "max-segment-size",  1, 0, 'S' },
-     { "mux-upto",   	    1, 0, 'l' },
+     { "mux-limit",   	    1, 0, 'l' },
      { "packets-per-pack",  1, 0, 'p' },
      { "sector-size",       1, 0, 's' },
      { "help",              0, 0, '?' },
