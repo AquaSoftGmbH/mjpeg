@@ -45,6 +45,7 @@ mpeg2enc \- MPEG 1/2 encoder
 .RB [ -d | --no-dummy-svcd-SOF]
 .RB [ -C | --correct-svcd-hds]
 .RB [ --hack-dxr2-bug]
+.RB [ --no-constraints]
 .RB [ -? | --help ]
 .BI -o \ output_filename
 .SH "DESCRIPTION"
@@ -245,6 +246,10 @@ play at 4:3 aspect ratio.
 This flag, as its name suggests, works around what appears to be a bug
 in MPEG-2 decoding in the firmware of the DXR2 board. Useful for
 encoding DVD-like streams for playback using a DXR2.
+.PP
+.BR --no-constraints
+.PP
+This flag deactivates all constraints for the maximum video samplerate or video resolution. Its purpose is to allow the encoding of unusual resolutions of MPEG-video (e.g. 2200 x 576, 160 degrees FOV VR-theatre MPEG movies), but should be used with care: It can possible circumvent a number of other security checks, and untested settings can cause mpeg2enc to crash in this mode. 
 .PP
 
 .SH "OPTION LETTERS CONTROLLING VIDEO PARAMETERS"
