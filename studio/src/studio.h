@@ -42,7 +42,6 @@ char enc_videofile [100];
 int  use_yuvplay_pipe;                          /* Encoding Preview on/off */
 int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 
-
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
 #define LONGOPT 25
@@ -60,13 +59,13 @@ struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
                         char forcestereo[SHORTOPT];
                         char forcemono[SHORTOPT];
                         char forcevcd[SHORTOPT];
-                        int  mpeglevel;              /* video options */
                         int  bitrate;
                         int  searchradius;
                         int  muxformat;              /* mplex options */
                       };
 /************************* END *********************/
-struct encodingoptions encoding;
+struct encodingoptions encoding;  /* for mpeg1 */
+struct encodingoptions encoding2; /* for mpeg2 */
 
 char *record_dir;
 int scene_detection_width_decimation;
