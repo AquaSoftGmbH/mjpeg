@@ -161,12 +161,13 @@ ElementaryStream::SetSyncOffset( clockticks sync_offset )
 
 Aunit *ElementaryStream::next()
 {
-    if( aunits.current()+FRAME_CHUNK > last_buffered_AU  )
+    Aunit *res;
+    while( AUBufferNeedsRefill() )
 	{
         FillAUbuffer(FRAME_CHUNK);
 	}
-			
-	return aunits.next();
+    res = aunits.next();
+	return res;
 }
 
 

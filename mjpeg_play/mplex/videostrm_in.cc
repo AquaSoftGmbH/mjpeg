@@ -130,6 +130,23 @@ void VideoStream::SetMaxStdBufferDelay( unsigned int dmux_rate )
 }
 
 //
+// Return whether AU buffer needs refilling.  There are two cases:
+// 1. We have less than our look-ahead "FRAME_CHUNK" buffer AU's
+// buffered 2. AU's are very small and we could have less than 1
+// sector's worth of data buffered.
+//
+
+bool VideoStream::AUBufferNeedsRefill()
+{
+    return 
+        !bs.eos() 
+        && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
+             ||
+             bs.buffered_bytes() < muxinto.sector_size 
+            );
+}
+
+//
 // Refill the AU unit buffer setting  AU PTS DTS from the scanned
 // header information...
 //
@@ -302,7 +319,6 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 	last_buffered_AU = decoding_order;
 	num_pictures = decoding_order;	
 	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
-
 }
 
 void VideoStream::Close()

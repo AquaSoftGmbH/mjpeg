@@ -209,6 +209,7 @@ public:
 protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;
+    virtual bool AUBufferNeedsRefill() = 0;
 	AUStream aunits;
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended

@@ -212,18 +212,22 @@ void IBitStream::undochanges( BitStreamUndo &undo)
 }
 
 
+
 unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 {
 	unsigned int to_read = length;
 	if( readpos < buffer_start)
 		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)\n", readpos, buffer_start );
-
+    mjpeg_debug( "Writing to %lld\n",  readpos+length );
 	if( readpos+length > buffer_start+bufcount )
 	{
 		if( !feof(fileh) )
-			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\n@POS=%lld END=%d REQ=%lld + %d bytes\n", 
-							  readpos,
-							  bufcount, readpos-(bitcount_t)buffer_start,length  );
+        {
+			mjpeg_error("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\n@POS=%lld END=%d REQ=%lld + %d bytes\n", 
+                        readpos,
+                        bufcount, readpos-(bitcount_t)buffer_start,length  );
+            abort();
+        }
 		to_read = static_cast<unsigned int>( (buffer_start+bufcount)-readpos );
 	}
 	memcpy( dst, 

@@ -70,6 +70,7 @@ public:
 	void OutputSector();
 protected:
 	void OutputSeqhdrInfo();
+    virtual bool AUBufferNeedsRefill();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 	virtual void InitAUbuffer();
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );

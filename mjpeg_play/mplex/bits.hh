@@ -57,6 +57,10 @@ public:
 	void undochanges(BitStreamUndo &undobuf);
 	bool seek_sync( unsigned int sync, int N, int lim);
 	void flush( bitcount_t bitposition );
+	inline unsigned int buffered_bytes()
+		{
+			return (buffer_start+bufcount-readpos);
+		}
 	unsigned int read_buffered_bytes( uint8_t *dst,
 									  unsigned int length_bytes);
 private:

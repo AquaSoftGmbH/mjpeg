@@ -52,6 +52,7 @@ public:
     unsigned int emphasis	;
 
 protected:
+    virtual bool AUBufferNeedsRefill();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	void InitAUbuffer();
     

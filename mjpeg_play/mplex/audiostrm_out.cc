@@ -59,6 +59,15 @@ bool AudioStream::RunOutComplete()
 			( muxinto.running_out && RequiredPTS() >= muxinto.runout_PTS));
 }
 
+bool AudioStream::AUBufferNeedsRefill()
+{
+    return 
+        !bs.eos() 
+        && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
+             || 
+             bs.buffered_bytes() < muxinto.sector_size
+            );
+}
 
 /******************************************************************
 	Output_Audio
