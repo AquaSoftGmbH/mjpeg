@@ -107,6 +107,7 @@ stream structure are simply ignored.
 	-	User VCD.
 As for profile 2 but bit-rate and video buffer size can
 be set to non-standard values. Frame size may also be non-standard.
+Bit-rate and buffer sizes default to those for standard VCD.
 .PP
 .BR -f|--format \ 3
 	-	Generic MPEG2.
@@ -131,6 +132,7 @@ non-standard stream structure are simply ignored.
 As for profile 4 but bit-rate, video
 buffer size, GOP sizes and structure can be set to
 non-standard values. Frame size may also be non-standard.
+Bit-rate and buffer sizes default to those for standard SVCD.
 .PP
 .BR -f|--format \ 6
 	-	VCD Stills sequence.
@@ -156,7 +158,8 @@ resolution (704 wide) images are supported.
 .PP
 Just a very basic implementation. Useful with DXR2 board and similar
 hardware that can decode MPEG-2 only if it is presented in a DVD like
-form.
+form.  Bit-rate defaults to 7500kbps, buffer sizes to the maximum
+permitted by the DVD specification.
 
 .SH "GENERAL FUNCTION LETTERS"
 .PP
@@ -179,9 +182,10 @@ adjusted for the standard VCD and SVCD profiles.
 .BR -b|--video-bitrate \ num 
 .PP
 The bit-rate of the output video stream in k Bits/sec.  The default is
-exactly the bit-rate required for VCD streams. A sensible bit-rate to
-set for SVCD is 2500.  If variable bit-rate mode has been selected (see the -q option) this
-is the 
+exactly the bit-rate required for VCD streams. Selecting one of the
+non-generic formats sets a default bit-rate that makes sense for the
+selected format. If variable bit-rate mode has been selected (see the
+-q option) this is the
 .I maximum
 bit-rate of the stream.
 .PP
@@ -354,6 +358,7 @@ Note that setting -I 1 for non-interlaced material will not do any
 harm but the encoder will waste a lot of time on calculations that
 aren't needed.  
 
+
 .PP
 .BR -g|--min-gop-size " num "
 .PP
@@ -377,6 +382,14 @@ Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
 each I/P frame unless the GOP size forces less.  This is reasonable
 for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
 low-bit-rate encoding.
+.PP
+.BR -c|--closed-GOPs
+.PP
+Setting this flag causes the encoder to generate only "closed" GOPs
+(Groups of Pictures) that can be decoded without reference to their
+predecessor.  This is useful for streams that are supposed to be used
+in multi-angle DVD's and applications where more easily edittable MPEG
+is required.
 .PP
 .BR -P|--force-b-b-p
 .PP
