@@ -146,7 +146,7 @@ void Usage(char *str)
    fprintf(stderr, "-I            Ignore unsupported bitrates/bits per sample\n");
    fprintf(stderr, "-r sr,bs,ch   If the file does not contain any sound generate silence\n");
    fprintf(stderr, "              sr samplerate 32000,44100,48000 bs bytesize 8,16, ch channes 1/2\n");
-   fprintf(stderr, "-R            The same a -R but now a silence with 44100, 16, 2 is created\n");
+   fprintf(stderr, "-R            The same as -r but now a silence with 44100, 16, 2 is created\n");
  
    exit(0);
 }
