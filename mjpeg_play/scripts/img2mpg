@@ -139,7 +139,9 @@
 #Clean the temporary file and exit. Used by the Trap fonction and at end of this script.
 CleanUp()
 {
-echo "Removing temporary files..."
+if [ $WITHGUI = 0 ]; then     
+    echo -e "Removing temporary files..."
+fi
 
 if [ -e $TMPFILENAME.tmp.m2v ]; then
     rm $TMPFILENAME.tmp.m2v
@@ -455,6 +457,10 @@ EOF
   shift
 done
 
+if [ $WITHGUI = 1 ]; then     
+    echo -e "Initialising...\n" >&2
+fi
+
 # Verify if some images file have been given on the command line.
 if [ $CPT_IMG_FILE = 0 ]; then
     echo -e "\nNo image file to convert !!!"
@@ -627,6 +633,8 @@ fi
 
 if [ $WITHGUI = 0 ]; then     
     echo -e "Encoding $CPT_IMG_FILE image(s) MPEG sequence with ImageMagick and MjpegTools.\n"
+else 
+    echo -e "Encoding image files...\n" >&2
 fi
 
 # Counter of frames for the MPEG conversion.
@@ -658,7 +666,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
     	    echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
 	else 
 	    COUNTERGUI=`echo $((($CPT*100)/$NBFRAMETOTAL))`
-	    echo -ne "Images encoding $COUNTERGUI%\r" >&2
+	    echo -ne "Images encoding (%) : $COUNTERGUI   \r" >&2
 	fi
 
         if [ $TRANSITIONENABLE = 0 ]; then
@@ -722,6 +730,8 @@ else
     if [ $AUDIO_WAV ]; then
         if [ $WITHGUI = 0 ]; then     
             echo -e "\nEncoding MPG layer 2 audio file from $AUDIO_WAV WAV file with MjpegTools."
+	else 
+	    echo -e "\nEncoding audio file...\n" >&2
 	fi
 	cat $AUDIO_WAV | mp2enc -v $VERBOSE -V -o $TMPFILENAME.tmp.mp2
         AUDIOFILENAME=$TMPFILENAME.tmp.mp2
@@ -732,6 +742,8 @@ fi
 
 if [ $WITHGUI = 0 ]; then     
     echo -e "\nMerging MPEG flux with MjpegTools."
+else 
+    echo -e "\nMerging MPEG flux..." >&2
 fi
 
 # No output MPEG file name on command line -> take a temporary file.
@@ -743,6 +755,8 @@ mplex -v $VERBOSE -f $VIDEO_FORMAT_NUMBER -b $BUFFER_SIZE $AUDIOFILENAME $TMPFIL
 
 if [ $WITHGUI = 0 ]; then     
     echo -e "\nThe video MPEG output file is '$OUTPUT_MPEG_FILE'."
+else 
+    echo -e "\nEncoding terminated..." >&2
 fi
 
 # Clean up & Bye...
