@@ -86,7 +86,7 @@ Note : The XVCD resolution is the same of DVD !
 .LP 
 \fB\-v\fR <\fInum\fP> : verbose level on the console. The possible values are  '0' for none (default), '1' for informations and warnings, or '2' for debug messages.
 
-\fB\-\-with\-gui\fR : running with the 'kimg2mpg' KDE GUI frontend. No messages will be showing on the console.
+\fB\-\-with\-gui\fR : running with the 'kimg2mpg' KDE GUI frontend. Specifics messages will be showing on the console.
 
 \fB\-t\fR <\fInum\fP> : enable transition between images with a specific speed. The possible speed values are '1' for slow, '2', '4', '5', '10', or '20' for fast. When you enable this option, the script make with ImageMagick package a beautiful merging transition between images. Warning : it's a long calculating process.
 
@@ -104,7 +104,7 @@ Speed '10' : PAL/SECAM (25 f/s) = 0400 ms | NTSC (30 f/s) = 0333 ms.
 .br 
 Speed '20' : PAL/SECAM (25 f/s) = 0200 ms | NTSC (30 f/s) = 0166 ms.
 
-\fB\-T\fR <\fITemporary folder\fP> : use a specific folder for create the temporary files ('/tmp' for example). If you don't use this option, all temporary files will be created in the actual local folder.
+\fB\-T\fR <\fITemporary folder\fP> : use a specific folder for create the temporary files ('/tmp' for example). If you don't use this option, all temporary files will be created in the current active folder.
 
 \fB\-f\fR <\fIVideo format\fP> : MPEG video format. The possible values are 'XVCD' (default), 'SVCD', or 'VCD'. See the DESCRIPTION section for more details.
 
@@ -114,7 +114,7 @@ Speed '20' : PAL/SECAM (25 f/s) = 0200 ms | NTSC (30 f/s) = 0166 ms.
 
 \fB\-c\fR <\fIRGB color\fP> : if you don't use the background image file, you can change the default background color (black = default). Use an hexadecimal RGB color value (example : AA001F).
 
-\fB\-d\fR <\fInum\fP> : duration for each image in MPEG file. The default value is 10 secondes. The minimal value is 1secondes.
+\fB\-d\fR <\fInum\fP> : duration for each image in MPEG file. The default value is 10 secondes. The minimal value is 1 secondes.
 
 \fB\-a\fR <\fIMPEG audio file\fP> : MP2 audio file to merge with the video sequence.
 
