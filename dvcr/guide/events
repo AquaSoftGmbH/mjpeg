@@ -1,6 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 from events import *
+from Tkinter import *
 
 root = Tk()
 test = EventList(root)

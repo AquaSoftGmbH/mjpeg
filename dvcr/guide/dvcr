@@ -1,15 +1,26 @@
 [global]
-videodir: /video, video1
+videodir: /video2
 recorders: b50
 
 [display]
-stations: 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
+stations: 909, 910, 911, 912, 20, 50, 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
 
 [b50]
-program: /usr/local/bin/lavrec
-params:  -iN, -v1, -s, -d12, -t, %size, %file-name
+recorder: /usr/local/bin/lavrec
+record_params:  -iN, -v0, -s, -d12, -q35,  -t, %size, %file-name
+channel: /usr/local/bin/channel
+channel_params: %station
 
 [tvguide]
-serviceid: 63891
+serviceid: 63892, 63598
+
+[63892]
+filter: 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
+host: www.tvguide.com
+
+
+[63598]
+translate: 2->909, 4->910, 7->911, 5->50, 9->912, 10->20
+filter: 909, 910, 911, 912, 20, 50
 host: www.tvguide.com
 

@@ -1,9 +1,9 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 
 
 import MySQLdb
 
-guide = MySQLdb.Connect(db='tvguide');
+guide = MySQLdb.Connect(db='tvguide', host='mike.mlb.org');
 cursor = guide.cursor();
 
 

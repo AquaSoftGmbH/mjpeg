@@ -61,8 +61,7 @@ class Table(Pmw.MegaWidget):
 			orient='horizontal',
 			command=self.xview)
 
-
-		self.table.grid(row=1, column=1)
+		self.table.grid(row=1, column=1, stick='NSEW')
 
 		self.horizScrollbarOn = 0
 		self.vertScrollbarOn = 0

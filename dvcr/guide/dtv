@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 #    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
 #
@@ -22,5 +22,6 @@ import guide
 guide = guide.Guide()
 #listing = time.mktime(2000,12,27,12,30,0, 0, 360, -1)
 listing = time.time()
+guide.create_display(0, 0, 640, 480, listing)
 guide.display_guide(0, 0, 640, 480, listing)
-
+guide.root.mainloop()

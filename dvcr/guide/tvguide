@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python2
 #
 #    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
 #
@@ -20,5 +20,7 @@ import tvguide
 import time
 
 guide = tvguide.TvGuide()
-guide.guide_whole_day(0)
+guide.guide_whole_day(8)
+print "done getting guide"
 guide.output()
+

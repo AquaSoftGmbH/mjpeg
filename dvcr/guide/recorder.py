@@ -19,7 +19,10 @@ import ConfigParser
 import time
 import marshal 
 import events
+import guidedbm
 import os
+
+dbm = guidedbm.guide_dbm()
 
 class Recorder:
 	def __init__(self):
@@ -30,7 +33,6 @@ class Recorder:
 		self.recorder_devices = self.config_list("global", "recorders")
 		self.running = {}
 		self.device = None
-		self.events.load()
 
 	def config_string(self, section, name):
 		try:
@@ -46,7 +48,7 @@ class Recorder:
 
 		return map(strip, split(data, ","))
 
-	def  find_device(self, start, end, channel):
+	def  find_device(self, event_data):
 		for device in self.recorder_devices:
 			if self.running.has_key(device):
 				continue
@@ -54,8 +56,9 @@ class Recorder:
 			return device
 		return None
 
-	def process_args(self, start, end, channel, title, args):
+	def process_args(self, event_data, args):
 		list = []
+		print "args processing:", event_data
 		for item in args:
 			if item[0:1] !='%':
 				list.append(item)
@@ -64,80 +67,150 @@ class Recorder:
 			if item == "%file-name":
 				file_name = "/video/" + \
 					time.strftime("%y%m%d.%H%M.", \
-					time.localtime(start)) + \
-					channel + "." + title + "-%d.avi"
+					time.localtime(event_data["start_time"])) + \
+					event_data["station_name"] + "." + \
+					event_data["title"] + "-%d.avi"
 				list.append(file_name)
 				continue
 
 			if item == "%size":
-				amount = "%d" % (end - time.time() - 2)
+				amount = "%d" % (event_data["stop_time"] - \
+					time.time() - 2)
 				list.append(amount)
+				continue
+
+			if item == "%station":
+				list.append(event_data["station_station"])
 				continue
 
 			print "Unknown item ", item
 
 		return list
 
+	def repeat(self, event_data):
+		changes = 0
+		current_time = time.time() - time.timezone 
+#
+# there is a error in that daylight saving time screw thing up
+#
+#		ch_id, guide_id, channel, start_time, end_time, \
+#			length, repeat, desc = dbm.get_event_data(id)
+
+		if event_data["repeat"] == "Delete":
+			dbm.delete_event_data(event_data)
+			return
+
+		if event_data["repeat"] == 'Once':
+			dbm.delete_event_data(event_data)
+			return
+
+		if event_data["repeat"] == "Daily":
+			start_time = start_time + 24 * 60 * 60
+			end_time = end_time + 24 * 60 * 60
+
+		if event_data["repeat"] == "Weekly":
+			start_time = start_time + 24 * 60 * 60 * 7
+			end_time = end_time + 24 * 60 * 60 * 7
+
+		if event_data["repeat"] == "Monday-Friday":
+			start_time = start_time + 24 * 60 * 60
+			end_time = end_time + 24 * 60 * 60
+
+		event_data["start_time"] = start_time
+		event_data["stop_time"] = stop_time
+		dbm.set_event_data(event_data)
+
 	def check_done(self):
 		for device in self.running.keys():
-			pid, tag = self.running[device]
+			pid, event_data = self.running[device]
 
 			new_pid, status = os.waitpid(pid, os.WNOHANG)
 			if new_pid != pid:
 				continue
-
-			if os.WIFEXITED(status):
-				if os.WEXITSTATUS(status):
-					print "process tag ", tag, \
+			if os.WIFEXITED(status) or os.WIFSIGNALED(status):
+				if os.WIFSIGNALED(status):
+					print "process tag ", event_data["id"], \
+						"signal ", os.WTERMSIG(status)
+				if os.WIFEXITED(status):
+					print "process tag ", event_data["id"], \
 						" exited ", \
 						os.WEXITSTATUS(status)
-				self.events.repeat(tag)
+				self.repeat(event_data)
 				del self.running[device]
 				
-
 	def scan(self):
 		self.check_done()
 
 		current_time = time.time()
 
-		for tag in self.events.tags():
-			self.events.repeat(tag)
-			start, end, channel, title, repeat = \
-				self.events.event(tag)
+		for id in dbm.event_ids():
 
-			start = start + time.timezone
-			end = end + time.timezone
+			running_id = -1;
+			for running in self.running.keys(): 
+				running_pid, running_id = self.running[running]
+				if running_id == id:
+					break
+			if running_id == id:
+				continue
 
-			if end <= current_time:
-				print "Title: %s start: %s end: %s deleted" % \
-					(title, time.strftime("%H:%M %m/%d" ,time.localtime(start)),
-					time.strftime("%H:%M", time.localtime(end)))
-				self.events.delete(tag)
+			event_data = {}
+			dbm.get_event_data(id, event_data)
+
+			if event_data["stop_time"] <= current_time:
+				print "delete it"
+				dbm.delete_event_data(event_data)
 				continue		
 
-			if start <= current_time:
-
-				recording_device = self.find_device(start, 
-					end, channel)
+			if event_data["start_time"] <= current_time:
+				recording_device = self.find_device(event_data)
 
 				if recording_device == None:
 					continue
 
+				if self.running.has_key(recording_device):
+					continue
+
+				channel_program = self.config_string(\
+					recording_device, "channel")
+
+				if channel_program != None:
+					channel_args = [channel_program]
+					args = self.config_list(recording_device, 
+						"channel_params")
+
+
+					for item in args:
+						channel_args.append(item)
+
+					args = self.process_args(event_data, \
+						channel_args)
+
+					print "running ", args
+					pid = os.fork()
+					if pid == 0:
+						os.execvp(channel_program, args)
+					else:
+						os.wait(pid)
+
 				recording_program = self.config_string(\
-					recording_device, "program")
-				
+					recording_device, "recorder")
+
 				recording_args = [recording_program]
 				args = self.config_list(recording_device, 
-					"params")
+					"record_params")
 
 				for item in args:
 					recording_args.append(item)
 
-				args = self.process_args(start, end, 
-					channel, title,recording_args)
+				args = self.process_args(event_data, \
+					recording_args)
 
 				print "running ", args
-				pid = os.spawnv(os.P_NOWAIT, 
-					recording_program, args) 
-				
-				self.running[recording_device] = pid, tag
+				pid = os.fork()
+				if pid == 0:
+					os.execvp(recording_program, args) 
+				else:
+					self.running[recording_device] = pid, event_data
+
+
+

@@ -1,4 +1,4 @@
-#    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
+#    COPYRIGHT (C) 2000 Mike Bernson <mike@mlb.org>
 #
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
@@ -24,7 +24,10 @@ import sys
 import ConfigParser
 import Pmw
 import re
+import guidedbm
 from table import *
+
+dbm = guidedbm.guide_dbm()
 
 class GuideCmd:
 	def __init__(self, func, *args, **kw):
@@ -69,8 +72,15 @@ class Guide:
 		self.seconds_per_day = 24 * 60 * 60
 		self.zone_offset = time.timezone
 		self.station_width = 0
+		self.times = (
+			"12:00 AM", "01:00 AM", "02:00 AM", "03:00 AM", 
+			"04:00 AM", "05:00 AM", "06:00 AM", "07:00 AM",
+			"08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
+			"12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", 
+			"04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM",
+			"08:00 PM", "09:00 PM", "10:00 PM", "11:00 PM")
 
-		self.guide = MySQLdb.Connect(db='tvguide');
+		self.guide = MySQLdb.Connect(db='tvguide', host='mike.mlb.org');
 		self.cursor = self.guide.cursor();
 
 	def config_string(self, section, name):
@@ -111,22 +121,6 @@ class Guide:
 			i = int(id)
 
 		return [i, name, desc]
-
-	def listing_id(self, id):
-		stmt = """Select id, station, start_time, end_time,
-		length, title from listings 
-			Where id = %d""" % id
-		self.cursor.execute(stmt);
-		if self.cursor.rowcount < 1:
-			return None
-
-		id, channel, start, end, length, title = self.cursor.fetchone()
-		s_time = TicksDateTime(start)
-		e_time = TicksDateTime(end)
-		i = int(id)
-		l = int(length)
-
-		return [i, channel, s_time, e_time, l, title, ""]
 
 	def search(self, station_id, list_time):
 		stmt = """Select id, station, start_time, end_time,
@@ -197,35 +191,47 @@ class Guide:
 				%d, '%s', '%s')""" % (start_time, end_time,
 				length, station_id, title)
 
-		self.cursor.execute(stmt);
+		self.cursor.execute(stmt)
 		
 	def info(self, key):
-		listing = self.listing_id(key)
-		if listing == None:
+		data = {}
+		data["id"] = int(key)
+		if dbm.get_listing_data(data):
 			return
 
-		id,channel,start_time,end_time,length,title,des_id = listing
 		station_id, station_name, station_des = \
-			self.station_id(channel)
-		self.events.add(id, station_id, start_time, \
-			end_time, "None", title)
+			self.station_id(data["station"])
+
+		self.events.add(data["id"], station_id, data["start_time"],
+			data["end_time"], "Once", data["title"])
 		self.events.display_events(key)
 
+	def new_time(self, key):
+		print "executing new time\n"
+		print "new time select: ", self.time_index.get()
+
+		new_time = self.day_index.get() + " " + self.time_index.get()
+		print "new_time: ", new_time
+		current = time.strptime(new_time, "%a %m/%d/%Y %I:%M %p")
+		print "current", current
+		starting = time.mktime(current)
+		self.display_guide(0, 0, 640, 480, starting)
+
+
 	def info_in(self, key, aa):
-		listing = self.listing_id(key)
-		if listing == None:
+		data = {}
+		data["id"] = int(key)
+		if dbm.get_listing_data(data):
 			return
 
-		id,channel,start_time,end_time,length,title,des_id = listing
-
 		station_id, station_name, station_desc = \
-			self.station_id(channel)
+			self.station_id(data["station"])
 
-		start = time.strftime("%l:%M %p", time.localtime(start_time))
-		end = time.strftime("%l:%M %p",time.localtime(end_time))
+		start = time.strftime("%l:%M %p", time.localtime(data["start_time"]))
+		end = time.strftime("%l:%M %p",time.localtime(data["end_time"]))
 
 		output = "%s %s  %s - %s   %d mins" % \
-			(station_name, title, start, end, length)
+			(station_name, data["title"], start, end, data["length"])
 		self.info_time.configure(text=output)
 
 
@@ -240,9 +246,7 @@ class Guide:
 		sec = int(sec/(60 * 30)) * 60 * 30
 		time_text = time.strftime("%I:%M %p", time.localtime(sec))
 		label = Button(self.listing_frame, text=time_text, width=15)
-		self.listing_widget.add(label, 
-			row=0, 
-			column=col)
+		label.grid(row=0, column=col, stick='NSEW')
 		return label
 	#
 	# lookup station id in database and get name 
@@ -255,9 +259,7 @@ class Guide:
 		label = Button(self.listing_frame, 
 			text=name, 
 			command=GuideCmd(print_data, name))
-		self.listing_widget.add(label, 
-			row=row, 
-			column=0)
+		label.grid(row=row, column=0, stick='NSEW')
 		return label
 
 	def listing_button(self,list_time, station_id, row, col, command):
@@ -279,10 +281,7 @@ class Guide:
 		label = Button(self.listing_frame,
 			command=GuideCmd(self.info, id),
 			text=title)
-		self.listing_widget.add(label, 
-			column=col,
-			row=row,
-			columnspan=span)
+		label.grid(column=col, row=row, columnspan=span, stick='NSEW')
 		label.bind("<Enter>", GuideCmd(self.info_in, id)) 
 		label.bind("<Leave>", GuideCmd(self.info_out, id)) 
 
@@ -295,7 +294,7 @@ class Guide:
 	def edit_events(self):
 		self.events.display_events(None)
 
-	def display_guide(self, x, y, width, height, seconds):
+	def create_display(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
 		starting = int((seconds/(24 * 60 * 60))) * (24 * 60 * 60) 
 
@@ -307,21 +306,19 @@ class Guide:
 
 		self.events = EventList(self.root)
 
-		menu_bar = Pmw.MenuBar(self.root,
+		self.menu_bar = Pmw.MenuBar(self.root,
 			hull_relief = 'raised',
 			hull_borderwidth=3)
-		menu_bar.addmenu('File', "Quit program")
-		menu_bar.addmenuitem("File", 'command', 
+		self.menu_bar.addmenu('File', "Quit program")
+		self.menu_bar.addmenuitem("File", 'command', 
 			"Exit Program", 
 			label="Exit",
 			command=GuideCmd(self.done))
-		menu_bar.addmenu('Edit', "Edit event list")
-		menu_bar.addmenuitem("Edit", 'command',
+		self.menu_bar.addmenu('Edit', "Edit event list")
+		self.menu_bar.addmenuitem("Edit", 'command',
 			"Edit Recording Events",
 			label="Events",
 			command=GuideCmd(self.edit_events))
-
-		self.menu_bar = menu_bar
 
 		self.info_frame = Frame(self.root)
 		self.info_time = Label(self.info_frame, text="")
@@ -329,21 +326,91 @@ class Guide:
 		set_weight(self.info_frame)
 		set_weight(self.info_time)
 
-		self.listing_widget = Table(self.root,
-			fixedcol=1,
-			fixedrow=1,
-			displayrow=5,
-			displaycol=4)
-		self.listing_frame = self.listing_widget.component("table")
+		self.time_frame = Frame(self.root)
+		self.day_index = StringVar()
+		day1 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 6))
+		day2 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 5))
+		day3 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 4))
+		day4 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 3))
+		day5 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 2))
+		day6 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 1))
+		day7 = time.strftime("%a %m/%d/%Y", time.localtime(seconds - 86499 * 0))
+		day8 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 1))
+		day9 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 2))
+		day10 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 3))
+		day11 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 4))
+		day12 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 5))
+		day13 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 6))
+		day14 = time.strftime("%a %m/%d/%Y", time.localtime(seconds + 86499 * 7))
+
+		self.day_index.set(day7);
+		self.dayOptions = Pmw.OptionMenu(self.time_frame, labelpos=W,
+			menubutton_textvariable=self.day_index,
+			items = ( day1, day2, day3, day4, day5, day6, day7,
+				  day8, day9, day10, day11, day12, day13, day4),
+			menubutton_width=14);
+
+		self.time_index = StringVar()
+		self.time_index.set("12:00 AM")
+		self.timeOptions = Pmw.OptionMenu(self.time_frame, labelpos=W,
+			menubutton_textvariable=self.time_index,
+			items = (
+			"12:00 AM", "01:00 AM", "02:00 AM", "03:00 AM", 
+			"04:00 AM", "05:00 AM", "06:00 AM", "07:00 AM",
+			"08:00 AM", "09:00 AM", "10:00 AM", "11:00 AM",
+			"12:00 PM", "01:00 PM", "02:00 PM", "03:00 PM", 
+			"04:00 PM", "05:00 PM", "06:00 PM", "07:00 PM",
+			"08:00 PM", "09:00 PM", "10:00 PM", "11:00 PM"),
+			menubutton_width=10)
+
+
+		self.timego = Button(self.time_frame, text="GO", width=4,
+			command=GuideCmd(self.new_time, id));
+
+		self.dayOptions.grid(row=0, column = 0)
+		self.timeOptions.grid(row=0, column = 1)
+		self.timego.grid(row=0, column=2, sticky='NSEW')
+
+		self.listing_frame = Frame(self.root)
 
 		self.buttons = []
 
 
 		label = Button(self.listing_frame, 
 			text=" ", width=8)
-		self.listing_widget.add(label, 
-			row=0, 
-			column=0)
+		label.grid(row=0, column=0, sticky='NSEW' )
+
+		set_weight(self.listing_frame, start_column=1)
+		self.menu_bar.pack(expand=YES, fill=BOTH, side='top')
+
+		self.info_frame.pack(expand=YES, fill=BOTH, side='top')
+		self.time_frame.pack(expand=YES, fill=BOTH, side='top')
+		self.listing_frame.pack(expand=YES, fill=BOTH, side='top')
+
+		self.info_frame.grid_propagate(flag=1)
+		self.listing_frame.grid_propagate(flag=1)
+
+
+
+	def display_guide(self, x, y, width, height, seconds):
+		station_list = self.config_list("display", "stations")
+		starting = int(((seconds-self.zone_offset)/(24 * 60 * 60))) * (24 * 60 * 60) 
+
+		date_string = time.strftime("%m/%d/%Y", 
+			time.localtime(seconds))
+
+		time_index = int((seconds - starting - self.zone_offset)/3600) + 1
+
+		self.time_index.set(self.times[time_index])
+
+		self.root.title("Program Listings for " + date_string)
+
+		self.events = EventList(self.root)
+
+		self.buttons = []
+
+		label = Button(self.listing_frame, 
+			text=" ", width=8)
 		label.grid(row=0, column=0, sticky='NSEW' )
 
 		col = 1
@@ -370,20 +437,6 @@ class Guide:
 
 		set_weight(self.listing_frame, start_column=1)
 
-		self.menu_bar.pack(expand=YES, fill=BOTH, side='top')
-
-		self.info_frame.pack(expand=YES, fill=BOTH, side='top')
-		self.listing_widget.pack(expand=YES, fill=BOTH, side='top')
-
-		self.info_frame.grid_propagate(flag=1)
-		self.listing_widget.grid_propagate(flag=1)
-
-#		self.base_frame.bind("<Configure>", 
-#			lambda event=None, self=self: self.callback1())
-#		self.base_frame.bind("<Map>", 
-#			lambda event=None, self=self: self.callback1())
-
-		self.root.mainloop()
 
 
 		

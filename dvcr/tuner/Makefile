@@ -1,4 +1,3 @@
-
 BIN_DIR = /usr/local/bin
 LIB_DIR = /usr/lib/site-python
 

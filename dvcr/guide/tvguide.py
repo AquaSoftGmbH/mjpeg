@@ -20,6 +20,7 @@ from httplib import *
 from string import *
 from time import *
 import ConfigParser
+import re
 from guide import Guide
 
 class TvGuide(Guide):
@@ -101,7 +102,6 @@ class TvGuide(Guide):
 
 		chan_end = chan_end + end_time
 		channel = line[chan_start:chan_end]
-
 		name_start = chan_end + 1
 		name_end = find(line[name_start:], "</a>")
 		if name_end < 0:
@@ -159,32 +159,40 @@ class TvGuide(Guide):
 		return runtime, svcid, titleid, data
 
 
-	def parse_tvguide_data(self, guide_data):
+	def parse_tvguide_data(self, guide_data, translate, filter):
 		for line in guide_data:
 			channel = None
 			name = None
 			lines = split(line, "</TD>")
+
 			for data in lines:
 				new_time, new_channel, new_name = \
 					self.parse_station(data)
 				run_time, svcid, titleid, show_name = \
 					self.parse_show(data)
+
 				if new_time != None:
 					curr_time = new_time
 					channel = new_channel
 					name = new_name
+
+					if translate.has_key(channel):
+						channel = translate[channel]
 					continue
 
+
+				if not filter.has_key(channel):
+					continue
+		
 				if run_time == None:
 					continue
-				
+
 				self.append([curr_time, name, channel, 
 					run_time, show_name,
 					svcid +','+titleid])
 				curr_time = curr_time + run_time * 60
 
-	def  guide_url(self,  url):
-		host = self.config_string("tvguide", "host")
+	def  guide_url(self,  url, host, translate, filter):
 		http_loop = 0
 		while http_loop < 20:
 			try:
@@ -211,31 +219,39 @@ class TvGuide(Guide):
 
 		data = http.getfile()
 		guide_data = split(data.read(), "\n")
-		self.parse_tvguide_data(guide_data)
+		self.parse_tvguide_data(guide_data, translate, filter)
 
 	def tvguide_url(self, start, end):
 		service_id = self.config_list("tvguide", "serviceid")
-
 		for id in service_id:
-			while start < end:
-				time_st = "%f" % start
+			translate_data = self.config_list(id, "translate")
+			translate = {}
+			if translate_data != None:
+				for data in translate_data:
+					(src, dst) = re.split('->', data)
+					translate[src] = dst
+			filter_data = self.config_list(id, "filter")
+			filter = {}
+			if (filter_data == None):
+				filter_data = range(1, 1000)
+			for data in filter_data:
+				filter[data] = 1
+		
+			host = self.config_string(id, "host")
+
+			s = start
+			while s < end:
+				time_st = "%f" % s
 				url = "/listings/index.asp?I=" + id + "&ST=" + time_st
-				self.guide_url(url)
-				start = start + 1.0/12.0
+				self.guide_url(url, host, translate, filter)
+				s = s + 1.0/12.0
 
-	def guide_file(file_name, guide):
-		file = open("test", "r")
-		guide_data = file.readlines()
-		self.parse_tvguide_data(guide_data, guide)
-
-
-	def guide_whole_day(self, offset):
+	def guide_whole_day(self, days):
 		current = time() - timezone
 		current = int(current/(24*60*60)) * (24*60*60)
 		
 		start = self.seconds_tvguide(current)
-		end = self.seconds_tvguide(current + 24 * 60 * 60)
-		print "start=",start,"  end=",end
+		end = self.seconds_tvguide(current + days * 24 * 60 * 60)
 		self.tvguide_url(start, end)
 
 

@@ -1,6 +1,5 @@
-#    Copyright (C) 2000-2001 Mike Bernson <mike@mlb.org>
+#    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
 #
-#    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
@@ -14,23 +13,24 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from Tkinter import *
 from string import *
+from Tkinter import *
+from events import *
 from DateTime import Date, Time, Timestamp, ISO, \
 	DateTimeType, DateTimeDeltaType
-import MySQLdb
 import time
-import Pmw
+import sys
 import ConfigParser
+import Pmw
 import re
+import guidedbm
+from table import *
 
-def TicksDateTime(DateTime):
-	aDateTime = "%s" % DateTime
-	date = ISO.ParseDateTime(aDateTime)
-	return date.ticks()
+dbm = guidedbm.guide_dbm()
 
 class Event:
-	def __init__(self):
+	def __init__(self, id, row):
+		self.id = id
 		self.channel = StringVar()
 		self.title = StringVar()
 		self.start_hour = IntVar()
@@ -45,6 +45,16 @@ class Event:
 		self.repeat = StringVar()
 		self.group_data = None
 		self.group_frame = None
+		self.event_data = {}
+
+		dbm.get_event_data(id, self.event_data)
+
+		self.set_start(self.event_data["start_time"])
+		self.set_stop(self.event_data["stop_time"])
+		self.set_title(self.event_data["title"])
+		self.set_channel(self.event_data["station_name"])
+		self.set_repeat(self.event_data["repeat"])
+#		self.group(self.scroll_area.interior(), row)
 
 	def __del__(self):
 		self.group_data.destroy()
@@ -62,12 +72,10 @@ class Event:
 		current = (self.year.get(), 
 			self.month.get(), self.day.get(),
 			hour, self.start_min.get(), 0, 0, 0, -1)
-		return time.mktime(current) - time.timezone
+
+		return time.mktime(current)
 
 	def set_start(self, time_value):
-		if self.get_start() == time_value:
-			return
-
 		if time_value == None:
 			time_value = time() - time.timezone
 			time_value = time_value - (time_value % (30 * 60))
@@ -77,32 +85,45 @@ class Event:
 		self.start_min.set(time.strftime("%M",time.localtime(time_value)))
 		self.start_ampm.set(time.strftime("%p",time.localtime(time_value)))
 
-		self.day.set(time.strftime("%d",time.gmtime(time_value)))
-		self.month.set(time.strftime("%m",time.gmtime(time_value)))
-		self.year.set(time.strftime("%g",time.gmtime(time_value)))
+		self.day.set(time.strftime("%d",time.localtime(time_value)))
+		self.month.set(time.strftime("%m",time.localtime(time_value)))
+		self.year.set(time.strftime("%g",time.localtime(time_value)))
 
 	def get_stop(self):
+		hour = self.start_hour.get()
+		if hour == 12:
+			hour = 0
+		if lower(self.start_ampm.get()) == 'pm':
+			hour = hour + 12
+		start_time = hour * 60 + self.start_min.get()
+
 		hour = self.stop_hour.get()
 		if hour == 12:
 			hour = 0
 		if lower(self.stop_ampm.get()) == 'pm':
 			hour = hour + 12
-		current = (self.year.get(), 
-			self.month.get(), self.day.get(),
-			hour, self.start_min.get(), 0, 0, 0, -1)
 
-		return time.mktime(current) - time.timezone
+		end_time = hour * 60 + self.stop_min.get()
+
+		if end_time > start_time:
+			current = (self.year.get(), 
+				self.month.get(), self.day.get(),
+				hour, self.stop_min.get(), 0, 0, 0, -1)
+		else:
+			current = (self.year.get(), 
+				self.month.get(), self.day.get()+1,
+				hour, self.stop_min.get(), 0, 0, 0, -1)
+
+		return time.mktime(current)
 
 	def set_stop(self, time_value):
-		if self.get_stop() == time_value:
-			return
-
 		if time_value == None:
 			self.stop_hour.set("")
 			self.stop_min.set("")
 			self.stop_ampm.set("")
 		else:
 			self.stop_hour.set(time.strftime("%l",time.localtime(time_value)))
+
 			self.stop_min.set(time.strftime("%M",time.localtime(time_value)))
 			self.stop_ampm.set(time.strftime("%p",time.localtime(time_value)))
 
@@ -165,6 +186,32 @@ class Event:
 
 	def delete(self):
 		self.set_repeat("Delete")
+
+	def update(self):
+		self.event_data["start_time"] = self.get_start()
+		self.event_data["stop_time"] = self.get_stop()
+		self.event_data["station_channel"] = self.get_channel()
+		self.event_data["repeat"] = self.get_repeat()
+		self.event_data["title"] = self.get_title()
+		self.event_data["length"] = int((self.event_data["stop_time"]-\
+			self.event_data["start_time"])/60)
+
+		if dbm.get_channel_name(self.event_data):
+			dbm.get_channel_station(self.event_data)
+
+		self.event_data["channel_id"] = self.event_data["station_id"]
+			
+		event_data = {}	
+		dbm.get_event_data(self.event_data["id"], event_data)
+
+		if self.event_data["channel_id"]!=event_data["channel_id"] or\
+		   self.event_data["listing_id"]!=event_data["listing_id"] or\
+		   self.event_data["start_time"]!=event_data["start_time"] or\
+		   self.event_data["stop_time"]!=event_data["stop_time"] or\
+		   self.event_data["length"]!=event_data["length"] or\
+		   self.event_data["repeat"]!=event_data["repeat"] or\
+		   self.event_data["title"]!=event_data["title"]:
+			dbm.set_event_data(self.event_data)
 
 	def group(self, root, row):
 		self.group_data = Pmw.Group(root, 
@@ -274,9 +321,6 @@ class EventList:
 		self.config_data.read("/etc/dvcr")
 		self.last_add = []
 
-		self.guide = MySQLdb.Connect(db='tvguide');
-		self.cursor = self.guide.cursor();
-
 		self.record_event = {}
 		self.event_groups = {}
 		if root != None:
@@ -290,19 +334,6 @@ class EventList:
 			self.scroll_area = Pmw.ScrolledFrame(self.dialog.interior(),
 				hscrollmode = 'dynamic')
 			self.scroll_area.pack(fill=BOTH, expand=1, pady=4, padx=4)
-
-	def channel_lookup(self, id):
-		stmt = """Select name, description From stations
-			Where id=%d""" % id
-		self.cursor.execute(stmt);
-		
-		name = id
-		desc = name
-		if self.cursor.rowcount > 0:
-			name, desc = self.cursor.fetchone();
-
-		return [name, desc]
-
 
 	def repeat(self, tag):
 		changes = 0
@@ -343,97 +374,44 @@ class EventList:
 			event.set_stop(end)
 
 	def load_data(self):
-		self.record_event = {}
 		self.event_groups = {}
 
-		stmt = """Select id, channel_id, start_time, end_time, length,
-				repeat, description From events
-				Where start_time > FROM_UNIXTIME(%d)
-				Order by start_time, channel_id""" % 0
-		self.cursor.execute(stmt);
+		ids = dbm.event_ids()
 
 		row = 0
-		for i, ch_id, start, end, length, repeat, desc in i\
-			self.cursor.fetchall():
-
-			id = int(i)
-			c_id = int(ch_id)
-			channel, channel_desc = self.channel_lookup(c_id)
-			start_time = TicksDateTime(start)
-			end_time = TicksDateTime(end)
-
+		for id in ids:
 			if self.root != None:
-				current = Event()
+				current = Event(id, row)
 				self.event_groups[id] = current
-				current.set_start(start_time)
-				current.set_stop(end_time)
-				current.set_title(desc)
-				current.set_channel(channel)
-				current.set_repeat(repeat)
 				current.group(self.scroll_area.interior(), row)
-			row = row + 1
+				row = row + 1
 
-
-	def add(self, id=None, channel_id=None, start=None, stop=None, repeat=None, title=None):
-		length = int((stop - start)/60)
-		t = re.escape(title);
-		stmt = """Insert into events(channel_id, listing_id, 
-				start_time, end_time, length, repeat,
-				description) 
-			Values (%s, %d, FROM_UNIXTIME(%d), 
-				FROM_UNIXTIME(%d), %d, '%s', '%s')""" % \
-			(channel_id, id, start, stop, length, repeat, t)
-		self.cursor.execute(stmt);
-
+	def add(self, id=None, channel_id=None, start=None, stop=None, \
+		repeat='Once', title=None):
 		self.last_add = []
-		stmt = "Select id From events Where id=LAST_INSERT_ID()"
-		self.cursor.execute(stmt);
-		for last_id in self.cursor.fetchall():
-			self.last_add.append(int(last_id[0]))
+		data = {}
+
+
+		data["station_id"] = channel_id
+		dbm.get_channel_id(data)
+
+		data["channel_id"] = data["station_id"]
+		data["listing_id"] = id
+		data["start_time"] = start
+		data["stop_time"] = stop
+		data["length"] = length = int((stop - start)/60)
+		data["repeat"] = repeat
+		data["title"] = title
+
+		ids = dbm.add_event_data(data)
+		print "add: ", data
+
+		for last_id in ids:
+			self.last_add.append(int(last_id))
 
 	def update(self):
-		print "updateing data:", self.tags()
-		for tag in self.tags():
-			print "updateing tag:", tag
-			event = self.event_groups[tag];
-			if event.get_repeat() == "Delete":
-				print "Deleting tag:", tag
-				self.delete(tag)
-			else:
-				print "checking tag:", tag
-				stmt = """Select id, channel_id, start_time, 
-					end_time, length, repeat, description 
-					From events While id=%d""" % tag
-				self.cursor.execute(stmt);
-				id, c_id, start, end, length, repeat, desc = \
-					self.cursor.fetchone()
-				ch_id = int(ch_id)
-				start_time = TicksDateTime(start)
-				end_time = TicksDateTime(end)
-
-				ch_id_new = event.get_channel()
-				start_new = event.get_start()
-				end_new = event.get_end()
-				repeat_new = event.get_repeat()
-				desc_new = event.get_desc()
-				new_length = end_new - start_new
-				if ch_id != ch_id_new | start != start_new |\
-				   end != end_new | repeat != repeat_new |\
-				   desc != desc_new:
-					print "updateing new items"
-					stmt = """update events
-						channel_id=%d,
-						start_time=FROM_UNIXTIME(%d),
-						end_time=FROM_UNIXTIME(%D),
-						length=%d, 
-						repeat='%s', 
-						description='%s' 
-						Where id=%d""" % \
-						(ch_id_new, start_new, end_new,
-						length_new, repeast_new, 
-						desc_new,id)
-					self.cursor.execute(stmt);
-
+		for id in self.event_groups.keys():
+			self.event_groups[id].update()
 
 	def last_delete(self):
 		for tag in self.last_add:
@@ -494,7 +472,7 @@ class EventList:
 		if button == 'OK':
 			self.dialog.deactivate()
 			self.last_add = []
-			self.update();
+			self.update()
 			return
 
 		if button == 'Cancel':

@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python
 #
 #    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
 #
@@ -18,9 +18,14 @@
 #
 import recorder
 import time
+import sys
 
 recorder = recorder.Recorder()
 while 1:
+	print time.ctime(time.time())
 	recorder.scan()
-
+	sys.stdout.flush()
+	current = time.time()
+	wanted = int((current + 60)/60) * 60
+	time.sleep(wanted - current + 1)
 	
