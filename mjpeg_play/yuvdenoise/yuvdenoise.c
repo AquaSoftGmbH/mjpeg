@@ -41,7 +41,7 @@
 
 #define BLOCKSIZE     8
 #define BLOCKOFFSET   (BLOCKSIZE-(BLOCKSIZE/2))/2
-#define RADIUS        32
+#define RADIUS        24
 
 
 
@@ -101,6 +101,7 @@ int uv_height;                  /* height of the UV-components */
  *****************************************************************************/
 
 uint32_t mean_SAD;              /* mean sum of absolute differences */
+int mod_radius=RADIUS;          /* initial modulated radius */
 float block_quality;
 
 
@@ -111,7 +112,7 @@ float block_quality;
 
 int matrix[1024][768][2];
 uint32_t SAD_matrix[1024][768];
-uint32_t lum_matrix[1024][768];
+uint32_t change_matrix[1024][768];
 
 
 
@@ -721,154 +722,82 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
 uint32_t
 calc_SAD_sse (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
-  uint32_t d = 0;
-  uint8_t *fs = frm + frm_offs;
-  uint8_t *rs = ref + ref_offs;
-  static uint16_t a[4] = { 0, 0, 0, 0 };
-
+  uint32_t d __attribute__ ((aligned (32))) = 0;
+  uint8_t *fs __attribute__ ((aligned (32))) = frm + frm_offs;
+  uint8_t *rs __attribute__ ((aligned (32))) = ref + ref_offs;
+  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+    
+        /* scheduling-cycle :
+         *
+         * - one load           | movd
+         * - one store          | 
+         * - two integer ALU    | addl  
+         *                      | addl
+         * - one int shift      |
+         * - two MMX ALU        | psadbw 
+         *                      | paddusw
+         * - one MMX shift      |
+         * - one 3Dnow add      |
+         * - one 3Dnow mul      |
+         * - one branch         |
+         */
+        
 
       switch (div)
-        {
+        { 
         case 1:                /* 8x8 */
-
-          asm volatile
-            (
-             " pushal                    ;          /* save registers                                     */"
-             "                           ;          /*                                                    */"
-             " pxor        %%mm0  , %%mm0;          /* clear mm0                                          */"
-             " pxor        %%mm7  , %%mm7;          /* clear mm7                                          */"
-             " movl        (%3)   , %%eax;          /* load framewidth to eax                             */"
-             " movl         %1    , %%ecx;          /* load frameadress into ecx                          */"
-             " movl         %2    , %%edx;          /* load frameadress into edx                          */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movq        (%%ecx), %%mm1;          /* 8 Pixels from filtered frame to mm1                */"
-             " movq        (%%edx), %%mm2;          /* 8 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " emms                      ;          /* clear MMX state                                    */"
-             " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
-             " popal                     ;          /* restore registers                                  */"
-             :"=X" (*a)     
-             :"X" (fs), "X" (rs), "X" (width)
-             );
-
-              d = a[0];
-
-          break;
-
-        case 2:                /* 4x4 */
           
           asm volatile
             (
-             " pushal                    ;          /* save registers                                     */"
+             " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */"
+             " movl         %1    , %%eax;          /* load frameadress into eax                          */"
+             " movl         %2    , %%ebx;          /* load frameadress into ebx                          */"
+             " movl         %3    , %%ecx;          /* load width       into ecx                          */"
              "                           ;          /*                                                    */"
-             " pxor        %%mm0  , %%mm0;          /* clear mm0                                          */"
-             " pxor        %%mm7  , %%mm7;          /* clear mm7                                          */"
-             " movl        (%3)   , %%eax;          /* load framewidth to eax                             */"
-             " movl         %1    , %%ecx;          /* load frameadress into ecx                          */"
-             " movl         %2    , %%edx;          /* load frameadress into edx                          */"
-             "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
+             " .rept 8                   ;          /*                                                    */"
+             " movq        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
+             " psadbw      (%%ebx), %%mm1;          /* 4 Pixels difference to mm1                         */"
+             " paddusw      %%mm1 , %%mm0;          /* add result to mm0                                  */"
+             " addl         %%ecx , %%eax;          /* add framewidth to frameaddress                     */"
+             " addl         %%ecx , %%ebx;          /* add framewidth to frameaddress                     */"
+             " .endr                     ;          /*                                                    */"
              "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " emms                      ;          /* clear MMX state                                    */"
              " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
-             " popal                     ;          /* restore registers                                  */"
-             :"=X" (*a)     
-             :"X" (fs), "X" (rs), "X" (width)
+             :"=m" (a)     
+             :"m" (fs), "m" (rs), "m" (width)
+             :"%eax", "%ebx", "%ecx"
              );
 
               d = a[0];
+              
+          break;
 
+        case 2:                /* 4x4 */
+
+          asm volatile
+            (
+             " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */"
+             " movl         %1    , %%eax;          /* load frameadress into eax                          */"
+             " movl         %2    , %%ebx;          /* load frameadress into ebx                          */"
+             " movl         %3    , %%ecx;          /* load framewidth  into ecx                          */"
+             "                           ;          /*                                                    */"
+             " .rept 4                   ;          /*                                                    */"
+             " movd        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
+             " movd        (%%ebx), %%mm2;          /* 4 Pixels from filtered frame to mm1                */"
+             " psadbw       %%mm2 , %%mm1;          /* 4 Pixels difference to mm1                         */"
+             " paddusw      %%mm1 , %%mm0;          /* add result to mm0                                  */"
+             " addl         %%ecx , %%eax;          /* add framewidth to frameaddress                     */"
+             " addl         %%ecx , %%ebx;          /* add framewidth to frameaddress                     */"
+             " .endr                     ;          /*                                                    */"
+             "                                      /*                                                    */"
+             " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
+             :"=m" (a)     
+             :"m" (fs), "m" (rs), "m" (width)
+             :"%eax", "%ebx", "%ecx"
+             );
+
+              d = a[0];
+              
           break;
         }
   return d;
@@ -1019,112 +948,85 @@ uint32_t
 calc_SAD_uv_sse (uint8_t * frm,
                  uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
-  uint32_t d = 0;
-  uint8_t *fs = frm + frm_offs;
-  uint8_t *rs = ref + ref_offs;
-  static uint16_t a[4] = { 0, 0, 0, 0 };
-  
-  
+  uint32_t d __attribute__ ((aligned (32))) = 0;
+  uint8_t *fs __attribute__ ((aligned (32))) = frm + frm_offs;
+  uint8_t *rs __attribute__ ((aligned (32))) = ref + ref_offs;
+  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
+    
   switch (div)
     {
     case 1:                    /* 4x4 --> subsampled chroma planes ! */
           asm volatile
             (
-             " pushal                    ;          /* save registers                                     */"
-             "                           ;          /*                                                    */"
-             " pxor        %%mm0  , %%mm0;          /* clear mm0                                          */"
-             " pxor        %%mm7  , %%mm7;          /* clear mm7                                          */"
-             " movl        (%3)   , %%eax;          /* load framewidth to eax                             */"
-             " movl         $4    , %%ebx;          /* load 8 into ebx                                    */"
+             " xorl        %%ebx  , %%ebx;          /* clear ebx                                          */"
+             " movl         %3    , %%eax;          /* load framewidth to eax                             */"
              " movl         %1    , %%ecx;          /* load frameadress into ecx                          */"
              " movl         %2    , %%edx;          /* load frameadress into edx                          */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
+             " movd  (%%ebx,%%ecx), %%mm0;          /* 4 Pixels from filtered frame to mm0                */"
+             " movd  (%%ebx,%%edx), %%mm1;          /* 4 Pixels from reference frame to mm1               */"
+             " addl         %%eax , %%ebx;          /* add framewidth to frameaddress (filtered)          */"
+             " movd  (%%ebx,%%ecx), %%mm2;          /* 4 Pixels from filtered frame to mm2                */"
+             " movd  (%%ebx,%%edx), %%mm3;          /* 4 Pixels from reference frame to mm3               */"
+             " addl         %%eax , %%ebx;          /* add framewidth to frameaddress (filtered)          */"
+             " movd  (%%ebx,%%ecx), %%mm4;          /* 4 Pixels from filtered frame to mm4                */"
+             " movd  (%%ebx,%%edx), %%mm5;          /* 4 Pixels from reference frame to mm5               */"
+             " addl         %%eax , %%ebx;          /* add framewidth to frameaddress (filtered)          */"
+             " movd  (%%ebx,%%ecx), %%mm6;          /* 4 Pixels from filtered frame to mm6                */"
+             " movd  (%%ebx,%%edx), %%mm7;          /* 4 Pixels from reference frame to mm7               */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
+             " psadbw       %%mm0 , %%mm1;          /* Calculate SAD of that line of pixels, store in mm2 */"
+             " psadbw       %%mm2 , %%mm3;          /* Calculate SAD of that line of pixels, store in mm3 */"
+             " psadbw       %%mm4 , %%mm5;          /* Calculate SAD of that line of pixels, store in mm5 */"
+             " psadbw       %%mm6 , %%mm7;          /* Calculate SAD of that line of pixels, store in mm7 */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
+             " paddusw      %%mm3 , %%mm1;          /* add result to mm1                                  */"
+             " paddusw      %%mm5 , %%mm1;          /* add result to mm1                                  */"
+             " paddusw      %%mm7 , %%mm1;          /* add result to mm1                                  */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
-             "                           ;          /*                                                    */"
-             " emms                      ;          /* clear MMX state                                    */"
-             " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
-             " popal                     ;          /* restore registers                                  */"
-             :"=X" (*a)     
-             :"X" (fs), "X" (rs), "X" (uv_width)
+             " movq         %%mm1 , %0   ;          /* make mm1 available to gcc ...                      */"
+             :"=m" (a)     
+             :"m" (fs), "m" (rs), "m" (uv_width)
+             :"%eax", "%ebx", "%ecx", "%edx"
              );
 
               d = a[0];
-
       break;
 
     case 2:                    /* 2x2 */
           asm volatile
             (
-             " pushal                    ;          /* save registers                                     */"
-             "                           ;          /*                                                    */"
-             " pxor        %%mm0  , %%mm0;          /* clear mm0                                          */"
-             " pxor        %%mm7  , %%mm7;          /* clear mm7                                          */"
-             " movl        (%3)   , %%eax;          /* load framewidth to eax                             */"
-             " movl         $4    , %%ebx;          /* load 8 into ebx                                    */"
+             " xorl        %%ebx  , %%ebx;          /* clear ebx                                          */"
              " movl         %1    , %%ecx;          /* load frameadress into ecx                          */"
              " movl         %2    , %%edx;          /* load frameadress into edx                          */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
+             " movd  (%%ebx,%%ecx), %%mm0;          /* 4 Pixels from filtered frame to mm0                */"
+             " movd  (%%ebx,%%edx), %%mm1;          /* 4 Pixels from reference frame to mm1               */"
+             " addl         %3    , %%ebx;          /* add framewidth to frameaddress (filtered)          */"
+             " movd  (%%ebx,%%ecx), %%mm2;          /* 4 Pixels from filtered frame to mm2                */"
+             " movd  (%%ebx,%%edx), %%mm3;          /* 4 Pixels from reference frame to mm3               */"
+             "                           ;          /*                                                    */"
+             " psrlq        $16,    %%mm0;          /* kick 2 Pixels  ...                                 */"
              " psrlq        $16,    %%mm1;          /* kick 2 Pixels  ...                                 */"
              " psrlq        $16,    %%mm2;          /* kick 2 Pixels  ...                                 */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
+             " psrlq        $16,    %%mm3;          /* kick 2 Pixels  ...                                 */"
              "                           ;          /*                                                    */"
-             " movd        (%%ecx), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
-             " movd        (%%edx), %%mm2;          /* 4 Pixels from reference frame to mm2               */"
-             " psrlq        $16,    %%mm1;          /* kick 2 Pixels  ...                                 */"
-             " psrlq        $16,    %%mm2;          /* kick 2 Pixels  ...                                 */"
-             " psadbw       %%mm1 , %%mm2;          /* Calculate SAD of that line of pixels, store in mm2 */"
-             " paddusw      %%mm2 , %%mm0;          /* add result to mm0                                  */"
-             "                                      /*                                                    */"
-             " addl         %%eax , %%ecx;          /* add framewidth to frameaddress (filtered)          */"
-             " addl         %%eax , %%edx;          /* add framewidth to frameaddress (reference)         */"
+             " psadbw       %%mm0 , %%mm1;          /* Calculate SAD of that line of pixels, store in mm2 */"
+             " psadbw       %%mm2 , %%mm3;          /* Calculate SAD of that line of pixels, store in mm3 */"
              "                           ;          /*                                                    */"
-             " emms                      ;          /* clear MMX state                                    */"
-             " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
-             " popal                     ;          /* restore registers                                  */"
-             :"=X" (*a)     
-             :"X" (fs), "X" (rs), "X" (uv_width)
+             " paddusw      %%mm3 , %%mm1;          /* add result to mm1                                  */"
+             "                           ;          /*                                                    */"
+             " movq         %%mm1 , %0   ;          /* make mm1 available to gcc ...                      */"
+             :"=m" (a)     
+             :"m" (fs), "m" (rs), "m" (uv_width)
+             :"%ebx", "%ecx", "%edx"
              );
 
               d = a[0];
 
       break;
     }
+
   return d;
 }
 
@@ -1133,33 +1035,36 @@ void
 mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
   int qy, qx;
-  uint32_t d;
+  uint32_t d,d_uv;
   uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
   uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
 
-  /* search_radius has to be devided by 8 as radius is given in */
-  /* half-pixels and image is reduced in resolution by 4 ...    */
+  /* search_radius has to be devided by 2 as radius is given in */
+  /* half-pixels ...                                            */
 
-  for (qy = -RADIUS / 8; qy <= RADIUS / 8; qy += 4)
-    for (qx = -RADIUS / 8; qx <= RADIUS / 8; qx += 4)
+  for (qy = -mod_radius / 2; qy <= mod_radius / 2; qy += 4)
+    for (qx = -mod_radius / 2; qx <= mod_radius / 2; qx += 4)
       {
         d = calc_SAD (tgt_frame[0],
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 4 + (y + qy - BLOCKOFFSET) / 4 * width,
                       (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * width, 2);
-
-        d += calc_SAD_uv (tgt_frame[1],
+        if((qx&7)==0)
+        {
+        d_uv = calc_SAD_uv (tgt_frame[1],
                           ref_frame[1],
                           (x + qx - BLOCKOFFSET) / 8 + (y + qy -
                                                         BLOCKOFFSET) / 8 * uv_width,
                           (x - BLOCKOFFSET) / 8 + (y - BLOCKOFFSET) / 8 * uv_width, 2);
 
-        d += calc_SAD_uv (tgt_frame[2],
+        d_uv += calc_SAD_uv (tgt_frame[2],
                           ref_frame[2],
                           (x + qx - BLOCKOFFSET) / 8 + (y + qy -
                                                         BLOCKOFFSET) / 8 * uv_width,
                           (x - BLOCKOFFSET) / 8 + (y - BLOCKOFFSET) / 8 * uv_width, 2);
-
+        }
+        d += d_uv;
+        
         if (d < SAD)
           {
             matrix[x][y][0] = qx * 2;
@@ -1185,7 +1090,7 @@ void
 mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
   int qy, qx;
-  uint32_t d;
+  uint32_t d,d_uv;
   uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
   uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
   int bx;
@@ -1201,19 +1106,21 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 2 + (y + qy - BLOCKOFFSET) / 2 * width,
                       (x - BLOCKOFFSET) / 2 + (y - BLOCKOFFSET) / 2 * width, 2);
-
-        d += calc_SAD_uv (tgt_frame[1],
+        if((qx&3)==0)
+        {
+        d_uv = calc_SAD_uv (tgt_frame[1],
                           ref_frame[1],
                           (x + qx - BLOCKOFFSET) / 4 + (y + qy -
                                                         BLOCKOFFSET) / 4 * uv_width,
                           (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * uv_width, 2);
 
-        d += calc_SAD_uv (tgt_frame[2],
+        d_uv += calc_SAD_uv (tgt_frame[2],
                           ref_frame[2],
                           (x + qx - BLOCKOFFSET) / 4 + (y + qy -
                                                         BLOCKOFFSET) / 4 * uv_width,
                           (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * uv_width, 2);
-
+        }
+        d+=d_uv;
         if (d < SAD)
           {
             matrix[x][y][0] = qx * 2;
@@ -1237,7 +1144,7 @@ void
 mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
   int qy, qx;
-  uint32_t d;
+  uint32_t d,d_uv;
   uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
   uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
   int bx;
@@ -1254,17 +1161,7 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
                       (x + qx - BLOCKOFFSET) + (y + qy - BLOCKOFFSET) * width,
                       (x - BLOCKOFFSET) + (y - BLOCKOFFSET) * width, 1);
 
-        d += calc_SAD_uv (tgt_frame[1],
-                          ref_frame[1],
-                          (x + qx - BLOCKOFFSET) / 2 + (y + qy) / 2 * uv_width,
-                          (x - BLOCKOFFSET) / 2 + (y) / 2 * uv_width, 1);
-
-        d += calc_SAD_uv (tgt_frame[2],
-                          ref_frame[2],
-                          (x + qx - BLOCKOFFSET) / 2 + (y + qy -
-                                                        BLOCKOFFSET) / 2 * uv_width,
-                          (x - BLOCKOFFSET) / 2 + (y - BLOCKOFFSET) / 2 * uv_width, 1);
-
+        
         if (d < SAD)
           {
             matrix[x][y][0] = qx * 2;
@@ -1357,6 +1254,54 @@ mb_search_half (int x, int y)
 
 void
 copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
+{
+  int dx,dy;
+  int qx = matrix[x][y][0]/2;
+  int qy = matrix[x][y][1]/2;
+
+  if(block_quality<0.25)
+  {
+  for (dy=0;dy<(BLOCKSIZE/2);dy++)
+  {
+    memcpy(dest[0]+x+(y+dy)*width,srce[0]+(x+qx)+(y+qy+dy)*width,BLOCKSIZE/2);
+    memcpy(dest[1]+x/2+(y+dy)/2*uv_width,srce[1]+(x+qx)/2+(y+qy+dy)/2*uv_width,BLOCKSIZE/4);
+    memcpy(dest[2]+x/2+(y+dy)/2*uv_width,srce[2]+(x+qx)/2+(y+qy+dy)/2*uv_width,BLOCKSIZE/4);
+  }
+}
+else
+{
+  if(block_quality==1)
+  {
+  for (dy=0;dy<(BLOCKSIZE/2);dy++)
+  {
+    memcpy(dest[0]+x+(y+dy)*width,yuv[0]+x+(y+dy)*width,BLOCKSIZE/2);
+    memcpy(dest[1]+x/2+(y+dy)/2*uv_width,yuv[1]+x/2+(y+dy)/2*uv_width,BLOCKSIZE/4);
+    memcpy(dest[2]+x/2+(y+dy)/2*uv_width,yuv[2]+x/2+(y+dy)/2*uv_width,BLOCKSIZE/4);
+  }
+}
+else
+{
+  for (dy=0;dy<(BLOCKSIZE/2);dy++)
+  {
+    for (dx=0;dx<(BLOCKSIZE/2);dx++)
+    {
+      *(dest[0]+(x+dx)+(y+dy)*width)=
+        *(srce[0]+(x+dx+qx)+(y+dy+qy)*width)*(1-block_quality)+
+        *(yuv[0]+(x+dx)+(y+dy)*width)*(block_quality);
+      *(dest[1]+(x+dx)/2+(y+dy)/2*uv_width)=
+        *(srce[1]+(x+dx+qx)/2+(y+dy+qy)/2*uv_width)*(1-block_quality)+
+        *(yuv[1]+(x+dx)/2+(y+dy)/2*uv_width)*(block_quality);
+      *(dest[2]+(x+dx)/2+(y+dy)/2*uv_width)=
+        *(srce[2]+(x+dx+qx)/2+(y+dy+qy)/2*uv_width)*(1-block_quality)+
+        *(yuv[2]+(x+dx)/2+(y+dy)/2*uv_width)*(block_quality);
+    }
+  }  
+}
+}  
+}
+
+void
+copy_filtered_block_old (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
 {
   int dx, dy;
   int qx = matrix[x][y][0];
@@ -1480,7 +1425,7 @@ despeckle_frame_soft (uint8_t * frame[3])
 
         v2 = *(frame[0] + (x + 0) + (y + 0) * width);
 
-        if (abs (v1 - v2) <= 2) /* range -2...+2 ^= 2 bits ... */
+        if (abs (v1 - v2) <= 3) /* range -3...+3 ~= 2 bits ... */
           *(yuv2[0] + (x + 0) + (y + 0) * width) = v1;
         else
           *(yuv2[0] + (x + 0) + (y + 0) * width) = v2;
@@ -1532,7 +1477,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   uint32_t avrg_SAD;
   int nr_of_blocks = 0;
   static uint32_t last_mean_SAD;
-
+  float mod=1;
+  
   /* subsample reference frame by 2 and by 4                 */
   /* store subsampled frame in sub_r[3]                      */
   subsample_frame (sub_r2, ref_frame);
@@ -1583,11 +1529,18 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    ref_frame[2],
                                    (x) / 2 + (y) / 2 * uv_width,
                                    (x) / 2 + (y) / 2 * uv_width, 2);
-#if 0                           /* need a more clever approach here ... */
-        if (center_SAD > (mean_SAD * 0.5))      /* if the center SAD is below 50% of the mean SAD 
-                                                 * a motion-search wouldn't be very clever...
-                                                 */
-#endif /* for the moment seach every block ... */
+                                   
+        /* depending on the quality of the center SAD modulate
+         * the search radius ...
+         */
+        if (center_SAD<mean_SAD*8)
+        {
+          mod_radius = (center_SAD/(mean_SAD*8))*RADIUS;
+        }
+        else
+          mod_radius = RADIUS;
+        
+        
           {
             /* search best matching block in the 4x4 subsampled
              * image and store the result in matrix[x][y][d]
@@ -1630,9 +1583,9 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    (x) / 2 + (y) / 2 * uv_width, 2);
 
 
-        if (vector_SAD > (center_SAD * 0.80))   /* only choose vector if result is */
-          {                     /* at least better by 20% ...      */
-            vector_SAD = center_SAD;
+        if (vector_SAD > (center_SAD * 0.90))   /* only choose vector if result is */
+          {                     /* at least better by 10% ...      */
+            //vector_SAD = center_SAD;
             matrix[x][y][0] = 0;
             matrix[x][y][1] = 0;
           }
@@ -1644,12 +1597,12 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 0.995 + avrg_SAD * 0.005;
+  mean_SAD = mean_SAD * 0.99 + avrg_SAD * 0.01;
 
-  if (mean_SAD < 96)            /* don't go too low !!! 48==2*3*4*4 */
-    mean_SAD = 96;              /* a SAD of 96 is nearly noisefree source material */
+  if (mean_SAD < 72)            /* don't go too low !!! */
+    mean_SAD = 72;              /* a SAD of 72 is nearly noisefree source material */
 
-  if (avrg_SAD > (mean_SAD * 3) && framenr++ > 12)
+  if (avrg_SAD > (mean_SAD * 2) && framenr++ > 12)
     {
       mean_SAD = last_mean_SAD;
       scene_change = 1;
@@ -1665,8 +1618,11 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
     }
 
   if (verbose)
+  {
     mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
                mean_SAD, ((float) mean_SAD / 16.0 / 3.0));
+    mjpeg_log (LOG_INFO, " ASAD : %d  \n\n",avrg_SAD);
+  }
 }
 
 void
