@@ -352,7 +352,7 @@ static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, 
 static int generate_YUV4MPEG(parameters_t *param)
 {
   uint32_t frame;
-  size_t jpegsize;
+  int jpegsize;
   char jpegname[FILENAME_MAX];
   FILE *jpegfile;
   int loops;                                 /* number of loops to go */
@@ -418,7 +418,7 @@ static int generate_YUV4MPEG(parameters_t *param)
           */
    
          if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
-           mjpeg_info("Processing non-interlaced/interleaved %s, size %ul.", 
+           mjpeg_info("Processing non-interlaced/interleaved %s, size %d", 
                       jpegname, jpegsize);
 	   if (param->colorspace == JCS_GRAYSCALE)
 	       decode_jpeg_gray_raw(jpegdata, jpegsize,
@@ -431,7 +431,7 @@ static int generate_YUV4MPEG(parameters_t *param)
          } else {
            switch (param->interlace) {
            case Y4M_ILACE_TOP_FIRST:
-             mjpeg_info("Processing interlaced, top-first %s, size %ul.",
+             mjpeg_info("Processing interlaced, top-first %s, size %d",
                         jpegname, jpegsize);
 	     if (param->colorspace == JCS_GRAYSCALE)
 	       decode_jpeg_gray_raw(jpegdata, jpegsize,
@@ -445,7 +445,7 @@ static int generate_YUV4MPEG(parameters_t *param)
 			       yuv[0], yuv[1], yuv[2]);
              break;
            case Y4M_ILACE_BOTTOM_FIRST:
-             mjpeg_info("Processing interlaced, bottom-first %s, size %ul.", 
+             mjpeg_info("Processing interlaced, bottom-first %s, size %d", 
                         jpegname, jpegsize);
 	     if (param->colorspace == JCS_GRAYSCALE)
 	       decode_jpeg_gray_raw(jpegdata, jpegsize,
