@@ -275,9 +275,9 @@ lav_file_t *lav_open_output_file(char *filename, char format,
                     int asize, int achans, long arate)
 {
    lav_file_t *lav_fd = (lav_file_t*) malloc(sizeof(lav_file_t));
-   char *extension;
+   char *extension, *tempfile;
 
-   if(lav_fd==0) { internal_error=ERROR_MALLOC; return 0; }
+   if (lav_fd == 0) { internal_error=ERROR_MALLOC; return 0; }
 
    /* Set lav_fd */
 
@@ -328,7 +328,6 @@ lav_file_t *lav_open_output_file(char *filename, char format,
    {
       case 'a':
       case 'A':
-
          /* Open AVI output file */
 
          lav_fd->avi_fd = AVI_open_output_file(filename);
@@ -337,21 +336,22 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          if (asize) AVI_set_audio(lav_fd->avi_fd, achans, arate, asize, WAVE_FORMAT_PCM);
          return lav_fd;
 
-      case 'j': {
-
+      case 'j':
         /* Open JPEG output file */
-        char tempfile[256];
-
+	tempfile = (char *)malloc(strlen(filename) + strlen(TMP_EXTENSION) + 1);
+	if (tempfile == NULL)
+	   {
+	   internal_error=ERROR_MALLOC;
+	   return(0);
+	   }
         strcpy(tempfile, filename);
         strcat(tempfile, TMP_EXTENSION);
-
         lav_fd->jpeg_filename = strdup(filename);
         lav_fd->jpeg_fd = open(tempfile, O_CREAT | O_TRUNC | O_WRONLY, 0644);
-
+	free(tempfile);
         return lav_fd;
-      }
-      case 'q':
 
+      case 'q':
 #ifdef HAVE_LIBQUICKTIME
          /* open quicktime output file */
 
@@ -380,26 +380,33 @@ lav_file_t *lav_open_output_file(char *filename, char format,
 }
 
 int lav_close(lav_file_t *lav_file)
-{
+   {
    int res;
+   char *tempfile;
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
 
-   switch(lav_file->format)
-   {
+   switch (lav_file->format)
+      {
       case 'a':
       case 'A':
          res = AVI_close( lav_file->avi_fd );
          break;
-      case 'j': {
-         char tempfile[256];
+      case 'j':
+	 tempfile = (char *)malloc(strlen(lav_file->jpeg_filename) + 
+				   strlen(TMP_EXTENSION) + 1);
+	 if (tempfile == NULL)
+	    {
+	    res = -1;
+	    break;
+	    }
          strcpy(tempfile, lav_file->jpeg_filename);
          strcat(tempfile, TMP_EXTENSION);
          res = close(lav_file->jpeg_fd);
          rename(tempfile, lav_file->jpeg_filename);
+	 free(tempfile);
          free(lav_file->jpeg_filename);
          break;
-      }
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          res = quicktime_close( lav_file->qt_fd );
@@ -407,12 +414,10 @@ int lav_close(lav_file_t *lav_file)
 #endif
       default:
          res = -1;
-   }
-
+      }
    free(lav_file);
-
    return res;
-}
+   }
 
 int lav_write_frame(lav_file_t *lav_file, uint8_t *buff, long size, long count)
 {
