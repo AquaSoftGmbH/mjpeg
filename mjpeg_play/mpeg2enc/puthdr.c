@@ -50,7 +50,12 @@ void putseqhdr()
 	putbits(vertical_size,12); /* vertical_size_value */
 	putbits(aspectratio,4); /* aspect_ratio_information */
 	putbits(frame_rate_code,4); /* frame_rate_code */
-	if(quant_floor != 0) {
+
+	/* MPEG-1 VBR is FFFF rate code. 
+	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
+	   sent 
+	*/
+	if(mpeg1 && quant_floor != 0) {
 		putbits(-1,18);
 	} else {
 		putbits((int)ceil(bit_rate/400.0),18); /* bit_rate_value */
@@ -87,7 +92,7 @@ void putseqext()
   putbits(chroma_format,2); /* chroma_format */
   putbits(horizontal_size>>12,2); /* horizontal_size_extension */
   putbits(vertical_size>>12,2); /* vertical_size_extension */
-  if(quant_floor != 0) {
+  if(mpeg1 && quant_floor != 0) {
     putbits(-1,12);
   } else {
     putbits(((int)ceil(bit_rate/400.0))>>18,12); /* bit_rate_extension */

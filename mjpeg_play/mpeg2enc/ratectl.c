@@ -922,7 +922,10 @@ void calc_vbv_delay(pict_data_s *picture)
 		picture->vbv_delay = 65535;
 	}
 #else
-	picture->vbv_delay =  90000.0/frame_rate/4;
+	if( !mpeg1 )
+		picture->vbv_delay =  0xffff;
+	else
+		picture->vbv_delay =  90000.0/frame_rate/4;
 #endif
 
 }

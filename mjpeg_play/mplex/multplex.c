@@ -148,6 +148,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_transport_size = 2324;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
+		opt_data_rate = 150*2324;
 	  	opt_VBR = 1;
 	  	video_buffer_size = 234*1024;
 		buffers_in_video = 1;
@@ -329,7 +330,7 @@ void outputstreamprefix( clockticks *current_SCR)
 
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,1, 0, 1, 1, 1, 1,
-					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   AUDIO_STR_0, 1, audio_buffer_size/128,
 					   VIDEO_STR_0, 1, video_buffer_size/1024, 
 					   which_streams  );
 	  	output_padding( *current_SCR, ostream,

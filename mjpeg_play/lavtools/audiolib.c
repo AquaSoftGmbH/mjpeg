@@ -882,7 +882,7 @@ void do_audio()
       gettimeofday(&tv,NULL);
 
       /* Get the status of the sound buffer */
-
+	  usleep(1000);
       if(audio_capt)
          ret = ioctl(fd, SNDCTL_DSP_GETIPTR, &count);
       else
@@ -901,9 +901,12 @@ void do_audio()
 
       ndiff = count.bytes - audio_buffer_size*(nbdone+1);
 
-	  /* Uncomment this and run testrec if you're getting audio problems...
+	  /* Uncomment this and run testrec if you're getting audio capture 
+		 problems...
 	   */
-	  /*printf( "CB = %d ND=%d MD=%d\n", count.bytes, ndiff,maxdiff );*/
+	  /*
+		printf( "CB=%08d ND=%06d BL=%03d NB=%d\n", count.bytes, ndiff, count.blocks, NBUF(nbdone) );
+	  */
       if(ndiff>maxdiff)
 	  {
 		  tv.tv_sec = tv.tv_usec = 0;

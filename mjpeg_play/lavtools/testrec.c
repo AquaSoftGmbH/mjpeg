@@ -527,7 +527,7 @@ int main(int argc, char ** argv)
 
 	while (1)
 	{
-		sleep(20); /* 50Hz as if frame sync */
+		usleep(20000); /* 50Hz as if frame sync */
 		/* sync on a frame */
 		/* Care about audio */
 

@@ -21,6 +21,23 @@ Minor
 
 Medium
 
+- Chrominance is only taken into account for motion compensation in P-frame's
+	for progressive sequences.  Curiously, experimentation showed that
+	extension to B-frames was counter-productive. So it is *deliberately*
+	not done for them. The necessary code is all written and tested.
+	We need to properly resolve this question and extend chrominanc checking
+	to P frames in field pictures.
+	Also, inclusion of chrominance wieghting should probably be used
+	at least from the 22 sub-sampled search level onwards.  Not just as
+	a "bail out to Intra coding as present".  Again the issue isn't clear
+	as the main need for chrominance checking is when scene changes mean
+	MC is nonsense.
+	Once we add	scene-change detection it probably won't really matter.
+
+- Get lavtools to use the new up-to-date headers from the drivers...
+
+- Add support for software playback of raw (YUV and RGB) AVI files.  	
+
 - Modify mplex to a decent job at mpeg stream splitting.  The solution
 	would be to get mpeg2enc to insert regular sequence headers at the
 	start of GOP's.  mplex could then simply split at these points.

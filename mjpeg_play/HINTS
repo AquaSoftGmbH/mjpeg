@@ -136,5 +136,12 @@
 	of motion compensation.  I have some suspicions that the rate control
 	code needs adjusting for field sequences (-m 2 -F 1 and -F 2) also.
 
+12)	Interoperability.
+
+	Quicktime files capturing using lavrec can be editted using Broadcast2000.
+	mjpeg AVI files captured using the streamer tool from the xawtv package
+	can be editted and compressed.  Software Playback is currently possible
+	but the image is partly corrupted.
+
 Andrew
 
