@@ -46,7 +46,7 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <sys/statfs.h>
-
+#include <stdint.h>
 #include <sys/vfs.h>
 #include <stdlib.h>
 
@@ -495,7 +495,7 @@ static uint64_t lavrec_get_free_space(video_capture_setup *settings)
 {
    uint64_t blocks_per_MB;
    struct statfs statfs_buf;
-   int64_t MBytes_fs_free;
+   uint64_t MBytes_fs_free;
 
    /* check the disk space again */
    if (statfs(settings->stats->output_filename, &statfs_buf))
@@ -1198,6 +1198,9 @@ static int lavrec_hardware_init(lavrec_t *info)
       bparm.TmpDcm = (info->vertical_decimation==1) ? 1 : 2;
       bparm.field_per_buff = (info->vertical_decimation==1) ? 2 : 1;
 
+      bparm.img_width  = info->geometry->w;
+      bparm.img_height = info->geometry->h/2;
+
       if (info->geometry->x != VALUE_NOT_FILLED)
          bparm.img_x = info->geometry->x;
       else
@@ -1212,7 +1215,7 @@ static int lavrec_hardware_init(lavrec_t *info)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Image width+offset (%d) bigger than maximum (%d)!",
-            info->geometry->w + info->geometry->x, vc.maxwidth);
+            info->geometry->w + bparm.img_x, vc.maxwidth);
          return 0;
       }
       if ((info->geometry->w%(bparm.HorDcm*16))!=0) 
@@ -1241,9 +1244,6 @@ static int lavrec_hardware_init(lavrec_t *info)
             info->geometry->h, bparm.VerDcm*16);
          return 0;
       }
-
-      bparm.img_width  = info->geometry->w;
-      bparm.img_height = info->geometry->h/2;
 
    }
    else
@@ -2168,6 +2168,7 @@ static void *lavrec_capture_thread(void *arg)
       lavrec_change_state(info, LAVREC_STATE_STOP);
 
    pthread_exit(NULL);
+   return NULL;
 }
 
 
