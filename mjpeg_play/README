@@ -38,7 +38,7 @@ compression tools.
   format they can easily be manually editted or use for other tools.
 	
 - "lavtrans" (in directory utils) converts a mixture of AVI files,
-  Quicktime files  or Edit Lists into a single AVI or Quicktime file
+  Quicktime files or Edit Lists into a single AVI or Quicktime file
   into single images or into WAV files.
 
 - "lavaddwav" (in directory utils) lets you add another soundtrack
@@ -48,77 +48,74 @@ compression tools.
    capabilities of your V4L hardware device.
 
 - "lav2yuv" decodes AVI and Quicktime MJPEG and edit lists video and
-outputs it to standard out the simple raw YUV video format expected by
-the MPEG compressor "mpeg2enc" (see below).
+  outputs it to standard out the simple raw YUV video format expected
+  by the MPEG compressor "mpeg2enc" (see below).
 
 - "lav2wav" decodes AVI and Quicktime MJPEG and edit lists video and
-outputs it to standard out the WAV format expected by the MPEG layer 2
-audio compressor "mp2enc" (see below.  If you output to a pipe it
-simply sticks a maxium length in the header.  Most programs processing
-streams will  work fine with this, ending cleanly when they reach the actual end.
-
-- "lavtrans" Takes a list of edit lists and/or files and produces the
-corresponding singleAVI or Quicktime file.
-
-- "lavaddwav" Adds an audio stream to a Quicktime or AVI without one.
+  outputs it to standard out the WAV format expected by the MPEG layer
+  2 audio compressor "mp2enc" (see below.  If you output to a pipe it
+  simply sticks a maxium length in the header.  Most programs processing
+  streams will  work fine with this, ending cleanly when they reach the
+  actual end.
 
 - "lav2dfilter".  A median filter for noise reduction.  Useful when MPEG
-encoding TV material.
+  encoding TV material.
 
 - "v4l-conf" is used in X to set up your video framebuffer address
 
 * The scripts directory
 
-	Turning a video stream captured as MJPEG AVI's or Quicktime files
-	using a capture card into MPEG or transcoding a MPEG-2 file
-	involves several steps and multiple programs. This directory
-	contains several useful shell scripts that automagically
-	do the right thing for common encoding tasks. They're also
-	intended as	examples of typical uses.
+Turning a video stream captured as MJPEG AVI's or Quicktime files
+using a capture card into MPEG or transcoding a MPEG-2 file
+involves several steps and multiple programs. This directory
+contains several useful shell scripts that automagically
+do the right thing for common encoding tasks. They're also
+intended as examples of typical uses.
 
 
 * The mpeg2enc directory
 
 - "mpeg2enc" for encoding the output of lav2yuv or suitable
-	output plugins in mpeg2dec to MPEG-1/2 video streams.
+  output plugins in mpeg2dec to MPEG-1/2 video streams.
 
-	See the README for further details.
-	In the current beta release MPEG-2 is untested and variable
-	bit-rate probably won't work.  HOWEVER: speed and quality for
-	MPEG-1 are really rather good. Encoding 352x288 PAL at 18
-	fps on a 700Mhz 	Duron or 11ps on a 450Mhz P-III.
+See the README for further details.
+In the current beta release MPEG-2 is untested and variable
+bit-rate probably won't work.  HOWEVER: speed and quality for
+MPEG-1 are really rather good. Encoding 352x288 PAL at 18
+fps on a 700Mhz Duron or 11ps on a 450Mhz P-III.
 
 * The aenc directory - 
 
-	Ccontains the source files for "mp2enc" the MPEG-1 layer 2 audio
-	compressor. It is not particularly good as encoders go, but is
-	included for simplicity and completeness.  It also has the virtue
-	that for transcoding applications (e.g. AC3 to mp2) it can do
-	sampling rate conversions.  You need this to compress audio.
+Contains the source files for "mp2enc" the MPEG-1 layer 2 audio
+compressor. It is not particularly good as encoders go, but is
+included for simplicity and completeness.  It also has the virtue
+that for transcoding applications (e.g. AC3 to mp2) it can do
+sampling rate conversions.  You need this to compress audio.
 
-	In general, however, you'd be better off with the faster and more
-	capable "toolame" encoder.  For transcoding applications the good old
-	stand-by "sox" will convert sampling rates very nicely (albeit it'll 
-	print a few warnings about incorrect headers if you use it in a
-	pipeline).
+	
+In general, however, you'd be better off with the faster and more
+capable "toolame" encoder.  For transcoding applications the good old
+stand-by "sox" will convert sampling rates very nicely (albeit it'll 
+print a few warnings about incorrect headers if you use it in a
+pipeline).
 
-	You may wish to try  using your favourite MPEG 1 layer 3 "MP3" 
-	encoder for better quality results.  However, make sure you 
-	use constant bit-rate  and turn of any extensions to the format.  
-	I have no idea how many players actually cope with layer 3.  Drop
-	as@comlab.ox.ac.uk an email if you get it to work!
+You may wish to try  using your favourite MPEG 1 layer 3 "MP3" 
+encoder for better quality results.  However, make sure you 
+use constant bit-rate  and turn of any extensions to the format.  
+I have no idea how many players actually cope with layer 3.  Drop
+as@comlab.ox.ac.uk an email if you get it to work!
 
 * The mplex directory
 
-	Contains for the source files the "mplex" multiplexer.
-	This multiplexes (interleaves) MPEG-1/2 video and audio streams
-  into a combined "system stream" that can be played back smoothly.
-  This is *not* quite as trivial a task as it might seem (see the
-  original authors paper on the subject - copy is in the
-  documentation). Note that the program has been pretty heavily
-  modified since then.
-  MPEG-2 multiplexing is implemented but is currently untested.
-  DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
+Contains for the source files the "mplex" multiplexer.
+This multiplexes (interleaves) MPEG-1/2 video and audio streams
+into a combined "system stream" that can be played back smoothly.
+This is *not* quite as trivial a task as it might seem (see the
+original authors paper on the subject - copy is in the
+documentation). Note that the program has been pretty heavily
+modified since then.
+MPEG-2 multiplexing is implemented but is currently untested.
+DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
 
 
 
@@ -141,9 +138,13 @@ lavplay!!!  (see http://dix.euro.ru for such codecs) The reason is
 that lavplay only handles AVI that use an MJPG codec, all other files
 don't use that codec and can therefore not be played back by the BUZ.
 
-
+* Contact
 
 You reach us by email.
+
+If you have questions, remarks, problems or you just want to contact 
+the developers, the main mailing list for the MJPEG-tools is:
+  mjpeg-users@lists.sourceforge.net
 
 Although little bits have been done by everyone the main work was
 roughly as follows:
@@ -151,7 +152,3 @@ roughly as follows:
 lav* : Rainer@Johanni.de and Gernot Ziegler <gz@lysator.liu.se>
 mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
 libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
-
-
-
-
