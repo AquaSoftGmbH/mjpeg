@@ -904,10 +904,25 @@ static void *parencodeworker(void *start_arg)
 		/* No dependency */
 		transform(picture);
 #else
+#ifdef SEQ_DEBUG
+        printf( "Frmae %d %08x Waiting for ref: %d %08x\n",
+                picture->decode, 
+                picture, 
+                picture->ref_frame->decode,
+                picture->ref_frame );
+
         sync_guard_test( &picture->ref_frame->completion );
         encodembs(picture);
+#endif SEQ_DEBUG
 #endif
 		/* Depends on previous frame completion for IB and P */
+#ifdef SEQ_DEBUG
+        printf( "Frmae %d %08x Waiting for compl: %d %08x\n",
+                picture->decode, 
+                picture, 
+                picture->prev_frame->decode,
+                picture->prev_frame );
+#endif
 		sync_guard_test( &picture->prev_frame->completion );
 		picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 
@@ -1000,7 +1015,7 @@ void putseq(void)
 	*/
 	old_ref_picture = &ref_pictures[ctl_max_active_ref_frames-1];
 	new_ref_picture = &ref_pictures[cur_ref_idx];
-	cur_picture = old_ref_picture;
+	cur_picture = new_ref_picture;
 	
 	encparams.bitrate_controller->InitSeq(false);
 	
@@ -1064,8 +1079,10 @@ void putseq(void)
 			cur_picture = new_b_picture;
 		}
 
+#ifdef SEQ_DEBUG
+        printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
 		sync_guard_update( &cur_picture->completion, 0 );
-
+#endif
 		if( readframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curorg) )
 		{
 		    mjpeg_error_exit1("Corrupt frame data in frame %d aborting!",
