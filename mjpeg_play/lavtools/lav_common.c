@@ -516,13 +516,32 @@ void writeoutYUV4MPEGheader(
 	, EditList el
 	)
 {
-   int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
+   //int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
+   int n;
+   y4m_stream_info_t *stream_info = NULL;
 
+#if 0
    if (frame_rate_code == 0) {
-      mjpeg_warn("unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
+      mjpeg_warn("unrecognised frame-rate -  no MPEG2 rate code can be specified... "
+         "encoder is likely to fail!\n");
    }
+#endif
 
-   yuv_write_header (out_fd, param->output_width, param->output_height, frame_rate_code);
+   /* this is old YUV4MPEG stream stuff - obsolete
+    * yuv_write_header (out_fd, param->output_width, param->output_height, frame_rate_code);
+    */
+
+   /* new YUV4MPEG streaming */
+   stream_info = y4m_init_stream_info(NULL);
+   stream_info->width = param->output_width;
+   stream_info->height = param->output_height;
+   stream_info->interlace = el.video_inter;
+   stream_info->framerate = el.video_fps;
+   //stream_info->aspectratio = param->output_width / param->output_height;
+   n = y4m_write_stream_header(out_fd, stream_info);
+   if (n != Y4M_OK)
+      mjpeg_error("Failed to write stream header: %s\n", y4m_errstr(n));
+   y4m_free_stream_info(stream_info);
 }
 
 void writeoutframeinYUV4MPEG(
@@ -536,8 +555,17 @@ void writeoutframeinYUV4MPEG(
    int n = 0;
    int i;
    char *ptr;
+   //y4m_frame_info_t frame_info;
 
-   pipewrite(out_fd, "FRAME\n", 6);
+   /* old YUVMPEG stream info, obsolete
+    * pipewrite(out_fd, "FRAME\n", 6);
+    */
+
+   /* new YUV4MPEG stream info */
+   /* NB: TODO - there's no frame info yet, since we don't need it yet */
+   i = y4m_write_frame_header(out_fd, NULL); /* &frame_info */ 
+   if (i != Y4M_OK)
+      mjpeg_error("Failed to write frame header: %s\n", y4m_errstr(i));
 
    for (i = 0; i < bounds->active_height; i++) {
       ptr = &frame[0][bounds->luma_offset + (i * param->output_width)];

@@ -67,13 +67,12 @@ int main(int argc, char *argv[])
 {
    double time_between_frames;
    struct timeval time_now;
-   int n, width, height;
-   int frame;
-   int frame_rate_code;
-   double framerate;
+   int n, frame;
    unsigned char *yuv[3];
-   int fd_in = 0;
+   int in_fd = 0;
    int screenwidth=0, screenheight=0;
+   y4m_frame_info_t *frameinfo = NULL;
+   y4m_stream_info_t *streaminfo = NULL;
 
    while ((n = getopt(argc, argv, "hs:")) != EOF) {
       switch (n) {
@@ -95,35 +94,16 @@ int main(int argc, char *argv[])
       }
    }
 
-   if (yuv_read_header(fd_in, &width, &height, &frame_rate_code)) {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header!\n");
+   streaminfo = y4m_init_stream_info(NULL);
+   frameinfo = y4m_init_frame_info(NULL);
+   if ((n = y4m_read_stream_header(in_fd, streaminfo)) != Y4M_OK) {
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n",
+         y4m_errstr(n));
       exit (1);
    }
 
-   if (screenwidth <= 0) screenwidth = width;
-   if (screenheight <= 0) screenheight = height;
-
-   switch (frame_rate_code) {
-      case 1:
-         time_between_frames = 1000000 * 1.0 / 23.976;
-         framerate = 23.976;
-         break;
-      case 2:
-         time_between_frames = 1000000 * 1.0 / 24.0;
-         framerate = 24.0;
-         break;
-      case 3:
-         time_between_frames = 1000000 * 1.0 / 25.0;
-         framerate = 25.0;
-         break;
-      case 4:
-         time_between_frames = 1000000 * 1.0 / 29.97;
-         framerate = 29.97;
-         break;
-     default:
-         mjpeg_log(LOG_ERROR, "Unknown format!!\n");
-         exit(1);
-   }
+   if (screenwidth <= 0) screenwidth = streaminfo->width;
+   if (screenheight <= 0) screenheight = streaminfo->height;
 
    /* Initialize the SDL library */
    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
@@ -132,9 +112,9 @@ int main(int argc, char *argv[])
    }
 
    /* yuv params */
-   yuv[0] = malloc(width * height * sizeof(unsigned char));
-   yuv[1] = malloc(width * height * sizeof(unsigned char) / 4);
-   yuv[2] = malloc(width * height * sizeof(unsigned char) / 4);
+   yuv[0] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char));
+   yuv[1] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
+   yuv[2] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
 
    screen = SDL_SetVideoMode(screenwidth, screenheight, 0, SDL_SWSURFACE);
    if ( screen == NULL ) {
@@ -147,7 +127,7 @@ int main(int argc, char *argv[])
          screenheight, screen->format->BitsPerPixel);
    }
 
-   yuv_overlay = SDL_CreateYUVOverlay(width, height, SDL_IYUV_OVERLAY, screen);
+   yuv_overlay = SDL_CreateYUVOverlay(streaminfo->width, streaminfo->height, SDL_IYUV_OVERLAY, screen);
    if ( yuv_overlay == NULL ) {
       mjpeg_log(LOG_ERROR, "SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
       exit(1);
@@ -163,10 +143,11 @@ int main(int argc, char *argv[])
    signal (SIGINT, sigint_handler);
 
    frame = 0;
+   time_between_frames = 1.e6 / streaminfo->framerate;
 
    gettimeofday(&time_now,0);
 
-   while ((yuv_read_frame(fd_in, yuv, width, height)) && (!got_sigint)) {
+   while ((n = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv))==Y4M_OK && (!got_sigint)) {
 
       /* Lock SDL_yuv_overlay */
       if ( SDL_MUSTLOCK(screen) ) {
@@ -185,12 +166,10 @@ int main(int argc, char *argv[])
 
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
-      SDL_UpdateRect(screen, 0, 0, width, height);
+      SDL_UpdateRect(screen, 0, 0, streaminfo->width, streaminfo->height);
 
-      //mjpeg_log(LOG_INFO, "Playing frame %4.4d - %s\r", frame, 
-         //print_status(frame, framerate));
       fprintf(stdout, "Playing frame %4.4d - %s\r", frame,
-         print_status(frame, framerate));
+         print_status(frame, streaminfo->framerate));
       fflush(stdout);
 
       while(get_time_diff(time_now) < time_between_frames) {
@@ -200,11 +179,15 @@ int main(int argc, char *argv[])
       gettimeofday(&time_now,0);
    }
 
+   if (n != Y4M_OK)
+      mjpeg_error("Couldn't read frame: %s\n",
+         y4m_errstr(n));
+
    for (n=0; n<3; n++) {
       free(yuv[n]);
    }
 
-   mjpeg_log(LOG_INFO, "Played %4.4d frames (%s)\n", frame, print_status(frame, framerate));
+   mjpeg_log(LOG_INFO, "Played %4.4d frames (%s)\n", frame, print_status(frame, streaminfo->framerate));
 
    SDL_FreeYUVOverlay(yuv_overlay);
    SDL_Quit();
