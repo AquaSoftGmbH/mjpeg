@@ -28,12 +28,10 @@ liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
-liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(PTHREAD_LIBS) liblavfile.la
+liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) 
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
-liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(PTHREAD_LIBS) $(SDL_LIBS) liblavfile.la liblavjpeg.la
+liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) 
 
 # *********************************************************************
 # The tools themselves
@@ -73,12 +71,11 @@ matteblend_flt_SOURCES = matteblend.flt.c yuv4mpeg.c ${lav_headers}
 matteblend_flt_LDADD = -L$(top_srcdir)/utils -lutils
 
 lavplay_SOURCES = lavplay.c
-lavplay_LDADD = -L$(top_srcdir)/utils -lutils \
-	liblavplay.la
+lavplay_LDADD = -L$(top_srcdir)/utils -lutils liblavplay.la $(PTHREAD_LIBS) $(SDL_LIBS) liblavjpeg.la liblavfile.la
+
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
-lavrec_LDADD = -L$(top_srcdir)/utils -lutils \
-	liblavrec.la
+lavrec_LDADD = -L$(top_srcdir)/utils -lutils liblavrec.la liblavfile.la $(PTHREAD_LIBS)
 
 testrec_SOURCES = testrec.c  audiolib.c  $(lav_headers)
 testrec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lutils
