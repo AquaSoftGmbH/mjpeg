@@ -43,10 +43,16 @@ void create_audio (GtkWidget *hbox);
 void create_video (GtkWidget *hbox);
 void set_mname (GtkWidget *menu_item, gpointer data);
 void add_mname (GtkWidget *wideget, gpointer data);
+void remove_mname (GtkWidget *wideget, gpointer data);
 
 /* Some Variables */
 GtkWidget *enter_machname;
+char remove_name[LONGOPT];
 
+/* =============================================================== */
+/* Start of the code */
+
+/* Here we may add the given name to the computer list */
 void add_mname (GtkWidget *wideget, gpointer data)
 {
 int i, do_not_insert;
@@ -56,24 +62,18 @@ do_not_insert = 0;
 
   val = gtk_entry_get_text (GTK_ENTRY(enter_machname));
 
-  if ( (strlen(val) > 1) && (strcmp(val,"localhost") != 0))
+  if ((strlen(val)>1) && (strlen(val)<LONGOPT) && (strcmp(val,"localhost")!=0))
   {
     machine_names= g_list_first(machine_names);
 
     for ( i = 0; i < g_list_length(machine_names); i++)
       {
-        if (strcmp(val,machine_names->data) == 0)
+        if (strcmp(val,g_list_nth_data(machine_names, i)) == 0)
           do_not_insert = 1;
-
-        printf ("debug val %s machinenames %s \n", val, machine_names->data);
-
-        machine_names = g_list_next (machine_names);
       }
 
-    printf ("\n debug do_not_insert %i \n",do_not_insert); 
-
     if (do_not_insert == 0)
-      machine_names = g_list_append (machine_names, val);
+      machine_names = g_list_append (machine_names, g_strdup(val));
 
     machine_names= g_list_first(machine_names);
   }
@@ -86,18 +86,41 @@ do_not_insert = 0;
 
 }
 
+/* Now we definitly remove the name of the machine from the list. */
+/* Could be I have to add the updating of the other Select boxes too */
+void remove_mname (GtkWidget *wideget, gpointer data)
+{
+int i;
+
+  if ( (strcmp((remove_name),"localhost") != 0) && (strlen(remove_name) > 0) )
+  {
+  machine_names= g_list_first(machine_names);
+  
+  for ( i = 0; i < (g_list_length(machine_names)); i++)
+    {
+      if (strcmp(remove_name ,(char*) g_list_nth_data(machine_names,i)) == 0)
+        {
+          machine_names = g_list_remove (machine_names, 
+                                          g_list_nth_data (machine_names, i));
+          break;
+        }
+    } 
+  }
+
+}
+
+/* Here we set a Value with the machine name that might be removed from the 
+ * list of aviable machines */
 void set_mname (GtkWidget *menu_item, gpointer data)
 {
-
-printf ("\n Wert: %s \n", (char*)data );
-
+  strcpy(remove_name, (char*)data);
 }
 
 /* Here we create the layout for the machine data */
 void create_machine(GtkWidget *hbox)
 {
 GtkWidget *label, *button_add, *table, *remove_mnames; 
-GtkWidget *menu, *menu_item;
+GtkWidget *menu, *menu_item, *button_remove;
 int tx, ty; /* table size x, y */
 int i; 
 
@@ -156,9 +179,11 @@ ty=2;
 
   tx++;
  
-  label = gtk_label_new (" Remove");
-  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
-  gtk_widget_show(label);
+  button_remove = gtk_button_new_with_label (" Remove ");
+  gtk_signal_connect(GTK_OBJECT(button_remove), "clicked",
+                                       GTK_SIGNAL_FUNC (remove_mname), NULL);
+  gtk_table_attach_defaults (GTK_TABLE (table),button_remove, tx,tx+1, ty,ty+1);
+  gtk_widget_show(button_remove);
   tx++;
 
   gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
