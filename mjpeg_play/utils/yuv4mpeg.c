@@ -86,7 +86,7 @@ ssize_t y4m_write(int fd, char *buf, size_t len)
 
    while (len > 0) {
      n = write(fd, buf, len);
-     if (n <= 0) return -len;  /* return amount left to write */
+     if (n < 0) return -len;  /* return amount left to write */
      buf += n;
      len -= n;
    }
@@ -462,7 +462,7 @@ int y4m_read_stream_header(int fd, y4m_stream_info_t *i)
 
    /* read the header line */
    for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
-     if (read(fd, p, 1) < 1) 
+     if (y4m_read(fd, p, 1)) 
        return Y4M_ERR_SYSTEM;
      if (*p == '\n') {
        *p = '\0';           /* Replace linefeed by end of string */
@@ -529,9 +529,15 @@ int y4m_read_frame_header(int fd, y4m_frame_info_t *i)
      Try to read "FRAME\n" all at once, and don't try to parse
      if nothing else is there...
   */
-  remain = y4m_read(fd, line, sizeof(Y4M_FRAME_MAGIC)-1+1);
-  if (remain < 0) return Y4M_ERR_SYSTEM;
-  if (remain > 0) return Y4M_ERR_EOF;
+  remain = y4m_read(fd, line, sizeof(Y4M_FRAME_MAGIC));
+  if (remain != 0)
+  {
+	  /* A clean EOF should end exactly at a frame-boundary */
+	  if( remain == sizeof(Y4M_FRAME_MAGIC) )
+		  return Y4M_ERR_EOF;
+	  else
+		  return Y4M_ERR_SYSTEM;
+  }
   if (strncmp(line, Y4M_FRAME_MAGIC, sizeof(Y4M_FRAME_MAGIC)-1))
     return Y4M_ERR_MAGIC;
   if (line[sizeof(Y4M_FRAME_MAGIC)-1] == '\n')
@@ -543,7 +549,7 @@ int y4m_read_frame_header(int fd, y4m_frame_info_t *i)
 
   /* proceed to get the tags... (overwrite the magic) */
   for (n = 0, p = line; n < Y4M_LINE_MAX; n++, p++) {
-    if (read(fd, p, 1) < 1)
+    if (y4m_read(fd, p, 1))
       return Y4M_ERR_SYSTEM;
     if (*p == '\n') {
       *p = '\0';           /* Replace linefeed by end of string */
@@ -745,7 +751,7 @@ const char *y4m_strerr(int err)
   switch (err) {
   case Y4M_OK:          return "no error";
   case Y4M_ERR_RANGE:   return "parameter out of range";
-  case Y4M_ERR_SYSTEM:  return "system error (failed read/write)";
+  case Y4M_ERR_SYSTEM:  return "stream ended unexpectedly (failed read/write)";
   case Y4M_ERR_HEADER:  return "bad stream or frame header";
   case Y4M_ERR_BADTAG:  return "unknown header tag";
   case Y4M_ERR_MAGIC:   return "bad header magic";

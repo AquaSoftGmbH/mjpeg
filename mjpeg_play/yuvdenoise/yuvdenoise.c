@@ -205,6 +205,15 @@ void deinterlace_frame_mmx (uint8_t * yuv[3]);
 
 void (*deinterlace_frame) (uint8_t * yuv[3]);
 
+
+static uint8_t *bufalloc(size_t size)
+{
+	uint8_t *ret = (uint8_t *)malloc(size);
+	if( ret == NULL )
+		mjpeg_error_exit1( "Out of memory: could not allocate buffer\n" );
+	return ret;
+}
+
 /*****************************************************************************
  * MAIN                                                                      *
  *****************************************************************************/
@@ -214,6 +223,8 @@ main (int argc, char *argv[])
 {
   int fd_in = 0;
   int fd_out = 1;
+  int luma_bufsize;
+  int chroma_bufsize;
   int errnr;
   char c;
   int i;
@@ -341,41 +352,48 @@ main (int argc, char *argv[])
     BY1 = (BY1>height)? height:BY1;
   }
   
-  /* allocate memory for buffers */
+  /* Allocate memory for buffers.  We add a "safety margin" of
+	 16 bytes because some SIMD block moves may "overshoot" a little.
+	 This doesn't matter for the image as we fill frame buffers 
+	 from top to bottom, but we want to avoid messing up the
+	 heap manager... 
+   */
 
-  yuv[0] = malloc (width * height * sizeof (uint8_t));
-  yuv[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  yuv[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  luma_bufsize = width * height * sizeof (uint8_t)+16;
+  chroma_bufsize = width * height * sizeof (uint8_t)/4+16;
+  yuv[0] = bufalloc (luma_bufsize);
+  yuv[1] = bufalloc (chroma_bufsize);
+  yuv[2] = bufalloc (chroma_bufsize);
 
-  yuv1[0] = malloc (width * height * sizeof (uint8_t));
-  yuv1[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  yuv1[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  yuv1[0] = bufalloc (luma_bufsize);
+  yuv1[1] = bufalloc (chroma_bufsize);
+  yuv1[2] = bufalloc (chroma_bufsize);
 
-  yuv2[0] = malloc (width * height * sizeof (uint8_t));
-  yuv2[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  yuv2[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  yuv2[0] = bufalloc (luma_bufsize);
+  yuv2[1] = bufalloc (chroma_bufsize);
+  yuv2[2] = bufalloc (chroma_bufsize);
 
-  avrg[0] = malloc (width * height * sizeof (uint8_t));
-  avrg[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  avrg[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  avrg[0] = bufalloc (luma_bufsize);
+  avrg[1] = bufalloc (chroma_bufsize);
+  avrg[2] = bufalloc (chroma_bufsize);
 
-  sub_t2[0] = malloc (width * height * sizeof (uint8_t));
-  sub_t2[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  sub_t2[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  sub_t2[0] = bufalloc (luma_bufsize);
+  sub_t2[1] = bufalloc (chroma_bufsize);
+  sub_t2[2] = bufalloc (chroma_bufsize);
 
-  sub_r2[0] = malloc (width * height * sizeof (uint8_t));
-  sub_r2[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  sub_r2[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  sub_r2[0] = bufalloc (luma_bufsize);
+  sub_r2[1] = bufalloc (chroma_bufsize);
+  sub_r2[2] = bufalloc (chroma_bufsize);
 
-  sub_t4[0] = malloc (width * height * sizeof (uint8_t));
-  sub_t4[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  sub_t4[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  sub_t4[0] = bufalloc (luma_bufsize);
+  sub_t4[1] = bufalloc (chroma_bufsize);
+  sub_t4[2] = bufalloc (chroma_bufsize);
 
-  sub_r4[0] = malloc (width * height * sizeof (uint8_t));
-  sub_r4[1] = malloc (width * height * sizeof (uint8_t) / 4);
-  sub_r4[2] = malloc (width * height * sizeof (uint8_t) / 4);
+  sub_r4[0] = bufalloc (luma_bufsize);
+  sub_r4[1] = bufalloc (chroma_bufsize);
+  sub_r4[2] = bufalloc (chroma_bufsize);
 
-  line_buf = malloc( width );
+  line_buf = bufalloc( width+16 );
 
 /* if needed, deinterlace frame */
 
@@ -431,7 +449,8 @@ main (int argc, char *argv[])
       y4m_write_frame (fd_out, &streaminfo, &frameinfo, yuv);
     }
 
-
+  if(  errnr !=  Y4M_ERR_EOF )
+	  mjpeg_error_exit1( "%s\n", y4m_strerr( errnr ) );
   /* free all used buffers and structures */
 
   y4m_fini_stream_info(&streaminfo);
