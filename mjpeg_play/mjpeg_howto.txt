@@ -133,7 +133,7 @@
   name of your card you have. The script is usually in /usr/src/driver-
   zoran/.  The zoran kernel driver below the kernel 2.4.4 do not work.
   You have to use the driver available from:
-  http://www.cicese.mx/~mirsev/Linux/DC10plus/
+  http://mjpeg.sourceforge.net/driver-zoran
 
   The driver for the Matrox Marvel card also works, more information
   about it: http://marvel.sourceforge.net
@@ -1545,7 +1545,7 @@
 
   7.6.3.  VCD Multiplexing Example
 
-  > mplex -f 1 sound.mpg video.mpg -o vcd_out.mpg
+  > mplex -f 1 sound.mp2 video.mpg -o vcd_out.mpg
 
   The -f 1 option turns on a lot of weird stuff that otherwise has no
   place in a respectable multiplexer!
