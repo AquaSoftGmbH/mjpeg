@@ -80,16 +80,16 @@ X_LIBS =  -L/usr/X11R6/lib
 X_PRE_LIBS =  -lSM -lICE
 x_libraries = /usr/X11R6/lib
 
-INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib -I/usr/lib/glib/include  -I /usr/local/src/quicktime
-SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib  -I /usr/local/src/quicktime
+SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav mpeg2enc
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/  -L/usr/lib -lglib
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ 
 lavplay_LDADD = -lmovtar -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L/usr/lib -lglib
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/
 lavrec_LDADD = -lmovtar -lmjpeg 
 
 lavvideo_SOURCES = lavvideo.c
@@ -103,10 +103,10 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(bin_PROGRAMS)
 
 
-DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DHAVE_LIBJPEG=1 -DBUILD_MJPEG=1 -DHAVE_LIBPTHREAD=1 -DHAVE_LIBPNG=1 -DHAVE_LIBJPEG=1 -DBUILD_QUICKTIME=1  -I. -I$(srcdir) 
+DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DHAVE_LIBJPEG=1 -DBUILD_MJPEG=1 -DHAVE_LIBPTHREAD=1 -DHAVE_LIBPNG=1 -DHAVE_LIBJPEG=1 -DHAVE_LIBGLIB=1 -DBUILD_QUICKTIME=1  -I. -I$(srcdir) 
 CPPFLAGS = 
 LDFLAGS = 
-LIBS = -L /usr/local/src/quicktime -ljpeg -lpng -lpthread -ljpeg  -lSDL -lquicktime
+LIBS = -L /usr/local/src/quicktime -lglib -ljpeg -lpng -lpthread -ljpeg  -lSDL -lquicktime
 lavplay_OBJECTS =  lavplay.o avilib.o audiolib.o lav_io.o editlist.o
 lavplay_DEPENDENCIES = 
 lavrec_OBJECTS =  lavrec.o avilib.o audiolib.o lav_io.o

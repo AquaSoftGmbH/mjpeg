@@ -8,8 +8,8 @@
 ##	gcc $(INCLUDES) -c v4l-conf.c
 
 ## EXTRA-DIST = README PLANS
-INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib @GLIB_CFLAGS@  @QUICKTIME_INCLUDE@
-SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav
+INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib  @QUICKTIME_INCLUDE@
+SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav mpeg2enc
 ## mpeg2enc taken out temporarily, definately *don't* want to include
 ## quicktime link here...
 
@@ -18,11 +18,11 @@ SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav
 ##
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/  @GLIB_LIBS@
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ 
 lavplay_LDADD = -lmovtar -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ @GLIB_LIBS@
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/
 lavrec_LDADD = -lmovtar -lmjpeg 
 
 lavvideo_SOURCES = lavvideo.c
