@@ -76,6 +76,7 @@ static int param_hires_quant = 0;
 static double param_act_boost = 2.0;
 static int param_video_buffer_size = 46;
 static int param_seq_hdr_every_gop = 0;
+static int param_seq_length_limit = 2000;
 
 static double framerates[9]=
     {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
@@ -123,7 +124,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:n:b:q:o:F:r:4:2:Q:v:stNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:4:2:Q:v:stNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -199,6 +200,15 @@ int main(argc,argv)
 			}
 			break;
 
+		case 'S' :
+			param_seq_length_limit = atoi(optarg);
+			if(param_seq_length_limit<1 )
+			{
+				fprintf(stderr,"-S option requires arg > 1\n");
+				nerr++;
+			}
+			break;
+			
 		case 's' :
 			param_seq_hdr_every_gop = 1;
 			break;
@@ -343,6 +353,11 @@ int main(argc,argv)
 	if(param_seq_hdr_every_gop ) printf("Sequence header for every GOP\n");
 	else printf( "Sequence header only for first GOP\n");
 		
+	if( param_seq_length_limit )
+		printf( "New Sequence every %d Mbytes\n", param_seq_length_limit );
+	else
+		printf( "Sequence unlimited length\n" );
+
 	printf("Search radius: %d\n",param_searchrad);
 
 	/* set params */
@@ -377,7 +392,7 @@ int main(argc,argv)
 	N.b.  don't try to free the resulting pointers, eh...
 	BUG: 	Of course this won't work if a char * won't fit in an int....
 */
-static uint8_t *bufalloc( size_t size )
+uint8_t *bufalloc( size_t size )
 {
 	char *buf = malloc( size + BUFFER_ALIGN );
 	int adjust;
@@ -472,18 +487,6 @@ static void init()
 		predframe[i]   = bufalloc(size);
 	}
 
-	cur_picture.qblocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
-
-	/* Initialise current transformed picture data tables
-	   These will soon become a buffer for transformed picture data to allow
-	   look-ahead for bit allocation etc.
-	 */
-	cur_picture.mbinfo = (
-		struct mbinfo *)bufalloc(mb_per_pict*sizeof(struct mbinfo));
-
-	cur_picture.blocks =
-		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
   
 	/* open statistics output file */
 	if (statname[0]=='-')
@@ -510,7 +513,6 @@ void error(text)
 static void readparmfile()
 {
 	int i;
-	int h,m,s,f;
 	int c;
 
 	sprintf(id_string,"Converted by mjpegtools mpeg2enc 1.3");
@@ -521,8 +523,7 @@ static void readparmfile()
 
 	inputtype = 0;  /* doesnt matter */
 	nframes = 999999999; /* determined by EOF of stdin */
-	frame0  = 0;
-	h = m = s = f = 0;
+
 	N = 12;      /* I frame distance */
 	M = 3;       /* I or P frame distance */
 	mpeg1           = (param_mpeg == 1);
@@ -576,6 +577,7 @@ static void readparmfile()
 	video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
 	seq_header_every_gop = param_seq_hdr_every_gop;
+	seq_length_limit = param_seq_length_limit;
 	low_delay       = 0;
 	constrparms     = mpeg1;       /* Will be reset, if not coompliant */
 	constrparms = 1;
@@ -716,13 +718,8 @@ static void readparmfile()
 	/* make sure MPEG specific parameters are valid */
 	range_checks();
 
-	frame_rate = framerates[frame_rate_code-1];
+	frame_rate = framerates[frame_rate_code];
 
-	/* timecode -> frame number */
-	tc0 = h;
-	tc0 = 60*tc0 + m;
-	tc0 = 60*tc0 + s;
-	tc0 = (int)(frame_rate+0.5)*tc0 + f;
 
 	if ( !mpeg1)
 	{

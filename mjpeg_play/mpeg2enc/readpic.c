@@ -170,8 +170,7 @@ int readframe( int num_frame,
    /* Read next look ahead chunk if this was the last 
 	  frame of current one */
 
-   /* We read fairly frequently... */
-   if(num_frame%(READ_LOOK_AHEAD/2) == (READ_LOOK_AHEAD/2-1)) 
+   if(frames_read - num_frame < READ_LOOK_AHEAD) 
    {
 	   read_gop();
    }

@@ -153,7 +153,7 @@ void putgophdr(int frame,int closed_gop, int seq_header )
   }
   alignbits();
   putbits(GOP_START_CODE,32); /* group_start_code */
-  tc = frametotc(tc0+frame);
+  tc = frametotc(frame);
   putbits(tc,25); /* time_code */
   putbits(closed_gop,1); /* closed_gop */
   putbits(0,1); /* broken_link */

@@ -66,8 +66,6 @@ int	d0i = 0, d0pb = 0;
 static double R;
 static int d;
 static double T;
-static int CarryR;
-static int CarryRLim;
 
 /* bitcnt_EOP - Position in generated bit-stream for latest
 				end-of-picture Comparing these values with the
@@ -105,7 +103,6 @@ double peak_act;
 
 static int Np, Nb;
 static int64_t S;
-static double IR;
 
 /* Note: eventually we may wish to tweak these to suit image content */
 static double Ki;    	/* Down-scaling of I/B/P-frame complexity */
@@ -208,26 +205,38 @@ static int scale_quant( pict_data_s *picture, double quant )
 	return iquant;
 }
 
-void rc_init_seq()
+/*********************
+
+ Initialise rate control parameters
+ params:  reinit - Rate control is being re-initialised during the middle
+                   of a run.  Don't reset adaptive parameters.
+ ********************/
+
+void rc_init_seq(int reinit)
 {
+
+	/* No bits unused from previous GOP....*/
+	R = 0;
+
+	/* Everything else already set or adaptive */
+	if( reinit )
+		return;
+
 	bits_per_mb = (double)bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
 	   rate as encoder is currently tending to under/over-shoot... in
 	   rate TODO: Reaction parameter is *same* for every frame type
 	   despite different weightings...  */
-	printf( "Frame rate = %.0f\n", frame_rate );
 	if (r==0)  
 		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
-	Ki = 1.2;  /* EXPERIMENT: ADJUST activities for I MB's */
+	Ki = 1.2;
 	Kb = 1.4;
 	Kp = 1.1;
 
 
-	/* remaining # of bits in GOP */
-	R = 0;
-	IR = 0;
+
 	/* Heuristic: In constant bit-rate streams we assume buffering
 	   will allow us to pre-load some (probably small) fraction of the
 	   buffers size worth of following data if earlier data was
@@ -236,8 +245,6 @@ void rc_init_seq()
 	*/
 
 
-	CarryR = 0;
-	CarryRLim = video_buffer_size / 3;
 	/* global complexity (Chi! not X!) measure of different frame types */
 	/* These are just some sort-of sensible initial values for start-up */
 
@@ -308,7 +315,7 @@ void rc_init_GOP(np,nb)
 		R +=  per_gop_bits;
 		gop_undershoot = 0;
 	}
-	IR = R;
+
 	Np = fieldpic ? 2*np+1 : np;
 	Nb = fieldpic ? 2*nb : nb;
 
@@ -469,7 +476,7 @@ static double calc_actj(pict_data_s *picture)
 			for( l = 0; l < 6; ++l )
 				actsum += 
 					(*pquant_weight_coeff_sum)
-					    ( cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
+					    ( picture->mbinfo[k].dctblocks[l], i_q_mat ) ;
 			actj = (double)actsum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;

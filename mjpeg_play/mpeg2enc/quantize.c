@@ -468,12 +468,12 @@ void iquantize( pict_data_s *picture )
 			for (j=0; j<block_count; j++)
 				iquant_intra(qblocks[k*block_count+j],
 							 qblocks[k*block_count+j],
-							 cur_picture.dc_prec,
-							 cur_picture.mbinfo[k].mquant);
+							 picture->dc_prec,
+							 picture->mbinfo[k].mquant);
 		else
 			for (j=0;j<block_count;j++)
 				iquant_non_intra(qblocks[k*block_count+j],
 								 qblocks[k*block_count+j],
-								 cur_picture.mbinfo[k].mquant);
+								 picture->mbinfo[k].mquant);
 	}
 }

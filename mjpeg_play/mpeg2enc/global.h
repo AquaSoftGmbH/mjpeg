@@ -72,6 +72,7 @@ void check_fast_motion_data (uint8_t *blk, char *label );
 void reset_thresholds  (int macroblocks_per_frame );
 /* mpeg2enc.c */
 void error (char *text);
+uint8_t *bufalloc( size_t size );
 
 /* predict.c */
 void init_predict();
@@ -140,7 +141,7 @@ extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 
 /* ratectl.c */
-void rc_init_seq (void);
+void rc_init_seq (int reinit);
 void rc_init_GOP (int np, int nb);
 void rc_init_pict (pict_data_s *picture);
 void rc_update_pict (pict_data_s *picture);
@@ -326,8 +327,6 @@ int video_buffer_size;
 /* Buffers frame data */
 EXTERN uint8_t ***frame_buffers;
 
-EXTERN pict_data_s cur_picture;
-
 /* Buffers for econstructed frames */
 EXTERN uint8_t *newrefframe[3], *oldrefframe[3], *auxframe[3];
 /* Pointers to original frames in frame_buffers */
@@ -374,7 +373,6 @@ EXTERN int N; /* number of frames in Group of Pictures */
 EXTERN int M; /* distance between I/P frames */
 EXTERN int P; /* intra slice refresh interval */
 EXTERN int nframes; /* total number of frames to encode */
-EXTERN int frame0, tc0; /* number and timecode of first frame */
 EXTERN int mpeg1; /* ISO/IEC IS 11172-2 sequence */
 EXTERN int fieldpic; /* use field pictures */
 
@@ -419,6 +417,7 @@ EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 
 EXTERN int mc_22_red;			/* Motion compensation stages						*/
 
 EXTERN int seq_header_every_gop;
+EXTERN int seq_length_limit;
 EXTERN int vbv_buffer_code;   /* Code for size of VBV buffer (* 16 kbit) */
 EXTERN double vbv_buffer_size; /* Size code codes for... */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
