@@ -1,6 +1,6 @@
 ############### BCBASE
 
-CFLAGS = -O6 -I../jpeg-6b-mmx
+CFLAGS = -O6 -I../jpeg-mmx
 
 OBJS = \
 	atom.o \
