@@ -98,11 +98,16 @@ AC_CHECK_LIB(jpeg,jpeg_set_quality)
 AC_CHECK_LIB(glib,g_strsplit)
 
 dnl -- Quicktime checks --
-if test -r /usr/local/src/quicktime
+if test -r ../quicktime
 then
-  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime
+  DEFAULT_QUICKTIME_LIBDIR=`pwd`/../quicktime
 else
-  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime4linux-1.2
+  if test -r /usr/local/src/quicktime
+    then
+      DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime
+    else
+      DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime4linux-1.2
+    fi
 fi
 	            
 AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime source dir [/usr/local/src/quicktime] ], 
@@ -166,7 +171,7 @@ AC_OUTPUT(Makefile
 	mjpeg/Makefile
 	mpeg2enc/Makefile
 	aenc/Makefile
-    mplex/Makefile
+	mplex/Makefile
     )
 
 echo ""
