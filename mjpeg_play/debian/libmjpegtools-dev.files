@@ -1,4 +1,3 @@
-usr/bin/mjpegtools-config
 usr/include
 usr/lib/*.{a,la,so}
 usr/lib/pkgconfig

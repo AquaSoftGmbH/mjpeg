@@ -1,3 +1,9 @@
+mjpegtools (1.7.0-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Sun,  5 Sep 2004 17:16:43 +0900
+
 mjpegtools (1.6.3-2) unstable; urgency=low
 
   * Configure option --enable-cmov-extension has been removed,
