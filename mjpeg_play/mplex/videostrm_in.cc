@@ -63,12 +63,10 @@ void VideoStream::ScanFirstSeqHeader()
 	if (pict_rate >0 && pict_rate <= mpeg_num_framerates)
     {
 		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(pict_rate));
-		film_rate = 1;
 	}
     else
     {
 		frame_rate = 25.0;
-		film_rate = 1;
 	}
 
 }
@@ -99,7 +97,7 @@ void VideoStream::Init ( const int stream_num )
 	AU_hdr = SEQUENCE_HEADER;
 	AU_pict_data = 0;
 	AU_start = 0LL;
-
+    
     OutputSeqhdrInfo();
 }
 
@@ -230,30 +228,33 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			/* We have reached AU's picture data... */
 			AU_pict_data = 1;
 			
+            prev_temp_ref = temporal_reference;
 			temporal_reference = bs.getbits( 10);
 			access_unit.type   = bs.getbits( 3);
 
 			/* Now scan forward a little for an MPEG-2 picture coding extension
 			   so we can get pulldown info (if present) */
-            film_rate = 1;
-			if( film_rate &&
-				bs.seek_sync(EXT_START_CODE, 32, 64) &&
+			if( bs.seek_sync(EXT_START_CODE, 32, 64) &&
                 bs.getbits(4) == CODING_EXT_ID)
 			{
 				/* Skip: 4 F-codes (4)... */
 				(void)bs.getbits(16); 
-                /* Skip: DC Precision(2), pict struct (2)
-                   topfirst (1)  frame pred dct (1), 
+                /* Skip: DC Precision(2) */
+                (void)bs.getbits(2);
+                pict_struct = bs.getbits(2);
+                /* Skip: topfirst (1) frame pred dct (1),
                    concealment_mv(1), q_scale_type (1), */
-				(void)bs.getbits(8);	
+				(void)bs.getbits(4);	
 				/* Skip: intra_vlc_format(1), alternate_scan (1) */
 				(void)bs.getbits(2);	
 				repeat_first_field = bs.getbits(1);
 				pulldown_32 |= repeat_first_field;
+
 			}
 			else
 			{
 				repeat_first_field = 0;
+                pict_struct = PIC_FRAME;
 			}
 				
 			if( access_unit.type == IFRAME )
@@ -395,7 +396,19 @@ void VideoStream::OutputSeqhdrInfo ()
 
 void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 {
-	if( pulldown_32 )
+    if( pict_struct != PIC_FRAME )
+    {
+		DTS = static_cast<clockticks>
+			(fields_presented * (double)(CLOCKS/2) / frame_rate);
+        int dts_fields = temporal_reference*2 + group_start_field+1;
+        if( temporal_reference == prev_temp_ref )
+            dts_fields += 1;
+        PTS =
+            static_cast<clockticks>(dts_fields* (double)(CLOCKS/2) / frame_rate);
+		access_unit.porder = temporal_reference + group_start_pic;
+        fields_presented += 1;
+    }	
+    else if( pulldown_32 )
 	{
 		int frames2field;
 		int frames3field;
@@ -417,7 +430,7 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 			((frames2field*2 + frames3field*3 + group_start_field+1) * (double)(CLOCKS/2) / frame_rate);
 		access_unit.porder = temporal_reference + group_start_pic;
 	}
-	else 
+    else
 	{
 		DTS = static_cast<clockticks> 
 			(decoding_order * (double)CLOCKS / frame_rate);

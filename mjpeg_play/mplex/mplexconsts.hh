@@ -15,6 +15,10 @@
 #define DFRAME                  4
 #define NOFRAME                 5
 
+#define PIC_TOP_FIELD 1
+#define PIC_BOT_FIELD 2
+#define PIC_FRAME 3
+
 #define CODING_EXT_ID       8
 #define AUDIO_SYNCWORD		0x7ff
 

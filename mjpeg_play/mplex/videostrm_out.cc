@@ -45,6 +45,8 @@ VideoStream::VideoStream(IBitStream &ibs, OutputStream &into )	:
 	group_start_field=0;
     temporal_reference=0;
 	pulldown_32 = 0;
+    temporal_reference = -1;   // Needed to recognise 2nd field of 1st
+                               // frame in a field pic sequence
 	last_buffered_AU=0;
 	max_bits_persec = 0;
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */

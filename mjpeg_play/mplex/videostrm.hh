@@ -108,11 +108,12 @@ protected:
     unsigned int group_order;
     unsigned int group_start_pic;
 	unsigned int group_start_field;
-    unsigned long temporal_reference;
-    unsigned short pict_rate;
+    int temporal_reference;
+    unsigned int pict_rate;
+    unsigned int pict_struct;
 	int pulldown_32;
 	int repeat_first_field;
-	int film_rate;
+	int prev_temp_ref;
     double frame_rate;
 	unsigned int max_bits_persec;
 	int AU_pict_data;
