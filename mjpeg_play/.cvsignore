@@ -30,3 +30,4 @@ compile
 mjpegtools.spec
 autom4te.cache
 autom4te-2.53.cache
+*-stamp

@@ -1,2 +1,10 @@
 Makefile
 Makefile.in
+*.substvars
+*i686*
+build-*
+inst-*
+libmjpegtools-[0-9]*
+libmjpegtools-dev
+mjpegtools
+files
