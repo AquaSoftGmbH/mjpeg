@@ -268,31 +268,6 @@ class Guide:
 		label.grid(row=row, column=0, stick='NSEW')
 		return label
 
-	def listing_button(self,list_time, station_id, row, col, command):
-		listing = self.search(station_id, list_time)
-		if listing == None:
-			return 	1
-
-		id,channel,start_time,end_time,length,title,des_id = listing
-		span = int((end_time - list_time) / 1800)
-
-		if span + col > self.columns + 1:
-			span = self.columns - col + 1
-		if span < 1:
-			span = 1
-
-		if len(title) > span * 12:
-			title = title[:span * 12]
-		
-		label = Button(self.listing_frame,
-			command=GuideCmd(self.info, id),
-			text=title)
-		label.grid(column=col, row=row, columnspan=span, stick='NSEW')
-		label.bind("<Enter>", GuideCmd(self.info_in, id)) 
-		label.bind("<Leave>", GuideCmd(self.info_out, id)) 
-
-		return span
-
 	def  done(self):
 		print "executing done"
 		sys.exit(0)
@@ -404,6 +379,8 @@ class Guide:
 
 		date_string = time.strftime("%m/%d/%Y", time_data)
 
+		seconds = int(seconds/1800)*1800
+
 		time_index = time_data[3]
 		self.time_index.set(self.times[time_index])
 
@@ -419,24 +396,51 @@ class Guide:
 
 		col = 1
 		sec = seconds
+
 		while col <= self.columns:
 			self.time_button(sec, col)
 			sec = sec + (30 * 60)
 			col = col + 1
 
 		current_row = 1
+
 		for station in station_list:
+			sec = int(seconds/1800) * 1800
+			data = dbm.search_listing(station, sec, sec + self.columns * 1800 + 1800)
 			self.station_button(station, current_row)
 			col = 1
-			sec = int(seconds/1800) * 1800
-
+			index = 0
 			while col <= self.columns:
-				span = self.listing_button(sec,
-					station, current_row,col, "")
+				id, channel, start_time, end_time, length, title = data[index]
+				index += 1
+				if end_time <= sec:
+					continue
+
+				if index >= len(data):
+					span = 100
+				else:
+					span =(data[index][2] - sec)/ 1800
+
+				if span + col > self.columns + 1:
+					span = self.columns - col + 1
+
 				if span < 1:
 					span = 1
+
+				span = int(span)
+				if len(title) > span * 12:
+					title = title[:span * 12]
+		
+				label = Button(self.listing_frame,
+					command=GuideCmd(self.info, id),
+					text=title)
+				label.grid(column=col, row=current_row, columnspan=span, stick='NSEW')
+				label.bind("<Enter>", GuideCmd(self.info_in, id)) 
+				label.bind("<Leave>", GuideCmd(self.info_out, id)) 
+
 				col = col + span
 				sec = sec + span * (30 * 60)
+
 			current_row = current_row + 1
 
 		set_weight(self.listing_frame, start_column=1)
