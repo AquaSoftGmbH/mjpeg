@@ -412,12 +412,24 @@ void unlock_update_screen()
   SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
 }
 
+static int reentry = 0;
 void x_shutdown(int a)
 {
-  printf("Ctrl-C shutdown (mjpeg = %p) !\n", mjpeg);
-  if (el.has_audio && audio_enable) audio_shutdown();
+	if( reentry )				/* Not perfect but good enough... */
+		return;
+	reentry = 1;
+  printf("Ctrl-C shutdown!\n");
+  
+  if (el.has_audio && audio_enable) 
+	  audio_shutdown();
+
   mjpeg_close(mjpeg);
-  if (soft_play) SDL_Quit();
+
+  if (soft_play) 
+	  SDL_Quit();
+  /* Force direct exit - main thread could be in a wait on the now killed
+	 mjpeg thread and suchlike things. */
+  _exit(1);
 }
 
 #define stringify( str ) #str
@@ -661,6 +673,13 @@ int main(int argc, char ** argv)
 
 	signal(SIGINT, x_shutdown);
 
+   /* After we have fired up the audio and video threads system (which
+	  are assisted if we're installed setuid root, we want to set the
+	  effective user id to the real user id */
+   if( seteuid( getuid() ) < 0 )
+	   system_error("Can't set effective user-id: ",
+					(char *)sys_errlist[errno]);
+
    /* Fill all buffers first */
 
 	for(nqueue = 0; nqueue < mjpeg->br.count; nqueue++)
@@ -832,7 +851,6 @@ int main(int argc, char ** argv)
 				lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
 				//mjpeg_close(mjpeg);
 				x_shutdown(1);
-				exit(1);
 			}
 			nsync++;
 			/* Look on clock */
