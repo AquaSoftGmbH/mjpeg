@@ -507,49 +507,96 @@ static int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
 }
 
 
-void init_x86_quantization( struct QuantizerCalls *qcalls,
-							int mpeg1)
-{
-	int flags = cpu_accel();
-	const char *opt_type1, *opt_type2;
-	if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
-	{
-		if( (flags & ACCEL_X86_3DNOW) != 0 )
-		{
-			opt_type1 = "3DNOW and";
-			qcalls->pquant_non_intra = quant_non_intra_3dnow;
-		}
-		else if ( (flags & ACCEL_X86_SSE) != 0 )
-		{
-			opt_type1 = "SSE and";
-			qcalls->pquant_non_intra = quant_non_intra_sse;
-		}
-		else 
-		{
-			opt_type1 = "MMX and";
-			qcalls->pquant_non_intra = quant_non_intra_mmx;
-		}
+void init_x86_quantization( struct QuantizerCalls *qcalls, int mpeg1)
+    {
+    int flags = cpu_accel();
+    int d_quant_nonintra, d_weight_intra, d_weight_nonintra, d_iquant_intra;
+    int d_iquant_nonintra;
+    const char *opt_type1 = "", *opt_type2 = "";
 
-		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+    if  ((flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
+	{
+	d_quant_nonintra = disable_simd("quant_nonintra");
+	d_weight_intra = disable_simd("quant_weight_intra");
+	d_weight_nonintra = disable_simd("quant_weight_nonintra");
+	d_iquant_intra = disable_simd("iquant_intra");
+	d_iquant_nonintra = disable_simd("iquant_nonintra");
+
+	if ((flags & ACCEL_X86_3DNOW) != 0)
+	   {
+	   if  (d_quant_nonintra == 0)
+	       {
+	       opt_type1 = "3DNOW and";
+	       qcalls->pquant_non_intra = quant_non_intra_3dnow;
+	       }
+	   }
+        else if ((flags & ACCEL_X86_SSE) != 0)
+	    {
+	    if  (d_quant_nonintra == 0)
 		{
-			opt_type2 = "EXTENDED MMX";
-			qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-			qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
-            if( mpeg1 )
-                qcalls->piquant_non_intra = iquant_non_intra_m1_extmmx;
-            else
-                qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
-        }
-		else
-		{
-			opt_type2 = "MMX";
-			qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
-			qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
-            if( mpeg1 )
-                qcalls->piquant_non_intra = iquant_non_intra_m1_mmx;
-            else
-                qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
+	        opt_type1 = "SSE and";
+	        qcalls->pquant_non_intra = quant_non_intra_sse;
 		}
-		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
+	    }
+	else 
+	    {
+	    if  (d_quant_nonintra == 0)
+		{
+	        opt_type1 = "MMX and";
+	        qcalls->pquant_non_intra = quant_non_intra_mmx;
+		}
+	    }
+
+	if ((flags & ACCEL_X86_MMXEXT) != 0)
+	    {
+	    opt_type2 = "EXTENDED MMX";
+	    if (d_weight_intra == 0)
+	       qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+	    if (d_weight_nonintra == 0)
+	       qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+
+            if (mpeg1)
+		{
+		if (d_iquant_nonintra == 0)
+                   qcalls->piquant_non_intra = iquant_non_intra_m1_extmmx;
+		}
+             else
+		{
+		if (d_iquant_nonintra == 0)
+                   qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
+		}
+             }
+	 else
+	     {
+	     opt_type2 = "MMX";
+	     if (d_weight_intra == 0)
+	        qcalls->pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+	     if (d_weight_nonintra == 0)
+	        qcalls->pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+
+             if (mpeg1)
+		{
+		if (d_iquant_nonintra == 0)
+                   qcalls->piquant_non_intra = iquant_non_intra_m1_mmx;
+		}
+             else
+		{
+		if (d_iquant_nonintra == 0)
+                   qcalls->piquant_non_intra = iquant_non_intra_m2_mmx;
+		}
+	     }
+
+	 if  (d_quant_nonintra)
+	     mjpeg_info(" Disabling quant_non_intra");
+	 if  (d_iquant_intra)
+	     mjpeg_info(" Disabling iquant_intra");
+	 if  (d_iquant_nonintra)
+	     mjpeg_info(" Disabling iquant_nonintra");
+	 if  (d_weight_intra)
+	     mjpeg_info(" Disabling quant_weight_intra");
+	 if (d_weight_nonintra)
+	     mjpeg_info(" Disabling quant_weight_nonintra");
+
+	mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
 	}
-}
+    }
