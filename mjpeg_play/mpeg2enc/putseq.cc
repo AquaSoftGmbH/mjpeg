@@ -325,7 +325,9 @@ void SeqEncoder::GopStart( StreamState *ss )
 	*/
 	if( encparams.M-1 > 0 )
 	{
-		ss->bs_short = (encparams.M - ((ss->gop_length-(ss->i==0)) % encparams.M))%encparams.M;
+        int pics_in_bigrps = 
+            ss->closed_gop ? ss->gop_length - 1 : ss->gop_length;
+		ss->bs_short = (encparams.M - pics_in_bigrps % encparams.M)%encparams.M;
 		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
 	}
 	else
@@ -455,7 +457,6 @@ static unsigned int checksum( uint8_t *buf, unsigned int len )
 
 void SeqEncoder::SequentialEncode(Picture *picture)
 {
-	/* ALWAYS do-able */
 	mjpeg_debug("Frame start %d %c %d %d",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
@@ -464,7 +465,7 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 
 
 	if( picture->pict_struct != FRAME_PICTURE )
-		mjpeg_info("Field %s (%d)",
+		mjpeg_debug("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
 			);
@@ -480,7 +481,7 @@ void SeqEncoder::SequentialEncode(Picture *picture)
 	if( encparams.fieldpic )
 	{
 		picture->Set2ndField();
-		mjpeg_info("Field %s (%d)",
+		mjpeg_debug("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
 			);
@@ -525,14 +526,14 @@ void SeqEncoder::ParallelEncodeWorker()
 		mp_semaphore_signal( &picture_started, 1);
 
 		/* ALWAYS do-able */
-		mjpeg_info("Frame %d  %c %d %d",  
-				   picture->decode,  
-                   pict_type_char[picture->pict_type],
-				   picture->temp_ref,
-				   picture->present);
+		mjpeg_debug("Frame %d  %c %d %d",  
+                    picture->decode,  
+                    pict_type_char[picture->pict_type],
+                    picture->temp_ref,
+                    picture->present);
 
 		if( picture->pict_struct != FRAME_PICTURE )
-			mjpeg_info("Field %s (%d)",
+			mjpeg_debug("Field %s (%d)",
 					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 					   picture->pict_struct
 				);
@@ -579,9 +580,9 @@ void SeqEncoder::ParallelEncodeWorker()
 		{
 			picture->Set2ndField();
 
-			mjpeg_info("Field %s (%d)",
-					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-					   picture->pict_struct
+			mjpeg_debug("Field %s (%d)",
+                        (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+                        picture->pict_struct
 				);
 
             picture->EncodeMacroBlocks();
@@ -739,6 +740,13 @@ void SeqEncoder::Encode()
         printf( "Mark incomplete: %d %08x prev = %08x ref = %08x\n", index, cur_picture, cur_picture->ref_frame, cur_picture->prev_frame );
 #endif
 		sync_guard_update( &cur_picture->completion, 0 );
+        mjpeg_info( "Fetch base %d+%d : %d %d %2d -> %d",  
+                    ss.gop_start_frame,
+                    cur_picture->temp_ref,
+                    ss.bigrp_length,
+                    ss.b,
+                    ss.g,
+                    cur_picture->temp_ref+ss.gop_start_frame );
 		reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
                           cur_picture->curorg );
 
