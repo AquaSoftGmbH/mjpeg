@@ -1163,7 +1163,7 @@ int main(int argc, char ** argv)
 					arg1=movie.avi/mov/movtar, arg2/arg3=start/stop frames */
 					int nc1, nc2, dest;
 					char movie[256];
-					sscanf(input_buffer+2,"%s %d %d %d",&movie,&nc1,&nc2,&dest);
+					sscanf(input_buffer+2,"%s %d %d %d",movie,&nc1,&nc2,&dest);
 					add_new_frames(movie, nc1, nc2, dest);
 				}
 
