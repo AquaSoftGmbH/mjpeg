@@ -9,7 +9,7 @@
     Copyright (C) 2000 Rainer Johanni <Rainer@Johanni.de>
     Additions by Gernot Ziegler <gz@lysator.liu.se>
 
-    Usage: lavtrans [options] filename [filename ...]
+    Usage: lavtrans [options] filename [filename ...] <-i num>
 
     where options are as follows:
 
@@ -28,6 +28,9 @@
                w: WAV file (of sound only)
 
     Both options are mandatory!
+
+    -i num     Grab a single frame (num) from the input to the outputfile
+               (you need -f i for this!)
 
     Filename options like in lavplay (optional +p/+n followed by
     an arbitrary number of AVI / Quicktime / movtar files or edit lists).
@@ -63,6 +66,8 @@ static EditList el;
 static char *outfile=0;
 static char format=0;
 
+static int process_image_frame = -1; /* All, >-1 means not all */
+
 #define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
 
 #define FOURCC_RIFF     FOURCC ('R', 'I', 'F', 'F')
@@ -93,13 +98,14 @@ int	verbose = 2;
 
 void Usage(char *str)
 {
-   fprintf(stderr,"Usage: %s -o <outputfile> -f [aqiw] filenames\n",str);
+   fprintf(stderr,"Usage: %s -o <outputfile> -f [aqiw] filenames [<-i num>]\n",str);
    fprintf(stderr,"          -f a    output AVI file\n");
    fprintf(stderr,"          -f q    output Quicktime file\n");
    fprintf(stderr,"          -f m    output movtar file\n");
    fprintf(stderr,"          -f i    output single JPEG images, "
                   "-o option mut be a valid format string\n");
    fprintf(stderr,"          -f w    output WAV file (sound only!)\n");
+   fprintf(stderr,"          -i num  convert single frame to JPEG\n");
    exit(1);
 }
 
@@ -122,7 +128,7 @@ int main(int argc, char ** argv)
    int res, n, nframe, nv, na;
    int forcestereo = 0;
 
-   while( (n=getopt(argc,argv,"o:f:")) != EOF)
+   while( (n=getopt(argc,argv,"o:f:i:")) != EOF)
    {
       switch(n) {
 
@@ -134,6 +140,10 @@ int main(int argc, char ** argv)
             format = optarg[0];
             break;
 
+         case 'i':
+            process_image_frame = atoi(optarg);
+            break;
+
          case '?':
             exit(1);
       }
@@ -142,6 +152,13 @@ int main(int argc, char ** argv)
    if(outfile==0 || format==0) Usage(argv[0]);
    if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);
    if(optind>=argc) Usage(argv[0]);
+
+   if (process_image_frame != -1 && format!='i')
+   {
+      printf("If you specify \'-i <num>\', you must use jpg (\'-f i\') as output:\n"
+             "   lavtrans -o image.jpg -f i movie.avi -i <frame_num>\n");
+      exit(1);
+   }
 
    /* Get and open input files */
 
@@ -209,6 +226,21 @@ int main(int argc, char ** argv)
 
    vbuff = (char*) malloc(el.max_frame_size);
    if(vbuff==0) { fprintf(stderr,"malloc failed\n"); exit(1); }
+
+   /* Quick hack by Ronald to enable one-frame picture grabbing */
+   if (process_image_frame != -1)
+   {
+      nv = el_get_video_frame(vbuff, process_image_frame, &el);
+      sprintf(imgfname,outfile);
+      imgfd = fopen(imgfname,"w");
+      if(imgfd==0) system_error("opening image file","fopen");
+      res = fwrite(vbuff,nv,1,imgfd);
+      if(res!=1) system_error("writing image","fwrite");
+      fclose(imgfd);
+      printf("Frame %d grabbed\n", process_image_frame);
+      exit(1);
+   }
+
 
    for(nframe=0;nframe<el.video_frames;nframe++)
    {
