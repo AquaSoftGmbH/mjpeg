@@ -98,8 +98,8 @@ void init_quantizer()
 		}
 		else 
 		{
-			opt_type1 = "";
-			pquant_non_intra = quant_non_intra;
+			opt_type1 = "MMX";
+			pquant_non_intra = quant_non_intra_mmx;
 		}
 
 		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
