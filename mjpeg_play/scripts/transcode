@@ -69,8 +69,8 @@ done
 
 shift $[$OPTIND-1]
 sleep $[$sleep*60]
-#cat $* |  mpeg2dec -s -m $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
-cat $* |  mpeg2dec -s -m $decode |  ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
+#cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
+cat $* |  mpeg2dec -s -o $decode |  ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
 fifo=/tmp/tcfifo$$
 sync=/tmp/sync$$
 mkfifo $fifo
