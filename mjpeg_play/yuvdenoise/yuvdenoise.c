@@ -11,7 +11,7 @@
  *                                                                          *
  ****************************************************************************/
 
-
+/* Anjuta is most cool ! */
 
 #include <stdio.h>
 #include <math.h>
@@ -21,7 +21,7 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 #include "config.h"
-
+#include "mmx.h"
 
 
 /*****************************************************************************
@@ -130,7 +130,7 @@ void denoise_frame (uint8_t *ref[3]);
 void antiflicker_reference (uint8_t *frame[3]);
 
 
-
+            
 /*****************************************************************************
  * MAIN                                                                      *
  *****************************************************************************/
@@ -421,7 +421,7 @@ average_frames (uint8_t *ref[3], uint8_t *avg[3])
     for (x = 0; x < width; x++)
       {
         *(avg[0] + x + y * width) =
-          (*(avg[0] + x + y * width) * 7 + *(ref[0] + x + y * width) * 1) / 8;
+          (*(avg[0] + x + y * width) * 4 + *(ref[0] + x + y * width) * 1) / 5;
       }
 
   /* blend U and V components */
@@ -430,10 +430,10 @@ average_frames (uint8_t *ref[3], uint8_t *avg[3])
     for (x = 0; x < uv_width; x++)
       {
         *(avg[1] + x + y * uv_width) =
-          (*(avg[1] + x + y * uv_width) * 7 + *(ref[1] + x + y * uv_width) * 1) / 8;
+          (*(avg[1] + x + y * uv_width) * 4 + *(ref[1] + x + y * uv_width) * 1) / 5;
 
         *(avg[2] + x + y * uv_width) =
-          (*(avg[2] + x + y * uv_width) * 7 + *(ref[2] + x + y * uv_width) * 1) / 8;
+          (*(avg[2] + x + y * uv_width) * 4 + *(ref[2] + x + y * uv_width) * 1) / 5;
       }
 }
 
@@ -508,6 +508,11 @@ subsample_frame (uint8_t *dst[3], uint8_t *src[3])
 inline uint32_t
 calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
+  #ifndef HAVE_ASM_MMX
+  /*****************************************************************************
+   * if machine does not support MMX instructions                              *
+   *****************************************************************************/
+  
   int dx, dy, Y;
   uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
@@ -525,6 +530,86 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
       rs += width;
     }
   return d;
+    
+  #else
+  /*****************************************************************************
+   * if machine does support MMX instructions    ;-)                           *
+   *****************************************************************************/
+  
+  uint32_t d = 0;
+  uint8_t *fs = frm + frm_offs;
+  uint8_t *rs = ref + ref_offs;
+  static uint16_t a[4] = {0,0,0,0};  
+  int i;
+  
+  switch (div)
+    {
+      case 1: /* 8x8 */
+        
+        pxor_r2r ( mm0, mm0 );                    /* clear mm0 */
+        pxor_r2r ( mm7, mm7 );                    /* clear mm7 */
+    
+        for(i=8;i!=0;i--)
+        {
+          movq_m2r        ( *(fs), mm1 );       /* 8 Pixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 8 Pixels from reference frame to mm2 */
+  
+          movq_r2r        ( mm2, mm3 );         /* hold a copy of mm2 in mm3 */      
+          psubusb_r2r     ( mm1, mm3 );         /* positive differences between mm2 and mm1 */
+          psubusb_r2r     ( mm2, mm1 );         /* positive differences between mm1 and mm3 */
+          paddusb_r2r     ( mm3, mm1 );         /* mm2 now contains abs(mm1-mm2) */
+  
+          movq_r2r        ( mm1, mm2 );         /* copy mm1 to mm2 */
+          
+          punpcklbw_r2r   ( mm7, mm1 );         /* unpack mm1 into mm1 and mm2 */
+          punpckhbw_r2r   ( mm7, mm2 );         
+        
+          paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
+          paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
+        
+          fs += width;                          /* next row */
+          rs += width;
+        }
+        
+        movq_r2m ( mm0, *a );
+        d=a[0]+a[1]+a[2]+a[3];
+      break;
+        
+      case 2: /* 4x4 */
+        
+        pxor_r2r ( mm0, mm0 );                    /* clear mm0 */
+        pxor_r2r ( mm7, mm7 );                    /* clear mm7 */
+    
+        for(i=4;i!=0;i--)
+        {
+          movd_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
+          movd_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
+                                                /* Bits 32-63 are zero'd ... */
+          movq_r2r        ( mm2, mm3 );         /* hold a copy of mm2 in mm3 */      
+          psubusb_r2r     ( mm1, mm3 );         /* positive differences between mm2 and mm1 */
+          psubusb_r2r     ( mm2, mm1 );         /* positive differences between mm1 and mm3 */
+          paddusb_r2r     ( mm3, mm1 );         /* mm2 now contains abs(mm1-mm2) */
+  
+          movq_r2r        ( mm1, mm2 );         /* copy mm1 to mm2 */
+          
+          punpcklbw_r2r   ( mm7, mm1 );         /* unpack mm1 into mm1 and mm2 */
+          punpckhbw_r2r   ( mm7, mm2 );         
+        
+          paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
+          paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
+        
+          fs += width;                          /* next row */
+          rs += width;
+        }
+        
+        movq_r2m ( mm0, *a );
+        d=a[0]+a[1]+a[2]+a[3];
+      break;
+    }
+  
+  return d;
+
+  #endif
 }
 
 /*****************************************************************************
@@ -534,6 +619,11 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
 inline uint32_t
 calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
+  #ifndef HAVE_ASM_MMX
+  /*****************************************************************************
+   * if machine does not support MMX instructions                              *
+   *****************************************************************************/
+  
   int dx, dy, Y;
   uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
@@ -551,6 +641,109 @@ calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs,
       rs += uv_width;
     }
   return d;
+
+  #else
+  /*****************************************************************************
+   * if machine does support MMX instructions    ;-)                           *
+   *****************************************************************************/
+  
+  uint32_t d = 0;
+  uint8_t *fs = frm + frm_offs;
+  uint8_t *rs = ref + ref_offs;
+  static uint16_t a[4] = {0,0,0,0};  
+  int i;
+  
+  switch (div)
+    {
+      case 1: /* 4x4 --> subsampled chroma planes !*/
+        
+        pxor_r2r ( mm0, mm0 );                    /* clear mm0 */
+        pxor_r2r ( mm7, mm7 );                    /* clear mm7 */
+    
+        for(i=4;i!=0;i--)
+        {
+          movd_m2r        ( *(fs), mm1 );       /* 4 Chroma-Pixels from filtered frame to mm1 */
+          movd_m2r        ( *(rs), mm2 );       /* 4 Chroma-Pixels from reference frame to mm2 */
+                                                /* high words are zero'd automatically */
+          
+          movq_r2r        ( mm2, mm3 );         /* hold a copy of mm2 in mm3 */      
+          psubusb_r2r     ( mm1, mm3 );         /* positive differences between mm2 and mm1 */
+          psubusb_r2r     ( mm2, mm1 );         /* positive differences between mm1 and mm3 */
+          paddusb_r2r     ( mm3, mm1 );         /* mm2 now contains abs(mm1-mm2) */
+  
+          movq_r2r        ( mm1, mm2 );         /* copy mm1 to mm2 */
+          
+          punpcklbw_r2r   ( mm7, mm1 );         /* unpack mm1 into mm1 and mm2 */
+          punpckhbw_r2r   ( mm7, mm2 );         
+        
+          paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
+          paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
+        
+          fs += uv_width;                       /* next row */
+          rs += uv_width;
+        }
+        
+        movq_r2m ( mm0, *a );
+        d=a[0]+a[1]+a[2]+a[3];
+      break;
+        
+      case 2: /* 2x2 */
+        
+        pxor_r2r ( mm0, mm0 );                    /* clear mm0 */
+        pxor_r2r ( mm7, mm7 );                    /* clear mm7 */
+    
+        /* loop is not needed... (is MMX really faster here?!?) */
+      
+          movd_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
+          movd_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
+          psrlq_i2r       (  16, mm1 );         /* kick 2 Pixels  ... */
+          psrlq_i2r       (  16, mm2 );         /* kick 2 Pixels  ... */
+      
+          movq_r2r        ( mm2, mm3 );         /* hold a copy of mm2 in mm3 */      
+          psubusb_r2r     ( mm1, mm3 );         /* positive differences between mm2 and mm1 */
+          psubusb_r2r     ( mm2, mm1 );         /* positive differences between mm1 and mm3 */
+          paddusb_r2r     ( mm3, mm1 );         /* mm2 now contains abs(mm1-mm2) */
+  
+          movq_r2r        ( mm1, mm2 );         /* copy mm1 to mm2 */
+          
+          punpcklbw_r2r   ( mm7, mm1 );         /* unpack mm1 into mm1 and mm2 */
+          punpckhbw_r2r   ( mm7, mm2 );         
+        
+          paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
+          paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
+        
+          fs += uv_width;                       /* next row */
+          rs += uv_width;
+        
+          movd_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
+          movd_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
+          psrlq_i2r       (  16, mm1 );         /* kick 2 Pixels  ... */
+          psrlq_i2r       (  16, mm2 );         /* kick 2 Pixels  ... */
+      
+          movq_r2r        ( mm2, mm3 );         /* hold a copy of mm2 in mm3 */      
+          psubusb_r2r     ( mm1, mm3 );         /* positive differences between mm2 and mm1 */
+          psubusb_r2r     ( mm2, mm1 );         /* positive differences between mm1 and mm3 */
+          paddusb_r2r     ( mm3, mm1 );         /* mm2 now contains abs(mm1-mm2) */
+  
+          movq_r2r        ( mm1, mm2 );         /* copy mm1 to mm2 */
+          
+          punpcklbw_r2r   ( mm7, mm1 );         /* unpack mm1 into mm1 and mm2 */
+          punpckhbw_r2r   ( mm7, mm2 );         
+        
+          paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
+          paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
+        
+          fs += uv_width;                       /* next row */
+          rs += uv_width;
+                
+        movq_r2m ( mm0, *a );
+        d=a[0]+a[1]+a[2]+a[3];
+      break;
+    }
+  
+  return d;
+
+  #endif
 }
 
 
@@ -571,7 +764,7 @@ mb_search_44 (int x, int y, uint8_t *ref_frame[3], uint8_t *tgt_frame[3])
         d = calc_SAD (tgt_frame[0],
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 4 + (y + qy - BLOCKOFFSET) / 4 * width,
-                      (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * width, 4);
+                      (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * width, 2);
 
         d += calc_SAD_uv (tgt_frame[1],
                           ref_frame[1],
@@ -925,12 +1118,41 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
   /* reset SAD accumulator ... */
   sum_of_SADs = 0;
 
+  if (framenr == 0)
+    {
+      last_mean_SAD = 100;
+      mean_SAD = 100;
+    }
+
   /* devide the frame in blocks ... */
   for (y = 0; y < height; y += (BLOCKSIZE / 2))
     for (x = 0; x < width; x += (BLOCKSIZE / 2))
       {
         nr_of_blocks++;
+        
+        /* calculate center's SAD 
+         * if there isn't a reasonable change, then don't
+         * do a motion-search ...
+         */
 
+        center_SAD = calc_SAD (target[0],
+                               ref_frame[0], (x) + (y) * width, (x) + (y) * width, 2);
+
+
+        center_SAD += calc_SAD_uv (target[1],
+                                   ref_frame[1],
+                                   (x) / 2 + (y) / 2 * uv_width,
+                                   (x) / 2 + (y) / 2 * uv_width, 2);
+
+        center_SAD += calc_SAD_uv (target[2],
+                                   ref_frame[2],
+                                   (x) / 2 + (y) / 2 * uv_width,
+                                   (x) / 2 + (y) / 2 * uv_width, 2);
+
+        if(center_SAD>(mean_SAD/2)) /* if the center SAD is below half the mean SAD 
+                                 * a motion-search wouldn't be very clever...
+                                 */
+        {
         /* search best matching block in the 4x4 subsampled
          * image and store the result in matrix[x][y][d]
          */
@@ -951,23 +1173,10 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
          * with the vectors-SAD. If it's not better by at least 
          * a factor of 2 it's discarded...                      
          */
-
+        }
+        
         dx = matrix[x][y][0] / 2;
         dy = matrix[x][y][1] / 2;
-
-        center_SAD = calc_SAD (target[0],
-                               ref_frame[0], (x) + (y) * width, (x) + (y) * width, 2);
-
-
-        center_SAD += calc_SAD_uv (target[1],
-                                   ref_frame[1],
-                                   (x) / 2 + (y) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 2);
-
-        center_SAD += calc_SAD_uv (target[2],
-                                   ref_frame[2],
-                                   (x) / 2 + (y) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 2);
 
 
         vector_SAD = calc_SAD (target[0],
@@ -985,8 +1194,8 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
                                    (x) / 2 + (y) / 2 * uv_width, 2);
 
 
-        if (vector_SAD > (center_SAD * 0.85))
-          {
+        if (vector_SAD > (center_SAD * 0.80)) /* only choose vector if result is */
+          {                                   /* at least better by 20% ...      */
             vector_SAD = center_SAD;
             matrix[x][y][0] = 0;
             matrix[x][y][1] = 0;
@@ -996,17 +1205,14 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
         sum_of_SADs += vector_SAD;
       }
 
-  if (framenr == 0)
-    {
-      last_mean_SAD = 100;
-      mean_SAD = 100;
-    }
-
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 0.99 + avrg_SAD * 0.01;
+  mean_SAD = mean_SAD * 0.995 + avrg_SAD * 0.005;
 
+  if( mean_SAD<96 ) /* don't go too low !!! 48==2*3*4*4 */
+    mean_SAD=96;    /* a SAD of 96 is nearly noisefree source material */
+    
   if (avrg_SAD > (mean_SAD * 2) && framenr++ > 12)
     {
       mean_SAD = last_mean_SAD;
@@ -1032,8 +1238,8 @@ transform_frame (uint8_t *avg[3])
       {
         if (SAD_matrix[x][y] < (mean_SAD))
           block_quality = 0;
-        else if (SAD_matrix[x][y] < (mean_SAD * 3))
-          block_quality = (float) (mean_SAD+SAD_matrix[x][y]) / (float) (mean_SAD*2) - 1;
+        else if (SAD_matrix[x][y] < (mean_SAD * 2))
+          block_quality = (float) (SAD_matrix[x][y]) / (float) (mean_SAD) - 1;
         else
           block_quality = 1;
 
