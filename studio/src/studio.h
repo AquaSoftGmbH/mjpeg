@@ -63,7 +63,6 @@ struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
                         int  mpeglevel;              /* video options */
                         int  bitrate;
                         int  searchradius;
-                        char sequenceheader[SHORTOPT];
                         int  muxformat;              /* mplex options */
                       };
 /************************* END *********************/
@@ -111,6 +110,9 @@ int open_eli_file(char *filename);
 
 /* lavencode.c */
 GtkWidget *create_lavencode_layout(void);
+
+/* lavencode_mpeg.c */
+void open_mpeg_window(GtkWidget *widget, gpointer data);
 
 /* studio.c */
 void global_open_location(char *location);
