@@ -12,9 +12,9 @@
  * Usage: lavplay [options] filename [filename ...]
  * where options are as follows:
  *
- *   -h/--h-offset num --- Horizontal offset
+ *   -H/--H-offset num --- Horizontal offset
  *
- *   -v/--v-offset num --- Vertical offset
+ *   -V/--V-offset num --- Vertical offset
  *      You may use that only for quarter resolution videos
  *      unless you remove the following 4 lines of code in the BUZ driver:
  *
@@ -143,8 +143,8 @@ static void Usage(char *progname)
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
    fprintf(stderr, "  -o/--norm [np]             NTSC or PAL (default: guess from framerate)\n");
-   fprintf(stderr, "  -h/--h-offset num          Horizontal offset\n");
-   fprintf(stderr, "  -v/--v-offset num          Vertical offset\n");
+   fprintf(stderr, "  -H/--H-offset num          Horizontal offset\n");
+   fprintf(stderr, "  -V/--V-offset num          Vertical offset\n");
    fprintf(stderr, "  -s/--skip num              skip num seconds before playing\n");
    fprintf(stderr, "  -c/--synchronization [01]  Sync correction off/on (default on)\n");
    fprintf(stderr, "  -n/--mjpeg-buffers num     Number of MJPEG buffers\n");
@@ -157,6 +157,8 @@ static void Usage(char *progname)
    fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
    fprintf(stderr, "  --size NxN                 width X height for SDL window (software)\n");
+   fprintf(stderr, "  --display :x.x             The X-display to use (default: \':0.0\')\n");
+   fprintf(stderr, "  -v/--verbose [012]         verbosity\n");
    exit(1);
 }
 
@@ -378,6 +380,10 @@ static int set_option(char *name, char *value)
    {
       info->flicker_reduction = 0;
    }
+   else if (strcmp(name, "display")==0)
+   {
+      info->display = optarg;
+   }
    else nerr++; /* unknown option - error */
 
    return nerr;
@@ -407,6 +413,7 @@ static void check_command_line_options(int argc, char *argv[])
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
       {"size"            ,1,0,0},   /* --size               */
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
+      {"display"         ,1,0,0},   /* --display            */
       {0,0,0,0}
    };
 #endif

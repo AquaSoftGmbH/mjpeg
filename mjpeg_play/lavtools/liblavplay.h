@@ -72,6 +72,7 @@ typedef struct {
    int  sdl_height;             /* height of the SDL playback window in case of software playback */
    int  soft_full_screen;       /* [0-1] set software-driven full-screen/screen-output, 1 = yes, 0 = no */
    char *video_dev;             /* the video device */
+   char *display;               /* the X-display (only important for -H) */
 
    int  audio;                  /* [0-1] Whether to play audio, 0 = no, 1 = yes */
    char *audio_dev;             /* the audio device */
