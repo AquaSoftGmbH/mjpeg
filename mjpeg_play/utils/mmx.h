@@ -226,8 +226,12 @@ typedef	union {
 #define pi2fd_r2r(regs,regd) mmx_r2r( pi2fd, regs, regd )
 
 /* SSE goodies */
+#define addps_m2r( var, regd) mmx_m2r( addps, var, regd )
 #define addps_r2r( regs, regd) mmx_r2r( addps, regs, regd )
 #define subps_r2r( regs, regd) mmx_r2r( subps, regs, regd )
+
+#define minps_r2r( regs, regd) mmx_r2r( minps, regs, regd )
+#define maxps_r2r( regs, regd) mmx_r2r( maxps, regs, regd )
 
 #define mulps_r2r( regs, regd) mmx_r2r( mulps, regs, regd )
 #define mulps_m2r( var, regd) mmx_m2r( mulps, var, regd )
@@ -242,6 +246,9 @@ typedef	union {
 #define movhlps_r2r(reg1, reg2) mmx_r2r( movhlps, reg1, reg2 )
 #define movups_r2m(reg, var) mmx_r2m( movups, reg, var )
 #define movaps_r2m(reg, var) mmx_r2m( movaps, reg, var )
+
+#define movss_r2m(reg, var) mmx_r2m( movss, reg, var )
+
 #define cvttps2pi_r2r(regs,regd) mmx_r2r( cvttps2pi, regs, regd )
 #define cvtps2pi_r2r(regs,regd) mmx_r2r( cvtps2pi, regs, regd )
 #define cvtpi2ps_r2r(regs,regd) mmx_r2r( cvtpi2ps, regs, regd )
