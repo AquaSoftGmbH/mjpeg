@@ -5,23 +5,23 @@
 #
 # IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD portfolio (with vcdimager)
 #
-# This script use this pakages :  'ImageMagick' ver >= 5.2.0 [http://www.imagemagick.org/]
-#                                 'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
+# This script use this packages :  'ImageMagick' ver >= 5.2.0 [http://www.imagemagick.org/]
+#                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
 #
 # You give the images files names on the command line (see the options '--help').
 # The images formats must be reconized by ImageMagick program.
 #
-# This script used this external binary program :
+# This script used this externals binary programs :
 #
-# - 'montage'   from ImageMagick package for resizing the images for the TV screen size.
-# - 'composite' from ImageMagick package for making the transition between images.
-# - 'convert'   from ImageMagick package for converting the images before MPEG encoding.
-# - 'identify'  from ImageMagick package for checking the background image file size.
-# - 'ppmtoy4m'  from MjpegTools for creating a video stream from the image.
-# - 'yuvscaler' from MjpegTools for adapting the video stream size before MPEG encoding.
-# - 'mpeg2enc'  from MjpegTools for encoding the video stream in MPEG file.
-# - 'mp2enc'    from MjpegTools for encoding on a MP2 file a WAV sound file if necessary.
-# - 'mplex'     from MjpegTools for multiplexing the MPEG file and the MP2 sound and converting
+# - 'montage'   from ImageMagick for resize the images for the TV screen size.
+# - 'composite' from ImageMagick for make the transition between images.
+# - 'convert'   from ImageMagick for convert the images before MPEG encoding.
+# - 'identify'  from ImageMagick for check the background image file size.
+# - 'ppmtoy4m'  from MjpegTools for create a video stream from the image.
+# - 'yuvscaler' from MjpegTools for adapt the video stream size before MPEG encoding.
+# - 'mpeg2enc'  from MjpegTools for encode the video stream in MPEG file.
+# - 'mp2enc'    from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
+# - 'mplex'     from MjpegTools for multiplexe the MPEG file and the MP2 sound and convert
 #               the final MPEG file to a X/S/VCD format compatible with vcdimager program.
 #
 # Return value : 0 -> Process finish succefuly.
@@ -71,7 +71,7 @@
 #
 # * Add an option for select PAL or NTSC video format.
 # * Add transitions betwen the images in the MPEG sequence.
-# - Write a man page file with some examples and more informations.
+# * Write a man page file with some examples and more informations.
 # * Don't use an default external black 'PNG' background image file.
 # * Add an option with the RVB color for the background image color.
 # * Add a trap signal fonction : clear temporary files when killed.
