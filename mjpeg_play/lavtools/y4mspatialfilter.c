@@ -63,6 +63,15 @@ int main(int argc, char **argv)
 		}
 	}
     
+    if (BWlumaX <= 0.0 || BWlumaX > 1.0)
+       mjpeg_error_exit1("Horizontal luma bandwidth '%f' not >0 and <=1.0", BWlumaX);
+    if (BWlumaY <= 0.0 || BWlumaY > 1.0)
+       mjpeg_error_exit1("Vertical luma bandwidth '%f' not >0 and <=1.0", BWlumaY);
+    if (BWchromaX <= 0.0 || BWchromaX > 1.0)
+       mjpeg_error_exit1("Horizontal chroma bandwidth '%f' not >0 and <=1.0", BWchromaX);
+    if (BWchromaY <= 0.0 || BWchromaY > 1.0)
+       mjpeg_error_exit1("Vertical chroma bandwidth '%f' not >0 and <=1.0", BWchromaY);
+
     /* initialize input stream and check chroma subsampling and interlacing */
     y4m_init_stream_info(&istream);
     y4m_init_frame_info(&iframe);
