@@ -92,7 +92,6 @@
     wa        Save current movie into edit list (arg1)
     ws        Save current selection into memory into edit list (arg1)
 
-
    *** Environment variables ***
 
    LAV_VIDEO_DEV     Name of video device (default: "/dev/video")
@@ -500,6 +499,7 @@ void paste_frames(void)
 {
 	/* We should output a warning if save_list is empty,
 	   we just insert nothing */
+
 	int k,i;
 
 	el.frame_list = realloc(el.frame_list,(el.video_frames+save_list_len)*sizeof(long));
