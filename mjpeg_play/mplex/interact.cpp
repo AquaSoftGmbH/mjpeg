@@ -107,7 +107,7 @@ MultiplexJob::~MultiplexJob()
 void MultiplexJob::Usage(char *str)
 {
     fprintf( stderr,
-	"mjpegtools mplex-2 version " MPLEX_VER "\n"
+	"mjpegtools mplex-2 version " VERSION " (" MPLEX_VER ")\n"
 	"Usage: %s [params] -o <output filename pattern> <input file>... \n"
 	"         %%d in the output file name is by segment count\n"
 	"  where possible params are:\n"
@@ -339,7 +339,7 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 		Usage(argv[0]);
     }
 	(void)mjpeg_default_handler_verbosity(verbose);
-	mjpeg_info( "mplex version %s (%s)",MPLEX_VER,MPLEX_DATE );
+	mjpeg_info( "mplex version %s (%s %s)",VERSION,MPLEX_VER,MPLEX_DATE );
 
     InputStreamsFromCmdLine( argc-(optind-1), argv+optind-1);
 }
