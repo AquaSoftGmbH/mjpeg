@@ -14,6 +14,8 @@
 /* Anjuta is most cool ! */
 
 #include <stdio.h>
+#include <signal.h>
+#include <setjmp.h>
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -21,7 +23,6 @@
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 #include "config.h"
-
 
 /*****************************************************************************
  * if this is commented out, a lot of messages                               *
@@ -198,6 +199,13 @@ uint32_t (*calc_SAD_uv) (uint8_t * frm,
 
 
 /*****************************************************************************
+ * needed to test if Operating System supports SSE/SSE2                      *
+ * ... it's just, we want to get back to life in case off SIGILL             *
+ *****************************************************************************/
+ 
+static sigjmp_buf jmp_buffer;
+
+/*****************************************************************************
  * MAIN                                                                      *
  *****************************************************************************/
 
@@ -213,6 +221,7 @@ main (int argc, char *argv[])
   display_greeting ();
   X86_CAP=test_CPU ();
   
+  mjpeg_log ( LOG_INFO, "\n");
   if(X86_CAP>=2) /* MMX+SSE */
   {
     calc_SAD    = &calc_SAD_sse;
@@ -721,7 +730,6 @@ calc_SAD_sse (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
   uint8_t *fs = frm + frm_offs;
   uint8_t *rs = ref + ref_offs;
   static uint16_t a[4] = { 0, 0, 0, 0 };
-  int i;
 
 
       switch (div)
@@ -1020,8 +1028,8 @@ calc_SAD_uv_sse (uint8_t * frm,
   uint8_t *fs = frm + frm_offs;
   uint8_t *rs = ref + ref_offs;
   static uint16_t a[4] = { 0, 0, 0, 0 };
-  int i;
-
+  
+  
   switch (div)
     {
     case 1:                    /* 4x4 --> subsampled chroma planes ! */
@@ -1757,6 +1765,61 @@ denoise_frame (uint8_t * frame[3])
       memcpy (frame[2], avrg[2], width * height / 4);
     }
 }
+
+/* well, as I have seen, now... these are pretty much the same than cpu_accel()
+ * [:*] It' important to reinvent the wheel ... *argh* Hours of ... *sigh*
+ * OK, if these do not work, i'll switch to cpu_accel.h 
+ */
+
+void rec_SIGILL(int sig)
+{
+  mjpeg_log ( LOG_INFO, "SSE/SSE2 causes SIGILL (illegal instruction) on this\n");
+  mjpeg_log ( LOG_INFO, "operating system. Sorry, can't use SSE.\n");
+  siglongjmp( jmp_buffer, 1 );
+}
+
+int test_SSE()
+{
+  /* assume SSE operations are valid on this system... */
+ 	int SSE_is_illegal=0; 
+  
+  /* Structure to save old signal handler */
+  struct sigaction old_SIGILL;
+    
+  /* the same for the new one */
+  struct sigaction recover_SIGILL;
+  
+  /* setup our own signal handler function */
+  recover_SIGILL.sa_handler = rec_SIGILL;
+  sigemptyset(&recover_SIGILL.sa_mask);
+  recover_SIGILL.sa_flags = 0;
+  sigaction(SIGILL, &recover_SIGILL, &old_SIGILL );
+  
+  /* set jump-back-address and just try it... */
+  if( sigsetjmp( jmp_buffer, 1 ) == 0 )
+	{
+    /* a little SSE fragment which doesn't do sensful things*/
+		asm  
+    (
+    "psadbw    %mm1, %mm0 ; /* do SSE nonsense ... ;-) */"
+    );
+
+    /* if it doesn't fail, we're here ...*/
+		SSE_is_illegal = 0;
+	}
+	else
+  {
+    /* we never should have reached this point ... Sh*t happend */
+		SSE_is_illegal = 1;
+  }
+  
+  /* restore old SIGILL handler */
+	sigaction(SIGSEGV, & old_SIGILL, NULL );
+  
+  /* return value nicely represents 0 if SSE can be used */
+	return SSE_is_illegal;
+}
+
 int
 test_CPU ()
 {
@@ -1774,7 +1837,8 @@ test_CPU ()
    *                                                                        *
    **************************************************************************/
 
-  uint32_t i = 0;
+  uint32_t feature=0;
+  uint32_t regs[4]={0,0,0,0};
   int cap = 0;
 
   asm volatile
@@ -1792,9 +1856,16 @@ test_CPU ()
      " cmpl          %%eax, %%ebx ;/* DO EAX and EBX differ ?                    */"
      " jz                    L991 ;/* no, CPU is too old ...                     */"
      "                            ;                                                "
-     " movl             $1, %%eax ;/* yes, CPU knows CPUID Opcode                */"
-     " cpuid                      ;/* read feature information                   */"
-     " movl          %%eax,    %0 ;/* copy feature information to (i)            */"
+     "                            ;                                                "
+     " movl             $0, %%eax ;/* yes, CPU knows CPUID Opcode                */"
+     " cpuid                      ;/* read identification                        */"
+     " movl             %1, %%eax ;                                                "
+     " movl         %%ebx,0(%%eax);/* copy identif. information to array         */"
+     " movl         %%ecx,4(%%eax);/* copy identif. information to array         */"
+     " movl         %%edx,8(%%eax);/* copy identif. information to array         */"
+     " movl             $1, %%eax ;/* now read feature flags                     */"
+     " cpuid                      ;                                                "
+     " movl          %%edx,    %0 ;/* store in (feature)                         */"
      " jmp                   L992 ;                                                "
      "                            ;                                                "
      "L991:                       ;                                                "
@@ -1804,33 +1875,59 @@ test_CPU ()
      "L992:                       ;                                                "
      "                            ;                                                "
      " popfl                      ;/* restore all registers and flags            */"
-     " popal                      ;                                                ":"=X"
-     (i)::"cc");
+     " popal                      ;                                                "
+     :"=X" (feature)
+     :"m" (regs)
+     );
 
   mjpeg_log (LOG_INFO, "\n");
   mjpeg_log (LOG_INFO, "compiled for an IA32 CPU.\n");
+  
+  if(regs[0]==0x68747541 && regs[1]==0x444d4163 && regs[2]==0x69746e65)
+  {
+    mjpeg_log (LOG_INFO, "CPU-identifies as : Authentic AMD(TM)\n");
+  }
+  else
+  {
+    mjpeg_log (LOG_INFO, "CPU-identifies as : unknown Vendor, probably Intel ? :)\n");
+    mjpeg_log (LOG_INFO, "                    0x%08x%08x%08x\n",regs[0],regs[1],regs[2]);
+  }
+  
   mjpeg_log (LOG_INFO, "found following accelerations:\n");
-  if (verbose)
-    mjpeg_log (LOG_INFO, "EDX : %08x\n", i);
+  mjpeg_log (LOG_INFO, "feature Flags (EDX) : 0x%08x\n", feature);
 
-  if (i & 0x00800000)
+  if (feature & 0x00800000)
     {
       mjpeg_log (LOG_INFO, "--> CPU states to have MMX  ... good.\n");
       cap++;
 
-      if (i & 0x02000000)
+      if (feature & 0x02000000)
         {
           mjpeg_log (LOG_INFO, "--> CPU states to have SSE  ... better.\n");
-          cap++;
-
-          if (i & 0x04000000)
+          
+          if (feature & 0x04000000)
             {
               mjpeg_log (LOG_INFO, "--> CPU states to have SSE2 ... best!\n");
-              cap++;
             }
+            
+          /* now the only one who could kill us, is the Operating System not allowing
+           * SSE/SSE2 usage ... Let's see if we get sigill...
+           */
+  
+          if(test_SSE()==0);
+          {
+            /* only increase cap if SSE is allowed to use ! */
+            cap++;
+
+            if (feature & 0x04000000)
+              {
+                /* increase cap again if SSE2 is valid */
+                cap++;
+              }
+          }
         }
     }
-
+    
   return cap;
 #endif
 }
