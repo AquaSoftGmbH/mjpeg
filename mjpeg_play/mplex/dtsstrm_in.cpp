@@ -156,7 +156,7 @@ void DTSStream::Init ( const int _stream_num)
 		num_frames++;
         access_unit.start = AU_start;
 		access_unit.length = framesize;
-        mjpeg_info( "dts frame size = %d\n", framesize );
+        mjpeg_info( "dts frame size = %d", framesize );
 		samples_per_second = dts_frequency[frequency];
 
 		/* Presentation time-stamping  */

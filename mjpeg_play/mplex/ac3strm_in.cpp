@@ -239,7 +239,7 @@ void AC3Stream::Init ( const int _stream_num)
 	num_frames++;
         access_unit.start = AU_start;
 	access_unit.length = framesize;
-        mjpeg_info( "AC3 frame size = %d\n", framesize );
+        mjpeg_info( "AC3 frame size = %d", framesize );
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];
 
