@@ -15,6 +15,9 @@ typedef struct
    long video_inter;
    long video_norm;
    double video_fps;
+   int video_sar_width; /* sample aspect ratio */
+   int video_sar_height;
+
    long max_frame_size;
    int  MJPG_chroma;
 	/* TODO: Need to flag mixed chroma model files? */

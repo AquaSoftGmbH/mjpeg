@@ -30,6 +30,10 @@
 #define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
+#ifdef SUPPORT_READ_DV2
+#include <libdv/dv.h>
+#endif
+
 extern int AVI_errno;
 
 static char video_format=' ';
@@ -643,6 +647,13 @@ int lav_video_interlacing(lav_file_t *lav_file)
    return lav_file->interlacing;
 }
 
+void lav_video_sampleaspect(lav_file_t *lav_file, int *sar_w, int *sar_h)
+{
+  *sar_w = lav_file->sar_w;
+  *sar_h = lav_file->sar_h;
+  return;
+}
+
 int lav_video_is_MJPG(lav_file_t *lav_file)
 {
    return lav_file->is_MJPG;
@@ -932,6 +943,8 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
    lav_fd->format      = 0;
    lav_fd->interlacing = LAV_INTER_UNKNOWN;
+   lav_fd->sar_w       = 0; /* (0,0) == unknown */
+   lav_fd->sar_h       = 0; 
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
    lav_fd->is_MJPG     = 0;
@@ -1321,6 +1334,37 @@ static int check_DV2_input(lav_file_t *lav_fd)
    if ( (frame = (char*) malloc(len)) == 0 ) { ierr=ERROR_MALLOC; goto ERREXIT; }
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
+   {
+     dv_decoder_t *decoder = dv_decoder_new();
+     dv_init();
+     dv_parse_header(decoder, frame);
+     switch (decoder->system) {
+     case e_dv_system_525_60:
+       if (dv_format_wide(decoder)) {
+	 lav_fd->sar_w = 40;
+	 lav_fd->sar_h = 33;
+       } else {
+	 lav_fd->sar_w = 10;
+	 lav_fd->sar_h = 11;
+       } 
+       break;
+     case e_dv_system_625_50:
+       if (dv_format_wide(decoder)) {
+	 lav_fd->sar_w = 118;
+	 lav_fd->sar_h = 81;
+       } else {
+	 lav_fd->sar_w = 59;
+	 lav_fd->sar_h = 54;
+       } 
+       break;
+     default:
+       lav_fd->sar_w = 0; /* ??? -> unknown */
+       lav_fd->sar_h = 0;
+       break;
+     }
+     free(decoder);
+   }
+
    /* reset video position to 0 */
    if ( lav_set_video_position(lav_fd,0) ) goto ERREXIT;
    return 0;

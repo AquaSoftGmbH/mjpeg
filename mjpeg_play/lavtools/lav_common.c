@@ -556,7 +556,18 @@ void writeoutYUV4MPEGheader(
    y4m_si_set_height(&stream_info, param->output_height);
    y4m_si_set_interlace(&stream_info, param->interlace );
    y4m_si_set_framerate(&stream_info, mpeg_conform_framerate(el.video_fps));
-   //stream_info->aspectratio = param->output_width / param->output_height;
+   if (!Y4M_RATIO_EQL(param->sar, y4m_sar_UNKNOWN)) {
+     y4m_si_set_sampleaspect(&stream_info, param->sar);
+   } else if ((el.video_sar_width != 0) || (el.video_sar_height != 0)) {
+     y4m_ratio_t sar;
+     sar.n = el.video_sar_width;
+     sar.d = el.video_sar_height;
+     y4m_si_set_sampleaspect(&stream_info, sar);
+   } else {
+     /* no idea! */
+     y4m_si_set_sampleaspect(&stream_info, y4m_sar_UNKNOWN);
+   }
+
    n = y4m_write_stream_header(out_fd, &stream_info);
    if (n != Y4M_OK)
       mjpeg_error("Failed to write stream header: %s\n", y4m_strerr(n));

@@ -63,7 +63,7 @@ void usage(const char *progname)
   fprintf(stdout, "\n");
   fprintf(stdout, "  -W w     frame width [720]\n");
   fprintf(stdout, "  -H h     frame height [480]\n");
-  fprintf(stdout, "  -F n:d   framerate (as ratio) \n");
+  fprintf(stdout, "  -F n:d   framerate (as ratio) [30000:1001]\n");
   fprintf(stdout, "  -A w:h   pixel aspect ratio [10:11]\n");
   fprintf(stdout, "  -I x     interlacing [p]\n");
   fprintf(stdout, "             p = none/progressive\n");

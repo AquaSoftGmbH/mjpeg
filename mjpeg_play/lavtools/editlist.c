@@ -125,7 +125,10 @@ int open_video_file(char *filename, EditList *el)
       el->video_height = lav_video_height(el->lav_fd[n]);
       el->video_width  = lav_video_width (el->lav_fd[n]);
       el->video_inter  = lav_video_interlacing(el->lav_fd[n]);
-	  el->video_fps = lav_frame_rate(el->lav_fd[n]);
+      el->video_fps = lav_frame_rate(el->lav_fd[n]);
+      lav_video_sampleaspect(el->lav_fd[n],
+			     &el->video_sar_width,
+			     &el->video_sar_height);
       if(!el->video_norm)
       {
 		  /* TODO: This guessing here is a bit dubious but it can be over-ridden */

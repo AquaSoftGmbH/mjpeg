@@ -58,6 +58,8 @@ void Usage(char *str)
    printf("   -S list.el Output a scene list with scene detection\n");
    printf("   -T num     Set scene detection threshold to num (default: 4)\n");
    printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
+   printf("   -A w:h     Set output sample aspect ratio (default is to detect\n");
+   printf("               and/or guess from the first input frame)\n");
    printf("   -o num     Frame offset - skip num frames in the beginning\n");
    printf("              if num is negative, all but the last num frames are skipped\n");
    printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
@@ -295,7 +297,9 @@ int main(argc, argv)
 
 	memset(&bounds, 0, sizeof(LavBounds));
 
-	while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:xF")) != EOF) {
+	param.sar = y4m_sar_UNKNOWN;
+
+	while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:xFA:")) != EOF) {
 		switch (n) {
 
 		case 'a':
@@ -422,6 +426,13 @@ int main(argc, argv)
 		case 'F':
 			param_shift_fields = 1;
 			break;
+
+		case 'A':
+		  if (y4m_parse_ratio(&(param.sar), optarg)) {
+		    mjpeg_error("Couldn't parse ratio '%s'\n", optarg);
+		    nerr++;
+		  }
+		  break;
 
 		default:
 			nerr++;

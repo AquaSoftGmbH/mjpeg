@@ -81,7 +81,8 @@ typedef struct {
    unsigned int scene_detection_decimation; // = 2;
    int output_width;
    int output_height;
-	int interlace;				/* LAV not Y4M coding... */
+   int interlace;				/* LAV not Y4M coding... */
+   y4m_ratio_t sar; /* sample aspect ratio (default 0:0 == unspecified) */
 } LavParam;
 //=
 //{ 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 } ;
