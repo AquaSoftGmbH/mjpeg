@@ -339,13 +339,7 @@ void SeqEncoder::GopStart( StreamState *ss )
 	/* We aim to spread the dropped B's evenly across the GOP */
 	ss->bigrp_length = (encparams.M-1);
 	
-	/* number of P frames */
-	if( encparams.M == 0 ) 
-	{
-		ss->bigrp_length = 0;
-		np = 0;
-	}
-	else if (ss->closed_gop )
+    if (ss->closed_gop )
 	{
 		ss->bigrp_length = 1;
 		np = (ss->gop_length + 2*(encparams.M-1))/encparams.M - 1; /* Closed GOP */
