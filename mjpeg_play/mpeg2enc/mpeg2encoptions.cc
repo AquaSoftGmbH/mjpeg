@@ -208,6 +208,10 @@ int MPEG2EncOptions::CheckBasicConstraints()
 		}
 	}
 	
+    if ((mpeg == 1) && (fieldenc != 0)) {
+        mjpeg_error("Interlaced encoding (-I != 0) is not supported by MPEG-1.");
+        ++nerr;
+    }
 
 
 	if(  aspect_ratio > mpeg_num_aspect_ratios[mpeg-1] ) 
