@@ -184,6 +184,8 @@ int number_of_frames(char *editlist)
    return num; /* number of frames */
 }
 
+/* Here the data is scanned for the output of mpeg2enc, yuv2divx, mp2enc */
+/* The number of the encoded frame is updated to the progress window     */
 void lavencode_callback(int number, char *input) 
 {
   if (progress_status_label)
@@ -209,7 +211,9 @@ void lavencode_callback(int number, char *input)
     }
     if ((number == YUV2DIVX) && (studio_enc_format == STUDIO_ENC_FORMAT_DIVX))
     {
-    /* Here is the counting of the frames missing */
+      sscanf(input, "   INFO: Encoding frame %d, %f frames per second, %f seconds left.", &n1, &f1, &f2);
+       gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
+       if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
     } 
     else if (number == MP2ENC && sscanf(input, "--DEBUG: %d seconds done", &n1)==1)
     {
@@ -1475,6 +1479,7 @@ ency=5;
   create_option_button(task_group, table, "SVCD", encx+1, ency);
   ency++;
 
+#ifdef HAVE_YUV2DIVX
   button_divx = gtk_radio_button_new_with_label(task_group, "DIVx ");
   gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
                       GTK_SIGNAL_FUNC (set_task), (gpointer) "DIVx");
@@ -1484,7 +1489,7 @@ ency=5;
   gtk_widget_show (button_divx);
   create_option_button(task_group, table, "DIVx", encx+1, ency);
   ency++;
-
+#endif
 }
 
 /* Here all the work is distributed, and some basic parts of the layout done */
