@@ -1377,7 +1377,8 @@ if (!interlace_correct)
   gtk_widget_show (combo_active);
   (*ty)++;
 
-  label1 = gtk_label_new ("  Interlacing correction: ");
+  label1 = gtk_label_new (NULL);
+  gtk_label_set_markup(GTK_LABEL(label1), "  <i>Interlacing correction:</i> ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
   gtk_widget_show (label1);
@@ -1811,7 +1812,7 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
 void open_mpeg_window(GtkWidget *widget, gpointer data)
 {
 GtkWidget *options_window, *button;
-GtkWidget *hbox,*vbox;
+GtkWidget *hbox,*vbox, *label1;
 
 if (g_list_length (muxformat) == 0)
   {
@@ -1845,7 +1846,6 @@ if (g_list_length (yuv2lav_format) == 0)
     yuv2lav_format = g_list_append (yuv2lav_format, "AVI");
     yuv2lav_format = g_list_append (yuv2lav_format, "AVI fields reversed");
     yuv2lav_format = g_list_append (yuv2lav_format, "Quicktime");
-    yuv2lav_format = g_list_append (yuv2lav_format, "Movtar");
   }
 
 if (g_list_length (yuv2lav_interlace) == 0)
@@ -1931,6 +1931,17 @@ if (g_list_length (yuv2lav_interlace) == 0)
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
   gtk_widget_show (hbox);
 
+  /* Show the last note */
+  hbox = gtk_hbox_new(TRUE, 20);
+  label1 = gtk_label_new (NULL);
+  gtk_label_set_markup(GTK_LABEL(label1), "  <i>Note: Options in italic are only aviable in scripts</i>");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_box_pack_start (GTK_BOX (hbox), label1, TRUE, TRUE, 20);
+  gtk_widget_show (label1);
+  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
+  gtk_widget_show (hbox);
+
+  /* pack the last widget into the windows and show everything */
   gtk_container_add (GTK_CONTAINER (options_window), vbox);
   gtk_widget_show(vbox);
 

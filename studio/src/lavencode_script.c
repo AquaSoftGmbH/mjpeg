@@ -35,6 +35,7 @@
 
 #include "studio.h"
 #include "pipes.h"   /* needed for the funktion app_name */
+#include "gtkfunctions.h"
 
 #define bit_audio 1  /* here we define the bits that should be used for */
 #define bit_video 2  /* comparing a script "job" */
@@ -903,7 +904,7 @@ char mplex_string[800];
 
 }
 
-/** Here we check if the given time is correct 
+/** Here we check if the given time is correct, 0 means no valid number given
    @param which time we shell check */
 int checktime (char* timetocheck)
 {
@@ -998,22 +999,24 @@ for (i = 0; i < 8; i++)
     {
       timetoadd = checktime(schedule.add_now);
   
-      if (timetoadd = 0)
-        error = 1;
+      if (timetoadd != 0)
+        {
+          /* first we recreate the script */
+          create_script(widget, data);
+          /* And then creating the command */
+          sprintf(command,"at now +%i minutes -f %s",timetoadd,temp_scriptname);
 
-      /* first we recreate the script */
-      create_script(widget, data);
-      /* And then creating the command */
-      sprintf(command, "at now +%i minutes -f %s", timetoadd, temp_scriptname);
+          if (verbose)
+            printf("Added to at: %s \n", command);
 
-      if (verbose)
-        printf("Added to at: %s \n", command);
-
-      file_atd = popen (command, "w");
-      fflush(file_atd);
-      pclose(file_atd);
+          file_atd = popen (command, "w");
+          fflush(file_atd);
+          pclose(file_atd);
+        }
+      else
+        gtk_show_text_window(STUDIO_ERROR, "There was a problem with the time you specified. The format must be: hh:mm");
     }
-  else if (schedule.lastone =dateh) 
+  else if (schedule.lastone == dateh) 
     {
 
     timetopoint = checktime(schedule.time_point);
@@ -1036,12 +1039,9 @@ for (i = 0; i < 8; i++)
         pclose(file_atd);
       }
     else 
-      error = 1;
+      gtk_show_text_window(STUDIO_ERROR, "There was a problem with the time you specified. The format must be: hh:mm and a number");
     }
 
-//if error = 1
-// we should make a error mesagge here   
- 
 }
 
 /** Here we read the data from the now +, field 

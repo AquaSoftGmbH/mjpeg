@@ -18,7 +18,7 @@ bin_PROGRAMS = studio stv
 noinst_HEADERS = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
 	mixer.h gtkfunctions.h gtkscenelist.h gdkpixbuf_write.h \
 	pipes.h channels.h lavedit.h lirc.h
-#	gtkenhancedscale.h
+	gtkenhancedscale.h
 
 studio_SOURCES = ${OBJS}
 studio_LDADD = ${X_LIBS} -lXv \
