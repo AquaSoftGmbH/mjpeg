@@ -23,9 +23,7 @@
 #ifndef __MPEGCONSTS_H__
 #define __MPEGCONSTS_H__
 
-
-#include "yuv4mpeg.h"
-
+#include <yuv4mpeg.h>
 
 typedef unsigned int mpeg_framerate_code_t;
 typedef unsigned int mpeg_aspect_code_t;
@@ -162,8 +160,6 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 			       mpeg_aspect_code_t code,
 			       int frame_width, int frame_height);
 
-
 END_CPP_WRAP
-
 
 #endif /* __MPEGCONSTS_H__ */

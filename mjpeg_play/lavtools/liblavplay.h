@@ -27,8 +27,8 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-#include "lav_io.h"
-#include "editlist.h"
+#include <lav_io.h>
+#include <editlist.h>
 
 enum {
    LAVPLAY_MSG_ERROR   = 0,

@@ -17,7 +17,7 @@
 #ifndef EDITLIST_H
 #define EDITLIST_H
 
-#include "lav_io.h"
+#include <lav_io.h>
 
 
 /* If changing MAX_EDIT_LIST_FILES, the macros below

@@ -24,7 +24,7 @@
 typedef void avi_t;
 #endif
 
-#include "yuv4mpeg.h"
+#include <yuv4mpeg.h>
 
 #define LAV_INTER_UNKNOWN       Y4M_UNKNOWN
 #define LAV_NOT_INTERLACED      Y4M_ILACE_NONE

@@ -21,7 +21,7 @@
 #ifndef __MJPEG_LOGGING_H__
 #define __MJPEG_LOGGING_H__
 
-#include "mjpeg_types.h"
+#include <mjpeg_types.h>
 
 typedef enum {
   LOG_NONE = 0,
