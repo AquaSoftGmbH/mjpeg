@@ -201,6 +201,19 @@ y4m_ratio_t y4m_chroma_ss_x_offset(int chroma_mode, int field, int plane);
 y4m_ratio_t y4m_chroma_ss_y_offset(int chroma_mode, int field, int plane);
 #endif
 
+/* Given a string containing a (case-insensitive) chroma-tag keyword,
+   return appropriate chroma mode (or Y4M_UNKNOWN) */
+int y4m_chroma_parse_keyword(const char *s);
+
+/* Given a Y4M_CHROMA_* mode, return appropriate chroma-tag keyword,
+   or NULL if there is none. */
+const char *y4m_chroma_keyword(int chroma_mode);
+
+/* Given a Y4M_CHROMA_* mode, return appropriate chroma mode description,
+   or NULL if there is none. */
+const char *y4m_chroma_description(int chroma_mode);
+
+
 
 /************************************************************************
  *  'xtag' functions

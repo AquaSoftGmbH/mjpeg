@@ -599,23 +599,8 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       if (i->sampleaspect.n < 0) return Y4M_ERR_RANGE;
       break;
     case 'C':
-      if (!strcmp("420jpeg", value))
-	i->chroma = Y4M_CHROMA_420JPEG;
-      else if (!strcmp("420mpeg2", value))
-	i->chroma = Y4M_CHROMA_420MPEG2;
-      else if (!strcmp("420paldv", value))
-	i->chroma = Y4M_CHROMA_420PALDV;
-      else if (!strcmp("444", value))
-	i->chroma = Y4M_CHROMA_444;
-      else if (!strcmp("422", value))
-	i->chroma = Y4M_CHROMA_422;
-      else if (!strcmp("411", value))
-	i->chroma = Y4M_CHROMA_411;
-      else if (!strcmp("mono", value))
-	i->chroma = Y4M_CHROMA_MONO;
-      else if (!strcmp("444alpha", value))
-	i->chroma = Y4M_CHROMA_444ALPHA;
-      else
+      i->chroma = y4m_chroma_parse_keyword(value);
+      if (i->chroma == Y4M_UNKNOWN)
 	return Y4M_ERR_HEADER;
       break;
     case 'X':  /* 'X' meta-tag */
@@ -803,7 +788,10 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
   int err;
   y4m_ratio_t rate = i->framerate;
   y4m_ratio_t aspect = i->sampleaspect;
+  const char *chroma_keyword = y4m_chroma_keyword(i->chroma);
 
+  if ((i->chroma == Y4M_UNKNOWN) || (chroma_keyword == NULL))
+    return Y4M_ERR_HEADER;
   if (_y4mparam_feature_level < 1) {
     if ((i->chroma != Y4M_CHROMA_420JPEG) || (i->interlace == Y4M_ILACE_MIXED))
       return Y4M_ERR_FEATURE;
@@ -820,14 +808,7 @@ int y4m_write_stream_header(int fd, const y4m_stream_info_t *i)
 	       (i->interlace == Y4M_ILACE_BOTTOM_FIRST) ? "b" :
 	       (i->interlace == Y4M_ILACE_MIXED) ? "m" : "?",
 	       aspect.n, aspect.d,
-	       (i->chroma == Y4M_CHROMA_420JPEG)  ? "420jpeg"  :
-	       (i->chroma == Y4M_CHROMA_420MPEG2) ? "420mpeg2" :
-	       (i->chroma == Y4M_CHROMA_420PALDV) ? "420paldv" :
-	       (i->chroma == Y4M_CHROMA_444)      ? "444"      :
-	       (i->chroma == Y4M_CHROMA_422)      ? "420"      :
-	       (i->chroma == Y4M_CHROMA_411)      ? "411"      :
-	       (i->chroma == Y4M_CHROMA_MONO)     ? "mono"     :
-	       (i->chroma == Y4M_CHROMA_444ALPHA) ? "444alpha" : "?"
+	       chroma_keyword
 	       );
   if ((n < 0) || (n > Y4M_LINE_MAX)) return Y4M_ERR_HEADER;
   if ((err = y4m_snprint_xtags(s + n, sizeof(s) - n - 1, &(i->x_tags))) 
@@ -1071,17 +1052,11 @@ void y4m_log_stream_info(log_level_t level, const char *prefix,
       snprintf(s+strlen(s), sizeof(s)-strlen(s), "(%d bytes)", framelength);
     mjpeg_log(level, "%s%s", prefix, s);
   }
-  mjpeg_log(level, "%s      chroma:  %s", prefix,
-	    (i->chroma == Y4M_CHROMA_420JPEG) ? "4:2:0(JPEG)" :
-	    (i->chroma == Y4M_CHROMA_420MPEG2) ? "4:2:0(MPEG-2)" :
-	    (i->chroma == Y4M_CHROMA_420PALDV) ? "4:2:0(PAL-DV)" :
-	    (i->chroma == Y4M_CHROMA_444) ? "4:4:4" :
-	    (i->chroma == Y4M_CHROMA_422) ? "4:2:2" :
-	    (i->chroma == Y4M_CHROMA_411) ? "4:1:1" :
-	    (i->chroma == Y4M_CHROMA_MONO) ? "none" :
-	    (i->chroma == Y4M_CHROMA_444ALPHA) ? "4:4:4 w/alpha" :
-	    "unknown!");
-
+  {
+    const char *desc = y4m_chroma_description(i->chroma);
+    if (desc == NULL) desc = "unknown!";
+    mjpeg_log(level, "%s      chroma:  %s", prefix, desc);
+  }
   if ((i->framerate.n == 0) && (i->framerate.d == 0))
     mjpeg_log(level, "%s  frame rate:  ??? fps", prefix);
   else
@@ -1216,3 +1191,61 @@ y4m_ratio_t y4m_chroma_ss_y_offset(int chroma_mode, int field, int plane);
   return r;
 }
 #endif
+
+
+
+int y4m_chroma_parse_keyword(const char *s)
+{
+  if (!strcasecmp("420jpeg", s))
+    return Y4M_CHROMA_420JPEG;
+  else if (!strcasecmp("420mpeg2", s))
+    return Y4M_CHROMA_420MPEG2;
+  else if (!strcasecmp("420paldv", s))
+    return Y4M_CHROMA_420PALDV;
+  else if (!strcasecmp("444", s))
+    return Y4M_CHROMA_444;
+  else if (!strcasecmp("422", s))
+    return Y4M_CHROMA_422;
+  else if (!strcasecmp("411", s))
+    return Y4M_CHROMA_411;
+  else if (!strcasecmp("mono", s))
+    return Y4M_CHROMA_MONO;
+  else if (!strcasecmp("444alpha", s))
+    return Y4M_CHROMA_444ALPHA;
+  else
+    return Y4M_UNKNOWN;
+}
+
+
+const char *y4m_chroma_keyword(int chroma_mode)
+{
+  switch (chroma_mode) {
+  case Y4M_CHROMA_420JPEG:  return "420jpeg";
+  case Y4M_CHROMA_420MPEG2: return "420mpeg2";
+  case Y4M_CHROMA_420PALDV: return "420paldv";
+  case Y4M_CHROMA_444:      return "444";
+  case Y4M_CHROMA_422:      return "422";
+  case Y4M_CHROMA_411:      return "411";
+  case Y4M_CHROMA_MONO:     return "mono";
+  case Y4M_CHROMA_444ALPHA: return "444alpha";
+  default:
+    return NULL;
+  }
+}  
+
+
+const char *y4m_chroma_description(int chroma_mode)
+{           
+  switch (chroma_mode) {
+  case Y4M_CHROMA_420JPEG:  return "4:2:0 JPEG/MPEG-1 (interstitial)";
+  case Y4M_CHROMA_420MPEG2: return "4:2:0 MPEG-2 (horiz. cositing)";
+  case Y4M_CHROMA_420PALDV: return "4:2:0 PAL-DV (altern. siting)";
+  case Y4M_CHROMA_444:      return "4:4:4 (no subsampling)";
+  case Y4M_CHROMA_422:      return "4:2:2 (horiz. cositing)";
+  case Y4M_CHROMA_411:      return "4:1:1 (horiz. cositing)";
+  case Y4M_CHROMA_MONO:     return "luma plane only";
+  case Y4M_CHROMA_444ALPHA: return "4:4:4 with alpha channel";
+  default:
+    return NULL;
+  }
+}
