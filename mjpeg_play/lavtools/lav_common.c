@@ -10,6 +10,10 @@
  *   for the structs.  I'm sure some of what I've done is inefficient,
  *   subtly incorrect or just plain Wrong.  Feedback is welcome.
  */
+/* - removed a lot of subsumed functionality and unnecessary cruft
+ *   March 2002, Matthew Marjanovic <maddog@mir.com>.
+ */
+
 
 /*
    This program is free software; you can redistribute it and/or modify
@@ -35,134 +39,120 @@
 
 static uint8_t jpeg_data[MAX_JPEG_LEN];
 
-uint8_t *filter_buf;
 
 #ifdef SUPPORT_READ_DV2
 
 dv_decoder_t *decoder;
 gint pitches[3];
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
-uint8_t *previous_Y;
 
-void frame_YUV422_to_YUV420P( uint8_t **output,
-			      uint8_t *input,
-			      int width,
-			      int height,
-			      LavParam *param
-			      )
+/*
+ * As far as I (maddog) can tell, this is what is going on with libdv-0.9
+ *  and the unpacking routine... 
+ *    o Ft/Fb refer to top/bottom scanlines (interleaved) --- each sample
+ *       is implicitly tagged by 't' or 'b' (samples are not mixed between
+ *       fields)
+ *    o Indices on Cb and Cr samples indicate the Y sample with which
+ *       they are co-sited.
+ *    o '^' indicates which samples are preserved by the unpacking
+ *
+ * libdv packs both NTSC 4:1:1 and PAL 4:2:0 into a common frame format of
+ *  packed 4:2:2 pixels as follows:
+ *
+ *
+ ***** NTSC 4:1:1 *****
+ *
+ *   libdv's 4:2:2-packed representation  (chroma repeated horizontally)
+ *
+ *Ft Y00.Cb00.Y01.Cr00.Y02.Cb00.Y03.Cr00 Y04.Cb04.Y05.Cr04.Y06.Cb04.Y07.Cr04
+ *    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *Fb Y00.Cb00.Y01.Cr00.Y02.Cb00.Y03.Cr00 Y04.Cb04.Y05.Cr04.Y06.Cb04.Y07.Cr04
+ *    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *Ft Y10.Cb10.Y11.Cr10.Y12.Cb10.Y13.Cr10 Y14.Cb14.Y15.Cr14.Y16.Cb14.Y17.Cr14
+ *    ^        ^        ^        ^        ^        ^        ^        ^    
+ *Fb Y10.Cb10.Y11.Cr10.Y12.Cb10.Y13.Cr10 Y14.Cb14.Y15.Cr14.Y16.Cb14.Y17.Cr14
+ *    ^        ^        ^        ^        ^        ^        ^        ^    
+ *
+ *    lavtools unpacking into 4:2:0-planar  (note lossiness)
+ *
+ *Ft  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ *Fb  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ *Ft  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ *Fb  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ *
+ *Ft  Cb00.Cb00.Cb04.Cb04...    Cb00,Cb04... are doubled
+ *Fb  Cb00.Cb00.Cb04.Cb04...    Cb10,Cb14... are ignored
+ *
+ *Ft  Cr00.Cr00.Cr04.Cr04...
+ *Fb  Cr00.Cr00.Cr04.Cr04...
+ *
+ * 
+ ***** PAL 4:2:0 *****
+ *
+ *   libdv's 4:2:2-packed representation  (chroma repeated vertically)
+ *
+ *Ft Y00.Cb00.Y01.Cr10.Y02.Cb02.Y03.Cr12 Y04.Cb04.Y05.Cr14.Y06.Cb06.Y07.Cr16
+ *    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *Fb Y00.Cb00.Y01.Cr10.Y02.Cb02.Y03.Cr12 Y04.Cb04.Y05.Cr14.Y06.Cb06.Y07.Cr16
+ *    ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^   ^    ^
+ *Ft Y10.Cb00.Y11.Cr10.Y12.Cb02.Y13.Cr12 Y14.Cb04.Y15.Cr14.Y16.Cb06.Y17.Cr16
+ *    ^        ^        ^        ^        ^        ^        ^        ^    
+ *Fb Y10.Cb00.Y11.Cr10.Y12.Cb02.Y13.Cr12 Y14.Cb04.Y15.Cr14.Y16.Cb06.Y17.Cr16
+ *    ^        ^        ^        ^        ^        ^        ^        ^    
+ *
+ *    lavtools unpacking into 4:2:0-planar
+ *
+ *Ft  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ *Fb  Y00.Y01.Y02.Y03.Y04.Y05.Y06.Y07...
+ *Ft  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ *Fb  Y10.Y11.Y12.Y13.Y14.Y15.Y16.Y17...
+ *
+ *Ft  Cb00.Cb02.Cb04.Cb06...
+ *Fb  Cb00.Cb02.Cb04.Cb06...
+ *
+ *Ft  Cr10.Cr12.Cr14.Cr16...
+ *Fb  Cr10.Cr12.Cr14.Cr16...
+ *
+ */
+
+/*
+ * Unpack libdv's 4:2:2-packed into our 4:2:0-planar
+ *
+ */
+void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
+			     int width, int height)
 {
-    int i,j,w2,w4;
-    char *y, *u, *v, *inp, *ym;
+    int i, j, w2;
+    uint8_t *y, *cb, *cr;
 
     w2 = width/2;
     y = output[0];
-    u = output[1];
-    v = output[2];
-
-    w4 = 4*width;
-    inp = input;
+    cb = output[1];
+    cr = output[2];
 
     for (i=0; i<height; i+=2) {
-        ym = y;
+	/* process two scanlines (one from each field, interleaved) */
         for (j=0; j<w2; j++) {
             /* packed YUV 422 is: Y[i] U[i] Y[i+1] V[i] */
-            *(y++) = *(inp++);
-            *(u++) = *(inp++);
-            *(y++) = *(inp++);
-            *(v++) = *(inp++);
+            *(y++) =  *(input++);
+            *(cb++) = *(input++);
+            *(y++) =  *(input++);
+            *(cr++) = *(input++);
         }
-        switch (param->DV_deinterlace) {
-        case 0:
-        case 1:
-            for (j=0; j<w2; j++) {
-                /* skip every second line for U and V */
-                *(y++) = *(inp++);
-                inp++;
-                *(y++) = *(inp++);
-                inp++;
-            }
-            break;
-        case 2:
-            /* average over the adjacent Y lines */
-            inp += 2*width;
-            y += width;
-            break;
-        default:
-            /* just duplicate the last Y line */
-            memcpy(y,ym,width);
-            inp += 2*width;
-            y += width;
-            break;
-        }
+	/* process next two scanlines (one from each field, interleaved) */
+	for (j=0; j<w2; j++) {
+	  /* skip every second line for U and V */
+	  *(y++) = *(input++);
+	  input++;
+	  *(y++) = *(input++);
+	  input++;
+	}
     }
 }
 
-                    
-void frame_YUV420P_deinterlace(uint8_t **frame, 
-        uint8_t *previous_Y, int width, int height,
-        int SpatialTolerance, int TemporalTolerance, int mode)
-{
-    int i,j,weave;
-    int cnt = 0;
-    uint8_t *M0, *T0, *B0, *M1, *T1, *B1;
+#endif /* SUPPORT_READ_DV2 */
 
-    switch (mode) {
-    case 1:
-        for (i=1; i<height-1; i+=2) {
-            M1 = frame[0] + i*width;
-            T1 = M1 - width;
-            B1 = M1 + width;
-            M0 = previous_Y + i*width;
-            T0 = M0 - width;
-            B0 = M0 + width;
-            for (j=0; j<width; j++, M0++, T0++, B0++, M1++, T1++, B1++) {
-                register int f;
-                f = *T1 - *M1;
-                f *= f;
-                weave = (f < SpatialTolerance);
-                if (!weave) {
-                    f = *B1 - *M1;
-                    f *= f;
-                    weave = (f < SpatialTolerance);
-                    if (!weave) {
-                        f = *M0 - *M1;
-                        f *= f;
-                        weave = (f < TemporalTolerance);
-                        f = *T0 - *T1;
-                        f *= f;
-                        weave = (f < TemporalTolerance) && weave;
-                        f = *B0 - *B1;
-                        f *= f;
-                        weave = (f < TemporalTolerance) && weave;
-                        if (!weave) {
-                            f = *T1 + *B1;
-                            *M1 = f>>1;
-                            cnt++;
-                        }
-                    }
-                }
-            }
-        }
-	mjpeg_info("De-Interlace mode 1, bob count = %d\n",cnt);
-        break;
-    case 2:
-        for (i=1; i<height-1; i+=2) {
-            M1 = frame[0] + i*width;
-            T1 = M1 - width;
-            B1 = M1 + width;
-            for (j=0; j<width; j++, M1++, T1++, B1++) {
-                register int f = *T1 + *B1;
-                *M1 = f>>1;
-            }
-        }
-        break;
-    }
-    /* just copy the last line */
-    M1 = frame[0] + (height - 1)*width;
-    T1 = M1 - width;
-    memcpy(M1,T1,width);
-}
-#endif
+
 
 /***********************
  *
@@ -245,13 +235,10 @@ void init(LavParam *param, uint8_t *buffer[])
    buffer[2] = bufalloc(param->chroma_size);
    
 #ifdef SUPPORT_READ_DV2
-   previous_Y  = bufalloc(param->output_width * param->output_height);
    dv_frame[0] = bufalloc(3 * param->output_width * param->output_height);
    dv_frame[1] = NULL;
    dv_frame[2] = NULL;
 #endif
-
-   filter_buf = bufalloc(param->output_width * param->output_height);
 }
 
 
@@ -306,7 +293,7 @@ int readframe(int numframe,
 	frame[1] = frame_tmp;
       }
       break;
-#endif
+#endif /* LIBDV_PAL_YV12 */
     case e_dv_sample_411:
     case e_dv_sample_422:
       /* libdv decodes NTSC DV (native 411) and by default also PAL
@@ -318,14 +305,14 @@ int readframe(int numframe,
       pitches[0] = decoder->width * 2;
       pitches[1] = 0;
       pitches[2] = 0;
-      if (pitches[0] != 2*param->output_width) {
+      if (decoder->width != param->output_width) {
 	mjpeg_error("for DV only full width output is supported\n");
 	res = 1;
       } else {
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     (guchar **) dv_frame, pitches);
-	frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
-				decoder->height, param);
+	frame_YUV422_to_YUV420P(frame, dv_frame[0],
+				decoder->width,	decoder->height);
 	
       }
       break;
@@ -333,19 +320,7 @@ int readframe(int numframe,
       res = 1;
       break;
     }
-    if ((res == 0) &&
-	(param->DV_deinterlace == 1 || param->DV_deinterlace == 2)) 
-      {
-	frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
-				  decoder->height,
-				  param->spatial_tolerance,
-				  param->default_temporal_tolerance,
-				  param->DV_deinterlace);
-	if (param->default_temporal_tolerance < 0)
-	  param->default_temporal_tolerance = param->temporal_tolerance;
-	memcpy(previous_Y, frame[0], decoder->width * decoder->height);
-      }
-#endif
+#endif /* SUPPORT_READ_DV2 */
     break;
 
   case DATAFORMAT_YUV420 :

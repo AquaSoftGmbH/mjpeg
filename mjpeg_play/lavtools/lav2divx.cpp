@@ -332,10 +332,6 @@ main ( int argc, char **argv )
 	param.frames = 0;
 	param.mono = 0;
 	param.scenefile = NULL;
-	param.DV_deinterlace = 0;
-	param.spatial_tolerance = 440;
-	param.temporal_tolerance = 220;
-	param.default_temporal_tolerance = -1;
 	param.delta_lum_threshold = 4;
 	param.scene_detection_decimation = 2;
 	param.output_width = 0;

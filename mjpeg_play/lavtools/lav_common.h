@@ -10,6 +10,9 @@
  *   inefficient, subtly broken, or Wrong.  Helpful feedback is certainly
  *   welcome.
  */
+/* - removed a lot of subsumed functionality and unnecessary cruft
+ *   March 2002, Matthew Marjanovic <maddog@mir.com>.
+ */
 
 /*
    This program is free software; you can redistribute it and/or modify
@@ -60,10 +63,6 @@ typedef struct {
    int frames;
    int mono;
    char *scenefile;
-   int DV_deinterlace; // = 0;
-   int spatial_tolerance; // = 440;
-   int temporal_tolerance; // = 220;
-   int default_temporal_tolerance; // = -1;
    int delta_lum_threshold; // = 4;
    unsigned int scene_detection_decimation; // = 2;
    int output_width;
@@ -91,10 +90,12 @@ void init(LavParam *param, uint8_t *frame[]);
 
 
 #ifdef SUPPORT_READ_DV2
+
 #include <libdv/dv.h>
-void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input, int width, int height, LavParam *param);
-void frame_YUV420P_deinterlace(uint8_t **frame, uint8_t *previous_Y, int width, int height, int SpatialTolerance, int TemporalTolerance, int mode);
+
+void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
+			     int width, int height);
 void lav_init_dv_decoder(void);
 
-#endif // SUPPORT_READ_DV2
+#endif /* SUPPORT_READ_DV2 */
 

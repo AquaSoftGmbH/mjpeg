@@ -8,6 +8,9 @@
  *   the relevant functions.  See lav_common.h for a bit more information.
  *   Helpful feedback is welcome.
  */
+/* - removed a lot of subsumed functionality and unnecessary cruft
+ *   March 2002, Matthew Marjanovic <maddog@mir.com>.
+ */
 
 /*
    This program is free software; you can redistribute it and/or modify
@@ -52,10 +55,7 @@ void Usage(char *str)
    "              (default:  read from DV files, or assume 4:3 for MJPEG)\n"
    "   -o num     Frame offset - skip num frames in the beginning\n"
    "              if num is negative, all but the last num frames are skipped\n"
-   "   -f num     Only num frames are written to stdout (0 means all frames)\n"
-   "   -I num     De-Interlacing mode for DV input (0,1,2,3)\n"
-   "   -i num     De-Interlacing spatial threshold (default: 440)\n"
-   "   -j num     De-Interlacing temporal threshold (default: 220)\n",
+   "   -f num     Only num frames are written to stdout (0 means all frames)\n",
   str);
    exit(0);
 }
@@ -185,10 +185,6 @@ int main(argc, argv)
 	param.frames = 0;
 	param.mono = 0;
 	param.scenefile = NULL;
-	param.DV_deinterlace = 0;
-	param.spatial_tolerance = 440;
-	param.temporal_tolerance = 220;
-	param.default_temporal_tolerance = -1;
 	param.delta_lum_threshold = 4;
 	param.scene_detection_decimation = 2;
 	param.output_width = 0;
@@ -197,7 +193,7 @@ int main(argc, argv)
 	param.sar = y4m_sar_UNKNOWN;
 	param.dar = y4m_dar_4_3;
 
-	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
+	while ((n = getopt(argc, argv, "mYv:S:T:D:o:f:P:A:")) != EOF) {
 		switch (n) {
 
 		case 'v':
@@ -207,32 +203,6 @@ int main(argc, argv)
 				nerr++;
 			}
 			break;
-
-		case 'I':
-			param.DV_deinterlace = atoi(optarg);
-			if (param.DV_deinterlace < 0 || param.DV_deinterlace > 3) {
-				mjpeg_error( "-I option requires arg 0..3\n");
-				nerr++;
-			}
-			break;
-
-		case 'i':
-			param.spatial_tolerance = atoi(optarg);
-			if (param.spatial_tolerance < 0 || param.spatial_tolerance > 65025)
-			{
-				mjpeg_error( "-i option requires a spatial tolerance between 0 and 65025\n");
-				nerr++;
-			}
-			break;
-
-		case 'j':
-			param.temporal_tolerance = atoi(optarg);
-			if (param.temporal_tolerance < 0 || param.temporal_tolerance > 65025) {
-				mjpeg_error( "-i option requires a temporal tolerance between 0 and 65025\n");
-				nerr++;
-			}
-			break;
-
 		case 'm':
 			param.mono = 1;
 			break;
