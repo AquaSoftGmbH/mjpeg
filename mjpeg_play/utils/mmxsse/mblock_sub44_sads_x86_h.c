@@ -82,8 +82,10 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 			if( (x & 15) == (ilow & 15) )
 			{
 				load_blk( curblk, rowstride, h );
+                                curblk += 4;
 			}
 			weight = SIMD_SUFFIX(qblock_sad)(ref, h, rowstride);
+			shift_blk(8);
 			if( weight <= threshold )
 			{
 				threshold = intmin(weight<<2,threshold);
@@ -97,8 +99,6 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 				cres->y = (uint8_t)y;
 				++cres;
 			}
-			curblk += 1;
-			shift_blk(8);
 		}
 		currowblk += gridrowstride;
 	}
