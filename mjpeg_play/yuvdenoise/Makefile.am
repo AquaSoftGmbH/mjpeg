@@ -4,10 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I $(top_srcdir)/utils -I $(top_srcdir)
 
-# (Ronald) do we have to do this?
-AM_CFLAGS = -funroll-all-loops -finline-functions \
-	-ffast-math -frerun-cse-after-loop -frerun-loop-opt \
-	-fexpensive-optimizations -fmove-all-movables
+yuvdenoise_CFLAGS=@PROGRAM_NOPIC@
 
 bin_PROGRAMS = yuvdenoise
 
