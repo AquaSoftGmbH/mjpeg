@@ -25,6 +25,8 @@
 #include <string.h>
 #include <math.h>
 
+#include "mjpeg_logging.h"
+
 #include "yuv4mpeg.h"
 
 const int num_mpeg2_framerates = 9;
@@ -98,7 +100,7 @@ yuv_read_frame (int fd, unsigned char *yuv[3], int width, int height)
       return 0;
    if (strncmp (magic, "FRAME\n", 6)) {
       magic[6] = '\0';
-      fprintf (stderr, "\nStart of frame is not \"FRAME\\n\"\n");
+      mjpeg_error( "\nStart of frame is not \"FRAME\\n\"\n");
       return 0;
       /* should we return -1 and set errno = EBADMSG instead? */
    }
@@ -137,7 +139,7 @@ yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
 
    for (n = 0; n < PARAM_LINE_MAX; n++) {
       if ((nerr = read (fd_in, param_line + n, 1)) < 1) {
-         fprintf (stderr, "Error reading header from stdin\n");
+         mjpeg_error( "Error reading header from stdin\n");
          /* set errno if nerr == 0 ? */
          return -1;
       }
@@ -145,7 +147,7 @@ yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
          break;
    }
    if (n == PARAM_LINE_MAX) {
-      fprintf (stderr,
+      mjpeg_error(
                "Didn't get linefeed in first %d characters of data\n",
                PARAM_LINE_MAX);
       /* set errno to EBADMSG? */
@@ -154,8 +156,8 @@ yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
    param_line[n] = 0;           /* Replace linefeed by end of string */
 
    if (strncmp (param_line, "YUV4MPEG", 8)) {
-      fprintf (stderr, "Input does not start with \"YUV4MPEG\"\n");
-      fprintf (stderr, "This is not a valid input for me\n");
+      mjpeg_error( "Input does not start with \"YUV4MPEG\"\n");
+      mjpeg_error( "This is not a valid input for me\n");
       /* set errno to EBADMSG? */
       return -1;
    }
@@ -165,20 +167,15 @@ yuv_read_header (int fd_in, int *horizontal_size, int *vertical_size,
 
    nerr = 0;
    if (*horizontal_size <= 0) {
-      fprintf (stderr, "Horizontal size illegal\n");
+      mjpeg_error( "Horizontal size illegal\n");
       nerr++;
    }
    if (*vertical_size <= 0) {
-      fprintf (stderr, "Vertical size illegal\n");
+      mjpeg_error( "Vertical size illegal\n");
       nerr++;
    }
 
    /* Ignore frame rate code */
-/*
-   if (verbose > 1)
-      fprintf (stderr, "YUV4MPEG %d %d %d\n",
-               *horizontal_size, *vertical_size, *frame_rate_code);
-*/
    return nerr ? -1 : 0;
 }
 

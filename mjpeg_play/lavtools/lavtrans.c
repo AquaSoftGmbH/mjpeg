@@ -96,7 +96,7 @@ static struct
 
 static char abuff[16384];
 
-int	verbose = 2;
+int	verbose = 1;
 void Usage(char *str);
 void system_error(char *str1, char *str2);
 
@@ -131,26 +131,37 @@ int main(int argc, char ** argv)
    int nv = 0, na = 0;
    int forcestereo = 0;
 
-   while( (n=getopt(argc,argv,"o:f:i:")) != EOF)
+   while( (n=getopt(argc,argv,"o:f:i:v:")) != EOF)
    {
       switch(n) {
-
-         case 'o':
-            outfile = optarg;
-            break;
-
-         case 'f':
-            format = optarg[0];
-            break;
-
-         case 'i':
-            process_image_frame = atoi(optarg);
-            break;
-
+		  
+	  case 'o':
+		  outfile = optarg;
+		  break;
+		  
+	  case 'f':
+		  format = optarg[0];
+		  break;
+		  
+	  case 'i':
+		  process_image_frame = atoi(optarg);
+		  break;
+      case 'v':
+		  verbose = atoi (optarg);
+		  if( verbose < 0 || verbose >2 )
+		  {
+			  Usage (argv[0]);
+			  exit (1);
+		  }
+		  break;		  
+		  
          case '?':
+			 Usage(argv[0]);
             exit(1);
       }
    }
+
+   (void)mjpeg_default_handler_verbosity(verbose);
 
    if(outfile==0 || format==0) Usage(argv[0]);
    if(format!='a' && format!='q' && format!='m' && format!='i' && format!='w' && format!='W') Usage(argv[0]);

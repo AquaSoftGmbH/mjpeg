@@ -29,10 +29,12 @@
 #include <sys/types.h>
 #include <signal.h>
 
+#include "mjpeg_logging.h"
+
 #include "pipelist.h"
 #include "yuv4mpeg.h"
 
-int verbose = 2;
+int verbose = 1;
 
 static int param_offset = 0;
 static int param_frames = 0;
@@ -43,6 +45,7 @@ static void usage () {
    fprintf (stderr, "Options: -o num   Frame offset - skip num frames in the beginning\n");
    fprintf (stderr, "                  if num is negative, all but the last num frames are skipped\n");
    fprintf (stderr, "         -n num   Only num frames are processed (0 means all frames\n");
+   fprintf (stderr, "         -v num  Verbosity of output [0..2]\n");
    
 }
 
@@ -170,8 +173,7 @@ static pid_t fork_child (char *cmd, int ofs, int num, int *fd_in, int *fd_out)
       p1 = (char *)((int)tmp1+(int)tmp2-(int)p1);
    }
    
-   if (verbose > 1)
-      fprintf (stderr, "Executing: \"%s\"\n", p1);
+   mjpeg_debug( "Executing: \"%s\"\n", p1);
    return fork_child_sub (p1, fd_in, fd_out);
 }
 
@@ -190,7 +192,7 @@ int main (int argc, char *argv[]) {
    
    unsigned char *yuv[3];
 
-   while ((i = getopt(argc, argv, "o:n:")) != EOF) {
+   while ((i = getopt(argc, argv, "o:n:v:")) != EOF) {
       switch (i) {
       case 'o':
          param_offset = atoi (optarg);
@@ -198,6 +200,15 @@ int main (int argc, char *argv[]) {
       case 'n':
          param_frames = atoi (optarg);
          break;
+      case 'v':
+         verbose = atoi (optarg);
+		 if( verbose < 0 || verbose >2 )
+		 {
+			 usage ();
+			 exit (1);
+		 }
+         break;
+
       default:
          iteration++;
       }
@@ -207,20 +218,20 @@ int main (int argc, char *argv[]) {
       exit (1);
    }
 
+   (void)mjpeg_default_handler_verbosity(verbose);
+
    if (open_pipe_list (argv[optind], &pl) <0) {
-      fprintf (stderr, "lavpipe: couldn't open \"%s\"\n", argv[optind]);
-      exit (1);
+      mjpeg_error_exit1( "lavpipe: couldn't open \"%s\"\n", argv[optind]);
    }
 
    if (param_offset < 0) {
       param_offset = pl.frame_num + param_offset;
    }   
    if (param_offset >= pl.frame_num) {
-      fprintf (stderr, "error: offset greater than # of frames in input\n");
-      exit (1);
+      mjpeg_error_exit1( "error: offset greater than # of frames in input\n");
    }
    if ((param_offset + param_frames) > pl.frame_num) {
-      fprintf (stderr, "warning: input too short for -n %d\n", param_frames);
+      mjpeg_warn( "input too short for -n %d\n", param_frames);
       param_frames = pl.frame_num - param_offset;
    }
    if (param_frames == 0) {
@@ -241,8 +252,7 @@ int main (int argc, char *argv[]) {
       sequence++;
    }
    
-   if (verbose > 1)
-      fprintf (stderr, "starting sequence %d, frame %d\n", sequence, frame);
+   mjpeg_debug("starting sequence %d, frame %d\n", sequence, frame);
 
    while (sequence < pl.seq_num) {
 
@@ -282,8 +292,7 @@ FINISH_CHECK:
                width = w; height = h; rate = r;
             } else {
                if ((width != w) || (height != h) /* || (rate != r) */) {
-                  fprintf (stderr, "input dimensions differ - please use lavscale or input streams with the same width/height\n");
-                  exit (1);
+                  mjpeg_error_exit1( "input dimensions differ - please use lavscale or input streams with the same width/height\n");
                }
             }
          }
@@ -332,15 +341,13 @@ FINISH_CHECK:
          
          for (i=0; i<seq->input_num; i++) {
             if (yuv_read_frame (input_in[seq->input_ptr[i]], yuv, width, height) == 0) {
-               fprintf (stderr, "lavpipe: input stream error in stream %d, sequence %d, frame %d\n", i, sequence, frame);
-               exit (1);
+               mjpeg_error_exit1( "lavpipe: input stream error in stream %d, sequence %d, frame %d\n", i, sequence, frame);
             }
             if (output_out >= 0) yuv_write_frame (output_out, yuv, width, height);
          }
          if (output_in >= 0) {
             if (yuv_read_frame (output_in, yuv, w, h) == 0) {
-               fprintf (stderr, "lavpipe: filter stream error in sequence %d, frame %d\n", sequence, frame);
-               exit (1);
+               mjpeg_error_exit1( "lavpipe: filter stream error in sequence %d, frame %d\n", sequence, frame);
             }
          }
 
@@ -376,7 +383,7 @@ FINISH_CHECK:
       for (i=0; i<pl.input_num; i++) {
          if (input_in[i] >= 0) {
             if (sequence == pl.seq_num) {
-               fprintf (stderr, "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
+               mjpeg_info( "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
                close (input_in[i]);
                kill (input_pid[i], SIGINT);
                input_in[i] = -1;
@@ -384,10 +391,10 @@ FINISH_CHECK:
                for (j=0; j<pl.seq_ptr[sequence]->input_num; j++)
                   if (i == pl.seq_ptr[sequence]->input_ptr[j])
                      if (pl.seq_ptr[sequence]->input_ofs[j] == seq->input_ofs[i] + frame) {
-                        fprintf (stderr, "using input %d (\"%s\") further\n", i, pl.input_cmd[i]);
+                        mjpeg_info( "using input %d (\"%s\") further\n", i, pl.input_cmd[i]);
                         goto DO_NOT_CLOSE;
                      }
-               fprintf (stderr, "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
+               mjpeg_info( "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
                close (input_in[i]);
                kill (input_pid[i], SIGINT);
                input_in[i] = -1;

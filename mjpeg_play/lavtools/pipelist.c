@@ -41,11 +41,10 @@ int open_pipe_list (char *name, PipeList *pl)
       fgets (line, 1024, fd);
       if(line[0]!='N' && line[0]!='n' && line[0]!='P' && line[0]!='p')
       {
-         fprintf(stderr,"Pipe list second line is not NTSC/PAL\n");
+         mjpeg_error("Pipe list second line is not NTSC/PAL\n");
          exit (1);
       }
-      if (verbose > 1)
-        fprintf(stderr,"Pipe list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
+	  mjpeg_debug("Pipe list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
       if(line[0]=='N'||line[0]=='n')
          pl->video_norm = 'n';
       else
@@ -55,11 +54,11 @@ int open_pipe_list (char *name, PipeList *pl)
 
       fgets (line, 1024, fd);
       if (sscanf (line, "%d", &(pl->input_num)) != 1) {
-         fprintf (stderr, "pipelist: # of input streams expected, \"%s\" found\n", line);
+         mjpeg_error( "pipelist: # of input streams expected, \"%s\" found\n", line);
          return -1;
       }
-      if (verbose > 1)
-        fprintf (stderr, "Pipe list contains %d input streams\n", pl->input_num);
+	  
+	  mjpeg_info( "Pipe list contains %d input streams\n", pl->input_num);
 
       pl->input_cmd = (char **) malloc (pl->input_num * sizeof (char *));
 
@@ -67,7 +66,7 @@ int open_pipe_list (char *name, PipeList *pl)
          fgets(line,1024,fd);
          n = strlen(line);
          if(line[n-1]!='\n') {
-            fprintf(stderr,"Input cmdline in pipe list too long\n");
+            mjpeg_error("Input cmdline in pipe list too long\n");
             exit(1);
          }
          line[n-1] = 0; /* Get rid of \n at end */
@@ -87,22 +86,22 @@ int open_pipe_list (char *name, PipeList *pl)
          /* 3.1. frames in sequence */
 
          if (sscanf (line, "%d", &(seq->frame_num)) != 1) {
-            fprintf (stderr, "pipelist: # of frames in sequence expected, \"%s\" found\n", line);
+            mjpeg_error( "pipelist: # of frames in sequence expected, \"%s\" found\n", line);
             return -1;
          }
          if (seq->frame_num < 1) {
-            fprintf (stderr, "Pipe list contains sequence of length < 1 frame\n");
-            exit (1);
+			 mjpeg_error_exit1( "Pipe list contains sequence of length < 1 frame\n");
          }
-         if (verbose > 1)
-            fprintf (stderr, "Pipe list sequence %d contains %d frames\n", pl->seq_num, seq->frame_num);
+
+		 mjpeg_debug( "Pipe list sequence %d contains %d frames\n", 
+					  pl->seq_num, seq->frame_num);
          pl->frame_num += seq->frame_num;
          
          /* 3.2. input streams */
      
          n = !fgets (line, 1024, fd);
          if (sscanf (line, "%d", &(seq->input_num)) != 1) {
-            fprintf (stderr, "pipelist: # of streams in sequence expected, \"%s\" found\n", line);
+            mjpeg_error( "pipelist: # of streams in sequence expected, \"%s\" found\n", line);
             return -1;
          }
          seq->input_ptr = (int *) malloc (seq->input_num * sizeof (int));
@@ -116,11 +115,11 @@ int open_pipe_list (char *name, PipeList *pl)
                j++;
             }
             if (j != 2) {
-               fprintf (stderr, "pipelist: input stream index & offset expected, \"%s\" found\n", line);
+               mjpeg_error( "pipelist: input stream index & offset expected, \"%s\" found\n", line);
                return -1;
             }
             if (seq->input_ptr[i] >= pl->input_num) {
-               fprintf (stderr, "Sequence requests input stream that is not contained in pipe list\n");
+               mjpeg_error( "Sequence requests input stream that is not contained in pipe list\n");
                exit (1);
             }
          }
@@ -129,13 +128,13 @@ int open_pipe_list (char *name, PipeList *pl)
 
          fgets (line, 1024, fd);
          if (n > 0) {
-            fprintf (stderr, "Error in pipe list: Unexpected end\n");
-            fprintf (stderr, "\"%s\"\n", line);
+            mjpeg_error( "Error in pipe list: Unexpected end\n");
+            mjpeg_error( "\"%s\"\n", line);
             exit (1);
          }
          n = strlen(line);
          if(line[n-1]!='\n') {
-            fprintf(stderr,"Output cmdline in pipe list too long\n");
+            mjpeg_error("Output cmdline in pipe list too long\n");
             exit(1);
          }
          line[n-1] = 0; /* Get rid of \n at end */

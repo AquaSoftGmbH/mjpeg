@@ -262,8 +262,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
          fgets(line,1024,fd);
          if(line[0]!='N' && line[0]!='n' && line[0]!='P' && line[0]!='p')
          {
-            fprintf(stderr,"Edit list second line is not NTSC/PAL\n");
-            exit(1);
+            mjpeg_error_exit1("Edit list second line is not NTSC/PAL\n");
          }
 
 		 mjpeg_debug("Edit list norm is %s\n",line[0]=='N'||line[0]=='n'?"NTSC":"PAL");
@@ -300,8 +299,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
             n = strlen(line);
             if(line[n-1]!='\n')
             {
-               fprintf(stderr,"Filename in edit list too long\n");
-               exit(1);
+               mjpeg_error_exit1("Filename in edit list too long\n");
             }
             line[n-1] = 0; /* Get rid of \n at end */
 
@@ -317,8 +315,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
                sscanf(line,"%d %d %d",&nl,&n1,&n2);
                if(nl<0 || nl>=num_list_files)
                {
-                  fprintf(stderr,"Wrong file number in edit list entry\n");
-                  exit(1);
+                  mjpeg_error_exit1("Wrong file number in edit list entry\n");
                }
                if(n1<0) n1 = 0;
                if(n2>=el->num_frames[index_list[nl]]) n2 = el->num_frames[index_list[nl]];

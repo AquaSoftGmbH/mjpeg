@@ -22,6 +22,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include "mjpeg_logging.h"
+
 #include "yuv4mpeg.h"
 
 static void usage () {
@@ -31,7 +33,8 @@ static void usage () {
                     "        -O num   opacity of second input at the end [0-255]\n"
                     "        -d num   duration of transistion in frames (REQUIRED!)\n"
                     "        -s num   skip first num frames of transistion\n"
-                    "        -n num   only process num frames of the transistion\n");
+                    "        -n num   only process num frames of the transistion\n"
+                    "        -v num   verbosity [0..2]\n");
 
 }
 
@@ -58,6 +61,7 @@ static void blend (unsigned char *src0[3], unsigned char *src1[3],
 
 int main (int argc, char *argv[])
 {
+   int verbose = 1;
    int in_fd  = 0;         /* stdin */
    int out_fd = 1;         /* stdout */
    unsigned char *yuv0[3]; /* input 0 */
@@ -71,27 +75,34 @@ int main (int argc, char *argv[])
    unsigned int param_skipframes = 0;     /* # of frames to skip */
    unsigned int param_numframes  = 0;    /* # of frames to process - skip+num <= duration */
 
-   while ((i = getopt(argc, argv, "o:O:d:s:n:")) != -1) {
+   while ((i = getopt(argc, argv, "v:o:O:d:s:n:")) != -1) {
       switch (i) {
+      case 'v':
+         verbose = atoi (optarg);
+		 if( verbose < 0 || verbose >2 )
+		 {
+			 usage ();
+			 exit (1);
+		 }
+         break;		  
       case 'o':
          param_opacity0 = atoi (optarg);
          if (param_opacity0 > 255) {
-            fprintf (stderr, "warning: start opacity > 255\n");
+            mjpeg_warn( "start opacity > 255\n");
             param_opacity0 = 255;
          }
          break;
       case 'O':
          param_opacity1 = atoi (optarg);
          if (param_opacity1 > 255) {
-            fprintf (stderr, "warning: end opacity > 255\n");
+            mjpeg_warn( "end opacity > 255\n");
             param_opacity1 = 255;
          }
          break;
       case 'd':
          param_duration = atoi (optarg);
          if (param_duration == 0) {
-            fprintf (stderr, "error: duration = 0 frames\n");
-            exit (1);
+            mjpeg_error_exit1( "error: duration = 0 frames\n");
          }
          break;
       case 's':
@@ -110,9 +121,10 @@ int main (int argc, char *argv[])
       exit (1);
    }
    if ((param_skipframes + param_numframes) > param_duration) {
-      fprintf (stderr, "error: skip + num > duration\n");
-      exit (1);
+      mjpeg_error_exit1( "skip + num > duration\n");
    }
+
+   (void)mjpeg_default_handler_verbosity(verbose);
 
    i = yuv_read_header (in_fd, &w, &h, &rate);
    

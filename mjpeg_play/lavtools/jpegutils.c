@@ -28,6 +28,8 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
+#include "mjpeg_logging.h"
+
 #include "lav_io.h"
 
  /*
@@ -207,7 +209,7 @@ static void init_destination (j_compress_ptr cinfo)
 static boolean empty_output_buffer (j_compress_ptr cinfo)
 {
    //FIXME:
-   fprintf (stderr, "Given jpeg buffer was too small!\n");
+   mjpeg_error( "Given jpeg buffer was too small!\n");
    ERREXIT (cinfo, JERR_BUFFER_SIZE);	/* shouldn't be FILE_WRITE but BUFFER_OVERRUN! */
    return TRUE;
 }
@@ -359,7 +361,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    jpeg_start_decompress (&dinfo);
 
    if (dinfo.output_components != 3) {
-      fprintf (stderr, "Output components of JPEG image = %d, must be 3\n",
+      mjpeg_error( "Output components of JPEG image = %d, must be 3\n",
                dinfo.output_components);
       goto ERR_EXIT;
    }
@@ -371,7 +373,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 
    if (hsf[0] != 2 || hsf[1] != 1 || hsf[2] != 1 ||
        (vsf[0] != 1 && vsf[0] != 2) || vsf[1] != 1 || vsf[2] != 1) {
-      fprintf (stderr, "Unsupported sampling factors!");
+      mjpeg_error( "Unsupported sampling factors!");
       goto ERR_EXIT;
    }
 
@@ -382,7 +384,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    } else if (2 * dinfo.output_height == height) {
       numfields = 2;
    } else {
-      fprintf (stderr,
+      mjpeg_error(
                "Read JPEG: requested height = %d, height of image = %d\n",
                height, dinfo.output_height);
       goto ERR_EXIT;
@@ -391,7 +393,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
    /* Width is more flexible */
 
    if (dinfo.output_width > MAX_LUMA_WIDTH) {
-      fprintf (stderr, "Image width of %d exceeds max\n",
+      mjpeg_error( "Image width of %d exceeds max\n",
                dinfo.output_width);
       goto ERR_EXIT;
    }
@@ -443,7 +445,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
             yl = yc = field;
             break;
          default:
-            fprintf (stderr,
+            mjpeg_error(
                      "Input is interlaced but no interlacing set\n");
             goto ERR_EXIT;
          }
@@ -608,19 +610,13 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
    cinfo.comp_info[2].h_samp_factor = 1;	/*1||2 */
    cinfo.comp_info[2].v_samp_factor = 1;
 
-/*
- * FIXME:
- *
- * Are these excessive restrictions reasonable?
- *
- */
 
-   if ((width>768)||(height>576)) {
-      fprintf (stderr, "Image dimensions (%dx%d) exceed lavtools' max (768x576)\n", width, height);
+   if ((width>4096)||(height>4096)) {
+      mjpeg_error( "Image dimensions (%dx%d) exceed lavtools' max (4096x4096)\n", width, height);
       goto ERR_EXIT;
    }
    if ((width%16)||(height%16)) {
-      fprintf (stderr, "Image dimensions (%dx%d) not multiples of 16\n", width, height);
+      mjpeg_error( "Image dimensions (%dx%d) not multiples of 16\n", width, height);
       goto ERR_EXIT;
    }
    cinfo.image_width = width;
@@ -631,8 +627,8 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
       break;
    default:
       numfields = 1;
-      if (height > 288) {
-         fprintf (stderr, "Image height (%d) exceeds lavtools max for non-interlaced frames\n", height);
+      if (height > 2048) {
+         mjpeg_error( "Image height (%d) exceeds lavtools max for non-interlaced frames\n", height);
          goto ERR_EXIT;
       }
    }
@@ -653,7 +649,7 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
             yl = yc = field;
             break;
          default:
-            fprintf (stderr,
+            mjpeg_error(
                      "Input is interlaced but no interlacing set\n");
             goto ERR_EXIT;
          }

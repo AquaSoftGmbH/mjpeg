@@ -630,7 +630,7 @@ int average_coeff(unsigned int input_length,unsigned int output_length,unsigned 
 			}
 			nb=(still_to_go/output_length);
 #ifdef DEBUG
-			mjpeg_debug("in=%d,nb=%d,still_to_go=%d\n",in,nb,still_to_go);
+			mjpeg_debug("in=%d,nb=%d,stgo=%d ol=%d\n",in,nb,still_to_go, output_length);
 #endif
 			for (out=0;out<nb;out++)
 			{
@@ -757,7 +757,7 @@ int average_Y(uint8_t * input,uint8_t * output, unsigned int * height_coeff, uns
 						//	          *(output_line_p[out_line]++)=value/diviseur;
 						//		  round_off_error=value%diviseur;
 						//		  Here, we speed up things but using the pretabulated integral parts
-						divi=*(divide+value);
+						divi=divide[value];
 						*(output_line_p[out_line]++)=divi;
 						round_off_error=value-divi*diviseur;
 						W+=nb_W+1;

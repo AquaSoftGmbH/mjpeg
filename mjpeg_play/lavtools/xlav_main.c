@@ -7,6 +7,7 @@
 #include <sys/wait.h>
 #include "forms.h"
 #include "xlav.h"
+#include "mjpeg_logging.h"
 
 #define PLAY_PROG "lavplay"
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
@@ -100,11 +101,9 @@ void dispatch_input(void)
       }
       return;
    }
+   // Note: no need to pass through ordinary lavplay logging output as it comes through
+   // stderr not stdout...
 
-   /* Default: some print output from lavplay */
-
-   printf("+++ %s",inpbuff);
-   if(inpbuff[inplen-1]!='\n') printf("<<<\n");
 }
 
 void get_input(int fd, void *data)
@@ -202,13 +201,13 @@ void Exit_cb(FL_OBJECT *ob, long data)
    /* Try to exit gracefully, wait 1 second, do real exit */
 
    write(out_pipe,"q\n\n\n",4);
-   printf("Exit: Waiting 1 second for childs\n");
+   mjpeg_info("Exit: Waiting 1 second for childs\n");
    fl_add_timeout(1000, do_real_exit, 0);
 }
 
 void signal_cb(int signum, void *data)
 {
-   printf("Got signal %d\n",signum);
+   mjpeg_debug("Got signal %d\n",signum);
    Exit_cb(0,0);
 }
 
@@ -377,6 +376,7 @@ int main(int argc, char *argv[])
    create_child(argvn);
 
    fl_initialize(&argc, argv, 0, 0, 0);
+   (void)mjpeg_default_handler_verbosity(verbose);
    fl_set_border_width(-2);
    fd_xlav = create_form_xlav();
 
