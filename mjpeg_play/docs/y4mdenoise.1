@@ -1,0 +1,189 @@
+.TH "y4mdenoise" "1" "27 Apr 2004" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH NAME
+y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
+
+.SH SYNOPSIS
+.B y4mdenoise
+.RI [ options ]
+.RI "< /dev/stdin > /dev/stdout"
+
+.SH DESCRIPTION
+\fBy4mdenoise\fP can be used to remove noise from images
+in a YUV4MPEG2 stream. This is useful for cleaning old sources to
+increase video quality, and to reduce the bitrate needed to encode
+your video (e.g. for VCD and SVCD creation).
+
+.SH HOW IT WORKS
+It maintains a list of the last several frames, called reference frames.
+Each reference frame is composed of reference pixels, which work like
+normal pixels except that each contains the sum of the values of all
+the pixels it represents, and the number of pixels it represents.
+Every time a pixel in one frame is proven to be a moved instance of a
+pixel in another frame, the reference-pixel incorporates its value, and
+produces an average value for the pixel.  The oldest reference frame,
+therefore, gets a pretty good idea of the real value of every pixel,
+but of course output is delayed by the number of reference frames.
+
+It compares every pixel in the current frame with all pixels in the
+previous frame, within a given search-radius, and any pixels that are
+equal within the given error-tolerance are assumed to be the same pixel.
+It builds contiguous regions of matched pixels, with the motion vector
+that's common to the region.
+
+If there are too many matches for a particular area of the image, or if
+the largest contiguous match in the area is too large, it's applied to
+the image right then, and then searching continues.  Applying a region
+means to flood-fill the region (to make it the largest size possible,
+and to flesh out its borders to pixel accuracy), then hooking up the
+corresponding reference-frame pixels to the new frame at their new
+location, and incorporating the values of all the new pixels into the
+corresponding reference pixels.  Doing this before the end of searching
+the frame means the affected areas don't have to be part of the search
+any more, helping to reduce the amount of work needed to search the
+rest of the frame.
+
+At the end of the frame, matches are applied to the new frame, from the
+largest to the smallest, discounting any areas that have already been
+resolved.  Any new-frame pixels not resolved by now are considered to
+be new information, and a new reference-pixel is generated for each one.
+
+The search is not actually done one pixel at a time; it's done in
+terms of pixel groups.  An entire pixel-group has to match for any
+match to be found, but all possible pixel-groups are tested (i.e. all
+possible overlaps are checked).  Using pixel-groups helps to establish
+a minimum standard for what may be considered a match, in order to
+avoid finding lots of really small (and really useless) matches.
+The flood-fill still extends the matches out to pixel accuracy,
+so the only details lost are the ones smaller than a pixel-group,
+which is not a bad sacrifice for performance's sake.
+
+.SH OPTIONS
+\fBy4mdenoise\fP accepts the following options:
+
+.TP 4
+.BI \-r " [4..] search radius"
+The search radius, i.e. the maximum distance that a pixel can move and
+still be found by motion-detection.  The default is 16.
+There are no particular limitations on the search radius, e.g. it
+doesn't have to be an even multiple of 4.
+
+.TP 4
+.BI \-R " [4..] color search radius"
+The search radius to use for color.  Default is whatever the main
+search-radius was set to.  Note that this value ends up getting scaled
+by the relative size of intensity & color planes in your YUV4MPEG2
+stream.
+
+.TP 4
+.BI \-t " [0..255] Error tolerance"
+The largest difference between two pixels that's accepted for the two
+pixels to be considered equal.  The default is 3, which is good for
+medium-noise material like analog cable TV.  (This value will have to
+be changed to whatever is appropriate for your YUV4MPEG2 stream.
+See the instructions below.)
+
+.TP 4
+.BI \-T " [0..255] Error tolerance for color"
+The default is whatever the main error-tolerance was set to.
+
+.TP 4
+.BI \-m " [num] Match-count throttle"
+If the denoiser finds more than this many regions in the area being
+searched, the search is short-circuited, and the best region in the area
+is applied right then.  Default is 5.
+
+.TP 4
+.BI \-M " [num] Match-size throttle"
+If the biggest region in the being searched for is greater than this
+many pixel-groups, the search is short-circuited, and the best region in
+the area is applied right then.  Default is 5.
+
+.TP 4
+.BI \-s " num"
+Number of beginning frames to skip.  The first num frames are written
+to stdout unfiltered.  This is useful for resuming an interrupted
+job without having to duplicate work.  Default is 0.
+
+.TP 4
+.BI \-f " num"
+The number of reference frames to keep.  Pixel values are averaged over
+this many frames before they're written to standard output; this also
+implies that output is delayed by this many frames.  Default is 10.
+
+.TP 4
+.BI \-B
+Black-and-white mode.  Denoise only the intensity plane, and set the
+color plane to all white.
+
+.TP 4
+.BI \-I " num"
+Set interlacing type.  Default is taken from the YUV4MPEG2 stream.
+0 means not interlaced, 1 means top-field interlaced, 2 means
+bottom-field interlaced.  This is useful when the signal is more
+naturally of some other interlacing type than its current representation
+(e.g. if the original was shot on film and then later it was transferred
+to interlaced video).
+
+.SH TYPICAL USAGE AND TIPS
+Keep in mind that all of this advice was gained through experience.
+(Just because one writes a tool doesn't mean one understands how it
+should be used, for the same reason that car designers aren't
+necessarily professional drivers.)
+
+The error-threshold must be determined for every individual YUV4MPEG2
+stream.  If the threshold is set too low, it'll leave noise in the
+video, and the denoiser will run a lot slower than it has to.  If it's
+set too high, the denoiser will start to remove detail: the video will
+get blurrier, you may see topographical-like bands in the relatively
+flat areas of the video, and small parts of the video that should
+be moving will be stuck in place.  Additionally, just because the
+video came to you from a clean source (digital cable TV, LaserDisc,
+etc.) doesn't mean the video itself is clean; y4mdenoise is capable
+of picking up on noise in the original recording.  You will have to
+generate small clips of representative parts of your video, denoise
+them with various error thresholds, and see what looks the best.  As you
+gain experience with the tool, you may know what error threshold
+generally works with various types of sources, but you'll still want to
+double-check your assumptions.
+
+Animation seems to require a higher error threshold than most other
+types of video, e.g. 50% higher and up.
+
+y4mdenoise only removes temporal noise, i.e. noise that occurs over
+time.  And it tends to do such a good job of this, that the spatial
+noise (i.e. noise that occurs in nearby areas of the same frame)
+tends to become very distinct.  Therefore, always pipe the output of
+\fBy4mdenoise\fP through a spatial filter such as \fBy4mspatialfilter\fP
+or \fByuvmedianfilter\fP.
+
+JPEG compression of your video frames, even 100% compression, seems to
+be inaccurate enough to affect MPEG encoding.  Therefore, if you're
+using motion-JPEG files as your intermediary video format, you may
+want to use the denoiser in your MPEG-encoding pipeline, i.e. after
+\fBlav2yuv\fP and before \fBmpeg2enc\fP.  If you're generating multiple
+resolutions of the same video, e.g. DVD and VCD, experience shows
+that it's acceptable to run \fBy4mdenoise\fP before \fByuv2lav\fP, but
+you should still use the spatial-filter (e.g. \fBy4mspatialfilter\fP,
+\fByuvmedianfilter\fP) in the MPEG-encoding pipeline, to try to smooth
+away JPEG encoding artifacts.
+
+.SH AUTHOR
+The bulk of the \fBy4mdenoise\fP code, and this man page, was written by
+Steven Boswell <ulatec@users.sourceforge.net>.
+
+.SH FURTHER INFO
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+
+.BR \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at
+
+.BR \fIhttp://mjpeg.sourceforge.net/\fP
+
+.SH SEE ALSO
+.BR mjpegtools (1),
+.BR mpeg2enc (1),
+.BR yuvdenoise (1),
+.BR yuvmedianfilter (1)
