@@ -105,7 +105,7 @@ AC_SUBST(QUICKTIME_INCLUDE)
 AC_CHECK_LIB( quicktime, quicktime_open,
 	          [ 
 		        AC_DEFINE(BUILD_QUICKTIME)
-				LIBS="$LIBS -lquicktime"
+				LIBS="$LIBS -lquicktime -lm -lpng -lpthread `glib-config --libs --cflags`"
 			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
 			    have_quicktime="yes"
 		      ],
