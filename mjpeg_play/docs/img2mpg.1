@@ -1,3 +1,4 @@
+.\" MPEG portfolio images multiplexer from MjpegTools package
 .TH "img2mpg" "1" "1 January 2003" "Gilles CAULIER" "MJPEG tools manual"
 .SH "NAME"
 .LP 
@@ -13,7 +14,7 @@ ImageMagick ver >= 5.2.0 [ http://www.imagemagick.org/ ]
 .br 
 MjpegTools  ver >= 1.6.0 [ http://mjpeg.sourceforge.net/ ]
 .LP 
-This script used this externals binary programs :
+With this packages, 'img2mpeg' used this externals binary programs :
 
 \- 'montage' from ImageMagick for resize the images for the TV screen size.
 .br 
@@ -35,6 +36,10 @@ This script used this externals binary programs :
 .SH "DESCRIPTION"
 .LP 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific duration and merge all images on an single MPEG file. It use the MjpegTools and ImageMagick packages.
+.LP 
+Between the images, you can insert a basic transition. You can also add an audio track with the image sequence from MP2 or WAV file.
+.LP 
+All images will be automaticly scaling to the good size for the video format. Also a specific background color or a image file could be used.
 .LP 
 You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
 .LP 
@@ -123,7 +128,7 @@ There isn't transition between images.
 .LP 
 #./img2mpg \-n NTSC \-t 2 \-o MyPortfolio.mpg \-i *.png
 
-Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
+Build XVCD (default) NTSC MPEG file with a transition between images (speed 2) with  all local PNG image files.
 The image files sequence use the local filesystem sort.
 .LP 
 .SH "AUTHORS"
