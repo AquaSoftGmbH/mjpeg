@@ -31,9 +31,13 @@
 #include <unistd.h>
 #include <mpegconsts.h>
 #include <mpegtimecode.h>
+#include <sys/time.h>
 
 #define PLAY_PROG "lavplay"
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION /* Expected version info */
+
+static struct timeval time_when_pressed;
+static int number_of_skipped_frames;
 
 int verbose = 1;
 static GTK_xlav *gtk_xlav;
@@ -343,7 +347,7 @@ void dispatch_input(void)
    }
 }
 
-static void get_input(gpointer data, gint fd, GdkInputCondition condition) 
+static void get_input(gpointer data, gint fd, GdkInputCondition condition)
 {
    char input[4096];
    int i, n;
@@ -394,7 +398,7 @@ void button_cb(GtkWidget *ob, long data)
    {
       case 1: write(out_pipe,"s0\n",3); break; /* go to beginning */
       case 2: write(out_pipe,"s10000000\n",10); break;  /* go to end */
-	/* moved this to  frame_skip_pressed 
+      /* moved this to  frame_skip_pressed
       case 3: write(out_pipe,"-\n",2); break;
       case 4: write(out_pipe,"+\n",2); break;
       */
@@ -402,31 +406,50 @@ void button_cb(GtkWidget *ob, long data)
 }
 
 static guint skip_frame(char *mychar) {
+   struct timeval current_time;
+
+   gettimeofday(&current_time,0);
+
    if (frame_skip_button_up == 0 ) {
-      char out[10];
-      sprintf(out,"%c\n",frame_skip_char);
-      write(out_pipe,out,2); 
+      if (((current_time.tv_sec-time_when_pressed.tv_sec)*1000+(current_time.tv_usec-time_when_pressed.tv_usec)/1000)>500)
+      {
+         char out[10];
+         sprintf(out,"%c\n",frame_skip_char);
+         write(out_pipe,out,2);
+         number_of_skipped_frames++;
+      }
    }
    return (! frame_skip_button_up);
 }
 
 void frame_skip_pressed(GtkWidget *ob, long data) {
-      frame_skip_button_up=0;
-      switch(data) {
-         case 3: 
-            frame_skip_char='-';  /* frame reverse */
-            gtk_timeout_add(10,(GtkFunction)skip_frame,(gpointer)0);
-            break;
-         case 4:
-            frame_skip_char='+'; /* frame advance */
-            gtk_timeout_add(10,(GtkFunction)skip_frame,(gpointer)0);
-            break;
-         default: break;
-      }
+   frame_skip_button_up=0;
+
+   gettimeofday(&time_when_pressed,0);
+   number_of_skipped_frames=0;
+
+   switch(data) {
+      case 3:
+         frame_skip_char='-';  /* frame reverse */
+         gtk_timeout_add(10,(GtkFunction)skip_frame,(gpointer)0);
+         break;
+      case 4:
+         frame_skip_char='+'; /* frame advance */
+         gtk_timeout_add(10,(GtkFunction)skip_frame,(gpointer)0);
+         break;
+      default:
+         break;
+   }
 }
 
 void frame_skip_released(GtkWidget *ob, long data){
    frame_skip_button_up=1;
+	
+   if(number_of_skipped_frames==0){
+      char out[10];
+      sprintf(out,"%c\n",frame_skip_char);
+      write(out_pipe,out,2);
+   }
 }
 
 
