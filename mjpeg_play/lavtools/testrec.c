@@ -76,7 +76,6 @@
 #include <signal.h>
 #include <stdlib.h>
 
-#ifndef IRIX
 /* Because of some really cool feature in video4linux1, also known as
  * 'not including sys/types.h and sys/time.h', we had to include it
  * ourselves. In all their intelligence, these people decided to fix
@@ -595,10 +594,3 @@ int main(int argc, char ** argv)
 		lavrec_msg(LAVREC_INFO,"Error exit ...","");
 	exit(0);
 }
-#else
-void main()
-{
-  fprintf(stderr, "This program doesn't work in IRIX !\n");
-}
-#endif
-

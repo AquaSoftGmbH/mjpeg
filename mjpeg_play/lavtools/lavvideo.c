@@ -49,7 +49,6 @@ Copyright by Gernot Ziegler.
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
-#ifndef IRIX
 #include <linux/types.h>
 /* Because of some really cool feature in video4linux1, also known as
  * 'not including sys/types.h and sys/time.h', we had to include it
@@ -384,17 +383,6 @@ int main(int argc,char *argv[])
 
   return 0;
 }
-#else
-int main ()
-{
-  fprintf(stderr, "This program doesn't work in IRIX !\n");
-  return -1;
-}
-#endif
-
-
-
-
 
 
 
