@@ -443,9 +443,9 @@ main ( int argc, char **argv )
 
 		copt =
 #if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvk:C:", long_options, &option_index );
+			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvVk:C:", long_options, &option_index );
 #else
-			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gv", long_options, &option_index );
+			getopt_long ( argc, argv, "F:E:A:a:w:h:e:c:b:o:s:n:d:gvV", long_options, &option_index );
 #endif
 		if ( copt == -1 )
 		{
