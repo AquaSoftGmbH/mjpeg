@@ -33,7 +33,7 @@ int main(int argc, char **argv)
         int     i, j, c, width, height, nomodify = 0, frames, err, uvlen;
 	int	y, u, v;
         int     verbose = 1, fdin;
-	int	thresh_percentage = 10, highpass = 48, luma_center = 28;
+	int	thresh_percentage = 5, highpass = 48, luma_center = 28;
 	int	luma_radius = 4, u_chroma_center = 128, u_chroma_radius = 4;
 	int	v_chroma_center = 128, v_chroma_radius = 4;
 	int	pixel_thresh, num_dark, num_replaced;
@@ -232,7 +232,7 @@ static void usage()
 	fprintf(stderr, "\t-U N Cb/U radius (4)\n");
 	fprintf(stderr, "\t-v N Cr/V center value (128)\n");
 	fprintf(stderr, "\t-V N Cr/V radius (4)\n");
-	fprintf(stderr, "\t-p N dark pixel threshold in percent (10)\n");
+	fprintf(stderr, "\t-p N dark pixel threshold in percent (5)\n");
 	fprintf(stderr, "\t     0 = always do replacment\n");
         exit(1);
         }
