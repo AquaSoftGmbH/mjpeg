@@ -37,6 +37,12 @@
 extern int altivec_copy_v0();
 #endif
 
+/*
+ * Don't add "mblocks_sub44_mests" to the list below because it does not
+ * have a C-reference code counterpart (mblocks_sub44_mests only exists as
+ * a SIMD routine).
+*/
+
 	const char *disable_simd_flags[] = {
 		"sad_00",
 		"sad_01",
@@ -52,7 +58,6 @@ extern int altivec_copy_v0();
 		"bsumsq",
 		"build_sub22_mests",
 		"build_sub44_mests",
-		"mblocks_sub44_mests",
 		"subsample_image",
 		"find_best_one_pel",
 		"quant_nonintra",
