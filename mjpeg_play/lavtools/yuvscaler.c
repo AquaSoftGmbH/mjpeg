@@ -1,6 +1,6 @@
 /*
   *  yuvscaler.c
-  *  Copyright (C) 2001 Xavier Biquard <xbiquard@free.fr>
+  *  Copyright (C) 2001-2003 Xavier Biquard <xbiquard@free.fr>
   * 
   *  
   *  Scales arbitrary sized yuv frame to yuv frames suitable for VCD, SVCD or specified
@@ -36,10 +36,12 @@
 // as well as luminance linear reequilibrium. Lots of code cleaning, function renaming, etc...
 // Keywords concerning interlacing/preprocessing now under INPUT case
 // October 2002: yuvscaler functionnalities not related to image rescaling now part of yuvcorrect
+// January 2003: reimplementation of the bicubic algorithm => goes faster
 //  
 // TODO:
 // no more global variables for librarification
 // a really working MMX subroutine for bicubic
+// reading field per field when interlaced in the bicubic case
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -65,7 +67,7 @@
 
 
 
-#define yuvscaler_VERSION "16-12-2002"
+#define yuvscaler_VERSION "17-01-2003"
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
@@ -146,7 +148,9 @@ unsigned int mono = 0;		// is =1 for monochrome output
 
 // Keywords for argument passing 
 const char VCD_KEYWORD[] = "VCD";
+const char SMALL_STILL[]   = "VCDSTILL";
 const char SVCD_KEYWORD[] = "SVCD";
+const char LARGE_STILL[]  = "SVCDSTILL";
 const char DVD_KEYWORD[] = "DVD";
 const char SIZE_KEYWORD[] = "SIZE_";
 const char USE_KEYWORD[] = "USE_";
@@ -161,9 +165,6 @@ const char RESAMPLE[] = "RESAMPLE";
 const char BICUBIC[] = "BICUBIC";
 const char ACTIVE[] = "ACTIVE";
 const char NO_HEADER[] = "NO_HEADER";
-#ifdef HAVE_ASM_MMX
-const char MMX[] = "MMX";
-#endif
 
 // Specific to BICUBIC algorithm
 // 2048=2^11
@@ -190,14 +191,6 @@ int verbose = 1;
 uint8_t blacky = 16;
 uint8_t blackuv = 128;
 uint8_t no_header = 0;		// =1 for no stream header output 
-
-#ifdef HAVE_ASM_MMX
-// MMX
-int16_t *mmx_padded, *mmx_cubic;
-int32_t *mmx_res;
-long int max_lint_neg = -2147483647;	// maximal negative number available for long int
-int mmx = 0;			// =1 for mmx activated
-#endif
 
 
 // *************************************************************************************
@@ -235,9 +228,6 @@ yuvscaler_print_usage (char *argv[])
 	   "\t FASTVCD       to transcode full sized frames to VCD (equivalent to -M RATIO_2_1_2_1 -O VCD)\n"
 	   "\t FAST_WIDE2VCD to transcode full sized wide (16:9) frames to VCD (-M WIDE2STD -M RATIO_2_1_2_1 -O VCD)\n"
 	   "\t NO_HEADER     to suppress stream header generation on output (chaining yuvscaler conversions)\n"
-#ifdef HAVE_ASM_MMX
-	   "\t MMX to use MMX functions for BICUBIC scaling (experimental feature!!)\n"
-#endif
 	   "\n"
 	   "Possible output keywords are:\n"
 	   "\t MONOCHROME to generate monochrome frames on output\n"
@@ -245,6 +235,8 @@ yuvscaler_print_usage (char *argv[])
 	   "\t SVCD to generate SVCD compliant frames, taking care of PAL and NTSC standards, any interlacing types\n"
 	   "\t  DVD to generate  DVD compliant frames, taking care of PAL and NTSC standards, any interlacing types\n"
 	   "\t      (SVCD and DVD: if input is not-interlaced/progressive, output interlacing will be taken as top_first)\n"
+	   "\t  VCDSTILL to generate VCD still images, not-interlaced/progressive frames\n"
+	   "\t SVCDSTILL to generate SVCD still images, not-interlaced/progressive frames, size 704x576\n"
 	   "\t SIZE_WidthxHeight to generate frames of size WidthxHeight on output (multiple of 2, Height of 4 if interlaced)\n"
 	   "\n"
 	   "-n  (usually not necessary) if norm could not be determined from data flux, specifies the OUTPUT norm for VCD/SVCD p=pal,s=secam,n=ntsc\n"
@@ -368,7 +360,6 @@ yuvscaler_nearest_integer_division (unsigned long int p, unsigned long int q)
 }
 
 // *************************************************************************************
-
 
 
 // *************************************************************************************
@@ -706,13 +697,6 @@ handle_args_dependent (int argc, char *argv[])
 	      mode = 1;
 	      algorithm = 0;
 	    }
-#ifdef HAVE_ASM_MMX
-	  if (strcmp (optarg, MMX) == 0)
-	    {
-	      mode = 1;
-	      mmx = 1;
-	    }
-#endif
 	  if (strcmp (optarg, BICUBIC) == 0)
 	    {
 	      mode = 1;
@@ -870,6 +854,9 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 
 		}
+	       else
+		 mjpeg_error_exit1
+		 ("Uncorrect USE input flag argument: %s", optarg);
 	    }
 	  if (strncmp (optarg, ACTIVE, 6) == 0)
 	    {
@@ -912,14 +899,14 @@ handle_args_dependent (int argc, char *argv[])
 		}
 	      else
 		mjpeg_error_exit1
-		  ("Uncorrect input flag argument: %s", optarg);
+		  ("Uncorrect ACTIVE input flag argument: %s", optarg);
 	    }
 	  if (input == 0)
 	    mjpeg_error_exit1 ("Uncorrect input keyword: %s", optarg);
 	  break;
 
 	default:
-	  break;
+	   break;
 	}
     }
 
@@ -1070,7 +1057,7 @@ handle_args_dependent (int argc, char *argv[])
 int
 main (int argc, char *argv[])
 {
-  int n, err = Y4M_OK, nb;
+  int err = Y4M_OK, nb;
   unsigned long int i, j;
 //  char sar[]="nnn:ddd";
 
@@ -1089,9 +1076,16 @@ main (int argc, char *argv[])
   // SPECIFIC TO BICUBIC
   unsigned int *in_line = NULL, *in_col = NULL, out_line, out_col;
   unsigned long int somme;
-  int m;
   float *a = NULL, *b = NULL;
-  int16_t *cubic_spline_m = NULL, *cubic_spline_n = NULL;
+  int16_t *cubic_spline_m_0 = NULL,
+     *cubic_spline_m_1 = NULL,
+     *cubic_spline_m_2 = NULL,
+     *cubic_spline_m_3 = NULL,
+     *cubic_spline_n_0 = NULL,
+     *cubic_spline_n_1 = NULL,
+     *cubic_spline_n_2 = NULL,
+     *cubic_spline_n_3 = NULL;
+     
   long int value, lint;
 
   // SPECIFIC TO YUV4MPEG 
@@ -1103,7 +1097,7 @@ main (int argc, char *argv[])
 
   // Information output
   mjpeg_info ("yuvscaler "LAVPLAY_VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
-  mjpeg_info ("(C) 2001-2002 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
+  mjpeg_info ("(C) 2001-2003 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
 
   // Initialisation of global variables that are independent of the input stream, input_file in particular
   handle_args_global (argc, argv);
@@ -1356,19 +1350,25 @@ main (int argc, char *argv[])
       if ((output_height_slice == 1) && (input_height_slice == 1))
 	{
 	  specific = 1;
-	  bicubic_div_height = 18;
-	  bicubic_offset =
-	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
-				      bicubic_negative_max * 255.0);
-	  bicubic_max =
-	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
-				      bicubic_positive_max * 255.0);
-	  // en hauteur, les coefficients bicubic  cubic_spline_m valent 1/18, 16/18, 1/18 et 0
+	  // en height, bicubic coefficients cubic_spline_m are 1/18, 16/18, 1/18 et 0 => one multiplication may be suppressed
 	}
+      if ((output_width_slice == 1) && (input_width_slice == 1))
+	{
+	  // Specific to the 16/9 to 4/3 conversion
+	  specific = 5;
+	  // on width, bicubic coefficient cubic_spline_n are 1/18, 16/18, 1/18 et 0 => one multiplication may be suppressed
+	}
+
       if ((output_height_slice == 1) && (input_height_slice == 1)
 	  && (output_width_slice == 2) && (input_width_slice == 3))
 	{
 	  specific = 6;
+	  // Specific to the DVD to SVCD conversion
+	  // Given the reasonnable number of possible value for the numerator of the bicubic calculations (18*144*1.1*255=700kBytes), 
+	  // we pretabulate evry possible values
+	  // en hauteur, les coefficients bicubic cubic_spline_m valent 1/18, 16/18, 1/18 et 0 (a=0)
+	  // en largeur, les coefficients bicubic cubic_spline_n valent pour les numéros de colonnes impaires (b=0.5) :
+	  // -5/144, 77/144, 77/144 et -5/144. Même chose qu'en hauteur pour les numéros de colonnes paires 
 	  bicubic_div_height = 18;
 	  bicubic_div_width = 144;
 	  bicubic_offset =
@@ -1377,14 +1377,21 @@ main (int argc, char *argv[])
 	  bicubic_max =
 	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
 				      bicubic_positive_max * 255.0);
+
 //          fprintf(stderr,"%ld %ld %ld %ld\n",bicubic_div_height,bicubic_div_width,bicubic_offset,bicubic_max);
-	  // en hauteur, les coefficients bicubic cubic_spline_m valent 1/18, 16/18, 1/18 et 0 (a=0)
-	  // en largeur, les coefficients bicubic cubic_spline_n valent pour les numéros de colonnes impaires (b=0.5) :
-	  // -5/144, 77/144, 77/144 et -5/144. Même chose qu'en hauteur pour les numéros de colonnes paires 
 	}
-      if (specific)
+      
+       if (specific) 
+	 mjpeg_info ("Specific downscaling routing number %u", specific);
+
+       if (specific == 1)
+	 bicubic_div_height = 18;
+       
+       if (specific == 5)
+	 bicubic_div_width = 18;
+
+       if (specific == 6)
 	{
-	  mjpeg_info ("Specific downscaling routing number %u", specific);
 	  if (!
 	      (divide =
 	       (uint8_t *) malloc ((bicubic_offset + bicubic_max) *
@@ -1392,7 +1399,6 @@ main (int argc, char *argv[])
 	    mjpeg_error_exit1
 	      ("Could not allocate enough memory for divide table. STOP!");
 	  mjpeg_debug ("before alignement divide=%p\n", divide);
-	  // alignement instructions
 	  if (((unsigned long) divide % ALIGNEMENT) != 0)
 	    divide =
 	      (uint8_t *) ((((unsigned long) divide / ALIGNEMENT) + 1) *
@@ -1412,56 +1418,78 @@ main (int argc, char *argv[])
 	      *(u_c_p++) = (uint8_t) value;
 	    }
 	}
+       
       // END OF SPECIFIC
+//	  specific = 0;
+//	  bicubic_div_height = FLOAT2INTEGER;
+//	  bicubic_div_width = FLOAT2INTEGER;
+//	  bicubic_offset =
+//	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+//				      bicubic_negative_max * 255.0);
+//	  bicubic_max =
+//	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+//				      bicubic_positive_max * 255.0);
 
-#ifdef HAVE_ASM_MMX
+      // Let us tabulate several values which are explained below:
+      // Given the scaling factor S, to an output pixel of coordinates (out_col,out_line) corresponds an input pixel of coordinates (in_col,in_line), 
+      // where in_col = out_col/S and in_line = out_line/S. As pixel coordinates are integer values, we take for in_col and out_col the nearest smaller integer
+      // value: in_col = floor(out_col/S) and in_line = floor(out_line/S). Thus, we make an error conventionnally named "b" for columns and "a" for lines
+      // with b = out_col/S - floor(out_col/S) and a = out_line/S - floor(out_line/S). a and b are inside range [0,1[. 
+      // Finally, the scaling ratio may be different for width and height and may be smaller or **larger** than 1.0. 
+      // 
+      // In the bicubic algorithm, the output pixel value depends on its 4x4 nearest neighbors in the input image.
+      // Therefore, output pixel (out_col,out_line) depends on the 16 input pixels (in_col+n,in_line+m) with n=-1,0,1,2 and m=-1,0,1,2.
+      // As a consequence, on the border of the image, the bicubic algorithm will try to find values outside the input image => to avoid this, we pad the input
+      // image 1 pixel on the top and on the left, and 2 pixels on the right and on the bottom
+      // 
+      // The formula giving the value of the output pixel as a function of the 4x4 input pixels is:
+      // OutputPixel(out_col,out_line)=Sum(m=-1,0,1,2)Sum(n=-1,0,1,2)InputPixel(in_col+n,in_line+m)*BicubicCoefficient(m-a)*BicubicCoefficient(b-n)
+      // For calculation of the BicubicCoefficient function, see file yuvscaler_bicubic.c
+      // 
+      // We will call cubic_spline_n, the various possible values of BicubicCoefficient(b-n) and cubic_spline_m the various possible values of BicubicCoefficient(m-a)
+      // 
+       // We will calculate every possible values of b, a, in_col, in_line, cubic_spline_n, cubic_spline_m, as a function of out_col (resp. out_line) values
 
-      if (!
-	  (mmx_padded =
-	   (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
-	  || !(mmx_cubic =
-	       (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
-	  || !(mmx_res =
-	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
+      // Memory allocations
+      if (
+	  !(cubic_spline_n_0 = (int16_t *) malloc (output_active_width  * sizeof (int16_t))) ||
+	  !(cubic_spline_n_1 = (int16_t *) malloc (output_active_width  * sizeof (int16_t))) ||
+	  !(cubic_spline_n_2 = (int16_t *) malloc (output_active_width  * sizeof (int16_t))) ||
+	  !(cubic_spline_n_3 = (int16_t *) malloc (output_active_width  * sizeof (int16_t))) ||
+	  !(in_col =   (unsigned int *)    malloc (output_active_width  * sizeof (unsigned int))) ||
+	  !(b = (float *)                  malloc (output_active_width  * sizeof (float))) ||
+	  !(cubic_spline_m_0 = (int16_t *) malloc (output_active_height * sizeof (int16_t))) ||
+	  !(cubic_spline_m_1 = (int16_t *) malloc (output_active_height * sizeof (int16_t))) ||
+	  !(cubic_spline_m_2 = (int16_t *) malloc (output_active_height * sizeof (int16_t))) ||
+	  !(cubic_spline_m_3 = (int16_t *) malloc (output_active_height * sizeof (int16_t))) ||
+	  !(in_line = (unsigned int *)     malloc (output_active_height * sizeof (unsigned int))) ||
+	  !(a = (float *)                  malloc (output_active_height * sizeof (float)))
+	  )
 	mjpeg_error_exit1
-	  ("Could not allocate memory for mmx registers. STOP!");
+	  ("Could not allocate memory for bicubic tables. STOP!");
+       
+      for (out_line = 0; out_line < output_active_height; out_line++)
+	{
+	  in_line[out_line] = (out_line * input_height_slice) / output_height_slice;
+	  a[out_line] = 
+	    (float) ((out_line * input_height_slice) % output_height_slice) /
+	    (float) output_height_slice;
+	   cubic_spline_m_0[out_line]= cubic_spline (a[out_line] + 1.0, bicubic_div_height);
+	   cubic_spline_m_1[out_line]= cubic_spline (a[out_line] + 0.0, bicubic_div_height);
+	   cubic_spline_m_2[out_line]= cubic_spline (a[out_line] - 1.0, bicubic_div_height);
+	   cubic_spline_m_3[out_line]= cubic_spline (a[out_line] - 2.0, bicubic_div_height);
+	   // Normalisation test and normalisation of cubic_spline_m
+	   somme = cubic_spline_m_0[out_line] + cubic_spline_m_1[out_line] + cubic_spline_m_2[out_line] + cubic_spline_m_3[out_line];
+	   if (somme != bicubic_div_height)
+	     {
+		mjpeg_debug ("out_line %d somme=%ld, to be normalized", out_line, somme);
+		cubic_spline_m_3[out_line] -= somme - bicubic_div_height;
+	     }
+	   mjpeg_debug ("out_line=%04u,in_line=%04u,a=%f,csm0=%04d,csm1=%04d,csm2=%04d,csm3=%04d",
+			out_line,in_line[out_line],a[out_line],
+			cubic_spline_m_0[out_line],cubic_spline_m_1[out_line],cubic_spline_m_2[out_line],cubic_spline_m_3[out_line]);
+	}
 
-      mjpeg_debug ("Before alignement");
-      mjpeg_debug ("%p %p %p", mmx_padded, mmx_cubic, mmx_res);
-      mjpeg_debug ("%u %u %u", (unsigned int) mmx_padded,
-		   (unsigned int) mmx_cubic, (unsigned int) mmx_res);
-
-      // alignement instructions
-      if (((unsigned int) mmx_padded % ALIGNEMENT) != 0)
-	mmx_padded =
-	  (int16_t *) ((((unsigned int) mmx_padded / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
-      if (((unsigned int) mmx_cubic % ALIGNEMENT) != 0)
-	mmx_cubic =
-	  (int16_t *) ((((unsigned int) mmx_cubic / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
-      if (((unsigned int) mmx_res % ALIGNEMENT) != 0)
-	mmx_res =
-	  (int32_t *) ((((unsigned int) mmx_res / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
-
-      mjpeg_debug ("After Alignement");
-      mjpeg_debug ("%p %p %p", mmx_padded, mmx_cubic, mmx_res);
-      mjpeg_debug ("%u %u %u", (unsigned int) mmx_padded,
-		   (unsigned int) mmx_cubic, (unsigned int) mmx_res);
-
-#endif
-
-      // Let us tabulate several values
-      // To the output pixel of coordinates (out_col,out_line) corresponds the input pixel (in_col,in_line), 
-      // in_col and in_line being the nearest **smaller** values.
-      // Tabulation of the width: in_col and b
-      if (!(in_col =
-	    (unsigned int *) malloc (output_active_width *
-				     sizeof (unsigned int)))
-	  || !(b = (float *) malloc (output_active_width * sizeof (float))))
-	mjpeg_error_exit1
-	  ("Could not allocate memory for in_col or b table. STOP!");
       for (out_col = 0; out_col < output_active_width; out_col++)
 	{
 	  in_col[out_col] =
@@ -1469,89 +1497,26 @@ main (int argc, char *argv[])
 	  b[out_col] =
 	    (float) ((out_col * input_width_slice) % output_width_slice) /
 	    (float) output_width_slice;
-	  mjpeg_debug ("out_col=%u,in_col=%u,b=%f", out_col, in_col[out_col],
-		       b[out_col]);
+	   cubic_spline_n_0[out_col]=cubic_spline (b[out_col] + 1.0, bicubic_div_width);
+	   cubic_spline_n_1[out_col]=cubic_spline (b[out_col] + 0.0, bicubic_div_width);
+	   cubic_spline_n_2[out_col]=cubic_spline (b[out_col] - 1.0, bicubic_div_width);
+	   cubic_spline_n_3[out_col]=cubic_spline (b[out_col] - 2.0, bicubic_div_width);
+	   // Normalisation test and normalisation of cubic_spline_n
+	   somme = cubic_spline_n_0[out_col] + cubic_spline_n_1[out_col] + cubic_spline_n_2[out_col] + cubic_spline_n_3[out_col];
+	   if (somme != bicubic_div_width)
+	     {
+		mjpeg_debug ("out_col %d somme=%ld, to be normalized", out_col, somme);
+		cubic_spline_n_3[out_col] -= somme - bicubic_div_width;
+	     }
+	   mjpeg_debug ("out_col=%04u,in_col=%04u,b=%f,csn0=%04d,csn1=%04d,csn2=%04d,csn3=%04d",
+			out_col,in_col[out_col],b[out_col],
+			cubic_spline_n_0[out_col],cubic_spline_n_1[out_col],cubic_spline_n_2[out_col],cubic_spline_n_3[out_col]);
 	}
-      // Tabulation of the height: in_line and a
-      if (!(in_line =
-	    (unsigned int *) malloc (output_active_height *
-				     sizeof (unsigned int))) ||
-	  !(a = (float *) malloc (output_active_height * sizeof (float))))
-	mjpeg_error_exit1
-	  ("Could not allocate memory for in_line or a table. STOP!");
-      for (out_line = 0; out_line < output_active_height; out_line++)
-	{
-	  in_line[out_line] =
-	    (out_line * input_height_slice) / output_height_slice;
-	  a[out_line] =
-	    (float) ((out_line * input_height_slice) % output_height_slice) /
-	    (float) output_height_slice;
-	  mjpeg_debug ("out_line=%u,in_line=%u,a=%f", out_line,
-		       in_line[out_line], a[out_line]);
-	}
-      // Tabulation of the cubic values 
-      if (!(cubic_spline_n =
-	    (int16_t *) malloc (4 * output_active_width * sizeof (int16_t)))
-	  || !(cubic_spline_m =
-	       (int16_t *) malloc (4 * output_active_height *
-				   sizeof (int16_t))))
-	mjpeg_error_exit1
-	  ("Could not allocate memory for cubic_spline_n or cubic_spline_mtable. STOP!");
-
-      for (n = -1; n <= 2; n++)
-	{
-
-	  for (out_col = 0; out_col < output_active_width; out_col++)
-	    {
-	      cubic_spline_n[out_col + (n + 1) * output_active_width] =
-		cubic_spline (b[out_col] - (float) n, bicubic_div_width);
-	      mjpeg_debug ("n=%d,out_col=%u,cubic=%d", n, out_col,
-			   cubic_spline (b[out_col] - (float) n,
-					 bicubic_div_width));
-	    }
-	}
-      // Normalisation test and normalisation
-      for (out_col = 0; out_col < output_active_width; out_col++)
-	{
-	  somme = cubic_spline_n[out_col + 0 * output_active_width]
-	    + cubic_spline_n[out_col + 1 * output_active_width]
-	    + cubic_spline_n[out_col + 2 * output_active_width]
-	    + cubic_spline_n[out_col + 3 * output_active_width];
-	  if (somme != bicubic_div_width)
-	    {
-	      mjpeg_debug ("out_col somme=%ld, to be normalized", somme);
-	      cubic_spline_n[out_col + 3 * output_active_width] -=
-		somme - bicubic_div_width;
-	    }
-	}
-
-
-      for (m = -1; m <= 2; m++)
-	for (out_line = 0; out_line < output_active_height; out_line++)
-	  {
-	    cubic_spline_m[out_line + (m + 1) * output_active_height] =
-	      cubic_spline ((float) m - a[out_line], bicubic_div_height);
-	    mjpeg_debug ("m=%d,out_line=%u,cubic=%d", m, out_line,
-			 cubic_spline ((float) m - a[out_line],
-				       bicubic_div_height));
-	  }
-      // Normalisation test and normalisation
-      for (out_line = 0; out_line < output_active_height; out_line++)
-	{
-	  somme = cubic_spline_m[out_line + 0 * output_active_height]
-	    + cubic_spline_m[out_line + 1 * output_active_height]
-	    + cubic_spline_m[out_line + 2 * output_active_height]
-	    + cubic_spline_m[out_line + 3 * output_active_height];
-	  if (somme != bicubic_div_height)
-	    {
-	      mjpeg_debug ("out_line somme=%ld, to be normalized", somme);
-	      cubic_spline_m[out_line + 3 * output_active_height] -=
-		somme - bicubic_div_height;
-	    }
-	}
-
-      if ((interlaced == Y4M_ILACE_NONE)
-	  || (interlaced == Y4M_ILACE_NONE))
+       
+      // In the bicubic algorithm, the output pixel value depends on its 4x4 nearest neighbors in the input image. 
+      // As a consequence, on the border of the image, the bicubic algorithm will try to find values outside the input image => to avoid this, we pad the input
+      // image 1 pixel on the top and on the left, and 2 pixels on the right and on the bottom
+      if (interlaced == Y4M_ILACE_NONE)
 	{
 	  if (!(padded_input =
 		(uint8_t *) malloc ((input_useful_width + 3) *
@@ -1810,50 +1775,68 @@ main (int argc, char *argv[])
 	  // 
 	  if (mono == 1)
 	    {
-	      if ((interlaced == Y4M_ILACE_NONE)
-		  || (interlaced == Y4M_ILACE_NONE))
+	      if (interlaced == Y4M_ILACE_NONE)
 		{
 		  padding (padded_input, input_y, 0);
-		  cubic_scale (padded_input, output_y, in_col, b, in_line,
-			       a, cubic_spline_n, cubic_spline_m, 0);
+		  cubic_scale (padded_input, output_y, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       0);
 		}
 	      else
 		{
 		  padding_interlaced (padded_top, padded_bottom, input_y, 0);
-		  cubic_scale_interlaced (padded_top, padded_bottom,
-					  output_y, in_col, b, in_line, a,
-					  cubic_spline_n, cubic_spline_m, 0);
+		  cubic_scale_interlaced (padded_top, padded_bottom, output_y, 
+					  in_col, in_line,
+					  cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+					  cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+					  0);
 		}
 	    }
 	  else
 	    {
-	      if ((interlaced == Y4M_ILACE_NONE)
-		  || (interlaced == Y4M_ILACE_NONE))
+	      if (interlaced == Y4M_ILACE_NONE)
 		{
 		  padding (padded_input, input_y, 0);
-		  cubic_scale (padded_input, output_y, in_col, b, in_line,
-			       a, cubic_spline_n, cubic_spline_m, 0);
+		  cubic_scale (padded_input, output_y, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       0);
 		  padding (padded_input, input_u, 1);
-		  cubic_scale (padded_input, output_u, in_col, b, in_line,
-			       a, cubic_spline_n, cubic_spline_m, 1);
+		  cubic_scale (padded_input, output_u, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       1);
 		  padding (padded_input, input_v, 1);
-		  cubic_scale (padded_input, output_v, in_col, b, in_line,
-			       a, cubic_spline_n, cubic_spline_m, 1);
+		  cubic_scale (padded_input, output_v, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       1);
 		}
 	      else
 		{
 		  padding_interlaced (padded_top, padded_bottom, input_y, 0);
-		  cubic_scale_interlaced (padded_top, padded_bottom,
-					  output_y, in_col, b, in_line, a,
-					  cubic_spline_n, cubic_spline_m, 0);
+		  cubic_scale_interlaced (padded_top, padded_bottom, output_y, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       0);
 		  padding_interlaced (padded_top, padded_bottom, input_u, 1);
-		  cubic_scale_interlaced (padded_top, padded_bottom,
-					  output_u, in_col, b, in_line, a,
-					  cubic_spline_n, cubic_spline_m, 1);
+		  cubic_scale_interlaced (padded_top, padded_bottom, output_u, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       1);
 		  padding_interlaced (padded_top, padded_bottom, input_v, 1);
-		  cubic_scale_interlaced (padded_top, padded_bottom,
-					  output_v, in_col, b, in_line, a,
-					  cubic_spline_n, cubic_spline_m, 1);
+		  cubic_scale_interlaced (padded_top, padded_bottom, output_v, 
+			       in_col, in_line,
+			       cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2, cubic_spline_n_3,
+			       cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2, cubic_spline_m_3,
+			       1);
 		}
 	    }
 	}

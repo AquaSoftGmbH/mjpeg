@@ -41,25 +41,18 @@ extern uint8_t *divide;
 extern long int bicubic_offset;
 
 
-#ifdef HAVE_ASM_MMX
-// MMX
-extern int16_t *mmx_padded, *mmx_cubic;
-extern int32_t *mmx_res;
-extern long int max_lint_neg;	// maximal negative number available for long int
-extern int mmx;			// =1 for mmx activated
-#endif
 // Defines
 #define FLOAT2INTEGERPOWER 11
 extern long int FLOAT2INTOFFSET;
-
-
+#define bicubic_VERSION "17-01-2003"
 
 // *************************************************************************************
 int
-cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
-	     float *b, unsigned int *in_line, float *a,
-	     int16_t * cubic_spline_n,
-	     int16_t * cubic_spline_m, unsigned int half)
+cubic_scale (uint8_t * padded_input, uint8_t * output, 
+	     unsigned int *in_col, unsigned int *in_line,
+	     int16_t * cubic_spline_n_0, int16_t * cubic_spline_n_1, int16_t * cubic_spline_n_2, int16_t * cubic_spline_n_3,
+	     int16_t * cubic_spline_m_0, int16_t * cubic_spline_m_1, int16_t * cubic_spline_m_2, int16_t * cubic_spline_m_3,
+	     unsigned int half)
 {
   // Warning: because cubic-spline values may be <0 or >1.0, a range test on value is mandatory
   unsigned int local_output_active_width = output_active_width >> half;
@@ -68,320 +61,114 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
+  unsigned long int in_line_offset;
 
-  int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
-    cubic_spline_n_3;
-  int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
-    cubic_spline_m_3;
+  int16_t csn0, csn1, csn2, csn3;
+  int16_t csm0, csm1, csm2, csm3;
 
-
-//   uint8_t zero=0;
-  uint8_t *output_p;
+  uint8_t *output_p,*adresse0,*adresse1,*adresse2,*adresse3;
   long int value;
   long int value1;
 
-#ifdef HAVE_ASM_MMX
-  unsigned long int ulint, base_0, base_1, base_2, base_3;
-  int32_t value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
-  long int value2;
-#endif
-   
-   
-   mjpeg_debug ("Start of cubic_scale");
+   mjpeg_debug ("Start of cubic_scale ");
 
-
+   output_p = output;
    
    /* *INDENT-OFF* */
-
-#ifdef HAVE_ASM_MMX
-   if (mmx==1) 
+   if (specific == 0) 
      {
-	mjpeg_debug ("-- MMX --");
-	if ((specific==1) || (specific==6)) 
-	  {  
-	     for (out_line = 0; out_line < local_output_active_height; out_line++)
-	       {
-		  output_p = output + out_line * local_output_width;
-		  // MMX Calculations:
-		  // We use the fact the on height, we have a 1 to 1 ratio => cubic_spline_3 are 1, 16, 1 and 0 => 
-		  // we factorise cubic_spline_n 	     
-		  // This implies that value_mmx_? never exceed 9330 => 
-		  // may be stored on a signed 16 bits integer => mmx maybe used 5 times (+last calculation), not only 4 
-
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       
-		       mmx_cubic[0]=1;
-		       mmx_cubic[1]=16;
-		       mmx_cubic[2]=1;
-		       mmx_cubic[3]=0;
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_0++];
-		       mmx_padded[1]=(int16_t)padded_input[base_1++];
-		       mmx_padded[2]=(int16_t)padded_input[base_2++];
-		       mmx_padded[3]=0;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_0++];
-		       mmx_padded[1]=(int16_t)padded_input[base_1++];
-		       mmx_padded[2]=(int16_t)padded_input[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_0++];
-		       mmx_padded[1]=(int16_t)padded_input[base_1++];
-		       mmx_padded[2]=(int16_t)padded_input[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_0++];
-		       mmx_padded[1]=(int16_t)padded_input[base_1++];
-		       mmx_padded[2]=(int16_t)padded_input[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-
-		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
-		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
-		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
-		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
-		       mmx_padded[0]=(int16_t)value_mmx_1;
-		       mmx_padded[1]=(int16_t)value_mmx_2;
-		       mmx_padded[2]=(int16_t)value_mmx_3;
-		       mmx_padded[3]=(int16_t)value_mmx_4;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value2 = mmx_res[0]+mmx_res[1];
-		       if (value2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
-		    }
-	       }
-	  }
-	
-	else
+	for (out_line = 0; out_line < local_output_active_height; out_line++)
 	  {
-	     for (out_line = 0; out_line < local_output_active_height; out_line++)
+	     csm0 = cubic_spline_m_0[out_line];
+	     csm1 = cubic_spline_m_1[out_line];
+	     csm2 = cubic_spline_m_2[out_line];
+	     csm3 = cubic_spline_m_3[out_line];
+	     in_line_offset = in_line[out_line] * local_padded_width;
+	     for (out_col = 0; out_col < local_output_active_width; out_col++)
 	       {
-		  output_p = output + out_line * local_output_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
-
-		       mmx_padded[0]=(int16_t)padded_input[base_0++];
-		       mmx_padded[1]=(int16_t)padded_input[base_0++];
-		       mmx_padded[2]=(int16_t)padded_input[base_0++];
-		       mmx_padded[3]=(int16_t)padded_input[base_0];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_1++];
-		       mmx_padded[1]=(int16_t)padded_input[base_1++];
-		       mmx_padded[2]=(int16_t)padded_input[base_1++];
-		       mmx_padded[3]=(int16_t)padded_input[base_1];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_padded[0]=(int16_t)padded_input[base_2++];
-		       mmx_padded[1]=(int16_t)padded_input[base_2++];
-		       mmx_padded[2]=(int16_t)padded_input[base_2++];
-		       mmx_padded[3]=(int16_t)padded_input[base_2];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-
-		       mmx_padded[0]=(int16_t)padded_input[base_3++];
-		       mmx_padded[1]=(int16_t)padded_input[base_3++];
-		       mmx_padded[2]=(int16_t)padded_input[base_3++];
-		       mmx_padded[3]=(int16_t)padded_input[base_3];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       value2 =
-			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
-			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
-			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
-			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
-			 FLOAT2INTOFFSET;
-		       
-		       if (value2 < 0)
-			 *(output_p++) = (uint8_t) 0;
-		       else {
-			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
-			  if (ulint > 255)
-			    *(output_p++) = (uint8_t) 255;
-			  else
-			    *(output_p++) = (uint8_t) ulint;
-		       }
-		       
-		    }
+		  csn0 =  cubic_spline_n_0[out_col];
+		  csn1 =  cubic_spline_n_1[out_col];
+		  csn2 =  cubic_spline_n_2[out_col];
+		  csn3 =  cubic_spline_n_3[out_col];
+		  adresse0 = padded_input + in_col[out_col] + in_line_offset;
+		  adresse1 = adresse0 + local_padded_width;
+		  adresse2 = adresse1 + local_padded_width;
+		  adresse3 = adresse2 + local_padded_width;
+		  value1  = (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn0 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
+		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
+		  value =
+		    (value1 +
+		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		  if (value < 0)
+		    value = 0;
 		  
+		  if (value > 255) 
+		    value = 255;
+		  
+		  *(output_p++) = (uint8_t) value;
 	       }
-	     
+	     // a line on output is now finished. We jump to the beginning of the next line
+	     output_p+=local_output_width-local_output_active_width;
 	  }
      }
-   else
-#endif
+   else 
      {
-	// NON-MMX algorithms
-	if ((specific==1) || (specific==6)) 
+	if (specific==6) 
 	  {  
 	     for (out_line = 0; out_line < local_output_active_height; out_line++)
 	       {
-		  output_p = output + out_line * local_output_width;
+		  in_line_offset = in_line[out_line] * local_padded_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
 		       value1 =
-			 (
-			  padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_0
-			  + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_1
-			  + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_2
-			  + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_3
-			  ) + ((
-				padded_input[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_0
-				+ padded_input[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-				* cubic_spline_n_1
-				+ padded_input[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_2
-				+ padded_input[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_3
-				)<<4) + ( 
-					  padded_input[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_0
-					  + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_1
-					  + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_2
-					  + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_3
-					  );
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
 		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
 		    }
-   
+		  output_p+=local_output_width-local_output_active_width;
 	       }
 	  }
-	else
-	  {
+
+	if (specific==1) 
+	  {  
 	     for (out_line = 0; out_line < local_output_active_height; out_line++)
 	       {
-		  cubic_spline_m_0 = cubic_spline_m[out_line + 0 * output_active_height];
-		  cubic_spline_m_1 = cubic_spline_m[out_line + 1 * output_active_height];
-		  cubic_spline_m_2 = cubic_spline_m[out_line + 2 * output_active_height];
-		  cubic_spline_m_3 = cubic_spline_m[out_line + 3 * output_active_height];
-		  output_p = output + out_line * local_output_width;
+		  in_line_offset = in_line[out_line] * local_padded_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
-		       value1 = 
-			 cubic_spline_m_0 *
-			 (
-			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_0
-			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_1 *
-			 ( 
-			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_2 *
-			 ( 
-			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) +  
-			 cubic_spline_m_3 *
-			 (
- 			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_3
-			   );
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       value1 =
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
+		       value1 = (9 + value1)/18;
 		       value =
 			 (value1 +
-			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
 		       if (value < 0)
 			 value = 0;
 		       
@@ -390,15 +177,48 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 		       
 		       *(output_p++) = (uint8_t) value;
 		    }
+		  // a line on output is now finished. We jump to the beginning of the next line
+		  output_p+=local_output_width-local_output_active_width;
+	       }
+	  }
+	if (specific == 5) 
+	  {
+	     for (out_line = 0; out_line < local_output_active_height; out_line++)
+	       {
+		  csm0 = cubic_spline_m_0[out_line];
+		  csm1 = cubic_spline_m_1[out_line];
+		  csm2 = cubic_spline_m_2[out_line];
+		  csm3 = cubic_spline_m_3[out_line];
+		  in_line_offset = in_line[out_line] * local_padded_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       adresse0 = padded_input + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       adresse3 = adresse2 + local_padded_width;
+		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
+		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
+		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
+		       value1 = (9 + value1)/18;
+		       value =
+			 (value1 +
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
+		  output_p+=local_output_width-local_output_active_width;
 	       }
 	  }
      }
 
-
-
    /* *INDENT-ON* */
-  mjpeg_debug ("End of cubic_scale");
-  return (0);
+   mjpeg_debug ("End of cubic_scale");
+   return (0);
 }
 
 // *************************************************************************************
@@ -406,11 +226,11 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 
 // *************************************************************************************
 int
-cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
-			uint8_t * output, unsigned int *in_col, float *b,
-			unsigned int *in_line, float *a,
-			int16_t * cubic_spline_n,
-			int16_t * cubic_spline_m, unsigned int half)
+cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom, uint8_t * output, 
+			unsigned int *in_col, unsigned int *in_line,
+			int16_t * cubic_spline_n_0, int16_t * cubic_spline_n_1, int16_t * cubic_spline_n_2, int16_t * cubic_spline_n_3,
+			int16_t * cubic_spline_m_0, int16_t * cubic_spline_m_1, int16_t * cubic_spline_m_2, int16_t * cubic_spline_m_3,
+			unsigned int half)
 {
   unsigned int local_output_active_width = output_active_width >> half;
   unsigned int local_output_active_height = output_active_height >> half;
@@ -418,508 +238,227 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
+  unsigned long int in_line_offset;
 
   long int value1, value;
-  int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
-    cubic_spline_n_3;
-  int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
-    cubic_spline_m_3;
-  uint8_t *output_p;
+  int16_t csn0, csn1, csn2, csn3;
+  int16_t csm0, csm1, csm2, csm3;
+  uint8_t *output_p,*adresse0,*adresse1,*adresse2,*adresse3;
 
-#ifdef HAVE_ASM_MMX
-  unsigned long int ulint, base_0, base_1, base_2, base_3;
-  long int value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
-  long int value2;
-#endif
 
    mjpeg_debug ("Start of cubic_scale_interlaced");
+   
+   output_p = output ;
 
    /* *INDENT-OFF* */
-#ifdef HAVE_ASM_MMX
-   if (mmx==1) 
+   if (specific == 0) 
      {
-	mjpeg_debug ("-- MMX --");
-	if ((specific==1) || (specific==6)) 
-	  {  
-	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
-	       {
-		  output_p = output + 2 * out_line * local_output_width;
-		  // MMX Calculations:
-		  // We use the fact the on height, we have a 1 to 1 ratio => cubic_spline_3 are 1, 16, 1 and 0 => 
-		  // we factorise cubic_spline_n 	     
-		  // This implies that value_mmx_? never exceed 9330 => 
-		  // may be stored on a signed 16 bits integer => mmx maybe used 5 times (+last calculation), not only 4 
-
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       
-		       mmx_cubic[0]=1;
-		       mmx_cubic[1]=16;
-		       mmx_cubic[2]=1;
-		       mmx_cubic[3]=0;
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_0++];
-		       mmx_padded[1]=(int16_t)padded_top[base_1++];
-		       mmx_padded[2]=(int16_t)padded_top[base_2++];
-		       mmx_padded[3]=0;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_0++];
-		       mmx_padded[1]=(int16_t)padded_top[base_1++];
-		       mmx_padded[2]=(int16_t)padded_top[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_0++];
-		       mmx_padded[1]=(int16_t)padded_top[base_1++];
-		       mmx_padded[2]=(int16_t)padded_top[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_0++];
-		       mmx_padded[1]=(int16_t)padded_top[base_1++];
-		       mmx_padded[2]=(int16_t)padded_top[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-
-		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
-		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
-		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
-		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
-		       mmx_padded[0]=(int16_t)value_mmx_1;
-		       mmx_padded[1]=(int16_t)value_mmx_2;
-		       mmx_padded[2]=(int16_t)value_mmx_3;
-		       mmx_padded[3]=(int16_t)value_mmx_4;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value2 = mmx_res[0]+mmx_res[1];
-		       if (value2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
-		    }
-		  // First line output is now finished. We jump to the beginning of the next line
-		  output_p+=local_output_width-local_output_active_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       
-		       mmx_cubic[0]=1;
-		       mmx_cubic[1]=16;
-		       mmx_cubic[2]=1;
-		       mmx_cubic[3]=0;
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
-		       mmx_padded[3]=0;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 ==  max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
-		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
-		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
-		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
-		       mmx_padded[0]=(int16_t)value_mmx_1;
-		       mmx_padded[1]=(int16_t)value_mmx_2;
-		       mmx_padded[2]=(int16_t)value_mmx_3;
-		       mmx_padded[3]=(int16_t)value_mmx_4;
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value2 = mmx_res[0]+mmx_res[1];
-		       if (value2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
-		    }
-	       }
-	  }
-	
-	else
+	for (out_line = 0; out_line < local_output_active_height/2; out_line++)
 	  {
-	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	     csm0 = cubic_spline_m_0[out_line];
+	     csm1 = cubic_spline_m_1[out_line];
+	     csm2 = cubic_spline_m_2[out_line];
+	     csm3 = cubic_spline_m_3[out_line];
+	     in_line_offset = in_line[out_line] * local_padded_width;
+	     for (out_col = 0; out_col < local_output_active_width; out_col++)
 	       {
-		  output_p = output + 2 * out_line * local_output_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
-
-		       mmx_padded[0]=(int16_t)padded_top[base_0++];
-		       mmx_padded[1]=(int16_t)padded_top[base_0++];
-		       mmx_padded[2]=(int16_t)padded_top[base_0++];
-		       mmx_padded[3]=(int16_t)padded_top[base_0];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_1++];
-		       mmx_padded[1]=(int16_t)padded_top[base_1++];
-		       mmx_padded[2]=(int16_t)padded_top[base_1++];
-		       mmx_padded[3]=(int16_t)padded_top[base_1];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_padded[0]=(int16_t)padded_top[base_2++];
-		       mmx_padded[1]=(int16_t)padded_top[base_2++];
-		       mmx_padded[2]=(int16_t)padded_top[base_2++];
-		       mmx_padded[3]=(int16_t)padded_top[base_2];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-
-		       mmx_padded[0]=(int16_t)padded_top[base_3++];
-		       mmx_padded[1]=(int16_t)padded_top[base_3++];
-		       mmx_padded[2]=(int16_t)padded_top[base_3++];
-		       mmx_padded[3]=(int16_t)padded_top[base_3];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       value2 =
-			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
-			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
-			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
-			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
-			 FLOAT2INTOFFSET;
-		       
-		       if (value2 < 0)
-			 *(output_p++) = (uint8_t) 0;
-		       else {
-			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
-			  if (ulint > 255)
-			    *(output_p++) = (uint8_t) 255;
-			  else
-			    *(output_p++) = (uint8_t) ulint;
-		       }
-		       
-		    }
+		  csn0 =  cubic_spline_n_0[out_col];
+		  csn1 =  cubic_spline_n_1[out_col];
+		  csn2 =  cubic_spline_n_2[out_col];
+		  csn3 =  cubic_spline_n_3[out_col];
+		  adresse0 = padded_top + in_col[out_col] + in_line_offset;
+		  adresse1 = adresse0 + local_padded_width;
+		  adresse2 = adresse1 + local_padded_width;
+		  adresse3 = adresse2 + local_padded_width;
+		  value1  = (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn0 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
+		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
+		  value =
+		    (value1 +
+		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		  if (value < 0)
+		    value = 0;
 		  
-		  // First line output is now finished. We jump to the beginning of the next line
-		  output_p+=local_output_width-local_output_active_width;
-		  for (out_col = 0; out_col < local_output_active_width; out_col++)
-		    {
-		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
-		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
-		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
-		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_0++];
-		       mmx_padded[3]=(int16_t)padded_bottom[base_0];
-		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
-		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
-		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
-		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_1 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_1 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-		       
-		       
-		       mmx_padded[0]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_1++];
-		       mmx_padded[3]=(int16_t)padded_bottom[base_1];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_2 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_2 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-
-		    
-		       mmx_padded[0]=(int16_t)padded_bottom[base_2++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_2++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
-		       mmx_padded[3]=(int16_t)padded_bottom[base_2];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_3 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_3 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-
-		       mmx_padded[0]=(int16_t)padded_bottom[base_3++];
-		       mmx_padded[1]=(int16_t)padded_bottom[base_3++];
-		       mmx_padded[2]=(int16_t)padded_bottom[base_3++];
-		       mmx_padded[3]=(int16_t)padded_bottom[base_3];
-		       movq_m2r(*mmx_padded,mm1);
-		       movq_m2r(*mmx_cubic ,mm2);
-		       pmaddwd_r2r(mm1,mm2);
-		       movq_r2m(mm2,*mmx_res);
-		       value_mmx_4 = mmx_res[0]+mmx_res[1];
-		       if (value_mmx_4 == max_lint_neg)
-			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
-
-		       value2 =
-			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
-			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
-			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
-			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
-			 FLOAT2INTOFFSET;
-		       
-		       if (value2 < 0)
-			 *(output_p++) = (uint8_t) 0;
-		       else {
-			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
-			  if (ulint > 255)
-			    *(output_p++) = (uint8_t) 255;
-			  else
-			    *(output_p++) = (uint8_t) ulint;
-		       }
-		       
-		    }
+		  if (value > 255) 
+		    value = 255;
+		  
+		  *(output_p++) = (uint8_t) value;
 	       }
-	     
+	     // a top line on output is now finished. We jump to the beginning of the next bottom line
+	     output_p+=local_output_width-local_output_active_width;
+	     for (out_col = 0; out_col < local_output_active_width; out_col++)
+	       {
+		  csn0 =  cubic_spline_n_0[out_col];
+		  csn1 =  cubic_spline_n_1[out_col];
+		  csn2 =  cubic_spline_n_2[out_col];
+		  csn3 =  cubic_spline_n_3[out_col];
+		  adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
+		  adresse1 = adresse0 + local_padded_width;
+		  adresse2 = adresse1 + local_padded_width;
+		  adresse3 = adresse2 + local_padded_width;
+		  value1  = (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn0 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn1 ;
+		  value1 += (*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3) * csn2 ;
+		  value1 += (*(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3) * csn3 ;
+		  value =
+		    (value1 +
+		     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		  if (value < 0)
+		    value = 0;
+		  
+		  if (value > 255) 
+		    value = 255;
+		  
+		  *(output_p++) = (uint8_t) value;
+	       }
+	     // a bottom line on output is now finished. We jump to the beginning of the next top line
+	     output_p+=local_output_width-local_output_active_width;
 	  }
      }
    else
-#endif
      {
-	// NON-MMX algorithms
-	if ((specific==1) || (specific==6)) 
+
+ if (specific==6) 
 	  {  
-	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	     for (out_line = 0; out_line < local_output_active_height /2 ; out_line++)
 	       {
-		  output_p = output + 2 * out_line * local_output_width;
+		  in_line_offset = in_line[out_line] * local_padded_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_top + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
 		       value1 =
-			 (
-			  padded_top[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_0
-			  + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_1
-			  + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_2
-			  + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_3
-			  ) + ((
-				padded_top[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_0
-				+ padded_top[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-				* cubic_spline_n_1
-				+ padded_top[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_2
-				+ padded_top[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_3
-				)<<4) + ( 
-					  padded_top[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_0
-					  + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_1
-					  + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_2
-					  + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_3
-					  );
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
 		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
 		    }
-		  // First line output is now finished. We jump to the beginning of the next line
 		  output_p+=local_output_width-local_output_active_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
 		       value1 =
-			 (
-			  padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_0
-			  + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			  * cubic_spline_n_1
-			  + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_2
-			  + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			  * cubic_spline_n_3
-			  ) + ((
-				padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_0
-				+ padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-				* cubic_spline_n_1
-				+ padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_2
-				+ padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-				* cubic_spline_n_3
-				)<<4) + ( 
-					  padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_0
-					  + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_1
-					  + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_2
-					  + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-					  * cubic_spline_n_3
-					  );
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
 		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
 		    }
-   
+		  // a bottom line on output is now finished. We jump to the beginning of the next top line
+		  output_p+=local_output_width-local_output_active_width;
+	       }
+        }
+
+	if (specific==1) 
+	  {  
+	     for (out_line = 0; out_line < local_output_active_height /2 ; out_line++)
+	       {
+		  in_line_offset = in_line[out_line] * local_padded_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_top + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       value1 =
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
+		       value1 = (9 + value1)/18;
+		       value =
+			 (value1 +
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
+		  // a top line on output is now finished. We jump to the beginning of the bottom line
+		  output_p+=local_output_width-local_output_active_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       csn0 =  cubic_spline_n_0[out_col];
+		       csn1 =  cubic_spline_n_1[out_col];
+		       csn2 =  cubic_spline_n_2[out_col];
+		       csn3 =  cubic_spline_n_3[out_col];
+		       adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       value1 =
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn0;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn1;
+		       value1 += 
+			 (int16_t) (*(adresse0++) + (((int16_t)*(adresse1++))<<4) + *(adresse2++)) * csn2;
+		       value1 += 
+			 (int16_t) (*(adresse0  ) + (((int16_t)*(adresse1  ))<<4) + *(adresse2  )) * csn3;
+		       value1 = (9 + value1)/18;
+		       value =
+			 (value1 +
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
+		  // a bottom line on output is now finished. We jump to the beginning of the next top line
+		  output_p+=local_output_width-local_output_active_width;
 	       }
 	  }
-	else
+	if (specific == 5) 
 	  {
-	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	     for (out_line = 0; out_line < local_output_active_height/2; out_line++)
 	       {
-		  cubic_spline_m_0 = cubic_spline_m[out_line + 0 * output_active_height];
-		  cubic_spline_m_1 = cubic_spline_m[out_line + 1 * output_active_height];
-		  cubic_spline_m_2 = cubic_spline_m[out_line + 2 * output_active_height];
-		  cubic_spline_m_3 = cubic_spline_m[out_line + 3 * output_active_height];
-		  output_p = output + 2 * out_line * local_output_width;
+		  csm0 = cubic_spline_m_0[out_line];
+		  csm1 = cubic_spline_m_1[out_line];
+		  csm2 = cubic_spline_m_2[out_line];
+		  csm3 = cubic_spline_m_3[out_line];
+		  in_line_offset = in_line[out_line] * local_padded_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
-		       value1 = 
-			 cubic_spline_m_0 *
-			 (
-			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_0
-			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_1 *
-			 ( 
-			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_2 *
-			 ( 
-			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) +  
-			 cubic_spline_m_3 *
-			 (
- 			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_3
-			   );
+		       adresse0 = padded_top + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       adresse3 = adresse2 + local_padded_width;
+		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
+		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
+		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
+		       value1 = (9 + value1)/18;
 		       value =
 			 (value1 +
-			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
 		       if (value < 0)
 			 value = 0;
 		       
@@ -931,58 +470,17 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 		  output_p+=local_output_width-local_output_active_width;
 		  for (out_col = 0; out_col < local_output_active_width; out_col++)
 		    {
-		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
-		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
-		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
-		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
-		       value1 = 
-			 cubic_spline_m_0 *
-			 (
-			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_0
-			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_1 *
-			 ( 
-			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
-			   * cubic_spline_n_1
-			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) + 
-			 cubic_spline_m_2 *
-			 ( 
-			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
-			   * cubic_spline_n_3
-			   ) +  
-			 cubic_spline_m_3 *
-			 (
-			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_0
-			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_1
-			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_2
-			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 3) * local_padded_width]
-			   * cubic_spline_n_3
-			   );
+		       adresse0 = padded_bottom + in_col[out_col] + in_line_offset;
+		       adresse1 = adresse0 + local_padded_width;
+		       adresse2 = adresse1 + local_padded_width;
+		       adresse3 = adresse2 + local_padded_width;
+		       value1  =   *(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ;
+		       value1 += ((*(adresse0++) * csm0 + *(adresse1++) * csm1 + *(adresse2++) * csm2 + *(adresse3++) * csm3 ) << 4) ;
+		       value1 +=   *(adresse0  ) * csm0 + *(adresse1  ) * csm1 + *(adresse2  ) * csm2 + *(adresse3  ) * csm3 ;
+		       value1 = (9 + value1)/18;
 		       value =
 			 (value1 +
-			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+			  (1 << (FLOAT2INTEGERPOWER - 1))) >> (FLOAT2INTEGERPOWER);
 		       if (value < 0)
 			 value = 0;
 		       
@@ -991,15 +489,14 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 		       
 		       *(output_p++) = (uint8_t) value;
 		    }
-		  
+		  output_p+=local_output_width-local_output_active_width;
 	       }
 	  }
      }
 
-
-/* *INDENT-ON* */
-  mjpeg_debug ("End of cubic_scale_interlaced");
-  return (0);
+   /* *INDENT-ON* */
+   mjpeg_debug ("End of cubic_scale_interlaced");
+   return (0);
 }
 
 // *************************************************************************************
@@ -1019,7 +516,7 @@ cubic_spline (float x, unsigned int multiplicative)
 
 
   if (fabs (x) < 1)
-    return ((long int)
+    return ((int16_t)
 	    floor (0.5 +
 		   (((12.0 - 9.0 * B -
 		      6.0 * C) * fabs (x) * fabs (x) * fabs (x) + (-18.0 +
@@ -1030,15 +527,15 @@ cubic_spline (float x, unsigned int multiplicative)
 		     fabs (x) * fabs (x) + (6.0 -
 					    2.0 * B)) / 6.0) *
 		   multiplicative));
-  if (fabs (x) < 2)
-    return ((long int)
+  if (fabs (x) <= 2)
+    return ((int16_t)
 	    floor (0.5 +
 		   (((-B - 6.0 * C) * fabs (x) * fabs (x) * fabs (x) +
 		     (6.0 * B + 30.0 * C) * fabs (x) * fabs (x) +
 		     (-12.0 * B - 48.0 * C) * fabs (x) + (8.0 * B +
 							  24.0 * C)) /
 		    6.0) * multiplicative));
-//   fprintf(stderr,"Bizarre!\n");
+  mjpeg_info("In function cubic_spline : x=%f >2",x);
   return (0);
 }
 
@@ -1059,6 +556,7 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
   unsigned int local_input_width = input_width >> half;
   unsigned int line;
 
+  mjpeg_debug ("Start of padding");
   // PADDING
   // Content Copy with 1 pixel offset on the left and top
   for (line = 0; line < local_input_useful_height; line++)
@@ -1086,6 +584,8 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
   memcpy (padded_input + (local_padded_height - 2) * local_padded_width,
 	  padded_input + (local_padded_height - 3) * local_padded_width,
 	  local_padded_width);
+   mjpeg_debug ("End of padding");
+
   return (0);
 }
 
@@ -1096,24 +596,36 @@ int
 padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 		    uint8_t * input, unsigned int half)
 {
-  // This padding function requires output_interlaced!=0
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_input_useful_height = input_useful_height >> half;
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int local_padded_height = local_input_useful_height / 2 + 3;
   unsigned int local_input_width = input_width >> half;
   unsigned int line;
+  uint8_t * uint8_ptop, * uint8_pbot, * uint8_input;
 
+  mjpeg_debug ("Start of padding_interlaced");
   // PADDING
   // Content Copy with 1 pixel offset on the left and top
+  uint8_ptop = padded_top + 1 + local_padded_width;
+  uint8_pbot = padded_bottom + 1 + local_padded_width;
+  uint8_input  = input;
   for (line = 0; line < local_input_useful_height / 2; line++)
     {
+       memcpy (uint8_ptop,uint8_input,local_input_useful_width);
+       uint8_ptop += local_padded_width;
+       uint8_input += local_input_width;
+       memcpy (uint8_pbot,uint8_input,local_input_useful_width);
+       uint8_pbot += local_padded_width;
+       uint8_input += local_input_width;
+    }
+/*       
       memcpy (padded_top + 1 + (line + 1) * local_padded_width,
 	      input + 2 * line * local_input_width, local_input_useful_width);
       memcpy (padded_bottom + 1 + (line + 1) * local_padded_width,
 	      input + (2 * line + 1) * local_input_width,
 	      local_input_useful_width);
-    }
+*/
 
   // borders padding: 1 pixel on the left and 2 on the right
   for (line = 1; line < local_padded_height - 2; line++)
@@ -1154,6 +666,7 @@ padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
   memcpy (padded_bottom + (local_padded_height - 2) * local_padded_width,
 	  padded_bottom + (local_padded_height - 3) * local_padded_width,
 	  local_padded_width);
+  mjpeg_debug ("End of padding_interlaced");
   return (0);
 
 }
