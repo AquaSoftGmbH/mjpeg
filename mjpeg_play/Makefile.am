@@ -42,6 +42,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = mjpegtools.pc
 
 DISTCLEANFILES = \
+	mjpegtools-config.h \
 	mjpegtools.pc \
 	confdefs.h \
 	config.cache \
