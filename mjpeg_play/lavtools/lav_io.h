@@ -22,11 +22,7 @@
 #include <avilib.h>
 
 #ifdef HAVE_LIBQUICKTIME
-#ifdef HAVE_OPENQUICKTIME
-#include <openquicktime.h>
-#else
 #include <quicktime.h>
-#endif
 #endif
 
 #ifdef HAVE_LIBMOVTAR

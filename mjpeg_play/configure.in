@@ -258,101 +258,28 @@ ifdef([AM_PATH_MOVTAR],
       [ AM_PATH_MOVTAR(0.0.2, [ AC_DEFINE(HAVE_LIBMOVTAR) have_movtar=true],,) ])
 
 dnl *********************************************************************
-dnl Check for the quicktime for linux library
-dnl At the end of this mess, QUICKTIME_LIBS will contain the libraries and
-dnl flags needed to link with the quicktime library and QUICKTIME_CFLAGS
-dnl will have the needed flags to compile against said library
+dnl Check for the libquicktime library
 AC_SUBST(QUICKTIME_LIBS)
 AC_SUBST(QUICKTIME_CFLAGS)
-if test x$with_quicktime = xyes ; then
-  AC_MSG_ERROR([
-*** A directory must be specified for the --with-quicktime option.])
-
-elif test x$with_quicktime = x ; then
-  if test -d ../quicktime4linux ; then
-    with_quicktime=`pwd`/../quicktime4linux
-  elif test -d ../quicktime4linux-1.4 ; then
-    with_quicktime=`pwd`/../quicktime4linux-1.4
-  elif test -d ../quicktime4linux-1.4-patch ; then
-    with_quicktime=`pwd`/../quicktime4linux-1.4-patch
-  elif test -d /usr/src/quicktime4linux-1.4  ; then
-    with_quicktime=/usr/src/quicktime4linux-1.4
-  elif test -d /usr/src/quicktime4linux-1.3  ; then
-    with_quicktime=/usr/src/quicktime4linux-1.3
-  elif test -d /usr/local/src/quicktime4linux-1.4  ; then
-    with_quicktime=/usr/local/src/quicktime4linux-1.4
-  elif test -d /usr/local/src/quicktime4linux-1.3  ; then
-    with_quicktime=/usr/local/src/quicktime4linux-1.3
-  elif test -d /usr/src/quicktime  ; then
-    with_quicktime=/usr/src/quicktime	
-  elif test -d /usr/local/src/quicktime  ; then
-    with_quicktime=/usr/local/src/quicktime	
-  elif test -d /usr/src/openquicktime-1.0-src ; then
-    with_quicktime=/usr/src/openquicktime-1.0-src
-  elif test -d /usr/local/src/openquicktime-1.0-src ; then
-    with_quicktime=/usr/local/src/openquicktime-1.0-src
-dnl This case doesn't work because Quicktime doesn't install qtprivate.h and
-dnl codecs.h by default.  We need the actual source tree.  If you copy the
-dnl appropriate headers to /usr/include/quicktime, uncomment the following case:
-dnl	else if test -d /usr/include/quicktime	; then
-dnl	  with_quicktime=/usr/include/quicktime
-  fi	
+if test x$with_quicktime = x -o x$with_quicktime = xyes ; then
+   lqt-config --version >/dev/null 2>/dev/null
+   if test $? != 0; then
+     have_quicktime=false
+   else
+     QUICKTIME_LIBS=`lqt-config --libs`
+     QUICKTIME_CFLAGS=`lqt-config --cflags`
+     AC_DEFINE(HAVE_LIBQUICKTIME)
+     have_quicktime=true
+   fi
+else
+     have_quicktime=false
 fi
 
 dnl test for PNG lib, moved out of Quicktime checks because of png2yuv /gz
 OLD_LIBS="$LIBS"
 LIBS="$LIBS -lz $LIBM_LIBS"
-AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng -lz $LIBM_LIBS" PNG=true have_png=true])
+AC_CHECK_LIB(png, png_read_info, [have_png=true])
 LIBS="$OLD_LIBS"
-
-have_quicktime=false
-have_openquicktime=false
-if test x$with_quicktime != x ; then
-  if test x$PNG = xtrue ; then
-    if test x$have_pthread = xtrue ; then
-      EXTRA_LIBS="$GLIB_LIBS $PTHREAD_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
-    else
-      EXTRA_LIBS="-L$with_quicktime -L$with_quicktime/$(uname -m) $GLIB_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
-    fi
-dnl Do we have OpenQuicktime instead of Quicktime4Linux?
-    if test -f "$with_quicktime/openquicktime.h" ; then
-        AC_CHECK_LIB(openquicktime, quicktime_open,
-          [ QUICKTIME_LIBS="-L$with_quicktime -lopenquicktime $EXTRA_LIBS"
-            QUICKTIME_CFLAGS="-I $with_quicktime"
-            AC_DEFINE(HAVE_LIBQUICKTIME)
-            have_openquicktime=true],, 
-            -L$with_quicktime $EXTRA_LIBS $JPEG_LIBS )
-        EXTRA_LIBS=""
-    else
-      AC_CHECK_LIB(quicktime, quicktime_open,
-        [ QUICKTIME_LIBS="-L$with_quicktime -L$with_quicktime/$(uname -m) -lquicktime $EXTRA_LIBS"
-          QUICKTIME_CFLAGS="-I $with_quicktime"
-          AC_DEFINE(HAVE_LIBQUICKTIME)
-          have_quicktime=true],, 
-          -L$with_quicktime -L$with_quicktime/$(uname -m) $EXTRA_LIBS $JPEG_LIBS )
-      EXTRA_LIBS=""
-    fi
-  fi
-else
-  AC_MSG_WARN([**** Quicktime record/playback disabled.])
-fi
-
-if test x$have_quicktime = xtrue ; then
-  HAVE_QUICKTIME=1
-else
-  HAVE_QUICKTIME=0
-fi
-if test x$have_openquicktime = xtrue ; then
-  HAVE_OPENQUICKTIME=1
-  HAVE_QUICKTIME=1
-  have_quicktime=true
-else
-  HAVE_OPENQUICKTIME=0
-fi
-AC_SUBST(HAVE_QUICKTIME)
-AC_SUBST(HAVE_OPENQUICKTIME)
-QUICKTIME_DIR=$with_quicktime
-AC_SUBST(QUICKTIME_DIR)
 
 dnl *********************************************************************
 dnl Check for the aviplay for linux library
@@ -674,8 +601,8 @@ AC_MSG_CHECKING(x86 sub-architecture settings)
   i586) ARCHFLAGS="-mcpu=i586 -march=$arch"
   have_cmov=false
   ;;
-  *) 
-  have_cmov=false
+  *) ARCHFLAGS="-mcpu=i686 -march=$arch"
+  have_cmov=true
   ;;
   esac
 AC_MSG_RESULT($ARCHFLAGS)
@@ -802,9 +729,6 @@ echo "    - software MJPEG playback       : ${have_sdl}"
 echo "    - movtar playback/recording     : ${have_movtar}"
 echo "    - Quicktime playback/recording  : ${have_quicktime}"
 echo "    - PNG input support             : ${have_png}"
-if test "$have_quicktime" = "true" ; then
-echo "      - Quicktime source in         : ${with_quicktime}"
-fi
 echo "    - AVI MJPEG playback/recording  : true (always)"
 echo "    - libDV (digital video) support : ${have_dv} "
 echo "    - libDV PAL YV12 read support   : ${have_dv_yv12} "
