@@ -8,13 +8,17 @@
 ##	gcc $(INCLUDES) -c v4l-conf.c
 
 ## EXTRA-DIST = README PLANS
-INCLUDES = -I../mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
+INCLUDES = -I../mjpeg -I /usr/X11R6/include @MOVTAR_CFLAGS@  @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
 CFLAGS=-Wall -Werror -g
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
 ##
-bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddwav
+bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddwav xlav
+
+include_HEADERS = lav_io.h editlist.h xlav.h avilib.h
+
+
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
 lavplay_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
@@ -38,6 +42,11 @@ lavaddwav_LDFLAGS  = -L movtar
 lavaddwav_SOURCES = lavaddwav.c
 lavaddwav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
 
+
+xlav_SOURCES = xlav.c xlav_main.c
+xlav_LDFLAGS  = -L movtar -L /usr/X11R6/lib 
+xlav_LDADD = editlist.o lav_io.o avilib.o -lmovtar -lforms -lX11 -lm
+
 lavvideo_SOURCES = lavvideo.c
 
 lib_LIBRARIES = liblavio.a
@@ -46,7 +55,6 @@ liblavio_a_SOURCES = lav_io.c avilib.c
 ## Seems more sensible simply to ask that movtar is linked as well if you
 ## use this lib.
 ##liblavio_a_LIBADD = @MOVTAR_LIBS@
-include_HEADERS = lav_io.h editlist.h
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 

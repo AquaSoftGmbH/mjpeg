@@ -418,6 +418,8 @@ void x_shutdown(int a)
   if (soft_play) SDL_Quit();
 }
 
+#define stringify( str ) #str
+
 int main(int argc, char ** argv)
 {
    int res, frame, hn;
@@ -439,7 +441,7 @@ int main(int argc, char ** argv)
    
    /* Output Version information */
 
-   printf("lavplay-1.2.0\n");
+   printf("lavplay" stringify(VERSION) ".0\n");
    fflush(stdout);
 
    if(argc < 2) Usage(argv[0]);

@@ -9,7 +9,7 @@
 
 ## EXTRA-DIST = README PLANS
 INCLUDES = -I./mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
-SUBDIRS = mjpeg lavtools aenc mplex utils xlav mpeg2enc
+SUBDIRS = mjpeg lavtools aenc mplex mpeg2enc
 CFLAGS=-Wall -g
 
 

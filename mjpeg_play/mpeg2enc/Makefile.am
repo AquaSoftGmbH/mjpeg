@@ -21,9 +21,10 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	fdctref.c idct.c quantize.c ratectl.c stats.c \
 	$(mpeg2enc_SIMD)
 
+include_HEADERS = config.h global.h mpeg2enc.h vlc.h
 
 INCLUDES = 
-CPPFLAGS = -DX86_CPU @MTYPEFLAGS@
+CPPFLAGS = @MTYPEFLAGS@
 CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized
 ASM = nasm
 
