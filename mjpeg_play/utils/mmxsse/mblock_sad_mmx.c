@@ -373,7 +373,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 		punpcklbw_r2r(mm7, mm5);
 		
 		movq_r2r(mm4, mm7);
-		pcmpgtw_r2r(mm5, mm7);		/*  mm7 := [i : W0..3,mm4>mm5] */
+		pcmpgtw_r2r(mm5, mm7);		/* mm7 := [i : W0..3,mm4>mm5] */
 		
 		movq_r2r(mm4, mm6);		/* mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)] */
 		psubw_r2r(mm5, mm6);
@@ -383,7 +383,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 			
 		movq_r2r(mm5, mm6);		/* mm6 := [i : W0..3,mm5>mm4] */
 		pcmpgtw_r2r(mm4, mm6);
-		psubw_r2r(mm4, mm5);		/* mm6 := [i : W0..3,mm5>mm4] */
+		psubw_r2r(mm4, mm5);		/* mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)] */
 		pand_r2r(mm6, mm5);
 		
 		paddw_r2r(mm5, mm0);		/* Add to accumulator */
@@ -414,7 +414,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 		
 		movq_r2r(mm5, mm6);		/* mm6 := [i : W0..3,mm5>mm4] */
 		pcmpgtw_r2r(mm4, mm6);
-		psubw_r2r(mm4, mm5);
+		psubw_r2r(mm4, mm5); 		/* mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)] */
 		pand_r2r(mm6, mm5);
 		
 		paddw_r2r(mm5, mm0);		/* Add to accumulator */
@@ -440,7 +440,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 		punpcklbw_r2r(mm7, mm5);
 		
 		movq_r2r(mm4, mm7);
-		pcmpgtw_r2r(mm5, mm7);		/*  mm7 := [i : W0..3,mm4>mm5] */
+		pcmpgtw_r2r(mm5, mm7);		/* mm7 := [i : W0..3,mm4>mm5] */
 		
 		movq_r2r(mm4, mm6);		/* mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)] */
 		psubw_r2r(mm5, mm6);
@@ -450,7 +450,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 
 		movq_r2r(mm5, mm6);		/* mm6 := [i : W0..3,mm5>mm4] */
 		pcmpgtw_r2r(mm4, mm6);
-		psubw_r2r(mm4, mm5);		/* mm6 := [i : W0..3,mm5>mm4] */
+		psubw_r2r(mm4, mm5);		/* mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)] */
 		pand_r2r(mm6, mm5);
 		
 		paddw_r2r(mm5, mm0);		/* Add to accumulator */
@@ -480,7 +480,7 @@ int sad_10_mmx(uint8_t *p1, uint8_t *p2, int lx, int h)
 		
 		movq_r2r(mm5, mm6);		/* mm6 := [i : W0..3,mm5>mm4] */
 		pcmpgtw_r2r(mm4, mm6);
-		psubw_r2r(mm4, mm5);
+		psubw_r2r(mm4, mm5);		/* mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)] */
 		pand_r2r(mm6, mm5);
 		
 		paddw_r2r(mm5, mm0);		/* Add to accumulator */
