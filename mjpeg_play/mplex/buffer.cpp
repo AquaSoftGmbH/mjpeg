@@ -105,7 +105,7 @@ void BufferModel::Queued (unsigned int bytes,
 			pointer = pointer->next;
 		}
 
-		pointer->next = (BufferQueue*) malloc (sizeof (BufferQueue));
+		pointer->next = new BufferQueue;
 		pointer->next->size = bytes;
 		pointer->next->next = NULL;
 		pointer->next->DTS = TS;
