@@ -45,9 +45,11 @@ liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
 
 liblavrec_la_SOURCES = liblavrec.c audiolib.c frequencies.c
 liblavrec_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavrec_la_CFLAGS = $(AM_CFLAGS)
 
 liblavplay_la_SOURCES = liblavplay.c audiolib.c
 liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
+liblavplay_la_CFLAGS = $(AM_CFLAGS)
 
 # *********************************************************************
 # The tools themselves
