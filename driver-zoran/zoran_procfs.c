@@ -106,7 +106,6 @@ static int zoran_read_proc(char *buffer, char **start, off_t offset, int size, i
         struct procfs_io io;
         int    nbytes;
 
-	DEBUG2(printk(KERN_INFO "%s: read_proc: buffer=%x, offset=%d, size=%d, data=%x\n", zr->name, (int) buffer, (int) offset, size, (int) data));
         io.buffer = buffer;
         io.end    = buffer + size - 128; // Just to make it a little bit safer
         io.count  = offset;
