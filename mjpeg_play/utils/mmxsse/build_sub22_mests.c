@@ -21,8 +21,8 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 	int x,y;
 	uint8_t *s22orgblk;
 	int32_t resvec[4];
+        me_result_s *mc = sub22set->mests;
 
-	sub22set->len = 0;
 	for( k = 0; k < sub44set->len; ++k )
 	{
 
@@ -43,11 +43,10 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 				s =resvec[i]+(intmax(abs(x), abs(y))<<3);
 				if( s < threshold )
 				{
-					me_result_s *mc = &sub22set->mests[sub22set->len];
 					mc->x = (int8_t)x;
 					mc->y = (int8_t)y;
 					mc->weight = s;
-					++(sub22set->len);
+                                        mc++;
 				}
 			}
 
@@ -64,6 +63,7 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 
 	}
 
+	sub22set->len = mc - sub22set->mests;
 	
 	sub_mean_reduction( sub22set, reduction, &min_weight );
 	return sub22set->len;
