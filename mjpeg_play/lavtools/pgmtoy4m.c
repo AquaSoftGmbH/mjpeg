@@ -75,8 +75,8 @@ main(int argc, char **argv)
 	int	width, height, uvlen, verbose = 1, fdout, fdin, c, i;
 	int	w2, columns, rows, maxval, magicn, frameno;
 	u_char	*yuv[3];
-	y4m_ratio_t	rate_ratio = y4m_fps_NTSC;
-	y4m_ratio_t	aspect_ratio = y4m_sar_NTSC_CCIR601;
+	y4m_ratio_t	rate_ratio = y4m_fps_UNKNOWN;
+	y4m_ratio_t	aspect_ratio = y4m_sar_UNKNOWN;
 	char	ilace = Y4M_ILACE_TOP_FIRST;
 	y4m_frame_info_t  oframe;
 	y4m_stream_info_t ostream;
@@ -170,6 +170,46 @@ main(int argc, char **argv)
 	if	(yuv[0] == NULL || yuv[1] == NULL || yuv[2] == NULL)
 		mjpeg_error_exit1("malloc yuv[]");
 
+/*
+ * If the (sample) aspect ratio and frame rate were not specified on the
+ * command line try to intuit the video norm of NTSC or PAL by looking at the
+ * height of the frame.
+*/
+	if	(Y4M_RATIO_EQL(aspect_ratio, y4m_sar_UNKNOWN))
+		{
+		if	(height == 480 || height == 240)
+			{
+			aspect_ratio = y4m_sar_NTSC_CCIR601;
+			mjpeg_log(LOG_WARN, "sample aspect not specified, using NTSC CCIR601 value based on frame height of %d", height);
+			}
+		else if	(height == 576 || height == 288)
+			{
+			aspect_ratio = y4m_sar_PAL_CCIR601;
+			mjpeg_log(LOG_WARN, "sample aspect not specified, using PAL CCIR601 value based on frame height of %d", height);
+			}
+		else
+			{
+			mjpeg_log(LOG_WARN, "sample aspect not specified and can not be inferred from frame height of %d (leaving sar as unknown", height);
+			}
+		}
+	if	(Y4M_RATIO_EQL(rate_ratio, y4m_fps_UNKNOWN))
+		{
+		if	(height == 480 || height == 240)
+			{
+			rate_ratio = y4m_fps_NTSC;
+			mjpeg_log(LOG_WARN, "frame rate not specified, using NTSC value based on frame height of %d", height);
+			}
+		else if	(height == 576 || height == 288)
+			{
+			rate_ratio = y4m_fps_PAL;
+			mjpeg_log(LOG_WARN, "frame rate not specified, using PAL value based on frame height of %d", height);
+			}
+		else
+			{
+			mjpeg_log(LOG_WARN, "frame rate not specified and can not be inferred from frame height of %d (using NTSC value)", height);
+			rate_ratio = y4m_fps_NTSC;
+			}
+		}
 	y4m_init_stream_info(&ostream);
 	y4m_init_frame_info(&oframe);
 	y4m_si_set_interlace(&ostream, ilace);
