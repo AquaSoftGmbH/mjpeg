@@ -12,20 +12,33 @@
   *  yuvscaler is distributed under the terms of the GNU General Public Licence
   *  as discribed in the COPYING file
  */
+// Implementation: there are two scaling methods: one for not_interlaced output and one for interlaced output. 
+// For each method, line switching may occur on input frames (by convention, line are numbered from 0 to n-1)
+// 
+// First version doing only downscaling with no interlacing
+// June 2001: interlacing capable version
+// July 2001: upscaling capable version
+// September 2001: line switching
+// September/October 2001: new yuv4m header
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include <signal.h>
 #include "lav_io.h"
 #include "editlist.h"
 #include "jpegutils.c"
-#include "mjpeg_types.h"
 #include "mjpeg_logging.h"
+#include "yuv4mpeg.h"
+#include "inttypes.h"
 #include "yuvscaler.h"
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
+// For pointer adress alignement
+#define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
+
 
 // For input
 unsigned int input_width;
@@ -34,7 +47,9 @@ unsigned int input_useful_width = 0;
 unsigned int input_useful_height = 0;
 unsigned int input_offset_width = 0;
 unsigned int input_offset_height = 0;
-int input_interlaced = LAV_INTER_UNKNOWN;	//=0 for not interlaced, =1 for top-field-first, =2 for bottom-field-first
+int input_interlaced = -1;
+//=Y4M_ILACE_NONE for not interlaced, =Y4M_ILACE_TOP_FIRST for top interlaced, =Y4M_ILACE_BOTTOM_FIRST for bottom interlaced
+// double input_aspectratio;
 
 // Downscaling ratios
 unsigned int input_height_slice;
@@ -65,13 +80,16 @@ unsigned int black = 0, black_line = 0, black_col = 0;	// =1 if black lines must
 unsigned int skip = 0, skip_line = 0, skip_col = 0;	// =1 if lines or columns from the active output will not be displayed on output frames
 // NB: as these number may not be multiple of output_[height,width]_slice, it is not possible to remove the corresponding pixels in
 // the input frame, a solution that could speed up things. 
-int output_interlaced = LAV_INTER_UNKNOWN;	//=0 for not interlaced, =1 for top-field-first, =2 for bottom-field-first
+int output_interlaced = -1;
+// =Y4M_ILACE_NONE for not interlaced, =Y4M_ILACE_TOP_FIRST for top interlaced, =Y4M_ILACE_BOTTOM_FIRST for bottom interlaced
+// double output_aspectratio;
+int output_fd = 1;		// frames are written to stdout
 unsigned int vcd = 0;		//=1 if vcd output was selected
 unsigned int svcd = 0;		//=1 if svcd output was selected
 
 // Global variables
+int line_switching = 0;		// =0 for no line switching, =1 for line switching
 int norm = -1;			// =0 for PAL and =1 for NTSC
-int valid_output = 0;		// =0 for unvalid output specification or =1 for valid specification
 int wide = 0;			// =1 for wide (16:9) input to standard (4:3) output conversion
 int ratio = 0;
 int infile = 0;			// =0 for stdin (default) =1 for file
@@ -99,18 +117,20 @@ const char WIDE2STD_KEYWORD[] = "WIDE2STD";
 const char INFILE_KEYWORD[] = "INFILE_";
 const char RATIO_KEYWORD[] = "RATIO_";
 const char TOP_FIRST[] = "INTERLACED_TOP_FIRST";
-const char BOTTOM_FIRST[] = "INTERLACED_BOTTOM_FIRST";
+const char BOT_FIRST[] = "INTERLACED_BOTTOM_FIRST";
 const char NOT_INTER[] = "NOT_INTERLACED";
 const char MONO_KEYWORD[] = "MONOCHROME";
+const char FASTVCD[] = "FASTVCD";
 const char FAST_WIDE2VCD[] = "FAST_WIDE2VCD";
 const char WIDE2VCD[] = "WIDE2VCD";
 const char RESAMPLE[] = "RESAMPLE";
 const char BICUBIC[] = "BICUBIC";
-
+const char LINESWITCH[] = "LINE_SWITCH";
 
 // Unclassified
 unsigned long int diviseur;
-unsigned short int *divide, *u_i_p;
+uint8_t *divide;
+unsigned short int *u_i_p;
 unsigned int out_nb_col_slice, out_nb_line_slice;
 static char *legal_opt_flags = "k:I:d:n:v:M:O:whtg";
 int verbose = 1;
@@ -120,7 +140,106 @@ float framerates[] =
 // 2048=2^11
 #define FLOAT2INTEGER 2048
 #define FLOAT2INTEGERPOWER 11
+int dummy=0;
 
+
+// *************************************************************************************
+int
+my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
+		   unsigned long int buflen, char *buf, int line_switching)
+{
+  static int err = Y4M_OK;
+  unsigned int line;
+  if ((err = y4m_read_frame_header (fd, frameinfo)) == Y4M_OK)
+    {
+      if (!line_switching)
+	{
+	  if ((err = y4m_read (fd, buf, buflen, &dummy)) != Y4M_OK)
+	    {
+	      mjpeg_info ("Couldn't read FRAME content: %s!\n",
+			  y4m_errstr (err));
+	      return (err);
+	    }
+	}
+      else
+	{
+	  // line switching during frame read 
+	  // Y COMPONENT
+	  for (line = 0; line < input_height; line += 2)
+	    {
+	      buf += input_width;	// buf points to next line on output, store input line there
+	      if ((err = y4m_read (fd, buf, input_width, &dummy)) != Y4M_OK)
+		{
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
+			      line, y4m_errstr (err));
+		  return (err);
+		}
+	      buf -= input_width;	// buf points to former line on output, store input line there
+	      if ((err = y4m_read (fd, buf, input_width, &dummy)) != Y4M_OK)
+		{
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
+			      line + 1, y4m_errstr (err));
+		  return (err);
+		}
+	      buf += 2 * input_width;	// two line were read and stored
+	    }
+	  // U and V component
+	  for (line = 0; line < input_height; line += 2)
+	    {
+	      buf += input_width / 2;	// buf points to next line on output, store input line there
+	      if ((err =
+		   y4m_read (fd, buf, input_width / 2, &dummy)) != Y4M_OK)
+		{
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
+			      line, y4m_errstr (err));
+		  return (err);
+		}
+	      buf -= input_width / 2;	// buf points to former line on output, store input line there
+	      if ((err =
+		   y4m_read (fd, buf, input_width / 2, &dummy)) != Y4M_OK)
+		{
+		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
+			      line + 1, y4m_errstr (err));
+		  return (err);
+		}
+	      buf += input_width;	// two line were read and stored
+	    }
+	}
+    }
+  else
+    {
+      if (err != Y4M_EOF)
+	mjpeg_info ("Couldn't read FRAME header: %s!\n", y4m_errstr (err));
+      else
+	mjpeg_info ("End of stream!\n");
+      return (err);
+    }
+  return Y4M_OK;
+}
+
+// *************************************************************************************
+int line_switch (uint8_t * input, uint8_t *line)
+{
+   int ligne;
+   // This function does line_switching on matrix input which contains a full frame 
+   // Y COMPONENT
+   for (ligne = 0; ligne < input_height; ligne += 2)
+     {
+	memcpy (line,input,input_width);
+	memcpy (input,input+input_width,input_width);
+	memcpy (input+input_width,line,input_width);
+	input+=(input_width<<1);
+     }
+   // U and V COMPONENTS
+   for (ligne = 0; ligne < input_height; ligne += 2)
+     {
+	memcpy (line,input,input_width>>1);
+	memcpy (input,input+(input_width>>1),input_width>>1);
+	memcpy (input+(input_width>>1),line,input_width>>1);
+	input+=input_width;
+     }
+   return (0);
+}
 
 // *************************************************************************************
 void
@@ -130,28 +249,21 @@ print_usage (char *argv[])
 	   "usage: %s -I [input_keyword] -M [mode_keyword] -O [output_keyword] [-n p|s|n] [-v 0-2] [-h/?] [inputfiles]\n"
 	   "%s UPscales or DOWNscales arbitrary sized yuv frames (stdin by default) to a specified format (to stdout)\n"
 	   "please note that %s implements two dowscaling algorithms but only one upscaling algorithm\n"
-	   "\n"
-	   "%s is keyword driven :\n"
+	   "\n" "%s is keyword driven :\n"
 	   "\t inputfiles selects yuv frames coming from Editlist files\n"
 	   "\t -I for keyword concerning INPUT  frame characteristics\n"
 	   "\t -M for keyword concerning the downscaling MODE of yuvscaler\n"
 	   "\t -O for keyword concerning OUTPUT frame characteristics\n"
 	   "\t ((the former syntax with -k and -w is still supported but depreciated))\n"
-	   "\n"
-	   "Possible input keyword are:\n"
+	   "\n" "Possible input keyword are:\n"
 	   "\t USE_WidthxHeight+WidthOffset+HeightOffset to select a useful area of the input frame (multiple of 4)\n"
 	   "\t    the rest of the image being discarded\n"
-	   "\t if frames come from stdin, input frames interlacing type is not known from header. For interlacing specification, use:\n"
-	   "\t NOT_INTERLACED to select non-interlaced input frames\n"
-	   "\t INTERLACED_TOP_FIRST  to select an interlaced, top-field-first input stream from stdin\n"
-	   "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom-field-first input stream from stdin\n"
 	   "\n"
 	   "Possible mode keyword are:\n"
 	   "\t BICUBIC to use the (Mitchell-Netravalli) high-quality bicubic upsacling and/or downscaling algorithm\n"
 	   "\t RESAMPLE to use a classical resampling algorithm -only for downscaling- that goes much faster than bicubic\n"
 	   "\t For coherence reason, %s will use RESAMPLE if only downscaling is necessary, BICUBIC if upscaling is necessary\n"
-	   "\t WIDE2STD to converts widescreen (16:9) input frames into standard output (4:3),\n"
-	   "\t     generating necessary black lines\n"
+	   "\t WIDE2STD to converts widescreen (16:9) input frames into standard output (4:3), generating necessary black lines\n"
 	   "\t RATIO_WidthIn_WidthOut_HeightIn_HeightOut to specified conversion ratios of\n"
 	   "\t     WidthIn/WidthOut for width and HeightIN/HeightOut for height to be applied to the useful area.\n"
 	   "\t     The output active area that results from scalingthe input useful area might be different\n"
@@ -159,22 +271,19 @@ print_usage (char *argv[])
 	   "\t     In that case, %s will automatically generate necessary black lines and columns and/or skip necessary\n"
 	   "\t     lines and columns to get an active output centered within the display size.\n"
 	   "\t WIDE2VCD to transcode wide (16:9) frames  to VCD (equivalent to -M WIDE2STD -O VCD)\n"
-	   "\t FAST_WIDE2VCD to transcode full sized wide (16:6) frames to VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see after)\n"
+	   "\t FASTVCD to transcode full sized frames to VCD (equivalent to -M RATIO_2_1_2_1 -O VCD, see after)\n"
+	   "\t FAST_WIDE2VCD to transcode full sized wide (16:9) frames to VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see after)\n"
+	   "\t LINE_SWITCH to switch lines between input end output, no line switching by default\n"
 	   "\n"
 	   "Possible output keywords are:\n"
 	   "\t MONOCHROME to generate monochrome frames on output\n"
 	   "\t  VCD to generate  VCD compliant frames on output\n"
-	   "\t     (taking care of PAL and NTSC standards, non-interlaced frames)\n"
+	   "\t     (taking care of PAL and NTSC standards, not-interlaced frames)\n"
 	   "\t SVCD to generate SVCD compliant frames on output\n"
-	   "\t     (taking care of PAL and NTSC standards, interlaced frames)\n"
+	   "\t     (taking care of PAL and NTSC standards, interlaced top first frames)\n"
 	   "\t SIZE_WidthxHeight to generate frames of size WidthxHeight on output (multiple of 4)\n"
-	   "\t If you wish to specify interlacing of output frames, use:\n"
-	   "\t INTERLACED_TOP_FIRST  to select an interlaced, top-field-first output stream\n"
-	   "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom-field-first output stream\n"
-	   "\t NOT_INTERLACED to select non-interlaced output frames\n"
-	   "\n"
-	   "\t If neither input interlacing nor output interlacing is specified, both are taken not interlaced\n"
-	   "\t If only one is specified, the other is taken of the same type, bottom_first for output by default\n"
+	   "\t If output interlacing is not specified, it is taken of the same type as input if coherent, top_first by default\n"
+	   "\t By default, output frames size will be the same as input frame sizes\n"
 	   "\n"
 	   "The most useful downscaling ratios receive a dedicated and accelerated treatment is RESAMPLE mode. They are:\n"
 	   "\t RATIO_WidthIn_WidthOut_1_1 => downscaling only concerns width, not height\n"
@@ -202,7 +311,7 @@ handle_args_global (int argc, char *argv[])
 {
   // This function takes care of the global variables 
   // initialisation that are independent of the input stream
-  // Main function is to know xether input frames originate from file or stdin
+  // Main function is to know wether input frames originate from file or stdin
   int c;
 
   while ((c = getopt (argc, argv, legal_opt_flags)) != -1)
@@ -270,9 +379,14 @@ handle_args_dependent (int argc, char *argv[])
 {
   // This function takes care of the global variables 
   // initialisation that may depend on the input stream
+  // It does also coherence check on input, useful_input, display, output_active sizes and ratio sizes
   int c;
   unsigned int ui1, ui2, ui3, ui4;
   int output, input, mode;
+
+  // By default, display sizes is the same as input size
+  display_width = input_width;
+  display_height = input_height;
 
   optind = 1;
   while ((c = getopt (argc, argv, legal_opt_flags)) != -1)
@@ -285,7 +399,6 @@ handle_args_dependent (int argc, char *argv[])
 	  if (strcmp (optarg, VCD_KEYWORD) == 0)
 	    {
 	      output = 1;
-	      valid_output = 1;
 	      vcd = 1;
 	      svcd = 0;		// if user gives VCD and SVCD keyword, take last one only into account
 	      display_width = 352;
@@ -308,7 +421,6 @@ handle_args_dependent (int argc, char *argv[])
 	  if (strcmp (optarg, SVCD_KEYWORD) == 0)
 	    {
 	      output = 1;
-	      valid_output = 1;
 	      svcd = 1;
 	      vcd = 0;		// if user gives VCD and SVCD keyword, take last one only into account
 	      display_width = 480;
@@ -335,7 +447,6 @@ handle_args_dependent (int argc, char *argv[])
 		  // Coherence check: sizes must be multiple of 4
 		  if ((ui1 % 4 == 0) && (ui2 % 4 == 0))
 		    {
-		      valid_output = 1;
 		      display_width = ui1;
 		      display_height = ui2;
 		    }
@@ -347,23 +458,23 @@ handle_args_dependent (int argc, char *argv[])
 	      else
 		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s\n", optarg);
 	    }
-	  if (strcmp (optarg, TOP_FIRST) == 0)
+/*	  if (strcmp (optarg, TOP_FIRST) == 0)
 	    {
 	      output = 1;
-	      output_interlaced = LAV_INTER_TOP_FIRST;
+	      output_interlaced = Y4M_ILACE_TOP_FIRST;
 	    }
 
-	  if (strcmp (optarg, BOTTOM_FIRST) == 0)
+	  if (strcmp (optarg, BOT_FIRST) == 0)
 	    {
 	      output = 1;
-	      output_interlaced = LAV_INTER_BOTTOM_FIRST;
+	      output_interlaced = Y4M_ILACE_BOTTOM_FIRST;
 	    }
 	  if (strcmp (optarg, NOT_INTER) == 0)
 	    {
 	      output = 1;
-	      output_interlaced = LAV_NOT_INTERLACED;
+	      output_interlaced = Y4M_ILACE_NONE;
 	    }
-	  // Theoritically, this should go into handle_args_global
+*/// Theoritically, this should go into handle_args_global
 	  if (strcmp (optarg, MONO_KEYWORD) == 0)
 	    {
 	      output = 1;
@@ -397,6 +508,12 @@ handle_args_dependent (int argc, char *argv[])
 	      algorithm = 1;
 	    }
 
+	  if (strcmp (optarg, LINESWITCH) == 0)
+	    {
+	      mode = 1;
+	      line_switching = 1;
+	    }
+
 
 	  if (strncmp (optarg, RATIO_KEYWORD, 6) == 0)
 	    {
@@ -415,6 +532,7 @@ handle_args_dependent (int argc, char *argv[])
 		mjpeg_error_exit1 ("Unconsistent RATIO keyword: %s\n",
 				   optarg);
 	    }
+
 	  if (strcmp (optarg, FAST_WIDE2VCD) == 0)
 	    {
 	      wide = 1;
@@ -424,7 +542,6 @@ handle_args_dependent (int argc, char *argv[])
 	      output_width_slice = 1;
 	      input_height_slice = 2;
 	      output_height_slice = 1;
-	      valid_output = 1;
 	      vcd = 1;
 	      svcd = 0;		// if user gives VCD and SVCD keyword, take last one only into account
 	      display_width = 352;
@@ -443,11 +560,11 @@ handle_args_dependent (int argc, char *argv[])
 		mjpeg_error_exit1
 		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 	    }
+
 	  if (strcmp (optarg, WIDE2VCD) == 0)
 	    {
 	      wide = 1;
 	      mode = 1;
-	      valid_output = 1;
 	      vcd = 1;
 	      svcd = 0;		// if user gives VCD and SVCD keyword, take last one only into account
 	      display_width = 352;
@@ -466,6 +583,34 @@ handle_args_dependent (int argc, char *argv[])
 		mjpeg_error_exit1
 		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
 	    }
+
+	  if (strcmp (optarg, FASTVCD) == 0)
+	    {
+	      mode = 1;
+	      vcd = 1;
+	      svcd = 0;		// if user gives VCD and SVCD keyword, take last one only into account
+	      ratio = 1;
+	      input_width_slice = 2;
+	      output_width_slice = 1;
+	      input_height_slice = 2;
+	      output_height_slice = 1;
+	      display_width = 352;
+	      if (norm == 0)
+		{
+		  mjpeg_info
+		    ("VCD output format requested in PAL/SECAM norm\n");
+		  display_height = 288;
+		}
+	      else if (norm == 1)
+		{
+		  mjpeg_info ("VCD output format requested in NTSC norm\n");
+		  display_height = 240;
+		}
+	      else
+		mjpeg_error_exit1
+		  ("No norm specified, cannot determine VCD output size. Please use the -n option!\n");
+	    }
+
 	  if (mode == 0)
 	    mjpeg_error_exit1 ("Uncorrect mode keyword: %s\n", optarg);
 	  break;
@@ -491,29 +636,30 @@ handle_args_dependent (int argc, char *argv[])
 		      input_offset_height = ui4;
 		    }
 		  else
-		    mjpeg_error_exit1 ("Unconsistent USE keyword: %s\n",
-				       optarg);
+		    mjpeg_error_exit1
+		      ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size\n",
+		       optarg);
 		}
 	      else
 		mjpeg_error_exit1 ("Uncorrect input flag argument: %s\n",
 				   optarg);
 	    }
-	  if (strcmp (optarg, NOT_INTER) == 0)
-	    {
-	      input = 1;
-	      input_interlaced = LAV_NOT_INTERLACED;
-	    }
-	  if (strcmp (optarg, TOP_FIRST) == 0)
-	    {
-	      input = 1;
-	      input_interlaced = LAV_INTER_TOP_FIRST;
-	    }
+//        if (strcmp (optarg, NOT_INTER) == 0)
+//          {
+//            input = 1;
+//            input_interlaced = 0;
+//          }
+//        if (strcmp (optarg, ODD_FIRST) == 0)
+//          {
+//            input = 1;
+//            input_interlaced = 1;
+//          }
 
-	  if (strcmp (optarg, BOTTOM_FIRST) == 0)
-	    {
-	      input = 1;
-	      input_interlaced = LAV_INTER_BOTTOM_FIRST;
-	    }
+//        if (strcmp (optarg, EVEN_FIRST) == 0)
+//          {
+//            input = 1;
+//            input_interlaced = 2;
+//          }
 	  if (input == 0)
 	    mjpeg_error_exit1 ("Uncorrect input keyword: %s\n", optarg);
 	  break;
@@ -523,49 +669,46 @@ handle_args_dependent (int argc, char *argv[])
 	}
     }
 
-// Interlacing
-// we want the least necessary keywords on the command line => default combinaison of interlacing type for input and output are:
+// Interlacing and line-switching
 // 
-// case 1: if input interlacing type is not known, but output interlacing is specified as vcd, or svcd, or with specific keyword, 
-// input interlacing is defaulted to the same value.
-// case 2:If output interlacing type is not known, but input interlacing type is known => output is considered 
-// as interlaced_even_first if input is interlaced (sub-case A), not_interlaced if input is not interlaced (sub_case B)
-// case 3:if neither input nor output frames interlacing type is known => both are considered not interlaced
+// Line_switching is not equivalent to a change in interlacing type from TOP_FIRST to BOTTOM_FIRST or vice_versa since
+// such conversion needs to interleave field 1 from frame 0 with field 0 from frame 1. Whereas line switching only works with frame 0
 // 
-// 
+// By default, there is no line switching. Line switching will occur only if specified
+
   if (vcd == 1)
     {
-      if (output_interlaced > LAV_NOT_INTERLACED)
-	mjpeg_warn
-	  ("VCD requires non-interlaced output frames. Ignoring interlaced specification\n");
-      output_interlaced = LAV_NOT_INTERLACED;
+//      if (output_interlaced > 0)
+//      mjpeg_warn
+//        ("VCD requires non-interlaced output frames. Ignoring interlaced specification\n");
+      output_interlaced = Y4M_ILACE_NONE;
     }
   if (svcd == 1)
     {
-      if (output_interlaced == LAV_NOT_INTERLACED)
-	mjpeg_warn
-	  ("SVCD requires interlaced output frames. Ignoring non-interlaced specification\n");
-      if (output_interlaced == LAV_INTER_UNKNOWN)
-	output_interlaced = LAV_INTER_BOTTOM_FIRST;// default to even interlaced frames
+//      if (output_interlaced == 0)
+//       {
+//          mjpeg_warn
+//            ("SVCD requires interlaced output frames. Ignoring non-interlaced specification\n");
+//          output_interlaced = 2;
+//       }
+//      
+//      if (output_interlaced == -1)
+//       {
+//          if (input_interlaced == -1)
+      // default to even interlaced frames
+//            output_interlaced = 2;    
+//          else 
+      // No line switching by default
+//            output_interlaced = input_interlaced; 
+//       }
+      if (input_interlaced == Y4M_ILACE_BOTTOM_FIRST)
+	output_interlaced = Y4M_ILACE_BOTTOM_FIRST;
+      else
+	output_interlaced = Y4M_ILACE_TOP_FIRST;
     }
-  // CASE 1
-  if ((input_interlaced == LAV_INTER_UNKNOWN) && (output_interlaced != LAV_INTER_UNKNOWN))
-    input_interlaced = output_interlaced;
-  // CASE 2 
-  if ((input_interlaced != LAV_INTER_UNKNOWN) && (output_interlaced == LAV_INTER_UNKNOWN))
-    {
-      // SUB-CASE A
-      if (input_interlaced == LAV_NOT_INTERLACED)
-	output_interlaced = input_interlaced;
-      // SUB-CASE B
-      if (input_interlaced > LAV_NOT_INTERLACED)
-	output_interlaced = LAV_INTER_BOTTOM_FIRST;
-    }
-  // CASE 3
-  if ((input_interlaced == LAV_INTER_UNKNOWN) && (output_interlaced == LAV_INTER_UNKNOWN))
-    input_interlaced = output_interlaced = LAV_NOT_INTERLACED;
+  if (output_interlaced == -1)
+    output_interlaced = input_interlaced;
 
-// END INTERLACING   
 
   // Unspecified input variables specification
   if (input_useful_width == 0)
@@ -579,7 +722,6 @@ handle_args_dependent (int argc, char *argv[])
       if ((input_useful_width % input_width_slice == 0)
 	  && (input_useful_height % input_height_slice == 0))
 	{
-	  valid_output = 1;
 	  output_active_width =
 	    (input_useful_width / input_width_slice) * output_width_slice;
 	  output_active_height =
@@ -592,19 +734,19 @@ handle_args_dependent (int argc, char *argv[])
 	   input_useful_height);
     }
 
-  if (valid_output == 0)
-    mjpeg_error_exit1
-      ("Output size could not be determined from command line!\n");
+//  if (valid_output == 0)
+//    mjpeg_error_exit1
+//      ("Output size could not be determined from command line!\n");
 
   // Unspecified output variables specification
   if (output_active_width == 0)
     output_active_width = display_width;
   if (output_active_height == 0)
     output_active_height = display_height;
-  if (display_width == 0)
-    display_width = output_active_width;
-  if (display_height == 0)
-    display_height = output_active_height;
+//  if (display_width == 0)
+//    display_width = output_active_width;
+//  if (display_height == 0)
+//    display_height = output_active_height;
 
   if (wide == 1)
     output_active_height = (output_active_height * 3) / 4;
@@ -661,33 +803,25 @@ handle_args_dependent (int argc, char *argv[])
 }
 
 // *************************************************************************************
-
-// *************************************************************************************
-static __inline__ int
-fwrite_complete (const uint8_t * buf, const int buflen, FILE * file)
-{
-  return fwrite (buf, 1, buflen, file) == buflen;
-}
-
-// *************************************************************************************
-
-// *************************************************************************************
 int
 main (int argc, char *argv[])
 {
-  char param_line[PARAM_LINE_MAX];
-  int n, nerr = 0, res, len;
+  // Function MAIN : we align (regularly used) pointers adress on 64 bits so that MMX instructions may be easely used
+  //  like that: a = ((unsigned int)a & (unsigned int) ~63) + 64;
+  // and we reserve 64 supplémentairy bits during memory allocation 
+  int n, res, len, err = Y4M_OK;
   unsigned long int i, j;
-  int frame_rate_code = 0;
-  float frame_rate=-1.0;
+//  int frame_rate_code = 0;
+  double frame_rate = -1.0;
 
-  int input_fd = 0;
+//  int input_fd = 0;
   long int frame_num = 0;
-  uint8_t magic[] = "123456";	// : the last character of magic is the string termination character
-  const uint8_t key[] = "FRAME\n";
-   uint8_t header[] = "YUV4MPEG XXX XXX X\n";
-  unsigned int *height_coeff=NULL, *width_coeff=NULL;
-  uint8_t *input, *output, *padded_input=NULL, *padded_top=NULL, *padded_bottom=NULL;
+//  uint8_t magic[] = "123456"; // : the last character of magic is the string termination character
+//  const uint8_t key[] = "FRAME\n";
+//   uint8_t header[] = "YUV4MPEG XXX XXX X\n";
+  unsigned int *height_coeff = NULL, *width_coeff = NULL;
+  uint8_t *input, *output, *line,*padded_input = NULL, *padded_bottom =
+    NULL, *padded_top = NULL;
   uint8_t *input_y, *input_u, *input_v;
   uint8_t *input_y_infile, *input_u_infile, *input_v_infile;	// when input frames come from files
   uint8_t *output_y, *output_u, *output_v;
@@ -695,104 +829,45 @@ main (int argc, char *argv[])
   uint8_t **frame_y_p, **frame_u_p, **frame_v_p;	// size is not yet known
   uint8_t *u_c_p;		//u_c_p = uint8_t pointer
   unsigned int divider;
-  FILE *in_file = stdin;
-  FILE *out_file = stdout;
-  char info_str[]="If you see this, please report to the author that info_str was faulty used unitialized <xbiquard@free.fr>\n";
 
-   // SPECIFIC TO BICUBIC
-  unsigned int *in_line=NULL, *in_col=NULL, out_line, out_col;
+  // SPECIFIC TO BICUBIC
+  unsigned int *in_line = NULL, *in_col = NULL, out_line, out_col;
   unsigned long int somme;
   int m;
-  float *a=NULL, *b=NULL;
-  long int *cubic_spline_m=NULL, *cubic_spline_n=NULL;
+  int dummy;
+  float *a = NULL, *b = NULL;
+  int16_t *cubic_spline_m = NULL, *cubic_spline_n = NULL;
 
-  mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION") is a general scaling utility for yuv frames\n");
+  // SPECIFIC TO YUV4MPEG 
+  unsigned long int nb_pixels;
+  y4m_frame_info_t *frameinfo = NULL;
+  y4m_stream_info_t *streaminfo = NULL;
+
+
+  mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
+	      ") is a general scaling utility for yuv frames\n");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
   mjpeg_info ("%s -h for help\n", argv[0]);
-   
+
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
+  streaminfo = y4m_init_stream_info (NULL);
+  y4m_init_frame_info (frameinfo);
+
 
   if (infile == 0)
     {
-      // INPUT comes from stdin
-      // Check for correct file header : taken from mpeg2enc
-      for (n = 0; n < PARAM_LINE_MAX; n++)
+      // INPUT comes from stdin, we check for a correct file header
+      if (y4m_read_stream_header (0, streaminfo) != Y4M_OK)
 	{
-	  if (!read (input_fd, param_line + n, 1))
-	     mjpeg_error_exit1 ("yuvscaler Unable to read header from stdin\n");
-	  if (param_line[n] == '\n')
-	    break;
+	  mjpeg_error ("Could'nt read YUV4MPEG header!\n");
+	  exit (1);
 	}
-
-      if (n == PARAM_LINE_MAX)
-	 mjpeg_error_exit1("yuvscaler Didn't get linefeed in first %d characters of data\n",PARAM_LINE_MAX);
-
-      if (strncmp (param_line, "YUV4MPEG", 8) == 0)
-	{
-	  mjpeg_info ("YUV4MPEG header\n");
-	  sscanf (param_line + 8, "%d %d %d", &input_width, &input_height,
-		  &frame_rate_code);
-	  nerr = 0;
-	  if (input_width <= 0)
-	    {
-	      mjpeg_error ("yuvscaler Horizontal size illegal\n");
-	      nerr++;
-	    }
-	  if (input_height <= 0)
-	    {
-	      mjpeg_error ("yuvscaler Vertical size illegal\n");
-	      nerr++;
-	    }
-	  if (frame_rate_code < 1 || frame_rate_code > 8)
-	    {
-	      mjpeg_error ("yuvscaler frame rate code illegal !!!!\n");
-	      nerr++;
-	    }
-	  frame_rate = framerates[frame_rate_code];
-
-	  if (nerr)
-	    exit (1);
-
-	}
-      else
-	{
-	  if (strncmp (param_line, "YUV4SCALER", 10) == 0)
-	    {
-	      mjpeg_info ("YUV4SCALER header\n");
-	      sscanf (param_line + 10, "%d %d %d %d", &input_width,
-		      &input_height, &frame_rate_code, &input_interlaced);
-	      nerr = 0;
-	      if (input_width <= 0)
-		{
-		  mjpeg_error ("yuvscaler Horizontal size illegal\n");
-		  nerr++;
-		}
-	      if (input_height <= 0)
-		{
-		  mjpeg_error ("yuvscaler Vertical size illegal\n");
-		  nerr++;
-		}
-	      if (frame_rate_code < 1 || frame_rate_code > 8)
-		{
-		  mjpeg_error ("yuvscaler frame rate code illegal !!!!\n");
-		  nerr++;
-		}
-	      if (input_interlaced < LAV_NOT_INTERLACED || input_interlaced > LAV_INTER_BOTTOM_FIRST)
-		{
-		  mjpeg_error
-		    ("yuvscaler input frame interlacing illegal !!!!\n");
-		  nerr++;
-		}
-	      frame_rate = framerates[frame_rate_code];
-	      if (nerr)
-		exit (1);
-	    }
-	  else
-	    {
-	      mjpeg_error_exit1 ("Uncorrect header\n");
-	    }
-	}
+      input_width = streaminfo->width;
+      input_height = streaminfo->height;
+      frame_rate = streaminfo->framerate;
+      input_interlaced = streaminfo->interlace;
+//     input_aspectratio=streaminfo->aspectratio;  
     }
   else
     {
@@ -800,35 +875,40 @@ main (int argc, char *argv[])
       read_video_files (filename, infile, &el);
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
-	 mjpeg_error_exit1("Editlist not in chroma 422 format, exiting...\n");
+	mjpeg_error_exit1 ("Editlist not in chroma 422 format, exiting...\n");
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = el.video_fps;
       input_interlaced = el.video_inter;	// this will be  eventually overrided by user's specification
       // Let's determine the frame rate code
-      frame_rate_code = 0;
-      while ((framerates[++frame_rate_code] != frame_rate)
-	     && (frame_rate_code <= 8));
+//      frame_rate_code = 0;
+//      while ((framerates[++frame_rate_code] != frame_rate)
+//           && (frame_rate_code <= 8));
+      streaminfo->width = input_width;
+      streaminfo->height = input_height;
+      streaminfo->interlace = input_interlaced;
+      streaminfo->framerate = frame_rate;
+      streaminfo->aspectratio = 0.0;
     }
 
   // INITIALISATIONS
   // Norm determination (we eventually overwrite user's specification through the -n flag
-  if (frame_rate_code == 3)
+  if (frame_rate == Y4M_FPS_PAL)
     norm = 0;
-  if (frame_rate_code == 4)
+  if (frame_rate == Y4M_FPS_NTSC)
     norm = 1;
   if (norm < 0)
     {
       mjpeg_warn
-	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate code=%u, frame rate=%.3f fps)!!\n",
-	 input_width, input_height, frame_rate_code, frame_rate);
+	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%.3f fps)!!\n",
+	 input_width, input_height, frame_rate);
     }
 
 
 
   // Deal with args that depend on input stream
   handle_args_dependent (argc, argv);
-   
+
   // Scaling algorithm determination
   if ((algorithm == 0) || (algorithm == -1))
     {
@@ -845,32 +925,87 @@ main (int argc, char *argv[])
 	algorithm = 0;
     }
 
-   // USER'S INFORMATION OUTPUT
-   
-  if (input_interlaced == LAV_NOT_INTERLACED)
-    strcpy (info_str, NOT_INTER);
-  if (input_interlaced == LAV_INTER_TOP_FIRST)
-    strcpy (info_str, TOP_FIRST);
-  if (input_interlaced == LAV_INTER_BOTTOM_FIRST)
-    strcpy (info_str, BOTTOM_FIRST);
-  mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
-	      input_width, input_height,
-	      input_useful_width, input_useful_height, input_offset_width,
-	      input_offset_height, info_str);
-  if (output_interlaced == LAV_NOT_INTERLACED)
-    strcpy (info_str, NOT_INTER);
-  if (output_interlaced == LAV_INTER_TOP_FIRST)
-    strcpy (info_str, TOP_FIRST);
-  if (output_interlaced == LAV_INTER_BOTTOM_FIRST)
-    strcpy (info_str, BOTTOM_FIRST);
-  mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
-	      output_active_width, output_active_height, display_width,
-	      display_height, info_str);
-  if (algorithm == 0)
-    strcpy (info_str, RESAMPLE);
-  if (algorithm == 1)
-    strcpy (info_str, BICUBIC);
-  mjpeg_info ("Scaling uses the %s algorithm\n", info_str);
+  // USER'S INFORMATION OUTPUT
+
+//  y4m_print_stream_info(output_fd,streaminfo);
+
+  switch (input_interlaced)
+    {
+    case Y4M_ILACE_NONE:
+      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		  input_width, input_height,
+		  input_useful_width, input_useful_height, input_offset_width,
+		  input_offset_height, NOT_INTER);
+      break;
+    case Y4M_ILACE_TOP_FIRST:
+      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		  input_width, input_height,
+		  input_useful_width, input_useful_height, input_offset_width,
+		  input_offset_height, TOP_FIRST);
+      break;
+    case Y4M_ILACE_BOTTOM_FIRST:
+      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		  input_width, input_height,
+		  input_useful_width, input_useful_height, input_offset_width,
+		  input_offset_height, BOT_FIRST);
+      break;
+    default:
+      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u\n",
+		  input_width, input_height,
+		  input_useful_width, input_useful_height, input_offset_width,
+		  input_offset_height);
+
+    }
+
+  switch (output_interlaced)
+    {
+    case Y4M_ILACE_NONE:
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		  output_active_width, output_active_height, display_width,
+		  display_height, NOT_INTER);
+      break;
+    case Y4M_ILACE_TOP_FIRST:
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		  output_active_width, output_active_height, display_width,
+		  display_height, TOP_FIRST);
+      break;
+    case Y4M_ILACE_BOTTOM_FIRST:
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		  output_active_width, output_active_height, display_width,
+		  display_height, BOT_FIRST);
+      break;
+    default:
+      mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
+		  output_active_width, output_active_height, display_width,
+		  display_height);
+    }
+
+  switch (algorithm)
+    {
+    case 0:
+      mjpeg_info ("Scaling uses the %s algorithm, ", RESAMPLE);
+      break;
+    case 1:
+      mjpeg_info ("Scaling uses the %s algorithm, ", BICUBIC);
+      break;
+    default:
+      mjpeg_error_exit1 ("Unknown algorithm %d\n", algorithm);
+    }
+
+  switch (line_switching)
+    {
+    case 0:
+      mjpeg_info ("without line switching\n");
+      break;
+    case 1:
+      mjpeg_info ("with line switching\n");
+      break;
+    default:
+      mjpeg_error_exit1 ("Unknown line switching status: %d\n",
+			 line_switching);
+    }
+
+
 
   if (black == 1)
     {
@@ -886,11 +1021,9 @@ main (int argc, char *argv[])
       mjpeg_info ("skipped columns: %u left and %u right\n",
 		  output_skip_col_left, output_skip_col_right);
     }
-  mjpeg_info ("yuvscaler frame rate: %.3f fps, Frame rate code: %d\n",
-	      framerates[frame_rate_code], frame_rate_code);
+  mjpeg_info ("yuvscaler frame rate: %.3f fps\n", frame_rate);
 
 
-// Coherence check: useful size should be multiple of 4 x 4, as well as display sizes
   divider = pgcd (input_useful_width, output_active_width);
   input_width_slice = input_useful_width / divider;
   output_width_slice = output_active_width / divider;
@@ -948,19 +1081,26 @@ main (int argc, char *argv[])
       if (specific)
 	mjpeg_info ("Specific downscaling routing number %u\n", specific);
 
-      // To speed up downscaling, we tabulate the integral part of the division by "diviseur" which is inside [0;255] integral => unsigned short int storage class
+      // To speed up downscaling, we tabulate the integral part of the division by "diviseur" which is inside [0;255]
+      // we use uint8_t
       // But division of integers is always made by smaller => this results in a systematic drift towards smaller values. To avoid that, we need
       // a division that takes the nearest integral part. So, prior to the division by smaller, we add 1/2 of the divider to the value to be divided
       divide =
-	(unsigned short int *) alloca (256 * diviseur *
-				       sizeof (unsigned short int));
+	(uint8_t *) alloca (256 * diviseur * sizeof (uint8_t) + ALIGNEMENT);
+//      fprintf (stderr, "%p\n", divide);
+      // alignement instructions
+      if (((unsigned int) divide % ALIGNEMENT) != 0)
+	divide =
+	  (uint8_t *) ((((unsigned int) divide / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+//      fprintf (stderr, "%p\n", divide);
 
-      u_i_p = divide;
+      u_c_p = divide;
       for (i = 0; i < 256 * diviseur; i++)
 	{
-	  *(u_i_p++) =
-	    (unsigned short int) floor (((double) i + (double) diviseur / 2.0)
-					/ diviseur);
+	  *(u_c_p++) =
+	    (uint8_t) floor (((double) i + (double) diviseur / 2.0)
+			     / diviseur);
 	  //      mjpeg_error("%ld: %d\r",i,(unsigned short int)(i/diviseur));
 	}
 
@@ -1016,11 +1156,9 @@ main (int argc, char *argv[])
       //   return (0);
       // Tabulation of the cubic values 
       cubic_spline_n =
-	(unsigned long int *) alloca (4 * output_active_width *
-				      sizeof (unsigned long int));
+	(int16_t *) alloca (4 * output_active_width * sizeof (int16_t));
       cubic_spline_m =
-	(unsigned long int *) alloca (4 * output_active_height *
-				      sizeof (unsigned long int));
+	(int16_t *) alloca (4 * output_active_height * sizeof (int16_t));
       for (n = -1; n <= 2; n++)
 	{
 
@@ -1065,16 +1203,17 @@ main (int argc, char *argv[])
 	      somme - FLOAT2INTEGER;
 	}
 
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	padded_input =
 	  (uint8_t *) alloca ((input_useful_width + 3) *
 			      (input_useful_height + 3));
       else
 	{
-	  padded_bottom =
+	  padded_top =
 	    (uint8_t *) alloca ((input_useful_width + 3) *
 				(input_useful_height / 2 + 3));
-	  padded_top =
+	  padded_bottom =
 	    (uint8_t *) alloca ((input_useful_width + 3) *
 				(input_useful_height / 2 + 3));
 	}
@@ -1082,8 +1221,20 @@ main (int argc, char *argv[])
   // BICUBIC BICUBIC BICUBIC     
 
   // Pointers allocations
-  input = alloca ((input_width * input_height * 3) / 2);
-  output = alloca ((output_width * output_height * 3) / 2);
+//  input = alloca ((input_width * input_height * 3) / 2);
+//  output = alloca ((output_width * output_height * 3) / 2);
+  line = alloca (input_width);
+  input = alloca (((input_width * input_height * 3) / 2) + ALIGNEMENT);
+  output = alloca (((output_width * output_height * 3) / 2) + ALIGNEMENT);
+//  fprintf (stderr, "%p %p\n", input, output);
+  if (((unsigned int) input % ALIGNEMENT) != 0)
+    input =
+      (uint8_t *) ((((unsigned int) input / ALIGNEMENT) + 1) * ALIGNEMENT);
+  if (((unsigned int) output % ALIGNEMENT) != 0)
+    output =
+      (uint8_t *) ((((unsigned int) output / ALIGNEMENT) + 1) * ALIGNEMENT);
+//  fprintf (stderr, "%p %p\n", input, output);
+
   // if skip_col==1
   frame_y_p = (uint8_t **) alloca (display_height * sizeof (uint8_t *));
   frame_u_p = (uint8_t **) alloca (display_height / 2 * sizeof (uint8_t *));
@@ -1205,33 +1356,37 @@ main (int argc, char *argv[])
 	}
     }
 
+  nb_pixels = (input_width * input_height * 3) / 2;
   mjpeg_debug ("End of Initialisation\n");
   // END OF INITIALISATION
 
   // Output file header
-   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
-   if (!fwrite_complete (header, 19, out_file))
-     goto out_error;
-   
+  // Should use functions y4m_copy, but I didn't find them inside yuv4mpeg.c (16 Sept 2001)
+  streaminfo->width = display_width;
+  streaminfo->height = display_height;
+  streaminfo->interlace = output_interlaced;
+  y4m_write_stream_header (output_fd, streaminfo);
+
+//   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
+//   if (!fwrite_complete (header, 19, out_file))
+//     goto out_error;
+
   if (infile == 0)
     {
       // input comes from stdin
       // Master loop : continue until there is no next frame in stdin
-      while ((fread (magic, 6, 1, in_file) == 1)
-	     && (strcmp (magic, key) == 0))
+      // Je sais pas pourquoi, mais y4m_read_frame merde, y4m_read_frame_header suivi de y4m_read marche !!!!!!!
+
+      while (my_y4m_read_frame
+	     (0, frameinfo, nb_pixels, input, line_switching) == Y4M_OK)
 	{
-	  // Output key word
-	  if (!fwrite_complete (key, 6, out_file))
+	  frame_num++;
+	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+	  // Output Frame Header
+	  if (y4m_write_frame_header (output_fd, frameinfo) != Y4M_OK)
 	    goto out_error;
 
-	  // Frame by Frame read and scaling
-	  frame_num++;
-	  if (fread (input, (input_height * input_width * 3) / 2, 1, in_file)
-	      != 1)
-	    {
-	      mjpeg_error_exit1 ("Frame %ld read failed\n", frame_num);
-	    }
-
+	  // SCALE THE FRAME
 	  // RESAMPLE ALGO       
 	  if (algorithm == 0)
 	    {
@@ -1241,7 +1396,7 @@ main (int argc, char *argv[])
 		    average (input_y, output_y, height_coeff, width_coeff, 0);
 		  else
 		    average_specific (input_y, output_y, height_coeff,
-				      width_coeff, specific, 0);
+				      width_coeff, 0);
 		}
 	      else
 		{
@@ -1257,11 +1412,11 @@ main (int argc, char *argv[])
 		  else
 		    {
 		      average_specific (input_y, output_y, height_coeff,
-					width_coeff, specific, 0);
+					width_coeff, 0);
 		      average_specific (input_u, output_u, height_coeff,
-					width_coeff, specific, 1);
+					width_coeff, 1);
 		      average_specific (input_v, output_v, height_coeff,
-					width_coeff, specific, 1);
+					width_coeff, 1);
 		    }
 		}
 	    }
@@ -1274,7 +1429,8 @@ main (int argc, char *argv[])
 	      // 
 	      if (mono == 1)
 		{
-		  if (output_interlaced == LAV_NOT_INTERLACED)
+		  if ((output_interlaced == Y4M_ILACE_NONE)
+		      || (input_interlaced == Y4M_ILACE_NONE))
 		    {
 		      padding (padded_input, input_y, 0);
 		      cubic_scale (padded_input, output_y, in_col, b, in_line,
@@ -1282,9 +1438,9 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      padding_interlaced (padded_bottom, padded_top, input_y,
+		      padding_interlaced (padded_top, padded_bottom, input_y,
 					  0);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_y, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      0);
@@ -1292,7 +1448,8 @@ main (int argc, char *argv[])
 		}
 	      else
 		{
-		  if (output_interlaced == LAV_NOT_INTERLACED)
+		  if ((output_interlaced == Y4M_ILACE_NONE)
+		      || (input_interlaced == Y4M_ILACE_NONE))
 		    {
 		      padding (padded_input, input_y, 0);
 		      cubic_scale (padded_input, output_y, in_col, b, in_line,
@@ -1306,21 +1463,21 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      padding_interlaced (padded_bottom, padded_top, input_y,
+		      padding_interlaced (padded_top, padded_bottom, input_y,
 					  0);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_y, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      0);
-		      padding_interlaced (padded_bottom, padded_top, input_u,
+		      padding_interlaced (padded_top, padded_bottom, input_u,
 					  1);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_u, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      1);
-		      padding_interlaced (padded_bottom, padded_top, input_v,
+		      padding_interlaced (padded_top, padded_bottom, input_v,
 					  1);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_v, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      1);
@@ -1329,12 +1486,15 @@ main (int argc, char *argv[])
 	    }
 	  // BICIBIC ALGO
 
+
+	  // OUTPUT FRAME CONTENTS
 	  if (skip == 0)
 	    {
 	      // Here, display=output_active 
-	      if (!fwrite_complete
-		  (output, (display_width * display_height * 3) / 2,
-		   out_file))
+//            mjpeg_debug("1\n");
+	      if (y4m_write
+		  (output_fd, output,
+		   (display_width * display_height * 3) / 2) != Y4M_OK)
 		goto out_error;
 	    }
 	  else
@@ -1343,16 +1503,17 @@ main (int argc, char *argv[])
 	      if (skip_col == 0)
 		{
 		  // output_active_width==display_width, component per component frame output
-		  if (!fwrite_complete
-		      (frame_y, display_width * display_height, out_file))
+		  if (y4m_write
+		      (output_fd, frame_y,
+		       display_width * display_height) != Y4M_OK)
 		    goto out_error;
-		  if (!fwrite_complete
-		      (frame_u, display_width / 2 * display_height / 2,
-		       out_file))
+		  if (y4m_write
+		      (output_fd, frame_u,
+		       display_width / 2 * display_height / 2) != Y4M_OK)
 		    goto out_error;
-		  if (!fwrite_complete
-		      (frame_v, display_width / 2 * display_height / 2,
-		       out_file))
+		  if (y4m_write
+		      (output_fd, frame_v,
+		       display_width / 2 * display_height / 2) != Y4M_OK)
 		    goto out_error;
 		}
 	      else
@@ -1360,30 +1521,35 @@ main (int argc, char *argv[])
 		  // output_active_width > display_width, line per line frame output for each component
 		  for (i = 0; i < display_height; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_y_p[i], display_width, out_file))
+		      if (y4m_write (output_fd, frame_y_p[i], display_width)
+			  != Y4M_OK)
 			goto out_error;
 		    }
 
 		  for (i = 0; i < display_height / 2; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_u_p[i], display_width / 2, out_file))
+		      if (y4m_write
+			  (output_fd, frame_u_p[i],
+			   display_width / 2) != Y4M_OK)
 			goto out_error;
 		    }
 
 		  for (i = 0; i < display_height / 2; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_v_p[i], display_width / 2, out_file))
+		      if (y4m_write
+			  (output_fd, frame_v_p[i],
+			   display_width / 2) != Y4M_OK)
 			goto out_error;
 
 		    }
 		}
 	    }
-	  mjpeg_debug ("yuvscaler Frame number %ld\r", frame_num);
 	}
       // End of master loop
+      if (err != Y4M_EOF)
+	mjpeg_info ("Couldn't read FRAME number %ld!\n", frame_num);
+      else
+	mjpeg_info ("End of stream with FRAME number %ld!\n", frame_num);
     }
   else
     {
@@ -1393,18 +1559,25 @@ main (int argc, char *argv[])
       input_v_infile = input + (input_width * input_height * 5) / 4;
       for (frame_num = 0; frame_num < el.video_frames; frame_num++)
 	{
-	  // Output key word
-	  if (!fwrite_complete (key, 6, out_file))
-	    goto out_error;
-	  // taken from lav2yuv
+	  // Read frame, taken from lav2yuv
 	  len = el_get_video_frame (jpeg_data, frame_num, &el);
-	  // Warning: el.video_inter could have been overwritten by user's specification
+	  // Warning: we substitute el.video_inter with input_interlaced since el.video_inter value 
+	  // may have been overwritten by user's specification
 	  if ((res =
-	       decode_jpeg_raw (jpeg_data, len, el.video_inter, chroma_format,
-				input_width, input_height, input_y_infile,
-				input_u_infile, input_v_infile)))
+	       decode_jpeg_raw (jpeg_data, len, input_interlaced,
+				chroma_format, input_width, input_height,
+				input_y_infile, input_u_infile,
+				input_v_infile)))
 	    mjpeg_error_exit1 ("Frame %ld read failed\n", frame_num);
 
+	   if (line_switching)
+	     line_switch(input,line);
+	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
+	  // Output Frame Header
+	  if (y4m_write_frame_header (output_fd, frameinfo) != Y4M_OK)
+	    goto out_error;
+
+	  // SCALE THE FRAME
 	  // RESAMPLE ALGO       
 	  if (algorithm == 0)
 	    {
@@ -1414,7 +1587,7 @@ main (int argc, char *argv[])
 		    average (input_y, output_y, height_coeff, width_coeff, 0);
 		  else
 		    average_specific (input_y, output_y, height_coeff,
-				      width_coeff, specific, 0);
+				      width_coeff, 0);
 		}
 	      else
 		{
@@ -1430,11 +1603,11 @@ main (int argc, char *argv[])
 		  else
 		    {
 		      average_specific (input_y, output_y, height_coeff,
-					width_coeff, specific, 0);
+					width_coeff, 0);
 		      average_specific (input_u, output_u, height_coeff,
-					width_coeff, specific, 1);
+					width_coeff, 1);
 		      average_specific (input_v, output_v, height_coeff,
-					width_coeff, specific, 1);
+					width_coeff, 1);
 		    }
 		}
 	    }
@@ -1447,7 +1620,8 @@ main (int argc, char *argv[])
 	      // 
 	      if (mono == 1)
 		{
-		  if (output_interlaced == LAV_NOT_INTERLACED)
+		  if ((output_interlaced == Y4M_ILACE_NONE)
+		      || (input_interlaced == Y4M_ILACE_NONE))
 		    {
 		      padding (padded_input, input_y, 0);
 		      cubic_scale (padded_input, output_y, in_col, b, in_line,
@@ -1455,9 +1629,9 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      padding_interlaced (padded_bottom, padded_top, input_y,
+		      padding_interlaced (padded_top, padded_bottom, input_y,
 					  0);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_y, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      0);
@@ -1465,7 +1639,8 @@ main (int argc, char *argv[])
 		}
 	      else
 		{
-		  if (output_interlaced == LAV_NOT_INTERLACED)
+		  if ((output_interlaced == Y4M_ILACE_NONE)
+		      || (input_interlaced == Y4M_ILACE_NONE))
 		    {
 		      padding (padded_input, input_y, 0);
 		      cubic_scale (padded_input, output_y, in_col, b, in_line,
@@ -1479,21 +1654,21 @@ main (int argc, char *argv[])
 		    }
 		  else
 		    {
-		      padding_interlaced (padded_bottom, padded_top, input_y,
+		      padding_interlaced (padded_top, padded_bottom, input_y,
 					  0);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_y, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      0);
-		      padding_interlaced (padded_bottom, padded_top, input_u,
+		      padding_interlaced (padded_top, padded_bottom, input_u,
 					  1);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_u, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      1);
-		      padding_interlaced (padded_bottom, padded_top, input_v,
+		      padding_interlaced (padded_top, padded_bottom, input_v,
 					  1);
-		      cubic_scale_interlaced (padded_bottom, padded_top,
+		      cubic_scale_interlaced (padded_top, padded_bottom,
 					      output_v, in_col, b, in_line, a,
 					      cubic_spline_n, cubic_spline_m,
 					      1);
@@ -1502,12 +1677,13 @@ main (int argc, char *argv[])
 	    }
 	  // BICIBIC ALGO
 
+	  // OUTPUT FRAME
 	  if (skip == 0)
 	    {
 	      // Here, display=output_active 
-	      if (!fwrite_complete
-		  (output, (display_width * display_height * 3) / 2,
-		   out_file))
+	      if (y4m_write
+		  (output_fd, output,
+		   (display_width * display_height * 3) / 2) != Y4M_OK)
 		goto out_error;
 	    }
 	  else
@@ -1516,16 +1692,17 @@ main (int argc, char *argv[])
 	      if (skip_col == 0)
 		{
 		  // output_active_width==display_width, component per component frame output
-		  if (!fwrite_complete
-		      (frame_y, display_width * display_height, out_file))
+		  if (y4m_write
+		      (output_fd, frame_y,
+		       display_width * display_height) != Y4M_OK)
 		    goto out_error;
-		  if (!fwrite_complete
-		      (frame_u, display_width / 2 * display_height / 2,
-		       out_file))
+		  if (y4m_write
+		      (output_fd, frame_u,
+		       display_width / 2 * display_height / 2) != Y4M_OK)
 		    goto out_error;
-		  if (!fwrite_complete
-		      (frame_v, display_width / 2 * display_height / 2,
-		       out_file))
+		  if (y4m_write
+		      (output_fd, frame_v,
+		       display_width / 2 * display_height / 2) != Y4M_OK)
 		    goto out_error;
 		}
 	      else
@@ -1533,22 +1710,24 @@ main (int argc, char *argv[])
 		  // output_active_width > display_width, line per line frame output for each component
 		  for (i = 0; i < display_height; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_y_p[i], display_width, out_file))
+		      if (y4m_write (output_fd, frame_y_p[i], display_width)
+			  != Y4M_OK)
 			goto out_error;
 		    }
 
 		  for (i = 0; i < display_height / 2; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_u_p[i], display_width / 2, out_file))
+		      if (y4m_write
+			  (output_fd, frame_u_p[i],
+			   display_width / 2) != Y4M_OK)
 			goto out_error;
 		    }
 
 		  for (i = 0; i < display_height / 2; i++)
 		    {
-		      if (!fwrite_complete
-			  (frame_v_p[i], display_width / 2, out_file))
+		      if (y4m_write
+			  (output_fd, frame_v_p[i],
+			   display_width / 2) != Y4M_OK)
 			goto out_error;
 
 		    }
@@ -1701,21 +1880,23 @@ pgcd (unsigned int num1, unsigned int num2)
   // My thanks to Chris Atenasio <chris@crud.net>
   unsigned int c, bigger, smaller;
 
-   if (num2 < num1) {
+  if (num2 < num1)
+    {
       smaller = num2;
       bigger = num1;
-   }
-   else {
+    }
+  else
+    {
       smaller = num1;
       bigger = num2;
-   }
+    }
 
-   while (smaller) 
-     {
-	c=bigger%smaller;
-	bigger=smaller;
-	smaller=c;
-     }
+  while (smaller)
+    {
+      c = bigger % smaller;
+      bigger = smaller;
+      smaller = c;
+    }
   return (bigger);
 }
 
@@ -1727,15 +1908,14 @@ int
 average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
 	 unsigned int *width_coeff, unsigned int half)
 {
-  // This function average an input matrix of name input that contains the Y component (size input_width*input_height, useful size input_useful_width*input_useful_height)
-  // into an output matrix of name output of size output_active_width*output_active_height
-  // input and output images are interlaced
+  // This function average an input matrix of name input and of size local_input_width*(local_out_nb_line_slice*input_height_slice)
+  // into an output matrix of name output and of size local_output_width*(local_out_nb_line_slice+output_height_slice)
+  // input and output images are interleaved
   // if half==1 => we are dealing with an U or V component => height and width are / 2 => for speed sake, we use >>half
   unsigned int local_input_width = input_width >> half;
   unsigned int local_output_width = output_width >> half;
   unsigned int local_out_nb_col_slice = out_nb_col_slice >> half;
   unsigned int local_out_nb_line_slice = out_nb_line_slice >> half;
-  unsigned int number;
   uint8_t *input_line_p[input_height_slice];
   uint8_t *output_line_p[output_height_slice];
   unsigned int *H_var, *W_var, *H, *W;
@@ -1750,15 +1930,14 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
   mjpeg_debug ("Start of average\n");
   //End of INIT
 
-
-  if (output_interlaced == LAV_NOT_INTERLACED)
+  if ((output_interlaced == Y4M_ILACE_NONE)
+      || (input_interlaced == Y4M_ILACE_NONE))
     {
       mjpeg_debug ("Non-interlaced downscaling\n");
-      // output frames are not interlaced => averaging will generate output lines is growing order, output_height_slice lines per output_height_slice lines. 
-      // To these output_height_slice lines, corresponds input_height_slice following lines. And if input frames are interlaced
-      // odd => line inversion should be done, not if they are either not_interlaced or even_interlaced since for that purpose, 
-      // not-interlaced or interlaced_even_first are of the same type
-      // In fact, the question wether input frames are interlaced or not just leads to line switching or not. More important is the following question :
+      // output frames are not interlaced => averaging will generate output lines is growing order, 
+      // output_height_slice lines per output_height_slice lines. 
+
+      // More important is the following question :
       // is input frames CONTENT interlaced or not (input frames are then said progressives). If content is interlaced (odd lines corresponds to time t 
       // and even lines to another time t+dt with dt=1/(2*frame_rate)), then input frames should be DEINTERLACED prior to averaging
       // So, if input frames are interlaced, we will suppose they are progressives
@@ -1766,12 +1945,12 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
       for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	   out_line_slice++)
 	{
+	  u_c_p = input +
+	    out_line_slice * input_height_slice * local_input_width;
 	  for (in_line = 0; in_line < input_height_slice; in_line++)
 	    {
-	      number = out_line_slice * input_height_slice + in_line;
-	      input_line_p[in_line] =
-		input + ((number & ~1) +
-			 (input_interlaced + number) % 2) * local_input_width;
+	      input_line_p[in_line] = u_c_p;
+	      u_c_p += local_input_width;
 	    }
 	  u_c_p =
 	    output +
@@ -1831,26 +2010,28 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
     }
   else
     {
-      // output frames are interlaced. Therefore, downscaling is done between odd lines, then between even lines, but we do not mix odd and even lines.
-      // If interlacing type of input and output frames is not the same, line switching is done
-      // For that purpose, not-interlaced or interlaced_even_first are of the same type
+      // output frames are interlaced, line numbers gioes from 0 to n-1. 
+      // Therefore, downscaling is done between odd lines, then between even lines, but we do not mix odd and even lines.
+      // So, we have to calculate the even and odd part of out_line_slice. 
+      // If the odd part is naturally out_line_slice % 2, the even part is (out_line_slice/2)*2. For speed reason, 
+      // the even part will be xritten as out_line_slice & ~(unsigned int) 1
       mjpeg_debug ("Interlaced downscaling\n");
       for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	   out_line_slice++)
 	{
 	  u_c_p =
-	    input + ((out_line_slice & ~1) * input_height_slice +
-		     ((input_interlaced +
-		       out_line_slice) % 2)) * local_input_width;
+	    input +
+	    ((out_line_slice & ~(unsigned int) 1) * input_height_slice +
+	     out_line_slice % 2) * local_input_width;
 	  for (in_line = 0; in_line < input_height_slice; in_line++)
 	    {
 	      input_line_p[in_line] = u_c_p;
 	      u_c_p += 2 * local_input_width;
 	    }
 	  u_c_p =
-	    output + ((out_line_slice & ~1) * output_height_slice +
-		      ((output_interlaced +
-			out_line_slice) % 2)) * local_output_width;
+	    output +
+	    ((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+	     out_line_slice % 2) * local_output_width;
 	  for (out_line = 0; out_line < output_height_slice; out_line++)
 	    {
 	      output_line_p[out_line] = u_c_p;
@@ -1913,12 +2094,13 @@ average (uint8_t * input, uint8_t * output, unsigned int *height_coeff,
 
 
 
+
 // *************************************************************************************
 int
 cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 	     float *b, unsigned int *in_line, float *a,
-	     unsigned long int *cubic_spline_n,
-	     unsigned long int *cubic_spline_m, unsigned int half)
+	     int16_t * cubic_spline_n,
+	     int16_t * cubic_spline_m, unsigned int half)
 {
   // Warning: because cubic-spline values may be <0 or >1.0, a range test on value is mandatory
   unsigned int local_output_active_width = output_active_width >> half;
@@ -1928,14 +2110,33 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
 
+
+//   uint8_t zero=0;
   uint8_t *output_p;
   long int value;
   long int value1;
+
+  mjpeg_debug ("Start of cubic_scale\n");
   for (out_line = 0; out_line < local_output_active_height; out_line++)
     {
       output_p = output + out_line * local_output_width;
       for (out_col = 0; out_col < local_output_active_width; out_col++)
 	{
+	  // Remplissage des variables mmx
+/*	   memcpy(var_mmx_1  ,padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width],1);
+	   memcpy(var_mmx_1+1,&zero,1);
+	   memcpy(var_mmx_1+2,padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width],1);
+	   memcpy(var_mmx_1+3,&zero,1);
+	   memcpy(var_mmx_1+4,padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width],1);
+	   memcpy(var_mmx_1+5,&zero,1);
+	   memcpy(var_mmx_1+6,padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width],1);
+	   memcpy(var_mmx_1+7,&zero,1);
+	   
+	   memcpy(var_mmx_2  ,cubic_spline_n[out_col + 0 * output_active_width],2);
+	   memcpy(var_mmx_2+2,cubic_spline_n[out_col + 1 * output_active_width],2);
+	   memcpy(var_mmx_2+4,cubic_spline_n[out_col + 2 * output_active_width],2);
+	   memcpy(var_mmx_2+6,cubic_spline_n[out_col + 3 * output_active_width],2);
+*/
 	  value1 =
 	    cubic_spline_m[out_line + 0 * output_active_height] *
 	    (padded_input
@@ -2031,7 +2232,7 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 	}
     }
 
-
+  mjpeg_debug ("End of cubic_scale\n");
   return (0);
 }
 
@@ -2040,11 +2241,11 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
 
 // *************************************************************************************
 int
-cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
+cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 			uint8_t * output, unsigned int *in_col, float *b,
 			unsigned int *in_line, float *a,
-			unsigned long int *cubic_spline_n,
-			unsigned long int *cubic_spline_m, unsigned int half)
+			int16_t * cubic_spline_n,
+			int16_t * cubic_spline_m, unsigned int half)
 {
   unsigned int local_output_active_width = output_active_width >> half;
   unsigned int local_output_active_height = output_active_height >> half;
@@ -2056,6 +2257,7 @@ cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
   long int value, value1;
   uint8_t *output_p;
 
+  mjpeg_debug ("Start of cubic_scale_interlaced\n");
   for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
     {
       output_p = output + 2 * out_line * local_output_width;
@@ -2063,87 +2265,87 @@ cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 	{
 	  value1 =
 	    cubic_spline_m[out_line + 0 * output_active_height] *
-	    (padded_bottom
+	    (padded_top
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       0) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			   (in_line[out_line] +
-			    0) * local_padded_width] *
+	     + padded_top[in_col[out_col] + 1 +
+			  (in_line[out_line] +
+			   0) * local_padded_width] *
 	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			 (in_line[out_line] +
-			  0) * local_padded_width] * cubic_spline_n[out_col +
-								    2 *
-								    output_active_width]
-	     + padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    0) * local_padded_width] *
+	     padded_top[in_col[out_col] + 2 +
+			(in_line[out_line] +
+			 0) * local_padded_width] * cubic_spline_n[out_col +
+								   2 *
+								   output_active_width]
+	     + padded_top[in_col[out_col] + 3 +
+			  (in_line[out_line] +
+			   0) * local_padded_width] *
 	     cubic_spline_n[out_col + 3 * output_active_width]) +
 	    cubic_spline_m[out_line +
 			   1 * output_active_height] *
-	    (padded_bottom
+	    (padded_top
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       1) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			   (in_line[out_line] +
-			    1) * local_padded_width] *
+	     + padded_top[in_col[out_col] + 1 +
+			  (in_line[out_line] +
+			   1) * local_padded_width] *
 	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			 (in_line[out_line] +
-			  1) * local_padded_width] * cubic_spline_n[out_col +
-								    2 *
-								    output_active_width]
-	     + padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    1) * local_padded_width] *
+	     padded_top[in_col[out_col] + 2 +
+			(in_line[out_line] +
+			 1) * local_padded_width] * cubic_spline_n[out_col +
+								   2 *
+								   output_active_width]
+	     + padded_top[in_col[out_col] + 3 +
+			  (in_line[out_line] +
+			   1) * local_padded_width] *
 	     cubic_spline_n[out_col + 3 * output_active_width]) +
 	    cubic_spline_m[out_line +
 			   2 * output_active_height] *
-	    (padded_bottom
+	    (padded_top
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       2) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			   (in_line[out_line] +
-			    2) * local_padded_width] *
+	     + padded_top[in_col[out_col] + 1 +
+			  (in_line[out_line] +
+			   2) * local_padded_width] *
 	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			 (in_line[out_line] +
-			  2) * local_padded_width] * cubic_spline_n[out_col +
-								    2 *
-								    output_active_width]
-	     + padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    2) * local_padded_width] *
+	     padded_top[in_col[out_col] + 2 +
+			(in_line[out_line] +
+			 2) * local_padded_width] * cubic_spline_n[out_col +
+								   2 *
+								   output_active_width]
+	     + padded_top[in_col[out_col] + 3 +
+			  (in_line[out_line] +
+			   2) * local_padded_width] *
 	     cubic_spline_n[out_col + 3 * output_active_width]) +
 	    cubic_spline_m[out_line +
 			   3 * output_active_height] *
-	    (padded_bottom
+	    (padded_top
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       3) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			   (in_line[out_line] +
-			    3) * local_padded_width] *
+	     + padded_top[in_col[out_col] + 1 +
+			  (in_line[out_line] +
+			   3) * local_padded_width] *
 	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			 (in_line[out_line] +
-			  3) * local_padded_width] * cubic_spline_n[out_col +
-								    2 *
-								    output_active_width]
-	     + padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    3) * local_padded_width] *
+	     padded_top[in_col[out_col] + 2 +
+			(in_line[out_line] +
+			 3) * local_padded_width] * cubic_spline_n[out_col +
+								   2 *
+								   output_active_width]
+	     + padded_top[in_col[out_col] + 3 +
+			  (in_line[out_line] +
+			   3) * local_padded_width] *
 	     cubic_spline_n[out_col + 3 * output_active_width]);
 	  value =
 	    (value1 +
@@ -2158,96 +2360,84 @@ cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 	{
 	  value1 =
 	    cubic_spline_m[out_line + 0 * output_active_height] *
-	    (padded_top
+	    (padded_bottom
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       0) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] * cubic_spline_n[out_col +
-								     1 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] * cubic_spline_n[out_col +
-								     3 *
-								     output_active_width])
-	    + cubic_spline_m[out_line +
-			     1 * output_active_height] *
-	    (padded_top
+	     + padded_bottom[in_col[out_col] + 1 +
+			     (in_line[out_line] +
+			      0) * local_padded_width] *
+	     cubic_spline_n[out_col + 1 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 2 +
+			   (in_line[out_line] +
+			    0) * local_padded_width] *
+	     cubic_spline_n[out_col + 2 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 3 +
+			   (in_line[out_line] +
+			    0) * local_padded_width] *
+	     cubic_spline_n[out_col + 3 * output_active_width]) +
+	    cubic_spline_m[out_line +
+			   1 * output_active_height] *
+	    (padded_bottom
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       1) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] * cubic_spline_n[out_col +
-								     1 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] * cubic_spline_n[out_col +
-								     3 *
-								     output_active_width])
-	    + cubic_spline_m[out_line +
-			     2 * output_active_height] *
-	    (padded_top
+	     + padded_bottom[in_col[out_col] + 1 +
+			     (in_line[out_line] +
+			      1) * local_padded_width] *
+	     cubic_spline_n[out_col + 1 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 2 +
+			   (in_line[out_line] +
+			    1) * local_padded_width] *
+	     cubic_spline_n[out_col + 2 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 3 +
+			   (in_line[out_line] +
+			    1) * local_padded_width] *
+	     cubic_spline_n[out_col + 3 * output_active_width]) +
+	    cubic_spline_m[out_line +
+			   2 * output_active_height] *
+	    (padded_bottom
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       2) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] * cubic_spline_n[out_col +
-								     1 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] * cubic_spline_n[out_col +
-								     3 *
-								     output_active_width])
-	    + cubic_spline_m[out_line +
-			     3 * output_active_height] *
-	    (padded_top
+	     + padded_bottom[in_col[out_col] + 1 +
+			     (in_line[out_line] +
+			      2) * local_padded_width] *
+	     cubic_spline_n[out_col + 1 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 2 +
+			   (in_line[out_line] +
+			    2) * local_padded_width] *
+	     cubic_spline_n[out_col + 2 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 3 +
+			   (in_line[out_line] +
+			    2) * local_padded_width] *
+	     cubic_spline_n[out_col + 3 * output_active_width]) +
+	    cubic_spline_m[out_line +
+			   3 * output_active_height] *
+	    (padded_bottom
 	     [in_col[out_col] + 0 +
 	      (in_line[out_line] +
 	       3) * local_padded_width] * cubic_spline_n[out_col +
 							 0 *
 							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] * cubic_spline_n[out_col +
-								     1 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] * cubic_spline_n[out_col +
-								     3 *
-								     output_active_width]);
+	     + padded_bottom[in_col[out_col] + 1 +
+			     (in_line[out_line] +
+			      3) * local_padded_width] *
+	     cubic_spline_n[out_col + 1 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 2 +
+			   (in_line[out_line] +
+			    3) * local_padded_width] *
+	     cubic_spline_n[out_col + 2 * output_active_width] +
+	     padded_bottom[in_col[out_col] + 3 +
+			   (in_line[out_line] +
+			    3) * local_padded_width] *
+	     cubic_spline_n[out_col + 3 * output_active_width]);
 	  value =
 	    (value1 +
 	     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
@@ -2259,7 +2449,7 @@ cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 	}
     }
 
-
+  mjpeg_debug ("End of cubic_scale_interlaced\n");
   return (0);
 }
 
@@ -2267,7 +2457,7 @@ cubic_scale_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 
 
 // *************************************************************************************
-long int
+int16_t
 cubic_spline (float x)
 {
   // Implementation of the Mitchell-Netravalli cubic spline, with recommended parameters B and C
@@ -2307,10 +2497,9 @@ cubic_spline (float x)
 int
 padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
 {
-  // In cubic inter/extrapolation, output pixel are evaluated from the 4*4 neirest neigbors. For border pixels, this
+  // In cubic interpolation, output pixel are evaluated from the 4*4 neirest neigbors. For border pixels, this
   // requires that input datas along the edge to be duplicated.
-  // This function padding takes care of it, as well as doing line switching if necessary.
-  // This padding functions requires output_interlaced==LAV_NOT_INTERLACED
+  // This padding functions requires output_interlaced==0
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_input_useful_height = input_useful_height >> half;
   unsigned int local_padded_width = local_input_useful_width + 3;
@@ -2319,23 +2508,11 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
   unsigned int line;
 
   // PADDING
-  if (input_interlaced != LAV_INTER_TOP_FIRST)
-    {
-      // NO LINE SWITCHING
-      // Content Copy with 1 pixel offset on the left and top
-      for (line = 0; line < local_input_useful_height; line++)
-	memcpy (padded_input + 1 + (line + 1) * local_padded_width,
-		input + line * local_input_width, local_input_useful_width);
-    }
-  else
-    {
-      // LINE SWITCHING
-      // Content Copy with 1 pixel offset on the left and top
-      for (line = 0; line < local_input_useful_height; line++)
-	memcpy (padded_input + 1 + (line + 1) * local_padded_width,
-		input + ((line & ~1) + (1 + line) % 2) * local_input_width,
-		local_input_useful_width);
-    }
+  // Content Copy with 1 pixel offset on the left and top
+  for (line = 0; line < local_input_useful_height; line++)
+    memcpy (padded_input + 1 + (line + 1) * local_padded_width,
+	    input + line * local_input_width, local_input_useful_width);
+
   // borders padding: 1 pixel on the left and 2 on the right
   for (line = 1; line < local_padded_height - 2; line++)
     {
@@ -2357,17 +2534,17 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
   memcpy (padded_input + (local_padded_height - 2) * local_padded_width,
 	  padded_input + (local_padded_height - 3) * local_padded_width,
 	  local_padded_width);
-   return (0);
+  return (0);
 }
 
 // *************************************************************************************
 
 // *************************************************************************************
 int
-padding_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
+padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
 		    uint8_t * input, unsigned int half)
 {
-  // This padding function requires output_interlaced!=LAV_NOT_INTERLACED
+  // This padding function requires output_interlaced!=0
   unsigned int local_input_useful_width = input_useful_width >> half;
   unsigned int local_input_useful_height = input_useful_height >> half;
   unsigned int local_padded_width = local_input_useful_width + 3;
@@ -2376,47 +2553,17 @@ padding_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
   unsigned int line;
 
   // PADDING
-  if ((input_interlaced % 2) == (output_interlaced % 2))
+  // Content Copy with 1 pixel offset on the left and top
+  for (line = 0; line < local_input_useful_height / 2; line++)
     {
-      // NO LINE SWITCHING
-      // Content Copy with 1 pixel offset on the left and top
-      for (line = 0; line < local_input_useful_height / 2; line++)
-	{
-	  memcpy (padded_bottom + 1 + (line + 1) * local_padded_width,
-		  input + 2 * line * local_input_width,
-		  local_input_useful_width);
-	  memcpy (padded_top + 1 + (line + 1) * local_padded_width,
-		  input + (2 * line + 1) * local_input_width,
-		  local_input_useful_width);
-	}
+      memcpy (padded_top + 1 + (line + 1) * local_padded_width,
+	      input + 2 * line * local_input_width, local_input_useful_width);
+      memcpy (padded_bottom + 1 + (line + 1) * local_padded_width,
+	      input + (2 * line + 1) * local_input_width,
+	      local_input_useful_width);
     }
-  else
-    {
-      // LINE SWITCHING : inverse 2*line with 2*line+1
-      // Content Copy with 1 pixel offset on the left and top
-      for (line = 0; line < local_input_useful_height / 2; line++)
-	{
-	  memcpy (padded_bottom + 1 + (line + 1) * local_padded_width,
-		  input + (2 * line + 1) * local_input_width,
-		  local_input_useful_width);
-	  memcpy (padded_top + 1 + (line + 1) * local_padded_width,
-		  input + 2 * line * local_input_width,
-		  local_input_useful_width);
-	}
-    }
-
 
   // borders padding: 1 pixel on the left and 2 on the right
-  for (line = 1; line < local_padded_height - 2; line++)
-    {
-      *(padded_bottom + 0 + line * local_padded_width)
-	= *(padded_bottom + 1 + line * local_padded_width);
-      *(padded_bottom + (local_padded_width - 1) + line * local_padded_width)
-	= *(padded_bottom + (local_padded_width - 2) +
-	    line * local_padded_width)
-	= *(padded_bottom + (local_padded_width - 3) +
-	    line * local_padded_width);
-    }
   for (line = 1; line < local_padded_height - 2; line++)
     {
       *(padded_top + 0 + line * local_padded_width)
@@ -2427,15 +2574,17 @@ padding_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 	= *(padded_top + (local_padded_width - 3) +
 	    line * local_padded_width);
     }
+  for (line = 1; line < local_padded_height - 2; line++)
+    {
+      *(padded_bottom + 0 + line * local_padded_width)
+	= *(padded_bottom + 1 + line * local_padded_width);
+      *(padded_bottom + (local_padded_width - 1) + line * local_padded_width)
+	= *(padded_bottom + (local_padded_width - 2) +
+	    line * local_padded_width)
+	= *(padded_bottom + (local_padded_width - 3) +
+	    line * local_padded_width);
+    }
   // borders padding: 1 pixel on top and 2 on the bottom
-  memcpy (padded_bottom, padded_bottom + 1 * local_padded_width,
-	  local_padded_width);
-  memcpy (padded_bottom + (local_padded_height - 1) * local_padded_width,
-	  padded_bottom + (local_padded_height - 3) * local_padded_width,
-	  local_padded_width);
-  memcpy (padded_bottom + (local_padded_height - 2) * local_padded_width,
-	  padded_bottom + (local_padded_height - 3) * local_padded_width,
-	  local_padded_width);
   memcpy (padded_top, padded_top + 1 * local_padded_width,
 	  local_padded_width);
   memcpy (padded_top + (local_padded_height - 1) * local_padded_width,
@@ -2443,6 +2592,14 @@ padding_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 	  local_padded_width);
   memcpy (padded_top + (local_padded_height - 2) * local_padded_width,
 	  padded_top + (local_padded_height - 3) * local_padded_width,
+	  local_padded_width);
+  memcpy (padded_bottom, padded_bottom + 1 * local_padded_width,
+	  local_padded_width);
+  memcpy (padded_bottom + (local_padded_height - 1) * local_padded_width,
+	  padded_bottom + (local_padded_height - 3) * local_padded_width,
+	  local_padded_width);
+  memcpy (padded_bottom + (local_padded_height - 2) * local_padded_width,
+	  padded_bottom + (local_padded_height - 3) * local_padded_width,
 	  local_padded_width);
   return (0);
 
@@ -2456,7 +2613,7 @@ padding_interlaced (uint8_t * padded_bottom, uint8_t * padded_top,
 int
 average_specific (uint8_t * input, uint8_t * output,
 		  unsigned int *height_coeff, unsigned int *width_coeff,
-		  unsigned int specific, unsigned int half)
+		  unsigned int half)
 {
   // This function gathers code that are speed enhanced due to specific downscaling ratios     
   unsigned int line_index;
@@ -2467,7 +2624,8 @@ average_specific (uint8_t * input, uint8_t * output,
   unsigned int local_out_nb_col_slice = out_nb_col_slice >> half;
   unsigned int local_out_nb_line_slice = out_nb_line_slice >> half;
   unsigned int number;
-  // specific==1
+  // specific==1, 4
+  uint8_t temp_uint8_t;
   uint8_t *in_line_p;
   uint8_t *out_line_p;
   unsigned int *W_var, *W;
@@ -2488,13 +2646,6 @@ average_specific (uint8_t * input, uint8_t * output,
   unsigned int out_line_slice;
   uint8_t *output_line_p[output_height_slice];
 
-
-  // For interlaced treatment, line numbers may be switched as a function of the interlacing type of the image.
-  // So, if line_index varies from 0 to output_active_height, input line number is 2*(line_index/2)*input_height_slice + (input_interlaced+line_index)%2
-  // and output line number is 2*(line_index/2)*output_height_slice + (output_interlaced+line_index)%2
-  // For speed reason, /half is replaced by >>half, 2*(line_index/2) by line_index&~1. Please note that %2 or &1 take the same amount of time
-  // Please note that interlaced==0 (non-interlaced) or interlaced==2 (bottom interlaced as treated alike)
-
   //Init
   mjpeg_debug ("Start of average_specific %u\n", specific);
   //End of INIT
@@ -2504,17 +2655,12 @@ average_specific (uint8_t * input, uint8_t * output,
       treatment = 1;
       mjpeg_debug ("Non interlaced and/or interlaced treatment");
       // We just take the average along the width, not the height, line per line
-      // If input and output are interlaced, but not of the same type (one odd, the other even),
-      // we must switch lines, If they are of the same interlacing type, or if theu are not interlaced, we do not switch lines
       // Infered from average, with input_height_slice=output_height_slice=1;
       for (line_index = 0; line_index < local_output_active_height;
 	   line_index++)
 	{
-	  in_line_p = input + ((line_index & ~1) + ((input_interlaced + line_index) % 2)) * local_input_width;	// 2*(line_index/2) = (line_index&~1)
-	  out_line_p =
-	    output + ((line_index & ~1) +
-		      ((output_interlaced +
-			line_index) % 2)) * local_output_width;
+	  in_line_p = input + line_index * local_input_width;
+	  out_line_p = output + line_index * local_output_width;
 	  for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
 	       out_col_slice++)
 	    {
@@ -2543,7 +2689,8 @@ average_specific (uint8_t * input, uint8_t * output,
       // SPECIAL FAST Full_size to VCD downscaling : 2to1 for width and height
       // Since 2 to 1 height dowscaling, no need for line switching
       // Drawback: slight distortion on width
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  for (out_line = 0; out_line < local_output_active_height;
@@ -2555,8 +2702,10 @@ average_specific (uint8_t * input, uint8_t * output,
 	      for (out_col = 0; out_col < local_output_active_width;
 		   out_col++)
 		{
-		  // Division of integers is always made by default. This results in a systematic drift towards smaller values. What we really need,
-		  // is a division that takes the nearest integer. So, we add 1/2 of the divider to the value to be divided
+		  // Division of integers is always made by default. This results in a systematic drift towards smaller values. 
+		  // What we really need,
+		  // is a division that takes the nearest integer. 
+		  // So, we add 1/2 of the divider to the value to be divided
 		  *(out_line_p++) =
 		    (2 + *(in_first_line_p) + *(in_first_line_p + 1) +
 		     *(in_second_line_p) + *(in_second_line_p + 1)) >> 2;
@@ -2572,14 +2721,10 @@ average_specific (uint8_t * input, uint8_t * output,
 	       line_index++)
 	    {
 	      in_first_line_p =
-		input + (((line_index & ~1) << 1) +
-			 ((input_interlaced +
-			   line_index) % 2)) * local_input_width;
+		input + (((line_index & ~(unsigned int) 1) << 1) +
+			 (line_index % 2)) * local_input_width;
 	      in_second_line_p = in_first_line_p + (local_input_width << 1);
-	      out_line_p =
-		output + ((line_index & ~1) +
-			  ((output_interlaced +
-			    line_index) % 2)) * local_output_width;
+	      out_line_p = output + line_index * local_output_width;
 	      for (out_col = 0; out_col < local_output_active_width;
 		   out_col++)
 		{
@@ -2600,7 +2745,8 @@ average_specific (uint8_t * input, uint8_t * output,
       // input_height_slice=2, output_height_slice=1 => input lines will be summed together.
       // infered from average with output_height_slice=1 and explicity writting of the for(in_line=0;in_line<input_height_slice;in_line++)
       // Special VCD downscaling without width distortion
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  for (out_line = 0; out_line < local_output_active_height;
@@ -2640,14 +2786,11 @@ average_specific (uint8_t * input, uint8_t * output,
 	       line_index++)
 	    {
 	      input_line_p[0] =
-		input + (input_height_slice * (line_index & ~1) +
-			 (input_interlaced +
-			  line_index) % 2) * local_input_width;
+		input +
+		(input_height_slice * (line_index & ~(unsigned int) 1) +
+		 line_index % 2) * local_input_width;
 	      input_line_p[1] = input_line_p[0] + 2 * local_input_width;
-	      out_line_p =
-		output + ((line_index & ~1) +
-			  (output_interlaced +
-			   line_index) % 2) * local_output_width;
+	      out_line_p = output + line_index * local_output_width;
 	      for (out_col_slice = 0;
 		   out_col_slice < (out_nb_col_slice >> half);
 		   out_col_slice++)
@@ -2682,12 +2825,9 @@ average_specific (uint8_t * input, uint8_t * output,
       mjpeg_debug ("Non-interlaced or interlaced downscaling\n");
       for (line_index = 0; line_index < local_output_active_height;
 	   line_index++)
-	memcpy (output +
-		((line_index & ~1) +
-		 ((output_interlaced + line_index) % 2)) * local_output_width,
-		input + ((line_index & ~1) +
-			 ((input_interlaced +
-			   line_index) % 2)) * local_input_width,
+//       ;
+	memcpy (output + line_index * local_output_width,
+		input + line_index * local_input_width,
 		local_output_active_width);
     }
 
@@ -2695,7 +2835,8 @@ average_specific (uint8_t * input, uint8_t * output,
     {
       // We downscale only lines along the height, not the width
       treatment = 5;
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
@@ -2705,8 +2846,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		{
 		  number = out_line_slice * input_height_slice + in_line;
 		  input_line_p[in_line] =
-		    input + ((number & ~1) +
-			     (input_interlaced +
+		    input + ((number & ~(unsigned int) 1) +
+			     (line_switching +
 			      number) % 2) * local_input_width;
 		}
 	      u_c_p =
@@ -2748,18 +2889,18 @@ average_specific (uint8_t * input, uint8_t * output,
 	       out_line_slice++)
 	    {
 	      u_c_p =
-		input + ((out_line_slice & ~1) * input_height_slice +
-			 ((input_interlaced +
-			   out_line_slice) % 2)) * local_input_width;
+		input +
+		((out_line_slice & ~(unsigned int) 1) * input_height_slice +
+		 out_line_slice % 2) * local_input_width;
 	      for (in_line = 0; in_line < input_height_slice; in_line++)
 		{
 		  input_line_p[in_line] = u_c_p;
 		  u_c_p += 2 * local_input_width;
 		}
 	      u_c_p =
-		output + ((out_line_slice & ~1) * output_height_slice +
-			  ((output_interlaced +
-			    out_line_slice) % 2)) * local_output_width;
+		output +
+		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		 out_line_slice % 2) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
 		  output_line_p[out_line] = u_c_p;
@@ -2795,23 +2936,21 @@ average_specific (uint8_t * input, uint8_t * output,
   if (specific == 6)
     {
       // Dedicated SVCD: we downscale 3 for 2 on width, and 1 to 1 on height. Infered from specific=1
-      // For width, W is equal to 2 2 1 2 1 2 => we can explicitely write down the calculs of value
+      // For width, W points on  "2 2 1 2 1 2" => we can explicitely write down the calculs of value
       treatment = 6;
       mjpeg_debug ("Non interlaced and/or interlaced treatment");
       for (line_index = 0; line_index < local_output_active_height;
 	   line_index++)
 	{
-	  in_line_p = input + ((line_index & ~1) + ((input_interlaced + line_index) % 2)) * local_input_width;	// 2*(line_index/2) = (line_index&~1)
-	  out_line_p =
-	    output + ((line_index & ~1) +
-		      ((output_interlaced +
-			line_index) % 2)) * local_output_width;
+	  in_line_p = input + line_index * local_input_width;
+	  out_line_p = output + line_index * local_output_width;
 	  for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
 	       out_col_slice++)
 	    {
-	      *(out_line_p++) = divide[2 * in_line_p[0] + in_line_p[1]];
-	      *(out_line_p++) = divide[in_line_p[1] + 2 * in_line_p[2]];
-	      in_line_p += 3;
+	      temp_uint8_t = in_line_p[1];
+	      *(out_line_p++) = divide[((*in_line_p) << 1) + temp_uint8_t];
+	      in_line_p += 2;
+	      *(out_line_p++) = divide[temp_uint8_t + ((*in_line_p++) << 1)];
 	    }
 	}
     }
@@ -2822,24 +2961,21 @@ average_specific (uint8_t * input, uint8_t * output,
       // For the height, H is equal to 2 3 1 2 2 2 2 1 3
       // Infered from specific=5
       treatment = 7;
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
 	      input_line_p[0] =
-		input + (4 * out_line_slice +
-			 input_interlaced % 2) * local_input_width;
+		input + (4 * out_line_slice + 0) * local_input_width;
 	      input_line_p[1] =
-		input + (4 * out_line_slice +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (4 * out_line_slice + 1) * local_input_width;
 	      input_line_p[2] =
-		input + (4 * out_line_slice + 2 +
-			 input_interlaced % 2) * local_input_width;
+		input + (4 * out_line_slice + 2) * local_input_width;
 	      input_line_p[3] =
-		input + (4 * out_line_slice + 2 +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (4 * out_line_slice + 3) * local_input_width;
 	      output_line_p[0] =
 		output + 3 * out_line_slice * local_output_width;
 	      output_line_p[1] = output_line_p[0] + local_output_width;
@@ -2863,18 +2999,18 @@ average_specific (uint8_t * input, uint8_t * output,
 	       out_line_slice++)
 	    {
 	      u_c_p =
-		input + ((out_line_slice & ~1) * input_height_slice +
-			 ((input_interlaced +
-			   out_line_slice) % 2)) * local_input_width;
+		input +
+		((out_line_slice & ~(unsigned int) 1) * input_height_slice +
+		 (out_line_slice % 2)) * local_input_width;
 	      for (in_line = 0; in_line < input_height_slice; in_line++)
 		{
 		  input_line_p[in_line] = u_c_p;
 		  u_c_p += 2 * local_input_width;
 		}
 	      u_c_p =
-		output + ((out_line_slice & ~1) * output_height_slice +
-			  ((output_interlaced +
-			    out_line_slice) % 2)) * local_output_width;
+		output +
+		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		 (out_line_slice % 2)) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
 		  output_line_p[out_line] = u_c_p;
@@ -2903,36 +3039,29 @@ average_specific (uint8_t * input, uint8_t * output,
       // Drawback: slight distortion on width
       // Coefficient for horizontal downscaling : (3,3,2), (1,3,3,1), (2,3,3)
       treatment = 8;
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
 	      input_line_p[0] =
-		input + (8 * out_line_slice +
-			 input_interlaced % 2) * local_input_width;
+		input + (8 * out_line_slice + 0) * local_input_width;
 	      input_line_p[1] =
-		input + (8 * out_line_slice +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 1) * local_input_width;
 	      input_line_p[2] =
-		input + (8 * out_line_slice + 2 +
-			 (input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 2) * local_input_width;
 	      input_line_p[3] =
-		input + (8 * out_line_slice + 2 +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 3) * local_input_width;
 	      input_line_p[4] =
-		input + (8 * out_line_slice + 4 +
-			 (input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 4) * local_input_width;
 	      input_line_p[5] =
-		input + (8 * out_line_slice + 4 +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 5) * local_input_width;
 	      input_line_p[6] =
-		input + (8 * out_line_slice + 6 +
-			 (input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 6) * local_input_width;
 	      input_line_p[7] =
-		input + (8 * out_line_slice + 6 +
-			 (1 + input_interlaced) % 2) * local_input_width;
+		input + (8 * out_line_slice + 7) * local_input_width;
 	      output_line_p[0] =
 		output + out_line_slice * 3 * local_output_width;
 	      output_line_p[1] = output_line_p[0] + local_output_width;
@@ -2976,9 +3105,8 @@ average_specific (uint8_t * input, uint8_t * output,
 	       out_line_slice++)
 	    {
 	      input_line_p[0] =
-		input + (((out_line_slice & ~1) << 3) +
-			 ((input_interlaced +
-			   out_line_slice) % 2)) * local_input_width;
+		input + (((out_line_slice & ~(unsigned int) 1) << 3) +
+			 (out_line_slice % 2)) * local_input_width;
 	      input_line_p[1] = input_line_p[0] + (local_input_width << 1);
 	      input_line_p[2] = input_line_p[1] + (local_input_width << 1);
 	      input_line_p[3] = input_line_p[2] + (local_input_width << 1);
@@ -2987,9 +3115,8 @@ average_specific (uint8_t * input, uint8_t * output,
 	      input_line_p[6] = input_line_p[5] + (local_input_width << 1);
 	      input_line_p[7] = input_line_p[6] + (local_input_width << 1);
 	      output_line_p[0] =
-		output + ((out_line_slice & ~1) * 3 +
-			  ((output_interlaced +
-			    out_line_slice) % 2)) * local_output_width;
+		output + ((out_line_slice & ~(unsigned int) 1) * 3 +
+			  (out_line_slice % 2)) * local_output_width;
 	      output_line_p[1] = output_line_p[0] + (local_output_width << 1);
 	      output_line_p[2] = output_line_p[1] + (local_output_width << 1);
 	      for (out_col = 0; out_col < local_output_active_width;
@@ -3030,7 +3157,8 @@ average_specific (uint8_t * input, uint8_t * output,
     {
       // Special WIDE2VCD, on height : 8->3
       treatment = 9;
-      if (output_interlaced == LAV_NOT_INTERLACED)
+      if ((output_interlaced == Y4M_ILACE_NONE)
+	  || (input_interlaced == Y4M_ILACE_NONE))
 	{
 	  mjpeg_debug ("Non-interlaced downscaling\n");
 	  // input frames are not interlaced, as are output frames.
@@ -3041,10 +3169,7 @@ average_specific (uint8_t * input, uint8_t * output,
 	      for (in_line = 0; in_line < input_height_slice; in_line++)
 		{
 		  number = out_line_slice * input_height_slice + in_line;
-		  input_line_p[in_line] =
-		    input + ((number & ~1) +
-			     (input_interlaced +
-			      number) % 2) * local_input_width;
+		  input_line_p[in_line] = input + number * local_input_width;
 		}
 	      u_c_p =
 		output +
@@ -3111,25 +3236,23 @@ average_specific (uint8_t * input, uint8_t * output,
 	}
       else
 	{
-	  // input frames are interlaced. Therefore, downscaling is done between odd lines, then between even lines, but we do not mix odd and even lines.
-	  // If interlacing type of input frames is odd and interlacing type of output frame is even or non-interlaced, line switching is done
 	  mjpeg_debug ("Interlaced downscaling\n");
 	  for (out_line_slice = 0; out_line_slice < local_out_nb_line_slice;
 	       out_line_slice++)
 	    {
 	      u_c_p =
-		input + ((out_line_slice & ~1) * input_height_slice +
-			 ((input_interlaced +
-			   out_line_slice) % 2)) * local_input_width;
+		input +
+		((out_line_slice & ~(unsigned int) 1) * input_height_slice +
+		 (out_line_slice % 2)) * local_input_width;
 	      for (in_line = 0; in_line < input_height_slice; in_line++)
 		{
 		  input_line_p[in_line] = u_c_p;
 		  u_c_p += 2 * local_input_width;
 		}
 	      u_c_p =
-		output + ((out_line_slice & ~1) * output_height_slice +
-			  ((output_interlaced +
-			    out_line_slice) % 2)) * local_output_width;
+		output +
+		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		 (out_line_slice % 2)) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
 		  output_line_p[out_line] = u_c_p;
@@ -3199,3 +3322,17 @@ average_specific (uint8_t * input, uint8_t * output,
 }
 
 // *************************************************************************************
+
+  // For interlaced treatment, line numbers may be switched as a function of the interlacing type of the image.
+  // So, if line_index varies from 0 to output_active_height, input line number is 2*(line_index/2)*input_height_slice + (line_switching+line_index)%2
+  // and output line number is 2*(line_index/2)*output_height_slice + (0+line_index)%2
+  // For speed reason, /half is replaced by >>half, 2*(line_index/2) by line_index&~1. Please note that %2 or &~1 take the same amount of time
+  // Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlaced) are treated alike
+//         "\t if frames come from stdin, input frames interlacing type is not known from header. For interlacing specification, use:\n"
+//         "\t NOT_INTERLACED to select not interlaced input frames\n"
+//         "\t INTERLACED_ODD_FIRST  to select an interlaced, odd  first frame input stream from stdin\n"
+//         "\t INTERLACED_EVEN_FIRST to select an interlaced, even first frame input stream from stdin\n"
+//         "\t If you wish to specify interlacing of output frames, use:\n"
+//         "\t INTERLACED_TOP_FIRST  to select an interlaced, top first frame output stream\n"
+//         "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom first frame output stream\n"
+//         "\t NOT_INTERLACED to select not interlaced output frames\n"
