@@ -28,6 +28,7 @@
 #include <string.h>
 #include <gdk/gdkx.h>
 #include <math.h>
+#include <errno.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
 //#include "y4m12.h"
@@ -430,7 +431,7 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 {
 	/* write a lavpipe .pli list and start lavpipe | yuvplay */
 	FILE *fd;
-	char file[256], temp[256];
+	char file[256];
 
 	struct scene_transition_options *options = (struct scene_transition_options*)data;
 
@@ -439,8 +440,8 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 	fd = fopen(file, "w");
 	if (fd == NULL)
 	{
-		sprintf(temp, "Error opening %s", file);
-		gtk_show_text_window(STUDIO_ERROR,temp, NULL);
+		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+			file, sys_errlist[errno]);
 		return;
 	}
 
@@ -558,7 +559,7 @@ void effects_scene_transition_accept(GtkWidget *widget, gpointer data)
 	if (pipe_is_active(LAVPIPE) || pipe_is_active(YUVPLAY))
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"Lavpipe is already active", NULL);
+			"Lavpipe is already active");
 		return;		
 	}
 
@@ -957,15 +958,15 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"Select an image for the scene transition", NULL);
+			"Select an image for the scene transition");
 		return;
 	}
 
 	if (GTK_SCENELIST(scenelist)->selected_scene+1 == g_list_length(GTK_SCENELIST(scenelist)->scene))
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"Don't select the last scene for scene transitions",
-			"The scene transition is applied to\nthe current frame and the next scene");
+			"Cannot do transition on the last scene - "
+			"scene transitions are applied on the current and next scene");
 		return;
 	}
 
@@ -1131,19 +1132,19 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 	if (!options->font)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"You need to choose a font first", NULL);
+			"You need to choose a font first");
 		return;
 	}
 	if (!text)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"You need to enter text first", NULL);
+			"You need to enter text first");
 		return;
 	}
 	if (strcmp(text, "")==0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"You need to enter text first", NULL);
+			"You need to enter text first");
 		return;
 	}
 
@@ -1163,7 +1164,7 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 	if (!pixmap)
 	{
 		gtk_show_text_window(STUDIO_ERROR,
-			"Couldn't create the image!", "Your X-server might be confused");
+			"Could not create the image. Your X-server might be confused");
 		return;
 	}
 
@@ -1206,7 +1207,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 {
 	/* write a lavpipe .pli list and start lavpipe | yuvplay */
 	FILE *fd;
-	char file[256], temp[256], yuv_file[256], yuv_blend_file[256];
+	char file[256], yuv_file[256], yuv_blend_file[256];
 	GdkPixbuf *temp_image;
 	guchar *yuv[3], *yuv_blend[3];
 	int i;
@@ -1217,14 +1218,14 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	if (!options->image)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"You need to choose an image first", NULL);
+			"You need to choose an image first");
 		return;
 	}
 
 	if (options->image_width <= 0 || options->image_height <= 0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"The size of the image needs to be greater than zero", NULL);
+			"The size of the image needs to be greater than zero");
 		return;
 	}
 
@@ -1268,8 +1269,8 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fd = fopen(yuv_file, "w");
 	if (fd == NULL)
 	{
-		sprintf(temp, "Error opening %s", yuv_file);
-		gtk_show_text_window(STUDIO_ERROR,temp, NULL);
+		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+			yuv_file, sys_errlist[errno]);
 		return;
 	}
 	fwrite(yuv[0], sizeof(guchar), options->movie_width*options->movie_height, fd);
@@ -1281,8 +1282,8 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fd = fopen(yuv_blend_file, "w");
 	if (fd == NULL)
 	{
-		sprintf(temp, "Error opening %s", yuv_blend_file);
-		gtk_show_text_window(STUDIO_ERROR,temp, NULL);
+		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+			yuv_blend_file, sys_errlist[errno]);
 		return;
 	}
 	fwrite(yuv_blend[0], sizeof(guchar), options->movie_width*options->movie_height, fd);
@@ -1303,8 +1304,8 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fd = fopen(file, "w");
 	if (fd == NULL)
 	{
-		sprintf(temp, "Error opening %s", file);
-		gtk_show_text_window(STUDIO_ERROR,temp, NULL);
+		gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
+			file, sys_errlist[errno]);
 		return;
 	}
 
@@ -1355,8 +1356,8 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 		fd = fopen(soundfile, "w");
 		if (fd == NULL)
 		{
-			sprintf(temp, "Error opening %s", soundfile);
-			gtk_show_text_window(STUDIO_ERROR,temp, NULL);
+			gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
+				soundfile, sys_errlist[errno]);
 			return;
 		}
 		fprintf(fd, "LAV Edit List\n");
@@ -1459,7 +1460,7 @@ void image_overlay_file_load(GtkWidget *w, gpointer data)
 	if (!options->image)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"Could not load image, are you sure it's an image?",
+			"Could not load image \'%s\', are you sure it's an image?",
 			gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)));
 		return;
 	}
@@ -1506,7 +1507,7 @@ void text_overlay_font_load(GtkWidget *w, gpointer data)
 	if (!options->font)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"There was an error loading the font:",
+			"There was an error loading the font \'%s\'",
 			gtk_font_selection_dialog_get_font_name (GTK_FONT_SELECTION_DIALOG (options->fs)));
 		return;
 	}
@@ -1621,10 +1622,8 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 
 	if (options->type != GTK_EFFECT_IMAGE && options->type != GTK_EFFECT_TEXT)
 	{
-		char temp[256];
-		sprintf(temp, "Unknown overlay type (options->type = %d)", options->type);
 		gtk_show_text_window(STUDIO_WARNING,
-			temp,NULL);
+			"Unknown overlay type (options->type = %d)", options->type);
 		return;
 	}
 
@@ -1856,7 +1855,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
-			"Select a scene for the image overlay", NULL);
+			"Select a scene for the image overlay");
 		return;
 	}
 

@@ -153,7 +153,7 @@ void quit_lavplay_with_error(char *msg)
 	quit_lavplay();
 	if (verbose) g_print("Lavplay error: %s\n", msg);
 	gtk_show_text_window(STUDIO_ERROR,
-		"Lavplay stopped and gave the following error:",
+		"Lavplay stopped and gave the following error: %s",
 		msg);
 }
 

@@ -421,7 +421,7 @@ void quit_lavplay_trimming_with_error(char *msg)
 {
 	quit_trimming(NULL,NULL);
 	if (verbose) g_print("Lavplay error: %s\n", msg);
-	gtk_show_text_window(STUDIO_ERROR, "Lavplay returned an error:", msg);
+	gtk_show_text_window(STUDIO_ERROR, "Lavplay returned an error: %s", msg);
 }
 
 void command_to_lavplay_trimming_set(GtkWidget *widget, char *data)

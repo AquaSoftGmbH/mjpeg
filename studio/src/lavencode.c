@@ -207,12 +207,10 @@ void lavencode_callback(int number, char *input)
 
   if (strncmp(input, "**ERROR:", 8) == 0)
   {
-     char temp[256];
-
      /* Error handling */
      if (!error) stop_encoding_process(NULL, (gpointer)progress_window);
-     sprintf(temp, "%s returned an error:", app_name(number));
-     gtk_show_text_window(STUDIO_ERROR, temp, input+9);
+     gtk_show_text_window(STUDIO_ERROR, "%s returned an error: %s",
+		app_name(number), input+9);
      error++;
   }
 }

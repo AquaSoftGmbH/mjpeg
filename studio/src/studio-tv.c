@@ -303,7 +303,7 @@ static void create_screenshot()
    if (!buf)
    {
       gtk_show_text_window(STUDIO_ERROR,
-         "creating a pixbuf failed, are you out of memory?", NULL);
+         "creating a pixbuf failed, are you out of memory?");
       return;
    }
    buf = gdk_pixbuf_get_from_drawable(buf, tv->window,
@@ -316,7 +316,7 @@ static void create_screenshot()
    if (!buf)
    {
       gtk_show_text_window(STUDIO_ERROR,
-         "Grabbing the screenshot failed", NULL);
+         "Grabbing the screenshot failed");
       return;
    }
 
@@ -324,7 +324,7 @@ static void create_screenshot()
 
 #else
    gtk_show_text_window(STUDIO_ERROR,
-      "Compiled without PNG/JPG support", "Screenshots not supported");
+      "Compiled without PNG/JPG support - screenshots not supported");
 #endif
 }
 

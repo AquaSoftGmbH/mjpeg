@@ -86,7 +86,8 @@ int chk_dir(char *name)
 		if (verbose) printf("chk_dir, %s does not exist, creating\n", name);
 		if (mkdir(name, DIR_MODE) != 0) {
 			gtk_show_text_window(STUDIO_ERROR,
-				"Unable to create directory config directory!", name);
+				"Unable to create directory config directory \'%s\': %s",
+				name, sys_errlist[errno]);
 			return 0;
 		};
 	};
@@ -564,7 +565,9 @@ void save_config()
 	fp = fopen(filename,"w");
 	if (NULL == fp)
 	{
-		fprintf(stderr,"can't open config file %s\n",filename);
+		gtk_show_text_window(STUDIO_ERROR,
+			"Can't open config file \'%s\': %s",
+			filename, sys_errlist[errno]);
 		return;
 	}
 

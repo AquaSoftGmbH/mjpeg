@@ -244,14 +244,15 @@ static void gdk_pixbuf_file_name_chosen(GtkWidget *widget, gpointer data)
 #endif
 	{
 		gtk_show_text_window(STUDIO_ERROR,
-			"Unknown file extension",
+			"Unknown file extension. Please choose a "
 #if defined(HAVE_PNG) && defined(HAVE_JPEG)
-			"Please choose a *.png/*.jpg file"
+			"*.png/*.jpg"
 #elif defined (HAVE_JPEG)
-			"Please choose a *.jpg file"
+			"*.jpg"
 #elif define (HAVE_PNG)
-			"Please choose a *.png file"
+			"*.png"
 #endif
+			" file"
 			);
 		gdk_pixbuf_save_to_file (buf);
 		return;
@@ -259,7 +260,7 @@ static void gdk_pixbuf_file_name_chosen(GtkWidget *widget, gpointer data)
 
 	if (!result)
 		gtk_show_text_window(STUDIO_ERROR,
-			"Encoding the image failed", NULL);
+			"Encoding the image failed");
 
 	gdk_pixbuf_unref(buf);
 }

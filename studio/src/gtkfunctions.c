@@ -19,6 +19,7 @@
 /* Only goal of this file is for some easy access to functions */
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -31,13 +32,55 @@
 #include "gnome-info.xpm"
 #include "gnome-warning.xpm"
 
-void gtk_show_text_window(int type, char *message, char *message2)
+void gtk_show_text_window(int type, char *format, ...)
 {
 	extern GtkWidget *window;
 	GtkWidget *pop_window, *hbox, *vbox, *label, *button, *hseparator, *pixmap_widget, *vbox2;
 	char *title = "Linux Video Studio";
 	gchar **data = NULL;
-	int x,y,w,h;
+	//int x,y,w,h;
+	int n,m;
+	va_list args;
+	char message[1024];
+
+	va_start (args, format);
+	vsnprintf(message, sizeof(message)-1, format, args);
+
+	/* TODO: add '\n's if line is too long */
+#define LINE_LENGTH 50
+	n = 0;
+nextline:
+	n += LINE_LENGTH;
+	if (n > strlen(message))
+		goto done;
+
+	/* check for spaces */
+	for (m=n;m>n-LINE_LENGTH;m--)
+	{
+		if (message[m] == '\n' || message[m] == ' ')
+		{
+			message[m] = '\n';
+			n = m;
+			goto nextline;
+		}
+	}
+
+	/* problem: we need to move on above 50... line's too long */	
+	m = n;
+	while(1)
+	{
+		if (m > strlen(message))
+			goto done;
+		if (message[m] == ' ' || message[m] == '\n')
+		{
+			message[m] = '\n';
+			n = m;
+			goto nextline;
+		}
+		m++;
+	}
+done:
+#undef LINE_LENGTH
 
 	switch(type)
 	{
@@ -74,14 +117,6 @@ void gtk_show_text_window(int type, char *message, char *message2)
 	gtk_box_pack_start (GTK_BOX (vbox2), label, TRUE, TRUE, 0);
 	gtk_widget_show (label);
 
-	if (message2)
-	{
-		label = gtk_label_new (message2);
-		gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-		gtk_box_pack_start (GTK_BOX (vbox2), label, TRUE, TRUE, 0);
-		gtk_widget_show (label);
-	}
-
 	gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, TRUE, 0);
 	gtk_widget_show (vbox2);
 
@@ -103,10 +138,12 @@ void gtk_show_text_window(int type, char *message, char *message2)
 
 	gtk_grab_add(pop_window);
 	gtk_window_set_transient_for(GTK_WINDOW(pop_window), GTK_WINDOW(window));
-	gdk_window_get_origin(window->window, &x, &y);
-	gdk_window_get_size(window->window, &w, &h);
-	gtk_widget_set_uposition(pop_window, x+w/4, y+h/4);
+//	gdk_window_get_origin(window->window, &x, &y);
+//	gdk_window_get_size(window->window, &w, &h);
+//	gtk_widget_set_uposition(pop_window, x+w/4, y+h/4);
 	gtk_widget_show(pop_window);
+
+	va_end (args);
 }
 
 GtkWidget *gtk_widget_from_xpm_data(gchar **data)

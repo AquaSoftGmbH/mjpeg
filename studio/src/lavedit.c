@@ -353,7 +353,7 @@ void quit_lavplay_edit_with_error(char *msg)
 {
 	quit_lavplay_edit();
 	if (verbose) g_print("Lavplay error: %s\n", msg);
-	gtk_show_text_window(STUDIO_ERROR, "Lavplay returned an error:", msg);
+	gtk_show_text_window(STUDIO_ERROR, "Lavplay returned an error: %s", msg);
 }
 
 void process_lavplay_edit_input(char *msg)
@@ -459,8 +459,7 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 			verbose?"":" >> /dev/null 2>&1");
 	system(command);
 
-	sprintf(temp, "Image saved to %s", file);
-	gtk_show_text_window(STUDIO_INFO, temp, NULL);
+	gtk_show_text_window(STUDIO_INFO, "Image saved to \'%s\'", file);
 }
 
 void prepare_for_scene_detection( GtkWidget *w, GtkFileSelection *fs )
@@ -543,13 +542,11 @@ void add_scene_movie_change_page(GtkWidget *widget, char *direction)
 
 	if (x==-1)
 	{
-		char temp[256];
-
 		/* oops something went wrong */
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
-		sprintf(temp, "Error opening %s",
-			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)));
-		gtk_show_text_window(STUDIO_WARNING, temp, NULL);
+		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
+			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
+			sys_errlist[errno]);
 	}
 }
 
@@ -689,13 +686,11 @@ void set_add_scene_movie_selection(GtkWidget *widget, gpointer data)
 
 	if (x==-1)
 	{
-		char temp[256];
-
 		/* oops something went wrong */
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
-		sprintf(temp, "Error opening %s",
-			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)));
-		gtk_show_text_window(STUDIO_WARNING, temp, NULL);
+		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
+			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
+			sys_errlist[errno]);
 	}
 }
 
@@ -844,7 +839,8 @@ void save_eli_file(char *target)
 {
 	if (!gtk_scenelist_write_editlist(GTK_SCENELIST(scenelist), target))
 		gtk_show_text_window(STUDIO_INFO,
-			"Error saving editlist to file:", (char *) sys_errlist[errno]);
+			"Error saving editlist to file \'%s\': %s",
+			target, (char *) sys_errlist[errno]);
 }
 
 void save_eli_temp_file()
@@ -872,7 +868,7 @@ void split_scene(GtkWidget *widget, gpointer data)
 	}
 	else
 		gtk_show_text_window(STUDIO_INFO,
-			"First select an image to split", NULL);
+			"First select an image to split");
 }
 
 void scene_move(GtkWidget *widget, gpointer data)
@@ -885,18 +881,16 @@ void scene_move(GtkWidget *widget, gpointer data)
 		(what == 1 && GTK_SCENELIST(scenelist)->selected_scene ==
 		g_list_length(GTK_SCENELIST(scenelist)->scene)-1))
 	{
-		sprintf(temp,"Image is already at the %s!\n",
-			what == -1 ? "beginning" : "end");
 		gtk_show_text_window(STUDIO_INFO,
-			"Cannot move image",
-			temp);
+			"Cannot move image to the %s, image is already there!",
+			what==-1 ? "beginning" : "end");
 		return;
 	}
 
 	if (GTK_SCENELIST(scenelist)->selected_scene<0)
 	{
 		gtk_show_text_window(STUDIO_INFO,
-			"Select a scene to move first",NULL);
+			"Select a scene to move first");
 		return;
 	}
 	/* Lavplay calls to move scene */
@@ -941,7 +935,7 @@ void delete_scene(GtkWidget *widget, gpointer data)
 	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_INFO,
-			"Select a scene to delete first",NULL);
+			"Select a scene to delete first");
 		return;
 	}
 

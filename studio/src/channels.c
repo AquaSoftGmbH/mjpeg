@@ -77,7 +77,7 @@ static void save_data(GtkWidget *widget, GtkCList *clist)
    if (!strcmp(gtk_entry_get_text(GTK_ENTRY(chanlist_entry)),""))
    {
       /* no name given */
-      gtk_show_text_window(STUDIO_WARNING, "Please supply a channel name", NULL);
+      gtk_show_text_window(STUDIO_WARNING, "Please supply a channel name");
       return;
    }
 
@@ -118,7 +118,7 @@ static void del_data(GtkWidget *widget, GtkCList *clist)
    }
 
    /* if we get here, it's not good */
-   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to delete", NULL);
+   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to delete");
 }
 
 static void clist_value_changed(GtkAdjustment *adj, gpointer data)
@@ -159,13 +159,13 @@ static void move_data_down(GtkWidget *w, gpointer data2)
             gtk_clist_select_row(clist, i+1, 0);
          }
          else
-            gtk_show_text_window(STUDIO_WARNING, "Channel is already down there", NULL);
+            gtk_show_text_window(STUDIO_WARNING, "Channel is already down there");
          return;
       }
    }
 
    /* if we get here, it's not good */
-   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to move", NULL);
+   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to move");
 }
 
 static void move_data_up(GtkWidget *w, gpointer data2)
@@ -185,13 +185,13 @@ static void move_data_up(GtkWidget *w, gpointer data2)
             gtk_clist_select_row(clist, i-1, 0);
          }
          else
-            gtk_show_text_window(STUDIO_WARNING, "Channel is already on top", NULL);
+            gtk_show_text_window(STUDIO_WARNING, "Channel is already on top");
          return;
       }
    }
 
    /* if we get here, it's not good */
-   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to move", NULL);
+   gtk_show_text_window(STUDIO_WARNING, "Please select a channel to move");
 }
 
 static void freq_slider_changed(GtkAdjustment *adj, char *what)

@@ -182,7 +182,7 @@ void scene_detection_input_cb(char *input)
 		/* error */
 		stop_scene_detection_process(NULL, NULL);
 		gtk_show_text_window(STUDIO_ERROR,
-			"Scene detection failed, lav2yuv gave the following error:",
+			"Scene detection failed, lav2yuv gave the following error: %s",
 			input+9);
 	}
 }
@@ -366,7 +366,7 @@ void quit_lavrec_with_error(char *msg)
 	emulate_ctrl_c();
 	if (verbose) g_print("Lavrec error: %s\n", msg);
 	gtk_show_text_window(STUDIO_ERROR,
-		"Lavrec failed with the following error:",
+		"Lavrec failed with the following error: %s",
 		msg);
 }
 

@@ -147,7 +147,7 @@ static void read_lav2yuv_data(gint source)
       {
          /* auch, bad */
          gtk_show_text_window(STUDIO_ERROR,
-            "Error reading the header from lav2yuv", NULL);
+            "Error reading the header from lav2yuv");
          close_pipe(LAV2YUV); /* let's quit - TODO: better solution */
          active[LAV2YUV_DATA] = 0;
       }
@@ -178,7 +178,7 @@ static void read_lav2yuv_data(gint source)
          {
             /* bad, bad, bad, something is wrong */
             gtk_show_text_window(STUDIO_ERROR,
-               "Error reading frame data from lav2yuv", NULL);
+               "Error reading frame data from lav2yuv");
             close_pipe(LAV2YUV); /* let's quit - TODO: better solution */
          }
          else
