@@ -13,7 +13,7 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
 
-#ifdef __i386__
+#if defined (HAVE_JPEG_MMX)
 #define JPEG_INTERNALS
 #include <jinclude.h>
 #endif
@@ -134,7 +134,7 @@ jpeg_mem_src_reset (j_decompress_ptr cinfo, int size)
 
 /* end of data source manager */
 
-#ifdef __i386__
+#if defined(__i386__) && defined(HAVE_JPEG_MMX)
 /* Colorspace conversion */
 /* RGB, 32 bits, 8bits each: (Junk), R, G, B */ 
 #if defined(__GNUC__) && !defined(int64_t)
@@ -556,7 +556,7 @@ void inline readpicfrommem(void *inbuffer, long size)
   jpeg_mem_src_reset(&cinfo, size);
   jpeg_read_header(&cinfo, TRUE);
 
-#ifdef __i386__
+#ifdef HAVE_JPEG_MMX
   cinfo.dct_method = JDCT_IFAST;
   cinfo.out_color_space = JCS_RGB;
 #else
@@ -568,7 +568,7 @@ void inline readpicfrommem(void *inbuffer, long size)
   switch (screen->format->BytesPerPixel)
     {
     case 4:
-#ifdef __i386__
+#ifdef HAVE_JPEG_MMX
       //printf("Choosing MMX color convert\n");
       cconvert = cinfo.cconvert;
       //cconvert->color_convert = ycc_rgb32_convert_mmx;
@@ -577,7 +577,7 @@ void inline readpicfrommem(void *inbuffer, long size)
 #endif
       break;
     case 2:
-#ifdef __i386__
+#ifdef HAVE_JPEG_MMX
       cconvert = cinfo.cconvert;
       cconvert->color_convert = ycc_rgb16_convert_mmx;
 #else
@@ -777,7 +777,7 @@ int main(int argc,char** argv)
   printf("wxh: %dx%d@%f fr/s\n", width, height, movtar_frame_rate(movtar));
 
   /* Set the video mode (at least the movtar resolution, with native bitdepth) */
-#ifdef __i386__ /* let the hardware choose its mode */
+#ifdef HAVE_JPEG_MMX /* let the hardware choose its mode */
   screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
 #else /* must force it to a mode */
   screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /* | SDL_FULLSCREEN */ );
@@ -795,7 +795,7 @@ int main(int argc,char** argv)
 
   dump_pixel_format(screen->format);
 
-#ifdef __i386__
+#ifdef HAVE_JPEG_MMX
   fprintf(stderr, "Screen parameters haven't been determined yet !\n");
 #else
   calc_rgb16_params(screen->format);

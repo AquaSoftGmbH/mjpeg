@@ -96,7 +96,7 @@ AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source 
     JPEGDIR="$DEFAULT_JPEGDIR")
 
 OLDLIBS="$LIBS"
-LIBS="-L $JPEGDIR $DEFAULT_JPEGDIR_L $LIBS"
+LIBS="-L$JPEGDIR $LIBS"
 AC_SUBST(JPEG_INCLUDE)
 AC_SUBST(JPEG_LIBS)
 
@@ -104,7 +104,7 @@ AC_CHECK_LIB( jpeg-mmx, jpeg_start_compress,
              	[	 
   			   		have_jpeg="yes"
 					JPEG_LIBS="$LIBS -ljpeg-mmx"
-					JPEG_INCLUDE="-I $JPEGDIR $DEFAULT_JPEGDIR_I"
+					JPEG_INCLUDE="-I$JPEGDIR"
  		     	],
              	[
              		have_jpeg="no"
@@ -129,6 +129,20 @@ AC_CHECK_LIB( jpeg, jpeg_start_compress,
 			)
 fi
 
+HAVE_JPEG_MMX=no
+OLD_CFLAGS=$CFLAGS
+OLD_CPPFLAGS=$CPPFLAGS
+CFLAGS="-I $JPEGDIR $INCLUDES"
+CPPFLAGS="-I $JPEGDIR $INCLUDES"
+AC_CHECK_HEADERS(jinclude.h, [HAVE_JPEG_MMX=yes])
+AC_SUBST(HAVE_JPEG_MMX)
+CFLAGS=$OLD_CFLAGS
+CPPFLAGS=$OLD_CPPFLAGS
+if test ${HAVE_JPEG_MMX} = "yes" 
+then
+    CFLAGS="-DHAVE_JPEG_MMX $CFLAGS"
+fi
+
 AC_OUTPUT(Makefile rtjpeg/Makefile 
 	movtar-config)
 
@@ -136,8 +150,9 @@ echo ""
 echo " libmovtar ${VERSION} build configuration :"
 echo ""
 echo "    - Build movtar_play     : ${have_SDL}"
-echo "    - JPEG input in      : ${have_jpeg}"
-echo "    - RTJPEG support      : ${have_rtjpeg}"
+echo "    - JPEG input in         : ${have_jpeg}"
+echo "    - JPEG-mmx optimization : ${HAVE_JPEG_MMX}"
+echo "    - RTJPEG support        : ${have_rtjpeg}"
 echo ""
 
 
