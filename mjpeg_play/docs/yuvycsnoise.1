@@ -1,0 +1,80 @@
+.TH "yuvycsnoise" "1" "10 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH NAME
+yuvycsnoise \- Noise filter specialized for NTSC Y/C separation noise
+
+.SH SYNOPSIS
+.B yuvycsnoise
+.RB [ \-t ]
+.RB [ \-m
+{tbic} ]
+.RB [ \-S
+.IR MIN ]
+.RB [ \-T
+.IR ERRT[,MAXT] ]
+.RB [ \-B
+.IR ERRB[,MAXB] ]
+.RB [ \-I
+.IR ERRI[,MAXI] ]
+.RB [ \-C
+.IR ERRC[,MAXC] ]
+
+.SH DESCRIPTION
+If video capture hardware has only a poor Y/C separator,
+at vertical stripe (especialy red/blue), noises appear
+which seem checker flag and bright/dark invert per 1 frame.
+\fByuvycsnoise\fP reduces noises of this type.
+
+.SH OPTIONS
+\fByuvycsnoise\fP accepts the following options:
+.TP 8
+.BI \-t
+test. Instead of noise reduction, noises will be marked as black pixel.
+.TP 8
+.BI \-m \ METHOD
+(default: tbic).
+.br
+Select method.
+METHOD is string in which each charactor mean method.
+ t: 'triframe' method of luma noise reduction.
+ b: 'biframe' method of luma noise reduction.
+ i: 'infield' method of luma noise reduction.
+ c: chroma noise reduction. use 3 frames as 'triframe'.
+.TP 8
+.BI \-S \ MIN
+(default: 4).
+.br
+Set minimum threshold of luma/chroma difference
+which is treated as noise.
+.TP 8
+.BI \-T \ ERRT[,MAXT]
+(default: 32,255).
+.TP 8
+.BI \-B \ ERRB[,MAXB]
+(default: 32,255).
+.TP 8
+.BI \-I \ ERRI[,MAXI]
+(default: 16,255).
+.TP 8
+.BI \-C \ ERRC[,MAXC]
+(default: 12,255).
+.br
+Set threshold of luma/chroma difference of each methods.
+ERRx is maximum error of luma/chroma of pixels arround
+target pixel, which should be same if target contain noise.
+MAXx is maximum threshold of luma/chroma difference of
+target pixel from luma/chroma after noise reduced.
+
+.SH AUTHOR
+This man page was written by Kawamata/Hitoshi.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net/
+
+.SH SEE ALSO
+.BR mjpegtools (1)
