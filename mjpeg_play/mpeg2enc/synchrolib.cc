@@ -41,6 +41,8 @@ void sync_guard_init( sync_guard_t *guard, int init )
 #ifdef PTHREAD_MUTEX_ERRORCHECK
 	pthread_mutexattr_t mu_attr;
 	pthread_mutexattr_t *p_attr = &mu_attr;
+
+	pthread_mutexattr_init(&mu_attr);
 	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
 	
 #else
@@ -99,6 +101,8 @@ void mp_semaphore_init( mp_semaphore_t *sema, int init_count )
 #ifdef _PTHREAD_MUTEX_ERRORCHECK
 	pthread_mutexattr_t mu_attr;
 	pthread_mutexattr_t *p_attr = &mu_attr;
+
+	pthread_mutexattr_init(&mu_attr);
 	pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
 	
 #else

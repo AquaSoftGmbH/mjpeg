@@ -42,6 +42,8 @@ public:
 #ifdef PTHREAD_MUTEX_ERRORCHECK
 			pthread_mutexattr_t mu_attr;
 			pthread_mutexattr_t *p_attr = &mu_attr;
+
+			pthread_mutexattr_init(&mu_attr);
 			pthread_mutexattr_settype( &mu_attr, PTHREAD_MUTEX_ERRORCHECK );
 #else
 			pthread_mutexattr_t *p_attr = NULL;		
