@@ -3,8 +3,9 @@ AC_INIT(lavtools/lav_io.c)
 
 MJPEG_MAJOR_VERSION=1
 MJPEG_MINOR_VERSION=6
-MJPEG_MICRO_VERSION=2
-MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
+MJPEG_MICRO_VERSION=1
+MJPEG_RELEASE_VERSION=92
+MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION.$MJPEG_RELEASE_VERSION
 
 AC_CONFIG_HEADER(config.h)
 AC_CANONICAL_HOST
@@ -263,6 +264,8 @@ dnl
 dnl Look for _a_ jpeg lib that will work.
 dnl
 if test x$have_jpeg = xfalse ; then
+  AC_CHECK_HEADER(jpeglib.h,,
+    AC_MSG_ERROR([jpeglib.h not found - please install the libjpeg headers]))
   AC_CHECK_LIB(jpeg, jpeg_start_compress,
     [ JPEG_LIBS="-ljpeg"
       JPEG_CFLAGS=""
