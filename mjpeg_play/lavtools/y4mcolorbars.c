@@ -57,10 +57,12 @@ void usage(const char *progname)
 
   fprintf(stdout, "usage: %s [options]\n", progname);
   fprintf(stdout, "\n");
-  fprintf(stdout, "Reads RAW PPM image(s) from stdin, and produces YUV4MPEG2 stream on stdout.\n");
-  fprintf(stdout, "Converts computer graphics R'G'B' colorspace to digital video Y'CbCr.\n");
+  fprintf(stdout, "Creates a YUV4MPEG2 stream consisting of frames containing a standard\n");
+  fprintf(stdout, " colorbar test pattern.\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Options:  (defaults specified in [])\n");
+  fprintf(stdout, "\n");
+  fprintf(stdout, "  -n n     frame count (output n frames) [1]\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "  -W w     frame width [720]\n");
   fprintf(stdout, "  -H h     frame height [480]\n");
@@ -70,8 +72,6 @@ void usage(const char *progname)
   fprintf(stdout, "             p = none/progressive\n");
   fprintf(stdout, "             t = top-field-first\n");
   fprintf(stdout, "             b = bottom-field-first\n");
-  fprintf(stdout, "\n");
-  fprintf(stdout, "  -n n     frame count (output n frames) [1]\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "  -S mode  chroma subsampling mode [%s]\n",
 	  ssm_id[SSM_420_JPEG]);
