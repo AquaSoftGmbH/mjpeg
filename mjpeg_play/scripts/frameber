@@ -3,18 +3,18 @@
 # frameber berechnet die Frames einer editliste.
 # Im Falle mehrerer editlists wird filename-substitution
 # verwendet.
-# Zudem wird die Gesamtl„nge bei einer SVCD-Komprimierung
+# Zudem wird die Gesamtlänge bei einer SVCD-Komprimierung
 # mit 2500 Kbit/s in MB ausgegeben.
-# Damit l„sst sich die L„nge einer Video-CD besser vor
-# der Komprimierung absch„tzen.
-# Die Sch„tzung der MB wurde an Hand der L„ngenangaben von
+# Damit lässt sich die Länge einer Video-CD besser vor
+# der Komprimierung abschätzen.
+# Die Schätzung der MB wurde an Hand der Längenangaben von
 # vcdimager gemacht.
 #
 direct="/video" #!!!!!!!!
 #
 cd $direct
 #
-# Das muss ge„ndert werden, wenn es kein Verzeichnis dieses Namens gibt
+# Das muss geändert werden, wenn es kein Verzeichnis dieses Namens gibt
 #
 # CHANGE if you don't have a directory named /video"
 #

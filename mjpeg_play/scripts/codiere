@@ -1,8 +1,8 @@
 #!/bin/sh
 #
 # codiere ist ein Shellscript das entweder AVI-files bearbeitet.
-# Bei AVI-Files wird der Name des AVI-Files auch fr die komprimierten
-# Files verwendet - erweitert um entsprechende Žnderungen.
+# Bei AVI-Files wird der Name des AVI-Files auch für die komprimierten
+# Files verwendet - erweitert um entsprechende Änderungen.
 # AVI-Files beginnen - so setzt es das script voraus - mit
 # einem Grossbuchstaben und enden mit Kleinbuchstaben.
 # Editlisten beginnen mit Kleinbuchstaben und es wird folgendes
@@ -18,7 +18,7 @@ direct=/video #!!!!!!!!!!!!!!!!!!!!11
 cd $direct
 echo -e "\n  Ist der erste Buchstabe gross, werden avi-Files bearbeitet."
 echo "  Ist der erste Buchstabe klein,"
-echo "  werden ohne weitere Prfung editlisten vorausgesetzt"
+echo "  werden ohne weitere Prüfung editlisten vorausgesetzt"
 echo -e "\n\n Welche Dateien bearbeiten? \c"
 # English:
 # echo -e "\n If the first letter oft the filename is a capital letter
@@ -26,7 +26,7 @@ echo -e "\n\n Welche Dateien bearbeiten? \c"
 # echo "  Otherwise editlists are assumed."
 # echo -e "\n\n Which files should I process? \c"
 read c
-echo -e " Filterst„rke angeben (0 - 2) \c"
+echo -e " Filterstärke angeben (0 - 2) \c"
 # English echo -e " Which filters should I use ( 0 - 2 ) \c"
 read filter
 if [ "$filter" = "0" ]
@@ -39,7 +39,7 @@ if [ "$filter" = "0" ]
         filter2="lav2dfilter"
 #
 # lav2dfilter" bringt nicht viel, kostet Zeit.
-# „hnliches gilt fr die Erh”hung von GOPS
+# ähnliches gilt für die Erhöhung von GOPS
 #
 # I don't see much improvement from lav2dfilter - but here it is.
 # Changing GOPS didn't result in an improvement - according to my eyes
@@ -53,9 +53,9 @@ read brat
 # ein schwarzer Rand zu sehen ist und bei manchen Fernsehern
 # die Seiten ein wenig abgeschnitten werden. Also: Leinwandfilme,
 # die im Fernsehen ausgestrahlt werden.
-# Da empfiehlt es sich, diese fast schwarzen R„nder abzuschneiden.
+# Da empfiehlt es sich, diese fast schwarzen Ränder abzuschneiden.
 # Das verbessert die Kompression weil nicht im Schwarz-Flimmern
-# nach Ver„nderungen gesucht werden muss.
+# nach Veränderungen gesucht werden muss.
 #
 echo -e "B = Breitbandvideo     ENTER = normales Video \c"
 # English
@@ -67,9 +67,9 @@ BREIT=1
 else
 BREIT=0
 fi
-# Wurde die Aufnahme bereits als vcd gemacht und enth„lt die
+# Wurde die Aufnahme bereits als vcd gemacht und enthält die
 # Hinweis darauf im Namen? Dann muss nicht viel gefragt werden,
-# ausser nach der Bitrate. SVCD und XVCD k”nnen aus diesen
+# ausser nach der Bitrate. SVCD und XVCD können aus diesen
 # Aufnahmen sowieso nicht mehr gemacht werden :-)
 # Die Randbreiten wurden experimentell gewonnen, wenn jemand
 # das genauer machen kann: Bitte verbessern!
@@ -102,7 +102,7 @@ if [ -n "$VCD" ] && [ ${c} \> "Zz" ]
 #
 # Nein, nicht mplex - bei mir erzeugte mplex eine etwas zu hohe
 # Bitrate - der Film ruckelt auf dem DVD-Spieler. Bei vcdmplex
-# habe ich dieses Ph„nomen nicht.
+# habe ich dieses Phänomen nicht.
 #
 # No, don't use mplex, unless you are really sure, that it works
 # for you - my DVD-Player fails - bitrate might be slightly too high
@@ -159,7 +159,7 @@ else
 #
 # Nein, nicht mplex - bei mir erzeugte mplex eine etwas zu hohe
 # Bitrate - der Film ruckelt auf dem DVD-Spieler. Bei vcdmplex
-# habe ich dieses Ph„nomen nicht.
+# habe ich dieses Phänomen nicht.
 #
 # No, don't use mplex, unless you are really sure, that it works
 # for you - my DVD-Player fails - bitrate might be slightly too high
@@ -184,7 +184,7 @@ else
 #
 # Nein, nicht mplex - bei mir erzeugte mplex eine etwas zu hohe
 # Bitrate - der Film ruckelt auf dem DVD-Spieler. Bei vcdmplex
-# habe ich dieses Ph„nomen nicht.
+# habe ich dieses Phänomen nicht.
 #
 # No, don't use mplex, unless you are really sure, that it works
 # for you - my DVD-Player fails - bitrate might be slightly too high
