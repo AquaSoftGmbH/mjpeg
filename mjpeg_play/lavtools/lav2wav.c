@@ -72,7 +72,7 @@ struct wave_header
 };
 
 struct wave_header wave;
-int verbose = 2;
+int verbose = 1;
 
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd );
 void Usage(char *str);
@@ -180,7 +180,7 @@ void Usage(char *str)
    fprintf(stderr, "where options are:\n");
    fprintf(stderr, "-s num        Start extracting at video frame (num)\n");
    fprintf(stderr, "-c num        Extract (num) frames of audio\n");
-   fprintf(stderr, "-v num        verbose level\n");
+   fprintf(stderr, "-v num        verbose level [0..2]\n");
  
    exit(0);
 }
@@ -204,6 +204,8 @@ char    **argv;
 
 	   case 'v':
 		verbose = atoi(optarg);
+		if( verbose < 0 || verbose > 2 )
+			Usage(argv[0]);
 		break;
 	   case 's':
 		start_frame = atoi(optarg);
@@ -221,6 +223,8 @@ char    **argv;
 
 	if( argc-optind < 1)
 		Usage(argv[0]);
+
+	(void)mjpeg_default_handler_verbosity(verbose);
 
     read_video_files(argv + optind, argc - optind, &el);
 

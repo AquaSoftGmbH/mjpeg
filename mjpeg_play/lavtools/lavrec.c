@@ -1365,8 +1365,8 @@ int main(int argc, char ** argv)
 	res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
 
 	if(res<0) mjpeg_error("getting video parameters: %s\n",sys_errlist[errno]);
-	/*bparm.input = input;
-	  bparm.norm = norm;*/
+	bparm.input = input;
+	bparm.norm = norm;
 	bparm.decimation = 0;
 	bparm.quality    = quality;
 

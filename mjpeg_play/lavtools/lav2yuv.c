@@ -114,7 +114,7 @@ unsigned char *double_buf[3];
 unsigned char luma_blank[768 * 480];
 unsigned char chroma_blank[768 * 480];
 
-int verbose = 2;
+int verbose = 1;
 
 EditList el;
 
@@ -659,6 +659,8 @@ char *argv[];
    if (nerr)
       Usage(argv[0]);
 
+   (void)mjpeg_default_handler_verbosity(verbose);
+
 
    /* Open editlist */
 
@@ -753,6 +755,5 @@ char *argv[];
    init();
    if (delta_lum_threshold != -1) streamout();
    else write_edit_list(param_scenefile, 0, el.video_frames, &el);
-
    return 0;
 }
