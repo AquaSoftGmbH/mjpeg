@@ -328,7 +328,7 @@ void VideoStream::Close()
 {
 
 	bs.Close();
-    stream_length = (unsigned int)(AU_start / 8);
+    stream_length = (unsigned int)(bs.bitcount() / 8);
     for (int i=0; i<4; i++)
 	{
 		avg_frames[i] /= num_frames[i] == 0 ? 1 : num_frames[i];
@@ -343,7 +343,7 @@ void VideoStream::Close()
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
 	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
-    mjpeg_info ("Video Stream length: %11llu bytes",stream_length);
+    mjpeg_info ("Video Stream length: %11llu bytes", stream_length);
     mjpeg_info ("Sequence headers: %8u",num_sequence);
     mjpeg_info ("Sequence ends   : %8u",num_seq_end);
     mjpeg_info ("No. Pictures    : %8u",num_pictures);

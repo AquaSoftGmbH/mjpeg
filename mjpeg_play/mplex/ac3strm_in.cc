@@ -182,7 +182,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		{
 			if( !bs.eos()   )
 			{
-				mjpeg_error_exit1( "Can't find next AC3 frame - broken bit-stream?" );
+				mjpeg_error_exit1( "Can't find next AC3 frame @ %lld %04x - broken bit-stream?", AU_start, syncword );
             }
             break;
 		}
@@ -195,7 +195,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
             (framesize_code&1) && frequency == 1 ?
             (framesize + 1) << 1:
             (framesize <<1);
-        
 		access_unit.start = AU_start;
 		access_unit.length = framesize;
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
