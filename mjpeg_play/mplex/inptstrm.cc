@@ -486,7 +486,7 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 			fields_presented += 2;
 		}
 		PTS = static_cast<clockticks>
-			((frames2field*2 + frames3field*3 + group_start_field) * (double)(CLOCKS/2) / frame_rate);
+			((frames2field*2 + frames3field*3 + group_start_field+1) * (double)(CLOCKS/2) / frame_rate);
 		access_unit.porder = temporal_reference + group_start_pic;
 	}
 	else 
@@ -494,7 +494,7 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 		DTS = static_cast<clockticks> 
 			(decoding_order * (double)CLOCKS / frame_rate);
 		PTS = static_cast<clockticks>
-			((temporal_reference + group_start_pic) * (double)CLOCKS / frame_rate);
+			((temporal_reference + group_start_pic+1) * (double)CLOCKS / frame_rate);
 		fields_presented += 2;
 	}
 
