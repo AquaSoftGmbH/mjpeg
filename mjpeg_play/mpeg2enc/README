@@ -53,7 +53,8 @@ Usage: ./mpeg2enc [params] inputfiles
    -m num     MPEG level (1 or 2) default: 1
    -b num     Bitrate in KBit/sec (default: 1152 KBit/s)
    -q num     Quality factor [1..31] (1 is best, no default)
-              Bitrate and Quality are mutually exclusive!
+	      This option selects a simple form of variable-bit-rate encoding
+	      -q and -b are mutually exclusive.
    -o name    Outputfile name (REQUIRED!!!)
    -r num     Search radius [0..32] (default 0: don't search at all)
    -s num     Special output format option:
@@ -173,7 +174,7 @@ material comes late in the frame.
 These modifications appear to give noticeable better results, greatly
 reducing fringes around sharp contrasts (e.g. titles).  
 
-
+Update: the new metrics still need a little more tuning.
 
 PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul 2000)
 
@@ -195,7 +196,8 @@ for computing a sum of absolute differences of 8-bit packed data.  They
 might as well have gone the whole hog and called it "MPEGMOTIONCOMP"...
 Chris Atenasio's code works like lightning and was also adapted for
 fast motion compensation search by yours truly.  Speed up is better than
-100% (more than twice as fast).
+100% (more than twice as fast).  Its even a bit quicker now due
+to some tuning by yours truly.
 
 There have also been some gross-me-out hacky optimisations made
 to the non-MMX code to make it run better on modern pipelined CPU's.
@@ -219,27 +221,36 @@ with real-time pretensions.  However, to get the additional factor of
 2-3 needed to allow real-time compression on a single modern GHz CPU
 other parts of the program would need to be investigated too...
 
-Profiling reveals that the next targets for "MMX magic" should be
-the quantisation and block coefficient summing routines.
+One possibility it sliding search windows based on previous motion
+compensations to keep search *small*...
+
 
 BETTER QUALITY?
 
-- There is a lot of room for improvements to bit-allocation.
+- There is still a lot of room for improvements to bit-allocation.
+The most interesting issue would be to find a reasonable quality
+metric and allow constant quality (variable bit-rate) encoding.
+The current "Quality factor"  method is just constant quantisation
+which is only a coarse approximation to constant quality.  One
+possibility would be to compare reconstructed blocks with the
+originals and take a second pass, reducing quantisation on those
+with unacceptably low SNR's.
+
 
 - It would probably be smart to replace the current pre-processor
 filtering with filtering based on modifications of the DCT quantisation
 matrices.   Strong suppression of HF coefficients would work wonders
-on noise I suspect....
+on noise I suspect.  Update: either I'm doing it wrong or it doesn't
+work too well.  One problem is the lack of filtering messing up 
+motion compensation.
 
 
 
 TODO
 
 The new quantizer is only used on the most crucial (non-intra frame) routine.
-It needs to be adopted for all of them.
-
-Handling of clipping/saturation in quantization should be improved in line
-with Juan Romero's suggestions to the bbmpeg prohect.
+It needs to be converted into a more efficient fully table-driven
+form and adapted for intra frames too.
 
 THE BIGGY: Brent Byeler's hard work to support variable bit-rate SVCD
 and MPEG-2 properly in the mpeg2enc / aenc / mplex derived "bbmpeg"
