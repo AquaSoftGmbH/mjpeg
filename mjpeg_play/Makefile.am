@@ -32,6 +32,7 @@ EXTRA_DIST = \
 	README.lavpipe \
 	README.transist \
 	TODO \
+	cpuinfo.sh \
 	mjpeg_howto.txt \
 	mjpegtools.spec \
 	mjpegtools.spec.in \
