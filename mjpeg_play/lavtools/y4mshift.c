@@ -384,8 +384,7 @@ static void usage(void)
 	fprintf(stderr, "%s:\t-b creates black border\n", __progname);
 	fprintf(stderr, "%s:\t\tusage is same as yuvdenoise.\n", __progname);
 	fprintf(stderr, "%s:\tShifting is done before border creation\n", __progname);
-        fprintf(stderr, "%s:\t-v progress report every 100 frames\n", 
-                __progname);
+        fprintf(stderr, "%s:\t-v print input stream info\n", __progname);
         fprintf(stderr, "%s:\t-h print this usage summary\n", __progname);
         exit(1);
         }
