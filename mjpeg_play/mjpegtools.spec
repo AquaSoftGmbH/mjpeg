@@ -1,6 +1,6 @@
 %define name    mjpegtools
-%define version 1.5
-%define release 20011206
+%define version 1.6.0
+%define release beta1
 %define prefix  /usr
 
 Name:           %name
@@ -11,9 +11,9 @@ License:	GPL
 Url:		http://mjpeg.sourceforge.net/
 Group:		Video
 Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}-%{release}.tar.gz
-Source1:	http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.4-patched.tar.gz
-Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.2a.tar.gz
-Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.3a.tar.gz
+Source1:	http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.4-patched-2.tar.gz
+Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3.tar.gz
+Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 BuildRequires:  XFree86-devel automake >= 1.5
 Prefix:		%{prefix}
@@ -29,7 +29,7 @@ encoded into mpeg1/2 or divx video.
 %prep
  [ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
  && rm -rf ${RPM_BUILD_ROOT}/
-%setup -b 3 -n jpeg-mmx
+%setup -b 3 -n jpeg-mmx-0.1.4
 %configure
 make libjpeg-mmx.a
 
@@ -37,7 +37,7 @@ make libjpeg-mmx.a
 %configure
 make
 
-%setup -b 2 -n libmovtar
+%setup -b 2 -n libmovtar-0.1.3
 %configure --prefix=%{prefix}
 make
 make DESTDIR=${RPM_BUILD_ROOT} install  
@@ -45,9 +45,9 @@ make DESTDIR=${RPM_BUILD_ROOT} install
 %setup -b 0 -n mjpegtools-%{version}-%{release}
 ./configure --prefix=%{prefix} \
 	--with-quicktime=`pwd`/../quicktime4linux-1.4-patch \
-	--with-jpeg-mmx=`pwd`/../jpeg-mmx \
-	--with-movtar-prefix=`pwd`/../libmovtar \
-	--with-movtar-exec-prefix=%{prefix} \
+	--with-jpeg-mmx=`pwd`/../jpeg-mmx-0.1.4 \
+	--with-movtar-prefix=`pwd`/../libmovtar-0.1.3 \
+	--with-movtar-exec-prefix=${RPM_BUILD_ROOT}%{prefix} \
 	--enable-large-file --enable-cmov-extension
 %build
 make
@@ -70,11 +70,15 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} install
 %{_bindir}/jpeg2yuv
 %{_bindir}/divxdec
 %{_bindir}/testrec
+%{_bindir}/y4m*
+%{_bindir}/ppm*
 %{_bindir}/glav
 %{_bindir}/ypipe
 %{_bindir}/mp*
 %{_bindir}/*.flt
 %{_bindir}/movtar_*
+%{_bindir}/pnm2rtj
+%{_bindir}/rtjshow
 %{_libdir}/*.so*
 %{_libdir}/*.la*
 %{prefix}/man/man1/*
@@ -92,6 +96,8 @@ of the mjpegtools package.
 %files devel
 %{_bindir}/*-config
 %{_includedir}/mjpegtools/*.h
+%{_includedir}/movtar.h
+%{prefix}/share/aclocal/*.m4
 %{_libdir}/*.a
 
 %changelog
