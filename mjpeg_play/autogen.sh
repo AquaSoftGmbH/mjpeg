@@ -49,19 +49,27 @@ grep "^AM_GNU_GETTEXT" $srcdir/configure.in >/dev/null && {
 (automake --version) < /dev/null > /dev/null 2>&1 || {
   echo
   echo "**Error**: You must have \`automake' installed to compile pinfo."
-  echo "Get ftp://ftp.gnu.org/pub/gnu/automake-1.3.tar.gz"
-  echo "(or a newer version if it is available)"
+  echo "Get ftp://ftp.gnu.org/pub/gnu/automake"
   DIE=1
   NO_AUTOMAKE=yes
 }
 
+automakevermin=`(automake --version|head -n 1|sed 's/^.* //;s/\./ /g;';echo "1 5")|sort -n|head -n 1`
+if test "x$automakevermin" != "x1 5"; then
+# version is less than 1.5, the minimum suitable version
+  echo
+  echo "You must have automake version 1.5 or greater installed."
+  echo "Download the appropriate package for your distribution,"
+  echo "or get the source tarball at ftp://ftp.gnu.org/pub/gnu/automake/"
+  DIE=1
+fi
 
 # if no automake, don't bother testing for aclocal
 test -n "$NO_AUTOMAKE" || (aclocal --version) < /dev/null > /dev/null 2>&1 || {
   echo
   echo "**Error**: Missing \`aclocal'.  The version of \`automake'"
   echo "installed doesn't appear recent enough."
-  echo "Get ftp://ftp.gnu.org/pub/gnu/automake-1.3.tar.gz"
+  echo "Get ftp://ftp.gnu.org/pub/gnu/automake"
   echo "(or a newer version if it is available)"
   DIE=1
 }
