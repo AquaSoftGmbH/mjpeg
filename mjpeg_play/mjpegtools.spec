@@ -1,6 +1,6 @@
 %define name    mjpegtools
 %define version 1.6.0
-%define release rc1
+%define release rc2
 %define prefix  /usr
 
 Name:           %name

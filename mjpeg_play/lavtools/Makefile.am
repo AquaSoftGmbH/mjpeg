@@ -5,8 +5,8 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(MOVTAR_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
-        $(DV_CFLAGS) -I /usr/X11R6/include -I$(top_srcdir)/utils \
+	$(MOVTAR_CFLAGS) $(DV_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
+        -I /usr/X11R6/include -I$(top_srcdir)/utils \
 	$(AVIPLAY_CFLAGS) ${GTK_CFLAGS}
 
 # *********************************************************************

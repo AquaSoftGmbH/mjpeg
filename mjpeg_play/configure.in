@@ -4,7 +4,7 @@ AC_INIT(lavtools/lav_io.c)
 MJPEG_MAJOR_VERSION=1
 MJPEG_MINOR_VERSION=6
 MJPEG_MICRO_VERSION=0
-MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION-rc1
+MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION-rc2
 
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(mjpegtools, $MJPEG_VERSION)
@@ -397,7 +397,7 @@ if test x$with_dv = xyes ; then
 *** A directory must be specified for the --with-dv option.])
 else if test x$with_dv = x ; then
   with_dv_l=/usr/local/lib
-  with_dv_i=/usr/local/include/libdv
+  with_dv_i=/usr/local/include
 fi
 fi
 have_dv=false
