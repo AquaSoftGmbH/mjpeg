@@ -25,7 +25,6 @@
 
 #include "altivec_motion.h"
 #include "vectorize.h"
-#include "../fastintfns.h"
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
