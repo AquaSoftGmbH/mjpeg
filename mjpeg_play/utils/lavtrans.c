@@ -88,6 +88,7 @@ static struct
 
 static char abuff[16384];
 
+int	verbose = 2;
 
 void Usage(char *str)
 {
@@ -100,6 +101,7 @@ void Usage(char *str)
    fprintf(stderr,"          -f w    output WAV file (sound only!)\n");
    exit(1);
 }
+
 
 void system_error(char *str1, char *str2)
 {

@@ -42,6 +42,8 @@
 #include "config.h"
 #include "global.h"
 
+int verbose = 2;
+
 /* private prototypes */
 static void init _ANSI_ARGS_((void));
 static void readparmfile();
