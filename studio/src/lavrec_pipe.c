@@ -446,7 +446,7 @@ void create_child()
 	{ lavrec_command[n] = "--use-read"; n++; }
 	if (file_flush > 0)
 	{
-		lavrec_command[n] = "--file_flush"; n++;
+		lavrec_command[n] = "--file-flush"; n++;
 		sprintf(lavrec_ff, "%d", file_flush);
 		lavrec_command[n] = lavrec_ff; n++;
 	}
