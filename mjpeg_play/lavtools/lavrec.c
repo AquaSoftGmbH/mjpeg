@@ -119,7 +119,7 @@ ReadInteger(char *string, char **NextString)
 		return (-Result);
 }
 
-int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned int *height)
+static int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned int *height)
 {
 	int mask = NoValue;
 	register char *strind;
@@ -212,7 +212,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
    Parse the X-style geometry string
 */
 
-int parse_geometry (char *geom, int *x, int *y, int *width, int *height)
+static int parse_geometry (char *geom, int *x, int *y, int *width, int *height)
 {
 	return XParseGeometry (geom, x, y, width, height);
 }
@@ -302,8 +302,8 @@ static void output_stats(video_capture_stats *stats)
       sprintf(infostring, "%06d frames captured, press enter for more>", stats->num_frames);
     else
       sprintf(infostring,
-        "%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4u ins:%3u del:%3u "
-        "ae:%3u td1=%.3f td2=%.3f\r",
+        "%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
+        "ae:%3d td1=%.3f td2=%.3f\r",
         nh, nm, ns, nf, 
         (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
         stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);

@@ -42,20 +42,19 @@ enum {
 enum {
    LAVREC_STATE_STOP      = 0,
    LAVREC_STATE_PAUSED    = 1,
-   LAVREC_STATE_RECORDING = 2,
-   LAVREC_STATE_QUIT      = 3
+   LAVREC_STATE_RECORDING = 2
 };
 
 typedef struct {
    int stats_changed;           /* has anything bad happened? */
 
-   int num_frames;              /* Number of video frames captured until now  */
-   int num_syncs;               /* Number of MJPIOC_SYNC ioctls               */
-   int num_lost;                /* Number of frames lost                      */
-   int num_asamps;              /* Number of frames written to file           */
-   int num_ins;                 /* Number of frames inserted for sync         */
-   int num_del;                 /* Number of frames deleted for sync          */
-   int num_aerr;                /* Number of audio buffers in error           */
+   unsigned int num_frames;     /* Number of video frames captured until now  */
+   unsigned int num_syncs;      /* Number of MJPIOC_SYNC ioctls               */
+   unsigned int num_lost;       /* Number of frames lost                      */
+   unsigned int num_asamps;     /* Number of frames written to file           */
+   unsigned int num_ins;        /* Number of frames inserted for sync         */
+   unsigned int num_del;        /* Number of frames deleted for sync          */
+   unsigned int num_aerr;       /* Number of audio buffers in error           */
 
    int current_output_file;     /* the number of the current file             */
    char output_filename[1024];  /* name of current recording file             */
@@ -70,9 +69,9 @@ typedef struct {
 
 typedef struct {
    int x;                       /* x-positions */
-   int y;                       /* y-position */
-   int w;                       /* width */
-   int h;                       /* height */
+   int y;                       /* y-position  */
+   int w;                       /* width       */
+   int h;                       /* height      */
 } rect;
 
 
@@ -113,7 +112,7 @@ typedef struct {
    void (*msg_callback)(int type, char* message);              /* callback for error/info/warn messages */
    void (*state_changed)(int new_state);                       /* changed state */
 
-   void *settings; /* private info - don't touch :-) (type video_capture_setup) */
+   void *settings;              /* private info - don't touch :-) (type video_capture_setup) */
 } lavrec_t;
 
 

@@ -163,7 +163,7 @@ static void lavrec_change_state(lavrec_t *info, int new_state)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
-   settings->state = new_state==LAVREC_STATE_QUIT ? LAVREC_STATE_STOP : new_state;
+   settings->state = new_state;
    if (info->state_changed)
       info->state_changed(new_state);
 }
@@ -704,7 +704,7 @@ static int lavrec_output_audio_samples(lavrec_t *info, char *buff, long samps)
    }
 
    /* diff samples go to old file */
-   if (lavrec_output_audio_to_file(info, buff, diff, 1))
+   if (!lavrec_output_audio_to_file(info, buff, diff, 1))
       return 0;
 
    /* close old file */
@@ -1339,6 +1339,7 @@ static void lavrec_recording_cycle(lavrec_t *info)
 
 static void lavrec_capture_thread(void *arg)
 {
+   int n;
    lavrec_t *info = (lavrec_t*)arg;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -1381,7 +1382,20 @@ static void lavrec_capture_thread(void *arg)
       }
    }
 
-   lavrec_change_state(info, LAVREC_STATE_QUIT);
+   /* stop streaming capture */
+   n = -1;
+   if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &n) < 0)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
+   }
+
+   /* and at last, we need to get rid of the video device */
+   close(settings->video_fd);
+
+   /* just to be sure */
+   if (settings->state != LAVREC_STATE_STOP)
+      lavrec_change_state(info, LAVREC_STATE_STOP);
 }
 
 
