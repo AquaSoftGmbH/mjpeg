@@ -1,5 +1,6 @@
 #include "config.h"
 #include <limits.h>
+#include <math.h>
 #include "mmxsse_motion.h"
 #include "fastintfns.h"
 

@@ -10,6 +10,7 @@ noinst_LIBRARIES = libmmxsse.a
 
 libmmxsse_a_SOURCES = \
 	motion.c \
+	mmxsse_motion.h \
 	mblock_sumsq_mmx.s \
 	mblock_bsumsq_mmx.s \
 	mblock_bsad_mmx.s \
@@ -18,7 +19,7 @@ libmmxsse_a_SOURCES = \
 	build_sub44_mests.c \
 	build_sub22_mests.c \
 	find_best_one_pel.c \
-    mblock_sub44_sads_x86.c \
+	mblock_sub44_sads_x86.c \
 	mblock_sub44_sads_x86.h
 
 EXTRA_DIST = .cvsignore  mblock_sub44_sads_x86_h.c 

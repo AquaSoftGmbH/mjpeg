@@ -39,8 +39,8 @@ mpeg2enc_REF = quantize_ref.c  quantize_ref.h transfrm_ref.c transfrm_ref.h \
 mpeg2enc_SOURCES = mpeg2enc.cc conform.cc putseq.cc putpic.cc puthdr.cc putmpg.cc \
 	 putvlc.cc putbits.cc motionest.cc predict.cc readpic.cc writepic.cc transfrm.cc \
 	quantize.cc ratectl.cc stats.cc synchrolib.cc \
-	macroblock.hh macroblock.cc picture.hh \
-	global.h mpeg2enc.h vlc.h \
+	macroblock.hh macroblock.cc picture.hh ratectl.hh \
+	global.h mpeg2enc.h vlc.h syntaxparams.h tables.h \
 	simd.h synchrolib.h $(mpeg2enc_REF) $(mpeg2enc_SIMD)
 
 mpeg2enc_DEPENDENCIES = $(top_builddir)/utils/libmjpegutils.a \

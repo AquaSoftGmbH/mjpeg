@@ -2,8 +2,8 @@ dnl Process this file with autoconf to produce a configure script.
 AC_INIT(lavtools/lav_io.c)
 
 MJPEG_MAJOR_VERSION=1
-MJPEG_MINOR_VERSION=7
-MJPEG_MICRO_VERSION=0
+MJPEG_MINOR_VERSION=6
+MJPEG_MICRO_VERSION=2
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADER(config.h)
@@ -36,8 +36,6 @@ AC_ARG_ENABLE(cmov-extension,
   [  --enable-cmov-extension,          use the cmov instruction.])
 AC_ARG_ENABLE(simd-accel,
   [  --enable-simd-accel,              use SIMD multimedia instructions (MMX,AltiVec etc) if possible])
-AC_ARG_WITH(jpeg-mmx,
-  [  --with-jpeg-mmx,                  use the mmx accelerated jpeg lib])
 AC_ARG_WITH(quicktime,
   [  --with-quicktime,                 quicktime support for record/playback])
 AC_ARG_WITH(dv,
