@@ -192,7 +192,7 @@ void open_about_menu(GtkWidget *widget, gpointer data)
 
 	label = gtk_label_new("Linux Video Studio " VERSION "\n\n" \
 		"Created by:\nRonald Bultje <rbultje@ronald.bitfreak.net>\n" \
-		"Bernhard Praschinger <praschinger@netway.at>\n\n" \
+		"Bernhard Praschinger <shadowlord@utanet.at>\n\n" \
 		"Images by Laurens Buhler <law@nixhelp.org>\n");
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	gtk_widget_show(label);
@@ -226,7 +226,7 @@ void open_help_menu(GtkWidget *widget, gpointer data)
 		"<mjpeg-users@lists.sourceforge.net>\n\n" \
 		"Or contact the developers individually:\n" \
 		"Ronald Bultje <rbultje@ronald.bitfreak.net>\n" \
-		"Bernhard Praschinger <praschinger@netway.at>");
+		"Bernhard Praschinger <shadowlord@utanet.at>");
 	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	gtk_widget_show(label);
 

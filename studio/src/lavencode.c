@@ -101,6 +101,7 @@ void create_mplex_options (GtkWidget *table);
 void encode_all (GtkWidget *widget, gpointer data);
 void create_buttons1 (GtkWidget *hbox1);
 void create_buttons2 (GtkWidget *hbox1);
+void create_buttons3 (GtkWidget *hbox1);
 void create_mplex (GtkWidget *table);
 void create_status (GtkWidget *hbox1, GtkWidget *vbox);
 void create_option_button(GSList *task_group, GtkWidget *table, 
@@ -1388,6 +1389,18 @@ void create_buttons2 (GtkWidget *hbox1)
   gtk_widget_show(set_defaults);
 }
 
+/* Create the 3rd line iwth the distributed encoding and batch buttons */
+void create_buttons3 (GtkWidget *hbox1)
+{
+GtkWidget *distribute;
+
+  distribute = gtk_button_new_with_label ("Distributed encoding setup");
+  gtk_signal_connect (GTK_OBJECT (distribute), "clicked",
+		  GTK_SIGNAL_FUNC (open_distributed_window), NULL);
+  gtk_box_pack_start (GTK_BOX (hbox1), distribute, TRUE, TRUE, 0);
+  gtk_widget_show(distribute);
+}
+
 /* Here some parts of status layout are done */
 void create_status (GtkWidget *hbox1, GtkWidget *vbox)
 {
@@ -1659,6 +1672,12 @@ int enc_x,enc_y;
   /* 2nd Line with the load and Save layout */
   hbox1 = gtk_hbox_new (TRUE, 20);
   create_buttons2 (hbox1);
+  gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
+  gtk_widget_show (hbox1);
+
+  /* 3rd Line with the dirtibuted encoding, and batchlayout */
+  hbox1 = gtk_hbox_new (TRUE, 20);
+  create_buttons3 (hbox1);
   gtk_box_pack_start (GTK_BOX (vbox), hbox1, TRUE, TRUE, 0);
   gtk_widget_show (hbox1);
 

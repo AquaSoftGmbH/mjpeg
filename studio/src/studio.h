@@ -96,6 +96,26 @@ struct encodingoptions encoding_svcd; /* for mpeg2 */
 struct encodingoptions encoding_divx; /* for divx */
 struct encodingoptions encoding_yuv2lav; /* for yuv2lav */
 
+/* Struct that holds the machine that thas to do the task */
+struct machine {  int lav2wav;
+                  int mp2enc;
+                  int lav2yuv;
+                  int yuvdenoise;
+                  int yuvscaler;
+                  int mpeg2enc;
+                  int yuv2divx;
+                  int yuv2lav;
+               };
+/************************* END *********************/
+struct machine machine4mpeg1;
+struct machine machine4mpeg2;
+struct machine machine4vcd;
+struct machine machine4svcd;
+struct machine machine4divx;
+struct machine machine4yuv2lav;
+
+GList *machine_names;
+
 char *record_dir;
 int scene_detection_width_decimation;
 int scene_detection_treshold;
@@ -142,6 +162,9 @@ GtkWidget *create_lavencode_layout(void);
 
 /* lavencode_mpeg.c */
 void open_mpeg_window(GtkWidget *widget, gpointer data);
+
+/* lavencode_distributed.c */
+void open_distributed_window(GtkWidget *widget, gpointer data);
 
 /* studio.c */
 void global_open_location(char *location);
