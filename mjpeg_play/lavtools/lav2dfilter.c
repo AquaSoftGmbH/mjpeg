@@ -14,7 +14,13 @@ int	read_frame(int fd, int chroma, int width, int height, unsigned char *frame[]
 int	write_frame(int fd, int chroma, int width, int height, unsigned char *frame[]);
 int	piperead(int fd, char *buf, int len);
 void	filter(int width, int height, int chroma, unsigned char *input[], unsigned char *output[]);
-void	filter_buffer(int width, int height, unsigned char *input, unsigned char *output);
+void	filter_buffer(int width, int height, int radus, int threshold, unsigned char *input, unsigned char *output);
+
+int	threshold_luma = 16;
+int	threshold_chroma = 16;
+
+int	radus_luma = 1;
+int	radus_chroma = 1;
 
 int
 main(int argc, char *argv[])
@@ -207,38 +213,63 @@ piperead(int fd, char *buf, int len)
 void
 filter(int width, int height, int chroma, unsigned char *input[], unsigned char *output[])
 {
-	filter_buffer(width, height, input[0], output[0]);
-	filter_buffer(width/2, height/2, input[1], output[1]);
-	filter_buffer(width/2, height/2, input[2], output[2]);
+	filter_buffer(width, height, radus_luma, threshold_luma, input[0], output[0]);
+	filter_buffer(width/2, height/2, radus_chroma, threshold_chroma, input[1], output[1]);
+	filter_buffer(width/2, height/2, radus_chroma, threshold_chroma, input[2], output[2]);
 }
 
 void
-filter_buffer(int width, int height, unsigned char *input, unsigned char *output)
+filter_buffer(int width, int height, int radus, int threshold, unsigned char *input, unsigned char *output)
 {
 	int	x;
 	int	y;
-	int	new;
 	int	diff;
+	int	reference;
+	int	total;
+	int	count;
+	int	lowx;
+	int	lowy;
+	int	highx;
+	int	highy;
+	int	a;
+	int	b;
+	unsigned char *pixel;
 
 	for(y=0; y < height; y++) {
 		for(x=0; x < width; x++) {
-			new = ( input[(y-1) * width + (x-1)] +
-				input[(y-1) * width + (x+0)] +
-				input[(y-1) * width + (x+1)] +
+			lowx = -radus;
+			highx = radus;
 
-				input[(y) * width + (x-1)] +
-				input[(y) * width + (x+0)] +
-				input[(y) * width + (x+1)] +
+			lowy = - radus;
+			highy = radus;
 
-				input[(y+1) * width + (x-1)] +
-				input[(y+1) * width + (x+0)] +
-				input[(y+1) * width + (x+1)]) / 9;
+			if (x + lowx < 0)
+				lowx = 0;
+			if (x + highx > width-1)
+				highx = (width - 1) - x;
 
-			diff = new - input[(y * width) + x];
-			if (abs(diff) > 16) 
-				output[y * width + x] = input[y * width + x];
-			else
-				output[y * width + x] = new;
+			if (y + lowy < 0)
+				lowy = 0;
+			if (y + highy > height-1)
+				highy = (height-1) - y;
+
+			total = input[width * y + x];
+			reference = total;
+			count = 1;
+
+			for(b=lowy; b < highy; b++) {
+//				pixel = &input[y * width + lowx];
+				for(a = lowx; a < highx; a++) {
+					pixel = &input[(y + b) * width + x + lowx];
+					diff = reference - *pixel;
+					if (diff > threshold || diff < -threshold)
+						continue;
+
+					total += *pixel;
+					count++;
+				}
+			}
+			output[width * y + x] = total / count;
 		}
 	}
 }
