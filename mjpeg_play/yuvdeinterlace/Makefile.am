@@ -8,6 +8,13 @@ LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 
 bin_PROGRAMS = yuvdeinterlace
 
+noinst_HEADERS = \
+	blend_fields.h \
+	copy_frame.h \
+	interleave.h \
+	sinc_interpolation.h \
+	transform_block.h
+
 yuvdeinterlace_SOURCES = blend_fields.c \
 	copy_frame.c \
 	interleave.c \
