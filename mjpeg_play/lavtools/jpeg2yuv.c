@@ -58,6 +58,7 @@ typedef struct _parameters {
 
   int width;
   int height;
+  int loop;
 } parameters_t;
 
 
@@ -85,6 +86,7 @@ static void usage(char *prog)
 	  "usage: %s [ options ]\n"
 	  "\n"
 	  "where options are ([] shows the defaults):\n"
+	  "  -l num        loop 1=forever, n >= 2 n-times        \n"
 	  "  -v num        verbosity (0,1,2)                  [1]\n"
 	  "  -b framenum   starting frame number              [0]\n"
 	  "  -f framerate  framerate for output stream (fps)     \n"
@@ -137,10 +139,11 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   param->interlace = Y4M_UNKNOWN;
   param->interleave = -1;
   param->verbose = 1;
+  param->loop = 0;
 
   /* parse options */
   for (;;) {
-    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:")))
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:l:")))
       break;
     switch (c) {
     case 'j':
@@ -180,6 +183,11 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       param->verbose = atoi(optarg);
       if (param->verbose < 0 || param->verbose > 2) 
 	mjpeg_error_exit1( "-v option requires arg 0, 1, or 2");    
+      break;     
+    case 'l':
+      param->loop = atoi(optarg);
+      if  (param->loop == 0) 
+	mjpeg_error_exit1( "-l option requires a number greater than 0");    
       break;     
     case 'h':
     default:
@@ -283,10 +291,14 @@ static int generate_YUV4MPEG(parameters_t *param)
   size_t jpegsize;
   char jpegname[FILENAME_MAX];
   FILE *jpegfile;
+  int loops;                                 /* number of loops to go */
   uint8_t *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
   static uint8_t jpegdata[MAXPIXELS];  /* that ought to be enough */
   y4m_stream_info_t streaminfo;
   y4m_frame_info_t frameinfo;
+  loops = param->loop;
+
+  mjpeg_info("Number of Loops %i", loops);
 
   mjpeg_info("Now generating YUV4MPEG stream.");
   y4m_init_stream_info(&streaminfo);
@@ -303,76 +315,82 @@ static int generate_YUV4MPEG(parameters_t *param)
 
   y4m_write_stream_header(STDOUT_FILENO, &streaminfo);
  
-  for (frame = param->begin;
-       (frame < param->numframes + param->begin) || (param->numframes == -1);
-       frame++) {
-
-    snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
-    jpegfile = fopen(jpegname, "rb");
-    
-    if (jpegfile == NULL) { 
-      mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
-      if (param->numframes == -1) {
-	mjpeg_info("No more frames.  Stopping.");
-	break;  /* we are done; leave 'while' loop */
-      } else {
-	mjpeg_info("Rewriting latest frame instead.");
-      }
-    } else {
-      mjpeg_debug("Preparing frame");
-      
-      jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
-      fclose(jpegfile);
-      
-      /* decode_jpeg_raw:s parameters from 20010826
-       * jpeg_data:       buffer with input / output jpeg
-       * len:             Length of jpeg buffer
-       * itype:           0: Interleaved/Progressive
-       *                  1: Not-interleaved, Top field first
-       *                  2: Not-interleaved, Bottom field first
-       * ctype            Chroma format for decompression.
-       *                  Currently always 420 and hence ignored.
-       * raw0             buffer with input / output raw Y channel
-       * raw1             buffer with input / output raw U/Cb channel
-       * raw2             buffer with input / output raw V/Cr channel
-       * width            width of Y channel (width of U/V is width/2)
-       * height           height of Y channel (height of U/V is height/2)
-       */
-
-      if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
-	mjpeg_info("Processing non-interlaced/interleaved %s, size %ul.", 
-		   jpegname, jpegsize);
-	decode_jpeg_raw(jpegdata, jpegsize,
-			0, 420, param->width, param->height,
-			yuv[0], yuv[1], yuv[2]);
-      } else {
-	switch (param->interlace) {
-	case Y4M_ILACE_TOP_FIRST:
-	  mjpeg_info("Processing interlaced, top-first %s, size %ul.",
-		     jpegname, jpegsize);
-	  decode_jpeg_raw(jpegdata, jpegsize,
-			  LAV_INTER_TOP_FIRST,
-			  420, param->width, param->height,
-			  yuv[0], yuv[1], yuv[2]);
-	  break;
-	case Y4M_ILACE_BOTTOM_FIRST:
-	  mjpeg_info("Processing interlaced, bottom-first %s, size %ul.", 
-		     jpegname, jpegsize);
-	  decode_jpeg_raw(jpegdata, jpegsize,
-			  LAV_INTER_BOTTOM_FIRST,
-			  420, param->width, param->height,
-			  yuv[0], yuv[1], yuv[2]);
-	  break;
-	default:
-	  mjpeg_error_exit1("FATAL logic error?!?");
-	  break;
-	}
-      }
-      mjpeg_debug("Frame decoded, now writing to output stream.");
-    }
-
-    y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
-  }
+  do {
+     for (frame = param->begin;
+          (frame < param->numframes + param->begin) || (param->numframes == -1);
+          frame++) {
+   
+       snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
+       jpegfile = fopen(jpegname, "rb");
+       
+       if (jpegfile == NULL) { 
+         mjpeg_info("Read from '%s' failed:  %s", jpegname, strerror(errno));
+         if (param->numframes == -1) {
+           mjpeg_info("No more frames.  Stopping.");
+           break;  /* we are done; leave 'while' loop */
+         } else {
+           mjpeg_info("Rewriting latest frame instead.");
+         }
+       } else {
+         mjpeg_debug("Preparing frame");
+         
+         jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
+         fclose(jpegfile);
+         
+         /* decode_jpeg_raw:s parameters from 20010826
+          * jpeg_data:       buffer with input / output jpeg
+          * len:             Length of jpeg buffer
+          * itype:           0: Interleaved/Progressive
+          *                  1: Not-interleaved, Top field first
+          *                  2: Not-interleaved, Bottom field first
+          * ctype            Chroma format for decompression.
+          *                  Currently always 420 and hence ignored.
+          * raw0             buffer with input / output raw Y channel
+          * raw1             buffer with input / output raw U/Cb channel
+          * raw2             buffer with input / output raw V/Cr channel
+          * width            width of Y channel (width of U/V is width/2)
+          * height           height of Y channel (height of U/V is height/2)
+          */
+   
+         if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
+           mjpeg_info("Processing non-interlaced/interleaved %s, size %ul.", 
+                      jpegname, jpegsize);
+           decode_jpeg_raw(jpegdata, jpegsize,
+                           0, 420, param->width, param->height,
+                           yuv[0], yuv[1], yuv[2]);
+         } else {
+           switch (param->interlace) {
+           case Y4M_ILACE_TOP_FIRST:
+             mjpeg_info("Processing interlaced, top-first %s, size %ul.",
+                        jpegname, jpegsize);
+             decode_jpeg_raw(jpegdata, jpegsize,
+                             LAV_INTER_TOP_FIRST,
+                             420, param->width, param->height,
+                             yuv[0], yuv[1], yuv[2]);
+             break;
+           case Y4M_ILACE_BOTTOM_FIRST:
+             mjpeg_info("Processing interlaced, bottom-first %s, size %ul.", 
+                        jpegname, jpegsize);
+             decode_jpeg_raw(jpegdata, jpegsize,
+                             LAV_INTER_BOTTOM_FIRST,
+                             420, param->width, param->height,
+                             yuv[0], yuv[1], yuv[2]);
+             break;
+           default:
+             mjpeg_error_exit1("FATAL logic error?!?");
+             break;
+           }
+         }
+         mjpeg_debug("Frame decoded, now writing to output stream.");
+       }
+   
+       y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
+     }
+ 
+     if (param->loop != 1)
+       loops--;
+ 
+  } while(loops);
   
   y4m_fini_stream_info(&streaminfo);
   y4m_fini_frame_info(&frameinfo);
@@ -407,13 +425,4 @@ int main(int argc, char ** argv)
 
   return 0;
 }
-
-
-
-
-
-
-
-
-
 
