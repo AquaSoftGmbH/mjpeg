@@ -32,7 +32,7 @@ With this packages, 'img2mpg' use this externals binary programs :
 .br 
 \- 'mp2enc' from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
 .br 
-\- 'mplex' from MjpegTools for multiplex the MPEG file and the MP2 sound and convert the final MPEG file to a XVCD/SVCD/VCD format compatible with vcdimager program.
+\- 'mplex' from MjpegTools for multiplex the MPEG file and the MP2 sound and convert the final MPEG file to a DVD/XVCD/SVCD/VCD format compatible with vcdimager program.
 .SH "DESCRIPTION"
 .LP 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific duration and merge all images on an single MPEG file. It use the MjpegTools and ImageMagick packages.
@@ -41,11 +41,11 @@ Between the images, you can insert a basic transition. You can also add an audio
 .LP 
 All images will be automatically scaling to the good size for the video format. Also a specific background color or a image file could be used.
 .LP 
-You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
+You can use this for to build some DVD/XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
 .LP 
 The video types and formats supported by this script are :
 .LP 
-VCD :
+\fBVCD\fR :
 .LP 
   Resolution : 352x288 (PAL/SECAM) / 352x240 (NTSC).
   Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
@@ -57,7 +57,7 @@ VCD :
   DVD player compatibility : medium.
   Image restitution : medium.
 .LP 
-SVCD :
+\fBSVCD\fR :
 .LP 
   Resolution : 576x480 (PAL/SECAM) / 480x480 (NTSC).
   Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
@@ -69,16 +69,28 @@ SVCD :
   DVD player compatibility : good.
   Image restitution : good.
 .LP 
-XVCD :
+\fBXVCD\fR :
 .LP 
   Resolution : 720x576 (PAL/SECAM) / 720x480 (NTSC).
   Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
   MPEG type : MPEG\-2.
-  Video CDR duration : 60mn.
+  Video CDR duration : 50mn.
   Video bitrate : 2,500 kbit/s.
   Sound format : MP2.
   Audio bitrate : 224 kbit/s.
   DVD player compatibility : medium.
+  Image restitution : excelent.
+.LP 
+\fBDVD\fR :
+.LP 
+  Resolution : 720x576 (PAL/SECAM) / 720x480 (NTSC).
+  Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
+  MPEG type : MPEG\-2.
+  Video CDR duration : 20mn.
+  Video bitrate : 8,000 kbit/s.
+  Sound format : MP2.
+  Audio bitrate : 224 kbit/s.
+  DVD player compatibility : excelent.
   Image restitution : excelent.
 
 Note : The XVCD resolution is the same of DVD !
@@ -86,7 +98,7 @@ Note : The XVCD resolution is the same of DVD !
 .LP 
 \fB\-v\fR <\fInum\fP> : verbose level on the console. The possible values are  '0' for none (default), '1' for informations and warnings, or '2' for debug messages.
 
-\fB\-\-with\-gui\fR : running with the 'kimg2mpg' KDE GUI frontend. Specifics messages will be showing on the console.
+\fB\-\-with\-gui\fR : running with the 'Kimg2mpg' KDE GUI frontend. Specifics messages will be showing on the console.
 
 \fB\-t\fR <\fInum\fP> : enable transition between images with a specific speed. The possible speed values are '1' for slow, '2', '4', '5', '10', or '20' for fast. When you enable this option, the script make with ImageMagick package a beautiful merging transition between images. Warning : it's a long calculating process.
 
@@ -106,7 +118,7 @@ Speed '20' : PAL/SECAM (25 f/s) = 0200 ms | NTSC (30 f/s) = 0166 ms.
 
 \fB\-T\fR <\fITemporary folder\fP> : use a specific folder for create the temporary files ('/tmp' for example). If you don't use this option, all temporary files will be created in the current active folder.
 
-\fB\-f\fR <\fIVideo format\fP> : MPEG video format. The possible values are 'XVCD' (default), 'SVCD', or 'VCD'. See the DESCRIPTION section for more details.
+\fB\-f\fR <\fIVideo format\fP> : MPEG video format. The possible values are 'DVD', 'XVCD' (default), 'SVCD', or 'VCD'. See the DESCRIPTION section for more details.
 
 \fB\-n\fR <\fIVideo type\fP> : video type for your TV screen. The possible values are 'PAL' (default), 'NTSC', or 'SECAM'.
 
@@ -126,7 +138,12 @@ Speed '20' : PAL/SECAM (25 f/s) = 0200 ms | NTSC (30 f/s) = 0166 ms.
 
 \fB\-h | \-\-help\fR : output help information and exit.
 
-Note : The \fB\-i\fR option must be the last option in the command line.
+Notes : 
+
+\- The \fB\-i\fR option must be the last option in the command line.
+.br 
+\- If you use some whitespaces in the path folders/files, use '"' around the complete path string.
+.br 
 .SH "RETURN VALUES"
 .LP 
 0 \-> Process finish succefuly.
