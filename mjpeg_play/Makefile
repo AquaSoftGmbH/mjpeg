@@ -13,13 +13,16 @@ M_OBJS       = movtar_play
 # uncomment if you want to use ALSA, 
 # the Advanced Linux Sound Architecture (http://alsa.jcu.cz) 
 #USE_ALSA = -DUSE_ALSA -lasound
-C_FLAGS  = `glib-config glib --cflags`
-L_FLAGS  = `glib-config glib --libs` -ljpeg -lpthread -lSDL -L./jpeg-6b-mmx
+C_FLAGS  = `glib-config glib --cflags` -pg
+L_FLAGS  = `glib-config glib --libs` -lpthread -lSDL 
 
 all:    $(M_OBJS)
 
-movtar_play: movtar.c movtar_play.c
-	gcc movtar.c movtar_play.c $(C_FLAGS) $(L_FLAGS) $(USE_ALSA) -o movtar_play
+movtar_play: movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a
+	gcc movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a $(C_FLAGS) $(L_FLAGS) $(USE_ALSA) -o movtar_play
+
+./jpeg-6b-mmx/libjpeg.a: ./jpeg-6b-mmx/jdapimin.c ./jpeg-6b-mmx/jdmerge.c ./jpeg-6b-mmx/jidctfst.c
+	cd jpeg-6b-mmx; make; cd ..; 
 
 install:
 	su -c "cp -v $(M_OBJS) /usr/local/bin/"

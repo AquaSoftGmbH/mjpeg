@@ -212,11 +212,15 @@ void readpicfrommem(void *inbuffer,int size)
   cinfo.err = jpeg_std_error(&jerr);
 	
   jpeg_create_decompress(&cinfo);
+
   jpeg_mem_src(&cinfo,inbuffer, size);
   jpeg_read_header(&cinfo, TRUE);
+
+  cinfo.out_color_space = JCS_RGB;
+  cinfo.dct_method = JDCT_IFAST;
+
   jpeg_start_decompress(&cinfo);
   
-  cinfo.out_color_space = JCS_RGB;
 
   /* lock the screen for current decompression */
   if ( SDL_MUSTLOCK(screen) ) 
@@ -244,7 +248,7 @@ void readpicfrommem(void *inbuffer,int size)
     }
 
   /* need to convert all pixels - ugh ! */
-  if (screen->format->BytesPerPixel != 0)
+  if (screen->format->BytesPerPixel != 3)
     { 
       // dprintf("Have to convert pixels - BAD for performance !");
       switch(screen->format->BytesPerPixel)
@@ -324,9 +328,9 @@ int main(int argc,char** argv)
       readnext();
       frame++;
     }
-  while((frame < 30) && !movtar_eof(movtarfile));
+  while((frame < 200) && !movtar_eof(movtarfile));
 
-  SDL_Delay(1000);        /* Wait x seconds */
+  //SDL_Delay(1000);        /* Wait x seconds */
                          
   return 0;
 }
