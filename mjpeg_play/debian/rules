@@ -110,8 +110,8 @@ binary-arch: build install
 			dh_movefiles --sourcedir=debian/inst-$$cpu ;; \
 		*) \
 			cd debian; \
-			rm -f *-$$cpu*.{docs,manpages,info}; \
-			for f in *.{docs,manpages,info}; do ln -sfn $$f `echo $$f | sed -e s/mjpegtools/mjpegtools-$$cpu/`; done; \
+			rm -f *-$$cpu*.{docs,manpages,info,postinst,prerm}; \
+			for f in *.{docs,manpages,info,postinst,prerm}; do ln -sfn $$f `echo $$f | sed -e s/mjpegtools/mjpegtools-$$cpu/`; done; \
 			cd ..; \
 			for f in debian/*.files; do mv $$f `echo $$f | sed -e s/mjpegtools/mjpegtools-$$cpu/`; done; \
 			dh_movefiles --sourcedir=debian/inst-$$cpu; \
@@ -129,7 +129,8 @@ binary-arch: build install
 #	dh_installinit
 #	dh_installcron
 	dh_installman
-	dh_installinfo
+#	dh_installinfo
+	dh_installinfo -n
 #	dh_undocumented
 	dh_installchangelogs ChangeLog
 	dh_link
@@ -143,8 +144,10 @@ binary-arch: build install
 #	dh_shlibdeps
 	for cpu in $(HOST_CPUS); do \
 		case $$cpu in \
-		$(DEB_HOST_GNU_CPU))	n=mjpegtools ;; \
-		*)			n=mjpegtools-$$cpu ;; \
+		$(DEB_HOST_GNU_CPU)) \
+			n=mjpegtools ;; \
+		*) \
+			n=mjpegtools-$$cpu ;; \
 		esac; \
 		l=lib$${n}0; \
 		LD_LIBRARY_PATH=debian/$$l/usr/lib dpkg-shlibdeps -Ldebian/$$l/DEBIAN/shlibs -Tdebian/$$n.substvars debian/$$n/usr/bin/*; \

@@ -8,4 +8,6 @@ EXTRA_DIST = \
 	mjpegtools.files \
 	mjpegtools.info \
 	mjpegtools.manpages \
+	mjpegtools.postinst \
+	mjpegtools.prerm \
 	rules

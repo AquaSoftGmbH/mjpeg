@@ -1,3 +1,10 @@
+mjpegtools (1.6.1.93-1) unstable; urgency=low
+
+  * Add mjpegtools.{postinst,prerm} to use install-info without automatically adding by dh_installinfo.
+  * Limit Build-Depends libjpeg-mmx-dev [i386] to libjpeg-mmx-dev (>= 0.1.4) [i386].
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Mon, 29 Dec 2003 14:33:58 +0900
+
 mjpegtools (1.6.1.93-0) unstable; urgency=low
 
   * New upstream release.
