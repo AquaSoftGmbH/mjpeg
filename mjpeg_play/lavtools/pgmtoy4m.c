@@ -4,20 +4,31 @@
  * pgmtoy4m converts the PGM output of "mpeg2dec -o pgmpipe" to YUV4MPEG2 on
  * stdout.
  *
- * Note: mpeg2dec uses a perversion of the PGM format - they're really not
- * "Grey Maps" but rather a catenation of the 420P data (commonly called
- * "YUV").    The type is P5 ("raw") and the number of rows is really
- * the total of the Y', Cb and Cr heights.   The Cb and Cr data is "joined"
- * together.  After the Y' rows you have 1 row of Cb and 1 row of Cr per 
- * "row" of PGM data.
+ * Note: mpeg2dec uses a rather interesting variation  of the PGM format - the
+ * output is not actually traditional "Grey Maps" but rather a catenation of 
+ * the Y'CrCb planes.  From the libmpeg2 project's video_out_pgm.c:
+ *
+ * Layout of the Y, U, and V buffers in our pgm image
+ *
+ *      YY        YY        YY
+ * 420: YY   422: YY   444: YY
+ *      UV        UV        UUVV
+ *                UV        UUVV
+ *
+ * The PGM type is P5 ("raw") and the number of rows is really the
+ * total of the Y', Cb and Cr heights.   The Cb and Cr data is "joined"
+ * together.
  *
  * NOTE: You MAY need to know the field order (top or bottom field first),
  *	sample aspect ratio and frame rate because the PGM format makes
  *	none of that information available!  There are defaults provided
  *	that hopefully will do the right thing in the common cases.
  *
- *	The defaults provided are: top field first, NTSC rate of 30000/1001
- *	frames/second, and a sample aspect of 10:11.
+ *	The defaults provided are: 4:2:0, top field first, NTSC rate of 
+ *	30000/1001 frames/second, and a sample aspect of 10:11.
+ *
+ *      If the incoming chroma space is not 4:2:0 then you MUST specify the
+ *	"-x chroma_tag" option or chaos and/or a program crash will occur.
 */
 
 #if defined(HAVE_CONFIG_H)
@@ -34,6 +45,7 @@
 #include "yuv4mpeg.h"
 
 static	void	usage(char *progname);
+static	void	chroma_usage(char *progname);
 static	int	getint(int);
 
 #define	P5MAGIC	(('P' * 256) + '5')
@@ -68,8 +80,11 @@ int
 main(int argc, char **argv)
 	{
 	int	width, height, uvlen, verbose = 1, fdout, fdin, c, i;
-	int	w2, columns, rows, maxval, magicn, frameno;
+	int	columns, rows, maxval, magicn, frameno;
+	int	ss_h, ss_v, chroma_height, chroma_width;
+	int	chroma_mode = Y4M_UNKNOWN;
 	u_char	*yuv[3];
+	char	junkbuffer[16384];
 	y4m_ratio_t	rate_ratio = y4m_fps_UNKNOWN;
 	y4m_ratio_t	aspect_ratio = y4m_sar_UNKNOWN;
 	char	ilace = Y4M_ILACE_TOP_FIRST;
@@ -79,8 +94,10 @@ main(int argc, char **argv)
 	fdin = fileno(stdin);
 	fdout = fileno(stdout);
 
+	y4m_accept_extensions(1);
+
 	opterr = 0;
-	while	((c = getopt(argc, argv, "i:a:r:hv:")) != EOF)
+	while	((c = getopt(argc, argv, "i:a:r:hv:x:")) != EOF)
 		{
 		switch	(c)
 			{
@@ -117,6 +134,15 @@ main(int argc, char **argv)
 					mjpeg_error_exit1("Invalid rate: %s",
 						optarg);
 				break;
+			case	'x':
+				chroma_mode = y4m_chroma_parse_keyword(optarg);
+				if	(chroma_mode == Y4M_UNKNOWN)
+					{
+					if	(strcmp(optarg, "help") == 0)
+						chroma_usage(argv[0]);
+					mjpeg_error_exit1("bad chroma arg");
+					}
+				break;
 			case	'h':
 			case	'?':
 			default:
@@ -124,6 +150,9 @@ main(int argc, char **argv)
 				/* NOTREACHED */
 			}
 		}
+
+	if	(chroma_mode == Y4M_UNKNOWN)
+		chroma_mode = Y4M_CHROMA_420MPEG2;
 
 	if	(isatty(fdout))
 		mjpeg_error_exit1("stdout must not be a terminal");
@@ -155,10 +184,22 @@ main(int argc, char **argv)
 		mjpeg_error_exit1("columns (%d) or rows(%d) < 0 or > 4096",
 			columns, rows);
 
+	y4m_init_frame_info(&oframe);
+	y4m_init_stream_info(&ostream);
+	y4m_si_set_chroma(&ostream, chroma_mode);
+
+	if	(y4m_si_get_plane_count(&ostream) != 3)
+		mjpeg_error_exit1("Only the 3 plane formats supported");
+
+	ss_h = y4m_chroma_ss_x_ratio(chroma_mode).d;
+	ss_v = y4m_chroma_ss_y_ratio(chroma_mode).d;
+
 	width = columns;
-	w2 = width / 2;
-	height = (rows * 2 ) / 3;
-	uvlen = w2 * (height / 2);
+	height = (rows * ss_v) / (ss_v + 1);
+	chroma_width = width / ss_h;
+	chroma_height = height / ss_v;
+	uvlen = chroma_height * chroma_width;
+
 	yuv[0] = malloc(height * width);
 	yuv[1] = malloc(uvlen);
 	yuv[2] = malloc(uvlen);
@@ -205,8 +246,6 @@ main(int argc, char **argv)
 			rate_ratio = y4m_fps_NTSC;
 			}
 		}
-	y4m_init_stream_info(&ostream);
-	y4m_init_frame_info(&oframe);
 	y4m_si_set_interlace(&ostream, ilace);
 	y4m_si_set_framerate(&ostream, rate_ratio);
 	y4m_si_set_sampleaspect(&ostream, aspect_ratio);
@@ -226,11 +265,15 @@ main(int argc, char **argv)
 	frameno = 0;
 	while	(1)	
 		{
-		piperead(fdin, yuv[0], width * height);
-		for	(i = 0; i < height / 2; i++)
+		for	(i = 0; i < height; i++)
 			{
-			piperead(fdin, yuv[1] + (i * w2), w2);
-			piperead(fdin, yuv[2] + (i * w2), w2);
+			piperead(fdin, yuv[0] + i * width, width);
+			piperead(fdin, junkbuffer, 2 * chroma_width - width);
+			}
+		for	(i = 0; i < chroma_height; i++)
+			{
+			piperead(fdin, yuv[1] + i * chroma_width, chroma_width);
+			piperead(fdin, yuv[2] + i * chroma_width, chroma_width);
 			}
 		y4m_write_frame(fdout, &ostream, &oframe, yuv);
 
@@ -257,9 +300,11 @@ static void
 usage(char *progname)
 	{
 
-	fprintf(stderr, "%s usage: [-v n] [-i t|b|p] [-a sample aspect] [-r rate]\n",
+	fprintf(stderr, "%s usage: [-v n] [-i t|b|p] [-x chroma] [-a sample aspect] [-r rate]\n",
 		progname);
 	fprintf(stderr, "%s\taspect and rate in ratio form: -a  10:11 and -r 30000:1001 or -r 25:1 for example\n", progname);
+	fprintf(stderr, "%s\t chroma default is 420mpeg2, -x help for list\n",
+		progname);
 	exit(0);
 	}
 
@@ -294,4 +339,16 @@ getint(int fd)
 			break;
 		} while (isdigit(ch));
 	return(i);
+	}
+
+void chroma_usage(char *pname)
+	{
+	int mode = 0;
+	const char *keyword;
+
+	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
+		pname);
+	for	(mode = 0; (keyword = y4m_chroma_keyword(mode)) != NULL; mode++)
+		fprintf(stderr, "\t%s - %s\n", keyword, y4m_chroma_description(mode));
+	exit(1);
 	}
