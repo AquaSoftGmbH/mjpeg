@@ -60,8 +60,8 @@
 
 #include "global.h"
 #include "motionsearch.h"
-#include <format_codes.h>
-#include <mpegconsts.h>
+#include "format_codes.h"
+#include "mpegconsts.h"
 
 int verbose = 1;
 
@@ -110,7 +110,9 @@ static int param_seq_end_every_gop = 0;
 static int param_still_size = 40*1024;
 static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
-static int param_topfirst =  1;
+static int param_force_interlacing = Y4M_UNKNOWN;
+static int param_input_interlacing;
+
 /* reserved: for later use */
 int param_422 = 0;
 
@@ -185,7 +187,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	fprintf(stderr,"   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
 	fprintf(stderr,"   -s         Include a sequence header every GOP.\n" );
-	fprintf(stderr,"   -z         Assume bottom-first rather than top-first interlaced video\n");
+	fprintf(stderr,"   -z b|t     Force playback field order of bottom or top first\n");
 	printf("   -?         Print this lot out!\n");
 	exit(0);
 }
@@ -461,6 +463,7 @@ static int check_param_constraints()
 	return nerr;
 }
 
+
 int main(argc,argv)
 	int argc;
 	char *argv[];
@@ -472,7 +475,7 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpsZNhOPz?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpsZNhOP")) != EOF)
 	{
 		switch(n) {
 
@@ -607,8 +610,15 @@ int main(argc,argv)
 			break;
 
 		case 'z' :
-			param_topfirst = 0;
-			mjpeg_info ("Setting bottom-first video\n");
+			if( strlen(optarg) != 1 || (optarg[0] != 't' && optarg[0] != 'b' ) )
+			{
+				mjpeg_error("-z option requires arg b or t\n" );
+				++nerr;
+			}
+			else if( optarg[0] == 't' )
+				param_force_interlacing = Y4M_ILACE_TOP_FIRST;
+			else if( optarg[0] == 'b' )
+				param_force_interlacing = Y4M_ILACE_BOTTOM_FIRST;
 			break;
 
 		case 'f' :
@@ -695,7 +705,7 @@ int main(argc,argv)
 
 	/* Read parameters inferred from input stream */
 	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
-			    &opt_frame_rate_code, &param_topfirst );
+						&opt_frame_rate_code, &param_input_interlacing );
 
 	if(opt_horizontal_size<=0)
 	{
@@ -758,8 +768,10 @@ int main(argc,argv)
 		mjpeg_info( "Bitrate: VCD\n");
 	if(param_quant) 
 		mjpeg_info("Quality factor: %d (1=best, 31=worst)\n",param_quant);
-	
-		
+
+	mjpeg_info("Field order for input: %s\n", 
+			   mpeg_interlace_code_definition(param_input_interlacing) );
+
 	if( param_seq_length_limit )
 	{
 		mjpeg_info( "New Sequence every %d Mbytes\n", param_seq_length_limit );
@@ -1037,7 +1049,20 @@ static void init_mpeg_parms(void)
 	else if (param_fieldenc == 1)
 		opt_topfirst = 0;
 	else if( ! opt_prog_seq )
-		opt_topfirst = param_topfirst;
+	{
+		int fieldorder;
+		if( param_force_interlacing != Y4M_UNKNOWN ) 
+		{
+			mjpeg_info( "Forcing playback video to be: %s\n",
+						mpeg_interlace_code_definition(	param_force_interlacing ) );	
+			fieldorder = param_force_interlacing;
+		}
+		else
+			fieldorder = param_input_interlacing;
+
+		opt_topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
+						fieldorder ==Y4M_ILACE_NONE );
+	}
 	else
 		opt_topfirst = 0;
 

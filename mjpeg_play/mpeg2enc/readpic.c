@@ -403,8 +403,9 @@ int frame_lum_mean( int num_frame )
 }
 
 
-void read_stream_params( int *hsize, int *vsize, int *frame_rate_code,
-			 int *topfirst)
+void read_stream_params( int *hsize, int *vsize, 
+						 int *frame_rate_code,
+						 int *interlacing_code)
 {
    int n;
    y4m_stream_info_t si;
@@ -418,9 +419,5 @@ void read_stream_params( int *hsize, int *vsize, int *frame_rate_code,
    *hsize = y4m_si_get_width(&si);
    *vsize = y4m_si_get_height(&si);
    *frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
-   if (y4m_si_get_interlace(&si) == Y4M_ILACE_TOP_FIRST)
-     *topfirst = 1;
-   else if (y4m_si_get_interlace(&si) == Y4M_ILACE_BOTTOM_FIRST)
-     *topfirst = 0;
-   y4m_fini_stream_info (&si);
+   *interlacing_code = y4m_si_get_interlace(&si);
 }

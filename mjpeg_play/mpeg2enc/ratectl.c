@@ -294,12 +294,6 @@ void rc_init_seq(int reinit)
 		if( undershoot_carry < 0 )
 			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals\n");
 		overshoot_gain =  opt_bit_rate / (ctl_video_buffer_size-buffer_safe);
-		mjpeg_info( "vb=%d UC = %d pfb=%d OSG=%f\n", 
-					(int)ctl_video_buffer_size/8,
-					(int)undershoot_carry/8, (int)per_frame_bits/8,
-					overshoot_gain);
-
-		
 	}
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
 
@@ -529,7 +523,7 @@ void rc_init_pict(pict_data_s *picture)
 		break;
 	}
 
-	mjpeg_info( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
+	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
 
 
 	/* 

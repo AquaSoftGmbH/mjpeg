@@ -267,3 +267,31 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  )
 
 	return aspect_ratio_definitions[mpeg_version-1][code-1];
 }
+
+
+/*
+ * Look-up explanatory definition of interlace field order code
+ *
+ */
+
+const char *
+mpeg_interlace_code_definition( int yuv4m_interlace_code )
+{
+	char *def;
+	switch( yuv4m_interlace_code )
+	{
+	case Y4M_ILACE_NONE :
+		def = "unknown/progressive";
+		break;
+	case Y4M_ILACE_TOP_FIRST :
+		def = "interlaced, top field first";
+		break;
+	case Y4M_ILACE_BOTTOM_FIRST :
+		def = "interlaced, bottom field first";
+		break;
+	default :
+		def = "UNDEFINED: illegal video interlacing type-code!";
+		break;
+	}
+	return def;
+}

@@ -922,6 +922,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"use-read"         ,0,0,0},   /* --use-read             */
 		{"software-encoding",0,0,0},   /* --software-encoding    */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
+		{"file-flush"       ,1,0,0},   /* --file-flush           */
 		{0,0,0,0}
 	};
 #endif

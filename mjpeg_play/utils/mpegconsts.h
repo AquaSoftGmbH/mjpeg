@@ -110,6 +110,9 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  );
 const char *
 mpeg_framerate_code_definition( mpeg_framerate_code_t code  );
 
+const char *
+mpeg_interlace_code_definition( int yuv4m_interlace_code );
+
 #ifdef __cplusplus
 };
 #endif
