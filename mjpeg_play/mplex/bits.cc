@@ -1,6 +1,6 @@
 /** @file bits.cc, bit-level output                                              */
 
- * Copyright (C) 2001, Andrew Stevens <andrew.stevens@philips.com> *
+/* Copyright (C) 2001, Andrew Stevens <andrew.stevens@philips.com> *
 
  *
  * Disclaimer of Warranty
