@@ -538,7 +538,7 @@ int unify_movtar()
   while (newpicsavail)
     {
       if (!omit_sound)
-	if (!feof(inwav)) break;
+	if (feof(inwav)) break;
 
       if (wavsize == 0)
 	printf("Warning: No WAV file data left for frame %d\n", vid_index);
