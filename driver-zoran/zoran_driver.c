@@ -645,16 +645,8 @@ jpg_fbuffer_free (struct file *file)
 		//if (alloc_contig) {
 		if (fh->jpg_buffers.need_contiguous) {
 			if (fh->jpg_buffers.buffer[i].frag_tab[0]) {
-				mem =
-				    (unsigned char *) bus_to_virt(
-								  le32_to_cpu(
-									      fh->
-									      jpg_buffers.
-									      buffer
-									      [i].
-									      frag_tab
-									      [0])
-								  );
+				mem = (unsigned char *) bus_to_virt(le32_to_cpu(
+					fh->jpg_buffers.buffer[i].frag_tab[0]));
 				for (off = 0;
 				     off < fh->jpg_buffers.buffer_size;
 				     off += PAGE_SIZE)
