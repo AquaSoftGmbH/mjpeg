@@ -1017,7 +1017,7 @@ FILE *fp;
   if( (t_script.svcd & bit_full ) || (t_script.svcd & bit_video) )
     create_video(fp, &encoding_svcd, &machine4svcd, "svcd");
 
-  if( (t_script.svcd & bit_full ) || (t_script.svcd & bit_video) )
+  if( (t_script.svcd & bit_full ) || (t_script.svcd & bit_mplex) )
     create_mplex(fp, &encoding_svcd, &machine4svcd, "svcd");
 
   /* Creating the DVD lines */
@@ -1027,7 +1027,7 @@ FILE *fp;
   if( (t_script.dvd & bit_full ) || (t_script.dvd & bit_video) )
     create_video(fp, &encoding_dvd, &machine4dvd, "dvd");
 
-  if( (t_script.dvd & bit_full ) || (t_script.dvd & bit_video) )
+  if( (t_script.dvd & bit_full ) || (t_script.dvd & bit_mplex) )
     create_mplex(fp, &encoding_dvd, &machine4dvd, "dvd");
 
   /* Creating the divx lines */

@@ -260,6 +260,7 @@ void do_preset_svcd(struct encodingoptions *point)
  @param point points to the struct we use */
 void do_preset_dvd(struct encodingoptions *point)
 {
+  (*point).bitrate = 0;
   (*point).outputbitrate = 480;
   (*point).muxformat = 8;
 }

@@ -1169,7 +1169,7 @@ for (i = 0; i < 3; i++)
 
   if ( (strcmp(temp , "1") == 0) || (strcmp(temp , "2") == 0) )
     {
-      if ((strcmp ((char*)data,"MPEG2") == 0) || (strcmp ((char*)data,"SVCD") == 0))
+      if ((strcmp ((char*)data,"MPEG2") == 0) || (strcmp ((char*)data,"SVCD") == 0) || (strcmp ((char*)data,"DVD") == 0) )
          enc_videofile[strlen(enc_videofile)-2] = '2';
       else 
          enc_videofile[strlen(enc_videofile)-2] = '1';
@@ -1212,6 +1212,13 @@ for (i = 0; i < 3; i++)
       sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
+  else if (strcmp ((char*)data,"GENERIC") == 0)
+   {
+      pointenc = &encoding_gmpeg;
+      pointdist = &machine4generic;
+      sprintf(text_task,"%s",(char*)data);
+      check_mpegname(data);
+   }
   else if (strcmp ((char*)data,"VCD")   == 0)
    {
       pointenc = &encoding_vcd;
@@ -1223,6 +1230,13 @@ for (i = 0; i < 3; i++)
    {
       pointenc = &encoding_svcd;
       pointdist = &machine4svcd;
+      sprintf(text_task,"%s",(char*)data);
+      check_mpegname(data);
+   }
+  else if (strcmp ((char*)data,"DVD")  == 0)
+   {
+      pointenc = &encoding_dvd;
+      pointdist = &machine4dvd;
       sprintf(text_task,"%s",(char*)data);
       check_mpegname(data);
    }
@@ -1281,16 +1295,17 @@ for (i = 0; i < 3; i++)
       gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
    }
 
-  if (verbose)
+  if (verbose) 
     printf(" Set encoding task to %s \n",(char*)data);
 }
 
-/* Create the task layout, and the Option buttons */
+/** Create the task layout, and the Option buttons */
 /* Also Work distribution */
 void create_task_layout(GtkWidget *table)
 {
 int encx, ency;
 GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd, *button_2lav;
+GtkWidget *button_dvd, *button_generic;
 GSList *task_group;
 
 encx=0;
@@ -1317,6 +1332,16 @@ ency=1;
   create_option_button(task_group, table, "MPEG2", encx+1, ency);
   ency++;
 
+  button_generic = gtk_radio_button_new_with_label(task_group, "Generic MPEG ");
+  gtk_signal_connect (GTK_OBJECT (button_generic), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "GENERIC");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_generic, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_generic));
+  gtk_widget_show (button_generic);
+  create_option_button(task_group, table, "GENERIC", encx+1, ency);
+  
+
 encx = 2;
 ency = 1;
 
@@ -1338,6 +1363,17 @@ ency = 1;
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));
   gtk_widget_show (button_svcd);
   create_option_button(task_group, table, "SVCD", encx+1, ency);
+  ency++;
+
+  button_dvd = gtk_radio_button_new_with_label(task_group, "DVD (MPEG-2) ");
+  gtk_signal_connect (GTK_OBJECT (button_dvd), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "DVD");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_dvd, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_dvd));
+  gtk_widget_show (button_dvd);
+  create_option_button(task_group, table, "DVD", encx+1, ency);
+  
 
 encx = 4;
 ency = 1;
@@ -1361,7 +1397,6 @@ ency = 1;
   gtk_widget_show (button_2lav);
   create_option_button(task_group, table, "MJPEG", encx+1, ency);
   ency++;
-
 }
 
 /* Here all the work is distributed, and some basic parts of the layout done */

@@ -91,6 +91,7 @@ void set_2lav_interlacing (GtkWidget *widget, gpointer data);
 void set_sharpen (GtkWidget *widget, gpointer data);
 void set_thhold (GtkWidget *widget, gpointer data);
 void set_average (GtkWidget *widget, gpointer data);
+void input_select (GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL;            /**< holds the possible audio sample rates */
@@ -1245,7 +1246,24 @@ void set_average (GtkWidget *widget, gpointer data)
   if (verbose)
     printf (" Setting Denoiser threshold to : %i\n", tempenco.average_frames);
 }
- 
+
+/** here we preprae the size selection
+  @param widget the calling widget 
+  @param the data with the contence of the data we select what we do */
+void input_select (GtkWidget *widget, gpointer data)
+{
+  char filename[LONGOPT];
+  char *size[LONGOPT]; 
+
+if (strcmp((char*)data,"inputwindow") == 0)
+  {
+
+   sprintf(filename,"file.png");
+   create_window_select(filename, size);
+  }
+
+}
+
 /** create the denoise encoding options now only with yuvdenoise,           
     but later maybe with: yuvkineco, yuvycsnoise, yuvmedianfilter
  @param table the table in which we insert the widgets
@@ -1410,10 +1428,14 @@ if (!interlace_correct)
   (*ty)++;
 }
 
-/* create the layout for yuvscaler programm */
+/** create the layout for yuvscaler programm 
+  @param points to the table widget
+  @param the current x position in the widget 
+  @param the current y position in the widget */
 void create_yuvscaler_layout (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_scaler_input,*combo_scaler_output, *combo_scaler_mode;
+GtkWidget *button_input;
 GList *input_window = NULL;
 GList *yuvscalermode = NULL;
 GList *output_window = NULL;
@@ -1436,10 +1458,18 @@ GList *output_window = NULL;
   output_window = g_list_append (output_window, "SVCD");
   output_window = g_list_append (output_window, "352x240");
 
-  label1 = gtk_label_new("  Input window: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
+//  label1 = gtk_label_new("  Input window: ");
+//  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+//  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+//  gtk_widget_show (label1);
+
+  button_input = gtk_button_new_with_label(" Input window: ");
+  gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
+                     GTK_SIGNAL_FUNC(input_select), "inputwindow");
+  gtk_table_attach_defaults (GTK_TABLE (table),
+                             button_input, *tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (button_input);
+
 
   combo_scaler_input = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_scaler_input), input_window);
