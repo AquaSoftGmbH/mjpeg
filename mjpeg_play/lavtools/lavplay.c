@@ -149,6 +149,7 @@
 #include <getopt.h>
 #endif
 #include <fcntl.h>
+#include <sys/stat.h>
 
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
 
