@@ -348,7 +348,6 @@ static void read_chunk_par( int num_frame)
 
 static void load_frame( int num_frame )
 {
-	
 	if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
 	{
 		mjpeg_error("Internal:readframe: internal error reading beyond end of frames");
@@ -370,16 +369,16 @@ static void load_frame( int num_frame )
         lum_mean = new int[frame_buffer_size];
 
 		/*
-          Pre-fill the buffer with one chunk of frames...
+          Pre-fill the buffer 
         */
 		if( ctl_parallel_read )
         {
 			start_worker();
-            read_chunk_par( num_frame);
+            read_chunk_par( frame_buffer_size/2 );
         }
         else
         {
-            read_chunk_seq( num_frame);
+            read_chunk_seq( frame_buffer_size/2);
         }
  
 	}
@@ -397,7 +396,7 @@ static void load_frame( int num_frame )
 
    if( num_frame+static_cast<int>(frame_buffer_size) < frames_read )
    {
-	   mjpeg_error("Internal:readframe: %d internal error - buffer flushed too soon", frame_buffer_size );
+	   mjpeg_error("Internal: buffer flushed too soon req %d buffer %d..%d", num_frame, frames_read-frame_buffer_size, frames_read );
 	   abort();
    }
 

@@ -2,6 +2,7 @@ IN PROGRESS
 
 	- Tidy up the source code placement of the Picture, StreamState etc classes
 	- Probably need to create an 'Encoder' object
+	- MotionEst should be called 'MacroBlockCodingMode'
 	- Shouldn't <X> (picture et al) be called <X>Encoder?
 
 	- Remove 'clearing' of INTRA blocks for prediction... what a waste
@@ -10,6 +11,12 @@ IN PROGRESS
 	- Set satlim and scale type in quantizer during init
 	- Move penalty for motion vector length into sad routine so it it
 	is always consistent (or write a penalty inline).
+
+	- Move to a buffering output model where a frame can be aborted/restarted
+	with different quantisation if it is coming out too large or too small.
+
+	- Dynamic B/P selection and selection of I frames 
+	without memory-expensive look-ahead.
 
 Near Future improvements
 
@@ -23,11 +30,13 @@ Near Future improvements
 	Alternatively: select using the base quantisation and use the old
 	encoder...
 
-1.  Add DCT quantisation reduction for macro blocks whose original image
-	(INTRA) data is low-variance... this should help misty scenes
+1. Add single coefficient dropping to DCT...
 
 2.	Split into front-end and library (for gstreamer etc) 
 	This will require removal of lots of nasty global scratch variables
+
+3.	Add accurate (GOP-structure based) decoder buffer modelling for more
+	aggresive bit-rate optimisation.
 
 4.	Seperate the transformation phase (ME, pred, DCT) from the bit allocation
 	and coding phases. 
@@ -69,8 +78,6 @@ phases in a single pass rather doing each for each Macroblock.
 3.  Check out using dist2 for initial MC calculations as well as final
 	selection?
 
-4.  Decouple motion estimation and encoding passes to allow backup-and-retry
-	and two-pass encoding.
 
 5.	Add low-passing for high-activity regions when a specified quantisation
 	level is exceeded (or block boundary edge energy exceeds some threshold?).
@@ -79,8 +86,6 @@ phases in a single pass rather doing each for each Macroblock.
 
 	The mblockq_ sub-routines intended specification should be documented...
 
-7.	Code Hygiene...
-	Is all theblock_count dependant code is o.k. for YUV422 and YUV444?
 
 
 

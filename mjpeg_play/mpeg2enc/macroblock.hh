@@ -139,7 +139,7 @@ public:
 	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
     vector<MotionEst> best_of_kind_me; // The best looking motion estimate
                                 // of each possible kind.
-    MotionEst final_me;      // Motion estimate selected for coding...
+    MotionEst final_me;      // Coding mode selected for coding...
 #ifdef OUTPUT_STAT
   double N_act;
 #endif

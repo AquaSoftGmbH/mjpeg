@@ -140,11 +140,15 @@ public:
 	bool frame_pred_dct;			/* Use only frame prediction... */
 	int intravlc;				/* Intra VLC format */
 	int q_scale_type;			/* Quantiser scale... */
-	int altscan;				/* Alternate scan  */
+	bool altscan;				/* Alternate scan  pattern selected */
+    const uint8_t *scan_pattern; /* The scan pattern itself */
 	bool repeatfirst;			/* repeat first field after second field */
 	bool prog_frame;				/* progressive frame */
 
-
+    int unit_coeff_threshold;   // Unit coefficient density weight
+                                // below which zeroing should be applied.
+    int unit_coeff_first;       // First coefficient for zeroing purposes...
+                                // either 1 or 0.
 	/* Information for GOP start frames */
 	bool gop_start;             /* GOP Start frame */
     bool closed_gop;            /* GOP is closed   */

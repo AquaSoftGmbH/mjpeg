@@ -48,7 +48,93 @@
 
 #include "config.h"
 #include "global.h"
+#include "fastintfns.h"
 #include "quantize_ref.h"
+
+/********************
+ * 
+ * Unit coefficient elimination.
+ * Zero DCT blocks in with 'only a few widely scattered' unit DCT coefficients.
+ * The basis for this heuristic is that such blocks have a high coding cost
+ * relative to the modest amount of picture information they carry.
+ *
+ * Original implementation: Copyright (c) 2000,2001 Fabrice Bellard.
+ * Same GPL V2 as above.
+ *
+ * I can't be bothered to look up the research papers on this topic so
+ * I can't give the original references...
+ *
+ * RETURN: 1 if block zero-ed, 0 otherwise
+ * 
+ *******************/
+
+static int unit_coeff_elimination(DCTblock &block, 
+								   const uint8_t *scan_pattern,
+								   const int start_coeff,
+								   const int threshold)
+{
+    static const char run_shortness_weight[64]=
+        {3,2,2,1,1,1,1,1,
+         1,1,1,1,1,1,1,1,
+         1,1,1,1,1,1,1,1,
+         0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,0};
+
+    int score=0;
+    int run=0;
+    int i;
+
+	// A non-unit DC coefficent makes zero-ing a bad idea... always
+	if( start_coeff > 0 && block[0] > 1 )
+		return 0;
+	
+	// 
+	// Compute a measure of the 'denseness' of the unit coefficients
+	// give up on zero-ing if a non-unit coefficient found...
+	//
+    for(i=start_coeff; i<64; i++)
+	{
+	    
+        const int j = scan_pattern[i];
+        const int level = intabs(block[j]);
+        if(level==1)
+		{
+            score += run_shortness_weight[run];
+            run=0;
+        }
+		else if(level>1)
+		{
+			// Uh-oh non-unit coefficient... zeroing not sensible...
+            return 0;
+        }
+		else
+		{
+            ++run;
+        }
+    }
+
+	//
+	// The weighted score of the zero runs lengths seperating the unit
+	// coefficients is high (unit coefficients are densely packed
+	// numerous) zero-ing not a good trade-off, abort.
+	//
+    if(score >= threshold) 
+ 		return 0;
+
+	//
+	// Zero the DCT block... N.b. all scan patterns have the DC coefficient
+	// first.
+	//
+    for(i=start_coeff; i<64; i++)
+	{
+        block[i]=0;
+    }
+
+    return (block[0] == 0);
+}
 
 
 void MacroBlock::Quantize()
@@ -71,10 +157,22 @@ void MacroBlock::Quantize()
                                    picture->q_scale_type,
                                    encparams.dctsatlim,
                                    &mquant );
+        int block;
+		if( picture->unit_coeff_threshold )
+        {
+            for( block = 0; block < BLOCK_COUNT; ++block )
+            {
+                int zero = 
+                    unit_coeff_elimination( qdctblocks[block],
+                                            picture->scan_pattern,
+                                            picture->unit_coeff_first,
+                                            picture->unit_coeff_threshold);
+                cbp &= ~(zero<<(BLOCK_COUNT-1-block));
+            }
+        }
         if (cbp)
             final_me.mb_type|= MB_PATTERN;
     }
-
 }
 
 void MacroBlock::IQuantize()

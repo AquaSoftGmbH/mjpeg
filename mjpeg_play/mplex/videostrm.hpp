@@ -112,6 +112,7 @@ protected:
 	int fields_presented;
     int group_start_pic;
 	int group_start_field;
+    int group_start_SCR;
     int temporal_reference;
     unsigned int pict_struct;
 	int pulldown_32;

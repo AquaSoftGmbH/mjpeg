@@ -185,6 +185,22 @@ void Picture::SetSeqPos(int _decode,int b_index )
 	q_scale_type = encparams->qscale_tab[pict_type-1];
 	intravlc = encparams->intravlc_tab[pict_type-1];
 	altscan = encparams->altscan_tab[pict_type-1];
+    scan_pattern = (altscan ? alternate_scan : zig_zag_scan);
+
+    /* If we're using B frames then we reserve unit coefficient
+       dropping for them as B frames have no 'knock on' information
+       loss */
+    if( pict_type == B_TYPE || ctl_M == 1 )
+    {
+        unit_coeff_threshold = abs( ctl_unit_coeff_elim );
+        unit_coeff_first = ctl_unit_coeff_elim < 0 ? 0 : 1;
+    }
+    else
+    {
+        unit_coeff_threshold = 0;
+        unit_coeff_first = 0;
+    }
+        
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
@@ -285,16 +301,20 @@ static int find_gop_length( int gop_start_frame,
     */
     int max_change = 0;
     int gop_len;
-	int cur_lum_mean = 
-		frame_lum_mean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
 	int pred_lum_mean;
 
     if( gop_min_len >= gop_max_len )
         gop_len = gop_max_len;
     else
     {
+        int cur_lum_mean = 
+            frame_lum_mean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
+
         /* Search forwards from min gop length for I-frame candidate
            which has the largest change in mean luminance.
+           BUGBUGBUG: The frame ring buffer size must be large enough to
+           accomodate this read-ahead without losing frames currently being
+           encoded!!!
         */
         gop_len = 0;
         for( i = gop_min_len; i <= gop_max_len; i += min_b_grp )
@@ -662,9 +682,6 @@ static void next_seq_state( StreamState *ss )
    more than M threads.   
 */
 
-#define R_PICS (MAX_WORKER_THREADS+2)
-#define B_PICS (MAX_WORKER_THREADS+2)
-
 
 static void link_pictures( Picture *ref_pictures, 
                            Picture *b_pictures )
@@ -673,12 +690,12 @@ static void link_pictures( Picture *ref_pictures,
 	int i,j;
 
 	
-	for( i = 0; i < R_PICS; ++i )
+	for( i = 0; i < ctl_max_active_ref_frames; ++i )
 		ref_pictures[i].Init( encparams);
 
-	for( i = 0; i < R_PICS; ++i )
+	for( i = 0; i < ctl_max_active_ref_frames; ++i )
 	{
-		j = (i + 1) % R_PICS;
+		j = (i + 1) % ctl_max_active_ref_frames;
 
 		ref_pictures[j].oldorg = ref_pictures[i].curorg;
 		ref_pictures[j].oldref = ref_pictures[i].curref;
@@ -686,7 +703,7 @@ static void link_pictures( Picture *ref_pictures,
 		ref_pictures[j].newref = ref_pictures[j].curref;
 	}
 
-	for( i = 0; i < B_PICS; ++i )
+	for( i = 0; i < ctl_max_active_b_frames; ++i )
 	{
 		b_pictures[i].Init( encparams );
 	}	
@@ -950,7 +967,7 @@ static void parencodepict( Picture *picture )
  *  Picture record for the oldest frame that could still be needed
  *  by active worker threads.
  * 
- *  Buffers sizes are given by R_PICS and B_PICS
+ *  Buffers sizes are given by ctl_max_active_ref_frames and ctl_max_active_b_frames
  *
  ********************/
  
@@ -965,22 +982,22 @@ void putseq(void)
 	int cur_b_idx = 0;
 
     int i;
-	Picture b_pictures[B_PICS];
-	Picture ref_pictures[R_PICS];
+	Picture b_pictures[ctl_max_active_b_frames];
+	Picture ref_pictures[ctl_max_active_ref_frames];
 
-	pthread_t worker_threads[MAX_WORKER_THREADS];
+	pthread_t worker_threads[ctl_max_encoding_frames];
 	Picture *cur_picture, *old_picture;
 	Picture *new_ref_picture, *old_ref_picture;
 
 	link_pictures( ref_pictures, b_pictures );
 	if( ctl_max_encoding_frames > 1 )
-		create_threads( worker_threads, 2, parencodeworker );
+		create_threads( worker_threads, ctl_max_encoding_frames, parencodeworker );
 
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
 	   must wait on.
 	*/
-	old_ref_picture = &ref_pictures[R_PICS-1];
+	old_ref_picture = &ref_pictures[ctl_max_active_ref_frames-1];
 	new_ref_picture = &ref_pictures[cur_ref_idx];
 	cur_picture = old_ref_picture;
 	
@@ -1012,7 +1029,7 @@ void putseq(void)
 		*/
 		if ( ss.b == 0)
 		{
-			cur_ref_idx = (cur_ref_idx + 1) % R_PICS;
+			cur_ref_idx = (cur_ref_idx + 1) % ctl_max_active_ref_frames;
 			old_ref_picture = new_ref_picture;
 			new_ref_picture = &ref_pictures[cur_ref_idx];
 			new_ref_picture->ref_frame_completion = &old_ref_picture->completion;
@@ -1027,7 +1044,7 @@ void putseq(void)
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.
 			*/
-			cur_b_idx = ( cur_b_idx + 1) % B_PICS;
+			cur_b_idx = ( cur_b_idx + 1) % ctl_max_active_b_frames;
 			new_b_picture = &b_pictures[cur_b_idx];
 			new_b_picture->oldorg = new_ref_picture->oldorg;
 			new_b_picture->oldref = new_ref_picture->oldref;

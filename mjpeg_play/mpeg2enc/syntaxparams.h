@@ -49,10 +49,10 @@
 
 
 /*
-  How many frames to read in one go and the size of the frame data buffer.
+  How many frames to read in one go
 */
 
-#define READ_CHUNK_SIZE 5
+#define READ_CHUNK_SIZE 1
 
 /*
   How many frames encoding may be concurrently under way.
@@ -127,9 +127,17 @@ EXTERN int ctl_max_encoding_frames; /* Maximum number of concurrent
 									   Used to control multi_threading.
 									*/
 
+EXTERN int ctl_max_active_ref_frames;
+EXTERN int ctl_max_active_b_frames;
+
 EXTERN bool ctl_parallel_read; /* Does the input reader / bufferer
 								 run as a seperate thread?
 							  */
+EXTERN int ctl_unit_coeff_elim;	/* Threshold of unit coefficient
+									density below which unit
+									coefficient blocks should be
+									zeroed.  < 0 implies DCT
+									coefficient should be included. */
 
 
 /* *************************
@@ -260,7 +268,7 @@ struct EncoderParams
     /* Selected intra/non_intra quantization matrices both ordinary*/
 	/* and inverted */
 	uint16_t *intra_q, *inter_q;
-
+	
 	struct RateCtl *bitrate_controller;	/* Ick struct for use in .c files */
 
 };

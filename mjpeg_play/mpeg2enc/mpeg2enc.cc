@@ -136,6 +136,7 @@ static int param_hack_svcd_hds_bug = 1;
 static int param_hack_altscan_bug = 0;
 static int param_mpeg2_dc_prec = 1;
 static int param_ignore_constraints = 0;
+static int param_unit_coeff_elim = 0;
 
 /* Input Stream parameter values that have to be further processed to
    set encoding options */
@@ -376,7 +377,14 @@ static void Usage(char *str)
 "    Could expose bugs in the software at very high resolutions!\n"
 "--custom-quant-matrices|-K kvcd|tmpgenc|default|hi-res|file=inputfile|help\n"
 "    Request custom or userspecified (from a file) quantization matrices\n"
-"--help|-?\n"
+"--unit-coeff-elim|-E num\n"
+"    Skip picture blocks satisfying which appear to carry little\n"
+"    because they code to only unit coefficients. The number specifies\n"
+"    how aggresively this should be done. A negative value means DC\n"
+"    coefficients are included.  Reasonable values -40 to 40\n"
+"--b-per-refframe| -R 0|1|2\n"
+"    The number of B frames to generate between each I/P frame\n"
+"    --help|-?\n"
 "    Print this lot out!\n"
 	);
 	exit(0);
@@ -776,7 +784,7 @@ int main( int argc,	char *argv[] )
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:E:R:";
 
 #ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
@@ -814,6 +822,8 @@ static struct option long_options[]={
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
      { "custom-quant-matrices", 1, 0, 'K'},
+     { "unit-coeff-elim",   1, 0, 'E'},
+     { "b-per-refframe",           1, 0, 'R' },
      { "help",              0, 0, '?' },
      { 0,                   0, 0, 0 }
 };
@@ -1019,13 +1029,13 @@ static struct option long_options[]={
 			param_preserve_B = true;
 			break;
 		case 'N':
-                        param_hf_q_boost = atof(optarg);
-            		if (param_hf_q_boost <0.0 || param_hf_q_boost > 2.0)
-            		   {
-                	   mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
-                	   ++nerr;
-			   param_hf_q_boost = 0.0;
-            		   }
+            param_hf_q_boost = atof(optarg);
+            if (param_hf_q_boost <0.0 || param_hf_q_boost > 2.0)
+            {
+                mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
+                ++nerr;
+                param_hf_q_boost = 0.0;
+            }
 			if (param_hf_quant == 0 && param_hf_q_boost != 0.0)
 			   param_hf_quant = 1;
 			break;
@@ -1035,6 +1045,22 @@ static struct option long_options[]={
 		case 'K':
 			parse_custom_option(optarg);
 			break;
+        case 'E':
+            param_unit_coeff_elim = atoi(optarg);
+            if (param_hf_q_boost <-30 || param_hf_q_boost > 30)
+            {
+                mjpeg_error( "-E option range arg -40 to 40" );
+                ++nerr;
+            }
+            break;
+        case 'R' :
+            param_Bgrp_size = atoi(optarg)+1;
+            if( param_Bgrp_size<1 || param_Bgrp_size>3)
+            {
+                mjpeg_error( "-R option arg 0|1|2" );
+                ++nerr;
+            }
+            break;
 		case 's' :
 			param_seq_hdr_every_gop = 1;
 			break;
@@ -1175,7 +1201,6 @@ static struct option long_options[]={
 	{
 		mjpeg_error_exit1("Couldn't create output file %s",outfilename);
 	}
-
 	init_encoder();
 	init_quantizer( encparams.mpeg1, encparams.intra_q, encparams.inter_q );
 	init_motion();
@@ -1298,10 +1323,16 @@ static void init_encoder(void)
 		break;
 	}
 
+    ctl_max_active_ref_frames = 
+        ctl_M == 0 ? ctl_max_encoding_frames : (ctl_max_encoding_frames+2);
+    ctl_max_active_b_frames = 
+        ctl_M <= 1 ? 0 : ctl_max_encoding_frames;
 
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;
-	
+
+    ctl_unit_coeff_elim	= param_unit_coeff_elim;
+
 	/* round picture dimensions to nearest multiple of 16 or 32 */
 	encparams.mb_width = (encparams.horizontal_size+15)/16;
 	encparams.mb_height = encparams.prog_seq ? (encparams.vertical_size+15)/16 : 2*((encparams.vertical_size+31)/32);
@@ -1367,8 +1398,12 @@ static void init_encoder(void)
 	encparams.mb_per_pict = encparams.mb_width*encparams.mb_height2;
 
 
-	/* Allocate the frame data buffers */
-    frame_buffer_size = 2*param_max_GOP_size+param_Bgrp_size+READ_CHUNK_SIZE+1;
+	/* Allocate the frame data buffers: if we're not going to scan ahead
+     for GOP size we can save a *lot* of memory... */
+    if( param_max_GOP_size == param_min_GOP_size )
+        frame_buffer_size = 2*param_Bgrp_size+READ_CHUNK_SIZE;
+    else
+        frame_buffer_size = 2*param_max_GOP_size+READ_CHUNK_SIZE;
     mjpeg_info( "Buffering %d frames", frame_buffer_size );
 	frame_buffers = (uint8_t ***) 
 		bufalloc(frame_buffer_size*sizeof(uint8_t**));
@@ -1585,7 +1620,7 @@ static void init_mpeg_parms(void)
 			fieldorder = param_input_interlacing;
 
 		encparams.topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
-						fieldorder ==Y4M_ILACE_NONE );
+                              fieldorder ==Y4M_ILACE_NONE );
 	}
 	else
 		encparams.topfirst = 0;

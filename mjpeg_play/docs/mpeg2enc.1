@@ -40,13 +40,15 @@ mpeg2enc \- MPEG 1/2 encoder
 .IR size_MB ]
 .RB [ -B | --nonvideo-bitrate
 .IR bitrate_kbps ]
-.RB [ -N | --reduce-hf] 0.0 .. 2.0
+.RB [ -N | --reduce-hf 0.0 .. 2.0 ]
 .RB [ -H | --keep-hf ]
 .RB [ -d | --no-dummy-svcd-SOF]
 .RB [ -C | --correct-svcd-hds]
 .RB [ --hack-dxr2-bug]
 .RB [ --no-constraints]
 .RB [ -K | --custom-quant-matrices kvcd|tmpgenc|default|hi-res|file=inputfile|help
+.RB [ -E | --unit-coeff-elim -100 ... 100 ]
+.RB [ -R | -b-per-refframe 0|1|2 ]
 .RB [ -? | --help ]
 .BI -o \ output_filename
 .SH "DESCRIPTION"
@@ -188,6 +190,27 @@ TMPGEnc matrices from http://www.tmpgenc.net/e_main.html. On average
 (this depends on the source material), the tmpgenc tables reduce
 the average bitrate by about 10% and the kvcd tables reduce bitrate
 by about 16% (compared to the default tables).
+.PP
+.BR [ -E | --unit-coeff-elim -100 ... 100 ]
+.PP
+Specify when a special 'unit coefficient elimination' algorithm should
+be applied to the encoded picture blocks.  Basically, this procedure
+forces blocks of a type that don't carry much information but are
+expensive to encode to be simply skipped.  The larger the number the
+more potentially visible this skipping is likely to be but the more
+compression is boosted.  A negative value means that all coefficients
+are zeroed, positive means only texture but not base intensity
+coefficients are zeroed.  Values of around 10 or -10 seem to work well
+with high quality source material. For noisier material it might be
+worth trying 20 or -20.  
+.PP Note: if B frames are being encoded this only applies to B frames.
+.BR [ -R | -b-per-refframe 0|1|2 ]
+Specify how many bi-directionally (B type) difference-encoded frames
+should be encoded between reference (I or P) frames.  Experts differ
+on how much using B frames improves compression.  For noisy material
+they tend to be less useful.  Encoding is significantly faster and
+uses less memory if no B frames are encoded and compression is rarely
+more than marginally worse...
 .PP
 .BR -?|--help
 .PP

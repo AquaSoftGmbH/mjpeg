@@ -29,7 +29,22 @@
 #include "global.h"
 #include "transfrm_ref.h"
 
+#ifdef JUNK
 
+    DCTELEM *block= s->block[n];
+	// This is -1 for blocks that are known to be all 0...
+    const int last_index= s->block_last_index[n];
+    int skip_dc;
+	
+	// Negative threshold means DC coeff is also zero-able...
+    if(threshold<0)
+	{
+        skip_dc=0;
+        threshold= -threshold;
+    }
+	else
+        skip_dc=1;
+#endif
 
 void MacroBlock::Transform()
 {
@@ -102,6 +117,8 @@ void MacroBlock::Transform()
 	}
 		
 }
+
+
 /* subtract prediction and transform prediction error */
 void transform(	Picture *picture )
 {
@@ -184,5 +201,7 @@ void itransform(Picture *picture)
 		mbi->ITransform();
 	}
 }
+
+
 
 
