@@ -277,7 +277,7 @@ if test x$with_quicktime != x ; then
     if test x$have_pthread = xtrue ; then
       EXTRA_LIBS="$GLIB_LIBS $PTHREAD_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
     else
-      EXTRA_LIBS="-L$with_quicktime -L$with_quicktime/$(uname -m) $GLIB_LIBS -lpng $LIBM_LIBS -L/lib -ldl"
+      EXTRA_LIBS="-L$with_quicktime -L$with_quicktime/$(uname -m) $GLIB_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
     fi
 dnl Do we have OpenQuicktime instead of Quicktime4Linux?
     if test -f "$with_quicktime/openquicktime.h" ; then
