@@ -103,7 +103,6 @@ void rc_init_GOP ( int np, int nb);
 void rc_init_pict (Picture *picture);
 void rc_update_pict (Picture *picture);
 int rc_start_mb (Picture *picture);
-int rc_calc_mquant (Picture *picture,int j);
 void vbv_end_of_picture (Picture *picture);
 void calc_vbv_delay (Picture *picture);
 double inv_scale_quant( int q_scale_type, int raw_code );
