@@ -65,6 +65,7 @@ uint8_t* frame3[3]={f3y,f1cr,f1cb};
 void blend_fields(void);
 void motion_compensate_field(void);
 void cubic_interpolation(uint8_t * frame[3], int field);
+void mc_interpolation(uint8_t * frame[3],int field);
 
 /***********************************************************
  * Main Loop                                               *
@@ -123,8 +124,8 @@ int main(int argc, char *argv[])
 	 * field ... 
 	 */
 	
-	cubic_interpolation(frame1,0);
-	cubic_interpolation(frame2,1);
+	mc_interpolation(frame1,0);
+	mc_interpolation(frame2,1);
 	
 	/* motion compensate the interpolated frame of field 2 to the 
          * interpolated frame of field 1
@@ -141,7 +142,7 @@ int main(int argc, char *argv[])
 	y4m_write_frame ( fd_out, 
 			  &streaminfo, 
 			  &frameinfo, 
-			  frame2);
+			  frame2); 
 
     }
     
@@ -168,7 +169,7 @@ void blend_fields(void)
 	    
 	    delta = delta<0 ? -delta:delta;
 	    
-	    if(delta<32)
+	    if(delta<16)
 	    {
 		*(frame2[0]+x+y*width)=
 		    (*(frame1[0]+x+y*width)>>1)+
@@ -197,21 +198,22 @@ void motion_compensate_field(void)
     int addr1=0;
     int addr2=0;
     
-    for(yy=0;yy<height;yy+=16)
-	for(xx=0;xx<width;xx+=16)
+    for(yy=0;yy<height;yy+=32)
+	for(xx=0;xx<width;xx+=32)
 	{
 	    tx=ty=0;
 	    
 	    addr1=(xx   )+(yy   )*width;
-	    cSAD=psad_00(frame1[0]+addr1,frame2[0]+addr1,width,16,0);
-	    min=cSAD;
+	    min=psad_00(frame1[0]+addr1,frame2[0]+addr1,width,32,0);
+	    min+=psad_00(frame1[0]+addr1+16,frame2[0]+addr1+16,width,32,0);
 	    
-	    for(vy=-16;vy<16;vy++)
-		for(vx=-16;vx<16;vx++)
+	    for(vy=-32;vy<32;vy++)
+		for(vx=-32;vx<32;vx++)
 		{
 		    addr1=(xx   )+(yy   )*width;
 		    addr2=(xx+vx)+(yy+vy)*width;
-		    SAD=psad_00(frame1[0]+addr1,frame2[0]+addr2,width,16,0);
+		    SAD=psad_00(frame1[0]+addr1,frame2[0]+addr2,width,32,0);
+		    SAD+=psad_00(frame1[0]+addr1+16,frame2[0]+addr2+16,width,32,0);
 		    
 		    if(SAD<min)
 		    {
@@ -221,15 +223,9 @@ void motion_compensate_field(void)
 		    }  
 		}
 	    
-	    /* favour center over other matches if not significantly better */
-	    if( ((cSAD)<=(2*min)) && tx!=0 && ty!=0 )
-	    {
-		tx=ty=0;
-	    }
-	    
 	    /* transform the sourceblock by the found vector */
-	    for(y=0;y<16;y++)
-		for(x=0;x<16;x++)
+	    for(y=0;y<32;y++)
+		for(x=0;x<32;x++)
 		{
 		    *(frame3[0]+(xx+x   )+(yy+y   )*width) =
 			*(frame2[0]+(xx+x+tx)+(yy+y+ty)*width);
@@ -263,4 +259,49 @@ void cubic_interpolation(uint8_t * frame[3], int field)
 	    
 	    *(frame[0]+x+(y+1)*width)=v;
 	}
+}
+
+void mc_interpolation ( uint8_t * frame[3], int field)
+{
+	int x,y,dx,vx=0;
+	uint32_t SAD=0x00ffffff;
+	uint32_t minSAD=0x00ffffff;
+	int addr1=0,addr2=0;
+	int z;
+
+	for(y=field;y<height;y+=2)
+	  	for(x=0;x<width;x+=8)
+		{
+
+			/* search match */
+			
+			vx=0;
+			minSAD=0x00ffffff;
+			for(dx=-4;dx<=4;dx++)
+			{
+				addr1=y*width+x;
+				addr2=y*width+width*2+x+dx;
+				
+				SAD=0;
+				for(z=-8;z<16;z++)
+				{
+					SAD+= fabs(
+						*(frame[0]+addr1+z) -
+						*(frame[0]+addr2+z) );
+				}
+		
+				if(SAD<minSAD)
+				{
+					vx=dx;
+					minSAD=SAD;
+				}
+			}
+
+			for (dx=-8;dx<16;dx++)
+			{
+				*(frame[0]+y*width+width+dx+x+vx/2)=
+				  (*(frame[0]+y*width         +dx+x)+
+				   *(frame[0]+y*width+width*2 +dx+x+vx))/2;
+			}
+		}
 }
