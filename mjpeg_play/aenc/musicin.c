@@ -222,7 +222,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
     }
     strncpy(encoded_file_name,outfilename,MAX_NAME_SIZE);
 
-	mjpeg_default_handler_verbosity(verbose);
+	(void)mjpeg_default_handler_verbosity(verbose);
 
 
     /* Sanity checks */

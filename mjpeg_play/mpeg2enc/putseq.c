@@ -441,18 +441,6 @@ static void gop_start( stream_state_s *ss )
 
 	ss->np = np;
 	ss->nb = nb;
-#ifdef GOP_MODIFICATIONS
-	rc_init_GOP(np,nb);
-	
-	/* set closed_GOP in first GOP only 
-	   No need for per-GOP seqhdr in first GOP as one
-	   has already been created.
-	*/
-	putgophdr(ss->i == 0 ? ss->i : ss->i+(M-1),
-			  ss->i == 0, 
-			  ss->i != 0 && seq_header_every_gop);
-#endif
-
 
 }
 
@@ -469,7 +457,17 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 	/* Temp ref of I frame in initial closed GOP of sequence is 0 
 	   We have to be a little careful with the end of stream special-case.
 	 */
-	picture->temp_ref = (ss->i == 0 ) ? ss->i : ss->g+(ss->bigrp_length-1);
+	if( ss->i == 0 )
+	{
+		picture->temp_ref =  ss->i;
+		picture->present = 0;
+	}
+	else 
+	{
+		picture->temp_ref = ss->g+(ss->bigrp_length-1);
+		picture->present = ss->i+(ss->bigrp_length);
+	}
+
 	if (picture->temp_ref >= (nframes-ss->gop_start_frame))
 		picture->temp_ref = (nframes-ss->gop_start_frame) - 1;
 
@@ -503,7 +501,7 @@ static void B_frame_struct(  stream_state_s *ss,
 					  pict_data_s *picture )
 {
 	picture->temp_ref = ss->g - 1;
-	picture->present = ss->i+1;
+	picture->present = ss->i;
 	picture->pict_type = B_TYPE;
 	picture->gop_start = 0;
 	picture->new_seq = 0;

@@ -31,6 +31,13 @@ AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_RANLIB
 
+
+dnl Set up the usual compiler infos...
+AC_C_BIGENDIAN
+AC_C_CONST
+AC_C_INLINE
+
+
 dnl *********************************************************************
 dnl Check for the various libraries we depend on.
 dnl
@@ -52,6 +59,7 @@ AC_CHECK_FUNC(pthread_attr_getstacksize,
 	          [
 				AC_DEFINE(HAVE_PTHREADSTACKSIZE)
 			  ] )
+
 
 
 dnl *********************************************************************

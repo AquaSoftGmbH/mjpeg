@@ -39,24 +39,11 @@ Medium
 
 - Move the CPU detection code into utils and use the same throughout.
 
-- Find an SSE DCT and iDCT.
+- Find a proper SSE DCT and iDCT.
 
 - Add support for field pictures to mplex. Not urgent since for most
   sources frame pictures with field DCT/motion compensation seems to
   give better results.
-
-- Chrominance is only taken into account for motion compensation in P-frame's
-	for progressive sequences.  Curiously, experimentation showed that
-	extension to B-frames was counter-productive. So it is *deliberately*
-	not done for them. The necessary code is all written and tested.
-	We need to properly resolve this question and extend chrominanc checking
-	to P frames in field pictures.
-	Also, inclusion of chrominance wieghting should probably be used
-	at least from the 22 sub-sampled search level onwards.  Not just as
-	a "bail out to Intra coding as present".  Again the issue isn't clear
-	as the main need for chrominance checking is when scene changes mean
-	MC is nonsense.
-	Once we add	scene-change detection it probably won't really matter.
 
 - Get lavtools to use the new up-to-date headers from the drivers...
 
@@ -73,5 +60,7 @@ Major
 
 -  I.e. add a dynamic noise reduction filter and an "intelligent" 
    blurring to suppress mosaics. Make it go *still faster* ;-)
+
+-	Continuation of frozen encoding sessions.
 
 

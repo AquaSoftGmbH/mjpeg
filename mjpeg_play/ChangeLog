@@ -45,9 +45,27 @@
 	* Support for 422 MJPEG from xawtv capture tool.
 
 	* More robust audio driver handling (SB-Live now works!).
+
+2001-01-25 Andrew Stevens (as@comlab.ox.ac.uk)
+
+	* 1.4 release Tag: Rel1_4
+	
+	* Dynamic GOP sizing and SMP support in mpeg2enc.  Minor refinements to
+	  motion compensation.
+
+	* Signficant enhancement and bug-fixing of lavrec and lavtools
+
+	* Addition of yuvscaler and yuvplay, ypipe and yuv2lav utilities
+
+	* Unified output logging format and consistent command line flags.
+
+	* Lots of bug fixes.
 	
 CVS log:
 $Log$
+Revision 1.9  2001/02/07 14:45:05  wackston
+Minor tidyings and bug-fixes ready for 1.3b3 release.
+
 Revision 1.8  2001/01/25 20:11:29  wackston
 Initial SVCD support in mplex. Update TODO files..
 
