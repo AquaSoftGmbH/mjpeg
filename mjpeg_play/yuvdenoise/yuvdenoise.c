@@ -3,7 +3,7 @@
  *                                                                          *
  * Yuv-Denoiser to be used with Andrew Stevens mpeg2enc                     *
  *                                                                          *
- * (C)2001 S.Fendt                                                          *
+ * (C)2001 S.Fendt 				                                            *
  *                                                                          *
  * Licensed and protected by the GNU-General-Public-License version 2       *
  * (or if you prefer any later version of that license). See the file       *
@@ -60,7 +60,7 @@ uint8_t *sub_t2[3];
 uint8_t *sub_r4[3];
 uint8_t *sub_t4[3];
 
-
+uint8_t *line_buf;
 
 /*****************************************************************************
  * a frame counter is needed in calculate_motion_vectors, as we don't like   *
@@ -81,11 +81,7 @@ int scene_change = 0;           /* set to 1 if a scene change was detected */
 int fixed_search_radius=0;      /* set to 1 if fixed search radius should be used */
 int despeckle_filter = 1;       /* set to 0 if despeckle filter should not be used */
 int verbose = 0;                /* set to 1 and it's very noisy on stderr... */
-int X86_CAP = 0;                /* 0== no Accel :(                        
-                                 * 1== MMX
-                                 * 2== SSE
-                                 * 3== SSE2
-                                 */
+int CPU_CAP = 0;                /* 0== no Accel - see cpu_accel.h  */
 
 /*****************************************************************************
  * some global variables needed for handling the YUV planar frames.          *
@@ -129,8 +125,6 @@ uint32_t SAD_matrix[1024][768];
 
 void display_greeting ();
 void display_help ();
-void deinterlace_frame (uint8_t * yuv[3]);
-void deinterlace_frame_MMX2 (uint8_t * yuv[3]);
 void denoise_frame (uint8_t * ref[3]);
 void antiflicker_reference (uint8_t * frame[3]);
 void despeckle_frame_hard (uint8_t * frame[3]);
@@ -146,7 +140,7 @@ calc_SAD_noaccel (uint8_t * frm,
                      uint32_t frm_offs, 
                      uint32_t ref_offs, 
                      int div);
-                     
+#ifdef HAVE_X86CPU                     
 uint32_t
 calc_SAD_mmx     (uint8_t * frm, 
                      uint8_t * ref, 
@@ -155,11 +149,12 @@ calc_SAD_mmx     (uint8_t * frm,
                      int div);
                      
 uint32_t
-calc_SAD_sse     (uint8_t * frm, 
+calc_SAD_mmxe     (uint8_t * frm, 
                      uint8_t * ref, 
                      uint32_t frm_offs, 
                      uint32_t ref_offs, 
                      int div);
+#endif
 
 /* pointer on them */
 uint32_t (*calc_SAD) (uint8_t * frm, 
@@ -176,6 +171,7 @@ calc_SAD_uv_noaccel (uint8_t * frm,
                      uint32_t frm_offs, 
                      uint32_t ref_offs, 
                      int div);
+#ifdef HAVE_X86CPU                     
                      
 uint32_t
 calc_SAD_uv_mmx     (uint8_t * frm, 
@@ -185,11 +181,12 @@ calc_SAD_uv_mmx     (uint8_t * frm,
                      int div);
                      
 uint32_t
-calc_SAD_uv_sse     (uint8_t * frm, 
+calc_SAD_uv_mmxe     (uint8_t * frm, 
                      uint8_t * ref, 
                      uint32_t frm_offs, 
                      uint32_t ref_offs, 
                      int div);
+#endif
 
 /* pointer on them */
 uint32_t (*calc_SAD_uv) (uint8_t * frm, 
@@ -198,7 +195,15 @@ uint32_t (*calc_SAD_uv) (uint8_t * frm,
                      uint32_t ref_offs, 
                      int div);
 
+/* Deinterlacers and pointer to them */
+void deinterlace_frame_noaccel (uint8_t * yuv[3]);
 
+#ifdef HAVE_X86CPU                     
+void deinterlace_frame_mmxe (uint8_t * yuv[3]);
+void deinterlace_frame_mmx (uint8_t * yuv[3]);
+#endif
+
+void (*deinterlace_frame) (uint8_t * yuv[3]);
 
 /*****************************************************************************
  * MAIN                                                                      *
@@ -219,29 +224,34 @@ main (int argc, char *argv[])
   y4m_init_frame_info(&frameinfo);
 
   display_greeting ();
-  X86_CAP=cpu_accel ();
+  CPU_CAP=cpu_accel ();
   
   mjpeg_log ( LOG_INFO, "\n");
-  if( (X86_CAP & ACCEL_X86_MMXEXT)!=0 ||
-      (X86_CAP & ACCEL_X86_SSE   )!=0 
+#ifdef HAVE_X86CPU
+  if( (CPU_CAP & ACCEL_X86_MMXEXT)!=0 ||
+      (CPU_CAP & ACCEL_X86_SSE   )!=0 
     ) /* MMX+SSE */
   {
-    calc_SAD    = &calc_SAD_sse;
-    calc_SAD_uv = &calc_SAD_uv_sse;
-    mjpeg_log (LOG_INFO, "Using MMXEXT/SSE SAD-functions.\n");
+    calc_SAD    = &calc_SAD_mmxe;
+    calc_SAD_uv = &calc_SAD_uv_mmxe;
+	deinterlace_frame = &deinterlace_frame_mmxe;
+    mjpeg_log (LOG_INFO, "Extended MMX SIMD optimisations.\n");
   }
   else
-    if( (X86_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
+    if( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
     {
       calc_SAD    = &calc_SAD_mmx;
       calc_SAD_uv = &calc_SAD_uv_mmx;
-      mjpeg_log (LOG_INFO, "Using MMX SAD-functions.\n");
+	  deinterlace_frame = &deinterlace_frame_mmx;
+      mjpeg_log (LOG_INFO, "Using MMX SIMD optimisations.\n");
     }
     else
+#endif
     {
       calc_SAD    = &calc_SAD_noaccel;
       calc_SAD_uv = &calc_SAD_uv_noaccel;
-      mjpeg_log (LOG_INFO, "Using standard SAD-functions.\n");
+	  deinterlace_frame = &deinterlace_frame_noaccel;
+      mjpeg_log (LOG_INFO, "No SIMD optimisations available.\n");
     }
 
   /* initialize stream-information */
@@ -365,6 +375,8 @@ main (int argc, char *argv[])
   sub_r4[1] = malloc (width * height * sizeof (uint8_t) / 4);
   sub_r4[2] = malloc (width * height * sizeof (uint8_t) / 4);
 
+  line_buf = malloc( width );
+
 /* if needed, deinterlace frame */
 
   if (y4m_si_get_interlace(&streaminfo) != Y4M_ILACE_NONE)
@@ -391,7 +403,7 @@ main (int argc, char *argv[])
 
       /* if needed, deinterlace frame */
       if (deinterlace)
-        deinterlace_frame (yuv);
+		  (*deinterlace_frame) (yuv);
 
       /* should we only deinterlace frames ? */
       if (!deinterlace_only)
@@ -528,15 +540,17 @@ display_help ()
  * it does a better job than just dropping lines but sometimes it            *
  * fails and reduces y-resolution... hmm... but everything else is           *
  * supposed to fail, too, sometimes, and is #much# more time consuming.      *
+ * 2001 A.Stevens.  Not a bad algorithm!  The only real improvements that    *
+ * are possible are to add full 2D motion compensation, and to use a low-pass *
+ * match-filter to control the mixing gain in the construction of the        *
+ * deinterlaced line.                                                        *
  *****************************************************************************/
 
 void
-deinterlace_frame (uint8_t * yuv[3])
+deinterlace_frame_noaccel (uint8_t * yuv[3])
 {
 
-  /* Buffer one line */
-  uint8_t line[1024];
-  unsigned int d,dd;
+  unsigned int d;
   unsigned int min;
   int x;
   int y;
@@ -546,8 +560,7 @@ deinterlace_frame (uint8_t * yuv[3])
   int l1;
   int l2;
   int lumadiff = 0;
-	uint8_t *base;
-	uint8_t *row;
+  uint8_t *line = line_buf;
 
   /* Go through the frame by every two lines */
   for (y = 0; y < height; y += 2)
@@ -559,16 +572,6 @@ deinterlace_frame (uint8_t * yuv[3])
           min = 65535;
           xpos = 0;
           /* search in the range of +/- 16 pixels offset in the line */
-
-		  base = (yuv[0] + x + y * width);
-		  movq_m2r( base[-8], mm0 );
-		  movq_m2r( base[0], mm1);
-		  movq_m2r( base[8], mm2);
-		  row = base + width;
-		  base += (width<<1);
-		  movq_m2r( base[-8], mm3 );
-		  movq_m2r( base[0], mm4);
-		  movq_m2r( base[+8], mm5);
 
           for (xx = -16; xx < 16; xx++)
             {
@@ -585,42 +588,8 @@ deinterlace_frame (uint8_t * yuv[3])
                 }
 
 
-			  if( row + xx != (yuv[0] + (x + xx ) + (y + 1) * width) )
-			  {
-				  fprintf( stderr, "base is wrong.. %08x %08x\n",
-						   base, (yuv[0] + (x + xx ) + (y + 1) * width));
-				  exit(1);
-			  }
-			  				/* Calculate SAD through mm7 */
-				movq_m2r( row[xx-8], mm7 );
-				psadbw_r2r( mm0, mm7 );
-				movq_m2r( row[xx], mm6 );
-				psadbw_r2r( mm1, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx+8], mm6 );
-				psadbw_r2r( mm2, mm6 );
-				paddw_r2r( mm6, mm7 );
-				
-				movq_m2r( row[xx-8], mm6 );
-				psadbw_r2r( mm3, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx], mm6 );
-				psadbw_r2r( mm4, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx+8], mm6 );
-				psadbw_r2r( mm5, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movd_r2m(mm7, dd);
-
-			  if( d != dd )
-			  {
-				  fprintf( stderr, "res is wrong.. %08x %08x\n",
-						   dd, d);
-				  exit(1);
-			  }
-
               /* if SAD reaches a minimum store the position */
-              if (min > dd)
+              if (min > d)
                 {
                   min = d;
                   xpos = xx;
@@ -656,7 +625,6 @@ deinterlace_frame (uint8_t * yuv[3])
                   (*(yuv[0] + (x + i + xpos) + ((y + 1) * width)) >>1) +
                   (*(yuv[0] + (x + i) + ((y + 0) * width)) >> 1) + 1;
               }
-		  emms();
 
         }
 
@@ -666,27 +634,36 @@ deinterlace_frame (uint8_t * yuv[3])
     }
 }
 
+#ifdef HAVE_X86CPU                     
 
+/*********************************
+ *
+ * MMX and extended MMX versions of Stefan's deinterlacer...
+ * (C) 2001 A.Stevens, same license as rest
+ *
+ ********************************/
 
 void
-deinterlace_frame_MMX2 (uint8_t * yuv[3])
+deinterlace_frame_mmxe (uint8_t * yuv[3])
 {
 
   /* Buffer one line */
-  uint8_t line[1024];
-  unsigned int d,dd;
+  unsigned int dd;
   unsigned int min;
   int x;
   int y;
   int xx;
   int i;
   int xpos;
-  int l1,l1d;
-  int l2,l2d;
+  int l1d,l2d;
+#ifdef ORIGINAL_CODE
+  int l2,l2,d;
+#endif
   int lumadiff = 0;
-	uint8_t *base;
-	uint8_t *row;
-	uint8_t *tmp_addr;
+  uint8_t *base;
+  uint8_t *row;
+  uint8_t *tmp_addr;
+  uint8_t *line = line_buf;
 
   /* Go through the frame by every two lines */
   for (y = 0; y < height; y += 2)
@@ -700,13 +677,7 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
           /* search in the range of +/- 16 pixels offset in the line */
 
 		  base = (yuv[0] + x + y * width);
-		  movq_m2r( base[-8], mm0 );
-		  movq_m2r( base[0], mm1);
-		  movq_m2r( base[8], mm2);
 		  row = base + width;
-		  movq_m2r( base[(width<<1)-8], mm3 );
-		  movq_m2r( base[(width<<1)], mm4);
-		  movq_m2r( base[(width<<1)+8], mm5);
 
           for (xx = -16; xx < 16; xx++)
             {
@@ -717,6 +688,7 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
                 {
                   /* to avoid blocking in ramps we analyse the best match on */
                   /* two lines ... */
+
                   d += (int) abs (*(yuv[0] + (x + i) + y * width) -
                                   *(yuv[0] + (x + xx + i) + (y + 1) * width));
                   d += (int) abs (*(yuv[0] + (x + i) + (y + 2) * width) -
@@ -724,38 +696,42 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
                 }
 
 
-			  if( row + xx != (yuv[0] + (x + xx ) + (y + 1) * width) )
+			  if( row + xx != (yuv[0] + (x + xx ) + (y + 1) * width) ||
+				  base != yuv[0] + (x ) + y * width)
 			  {
-				  fprintf( stderr, "base is wrong.. %08x %08x\n",
+				  fprintf( stderr, "row is wrong.. %08x %08x\n",
 						   base, (yuv[0] + (x + xx ) + (y + 1) * width));
 				  exit(1);
 			  }
 #endif
+
+			  tmp_addr = &base[2*width];
+
 			  				/* Calculate SAD through mm7 */
-				movq_m2r( row[xx-8], mm7 );
-				psadbw_r2r( mm0, mm7 );
-				movq_m2r( row[xx], mm6 );
-				psadbw_r2r( mm1, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx+8], mm6 );
-				psadbw_r2r( mm2, mm6 );
-				paddw_r2r( mm6, mm7 );
-				
-				movq_m2r( row[xx-8], mm6 );
-				psadbw_r2r( mm3, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx], mm6 );
-				psadbw_r2r( mm4, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movq_m2r( row[xx+8], mm6 );
-				psadbw_r2r( mm5, mm6 );
-				paddw_r2r( mm6, mm7 );
-				movd_r2m(mm7, dd);
+			  movq_m2r( row[xx-8], mm0 );
+			  movq_r2r( mm0, mm7 );
+			  psadbw_m2r( base[-8], mm7 );
+			  movq_m2r( row[xx], mm6 );
+			  movq_r2r( mm6, mm1 );
+			  psadbw_m2r( base[0], mm6 );
+			  paddw_r2r( mm6, mm7 );
+			  movq_m2r( row[xx+8], mm6 );
+			  movq_r2r( mm6, mm2 );
+			  psadbw_m2r( base[8], mm6 );
+			  paddw_r2r( mm6, mm7 );
+			  
+			  psadbw_m2r( tmp_addr[-8], mm0 );
+			  paddw_r2r( mm0, mm7 );
+			  psadbw_m2r( tmp_addr[0], mm1 );
+			  paddw_r2r( mm1, mm7 );
+			  psadbw_m2r( tmp_addr[8], mm2 );
+			  paddw_r2r( mm2, mm7 );
+			  movd_r2m(mm7, dd);
 
 #ifdef ORIGINAL_CODE
 			  if( d != dd )
 			  {
-				  fprintf( stderr, "res is wrong.. %08x %08x\n",
+				  fprintf( stderr, "MMX2 res is wrong.. %08x %08x\n",
 						   dd, d);
 				  exit(1);
 			  }
@@ -767,7 +743,7 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
                   min = dd;
                   xpos = xx;
 				  movq_m2r( base[0], mm0 );
-				  movq_m2r( tmp_addr[0], mm4 );
+				  movq_m2r( *tmp_addr, mm4 );
 				
 				  movq_r2r( mm0, mm1 );
 				  movq_r2r( mm4, mm5 );
@@ -838,9 +814,9 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
               }
 #else
 		  {
-		  movq_m2r( base[0], mm0 );
-		  pavgb_m2r( base[(width<<1)], mm0 );
-		  movq_r2m( mm0, line[x] );
+			  movq_m2r( base[0], mm0 );
+			  pavgb_m2r( base[(width<<1)], mm0 );
+			  movq_r2m( mm0, line[x] );
 		  }
 #endif
           else
@@ -856,7 +832,7 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
 		  {
 			  tmp_addr = &base[width+xpos];
 			  movq_m2r( base[0], mm0 );
-			  pavgb_m2r( tmp_addr[0], mm0 );
+			  pavgb_m2r( *tmp_addr, mm0 );
 			  movq_r2m( mm0, line[x] );
 		  }
 		  
@@ -871,9 +847,8 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
 #ifdef ORIGINAL_CODE
 				  *(yuv[0] + i + (y + 1) * width) = *(line + i);
 #else
-				  tmp_addr = &line;
-				  movq_m2r( base[i], mm0 );
-				  movq_r2m( mm0, tmp_addr[i] );
+				  movq_m2r( line[i], mm0 );
+				  movq_r2m( mm0, base[i] );
 #endif
 			  }
 		  emms();
@@ -881,8 +856,282 @@ deinterlace_frame_MMX2 (uint8_t * yuv[3])
     }
 }
 
+void
+deinterlace_frame_mmx (uint8_t * yuv[3])
+{
+	static uint64_t four1w = 0x0001000100010001LL;
+  /* Buffer one line */
+	uint8_t *line = line_buf;
+  unsigned int dd;
+  unsigned int min;
+  int x;
+  int y;
+  int xx;
+  int i;
+  int xpos;
+  int l1d,l2d;
+#ifdef ORIGINAL_CODE
+  int l1,l2,d;
+#endif
+  int lumadiff = 0;
+	uint8_t *base;
+	uint8_t *base_down2;
+	uint8_t *row;
+	uint8_t *tmp_addr;
+
+  /* Go through the frame by every two lines */
+  for (y = 0; y < height; y += 2)
+    {
+      /* Go through each line by a "block" length of 32 pixels */
+      for (x = 0; x < width; x += 8)
+        {
+          /* search best matching block of pixels in other field line */
+          min = 65535;
+          xpos = 0;
+          /* search in the range of +/- 16 pixels offset in the line */
+
+		  base = (yuv[0] + x + y * width);
+		  row = base + width;
+		  base_down2 = row + width;
+
+          for (xx = -16; xx < 16; xx++)
+            {
+#ifdef ORIGINAL_CODE
+              d = 0;
+              /* Calculate SAD */
+              for (i = -8; i < 16; i++)
+                {
+                  /* to avoid blocking in ramps we analyse the best match on */
+                  /* two lines ... */
+                  d += (int) abs (*(yuv[0] + (x + i) + y * width) -
+                                  *(yuv[0] + (x + xx + i) + (y + 1) * width));
+                  d += (int) abs (*(yuv[0] + (x + i) + (y + 2) * width) -
+                                  *(yuv[0] + (x + xx + i) + (y + 1) * width));
+                }
 
 
+#endif
+			  pxor_r2r(mm7,mm7); /* Zero */
+			  pxor_r2r(mm6,mm6); /* Accumulators for SADs */
+			  for( i = -8; i < 16; i += 8 )
+			  {
+				  /* mm0=mm1=base[i], mm2=mm3=base_down2[i], 
+					 mm4=mm5=row[xx+i]
+				  */
+				  movq_m2r( base[i], mm0 );
+				  movq_r2r( mm0, mm1 );
+				  movq_m2r( base_down2[i], mm2 );
+				  movq_r2r( mm2, mm3 );
+				  tmp_addr = &row[xx+i];
+				  movq_m2r( *tmp_addr, mm4 );
+				  movq_r2r( mm4, mm5 );
+				  
+				  /* mm0=mm1=SAD(base[i],row[xx+i] */
+				  psubusb_r2r( mm4, mm0 );
+				  psubusb_r2r( mm1, mm4 );
+				  paddb_r2r( mm4, mm0 );
+				  movq_r2r( mm0, mm1 );	
+				  
+				  /* mm6 = mm6 + [mm0|0..3W] + [mm1|4..7W] */
+
+				  punpcklbw_r2r( mm7, mm0 );
+				  punpckhbw_r2r( mm7, mm1 );
+				  paddw_r2r( mm0, mm6 );
+				  paddw_r2r( mm1, mm6 );
+				  
+				  /* mm2=mm3=SAD(base_down2[i],row[xx+i]) */
+				  psubusb_r2r( mm5, mm2 );
+				  psubusb_r2r( mm3, mm5 );
+				  paddb_r2r( mm5, mm2 );
+				  movq_r2r( mm2, mm3 );
+
+				  /* mm6 = mm6 + [mm2|0..3W] + [mm3|4..7W] */
+
+				  punpcklbw_r2r( mm7, mm2 );
+				  punpckhbw_r2r( mm7, mm3 );
+				  paddw_r2r( mm2, mm6 );
+				  paddw_r2r( mm3, mm6 );
+			  }
+
+			  /* d = sum of words in mm6 */
+			  movq_r2r( mm6, mm7 );
+			  psrlq_i2r( 32, mm6 );
+			  paddw_r2r( mm7, mm6 );
+
+			  movq_r2r( mm6, mm7 );
+			  psrlq_i2r( 16, mm6 );
+			  paddw_r2r( mm7, mm6 );
+			  				  
+			  movd_r2m( mm6, dd );
+			  dd &= 0xffff;
+
+#ifdef ORIGINAL_CODE
+			  if( d != dd )
+			  {
+				  fprintf( stderr, "MMX res is wrong.. %08x %08x\n",
+						   dd, d);
+				  exit(1);
+			  }
+#endif
+              /* if SAD reaches a minimum store the position */
+              if (min > dd)
+			  {
+				  tmp_addr = &base[width+xx];
+                  min = dd;
+                  xpos = xx;
+				  movq_m2r( base[0], mm0 );
+				  movq_m2r( *tmp_addr, mm4 );
+				
+				  movq_r2r( mm0, mm1 );
+				  movq_r2r( mm4, mm5 );
+
+				  pxor_r2r( mm7, mm7 );
+				  punpcklbw_r2r( mm7, mm0 );
+				  punpckhbw_r2r( mm7, mm1 );
+				  punpcklbw_r2r( mm7, mm4 );
+				  punpckhbw_r2r( mm7, mm5 );
+				  
+				  paddw_r2r( mm1, mm0 );
+				  paddw_r2r( mm5, mm4 );
+
+				  movq_r2r( mm0, mm1 );
+				  psrlq_i2r( 32, mm0 );
+
+				  movq_r2r( mm4, mm5 );
+				  psrlq_i2r( 32, mm4 );
+				  
+				  paddw_r2r( mm1, mm0 );
+				  paddw_r2r( mm5, mm4 );
+
+				  movq_r2r( mm0, mm1 );
+				  psrlq_i2r( 16, mm0 );
+
+				  movq_r2r( mm4, mm5 );
+				  psrlq_i2r( 16, mm4 );
+
+				  paddw_r2r( mm1, mm0 );
+				  paddw_r2r( mm5, mm4 );
+				  
+				  movd_r2m( mm0, l1d );
+				  movd_r2m( mm4, l2d );
+				  l1d = (l1d & 0xffff)/8;
+				  l2d = (l2d & 0xffff)/8;
+#ifdef ORIGINAL_CODE
+                  l1 = l2 = 0;
+                  for (i = 0; i < 8; i++)
+                    {
+                      l1 += *(yuv[0] + (x + i) + y * width);
+                      l2 += *(yuv[0] + (x + i + xpos) + (y + 1) * width);
+                    }
+                  l1 /= 8;
+                  l2 /= 8;
+				  if( l1 != l1d || l2 != l2d )
+				  {
+					  fprintf( stderr, "MMX LUM DIFF %d %d %d %d\n", l1, l1d, l2, l2d);
+				  }
+#endif
+                  lumadiff = abs(l1d - l2d);
+                  //lumadiff = (lumadiff < 6) ? 0 : 1;
+                }
+
+            }
+
+          /* copy pixel-block into the line-buffer */
+
+          /* if lumadiff is small take the fields block, if not */
+          /* take the other fields block */
+
+          if (lumadiff >= 6 && min > (8 * 24))
+#ifdef ORIGINAL_CODE
+			  for (i = 0; i < 8; i++)
+              {
+				  *(line + x + i) =
+					  (*(yuv[0] + (x + i) + ((y) * width)) >>1) +
+					  (*(yuv[0] + (x + i) + ((y + 2) * width))>>1) + 1;
+              }
+#else
+		  {
+			  movq_m2r( base[0], mm0 );
+			  pxor_r2r( mm7,mm7 );
+			  movq_r2r( mm0, mm1 );
+			  punpcklbw_r2r( mm7, mm0 );
+			  punpckhbw_r2r( mm7, mm1 );
+			  movq_m2r( base[(width<<1)], mm2 );
+			  movq_r2r( mm2, mm3 );
+			  movq_m2r( four1w, mm4 );
+			  pxor_r2r(mm4,mm4);
+			  punpcklbw_r2r( mm7, mm2 );
+			  punpckhbw_r2r( mm7, mm3 );
+
+			  paddw_r2r( mm2, mm0 );
+			  paddw_r2r( mm3, mm1 );
+			  paddw_r2r( mm4, mm0 );
+			  paddw_r2r( mm4, mm1 ); 
+			  psrlw_i2r( 1, mm0 );
+			  psrlw_i2r( 1, mm1 );
+			  
+			  packuswb_r2r( mm1, mm0 ); 
+
+			  movq_r2m( mm0, line[x] );
+		  }
+#endif
+          else
+#ifdef ORIGINAL_CODE
+			  for (i = 0; i < 8; i++)
+              {
+				  *(line + x + i) =
+					  (*(yuv[0] + (x + i + xpos) + ((y + 1) * width)) >>1) +
+					  (*(yuv[0] + (x + i) + ((y + 0) * width)) >> 1) + 1;
+              }
+
+#else
+		  {
+			  tmp_addr = &base[width+xpos];
+
+			  movq_m2r( base[0], mm0 );
+			  pxor_r2r( mm7,mm7 );
+			  movq_r2r( mm0, mm1 );
+			  punpcklbw_r2r( mm7, mm0 );
+			  punpckhbw_r2r( mm7, mm1 );
+			  movq_m2r( *tmp_addr, mm2 );
+			  movq_r2r( mm2, mm3 );
+			  movq_m2r( four1w, mm4 );
+			  punpcklbw_r2r( mm7, mm2 );
+			  punpckhbw_r2r( mm7, mm3 );
+
+			  paddw_r2r( mm2, mm0 );
+			  paddw_r2r( mm3, mm1 );
+			  paddw_r2r( mm4, mm0 );
+			  paddw_r2r( mm4, mm1 );
+			  psrlw_i2r( 1, mm0 );      
+			  psrlw_i2r( 1, mm1 );      
+			  
+			  packuswb_r2r( mm1, mm0 ); 
+			  movq_r2m( mm0, line[x] );
+
+		  }
+		  
+#endif		  
+
+        }
+
+      /* copy the line-buffer into the source-line */
+			  base = yuv[0] + (y + 1) * width;
+			  for (i = 0; i < width; i+=8)
+			  {
+#ifdef ORIGINAL_CODE
+				  *(yuv[0] + i + (y + 1) * width) = *(line + i);
+#else
+				  movq_m2r( line[i], mm0 );
+				  movq_r2m( mm0, base[i] );
+#endif
+			  }
+		  emms();
+
+    }
+}
+
+#endif
 
 /*****************************************************************************
  * takes a frame and blends it into the average                              *
@@ -1046,6 +1295,8 @@ calc_SAD_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_
   return d;
 }
 
+
+#ifdef HAVE_X86CPU
 /*****************************************************************************
  * SAD-function for Y with MMX                                               *
  *****************************************************************************/
@@ -1137,7 +1388,7 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
  *****************************************************************************/
 
 uint32_t
-calc_SAD_sse (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
+calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
   uint32_t d __attribute__ ((aligned (32))) = 0;
   uint8_t *fs __attribute__ ((aligned (32))) = frm + frm_offs;
@@ -1220,6 +1471,7 @@ calc_SAD_sse (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs
   return d;
 }
 
+#endif
 
 /*****************************************************************************
  * SAD-function for U+V without MMX/SSE                                      *
@@ -1250,6 +1502,8 @@ calc_SAD_uv_noaccel (uint8_t * frm,
     }
   return d;
 }
+
+#ifdef HAVE_X86CPU
 
 /*****************************************************************************
  * SAD-function for U+V with MMX                                             *
@@ -1362,7 +1616,7 @@ calc_SAD_uv_mmx (uint8_t * frm,
  *****************************************************************************/
 
 uint32_t
-calc_SAD_uv_sse (uint8_t * frm,
+calc_SAD_uv_mmxe (uint8_t * frm,
                  uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int div)
 {
   uint32_t d __attribute__ ((aligned (32))) = 0;
@@ -1447,6 +1701,7 @@ calc_SAD_uv_sse (uint8_t * frm,
   return d;
 }
 
+#endif
 
 /* Motion estimation on 4*4 blocks... */
 
