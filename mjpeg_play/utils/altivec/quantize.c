@@ -33,7 +33,7 @@ extern int (*pquant_non_intra)(int16_t *src, int16_t *dst, int q_scale_type,
 				int mquant, int *nonsat_mquant);
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t *i_quant_mat);
 
-extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, uint16_t *qmat);
+extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant);
 
 
 void enable_altivec_quantization(int opt_mpeg1)
