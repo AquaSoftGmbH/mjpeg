@@ -674,9 +674,12 @@ GList *abitrate = NULL;
    abitrate = g_list_append (abitrate, "128");
    abitrate = g_list_append (abitrate, "96");
 
-   samples = g_list_append (samples, "44100");
-   samples = g_list_append (samples, "48000");
-   samples = g_list_append (samples, "32000");
+   if (!samples)
+   {
+      samples = g_list_append (samples, "44100");
+      samples = g_list_append (samples, "48000");
+      samples = g_list_append (samples, "32000");
+   }
 
   /* Creating 1st line iwth the Bitrate selection */
   label1 = gtk_label_new ("  Bitrate: ");
@@ -771,11 +774,14 @@ GList *input_active_size = NULL;
    droplsb = g_list_append (droplsb, "2");
    droplsb = g_list_append (droplsb, "3");
 
-   outputformat = g_list_append (outputformat, "as is");
-   outputformat = g_list_append (outputformat, "half height/width from input");
-   outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
-   outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
-   outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
+   if (!outputformat)
+   {
+      outputformat = g_list_append (outputformat, "as is");
+      outputformat = g_list_append (outputformat, "half height/width from input");
+      outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
+      outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
+      outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
+   }
 
    input_active_size = g_list_append (input_active_size, "as is");
    input_active_size = g_list_append (input_active_size, "348x278+2+2");
@@ -1147,13 +1153,16 @@ GtkWidget *options_window, *button;
 GtkWidget *hbox,*vbox;
  
   printf("\n laenge %i \n", g_list_length (g_list_first(muxformat)));
-   muxformat = g_list_append (muxformat, "Auto MPEG 1");
-   muxformat = g_list_append (muxformat, "standard VCD");
-   muxformat = g_list_append (muxformat, "user-rate VCD");
-   muxformat = g_list_append (muxformat, "Auto MPEG 2");
-   muxformat = g_list_append (muxformat, "standard SVCD");
-   muxformat = g_list_append (muxformat, "user-rate SVCD");
-   muxformat = g_list_append (muxformat, "DVD");
+   if (!muxformat)
+   {
+      muxformat = g_list_append (muxformat, "Auto MPEG 1");
+      muxformat = g_list_append (muxformat, "standard VCD");
+      muxformat = g_list_append (muxformat, "user-rate VCD");
+      muxformat = g_list_append (muxformat, "Auto MPEG 2");
+      muxformat = g_list_append (muxformat, "standard SVCD");
+      muxformat = g_list_append (muxformat, "user-rate SVCD");
+      muxformat = g_list_append (muxformat, "DVD");
+   }
  
 
  init_tempenco(data);
