@@ -45,6 +45,9 @@ int	interlace;
 #define	NUMAVG	1024
 int	avg_replace[NUMAVG];
 
+int     SS_H = 2;
+int     SS_V = 2;
+
 static void Usage(char *name )
 {
 	fprintf(stderr,
@@ -116,7 +119,35 @@ main(int argc, char *argv[])
 
 	i = y4m_read_stream_header(input_fd, &istream);
 	if (i != Y4M_OK)
-		mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
+	  mjpeg_error_exit1("Input stream error: %s", y4m_strerr(i));
+	else
+	  {
+	    /* try to find a chromass xtag... */
+	    y4m_xtag_list_t *xtags = y4m_si_xtags(&istream);
+	    const char *tag = NULL;
+	    int n;
+	    for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
+	      {
+		tag = y4m_xtag_get(xtags, n);
+		if (!strncmp("XYSCSS=", tag, 7)) break;
+	      }
+	    if ((tag != NULL) && (n >= 0))
+	      {
+		/* parse the tag */
+		tag += 7;
+		if (!strcmp("411", tag))
+		  {
+		    SS_H = 4;
+		    SS_V = 1;
+		  } 
+		else if (!strcmp("420", tag))
+		  {
+		    SS_H = 2;
+		    SS_V = 2;
+		  } 
+	      }
+	  }
+	mjpeg_debug("chroma subsampling: %dH %dV\n",SS_H,SS_V);
 
 	i = y4m_si_get_interlace(&istream);
 	switch (i)
@@ -144,12 +175,12 @@ main(int argc, char *argv[])
 	y4m_copy_stream_info(&ostream, &istream);
 
 	input_frame[0] = malloc(horz * vert);
-	input_frame[1] = malloc((horz / 2) * (vert / 2));
-	input_frame[2] = malloc((horz / 2) * (vert / 2));
+	input_frame[1] = malloc((horz / SS_H) * (vert / SS_V));
+	input_frame[2] = malloc((horz / SS_H) * (vert / SS_V));
 
 	output_frame[0] = malloc(horz * vert);
-	output_frame[1] = malloc((horz / 2) * (vert / 2));
-	output_frame[2] = malloc((horz / 2) * (vert / 2));
+	output_frame[1] = malloc((horz / SS_H) * (vert / SS_V));
+	output_frame[2] = malloc((horz / SS_H) * (vert / SS_V));
 
 
 	y4m_write_stream_header(output_fd, &ostream);
@@ -189,29 +220,29 @@ filter(int width, int height, uint8_t * const input[], uint8_t *output[])
 					  radius_luma, threshold_luma, 
 					  input[0]+width, output[0]+width);
 
-		filter_buffer(width/2, height/4, width, 
+		filter_buffer(width/SS_H, (height/SS_V)/2, (width/SS_H)*2, 
 					  radius_chroma, threshold_chroma, 
 					  input[1], output[1]);
-		filter_buffer(width/2, height/4, width, 
+		filter_buffer(width/SS_H, (height/SS_V)/2, (width/SS_H)*2, 
 					  radius_chroma, threshold_chroma, 
-					  input[1]+width/2, output[1]+width/2);
+					  input[1]+width/SS_H, output[1]+width/SS_H);
 
-		filter_buffer(width/2, height/4, width, 
+		filter_buffer(width/SS_H, (height/SS_V)/2, (width/SS_H)*2, 
 					  radius_chroma, threshold_chroma, 
 					  input[2], output[2]);
-		filter_buffer(width/2, height/4, width,
+		filter_buffer(width/SS_H, (height/SS_V)/2, (width/SS_H)*2,
 					  radius_chroma, threshold_chroma, 
-					  input[2]+width/2, output[2]+width/2);
+					  input[2]+width/SS_H, output[2]+width/SS_H);
 	}
 	else
 	{
 		filter_buffer(width, height, width, 
 						  radius_luma, threshold_luma, 
 						  input[0], output[0]);
-		filter_buffer(width/2, height/2, width/2, 
+		filter_buffer(width/SS_H, height/SS_V, width/SS_H, 
 					  radius_chroma, threshold_chroma, 
 					  input[1], output[1]);
-		filter_buffer(width/2, height/2, width/2, 
+		filter_buffer(width/SS_H, height/SS_V, width/SS_H, 
 					  radius_chroma, threshold_chroma, 
 					  input[2], output[2]);
 	}

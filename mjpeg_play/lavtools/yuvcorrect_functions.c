@@ -352,22 +352,51 @@ void initialisation1(int fd,frame_t * frame, general_correction_t * gen_correct,
 		    
 {
    uint8_t *u_c_p;		//u_c_p = uint8_t pointer
-   
+   int SS_H = 2;
+   int SS_V = 2;
+
   // gen_correct 
   gen_correct->no_header = gen_correct->line_switch =
   gen_correct->field_move = 0;
 
    y4m_init_stream_info (&gen_correct->streaminfo);
    if (y4m_read_stream_header (fd, &gen_correct->streaminfo) != Y4M_OK)
-     mjpeg_error_exit1 ("Could'nt read yuv4mpeg header!");
+     mjpeg_error_exit1 ("Couldn't read yuv4mpeg header!");
+   else
+     {
+       /* try to find a chromass xtag... */
+       y4m_xtag_list_t *xtags = y4m_si_xtags(&gen_correct->streaminfo);
+       const char *tag = NULL;
+       int n;
+       for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
+         {
+           tag = y4m_xtag_get(xtags, n);
+           if (!strncmp("XYSCSS=", tag, 7)) break;
+         }
+       if ((tag != NULL) && (n >= 0))
+         {
+           /* parse the tag */
+           tag += 7;
+           if (!strcmp("411", tag))
+             {
+               SS_H = 4;
+               SS_V = 1;
+             } 
+           else if (!strcmp("420", tag))
+             {
+               SS_H = 2;
+               SS_V = 2;
+             } 
+         }
+     }
 
    // frame
   frame->y_width = y4m_si_get_width (&gen_correct->streaminfo);
   frame->y_height = y4m_si_get_height (&gen_correct->streaminfo);
   frame->nb_y = frame->y_width * frame->y_height;
-  frame->uv_width = frame->y_width >> 1;	// /2
-  frame->uv_height = frame->y_height >> 1;	// /2
-  frame->nb_uv = frame->nb_y >> 2;	// /4
+  frame->uv_width = frame->y_width / SS_H;
+  frame->uv_height = frame->y_height / SS_V;
+  frame->nb_uv = frame->nb_y / (SS_H*SS_V);
   frame->length = (frame->nb_y * 3) >> 1;	// * 3/2
   if (!(u_c_p = malloc (frame->length + ALIGNEMENT)))
     mjpeg_error_exit1 ("Could not allocate memory for frame table. STOP!");
