@@ -164,10 +164,11 @@ int main (int argc, char *argv[])
   int fdOut = 1 ;
   y4m_stream_info_t in_streaminfo, out_streaminfo ;
   y4m_ratio_t frame_rate, src_frame_rate ;
-
   const static char *legal_flags = "r:s:cnv:h";
   int c ;
   
+  src_frame_rate.d = 0;
+
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
         switch (c)
         {
@@ -222,7 +223,8 @@ int main (int argc, char *argv[])
      mjpeg_error_exit1("Only 3 plane formats supported");
 
   /* Prepare output stream */
-  src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
+  if (src_frame_rate.d == 0)
+     src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
   y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
   
   /* Information output */
