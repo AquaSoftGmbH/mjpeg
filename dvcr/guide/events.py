@@ -16,6 +16,7 @@
 #
 from Tkinter import *
 from time import *
+from string import *
 import marshal 
 import Pmw
 import ConfigParser
@@ -33,8 +34,31 @@ class Event:
 		self.day= IntVar()
 		self.month = IntVar()
 		self.year = IntVar()
+		self.group_data = None
+		self.group_frame = None
+
+	def __del__(self):
+		self.group_data.destroy()
+
+	def show(self):
+		self.group_data.focus_force()
+
+	def get_start(self):
+		hour = self.start_hour.get()
+		if hour == 12:
+			hour = 0
+		if lower(self.start_ampm.get()) == 'pm':
+			hour = hour + 12
+		return mktime(2000 + self.year.get(), 
+			self.month.get(), self.day.get(),
+			hour, self.start_min.get(), 0, 0, 0, -1) - timezone
 
 	def set_start(self, time_value):
+		if time_value == None:
+			time_value = time() - timezone
+			time_value = time_value - (time_value % (30 * 60))
+			time_value = time_value + 30 * 60
+
 		self.start_hour.set(strftime("%l",gmtime(time_value)))
 		self.start_min.set(strftime("%M",gmtime(time_value)))
 		self.start_ampm.set(strftime("%p",gmtime(time_value)))
@@ -43,19 +67,56 @@ class Event:
 		self.month.set(strftime("%m",gmtime(time_value)))
 		self.year.set(strftime("%g",gmtime(time_value)))
 
+	def get_stop(self):
+		hour = self.stop_hour.get()
+		if hour == 12:
+			hour = 0
+		if lower(self.stop_ampm.get()) == 'pm':
+			hour = hour + 12
+		return mktime(2000 + self.year.get(), 
+			self.month.get(), self.day.get(),
+			hour, self.stop_min.get(), 0, 0, 0, -1) - timezone
 
 	def set_stop(self, time_value):
-		self.stop_hour.set(strftime("%l",gmtime(time_value)))
-		self.stop_min.set(strftime("%M",gmtime(time_value)))
-		self.stop_ampm.set(strftime("%p",gmtime(time_value)))
+		if time_value == None:
+			self.stop_hour.set("")
+			self.stop_min.set("")
+			self.stop_ampm.set("")
+		else:
+			self.stop_hour.set(strftime("%l",gmtime(time_value)))
+			self.stop_min.set(strftime("%M",gmtime(time_value)))
+			self.stop_ampm.set(strftime("%p",gmtime(time_value)))
+
+	def get_title(self):
+		return self.title.get()
 
 	def set_title(self, title):
-		self.title.set(title)
+		if title == None:
+			self.title.set("")
+		else:
+			self.title.set(title)
 
+
+	def get_channel(self):
+		return self.channel.get()
+	
 	def set_channel(self, channel):
-		self.channel.set(channel)
+		if channel == None:
+			self.channel.set("")
+		else:
+			self.channel.set(channel)
 
-	def group(self, root):
+	def get_repeat(self):
+		return None
+
+	def withdraw(self):
+		self.group_data.grid_forget()
+
+	def display(self, row):
+		self.group_data.grid(row=row, column=0, sticky='NSEW', 
+			ipadx=4, ipady=4)
+
+	def group(self, root, row):
 		self.group_data = Pmw.Group(root, tag_text=" ")
 		self.group_frame = self.group_data.interior()
 
@@ -121,7 +182,6 @@ class Event:
 		dash = Label(self.group_frame,
 			text = " - ",
 			width = 3)
-
 		date_frame.grid(row=0, column=0)
 		start_time_frame.grid(row = 0, column=1)
 		dash.grid(row=0, column = 2, sticky="NSEW")
@@ -138,19 +198,23 @@ class Event:
 		channel.grid(row=1, column=0, sticky="NSW")
 		title.grid(row=1, column = 1, columnspan=3, sticky="NSW")
 
-		self.group_data.pack(expand=1, fill=BOTH, ipadx=4, ipady=4)
+		self.group_data.grid(row=row, column=0, sticky='NSEW', 
+			ipadx=4, ipady=4)
 
 class EventList:
 	def __init__(self, root):
 		self.config_data = ConfigParser.ConfigParser()
 		self.config_data.read("/etc/dvcr")
+		self.last_add = []
 
 		self.record_event = {}
 		self.event_groups = {}
 		self.dialog = Pmw.Dialog(root,
 			title="Reording Events",
 			buttons=("OK", "Add", "Cancel"),
+			command=self.execute,
 			defaultbutton='OK')
+		self.dialog.withdraw()
 
 		self.scroll_area = Pmw.ScrolledFrame(self.dialog.interior(),
 			hscrollmode = 'dynamic')
@@ -167,7 +231,7 @@ class EventList:
 			return
 
 		self.record_event = marshal.load(file)
-
+		row = 0
 		for tag in self.tags():
 			start, end, channel, title = \
 				self.event(tag)
@@ -177,9 +241,8 @@ class EventList:
 			current.set_stop(end)
 			current.set_title(title)
 			current.set_channel(channel)
-			current.group(self.scroll_area.interior())
-		self.dialog.deactivate()
-
+			current.group(self.scroll_area.interior(), row)
+			row = row + 1
 
 	def save(self):
 		try:
@@ -190,7 +253,7 @@ class EventList:
 
 		marshal.dump(self.record_event, file)
 
-	def add(self, id, channel, start, stop, repeat, title):
+	def add(self, id, channel=None, start=None, stop=None, repeat=None, title=None):
 		self.record_event[id] = { 
 			"channel" : channel, 
 			"start": start, 
@@ -199,10 +262,40 @@ class EventList:
 			"title" : title
 			}
 
+		current = Event()
+		self.event_groups[id] = current
+		current.set_start(start)
+		current.set_stop(stop)
+		current.set_title(title)
+		current.set_channel(channel)
+		current.group(self.scroll_area.interior(), 
+			len(self.event_groups)-1)
+
+		self.last_add.append(id)
+
+	def last_delete(self):
+		for tag in self.last_add:
+			self.delete(tag)
+
+	def delete(self, id):
+		if self.record_event.has_key(id):
+			del self.record_event[id]
+			del self.event_groups[id]
+
+	def event_cmp(self, a1, a2):
+		diff = self.record_event[a1]['start'] - \
+			self.record_event[a2]['start']
+		if diff < 0:
+			return -1
+		if diff > 0:
+			return 1
+		return 0
+		
 	def tags(self):
 		tags = self.record_event.keys()
-		tags.sort(cmp)
+		tags.sort(self.event_cmp)
 		return tags
+
 
 	def event(self, tag):
 		if self.record_event.has_key(tag):
@@ -211,8 +304,6 @@ class EventList:
 				dict['stop'], \
 				dict['channel'], \
 				dict['title']
-				
-
 		return None
 
 	def list(self):
@@ -225,5 +316,44 @@ class EventList:
 		except:
 			return None
 
-	def display_events(self):
-		self.dialog.activate()
+	def execute(self, button):
+		if button == 'OK':
+			self.dialog.deactivate()
+			self.last_add = []		
+			for tag in self.tags():
+				dict = self.record_event[tag]
+				event = self.event_groups[tag]
+				dict['channel'] = event.get_channel()
+				dict['start'] = event.get_start()
+				dict['stop'] = event.get_stop()
+				dict['title'] = event.get_title()
+				dict['repeat'] = event.get_repeat()
+			self.save()
+			return
+
+		if button == 'Cancel':
+			self.dialog.deactivate()
+			self.last_delete()
+			self.last_add = []		
+
+		if button == "Add":
+			self.add("x1")
+			return
+
+
+	def display_events(self, group_tag):
+		if group_tag != None:
+			if self.event_groups.has_key(group_tag):
+				self.event_groups[group_tag].show()
+		else:
+			self.last_add = []
+
+		for tag in self.tags():
+			self.event_groups[tag].withdraw()
+
+		row = 0
+		for tag in self.tags():
+			self.event_groups[tag].display(row)
+			row = row + 1
+
+		result = self.dialog.activate()

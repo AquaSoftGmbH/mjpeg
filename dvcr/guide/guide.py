@@ -18,6 +18,7 @@ from string import *
 from time import *
 from Tkinter import *
 from events import *
+import sys
 import marshal 
 import ConfigParser
 import Pmw
@@ -173,9 +174,9 @@ class Guide:
 		listing = self.list_dict[key]
 		print "listing=", listing
 		stop = listing[0] + listing[3] * 60;
-#		self.events.addit(key,  listing[2], listing[0], stop,
-#			"aa", listing[4])
-		self.events.display_events()
+		self.events.add(key,  listing[2], listing[0], stop,
+			"aa", listing[4])
+		self.events.display_events(key)
 
 	def info_in(self, key, aa):
 		listing = self.list_dict[key]
@@ -247,6 +248,13 @@ class Guide:
 
 		return span
 
+	def  done(self):
+		print "executing done"
+		sys.exit(0)
+
+	def edit_events(self):
+		self.events.display_events(None)
+
 	def display_guide(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
 		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
@@ -261,6 +269,22 @@ class Guide:
 		self.events.load()
 
 		self.load(seconds)
+
+		menu_bar = Pmw.MenuBar(self.root,
+			hull_relief = 'raised',
+			hull_borderwidth=3)
+		menu_bar.addmenu('File', "Quit program")
+		menu_bar.addmenuitem("File", 'command', 
+			"Exit Program", 
+			label="Exit",
+			command=GuideCmd(self.done))
+		menu_bar.addmenu('Edit', "Edit event list")
+		menu_bar.addmenuitem("Edit", 'command',
+			"Edit Recording Events",
+			label="Events",
+			command=GuideCmd(self.edit_events))
+
+		self.menu_bar = menu_bar
 
 		self.info_frame = Frame(self.root, background="green")
 		self.listing_widget = Table(self.root,
@@ -283,6 +307,7 @@ class Guide:
 			if end > station_size:
 				station_size = end
 					
+
 
 		self.info_time = Label(self.info_frame, text="")
 		self.info_time.grid(row=0, column=0, sticky="NSEW")
@@ -314,6 +339,8 @@ class Guide:
 
 
 		set_weight(self.listing_frame, start_column=1)
+
+		self.menu_bar.pack(expand=YES, fill=BOTH, side='top')
 
 		self.info_frame.pack(expand=YES, fill=BOTH, side='top')
 		self.listing_widget.pack(expand=YES, fill=BOTH, side='top')
