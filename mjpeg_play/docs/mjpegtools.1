@@ -1962,7 +1962,7 @@ Optimizing the stream
 Using filters helps to increase the image quality using fixes bitrate
 video streams. With VBR (variable bit rate) video the filesize is reduced.
 .PP
-Example
+Example:
 .PP
 \fB> lav2yuv stream.avi \(br yuvmedianfilter \(br
 mpeg2enc -o video.m1v\fP
@@ -1990,7 +1990,7 @@ source material, median filtering of the chroma can cause a slight color
 shift towards green.   Filtering on the luma component (disabling the chroma
 filtering) is the solution to that problem.
 .PP
-Example
+Example:
 .PP
 \fB> lav2yuv stream.avi \(br yuvdenoise \(br mpeg2enc -o video.m1v\fP
 .PP
@@ -1999,17 +1999,72 @@ reduces color and luminance-noise and flickering due to phase errors but is
 also effective at removing speckles.
 If you want yuvdenoise to deinterlace the stream use the -F option.
 .PP
-By default yuvdenoise denoises interlaced if the input is interlaced. Like
-yuvmedianfilter you can also change the denoiser threshold (-t), you can also
-use adifferent search raduis (-r). You can also set a active area where 
-everything outside that area is set to real black. This might speed up things
-a little.
+By default yuvdenoise denoises interlaced if the input is interlaced.
+You can of course change the denoiser threshold (-t), as well as the
+different search radius (-r). You can also set a \fBactive area\fP where
+everything outside that area is set to real black.   Creating a black
+border can lower the bitrate of the encoded stream because pure black
+areas compress much better than noise (captures from analog sources such
+as VHS and 8mm usually have several lines at the time and bottom that are
+very noisy).
 .PP
 yuvdenoise uses a different approach to filter the noise.  More information
 about how yuvdenoise works as well as descriptions of its options are found
 in the manpage.
 .PP
-Example
+If you have a high quality source you can only use \fBfast mode\fP\&. In
+the fast mode yuvdenoise only uses the bitnoise reduction.  You might also
+use the mpeg2enc \fB-h/--keep-hf\fP option. That option tells mpeg2enc to
+keep as much high frequency information as possible.   Using -h will
+greatly increase the bitrate (filesize).  If the bitrate is too close to
+the maximum (set with -b) the encoder will have to decrease the quality
+to avoid exceeding the maximum bitrate.
+.PP
+A builtin filter in mpeg2enc is the -N/--reduce-HF option.  This
+option is not really filter in the usual sense.  Rather it changes
+how exactly the high frequency information is encoded.  Often the high
+frequency is noise.  You also have high frequencies on sharp borders or
+transitions. The -N option can have values between 0.0 and 2.0 where 0.0
+does nothing (disables the high frequency quantiser boost) and 2.0 gives
+the maximum quantisation boost.  The value to use depends on the desired
+output quality and filesize.  Values of -N less than 0.5 are very subtle
+while a value of 1.0 will achieve a good balance between bitrate reduction
+and output quality.   Using -N values above 1.5 will noticeably reduce the
+sharpness of the output picture and are normally used only for poor quality
+sources (VHS tapes for example).
+.PP
+Using yuvmedianfilter's capability to only filter the chroma (-T) is
+moderately effective at reducing noise in dark scenes without softening
+the image during normal (brighter) scenes.   Median filtering of the luma
+(-t) will produce a lower bitrate but can cause loss of detail (softening).
+Chroma only medianfiltering is less agressive and is a good choice to use
+in combination with yuvdenoise.
+.PP
+Combining the filters yuvdenoise, yuvmedianfilter and the mpeg2enc -N
+option gives a very fine degree of control over the bitrate (filesize).
+The reduction (or increase) in the bitrate depends on the source material
+and the exact encoding/filter options used.  So we can give no exact
+numbers how much each option and combination will reduce the filesize, only
+guidelines.
+.PP
+Usually you should use the -N option in a range from 0.5 to 1.5.  Below
+0.5 it does not reduce the bitrate very much (but does preserve sharpness).
+At 1.5 and higher you will notice a softening in the video and possibly
+artifacts (halo/ringing) around edges of objects (text/subtitles especially).
+If you combine the filters you should use yuvdenoise and maybe afterwards
+yuvmedianfilter.  Maybe yuvmedianfilter even after scaling.  Having
+yuvmedianfilter in the chain does not reduce the bitrate that much.  Often
+the use of yuvdenoise is enough.  The yuvmedianfilter helps much if you
+have low quality sources, and not that much if you already have a rather
+good quality.  When you combine the filter and option you will very likely
+reduce the filesize to about the half of the filesize without using the
+options and programs.
+.PP
+In general aggressive filtering will produce smaller files (lower bitrate)
+but reduce the quality (details) of the picture.  Less aggressive
+filtering/processing will preserve more detail but result in larger files.
+.PP
+Example:
 .PP
 \fB> lav2yuv stream.avi \(br yuvkineco -F 1 \(br mpeg2enc -o video.m1v\fP
 .PP
@@ -2617,6 +2672,11 @@ For SMP machines with two ore more processors you can speed up
 mpeg2enc by setting the number of concurrently executing encoding
 threads's you wish to utilize (e.g. -M 2). Setting -M 2 or -M 3 on a
 2-way machine should allow you to speed up encoding by around 80%\&.
+.PP
+If you have a real fast SMP machine (currently 1.Aug.03) like a dual
+Athlon MP 2600 or something similair. The -M 2 and the filtering might not
+keep both (or more)  CPU's busy. Ther the use of the buffer or bfr programm
+in combination with 10-20MB buffer helps to keep both CPUs busy.
 .PP
 Obviously, if your encoding pipeline contains several filtering stages
 it is likely that you can keep two or more CPU's busy simultaneously

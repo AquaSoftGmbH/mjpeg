@@ -1861,7 +1861,7 @@
   video streams. With VBR (variable bit rate) video the filesize is
   reduced.
 
-  Example
+  Example:
 
   > lav2yuv stream.avi | yuvmedianfilter | mpeg2enc -o video.m1v
 
@@ -1890,7 +1890,7 @@
   green.   Filtering on the luma component (disabling the chroma
   filtering) is the solution to that problem.
 
-  Example
+  Example:
 
   > lav2yuv stream.avi | yuvdenoise | mpeg2enc -o video.m1v
 
@@ -1900,16 +1900,74 @@
   deinterlace the stream use the -F option.
 
   By default yuvdenoise denoises interlaced if the input is interlaced.
-  Like yuvmedianfilter you can also change the denoiser threshold (-t),
-  you can also use adifferent search raduis (-r). You can also set a
-  active area where everything outside that area is set to real black.
-  This might speed up things a little.
+  You can of course change the denoiser threshold (-t), as well as the
+  different search radius (-r). You can also set a active area where
+  everything outside that area is set to real black.   Creating a black
+  border can lower the bitrate of the encoded stream because pure black
+  areas compress much better than noise (captures from analog sources
+  such as VHS and 8mm usually have several lines at the time and bottom
+  that are very noisy).
 
   yuvdenoise uses a different approach to filter the noise.  More
   information about how yuvdenoise works as well as descriptions of its
   options are found in the manpage.
 
-  Example
+  If you have a high quality source you can only use fast mode. In the
+  fast mode yuvdenoise only uses the bitnoise reduction.  You might also
+  use the mpeg2enc -h/--keep-hf option. That option tells mpeg2enc to
+  keep as much high frequency information as possible.   Using -h will
+  greatly increase the bitrate (filesize).  If the bitrate is too close
+  to the maximum (set with -b) the encoder will have to decrease the
+  quality to avoid exceeding the maximum bitrate.
+
+  A builtin filter in mpeg2enc is the -N/--reduce-HF option.  This
+  option is not really filter in the usual sense.  Rather it changes how
+  exactly the high frequency information is encoded.  Often the high
+  frequency is noise.  You also have high frequencies on sharp borders
+  or transitions. The -N option can have values between 0.0 and 2.0
+  where 0.0 does nothing (disables the high frequency quantiser boost)
+  and 2.0 gives the maximum quantisation boost.  The value to use
+  depends on the desired output quality and filesize.  Values of -N less
+  than 0.5 are very subtle while a value of 1.0 will achieve a good
+  balance between bitrate reduction and output quality.   Using -N
+  values above 1.5 will noticeably reduce the sharpness of the output
+  picture and are normally used only for poor quality sources (VHS tapes
+  for example).
+
+  Using yuvmedianfilter's capability to only filter the chroma (-T) is
+  moderately effective at reducing noise in dark scenes without
+  softening the image during normal (brighter) scenes.   Median
+  filtering of the luma (-t) will produce a lower bitrate but can cause
+  loss of detail (softening).  Chroma only medianfiltering is less
+  agressive and is a good choice to use in combination with yuvdenoise.
+
+  Combining the filters yuvdenoise, yuvmedianfilter and the mpeg2enc -N
+  option gives a very fine degree of control over the bitrate
+  (filesize).  The reduction (or increase) in the bitrate depends on the
+  source material and the exact encoding/filter options used.  So we can
+  give no exact numbers how much each option and combination will reduce
+  the filesize, only guidelines.
+
+  Usually you should use the -N option in a range from 0.5 to 1.5.
+  Below 0.5 it does not reduce the bitrate very much (but does preserve
+  sharpness).  At 1.5 and higher you will notice a softening in the
+  video and possibly artifacts (halo/ringing) around edges of objects
+  (text/subtitles especially).  If you combine the filters you should
+  use yuvdenoise and maybe afterwards yuvmedianfilter.  Maybe
+  yuvmedianfilter even after scaling.  Having yuvmedianfilter in the
+  chain does not reduce the bitrate that much.  Often the use of
+  yuvdenoise is enough.  The yuvmedianfilter helps much if you have low
+  quality sources, and not that much if you already have a rather good
+  quality.  When you combine the filter and option you will very likely
+  reduce the filesize to about the half of the filesize without using
+  the options and programs.
+
+  In general aggressive filtering will produce smaller files (lower
+  bitrate) but reduce the quality (details) of the picture.  Less
+  aggressive filtering/processing will preserve more detail but result
+  in larger files.
+
+  Example:
 
   > lav2yuv stream.avi | yuvkineco -F 1 | mpeg2enc -o video.m1v
 
@@ -1981,7 +2039,6 @@
 
   o  yuvdenoise + yuvmedianfilter : 6000 kb/s
 
-
   o  yuvdenoise + mpeg2enc --reduce-hf : 4900 kb/s
 
   o  all of the above : 3600 kb/s
@@ -1990,8 +2047,6 @@
   together they reduce the bitrate substantially.  There is not really
   much visible difference between using yuvdenoise alone and yuvdenoise
   with mpeg2enc --reduce-hf.
-
-
 
   If you ask yourselve why not alyways use all of the aboth filter ?
   Hmmm, hard question. The image softens, and the encoding time
@@ -2046,7 +2101,6 @@
   Because of that border the image is always centered on a TV. But when
   you capture the video with a card, you see the whole size of the image
   including the border and maybe the offset.
-
 
   A horizontal offset is usually not a problem of the capture card. It
   is a problem when the film is broadcast and not well synchronized with
@@ -2114,6 +2168,7 @@
 
   If you know that the header is wrong, and you need a other output
   bitrate you still can do this in a single step:
+
   > lav2yuv video.eli | yuvfps -s 24:1 -r 25:1 | mpeg2enc -o video.m1v
 
   9.  Transcoding of existing MPEG-2
@@ -2123,6 +2178,7 @@
   VCD 1152 kbps typically works just fine for MPEG1. The difference is
   in the Signal/Noise ratio of the original. The noise in the analog
   stuff makes it much harder to compress.
+
 
   One other very good guide that helps you transcoding videos can be
   found at: http://www.bunkus.org/dvdripping4linux/index.html
@@ -2179,7 +2235,6 @@
      vcd_stream.mp2 & vcd_stream.m1v
         generated files by the script
 
-
      lowrate.mpg
         the VCD compatible output stream
 
@@ -2189,6 +2244,7 @@
   > mjpegtranscode -S -o svcd_stream mpeg2src.mpg
 
   You have to multiplex it with:
+
 
   > mplex -f 4 -O 234 svcd_stream.mp2 svcd_stream.m2v -o lowrate.mpg
 
@@ -2245,7 +2301,6 @@
 
   You can generate VCD and SVCD videos, and own mpeg1/2 videos.
 
-
   For VCD creation use:
 
   > cat test2.mpg " mpeg2dec -s -o YUVh " mpeg2enc -s -o video_vcd.m1v
@@ -2257,7 +2312,6 @@
 
      -o YUVh
         the output size of the extracted frames.
-
   There are other output modes, try "mpeg2dec --help" but the most
   important here are:
 
@@ -2312,6 +2366,7 @@
 
   > cat test2.mpg | mpeg2dec -s -o YUV | yuvscaler -O SIZE_320x200 -O
   NOT_INTERLACED | mpeg2enc -o strange_video.m1v
+
   If you want to edit mpeg streams, this also works, but in a slightly
   different way. For demultiplexing you can use bbdmux, from the bbtools
   package. Splits out either video or audio very cleanly.  You can't get
@@ -2321,6 +2376,7 @@
 
 
   First run:
+
 
   > bbdmux myvideo.mpg
 
@@ -2377,7 +2433,6 @@
   I never get more than 6-7 Frames a second.  You loose quality each
   time you convert a stream into an other format!
 
-
   10.  Trading Quality/Speed
 
   If absolute quality is your objective a modest improvement can be
@@ -2389,7 +2444,6 @@
   because the statistical criteria mpeg2enc uses for discarding bad
   looking matches are usually fairly reliable the increase/decrease in
   quality is modest (but noticeable).
-
   Reducing the radius of the search for matching sections of images also
   increases speed. However due to the way the search algorithm works the
   search radius is in effect rounded to the nearest multiple of 8.
@@ -2426,6 +2480,12 @@
   mpeg2enc by setting the number of concurrently executing encoding
   threads's you wish to utilize (e.g. -M 2). Setting -M 2 or -M 3 on a
   2-way machine should allow you to speed up encoding by around 80%.
+
+  If you have a real fast SMP machine (currently 1.Aug.03) like a dual
+  Athlon MP 2600 or something similair. The -M 2 and the filtering might
+  not keep both (or more)  CPU's busy. Ther the use of the buffer or bfr
+  programm in combination with 10-20MB buffer helps to keep both CPUs
+  busy.
 
   Obviously, if your encoding pipeline contains several filtering stages
   it is likely that you can keep two or more CPU's busy simultaneously
@@ -2508,7 +2568,6 @@
   o  vlc http://www.videolan.org/
 
   o  MPEG1 only: mtv http://www.mpegtv.com/
-
 
   o  MPEG1 only: gtv http://packages.debian.org/stable/graphics/smpeg-
      gtv.html
