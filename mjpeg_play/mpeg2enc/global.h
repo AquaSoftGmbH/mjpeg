@@ -55,6 +55,9 @@ void idct _ANSI_ARGS_((short *block));
 void init_idct _ANSI_ARGS_((void));
 
 /* motion.c */
+
+void init_motion ();
+
 void motion_estimation _ANSI_ARGS_((unsigned char *oldorg, unsigned char *neworg,
   unsigned char *oldref, unsigned char *newref, unsigned char *cur,
   unsigned char *curref, int sxf, int syf, int sxb, int syb,
@@ -110,17 +113,6 @@ void putdmv _ANSI_ARGS_((int dmv));
 void putcbp _ANSI_ARGS_((int cbp));
 
 /* quantize.c */
-/* TODO: DELETE Original types of reference implementations
-	currently used for testing...
-int quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned short *quant_mat,  int mquant));
-int quant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned short *quant_mat,  int mquant));
-void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
-  unsigned short *quant_mat,   int mquant));
-void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
-  unsigned short *quant_mat,  int mquant));
-*/
 
 void quant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned short *quant_mat,  unsigned short *iquant_mat, int mquant, int *nonsat_mquant));
@@ -130,20 +122,22 @@ void iquant_intra _ANSI_ARGS_((short *src, short *dst, int dc_prec,
   unsigned short *quant_mat,  unsigned short *i_quant_mat, int mquant));
 void iquant_non_intra _ANSI_ARGS_((short *src, short *dst,
   unsigned short *quant_mat, unsigned short *iquant_mat,  int mquant));
+void init_quantizer();
 
+#ifdef X86_CPU
 
-#if defined(MMX) || defined(SSE)
-extern int quantize_ni_mmx(short *dst, short *src, short *quant_mat, short *i_quant_mat, 
-												     int imquant, int mquant, int sat_limit);
-extern int quant_weight_coeff_sum_mmx _ANSI_ARGS_((short *blk, unsigned short*i_quant_mat ));
-
-#define  quant_weight_coeff_sum quant_weight_coeff_sum_mmx
-#else
-
-int quant_weight_coeff_sum _ANSI_ARGS_((short *blk, unsigned short*i_quant_mat ));
-
-
+int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
+						   short *i_quant_mat, 
+						   int imquant, int mquant, int sat_limit);
+int quant_weight_coeff_sum_mmx (short *blk, unsigned short*i_quant_mat );
+int cpuid_flags();
+extern int use_mmx_quantizer;
+extern int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
 #endif
+
+
+int quant_weight_coeff_sum(short *blk, unsigned short*i_quant_mat );
+
 
 /* ratectl.c */
 void rc_init_seq _ANSI_ARGS_((void));
@@ -169,6 +163,8 @@ void itransform _ANSI_ARGS_((unsigned char *pred[], unsigned char *cur[],
   struct mbinfo *mbi, short blocks[][64]));
 void dct_type_estimation _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
   struct mbinfo *mbi));
+
+void init_transform();
 
 /* writepic.c */
 void writeframe _ANSI_ARGS_((char *fname, unsigned char *frame[]));

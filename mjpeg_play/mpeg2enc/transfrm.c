@@ -32,38 +32,68 @@
 #include "config.h"
 #include "global.h"
 
-#if (defined(MMX) || defined(SSE))
+#ifdef X86_CPU
 extern void fdct_mmx( short * blk );
 extern void idct_mmx( short * blk );
 
-void add_pred_mmx _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
-  int lx, short *blk));
-void sub_pred_mmx _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
-  int lx, short *blk));
-
-
-#define fdct_fast fdct_mmx
-#define idct_fast idct_mmx
-#define add_pred_fast add_pred_mmx
-#define sub_pred_fast sub_pred_mmx
-
-#else
+void add_pred_mmx (unsigned char *pred, unsigned char *cur,
+				   int lx, short *blk);
+void sub_pred_mmx (unsigned char *pred, unsigned char *cur,
+				   int lx, short *blk);
+#endif
 
 extern void fdct( short *blk );
 extern void idct( short *blk );
 
-#define fdct_fast fdct
-#define idct_fast idct
-#define add_pred_fast add_pred
-#define sub_pred_fast sub_pred
 
 
 /* private prototypes*/
-static void add_pred _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
-  int lx, short *blk));
-static void sub_pred _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
-  int lx, short *blk));
+static void add_pred (unsigned char *pred, unsigned char *cur,
+  int lx, short *blk);
+static void sub_pred (unsigned char *pred, unsigned char *cur,
+  int lx, short *blk);
+
+/*
+  Pointers to version of transform and prediction manipulation
+  routines to be used..
+ */
+
+static void (*pfdct)( short * blk );
+static void (*pidct)( short * blk );
+static void (*padd_pred) (unsigned char *pred, unsigned char *cur,
+  int lx, short *blk);
+static void (*psub_pred) (unsigned char *pred, unsigned char *cur,
+  int lx, short *blk);
+
+/*
+  Initialise DCT transformation routines
+  Currently just activates MMX routines if available
+ */
+
+
+void init_transform()
+{
+  int flags;
+#ifdef X86_CPU
+  flags = cpuid_flags();
+  if( (flags & (1 << 23)) != 0 ) /* MMX CPU */
+	{
+	  fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
+      pfdct = fdct_mmx;
+	  pidct = idct_mmx;
+	  padd_pred = add_pred_mmx;
+	  psub_pred = sub_pred_mmx;
+	}
+  else
 #endif
+	{
+      pfdct = fdct;
+	  pidct = idct;
+	  padd_pred = add_pred;
+	  psub_pred = sub_pred;
+
+	}
+}
 
 /* subtract prediction and transform prediction error */
 void transform(pred,cur,mbi,blocks)
@@ -129,8 +159,8 @@ short blocks[][64];
             offs += chrom_width;
         }
 
-        sub_pred_fast(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
-        fdct_fast(blocks[k*block_count+n]);
+        (*psub_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
+        (*pfdct)(blocks[k*block_count+n]);
       }
 
       k++;
@@ -199,15 +229,14 @@ short blocks[][64];
             offs += chrom_width;
         }
 
-        idct_fast(blocks[k*block_count+n]);
-        add_pred_fast(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
+        (*pidct)(blocks[k*block_count+n]);
+        (*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
       }
 
       k++;
     }
 }
 
-#if  (!defined(SSE) && !defined(MMX))
 
 /* add prediction and prediction error, saturate to 0...255 */
 static void add_pred(pred,cur,lx,blk)
@@ -245,8 +274,6 @@ short *blk;
     pred+= lx;
   }
 }
-
-#endif
 
 /*
  * select between frame and field DCT

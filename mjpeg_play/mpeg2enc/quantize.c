@@ -40,6 +40,35 @@
 #define signmask(x) (((int)x)>>fabsshift)
 #define samesign(x,y) (y+(signmask(x) & -(y<<1)))
 
+#ifdef X86_CPU
+int use_mmx_quantizer;
+int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
+#endif
+
+/*
+  Initialise quantization routines.
+  Currently just setting up MMX routines if available...
+ */
+
+void init_quantizer()
+{
+  int flags;
+#ifdef X86_CPU
+  flags = cpuid_flags();
+  if( (flags & (1 << 23)) != 0 ) /* MMX CPU */
+	{
+	  fprintf( stderr, "SETTING MMX for QUANTIZER!\n");
+	  use_mmx_quantizer = 1;
+	  pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
+	}
+  else
+#endif
+	{
+	  use_mmx_quantizer = 0;
+	  pquant_weight_coeff_sum = quant_weight_coeff_sum;
+	}
+}
+
 /*
  *
  * Computes the next quantisation up.  Used to avoid saturation
@@ -145,7 +174,6 @@ int *nonsat_mquant;
   *nonsat_mquant = mquant;
 }
 
-#if !defined(SSE) && !defined(MMX)
 
 /*
  * Quantisation matrix weighted Coefficient sum fixed-point
@@ -168,39 +196,8 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
   	are around 20.0.
 	*/
 }
-#endif
 
-#ifdef DEBUG
 
-int quant_non_intra_inv(src,dst,quant_mat,i_quant_mat,imquant, mquant)
-short *src, *dst;
-unsigned short *quant_mat;
-short *i_quant_mat;  /* 2^16 / quant_mat */
-int imquant;      /* 2^16 / 2*mquant */
-int mquant;
-{
-  int i;
-  int x, y;
-  int nzflag;
-  int clipping;
-
-	  clipping = 0;
-
-	  for (i=0; i<64; i++)
-		{
-			x = (int)src[i];
-			y = ( (((abs(x)<<5)+ (quant_mat[i]>>1))) * i_quant_mat[i])>>(IQUANT_SCALE_POW2);
-			/* y1 is  2*divisor i.e. 1!! guard bits */
-			y = ((y<<4)+(mquant>>1))*imquant;
-			y = y >> (IQUANT_SCALE_POW2+5);
-		  clipping |= ((y > 255) && (mpeg1 || (y > 2047)));
-			nzflag |= (y != 0);
-			dst[i] = samesign(x,y);
-		}
-
-  return clipping;
-}
-#endif
 							     
 /* 
  * Quantisation for non-intra blocks using Test Model 5 quantization
@@ -228,7 +225,7 @@ int *nonsat_mquant;
   int coeff_count;
   int clipvalue  = mpeg1 ? 255 : 2047;
   int imquant;
-  int flags;
+  int flags = 0;
 
     	/* If available use the fast MMX quantiser.  It returns
 		flags to signal if coefficients are outside its limited range or
@@ -239,78 +236,77 @@ int *nonsat_mquant;
 		Bits 0-7    - Coefficient out of range.
 		*/
 
-#if (defined(MMX) || defined(SSE))
-
-  pdst = dst;
-  psrc = src;
-  comp = 0; 
-  do
-  {
-	imquant = (IQUANT_SCALE/mquant);
-	flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
-							 imquant, mquant, clipvalue );
-	nzflag = flags & 0xffff0000;
-	
-	/* If we're saturating simply bump up quantization and start from scratch...
-	*/
-
-	if( (flags & 0xff00) != 0 )
+#ifdef X86_CPU
+  if( use_mmx_quantizer )
 	{
-	  mquant = next_larger_quant( mquant );
-	  comp = 0; 
 	  pdst = dst;
 	  psrc = src;
+	  comp = 0; 
+	  do
+		{
+		  imquant = (IQUANT_SCALE/mquant);
+		  flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
+								   imquant, mquant, clipvalue );
+		  nzflag = flags & 0xffff0000;
+		  
+		  /* If we're saturating simply bump up quantization and start from scratch...
+		   */
+		  
+		  if( (flags & 0xff00) != 0 )
+			{
+			  mquant = next_larger_quant( mquant );
+			  comp = 0; 
+			  pdst = dst;
+			  psrc = src;
+			}
+		  else
+			{
+			  ++comp;
+			  pdst += 64;
+			  psrc +=64;
+			}
+		  /* Fall back to 32-bit(or better - if some hero(ine) made this work on
+			 non 32-bit int machines ;-)) if out of dynamic range for MMX...
+		  */
+		}
+	  while( comp < block_count && (flags& 0xff00) != 0 
+			 && (flags & 0xff) == 0 );
 	}
-	else
-	{
-	  ++comp;
-	  pdst += 64;
-	  psrc +=64;
-	}
-	/* Fall back to 32-bit(or better - if some hero(ine) made this work on
-	  non 32-bit int machines ;-)) if out of dynamic range for MMX...
-	  */
-  }
-  while( comp < block_count && (flags& 0xff00) != 0 && (flags & 0xff) == 0 );
   
   if( (flags & 0xff) != 0)
-#endif  
-  {
-	coeff_count = 64*block_count;
-	fprintf( stderr, "O" );
-
-
-	nzflag = 0;
-	pdst = dst;
-	psrc = src;		
-	for (i=0; i<coeff_count; ++i)
-	{
-	  /* RJ: save one divide operation */
-
-	  x = abs(*psrc);
-	  d = quant_mat[(i&63)]; 
-	  y = (32*abs(x) + (d>>1))/(d*2*mquant);
-	  nzflag |= (*pdst=samesign(src[i],y));
-	  if (y > clipvalue)
-	  {
-		  fprintf( stderr, "C");
-		  mquant = next_larger_quant( mquant );
-		  i=0;
-		  pdst = dst;
-		  psrc = src;
-		  continue;		
-	  }
-	  else
-	  {
-	  	++pdst; 
-		++psrc;
-	  }
-   }
-
-#if (defined(MMX) || defined(SSE))
-  }
 #endif
+	{
+	  coeff_count = 64*block_count;
+	  fprintf( stderr, "O" );
 
+
+	  nzflag = 0;
+	  pdst = dst;
+	  psrc = src;		
+	  for (i=0; i<coeff_count; ++i)
+		{
+		  /* RJ: save one divide operation */
+
+		  x = abs(*psrc);
+		  d = quant_mat[(i&63)]; 
+		  y = (32*abs(x) + (d>>1))/(d*2*mquant);
+		  nzflag |= (*pdst=samesign(src[i],y));
+		  if (y > clipvalue)
+			{
+			  fprintf( stderr, "C");
+			  mquant = next_larger_quant( mquant );
+			  i=0;
+			  pdst = dst;
+			  psrc = src;
+			  continue;		
+			}
+		  else
+			{
+			  ++pdst; 
+			  ++psrc;
+			}
+		}
+	}
   *nonsat_mquant = mquant;
   return !!nzflag;
 }

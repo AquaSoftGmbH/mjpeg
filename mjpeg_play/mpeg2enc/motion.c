@@ -96,92 +96,129 @@ static int fullsearch _ANSI_ARGS_( (unsigned char *org, unsigned char *ref,
 
 
 
-#ifdef SSE
+#ifdef X86_CPU
 
 int dist1_00_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int distlim);
 int dist1_01_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_10_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-
-#define dist1_00 dist1_00_SSE
-#define dist1_01 dist1_01_SSE
-#define dist1_10 dist1_10_SSE
-#define dist1_11 dist1_11_SSE
-
-
 int fdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-
 int qdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-
 int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
                  int lx, int hx, int hy, int h);
-
 int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-
 int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
-#define fdist1 fdist1_SSE
-#define qdist1 qdist1_SSE
 
-#define dist2  dist2_mmx
-#define bdist2  bdist2_mmx
-#define bdist1 bdist1_mmx 
-
-#else
-
-#ifdef MMX
 int dist1_00_MMX ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
 int dist1_01_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_10_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-#define dist1_00 dist1_00_MMX
-#define dist1_01 dist1_01_MMX
-#define dist1_10 dist1_10_MMX
-#define dist1_11 dist1_11_MMX
-
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-
 int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
-
 int dist2_mmx( unsigned char *blk1, unsigned char *blk2,
                  int lx, int hx, int hy, int h);
-
 int bdist2_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 int bdist1_mmx _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
 
-
-#define qdist1 qdist1_MMX
-#define fdist1 fdist1_MMX
-#define dist2  dist2_mmx
-#define bdist2 bdist2_mmx	
-#define bdist1 bdist1_mmx 
-#else
+#endif
 
 static int fdist1 ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
-/*#define dist1_00( blk1, blk2, lx,  h, distlim ) \
-        dist1( blk1, blk2, lx,  0,0,h,distlim) */
 static int qdist1 ( mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
 static int dist1_00( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
 static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-
 static int dist2 _ANSI_ARGS_((unsigned char *blk1, unsigned char *blk2,
   int lx, int hx, int hy, int h));
-  
-  
 static int bdist2 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-
 static int bdist1 _ANSI_ARGS_((unsigned char *pf, unsigned char *pb,
   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h));
-#endif
+
+
+static int (*pfdist1) ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
+static int (*pqdist1) ( mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
+static int (*pdist1_00) ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
+static int (*pdist1_01) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int (*pdist1_10) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int (*pdist1_11) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
+
+static int (*pdist2) (unsigned char *blk1, unsigned char *blk2,
+					  int lx, int hx, int hy, int h);
+  
+  
+static int (*pbdist2) (unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+
+static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
+  unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+
+static int nodual_qdist;	/* Can the qdist function return two adjacent
+							   quad-pel distances in one call? */
+/*
+  Initialise motion compensation - currently purely selection of which
+  versions of the various low level computation routines to use
+  
+ */
+
+void init_motion()
+{
+  int cpuid;
+#ifdef X86_CPU
+  cpuid = cpuid_flags();
+#else
+  cpuid = 0;
 #endif
 
+  if( (cpuid & (1 << 23)) == 0 )	/* No MMX/SSE support available */
+	{
+	  pfdist1 = fdist1;
+	  pqdist1 = qdist1;
+	  pdist1_00 = dist1_00;
+	  pdist1_01 = dist1_01;
+	  pdist1_10 = dist1_10;
+	  pdist1_11 = dist1_11;
+	  pbdist1 = bdist1;
+	  pdist2 = dist2;
+	  pbdist2 = bdist2;
+	  nodual_qdist = 1;
+	}
+  else if((cpuid & (1 << 25)) == 0  ) /* Ordinary MMX no SSE... */
+	{
+	  fprintf( stderr, "SETTING MMX for MOTION!\n");
+
+	  pfdist1 = fdist1_MMX;
+	  pqdist1 = qdist1_MMX;
+	  pdist1_00 = dist1_00_MMX;
+	  pdist1_01 = dist1_01_MMX;
+	  pdist1_10 = dist1_10_MMX;
+	  pdist1_11 = dist1_11_MMX;
+	  pbdist1 = bdist1_mmx;
+	  pdist2 = dist2_mmx;
+	  pbdist2 = bdist2_mmx;
+	  nodual_qdist = 0;
+	}
+  else								/* SSE CPU */
+	{
+	  fprintf( stderr, "SETTING SSE for MOTION!\n");
+	  pfdist1 = fdist1_SSE;
+	  pqdist1 = qdist1_SSE;
+	  pdist1_00 = dist1_00_SSE;
+	  pdist1_01 = dist1_01_SSE;
+	  pdist1_10 = dist1_10_SSE;
+	  pdist1_11 = dist1_11_SSE;
+	  pbdist1 = bdist1_mmx;
+	  pdist2 = dist2_mmx;
+	  pbdist2 = bdist2_mmx;
+	  nodual_qdist = 0;
+	}
+
+}
 
 
 
@@ -388,7 +425,7 @@ struct mbinfo *mbi;
     {
       dmc = fullsearch(oldorg,oldref,mb, fmb, qmb,
                        width,i,j,sxf,syf,16,width,height,&imin,&jmin);
-      vmc = dist2(oldref+(imin>>1)+width*(jmin>>1),mb,
+      vmc = (*pdist2)(oldref+(imin>>1)+width*(jmin>>1),mb,
                   width,imin&1,jmin&1,16);
       mbi->motion_type = MC_FRAME;
     }
@@ -412,16 +449,16 @@ struct mbinfo *mbi;
       else if (dmc<=dmcfield)
       {
         mbi->motion_type = MC_FRAME;
-        vmc = dist2(oldref+(imin>>1)+width*(jmin>>1),mb,
+        vmc = (*pdist2)(oldref+(imin>>1)+width*(jmin>>1),mb,
                     width,imin&1,jmin&1,16);
       }
       else
       {
         mbi->motion_type = MC_FIELD;
         dmc = dmcfield;
-        vmc = dist2(oldref+(tsel?width:0)+(imint>>1)+(width<<1)*(jmint>>1),
+        vmc = (*pdist2)(oldref+(tsel?width:0)+(imint>>1)+(width<<1)*(jmint>>1),
                     mb,width<<1,imint&1,jmint&1,8);
-        vmc+= dist2(oldref+(bsel?width:0)+(iminb>>1)+(width<<1)*(jminb>>1),
+        vmc+= (*pdist2)(oldref+(bsel?width:0)+(iminb>>1)+(width<<1)*(jminb>>1),
                     mb+width,width<<1,iminb&1,jminb&1,8);
       }
     }
@@ -453,7 +490,7 @@ struct mbinfo *mbi;
        * blocks with small prediction error are always coded as No-MC
        * (requires no motion vectors, allows skipping)
        */
-      v0 = dist2(oldref+i+width*j,mb,width,0,0,16);
+      v0 = (*pdist2)(oldref+i+width*j,mb,width,0,0,16);
       if (4*v0>5*vmc && v0>=9*256)
       {
         /* use MC */
@@ -504,17 +541,17 @@ struct mbinfo *mbi;
       /* forward */
       dmcf = fullsearch(oldorg,oldref,mb,fmb, qmb,
                         width,i,j,sxf,syf,16,width,height,&iminf,&jminf);
-      vmcf = dist2(oldref+(iminf>>1)+width*(jminf>>1),mb,
+      vmcf = (*pdist2)(oldref+(iminf>>1)+width*(jminf>>1),mb,
                    width,iminf&1,jminf&1,16);
 
       /* backward */
       dmcr = fullsearch(neworg,newref,mb,fmb,qmb,
                         width,i,j,sxb,syb,16,width,height,&iminr,&jminr);
-      vmcr = dist2(newref+(iminr>>1)+width*(jminr>>1),mb,
+      vmcr = (*pdist2)(newref+(iminr>>1)+width*(jminr>>1),mb,
                    width,iminr&1,jminr&1,16);
 
       /* interpolated (bidirectional) */
-      vmci = bdist2(oldref+(iminf>>1)+width*(jminf>>1),
+      vmci = (*pbdist2)(oldref+(iminf>>1)+width*(jminf>>1),
                     newref+(iminr>>1)+width*(jminr>>1),
                     mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
 
@@ -555,18 +592,18 @@ struct mbinfo *mbi;
 
       /* calculate interpolated distance */
       /* frame */
-      dmci = bdist1(oldref+(iminf>>1)+width*(jminf>>1),
+      dmci = (*pbdist1)(oldref+(iminf>>1)+width*(jminf>>1),
                     newref+(iminr>>1)+width*(jminr>>1),
                     mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
 
       /* top field */
-      dmcfieldi = bdist1(
+      dmcfieldi = (*pbdist1)(
                     oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
                     newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
                     mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
 
       /* bottom field */
-      dmcfieldi+= bdist1(
+      dmcfieldi+= (*pbdist1)(
                     oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
                     newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
                     mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
@@ -580,7 +617,7 @@ struct mbinfo *mbi;
         /* frame, interpolated */
         mbi->mb_type = MB_FORWARD|MB_BACKWARD;
         mbi->motion_type = MC_FRAME;
-        vmc = bdist2(oldref+(iminf>>1)+width*(jminf>>1),
+        vmc = (*pbdist2)(oldref+(iminf>>1)+width*(jminf>>1),
                      newref+(iminr>>1)+width*(jminr>>1),
                      mb,width,iminf&1,jminf&1,iminr&1,jminr&1,16);
       }
@@ -590,10 +627,10 @@ struct mbinfo *mbi;
         /* field, interpolated */
         mbi->mb_type = MB_FORWARD|MB_BACKWARD;
         mbi->motion_type = MC_FIELD;
-        vmc = bdist2(oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
+        vmc = (*pbdist2)(oldref+(imintf>>1)+(tself?width:0)+(width<<1)*(jmintf>>1),
                      newref+(imintr>>1)+(tselr?width:0)+(width<<1)*(jmintr>>1),
                      mb,width<<1,imintf&1,jmintf&1,imintr&1,jmintr&1,8);
-        vmc+= bdist2(oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
+        vmc+= (*pbdist2)(oldref+(iminbf>>1)+(bself?width:0)+(width<<1)*(jminbf>>1),
                      newref+(iminbr>>1)+(bselr?width:0)+(width<<1)*(jminbr>>1),
                      mb+width,width<<1,iminbf&1,jminbf&1,iminbr&1,jminbr&1,8);
       }
@@ -602,7 +639,7 @@ struct mbinfo *mbi;
         /* frame, forward */
         mbi->mb_type = MB_FORWARD;
         mbi->motion_type = MC_FRAME;
-        vmc = dist2(oldref+(iminf>>1)+width*(jminf>>1),mb,
+        vmc = (*pdist2)(oldref+(iminf>>1)+width*(jminf>>1),mb,
                     width,iminf&1,jminf&1,16);
       }
       else if (dmcfieldf<dmcr && dmcfieldf<dmcfieldr)
@@ -610,9 +647,9 @@ struct mbinfo *mbi;
         /* field, forward */
         mbi->mb_type = MB_FORWARD;
         mbi->motion_type = MC_FIELD;
-        vmc = dist2(oldref+(tself?width:0)+(imintf>>1)+(width<<1)*(jmintf>>1),
+        vmc = (*pdist2)(oldref+(tself?width:0)+(imintf>>1)+(width<<1)*(jmintf>>1),
                     mb,width<<1,imintf&1,jmintf&1,8);
-        vmc+= dist2(oldref+(bself?width:0)+(iminbf>>1)+(width<<1)*(jminbf>>1),
+        vmc+= (*pdist2)(oldref+(bself?width:0)+(iminbf>>1)+(width<<1)*(jminbf>>1),
                     mb+width,width<<1,iminbf&1,jminbf&1,8);
       }
       else if (dmcr<dmcfieldr)
@@ -620,7 +657,7 @@ struct mbinfo *mbi;
         /* frame, backward */
         mbi->mb_type = MB_BACKWARD;
         mbi->motion_type = MC_FRAME;
-        vmc = dist2(newref+(iminr>>1)+width*(jminr>>1),mb,
+        vmc = (*pdist2)(newref+(iminr>>1)+width*(jminr>>1),mb,
                     width,iminr&1,jminr&1,16);
       }
       else
@@ -628,9 +665,9 @@ struct mbinfo *mbi;
         /* field, backward */
         mbi->mb_type = MB_BACKWARD;
         mbi->motion_type = MC_FIELD;
-        vmc = dist2(newref+(tselr?width:0)+(imintr>>1)+(width<<1)*(jmintr>>1),
+        vmc = (*pdist2)(newref+(tselr?width:0)+(imintr>>1)+(width<<1)*(jmintr>>1),
                     mb,width<<1,imintr&1,jmintr&1,8);
-        vmc+= dist2(newref+(bselr?width:0)+(iminbr>>1)+(width<<1)*(jminbr>>1),
+        vmc+= (*pdist2)(newref+(bselr?width:0)+(iminbr>>1)+(width<<1)*(jminbr>>1),
                     mb+width,width<<1,iminbr&1,jminbr&1,8);
       }
     }
@@ -798,17 +835,17 @@ int secondfield,ipflag;
       /* 16x8 prediction */
       mbi->motion_type = MC_16X8;
       /* upper half block */
-      vmc = dist2((sel8u?botref:topref) + (imin8u>>1) + w2*(jmin8u>>1),
+      vmc = (*pdist2)((sel8u?botref:topref) + (imin8u>>1) + w2*(jmin8u>>1),
                   mb,w2,imin8u&1,jmin8u&1,8);
       /* lower half block */
-      vmc+= dist2((sel8l?botref:topref) + (imin8l>>1) + w2*(jmin8l>>1),
+      vmc+= (*pdist2)((sel8l?botref:topref) + (imin8l>>1) + w2*(jmin8l>>1),
                   mb+8*w2,w2,imin8l&1,jmin8l&1,8);
     }
     else
     {
       /* field prediction */
       mbi->motion_type = MC_FIELD;
-      vmc = dist2((sel?botref:topref) + (imin>>1) + w2*(jmin>>1),
+      vmc = (*pdist2)((sel?botref:topref) + (imin>>1) + w2*(jmin>>1),
                   mb,w2,imin&1,jmin&1,16);
     }
 
@@ -821,7 +858,7 @@ int secondfield,ipflag;
        * (not allowed if ipflag is set)
        */
       if (!ipflag)
-        v0 = dist2(((pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
+        v0 = (*pdist2)(((pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
                    mb,w2,0,0,16);
       if (ipflag || (4*v0>5*vmc && v0>=9*256))
       {
@@ -881,17 +918,17 @@ int secondfield,ipflag;
 
     /* calculate distances for bidirectional prediction */
     /* field */
-    dmcfieldi = bdist1(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+    dmcfieldi = (*pbdist1)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
                        newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
                        mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
 
     /* 16x8 upper half block */
-    dmc8i = bdist1(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+    dmc8i = (*pbdist1)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
                    newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
                    mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
 
     /* 16x8 lower half block */
-    dmc8i+= bdist1(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+    dmc8i+= (*pbdist1)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
                    newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
                    mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
 
@@ -902,7 +939,7 @@ int secondfield,ipflag;
       /* field, interpolated */
       mbi->mb_type = MB_FORWARD|MB_BACKWARD;
       mbi->motion_type = MC_FIELD;
-      vmc = bdist2(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+      vmc = (*pbdist2)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
                    newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
                    mb,w2,iminf&1,jminf&1,iminr&1,jminr&1,16);
     }
@@ -914,12 +951,12 @@ int secondfield,ipflag;
       mbi->motion_type = MC_16X8;
 
       /* upper half block */
-      vmc = bdist2(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+      vmc = (*pbdist2)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
                    newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
                    mb,w2,imin8uf&1,jmin8uf&1,imin8ur&1,jmin8ur&1,8);
 
       /* lower half block */
-      vmc+= bdist2(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+      vmc+= (*pbdist2)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
                    newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
                    mb+8*w2,w2,imin8lf&1,jmin8lf&1,imin8lr&1,jmin8lr&1,8);
     }
@@ -928,7 +965,7 @@ int secondfield,ipflag;
       /* field, forward */
       mbi->mb_type = MB_FORWARD;
       mbi->motion_type = MC_FIELD;
-      vmc = dist2(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
+      vmc = (*pdist2)(oldref + (self?width:0) + (iminf>>1) + w2*(jminf>>1),
                   mb,w2,iminf&1,jminf&1,16);
     }
     else if (dmc8f<dmcfieldr && dmc8f<dmc8r)
@@ -938,11 +975,11 @@ int secondfield,ipflag;
       mbi->motion_type = MC_16X8;
 
       /* upper half block */
-      vmc = dist2(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
+      vmc = (*pdist2)(oldref + (sel8uf?width:0) + (imin8uf>>1) + w2*(jmin8uf>>1),
                   mb,w2,imin8uf&1,jmin8uf&1,8);
 
       /* lower half block */
-      vmc+= dist2(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
+      vmc+= (*pdist2)(oldref + (sel8lf?width:0) + (imin8lf>>1) + w2*(jmin8lf>>1),
                   mb+8*w2,w2,imin8lf&1,jmin8lf&1,8);
     }
     else if (dmcfieldr<dmc8r)
@@ -950,7 +987,7 @@ int secondfield,ipflag;
       /* field, backward */
       mbi->mb_type = MB_BACKWARD;
       mbi->motion_type = MC_FIELD;
-      vmc = dist2(newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
+      vmc = (*pdist2)(newref + (selr?width:0) + (iminr>>1) + w2*(jminr>>1),
                   mb,w2,iminr&1,jminr&1,16);
     }
     else
@@ -960,11 +997,11 @@ int secondfield,ipflag;
       mbi->motion_type = MC_16X8;
 
       /* upper half block */
-      vmc = dist2(newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
+      vmc = (*pdist2)(newref + (sel8ur?width:0) + (imin8ur>>1) + w2*(jmin8ur>>1),
                   mb,w2,imin8ur&1,jmin8ur&1,8);
 
       /* lower half block */
-      vmc+= dist2(newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
+      vmc+= (*pdist2)(newref + (sel8lr?width:0) + (imin8lr>>1) + w2*(jmin8lr>>1),
                   mb+8*w2,w2,imin8lr&1,jmin8lr&1,8);
     }
 
@@ -1346,14 +1383,14 @@ int *dmcp,*vmcp;
                 jb >= 0 && jb <= (height-16))
             {
               /* compute prediction error */
-              local_dist = bdist2(
+              local_dist = (*pbdist2)(
                 ref + (is>>1) + (width<<1)*(js>>1),
                 ref + width + (it>>1) + (width<<1)*(jt>>1),
                 mb,             /* current mb location */
                 width<<1,       /* adjacent line distance */
                 is&1, js&1, it&1, jt&1, /* half-pel flags */
                 8);             /* block height */
-              local_dist += bdist2(
+              local_dist += (*pbdist2)(
                 ref + width + (is>>1) + (width<<1)*(js>>1),
                 ref + (ib>>1) + (width<<1)*(jb>>1),
                 mb + width,     /* current mb location */
@@ -1382,14 +1419,14 @@ int *dmcp,*vmcp;
   }
 
   /* Compute L1 error for decision purposes */
-  local_dist = bdist1(
+  local_dist = (*pbdist1)(
     ref + (imins>>1) + (width<<1)*(jmins>>1),
     ref + width + (imint>>1) + (width<<1)*(jmint>>1),
     mb,
     width<<1,
     imins&1, jmins&1, imint&1, jmint&1,
     8);
-  local_dist += bdist1(
+  local_dist += (*pbdist1)(
     ref + width + (imins>>1) + (width<<1)*(jmins>>1),
     ref + (iminb>>1) + (width<<1)*(jminb>>1),
     mb + width,
@@ -1467,7 +1504,7 @@ int *dmcp,*vmcp;
           jo >= 0 && jo <= (height2-16)<<1)
       {
         /* compute prediction error */
-        local_dist = bdist2(
+        local_dist = (*pbdist2)(
           sameref + (imins>>1) + width2*(jmins>>1),
           oppref  + (io>>1)    + width2*(jo>>1),
           mb,             /* current mb location */
@@ -1489,7 +1526,7 @@ int *dmcp,*vmcp;
   } /* end delta y loop */
 
   /* Compute L1 error for decision purposes */
-  *dmcp = bdist1(
+  *dmcp = (*pbdist1)(
     sameref + (imins>>1) + width2*(jmins>>1),
     oppref  + (imino>>1) + width2*(jmino>>1),
     mb,             /* current mb location */
@@ -1809,7 +1846,7 @@ static void rcsums( unsigned char *org, unsigned short *sums, int lx, int h)
 
 
 
-static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int lx, int h, int *pdist )
+static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int lx, int h, int (*pdist) )
 {
 	int i,j;
 	unsigned char *porg, *pblk;
@@ -1819,7 +1856,7 @@ static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int l
 	
 	if( isfreshentry(x,y) )
 	{
-		*pdist = searchentry(x,y).weight;
+		(*pdist) = searchentry(x,y).weight;
 		return 1;
 	}
 	porg = org;
@@ -1846,7 +1883,7 @@ static int rcdist_table( unsigned char *org, short* blksums, int x, int y, int l
 		dist += abs(cso[i]-csb[i]);
 	
 	freshsearchtableentry(x,y, dist);
-	*pdist = dist;
+	(*pdist) = dist;
 	return 0;
 
 }
@@ -2023,7 +2060,7 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 				/* Now compute 1*1 pel distance measure (we could even try a DCT here  for real accuracy... *) 
 					 And use that as the basis for our final selection of the best match position.
 				*/
-				dist = dist1_00(org+x+y*lx, blk, lx, h, bestdist);
+				dist = (*pdist1_)00(org+x+y*lx, blk, lx, h, bestdist);
 				if ( dist < bestdist  )
 				{
 					bestdist = dist;
@@ -2080,7 +2117,7 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 				{
 					for( i = filow; i <= fihigh; i += 2 )
 						{
-							dist = fdist1( forgblk+(i>>1), fblk, flx, fh );	
+							dist = *pfdist1( forgblk+(i>>1), fblk, flx, fh );	
 							if( dist < bestfdist )
 							{
 								bestfdist = dist;
@@ -2120,7 +2157,7 @@ static void best_graddesc_match( int ilow, int ihigh, int jlow, int jhigh,
 		{
 			for( i = ilow; i <= ihigh; ++i)
 				{
-					dist = dist1_00( orgblk+i, blk, lx, h, bestdist );	
+					dist = (*pdist1_)00( orgblk+i, blk, lx, h, bestdist );	
 					if( dist < bestdist )
 					{
 						/*
@@ -2209,134 +2246,134 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 
   rough_heap_size = 0;
   dist_sum = 0;
-#if (defined(SSE) || defined(MMX))
-  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-  for( j = jlow; j <= jhigh; j += 8 )
+  if( nodual_qdist )
 	{
-  	old_qorgblk = qorgblk;
-	  k = 0;
-	  for( i = ilow; i <= ihigh; i+= 8  )
+	  /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
+	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+	  for( j = jlow; j <= jhigh; j += 4 )
 		{
-
-		  s1 = qdist1( qorgblk,qblk,qlx,qh);
-		  s2 = (s1 >> 16) & 0xffff;
-		  s1 = s1 & 0xffff;
-		  dist_sum += s1+s2;
-		  rough_match_heap[rough_heap_size].weight = s1;
-		  rough_match_heap[rough_heap_size].index = rough_heap_size;	
-		  rough_match_heap[rough_heap_size+1].weight = s2;
-		  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
-		  rough_matches[rough_heap_size].dx = i;
-		  rough_matches[rough_heap_size].dy = j;
-		  rough_matches[rough_heap_size+1].dx = i+16;
-		  rough_matches[rough_heap_size+1].dy = j;
-			/* A sneaky fast way way of binning out-of-limits estimates ... */
-  		  rough_heap_size += 1 + (i+16 <= ihigh);
-
-		  /* NTOE:  If you change the grid size you *must* adjust this code... too */
-	
-		  qorgblk+=2;
-	  	  k = (k+2)&3;
-		  /* Original branchy code... so you can see what this stuff is meant to
-		  do!!!!
-		  if( k == 0 )
+		  old_qorgblk = qorgblk;
+		  for( i = ilow; i <= ihigh; i += 4 )
 			{
-			  qorgblk += 4;
-			  i += 16;
+			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh) & 0xffff;
+			  quad_matches[quad_heap_size].dx = i;
+			  quad_matches[quad_heap_size].dy = j;
+			  quad_match_heap[quad_heap_size].index = quad_heap_size;
+			  quad_match_heap[quad_heap_size].weight =s1;
+			  dist_sum += s1;
+			  ++quad_heap_size;
+			  qorgblk += 1;
 			}
-		  */
-		  qorgblk += (k==0)<<2;
-		  i += (k==0)<<4;
-		  
+		  qorgblk = old_qorgblk + qlx;
 		}
-	  qorgblk = old_qorgblk + (qlx<<1);
 	}
-	
-  heapify( rough_match_heap, rough_heap_size );
-
-  best_quad_dist = rough_match_heap[0].weight;	
-	  /* 
-	 We now use the better-than-average matches on 8-pel boundaries 
-	 as starting points for matches on 4-pel boundaries...
-  		*/
-  quad_heap_size = 0;
-  searched_rough_size = 1+rough_heap_size / 3;
-
-  dist_sum = 0;
-  for( k = 0; k < searched_rough_size; ++k )
+  else
 	{
-	  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
-	  matchrec = rough_matches[distrec.index];
-	  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
-	  quad_matches[quad_heap_size].dx = matchrec.dx;
-	  quad_matches[quad_heap_size].dy = matchrec.dy;
-	  quad_match_heap[quad_heap_size].index = quad_heap_size;
-	  quad_match_heap[quad_heap_size].weight = distrec.weight;
-	  dist_sum += distrec.weight;	
-	  ++quad_heap_size;	  
+	
+	  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
+	  for( j = jlow; j <= jhigh; j += 8 )
+		{
+		  old_qorgblk = qorgblk;
+		  k = 0;
+		  for( i = ilow; i <= ihigh; i+= 8  )
+			{
 
-	  for( i = 1; i < 4; ++i )
-	 	{
-			int x, y;
-			x = matchrec.dx + (i & 0x1)*4;
-			y = matchrec.dy + (i >>1)*4;
-  			s1 = qdist1( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
-			dist_sum += s1;
-		    if( s1 < best_quad_dist )
+			  s1 = (*pqdist1)( qorgblk,qblk,qlx,qh);
+			  s2 = (s1 >> 16) & 0xffff;
+			  s1 = s1 & 0xffff;
+			  dist_sum += s1+s2;
+			  rough_match_heap[rough_heap_size].weight = s1;
+			  rough_match_heap[rough_heap_size].index = rough_heap_size;	
+			  rough_match_heap[rough_heap_size+1].weight = s2;
+			  rough_match_heap[rough_heap_size+1].index = rough_heap_size+1;	
+			  rough_matches[rough_heap_size].dx = i;
+			  rough_matches[rough_heap_size].dy = j;
+			  rough_matches[rough_heap_size+1].dx = i+16;
+			  rough_matches[rough_heap_size+1].dy = j;
+			  /* A sneaky fast way way of binning out-of-limits estimates ... */
+			  rough_heap_size += 1 + (i+16 <= ihigh);
+
+			  /* NTOE:  If you change the grid size you *must* adjust this code... too */
+	
+			  qorgblk+=2;
+			  k = (k+2)&3;
+			  /* Original branchy code... so you can see what this stuff is meant to
+				 do!!!!
+				 if( k == 0 )
+				 {
+				 qorgblk += 4;
+				 i += 16;
+				 }
+			  */
+			  qorgblk += (k==0)<<2;
+			  i += (k==0)<<4;
+		  
+			}
+		  qorgblk = old_qorgblk + (qlx<<1);
+		}
+	
+	  heapify( rough_match_heap, rough_heap_size );
+
+	  best_quad_dist = rough_match_heap[0].weight;	
+
+	  /* 
+		 We now use the better-than-average matches on 8-pel boundaries 
+		 as starting points for matches on 4-pel boundaries...
+	  */
+	  quad_heap_size = 0;
+	  searched_rough_size = 1+rough_heap_size / 3;
+
+	  dist_sum = 0;
+	  for( k = 0; k < searched_rough_size; ++k )
+		{
+		  heap_extract( rough_match_heap, &rough_heap_size, &distrec );
+		  matchrec = rough_matches[distrec.index];
+		  qorgblk =  qorg + (matchrec.dy>>2)*qlx +(matchrec.dx>>2);
+		  quad_matches[quad_heap_size].dx = matchrec.dx;
+		  quad_matches[quad_heap_size].dy = matchrec.dy;
+		  quad_match_heap[quad_heap_size].index = quad_heap_size;
+		  quad_match_heap[quad_heap_size].weight = distrec.weight;
+		  dist_sum += distrec.weight;	
+		  ++quad_heap_size;	  
+
+		  for( i = 1; i < 4; ++i )
+			{
+			  int x, y;
+			  x = matchrec.dx + (i & 0x1)*4;
+			  y = matchrec.dy + (i >>1)*4;
+			  s1 = (*pqdist1)( qorgblk+(i & 0x1),qblk,qlx,qh) & 0xffff;
+			  dist_sum += s1;
+			  if( s1 < best_quad_dist )
 		  		best_quad_dist = s1;
 
-	  		quad_match_heap[quad_heap_size].weight = s1;
-			quad_match_heap[quad_heap_size].index = quad_heap_size;
-	  		quad_matches[quad_heap_size].dx = x;
-	  		quad_matches[quad_heap_size].dy = y;
-			quad_heap_size += (x <= ihigh && y <= jhigh);
+			  quad_match_heap[quad_heap_size].weight = s1;
+			  quad_match_heap[quad_heap_size].index = quad_heap_size;
+			  quad_matches[quad_heap_size].dx = x;
+			  quad_matches[quad_heap_size].dy = y;
+			  quad_heap_size += (x <= ihigh && y <= jhigh);
 
-			if( i == 2 )
+			  if( i == 2 )
 				qorgblk += qlx;
-	    }
+			}
+		  /* If we're thresholding check  got a match below the threshold. 
+		   *and* .. stop looking... we've already found a good candidate...
+		   */
+		  /*  Doesn't work well - disabled.
+			  if( fast_mc_threshold && 
+			  best_quad_dist < quadpel_threshold.threshold )
+			  { 
+			  break;
+			  }
+		  */
 
-	  /* If we're thresholding check  got a match below the threshold. 
-	  	*and* .. stop looking... we've already found a good candidate...
-		*/
-/*  Doesn't work well - disabled.
-	  if( fast_mc_threshold && best_quad_dist < quadpel_threshold.threshold )
-		{ 
-		  break;
 		}
-*/
-
-	}
-#else
-
-
-    /* Invariant:  qorgblk = qorg+(i>>2)+qlx*(j>>2) */
-  qorgblk = qorg+(ilow>>2)+qlx*(jlow>>2);
-  for( j = jlow; j <= jhigh; j += 4 )
-	{
-  	old_qorgblk = qorgblk;
-	  for( i = ilow; i <= ihigh; i += 4 )
-		{
-		  s1 = qdist1( qorgblk,qblk,qlx,qh) & 0xffff;
-	  	quad_matches[quad_heap_size].dx = i;
-	  	quad_matches[quad_heap_size].dy = j;
-	  	quad_match_heap[quad_heap_size].index = quad_heap_size;
-	  	quad_match_heap[quad_heap_size].weight =s1;
-	  	dist_sum += s1;
-	  	++quad_heap_size;
-		  qorgblk += 1;
-		}
-	  qorgblk = old_qorgblk + qlx;
 	}
 
-#endif
 
-	/*
-  quad_heap_size = thin_vector( quad_match_heap, dist_sum/quad_heap_size,
-													      quad_heap_size);
-	*/
   heapify( quad_match_heap, quad_heap_size );
   /* Update the fast motion match average using the best 2*2 match */
-  /* update_threshold( &quadpel_threshold, quad_match_heap[0].weight ); */
+  /* Poor results... disabled...
+	 update_threshold( &quadpel_threshold, quad_match_heap[0].weight ); */
 
   return quad_heap_size;
 }
@@ -2531,7 +2568,7 @@ static int build_half_heap(int ihigh, int jhigh,
 	  forgblk =  forg + (matchrec.dy>>1)*flx +(matchrec.dx>>1);
 		  
 
-	  s = fdist1( forgblk,fblk,flx,fh);
+	  s = (*pfdist1)( forgblk,fblk,flx,fh);
 	  half_matches[half_heap_size].dx = matchrec.dx;
 	  half_matches[half_heap_size].dy = matchrec.dy;
 	  half_match_heap[half_heap_size].index = half_heap_size;
@@ -2544,7 +2581,7 @@ static int build_half_heap(int ihigh, int jhigh,
 		  
 	 if(  matchrec.dy+2 <= jhigh )
 	   {
-		  s = fdist1( forgblk+flx,fblk,flx,fh);
+		  s = (*pfdist1)( forgblk+flx,fblk,flx,fh);
 		  half_matches[half_heap_size].dx = matchrec.dx;
 		  half_matches[half_heap_size].dy = matchrec.dy+2;
 		  half_match_heap[half_heap_size].index = half_heap_size;
@@ -2557,7 +2594,7 @@ static int build_half_heap(int ihigh, int jhigh,
 		  
 	  if( matchrec.dx+2 <= ihigh )
 		  {
-			  s = fdist1( forgblk+1,fblk,flx,fh);
+			  s = (*pfdist1)( forgblk+1,fblk,flx,fh);
 			  half_matches[half_heap_size].dx = matchrec.dx+2;
 			  half_matches[half_heap_size].dy = matchrec.dy;
 			  half_match_heap[half_heap_size].index = half_heap_size;
@@ -2569,7 +2606,7 @@ static int build_half_heap(int ihigh, int jhigh,
 			  
 			 if( matchrec.dy+2 <= jhigh )
 				{
-				    s = fdist1( forgblk+flx+1,fblk,flx,fh);
+				    s = (*pfdist1)( forgblk+flx+1,fblk,flx,fh);
 					half_matches[half_heap_size].dx = matchrec.dx+2;
 					half_matches[half_heap_size].dy = matchrec.dy+2;
 					half_match_heap[half_heap_size].index = half_heap_size;
@@ -2654,7 +2691,7 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 
 		  if( matchrec.dx <= xmax && matchrec.dy <= ymax )
 		  {
-			  d = dist1_00(orgblk,blk,lx,h, dmin);
+			  d = (*pdist1_00)(orgblk,blk,lx,h, dmin);
 			  if (d<dmin)
 			  {
 				  dmin = d;
@@ -2662,7 +2699,7 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 				  jmin = matchrec.dy;
 
 			  }
-			  d = dist1_00(orgblk+1,blk,lx,h, dmin);
+			  d = (*pdist1_00)(orgblk+1,blk,lx,h, dmin);
 			  if (d<dmin && (matchrec.dx < xmax))
 			  {
 				  dmin = d;
@@ -2671,7 +2708,7 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 
 			  }
 
-			  d = dist1_00(orgblk+lx,blk,lx,h, dmin);
+			  d = (*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
 			  if( (d<dmin) && (matchrec.dy < ymax))
 			  {
 				  dmin = d;
@@ -2679,7 +2716,7 @@ static void find_best_one_pel( mcompuint *org, mcompuint *blk,
 				  jmin = matchrec.dy+1;
   
 			  }
-			  d = dist1_00(orgblk+lx+1,blk,lx,h, dmin);
+			  d = (*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
 			  if ( (d<dmin) && (matchrec.dy < ymax) && (matchrec.dx < xmax))
 			  {
 				  dmin = d;
@@ -2793,7 +2830,7 @@ int *iminp,*jminp;
 
   /* full pel search, spiraling outwards */
 
-  dmin = dist1(org+imin+lx*jmin,blk,lx,0,0,h,65536);
+  dmin = (*pdist1)(org+imin+lx*jmin,blk,lx,0,0,h,65536);
 
   for (l=1; l<=sxy; l++)
   {
@@ -2803,8 +2840,8 @@ int *iminp,*jminp;
     {
       if (i>=ilow && i<=ihigh && j>=jlow && j<=jhigh)
       {
-        /* d = dist1(org+i+lx*j,blk,lx,0,0,h, dmin); */
-				d = dist1_00(org+i+lx*j,blk,lx,h, dmin); 
+        /* d = (*pdist1)(org+i+lx*j,blk,lx,0,0,h, dmin); */
+				d = (*pdist1_)00(org+i+lx*j,blk,lx,h, dmin); 
         if (d<dmin)
         {
           dmin = d;
@@ -2915,7 +2952,7 @@ int *iminp,*jminp;
 			{
 				printf( "\n****A %d %d dmin=%d rcdmin=%d!\n", imin, jmin, dmin, rcdmin);
 			}
-		if( dist1_00(org+rcimin+lx*rcjmin, blk, lx, h, INT_MAX ) != rcdmin )
+		if( (*pdist1_)00(org+rcimin+lx*rcjmin, blk, lx, h, INT_MAX ) != rcdmin )
 			{
 				printf( "INCONSISTENT DISTANCE MEASURE B!\n");
 			}
@@ -2932,7 +2969,7 @@ int *iminp,*jminp;
 
 
 #ifdef TESTING_MOTION_COMP
-		if( dist1_00(org+imin+lx*jmin, blk, lx, h, INT_MAX ) != dmin )
+		if( (*pdist1_)00(org+imin+lx*jmin, blk, lx, h, INT_MAX ) != dmin )
 			{
 				printf( "INCONSISTENT DISTANCE MEASURE @ %d %d!\n", i0, j0);
 			}
@@ -2942,7 +2979,7 @@ int *iminp,*jminp;
 	for( j = jlow; j <= jhigh; ++j )
   		for( i = ilow; i <= ihigh; ++i )
 			{
-				d = dist1_00(org+i+lx*j, blk, lx, h, dmin );
+				d = (*pdist1_)00(org+i+lx*j, blk, lx, h, dmin );
 				if( d < dmin )
 					{
 						dmin = d;
@@ -2972,22 +3009,22 @@ int *iminp,*jminp;
 	  for (i=ilow; i<=ihigh; i++)
 		{
 		  orgblk = org+(i>>1)+((j>>1)*lx);
-		  /* ORIGINALLY: d = dist1(orgblk,blk,lx,(i&1),(j&1),h,dmin);
+		  /* ORIGINALLY: d = (*pdist1)(orgblk,blk,lx,(i&1),(j&1),h,dmin);
 			 However, this provokes a bug in egcs 1.1.2...
 		  */
 		  if( i&1 )
 			{
 			  if( j & 1 )
-				d = dist1_11(orgblk,blk,lx,h);
+				d = (*pdist1_11)(orgblk,blk,lx,h);
 			  else
-				d = dist1_01(orgblk,blk,lx,h);
+				d = (*pdist1_01)(orgblk,blk,lx,h);
 			}
 		  else
 			{
 			  if( j & 1 )
-				d = dist1_10(orgblk,blk,lx,h);
+				d = (*pdist1_10)(orgblk,blk,lx,h);
 			  else
-				d = dist1_00(orgblk,blk,lx,h,dmin);
+				d = (*pdist1_00)(orgblk,blk,lx,h,dmin);
 			}
 		  if (d<dmin)
 			{
@@ -3031,7 +3068,7 @@ int *iminp,*jminp;
    That 1970's heritage...
 */
 
-#if  !defined(SSE) && !defined(MMX)
+
 static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 					int lx, int h,int distlim)
 {
@@ -3182,7 +3219,7 @@ static int dist1_11(unsigned char *blk1,unsigned char *blk2,
 	}
   return s;
 }
-#endif
+
 
 static int dist1(blk1,blk2,lx,hx,hy,h,distlim)
 unsigned char *blk1,*blk2;
@@ -3405,7 +3442,6 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 #endif 		
 }
 
-#if !defined(SSE) && !defined(MMX)
 
 static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 {
@@ -3424,6 +3460,7 @@ static int fdist1( mcompuint *fblk1, mcompuint *fblk2,int flx,int fh)
 	  pipestep(6); pipestep(7);
 	  p1 += flx;
 	  p2 += flx;
+#undef pipestep
 	}
 
   return s;
@@ -3466,7 +3503,7 @@ static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
 
   return s;
 }
-#endif
+
 
 /*
  * total squared difference between two (16*h) blocks
@@ -3477,7 +3514,7 @@ static int qdist1( mcompuint *qblk1, mcompuint *qblk2,int qlx,int qh)
  * h:         height of block (usually 8 or 16)
  */
  
-#if (!defined(SSE) && !defined(MMX))
+
 static int dist2(blk1,blk2,lx,hx,hy,h)
 unsigned char *blk1,*blk2;
 int lx,hx,hy,h;
@@ -3658,7 +3695,7 @@ int lx,hxf,hyf,hxb,hyb,h;
 
   return s;
 }
-#endif
+
 
 /*
  * variance of a (16*16) block, multiplied by 256

@@ -277,6 +277,9 @@ char *argv[];
   }
 
   init();
+  init_quantizer();
+  init_motion();
+  init_transform();
   putseq();
 
   fclose(outfile);

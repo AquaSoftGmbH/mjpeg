@@ -284,14 +284,14 @@ unsigned char *frame;
 			i_q_mat = i_inter_q;
 		}
 
-	  actj  = (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[0], i_q_mat ) /
+	  actj  = (double) (*pquant_weight_coeff_sum)( &mbinfo[k].dctblocks[0], i_q_mat ) /
 	  	       (double) COEFFSUM_SCALE ;
-	  actj += (double)quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
+	  actj += (double) (*quant_weight_coeff_sum)( &mbinfo[k].dctblocks[1], i_q_mat ) / 
 	  		(double) COEFFSUM_SCALE;
-	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) / 
+	  actj += (double) (*quant_weight_coeff_sum)( &mbinfo[k].dctblocks[1], i_q_mat ) / 
 	  		(double) COEFFSUM_SCALE;
 
-	  actj += (double) quant_weight_coeff_sum( &mbinfo[k].dctblocks[1], i_q_mat ) /
+	  actj += (double) (*quant_weight_coeff_sum)( &mbinfo[k].dctblocks[1], i_q_mat ) /
 	  		(double) COEFFSUM_SCALE;
 #endif
       mbinfo[k].act = actj;
