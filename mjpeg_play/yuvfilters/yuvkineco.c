@@ -144,11 +144,9 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 #  b: duplicate Bottom field and output or drop
 #
 # Use this list with old input to generator yuvkineco,
-# do 'yuvkineco -F fpscode -O %s'
-# or 'lavkineco -F fpscode -O %s -f [aqm] -o output input',
+# do 'yuvkineco -F fpscode -O %s',
 # with output new,
-# do 'yuvkineco -F fpscode -N %s'
-# or 'lavkineco -F fpscode -N %s -f [aqm] -o output input'.
+# do 'yuvkineco -F fpscode -N %s'.
 #
 # When used as '-O %s':
 #  O:    Output
