@@ -50,7 +50,7 @@ static void pred_comp (
 	pict_data_s *picture,
 	uint8_t *src, uint8_t *dst,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 static void pred_comp_mmxe(
 	pict_data_s *picture,
 	uint8_t *src, uint8_t *dst,
@@ -87,7 +87,7 @@ void init_predict()
 		ppred_comp = pred_comp;
 	}
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		fprintf( stderr, "SETTING EXTENDED MMX for PREDICTION!\n");
@@ -531,7 +531,7 @@ static void pred_comp(
 			}
 }
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 static void pred_comp_mmxe(
 	pict_data_s *picture,
 	uint8_t *src,

@@ -60,7 +60,7 @@ void init_quantizer()
 {
   int flags;
   flags = cpu_accel();
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
 		fprintf( stderr, "SETTING " );

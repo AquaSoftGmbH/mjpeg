@@ -33,7 +33,7 @@
 #include "global.h"
 #include "cpu_accel.h"
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 extern void fdct_mmx( int16_t * blk );
 extern void idct_mmx( int16_t * blk );
 
@@ -77,7 +77,7 @@ void init_transform()
 	int flags;
 	flags = cpu_accel();
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
 		fprintf( stderr, "SETTING MMX for TRANSFORM!\n");

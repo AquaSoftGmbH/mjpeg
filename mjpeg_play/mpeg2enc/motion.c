@@ -169,7 +169,7 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
 							   int flx, int fh,  int searched_sub44_size );
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 static void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,
@@ -289,7 +289,7 @@ void init_motion()
 		pfind_best_one_pel = find_best_one_pel;
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
 	 }
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		fprintf( stderr, "SETTING EXTENDED MMX for MOTION!\n");
@@ -1852,7 +1852,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 	int mean_weight;
 	int threshold;
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 
 	/*int rangex, rangey;
 	static int rough_num_mcomps;
@@ -1881,7 +1881,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 		(a)	it is only 16th of the size of the real 1-pel data 
 		(b) we ignore those matches with an sad above our threshold.	
 	*/
-#ifndef X86_CPU
+#ifndef HAVE_X86CPU 
 
 		/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
 		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
@@ -1991,7 +1991,7 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 	return sub22_num_mcomps;
 }
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
 								int null_mc_sad,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
@@ -2123,7 +2123,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 
 }
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,

@@ -25,7 +25,7 @@
 
 #include "cpu_accel.h"
 
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
 static int x86_accel (void)
 {
     int eax, ebx, ecx, edx;
@@ -91,7 +91,7 @@ static int x86_accel (void)
 
 int cpu_accel (void)
 {
-#ifdef X86_CPU
+#ifdef HAVE_X86CPU 
     static int got_accel = 0;
     static int accel;
 
