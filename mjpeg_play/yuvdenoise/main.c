@@ -153,6 +153,16 @@ int main(int argc, char *argv[])
       denoiser.border.h        = denoiser.frame.h;
   }
 
+  /* handle relative border height/width offsets. */
+  if ( denoiser.border.w < 0 )
+  {
+      denoiser.border.w = denoiser.frame.w - denoiser.border.x + denoiser.border.w;
+  }
+  if ( denoiser.border.h < 0 )
+  {
+      denoiser.border.h = denoiser.frame.h - denoiser.border.y + denoiser.border.h;
+  }
+
   /* stream is interlaced and shall not be
    * deinterlaced ?
    */ 
