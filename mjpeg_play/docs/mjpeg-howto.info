@@ -1,0 +1,71 @@
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.0 aus
+/tmp/linuxdoc-dir-1751/sgmltmp.mjpeg-howto.info.2.
+
+   \input texinfo
+
+
+Indirect:
+mjpeg-howto.info-1: 139
+mjpeg-howto.info-2: 49233
+
+Tag Table:
+(Indirect)
+Node: Top139
+Node: Introduction784
+Node: Unsorted list of usefull Hints2101
+Node: Recording videos6011
+Node: lavrec examples6385
+Node: Other recording hints8969
+Node: Some information about the typical lavrec output while recording10037
+Node: Notes about "interlace field order - what can go wrong and how to fix it"11620
+Node: There are three bad things that can happen with fields12462
+Node: How can I recognize if I have one of these Problems ?14234
+Node: How can you fix it?15787
+Node: Hey what about NTSC movies ?19072
+Node: Creating videos from images20379
+Node: Checking if recording was successful23335
+Node: Edit the video25561
+Node: Edit with glav25865
+Node: Unify videos27293
+Node: Separate sound27748
+Node: Separate images28211
+Node: Creating movie transitions29201
+Node: Converting the stream to MPEG or DIVx videos32945
+Node: Creating sound34665
+Node: Converting video35960
+Node: Scaling37520
+Node: Putting the streams together40206
+Node: Creating MPEG1 Videos42311
+Node: MPEG1 Audio creation Example43025
+Node: MPEG1 Video creation Example43776
+Node: MPEG1 Multiplexing Example48387
+Node: Creating MPEG2 Videos49233
+Node: MPEG2 Audio creation Example50205
+Node: MPEG2 Video creation Example50698
+Node: Which values should be used for VBR Encoding53025
+Node: Encoding destination TV (interlaced) or Monitor (progressive)55034
+Node: MPEG2 Multiplexing Example57476
+Node: Creating Video-CD's58250
+Node: VCD Audio creation Example59370
+Node: VCD Video creation Example59744
+Node: VCD Multiplexing Example61210
+Node: Creating the CD61567
+Node: Notes62119
+Node: Storing MPEGs63096
+Node: Creating SVCD64748
+Node: SVCD Audio creation Example65386
+Node: SVCD Video creation Example65824
+Node: SVCD Multiplexing Example68178
+Node: SVCD Creating the CD68702
+Node: Creating DIVX Videos69377
+Node: lav2divx71616
+Node: A word on avifile codecs72174
+Node: Optimizing the stream72752
+Node: Transcoding of existing MPEG-275561
+Node: If you want to do every step on your own it has to look like this78714
+Node: Trading Quality/Speed83251
+Node: Creating streams to be played from disk using Software players84474
+Node: SMP and distributed Encoding85295
+Node: Interoperability88574
+
+End Tag Table
