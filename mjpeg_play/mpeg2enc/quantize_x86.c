@@ -364,7 +364,7 @@ int quant_non_intra_mmx(
 	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
-	uint16_t *quant_mat = inter_q;
+	uint16_t *quant_mat = opt_inter_q;
 	int comp;
 	uint16_t *i_quant_mat = i_inter_q;
 	int imquant;

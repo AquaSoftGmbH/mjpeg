@@ -318,21 +318,17 @@ int opt_video_buffer_size;
 /* Buffers frame data */
 EXTERN uint8_t ***frame_buffers;
 
-/* Buffers for econstructed frames */
-EXTERN uint8_t *newrefframe[3], *oldrefframe[3], *auxframe[3];
-
-/* prediction of current frame */
-EXTERN uint8_t *predframe[3];
-
 /* Buffer for filter pre-processing */
 
-EXTERN struct motion_data *motion_data;
+EXTERN struct motion_data *opt_motion_data;
 
 /* Orginal intra / non_intra quantization matrices */
-EXTERN uint16_t intra_q[64], inter_q[64];
-EXTERN uint16_t i_intra_q[64], i_inter_q[64];
+EXTERN uint16_t opt_intra_q[64], opt_inter_q[64];
+
+
 
 /* Table driven intra / non-intra quantization matrices */
+EXTERN uint16_t i_intra_q[64], i_inter_q[64];
 EXTERN uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
 EXTERN uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
 EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];
@@ -486,10 +482,10 @@ EXTERN uint8_t dummy_svcd_scan_data[14]
 = {
 	0x10,                       /* Scan data tag */
 	14,                         /* Length */
-	0x01, 0x02, 0x03,            /* Dummy data - this will be filled */
-	0x01, 0x02, 0x03,            /* By the multiplexor or cd image   */        
-	0x01, 0x02, 0x03,            /* creation software                */        
-	0x01, 0x02, 0x03
+	0x01, 0x82, 0x83,            /* Dummy data - this will be filled */
+	0x01, 0x82, 0x83,            /* By the multiplexor or cd image   */        
+	0x01, 0x82, 0x83,            /* creation software                */        
+	0x01, 0x82, 0x83
 
   }
 #endif

@@ -288,7 +288,7 @@ void set_format_presets()
 		param_mpeg = 2;
 		if( param_quant == 0 )
 			param_quant = 12;
-		param_svcd_scan_data = 0;
+		param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
 		break;
 			 
@@ -811,17 +811,6 @@ static void init_encoder()
 		 }
 	}
 
-	/* TODO: The ref and aux frame buffers are not redundant! */
-	for( i = 0 ; i<3; i++)
-	{
-		int size =  (i==0) ? lum_buffer_size : chrom_buffer_size;
-		newrefframe[i] = bufalloc(size);
-		oldrefframe[i] = bufalloc(size);
-		auxframe[i]    = bufalloc(size);
-		predframe[i]   = bufalloc(size);
-	}
-
-  
 	/* open statistics output file */
 	if (statname[0]=='-')
 		statfile = stdout;
@@ -971,29 +960,29 @@ static void init_mpeg_parms(void)
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 
-		motion_data = (struct motion_data *)malloc(opt_M*sizeof(struct motion_data));
-		if (!motion_data)
+		opt_motion_data = (struct motion_data *)malloc(opt_M*sizeof(struct motion_data));
+		if (!opt_motion_data)
 			mjpeg_error_exit1("malloc failed\n");
 
 		for (i=0; i<opt_M; i++)
 		{
 			if(i==0)
 			{
-				motion_data[i].sxf = MAX(1,radius_x*opt_M);
-				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
-				motion_data[i].syf = MAX(1,radius_y*opt_M);
-				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
+				opt_motion_data[i].sxf = MAX(1,radius_x*opt_M);
+				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
+				opt_motion_data[i].syf = MAX(1,radius_y*opt_M);
+				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
 			}
 			else
 			{
-				motion_data[i].sxf = MAX(1,radius_x*opt_M);
-				motion_data[i].forw_hor_f_code  = f_code(motion_data[i].sxf);
-				motion_data[i].syf = MAX(1,radius_y*opt_M);
-				motion_data[i].forw_vert_f_code  = f_code(motion_data[i].syf);
-				motion_data[i].sxb = MAX(1,radius_x*(opt_M-i));
-				motion_data[i].back_hor_f_code  = f_code(motion_data[i].sxb);
-				motion_data[i].syb = MAX(1,radius_y*(opt_M-i));
-				motion_data[i].back_vert_f_code  = f_code(motion_data[i].syb);
+				opt_motion_data[i].sxf = MAX(1,radius_x*opt_M);
+				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
+				opt_motion_data[i].syf = MAX(1,radius_y*opt_M);
+				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
+				opt_motion_data[i].sxb = MAX(1,radius_x*(opt_M-i));
+				opt_motion_data[i].back_hor_f_code  = f_code(opt_motion_data[i].sxb);
+				opt_motion_data[i].syb = MAX(1,radius_y*(opt_M-i));
+				opt_motion_data[i].back_vert_f_code  = f_code(opt_motion_data[i].syb);
 			}
 		}
 		
@@ -1031,14 +1020,14 @@ static void init_mpeg_parms(void)
 		{
 			for (i=0; i<opt_M; i++)
 			{
-				if (motion_data[i].forw_hor_f_code>4)
+				if (opt_motion_data[i].forw_hor_f_code>4)
 				{
 					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0\n");
 					opt_constrparms = 0;
 					break;
 				}
 
-				if (motion_data[i].forw_vert_f_code>4)
+				if (opt_motion_data[i].forw_vert_f_code>4)
 				{
 					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0\n");
 					opt_constrparms = 0;
@@ -1047,14 +1036,14 @@ static void init_mpeg_parms(void)
 
 				if (i!=0)
 				{
-					if (motion_data[i].back_hor_f_code>4)
+					if (opt_motion_data[i].back_hor_f_code>4)
 					{
 						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0\n");
 						opt_constrparms = 0;
 						break;
 					}
 
-					if (motion_data[i].back_vert_f_code>4)
+					if (opt_motion_data[i].back_vert_f_code>4)
 					{
 						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0\n");
 						opt_constrparms = 0;
@@ -1141,38 +1130,38 @@ static void init_mpeg_parms(void)
 	/* search windows */
 	for (i=0; i<opt_M; i++)
 	{
-		if (motion_data[i].sxf > (4<<motion_data[i].forw_hor_f_code)-1)
+		if (opt_motion_data[i].sxf > (4<<opt_motion_data[i].forw_hor_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward horizontal search width to %d\n",
-						(4<<motion_data[i].forw_hor_f_code)-1);
-			motion_data[i].sxf = (4<<motion_data[i].forw_hor_f_code)-1;
+						(4<<opt_motion_data[i].forw_hor_f_code)-1);
+			opt_motion_data[i].sxf = (4<<opt_motion_data[i].forw_hor_f_code)-1;
 		}
 
-		if (motion_data[i].syf > (4<<motion_data[i].forw_vert_f_code)-1)
+		if (opt_motion_data[i].syf > (4<<opt_motion_data[i].forw_vert_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward vertical search width to %d\n",
-				(4<<motion_data[i].forw_vert_f_code)-1);
-			motion_data[i].syf = (4<<motion_data[i].forw_vert_f_code)-1;
+				(4<<opt_motion_data[i].forw_vert_f_code)-1);
+			opt_motion_data[i].syf = (4<<opt_motion_data[i].forw_vert_f_code)-1;
 		}
 
 		if (i!=0)
 		{
-			if (motion_data[i].sxb > (4<<motion_data[i].back_hor_f_code)-1)
+			if (opt_motion_data[i].sxb > (4<<opt_motion_data[i].back_hor_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward horizontal search width to %d\n",
-					(4<<motion_data[i].back_hor_f_code)-1);
-				motion_data[i].sxb = (4<<motion_data[i].back_hor_f_code)-1;
+					(4<<opt_motion_data[i].back_hor_f_code)-1);
+				opt_motion_data[i].sxb = (4<<opt_motion_data[i].back_hor_f_code)-1;
 			}
 
-			if (motion_data[i].syb > (4<<motion_data[i].back_vert_f_code)-1)
+			if (opt_motion_data[i].syb > (4<<opt_motion_data[i].back_vert_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward vertical search width to %d\n",
-					(4<<motion_data[i].back_vert_f_code)-1);
-				motion_data[i].syb = (4<<motion_data[i].back_vert_f_code)-1;
+					(4<<opt_motion_data[i].back_vert_f_code)-1);
+				opt_motion_data[i].syb = (4<<opt_motion_data[i].back_vert_f_code)-1;
 			}
 		}
 	}
@@ -1220,7 +1209,7 @@ static void init_quantmat()
 			mjpeg_info( "Setting hi-res intra Quantisation matrix\n" );
 			for (i=0; i<64; i++)
 			{
-				intra_q[i] = hires_intra_quantizer_matrix[i];
+				opt_intra_q[i] = hires_intra_quantizer_matrix[i];
 			}	
 		}
 		else
@@ -1232,7 +1221,7 @@ static void init_quantmat()
 				v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
 				if (v<1 || v>255)
 					mjpeg_error_exit1("value in intra quant matrix invalid (after noise filt adjust)");
-				intra_q[i] = v;
+				opt_intra_q[i] = v;
 
 			} 
 		}
@@ -1253,7 +1242,7 @@ static void init_quantmat()
 			if (v<1 || v>255)
 				mjpeg_error_exit1("value in intra quant matrix invalid (after noise filt adjust)");
 
-			intra_q[i] = v;
+			opt_intra_q[i] = v;
 		}
 
 		fclose(fd);
@@ -1268,7 +1257,7 @@ static void init_quantmat()
 			mjpeg_info( "Setting hi-res non-intra quantiser matrix\n" );
 			for (i=0; i<64; i++)
 			{
-				inter_q[i] = hires_nonintra_quantizer_matrix[i];
+				opt_inter_q[i] = hires_nonintra_quantizer_matrix[i];
 			}	
 		}
 		else
@@ -1281,7 +1270,7 @@ static void init_quantmat()
 				v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
 				if (v<1 || v>255)
 					mjpeg_error_exit1("value in non-intra quant matrix invalid (after noise filt adjust)");
-				inter_q[i] = v;
+				opt_inter_q[i] = v;
 			}
 		}
 	}
@@ -1298,26 +1287,25 @@ static void init_quantmat()
 		{
 			fscanf(fd,"%d",&v);
 			v = quant_hfnoise_filt(v,i);
-			inter_q[i] = v;
+			opt_inter_q[i] = v;
 			if (v<1 || v>255)
 				mjpeg_error_exit1("value in non-intra quant matrix invalid (after noise filt adjust)");
-			i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v)); 
 		}
 		fclose(fd);
 	}
   
 	for (i=0; i<64; i++)
 	{
-		i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)intra_q[i]));
-		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+		i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_intra_q[i]));
+		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_inter_q[i]));
 	}
 	
 	for( q = 1; q <= 112; ++q )
 	{
 		for (i=0; i<64; i++)
 		{
-			intra_q_tbl[q][i] = intra_q[i] * q;
-			inter_q_tbl[q][i] = inter_q[i] * q;
+			intra_q_tbl[q][i] = opt_intra_q[i] * q;
+			inter_q_tbl[q][i] = opt_inter_q[i] * q;
 			intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
 			inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
 			i_intra_q_tblf[q][i] = 1.0f/ ( intra_q_tblf[q][i] * 0.98);

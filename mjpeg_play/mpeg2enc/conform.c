@@ -117,31 +117,31 @@ void range_checks()
 
   for (i=0; i<opt_M; i++)
   {
-    if (motion_data[i].forw_hor_f_code<1 || motion_data[i].forw_hor_f_code>9)
+    if (opt_motion_data[i].forw_hor_f_code<1 || opt_motion_data[i].forw_hor_f_code>9)
       mjpeg_error_exit1("f_code x must be between 1 and 9");
-    if (motion_data[i].forw_vert_f_code<1 || motion_data[i].forw_vert_f_code>9)
+    if (opt_motion_data[i].forw_vert_f_code<1 || opt_motion_data[i].forw_vert_f_code>9)
       mjpeg_error_exit1("f_code y must be between 1 and 9");
-    if (opt_mpeg1 && motion_data[i].forw_hor_f_code>7)
+    if (opt_mpeg1 && opt_motion_data[i].forw_hor_f_code>7)
       mjpeg_error_exit1("f_code x must be less than 8");
-    if (opt_mpeg1 && motion_data[i].forw_vert_f_code>7)
+    if (opt_mpeg1 && opt_motion_data[i].forw_vert_f_code>7)
       mjpeg_error_exit1("f_code y must be less than 8");
-    if (motion_data[i].sxf<=0)
+    if (opt_motion_data[i].sxf<=0)
       mjpeg_error_exit1("search window must be positive"); /* doesn't belong here */
-    if (motion_data[i].syf<=0)
+    if (opt_motion_data[i].syf<=0)
       mjpeg_error_exit1("search window must be positive");
     if (i!=0)
     {
-      if (motion_data[i].back_hor_f_code<1 || motion_data[i].back_hor_f_code>9)
+      if (opt_motion_data[i].back_hor_f_code<1 || opt_motion_data[i].back_hor_f_code>9)
         mjpeg_error_exit1("f_code must be between 1 and 9");
-      if (motion_data[i].back_vert_f_code<1 || motion_data[i].back_vert_f_code>9)
+      if (opt_motion_data[i].back_vert_f_code<1 || opt_motion_data[i].back_vert_f_code>9)
         mjpeg_error_exit1("f_code must be between 1 and 9");
-      if (opt_mpeg1 && motion_data[i].back_hor_f_code>7)
+      if (opt_mpeg1 && opt_motion_data[i].back_hor_f_code>7)
         mjpeg_error_exit1("f_code must be le less than 8");
-      if (opt_mpeg1 && motion_data[i].back_vert_f_code>7)
+      if (opt_mpeg1 && opt_motion_data[i].back_vert_f_code>7)
         mjpeg_error_exit1("f_code must be le less than 8");
-      if (motion_data[i].sxb<=0)
+      if (opt_motion_data[i].sxb<=0)
         mjpeg_error_exit1("search window must be positive");
-      if (motion_data[i].syb<=0)
+      if (opt_motion_data[i].syb<=0)
         mjpeg_error_exit1("search window must be positive");
     }
   }
@@ -252,18 +252,18 @@ void profile_and_level_checks(void)
 
   for (i=0; i<opt_M; i++)
   {
-    if (motion_data[i].forw_hor_f_code > maxval->hor_f_code)
+    if (opt_motion_data[i].forw_hor_f_code > maxval->hor_f_code)
       mjpeg_error_exit1("forward horizontal f_code greater than permitted in specified Level");
 
-    if (motion_data[i].forw_vert_f_code > maxval->vert_f_code)
+    if (opt_motion_data[i].forw_vert_f_code > maxval->vert_f_code)
       mjpeg_error_exit1("forward vertical f_code greater than permitted in specified Level");
 
     if (i!=0)
     {
-      if (motion_data[i].back_hor_f_code > maxval->hor_f_code)
+      if (opt_motion_data[i].back_hor_f_code > maxval->hor_f_code)
         mjpeg_error_exit1("backward horizontal f_code greater than permitted in specified Level");
   
-      if (motion_data[i].back_vert_f_code > maxval->vert_f_code)
+      if (opt_motion_data[i].back_vert_f_code > maxval->vert_f_code)
         mjpeg_error_exit1("backward vertical f_code greater than permitted in specified Level");
     }
   }

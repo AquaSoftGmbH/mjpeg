@@ -86,12 +86,12 @@ void putseqhdr()
 	putbits(opt_load_iquant,1); /* load_intra_quantizer_matrix */
 	if (opt_load_iquant)
 		for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
-			putbits(intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
+			putbits(opt_intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
 
 	putbits(opt_load_niquant,1); /* load_non_intra_quantizer_matrix */
 	if (opt_load_niquant)
 		for (i=0; i<64; i++)
-			putbits(inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
+			putbits(opt_inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
 	if (!opt_mpeg1)
 	{
 		putseqext();

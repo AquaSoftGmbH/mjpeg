@@ -110,26 +110,26 @@ static void set_pic_params( int decode,
 	case I_TYPE :
 		picture->forw_hor_f_code = 15;
 		picture->forw_vert_f_code = 15;
-		picture->sxf = motion_data[0].sxf;
-		picture->syf = motion_data[0].syf;
+		picture->sxf = opt_motion_data[0].sxf;
+		picture->syf = opt_motion_data[0].syf;
 		break;
 	case P_TYPE :
-		picture->forw_hor_f_code = motion_data[0].forw_hor_f_code;
-		picture->forw_vert_f_code = motion_data[0].forw_vert_f_code;
+		picture->forw_hor_f_code = opt_motion_data[0].forw_hor_f_code;
+		picture->forw_vert_f_code = opt_motion_data[0].forw_vert_f_code;
 		picture->back_hor_f_code = 15;
 		picture->back_vert_f_code = 15;
-		picture->sxf = motion_data[0].sxf;
-		picture->syf = motion_data[0].syf;
+		picture->sxf = opt_motion_data[0].sxf;
+		picture->syf = opt_motion_data[0].syf;
 		break;
 	case B_TYPE :
-		picture->forw_hor_f_code = motion_data[b_index].forw_hor_f_code;
-		picture->forw_vert_f_code = motion_data[b_index].forw_vert_f_code;
-		picture->back_hor_f_code = motion_data[b_index].back_hor_f_code;
-		picture->back_vert_f_code = motion_data[b_index].back_vert_f_code;
-		picture->sxf = motion_data[b_index].sxf;
-		picture->syf = motion_data[b_index].syf;
-		picture->sxb = motion_data[b_index].sxb;
-		picture->syb = motion_data[b_index].syb;
+		picture->forw_hor_f_code = opt_motion_data[b_index].forw_hor_f_code;
+		picture->forw_vert_f_code = opt_motion_data[b_index].forw_vert_f_code;
+		picture->back_hor_f_code = opt_motion_data[b_index].back_hor_f_code;
+		picture->back_vert_f_code = opt_motion_data[b_index].back_vert_f_code;
+		picture->sxf = opt_motion_data[b_index].sxf;
+		picture->syf = opt_motion_data[b_index].syf;
+		picture->sxb = opt_motion_data[b_index].sxb;
+		picture->syb = opt_motion_data[b_index].syb;
 
 		break;
 	}
@@ -189,12 +189,12 @@ static void set_2nd_field_params(pict_data_s *picture)
 		picture->ipflag = 1;
 		picture->pict_type = P_TYPE;
 		
-		picture->forw_hor_f_code = motion_data[0].forw_hor_f_code;
-		picture->forw_vert_f_code = motion_data[0].forw_vert_f_code;
+		picture->forw_hor_f_code = opt_motion_data[0].forw_hor_f_code;
+		picture->forw_vert_f_code = opt_motion_data[0].forw_vert_f_code;
 		picture->back_hor_f_code = 15;
 		picture->back_vert_f_code = 15;
-		picture->sxf = motion_data[0].sxf;
-		picture->syf = motion_data[0].syf;	
+		picture->sxf = opt_motion_data[0].sxf;
+		picture->syf = opt_motion_data[0].syf;	
 	}
 }
 

@@ -216,9 +216,13 @@ void putpict(pict_data_s *picture )
 	putpicthdr(picture);
 
 	if ( !opt_mpeg1 )
+	{
 		putpictcodext(picture);
+	}
 	if( opt_svcd_scan_data && picture->pict_type == I_TYPE )
+	{
 		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
+	}
 	prev_mquant = rc_start_mb(picture); /* initialize quantization parameter */
 
 	k = 0;
