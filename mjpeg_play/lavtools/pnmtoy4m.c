@@ -99,7 +99,6 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->offset = 0;
   cl->framecount = 0;
   cl->output_aspect = y4m_sar_SQUARE;
-  //  cl->output_interlace = Y4M_ILACE_NONE;
   cl->output_interlace = Y4M_UNKNOWN;
   cl->output_framerate = y4m_fps_NTSC;
   cl->deinterleave = 0;

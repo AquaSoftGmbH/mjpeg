@@ -117,6 +117,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 }
 
 
+/* Write a single PAM image. */
 static
 void write_pam(FILE *fp,
                int chroma,
@@ -185,6 +186,7 @@ void write_pam(FILE *fp,
 }
 
 
+/* Write a single PPM image. */
 static
 void write_ppm(FILE *fp,
                uint8_t *buffers[],
@@ -211,6 +213,7 @@ void write_ppm(FILE *fp,
 }
 
 
+/* Write a single PGM image. */
 static
 void write_pgm(FILE *fp, uint8_t *buffer, int width, int height) 
 {
@@ -221,7 +224,8 @@ void write_pgm(FILE *fp, uint8_t *buffer, int width, int height)
 
 
 
-
+/* Write a frame or field out as "an image".
+   A frame/field with an alpha channel may become two images... */
 static
 void write_image(FILE *fp,
                  int make_pam,
@@ -264,6 +268,7 @@ int main(int argc, char **argv)
   int width, height;
   int interlace, chroma, planes;
   uint8_t *rowbuffer = NULL;
+  int frame_count;
 
   y4m_accept_extensions(1); /* allow non-4:2:0 chroma */
   y4m_init_stream_info(&streaminfo);
@@ -336,15 +341,13 @@ int main(int argc, char **argv)
                 i, buffers[i], i, buffers2[i]);
   }
 
-  /* XXXXXX handle mixed-mode field output properly! */
-  /* which fields is written first if 'p' */
-
   /*** Process frames ***/
+  frame_count = 0;
   while (1) {
-    int temporal;
     err = y4m_read_frame_header(in_fd, &streaminfo, &frameinfo);
     if (err != Y4M_OK) break;
-    temporal = y4m_fi_get_temporal(&frameinfo);
+
+    frame_count++;
 
     if (!cl.deinterleave) {
       mjpeg_debug("reading whole frame...");
@@ -390,8 +393,8 @@ int main(int argc, char **argv)
         assert(0);  break;
       }
       switch (interlace) {
-      case Y4M_ILACE_NONE:
-      case Y4M_ILACE_MIXED:
+      case Y4M_ILACE_NONE:       /* ambiguous temporal order */
+      case Y4M_ILACE_MIXED:      /* ambiguous temporal order */
       case Y4M_ILACE_TOP_FIRST:
         /* write top field first */
         write_image(cl.outfp, cl.make_pam,
@@ -414,6 +417,8 @@ int main(int argc, char **argv)
   }     
   if ((err != Y4M_OK) && (err != Y4M_ERR_EOF))
     mjpeg_error("Couldn't read frame:  %s", y4m_strerr(err));
+
+  mjpeg_info("Processed %d frames.", frame_count);
 
   /*** Clean-up after ourselves ***/
   mjpeg_debug("freeing buffers; cleaning up");
