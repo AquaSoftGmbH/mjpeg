@@ -2,8 +2,8 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-AM_CFLAGS = -DNDEBUG -finline-functions
-AM_CXXFLAGS = -DNDEBUG -finline-functions
+AM_CFLAGS = -DNDEBUG -finline-functions @PROGRAM_NOPIC@
+AM_CXXFLAGS = -DNDEBUG -finline-functions @PROGRAM_NOPIC@
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
 
