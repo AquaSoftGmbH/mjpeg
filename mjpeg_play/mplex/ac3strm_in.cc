@@ -29,7 +29,6 @@
 #include "interact.hh"
 #include "multiplexor.hh"
 
-#define DEBUG_AC3_HEADERS
 
 #define AC3_SYNCWORD            0x0b77
 #define AC3_PACKET_SAMPLES      1536
@@ -360,8 +359,10 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
-    if( eoscan )                // DEBUG
+#ifdef DEBUG_AC3_HEADERS
+    if( eoscan )
         mjpeg_info( "End of AC3 found\n");
+#endif
 }
 
 
