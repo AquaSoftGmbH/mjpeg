@@ -52,12 +52,12 @@ b = bottom field first
 No default, this option has to be specified.
 .TP 5
 .BI \-L " num"
-0 = non-interleaved (two successive fields per JPEG file)
+0 = non-interleaved (two successive fields per PNG file)
 .br
 1 = interleaved fields
 .TP 5
 .BI \-l " num"
-Specifies the nummber of loops (default: 0 loops )
+Specifies the number of loops (default: 0 loops )
 .TP 5
 .BI \-S " samp_mode"
 chroma subsampling mode, only for professionals, for more info see ppmtoy4m and
@@ -82,6 +82,7 @@ Verbosity level (0, 1 or 2)
 
 .SH BUGS
 The frame rate description does not seem to be up to date. The NTSC integer ratios are not supported (use floating point instead). As workaround specify a PAL (25) or native FILM (24) and set the right frame rate in mpeg2enc with the -F option.
+Interlaced handling is not implemented yet.
 
 .SH "AUTHOR"
 This man page was written by Gernot Ziegler.

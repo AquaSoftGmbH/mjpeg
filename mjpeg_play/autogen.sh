@@ -6,7 +6,7 @@ test -z "$srcdir" && srcdir=.
 test -z "$automake" && automake=automake
 
 PKG_NAME="The Linux Audio Video tools"
-ACLOCAL_FLAGS=""
+ACLOCAL_FLAGS="-I $srcdir/movtar"
 
 (test -f $srcdir/configure.in \
   && test -d $srcdir/mpeg2enc) || {
