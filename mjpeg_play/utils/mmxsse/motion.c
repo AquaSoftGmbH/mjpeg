@@ -41,7 +41,7 @@ void enable_mmxsse_motion(int cpucap)
 
         SIMD_MMX(variance);
 
-        SIMD_MMX(bsad);
+        SIMD_MMXE(bsad);
 
         SIMD_MMXE(build_sub22_mests);
 

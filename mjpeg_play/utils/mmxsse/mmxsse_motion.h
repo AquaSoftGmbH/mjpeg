@@ -56,6 +56,10 @@ int bsad_mmx (uint8_t *pf, uint8_t *pb,
 	      uint8_t *p2, int rowstride,
 	      int hxf, int hyf, int hxb, int hyb, int h);
 
+int bsad_mmxe(uint8_t *pf, uint8_t *pb,
+	      uint8_t *p2, int rowstride,
+	      int hxf, int hyf, int hxb, int hyb, int h);
+
 void variance_mmx (uint8_t *p, int size, int rowstride,
 				   uint32_t *p_variance, uint32_t *p_mean);
 

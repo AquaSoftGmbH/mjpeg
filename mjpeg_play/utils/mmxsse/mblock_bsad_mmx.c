@@ -19,8 +19,25 @@
  */
 
 #include <config.h>
+#include <stdio.h>
 #include "mjpeg_types.h"
 #include "mmx.h"
+
+// These rely on mm7 being zero
+
+// load 8 bytes at *ptr, and expand into 16-bit words in r1 and r2
+#define BSAD_LOAD(ptr,r1,r2)    \
+	movq_m2r(ptr, r1);      \
+	movq_r2r(r1, r2);       \
+ 	punpcklbw_r2r(mm7, r1); \
+	punpckhbw_r2r(mm7, r2);
+
+// load 8 bytes at *ptr, and add to 16-bit words in r1 and r2, using t1 and t2 as temporary registers
+#define BSAD_LOAD_ACC(ptr,t1,t2,r1,r2) \
+        BSAD_LOAD(ptr,t1,t2);          \
+        paddw_r2r(t1,r1);              \
+        paddw_r2r(t2,r2);
+        
 
 
 /*
@@ -37,210 +54,293 @@
 
 int bsad_mmx(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h)
 {
-	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
-	int s, s1, s2;
+    uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+    int s, s1, s2;
 
-	pfa = pf + hxf;
-	pfb = pf + lx * hyf;
-	pfc = pfb + hxf;
+    pfa = pf + hxf;
+    pfb = pf + lx * hyf;
+    pfc = pfb + hxf;
 
-	pba = pb + hxb;
-	pbb = pb + lx * hyb; 
-	pbc = pbb + hxb;
+    pba = pb + hxb;
+    pbb = pb + lx * hyb; 
+    pbc = pbb + hxb;
 
-	s = 0; /* the accumulator */
+    s = 0; /* the accumulator */
 
-	if (h > 0)
-	{
-		pxor_r2r(mm7, mm7);
-		pxor_r2r(mm6, mm6);
-		pcmpeqw_r2r(mm5, mm5);
-		psubw_r2r(mm5, mm6);
-		psllw_i2r(1, mm6);
+    if (h > 0)
+    {
+        pxor_r2r(mm7, mm7);
+        pxor_r2r(mm6, mm6);
+        pcmpeqw_r2r(mm5, mm5);
+        psubw_r2r(mm5, mm6);
+        psllw_i2r(1, mm6);
 		
-		do {
-			movq_m2r(pf[0], mm0);
-			movq_r2r(mm0, mm1);
-			punpcklbw_r2r(mm7, mm0);
-			punpckhbw_r2r(mm7, mm1);
-			movq_m2r(pfa[0], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			movq_m2r(pfb[0], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			movq_m2r(pfc[0], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			paddw_r2r(mm6, mm0);
-			paddw_r2r(mm6, mm1);
-			psrlw_i2r(2, mm0);
-			psrlw_i2r(2, mm1);
+        do {
+            BSAD_LOAD(pf[0],mm0,mm1);
+            BSAD_LOAD_ACC(pfa[0],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfb[0],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfc[0],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
 			
-			movq_m2r(pb[0], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			movq_m2r(pba[0], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			movq_m2r(pbb[0], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			movq_m2r(pbc[0], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			paddw_r2r(mm6, mm2);
-			paddw_r2r(mm6, mm3);
-			psrlw_i2r(2, mm2);
-			psrlw_i2r(2, mm3);
+            BSAD_LOAD(pb[0],mm2,mm3);
+            BSAD_LOAD_ACC(pba[0],mm4,mm5,mm2,mm3);
+            BSAD_LOAD_ACC(pbb[0],mm4,mm5,mm2,mm3);
+            BSAD_LOAD_ACC(pbc[0],mm4,mm5,mm2,mm3);
+            paddw_r2r(mm6, mm2);
+            paddw_r2r(mm6, mm3);
+            psrlw_i2r(2, mm2);
+            psrlw_i2r(2, mm3);
 			
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			psrlw_i2r(1, mm6);
-			paddw_r2r(mm6, mm0);
-			paddw_r2r(mm6, mm1);
-			psllw_i2r(1, mm6);
-			psrlw_i2r(1, mm0);
-			psrlw_i2r(1, mm1);
-			packuswb_r2r(mm1, mm0);
+            paddw_r2r(mm2, mm0);
+            paddw_r2r(mm3, mm1);
+            psrlw_i2r(1, mm6);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psllw_i2r(1, mm6);
+            psrlw_i2r(1, mm0);
+            psrlw_i2r(1, mm1);
+            packuswb_r2r(mm1, mm0);
 			
-			movq_m2r(p2[0], mm1);
-			movq_r2r(mm0, mm2);
-			psubusb_r2r(mm1, mm0);
-			psubusb_r2r(mm2, mm1);
-			por_r2r(mm1, mm0);
-			movq_r2r(mm0, mm1);
-			punpcklbw_r2r(mm7, mm0);
-			punpckhbw_r2r(mm7, mm1);
-			paddw_r2r(mm1, mm0);
-			movq_r2r(mm0, mm1);
-			punpcklwd_r2r(mm7, mm0);
-			punpckhwd_r2r(mm7, mm1);
+            movq_m2r(p2[0], mm1);
+            movq_r2r(mm0, mm2);
+            psubusb_r2r(mm1, mm0);
+            psubusb_r2r(mm2, mm1);
+            por_r2r(mm1, mm0);
+            movq_r2r(mm0, mm1);
+            punpcklbw_r2r(mm7, mm0);
+            punpckhbw_r2r(mm7, mm1);
+            paddw_r2r(mm1, mm0);
+            movq_r2r(mm0, mm1);
+            punpcklwd_r2r(mm7, mm0);
+            punpckhwd_r2r(mm7, mm1);
 			
-			paddd_r2r(mm1, mm0);
-			movd_r2g(mm0, s1);
-			psrlq_i2r(32, mm0);
-			movd_r2g(mm0, s2);
-			s += s1 + s2;
+            paddd_r2r(mm1, mm0);
+            movd_r2g(mm0, s1);
+            psrlq_i2r(32, mm0);
+            movd_r2g(mm0, s2);
+            s += s1 + s2;
 
-			movq_m2r(pf[8], mm0);
-			movq_r2r(mm0, mm1);
-			punpcklbw_r2r(mm7, mm0);
-			punpckhbw_r2r(mm7, mm1);
-			movq_m2r(pfa[8], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			movq_m2r(pfb[8], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			movq_m2r(pfc[8], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			paddw_r2r(mm6, mm0);
-			paddw_r2r(mm6, mm1);
-			psrlw_i2r(2, mm0);
-			psrlw_i2r(2, mm1);
+            BSAD_LOAD(pf[8],mm0,mm1);
+            BSAD_LOAD_ACC(pfa[8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfb[8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfc[8],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
 			
-			movq_m2r(pb[8], mm2);
-			movq_r2r(mm2, mm3);
-			punpcklbw_r2r(mm7, mm2);
-			punpckhbw_r2r(mm7, mm3);
-			movq_m2r(pba[8], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			movq_m2r(pbb[8], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			movq_m2r(pbc[8], mm4);
-			movq_r2r(mm4, mm5);
-			punpcklbw_r2r(mm7, mm4);
-			punpckhbw_r2r(mm7, mm5);
-			paddw_r2r(mm4, mm2);
-			paddw_r2r(mm5, mm3);
-			paddw_r2r(mm6, mm2);
-			paddw_r2r(mm6, mm3);
-			psrlw_i2r(2, mm2);
-			psrlw_i2r(2, mm3);
+            BSAD_LOAD(pb[8],mm2,mm3);
+            BSAD_LOAD_ACC(pba[8],mm4,mm5,mm2,mm3);
+            BSAD_LOAD_ACC(pbb[8],mm4,mm5,mm2,mm3);
+            BSAD_LOAD_ACC(pbc[8],mm4,mm5,mm2,mm3);
+            paddw_r2r(mm6, mm2);
+            paddw_r2r(mm6, mm3);
+            psrlw_i2r(2, mm2);
+            psrlw_i2r(2, mm3);
+						
+            paddw_r2r(mm2, mm0);
+            paddw_r2r(mm3, mm1);
+            psrlw_i2r(1, mm6);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psllw_i2r(1, mm6);
+            psrlw_i2r(1, mm0);
+            psrlw_i2r(1, mm1);
+            packuswb_r2r(mm1, mm0);
 			
-			paddw_r2r(mm2, mm0);
-			paddw_r2r(mm3, mm1);
-			psrlw_i2r(1, mm6);
-			paddw_r2r(mm6, mm0);
-			paddw_r2r(mm6, mm1);
-			psllw_i2r(1, mm6);
-			psrlw_i2r(1, mm0);
-			psrlw_i2r(1, mm1);
-			packuswb_r2r(mm1, mm0);
+            movq_m2r(p2[8], mm1);
+            movq_r2r(mm0, mm2);
+            psubusb_r2r(mm1, mm0);
+            psubusb_r2r(mm2, mm1);
+            por_r2r(mm1, mm0);
+            movq_r2r(mm0, mm1);
+            punpcklbw_r2r(mm7, mm0);
+            punpckhbw_r2r(mm7, mm1);
+            paddw_r2r(mm1, mm0);
+            movq_r2r(mm0, mm1);
+            punpcklwd_r2r(mm7, mm0);
+            punpckhwd_r2r(mm7, mm1);
 			
-			movq_m2r(p2[8], mm1);
-			movq_r2r(mm0, mm2);
-			psubusb_r2r(mm1, mm0);
-			psubusb_r2r(mm2, mm1);
-			por_r2r(mm1, mm0);
-			movq_r2r(mm0, mm1);
-			punpcklbw_r2r(mm7, mm0);
-			punpckhbw_r2r(mm7, mm1);
-			paddw_r2r(mm1, mm0);
-			movq_r2r(mm0, mm1);
-			punpcklwd_r2r(mm7, mm0);
-			punpckhwd_r2r(mm7, mm1);
+            paddd_r2r(mm1, mm0);
+            movd_r2g(mm0, s1);
+            psrlq_i2r(32, mm0);
+            movd_r2g(mm0, s2);
+            s += s1 + s2;
 			
-			paddd_r2r(mm1, mm0);
-			movd_r2g(mm0, s1);
-			psrlq_i2r(32, mm0);
-			movd_r2g(mm0, s2);
-			s += s1 + s2;
-			
-			p2  += lx;
-			pf  += lx;
-			pfa += lx;
-			pfb += lx;
-			pfc += lx;
-			pb  += lx;
-			pba += lx;
-			pbb += lx;
-			pbc += lx;
+            p2  += lx;
+            pf  += lx;
+            pfa += lx;
+            pfb += lx;
+            pfc += lx;
+            pb  += lx;
+            pba += lx;
+            pbb += lx;
+            pbc += lx;
 
-			h--;
-		} while (h > 0);	
+            h--;
+        } while (h > 0);	
 	
-	}
+    }
 	
-	emms();
+    emms();
 
-	return s;
+    return s;
+}
+
+static int bsad_4param_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h)
+{
+    uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+    int s;
+
+    pfa = pf + hxf;
+    pfb = pf + lx * hyf;
+    pfc = pfb + hxf;
+
+    pba = pb + hxb;
+    pbb = pb + lx * hyb; 
+    pbc = pbb + hxb;
+
+    s = 0; /* the accumulator */
+
+    if (h > 0)
+    {
+        pcmpeqw_r2r(mm6, mm6);
+        psrlw_i2r(15, mm6);
+        paddw_r2r(mm6, mm6);
+
+        pxor_r2r(mm7, mm7);
+        pxor_r2r(mm5, mm5);
+		
+        do {
+            BSAD_LOAD(pf[0],mm0,mm1);
+            BSAD_LOAD_ACC(pfa[0],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfb[0],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfc[0],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
+            packuswb_r2r(mm1, mm0);
+			
+            BSAD_LOAD(pb[0],mm1,mm2);
+            BSAD_LOAD_ACC(pba[0],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pbb[0],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pbc[0],mm3,mm4,mm1,mm2);
+            paddw_r2r(mm6, mm1);
+            paddw_r2r(mm6, mm2);
+            psrlw_i2r(2, mm1);
+            psrlw_i2r(2, mm2);
+            packuswb_r2r(mm2, mm1);
+
+            pavgb_r2r(mm1, mm0);
+            psadbw_m2r(p2[0],mm0);
+            paddd_r2r(mm0,mm5);
+
+            BSAD_LOAD(pf[8],mm0,mm1);
+            BSAD_LOAD_ACC(pfa[8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfb[8],mm2,mm3,mm0,mm1);
+            BSAD_LOAD_ACC(pfc[8],mm2,mm3,mm0,mm1);
+            paddw_r2r(mm6, mm0);
+            paddw_r2r(mm6, mm1);
+            psrlw_i2r(2, mm0);
+            psrlw_i2r(2, mm1);
+            packuswb_r2r(mm1, mm0);
+			
+            BSAD_LOAD(pb[8],mm1,mm2);
+            BSAD_LOAD_ACC(pba[8],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pbb[8],mm3,mm4,mm1,mm2);
+            BSAD_LOAD_ACC(pbc[8],mm3,mm4,mm1,mm2);
+            paddw_r2r(mm6, mm1);
+            paddw_r2r(mm6, mm2);
+            psrlw_i2r(2, mm1);
+            psrlw_i2r(2, mm2);
+            packuswb_r2r(mm2, mm1);
+						
+            pavgb_r2r(mm1, mm0);
+            psadbw_m2r(p2[8],mm0);
+            paddd_r2r(mm0,mm5);
+			
+            p2  += lx;
+            pf  += lx;
+            pfa += lx;
+            pfb += lx;
+            pfc += lx;
+            pb  += lx;
+            pba += lx;
+            pbb += lx;
+            pbc += lx;
+
+            h--;
+        } while (h > 0);	
+	
+    }
+    movd_r2g(mm5,s);
+	
+    emms();
+
+    return s;
+}
+
+/* For a 16*h block, this computes
+   (((((*pf + *pf2 + 1)>>1) + ((*pb + *pb2 + 1)>>1) + 1)>>1) + *p2 + 1)>>1
+*/
+static int bsad_2param_mmxe(uint8_t *pf,uint8_t *pf2,uint8_t *pb,uint8_t *pb2,uint8_t *p2,int lx,int h)
+{
+    int32_t s=0;
+
+    pxor_r2r(mm7, mm7);
+    do {
+        movq_m2r(pf2[0],mm0);
+        movq_m2r(pf2[8],mm2);
+        movq_m2r(pb2[0],mm1);
+        movq_m2r(pb2[8],mm3);
+        pavgb_m2r(pf[0],mm0);
+        pavgb_m2r(pf[8],mm2);
+        pavgb_m2r(pb[0],mm1);
+        pavgb_m2r(pb[8],mm3);
+        pavgb_r2r(mm1,mm0);
+        pavgb_r2r(mm3,mm2);
+        psadbw_m2r(p2[0],mm0);
+        psadbw_m2r(p2[8],mm2);
+        paddd_r2r(mm0,mm7);
+        paddd_r2r(mm2,mm7);
+
+        pf+=lx;
+        pf2+=lx;
+        pb+=lx;
+        pb2+=lx;
+        p2+=lx;
+
+        h--;
+    } while (h);
+    movd_r2g(mm7,s);
+    emms();
+    return s;
+}
+
+int bsad_mmxe(uint8_t *pf, uint8_t *pb, uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h)
+{
+    uint8_t *pf2,*pb2;
+
+    // if either pf or pb have half pels in BOTH directions, then
+    // use the slow routine
+    if( (hxf & hyf) | (hxb & hyb) )
+        return bsad_4param_mmxe(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h);
+
+    // otherwise, for pf and pb, we only have at most one half pel
+    // so we can use pavgb!
+    if( hyf )
+        pf2=pf+lx;
+    else
+        pf2=pf+hxf;
+
+    if( hyb )
+        pb2=pb+lx;
+    else
+        pb2=pb+hxb;
+
+    return bsad_2param_mmxe(pf,pf2,pb,pb2,p2,lx,h);
 }
