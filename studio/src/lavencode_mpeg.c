@@ -56,10 +56,8 @@ void set_mplex_muxfmt (GtkWidget *widget, gpointer data);
 void set_audiobitrate (GtkWidget *widget, gpointer data);
 void set_samplebitrate (GtkWidget *widget, gpointer data);
 void force_options (GtkWidget *widget, gpointer data);
-void set_noisefilter (GtkWidget *widget, gpointer data);
 void set_drop_samples (GtkWidget *widget, gpointer data);
 void set_activewindow (GtkWidget *widget, gpointer data);
-void set_outputformat (GtkWidget *widget, gpointer data);
 void set_scalerstrings (GtkWidget *widget, gpointer data);
 void set_videobit (GtkWidget *widget, gpointer data);
 void set_searchrad (GtkWidget *widget, gpointer data);
@@ -94,7 +92,6 @@ void set_2lav_interlacing (GtkWidget *widget, gpointer data);
 GList *samples = NULL; 
 GList *muxformat = NULL;
 GList *streamdata = NULL;
-GList *outputformat = NULL;
 GList *interlace_correct = NULL;
 GList *yuv2lav_interlace = NULL;
 GList *yuv2lav_format = NULL;
@@ -103,8 +100,8 @@ struct encodingoptions *point;    /* points to the encoding struct to change */
 int changed_streamdatarate;  /* shows if the rate was updated into the Glist */
 
 GtkWidget *combo_entry_active, *combo_entry_scalerinput, *combo_entry_scaleroutput;
-GtkWidget *combo_entry_scalermode, *combo_entry_outputformat;
-GtkWidget *combo_entry_samples, *combo_entry_noisefilter, *combo_entry_audiobitrate;
+GtkWidget *combo_entry_scalermode;
+GtkWidget *combo_entry_samples, *combo_entry_audiobitrate;
 GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
 GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
@@ -124,12 +121,8 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.input_use,"%s",(*point).input_use);
   sprintf(tempenco.output_size,"%s",(*point).output_size);
   sprintf(tempenco.mode_keyword,"%s",(*point).mode_keyword);
-  sprintf(tempenco.ininterlace_type,"%s",(*point).ininterlace_type);
   tempenco.addoutputnorm=(*point).addoutputnorm;
   sprintf(tempenco.interlacecorr,"%s",(*point).interlacecorr);
-  tempenco.outputformat=(*point).outputformat;
-  tempenco.droplsb=(*point).droplsb;
-  tempenco.noisefilter=(*point).noisefilter;
   tempenco.audiobitrate=(*point).audiobitrate;
   tempenco.outputbitrate=(*point).outputbitrate;
   sprintf(tempenco.forcestereo,"%s",(*point).forcestereo);
@@ -171,24 +164,7 @@ char val[LONGOPT];
 /* setting the values of the GTK_ENTRY's for the lav2yuv options */
 void show_data_lav2yuv(gpointer task)
 {
-int i;
-char val[LONGOPT];
-
   gtk_entry_set_text(GTK_ENTRY(combo_entry_active), tempenco.notblacksize);
-
-  outputformat = g_list_first (outputformat);
-  for (i = 0; i < tempenco.outputformat ;i++)
-    outputformat = g_list_next (outputformat);
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_outputformat), outputformat->data);
-
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_interlacecorr), 
-                                             tempenco.interlacecorr);
-
-  sprintf(val,"%i",tempenco.droplsb);
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_samples), val);
-
-  sprintf(val,"%i",tempenco.noisefilter);
-  gtk_entry_set_text(GTK_ENTRY(combo_entry_noisefilter), val);
 }
 
 /* setting the values of the GTK_ENTRY's for the yuvtools options */
@@ -329,42 +305,6 @@ i=0;
 
 }
 
-/* set the noisfilter for lav2yuv */
-void set_noisefilter (GtkWidget *widget, gpointer data)
-{
-  char *test;
-  int i;
-
-  i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
-  i = atoi ( test );
-
-  if ( (i >= 0) && (i <= 2) )
-    tempenco.noisefilter = i;
-
-  if (verbose)
-    printf(" selected noise filer grade : %i \n", tempenco.noisefilter);
-}
-
-/* set the number of LSBs dropped */
-void set_drop_samples (GtkWidget *widget, gpointer data)
-{
-char *test;
-int i;
-
-  i = 0;
-
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
-
-  i = atoi ( test );
-
-  if ( (i >= 0) && (i <= 4) )
-    tempenco.droplsb = i;
-
-  if (verbose)
-    printf(" dropping as many LSB of each sample : %i \n", tempenco.droplsb);
-}
-
 /* Set the string for the lav2yuv active window */
 void set_activewindow (GtkWidget *widget, gpointer data)
 {
@@ -408,31 +348,6 @@ void set_interlacing (GtkWidget *widget, gpointer data)
 
   if (verbose)
     printf (" Set Interlacing Correction to : %s \n", test);
-}
-
-/* set the output format of lav2yuv */
-void set_outputformat (GtkWidget *widget, gpointer data)
-{
-char *test;
-int i;
-
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
-
-  outputformat = g_list_last (outputformat);
-
-  for (i = (g_list_length (g_list_first(outputformat))-1) ; i > 0 ; i--)
-    {
-      if (strcmp (test,outputformat->data) == 0)
-                break;
-
-      outputformat = g_list_previous (outputformat);
-    }
-    tempenco.outputformat = i;
-
-  outputformat = g_list_first (outputformat);
-
-  if (verbose)
-    printf(" selected output format: %i \n", tempenco.outputformat);
 }
 
 /* set the decoder buffer size for mplex and mpeg2enc */
@@ -1223,29 +1138,8 @@ GtkWidget *label1;
 /* create the lav2yuv encoding options */
 void create_video_options_layout (GtkWidget *table, int *tx, int *ty)
 {
-GtkWidget *label1, *combo_active, *combo_noisefilter; 
-GtkWidget *combo_samples, *combo_outputformat, *combo_interlacecorr;
-GList *noisefilter = NULL;
-GList *droplsb = NULL;
+GtkWidget *label1, *combo_active, *combo_interlacecorr;
 GList *input_active_size = NULL;
-
-   noisefilter = g_list_append (noisefilter, "0");
-   noisefilter = g_list_append (noisefilter, "1");
-   noisefilter = g_list_append (noisefilter, "2");
-
-   droplsb = g_list_append (droplsb, "0");
-   droplsb = g_list_append (droplsb, "1");
-   droplsb = g_list_append (droplsb, "2");
-   droplsb = g_list_append (droplsb, "3");
-
-if (!outputformat)
-  {
-   outputformat = g_list_append (outputformat, "as is");
-   outputformat = g_list_append (outputformat, "half height/width from input");
-   outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
-   outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
-   outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
-  }
 
    input_active_size = g_list_append (input_active_size, "as is");
    input_active_size = g_list_append (input_active_size, "348x278+2+2");
@@ -1264,38 +1158,6 @@ if (!interlace_correct)
    interlace_correct = g_list_append (interlace_correct, "not interlaced");
   }
 
-  label1 = gtk_label_new ("  Noise filter: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_noisefilter = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_noisefilter), noisefilter);
-  combo_entry_noisefilter = GTK_COMBO (combo_noisefilter)->entry;
-  gtk_widget_set_usize (combo_noisefilter, 35, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_noisefilter), "changed",
-                      GTK_SIGNAL_FUNC (set_noisefilter), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_noisefilter,
-                                        *tx+1, *tx+2, *ty, *ty+1);
-  gtk_widget_show (combo_noisefilter);
-  (*ty)++;
-
-  label1 = gtk_label_new ("  Drop LSB of samples: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_samples = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_samples), droplsb);
-  combo_entry_samples = GTK_COMBO (combo_samples)->entry;
-  gtk_widget_set_usize (combo_samples, 35, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_samples), "changed",
-                      GTK_SIGNAL_FUNC (set_drop_samples), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table), combo_samples,
-                                        *tx+1, *tx+2, *ty, *ty+1);
-  gtk_widget_show (combo_samples);
-  (*ty)++;
-
   label1 = gtk_label_new ("  Set active window: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
@@ -1310,22 +1172,6 @@ if (!interlace_correct)
   gtk_table_attach_defaults (GTK_TABLE (table), combo_active,
                                         *tx+1, *tx+2, *ty, *ty+1);
   gtk_widget_show (combo_active);
-  (*ty)++;
-
-  label1 = gtk_label_new ("  Lav2yuv output format: ");
-  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
-  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
-  gtk_widget_show (label1);
-
-  combo_outputformat = gtk_combo_new();
-  gtk_combo_set_popdown_strings (GTK_COMBO (combo_outputformat), outputformat);
-  combo_entry_outputformat = GTK_COMBO (combo_outputformat)->entry;
-  gtk_widget_set_usize (combo_outputformat, 200, -2 );
-  gtk_signal_connect(GTK_OBJECT(combo_entry_outputformat), "changed",
-                      GTK_SIGNAL_FUNC (set_outputformat), NULL);
-  gtk_table_attach_defaults (GTK_TABLE (table),combo_outputformat,
-                                        *tx+1, *tx+2, *ty, *ty+1);
-  gtk_widget_show (combo_outputformat);
   (*ty)++;
 
   label1 = gtk_label_new ("  Interlacing correction: ");
@@ -1832,12 +1678,8 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).input_use,"%s",tempenco.input_use);
   sprintf((*point).output_size,"%s",tempenco.output_size);
   sprintf((*point).mode_keyword,"%s",tempenco.mode_keyword);
-  sprintf((*point).ininterlace_type,"%s",tempenco.ininterlace_type);
   (*point).addoutputnorm=tempenco.addoutputnorm;
   sprintf((*point).interlacecorr,"%s",tempenco.interlacecorr);
-  (*point).outputformat=tempenco.outputformat;
-  (*point).droplsb=tempenco.droplsb;
-  (*point).noisefilter=tempenco.noisefilter;
   (*point).audiobitrate=tempenco.audiobitrate;
   (*point).outputbitrate=tempenco.outputbitrate;
   sprintf((*point).forcestereo,"%s",tempenco.forcestereo);

@@ -92,7 +92,7 @@ int chk_dir(char *name);
 /* other variables */
 #define Encoptions_Table_x 2
 #define Encoptions_Table_y 9
-int t_use_yuvplay_pipe, t_encoding_syntax_style, t_addoutputnorm;
+int t_use_yuvplay_pipe, t_addoutputnorm;
 int t_fourpelmotion, t_twopelmotion, t_use_bicubic, t_saveonexit;
 char t_selected_player[FILELEN];
 char t_ininterlace_type[LONGOPT];
@@ -115,7 +115,6 @@ for (i=0; i < FILELEN; i++)
   }
 
 use_yuvplay_pipe = 0;
-encoding_syntax_style = 0;
 fourpelmotion = 2;
 twopelmotion  = 3;
 use_bicubic   = 0;
@@ -137,7 +136,6 @@ int i;
       (*point).input_use[i]     ='\0';
       (*point).output_size[i]   ='\0';
       (*point).mode_keyword[i]  ='\0';
-      (*point).ininterlace_type[i] ='\0';
       (*point).codec[i]  ='\0';
     }
 
@@ -150,9 +148,6 @@ int i;
     }
 
   (*point).addoutputnorm  = 0;
-  (*point).outputformat   = 0;
-  (*point).droplsb        = 0;
-  (*point).noisefilter    = 0;
   (*point).audiobitrate   = 224;
   (*point).outputbitrate  = 0;
   (*point).use_yuvdenoise = 0;
@@ -394,11 +389,6 @@ int i;
     else 
         use_yuvplay_pipe = 0;
 
-  if (-1 != (i = cfg_get_int("Studio","Encoding_Syntax_Style")))
-    encoding_syntax_style = i;
-  else
-    encoding_syntax_style = 140;
-
   if (-1 != (i = cfg_get_int("Studio","Encoding_four_pel_motion_compensation")))
     fourpelmotion = i;
 
@@ -445,21 +435,6 @@ int i;
       sprintf((*point).mode_keyword, val);
   else
       sprintf((*point).mode_keyword,"as is");
-
-  if (-1 != (i = cfg_get_int(section,"Encode_Outputformat")))
-        (*point).outputformat = i;
-  else
-        (*point).outputformat = 0;
-
-  if (-1 != (i = cfg_get_int(section,"Encode_Droplsb")))
-        (*point).droplsb = i;
-  else
-        (*point).droplsb = 0;
-
-  if (-1 != (i = cfg_get_int(section,"Encode_Noisefilter")))
-        (*point).noisefilter = i;
-  else
-        (*point).noisefilter = 0;
 
   if (-1 != (i = cfg_get_int(section,"Encode_Audiobitrate")))
         (*point).audiobitrate = i;
@@ -621,10 +596,6 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
   printf("Encoding Input use to \'%s\' \n",               (*point).input_use);
   printf("Encoding Output size to \'%s\' \n",           (*point).output_size);
   printf("Encoding yvscaler scaling Mode to \'%s\' \n",(*point).mode_keyword);
-  printf("Encoding ininterlace type \'%s\' \n",    (*point).ininterlace_type);
-  printf("Encoding lav2yuv output Format \'%i\' \n",   (*point).outputformat);
-  printf("Encoding Dropping \'%i\'LSB \n",                  (*point).droplsb);
-  printf("Encoding Noise filter strength: \'%i\' \n",   (*point).noisefilter);
   printf("Encoding Audio Bitrate : \'%i\' \n",         (*point).audiobitrate);
   printf("Encoding Audio Samplerate : \'%i\' \n",     (*point).outputbitrate);
   printf("Encoding Audio force stereo : \'%s\' \n",     (*point).forcestereo);
@@ -654,7 +625,6 @@ void show_common()
   printf("Encode video file set to \'%s\' \n",enc_videofile);
   printf("Video player set to \'%s\' \n",selected_player);
   printf("Encoding Preview with yuvplay : \'%i\' \n",use_yuvplay_pipe);
-  printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
   printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
   printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
   printf("Encoding save on exit :\'%i\' \n",saveonexit);
@@ -698,9 +668,6 @@ int have_config;
   do_preset_yuv2lav(point);     /* set some DIVX specific options */
 
   set_distributed(); /*set the distributed encoding variabels to the defaults*/
-
-  /* Saved but not in the structs */
-  encoding_syntax_style = 0;
 
   /* set the defaults for the scripting options */
   set_scripting_defaults ();
@@ -806,8 +773,6 @@ void save_common(FILE *fp)
   else
     fprintf(fp,"Encode_Video_Preview = %s\n", "no");
 
-  fprintf(fp,"Encoding_Syntax_Style = %i\n", encoding_syntax_style);
-
   fprintf(fp,"Encoding_four_pel_motion_compensation = %i\n", fourpelmotion);
   fprintf(fp,"Encoding_two_pel_motion_compensation = %i\n", twopelmotion);
 
@@ -853,9 +818,6 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
   else
     fprintf(fp,"Encode_Mode_keyword = %s\n", "as is");
 
-  fprintf(fp,"Encode_Outputformat = %i\n", (*point).outputformat);
-  fprintf(fp,"Encode_Droplsb = %i\n", (*point).droplsb);
-  fprintf(fp,"Encode_Noisefilter = %i\n", (*point).noisefilter);
   fprintf(fp,"Encode_Audiobitrate = %i\n", (*point).audiobitrate);
   fprintf(fp,"Encode_Outputbitrate = %i\n", (*point).outputbitrate);
 
@@ -1037,12 +999,6 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
       if (t_addoutputnorm != encoding.addoutputnorm)
         printf(" Output norm is added %i \n",t_addoutputnorm);
 
-      if (strcmp(t_ininterlace_type, encoding.ininterlace_type) != 0 )
-        printf(" yuvscaler interlace type set to %s \n", t_ininterlace_type);
-    
-      if (t_encoding_syntax_style != encoding_syntax_style)
-        printf(" Encoding Syntax set to %i \n", t_encoding_syntax_style);
-
       if (t_use_bicubic != use_bicubic)
         printf(" For scaling use bicubic %i \n", t_use_bicubic);
 
@@ -1060,9 +1016,7 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
 
   use_yuvplay_pipe = t_use_yuvplay_pipe;
   encoding.addoutputnorm = t_addoutputnorm;
-  strcpy(encoding.ininterlace_type, t_ininterlace_type);
   use_bicubic = t_use_bicubic;
-  encoding_syntax_style = t_encoding_syntax_style;  
   fourpelmotion = t_fourpelmotion;
   twopelmotion = t_twopelmotion;
   strcpy(selected_player,t_selected_player);
@@ -1148,19 +1102,11 @@ gchar *name;
   strcpy(t_selected_player,name);
 }
 
-/* Set the encoding syntax syle */
-void set_encoding_syntax(GtkWidget *widget, gpointer data)
-{
-  t_encoding_syntax_style = atoi ((char*)data);
-}
-
 /* Here the fist page of the layout is created */
 void create_encoding_layout(GtkWidget *table)
 {
-GtkWidget *preview_button, *label, *addnorm_button, *int_asis_button;
-GtkWidget *int_odd_button, *int_even_button, *style_14x, *style_15x;
+GtkWidget *preview_button, *label, *addnorm_button;
 GtkWidget *bicubic_button, *player_field, *saveonexit_button;
-GSList *interlace_type, *encoding_style;
 GtkObject *adjust_scale, *adjust_scale_n;
 int table_line;
 
@@ -1168,9 +1114,7 @@ table_line = 0;
 
   t_use_yuvplay_pipe = use_yuvplay_pipe;
   t_addoutputnorm = encoding.addoutputnorm;
-  strcpy(t_ininterlace_type, encoding.ininterlace_type);
   t_use_bicubic = use_bicubic; 
-  t_encoding_syntax_style = encoding_syntax_style;
   t_fourpelmotion = fourpelmotion;
   t_twopelmotion = twopelmotion;
   sprintf(t_selected_player, "%s", selected_player);
@@ -1223,50 +1167,7 @@ table_line = 0;
                              addnorm_button, 1, 2, table_line, table_line+1);
   gtk_widget_show (addnorm_button);
   table_line++;
-
-  label = gtk_label_new ("Interlacing type for yuvscaler : ");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             label, 0, 1, table_line, table_line+1);
-  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-  gtk_widget_show (label);
-  int_asis_button = gtk_radio_button_new_with_label (NULL, " from header");
-  gtk_signal_connect (GTK_OBJECT (int_asis_button), "toggled",
-                      GTK_SIGNAL_FUNC (set_interlacein_type), (gpointer) "header");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             int_asis_button, 1, 2, table_line, table_line+1);
-  interlace_type = gtk_radio_button_group (GTK_RADIO_BUTTON (int_asis_button));
-  gtk_widget_show (int_asis_button);
-  if (strcmp(encoding.ininterlace_type,"") == 0)
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(int_asis_button), TRUE);
-  table_line++;
-
-  label = gtk_label_new ("only for yuvscaler 1.4.x");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             label, 0, 1, table_line, table_line+1);
-  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-  gtk_widget_show (label);
-  int_odd_button=gtk_radio_button_new_with_label(interlace_type," odd frame first");
-  gtk_signal_connect (GTK_OBJECT (int_odd_button), "toggled",
-      GTK_SIGNAL_FUNC (set_interlacein_type), (gpointer) "INTERLACED_ODD_FIRST");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             int_odd_button, 1, 2, table_line, table_line+1);
-  interlace_type = gtk_radio_button_group (GTK_RADIO_BUTTON (int_odd_button));
-  gtk_widget_show (int_odd_button);
-  if (strcmp(encoding.ininterlace_type,"INTERLACED_ODD_FIRST") == 0)
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(int_odd_button), TRUE);
-  table_line++;
-
-  int_even_button=gtk_radio_button_new_with_label(interlace_type," even frame first");
-  gtk_signal_connect (GTK_OBJECT (int_even_button), "toggled",
-      GTK_SIGNAL_FUNC (set_interlacein_type ), (gpointer) "INTERLACED_EVEN_FIRST");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             int_even_button, 1, 2, table_line, table_line+1);
-  interlace_type = gtk_radio_button_group (GTK_RADIO_BUTTON (int_even_button));
-  gtk_widget_show (int_even_button);
-  if (strcmp(encoding.ininterlace_type,"INTERLACED_EVEN_FIRST") == 0)
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(int_even_button), TRUE);
-  table_line++;
-
+  
   label = gtk_label_new ("Always use bicubic for scaling : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              label, 0, 1, table_line, table_line+1);
@@ -1281,34 +1182,6 @@ table_line = 0;
   gtk_table_attach_defaults (GTK_TABLE (table), 
                              bicubic_button, 1, 2, table_line, table_line+1);
   gtk_widget_show (bicubic_button);
-  table_line++;
-
-  label = gtk_label_new ("Syntax style for encoding : ");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             label, 0, 1, table_line, table_line+1);
-  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
-  gtk_widget_show (label);
-
-  style_14x = gtk_radio_button_new_with_label (NULL, " 1.4.x");
-  gtk_signal_connect (GTK_OBJECT (style_14x), "toggled",
-                      GTK_SIGNAL_FUNC (set_encoding_syntax), (gpointer) "140");
-  gtk_table_attach_defaults (GTK_TABLE (table), 
-                             style_14x, 1, 2, table_line, table_line+1); 
-  encoding_style = gtk_radio_button_group (GTK_RADIO_BUTTON (style_14x)); 
-  gtk_widget_show (style_14x);
-  if (encoding_syntax_style == 140)
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(style_14x), TRUE);
-  table_line++;
-
-  style_15x = gtk_radio_button_new_with_label (encoding_style, " 1.5.x");
-  gtk_signal_connect (GTK_OBJECT (style_15x), "toggled",
-                      GTK_SIGNAL_FUNC (set_encoding_syntax), (gpointer) "150");
-  gtk_table_attach_defaults (GTK_TABLE (table),
-                             style_15x, 1, 2, table_line, table_line+1);
-  encoding_style = gtk_radio_button_group (GTK_RADIO_BUTTON (style_15x));
-  gtk_widget_show (style_15x);
-  if (encoding_syntax_style == 150)
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(style_15x), TRUE);
   table_line++;
 
   label = gtk_label_new (" 4*4-pel subsampled motion comp : ");

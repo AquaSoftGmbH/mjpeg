@@ -503,34 +503,17 @@ if ( ( (*option).maxGop != 12 ) &&
    mpeg2enc_command[n] =  temp10; n++;
   }
 
-/* And here the support for the different versions of mjpeg tools */
-/* And the different mpeg versions */
-if (encoding_syntax_style == 140)
-{
-  if ((*option).muxformat >= 3)
-    {
-      mpeg2enc_command[n] = "-m"; n++;
-      mpeg2enc_command[n] = "2"; n++;
-    }
-  if (((*option).muxformat != 0) && ((*option).muxformat != 3))
-    {
-      mpeg2enc_command[n] = "-s"; n++;
-    }
-}
-if (encoding_syntax_style == 150)
-{
-  if((*option).muxformat != 0)
-    {
-      sprintf(temp11, "%i",(*option).muxformat);
-      mpeg2enc_command[n] =  "-f"; n++;
-      mpeg2enc_command[n] =  temp11; n++;
-    }
-  if((*option).muxformat >= 3)
-    {
-      mpeg2enc_command[n] = "-P";
-      n++;
-    }
-}
+if((*option).muxformat != 0)
+  {
+    sprintf(temp11, "%i",(*option).muxformat);
+    mpeg2enc_command[n] =  "-f"; n++;
+    mpeg2enc_command[n] =  temp11; n++;
+  }
+if((*option).muxformat >= 3)
+  {
+    mpeg2enc_command[n] = "-P";
+    n++;
+  }
 
 /* And here again some common stuff */
   mpeg2enc_command[n] = "-o"; n++;
@@ -573,41 +556,24 @@ n = 0;
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = (*option).input_use; n++;
       }
-    if ( (strlen((*option).ininterlace_type) > 0) &&
-                      (encoding_syntax_style == 140))
-      {
-         yuvscaler_command[n] = "-I"; n++;
-         yuvscaler_command[n] = (*option).ininterlace_type; n++;
-      }
     if (strlen((*option).notblacksize) > 0 &&
-        strcmp((*option).notblacksize,"as is") != 0 &&
-        encoding_syntax_style == 150)
+        strcmp((*option).notblacksize,"as is") != 0)
       {
        yuvscaler_command[n] = "-I"; n++;
        sprintf(temp2,"ACTIVE_%s", (*option).notblacksize);
        yuvscaler_command[n] = temp2; n++;
       }
-    if ( (use_bicubic == 1) && (encoding_syntax_style == 150))
+    if (use_bicubic == 1)
       {
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = "BICUBIC"; n++;
       }
-    if ((strcmp((*option).mode_keyword,"LINE_SWITCH") != 0) &&
-        (strcmp((*option).mode_keyword,"as is") != 0) &&
-        encoding_syntax_style == 140 )
+    if (strcmp((*option).mode_keyword,"as is") != 0)
       {
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = (*option).mode_keyword; n++;
       }
-    else if ((strcmp((*option).mode_keyword,"as is") != 0) &&
-              encoding_syntax_style == 150 )
-      {
-         yuvscaler_command[n] = "-M"; n++;
-         yuvscaler_command[n] = (*option).mode_keyword; n++;
-      }
-
-    if( (strcmp((*option).interlacecorr,"not needed") != 0) &&
-                (encoding_syntax_style == 150) )
+    if( strcmp((*option).interlacecorr,"not needed") != 0)
       {
        yuvscaler_command[n] = "-M"; n++;
         
@@ -633,22 +599,14 @@ n = 0;
          yuvscaler_command[n] = "-O"; n++;
          yuvscaler_command[n] = (*option).output_size; n++;
       }
-/* This is the option: "add norm when using yuvscaler"  */
-/* Curernty not working, till I know what to do */
-/*    if ((*option).addoutputnorm == 1)
-      {
-         sprintf(temp1, "-n%c", standard);
-         yuvscaler_command[n] = temp1; n++;
-      } */
-    yuvscaler_command[n] = NULL;
 
+    yuvscaler_command[n] = NULL;
 }
 
 /* Here we create the lav2yuv command */
 void create_command_lav2yuv(char *lav2yuv_command[256], int use_rsh,
           struct encodingoptions *option, struct machine *machine4)
 {
-static char temp1[16], temp2[16], temp3[16];
 int n;
 n = 0;
 
@@ -666,39 +624,8 @@ n = 0;
         }
     }
 
-  lav2yuv_command[n] = app_name(LAV2YUV); n++;
-  if (encoding_syntax_style == 140)
-    {
-      if (strlen((*option).notblacksize) > 0 &&
-           strcmp((*option).notblacksize,"as is") != 0)
-        {
-          lav2yuv_command[n] = "-a"; n++;
-          lav2yuv_command[n] = (*option).notblacksize; n++;
-        }
-      if ((*option).outputformat > 0)
-        {
-          sprintf(temp1, "%i", (*option).outputformat);
-          lav2yuv_command[n] = "-s"; n++;
-          lav2yuv_command[n] = temp1; n++;
-        }
-      if ((*option).droplsb > 0) 
-        {
-          sprintf(temp2, "%i", (*option).droplsb);
-          lav2yuv_command[n] = "-d"; n++;
-          lav2yuv_command[n] = temp2; n++;
-        }
-      if ((*option).noisefilter > 0)
-        {
-          sprintf(temp3, "%i", (*option).noisefilter);
-          lav2yuv_command[n] = "-n"; n++;
-          lav2yuv_command[n] = temp3; n++;
-        }
-     }
-
    lav2yuv_command[n] = enc_inputfile; n++;
    lav2yuv_command[n] = NULL;
-
-
 }
 
 /* Here we create the lav2wav command */
@@ -761,34 +688,19 @@ char yuvscaler_string[256];
 char mpeg2enc_string[256];
 char yuv2divx_string[256];
 char yuv2lav_string[256];
-static int scale_140, scale_150;
-
-scale_140    = 0; /* this 2 variabels are used for spliting up */
-scale_150    = 0; /* the detection if yuvscaler has to be used */
-                  /* for the encoding process                  */
 
   create_command_lav2yuv(lav2yuv_command,temp_use_distributed,option, machine4);
   command_2string(lav2yuv_command, lav2yuv_string);
 
  /* Here, the command for the pipe for yuvscaler may be added */
- if ( (((strcmp((*option).mode_keyword,"as is") != 0) &&
-        (strcmp((*option).mode_keyword,"LINE_SWITCH") != 0)) ||
-       ( strlen((*option).ininterlace_type) >= 10)             ) &&
-      (encoding_syntax_style == 140)                                  )
-      scale_140=1;
-
-  if ( ( (strcmp((*option).mode_keyword,"as is") != 0) ||
-         (use_bicubic == 1) ||
-         (strlen((*option).interlacecorr) > 0 &&
-          strcmp((*option).interlacecorr,"not needed") != 0 ) ||
-         (strlen((*option).notblacksize) > 0 &&
-          strcmp((*option).notblacksize,"as is") != 0 ) ) &&
-       (encoding_syntax_style == 150)                          )
-     scale_150=1;
-
   if (  (strcmp((*option).input_use,"as is") != 0)   ||
         (strcmp((*option).output_size,"as is") != 0) ||
-        (scale_140 == 1) || (scale_150 == 1)             )
+        (strcmp((*option).mode_keyword,"as is") != 0) ||
+        (use_bicubic == 1) ||
+        ( strlen((*option).interlacecorr) > 0 &&
+          strcmp((*option).interlacecorr,"not needed") != 0 ) ||
+        ( strlen((*option).notblacksize) > 0 &&
+          strcmp((*option).notblacksize,"as is") != 0 )          )
     {
   
       create_command_yuvscaler (yuvscaler_command, temp_use_distributed,

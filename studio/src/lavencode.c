@@ -455,7 +455,6 @@ void audio_convert()
 void video_convert()
 {
    int n;
-   static int scale_140, scale_150;
    char *mpeg2enc_command[256];
    char *yuv2divx_command[256];
    char *lav2yuv_command[256];
@@ -467,9 +466,6 @@ void video_convert()
    char command_temp[256];
    char command_progress[256];
    error = 0;
-   scale_140    = 0; /* this 2 variabels are used for spliting up */ 
-   scale_150    = 0; /* the detection if yuvscaler has to be used */
-                     /* for the encoding process                  */
  
    progress_encoding = 2;
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
@@ -492,26 +488,32 @@ void video_convert()
        create_command_yuv2lav(yuv2lav_command,0,pointenc,&machine4mpeg1,"");
        start_pipe_command(yuv2lav_command, YUV2LAV_E);
      }
+
+   /* Here the command for the yuvdenoise pipe may be added */
+   if ((*pointenc).use_yuvdenoise == 1)
+     {
+      n = 0;
+      yuvdenoise_command[n] = YUVDENOISE_LOCATION; n++;
+      yuvdenoise_command[n] = NULL;
+
+      start_pipe_command(yuvdenoise_command, YUVDENOISE);
+      use_yuvdenoise_pipe = 1;
+     }
+   else
+     {
+      /* set variable in pipes.h to tell not to use yuvdenoise */
+      use_yuvdenoise_pipe = 0;
+     }
  
    /* Here, the command for the pipe for yuvscaler may be added */
-   if ( (((strcmp((*pointenc).mode_keyword,"as is") != 0) &&
-          (strcmp((*pointenc).mode_keyword,"LINE_SWITCH") != 0)) ||
-         ( strlen((*pointenc).ininterlace_type) >= 10)             ) &&
-        (encoding_syntax_style == 140)                                  )
-      scale_140=1;
-
-   if ( ( (strcmp((*pointenc).mode_keyword,"as is") != 0) || 
-          (use_bicubic == 1) || 
-          (strlen((*pointenc).interlacecorr) > 0 &&
-           strcmp((*pointenc).interlacecorr,"not needed") != 0 ) ||
-          (strlen((*pointenc).notblacksize) > 0 &&
-           strcmp((*pointenc).notblacksize,"as is") != 0 ) ) &&
-        (encoding_syntax_style == 150)                          )
-      scale_150=1;
-
    if (  (strcmp((*pointenc).input_use,"as is") != 0)   ||
          (strcmp((*pointenc).output_size,"as is") != 0) ||
-         (scale_140 == 1) || (scale_150 == 1)             )
+         (strcmp((*pointenc).mode_keyword,"as is") != 0) ||
+         (use_bicubic == 1) || 
+         ( strlen((*pointenc).interlacecorr) > 0 &&
+           strcmp((*pointenc).interlacecorr,"not needed") != 0 ) ||
+         ( strlen((*pointenc).notblacksize) > 0 &&
+           strcmp((*pointenc).notblacksize,"as is") != 0 )          )
    {
 
       create_command_yuvscaler (yuvscaler_command, 0, pointenc, &machine4mpeg1);
@@ -545,7 +547,7 @@ void video_convert()
 
   create_command_lav2yuv(lav2yuv_command, 0, pointenc, &machine4mpeg1);
   
-   start_pipe_command(lav2yuv_command, LAV2YUV); 
+  start_pipe_command(lav2yuv_command, LAV2YUV); 
 
    /* now here the the commands are set together for the:
       executing, the debug mode and the progress window */
@@ -553,18 +555,18 @@ void video_convert()
    sprintf(command, "%s |", command_temp);
    sprintf(command_progress, "lav2yuv |");
 
-   if (use_yuvdenoise_pipe)
-   {
-      command_2string(yuvdenoise_command, command_temp);
-      sprintf(command,"%s %s |", command, command_temp);
-      sprintf(command_progress, "%s yuvdenoise |", command_progress);
-   }
-
    if (use_yuvscaler_pipe)
    {
       command_2string(yuvscaler_command, command_temp);
       sprintf(command, "%s %s |", command, command_temp);
       sprintf(command_progress, "%s yuvscaler |", command_progress);
+   }
+
+   if (use_yuvdenoise_pipe)
+   {
+      command_2string(yuvdenoise_command, command_temp);
+      sprintf(command,"%s %s |", command, command_temp);
+      sprintf(command_progress, "%s yuvdenoise |", command_progress);
    }
 
    if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)

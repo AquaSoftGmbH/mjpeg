@@ -58,15 +58,11 @@ int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 /* Structure that hat holds the encoding options */
 #define SHORTOPT 2
 #define LONGOPT 25
-struct encodingoptions{ char notblacksize[LONGOPT];    /**< lav2yuv options */
-                        int  outputformat;           
-                        int  droplsb;
-                        int  noisefilter;
-                        char interlacecorr[LONGOPT];
+struct encodingoptions{ char notblacksize[LONGOPT];    /**< yuvscaler options */
                         char input_use[LONGOPT];     /**< yuvscaler options */
                         char output_size[LONGOPT];
                         char mode_keyword[LONGOPT];
-                        char ininterlace_type[LONGOPT];
+                        char interlacecorr[LONGOPT];
                         int  addoutputnorm;
                         int  audiobitrate;               /**< audio options */
                         int  outputbitrate;
