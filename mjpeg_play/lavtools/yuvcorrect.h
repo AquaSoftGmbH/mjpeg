@@ -134,7 +134,8 @@ int bottom_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 int top_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 		       uint8_t * field2);
 int main (int argc, char *argv[]);
-uint8_t clip_0_255 (int16_t number);
+uint8_t clip_0_255   (int16_t number);
+int8_t  clip_127_127 (int16_t number);
 void yuvstat (frame_t * frame);
 uint8_t yuvcorrect_nearest_integer_division (unsigned long int p,
 					     unsigned long int q);

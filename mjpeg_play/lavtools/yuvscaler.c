@@ -53,7 +53,7 @@
 #include <signal.h>
 #include "lav_io.h"
 #include "editlist.h"
-#include "jpegutils.c"
+// #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_types.h"
@@ -65,7 +65,7 @@
 
 
 
-#define yuvscaler_VERSION 20-10-2002
+#define yuvscaler_VERSION "16-12-2002"
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
@@ -1102,7 +1102,7 @@ main (int argc, char *argv[])
   y4m_ratio_t frame_rate = y4m_fps_UNKNOWN;
 
   // Information output
-  mjpeg_info ("yuvscaler LAVPLAY_VERSION (yuvscaler_VERSION) is a general scaling utility for yuv frames");
+  mjpeg_info ("yuvscaler "LAVPLAY_VERSION" ("yuvscaler_VERSION") is a general scaling utility for yuv frames");
   mjpeg_info ("(C) 2001-2002 Xavier Biquard <xbiquard@free.fr>, yuvscaler -h for help, or man yuvscaler");
 
   // Initialisation of global variables that are independent of the input stream, input_file in particular
