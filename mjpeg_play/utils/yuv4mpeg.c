@@ -49,7 +49,7 @@ int y4m_allow_unknown_tags(int yn)
 }
 
 
-int y4m_feature_level(int level)
+int y4m_accept_extensions(int level)
 {
   int old = _y4mparam_feature_level;
   if (level >= 0)
