@@ -40,7 +40,7 @@ library like gtk+.
 
 4) The MMX enhanced jpeg library from the same place you got this package.
 
-http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.3.tar.gz
+http://download.sourceforge.net/mjpeg/jpeg-mmx-0.1.3.tar.gz
 
 The configure scripts look for this in same parent directory as the
 directory containing this file, /usr/local/src/jpeg-mmx by default.
