@@ -292,11 +292,6 @@ void make_menus(GtkWidget *box)
 //	root_menu = gtk_menu_item_new_with_label ("Options");
 //	gtk_widget_show (root_menu);
 
-	menu_items = gtk_menu_item_new_with_label ("Encoding Options");
-	gtk_menu_append (GTK_MENU (menu), menu_items);
-	gtk_signal_connect_object (GTK_OBJECT (menu_items), "activate",
-		GTK_SIGNAL_FUNC(open_encoptions_window), NULL);
-	gtk_widget_show(menu_items);
 	root_menu = gtk_menu_item_new_with_label ("Options");
 	gtk_widget_show (root_menu);
 
