@@ -67,22 +67,23 @@ struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
                         char mode_keyword[LONGOPT];
                         char ininterlace_type[LONGOPT];
                         int  addoutputnorm;
-                        int  audiobitrate;           /* audio options */
+                        int  audiobitrate;               /* audio options */
                         int  outputbitrate;
                         char forcestereo[SHORTOPT];
                         char forcemono[SHORTOPT];
                         char forcevcd[SHORTOPT];
-                        int  bitrate;              /* mpeg2enc options */
+                        int  use_yuvdenoise;            /* filter options */
+                        int  bitrate;                 /* mpeg2enc options */
                         int  qualityfactor;
                         int  minGop;
                         int  maxGop;
                         int  sequencesize;
                         int  nonvideorate;
                         int  searchradius;
-                        int  muxformat;              /* mplex options */
+                        int  muxformat;                  /* mplex options */
                         char muxvbr[SHORTOPT];
                         int  streamdatarate;
-			int  decoderbuffer;        /* also used for mpeg2enc */
+			int  decoderbuffer;     /* also used for mpeg2enc */
                       };
 /************************* END *********************/
 struct encodingoptions encoding;  /* for mpeg1 */

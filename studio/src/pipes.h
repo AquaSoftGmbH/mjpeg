@@ -18,6 +18,7 @@
 #define YUV2LAV 14      /* for the effects notebook page in lavedit_effects.c */
 #define NUM 15          /* total number of pipes */
 #define LAV2YUV_DATA 16 /* a special case for lav2yuv-data-processing */
+#define YUVDENOISE 17   /* video encoding, lavencode.c */
 
 /* Shared functions for pipes.c */
 void start_pipe_command(char *command[], int number);
