@@ -5,6 +5,7 @@ man_MANS = lavplay.1  lavrec.1  mjpegtools.1  mpeg2enc.1  mplex.1 \
 	yuvscaler.1 lavpipe.1 yuv2lav.1 yuvdenoise.1 jpeg2yuv.1 \
         ppmtoy4m.1 y4mtoppm.1 y4mcolorbars.1 \
         yuvkineco.1 yuvycsnoise.1 yuvmedianfilter.1 \
-	lav2divx.1 yuv2divx.1 divxdec.1 lav2mpeg.1
+	lav2divx.1 yuv2divx.1 divxdec.1 lav2mpeg.1 \
+	yuv4mpeg.5
 EXTRA_DIST = $(man_MANS) authors.sgml lavtools.sgml .cvsignore
 MAINTAINERCLEANFILES = Makefile.in

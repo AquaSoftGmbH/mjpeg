@@ -1,8 +1,7 @@
 .TH "yuvscaler" "1" "26 Septembre 2001" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
-yuvscaler \- UPscales or DOWNscales arbitrary sized yuv frames (stdin by default) to a
-specified format (to stdout)
+yuvscaler \- UPscales or DOWNscales a YUV4MPEG2 stream to a specified format
 
 .SH SYNOPSIS
 .B yuvscaler 
@@ -10,43 +9,42 @@ specified format (to stdout)
 .IR input_keyword ]
 .RB [ -M 
 .IR mode_keyword ]
-?RB [ -O
+.RB [ -O
 .IR output_keyword ]
 .RB [ -n\ p | s | n ]
 .RB [ -v\ 0 - 2 ]
 .RB [ -h ]
-.RI [ mjpegfiles ]
 
 .SH DESCRIPTION
 \fByuvscaler\fP is a general (UP or DOWN) scaling utility that is provided to
-allow conversion between different video formats. It can filter
-YUV4MPEG format stream between stdin and stdout or can generate a
-YUV4MPEG stream from one or more MJPEG video files in any of the
-\fBmjpegtools\fP(1) container formats (AVI, Quicktime, movtar, edit
-list).  The most common use of yuvscaler is to generate input suitable
+allow conversion between different video formats. It reads in a
+YUV4MPEG2 format stream from stdin (such as that produced
+by \fBlav2yuv\fP) and outputs such stream to stdout (e.g. to be
+consumed by \fBmpeg2enc\fP).
+The most common use of yuvscaler is to generate input suitable
 for MPEG encoding to VCD or SVCD formats using \fBmpeg2enc\fP(1).
 
 \fByuvscaler\fP will automatically take into account PAL/SECAM and
 NTSC format, as well as widescreen (16:9) format and interlacing. Use
-of yuvscaler was designed to be straithforward.
+of yuvscaler was designed to be straightforward.
 
 .SH EXAMPLES
 
-\fBVCD encoding:
+\fBVCD encoding:\fP
 .br
-\fPyuvscaler -O VCD my-file.avi | mpeg2enc -f 1 -o vcd.%d.m1v
+lav2yuv my-file.avi | yuvscaler -O VCD | mpeg2enc -f 1 -o vcd.%d.m1v
 
-\fBSVCD encoding:
+\fBSVCD encoding:\fP
 .br
-\fPyuvscaler -O SVCD my-file.mov | mpeg2enc -f 4 -o svcd.%d.m2v
+lav2yuv my-file.mov | yuvscaler -O SVCD | mpeg2enc -f 4 -o svcd.%d.m2v
 
-\fBEncoding anamorphic 16:9 as letterboxed VCD:
+\fBEncoding anamorphic 16:9 as letterboxed VCD:\fP
 .br
-\fPyuvscaler -M WIDE2VCD my-ana16-9.eli | mpeg2enc -f 1 -o letterbox_vcd.%d.m1v
+lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2VCD | mpeg2enc -f 1 -o letterbox_vcd.%d.m1v
 
-\fBEncoding anamorphic 16:9 as letterboxed SVCD:
+\fBEncoding anamorphic 16:9 as letterboxed SVCD:\fP
 .br
-\fPyuvscaler -M WIDE2STD -O SVCD  my-ana16-9.eli | mpeg2enc -f 4 -o letterbox_svcd.%d.m1v
+lav2yuv my-ana16-9.eli | yuvscaler -M WIDE2STD -O SVCD | mpeg2enc -f 4 -o letterbox_svcd.%d.m1v
 
 .SH OPTIONS
 
