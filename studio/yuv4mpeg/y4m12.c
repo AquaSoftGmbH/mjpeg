@@ -67,15 +67,20 @@ y4m12_read_header (y4m12_t *y4m12, int fd)
         /* Y4M1 */
         if (write(fake_fd[1], fake_buff, strlen(fake_buff)) != strlen(fake_buff))
         {
+          close(fake_fd[1]);
+          close(fake_fd[0]);
           fprintf(stderr, "Failed to write 1.4 pipe info to fake pipe\n");
           return -1;
         }
+        close(fake_fd[1]);
         if (yuv_read_header(fake_fd[0],
             &y4m12->v_140_width, &y4m12->v_140_height, &y4m12->v_140_frameratecode) < 0)
         {
+          close(fake_fd[0]);
           fprintf(stderr, "Failed to read 1.4 pipe info from fake pipe\n");
           return -1;
         }
+        close(fake_fd[0]);
         y4m12->version = 140;
         y4m12->width = y4m12->v_140_width;
         y4m12->height = y4m12->v_140_height;
@@ -87,14 +92,19 @@ y4m12_read_header (y4m12_t *y4m12, int fd)
         /* Y4M2 */
         if (write(fake_fd[1], fake_buff, strlen(fake_buff)) != strlen(fake_buff))
         {
+          close(fake_fd[1]);
+          close(fake_fd[0]);
           fprintf(stderr, "Failed to write 1.5 pipe info to fake pipe\n");
           return -1;
         }
+        close(fake_fd[1]);
         if (y4m_read_stream_header(fake_fd[0], y4m12->v_150_streaminfo) != Y4M_OK)
         {
+          close(fake_fd[0]);
           fprintf(stderr, "Failed to read 1.f pipe info from fake pipe\n");
           return -1;
         }
+        close(fake_fd[0]);
         y4m12->version = 150;
         y4m12->width = y4m_si_get_width(y4m12->v_150_streaminfo);
         y4m12->height = y4m_si_get_height(y4m12->v_150_streaminfo);
@@ -103,6 +113,8 @@ y4m12_read_header (y4m12_t *y4m12, int fd)
 #endif
       else
       {
+        close(fake_fd[1]);
+        close(fake_fd[0]);
         fprintf(stderr, "Unknown header\n");
         return -1;
       }
@@ -125,7 +137,7 @@ y4m12_read_frame (y4m12_t *y4m12, int fd)
       !y4m12->buffer[2])
   {
     fprintf(stderr, "No buffer found\n");
-    return 1;
+    return -1;
   }
 
   if (y4m12->version == 140)
@@ -203,7 +215,7 @@ y4m12_write_frame (y4m12_t *y4m12, int fd)
       !y4m12->buffer[2])
   {
     fprintf(stderr, "No buffer found\n");
-    return 1;
+    return -1;
   }
 
   if (y4m12->version == 140)
