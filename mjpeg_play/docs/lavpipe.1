@@ -80,13 +80,19 @@ A pipe list contains of two parts: the YUV
 .B source list
 and after this, as many
 .B sequence descriptions
-as wanted. It always begins with the following line:
+as wanted. It always begins with the following two lines:
 
-.TP A
+.TP
 .B LAV Pipe List
 This is the first line in every pipe list script. It is used as
 a simple test if lavpipe really was given a pipe list script and
 not your PhD thesis as input.
+
+.TP
+.BR NTSC | PAL
+This is the second line in every pipe list and can be either PAL
+or NTSC, depending on what video standard you use. I don't remember
+if this is used at the moment.
 
 .PP
 Now follows the
@@ -161,6 +167,8 @@ And here's an example for a complete pipe list that implements
 a transistion from scene1.avi to scene2.avi (remove the comments after #):
 
 .B LAV Pipe List
+.br
+.B PAL
 .br
 .B 2
 .br
