@@ -52,7 +52,7 @@ static char  param_format = 'a';
 static char *param_output = 0;
 static int   param_bufsize = 256*1024; /* 256 kBytes */
 static int   param_interlace = -1;
-static int   param_maxfilesize = MAX_MBYTES_PER_FILE;
+static int   param_maxfilesize = 0;
 
 static int got_sigint = 0;
 
@@ -190,6 +190,13 @@ int main(int argc, char *argv[])
       mjpeg_error("cannot use -I 2 with -f %c\n", param_format);
       usage ();
       exit (1);
+   }
+   if (param_maxfilesize <= 0)
+   {
+      if (param_format=='a'||param_format=='A')
+         param_maxfilesize = MAX_MBYTES_PER_FILE_32;
+      else
+         param_maxfilesize = MAX_MBYTES_PER_FILE;
    }
 
    (void)mjpeg_default_handler_verbosity(verbose);   
