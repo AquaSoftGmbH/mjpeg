@@ -198,7 +198,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 							   uint8_t *s44org, uint8_t *s44blk, 
 							   int qlx, int qh );
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 static void find_best_one_pel_mmxe( mc_result_set *sub22set, 
 									uint8_t *org, uint8_t *blk,
 									int i0, int j0,
@@ -337,7 +337,7 @@ void init_motion()
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
 		pbuild_sub44_mcomps	= build_sub44_mcomps;
 	 }
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");
@@ -2108,7 +2108,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 	return sub44set->len;
 }
 
-#ifdef HAVE_X86CPU
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
 static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
@@ -2217,7 +2217,7 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 	return sub22set->len;
 }
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 							 mc_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
@@ -2349,7 +2349,7 @@ static void find_best_one_pel( mc_result_set *sub22set,
 
 }
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 void find_best_one_pel_mmxe( mc_result_set *sub22set,
 							 uint8_t *org, uint8_t *blk,
 							 int i0, int j0,

@@ -54,7 +54,7 @@
 #include "mmx.h"
 #include "cpu_accel.h"
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 int select_dct_type_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
 
 extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
@@ -102,7 +102,7 @@ void init_transform(void)
 	int flags;
 	flags = cpu_accel();
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
 		mjpeg_info( "SETTING MMX for TRANSFORM!\n");
@@ -175,7 +175,7 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 
 	return dct_type;
 }
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 static __inline__ void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 {

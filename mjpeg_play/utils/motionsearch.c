@@ -33,7 +33,7 @@
 
 
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
 static int (*pmblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
@@ -324,7 +324,7 @@ static int build_sub44_mests( me_result_set *sub44set,
 	return sub44set->len;
 }
 
-#ifdef HAVE_X86CPU
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
 static int build_sub44_mests_mmx( me_result_set *sub44set,
 								   int ilow, int jlow, int ihigh, int jhigh, 
@@ -445,7 +445,7 @@ static int build_sub22_mests( me_result_set *sub44set,
 	return sub22set->len;
 }
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 static int build_sub22_mests_mmxe( me_result_set *sub44set,
 							 me_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
@@ -581,7 +581,7 @@ static void find_best_one_pel( me_result_set *sub22set,
 	*best_so_far = minpos;
 }
 
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
 static void find_best_one_pel_mmxe( me_result_set *sub22set,
 							 uint8_t *org, uint8_t *blk,
 							 int i0, int j0,
@@ -1203,7 +1203,7 @@ void init_motion_search()
 		pbuild_sub22_mests	= build_sub22_mests;
 		pbuild_sub44_mests	= build_sub44_mests;
 	 }
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		mjpeg_info( "SETTING EXTENDED MMX for MOTION!\n");

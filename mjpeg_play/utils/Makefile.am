@@ -21,8 +21,12 @@ libmjpegutils_a_SOURCES = mjpeg_logging.c cpu_accel.c \
 
 pkginclude_HEADERS = yuv4mpeg.h mpegconsts.h mjpeg_logging.h mjpeg_types.h
 
-if HAVE_X86CPU
+if HAVE_ASM_NASM
+if HAVE_ASM_MMX
 libmotion_SIMD = $(libmotion_MMXSSE)
+else
+mpeg2enc_SIMD = 
+endif
 else
 mpeg2enc_SIMD = 
 endif

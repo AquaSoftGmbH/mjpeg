@@ -83,7 +83,7 @@ void init_quantizer()
   int flags;
   const char *opt_type1, *opt_type2;
   flags = cpu_accel();
-#ifdef HAVE_X86CPU 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
 		if( (flags & ACCEL_X86_3DNOW) != 0 )

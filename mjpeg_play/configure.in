@@ -460,7 +460,6 @@ dnl
 dnl 
 have_asm_mmx=false
 have_asm_sse=false
-have_asm_3dnow=false
 have_asm_nasm=false
 have_x86cpu=false
 AC_MSG_CHECKING([for Intel Pentium architecture (IA32)])
@@ -481,7 +480,10 @@ else
   AC_MSG_RESULT(no)
 fi
 
-if test "$enable_simd_accel" != "no"; then
+echo enable_simd_accel = X"$enable_simd_accel"X
+
+if test "$enable_simd_accel" != "false" -a "$enable_simd_accel" != "no"
+then
   if test x$have_x86cpu = xtrue
   then
    AC_DEFINE(HAVE_X86CPU)
@@ -521,16 +523,18 @@ EOF
         enable_simd_accel=no
         have_asm_mmx=false
         have_asm_sse=false
-        have_asm_3dnow=false
         have_asm_nasm=false
     else
      AC_DEFINE(HAVE_ASM_NASM)
+	 have_asm_nasm=true
      ASFLAGS="-f elf"
      if test x$CYGWIN = xyes; then
        ASFLAGS="-f coff"
      fi
      AC_SUBST(ASFLAGS)
     fi
+
+
    ],
    [AC_MSG_RESULT(no)
     AC_MSG_WARN(*** MMX Optimizations disabled....)]);
@@ -571,38 +575,14 @@ AC_MSG_CHECKING(x86 sub-architecture settings)
   esac
 AC_MSG_RESULT($ARCHFLAGS)
 
-dnl ************************************************************************
-dnl
-if test "$enable_3dnow_accel" != "no" 
-then
-  AC_MSG_CHECKING([for support of 3DNow in assembly code])
-  cat > conftest.S <<EOF
-    .text
-    pfmul %mm3, %mm4
-EOF
-  if $CC -c conftest.S >&AC_FD_CC; then
-    rm -f conftest.*
-    AC_DEFINE(HAVE_ASM_3DNOW)
-    have_asm_3dnow=true
-    AC_MSG_RESULT(yes)
-  else
-    echo "configure: failed program was:" >&AC_FD_CC
-    cat conftest.S >&AC_FD_CC
-    rm -f conftest.*
-    AC_MSG_RESULT(no)
-  fi
-fi
-
 else
   have_cmov=false
-  have_asm_3dnow=false
 fi
 
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles
 dnl
 AM_CONDITIONAL(HAVE_ASM_MMX, test x$have_asm_mmx = xtrue)
-AM_CONDITIONAL(HAVE_ASM_3DNOW, test x$have_asm_3dnow = xtrue)
 AM_CONDITIONAL(HAVE_ASM_NASM, test x$have_asm_nasm = xtrue)
 AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
@@ -690,8 +670,7 @@ echo ""
 echo " MJPEG tools ${VERSION} build configuration :"
 echo ""
 echo "    - X86 Optimizations:"
-echo "      - MMX Optimizations enabled   : ${have_asm_mmx}"
-echo "      - 3DNow support               : ${have_asm_3dnow}"
+echo "      - MMX/3DNow!/SSE enabled      : ${have_asm_mmx}"
 echo "      - cmov support enabled        : ${have_cmov}"
 if test "$have_cmov" = "true" ; then
 echo "

@@ -16,9 +16,14 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
-if HAVE_X86CPU
+if HAVE_ASM_MMX
+if HAVE_ASM_NASM
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)
 libmotion_SIMD = $(libmotion_MMXSSE)
+else
+mpeg2enc_SIMD = 
+libmotion_SIMD = 
+endif
 else
 mpeg2enc_SIMD = 
 libmotion_SIMD = 

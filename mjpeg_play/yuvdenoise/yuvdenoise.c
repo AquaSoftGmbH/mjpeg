@@ -171,7 +171,7 @@ calc_SAD_half_noaccel (uint8_t * frm,
 		     uint32_t ref_offs, 
 		     int xx, 
 		     int yy);
-#ifdef HAVE_X86CPU                     
+#ifdef HAVE_ASM_MMX
 uint32_t
 calc_SAD_mmx     (uint8_t * frm, 
                      uint8_t * ref, 
@@ -248,7 +248,7 @@ uint32_t (*calc_SAD_uv) (uint8_t * frm,
 /* Deinterlacers and pointer to them */
 void deinterlace_frame_noaccel (uint8_t * yuv[3]);
 
-#ifdef HAVE_X86CPU                     
+#ifdef HAVE_ASM_MMX
 void deinterlace_frame_mmxe (uint8_t * yuv[3]);
 void deinterlace_frame_mmx (uint8_t * yuv[3]);
 #endif
@@ -351,7 +351,7 @@ main (int argc, char *argv[])
     }
   mjpeg_log ( LOG_INFO, "\n");
 
-#ifdef HAVE_X86CPU
+#ifdef HAVE_ASM_MMX
   if( (CPU_CAP & ACCEL_X86_MMXEXT)!=0 ||
       (CPU_CAP & ACCEL_X86_SSE   )!=0 
     ) /* MMX+SSE */
@@ -748,7 +748,7 @@ deinterlace_frame_noaccel (uint8_t * yuv[3])
     }
 }
 
-#ifdef HAVE_X86CPU                     
+#ifdef HAVE_ASM_MMX
 
 /*********************************
  *
@@ -1409,7 +1409,7 @@ calc_SAD_half_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t
 /*****************************************************************************
  * halfpel-SAD-function for Y with MMX                                       *
  *****************************************************************************/
-#ifdef HAVE_X86CPU
+#ifdef HAVE_ASM_MMX
 
 uint32_t
 calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
@@ -1527,7 +1527,7 @@ calc_SAD_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_
 }
 
 
-#ifdef HAVE_X86CPU
+#ifdef HAVE_ASM_MMX
 /*****************************************************************************
  * SAD-function for Y with MMX                                               *
  *****************************************************************************/
@@ -1714,7 +1714,7 @@ calc_SAD_uv_noaccel (uint8_t * frm,
   return d;
 }
 
-#ifdef HAVE_X86CPU
+#ifdef HAVE_ASM_MMX
 
 /*****************************************************************************
  * SAD-function for U+V with MMX                                             *
