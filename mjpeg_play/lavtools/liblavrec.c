@@ -67,7 +67,9 @@
 #define MAP_FAILED ( (caddr_t) -1 )
 #endif
 
-#define MJPEG_MAX_BUF 64
+#define MJPEG_MAX_BUF 256
+
+#define MIN_QUEUES_NEEDED 1 /* minimal number of queues needed to sync */
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
@@ -101,6 +103,7 @@ typedef struct {
    double spvf;                               /* seconds per video frame */
    int    video_fd;                           /* file descriptor of open("/dev/video") */
    struct mjpeg_requestbuffers breq;          /* buffer requests */
+   struct mjpeg_sync bsync;
    struct video_mbuf softreq;                 /* Software capture (YUV) buffer requests */
    char   *MJPG_buff;                         /* the MJPEG buffer */
    struct video_mmap mm;                      /* software (YUV) capture info */
@@ -112,6 +115,8 @@ typedef struct {
    char   AUDIO_buff[AUDIO_BUFFER_SIZE];      /* the audio buffer */
    struct timeval audio_t0;
    int    astat;
+   long   audio_offset;
+   struct timeval audio_tmstmp;
    int    mixer_set;                          /* whether the mixer settings were changed */
    int    audio_bps;                          /* bytes per second for audio stream */
    long   audio_buffer_size;                  /* audio stream buffer size */
@@ -127,12 +132,23 @@ typedef struct {
    int    mixer_recsrc_saved;                 /* saved recording source before setting mixer */
    int    mixer_inplev_saved;                 /* saved output volume before setting mixer */
 
-#if 0
+   /* the JPEG video encoding thread mess */
    pthread_t encoding_thread;                 /* for software encoding recording */
-   pthread_mutex_t valid_mutex;               /* for software encoding recording */
-   int buffer_valid[MJPEG_MAX_BUF];           /* Non-zero if buffer has been filled */
+   pthread_mutex_t encoding_mutex;            /* for software encoding recording */
+   short buffer_valid[MJPEG_MAX_BUF];         /* Non-zero if buffer has been filled */
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
-#endif
+
+   /* thread for correctly timestamping the V4L/YUV buffers */
+   pthread_t software_sync_thread;            /* the thread */
+   pthread_mutex_t software_sync_mutex;       /* the mutex */
+   unsigned char software_sync_ready[MJPEG_MAX_BUF]; /* whether the frame has already been synced on */
+   pthread_cond_t software_sync_wait[MJPEG_MAX_BUF]; /* wait for frame to be synced on */
+   struct timeval software_sync_timestamp[MJPEG_MAX_BUF];
+
+   /* some mutex/cond stuff to make sure we have enough queues left */
+   pthread_mutex_t queue_mutex;
+   unsigned short queue_left;
+   pthread_cond_t queue_wait;
 
    int    output_status;
    int    state;                              /* recording, paused or stoppped */
@@ -790,15 +806,20 @@ static int audio_captured(lavrec_t *info, char *buff, long samps)
  * lavrec_encoding_thread()
  *   The software encoding thread
  ******************************************************/
-#if 0
-static int lavrec_queue_buffer(lavrec_t *info, int *num);
+
+/* definition, needed in here */
+static int
+lavrec_queue_buffer (lavrec_t *info, unsigned long *num);
+static int
+lavrec_handle_audio (lavrec_t *info, struct timeval *timestamp);
+
 static void *lavrec_encoding_thread(void* arg)
 {
-   lavrec_t *info = (lavrec_t *) info;
+   lavrec_t *info = (lavrec_t *) arg; 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
+   struct timeval timestamp[MJPEG_MAX_BUF];
    int jpegsize;
-   unsigned char *yuv_endbuff[3], *YUV;
-   int x,y;
+   unsigned long current_frame = 0;
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
       "Starting software encoding thread");
@@ -807,27 +828,16 @@ static void *lavrec_encoding_thread(void* arg)
    pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
    pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
-   yuv_endbuff[0] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
-   yuv_endbuff[1] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-   yuv_endbuff[2] = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
-
-   if (!yuv_endbuff[0] || !yuv_endbuff[1] || !yuv_endbuff[2])
-   {
-      lavrec_msg (LAVREC_MSG_ERROR, info,
-         "Malloc error, you\'re probably out of memory");
-      lavrec_change_state(info, LAVREC_STATE_STOP);
-   }
-
    while (settings->state != LAVREC_STATE_STOP)
    {
-      pthread_mutex_lock(&(settings->valid_mutex));
-      while (settings->buffer_valid[settings->mm.frame] == 0)
+      pthread_mutex_lock(&(settings->encoding_mutex));
+      while (settings->buffer_valid[current_frame] == -1)
       {
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Encoding thread: sleeping for new frames (waiting for frame %d)", 
-            settings->mm.frame);
-         pthread_cond_wait(&(settings->buffer_filled[settings->mm.frame]),
-            &(settings->valid_mutex));
+            current_frame);
+         pthread_cond_wait(&(settings->buffer_filled[current_frame]),
+            &(settings->encoding_mutex));
          if (settings->state == LAVREC_STATE_STOP)
          {
             /* Ok, we shall exit, that's the reason for the wakeup */
@@ -836,70 +846,60 @@ static void *lavrec_encoding_thread(void* arg)
             pthread_exit(NULL);
          }
       }
-      pthread_mutex_unlock(&(settings->valid_mutex));
+      pthread_mutex_unlock(&(settings->encoding_mutex));
+      memcpy(&(timestamp[current_frame]), &(settings->bsync.timestamp), sizeof(struct timeval));
 
-      if (settings->buffer_valid[settings->mm.frame] > 0)
+      if (settings->buffer_valid[current_frame] > 0)
       {
-         /* move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
-         YUV = settings->YUV_buff + (settings->softreq.offsets[settings->mm.frame]);
-
-         /* sit down for this - it's really easy except if you try to understand it :-) */
-         for (x=0;x<settings->width;x++)
-            if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
-               for (y=0;y<settings->height;y++)
-                  if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
-                     yuv_endbuff[0][(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
-                        YUV[(y*settings->width+x)*2 + 1];
-
-         for (x=0;x<settings->width/2;x++)
-            if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
-               for (y=0;y<settings->height/2;y++)
-                  if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
-                  {
-                     yuv_endbuff[1][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                        YUV[(y*settings->width+x)*4];
-                     yuv_endbuff[2][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                        YUV[(y*settings->width+x)*4 + 2];
-                  }
-
-         jpegsize = encode_jpeg_raw(settings->MJPG_buff+settings->mm.frame*settings->breq.size,
+         jpegsize = encode_jpeg_raw(settings->MJPG_buff+current_frame*settings->breq.size,
             settings->breq.size, info->quality, settings->interlaced,
             CHROMA420, info->geometry->w, info->geometry->h,
-            yuv_endbuff[0], yuv_endbuff[1], yuv_endbuff[2]);
+            settings->YUV_buff+settings->softreq.offsets[current_frame],
+            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h),
+            settings->YUV_buff+settings->softreq.offsets[current_frame]+(info->geometry->w*info->geometry->h*5/4));
+
          if (jpegsize<0)
          {
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error encoding frame to JPEG");
             lavrec_change_state(info, LAVREC_STATE_STOP);
+            continue;
          }
 
-         if (!video_captured(info,
-            settings->MJPG_buff+(settings->breq.size*settings->mm.frame), jpegsize,
-            settings->buffer_valid[settings->mm.frame]))
+         if (video_captured(info,
+            settings->MJPG_buff+(settings->breq.size*current_frame), jpegsize,
+            settings->buffer_valid[current_frame]) != 1)
          {
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error writing the frame");
             lavrec_change_state(info, LAVREC_STATE_STOP);
+            continue;
          }
       }
 
-      pthread_mutex_lock(&(settings->valid_mutex));
-      settings->buffer_valid[settings->mm.frame] = 0;
-      pthread_mutex_unlock(&(settings->valid_mutex));
+      pthread_mutex_lock(&(settings->encoding_mutex));
+      settings->buffer_valid[current_frame] = -1;
+      pthread_mutex_unlock(&(settings->encoding_mutex));
 
-      if (!lavrec_queue_buffer(info, &(settings->mm.frame)))
+      if (!lavrec_queue_buffer(info, &current_frame))
       {
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
+         continue;
       }
+
+      if (!lavrec_handle_audio(info, &(timestamp[current_frame])))
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+
+      current_frame = (current_frame+1)%settings->softreq.frames;
    }
 
    pthread_exit(NULL);
 }
-#endif
+
 
 /******************************************************
  * lavrec_software_init()
@@ -911,6 +911,7 @@ static void *lavrec_encoding_thread(void* arg)
 static int lavrec_software_init(lavrec_t *info)
 {
    struct video_capability vc;
+   int i;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -962,8 +963,9 @@ static int lavrec_software_init(lavrec_t *info)
       return 0;
    }
 
-   settings->width = info->geometry->w;
-   settings->height = info->geometry->h;
+   settings->mm.width = settings->width = info->geometry->w;
+   settings->mm.height = settings->height = info->geometry->h;
+   settings->mm.format = VIDEO_PALETTE_YUV420P;
 
    if (info->geometry->h > (info->video_norm==1?320:384))
       settings->interlaced = LAV_INTER_TOP_FIRST; /* all interlaced BT8x8 capture seems top-first ?? */
@@ -1017,12 +1019,11 @@ static int lavrec_software_init(lavrec_t *info)
       "Created %ld MJPEG-buffers of size %ld KB",
       settings->breq.count, settings->breq.size/1024);
 
-#if 0
-   /* set up thread */
-   pthread_mutex_init(&(settings->valid_mutex), NULL);
+   /* set up software JPEG-encoding thread */
+   pthread_mutex_init(&(settings->encoding_mutex), NULL);
    for (i=0;i<MJPEG_MAX_BUF;i++)
    {
-      settings->buffer_valid[i] = 0;
+      settings->buffer_valid[i] = -1; /* 0 means to just omit the frame, -1 means "in progress" */
       pthread_cond_init(&(settings->buffer_filled[i]), NULL);
    }
    if ( pthread_create( &(settings->encoding_thread), NULL,
@@ -1032,7 +1033,10 @@ static int lavrec_software_init(lavrec_t *info)
          "Failed to create software encoding thread");
       return 0;
    }
-#endif
+
+   /* queue setup */
+   pthread_mutex_init(&(settings->queue_mutex), NULL);
+   pthread_cond_init(&(settings->queue_wait), NULL);
 
    return 1;
 }
@@ -1407,7 +1411,7 @@ static int lavrec_init(lavrec_t *info)
    /* after setting priority and pthread real-time scheduling, there's
     * no need for SUID anymore, so if we have it, kick it out (the result
     * is that the files created by lavrec will be owned by the actual user
-    * calling lavrec instead of by root if we're set SUID
+    * calling lavrec instead of by root if we're set SUID)
     */
    if (getuid() != geteuid())
       if (setuid(getuid()))
@@ -1473,11 +1477,18 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
+   lavrec_msg(LAVREC_MSG_DEBUG, info,
+      "Queueing frame %lud", *num);
    if (info->software_encoding)
    {
       settings->mm.frame = *num;
       if (ioctl(settings->video_fd, VIDIOCMCAPTURE, &(settings->mm)) < 0)
          return 0;
+
+      pthread_mutex_lock(&(settings->queue_mutex));
+      settings->queue_left++;
+      pthread_cond_broadcast(&(settings->queue_wait));
+      pthread_mutex_unlock(&(settings->queue_mutex));
    }
    else
    {
@@ -1486,6 +1497,66 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
    }
 
    return 1;
+}
+
+
+/******************************************************
+ * lavrec_software_sync_thread ()
+ *   software syncing to get correct timestamps
+ ******************************************************/
+
+static void *lavrec_software_sync_thread(void* arg)
+{
+   lavrec_t *info = (lavrec_t *) arg;
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+   int frame = 0; /* framenum to sync on */
+
+   /* Allow easy shutting down by other processes... */
+   pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
+   pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
+
+   while (settings->state == LAVREC_STATE_RECORDING)
+   {
+      pthread_mutex_lock(&(settings->queue_mutex));
+      while (settings->queue_left < MIN_QUEUES_NEEDED)
+      {
+         lavrec_msg(LAVREC_MSG_DEBUG, info,
+            "Software sync thread: sleeping for new queues");
+         pthread_cond_wait(&(settings->queue_wait),
+            &(settings->queue_mutex));
+      }
+      pthread_mutex_unlock(&(settings->queue_mutex));
+retry:
+      if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
+      {
+         if (errno==EINTR && info->software_encoding) goto retry; /* BTTV sync got interrupted */
+         pthread_mutex_lock(&(settings->software_sync_mutex));
+         settings->software_sync_ready[frame] = -1;
+         pthread_cond_broadcast(&(settings->software_sync_wait[frame]));
+         pthread_mutex_unlock(&(settings->software_sync_mutex));
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error syncing on a buffer: %s", sys_errlist[errno]);
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
+      else
+      {
+         pthread_mutex_lock(&(settings->software_sync_mutex));
+         gettimeofday(&(settings->software_sync_timestamp[frame]), NULL);
+         settings->software_sync_ready[frame] = 1;
+         pthread_cond_broadcast(&(settings->software_sync_wait[frame]));
+         pthread_mutex_unlock(&(settings->software_sync_mutex));
+      }
+
+      frame = (frame+1)%settings->softreq.frames;
+      
+      pthread_mutex_lock(&(settings->queue_mutex));
+      settings->queue_left--;
+      pthread_mutex_unlock(&(settings->queue_mutex));
+   }
+
+   lavrec_msg(LAVREC_MSG_DEBUG, info,
+      "Software sync thread stopped");
+   pthread_exit(NULL);
 }
 
 
@@ -1502,13 +1573,25 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
 
    if (info->software_encoding)
    {
-      bsync->frame = (settings->mm.frame+1)%settings->softreq.frames;
+      bsync->frame = (bsync->frame+1)%settings->softreq.frames;
       bsync->seq++;
-      if (ioctl(settings->video_fd, VIDIOCSYNC, &(bsync->frame)) < 0)
+      pthread_mutex_lock(&(settings->software_sync_mutex));
+      while (settings->software_sync_ready[bsync->frame] == 0)
+      {
+         lavrec_msg(LAVREC_MSG_DEBUG, info,
+            "Software sync client: sleeping for new frames (waiting for frame %ld)", 
+            bsync->frame);
+         pthread_cond_wait(&(settings->software_sync_wait[bsync->frame]),
+            &(settings->software_sync_mutex));
+      }
+      pthread_mutex_unlock(&(settings->software_sync_mutex));
+      if (settings->software_sync_ready < 0)
       {
          return 0;
       }
-      gettimeofday( &(bsync->timestamp), NULL );
+      memcpy(&(bsync->timestamp), &(settings->software_sync_timestamp[bsync->frame]),
+         sizeof(struct timeval));
+      settings->software_sync_ready[bsync->frame] = 0;
    }
    else
    {
@@ -1517,7 +1600,95 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
          return 0;
       }
    }
+   lavrec_msg(LAVREC_MSG_DEBUG, info,
+      "Sycning on frame %ld", bsync->frame);
 
+   return 1;
+}
+
+
+/******************************************************
+ * lavrec_handle_audio()
+ *   handle audio and output stats
+ *
+ * return value: 1 on success, 0 on error
+ ******************************************************/
+
+static int lavrec_handle_audio(lavrec_t *info, struct timeval *timestamp)
+{
+   int x;
+   int nerr = 0;
+   video_capture_setup *settings = (video_capture_setup *)info->settings;
+   video_capture_stats *stats = settings->stats;
+
+   while (info->audio_size)
+   {
+      /* Only try to read a audio sample if video is ahead - else we might
+       * get into difficulties when writing the last samples
+       */
+      if (settings->output_status < 3 && 
+         stats->num_frames * settings->spvf <
+         (stats->num_asamps + settings->audio_buffer_size /
+         settings->audio_bps) * settings->spas)
+         break;
+
+      x = audio_read(settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
+         0, &(settings->audio_tmstmp), &(settings->astat));
+
+      if (x == 0) break;
+      if (x < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Error reading audio: %s", audio_strerror());
+         if (info->files)
+            lavrec_close_files_on_error(info);
+         nerr++;
+         break;
+      }
+
+      if (!(settings->astat))
+      {
+         stats->num_aerr++;
+         stats->stats_changed = 1;
+      }
+
+      /* Adjust for difference at start */
+      if (settings->audio_offset >= x)
+      {
+         settings->audio_offset -= x;
+         continue;
+      }
+      x -= settings->audio_offset;
+
+      /* Got an audio sample, write it out */
+      if (audio_captured(info, settings->AUDIO_buff+settings->audio_offset,
+         x/settings->audio_bps) != 1)
+      {
+         nerr++;
+         break; /* Done or error occured */
+      }
+      settings->audio_offset = 0;
+
+      /* calculate time differences beetween audio and video
+       * tdiff1 is the difference according to the number of frames/samples written
+       * tdiff2 is the difference according to the timestamps
+       * (only if audio timestamp is not zero)
+       */
+      if(settings->audio_tmstmp.tv_sec)
+      {
+         stats->tdiff1 = stats->num_frames * settings->spvf - stats->num_asamps * settings->spas;
+         stats->tdiff2 = (timestamp->tv_sec - settings->audio_tmstmp.tv_sec)
+            + (timestamp->tv_usec - settings->audio_tmstmp.tv_usec) * 1.e-6;
+      }
+   }
+
+   /* output_statistics */
+   if (info->output_statistics) info->output_statistics(stats);
+   stats->stats_changed = 0;
+
+   stats->prev_sync = stats->cur_sync;
+
+   if (nerr) return 0;
    return 1;
 }
 
@@ -1530,32 +1701,18 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
 static void lavrec_record(lavrec_t *info)
 {
    unsigned long frame_cnt;
-   int x,y, write_frame, nerr, nfout, jpegsize=0;
+   int x, write_frame, nerr, nfout;
    video_capture_stats stats;
    unsigned int first_lost;
-   long audio_offset = 0;
    double time;
    struct timeval first_time;
-   struct mjpeg_sync bsync;
-   struct timeval audio_tmstmp;
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    settings->stats = &stats;
+   settings->queue_left = 0;
+   settings->audio_offset = 0;
 
    /* Queue all buffers, this also starts streaming capture */
-   if (info->software_encoding)
-   {
-      //frame_cnt = 1;
-      //if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &frame_cnt) < 0)
-      //{
-      //   lavrec_msg(LAVREC_MSG_WARNING, info,
-      //      "Error starting streaming capture: %s", (char *)sys_errlist[errno]);
-      //   //lavrec_change_state(info, LAVREC_STATE_STOP);
-      //}
-      settings->mm.width = settings->width;
-      settings->mm.height = settings->height;
-      settings->mm.format = VIDEO_PALETTE_YUV420P;
-   }
    for (frame_cnt=0; 
 		frame_cnt<(info->software_encoding?settings->softreq.frames:settings->breq.count);
 		frame_cnt++)
@@ -1567,6 +1724,21 @@ static void lavrec_record(lavrec_t *info)
          lavrec_change_state(info, LAVREC_STATE_STOP);
          break;
       }
+   }
+
+   /* if we're doing software-encoding, start up the software-sync thread */
+   pthread_mutex_init(&(settings->software_sync_mutex), NULL);
+   for (x=0;x<MJPEG_MAX_BUF;x++)
+   {
+      settings->software_sync_ready[x] = 0;
+      pthread_cond_init(&(settings->software_sync_wait[x]), NULL);
+   }
+   if ( pthread_create( &(settings->software_sync_thread), NULL,
+      lavrec_software_sync_thread, (void *) info ) )
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "Failed to create software sync thread");
+      lavrec_change_state(info, LAVREC_STATE_STOP);
    }
 
    /* reset the counter(s) */
@@ -1583,16 +1755,16 @@ static void lavrec_record(lavrec_t *info)
    stats.num_aerr = 0;
    stats.tdiff1 = 0.;
    stats.tdiff2 = 0.;
+   if (info->software_encoding);
+      settings->bsync.frame = -1;
    gettimeofday( &(stats.prev_sync), NULL );
 
    /* The video capture loop */
    while (settings->state == LAVREC_STATE_RECORDING)
    {
       /* sync on a frame */
-retry:
-      if (!lavrec_sync_buffer(info, &bsync))
+      if (!lavrec_sync_buffer(info, &(settings->bsync)))
       {
-         if (errno==EINTR && info->software_encoding) goto retry; /* BTTV sync got interrupted */
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
@@ -1604,21 +1776,21 @@ retry:
       gettimeofday( &(stats.cur_sync), NULL );
       if(stats.num_syncs==1)
       {
-         first_time = bsync.timestamp;
-         first_lost = bsync.seq;
+         first_time = settings->bsync.timestamp;
+         first_lost = settings->bsync.seq;
          if(info->audio_size && info->sync_correction > 1)
          {
             /* Get time difference beetween audio and video in bytes */
-            audio_offset  = ((first_time.tv_usec-settings->audio_t0.tv_usec)*1.e-6 +
+            settings->audio_offset  = ((first_time.tv_usec-settings->audio_t0.tv_usec)*1.e-6 +
                first_time.tv_sec-settings->audio_t0.tv_sec - settings->spvf)*info->audio_rate;
-            audio_offset *= settings->audio_bps;   /* convert to bytes */
+            settings->audio_offset *= settings->audio_bps;   /* convert to bytes */
          }
          else
-            audio_offset = 0;
+            settings->audio_offset = 0;
       }
 
-      time = bsync.timestamp.tv_sec - first_time.tv_sec
-         + 1.e-6*(bsync.timestamp.tv_usec - first_time.tv_usec)
+      time = settings->bsync.timestamp.tv_sec - first_time.tv_sec
+         + 1.e-6*(settings->bsync.timestamp.tv_usec - first_time.tv_usec)
          + settings->spvf; /* for first frame */
 
 
@@ -1642,7 +1814,7 @@ retry:
       {
 
          nfout = 1;
-         frame_cnt = bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
+         frame_cnt = settings->bsync.seq - stats.num_syncs - first_lost + 1; /* total lost frames */
          if (info->sync_correction > 0) 
             nfout +=  frame_cnt - stats.num_lost; /* lost since last sync */
          stats.stats_changed = (stats.num_lost != frame_cnt);
@@ -1669,136 +1841,47 @@ retry:
       }
 
       /* write it out */
-      if(write_frame && nfout > 0)
+      if (info->software_encoding)
       {
-         if (info->software_encoding)
-         {
-#if 0
-            pthread_mutex_lock(&(settings->valid_mutex));
-            settings->buffer_valid[settings->mm.frame] = nfout;
-            pthread_cond_broadcast(&(settings->buffer_filled[settings->mm.frame]));
-            pthread_mutex_unlock(&(settings->valid_mutex));
-#endif
-
-            jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
-               settings->breq.size, info->quality, settings->interlaced,
-               CHROMA420, info->geometry->w, info->geometry->h,
-               settings->YUV_buff+settings->softreq.offsets[bsync.frame],
-               settings->YUV_buff+settings->softreq.offsets[bsync.frame]+(info->geometry->w*info->geometry->h),
-               settings->YUV_buff+settings->softreq.offsets[bsync.frame]+(info->geometry->w*info->geometry->h*5/4));
-            if (jpegsize<0)
-            {
-               lavrec_msg(LAVREC_MSG_ERROR, info,
-                  "Error encoding frame to JPEG");
-               lavrec_change_state(info, LAVREC_STATE_STOP);
-            }
-         }
-#if 0
-         else
-         {
-#endif
-            if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
-               info->software_encoding?jpegsize:bsync.length, nfout) != 1)
-               nerr++; /* Done or error occured */
-#if 0
-         }
-#endif
+         pthread_mutex_lock(&(settings->encoding_mutex));
+         settings->buffer_valid[settings->bsync.frame] = write_frame?nfout:0;
+         pthread_cond_broadcast(&(settings->buffer_filled[settings->bsync.frame]));
+         pthread_mutex_unlock(&(settings->encoding_mutex));
       }
-
-      /* Re-queue the buffer */
-      if (!lavrec_queue_buffer(info, &(bsync.frame)))
+      else if(write_frame && nfout > 0)
       {
-         if (info->files)
-            lavrec_close_files_on_error(info);
-         lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
-         nerr++;
-      }
+         if (video_captured(info,
+	    settings->MJPG_buff+settings->bsync.frame*settings->breq.size,
+            settings->bsync.length, nfout) != 1)
+            nerr++; /* Done or error occured */
 
-      while (info->audio_size)
-      {
-         /* Only try to read a audio sample if video is ahead - else we might
-          * get into difficulties when writing the last samples
-          */
-         if (settings->output_status < 3 && 
-            stats.num_frames * settings->spvf <
-            (stats.num_asamps + settings->audio_buffer_size /
-            settings->audio_bps) * settings->spas)
-            break;
-
-         x = audio_read(settings->AUDIO_buff, sizeof(settings->AUDIO_buff),
-            0, &audio_tmstmp, &(settings->astat));
-
-         if (x == 0) break;
-         if (x < 0)
+         /* Re-queue the buffer */
+         if (!lavrec_queue_buffer(info, &(settings->bsync.frame)))
          {
-            lavrec_msg(LAVREC_MSG_ERROR, info,
-               "Error reading audio: %s", audio_strerror());
             if (info->files)
                lavrec_close_files_on_error(info);
+            lavrec_msg(LAVREC_MSG_ERROR, info,
+               "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
             nerr++;
-            break;
          }
 
-         if (!(settings->astat))
-         {
-            stats.num_aerr++;
-            stats.stats_changed = 1;
-         }
-
-         /* Adjust for difference at start */
-         if (audio_offset >= x)
-         {
-            audio_offset -= x;
-            continue;
-         }
-         x -= audio_offset;
-
-         /* Got an audio sample, write it out */
-         if (audio_captured(info, settings->AUDIO_buff+audio_offset, x/settings->audio_bps) != 1)
-         {
+         if (!lavrec_handle_audio(info, &(settings->bsync.timestamp)))
             nerr++;
-            break; /* Done or error occured */
-         }
-         audio_offset = 0;
-
-         /* calculate time differences beetween audio and video
-          * tdiff1 is the difference according to the number of frames/samples written
-          * tdiff2 is the difference according to the timestamps
-          * (only if audio timestamp is not zero)
-          */
-         if(audio_tmstmp.tv_sec)
-         {
-            stats.tdiff1 = stats.num_frames * settings->spvf - stats.num_asamps * settings->spas;
-            stats.tdiff2 = (bsync.timestamp.tv_sec - audio_tmstmp.tv_sec)
-               + (bsync.timestamp.tv_usec - audio_tmstmp.tv_usec) * 1.e-6;
-         }
       }
-
-      /* output_statistics */
-      if (info->output_statistics) info->output_statistics(&stats);
-      stats.stats_changed = 0;
-
-      stats.prev_sync = stats.cur_sync;
 
       /* if (nerr++) we need to stop and quit */
       if (nerr) lavrec_change_state(info, LAVREC_STATE_STOP);
    }
 
-   /* stop streaming capture */
-   //if (info->software_encoding)
-   //{
-   //   x = 0;
-   //   if (ioctl(settings->video_fd,  VIDIOCCAPTURE, &x) < 0)
-   //   {
-   //      lavrec_msg(LAVREC_MSG_WARNING, info,
-   //         "Error stopping streaming capture: %s", (char *)sys_errlist[errno]);
-   //      //lavrec_change_state(info, LAVREC_STATE_STOP);
-   //   }
-   //}
-   //else
-   if (!info->software_encoding)
+   if (info->software_encoding)
    {
+      /* sync on all remaining buffers (*sigh*) */
+      for (x=0;x<settings->softreq.frames;x++)
+         ioctl(settings->video_fd, VIDIOCSYNC, &x);
+   }
+   else
+   {
+      /* cancel all queued buffers (now this is much nicer!) */
       x = -1;
       if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &x) < 0)
       {
@@ -2092,7 +2175,7 @@ int lavrec_stop(lavrec_t *info)
 
    if (settings->state == LAVREC_STATE_STOP)
    {
-      lavrec_msg(LAVREC_MSG_WARNING, info,
+      lavrec_msg(LAVREC_MSG_DEBUG, info,
          "We weren't even initialized!");
       return 0;
    }
@@ -2100,6 +2183,8 @@ int lavrec_stop(lavrec_t *info)
    lavrec_change_state(info, LAVREC_STATE_STOP);
 
    //pthread_cancel( settings->capture_thread );
+   pthread_join( settings->encoding_thread, NULL );
+   pthread_join( settings->software_sync_thread, NULL );
    pthread_join( settings->capture_thread, NULL );
 
    return 1;
