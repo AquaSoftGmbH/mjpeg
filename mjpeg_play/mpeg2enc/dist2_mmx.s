@@ -449,3 +449,152 @@ d2exit:
 
 	emms			; clear mmx registers
 	ret	
+
+
+; total squared difference between two (8*h) blocks
+; blk1,blk2: addresses of top left pels of both blocks
+; lx:        distance (in bytes) of vertically adjacent pels
+; h:         height of block (usually 4, or 8)
+; mmX version
+
+global dist2_22_mmx
+; int dist2_22_mmx(unsigned char *blk1, unsigned char *blk2,
+;                 int lx, int h)
+
+; mm7 = 0
+
+; eax = pblk1 
+; ebx = pblk2
+; ecx = temp
+; edx = distance_sum
+; edi = h
+; esi = lx
+
+align 32
+dist2_22_mmx:
+	push ebp			; save frame pointer
+	mov ebp, esp		; link
+	push ebx
+	push ecx
+	push edx
+	push esi     
+	push edi
+
+	mov		esi, [ebp+16] ; lx
+	mov     edi, [ebp+20] ; h
+
+    pxor      mm5, mm5      ; sum
+	test      edi, edi     ; h = 0?
+	jle       near d2exit
+
+	pxor	  mm7, mm7     ; get zeros i mm7
+
+	mov       eax, [ebp+8]		; blk1
+    mov       ebx, [ebp+12]		; blk2
+	jmp 	 d2top22
+
+align 32
+d2top22:
+        movq      mm0, [eax]
+        movq      mm1, mm0
+        punpcklbw mm0, mm7
+        punpckhbw mm1, mm7
+
+        movq      mm2, [ebx]
+        movq      mm3, mm2
+        punpcklbw mm2, mm7
+        punpckhbw mm3, mm7
+
+        psubw     mm0, mm2
+        psubw     mm1, mm3
+        pmaddwd   mm0, mm0
+        pmaddwd   mm1, mm1
+        paddd     mm5, mm0
+		paddd    mm5, mm1
+
+			add       eax, esi
+	add       ebx, esi
+	dec       edi
+	jg        d2top22
+	jmp       d2exit
+
+
+; total squared difference between interpolation of two (8*h) blocks and
+; another 8*h block		
+; blk1,blk2: addresses of top left pels of both blocks
+; lx:        distance (in bytes) of vertically adjacent pels
+; h:         height of block (usually 4, or 8)
+; mmX version
+		
+global bdist2_22_mmx
+; int bdist2_22_mmx(unsigned char *blk1f, unsigned char*blk1b,
+;				   unsigned char *blk2,
+;                 int lx, int h)
+
+; mm7 = 0
+
+; eax = pblk1f 
+; ebx = pblk2
+; ecx = pblk1b
+; edx = distance_sum
+; edi = h
+; esi = lx
+
+align 32
+bdist2_22_mmx:
+	push ebp			; save frame pointer
+	mov ebp, esp		; link
+	push ebx
+	push ecx
+	push edx
+	push esi     
+	push edi
+
+	mov		esi, [ebp+20] ; lx
+	mov     edi, [ebp+24] ; h
+
+    pxor      mm5, mm5      ; sum
+	test      edi, edi     ; h = 0?
+	jle       near d2exit
+
+	pxor	  mm7, mm7     ; get zeros i mm7
+
+	mov       eax, [ebp+8]		; blk1
+    mov       ebx, [ebp+12]		; blk2
+    mov       ecx, [ebp+12]		; blk2		
+	jmp 	 bd2top22
+
+align 32
+bd2top22:
+        movq      mm0, [eax]
+        movq      mm1, mm0
+		movq      mm4, [ecx]
+		movq      mm6, mm4
+        punpcklbw mm0, mm7
+        punpckhbw mm1, mm7
+		punpcklbw mm4, mm7
+		punpckhbw mm6, mm7
+
+        movq      mm2, [ebx]
+        movq      mm3, mm2
+        punpcklbw mm2, mm7
+        punpckhbw mm3, mm7
+
+		paddw	  mm0, mm4
+		psrlw     mm0, 1
+        psubw     mm0, mm2
+        pmaddwd   mm0, mm0
+		paddw     mm1, mm6
+		psrlw	  mm1, 1
+        psubw     mm1, mm3
+        pmaddwd   mm1, mm1
+        paddd     mm5, mm0
+		paddd    mm5, mm1
+
+			add       eax, esi
+	add       ebx, esi
+	add		  ecx, esi
+	dec       edi
+	jg        bd2top22
+	jmp       d2exit
+				

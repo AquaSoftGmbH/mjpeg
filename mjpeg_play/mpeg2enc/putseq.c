@@ -225,12 +225,12 @@ void putseq()
 			exit(1);
 		}
 
-		mc_data.oldorg = oldorgframe[0];
-		mc_data.neworg = neworgframe[0];
-		mc_data.oldref = oldrefframe[0];
-		mc_data.newref = newrefframe[0];
-		mc_data.cur    = curorg[0];
-		mc_data.curref = curref[0];
+		mc_data.oldorg = oldorgframe;
+		mc_data.neworg = neworgframe;
+		mc_data.oldref = oldrefframe;
+		mc_data.newref = newrefframe;
+		mc_data.cur    = curorg;
+		mc_data.curref = curref;
 		mc_data.sxf = sxf;
 		mc_data.syf = syf;
 		mc_data.sxb = sxb;

@@ -983,6 +983,8 @@ nextrow:
 	ret			; we now return you to your regular programming
 
 
+
+
 global dist44_mmx
 
 ; int dist44_mmx(unsigned char *blk1,unsigned char *blk2,int qlx,int qh);

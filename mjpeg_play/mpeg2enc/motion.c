@@ -70,6 +70,8 @@ struct mb_motion
 	uint8_t *blk ;		// Source block data (in luminace data array)
 	int hx, hy;			// Half-pel offsets
 	int fieldsel;		// 0 = top 1 = bottom
+	int fieldoff;       // Offset from start of frame data to first line
+						// of field.	(top = 0, bottom = width );
 };
 
 typedef struct mb_motion mb_motion_s;
@@ -79,6 +81,8 @@ struct subsampled_mb
 	uint8_t *mb;		// One pel
 	uint8_t *fmb;		// Two-pel subsampled
 	uint8_t *qmb;		// Four-pel subsampled
+	uint8_t *umb; 		// U compoenent one-pel
+	uint8_t *vmb;       // V component  one-pel
 };
 
 typedef struct subsampled_mb subsampled_mb_s;
@@ -189,7 +193,7 @@ static int bidir_pred_sad( const mb_motion_s *motion_f,
 						   const mb_motion_s *motion_b, 
 						   uint8_t *mb,  int lx, int h);
 
-static int variance(  uint8_t *mb, int lx);
+static int variance(  uint8_t *mb, int size, int lx);
 
 static int dist22 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
@@ -416,6 +420,25 @@ static void init_mc( mb_motion_s *motion )
 	motion->pos.y = -1000;
 }
 */
+
+/*
+  Compute the variance of chrominance information for a particular
+  motion compensation...
+  Note: results scaled to give chrominance equal weight to chrominance.
+  TODO: BUG: ONLY works for 420 video...
+ */
+static int chrom_var_sum( mb_motion_s *lum_mc, 
+						  uint8_t *uref, uint8_t *vref, 
+						  subsampled_mb_s *ssblk,
+						  int fieldoff,
+						  int uvlx, int h )
+{
+	int cblkoffset = fieldoff + (lum_mc->pos.x>>1) + (lum_mc->pos.y>>1)*uvlx;
+	
+	return (dist2_22_mmx( uref + cblkoffset, ssblk->umb, uvlx, h ) +
+			dist2_22_mmx( vref + cblkoffset, ssblk->vmb, uvlx, h )) * 2;
+}
+
 static void frame_ME(pict_data_s *picture,
 					 motion_comp_s *mc,
 					 int mb_row_start,
@@ -441,10 +464,22 @@ static void frame_ME(pict_data_s *picture,
 	/* A.Stevens fast motion estimation data is appended to actual
 	   luminance information 
 	*/
-	ssmb.mb = mc->cur + mb_row_start + i;
-	ssmb.fmb = (uint8_t*)(mc->cur + fsubsample_offset + (i>>1) + (mb_row_start>>2));
-	ssmb.qmb = (uint8_t*)(mc->cur + qsubsample_offset + (i>>2) + (mb_row_start>>4));
-	var = variance(ssmb.mb,width);
+	ssmb.mb = mc->cur[0] + mb_row_start + i;
+	ssmb.umb = (uint8_t*)(mc->cur[1] + (i>>1) + (mb_row_start>>2));
+	ssmb.vmb = (uint8_t*)(mc->cur[2] + (i>>1) + (mb_row_start>>2));
+	ssmb.fmb = (uint8_t*)(mc->cur[0] + fsubsample_offset + 
+						  ((i>>1) + (mb_row_start>>2)));
+	ssmb.qmb = (uint8_t*)(mc->cur[0] + qsubsample_offset + 
+						  (i>>2) + (mb_row_start>>4));
+
+	/* Compute variance MB as a measure of Intra-coding complexity
+	   We include chrominance information here, scaled to compensate
+	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
+	   quantisations...
+	 */
+	var = variance(ssmb.mb,16,width) +
+		( variance(ssmb.umb,8,(width>>1)) + variance(ssmb.vmb,8,(width>>1)))*2;
+
 
 	if (picture->pict_type==I_TYPE)
 	{
@@ -454,7 +489,7 @@ static void frame_ME(pict_data_s *picture,
 	{
 		if (picture->frame_pred_dct)
 		{
-			fullsearch(mc->oldorg,mc->oldref,&ssmb,
+			fullsearch(mc->oldorg[0],mc->oldref[0],&ssmb,
 					   width,i,j,mc->sxf,mc->syf,16,width,height,
 					    &framef_mc);
 			vmc = framef_mc.var;
@@ -462,7 +497,7 @@ static void frame_ME(pict_data_s *picture,
 		}
 		else
 		{
-			frame_estimate(mc->oldorg,mc->oldref,&ssmb,
+			frame_estimate(mc->oldorg[0],mc->oldref[0],&ssmb,
 						   i,j,mc->sxf,mc->syf,
 						   &framef_mc,
 						   &topfldf_mc,
@@ -473,7 +508,7 @@ static void frame_ME(pict_data_s *picture,
 			/* DEBUG DP currently disabled... */
 			if ( M==1)
 			{
-				dpframe_estimate(picture,mc->oldref,&ssmb,
+				dpframe_estimate(picture,mc->oldref[0],&ssmb,
 								 i,j>>1,imins,jmins,
 								 &dualpf_mc,
 								 &imindmv,&jmindmv, &vmc_dp);
@@ -484,17 +519,25 @@ static void frame_ME(pict_data_s *picture,
 			if ( M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				mbi->motion_type = MC_DMV;
-				vmc = vmc_dp;
+				/* No chrominance squared difference  measure yet.
+				   Assume identical to luminance */
+				vmc = vmc_dp * vmc_dp;
 			}
 			else if ( vmcf < vmcfieldf)
 			{
 				mbi->motion_type = MC_FRAME;
-				vmc = vmcf;
+				vmc = vmcf + 
+					chrom_var_sum( &framef_mc, mc->oldref[1],mc->oldref[2],
+								   &ssmb, 0, width>>1, 8 );
 			}
 			else
 			{
 				mbi->motion_type = MC_FIELD;
-				vmc = vmcfieldf;
+				vmc = vmcfieldf + 
+					chrom_var_sum( &topfldf_mc, mc->oldref[1], mc->oldref[2],
+								   &ssmb,(topfldf_mc.fieldoff>>1), width>>1, 4 ) +
+					chrom_var_sum( &botfldf_mc, mc->oldref[1], mc->oldref[2],
+								   &ssmb,(botfldf_mc.fieldoff>>1), width>>1, 4 );
 			}
 		}
 
@@ -515,7 +558,7 @@ static void frame_ME(pict_data_s *picture,
 		 */
 
 
-		if (vmc>var && vmc>=(3*3)*16*16 )
+		if (vmc>var /*&& vmc>=(3*3)*16*16*2*/ )
 		{
 			mbi->mb_type = MB_INTRA;
 			mbi->var = var;
@@ -531,7 +574,7 @@ static void frame_ME(pict_data_s *picture,
 			 * blocks with small prediction error are always coded as No-MC
 			 * (requires no motion vectors, allows skipping)
 			 */
-			v0 = (*pdist2)(mc->oldref+i+width*j,ssmb.mb,width,0,0,16);
+			v0 = (*pdist2)(mc->oldref[0]+i+width*j,ssmb.mb,width,0,0,16);
 
 			if (4*v0>5*vmc )
 			{
@@ -582,7 +625,7 @@ static void frame_ME(pict_data_s *picture,
 		if (picture->frame_pred_dct)
 		{
 			/* forward */
-			fullsearch(mc->oldorg,mc->oldref,&ssmb,
+			fullsearch(mc->oldorg[0],mc->oldref[0],&ssmb,
 					   width,i,j,mc->sxf,mc->syf,
 					   16,width,height,
 					   &framef_mc
@@ -590,7 +633,7 @@ static void frame_ME(pict_data_s *picture,
 			vmcf = framef_mc.var;
 
 			/* backward */
-			fullsearch(mc->neworg,mc->newref,&ssmb,
+			fullsearch(mc->neworg[0],mc->newref[0],&ssmb,
 					   width,i,j,mc->sxb,mc->syb,
 					   16,width,height,
 					   &frameb_mc);
@@ -627,7 +670,7 @@ static void frame_ME(pict_data_s *picture,
 		{
 
 			/* forward prediction */
-			frame_estimate(mc->oldorg,mc->oldref,&ssmb,
+			frame_estimate(mc->oldorg[0],mc->oldref[0],&ssmb,
 						   i,j,mc->sxf,mc->syf,
 						   &framef_mc,
 						   &topfldf_mc,
@@ -636,7 +679,7 @@ static void frame_ME(pict_data_s *picture,
 
 
 			/* backward prediction */
-			frame_estimate(mc->neworg,mc->newref,&ssmb,
+			frame_estimate(mc->neworg[0],mc->newref[0],&ssmb,
 						   i,j,mc->sxb,mc->syb,
 						   &frameb_mc,
 						   &topfldb_mc,
@@ -795,38 +838,39 @@ static void field_ME(
 	mb_motion_s field8uf_mc, field8lf_mc;
 	mb_motion_s field8ub_mc, field8lb_mc;
 	int var,vmc,v0,dmc,dmcfieldi,dmcfield,dmcfieldf,dmcfieldr,dmc8i;
-	/* int imin,jmin,imin8u,jmin8u,imin8l,jmin8l,sel,sel8u,sel8l;
-	int iminf,jminf,imin8uf,jmin8uf,imin8lf,jmin8lf,dmc8f,self,sel8uf,sel8lf;
-	int iminr,jminr,imin8ur,jmin8ur,imin8lr,jmin8lr,dmc8rdmc8r,selr,sel8ur,sel8lr; */
 	int imins,jmins;
 	int dmc8f,dmc8r;
-	/* int imindmv,jmindmv;*/
 	int vmc_dp,dmc_dp;
 
 	w2 = width<<1;
 
 	/* Fast motion data sits at the end of the luminance buffer */
-	ssmb.mb = mc->cur + i + w2*j;
-	ssmb.fmb = ((uint8_t*)(mc->cur + fsubsample_offset))+(i>>1)+(w2>>1)*(j>>1);
-	ssmb.qmb = ((uint8_t*)(mc->cur + qsubsample_offset))+ (i>>2)+(w2>>2)*(j>>2);
+	ssmb.mb = mc->cur[0] + i + w2*j;
+	ssmb.umb = mc->cur[1] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.vmb = mc->cur[2] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.fmb = mc->cur[0] + fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
+	ssmb.qmb = mc->cur[0] + qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
+
 	if (picture->pict_struct==BOTTOM_FIELD)
 	{
 		ssmb.mb += width;
+		ssmb.umb += (width >> 1);
+		ssmb.vmb += (width >> 1);
 		ssmb.fmb += (width >> 1);
 		ssmb.qmb += (width >> 2);
 	}
 
-
-	var = variance(ssmb.mb,w2);
+	var = variance(ssmb.mb,16,w2) + 
+		( variance(ssmb.umb,8,(width>>1)) + variance(ssmb.vmb,8,(width>>1)))*2;
 
 	if (picture->pict_type==I_TYPE)
 		mbi->mb_type = MB_INTRA;
 	else if (picture->pict_type==P_TYPE)
 	{
-		toporg = mc->oldorg;
-		topref = mc->oldref;
-		botorg = mc->oldorg + width;
-		botref = mc->oldref + width;
+		toporg = mc->oldorg[0];
+		topref = mc->oldref[0];
+		botorg = mc->oldorg[0] + width;
+		botref = mc->oldref[0] + width;
 
 		if (secondfield)
 		{
@@ -834,14 +878,14 @@ static void field_ME(
 			if (picture->pict_struct==TOP_FIELD)
 			{
 				/* current is top field */
-				botorg = mc->cur + width;
-				botref = mc->curref + width;
+				botorg = mc->cur[0] + width;
+				botref = mc->curref[0] + width;
 			}
 			else
 			{
 				/* current is bottom field */
-				toporg = mc->cur;
-				topref = mc->curref;
+				toporg = mc->cur[0];
+				topref = mc->curref[0];
 			}
 		}
 
@@ -889,7 +933,7 @@ static void field_ME(
 		}
 
 		/* select between intra and non-intra coding */
-		/* DEBUG */
+
 		if ( vmc>var && vmc>=9*256)
 			mbi->mb_type = MB_INTRA;
 		else
@@ -946,8 +990,8 @@ static void field_ME(
 	{
 		/* forward prediction */
 		field_estimate(picture,
-					   mc->oldorg,mc->oldref,
-					   mc->oldorg+width,mc->oldref+width,&ssmb,
+					   mc->oldorg[0],mc->oldref[0],
+					   mc->oldorg[0]+width,mc->oldref[0]+width,&ssmb,
 					   i,j,mc->sxf,mc->syf,0,
 					   &fieldf_mc,
 					   &field8uf_mc,
@@ -958,7 +1002,7 @@ static void field_ME(
 
 		/* backward prediction */
 		field_estimate(picture,
-					   mc->neworg,mc->newref,mc->neworg+width,mc->newref+width,
+					   mc->neworg[0],mc->newref[0],mc->neworg[0]+width,mc->newref[0]+width,
 					   &ssmb,
 					   i,j,mc->sxb,mc->syb,0,
 					   &fieldb_mc,
@@ -1103,7 +1147,9 @@ static void frame_estimate(
 	botssmb.mb = ssmb->mb+width;
 	botssmb.fmb = ssmb->mb+(width>>1);
 	botssmb.qmb = ssmb->qmb+(width>>2);
-	
+	botssmb.umb = ssmb->umb+(width>>1);
+	botssmb.vmb = ssmb->vmb+(width>>1);
+
 	/* frame prediction */
 	fullsearch(org,ref,ssmb,width,i,j,sx,sy,16,width,height,
 						  bestfr );
@@ -1119,6 +1165,8 @@ static void frame_estimate(
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
+	topfld_mc.fieldoff = 0;
+	botfld_mc.fieldoff = width;
 
 	imins[0][0] = topfld_mc.pos.x;
 	jmins[0][0] = topfld_mc.pos.y;
@@ -1148,6 +1196,8 @@ static void frame_estimate(
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
+	topfld_mc.fieldoff = 0;
+	botfld_mc.fieldoff = width;
 
 	imins[0][1] = topfld_mc.pos.x;
 	jmins[0][1] = topfld_mc.pos.y;
@@ -1205,6 +1255,8 @@ static void field_estimate (
 	subsampled_mb_s botssmb;
 
 	botssmb.mb = ssmb->mb+width;
+	botssmb.umb = ssmb->umb+(width>>1);
+	botssmb.vmb = ssmb->vmb+(width>>1);
 	botssmb.fmb = ssmb->fmb+(width>>1);
 	botssmb.qmb = ssmb->qmb+(width>>2);
 
@@ -1233,6 +1285,8 @@ static void field_estimate (
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
+	topfld_mc.fieldoff = 0;
+	botfld_mc.fieldoff = width;
 
 	/* same parity prediction (only valid if ipflag==0) */
 	if (picture->pict_struct==TOP_FIELD)
@@ -1277,6 +1331,8 @@ static void field_estimate (
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
+	topfld_mc.fieldoff = 0;
+	botfld_mc.fieldoff = width;
 
 	/* select prediction for upper half field */
 	if (dt<=db)
@@ -1318,6 +1374,8 @@ static void field_estimate (
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
+	topfld_mc.fieldoff = 0;
+	botfld_mc.fieldoff = width;
 
 	/* select prediction for lower half field */
 	if (dt<=db)
@@ -2778,30 +2836,28 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 
 
 /*
- * variance of a (16*16) block, multiplied by 256
+ * variance of a (size*size) block, multiplied by 256
  * p:  address of top left pel of block
  * lx: distance (in bytes) of vertically adjacent pels
  */
-static int variance(p,lx)
-	uint8_t *p;
-	int lx;
+static int variance(uint8_t *p, int size,	int lx)
 {
 	int i,j;
 	unsigned int v,s,s2;
 
 	s = s2 = 0;
 
-	for (j=0; j<16; j++)
+	for (j=0; j<size; j++)
 	{
-		for (i=0; i<16; i++)
+		for (i=0; i<size; i++)
 		{
 			v = *p++;
 			s+= v;
 			s2+= v*v;
 		}
-		p+= lx-16;
+		p+= lx-size;
 	}
-	return s2 - (s*s)/256;
+	return s2 - (s*s)/(size*size);
 }
 
 /*

@@ -136,6 +136,8 @@ static double AQ = 0.0;
    actual stream...
 */
 
+#ifdef REDUNDANT_BUT_MAY_COME_ION_HANDY
+
 static double scale_quantf( pict_data_s *picture, double quant )
 {
 	double quantf;
@@ -173,6 +175,8 @@ static double scale_quantf( pict_data_s *picture, double quant )
 	}
 	return quantf;
 }
+
+#endif
 
 static int scale_quant( pict_data_s *picture, double quant )
 {

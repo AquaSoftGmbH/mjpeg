@@ -1,5 +1,5 @@
 ;
-;  bdist2_mmx.s:  mmX optimized bidirectional squared distance sum
+;  bdist2_mmx.s:  MMX optimized bidirectional squared distance sum
 ;
 ;  Original believed to be Copyright (C) 2000 Brent Byeler
 ;

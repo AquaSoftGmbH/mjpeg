@@ -111,9 +111,9 @@ typedef enum field { top, bot }  field_e;
 
 struct motion_comp
 {
-	unsigned char *oldorg, *neworg;
-	unsigned char *oldref, *newref;
-	unsigned char *cur, *curref;
+	uint8_t **oldorg, **neworg;
+	uint8_t **oldref, **newref;
+	uint8_t **cur, **curref;
 	int sxf, syf, sxb, syb;
 };
 

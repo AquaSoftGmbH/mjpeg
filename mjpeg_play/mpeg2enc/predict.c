@@ -134,11 +134,6 @@ void predict(pict_data_s *picture,
 		{
 			predict_mb(picture,reff,refb,cur,width,i,j,
 					   &mbi[k], secondfield );
-			/*
-					   mbi[k].mb_type,mbi[k].motion_type,secondfield,
-					   mbi[k].MV,mbi[k].mv_field_sel,mbi[k].dmvector);
-			*/
-
 			k++;
 		}
 }
