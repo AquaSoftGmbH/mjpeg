@@ -29,7 +29,7 @@
 #include "interact.hh"
 #include "multiplexor.hh"
 
-
+#define DEBUG_AC3_HEADERS
 
 #define AC3_SYNCWORD            0x0b77
 #define AC3_PACKET_SAMPLES      1536
@@ -80,6 +80,129 @@ bool AC3Stream::Probe(IBitStream &bs )
  *************************************************************************/
 
 
+void  AC3Stream::DisplayAc3HeaderInfo()
+{
+        /* Some stuff to generate frame-header information */
+        printf( "AC3 FRAME %d\n", num_syncword-1 );
+        printf( "bsid         = %d\n", bs.GetBits(5) );
+        printf( "bsmode       = 0x%1x\n", bs.GetBits(3) ); 
+        int acmode = bs.GetBits(3);
+        int nfchans;
+        switch( acmode )
+        {
+        case 0x0 :
+            nfchans = 2; break;
+        case 0x1 :
+            nfchans = 1; break;
+        case 0x2 :
+            nfchans = 2; break;
+        case 0x3 :
+        case 0x4 :
+            nfchans = 3; break;
+        case 0x5 :
+        case 0x6 :
+            nfchans = 4; break;
+        case 0x7 :
+            nfchans = 5; break;
+        }
+        printf( "acmode       = 0x%1x (%d channels)\n", acmode, nfchans ); 
+        if( (acmode & 0x1) && (acmode != 1 ) )
+            printf( "cmixlev  = %d\n", bs.GetBits(2) ); 
+        if( (acmode & 0x4) )
+            printf( "smixlev  = %d\n", bs.GetBits(2) ); 
+        if( acmode == 2 ) 
+            printf( "dsurr    = %d\n", bs.GetBits(2) ); 
+        printf( "lfeon        = %d\n", bs.GetBits(1) ); 
+        printf( "dialnorm     = %02d\n", bs.GetBits(5) ); 
+        int compre = bs.GetBits(1);
+        printf( "compre       = %d\n", compre ); 
+        if( compre )
+            printf( "compr    = %02d\n", bs.GetBits(8) ); 
+        int langcode = bs.GetBits(1);
+        printf( "langcode     = %d\n", langcode ); 
+        if( langcode )
+            printf( "langcod  = 0x%02x\n", bs.GetBits(8) ); 
+        int audprodie =  bs.GetBits(1);
+        printf( "audprodie    = %d\n", audprodie );
+        if( audprodie )
+        {
+            printf( "mixlevel = 0x%02x\n", bs.GetBits(5) );
+            printf( "roomtyp  = 0x%02x\n", bs.GetBits(2) );
+        }
+        if( acmode == 0 )
+        {
+            printf( "Skipping 1+1 mode parameters\n" );
+            bs.GetBits(5+1+8+1+8);
+            if( bs.GetBits(1) )
+                bs.GetBits(7);
+        }
+        printf( "Copyright  = %d\n", bs.GetBits(1) ); 
+        printf( "Original   = %d\n", bs.GetBits(1) ); 
+        int timecod1e = bs.GetBits(1);
+        if( timecod1e )
+        {
+            printf( "timecod1 = 0x%03x\n", bs.GetBits(14) );
+        }
+        int timecod2e = bs.GetBits(1);
+        if( timecod2e )
+        {
+            printf( "timecod2 = 0x%03x\n", bs.GetBits(14) );
+        }
+        int addbsie = bs.GetBits(1);
+        if( addbsie )
+        {
+            printf( "addbsil  = %02x\n", bs.GetBits(6) );
+        }
+        
+
+        // FROM This point on we're actually right into the actual audio block
+        printf( "Audio block header...\n" );
+        printf( "blksw  [ch] = %02x\n", bs.GetBits(nfchans) );
+        printf( "dithflg[ch] = %02x\n", bs.GetBits(nfchans) );
+        int dynrnge = bs.GetBits(1);
+        printf( "Dynrange    = %d\n", bs.GetBits(1) ); 
+        if( dynrnge )
+        {
+            printf( "dynrng    = %02x\n", bs.GetBits(8) );
+        }
+        if( acmode == 0 && bs.GetBits(1) )
+        {
+            printf( "dynrng2   = %02x\n", bs.GetBits(8) );
+        }
+        int cplstre = bs.GetBits(1);
+        printf( "cplstre     = %d\n", cplstre ); 
+        int cplinu = 0;
+        if( cplstre )
+        {
+            cplinu = bs.GetBits(1);
+            printf( "cplinu    = %d\n", cplinu );
+            if( cplinu )
+            {
+                printf( "Skipping cplinu=1 info...\n");
+                bs.GetBits(nfchans);
+                if( acmode == 2 )
+                    bs.GetBits(1);
+                int cplbegf = bs.GetBits(4);
+                int cplendf = bs.GetBits(4);
+                bs.GetBits(3+cplbegf-cplendf);
+            }
+        }
+        if( cplinu )
+        {
+            printf( "Warning: no parser for coupling co-ordinates mess\n");
+            return;
+        }
+
+        if( acmode == 2 )
+        {
+            int rmatstr = bs.GetBits(1);
+            printf( "rmatstr = %d\n", rmatstr );
+            printf( "Warning: no parser for rematrixing...\n" );
+        }
+        
+
+}
+
 void AC3Stream::Init ( const int _stream_num)
 
 {
@@ -112,6 +235,15 @@ void AC3Stream::Init ( const int _stream_num)
             (framesize + 1) << 1:
             (framesize <<1);
             
+#ifdef DEBUG_AC3_HEADERS
+
+        DisplayAc3HeaderInfo();
+        while( bs.bitcount() % 8 != 0 )
+            bs.GetBits(1);
+        header_skip = (bs.bitcount()-AU_start)/8;
+#else
+        header_skip = 5;        // Initially skipped past  5 bytes of header 
+#endif
 
 		size_frames[0] = framesize;
 		size_frames[1] = framesize;
@@ -158,7 +290,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 				 frames_to_buffer, last_buffered_AU );
 
     IBitStream undo;
-    static int header_skip = 5;        // Initially skipped past  5 bytes of header 
     int skip;
     bool cleanexit = false;
 	while( !bs.eos() 
@@ -213,30 +344,9 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		
 		num_syncword++;
 
-
 #ifdef DEBUG_AC3_HEADERS
-        /* Some stuff to generate frame-header information */
-        printf( "bsid       = %d\n", bs.GetBits(5) );
-        printf( "bsmode     = 0x%1x\n", bs.GetBits(3) ); 
-        int acmode = bs.GetBits(3);
-        printf( "acmode     = 0x%1x\n", acmode ); 
-        if( (acmode & 0x1) && (acmode != 1 ) )
-            printf( "cmixlev   = %d\n", bs.GetBits(2) ); 
-        if( (acmode & 0x4) )
-            printf( "smixlev   = %d\n", bs.GetBits(2) ); 
-        if( acmode == 2 ) 
-            printf( "dsurr     = %d\n", bs.GetBits(2) ); 
-        printf( "lfeon      = %d\n", bs.GetBits(1) ); 
-        printf( "dialnorm   = %02d\n", bs.GetBits(5) ); 
-        int compre = bs.GetBits(1);
-        printf( "compre     = %d\n", compre ); 
-        if( compre )
-            printf( "compr    = %02d\n", bs.GetBits(8) ); 
-        int langcode = bs.GetBits(1);
-        printf( "langcode     = %d\n", langcode ); 
-        if( langcode )
-            printf( "langcod  = 0x%02x\n", bs.GetBits(8) ); 
-        
+
+        DisplayAc3HeaderInfo();
         while( bs.bitcount() % 8 != 0 )
             bs.GetBits(1);
         header_skip = (bs.bitcount()-AU_start)/8;
@@ -246,8 +356,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 			mjpeg_debug ("Got %d frame headers.", num_syncword);
 			old_frames=num_syncword;
 		}
-
-
+        
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);

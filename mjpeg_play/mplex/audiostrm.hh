@@ -102,6 +102,7 @@ public:
 
 private:
 	void OutputHdrInfo();
+    void DisplayAc3HeaderInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
     
     static const unsigned int default_buffer_size = 16*1024;
@@ -110,6 +111,7 @@ private:
     unsigned int samples_per_second;
     unsigned int bit_rate;
     unsigned int stream_num;
+    unsigned int header_skip;
 }; 	
 
 class LPCMStream : public AudioStream

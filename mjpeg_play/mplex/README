@@ -6,7 +6,7 @@
 * Reengineered version in C++
 *  Copyright (C) 2000,2001, 2002 Andrew Stevens
 *
-*  as@comlab.ox.ac.uk
+*  Andrew.stevens@philips.com
 		(Andrew Stevens)
 *  This program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
@@ -46,11 +46,12 @@ Novermber 2000 Andrew Stevens
 	Support for splitting output streams (not yet completely implemented)
 	Support for multiplexing for VCD.
 
-Jan 2001-
+Jan 2001-Dec 2002
 	
 	Reengineered in C++
 	Support for SVCD.
-	Support for basic DVD
+	Support for basic DVD (dummy navigation sectors)
+	Support for AC3 and LPCM audio
 	VBR Audio as well as video.
 	Clean stream splitting support.
 	Class structure to simplify adding new stream types

@@ -1,5 +1,7 @@
 TODO
 
+- Support for muxing subtitles...
+
 - Figure out why dvdauthor barfs on mplex' output but not the hacked bbmplex in
 	transcode...
 
@@ -15,29 +17,28 @@ TODO
 - Complete tidying up the systems.cc structure.   Non-duplication of the
 	header generation stuff would be neat if it can be managed...
 
-- Add checking for changed sequence parameters in mid-sequence sequence headers.
-
+- Add checking for changed sequence parameters in mid-sequence
+	sequence headers.
 
 - Currently the VCD HR Stills muxing stuff assumes *all* HR stills
   are the same size which is given in the initial vbv_buffer_size...
-	This will work with mpeg2enc (which does this) but will fail fail fail
-	with other streams.
+  This will work with mpeg2enc (which does this) but will fail fail fail
+  with other streams.
 
 - Rebuild initial delay / sequence splitting DTS adjustment stuff so
-	different streams can have different starting delays based on
-	*stream* parameters.  I.e. delay should be delegated to the elementary
-	streams with only a sector_prefix offset set centrally.
+  different streams can have different starting delays based on
+  *stream* parameters.  I.e. delay should be delegated to the elementary
+  streams with only a sector_prefix offset set centrally.
 
 - Tidy code so Elementary streams handle their mux parameter initialisation
 	from cmd-line parameters *not* the output stream.
 
 
-
-
 Eventually:
 
-- Full SVCD (MPEG audio extension) support.
+- Multi-channel SVCD (MPEG audio extension) support. N.b. multi-track
+  two-channel audio already works.
 
-- DVD muxing and generation of info for .IFO's etc.
+- DVD muxing and generation of info to help authoring tools produce .IFO's etc.
 
 

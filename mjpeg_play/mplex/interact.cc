@@ -71,7 +71,7 @@ MultiplexJob::MultiplexJob()
 void MultiplexJob::Usage(char *str)
 {
     fprintf( stderr,
-	"mjpegtools mplex version " VERSION "\n"
+	"mjpegtools mplex-2 version " VERSION "\n"
 	"Usage: %s [params] -o <output filename pattern> <input file>... \n"
 	"         %%d in the output file name is by segment count\n"
 	"  where possible params are:\n"
