@@ -200,8 +200,8 @@ void MultiplexJob::SetupInputStreams( std::vector< IBitStream *> &inputs )
         }
 #endif
         bad_file = true;
-        delete bs;
         mjpeg_error ("File %s unrecogniseable!", bs->StreamName());
+        delete bs;
     }
     
     if( bad_file )
