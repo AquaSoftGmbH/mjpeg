@@ -271,6 +271,8 @@ void OutputStream::InitSyntaxParameters()
         timestamp_iframe_only = true;
         video_buffers_iframe_only = true;
 		vbr = true;
+        opt_max_segment_size = 2000*1024*1024;
+        opt_multifile_segment = true;
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */

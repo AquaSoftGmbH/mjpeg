@@ -139,7 +139,7 @@ void VideoStream::SetMaxStdBufferDelay( unsigned int dmux_rate )
 bool VideoStream::AUBufferNeedsRefill()
 {
     return 
-        !bs.eos() 
+        !eoscan
         && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
              ||
              bs.buffered_bytes() < muxinto.sector_size 
