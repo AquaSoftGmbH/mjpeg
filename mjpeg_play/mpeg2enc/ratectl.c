@@ -358,8 +358,11 @@ void rc_init_GOP( int np, int nb)
 	gop_buffer_correction = 0;
 	T_sum = 0.0;
 
+	/* Each still is encoded independently so we reset rate control
+	   for each one.  They're all I-frames so each stills is a GOP too.
+	*/
 
-	if( first_gop )
+	if( first_gop || opt_still_size > 0)
 	{
 		fast_tune = true;
 		first_I = first_B = first_P = true;

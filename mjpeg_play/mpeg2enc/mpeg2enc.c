@@ -107,7 +107,7 @@ static int param_32_pulldown = 0;
 static int param_svcd_scan_data = 0;
 static int param_seq_hdr_every_gop = 0;
 static int param_seq_end_every_gop = 0;
-static int param_still_size = 40*1024;
+static int param_still_size = 0;
 static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
 static int param_force_interlacing = Y4M_UNKNOWN;
@@ -272,6 +272,8 @@ static void set_format_presets()
 			(opt_vertical_size == 240 || opt_vertical_size == 288 ) )
 		{
 			/* VCD normal resolution still */
+			if( param_still_size == 0 )
+				param_still_size = 30*1024;
 			if( param_still_size < 20*1024 || param_still_size > 42*1024 )
 			{
 				mjpeg_error_exit1( "VCD normal-resolution stills must be >= 20KB and <= 42KB each\n");
@@ -287,6 +289,12 @@ static void set_format_presets()
 			/* VCD high-resolution stills: only these use vbv_delay
 			 to encode picture size...
 			*/
+			if( param_still_size == 0 )
+				param_still_size = 125*1024;
+			if( param_still_size < 46*1024 || param_still_size > 220*1024 )
+			{
+				mjpeg_error_exit1( "VCD normal-resolution stills should be >= 46KB and <= 220KB each\n");
+			}
 			param_vbv_buffer_still_size = param_still_size;
 			param_video_buffer_size = 224;
 			param_pad_stills_to_vbv_buffer_size = 1;			

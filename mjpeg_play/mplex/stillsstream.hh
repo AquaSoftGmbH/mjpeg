@@ -79,7 +79,8 @@ public:
 	VCDStillsStream( IBitStream &ibs,  
                      OutputStream &into, FrameIntervals *frame_ints) :
 		StillsStream( ibs, into, frame_ints ),
-		sibling( 0 )
+		sibling( 0 ),
+        stream_mismatch_warned( false )
 		{}
 	
 	void SetSibling( VCDStillsStream * );
@@ -87,6 +88,7 @@ public:
 private:
 	bool LastSectorLastAU();
 	VCDStillsStream *sibling;
+    bool stream_mismatch_warned;
 	
 };
 	

@@ -181,11 +181,18 @@ bool VCDStillsStream::MuxPossible()
 	
 	if( LastSectorLastAU() )
 	{
-		if( sibling == 0 ||
-			sibling->MuxCompleted() || sibling->LastSectorLastAU() )
-			return true;
-		else
-			return false;
+		if( sibling != 0 )
+        {
+            if( !stream_mismatch_warned && sibling->NextAUType() != NOFRAME  )
+            {
+                mjpeg_warn( "One VCD stills stream runs significantly longer than the other!\n");
+                mjpeg_warn( "Simultaneous stream ending recommended by standard not possible\n" );
+                return true;
+            }
+            return sibling->MuxCompleted() || sibling->LastSectorLastAU();
+        }
+        else
+            return true;
 	}
 	else
 		return true;
