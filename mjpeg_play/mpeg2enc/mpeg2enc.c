@@ -294,7 +294,8 @@ static void set_format_presets()
 			param_quant = 8;
 		if( param_svcd_scan_data == -1 )
 			param_svcd_scan_data = 1;
-		break;
+        param_seq_hdr_every_gop = 1;
+        break;
 
 	case MPEG_FORMAT_VCD_STILL :
 		mjpeg_info( "Selecting VCD Stills output profile\n");
@@ -1243,20 +1244,19 @@ static void init_mpeg_parms(void)
 	case 's':
 	case 'p':  /* ITU BT.470  B,G */
 		opt_color_primaries = 5;
-		opt_transfer_characteristics = 4; /* Gamma = 2.2 */
+		opt_transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
 		opt_matrix_coefficients = 5; 
         msg = "PAL B/G";
 		break;
 	case 'n': /* SMPTPE 170M "modern NTSC" */
 		opt_color_primaries = 6;
-		opt_transfer_characteristics = 6;
 		opt_matrix_coefficients = 6; 
-		opt_matrix_coefficients = 5; 
+		opt_transfer_characteristics = 6;
         msg = "NTSC";
 		break; 
 	default:   /* unspec. */
-		opt_matrix_coefficients = 2; 
 		opt_color_primaries = 2;
+		opt_matrix_coefficients = 2; 
 		opt_transfer_characteristics = 2;
         msg = "unspecified";
 		break;

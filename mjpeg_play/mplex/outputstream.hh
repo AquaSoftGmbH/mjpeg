@@ -102,6 +102,8 @@ private:
 	/* Output data stream... */
 	PS_Stream *psstrm;
 	bitcount_t bytes_output;
+    clockticks ticks_per_sector;
+
 public:
 	clockticks current_SCR;
 private:

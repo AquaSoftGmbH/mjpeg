@@ -699,7 +699,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	int i;
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
-    clockticks ticks_per_sector;
 	vector<bool> completed;
 	vector<bool>::iterator pcomp;
 	vector<ElementaryStream *>::iterator str;
@@ -741,7 +740,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	*/
 
 	ByteposTimecode( sector_transport_size, ticks_per_sector );
-	
+	clockticks DEBUGticks;
 	seg_state = start_segment;
 	running_out = false;
 	for(;;)
@@ -818,10 +817,13 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			*/
 
 			for( str = vstreams.begin(); str < vstreams.end(); ++str )
+            {
 				(*str)->SetTSOffset(video_delay + current_SCR );
+                DEBUGticks = video_delay + current_SCR;
+            }
+
 			for( str = astreams.begin(); str < astreams.end(); ++str )
 				(*str)->SetTSOffset(audio_delay + current_SCR );
- 
 			pstrm.nsec = 0;
 			for( str = estreams->begin(); str < estreams->end(); ++str )
 				(*str)->nsec = 0;
@@ -921,6 +923,11 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 		if( despatch )
 		{
+            printf( "DTS = %lld CS+C = %lld DTS+D=%lld\n",
+                    despatch->au->DTS/300ll,
+                    (current_SCR+CLOCKS)/300ll,
+                    (despatch->au->DTS+DEBUGticks)/300ll
+                );
 			despatch->OutputSector();
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)
