@@ -91,7 +91,7 @@ bin_PROGRAMS = \
 	multiblend.flt lavpipe \
 	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(YUVPLAY_BIN) \
 	ppmtoy4m y4mtoppm pgmtoy4m y4mcolorbars lavinfo y4mshift yuvfps \
-	y4mblack yuv4mpeg \
+	y4mblack yuv4mpeg yuvinactive \
 	$(PNG_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
@@ -206,3 +206,6 @@ yuv4mpeg_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 yuvfps_SOURCES = yuvfps.c ${lav_headers}
 yuvfps_LDADD = ${top_builddir}/utils/libmjpegutils.a
+
+yuvinactive_SOURCES = yuvinactive.c ${lav_headers}
+yuvinactive_LDADD = ${top_builddir}/utils/libmjpegutils.a
