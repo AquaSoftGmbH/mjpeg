@@ -69,6 +69,7 @@ int height = 0;
 int input_chroma_subsampling = 0;
 int output_chroma_subsampling = 0;
 int non_interleaved_fields = 0;
+int use_film_fx = 0;
 
 uint8_t *inframe[3];
 uint8_t *outframe[3];
@@ -114,7 +115,7 @@ main (int argc, char *argv[])
   mjpeg_log (LOG_INFO, "       Motion-Compensating-Deinterlacer          ");
   mjpeg_log (LOG_INFO, "-------------------------------------------------");
 
-  while ((c = getopt (argc, argv, "hvs:")) != -1)
+  while ((c = getopt (argc, argv, "fhvs:")) != -1)
     {
       switch (c)
 	{
@@ -155,6 +156,10 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO,
 		       "                                                            ");
 	    mjpeg_log (LOG_INFO,
+		       " -f film-FX processing to give DV a more film-like-look...  ");
+	    mjpeg_log (LOG_INFO,
+		       "                                                            ");
+	    mjpeg_log (LOG_INFO,
 		       " -s [n=0/1] forces field-order in case of misflagged streams");
 	    mjpeg_log (LOG_INFO,
 		       "                                                            ");
@@ -171,6 +176,13 @@ main (int argc, char *argv[])
 	case 'v':
 	  {
 	    verbose = 1;
+	    break;
+	  }
+	case 'f':
+	  {
+	    use_film_fx = 1;
+	    mjpeg_log (LOG_INFO,
+		       "Film-FX turned on ... love it or leave it ...");
 	    break;
 	  }
 	case 's':
@@ -194,14 +206,14 @@ main (int argc, char *argv[])
   /* initialize motion_library */
   init_motion_search ();
 
-#if 0
   /* initialize MMX transforms (fixme) */
   if ((cpucap & ACCEL_X86_MMXEXT) != 0 || (cpucap & ACCEL_X86_SSE) != 0)
     {
+#if 0
       mjpeg_log (LOG_INFO,
 		 "FIXME: could use MMX/SSE Block/Frame-Copy/Blend if I had one ;-)");
-    }
 #endif
+    }
 
   /* initialize stream-information */
   y4m_accept_extensions (1);
@@ -261,19 +273,17 @@ main (int argc, char *argv[])
        */
 
       if (y4m_si_get_interlace (&istreaminfo) == Y4M_ILACE_TOP_FIRST)
-          {
-          /* got it: Top-field-first... */
-          mjpeg_log(LOG_INFO," Stream is interlaced, top-field-first.");
-	field_order = 0;
-          }
-      else
-	if (y4m_si_get_interlace (&istreaminfo) ==
-	    Y4M_ILACE_BOTTOM_FIRST)
-    {
-          /* got it: Bottom-field-first... */
-          mjpeg_log(LOG_INFO," Stream is interlaced, bottom-field-first.");
-	field_order = 1;
-    }
+	{
+	  /* got it: Top-field-first... */
+	  mjpeg_log (LOG_INFO, " Stream is interlaced, top-field-first.");
+	  field_order = 0;
+	}
+      else if (y4m_si_get_interlace (&istreaminfo) == Y4M_ILACE_BOTTOM_FIRST)
+	{
+	  /* got it: Bottom-field-first... */
+	  mjpeg_log (LOG_INFO, " Stream is interlaced, bottom-field-first.");
+	  field_order = 1;
+	}
       else
 	{
 	  mjpeg_log (LOG_ERROR,
@@ -380,6 +390,10 @@ main (int argc, char *argv[])
        */
       motion_compensate_field ();
       blend_fields (reconstructed, frame2);
+      if (use_film_fx)
+	{
+	  film_fx ();
+	}
       /* all left is to write out the reconstructed frame
        */
       y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
@@ -416,4 +430,49 @@ main (int argc, char *argv[])
 
   /* Exit gently */
   return (0);
+}
+
+/* try to make a CCD recording look more like film_fx
+ * one of the many attempts...
+ */
+void
+film_fx (void)
+{
+  static int initialized = 0;
+  static int LUT_Y[256];
+  static int LUT_Cr[256];
+  static int LUT_Cb[256];
+  int x, y, z;
+
+  if (!initialized)
+    {
+      initialized = 1;
+      for (x = 0; x < 256; x++)
+	{
+	  /* luma curve currently not implemented */
+	  LUT_Y[x] = (float) x;
+	  /* nevertheless chroma is more important 
+	   * as CCDs are too blue ...
+	   * this gives a nice technicolor :)
+	   */
+	  LUT_Cr[x] = (float) x / 256.f * 192 + 18;
+	  LUT_Cb[x] = (float) x / 256.f * 192 + 46;
+	}
+    }
+
+  z = 0;
+  for (y = 0; y < height; y++)
+    for (x = 0; x < width; x++)
+      {
+	*(reconstructed[0] + z) = LUT_Y[*(reconstructed[0] + z)];
+	z++;
+      }
+  z = 0;
+  for (y = 0; y < height / 2; y++)
+    for (x = 0; x < width / 2; x++)
+      {
+	*(reconstructed[1] + z) = LUT_Cr[*(reconstructed[1] + z)];
+	*(reconstructed[2] + z) = LUT_Cb[*(reconstructed[2] + z)];
+	z++;
+      }
 }
