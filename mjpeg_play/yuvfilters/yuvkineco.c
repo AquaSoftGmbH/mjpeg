@@ -89,7 +89,7 @@ DECLARE_YFTASKCLASS(yuvycsnoise);
 static const char *
 do_usage()
 {
-  return "[-S YCSNoiseThreashold] [-F OutputFPSCODE] {[-C OutputCycleListName] | -[ON] InputCycleListName}";
+  return "[-u] [-S YCSNoiseThreashold] [-F OutputFPSCODE] {[-C OutputCycleListName] | -[ON] InputCycleListName}";
 }
 
 static YfTaskCore_t *
@@ -458,7 +458,9 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	/* apply frame summary */
 	unsigned long noisetotal;
 	int bmin;
+#if 0
 	int diff1024;
+#endif
 	while ((noisetotal = (h->u.noise.total +
 			      (((h->_.height / h->nfields) - 1) * h->_.width))) <
 	       h->u.noise.total)	/* overflow */
@@ -474,8 +476,11 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 	    break;
 	  noisetotal -= h->u.noise.dist[i];
 	}
+#if 0
 	diff1024 = (i - h->u.noise.level) * 1024;
+#endif
 	h->u.noise.level = i;
+#if 0
 	if (diff1024) {
 	  for (i = 0; i < h->nframes; i++) {
 	    if (diff1024 < -(int)h->framestat[i].odiff)
@@ -491,6 +496,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
 		h->framestat[i].ediff += diff1024;
 	    }
 	}
+#endif
       } else {
 	imin = h->nframes / 2;
 	if (h->iget - h->iuse < imin)
