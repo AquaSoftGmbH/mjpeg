@@ -15,7 +15,7 @@ LDADD = ./libmovtar.a
 
 EXTRA_DIST = README.movtar.implement movtar.m4
 
-m4datadir = $(datadir)/aclocal
+m4datadir = /usr/share/aclocal
 m4data_DATA = movtar.m4
 
 
