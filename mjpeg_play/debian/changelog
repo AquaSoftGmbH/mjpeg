@@ -1,3 +1,11 @@
+mjpegtools (1.6.3-2) unstable; urgency=low
+
+  * Configure option --enable-cmov-extension has been removed,
+    so use --host to specify cpu.
+  * For now, --enable-zalpha causes compiling error, so remove it.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Wed,  5 May 2004 11:11:06 +0900
+
 mjpegtools (1.6.3-1) unstable; urgency=low
 
   * New upstream release.
