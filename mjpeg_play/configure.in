@@ -409,11 +409,12 @@ AC_CHECK_LIB(dv, dv_init,
 dnl ******************
 dnl ...and now if we have libdv, check if version >= 0.9.5
 dnl (by checking if the new function dv_decoder_free() exists)
+have_dv_gte_0_9_5=false
 if test x$have_dv = xtrue; then
    AC_CHECK_LIB(dv, dv_decoder_free,
 	[ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
 	  DV_CFLAGS="-I$with_dv$with_dv_i"
-	  have_dv_0_9_5=true ],
+	  have_dv_gte_0_9_5=true ],
 	[ AC_DEFINE(LIBDV_PRE_0_9_5) ],
     -L$with_dv$with_dv_l  ${EXTRA_LIBS})
 fi
@@ -721,11 +722,10 @@ echo "    - X86 Optimizations:"
 echo "      - MMX/3DNow!/SSE enabled      : ${have_asm_mmx}"
 echo "      - cmov support enabled        : ${have_cmov}"
 if test "$have_cmov" = "true" ; then
-echo "
-****************************************************************************
-* NOTE:                                                                    *
-*   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU       *
-****************************************************************************"
+echo "   ***********************************************************************
+   * NOTE:                                                               *
+   *   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU  *
+   ***********************************************************************"
 fi
 echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
@@ -735,8 +735,17 @@ if test "$have_quicktime" = "true" ; then
 echo "      - Quicktime source in         : ${with_quicktime}"
 fi
 echo "    - AVI MJPEG playback/recording  : true (always)"
-echo "    - libDV (digital video) support : ${have_dv}"
+echo -n "    - libDV (digital video) support : ${have_dv} "
+if test "x$have_dv" = "xtrue" ; then
+  if test "x$have_dv_gte_0_9_5" = "xtrue" ; then
+    echo "(>= v0.9.5)"
+  else
+    echo "(< v0.9.5)"
+  fi
+else
+  echo " "
+fi
 echo "    - AVIFILE divx encoding support : ${have_aviplay}"
 echo "    - Gtk+ support for glav         : ${have_gtk}"
-echo "    - Support for large (>2GB) files: ${have_large_file}"
+echo "    - glibc support for >2GB files  : ${have_large_file}"
 echo ""
