@@ -56,6 +56,8 @@ int adjustment_a_changed;
 int total_frames, lavplay_abrate, lavplay_absize, lavplay_sizew, lavplay_sizeh;
 int lavplay_fps, lavplay_chans;
 char lavplay_norm;
+int mute_audio;   /**< tells us if we have to mute the audio while playback */
+int sw_playback;  /**< tells us if we should do SW playback */
 //gint studio_lavplay_gint;
 GtkObject *lavplay_slider_adj;
 
@@ -73,9 +75,32 @@ void command_to_lavplay(GtkWidget *widget, gpointer data);
 void play_file(GtkWidget *widget, gpointer data);
 void create_filesel2(GtkWidget *widget, gpointer data);
 void create_lavplay_logtable(GtkWidget *table);
+void set_audio_mute(GtkWidget *widget, gpointer *data);
+void set_sw_playback(GtkWidget *widget, gpointer *data);
 GtkWidget *create_lavplay_buttons(void);
 
 /* ================================================================= */
+
+/** Set the option if the audio playback should be muted
+ @param widget the toggle button 
+ @param data   unused                         */
+void set_sw_playback(GtkWidget *widget, gpointer *data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    sw_playback = 1;
+  else
+    sw_playback = 0;
+}
+/** Set the option if the audio playback should be muted
+ @param widget the toggle button 
+ @param data   unused                         */
+void set_audio_mute(GtkWidget *widget, gpointer *data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    mute_audio = 1;
+  else
+    mute_audio = 0;
+}
 
 void table_lavplay_set_text(int frame)
 {
@@ -257,7 +282,21 @@ void create_lavplay_child()
 	lavplay_command[n] = "-q"; n++;
 	lavplay_command[n] = "-g"; n++;
 	lavplay_command[n] = "-v"; n++; lavplay_command[n] = "2"; n++;
-	lavplay_command[n] = "-pC"; n++;
+	if (mute_audio == 1)
+	  {
+	    lavplay_command[n]= "-a 0";
+	    n++;
+	  }
+	if (sw_playback == 1)
+	  {
+	    lavplay_command[n]= "-pS";
+            n++;
+	  }
+	else
+	  {
+	    lavplay_command[n] = "-pC";
+            n++;
+          }
 	lavplay_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield2)); n++;
 	lavplay_command[n] = NULL;
 
@@ -456,10 +495,12 @@ GtkWidget *create_lavplay_buttons()
 	return hbox3;
 }
 
+/** Here we create the layout of the Playback Video Page */
 GtkWidget *create_lavplay_layout()
 {
 	GtkWidget *hbox2, *hbox, *vbox, *vbox2, *label, *button;
-	GtkWidget *scrollbar, *table, *hbox3;
+	GtkWidget *scrollbar, *table, *hbox3, *mute_sound;
+	GtkWidget *hwsw_button;
 	char tempfile[100];
 
 	vbox = gtk_vbox_new(FALSE,0);
@@ -514,8 +555,25 @@ GtkWidget *create_lavplay_layout()
 	gtk_box_pack_start (GTK_BOX (vbox2), hbox2, TRUE, FALSE, 10);
 	gtk_widget_show(hbox2);
 
+	/* Here we create the mute and playback button */
 	hbox2 = gtk_hbox_new(TRUE, 20);
+	mute_sound = gtk_check_button_new_with_label ("mute playback");
+	gtk_signal_connect (GTK_OBJECT(mute_sound), "clicked",
+	  GTK_SIGNAL_FUNC (set_audio_mute), NULL);
+	gtk_box_pack_start(GTK_BOX (hbox2), mute_sound, FALSE, FALSE, 0);
+	gtk_widget_show(mute_sound);
+       
+        hwsw_button = gtk_check_button_new_with_label ("sw playback"); 
+	gtk_signal_connect (GTK_OBJECT(hwsw_button), "clicked",
+	  GTK_SIGNAL_FUNC (set_sw_playback), NULL);
+	gtk_box_pack_start(GTK_BOX (hbox2), hwsw_button, FALSE, FALSE, 0);
+	gtk_widget_show(hwsw_button);
 
+	gtk_box_pack_start (GTK_BOX (vbox2), hbox2, FALSE, FALSE, 10);
+	gtk_widget_show(hbox2);
+
+	/* Here we create the Start/Stop Buttons */
+	hbox2 = gtk_hbox_new(TRUE, 20);
 	button = gtk_button_new_with_label("[Start]");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC(play_file), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox2), button, TRUE, TRUE, 0);

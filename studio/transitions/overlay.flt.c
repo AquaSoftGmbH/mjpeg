@@ -19,7 +19,7 @@
  */
 
 #ifdef HAVE_CONFIG_H
-#define HAVE_STDINT_H
+/* #define HAVE_STDINT_H chnaged for the Suse 90 */
 #include "config.h"
 #endif
 #include <stdio.h>

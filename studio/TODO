@@ -27,12 +27,12 @@ Bernhards Problems:
 * never ending: add more options
 * add some usable doku
 * split it to more files ??
-* add support for yuvmedianfilter
+* add support for yuvmedianfilter ??
 * make the input fields more secure
 * make test for the input and output files
 * take a look at the yuvscaler options ( do they really work correct ? )
+* How can I load a image, where I do not know the size before.
 * remove beginning mistakes
-* write a description for the thing. 
 * make a thing that created scripts can be scheduled with crontab or at
 * make a solution for dermining the active window in LVS 
 * Long term: make it look better (especially the distributed part)
