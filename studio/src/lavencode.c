@@ -204,8 +204,10 @@ void lavencode_callback(int number, char *input)
        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
       }
       
-      if ( (encoding_syntax_style == 150) && 
-           (sscanf(input, "   INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
+      if ( (encoding_syntax_style == 150) &&
+////                              INFO: [mpeg2enc] Frame start 976 P 8 978r 1000
+           (sscanf(input, "   INFO: [mpeg2enc] Frame start %d %c %d", &n1, &c, &n2)==3) )
+//           (sscanf(input, "   INFO: Frame start %d %c %d", &n1, &c, &n2)==3) )
       {
        gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
@@ -672,7 +674,7 @@ void video_convert()
    char command[600];
    char command_temp[256];
    char command_progress[256];
-   static char temp1[16], temp2[16], temp3[16], temp7[4];
+   static char temp1[16], temp2[16], temp3[16], temp4[24], temp7[4];
    error = 0;
    scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
@@ -700,22 +702,6 @@ void video_convert()
        start_pipe_command(yuv2lav_command, YUV2LAV);
      }
  
-   /* let's start yuvplay to show video while it's being encoded */
-   if (use_yuvplay_pipe)
-   {
-      char SDL_windowhack[32];
-
-      sprintf(SDL_windowhack,"%ld",GDK_WINDOW_XWINDOW(tv_preview->window));
-      setenv("SDL_WINDOWID", SDL_windowhack, 1);
-
-      n = 0;
-      yuvplay_command[n] = "yuvplay"; n++;
-      yuvplay_command[n] = "-s"; n++;
-      yuvplay_command[n] = "240x180"; n++;
-      yuvplay_command[n] = NULL;
-      start_pipe_command(yuvplay_command, YUVPLAY); /* yuvplay */
-   }
-
    /* Here, the command for the pipe for yuvscaler may be added */
    if ( (((strcmp((*pointenc).mode_keyword,"as is") != 0) &&
           (strcmp((*pointenc).mode_keyword,"LINE_SWITCH") != 0)) ||
@@ -724,7 +710,11 @@ void video_convert()
       scale_140=1;
 
    if ( ( (strcmp((*pointenc).mode_keyword,"as is") != 0) || 
-          (use_bicubic == 1)                                ) &&
+          (use_bicubic == 1) || 
+          (strlen((*pointenc).interlacecorr) > 0 &&
+           strcmp((*pointenc).interlacecorr,"not needed") != 0 ) ||
+          (strlen((*pointenc).notblacksize) > 0 &&
+           strcmp((*pointenc).notblacksize,"as is") != 0 ) ) &&
         (encoding_syntax_style == 150)                          )
       scale_150=1;
 
@@ -747,6 +737,14 @@ void video_convert()
          yuvscaler_command[n] = "-I"; n++;
          yuvscaler_command[n] = (*pointenc).ininterlace_type; n++;
       }
+      if (strlen((*pointenc).notblacksize) > 0 && 
+          strcmp((*pointenc).notblacksize,"as is") != 0 &&
+          encoding_syntax_style == 150) 
+      {
+       yuvscaler_command[n] = "-I"; n++;
+       sprintf(temp4,"ACTIVE_%s", (*pointenc).notblacksize);
+       yuvscaler_command[n] = temp4; n++;
+      }
       if ( (use_bicubic == 1) && (encoding_syntax_style == 150))
       {
          yuvscaler_command[n] = "-M"; n++;
@@ -764,6 +762,27 @@ void video_convert()
       {
          yuvscaler_command[n] = "-M"; n++;
          yuvscaler_command[n] = (*pointenc).mode_keyword; n++;
+      }
+  
+      if( (strcmp((*pointenc).interlacecorr,"not needed") != 0) &&
+                  (encoding_syntax_style == 150) )
+      {
+       yuvscaler_command[n] = "-M"; n++;
+        
+       if (strcmp((*pointenc).interlacecorr,"exchange fields") == 0) 
+           yuvscaler_command[n] = "LINE_SWITCH"; 
+       if (strcmp((*pointenc).interlacecorr,"shift bottom field forward") == 0) 
+           yuvscaler_command[n] = "BOTT_FORWARD"; 
+       if (strcmp((*pointenc).interlacecorr,"shift top field forward") == 0) 
+           yuvscaler_command[n] = "TOP_FORWARD"; 
+       if (strcmp((*pointenc).interlacecorr,"interlace top first") == 0) 
+           yuvscaler_command[n] = "INTERLACED_TOP_FIRST"; 
+       if (strcmp((*pointenc).interlacecorr,"interlace bottom first") == 0) 
+           yuvscaler_command[n] = "INTERLACED_BOTTOM_FIRST"; 
+       if (strcmp((*pointenc).interlacecorr,"not interlaced") == 0) 
+           yuvscaler_command[n] = "NOT_INTERLACED"; 
+
+         n++;
       }
 
       if (strlen((*pointenc).output_size) > 0 &&
@@ -790,47 +809,50 @@ void video_convert()
       use_yuvscaler_pipe = 0;
      }
 
+   /* let's start yuvplay to show video while it's being encoded */
+   if (use_yuvplay_pipe)
+   {
+      char SDL_windowhack[32];
+
+      sprintf(SDL_windowhack,"%ld",GDK_WINDOW_XWINDOW(tv_preview->window));
+      setenv("SDL_WINDOWID", SDL_windowhack, 1);
+
+      n = 0;
+      yuvplay_command[n] = "yuvplay"; n++;
+      yuvplay_command[n] = "-s"; n++;
+      yuvplay_command[n] = "240x180"; n++;
+      yuvplay_command[n] = NULL;
+      start_pipe_command(yuvplay_command, YUVPLAY); /* yuvplay */
+   }
+
    n = 0;
    lav2yuv_command[n] = app_name(LAV2YUV); n++;
-   if (strlen((*pointenc).notblacksize) > 0 && 
-       strcmp((*pointenc).notblacksize,"as is") != 0) 
+   if (encoding_syntax_style == 140)
      {
-      lav2yuv_command[n] = "-a"; n++;
-      lav2yuv_command[n] = (*pointenc).notblacksize; n++;
-     }
-   if ((*pointenc).outputformat > 0) 
-     {
-      sprintf(temp1, "%i", (*pointenc).outputformat);
-      lav2yuv_command[n] = "-s"; n++;
-      lav2yuv_command[n] = temp1; n++;
-     }
-   if ((*pointenc).droplsb > 0) 
-     {
-      sprintf(temp2, "%i", (*pointenc).droplsb);
-      lav2yuv_command[n] = "-d"; n++;
-      lav2yuv_command[n] = temp2; n++;
-     }
-   if ((*pointenc).noisefilter > 0) 
-     {
-      sprintf(temp3, "%i", (*pointenc).noisefilter);
-      lav2yuv_command[n] = "-n"; n++;
-      lav2yuv_command[n] = temp3; n++;
-     }
-   if( (strcmp((*pointenc).interlacecorr,"not needed") != 0) &&
-               (encoding_syntax_style == 150) )
-     {
-       if ( (strcmp((*pointenc).interlacecorr,"exchange fields") == 0) ||
-            (strcmp((*pointenc).interlacecorr,"do both") == 0)           )
-         {
-           lav2yuv_command[n] = "-x"; 
-           n++;
-         }
-         if ( (strcmp((*pointenc).interlacecorr,"shift fields") == 0) ||
-            (strcmp((*pointenc).interlacecorr,"do both") == 0)           )
-         {
-           lav2yuv_command[n] = "-F"; 
-             n++;
-         }
+       if (strlen((*pointenc).notblacksize) > 0 && 
+           strcmp((*pointenc).notblacksize,"as is") != 0) 
+       {
+        lav2yuv_command[n] = "-a"; n++;
+        lav2yuv_command[n] = (*pointenc).notblacksize; n++;
+       }
+       if ((*pointenc).outputformat > 0) 
+       {
+        sprintf(temp1, "%i", (*pointenc).outputformat);
+        lav2yuv_command[n] = "-s"; n++;
+        lav2yuv_command[n] = temp1; n++;
+       }
+       if ((*pointenc).droplsb > 0) 
+       {
+        sprintf(temp2, "%i", (*pointenc).droplsb);
+        lav2yuv_command[n] = "-d"; n++;
+        lav2yuv_command[n] = temp2; n++;
+       }
+       if ((*pointenc).noisefilter > 0) 
+       {
+        sprintf(temp3, "%i", (*pointenc).noisefilter);
+        lav2yuv_command[n] = "-n"; n++;
+        lav2yuv_command[n] = temp3; n++;
+       }
      }
 
    lav2yuv_command[n] = enc_inputfile; n++;

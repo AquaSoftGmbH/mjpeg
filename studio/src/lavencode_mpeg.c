@@ -1257,8 +1257,11 @@ if (!interlace_correct)
   {
    interlace_correct = g_list_append (interlace_correct, "not needed");
    interlace_correct = g_list_append (interlace_correct, "exchange fields");
-   interlace_correct = g_list_append (interlace_correct, "shift fields");
-   interlace_correct = g_list_append (interlace_correct, "do both");
+   interlace_correct = g_list_append (interlace_correct, "shift bottom field forward");
+   interlace_correct = g_list_append (interlace_correct, "shift top field forward");
+   interlace_correct = g_list_append (interlace_correct, "interlace top first");
+   interlace_correct = g_list_append (interlace_correct, "interlace bottom first");
+   interlace_correct = g_list_append (interlace_correct, "not interlaced");
   }
 
   label1 = gtk_label_new ("  Noise filter: ");
@@ -1358,7 +1361,6 @@ GList *output_window = NULL;
   yuvscalermode = g_list_append (yuvscalermode, "as is");
   yuvscalermode = g_list_append (yuvscalermode, "WIDE2STD");
   yuvscalermode = g_list_append (yuvscalermode, "WIDE2VCD");
-  yuvscalermode = g_list_append (yuvscalermode, "LINE_SWITCH");
   yuvscalermode = g_list_append (yuvscalermode, "FAST_WIDE2VCD");
   yuvscalermode = g_list_append (yuvscalermode, "RATIO_388_352_1_1");
   yuvscalermode = g_list_append (yuvscalermode, "RATIO_1_1_288_200");
