@@ -21,7 +21,7 @@
 
 /* whether we have some specific applications */
 #undef HAVE_YUV2DIVX
-@undef HAVE_YUVDENOISE
+#undef HAVE_YUVDENOISE
 
 /* mixer, video and audio devices */
 #undef DEFAULT_MIXER
