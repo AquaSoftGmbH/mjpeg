@@ -16,3 +16,4 @@ ltmain.sh
 libtool
 mjpegtools-config
 mjpegtools-*.tar.gz
+mjpegtools.pc
