@@ -35,7 +35,7 @@
 #include <unistd.h>
 #include <string.h>
 
-#include <mjpegtools/yuv4mpeg.h>
+#include <yuv4mpeg.h>
 
 extern	char	*__progname;
 
