@@ -92,7 +92,9 @@ static void calc_timecode(int pos, int do_frames)
 static void store_filename(GtkFileSelection *selector, gpointer user_data) {
    char str[256];
    const char *name;
-   selected_filename = gtk_file_selection_get_filename (GTK_FILE_SELECTION(file_selector));
+
+   /* First easy fix, Bernhard */
+   selected_filename = (char*)gtk_file_selection_get_filename (GTK_FILE_SELECTION(file_selector));
    name = selected_filename;
    if(name==0) return;
    switch(savetype) {
@@ -114,14 +116,18 @@ static void create_file_selection(void) {
       default: printf("Error in create_file_selection\n"); return; break;
    }
    file_selector = gtk_file_selection_new(label);
-   gtk_signal_connect (GTK_OBJECT(GTK_FILE_SELECTION(file_selector)->ok_button),
-               "clicked", GTK_SIGNAL_FUNC (store_filename), NULL);
+
+   /* Next problem, Bernhard */
+   g_signal_connect_swapped(G_OBJECT(GTK_FILE_SELECTION
+                           (file_selector)->ok_button),  "clicked", 
+                           (GtkSignalFunc)store_filename, NULL);
    /* Ensure that the dialog box is destroyed when the user clicks a button. */
-   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
-                    "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+   g_signal_connect_swapped(G_OBJECT (GTK_FILE_SELECTION(file_selector)->ok_button),
+                    "clicked", G_CALLBACK (gtk_widget_destroy),
                     (gpointer) file_selector);
-   gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(file_selector)->cancel_button),
-                    "clicked", GTK_SIGNAL_FUNC (gtk_widget_destroy),
+
+   g_signal_connect_swapped(G_OBJECT (GTK_FILE_SELECTION(file_selector)->cancel_button),
+                    "clicked", G_CALLBACK (gtk_widget_destroy),
                     (gpointer) file_selector);
    
    /* Display that dialog */
@@ -143,16 +149,16 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          break;
       case GDK_parenleft: /* mark start of selection */
       case GDK_Home:
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BSSelStart),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BSSelStart),"clicked",(gpointer)1);
          break;
       case GDK_parenright: /* mark end of selection */
       case GDK_End:
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BSSelEnd),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BSSelEnd),"clicked",(gpointer)1);
          break;
       case GDK_l: /* some number of frames right */
       case GDK_Right:
          need_pause=TRUE;
-         gtk_signal_emit_stop_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
+         g_signal_stop_emission_by_name(G_OBJECT(gtk_xlav->xlav), "key_press_event");
          n=1;
          if(event->state & GDK_CONTROL_MASK) {
             write(out_pipe,"s10000000\n",10); break;  /* go to end */
@@ -166,7 +172,7 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          break;
       case GDK_h: /* some number of frames left */
       case GDK_Left:
-         gtk_signal_emit_stop_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
+         g_signal_stop_emission_by_name(GTK_OBJECT(gtk_xlav->xlav), "key_press_event");
          n=-1;
          if(event->state & GDK_CONTROL_MASK) { /* go to beginning  */
             gtk_adjustment_set_value(GTK_ADJUSTMENT(gtk_xlav->timeslider),(gfloat)0);
@@ -196,30 +202,30 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
          break;
       case GDK_x: /* cut selection */
       case GDK_Delete:
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BECut),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BECut),"clicked",(gpointer)1);
          break;
       case GDK_y: /* copy (yank) selection */
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BECopy),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BECopy),"clicked",(gpointer)1);
          break;
       case GDK_p: /* paste selection */
       case GDK_Insert:
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->BEPaste),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->BEPaste),"clicked",(gpointer)1);
          break;
       case GDK_f: /*  play (forward) */
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->play),"clicked",(gpointer)4);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->play),"clicked",(gpointer)4);
          break;
       case GDK_F: /* fast forward */
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->ff),"clicked",(gpointer)5);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->ff),"clicked",(gpointer)5);
          break;
       case GDK_r: /* play reverse */
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->rew),"clicked",(gpointer)2);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->rew),"clicked",(gpointer)2);
          break;
       case GDK_R: /* fast reverse */
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->fr),"clicked",(gpointer)1);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->fr),"clicked",(gpointer)1);
          break;
       case GDK_s: /* stop */
       case GDK_S:
-         gtk_signal_emit_by_name(GTK_OBJECT(gtk_xlav->stop),"clicked",(gpointer)3);
+         g_signal_emit_by_name(G_OBJECT(gtk_xlav->stop),"clicked",(gpointer)3);
          break;
       case GDK_1: /* go 5 seconds forward */
          skip_num_frames(150);
@@ -284,8 +290,8 @@ static void quick_message(const char *message) {
    
    /* Ensure that the dialog box is destroyed when the user clicks ok. */
    
-   gtk_signal_connect_object (GTK_OBJECT (okay_button), "clicked",
-                              GTK_SIGNAL_FUNC (gtk_widget_destroy), GTK_OBJECT(dialog));
+   g_signal_connect_swapped(G_OBJECT (okay_button), "clicked",
+                         G_CALLBACK (gtk_widget_destroy), G_OBJECT(dialog));
    gtk_container_add (GTK_CONTAINER (GTK_DIALOG(dialog)->action_area),
                       okay_button);
 
@@ -681,8 +687,10 @@ int main(int argc, char *argv[])
 
    gtk_init (&argc, &argv);
    gtk_xlav = create_form_xlav();
-   gtk_signal_connect (GTK_OBJECT (gtk_xlav->xlav), "destroy",
-       GTK_SIGNAL_FUNC(gtk_main_quit), NULL);
+// old:  gtk_signal_connect (GTK_OBJECT (gtk_xlav->xlav), "destroy",
+// old:      GTK_SIGNAL_FUNC(gtk_main_quit), NULL);
+   g_signal_connect_swapped(G_OBJECT (gtk_xlav->xlav), "destroy",
+   G_CALLBACK(gtk_main_quit), NULL);
    gtk_widget_show(gtk_xlav->xlav); /* show the main window */
 
    gdk_input_add(inp_pipe,GDK_INPUT_READ,(GdkInputFunction)get_input,(gpointer)0);

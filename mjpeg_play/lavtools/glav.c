@@ -12,7 +12,8 @@ static GtkWidget* glav_create_button(GtkWidget * parent, const gchar * label, co
    GtkTooltips * tooltip;
    obj = gtk_button_new_with_label(label);
    gtk_box_pack_start(GTK_BOX(parent),obj, TRUE, TRUE, 0); 
-   gtk_signal_connect(GTK_OBJECT(obj),"clicked",callback,val);
+
+   g_signal_connect(G_OBJECT(obj),"clicked",callback,val);
 
    tooltip = gtk_tooltips_new();
    gtk_tooltips_set_tip(tooltip, obj, tipstring, NULL);
@@ -38,7 +39,7 @@ GTK_xlav *create_form_xlav(void)
   GTK_xlav *gui = (GTK_xlav *) malloc(sizeof(*gui));
 
   gui->xlav = gtk_window_new (GTK_WINDOW_TOPLEVEL);
-  gtk_signal_connect (GTK_OBJECT (gui->xlav), "key_press_event",
+  g_signal_connect (G_OBJECT (gui->xlav), "key_press_event",
     GTK_SIGNAL_FUNC (key_press_cb), (gpointer)0);
 
   vbox = gtk_vbox_new(TRUE,4);
@@ -50,12 +51,12 @@ GTK_xlav *create_form_xlav(void)
     gtk_scale_set_draw_value(GTK_SCALE(gui->timehscale),FALSE);
     gtk_box_pack_start(GTK_BOX(temphbox), gui->timehscale, TRUE, TRUE, 0);
     gtk_widget_show(gui->timehscale);
-    gtk_signal_connect (GTK_OBJECT (gui->timeslider), "value_changed",
-       GTK_SIGNAL_FUNC (timeslider_cb), (gpointer)0);
-    gtk_signal_connect (GTK_OBJECT (gui->timehscale), "button-release-event",
-       GTK_SIGNAL_FUNC (timehscale_button_released_cb), (gpointer)0);
-    gtk_signal_connect (GTK_OBJECT (gui->timehscale), "button-press-event",
-       GTK_SIGNAL_FUNC (timehscale_button_pressed_cb), (gpointer)0);
+    g_signal_connect (G_OBJECT (gui->timeslider), "value_changed",
+       G_CALLBACK (timeslider_cb), (gpointer)0);
+    g_signal_connect (G_OBJECT (gui->timehscale), "button-release-event",
+       G_CALLBACK (timehscale_button_released_cb), (gpointer)0);
+    g_signal_connect (G_OBJECT (gui->timehscale), "button-press-event",
+       G_CALLBACK (timehscale_button_pressed_cb), (gpointer)0);
   gtk_widget_show(temphbox);
 
   /* second row */
@@ -74,12 +75,12 @@ GTK_xlav *create_form_xlav(void)
    gui->se = obj = glav_create_button(temphbox,">|","Skip to End",GTK_SIGNAL_FUNC(button_cb),(gpointer)2);
    gui->stepr = obj = glav_create_button(temphbox,"<|","Frame Reverse",GTK_SIGNAL_FUNC(rb_cb),(gpointer)0);
      /* unmap the click, map press and release */
-    gtk_signal_connect(GTK_OBJECT(obj),"pressed",GTK_SIGNAL_FUNC(frame_skip_pressed),(gpointer)3);
-    gtk_signal_connect(GTK_OBJECT(obj),"released",GTK_SIGNAL_FUNC(frame_skip_released),(gpointer)3);
+    g_signal_connect(G_OBJECT(obj),"pressed",G_CALLBACK(frame_skip_pressed),(gpointer)3);
+    g_signal_connect(G_OBJECT(obj),"released",G_CALLBACK(frame_skip_released),(gpointer)3);
   gui->stepf = obj = glav_create_button(temphbox,"|>","Frame Forward",GTK_SIGNAL_FUNC(button_cb),(gpointer)0);
      /* unmap the click, map press and release */
-    gtk_signal_connect(GTK_OBJECT(obj),"pressed",GTK_SIGNAL_FUNC(frame_skip_pressed),(gpointer)4);
-    gtk_signal_connect(GTK_OBJECT(obj),"released",GTK_SIGNAL_FUNC(frame_skip_released),(gpointer)4);
+    g_signal_connect(G_OBJECT(obj),"pressed",G_CALLBACK(frame_skip_pressed),(gpointer)4);
+    g_signal_connect(G_OBJECT(obj),"released",G_CALLBACK(frame_skip_released),(gpointer)4);
 
   /*
   gtk_widget_show(temphbox);
@@ -106,6 +107,8 @@ GTK_xlav *create_form_xlav(void)
   gui->FSelStart = obj = glav_create_label(temphbox,"-:--:--:--");
   gui->TSelEnd = obj = glav_create_label(temphbox,"Select.\nEnd:");
   gui->FSelEnd = obj = glav_create_label(temphbox,"-:--:--:--");
+  gtk_widget_set_size_request(GTK_WIDGET(gui->FSelStart), 100, -1);
+  gtk_widget_set_size_request(GTK_WIDGET(gui->FSelEnd), 100, -1);
 
   gui->BSSelStart = obj = glav_create_button(temphbox,"|<-","Select Start",GTK_SIGNAL_FUNC(selection_cb),(gpointer)1);
   gui->BSSelEnd = obj = glav_create_button(temphbox,"->|","Select End",GTK_SIGNAL_FUNC(selection_cb),(gpointer)2);

@@ -295,13 +295,11 @@ AC_CHECK_LIB(Xxf86dga, XF86DGAQueryExtension,
 	$X_LIBS $X_PRE_LIBS -lXext -lX11 $X_EXTRA_LIBS)
 
 dnl ********************************************************************
-dnl Check for Gtk+/glib (for glav)
+dnl Check for Gtk+/glib (for glav).  2.4.0 or greater required (should
+dnl not be a problem on recent distributions).
 dnl   (defines GTK_CFLAGS and GTK_LIBS)
 dnl ********************************************************************
-AM_PATH_GTK(1.2.0,
-            [have_gtk=true
-             AC_DEFINE(HAVE_GTK, 1, [Gtk library present]) ],
-            [have_gtk=false])
+PKG_CHECK_MODULES(GTK, [gtk+-2.0 >= 2.4.0], have_gtk="true", have_gtk="false")
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 
 dnl ********************************************************************
