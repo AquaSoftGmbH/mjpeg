@@ -1422,13 +1422,11 @@ GList *output_window = NULL;
   output_window = g_list_append (output_window, "as is");
   output_window = g_list_append (output_window, "VCD");
   output_window = g_list_append (output_window, "SVCD");
+  output_window = g_list_append (output_window, "DVD");
   output_window = g_list_append (output_window, "352x240");
 
   label1 = gtk_label_new("  Input window: ");
-// This is the next step setting the input window size 
-//  button_input = gtk_button_new_with_label(" Input window: ");
-//  gtk_signal_connect(GTK_OBJECT(button_input), "clicked",
-//                     GTK_SIGNAL_FUNC(input_select), "inputwindow");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table),
                              label1, *tx,*tx+1,*ty,*ty+1);
   gtk_widget_show (label1);
@@ -1461,7 +1459,7 @@ GList *output_window = NULL;
   gtk_widget_show(combo_scaler_mode);
   (*ty)++;
 
-  label1 = gtk_label_new("  Output window: ");
+  label1 = gtk_label_new("  Output size: ");
   gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
   gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
   gtk_widget_show (label1);

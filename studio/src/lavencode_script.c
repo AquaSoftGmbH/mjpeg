@@ -26,6 +26,7 @@
 #endif
 
 #include <stdio.h>
+#include <ctype.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -39,7 +40,8 @@
 #define bit_video 2  /* comparing a script "job" */
 #define bit_mplex 4
 #define bit_full  8
-
+#define addh 1       /* to know ith the last box entered was add time */
+#define dateh 2      /* or the date time*/
 
 /* Forward declarations */
 void init_temp(void);
@@ -96,6 +98,13 @@ static void create_video(FILE *fp, struct encodingoptions *option,
                             struct machine *machine4, char ext[LONGOPT]);
 static void create_mplex(FILE *fp, struct encodingoptions *option,
                             struct machine *machine4, char ext[LONGOPT]);
+static void create_schedule (GtkWidget *hbox);
+static void schedule_encoding (GtkWidget *widget, gpointer data);
+static void pointinadd (GtkWidget *widget, gpointer data);
+static void pointintime (GtkWidget *widget, gpointer data);
+static void pointinday (GtkWidget *widget, gpointer data);
+static int checktime (char* timetocheck);
+static void backtotime(char *backtime, int time);
 
 /* Some variables defined here */
 GtkWidget *script_filename, *check_usage;
@@ -109,6 +118,16 @@ GtkWidget *yuv2lav_v;
 int temp_use_distributed;
 char temp_scriptname[FILELEN];
 struct f_script t_script;
+
+struct Times_for_scheduling
+  {
+    int lastone;
+    char *add_now;     /* stores the information from the now + field */
+    char *time_point;  /* from the time field */
+    char *day_point;   /* from the date field, in the scedule part  */
+  };
+
+struct Times_for_scheduling schedule;
 
 /* used from config.c */
 int chk_dir(char *name);
@@ -655,8 +674,9 @@ n = 0;
 
     if ( strcmp((*option).output_size,"as is") != 0)
       {
-         if (((*option).output_size != "VCD") ||
-              (*option).output_size != "SVCD")
+         if ( ((*option).output_size != "VCD") ||
+              ((*option).output_size != "SVCD") ||
+              ((*option).output_size != "DVD") )
               sprintf(temp3,"%s", (*option).output_size);
          else
               sprintf(temp3,"SIZE_%s", (*option).output_size);
@@ -877,9 +897,181 @@ char mplex_string[800];
   create_command_mplex(mplex_command, temp_use_distributed,
                                                     option, machine4, ext);
   command_2string(mplex_command, mplex_string);
+
   fprintf(fp,"%s\n", mplex_string);
 
 
+}
+
+/** Here we check if the given time is correct 
+   @param which time we shell check */
+int checktime (char* timetocheck)
+{
+int minutes;
+int hours;
+char zeichen;
+int doppelpunkt;
+int i, error;
+error = 0; 
+doppelpunkt = 0;
+minutes = 0;
+hours = 0;
+
+  if (strlen(timetocheck) <= 5)
+    {
+    for (i = 0 ; i < strlen(timetocheck); i++)
+      { 
+        zeichen = timetocheck[i];
+
+        if (isdigit(zeichen) && (doppelpunkt == 0) && (i <= 1))
+          {
+            hours = minutes * 10;
+            minutes = atoi (&zeichen);
+          }
+        else if ( (strncmp(&zeichen, ":",1)) == 0 )
+          {
+            doppelpunkt = (hours + minutes) * 60;
+            hours = 0;
+            minutes = 0;
+          }
+        else if ( (doppelpunkt < 600) && (i == 4) )
+          error = 1;  /* Has come before the next test */
+        else if ( (doppelpunkt > 0) && isdigit(zeichen) )
+          {
+            hours = minutes * 10;
+            minutes = atoi (&zeichen);
+          }
+        else 
+          error = 1;
+      }
+
+    if (error == 0)     /* Here we finalize the calcuation */
+      {
+        doppelpunkt = doppelpunkt +  hours + minutes ;
+        minutes = doppelpunkt;
+      } 
+    else 
+      minutes = 0;
+    }
+
+  return minutes; /* returning 0 means no valid time given */
+}
+
+/** here we convert the time back to a time with am/pm suitable for at 
+   @param the minutes we need to convert back */
+void backtotime(char *backtime, int time)
+{
+int i;
+
+i = time / 60;
+if (i > 12) 
+  {
+    i = i - 12;    
+    sprintf(backtime,"%i:%i pm",i ,(time%60)); 
+  }
+else 
+    sprintf(backtime,"%i:%i am",i ,(time%60));
+}   
+
+/** Here we create the sceduling
+   @param widget which was calling the void unused, 
+   @param data also not used */
+void schedule_encoding (GtkWidget *widget, gpointer data)
+{
+FILE *file_atd;
+char command[200];
+char backtime[8];
+int timetoadd; 
+int timetopoint; 
+int daystopoint;
+int error, i;
+error = 0;
+timetoadd = 0; 
+timetopoint = 0;
+daystopoint = 0;
+ 
+for (i = 0; i < 8; i++)
+  backtime[i]= '\0';
+
+
+  if (schedule.lastone == addh) 
+    {
+      timetoadd = checktime(schedule.add_now);
+  
+      if (timetoadd = 0)
+        error = 1;
+
+      /* first we recreate the script */
+      create_script(widget, data);
+      /* And then creating the command */
+      sprintf(command, "at now +%i minutes -f %s", timetoadd, temp_scriptname);
+
+      if (verbose)
+        printf("Added to at: %s \n", command);
+
+      file_atd = popen (command, "w");
+      fflush(file_atd);
+      pclose(file_atd);
+    }
+  else if (schedule.lastone =dateh) 
+    {
+
+    timetopoint = checktime(schedule.time_point);
+    daystopoint = checktime(schedule.day_point);
+ 
+    if (    (timetopoint !=0) &&(timetopoint <1440)
+          &&( ( (daystopoint != 0) && (strlen(schedule.day_point) > 0) ) || 
+            ( ( (daystopoint == 0) && (strlen(schedule.day_point) ==0) ) ) ) )
+      {
+        backtotime(backtime, timetopoint);
+        sprintf(command, "at %s", backtime);
+      
+        if (daystopoint > 0)
+          sprintf(command,"%s + %i days",command ,daystopoint); 
+ 
+        printf("Added to at: %s \n",command);
+
+        file_atd = popen (command, "w");
+        fflush(file_atd);
+        pclose(file_atd);
+      }
+    else 
+      error = 1;
+    }
+
+//if error = 1
+// we should make a error mesagge here   
+ 
+}
+
+/** Here we read the data from the now +, field 
+    to a string suitable for further use 
+   @param the data from the input field 
+   @param data also not used */
+void pointinadd (GtkWidget *widget, gpointer data)
+{
+  schedule.add_now = (char*)gtk_entry_get_text(GTK_ENTRY(widget));
+  schedule.lastone = addh;
+}
+
+/** Here we read the data from the time, field 
+    to a string suitable for further use 
+   @param the data from the input field 
+   @param data also not used */
+void pointintime (GtkWidget *widget, gpointer data)
+{
+  schedule.time_point = (char*)gtk_entry_get_text(GTK_ENTRY(widget));
+  schedule.lastone = dateh;
+}
+
+/** Here we read the data from the day, field 
+    to a string suitable for further use 
+   @param the data from the input field 
+   @param data also not used */
+void pointinday (GtkWidget *widget, gpointer data)
+{
+  schedule.day_point = (char*)gtk_entry_get_text(GTK_ENTRY(widget));
+  schedule.lastone = dateh;
 }
 
 /* Here we finally create the script */
@@ -1006,6 +1198,12 @@ void init_temp ()
   t_script.svcd   = script.svcd;
   t_script.dvd    = script.dvd;
   t_script.yuv2lav= script.yuv2lav;
+
+  schedule.lastone = 0;
+  schedule.add_now = NULL;
+  schedule.time_point = NULL;
+  schedule.day_point = NULL;
+
 }
 
 /* This is done after the OK Button was pressed */
@@ -1046,7 +1244,7 @@ GtkWidget *button;
 
 }
 
-/* Here we have the callback for the mpeg1 settings */
+/** Here we have the callback for the mpeg1 settings */
 void set_mpeg1(GtkWidget *widget, gpointer data)
 {
   if (GTK_TOGGLE_BUTTON (widget)->active)
@@ -1055,7 +1253,7 @@ void set_mpeg1(GtkWidget *widget, gpointer data)
     t_script.mpeg1 = (t_script.mpeg1 & (~(gint)data)); 
 }
 
-/* Here we have the callback for the mpeg2 settings */
+/** Here we have the callback for the mpeg2 settings */
 void set_mpeg2(GtkWidget *widget, gpointer data)
 {
   if (GTK_TOGGLE_BUTTON (widget)->active)
@@ -1454,6 +1652,91 @@ GtkWidget *button;
 
 }
 
+/** Here we create the layout for the sceduling 
+    @param The table where we mount in the widgets */
+void create_schedule (GtkWidget *hbox)
+{
+GtkWidget *button, *table, *label, *add_hours, *point_time, *point_day;
+int tx, ty;
+
+tx = 4;
+ty = 4;
+
+  table = gtk_table_new (tx, ty, FALSE);
+  tx=0;
+  ty=0;
+
+  gtk_table_set_row_spacing(GTK_TABLE(table), ty, 10);
+  label = gtk_label_new("Schedule for:");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+4, ty, ty+1);
+  gtk_widget_show(label);
+  ty++;
+
+  label = gtk_label_new(" now + ");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
+  gtk_widget_show(label);
+  tx++;
+
+  add_hours = gtk_entry_new ();
+  gtk_table_attach_defaults (GTK_TABLE (table), add_hours, tx, tx+1, ty, ty+1);
+  g_signal_connect(G_OBJECT(add_hours), "changed",
+                    G_CALLBACK(pointinadd), NULL );
+  gtk_widget_set_usize (add_hours, 80, -2);
+  gtk_widget_show(add_hours);
+  tx++;
+
+  label = gtk_label_new("   hours : minutes");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+2, ty, ty+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0, 1);
+  gtk_widget_set_usize (label, 80, -2);
+  gtk_widget_show(label);
+  tx++;
+
+  gtk_table_set_row_spacing(GTK_TABLE(table), ty, 3);
+  ty++;  /* going into the next line first cell */
+  tx=0;
+
+  label = gtk_label_new("or    time : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
+  gtk_widget_show(label);
+  tx++;
+
+  point_time = gtk_entry_new ();
+  gtk_table_attach_defaults (GTK_TABLE (table), point_time,tx, tx+1, ty, ty+1);
+  g_signal_connect(G_OBJECT(point_time), "changed",
+                    G_CALLBACK(pointintime), NULL );
+  gtk_widget_set_usize (point_time, 80, -2);
+  gtk_widget_show(point_time);
+  tx++;
+
+  label = gtk_label_new("  + days : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), label, tx, tx+1, ty, ty+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 1, 0);
+  gtk_widget_show(label);
+  tx++;
+  
+  point_day = gtk_entry_new ();
+  gtk_table_attach_defaults (GTK_TABLE (table), point_day, tx, tx+1, ty, ty+1);
+  g_signal_connect(G_OBJECT(point_day), "changed",
+                    G_CALLBACK(pointinday), NULL );
+  gtk_widget_set_usize (point_day, 80, -2);
+  gtk_widget_show(point_day);
+  tx++;
+
+  gtk_table_set_row_spacing(GTK_TABLE(table), ty, 3);
+  ty++;  /* going into the next line first cell */
+  tx=0;
+
+  button = gtk_button_new_with_label("Schedule");
+  g_signal_connect_swapped(G_OBJECT(button), "clicked",
+                   G_CALLBACK(schedule_encoding), NULL );
+  gtk_table_attach_defaults (GTK_TABLE (table), button, tx+1, tx+3, ty, ty+1);
+  gtk_widget_show(button);
+  
+  gtk_box_pack_start (GTK_BOX (hbox), table, TRUE, FALSE, 5);
+  gtk_widget_show(table);
+}
+
 /* Here we create the window, menu basic layout ... */
 void open_scriptgen_window(GtkWidget *widget, gpointer data)
 {
@@ -1493,6 +1776,11 @@ GtkWidget *script_window, *vbox, *hbox, *separator, *label;
 
   hbox = gtk_hbox_new (FALSE, 10);
   create_script_button (hbox); /* Creating the "Create Script" Button */
+  gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 5);
+  gtk_widget_show (hbox);
+
+  hbox = gtk_hbox_new (FALSE, 10);
+  create_schedule (hbox); /* Creating the Box with the scheduling things */
   gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 5);
   gtk_widget_show (hbox);
 
