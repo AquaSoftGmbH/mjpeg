@@ -32,13 +32,14 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .RB [ -? ]
 .BI -o \ output_filename_pattern input_file...
 .SH "DESCRIPTION"
-Mplex is a general-purpose audio/video multiplexer for
-MPEG-1/MPEG-2.  It accepts one or more MPEG-1/2 video stream and/or MPEG
-layer II/III audio streams and multiplexes them into a combined
+Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
+It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
+streams and AC3 audio streams and multiplexes them into a combined
 program/system stream according to the constraints specified.  Many
 different types of output structure are supported along with presets
-for standard VCD and SVCD streams.  These latter can be burned to CD using
-tools such as \fBvcdimager\fP(1) and played in stand-alone players.
+for standard VCD and SVCD streams.  These latter can be burned to CD
+using tools such as \fBvcdimager\fP(1) and played in stand-alone
+players.
 
 It is also capable of automatically splitting the output stream into
 chunks of a specified size either independently or at sequence end/start
@@ -81,7 +82,10 @@ manually.
  6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
 	 multiplexed are supported).
  7 - SVCD Stills stream.
- 8 - DVD.   Very very incomplete due to lack of documentation.
+ 8 - DVD. Don't get too excited.  This is really a very minimal 
+	 mux format.   It includes empty versions of the peculiar GOP start
+	 sectors DVD VOB's include.   This is enough to persuade some hardware
+	 players to play the stream but is a long way from full DVD authoring.
 .TP
 .BI -r \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k

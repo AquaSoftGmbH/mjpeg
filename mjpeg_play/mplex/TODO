@@ -1,13 +1,15 @@
 TODO
 
-- Fix the DVD generation bug where the correct system header is only
-  appearing in the first sector...
+- Fix the probing code so that mplex can work in a true single-pass mode
+	using fifo's.
+
+- Add checking for changed sequence parameters in mid-sequence sequence headers.
+
+- Make VBR more efficient (a skip for long periods where no sector is emitted).
+
 
 - Complete tidying up the systems.cc structure.   Non-duplication of the
 	header generation stuff would be neat if it can be managed...
-
-- Start testing the AC3/DVD muxing stuff.  I reckommend AC3 first, then
-	DVD.
 
 - Currently the VCD HR Stills muxing stuff assumes *all* HR stills
   are the same size which is given in the initial vbv_buffer_size...
@@ -22,13 +24,7 @@ TODO
 - Tidy code so Elementary streams handle their mux parameter initialisation
 	from cmd-line parameters *not* the output stream.
 
-- Add checking for changed sequence parameters in mid-sequence sequence headers.
 
-- Add basic DVD support ( needs predecessor really).
-	Note the bizarre absence of PTS/DTS except on I-frames.
-
-
-- Make VBR more efficient.
 
 
 Eventually:

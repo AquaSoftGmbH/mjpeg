@@ -97,7 +97,7 @@ quantize_ni_mmx:
 
 align 32
 nextquadniq:
-	movq mm2, [esi]				; mm0 = *psrc
+	movq mm2, [esi]				; mm2 = *psrc
 
 	pxor    mm4, mm4
 	pcmpgtw mm4, mm2       ; mm4 = *psrc < 0

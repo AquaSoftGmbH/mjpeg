@@ -1,5 +1,10 @@
-0.	Add some facilities to adapt I-gain in rate control to different streams /
-	buffer sizes.
+Short Term
+
+1.	Tidy up defaults for gop sizes etc for NTSC vs. PAL
+
+2.	Librarify for gstreamer
+
+Medium Term
 
 
 1.  	Bring field sequence MC/prediction to same level as progressive	
@@ -30,7 +35,3 @@
 	tidying...
 
 
-
-6.	The rate control based on per-GOP allocation and virtual buffers is *lame*.
-	Needs to be replaced with a frame-by-frame bit-pool and more sensible
-	measures that don't constantly under-run...
