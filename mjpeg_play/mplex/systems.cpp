@@ -782,13 +782,17 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 	std::vector<MuxStream *>::iterator str;
     for( str = streams.begin(); str < streams.end(); ++str )
     {
-        switch( ((*str)->stream_id & 0xe0) )
+        switch( ((*str)->stream_id & 0xf0) )
         {
         case 0xe0 :             // MPEG Video
             ++video_bound;
             break;
-        case 0xb9 :             // DVD seems to use this stream id in
-            ++video_bound;      // system headers for video buffer size
+        case 0xb0 :             // DVD seems to use these stream id in
+                                // system headers for buffer size counts
+            if( (*str)->stream_id == 0xb9 )
+                ++video_bound;   
+            if( (*str)->stream_id == 0xbd )
+                ++audio_bound;   
             break;
         case 0xc0 :
             ++audio_bound;      // MPEG Audio

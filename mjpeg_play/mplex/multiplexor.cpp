@@ -360,7 +360,8 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         //
         // The first DVD video stream is made the master stream...
         //
-        if( i == 0 && job.mux_format ==  MPEG_FORMAT_DVD_NAV )
+        if( i == 0 && ( job.mux_format ==  MPEG_FORMAT_DVD_NAV 
+                        || job.mux_format ==  MPEG_FORMAT_DVD ) )
             videoStrm = new DVDVideoStream( *job.video_files[i], 
                                             *vidparm,
                                             *this);
@@ -372,7 +373,6 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         estreams.push_back( videoStrm );
         vstreams.push_back( videoStrm );
         ++vidparm;
-
     }
     for( i = 0 ; i < job.mpa_files.size() ; ++i )
     {
@@ -816,7 +816,7 @@ void Multiplexor::OutputPrefix( )
 
     case MPEG_FORMAT_DVD_NAV :
         /* A DVD System header is a weird thing.  We seem to need to
-           include buffer info about streams 0xb8, 0xb9, 0xbf even if
+           include buffer info about streams 0xb8, 0xb9, 0xbd, 0xbf even if
            they're not physically present but the buffers for the actual
            video streams aren't included.  
         */
@@ -832,7 +832,7 @@ void Multiplexor::OutputPrefix( )
 		std::vector<MuxStream *>::iterator muxstr;
         dvdmux.push_back( &dvd_0xb9_strm_dummy );
         dvdmux.push_back( &dvd_0xb8_strm_dummy );
-        unsigned int max_priv1_buffer = 0;
+        unsigned int max_priv1_buffer = 58*1024;
         for( muxstr = amux.begin(); muxstr < amux.end(); ++muxstr )
         {
             // We mux *many* substreams on PRIVATE_STR_1
@@ -849,9 +849,8 @@ void Multiplexor::OutputPrefix( )
         
         DummyMuxStream dvd_priv1_strm_dummy( PRIVATE_STR_1, 1, 
                                              max_priv1_buffer );
-        if( max_priv1_buffer > 0 )
-            dvdmux.push_back( &dvd_priv1_strm_dummy );
-
+        dvdmux.push_back( &dvd_priv1_strm_dummy );
+            
         dvdmux.push_back( &dvd_0xbf_strm_dummy );
         psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
                                  true, true, dvdmux );
