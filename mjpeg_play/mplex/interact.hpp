@@ -114,7 +114,7 @@ public:
   unsigned int NumberOfTracks( StreamKind kind );
   void GetJobStreams( vector<JobStream *> &streams, StreamKind kind );
 
-private:
+protected:
   virtual void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
   virtual void Usage(char *program_name);
   virtual bool ParseVideoOpt( const char *optarg );
