@@ -1,0 +1,32 @@
+You should be able to just "make"
+
+there are some hacks so I didn't have to include anything from the mjpeg utils 
+directory.  I hope to get it into the build tree sometime (soon...).
+
+seconds are NTSC seconds (30 frames)
+Key Bindings:  (loosely based on vi key bindings)
+   (      set Selection Start
+   )      set Selection End
+   0      go to beginning
+   $      go to end
+   l ->   forward single frame
+   w      forward 1/2 second (15 frames)
+   W      forward 1 second (30 frames)
+   h <-   reverse single frame
+   1      forward 5 seconds
+   2      forward 10 seconds
+   3      forward 15 seconds
+   b      reverse 1/2 second (15 frames)
+   B      reverse 1 second (30 frames)
+   !      reverse 5 seconds
+   @      reverse 10 seconds
+   #      reverse 15 seconds
+   x      cut selection
+   y      yank (copy) selection
+   p      paste selection
+   s,S    stop, pause
+   f      play (forward)
+   F      fast forward
+   r      reverse
+   R      fast reverse
+
