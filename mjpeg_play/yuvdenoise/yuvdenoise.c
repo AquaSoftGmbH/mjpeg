@@ -285,6 +285,61 @@ main (int argc, char *argv[])
   CPU_CAP=cpu_accel ();
   
   mjpeg_log ( LOG_INFO, "\n");
+
+  /* process commandline */
+
+  while ((c = getopt (argc, argv, "?hvBb:r:fDI")) != -1)
+    {
+      switch (c)
+        {
+        case '?':
+          display_help ();
+          break;
+        case 'h':
+          display_help ();
+          break;
+        case 'f':
+          fixed_search_radius=1;
+          mjpeg_log (LOG_INFO, "Using fixed radius. Radius optimization turned off.\n");
+          break;
+        case 'D':
+          despeckle_filter=0;
+          mjpeg_log (LOG_INFO, "Turning off despeckle filter.\n");
+          break;
+        case 'I':
+          deinterlace_only=1;
+          mjpeg_log (LOG_INFO, "Turning off denoising filter.\n");
+          mjpeg_log (LOG_INFO, "Only deinterlacing material.\n");
+          break;
+        case 'v':
+          verbose = 1;
+          break;
+        case 'b':
+          sscanf( optarg, "%i,%i,%i,%i", &BX0,&BY0,&BX1,&BY1);
+          mjpeg_log (LOG_INFO, "Border set to: ( %i , %i ) -- ( %i , %i )\n",BX0,BY0,BX1,BY1);
+          break;
+        case 'r':
+          radius = atoi(optarg) * 2;
+          if(radius<8)
+          {
+	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
+	      radius=8;
+          }
+          if(radius>256)
+          {
+            mjpeg_log (LOG_WARN, "Maximum sensfull search radius is 128 pixel.\n");
+            radius=256;
+          }
+          mjpeg_log (LOG_INFO, "Maximum search radius set to %i pixel.\n",radius/2);
+          break;
+	case 'B':
+	  BW_mode=true;
+          mjpeg_log (LOG_INFO, "Using B&W mode. This kills all chroma.\n");
+	  break;
+        }
+    }
+  mjpeg_log ( LOG_INFO, "\n");
+
 #ifdef HAVE_X86CPU
   if( (CPU_CAP & ACCEL_X86_MMXEXT)!=0 ||
       (CPU_CAP & ACCEL_X86_SSE   )!=0 
@@ -335,61 +390,6 @@ main (int argc, char *argv[])
   uv_width = width >> 1;
   uv_height = height >> 1;
 
-  /* process commandline */
-
-  while ((c = getopt (argc, argv, "?hvBb:r:fDI")) != -1)
-    {
-      switch (c)
-        {
-        case '?':
-          display_help ();
-          break;
-        case 'h':
-          display_help ();
-          break;
-        case 'f':
-          fixed_search_radius=1;
-          mjpeg_log (LOG_INFO, "Using fixed radius. Radius optimization turned off.\n");
-          break;
-        case 'D':
-          despeckle_filter=0;
-          mjpeg_log (LOG_INFO, "Turning off despeckle filter.\n");
-          break;
-        case 'I':
-          deinterlace_only=1;
-          mjpeg_log (LOG_INFO, "Turning off denoising filter.\n");
-          mjpeg_log (LOG_INFO, "Only deinterlacing material.\n");
-          break;
-        case 'v':
-          verbose = 1;
-          break;
-        case 'b':
-          sscanf( optarg, "%i,%i,%i,%i", &BX0,&BY0,&BX1,&BY1);
-	  if(BX1<0) BX1=width+BX1;
-	  if(BY1<0) BY1=height+BY1;
-
-          mjpeg_log (LOG_INFO, "Search area set to: (%i,%i)-(%i,%i)\n",BX0,BY0,BX1,BY1);
-          break;
-        case 'r':
-          radius = atoi(optarg) * 2;
-          if(radius<8)
-          {
-	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
-	      radius=8;
-          }
-          if(radius>256)
-          {
-            mjpeg_log (LOG_WARN, "Maximum sensfull search radius is 128 pixel.\n");
-            radius=256;
-          }
-          mjpeg_log (LOG_INFO, "Maximum search radius set to %i pixel.\n",radius/2);
-          break;
-	case 'B':
-	  BW_mode=true;
-          mjpeg_log (LOG_INFO, "Using B&W mode. This kills all chroma.\n");
-	  break;
-        }
-    }
 
   /* was a border set ? */
   if(BX0==0 && BY0==0 && BX1==0 && BY1==0)
@@ -399,14 +399,17 @@ main (int argc, char *argv[])
   }
   else
   {
-    BX0 = (BX0<0)? 0:BX0;
-    BX0 = (BX0>width)? width:BX0; /* who would do this ??? */
-    BY0 = (BY0<0)? 0:BY0;
-    BY0 = (BY0>height)? height:BY0;
-    BX1 = (BX1<0)? 0:BX1;
-    BX1 = (BX1>width)? width:BX1; 
-    BY1 = (BY1<0)? 0:BY1;
-    BY1 = (BY1>height)? height:BY1;
+      if(BX1<0) BX1=width+BX1;
+      if(BY1<0) BY1=height+BY1;
+
+      BX0 = (BX0<0)? 0:BX0;
+      BX0 = (BX0>width)? width:BX0; /* who would do this ??? */
+      BY0 = (BY0<0)? 0:BY0;
+      BY0 = (BY0>height)? height:BY0;
+      BX1 = (BX1<0)? 0:BX1;
+      BX1 = (BX1>width)? width:BX1; 
+      BY1 = (BY1<0)? 0:BY1;
+      BY1 = (BY1>height)? height:BY1;
   }
   
   /* Allocate memory for buffers.  We add a "safety margin" of
@@ -608,15 +611,10 @@ display_help ()
   fprintf (stderr,"\n     Sets the maximum search Radius to 16 pixels.            ");
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n                                                             ");
-  fprintf (stderr,"\n -f  Fixed Search Radius.                                    ");
-  fprintf (stderr,"\n     By adding this option you may advise the filter to use  ");
-  fprintf (stderr,"\n     a fixed radius for searching block matches. This dis-   ");
-  fprintf (stderr,"\n     ables the internal radius optimization/reduction.       ");
+  fprintf (stderr,"\n -B  B&W mode. This helps a lot for old films ...            ");
   fprintf (stderr,"\n                                                             ");
   fprintf (stderr,"\n                                                             ");
-  fprintf (stderr,"\n -D  Disable Additional Despeckle Filter.                    ");
-  fprintf (stderr,"\n     This option allows you to turn off the second pass of   ");
-  fprintf (stderr,"\n     the noisefilter.                                        ");
+  fprintf (stderr,"\n -I  Deinterlace only. Switch off any other processing.      ");
   fprintf (stderr,"\n");
   fprintf (stderr,"\n");
   exit (0);
@@ -2613,3 +2611,12 @@ kill_chroma (uint8_t * avg[3])
 	*(c+i)=128;
     
 }
+
+
+
+
+
+
+
+
+
