@@ -36,6 +36,7 @@ DISTCLEANFILES = \
  config.log
 
 MAINTAINERCLEANFILES = \
+ compile \
  depcomp \
  install-sh \
  missing \
