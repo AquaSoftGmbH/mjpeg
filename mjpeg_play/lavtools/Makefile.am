@@ -9,6 +9,7 @@ INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	${GTK_CFLAGS} $(JPEG_CFLAGS)
 
 LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
+LIBCPUACCEL   = $(top_builddir)/utils/libcpuaccel.la
 
 # *********************************************************************
 # Support lib
@@ -215,7 +216,7 @@ y4mshift_LDADD = $(LIBMJPEGUTILS)
 
 y4mspatialfilter_CFLAGS=@PROGRAM_NOPIC@
 y4mspatialfilter_SOURCES = y4mspatialfilter.c
-y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
+y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) $(LIBCPUACCEL) $(LIBM_LIBS)
 
 y4mstabilizer_SOURCES = y4mstabilizer.c subsample.c
 y4mstabilizer_LDADD = $(LIBMJPEGUTILS)

@@ -17,6 +17,11 @@
 #include <string.h>
 #include <math.h>
 #include "yuv4mpeg.h"
+#include "cpu_accel.h"
+
+#ifdef HAVE_ASM_MMX
+#include "mmx.h"
+#endif
 
 extern  char    *__progname;
 
@@ -26,7 +31,12 @@ extern  char    *__progname;
 static void *my_malloc(size_t);
 static void get_coeff(float **, int, float);
 static void convolveFrame(u_char *src,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy,float *yuvtmp1,float *yuvtmp2);
+static void set_accel(int w,int h);
 static void usage(void);
+
+static void (*pframe_i2f)(u_char *,float *,int);
+static void (*pframe_f2i)(float *,u_char *,int);
+
 
 int main(int argc, char **argv)
 {
@@ -152,6 +162,8 @@ int main(int argc, char **argv)
     get_coeff(chromaXtaps, NchromaX, BWchromaX);
     get_coeff(chromaYtaps, NchromaY, BWchromaY);
 
+    set_accel(uvwidth,uvheight);
+
     if (verbose)
 	y4m_log_stream_info(LOG_INFO, "", &istream);
     
@@ -178,12 +190,16 @@ int main(int argc, char **argv)
 
 
 /* Move memory allocation error checking here to clean up code */
+/* Aligns values on 16 byte boundaries (to aid in vectorization) */
 static void *my_malloc(size_t size)
 {
-    void *tmp = malloc(size);
+    void *tmp = malloc(size+15);
+    unsigned long addr;
     if (tmp == NULL)
 	    mjpeg_error_exit1("malloc(%ld) failed\n", (long)size);
-    return tmp;
+    addr=(unsigned long)tmp;
+    addr=(addr+15)&(-16);    
+    return (void *)addr;
 }
 
 
@@ -226,6 +242,81 @@ static void frame_f2i(float *src,u_char *dst,int l)
     for( i=0; i<l; i++ )
         dst[i]=src[i]+0.5;
 }
+
+#ifdef HAVE_ASM_MMX
+
+static void frame_i2f_sse(u_char *src,float *dst,int l)
+{
+    int i;
+
+    pxor_r2r(mm7,mm7);
+
+    for( i=0; i<l; i+=8 ) {
+        movq_m2r(*src,mm0);
+        movq_r2r(mm0, mm2);
+        punpcklbw_r2r(mm7, mm0);
+        punpckhbw_r2r(mm7, mm2);
+        movq_r2r(mm0, mm1);
+        movq_r2r(mm2, mm3);
+        punpcklwd_r2r(mm7, mm0);
+        punpckhwd_r2r(mm7, mm1);
+        punpcklwd_r2r(mm7, mm2);
+        punpckhwd_r2r(mm7, mm3);
+        cvtpi2ps_r2r(mm0,xmm0);
+        cvtpi2ps_r2r(mm1,xmm1);
+        cvtpi2ps_r2r(mm2,xmm2);
+        cvtpi2ps_r2r(mm3,xmm3);
+        movlps_r2m(xmm0,dst[0]);
+        movlps_r2m(xmm1,dst[2]);
+        movlps_r2m(xmm2,dst[4]);
+        movlps_r2m(xmm3,dst[6]);
+
+        src+=8;
+        dst+=8;
+    }
+    emms();
+}
+
+static void frame_f2i_sse(float *src,u_char *dst,int l)
+{
+    int i;
+
+    // put 128 in all 4 words of mm7
+    movd_g2r(128,mm7);
+    punpcklwd_r2r(mm7,mm7);
+    punpckldq_r2r(mm7,mm7);
+
+    // put 128 in all 8 bytes of mm6
+    movd_g2r(128,mm6);
+    punpcklbw_r2r(mm6,mm6);
+    punpcklwd_r2r(mm6,mm6);
+    punpckldq_r2r(mm6,mm6);
+
+    for( i=0; i<l; i+=8 ) {
+        movaps_m2r(src[0],xmm0);
+        movaps_m2r(src[4],xmm2);
+        movhlps_r2r(xmm0,xmm1);
+        cvtps2pi_r2r(xmm0,mm0);
+        cvtps2pi_r2r(xmm1,mm1);
+        movhlps_r2r(xmm2,xmm3);
+        cvtps2pi_r2r(xmm2,mm2);
+        cvtps2pi_r2r(xmm3,mm3);
+        packssdw_r2r(mm1,mm0);
+        packssdw_r2r(mm3,mm2);
+        psubw_r2r(mm7,mm0);
+        psubw_r2r(mm7,mm2);
+        packsswb_r2r(mm2, mm0);
+        paddb_r2r(mm6, mm0);
+        movq_r2m(mm0,dst[0]);
+
+        src+=8;
+        dst+=8;
+    }
+
+    emms();
+}
+
+#endif
 
 /* Routine to perform a 1-dimensional convolution with the result 
    symmetrically truncated to match the input length.  
@@ -283,7 +374,7 @@ static void convolveField(float *data, int width, int height, int outstride, flo
 
 static void convolveFrame(u_char *src,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy,float *tmp1,float *tmp2)
 {
-    frame_i2f(src,tmp1,w*h);
+    pframe_i2f(src,tmp1,w*h);
 
     if (interlace ) {
         convolveField(tmp1,  w,h,2,ytap,numy,tmp2);
@@ -294,7 +385,22 @@ static void convolveFrame(u_char *src,int w,int h,int interlace,float **xtap,int
 
     convolveField(tmp2,h,w,1,xtap,numx,tmp1);
 
-    frame_f2i(tmp1,src,w*h);
+    pframe_f2i(tmp1,src,w*h);
+}
+
+static void set_accel(int w,int h)
+{
+    pframe_i2f=frame_i2f;
+    pframe_f2i=frame_f2i;
+
+#ifdef HAVE_ASM_MMX
+    if ( (w&7)==0 && (h&7)==0 ) { // everything must be a multiple of 8
+        if( cpu_accel() & ACCEL_X86_SSE ) {
+            pframe_i2f=frame_i2f_sse;
+            pframe_f2i=frame_f2i_sse;
+        }
+    }
+#endif
 }
 
 static void usage(void)
