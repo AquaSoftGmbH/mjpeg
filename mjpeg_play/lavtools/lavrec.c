@@ -183,6 +183,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <termios.h>
 #include <sys/fsuid.h>
 #include <signal.h>
 #include <fcntl.h>
@@ -192,18 +193,18 @@
 #endif
 #include <string.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 static lavrec_t *info;
 static int num_frames, num_lost, num_ins, num_del, num_aerr;
 static int show_stats = 0;
 static int state;
+static sem_t state_changed;
 static int verbose = 0;
 static int wait_for_start = 0;
 static int batch_mode = 0;
 static char input_source;
-static pthread_cond_t state_cond;
-static int cond_done = 0;
-static pthread_mutex_t state_mutex;
+static pthread_t signal_thread;
 
 static void Usage(char *progname)
 {
@@ -423,11 +424,6 @@ static int parse_geometry (char *geom, int *x, int *y, int *width, int *height)
 }
 
 
-static void SigHandler(int sig_num)
-{
-  lavrec_stop(info);
-}
-
 static void input(int type, char *message)
 {
   switch (type)
@@ -447,101 +443,55 @@ static void input(int type, char *message)
   }
 }
 
-static void *batch_control_thread(void *arg)
+static void *
+user_input_thread (void * arg)
 {
+   fd_set rfds;
+   struct timeval timeout;
+   char input_buffer[256];
 
-  do
-  {
-	  while (!cond_done)
-	  {
-		  pthread_mutex_lock(&state_mutex);
-		  pthread_cond_wait(&state_cond, &state_mutex);
-		  pthread_mutex_unlock(&state_mutex);
-	  }
-	  cond_done = 0;
-	  if (state == LAVREC_STATE_PAUSED )
-	  {
-          usleep(10000);
-		  lavrec_start(info);
-	  }
-  }
-  while (state != LAVREC_STATE_STOP);
-  mjpeg_debug("Control thread finished\n");
-  pthread_exit(NULL);
-}
-
-static void *input_thread(void *arg)
-{
-  char input_buffer[256];
-
-  do
-  {
-    while (!cond_done)
-    {
-      pthread_mutex_lock(&state_mutex);
-      pthread_cond_wait(&state_cond, &state_mutex);
-      pthread_mutex_unlock(&state_mutex);
-    }
-    cond_done = 0;
-    if (state == LAVREC_STATE_PAUSED || state == LAVREC_STATE_RECORDING)
-    {
-      if (!info->single_frame && wait_for_start)
-      {
-        if (state == LAVREC_STATE_PAUSED)
-          printf("Press enter to start recording>");
-        else
-          printf("Press enter to pause recording\n");
-      }
+   if (state == LAVREC_STATE_PAUSED)
+   {
+      printf("Press enter to start recording>");
       fflush(stdout);
-      if (!wait_for_start && !info->single_frame)
+   }
+
+   while (state != LAVREC_STATE_STOP)
+   {
+      pthread_testcancel();
+
+      /* wait for input */
+      FD_ZERO(&rfds);
+      FD_SET(0, &rfds);
+      timeout.tv_sec = 0;
+      timeout.tv_usec = 500000;
+      if (select(1, &rfds, 0, 0, &timeout) == 0)
+        continue; /* input timeout */
+
+      read(0, input_buffer, sizeof(input_buffer));
+
+      switch (state)
       {
-        if (state == LAVREC_STATE_PAUSED)
-        {
-          lavrec_start(info);
-          wait_for_start = 1; /* enable pause from now on */
-        }
-      }
-      else
-      {
-        int bla = show_stats;
-        while (show_stats == bla)
-        {
-          usleep(10000);
-          if (read(0, input_buffer, sizeof(input_buffer))>0)
-          {
-            if (state == LAVREC_STATE_PAUSED)
-              lavrec_start(info);
-            else /* now recording - so stop */
-              lavrec_pause(info);
+         case LAVREC_STATE_PAUSED:
+            lavrec_start(info);
+            printf("Press enter to pause recording\n");
             break;
-          }
-        }
+         case LAVREC_STATE_RECORDING:
+            lavrec_pause(info);
+            printf("Press enter to start recording>");
+            fflush(stdout);
+            break;
       }
-    }
-  }
-  while (state != LAVREC_STATE_STOP);
-  mjpeg_debug("Input thread finished\n");
-  pthread_exit(NULL);
+   }
+
+   return 0;
 }
 
 static void statechanged(int new)
 {
+  show_stats = (new == LAVREC_STATE_RECORDING);
   state = new;
-
-  switch (new)
-  {
-  case LAVREC_STATE_PAUSED:
-  case LAVREC_STATE_RECORDING:
-    show_stats = (new==LAVREC_STATE_PAUSED?0:1);
-    cond_done = 1;
-    pthread_mutex_lock(&state_mutex);
-    pthread_cond_broadcast(&state_cond);
-    pthread_mutex_unlock(&state_mutex);
-    break;
-  case LAVREC_STATE_STOP:
-    show_stats = -1;
-    break;
-  }
+  sem_post(&state_changed);
 }
 
 #if 0
@@ -1102,9 +1052,44 @@ static void print_summary(void)
     num_lost, num_ins, num_del, num_aerr);
 }
 
+static void *
+signal_catcher_thread (void * arg)
+{
+   sigset_t * sigs = arg;
+   int sig;
+
+   sigwait(sigs, &sig);
+   lavrec_stop(info);
+   return 0;
+}
+
+static void
+signal_forwarder (int sig)
+{
+   pthread_kill(signal_thread, sig);
+}
+
+static void
+forward_signals (sigset_t * sigs)
+{
+   struct sigaction sa;
+   int sig;
+   
+   sa.sa_handler = signal_forwarder;
+   sigfillset(&sa.sa_mask);
+   sa.sa_flags = SA_RESTART;
+
+   for (sig = 1; sig < 32; sig++)
+      if (sigismember(sigs, sig) > 0)
+	 sigaction(sig, &sa, 0);
+
+   pthread_sigmask(SIG_UNBLOCK, sigs, 0);
+}
+
 int main(int argc, char **argv)
 {
-  pthread_t msg_thr;
+  sigset_t sigmask;
+  pthread_t input_thread;
 
   /* no root please (only during audio setup) */
   if (getuid() != geteuid())
@@ -1116,11 +1101,6 @@ int main(int argc, char **argv)
       return 0;
     }
   }
-  
-  fcntl(0,F_SETFL,O_NONBLOCK);
-  signal(SIGINT, SigHandler);  /* Control-C handler */
-  signal(SIGTERM, SigHandler); /* Handle kill */
-  signal(SIGHUP, SigHandler);  /* Handle kill -HUP */
 
   info = lavrec_malloc();
   info->state_changed = statechanged;
@@ -1133,20 +1113,43 @@ int main(int argc, char **argv)
 //  else
 	  info->output_statistics = output_stats;
 
-  pthread_mutex_init(&state_mutex, NULL);
-  pthread_cond_init(&state_cond, NULL);
-  if( batch_mode )
-	  pthread_create(&msg_thr, NULL, batch_control_thread, NULL);
-  else
-	  pthread_create(&msg_thr, NULL, input_thread, NULL);
-	  
+  sem_init(&state_changed, 0, 0);
+  state = LAVREC_STATE_PAUSED;
+
+  /* Block all signals */	  
+  sigfillset(&sigmask);
+  pthread_sigmask(SIG_SETMASK, &sigmask, 0);
+
+  sigemptyset(&sigmask);
+  sigaddset(&sigmask, SIGHUP);
+  sigaddset(&sigmask, SIGINT);
+  sigaddset(&sigmask, SIGQUIT);
+  sigaddset(&sigmask, SIGTERM);
+
+  /* Start signal catching thread */
+  pthread_create(&signal_thread, NULL, signal_catcher_thread, &sigmask);
+  /* Catch and forward selected signals to the signal catcher */
+  forward_signals(&sigmask);
+
   lavrec_main(info);
+
+  if (!wait_for_start)
+     lavrec_start(info);
+  if (!batch_mode)
+     pthread_create(&input_thread, NULL, user_input_thread, NULL);
+
   lavrec_busy(info);
   lavrec_free(info);
 
-  pthread_cancel(msg_thr);
-  pthread_join(msg_thr, NULL);
-
+  pthread_cancel(signal_thread);
+  pthread_join(signal_thread, 0);
+  if (!batch_mode)
+  {
+     pthread_cancel(input_thread);
+     pthread_join(input_thread, 0);
+  }
+  
+  sem_destroy(&state_changed);
   fprintf(stderr, "\n");
   print_summary();
 

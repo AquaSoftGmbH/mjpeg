@@ -663,21 +663,22 @@ void do_audio(void)
    sigset_t blocked_signals;
 
    /* Set the capture thread in a reasonable state - cancellation enabled
-	  and asynchronous, SIGINT's ignored... */
-   if( pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL) )
-	 {
-	   system_error( "Bad pthread_setcancelstate", fd, 0 );
-	 }
+      and asynchronous, SIGINT's ignored... */
+   /* PTHREAD_CANCEL_ASYNCHRONOUS is evil. */
+/*   if( pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL) )
+   {
+      system_error( "Bad pthread_setcancelstate", fd, 0 );
+   }
    if( pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL) )
-	 {
-	   system_error( "Bad pthread_setcanceltype", fd, 0 );
-	 }
+   {
+      system_error( "Bad pthread_setcanceltype", fd, 0 );
+   }*/
 
    sigaddset( &blocked_signals, SIGINT );
    if( pthread_sigmask( SIG_BLOCK, &blocked_signals, NULL ))
-	 {
-	   system_error( "Bad pthread_sigmask", fd, 0 );
-	 }
+   {
+      system_error( "Bad pthread_sigmask", fd, 0 );
+   }
 #endif
 	 
 
