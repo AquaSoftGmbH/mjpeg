@@ -13,13 +13,32 @@ OBJS= studio.c config.c parseconfig.c gtktvplug.c lavrec_pipe.c \
 bin_PROGRAMS = studio stv
 
 studio_headers = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
-	mixer.h gtkfunctions.h yuv4mpeg.h gtkscenelist.h
+	mixer.h gtkfunctions.h yuv4mpeg.h gtkscenelist.h \
+	gdkpixbuf_write.h
 
 studio_SOURCES = ${studio_headers} ${OBJS}
 studio_LDADD = ${X_LIBS} -lXv -L$(top_srcdir)/yuv4mpeg -lyuv4mpeg
 studio_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS} ${GDK_PIXBUF_LIBS}
 
+if HAVE_PNG
+PNG_LIBS = -lpng
+else
+PNG_LIBS =
+endif
+
+if HAVE_JPEG
+JPEG_LIBS = -ljpeg
+else
+JPEG_LIBS =
+endif
+
+if OSS
+MIXER_OBJECTS = mixer.c mixer.h
+else
+MIXER_OBJECTS =
+endif
+
 stv_SOURCES = studio-tv.c gtktvplug.c gtktvplug.h gtkfunctions.c \
-	parseconfig.c
-stv_LDADD = ${X_LIBS} -lXv
-stv_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS}
+	parseconfig.c gdkpixbuf_write.c ${MIXER_OBJECTS}
+stv_LDADD = ${X_LIBS} -lXv ${PNG_LIBS} ${JPEG_LIBS}
+stv_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS} ${GDK_PIXBUF_LIBS}

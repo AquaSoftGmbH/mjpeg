@@ -82,9 +82,9 @@ void create_filesel1(GtkWidget *widget, gpointer data);
 void write_result(GtkWidget *widget, gpointer data);
 GtkWidget *create_buttons(GtkWidget *vbox, GtkWidget *window);
 void create_lavrec_logtable(GtkWidget *table);
-GtkWidget *create_audio_sliders(GtkWidget *window);
+GtkWidget *create_audio_sliders(void);
 void audio_slider_changed(GtkAdjustment *adj, gpointer data);
-GtkWidget *create_video_sliders(GtkWidget *window);
+GtkWidget *create_video_sliders(void);
 void video_slider_changed(GtkAdjustment *adj, char *what);
 void create_scene_detection_window(void);
 void scene_detection_input_cb(char *input);
@@ -709,7 +709,7 @@ void audio_slider_changed(GtkAdjustment *adj, gpointer data)
 	}
 }
 
-GtkWidget *create_audio_sliders(GtkWidget *window)
+GtkWidget *create_audio_sliders()
 {
 	GtkWidget *vbox, *scrollbar, *label, *pixmap_w;
 	GtkObject *adj;
@@ -770,105 +770,60 @@ void video_slider_changed(GtkAdjustment *adj, char *what)
 	gtk_tvplug_set(tv, what, adj->value);
 }
 
-GtkWidget *create_video_sliders(GtkWidget *window)
+GtkWidget *create_video_sliders()
 {
-	GtkWidget *hbox, *vbox, *scrollbar, *label, *pixmap_w;
-	GtkObject *adj;
-	GtkTooltips *tooltip;
+   GtkWidget *hbox, *vbox, *pixmap, *scrollbar;
+   GtkTooltips *tooltip;
+   int i=0;
+   char *titles[4] = {
+      "Hue",
+      "Contrast",
+      "Brightness",
+      "Colour Saturation"
+   };
+   char *names[4] = {
+      "hue",
+      "contrast",
+      "brightness",
+      "colour"
+   };
+   GtkAdjustment *adj[4] = {
+      GTK_TVPLUG(tv)->hue_adj,
+      GTK_TVPLUG(tv)->contrast_adj,
+      GTK_TVPLUG(tv)->brightness_adj,
+      GTK_TVPLUG(tv)->saturation_adj,
+   };
+   char **pixmaps[4] = {
+      slider_hue_xpm,
+      slider_contrast_xpm,
+      slider_brightness_xpm,
+      slider_sat_colour_xpm,
+   };
 
-	tooltip = gtk_tooltips_new();
-	hbox = gtk_hbox_new (FALSE, 20);
+   tooltip = gtk_tooltips_new();
+   hbox = gtk_hbox_new(TRUE, 20);
 
-	vbox = gtk_vbox_new (FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	adj = gtk_adjustment_new(tv!=NULL?GTK_TVPLUG(tv)->hue:0, -1000, 1000, 10, 100, 0);
-	if (tv!= NULL)
-		gtk_signal_connect(adj, "value_changed",
-			GTK_SIGNAL_FUNC(video_slider_changed), "hue");
-	scrollbar = gtk_vscale_new(GTK_ADJUSTMENT (adj));
-	gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
-	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
-	gtk_widget_show(scrollbar);
-	gtk_tooltips_set_tip(tooltip, scrollbar, "Hue", NULL);
-	pixmap_w = gtk_widget_from_xpm_data(slider_hue_xpm);
-	gtk_widget_show(pixmap_w);
-	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
-	gtk_widget_show(vbox);
+   for (i=0;i<4;i++)
+   {
+      vbox = gtk_vbox_new (FALSE, 0);
+      gtk_signal_connect(GTK_OBJECT(adj[i]), "value_changed",
+         GTK_SIGNAL_FUNC(video_slider_changed), names[i]);
+      scrollbar = gtk_vscale_new(adj[i]);
+      gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
+      gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 10);
+      gtk_widget_show(scrollbar);
+      gtk_widget_set_usize(scrollbar, -1, 150);
+      gtk_tooltips_set_tip(tooltip, scrollbar, titles[i], NULL);
+      pixmap = gtk_widget_from_xpm_data(pixmaps[i]);
+      gtk_widget_show(pixmap);
+      gtk_box_pack_start(GTK_BOX(vbox), pixmap, FALSE, FALSE, 10);
+      gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
+      gtk_widget_show(vbox);
+   }
 
-	vbox = gtk_vbox_new (FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	adj = gtk_adjustment_new(tv!=NULL?GTK_TVPLUG(tv)->contrast:0, -1000, 1000, 10, 100, 0);
-	if (tv!=NULL)
-		gtk_signal_connect(adj, "value_changed",
-			GTK_SIGNAL_FUNC(video_slider_changed), "contrast");
-	scrollbar = gtk_vscale_new(GTK_ADJUSTMENT (adj));
-	gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
-	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
-	gtk_widget_show(scrollbar);
-	gtk_tooltips_set_tip(tooltip, scrollbar, "Contrast", NULL);
-	pixmap_w = gtk_widget_from_xpm_data(slider_contrast_xpm);
-	gtk_widget_show(pixmap_w);
-	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
-	gtk_widget_show(vbox);
-
-	vbox = gtk_vbox_new (FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	adj = gtk_adjustment_new(tv!=NULL?GTK_TVPLUG(tv)->brightness:0, -1000, 1000, 10, 100, 0);
-	if(tv!=NULL)
-		gtk_signal_connect(adj, "value_changed",
-			GTK_SIGNAL_FUNC(video_slider_changed), "brightness");
-	scrollbar = gtk_vscale_new(GTK_ADJUSTMENT (adj));
-	gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
-	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
-	gtk_widget_show(scrollbar);
-	gtk_tooltips_set_tip(tooltip, scrollbar, "Brightness", NULL);
-	pixmap_w = gtk_widget_from_xpm_data(slider_brightness_xpm);
-	gtk_widget_show(pixmap_w);
-	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
-	gtk_widget_show(vbox);
-
-	vbox = gtk_vbox_new (FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	adj = gtk_adjustment_new(tv!=NULL?GTK_TVPLUG(tv)->saturation:0, -1000, 1000, 10, 100, 0);
-	if(tv!=NULL)
-		gtk_signal_connect(adj, "value_changed",
-			GTK_SIGNAL_FUNC(video_slider_changed), "colour");
-	scrollbar = gtk_vscale_new(GTK_ADJUSTMENT (adj));
-	gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
-	gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 0);
-	gtk_widget_show(scrollbar);
-	gtk_tooltips_set_tip(tooltip, scrollbar, "Colour Saturation", NULL);
-	pixmap_w = gtk_widget_from_xpm_data(slider_sat_colour_xpm);
-	gtk_widget_show(pixmap_w);
-	gtk_box_pack_start(GTK_BOX(vbox), pixmap_w, FALSE, FALSE, 0);
-	label = gtk_label_new("\n");
-	gtk_box_pack_start(GTK_BOX (vbox), label, FALSE, FALSE, 0);
-	gtk_widget_show (label);
-	gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
-	gtk_widget_show(vbox);
-
-	return hbox;
+   return hbox;
 }
+
 
 GtkWidget *create_lavrec_layout(GtkWidget *window)
 {
@@ -887,7 +842,7 @@ GtkWidget *create_lavrec_layout(GtkWidget *window)
 		save_config();
 	}
 
-	hbox3 = create_video_sliders(window);
+	hbox3 = create_video_sliders();
 	gtk_box_pack_start (GTK_BOX (hbox2), hbox3, TRUE, FALSE, 10);
 	gtk_widget_show(hbox3);
 
@@ -900,7 +855,7 @@ GtkWidget *create_lavrec_layout(GtkWidget *window)
 	gtk_box_pack_start (GTK_BOX (hbox2), tv, TRUE, FALSE, 10);
 	gtk_widget_show(tv);
 
-	vbox2 = create_audio_sliders(window);
+	vbox2 = create_audio_sliders();
 	gtk_box_pack_start (GTK_BOX (hbox2), vbox2, TRUE, FALSE, 10);
 	gtk_widget_show(vbox2);
 

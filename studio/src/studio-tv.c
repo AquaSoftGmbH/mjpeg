@@ -16,16 +16,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-/*
-TODO:
-- auto-channel detection
-- initting (xawtv...?)
-- improved focus behaviour
-
-GoT requests:
-- always on top
-*/
-
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
@@ -37,6 +27,7 @@ GoT requests:
 #include <string.h>
 #include <gdk/gdkkeysyms.h>
 #include <gdk/gdkx.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <getopt.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -46,11 +37,18 @@ GoT requests:
 #include "gtktvplug.h"
 #include "gtkfunctions.h"
 #include "parseconfig.h"
+#if defined(HAVE_PNG) || defined(HAVE_JPEG)
+#include "gdkpixbuf_write.h"
+#endif
+#ifdef OSS
+#include "mixer.h"
+#endif
 
 #include "slider_hue.xpm"
 #include "slider_contrast.xpm"
 #include "slider_sat_colour.xpm"
 #include "slider_brightness.xpm"
+#include "slider_volume.xpm"
 #include "stv_accept.xpm"
 #include "stv_reject.xpm"
 #include "stv_arrow_up.xpm"
@@ -60,12 +58,6 @@ typedef struct {
    int  frequency;        /* channel frequency         */
    char name[256];        /* name given to the channel */
 } Channel;
-
-typedef struct {
-   GtkWidget *entry;
-   GtkObject *adj;
-   GtkWidget *scrollbar;
-} EntryAndSlider;
 
 #ifdef HAVE_LIRC
 enum{
@@ -84,6 +76,10 @@ enum{
    RC_CHAN_DOWN,
    RC_FULLSCREEN,
    RC_QUIT,
+   RC_SCREENSHOT,
+   RC_VOLUME_UP,
+   RC_VOLUME_DOWN,
+   RC_PREVIOUS_CHAN,
    RC_NUM_KEYS
 };
 static char *rc_names[] = {
@@ -101,25 +97,36 @@ static char *rc_names[] = {
    "Channel up  ",
    "Channel down  ",
    "Fullscreen  ",
-   "Quit  "
+   "Quit  ",
+   "Screenshot  ",
+   "Volume up  ",
+   "Volume down  ",
+   "Last channel  "
 };
 #endif
 
+#define min(a,b) a>b?b:a
+
 GtkWidget *window = NULL;
-static GtkWidget *tv = NULL, *channelcombo = NULL;
-static EntryAndSlider entry_and_slider;
 static gboolean verbose = FALSE;
+static GtkWidget *tv = NULL, *channelcombo = NULL;
+static GtkWidget *chanlist_scrollbar = NULL, *chanlist_entry = NULL;
 static Channel **channels = NULL; /* make it NULL-terminated PLEASE! */
-static gint current_channel=-1, port=0;
+static gint current_channel=-1, previous_channel=-1, port=0;
 static char *tv_config_file = "studio";
+#ifdef OSS
+static char *mixer_dev = NULL;
+static GtkAdjustment *adj_audio = NULL;
+static gint mixer_id, volume;
+#endif
 #ifdef HAVE_LIRC
-static char *lirc_dev = "/dev/lircd";
+static char *lirc_dev = NULL;
 static char *remote_buttons[RC_NUM_KEYS];
 static GtkWidget *rc_entry[RC_NUM_KEYS];
 static GtkWidget *focussed_entry = NULL, *focussed_label = NULL;
 #endif
 
-/* Found this one in bluefish (http://bluefish.openoffice.org/) */
+/* Found this one in bluefish (http://bluefish.openoffice.nl/) */
 #define DIR_MODE (S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)	/* same as 0755 */
 static int chk_dir(char *name)
 {
@@ -153,8 +160,14 @@ static void load_options(int *width, int *height, int *x, int *y)
    if (x) *x = cfg_get_int("StudioTV", "default_x");
    if (y) *y = cfg_get_int("StudioTV", "default_y");
 
+#ifdef OSS
+   if (!mixer_dev) mixer_dev = cfg_get_str("StudioTV", "default_mixer_dev");
+   if (!mixer_dev) mixer_dev = "/dev/mixer";
+#endif
+
 #ifdef HAVE_LIRC
-   lirc_dev = cfg_get_str("StudioTV", "default_lirc_dev");
+   if (!lirc_dev) lirc_dev = cfg_get_str("StudioTV", "default_lirc_dev");
+   if (!lirc_dev) lirc_dev = "/dev/lircd";
    for(num=0;num<RC_NUM_KEYS;num++)
    {
       sprintf(value_get, "remote_control_key_%d", num);
@@ -217,6 +230,10 @@ static void save_options()
    fprintf(fd, "default_x = %d\n", x);
    fprintf(fd, "default_y = %d\n", y);
 
+#ifdef OSS
+   fprintf(fd, "default_mixer_dev = %s\n", mixer_dev);
+#endif
+
 #ifdef HAVE_LIRC
    fprintf(fd, "default_lirc_dev = %s\n", lirc_dev);
    for(i=0;i<RC_NUM_KEYS;i++)
@@ -265,6 +282,7 @@ static void usage()
    g_print("Linux Video Studio TV - a simple yet functional TV application\n");
    g_print("Usage: \'stv [options]\' - where options are:\n");
    g_print("  -p num    : Xvideo port number to use (see -t, default: %d)\n", port);
+   g_print("  -m device : Mixer device (default: %s)\n", mixer_dev);
 #ifdef HAVE_LIRC
    g_print("  -l device : Linux Infrared Remote Control device (default: %s)\n", lirc_dev);
 #endif
@@ -286,12 +304,86 @@ static gint reset_size(gpointer data)
    geom.min_height = GTK_TVPLUG(tv)->height_best/16;
    geom.width_inc = GTK_TVPLUG(tv)->width_best/16;
    geom.height_inc = GTK_TVPLUG(tv)->height_best/16;
-   geom.max_width = GTK_TVPLUG(tv)->width_max;
-   geom.max_height = GTK_TVPLUG(tv)->height_max;
+   geom.max_width = GTK_TVPLUG(tv)->width_best;
+   geom.max_height = GTK_TVPLUG(tv)->height_best;
    gtk_window_set_geometry_hints(GTK_WINDOW(window), window, &geom,
       GDK_HINT_MIN_SIZE | GDK_HINT_MAX_SIZE | GDK_HINT_RESIZE_INC);
 
    return FALSE;
+}
+
+
+static void goto_previous_channel()
+{
+   int old_cur = current_channel;
+   
+   if (previous_channel < 0) return;
+   
+   current_channel = previous_channel;
+   previous_channel = old_cur;
+
+   gtk_tvplug_set(tv, "frequency", channels[current_channel]->frequency);
+}
+
+static void create_screenshot()
+{
+#if defined(HAVE_PNG) || defined(HAVE_JPEG)
+   GdkPixbuf *buf;
+
+   if (!window) return;
+   if (!GTK_WIDGET_VISIBLE(tv)) return;
+
+   /* ref/get */
+   buf = gdk_pixbuf_new(GDK_COLORSPACE_RGB, 0, 8, 
+      min(tv->allocation.width, GTK_TVPLUG(tv)->width_best),
+      min(tv->allocation.height, GTK_TVPLUG(tv)->height_best));
+   if (!buf)
+   {
+      gtk_show_text_window(STUDIO_ERROR,
+         "creating a pixbuf failed, are you out of memory?", NULL);
+      return;
+   }
+   buf = gdk_pixbuf_get_from_drawable(buf, tv->window,
+      gtk_widget_get_default_colormap(),
+      tv->allocation.width>GTK_TVPLUG(tv)->width_best?(tv->allocation.width-GTK_TVPLUG(tv)->width_best)/2:0,
+      tv->allocation.height>GTK_TVPLUG(tv)->height_best?(tv->allocation.height-GTK_TVPLUG(tv)->height_best)/2:0,
+      0, 0,
+      min(tv->allocation.width, GTK_TVPLUG(tv)->width_best),
+      min(tv->allocation.height, GTK_TVPLUG(tv)->height_best));
+   if (!buf)
+   {
+      gtk_show_text_window(STUDIO_ERROR,
+         "Grabbing the screenshot failed", NULL);
+      return;
+   }
+
+   gdk_pixbuf_save_to_file(buf);
+
+#else
+   gtk_show_text_window(STUDIO_ERROR,
+      "Compiled without PNG/JPG support", "Screenshots not supported");
+#endif
+}
+
+static void toggle_audio()
+{
+   static gboolean audio = TRUE;
+
+   if (!window) return;
+   if (!GTK_WIDGET_VISIBLE(tv)) return;
+
+   audio = audio?FALSE:TRUE;
+
+   if (audio)
+   {
+      if (verbose) g_print("Enabling audio\n");
+      gtk_tvplug_set(tv, "mute", 0);
+   }
+   else
+   {
+      if (verbose) g_print("Disabling audio\n");
+      gtk_tvplug_set(tv, "mute", 1);
+   }
 }
 
 static void toggle_fullscreen()
@@ -345,11 +437,39 @@ static void video_slider_changed(GtkAdjustment *adj, char *what)
     gtk_tvplug_set(tv, what, adj->value);
 }
 
+#ifdef OSS
+static void set_volume(int value)
+{
+   if (mixer_id > 0)
+   {
+      int num_devs = mixer_num_of_devs (mixer_id);
+      int i;
+
+      for (i=0;i<num_devs;i++)
+      {
+         if (!strcmp(mixer_get_label(mixer_id, i), "Vol  "))
+         {
+            mixer_set_vol_left (mixer_id, i, value);
+            if (mixer_is_stereo (mixer_id, i))
+               mixer_set_vol_right (mixer_id, i, value);
+         }
+      }
+   }
+   volume = value;
+
+   if (adj_audio) gtk_adjustment_set_value(adj_audio, 100 - value);
+}
+
+static void audio_slider_changed(GtkAdjustment *adj, gpointer data)
+{
+   set_volume(100 - adj->value);
+}
+#endif
+
 static GtkWidget *get_video_sliders_widget()
 {
    GtkWidget *hbox, *vbox, *pixmap, *scrollbar;
    GtkTooltips *tooltip;
-   GtkObject *adj;
    int i=0;
    char *titles[4] = {
       "Hue",
@@ -363,19 +483,11 @@ static GtkWidget *get_video_sliders_widget()
       "brightness",
       "colour"
    };
-   int values[12] = {
-      GTK_TVPLUG(tv)->hue,
-      GTK_TVPLUG(tv)->contrast,
-      GTK_TVPLUG(tv)->brightness,
-      GTK_TVPLUG(tv)->saturation,
-      GTK_TVPLUG(tv)->hue_min,
-      GTK_TVPLUG(tv)->contrast_min,
-      GTK_TVPLUG(tv)->brightness_min,
-      GTK_TVPLUG(tv)->saturation_min,
-      GTK_TVPLUG(tv)->hue_max,
-      GTK_TVPLUG(tv)->contrast_max,
-      GTK_TVPLUG(tv)->brightness_max,
-      GTK_TVPLUG(tv)->saturation_max,
+   GtkAdjustment *adj[4] = {
+      GTK_TVPLUG(tv)->hue_adj,
+      GTK_TVPLUG(tv)->contrast_adj,
+      GTK_TVPLUG(tv)->brightness_adj,
+      GTK_TVPLUG(tv)->saturation_adj
    };
    char **pixmaps[4] = {
       slider_hue_xpm,
@@ -390,11 +502,10 @@ static GtkWidget *get_video_sliders_widget()
    for (i=0;i<4;i++)
    {
       vbox = gtk_vbox_new (FALSE, 0);
-      adj = gtk_adjustment_new(values[i], values[i+4], values[i+8],
-         1, (values[i+8]-values[i+4])/10, 0);
-      gtk_signal_connect(adj, "value_changed",
+      gtk_signal_connect(GTK_OBJECT(adj[i]), "value_changed",
          GTK_SIGNAL_FUNC(video_slider_changed), names[i]);
-      scrollbar = gtk_vscale_new(GTK_ADJUSTMENT (adj));
+      gtk_object_ref(GTK_OBJECT(adj[i]));
+      scrollbar = gtk_vscale_new(adj[i]);
       gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
       gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 10);
       gtk_widget_show(scrollbar);
@@ -407,6 +518,39 @@ static GtkWidget *get_video_sliders_widget()
       gtk_widget_show(vbox);
    }
 
+#ifdef OSS
+   /* Audio volume slider */
+   if (mixer_id > 0)
+   {
+      int num_devs = mixer_num_of_devs (mixer_id);
+      int value = 0;
+      for (i=0;i<num_devs;i++)
+      {
+         if (!strcmp(mixer_get_label(mixer_id, i), "Vol  "))
+         {
+            value = 100 - mixer_get_vol_left(mixer_id, i);
+            break;
+         }
+      }
+
+      vbox = gtk_vbox_new (FALSE, 0);
+      adj_audio = GTK_ADJUSTMENT(gtk_adjustment_new(value,0,100,1,10,0));
+      gtk_signal_connect(GTK_OBJECT(adj_audio), "value_changed",
+         GTK_SIGNAL_FUNC(audio_slider_changed), NULL);
+      scrollbar = gtk_vscale_new(adj_audio);
+      gtk_scale_set_draw_value(GTK_SCALE(scrollbar), 0);
+      gtk_box_pack_start(GTK_BOX (vbox), scrollbar, TRUE, TRUE, 10);
+      gtk_widget_show(scrollbar);
+      gtk_widget_set_usize(scrollbar, -1, 150);
+      gtk_tooltips_set_tip(tooltip, scrollbar, "Audio Volume", NULL);
+      pixmap = gtk_widget_from_xpm_data(slider_volume_xpm);
+      gtk_widget_show(pixmap);
+      gtk_box_pack_start(GTK_BOX(vbox), pixmap, FALSE, FALSE, 10);
+      gtk_box_pack_start(GTK_BOX (hbox), vbox, FALSE, FALSE, 0);
+      gtk_widget_show(vbox);
+   }
+#endif
+
    return hbox;
 }
 
@@ -415,9 +559,9 @@ static void row_selected(GtkCList *clist, gint row, gint column, GdkEvent *event
    char *ldata;
 
    gtk_clist_get_text(clist, row, 0, &ldata);
-   gtk_entry_set_text(GTK_ENTRY(entry_and_slider.entry), ldata);
+   gtk_entry_set_text(GTK_ENTRY(chanlist_entry), ldata);
    gtk_clist_get_text(clist, row, 1, &ldata);
-   gtk_adjustment_set_value(GTK_ADJUSTMENT(entry_and_slider.adj), atoi(ldata));
+   gtk_adjustment_set_value(GTK_TVPLUG(tv)->frequency_adj, atoi(ldata));
    if (channels)
    {
       int i;
@@ -425,6 +569,7 @@ static void row_selected(GtkCList *clist, gint row, gint column, GdkEvent *event
       {
          if (channels[i]->frequency == atoi(ldata))
          {
+            previous_channel = current_channel;
             current_channel = i;
             break;
          }
@@ -439,7 +584,7 @@ static void save_data(GtkWidget *widget, GtkCList *clist)
    char *ldata[2];
    char buf[256];
 
-   if (!strcmp(gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry)),""))
+   if (!strcmp(gtk_entry_get_text(GTK_ENTRY(chanlist_entry)),""))
    {
       /* no name given */
       gtk_show_text_window(STUDIO_WARNING, "Please supply a channel name", NULL);
@@ -450,19 +595,19 @@ static void save_data(GtkWidget *widget, GtkCList *clist)
    {
       gtk_clist_get_text(clist, i, 0, &ldata[0]);
       gtk_clist_get_text(clist, i, 1, &ldata[1]);
-      if (strcmp(ldata[0], gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry))) == 0 ||
-         atoi(ldata[1]) == GTK_ADJUSTMENT(entry_and_slider.adj)->value)
+      if (strcmp(ldata[0], gtk_entry_get_text(GTK_ENTRY(chanlist_entry))) == 0 ||
+         atoi(ldata[1]) == GTK_TVPLUG(tv)->frequency_adj->value)
       {
          /* just change this */
-         gtk_clist_set_text(clist, i, 0, gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry)));
-         sprintf(buf, "%d", (int)GTK_ADJUSTMENT(entry_and_slider.adj)->value);
+         gtk_clist_set_text(clist, i, 0, gtk_entry_get_text(GTK_ENTRY(chanlist_entry)));
+         sprintf(buf, "%d", (int)GTK_TVPLUG(tv)->frequency_adj->value);
          gtk_clist_set_text(clist, i, 1, buf);
          return;
       }
    }
 
-   data[0] = gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry));
-   sprintf(buf, "%d", (int)GTK_ADJUSTMENT(entry_and_slider.adj)->value);
+   data[0] = gtk_entry_get_text(GTK_ENTRY(chanlist_entry));
+   sprintf(buf, "%d", (int)GTK_TVPLUG(tv)->frequency_adj->value);
    data[1] = buf;
    gtk_clist_append(clist, data);
 }
@@ -475,7 +620,7 @@ static void del_data(GtkWidget *widget, GtkCList *clist)
    for (i=0;i<clist->rows;i++)
    {
       gtk_clist_get_text(clist, i, 0, &data);
-      if (!strcmp(data, gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry))))
+      if (!strcmp(data, gtk_entry_get_text(GTK_ENTRY(chanlist_entry))))
       {
          gtk_clist_remove(clist, i);
          return;
@@ -549,7 +694,7 @@ static void channel_editor_exposed(GtkWidget *channellist, GdkEvent *event, gpoi
    }
 }
 
-static void window_unrealize(GtkWidget *widget, gpointer data)
+static void options_window_unrealize(GtkWidget *widget, gpointer data)
 {
    int *bla = (int *) data;
    *bla = 0;
@@ -557,6 +702,16 @@ static void window_unrealize(GtkWidget *widget, gpointer data)
 #ifdef HAVE_LIRC
    focussed_entry = NULL;
    focussed_label = NULL;
+#endif
+}
+
+static void settings_window_unrealize(GtkWidget *widget, gpointer data)
+{
+   int *bla = (int *) data;
+   *bla = 0;
+
+#ifdef OSS
+   adj_audio = NULL;
 #endif
 }
 
@@ -569,7 +724,7 @@ static void move_data_down(GtkWidget *w, gpointer data2)
    for (i=0;i<clist->rows;i++)
    {
       gtk_clist_get_text(clist, i, 0, &data[0]);
-      if (!strcmp(gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry)), data[0]))
+      if (!strcmp(gtk_entry_get_text(GTK_ENTRY(chanlist_entry)), data[0]))
       {
          if (i+1<clist->rows)
          {
@@ -595,7 +750,7 @@ static void move_data_up(GtkWidget *w, gpointer data2)
    for (i=0;i<clist->rows;i++)
    {
       gtk_clist_get_text(clist, i, 0, &data[0]);
-      if (!strcmp(gtk_entry_get_text(GTK_ENTRY(entry_and_slider.entry)), data[0]))
+      if (!strcmp(gtk_entry_get_text(GTK_ENTRY(chanlist_entry)), data[0]))
       {
          if (i>0)
          {
@@ -705,22 +860,20 @@ static GtkWidget *get_channel_list_notebook_page(GtkWidget *channellist)
    gtk_box_pack_start(GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
    gtk_widget_show(hbox);
 
-   entry_and_slider.adj = gtk_adjustment_new(GTK_TVPLUG(tv)->frequency,
-      GTK_TVPLUG(tv)->frequency_min, GTK_TVPLUG(tv)->frequency_max,
-      1, (GTK_TVPLUG(tv)->frequency_max-GTK_TVPLUG(tv)->frequency_min)/10, 0);
-   gtk_signal_connect(entry_and_slider.adj, "value_changed",
+   gtk_signal_connect(GTK_OBJECT(GTK_TVPLUG(tv)->frequency_adj), "value_changed",
       GTK_SIGNAL_FUNC(video_slider_changed), "frequency");
-   entry_and_slider.scrollbar = gtk_hscale_new(GTK_ADJUSTMENT (entry_and_slider.adj));
-   gtk_scale_set_draw_value(GTK_SCALE(entry_and_slider.scrollbar), 1);
-   gtk_scale_set_value_pos(GTK_SCALE(entry_and_slider.scrollbar), GTK_POS_BOTTOM);
-   gtk_box_pack_start(GTK_BOX (vbox), entry_and_slider.scrollbar, TRUE, TRUE, 0);
-   gtk_widget_show(entry_and_slider.scrollbar);
-   gtk_widget_set_usize(entry_and_slider.scrollbar, 150, -1);
-   gtk_tooltips_set_tip(tooltip, entry_and_slider.scrollbar, "Channel Frequency", NULL);
+   gtk_object_ref(GTK_OBJECT(GTK_TVPLUG(tv)->frequency_adj));
+   chanlist_scrollbar = gtk_hscale_new(GTK_TVPLUG(tv)->frequency_adj);
+   gtk_scale_set_draw_value(GTK_SCALE(chanlist_scrollbar), 1);
+   gtk_scale_set_value_pos(GTK_SCALE(chanlist_scrollbar), GTK_POS_BOTTOM);
+   gtk_box_pack_start(GTK_BOX (vbox), chanlist_scrollbar, TRUE, TRUE, 0);
+   gtk_widget_show(chanlist_scrollbar);
+   gtk_widget_set_usize(chanlist_scrollbar, 150, -1);
+   gtk_tooltips_set_tip(tooltip, chanlist_scrollbar, "Channel Frequency", NULL);
 
-   entry_and_slider.entry = gtk_entry_new();
-   gtk_box_pack_start(GTK_BOX (vbox), entry_and_slider.entry, TRUE, FALSE, 0);
-   gtk_widget_show(entry_and_slider.entry);
+   chanlist_entry = gtk_entry_new();
+   gtk_box_pack_start(GTK_BOX (vbox), chanlist_entry, TRUE, FALSE, 0);
+   gtk_widget_show(chanlist_entry);
 
    hbox = gtk_hbox_new(FALSE, 5);
    button = gtk_image_label_button("Add", stv_accept_xpm, 5, GTK_POS_RIGHT);
@@ -811,7 +964,7 @@ static void show_channel_editor(GtkWidget *widget, gpointer data)
    gtk_widget_show(vbox);
 
    gtk_signal_connect(GTK_OBJECT(pop_window), "unrealize",
-      GTK_SIGNAL_FUNC(window_unrealize), (gpointer)(&show));
+      GTK_SIGNAL_FUNC(options_window_unrealize), (gpointer)(&show));
 
    gtk_window_set_policy(GTK_WINDOW(pop_window), 0, 0, 0); /* pffffffffft */
    gtk_window_set_transient_for(GTK_WINDOW(pop_window), GTK_WINDOW(window)); /* ? */
@@ -834,6 +987,7 @@ static void channel_changed(GtkWidget *widget, gpointer data)
       if (strcmp(gtk_entry_get_text(GTK_ENTRY(widget)), channels[i]->name) == 0)
       {
          frequency = channels[i]->frequency;
+         previous_channel = current_channel;
          current_channel = i;
          break;
       }
@@ -931,7 +1085,7 @@ static void show_options_window()
    gtk_widget_show(vbox);
 
    gtk_signal_connect(GTK_OBJECT(pop_window), "unrealize",
-      GTK_SIGNAL_FUNC(window_unrealize), (gpointer)(&show));
+      GTK_SIGNAL_FUNC(settings_window_unrealize), (gpointer)(&show));
 
    gtk_window_set_policy(GTK_WINDOW(pop_window), 0, 0, 0);
    gtk_window_set_transient_for(GTK_WINDOW(pop_window), GTK_WINDOW(window)); /* ? */
@@ -956,6 +1110,7 @@ static void increase_channel(int num)
 
    if (current_channel != old_cur)
    {
+      previous_channel = old_cur;
       if (verbose) g_print("Changing channel to \'%s\' (frequency: %d)\n",
          channels[current_channel]->name, channels[current_channel]->frequency);
       gtk_tvplug_set(tv, "frequency", channels[current_channel]->frequency);
@@ -1026,6 +1181,15 @@ static void tv_typed(GtkWidget *widget, GdkEventKey *event, gpointer data)
       case GDK_q:
          if (!delete_event(NULL, NULL, NULL)) destroy(NULL, NULL);
          break;
+      case GDK_a:
+         toggle_audio();
+         break;
+      case GDK_s:
+         create_screenshot();
+         break;
+      case GDK_p:
+         goto_previous_channel();
+	 break;
       case GDK_KP_0:
       case GDK_KP_1:
       case GDK_KP_2:
@@ -1090,6 +1254,9 @@ static void remote_button_action(gint button_num)
       case RC_9:
          set_timeout_goto_channel(button_num - RC_0);
          break;
+      case RC_MUTE:
+         toggle_audio();
+         break;
       case RC_CHAN_UP:
          increase_channel(1);
          break;
@@ -1099,8 +1266,22 @@ static void remote_button_action(gint button_num)
       case RC_FULLSCREEN:
          toggle_fullscreen();
          break;
+      case RC_SCREENSHOT:
+         create_screenshot();
+         break;
       case RC_QUIT:
          if (!delete_event(NULL, NULL, NULL)) destroy(NULL, NULL);
+         break;
+#ifdef OSS
+      case RC_VOLUME_UP:
+         set_volume(volume + 2);
+         break;
+      case RC_VOLUME_DOWN:
+         set_volume(volume - 2);
+         break;
+#endif
+      case RC_PREVIOUS_CHAN:
+         goto_previous_channel();
          break;
    }
 }
@@ -1209,7 +1390,7 @@ static int parse_command_line_options(int *argc, char **argv[],
    int w,h,x,y,i;
    char c1, c2;
 
-   while((n=getopt(*argc,*argv,"htvdp:c:g:l:")) != EOF)
+   while((n=getopt(*argc,*argv,"htvdp:c:g:l:m:")) != EOF)
    {
       switch (n)
       {
@@ -1246,6 +1427,9 @@ static int parse_command_line_options(int *argc, char **argv[],
             lirc_dev = optarg;
             break;
 #endif
+         case 'm':
+            mixer_dev = optarg;
+            break;
       }
    }
 
@@ -1282,7 +1466,7 @@ int main(int argc, char *argv[])
    {
       int i;
       for(i=0;channels[i];i++)
-         if (channels[i]->frequency == GTK_TVPLUG(tv)->frequency)
+         if (channels[i]->frequency == (int)GTK_TVPLUG(tv)->frequency_adj->value)
          {
             current_channel = i;
             break;
@@ -1317,6 +1501,26 @@ int main(int argc, char *argv[])
 
 #ifdef HAVE_LIRC
    lirc_init();
+#endif
+#ifdef OSS
+   mixer_id = mixer_init (mixer_dev);
+   if (mixer_id<=0)
+      g_print("**ERROR: opening mixer device (%s): %s\n",
+         mixer_dev, sys_errlist[errno]);
+   else
+   {
+      int num_devs = mixer_num_of_devs (mixer_id);
+      int i;
+      for (i=0;i<num_devs;i++)
+      {
+         if (!strcmp(mixer_get_label(mixer_id, i), "Vol  "))
+         {
+            volume = mixer_get_vol_left(mixer_id, i);
+            break;
+         }
+      }
+   }
+
 #endif
 
    gtk_main();

@@ -92,10 +92,11 @@ static void gtk_tvplug_class_init (GtkTvPlugClass *class)
 static void gtk_tvplug_init (GtkTvPlug *tvplug)
 {
 	tvplug->port = 0;
-	tvplug->brightness = 0;
-	tvplug->contrast = 0;
-	tvplug->saturation = 0;
-	tvplug->hue = 0;
+	tvplug->hue_adj = NULL;
+	tvplug->brightness_adj = NULL;
+	tvplug->saturation_adj = NULL;
+	tvplug->contrast_adj = NULL;
+	tvplug->frequency_adj = NULL;
 }
 
 int guess_port(int v)
@@ -139,7 +140,9 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 	XvAttribute *at;
 	XvEncodingInfo *ei;
 	int j;
-	int attributes, val, encodings;
+	int attributes, encodings;
+	int min, max, cur;
+	GtkAdjustment *adj;
 
 	g_return_if_fail (widget != NULL);
 	g_return_if_fail (GTK_IS_TVPLUG (widget));
@@ -181,46 +184,23 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 	at = XvQueryPortAttributes(GDK_DISPLAY(),tvplug->port,&attributes);
 	for (j = 0; j < attributes; j++)
 	{
+		attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
+		XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &cur);
+		min = at[j].min_value;
+		max = at[j].max_value;
+		adj = GTK_ADJUSTMENT(gtk_adjustment_new(cur, min, max,
+				1, (max-min)/10, 0));
+
 		if (strcmp(at[j].name, "XV_BRIGHTNESS") == 0)
-		{
-			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
-			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
-			tvplug->brightness = val;
-			tvplug->brightness_min = at[j].min_value;
-			tvplug->brightness_max = at[j].max_value;
-		}
+			tvplug->brightness_adj = adj;
 		else if (strcmp(at[j].name, "XV_CONTRAST") == 0)
-		{
-			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
-			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
-			tvplug->contrast = val;
-			tvplug->contrast_min = at[j].min_value;
-			tvplug->contrast_max = at[j].max_value;
-		}
+			tvplug->contrast_adj = adj;
 		else if (strcmp(at[j].name, "XV_SATURATION") == 0)
-		{
-			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
-			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
-			tvplug->saturation = val;
-			tvplug->saturation_min = at[j].min_value;
-			tvplug->saturation_max = at[j].max_value;
-		}
+			tvplug->saturation_adj = adj;
 		else if (strcmp(at[j].name, "XV_HUE") == 0)
-		{
-			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
-			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
-			tvplug->hue = val;
-			tvplug->hue_min = at[j].min_value;
-			tvplug->hue_max = at[j].max_value;
-		}
+			tvplug->hue_adj = adj;
 		else if (strcmp(at[j].name, "XV_FREQ") == 0)
-		{
-			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
-			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
-			tvplug->frequency = val;
-			tvplug->frequency_min = at[j].min_value;
-			tvplug->frequency_max = at[j].max_value;
-		}
+			tvplug->frequency_adj = adj;
 	}
 	if (at)
 		XFree(at);
@@ -238,27 +218,27 @@ void gtk_tvplug_set(GtkWidget *widget, char *what, int value)
 	if (strcmp(what, "hue") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_HUE", False);
-		tvplug->hue = value;
+		gtk_adjustment_set_value(tvplug->hue_adj, value);
 	}
 	else if (strcmp(what, "contrast") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_CONTRAST", False);
-		tvplug->contrast = value;
+		gtk_adjustment_set_value(tvplug->contrast_adj, value);
 	}
 	else if (strcmp(what, "brightness") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_BRIGHTNESS", False);
-		tvplug->brightness = value;
+		gtk_adjustment_set_value(tvplug->brightness_adj, value);
 	}
 	else if (strcmp(what, "colour") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_SATURATION", False);
-		tvplug->saturation = value;
+		gtk_adjustment_set_value(tvplug->saturation_adj, value);
 	}
 	else if (strcmp(what, "frequency") == 0)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_FREQ", False);
-		tvplug->frequency = value;
+		gtk_adjustment_set_value(tvplug->frequency_adj, value);
 	}
 	else if (strcmp(what, "mute") == 0)
 	{
@@ -421,6 +401,12 @@ static void gtk_tvplug_destroy (GtkObject *object)
 	g_return_if_fail (GTK_IS_TVPLUG (object));
 
 	tvplug = GTK_TVPLUG (object);
+
+	gtk_object_unref(GTK_OBJECT(tvplug->hue_adj));
+	gtk_object_unref(GTK_OBJECT(tvplug->brightness_adj));
+	gtk_object_unref(GTK_OBJECT(tvplug->contrast_adj));
+	gtk_object_unref(GTK_OBJECT(tvplug->saturation_adj));
+	gtk_object_unref(GTK_OBJECT(tvplug->frequency_adj));
 
 	if (GTK_OBJECT_CLASS (parent_class)->destroy)
 		(* GTK_OBJECT_CLASS (parent_class)->destroy) (object);

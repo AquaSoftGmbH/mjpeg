@@ -64,6 +64,9 @@ if test "x$HAVE_OSS" = xno; then
   AC_MSG_ERROR(Could not find OSS headers)
 fi
 
+AC_CHECK_HEADER(png.h,HAVE_PNG=1,HAVE_PNG=0)
+AC_CHECK_HEADER(jpeglib.h,HAVE_JPEG=1,HAVE_JPEG=0)
+
 dnl glib
 AM_PATH_GLIB(1.2.0,,AC_MSG_ERROR(Could not find glib-config))
 
@@ -213,12 +216,20 @@ AC_DEFINE_UNQUOTED(MAX_NUM_SCENES, ${with_max_num_scenes})
 AC_SUBST(MAX_NUM_SCENES)
 AC_DEFINE_UNQUOTED(HAVE_LIRC, ${have_lirc})
 AC_SUBST(HAVE_LIRC)
+AC_DEFINE_UNQUOTED(HAVE_PNG, ${HAVE_PNG})
+AM_CONDITIONAL(HAVE_PNG, test ${HAVE_PNG} = 1)
+AC_SUBST(HAVE_PNG)
+AC_DEFINE_UNQUOTED(HAVE_JPEG, ${HAVE_JPEG})
+AM_CONDITIONAL(HAVE_JPEG, test ${HAVE_JPEG} = 1)
+AC_SUBST(HAVE_JPEG)
 
 dnl **********************************************************************
 dnl we use OSS, ALSA doesn't work yet
 dnl
-AC_DEFINE(OSS,1)
+HAVE_OSS=1
+AC_DEFINE(OSS,${HAVE_OSS})
 AC_SUBST(OSS)
+AM_CONDITIONAL(OSS, test ${HAVE_OSS} = 1)
 
 dnl **********************************************************************
 dnl Output Makefiles

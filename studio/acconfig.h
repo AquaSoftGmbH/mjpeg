@@ -31,3 +31,7 @@
 
 /* Have lirc? */
 #undef HAVE_LIRC
+
+/* png/jpeg support */
+#undef HAVE_JPEG
+#undef HAVE_PNG

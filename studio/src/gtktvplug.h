@@ -42,25 +42,11 @@ struct _GtkTvPlug
 	GtkWidget widget;
 	int port;
 
-	int hue;
-	int hue_min;
-	int hue_max;
-
-	int brightness;
-	int brightness_min;
-	int brightness_max;
-
-	int saturation;
-	int saturation_min;
-	int saturation_max;
-
-	int contrast;
-	int contrast_min;
-	int contrast_max;
-
-	int frequency;
-	int frequency_min;
-	int frequency_max;
+	GtkAdjustment *hue_adj;
+	GtkAdjustment *brightness_adj;
+	GtkAdjustment *saturation_adj;
+	GtkAdjustment *contrast_adj;
+	GtkAdjustment *frequency_adj;
 
 	int width_min;
 	int width_best;

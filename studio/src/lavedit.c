@@ -26,6 +26,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <gdk/gdkx.h>
 
 #include "studio.h"
@@ -830,7 +831,9 @@ int open_eli_file(char *filename)
 
 void save_eli_file(char *target)
 {
-	gtk_scenelist_write_editlist(GTK_SCENELIST(scenelist), target);
+	if (!gtk_scenelist_write_editlist(GTK_SCENELIST(scenelist), target))
+		gtk_show_text_window(STUDIO_INFO,
+			"Error saving editlist to file:", (char *) sys_errlist[errno]);
 }
 
 void save_eli_temp_file()
