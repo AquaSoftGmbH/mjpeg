@@ -30,15 +30,21 @@ YfAllocateTask(const YfTaskClass_t *filter, size_t size, const YfTaskCore_t *h0)
     return NULL;
   }
   memset(h, 0, size);
-  if (h0)
-    *h = *h0;
   h->method = filter;
   h->handle_outgoing = NULL;
+  y4m_init_stream_info(&h->si);
+  if (h0) {
+    y4m_copy_stream_info(&h->si, &h0->si);
+    h->width   = h0->width;
+    h->height  = h0->height;
+    h->fpscode = h0->fpscode;
+  }
   return h;
 }
 
 void
 YfFreeTask(YfTaskCore_t *handle)
 {
+  y4m_fini_stream_info(&handle->si);
   free(handle);
 }

@@ -47,11 +47,10 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   h = YfAllocateTask(&yuvstdin, sizeof *h + framebytes, h0);
   if (!h)
     goto FINI_SI;
-  h->width       = y4m_si_get_width(&si);
-  h->height      = y4m_si_get_height(&si);
-  h->fpscode     = mpeg_framerate_code(y4m_si_get_framerate(&si));
-  h->interlace   = y4m_si_get_interlace(&si);
-  h->sampleaspect= y4m_si_get_sampleaspect(&si);
+  y4m_copy_stream_info(&h->si, &si);
+  h->width   = y4m_si_get_width(&si);
+  h->height  = y4m_si_get_height(&si);
+  h->fpscode = mpeg_framerate_code(y4m_si_get_framerate(&si));
  FINI_SI:
   y4m_fini_stream_info(&si);
   return h;
@@ -67,46 +66,18 @@ static int
 do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame)
 {
   YfTaskCore_t *h = handle;
-  int n, framebytes;
-  int ret, warning;
-  char *p;
+  YfFrame_t *f = (YfFrame_t *)(h + 1);
+  int ret;
+  unsigned char *yuv[3];
 
-  framebytes = FRAMEBYTES(h->width, h->height);
-  ret = 0;
-  warning = 0;
-  n = 0;
-  p = (char *)(h + 1);
-  for (;;) {
-    while (n < framebytes) {
-      int n0 = read(0, p + n, framebytes - n);
-      if (n0 < 0) {
-	perror("(stdin)");
-	ret = 1;
-	goto END;
-      } else if (n0 == 0) {
-	if (n) {
-	  WERROR("(stdin): illeagal EOF in frame\n");
-	  ret = 1;
-	}
-	goto END;
-      }
-      n += n0;
-    }
-    if (strncmp(p, "FRAME\n", sizeof ((YfFrame_t *)0)->id)) {
-      if (warning++ < 10) {
-	WWARN("(stdin): illeagal frame ID\n");
-	strncpy(p, "FRAME\n", sizeof ((YfFrame_t *)0)->id);
-	continue;
-      } else {
-	WERROR("(stdin): illeagal frame ID, give up!\n");
-      }
-      ret = 1;
+  YfInitFrame(f, h);
+  yuv[0] = f->data;
+  yuv[1] = yuv[0] + (h->width * h->height);
+  yuv[2] = yuv[1] + ((h->width / 2) * (h->height / 2));
+  while ((ret = y4m_read_frame(0, &h->si, &f->fi, yuv)) == Y4M_OK) {
+    if ((ret = YfPutFrame(h, f)) != Y4M_OK)
       break;
-    }
-    if ((ret = YfPutFrame(h, (YfFrame_t *)p)))
-      break;
-    n = 0;
   }
- END:
+  YfFiniFrame(f);
   return ret;
 }

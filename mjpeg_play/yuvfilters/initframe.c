@@ -31,6 +31,12 @@ YfInitFrame(YfFrame_t *frame, const YfTaskCore_t *h0)
       return NULL;
     }
   }
-  strncpy(frame->id, "FRAME\n", sizeof frame->id);
+  y4m_init_frame_info(&frame->fi);
   return frame;
+}
+
+void
+YfFiniFrame(YfFrame_t *frame)
+{
+  y4m_fini_frame_info(&frame->fi);
 }

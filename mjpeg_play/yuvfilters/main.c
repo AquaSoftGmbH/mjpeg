@@ -86,6 +86,10 @@ main(int argc, char **argv)
     goto FINI;
 
   ret = (*READER.frame)(hreader, NULL, NULL);
+  if (ret == Y4M_ERR_EOF)
+    ret = Y4M_OK;
+  if (ret != Y4M_OK)
+    WERRORL(y4m_strerr(ret));
 
  FINI:
   for (h = hreader; h; h = hreader) {

@@ -156,7 +156,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     WERROR("illeagal output fpscode\n");
     return NULL;
   }
-  if (h0->interlace == Y4M_ILACE_BOTTOM_FIRST) {
+  if (y4m_si_get_interlace(&h0->si) == Y4M_ILACE_BOTTOM_FIRST) {
     WERROR("unsupported field order\n");
     return NULL;
   }
@@ -171,8 +171,8 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   }
   nframes = ((cytype && cytype != 'C')? 2:
 	     (h0->fpscode == 3)? 49: 9);
-  nfields = ((h0->interlace == Y4M_UNKNOWN)?
-	     (MAXHALFHEIGHT < h0->height): h0->interlace) + 1;
+  nfields = ((y4m_si_get_interlace(&h0->si) == Y4M_UNKNOWN)?
+	     (MAXHALFHEIGHT < h0->height): y4m_si_get_interlace(&h0->si)) + 1;
   if (deintlval < 0 || nfields == 1 || (cytype && cytype != 'C'))
     deintlval = -1;
   else if (2 * DEINTLRESO < deintlval)
@@ -194,7 +194,8 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 		   (hycs? hycs: h0));
   if (!h)
     return NULL;
-  h->_.interlace = (unknown_interlace? Y4M_UNKNOWN: Y4M_ILACE_NONE);
+  y4m_si_set_interlace(&h->_.si, (unknown_interlace?
+				  Y4M_UNKNOWN: Y4M_ILACE_NONE));
   h->_.fpscode = fpscode;
   h->fpscode0  = h0->fpscode;
   h->cytype    = cytype;
@@ -207,12 +208,17 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   h->nointlmax = -1;
   h->deintlmin = 0x7fffffff;
   h->u.noise.level0 = h->u.noise.level = noiselevel;
+  if (0 <= h->deintl)
+    nframes++;
+  while (0 <= --nframes)
+    YfInitFrame((YfFrame_t *)((char *)h->frame +
+			      (nframes * FRAMEBYTES(h0->width, h0->height))),
+		&h->_);
   if (!cytype)
     goto RETURN;
   if ((h->cyfp = fopen(cyname, ((cytype == 'C')? "w": "r"))) == NULL) {
     perror(cyname);
-    YfFreeTask((YfTaskCore_t *)h);
-    return NULL;
+    goto ERROR_RETURN;
   }
   if (cytype == 'C') {
     fprintf(h->cyfp, "# 2-3 pull down cycle list
@@ -289,11 +295,18 @@ SIZE:%dx%d OLD_FPS:%d NEW_FPS:%d # DON'T CHANGE THIS LINE!!!",
     WERROR("broken cycle list.\n");
   ERROR:
     fclose(h->cyfp);
-    YfFreeTask((YfTaskCore_t *)h);
-    return NULL;
+    goto ERROR_RETURN;
   }
  RETURN:
   return (YfTaskCore_t *)h;
+ ERROR_RETURN:
+  if (0 <= h->deintl)
+    h->nframes++;
+  while (0 <= --h->nframes)
+    YfFiniFrame((YfFrame_t *)((char *)h->frame +
+			      (h->nframes * FRAMEBYTES(h0->width, h0->height))));
+  YfFreeTask((YfTaskCore_t *)h);
+  return NULL;
 }
 
 static void
@@ -346,6 +359,11 @@ do_fini(YfTaskCore_t *handle)
     dumpnoise(h, h->cyfp);
     fclose(h->cyfp);
   }
+  if (0 <= h->deintl)
+    h->nframes++;
+  while (0 <= --h->nframes)
+    YfFiniFrame((YfFrame_t *)((char *)h->frame +
+			      (h->nframes * FRAMEBYTES(h->_.width, h->_.height))));
   YfFreeTask((YfTaskCore_t *)h);
 }
 
@@ -444,7 +462,8 @@ putframe(YfTask_t *h, int c, YfFrame_t *frame)
       int n;
       int bytes = FRAMEBYTES(h->_.width, h->_.height);
       YfFrame_t *fdst = (YfFrame_t *)((char *)h->frame + (h->nframes * bytes));
-      memcpy(fdst, frame, bytes);
+      y4m_copy_frame_info(&fdst->fi, &frame->fi);
+      memcpy(fdst->data, frame->data, bytes - sizeof frame->fi);
       n = deinterlace(fdst->data, h->_.width, h->_.height, h->u.noise.level0);
       if (h->deintl < n) {
 	frame = fdst;
@@ -457,7 +476,7 @@ putframe(YfTask_t *h, int c, YfFrame_t *frame)
 	  h->nointlmax = n;
       }
       n *= (2 * DEINTLRESO);
-      n /= (bytes - sizeof frame->id);
+      n /= (bytes - sizeof frame->fi);
       if (sizeof h->deintldist / sizeof h->deintldist[0] <= n)
 	n = (sizeof h->deintldist / sizeof h->deintldist[0]) - 1;
       h->deintldist[n]++;
@@ -483,7 +502,8 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
   if (frame0) {
     int b = h->iget % h->nframes;
     YfFrame_t *fget = (YfFrame_t *)((char *)h->frame + (b * framebytes));
-    memcpy(fget, frame0, framebytes);
+    y4m_copy_frame_info(&fget->fi, &frame0->fi);
+    memcpy(fget->data, frame0->data, framebytes - sizeof frame0->fi);
     /* get frame summary */
     if (h->cytype == 'O' || h->cytype =='N') {
       /* do nothing */
@@ -856,7 +876,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
       return c;
     h->iput++;
     if (i || deintl)
-      memcpy(fdst, frame0, framebytes);
+      memcpy(fdst->data, frame0->data, framebytes - sizeof frame0->fi);
   }
   return 0;
 }

@@ -120,7 +120,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
     WERROR("illeagal error\n");
     return NULL;
   }
-  if (h0->interlace == Y4M_ILACE_BOTTOM_FIRST) {
+  if (y4m_si_get_interlace(&h0->si) == Y4M_ILACE_BOTTOM_FIRST) {
     WERROR("unsupported field order\n");
     return NULL;
   }
@@ -152,7 +152,10 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 static void
 do_fini(YfTaskCore_t *handle)
 {
+  YfTask_t *h = (YfTask_t *)handle;
+
   do_frame(handle, NULL, NULL);
+  YfFiniFrame(&h->frame);
   YfFreeTask(handle);
 }
 

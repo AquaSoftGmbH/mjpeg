@@ -44,12 +44,12 @@ extern "C" {
 #endif
 
 typedef struct {
-  char id[sizeof "FRAME\n" - 1];
+  y4m_frame_info_t fi;
   unsigned char data[0];
 } YfFrame_t;
 
 #define DATABYTES(W,H) (((W)*(H))+(((W)/2)*((H)/2)*2))
-#define FRAMEBYTES(W,H) (sizeof ((YfFrame_t *)0)->id + DATABYTES(W,H))
+#define FRAMEBYTES(W,H) (sizeof ((YfFrame_t *)0)->fi + DATABYTES(W,H))
 
 struct YfTaskClass_tag;
 
@@ -58,9 +58,8 @@ typedef struct YfTaskCore_tag {
   const struct YfTaskClass_tag *method;
   struct YfTaskCore_tag *handle_outgoing;
   /* protected: filter must set */
+  y4m_stream_info_t si;
   int width, height, fpscode;
-  int interlace;
-  y4m_ratio_t sampleaspect;
 } YfTaskCore_t;
 
 typedef struct YfTaskClass_tag {
@@ -88,9 +87,10 @@ extern int verbose;
 extern YfTaskCore_t *YfAllocateTask(const YfTaskClass_t *filter, size_t size, const YfTaskCore_t *h0);
 extern void YfFreeTask(YfTaskCore_t *handle);
 extern YfFrame_t *YfInitFrame(YfFrame_t *frame, const YfTaskCore_t *h0);
+extern void YfFiniFrame(YfFrame_t *frame);
 extern int YfPutFrame(const YfTaskCore_t *handle, const YfFrame_t *frame);
 extern YfTaskCore_t *YfAddNewTask(const YfTaskClass_t *filter,
-			    int argc, char **argv, const YfTaskCore_t *h0);
+				  int argc, char **argv, const YfTaskCore_t *h0);
 #ifdef __cplusplus
 }
 #endif
