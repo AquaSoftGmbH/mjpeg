@@ -73,6 +73,7 @@ static int gen_convolve_matrix(double, double **);
 
 	int	lowy = 16, highy = 235, lowuv = 16, highuv = 240;
 
+int
 main(int argc, char **argv)
 	{
 	int	fdin, fdout, err, c, i, verbose = 1;
