@@ -1,6 +1,6 @@
 %define name    mjpegtools
 %define version 1.6.0
-%define release beta2
+%define release rc1
 %define prefix  /usr
 
 Name:           %name
@@ -12,8 +12,8 @@ Url:		http://mjpeg.sourceforge.net/
 Group:		Video
 Source0:	http://prdownloads.sourceforge.net/mjpeg/mjpegtools-%{version}-%{release}.tar.gz
 Source1:	http://prdownloads.sourceforge.net/mjpeg/quicktime4linux-1.4-patched-2.tar.gz
-Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3.tar.gz
-Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4.tar.gz
+Source2:	http://prdownloads.sourceforge.net/mjpeg/libmovtar-0.1.3-rc1.tar.gz
+Source3:	http://prdownloads.sourceforge.net/mjpeg/jpeg-mmx-0.1.4-rc1.tar.gz
 BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
 BuildRequires:  XFree86-devel automake >= 1.5
 Prefix:		%{prefix}
@@ -103,8 +103,7 @@ make prefix=${RPM_BUILD_ROOT}%{prefix} install
 %{_bindir}/movtar_*
 %{_bindir}/pnm2rtj
 %{_bindir}/rtjshow
-%{_libdir}/*.so*
-%{_libdir}/*.la*
+%{_libdir}/*.so.*
 %{prefix}/man/man1/*
 
 %package devel
@@ -123,6 +122,8 @@ of the mjpegtools package.
 %{prefix}/share/aclocal/*.m4
 %{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a
+%{_libdir}/*.la
+%{_libdir}/*.so
 
 %changelog
 * Tue Feb 12 2002 Geoffrey T. Dairiki <dairiki@dairiki.org>

@@ -4,7 +4,7 @@ AC_INIT(lavtools/lav_io.c)
 MJPEG_MAJOR_VERSION=1
 MJPEG_MINOR_VERSION=6
 MJPEG_MICRO_VERSION=0
-MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION-beta2
+MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION-rc1
 
 AM_CONFIG_HEADER(config.h)
 AM_INIT_AUTOMAKE(mjpegtools, $MJPEG_VERSION)
@@ -193,6 +193,8 @@ if test x$with_jpeg_mmx = x ; then
   dnl Special case for building .deb's
   if test -d ../jpeg-mmx ; then
     with_jpeg_mmx=`pwd`/../jpeg-mmx
+  elif test -d ../jpeg-mmx-0.1.4 ; then
+    with_jpeg_mmx=`pwd`/../jpeg-mmx-0.1.4
   else
     with_jpeg_mmx=/usr/local/src/jpeg-mmx
   fi
@@ -242,7 +244,13 @@ if test x$with_quicktime = xyes ; then
 *** A directory must be specified for the --with-quicktime option.])
 
 elif test x$with_quicktime = x ; then
-  if test -d /usr/src/quicktime4linux-1.4  ; then
+  if test -d ../quicktime4linux ; then
+    with_quicktime=`pwd`/../quicktime4linux
+  elif test -d ../quicktime4linux-1.4 ; then
+    with_quicktime=`pwd`/../quicktime4linux-1.4
+  elif test -d ../quicktime4linux-1.4-patch ; then
+    with_quicktime=`pwd`/../quicktime4linux-1.4-patch
+  elif test -d /usr/src/quicktime4linux-1.4  ; then
     with_quicktime=/usr/src/quicktime4linux-1.4
   elif test -d /usr/src/quicktime4linux-1.3  ; then
     with_quicktime=/usr/src/quicktime4linux-1.3

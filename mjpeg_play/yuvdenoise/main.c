@@ -466,36 +466,50 @@ display_help(void)
   "                   pixel to be accepted as valid for the image. If the\n"
   "                   absolute error is greater than this, exchange the pixel\n"
   "                   with the according pixel of the reference image.\n"
+  "                   (default=%i)"
   "\n"
   "-l <1...255>       Average 'n' frames for a time-lowpassed pixel. Values\n"
   "                   below 2 will lead to a good response to the reference\n"
   "                   frame, while larger values will cut out more noise (and\n"
   "                   as a drawback will lead to noticable artefacts on high\n"
   "                   motion scenes.) Values above 8 are allowed but rather\n"
-  "                   useless.\n"
+  "                   useless. (default=%i)\n"
   "\n"
   "-r <8...24>        Limit the search radius to that value. Usually it will\n"
   "                   not make sense to go higher than 16. Esp. for VCD sizes.\n"
+  "                   (default=%i)"
   "\n"
   "-b <x>,<y>,<w>,<h> Set active image area. Every pixel outside will be set\n"
   "                   to <16,128,128> (\"pure black\"). This can save a lot of bits\n"
   "                   without even touching the image itself (eg. on 16:9 movies\n"
-  "                   on 4:3 (VCD and SVCD)\n"
+  "                   on 4:3 (VCD and SVCD) (default=%i,%i,%i,%i)\n"
   "\n"
-  "-L <0...255>       Set luminance contrast in percent.\n"
+  "-L <0...255>       Set luminance contrast in percent. (default=%i)\n"
   "\n"
   "-C <0...255>       Set chrominance contrast in percent. AKA \"Saturation\"\n"
+  "                   (default=%i)"
   "\n"
   "-S <0...255>       Set sharpness in percent. WARNING: do not set too high\n"
-  "                   as this will gain bit-noise.\n"
+  "                   as this will gain bit-noise. (default=%i)\n"
   "\n"
   "-F                 Force deinterlacing. By default denoise interlaced.\n"
   "\n"
   "-f                 Fast mode. Use only Pass II (bitnoise-reduction) for\n"
-  "                   low to very low noise material.\n"
+  "                   low to very low noise material. (default off)\n"
   "\n"
   "-p <0...255>       Pass II threshold (same as -t).\n"
   "                   WARNING: If set to values greater than 8 you *will* see\n"
-  "                   artefacts...\n\n"
+  "                   artefacts...(default=%i)\n\n",
+  denoiser.threshold,
+  denoiser.delay,
+  denoiser.radius,
+  denoiser.border.x,
+  denoiser.border.y,
+  denoiser.border.w,
+  denoiser.border.h,
+  denoiser.luma_contrast,
+  denoiser.chroma_contrast,
+  denoiser.sharpen,
+  denoiser.pp_threshold
   );
 }
