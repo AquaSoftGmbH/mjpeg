@@ -55,6 +55,7 @@ int num_frames = -1;
 char standard;
 GtkObject *progress_adj;
 int go_all_the_way = 0; /* if 1, it will do audio/video/mplex, else only 1 of them */
+int use_yuvdenoise_pipe; /* tells us whether to use yuvdenoise or not */
 int use_yuvscaler_pipe; /* tells us whether to use yuvscaler or not */
 int use_yuvplay_pipe = 0; /* see preview window while video is being encoded or not */
 GtkWidget *progress_window;
@@ -464,8 +465,10 @@ void video_convert()
    char *lav2yuv_command[256];
    char *yuvscaler_command[256];
    char *yuvplay_command[256];
+   char *yuvdenoise_command[256];
    char command[600];
    char command_temp[256];
+   char command_progress[256];
    static char temp1[16],temp2[16],temp3[16],temp5[16],temp6[16], temp7[4];
    static char temp8[4], temp9[4], temp10[4],temp12[4],temp13[4];
    static char temp14[6],temp15[4],temp16[4],temp17[4];
@@ -663,6 +666,21 @@ void video_convert()
       use_yuvscaler_pipe = 0;
    }
 
+   /* Here, the command for the pipe for yuvdenoise may be added */
+   if ( ((*pointenc).use_yuvdenoise == 1) && (encoding_syntax_style == 150) )
+     {
+      yuvdenoise_command[n] = YUVDENOISE_LOCATION; n++;     
+      yuvdenoise_command[n] = NULL;
+ 
+      start_pipe_command(yuvscaler_command, YUVDENOISE);
+      use_yuvdenoise_pipe = 1;
+     }
+   else 
+     {
+      /* set variable in pipes.h to tell not to use yuvdenoise */
+      use_yuvdenoise_pipe = 0;
+     }
+
    n = 0;
    lav2yuv_command[n] = LAV2YUV_LOCATION; n++;
    if (strlen((*pointenc).notblacksize) > 0 && 
@@ -711,18 +729,28 @@ void video_convert()
   
    start_pipe_command(lav2yuv_command, LAV2YUV); 
 
+   /* now here the the commands are set together for the:
+      executing, the debug mode and the progress window */
    command2string(lav2yuv_command, command_temp);
    sprintf(command, "%s |", command_temp);
-   if (use_yuvscaler_pipe)
+   sprintf(command_progress, "lav2yuv |");
+ 
+   if (use_yuvdenoise_pipe)
+   {
+      command2string(yuvdenoise_command, command_temp);
+      sprintf(command,"%s %s |", command, command_temp);
+      sprintf(command_progress, " %s yuvdenoise |", command_progress);
+   }
+   else if (use_yuvscaler_pipe)
    {
       command2string(yuvscaler_command, command_temp);
       sprintf(command, "%s %s |", command, command_temp);
-      if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
-         "Encoding video: lav2yuv | yuvscaler | mpeg2enc");
+      sprintf(command_progress, " %s yuvscaler |", command_progress);
    }
-   else
-      if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
-         "Encoding video: lav2yuv | mpeg2enc");
+   
+   sprintf(command_progress, " %s mpeg2enc", command_progress);
+
+   gtk_label_set_text(GTK_LABEL(progress_label), command_progress);
 
    command2string(mpeg2enc_command, command_temp);
    sprintf(command, "%s %s", command, command_temp);
