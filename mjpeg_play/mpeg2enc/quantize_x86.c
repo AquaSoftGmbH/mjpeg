@@ -100,11 +100,11 @@ void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat)
  * upwards which partly compensates.
  */
  
-int quant_non_intra_3dnow(	struct QuantizerWorkSpace *wsp,
-							int16_t *src, int16_t *dst,
-							int q_scale_type,
-							int satlim,
-							int *nonsat_mquant)
+static int quant_non_intra_3dnow(	struct QuantizerWorkSpace *wsp,
+									int16_t *src, int16_t *dst,
+									int q_scale_type,
+									int satlim,
+									int *nonsat_mquant)
 {
 	int saturated;
 	float *i_quant_matf; 
@@ -244,11 +244,11 @@ restart:
  */
 static int trunc_mxcsr = 0x7f80;
  
-int quant_non_intra_sse( struct QuantizerWorkSpace *wsp,
-						 int16_t *src, int16_t *dst,
-						 int q_scale_type,
-						 int satlim,
-						 int *nonsat_mquant)
+static int quant_non_intra_sse( struct QuantizerWorkSpace *wsp,
+								int16_t *src, int16_t *dst,
+								int q_scale_type,
+								int satlim,
+								int *nonsat_mquant)
 {
 	int saturated;
 	float *i_quant_matf; 
@@ -386,11 +386,11 @@ restart:
  * through the whole lot...
  */
 																							     											     
-int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
-						 int16_t *src, int16_t *dst,
-						 int q_scale_type,
-						 int clipvalue,
-						 int *nonsat_mquant)
+static int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
+								int16_t *src, int16_t *dst,
+								int q_scale_type,
+								int clipvalue,
+								int *nonsat_mquant)
 {
 
 	int nzflag;
@@ -477,36 +477,36 @@ int quant_non_intra_mmx( struct QuantizerWorkSpace *wsp,
 	return nzflag;
 }
 
-void iquant_non_intra_m1_extmmx(struct QuantizerWorkSpace *wsp,
+static void iquant_non_intra_m1_extmmx(struct QuantizerWorkSpace *wsp,
 								int16_t *src, int16_t *dst, int mquant )
 {
 	iquantize_non_intra_m1_extmmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m2_extmmx(struct QuantizerWorkSpace *wsp,
+static void iquant_non_intra_m2_extmmx(struct QuantizerWorkSpace *wsp,
 								int16_t *src, int16_t *dst, int mquant )
 {
 	iquantize_non_intra_m2_extmmx( src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
+static void iquant_non_intra_m1_mmx(struct QuantizerWorkSpace *wsp,
 							 int16_t *src, int16_t *dst, int mquant )
 {
 	iquantize_non_intra_m1_mmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_m2_mmx(struct QuantizerWorkSpace *wsp,
+static void iquant_non_intra_m2_mmx(struct QuantizerWorkSpace *wsp,
 							 int16_t *src, int16_t *dst, int mquant )
 {
 	iquantize_non_intra_m2_mmx(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
-int quant_weight_coeff_x86_intra( struct QuantizerWorkSpace *wsp,
+static int quant_weight_coeff_x86_intra( struct QuantizerWorkSpace *wsp,
 								  int16_t *blk )
 {
 	return quant_weight_coeff_sum_mmx( blk, wsp->i_intra_q_mat );
 }
-int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
+static int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
 								  int16_t *blk )
 {
 	return quant_weight_coeff_sum_mmx( blk, wsp->i_inter_q_mat );
