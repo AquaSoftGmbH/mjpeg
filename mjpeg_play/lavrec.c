@@ -1373,7 +1373,6 @@ int main(int argc, char ** argv)
 
    /* Map the buffers */
 
-   printf("Mapping video buffers !\n");
    MJPG_buff = mmap(0, breq.count*breq.size, PROT_READ, MAP_SHARED, video_dev, 0);
    if (MJPG_buff == MAP_FAILED) system_error("mapping video buffers","mmap");
 
@@ -1404,7 +1403,6 @@ int main(int argc, char ** argv)
       }
    }
          
-   printf("Queueing !\n");
    /* For single frame recording: Make stdin nonblocking */
 
    if(single_frame || wait_for_start)
@@ -1442,7 +1440,6 @@ int main(int argc, char ** argv)
    }
 
    /* Queue all buffers, this also starts streaming capture */
-   printf("Queueing video buffers !\n");
 
    for(n=0;n<breq.count;n++)
    {

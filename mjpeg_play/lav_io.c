@@ -547,6 +547,7 @@ long lav_video_frames(lav_file_t *lav_file)
          return movtar_video_length(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 int lav_video_width(lav_file_t *lav_file)
@@ -566,6 +567,7 @@ int lav_video_width(lav_file_t *lav_file)
          return movtar_video_width(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 int lav_video_height(lav_file_t *lav_file)
@@ -585,6 +587,7 @@ int lav_video_height(lav_file_t *lav_file)
          return movtar_video_height(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 double lav_frame_rate(lav_file_t *lav_file)
@@ -604,6 +607,7 @@ double lav_frame_rate(lav_file_t *lav_file)
          return movtar_frame_rate(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 int lav_video_interlacing(lav_file_t *lav_file)
@@ -638,6 +642,7 @@ char *lav_video_compressor(lav_file_t *lav_file)
          return "N/A";
 #endif
    }
+   return "N/A";
 }
 
 int lav_audio_channels(lav_file_t *lav_file)
@@ -658,6 +663,7 @@ int lav_audio_channels(lav_file_t *lav_file)
          return movtar_track_channels(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 int lav_audio_bits(lav_file_t *lav_file)
@@ -678,6 +684,7 @@ int lav_audio_bits(lav_file_t *lav_file)
          return movtar_audio_bits(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 long lav_audio_rate(lav_file_t *lav_file)
@@ -698,6 +705,7 @@ long lav_audio_rate(lav_file_t *lav_file)
          return movtar_sample_rate(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 long lav_audio_samples(lav_file_t *lav_file)
@@ -718,6 +726,7 @@ long lav_audio_samples(lav_file_t *lav_file)
          return movtar_audio_length(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 long lav_frame_size(lav_file_t *lav_file, long frame)
@@ -737,6 +746,7 @@ long lav_frame_size(lav_file_t *lav_file, long frame)
          return movtar_frame_size(lav_file->movtar_fd,frame);
 #endif
    }
+   return -1;
 }
 
 int lav_seek_start(lav_file_t *lav_file)
@@ -756,6 +766,7 @@ int lav_seek_start(lav_file_t *lav_file)
          return movtar_seek_start(lav_file->movtar_fd);
 #endif
    }
+   return -1;
 }
 
 int lav_set_video_position(lav_file_t *lav_file, long frame)
@@ -775,6 +786,7 @@ int lav_set_video_position(lav_file_t *lav_file, long frame)
          return movtar_set_video_position(lav_file->movtar_fd,frame);
 #endif
    }
+   return -1;
 }
 
 int lav_read_frame(lav_file_t *lav_file, char *vidbuf)
@@ -794,6 +806,7 @@ int lav_read_frame(lav_file_t *lav_file, char *vidbuf)
          return movtar_read_frame(lav_file->movtar_fd,vidbuf);
 #endif
    }
+   return -1;
 }
 
 
@@ -815,6 +828,7 @@ int lav_set_audio_position(lav_file_t *lav_file, long sample)
          return movtar_set_audio_position(lav_file->movtar_fd,sample);
 #endif
    }
+   return -1;
 }
 
 long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
@@ -852,6 +866,7 @@ long lav_read_audio(lav_file_t *lav_file, char *audbuf, long samps)
          return movtar_read_audio(lav_file->movtar_fd,audbuf,samps)/lav_file->bps;
 #endif
    }
+   return -1;
 }
 
 int lav_filetype(lav_file_t *lav_file)

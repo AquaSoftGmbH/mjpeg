@@ -378,7 +378,7 @@ long audio_get_buffer_size()
  *      returns 0 for success, -1 for failure
  */
 
-int audio_start()
+void audio_start()
 {
    /* signal the audio task that we want to start */
 
@@ -391,7 +391,7 @@ int audio_start()
  * or calculate it from previous value
  */
 
-
+void
 set_timestamp(struct timeval tmstmp)
 {
    if( tmstmp.tv_sec != 0 )
