@@ -57,8 +57,7 @@ const char *JobStream::NameOfKind()
     return KindNames[kind];
 }
 
-Workarounds::Workarounds() :
-    mplayer_pes_headers( false )          // All default to false...
+Workarounds::Workarounds() 
 {
 }
 

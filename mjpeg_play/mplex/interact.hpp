@@ -44,7 +44,6 @@ using std::vector;
 struct Workarounds
 {
   Workarounds();
-  bool mplayer_pes_headers;
 };
 
 class MultiplexParams

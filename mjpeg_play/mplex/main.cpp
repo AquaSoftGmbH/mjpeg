@@ -484,11 +484,9 @@ bool CmdLineMultiplexJob::ParseLpcmOpt( const char *optarg )
 bool CmdLineMultiplexJob::ParseWorkaroundOpt( const char *optarg )
 {
     char *endptr, *startptr;
-    unsigned int buffer_size;
     endptr = const_cast<char *>(optarg);
     struct { const char *longname; char shortname; bool *flag; } flag_table[] =
         {
-            { "mplayer_hdr", 'M', &workarounds.mplayer_pes_headers },
             { 0, '\0', 0 }
         };
     for(;;)

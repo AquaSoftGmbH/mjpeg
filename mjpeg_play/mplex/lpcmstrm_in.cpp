@@ -79,11 +79,11 @@ void LPCMStream::Init ( const int _stream_num)
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    
-    if( muxinto.workarounds.mplayer_pes_headers )
-    {
-        min_pes_header_len = 10;
-    }
+
+    // This seems to be necessary not only for some software players but
+    // for some standalone players too.   Yuck... shades of the VCD audio
+    // sectors.
+    min_pes_header_len = 10;
     mjpeg_info ("Scanning for header info: LPCM Audio stream %02x (%s)",
                 stream_num,
                 bs.StreamName()
