@@ -138,11 +138,11 @@ plane_cb= frame[1];
 plane_cr= frame[2];
 
 /* Number of pixles for the luma */
-hoffset_pix = (horz * inarea.hoffset) + inarea.voffset;
+hoffset_pix = (horz * (inarea.hoffset) ) + inarea.voffset;
 
-for (i = 0; i < inarea.height; i++) /* Setting the Luma */
+for (i = 0; i < (inarea.height); i++) /* Setting the Luma */
   {
-    memset( (plane_l + hoffset_pix), (*coloryuv).luma , inarea.width);
+    memset( (plane_l + hoffset_pix), (*coloryuv).luma , (inarea.width) );
     hoffset_pix = hoffset_pix + horz;
   }
 
@@ -172,9 +172,13 @@ int output_fd = 1;   /* std out */
 y4m_stream_info_t istream, ostream;
 y4m_frame_info_t iframe;
 
+inarea.width=0; inarea.height=0; inarea.voffset=0; inarea.hoffset=0;
+
 coloryuv.luma    = LUMA;  /*Setting the luma to black */
 coloryuv.croma_b = CROMA; /*Setting the croma to center, means white */
 coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
+
+(void)mjpeg_default_handler_verbosity(verbose);
 
   while ((c = getopt(argc, argv, "Hhv:i:s:")) != -1)
     {
@@ -201,7 +205,9 @@ coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
       }
     }
 
-  (void)mjpeg_default_handler_verbosity(verbose);
+  /* Checking if we have used the -i option */
+  if ( (inarea.height == 0) && (inarea.width == 0) )
+    mjpeg_error_exit1("You have to use the -i option");
 
   y4m_init_stream_info(&istream);
   y4m_init_stream_info(&ostream);
@@ -247,7 +253,6 @@ coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
       have any problems or we have alreaddy processed the last without data */
       while(y4m_read_frame(input_fd, &istream, &iframe, frame) == Y4M_OK)
         {
-           mjpeg_info("Now passing frame %i throuth", frame_count);
            frame_count++; 
 
            /* You can do something usefull here */
