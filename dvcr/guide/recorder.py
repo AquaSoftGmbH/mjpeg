@@ -67,7 +67,15 @@ class Recorder:
 
 			if item == "%file-name":
 				dirs = self.config_list("global", "videodir");
-				dir = dirs[0]
+				last_free_space = -1
+				last_free_dir = dirs[0]
+				for dir in dirs:
+					free_space = os.statvfs(dir)
+					print "check free space %s ->%d" % (dir,free_space[4])
+					if last_free_space <  free_space[4]:
+						last_free_space = free_space[4]
+						last_free_dir = dir
+				dir = last_free_dir
 				file_name = dir + "/" + \
 					time.strftime("%y%m%d.%H%M.", \
 					time.localtime(event_data["start_time"])) + \

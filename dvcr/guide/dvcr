@@ -1,9 +1,9 @@
 [global]
-videodir: /video2, video3
+videodir: /video2, /video3, /video1
 recorders: b50
 
 [display]
-stations: 909, 910, 911, 912, 20, 50, 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
+stations: 909, 910, 911, 912, 20, 50, 245, 307, 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
 
 [b50]
 recorder: /usr/local/bin/lavrec
@@ -15,7 +15,7 @@ channel_params: %station
 serviceid: 63891, 63598
 
 [63891]
-filter: 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
+filter: 245, 307, 501, 502, 503, 504, 505, 507, 508, 512, 513, 514
 host: www.tvguide.com
 
 

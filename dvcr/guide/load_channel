@@ -8,6 +8,8 @@ cursor = guide.cursor();
 
 
 channel_list = [
+	["245", "TNT",  "TNT",		"DIRECT-TV", "245"],
+	["307", "WGN",  "WGN",		"DIRECT-TV", "307"],
 	["501", "HBO", 	"HBO", 		"DIRECT-TV", "501"],
 	["502", "HBOP",	"HBOP",		"DIRECT-TV", "502"],
 	["503", "HBOS",	"HBOS",		"DIRECT-TV", "502"],

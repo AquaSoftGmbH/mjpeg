@@ -28,13 +28,14 @@ import os
 import sys
 import re
 import signal
+import string
 from guide import Guide
 
 def http_timeout(signum, frame):
 	print "http timeout!";
 	raise IOError, "Host not responding."
 
-VERBOSE=1
+VERBOSE=0
 
 class TvGuideParser(sgmllib.SGMLParser):
 
@@ -134,7 +135,8 @@ class TvGuideParser(sgmllib.SGMLParser):
 				self.channel = self.translate_data[self.channel]
 
 			if self.filter_data.has_key(self.channel):
-#				print "found titleid=",self.titleid, "title=",self.title, "runtime=",self.runtime, "time=",self.start_time, "channel=",self.channel
+				if VERBOSE:
+					print "found titleid=",self.titleid, "title=",self.title, "runtime=",self.runtime, "time=",self.start_time, "channel=",self.channel
 				curr_time = self.tvguide_seconds(self.start_time)
 
 				self.guide.append([curr_time, self.channel,
@@ -199,7 +201,9 @@ class TvGuide(Guide):
 		start_time = start_time + 36839.2083333333333
 		return start_time
 
-	def  guide_url(self,  url, host, day, translate, filter):
+
+
+	def  guide_url(self,  host, day, hour, service_id, translate, filter):
 		http_loop = 0
 
 		while http_loop < 20:
@@ -207,9 +211,12 @@ class TvGuide(Guide):
 			signal.signal(signal.SIGALRM, http_timeout)
 
 #			try:
-#				print "host='%s' seconds=%f url='%s'" % (host, day, url)
+			if VERBOSE:
+				print "host='%s' seconds=%f service_id=%s" % (host, day + hour, service_id)
 			http = httplib.HTTP(host)
-			http.putrequest('GET',  url)
+			http.set_debuglevel(VERBOSE)
+			url = "/listings/index.asp"
+			http.putrequest('POST',  url)
 			ref = 'http://' + host + url
 			http.putheader("Referer", ref)
 			http.putheader("Connection", 'Keep-Alive')
@@ -219,9 +226,20 @@ class TvGuide(Guide):
 			http.putheader("Accept-Encoding", "gzip")
 			http.putheader("Accept-Language", "en")
 			http.putheader("Accept-Charset", 'iso-8859-1,*,utf-8')
-			http.putheader("Cookie",'sid=20; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=20');
+#			http.putheader("Cookie",'sid=17; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; Zip=48160; ServiceID=63892; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; cb=TV00; AdHistory=3586%2C3338%2C3474; FilterGenre=0; AdHistoryGrid=3395; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=17');
+			cookie = "sid=17; Country=USA; PPVProvider=%2E; TypeOfService=National; TimeRule=300%2C%2D60%3B0%2C10%2C0%2C5%2C2%2C0%2C0%2C0%3B0%2C4%2C0%2C1%2C2%2C0%2C0%2C0%3B; SITESERVER=ID=8b0c35c8658ce98bf309d037ab4064a6; nat=0; ServiceID="+ service_id + "; cb=TV00; AdHistory=3760%2C3338%2C3338%2C3338; FilterGenre=0; FilterChannel=0; tmpptfc=tmpyfki; ptfc=yfki; sid=17"
+			http.putheader("Cookie", cookie)
+
+			data = "serv_id=%s&zip=&gridtype=0&S=&N=&event_date=%d&event_hour=%f&frm_chanfltr=0&frm_cat_Fltr=0&x=20&y=6" % \
+				('63891', day, hour)
+			size = "%d" % len(data)
+			http.putheader("Content-type", "application/x-www-form-urlencoded");
+			http.putheader("Content-length", size)
 			http.endheaders()
-			self.parser.set_event_time(day)
+
+			http.send(data);
+
+			self.parser.set_event_time(day + hour)
 			errcode, errmsg, headers = http.getreply()
 			if errcode != 200:
 				print
@@ -277,9 +295,9 @@ class TvGuide(Guide):
 
 			s = start
 			while s < end:
-				time_st = "%f" % s
-				url = "/listings/index.asp?I="+id+"&Style=&Dyn=&GB=24&FC=0&FG=0&ST="+time_st+"&view=&width=635"
-				self.guide_url(url, host, s, translate, filter)
+				self.guide_url(host, int(s),  \
+					s - int(s), id, \
+					translate, filter)
 				s = s + 2.0/24.0
 
 	def guide_whole_day(self, days):
