@@ -12,10 +12,10 @@ lavpipe \- creates raw YUV streams from pipe list scripts
 .I pipe-list
 
 .SH "DESCRIPTION"
-lavpipe reads a little script file that I called 'pipe list'
-and that is of a similar structure as the edit lists that
-can be fed into lav2yuv (for info about the pipe list format
-see below).
+lavpipe reads a script file called 'pipe list'
+that is of a similar structure as the edit lists that
+can be fed into lav2yuv.  For info about the pipe list format
+see below.
 
 The pipe list defines several video sources and filters
 that are combined by lavpipe to produce a single output YUV
@@ -24,8 +24,8 @@ stored to disk via
 .BR mpeg2enc "(1) or " yuv2lav "(1))."
 
 .SH "OPTIONS"
-The command line options allow to only output a specific
-part of the resulting video stream, that means you can
+The command line options are used to output a specific
+part of the resulting video stream.  That means you can
 tell lavpipe how many frames to skip and how many frames
 to deliver from that point on.
 
@@ -67,7 +67,7 @@ lavpipe input.pli | yuv2lav -q80 output.avi
 would save the movie assembled by lavpipe as a single AVI file.
 
 .SH "USAGE"
-In this section the format of lavpipe's input files, the pipe
+In this section the format of lavpipe's input files the pipe
 list scripts is explained. If you need some examples or a more
 detailed tutorial, please read the
 .BR mjpegtools "(1) manpage's section about"
@@ -121,7 +121,7 @@ that the program has to output. Example:
 .br
 .B lav2yuv -o $o -f $n scene2.avi
 
-And after this you can append as many
+after this you can append as many
 .B sequence descriptions
 as needed. Each of them is built up as follows:
 

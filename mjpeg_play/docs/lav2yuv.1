@@ -23,7 +23,7 @@ video held in such files.
 
 Mixing different files with different video formats is currently not possible.
 
-The \fB\-S \-T \-D\fP options are used for scene detection,
+The \fB\-S \-T \-D\fP options are used for scene detection
 which is used by linux video studio.
 
 .SH "OPTIONS"
@@ -43,16 +43,16 @@ Set scene detection threshold to num (default: 4)
 Width decimation to use for scene detection (default: 2)
 .TP 5
 .BI \-o " num"
-Frame offset skip num frames in the beginning if num is negative, 
-all but the last num frames are skipped
+Frame offset \- skip \fInum\fP frames at the beginning.  if \fInum\fP is negative
+all but the last \fInum\fP frames are skipped
 .TP 5
 .BI \-f " num"
-Only num frames are written to stdout. 0 means that all frames are processed. 
+Only \fInum\fP frames are written to stdout. 0 means that all frames are processed. 
 .TP 5
 .BI \-A \ width:height
 Set/override the sample aspect ratio (SAR) emitted in the output stream
-header.  (Currently, the SAR is only auto-detected for DV files, and
-guessed otherwise.)
+header.  Currently, the SAR is only auto-detected for DV files, and
+guessed otherwise.
 .TP 5
 .BI \-P \ width:height
 Set the intended/approximate display aspect ratio (DAR) for the stream.

@@ -10,7 +10,7 @@ lav2mpeg \- easy conversion of lav files to mpeg
 .SH DESCRIPTION
 .B lav2mpeg
 is a shell script to ease the use of the mjpeg utilities, providing a 
-convinient way to convert from MJPEG files to popular MPEG file formats.
+convenient way to convert from MJPEG files to popular MPEG file formats.
 It supports output in VCD, medium and high rate VCD, SVCD, high rate
 SVCD, and generic mpeg1 and mpeg2
 .LP 
@@ -23,7 +23,7 @@ Turn stereo off/on                   (default auto)
 .IP -k/K
 Turn keeping of raw files off/on      (default off)
 .IP -f/F 
-Turn use of Fifos off/on              (default off)
+Turn use of fifos off/on              (default off)
 .IP -l/L 
 Turn logging of entire process off/on (default off)
 .IP -n/N 
@@ -96,13 +96,13 @@ set the file used for quiet logging. defaults to lav2mpeg.log if set to "" it wi
 .IP LOGDATE
 defaults to 1, set to 0 to not have the date logged in log or output (see man date for more info)
 .IP LOGDATESTR
-will pass this on to 'date' to describe what time format to use.  only used if LOGDATE is not 0
+will pass this on to 'date' to describe what time format to use.  Only used if LOGDATE is not 0
 .IP LOGCOMMANDS
-if set to non-zero, will log to the quite log the commands used.  commands are always logged to NOISYLOGFILE if used
+if set to non-zero, will log to the quite log the commands used.  Commands are always logged to NOISYLOGFILE if used
 .IP LOGONLY
 if set to non-zero, will only log the commands it would use but not actually run any commands
 .IP LAV2MPEGRC
-the lav2mpegrc file.  really only beneficial if set from environment variable.
+the lav2mpegrc file.  Only beneficial if set from environment variable.
 .IP VCD_MEDIUM_BR
 video bitrate for mode=vcd_medium
 .IP VCD_HIGH_BR
@@ -130,12 +130,12 @@ set extra command line arguments to yuvdenoise, which will be added on the end
 .SH DIAGNOSTICS
 To simply see the commands that lav2mpeg would have called, run 'LOGONLY=1 lav2mpeg ...'
 .SH BUGS
-Possibly Exist, please let the author know
+Possibly.  Please let the author know.
 .SH AUTHOR
 Scott Moser <smoser at brickies dot net>
 .SH EXAMPLES
 .nf 
-create a VCD complient mpeg regardless of input named file.mpg
+create a VCD compliant mpeg regardless of input named file.mpg
 .ft B
 lav2mpeg file.avi
 .ft R
@@ -151,5 +151,5 @@ yuvscaler:
 LAV2YUV="lav2yuv.new" EXTRA_YUVSCALER="-M MMX" lav2mpeg file.avi
 .ft R
 
-Please Read Other examples included in documentation for .lav2mpegrc 
+Please read other examples included in documentation for .lav2mpegrc 
 usage
