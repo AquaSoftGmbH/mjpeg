@@ -1,8 +1,25 @@
-/************************
+
+/*
+ *  inptstrm.c:  Members of input stream classes related to muxing out into
+ *               the output stream.
  *
- * Class member function definitions for input stream class hierarchy
+ *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *
- ***********************/
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 
 #include <config.h>
 #include <assert.h>
@@ -78,7 +95,10 @@ ElementaryStream::NextAU()
 Aunit *
 ElementaryStream::Lookahead( )
 {
-	return aunits.lookahead();
+	if( eoscan )
+		return 0;
+	else
+		return aunits.lookahead();
 }
 
 unsigned int 
@@ -182,6 +202,9 @@ void VideoStream::InitAUbuffer()
 		aunits.init( new VAunit );
 }
 
+
+
+
 AudioStream::AudioStream(OutputStream &into) : 
 	ElementaryStream( into,  ElementaryStream::audio ),
 	num_syncword(0)
@@ -214,3 +237,12 @@ unsigned int VCDAPadStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 	return to_read;
 }
 
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

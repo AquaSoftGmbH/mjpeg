@@ -75,7 +75,7 @@ public:
 							int	     CSPS,
 							bool	 audio_lock,
 							bool	 video_lock,
-							vector<ElementaryStream *> &streams
+							vector<ElementaryStream *> *streams
 		);
 
 	void Close() { fclose(strm); }
@@ -101,3 +101,12 @@ private:
 	uint8_t *sector_buf;
 };
 #endif // __SYSTEMS_HH__
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "gnu"
+ *  tab-width: 8
+ *  indent-tabs-mode: nil
+ * End:
+ */

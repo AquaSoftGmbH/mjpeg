@@ -12,17 +12,16 @@ INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 bin_PROGRAMS = mplex
 
 mplex_SOURCES = \
-	main.cc 		main.hh	\
+	main.cc	\
+	interact.cc		interact.hh \
 	bits.cc 		bits.hh	\
 	buffer.cc 		\
-	inits.cc 		\
 	inptstrm.cc 		\
-	interact.cc		\
 	multplex.cc 	outputstream.hh	\
 	systems.cc 		systems.hh \
 	vector.cc 	vector.hh \
-	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh
-#	InElemStream.hh
+	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh \
+	stillsstream.cc stillsstream.hh
 
 mplex_LDADD = -L$(top_srcdir)/utils -lutils -lm 
 

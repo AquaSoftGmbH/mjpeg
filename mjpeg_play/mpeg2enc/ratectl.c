@@ -502,6 +502,7 @@ void rc_init_pict(pict_data_s *picture)
 		/* If stills size must match then target low to ensure no
 		   overshoot.
 		*/
+		printf( "Setting overshoot margin for T=%d\n", (int)T/8 );
 		frame_overshoot_margin = (int)(T/16.0);
 		T -= frame_overshoot_margin;
 	}
@@ -630,12 +631,23 @@ void rc_update_pict(pict_data_s *picture)
 
 	if( opt_still_size > 0 && opt_vbv_buffer_still_size)
 	{
+		printf(" Overshoot = %d (%d) BC=%lld S=%lld\n", 
+			   frame_overshoot, frame_overshoot_margin, bitcount()/8, S/8 );
+
 		if( frame_overshoot > frame_overshoot_margin )
 		{
 			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! \n", 
 						((int)AP)/8-opt_still_size);
 		}
-		frame_overshoot -= frame_overshoot_margin;
+		//
+		// Aim for an actual size squarely in the middle of the 2048
+		// byte granuality of the still_size coding.  This gives a 
+		// safety margin for headers etc.
+		//
+		frame_overshoot = frame_overshoot - frame_overshoot_margin;
+		if( frame_overshoot < -2048*8 )
+			frame_overshoot += 1024*8;
+		printf( "FO=%d GU=%d\n", frame_overshoot/8, gop_undershoot/8 );
 	}
 
 	/* For the virtual buffers for quantisation feedback it is the

@@ -562,7 +562,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 								int	     CSPS,
 								bool	 audio_lock,
 								bool	 video_lock,
-								vector<ElementaryStream *> &streams
+								vector<ElementaryStream *> *streams
 	)
 
 {
@@ -572,14 +572,8 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
     index = sys_header->buf;
 	int video_bound = 0;
 	int audio_bound = 0;
-		/* ORIGINAL_CODE
-	unsigned int 	 buffer1_scale = strm1.buffer_scale;
-	unsigned int 	 buffer1_size = strm1.BufferSizeCode();
-	unsigned int 	 buffer2_scale = strm2.buffer_scale;
-	unsigned int 	 buffer2_size = strm2.BufferSizeCode();
-		*/
 	vector<ElementaryStream *>::iterator str;
-	for( str = streams.begin(); str < streams.end(); ++str )
+	for( str = streams->begin(); str < streams->end(); ++str )
 	{
 		switch( (*str)->Kind() )
 		{
@@ -613,22 +607,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 								 (video_lock << 6)|0x20|video_bound);
 
     *(index++) = static_cast<uint8_t>(RESERVED_BYTE);
-#ifdef ORIGINAL_CODE
-    if (strm1.init) {
-		*(index++) = strm1.stream_id;
-		*(index++) = static_cast<uint8_t> (0xc0 |
-									  (buffer1_scale << 5) | (buffer1_size >> 8));
-		*(index++) = static_cast<uint8_t> (buffer1_size & 0xff);
-    }
-
-    if ( strm2.init ) {
-		*(index++) = strm2.stream_id;
-		*(index++) = static_cast<uint8_t> (0xc0 |
-									  (buffer2_scale << 5) | (buffer2_size >> 8));
-		*(index++) = static_cast<uint8_t> (buffer2_size & 0xff);
-    }
-#else
-	for( str = streams.begin(); str < streams.end(); ++str )
+	for( str = streams->begin(); str < streams->end(); ++str )
 	{
 		switch( (*str)->Kind() )
 		{
@@ -645,7 +624,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 			break;
 		}
 	}
-#endif
+
 
 	system_header_size = (index - sys_header->buf);
 	len_index[0] = static_cast<uint8_t>((system_header_size-6) >> 8);
@@ -662,3 +641,12 @@ PS_Stream::RawWrite( uint8_t *buf, unsigned int len )
 		mjpeg_error_exit1( "Failed write: %s\n", cur_filename );
 	}
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "gnu"
+ *  tab-width: 8
+ *  indent-tabs-mode: nil
+ * End:
+ */

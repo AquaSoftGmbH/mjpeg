@@ -1,4 +1,4 @@
-#include "main.hh"
+#include "buffer.hh"
 #include <stdlib.h>
 
 /******************************************************************

@@ -1,4 +1,26 @@
 
+/*
+ *  inptstrm.hh:  Input stream classes for MPEG multiplexing
+ *  TODO: Split into the base classes and the different types of
+ *  actual input stream.
+ *
+ *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 #ifndef __INPUTSTRM_H__
 #define __INPUTSTRM_H__
 
@@ -6,43 +28,18 @@
 #include <stdio.h>
 #include <vector>
 #include <sys/stat.h>
-#include "mjpeg_types.h"
 
+#include "mjpeg_types.h"
+#include "mpegconsts.hh"
+#include "mjpeg_logging.h"
 
 #include "bits.hh"
 #include "aunit.hh"
 #include "vector.hh"
-#include "mpegconsts.hh"
-
-#include "mjpeg_logging.h"
-
-class BufferQueue
-{
-public:
-	unsigned int size	;	/* als verkettete Liste implementiert	*/
-    clockticks DTS	;
-    BufferQueue *next	;
-};
-    
-
-class BufferModel
-{
-public:
-	BufferModel() : max_size(0),first(0) {}
-void init( unsigned int size);
-
-void cleaned(  clockticks timenow);
-void flushed( );
-unsigned int space();
-void queued( unsigned int bytes,
-			 clockticks removaltime);
-
-private:
-	unsigned int max_size;
-    BufferQueue *first;
-};
-
-
+#include "buffer.hh"
+ //
+ // TODO: Put into own source file...
+ //
 
 
 class InputStream
@@ -183,7 +180,7 @@ protected:
 	Aunit *next();
 	OutputStream &muxinto;
 	stream_kind kind;
-
+									
 };
 
 
@@ -220,8 +217,10 @@ public:
 			return  p_au != NULL && p_au->seq_header;
 		}
 
-
-	unsigned int NominalBitRate() { return bit_rate * 50; }
+	virtual unsigned int NominalBitRate() 
+		{ 
+			return bit_rate * 50;
+		}
 	bool RunOutComplete();
 
 	void OutputSector();
@@ -272,86 +271,23 @@ protected:
 	int AU_pict_data;
 	int AU_hdr;
 	clockticks max_PTS;
-
-	
 }; 	
-
-
-class FrameIntervals
-{
-public:
-	virtual int NextFrameInterval() = 0;
-};
-
-//
-// Class of sequence of frame intervals.
-//
-
-class ConstantFrameIntervals : public FrameIntervals
-{
-public:
-	ConstantFrameIntervals( int _frame_interval ) :
-		frame_interval( _frame_interval )
-		{
-		}
-	int NextFrameInterval() { return frame_interval; };
-private:
-	int frame_interval;
-};
-
-
-//
-// Class for video stills sequence (VCD/SVCD)
-//
-
-class StillsStream : public VideoStream
-{
-public:
-	StillsStream(OutputStream &into, FrameIntervals *frame_ints) :
-		VideoStream( into ),
-		current_PTS(0LL),
-		current_DTS(0LL),
-		intervals( frame_ints )
-		{}
-	void Init( const char *input_file);
-private:
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
-	clockticks current_PTS;
-	clockticks current_DTS;
-	FrameIntervals *intervals;
-};
-
-class VCDMixedStillsStream : public StillsStream
-{
-public:
-	VCDMixedStillsStream(OutputStream &into, FrameIntervals *frame_ints) :
-		StillsStream( into, frame_ints ),
-		sibling( 0 )
-		{}
-	void SetSibling( VCDMixedStillsStream * );
-	virtual bool MuxPossible();
-private:
-	VCDMixedStillsStream *sibling;
-	
-};
-	
 
 class AudioStream : public ElementaryStream
 {
 public:   
-	AudioStream(OutputStream &into );
+  AudioStream(OutputStream &into );
+  void Init(const int stream_num, const char *audio_file);
+  void OutputSector();
+  
+  void Close();
 
-	void Init(const int stream_num, const char *audio_file);
-	void OutputSector();
+  virtual unsigned int NominalBitRate();
+  bool RunOutComplete();
 
-	void Close();
-
-	unsigned int NominalBitRate();
-	bool RunOutComplete();
-
-    unsigned int num_syncword	;
-    unsigned int num_frames [2]	;
-    unsigned int size_frames[2] ;
+  unsigned int num_syncword	;
+  unsigned int num_frames [2]	;
+  unsigned int size_frames[2] ;
 	unsigned int version_id ;
     unsigned int layer		;
     unsigned int protection	;
@@ -402,3 +338,12 @@ public:
 
 
 #endif // __INPUTSTRM_H__
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

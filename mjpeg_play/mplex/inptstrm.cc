@@ -1,10 +1,34 @@
 
-#include "main.hh"
-#include "format_codes.h"
+/*
+ *  inptstrm.c:  Members of input stream classes related to raw stream
+ *               scanning.
+ *
+ *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
+#include <config.h>
 #include <math.h>
 #include <stdlib.h>
-#include <sys/stat.h>
 
+#include "format_codes.h"
+
+#include "inputstrm.hh"
+#include "interact.hh"
+#include "outputstream.hh"
 
 static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
 									30000./1001., 30., 50., 60000./1001., 60. };
@@ -110,13 +134,6 @@ static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
 
-
-/*************************************************************************
-    MPEG Streams Kontrolle
-
-    Basic Checks on MPEG Streams
-*************************************************************************/
-
 static void marker_bit (IBitStream &bs, unsigned int what)
 {
     if (what != bs.get1bit())
@@ -126,126 +143,6 @@ static void marker_bit (IBitStream &bs, unsigned int what)
     }
 }
 
-/************************************************************************
-Pick out and check MPEG stills files.
-TODO: Do more than just collect the files can be opened!
-
-************************************************************************/
-#ifdef REDUNDANT
-void check_stills( const int argc, char *argv[], vector<const char *>stills )
-{
-	int i;
-	off_t file_length;
-	while( i < argc )
-	{
-		if( open_file( argv[i] ) )
-		{
-			mjpeg_info( "Still image: %s\n", argv[i], file_length);
-				stills.push_back(argv[i]);
-		}
-		else
-		{
-			mjpeg_error_exit1( "Could not open file: %s\n", argv[i]);
-		}
-	}
-}
-
-#endif
-
-
-/*************************************************************************
-    MPEG Verifikation der Inputfiles
-
-    Check if files are valid MPEG streams
-*************************************************************************/
-
-void check_files (int argc,
-				  char* argv[],
-				  char* *audio_file,
-				  char* *video_file
-	)
-{
-    IBitStream bs1, bs2;
-    BitStreamUndo undo;
-	
-	/* As yet no streams determined... */
-    if (argc == 2) {
-		if (open_file(argv[1]))
-			exit (1); }
-    else if (argc == 3) {
-		if (open_file(argv[1]) || open_file(argv[2]))
-			exit (1); }
-	    
-    bs1.open(argv[1]);
- 
-    if (argc == 3)
-		bs2.open(argv[2]);
-
-	bs1.prepareundo( undo);
-	if (bs1.getbits( 12 )  == 0xfff)
-    {
-		*audio_file = argv[1];
-		mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[1]);
-		if (argc == 3 ) {
-			if (  bs2.getbits( 32) != 0x1b3)
-			{
-				mjpeg_info ("File %s is not a MPEG-1/2 Video stream.\n",argv[2]);
-				bs1.close();
-				bs2.close();
-				exit (1);
-			} 
-			else
-			{
-				mjpeg_info ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
-				*video_file = argv[2];
-			}
-		}
-
-    }
-    else
-    { 
-		bs1.undochanges( undo);
-		if (  bs1.getbits( 32)  == 0x1b3)
-		{
-			*video_file = argv[1];
-			mjpeg_info ("File %s is an MPEG-1/2 Video stream.\n",argv[1]);
-			if (argc == 3 ) {
-				if ( bs2.getbits( 12 ) != 0xfff)
-				{
-					mjpeg_info ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
-					bs1.close();
-					bs2.close();
-					exit (1);
-				} 
-				else
-				{
-					mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[2]);
-					*audio_file = argv[2];
-				}
-			}
-		}
-		else 
-		{
-			if (argc == 3) {
-				mjpeg_error ("Files %s and %s are not valid MPEG streams.\n",
-						argv[1],argv[2]);
-				bs1.close();
-				bs2.close();
-				exit (1);
-			}
-			else {
-				mjpeg_error ("File %s is not a valid MPEG stream.\n", argv[1]);
-				bs1.close();
-				exit (1);
-			}
-		}
-	}
-
-	bs1.close();
-    if (argc == 3)
-		bs2.close();
-
-}
 
 void VideoStream::ScanFirstSeqHeader()
 {
@@ -605,108 +502,6 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 
 
 
-void StillsStream::Init ( const char *video_file )
-{
-	int stream_id;
-	int buffer_size;
-    mjpeg_info( "Scanning Stills stream for access units information.\n" );
-	InitAUbuffer();
-	InputStream::Init( video_file );
-	ScanFirstSeqHeader();
-
-	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
-	switch( opt_mux_format )
-	{
-	case  MPEG_FORMAT_VCD_STILL :
-		if( horizontal_size > 352 )
-		{
-			stream_id = VIDEO_STR_0+2 ;
-			buffer_size = vbv_buffer_size*2048;
-			mjpeg_info( "Stream %d: high-resolution VCD stills %d KB each\n", 
-						stream_id,
-						buffer_size );
-			if( buffer_size < 46*1024 )
-				mjpeg_error_exit1( "I Can't multiplex high-res stills smaller than normal res stills - sorry!\n");
-
-		}
-		else
-		{
-			stream_id = VIDEO_STR_0+1 ;
-			buffer_size = 46*1024;
-			mjpeg_info( "Stream %d: normal VCD stills\n", stream_id );
-		}
-		break;
-	case MPEG_FORMAT_SVCD_STILL :
-		if( horizontal_size > 480 )
-		{
-			stream_id = VIDEO_STR_0+1;
-			buffer_size = 230*1024;
-			mjpeg_info( "Stream %d: high-resolution SVCD stills.\n", 
-						stream_id );
-		}
-		else
-		{
-			stream_id = VIDEO_STR_0+1 ;
-			buffer_size = 230*1024;
-			mjpeg_info( "Stream %d: normal-resolution SVCD stills.\n", stream_id );
-		}
-		break;
-	defaut:
-		mjpeg_error_exit1( "Only SVCD and VCD Still currently supported\n");
-	}
-
-
-	MuxStream::Init( stream_id,
-					 1,  // Buffer scale
-					 buffer_size,
-					 0,  // Zero stuffing
-					 muxinto.buffers_in_video,
-					 muxinto.always_buffers_in_video);
-	
-	/* Skip to the end of the 1st AU (*2nd* Picture start!)
-	*/
-	AU_hdr = SEQUENCE_HEADER;
-	AU_pict_data = 0;
-	AU_start = 0LL;
-
-    OutputSeqhdrInfo();
-
-}
-
-
-
-
-//
-// Compute DTS / PTS for a VCD/SVCD Stills sequence
-// TODO: Very crude. Simply assumes each still stays for the specified
-// frame interval and that enough run-in delay is present for the first
-// frame to be loaded.
-//
-
-void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
-{
-	clockticks interval = static_cast<clockticks>
-		(intervals->NextFrameInterval() * CLOCKS / frame_rate);
-	clockticks time_for_xfer;
-	muxinto.ByteposTimecode( BufferSize(), time_for_xfer );
-		
-	DTS = current_PTS + time_for_xfer;	// This frame decoded just after
-	                                    // Predecessor completed.
-	PTS = current_PTS + time_for_xfer + interval;
-	current_PTS = PTS;
-	current_DTS = DTS;
-}
-
-void VCDMixedStillsStream::SetSibling( VCDMixedStillsStream *_sibling )
-{
-	assert( sibling != NULL );
-	sibling = _sibling;
-	if( sibling->stream_id == stream_id )
-	{
-		mjpeg_error_exit1("VCD mixed stills stream cannot contain two streams of the same type!\n");
-	}
-
-}
 
 /*************************************************************************
 	Get_Info_Audio
@@ -946,3 +741,11 @@ void AudioStream::OutputHdrInfo ()
 }
 
 
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

@@ -1,12 +1,16 @@
 
-#include "main.hh"
-
+#include <config.h>
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <mjpeg_types.h>
+#include <mjpeg_logging.h>
 #include <format_codes.h>
 
+#include "interact.hh"
+#include "inputstrm.hh"
+#include "outputstream.hh"
 
 
 /******************************************************************* 
@@ -237,6 +241,34 @@ void OutputStream::InitSyntaxParameters()
 	audio_buffer_size = 4 * 1024;
 }
 
+/*
+ * Compute the number of run-in sectors needed to fill up the buffers to
+ * suit the type of stream being muxed.
+ *
+ * For stills we have to ensure an entire buffer is loaded as we only
+ * ever process one frame at a time.
+ *
+ */
+
+unsigned int OutputStream::RunInSectors()
+{
+	vector<ElementaryStream *>::iterator str;
+	unsigned int sectors_delay = 0;
+
+	for( str = vstreams.begin(); str < vstreams.end(); ++str )
+	{
+
+		if( MPEG_STILLS_FORMAT( opt_mux_format ) )
+		{
+			sectors_delay += (unsigned int)(1.02*(*str)->BufferSize()) / sector_size+2;
+		}
+		else if( vbr )
+			sectors_delay += 3*(*str)->BufferSize() / ( 4 * sector_size );
+		else
+			sectors_delay = 5 *(*str)->BufferSize() / ( 6 * sector_size );
+	}
+	return sectors_delay;
+}
 
 void OutputStream::Init( char *multi_file)
 {
@@ -270,9 +302,9 @@ void OutputStream::Init( char *multi_file)
 	}
 	else
 		sys_hdr = NULL;
-
+	
 	nominal_rate_sum = 0;
-	for( str = estreams.begin(); str < estreams.end(); ++str )
+	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		switch( (*str)->Kind() )
 		{
@@ -301,15 +333,15 @@ void OutputStream::Init( char *multi_file)
 			mjpeg_error_exit1("INTERNAL: Only audio and video payload calculations implemented!\n");
 			
 		}
+
 		if( (*str)->NominalBitRate() == 0 && opt_data_rate == 0)
 			mjpeg_error_exit1( "Variable bit-rate stream present: output stream (max) data-rate *must* be specified!\n");
 		nominal_rate_sum += (*str)->NominalBitRate();
 
 	}
 		
-	
 	/* Attempt to guess a sensible mux rate for the given video and *
-	 audio estreams. This is a rough and ready guess for MPEG-1 like
+	 audio estreams-> This is a rough and ready guess for MPEG-1 like
 	 formats. */
 	   
 	 
@@ -344,22 +376,13 @@ void OutputStream::Init( char *multi_file)
 	   time to fill before decoding starts. Calculate the necessary delays...
 	*/
 
-	/* Set a start delay in SCR units that guarantees the buffers should
-	   be nicely filled up.
-	*/
-
-	if( MPEG_STILLS_FORMAT( opt_mux_format ) )
-		sectors_delay =  (unsigned int)(1.02*video_buffer_size) / sector_size+2;
-	else if( vbr )
-		sectors_delay = 3*video_buffer_size / ( 4 * sector_size );
-	else
-		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
+	sectors_delay = RunInSectors();
 
 	ByteposTimecode( 
 		static_cast<bitcount_t>(sectors_delay*sector_transport_size),
 		delay );
 	
-	mjpeg_info( "VO = %d AO = %d\n", opt_video_offset, opt_audio_offset );
+
 	video_delay = delay + 
 		static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
 	audio_delay = delay + 
@@ -374,7 +397,7 @@ void OutputStream::Init( char *multi_file)
 	// of actual input stream data and calculation of associated 
 	// PTS/DTS by causing the read of the first AU's...
 	//
-	for( str = estreams.begin(); str < estreams.end(); ++str )
+	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		(*str)->NextAU();
 	}
@@ -384,7 +407,7 @@ void OutputStream::Init( char *multi_file)
 void OutputStream::MuxStatus(log_level_t level)
 {
 	vector<ElementaryStream *>::iterator str;
-	for( str = estreams.begin(); str < estreams.end(); ++str )
+	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		switch( (*str)->Kind()  )
 		{
@@ -452,7 +475,7 @@ void OutputStream::OutputPrefix( )
 		/* Annoyingly VCD generates seperate system headers for
 		   audio and video ... DOH... */
 		if( astreams.size() > 1 || vstreams.size() > 1 ||
-			astreams.size() + vstreams.size() != estreams.size() )
+			astreams.size() + vstreams.size() != estreams->size() )
 		{
 				mjpeg_error_exit1("VCD man only have max. 1 audio and 1 video stream\n");
 		}
@@ -460,14 +483,14 @@ void OutputStream::OutputPrefix( )
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
 								 false, true, 
-								 true, true, vstreams  );
+								 true, true, &vstreams  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( current_SCR,  true, true, false,  false);		
 
 		/* Second packet carries audio-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate,  false, true, 
-								 true, true, astreams );
+								 true, true, &astreams );
 
 		
 	  	OutputPadding( current_SCR, true, true, false, true );
@@ -497,7 +520,7 @@ void OutputStream::OutputPrefix( )
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
 								 false, true, 
-								 true, true, vstreams  );
+								 true, true, &vstreams  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( current_SCR,  true, true, false,  false);		
@@ -547,9 +570,8 @@ void OutputStream::OutputSuffix()
 
 
 	
-void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
-									 AudioStream *e_astrm,
-									 char *multi_file)
+void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
+									char *multi_file)
 
 {
 	segment_state seg_state;
@@ -558,11 +580,11 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	unsigned int video_bytes;
 
 	int i;
-	vector<ElementaryStream *>::iterator str;
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
 	vector<bool> completed;
 	vector<bool>::iterator pcomp;
+	vector<ElementaryStream *>::iterator str;
 	bool video_ended = false;
 	bool audio_ended = false;
 
@@ -572,16 +594,9 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	bool include_sys_header = false; /* Suppress warning */
 	bool video_first = seg_starts_with_video;
 
-	if( e_vstrm != 0 )
-	{
-		estreams.push_back(e_vstrm);
-	}
-	if( e_astrm != 0)
-	{
-		estreams.push_back(e_astrm);
-	}
+	estreams = strms;
 
-	for( str = estreams.begin(); str < estreams.end(); ++str )
+	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		switch( (*str)->Kind() )
 		{
@@ -615,7 +630,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	{
 		bool completion = true;
 
-		for( str = estreams.begin(); str < estreams.end() ; ++str )
+		for( str = estreams->begin(); str < estreams->end() ; ++str )
 			completion &= (*str)->MuxCompleted();
 		if( completion )
 			break;
@@ -637,7 +652,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			*/
 		case runout_segment :
 			runout_incomplete = false;
-			for( str = estreams.begin(); str < estreams.end(); ++str )
+			for( str = estreams->begin(); str < estreams->end(); ++str )
 			{
 				runout_incomplete |= !(*str)->RunOutComplete();
 			}
@@ -653,8 +668,6 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			running_out = false;
 			seg_state = start_segment;
 
-			/* Start a new segment... */
-
 			/* Starting a new segment.
 			   We send the segment prefix, video and audio reciever
 			   buffers are assumed to start empty.  We reset the segment
@@ -667,7 +680,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			SetPosAndSCR(0);
 			MuxStatus( LOG_INFO );
 
-			for( str = estreams.begin(); str < estreams.end(); ++str )
+			for( str = estreams->begin(); str < estreams->end(); ++str )
 			{
 				(*str)->AllDemuxed();
 			}
@@ -691,7 +704,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 			buffers_in_video = always_buffers_in_video;
 			video_first = seg_starts_with_video;
 			pstrm.nsec = 0;
-			for( str = estreams.begin(); str < estreams.end(); ++str )
+			for( str = estreams->begin(); str < estreams->end(); ++str )
 				(*str)->nsec = 0;
 			seg_state = mid_segment;
 			break;
@@ -750,15 +763,13 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 		padding_packet = false;
 		start_of_new_pack = (packets_left_in_pack == packets_per_pack); 
 
-		for( str = estreams.begin(); str < estreams.end(); ++str )
+		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 			(*str)->DemuxedTo(current_SCR);
 		}
 
 		if (start_of_new_pack)
 		{
-			/* Wir generieren den Pack Header				*/
-			/* let's generate pack header					*/
 			psstrm->CreatePack (&pack_header, current_SCR, mux_rate);
 			pack_header_ptr = &pack_header;
 			if( include_sys_header )
@@ -776,7 +787,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 		//
 		ElementaryStream *despatch = 0;
 		clockticks earliest;
-		for( str = estreams.begin(); str < estreams.end(); ++str )
+		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 
 /* DEBUG
@@ -849,35 +860,19 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 		   packet has been generated */
 		include_sys_header = always_sys_header_in_pack;
 
-#ifdef ORIGINAL_CODE
-		if( !video_ended && vstrm->MuxCompleted() )
-		{
-			mjpeg_info( "Video stream ended.\n" );
-			MuxStatus( LOG_DEBUG );
-			video_ended = true;
-		}
-
-		if( !audio_ended && astrm->MuxCompleted() )
-		{
-			mjpeg_info( "Audio stream ended.\n" );
-			MuxStatus( LOG_DEBUG );
-			audio_ended = true;
-		}
-#else
 		pcomp = completed.begin();
-		str = estreams.begin();
-		while( str < estreams.end() )
+		str = estreams->begin();
+		while( str < estreams->end() )
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_debug( "STREAM %d completed.\n", (*str)->stream_id );
+				mjpeg_debug( "STREAM %02x completed.\n", (*str)->stream_id );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}
 			++str;
 			++pcomp;
 		}
-#endif
 	}
 	// Tidy up
 	
@@ -885,7 +880,7 @@ void OutputStream::OutputMultiplex ( VideoStream *e_vstrm,
 	psstrm->Close();
 	mjpeg_info( "Multiplex completion at SCR=%lld.\n", current_SCR/300);
 	MuxStatus( LOG_INFO );
-	for( str = estreams.begin(); str < estreams.end(); ++str )
+	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		(*str)->Close();
 	}
@@ -1036,16 +1031,15 @@ void VideoStream::OutputSector ( )
 		The same applies when we wish to ensure sequence headers starting
 		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
 	*/
-
-	if( (muxinto.running_out && NextAUType() == IFRAME && 
+	int nextAU = NextAUType();
+	if( (muxinto.running_out && nextAU == IFRAME && 
 		 Lookahead()->PTS >= muxinto.runout_PTS) ||
-		(muxinto.sector_align_iframeAUs && SeqHdrNext() )
+		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
 		) 
 	{
 		max_packet_payload = au_unsent;
 	}
 	
-        
 	/* Figure out the threshold payload size below which we can fit more
 	   than one AU into a packet N.b. because fitting more than one in
 	   imposses an overhead of additional header fields so there is a
@@ -1305,3 +1299,12 @@ void OutputStream::OutputPadding (	clockticks SCR,
 
 }
 
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

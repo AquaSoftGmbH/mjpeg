@@ -18,8 +18,7 @@ public:
 			underrun_ignore = 0;
 			underruns = 0;
 		}
-	void OutputMultiplex ( VideoStream *vstrm,
-						   AudioStream *astrm,
+	void OutputMultiplex ( vector<ElementaryStream *> *strms,
 						   char *multi_file);
 
 
@@ -101,7 +100,7 @@ private:
 	/* Note: 1st video stream is regarded as the "master" stream for
 	   the purpose of splitting sequences etc...
 	*/
-	vector<ElementaryStream *> estreams; // Complete set
+	vector<ElementaryStream *> *estreams; // Complete set
 	vector<ElementaryStream *> vstreams; // Video streams in estreams
 	vector<ElementaryStream *> astreams; // Audio streams in estreams
 	
@@ -109,6 +108,7 @@ private:
 	VCDAPadStream vcdapstrm;
 
 private:
+	unsigned int RunInSectors();
 	void Init( char *multi_file );
 	
 
