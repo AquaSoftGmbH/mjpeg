@@ -385,7 +385,7 @@ else
    # assume toolame
    audioenc_flags="$mono_flag -s 44.1 /dev/stdin ${audioenc_flags} $audio"
 fi
-mplex_flags="-m $mpegver -o $outfile $mplex_flags $audio $video"
+mplex_flags=" -o $outfile $mplex_flags $audio $video"
 
 # input/output dependent
 if [ $video_width -eq $output_width -a $video_height -eq $output_height ]; then
