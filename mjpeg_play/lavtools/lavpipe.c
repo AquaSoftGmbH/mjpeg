@@ -36,17 +36,8 @@
 #include <signal.h>
 
 #include "mjpeg_logging.h"
-
 #include "pipelist.h"
 #include "yuv4mpeg.h"
-
-
-
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
 
 static void usage(void)
 {
@@ -59,12 +50,6 @@ static void usage(void)
   "         -v num  Verbosity of output [0..2]\n"
   );
 }
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
 
 static
 char **parse_spawn_command(char *cmdline)
@@ -106,10 +91,6 @@ char **parse_spawn_command(char *cmdline)
   argv[argc] = NULL;  
   return argv;
 }
-
-
-
-/***********************************************************************/  
 
 static 
 pid_t fork_child_sub(char *command, int *fd_in, int *fd_out)
@@ -167,12 +148,6 @@ pid_t fork_child_sub(char *command, int *fd_in, int *fd_out)
 }
 
 
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-
 static pid_t fork_child(const char *command,
 			int offset, int num,
 			int *fd_in, int *fd_out)
@@ -210,20 +185,12 @@ static pid_t fork_child(const char *command,
   return fork_child_sub(current, fd_in, fd_out);
 }
 
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-
-
 static void alloc_yuv_buffers(unsigned char *yuv[3], int w, int h)
 {
   yuv[0] = malloc (w * h * sizeof(yuv[0][0]));
   yuv[1] = malloc (w * h / 4 * sizeof(yuv[1][0]));
   yuv[2] = malloc (w * h / 4 * sizeof(yuv[2][0]));
 }
-
 
 static void free_yuv_buffers(unsigned char *yuv[3])
 {
@@ -232,13 +199,6 @@ static void free_yuv_buffers(unsigned char *yuv[3])
   free(yuv[2]);
   yuv[0] = yuv[1] = yuv[2] = NULL;
 }
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-
-
-
 
 static void init_pipe_source(pipe_source_t *ps, char *command)
 {
@@ -278,10 +238,6 @@ static void decommission_pipe_source(pipe_source_t *source)
     source->pid = -1;
   }
 }
-
-
-/***********************************************************************/  
-
 
 static void init_pipe_filter(pipe_filter_t *pf, const char *command)
 {
@@ -329,15 +285,6 @@ static void decommission_pipe_filter(pipe_filter_t *filt)
   }
   free_yuv_buffers(filt->yuv);
 }    
-
-
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-
 
 /*
  * make sure all the sources needed for this segment are cued up
@@ -426,8 +373,6 @@ void open_segment_inputs(PipeSegment *seg, pipe_filter_t *filt,
   }
   
 }
-
-
 
 static
 void setup_segment_filter(PipeSegment *seg, pipe_filter_t *filt, int frame)
@@ -533,7 +478,6 @@ void process_segment_frames(pipe_sequence_t *ps, int segnum,
   }
 }
 
-
 /* 
  * this is just being picky, but...
  * 
@@ -581,30 +525,11 @@ void close_segment_inputs(pipe_sequence_t *ps, int segnum, int frame)
       }
       mjpeg_info( "closing input %d (source %d)", i, current_index);
       decommission_pipe_source(source);
-    KEEP_SOURCE:;
+KEEP_SOURCE:
     }
   }
 }
 
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-
-
-
-
-
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
 static
 void parse_command_line(int argc, char *argv[], commandline_params_t *cl)
 {
@@ -642,13 +567,6 @@ void parse_command_line(int argc, char *argv[], commandline_params_t *cl)
   }
   cl->listfile = strdup(argv[optind]);
 }
-
-
-/***********************************************************************/  
-/***********************************************************************/  
-/***********************************************************************/  
-
-
 
 static
 void initialize_pipe_sequence(pipe_sequence_t *ps, int argc, char **argv)
@@ -700,7 +618,6 @@ void initialize_pipe_sequence(pipe_sequence_t *ps, int argc, char **argv)
     init_pipe_filter(&(ps->filters[i]), pl->segments[i]->output_cmd);
   
 }
-
 
 static
 void process_pipe_sequence(pipe_sequence_t *ps)
@@ -775,7 +692,6 @@ void process_pipe_sequence(pipe_sequence_t *ps)
   }
 }
 
-
 static
 void cleanup_pipe_sequence(pipe_sequence_t *ps)
 {
@@ -793,8 +709,6 @@ void cleanup_pipe_sequence(pipe_sequence_t *ps)
 }
 
 
-
-
 int main (int argc, char *argv[]) 
 {
   pipe_sequence_t ps;
@@ -802,11 +716,5 @@ int main (int argc, char *argv[])
   initialize_pipe_sequence(&ps, argc, argv);
   process_pipe_sequence(&ps);
   cleanup_pipe_sequence(&ps);
-
   return 0;
 }
-
-
-
-
-
