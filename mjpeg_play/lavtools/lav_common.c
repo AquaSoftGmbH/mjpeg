@@ -254,8 +254,6 @@ void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
       else
          size = bounds->chroma_output_width * bounds->chroma_output_height;
 
-	fprintf(stderr, "i=%i, size=%i\n", i, size);
-
       buffer->read_buf[i] = bufalloc(size);
       buffer->double_buf[i] = bufalloc(size);
    }
