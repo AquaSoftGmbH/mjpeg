@@ -277,17 +277,20 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  )
 const char *
 mpeg_interlace_code_definition( int yuv4m_interlace_code )
 {
-	char *def;
+	const char *def;
 	switch( yuv4m_interlace_code )
 	{
+	case Y4M_UNKNOWN :
+		def = "unknown";
+		break;
 	case Y4M_ILACE_NONE :
-		def = "unknown/progressive";
+		def = "none/progressive";
 		break;
 	case Y4M_ILACE_TOP_FIRST :
-		def = "interlaced, top field first";
+		def = "top-field-first";
 		break;
 	case Y4M_ILACE_BOTTOM_FIRST :
-		def = "interlaced, bottom field first";
+		def = "bottom-field-first";
 		break;
 	default :
 		def = "UNDEFINED: illegal video interlacing type-code!";

@@ -82,4 +82,26 @@ void y4m_ratio_reduce(y4m_ratio_t *r)
 
 
 
+/*************************************************************************
+ *
+ * Parse "nnn:ddd" into a ratio
+ *
+ * returns:         Y4M_OK  - success
+ *           Y4M_ERR_RANGE  - range error 
+ *
+ *************************************************************************/
+
+int y4m_parse_ratio(y4m_ratio_t *r, const char *s)
+{
+  char *t = strchr(s, ':');
+
+  if (t == NULL) return Y4M_ERR_RANGE;
+  r->n = atoi(s);
+  r->d = atoi(t+1);
+  if (r->d < 0) return Y4M_ERR_RANGE;
+  /* 0:0 == unknown, so that is ok, otherwise zero denominator is bad */
+  if ((r->d == 0) && (r->n != 0)) return Y4M_ERR_RANGE;
+  y4m_ratio_reduce(r);
+  return Y4M_OK;
+}
 

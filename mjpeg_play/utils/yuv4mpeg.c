@@ -338,22 +338,6 @@ void y4m_fini_frame_info(y4m_frame_info_t *info)
  *
  *************************************************************************/
 
-static int parse_ratio(char *s, y4m_ratio_t *r)
-{
-  char *t = strchr(s, ':');
-
-  if (t == NULL) return Y4M_ERR_RANGE;
-  r->n = atoi(s);
-  r->d = atoi(t+1);
-  if (r->d < 0) return Y4M_ERR_RANGE;
-  /* 0:0 == unknown, so that is ok, otherwise zero denominator is bad */
-  if ((r->d == 0) && (r->n != 0)) return Y4M_ERR_RANGE;
-  y4m_ratio_reduce(r);
-  return Y4M_OK;
-}
-
-
-
 int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
 {
   char *token, *value;
@@ -377,7 +361,8 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       if (i->height <= 0) return Y4M_ERR_RANGE;
       break;
     case 'F':  /* frame rate (fps) */
-      if ((err = parse_ratio(value, &(i->framerate))) != Y4M_OK) return err;
+      if ((err = y4m_parse_ratio(&(i->framerate), value)) != Y4M_OK)
+	return err;
       if (i->framerate.n < 0) return Y4M_ERR_RANGE;
       break;
     case 'I':  /* interlacing */
@@ -391,7 +376,8 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
       }
       break;
     case 'A':  /* display aspect ratio */
-      if ((err = parse_ratio(value, &(i->aspectratio))) != Y4M_OK) return err;
+      if ((err = y4m_parse_ratio(&(i->aspectratio), value)) != Y4M_OK)
+	return err;
       if (i->aspectratio.n < 0) return Y4M_ERR_RANGE;
       break;
     case 'X':  /* 'X' meta-tag */
