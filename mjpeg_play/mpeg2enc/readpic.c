@@ -73,11 +73,21 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <pthread.h>
+#include <errno.h>
 #include "global.h"
 
  
+   /* NOTE: access toframes_read *must* be read-only in other threads
+	  once the chunk-reading worker thread has been started.
+   */
 
-static int frames_read = 0;
+static pthread_mutex_t frame_buffer_lock;
+static pthread_cond_t new_chunk_req = PTHREAD_COND_INITIALIZER;
+static pthread_cond_t new_chunk_ack = PTHREAD_COND_INITIALIZER;
+static pthread_t      worker_thread;
+
+static volatile int frames_read = 0;
 static int last_frame = -1;
 
 
@@ -177,8 +187,17 @@ static void read_chunk()
       border_extend(frame_buffers[n][1],h,v,chrom_width,chrom_height);
       border_extend(frame_buffers[n][2],h,v,chrom_width,chrom_height);
 
+	  if( ctl_max_encoding_frames > 2 )
+	  {
+		  pthread_mutex_lock( &frame_buffer_lock );
+	  }
+	  ++frames_read;
+	  if( ctl_max_encoding_frames > 2 )
+	  {
+		  pthread_cond_broadcast( &new_chunk_ack );
+		  pthread_mutex_unlock( &frame_buffer_lock );
+	  }
 
-      frames_read++;
    }
    return;
 
@@ -188,14 +207,97 @@ static void read_chunk()
    istrm_nframes = frames_read;
 }
 
-static void load_frame( int num_frame, int look_ahead )
+
+
+
+static void *read_chunks_worker(void *_dummy)
+{
+	for(;;)
+	{
+		pthread_mutex_lock( &frame_buffer_lock );
+		pthread_cond_wait( &new_chunk_req, &frame_buffer_lock );
+		if( frames_read < istrm_nframes ) 
+		{
+			pthread_mutex_unlock( &frame_buffer_lock );
+			read_chunk();
+		}
+	}
+	return NULL;
+}
+
+
+static void start_worker()
+{
+	pthread_attr_t *pattr = NULL;
+
+#ifdef HAVE_PTHREADSTACKSIZE
+#define MINSTACKSIZE 200000
+	pthread_attr_t attr;
+	size_t stacksize;
+	
+	pthread_attr_init(&attr);
+	pthread_attr_getstacksize(&attr, &stacksize);
+	
+	if (stacksize < MINSTACKSIZE) {
+		pthread_attr_setstacksize(&attr, MINSTACKSIZE);
+	}
+	
+	pattr = &attr;
+#endif
+
+	if( pthread_create( &worker_thread, pattr, read_chunks_worker, NULL ) != 0 )
+	{
+		mjpeg_error_exit1( "worker thread creation failed: %s\n", strerror(errno) );
+
+	}
+
+}
+
+
+   
+static void read_chunk_seq( int num_frame )
+{
+   while(frames_read - num_frame < READ_CHUNK_SIZE && 
+		 frames_read < istrm_nframes ) 
+   {
+	   read_chunk();
+   }
+}
+
+static void read_chunk_par( int num_frame)
+{
+	pthread_mutex_lock( &frame_buffer_lock);
+	for(;;)
+	{
+
+		// Activate reader process "on the fly"
+		if( frames_read - num_frame < READ_CHUNK_SIZE && 
+			frames_read < istrm_nframes )
+		{
+			pthread_cond_broadcast( &new_chunk_req );
+		}
+		if( frames_read > num_frame  || 
+			frames_read >= istrm_nframes )
+		{
+			pthread_mutex_unlock( &frame_buffer_lock );
+			return;
+		}
+		pthread_cond_wait( &new_chunk_ack, &frame_buffer_lock );
+	}
+	
+}
+
+static void load_frame( int num_frame )
 {
 
    if( frames_read == 0)
    {
       /* Read first + second look-ahead buffer loads */
-	   while( frames_read < look_ahead )
+	   read_chunk();
+	   if( frames_read != istrm_nframes )
 		   read_chunk();
+	   if( ctl_max_encoding_frames > 2 )
+		   start_worker();
    }
 
    if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
@@ -204,13 +306,13 @@ static void load_frame( int num_frame, int look_ahead )
 	   abort();
    }
 
-   /* Read in chunk(s) of frames if we have insufficient look-ahead margin
+   /* Read a chunk of frames if we've got less than one chunk buffered
 	*/
 
-   while(frames_read - num_frame <= look_ahead && frames_read < istrm_nframes ) 
-   {
-	   read_chunk();
-   }
+   if( ctl_max_encoding_frames > 2 )
+	   read_chunk_par( num_frame );
+   else
+	   read_chunk_seq( num_frame );
 
    /* We aren't allowed to go too far behind the last read
 	  either... */
@@ -230,7 +332,7 @@ int readframe( int num_frame,
 {
    int n;
 
-   load_frame( num_frame, 1 ); 
+   load_frame( num_frame ); 
    n = num_frame % FRAME_BUFFER_SIZE;
 
    frame[0] = frame_buffers[n][0];
@@ -247,7 +349,7 @@ int frame_lum_mean( int num_frame )
 	{
 		n = frames_read-1;
 	}
-	load_frame( n, 1 );
+	load_frame( n );
 	return lum_mean[n% FRAME_BUFFER_SIZE];
 }
 

@@ -58,7 +58,7 @@ int opt_emul_vcdmplex = 0;
 bool opt_stills = false;
 
 /* Should fit nicely on an ordinary CD ... */
-off_t max_system_segment_size =  2000*1024*1024;
+off_t opt_max_segment_size =  2000*1024*1024;
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
@@ -138,10 +138,10 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 				Usage(argv[0]);
 			break;
 		case 'S' :
-			max_system_segment_size = atoi(optarg);
-			if( max_system_segment_size < 0  )
+			opt_max_segment_size = atoi(optarg);
+			if( opt_max_segment_size < 0  )
 				Usage(argv[0]);
-			max_system_segment_size *= 1024*1024; 
+			opt_max_segment_size *= 1024*1024; 
 			break;
 		case 'M' :
 			opt_multifile_segment = 1;
@@ -163,7 +163,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 		Usage(argv[0]);
     }
 	(void)mjpeg_default_handler_verbosity(verbose);
-	printf( "MFS =%lld\n", max_system_segment_size);
+
 	mjpeg_info( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
 	*multplex_outfile = outfile;
 	return optind-1;

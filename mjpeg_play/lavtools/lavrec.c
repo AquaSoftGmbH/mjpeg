@@ -448,7 +448,7 @@ void Usage(char *progname)
 	fprintf(stderr, "  -n/--mjpeg-buffers num      Number of MJPEG buffers (default: 64)\n");
 	fprintf(stderr, "  -b/--mjpeg-buffer-size num  Size of MJPEG buffers [Kb] (default: 256)\n");
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
-	fprintf(stderr, "  -r/--use-read               Mute audio output during recording\n");
+	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
 	fprintf(stderr, "Environment variables recognized:\n");
 	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
@@ -1140,7 +1140,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"mjpeg-buffers"    ,1,0,0},   /* -n/--mjpeg_buffers     */
 		{"mjpeg-buffer-size",1,0,0},   /* -b/--mjpeg-buffer-size */
 		{"channel"          ,1,0,0},   /* -C/--channel           */
-		{"use-read"        ,0,0,0},   /* --use-read           */
+		{"use-read"         ,0,0,0},   /* --use-read           */
 		{0,0,0,0}
 	};
 

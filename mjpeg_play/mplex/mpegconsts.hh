@@ -13,6 +13,7 @@
 #define PFRAME                  2
 #define BFRAME                  3
 #define DFRAME                  4
+#define NOFRAME                 5
 
 #define CODING_EXT_ID       8
 #define AUDIO_SYNCWORD		0x7ff

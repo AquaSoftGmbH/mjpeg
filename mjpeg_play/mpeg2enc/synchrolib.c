@@ -86,3 +86,10 @@ void mp_semaphore_signal( semaphore_t *sema, int count )
 	pthread_mutex_unlock( &sema->mutex );
 }
 
+void mp_semaphore_set( semaphore_t *sema )
+{
+	pthread_mutex_lock( &sema->mutex );
+	sema->count = 1;
+	pthread_cond_broadcast( &sema->raised );
+	pthread_mutex_unlock( &sema->mutex );
+}

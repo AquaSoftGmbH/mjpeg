@@ -1,8 +1,8 @@
 TODO
 
+- Try to burn a proper SVCD with the new align access sector logic
+and see what vcdimager makes of it.
 
-- Replace the hardwired two-stream mux-despatcher loop with a general-purpose
-one table-driven affair for n-streams.
 
 - Add basic DVD support ( needs predecessor really).
 

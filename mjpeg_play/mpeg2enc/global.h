@@ -65,7 +65,6 @@ void fast_motion_data (pict_data_s *picture);
 int round_search_radius(int);
 
 /* mpeg2enc.c */
-void error (char *text);
 uint8_t *bufalloc( size_t size );
 
 /* predict.c */
@@ -339,8 +338,8 @@ EXTERN const char *statname
   How many frames to read in one go and the size of the frame data buffer.
 */
 
-#define READ_CHUNK_SIZE 12
-#define FRAME_BUFFER_SIZE 64
+#define READ_CHUNK_SIZE 20
+#define FRAME_BUFFER_SIZE READ_CHUNK_SIZE*4
 
 /*
   How many frames encoding may be concurrently under way.
@@ -451,7 +450,11 @@ EXTERN double ctl_act_boost;		/* Quantisation reduction for highly active blocks
 
 
 EXTERN int ctl_max_encoding_frames; /* Maximum number of concurrent
-								   frames to be concurrently encoded */
+									   frames to be concurrently encoded 
+									   Used to control multi_threading.
+									*/
+
+
 
 
 /* *************************

@@ -1,5 +1,16 @@
 IMMEDIATE
 
+Check mpeg2enc buffering thread stuff works.
+
+Merge the interlace fixes.
+
+Have a look over and test the denoiser.
+
+Add stills muxing to mplex
+
+Add a stills mode to mpeg2enc
+
+
 
 Fix all the BUGS (see BUGS) of course!
 

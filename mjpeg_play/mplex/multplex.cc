@@ -77,6 +77,7 @@ void OutputStream::InitSyntaxParameters()
 		always_buffers_in_audio = 1;
 		zero_stuffing = 1;
 		dtspts_for_all_vau = 1;
+		sector_align_iframeAUs = false;
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -98,6 +99,7 @@ void OutputStream::InitSyntaxParameters()
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
+		sector_align_iframeAUs = false;
 		break;
 
 	case MPEG_FORMAT_SVCD :
@@ -127,7 +129,7 @@ void OutputStream::InitSyntaxParameters()
 		zero_stuffing = 0;
 		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
-
+		sector_align_iframeAUs = true;
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -168,6 +170,7 @@ void OutputStream::InitSyntaxParameters()
 		zero_stuffing = 1;
 		audio_packet_data_limit = 0;		/* Fill packet completely */
         dtspts_for_all_vau = 0;
+		sector_align_iframeAUs = false;
 		break;
 	}
 	
@@ -192,7 +195,7 @@ void OutputStream::Init( VideoStream 	&vstrm,
 	psstrm = new PS_Stream(opt_mpeg, sector_size, zero_stuffing );
 
 	psstrm->Init( multi_file,
-				  max_system_segment_size );
+				  opt_max_segment_size );
 	/* These are used to make (conservative) decisions
 	   about whether a packet should fit into the recieve buffers... 
 	   Audio packets always have PTS fields, video packets needn't.	
@@ -470,10 +473,6 @@ void OutputStream::OutputMultiplex ( VideoStream &vstrm,
 	unsigned int nsec_v=0;
 	unsigned int nsec_p=0;
 
-	clockticks SCR_audio_delay = 0;
-	clockticks SCR_video_delay = 0;
-
-	clockticks current_SCR;
 	clockticks audio_next_SCR;
 	clockticks video_next_SCR;
 
@@ -613,14 +612,14 @@ void OutputStream::OutputMultiplex ( VideoStream &vstrm,
 					psstrm->NextFile();
 				else
 				{
-					next_vau = vstrm.lookahead( 1);
+					next_vau = vstrm.Lookahead( 1);
 					if( next_vau->type != IFRAME)
 						seg_state = last_vau_segment;
 				}
 			}
 			else if( vstrm.au.end_seq )
 			{
-				next_vau = vstrm.lookahead( 1);
+				next_vau = vstrm.Lookahead( 1);
 				if( next_vau  )
 				{
 					if( ! next_vau->seq_header || next_vau->type != IFRAME)
@@ -701,8 +700,7 @@ void OutputStream::OutputMultiplex ( VideoStream &vstrm,
 			ByteposTimecode (bytes_output+audio_bytes, audio_next_SCR);
 			if( audio_next_SCR >= astrm.au.PTS+SCR_audio_delay )
 				timeout_error (STATUS_AUDIO_TIME_OUT,astrm.au.dorder);
-			OutputAudio (current_SCR, SCR_audio_delay, 
-						 astrm,
+			OutputAudio (astrm,
 						 start_of_new_pack,
 						 include_sys_header,
 						 seg_state == last_aaus_segment);
@@ -722,10 +720,7 @@ void OutputStream::OutputMultiplex ( VideoStream &vstrm,
 			ByteposTimecode (bytes_output+video_bytes, video_next_SCR);
 			if( video_next_SCR >= vstrm.au.DTS+SCR_video_delay )
 				timeout_error (STATUS_VIDEO_TIME_OUT,vstrm.au.dorder);
-			OutputVideo ( current_SCR, SCR_video_delay, 
-						  vstrm, 
-						  start_of_new_pack,
-						  include_sys_header);
+			OutputVideo ( vstrm,  start_of_new_pack, include_sys_header);
 
 			++nsec_v;
 
@@ -804,7 +799,6 @@ void OutputStream::OutputMultiplex ( VideoStream &vstrm,
 
 
 void OutputStream::NextVideoAU (unsigned int bytes_muxed,
-								clockticks SCR_delay,
 								VideoStream  &vstrm
 	)
 {
@@ -826,7 +820,7 @@ void OutputStream::NextVideoAU (unsigned int bytes_muxed,
 	   another matter of course!
 	*/
 
-	decode_time = vstrm.au.DTS + SCR_delay;
+	decode_time = vstrm.au.DTS + SCR_video_delay;
 	while (vstrm.au_unsent < bytes_muxed)
 	{	  
 
@@ -836,7 +830,7 @@ void OutputStream::NextVideoAU (unsigned int bytes_muxed,
 		if( ! vstrm.au_unsent )
 			return;
 		vstrm.new_au_next_sec = true;
-		decode_time = vstrm.au.DTS + SCR_delay;
+		decode_time = vstrm.au.DTS + SCR_video_delay;
 	};
 
 	// We've now reached a point where the current AU overran or
@@ -872,9 +866,7 @@ void OutputStream::NextVideoAU (unsigned int bytes_muxed,
 	video stream and writes out the new sector
 ******************************************************************/
 
-void OutputStream::OutputVideo ( clockticks SCR,
-								 clockticks SCR_delay,
-								 VideoStream &vstrm,
+void OutputStream::OutputVideo ( VideoStream &vstrm,
 								 bool start_of_new_pack,
 								 bool include_sys_header
 	)
@@ -892,11 +884,16 @@ void OutputStream::OutputVideo ( clockticks SCR,
 	clockticks  DTS,PTS;
   
 	max_packet_payload = 0;	/* 0 = Fill sector */
-  	/* 	We're now in the last AU of a segment. 
+  	/* 	
+	   We're now in the last AU of a segment. 
 		So we don't want to go beyond it's end when filling
 		sectors. Hence we limit packet payload size to (remaining) AU length.
+		The same applies when we wish to ensure sequence headers starting
+		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
 	*/
-	if( vstrm.au.end_seq )
+	
+	if( vstrm.au.end_seq ||	(sector_align_iframeAUs && vstrm.SeqHdrNext() )
+		) 
 	{
 		max_packet_payload = vstrm.au_unsent;
 	}
@@ -905,7 +902,7 @@ void OutputStream::OutputVideo ( clockticks SCR,
     {
 		/* Wir generieren den Pack Header				*/
 		/* let's generate pack header					*/
-		psstrm->CreatePack (&pack, SCR, mux_rate);
+		psstrm->CreatePack (&pack, current_SCR, mux_rate);
 		pack_ptr = &pack;
 		if( include_sys_header )
 			sys_header_ptr = &sys_header;
@@ -923,8 +920,8 @@ void OutputStream::OutputVideo ( clockticks SCR,
 	old_au_then_new_payload = psstrm->PacketPayload( sys_header_ptr, pack_ptr, 
 											  buffers_in_video, true, true);
 
-	PTS = vstrm.au.PTS + SCR_delay;
-	DTS = vstrm.au.DTS + SCR_delay;
+	PTS = vstrm.au.PTS + SCR_video_delay;
+	DTS = vstrm.au.DTS + SCR_video_delay;
 
 	/* CASE: Packet starts with new access unit			*/
 	if (vstrm.new_au_next_sec  )
@@ -943,8 +940,7 @@ void OutputStream::OutputVideo ( clockticks SCR,
 						vstrm,
 						buffers_in_video, PTS, DTS,
 						timestamps );
-		NextVideoAU ( cur_sector.length_of_packet_data, 
-								 SCR_delay, vstrm);
+		NextVideoAU ( cur_sector.length_of_packet_data, vstrm);
 
 	}
 
@@ -961,8 +957,7 @@ void OutputStream::OutputVideo ( clockticks SCR,
 					   vstrm,
 					   buffers_in_video, 0, 0,
 					   TIMESTAMPBITS_NO );
-		NextVideoAU ( cur_sector.length_of_packet_data, 
-								 SCR_delay, vstrm);
+		NextVideoAU ( cur_sector.length_of_packet_data, vstrm);
 
 	}
 
@@ -988,8 +983,8 @@ void OutputStream::OutputVideo ( clockticks SCR,
 			else
 				timestamps=TIMESTAMPBITS_PTS_DTS;
 			vstrm.new_au_next_sec = true;
-			PTS = vstrm.au.PTS + SCR_delay;
-			DTS = vstrm.au.DTS + SCR_delay;
+			PTS = vstrm.au.PTS + SCR_video_delay;
+			DTS = vstrm.au.DTS + SCR_video_delay;
 	
 			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
 						   max_packet_payload,
@@ -998,7 +993,7 @@ void OutputStream::OutputVideo ( clockticks SCR,
 						   buffers_in_video, PTS, DTS,
 						   timestamps );
 			NextVideoAU ( cur_sector.length_of_packet_data - prev_au_tail, 
-									 SCR_delay, vstrm);
+						  vstrm);
 		} 
 		else
 		{
@@ -1033,7 +1028,6 @@ void OutputStream::OutputVideo ( clockticks SCR,
 ******************************************************************/
 
 void OutputStream::NextAudioAU( unsigned int bytes_muxed,
-								 clockticks SCR_delay,
 								 AudioStream &astrm
 	)
 
@@ -1044,7 +1038,7 @@ void OutputStream::NextAudioAU( unsigned int bytes_muxed,
 	if (bytes_muxed == 0)
 		return;
 
-	decode_time = astrm.au.PTS + SCR_delay;
+	decode_time = astrm.au.PTS + SCR_audio_delay;
 	while (astrm.au_unsent < bytes_muxed)
 	{
 		astrm.bufmodel.queued ( astrm.au_unsent, decode_time);
@@ -1052,7 +1046,7 @@ void OutputStream::NextAudioAU( unsigned int bytes_muxed,
 		if( ! astrm.NextAU() )
 			return;
 		astrm.new_au_next_sec = true;
-		decode_time = astrm.au.PTS + SCR_delay;
+		decode_time = astrm.au.PTS + SCR_audio_delay;
 	};
 
 	if (astrm.au_unsent > bytes_muxed)
@@ -1077,9 +1071,7 @@ void OutputStream::NextAudioAU( unsigned int bytes_muxed,
 	audio stream and saves them into the sector
 ******************************************************************/
 
-void OutputStream::OutputAudio ( clockticks SCR,
-								 clockticks SCR_delay,
-								 AudioStream &astrm,
+void OutputStream::OutputAudio ( AudioStream &astrm,
 								 bool start_of_new_pack,
 								 bool include_sys_header,
 								 bool last_au_segment
@@ -1095,7 +1087,7 @@ void OutputStream::OutputAudio ( clockticks SCR,
 	Pack_struc pack;
 	unsigned int old_au_then_new_payload;
 
-	PTS = astrm.au.PTS + SCR_delay;
+	PTS = astrm.au.PTS + SCR_audio_delay;
 	old_au_then_new_payload = 
 		psstrm->PacketPayload( sys_header_ptr, pack_ptr,
 							   buffers_in_audio, false, false );
@@ -1116,7 +1108,7 @@ void OutputStream::OutputAudio ( clockticks SCR,
     {
 		/* Wir generieren den Pack Header				*/
 		/* let's generate pack header					*/
-		psstrm->CreatePack (&pack, SCR, mux_rate);
+		psstrm->CreatePack (&pack, current_SCR, mux_rate);
 		pack_ptr = &pack;
 		if( include_sys_header )
 			sys_header_ptr = &sys_header;
@@ -1140,8 +1132,7 @@ void OutputStream::OutputAudio ( clockticks SCR,
 					   buffers_in_audio, PTS, 0,
 					   TIMESTAMPBITS_PTS);
 
-		NextAudioAU ( cur_sector.length_of_packet_data, 
-								 SCR_delay, astrm);
+		NextAudioAU ( cur_sector.length_of_packet_data, astrm);
     }
 
 	/* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
@@ -1158,8 +1149,7 @@ void OutputStream::OutputAudio ( clockticks SCR,
 					   buffers_in_audio, 0, 0,
 					   TIMESTAMPBITS_NO );
 
-		NextAudioAU ( cur_sector.length_of_packet_data,
-								 SCR_delay, astrm);
+		NextAudioAU ( cur_sector.length_of_packet_data, astrm);
     }
 
 
@@ -1175,7 +1165,7 @@ void OutputStream::OutputAudio ( clockticks SCR,
 		if( astrm.NextAU() )
 		{
 			astrm.new_au_next_sec = true;
-			PTS = astrm.au.PTS + SCR_delay;
+			PTS = astrm.au.PTS + SCR_audio_delay;
 			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
 						   audio_packet_data_limit,
 						   astrm.rawstrm, 
@@ -1184,9 +1174,9 @@ void OutputStream::OutputAudio ( clockticks SCR,
 						   TIMESTAMPBITS_PTS );
 
 			NextAudioAU ( cur_sector.length_of_packet_data - bytes_sent, 
-						  SCR_delay, astrm );
+						  astrm );
 		} 
-			else
+		else
 		{
 			psstrm->CreateSector (&cur_sector, pack_ptr, sys_header_ptr,
 						   0,

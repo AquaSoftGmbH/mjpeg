@@ -30,6 +30,7 @@ public:
 	bool buffers_in_audio;
 	bool always_buffers_in_audio;
 	bool trailing_pad_pack;		/* Stick a padding packet at the end	*/
+	bool sector_align_iframeAUs;
 
 /* In some situations the system/PES packets are embedded with
    external transport data which has to be taken into account for SCR
@@ -57,8 +58,11 @@ int 		mux_rate;	/* TODO: remove MPEG mux rate (50 byte/sec units      */
 	
 	/* Output stream... */
 	unsigned long long bytes_output;
+	clockticks current_SCR;
+	clockticks SCR_audio_delay;
+	clockticks SCR_video_delay;
 	PS_Stream *psstrm;
-	
+
 
 private:
 	void Init( VideoStream 	&vstrm,
@@ -73,22 +77,16 @@ private:
 					  unsigned long long  *bytes_output);
 
 	void NextVideoAU( unsigned int bytes_muxed,
-					  clockticks SCR_delay,
 					  VideoStream  &vstrm );
-	void OutputVideo ( clockticks SCR,
-					   clockticks SCR_delay,
-					   VideoStream &vstrm,
+	void OutputVideo ( VideoStream &vstrm,
 					   bool marker_pack,
 					   bool include_sys_header
 		);
 	void NextAudioAU( unsigned int bytes_muxed,
-					  clockticks SCR_delay,
 					  AudioStream &astrm
 		);
 	
-	void OutputAudio ( clockticks SCR,
-					   clockticks SCR_delay,
-					   AudioStream &astrm,
+	void OutputAudio ( AudioStream &astrm,
 					   bool marker_pack,
 					   bool include_sys_header,
 					   bool end_of_segment);

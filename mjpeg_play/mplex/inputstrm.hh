@@ -74,10 +74,6 @@ public:
 		}
 
 
-	//void close();
-	//T *next() = 0;
-	//T *lookahead( unsigned int lookahead ) = 0;
-
 	FILE *rawstrm;				// Elementary input stream
 	                            // Eventually to be encapsulated
     bitcount_t stream_length;
@@ -144,27 +140,6 @@ public:
 		MuxStream( stream_id, buf_scale )
 		{}
 
-	T *next()
-		{
-			if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
-			{
-				if( aunits.curpos() > FRAME_CHUNK )
-				{
-					aunits.flush(FRAME_CHUNK);
-				}
-				FillAUbuffer(FRAME_CHUNK);
-			}
-			
-			return aunits.next();
-		}
-	
-	T *lookahead( unsigned int i )
-		{
-			assert( i < FRAME_CHUNK-1 );
-			return aunits.lookahead(i);
-		}
-
-
 	bool NextAU()
 		{
 			T *p_au = next();
@@ -181,10 +156,50 @@ public:
 			}
 		}
 
+	int NextAUType()
+		{
+			T *p_au = Lookahead(1);
+			if( p_au != NULL )
+				return p_au->type;
+			else
+				return NOFRAME;
+		}
+
+	bool SeqHdrNext()
+		{
+			T *p_au = Lookahead(1);
+			return p_au != NULL && p_au->seq_header;
+		}
+
+	T *Lookahead( unsigned int i )
+		{
+			assert( i < FRAME_CHUNK-1 );
+			return aunits.lookahead(i);
+		}
+
+
 public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
 	     // stream.
 	T au;
+	
+private:
+	T *next()
+		{
+			if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
+			{
+				if( aunits.curpos() > FRAME_CHUNK )
+				{
+					aunits.flush(FRAME_CHUNK);
+				}
+				FillAUbuffer(FRAME_CHUNK);
+			}
+			
+			return aunits.next();
+		}
+	
+
+
 
 };
 
