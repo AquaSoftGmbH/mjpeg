@@ -20,19 +20,18 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
-#include <mjpegtools/yuv4mpeg.h>
-#include <mjpegtools/mjpeg_logging.h>
-
-extern	char	*__progname;
+#include "yuv4mpeg.h"
+#include "mjpeg_logging.h"
 
 static	void	usage();
 
-main(int argc, char **argv)
+int main(int argc, char **argv)
 	{
 	int	c, n, width, height, frames, err, uvlen;
 	int	fd_in = fileno(stdin), fd_out = fileno(stdout);
-	int	ss_v, ss_h;
+	int	ss_v = 0, ss_h = 0;
 	const	char *tag;
 	u_char	*yuv[3];
 	y4m_xtag_list_t *xtags;
