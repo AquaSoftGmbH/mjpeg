@@ -7,30 +7,30 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .br 
 .SH "SYNOPSIS"
 .B mplex
-.RB [ -v
+.RB [ -v|--vervose
 .IR num ]
-.RB [ -m\ 1 | 2 ]
-.RB [ -b
+.RB [ -m|--mpeg\ 1 | 2 ]
+.RB [ -b|--video-buffer
 .IR video_buffer_size_kB ]
-.RB [ -r
+.RB [ -r|--muxed-bitrate
 .IR muxed_bitrate_kbps ]
-.RB [ -l
+.RB [ -l|--mux-limit 
 .IR num ]
-.RB [ -O
+.RB [ -O|--sync-offset
 .IR num ]
-.RB [ -f
+.RB [ -f|--format
 .IR format_code ]
-.RB [ -V ]
-.RB [ -s
+.RB [ -V|--vbr]
+.RB [ -s|--sector-size
 .IR sector_size_B ]
-.RB [ -p
+.RB [ -p|--packets-per-pack
 .IR num ]
-.RB [ -S
+.RB [ -h|--system-headers ]
+.RB [ -S|--max-segment-size
 .IR output_filesize_limit_MB ]
-.RB [ -M ]
-.RB [ -h ]
-.RB [ -? ]
-.BI -o \ output_filename_pattern input_file...
+.RB [ -M|--split-segment]
+.RB [ -?|--help ]
+.BI -o|--output \ output_filename_pattern input_file...
 .SH "DESCRIPTION"
 Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
 It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
@@ -46,37 +46,39 @@ chunks of a specified size either independently or at sequence end/start
 points in the input video stream.
 .SH "GENERAL FUNCTION LETTERS"
 .TP
-.BI -o \ output_filename_pattern
+.BI -o|-output \ output_filename_pattern
 This (compulsorary) option sets the pattern for the name(s) of output files.
 
 An integer format code (e.g. %d) in the name is replaced by the number of
 the file generated (see \fBprintf\fP(3)).
 .TP
-.BI -v \ num
+.BI -v|--verbose \ num
 Set verbosity level to \fInum\fP:
  0 - warnings and errors only,
  1 - information as well,
  2 - really verbose.
 .TP
-.B -?
+.B -?|--help
 Display a synopsis of the command syntax.
 .br
-.SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
+.SH "FUNCTION LETTERS"
 .TP
-.BI -f \ format_code
+.BI -f|--format \ format_code
 This command allows one of a number of convenient preset output
-formats to be selected without the need to individually set numerous
-parameters.  In particular producing VCD or SVCD compliant output requires
-the use of the appropriate presets as these require a number of (rather odd)
-VCD-specific constraints to be activated.
+formats or generic MPEG1 or MPEG2 output to be selected. For the 
+generic formats other function letters can be used to control many
+aspects of the multiplexed stream.  For VCD/SVCD/DVD compliant output
+the corresponding formats \fImust\fR be used as the standards require the
+multiplexer to enforce a variety of special constraints on the structure
+of the output stream.
 .IP
- 0 - Auto MPEG1.  A simple general-purpose MPEG1 format primarily suitable
+ 0 - Generic MPEG1.  A simple general-purpose MPEG1 format primarily suitable
 for software decoders.  Buffer sizes and VBR must be specified.
 Bit-rate can be auto-detected.
  1 - VCD.  Standard VCD.  Overrides other option settings.
  2 - User VCD.  VCD format but buffer size, bit rate and VBR can be set
 manually.
- 3 - Auto MPEG2.  Like 0 expcept MPEG2.
+ 3 - Generic MPEG2.  Like 0 except MPEG2.
  4 - SVCD.  Standard SVCD.  Overrides other option settings.
  5 - User-rate SVCD.  SVCD format but buffer size bit rate and VBR can be set.
  6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
@@ -87,39 +89,39 @@ manually.
 	 sectors DVD VOB's include.   This is enough to persuade some hardware
 	 players to play the stream but is a long way from full DVD authoring.
 .TP
-.BI -r \ num
+.BI -r|--mux-bitrate \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
 Bits/sec. If unspecified and not set by a preset it is automatically
 calculated from the input stream.
 .TP
-.BI -b \ num
+.BI -b|--video-buffer \ num
 The size of the video input buffer available in the target decoder.
 The default is 46KB the (tiny) size specified for VCD.  The
 size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
 .TP
-.BI -l \ num
+.BI -l|--mux-limit \ num
 Multiplex limit.  Multiplex only the specified number of sectors.  Useful
 for tuning and debugging.
 .TP
-.BI -O \ num
+.BI -O|--sync-offset \ num
 Set the presentation timestamp offset of video stream w.r.t. audio stream (video-audio) in mSec.   This flag is used to produce a stream with synchronised
 audio/video when one stream started before/after the other.  This is common
 when transcoding as the synchronisation information is typically lost during
 the (seperate) decoding/encoding of audio and video.
 .TP
-.B -V
+.B -V|--vbr
 Set variable bit rate multiplexing.  This is needed to multiplex variable
 bit-rate video streams correctly.
 .TP
-.BI -s \ num
+.BI -s|--sector-size \ num
 This option specifies the sector size of the output stream in bytes.
 .TP
-.BI -p \ num
+.BI -p|--packets-per-pack \ num
 This option specifies the number of packets per pack in the output stream.
 .TP
-.BI -S \ num
+.BI -S|--max-segment-size \ num
 This option specifies the maximum size of output files in MBytes (2^10).
 The default is 2000 Mbytes (splitting output before 2G limits can hit).
 When the limit is reached a  new file is started.
@@ -142,14 +144,14 @@ Thus to split a long video across VCD's/SVCD's you have to get the
 MPEG video encoder to introduce sequence splits at the right points
 (see mpeg2enc(1) for details of how to do this).
 .TP
-.B -M
+.B -M|--split-segment
 When splitting a long stream in files based on -S mplex does a certain
 amount of careful "running out" to prevent a GOP or audio frame being
 split. This is wasteful for continuous bit-rate streams. If the files
 are simply going to be concatenated for playback this "run out" is
 superfluous and -M turns it off.
 .TP
-.B -h
+.B -h|--system-headers
 A system header is generated in every pack rather than just in the first.
 .SH "DIAGNOSTIC OUTPUT"
 When multiplexing using mplex you may get warning or error messages
