@@ -869,6 +869,7 @@ lav_file_t *lav_open_input_file(char *filename)
 	if (!movtar_check_sig(filename))
 	  {
 	    /* None of the known formats */
+	    printf("No movtar file\n");
 	    free(lav_fd);
 	    internal_error = ERROR_FORMAT; /* Format not recognized */
 	    return 0;
