@@ -7,7 +7,7 @@ INCLUDES = -I../yuv4mpeg ${MJPEGTOOLS_CFLAGS} \
 
 bin_PROGRAMS = blend.flt wipe.flt overlay.flt
 
-bin_SCRIPTS = foreveryuv
+bin_SCRIPTS = foreveryuv forevery4m2
 
 if HAVE_MJPEGTOOLS_15
   MJPG15LIBS = ${MJPEGTOOLS_PREFIX}/lib/libmjpegutils.a

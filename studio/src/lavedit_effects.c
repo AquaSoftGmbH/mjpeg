@@ -31,7 +31,6 @@
 #include <errno.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
-//#include "y4m12.h"
 #include "lavedit.h"
 #include "gtkfunctions.h"
 #include "pipes.h"
@@ -1211,6 +1210,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	GdkPixbuf *temp_image;
 	guchar *yuv[3], *yuv_blend[3];
 	int i;
+	extern int encoding_syntax_style;
 
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
@@ -1313,12 +1313,62 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
 	fprintf(fd, "3\n");
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene_file);
-	fprintf(fd, "foreveryuv %d %d %d %s\n",
-		options->movie_width, options->movie_height,
-		GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_file);
-	fprintf(fd, "foreveryuv %d %d %d %s\n",
-		options->movie_width, options->movie_height,
-		GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_blend_file);
+
+	if (encoding_syntax_style == 140) /* 1.4 */
+	{
+		fprintf(fd, "foreveryuv %d %d %d %s\n",
+			options->movie_width, options->movie_height,
+			GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_file);
+		fprintf(fd, "foreveryuv %d %d %d %s\n",
+			options->movie_width, options->movie_height,
+			GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_blend_file);
+	}
+	else /* 1.5 */
+	{
+		char interlacing_info = 'p'; /* we need something */
+
+		/* hack to get interlacing info from the first stream */
+		FILE *fdd;
+		char tempfile[256];
+		char syscall[256];
+		sprintf(tempfile, "%s/.studio/tempfile.lav2yuv.data", getenv("HOME"));
+		sprintf(syscall, "%s -f 1 %s > %s 2>/dev/null",
+			LAV2YUV_LOCATION, options->scene_file, tempfile);
+		system(syscall);
+		fdd = fopen(tempfile, "r");
+		syscall[0] = '\0';
+		fgets(syscall, 255, fdd);
+		fclose(fdd);
+		unlink(tempfile);
+
+		for (i=0;i<strlen(syscall);i++)
+			if (syscall[i] == '\n' || syscall[i] == '\0')
+			{
+				syscall[i] = '\0';
+				break;
+			}
+		if (verbose) printf("lav2yuv gave us the following header: \'%s\'\n",
+			syscall);
+		for (i=0;i<strlen(syscall);i++)
+			if (!strncmp(syscall+i, " I", 2))
+			{
+				interlacing_info = syscall[i+2];
+				if (verbose) printf("Using \'%c\' as interlacing info\n",
+					interlacing_info);
+				break;
+			}
+
+		fprintf(fd, "forevery4m2 %d %d %c %s %s\n",
+			options->movie_width, options->movie_height,
+			interlacing_info, 
+			GTK_SCENELIST(scenelist)->norm=='p'?"25:1":"30000:1001",
+			yuv_file);
+		fprintf(fd, "forevery4m2 %d %d %c %s %s\n",
+			options->movie_width, options->movie_height,
+			interlacing_info,
+			GTK_SCENELIST(scenelist)->norm=='p'?"25:1":"30000:1001",
+			yuv_blend_file);
+	}
 
 	if (options->offset > 0)
 	{
