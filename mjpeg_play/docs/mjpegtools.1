@@ -73,7 +73,7 @@ Video: (width * height * framerate * quality )/ (200*1024)
 .br
 PAL HALF Size : (352*288*25*80) / (200*1024) = 990  kB/sec
 .br
-PAL FULL size : (786*576*25*80) / (200*1024) = 4260 kB/sec
+PAL FULL size : (768*576*25*80) / (200*1024) = 4320 kB/sec
 .br
 NTSC HALF size: (320*200*30*80) / (200*1024) = 750  kB/sec
 .br
@@ -81,12 +81,19 @@ NTSC FULL size: (640*480*30*80) / (200*1024) = 3600 kB/sec
 
 .br
 The 1024 converts the Bytes to kBytes. Not every card can record the size 
-mentioned. The Buz for examples can only record a size of 720x576 when
-using -d 1 , the DC10 records a size of 384x288 when using -d 2.
+mentioned. The Buz an Marvel G400 for example can only record a size of 720x576
+when using -d 1 , the DC10 records a size of 384x288 when using -d 2.
 
 .br
 When you add audio and video datarate, this is what your hard disk has  
 to be able to write constantly streaming, else you will have lost frames.
+
+.br
+If you want to play with the --mjpeg-buffer-size. Remember the value should be 
+at least so big that one frame fits into it. The size of one frame is:       
+(width * height * quality ) / (200 * 1024) = kB
+If the buffer is to small the rate calculation doesn't match any more and 
+buffer overflows can happen.
 
 How video works, and the difference between the video type is explained here:
 .br
