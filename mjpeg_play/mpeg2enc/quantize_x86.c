@@ -64,6 +64,7 @@
  *
  *RETURN: A bit-mask of block_count bits indicating non-zero blocks (a 1).
  */
+void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant);
 	
 
 /*

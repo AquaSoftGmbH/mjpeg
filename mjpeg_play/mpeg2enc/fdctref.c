@@ -63,6 +63,9 @@ static double aanscales[64];
 #define NC_COS6SQRT2 0.541196100146196984399723205366389//cos(6*pi/16)*sqrt(2)
 #define NC_COS7SQRT2 0.275899379282943012335957563669373//cos(7*pi/16)*sqrt(2)
 
+void init_fdctdaan( void );
+void fdctdaan(int16_t *block);
+
 
 void init_fdctdaan( void )
 {

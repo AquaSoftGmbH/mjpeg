@@ -66,6 +66,8 @@ static void calc_DMV
 
 static void clearblock (pict_data_s *picture,
 						uint8_t *cur[], int i0, int j0);
+void init_predict(void);
+
 
 /*
   Initialise prediction - currently purely selection of which
@@ -78,7 +80,7 @@ static void (*ppred_comp)(
 	uint8_t *src, uint8_t *dst,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 
-void init_predict()
+void init_predict(void)
 {
 	int cpucap = cpu_accel();
 

@@ -39,7 +39,28 @@
 #include <string.h>
 #include "global.h"
 
+struct _stream_state 
+ {
+	 int i;						/* Index in current sequence */
+	 int g;						/* Index in current GOP */
+	 int b;						/* Index in current B frame group */
+	 int gop_start_frame;		/* Index start current sequence in
+								   input stream */
+	 int seq_start_frame;		/* Index start current gop in input stream */
+	 int gop_length;			/* Length of current gop */
+	 int bigrp_length;			/* Length of current B-frame group */
+	 int bs_short;				/* Number of B frame GOP is short of
+								   having M-1 B's for each I/P frame
+								 */
+	 int np;					/* P frames in current GOP */
+	 int nb;					/* B frames in current GOP */
+	 double next_b_drop;		/* When next B frame drop is due in GOP */
+	 int new_seq;				/* Current GOP/frame starts new sequence */
+	int64_t next_split_point;
+	int64_t seq_split_length;
+};
 
+typedef struct _stream_state stream_state_s;
 
 static void set_pic_params( int pict_struct,
 							int decode,
@@ -165,6 +186,22 @@ static void set_pic_params( int pict_struct,
 
 #define SCENE_CHANGE_THRESHOLD 4
 
+int find_gop_length( int gop_start_frame, int I_frame_temp_ref,
+	int gop_min_len, int gop_max_len );
+void encodepict(pict_data_s *picture);
+void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) );
+void gop_start( stream_state_s *ss );
+void flip_ref_images( pict_data_s *picture );
+void I_or_P_frame_struct( stream_state_s *ss, pict_data_s *picture );
+void B_frame_struct(  stream_state_s *ss, pict_data_s *picture );
+void next_seq_state( stream_state_s *ss );
+void stputseq(void);
+void init_pict_data( pict_data_s *picture );
+void init_pictures( pict_data_s *ref_pictures, pict_data_s *b_pictures );
+void *parencodeworker(void *start_arg);
+void parencodepict( pict_data_s *picture );
+
+
 int find_gop_length( int gop_start_frame, 
 					 int I_frame_temp_ref,
 					 int gop_min_len, int gop_max_len )
@@ -280,29 +317,6 @@ void encodepict(pict_data_s *picture)
 }
 
 
-
-struct _stream_state 
- {
-	 int i;						/* Index in current sequence */
-	 int g;						/* Index in current GOP */
-	 int b;						/* Index in current B frame group */
-	 int gop_start_frame;		/* Index start current sequence in
-								   input stream */
-	 int seq_start_frame;		/* Index start current gop in input stream */
-	 int gop_length;			/* Length of current gop */
-	 int bigrp_length;			/* Length of current B-frame group */
-	 int bs_short;				/* Number of B frame GOP is short of
-								   having M-1 B's for each I/P frame
-								 */
-	 int np;					/* P frames in current GOP */
-	 int nb;					/* B frames in current GOP */
-	 double next_b_drop;		/* When next B frame drop is due in GOP */
-	 int new_seq;				/* Current GOP/frame starts new sequence */
-	int64_t next_split_point;
-	int64_t seq_split_length;
-};
-
-typedef struct _stream_state stream_state_s;
 
 void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
 {
@@ -532,7 +546,7 @@ void next_seq_state( stream_state_s *ss )
 }
 
 
-void stputseq()
+void stputseq(void)
 {
 	stream_state_s ss;
 	pict_data_s cur_picture;

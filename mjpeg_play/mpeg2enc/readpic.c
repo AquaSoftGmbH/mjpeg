@@ -44,6 +44,9 @@ static int last_frame = -1;
 
 static int lum_mean[FRAME_BUFFER_SIZE];
 
+int piperead(int fd, char *buf, int len);
+void load_frame( int num_frame, int look_ahead );
+
 
 static int luminance_mean(uint8_t *frame, int w, int h )
 {

@@ -88,6 +88,9 @@ static double framerates[9]=
 /* reserved: for later use */
 int param_422 = 0;
 
+void Usage(char *str);
+
+
 void Usage(char *str)
 {
 	printf("lavtools mpeg2enc version " VERSION "\n" );
@@ -563,8 +566,10 @@ void error(text)
 }
 
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
+static void init_encoding_parms(void);
 
-static void init_encoding_parms()
+
+static void init_encoding_parms(void)
 {
 	int i;
 	int c;

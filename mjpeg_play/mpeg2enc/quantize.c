@@ -51,6 +51,8 @@ static void (*piquant_non_intra_m1)(int16_t *src, int16_t *dst,  uint16_t *quant
 static int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat );
 static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
 
+void init_quantizer(void);
+
 
 /*
   Initialise quantization routines.

@@ -185,7 +185,10 @@ static struct level_limits {
 #define H14  6
 #define HL   4
 
-void profile_and_level_checks()
+void profile_and_level_checks(void);
+
+
+void profile_and_level_checks(void)
 {
   int i;
   struct level_limits *maxval;

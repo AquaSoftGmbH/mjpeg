@@ -45,6 +45,7 @@ void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
 
 extern void fdct( int16_t *blk );
 extern void idct( int16_t *blk );
+void init_transform(void);
 
 
 
@@ -72,7 +73,7 @@ static void (*psub_pred) (uint8_t *pred, uint8_t *cur,
  */
 
 
-void init_transform()
+void init_transform(void)
 {
 	int flags;
 	flags = cpu_accel();

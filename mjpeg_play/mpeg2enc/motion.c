@@ -294,6 +294,14 @@ static int (*pbdist2) (uint8_t *pf, uint8_t *pb,
 static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
 					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
+void init_motion(void);
+int round_search_radius( int radius );
+int bidir_chrom_var_sum( mb_motion_s *lum_mc_f, 
+					   mb_motion_s *lum_mc_b, 
+					   uint8_t **ref_f, 
+					   uint8_t **ref_b,
+					   subsampled_mb_s *ssblk,
+					   int lx, int h );
 
 
 
@@ -303,7 +311,7 @@ static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
   
   */
 
-void init_motion()
+void init_motion(void)
 {
 	int cpucap = cpu_accel();
 
