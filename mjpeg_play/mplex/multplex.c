@@ -222,7 +222,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		}
     }
 	if (which_streams & STREAMS_AUDIO)
-		audio_rate = bitrate_index[3-audio_info->layer][audio_info->bit_rate]*128;
+		audio_rate = bitrate_index[audio_info->version_id][3-audio_info->layer][audio_info->bit_rate]*128;
 
     
 	/* Attempt to guess a sensible mux rate for the given video and audio streams 	*/

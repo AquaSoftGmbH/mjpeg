@@ -1704,7 +1704,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 			old_s44orgblk = s44orgblk;
 			for( i = istrt; i <= iend; i += 4 )
 			{
-				s1 = ((*pqdist1)( s44orgblk,s44blk,qlx,qh) & 0xffff) + intabs(i-i0) + intabs(j-j0);
+				s1 = ((*pqdist1)( s44orgblk,s44blk,qlx,qh) & 0xffff) + abs(i-i0) + abs(j-j0);
 				if( s1 < threshold )
 				{
 					sub44_mcomps[sub44_num_mcomps].x = i;
@@ -2069,7 +2069,7 @@ static int dist1_00(uint8_t *blk1,uint8_t *blk2,
 	for (j=0; j<h; j++)
 	{
 
-#define pipestep(o) v = p1[o]-p2[o]; s+= intabs(v);
+#define pipestep(o) v = p1[o]-p2[o]; s+= abs(v);
 		pipestep(0);  pipestep(1);  pipestep(2);  pipestep(3);
 		pipestep(4);  pipestep(5);  pipestep(6);  pipestep(7);
 		pipestep(8);  pipestep(9);  pipestep(10); pipestep(11);
@@ -2105,7 +2105,7 @@ static int dist1_01(uint8_t *blk1,uint8_t *blk2,
 			/*
 			  v = ((p1[i]>>1)+(p1[i+1]>>1)>>1) - (p2[i]>>1);
 			*/
-			s+=intabs(v);
+			s+=abs(v);
 		}
 		p1+= lx;
 		p2+= lx;
@@ -2130,7 +2130,7 @@ static int dist1_10(uint8_t *blk1,uint8_t *blk2,
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
-			s+=intabs(v);
+			s+=abs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;
@@ -2158,7 +2158,7 @@ static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 		for (i=0; i<16; i++)
 		{
 			v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
-			s+=intabs(v);
+			s+=abs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;
@@ -2375,7 +2375,7 @@ static int fdist1( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
 	for( j = 0; j < fh; ++j )
 	{
 		register int diff;
-#define pipestep(o) diff = p1[o]-p2[o]; s += intabs(diff)
+#define pipestep(o) diff = p1[o]-p2[o]; s += abs(diff)
 		pipestep(0); pipestep(1);
 		pipestep(2); pipestep(3);
 		pipestep(4); pipestep(5);
@@ -2405,7 +2405,7 @@ static int qdist1( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
 	int s = 0;
 	register int diff;
 
-	/* #define pipestep(o) diff = p1[o]-p2[o]; s += intabs(diff) */
+	/* #define pipestep(o) diff = p1[o]-p2[o]; s += abs(diff) */
 #define pipestep(o) diff = p1[o]-p2[o]; s += diff < 0 ? -diff : diff;
 	pipestep(0); pipestep(1);	 pipestep(2); pipestep(3);
 	if( qh > 1 )
@@ -2541,7 +2541,7 @@ static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 			v = ((((unsigned int)(*pf++ + *pfa++ + *pfb++ + *pfc++ + 2)>>2) +
 				  ((unsigned int)(*pb++ + *pba++ + *pbb++ + *pbc++ + 2)>>2) + 1)>>1)
 				- *p2++;
-			s += intabs(v);
+			s += abs(v);
 		}
 		p2+= lx-16;
 		pf+= lx-16;

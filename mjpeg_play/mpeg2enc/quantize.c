@@ -185,8 +185,8 @@ void quant_intra(
 			  }
 #else
 			/* RJ: save one divide operation */
-			y = ((intabs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)
-				/*(32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
+			y = ((abs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)
+				/*(32*abs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
 				;
 			if ( y > clipvalue )
 			  {
@@ -279,7 +279,7 @@ restart:
 		}
 		/* RJ: save one divide operation */
 
-		x = intabs( ((int)src[i]) ) /*(src[i] >= 0 ? src[i] : -src[i])*/ ;
+		x = abs( ((int)src[i]) ) /*(src[i] >= 0 ? src[i] : -src[i])*/ ;
 		d = (int)quant_mat[(i&63)]; 
 		/* A.Stevens 2000: Given the math of non-intra frame
 		   quantisation / inverse quantisation I always though the
@@ -434,7 +434,7 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
 		  val = src[i];
 		  if( val != 0 )
 		  {
-			  val = intabs(val);
+			  val = abs(val);
 			  val = (int)((val+val+1)*quant_mat[i])>>5;
 			  val = intmin( val, 2047);
 			  sum += val;

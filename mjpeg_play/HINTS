@@ -19,7 +19,8 @@
 	 by mplex).
 	 
 (2)  If you want to play MPEG-1 stuff on hardware decoders stick to
-     44.1 Stereo layer-2 audio.   
+     44.1 192Kbps Stereo layer-2 audio.  The 100Kbps or so maximum you'll gain
+	using MP3 aren't going to make a visible difference to video anyway.
 
 (3)  Use the noise filters when MPEG compressing broadcast material
      unless it is *very* good or you like Artefacts. 

@@ -83,7 +83,7 @@ typedef uint64_t clockticks;
 #define BFRAME                  3
 #define DFRAME                  4
 
-#define AUDIO_SYNCWORD		0xfff
+#define AUDIO_SYNCWORD		0x7ff
 
 
 #define PACK_START		0x000001ba
@@ -208,6 +208,7 @@ typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
     unsigned int size_frames[2] ;
+	unsigned int version_id ;
     unsigned int layer		;
     unsigned int protection	;
     unsigned int bit_rate	;
@@ -412,7 +413,7 @@ void status_footer	  (void);	/* Endzeile				*/
     Statische Arrays
 *************************************************************************/
 
-extern unsigned int bitrate_index [3][16];
+extern unsigned int bitrate_index [4][3][16];
 
 /*************************************************************************
     Command line options and derived parameters

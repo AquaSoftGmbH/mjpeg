@@ -6,16 +6,54 @@
 static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
 									30000./1001., 30., 50., 60000./1001., 60. };
 
-unsigned int bitrate_index [3][16] =
-{{0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},
- {0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},
- {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0}};
+char *audio_version[4] =
+{
+	"2.5",
+	"2.0",
+	"reserved",
+	"1.0"
+};
+
+unsigned int bitrate_index [4][3][16] =
+{
+	{ /* MPEG audio V2.5 */
+		{0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
+		{0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
+		{0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0}
+	},
+	{ /*RESERVED*/
+		{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
+	},
+	{ /* MPEG audio V2 */
+		{0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
+		{0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0},
+		{0,8,16,24,32,40,48,56,64,80,96,112,128,144,160,0}
+	},
+	{ /* MPEG audio V1 */
+		{0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},
+		{0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},
+		{0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0}
+	}
+
+};
 
 static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
 							 0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
 							 1.2015, 0.};
 
-static int frequency [4] = {44100, 48000, 32000, 0};
+static int frequency [4][4] = 
+{
+	/* MPEG audio V2.5 */
+	{11025,12000,8000,0},
+	/* RESERVED */
+	{ 0, 0, 0, 0 }, 
+	/* MPEG audio V2 */
+	{22050,24000, 16000,0},
+	/* MPEG audio V1 */
+	{44100, 48000, 32000, 0}
+};
 static char mode [4][15] =
 { "stereo", "joint stereo", "dual channel", "single channel" };
 static char copyright [2][20] =
@@ -24,8 +62,8 @@ static char original [2][10] =
 { "copy","original" };
 static char emphasis [4][20] =
 { "none", "50/15 microseconds", "reserved", "CCITT J.17" };
-static unsigned int slots [4] = {12, 144, 0, 0};
-static unsigned int samples [4] = {384, 1152, 0, 0};
+static unsigned int slots [4] = {12, 144, 144, 0};
+static unsigned int samples [4] = {384, 1152, 1152, 0};
 
 
 /*************************************************************************
@@ -426,12 +464,12 @@ void output_info_audio (audio_info)
     unsigned int bitrate;
 
     layer=3-audio_info->layer;
-    bitrate = bitrate_index[layer][audio_info->bit_rate];
+    bitrate = bitrate_index[audio_info->version_id][layer][audio_info->bit_rate];
 
 
 	printf("\n+------------------ AUDIO STREAM INFORMATION -----------------+\n");
-
-    printf ("\nStream length  : %11llu\n",audio_info->stream_length);
+	printf ("Audio version  : %s\n", audio_version[audio_info->version_id]);
+    printf (" Stream length  : %11llu\n",audio_info->stream_length);
     printf   ("Syncwords      : %8u\n",audio_info->num_syncword);
     printf   ("Frames         : %8u size %6u bytes\n",
 			  audio_info->num_frames[0],audio_info->size_frames[0]);
@@ -454,7 +492,7 @@ void output_info_audio (audio_info)
 		printf ("Frequency      : reserved\n");
     else
 		printf ("Frequency      :     %d Hz\n",
-				frequency[audio_info->frequency]);
+				frequency[audio_info->version_id][audio_info->frequency]);
 
     printf   ("Mode           : %8u %s\n",
 			  audio_info->mode,mode[audio_info->mode]);
@@ -470,11 +508,7 @@ void output_info_audio (audio_info)
 /*************************************************************************
 	Get_Info_Audio
 	holt Informationen zu den einzelnen Audio Access Units
-	(Audio frames) ein und speichert sie in einer temporaeren
-	Datei ab.
-
-	gets information on the single audio access units (audio frames)
-	and saves them into a tmp file for further processing.
+	(Audio frames) and records it.
 *************************************************************************/
 
 
@@ -506,10 +540,12 @@ void get_info_audio (
     init_getbits (&audio_bs, audio_file);
     empty_aaunit_struc (&access_unit);
 
-    if (getbits (&audio_bs, 12)==AUDIO_SYNCWORD)
+	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
+	 */
+    if (getbits (&audio_bs, 11)==AUDIO_SYNCWORD)
     {
-		marker_bit (&audio_bs, 1);
 		audio_info->num_syncword++;
+		audio_info->version_id = getbits (&audio_bs, 2);
 		audio_info->layer 		= getbits (&audio_bs, 2);
 		audio_info->protection 		= get1bit (&audio_bs);
 		audio_info->bit_rate 		= getbits (&audio_bs, 4);
@@ -522,16 +558,19 @@ void get_info_audio (
 		audio_info->original_copy 	= get1bit (&audio_bs);
 		audio_info->emphasis		= getbits (&audio_bs, 2);
 
+		/* TODO: I'll be the slots counts have changed in the newer versions too... */
 		framesize =
-			bitrate_index[3-audio_info->layer][audio_info->bit_rate]  * slots [3-audio_info->layer] *1000 /
-			frequency[audio_info->frequency];
+			bitrate_index[audio_info->version_id][3-audio_info->layer][audio_info->bit_rate]  * 
+			slots [3-audio_info->layer] *1000 /
+			frequency[audio_info->version_id][audio_info->frequency];
+
 		audio_info->size_frames[0] = framesize;
 		audio_info->size_frames[1] = framesize+1;
 		audio_info->num_frames[padding_bit]++;
 	
 		access_unit.length = audio_info->size_frames[padding_bit];
 	  
-		samples_per_second = frequency [audio_info->frequency];
+		samples_per_second = frequency[audio_info->version_id][audio_info->frequency];
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = (clockticks)
@@ -543,7 +582,7 @@ void get_info_audio (
 
     } else
     {
-		printf ("Invalid MPEG Audio stream header.\n");
+		fprintf ( stderr,"Invalid MPEG Audio stream header.\n");
 		exit (1);
     }
 
@@ -567,7 +606,7 @@ void get_info_audio (
 		   stream to process before finishing ... */
 
 	
-		if ( (syncword = getbits (&audio_bs, 12))!=AUDIO_SYNCWORD )
+		if ( (syncword = getbits (&audio_bs, 11))!=AUDIO_SYNCWORD )
 		{
 			int bits_to_end = length*8 - offset_bits;
 			if( bits_to_end > 1024*8  )
@@ -592,8 +631,8 @@ void get_info_audio (
 				/* No catenated stream... finished! */
 				break;
 		}
-	
-		marker_bit (&audio_bs, 1);
+
+		getbits( &audio_bs, 11); /* Skip version, layer, protection, bitrate,sampling */
 		prozent =(int) (((float) bitcount(&audio_bs)/8/(float)length)*100);
 		audio_info->num_syncword++;
 
@@ -606,7 +645,6 @@ void get_info_audio (
 			old_prozent=prozent;
 		
 		}
-		getbits (&audio_bs, 9);
 	
 		padding_bit=get1bit(&audio_bs);
 		access_unit.length = audio_info->size_frames[padding_bit];
