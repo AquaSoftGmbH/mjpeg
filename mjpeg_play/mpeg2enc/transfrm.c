@@ -161,11 +161,11 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 	r = 0.0;
 	topvar = sumsqtop-sumtop*sumtop/128;
 	botvar = sumsqbot-sumbot*sumbot/128;
-	if ((topvar>0) && (botvar>0))
+	if (!((topvar>0) ^ (botvar>0)))
 	{
 		d = ((double) topvar) * ((double)botvar);
-		r = (sumbottop-(sumtop*sumbot)/128)/sqrt(d);
-		if (r>0.5)
+		r = (sumbottop-(sumtop*sumbot)/128);
+		if (r>0.5*sqrt(d))
 			return 0; /* frame DCT */
 		else
 			return 1; /* field DCT */
@@ -175,7 +175,7 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 
 	return dct_type;
 }
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+#if defined(HAVE_ASM_MMX)
 static __inline__ void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 {
@@ -378,8 +378,8 @@ int select_dct_type_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 	if ( !((topvar <= 0) ^ (botvar <= 0)) )
 	{
 		d = ((double) topvar) * ((double)botvar);
-		r = (sumbottop-(sumtop*sumbot)/128)/sqrt(d);
-		if (r>0.5)
+		r = (sumbottop-(sumtop*sumbot)/128);
+		if (r>0.5*sqrt(d))
 			return 0; /* frame DCT */
 		else
 			return 1; /* field DCT */
