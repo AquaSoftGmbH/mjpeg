@@ -426,15 +426,21 @@ main (int argc, char **argv)
 
       inputfiles[i] = argv[optind];
 
-      tempor = access (inputfiles[i], R_OK);
-      if (tempor < 0)
-	{
-	  printf
-	    ("Sorry there is a problem with the file %s you specified.\n",
-	     inputfiles[i]);
-	  printf ("Please try again. \n");
-	  exit (1);
-	}
+       // first filename may be norm parameter, so don't check
+       // access on them.
+       if (!(strcmp(inputfiles[i],"+p")==0 || strcmp(inputfiles[i],"+n")==0))
+	 {
+	    
+	    tempor = access (inputfiles[i], R_OK);
+	    if (tempor < 0)
+	      {
+		 printf
+		   ("Sorry there is a problem with the file %s you specified.\n",
+		    inputfiles[i]);
+		 printf ("Please try again. \n");
+		 exit (1);
+	      }
+	 }
       ++i;
     }
 
@@ -581,12 +587,18 @@ main (int argc, char **argv)
 		case 22050:
 			opt_mp3bitrate = 32 * audio_chan;
 			break;
-		default:
-			if (audioexist <= 0)
-			{
-				printf ("Audio doesn't appear to exist so no audio will be converted\n");
-				break;
-			}
+
+		 default:
+		   if (audioexist <= 0)
+		     {
+			printf ("Audio doesn't appear to exist so no audio will be converted\n");
+			break;
+		     }
+		   else
+		     {
+			opt_mp3bitrate = 16 * audio_chan;
+		        printf ("No mp3 bitrate available for audio rate %d, defaulting to %d\n", audio_rate, opt_mp3bitrate);
+		     }
 		}
 	}
 	IAviAudioWriteStream *astream;

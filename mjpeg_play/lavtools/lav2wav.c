@@ -187,6 +187,7 @@ void Usage(char *str)
    fprintf(stderr, "-s num        Start extracting at video frame (num)\n");
    fprintf(stderr, "-c num        Extract (num) frames of audio\n");
    fprintf(stderr, "-v num        verbose level [0..2]\n");
+   fprintf(stderr, "-I            Ignore unsupported bitrates/bits per sample\n");
  
    exit(0);
 }
@@ -203,8 +204,9 @@ char    **argv;
 	int warned = 0;
 	int start_frame = 0;
 	int num_frames = -1;
+        int ignore_bitrate = 0;
 
-    while( (n=getopt(argc,argv,"v:s:c:")) != EOF)
+    while( (n=getopt(argc,argv,"v:s:c:I")) != EOF)
     {
         switch(n) {
 
@@ -218,6 +220,9 @@ char    **argv;
 		break;
 	   case 'c':
 		num_frames = atoi(optarg);
+		break;
+	   case 'I':
+		ignore_bitrate = 1;
 		break;
 	   case '?':
 		Usage(argv[0]);
@@ -240,31 +245,34 @@ char    **argv;
         exit(1);
     }
 
-    if(el.audio_bits!=16)
-    {
-        mjpeg_error("Input file(s) must have 16 bit audio!\n");
-        exit(1);
-    }
- 
-    switch (el.audio_rate) {
-       case 48000 : 
-       case 44100 :
-       case 32000 :
-           break;
-       default:
-           mjpeg_error("Audio rate is %ld Hz\n",el.audio_rate);
-           mjpeg_error("Audio rate must be 32000, 44100 or 48000 !\n");
-           exit(1);
-    }
+    if(!ignore_bitrate) 
+      {
+        if(el.audio_bits!=16)
+          {
+            mjpeg_error("Input file(s) must have 16 bit audio!\n");
+            exit(1);
+          }
+        
+        switch (el.audio_rate) {
+        case 48000 : 
+        case 44100 :
+        case 32000 :
+          break;
+        default:
+          mjpeg_error("Audio rate is %ld Hz\n",el.audio_rate);
+          mjpeg_error("Audio rate must be 32000, 44100 or 48000 !\n");
+          exit(1);
+        }
+      }
 
     switch (el.audio_chans) {
-       case 1:
-       case 2:
-          break;
-
-       default:
-          mjpeg_error("Audio channels %d not allowed\n",el.audio_chans);
-           exit(1);
+    case 1:
+    case 2:
+      break;
+      
+    default:
+      mjpeg_error("Audio channels %d not allowed\n",el.audio_chans);
+      exit(1);
     }
  
 	/* Create wav header (skeleton) on stdout ... */
