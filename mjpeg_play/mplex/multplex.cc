@@ -96,6 +96,7 @@ static void output_padding       (
 	int packet_data_limit
 	);	/* erstellt und schreibt Padding packet	*/
 
+static PaddingStream pstrm;
 
 
 /******************************************************************
@@ -256,8 +257,8 @@ static void init_outputstream( VideoStream 	&vstrm,
   {
 	  create_sys_header (&dummy_sys_header, mux_rate,  !opt_VBR, 1, 
 						 1, 1, num_audio, num_video,
-						 astrm, 0, audio_buffer_size/128,
-						 vstrm, 1, video_buffer_size/1024
+						 astrm, /*0, audio_buffer_size/128,*/
+						 vstrm /*1, video_buffer_size/1024*/
 		                );
 
   	video_min_packet_data = 
@@ -361,8 +362,8 @@ void outputstreamprefix( clockticks *current_SCR,
 		/* First packet carries video-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate, false, true, 
 						   true, true, 0, num_video,
-						   astrm, 0, audio_buffer_size/128,
-						   vstrm, 1, video_buffer_size/1024);
+						   astrm, /*0, audio_buffer_size/128,*/
+						   vstrm /*1, video_buffer_size/1024 */ );
 	  	output_padding( *current_SCR, ostream,
 					  	true,
 						true,
@@ -374,8 +375,8 @@ void outputstreamprefix( clockticks *current_SCR,
 				/* Second packet carries audio-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate,  false, true, 
 						   true, true, num_audio, 0,
-						   astrm, 0, audio_buffer_size/128,
-						   vstrm, 1, video_buffer_size/1024);
+						   astrm, /* 0, audio_buffer_size/128,*/
+						   vstrm /*1, video_buffer_size/1024 */ );
 		create_pack (&dummy_pack, 0, mux_rate);
 
 		vcd_2nd_syshdr_data_limit = 
@@ -402,8 +403,8 @@ void outputstreamprefix( clockticks *current_SCR,
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,  !opt_VBR, true, 
 						   true, true, num_audio, num_video,
-						   astrm, 0, audio_buffer_size/128,
-						   vstrm, 1, video_buffer_size/1024 );
+						   astrm, /*0, audio_buffer_size/128,*/
+						   vstrm /* , 1, video_buffer_size/1024*/ );
 	  	output_padding( *current_SCR, ostream,
 					  	true,
 						true,
@@ -419,8 +420,8 @@ void outputstreamprefix( clockticks *current_SCR,
 			/* TODO COMPLETELY BOGUS!!!! */
 			create_sys_header (&sys_header, mux_rate, false, true,
 							   true, true, 0, num_video,
-							   astrm, 0, audio_buffer_size/128,
-							   vstrm, 1, 46);
+							   astrm, /* 0, audio_buffer_size/128,*/
+							   vstrm /* , 1, 46 */ );
 			output_padding( *current_SCR, ostream,
 							true,
 							true,
@@ -431,8 +432,8 @@ void outputstreamprefix( clockticks *current_SCR,
 			/* Second packet carries large-still sys_header */
 			create_sys_header (&sys_header, mux_rate, false, true, 
 							   true, true, 0, num_video,
-							   astrm, 0, audio_buffer_size/128,
-							   vstrm, 1, 117);
+							   astrm, /* 0, audio_buffer_size/128,*/
+							   vstrm /* , 1, 117*/);
 			output_padding( *current_SCR, ostream,
 							true,
 							true,
@@ -450,8 +451,8 @@ void outputstreamprefix( clockticks *current_SCR,
    /* Create the in-stream header if needed */
 	create_sys_header (&sys_header, mux_rate, !opt_VBR, true, 
 					   true, true, num_audio, num_video,
-					   astrm, 0, audio_buffer_size/128,
-					   vstrm, 1, video_buffer_size/1024);
+					   astrm, /*0, audio_buffer_size/128,*/
+					   vstrm /* , 1, video_buffer_size/1024 */);
 
 
 }
@@ -489,7 +490,7 @@ void outputstreamsuffix(clockticks *SCR,
 		end_code_padding_payload = packet_payload( NULL, &pack, false, 0, 0)-4;
 		create_sector (&cur_sector, &pack, NULL,
 					   end_code_padding_payload,
-					   NULL, PADDING_STR, 0, 0,
+					   NULL, pstrm, /*PADDING_STR, 0, 0,*/
 					   false, 0, 0,
 					   TIMESTAMPBITS_NO );
 		index = cur_sector.buf  + sector_size-4;
@@ -1044,8 +1045,9 @@ void output_video ( clockticks SCR,
 
 	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 					  max_packet_payload,
-					  vstrm.rawstrm, vstrm.stream_id,
-					  1, video_buffer_size/1024,
+					  vstrm.rawstrm, 
+					  vstrm,
+					  /* vstrm.stream_id, 1, video_buffer_size/1024,*/
 					  buffers_in_video, PTS, DTS,
 					  timestamps );
 	  next_video_access_unit ( cur_sector.length_of_packet_data, 
@@ -1062,7 +1064,9 @@ void output_video ( clockticks SCR,
 	{
 	  create_sector( &cur_sector, pack_ptr, sys_header_ptr,
 					 vstrm.au.length,
-					 vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
+					 vstrm.rawstrm,
+					 vstrm,
+					 /*vstrm.stream_id, 1, video_buffer_size/1024,*/
 					 buffers_in_video, 0, 0,
 					 TIMESTAMPBITS_NO );
 	  next_video_access_unit ( cur_sector.length_of_packet_data, 
@@ -1101,7 +1105,9 @@ void output_video ( clockticks SCR,
 	
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 max_packet_payload,
-						 vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
+						 vstrm.rawstrm,
+						 vstrm,
+						 /*vstrm.stream_id, 1, video_buffer_size/1024,*/
 						 buffers_in_video, PTS, DTS,
 						 timestamps );
 		  next_video_access_unit ( cur_sector.length_of_packet_data - prev_au_tail, 
@@ -1112,7 +1118,9 @@ void output_video ( clockticks SCR,
 		  vstrm.au.markempty();
 		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 						  0,
-						  vstrm.rawstrm, vstrm.stream_id, 1, video_buffer_size/1024,
+						  vstrm.rawstrm, 
+						  vstrm,
+						  /*vstrm.stream_id, 1, video_buffer_size/1024,*/
 						  buffers_in_video, 0, 0,
 						  TIMESTAMPBITS_NO);
 		};
@@ -1254,7 +1262,9 @@ void output_audio ( clockticks SCR,
     {
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 audio_packet_data_limit,
-					 astrm.rawstrm, astrm.stream_id, 0, audio_buffer_size/128,
+					 astrm.rawstrm, 
+					 astrm,
+					 /*astrm.stream_id, 0, audio_buffer_size/128,*/
 					 buffers_in_audio, PTS, 0,
 					 TIMESTAMPBITS_PTS);
 
@@ -1271,7 +1281,9 @@ void output_audio ( clockticks SCR,
     {
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 audio_packet_data_limit,
-					 astrm.rawstrm, astrm.stream_id, 0, audio_buffer_size/128,
+					 astrm.rawstrm, 
+					 astrm,
+					 /*astrm.stream_id, 0, audio_buffer_size/128,*/
 					 buffers_in_audio, 0, 0,
 					 TIMESTAMPBITS_NO );
 
@@ -1297,7 +1309,9 @@ void output_audio ( clockticks SCR,
 		  PTS = astrm.au.PTS + SCR_delay;
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 audio_packet_data_limit,
-						 astrm.rawstrm, astrm.stream_id, 0, audio_buffer_size/128,
+						 astrm.rawstrm, 
+						 astrm,
+						 /*astrm.stream_id, 0, audio_buffer_size/128,*/
 						 buffers_in_audio, PTS, 0,
 						 TIMESTAMPBITS_PTS );
 
@@ -1308,7 +1322,9 @@ void output_audio ( clockticks SCR,
 			astrm.au.markempty();
 			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						   0,
-						   astrm.rawstrm, astrm.stream_id, 0, audio_buffer_size/128,
+						   astrm.rawstrm, 
+						   astrm,
+						   /*astrm.stream_id, 0, audio_buffer_size/128,*/
 						   buffers_in_audio, 0, 0,
 						   TIMESTAMPBITS_NO );
 		  };
@@ -1377,7 +1393,9 @@ void output_padding (
 	  /* let's generate the packet				*/
 	  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 					 padding_limit,
-					 NULL, PADDING_STR, 0, 0,
+					 NULL, 
+					 pstrm,
+					 /*PADDING_STR, 0, 0,*/
 					 false, 0, 0,
 					 TIMESTAMPBITS_NO );
 

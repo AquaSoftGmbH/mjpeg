@@ -97,12 +97,12 @@ unsigned int packet_payload( Sys_header_struc *sys_header,
 *************************************************************************/
 
 void buffer_dtspts_mpeg1scr_timecode (clockticks    timecode,
-									 unsigned char  marker,
-									 unsigned char **buffer)
+									 uint8_t  marker,
+									 uint8_t **buffer)
 
 {
 	clockticks thetime_base;
-    unsigned char temp;
+    uint8_t temp;
     unsigned int msb, lsb;
      
  	/* MPEG-1 uses a 90KHz clock, extended to 300*90KHz = 27Mhz in MPEG-2 */
@@ -138,12 +138,12 @@ void buffer_dtspts_mpeg1scr_timecode (clockticks    timecode,
 
 
 void buffer_mpeg2scr_timecode( clockticks    timecode,
-								unsigned char **buffer
+								uint8_t **buffer
 							 )
 {
  	clockticks thetime_base;
 	unsigned int thetime_ext;
-    unsigned char temp;
+    uint8_t temp;
     unsigned int msb, lsb;
      
 	thetime_base = timecode /300;
@@ -196,25 +196,32 @@ void create_sector (Sector_struc 	 *sector,
 					Sys_header_struc *sys_header,
 					unsigned int     max_packet_data_size,
 					FILE		 	 *inputstream,
-					unsigned char 	 type,
-					unsigned char 	 buffer_scale,
-					unsigned int 	 buffer_size,
-					unsigned char 	 buffers,
+					MuxStream        &strm,
+#ifdef REDUNDANT
+
+					uint8_t 	 _type,
+					uint8_t 	 _buffer_scale,
+					unsigned int 	 _buffer_size,
+#endif
+					bool 	 buffers,
 					clockticks   	 PTS,
 					clockticks   	 DTS,
-					unsigned char 	 timestamps
+					uint8_t 	 timestamps
 	)
 
 {
     int i,j;
-    unsigned char *index;
-    unsigned char *size_offset;
-	unsigned char *fixed_packet_header_end;
-	unsigned char *pes_header_len_offset = 0; /* Silence compiler... */
+    uint8_t *index;
+    uint8_t *size_offset;
+	uint8_t *fixed_packet_header_end;
+	uint8_t *pes_header_len_offset = 0; /* Silence compiler... */
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
 	int bytes_short;
+	uint8_t 	 type = strm.stream_id;
+	uint8_t 	 buffer_scale = strm.buffer_scale;
+	unsigned int buffer_size = strm.buffer_size_code();
 
     index = sector->buf;
 
@@ -470,7 +477,7 @@ void create_pack (
 	unsigned int 	 mux_rate
 	)
 {
-    unsigned char *index;
+    uint8_t *index;
 
     index = pack->buf;
 
@@ -523,19 +530,19 @@ void create_sys_header (
 	int video_bound,
 	int audio_bound,
 
-	InputStream      &strm1,					// Usually 1 is audio
-	unsigned int 	 buffer1_scale,
-	unsigned int 	 buffer1_size,
-	InputStream      &strm2,					// Usually 2 is video
-	unsigned int 	 buffer2_scale,
-	unsigned int 	 buffer2_size
+	MuxStream      &strm1,					// Usually 1 is audio
+	MuxStream      &strm2					// Usually 2 is video
 	)
 
 {
-    unsigned char *index;
-	unsigned char *len_index;
+    uint8_t *index;
+	uint8_t *len_index;
 	int system_header_size;
     index = sys_header->buf;
+	unsigned int 	 buffer1_scale = strm1.buffer_scale;
+	unsigned int 	 buffer1_size = strm1.buffer_size_code();
+	unsigned int 	 buffer2_scale = strm2.buffer_scale;
+	unsigned int 	 buffer2_size = strm2.buffer_size_code();
 
     /* if we are not using both streams, we should clear some
        options here */

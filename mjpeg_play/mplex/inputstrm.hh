@@ -10,6 +10,7 @@
 
 #include "aunit.hh"
 #include "vector.hh"
+#include "mpegconsts.hh"
 
 #include "mjpeg_logging.h"
 
@@ -32,6 +33,7 @@ void flushed( );
 unsigned int space();
 void queued( unsigned int bytes,
 			 clockticks removaltime);
+
 private:
 	unsigned int max_size;
     BufferQueue *first;
@@ -44,7 +46,6 @@ class InputStream
 {
 public:
 	InputStream() :
-		init(false),
 		eoscan(false),
 		stream_length(0),
 		last_buffered_AU(0),
@@ -53,10 +54,9 @@ public:
 		prozent(0)
 		{}
 
-	void Init( const char *file_name, uint8_t strm_id )
+	void Init( const char *file_name )
 		{
 			struct stat stb;
-			stream_id = strm_id;
 			/* We actually maintain *two* file-handles one is used for
 			   scanning ahead to pick-up access unit information the
 			   other for the reading done to shuffle data into the
@@ -69,7 +69,6 @@ public:
 			file_length = stb.st_size;
 			
 			bs.open( const_cast<char *>(file_name) );
-			init = true;
 		}
 
 
@@ -80,8 +79,6 @@ public:
 	FILE *rawstrm;				// Elementary input stream
 	                            // Eventually to be encapsulated
     bitcount_t stream_length;
-	int        stream_id;
-	bool       init;
 protected:
 	off_t      file_length;
     IBitStream bs;
@@ -97,16 +94,50 @@ protected:
 
 };
 
+
+
+class MuxStream
+{
+public:
+	MuxStream(const int strm_id, const int buf_scale) : 
+		stream_id(strm_id), 
+		new_au_next_sec(true),
+		buffer_scale( buf_scale ),
+		init(false)
+		{
+
+		}
+	void SetMuxParams( unsigned int buf_size )
+		{
+			bufmodel.init( buf_size );
+			buffer_size = buf_size;
+			init = true;
+		}
+	unsigned int buffer_size_code()
+		{
+			assert(init);
+			if( buffer_scale == 1 )
+				return buffer_size / 1024;
+			else if( buffer_scale == 0 )
+				return buffer_size / 128;
+			else
+				assert(false);
+		}
+public:  // TODO should go protected once encapsulation complete
+
+
+	BufferModel bufmodel;
+	int        stream_id;
+	bool new_au_next_sec;
+	int        buffer_scale;
+	unsigned   int buffer_size;
+	bool       init;
+};
+
+
 template <class T, const int frame_chunk>
 class BufInputStream : public InputStream
 {
-public:
-	BufInputStream() : new_au_next_sec(true) {}
-
-	void SetMuxParams( unsigned int buffer_size )
-		{
-			bufmodel.init( buffer_size );
-		}
 protected:
 	virtual void fillAUbuffer(unsigned int frames_to_buffer) = 0;
 
@@ -114,19 +145,17 @@ protected:
     static const int FRAME_CHUNK = frame_chunk;
 
 public:  // TODO should go protected once encapsulation complete
-	BufferModel bufmodel;
 	T au;
 
-	bool new_au_next_sec;
 };
 
-// TODO get shot...
-#define OLDFRAME				0
 
-class VideoStream : public BufInputStream<VAunit, 256>
+class VideoStream : public BufInputStream<VAunit, 256>,
+					public MuxStream
 {
 public:
-	VideoStream() :
+	VideoStream(const int stream_num) :
+		MuxStream(VIDEO_STR_0+stream_num,1),
 		num_sequence(0),
 		num_seq_end(0),
 		num_pictures(0),
@@ -135,7 +164,7 @@ public:
 			for( int i =0; i<4; ++i )
 				num_frames[i] = avg_frames[i] = 0;
 		}
-	void Init(const char *input_file, int stream_num);
+	void Init(const char *input_file);
 	
 	void close();
 	VAunit *next();
@@ -190,19 +219,19 @@ public:							// TODO make private once encapsulation comple
 	int next_sec_AU_type;
 }; 		
 
-class AudioStream : public BufInputStream<AAunit, 128>
+class AudioStream : public BufInputStream<AAunit, 128>,
+					public MuxStream
 {
 public:   
-	AudioStream() : 
+	AudioStream(const int stream_num) : 
+		MuxStream( AUDIO_STR_0 + stream_num, 0),
 		num_syncword(0)
 		{
 			for( int i = 0; i <2 ; ++i )
 				num_frames[i] = size_frames[i] = 0;
 		}
 
-	void Init(char *audio_file,
-			  int stream_num
-		);
+	void Init(char *audio_file);
 
 	void close();
 	AAunit *next();
@@ -235,5 +264,16 @@ private:
     AAunit access_unit;
 
 }; 	
+
+class PaddingStream : public MuxStream
+{
+public:
+	PaddingStream() :
+		MuxStream( PADDING_STR, 0 )
+		{
+			init = true;
+		}
+};
+
 
 #endif // __INPUTSTRM_H__

@@ -215,7 +215,7 @@ void check_files (int argc,
 *************************************************************************/
 
 
-void VideoStream::Init (const char *video_file, int stream_num )
+void VideoStream::Init (const char *video_file )
 {
 	prev_offset=0;
     decoding_order=0;
@@ -231,10 +231,9 @@ void VideoStream::Init (const char *video_file, int stream_num )
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	
     mjpeg_info ("Scanning Video stream %d for access units information.\n",
-				stream_num);
+				stream_id-VIDEO_STR_0);
 
-	InputStream::Init( video_file, 
-										   VIDEO_STR_0 + stream_num ); 
+	InputStream::Init( video_file );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
 		num_sequence++;
@@ -577,17 +576,13 @@ void VideoStream::output_seqhdr_info ()
 *************************************************************************/
 
 
-void AudioStream::Init (
-	char *audio_file,
-	int stream_num
-	)
+void AudioStream::Init (char *audio_file)
 
 {
     unsigned int i;
    
     mjpeg_info ("Scanning Audio stream for access units information. \n");
-	InputStream::Init( audio_file, 
-					   AUDIO_STR_0 + stream_num );
+	InputStream::Init( audio_file );
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
