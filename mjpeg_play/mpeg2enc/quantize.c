@@ -297,7 +297,8 @@ int *nonsat_mquant;
 		  mquant = next_larger_quant( mquant );
 		  i=0;
 		  pdst = dst;
-		  psrc = src;			
+		  psrc = src;
+		  continue;		
 	  }
 	  else
 	  {
