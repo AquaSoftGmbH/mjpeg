@@ -1,0 +1,88 @@
+.TH "jpeg2yuv" "1" "8 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH "NAME"
+jpeg2yuv \- Convert jpeg images to the yuv format. 
+
+.SH "SYNOPSIS"
+.B lav2wav
+.RB [ \-b
+.IR num ]
+.RB [ \-f
+.IR num ]
+.RB [ \-I
+.IR num ]
+.RB [ \-L
+.IR num ]
+.RB [ \-n 
+.RB num ]
+.RB [ \-j
+.IR filename ]
+
+.SH "DESCRIPTION"
+\fBjpeg2yuv\fP pipes a sequence of JPEG files to stdout,
+making the direct encoding of MPEG files possible under mpeg2enc.
+Any JPEG format supported by libjpeg can be read.
+stdout will be filled with the YUV4MPEG2 movie data stream,
+so be prepared to pipe it on to mpeg2enc or to write it into a file.
+
+
+.SH "OPTIONS"
+\fBjpeg2yuv\fP accepts the following options:
+
+.TP 5
+.BI \-b " num" 
+Frame offset:  skip output of the first 'num' frames.  (default: 0)
+.TP 5
+.BI \-f " num"
+Set the frame rate of stream accepts the same numbers. Not default, this option has to be specified.
+.TP 5
+.BI \-I " num"
+interlacing mode:
+p = none / progressive
+.br
+t = top field first
+.br
+b = bottom field first
+.br
+No default, this option has to be specified.
+.TP 5
+.BI \-L " num"
+0 = non-interleaved (two successive fields per JPEG file)
+.br
+1 = interleaved fields
+.TP 5
+.BI \-n " num"
+Specifies the nummber of frames to process. (default: all = -1)
+.TP 5 
+.BI \-j " {1}%{2}d{3}"
+Read JPEG frames with the name components as follows:
+ {1} JPEG filename prefix (e g: picture_ )
+ {2} Counting placeholder (like in C, printf, eg 06 ))
+ {3} File extension. Something like this: .jpg
+A correct description of the files could look like this: picture_%06d.jpg
+.TP 5
+.BI \-v " num"
+Verbosity level (0, 1 or 2)
+
+.SH BUGS
+The frame rate desciption seems not to be up to date. The NTSC integer ratios seems not to be suportet well. As workaround specify a PAL (25) or nativ FILM (24) and set the right frame rate in mpeg2enc with the -F option.
+
+.SH "AUTHOR"
+This man page was written by Bernhard Praschinger.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR mjpegtools (1),
+.BR mpeg2enc (1),
+.BR ppmtoy4m (1),
+.BR yuv2lav (1),
+.BR yuvdenoise (1),
+.BR yuvmedianfilter (1),
+.BR yuvscaler (1)
