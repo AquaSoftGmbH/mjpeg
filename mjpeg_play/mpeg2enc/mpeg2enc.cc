@@ -95,7 +95,6 @@ public:
             {
                 mjpeg_error_exit1("Couldn't create output file %s",outfilename);
             }
-            flushed = 0;
         }
 
     virtual void WriteOutBufferUpto( const uint8_t *buffer, const uint32_t flush_upto )

@@ -179,8 +179,8 @@ void MacroBlock::Predict()
 	const Picture &picture = ParentPicture();
 	const int bx = TopleftX();
 	const int by = TopleftY();
-	uint8_t **oldref = picture.oldref;	// Forward prediction
-	uint8_t **newref = picture.newref;	// Backward prediction
+	uint8_t **fwd_rec = picture.fwd_rec;	// Forward prediction
+	uint8_t **bwd_rec = picture.bwd_rec;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
 	int lx = picture.encparams.phy_width;
 	int lx2 = picture.encparams.phy_width;
@@ -212,7 +212,7 @@ void MacroBlock::Predict()
 				 || !(final_me.mb_type & MB_FORWARD))
 			{
 				/* frame-based prediction in frame picture */
-				pred( oldref,0,cur,0,
+				pred( fwd_rec,0,cur,0,
 					 lx,16,16,bx,by,final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 			}
 			else if (final_me.motion_type==MC_FIELD)
@@ -224,12 +224,12 @@ void MacroBlock::Predict()
 				 */
 
 				/* top field prediction */
-				pred(oldref,final_me.field_sel[0][0],cur,0,
+				pred(fwd_rec,final_me.field_sel[0][0],cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
 
 				/* bottom field prediction */
-				pred(oldref,final_me.field_sel[1][0],cur,1,
+				pred(fwd_rec,final_me.field_sel[1][0],cur,1,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[1][0][0],final_me.MV[1][0][1]>>1,false);
 			}
@@ -244,23 +244,23 @@ void MacroBlock::Predict()
 
 
 				/* predict top field from top field */
-				pred(oldref,0,cur,0,
+				pred(fwd_rec,0,cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
       
 				/* predict bottom field from bottom field */
-				pred(oldref,1,cur,1,
+				pred(fwd_rec,1,cur,1,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
 
 				/* predict and add to top field from bottom field */
-				pred(oldref,1,cur,0,
+				pred(fwd_rec,1,cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 DMV[0][0],DMV[0][1],true);
 
 
 				/* predict and add to bottom field from top field */
-				pred(oldref,0,cur,1,
+				pred(fwd_rec,0,cur,1,
 					 lx<<1,16,8,bx,by>>1,
 					 DMV[1][0],DMV[1][1],true);
 			}
@@ -279,9 +279,9 @@ void MacroBlock::Predict()
 			/* determine which frame to use for prediction */
 			if ((picture.pict_type==P_TYPE) && picture.secondfield
 				&& (currentfield!=final_me.field_sel[0][0]))
-				predframe = newref; /* same frame */
+				predframe = bwd_rec; /* same frame */
 			else
-				predframe = oldref; /* previous frame */
+				predframe = fwd_rec; /* previous frame */
 
 			if ( final_me.motion_type==MC_FIELD
 				 || !(final_me.mb_type & MB_FORWARD))
@@ -303,9 +303,9 @@ void MacroBlock::Predict()
 				/* determine which frame to use for lower half prediction */
 				if ((picture.pict_type==P_TYPE) && picture.secondfield
 					&& (currentfield!=final_me.field_sel[1][0]))
-					predframe = newref; /* same frame */
+					predframe = bwd_rec; /* same frame */
 				else
-					predframe = oldref; /* previous frame */
+					predframe = fwd_rec; /* previous frame */
 
 				/* lower half */
 				pred(predframe,final_me.field_sel[1][0],cur,currentfield,
@@ -318,9 +318,9 @@ void MacroBlock::Predict()
 
 				/* determine which frame to use for prediction */
 				if (picture.secondfield)
-					predframe = newref; /* same frame */
+					predframe = bwd_rec; /* same frame */
 				else
-					predframe = oldref; /* previous frame */
+					predframe = fwd_rec; /* previous frame */
 
 				/* calculate derived motion vectors */
 				calc_DMV(picture,
@@ -329,7 +329,7 @@ void MacroBlock::Predict()
 						 final_me.MV[0][0][1]);
 
 				/* predict from field of same parity */
-				pred(oldref,currentfield,cur,currentfield,
+				pred(fwd_rec,currentfield,cur,currentfield,
 					 lx<<1,16,16,bx,by,
 					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 
@@ -358,7 +358,7 @@ void MacroBlock::Predict()
 			if (final_me.motion_type==MC_FRAME)
 			{
 				/* frame-based prediction in frame picture */
-				pred(newref,0,cur,0,
+				pred(bwd_rec,0,cur,0,
 					 lx,16,16,bx,by,
 					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 			}
@@ -371,12 +371,12 @@ void MacroBlock::Predict()
 				 */
 
 				/* top field prediction */
-				pred(newref,final_me.field_sel[0][1],cur,0,
+				pred(bwd_rec,final_me.field_sel[0][1],cur,0,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[0][1][0],final_me.MV[0][1][1]>>1,addflag);
 
 				/* bottom field prediction */
-				pred(newref,final_me.field_sel[1][1],cur,1,
+				pred(bwd_rec,final_me.field_sel[1][1],cur,1,
 					 lx<<1,16,8,bx,by>>1,
 					 final_me.MV[1][1][0],final_me.MV[1][1][1]>>1,addflag);
 			}
@@ -390,7 +390,7 @@ void MacroBlock::Predict()
 			if (final_me.motion_type==MC_FIELD)
 			{
 				/* field-based prediction in field picture */
-				pred(newref,final_me.field_sel[0][1],cur,currentfield,
+				pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
 					 lx<<1,16,16,bx,by,
 					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 			}
@@ -399,12 +399,12 @@ void MacroBlock::Predict()
 				/* 16 x 8 motion compensation in field picture */
 
 				/* upper half */
-				pred(newref,final_me.field_sel[0][1],cur,currentfield,
+				pred(bwd_rec,final_me.field_sel[0][1],cur,currentfield,
 					 lx<<1,16,8,bx,by,
 					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 
 				/* lower half */
-				pred(newref,final_me.field_sel[1][1],cur,currentfield,
+				pred(bwd_rec,final_me.field_sel[1][1],cur,currentfield,
 					 lx<<1,16,8,bx,by+8,
 					 final_me.MV[1][1][0],final_me.MV[1][1][1],addflag);
 			}

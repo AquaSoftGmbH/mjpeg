@@ -53,6 +53,7 @@
 
 ElemStrmWriter::ElemStrmWriter() 
 {
+    flushed = BITCOUNT_OFFSET/8;
 }
 
 ElemStrmWriter::~ElemStrmWriter()

@@ -719,7 +719,7 @@ void MacroBlock::FrameMEs()
     const EncoderParams &eparams = picture.encparams;
     int i = TopleftX();
     int j = TopleftY();
-	uint8_t **oldrefimg, **newrefimg;
+	uint8_t **fwd_ref_img, **bwd_ref_img;
 
     //
     // Motion info for the various possible motion modes...
@@ -751,13 +751,13 @@ void MacroBlock::FrameMEs()
 	   final refinement of motion estimation */
 	if( eparams.refine_from_rec )
 	{
-		oldrefimg = picture.oldref;
-		newrefimg = picture.newref;
+		fwd_ref_img = picture.fwd_rec;
+		bwd_ref_img = picture.bwd_rec;
 	}
 	else
 	{
-		oldrefimg = picture.oldorg;
-		newrefimg = picture.neworg;
+		fwd_ref_img = picture.fwd_org;
+		bwd_ref_img = picture.bwd_org;
 	}
 
 
@@ -768,12 +768,12 @@ void MacroBlock::FrameMEs()
 	   it should really be replaced by additional pointers to
 	   seperate buffers.
 	*/
-	ssmb.mb = picture.curorg[0] + mb_row_start + i;
-	ssmb.umb = (uint8_t*)(picture.curorg[1] + (i>>1) + (mb_row_start>>2));
-	ssmb.vmb = (uint8_t*)(picture.curorg[2] + (i>>1) + (mb_row_start>>2));
-	ssmb.fmb = (uint8_t*)(picture.curorg[0] + eparams.fsubsample_offset + 
+	ssmb.mb = picture.org_img[0] + mb_row_start + i;
+	ssmb.umb = (uint8_t*)(picture.org_img[1] + (i>>1) + (mb_row_start>>2));
+	ssmb.vmb = (uint8_t*)(picture.org_img[2] + (i>>1) + (mb_row_start>>2));
+	ssmb.fmb = (uint8_t*)(picture.org_img[0] + eparams.fsubsample_offset + 
 						  ((i>>1) + (mb_row_start>>2)));
-	ssmb.qmb = (uint8_t*)(picture.curorg[0] + eparams.qsubsample_offset + 
+	ssmb.qmb = (uint8_t*)(picture.org_img[0] + eparams.qsubsample_offset + 
 						  (i>>2) + (mb_row_start>>4));
 
 
@@ -783,7 +783,7 @@ void MacroBlock::FrameMEs()
 	zeromot_mc.pos.y = (j<<1);	/* absolute Co-ordinates for M/C */
 	zeromot_mc.fieldsel = 0;
 	zeromot_mc.fieldoff = 0;
-	zeromot_mc.blk = oldrefimg[0]+mb_row_start+i;
+	zeromot_mc.blk = fwd_ref_img[0]+mb_row_start+i;
     zeromot_mc.hx = zeromot_mc.hy = 0;
 
 	/* Compute variance MB as a measure of Intra-coding complexity
@@ -813,12 +813,12 @@ void MacroBlock::FrameMEs()
                                          eparams.phy_width, 16 );
         me.mb_type = 0;
         me.motion_type = MC_FRAME;
-        me.var =  unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, 
+        me.var =  unidir_var_sum(&zeromot_mc, fwd_ref_img, &ssmb, 
                                  eparams.phy_width, 16 );
         best_of_kind_me.push_back( me );
 
         mb_me_search( eparams,
-                      picture.oldorg[0],oldrefimg[0],
+                      picture.fwd_org[0],fwd_ref_img[0],
                       0,
                       &ssmb, eparams.phy_width,
                       i,j,picture.sxf,picture.syf,16,
@@ -827,7 +827,7 @@ void MacroBlock::FrameMEs()
 
         me.mb_type = MB_FORWARD;
         me.motion_type=MC_FRAME;
-        me.var = unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  
+        me.var = unidir_var_sum( &framef_mc, fwd_ref_img, &ssmb,  
                                  eparams.phy_width, 16 );
         me.MV[0][0] = MotionVector::Frame( framef_mc.pos, hpel );
         best_of_kind_me.push_back( me );
@@ -843,7 +843,7 @@ void MacroBlock::FrameMEs()
 			botssmb.vmb = ssmb.vmb+(eparams.phy_width>>1);
 
 			FieldMotionCands( eparams,
-                               picture.oldorg[0],oldrefimg[0],
+                               picture.fwd_org[0],fwd_ref_img[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxf,picture.syf,
                                &topfldf_mc,
@@ -853,9 +853,9 @@ void MacroBlock::FrameMEs()
             me.mb_type = MB_FORWARD;
             me.motion_type = MC_FIELD;
             me.var = 
-                unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb,
+                unidir_var_sum( &topfldf_mc, fwd_ref_img, &ssmb,
                                 (eparams.phy_width<<1), 8 )
-				+ unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
+				+ unidir_var_sum( &botfldf_mc, fwd_ref_img, &botssmb, 
                                   (eparams.phy_width<<1), 8 );
             me.MV[0][0] = MotionVector::Field(topfldf_mc.pos, hpel);
             me.MV[1][0] = MotionVector::Field(botfldf_mc.pos, hpel);
@@ -865,7 +865,7 @@ void MacroBlock::FrameMEs()
             best_of_kind_me.push_back( me );
 
 			if ( eparams.dualprime 
-                 && FrameDualPrimeCand(oldrefimg[0], ssmb,
+                 && FrameDualPrimeCand(fwd_ref_img[0], ssmb,
                                        best_fieldmcs, dualpf_mc, min_dpmv ) 
                 )
             {
@@ -887,7 +887,7 @@ void MacroBlock::FrameMEs()
 
         // Forward motion estimates
         mb_me_search( eparams,
-                      picture.oldorg[0],oldrefimg[0],0,&ssmb,
+                      picture.fwd_org[0],fwd_ref_img[0],0,&ssmb,
                       eparams.phy_width,i,j,picture.sxf,picture.syf,
                       16,eparams.enc_width,eparams.enc_height,
                       &framef_mc
@@ -896,7 +896,7 @@ void MacroBlock::FrameMEs()
         
         // Backword motion estimates...
         mb_me_search( eparams,
-                      picture.neworg[0],newrefimg[0],0,&ssmb, 
+                      picture.bwd_org[0],bwd_ref_img[0],0,&ssmb, 
                       eparams.phy_width, i,j,picture.sxb,picture.syb,
                       16, eparams.enc_width, eparams.enc_height,
                       &frameb_mc);
@@ -909,18 +909,18 @@ void MacroBlock::FrameMEs()
         me.MV[0][1][1] = frameb_mc.pos.y - (j<<1);
 
         me.mb_type = MB_FORWARD;
-        me.var = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
+        me.var = unidir_var_sum( &framef_mc, fwd_ref_img, &ssmb, 
                                eparams.phy_width, 16 );
         best_of_kind_me.push_back( me );
        
         me.mb_type = MB_BACKWARD;
-        me.var = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, 
+        me.var = unidir_var_sum( &frameb_mc, bwd_ref_img, &ssmb, 
                                  eparams.phy_width, 16 );
         best_of_kind_me.push_back( me );
 
         me.mb_type = MB_FORWARD|MB_BACKWARD;
         me.var = bidir_var_sum( &framef_mc, &frameb_mc,  
-                                oldrefimg, newrefimg,  
+                                fwd_ref_img, bwd_ref_img,  
                                 &ssmb, eparams.phy_width, 16 );
         best_of_kind_me.push_back( me );
 	    
@@ -936,7 +936,7 @@ void MacroBlock::FrameMEs()
 
             // Forward motion estimates...
 			FieldMotionCands( eparams,
-                               picture.oldorg[0],oldrefimg[0],
+                               picture.fwd_org[0],fwd_ref_img[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxf,picture.syf,
                                &topfldf_mc,
@@ -946,7 +946,7 @@ void MacroBlock::FrameMEs()
 
 			// Backward motion estimates...
 			FieldMotionCands( eparams,
-                               picture.neworg[0],newrefimg[0],
+                               picture.bwd_org[0],bwd_ref_img[0],
                                &ssmb, &botssmb,
                                i,j,picture.sxb,picture.syb,
                                &topfldb_mc,
@@ -972,26 +972,26 @@ void MacroBlock::FrameMEs()
             me.mb_type = MB_FORWARD|MB_BACKWARD;
             me.var = 
                 bidir_var_sum( &topfldf_mc, &topfldb_mc, 
-                               oldrefimg,newrefimg,
+                               fwd_ref_img,bwd_ref_img,
                                &ssmb, eparams.phy_width<<1, 8) 
                 +  bidir_var_sum( &botfldf_mc, &botfldb_mc, 
-                                  oldrefimg,newrefimg,
+                                  fwd_ref_img,bwd_ref_img,
                                   &botssmb, eparams.phy_width<<1, 8);
             best_of_kind_me.push_back( me );
 
             me.mb_type = MB_FORWARD;
             me.var = 
-                unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, 
+                unidir_var_sum( &topfldf_mc, fwd_ref_img, &ssmb, 
                                 (eparams.phy_width<<1), 8 )
-                + unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
+                + unidir_var_sum( &botfldf_mc, fwd_ref_img, &botssmb, 
                                   (eparams.phy_width<<1), 8 );
             best_of_kind_me.push_back( me );
 
             me.mb_type = MB_BACKWARD;
             me.var =  
-                unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, 
+                unidir_var_sum( &topfldb_mc, bwd_ref_img, &ssmb, 
                                 (eparams.phy_width<<1), 8 )
-                + unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, 
+                + unidir_var_sum( &botfldb_mc, bwd_ref_img, &botssmb, 
                                   (eparams.phy_width<<1), 8 );
             best_of_kind_me.push_back( me );
             
@@ -1023,7 +1023,7 @@ void MacroBlock::FieldME()
     int i = TopleftX();
     int j = TopleftY();
 	int w2;
-	uint8_t **oldrefimg, **newrefimg;
+	uint8_t **fwd_ref_img, **bwd_ref_img;
 	uint8_t *toporg, *topref, *botorg, *botref;
 	SubSampledImg ssmb;
 	MotionCand fieldsp_mc, dualp_mc;
@@ -1040,23 +1040,23 @@ void MacroBlock::FieldME()
 	   final refinement of motion estimation */
 	if( eparams.refine_from_rec )
 	{
-		oldrefimg = picture.oldref;
-		newrefimg = picture.newref;
+		fwd_ref_img = picture.fwd_rec;
+		bwd_ref_img = picture.bwd_rec;
 	}
 	else
 	{
-		oldrefimg = picture.oldorg;
-		newrefimg = picture.neworg;
+		fwd_ref_img = picture.fwd_org;
+		bwd_ref_img = picture.bwd_org;
 	}
 
 	w2 = eparams.phy_width<<1;
 
 	/* Fast motion data sits at the end of the luminance buffer */
-	ssmb.mb = picture.curorg[0] + i + w2*j;
-	ssmb.umb = picture.curorg[1] + ((i>>1)+(w2>>1)*(j>>1));
-	ssmb.vmb = picture.curorg[2] + ((i>>1)+(w2>>1)*(j>>1));
-	ssmb.fmb = picture.curorg[0] + eparams.fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
-	ssmb.qmb = picture.curorg[0] + eparams.qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
+	ssmb.mb = picture.org_img[0] + i + w2*j;
+	ssmb.umb = picture.org_img[1] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.vmb = picture.org_img[2] + ((i>>1)+(w2>>1)*(j>>1));
+	ssmb.fmb = picture.org_img[0] + eparams.fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
+	ssmb.qmb = picture.org_img[0] + eparams.qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
 
 	if (picture.pict_struct==BOTTOM_FIELD)
 	{
@@ -1077,10 +1077,10 @@ void MacroBlock::FieldME()
     }
 	else if (picture.pict_type==P_TYPE)
 	{
-		toporg = picture.oldorg[0];
-		topref = oldrefimg[0];
-		botorg = picture.oldorg[0];
-		botref = oldrefimg[0];
+		toporg = picture.fwd_org[0];
+		topref = fwd_ref_img[0];
+		botorg = picture.fwd_org[0];
+		botref = fwd_ref_img[0];
                                                         
 		if (picture.secondfield)
 		{
@@ -1088,14 +1088,14 @@ void MacroBlock::FieldME()
 			if (picture.pict_struct==TOP_FIELD)
 			{
 				/* current is top field */
-				botorg = picture.curorg[0] ;
-				botref = picture.curref[0];
+				botorg = picture.org_img[0] ;
+				botref = picture.rec_img[0];
 			}
 			else
 			{
 				/* current is bottom field */
-				toporg = picture.curorg[0];
-				topref = picture.curref[0];
+				toporg = picture.org_img[0];
+				topref = picture.rec_img[0];
 			}
 		}
 		field_estimate(picture,
@@ -1206,10 +1206,10 @@ void MacroBlock::FieldME()
 	{
 		/* forward prediction */
 		field_estimate(picture,
-					   picture.oldorg[0],
-                       oldrefimg[0],
-					   picture.oldorg[0],
-                       oldrefimg[0],
+					   picture.fwd_org[0],
+                       fwd_ref_img[0],
+					   picture.fwd_org[0],
+                       fwd_ref_img[0],
                        &ssmb,i,j,picture.sxf,picture.syf,
 					   &fieldf_mc,
 					   &field8uf_mc,
@@ -1220,10 +1220,10 @@ void MacroBlock::FieldME()
 
 		/* backward prediction */
 		field_estimate(picture,
-					   picture.neworg[0],
-                       newrefimg[0],
-                       picture.neworg[0],
-                       newrefimg[0],
+					   picture.bwd_org[0],
+                       bwd_ref_img[0],
+                       picture.bwd_org[0],
+                       bwd_ref_img[0],
 					   &ssmb,i,j,picture.sxb,picture.syb,
 					   &fieldb_mc,
 					   &field8ub_mc,

@@ -31,27 +31,53 @@ class MPEG2Coder;
 class PictureReader;
 class Despatcher;
 
-struct StreamState 
+/************************************************
+ *
+ * StreamState - MPEG-1/2 streams have a fairly complex structure. The context of each picture
+ *               in this structure determines how it is encoded. This is the class for maintaining
+ *               iterating through such stream encoding contexts.
+ *
+ **********************************************/
+
+class SeqEncoder;
+class StreamState 
 {
-	int i;						/* Index in current sequence */
-	int g;						/* Index in current GOP */
-	int b;						/* Index in current B frame group */
+public:
+    StreamState( EncoderParams &encparams );
+    void SeqStart();
+    void GopStart();
+
+    // Conext of current frame in hierarchy of structures: sequence, GOP, B-group */
+	int s_idx;						/* Index in current sequence */
+	int g_idx;						/* Index in current GOP */
+	int b_idx;						/* Index in current B frame group */
+    int frame_type;              /* Type of indexed framme */
+    
+    // Context of current sequence and GOP in the input image stream
+
 	int seq_start_frame;		/* Index start current sequence in
 								   input stream */
 	int gop_start_frame;		/* Index start current gop in input stream */
-	int gop_length;			/* Length of current gop */
+
+    // GOP state
+	int gop_length;			    /* Length of current gop */
 	int bigrp_length;			/* Length of current B-frame group */
 	int bs_short;				/* Number of B frame GOP is short of
 								   having M-1 B's for each I/P frame
 								*/
-	int np;					/* P frames in current GOP */
+	int np;					   /* P frames in current GOP */
 	int nb;					/* B frames in current GOP */
 	double next_b_drop;		/* When next B frame drop is due in GOP */
+    bool closed_gop;            /* Current GOP is closed */
+
+    // Sequence splitting state
     bool end_seq;           /* Current frame is last in sequence */
 	bool new_seq;				/* Current GOP/frame starts new sequence */
-    bool closed_gop;            /* Current GOP is closed */
 	uint64_t next_split_point;
 	uint64_t seq_split_length;
+
+private:
+    EncoderParams &encparams;
 };
 
 
@@ -93,14 +119,9 @@ public:
     
 private:
 
-	int FindGopLength( int gop_start_frame, 
-					   int I_frame_temp_ref,
-					   int gop_min_len, int gop_max_len,
-					   int min_b_grp);
-	void GopStart( StreamState *ss );
+
 	void NextSeqState( StreamState *ss );
-	void LinkPictures( Picture *ref_pictures[], 
-					   Picture *b_pictures[] );
+	void LinkRefPictureRing( Picture *ref_pictures[] );
 	void EncodePicture( Picture *picture );
     EncoderParams &encparams;
     PictureReader &reader;

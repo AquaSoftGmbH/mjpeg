@@ -23,6 +23,7 @@
 
 #include <config.h>
 #include <pthread.h>
+#include <deque>
 #include "mjpeg_types.h"
 #include "picture.hh"
 
@@ -39,6 +40,7 @@ public:
     int FrameLumMean( int num_frame );
     virtual void StreamPictureParams( MPEG2EncInVidParams &strm ) = 0;
     void ReadFrame( int num_frame, uint8_t *frame[] );
+    void FreeFrame( int num_frame );
     inline int NumberOfFrames() { return istrm_nframes; }
 protected:
     int LumMean(uint8_t *frame );
@@ -59,13 +61,19 @@ protected:
 	pthread_cond_t new_chunk_ack;
 	pthread_t      worker_thread;
  
-   /* NOTE: access to frames_read *must* be read-only in other threads
+   /* NOTES: 
+      - Aaccess to frames_read *must* be read-only in other threads
 	  once the chunk-reading worker thread has been started.
+
+      - To allow streaming read is strictly sequential 'skipped over'
+      frames are buffered in input_imgs_buf until the encoder indicates
+      they have been committed (no further access to original image data
+      is required).
    */
 
     
     int *lum_mean;
-	volatile int frames_read;
+	volatile int frames_read; 
 	int last_frame;
     ImagePlanes *input_imgs_buf;
     int input_imgs_buf_size;

@@ -35,7 +35,7 @@
 
 void MacroBlock::Transform()
 {
-	uint8_t **cur = picture->curorg;
+	uint8_t **cur = picture->org_img;
 	uint8_t **pred = picture->pred;
 	// assert( dctblocks == &blocks[k*block_count]);
 	int i = TopleftX();
@@ -121,7 +121,7 @@ void transform(	Picture *picture )
 
 void MacroBlock::ITransform()
 {
-	uint8_t **cur = picture->curref;
+	uint8_t **cur = picture->rec_img;
 	uint8_t **pred = picture->pred;
 
 	int i1, j1, n, cc, offs, lx;

@@ -83,7 +83,9 @@ public:
              Quantizer &_quantizer );
     ~Picture();
 
-    // In putseq.cc
+    void QuantiseAndEncode(RateCtl &ratecontrol);
+    void InitRateControl(RateCtl &ratecontrol);
+
     void MotionSubSampledLum();
     void EncodeMacroBlocks();
     void ITransform();
@@ -92,14 +94,10 @@ public:
     void Stats();
     void Reconstruct();
 
-    void SetSeqPos( int decode, int b_index );
-    void Set2ndField();
-    void Set_IP_Frame( StreamState *ss, int num_frames );
-    void Set_B_Frame( StreamState *ss );
+    void SetEncodingParams(  const StreamState &ss, int last_frame );
+    void Adjust2ndField();
 
     // In putpic..c
-    void QuantiseAndEncode(RateCtl &ratecontrol);
-    void InitRateControl(RateCtl &ratecontrol);
     void PutHeaders();
     void PutHeader(); 
 
@@ -131,8 +129,12 @@ public:
         }
 
     int SizeCodedMacroBlocks() const;
+
+protected:
+    void Set_IP_Frame( const StreamState &ss, int last_frame );
+    void Set_B_Frame( const StreamState &ss );
+
     
-private:
 
     void PutSliceHdr( int slice_mb_y, int mquant );
     void PutMVs( MotionEst &me, bool back );
@@ -165,19 +167,25 @@ public:
      *
      **************/
 
-	int decode;					/* Number of frame in stream */
-	int present;				/* Number of frame in playback order */
+	int decode;					// Number of frame in stream 
+	int present;				// Number of frame in playback order
+    int input;                  // Number of frame in input stream - need
+                                // NOT be the same as decode!!
+
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
 	 */
     Picture *ref_frame;
 
 	/* picture encoding source data  */
-	ImagePlanes oldorg, neworg;	/* Images for Old and new reference picts */
-	ImagePlanes oldref, newref;	/* original and reconstructed */
-	ImagePlanes curorg, curref;	/* Images for current pict orginal and*/
-                                    /* reconstructed */
-	ImagePlanes pred;			/* Prediction based on MC (if any) */
+	ImagePlanes fwd_org, bwd_org;	// Original Images of fwd and bwd
+                                    // reference pictures
+	ImagePlanes fwd_rec, bwd_rec;	// Reconstructed  Images for fwd and 
+                                    // bwd references pictures
+	ImagePlanes org_img, rec_img;	// Images for current pict: orginal
+                                // and reconstructed.  Reconstructed
+                                // 0 for B planes except when debugging
+	ImagePlanes pred;
 	int sxf, syf, sxb, syb;		/* MC search limits. */
 	bool secondfield;			/* Second field of field frame */
 	bool ipflag;				/* P pict in IP frame (FIELD pics only)*/

@@ -255,7 +255,8 @@ SeqEncoder::SeqEncoder( EncoderParams &_encparams,
     writer( _writer ),
     coder( _coder ),
     ratecontroller( _ratecontroller ),
-    despatcher( *new Despatcher )
+    despatcher( *new Despatcher ),
+    ss( _encparams )
 
 {
 }
@@ -265,142 +266,27 @@ SeqEncoder::~SeqEncoder()
     delete &despatcher;
 }
 
-/************************************
- *
- * FindGopLength - Finds a sensible spot for a GOP to end based on
- * the mean luminance strategy developed in Dirk Farin's sampeg-2
- *
- * Basically it looks for a frame whose mean luminance is above
- * certain threshold distance from that of its predecessor and adjust the
- * suggested length of the GOP to make that the I frame of the *next* GOP.
- * 
- * A slight trick is that search commences at the end of the legal range
- * backwards.  The reason is that longer GOP's are more efficient.  Thus if
- * two scence changes come close together it is better to have a change in
- * the middle of a long GOP (with plenty of bits to play with) rather than
- * a short GOP followed by another potentially very short GOP.
- *
- * Another complication is that the temporal reference of the I frame
- * of the successor frame need not be 0, so the length calculation has to
- * take into account this offset.
- *
- * N.b. This is experimental and could be highly bogus
- *
- ************************************/
-
-#define SCENE_CHANGE_THRESHOLD 4
-
-int SeqEncoder::FindGopLength( int gop_start_frame, 
-                               int I_frame_temp_ref,
-                               int gop_min_len, int gop_max_len,
-                               int min_b_grp)
+StreamState::StreamState( EncoderParams &_encparams ) :
+    encparams(_encparams)
 {
-	int i,j;
-    int max_change = 0;
-    int gop_len;
-	int pred_lum_mean;
+}
 
-    if( gop_min_len >= gop_max_len )
-        gop_len = gop_max_len;
-    else
-    {
-        int cur_lum_mean = 
-            reader.FrameLumMean( gop_start_frame+gop_min_len-min_b_grp+I_frame_temp_ref );
-
-        /* Search forwards from min gop length for I-frame candidate
-           which has the largest change in mean luminance.
-           BUGBUGBUG: The frame ring buffer size must be large enough to
-           accomodate this read-ahead without losing frames currently being
-           encoded!!!
-        */
-        gop_len = 0;
-        for( i = gop_min_len; i <= gop_max_len; i += min_b_grp )
-        {
-            pred_lum_mean = reader.FrameLumMean( gop_start_frame+i+I_frame_temp_ref);
-            if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD 
-                && abs(cur_lum_mean-pred_lum_mean ) > max_change )
-            {
-                max_change = abs(cur_lum_mean-pred_lum_mean );
-                gop_len = i;
-            }
-            cur_lum_mean = pred_lum_mean;
-        }
-
-        if( gop_len == 0 )
-        {
-
-            /* No scene change detected within maximum GOP length.
-               Now do a look-ahead check to see if running a maximum length
-               GOP next would put scene change into the GOP after-next
-               that would need a GOP smaller than minimum to handle...
-            */
-            gop_len = gop_max_len;
-            for( j = gop_max_len+min_b_grp; j < gop_max_len+gop_min_len; j += min_b_grp )
-            {
-                cur_lum_mean = 
-                    reader.FrameLumMean( gop_start_frame+j+I_frame_temp_ref );
-                if( abs(cur_lum_mean-pred_lum_mean ) >= SCENE_CHANGE_THRESHOLD
-                    &&  abs(cur_lum_mean-pred_lum_mean > max_change )
-                    )
-                {
-                    max_change = abs(cur_lum_mean-pred_lum_mean );
-                    gop_len = j;
-                }
-            }
-		
-            /* If a max length GOP next would cause a scene change in
-               a place where the GOP after-next would be under-size to
-               handle it *and* making the current GOP minimum size
-               would allow an acceptable GOP after-next size the next
-               GOP to give it and after-next roughly equal sizes
-               otherwise simply set the GOP to maximum length
-            */
-
-            if( gop_len > gop_max_len 
-                && gop_len < gop_max_len+gop_min_len )
-            {
-                if( gop_len < 2*gop_min_len )
-                {
-                    mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d", j);
-                    /* Its better to put the missed transition at the end
-                       of a GOP so any eventual artefacting is soon washed
-                       out by an I-frame*/
-                    gop_len = gop_min_len;
-                }
-                else
-                {
-                    /* If we can make the two GOPs near the transition
-                       similarly sized */
-                    i = gop_len /2;
-                    if( i%min_b_grp != 0 )
-                        i+=(min_b_grp-i%min_b_grp);
-                    if( gop_len-i < gop_min_len )
-                        gop_len = gop_min_len;
-                    if( gop_len > gop_max_len )
-                        gop_len = gop_max_len;
-                }
-				
-            }
-            else
-                gop_len = gop_max_len;
-        }
-    }
-	/* last GOP may contain less frames! */
-    int istrm_nframes = reader.NumberOfFrames();
-	if (gop_len > istrm_nframes-gop_start_frame)
-		gop_len = istrm_nframes-gop_start_frame;
-	mjpeg_info( "GOP start (%d frames)", gop_len);
-	return gop_len;
-
+void StreamState::SeqStart( )
+{
+	s_idx = 0;
+	g_idx = 0;
+	b_idx = 0;
+	gop_length = 0;             // Forces new GOP start 1st sequence.
+	seq_start_frame = 0;
+	gop_start_frame = 0;
+	seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
+	next_split_point = BITCOUNT_OFFSET + seq_split_length;
 }
 
 
-
-
-void SeqEncoder::GopStart( StreamState *ss )
+void StreamState::GopStart()
 {
-
-	int nb, np;
+	//int nb, np;
 	uint64_t bits_after_mux;
 	double frame_periods;
 	/* If	we're starting a GOP and have gone past the current
@@ -408,40 +294,34 @@ void SeqEncoder::GopStart( StreamState *ss )
 	   set the next splitting point.
 	*/
 			
-	ss->g = 0;
-	ss->b = 0;
-    
+	g_idx = 0;
+	b_idx = 0;
+    frame_type = I_TYPE;
     /* Sequence ended at previous frame so this one starts a new sequence */
-    if( ss->end_seq )
+    if( end_seq )
     {
           /* We split sequence last frame.This is the input stream display 
            * order sequence number of the frame that will become frame 0 in display
            * order in  the new sequence 
            */
-          ss->seq_start_frame += ss->i;
-          ss->i = 0;
-          ss->new_seq = true;
+          seq_start_frame += s_idx;
+          s_idx = 0;
+          new_seq = true;
     }
     
 
     /* Normally set closed_GOP in first GOP only...   */
 
-    ss->closed_gop = ss->i == 0 || encparams.closed_GOPs;
-	ss->gop_start_frame = ss->seq_start_frame + ss->i;
+    closed_gop = s_idx == 0 || encparams.closed_GOPs;
+	gop_start_frame = seq_start_frame + s_idx;
 	
-	/*
-	  Compute GOP length based on min and max sizes specified
-	  and scene changes detected.  
-	  First GOP in a sequence has I frame with a 0 temp_ref
-	  and (M-1) less frames (no initial B frames).
-	  In all other GOPs I-frame has a temp_ref of M-1
-	*/
-	
-    ss->gop_length =  
-        FindGopLength( ss->gop_start_frame, 
-                       ss->closed_gop ? 0 : encparams.M-1, 
-                       encparams.N_min, encparams.N_max,
-                       encparams.M_min);
+
+    // 
+    // GOPs initially always start out maximum length - short GOPs occur when we notice
+    // a P frame occurring after the minimum GOP lengthhas been reached
+    //
+
+    gop_length =  encparams.N_max;
 			
 	/* First figure out how many B frames we're short from
 	   being able to achieve an even M-1 B's per I/P frame.
@@ -455,38 +335,38 @@ void SeqEncoder::GopStart( StreamState *ss )
 	if( encparams.M-1 > 0 )
 	{
         int pics_in_bigrps = 
-            ss->closed_gop ? ss->gop_length - 1 : ss->gop_length;
-		ss->bs_short = (encparams.M - pics_in_bigrps % encparams.M)%encparams.M;
-		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
+            closed_gop ? gop_length - 1 : gop_length;
+		bs_short = (encparams.M - pics_in_bigrps % encparams.M)%encparams.M;
+		next_b_drop = ((double)gop_length) / (double)(bs_short+1)-1.0 ;
 	}
 	else
 	{
-		ss->bs_short = 0;
-		ss->next_b_drop = 0.0;
+		bs_short = 0;
+		next_b_drop = 0.0;
 	}
 	
 	/* We aim to spread the dropped B's evenly across the GOP */
-	ss->bigrp_length = (encparams.M-1);
+	bigrp_length = (encparams.M-1);
 	
-    if (ss->closed_gop )
+    if (closed_gop )
 	{
-		ss->bigrp_length = 1;
-		np = (ss->gop_length + 2*(encparams.M-1))/encparams.M - 1; /* Closed GOP */
+		bigrp_length = 1;
+		np = (gop_length + 2*(encparams.M-1))/encparams.M - 1; /* Closed GOP */
 	}
 	else
 	{
-		ss->bigrp_length = encparams.M;
-		np = (ss->gop_length + (encparams.M-1))/encparams.M - 1;
+		bigrp_length = encparams.M;
+		np = (gop_length + (encparams.M-1))/encparams.M - 1;
 	}
 	/* number of B frames */
-	nb = ss->gop_length - np - 1;
+	nb = gop_length - np - 1;
 
-	ss->np = np;
-	ss->nb = nb;
-	if( np+nb+1 != ss->gop_length )
+	//np = np;
+	//nb = nb;
+	if( np+nb+1 != gop_length )
 	{
 		mjpeg_error_exit1( "****INTERNAL: inconsistent GOP %d %d %d", 
-						   ss->gop_length, np, nb);
+						   gop_length, np, nb);
 	}
 
 }
@@ -498,17 +378,17 @@ void SeqEncoder::GopStart( StreamState *ss )
 
 void SeqEncoder::NextSeqState( StreamState *ss )
 {
-	++(ss->i);
-	++(ss->g);
-	++(ss->b);	
+	++(ss->s_idx);
+	++(ss->g_idx);
+	++(ss->b_idx);	
 
 	/* Are we starting a new B group */
-	if( ss->b >= ss->bigrp_length )
+	if( ss->b_idx >= ss->bigrp_length )
 	{
-		ss->b = 0;
+		ss->b_idx = 0;
 		/* Does this need to be a short B group to make the GOP length
 		   come out right ? */
-		if( ss->bs_short != 0 && ss->g > (int)ss->next_b_drop )
+		if( ss->bs_short != 0 && ss->g_idx > (int)ss->next_b_drop )
 		{
 			ss->bigrp_length = encparams.M - 1;
 			if( ss->bs_short )
@@ -516,25 +396,35 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 		}
 		else
 			ss->bigrp_length = encparams.M;
-	}
 
-    /* Are we starting a new GOP? */
-    ss->new_seq = false;
-	if( ss->g == ss->gop_length )
-	{
-		GopStart( ss);
+        // Are we starting a new GOP
+        if( ss->g_idx == ss->gop_length )
+        {
+            ss->GopStart();
+            // Sets frame_type == I_TYPE
+        }
+        else
+        {
+            ss->frame_type = P_TYPE;
+        }
 	}
+    else
+    {
+        ss->frame_type = B_TYPE;
+    }
+
+    ss->new_seq = false;
   
     ++frame_num;
     ss->end_seq = false;
     if( frame_num >= reader.NumberOfFrames() )
         ss->end_seq = true;
-    else if( ss->g == ss->gop_length-1 ) /* Last frame GOP: sequence split? */
+    else if( ss->g_idx == ss->gop_length-1 ) /* Last frame GOP: sequence split? */
     {
         if( encparams.pulldown_32 )
-            frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
+            frame_periods = (double)(ss->seq_start_frame + ss->s_idx)*(5.0/4.0);
         else
-            frame_periods = (double)(ss->seq_start_frame + ss->i);
+            frame_periods = (double)(ss->seq_start_frame + ss->s_idx);
         
         /*
           For VBR we estimate total bits based on actual stream size and
@@ -549,7 +439,7 @@ void SeqEncoder::NextSeqState( StreamState *ss )
             bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
                                         (encparams.nonvid_bit_rate + encparams.bit_rate));
         if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
-            || (ss->i != 0 && encparams.seq_end_every_gop)
+            || (ss->s_idx != 0 && encparams.seq_end_every_gop)
             )
         {
             mjpeg_info( "Splitting sequence this GOP start" );
@@ -580,8 +470,7 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 */
 
 
-void SeqEncoder::LinkPictures( Picture *ref_pictures[], 
-                               Picture *b_pictures[] )
+void SeqEncoder::LinkRefPictureRing( Picture *ref_pictures[] )
 {
 
 	int i,j;
@@ -590,10 +479,10 @@ void SeqEncoder::LinkPictures( Picture *ref_pictures[],
 	{
 		j = (i + 1) % encparams.max_active_ref_frames;
 
-		ref_pictures[j]->oldorg = ref_pictures[i]->curorg;
-		ref_pictures[j]->oldref = ref_pictures[i]->curref;
-		ref_pictures[j]->neworg = ref_pictures[j]->curorg;
-		ref_pictures[j]->newref = ref_pictures[j]->curref;
+		ref_pictures[j]->fwd_org = ref_pictures[i]->org_img;
+		ref_pictures[j]->fwd_rec = ref_pictures[i]->rec_img;
+		//ref_pictures[j]->bwd_org = ref_pictures[j]->org_img;
+		//ref_pictures[j]->bwd_rec = ref_pictures[j]->rec_img;
 	}
 
 }
@@ -645,7 +534,7 @@ void SeqEncoder::EncodePicture(Picture *picture)
 	/* Handle second field of a frame that is being field encoded */
 	if( encparams.fieldpic )
 	{
-		picture->Set2ndField();
+		picture->Adjust2ndField();
 		mjpeg_debug("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
@@ -719,7 +608,7 @@ void SeqEncoder::Init()
         ref_pictures[i] = new Picture(encparams, coder, quantizer);
     }
 
-	LinkPictures( ref_pictures, b_pictures );
+	LinkRefPictureRing( ref_pictures );
 
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
@@ -733,20 +622,11 @@ void SeqEncoder::Init()
 	
 	ratecontroller.InitSeq(false);
 	
-	ss.i = 0;		                /* Index in current MPEG sequence */
-	ss.g = 0;						/* Index in current GOP */
-	ss.b = 0;						/* B frames since last I/P */
-	ss.gop_length = 0;				/* Length of current GOP init 0
-									   0 force new GOP at start 1st sequence */
-	ss.seq_start_frame = 0;		/* Index start current sequence in
-								   input stream */
-	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
-	ss.seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
-	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
+    ss.SeqStart();
 	mjpeg_debug( "Split len = %lld", ss.seq_split_length );
 
     frame_num = 0;
-	GopStart( &ss);
+	ss.GopStart();
 }
 
 
@@ -766,15 +646,13 @@ bool SeqEncoder::EncodeFrame()
    /* Each bigroup starts once all the B frames of its predecessor
        have finished.
     */
-    int index;
-    if ( ss.b == 0)
+
+    if ( ss.b_idx == 0 ) // I or P Frame
     {
         cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
-        index = cur_ref_idx;
         old_ref_picture = new_ref_picture;
         new_ref_picture = ref_pictures[cur_ref_idx];
         new_ref_picture->ref_frame = old_ref_picture;
-        new_ref_picture->Set_IP_Frame(&ss, reader.NumberOfFrames());
         cur_picture = new_ref_picture;
     }
     else
@@ -785,26 +663,24 @@ bool SeqEncoder::EncodeFrame()
            seperate from the reference data pointers.
         */
         cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
-        index = cur_b_idx;
         new_b_picture = b_pictures[cur_b_idx];
-        new_b_picture->oldorg = new_ref_picture->oldorg;
-        new_b_picture->oldref = new_ref_picture->oldref;
-        new_b_picture->neworg = new_ref_picture->neworg;
-        new_b_picture->newref = new_ref_picture->newref;
+        new_b_picture->fwd_org = new_ref_picture->fwd_org;
+        new_b_picture->fwd_rec = new_ref_picture->fwd_rec;
+        new_b_picture->bwd_org = new_ref_picture->bwd_org;
+        new_b_picture->bwd_rec = new_ref_picture->bwd_rec;
         new_b_picture->ref_frame = new_ref_picture;
-        new_b_picture->Set_B_Frame( &ss );
         cur_picture = new_b_picture;
     }
+   cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
 
+    
+    reader.ReadFrame( cur_picture->input /*cur_picture->temp_ref+ss.gop_start_frame*/,
+                      cur_picture->org_img );
 
-    reader.ReadFrame( cur_picture->temp_ref+ss.gop_start_frame,
-                      cur_picture->curorg );
-
-    cur_picture->SetSeqPos( ss.i, ss.b );
     EncodePicture( cur_picture );
 
 #ifdef DEBUG
-    writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curref);
+    writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->rec_img);
 #endif
 
     NextSeqState( &ss );
@@ -817,9 +693,9 @@ bool SeqEncoder::EncodeFrame()
         
     // DEBUG
 	if( encparams.pulldown_32 )
-		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);
+		frame_periods = (double)(ss.seq_start_frame + ss.s_idx)*(5.0/4.0);
 	else
-		frame_periods = (double)(ss.seq_start_frame + ss.i);
+		frame_periods = (double)(ss.seq_start_frame + ss.s_idx);
     if( encparams.quant_floor > 0.0 )
         bits_after_mux = writer.BitCount() + 
             (uint64_t)((frame_periods / encparams.frame_rate) * encparams.nonvid_bit_rate);

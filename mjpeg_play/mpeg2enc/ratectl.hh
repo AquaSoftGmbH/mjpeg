@@ -28,6 +28,7 @@ class MacroBlock;
 class EncoderParams;
 class Picture;
 
+
 class RateCtl
 {
 public:

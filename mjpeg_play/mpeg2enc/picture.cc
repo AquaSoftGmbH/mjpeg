@@ -45,6 +45,7 @@
  */
 
 #include "config.h"
+#include <cassert>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
 #include "mpeg2syntaxcodes.h"
@@ -85,19 +86,21 @@ Picture::Picture( EncoderParams &_encparams,
     }
 
 
-	curref = new uint8_t *[5];
-	curorg = new uint8_t *[5];
+	rec_img = new uint8_t *[5];
+	org_img = new uint8_t *[5];
 	pred   = new uint8_t *[5];
 
 	for( i = 0 ; i<3; i++)
 	{
 		int size =  (i==0) ? encparams.lum_buffer_size : encparams.chrom_buffer_size;
-		curref[i] = static_cast<uint8_t *>(bufalloc(size));
-		curorg[i] = NULL;       // Will point to input frame data buffered by
-                                // PictureReader
+		rec_img[i] = static_cast<uint8_t *>(bufalloc(size));
+		org_img[i] = 0;
 		pred[i]   = static_cast<uint8_t *>(bufalloc(size));
 	}
 
+    // Initialise the reference image pointers to NULL to ensure errors show
+    fwd_rec = fwd_org = 0;
+    bwd_rec = bwd_org = 0;
 }
 
 Picture::~Picture()
@@ -105,11 +108,11 @@ Picture::~Picture()
     int i;
 	for( i = 0 ; i<3; i++)
 	{
-		free( curref[i] );
+		free( rec_img[i] );
 		free( pred[i] );
 	}
-    delete curref;
-    delete curorg;
+    delete rec_img;
+    delete org_img;
     delete pred;
 }
 
@@ -137,9 +140,28 @@ void Picture::Reconstruct()
 #endif
 }
 
-void Picture::SetSeqPos(int _decode,int b_index )
+/*******************************************
+ *
+ * Adjust picture encoding parameters
+ *
+ ******************************************/
+
+void Picture::SetEncodingParams( const StreamState &ss, int frames_available )
 {
-	decode = _decode;
+    if( ss.b_idx == 0 )             // Start of a B-group: I or P frame
+    {
+        Set_IP_Frame(ss, frames_available);
+    }
+    else
+    {
+        Set_B_Frame( ss );
+    }
+
+    assert( pict_type == ss.frame_type );
+
+	decode = ss.s_idx;
+    input   = temp_ref+ss.gop_start_frame;
+
 	dc_prec = encparams.dc_prec;
 	secondfield = false;
 	ipflag = 0;
@@ -187,6 +209,10 @@ void Picture::SetSeqPos(int _decode,int b_index )
 		topfirst = encparams.topfirst;
 	}
 
+    forw_hor_f_code = encparams.motion_data[ss.b_idx].forw_hor_f_code;
+    forw_vert_f_code = encparams.motion_data[ss.b_idx].forw_vert_f_code;
+    sxf = encparams.motion_data[ss.b_idx].sxf;
+    syf = encparams.motion_data[ss.b_idx].syf;
 
 	switch ( pict_type )
 	{
@@ -195,27 +221,16 @@ void Picture::SetSeqPos(int _decode,int b_index )
 		forw_vert_f_code = 15;
 		back_hor_f_code = 15;
 		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;
 		break;
 	case P_TYPE :
-		forw_hor_f_code = encparams.motion_data[0].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[0].forw_vert_f_code;
 		back_hor_f_code = 15;
 		back_vert_f_code = 15;
-		sxf = encparams.motion_data[0].sxf;
-		syf = encparams.motion_data[0].syf;
 		break;
 	case B_TYPE :
-		forw_hor_f_code = encparams.motion_data[b_index].forw_hor_f_code;
-		forw_vert_f_code = encparams.motion_data[b_index].forw_vert_f_code;
-		back_hor_f_code = encparams.motion_data[b_index].back_hor_f_code;
-		back_vert_f_code = encparams.motion_data[b_index].back_vert_f_code;
-		sxf = encparams.motion_data[b_index].sxf;
-		syf = encparams.motion_data[b_index].syf;
-		sxb = encparams.motion_data[b_index].sxb;
-		syb = encparams.motion_data[b_index].syb;
-
+		back_hor_f_code = encparams.motion_data[ss.b_idx].back_hor_f_code;
+		back_vert_f_code = encparams.motion_data[ss.b_idx].back_vert_f_code;
+		sxb = encparams.motion_data[ss.b_idx].sxb;
+		syb = encparams.motion_data[ss.b_idx].syb;
 		break;
 	}
 
@@ -274,13 +289,86 @@ void Picture::SetSeqPos(int _decode,int b_index )
 
 }
 
-/*
+
+
+/**************************************************
+ *
+ * Set the picture encoding paramters for an I or P frame
+ *
+ * num_frames is the total number for frames in the input...
+ *
+ **************************************************/
+
+void Picture::Set_IP_Frame( const StreamState &ss, int num_frames )
+{
+	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
+	   be a little careful with the end of stream special-case.
+	*/
+	if( ss.g_idx == 0 && ss.closed_gop )
+	{
+		temp_ref = 0;
+	}
+	else 
+	{
+		temp_ref = ss.g_idx+(ss.bigrp_length-1);
+	}
+
+	if (temp_ref >= (num_frames-ss.gop_start_frame))
+		temp_ref = (num_frames-ss.gop_start_frame) - 1;
+
+	present = (ss.s_idx-ss.g_idx)+temp_ref;
+	if (ss.g_idx==0) /* first displayed frame in GOP is I */
+	{
+		pict_type = I_TYPE;
+	}
+	else 
+	{
+		pict_type = P_TYPE;
+	}
+
+	/* Start of GOP - set GOP data for picture */
+	if( ss.g_idx == 0 )
+	{
+		gop_start = true;
+        closed_gop = ss.closed_gop;
+		new_seq = ss.new_seq;
+        end_seq = ss.end_seq;
+		nb = ss.nb;
+		np = ss.np;
+	}		
+	else
+	{
+		gop_start = false;
+        closed_gop = false;
+		new_seq = false;
+	}
+}
+
+/**************************************************
+ *
+ * Set the picture encoding paramters for a B frame
+ *
+ * num_frames is the total number for frames in the input...
+ *
+ **************************************************/
+
+void Picture::Set_B_Frame(  const StreamState &ss )
+{
+	temp_ref = ss.g_idx - 1;
+	present = ss.s_idx-1;
+	pict_type = B_TYPE;
+	gop_start = false;
+	new_seq = false;
+}
+
+/************************************************************************
+ *
  * Adjust picture parameters for the second field in a pair of field
  * pictures.
  *
- */
+ ************************************************************************/
 
-void Picture::Set2ndField()
+void Picture::Adjust2ndField()
 {
 	secondfield = true;
     gop_start = false;
@@ -303,68 +391,6 @@ void Picture::Set2ndField()
 	}
 }
 
-
-
-
-/* Set the sequencing structure information
-   of a picture (type and temporal reference)
-   based on the specified sequence state
-*/
-
-void Picture::Set_IP_Frame( StreamState *ss, int num_frames )
-{
-	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
-	   be a little careful with the end of stream special-case.
-	*/
-	if( ss->g == 0 && ss->closed_gop )
-	{
-		temp_ref = 0;
-	}
-	else 
-	{
-		temp_ref = ss->g+(ss->bigrp_length-1);
-	}
-
-	if (temp_ref >= (num_frames-ss->gop_start_frame))
-		temp_ref = (num_frames-ss->gop_start_frame) - 1;
-
-	present = (ss->i-ss->g)+temp_ref;
-	if (ss->g==0) /* first displayed frame in GOP is I */
-	{
-		pict_type = I_TYPE;
-	}
-	else 
-	{
-		pict_type = P_TYPE;
-	}
-
-	/* Start of GOP - set GOP data for picture */
-	if( ss->g == 0 )
-	{
-		gop_start = true;
-        closed_gop = ss->closed_gop;
-		new_seq = ss->new_seq;
-        end_seq = ss->end_seq;
-		nb = ss->nb;
-		np = ss->np;
-	}		
-	else
-	{
-		gop_start = false;
-        closed_gop = false;
-		new_seq = false;
-	}
-}
-
-
-void Picture::Set_B_Frame(  StreamState *ss )
-{
-	temp_ref = ss->g - 1;
-	present = ss->i-1;
-	pict_type = B_TYPE;
-	gop_start = false;
-	new_seq = false;
-}
 
 
 
@@ -479,10 +505,10 @@ void Picture::MotionSubSampledLum( )
 		linestride = 2*eparams.phy_width;
 	}
 
-	psubsample_image( curorg[0], 
+	psubsample_image( org_img[0], 
 					 linestride,
-					 curorg[0]+eparams.fsubsample_offset, 
-					 curorg[0]+eparams.qsubsample_offset );
+					 org_img[0]+eparams.fsubsample_offset, 
+					 org_img[0]+eparams.qsubsample_offset );
 }
 
 
