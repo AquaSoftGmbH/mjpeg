@@ -1,3 +1,152 @@
+/*
+ * lavrec - Linux Audio Video RECord
+ *
+ * Copyright (C) 2000 Rainer Johanni <Rainer@Johanni.de>
+ * Extended by:     Gernot Ziegler  <gz@lysator.liu.se>
+ *               &  Wolfgang Scherr <scherr@net4you.net>
+ *               &  Ronald Bultje   <rbultje@ronald.bitfreak.net>
+ *               &  many others
+ *
+ * Usage: lavrec [options] filename [filename ...]
+ * where options are as follows:
+ *
+ *   -f/--format [aAqm] --- Output file format:
+ *      'a': AVI (default)
+ *      'A': AVI with fields exchanged
+ *      'q': quicktime (if compiled with quicktime support)
+ *      'm': movtar (if compiled with movtar support)
+ *      Hint: If your AVI video looks strange, try 'A' instead 'a'
+ *      and vice versa.
+ *		 
+ *   -i/--input [pPnNsStTa] --- Input Source:
+ *      'p': PAL       Composite Input
+ *      'P': PAL       SVHS-Input
+ *      'n': NTSC      Composite Input
+ *      'N': NTSC      SVHS-Input
+ *      's': SECAM     Composite Input
+ *      'S': SECAM     SVHS-Input
+ *      't': PAL/SECAM TV tuner input (if available)
+ *      'T': NTSC      TV tuner input (if available)
+ *      'a': (or every other letter) Autosense (default)
+ *
+ *   -d/--decimation num --- Frame recording decimation:
+ *      must be either 1, 2 or 4 for identical decimation
+ *      in horizontal and vertical direction (mostly used) or a
+ *      two digit letter with the first digit specifying horizontal
+ *      decimation and the second digit specifying vertical decimation
+ *      (more exotic usages).
+ *
+ *   -g/--geometry WxH+X+Y --- An X-style geometry string (capturing area):
+ *      Even if a decimation > 1 is used, these values are always
+ *      coordinates in the undecimated frame.  
+ *                For DC10: 768x{576 or 480}.
+ *                For others: 720x{576 or 480}.
+ *      Also, unlike in X-Window, negative values for X and Y
+ *      really mean negative offsets (if this feature is enabled
+ *      in the driver) which lets you fine tune the position of the
+ *      image caught.
+ *      The horizontal resolution of the DECIMATED frame must
+ *      allways be a multiple of 16, the vertical resolution
+ *      of the DECIMATED frame must be a multiple of 16 for decimation 1
+ *      and a multiple of 8 for decimations 2 and 4
+ *
+ *      If not offset (X and Y values) is given, the capture area
+ *      is centered in the frame.
+ *
+ *   -q/--quality num --- quality:
+ *      must be between 0 and 100, default is 50
+ *
+ *   -t/--time num -- capturing time:
+ *      Time to capture in seconds, default is unlimited
+ *      (use ^C to stop capture!)
+ *
+ *   -S/--single-frame --- enables single-frame capturing mode
+ *
+ *   -T/--time-lapse num --- time-lapse mode:
+ *      Time lapse factor: Video will be played back <num> times
+ *      faster, audio is switched off.
+ *      This means that only every <num>th frame is recorded.
+ *      If num==1 it is silently ignored.
+ *
+ *   -w/--wait --- Wait for user confirmation to start
+ *
+ *   --software-encoding --- encode frames in software-mode:
+ *      Mainly intended to make it possible to use lavrec with BTTV
+ *      cards too. Should work for V4L-capture with zoran cards too
+ *      but that's only for testing - you really don't want to use
+ *      this option for zoran-devices since they have hardware-encoding
+ *      possibilities
+ *
+ **** Audio settings ***
+ *
+ *   -a/--audio-bitsize num --- audio bitsize:
+ *      Audio size in bits, must be 0 (no audio), 8 or 16 (default)
+ *
+ *   -r/--audio_bitrate num --- audio-bitrate:
+ *      Audio rate (in Hz), must be a permitted sampling rate for
+ *      your soundcard. Default is 22050.
+ *
+ *   -s/--stereo --- enable stereo (disabled by default)
+ *
+ *   -l/--audio-volume num --- audio recording level/volume:
+ *      Audio level to use for recording, must be between 0 and 100
+ *      or -1 (for not touching the mixer settings at all), default
+ *      is 100.
+ *
+ *   -m/--mute --- mute output during recording:
+ *      Mute audio output during recording (default is to let it enabled).
+ *      This is particularly usefull if you are recording with a
+ *      microphone to avoid feedback.
+ *
+ *   -R/--audio-source [lmc] --- Audio recording source:
+ *      'l': line-in
+ *      'm': microphone
+ *      'c': cdrom
+ *
+ **** Audio/Video synchronization ***
+ *
+ *   -c/--synchronization num --- Level of corrections for synchronization:
+ *      0: Neither try to replicate lost frames nor any sync correction
+ *      1: Replicate frames for lost frames, but no sync correction
+ *      2. lost frames replication + sync correction
+ *
+ **** Special capture settings ***
+ *
+ *   -n/--mjpeg-buffers num --- Number of MJPEG capture buffers (default 64)
+ *
+ *   -b/--mjpeg-buffer-size num --- Size of MJPEG buffers in KB (default 256)
+ *
+ **** Environment variables ***
+ *
+ * Recognized environment variables:
+ *    LAV_VIDEO_DEV: Name of video device (default: "/dev/video")
+ *    LAV_AUDIO_DEV: Name of audio device (default: "/dev/dsp")
+ *    LAV_MIXER_DEV: Name of mixer device (default: "/dev/mixer")
+ *
+ * To overcome the AVI (and ext2fs) 2 GB filesize limit, you can:
+ *   - give multiple filenames on the command-line
+ *   - give one filename which contains a '%' sign. This name is then
+ *     interpreted as the format argument to sprintf() to form multiple
+ *     file names
+ *
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ */
+
+
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
