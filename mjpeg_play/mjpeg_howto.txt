@@ -41,14 +41,18 @@ http://sourceforge.net/projects/mjpeg
 You have to compile and install the mjpeg_play package, for this read the
 README & INSTALL.
 
-There is a script in the scripts/ directory. This script is something that
-shows you a way how it can be done. It also creates (under certain 
-circumstances) videos that look quite good. Better videos you only get 
-by tuning the parameters yourself.
+The mjpegtools are a set of programs that can do recording,
+playback,  editing and eventual MPEG compression of
+audio and video under Linux.
 
-For more information about the programs read the corresponding manpage.
-If not installed they are in the docs directory and use: man -l lavrec.1
-If installed use: man mjpegtools
+Although primarily intended for use with capture / playback boards
+based on the Zoran ZR36067 MJPEG codec chip, the mjpegtools can easily
+be used to process and compress MJPEG video streams captured using
+xawtv using simple frame-buffer devices.
+
+The HOWTO for the tools intended to give an an introduction to the
+MJPEG\-tools and the creation of MPEG 1/2 videos. VCD and SVCD, and
+the transcoding of existing mpeg streams.
 
 You will usually have to load the drivers for the Buz or DC10(+) or LML33
 cards. So you have to run the update script providing as option the name 
@@ -82,9 +86,9 @@ The 8 * 1024 convert the value from bit/sec to kByte/sec
 
 Video: (width * height * framerate * quality ) / (200 * 1024) 
 PAL HALF Size : (352 * 288 * 25 * 80) / (200 * 1024) = 990  kB/sec
-PAL FULL size : (768 * 576 * 25 * 80) / (200 * 1024) = 4320 kB/sec
-NTSC HALF size: (320 * 200 * 30 * 80) / (200 * 1024) = 750  kB/sec
-NTSC FULL size: (640 * 480 * 30 * 80) / (200 * 1024) = 3600 kB/sec
+PAL FULL size : (720 * 576 * 25 * 80) / (200 * 1024) = 4050 kB/sec
+NTSC HALF size: (352 * 240 * 30 * 80) / (200 * 1024) = 990  kB/sec
+NTSC FULL size: (720 * 480 * 30 * 80) / (200 * 1024) = 4050 kB/sec
 
 The 1024 converts the Bytes to kBytes. Not every card can record the size
 mentioned. The Buz and Marvel G400 for example can record a max size of 720x576
@@ -145,9 +149,13 @@ Should start recoding:
 -d 2 : the size of the pictures are half size
 -l -1: do not touch the mixer settings.
 record%02d.avi : Here lavrec creates the first file named record00.avi after 
-the file has reached a size of 1.6GB (after about 20 Minutes recording) it 
+the file has reached a size of 1.8GB (after about 20 Minutes recording) it 
 starts a new sequence named record01.avi and so on till the recording is 
-stopped or the disk is full. 
+stopped or the disk is full. AVI files can maximal have a size of 2GB. 
+If you want to have only one extra big file, you have to use the Quicktime or
+movtar format. They do not have that limit. Other things like the kernel or
+the filsystem can also limit the maximal filesize. 
+
 
 Other example:
 lavrec -f a -i t -q 80 -d 2 -C europe-west:SE20 test.avi
@@ -1089,9 +1097,12 @@ have told it with the -r option. An this streams usually get BIG.
 CREATING VIDEO-CD'S
 =====================================
 VCD is a cut down version of MPEG1 streams. 
-There are some limitations on VCD's. Like bitrate for video 1152kBit and for 
-audio layer 2 audio with 224kBit stereo. You are not allowed to use the -q 
-option, dynamic GOP the video buffer is limited to 46kB.
+VCD format was defined by Philips. The goal was to use a single speed CD-drive,
+and other cheap hardware (=no that flexibel) to have a rather cheap HW-Player. 
+The spec for VCD has Philips, but they are not aviable for everyone.
+Because of that there are some limitations on VCD's. Like bitrate for 
+video 1152kBit and for audio layer 2 audio with 224kBit stereo. You are not 
+allowed to use the -q option, dynamic GOP the video buffer is limited to 46kB.
 The image size is limited to 352x240 for NTSC, and to 352x288 for PAL.
 
 If you have no VCD player, and you plan to play it back on your DVD player for
@@ -1138,7 +1149,7 @@ in a respectable multiplexer!
 
 Creating the CD:
 The multiplexed streams have to be converted to an VCD compatible.
-This is done by vcdimager. (http://www.hvrlab.org/~hvr/vcdimager/)
+This is done by vcdimager. (http://www.vcdimager.org)
 
 Example:
 > vcdimager testvideo.mpg
@@ -1196,6 +1207,10 @@ while typically producing files that are rather less than twice as big.
 
 CREATING SVCD'S
 =====================================
+SVCD is a cut down version of MEPG2 streams.
+SVCD format was defined by Philips. The spec for VCD has Philips, but they
+are not aviable for everyone.
+
 Record at full TV resolution (means: -d 1  for PAL this is 720x576 for the Buz)
 
 Audio creation Example:
@@ -1699,6 +1714,9 @@ vlc
 ztheater
 MS Media player version 6 and 7
 SW DVD player
+
+To find out what you HW-player (most of the time DVD player) can do take a look
+at: http://www.vcdhelp.com
 
 It seems that the MS Media player likes MPEG-1 streams more if you have 
 used -f 1 when multiplexing.

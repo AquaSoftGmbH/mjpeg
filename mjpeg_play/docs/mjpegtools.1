@@ -122,11 +122,11 @@ Video: (width * height * framerate * quality )/ (200*1024)
 .br
 PAL HALF Size : (352*288*25*80) / (200*1024) = 990  kB/sec
 .br
-PAL FULL size : (768*576*25*80) / (200*1024) = 4320 kB/sec
+PAL FULL size : (720*576*25*80) / (200*1024) = 4050 kB/sec
 .br
-NTSC HALF size: (320*200*30*80) / (200*1024) = 750  kB/sec
+NTSC HALF size: (352*240*30*80) / (200*1024) = 990  kB/sec
 .br
-NTSC FULL size: (640*480*30*80) / (200*1024) = 3600 kB/sec
+NTSC FULL size: (720*480*30*80) / (200*1024) = 4050 kB/sec
 
 .br
 The 1024 converts the Bytes to kBytes. Not every card can record the size 
@@ -1282,10 +1282,12 @@ have told it with the -r option. An this streams usually get BIG.
 
 .SH "CREATING VIDEO\-CD'S"
 
-VCD is a cut down version of MPEG1 streams. 
-There are some limitations on VCD's. Like bitrate for video 1152kBit and for 
-audio layer 2 audio with 224kBit stereo. You are not allowed to use the -q 
-option, dynamic GOP the video buffer is limited to 46kB.
+VCD is a cut down version of MPEG1 streams.
+VCD format was defined by Philips. The goal was to use a single speed CD-drive, and other cheap hardware (=no that flexibel) to have a rather cheap HW-Player. 
+The spec for VCD has Philips, but they are not aviable for everyone.
+Because of that there are some limitations on VCD's. Like bitrate for 
+video 1152kBit and for audio layer 2 audio with 224kBit stereo. You are not 
+allowed to use the -q option, dynamic GOP the video buffer is limited to 46kB.
 .br
 The image size is limited to 352x240 for NTSC, and to 352x288 for PAL.
 
@@ -1333,7 +1335,7 @@ in a respectable multiplexer!
 
 Creating the CD:
 The multiplexed streams have to be converted to an VCD compatible.
-This is done by vcdimager (http://www.hvrlab.org/~hvr/vcdimager/)
+This is done by vcdimager (http://www.vcdimager.org/)
 
 Example:
 .br
@@ -1395,6 +1397,11 @@ a more efficient MPEG format SVCD more than doubles VCD's resolution
 while typically producing files that are rather less than twice as big.
 
 .SH "CREATING SVCD'S"
+.br
+SVCD is a cut down version of MEPG2 streams.
+.br
+SVCD format was defined by Philips. The spec for VCD has Philips, but they
+are not aviable for everyone.
 .br 
 Record at full TV resolution (means: \-d 1  for PAL this is 720x576)
 .br
@@ -1998,6 +2005,8 @@ ztheater
 MS Media player version 6 and 7
 .br
 SW DVD Player
+.br
+To find out what you HW-player (most of the time DVD player) can do take a look at: http://www.vcdhelp.com
 
 It seems that the MS Media player likes MPEG-1 streams more if you have used -f 1 when multiplexing.
 
@@ -2067,7 +2076,7 @@ http://sourceforge.net/projects/mjpeg
 
 vcdimager  is aviable at: 
 .br 
-http://www.hvrlab.org/~hvr/vcdimager/
+http://www.vcdimager.org/
 .br 
 
 cdrdao   is aviable at:
