@@ -27,13 +27,16 @@ Bernhards Problems:
 ===================
 * never ending: add more options
 * split it to more files ??
+* add support for yuvdenoise, and mybe yuvmedianfilter
 * make the imput fields more secure
 * make test for the input and output files
 * remove beginning mistakes
 * make some kind of batch productions 
 * write a description for the thing. 
 * Long term: make it look better
+* Long term: make the task labes editable
 * Long term: add the divx output
 * Long term: add lavtrans 
+* Long term: support for MPEG audio Layer3 
 * Long term: add jpeg2yuv as source
 * Very long therm: add the transcoding stuff (maybe)
