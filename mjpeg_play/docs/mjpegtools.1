@@ -187,11 +187,13 @@ Last example:
 .br
 .B > lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi 
 .br
-The only not known option is 
+The two new options are 
+.B -g 352x288, 
+which sets the size of the video to be recorded when using 
 .B --software-encoding, 
 this enables the software encoding of the recorded images. With this option 
-you can also record from a bttv based card. The processor load is high. It 
-also works with zoran based cards but only with -d 4.
+you can also record from a bttv based card. The processor load is high.
+This option only works for generic video4linux cards (such as the brooktree-848/878 based cards), it doesn't work for zoran-based cards.
 .br
 
 All lavtools accept the %02d file description, so you do not have to name each 
