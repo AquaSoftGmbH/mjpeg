@@ -89,11 +89,10 @@ static int Np, Nb, Q;
 static bitcount_t S;
 static int prev_mquant;
 
-
 /* Note: eventually we may wish to tweak these to suit image content */
-static double Ki = 1.0;    	/* Down-scaling of I/B/P-frame complexity */
-static double Kb = 1.4;	    /* relative to others in bit-allocation   */
-static double Kp = 1.0;	    /* calculations.  We only need 2 but have all
+static double Ki = 1.7;    	/* Down-scaling of I/B/P-frame complexity */
+static double Kb = 1.0;	    /* relative to others in bit-allocation   */
+static double Kp = 1.8;	    /* calculations.  We only need 2 but have all
 							   3 for readability */
 
 
@@ -110,12 +109,18 @@ static double avgsq_KP = 20.0*20.0;
 #define K_AVG_WINDOW 128.0
 static double bits_per_mb;
 
+/* Scaling and clipping of quantisation factors
+   One floating point for predictive calculations
+   one producing actual quantisation factors...
+*/
+
 static double scale_quant( pict_data_s *picture, double quant )
 {
 	double squant;
 	int iquant;
 	if (picture->q_scale_type)
 	{
+		/* BUG TODO: This should interpolate the table... */
 		iquant = (int) floor(quant + 0.5);
 
 		/* clip mquant to legal (linear) range */
@@ -139,6 +144,36 @@ static double scale_quant( pict_data_s *picture, double quant )
 	return squant;
 }
 
+static int iscale_quant( pict_data_s *picture, double quant )
+{
+	int iquant;
+	if (picture->q_scale_type)
+	{
+		/* BUG TODO: This should interpolate the table... */
+		iquant = (int) floor(quant + 0.5);
+
+		/* clip mquant to legal (linear) range */
+		if (iquant<1)
+			iquant = 1;
+		if (iquant>112)
+			iquant = 112;
+
+		iquant =
+			non_linear_mquant_table[map_non_linear_mquant[iquant]];
+	}
+	else
+	{
+		/* clip mquant to legal (linear) range */
+		iquant = (int)floor(quant+0.5);
+		if (iquant<2)
+			iquant = 2;
+		if (iquant>62)
+			iquant = 62;
+		iquant = (iquant/2)*2; // Must be *even*
+	}
+	return iquant;
+}
+
 void rc_init_seq()
 {
 	bits_per_mb = (double)bit_rate / (mb_width*mb_height2);
@@ -150,6 +185,18 @@ void rc_init_seq()
 	if (r==0)  
 		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
+	if( pred_ratectl )
+	{
+		Ki = 1.7;
+		Kb = 1.0;
+		Kp = 1.8;
+	}
+	else
+	{
+		Ki = 1.0;
+		Kb = 1.4;
+		Kp = 1.0;
+	}
 
 	/* remaining # of bits in GOP */
 	R = 0;
@@ -160,6 +207,8 @@ void rc_init_seq()
 	   undershot its bit-rate allocation
 	 
 	*/
+
+
 	CarryR = 0;
 	CarryRLim = video_buffer_size / 3;
 	/* global complexity (Chi! not X!) measure of different frame types */
@@ -183,6 +232,7 @@ void rc_init_seq()
 		Xi = (int)floor(160.0*bit_rate/115.0 + 0.5);
 		Xp = (int)floor( 60.0*bit_rate/115.0 + 0.5);
 		Xb = (int)floor( 42.0*bit_rate/115.0 + 0.5);
+		d = d0i;
 	}
 
 		
@@ -241,7 +291,7 @@ void rc_init_GOP(np,nb)
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: new group of pictures (GOP)\n");
-	fprintf(statfile," target number of bits for GOP: R=%lld\n",R);
+	fprintf(statfile," target number of bits for GOP: R=%.0f\n",R);
 	fprintf(statfile," number of P pictures in GOP: Np=%d\n",Np);
 	fprintf(statfile," number of B pictures in GOP: Nb=%d\n",Nb);
 #endif
@@ -291,9 +341,9 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			Xi = avg_act;
 			avg_K = avg_KI;
+			d = d0i;
 		}
 		T = R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb));
-		d = d0i;
 		sliding_d_avg = sliding_di_avg;
 		break;
 	case P_TYPE:
@@ -301,9 +351,9 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			Xp = avg_act;
 			avg_K = avg_KP;
+			d = d0p;
 		}
 		T =  R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5;
-		d = d0p;
 		sliding_d_avg = sliding_dp_avg;
 		break;
 	case B_TYPE:
@@ -311,9 +361,9 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			Xb = avg_act;
 			avg_K = avg_KB;
+			d = d0b;
 		}
 		T =  R/(Nb+Np*Kb*Xp/(Kp*Xb));
-		d = d0b;
 		sliding_d_avg = sliding_db_avg;
 		break;
 	}
@@ -386,7 +436,7 @@ void rc_init_pict(pict_data_s *picture)
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: start of picture\n");
-	fprintf(statfile," target number of bits: T=%lld\n",T);
+	fprintf(statfile," target number of bits: T=%.0f\n",T);
 #endif
 }
 
@@ -483,30 +533,44 @@ void rc_update_pict(pict_data_s *picture)
 	switch (picture->pict_type)
 	{
 	case I_TYPE:
-		d0i = d;
 		avg_KI = (K + avg_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
 		avgsq_KI = (K*K + avgsq_KI * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
-		/* DEBUG */
-		if( ! pred_ratectl )
+		if( pred_ratectl )
+		{
+			d0i = d;
+		}
+		else
+		{
 			Xi = X;
+		}
 		sliding_di_avg = sliding_d_avg;
 		break;
 	case P_TYPE:
-		d0p = d;
 		avg_KP = (K + avg_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
 		avgsq_KP = (K*K + avgsq_KP * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;;
-		if( ! pred_ratectl )
+		if( pred_ratectl )
+		{
+			d0p = d;
+		}
+		else
+		{
 			Xp = X;
+		}
 
 		sliding_dp_avg = sliding_d_avg;
 		Np--;
 		break;
 	case B_TYPE:
-		d0b = d;
 		avg_KB = (K + avg_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;
-		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0) ;;
-		if( ! pred_ratectl )
+		avgsq_KB = (K*K + avgsq_KB * K_AVG_WINDOW) / (K_AVG_WINDOW+1.0);
+		if( pred_ratectl )
+		{
+			d0b = d;
+		}
+		else
+		{
 			Xb = X;
+		}
 		sliding_db_avg = sliding_d_avg;
 		Nb--;
 		break;
@@ -520,7 +584,7 @@ void rc_update_pict(pict_data_s *picture)
 	fprintf(statfile," actual number of bits: S=%lld\n",S);
 	fprintf(statfile," average quantization parameter Q=%.1f\n",
 			(double)Q/(mb_width*mb_height2));
-	fprintf(statfile," remaining number of bits in GOP: R=%lld\n",R);
+	fprintf(statfile," remaining number of bits in GOP: R=%.0f\n",R);
 	fprintf(statfile,
 			" global complexity measures (I,P,B): Xi=%d, Xp=%d, Xb=%d\n",
 			Xi, Xp, Xb);
@@ -581,6 +645,7 @@ int rc_start_mb(pict_data_s *picture)
 int rc_calc_mquant( pict_data_s *picture,int j)
 {
 	int mquant;
+
 	double dj, Qj, actj, N_actj; 
 
 	/* A.Stevens 2000 : we measure how much *information* (total activity)
@@ -643,7 +708,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 	}
 #endif
-	mquant = (int)floor(scale_quant(picture,Qj*N_actj)+0.5);
+	mquant = iscale_quant(picture,Qj*N_actj);
 
 	/* ignore small changes in mquant */
 	if (mquant>=8 && (mquant-prev_mquant)>=-4 && (mquant-prev_mquant)<=4)

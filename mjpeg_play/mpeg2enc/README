@@ -163,12 +163,14 @@ As a first step to better quality encoding the current source now
 uses the sum of absolute block coefficients as a measure of information
 content. Bits are then allocated on the basis of how much information
 is being covered so that bits are held back if high information
-material comes late in the frame.
+material comes late in the frame.  As a second step some attempt is made to
+guess the "right" level of quantisation for a frame in advance so that
+the (inevitably lagging) feedback control of bit-allocation only deals with
+minor fine-tuning.  This prevents annoying "oscillation" of bit-allocation".
 
 These modifications appear to give noticeable better results, greatly
-reducing fringes around sharp contrasts (e.g. titles).  
-
-Update: the new metrics still need a little more tuning. Watch this space...
+reducing fringes around sharp contrasts (e.g. titles) whilst still
+ensuring no significant bit-rate overshoots.
 
 PERFORMANCE: MMX/MMX2/SSE (A.Stevens Jul/Aug 2000)
 
@@ -208,10 +210,10 @@ merrily abuses data alignment constraints.
 
 STILL MORE PERFORMANCE?
 
-Not easy to see how bit improvements can be made without radical
+Not easy to see how big improvements can be made without radical
 rebuilding of the code.  The program still spends around 50% of its
 time in motion compesation search.  Further speed ups would require
-more aggressive algoriths. A logarithmic search with row/column sums
+more aggressive algoriths. A partial best-first search with row/column sums
 might be worth investigating for a "quick and dirty" compression mode
 with real-time pretensions.  However, to get the additional factor of
 2-3 needed to allow real-time compression on a single modern GHz CPU
@@ -220,6 +222,8 @@ other parts of the program would need to be investigated too...
 One possibility it sliding search windows based on previous motion
 compensations to keep search *small*...
 
+A small step would be to precalculate some of the quantisation calculations
+and/or add 3D-Now and SSE support for DCT/IDCT and Quantisation.
 
 BETTER QUALITY?
 
@@ -232,7 +236,6 @@ possibility would be to compare reconstructed blocks with the
 originals and take a second pass, reducing quantisation on those
 with unacceptably low SNR's.
 
-
 - It would probably be smart to replace the current pre-processor
 filtering with filtering based on modifications of the DCT quantisation
 matrices.   Strong suppression of HF coefficients would work wonders
@@ -240,6 +243,11 @@ on noise I suspect.  Update: either I'm doing it wrong or it doesn't
 work too well.  One problem is the lack of filtering messing up 
 motion compensation.
 
+- Pre-processing of the input to suppress mosaicing is a tantalising 
+possibility.
+
+- Scene change detection to allow smart GOP length determination would
+probably help quality in "extreme" situations.
 
 INPUT FORMAT
 

@@ -39,22 +39,10 @@
  * this routine also updates the predictions for motion vectors (PMV)
  */
 static void putmvs(
-#ifdef ORIGINAL_CODE 
-	pict_data_s *picture,
-	int MV[2][2][2],
-	int PMV[2][2][2],
-	int mv_field_sel[2][2],
-	int dmvector[2],
-	int back,
-	int motion_type,
-	int hor_f_code,
-	int vert_f_code
-#else
 	pict_data_s *picture,
 	mbinfo_s *mb,
 	int PMV[2][2][2],
 	int back
-#endif
 	)
 
 {
@@ -195,7 +183,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 		{
 			cur_mb = &picture->mbinfo[k];
 			cur_mb_blocks = k*block_count;
-			/* acroblock loop */
+			/* macroblock loop */
 			if (i==0)
 			{
 				/* slice header (6.2.4) */
@@ -380,31 +368,13 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 			if (mb_type & MB_FORWARD)
 			{
 				/* forward motion vectors, update predictors */
-#ifdef ORIGINAL_CODE
-				putmvs(picture,
-					   cur_mb->MV,PMV,
-					   cur_mb->mv_field_sel,
-					   cur_mb->dmvector,0,
-					   cur_mb->motion_type,
-					   picture->forw_hor_f_code,picture->forw_vert_f_code);
-#else
 				putmvs(picture, cur_mb, PMV,  0 );
-#endif
 			}
 
 			if (mb_type & MB_BACKWARD)
 			{
 				/* backward motion vectors, update predictors */
-#ifdef ORIGINAL_CODE
-				putmvs(picture,
-						cur_mb->MV,PMV,
-					   cur_mb->mv_field_sel,
-					   cur_mb->dmvector,1,
-					   cur_mb->motion_type,
-					   picture->back_hor_f_code,picture->back_vert_f_code);
-#else
 				putmvs(picture,  cur_mb, PMV, 1 );
-#endif
 			}
 
 			if (mb_type & MB_PATTERN)
