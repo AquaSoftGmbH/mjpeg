@@ -45,7 +45,7 @@ MPLEX=mplex.test
 ;;
 h)
 echo hi-res mode
-MPEGOPTS="$MPEGOPTS -h"
+MPEGOPTS="$MPEGOPTS -H"
 ;;
 X)
 echo Using test encoder max speed
@@ -83,4 +83,3 @@ cat $* | extract_a52 - -s | a52dec -m wav | \
 
 # Eventually mux-ing goes here!
 
- 
