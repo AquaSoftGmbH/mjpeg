@@ -8,24 +8,28 @@
 ##	gcc $(INCLUDES) -c v4l-conf.c
 
 ## EXTRA-DIST = README PLANS
-INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib  @QUICKTIME_INCLUDE@
-SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav mpeg2enc
-## mpeg2enc taken out temporarily, definately *don't* want to include
-## quicktime link here...
+INCLUDES = -I./mjpeg @MOVTAR_CFLAGS@ -I/usr/X11R6/lib @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
+SUBDIRS = mjpeg . aenc mpegjoin mplex utils xlav mpeg2enc
+CFLAGS=-Wall
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
 ##
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ 
-lavplay_LDADD = -lmovtar -lmjpeg
+lavplay_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
+lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/
-lavrec_LDADD = -lmovtar -lmjpeg 
+
+lavrec_LDFLAGS = -L./mjpeg/ @GLIB_LIBS@
+lavrec_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
 lavvideo_SOURCES = lavvideo.c
+
+lib_LIBRARIES = liblavio.a
+liblavio_a_SOURCES = lav_io.c avilib.c @MOVTAR_LIBS@
+include_HEADERS = lav_io.h editlist.h
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 

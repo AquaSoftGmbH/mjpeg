@@ -61,14 +61,21 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+AWK = gawk
 CC = gcc
 GLIB_CFLAGS = -I/usr/lib/glib/include
 GLIB_CONFIG = /usr/bin/glib-config
 GLIB_LIBS = -L/usr/lib -lglib
 MAINT = #
-MAKEINFO = makeinfo
+MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
+MOVTAR_CFLAGS = -I/usr/include -I/usr/local/include -I/usr/lib/glib/include
+MOVTAR_CONFIG = /usr/local/bin/movtar-config
+MOVTAR_DATA_DIR = 
+MOVTAR_LIBS = -L/usr/local/lib -L/usr/lib -lglib -lmovtar
+MOVTAR_VERSION = 0.1.0
+MTYPEFLAGS = -mpentium
 PACKAGE = lavtools
-QUICKTIME_INCLUDE = -I /usr/local/src/quicktime
+QUICKTIME_INCLUDE = 
 RANLIB = ranlib
 SDL_CFLAGS = -I/usr/include/SDL -D_REENTRANT
 SDL_CONFIG = /usr/bin/sdl-config
@@ -80,19 +87,25 @@ X_LIBS =  -L/usr/X11R6/lib
 X_PRE_LIBS =  -lSM -lICE
 x_libraries = /usr/X11R6/lib
 
-INCLUDES = -I./mjpeg -I./movtar -I/usr/X11R6/lib  -I /usr/local/src/quicktime
-SUBDIRS = mjpeg movtar . aenc mpegjoin mplex utils xlav mpeg2enc
+INCLUDES = -I./mjpeg -I/usr/include -I/usr/local/include -I/usr/lib/glib/include -I/usr/X11R6/lib -I/usr/lib/glib/include 
+SUBDIRS = mjpeg . aenc mpegjoin mplex utils xlav mpeg2enc
+CFLAGS = -Wall
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ 
-lavplay_LDADD = -lmovtar -lmjpeg
+lavplay_LDFLAGS = -L./mjpeg/ -L/usr/lib -lglib
+lavplay_LDADD = -L/usr/local/lib -L/usr/lib -lglib -lmovtar -lmjpeg
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/
-lavrec_LDADD = -lmovtar -lmjpeg 
+
+lavrec_LDFLAGS = -L./mjpeg/ -L/usr/lib -lglib
+lavrec_LDADD = -L/usr/local/lib -L/usr/lib -lglib -lmovtar -lmjpeg
 
 lavvideo_SOURCES = lavvideo.c
+
+lib_LIBRARIES = liblavio.a
+liblavio_a_SOURCES = lav_io.c avilib.c -L/usr/local/lib -L/usr/lib -lglib -lmovtar
+include_HEADERS = lav_io.h editlist.h
 
 v4l_conf_SOURCES = v4l-conf.c 
 v4l_conf_INCLUDES = -I./.. -I.. -I/usr/X11R6/lib 
@@ -100,13 +113,18 @@ v4l_conf_LINK = gcc -Wall -Wstrict-prototypes -g -O2 -D_REENTRANT -o v4l-conf v4
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_CLEAN_FILES = 
-PROGRAMS =  $(bin_PROGRAMS)
+LIBRARIES =  $(lib_LIBRARIES)
 
 
-DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DHAVE_LIBJPEG=1 -DBUILD_MJPEG=1 -DHAVE_LIBPTHREAD=1 -DHAVE_LIBPNG=1 -DHAVE_LIBJPEG=1 -DHAVE_LIBGLIB=1 -DBUILD_QUICKTIME=1  -I. -I$(srcdir) 
+DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DHAVE_LIBJPEG=1 -DBUILD_MJPEG=1 -DHAVE_LIBPTHREAD=1 -DHAVE_LIBPNG=1 -DHAVE_LIBJPEG=1 -DHAVE_LIBGLIB=1  -I. -I$(srcdir) 
 CPPFLAGS = 
 LDFLAGS = 
-LIBS = -L /usr/local/src/quicktime -lglib -ljpeg -lpng -lpthread -ljpeg  -lSDL -lquicktime
+LIBS = -lglib -ljpeg -lpng -lpthread -ljpeg  -lSDL
+liblavio_a_LIBADD = 
+liblavio_a_OBJECTS =  lav_io.o avilib.o
+AR = ar
+PROGRAMS =  $(bin_PROGRAMS)
+
 lavplay_OBJECTS =  lavplay.o avilib.o audiolib.o lav_io.o editlist.o
 lavplay_DEPENDENCIES = 
 lavrec_OBJECTS =  lavrec.o avilib.o audiolib.o lav_io.o
@@ -119,10 +137,11 @@ v4l_conf_OBJECTS =  v4l-conf.o
 v4l_conf_LDADD = $(LDADD)
 v4l_conf_DEPENDENCIES = 
 v4l_conf_LDFLAGS = 
-CFLAGS = -g -O2
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
+HEADERS =  $(include_HEADERS)
+
 DIST_COMMON =  README AUTHORS COPYING ChangeLog INSTALL Makefile.am \
 Makefile.in NEWS TODO aclocal.m4 configure configure.in install-sh \
 missing mkinstalldirs
@@ -135,8 +154,8 @@ GZIP_ENV = --best
 DEP_FILES =  .deps/audiolib.P .deps/avilib.P .deps/editlist.P \
 .deps/lav_io.P .deps/lavplay.P .deps/lavrec.P .deps/lavvideo.P \
 .deps/v4l-conf.P
-SOURCES = $(lavplay_SOURCES) $(lavrec_SOURCES) $(lavvideo_SOURCES) $(v4l_conf_SOURCES)
-OBJECTS = $(lavplay_OBJECTS) $(lavrec_OBJECTS) $(lavvideo_OBJECTS) $(v4l_conf_OBJECTS)
+SOURCES = $(liblavio_a_SOURCES) $(lavplay_SOURCES) $(lavrec_SOURCES) $(lavvideo_SOURCES) $(v4l_conf_SOURCES)
+OBJECTS = $(liblavio_a_OBJECTS) $(lavplay_OBJECTS) $(lavrec_OBJECTS) $(lavvideo_OBJECTS) $(v4l_conf_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -155,6 +174,59 @@ config.status: $(srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	$(SHELL) ./config.status --recheck
 $(srcdir)/configure: #$(srcdir)/configure.in $(ACLOCAL_M4) $(CONFIGURE_DEPENDENCIES)
 	cd $(srcdir) && $(AUTOCONF)
+
+mostlyclean-libLIBRARIES:
+
+clean-libLIBRARIES:
+	-test -z "$(lib_LIBRARIES)" || rm -f $(lib_LIBRARIES)
+
+distclean-libLIBRARIES:
+
+maintainer-clean-libLIBRARIES:
+
+install-libLIBRARIES: $(lib_LIBRARIES)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(libdir)
+	@list='$(lib_LIBRARIES)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    echo " $(INSTALL_DATA) $$p $(DESTDIR)$(libdir)/$$p"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(libdir)/$$p; \
+	  else :; fi; \
+	done
+	@$(POST_INSTALL)
+	@list='$(lib_LIBRARIES)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    echo " $(RANLIB) $(DESTDIR)$(libdir)/$$p"; \
+	    $(RANLIB) $(DESTDIR)$(libdir)/$$p; \
+	  else :; fi; \
+	done
+
+uninstall-libLIBRARIES:
+	@$(NORMAL_UNINSTALL)
+	list='$(lib_LIBRARIES)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(libdir)/$$p; \
+	done
+
+.s.o:
+	$(COMPILE) -c $<
+
+.S.o:
+	$(COMPILE) -c $<
+
+mostlyclean-compile:
+	-rm -f *.o core *.core
+
+clean-compile:
+
+distclean-compile:
+	-rm -f *.tab.c
+
+maintainer-clean-compile:
+
+liblavio.a: $(liblavio_a_OBJECTS) $(liblavio_a_DEPENDENCIES)
+	-rm -f liblavio.a
+	$(AR) cru liblavio.a $(liblavio_a_OBJECTS) $(liblavio_a_LIBADD)
+	$(RANLIB) liblavio.a
 
 mostlyclean-binPROGRAMS:
 
@@ -181,22 +253,6 @@ uninstall-binPROGRAMS:
 	  rm -f $(DESTDIR)$(bindir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
 	done
 
-.s.o:
-	$(COMPILE) -c $<
-
-.S.o:
-	$(COMPILE) -c $<
-
-mostlyclean-compile:
-	-rm -f *.o core *.core
-
-clean-compile:
-
-distclean-compile:
-	-rm -f *.tab.c
-
-maintainer-clean-compile:
-
 lavplay: $(lavplay_OBJECTS) $(lavplay_DEPENDENCIES)
 	@rm -f lavplay
 	$(LINK) $(lavplay_LDFLAGS) $(lavplay_OBJECTS) $(lavplay_LDADD) $(LIBS)
@@ -212,6 +268,21 @@ lavvideo: $(lavvideo_OBJECTS) $(lavvideo_DEPENDENCIES)
 v4l-conf: $(v4l_conf_OBJECTS) $(v4l_conf_DEPENDENCIES)
 	@rm -f v4l-conf
 	$(v4l_conf_LINK) $(v4l_conf_LDFLAGS) $(v4l_conf_OBJECTS) $(v4l_conf_LDADD) $(LIBS)
+
+install-includeHEADERS: $(include_HEADERS)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(includedir)
+	@list='$(include_HEADERS)'; for p in $$list; do \
+	  if test -f "$$p"; then d= ; else d="$(srcdir)/"; fi; \
+	  echo " $(INSTALL_DATA) $$d$$p $(DESTDIR)$(includedir)/$$p"; \
+	  $(INSTALL_DATA) $$d$$p $(DESTDIR)$(includedir)/$$p; \
+	done
+
+uninstall-includeHEADERS:
+	@$(NORMAL_UNINSTALL)
+	list='$(include_HEADERS)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(includedir)/$$p; \
+	done
 
 # This directory's subdirectories are mostly independent; you can cd
 # into them and run `make' without going through this Makefile.
@@ -348,7 +419,7 @@ distdir: $(DISTFILES)
 	@for file in $(DISTFILES); do \
 	  d=$(srcdir); \
 	  if test -d $$d/$$file; then \
-	    cp -pr $$d/$$file $(distdir)/$$file; \
+	    cp -pr $$/$$file $(distdir)/$$file; \
 	  else \
 	    test -f $(distdir)/$$file \
 	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \
@@ -405,24 +476,26 @@ check-am: all-am
 check: check-recursive
 installcheck-am:
 installcheck: installcheck-recursive
-install-exec-am: install-binPROGRAMS
+install-exec-am: install-libLIBRARIES install-binPROGRAMS
 install-exec: install-exec-recursive
 
-install-data-am:
+install-data-am: install-includeHEADERS
 install-data: install-data-recursive
 
 install-am: all-am
 	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
 install: install-recursive
-uninstall-am: uninstall-binPROGRAMS
+uninstall-am: uninstall-libLIBRARIES uninstall-binPROGRAMS \
+		uninstall-includeHEADERS
 uninstall: uninstall-recursive
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(HEADERS)
 all-redirect: all-recursive
 install-strip:
 	$(MAKE) $(AM_MAKEFLAGS) AM_INSTALL_PROGRAM_FLAGS=-s install
 installdirs: installdirs-recursive
 installdirs-am:
-	$(mkinstalldirs)  $(DESTDIR)$(bindir)
+	$(mkinstalldirs)  $(DESTDIR)$(libdir) $(DESTDIR)$(bindir) \
+		$(DESTDIR)$(includedir)
 
 
 mostlyclean-generic:
@@ -434,40 +507,45 @@ distclean-generic:
 	-rm -f config.cache config.log stamp-h stamp-h[0-9]*
 
 maintainer-clean-generic:
-mostlyclean-am:  mostlyclean-binPROGRAMS mostlyclean-compile \
-		mostlyclean-tags mostlyclean-depend mostlyclean-generic
+mostlyclean-am:  mostlyclean-libLIBRARIES mostlyclean-compile \
+		mostlyclean-binPROGRAMS mostlyclean-tags \
+		mostlyclean-depend mostlyclean-generic
 
 mostlyclean: mostlyclean-recursive
 
-clean-am:  clean-binPROGRAMS clean-compile clean-tags clean-depend \
-		clean-generic mostlyclean-am
+clean-am:  clean-libLIBRARIES clean-compile clean-binPROGRAMS clean-tags \
+		clean-depend clean-generic mostlyclean-am
 
 clean: clean-recursive
 
-distclean-am:  distclean-binPROGRAMS distclean-compile distclean-tags \
-		distclean-depend distclean-generic clean-am
+distclean-am:  distclean-libLIBRARIES distclean-compile \
+		distclean-binPROGRAMS distclean-tags distclean-depend \
+		distclean-generic clean-am
 
 distclean: distclean-recursive
 	-rm -f config.status
 
-maintainer-clean-am:  maintainer-clean-binPROGRAMS \
-		maintainer-clean-compile maintainer-clean-tags \
-		maintainer-clean-depend maintainer-clean-generic \
-		distclean-am
+maintainer-clean-am:  maintainer-clean-libLIBRARIES \
+		maintainer-clean-compile maintainer-clean-binPROGRAMS \
+		maintainer-clean-tags maintainer-clean-depend \
+		maintainer-clean-generic distclean-am
 	@echo "This command is intended for maintainers to use;"
 	@echo "it deletes files that may require special tools to rebuild."
 
 maintainer-clean: maintainer-clean-recursive
 	-rm -f config.status
 
-.PHONY: mostlyclean-binPROGRAMS distclean-binPROGRAMS clean-binPROGRAMS \
-maintainer-clean-binPROGRAMS uninstall-binPROGRAMS install-binPROGRAMS \
-mostlyclean-compile distclean-compile clean-compile \
-maintainer-clean-compile install-data-recursive \
-uninstall-data-recursive install-exec-recursive \
-uninstall-exec-recursive installdirs-recursive uninstalldirs-recursive \
-all-recursive check-recursive installcheck-recursive info-recursive \
-dvi-recursive mostlyclean-recursive distclean-recursive clean-recursive \
+.PHONY: mostlyclean-libLIBRARIES distclean-libLIBRARIES \
+clean-libLIBRARIES maintainer-clean-libLIBRARIES uninstall-libLIBRARIES \
+install-libLIBRARIES mostlyclean-compile distclean-compile \
+clean-compile maintainer-clean-compile mostlyclean-binPROGRAMS \
+distclean-binPROGRAMS clean-binPROGRAMS maintainer-clean-binPROGRAMS \
+uninstall-binPROGRAMS install-binPROGRAMS uninstall-includeHEADERS \
+install-includeHEADERS install-data-recursive uninstall-data-recursive \
+install-exec-recursive uninstall-exec-recursive installdirs-recursive \
+uninstalldirs-recursive all-recursive check-recursive \
+installcheck-recursive info-recursive dvi-recursive \
+mostlyclean-recursive distclean-recursive clean-recursive \
 maintainer-clean-recursive tags tags-recursive mostlyclean-tags \
 distclean-tags clean-tags maintainer-clean-tags distdir \
 mostlyclean-depend distclean-depend clean-depend \

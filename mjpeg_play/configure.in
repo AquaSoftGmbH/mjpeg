@@ -7,6 +7,7 @@ AM_MAINTAINER_MODE
 
 
 dnl Checks for programs.
+dnl AM_PROG_LIBTOOL
 AC_PROG_CC
 AC_PROG_RANLIB
 
@@ -144,7 +145,13 @@ i586)
 esac
 
 
+
+AM_PATH_MOVTAR(0.0.2, have_movtar="yes", have_movtar="no")
+AC_SUBST(MOVTAR_CFLAGS)
+AC_SUBST(MOVTAR_LIBS)
+
 AM_CONDITIONAL(X86CPU, test $x86cpu=yes   )
+
 
 AC_OUTPUT(Makefile
 	movtar/Makefile
@@ -157,7 +164,9 @@ echo ""
 echo " lavtools ${VERSION} build configuration :"
 echo ""
 echo "    - software MJPEG playback     : ${have_sdl}"
+echo "    - movtar playback/recording   : ${have_movtar}"
 echo "    - Quicktime playback/recording: ${have_quicktime}"
+echo "    - AVI MJPEG playback/recording: yes (always)"
 echo ""
 
 
