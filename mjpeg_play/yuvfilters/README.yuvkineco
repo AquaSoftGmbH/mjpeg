@@ -50,8 +50,6 @@ yuvycsnoise
   at vertical stripe (especialy red/blue), noises appear
   which seem checker flag and bright/dark invert per 1 frame.
   yuvycsnoise reduces noises of this type.
-  Only Y noise reduced because UV noise should be
-  removed when convert to 4:2:0 from 4:2:2.
   Options:
     -t		test. Instead of noise reduction, noises will be
 		marked as black pixel.
@@ -64,7 +62,7 @@ yuvycsnoise
 		c: chroma noise reduction. use 3 frames as 'triframe'.
     -S MIN		(default: 4).
 		Set minimum threshold of luma/chroma difference
-		which   is treated as noise.
+		which is treated as noise.
     -T ERRT[,MAXT]	(default: 32,255).
     -B ERRB[,MAXB]	(default: 32,255).
     -I ERRI[,MAXI]	(default: 16,255).

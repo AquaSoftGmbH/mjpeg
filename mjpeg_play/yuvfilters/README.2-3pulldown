@@ -20,14 +20,14 @@ NTSC fields  0T |  1T |  2T |  3T |  4T |
 
 In analog video world, this process is called 2-3 pulldown,
 because NTSC video is repeating of 2 fields from original 1 frame
-and 2 fields from original 1 frame.
+and 3 fields from original 1 frame.
 
 
 What is 3:2 pulldown?
 
-FILM is recorded in DVD(MPEG2) for NTSC at 24fps
-(to be exact, 24/1.001fps).  Some flags is also recorded on each frame.
-DVD player use top_field_first flag and repeat_first_field flag
+FILM is recorded in MPEG2 / DVD video for NTSC at 24fps
+(to be exact, 24/1.001fps).  Some flags are also recorded on each frame.
+DVD video player use top_field_first flag and repeat_first_field flag
 to play 30fps (to be exact, 30/1.001fps) for NTSC monitor.
 
 FILM frames         0     1        2     3
@@ -44,7 +44,7 @@ This process is called 3:2 pulldown.
 
 What is different 2-3 pulldown and 3:2 pulldown?
 
-Result seem same.
+Results seem same.
 Difference of name is maybe where to start counting:
 2 fields or 3 fields.
 2-3 pulldown is processed before recording and recorded at 30fps.
