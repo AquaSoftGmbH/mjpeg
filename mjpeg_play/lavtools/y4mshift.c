@@ -12,7 +12,7 @@
  * Simple program to shift the data an even number of pixels.   The shift count
  * is positive for shifting to the right and negative for a left shift.   
  *
- * Usage: y4mfill -n N [ -b xoffset,yoffset,xsize,ysize ]
+ * Usage: y4mshift -n N [ -b xoffset,yoffset,xsize,ysize ]
  *
  * No file arguments are needed since this is a filter only program.
 */
