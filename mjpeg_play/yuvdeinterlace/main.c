@@ -20,6 +20,7 @@
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include "motionsearch.h"
 
 #define BLK 16
 #define TR 128
@@ -77,6 +78,8 @@ int main(int argc, char *argv[])
   y4m_frame_info_t  frameinfo;
   y4m_stream_info_t streaminfo;
 
+  init_motion_search();
+
   /* initialize stream-information */
   y4m_init_stream_info (&streaminfo);
   y4m_init_frame_info (&frameinfo);
@@ -112,37 +115,52 @@ int main(int argc, char *argv[])
 	{
 	    int x,y;
 
-	for(y=1;y<height;y+=2)
-	    for(x=0;x<width;x++)
-		*(frame2[0]+x+y*width)=
-		    ( *(frame2[0]+x+(y-1)*width)+
-		      *(frame2[0]+x+(y+1)*width)  )/2;
+	    for(y=0;y<height;y+=2)
+		for(x=0;x<width;x++)
+		{
+		    float a,b,c;
+		    float o[4];
+		    float v;
+		    
+		    o[0]=*(frame1[0]+x+(y-2)*width);
+		    o[1]=*(frame1[0]+x+(y+0)*width);
+		    o[2]=*(frame1[0]+x+(y+2)*width);
+		    o[3]=*(frame1[0]+x+(y+4)*width);
+		    
+		    a = ( 3.f * ( o[1] - o[2] ) - o[0] + o[3] )/2.f;
+		    b = 2.f * o[2] + o[0] - ( 5.f * o[1] + o[3] ) / 2.f;
+		    c = ( o[2] - o[0] ) / 2.f;
+		    
+		    v = a * 0.125 + b * 0.25 + c * 0.5 + o[1];
+		    
+		    *(frame1[0]+x+(y+1)*width)=v;
+		}
 
-	for(y=0;y<height;y+=2)
-	    for(x=0;x<width;x++)
-		*(frame1[0]+x+y*width)=
-		    ( *(frame1[0]+x+(y-1)*width)+
-		      *(frame1[0]+x+(y+1)*width)  )/2;
+	    for(y=1;y<height;y+=2)
+		for(x=0;x<width;x++)
+		{
+		    float a,b,c;
+		    float o[4];
+		    float v;
+		    
+		    o[0]=*(frame2[0]+x+(y-2)*width);
+		    o[1]=*(frame2[0]+x+(y+0)*width);
+		    o[2]=*(frame2[0]+x+(y+2)*width);
+		    o[3]=*(frame2[0]+x+(y+4)*width);
+		    
+		    a = ( 3.f * ( o[1] - o[2] ) - o[0] + o[3] )/2.f;
+		    b = 2.f * o[2] + o[0] - ( 5.f * o[1] + o[3] ) / 2.f;
+		    c = ( o[2] - o[0] ) / 2.f;
+		    
+		    v = a * 0.125 + b * 0.25 + c * 0.5 + o[1];
+		    v = v>240? 240:v;
+		    v = v<16 ? 16:v;
 
-	for(y=1;y<height;y++)
-	    for(x=0;x<width;x++)
-		*(frame4[0]+x+y*width)=
-		    ( *(frame2[0]+x+(y-2)*width)+
-		      *(frame2[0]+x+(y-1)*width)+ 
-		      *(frame2[0]+x+(y+0)*width)+ 
-		      *(frame2[0]+x+(y+1)*width)+ 
-		      *(frame2[0]+x+(y+2)*width)  )/5;
-
-	for(y=1;y<height;y++)
-	    for(x=0;x<width;x++)
-		*(frame5[0]+x+y*width)=
-		    ( *(frame1[0]+x+(y-2)*width)+
-		      *(frame1[0]+x+(y-1)*width)+ 
-		      *(frame1[0]+x+(y+0)*width)+ 
-		      *(frame1[0]+x+(y+1)*width)+ 
-		      *(frame1[0]+x+(y+2)*width)  )/5;
+		    *(frame2[0]+x+(y+1)*width)=v;
+		}
+	    
 	}
-
+	
 #if 1
 	// motion compensate the true 2nd field to the interpolated one
 	{ 
@@ -164,12 +182,13 @@ int main(int argc, char *argv[])
 		    vlist[1].y=0;
 		    vlist[1].SAD=0xffffff;
 
-		    for(vy=-8;vy<8;vy++)
-			for(vx=-8;vx<8;vx++)
+		    for(vy=-16;vy<16;vy++)
+			for(vx=-16;vx<16;vx++)
 			{
 			    addr1=(xx   )+(yy   )*width;
 			    addr2=(xx+vx)+(yy+vy)*width;
-			    SAD=calc_SAD_mmxe(frame5[0]+addr1,frame4[0]+addr2);
+			    //SAD=calc_SAD_mmxe(frame5[0]+addr1,frame4[0]+addr2);
+			    SAD=psad_00(frame1[0]+addr1,frame2[0]+addr2,width,16,0);
 
 			    if(SAD<=vlist[0].SAD)
 			    {
@@ -197,7 +216,7 @@ int main(int argc, char *argv[])
 
 		    // transform the sourceblock by that vector if match is good
 		    // else use interpolation
-		    if(SAD<=mean_SAD/2)
+		    if(SAD<=(mean_SAD*3))
 			for(y=0;y<16;y++)
 			    for(x=0;x<16;x++)
 			    {
@@ -209,9 +228,9 @@ int main(int argc, char *argv[])
 			    for(x=0;x<16;x++)
 			    {
 				*(frame3[0]+(xx+x   )+(yy+y   )*width) = 
-				    (*(frame1[0]+(xx+x)+(yy+y+1)*width)>>1)+
-				    (*(frame1[0]+(xx+x)+(yy+y-1)*width)>>1);
+				    *(frame1[0]+(xx+x)+(yy+y)*width);
 			    }			
+
 		}
 	    sum_SAD  = sum_SAD*256/width/height;
 	    mean_SAD = sum_SAD>mean_SAD? sum_SAD:mean_SAD;
@@ -224,24 +243,25 @@ int main(int argc, char *argv[])
 	
 #endif
 
-#if 1	
+#if 0	
 	{
 	    int x,y;
 
 	    for(y=0;y<height;y+=2)
 		for(x=0;x<width;x++)
 		{
-		    *(frame1[0]+x+y*width)=
-			*(frame3[0]+x+y*width);
+		    *(frame3[0]+x+y*width)=
+			*(frame2[0]+x+y*width);
 		}
 	}
 #endif
 
 	/* write output-frame */
+
 	y4m_write_frame ( fd_out, 
 			  &streaminfo, 
 			  &frameinfo, 
-			  frame1);
+			  frame2);
 
     }
     
