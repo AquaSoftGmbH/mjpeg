@@ -92,5 +92,6 @@ mpeg2enc_LDADD= libmpeg2encpp.la \
 
 %.o: %.s ; 	$(AS) $(ASFLAGS) -o $@ $<
 
+%.o: %.x86c ; 	$(CC) $(CFLAGS) -mmmx -o $@ $<
 
 # Comment....

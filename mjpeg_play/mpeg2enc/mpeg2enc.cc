@@ -764,6 +764,7 @@ YUV4MPEGEncoder::YUV4MPEGEncoder( MPEG2EncCmdLineOptions &cmd_options ) :
     parms.Init( options );
     reader->Init();
     quantizer->Init();
+    
 
 }
 
@@ -776,6 +777,7 @@ int main( int argc,	char *argv[] )
 	mjpeg_default_handler_verbosity(options.verbose);
     if( options.SetFromCmdLine( argc, argv ) != 0 )
 		options.Usage();
+	mjpeg_default_handler_verbosity(options.verbose);
 
     YUV4MPEGEncoder encoder( options );
     encoder.seqencoder->Encode();

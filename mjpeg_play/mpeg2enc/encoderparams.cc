@@ -213,7 +213,7 @@ void EncoderParams::Init( const MPEG2EncOptions &options )
 	M = options.Bgrp_size;             /* I or P frame distance */
 	M_min = options.preserve_B ? M : 1;
 	if( M >= N_min )
-		M = N_min-1;
+		M = N_min;
 	mpeg1           = (options.mpeg == 1);
 	fieldpic        = (options.fieldenc == 2);
 

@@ -43,7 +43,7 @@
 #define I_TYPE 1
 #define P_TYPE 2
 #define B_TYPE 3
-#define D_TYPE 4
+#define NUM_PICT_TYPES 3
 
 /* picture structure */
 #define TOP_FIELD     1
