@@ -1,8 +1,8 @@
 #!/bin/sh
 #
-# Dieses Shell-Script setzt fr die AVI-files das
+# Dieses Shell-Script setzt für die AVI-files das
 # Verzeichnis /video voraus - bei mir ein Link auf
-# das tats„chliche Verzeichnis.
+# das tatsächliche Verzeichnis.
 #
 # This shell-sript assumes a directory /video for the AVI-files
 # (This might be well a link to your actual directory.
@@ -20,15 +20,15 @@ direct=/video  # !!!!
 # Editlists must not start with captials.
 # Of course it's up to you to change this :-))
 #
-# Die Qualit„tsangabe ist ein wenig obsolet:
-# Eigentlich ist bei Wiedergabe ber einen DVD-Player
+# Die Qualitätsangabe ist ein wenig obsolet:
+# Eigentlich ist bei Wiedergabe über einen DVD-Player
 # alles unter 75 wenig sinnvoll.
 #
 # mpeg 2 und SVCD verlangen 720x576 anders geht es noch nicht!
 #
 # Wegen des Shellscripts "codiere" verwende ich folgende Konvention:
 # Dateinamen, die mit Grossbuchstaben beginnen, sind AVI-files.
-# editlisten beginnen mit Kleinbuchstaben. Man kann das natrlich
+# editlisten beginnen mit Kleinbuchstaben. Man kann das natürlich
 # auch anders machen. :-))
 #
 echo -e "Dateiname (Bitte mit Grossbuchstaben anfangen) ?? \c"
@@ -36,7 +36,7 @@ echo -e "Dateiname (Bitte mit Grossbuchstaben anfangen) ?? \c"
 # English: echo -e "Filename to record to (Please start with captial) ?? \c"
 #
 read titel
-echo -e "Qualit„t 30 -100 ( Enter = 100 ) \c"
+echo -e "Qualität 30 -100 ( Enter = 100 ) \c"
 #
 # English: echo -e "Quality 30 - 100 (ENTER = 100 ) \c"
 #
@@ -67,7 +67,7 @@ then
 minuten=180
 fi
 zeit=`expr $minuten \* 60`
-echo " Aufnahmedauer fr $titel: $zeit Sekunden "
+echo " Aufnahmedauer für $titel: $zeit Sekunden "
 #
 # English: echo "Recording time for $titel: $zeit seconds "
 #
@@ -85,7 +85,7 @@ fi
 sleep $warte
 lavrec -f a -i p -c 2 -a 16 $format -s -r 44100 -l 90 -R l -q $qual -t $zeit $direct/${titel}%03d.avi
 #
-# c = Korrektur fr audio und video Sync  t=sekunden
+# c = Korrektur für audio und video Sync  t=sekunden
 # f = format ( A und a sind Avi )
 #
 
