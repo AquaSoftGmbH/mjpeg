@@ -1,0 +1,198 @@
+This file describes the internal implementation of yuvscaler.
+
+Variable name are between $$ like $$Variabel_name$$
+
+********
+OVERVIEW
+********
+
+Basically, yuvscaler is a scaling program that works sequentially on the
+video stream to be treated, that is single frame by single frame. An input
+frame is read, it is then scaled, and the resulting frame is written on
+output. Frame number is $$frame_num$$. Frames are interleaved and they have
+the three components YUV with U and V at quarter resolution.
+
+
+Input frame Y component is of width $$input_width$$ and of height
+$$input_height$$, therefore U and V components are of size
+$$input_width$$/2*$$input_heith$$/2. Input frame is accessed exclusively
+through the pointer $$input$$ which points to 
+3/2*$$input_width$$*$$input_height$$ unsigned integer stored on 8bit
+(uint8_t).
+
+
+Once scaled, input frame $$input$$ becomes the output frame accessed
+exclusively through $$output$$ pointer, where output frame Y component size
+is $$output_width$$*$$output_height$$.
+
+
+*****
+INPUT => variable names begin with input_
+*****
+
+Two areas might be defined inside Input frame. First area is the useful area
+and second area is the active area. 
+
+
+Input useful area (-I USE_WWxHH+x+y argument)
+-----------------
+Everything outside the useful area is discarded. This area (Y component) is of size
+$$input_useful_width$$*$$input_useful_height$$. And as it is not necesseraly
+centered, we also define $$input_discard_col_left$$ (number of columns
+discard on the left side of the input frame),
+$$input_discard_col_right$$, $$input_discard_line_above$$ and
+$$input_discard_line_under$$.
+So, we have the relations:
+input_width=input_useful_width+input_discard_col_left+input_discard_col_right
+input_height=input_useful_height+input_discard_line_above+input_discard_line_under
+Illustration:
+
+input frame
+---------------------------------------------------------------------------
+                     ^                         ^                          |					       
+                     | input_discard_line_above|                          |
+		                                                          |
+input_discard  ---------------------------------------  input_discard     |
+_col_left      |     ^                               |  _col_right        |
+<------------->|     |   input_useful_width          |<------------------>|
+               |<----------------------------------->|                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |input_useful_height            |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |     USEFUL AREA               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     |                               |                    |
+               |     \                               |                    |
+               ---------------------------------------                    |
+                     ^                         ^                          |
+                     | input_discard_line_under|                          |
+--------------------------------------------------------------------------|
+
+As a consequence, we must take into account ONLY what is inside the useful
+area. So, we define three new pointers: $$input_y$$, $$input_u$$ and
+$$input_v$$ that points respectively on the first USEFUL element of the Y
+(resp. U and V) component.
+So, BEWARE, data scaling (for Y) will only take into account lines that are 
+$$input_useful_width$$ elements long BUT are spaced one to another by $$input_width$$
+elements, and that stars at $$input_y$$, not $$input$$. The same stands for
+U and V components.
+
+Input active area:
+------------------
+Everything outside the active area is considered to be black pixels.
+Similarly to the useful area, we define six variables:
+$$input_active_width$$ and $$input_active_height$$
+$$input_black_line_above$$ and $$input_black_line_under$$
+$$input_black_col_left$$ and $$input_black_col_right$$
+
+
+********
+SCALING
+********
+
+yuvscaler uses two different algorithms to scale an image:
+- the resample algorithm used to DOWNscale an image
+- the bicubic algorithm used to DOWNsclae or UPScale an image
+Moreover, there is a subdivision in each algorithm: interlaced or not-interlaced algorithm
+
+Scaling factors
+---------------
+As scaling factors may not be the same along width and height, we defined
+two scaling factors. For [width|height], $$input_[width|height]_slice$$ input pixels will be
+scaled to $$output_[width|height]_slice$$ pixels. Moreover,
+$$input_[width|height]_slice$$ and $$output_[width|height]_slice$$ are taken
+as irreductible (thanks to the pgcd function).
+
+RESAMPLE ALGORITHM
+------------------
+The resample algorithm is, in fact, the natural way you will average
+(downscale) a certain number of input pixels into a smaller number of output
+pixels.
+For example, let us average 11 pixels into 5 pixels. If each input pixels is
+drawn as 5 units long and each output pixels as 11 units long, then input
+pixels contributes to the corresponding output pixels of the amount they
+intersect with it.
+--------------------------------------------------------
+| 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | input
+--------------------------------------------------------
+|     1    |    2     |    3     |    4     |     5    | output
+--------------------------------------------------------
+Thus, for example, output pixel number 4 will be equal to
+(2/5*input_pixel7+5/5*input_pixel8+4/5input_pixel9)/11, which may be
+rewritten as
+(2*input_pixel7+5*input_pixel8+4input_pixel9)/(5*11).
+It is the function average_coeff that calculates the multiplicative
+coefficents, here 2, 5 and 4.
+
+
+For the resample scaling of one image may be decomposed into the scaling a certain
+number of sub-pictures called slice. Each slice is of dimensions
+$$input_width_slice$$*$$input_height_slice$$ on input and
+$$output_width_slice$$*$$output_height_slice$$ on output. There are
+$$out_nb_line_slice$$ slices along the width and $$out_nb_col_slice$$ slices
+along the height. So, for both scaling algorithm implementation, we "just"
+have to implement scaling of a single slice and repeat the same process on all the
+slices. Thus, resample function is implemented as:
+
+for (out_line_slice = 0; out_line_slice < out_nb_line_slice;
+out_line_slice++) {
+    for (out_col_slice = 0; out_col_slice < out_nb_col_slice;
+    out_col_slice++) {
+    
+    *****SINGLE SLICE RESAMPLE SCALING********
+    
+    }
+}
+
+BICUBIC ALGORITHM
+-----------------
+Not so simple to explain and understand, but I will give it a try.... later!
+
+
+
+
+*********
+OUTPUT => variables names begin with output_ or display_
+*********
+
+It is a bit more complicated than input in the sense that part of the output frame
+(resulting from scaling from the input frame) may not be displayed, or, on
+the contrary, output frame may be smaller than the display size.
+
+Display:
+--------
+The display size is $$display_width$$*$$display_height$$ and is usually
+defined on the command line (-O [VCD|SVCD|SIZE_WWxHH] argument). This is the
+size of the frame that will be outputted by yuvscaler.
+
+Output size:
+------------
+By multipling input USEFUL size by the (irreductible) scaling ratios
+$$input_width_slice$$/$$output_width_slice$$ and 
+$$input_height_slice$$/$$output_height_slice$$, output size
+$$output_width$$*$$output_height$$ is determined. If we now compare
+$$output_width$$ and $$display_width$$:
+- if $$display_width$$ is the smaller, then part of the output frame will not be displayed => we define
+$$output_skip_col_[left|right]$$ so that display is centered relative to
+output.
+- if $$display_width$$ is the bigger, then the output frame is too small and
+it will be completed by black borders => we define
+$$output_black_col_[left|right]$$ so that output frame is centered inside
+display frame
+Doing the same thing with height, we define
+$$output_skip_line_[above|under]$$ and $$output_black_line_[above|under]$$ 
+
+
+***********
+FRAME PREPROCESSING
+***********
+There is currently one frame preprocessing function, the line_switch
+function: it will switch lines two by two just after the frame was read and
+before it is scaled.
