@@ -34,6 +34,7 @@ static int   param_quality = 80;
 static char  param_format = 'a';
 static char *param_output = 0;
 static int   param_bufsize = 256*1024; /* 256 kBytes */
+static int   param_interlace = -1;
 
 static int got_sigint = 0;
 
@@ -44,7 +45,22 @@ static void usage (){
    fprintf (stderr, "Usage:  yuv2lav [params] -o <filename>\n"
                     "where possible params are:\n"
 			        "   -v num      Verbosity [0..2] (default 1)\n"
-                    "   -f [aAqm]   output format (AVI/Quicktime/movtar) [%c]\n"
+                    "   -f [aA"
+#ifdef HAVE_LIBQUICKTIME
+                             "q"
+#endif
+#ifdef HAVE_LIBMOVTAR
+                              "m"
+#endif
+                               "]   output format (AVI"
+#ifdef HAVE_LIBQUICKTIME
+                                                     "/Quicktime"
+#endif
+#ifdef HAVE_LIBMOVTAR
+                                                               "/movtar"
+#endif
+                                                                      ") [%c]\n"
+                    "   -I num      force output interlacing 0:no 1:odd 2:even field first\n"
                     "   -q num      JPEG encoding quality [%d%%]\n"
                     "   -b num      size of MJPEG buffer [%d kB]\n"
                     "   -o file     output mjpeg file (REQUIRED!) \n",
@@ -73,7 +89,7 @@ int main(int argc, char *argv[])
    unsigned char *yuv[3];
 
 
-   while ((n = getopt(argc, argv, "v:f:q:b:o:")) != -1) {
+   while ((n = getopt(argc, argv, "v:f:I:q:b:o:")) != -1) {
       switch (n) {
       case 'v':
          verbose = atoi(optarg);
@@ -87,16 +103,34 @@ int main(int argc, char *argv[])
          switch (param_format = optarg[0]) {
          case 'a':
          case 'A':
+#ifdef HAVE_LIBQUICKTIME
          case 'q':
+#endif
+#ifdef HAVE_LIBMOVTAR
          case 'm':
+#endif
             /* do interlace setting here? */
             continue;
          default:
-            mjpeg_error( "-f parameter must be one of [aAqm]\n");
+            mjpeg_error( "-f parameter must be one of [aA"
+#ifdef HAVE_LIBQUICKTIME
+                                                        "q"
+#endif
+#ifdef HAVE_LIBMOVTAR
+                                                         "m"
+#endif
+                                                          "]\n");
             usage ();
             exit (1);
          }
          break;
+      case 'I':
+	 param_interlace = atoi(optarg);
+         if (2 < param_interlace) {
+            mjpeg_error("-I parameter must be one of 0,1,2\n");
+            exit (1);
+         }
+	 break;
       case 'q':
          param_quality = atoi (optarg);
          if ((param_quality<24)||(param_quality>100)) {
@@ -116,9 +150,15 @@ int main(int argc, char *argv[])
          exit(1);
       }
    }
-   
+
    if (!param_output) {
       mjpeg_error( "yuv2lav needs an output filename\n");
+      usage ();
+      exit (1);
+   }
+   if (param_interlace == 2 &&
+       (param_format == 'q' || param_format == 'm')) {
+      mjpeg_error("cannot use -I 2 with -f %c\n", param_format);
       usage ();
       exit (1);
    }
@@ -131,6 +171,9 @@ int main(int argc, char *argv[])
       exit (1);
    }
    
+   if (0 <= param_interlace) {
+       n = param_interlace;
+   } else
    /* how to determine if input is interlaced? at the moment, we can do this
       via the input frame height, but this relies on PAL/NTSC standard input: */
    if (((height >  288) && (frame_rate_code == 3)) ||  /* PAL */
@@ -138,6 +181,10 @@ int main(int argc, char *argv[])
        n = (param_format == 'A') ? LAV_INTER_EVEN_FIRST : LAV_INTER_ODD_FIRST;
    } else                                              /* 24fps movie, etc. */
        n = LAV_NOT_INTERLACED;
+   if      (n == LAV_INTER_ODD_FIRST  && param_format == 'A')
+      param_format = 'a';
+   else if (n == LAV_INTER_EVEN_FIRST && param_format == 'a')
+      param_format = 'A';
 
    output = lav_open_output_file (param_output, param_format, width, height, n,
                                   yuv_mpegcode2fps (frame_rate_code),
