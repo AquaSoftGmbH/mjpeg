@@ -15,7 +15,7 @@ mplex_SOURCES = \
 	main.cc	\
 	interact.cc		interact.hh \
 	bits.cc 		bits.hh	\
-	buffer.cc 		\
+	buffer.cc 		buffer.hh \
 	inptstrm.cc 		\
 	multplex.cc 	outputstream.hh	\
 	systems.cc 		systems.hh \
