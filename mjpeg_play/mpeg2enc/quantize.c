@@ -180,31 +180,39 @@ int *pmquant;
   int clipvalue  = mpeg1 ? 255 : 2047;
   int imquant = (IQUANT_SCALE/mquant);
 
- /*
+#ifdef TESTING_QUANT
   int tstclip;
   short tst[64];
 
- 
-
+ 	/* 
   tstclip = quant_non_intra_inv( src,tst,quant_mat, i_quant_mat,imquant, mquant, pmquant);
-  tstclip = quantize_ni_mmx( tst, src, quant_mat, i_quant_mat, 
-  						(IQUANT_SCALE/mquant), mquant, clipvalue ) & 0xffff;
-  */
-
-  /* MMX Quantizer currently disabled: occasionally causes artefacts due to
-  	 a somewhat different rounding behaviour from the reference code...
-  */
+	*/
+   tstclip = quantize_ni_mmx( tst, src, quant_mat, i_quant_mat, 
+  						imquant, mquant, clipvalue );
+	if( tstclip & 0xffff0000 == 0 )
+	{
+		printf( "Zero block flag!");
+	}
+	if( tstclip & 0xffff != 0)
+   		printf( "S" ); 
+#endif
+  /* MMX Quantizer maintains its own local buffer... dst will be unchanged if
+  	it flags saturation...
+    */
 #if (defined(MMX) || defined(SSE))
-	  int  ret = quantize_ni_mmx( quant_buf, src, quant_mat, i_quant_mat, 
+	  int  ret = quantize_ni_mmx( dst, src, quant_mat, i_quant_mat, 
 	  			                 imquant, mquant, clipvalue );
 	  nzflag = ret & 0xffff0000;
 	  
-	  /* We had a saturation problem with the MMX code revert to the tougher integer C
-	  	code
-		*/
-	  if( ret & 0xffff )
+			
+	/* The fast MMX routines have a limited dynamic range.  We simply fall back to
+		stanard routines in the (rather rare) cases when they detected out of
+		range values...
+	*/
+
+	  if( (ret & 0xffff) != 0)
 	  {
-	  	printf( "MMX saturation - reversion\n" );
+	  	 fprintf( stderr, "S" );
 #endif
 
  	 	do
@@ -223,27 +231,38 @@ int *pmquant;
 			y = (32*abs(x) + (d>>1))/(d*2*mquant);
 			if (y > clipvalue)
 				y = clipvalue;
-			nzflag |= (quant_buf[i] = samesign(src[i],y));
+			nzflag |= (dst[i] = samesign(src[i],y));
 			
+#ifdef TESTING_QUANT
+			if( quant_buf[i] != tst[i]  )
+			{
+		        int y1,y2, y3,rnd;
+				int p = x*32+d/2;
+				int id = i_quant_mat[i];
+				int iq = imquant;
+				y1 = ((p * id) + p )>>16;
+				rnd = y1;
+				y2 = (y1 * iq);
+				y3 = (y2 + rnd) / (2*IQUANT_SCALE);
+				printf( "mm2 = %d, [ecx] = %d, res = %d\n", tst[i],tst[i+4],tst[i+8]);
+				printf( "I=%d (%d/%d*2*%d) IQ=%d T=%d MMX=%d ID=%d %d %d %d\n", 
+				i, p, quant_mat[i], mquant, iq,
+				dst[i], tst[i], id,
+					y1, y2>>16, y3
+				  );
+				exit(0);
+			}
+#endif			
 		  }
-			  /*
-				  TODO: BUG: THis *has* to be bogus in the event of non-linear mquant
-				  values being chosen...
-			if( clipping )
-	  		mquant += 2;
-					  */
 		
 	  }
   	while( clipping );
 #if (defined(MMX) || defined(SSE))
   }
 #endif
-	/* TODO:  THis is bogus until it properly rescales in the non-linear case....
-	for now we just do simple saturation...
+	/* TODO:  we ouught to add code to adjust mquant rather than simply saturate */
+
   *pmquant = mquant;
-  	*/
-  
-  memcpy( dst, quant_buf, 64*sizeof(short) );
 
   return !!nzflag;
 }

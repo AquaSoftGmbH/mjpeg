@@ -38,7 +38,7 @@ CC = gcc
 SSEFLAGS=-DSSE
 #MMXFLAGS=-DMMX
 
-CFLAGS = -O6 $(SSEFLAGS) $(MMXFLAGS) -mpentiumpro -Wall -I .. -I ../jpeg-6b 
+CFLAGS = -pg -O6 $(SSEFLAGS) $(MMXFLAGS) -mpentiumpro -Wall -I .. -I ../jpeg-6b 
 QT_LIBS= ../quicktime/quicktime/libquicktime.a ../jpeg-6b-mmx/libjpeg.a -lpthread -lpng -lz
 #QT_LIBS= ../jpeg-6b/libjpeg.a -lpng -lz
 

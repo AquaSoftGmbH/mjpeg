@@ -2187,7 +2187,7 @@ static int build_quad_heap( int ilow, int ihigh, int jlow, int jhigh,
 	 as starting points for matches on 4-pel boundaries...
   		*/
   quad_heap_size = 0;
-  searched_rough_size = 1+rough_heap_size / 2;
+  searched_rough_size = 1+rough_heap_size / 3;
   dist_sum = 0;
   for( k = 0; k < searched_rough_size; ++k )
 	{

@@ -22,23 +22,25 @@
 
 
 global quantize_ni_mmx
-; int quantize_ni_mmx(short *dst, short *src, short *quant_mat, short *i_quant_mat, 
-;                                             int imquant, int mquant, int sat_limit)
+; int quantize_ni_mmx(short *dst, short *src, 
+;		              short *quant_mat, short *i_quant_mat,
+;                     int imquant, int mquant, int sat_limit)
 
 ;  See quantize.c: quant_non_intra_inv()  for reference implementation in C...
-
-; eax = nzflag 
+		;;  mquant is not currently used.
+; eax = row counter...
 ; ebx = pqm
-; ecx = piqm
-; edx = temp
+; ecx = piqm  ; Matrix of quads first (2^16/quant) 
+ 			  ; then (2^16/quant)*(2^16%quant) the second part is for rounding
+; edx = satlim
 ; edi = psrc
 ; esi = pdst
 
 ; mm0 = [imquant|0..3]W
 ; mm1 = [sat_limit|0..3]W
 ; mm2 = *psrc -> src
-; mm3 = [mquant/2|0..3]W
-; mm4 = temp
+; mm3 = rounding corrections...
+; mm4 = flags...
 ; mm5 = saturation accumulator...
 ; mm6 = nzflag accumulator...
 ; mm7 = temp
@@ -54,7 +56,9 @@ satlim:
 			dw	1024-1
 			dw	1024-1
 			dw	1024-1
-
+SECTION .bss
+align 32
+quant_buf:	resw 64
 		
 SECTION .text
 		
@@ -69,7 +73,7 @@ quantize_ni_mmx:
 	push esi     
 	push edi
 
-	mov edi, [ebp+8]	  ; get pdst
+	mov edi, quant_buf  ; get temporary dst w
 	mov esi, [ebp+12]	; get psrc
 	mov ebx, [ebp+16]	; get pqm
 	mov ecx,  [ebp+20]  ; get piqm
@@ -78,22 +82,15 @@ quantize_ni_mmx:
 	punpcklwd mm0, mm1  
 	punpcklwd mm0, mm0    ; mm0 = [imquant|0..3]W
 	
-	pxor  mm6, mm6			; zero nzflag accumulator(s)
+	pxor  mm6, mm6			; saturation / out-of-range accumulator(s)
 
 	movd mm1, [ebp+32]  ; sat_limit
 	movq mm2, mm1
-	punpcklwd mm1, mm2   ; [sat_limit|0..1]W
+	punpcklwd mm1, mm2   ; [sat_limit|0..3]W
 	punpcklwd mm1, mm1   ; mm1 = [sat_limit|0..3]W
 	
-	mov  eax,  [ebp+28] ; mquant
-	shr  eax,  1
-	movd mm3,  eax
-	movd mm7,  eax
-	punpcklwd  mm3, mm7
-	punpcklwd  mm3, mm3
-	
-	pxor       mm5, mm5  ; Zero saturation accumulator (s)...
-	mov eax,  16				; 16 quads to do
+	xor       edx, edx  ; Non-zero flag accumulator 
+	mov eax,  16		; 16 quads to do 
 	jmp nextquadniq
 
 align 32
@@ -107,31 +104,43 @@ nextquadniq:
 	psllw   mm7, 1         ; mm7 = -2*(*psrc)
 	pand    mm7, mm4       ; mm7 = -2*(*psrc)*(*psrc < 0)
 	paddw   mm2, mm7       ; mm2 = abs(*psrc)
-	
+
 	;;
 	;;  Check whether we'll saturate intermediate results
 	;;
 	
 	movq    mm7, mm2
 	pcmpgtw mm7, [satlim]    ; Tooo  big for 16 bit arithmetic :-( (should be *very* rare)
-	por     mm5, mm7       ; Accumulate that bad things happened...
+	por     mm6, mm7
 
 	;;
 	;; Carry on with the arithmetic...
 	psllw   mm2, 5         ; mm2 = 32*abs(*psrc)
 	movq    mm7, [ebx]     ; mm7 = *pqm>>1
 	psrlw   mm7, 1
-	paddw   mm2, mm7       ; mm2 = 32*abs(*psrc)+((*pqm)/2)
+	paddw   mm2, mm7       ; mm2 = 32*abs(*psrc)+((*pqm)) = "p"
 
-	
 	
 	;;
 	;; Do the first multiplication.  Cunningly we've set things up so
 	;; it is exactly the top 16 bits we're interested in...
 	;;
+	;; We need the low word results for a rounding correction.  
+	;; This is *not* exact (that actual
+    ;; correction the product abs(*psrc)*(*pqm)*(2^16%*qm) >> 16
+    ;;  However we get very very few wrong and none too low (the most
+    ;; important) and no errors for small coefficients (also important)
+	;; 	if we simply add abs(*psrc)
 	
-	
-	pmulhuw mm2, [ecx]        ; mm2 = (32*abs(*psrc)+(*pqm) * *piqm/2) >> IQUANT_SCALE_POW2
+	movq    mm3, mm2				
+	pmullw  mm3, [ecx]          
+	movq    mm5, mm2
+	psrlw   mm5, 1            ; Want to see if adding p would carry into upper 16 bits
+	psrlw   mm3, 1
+	paddw   mm3, mm5
+	psrlw   mm3, 15           ; High bit in lsb rest 0's
+	pmulhw  mm2, [ecx]        ; mm2 = (p*iqm+p) >> IQUANT_SCALE_POW2 ~= p/*qm
+
 	
 	
 	;;
@@ -139,22 +148,31 @@ nextquadniq:
 	add   esi, 8					; 4 word's
 	add   ecx, 8					; 4 word's
 	sub   eax, 1
-	
-	;;
-	;; Do the second multiplication, again we fiddle with shifts to get the right rounding...
-	;;
 
-	psllw   mm2, 4
+	;; Add rounding correction....
 	paddw   mm2, mm3
-	pmulhuw mm2, mm0     ; mm2 = ((((32*abs(*psrc)+(*pqm/2) * *piqm) >> IQUANT_SCALE_POW2))*2 *imquant+1) >> IQUANT_SCALE_POW2
+
+
+	;;
+	;; Do the second multiplication, again we ned to make a rounding adjustment
+	movq    mm3, mm2				
+	pmullw  mm3, mm0          
+	movq    mm5, mm2
+	psrlw   mm5, 1            ; Want to see if adding p would carry into upper 16 bits
+	psrlw   mm3, 1
+	paddw   mm3, mm5
+	psrlw   mm3, 15           ; High bit in lsb rest 0's
+
+	pmulhw  mm2, mm0     ; mm2 ~= (p/(qm*mquant)) 
 
 	;;
 	;; To hide the latency lets update some more pointers...
 	add   edi, 8
 	add   ebx, 8
 
-	;; Correct the shift-ology used for rounding...
-	psrlw mm2, 5
+	;; Correct rounding and the factor of two (we want p/(qm*2*mquant)
+	paddw mm2, mm3
+	psrlw mm2, 1
 
 
 	;;
@@ -162,11 +180,18 @@ nextquadniq:
 	;;
 	movq mm7, mm2
 	pcmpgtw mm7, mm1
-	por   mm5, mm7 		;; mm5  |= (mm2 > sat_limit)
-	
+	por     mm6, mm7       ; Accumulate that bad things happened...
+
 	;;
 	;;  Accumulate non-zero flags
-	por   mm6, mm2
+	movq   mm7, mm2
+	movq   mm5, mm2
+	psrlq   mm5, 32
+	por     mm5, mm7
+	movd    mm7, edx       	;; edx  |= mm2 != 0
+	por     mm7, mm5
+	movd    edx, mm7
+
 	
 	;;
 	;; Now correct the sign mm4 = *psrc < 0
@@ -191,24 +216,36 @@ quit:
 
 	;; Return saturation in low word and nzflag in high word of reuslt dword 
 		
-	movq mm0, mm5
+	movq mm0, mm6
 	psrlq mm0, 32
-	por   mm5, mm0
-	movd  eax, mm5
+	por   mm6, mm0
+	movd  eax, mm6
 	mov   ebx, eax
 	shr   ebx, 16
 	or    eax, ebx
 	and   eax, 0xffff		;; low word eax is saturation
 	
-	movq mm0, mm6
-	psrlq mm0, 32
-	por   mm6, mm0
-	movd  ecx, mm6
-	mov   ebx, ecx
-	shr   ebx, 16
-	or    ecx, ebx
-  and   ecx, 0xffff0000  ;; hiwgh word ecx is nzflag
-	or    eax, ecx
+	test  eax, eax
+	jnz   skipupdate
+	
+	mov   ecx, 8           ;; 8 pairs of quads...
+	mov   edi, [ebp+8]     ;; destination
+	mov   esi, quant_buf
+update:
+	movq  mm0, [esi]
+	movq  mm1, [esi+8]
+	add   esi, 16
+	movq  [edi], mm0
+	movq  [edi+8], mm1
+	add   edi, 16
+	sub   ecx, 1	
+	jnz   update
+skipupdate:
+	mov   ebx, edx
+	shl   ebx, 16
+	or    edx, ebx
+    and   edx, 0xffff0000  ;; hiwgh word ecx is nzflag
+	or    eax, edx
 	
 
 	pop edi
