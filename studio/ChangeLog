@@ -1,3 +1,34 @@
+Updates from 0.1.4 to 0.1.5
+---------------------------
+* The encoding section has changed a lot, added the support for the 1.5.x 
+  version. The 1.4.x version should also work. You can select the encoding 
+  syntax version when you set the Syntax style to 1.5.x (default: 1.4.x this 
+  option is saved in the config file)
+* Because of this the "MPEG level" checkboxes and the button for the "Sequence
+  Header for every GOP" have been dismissed. They are now automatical set when 
+  you select the mplex format in the "Muliplex format" box.
+* The encoding options are only saved when you use the 
+  "Save Default Options" button
+* There are 4 default sets of options that are predefined, but the options can 
+  be changed as needed. They are named as Task: MPEG-1, MPEG2, VCD, SVCD.
+* The "Play output/video file" buttons only work when the Output/Video file
+  exists. The default player (gtv) can not play back MPEG-2 videos !!!
+* The Bicubic scaling does only work if the encoding syntax is 1.5.x
+* If you cativate Mux VBR the last entry in the Box "Datarate of Streams"
+  is calulated on the acutal values of Audio Bitrate and Video Bitrate.
+* The decoder Buffer size has to be correct set up when you encode the video.
+  If you set the first time when multiplexing it's to late. The decoder buffer
+  size is important for the video encoding too. 
+* Might be a good idea not to use "Lav2yuv output format" and the Output window
+  the same time. First is scaling with lav2yuv, 2nd is scaling with yuvscaler.
+* The "Video / Mux Format" Entries VCD Stills, SVCD Stills, DVD are not tested
+* Most entries can be edited as needed. But our own creation is not saved in
+  the list of the entry field. After all it is saved as value and shown and 
+  used correct. But not in all fields, does not work for example in the:
+  "Video / Mux format", "Interlacing correction" "Samplerate"
+* Sorry for the spelling mistakes, this text was written by me (Bernhard)
+  on a Sunday morning.
+
 Updates from 0.1.3 to 0.1.4
 ---------------------------
 * lavplay works now (removed the floating point error, which was a
