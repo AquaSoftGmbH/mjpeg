@@ -782,18 +782,17 @@ int main(argc,argv)
 	Wrapper for malloc that allocates pbuffers aligned to the 
 	specified byte boundary and checks for failure.
 	N.b.  don't try to free the resulting pointers, eh...
-	BUG: 	Of course this won't work if a char * won't fit in an int....
 */
 uint8_t *bufalloc( size_t size )
 {
 	char *buf = malloc( size + BUFFER_ALIGN );
-	int adjust;
+	unsigned long adjust;
 
 	if( buf == NULL )
 	{
 		mjpeg_error_exit1("malloc failed\n");
 	}
-	adjust = BUFFER_ALIGN-((int)buf)%BUFFER_ALIGN;
+	adjust = BUFFER_ALIGN-((unsigned long)buf)%BUFFER_ALIGN;
 	if( adjust == BUFFER_ALIGN )
 		adjust = 0;
 	return (uint8_t*)(buf+adjust);

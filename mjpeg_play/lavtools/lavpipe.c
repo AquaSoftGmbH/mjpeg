@@ -167,8 +167,8 @@ static pid_t fork_child (char *cmd, int ofs, int num, int *fd_in, int *fd_out)
    if (p2) {
       p2[0] = '\0';
       p2 += 2;
-      snprintf ((char *)((int)tmp1+(int)tmp2-(int)p1), 1024, "%s%d%s", p1, num, p2);
-      p1 = (char *)((int)tmp1+(int)tmp2-(int)p1);
+      snprintf ((char *)((unsigned long)tmp1+(unsigned long)tmp2-(unsigned long)p1), 1024, "%s%d%s", p1, num, p2);
+      p1 = (char *)((unsigned long)tmp1+(unsigned long)tmp2-(unsigned long)p1);
    }
    
    mjpeg_debug( "Executing: \"%s\"\n", p1);

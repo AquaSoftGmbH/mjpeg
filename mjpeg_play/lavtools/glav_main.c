@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -47,7 +48,7 @@ GtkWidget *file_selector;
 
 static void skip_num_frames(int num) {
    char out[32];
-   sprintf(out,"s%ld\n",cur_pos + num);
+   sprintf(out,"s%d\n",cur_pos + num);
    write(out_pipe,out,strlen(out));
 }
 
@@ -333,7 +334,7 @@ void        timeslider_cb(GtkAdjustment *adjustment, gpointer data)
       float new;
       val = ((GTK_ADJUSTMENT(gtk_xlav->timeslider)->value));
       new = (val / 100.00 );
-      sprintf(out,"s%ld\n",(int)((val*total_frames)/100));
+      sprintf(out,"s%d\n",(int)((val*total_frames)/100));
       write(out_pipe,out,strlen(out));
    }
       slider_pause = 8;
