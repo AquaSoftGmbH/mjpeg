@@ -54,8 +54,7 @@ int bsumsq_sub22_mmx( uint8_t *blk1f, uint8_t *blk1b,
 	) __asm__ ("bsumsq_sub22_mmx");
 int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride,
-				int hxf, int hyf, int hxb, int hyb, int h
-	) __asm__ ("bsumsq_mmx");
+				int hxf, int hyf, int hxb, int hyb, int h);
 int bsad_mmx (uint8_t *pf, uint8_t *pb,
 	      uint8_t *p2, int rowstride,
 	      int hxf, int hyf, int hxb, int hyb, int h

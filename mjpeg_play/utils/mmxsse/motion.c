@@ -31,14 +31,14 @@ void enable_mmxsse_motion(int cpucap)
 
         SIMD_MMXE(find_best_one_pel);
 
+        SIMD_MMX(bsumsq);
+
 #ifdef HAVE_ASM_NASM
         SIMD_MMX(bsad);
 
         SIMD_MMX(variance);
 
         SIMD_MMX(sumsq);
-
-        SIMD_MMX(bsumsq);
 
         SIMD_MMX(sumsq_sub22);
 
@@ -74,12 +74,12 @@ void enable_mmxsse_motion(int cpucap)
 
         SIMD_MMX(sumsq);
 
-        SIMD_MMX(bsumsq);
-
         SIMD_MMX(sumsq_sub22);
 
         SIMD_MMX(bsumsq_sub22);
 #endif
+
+        SIMD_MMX(bsumsq);
 
         // NOT CHANGED pfind_best_one_pel;
         // NOT CHANGED pbuild_sub22_mests	= build_sub22_mests;
