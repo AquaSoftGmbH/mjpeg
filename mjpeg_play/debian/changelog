@@ -1,3 +1,10 @@
+mjpegtools (1.6.3-1) unstable; urgency=low
+
+  * New upstream release.
+  * Remove mjpegtools.{postinst,prerm} because now START-INFO-DIR-ENTRY available.
+
+ -- Kawamata/Hitoshi <hitoshi.kawamata@nifty.com>  Sat, 28 Feb 2004 11:13:13 +0900
+
 mjpegtools (1.6.2-1) unstable; urgency=low
 
   * New upstream release.

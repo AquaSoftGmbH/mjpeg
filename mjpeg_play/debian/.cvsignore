@@ -1,6 +1,7 @@
 Makefile
 Makefile.in
 control
+*.debhelper
 *.substvars
 *i686*
 build-*
