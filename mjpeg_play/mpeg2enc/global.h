@@ -372,7 +372,11 @@ EXTERN int quiet; /* suppress warnings */
 EXTERN int N; /* number of frames in Group of Pictures */
 EXTERN int M; /* distance between I/P frames */
 EXTERN int P; /* intra slice refresh interval */
-EXTERN int nframes; /* total number of frames to encode */
+EXTERN int nframes; /* total number of frames to encode
+					   Note: this may start enormous and shrink
+					   down later if the input stream length is
+					   unknown at the start of encoding.
+					 */
 EXTERN int mpeg1; /* ISO/IEC IS 11172-2 sequence */
 EXTERN int fieldpic; /* use field pictures */
 

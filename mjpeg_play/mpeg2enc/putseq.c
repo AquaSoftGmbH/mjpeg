@@ -58,11 +58,10 @@ static void init_seq(int reinit)
 
 
 static void frame_mc_and_pic_params( int decode,
-									 int display,
+									 int b_index,
 									 motion_comp_s *mc_data, 
 									 pict_data_s *picture )
 {
-	int n;
 
 	switch ( picture->pict_type )
 	{
@@ -81,15 +80,14 @@ static void frame_mc_and_pic_params( int decode,
 		mc_data->syf = motion_data[0].syf;
 		break;
 	case B_TYPE :
-		n = (decode-2)%M + 1; /* first B: n=1, second B: n=2, ... */
-		picture->forw_hor_f_code = motion_data[n].forw_hor_f_code;
-		picture->forw_vert_f_code = motion_data[n].forw_vert_f_code;
-		picture->back_hor_f_code = motion_data[n].back_hor_f_code;
-		picture->back_vert_f_code = motion_data[n].back_vert_f_code;
-		mc_data->sxf = motion_data[n].sxf;
-		mc_data->syf = motion_data[n].syf;
-		mc_data->sxb = motion_data[n].sxb;
-		mc_data->syb = motion_data[n].syb;
+		picture->forw_hor_f_code = motion_data[b_index].forw_hor_f_code;
+		picture->forw_vert_f_code = motion_data[b_index].forw_vert_f_code;
+		picture->back_hor_f_code = motion_data[b_index].back_hor_f_code;
+		picture->back_vert_f_code = motion_data[b_index].back_vert_f_code;
+		mc_data->sxf = motion_data[b_index].sxf;
+		mc_data->syf = motion_data[b_index].syf;
+		mc_data->sxb = motion_data[b_index].sxb;
+		mc_data->syb = motion_data[b_index].syb;
 
 		break;
 	}
@@ -134,17 +132,60 @@ static void frame_mc_and_pic_params( int decode,
 		}
 
 }
-							  
+
+/************************************
+ *
+ * gop_end_frame - Finds a sensible spot for a GOP to end based on
+ * the mean luminance strategy developed in Dirk Farin's sampeg-2
+ *
+ * Basically it looks for a frame whose mean luminance is above
+ * certain threshold distance over that of its predecessor.
+ * 
+ * A slight trick is that search commences at the end of the legal range
+ * backwards.  The reason is that longer GOP's are more efficient.  Thus if
+ * two scence changes come close together it is better to have a change in
+ * the middle of a long GOP (with plenty of bits to play with) rather than
+ * a short GOP followed by another potentially very short GOP.
+ *
+ * N.b. This is experimental and could be highly bogus
+ *
+ ************************************/
+
+#ifdef NEW_CODE
+#define SCENE_CHANGE_THRESHOLD 4
+
+static int gop_end_frame( int gop_start_frame, int gop_min_len, int gop_max_len )
+{
+	int i;
+	int prev_lum_mean = frame_lum_mean( gop_start_frame+gop_max_len-1 );
+	int cur_lum_mean;
+	for( i = gop_start_frame+gop_max_len-2; i >= gop_min_len; --i )
+	{
+		cur_lum_mean =  frame_lum_mean( i );
+		if( abs(cur_lum_mean-prev_lum_mean ) > SCENE_CHANGE_THRESHOLD )
+			break;
+	}
+
+	if( i < gop_min_len )
+		i = gop_max_len;
+	return i;
+}
+#endif
 void putseq()
 {
 	/* this routine assumes (N % M) == 0 */
-	int i, j, f, f0, n, np, nb;
+	int i, j, f, g,  b, np, nb;
 	int ipflag;
 	/*int sxf = 0, sxb = 0, syf = 0, syb = 0;*/
 	motion_comp_s mc_data;
 	unsigned char **curorg, **curref;
-	int sequence_start = 1;
-	int seq_start_frame = 0;
+	int gop_start_frame;
+	int seq_start_frame;
+	int temp_ref;
+	int gop_length;
+	int bs_short;
+	int bigrp_length;
+	int b_drop;
 	pict_data_s cur_picture;
 
 	/* Length limit parameter is specied in MBytes */
@@ -166,45 +207,112 @@ void putseq()
 	
 	i = 0;		                /* Index in current MPEG sequence */
 	frame_num = 0;              /* Encoding number */
+	g = 0;						/* Index in current GOP */
+	b = 0;						/* B frames since last I/P */
+	gop_length = 0;				/* Length of current GOP init 0
+								   0 force new GOP at start 1st sequence */
+	seq_start_frame = 0;		/* Index start current sequence in
+								 input stream */
+	gop_start_frame = 0;		/* Index start current gop in input stream */
+
 	/* loop through all frames in encoding/decoding order */
 	while( frame_num<nframes )
 	{
-
-		/* Are we starting a new sequence? If so initialise
-		   per-sequence quantities and generate headers..
-		*/
+		/* Are we starting a new GOP? */
+		if( g == gop_length )
+		{
+			/* If	we're starting a GOP and have gone past the current
+			   sequence splitting point split the sequence and
+			   set the next splitting point.
+			*/
 			
-		/* f0: lowest frame number in current GOP
-		 *
-		 * first GOP contains N-(M-1) frames,
-		 * all other GOPs contain N frames
-		 */
+			g = 0;
+			if( next_split_point != 0LL && 	bitcount() > next_split_point )
+			{
+				printf( "\nSplitting sequence\n" );
+				next_split_point += seq_split_length;
+				putseqend();
+				init_seq(1);
+				/* This is the input stream display order sequence number of
+				   the frame that will become frame 0 in display
+				   order in  the new sequence */
+				seq_start_frame += i;
+				i = 0;
+			}
+			
+			gop_start_frame = seq_start_frame + i;
 
-		 f0 = N*((i+(M-1))/N) - (M-1);
-		 if (f0<0)
-			 f0=0;
+			/*
+			  First GOP in a sequence contains N-(M-1) frames,
+			  all other GOPs contain N frames
+			*/
+			if( i == 0 )
+				gop_length = N-(M-1);
+			else
+				gop_length = N;
 
-		 /* If we're starting a GOP and have gone past the current
-			sequence splitting point split the sequence and
-			set the next splitting point */
-		 if( i == f0 && next_split_point != 0LL && 
-			 bitcount() > next_split_point )
-		 {
-			 printf( "\nSplitting sequence\n" );
-			 next_split_point += seq_split_length;
-			 putseqend();
-			 init_seq(1);
-			 /* This is the input stream display order sequence number of
-				the frame that will become frame 0 in display
-				order in  the new sequence */
-			 seq_start_frame += i;
-			 f0 = i = 0;
-			 sequence_start = 1;
-		 }
+			/* last GOP may contain less frames */
+			if (gop_length > nframes-gop_start_frame)
+				gop_length = nframes-gop_start_frame;
 
-		if ( sequence_start || (i-1)%M==0)
+			/* First figure out how many B frames we're short from
+			   being able to achieve an even M-1 B's per I/P frame.
+
+			   To avoid peaks in necessary data-rate we try to
+			   lose the B's in the middle of the GOP. We always
+			   *start* with M-1 B's.
+			*/
+			if( M-1 > 0 )
+				bs_short = (M - (gop_length % M))%M;
+			else
+				bs_short = 0;
+
+			/* We aim to spread the dropped B's evenly across the GOP */
+
+			if( bs_short )
+				b_drop = (M - bs_short) * gop_length / M;
+
+			bigrp_length = (M-1);
+			b = bigrp_length;
+
+			/* number of P frames */
+			if (i == 0)
+				np = (gop_length + 2*(M-1))/M - 1; /* first GOP */
+			else
+				np = (gop_length + (M-1))/M - 1;
+			
+			/* number of B frames */
+			nb = gop_length - np - 1;
+
+			rc_init_GOP(np,nb);
+			
+			/* set closed_GOP in first GOP only 
+			   No need for per-GOP seqhdr in first GOP as one
+			   has already been created.
+			*/
+			
+			putgophdr(i == 0 ? i : i+(M-1),
+					  i == 0, 
+					  i != 0 && seq_header_every_gop);
+
+			fprintf( stderr, "GOP len = %d GOP start =%d\n", 
+					 gop_length, gop_start_frame);
+		}
+
+		/* Each bigroup starts once all the B frames of its predecessor
+		   has finished.
+		*/
+		if ( b == bigrp_length)
 		{
 
+			/* The first GOP of a sequence is closed with a 0 length
+			   initial bigroup... */
+			if( i == 0 )
+				b = bigrp_length;
+			else
+				b = 0;
+			
+			
 			/* I or P frame: Somewhat complicated buffer handling.
 			   The original reference frame data is actually held in
 			   the frame input buffers.  In input read-ahead buffer
@@ -232,52 +340,24 @@ void putseq()
 			curorg = neworgframe;
 			curref = newrefframe;
 
+			bigrp_length = M-1;
+			if( bs_short != 0 && g >= b_drop )
+			{
+				--bs_short;
+				bigrp_length = M - 2;
+				if( bs_short )
+					b_drop = (M - bs_short) * gop_length / M;
+			}
 
-			/* f: frame number in display order */
-			f = sequence_start ? i : i+M-1;
-			if (f >= (nframes-seq_start_frame))
-				f = (nframes-seq_start_frame) - 1;
+			/* f: frame number in sequence display order */
+			temp_ref = (i == 0 ) ? i : g+(bigrp_length);
+			if (temp_ref+gop_start_frame >= (nframes-gop_start_frame))
+				temp_ref = (nframes-gop_start_frame) - 1;
 
-			if (i==f0) /* first displayed frame in GOP is I */
+			if (g==0) /* first displayed frame in GOP is I */
 			{
 
 				cur_picture.pict_type = I_TYPE;
-				
-				/* 
-				   First GOP in sequence is closed and thus contains
-				   M-1 less B frames..
-				*/
-				if( sequence_start )
-				{
-					n = N-(M-1);
-				}
-				else
-					n = N;
-
-				/* last GOP may contain less frames */
-				if (n > nframes-(f0+seq_start_frame))
-					n = nframes-(f0+seq_start_frame);
-
-				/* number of P frames */
-				if (sequence_start)
-					np = (n + 2*(M-1))/M - 1; /* first GOP */
-				else
-					np = (n + (M-1))/M - 1;
-
-				/* number of B frames */
-				nb = n - np - 1;
-
-				rc_init_GOP(np,nb);
-				
-				/* set closed_GOP in first GOP only 
-				   No need for per-GOP seqhdr in first GOP as one
-				   has already been created.
-				 */
-				putgophdr(f0,
-						  sequence_start, 
-						  !sequence_start && seq_header_every_gop);
-
-
 			}
 			else 
 			{
@@ -290,19 +370,19 @@ void putseq()
 			   The current frame data pointers are a 3rd set
 			   seperate from the reference data pointers.
 			*/
+			b++;
+
 			curorg = auxorgframe;
 			curref = auxframe;
 
-			/* f: frame number in display order */
-			f = i - 1;
+			/* f: frame number in sequence display order */
+			temp_ref = g - 1;
 			cur_picture.pict_type = B_TYPE;
-			n = (i-2)%M + 1; /* first B: n=1, second B: n=2, ... */
 		}
 
-		cur_picture.temp_ref = f - f0;
-		frame_mc_and_pic_params( i, f,  &mc_data, &cur_picture );
-		printf( "(%d) ", f+seq_start_frame );
-		if( readframe(f+seq_start_frame,curorg) )
+		frame_mc_and_pic_params( i, b,  &mc_data, &cur_picture );
+		printf( "(%d %d %d) ", i-g+temp_ref, temp_ref+gop_start_frame, temp_ref );
+		if( readframe(temp_ref+gop_start_frame,curorg) )
 		{
 			fprintf( stderr, "Corrupt frame data aborting!\n" );
 			exit(1);
@@ -431,9 +511,9 @@ void putseq()
 #endif
 		}
 		writeframe(f+seq_start_frame,curref);
-		sequence_start = 0;
 		++i;
 		++frame_num;
+		++g;
 	}
 	putseqend();
 }

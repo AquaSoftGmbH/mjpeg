@@ -461,8 +461,7 @@ static void init()
 	for (i=-384; i<640; i++)
 		clp[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
 	
-	/* Allocate the frame data buffer */
-
+	/* Allocate the frame data buffers */
 
 	frame_buffers = (uint8_t ***) 
 		bufalloc(2*READ_LOOK_AHEAD*sizeof(uint8_t**));

@@ -40,9 +40,26 @@ static int frames_read = 0;
 static int last_frame = -1;
 
 
-static void border_extend(frame,w1,h1,w2,h2)
-unsigned char *frame;
-int w1,h1,w2,h2;
+/* Buffers for frame luminance means */
+
+static int lum_mean[2*READ_LOOK_AHEAD];
+
+
+static int luminance_mean(uint8_t *frame, int w, int h )
+{
+	uint8_t *p = frame;
+	uint8_t *lim = frame + w*h;
+	int sum = 0;
+	while( p < lim )
+	{
+		sum = (p[0] + p[1]) + (p[2] + p[3]) + (p[4] + p[5]) + (p[6] + p[7]);
+		p += 8;
+	}
+	return sum / (h * h);
+}
+
+static void border_extend(unsigned char *frame,
+						  int w1, int h1, int w2, int h2)
 {
   int i, j;
   unsigned char *fp;
@@ -108,6 +125,8 @@ static void read_gop()
          if(piperead(input_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
 
       border_extend(frame_buffers[n][0],h,v,width,height);
+	  
+	  lum_mean[n] = luminance_mean(frame_buffers[n][0], width, height );
 
       v = chroma_format==CHROMA420 ? vertical_size/2 : vertical_size;
       h = chroma_format!=CHROMA444 ? horizontal_size/2 : horizontal_size;
@@ -129,11 +148,8 @@ static void read_gop()
    nframes = frames_read;
 }
 
-int readframe( int num_frame,
-               unsigned char *frame[]
-	       	)
+void load_frame( int num_frame )
 {
-   int n;
 
    if( frames_read == 0)
    {
@@ -144,11 +160,9 @@ int readframe( int num_frame,
    }
 
 
-   if(num_frame < frames_read - 2*READ_LOOK_AHEAD)
-   {
-      fprintf(stderr,"readframe: internal error 1\n");
-      exit(1);
-   }
+
+   /* We're not allow to request frame more than READ_LOOK_AHEAD
+	  ahead, ahead of the last read ... */
 
    if(num_frame >= frames_read)
    {
@@ -162,13 +176,6 @@ int readframe( int num_frame,
       exit(1);
    }
 
-   n = num_frame % (2*READ_LOOK_AHEAD);
-
-   frame[0] = frame_buffers[n][0];
-   frame[1] = frame_buffers[n][1];
-   frame[2] = frame_buffers[n][2];
-
-
    /* Read next look ahead chunk if this was the last 
 	  frame of current one */
 
@@ -177,6 +184,30 @@ int readframe( int num_frame,
 	   read_gop();
    }
 
+   /* We aren't allowed to go too far behind the last read
+	  either... */
+
+   if(num_frame < frames_read - 2*READ_LOOK_AHEAD)
+   {
+      fprintf(stderr,"readframe: internal error 1\n");
+      exit(1);
+   }
+
+	
+}
+
+int readframe( int num_frame,
+               unsigned char *frame[]
+	       	)
+{
+   int n;
+
+   load_frame( num_frame );
+   n = num_frame % (2*READ_LOOK_AHEAD);
+
+   frame[0] = frame_buffers[n][0];
+   frame[1] = frame_buffers[n][1];
+   frame[2] = frame_buffers[n][2];
 
    return 0;
 }
