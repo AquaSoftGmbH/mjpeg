@@ -93,28 +93,29 @@ void init_fdct_sse( void )
         movaps_m2r((src)[24], x1); /* 0d 1d 2d 3d */   \
                                                        \
         /* mm0 = 0a 0b 1a 1b */                        \
-        /* mm4 = 2a 2b 3a 3b */                        \
+        /* mm2 = 2a 2b 3a 3b */                        \
         movaps_r2r  (x0, x2);                          \
         unpcklps_r2r(t,  x0);                          \
         unpckhps_r2r(t,  x2);                          \
                                                        \
-        /* mm2 = 0c 0d 1c 1d */                        \
-        /* mm1 = 2c 2d 3c 3d */                        \
+        /* mm3 = 0c 0d 1c 1d */                        \
+        /* mmt = 2c 2d 3c 3d */                        \
         movaps_r2r  (x3, t);                           \
         unpcklps_r2r(x1, x3);                          \
         unpckhps_r2r(x1, t);                           \
                                                        \
         /* mm0 = 0a 0b 0c 0d */                        \
-        /* mm3 = 1a 1b 1c 1d */                        \
-        movaps_r2r (x0, x1);                           \
-        shufps_r2ri(x3, x0, SHUFFLEMAP(0,1,0,1));      \
-        shufps_r2ri(x3, x1, SHUFFLEMAP(2,3,2,3));      \
+        /* mm1 = 1a 1b 1c 1d */                        \
+        movaps_r2r (x3, x1);                           \
+        movhlps_r2r(x0, x1);                           \
+        movlhps_r2r(x3, x0);                           \
                                                        \
-        /* mm4 = 2a 2b 2c 2d */                        \
-        /* mm2 = 3a 3b 3c 3d */                        \
-        movaps_r2r (x2, x3);                           \
-        shufps_r2ri(t,  x2, SHUFFLEMAP(0,1,0,1));      \
-        shufps_r2ri(t,  x3, SHUFFLEMAP(2,3,2,3));
+        /* mm2 = 2a 2b 2c 2d */                        \
+        /* mm3 = 3a 3b 3c 3d */                        \
+        movaps_r2r ( t, x3);                           \
+        movhlps_r2r(x2, x3);                           \
+        movlhps_r2r( t, x2);
+
 
 #define STOREXMM(x0, offs)               \
         mulps_m2r(aanptr[offs], x0);     \

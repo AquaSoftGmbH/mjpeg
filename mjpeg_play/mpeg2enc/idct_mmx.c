@@ -140,6 +140,11 @@ static float idct_sse_eighth[4] __attribute__ ((aligned (16)))={ RPT4(1./8.) };
         paddd_r2r(y, y); \
         paddd_r2r(x, y);
 
+#define SSEADDDIFF_t(A,B,C) \
+        movaps_r2r(A,C);    \
+        subps_r2r(B,A);     \
+        addps_r2r(C,B);
+
 #define SSEADDDIFF(x,y)  \
         subps_r2r(y, x); \
         addps_r2r(y, y); \
@@ -534,26 +539,27 @@ void idct_sse(int16_t *block)
         SSEMULTADD( xmm4, xmm5, idct_sse_table+32 );
         SSEMULTADD( xmm6, xmm7, idct_sse_table+48 );
         
+        // third stage
+
+        SSEADDDIFF( xmm1, xmm3 );
+
         // second stage
 
         SSEADDDIFF( xmm6, xmm4 );
         SSEADDDIFF( xmm7, xmm5 );
   
-        // third stage
-
-        SSEADDDIFF( xmm1, xmm3 );
-        SSEADDDIFF( xmm0, xmm2 );
-        SSEADDDIFF( xmm6, xmm7 );
-
         // fourth stage
 
         SSEADDDIFF( xmm3, xmm4 );
         SSEADDDIFF( xmm1, xmm5 );
 
-        movaps_r2m( xmm4, dst[0*8]);
-        movaps_r2m( xmm5, dst[3*8]);
-        movaps_r2m( xmm1, dst[4*8]);
         movaps_r2m( xmm3, dst[7*8]);
+        movaps_r2m( xmm4, dst[0*8]);
+        movaps_r2m( xmm1, dst[4*8]);
+        movaps_r2m( xmm5, dst[3*8]);
+
+        SSEADDDIFF_t( xmm6, xmm7, xmm1 );
+        SSEADDDIFF_t( xmm0, xmm2, xmm1 );
 
         // x7 = MUL_BY_ROOT_2_OVER_2(x7);
         // x6 = MUL_BY_ROOT_2_OVER_2(x6);
@@ -561,13 +567,13 @@ void idct_sse(int16_t *block)
         mulps_r2r( xmm1, xmm7 );
         mulps_r2r( xmm1, xmm6 );
   
-        SSEADDDIFF(xmm2, xmm7);
-        SSEADDDIFF(xmm0, xmm6);
+        SSEADDDIFF_t(xmm2, xmm7, xmm1);
+        SSEADDDIFF_t(xmm0, xmm6, xmm1);
 
-        movaps_r2m( xmm7, dst[1*8] );
-        movaps_r2m( xmm6, dst[2*8] );
-        movaps_r2m( xmm0, dst[5*8] );
         movaps_r2m( xmm2, dst[6*8] );
+        movaps_r2m( xmm7, dst[1*8] );
+        movaps_r2m( xmm0, dst[5*8] );
+        movaps_r2m( xmm6, dst[2*8] );
         
     }
 
@@ -582,28 +588,28 @@ void idct_sse(int16_t *block)
         movaps_m2r((src)[24], x1); /* 0d 1d 2d 3d */   \
                                                        \
         /* mm0 = 0a 0b 1a 1b */                        \
-        /* mm4 = 2a 2b 3a 3b */                        \
+        /* mm2 = 2a 2b 3a 3b */                        \
         movaps_r2r  (x0, x2);                          \
         unpcklps_r2r(t,  x0);                          \
         unpckhps_r2r(t,  x2);                          \
                                                        \
-        /* mm2 = 0c 0d 1c 1d */                        \
-        /* mm1 = 2c 2d 3c 3d */                        \
+        /* mm3 = 0c 0d 1c 1d */                        \
+        /* mmt = 2c 2d 3c 3d */                        \
         movaps_r2r  (x3, t);                           \
         unpcklps_r2r(x1, x3);                          \
         unpckhps_r2r(x1, t);                           \
                                                        \
         /* mm0 = 0a 0b 0c 0d */                        \
-        /* mm3 = 1a 1b 1c 1d */                        \
-        movaps_r2r (x0, x1);                           \
-        shufps_r2ri(x3, x0, SHUFFLEMAP(0,1,0,1));      \
-        shufps_r2ri(x3, x1, SHUFFLEMAP(2,3,2,3));      \
+        /* mm1 = 1a 1b 1c 1d */                        \
+        movaps_r2r (x3, x1);                           \
+        movhlps_r2r(x0, x1);                           \
+        movlhps_r2r(x3, x0);                           \
                                                        \
-        /* mm4 = 2a 2b 2c 2d */                        \
-        /* mm2 = 3a 3b 3c 3d */                        \
-        movaps_r2r (x2, x3);                           \
-        shufps_r2ri(t,  x2, SHUFFLEMAP(0,1,0,1));      \
-        shufps_r2ri(t,  x3, SHUFFLEMAP(2,3,2,3));
+        /* mm2 = 2a 2b 2c 2d */                        \
+        /* mm3 = 3a 3b 3c 3d */                        \
+        movaps_r2r ( t, x3);                           \
+        movhlps_r2r(x2, x3);                           \
+        movlhps_r2r( t, x2);
 
 #define STOREXMM(x0, dst)                \
         mulps_m2r(*idct_sse_eighth, x0); \
@@ -626,26 +632,26 @@ void idct_sse(int16_t *block)
         SSEMULTADD( xmm4, xmm5, idct_sse_table+32 );
         SSEMULTADD( xmm6, xmm7, idct_sse_table+48 );
   
-        // second stage
-
-        SSEADDDIFF( xmm6, xmm4 );
-        SSEADDDIFF( xmm7, xmm5 );
-  
         // third stage
 
         SSEADDDIFF( xmm1, xmm3 );
-        SSEADDDIFF( xmm0, xmm2 );
-        SSEADDDIFF( xmm6, xmm7 );
+        // second stage
+
+        SSEADDDIFF( xmm6, xmm4 );
+        SSEADDDIFF( xmm7, xmm5 );  
 
         // fourth stage
 
         SSEADDDIFF( xmm3, xmm4 );
         SSEADDDIFF( xmm1, xmm5 );
 
-        STOREXMM( xmm4, src[0*8] );
-        STOREXMM( xmm5, src[3*8]);
-        STOREXMM( xmm1, src[4*8]);
         STOREXMM( xmm3, src[7*8]);
+        STOREXMM( xmm4, src[0*8] );
+        STOREXMM( xmm1, src[4*8]);
+        STOREXMM( xmm5, src[3*8]);
+
+        SSEADDDIFF_t( xmm6, xmm7, xmm1 );
+        SSEADDDIFF_t( xmm0, xmm2, xmm1 );
 
         // x7 = MUL_BY_ROOT_2_OVER_2(x7);
         // x6 = MUL_BY_ROOT_2_OVER_2(x6);
@@ -653,13 +659,13 @@ void idct_sse(int16_t *block)
         mulps_r2r( xmm1, xmm7 );
         mulps_r2r( xmm1, xmm6 );
   
-        SSEADDDIFF(xmm2, xmm7);
-        SSEADDDIFF(xmm0, xmm6);
+        SSEADDDIFF_t(xmm2, xmm7, xmm1);
+        SSEADDDIFF_t(xmm0, xmm6, xmm1);
 
-        STOREXMM( xmm7, src[1*8] );
-        STOREXMM( xmm6, src[2*8] );
-        STOREXMM( xmm0, src[5*8] );
         STOREXMM( xmm2, src[6*8] );        
+        STOREXMM( xmm7, src[1*8] );
+        STOREXMM( xmm0, src[5*8] );
+        STOREXMM( xmm6, src[2*8] );
     }
     emms();
 }
