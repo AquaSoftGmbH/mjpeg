@@ -30,6 +30,7 @@
 
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
+#include "../../mpeg2enc/quantize_precomp.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
@@ -40,14 +41,10 @@
 #endif
 
 
-/* initialized in enable_altivec_quantization() */
-extern vector unsigned short *intra_q_altivec;
-
-
-#define IQUANT_INTRA_PDECL \
+#define IQUANT_INTRA_PDECL struct QuantizerWorkSpace *wsp, \
     int16_t *src, int16_t *dst, int dc_prec, int mquant
-#define IQUANT_INTRA_ARGS src, dst, dc_prec, mquant
-#define IQUANT_INTRA_PFMT "src=0x%X, dst=0x%X, dc_prec=%d, mquant=%d"
+#define IQUANT_INTRA_ARGS wsp, src, dst, dc_prec, mquant
+#define IQUANT_INTRA_PFMT "wsp=0x%X, src=0x%X, dst=0x%X, dc_prec=%d, mquant=%d"
 
 
 void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
@@ -78,11 +75,15 @@ void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
 #endif
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
+    if (NOT_VECTOR_ALIGNED(wsp->intra_q_mat))
+	mjpeg_error_exit1("iquant_intra_m1: wsp->intra_q_mat %% 16 != 0, (%d)",
+	    wsp->intra_q_mat);
+
     if (NOT_VECTOR_ALIGNED(src))
-	mjpeg_error_exit1("iquant_intra_m2: src %% 16 != 0, (%d)", src);
+	mjpeg_error_exit1("iquant_intra_m1: src %% 16 != 0, (%d)", src);
 
     if (NOT_VECTOR_ALIGNED(dst))
-	mjpeg_error_exit1("iquant_intra_m2: dst %% 16 != 0, (%d)", dst);
+	mjpeg_error_exit1("iquant_intra_m1: dst %% 16 != 0, (%d)", dst);
 
     for (i = 0; i < 64; i++)
 	if (src[i] < -256 || src[i] > 255)
@@ -94,7 +95,7 @@ void iquant_intra_m1_altivec(IQUANT_INTRA_PDECL)
 
     dst0 = src[0] << (3 - dc_prec);
 
-    qmat = (uint16_t*)intra_q_altivec;
+    qmat = (uint16_t*)wsp->intra_q_mat;
 
 #ifdef ALTIVEC_DST
     dsc.control = DATA_STREAM_CONTROL(64/8,1,0);
@@ -280,6 +281,10 @@ void iquant_intra_m2_altivec(IQUANT_INTRA_PDECL)
 #endif
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
+    if (NOT_VECTOR_ALIGNED(wsp->intra_q_mat))
+	mjpeg_error_exit1("iquant_intra_m2: wsp->intra_q_mat %% 16 != 0, (%d)",
+	    wsp->intra_q_mat);
+
     if (NOT_VECTOR_ALIGNED(src))
 	mjpeg_error_exit1("iquant_intra_m2: src %% 16 != 0, (%d)", src);
 
@@ -296,7 +301,7 @@ void iquant_intra_m2_altivec(IQUANT_INTRA_PDECL)
 
     dst0 = src[0] << (3 - dc_prec);
 
-    qmat = (uint16_t*)intra_q_altivec;
+    qmat = (uint16_t*)wsp->intra_q_mat;
 
 #ifdef ALTIVEC_DST
     dsc.control = DATA_STREAM_CONTROL(64/8,1,0);
@@ -464,7 +469,7 @@ static void iquant_intra_altivec_verify(IQUANT_INTRA_PDECL,
     int16_t srccpy[64], dstcpy[64];
     uint16_t *qmat;
 
-    qmat = (uint16_t*) intra_q_altivec;
+    qmat = (uint16_t*) wsp->intra_q_mat;
 
     /* in case src == dst */
     memcpy(srccpy, src, 64*sizeof(int16_t));

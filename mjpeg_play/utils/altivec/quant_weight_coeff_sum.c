@@ -24,6 +24,7 @@
 #include "altivec_quantize.h"
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
+#include "../../mpeg2enc/quantize_precomp.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
@@ -34,16 +35,18 @@
 #endif
  
 
-#define QUANT_WEIGHT_COEFF_INTRA_PDECL int16_t *blk
-#define QUANT_WEIGHT_COEFF_INTRA_ARGS blk
-#define QUANT_WEIGHT_COEFF_INTRA_PFMT "blk=0x%X"
+#define QUANT_WEIGHT_COEFF_INTRA_PDECL \
+    struct QuantizerWorkSpace *wsp, int16_t *blk
+#define QUANT_WEIGHT_COEFF_INTRA_ARGS wsp, blk
+#define QUANT_WEIGHT_COEFF_INTRA_PFMT "wsp=0x%X, blk=0x%X"
 
-#define QUANT_WEIGHT_COEFF_INTER_PDECL int16_t *blk
-#define QUANT_WEIGHT_COEFF_INTER_ARGS blk
-#define QUANT_WEIGHT_COEFF_INTER_PFMT "blk=0x%X"
+#define QUANT_WEIGHT_COEFF_INTER_PDECL \
+    struct QuantizerWorkSpace *wsp, int16_t *blk
+#define QUANT_WEIGHT_COEFF_INTER_ARGS wsp, blk
+#define QUANT_WEIGHT_COEFF_INTER_PFMT "wsp=0x%X, blk=0x%X"
 
 
-static int quant_weight_coeff_sum_altivec(int16_t *blk, uint16_t *i_quant_mat)
+static int quant_weight_coeff_sum_altivec(uint16_t *i_quant_mat, int16_t *blk)
 {
     int16_t *pb;
     uint16_t *pq;
@@ -62,12 +65,12 @@ static int quant_weight_coeff_sum_altivec(int16_t *blk, uint16_t *i_quant_mat)
     } vo;
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
-  if (NOT_VECTOR_ALIGNED(blk))
-    mjpeg_error_exit1("quant_weight_coeff_sum: blk %% 16 != 0, (%d)", blk);
-
   if (NOT_VECTOR_ALIGNED(i_quant_mat))
     mjpeg_error_exit1("quant_weight_coeff_sum: i_quant_mat %% 16 != 0, (%d)",
 	i_quant_mat);
+
+  if (NOT_VECTOR_ALIGNED(blk))
+    mjpeg_error_exit1("quant_weight_coeff_sum: blk %% 16 != 0, (%d)", blk);
 #endif /* }}} */
 
     AMBER_START;
@@ -142,19 +145,15 @@ static int quant_weight_coeff_sum_altivec(int16_t *blk, uint16_t *i_quant_mat)
 }
 
 
-extern uint16_t i_intra_q_mat[64];
-extern uint16_t i_inter_q_mat[64];
-
-
 int quant_weight_coeff_intra_altivec(QUANT_WEIGHT_COEFF_INTRA_PDECL)
 {
-    return quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_INTRA_ARGS, i_intra_q_mat);
+    return quant_weight_coeff_sum_altivec(wsp->i_intra_q_mat, blk);
 }
 
 
 int quant_weight_coeff_inter_altivec(QUANT_WEIGHT_COEFF_INTER_PDECL)
 {
-    return quant_weight_coeff_sum_altivec(QUANT_WEIGHT_COEFF_INTER_ARGS, i_inter_q_mat);
+    return quant_weight_coeff_sum_altivec(wsp->i_inter_q_mat, blk);
 }
 
 

@@ -39,29 +39,33 @@
 extern "C" {
 #endif
 
-void enable_altivec_quantization(int opt_mpeg1,
-                                 uint16_t *intra_q,
-                                 uint16_t *inter_q);
+void enable_altivec_quantization(struct QuantizerCalls *calls, int opt_mpeg1);
 
 ALTIVEC_FUNCTION(quant_non_intra, int,
-	(int16_t *src, int16_t *dst,
+	(struct QuantizerWorkSpace *wsp, int16_t *src, int16_t *dst,
 	 int q_scale_type, int dctsatlim, int *nonsat_mquant));
 
-ALTIVEC_FUNCTION(quant_weight_coeff_intra, int, (int16_t *blk));
+ALTIVEC_FUNCTION(quant_weight_coeff_intra, int,
+	(struct QuantizerWorkSpace *wsp, int16_t *blk));
 
-ALTIVEC_FUNCTION(quant_weight_coeff_inter, int, (int16_t *blk));
+ALTIVEC_FUNCTION(quant_weight_coeff_inter, int,
+	(struct QuantizerWorkSpace *wsp, int16_t *blk));
 
 ALTIVEC_FUNCTION(iquant_non_intra_m1, void,
-	(int16_t *src, int16_t *dst, int mquant));
+	(struct QuantizerWorkSpace *wsp,
+	 int16_t *src, int16_t *dst, int mquant));
 
 ALTIVEC_FUNCTION(iquant_non_intra_m2, void,
-	(int16_t *src, int16_t *dst, int mquant));
+	(struct QuantizerWorkSpace *wsp,
+	 int16_t *src, int16_t *dst, int mquant));
 
 ALTIVEC_FUNCTION(iquant_intra_m1, void,
-	(int16_t *src, int16_t *dst, int dc_prec, int mquant));
+	(struct QuantizerWorkSpace *wsp,
+	 int16_t *src, int16_t *dst, int dc_prec, int mquant));
 
 ALTIVEC_FUNCTION(iquant_intra_m2, void,
-	(int16_t *src, int16_t *dst, int dc_prec, int mquant));
+	(struct QuantizerWorkSpace *wsp,
+	 int16_t *src, int16_t *dst, int dc_prec, int mquant));
 
 #ifdef __cplusplus
 }

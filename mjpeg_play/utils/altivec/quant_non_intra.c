@@ -32,6 +32,7 @@
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"
 #include "../../mpeg2enc/syntaxconsts.h"
+#include "../../mpeg2enc/quantize_precomp.h"
 
 /* #define AMBER_ENABLE */
 #include "amber.h"
@@ -42,9 +43,6 @@
 #endif
 
 
-/* initialized in enable_altivec_quantization() */
-extern vector unsigned short *inter_q_altivec;
-
 /*
  * The original C version would start-over from the beginning each time
  * clipping occurred (until saturated) which resulted in the possibility of
@@ -54,10 +52,16 @@ extern vector unsigned short *inter_q_altivec;
  */
 
 #define QUANT_NON_INTRA_PDECL                                                \
+    struct QuantizerWorkSpace *wsp,                                          \
     int16_t *src, int16_t *dst,                                              \
     int q_scale_type, int dctsatlim, int *nonsat_mquant                      \
 
-#define QUANT_NON_INTRA_ARGS src, dst, q_scale_type, dctsatlim, nonsat_mquant
+#define QUANT_NON_INTRA_ARGS \
+    wsp, src, dst, q_scale_type, dctsatlim, nonsat_mquant
+
+#define QUANT_NON_INTRA_PFMT \
+    "wsp=0x%X, src=0x%X, dst=0x%X, q_scale_type=%d, dctsatlim=%d, " \
+    "nonsat_mquant=0x%X"
 
 
 int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
@@ -65,6 +69,7 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
     int mquant = *nonsat_mquant;
     int i, j, N, nzblockbits, last_block, recalc_blocks;
     vector unsigned short *pqm;
+    vector unsigned short *inter_q_mat = wsp->inter_q_mat;
     signed short *ps, *pd;
     vector unsigned short zero, four;
     vector float one;
@@ -97,9 +102,9 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
-    if (NOT_VECTOR_ALIGNED(inter_q_altivec))
-	mjpeg_error_exit1("quant_non_intra: inter_q_altivec %% 16 != 0, (%d)",
-	    inter_q_altivec);
+    if (NOT_VECTOR_ALIGNED(wsp->inter_q_mat))
+	mjpeg_error_exit1("quant_non_intra: wsp->inter_q_mat %% 16 != 0, (%d)",
+	    wsp->inter_q_mat);
     if (NOT_VECTOR_ALIGNED(src))
 	mjpeg_error_exit1("quant_non_intra: src %% 16 != 0, (%d)", src);
 
@@ -248,7 +253,7 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
     pd = dst;
 
 #ifdef ALTIVEC_DST
-    vec_dst(inter_q_altivec, 0x01080010, 0);
+    vec_dst(inter_q_mat, 0x01080010, 0);
     vec_dst(ps, 0x01040010, 1);
     vec_dstst(pd, 0x01040010, 2);
 #endif
@@ -268,7 +273,7 @@ int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 
     do {
 recalc:
-	pqm = inter_q_altivec;
+	pqm = inter_q_mat;
 	vu16(nz) = vec_splat_u16(0);
 	max = vec_splat_u16(0);
 	j = 4;
@@ -359,7 +364,7 @@ recalc:
 	pd = dst;
 
 	do {
-	    pqm = inter_q_altivec;
+	    pqm = inter_q_mat;
 	    vu16(nz) = vec_splat_u16(0);
 	    j = 4;
 	    do {
@@ -391,7 +396,7 @@ recalc:
 	recalc_blocks = 0; /* no more blocks after next loop */
 
 	do {
-	    pqm = inter_q_altivec;
+	    pqm = inter_q_mat;
 	    vu16(nz) = vec_splat_u16(0);
 	    j = 4;
 	    do {
@@ -431,16 +436,13 @@ done:
 
 
 #if ALTIVEC_TEST_FUNCTION(quant_non_intra) /* {{{ */
-#define QUANT_NON_INTRA_PFMT \
-    "src=0x%X, dst=0x%X, q_scale_type=%d, dctsatlim=%d, nonsat_mquant=0x%X"
-
 #  ifdef ALTIVEC_VERIFY
 int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
 {
     int i, len, nzb1, nzb2, nsmq, nsmq1, nsmq2;
     unsigned long checksum1, checksum2;
     int16_t *dstcpy;
-    uint16_t *inter_q = (uint16_t*)inter_q_altivec;
+    uint16_t *inter_q = (uint16_t*)wsp->inter_q_mat;
 
     len = 64 * BLOCK_COUNT;
 
