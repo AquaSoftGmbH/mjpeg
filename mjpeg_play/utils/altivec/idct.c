@@ -25,6 +25,9 @@
 #include "vectorize.h"
 #include "../mjpeg_logging.h"
 
+/* #define AMBER_ENABLE */
+#include "amber.h"
+
 #ifdef HAVE_ALTIVEC_H
 /* include last to ensure AltiVec type semantics, especially for bool. */
 #include <altivec.h>
@@ -61,7 +64,7 @@ static vector float idctconsts[3] = {
 
 
 
-#define IDCTROW(b0,b1,b2,b3,b4,b5,b6,b7)                             \
+#define IDCTROW(b0,b1,b2,b3,b4,b5,b6,b7) /* {{{ */                   \
     x0 = b0;                                                         \
     x1 = b4;                                                         \
     x2 = b6;                                                         \
@@ -122,10 +125,11 @@ static vector float idctconsts[3] = {
     b5 = vec_sub(x0, x4);               /* x0-x4 */                  \
     b6 = vec_sub(x3, x2);               /* x3-x2 */                  \
     b7 = vec_sub(x7, x1);               /* x7-x1 */                  \
+    /* }}} */
 
 
 
-#define IDCTCOL(b0,b1,b2,b3,b4,b5,b6,b7)                             \
+#define IDCTCOL(b0,b1,b2,b3,b4,b5,b6,b7) /* {{{ */                   \
     x0 = b0;                                                         \
     x1 = b4;                                                         \
     x2 = b6;                                                         \
@@ -189,6 +193,7 @@ static vector float idctconsts[3] = {
     b5 = vec_sub(x0, x4); /* x0-x4 */                                \
     b6 = vec_sub(x3, x2); /* x3-x2 */                                \
     b7 = vec_sub(x7, x1); /* x7-x1 */                                \
+    /* }}} */
 
 
 
@@ -197,15 +202,19 @@ static vector float idctconsts[3] = {
 void idct_altivec(short *block)
 {
     vector signed short *bp;
+    vector float *cp;
     vector float b00, b10, b20, b30, b40, b50, b60, b70;
     vector float b01, b11, b21, b31, b41, b51, b61, b71;
     vector float mzero, cnst, cnsts0, cnsts1, cnsts2;
     vector float x0, x1, x2, x3, x4, x5, x6, x7, x8;
 
 #ifdef ALTIVEC_VERIFY
-  if (NOT_VECTOR_ALIGNED(block))
-    mjpeg_error_exit1("idct: block %% 16 != 0, (%d)\n", block);
+    if (NOT_VECTOR_ALIGNED(block))
+	mjpeg_error_exit1("idct: block %% 16 != 0, (%d)\n", block);
 #endif
+
+    AMBER_START;
+
 
     /* 8x8 matrix transpose (vector short[8]) {{{ */
 
@@ -278,9 +287,10 @@ void idct_altivec(short *block)
     /* mzero = -0.0 */
     mzero = (vector float)vec_splat_u32(-1);
     mzero = (vector float)vec_sl(vu32(mzero), vu32(mzero));
-    cnsts0 = vec_ld(0,    idctconsts);
-    cnsts1 = vec_ld(1*16, idctconsts);
-    cnsts2 = vec_ld(2*16, idctconsts);
+    cp = idctconsts;
+    cnsts0 = vec_ld(0, cp); cp++;
+    cnsts1 = vec_ld(0, cp); cp++;
+    cnsts2 = vec_ld(0, cp);
     /* }}} */
 
 
@@ -368,6 +378,9 @@ void idct_altivec(short *block)
 
 #undef CTS
     /* }}} */
+
+
+    AMBER_STOP;
 }
 
 /* vim:set foldmethod=marker foldlevel=0: */
