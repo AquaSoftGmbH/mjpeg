@@ -217,7 +217,7 @@ static void Usage(char *str)
 	printf("   -G num     Maximum GOP size (default 12)\n" );
 	printf("   -M num     Optimise threading for num CPU's (default: 1)\n");
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
-	printf("   -v num     Target video buffer size in KB (default 46)\n");
+	printf("   -V num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
 	printf("   -S num     Start a new sequence every num Mbytes in the final mux-ed\n");
 	printf("              stream.  -B specifies the bitrate of non-video data\n");
