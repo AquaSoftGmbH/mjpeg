@@ -80,7 +80,7 @@ the jpeg library can be correctly set for the state of the X display.
 However, by far the simplest solution is to the faster patched MMX
 version that can be found with where you obtained this software. 
 
-http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.2.tar.gz
+http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.3.tar.gz
 
 Compile: 
 
