@@ -65,7 +65,8 @@ int main (int argc, char *argv[])
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv2[3]; /* input 2 */
    unsigned char *yuv[3];  /* output */
-   int w, h, rate;
+   y4m_stream_info_t *streaminfo;
+   y4m_frame_info_t *frameinfo;
    int i;
 
    if (argc > 1) {
@@ -73,32 +74,35 @@ int main (int argc, char *argv[])
       exit (1);
    }
 
-   i = yuv_read_header (in_fd, &w, &h, &rate);
-   if (i != 0) {
+   streaminfo = y4m_init_stream_info (NULL);
+   frameinfo = y4m_init_frame_info (NULL);
+
+   i = y4m_read_stream_header (in_fd, streaminfo);
+   if (i != Y4M_OK) {
       fprintf (stderr, "%s: input stream error\n", argv[0]);
       exit (1);
    }
 
-   yuv[0] = (char *)malloc (w*h);   (char *)yuv0[0] = malloc (w*h);   (char *)yuv1[0] = malloc (w*h);   (char *)yuv2[0] = malloc (w*h);
-   yuv[1] = (char *)malloc (w*h/4); (char *)yuv0[1] = malloc (w*h/4); (char *)yuv1[1] = malloc (w*h/4); (char *)yuv2[1] = malloc (w*h/4);
-   yuv[2] = (char *)malloc (w*h/4); (char *)yuv0[2] = malloc (w*h/4); (char *)yuv1[2] = malloc (w*h/4); (char *)yuv2[2] = malloc (w*h/4);
+   yuv[0] = (char *)malloc (streaminfo->width*streaminfo->height);   (char *)yuv0[0] = malloc (streaminfo->width*streaminfo->height);   (char *)yuv1[0] = malloc (streaminfo->width*streaminfo->height);   (char *)yuv2[0] = malloc (streaminfo->width*streaminfo->height);
+   yuv[1] = (char *)malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv0[1] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv1[1] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv2[1] = malloc ((streaminfo->width*streaminfo->height)/4);
+   yuv[2] = (char *)malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv0[2] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv1[2] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv2[2] = malloc ((streaminfo->width*streaminfo->height)/4);
 
-   yuv_write_header (out_fd, w, h, rate);
+   y4m_write_stream_header (out_fd, streaminfo);
 
    while (1) {
-      i = yuv_read_frame(in_fd, yuv0, w, h);
-      if (i<=0)
+      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv0);
+      if (i != Y4M_OK)
          exit (0);
-      i = yuv_read_frame(in_fd, yuv1, w, h);
-      if (i<=0)
+      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv1);
+      if (i != Y4M_OK)
          exit (1);
-      i = yuv_read_frame(in_fd, yuv2, w, h);
-      if (i<=0)
+      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv2);
+      if (i != Y4M_OK)
          exit (1);
 
-      blend (yuv0, yuv1, yuv2, w, h, yuv);
+      blend (yuv0, yuv1, yuv2, streaminfo->width, streaminfo->height, yuv);
 
-      yuv_write_frame (out_fd, yuv, w, h);
+      y4m_write_frame (out_fd, streaminfo, frameinfo, yuv);
 
    }
 

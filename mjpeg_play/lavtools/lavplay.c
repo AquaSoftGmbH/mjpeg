@@ -155,10 +155,30 @@ static void Usage(char *progname)
    fprintf(stderr, "  -x/--exchange-fields       Exchange fields of an interlaced video\n");
    fprintf(stderr, "  -z/--zoom                  Zoom video to fill screen as much as possible\n");
    fprintf(stderr, "  -Z/--full-screen           Switch to fullscreen\n");
-   fprintf(stderr, "  -p/--playback [SHC]        playback: (S)oftware, (H)ardware (screen) or (C)ard\n");
+   fprintf(stderr, "  -p/--playback ["
+#ifdef HAVE_SDL
+      "S"
+#else
+      " "
+#endif
+#ifndef IRIX
+      "HC"
+#else
+      "  "
+#endif
+      "]        playback: "
+#ifdef HAVE_SDL
+      "(S)oftware, "
+#endif
+#ifndef IRIX
+      "(H)ardware (screen) or (C)ard"
+#endif
+      "\n");
    fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
+#ifdef HAVE_SDL
    fprintf(stderr, "  --size NxN                 width X height for SDL window (software)\n");
+#endif
    fprintf(stderr, "  --display :x.x             The X-display to use (default: \':0.0\')\n");
    fprintf(stderr, "  -v/--verbose [012]         verbosity\n");
    exit(1);
@@ -368,8 +388,24 @@ static int set_option(char *name, char *value)
    }
    else if (strcmp(name, "playback")==0 || strcmp(name, "p")==0)
    {
-      info->playback_mode = value[0];
+      switch (value[0])
+      {
+#ifndef IRIX
+         case 'H':
+         case 'C':
+#endif
+#ifdef HAVE_SDL
+         case 'S':
+#endif
+            info->playback_mode = value[0];
+            break;
+         default:
+            mjpeg_error("Unknown playback mode: \'%c\'\n", value[0]);
+            nerr++;
+            break;
+      }
    }
+#ifdef HAVE_SDL
    else if (strcmp(name, "size")==0)
    {
       if (sscanf(value, "%dx%d", &info->sdl_width, &info->sdl_height)!=2)
@@ -378,6 +414,7 @@ static int set_option(char *name, char *value)
          nerr++;
       }
    }
+#endif
    else if (strcmp(name, "flicker")==0 || strcmp(name, "F")==0)
    {
       info->flicker_reduction = 0;
@@ -413,7 +450,9 @@ static void check_command_line_options(int argc, char *argv[])
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
       {"audio"           ,1,0,0},   /* -a/--audio [01]      */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
+#ifdef HAVE_SDL
       {"size"            ,1,0,0},   /* --size               */
+#endif
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
       {"display"         ,1,0,0},   /* --display            */
       {0,0,0,0}

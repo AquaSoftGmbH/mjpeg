@@ -51,11 +51,17 @@ else
 GLAV_BIN = 
 endif
 
+if HAVE_SDL
+YUVPLAY_BIN = yuvplay
+else
+YUVPLAY_BIN =
+endif
+
 bin_PROGRAMS = \
 	lavplay   lavrec   lav2wav  lav2yuv yuvmedianfilter  lavaddwav \
 	lavvideo  lavtrans $(GLAV_BIN)  ypipe yuv2lav testrec \
-	transist.flt matteblend.flt lavpipe yuvscaler yuvplay jpeg2yuv \
-	$(AVIFILE_BIN)
+	transist.flt matteblend.flt lavpipe yuvscaler jpeg2yuv \
+	$(AVIFILE_BIN) $(YUVPLAY_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h oldyuv4mpeg.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h
@@ -76,7 +82,7 @@ matteblend_flt_LDADD = -L$(top_srcdir)/utils -lmjpegutils
 lavplay_SOURCES = lavplay.c ${lav_headers}
 lavplay_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	${PTHREAD_LIBS} ${SDL_LIBS}
+	${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS} -lX11
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
 lavrec_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
@@ -96,7 +102,7 @@ jpeg2yuv_LDADD = -L$(top_srcdir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
 lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c oldyuv4mpeg.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
-	$(AVIPLAY_LIBS)
+	$(AVIPLAY_LIBS) -lm
 
 lavpipe_SOURCES = lavpipe.c oldyuv4mpeg.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lmjpegutils 
@@ -130,4 +136,4 @@ yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils
 
 yuv2divx_SOURCES = yuv2divx.cpp oldyuv4mpeg.h oldyuv4mpeg.c
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
-	$(AVIPLAY_LIBS)
+	$(AVIPLAY_LIBS) -lm

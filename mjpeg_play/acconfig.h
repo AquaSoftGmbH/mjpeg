@@ -48,9 +48,10 @@
 #undef SUPPORT_READ_DV2
 #undef SUPPORT_READ_YUV420
 
-/* whether we have avifile/gtk+ */
+/* whether we have avifile/gtk+/sdl */
 #undef HAVE_AVIFILE
 #undef HAVE_GTK
+#undef HAVE_SDL
 
 /* Name of package */
 #define PACKAGE "mjpegtools"

@@ -11,6 +11,7 @@
  * video devices such as the Pinnacle/Miro DC10(+), Iomega
  * Buz, the Linux Media Labs LML33, the Matrox Marvel G200,
  * Matrox Marvel G400 and the Rainbow Runner G-series.
+ * Can also be used for video-capture from BTTV-devices
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -106,7 +107,7 @@ typedef struct {
 
    char **files;                /* the files where to capture the video to */
    int  num_files;              /* number of files in the files[]-array */
-	int max_file_size_mb;
+   int  max_file_size_mb;        /* the maximum file size per file (default: let liblavrec decide) */
 
    void (*output_statistics)(video_capture_stats *stats);      /* speaks for itself */
    void (*audio_captured)(char *audio, long sampes);           /* callback when audio has been grabbed */

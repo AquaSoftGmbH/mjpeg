@@ -470,7 +470,7 @@ main (int argc, char **argv)
 	// do the read video file thing from el.
 	// get the format information from the el.  Set it up in the destination avi.
 
-	double framespersec = framerate;
+	double framespersec = streaminfo->framerate;
 
 	BITMAPINFOHEADER bh;
 	memset (&bh, 0, sizeof(BITMAPINFOHEADER));
@@ -690,8 +690,8 @@ main (int argc, char **argv)
 		if (asis < 1)  //faster
 		{
 			memcpy (framebuffer, yuv[0], yplane);
-			memcpy (framebuffer + yplane, yuv[1], uplane);
-			memcpy (framebuffer + yplane + uplane, yuv[2], vplane);
+			memcpy (framebuffer + yplane, yuv[2], uplane);
+			memcpy (framebuffer + yplane + uplane, yuv[1], vplane);
 		}
 		else	// slower, but handles cropping.
 		{
@@ -707,11 +707,11 @@ main (int argc, char **argv)
 					, opt_w
 					);
 				memcpy ( framebuffer + yplane + chromaoffset
-					, yuv[1] + chromaoffsetsrc + chromax
+					, yuv[2] + chromaoffsetsrc + chromax
 					, chromaw
 					);
 				memcpy ( framebuffer + yplane + uplane + chromaoffset
-					, yuv[2] + chromaoffsetsrc + chromax
+					, yuv[1] + chromaoffsetsrc + chromax
 					, chromaw
 					);
 			}

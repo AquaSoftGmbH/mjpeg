@@ -53,6 +53,7 @@ void Usage(char *str)
    printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
    printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
    printf("   -m         Force mono-chrome\n");
+   printf("   -x         Exchange fields for interlaced frames\n");
    printf("   -S list.el Output a scene list with scene detection\n");
    printf("   -T num     Set scene detection threshold to num (default: 4)\n");
    printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
@@ -71,6 +72,7 @@ static int last_lum_mean;
 static int delta_lum;
 static int scene_num;
 static int scene_start;
+static int param_exchange_fields=0;
 
 LavBounds bounds;
 LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
@@ -169,7 +171,7 @@ char *argv[];
 
 	memset(&bounds, 0, sizeof(LavBounds));
 
-   while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:")) != EOF) {
+   while ((n = getopt(argc, argv, "mYvx:a:s:d:n:S:T:D:o:f:I:i:j:")) != EOF) {
       switch (n) {
 
       case 'a':
@@ -289,6 +291,9 @@ char *argv[];
       case 'f':
          param.frames = atoi(optarg);
          break;
+      case 'x':
+         param_exchange_fields = 1;
+         break;
       default:
          nerr++;
       }
@@ -390,6 +395,23 @@ char *argv[];
    if (bounds.active_height + bounds.active_y > param.output_height) {
       mjpeg_error( "active offset + active height > image size\n");
       Usage(argv[0]);
+   }
+
+   /* exchange fields if wanted */
+   if (param_exchange_fields)
+   {
+      switch (el.video_inter)
+      {
+         case LAV_INTER_TOP_FIRST:
+            el.video_inter = LAV_INTER_BOTTOM_FIRST;
+            break;
+         case LAV_INTER_BOTTOM_FIRST:
+            el.video_inter = LAV_INTER_TOP_FIRST;
+            break;
+         default:
+            mjpeg_warn("Input video is not interlaced - cannot invert field order\n");
+            break;
+      }
    }
 
    init(&bounds, &param, &buffer);

@@ -195,7 +195,18 @@ static void Usage(char *progname)
 	fprintf(stderr, "lavtools version " VERSION ": lavrec\n");
 	fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
 	fprintf(stderr, "where options are:\n");
-	fprintf(stderr, "  -f/--format [aAqm]          Format AVI/Quicktime/movtar\n");
+	fprintf(stderr, "  -f/--format [aA"
+#ifdef HAVE_LIBQUICKTIME
+           "q"
+#else
+           " "
+#endif
+#ifdef HAVE_LIBMOVTAR
+           "m"
+#else
+           " "
+#endif
+           "]          Format AVI/Quicktime/movtar\n");
 	fprintf(stderr, "  -i/--input [pPnNsStTa]      Input Source\n");
 	fprintf(stderr, "  -d/--decimation num         Decimation (either 1,2,4 or two digit number)\n");
 	fprintf(stderr, "  -g/--geometry WxH+X+Y       X-style geometry string (part of 768/720x576/480)\n");
@@ -605,9 +616,34 @@ static int set_option(const char *name, char *value)
 	if (strcmp(name, "format")==0 || strcmp(name, "f")==0)
 	{
 		info->video_format = value[0];
-		if(value[0]!='a' && value[0]!='A' && value[0]!='q' && value[0]!='m')
+		if(value[0]!='a' && value[0]!='A'
+#ifdef HAVE_LIBQUICKTIME
+                   && value[0]!='q'
+#endif
+#ifdef HAVE_LIBMOVTAR
+                   && value[0]!='m'
+#endif
+                   )
 		{
-			mjpeg_error("Format (-f/--format) must be a, A, q or m\n");
+			mjpeg_error("Format (-f/--format) must be a"
+#if !defined(HAVE_LIBMOVTAR) && !defined(HAVE_LIBQUICKTIME)
+                           " or"
+#else
+                           ","
+#endif
+                           " A"
+#ifdef HAVE_LIBQUICKTIME
+#ifdef HAVE_LIBMOVTAR
+                           ","
+#else
+                           " or"
+#endif
+                           " q"
+#endif
+#ifdef HAVE_LIBMOVTAR
+                           " or m"
+#endif
+                           "\n");
 			nerr++;
 		}
 	}

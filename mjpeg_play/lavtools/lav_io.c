@@ -965,18 +965,24 @@ lav_file_t *lav_open_input_file(char *filename)
       {
 	movtar_init(FALSE, FALSE);
 	if (!movtar_check_sig(filename))
+#endif
 	  {
 	    /* None of the known formats */
             char errmsg[1024];
-            sprintf(errmsg, "movtar");
-#ifdef HAVE_LIBQUICKTIME
-            sprintf(errmsg, "%s quicktime", errmsg);
+	    sprintf(errmsg, "Unable to identify file (not a supported format - avi");
+#ifdef HAVE_LIBMOVTAR
+            strcat(errmsg, ", movtar");
 #endif
-	    printf("Unable to identify file (not one of: avi %s).\n", errmsg);
+#ifdef HAVE_LIBQUICKTIME
+            strcat(errmsg, ", quicktime");
+#endif
+	    strcat(errmsg, ").\n");
+            fprintf(stderr, errmsg);
 	    free(lav_fd);
 	    internal_error = ERROR_FORMAT; /* Format not recognized */
 	    return 0;
 	  }
+#ifdef HAVE_LIBMOVTAR
 	else
 	  {
 	    /* It is a movtar file */
@@ -1013,7 +1019,9 @@ lav_file_t *lav_open_input_file(char *filename)
 	  video_format = 'q'; /* for error messages */
 	  if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
 	  lav_fd->avi_fd = 0;
+#ifdef HAVE_LIBMOVTAR
 	  lav_fd->movtar_fd = 0;
+#endif
 	  lav_fd->format = 'q';
 	  video_comp = quicktime_video_compressor(lav_fd->qt_fd,0);
 	  /* We want at least one video track */

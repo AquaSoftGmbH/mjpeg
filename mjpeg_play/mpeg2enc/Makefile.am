@@ -35,4 +35,4 @@ mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libmjpegutils.a $(top_srcdir)/utils/
 mpeg2enc_LDADD=-L$(top_srcdir)/utils -lmotion -lmjpegutils @PTHREAD_LIBS@ $(LIBM_LIBS)
 
 .s.o:
-	$(NASM) $(NASMFLAGS) -o $@ $<
+	$(AS) $(ASFLAGS) -o $@ $<

@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
    gettimeofday(&time_now,0);
    mjpeg_info( "got here in stream... assuming 25Hz!\n" );
 
-   while ((n = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv))==Y4M_OK && (!got_sigint)) {
+   while (y4m_read_frame(in_fd, streaminfo, frameinfo, yuv)==Y4M_OK && (!got_sigint)) {
 
       /* Lock SDL_yuv_overlay */
       if ( SDL_MUSTLOCK(screen) ) {
@@ -202,6 +202,9 @@ int main(int argc, char *argv[])
    for (n=0; n<3; n++) {
       free(yuv[n]);
    }
+
+   y4m_free_frame_info(frameinfo);
+   y4m_free_stream_info(streaminfo);
 
    mjpeg_log(LOG_INFO, "Played %4.4d frames (%s)\n", frame, print_status(frame, streaminfo->framerate));
 

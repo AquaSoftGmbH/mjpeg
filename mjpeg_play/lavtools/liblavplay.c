@@ -59,7 +59,10 @@
 
 #include <videodev_mjpeg.h>
 #include <pthread.h>
+
+#ifdef HAVE_SDL
 #include <SDL/SDL.h>
+#endif
 
 #include "mjpeg_types.h"
 #include "liblavplay.h"
@@ -99,7 +102,7 @@ typedef struct {
    int    show_top;                           /* changes constantly */
    int    first_frame;                        /* software sync variable */
    struct timeval lastframe_completion;       /* software sync variable */
-
+#ifdef HAVE_SDL
    SDL_Surface *screen;                       /* the screen object used for software playback */
    SDL_Rect jpegdims;                         /* a SDL rectangle */
    SDL_Overlay *yuv_overlay;                  /* SDL YUV overlay */
@@ -110,6 +113,8 @@ typedef struct {
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
    pthread_cond_t buffer_done[MJPEG_MAX_BUF];
    pthread_mutex_t syncinfo_mutex;
+#endif
+
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
    int data_format[MJPEG_MAX_BUF];
 #endif
@@ -447,6 +452,7 @@ static int lavplay_queue_next_frame(lavplay_t *info, char *vbuff,
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static int lavplay_SDL_lock(lavplay_t *info)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
@@ -470,6 +476,7 @@ static int lavplay_SDL_lock(lavplay_t *info)
 
    return 1;
 }
+#endif
 
 
 /******************************************************
@@ -479,6 +486,7 @@ static int lavplay_SDL_lock(lavplay_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static int lavplay_SDL_unlock(lavplay_t *info)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
@@ -491,6 +499,7 @@ static int lavplay_SDL_unlock(lavplay_t *info)
 
    return 1;
 }
+#endif
 
 
 /******************************************************
@@ -500,6 +509,7 @@ static int lavplay_SDL_unlock(lavplay_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 			      int data_format,
@@ -516,7 +526,9 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    switch (data_format) {
    case DATAFORMAT_MJPG:
 #endif
-   decode_jpeg_raw (jpeg_buffer, buf_len, editlist->video_inter, CHROMA420,
+   decode_jpeg_raw (jpeg_buffer, buf_len,
+      editlist->video_inter>0&&info->exchange_fields?(editlist->video_inter+1)%2+1:editlist->video_inter,
+      CHROMA420,
       editlist->video_width, editlist->video_height, 
       settings->yuv_overlay->pixels[0], 
       settings->yuv_overlay->pixels[1],
@@ -550,6 +562,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 
    return 1;
 }
+#endif
 
 
 /******************************************************
@@ -559,6 +572,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static int lavplay_SDL_init(lavplay_t *info)
 {
    char *sbuffer;
@@ -636,6 +650,7 @@ static int lavplay_SDL_init(lavplay_t *info)
 
    return 1;
 }
+#endif
 
 
 /******************************************************
@@ -647,6 +662,7 @@ static int lavplay_SDL_init(lavplay_t *info)
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static void lavplay_mjpeg_software_frame_sync(lavplay_t *info, int frame_periods)
 {
    int usec_since_lastframe;
@@ -686,6 +702,7 @@ static void lavplay_mjpeg_software_frame_sync(lavplay_t *info, int frame_periods
    gettimeofday( &(settings->lastframe_completion), 0 );
    settings->syncinfo[settings->currently_processed_frame].timestamp = settings->lastframe_completion;
 }
+#endif
 
 
 /******************************************************
@@ -695,6 +712,7 @@ static void lavplay_mjpeg_software_frame_sync(lavplay_t *info, int frame_periods
  * return value: 1 on success, 0 on error
  ******************************************************/
 
+#ifdef HAVE_SDL
 static void *lavplay_mjpeg_playback_thread(void * arg)
 {
    lavplay_t *info = (lavplay_t *)arg;
@@ -761,6 +779,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
    pthread_exit(NULL);
    return NULL;
 }
+#endif
 
 
 /******************************************************
@@ -773,7 +792,9 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
 
 static int lavplay_mjpeg_open(lavplay_t *info)
 {
+#ifdef HAVE_SDL
    int i;
+#endif
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    EditList *editlist = info->editlist;
    int max_frame_size = editlist->max_frame_size;
@@ -783,9 +804,9 @@ static int lavplay_mjpeg_open(lavplay_t *info)
 
    switch (info->playback_mode)
    {
+#ifndef IRIX
       case 'H':
       case 'C':
-#ifndef IRIX
          /* open video device */
          if ((settings->video_fd = open(info->video_dev, O_RDWR)) < 0)
          {
@@ -814,13 +835,9 @@ static int lavplay_mjpeg_open(lavplay_t *info)
                "Error mapping the video buffer: %s", (char *)sys_errlist[errno]);
             return 0;
          }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
-#endif
          break;
-
-
+#endif
+#ifdef HAVE_SDL
       case 'S':
          /* Just allocate MJPG_nbuf buffers */
          settings->br.count = info->MJPG_numbufs;
@@ -858,10 +875,11 @@ static int lavplay_mjpeg_open(lavplay_t *info)
          }
 
          break;
+#endif
 
       default:
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Unknown playback_method!");
+            "lavplay_mjpeg_open(): Unknown playback mode (\'%c\')", info->playback_mode);
          return 0;
    }
 
@@ -880,38 +898,45 @@ static int lavplay_mjpeg_open(lavplay_t *info)
 
 static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
 {
+#ifdef HAVE_SDL
    int i;
+#endif
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
 
-   if (info->playback_mode == 'H' || info->playback_mode == 'C')
+   switch (info->playback_mode)
    {
-#ifndef IRIX 
-      /* do a MJPIOC_G_PARAMS ioctl to get proper default values */
-      if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, bp) < 0)
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error getting video parameters: %s", (char *)sys_errlist[errno]);
-         return 0;
-      }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
+#ifndef IRIX
+      case 'H':
+      case 'C':
+         /* do a MJPIOC_G_PARAMS ioctl to get proper default values */
+         if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, bp) < 0)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Error getting video parameters: %s", (char *)sys_errlist[errno]);
+            return 0;
+         }
+         break;
 #endif
-   }
-   else
-   {
-      /* Set some necessary params */
-      bp->decimation = 1;
-      bp->quality = 50; /* default compression factor 8 */
-      bp->odd_even = 1;
-      bp->APPn = 0;
-      bp->APP_len = 0; /* No APPn marker */
-      for(i=0;i<60;i++) bp->APP_data[i] = 0;
-      bp->COM_len = 0; /* No COM marker */
-      for(i=0;i<60;i++) bp->COM_data[i] = 0;
-      bp->VFIFO_FB = 1;
-      memset(bp->reserved,0,sizeof(bp->reserved));
+#ifdef HAVE_SDL
+      case 'S':
+         /* Set some necessary params */
+         bp->decimation = 1;
+         bp->quality = 50; /* default compression factor 8 */
+         bp->odd_even = 1;
+         bp->APPn = 0;
+         bp->APP_len = 0; /* No APPn marker */
+         for(i=0;i<60;i++) bp->APP_data[i] = 0;
+         bp->COM_len = 0; /* No COM marker */
+         for(i=0;i<60;i++) bp->COM_data[i] = 0;
+         bp->VFIFO_FB = 1;
+         memset(bp->reserved,0,sizeof(bp->reserved));
+         break;
+#endif
+      default:
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "lavplay_mjpeg_get_params(): Unknown playback mode (\'%c\')", info->playback_mode);
+         return 0;
    }
 
    return 1;
@@ -930,9 +955,9 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
   
-   if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
-    {
 #ifndef IRIX
+   if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
+   {
       struct video_window vw;
       XWindowAttributes wts;
       Display *dpy;
@@ -968,35 +993,37 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       }
 
       bp->VFIFO_FB = 1;
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
-#endif
    }
+#endif
 
-   if (info->playback_mode == 'H' || info->playback_mode == 'C')
+   switch (info->playback_mode)
    {
-#ifndef IRIX 
-      /* All should be set up now, set the parameters */
-      lavplay_msg(LAVPLAY_MSG_DEBUG, info,
-         "Hardware video settings: input=%d, norm=%d, fields_per_buf=%d, "
-         "x=%d, y=%d, width=%d, height=%d, quality=%d",
-         bp->input, bp->norm, bp->field_per_buff, bp->img_x, bp->img_y,
-         bp->img_width, bp->img_height, bp->quality);
-      if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, bp) < 0)
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error setting video parameters: %s", (char *)sys_errlist[errno]);
-         return 0;
-      }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
+#ifndef IRIX
+      case 'C':
+      case 'H':
+         /* All should be set up now, set the parameters */
+         lavplay_msg(LAVPLAY_MSG_DEBUG, info,
+            "Hardware video settings: input=%d, norm=%d, fields_per_buf=%d, "
+            "x=%d, y=%d, width=%d, height=%d, quality=%d",
+            bp->input, bp->norm, bp->field_per_buff, bp->img_x, bp->img_y,
+            bp->img_width, bp->img_height, bp->quality);
+         if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, bp) < 0)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Error setting video parameters: %s", (char *)sys_errlist[errno]);
+            return 0;
+         }
+         break;
 #endif
-   }
-   else /* software */
-   {
-      settings->show_top = (bp->odd_even) ? 1 : 0; /* odd_even = 1: show top field first */
+#ifdef HAVE_SDL
+      case 'S':
+         settings->show_top = (bp->odd_even) ? 1 : 0; /* odd_even = 1: show top field first */
+         break;
+#endif
+      default:
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "lavplay_mjpeg_set_params(): Unknown playback mode (\'%c\')", info->playback_mode);
+         return 0;
    }
 
    return 1;
@@ -1066,27 +1093,32 @@ static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
 
-   if (info->playback_mode == 'H' || info->playback_mode == 'C')
+   switch (info->playback_mode)
    {
-#ifndef IRIX 
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &frame) < 0)
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error queueing buffer: %s", (char *)sys_errlist[errno]);
-         return 0;
-      }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
+#ifndef IRIX
+      case 'H':
+      case 'C':
+         if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &frame) < 0)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Error queueing buffer: %s", (char *)sys_errlist[errno]);
+            return 0;
+         }
+         break;
 #endif
-   }
-   else
-   {
-      /* mark this buffer as playable and tell the software playback thread to wake up if it sleeps */
-      pthread_mutex_lock(&(settings->valid_mutex));
-      settings->valid[frame] = frame_periods;
-      pthread_cond_broadcast(&(settings->buffer_filled[frame]));
-      pthread_mutex_unlock(&(settings->valid_mutex));
+#ifdef HAVE_SDL
+      case 'S':
+         /* mark this buffer as playable and tell the software playback thread to wake up if it sleeps */
+         pthread_mutex_lock(&(settings->valid_mutex));
+         settings->valid[frame] = frame_periods;
+         pthread_cond_broadcast(&(settings->buffer_filled[frame]));
+         pthread_mutex_unlock(&(settings->valid_mutex));
+      break;
+#endif
+      default:
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "lavplay_mjpeg_queue_buf(): Unknown playback mode (\'%c\')", info->playback_mode);
+         return 0;
    }
 
    return 1;
@@ -1105,37 +1137,42 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
 
-   if (info->playback_mode == 'H' || info->playback_mode == 'C')
+   switch (info->playback_mode)
    {
 #ifndef IRIX 
-      if (ioctl(settings->video_fd, MJPIOC_SYNC, bs) < 0)
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error syncing on a buffer: %s", (char *)sys_errlist[errno]);
-         return 0;
-      }
-      lavplay_msg(LAVPLAY_MSG_DEBUG, info,
-         "frame=%ld, length=%ld, seq=%ld", bs->frame, bs->length, bs->seq);
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
+      case 'H':
+      case 'C':
+         if (ioctl(settings->video_fd, MJPIOC_SYNC, bs) < 0)
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Error syncing on a buffer: %s", (char *)sys_errlist[errno]);
+            return 0;
+         }
+         lavplay_msg(LAVPLAY_MSG_DEBUG, info,
+            "frame=%ld, length=%ld, seq=%ld", bs->frame, bs->length, bs->seq);
+         break;
 #endif
-   }
-   else
-   {
-      /* Wait until this buffer has been played */
-      pthread_mutex_lock(&(settings->valid_mutex));
-      while (settings->valid[settings->currently_synced_frame] != 0)
-      {
-         pthread_cond_wait(&(settings->buffer_done[settings->currently_synced_frame]),
-            &(settings->valid_mutex));
-      }
-      pthread_mutex_unlock(&(settings->valid_mutex));
+#ifdef HAVE_SDL
+      case 'S':
+         /* Wait until this buffer has been played */
+         pthread_mutex_lock(&(settings->valid_mutex));
+         while (settings->valid[settings->currently_synced_frame] != 0)
+         {
+            pthread_cond_wait(&(settings->buffer_done[settings->currently_synced_frame]),
+               &(settings->valid_mutex));
+         }
+         pthread_mutex_unlock(&(settings->valid_mutex));
 
-      /* copy the relevant sync information */
-      memcpy(bs, &(settings->syncinfo[settings->currently_synced_frame]),
-         sizeof(struct mjpeg_sync));
-      settings->currently_synced_frame = (settings->currently_synced_frame + 1) % settings->br.count;
+         /* copy the relevant sync information */
+         memcpy(bs, &(settings->syncinfo[settings->currently_synced_frame]),
+            sizeof(struct mjpeg_sync));
+         settings->currently_synced_frame = (settings->currently_synced_frame + 1) % settings->br.count;
+         break;
+#endif
+      default:
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "lavplay_mjpeg_sync_buf(): Unknown playback mode (\'%c\')", info->playback_mode);
+         return 0;
    }
 
    return 1;
@@ -1158,40 +1195,45 @@ static int lavplay_mjpeg_close(lavplay_t *info)
    lavplay_msg(LAVPLAY_MSG_DEBUG, info,
       "Closing down the %s", info->playback_mode=='S'?"threading system":"video device");
 
-   if (info->playback_mode == 'H' || info->playback_mode == 'C')
+   switch (info->playback_mode)
    {
 #ifndef IRIX
-      n = -1;
-      if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &n) < 0)
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error de-queueing the buffers: %s", (char *)sys_errlist[errno]);
-         return 0;
-      }
-      if (info->playback_mode == 'H')
-      {
-         n = 0;
-         if (ioctl(settings->video_fd, VIDIOCCAPTURE, &n) < 0)
+      case 'C':
+      case 'H':
+         n = -1;
+         if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &n) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Could not deactivate on-screen window: %s", sys_errlist[errno]);
+               "Error de-queueing the buffers: %s", (char *)sys_errlist[errno]);
             return 0;
          }
-      }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
+         if (info->playback_mode == 'H')
+         {
+            n = 0;
+            if (ioctl(settings->video_fd, VIDIOCCAPTURE, &n) < 0)
+            {
+               lavplay_msg(LAVPLAY_MSG_ERROR, info,
+                  "Could not deactivate on-screen window: %s", sys_errlist[errno]);
+               return 0;
+            }
+         }
+         break;
 #endif
-   }
-   else
-   {
-      pthread_cancel(settings->software_playback_thread);
-      if (pthread_join(settings->software_playback_thread, NULL)) 
-      {
+#ifdef HAVE_SDL
+      case 'S':
+         pthread_cancel(settings->software_playback_thread);
+         if (pthread_join(settings->software_playback_thread, NULL)) 
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Failure deleting software playback thread");
+            return 0;
+         }
+         break;
+#endif
+      default:
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Failure deleting software playback thread");
+            "lavplay_mjpeg_close(): Unknown playback mode (\'%c\')", info->playback_mode);
          return 0;
-      }
    }
 
    return 1;
@@ -1271,6 +1313,7 @@ static int lavplay_init(lavplay_t *info)
    /* initialize the playback threading system (used to be libmjpeg) */
    lavplay_mjpeg_open(info);
 
+#ifdef HAVE_SDL
    /* init SDL if we want SDL */
    if (info->playback_mode == 'S')
    {
@@ -1279,6 +1322,7 @@ static int lavplay_init(lavplay_t *info)
       if (!lavplay_SDL_init(info))
          return 0;
    }
+#endif
 
    if (editlist->has_audio && info->audio)
    {
@@ -1442,6 +1486,7 @@ static int lavplay_init(lavplay_t *info)
       return 0;
 #endif
    }
+#ifdef HAVE_SDL
    else
    {
       /* software playback */
@@ -1449,6 +1494,7 @@ static int lavplay_init(lavplay_t *info)
          "Output dimensions: %ldx%ld",
          editlist->video_width, editlist->video_height);
    }
+#endif
    
    /* Set field polarity for interlaced video */
    bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
@@ -1670,11 +1716,13 @@ static void *lavplay_playback_thread(void *data)
    }
    lavplay_mjpeg_close(info);
 
+#ifdef HAVE_SDL
    if (info->playback_mode == 'S')
    {
       SDL_FreeYUVOverlay(settings->yuv_overlay);
       SDL_Quit();
    }
+#endif
 
    pthread_exit(NULL);
 }
@@ -1705,8 +1753,10 @@ lavplay_t *lavplay_malloc()
    info->exchange_fields = 0;
    info->zoom_to_fit = 0;
    info->flicker_reduction = 1;
+#ifdef HAVE_SDL
    info->sdl_width = 0; /* use video size */
    info->sdl_height = 0; /* use video size */
+#endif
    info->soft_full_screen = 0;
    info->video_dev = "/dev/video";
    info->display = ":0.0";
@@ -2308,6 +2358,24 @@ int lavplay_open(lavplay_t *info, char **files, int num_files)
          "Editlists are different");
       free(new_eli);
       return 0;
+   }
+
+   /* if requested, invert field order */
+   if (info->exchange_fields)
+   {
+      switch (info->editlist->video_inter)
+      {
+         case LAV_INTER_BOTTOM_FIRST:
+            info->editlist->video_inter = LAV_INTER_TOP_FIRST;
+            break;
+         case LAV_INTER_TOP_FIRST:
+            info->editlist->video_inter = LAV_INTER_BOTTOM_FIRST;
+            break;
+         default:
+            lavplay_msg(LAVPLAY_MSG_WARNING, info,
+               "Input video is not interlaced - cannot invert field order");
+            break;
+      }
    }
 
    /* if everything went well et all */

@@ -36,23 +36,22 @@ jpeg2yuv
 #include "mjpeg_logging.h"
 #include "mjpeg_types.h"
 
-#include "oldyuv4mpeg.h"
+#include "yuv4mpeg.h"
 
 #define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
 static unsigned char *jpegformatstr   = NULL;
 
 static float framerate = -1.0;
-static int fpscode = 0;
 static uint32_t begin = 0; /* the video frame start */
 static uint32_t numframes = -1; /* -1 means: take all frames */
 
 static int verbose = 1; /* the verbosity of the program (see mjpeg_logging.h) */
-static int interlaced = -1; /* tells if the YUV4MPEG stream shall be interlaced */
-static int interlaced_top_first = -1; /* tells if the YUV4MPEG's frames are bottom first or top first */
+static int interlaced = 0; /* tells if the YUV4MPEG stream shall be interlaced */
+static int interlaced_mode = Y4M_ILACE_NONE; /* tells if the YUV4MPEG's frames are bottom first or top first */
 
-static int image_width = 0;
-static int image_height = 0;
+static y4m_stream_info_t *streaminfo = NULL;
+static y4m_frame_info_t *frameinfo = NULL;
 
 static struct jpeg_decompress_struct dinfo;
 static struct jpeg_error_mgr jerr;
@@ -144,7 +143,17 @@ void parse_commandline(int argc, char ** argv)
      interlaced = 1;
      break;
    case 'T':
-     interlaced_top_first = atoi(optarg);
+     switch (atoi(optarg))
+       {
+       case 0:
+         interlaced_mode = Y4M_ILACE_BOTTOM_FIRST;
+         break;
+       case 1:
+         interlaced_mode = Y4M_ILACE_TOP_FIRST;
+         break;
+       default:
+         mjpeg_error_exit1 ("-T option requires arg 0 or 1\n");
+       }
      break;
    case 'v':
      verbose = atoi(optarg);
@@ -211,60 +220,48 @@ int init_parse_files()
       
       mjpeg_info("Image dimensions are %dx%d, framerate = %f frames/s\n",
 	      dinfo.image_width, dinfo.image_height, framerate);
-      image_width = dinfo.image_width;
-      image_height = dinfo.image_height;
+      streaminfo->width = dinfo.image_width;
+      streaminfo->height = dinfo.image_height;
 
       jpeg_destroy_decompress(&dinfo);
       fclose(jpegfile);
     }
 
-  fpscode = yuv_fps2mpegcode (framerate);
-  if (fpscode == 0) 
-    {
-      mjpeg_error_exit1("%f frames/s is an unsupported framerate !\n"
-	      "use: 23.976, or\n"
-	      "24.000, /* 24fps movie */\n"
-	      "25.000, /* PAL */\n"
-	      "29.970, /* NTSC */\n"
-	      "30.000, 50.000, 59.940, 60.000\n"
-	      "\n", framerate);
-    }
-  else
-    {
-      mjpeg_info("movie frame rate is: %f frames/s\n", framerate);
-    }
+  streaminfo->framerate = framerate;
+  mjpeg_info("movie frame rate is: %f frames/s\n", framerate);
 
-  if (interlaced == -1)
+  if (!interlaced)
     {
-      if (image_height / image_width >= 2)
+      if (streaminfo->height / streaminfo->width >= 2)
 	{
-	  mjpeg_info("INTERLACED format detected, doubling frame height to %d\n", image_height*2);      
+	  mjpeg_info("INTERLACED format detected, doubling frame height to %d\n", streaminfo->height*2);      
 	  interlaced = 1;
 	}
       else
 	{
 	  mjpeg_info("(non_interlaced input assumed)\n");      
-	  interlaced = 0;
 	}
     }
 
-  if (interlaced)
+  if (interlaced == 1)
     {
-      switch(interlaced_top_first)
+      switch(interlaced_mode)
 	{
-	case -1:
+	case Y4M_ILACE_NONE:
 	  mjpeg_error_exit1("You have not specified the order of the frames (use the -T option)\n");      
 	  break;
-	case 0:
+	case Y4M_ILACE_BOTTOM_FIRST:
 	  mjpeg_info("Interlaced frame order: Bottom frame first.\n");      
 	  break;
-	case 1:
+	case Y4M_ILACE_TOP_FIRST:
 	  mjpeg_info("Interlaced frame order: Top frame first.\n");      
 	  break;
 	default:
 	  mjpeg_error_exit1("Invalid Top/Bottom paramter (only 0 or 1 allowed for -T)\n");      
 	}
     }
+
+    streaminfo->interlace = interlaced_mode;
 
   return 1;
 }
@@ -289,10 +286,7 @@ int generate_YUV4MPEG()
   yuvbufptr[1] = ubuffer; 
   yuvbufptr[2] = vbuffer; 
 
-  if (!interlaced)
-    yuv_write_header(STDOUT_FILENO, image_width, image_height, fpscode);
-  else
-    yuv_write_header(STDOUT_FILENO, image_width, image_height * 2, fpscode);
+  y4m_write_stream_header(STDOUT_FILENO, streaminfo);
   
   while (newpicsavail)
     {
@@ -309,7 +303,7 @@ int generate_YUV4MPEG()
 	      mjpeg_info("(Rewriting latest frame instead)\n");
 
 	      mjpeg_debug("Old frame recycled, now writing to output stream.\n");
-	      yuv_write_frame (STDOUT_FILENO, yuvbufptr, image_width, image_height);
+              y4m_write_frame (STDOUT_FILENO, streaminfo, frameinfo, yuvbufptr);
 	    }
 	  else
 	    {
@@ -338,33 +332,32 @@ int generate_YUV4MPEG()
 	   * width            width of Y channel (width of U/V is width/2)
 	   * height           height of Y channel (height of U/V is height/2)
 	   */
-	  if (interlaced == 0)
-	    {
-	      mjpeg_info("Processing non-interlaced %s, size %d.\n", jpegname, jpegsize);
-	      decode_jpeg_raw (jpegdata, jpegsize,
-			       0, 420, image_width, image_height,
-			       ybuffer, ubuffer, vbuffer);
-	    }
-	  else
-	    {
-	      if (interlaced_top_first)
-		{
-		  mjpeg_info("Processing interlaced, top-first %s, size %d.\n", jpegname, jpegsize);
-		  decode_jpeg_raw (jpegdata, jpegsize,
-				   1, 420, image_width, image_height,
-				   ybuffer, ubuffer, vbuffer);
-		}
-	      else
-		{
-		  mjpeg_info("Processing interlaced, bottom-first %s, size %d.\n", jpegname, jpegsize);
-		  decode_jpeg_raw (jpegdata, jpegsize,
-				   2, 420, image_width, image_height,
-				   ybuffer, ubuffer, vbuffer);
-		}
+          switch (interlaced_mode)
+            {
+            case Y4M_ILACE_NONE:
+              mjpeg_info("Processing non-interlaced %s, size %d.\n", jpegname, jpegsize);
+              decode_jpeg_raw (jpegdata, jpegsize,
+                               0, 420, streaminfo->width, streaminfo->height,
+                               ybuffer, ubuffer, vbuffer);
+              break;
+
+            case Y4M_ILACE_TOP_FIRST:
+              mjpeg_info("Processing interlaced, top-first %s, size %d.\n", jpegname, jpegsize);
+              decode_jpeg_raw (jpegdata, jpegsize,
+                               1, 420, streaminfo->width, streaminfo->height,
+                               ybuffer, ubuffer, vbuffer);
+              break;
+
+            case Y4M_ILACE_BOTTOM_FIRST:
+              mjpeg_info("Processing interlaced, bottom-first %s, size %d.\n", jpegname, jpegsize);
+              decode_jpeg_raw (jpegdata, jpegsize,
+                               2, 420, streaminfo->width, streaminfo->height,
+                               ybuffer, ubuffer, vbuffer);
+              break;
 	    }
 
 	  mjpeg_debug("Frame decoded, now writing to output stream.\n");
-	  yuv_write_frame (STDOUT_FILENO, yuvbufptr, image_width, image_height);
+          y4m_write_frame (STDOUT_FILENO, streaminfo, frameinfo, yuvbufptr);
 	}
 
       vid_index++; /* reached the end of the file, or the desired number of frames ? */
@@ -381,6 +374,9 @@ int generate_YUV4MPEG()
  */
 int main(int argc, char ** argv)
 { 
+  streaminfo = y4m_init_stream_info (NULL);
+  frameinfo = y4m_init_frame_info (NULL);
+
   parse_commandline(argc, argv);
 
   mjpeg_default_handler_verbosity(verbose);

@@ -1,5 +1,7 @@
 # Process this file with Automake to produce Makefile.in
 
+CC = g++
+
 EXTRA_DIST = \
 	README  	INSTRUCT	TODO \
 	.cvsignore
