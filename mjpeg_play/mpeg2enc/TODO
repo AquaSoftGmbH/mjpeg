@@ -1,25 +1,10 @@
 Short Term
 
-1.	Tidy up the experimental rate control code - decide which one you want to
-	keep ;-)
-
-2.	Merge the correction for the MPEG2 quality level setting numbers issue
-	into the stable branch.
-
-3.	Figure out why the file-splitting points seem so variable...
-
-4.	The order of return from block_dist1_MMXE is silly.  Why not
+2.	The order of return from block_dist1_MMXE is silly.  Why not
 	retune in the order it is held and adjust find_best_one_pel_MMXE to
 	suit.  
 
-5.	Add a mode for generating closed GOPs.
-
-Medium Term
-
-0.	Librarify for gstreamer
-
-
-1.	For Motion estimation in -I 1 we really need both field *and* frame
+3.	For Motion estimation in -I 1 we really need both field *and* frame
 	sub-sampled images for motion estimation to be optimal.
 
 4.	The rate control code is now a mess of int64_t , double and int. Needs
@@ -30,6 +15,11 @@ Medium Term
 	some circumstances mess up as the sizing takes no account of
 	the fact the when a sequence split occurs the I-frame tempref is
 	0 not M-1.
+
+
+Medium Term
+
+0.	Librarify for gstreamer
 
 
 1.  	Bring field sequence MC/prediction to same level as progressive	

@@ -3,9 +3,8 @@ to MPEG-1/2 video streams.
 
 DISCLAIMER:
 
-This software is from the MPEG Software Simulation Group.
-See notices in source code regarding Patents and miscellaneous
-IP issues.
+This software is from the MPEG Software Simulation Group.  See notices
+in source code regarding Patents and miscellaneous IP issues.
 
 POST  MPEG SSG Development
 
@@ -21,7 +20,7 @@ results of some work by Juan Remero Arroyo (who would have guessed 4*4
 blocks still produce useful results!).
  
 Chris Atenasio's contributed MMX2/SSE code for the motion compensation
-macroblock group difference calculation.  
+macroblock group difference calculation.
 
 Andrew Stevens added a lot more MMX1 code for motion compensation and
 adapted Chris' code for his intelligent motion compensation mods and
@@ -30,23 +29,23 @@ ported the fdct/idct MMX code to nasm.
 Andrew Stevens added some simple pre-processing filters to improve
 output quality when using noisy (e.g. broadcast) source video.
 
-Andrew Stevens modified the bit-allocation routines to use a 
-more accurate method of estimating bits needed for good quality results.
+Andrew Stevens modified the bit-allocation routines to use a more
+accurate method of estimating bits needed for good quality results.
 
 Andrew Stevens fixed a number of overflow and calculation errors
 associated with large files.
 
-Andrew Stevens ported in and tidied up a number of
-MMX routines from the bbmpeg project for windows (see
-www.delphi.com/bbmpeg_ug) to accelerate a few "second line" but
-nonetheless significantly time-consuming functions.
+Andrew Stevens ported in and tidied up a number of MMX routines from
+the bbmpeg project for windows (see www.delphi.com/bbmpeg_ug) to
+accelerate a few "second line" but nonetheless significantly
+time-consuming functions.
 
-Andrew Stevens added a new much faster MMX / 3Dnow / ISSE 
-based quantization routines.
+Andrew Stevens added a new much faster MMX / 3Dnow / ISSE based
+quantization routines.
 
 Andrew Stevens replaced the use of SAD with variance for selecting
  motion compensations. Slightly more expensive but produces *markedly*
- better results.  Similarly added initial support for checking the
+ better results.  Similarly added support for checking the
  quality of the chrominance match achieved.
 
 Andrew Stevens added limited SMP support and basic chrominance match
@@ -55,54 +54,14 @@ checking in motion compensation.
 Andrew Stevens added support for variable-sized GOP's and sequence
 splitting at file-size boundaries.
 
+James Klikman ported all the SSE/MMX etc stuff to AltiVec
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
-around 12 times as fast with sensible (search radius 15) motion compensation
-settings, and you can now get half-decent looking results when working with
-typical broadcast quality sources.
+around 12 times as fast with sensible (search radius 15) motion
+compensation settings, and you can now get half-decent looking results
+when working with typical broadcast quality sources.
 
-USAGE:
-
-Output file name (-o option) is required!
-Usage: mpeg2enc [params]
-   where possible params are:
- -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug
-   -m num     MPEG level (1 or 2) default: 1
-   -a num     Aspect ratio displayed image [1..14] (default: code for 4:3 in specified norm)
-              0 - Display MPEG1 and MPEG2 aspect ratio code tables
-   -f num     Frame rate for encoded video (default: frame rate of input stream)   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)
-   -B num     Non-video data bitrate to use for sequence splitting
-              calculations (see -S).
-   -q num     Quality factor [1..31] (1 is best, no default)
-              Bitrate and Quality are mutually exclusive!
-   -o name    Outputfile name (REQUIRED!!!)
-   -F num     only for MPEG 2 output:
-               0 = progressive output (no field pictures)
-               1 = field pictures, bottom field first
-               2 = field pictures, top field first
-               3 = progressive output, field MC and MDCT
-   -r num     Search radius for motion compensation [0..32] (default 16)
-   -4 num     (default: 2)
-                          Population halving passes 4*4-pel subsampled motion compensation
-   -2 num     (default: 3)
-                          Population halving passes 2*2-pel subsampled motion compensation
-   -g num     Minimum GOP size (default 12)
-   -G num     Maximum GOP size (default 12)
-   -M num     Optimise threading for num CPU's (default: 1)
-   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 ..
-10] (default: 2.5)
-   -V num     Target video buffer size in KB (default 46)
-   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).
-   -S num     Start a new sequence every num Mbytes in the final mux-ed
-              stream.  -B specifies the bitrate of non-video data
-   -s         Generate a sequence header for every GOP rather than just for the
-first GOP
-   -p         Generate header flags for 32 pull down of 24fps movie.
-   -t         Activate dynamic thresholding of motion compensation window size
-   -N         Noise filter via quantisation adjustment (experimental)
-   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)
-   -?         Print this lot out!
 
 FAST MOTION COMPENSATION:
 

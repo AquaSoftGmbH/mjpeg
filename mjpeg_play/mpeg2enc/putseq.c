@@ -330,7 +330,7 @@ static int find_gop_length( int gop_start_frame,
 	/* last GOP may contain less frames! */
 	if (gop_len > istrm_nframes-gop_start_frame)
 		gop_len = istrm_nframes-gop_start_frame;
-	mjpeg_info( "GOP LENGTH = %d", gop_len);
+	mjpeg_info( "GOP start (%d frames)", gop_len);
 	return gop_len;
 
 }
@@ -711,7 +711,7 @@ static mp_semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 static void stencodeworker(pict_data_s *picture)
 {
 	/* ALWAYS do-able */
-	mjpeg_info("Frame start %d %c %d %d",
+	mjpeg_debug("Frame start %d %c %d %d",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
 			   picture->temp_ref,
@@ -768,11 +768,12 @@ static void stencodeworker(pict_data_s *picture)
 	}
 
 
-	mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f",
-				picture->decode, 
-				picture->pad ? "PAD" : "   ",
-				picture->avg_act, picture->sum_avg_act,
-				picture->AQ, picture->SQ);
+	mjpeg_info("Frame end %d %c quant=%3.2f %s",
+               picture->decode, 
+			   pict_type_char[picture->pict_type],
+               picture->AQ,
+               picture->pad ? "PAD" : "   "
+        );
 			
 }
 

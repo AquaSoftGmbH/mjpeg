@@ -110,7 +110,6 @@ static int32_t P_pict_base_bits;
 static int64_t bitcnt_EOP = 0;
 static int frame_overshoot_margin = 0;
 static int undershoot_carry;
-static double undershoot_gain;
 static double overshoot_gain;
 
 /*
@@ -291,7 +290,7 @@ void rc_init_seq(int reinit)
 	first_gop = 1;
 
 	/* Calculate reasonable margins for variation in the decoder
-	   buffer.  we assume that having less than 5 frame intervals
+	   buffer.  We assume that having less than 5 frame intervals
 	   worth buffered is cutting it fine for avoiding under-runs.
 
 	   The gain values represent the fraction of the under/over shoot
@@ -304,12 +303,11 @@ void rc_init_seq(int reinit)
 	if( opt_still_size > 0 )
 	{
 		undershoot_carry = 0;
-		undershoot_gain = 1.0;
 		overshoot_gain = 1.0;
 	}
 	else
 	{
-		int buffer_safe = 4 * per_pict_bits ;
+		int buffer_safe = 3 * per_pict_bits ;
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/6;
 		if( undershoot_carry < 0 )
 			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
