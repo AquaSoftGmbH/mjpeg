@@ -623,7 +623,7 @@ int y4m_parse_stream_tags(char *s, y4m_stream_info_t *i)
   }
   /*
    *...but first, try to look for deprecated X-tag (it will be removed if 
-   * found.  The XYSCSS tag had to be consistent with C tag anyhow.
+   * found).  The XYSCSS tag had to be consistent with C tag anyhow.
   */
   val = find_old_chroma_xtag(i);
   if (val != Y4M_UNKNOWN)
