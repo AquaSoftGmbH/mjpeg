@@ -37,6 +37,7 @@ void display_help(void);
 
 
 struct DNSR_GLOBAL denoiser;
+int param_skip = 0;
 
 extern uint32_t (*calc_SAD)         (uint8_t * , uint8_t * );
 extern uint32_t (*calc_SAD_uv)      (uint8_t * , uint8_t * );
@@ -55,6 +56,7 @@ int main(int argc, char *argv[])
   int frame_offset;
   int frame_Coffset;
   int uninitialized = 1;
+  int frame = 0;
   
   y4m_frame_info_t frameinfo;
   y4m_stream_info_t streaminfo;
@@ -209,6 +211,15 @@ int main(int argc, char *argv[])
                                               denoiser.frame.io) )
     )
     {
+	  frame++;
+	  if (frame <= param_skip)
+	  {
+         y4m_write_frame ( fd_out, 
+                        &streaminfo, 
+                        &frameinfo, 
+                        denoiser.frame.io);
+		 continue;
+	  }
       
       /* Move frame down by BUF_OFF lines into reference buffer */
       memcpy(denoiser.frame.ref[Yy]+frame_offset ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
@@ -358,7 +369,7 @@ process_commandline(int argc, char *argv[])
   char c;
   int i1,i2,i3,i4;
 
-  while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:L:C:p:Ff")) != -1)
+  while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:s:L:C:p:Ff")) != -1)
   {
     switch (c)
     {
@@ -426,6 +437,11 @@ process_commandline(int argc, char *argv[])
       case 'S':
       {
         denoiser.sharpen = atoi(optarg);
+        break;
+      }
+      case 's':
+      {
+        param_skip = atoi(optarg);
         break;
       }
       case 'L':
