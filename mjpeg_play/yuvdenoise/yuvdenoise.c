@@ -100,7 +100,7 @@ int uv_height;                  /* height of the UV-components */
  * global variables needed for the motion estimation                         *
  *****************************************************************************/
 
-uint32_t mean_SAD;              /* mean sum of absolute differences */
+uint32_t mean_SAD=100;          /* mean sum of absolute differences */
 int mod_radius=RADIUS;          /* initial modulated radius */
 int radius=RADIUS;              /* initial fixed radius */
 float block_quality;
@@ -287,7 +287,7 @@ main (int argc, char *argv[])
 
   /* process commandline */
 
-  while ((c = getopt (argc, argv, "?vb:r:hDI")) != -1)
+  while ((c = getopt (argc, argv, "?hvb:r:fDI")) != -1)
     {
       switch (c)
         {
@@ -295,6 +295,9 @@ main (int argc, char *argv[])
           display_help ();
           break;
         case 'h':
+          display_help ();
+          break;
+        case 'f':
           fixed_search_radius=1;
           mjpeg_log (LOG_INFO, "Using fixed radius. Radius optimization turned off.\n");
           break;
@@ -432,9 +435,6 @@ main (int argc, char *argv[])
 	  /* main denoise processing */
 	  denoise_frame (yuv);
 
-	  /* blur depending on distance */
-	  //distance_blur_frame (yuv);
-
 	  /* despeckling */
 	  if (scene_change && despeckle_filter)
 	      despeckle_frame_hard (yuv);
@@ -498,57 +498,57 @@ display_greeting ()
 void
 display_help ()
 {
-  printf ("\n ----------------------------------------------------------- ");
-  printf ("\n yuvdenoise - A brief summery of options                     ");
-  printf ("\n ----------------------------------------------------------- ");
-  printf ("\n                                                             ");
-  printf ("\n Usage :  yuvdenoise [options]                               ");
-  printf ("\n                                                             ");
-  printf ("\n Currently supported options are:                            ");
-  printf ("\n                                                             ");
-  printf ("\n                                                             ");
-  printf ("\n -v  Verbose output.                                         ");
-  printf ("\n     You will get some statistical information on the input  ");
-  printf ("\n     video-stream as mean-SAD so far and the average SAD of  ");
-  printf ("\n     the last image. Additionaly you will have a translation ");
-  printf ("\n     of these values on a single Pixel (Noiselevel).         ");
-  printf ("\n                                                             ");
-  printf ("\n                                                             ");
-  printf ("\n -b  Border Setting.                                         ");
-  printf ("\n     If you allready know parts of the image are and remain  ");
-  printf ("\n     black all over the complete sequence of images, you may ");
-  printf ("\n     use something like this:                                ");
-  printf ("\n                                                             ");
-  printf ("\n     yuvdenoise -b 16,16,704,560                             ");
-  printf ("\n                                                             ");
-  printf ("\n     This will set all the pixels in the image outside that  ");
-  printf ("\n     search window to absolute pure black. The area outside  ");
-  printf ("\n     the search window will not go into the motion compen-   ");
-  printf ("\n     sation algorithm and therefor you might have a speed    ");
-  printf ("\n     gain in processing the movie.                           ");
-  printf ("\n                                                             ");
-  printf ("\n                                                             ");
-  printf ("\n -r  Maximum Search Radius.                                  ");
-  printf ("\n     By adding this option you may limit the search radius.  ");
-  printf ("\n     Search radius may internally be reduced by the algorithm");
-  printf ("\n     depending on the quality of the center match.           ");
-  printf ("\n                                                             ");
-  printf ("\n     yuvdenoise -r 16                                        ");
-  printf ("\n                                                             ");
-  printf ("\n     Sets the maximum search Radius to 16 pixels.            ");
-  printf ("\n                                                             ");
-  printf ("\n                                                             ");
-  printf ("\n -h  Fixed Search Radius.                                    ");
-  printf ("\n     By adding this option you may advise the filter to use  ");
-  printf ("\n     a fixed radius for searching block matches. This dis-   ");
-  printf ("\n     ables the internal radius optimization/reduction.       ");
-  printf ("\n                                                             ");
-  printf ("\n                                                             ");
-  printf ("\n -D  Disable Additional Despeckle Filter.                    ");
-  printf ("\n     This option allows you to turn off the second pass of   ");
-  printf ("\n     the noisefilter.                                        ");
-  printf ("\n");
-  printf ("\n");
+  fprintf (stderr,"\n ----------------------------------------------------------- ");
+  fprintf (stderr,"\n yuvdenoise - A brief summery of options                     ");
+  fprintf (stderr,"\n ----------------------------------------------------------- ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n Usage :  yuvdenoise [options]                               ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n Currently supported options are:                            ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -v  Verbose output.                                         ");
+  fprintf (stderr,"\n     You will get some statistical information on the input  ");
+  fprintf (stderr,"\n     video-stream as mean-SAD so far and the average SAD of  ");
+  fprintf (stderr,"\n     the last image. Additionaly you will have a translation ");
+  fprintf (stderr,"\n     of these values on a single Pixel (Noiselevel).         ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -b  Border Setting.                                         ");
+  fprintf (stderr,"\n     If you allready know parts of the image are and remain  ");
+  fprintf (stderr,"\n     black all over the complete sequence of images, you may ");
+  fprintf (stderr,"\n     use something like this:                                ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     yuvdenoise -b 16,16,704,560                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     This will set all the pixels in the image outside that  ");
+  fprintf (stderr,"\n     search window to absolute pure black. The area outside  ");
+  fprintf (stderr,"\n     the search window will not go into the motion compen-   ");
+  fprintf (stderr,"\n     sation algorithm and therefor you might have a speed    ");
+  fprintf (stderr,"\n     gain in processing the movie.                           ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -r  Maximum Search Radius.                                  ");
+  fprintf (stderr,"\n     By adding this option you may limit the search radius.  ");
+  fprintf (stderr,"\n     Search radius may internally be reduced by the algorithm");
+  fprintf (stderr,"\n     depending on the quality of the center match.           ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     yuvdenoise -r 16                                        ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n     Sets the maximum search Radius to 16 pixels.            ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -f  Fixed Search Radius.                                    ");
+  fprintf (stderr,"\n     By adding this option you may advise the filter to use  ");
+  fprintf (stderr,"\n     a fixed radius for searching block matches. This dis-   ");
+  fprintf (stderr,"\n     ables the internal radius optimization/reduction.       ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n                                                             ");
+  fprintf (stderr,"\n -D  Disable Additional Despeckle Filter.                    ");
+  fprintf (stderr,"\n     This option allows you to turn off the second pass of   ");
+  fprintf (stderr,"\n     the noisefilter.                                        ");
+  fprintf (stderr,"\n");
+  fprintf (stderr,"\n");
   exit (0);
 }
 
@@ -1172,7 +1172,7 @@ average_frames (uint8_t * ref[3], uint8_t * avg[3])
     for (x = 0; x < width; x++)
       {
         *(avg[0] + x + y * width) =
-          (*(avg[0] + x + y * width) * 4 + *(ref[0] + x + y * width) * 1) / 5;
+          (*(avg[0] + x + y * width) * 6 + *(ref[0] + x + y * width) * 2) >>3;
       }
 
   /* blend U and V components */
@@ -1266,7 +1266,9 @@ calc_SAD_half (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_off
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
   uint8_t *rs = ref + ref_offs;
+  static uint16_t a[4] __attribute__ ((aligned (32))) = { 0, 0, 0, 0 };
 
+#if 0
   for (dy = 0; dy < BLOCKSIZE; dy++)
     {
       for (dx = 0; dx < BLOCKSIZE; dx++)
@@ -1283,7 +1285,34 @@ calc_SAD_half (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_off
       fs2 += width;
       rs += width;
     }
-  return d;
+#endif
+
+          asm volatile
+            (
+             " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */"
+             " movl         %1    , %%eax;          /* load frameadress into eax                          */"
+             " movl         %2    , %%ebx;          /* load frameadress into ebx                          */"
+             " movl         %3    , %%ecx;          /* load frameadress into ecx                          */"
+             " movl         %4    , %%edx;          /* load width       into edx                          */"
+             "                           ;          /*                                                    */"
+             " .rept 8                   ;          /*                                                    */"
+             " movq        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */"
+             " movq        (%%ebx), %%mm2;          /* 4 Pixels from filtered frame to mm1 (displaced)    */"
+	     " pavgb        %%mm2 , %%mm1;          /* average source pixels                              */"
+             " psadbw      (%%ecx), %%mm1;          /* 4 Pixels difference to mm1                         */"
+             " paddusw      %%mm1 , %%mm0;          /* add result to mm0                                  */"
+             " addl         %%edx , %%eax;          /* add framewidth to frameaddress                     */"
+             " addl         %%edx , %%ebx;          /* add framewidth to frameaddress                     */"
+             " addl         %%edx , %%ecx;          /* add framewidth to frameaddress                     */"
+             " .endr                     ;          /*                                                    */"
+             "                                      /*                                                    */"
+             " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
+             :"=m" (a)     
+             :"m" (fs),"m" (fs2), "m" (rs), "m" (width)
+             :"%eax", "%ebx", "%ecx", "%edx"
+             );
+
+  return a[0];
 }
 
 /*****************************************************************************
@@ -1736,13 +1765,14 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   /* search_radius has to be devided by 2 as radius is given in */
   /* half-pixels ...                                            */
 
-  for (qy = -mod_radius / 2; qy <= mod_radius / 2; qy += 4)
-    for (qx = -mod_radius / 2; qx <= mod_radius / 2; qx += 4)
+  for (qy = -mod_radius / 2; qy <= mod_radius / 2; qy += 8)
+    for (qx = -mod_radius / 2; qx <= mod_radius / 2; qx += 8)
       {
         d = calc_SAD (tgt_frame[0],
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 4 + (y + qy - BLOCKOFFSET) / 4 * width,
                       (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * width, 2);
+
       if((qx&7)==0 || d_uv==0)
         {
         d_uv = calc_SAD_uv (tgt_frame[1],
@@ -1758,7 +1788,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
                           (x - BLOCKOFFSET) / 8 + (y - BLOCKOFFSET) / 8 * uv_width, 2);
         }
         d += d_uv;
-        
+
         if (d < SAD)
           {
             matrix[x][y][0] = qx * 2;
@@ -1793,13 +1823,14 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   bx = matrix[x][y][0] / 2;
   by = matrix[x][y][1] / 2;
 
-  for (qy = (by - 2); qy <= (by + 2); qy += 2)
-    for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
+  for (qy = (by - 2); qy <= (by + 2); qy += 4)
+    for (qx = (bx - 2); qx <= (bx + 2); qx += 4)
       {
         d = calc_SAD (tgt_frame[0],
                       ref_frame[0],
                       (x + qx - BLOCKOFFSET) / 2 + (y + qy - BLOCKOFFSET) / 2 * width,
                       (x - BLOCKOFFSET) / 2 + (y - BLOCKOFFSET) / 2 * width, 2);
+
         if((qx&3)==0)
         {
         d_uv = calc_SAD_uv (tgt_frame[1],
@@ -1815,6 +1846,7 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
                           (x - BLOCKOFFSET) / 4 + (y - BLOCKOFFSET) / 4 * uv_width, 2);
         }
         d+=d_uv;
+
         if (d < SAD)
           {
             matrix[x][y][0] = qx * 2;
@@ -1994,14 +2026,14 @@ void
 copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
 {
   int dx,dy;
-  int qx = matrix[x][y][0]/2;
-  int qy = matrix[x][y][1]/2;
+  int qx = matrix[x][y][0]>>1;
+  int qy = matrix[x][y][1]>>1;
   int sx = matrix[x][y][0]-(qx*2);
   int sy = matrix[x][y][1]-(qy*2);
 
-  for (dy=0;dy<(BLOCKSIZE/2);dy++)
+  for (dy=0;dy<(BLOCKSIZE>>1);dy++)
   {
-    for (dx=0;dx<(BLOCKSIZE/2);dx++)
+    for (dx=0;dx<(BLOCKSIZE>>1);dx++)
     {
       *(dest[0]+(x+dx)+(y+dy)*width)=
 	  (
@@ -2107,7 +2139,7 @@ despeckle_frame_hard (uint8_t * frame[3])
     for (x = 1; x < (width - 1); x++)
       {
         /* generate a mean-filtered version of the frames Y in yuv2[0] */
-        *(yuv2[0] + (x + 0) + (y + 0) * width) =
+	  *(yuv2[0] + (x + 0) + (y + 0) * width) =((
           (*(frame[0] + (x - 1) + (y - 1) * width) +
            *(frame[0] + (x + 0) + (y - 1) * width) +
            *(frame[0] + (x + 1) + (y - 1) * width) +
@@ -2115,8 +2147,8 @@ despeckle_frame_hard (uint8_t * frame[3])
            *(frame[0] + (x + 1) + (y + 0) * width) +
            *(frame[0] + (x - 1) + (y + 1) * width) +
            *(frame[0] + (x + 0) + (y + 1) * width) +
-           *(frame[0] + (x + 1) + (y + 1) * width)) / 8 * 0.2 +
-          *(frame[0] + (x + 0) + (y + 0) * width) * 0.8;
+           *(frame[0] + (x + 1) + (y + 1) * width)) >>3) * 2 +
+          *(frame[0] + (x + 0) + (y + 0) * width) * 8)/10;
       }
   /* copy yuv2[0] to frame[0] */
   memcpy (frame[0], yuv2[0], width * height);
@@ -2126,9 +2158,11 @@ void
 despeckle_frame_soft (uint8_t * frame[3])
 {
   int x, y;
-  int v1, v2;
+  long int v1, v2;
   float delta;
   
+  memcpy (yuv2[0], frame[0], width * height);
+
   for (y = 1; y < (height - 1); y++)
     for (x = 1; x < (width - 1); x++)
       {
@@ -2141,7 +2175,7 @@ despeckle_frame_soft (uint8_t * frame[3])
            *(frame[0] + (x + 1) + (y + 0) * width) +
            *(frame[0] + (x - 1) + (y + 1) * width) +
            *(frame[0] + (x + 0) + (y + 1) * width) +
-           *(frame[0] + (x + 1) + (y + 1) * width)) / 8;
+           *(frame[0] + (x + 1) + (y + 1) * width)) >>3;
 
         v2 = *(frame[0] + (x + 0) + (y + 0) * width);
 
@@ -2150,7 +2184,7 @@ despeckle_frame_soft (uint8_t * frame[3])
         if (delta <= 3) /* range -3...+3 ~= 2 bits ... */
           *(yuv2[0] + (x + 0) + (y + 0) * width) = v1;
         else
-          *(yuv2[0] + (x + 0) + (y + 0) * width) = v2*0.85+v1*0.15;
+          *(yuv2[0] + (x + 0) + (y + 0) * width) = v2;
 
       }
   /* copy yuv2[0] to frame[0] */
@@ -2175,6 +2209,34 @@ line (uint8_t * image, int x0, int y0, int x1, int y1)
 }
 
 
+int block_detailed(int x, int y, uint8_t * yuv[3])
+{
+  int xx, yy;
+  uint32_t avg;
+  int d,dy;
+
+  avg=0;
+  for (yy=0;yy<(BLOCKSIZE);yy++)
+      for (xx=0;xx<(BLOCKSIZE);xx++)
+      {
+	  avg+=*(yuv[0]+xx+x+(yy+y)*width);
+      }
+  avg/=BLOCKSIZE*BLOCKSIZE;
+
+  dy=0;
+  for (yy=0;yy<(BLOCKSIZE);yy++)
+      for (xx=0;xx<(BLOCKSIZE);xx++)
+      {
+	  d=fabs(avg-*(yuv[0]+xx+x+(yy+y)*width));
+	  dy= (dy>d)? dy:d;
+      }
+
+  if(dy<16)
+      return 0;
+  else
+      return 1;
+}
+
 /*********************************************************** 
  *                                                         * 
  * Hirarchical Motion-Search-Algorithm                     * 
@@ -2198,7 +2260,7 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   uint32_t sum_of_SADs;
   uint32_t avrg_SAD;
   int nr_of_blocks = 0;
-  static uint32_t last_mean_SAD;
+  static uint32_t last_mean_SAD=100;
   float mod=1;
   
   /* subsample reference frame by 2 and by 4                 */
@@ -2221,15 +2283,9 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   /* reset SAD accumulator ... */
   sum_of_SADs = 0;
 
-  if (framenr == 0)
-    {
-      last_mean_SAD = 100;
-      mean_SAD = 100;
-    }
-
   /* devide the frame in blocks ... */
-  for (y = 0; y < height; y += (BLOCKSIZE / 2))
-    for (x = 0; x < width; x += (BLOCKSIZE / 2))
+  for (y = (BLOCKSIZE>>1); y < height-(BLOCKSIZE>>1); y += (BLOCKSIZE>>1))
+    for (x = (BLOCKSIZE>>1); x < width-(BLOCKSIZE>>1); x += (BLOCKSIZE>>1))
       if(x>(BX0-4) && x<(BX1+4) && y>(BY0-4) && y<(BY1+4))
       {
         nr_of_blocks++;
@@ -2245,13 +2301,13 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 
         center_SAD += calc_SAD_uv (target[1],
                                    ref_frame[1],
-                                   (x) / 2 + (y) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 1);
+                                   ((x) >>1) + ((y) >>1) * uv_width,
+                                   ((x) >>1) + ((y) >>1) * uv_width, 1)>>1;
 
         center_SAD += calc_SAD_uv (target[2],
                                    ref_frame[2],
-                                   (x) / 2 + (y) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 1);
+                                   ((x) >>1) + ((y) >>1) * uv_width,
+                                   ((x) >>1) + ((y) >>1) * uv_width, 1)>>1;
                                    
         /* depending on the quality of the center SAD modulate
          * the search radius ...
@@ -2263,12 +2319,12 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
         else
           mod_radius = RADIUS;
         
-        if(mod_radius<8)
-          mod_radius=8;
+//        if(mod_radius<8)
+//          mod_radius=8;
         
         if(fixed_search_radius)
           mod_radius=radius;
-        
+
           {
             /* search best matching block in the 4x4 subsampled
              * image and store the result in matrix[x][y][d]
@@ -2284,7 +2340,7 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
              * real frame and store the result in matrix[x][y][d]
              */
             mb_search (x, y, ref_frame, target);
-            mb_search_half (x, y, ref_frame, target);
+	    mb_search_half (x, y, ref_frame, target);
 
             /* now, we need(!!) to check if the vector is valid...  
              * to do so, the center-SAD is calculated and compared  
@@ -2293,8 +2349,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
              */
           }
 
-        dx = matrix[x][y][0] / 2;
-        dy = matrix[x][y][1] / 2;
+        dx = matrix[x][y][0] >>1;
+        dy = matrix[x][y][1] >>1;
 
 
         vector_SAD = calc_SAD (target[0],
@@ -2303,24 +2359,22 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 
         vector_SAD += calc_SAD_uv (target[1],
                                    ref_frame[1],
-                                   (x + dx) / 2 + (y + dy) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 1);
+                                   ((x + dx) >>1) + ((y + dy)>>1) * uv_width,
+                                   ((x)      >>1) + ((y)     >>1) * uv_width, 1);
 
         vector_SAD += calc_SAD_uv (target[2],
                                    ref_frame[2],
-                                   (x + dx) / 2 + (y + dy) / 2 * uv_width,
-                                   (x) / 2 + (y) / 2 * uv_width, 1);
+                                   ((x + dx) >>1) + ((y + dy)>>1) * uv_width,
+                                   ((x)      >>1) + ((y)     >>1) * uv_width, 1);
 
-
-        if ( 
-	    (vector_SAD > (center_SAD * 0.50) ) ||
-	    (center_SAD < (mean_SAD) )
-	    )
+#if 0
+        if ( vector_SAD > (center_SAD >> 4) )
 	{
-            //vector_SAD = center_SAD;
+            vector_SAD = center_SAD;
             matrix[x][y][0] = 0;
             matrix[x][y][1] = 0;
 	}
+#endif
 
         SAD_matrix[x][y] = vector_SAD;
         sum_of_SADs += vector_SAD;
@@ -2329,13 +2383,14 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = mean_SAD * 0.99 + avrg_SAD * 0.01;
+  mean_SAD = (mean_SAD * 63 + avrg_SAD + 1)>>6;
 
-  if (mean_SAD < 100)            /* don't go too low !!! */
-    mean_SAD = 100;              /* a SAD of 100 is nearly noisefree source material */
+  if (mean_SAD < 50)            /* don't go too low !!! */
+    mean_SAD = 50;              /* a SAD of 100 is nearly noisefree source material */
 
-  if (avrg_SAD > (mean_SAD * 2) && framenr++ > 12)
+  if (avrg_SAD > (mean_SAD *1.5) && framenr++ > 12)
     {
+	framenr=0;
       mean_SAD = last_mean_SAD;
       scene_change = 1;
       if (verbose)
@@ -2353,6 +2408,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   {
     mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
                mean_SAD, ((float) mean_SAD / 16.0 / 3.0));
+    mjpeg_log (LOG_INFO, "lMSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
+               last_mean_SAD, ((float) last_mean_SAD / 16.0 / 3.0));
     mjpeg_log (LOG_INFO, " ASAD : %d  \n\n",avrg_SAD);
   }
 }
@@ -2362,35 +2419,55 @@ distance_blur_frame (uint8_t * yuv[3])
 {
   int x, y, xx, yy;
   int distance;
+  uint32_t avg,avgu,avgv;
+  int d,dy;
 
   /* distance dependend blur */
 
-  for (y = 0; y < height; y += (BLOCKSIZE / 2))
-    for (x = 0; x < width; x += (BLOCKSIZE / 2))
+  for (y = 0; y < height; y += (BLOCKSIZE))
+    for (x = 0; x < width; x += (BLOCKSIZE))
     {
-	distance=
-	    sqrt(
-		matrix[x][y][0]*matrix[x][y][0]+
-		matrix[x][y][1]*matrix[x][y][1]
-		);
+	avg=0;
+	for (yy=0;yy<(BLOCKSIZE);yy++)
+	    for (xx=0;xx<(BLOCKSIZE);xx++)
+	    {
+		avg+=*(yuv[0]+xx+x+(yy+y)*width);
+	    }
+	avg/=BLOCKSIZE*BLOCKSIZE;
 
-	if(distance>16)
-	    for(yy=y;yy<y+4;yy++)
-		for(xx=x;xx<x+4;xx++)
+	dy=0;
+	for (yy=-BLOCKSIZE;yy<(BLOCKSIZE*2);yy++)
+	    for (xx=-BLOCKSIZE;xx<(BLOCKSIZE*2);xx++)
+	    {
+		d=fabs(avg-*(yuv[0]+xx+x+(yy+y)*width));
+		dy= (dy>d)? dy:d;
+	    }
+
+	if(dy<8)
+	{
+	    avgu=avgv=0;
+	    for (yy=0;yy<(BLOCKSIZE/2);yy++)
+		for (xx=0;xx<(BLOCKSIZE/2);xx++)
 		{
-		    *(yuv[0]+xx+yy*width)=
-			(
-			    *(yuv[0]+(xx-1)+(yy-1)*width)+
-			    *(yuv[0]+(xx+0)+(yy-1)*width)+
-			    *(yuv[0]+(xx+1)+(yy-1)*width)+
-			    *(yuv[0]+(xx-1)+(yy+0)*width)+
-			    *(yuv[0]+(xx+0)+(yy+0)*width)+
-			    *(yuv[0]+(xx+1)+(yy+0)*width)+
-			    *(yuv[0]+(xx-1)+(yy+1)*width)+
-			    *(yuv[0]+(xx+0)+(yy+1)*width)+
-			    *(yuv[0]+(xx+1)+(yy+1)*width)
-			    )/9;
+		    avgu+=*(yuv[1]+(xx+x/2)+(yy+y/2)*uv_width);
 		}
+	    for (yy=0;yy<(BLOCKSIZE/2);yy++)
+		for (xx=0;xx<(BLOCKSIZE/2);xx++)
+		{
+		    avgv+=*(yuv[2]+(xx+x/2)+(yy+y/2)*uv_width);
+		}
+
+	    avgu/=BLOCKSIZE*BLOCKSIZE/4;
+	    avgv/=BLOCKSIZE*BLOCKSIZE/4;
+
+	    for (yy=0;yy<(BLOCKSIZE);yy++)
+		for (xx=0;xx<(BLOCKSIZE);xx++)
+		{
+		    *(yuv[0]+xx+x+(yy+y)*width)=avg;
+		    *(yuv[1]+xx/2+x/2+(yy/2+y/2)*uv_width)=avgu;
+		    *(yuv[2]+xx/2+x/2+(yy/2+y/2)*uv_width)=avgv;
+		}
+	}
     }
 }
 
@@ -2399,8 +2476,8 @@ transform_frame (uint8_t * avg[3])
 {
   int x, y;
 
-  for (y = 0; y < height; y += (BLOCKSIZE / 2))
-    for (x = 0; x < width; x += (BLOCKSIZE / 2))
+  for (y = 0; y < height; y += (BLOCKSIZE >>1))
+    for (x = 0; x < width; x += (BLOCKSIZE >>1))
       if(x>(BX0-4) && x<(BX1+4) && y>(BY0-4) && y<(BY1+4))
       {
         if (SAD_matrix[x][y] < (mean_SAD))
