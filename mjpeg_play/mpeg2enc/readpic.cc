@@ -166,20 +166,20 @@ static void read_chunk(void)
          goto EOF_MARK;
       }
       
-      v = opt_vertical_size;
-      h = opt_horizontal_size;
+      v = encparams.vertical_size;
+      h = encparams.horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][0]+i*opt_phy_width,h)!=h) goto EOF_MARK;
-	  lum_mean[n] = luminance_mean(frame_buffers[n][0], opt_phy_width, opt_phy_height );
+         if(piperead(istrm_fd,frame_buffers[n][0]+i*encparams.phy_width,h)!=h) goto EOF_MARK;
+	  lum_mean[n] = luminance_mean(frame_buffers[n][0], encparams.phy_width, encparams.phy_height );
 
-      v = opt_chroma_format==CHROMA420 ? 
-		  opt_vertical_size/2 : opt_vertical_size;
-      h = opt_chroma_format!=CHROMA444 ? 
-		  opt_horizontal_size/2 : opt_horizontal_size;
+      v = encparams.chroma_format==CHROMA420 ? 
+		  encparams.vertical_size/2 : encparams.vertical_size;
+      h = encparams.chroma_format!=CHROMA444 ? 
+		  encparams.horizontal_size/2 : encparams.horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][1]+i*opt_phy_chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][1]+i*encparams.phy_chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(istrm_fd,frame_buffers[n][2]+i*opt_phy_chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][2]+i*encparams.phy_chrom_width,h)!=h) goto EOF_MARK;
 
 
 	  if( ctl_parallel_read )

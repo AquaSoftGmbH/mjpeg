@@ -303,21 +303,21 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
 	*/
 	bits_transported = bits_used = 0;
 	field_rate = 2*ctl_decode_frame_rate;
-	fields_per_pict = opt_fieldpic ? 1 : 2;
-	if( opt_still_size > 0 )
+	fields_per_pict = encparams.fieldpic ? 1 : 2;
+	if( encparams.still_size > 0 )
 	{
 		avg_KI *= 1.5;
-		per_pict_bits = opt_still_size * 8;
-		R = opt_still_size * 8;
+		per_pict_bits = encparams.still_size * 8;
+		R = encparams.still_size * 8;
 	}
 	else
 	{
 		per_pict_bits = 
-			static_cast<int32_t>(opt_fieldpic
-								 ? opt_bit_rate / field_rate
-								 : opt_bit_rate / ctl_decode_frame_rate
+			static_cast<int32_t>(encparams.fieldpic
+								 ? encparams.bit_rate / field_rate
+								 : encparams.bit_rate / ctl_decode_frame_rate
 				);
-		R = static_cast<int32_t>(opt_bit_rate);
+		R = static_cast<int32_t>(encparams.bit_rate);
 	}
 
 	/* Everything else already set or adaptive */
@@ -337,7 +337,7 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
 	   Currently, for a 1-frame sized margin gain is set to recover
 	   an undershoot in half a second
 	*/
-	if( opt_still_size > 0 )
+	if( encparams.still_size > 0 )
 	{
 		undershoot_carry = 0;
 		overshoot_gain = 1.0;
@@ -348,9 +348,9 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
 		undershoot_carry = (ctl_video_buffer_size - buffer_safe)/6;
 		if( undershoot_carry < 0 )
 			mjpeg_error_exit1("Rate control can't cope with a video buffer smaller 4 frame intervals");
-		overshoot_gain =  opt_bit_rate / (ctl_video_buffer_size-buffer_safe);
+		overshoot_gain =  encparams.bit_rate / (ctl_video_buffer_size-buffer_safe);
 	}
-	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
+	bits_per_mb = (double)encparams.bit_rate / (encparams.mb_per_pict);
 
 	/*
 	  Reaction paramer - i.e. quantisation feedback gain relative
@@ -362,10 +362,10 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
 	  For stills we set it a higher so corrections take place
 	  more rapidly *within* a single frame.
 	*/
-	if( opt_still_size > 0 )
-		r = (int)floor(2.0*opt_bit_rate/ctl_decode_frame_rate);
+	if( encparams.still_size > 0 )
+		r = (int)floor(2.0*encparams.bit_rate/ctl_decode_frame_rate);
 	else
-		r = (int)floor(4.0*opt_bit_rate/ctl_decode_frame_rate);
+		r = (int)floor(4.0*encparams.bit_rate/ctl_decode_frame_rate);
 
 
 	/* Set the virtual buffers for per-frame rate control feedback to
@@ -397,9 +397,9 @@ void OnTheFlyRateCtl::InitSeq(bool reinit)
 
 void OnTheFlyRateCtl::InitGOP( int np, int nb)
 {
-	Np = opt_fieldpic ? 2*np+1 : 2*np;
-	Nb = opt_fieldpic ? 2*nb : 2*nb;
-	Ni = opt_fieldpic ? 1 : 2;
+	Np = encparams.fieldpic ? 2*np+1 : 2*np;
+	Nb = encparams.fieldpic ? 2*nb : 2*nb;
+	Ni = encparams.fieldpic ? 1 : 2;
 	fields_in_gop = Ni + Nb + Np;
 
 	/*
@@ -415,7 +415,7 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb)
 	   for each one.  They're all I-frames so each stills is a GOP too.
 	*/
 
-	if( first_gop || opt_still_size > 0)
+	if( first_gop || encparams.still_size > 0)
 	{
 		mjpeg_debug( "FIRST GOP INIT");
 		fast_tune = true;
@@ -431,7 +431,7 @@ void OnTheFlyRateCtl::InitGOP( int np, int nb)
 		double recovery_gain = 
 			recovery_fraction > 1.0 ? 1.0 : overshoot_gain * recovery_fraction;
 		int available_bits = 
-			static_cast<int>( (opt_bit_rate+buffer_variation*recovery_gain)
+			static_cast<int>( (encparams.bit_rate+buffer_variation*recovery_gain)
 							  * fields_in_gop/field_rate);
 		double Xsum = Ni*Xi+Np*Xp+Nb*Xb;
 		mjpeg_debug( "REST GOP INIT" );
@@ -477,8 +477,8 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 	*/
 	
 	calc_actj(picture, &actsum, &varsum );
-	avg_act = actsum/(double)(mb_per_pict);
-	avg_var = varsum/(double)(mb_per_pict);
+	avg_act = actsum/(double)(encparams.mb_per_pict);
+	avg_var = varsum/(double)(encparams.mb_per_pict);
 	sum_avg_act += avg_act;
 	sum_avg_var += avg_var;
 	actcovered = 0.0;
@@ -511,7 +511,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 	*/
 
 	
-	if( opt_still_size > 0 )
+	if( encparams.still_size > 0 )
 		available_bits = per_pict_bits;
 	else
 	{
@@ -522,7 +522,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 							    * overshoot_gain
 				);
 		available_bits = 
-			static_cast<int>( (opt_bit_rate+feedback_correction)
+			static_cast<int>( (encparams.bit_rate+feedback_correction)
 							  * fields_in_gop/field_rate
 							  );
 	}
@@ -629,7 +629,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 	*/
 	T = intmax( T, 4000 );
 
-	if( opt_still_size > 0 && opt_vbv_buffer_still_size )
+	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size )
 	{
 		/* If stills size must match then target low to ensure no
 		   overshoot.
@@ -645,7 +645,7 @@ void OnTheFlyRateCtl::InitPict(Picture &picture)
 		target_Q = current_Q;
 	else
 		target_Q = scale_quantf(picture.q_scale_type, 
-								avg_K * avg_act *(mb_per_pict) / T);
+								avg_K * avg_act *(encparams.mb_per_pict) / T);
 
 	picture.avg_act = avg_act;
 	picture.sum_avg_act = sum_avg_act;
@@ -691,8 +691,8 @@ static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 	varsum = 0.0;
 	k = 0;
 
-	for (j=0; j<opt_enc_height2; j+=16)
-		for (i=0; i<opt_enc_width; i+=16)
+	for (j=0; j<encparams.enc_height2; j+=16)
+		for (i=0; i<encparams.enc_width; i+=16)
 		{
 			/* A.Stevens Jul 2000 Luminance variance *has* to be a
 			   rotten measure of how active a block in terms of bits
@@ -707,7 +707,7 @@ static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 			varsum += (double)picture.mbinfo[k].final_me.var;
 			if( picture.mbinfo[k].final_me.mb_type  & MB_INTRA )
 			{
-				i_q_mat = i_intra_q;
+				i_q_mat = encparams.i_intra_q;
 				/* Compensate for the wholly disproprotionate weight
 				 of the DC coefficients.  Shold produce more sensible
 				 results...  yes... it *is* an mostly empirically derived
@@ -717,7 +717,7 @@ static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 			}
 			else
 			{
-				i_q_mat = i_inter_q;
+				i_q_mat = encparams.i_inter_q;
 				blksum = 0;
 			}
 			/* It takes some bits to code even an entirely zero block...
@@ -773,13 +773,13 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	*/
 	picture.pad = 0;
 
-	if( opt_still_size > 0 && opt_vbv_buffer_still_size)
+	if( encparams.still_size > 0 && encparams.vbv_buffer_still_size)
 	{
 		int padding_bytes;
 		if( frame_overshoot > frame_overshoot_margin )
 		{
 			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! ", 
-						((int)AP)/8-opt_still_size);
+						((int)AP)/8-encparams.still_size);
 		}
 		
 		//
@@ -843,7 +843,7 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 
 
 	Qsum = 0;
-	for( i = 0; i < mb_per_pict; ++i )
+	for( i = 0; i < encparams.mb_per_pict; ++i )
 	{
 		Qsum += picture.mbinfo[i].mquant;
 	}
@@ -853,7 +853,7 @@ void OnTheFlyRateCtl::UpdatePict(Picture &picture)
 	   Its only used for stats display as the integerisation
 	   of the quantisation value makes it rather coarse for use in
 	   estimating bit-demand */
-	AQ = (double)Qsum/(double)mb_per_pict;
+	AQ = (double)Qsum/(double)encparams.mb_per_pict;
 	sum_avg_quant += AQ;
 	
 	/* X (Chi - Complexity!) is an estimate of "bit-demand" for the
@@ -1120,47 +1120,47 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 	/* number of 1/90000 s ticks until next picture is to be decoded */
 	if (picture.pict_type == B_TYPE)
 	{
-		if (opt_prog_seq)
+		if (encparams.prog_seq)
 		{
 			if (!picture.repeatfirst)
-				picture_delay = 90000.0/opt_frame_rate; /* 1 frame */
+				picture_delay = 90000.0/encparams.frame_rate; /* 1 frame */
 			else
 			{
 				if (!picture.topfirst)
-					picture_delay = 90000.0*2.0/opt_frame_rate; /* 2 frames */
+					picture_delay = 90000.0*2.0/encparams.frame_rate; /* 2 frames */
 				else
-					picture_delay = 90000.0*3.0/opt_frame_rate; /* 3 frames */
+					picture_delay = 90000.0*3.0/encparams.frame_rate; /* 3 frames */
 			}
 		}
 		else
 		{
 			/* interlaced */
-			if (opt_fieldpic)
-				picture_delay = 90000.0/(2.0*opt_frame_rate); /* 1 field */
+			if (encparams.fieldpic)
+				picture_delay = 90000.0/(2.0*encparams.frame_rate); /* 1 field */
 			else
 			{
 				if (!picture.repeatfirst)
-					picture_delay = 90000.0*2.0/(2.0*opt_frame_rate); /* 2 flds */
+					picture_delay = 90000.0*2.0/(2.0*encparams.frame_rate); /* 2 flds */
 				else
-					picture_delay = 90000.0*3.0/(2.0*opt_frame_rate); /* 3 flds */
+					picture_delay = 90000.0*3.0/(2.0*encparams.frame_rate); /* 3 flds */
 			}
 		}
 	}
 	else
 	{
 		/* I or P picture */
-		if (opt_fieldpic)
+		if (encparams.fieldpic)
 		{
 			if(picture.topfirst && (picture.pict_struct==TOP_FIELD))
 			{
 				/* first field */
-				picture_delay = 90000.0/(2.0*opt_frame_rate);
+				picture_delay = 90000.0/(2.0*encparams.frame_rate);
 			}
 			else
 			{
 				/* second field */
 				/* take frame reordering delay into account */
-				picture_delay = next_ip_delay - 90000.0/(2.0*opt_frame_rate);
+				picture_delay = next_ip_delay - 90000.0/(2.0*encparams.frame_rate);
 			}
 		}
 		else
@@ -1170,32 +1170,32 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 			picture_delay = next_ip_delay;
 		}
 
-		if (!opt_fieldpic || 
+		if (!encparams.fieldpic || 
 			picture.topfirst!=(picture.pict_struct==TOP_FIELD))
 		{
 			/* frame picture or second field */
-			if (opt_prog_seq)
+			if (encparams.prog_seq)
 			{
 				if (!picture.repeatfirst)
-					next_ip_delay = 90000.0/opt_frame_rate;
+					next_ip_delay = 90000.0/encparams.frame_rate;
 				else
 				{
 					if (!picture.topfirst)
-						next_ip_delay = 90000.0*2.0/opt_frame_rate;
+						next_ip_delay = 90000.0*2.0/encparams.frame_rate;
 					else
-						next_ip_delay = 90000.0*3.0/opt_frame_rate;
+						next_ip_delay = 90000.0*3.0/encparams.frame_rate;
 				}
 			}
 			else
 			{
-				if (opt_fieldpic)
-					next_ip_delay = 90000.0/(2.0*opt_frame_rate);
+				if (encparams.fieldpic)
+					next_ip_delay = 90000.0/(2.0*encparams.frame_rate);
 				else
 				{
 					if (!picture.repeatfirst)
-						next_ip_delay = 90000.0*2.0/(2.0*opt_frame_rate);
+						next_ip_delay = 90000.0*2.0/(2.0*encparams.frame_rate);
 					else
-						next_ip_delay = 90000.0*3.0/(2.0*opt_frame_rate);
+						next_ip_delay = 90000.0*3.0/(2.0*encparams.frame_rate);
 				}
 			}
 		}
@@ -1205,9 +1205,9 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 	{
 		/* first call of calc_vbv_delay */
 		/* we start with a 7/8 filled VBV buffer (12.5% back-off) */
-		picture_delay = ((opt_vbv_buffer_size*7)/8)*90000.0/opt_bit_rate;
-		if (opt_fieldpic)
-			next_ip_delay = (int)(90000.0/opt_frame_rate+0.5);
+		picture_delay = ((encparams.vbv_buffer_size*7)/8)*90000.0/encparams.bit_rate;
+		if (encparams.fieldpic)
+			next_ip_delay = (int)(90000.0/encparams.frame_rate+0.5);
 	}
 
 	/* VBV checks */
@@ -1224,11 +1224,11 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 
 	/* check for underflow (previous picture).
 	*/
-	if (!opt_low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/opt_bit_rate))
+	if (!encparams.low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/encparams.bit_rate))
 	{
 		/* picture not completely in buffer at intended decoding time */
 		mjpeg_warn("vbv_delay underflow frame %d (target=%.1f, actual=%.1f)",
-				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/opt_bit_rate);
+				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/encparams.bit_rate);
 	}
 
 
@@ -1246,7 +1246,7 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 	if ( decoding_time * ((double)bit_rate  / 90000.0) - ((double)bitcnt_EOP)
 		> vbv_buffer_size )
 	{
-		double oversize = opt_vbv_buffer_size -
+		double oversize = encparams.vbv_buffer_size -
 			(decoding_time / 90000.0 * bit_rate - (double)(bitcnt_EOP+frame_undershoot));
 		if(!quiet || oversize > 0.0  )
 			mjpeg_warn("vbv_delay overflow frame %d - %f.0 bytes!", 
@@ -1277,10 +1277,10 @@ void OnTheFlyRateCtl::CalcVbvDelay(Picture &picture)
 		picture.vbv_delay = 65535;
 	}
 #else
-	if( !opt_mpeg1 || ctl_quant_floor != 0 || opt_still_size > 0)
+	if( !encparams.mpeg1 || ctl_quant_floor != 0 || encparams.still_size > 0)
 		picture.vbv_delay =  0xffff;
-	else if( opt_still_size > 0 )
-		picture.vbv_delay =  static_cast<int>(90000.0/opt_frame_rate/4);
+	else if( encparams.still_size > 0 )
+		picture.vbv_delay =  static_cast<int>(90000.0/encparams.frame_rate/4);
 #endif
 
 }

@@ -38,7 +38,7 @@ void MacroBlock::Transform()
 	// assert( dctblocks == &blocks[k*block_count]);
 	int i = TopleftX();
 	int j = TopleftY();
-	int blocktopleft = j*opt_phy_width+i;
+	int blocktopleft = j*encparams.phy_width+i;
 	field_dct =
 		! picture->frame_pred_dct 
 		&& picture->pict_struct == FRAME_PICTURE
@@ -46,7 +46,7 @@ void MacroBlock::Transform()
 							&pred[0][blocktopleft]);
 	int i1, j1, n, cc, offs, lx;
 
-	for (n=0; n<block_count; n++)
+	for (n=0; n<encparams.block_count; n++)
 	{
 		cc = (n<4) ? 0 : (n&1)+1; /* color component index */
 		if (cc==0)
@@ -58,43 +58,43 @@ void MacroBlock::Transform()
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct)
 			{
 				/* field DCT */
-				offs = i + ((n&1)<<3) + opt_phy_width*(j+((n&2)>>1));
-				lx =  opt_phy_width<<1;
+				offs = i + ((n&1)<<3) + encparams.phy_width*(j+((n&2)>>1));
+				lx =  encparams.phy_width<<1;
 			}
 			else
 			{
 				/* frame DCT */
-				offs = i + ((n&1)<<3) +  opt_phy_width2*(j+((n&2)<<2));
-				lx =  opt_phy_width2;
+				offs = i + ((n&1)<<3) +  encparams.phy_width2*(j+((n&2)<<2));
+				lx =  encparams.phy_width2;
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  opt_phy_width;
+				offs +=  encparams.phy_width;
 		}
 		else
 		{
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (opt_chroma_format==CHROMA444) ? i : i>>1;
-			j1 = (opt_chroma_format!=CHROMA420) ? j : j>>1;
+			i1 = (encparams.chroma_format==CHROMA444) ? i : i>>1;
+			j1 = (encparams.chroma_format!=CHROMA420) ? j : j>>1;
 
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
-				&& (opt_chroma_format!=CHROMA420))
+				&& (encparams.chroma_format!=CHROMA420))
 			{
 				/* field DCT */
-				offs = i1 + (n&8) +  opt_phy_chrom_width*(j1+((n&2)>>1));
-				lx =  opt_phy_chrom_width<<1;
+				offs = i1 + (n&8) +  encparams.phy_chrom_width*(j1+((n&2)>>1));
+				lx =  encparams.phy_chrom_width<<1;
 			}
 			else
 			{
 				/* frame DCT */
-				offs = i1 + (n&8) +  opt_phy_chrom_width2*(j1+((n&2)<<2));
-				lx =  opt_phy_chrom_width2;
+				offs = i1 + (n&8) +  encparams.phy_chrom_width2*(j1+((n&2)<<2));
+				lx =  encparams.phy_chrom_width2;
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  opt_phy_chrom_width;
+				offs +=  encparams.phy_chrom_width;
 		}
 
 		psub_pred(pred[cc]+offs,cur[cc]+offs,lx, dctblocks[n]);
@@ -122,7 +122,7 @@ void MacroBlock::ITransform()
 	int i = TopleftX();
 	int j = TopleftY();
 			
-	for (n=0; n<block_count; n++)
+	for (n=0; n<encparams.block_count; n++)
 	{
 		cc = (n<4) ? 0 : (n&1)+1; /* color component index */
 			
@@ -132,43 +132,43 @@ void MacroBlock::ITransform()
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct)
 			{
 				/* field DCT */
-				offs = i + ((n&1)<<3) + opt_phy_width*(j+((n&2)>>1));
-				lx = opt_phy_width<<1;
+				offs = i + ((n&1)<<3) + encparams.phy_width*(j+((n&2)>>1));
+				lx = encparams.phy_width<<1;
 			}
 			else
 			{
 				/* frame DCT */
-				offs = i + ((n&1)<<3) + opt_phy_width2*(j+((n&2)<<2));
-				lx = opt_phy_width2;
+				offs = i + ((n&1)<<3) + encparams.phy_width2*(j+((n&2)<<2));
+				lx = encparams.phy_width2;
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  opt_phy_width;
+				offs +=  encparams.phy_width;
 		}
 		else
 		{
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (opt_chroma_format==CHROMA444) ? i : i>>1;
-			j1 = (opt_chroma_format!=CHROMA420) ? j : j>>1;
+			i1 = (encparams.chroma_format==CHROMA444) ? i : i>>1;
+			j1 = (encparams.chroma_format!=CHROMA420) ? j : j>>1;
 
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
-				&& (opt_chroma_format!=CHROMA420))
+				&& (encparams.chroma_format!=CHROMA420))
 			{
 				/* field DCT */
-				offs = i1 + (n&8) + opt_phy_chrom_width*(j1+((n&2)>>1));
-				lx = opt_phy_chrom_width<<1;
+				offs = i1 + (n&8) + encparams.phy_chrom_width*(j1+((n&2)>>1));
+				lx = encparams.phy_chrom_width<<1;
 			}
 			else
 			{
 				/* frame DCT */
-				offs = i1 + (n&8) + opt_phy_chrom_width2*(j1+((n&2)<<2));
-				lx = opt_phy_chrom_width2;
+				offs = i1 + (n&8) + encparams.phy_chrom_width2*(j1+((n&2)<<2));
+				lx = encparams.phy_chrom_width2;
 			}
 
 			if (picture->pict_struct==BOTTOM_FIELD)
-				offs +=  opt_phy_chrom_width;
+				offs +=  encparams.phy_chrom_width;
 		}
 		pidct(qdctblocks[n]);
 		padd_pred(pred[cc]+offs,cur[cc]+offs,lx,qdctblocks[n]);

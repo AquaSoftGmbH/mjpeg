@@ -153,10 +153,10 @@ void MacroBlock::PutBlocks( )
 {
     int comp;
     int cc;
-    for (comp=0; comp<block_count; comp++)
+    for (comp=0; comp<encparams.block_count; comp++)
     {
         /* block loop */
-        if( cbp & (1<<(block_count-1-comp)))
+        if( cbp & (1<<(encparams.block_count-1-comp)))
         {
             if (final_me.mb_type & MB_INTRA)
             {
@@ -255,7 +255,7 @@ void Picture::PutHeader()
 	if (pict_type==P_TYPE || pict_type==B_TYPE)
 	{
 		putbits(0,1); /* full_pel_forward_vector */
-		if (opt_mpeg1)
+		if (encparams->mpeg1)
 			putbits(forw_hor_f_code,3);
 		else
 			putbits(7,3); /* forward_f_code */
@@ -264,7 +264,7 @@ void Picture::PutHeader()
 	if (pict_type==B_TYPE)
 	{
 		putbits(0,1); /* full_pel_backward_vector */
-		if (opt_mpeg1)
+		if (encparams->mpeg1)
 			putbits(back_hor_f_code,3);
 		else
 			putbits(7,3); /* backward_f_code */
@@ -272,7 +272,7 @@ void Picture::PutHeader()
 
 
 	putbits(0,1); /* extra_bit_picture */
-	if ( !opt_mpeg1 )
+	if ( !encparams->mpeg1 )
 	{
 		PutCodingExt();
 	}
@@ -313,7 +313,7 @@ void Picture::PutSliceHdr( int slice_mb_y )
     /* slice header (6.2.4) */
     alignbits();
     
-    if (opt_mpeg1 || opt_vertical_size<=2800)
+    if (encparams->mpeg1 || encparams->vertical_size<=2800)
         putbits(SLICE_MIN_START+slice_mb_y,32); /* slice_start_code */
     else
     {
@@ -367,7 +367,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 	*/
 
     if( new_seq || decode == 0 ||
-        (gop_start && opt_seq_hdr_every_gop) )
+        (gop_start && encparams->seq_hdr_every_gop) )
     {
 		putseqhdr();
     }
@@ -388,7 +388,7 @@ void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
  *
  * QuantiseAndEncode - Quantise and Encode a picture.
  *
- * NOTE: It may seem perverse to quantise in the sample as
+ * NOTE: It may seem perverse to quantise at the same time as
  * coding. However, actually makes (limited) sense: feedback from the
  * *actual* bit-allocation may be used to adjust quantisation "on the
  * fly".  We, of course, need the quantised DCT blocks to construct
@@ -406,7 +406,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
     PutHeader();
 
     /* TODO: This should really be a member of the picture object */
-	if( opt_svcd_scan_data && pict_type == I_TYPE )
+	if( encparams->svcd_scan_data && pict_type == I_TYPE )
 	{
 		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
 	}
@@ -419,7 +419,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
        slice.  For MPEG-2 we could do this better and reduce slice
        start code coverhead... */
 
-	for (j=0; j<mb_height2; j++)
+	for (j=0; j<encparams->mb_height2; j++)
 	{
 
         PutSliceHdr(j);
@@ -429,7 +429,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
         MBAinc = 1; /* first MBAinc denotes absolute position */
 
         /* Slice macroblocks... */
-		for (i=0; i<mb_width; i++)
+		for (i=0; i<encparams->mb_width; i++)
 		{
             prev_mb = cur_mb;
 			cur_mb = &mbinfo[k];
@@ -447,7 +447,7 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
             /* Check to see if Macroblock is skippable, this may set
                the MB_FORWARD bit... */
-            bool slice_begin_or_end = (i==0 || i==mb_width-1);
+            bool slice_begin_or_end = (i==0 || i==encparams->mb_width-1);
             cur_mb->SkippedCoding(slice_begin_or_end);
             if( cur_mb->skipped )
             {
@@ -489,9 +489,9 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
                 if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
-                    putcbp((cur_mb->cbp >> (block_count-6)) & 63);
-                    if (opt_chroma_format!=CHROMA420)
-                        putbits(cur_mb->cbp,block_count-6);
+                    putcbp((cur_mb->cbp >> (encparams->block_count-6)) & 63);
+                    if (encparams->chroma_format!=CHROMA420)
+                        putbits(cur_mb->cbp,encparams->block_count-6);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */

@@ -105,8 +105,8 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 
 	/* Load pixels from bot field into mm1.w,mm2.w
 	 */
-	movq_m2r( *((mmx_t*)(cur_lum_mb+opt_phy_width)), mm1 );
-	movq_m2r( *((mmx_t*)(pred_lum_mb+opt_phy_width)), mm2 );
+	movq_m2r( *((mmx_t*)(cur_lum_mb+encparams.phy_width)), mm1 );
+	movq_m2r( *((mmx_t*)(pred_lum_mb+encparams.phy_width)), mm2 );
 	
 	/* mm2 := mm1 mm4 := mm2
 	   mm1.w[0..3] := mm1.b[0..3]-mm2.b[0..3]
@@ -211,7 +211,7 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 		sum_sumsq_8bytes( &cur_lum_mb[rowoffs+8], &pred_lum_mb[rowoffs+8],
 						  &sumtop_accs, &sumbot_accs,
 						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs );
-		rowoffs += (opt_phy_width<<1);
+		rowoffs += (encparams.phy_width<<1);
 	}
 
 	mmx_sum_4_word_accs( &sumtop_accs, &sumtop );

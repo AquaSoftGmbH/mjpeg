@@ -257,8 +257,4 @@ EXTERNTBL const char *statname
 
 EXTERNTBL const uint8_t map_non_linear_mquant[113];
 EXTERNTBL const uint8_t non_linear_mquant_table[32];
-EXTERNTBL uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-EXTERNTBL uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-EXTERNTBL float intra_q_tblf[113][64], inter_q_tblf[113][64];
-EXTERNTBL float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
 

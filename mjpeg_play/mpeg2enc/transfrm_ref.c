@@ -100,15 +100,15 @@ int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 			register int toppix = 
 				cur_lum_mb[rowoffs+i] - pred_lum_mb[rowoffs+i];
 			register int botpix = 
-				cur_lum_mb[rowoffs+opt_phy_width+i] 
-				- pred_lum_mb[rowoffs+opt_phy_width+i];
+				cur_lum_mb[rowoffs+encparams.phy_width+i] 
+				- pred_lum_mb[rowoffs+encparams.phy_width+i];
 			sumtop += toppix;
 			sumsqtop += toppix*toppix;
 			sumbot += botpix;
 			sumsqbot += botpix*botpix;
 			sumbottop += toppix*botpix;
 		}
-		rowoffs += (opt_phy_width<<1);
+		rowoffs += (encparams.phy_width<<1);
 	}
 
 	/* Calculate Variances top and bottom.  If they're of similar

@@ -78,9 +78,9 @@ int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 							int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = opt_dctsatlim;
+	int satlim = encparams.dctsatlim;
 	float *i_quant_matf; 
-	int   coeff_count = 64*block_count;
+	int   coeff_count = 64*encparams.block_count;
 	int mquant = *nonsat_mquant;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
@@ -98,7 +98,7 @@ int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = i_inter_q_tblf[mquant];
+	i_quant_matf = encparams.i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -219,10 +219,10 @@ int quant_non_intra_sse( int16_t *src, int16_t *dst,
 						 int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = opt_dctsatlim;
+	int satlim = encparams.dctsatlim;
 	float *i_quant_matf; 
 	int mquant = *nonsat_mquant;
-	int   coeff_count = 64*block_count;
+	int   coeff_count = 64*encparams.block_count;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
 	float *piqf;
@@ -242,7 +242,7 @@ int quant_non_intra_sse( int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = i_inter_q_tblf[mquant];
+	i_quant_matf = encparams.i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -359,13 +359,13 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 {
 
 	int nzflag;
-	int clipvalue  = opt_dctsatlim;
+	int clipvalue  = encparams.dctsatlim;
 	int flags = 0;
 	int saturated = 0;
 	int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = opt_inter_q;
+	uint16_t *quant_mat = encparams.inter_q;
 	int comp;
-	uint16_t *i_quant_mat = i_inter_q;
+	uint16_t *i_quant_mat = encparams.i_inter_q;
 	int imquant;
 	int16_t *psrc, *pdst;
 
@@ -427,7 +427,7 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 			non 32-bit int machines ;-)) if out of dynamic range for MMX...
 		*/
 	}
-	while( comp < block_count  && (flags & 0xff) == 0  );
+	while( comp < encparams.block_count  && (flags & 0xff) == 0  );
 
 
 	/* Coefficient out of range or can't avoid saturation:
@@ -443,17 +443,17 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 
 void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, int mquant )
 {
-  if ( opt_mpeg1 )
-	  iquant_non_intra_m1_extmmx(src,dst,inter_q_tbl[mquant]);
+  if ( encparams.mpeg1 )
+	  iquant_non_intra_m1_extmmx(src,dst,encparams.inter_q_tbl[mquant]);
   else
-	  iquant_non_intra_m2_extmmx(src,dst,inter_q_tbl[mquant]);
+	  iquant_non_intra_m2_extmmx(src,dst,encparams.inter_q_tbl[mquant]);
 }
 
 void iquant_non_intra_mmx(int16_t *src, int16_t *dst, int mquant )
 {
-  if ( opt_mpeg1 )
-	  iquant_non_intra_m1_mmx(src,dst,inter_q_tbl[mquant]);
+  if ( encparams.mpeg1 )
+	  iquant_non_intra_m1_mmx(src,dst,encparams.inter_q_tbl[mquant]);
   else
-	  iquant_non_intra_m2_mmx(src,dst,inter_q_tbl[mquant]);
+	  iquant_non_intra_m2_mmx(src,dst,encparams.inter_q_tbl[mquant]);
   
 }

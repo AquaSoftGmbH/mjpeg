@@ -95,12 +95,12 @@ void pred (	uint8_t *src[], int sfield,
 		if (cc==1)
 		{
 			/* scale for color components */
-			if (opt_chroma_format==CHROMA420)
+			if (encparams.chroma_format==CHROMA420)
 			{
 				/* vertical */
 				h >>= 1; y >>= 1; dy /= 2;
 			}
-			if (opt_chroma_format!=CHROMA444)
+			if (encparams.chroma_format!=CHROMA444)
 			{
 				/* horizontal */
 				w >>= 1; x >>= 1; dx /= 2;
@@ -138,7 +138,7 @@ void MacroBlock::Predict()
 	uint8_t **oldref = picture.oldref;	// Forward prediction
 	uint8_t **newref = picture.newref;	// Backward prediction
 	uint8_t **cur = picture.pred;      // Frame to predict
-	int lx = opt_phy_width;
+	int lx = encparams.phy_width;
 
 	bool addflag;
 	int currentfield;

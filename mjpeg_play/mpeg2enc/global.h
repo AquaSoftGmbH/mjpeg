@@ -147,4 +147,3 @@ EXTERN int frame_num;			/* Useful for triggering debug information */
  
 
 
-/* 1 if maxval->hor_size, maxval->vert_size and maxval->samp_rate in conform.c should not be checked */					    EXTERN int opt_ignore_constraints;			

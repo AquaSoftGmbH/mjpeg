@@ -184,19 +184,19 @@ void motion_subsampled_lum( Picture *picture )
        interlaced ME modes?
     */
 
-	if (!opt_fieldpic)
+	if (!encparams.fieldpic)
 	{
-		linestride = opt_phy_width;
+		linestride = encparams.phy_width;
 	}
 	else
 	{
-		linestride = 2*opt_phy_width;
+		linestride = 2*encparams.phy_width;
 	}
 
 	psubsample_image( picture->curorg[0], 
 					 linestride,
-					 picture->curorg[0]+fsubsample_offset, 
-					 picture->curorg[0]+qsubsample_offset );
+					 picture->curorg[0]+encparams.fsubsample_offset, 
+					 picture->curorg[0]+encparams.qsubsample_offset );
 
 }
 
@@ -445,7 +445,7 @@ void MacroBlock::FrameME()
 	int imins[2][2],jmins[2][2];
 	int imindmv,jmindmv,vmc_dp;
 
-    int mb_row_start = j*opt_phy_width;
+    int mb_row_start = j*encparams.phy_width;
 	
     MotionEst me;
 
@@ -473,9 +473,9 @@ void MacroBlock::FrameME()
 	ssmb.mb = picture.curorg[0] + mb_row_start + i;
 	ssmb.umb = (uint8_t*)(picture.curorg[1] + (i>>1) + (mb_row_start>>2));
 	ssmb.vmb = (uint8_t*)(picture.curorg[2] + (i>>1) + (mb_row_start>>2));
-	ssmb.fmb = (uint8_t*)(picture.curorg[0] + fsubsample_offset + 
+	ssmb.fmb = (uint8_t*)(picture.curorg[0] + encparams.fsubsample_offset + 
 						  ((i>>1) + (mb_row_start>>2)));
-	ssmb.qmb = (uint8_t*)(picture.curorg[0] + qsubsample_offset + 
+	ssmb.qmb = (uint8_t*)(picture.curorg[0] + encparams.qsubsample_offset + 
 						  (i>>2) + (mb_row_start>>4));
 
 
@@ -494,8 +494,8 @@ void MacroBlock::FrameME()
 	   quantisations... ;-)
 	 */
 
-    pvariance(ssmb.mb,16,opt_phy_width, &lum_variance, &lum_mean );
-	intravar = lum_variance + chrom_var_sum(&ssmb,16,opt_phy_width);
+    pvariance(ssmb.mb,16,encparams.phy_width, &lum_variance, &lum_mean );
+	intravar = lum_variance + chrom_var_sum(&ssmb,16,encparams.phy_width);
 
 
 
@@ -509,21 +509,21 @@ void MacroBlock::FrameME()
 
         mb_me_search(picture.oldorg[0],oldrefimg[0],
                      0,
-                     &ssmb, opt_phy_width,
+                     &ssmb, encparams.phy_width,
                      i,j,picture.sxf,picture.syf,16,
-                     opt_enc_width,opt_enc_height, &framef_mc);
+                     encparams.enc_width,encparams.enc_height, &framef_mc);
         framef_mc.fieldoff = 0;
         vmc = vmcf =
-            unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  opt_phy_width, 16 );
+            unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  encparams.phy_width, 16 );
         me.motion_type = MC_FRAME;
 
 		if (!picture.frame_pred_dct )
 		{
-			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
-			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
-			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
-			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
+			botssmb.mb = ssmb.mb+encparams.phy_width;
+			botssmb.fmb = ssmb.fmb+(encparams.phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(encparams.phy_width>>2);
+			botssmb.umb = ssmb.umb+(encparams.phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(encparams.phy_width>>1);
 
 			frame_field_modes(picture.oldorg[0],oldrefimg[0],
                               &ssmb, &botssmb,
@@ -534,13 +534,13 @@ void MacroBlock::FrameME()
                               imins,jmins);
 			vmcf = 
 				unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
-                                opt_phy_width, 16 );
+                                encparams.phy_width, 16 );
 			vmcfieldf = 
 				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb,
-                                (opt_phy_width<<1), 8 ) +
+                                (encparams.phy_width<<1), 8 ) +
 				
 				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
-                                (opt_phy_width<<1), 8 );
+                                (encparams.phy_width<<1), 8 );
 			if ( ctl_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
@@ -607,9 +607,9 @@ void MacroBlock::FrameME()
 			 */
 
 			zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, 
-                                             opt_phy_width, 16 );
+                                             encparams.phy_width, 16 );
 			v0 = unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, 
-                                opt_phy_width, 16 );
+                                encparams.phy_width, 16 );
 
 			if (4*v0>5*vmc )
 			{
@@ -664,28 +664,28 @@ void MacroBlock::FrameME()
         /* FRAME modes always possible... */
         /* forward */
         mb_me_search(picture.oldorg[0],oldrefimg[0],0,&ssmb,
-                     opt_phy_width,i,j,picture.sxf,picture.syf,
-                     16,opt_enc_width,opt_enc_height,
+                     encparams.phy_width,i,j,picture.sxf,picture.syf,
+                     16,encparams.enc_width,encparams.enc_height,
                      &framef_mc
             );
         framef_mc.fieldoff = 0;
         vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
-                               opt_phy_width, 16 );
+                               encparams.phy_width, 16 );
         
         /* backward */
         mb_me_search(picture.neworg[0],newrefimg[0],0,&ssmb, 
-                     opt_phy_width, i,j,picture.sxb,picture.syb,
-                     16, opt_enc_width, opt_enc_height,
+                     encparams.phy_width, i,j,picture.sxb,picture.syb,
+                     16, encparams.enc_width, encparams.enc_height,
                      &frameb_mc);
         frameb_mc.fieldoff = 0;
         vmcr = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, 
-                               opt_phy_width, 16 );
+                               encparams.phy_width, 16 );
         
         /* interpolated (bidirectional) */
         
         vmci = bidir_var_sum( &framef_mc, &frameb_mc,  
                               oldrefimg, newrefimg,  
-                                  &ssmb, opt_phy_width, 16 );
+                                  &ssmb, encparams.phy_width, 16 );
         
 
         
@@ -715,11 +715,11 @@ void MacroBlock::FrameME()
 
 		if (!picture.frame_pred_dct )
 		{
-			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
-			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
-			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
-			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
+			botssmb.mb = ssmb.mb+encparams.phy_width;
+			botssmb.fmb = ssmb.fmb+(encparams.phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(encparams.phy_width>>2);
+			botssmb.umb = ssmb.umb+(encparams.phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(encparams.phy_width>>1);
 
 			/* forward prediction */
 			frame_field_modes(picture.oldorg[0],oldrefimg[0],
@@ -741,25 +741,25 @@ void MacroBlock::FrameME()
                               imins,jmins);
 
 			vmcf = unidir_var_sum( &framef_mc, oldrefimg, 
-                                   &ssmb, opt_phy_width, 16 );
+                                   &ssmb, encparams.phy_width, 16 );
 			vmcr = unidir_var_sum( &frameb_mc, newrefimg, 
-                                   &ssmb, opt_phy_width, 16 );
+                                   &ssmb, encparams.phy_width, 16 );
 			vmci = bidir_var_sum( &framef_mc, &frameb_mc, 
 								  oldrefimg, newrefimg,
-								  &ssmb, opt_phy_width, 16 );
+								  &ssmb, encparams.phy_width, 16 );
 
 			vmcfieldf =	
-				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (opt_phy_width<<1), 8 ) +
-				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (opt_phy_width<<1), 8 );
+				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (encparams.phy_width<<1), 8 ) +
+				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (encparams.phy_width<<1), 8 );
 			vmcfieldr =	
-				unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, (opt_phy_width<<1), 8 ) +
-				unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, (opt_phy_width<<1), 8 );
+				unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, (encparams.phy_width<<1), 8 ) +
+				unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, (encparams.phy_width<<1), 8 );
 			vmcfieldi = bidir_var_sum( &topfldf_mc, &topfldb_mc, 
 									   oldrefimg,newrefimg,
-									   &ssmb, opt_phy_width<<1, 8) +
+									   &ssmb, encparams.phy_width<<1, 8) +
 				        bidir_var_sum( &botfldf_mc, &botfldb_mc, 
 									   oldrefimg,newrefimg,
-									   &botssmb, opt_phy_width<<1, 8);
+									   &botssmb, encparams.phy_width<<1, 8);
 
 			/* select best prediction mode field or frame: smallest
              * mean squared prediction error
@@ -862,8 +862,8 @@ void MacroBlock::FrameME()
 		}
 	}
 
-    plausible_me.erase(plausible_me.begin(),plausible_me.end());
-    plausible_me.push_back( me );
+    best_of_kind_me.erase(best_of_kind_me.begin(),best_of_kind_me.end());
+    best_of_kind_me.push_back( me );
 }
 
 /*
@@ -883,6 +883,10 @@ void MacroBlock::FrameMEs()
     int i = TopleftX();
     int j = TopleftY();
 	uint8_t **oldrefimg, **newrefimg;
+
+    //
+    // Motion info for the various possible motion modes...
+    //
 	mb_motion_s framef_mc;
 	mb_motion_s frameb_mc;
 	mb_motion_s dualpf_mc;
@@ -892,17 +896,19 @@ void MacroBlock::FrameMEs()
 	mb_motion_s botfldb_mc;
 	mb_motion_s zeromot_mc;
 
+    // Pointers to macroblock's contents in YUV and half and quad
+    // subsampled planes, and for FIELD modes, the bottom field
+    // variants...
 	subsampled_mb_s ssmb;
 	subsampled_mb_s  botssmb;
 
 	int imins[2][2],jmins[2][2];
 	int imindmv,jmindmv,vmc_dp;
 
-    int mb_row_start = j*opt_phy_width;
+    int mb_row_start = j*encparams.phy_width;
 	
     MotionEst me;
-    vector<MotionEst> candidates;
-    plausible_me.erase(plausible_me.begin(),plausible_me.end());
+    best_of_kind_me.erase(best_of_kind_me.begin(),best_of_kind_me.end());
 
 	/* Select between the original or the reconstructed image for
 	   final refinement of motion estimation */
@@ -928,9 +934,9 @@ void MacroBlock::FrameMEs()
 	ssmb.mb = picture.curorg[0] + mb_row_start + i;
 	ssmb.umb = (uint8_t*)(picture.curorg[1] + (i>>1) + (mb_row_start>>2));
 	ssmb.vmb = (uint8_t*)(picture.curorg[2] + (i>>1) + (mb_row_start>>2));
-	ssmb.fmb = (uint8_t*)(picture.curorg[0] + fsubsample_offset + 
+	ssmb.fmb = (uint8_t*)(picture.curorg[0] + encparams.fsubsample_offset + 
 						  ((i>>1) + (mb_row_start>>2)));
-	ssmb.qmb = (uint8_t*)(picture.curorg[0] + qsubsample_offset + 
+	ssmb.qmb = (uint8_t*)(picture.curorg[0] + encparams.qsubsample_offset + 
 						  (i>>2) + (mb_row_start>>4));
 
 
@@ -949,15 +955,15 @@ void MacroBlock::FrameMEs()
 	   quantisations... ;-)
 	 */
 
-    pvariance(ssmb.mb,16,opt_phy_width, &lum_variance, &lum_mean );
-	int intravar = lum_variance + chrom_var_sum(&ssmb,16,opt_phy_width);
+    pvariance(ssmb.mb,16,encparams.phy_width, &lum_variance, &lum_mean );
+	int intravar = lum_variance + chrom_var_sum(&ssmb,16,encparams.phy_width);
 
 
     /* We always have the possibility of INTRA coding */
 
     me.mb_type = MB_INTRA;
     me.var = intravar;
-    candidates.push_back( me );
+    best_of_kind_me.push_back( me );
 
 	if (picture.pict_type==P_TYPE)
 	{
@@ -965,21 +971,21 @@ void MacroBlock::FrameMEs()
         /* FRAME mode non-intra coding 0 MV and estimated MVs is
            always possible */
         zeromot_mc.var = unidir_pred_var(&zeromot_mc, ssmb.mb, 
-                                         opt_phy_width, 16 );
+                                         encparams.phy_width, 16 );
         me.mb_type = 0;
         me.motion_type = MC_FRAME;
         me.MV[0][0][0] = 0;
         me.MV[0][0][1] = 0;
         me.var =  unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, 
-                                 opt_phy_width, 16 );
-        candidates.push_back( me );
+                                 encparams.phy_width, 16 );
+        best_of_kind_me.push_back( me );
 
         
         mb_me_search(picture.oldorg[0],oldrefimg[0],
                      0,
-                     &ssmb, opt_phy_width,
+                     &ssmb, encparams.phy_width,
                      i,j,picture.sxf,picture.syf,16,
-                     opt_enc_width,opt_enc_height, &framef_mc);
+                     encparams.enc_width,encparams.enc_height, &framef_mc);
         framef_mc.fieldoff = 0;
 
         me.mb_type = MB_FORWARD;
@@ -987,18 +993,18 @@ void MacroBlock::FrameMEs()
         me.MV[0][0][0] = framef_mc.pos.x - (i<<1);
         me.MV[0][0][1] = framef_mc.pos.y - (j<<1);
         me.var = unidir_var_sum( &framef_mc, oldrefimg, &ssmb,  
-                                 opt_phy_width, 16 );
-        candidates.push_back( me );
+                                 encparams.phy_width, 16 );
+        best_of_kind_me.push_back( me );
         
 
         /* FIELD modes only possible if appropriate picture type is legal */
 		if (!picture.frame_pred_dct )
 		{
-			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
-			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
-			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
-			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
+			botssmb.mb = ssmb.mb+encparams.phy_width;
+			botssmb.fmb = ssmb.fmb+(encparams.phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(encparams.phy_width>>2);
+			botssmb.umb = ssmb.umb+(encparams.phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(encparams.phy_width>>1);
 
 			frame_field_modes(picture.oldorg[0],oldrefimg[0],
                               &ssmb, &botssmb,
@@ -1017,11 +1023,11 @@ void MacroBlock::FrameMEs()
             me.field_sel[1][0] = botfldf_mc.fieldsel;
             me.var = 
                 unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb,
-                                     (opt_phy_width<<1), 8 )
+                                     (encparams.phy_width<<1), 8 )
 				+ unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
-                                  (opt_phy_width<<1), 8 );
+                                  (encparams.phy_width<<1), 8 );
 
-            candidates.push_back( me );
+            best_of_kind_me.push_back( me );
 
 			if ( ctl_M==1)
 			{
@@ -1036,7 +1042,7 @@ void MacroBlock::FrameMEs()
                 me.dualprimeMV[0] = imindmv;
                 me.dualprimeMV[1] = jmindmv;
                 me.var = vmc_dp;
-                candidates.push_back( me );
+                best_of_kind_me.push_back( me );
 			}
 		}
 	}
@@ -1047,16 +1053,16 @@ void MacroBlock::FrameMEs()
 
         // Forward motion estimates
         mb_me_search(picture.oldorg[0],oldrefimg[0],0,&ssmb,
-                     opt_phy_width,i,j,picture.sxf,picture.syf,
-                     16,opt_enc_width,opt_enc_height,
+                     encparams.phy_width,i,j,picture.sxf,picture.syf,
+                     16,encparams.enc_width,encparams.enc_height,
                      &framef_mc
 					   );
         framef_mc.fieldoff = 0;
         
         // Backword motion estimates...
         mb_me_search(picture.neworg[0],newrefimg[0],0,&ssmb, 
-                     opt_phy_width, i,j,picture.sxb,picture.syb,
-                     16, opt_enc_width, opt_enc_height,
+                     encparams.phy_width, i,j,picture.sxb,picture.syb,
+                     16, encparams.enc_width, encparams.enc_height,
                      &frameb_mc);
         frameb_mc.fieldoff = 0;
 
@@ -1068,29 +1074,29 @@ void MacroBlock::FrameMEs()
 
         me.mb_type = MB_FORWARD;
         me.var = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, 
-                               opt_phy_width, 16 );
-        candidates.push_back( me );
+                               encparams.phy_width, 16 );
+        best_of_kind_me.push_back( me );
        
         me.mb_type = MB_BACKWARD;
         me.var = unidir_var_sum( &frameb_mc, newrefimg, &ssmb, 
-                                 opt_phy_width, 16 );
-        candidates.push_back( me );
+                                 encparams.phy_width, 16 );
+        best_of_kind_me.push_back( me );
 
         me.mb_type = MB_FORWARD|MB_BACKWARD;
         me.var = bidir_var_sum( &framef_mc, &frameb_mc,  
                                 oldrefimg, newrefimg,  
-                                &ssmb, opt_phy_width, 16 );
-        candidates.push_back( me );
+                                &ssmb, encparams.phy_width, 16 );
+        best_of_kind_me.push_back( me );
 	    
         /* FIELD modes only possible if appropriate picture type is legal */
 
 		if (!picture.frame_pred_dct )
 		{
-			botssmb.mb = ssmb.mb+opt_phy_width;
-			botssmb.fmb = ssmb.fmb+(opt_phy_width>>1);
-			botssmb.qmb = ssmb.qmb+(opt_phy_width>>2);
-			botssmb.umb = ssmb.umb+(opt_phy_width>>1);
-			botssmb.vmb = ssmb.vmb+(opt_phy_width>>1);
+			botssmb.mb = ssmb.mb+encparams.phy_width;
+			botssmb.fmb = ssmb.fmb+(encparams.phy_width>>1);
+			botssmb.qmb = ssmb.qmb+(encparams.phy_width>>2);
+			botssmb.umb = ssmb.umb+(encparams.phy_width>>1);
+			botssmb.vmb = ssmb.vmb+(encparams.phy_width>>1);
 
             // Forward motion estimates...
 			frame_field_modes(picture.oldorg[0],oldrefimg[0],
@@ -1129,42 +1135,31 @@ void MacroBlock::FrameMEs()
             me.var = 
                 bidir_var_sum( &topfldf_mc, &topfldb_mc, 
                                oldrefimg,newrefimg,
-                               &ssmb, opt_phy_width<<1, 8) 
+                               &ssmb, encparams.phy_width<<1, 8) 
                 +  bidir_var_sum( &botfldf_mc, &botfldb_mc, 
                                   oldrefimg,newrefimg,
-                                  &botssmb, opt_phy_width<<1, 8);
-            candidates.push_back( me );
+                                  &botssmb, encparams.phy_width<<1, 8);
+            best_of_kind_me.push_back( me );
 
             me.mb_type = MB_FORWARD;
             me.var = 
                 unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, 
-                                (opt_phy_width<<1), 8 )
+                                (encparams.phy_width<<1), 8 )
                 + unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
-                                  (opt_phy_width<<1), 8 );
-            candidates.push_back( me );
+                                  (encparams.phy_width<<1), 8 );
+            best_of_kind_me.push_back( me );
 
             me.mb_type = MB_BACKWARD;
             me.var =  
                 unidir_var_sum( &topfldb_mc, newrefimg, &ssmb, 
-                                (opt_phy_width<<1), 8 )
+                                (encparams.phy_width<<1), 8 )
                 + unidir_var_sum( &botfldb_mc, newrefimg, &botssmb, 
-                                  (opt_phy_width<<1), 8 );
-            candidates.push_back( me );
+                                  (encparams.phy_width<<1), 8 );
+            best_of_kind_me.push_back( me );
         
 		}
 	}
 
-    //
-    // Now discard all motion estimates where squared error
-    // more than 10% greater than the best...
-    vector<MotionEst>::iterator c;
-    vector<MotionEst>::iterator min_me = candidates.begin();
-    for( c = candidates.begin(); c < candidates.end(); ++ c)
-        if( c->var < min_me->var )
-            min_me = c;
-    for( c = candidates.begin(); c < candidates.end(); ++ c)
-        if( static_cast<double>(c->var) <= min_me->var * 1.1 )
-            plausible_me.push_back(*c);
 }
 
 
@@ -1215,22 +1210,22 @@ void MacroBlock::FieldME()
 		newrefimg = picture.neworg;
 	}
 
-	w2 = opt_phy_width<<1;
+	w2 = encparams.phy_width<<1;
 
 	/* Fast motion data sits at the end of the luminance buffer */
 	ssmb.mb = picture.curorg[0] + i + w2*j;
 	ssmb.umb = picture.curorg[1] + ((i>>1)+(w2>>1)*(j>>1));
 	ssmb.vmb = picture.curorg[2] + ((i>>1)+(w2>>1)*(j>>1));
-	ssmb.fmb = picture.curorg[0] + fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
-	ssmb.qmb = picture.curorg[0] + qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
+	ssmb.fmb = picture.curorg[0] + encparams.fsubsample_offset+((i>>1)+(w2>>1)*(j>>1));
+	ssmb.qmb = picture.curorg[0] + encparams.qsubsample_offset+ (i>>2)+(w2>>2)*(j>>2);
 
 	if (picture.pict_struct==BOTTOM_FIELD)
 	{
-		ssmb.mb += opt_phy_width;
-		ssmb.umb += (opt_phy_width >> 1);
-		ssmb.vmb += (opt_phy_width >> 1);
-		ssmb.fmb += (opt_phy_width >> 1);
-		ssmb.qmb += (opt_phy_width >> 2);
+		ssmb.mb += encparams.phy_width;
+		ssmb.umb += (encparams.phy_width >> 1);
+		ssmb.vmb += (encparams.phy_width >> 1);
+		ssmb.fmb += (encparams.phy_width >> 1);
+		ssmb.qmb += (encparams.phy_width >> 2);
 	}
 
     pvariance( ssmb.mb, 16, w2, &lum_variance, &lum_mean );
@@ -1463,6 +1458,7 @@ void MacroBlock::FieldME()
 
 		}
 
+
 		/* select between intra and non-intra coding */
 		if (vmc>intravar && vmc > 12*256)
         {
@@ -1502,8 +1498,8 @@ void MacroBlock::FieldME()
 			}
 		}
 	}
-    plausible_me.erase(plausible_me.begin(), plausible_me.end());
-    plausible_me.push_back( me );
+    best_of_kind_me.erase(best_of_kind_me.begin(), best_of_kind_me.end());
+    best_of_kind_me.push_back( me );
 
 }
 
@@ -1536,20 +1532,20 @@ static void frame_field_modes(
 
 	/* predict top field from top field */
 	mb_me_search(org,ref,0,topssmb,
-                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
-                 opt_enc_width,opt_enc_height>>1,
+                 encparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 encparams.enc_width,encparams.enc_height>>1,
                  &topfld_mc);
 
 	/* predict top field from bottom field */
-	mb_me_search(org,ref,opt_phy_width,topssmb, 
-                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
-                 opt_enc_width,opt_enc_height>>1, &botfld_mc);
+	mb_me_search(org,ref,encparams.phy_width,topssmb, 
+                 encparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 encparams.enc_width,encparams.enc_height>>1, &botfld_mc);
 
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = opt_phy_width;
+	botfld_mc.fieldoff = encparams.phy_width;
 
 	imins[0][0] = topfld_mc.pos.x;
 	jmins[0][0] = topfld_mc.pos.y;
@@ -1568,21 +1564,21 @@ static void frame_field_modes(
 
 	/* predict bottom field from top field */
 	mb_me_search(org,ref,0,botssmb,
-                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
-                 opt_enc_width,opt_enc_height>>1,
+                 encparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 encparams.enc_width,encparams.enc_height>>1,
                  &topfld_mc);
 
 	/* predict bottom field from bottom field */
-	mb_me_search(org,ref,opt_phy_width,botssmb,
-                 opt_phy_width<<1,i,j>>1,sx,sy>>1,8,
-                 opt_enc_width,opt_enc_height>>1,
+	mb_me_search(org,ref,encparams.phy_width,botssmb,
+                 encparams.phy_width<<1,i,j>>1,sx,sy>>1,8,
+                 encparams.enc_width,encparams.enc_height>>1,
                  &botfld_mc);
     
 	/* set correct field selectors... */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = opt_phy_width;
+	botfld_mc.fieldoff = encparams.phy_width;
 
 	imins[0][1] = topfld_mc.pos.x;
 	jmins[0][1] = topfld_mc.pos.y;
@@ -1639,11 +1635,11 @@ static void field_estimate (
 	int notop, nobot;
 	subsampled_mb_s botssmb;
 
-	botssmb.mb = ssmb->mb+opt_phy_width;
-	botssmb.umb = ssmb->umb+(opt_phy_width>>1);
-	botssmb.vmb = ssmb->vmb+(opt_phy_width>>1);
-	botssmb.fmb = ssmb->fmb+(opt_phy_width>>1);
-	botssmb.qmb = ssmb->qmb+(opt_phy_width>>2);
+	botssmb.mb = ssmb->mb+encparams.phy_width;
+	botssmb.umb = ssmb->umb+(encparams.phy_width>>1);
+	botssmb.vmb = ssmb->vmb+(encparams.phy_width>>1);
+	botssmb.fmb = ssmb->fmb+(encparams.phy_width>>1);
+	botssmb.qmb = ssmb->qmb+(encparams.phy_width>>2);
 
 	/* if ipflag is set, predict from field of opposite parity only */
 	notop = picture.ipflag && (picture.pict_struct==TOP_FIELD);
@@ -1656,22 +1652,22 @@ static void field_estimate (
 		topfld_mc.sad = dt = 65536; /* infinity */
 	else
 		mb_me_search(toporg,topref,0,ssmb,
-                     opt_phy_width<<1, i,j,sx,sy>>1,16,
-                     opt_enc_width,opt_enc_height>>1, &topfld_mc);
+                     encparams.phy_width<<1, i,j,sx,sy>>1,16,
+                     encparams.enc_width,encparams.enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict current field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
 	else
-		mb_me_search(botorg,botref,opt_phy_width,ssmb,
-                     opt_phy_width<<1, i,j,sx,sy>>1,16,
-                     opt_enc_width,opt_enc_height>>1, &botfld_mc);
+		mb_me_search(botorg,botref,encparams.phy_width,ssmb,
+                     encparams.phy_width<<1, i,j,sx,sy>>1,16,
+                     encparams.enc_width,encparams.enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = opt_phy_width;
+	botfld_mc.fieldoff = encparams.phy_width;
 
 	/* same parity prediction (only valid if ipflag==0) */
 	if (picture.pict_struct==TOP_FIELD)
@@ -1702,23 +1698,23 @@ static void field_estimate (
 		topfld_mc.sad = dt = 65536;
 	else
 		mb_me_search(toporg,topref,0,ssmb,
-                     opt_phy_width<<1, i,j,sx,sy>>1,8,
-                     opt_enc_width,opt_enc_height>>1,&topfld_mc);
+                     encparams.phy_width<<1, i,j,sx,sy>>1,8,
+                     encparams.enc_width,encparams.enc_height>>1,&topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict upper half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,opt_phy_width,ssmb,
-                     opt_phy_width<<1, i,j,sx,sy>>1,8,
-                     opt_enc_width,opt_enc_height>>1,&botfld_mc);
+		mb_me_search(botorg,botref,encparams.phy_width,ssmb,
+                     encparams.phy_width<<1, i,j,sx,sy>>1,8,
+                     encparams.enc_width,encparams.enc_height>>1,&botfld_mc);
 	db = botfld_mc.sad;
 
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = opt_phy_width;
+	botfld_mc.fieldoff = encparams.phy_width;
 
 	/* select prediction for upper half field */
 	if (dt<=db)
@@ -1745,22 +1741,22 @@ static void field_estimate (
 		topfld_mc.sad = dt = 65536;
 	else
 		mb_me_search(toporg,topref,0,&botssmb,
-                     opt_phy_width<<1, i,j+8,sx,sy>>1,8,
-                     opt_enc_width,opt_enc_height>>1, &topfld_mc);
+                     encparams.phy_width<<1, i,j+8,sx,sy>>1,8,
+                     encparams.enc_width,encparams.enc_height>>1, &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict lower half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_me_search(botorg,botref,opt_phy_width,&botssmb,
-                     opt_phy_width<<1,i,j+8,sx,sy>>1,8,
-                     opt_enc_width,opt_enc_height>>1, &botfld_mc);
+		mb_me_search(botorg,botref,encparams.phy_width,&botssmb,
+                     encparams.phy_width<<1,i,j+8,sx,sy>>1,8,
+                     encparams.enc_width,encparams.enc_height>>1, &botfld_mc);
 	db = botfld_mc.sad;
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
 	botfld_mc.fieldsel = 1;
 	topfld_mc.fieldoff = 0;
-	botfld_mc.fieldoff = opt_phy_width;
+	botfld_mc.fieldoff = encparams.phy_width;
 
 	/* select prediction for lower half field */
 	if (dt<=db)
@@ -1864,8 +1860,8 @@ static void dpframe_estimate (
 			ib0 += i<<1;
 			jb0 += j<<1;
 
-			if (is >= 0 && is <= (opt_enc_width-16)<<1 &&
-				js >= 0 && js <= (opt_enc_height-16))
+			if (is >= 0 && is <= (encparams.enc_width-16)<<1 &&
+				js >= 0 && js <= (encparams.enc_height-16))
 			{
 				for (delta_y=-1; delta_y<=1; delta_y++)
 				{
@@ -1877,24 +1873,24 @@ static void dpframe_estimate (
 						ib = ib0 + delta_x;
 						jb = jb0 + delta_y;
 
-						if (it >= 0 && it <= (opt_enc_width-16)<<1 &&
-							jt >= 0 && jt <= (opt_enc_height-16) &&
-							ib >= 0 && ib <= (opt_enc_width-16)<<1 &&
-							jb >= 0 && jb <= (opt_enc_height-16))
+						if (it >= 0 && it <= (encparams.enc_width-16)<<1 &&
+							jt >= 0 && jt <= (encparams.enc_height-16) &&
+							ib >= 0 && ib <= (encparams.enc_width-16)<<1 &&
+							jb >= 0 && jb <= (encparams.enc_height-16))
 						{
 							/* compute prediction error */
 							local_dist = pbsumsq(
-								ref + (is>>1) + (opt_phy_width<<1)*(js>>1),
-								ref + opt_phy_width + (it>>1) + (opt_phy_width<<1)*(jt>>1),
+								ref + (is>>1) + (encparams.phy_width<<1)*(js>>1),
+								ref + encparams.phy_width + (it>>1) + (encparams.phy_width<<1)*(jt>>1),
 								ssmb->mb,             /* current mb location */
-								opt_phy_width<<1,       /* adjacent line distance */
+								encparams.phy_width<<1,       /* adjacent line distance */
 								is&1, js&1, it&1, jt&1, /* half-pel flags */
 								8);             /* block height */
 							local_dist += pbsumsq(
-								ref + opt_phy_width + (is>>1) + (opt_phy_width<<1)*(js>>1),
-								ref + (ib>>1) + (opt_phy_width<<1)*(jb>>1),
-								ssmb->mb + opt_phy_width,     /* current mb location */
-								opt_phy_width<<1,       /* adjacent line distance */
+								ref + encparams.phy_width + (is>>1) + (encparams.phy_width<<1)*(js>>1),
+								ref + (ib>>1) + (encparams.phy_width<<1)*(jb>>1),
+								ssmb->mb + encparams.phy_width,     /* current mb location */
+								encparams.phy_width<<1,       /* adjacent line distance */
 								is&1, js&1, ib&1, jb&1, /* half-pel flags */
 								8);             /* block height */
 
@@ -1921,17 +1917,17 @@ static void dpframe_estimate (
 	/* TODO: This is now likely to be obsolete... */
 	/* Compute L1 error for decision purposes */
 	local_dist = pbsad(
-		ref + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
-		ref + opt_phy_width + (imint>>1) + (opt_phy_width<<1)*(jmint>>1),
+		ref + (imins>>1) + (encparams.phy_width<<1)*(jmins>>1),
+		ref + encparams.phy_width + (imint>>1) + (encparams.phy_width<<1)*(jmint>>1),
 		ssmb->mb,
-		opt_phy_width<<1,
+		encparams.phy_width<<1,
 		imins&1, jmins&1, imint&1, jmint&1,
 		8);
 	local_dist += pbsad(
-		ref + opt_phy_width + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
-		ref + (iminb>>1) + (opt_phy_width<<1)*(jminb>>1),
-		ssmb->mb + opt_phy_width,
-		opt_phy_width<<1,
+		ref + encparams.phy_width + (imins>>1) + (encparams.phy_width<<1)*(jmins>>1),
+		ref + (iminb>>1) + (encparams.phy_width<<1)*(jminb>>1),
+		ssmb->mb + encparams.phy_width,
+		encparams.phy_width<<1,
 		imins&1, jmins&1, iminb&1, jminb&1,
 		8);
 
@@ -2012,15 +2008,15 @@ static void dpfield_estimate(
 			io = io0 + delta_x;
 			jo = jo0 + delta_y;
 
-			if (io >= 0 && io <= (opt_enc_width-16)<<1 &&
-				jo >= 0 && jo <= (opt_enc_height2-16)<<1)
+			if (io >= 0 && io <= (encparams.enc_width-16)<<1 &&
+				jo >= 0 && jo <= (encparams.enc_height2-16)<<1)
 			{
 				/* compute prediction error */
 				local_dist = pbsumsq(
-					sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
-					oppref  + (io>>1)    + opt_phy_width2*(jo>>1),
+					sameref + (imins>>1) + encparams.phy_width2*(jmins>>1),
+					oppref  + (io>>1)    + encparams.phy_width2*(jo>>1),
 					mb,             /* current mb location */
-					opt_phy_width2,         /* adjacent line distance */
+					encparams.phy_width2,         /* adjacent line distance */
 					imins&1, jmins&1, io&1, jo&1, /* half-pel flags */
 					16);            /* block height */
 
@@ -2040,10 +2036,10 @@ static void dpfield_estimate(
 	/* Compute L1 error for decision purposes */
 	bestdp_mc->sad =
 		pbsad(
-			sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
-			oppref  + (imino>>1) + opt_phy_width2*(jmino>>1),
+			sameref + (imins>>1) + encparams.phy_width2*(jmins>>1),
+			oppref  + (imino>>1) + encparams.phy_width2*(jmino>>1),
 			mb,             /* current mb location */
-			opt_phy_width2,         /* adjacent line distance */
+			encparams.phy_width2,         /* adjacent line distance */
 			imins&1, jmins&1, imino&1, jmino&1, /* half-pel flags */
 			16);            /* block height */
 
@@ -2107,8 +2103,8 @@ static void mb_me_search(
 	   works better when the original image not the reference (reconstructed)
 	   image is used. 
 	*/
-	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset+(fieldoff>>1));
-	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset+(fieldoff>>2));
+	uint8_t *s22org = (uint8_t*)(org+encparams.fsubsample_offset+(fieldoff>>1));
+	uint8_t *s44org = (uint8_t*)(org+encparams.qsubsample_offset+(fieldoff>>2));
 	uint8_t *orgblk;
 
     uint8_t *reffld = ref+fieldoff;

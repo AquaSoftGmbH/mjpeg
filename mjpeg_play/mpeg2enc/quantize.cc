@@ -61,7 +61,7 @@ void MacroBlock::Quantize()
                      picture->dc_prec,
                      &mquant );
 		
-        cbp = (1<<block_count) - 1;
+        cbp = (1<<encparams.block_count) - 1;
     }
     else
     {
@@ -80,13 +80,13 @@ void MacroBlock::IQuantize()
     int j;
     if (final_me.mb_type & MB_INTRA)
     {
-        for (j=0; j<block_count; j++)
+        for (j=0; j<encparams.block_count; j++)
             iquant_intra(qdctblocks[j], qdctblocks[j], 
                          picture->dc_prec, mquant);
     }
     else
     {
-        for (j=0;j<block_count;j++)
+        for (j=0;j<encparams.block_count;j++)
             iquant_non_intra(qdctblocks[j], qdctblocks[j], mquant);
     }
 }
@@ -95,31 +95,10 @@ void MacroBlock::IQuantize()
 
 void iquantize( Picture *picture )
 {
-#ifdef ORIGINAL_JUNK
-	int j,k;
-	int16_t (*qblocks)[64] = picture->qblocks;
-#else
     int k;
-#endif
-	for (k=0; k<mb_per_pict; k++)
+	for (k=0; k<encparams.mb_per_pict; k++)
 	{
-#ifdef ORIGINAL_JUNK
-		if (picture->mbinfo[k].mb_type & MB_INTRA)
-			for (j=0; j<block_count; j++)
-            {
-				iquant_intra(qblocks[k*block_count+j],
-							 qblocks[k*block_count+j],
-							 picture->dc_prec,
-							 picture->mbinfo[k].mquant);
-            }
-		else
-			for (j=0;j<block_count;j++)
-				iquant_non_intra(qblocks[k*block_count+j],
-								 qblocks[k*block_count+j],
-								 picture->mbinfo[k].mquant);
-#else
         picture->mbinfo[k].IQuantize();
-#endif
 	}
 }
 

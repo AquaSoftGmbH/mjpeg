@@ -67,7 +67,7 @@ static void putDC(const sVLCtable *tab, int val)
   int absval, size;
 
   absval = abs(val);
-  if (absval>opt_dctsatlim)
+  if (absval>encparams.dctsatlim)
   {
     /* should never happen */
     mjpeg_error("Internal: DC value out of range (%d)",val);
@@ -137,9 +137,9 @@ void putAC(int run, int signed_level, int vlcformat)
   level = abs(signed_level);
 
   /* make sure run and level are valid */
-  if (run<0 || run>63 || level==0 || level>opt_dctsatlim)
+  if (run<0 || run>63 || level==0 || level>encparams.dctsatlim)
   {
-	  if( signed_level != -(opt_dctsatlim+1)) 	/* Negative range is actually 1 more */
+	  if( signed_level != -(encparams.dctsatlim+1)) 	/* Negative range is actually 1 more */
 	  {
 		  mjpeg_error("Internal: AC value out of range (run=%d, signed_level=%d)",
 					  run,signed_level);
@@ -180,7 +180,7 @@ void putAC(int run, int signed_level, int vlcformat)
     /* no VLC for this (run, level) combination: use escape coding (7.2.2.3) */
     putbits(1l,6); /* Escape */
     putbits(run,6); /* 6 bit code for run */
-    if (opt_mpeg1)
+    if (encparams.mpeg1)
     {
       /* ISO/IEC 11172-2 uses a 8 or 16 bit code */
       if (signed_level>127)

@@ -73,6 +73,8 @@
 #endif
 int verbose = 1;
 
+#include "ratectl.hh"
+
 /* private prototypes */
 static void init_mpeg_parms (void);
 static void init_encoder(void);
@@ -87,7 +89,7 @@ static void init_quantmat (void);
 
 
 /* Command Parameter values.  These are checked and processed for
-   defaults etc after parsing.  The resulting values then set the opt_
+   defaults etc after parsing.  The resulting values then set the encdims->
    variables that control the actual encoder.
 */
 
@@ -285,7 +287,7 @@ static void Usage(char *str)
 "    Set pre-defined mux format fmt.\n"
 "    [0 = Generic MPEG1, 1 = standard VCD, 2 = user VCD,\n"
 "     3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
-"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
+"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8|9 = DVD]\n"
 "--aspect|-a num\n"
 "    Set displayed image aspect ratio image (default: 2 = 4:3)\n"
 "    [1 = 1:1, 2 = 4:3, 3 = 16:9, 4 = 2.21:1]\n"
@@ -463,8 +465,8 @@ static void set_format_presets(void)
 		   resolution. 
 		*/
 		
-		if( opt_horizontal_size == 352 && 
-			(opt_vertical_size == 240 || opt_vertical_size == 288 ) )
+		if( encparams.horizontal_size == 352 && 
+			(encparams.vertical_size == 240 || encparams.vertical_size == 288 ) )
 		{
 			/* VCD normal resolution still */
 			if( param_still_size == 0 )
@@ -478,8 +480,8 @@ static void set_format_presets(void)
 			param_video_buffer_size = 46;
 			param_pad_stills_to_vbv_buffer_size = 0;
 		}
-		else if( opt_horizontal_size == 704 &&
-				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
+		else if( encparams.horizontal_size == 704 &&
+				 (encparams.vertical_size == 480 || encparams.vertical_size == 576) )
 		{
 			/* VCD high-resolution stills: only these use vbv_delay
 			 to encode picture size...
@@ -526,15 +528,15 @@ static void set_format_presets(void)
 		   resolution. 
 		*/
 		
-		if( opt_horizontal_size == 480 && 
-			(opt_vertical_size == 480 || opt_vertical_size == 576 ) )
+		if( encparams.horizontal_size == 480 && 
+			(encparams.vertical_size == 480 || encparams.vertical_size == 576 ) )
 		{
 			mjpeg_info( "SVCD normal-resolution stills selected." );
 			if( param_still_size == 0 )
 				param_still_size = 90*1024;
 		}
-		else if( opt_horizontal_size == 704 &&
-				 (opt_vertical_size == 480 || opt_vertical_size == 576) )
+		else if( encparams.horizontal_size == 704 &&
+				 (encparams.vertical_size == 480 || encparams.vertical_size == 576) )
 		{
 			mjpeg_info( "SVCD high-resolution stills selected." );
 			if( param_still_size == 0 )
@@ -662,7 +664,7 @@ static int infer_default_params(void)
 			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream",
 						Y4M_RATIO_DBL(mpeg_framerate(strm_frame_rate_code)));
 		}
-		opt_frame_rate_code = param_frame_rate;
+		encparams.frame_rate_code = param_frame_rate;
 	}
 
 	if( param_aspect_ratio == 0 )
@@ -1049,7 +1051,7 @@ static struct option long_options[]={
 			break;
 		case 'X' :
 			param_boost_var_ceil = atof(optarg);
-			if( param_act_boost <0 || param_act_boost > 50*50 )
+			if( param_boost_var_ceil <0 || param_boost_var_ceil > 50*50 )
 			{
 				mjpeg_error( "-X option requires arg 0 .. 2500" );
 				++nerr;
@@ -1089,17 +1091,17 @@ static struct option long_options[]={
 		istrm_fd = 0; /* stdin */
 
 	/* Read parameters inferred from input stream */
-	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
+	read_stream_params( &encparams.horizontal_size, &encparams.vertical_size, 
 						&strm_frame_rate_code, &param_input_interlacing,
 						&strm_aspect_ratio
 						);
 	
-	if(opt_horizontal_size<=0)
+	if(encparams.horizontal_size<=0)
 	{
 		mjpeg_error("Horizontal size from input stream illegal");
 		++nerr;
 	}
-	if(opt_vertical_size<=0)
+	if(encparams.vertical_size<=0)
 	{
 		mjpeg_error("Vertical size from input stream illegal");
 		++nerr;
@@ -1129,8 +1131,8 @@ static struct option long_options[]={
 
 
 	mjpeg_info("Encoding MPEG-%d video to %s",param_mpeg,outfilename);
-	mjpeg_info("Horizontal size: %d pel",opt_horizontal_size);
-	mjpeg_info("Vertical size: %d pel",opt_vertical_size);
+	mjpeg_info("Horizontal size: %d pel",encparams.horizontal_size);
+	mjpeg_info("Vertical size: %d pel",encparams.vertical_size);
 	mjpeg_info("Aspect ratio code: %d = %s", 
 			param_aspect_ratio,
 			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
@@ -1302,23 +1304,23 @@ static void init_encoder(void)
 	ctl_22_red		= param_22_red;
 	
 	/* round picture dimensions to nearest multiple of 16 or 32 */
-	mb_width = (opt_horizontal_size+15)/16;
-	mb_height = opt_prog_seq ? (opt_vertical_size+15)/16 : 2*((opt_vertical_size+31)/32);
-	mb_height2 = opt_fieldpic ? mb_height>>1 : mb_height; /* for field pictures */
-	opt_enc_width = 16*mb_width;
-	opt_enc_height = 16*mb_height;
+	encparams.mb_width = (encparams.horizontal_size+15)/16;
+	encparams.mb_height = encparams.prog_seq ? (encparams.vertical_size+15)/16 : 2*((encparams.vertical_size+31)/32);
+	encparams.mb_height2 = encparams.fieldpic ? encparams.mb_height>>1 : encparams.mb_height; /* for field pictures */
+	encparams.enc_width = 16*encparams.mb_width;
+	encparams.enc_height = 16*encparams.mb_height;
 
 #ifdef HAVE_ALTIVEC
-	/* Pad opt_phy_width to 64 so that the rowstride of 4*4
+	/* Pad encparams.phy_width to 64 so that the rowstride of 4*4
 	 * sub-sampled data will be a multiple of 16 (ideal for AltiVec)
 	 * and the rowstride of 2*2 sub-sampled data will be a multiple
 	 * of 32. Height does not affect rowstride, no padding needed.
 	 */
-	opt_phy_width = (opt_enc_width + 63) & (~63);
+	encparams.phy_width = (encparams.enc_width + 63) & (~63);
 #else
-	opt_phy_width = opt_enc_width;
+	encparams.phy_width = encparams.enc_width;
 #endif
-	opt_phy_height = opt_enc_height;
+	encparams.phy_height = encparams.enc_height;
 
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
@@ -1327,38 +1329,38 @@ static void init_encoder(void)
 	   extra row to act as a margin to allow us to neglect / postpone
 	   edge condition checking in time-critical loops...  */
 
-	opt_phy_chrom_width = (opt_chroma_format==CHROMA444) 
-        ? opt_phy_width 
-        : opt_phy_width>>1;
-	opt_phy_chrom_height = (opt_chroma_format!=CHROMA420) 
-        ? opt_phy_height 
-        : opt_phy_height>>1;
-	enc_chrom_width = (opt_chroma_format==CHROMA444) 
-        ? opt_enc_width 
-        : opt_enc_width>>1;
-	enc_chrom_height = (opt_chroma_format!=CHROMA420) 
-        ? opt_enc_height 
-        : opt_enc_height>>1;
+	encparams.phy_chrom_width = (encparams.chroma_format==CHROMA444) 
+        ? encparams.phy_width 
+        : encparams.phy_width>>1;
+	encparams.phy_chrom_height = (encparams.chroma_format!=CHROMA420) 
+        ? encparams.phy_height 
+        : encparams.phy_height>>1;
+	enc_chrom_width = (encparams.chroma_format==CHROMA444) 
+        ? encparams.enc_width 
+        : encparams.enc_width>>1;
+	enc_chrom_height = (encparams.chroma_format!=CHROMA420) 
+        ? encparams.enc_height 
+        : encparams.enc_height>>1;
 
-	opt_phy_height2 = opt_fieldpic ? opt_phy_height>>1 : opt_phy_height;
-	opt_enc_height2 = opt_fieldpic ? opt_enc_height>>1 : opt_enc_height;
-	opt_phy_width2 = opt_fieldpic ? opt_phy_width<<1 : opt_phy_width;
-	opt_phy_chrom_width2 = opt_fieldpic 
-        ? opt_phy_chrom_width<<1 
-        : opt_phy_chrom_width;
+	encparams.phy_height2 = encparams.fieldpic ? encparams.phy_height>>1 : encparams.phy_height;
+	encparams.enc_height2 = encparams.fieldpic ? encparams.enc_height>>1 : encparams.enc_height;
+	encparams.phy_width2 = encparams.fieldpic ? encparams.phy_width<<1 : encparams.phy_width;
+	encparams.phy_chrom_width2 = encparams.fieldpic 
+        ? encparams.phy_chrom_width<<1 
+        : encparams.phy_chrom_width;
  
-	block_count = block_count_tab[opt_chroma_format-1];
-	lum_buffer_size = (opt_phy_width*opt_phy_height) +
-					 sizeof(uint8_t) *(opt_phy_width/2)*(opt_phy_height/2) +
-					 sizeof(uint8_t) *(opt_phy_width/4)*(opt_phy_height/4+1);
-	chrom_buffer_size = opt_phy_chrom_width*opt_phy_chrom_height;
+	encparams.block_count = block_count_tab[encparams.chroma_format-1];
+	encparams.lum_buffer_size = (encparams.phy_width*encparams.phy_height) +
+					 sizeof(uint8_t) *(encparams.phy_width/2)*(encparams.phy_height/2) +
+					 sizeof(uint8_t) *(encparams.phy_width/4)*(encparams.phy_height/4+1);
+	encparams.chrom_buffer_size = encparams.phy_chrom_width*encparams.phy_chrom_height;
 
 
-	fsubsample_offset = (opt_phy_width)*(opt_phy_height) * sizeof(uint8_t);
-	qsubsample_offset =  fsubsample_offset 
-        + (opt_phy_width/2)*(opt_phy_height/2)*sizeof(uint8_t);
+	encparams.fsubsample_offset = (encparams.phy_width)*(encparams.phy_height) * sizeof(uint8_t);
+	encparams.qsubsample_offset =  encparams.fsubsample_offset 
+        + (encparams.phy_width/2)*(encparams.phy_height/2)*sizeof(uint8_t);
 
-	mb_per_pict = mb_width*mb_height2;
+	encparams.mb_per_pict = encparams.mb_width*encparams.mb_height2;
 
 
 	/* Allocate the frame data buffers */
@@ -1374,20 +1376,20 @@ static void init_encoder(void)
 		 {
 			 frame_buffers[n][i] = 
                  static_cast<uint8_t *>( bufalloc( (i==0) 
-                                                   ? lum_buffer_size 
-                                                   : chrom_buffer_size ) 
+                                                   ? encparams.lum_buffer_size 
+                                                   : encparams.chrom_buffer_size ) 
                      );
 		 }
 
          border_mark(frame_buffers[n][0],
-                     opt_enc_width,opt_enc_height,
-                     opt_phy_width,opt_phy_height);
+                     encparams.enc_width,encparams.enc_height,
+                     encparams.phy_width,encparams.phy_height);
          border_mark(frame_buffers[n][1],
                      enc_chrom_width, enc_chrom_height,
-                     opt_phy_chrom_width,opt_phy_chrom_height);
+                     encparams.phy_chrom_width,encparams.phy_chrom_height);
          border_mark(frame_buffers[n][2],
                      enc_chrom_width, enc_chrom_height,
-                     opt_phy_chrom_width,opt_phy_chrom_height);
+                     encparams.phy_chrom_width,encparams.phy_chrom_height);
 
 	}
 #ifdef OUTPUT_STAT
@@ -1430,8 +1432,8 @@ static void init_mpeg_parms(void)
 	ctl_M_min = param_preserve_B ? ctl_M : 1;
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
-	opt_mpeg1           = (param_mpeg == 1);
-	opt_fieldpic        = (param_fieldenc == 2);
+	encparams.mpeg1           = (param_mpeg == 1);
+	encparams.fieldpic        = (param_fieldenc == 2);
 
     // SVCD and probably DVD? mandate progressive_sequence = 0 
     switch( param_format )
@@ -1441,17 +1443,17 @@ static void init_mpeg_parms(void)
     case MPEG_FORMAT_SVCD_STILL :
     case MPEG_FORMAT_DVD :
     case MPEG_FORMAT_DVD_NAV :
-        opt_prog_seq = 0;
+        encparams.prog_seq = 0;
         break;
     default :
-        opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
+        encparams.prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
         break;
     }
-	opt_pulldown_32     = param_32_pulldown;
+	encparams.pulldown_32     = param_32_pulldown;
 
-	opt_aspectratio     = param_aspect_ratio;
-	opt_frame_rate_code = param_frame_rate;
-	opt_dctsatlim		= opt_mpeg1 ? 255 : 2047;
+	encparams.aspectratio     = param_aspect_ratio;
+	encparams.frame_rate_code = param_frame_rate;
+	encparams.dctsatlim		= encparams.mpeg1 ? 255 : 2047;
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
 		buffer accordingly... */
@@ -1461,26 +1463,26 @@ static void init_mpeg_parms(void)
 		mjpeg_error_exit1( "Generic format - must specify bit-rate!" );
 	}
 
-	opt_still_size = 0;
+	encparams.still_size = 0;
 	if( MPEG_STILLS_FORMAT(param_format) )
 	{
-		opt_vbv_buffer_code = param_vbv_buffer_still_size / 2048;
-		opt_vbv_buffer_still_size = param_pad_stills_to_vbv_buffer_size;
-		opt_bit_rate = param_bitrate;
-		opt_still_size = param_still_size;
+		encparams.vbv_buffer_code = param_vbv_buffer_still_size / 2048;
+		encparams.vbv_buffer_still_size = param_pad_stills_to_vbv_buffer_size;
+		encparams.bit_rate = param_bitrate;
+		encparams.still_size = param_still_size;
 	}
 	else if( param_mpeg == 1 )
 	{
 		/* Scale VBV relative to VCD  */
-		opt_bit_rate = MAX(10000, param_bitrate);
-		opt_vbv_buffer_code = (20 * param_bitrate  / 1151929);
+		encparams.bit_rate = MAX(10000, param_bitrate);
+		encparams.vbv_buffer_code = (20 * param_bitrate  / 1151929);
 	}
 	else
 	{
-		opt_bit_rate = MAX(10000, param_bitrate);
-		opt_vbv_buffer_code = MIN(112,param_video_buffer_size / 2);
+		encparams.bit_rate = MAX(10000, param_bitrate);
+		encparams.vbv_buffer_code = MIN(112,param_video_buffer_size / 2);
 	}
-	opt_vbv_buffer_size = opt_vbv_buffer_code*16384;
+	encparams.vbv_buffer_size = encparams.vbv_buffer_code*16384;
 
 	if( param_quant )
 	{
@@ -1494,44 +1496,44 @@ static void init_mpeg_parms(void)
 
 	ctl_video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
-	opt_seq_hdr_every_gop = param_seq_hdr_every_gop;
-	opt_seq_end_every_gop = param_seq_end_every_gop;
-	opt_svcd_scan_data = param_svcd_scan_data;
-	opt_ignore_constraints = param_ignore_constraints;
+	encparams.seq_hdr_every_gop = param_seq_hdr_every_gop;
+	encparams.seq_end_every_gop = param_seq_end_every_gop;
+	encparams.svcd_scan_data = param_svcd_scan_data;
+	encparams.ignore_constraints = param_ignore_constraints;
 	ctl_seq_length_limit = param_seq_length_limit;
 	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;
-	opt_low_delay       = 0;
-	opt_constrparms     = (param_mpeg == 1 && 
+	encparams.low_delay       = 0;
+	encparams.constrparms     = (param_mpeg == 1 && 
 						   !MPEG_STILLS_FORMAT(param_format));
-	opt_profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
-	opt_level           = 8;                 /* Main Level      CCIR 601 rates */
-	opt_chroma_format   = param_422 ? CHROMA422 : CHROMA420;
+	encparams.profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
+	encparams.level           = 8;                 /* Main Level      CCIR 601 rates */
+	encparams.chroma_format   = param_422 ? CHROMA422 : CHROMA420;
 	switch(param_norm)
 	{
-	case 'p': opt_video_format = 1; break;
-	case 'n': opt_video_format = 2; break;
-	case 's': opt_video_format = 3; break;
-	default:  opt_video_format = 5; break; /* unspec. */
+	case 'p': encparams.video_format = 1; break;
+	case 'n': encparams.video_format = 2; break;
+	case 's': encparams.video_format = 3; break;
+	default:  encparams.video_format = 5; break; /* unspec. */
 	}
 	switch(param_norm)
 	{
 	case 's':
 	case 'p':  /* ITU BT.470  B,G */
-		opt_color_primaries = 5;
-		opt_transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
-		opt_matrix_coefficients = 5; 
+		encparams.color_primaries = 5;
+		encparams.transfer_characteristics = 5; /* Gamma = 2.8 (!!) */
+		encparams.matrix_coefficients = 5; 
         msg = "PAL B/G";
 		break;
 	case 'n': /* SMPTPE 170M "modern NTSC" */
-		opt_color_primaries = 6;
-		opt_matrix_coefficients = 6; 
-		opt_transfer_characteristics = 6;
+		encparams.color_primaries = 6;
+		encparams.matrix_coefficients = 6; 
+		encparams.transfer_characteristics = 6;
         msg = "NTSC";
 		break; 
 	default:   /* unspec. */
-		opt_color_primaries = 2;
-		opt_matrix_coefficients = 2; 
-		opt_transfer_characteristics = 2;
+		encparams.color_primaries = 2;
+		encparams.matrix_coefficients = 2; 
+		encparams.transfer_characteristics = 2;
         msg = "unspecified";
 		break;
 	}
@@ -1550,24 +1552,24 @@ static void init_mpeg_parms(void)
         */
         if( param_hack_svcd_hds_bug )
         {
-            opt_display_horizontal_size  = opt_horizontal_size;
-            opt_display_vertical_size    = opt_vertical_size;
+            encparams.display_horizontal_size  = encparams.horizontal_size;
+            encparams.display_vertical_size    = encparams.vertical_size;
         }
         else
         {
-            opt_display_horizontal_size  = opt_aspectratio == 2 ? 540 : 720;
-            opt_display_vertical_size    = opt_vertical_size;
+            encparams.display_horizontal_size  = encparams.aspectratio == 2 ? 540 : 720;
+            encparams.display_vertical_size    = encparams.vertical_size;
         }
 		break;
 	default:
-		opt_display_horizontal_size  = opt_horizontal_size;
-		opt_display_vertical_size    = opt_vertical_size;
+		encparams.display_horizontal_size  = encparams.horizontal_size;
+		encparams.display_vertical_size    = encparams.vertical_size;
 		break;
 	}
 
-	opt_dc_prec         = param_mpeg2_dc_prec;  /* 9 bits */
-    opt_topfirst = 0;
-	if( ! opt_prog_seq )
+	encparams.dc_prec         = param_mpeg2_dc_prec;  /* 9 bits */
+    encparams.topfirst = 0;
+	if( ! encparams.prog_seq )
 	{
 		int fieldorder;
 		if( param_force_interlacing != Y4M_UNKNOWN ) 
@@ -1579,35 +1581,35 @@ static void init_mpeg_parms(void)
 		else
 			fieldorder = param_input_interlacing;
 
-		opt_topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
+		encparams.topfirst = (fieldorder == Y4M_ILACE_TOP_FIRST || 
 						fieldorder ==Y4M_ILACE_NONE );
 	}
 	else
-		opt_topfirst = 0;
+		encparams.topfirst = 0;
 
     // Restrict to frame motion estimation and DCT modes only when MPEG1
     // or when progressive content is specified for MPEG2.
     // Note that for some profiles although we have progressive sequence 
     // header bit = 0 we still only encode with frame modes (for speed).
-	opt_frame_pred_dct_tab[0] 
-		= opt_frame_pred_dct_tab[1] 
-		= opt_frame_pred_dct_tab[2] 
+	encparams.frame_pred_dct_tab[0] 
+		= encparams.frame_pred_dct_tab[1] 
+		= encparams.frame_pred_dct_tab[2] 
         = (param_mpeg == 1 || param_fieldenc == 0) ? 1 : 0;
 
-    mjpeg_info( "Progressive format frames = %d", 	opt_frame_pred_dct_tab[0] );
-	opt_qscale_tab[0] 
-		= opt_qscale_tab[1] 
-		= opt_qscale_tab[2] 
+    mjpeg_info( "Progressive format frames = %d", 	encparams.frame_pred_dct_tab[0] );
+	encparams.qscale_tab[0] 
+		= encparams.qscale_tab[1] 
+		= encparams.qscale_tab[2] 
 		= param_mpeg == 1 ? 0 : 1;
 
-	opt_intravlc_tab[0] 
-		= opt_intravlc_tab[1] 
-		= opt_intravlc_tab[2] 
+	encparams.intravlc_tab[0] 
+		= encparams.intravlc_tab[1] 
+		= encparams.intravlc_tab[2] 
 		= param_mpeg == 1 ? 0 : 1;
 
-	opt_altscan_tab[2]  
-		= opt_altscan_tab[1]  
-		= opt_altscan_tab[0]  
+	encparams.altscan_tab[2]  
+		= encparams.altscan_tab[1]  
+		= encparams.altscan_tab[0]  
 		= (param_mpeg == 1 || param_hack_altscan_bug) ? 0 : 1;
 	
 
@@ -1623,47 +1625,47 @@ static void init_mpeg_parms(void)
 	
 	{ 
 		int radius_x = param_searchrad;
-		int radius_y = param_searchrad*opt_vertical_size/opt_horizontal_size;
+		int radius_y = param_searchrad*encparams.vertical_size/encparams.horizontal_size;
 
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 
-		opt_motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
-		if (!opt_motion_data)
+		encparams.motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
+		if (!encparams.motion_data)
 			mjpeg_error_exit1("malloc failed");
 
 		for (i=0; i<ctl_M; i++)
 		{
 			if(i==0)
 			{
-				opt_motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
-				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = round_search_radius(radius_y*ctl_M);
-				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
+				encparams.motion_data[i].sxf = round_search_radius(radius_x*ctl_M);
+				encparams.motion_data[i].forw_hor_f_code  = f_code(encparams.motion_data[i].sxf);
+				encparams.motion_data[i].syf = round_search_radius(radius_y*ctl_M);
+				encparams.motion_data[i].forw_vert_f_code  = f_code(encparams.motion_data[i].syf);
 			}
 			else
 			{
-				opt_motion_data[i].sxf = round_search_radius(radius_x*i);
-				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = round_search_radius(radius_y*i);
-				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
-				opt_motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
-				opt_motion_data[i].back_hor_f_code  = f_code(opt_motion_data[i].sxb);
-				opt_motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
-				opt_motion_data[i].back_vert_f_code  = f_code(opt_motion_data[i].syb);
+				encparams.motion_data[i].sxf = round_search_radius(radius_x*i);
+				encparams.motion_data[i].forw_hor_f_code  = f_code(encparams.motion_data[i].sxf);
+				encparams.motion_data[i].syf = round_search_radius(radius_y*i);
+				encparams.motion_data[i].forw_vert_f_code  = f_code(encparams.motion_data[i].syf);
+				encparams.motion_data[i].sxb = round_search_radius(radius_x*(ctl_M-i));
+				encparams.motion_data[i].back_hor_f_code  = f_code(encparams.motion_data[i].sxb);
+				encparams.motion_data[i].syb = round_search_radius(radius_y*(ctl_M-i));
+				encparams.motion_data[i].back_vert_f_code  = f_code(encparams.motion_data[i].syb);
 			}
 
 			/* MPEG-1 demands f-codes for vertical and horizontal axes are
 			   identical!!!!
 			*/
-			if( opt_mpeg1 )
+			if( encparams.mpeg1 )
 			{
-				opt_motion_data[i].syf = opt_motion_data[i].sxf;
-				opt_motion_data[i].syb  = opt_motion_data[i].sxb;
-				opt_motion_data[i].forw_vert_f_code  = 
-					opt_motion_data[i].forw_hor_f_code;
-				opt_motion_data[i].back_vert_f_code  = 
-					opt_motion_data[i].back_hor_f_code;
+				encparams.motion_data[i].syf = encparams.motion_data[i].sxf;
+				encparams.motion_data[i].syb  = encparams.motion_data[i].sxb;
+				encparams.motion_data[i].forw_vert_f_code  = 
+					encparams.motion_data[i].forw_hor_f_code;
+				encparams.motion_data[i].back_vert_f_code  = 
+					encparams.motion_data[i].back_hor_f_code;
 				
 			}
 		}
@@ -1679,67 +1681,67 @@ static void init_mpeg_parms(void)
 	   For 3:2 movie pulldown decode rate is != display rate due to
 	   the repeated field that appears every other frame.
 	*/
-	opt_frame_rate = Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code));
+	encparams.frame_rate = Y4M_RATIO_DBL(mpeg_framerate(encparams.frame_rate_code));
 	if( param_32_pulldown )
 	{
-		ctl_decode_frame_rate = opt_frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
+		ctl_decode_frame_rate = encparams.frame_rate * (2.0 + 2.0) / (3.0 + 2.0);
 		mjpeg_info( "3:2 Pulldown selected frame decode rate = %3.3f fps", 
 					ctl_decode_frame_rate);
 	}
 	else
-		ctl_decode_frame_rate = opt_frame_rate;
+		ctl_decode_frame_rate = encparams.frame_rate;
 
-	if ( !opt_mpeg1)
+	if ( !encparams.mpeg1)
 	{
 		profile_and_level_checks();
 	}
 	else
 	{
 		/* MPEG-1 */
-		if (opt_constrparms)
+		if (encparams.constrparms)
 		{
-			if (opt_horizontal_size>768
-				|| opt_vertical_size>576
-				|| ((opt_horizontal_size+15)/16)*((opt_vertical_size+15)/16)>396
-				|| ((opt_horizontal_size+15)/16)*((opt_vertical_size+15)/16)*opt_frame_rate>396*25.0
-				|| opt_frame_rate>30.0)
+			if (encparams.horizontal_size>768
+				|| encparams.vertical_size>576
+				|| ((encparams.horizontal_size+15)/16)*((encparams.vertical_size+15)/16)>396
+				|| ((encparams.horizontal_size+15)/16)*((encparams.vertical_size+15)/16)*encparams.frame_rate>396*25.0
+				|| encparams.frame_rate>30.0)
 			{
 				mjpeg_info( "size - setting constrained_parameters_flag = 0");
-				opt_constrparms = 0;
+				encparams.constrparms = 0;
 			}
 		}
 
-		if (opt_constrparms)
+		if (encparams.constrparms)
 		{
 			for (i=0; i<ctl_M; i++)
 			{
-				if (opt_motion_data[i].forw_hor_f_code>4)
+				if (encparams.motion_data[i].forw_hor_f_code>4)
 				{
 					mjpeg_info("Hor. motion search forces constrained_parameters_flag = 0");
-					opt_constrparms = 0;
+					encparams.constrparms = 0;
 					break;
 				}
 
-				if (opt_motion_data[i].forw_vert_f_code>4)
+				if (encparams.motion_data[i].forw_vert_f_code>4)
 				{
 					mjpeg_info("Ver. motion search forces constrained_parameters_flag = 0");
-					opt_constrparms = 0;
+					encparams.constrparms = 0;
 					break;
 				}
 
 				if (i!=0)
 				{
-					if (opt_motion_data[i].back_hor_f_code>4)
+					if (encparams.motion_data[i].back_hor_f_code>4)
 					{
 						mjpeg_info("Hor. motion search setting constrained_parameters_flag = 0");
-						opt_constrparms = 0;
+						encparams.constrparms = 0;
 						break;
 					}
 
-					if (opt_motion_data[i].back_vert_f_code>4)
+					if (encparams.motion_data[i].back_vert_f_code>4)
 					{
 						mjpeg_info("Ver. motion search setting constrained_parameters_flag = 0");
-						opt_constrparms = 0;
+						encparams.constrparms = 0;
 						break;
 					}
 				}
@@ -1748,116 +1750,118 @@ static void init_mpeg_parms(void)
 	}
 
 	/* relational checks */
-	if ( opt_mpeg1 )
+	if ( encparams.mpeg1 )
 	{
-		if (!opt_prog_seq)
+		if (!encparams.prog_seq)
 		{
-			mjpeg_warn("opt_mpeg1 specified - setting progressive_sequence = 1");
-			opt_prog_seq = 1;
+			mjpeg_warn("encparams.mpeg1 specified - setting progressive_sequence = 1");
+			encparams.prog_seq = 1;
 		}
 
-		if (opt_chroma_format!=CHROMA420)
+		if (encparams.chroma_format!=CHROMA420)
 		{
 			mjpeg_info("mpeg1 - forcing chroma_format = 1 (4:2:0) - others not supported");
-			opt_chroma_format = CHROMA420;
+			encparams.chroma_format = CHROMA420;
 		}
 
-		if (opt_dc_prec!=0)
+		if (encparams.dc_prec!=0)
 		{
 			mjpeg_info("mpeg1 - setting intra_dc_precision = 0");
-			opt_dc_prec = 0;
+			encparams.dc_prec = 0;
 		}
 
 		for (i=0; i<3; i++)
-			if (opt_qscale_tab[i])
+			if (encparams.qscale_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting qscale_tab[%d] = 0",i);
-				opt_qscale_tab[i] = 0;
+				encparams.qscale_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
-			if (opt_intravlc_tab[i])
+			if (encparams.intravlc_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting intravlc_tab[%d] = 0",i);
-				opt_intravlc_tab[i] = 0;
+				encparams.intravlc_tab[i] = 0;
 			}
 
 		for (i=0; i<3; i++)
-			if (opt_altscan_tab[i])
+			if (encparams.altscan_tab[i])
 			{
 				mjpeg_info("mpeg1 - setting altscan_tab[%d] = 0",i);
-				opt_altscan_tab[i] = 0;
+				encparams.altscan_tab[i] = 0;
 			}
 	}
 
-	if ( !opt_mpeg1 && opt_constrparms)
+	if ( !encparams.mpeg1 && encparams.constrparms)
 	{
 		mjpeg_info("not mpeg1 - setting constrained_parameters_flag = 0");
-		opt_constrparms = 0;
+		encparams.constrparms = 0;
 	}
 
 
-	if( (!opt_prog_seq || opt_fieldpic != 0 ) &&
-		( (opt_vertical_size+15) / 16)%2 != 0 )
+	if( (!encparams.prog_seq || encparams.fieldpic != 0 ) &&
+		( (encparams.vertical_size+15) / 16)%2 != 0 )
 	{
 		mjpeg_warn( "Frame height won't split into two equal field pictures...");
 		mjpeg_warn( "forcing encoding as progressive video");
-		opt_prog_seq = 1;
-		opt_fieldpic = 0;
+		encparams.prog_seq = 1;
+		encparams.fieldpic = 0;
 	}
 
 
-	if (opt_prog_seq && opt_fieldpic != 0)
+	if (encparams.prog_seq && encparams.fieldpic != 0)
 	{
 		mjpeg_info("prog sequence - forcing progressive frame encoding");
-		opt_fieldpic = 0;
+		encparams.fieldpic = 0;
 	}
 
 
-	if (opt_prog_seq && opt_topfirst)
+	if (encparams.prog_seq && encparams.topfirst)
 	{
 		mjpeg_info("prog sequence setting top_field_first = 0");
-		opt_topfirst = 0;
+		encparams.topfirst = 0;
 	}
 
 	/* search windows */
 	for (i=0; i<ctl_M; i++)
 	{
-		if (opt_motion_data[i].sxf > (4U<<opt_motion_data[i].forw_hor_f_code)-1)
+		if (encparams.motion_data[i].sxf > (4U<<encparams.motion_data[i].forw_hor_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward horizontal search width to %d",
-						(4<<opt_motion_data[i].forw_hor_f_code)-1);
-			opt_motion_data[i].sxf = (4U<<opt_motion_data[i].forw_hor_f_code)-1;
+						(4<<encparams.motion_data[i].forw_hor_f_code)-1);
+			encparams.motion_data[i].sxf = (4U<<encparams.motion_data[i].forw_hor_f_code)-1;
 		}
 
-		if (opt_motion_data[i].syf > (4U<<opt_motion_data[i].forw_vert_f_code)-1)
+		if (encparams.motion_data[i].syf > (4U<<encparams.motion_data[i].forw_vert_f_code)-1)
 		{
 			mjpeg_info(
 				"reducing forward vertical search width to %d",
-				(4<<opt_motion_data[i].forw_vert_f_code)-1);
-			opt_motion_data[i].syf = (4U<<opt_motion_data[i].forw_vert_f_code)-1;
+				(4<<encparams.motion_data[i].forw_vert_f_code)-1);
+			encparams.motion_data[i].syf = (4U<<encparams.motion_data[i].forw_vert_f_code)-1;
 		}
 
 		if (i!=0)
 		{
-			if (opt_motion_data[i].sxb > (4U<<opt_motion_data[i].back_hor_f_code)-1)
+			if (encparams.motion_data[i].sxb > (4U<<encparams.motion_data[i].back_hor_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward horizontal search width to %d",
-					(4<<opt_motion_data[i].back_hor_f_code)-1);
-				opt_motion_data[i].sxb = (4U<<opt_motion_data[i].back_hor_f_code)-1;
+					(4<<encparams.motion_data[i].back_hor_f_code)-1);
+				encparams.motion_data[i].sxb = (4U<<encparams.motion_data[i].back_hor_f_code)-1;
 			}
 
-			if (opt_motion_data[i].syb > (4U<<opt_motion_data[i].back_vert_f_code)-1)
+			if (encparams.motion_data[i].syb > (4U<<encparams.motion_data[i].back_vert_f_code)-1)
 			{
 				mjpeg_info(
 					"reducing backward vertical search width to %d",
-					(4<<opt_motion_data[i].back_vert_f_code)-1);
-				opt_motion_data[i].syb = (4U<<opt_motion_data[i].back_vert_f_code)-1;
+					(4<<encparams.motion_data[i].back_vert_f_code)-1);
+				encparams.motion_data[i].syb = (4U<<encparams.motion_data[i].back_vert_f_code)-1;
 			}
 		}
 	}
+
+    encparams.bitrate_controller = new OnTheFlyRateCtl;
 
 }
 
@@ -1885,14 +1889,14 @@ init_quantmat(void)
     int i, v, q;
     const char *msg = NULL;
     const uint16_t *qmat, *niqmat;
-    opt_load_iquant = 0;
-    opt_load_niquant = 0;
+    encparams.load_iquant = 0;
+    encparams.load_niquant = 0;
 
     /* bufalloc to ensure alignment */
-    opt_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    opt_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    encparams.intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    encparams.inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    encparams.i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    encparams.i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
 
     switch  (param_hf_quant)
         {
@@ -1905,35 +1909,35 @@ init_quantmat(void)
             msg = "Using -N modified default quantization matrices";
             qmat = default_intra_quantizer_matrix;
             niqmat = default_nonintra_quantizer_matrix;
-            opt_load_iquant = 1;
-            opt_load_niquant = 1;
+            encparams.load_iquant = 1;
+            encparams.load_niquant = 1;
             break;
         case  2:    /* -H used OR -H followed by "-N value" */
             msg = "Setting hi-res intra Quantisation matrix";
             qmat = hires_intra_quantizer_matrix;
             niqmat = hires_nonintra_quantizer_matrix;
-            opt_load_iquant = 1;
+            encparams.load_iquant = 1;
             if  (param_hf_q_boost)
-                opt_load_niquant = 1;   /* Custom matrix if -N used */
+                encparams.load_niquant = 1;   /* Custom matrix if -N used */
             break;
         case  3:
             msg = "KVCD Notch Quantization Matrix";
             qmat = kvcd_intra_quantizer_matrix;
             niqmat = kvcd_nonintra_quantizer_matrix;
-            opt_load_iquant = 1;
-            opt_load_niquant = 1;
+            encparams.load_iquant = 1;
+            encparams.load_niquant = 1;
             break;
         case  4:
             msg = "TMPGEnc Quantization matrix";
             qmat = tmpgenc_intra_quantizer_matrix;
             niqmat = tmpgenc_nonintra_quantizer_matrix;
-            opt_load_iquant = 1;
-            opt_load_niquant = 1;
+            encparams.load_iquant = 1;
+            encparams.load_niquant = 1;
             break;
         case  5:            /* -K file=qmatrixfilename */
             msg = "Loading custom matrices from user specified file";
-            opt_load_iquant = 1;
-            opt_load_niquant = 1;
+            encparams.load_iquant = 1;
+            encparams.load_niquant = 1;
             qmat = custom_intra_quantizer_matrix;
             niqmat = custom_nonintra_quantizer_matrix;
             break;
@@ -1951,12 +1955,12 @@ init_quantmat(void)
         v = quant_hfnoise_filt(qmat[i], i);
         if  (v < 1 || v > 255)
             mjpeg_error_exit1("bad intra value after -N adjust");
-        opt_intra_q[i] = v;
+        encparams.intra_q[i] = v;
 
         v = quant_hfnoise_filt(niqmat[i], i);
         if  (v < 1 || v > 255)
             mjpeg_error_exit1("bad nonintra value after -N adjust");
-        opt_inter_q[i] = v;
+        encparams.inter_q[i] = v;
         }
 
     /* TODO: Inv Quant matrix initialisation should check if the
@@ -1964,22 +1968,24 @@ init_quantmat(void)
   
     for (i = 0; i < 64; i++)
         {
-        i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_intra_q[i]));
-        i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_inter_q[i]));
+            encparams.i_intra_q[i] = 
+                (int)(((double)IQUANT_SCALE) / ((double)encparams.intra_q[i]));
+            encparams.i_inter_q[i] = 
+                (int)(((double)IQUANT_SCALE) / ((double)encparams.inter_q[i]));
         }
     
     for (q = 1; q <= 112; ++q)
         {
         for (i = 0; i < 64; i++)
             {
-            intra_q_tbl[q][i] = opt_intra_q[i] * q;
-            inter_q_tbl[q][i] = opt_inter_q[i] * q;
-            intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
-            inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
-            i_intra_q_tblf[q][i] = 1.0f / ( intra_q_tblf[q][i] * 0.98);
-            i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
-            i_inter_q_tblf[q][i] =  1.0f / (inter_q_tblf[q][i] * 0.98);
-            i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
+                encparams.intra_q_tbl[q][i] = encparams.intra_q[i] * q;
+                encparams.inter_q_tbl[q][i] = encparams.inter_q[i] * q;
+                encparams.intra_q_tblf[q][i] = (float)encparams.intra_q_tbl[q][i];
+                encparams.inter_q_tblf[q][i] = (float)encparams.inter_q_tbl[q][i];
+                encparams.i_intra_q_tblf[q][i] = 1.0f / (encparams.intra_q_tblf[q][i] * 0.98);
+                encparams.i_intra_q_tbl[q][i] = (IQUANT_SCALE/encparams.intra_q_tbl[q][i]);
+                encparams.i_inter_q_tblf[q][i] =  1.0f / (encparams.inter_q_tblf[q][i] * 0.98);
+                encparams.i_inter_q_tbl[q][i] = (IQUANT_SCALE/encparams.inter_q_tbl[q][i]);
             }
         }
     }

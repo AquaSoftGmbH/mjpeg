@@ -23,6 +23,7 @@
 #define _PICTURE_HH
 /* picture.hh picture class... */
 
+#include "config.h"
 #include <vector>
 using namespace std;
 
@@ -57,9 +58,56 @@ public:
     
 };
 
-class pict_data_s
+
+class RateCtl;
+class EncoderParams;
+class StreamState;
+
+class Picture : public CodingPredictors
 {
 public:
+    Picture() {}
+    
+    // In putseq.cc
+    void Init( EncoderParams &_encparms ); 
+    void SetSeqPos( int decode, int b_index );
+    void Set2ndField();
+    void Set_IP_Frame( StreamState *ss );
+    void Set_B_Frame( StreamState *ss );
+
+    // In putpic..c
+    void PutHeadersAndEncoding( RateCtl &ratecontrol );
+    void QuantiseAndPutEncoding(RateCtl &ratecontrol);
+    void PutHeader(); 
+private:
+    void PutSliceHdr( int slice_mb_y );
+    void PutMVs( MotionEst &me, bool back );
+    void PutCodingExt(); 
+
+public:
+    /***************
+     *
+     * Data initialised at construction
+     *
+     **************/
+
+    EncoderParams *encparams;
+
+	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
+	   not yet inverse quantised */
+	DCTblock *blocks;
+	DCTblock *qblocks;
+
+	/* Macroblocks of picture */
+	vector<MacroBlock> mbinfo;
+
+
+    /***************
+     *
+     * Data update as picture is re-used for different images in streams
+     *
+     **************/
+
 	int decode;					/* Number of frame in stream */
 	int present;				/* Number of frame in playback order */
 	/* multiple-reader/single-writer channels Synchronisation  
@@ -96,13 +144,6 @@ public:
 	bool repeatfirst;			/* repeat first field after second field */
 	bool prog_frame;				/* progressive frame */
 
-	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
-	   not yet inverse quantised */
-	DCTblock *blocks;
-	DCTblock *qblocks;
-
-	/* Macroblocks of picture */
-	vector<MacroBlock> mbinfo;
 
 	/* Information for GOP start frames */
 	bool gop_start;             /* GOP Start frame */
@@ -119,20 +160,7 @@ public:
 	double avg_act;
 	double sum_avg_act;
 
-};
-
-class RateCtl;
-
-class Picture : public pict_data_s, public CodingPredictors
-{
-public:
-    void PutHeadersAndEncoding( RateCtl &ratecontrol );
-    void QuantiseAndPutEncoding(RateCtl &ratecontrol);
-    void PutHeader(); 
-private:
-    void PutSliceHdr( int slice_mb_y );
-    void PutMVs( MotionEst &me, bool back );
-    void PutCodingExt();
+    
 };
 
 

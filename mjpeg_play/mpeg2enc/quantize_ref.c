@@ -96,11 +96,6 @@ const uint8_t map_non_linear_mquant[113] =
 	29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,31,31,31,31,31
 };
 
-/* Table driven intra / non-intra quantization matrices */
-uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-float intra_q_tblf[113][64], inter_q_tblf[113][64];
-float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
 
 /*
  * Return the code for a quantisation level
@@ -160,8 +155,8 @@ void quant_intra( int16_t *src,
   int x, y, d;
   int clipping;
   int mquant = *nonsat_mquant;
-  int clipvalue  = opt_dctsatlim;
-  uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
+  int clipvalue  = encparams.dctsatlim;
+  uint16_t *quant_mat = encparams.intra_q_tbl[mquant] /* intra_q */;
 
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
@@ -172,7 +167,7 @@ void quant_intra( int16_t *src,
 	  clipping = 0;
 	  pbuf = dst;
 	  psrc = src;
-	  for( comp = 0; comp<block_count && !clipping; ++comp )
+	  for( comp = 0; comp<encparams.block_count && !clipping; ++comp )
 	  {
 		x = psrc[0];
 		d = 8>>dc_prec; /* intra_dc_mult */
@@ -205,7 +200,7 @@ void quant_intra( int16_t *src,
 			  {
 				clipping = 1;
 				mquant = next_larger_quant(q_scale_type, mquant );
-				quant_mat = intra_q_tbl[mquant];
+				quant_mat = encparams.intra_q_tbl[mquant];
 				break;
 			  }
 #endif
@@ -269,13 +264,13 @@ int quant_non_intra( int16_t *src, int16_t *dst,
 	int x, y, d;
 	int nzflag;
 	int coeff_count;
-	int clipvalue  = opt_dctsatlim;
+	int clipvalue  = encparams.dctsatlim;
 	int flags = 0;
 	int saturated = 0;
     int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = inter_q_tbl[mquant]; /* inter_q */
+	uint16_t *quant_mat = encparams.inter_q_tbl[mquant]; /* inter_q */
 	
-	coeff_count = 64*block_count;
+	coeff_count = 64*encparams.block_count;
 	flags = 0;
 	nzflag = 0;
 	for (i=0; i<coeff_count; ++i)
@@ -310,7 +305,7 @@ restart:
 				if( new_mquant != mquant )
 				{
 					mquant = new_mquant;
-					quant_mat = inter_q_tbl[mquant];
+					quant_mat = encparams.inter_q_tbl[mquant];
 				}
 				else
 				{
@@ -334,7 +329,7 @@ restart:
 static void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val;
-  uint16_t *quant_mat = opt_intra_q;
+  uint16_t *quant_mat = encparams.intra_q;
 
   dst[0] = src[0] << (3-dc_prec);
   for (i=1; i<64; i++)
@@ -356,14 +351,14 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
-  if ( opt_mpeg1  )
+  if ( encparams.mpeg1  )
     iquant1_intra(src,dst,dc_prec, mquant);
   else
   {
     sum = dst[0] = src[0] << (3-dc_prec);
     for (i=1; i<64; i++)
     {
-      val = (int)(src[i]*opt_intra_q[i]*mquant)/16;
+      val = (int)(src[i]*encparams.intra_q[i]*mquant)/16;
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
     }
 
@@ -422,8 +417,8 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
   int i, val, sum;
   uint16_t *quant_mat;
 
-  if ( opt_mpeg1 )
-	  iquant_non_intra_m1(src,dst,inter_q_tbl[mquant]);
+  if ( encparams.mpeg1 )
+	  iquant_non_intra_m1(src,dst,encparams.inter_q_tbl[mquant]);
   else
   {
 	  sum = 0;
@@ -434,11 +429,11 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
 		  val = src[i];
 		  if (val!=0)
 			  
-			  val = (int)((2*val+(val>0 ? 1 : -1))*opt_inter_q[i]*mquant)/32;
+			  val = (int)((2*val+(val>0 ? 1 : -1))*encparams.inter_q[i]*mquant)/32;
 		  sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
 	  }
 #else
-	  quant_mat = inter_q_tbl[mquant];
+	  quant_mat = encparams.inter_q_tbl[mquant];
 	  for (i=0; i<64; i++)
 	  {
 		  val = src[i];
@@ -513,7 +508,7 @@ void init_quantizer(void)
 	}
 #ifdef HAVE_ALTIVEC
 	if (cpu_accel())
-	    enable_altivec_quantization(opt_mpeg1);
+	    enable_altivec_quantization(encparams.mpeg1);
 #endif
 }
 

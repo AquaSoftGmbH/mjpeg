@@ -1,3 +1,9 @@
+IN PROGRESS
+
+	- Tidy up the source code placement of the Picture, StreamState etc classes
+	- Probably need to create and 'Encoder' object
+	- Shouldn't picture et al be called <X>Encoder?
+
 Near Future improvements
 
 0.  Replace current variance based motion estimation mode selection

@@ -53,46 +53,86 @@
 #include "motionsearch.h"
 #include "ratectl.hh"
 
-static RateCtl *bitrate_controller = 0;
-static void set_pic_params( int decode,
-							int b_index,
-							Picture *picture )
+
+void Picture::Init( EncoderParams &_encparams )
 {
-	picture->decode = decode;
-	picture->dc_prec = opt_dc_prec;
-	picture->secondfield = false;
-	picture->ipflag = 0;
+    encparams = &_encparams;
+	int i,j;
+	/* Allocate buffers for picture transformation */
+	blocks = 
+        static_cast<DCTblock*>(
+            bufalloc(encparams->mb_per_pict*encparams->block_count*sizeof(DCTblock)));
+	qblocks =
+		static_cast<DCTblock *>(
+            bufalloc(encparams->mb_per_pict*encparams->block_count*sizeof(DCTblock)));
+    DCTblock *block = blocks;
+    DCTblock *qblock = qblocks;
+    for (j=0; j<encparams->enc_height2; j+=16)
+    {
+        for (i=0; i<encparams->enc_width; i+=16)
+        {
+            mbinfo.push_back(MacroBlock(*this, i,j, block,qblock ));
+            block += encparams->block_count;
+            qblock += encparams->block_count;
+        }
+    }
+
+
+	curref = new (uint8_t *)[3];
+	curorg = new (uint8_t *)[3];
+	pred   = new (uint8_t *)[3];
+
+	for( i = 0 ; i<3; i++)
+	{
+		int size =  (i==0) ? encparams->lum_buffer_size : encparams->chrom_buffer_size;
+		curref[i] = static_cast<uint8_t *>(bufalloc(size));
+		curorg[i] = NULL;
+		pred[i]   = static_cast<uint8_t *>(bufalloc(size));
+	}
+
+	/* The (non-existent) previous encoding using an as-yet un-used
+	   picture encoding data buffers is "completed"
+	*/
+	sync_guard_init( &completion, 1 );
+}
+
+void Picture::SetSeqPos(int _decode,int b_index )
+{
+	decode = _decode;
+	dc_prec = encparams->dc_prec;
+	secondfield = false;
+	ipflag = 0;
 
 		
 	/* Handle picture structure... */
-	if( opt_fieldpic )
+	if( encparams->fieldpic )
 	{
-		picture->pict_struct = opt_topfirst ? TOP_FIELD : BOTTOM_FIELD;
-		picture->topfirst = 0;
-		picture->repeatfirst = 0;
+		pict_struct = encparams->topfirst ? TOP_FIELD : BOTTOM_FIELD;
+		topfirst = 0;
+		repeatfirst = 0;
 	}
 
 	/* Handle 3:2 pulldown frame pictures */
-	else if( opt_pulldown_32 )
+	else if( encparams->pulldown_32 )
 	{
-		picture->pict_struct = FRAME_PICTURE;
-		switch( picture->present % 4 )
+		pict_struct = FRAME_PICTURE;
+		switch( present % 4 )
 		{
 		case 0 :
-			picture->repeatfirst = 1;
-			picture->topfirst = opt_topfirst;			
+			repeatfirst = 1;
+			topfirst = encparams->topfirst;			
 			break;
 		case 1 :
-			picture->repeatfirst = 0;
-			picture->topfirst = !opt_topfirst;
+			repeatfirst = 0;
+			topfirst = !encparams->topfirst;
 			break;
 		case 2 :
-			picture->repeatfirst = 1;
-			picture->topfirst = !opt_topfirst;
+			repeatfirst = 1;
+			topfirst = !encparams->topfirst;
 			break;
 		case 3 :
-			picture->repeatfirst = 0;
-			picture->topfirst = opt_topfirst;
+			repeatfirst = 0;
+			topfirst = encparams->topfirst;
 			break;
 		}
 	}
@@ -101,76 +141,76 @@ static void set_pic_params( int decode,
 	else
 
 	{
-		picture->pict_struct = FRAME_PICTURE;
-		picture->repeatfirst = 0;
-		picture->topfirst = opt_topfirst;
+		pict_struct = FRAME_PICTURE;
+		repeatfirst = 0;
+		topfirst = encparams->topfirst;
 	}
 
 
-	switch ( picture->pict_type )
+	switch ( pict_type )
 	{
 	case I_TYPE :
-		picture->forw_hor_f_code = 15;
-		picture->forw_vert_f_code = 15;
-		picture->back_hor_f_code = 15;
-		picture->back_vert_f_code = 15;
-		picture->sxf = opt_motion_data[0].sxf;
-		picture->syf = opt_motion_data[0].syf;
+		forw_hor_f_code = 15;
+		forw_vert_f_code = 15;
+		back_hor_f_code = 15;
+		back_vert_f_code = 15;
+		sxf = encparams->motion_data[0].sxf;
+		syf = encparams->motion_data[0].syf;
 		break;
 	case P_TYPE :
-		picture->forw_hor_f_code = opt_motion_data[0].forw_hor_f_code;
-		picture->forw_vert_f_code = opt_motion_data[0].forw_vert_f_code;
-		picture->back_hor_f_code = 15;
-		picture->back_vert_f_code = 15;
-		picture->sxf = opt_motion_data[0].sxf;
-		picture->syf = opt_motion_data[0].syf;
+		forw_hor_f_code = encparams->motion_data[0].forw_hor_f_code;
+		forw_vert_f_code = encparams->motion_data[0].forw_vert_f_code;
+		back_hor_f_code = 15;
+		back_vert_f_code = 15;
+		sxf = encparams->motion_data[0].sxf;
+		syf = encparams->motion_data[0].syf;
 		break;
 	case B_TYPE :
-		picture->forw_hor_f_code = opt_motion_data[b_index].forw_hor_f_code;
-		picture->forw_vert_f_code = opt_motion_data[b_index].forw_vert_f_code;
-		picture->back_hor_f_code = opt_motion_data[b_index].back_hor_f_code;
-		picture->back_vert_f_code = opt_motion_data[b_index].back_vert_f_code;
-		picture->sxf = opt_motion_data[b_index].sxf;
-		picture->syf = opt_motion_data[b_index].syf;
-		picture->sxb = opt_motion_data[b_index].sxb;
-		picture->syb = opt_motion_data[b_index].syb;
+		forw_hor_f_code = encparams->motion_data[b_index].forw_hor_f_code;
+		forw_vert_f_code = encparams->motion_data[b_index].forw_vert_f_code;
+		back_hor_f_code = encparams->motion_data[b_index].back_hor_f_code;
+		back_vert_f_code = encparams->motion_data[b_index].back_vert_f_code;
+		sxf = encparams->motion_data[b_index].sxf;
+		syf = encparams->motion_data[b_index].syf;
+		sxb = encparams->motion_data[b_index].sxb;
+		syb = encparams->motion_data[b_index].syb;
 
 		break;
 	}
 
 	/* We currently don't support frame-only DCT/Motion Est.  for non
 	   progressive frames */
-	picture->prog_frame = opt_frame_pred_dct_tab[picture->pict_type-1];
-	picture->frame_pred_dct = opt_frame_pred_dct_tab[picture->pict_type-1];
-	picture->q_scale_type = opt_qscale_tab[picture->pict_type-1];
-	picture->intravlc = opt_intravlc_tab[picture->pict_type-1];
-	picture->altscan = opt_altscan_tab[picture->pict_type-1];
+	prog_frame = encparams->frame_pred_dct_tab[pict_type-1];
+	frame_pred_dct = encparams->frame_pred_dct_tab[pict_type-1];
+	q_scale_type = encparams->qscale_tab[pict_type-1];
+	intravlc = encparams->intravlc_tab[pict_type-1];
+	altscan = encparams->altscan_tab[pict_type-1];
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
-	fprintf(statfile," picture_type=%c\n",pict_type_char[picture->pict_type]);
-	fprintf(statfile," temporal_reference=%d\n",picture->temp_ref);
-	fprintf(statfile," frame_pred_frame_dct=%d\n",picture->frame_pred_dct);
-	fprintf(statfile," q_scale_type=%d\n",picture->q_scale_type);
-	fprintf(statfile," intra_vlc_format=%d\n",picture->intravlc);
-	fprintf(statfile," alternate_scan=%d\n",picture->altscan);
+	fprintf(statfile," picture_type=%c\n",pict_type_char[pict_type]);
+	fprintf(statfile," temporal_reference=%d\n",temp_ref);
+	fprintf(statfile," frame_pred_frame_dct=%d\n",frame_pred_dct);
+	fprintf(statfile," q_scale_type=%d\n",q_scale_type);
+	fprintf(statfile," intra_vlc_format=%d\n",intravlc);
+	fprintf(statfile," alternate_scan=%d\n",altscan);
 
-	if (picture->pict_type!=I_TYPE)
+	if (pict_type!=I_TYPE)
 	{
 		fprintf(statfile," forward search window: %d...%d / %d...%d\n",
 				-sxf,sxf,-syf,syf);
 		fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<picture->forw_hor_f_code),(4<<picture->forw_hor_f_code)-1,
-				-(4<<picture->forw_vert_f_code),(4<<picture->forw_vert_f_code)-1);
+				-(4<<forw_hor_f_code),(4<<forw_hor_f_code)-1,
+				-(4<<forw_vert_f_code),(4<<forw_vert_f_code)-1);
 	}
 
-	if (picture->pict_type==B_TYPE)
+	if (pict_type==B_TYPE)
 	{
 		fprintf(statfile," backward search window: %d...%d / %d...%d\n",
 				-sxb,sxb,-syb,syb);
 		fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-				-(4<<picture->back_hor_f_code),(4<<picture->back_hor_f_code)-1,
-				-(4<<picture->back_vert_f_code),(4<<picture->back_vert_f_code)-1);
+				-(4<<back_hor_f_code),(4<<back_hor_f_code)-1,
+				-(4<<back_vert_f_code),(4<<back_vert_f_code)-1);
 	}
 #endif
 
@@ -183,26 +223,26 @@ static void set_pic_params( int decode,
  *
  */
 
-static void set_2nd_field_params(Picture *picture)
+void Picture::Set2ndField()
 {
-	picture->secondfield = true;
-    picture->gop_start = false;
-	if( picture->pict_struct == TOP_FIELD )
-		picture->pict_struct =  BOTTOM_FIELD;
+	secondfield = true;
+    gop_start = false;
+	if( pict_struct == TOP_FIELD )
+		pict_struct =  BOTTOM_FIELD;
 	else
-		picture->pict_struct =  TOP_FIELD;
+		pict_struct =  TOP_FIELD;
 	
-	if( picture->pict_type == I_TYPE )
+	if( pict_type == I_TYPE )
 	{
-		picture->ipflag = 1;
-		picture->pict_type = P_TYPE;
+		ipflag = 1;
+		pict_type = P_TYPE;
 		
-		picture->forw_hor_f_code = opt_motion_data[0].forw_hor_f_code;
-		picture->forw_vert_f_code = opt_motion_data[0].forw_vert_f_code;
-		picture->back_hor_f_code = 15;
-		picture->back_vert_f_code = 15;
-		picture->sxf = opt_motion_data[0].sxf;
-		picture->syf = opt_motion_data[0].syf;	
+		forw_hor_f_code = encparams->motion_data[0].forw_hor_f_code;
+		forw_vert_f_code = encparams->motion_data[0].forw_vert_f_code;
+		back_hor_f_code = 15;
+		back_vert_f_code = 15;
+		sxf = encparams->motion_data[0].sxf;
+		syf = encparams->motion_data[0].syf;	
 	}
 }
 
@@ -338,7 +378,7 @@ static int find_gop_length( int gop_start_frame,
 
 
 
-struct _stream_state 
+struct StreamState 
 {
 	int i;						/* Index in current sequence */
 	int g;						/* Index in current GOP */
@@ -360,7 +400,6 @@ struct _stream_state
 	uint64_t seq_split_length;
 };
 
-typedef struct _stream_state stream_state_s;
 
 static void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
 {
@@ -393,7 +432,7 @@ static void create_threads( pthread_t *threads, int num, void *(*start_routine)(
 	}
 }
 
-static void gop_start( stream_state_s *ss )
+static void gop_start( StreamState *ss )
 {
 
 	int nb, np;
@@ -408,7 +447,7 @@ static void gop_start( stream_state_s *ss )
 	ss->b = 0;
 	ss->new_seq = false;
 	
-	if( opt_pulldown_32 )
+	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
@@ -422,12 +461,12 @@ static void gop_start( stream_state_s *ss )
     
     if( ctl_quant_floor > 0.0 )
         bits_after_mux = bitcount() + 
-            (uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
+            (uint64_t)((frame_periods / encparams.frame_rate) * ctl_nonvid_bit_rate);
     else
-        bits_after_mux = (uint64_t)((frame_periods / opt_frame_rate) * 
-                                    (ctl_nonvid_bit_rate + opt_bit_rate));
+        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
+                                    (ctl_nonvid_bit_rate + encparams.bit_rate));
 	if( (ss->next_split_point != 0ULL && bits_after_mux > ss->next_split_point)
-		|| (ss->i != 0 && opt_seq_end_every_gop)
+		|| (ss->i != 0 && encparams.seq_end_every_gop)
 		)
 	{
 		mjpeg_info( "Splitting sequence this GOP start" );
@@ -516,67 +555,65 @@ static void gop_start( stream_state_s *ss )
    based on the specified sequence state
 */
 
-static void I_or_P_frame_struct( stream_state_s *ss,
-								 Picture *picture )
+void Picture::Set_IP_Frame( StreamState *ss )
 {
 	/* Temp ref of I frame in closed GOP of sequence is 0 We have to
 	   be a little careful with the end of stream special-case.
 	*/
 	if( ss->g == 0 && ss->closed_gop )
 	{
-		picture->temp_ref = 0;
+		temp_ref = 0;
 	}
 	else 
 	{
-		picture->temp_ref = ss->g+(ss->bigrp_length-1);
+		temp_ref = ss->g+(ss->bigrp_length-1);
 	}
 
-	if (picture->temp_ref >= (istrm_nframes-ss->gop_start_frame))
-		picture->temp_ref = (istrm_nframes-ss->gop_start_frame) - 1;
+	if (temp_ref >= (istrm_nframes-ss->gop_start_frame))
+		temp_ref = (istrm_nframes-ss->gop_start_frame) - 1;
 
-	picture->present = (ss->i-ss->g)+picture->temp_ref;
+	present = (ss->i-ss->g)+temp_ref;
 	if (ss->g==0) /* first displayed frame in GOP is I */
 	{
-		picture->pict_type = I_TYPE;
+		pict_type = I_TYPE;
 	}
 	else 
 	{
-		picture->pict_type = P_TYPE;
+		pict_type = P_TYPE;
 	}
 
 	/* Start of GOP - set GOP data for picture */
 	if( ss->g == 0 )
 	{
-		picture->gop_start = true;
-        picture->closed_gop = ss->closed_gop;
-		picture->new_seq = ss->new_seq;
-		picture->nb = ss->nb;
-		picture->np = ss->np;
+		gop_start = true;
+        closed_gop = ss->closed_gop;
+		new_seq = ss->new_seq;
+		nb = ss->nb;
+		np = ss->np;
 	}		
 	else
 	{
-		picture->gop_start = false;
-        picture->closed_gop = false;
-		picture->new_seq = false;
+		gop_start = false;
+        closed_gop = false;
+		new_seq = false;
 	}
 }
 
 
-static void B_frame_struct(  stream_state_s *ss,
-							 Picture *picture )
+void Picture::Set_B_Frame(  StreamState *ss )
 {
-	picture->temp_ref = ss->g - 1;
-	picture->present = ss->i-1;
-	picture->pict_type = B_TYPE;
-	picture->gop_start = false;
-	picture->new_seq = false;
+	temp_ref = ss->g - 1;
+	present = ss->i-1;
+	pict_type = B_TYPE;
+	gop_start = false;
+	new_seq = false;
 }
 
 /*
   Update ss to the next sequence state.
 */
 
-static void next_seq_state( stream_state_s *ss )
+static void next_seq_state( StreamState *ss )
 {
 	++(ss->i);
 	++(ss->g);
@@ -608,48 +645,6 @@ static void next_seq_state( stream_state_s *ss )
 
 
 
-static void init_pict_data( Picture *picture )
-{
-	int i,j;
-	/* Allocate buffers for picture transformation */
-	picture->blocks = 
-        static_cast<DCTblock*>(
-            bufalloc(mb_per_pict*block_count*sizeof(DCTblock)));
-	picture->qblocks =
-		static_cast<DCTblock *>(
-            bufalloc(mb_per_pict*block_count*sizeof(DCTblock)));
-    DCTblock *blocks = picture->blocks;
-    DCTblock *qblocks = picture->qblocks;
-    for (j=0; j<opt_enc_height2; j+=16)
-    {
-        for (i=0; i<opt_enc_width; i+=16)
-        {
-            picture->mbinfo.push_back(MacroBlock(*picture, i,j, 
-                                                 blocks,qblocks ));
-            blocks += block_count;
-            qblocks += block_count;
-        }
-    }
-
-
-	picture->curref = new (uint8_t *)[3];
-	picture->curorg = new (uint8_t *)[3];
-	picture->pred   = new (uint8_t *)[3];
-
-	for( i = 0 ; i<3; i++)
-	{
-		int size =  (i==0) ? lum_buffer_size : chrom_buffer_size;
-		picture->curref[i] = static_cast<uint8_t *>(bufalloc(size));
-		picture->curorg[i] = NULL;
-		picture->pred[i]   = static_cast<uint8_t *>(bufalloc(size));
-	}
-
-	/* The (non-existent) previous encoding using an as-yet un-used
-	   picture encoding data buffers is "completed"
-	*/
-	sync_guard_init( &picture->completion, 1 );
-}
-
 
 /* 
    Initialize picture data buffers for reference and B pictures
@@ -670,13 +665,16 @@ static void init_pict_data( Picture *picture )
 #define R_PICS (MAX_WORKER_THREADS+2)
 #define B_PICS (MAX_WORKER_THREADS+2)
 
-static void init_pictures( Picture *ref_pictures, Picture *b_pictures )
+
+static void link_pictures( Picture *ref_pictures, 
+                           Picture *b_pictures )
 {
 
 	int i,j;
+
 	
 	for( i = 0; i < R_PICS; ++i )
-		init_pict_data( &ref_pictures[i] );
+		ref_pictures[i].Init( encparams);
 
 	for( i = 0; i < R_PICS; ++i )
 	{
@@ -690,8 +688,9 @@ static void init_pictures( Picture *ref_pictures, Picture *b_pictures )
 
 	for( i = 0; i < B_PICS; ++i )
 	{
-		init_pict_data( &b_pictures[i]);
-	}
+		b_pictures[i].Init( encparams );
+	}	
+
 }
 
 /*
@@ -740,8 +739,8 @@ static void encodembs(Picture *picture)
 	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
 	{
         mbi->MotionEstimate();
-        // Temporary eventually we will select by
-        // a quick prediction and complexity estimate...
+        // TODO: Eventually we will allow alternative selectors to be used!
+        mbi->SelectCodingModeOnVariance();
         mbi->Predict();
         mbi->Transform();
 	}
@@ -788,14 +787,14 @@ static void stencodeworker(Picture *picture)
 #endif
 	/* Depends on previous frame completion for IB and P */
 
-	picture->PutHeadersAndEncoding(*bitrate_controller);
+	picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 
 	reconstruct(picture);
 
 	/* Handle second field of a frame that is being field encoded */
-	if( opt_fieldpic )
+	if( encparams.fieldpic )
 	{
-		set_2nd_field_params(picture);
+		picture->Set2ndField();
 		mjpeg_info("Field %s (%d)",
 				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
 				   picture->pict_struct
@@ -804,7 +803,7 @@ static void stencodeworker(Picture *picture)
 		motion_estimation(picture);
 		predict(picture);
 		transform(picture);
-		picture->PutHeadersAndEncoding(*bitrate_controller);;
+		picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 		reconstruct(picture);
 
 	}
@@ -892,13 +891,13 @@ static void *parencodeworker(void *start_arg)
 #endif
 		/* Depends on previous frame completion for IB and P */
 		sync_guard_test( picture->prev_frame_completion );
-		picture->PutHeadersAndEncoding(*bitrate_controller);
+		picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 
 		reconstruct(picture);
 		/* Handle second field of a frame that is being field encoded */
-		if( opt_fieldpic )
+		if( encparams.fieldpic )
 		{
-			set_2nd_field_params(picture);
+			picture->Set2ndField();
 
 			mjpeg_info("Field %s (%d)",
 					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
@@ -908,7 +907,7 @@ static void *parencodeworker(void *start_arg)
 			motion_estimation(picture);
 			predict(picture);
 			transform(picture);
-            picture->PutHeadersAndEncoding(*bitrate_controller);
+            picture->PutHeadersAndEncoding(*encparams.bitrate_controller);
 			reconstruct(picture);
 
 		}
@@ -957,22 +956,23 @@ static void parencodepict( Picture *picture )
  
 void putseq(void)
 {
-    OnTheFlyRateCtl ratectl;
-    bitrate_controller = &ratectl;
     /* DEBUG */
 	uint64_t bits_after_mux;
 	double frame_periods;
     /* END DEBUG */
-	stream_state_s ss;
+	StreamState ss;
 	int cur_ref_idx = 0;
 	int cur_b_idx = 0;
+
+    int i;
 	Picture b_pictures[B_PICS];
 	Picture ref_pictures[R_PICS];
+
 	pthread_t worker_threads[MAX_WORKER_THREADS];
 	Picture *cur_picture, *old_picture;
 	Picture *new_ref_picture, *old_ref_picture;
 
-	init_pictures( ref_pictures, b_pictures );
+	link_pictures( ref_pictures, b_pictures );
 	if( ctl_max_encoding_frames > 1 )
 		create_threads( worker_threads, 2, parencodeworker );
 
@@ -984,7 +984,7 @@ void putseq(void)
 	new_ref_picture = &ref_pictures[cur_ref_idx];
 	cur_picture = old_ref_picture;
 	
-	ratectl.InitSeq(false);
+	encparams.bitrate_controller->InitSeq(false);
 	
 	ss.i = 0;		                /* Index in current MPEG sequence */
 	ss.g = 0;						/* Index in current GOP */
@@ -1017,7 +1017,7 @@ void putseq(void)
 			new_ref_picture = &ref_pictures[cur_ref_idx];
 			new_ref_picture->ref_frame_completion = &old_ref_picture->completion;
 			new_ref_picture->prev_frame_completion = &cur_picture->completion;
-			I_or_P_frame_struct(&ss, new_ref_picture);
+			new_ref_picture->Set_IP_Frame(&ss);
 			cur_picture = new_ref_picture;
 		}
 		else
@@ -1035,7 +1035,7 @@ void putseq(void)
 			new_b_picture->newref = new_ref_picture->newref;
 			new_b_picture->ref_frame_completion = &new_ref_picture->completion;
 			new_b_picture->prev_frame_completion = &cur_picture->completion;
-			B_frame_struct( &ss, new_b_picture );
+			new_b_picture->Set_B_Frame( &ss );
 			cur_picture = new_b_picture;
 		}
 
@@ -1048,7 +1048,7 @@ void putseq(void)
 		}
 
 
-		set_pic_params( ss.i, ss.b,   cur_picture );
+		cur_picture->SetSeqPos( ss.i, ss.b );
 		if( ctl_max_encoding_frames > 1 )
 			parencodepict( cur_picture );
 		else
@@ -1067,7 +1067,7 @@ void putseq(void)
 		sync_guard_test( &cur_picture->completion );
 	putseqend();
 
-	if( opt_pulldown_32 )
+	if( encparams.pulldown_32 )
 		frame_periods = (double)(ss.seq_start_frame + ss.i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss.seq_start_frame + ss.i);
@@ -1076,10 +1076,10 @@ void putseq(void)
     
     if( ctl_quant_floor > 0.0 )
         bits_after_mux = bitcount() + 
-            (uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
+            (uint64_t)((frame_periods / encparams.frame_rate) * ctl_nonvid_bit_rate);
     else
-        bits_after_mux = (uint64_t)((frame_periods / opt_frame_rate) * 
-                                    (ctl_nonvid_bit_rate + opt_bit_rate));
+        bits_after_mux = (uint64_t)((frame_periods / encparams.frame_rate) * 
+                                    (ctl_nonvid_bit_rate + encparams.bit_rate));
 
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
     /* END DEBUG */

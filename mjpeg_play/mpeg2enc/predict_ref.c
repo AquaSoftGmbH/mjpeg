@@ -238,48 +238,48 @@ void clearblock( int pict_struct,
   uint8_t *p;
 
   p = cur[0] 
-	  + ((pict_struct==BOTTOM_FIELD) ? opt_phy_width : 0) 
-	  + i0 + opt_phy_width2*j0;
+	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_width : 0) 
+	  + i0 + encparams.phy_width2*j0;
 
   for (j=0; j<16; j++)
   {
     for (i=0; i<16; i++)
       p[i] = 128;
-    p+= opt_phy_width2;
+    p+= encparams.phy_width2;
   }
 
   w = h = 16;
 
-  if (opt_chroma_format!=CHROMA444)
+  if (encparams.chroma_format!=CHROMA444)
   {
     i0>>=1; w>>=1;
   }
 
-  if (opt_chroma_format==CHROMA420)
+  if (encparams.chroma_format==CHROMA420)
   {
     j0>>=1; h>>=1;
   }
 
   p = cur[1] 
-	  + ((pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
-	  + i0 + opt_phy_chrom_width2*j0;
+	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_chrom_width : 0) 
+	  + i0 + encparams.phy_chrom_width2*j0;
 
   for (j=0; j<h; j++)
   {
     for (i=0; i<w; i++)
       p[i] = 128;
-    p+= opt_phy_chrom_width2;
+    p+= encparams.phy_chrom_width2;
   }
 
   p = cur[2] 
-	  + ((pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
-	  + i0 + opt_phy_chrom_width2*j0;
+	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_chrom_width : 0) 
+	  + i0 + encparams.phy_chrom_width2*j0;
 
   for (j=0; j<h; j++)
   {
     for (i=0; i<w; i++)
       p[i] = 128;
-    p+= opt_phy_chrom_width2;
+    p+= encparams.phy_chrom_width2;
   }
 }
 

@@ -35,15 +35,30 @@ void MacroBlock::MotionEstimate()
 	{		
 		FieldME();
 	}
-    vector<MotionEst>::iterator i;
-    vector<MotionEst>::iterator min_me = plausible_me.begin();
-    for( i = plausible_me.begin(); i < plausible_me.end(); ++ i)
-        if( i->var < min_me->var )
-            min_me = i;
-    final_me = *min_me;
 }
 
- 
+void MacroBlock::SelectCodingModeOnVariance()
+{
+    vector<MotionEst>::iterator i;
+    vector<MotionEst>::iterator min_me;
+    int best_score = INT_MAX;
+    int cur_score;
+
+    //
+    // Select motion estimate with lowest variance
+    // Penalise the INTRA motion type slightly because it can't be
+    // skip coded.
+    for( i = best_of_kind_me.begin(); i < best_of_kind_me.end(); ++ i)
+    {
+        cur_score = i->var + (i->mb_type == MB_INTRA ? 4*4*256 : 0);
+        if( cur_score < best_score )
+        {
+            best_score = cur_score;
+            min_me = i;
+        }
+    }
+    final_me = *min_me;
+} 
 
 
 /* 

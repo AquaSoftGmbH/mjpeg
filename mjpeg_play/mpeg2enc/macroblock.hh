@@ -91,6 +91,7 @@ public:
         }
     
     void MotionEstimate();
+    void SelectCodingModeOnVariance();
     void FrameME();            // In motionest.cc
     void FrameMEs();            // In motionest.cc
     void FieldME();
@@ -113,7 +114,9 @@ public:
 
 private:
     Picture *picture;   
-    unsigned int i,j;       // Co-ordinates top-left in picture
+    unsigned int i,j;           // Co-ordinates top-left in picture
+    int row_start;              // Offset from frame top to start of MB's row
+
 
     DCTblock *dctblocks;
     DCTblock *qdctblocks;
@@ -134,8 +137,9 @@ public:
 	int i_act;  /* Activity measure if intra coded (I/P-frame) */
 	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
 	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
-    vector<MotionEst> plausible_me; // Suggestions from motion estimator
-    MotionEst final_me;      // Motion estimate found to work best
+    vector<MotionEst> best_of_kind_me; // The best looking motion estimate
+                                // of each possible kind.
+    MotionEst final_me;      // Motion estimate selected for coding...
 #ifdef OUTPUT_STAT
   double N_act;
 #endif
