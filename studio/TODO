@@ -1,7 +1,6 @@
 Critical:
 =========
 Make everything mjpegtools-1.5 compatible
-  * lavplay/lavrec messages (pipelines)
   * yuv4mpeg2
 
 Short term:
