@@ -103,7 +103,7 @@ private:
 
 
 FILE_StrmWriter::FILE_StrmWriter( EncoderParams &encparams, const char *outfilename ) :
-	ElemStrmWriter( encparams )
+    ElemStrmWriter( encparams )
 {
 	/* open output file */
 	if (!(outfile=fopen(outfilename,"wb")))
@@ -165,7 +165,7 @@ class Y4MPipeReader : public PictureReader
 {
 public:
     Y4MPipeReader( EncoderParams &encparams, int pipe_fd );
-    ~Y4MPipeReader() {}
+    ~Y4MPipeReader();
     void StreamPictureParams( MPEG2EncInVidParams &strm );
 protected:
     bool LoadFrame( );
@@ -173,6 +173,8 @@ private:
     int PipeRead(  uint8_t *buf, int len);
 
     int pipe_fd;
+    y4m_stream_info_t _si;
+    y4m_frame_info_t _fi;
 };
  
 
@@ -180,6 +182,15 @@ Y4MPipeReader::Y4MPipeReader( EncoderParams &encparams, int istrm_fd ) :
     PictureReader( encparams ),
     pipe_fd( istrm_fd )
 {
+    y4m_init_stream_info(&_si);
+    y4m_init_frame_info(&_fi);
+}
+
+
+Y4MPipeReader::~Y4MPipeReader()
+{
+    y4m_fini_stream_info(&_si);
+    y4m_fini_frame_info(&_fi);
 }
 
 
@@ -198,24 +209,22 @@ void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
 {
    int n;
    y4m_ratio_t sar;
-   y4m_stream_info_t si;
 
-   y4m_init_stream_info (&si);  
-   if ((n = y4m_read_stream_header (pipe_fd, &si)) != Y4M_OK) {
+   if ((n = y4m_read_stream_header (pipe_fd, &_si)) != Y4M_OK) {
        mjpeg_log( LOG_ERROR, 
                   "Could not read YUV4MPEG2 header: %s!",
                   y4m_strerr(n));
       exit (1);
    }
 
-   strm.horizontal_size = y4m_si_get_width(&si);
-   strm.vertical_size = y4m_si_get_height(&si);
-   strm.frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
-   strm.interlacing_code = y4m_si_get_interlace(&si);
+   strm.horizontal_size = y4m_si_get_width(&_si);
+   strm.vertical_size = y4m_si_get_height(&_si);
+   strm.frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&_si));
+   strm.interlacing_code = y4m_si_get_interlace(&_si);
 
    /* Deduce MPEG aspect ratio from stream's frame size and SAR...
       (always as an MPEG-2 code; that's what caller expects). */
-   sar = y4m_si_get_sampleaspect(&si);
+   sar = y4m_si_get_sampleaspect(&_si);
    strm.aspect_ratio_code = 
        mpeg_guess_mpeg_aspect_code(2, sar, 
                                    strm.horizontal_size, 
@@ -240,13 +249,11 @@ void Y4MPipeReader::StreamPictureParams( MPEG2EncInVidParams &strm )
 
 bool Y4MPipeReader::LoadFrame( )
 {
-   y4m_frame_info_t fi;
    int h,v,y;
-   y4m_init_frame_info (&fi);
    int buffer_slot = frames_read % input_imgs_buf_size;
 
 
-   if ((y = y4m_read_frame_header (pipe_fd, &fi)) != Y4M_OK) 
+   if ((y = y4m_read_frame_header (pipe_fd, &_si, &_fi)) != Y4M_OK) 
    {
        if( y != Y4M_ERR_EOF )
            mjpeg_log (LOG_WARN, 
