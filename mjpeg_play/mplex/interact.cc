@@ -285,8 +285,7 @@ void MultiplexJob::SetFromCmdLine(int argc, char *argv[])
 	  
 		case 'f' :
 			mux_format = atoi(optarg);
-			if( mux_format != MPEG_FORMAT_DVD &&
-                (mux_format < MPEG_FORMAT_MPEG1 || mux_format > MPEG_FORMAT_LAST)
+			if( mux_format < MPEG_FORMAT_MPEG1 || mux_format > MPEG_FORMAT_LAST
                 )
 				Usage(argv[0]);
 			break;

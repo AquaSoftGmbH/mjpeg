@@ -67,6 +67,7 @@ bool VideoParams::Force( unsigned int mux_format )
 		bufsiz = 46;
 		break;
 	case MPEG_FORMAT_DVD :
+	case MPEG_FORMAT_DVD_NAV :
 		bufsiz = 232;
 		break;
 	default :
@@ -100,6 +101,7 @@ VideoParams *VideoParams::Default(unsigned int mux_format)
 		bufsiz = 230;
 		break;
 	case MPEG_FORMAT_DVD :		
+	case MPEG_FORMAT_DVD_NAV :		
 		bufsiz = 232;
 		break;
 	default :
