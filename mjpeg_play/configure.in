@@ -44,6 +44,8 @@ AC_ARG_WITH(dv-yv12,
   [  --with-dv-yv12,                   libDV PAL YV12 read-support])
 AC_ARG_ENABLE(large-file,
   [  --disable-large-file,             disable large file support (>2GB)])
+AC_ARG_ENABLE(zalpha,
+  [  --enable-zalpha,                  include MPEG Z/Alpha support in mplex])
 
 dnl Checks for programs.
 AC_GNU_SOURCE
@@ -596,6 +598,15 @@ else
   have_cmov=false
 fi
 
+dnl *********************************************************************
+dnl Check if Z/Alpha has been enabled. 
+dnl 
+
+use_zalpha=false
+if test "x$enable_zalpha" = "xyes" ; then
+  use_zalpha=true
+fi
+
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles
 dnl
@@ -618,6 +629,7 @@ else
   fi
 fi
 AM_CONDITIONAL(HAVE_V4L_OR_SDL, test x$have_v4l_or_sdl = xtrue)
+AM_CONDITIONAL(HAVE_ZALPHA, test x$use_zalpha = xtrue)
 
 dnl *********************************************************************
 dnl Check for what warnings we want gcc to use and adjust the CFLAGS
@@ -720,6 +732,7 @@ fi
 echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
 echo "    - movtar playback/recording     : ${have_movtar}"
+echo "    - MPEG Z/Alpha                  : ${use_zalpha}"
 echo "    - Quicktime playback/recording  : ${have_quicktime}"
 echo "    - PNG input support             : ${have_png}"
 echo "    - AVI MJPEG playback/recording  : true (always)"
