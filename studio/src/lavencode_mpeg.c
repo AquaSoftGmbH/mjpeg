@@ -42,8 +42,9 @@ void open_mpeg_window(GtkWidget *widget, gpointer data);
 void accept_mpegoptions(GtkWidget *widget, gpointer data);
 void create_audio_mplex_layout(GtkWidget *hbox);
 void create_yuv2mpeg_layout(GtkWidget *hbox);
-void create_sound_encoding (GtkWidget *table,int *tx,int *ty);
+void create_sound_encoding (GtkWidget *table, int *tx,int *ty);
 void create_mplex_encoding (GtkWidget *table, int *tx, int *ty);
+void create_denoise_layout (GtkWidget *table, int *tx, int *ty);
 void create_video_options_layout (GtkWidget *table, int *tx, int *ty);
 void create_yuvscaler_layout (GtkWidget *table, int *tx, int *ty);
 void create_video_layout (GtkWidget *table, int *tx, int *ty);
@@ -70,6 +71,7 @@ void set_sequencesize (GtkWidget *widget, gpointer data);
 void set_nonvideorate (GtkWidget *widget, gpointer data);
 void update_vbr(void);
 void set_interlacing (GtkWidget *widget, gpointer data);
+void set_use_yuvdenoise(GtkWidget *widget, gpointer data);
 
 /* Some variables */
 GList *samples = NULL; 
@@ -89,7 +91,7 @@ GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
 GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
-GtkWidget *combo_streamrate, *combo_entry_interlacecorr;
+GtkWidget *combo_streamrate, *combo_entry_interlacecorr, *switch_yuvdenoise;
 /* =============================================================== */
 /* Start of the code */
 
@@ -127,6 +129,7 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.forcestereo,"%s",(*point).forcestereo);
   sprintf(tempenco.forcemono,"%s",(*point).forcemono);
   sprintf(tempenco.forcevcd,"%s",(*point).forcevcd);
+  tempenco.use_yuvdenoise=(*point).use_yuvdenoise;
   tempenco.bitrate=(*point).bitrate;
   tempenco.qualityfactor=(*point).qualityfactor;
   tempenco.minGop=(*point).minGop;
@@ -182,6 +185,11 @@ char val[LONGOPT];
   if (tempenco.forcevcd[0] == '-')
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_vcd),TRUE);
 
+  /* denoise options */
+
+  if (tempenco.use_yuvdenoise == 1 )
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(switch_yuvdenoise),TRUE);
+
   /* Video Options */
 
   sprintf(val,"%i",tempenco.bitrate);
@@ -212,7 +220,7 @@ char val[LONGOPT];
   sprintf(val,"%i",tempenco.searchradius);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_searchradius),val);
 
-  /* Mplex Options how do I change this ? */
+  /* Mplex Options how do I change this ? or is this the best solution */
   muxformat = g_list_first (muxformat);
   for (i = 0; i < tempenco.muxformat ;i++)
     muxformat = g_list_next (muxformat);
@@ -766,7 +774,7 @@ GList *nonvideorate = NULL;
   gtk_widget_ref (switch_vbr);
   gtk_signal_connect (GTK_OBJECT (switch_vbr), "toggled",
                       GTK_SIGNAL_FUNC (set_vbr), NULL);
-  gtk_table_attach_defaults (GTK_TABLE(table), switch_vbr, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_table_attach_defaults (GTK_TABLE(table),switch_vbr,*tx+1,*tx+2,*ty,*ty+1);
   gtk_widget_show (switch_vbr);
   (*ty)++;
 
@@ -966,6 +974,41 @@ if (!samples)
   gtk_widget_show (button_force_mono);
   (*ty)++;
   (*tx)--;
+}
+
+/* set the yuvdenoise flag for the Encoding */
+void set_use_yuvdenoise(GtkWidget *widget, gpointer data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+       tempenco.use_yuvdenoise=1;
+  else
+       tempenco.use_yuvdenoise=0;
+
+  if (verbose)
+    printf(" Set the use of yuvdenoise to : %s \n",tempenco.muxvbr);
+}
+  
+/* create the denoise encoding options */
+/* now only with yuvdenoise,           */
+/* but later maybe with: yuvkineco, yuvycsnoise, yuvmedinafilter */
+void create_denoise_layout (GtkWidget *table, int *tx, int *ty)
+{
+GtkWidget *label1;
+
+  label1 = gtk_label_new ("  Noise reduction : ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1,*tx,*tx+1,*ty,*ty+1);
+  gtk_widget_show (label1);
+
+  switch_yuvdenoise = gtk_check_button_new_with_label (" use yuvdenoise");
+  gtk_widget_ref (switch_yuvdenoise);
+  gtk_signal_connect (GTK_OBJECT (switch_yuvdenoise), "toggled",
+                      GTK_SIGNAL_FUNC (set_use_yuvdenoise), NULL);
+  gtk_table_attach_defaults (GTK_TABLE(table),
+                                    switch_yuvdenoise,*tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (switch_yuvdenoise);
+  (*ty)++;
+
 }
 
 /* create the lav2yuv encoding options */
@@ -1349,6 +1392,8 @@ ty = 9;
 
   create_yuvscaler_layout (table, &tx, &ty);
 
+  create_denoise_layout(table, &tx, &ty);
+
   create_video_layout (table, &tx, &ty);
 
   gtk_box_pack_start (GTK_BOX (hbox), table, FALSE, FALSE, 0);
@@ -1373,6 +1418,7 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).forcestereo,"%s",tempenco.forcestereo);
   sprintf((*point).forcemono,"%s",tempenco.forcemono);
   sprintf((*point).forcevcd,"%s",tempenco.forcevcd);
+  (*point).use_yuvdenoise=tempenco.use_yuvdenoise;
   (*point).bitrate=tempenco.bitrate;
   (*point).qualityfactor=tempenco.qualityfactor;
   (*point).minGop=tempenco.minGop;
