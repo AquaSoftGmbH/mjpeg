@@ -19,11 +19,15 @@ EXTRA_DIST = \
  BUGS\
  CHANGES\
  PLANS\
- mjpeg_howto.txt\
- mjpegtools.spec\
+ mjpeg_howto.txt \
+ mjpegtools.spec \
+ mjpegtools.pc.in \
  autogen.sh\
  depcomp\
  .cvsignore
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = mjpegtools.pc
 
 DISTCLEANFILES = \
  confdefs.h \

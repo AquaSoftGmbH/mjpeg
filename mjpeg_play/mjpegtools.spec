@@ -98,6 +98,7 @@ of the mjpegtools package.
 %{_includedir}/mjpegtools/*.h
 %{_includedir}/movtar.h
 %{prefix}/share/aclocal/*.m4
+%{_libdir}/pkgconfig/*.pc
 %{_libdir}/*.a
 
 %changelog

@@ -661,6 +661,7 @@ mplex/Makefile
 scripts/Makefile
 utils/Makefile
 mjpegtools-config
+mjpegtools.pc
 ])
 
 AC_DEFINE(VERSION, ${VERSION})
