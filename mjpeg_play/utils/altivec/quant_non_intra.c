@@ -54,13 +54,14 @@ extern int block_count;
 
 #define QUANT_NON_INTRA_PDECL                                                \
     int16_t *src, int16_t *dst,                                              \
-    int q_scale_type, int mquant, int *nonsat_mquant                         \
+    int q_scale_type, int *nonsat_mquant                         \
 
-#define  QUANT_NON_INTRA_ARGS src, dst, q_scale_type, mquant, nonsat_mquant
+#define  QUANT_NON_INTRA_ARGS src, dst, q_scale_type,  nonsat_mquant
 
 
 int quant_non_intra_altivec(QUANT_NON_INTRA_PDECL)
 {
+    int mquant = *nonsat_mquant;
     int i, j, N, nzblockbits, last_block, recalc_blocks;
     unsigned short *popt_inter_q, *pqm;
     signed short *ps, *pd;
@@ -437,6 +438,7 @@ done:
 #  ifdef ALTIVEC_VERIFY
 int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
 {
+    int mquant = *nonsat_mquant;
     int i, len, nzb1, nzb2, nsmq, nsmq1, nsmq2;
     unsigned long checksum1, checksum2;
     int16_t *dstcpy;
