@@ -921,6 +921,10 @@ static void *lavrec_encoding_thread(void* arg)
             current_frame);
          pthread_cond_wait(&(settings->buffer_filled[current_frame]),
             &(settings->encoding_mutex));
+         if (settings->please_stop_syncing) {
+            pthread_mutex_unlock(&(settings->encoding_mutex));
+            pthread_exit(NULL);
+         }
       }
       memcpy(&(timestamp[current_frame]), &(settings->bsync.timestamp), sizeof(struct timeval));
 
@@ -1719,8 +1723,10 @@ static void *lavrec_software_sync_thread(void* arg)
          {
             pthread_cond_wait(&(settings->buffer_completion[qframe]),
                &(settings->encoding_mutex));
-            if (settings->please_stop_syncing)
+            if (settings->please_stop_syncing) {
+               pthread_mutex_unlock(&(settings->encoding_mutex));
                pthread_exit(0);
+            }
          }
          if (!lavrec_queue_buffer(info, &qframe))
          {
