@@ -103,6 +103,7 @@ typedef __uint64_t clockticks;
 #define MPEG1_AFTER_PACKET_LENGTH_MAX    \
 		(MPEG1_AFTER_PACKET_LENGTH_MIN+DTS_PTS_TIMESTAMP_LENGTH*2+BUFFERINFO_LENGTH-1)
 
+#define MINIMUM_PADDING_PACKET_SIZE 25
 
 /* The following values for sys_header_length & size are only valid for */
 /* System streams consisting of two basic streams. When wrapping around */
@@ -168,6 +169,7 @@ typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
     unsigned int type		;
     Timecode_struc DTS		;
     Timecode_struc PTS		;
+    int            dorder;
 } Vaunit_struc;
 
 typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
@@ -365,23 +367,6 @@ void output_padding       (
 					unsigned char include_sys_header,
 					unsigned char pseudo_VBR
 						);	/* erstellt und schreibt Padding packet	*/
-
-
-
-void next_video_access_unit ( Buffer_struc *buffer,
-							  Vaunit_struc *video_au,
-							  unsigned int *bytes_left,
-							  unsigned char *picture_start,
-							  Timecode_struc *SCR_delay,
-							  Vector vaunit_info_vec
-							 );
-void next_audio_access_unit (Buffer_struc *buffer,
-							Aaunit_struc *audio_au,
-							unsigned int *bytes_left,
-							unsigned char *audio_frame_start,
-							Timecode_struc *SCR_delay,
-							Vector aaunit_info_vec
-							);
 
 void buffer_clean	  ();	/* saeubert die Bufferschlange 		*/
 int  buffer_space         ();	/* Anzahl freier Bytes in Buffer	*/

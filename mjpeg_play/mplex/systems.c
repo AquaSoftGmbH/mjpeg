@@ -80,7 +80,7 @@ void create_sector (Sector_struc 	 *sector,
     int i,j;
     unsigned char *index;
     unsigned char *size_offset;
-	unsigned char *packet_header_start_offset;
+	unsigned char *fixed_packet_header_end;
 	unsigned char *pes_header_len_offset = 0; /* Silence compiler... */
 	int target_packet_data_size;
 	int actual_packet_data_size;
@@ -112,7 +112,7 @@ void create_sector (Sector_struc 	 *sector,
 
     /* konstante Packet Headerwerte eintragen */
     /* write constant packet header data */
-	packet_header_start_offset = index;
+
     *(index++) = (unsigned char)(PACKET_START)>>16;
     *(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
     *(index++) = (unsigned char)(PACKET_START & 0x0000ff);
@@ -123,7 +123,7 @@ void create_sector (Sector_struc 	 *sector,
 	   we know the actual size... */
     size_offset = index;   
 	index += 2;
- 
+ 	fixed_packet_header_end = index;
 
 	if( opt_mpeg == 1 )
 	{
@@ -202,14 +202,7 @@ void create_sector (Sector_struc 	 *sector,
 
 	target_packet_data_size = sector_size - (index - sector->buf);
 	
-	/* If a maximum payload data size is specified (!=0) and is smaller than the space available
-	   thats all we read (the remaining space is stuffed) */
-	if( max_packet_data_size != 0 && max_packet_data_size < target_packet_data_size )
-		packet_data_to_read = max_packet_data_size;
-	else
-		packet_data_to_read = target_packet_data_size;
-
-
+		
 	/* TODO DEBUG: */		
 	if( target_packet_data_size != packet_payload( sys_header, pack, buffers,
 												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
@@ -222,10 +215,21 @@ void create_sector (Sector_struc 	 *sector,
 		exit(1);
 	}
 	
+	/* If a maximum payload data size is specified (!=0) and is smaller than the space available
+	   thats all we read (the remaining space is stuffed) */
+	if( max_packet_data_size != 0 && max_packet_data_size < target_packet_data_size )
+	{
+		packet_data_to_read = max_packet_data_size;
+	}
+	else
+		packet_data_to_read = target_packet_data_size;
+
+
 	/* MPEG-1, MPEG-2: read in available packet data ... */
     
     if (type == PADDING_STR)
     {
+    	/* TODO DEBUG */
 		for (j=0; j<target_packet_data_size; j++)
 			*(index+j)=(unsigned char) STUFFING_BYTE;
 		actual_packet_data_size = target_packet_data_size;
@@ -237,39 +241,54 @@ void create_sector (Sector_struc 	 *sector,
 										 packet_data_to_read, 
 										 inputstream);
 		bytes_short = target_packet_data_size - actual_packet_data_size;
-
 	}
 	
 	/* Handle the situations where we don't have enough data to fill
-	   the packet size fully at the end of the stream... */
+	   the packet size fully ...
+	   Small shortfalls are dealt with by stuffing, big ones by inserting
+	   padding packets.
+	*/
 
 
-	/* The case where we have fallen short, but only so much that we
-	   can deal with it by stuffing (max 255) */
-	/* TODO: MPEG-1: is it o.k. to merrily stuff like this...?        */
-	if( bytes_short < 25 && bytes_short > 0 )
+	if( bytes_short < MINIMUM_PADDING_PACKET_SIZE && bytes_short > 0  )
 	{
-		memmove( index+bytes_short, index,  actual_packet_data_size );
-		for( j=0; j< bytes_short; ++j)
-			*(index+j)=(unsigned char) STUFFING_BYTE;
-
-		actual_packet_data_size = target_packet_data_size;
+		if (opt_mpeg == 1 )
+		{
+			/* MPEG-1 stuffing happens *before* header data fields. */
+			memmove( fixed_packet_header_end+bytes_short, 
+				     fixed_packet_header_end, 
+				     actual_packet_data_size+(index-fixed_packet_header_end)
+				     );
+			for( j=0; j< bytes_short; ++j)
+				fixed_packet_header_end[j] = (unsigned char)STUFFING_BYTE;
+		}
+		else
+		{
+			memmove( index+bytes_short, index,  actual_packet_data_size );
+			for( j=0; j< bytes_short; ++j)
+				*(index+j)=(unsigned char) STUFFING_BYTE;
+		}
+		index += bytes_short;
 		bytes_short = 0;
 	}
-	  
-	/* MPEG-2: we now know the header length... */
-	if (opt_mpeg == 2 )
-	{
-		*pes_header_len_offset = 
-			(unsigned char)(index-(pes_header_len_offset+1));
-	}
-	
-	index += actual_packet_data_size;	 
 
+	
+	/* MPEG-2: we now know the header length... */
+	if( opt_mpeg == 2 )
+	{
+		*pes_header_len_offset = (unsigned char)(index-(pes_header_len_offset+1));	
+	}
+	index += actual_packet_data_size;	 
+	/* MPEG-1, MPEG-2: Now we know that actual packet size */
+	size_offset[0] = (unsigned char)((index-size_offset-2)>>8);
+	size_offset[1] = (unsigned char)((index-size_offset-2)&0xff);
+	
 	/* The case where we have fallen short enough to allow it to be dealt with by
 	   inserting a stuffing packet... */	
 	if ( bytes_short != 0 )
 	{
+		/* assert( bytes_short >= MINIMUM_PADDING_PACKET_SIZE */
+		/* TODO DEBUG */
 		*(index++) = (unsigned char)(PACKET_START)>>16;
 		*(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
 		*(index++) = (unsigned char)(PACKET_START & 0x0000ff);
@@ -287,14 +306,14 @@ void create_sector (Sector_struc 	 *sector,
 			for (i = 0; i < bytes_short - 7; i++)
 				*(index++) = (unsigned char) STUFFING_BYTE;
 		}
-		actual_packet_data_size = target_packet_data_size;
 		bytes_short = 0;
 	}
 	  
-	/* MPEG-1, MPEG-2: Now we know that actual packet size */
-	size_offset[0] = (unsigned char)((index-size_offset-2)>>8);
-	size_offset[1] = (unsigned char)((index-size_offset-2)&0xff);
 
+
+	/* At this point padding or stuffing will have ensured the packet
+		is filled to target_packet_data_size
+	*/ 
     sector->length_of_sector = sector_size - bytes_short;
     sector->length_of_packet_data = actual_packet_data_size;
 

@@ -289,7 +289,7 @@ void get_info_video (char *video_file,
 				PTS = (temporal_reference - group_order + 1 + 
 					   decoding_order) * secs_per_frame*CLOCKS;
 
-
+				access_unit.dorder = decoding_order;
 				make_timecode (DTS,&access_unit.DTS);
 				make_timecode (PTS,&access_unit.PTS);
 

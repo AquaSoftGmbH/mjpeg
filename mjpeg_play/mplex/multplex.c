@@ -126,13 +126,13 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		break;
 		
 		case 3 :   /* alternate VCD 2 */
-		packets_per_pack = 1;
+		packets_per_pack = 20;
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	trailing_pad_pack = 1;
 	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 30;
+	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
@@ -148,7 +148,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	trailing_pad_pack = 1;
 	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 1;
+	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
@@ -164,7 +164,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		trailing_pad_pack = 0;
 		sector_transport_size = opt_sector_size;
 		transport_prefix_sectors = 0;
-		sector_size = opt_sector_size;
+		        sector_size = opt_sector_size;
 		video_buffer_size = opt_buffer_size * 1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
@@ -378,6 +378,9 @@ void outputstreamsuffix(Timecode_struc *SCR,
 	packet.
 ******************************************************************/
 
+
+	int frame_cnt=0;
+	
 void outputstream ( char 		*video_file,
 					char 		*audio_file,
 					char 		*multi_file,
@@ -419,7 +422,6 @@ void outputstream ( char 		*video_file,
 	unsigned char start_of_new_pack;
 	unsigned char include_sys_header;
 	unsigned int packet_data_size;
-
 
   /* Oeffne alle Ein- und Ausgabefiles			*/
   /* Open in- and outputstream				*/
@@ -477,7 +479,7 @@ void outputstream ( char 		*video_file,
 	if( opt_VBR )
 		sectors_delay = video_buffer_size / ( 4 * sector_size );
 	else
-		sectors_delay = video_buffer_size / ( 2* sector_size);
+		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
 
 	delay = ((double)sectors_delay +
 			 ceil((double)video_au.length/(double)min_packet_data)  +
@@ -615,6 +617,7 @@ void outputstream ( char 		*video_file,
 				 && video_au.length>0
 			)
 		{
+		
 			/* Calculate actual time current AU is likely to arrive. */
 			bytepos_timecode (bytes_output+video_bytes, &video_next_SCR);
 			if( ! comp_timecode (&video_next_SCR, &video_au.DTS) )
@@ -654,7 +657,7 @@ void outputstream ( char 		*video_file,
 #ifdef TIMER
 			gettimeofday (&tp_start,NULL);
 #endif 
-			status_info (nsec_a, ++nsec_v, nsec_p, bytes_output,
+			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
 						 buffer_space(&video_buffer),
 						 buffer_space(&audio_buffer),verbose);
 
@@ -722,7 +725,7 @@ void outputstream ( char 		*video_file,
 
 void next_video_access_unit (Buffer_struc *buffer,
 							 Vaunit_struc *video_au,
-							 unsigned int *bytes_left,
+							 unsigned int sent_in_last_sector,
 							 unsigned char *picture_start,
 							 Timecode_struc *SCR_delay,
 							 Vector vaunit_info_vec
@@ -730,14 +733,25 @@ void next_video_access_unit (Buffer_struc *buffer,
 {
 
   Vaunit_struc *vau;
-
-  if (*bytes_left == 0)
+  int bytes_left =  sent_in_last_sector;
+  
+  if (bytes_left == 0)
 	return;
 
-  while (video_au->length < *bytes_left)
+
+  /* What's left of the current AU and any prefix remaining of the next AU.
+ 	NOTE: TODO: This loop case should never actually iterate for normal MPEG streams.
+	Any MPEG stream carrying PTS/DTS data in packet headers won't really make sense 
+	if a second complete packet is squeezed in as there won't be any place to put its PTS/DTS.
+	
+	The current implementation uses bounds on maximum sector sizes to prevent this happening...
+	
+	*/
+
+  while (video_au->length < bytes_left)
 	{
 	  queue_buffer (buffer, video_au->length, &video_au->DTS);
-	  *bytes_left -= video_au->length;
+	  bytes_left -= video_au->length;
 	  vau = (Vaunit_struc*)VectorNext( vaunit_info_vec );
 	  if( vau != NULL )
 		*video_au = *vau;
@@ -751,16 +765,20 @@ void next_video_access_unit (Buffer_struc *buffer,
 	  add_to_timecode (SCR_delay, &video_au->DTS);
 	  add_to_timecode (SCR_delay, &video_au->PTS);
 	};
+	
 
-  if (video_au->length > *bytes_left)
+  if (video_au->length > bytes_left)
 	{
-	  queue_buffer (buffer, *bytes_left, &video_au->DTS);
-	  video_au->length -= *bytes_left;
+	  queue_buffer (buffer, bytes_left, &video_au->DTS);
+	  video_au->length -= bytes_left;
 	  *picture_start = FALSE;
-	} else
-	  if (video_au->length == *bytes_left)
+	} 
+  else
+	  if (video_au->length == bytes_left)
 		{
-		  queue_buffer (buffer, *bytes_left, &video_au->DTS);
+		  queue_buffer (buffer, bytes_left, &video_au->DTS);
+
+
 		  vau = (Vaunit_struc*)VectorNext( vaunit_info_vec );
 		  if( vau != NULL )
 			*video_au = *vau;
@@ -773,7 +791,7 @@ void next_video_access_unit (Buffer_struc *buffer,
 		  *picture_start = TRUE;
 		  add_to_timecode (SCR_delay, &video_au->DTS);
 		  add_to_timecode (SCR_delay, &video_au->PTS);
-		};
+		};	   
 
 }
 
@@ -800,8 +818,8 @@ void output_video ( Timecode_struc *SCR,
 
 {
 
-  unsigned int bytes_left;
-  unsigned int temp;
+  unsigned int sent_in_sector;
+  unsigned int prev_au_tail;
   Pack_struc *pack_ptr = NULL;
   Sys_header_struc *sys_header_ptr = NULL;
   unsigned char timestamps;
@@ -832,7 +850,7 @@ void output_video ( Timecode_struc *SCR,
 		packet_payload( sys_header_ptr, pack_ptr, TRUE, TRUE, next_vau->type != BFRAME );
 	}
   else
-	old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE );
+	  old_au_then_new_payload = packet_payload( sys_header_ptr, pack_ptr, TRUE, FALSE, FALSE );
   /* Wir generieren das Packet				*/
   /* let's generate packet					*/
 
@@ -843,27 +861,28 @@ void output_video ( Timecode_struc *SCR,
   /* CASE: Packet starts with new access unit			*/
   if (*picture_start)
 	{
+
 	  if (video_au->type == BFRAME)
 		timestamps=TIMESTAMPBITS_PTS;
 	  else
 		timestamps=TIMESTAMPBITS_PTS_DTS;
 
 	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
-					  0,
+					  video_au->length,
 					  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
 					  buffers_in_video, &video_au->PTS, &video_au->DTS,
 					  timestamps );
 	  
-	  bytes_left = cur_sector.length_of_packet_data;
-	  next_video_access_unit (buffer, video_au, &bytes_left, 
+	  sent_in_sector = cur_sector.length_of_packet_data;
+	  next_video_access_unit (buffer, video_au, sent_in_sector, 
 							  picture_start, SCR_delay, vaunit_info_vec);
 
 	}
 
   /* FALL: Packet beginnt mit alter Access Unit, es kommt	*/
-  /*       keine neue im selben Packet vor			*/
+  /*       keine neue im selben Packet vor					*/
   /* CASE: Packet begins with old access unit, no new one	*/
-  /*	     begins in the very same packet			*/
+  /*	     begins in the very same packet					*/
   else if (!(*picture_start) &&
 		   (video_au->length >= old_au_then_new_payload))
 	{
@@ -873,8 +892,8 @@ void output_video ( Timecode_struc *SCR,
 					 buffers_in_video, NULL, NULL,
 					 TIMESTAMPBITS_NO );
 
-	  bytes_left = cur_sector.length_of_packet_data;	
-	  next_video_access_unit (buffer, video_au, &bytes_left, 
+	  sent_in_sector = cur_sector.length_of_packet_data;	
+	  next_video_access_unit (buffer, video_au, sent_in_sector, 
 							  picture_start, SCR_delay, vaunit_info_vec);
 
 	}
@@ -886,7 +905,7 @@ void output_video ( Timecode_struc *SCR,
   else if (!(*picture_start) && 
 		   (video_au->length < old_au_then_new_payload))
 	{
-	  temp = video_au->length;
+	  prev_au_tail = video_au->length;
 	  queue_buffer (buffer, video_au->length, &video_au->DTS);
 
 	  /* gibt es ueberhaupt noch eine Access Unit ? */
@@ -901,17 +920,18 @@ void output_video ( Timecode_struc *SCR,
 			timestamps=TIMESTAMPBITS_PTS;
 		  else
 			timestamps=TIMESTAMPBITS_PTS_DTS;
+	  	 *picture_start = TRUE;
+		 add_to_timecode (SCR_delay, &video_au->DTS);
+	     add_to_timecode (SCR_delay, &video_au->PTS);
 
-		  *picture_start = TRUE;
-		  add_to_timecode (SCR_delay, &video_au->DTS);
-		  add_to_timecode (SCR_delay, &video_au->PTS);
+	
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
-						 0,
+						 prev_au_tail + video_au->length,
 						 istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
 						 buffers_in_video, &video_au->PTS, &video_au->DTS,
 						 timestamps );
-		  bytes_left = cur_sector.length_of_packet_data - temp;
-		  next_video_access_unit (buffer, video_au, &bytes_left, 
+		  sent_in_sector = cur_sector.length_of_packet_data - prev_au_tail;
+		  next_video_access_unit (buffer, video_au, sent_in_sector, 
 								  picture_start, SCR_delay, vaunit_info_vec);
 		} 
 	  else
