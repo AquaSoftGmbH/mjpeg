@@ -25,7 +25,7 @@ movtar_play: movtar.c movtar_play.c ./jpeg-6b-mmx/libjpeg.a
 #are suspect to change 
 ./jpeg-6b-mmx/libjpeg.a: ./jpeg-6b-mmx/jdapimin.c ./jpeg-6b-mmx/jdmerge.c \
 	./jpeg-6b-mmx/jidctfst.c ./jpeg-6b-mmx/jidctint.c \
-	./jpeg-6b-mmx/jdcolor.c
+ 	./jpeg-6b-mmx/jdcolor.c ./jpeg-6b-mmx/jdsample.c
 	cd jpeg-6b-mmx; make; cd ..; 
 
 install:
