@@ -62,21 +62,3 @@
 
 /* Define if disable assert() */
 #undef NDEBUG
-
-/* Define stream header formats supported by libyst */
-#undef USE_Y4M_PLAIN_FIELD
-#undef USE_Y4M_TAGGED_FIELD
-#undef USE_Y4M_NAMED_FIELD
-#undef USE_Y4M_BINARY_HEADER
-#undef USE_VIDEO_RAW
-
-/* Define if libyst output stream header with "named" fields by default */
-#undef WRITE_Y4M_NAMED_FIELD
-
-/* Define streaming media supported by libyst */
-#undef USE_MEDIA_FILE
-#undef USE_MEDIA_STACK
-#undef USE_MEDIA_GST
-
-/* Define if build libyst media drivers and yuvfilters as plugin modules */
-#undef USE_DLFCN_H

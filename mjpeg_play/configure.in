@@ -639,79 +639,11 @@ AC_ARG_ENABLE(assert,
  [  --disable-assert        Do not assert parameters to functions in libraries.],
  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-assert)                ;; esac ],
  [ enable_assert=yes ])
-AC_ARG_ENABLE(use-y4m-plain-field,
- [  --disable-use-y4m-plain-field    Do not use OLD YUV4MPEG with plain field.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-y4m-plain-field)   ;; esac ],
- [ enable_use_y4m_plain_field=yes ])
-AC_ARG_ENABLE(use-y4m-tagged-field,
- [  --disable-use-y4m-tagged-field   Do not use YUV4MPEG with tagged field.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-y4m-tagged-field)  ;; esac ],
- [ enable_use_y4m_tagged_field=yes ])
-AC_ARG_ENABLE(use-y4m-named-field,
- [  --disable-use-y4m-named-field    Do not use YUV4MPEG with named field.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-y4m-named-field)   ;; esac ],
- [ enable_use_y4m_named_field=yes ])
-# AC_ARG_ENABLE(use-y4m-binary-header,
-#  [  --disable-use-y4m-binary-header  Do not use YUV4MPEG with binary header.],
-#  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-y4m-binary-header) ;; esac ],
-#  [ enable_use_y4m_binary_header=yes ])
-enable_use_y4m_binary_header=no
-AC_ARG_ENABLE(use-video-raw,
- [  --disable-use-video-raw         Do not use video/raw.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-video-raw)         ;; esac ],
- [ enable_use_video_raw=yes ])
-AC_ARG_ENABLE(write-y4m-named-field,
- [  --disable-write-y4m-named-field  Write YUV4MPEG with tagged field by default.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-write-y4m-named-field) ;; esac ],
- [ enable_write_y4m_named_field=yes ])
-AC_ARG_ENABLE(use-media-file,
- [  --disable-use-media-file         Do not support file read/write.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-media-file)        ;; esac ],
- [ enable_use_media_file=yes ])
-AC_ARG_ENABLE(use-media-stack,
- [  --disable-use-media-stack        Do not support filter stack.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-media-stack)       ;; esac ],
- [ enable_use_media_stack=yes ])
-# AC_ARG_ENABLE(use-media-gst,
-#  [  --disable-use-media-gst          Do not support gstreamer.],
-#  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-media-gst)         ;; esac ],
-#  [ enable_use_media_gst=yes ])
-enable_use_media_gst=no
-AC_ARG_ENABLE(use-plugin,
- [  --disable-use-plugin             Do not use plugin modules.],
- [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-use-plugin)            ;; esac ],
- [ enable_use_plugin=yes ])
 
 if test x"$enable_assert"                 = x"no"; then NDEBUG=1;                fi
-if test x"$enable_use_y4m_plain_field"   != x"no"; then USE_Y4M_PLAIN_FIELD=1;   fi
-if test x"$enable_use_y4m_tagged_field"  != x"no"; then USE_Y4M_TAGGED_FIELD=1;  fi
-if test x"$enable_use_y4m_named_field"   != x"no"; then USE_Y4M_NAMED_FIELD=1;   fi
-if test x"$enable_use_y4m_binary_header" != x"no"; then USE_Y4M_BINARY_HEADER=1; fi
-if test x"$enable_use_video_raw"         != x"no"; then USE_VIDEO_RAW=1;         fi
-if test x"$enable_write_y4m_named_field" != x"no"; then WRITE_Y4M_NAMED_FIELD=1; fi
-if test x"$enable_use_media_file"        != x"no"; then USE_MEDIA_FILE=1;        fi
-if test x"$enable_use_media_stack"       != x"no"; then USE_MEDIA_STACK=1;       fi
-if test x"$enable_use_media_gst"         != x"no"; then USE_MEDIA_GST=1;         fi
-if test x"$enable_use_plugin" != x"no" -a x"$enable_shared" != x"no" -a x"$ac_cv_header_dlfcn_h" = x"yes"; then
- 							USE_DLFCN_H=1;           fi
 
 AC_DEFINE(MJPEGTOOLS)
 case x"$NDEBUG"                in x"1") AC_DEFINE(NDEBUG)                ;; esac
-case x"$USE_Y4M_PLAIN_FIELD"   in x"1") AC_DEFINE(USE_Y4M_PLAIN_FIELD)   ;; esac
-case x"$USE_Y4M_TAGGED_FIELD"  in x"1") AC_DEFINE(USE_Y4M_TAGGED_FIELD)  ;; esac
-case x"$USE_Y4M_NAMED_FIELD"   in x"1") AC_DEFINE(USE_Y4M_NAMED_FIELD)   ;; esac
-case x"$USE_Y4M_BINARY_HEADER" in x"1") AC_DEFINE(USE_Y4M_BINARY_HEADER) ;; esac
-case x"$USE_VIDEO_RAW"         in x"1") AC_DEFINE(USE_VIDEO_RAW)         ;; esac
-case x"$WRITE_Y4M_NAMED_FIELD" in x"1") AC_DEFINE(WRITE_Y4M_NAMED_FIELD) ;; esac
-case x"$USE_MEDIA_FILE"        in x"1") AC_DEFINE(USE_MEDIA_FILE)        ;; esac
-case x"$USE_MEDIA_STACK"       in x"1") AC_DEFINE(USE_MEDIA_STACK)       ;; esac
-case x"$USE_MEDIA_GST"         in x"1") AC_DEFINE(USE_MEDIA_GST)         ;; esac
-case x"$USE_DLFCN_H"           in x"1") AC_DEFINE(USE_DLFCN_H)           ;; esac
-
-AM_CONDITIONAL(USE_MEDIA_FILE,  test x"$USE_MEDIA_FILE"  = x"1")
-AM_CONDITIONAL(USE_MEDIA_STACK, test x"$USE_MEDIA_STACK" = x"1")
-AM_CONDITIONAL(USE_MEDIA_GST,   test x"$USE_MEDIA_GST"   = x"1")
-AM_CONDITIONAL(USE_DLFCN_H,     test x"$USE_DLFCN_H"     = x"1")
 
 dnl **********************************************************************
 dnl Output a Makefile or two and the lib/header descriptor script
@@ -726,7 +658,6 @@ mpeg2enc/Makefile
 aenc/Makefile
 mplex/Makefile
 scripts/Makefile
-mjpegtools/Makefile
 utils/Makefile
 mjpegtools-config
 ])

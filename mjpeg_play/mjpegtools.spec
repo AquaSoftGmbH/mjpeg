@@ -21,7 +21,7 @@ be done with zoran-based MJPEG-boards (LML33, Iomega Buz, Pinnacle
 DC10(+), Marvel G200/G400), these can also playback video using the
 hardware. With the rest of the tools, this video can be edited and
 encoded into mpeg1/2 video.
-  
+ 
 %prep
 %setup -b 3 -n jpeg-mmx
 ./configure
@@ -90,7 +90,6 @@ make install
 %{prefix}/bin/yuvdenoise
 %{prefix}/bin/yuvycsnoise
 %{prefix}/bin/yuvkineco
-%{prefix}/bin/yuvfilter
 ${prefix}/include/mjpegtools/*.h
 %{prefix}/bin/movtar_play
 %{prefix}/bin/movtar_split

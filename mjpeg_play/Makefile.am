@@ -1,6 +1,6 @@
 # Process with automake to produce Makefile.in
 
-SUBDIRS    = utils lavtools aenc mplex mpeg2enc	scripts docs yuvdenoise mjpegtools yuvfilters
+SUBDIRS    = utils lavtools aenc mplex mpeg2enc	scripts docs yuvdenoise yuvfilters
 
 bin_SCRIPTS = mjpegtools-config
 
