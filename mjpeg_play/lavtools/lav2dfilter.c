@@ -300,11 +300,10 @@ filter_buffer(int width, int height, int radus, int threshold, unsigned char *in
 				for(a = lowx; a < highx; a++) {
 					pixel = &input[(y + b) * width + x + lowx];
 					diff = reference - *pixel;
-					if (diff > threshold || diff < -threshold)
-						continue;
-
-					total += *pixel;
-					count++;
+					if (diff < threshold && diff > -threshold) {
+						total += *pixel;
+						count++;
+					}
 				}
 			}
 			output[width * y + x] = total / count;
