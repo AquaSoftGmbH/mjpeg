@@ -1198,7 +1198,17 @@ static int lavrec_hardware_init(lavrec_t *info)
       bparm.TmpDcm = (info->vertical_decimation==1) ? 1 : 2;
       bparm.field_per_buff = (info->vertical_decimation==1) ? 2 : 1;
 
-      if (info->geometry->w + info->geometry->x > vc.maxwidth)
+      if (info->geometry->x != VALUE_NOT_FILLED)
+         bparm.img_x = info->geometry->x;
+      else
+         bparm.img_x = (vc.maxwidth - bparm.img_width)/2;
+
+      if (info->geometry->y != VALUE_NOT_FILLED)
+         bparm.img_y = info->geometry->y/2;
+      else
+         bparm.img_y = ( (info->video_norm==1 ? 240 : 288) - bparm.img_height)/2;
+
+      if (info->geometry->w + bparm.img_x > vc.maxwidth)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Image width+offset (%d) bigger than maximum (%d)!",
@@ -1212,7 +1222,7 @@ static int lavrec_hardware_init(lavrec_t *info)
             info->geometry->w, bparm.HorDcm*16);
          return 0;
       }
-      if (info->geometry->h + info->geometry->y > (info->video_norm==1 ? 480 : 576)) 
+      if (info->geometry->h + bparm.img_y > (info->video_norm==1 ? 480 : 576)) 
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Image height+offset (%d) bigger than maximum (%d)!",
@@ -1235,15 +1245,6 @@ static int lavrec_hardware_init(lavrec_t *info)
       bparm.img_width  = info->geometry->w;
       bparm.img_height = info->geometry->h/2;
 
-      if (info->geometry->x != VALUE_NOT_FILLED)
-         bparm.img_x = info->geometry->x;
-      else
-         bparm.img_x = (vc.maxwidth - bparm.img_width)/2;
-
-      if (info->geometry->y != VALUE_NOT_FILLED)
-         bparm.img_y = info->geometry->y/2;
-      else
-         bparm.img_y = ( (info->video_norm==1 ? 240 : 288) - bparm.img_height)/2;
    }
    else
    {
