@@ -69,7 +69,7 @@
 
 #define MJPEG_MAX_BUF 256
 
-#define MIN_QUEUES_NEEDED 1 /* minimal number of queues needed to sync */
+#define MIN_QUEUES_NEEDED 2 /* minimal number of queues needed to sync */
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
@@ -151,6 +151,7 @@ typedef struct {
    /* some mutex/cond stuff to make sure we have enough queues left */
    pthread_mutex_t queue_mutex;
    unsigned short queue_left;
+   short is_queued[MJPEG_MAX_BUF];
    pthread_cond_t queue_wait;
 
    int    output_status;
@@ -1027,6 +1028,13 @@ static int lavrec_software_init(lavrec_t *info)
          "Error getting buffer information: %s", (char *)sys_errlist[errno]);
       return 0;
    }
+   if (settings->softreq.frames < MIN_QUEUES_NEEDED)
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "We need at least %d buffers, but we only got %d",
+         MIN_QUEUES_NEEDED, settings->softreq.frames);
+      return 0;
+   }
    lavrec_msg(LAVREC_MSG_INFO, info,
       "Got %d YUV-buffers of size %d KB", settings->softreq.frames,
       settings->softreq.size/(1024*settings->softreq.frames));
@@ -1083,6 +1091,7 @@ static int lavrec_software_init(lavrec_t *info)
                                             0 means in progress */
       pthread_cond_init(&(settings->buffer_filled[i]), NULL);
       pthread_cond_init(&(settings->buffer_completion[i]), NULL);
+      settings->is_queued[i] = 0;
    }
 
    for( i=0; i < info->num_encoders; ++i )
@@ -1565,6 +1574,7 @@ static int lavrec_queue_buffer(lavrec_t *info, unsigned long *num)
 
       pthread_mutex_lock(&(settings->queue_mutex));
       settings->queue_left++;
+      settings->is_queued[*num] = 1;
       pthread_cond_broadcast(&(settings->queue_wait));
       pthread_mutex_unlock(&(settings->queue_mutex));
    }
@@ -1593,17 +1603,20 @@ static void *lavrec_software_sync_thread(void* arg)
    pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL );
    pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL );
 
-   while (settings->state == LAVREC_STATE_RECORDING)
+   while (1)
    {
       pthread_mutex_lock(&(settings->queue_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
+         if (settings->is_queued[frame] <= 0) break; /* sync on all remaining frames */
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Software sync thread: sleeping for new queues");
          pthread_cond_wait(&(settings->queue_wait),
             &(settings->queue_mutex));
       }
       pthread_mutex_unlock(&(settings->queue_mutex));
+      if (settings->state != LAVREC_STATE_RECORDING && !settings->is_queued[frame])
+         break;
 retry:
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
       {
@@ -1615,6 +1628,7 @@ retry:
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error syncing on a buffer: %s", sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
+         break;
       }
       else
       {
@@ -1625,11 +1639,12 @@ retry:
          pthread_mutex_unlock(&(settings->software_sync_mutex));
       }
 
-      frame = (frame+1)%settings->softreq.frames;
-      
       pthread_mutex_lock(&(settings->queue_mutex));
       settings->queue_left--;
+      settings->is_queued[frame] = 0;
       pthread_mutex_unlock(&(settings->queue_mutex));
+
+      frame = (frame+1)%settings->softreq.frames;
    }
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
@@ -1954,9 +1969,11 @@ static void lavrec_record(lavrec_t *info)
 
    if (info->software_encoding)
    {
-      /* sync on all remaining buffers (*sigh*) */
+      /* mark us as "ready" */
       for (x=0;x<settings->softreq.frames;x++)
-         ioctl(settings->video_fd, VIDIOCSYNC, &x);
+         if (settings->is_queued[x] == 1)
+            settings->is_queued[x] = -1;
+      pthread_join(settings->software_sync_thread, NULL);
    }
    else
    {
