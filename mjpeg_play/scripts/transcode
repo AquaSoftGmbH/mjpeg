@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 function usage ()
@@ -50,12 +49,12 @@ MPEGOPTS="$MPEGOPTS -4 1 -2 1"
 ;;
 V)
 echo Generating VCD stream
-MPEGOPTS="$MPEGOPTS -r 16 "
+MPEGOPTS="$MPEGOPTS -f 1"
 decode="YUVh"
 ;;
 S)
 echo Generating SVCD stream
-MPEGOPTS="$MPEGOPTS -m 2 -q 9 -V 200"
+MPEGOPTS="$MPEGOPTS -f 4 -q 9 -P -V 200"
 bitrate="-b 2500"
 decode="YUVs"
 ;;
