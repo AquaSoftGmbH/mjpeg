@@ -524,19 +524,19 @@ static void readparmfile()
     {
       motion_data[i].forw_hor_f_code  = c;
       motion_data[i].forw_vert_f_code = c;
-      motion_data[i].sxf = MAX(1,param_searchrad*M);
-      motion_data[i].syf = MAX(1,param_searchrad*M);
+      motion_data[i].sxf = MAX(4,param_searchrad*M);
+      motion_data[i].syf = MAX(4,param_searchrad*M);
     }
     else
     {
       motion_data[i].forw_hor_f_code  = c;
       motion_data[i].forw_vert_f_code = c;
-      motion_data[i].sxf = MAX(1,param_searchrad*i);
-      motion_data[i].syf = MAX(1,param_searchrad*i);
+      motion_data[i].sxf = MAX(4,param_searchrad*i);
+      motion_data[i].syf = MAX(4,param_searchrad*i);
       motion_data[i].back_hor_f_code  = c;
       motion_data[i].back_vert_f_code = c;
-      motion_data[i].sxb = MAX(1,param_searchrad*(M-i));
-      motion_data[i].syb = MAX(1,param_searchrad*(M-i));
+      motion_data[i].sxb = MAX(4,param_searchrad*(M-i));
+      motion_data[i].syb = MAX(4,param_searchrad*(M-i));
     }
   }
 

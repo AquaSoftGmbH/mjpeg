@@ -142,13 +142,12 @@ unsigned char *frame[];
 			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
 								p[-1] + p[1] +
 								p[width-1]+p[width]+p[width+1]);
-			   f = f + (*p<<3) + ((*p)<<4);   /* 8 + (8 + 16) = 32 */
+			   f = f + ((*p)<<3) + ((*p)<<4);   /* 8 + (8 + 16) = 32 */
 			   *bp = (f + 8) >> (4 + 1);
 			   ++bp;
 			 }
-		 
 		 }
-	   if( noise_filt == 2 )
+	   else if( noise_filt == 2 )
 		 {
 		   for( p = frame[0]+width+1; p < end; ++p )
 			 {
@@ -156,7 +155,7 @@ unsigned char *frame[];
 								p[-1] + p[1] +
 								p[width-1]+p[width]+p[width+1]);
 
-			   f = f + (*p<<3);
+			   f = f + ((*p)<<3);
 			   *bp = (f + 16) >> (3 + 1);
 			   ++bp;
 			 }
