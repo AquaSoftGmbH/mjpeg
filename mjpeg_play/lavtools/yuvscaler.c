@@ -67,6 +67,9 @@
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
+float PI = 3.141592654;
+
+
 // For input
 unsigned int input_width;
 unsigned int input_height;
@@ -90,7 +93,7 @@ int input_interlaced = -1;
 // =Y4M_ILACE_TOP_FIRST for top interlaced, 
 // =Y4M_ILACE_BOTTOM_FIRST for bottom interlaced
 uint8_t input_y_min, input_y_max;
-float Ufactor, Vfactor;
+float Ufactor, Vfactor, Gamma;
 
 // Downscaling ratios
 unsigned int input_height_slice;
@@ -135,6 +138,7 @@ unsigned int luma = 0;		//=1 if luminance correction is selected
 uint8_t output_y_min, output_y_max;
 unsigned int chroma = 0;	//=1 if chrominance correction is selected
 uint8_t Ucenter, Vcenter, UVmin, UVmax;
+float UVrotation;
 
 
 
@@ -338,10 +342,11 @@ yuvscaler_print_usage (char *argv[])
 	   "\t BOTT_FORWARD to preprocess frames by moving bott field one frame forward\n"
 	   "\t TOP_FORWARD  to preprocess frames by moving top  field one frame forward\n"
 	   "\t If you want to correct the look of your image, you may use\n"
-	   "\t LUMINANCE_InputYmin_InputYmax_OutputYmin_OutputYmax to linearly correct the input frame luminance by clipping it\n"
-	   "\t    inside range [InputYmin;InputYmax] and scale this range to [OutputYmin;OutputYmax]\n"
-	   "\t CHROMINANCE_Ufactor_Ucenter_Vfactor_Vcenter_UVmin_UVmax to multiply the input frame chroma component U-Ucenter or V-Vcenter\n"
-	   "\t     by (float) Ufactor or Vfactor, recenter it to the normalize 128 center, and clip the result to range [UVmin;UVmax]\n"
+	   "\t LUMINANCE_Gamme_InputYmin_InputYmax_OutputYmin_OutputYmax to correct the input frame luminance by clipping it\n"
+	   "\t    inside range [InputYmin;InputYmax], scale with power (1/Gamma), and clip to [OutputYmin;OutputYmax]\n"
+	   "\t CHROMINANCE_UVrotation_Ufactor_Ucenter_Vfactor_Vcenter_UVmin_UVmax to rotate the UV value by (float) UVrotation degree,\n"
+	   "\t    then multiply the input frame chroma component U-Ucenter or V-Vcenter by (float) Ufactor or Vfactor,\n"
+	   "\t    and finally recenter it to the normalize 128 center, and clip the result to range [UVmin;UVmax]\n"
 	   "\t R_InRmin_InRmax_OutRmin_OutRmax\n"
 	   "\t G_InGmin_InGmax_OutGmin_OutGmax\n"
 	   "\t B_InBmin_InBmax_OutBmin_OutBmax\n"
@@ -704,13 +709,10 @@ yuvscaler_luminance_init (uint8_t * luminance,
 	    *(u_c_p++) = output_y_max;
 	  else
 	    *(u_c_p++) = output_y_min +
-	      yuvscaler_nearest_integer_division ((unsigned long
-						   int) (output_y_max -
-							 output_y_min) *
-						  (unsigned long int) (i -
-								       input_y_min),
-						  (input_y_max -
-						   input_y_min));
+	      floor (0.5 +
+		     pow ((float) (i - input_y_min) /
+			  (float) (input_y_max - input_y_min),
+			  (float) 1 / Gamma) * (output_y_max - output_y_min));
 	}
       mjpeg_debug ("Luminance[%u]=%u", i, luminance[i]);
     }
@@ -725,45 +727,47 @@ yuvscaler_luminance_init (uint8_t * luminance,
 // PREPROCESSING
 // *************************************************************************************
 int
-yuvscaler_chrominance_init (uint8_t * Uchroma, uint8_t * Vchroma,
-			    float Ufactor, float Vfactor,
-			    uint8_t UVmin, uint8_t UVmax)
+yuvscaler_chrominance_init (uint8_t * UVchroma, float UVrotation,
+			    float Ufactor, uint8_t Ucenter, float Vfactor,
+			    uint8_t Vcenter, uint8_t UVmin, uint8_t UVmax)
 {
-  // This function initialises the Uchroma and Vchroma vectors
-  uint8_t *Uu_c_p, *Vu_c_p;	//u_c_p = uint8_t pointer
-  uint16_t i;
-  float newU, newV;
+  // This function initialises the UVchroma vector
+  uint8_t *u_c_p;		//u_c_p = uint8_t pointer
+  uint16_t u, v;		// do not use uint8_t, else you get infinite loop for u and v because 255+1=0 in unit8_t 
+  float newU, newV, cosinus, sinus;
 
-  // Filling in the 2 chrominance vectors
-  Uu_c_p = Uchroma;
-  Vu_c_p = Vchroma;
-  for (i = 0; i < 256; i++)
+  mjpeg_debug ("chroma init");
+  cosinus = cos (UVrotation / 180.0 * PI);
+  sinus = sin (UVrotation / 180.0 * PI);
+  // Filling in the chrominance vector
+  u_c_p = UVchroma;
+  for (u = 0; u <= 255; u++)
     {
-      newU = (float) (i - Ucenter) * Ufactor + 128.0;
-      newU = (float) floor (0.5 + newU);	// nearest integer in double format
-      newV = (float) (i - Vcenter) * Vfactor + 128.0;
-      newV = (float) floor (0.5 + newV);	// nearest integer in double format
-      if (newU < UVmin)
-	*(Uu_c_p++) = UVmin;
-      else
+      for (v = 0; v <= 255; v++)
 	{
+	  newU =
+	    (((float) (u - Ucenter) * Ufactor) * cosinus -
+	     ((float) (v - Vcenter) * Vfactor) * sinus) + 128.0;
+//          mjpeg_debug("u=%u, v=%u, newU=%f",u,v,newU);
+	  newU = (float) floor (0.5 + newU);	// nearest integer in double format
+	  if (newU < UVmin)
+	    newU = UVmin;
 	  if (newU > UVmax)
-	    *(Uu_c_p++) = UVmax;
-	  else
-	    *(Uu_c_p++) = (uint8_t) newU;
-	}
-      mjpeg_debug ("Uchroma[%u]=%u", i, Uchroma[i]);
-      if (newV < UVmin)
-	*(Vu_c_p++) = UVmin;
-      else
-	{
+	    newU = UVmax;
+	  newV =
+	    (((float) (v - Vcenter) * Vfactor) * cosinus +
+	     ((float) (u - Ucenter) * Ufactor) * sinus) + 128.0;
+//          mjpeg_debug("u=%u, v=%u, newV=%f",u,v,newV);
+	  newV = (float) floor (0.5 + newV);	// nearest integer in double format
+	  if (newV < UVmin)
+	    newV = UVmin;
 	  if (newV > UVmax)
-	    *(Vu_c_p++) = UVmax;
-	  else
-	    *(Vu_c_p++) = (uint8_t) newV;
+	    newV = UVmax;
+	  *(u_c_p++) = (uint8_t) newU;
+	  *(u_c_p++) = (uint8_t) newV;
 	}
-      mjpeg_debug ("Vchroma[%u]=%u", i, Vchroma[i]);
     }
+  mjpeg_debug ("chroma init");
   return (0);
 }
 
@@ -798,26 +802,28 @@ yuvscaler_luminance_treatment (uint8_t * input, unsigned long size,
 // *************************************************************************************
 int
 yuvscaler_chrominance_treatment (uint8_t * input, unsigned long size,
-				 uint8_t * Uchroma, uint8_t * Vchroma)
+				 uint8_t * UVchroma)
 {
   // This function corrects the chrominance of input
-  uint8_t *u_c_p;
-  uint32_t i;
+  uint8_t *Uu_c_p, *Vu_c_p;
+  uint32_t i, base;
 
-//   mjpeg_debug("Start of yuvscaler_chrominance_treatment(%p, %lu, %p, %p)",input,size,Uchroma,Vchroma); 
+//   mjpeg_debug("Start of yuvscaler_chrominance_treatment(%p, %lu, %p)",input,size,UVchroma); 
   // Coherence check
   if (size % 2 != 0)
     mjpeg_error_exit1
       ("yuvscaler_chrominance_treatment: size=%lu, not even!!", size);
 
-  u_c_p = input;
+  Uu_c_p = input;
+  Vu_c_p = Uu_c_p + size / 2;
+
   // Chroma
-  // U component
   for (i = 0; i < size / 2; i++)
-    *(u_c_p++) = Uchroma[*(u_c_p)];
-  // V component
-  for (i = 0; i < size / 2; i++)
-    *(u_c_p++) = Vchroma[*(u_c_p)];
+    {
+      base = ((*Uu_c_p) * 256 + (*Vu_c_p)) * 2;
+      *(Uu_c_p++) = UVchroma[base++];
+      *(Vu_c_p++) = UVchroma[base];
+    }
 //   mjpeg_debug("End of yuvscaler_chrominance_treatment");
   return (0);
 }
@@ -1181,7 +1187,7 @@ handle_args_dependent (int argc, char *argv[])
   int c;
   unsigned int ui1, ui2, ui3, ui4;
   int output, input, mode;
-  float f1, f2;
+  float f1, f2, f3;
 
   // By default, display sizes is the same as input size
   display_width = input_width;
@@ -1284,7 +1290,8 @@ handle_args_dependent (int argc, char *argv[])
 		  // A second check will eventually be done when output interlacing is finally known
 		}
 	      else
-		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s", optarg);
+		mjpeg_error_exit1
+		  ("Wrong number of argument to SIZE keyword: %s", optarg);
 	    }
 	  if (strcmp (optarg, TOP_FIRST) == 0)
 	    {
@@ -1503,17 +1510,19 @@ handle_args_dependent (int argc, char *argv[])
 	      input = 1;
 	      luma = 1;
 	      if (sscanf
-		  (optarg, "LUMINANCE_%u_%u_%u_%u", &ui1, &ui2, &ui3,
-		   &ui4) == 4)
+		  (optarg, "LUMINANCE_%f_%u_%u_%u_%u", &f1, &ui1, &ui2, &ui3,
+		   &ui4) == 5)
 		{
 		  // Coherence check:
-		  if ((ui1 < 0) || (ui1 > 255) ||
+		  if ((f1 < 0) ||
+		      (ui1 < 0) || (ui1 > 255) ||
 		      (ui2 < 0) || (ui2 > 255) ||
 		      (ui3 < 0) || (ui3 > 255) ||
 		      (ui4 < 0) || (ui4 > 255) || (ui1 > ui2) || (ui3 > ui4))
 		    mjpeg_error_exit1
-		      ("Uncoherent luminance correction (0<>255, small, large): InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
-		       ui1, ui2, ui3, ui4);
+		      ("Uncoherent luminance correction (0<>255, small, large): Gamma=%f, InputYmin=%u, InputYmax=%u, OutputYmin=%u, OutputYmax=%u\n",
+		       f1, ui1, ui2, ui3, ui4);
+		  Gamma = f1;
 		  input_y_min = (uint8_t) ui1;
 		  input_y_max = (uint8_t) ui2;
 		  output_y_min = (uint8_t) ui3;
@@ -1521,15 +1530,16 @@ handle_args_dependent (int argc, char *argv[])
 		}
 	      else
 		mjpeg_error_exit1
-		  ("Unconsistent LUMINANCE keyword: %s\n", optarg);
+		  ("Wrong number of argument to LUMINANCE keyword: %s\n",
+		   optarg);
 	    }
 	  if (strncmp (optarg, CHROMINANCE, 12) == 0)
 	    {
 	      input = 1;
 	      chroma = 1;
 	      if (sscanf
-		  (optarg, "CHROMINANCE_%f_%u_%f_%u_%u_%u", &f1, &ui1, &f2,
-		   &ui2, &ui3, &ui4) == 6)
+		  (optarg, "CHROMINANCE_%f_%f_%u_%f_%u_%u_%u", &f1, &f2, &ui1,
+		   &f3, &ui2, &ui3, &ui4) == 7)
 		{
 		  // Coherence check:
 		  if ((ui1 < 0) || (ui1 > 255) ||
@@ -1538,18 +1548,20 @@ handle_args_dependent (int argc, char *argv[])
 		      (ui4 < 0) || (ui4 > 255) ||
 		      (ui3 > ui4) || (ui1 > ui4) || (ui2 > ui4))
 		    mjpeg_error_exit1
-		      ("Uncoherent chrominance correction (0<>255, small, large): Ufactor=%f, Ucenter=%u, Vfactor=%f, Vcenter=%u, UVmin=%u, UVmax=%u, \n",
-		       f1, ui1, f2, ui2, ui3, ui4);
+		      ("Uncoherent chrominance correction (0<>255, small, large): UVrotation=%f, Ufactor=%f, Ucenter=%u, Vfactor=%f, Vcenter=%u, UVmin=%u, UVmax=%u, \n",
+		       f1, f2, ui1, f3, ui2, ui3, ui4);
+		  UVrotation = f1;
 		  Ucenter = (uint8_t) ui1;
 		  Vcenter = (uint8_t) ui2;
-		  Ufactor = f1;
-		  Vfactor = f2;
+		  Ufactor = f2;
+		  Vfactor = f3;
 		  UVmin = (uint8_t) ui3;
 		  UVmax = (uint8_t) ui4;
 		}
 	      else
 		mjpeg_error_exit1
-		  ("Unconsistent CHROMINANCE keyword: %s\n", optarg);
+		  ("Wrong number of argument to CHROMINANCE keyword: %s\n",
+		   optarg);
 	    }
 	  if (strcmp (optarg, TOP_FIRST) == 0)
 	    {
@@ -1872,7 +1884,7 @@ main (int argc, char *argv[])
 
   // SPECIFIC TO LUMINANCE AND CHROMINANCE CORRECTION
   uint8_t *luminance = NULL;
-  uint8_t *Uchroma = NULL, *Vchroma = NULL, *input_uv = NULL;
+  uint8_t *UVchroma = NULL, *input_uv = NULL;
   unsigned long int nb_y = 0, nb_uv = 0;
 
   // Information output
@@ -2523,25 +2535,20 @@ main (int argc, char *argv[])
     }
   if (chroma == 1)
     {
-      // Memory allocation for the 2 chroma vectors
-      if ((!(Uchroma =
-	     (uint8_t *) malloc (256 * sizeof (uint8_t) + ALIGNEMENT))) ||
-	  (!(Vchroma =
-	     (uint8_t *) malloc (256 * sizeof (uint8_t) + ALIGNEMENT))))
+      // Memory allocation for the UVchroma vector
+      if (!(UVchroma =
+	    (uint8_t *) malloc (2 * 256 * 256 * sizeof (uint8_t) +
+				ALIGNEMENT)))
 	mjpeg_error_exit1
-	  ("Could not allocate memory for Uchroma or Vchroma vectors. STOP!");
+	  ("Could not allocate memory for UVchroma vector. STOP!");
       // memory alignement of the 2 chroma vectors
-      if (((unsigned long) Uchroma % ALIGNEMENT) != 0)
-	Uchroma =
-	  (uint8_t *) ((((unsigned long) Uchroma / ALIGNEMENT) + 1) *
+      if (((unsigned long) UVchroma % ALIGNEMENT) != 0)
+	UVchroma =
+	  (uint8_t *) ((((unsigned long) UVchroma / ALIGNEMENT) + 1) *
 		       ALIGNEMENT);
-      if (((unsigned long) Vchroma % ALIGNEMENT) != 0)
-	Vchroma =
-	  (uint8_t *) ((((unsigned long) Vchroma / ALIGNEMENT) + 1) *
-		       ALIGNEMENT);
-      // Filling in the Uchroma and Vchroma vectors
-      yuvscaler_chrominance_init (Uchroma, Vchroma,
-				  Ufactor, Vfactor, UVmin, UVmax);
+      // Filling in the UVchroma vector
+      yuvscaler_chrominance_init (UVchroma, UVrotation, Ufactor, Ucenter,
+				  Vfactor, Vcenter, UVmin, UVmax);
       nb_uv = input_width * input_height / 2;
       input_uv = input + input_width * input_height;
     }
@@ -2587,7 +2594,7 @@ main (int argc, char *argv[])
 		  if (yuvscaler_y4m_read_frame
 		      (0, &frameinfo, nb_pixels, input,
 		       line_switching) != Y4M_OK)
-		     mjpeg_error_exit1("Can't read frame %ld",frame_num);
+		    mjpeg_error_exit1 ("Can't read frame %ld", frame_num);
 		  frame_num++;
 		  mjpeg_info ("Frame number %ld", frame_num);
 		}
@@ -2603,7 +2610,7 @@ main (int argc, char *argv[])
 		  if (yuvscaler_y4m_read_frame
 		      (0, &frameinfo, nb_pixels, input,
 		       line_switching) != Y4M_OK)
-		     mjpeg_error_exit1("Can't read frame %ld",frame_num);
+		    mjpeg_error_exit1 ("Can't read frame %ld", frame_num);
 		  frame_num++;
 		  mjpeg_info ("Frame number %ld", frame_num);
 		}
@@ -2616,10 +2623,10 @@ main (int argc, char *argv[])
 	yuvscaler_luminance_treatment (input, nb_y, luminance);
       // chrominance correction
       if (chroma == 1)
-	yuvscaler_chrominance_treatment (input_uv, nb_uv, Uchroma, Vchroma);
+	yuvscaler_chrominance_treatment (input_uv, nb_uv, UVchroma);
       // YUV statistics
-//      if (verbose == 2)
-//	yuvstat (input);
+      if (verbose == 2)
+	yuvstat (input);
       // Blackout if necessary
       if (input_black == 1)
 	blackout (input_y, input_u, input_v);
@@ -2944,7 +2951,7 @@ yuvscaler_RGB_treatment (uint8_t * input, unsigned long size,
   uint8_t *y_p, *u_p, *v_p, *line_u_p, *line_v_p;
   uint32_t i, j;
   int16_t pixel_red, pixel_green, pixel_blue;
-   
+
   y_p = input;
   u_p = y_p + size / 4;
   v_p = u_p + size / 4;
