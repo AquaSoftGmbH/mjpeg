@@ -446,33 +446,36 @@ quant_weight_coeff_sum_mmx:
 
 	mov ecx, 16			; 16 coefficient / quantiser quads to process...
 	pxor mm6, mm6		; Accumulator
-	pxor mm7, mm7		; Zero
-nquantsum:
+.nquantsum:
 	movq    mm0, [edi]
-	movq    mm1, mm7
-	movq    mm2, [esi]
+	movq    mm2, [edi+8]
+	pxor    mm1, mm1
+	pxor    mm3, mm3
 	
 	;;
 	;;      Compute absolute value of coefficients...
 	;;
 	pcmpgtw mm1, mm0   ; (mm0 < 0 )
-	movq	mm3, mm0
-	psllw   mm3, 1     ; 2*mm0
-	pand    mm3, mm1   ; 2*mm0 * (mm0 < 0)
-	psubw   mm0, mm3   ; mm0 = abs(mm0)
+	pcmpgtw mm3, mm2   ; (mm0 < 0 )
+	pxor	mm0, mm1
+	pxor	mm2, mm3
+	psubw	mm0, mm1
+	psubw	mm2, mm3
 
 
 	;;
 	;; Compute the low and high words of the result....
 	;;
-	pmaddwd   mm0, mm2				
-	add		edi, 8
-	add		esi, 8
+	pmaddwd   mm0, [esi]
+	pmaddwd   mm2, [esi+8]
+	add		edi, 16
+	add		esi, 16
 	paddd      mm6, mm0
+	paddd      mm6, mm2
 	
 	
-	sub ecx,	1
-	jnz   nquantsum
+	sub ecx,	2
+	jnz   .nquantsum
 
 	movd   eax, mm6
 	psrlq  mm6, 32
