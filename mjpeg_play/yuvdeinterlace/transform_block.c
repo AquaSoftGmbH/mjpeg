@@ -9,16 +9,16 @@ void transform_block ( uint8_t * a1, uint8_t * a2, int rowstride)
 {
 	int x,y;
 
-	for(y=0;y<16;y++)
+	for(y=0;y<8;y++)
 	{	
-		for(x=0;x<16;x++)
+		for(x=0;x<8;x++)
 		{
 			*(a1)=*(a2);
 			a1++;
 			a2++;
 		}
-	a1 -= 16;
-	a2 -= 16;
+	a1 -= 8;
+	a2 -= 8;
 	a1 += rowstride;
 	a2 += rowstride;
 	}

@@ -8,7 +8,7 @@ extern int height;
 extern int bttv_hack;
 
 void
-mux_fields (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
+weave_fields (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
 {
 	int x, y;
 
@@ -16,12 +16,12 @@ mux_fields (uint8_t * dst[3], uint8_t * src1[3], uint8_t * src2[3] )
 	{
 		for (x = 0; x < width; x++)
 		{
-			*(dst[0]+x+y*width)=*(src1[0]+x+y*width);
-			*(dst[0]+x+(y+1)*width)=
-				(
-					*(src2[0]+x+(y+1)*width)+
-					*(src2[0]+x+(y  )*width)
-				)/2;
+			*(dst[0]+x+(y+1)*width)=*(src1[0]+x+(y+1)*width);
+			*(dst[0]+x+(y+0)*width)=*(src2[0]+x+(y+0)*width);
+			*(dst[1]+x+(y+0)*width)=*(src1[1]+x+(y+0)*width);
+			*(dst[1]+x+(y+1)*width)=*(src2[1]+x+(y+1)*width);
+			*(dst[2]+x+(y+0)*width)=*(src1[2]+x+(y+0)*width);
+			*(dst[2]+x+(y+1)*width)=*(src2[2]+x+(y+1)*width);
 		}
 	}
 }
