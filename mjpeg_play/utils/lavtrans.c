@@ -20,8 +20,8 @@
 
     -f [amqiw]  Format of output
                a: AVI (no selection of even/odd frame first possible)
-               q: Quicktime (for interlaced input, all input files
-                             also must be Quicktime)
+               q: Quicktime (if the input is interlaced, then all input files
+                             must be Quicktime, too)
                m: movtar format
                i: single images, "name" in the -o option must be a vaild
                   format string for sprintf!
