@@ -549,8 +549,8 @@ int main(int argc, char ** argv)
 
 	/* Seconds per video frame: */
 
-	spvf = (el.video_norm == 'n') ? 1001./30000. : 0.040;
-
+	spvf = 1.0 / el.video_fps;
+	fprintf( stderr, "DEBUG: 1.0/SPVF = %4.4f\n", 1.0 / spvf );
 	/* Seconds per audio sample: */
 
 	if(el.has_audio && audio_enable)
@@ -696,7 +696,7 @@ int main(int argc, char ** argv)
 	bp.input = 0;
 
    /* Set norm */       
-	bp.norm = (el.video_norm == 'n') ? 1 : 0;
+	bp.norm = (el.video_norm == 'n') ? VIDEO_MODE_NTSC : VIDEO_MODE_PAL;
 	sprintf(infostring,"Output norm: %s",bp.norm?"NTSC":"PAL");
 	lavplay_msg(LAVPLAY_INFO,infostring,"");
    
@@ -802,6 +802,9 @@ int main(int argc, char ** argv)
 	if(exchange_fields) bp.odd_even = !bp.odd_even;
    
 	mjpeg_set_params(mjpeg, &bp);
+
+	/* Set target play-back frame-rate */
+	mjpeg_set_playback_rate( mjpeg, el.video_fps );
 
 	/* Make stdin nonblocking */
 	memset(&action, 0, sizeof(action));

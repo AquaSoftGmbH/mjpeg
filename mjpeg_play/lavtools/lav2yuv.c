@@ -23,10 +23,9 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <string.h>
 #include <lav_io.h>
 #include <editlist.h>
-
+#include <math.h>
 
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
                     int itype, int ctype, int width, int height,
@@ -86,6 +85,9 @@ int	chroma_left_size;
 int	chroma_right_size;
 int	chroma_right_offset;
 
+const int num_mpeg2_framerates = 9;
+static float mpeg2_framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
+
 unsigned char *frame_buf[3]; /* YUV... */
 unsigned char *read_buf[3];
 unsigned char *median_buf[3];
@@ -114,15 +116,13 @@ void Usage(char *str)
   printf("Usage: %s [params] inputfiles\n",str);
   printf("   where possible params are:\n");
   printf("   -a widthxhight+x+y\n");
-  printf("   -f num     Special output format option:\n");
-  printf("                 0 output like input, nothing special (default)\n");
+  printf("   -s num     Special output format option:\n");
+  printf("                 0 output like input, nothing special\n");
   printf("                 1 create half height/width output from interlaced input\n");
   printf("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
   printf("                 3 create 352 wide output from 720 wide input (for vcd)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
-  printf("   -s num     Start extracting at frame <num> (default: 0)\n");
-  printf("   -c num     Extract <num> frames of video (default: all)\n");
   printf("   -m         Force mono-chrome\n");
   exit(0);
 }
@@ -415,12 +415,30 @@ static size_t do_write( int fd, void *buf, size_t count )
 void writeoutYUV4MPEGheader()
 {
 	 char str[256];
-
+	 int i;
+	 int frame_rate_code = 0;
 	 /* RJ: Framerate specification should be based on
 		something more reliable than height */
+	 for( i =0; i < num_mpeg2_framerates; ++i )
+	 {
+		 if( fabs(mpeg2_framerates[i] - el.video_fps) / mpeg2_framerates[i] 
+			 <
+			 0.001 )
+		 {
+			 frame_rate_code = i;
+			 break;
+		 }
+	 }
+
+	 fprintf( stderr, "DEBUG: frame rate code %d set!\n", frame_rate_code );
+	 fprintf( stderr, "DEBUG: 24fps = 2, PAL = 3, NTSC = 4\n" );
+	 if( frame_rate_code == 0 )
+	 {
+		 fprintf( stderr, "+++ WARNING: unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n" );
+	 }
 	 
 	 sprintf(str,"YUV4MPEG %d %d %d\n",
-			 output_width,output_height,el.video_norm == 'n' ? 4 : 3);
+			 output_width,output_height, frame_rate_code);
 	 do_write(out_fd,str,strlen(str));
 }
 
@@ -489,22 +507,12 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 	}
 }
 
-/**
- * write the video stream out, starting at <start> frame for <count> frames.
- **/
-void streamout(int start, int count)
+
+void streamout()
 {
 	int framenum;
 	writeoutYUV4MPEGheader();
-	
-	framenum = 0;
-	if (start != 0)
-	{
-		framenum = start;
-	}
-	if (count == -1)
-		count = el.video_frames;		
-	for( ; framenum < count ; ++framenum )
+	for( framenum = 0; framenum < el.video_frames ; ++framenum )
 	{
 		readframe(framenum,frame_buf);
 #ifdef	NEVER
@@ -521,10 +529,8 @@ char *argv[];
   int n, nerr = 0;
   char	*geom;
   char  *end;
-  int   start_frame = 0;
-  int   num_frames = -1;
 
-  while( (n=getopt(argc,argv,"v:a:s:d:n:f:c:")) != EOF)
+  while( (n=getopt(argc,argv,"v:a:s:d:n:")) != EOF)
   {
     switch(n) {
 
@@ -567,7 +573,7 @@ char *argv[];
 	break;
 	
 
-      case 'f':
+      case 's':
         param_special = atoi(optarg);
         if(param_special<0 || param_special>3)
         {
@@ -599,12 +605,6 @@ char *argv[];
 		break;
 	case 'm' :
 		param_mono = 1;
-		break;
-	case 's' :
-		start_frame = atoi(optarg);
-		break;
-	case 'c' :
-		num_frames = atoi(optarg);
 		break;
 	default:
 	  nerr++;
@@ -687,7 +687,7 @@ char *argv[];
 
   out_fd = 1; /* stdout */
   init();
-  streamout(start_frame, num_frames);
+  streamout();
 
   return 0;
 }

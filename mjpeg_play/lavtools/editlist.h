@@ -14,7 +14,7 @@ typedef struct
    long video_height;
    long video_inter;
    long video_norm;
-
+   double video_fps;
    long max_frame_size;
    int  MJPG_chroma;
 	/* TODO: Need to flag mixed chroma model files? */

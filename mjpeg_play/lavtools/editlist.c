@@ -112,18 +112,18 @@ static int open_video_file(char *filename, EditList *el)
       el->video_height = lav_video_height(el->lav_fd[n]);
       el->video_width  = lav_video_width (el->lav_fd[n]);
       el->video_inter  = lav_video_interlacing(el->lav_fd[n]);
+	  el->video_fps = lav_frame_rate(el->lav_fd[n]);
       if(!el->video_norm)
       {
-         double fps;
-         fps = lav_frame_rate(el->lav_fd[n]);
-         if(fps>24 && fps<26)
+		  /* TODO: This guessing here is a bit dubious but it can be over-ridden */
+		 if(el->video_fps>24.95 && el->video_fps<25.05)
             el->video_norm = 'p';
-         else if (fps>29 && fps<31)
+         else if (el->video_fps>30000./999. && el->video_fps<30000./1001.)
             el->video_norm = 'n';
          else
          {
             fprintf(stderr,"File %s has %f frames/sec, choose norm with +[np] param\n",
-                               filename,fps);
+					filename,el->video_fps);
             exit(1);
          }
       }
@@ -157,7 +157,14 @@ static int open_video_file(char *filename, EditList *el)
                  filename,lav_video_interlacing(el->lav_fd[n]),el->video_inter);
          nerr++;
       }
-
+      if( el->video_fps != lav_frame_rate(el->lav_fd[n]))
+      {
+         fprintf(stderr,"File %s: fps is %3.2f should be %3.2f\n",
+                 filename,
+				 lav_frame_rate(el->lav_fd[n]),
+				 el->video_fps);
+         nerr++;
+      }
       /* If first file has no audio, we don't care about audio */
 
       if(el->has_audio)
@@ -446,16 +453,8 @@ int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute)
    if(nframe>el->video_frames) nframe = el->video_frames;
    n = el->frame_list[nframe];
 
-   if(el->video_norm == 'p')
-   {
-      ns1 = (double)(N_EL_FRAME(n)+1)*el->audio_rate/25.0;
-      ns0 = (double) N_EL_FRAME(n)   *el->audio_rate/25.0;
-   }
-   else
-   {
-      ns1 = (double)(N_EL_FRAME(n)+1)*el->audio_rate*1001.0/30000.0;
-      ns0 = (double) N_EL_FRAME(n)   *el->audio_rate*1001.0/30000.0;
-   }
+   ns1 = (double)(N_EL_FRAME(n)+1)*el->audio_rate/el->video_fps;
+   ns0 = (double) N_EL_FRAME(n)   *el->audio_rate/el->video_fps;
 
    asamps = ns1-ns0;
 
