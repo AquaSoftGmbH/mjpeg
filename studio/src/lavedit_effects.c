@@ -14,6 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+ * Michael Hanke, September 6, 2003
+ *   - correction for still effects with interlaced material
  */
 
 #ifdef HAVE_CONFIG_H
@@ -31,6 +34,7 @@
 #include <errno.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
+#include "studio.h"  /* for aspect ratio */
 #include "lavedit.h"
 #include "gtkfunctions.h"
 #include "pipes.h"
@@ -86,16 +90,19 @@ struct image_overlay_options {
 	int image_y;		/* y-position of the image over the movie */
 	int movie_width;	/* width of the movie */
 	int movie_height;	/* height of the movie */
-	GdkPixbuf *video_image;	/* First frame of the scene */
 	GdkPixbuf *image;	/* the _original_ gdk-pixbuf of the image (unscaled!) */
 	int opacity;		/* percentage that the image is visible (0-100%) */
 	GtkEffectType type;	/* GTK_EFFECT_TEXT or GTK_EFFECT_IMAGE */
 	char *font;		/* in case of GTK_EFFECT_TEXT, the font to be used */
+        GdkFont *fontdesc;       /* Gdk Font Structure */
 	gdouble colors[3];	/* in case of GTK_EFFECT_TEXT, the color to be used for the font */
 
 	GtkWidget *fs;		/* stupid $%@$%@# needs this object */
 	GtkObject *adj[2];	/* stupid $$ global var for length/offset slider */
 	GtkWidget *image_position[4];	/* widgets for positioning the image (w/h/x-,y-offset) */
+  int aspect_den;         /* aspect ratio: denominator */
+  int aspect_enu;         /* aspect ratio: enumerator */
+        char interlacing_info;        /* interlaced material */
 };
 
 /* variables */
@@ -110,7 +117,7 @@ static int num_frames = 0;
 static GtkWidget *transition_selection_box[3];
 
 /* size of preview-tv-window */
-int lavedit_effects_preview_width = 240;
+int lavedit_effects_preview_width; /* = 240; set dynamically */
 int lavedit_effects_preview_height = 180;
 
 /* forward declarations */
@@ -132,6 +139,7 @@ void start_lavpipe_render(char *lavpipe_file, char *result_file);
 void start_lavpipe_preview(char *file);
 void play_scene_transition(GtkWidget *widget, gpointer data);
 void play_text_overlay(GtkWidget *widget, gpointer data);
+void write_yuv_to_file(FILE *fd, guchar **yuv, int width, int height);
 void play_image_overlay(GtkWidget *widget, gpointer data);
 void stop_scene_transition(GtkWidget *widget, gpointer data);
 void scene_transition_adj_changed(GtkAdjustment *adj, int *i);
@@ -160,6 +168,7 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data);
 
 void effects_finished()
 {
+  int stl;
 	if (preview_or_render)
 	{
 		/* lavpipe | yuv2lav */
@@ -184,14 +193,21 @@ void effects_finished()
 				gtk_label_set_text(GTK_LABEL(render_progress_status_label), "......");
 
 			strcpy(new_renderfile, renderfile);
-			new_renderfile[strlen(new_renderfile)-1] = '\0';
+			/* Need to add one character: avoid buffer overflow */
+			stl = strlen(renderfile);
+			if (stl < 255) {
+			  new_renderfile[stl-4] = '~';
+			  strcpy(new_renderfile+stl-3,renderfile+stl-4);
+			}
+			else new_renderfile[stl-5] = new_renderfile[stl-5] == '~'? '#' : '~';
 			sprintf(command, "\"%s\" \"%s\" \"%s\" \"%s\"%s",
 				app_location(LAVADDWAV), renderfile, file, new_renderfile,
-				verbose?"":" >> /dev/null 2>&1");
+				verbose?"":" > /dev/null 2>&1");
 			system(command);
 
 			unlink(file);
 			unlink(renderfile);
+			rename(new_renderfile,renderfile);
 
 			soundfile[0] = '\0';
 		}
@@ -1010,6 +1026,11 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	{
 		options->length = 25;
 	}
+	/* Set preview aspect ratio */
+	if (strncmp(picture_aspect,"16:9",8))
+	  lavedit_effects_preview_width = (lavedit_effects_preview_height*16)/9;
+	else
+	  lavedit_effects_preview_width = (lavedit_effects_preview_height*4)/3;
 
 	effects_scene_transition_show_window(options);
 }
@@ -1120,11 +1141,10 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 {
 	/* we need to render the image first */
 	GdkColor color, bg_color;
-	GdkFont* font;
 	GdkPixmap* pixmap;
 	GdkGC *gc;
 	GdkImage *image;
-	int w,h,x,y;
+	int w,h,x,y,wi,lbea,rbea,asc,desc;
 	char *text;
 	guchar *pixel_data;
 	guint32 pixel;
@@ -1133,7 +1153,7 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 
 	text = options->text;
 
-	if (!options->font)
+	if (!options->fontdesc)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
 			"You need to choose a font first");
@@ -1155,10 +1175,10 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 	color.pixel = 0x0;
 	bg_color.pixel = 0x1;
 
-	font = gdk_font_load(options->font);
-
-	w = gdk_text_width(gdk_font_load(options->font), text, strlen(text));
-	h = gdk_text_height(gdk_font_load(options->font), text, strlen(text));
+	gdk_string_extents(options->fontdesc, text,
+			   &lbea, &rbea, &wi, &asc, &desc);
+	h = asc+desc;
+	w = rbea-lbea;
 
 	if (verbose) printf("Drawing pixmap (%dx%d) with font %s\n", w, h,
 		options->font);
@@ -1181,7 +1201,7 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 	gdk_gc_set_foreground(gc, &color);
 	gdk_gc_set_background(gc, &bg_color);
 
-	gdk_draw_string(pixmap, font, gc, 0, h, text);
+	gdk_draw_string(pixmap, options->fontdesc, gc, -lbea, asc, text);
 
 	image = gdk_image_get(pixmap, 0,0,w,h);
 	pixel_data = malloc(sizeof(guchar)*w*h*4);
@@ -1203,8 +1223,20 @@ void play_text_overlay(GtkWidget *widget, gpointer data)
 
 	gdk_gc_unref(gc);
 	gdk_pixmap_unref(pixmap);
+	/* Fort testing purposes. If scaling works, remove the following 2
+	   statements. */
+	/*options->image_width = w;
+	  options->image_height = h;*/
 
 	play_image_overlay(NULL, (gpointer)options);
+}
+
+void write_yuv_to_file(FILE *fd, guchar **yuv, int width, int height)
+{
+  /* Convenience function for writing yuv data to a file */
+  fwrite(yuv[0], sizeof(guchar), width*height, fd);
+  fwrite(yuv[1], sizeof(guchar), width*height/4, fd);
+  fwrite(yuv[2], sizeof(guchar), width*height/4, fd);
 }
 
 void play_image_overlay(GtkWidget *widget, gpointer data)
@@ -1215,11 +1247,6 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	GdkPixbuf *temp_image;
 	guchar *yuv[3], *yuv_blend[3];
 	int i;
-	char interlacing_info = 'p'; /* we need something */
-	/* hack to get interlacing info from the first stream */
-	FILE *fdd;
-	char tempfile[256];
-	char syscall[256];
 
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
@@ -1242,14 +1269,6 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	sprintf(file, "%s/.studio/effect.pli", getenv("HOME"));
 
 	/* create a scaled gdkpixbuf and "yuv" it */
-	yuv[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
-	yuv_blend[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
-	for(i=1;i<3;i++)
-	{
-		yuv[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
-		yuv_blend[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
-	}
-
 	if (options->image_width != gdk_pixbuf_get_width(options->image) ||
 		options->image_height != gdk_pixbuf_get_height(options->image))
 	{
@@ -1263,48 +1282,53 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	else
 		temp_image = options->image;
 
-	rgb_to_yuv(options->movie_width, options->movie_height,
-		gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
-		yuv, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
-		options->image_width, options->image_height);
-	alpha_to_yuv(options->movie_width, options->movie_height,
-		gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
-		yuv_blend, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
-		options->image_width, options->image_height, options->opacity);
+	  yuv[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
+	  yuv_blend[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
+	  for(i=1;i<3;i++)
+	    {
+	      yuv[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
+	      yuv_blend[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
+	    }
 
+	  rgb_to_yuv(options->movie_width, options->movie_height,
+		     gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
+		     yuv, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
+		     options->image_width, options->image_height);
+	  alpha_to_yuv(options->movie_width, options->movie_height,
+		       gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
+		       yuv_blend, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
+		       options->image_width, options->image_height, options->opacity);
 
-	/* create the YUV files */
-	sprintf(yuv_file, "%s/.studio/image.yuv", getenv("HOME"));
-	fd = fopen(yuv_file, "w");
-	if (fd == NULL)
-	{
-		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
-			yuv_file, sys_errlist[errno]);
-		return;
-	}
-	fwrite(yuv[0], sizeof(guchar), options->movie_width*options->movie_height, fd);
-	fwrite(yuv[1], sizeof(guchar), options->movie_width*options->movie_height/4, fd);
-	fwrite(yuv[2], sizeof(guchar), options->movie_width*options->movie_height/4, fd);
-	fclose(fd);
-	
-	sprintf(yuv_blend_file, "%s/.studio/blend.yuv", getenv("HOME"));
-	fd = fopen(yuv_blend_file, "w");
-	if (fd == NULL)
-	{
-		gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
-			yuv_blend_file, sys_errlist[errno]);
-		return;
-	}
-	fwrite(yuv_blend[0], sizeof(guchar), options->movie_width*options->movie_height, fd);
-	fwrite(yuv_blend[1], sizeof(guchar), options->movie_width*options->movie_height/4, fd);
-	fwrite(yuv_blend[2], sizeof(guchar), options->movie_width*options->movie_height/4, fd);
-	fclose(fd);
+	  /* create the YUV files */
+	  sprintf(yuv_file, "%s/.studio/image.yuv", getenv("HOME"));
+	  fd = fopen(yuv_file, "w");
+	  if (fd == NULL)
+	    {
+	      gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+				   yuv_file, sys_errlist[errno]);
+	      return;
+	    }
+	  write_yuv_to_file(fd, yuv, options->movie_width, options->movie_height);
+	  fclose(fd);
 
-	for(i=0;i<3;i++)
-	{
-		free(yuv[i]);
-		free(yuv_blend[i]);
-	}
+	  sprintf(yuv_blend_file, "%s/.studio/blend.yuv", getenv("HOME"));
+	  fd = fopen(yuv_blend_file, "w");
+	  if (fd == NULL)
+	    {
+	      gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+				   yuv_blend_file, sys_errlist[errno]);
+	      return;
+	    }
+	  write_yuv_to_file(fd, yuv_blend, options->movie_width,
+			    options->movie_height);
+	  fclose(fd);
+
+	  for(i=0;i<3;i++)
+	    {
+	      free(yuv[i]);
+	      free(yuv_blend[i]);
+	    }
+
 	/* unref the image only if it was recreated */
 	if (options->image_width != gdk_pixbuf_get_width(options->image) ||
 		options->image_height != gdk_pixbuf_get_height(options->image) || options->type == GTK_EFFECT_TEXT)
@@ -1323,41 +1347,14 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	fprintf(fd, "3\n");
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene_file);
 
-	sprintf(tempfile, "%s/.studio/tempfile.lav2yuv.data", getenv("HOME"));
-	sprintf(syscall, "\"%s\" -f 1 \"%s\" > \"%s\" 2>/dev/null",
-		app_location(LAV2YUV), options->scene_file, tempfile);
-	system(syscall);
-	fdd = fopen(tempfile, "r");
-	syscall[0] = '\0';
-	fgets(syscall, 255, fdd);
-	fclose(fdd);
-	unlink(tempfile);
-
-	for (i=0;i<strlen(syscall);i++)
-		if (syscall[i] == '\n' || syscall[i] == '\0')
-		{
-			syscall[i] = '\0';
-			break;
-		}
-	if (verbose) printf("lav2yuv gave us the following header: \'%s\'\n",
-		syscall);
-	for (i=0;i<strlen(syscall);i++)
-		if (!strncmp(syscall+i, " I", 2))
-		{
-			interlacing_info = syscall[i+2];
-			if (verbose) printf("Using \'%c\' as interlacing info\n",
-				interlacing_info);
-			break;
-		}
-
 	fprintf(fd, "forevery4m2 %d %d %c %s %s\n",
 		options->movie_width, options->movie_height,
-		interlacing_info, 
+		options->interlacing_info, 
 		GTK_SCENELIST(scenelist)->norm=='p'?"25:1":"30000:1001",
 		yuv_file);
 	fprintf(fd, "forevery4m2 %d %d %c %s %s\n",
 		options->movie_width, options->movie_height,
-		interlacing_info,
+		options->interlacing_info,
 		GTK_SCENELIST(scenelist)->norm=='p'?"25:1":"30000:1001",
 		yuv_blend_file);
 
@@ -1429,7 +1426,7 @@ void overlay_render_file_selected(GtkWidget *w, gpointer data)
 
 	/* set mode to "render" */
 	preview_or_render = 1;
-	sprintf(renderfile, "%s~", gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)));
+	sprintf(renderfile, "%s", gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)));
 
 	create_progress_window(options->scene_end - options->scene_start + 1);
 
@@ -1540,6 +1537,8 @@ void select_image_overlay_file(GtkWidget *widget, gpointer data)
 void text_overlay_font_load(GtkWidget *w, gpointer data)
 {
 	/* OK was pressed - load the selected font */
+  int res_x, res_y, i, j, field;
+  char newname[512];
 
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
@@ -1550,6 +1549,44 @@ void text_overlay_font_load(GtkWidget *w, gpointer data)
 		gtk_show_text_window(STUDIO_WARNING,
 			"There was an error loading the font \'%s\'",
 			gtk_font_selection_dialog_get_font_name (GTK_FONT_SELECTION_DIALOG (options->fs)));
+		return;
+	}
+
+	/* Rewrite font and load it. Adapted from Xlib Programming Manual */
+	res_x = 100;
+	res_y = (res_x*options->aspect_enu)/options->aspect_den;
+	for (i = j = field = 0; (options->font[i] != '\0') && 
+	       (field <= 14); i++) {
+	  newname[j++] = options->font[i];
+	  if (options->font[i] == '-') {
+	    field++;
+	    switch (field) {
+	    case 7:
+	    case 12:
+	      newname[j++] = '*';
+	      while ((options->font[i+1] != '-') && 
+		     (options->font[i+1] != '\0')) i++;
+	      break;
+	    case 9:
+	    case 10: /* Rewrite resolution:
+			Assume a minimal resolution of 100 dpi */
+	      sprintf(&newname[j],"%d",(field == 9) ? res_x : res_y);
+	      while (newname[j] != '\0') j++;
+	      while ((options->font[i+1] != '-') && 
+		     (options->font[i+1] != '\0')) i++;
+	      break;
+	    }
+	  }
+	}
+	newname[j] = '\0';
+	if ((field != 14) ||
+	    (NULL == (options->fontdesc = gdk_font_load(newname))))
+	{
+		gtk_show_text_window(STUDIO_WARNING,
+			"There was an error loading the font \'%s\'",
+			newname);
+		options->font = NULL;
+		options->fontdesc = NULL;
 		return;
 	}
 
@@ -1570,6 +1607,10 @@ void select_text_overlay_font(GtkWidget *w, gpointer data)
 		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (options->fs));
 	gtk_signal_connect_object (GTK_OBJECT (GTK_FONT_SELECTION_DIALOG(options->fs)->cancel_button),
 		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (options->fs));
+	/* Should be used for widescreen adaption */
+	gtk_font_selection_dialog_set_filter(GTK_FONT_SELECTION_DIALOG(options->fs),
+					     GTK_FONT_FILTER_BASE,GTK_FONT_SCALABLE,
+					     NULL,NULL,NULL,NULL,NULL,NULL);
 	if (options->font)
 		gtk_font_selection_dialog_set_font_name(GTK_FONT_SELECTION_DIALOG(options->fs), options->font);
 
@@ -1629,15 +1670,20 @@ void text_overlay_textbox_changed(GtkWidget *w, gpointer data)
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
 	char *text = gtk_entry_get_text(GTK_ENTRY(w));
+	int lbea, rbea, wi, asc, desc, wn, h;
 
 	strcpy(options->text, text);
 
 	if (text && options->font)
 		if (strcmp(text, "")!=0)
 		{
-			char temp[10];
-			options->image_width = gdk_text_width(gdk_font_load(options->font), text, strlen(text));
-			options->image_height = gdk_text_height(gdk_font_load(options->font), text, strlen(text));
+			char temp[10];	
+			gdk_string_extents(options->fontdesc, text,
+			   &lbea, &rbea, &wi, &asc, &desc);
+			h = asc+desc;
+			wn = rbea-lbea;
+			options->image_width = wn;
+			options->image_height = h;
 
 			sprintf(temp, "%d", options->image_width);
 			gtk_entry_set_text(GTK_ENTRY(options->image_position[0]), temp);
@@ -1800,7 +1846,10 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	gtk_widget_show(label);
 	options->image_position[0] = gtk_entry_new();
 	gtk_widget_set_usize(options->image_position[0], 50, 23);
-	gtk_signal_connect(GTK_OBJECT(options->image_position[0]), "changed",
+	if (options->type == GTK_EFFECT_TEXT)
+	  gtk_entry_set_editable(GTK_ENTRY(options->image_position[0]),FALSE);
+	else
+	  gtk_signal_connect(GTK_OBJECT(options->image_position[0]), "changed",
 		GTK_SIGNAL_FUNC(image_overlay_textbox_changed), &(options->image_width));
 	gtk_box_pack_start (GTK_BOX (hbox2), options->image_position[0], TRUE, FALSE, 0);
 	gtk_widget_show(options->image_position[0]);
@@ -1809,7 +1858,10 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	gtk_widget_show(label);
 	options->image_position[1] = gtk_entry_new();
 	gtk_widget_set_usize(options->image_position[1], 50, 23);
-	gtk_signal_connect(GTK_OBJECT(options->image_position[1]), "changed",
+	if (options->type == GTK_EFFECT_TEXT)
+	  gtk_entry_set_editable(GTK_ENTRY(options->image_position[1]),FALSE);
+	else
+	  gtk_signal_connect(GTK_OBJECT(options->image_position[1]), "changed",
 		GTK_SIGNAL_FUNC(image_overlay_textbox_changed), &(options->image_height));
 	gtk_box_pack_start (GTK_BOX (hbox2), options->image_position[1], TRUE, FALSE, 0);
 	gtk_widget_show(options->image_position[1]);
@@ -1888,9 +1940,11 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	/* Create an image/text overlay using lavpipe and matteblend.flt */
 
 	struct image_overlay_options *options;
-	char file[256];
-	char command[256];
+	int i;
 	GtkScene *scene;
+	FILE *fdd;
+	char tempfile[256];
+	char syscall[256];
 
 	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
@@ -1917,18 +1971,59 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	options->opacity = 100; /* default opacity */
 
 	/* now a bit tricky, get the movie settings by obtaining one frame */
-	sprintf(file, "%s/.studio/temp.jpg", getenv("HOME"));
-	sprintf(command, "\"%s\" -o \"%s \"-f i -i %d \"%s\"%s",
-		app_location(LAVTRANS), file, options->scene_start, options->scene_file,
-		verbose?"":" >> /dev/null 2>&1");
-	system(command);
-	options->video_image = gdk_pixbuf_new_from_file (file);
-	unlink(file);
-	options->movie_width = gdk_pixbuf_get_width(options->video_image);
-	options->movie_height = gdk_pixbuf_get_height(options->video_image);
+	/* Video format (normal or widescreen) used */
+	sprintf(tempfile, "%s/.studio/tempfile.lav2yuv.data", getenv("HOME"));
+	sprintf(syscall, "\"%s\" -f 1 -P %s \"%s\" > \"%s\" 2>/dev/null",
+		app_location(LAV2YUV), picture_aspect, options->scene_file, tempfile);
+	system(syscall);
+	fdd = fopen(tempfile, "r");
+	syscall[0] = '\0';
+	fgets(syscall, 255, fdd);
+	fclose(fdd);
+	unlink(tempfile);
+
+	for (i=0;i<strlen(syscall);i++)
+		if (syscall[i] == '\n' || syscall[i] == '\0')
+		{
+			syscall[i] = '\0';
+			break;
+		}
+	if (verbose) printf("lav2yuv gave us the following header: \'%s\'\n",
+		syscall);
+	/* Here we assume that the header is correct! */
+	for (i = 0; i < strlen(syscall); i++)
+	  if (!strncmp(syscall+i," W",2)) {
+	    sscanf(syscall+i+2,"%d",&(options->movie_width));
+	    break;
+	  }
+	for (i = 0; i < strlen(syscall); i++)
+	  if (!strncmp(syscall+i," H",2)) {
+	    sscanf(syscall+i+2,"%d",&(options->movie_height));
+	    break;
+	  }
+	for (i = 0; i < strlen(syscall); i++)
+		if (!strncmp(syscall+i, " I", 2))
+		{
+			options->interlacing_info = syscall[i+2];
+			break;
+		}
+	/* If no aspect ration present, use A1:1 */
+	options->aspect_enu = 1;
+	options->aspect_den = 1;
+	for (i = 0; i < strlen(syscall); i++)
+	  if (!strncmp(syscall+i, " A", 2)){
+	    sscanf(syscall+i+2,"%d:%d",&(options->aspect_enu),
+		   &(options->aspect_den));
+	  }
+	/* Set preview aspect ratio */
+	if (strncmp(picture_aspect,"4:3",8))
+	  lavedit_effects_preview_width = (lavedit_effects_preview_height*16)/9;
+	else
+	  lavedit_effects_preview_width = (lavedit_effects_preview_height*4)/3;
 
 	options->image = NULL;
 	options->font = NULL;
+	options->fontdesc = NULL;
 
 	if (strcmp(data, "image")==0)
 	{

@@ -422,7 +422,7 @@ static void callback_pipes(gpointer data, gint source,
 
       /* trigger callback function for each specific app */
       if (number == MPEG2ENC || number == MP2ENC || number == MPLEX || number == YUV2DIVX ||
-          number == YUV2LAV) {
+          number == YUV2LAV_E) {
          continue_encoding();
       }
       else if (number == LAV2YUV_S) {

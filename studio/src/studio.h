@@ -40,6 +40,7 @@ int audio_recsrc;
 int sync_corr;
 int MJPG_nbufs;
 int MJPG_bufsize;
+  char picture_aspect[8];
 
 /* used for the encoding configuration */
 #define FILELEN 100
