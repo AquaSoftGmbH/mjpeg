@@ -16,7 +16,8 @@ typedef struct
    long video_norm;
 
    long max_frame_size;
-   int  MJPG_422;
+   int  MJPG_chroma;
+	/* TODO: Need to flag mixed chroma model files? */
 
    int  has_audio;
    long audio_rate;

@@ -46,10 +46,7 @@ int	active_height = 0;
 static char roundadj[4] = { 0, 0, 1, 2 };
 
 
-/* chroma_format */
-#define CHROMA420 1
-#define CHROMA422 2
-#define CHROMA444 3
+
 
 #define BUFFER_ALIGN 16
  

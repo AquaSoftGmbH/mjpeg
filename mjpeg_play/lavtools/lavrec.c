@@ -2,8 +2,9 @@
     lavrec - Linux Audio Video RECord
 
     Copyright (C) 2000 Rainer Johanni <Rainer@Johanni.de>
-
     Extended by: Gernot Ziegler <gz@lysator.liu.se>
+    Patched '2000 by Wolfgang Scherr <scherr@net4you.net>
+    Works fine with Miro DC10(plus), too.
 
 
     Capture motion video from the IOMEGA Buz to an AVI or Quicktime
@@ -18,11 +19,13 @@
                  Hint: If your AVI video looks strange, try 'A' instead 'a'
                  and vice versa.
 		 
-    -i [pPnNta]  Input Source:
-                 'p' PAL  Composite Input
-                 'P' PAL  SVHS-Input
-                 'n' NTSC Composite Input
-                 'N' NTSC SVHS-Input
+    -i [pPnNkKa]   Input Source:
+                 'p' PAL   Composite Input
+                 'P' PAL   SVHS-Input
+                 'n' NTSC  Composite Input
+                 'N' NTSC  SVHS-Input
+                 's' SECAM Composite Input
+                 'S' SECAM SVHS-Input
                  't' TV tuner input (if available)
                  'a' (or every other letter) Autosense (default)
 
@@ -34,7 +37,9 @@
 
    -g WxH+X+Y    An X-style geometry string for capturing subareas.
                  Even if a decimation > 1 is used, these values are always
-                 coordinates in the undecimated (720x576 or 720x480) frame.
+                 coordinates in the undecimated frame.  
+				 For DC10: 768x{576 or 480}.
+				 For others: 720x{576 or 480}.
                  Also, unlike in X-Window, negative values for X and Y
                  really mean negative offsets (if this feature is enabled
                  in the driver) which lets you fine tune the position of the
@@ -207,6 +212,8 @@ static lav_file_t *video_file, *video_file_old;
 static int width, height;
 static int input, norm;
 static int audio_bps; /* audio bytes per sample */
+
+static char *norm_name[] = {"PAL", "NTSC", "SECAM"};
 
 static char infostring[4096];
 
@@ -437,10 +444,10 @@ void Usage(char *progname)
 	fprintf(stderr, "lavtools version " VERSION ": lavrec\n");
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
-   fprintf(stderr, "   -f [aAqm]   Format AVI/Quicktime/movtar\n");
-   fprintf(stderr, "   -i [pPnNat] Input Source\n");
+   fprintf(stderr, "   -f [aAqm]     Format AVI/Quicktime/movtar\n");
+   fprintf(stderr, "   -i [pPnNsSat] Input Source\n");
    fprintf(stderr, "   -d num     Decimation (either 1,2,4 or two digit number)\n");
-   fprintf(stderr, "   -g WxH+X+Y X-style geometry string (part of 720x576/480 field)\n");
+   fprintf(stderr, "   -g WxH+X+Y X-style geometry string (part of 768/720x576/480 field)\n");
    fprintf(stderr, "   -q num     Quality [%%]\n");
    fprintf(stderr, "   -t num     Capture time\n");
    fprintf(stderr, "   -S         Single frame capture mode\n");
@@ -823,9 +830,9 @@ static int output_video_frame(char *buff, long size, long count)
       /* Open next file */
 
       video_file = lav_open_output_file(out_filename,video_format,
-                      width,height,interlaced,
-                      (norm==VIDEO_MODE_PAL? 25.0 : 30000.0/1001.0),
-                      audio_size,(stereo ? 2 : 1),audio_rate);
+										width,height,interlaced,
+										(norm==VIDEO_MODE_NTSC? 30000.0/1001.0 : 25.0),
+										audio_size,(stereo ? 2 : 1),audio_rate);
       if(!video_file)
       {
          sprintf(infostring,"Error opening output file %s",out_filename);
@@ -965,6 +972,7 @@ static int output_audio_samples(char *buff, long samps)
    return res;
 }
 
+
 int main(int argc, char ** argv)
 {
    int video_dev;
@@ -976,6 +984,8 @@ int main(int argc, char ** argv)
    struct timeval first_time;
    struct timeval audio_t0;
    struct timeval audio_tmstmp;
+   struct video_capability vc;
+   struct video_channel vch;
    char * MJPG_buff;
    char AUDIO_buff[8192];
    long audio_offset, nb;
@@ -992,7 +1002,7 @@ int main(int argc, char ** argv)
    double time;
    double tdiff1, tdiff2;
    char *video_dev_name;
-
+   int device_width;
    /* check usage */
    if (argc < 2)  Usage(argv[0]);
 
@@ -1180,6 +1190,8 @@ int main(int argc, char ** argv)
         case 'P': printf("S-VHS PAL\n"); break;
         case 'n': printf("Composite NTSC\n"); break;
         case 'N': printf("S-VHS NTSC\n"); break;
+        case 's': printf("Composite SECAM\n"); break;
+        case 'S': printf("S-VHS SECAM\n"); break;
         case 't': printf("TV tuner\n"); break;
         default:  printf("Auto detect\n");
      }
@@ -1204,7 +1216,8 @@ int main(int argc, char ** argv)
         if(audio_lev!=-1)
         {
            printf("Audio input recording level: %d %%\n",audio_lev);
-           printf("%s audio output during recording\n",audio_mute?"Mute":"Don\'t mute");
+           printf("%s audio output during recording\n",
+				  audio_mute?"Mute":"Don\'t mute");
            printf("Recording source: %c\n",audio_recsrc);
         }
         else
@@ -1276,6 +1289,8 @@ int main(int argc, char ** argv)
       case 'P': input = 1; norm = 0; break;
       case 'n': input = 0; norm = 1; break;
       case 'N': input = 1; norm = 1; break;
+      case 's': input = 0; norm = 2; break;
+      case 'S': input = 1; norm = 2; break;
       case 't': input = 2; norm = 0; break;
       default:
          n = 0;
@@ -1289,8 +1304,9 @@ int main(int argc, char ** argv)
             if(res<0) system_error("getting input status","ioctl MJPIOC_G_STATUS");
             if(bstat.signal)
             {
-                sprintf(infostring,"input present: %s %s",bstat.norm?"NTSC":"PAL",
-                                                         bstat.color?"color":"no color");
+                sprintf(infostring,"input present: %s %s",
+						norm_name[bstat.norm],
+						bstat.color?"color":"no color");
                lavrec_msg(LAVREC_INFO,infostring,"");
                input = i;
                norm = bstat.norm;
@@ -1305,8 +1321,9 @@ int main(int argc, char ** argv)
                lavrec_msg(LAVREC_ERROR,"No input signal ... exiting","");
                exit(1);
             case 1:
-               sprintf(infostring,"Detected %s %s",norm?"NTSC":"PAL",
-                                                   input==0?"Composite":"S-Video");
+               sprintf(infostring,"Detected %s %s",
+					   norm_name[norm],
+					   input==0?"Composite":"S-Video");
                lavrec_msg(LAVREC_INFO,infostring,"");
                break;
             case 2:
@@ -1315,14 +1332,23 @@ int main(int argc, char ** argv)
          }
    }
 
+   /* Set input and norm first so we can determine width*/
+   vch.channel = input;
+   vch.norm    = norm;
+   res = ioctl(video_dev, VIDIOCSCHAN,&vch);
+   if(res<0) system_error("setting norm","ioctl VIDIOCSCHAN");
+   
+   /* Determine device pixel width (DC10=768, BUZ=720 for PAL/SECAM, DC10=640, BUZ=720) */
+   
+    res = ioctl(video_dev, VIDIOCGCAP,&vc);
+    if (res < 0) system_error("getting device capabilities","ioctl VIDIOCGCAP");
+    device_width=vc.maxwidth;
 
    /* Query and set params for capture */
 
    res = ioctl(video_dev, MJPIOC_G_PARAMS, &bparm);
    if(res<0) system_error("getting video parameters","ioctl MJPIOC_G_PARAMS");
 
-   bparm.input      = input;
-   bparm.norm       = norm;
    bparm.decimation = 0;
    bparm.quality    = quality;
 
@@ -1333,10 +1359,10 @@ int main(int argc, char ** argv)
    bparm.TmpDcm         = (verdcm==1) ? 1 : 2;
    bparm.field_per_buff = (verdcm==1) ? 2 : 1;
 
-   bparm.img_width      = (hordcm==1) ? 720 : 704;
+   bparm.img_width      = (hordcm==1) ? device_width : (device_width-64);
    bparm.img_height     = (norm==1)   ? 240 : 288;
 
-   if (geom_width>720) {
+   if (geom_width>device_width) {
       lavrec_msg(LAVREC_ERROR,"Image width too big! Exiting.","");
       exit(1);
    }
@@ -1363,7 +1389,7 @@ int main(int argc, char ** argv)
    if(geom_flags&XValue)
       bparm.img_x = geom_x;
    else
-      bparm.img_x = (720 - bparm.img_width)/2;
+      bparm.img_x = (device_width - bparm.img_width)/2;
 
    if(geom_flags&YValue)
       bparm.img_y = geom_y/2;
@@ -1386,7 +1412,7 @@ int main(int argc, char ** argv)
       bparm.APPn     = lav_query_APP_marker(video_format);
       bparm.APP_len  = lav_query_APP_length(video_format);
       /* There seems to be some confusion about what is the even and odd field ... */
-      bparm.odd_even = lav_query_polarity(video_format) == LAV_INTER_EVEN_FIRST;
+      bparm.odd_even = lav_query_polarity(video_format) == LAV_INTER_ODD_FIRST;
       for(n=0; n<bparm.APP_len && n<60; n++) bparm.APP_data[n] = 0;
    }
 
@@ -1507,7 +1533,7 @@ int main(int argc, char ** argv)
    num_aerr   = 0; /* Number of audio buffers in error        */
 
    /* Seconds per video frame: */
-   spvf = (norm==VIDEO_MODE_PAL) ? 0.040 : 1001./30000.;
+   spvf = (norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
 
    /* Seconds per audio sample: */
    if(audio_size)
@@ -1618,7 +1644,7 @@ int main(int argc, char ** argv)
       if(!single_frame && output_status<3 && (verbose > 1 || stats_changed))
       {
          int nf, ns, nm, nh;
-         if(norm==VIDEO_MODE_PAL)
+         if(norm!=VIDEO_MODE_NTSC)
          {
             nf = num_frames % 25;
             ns = num_frames / 25;

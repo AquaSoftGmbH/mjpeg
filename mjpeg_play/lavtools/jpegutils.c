@@ -187,9 +187,11 @@ static unsigned char chr2[8][MAX_CHROMA_WIDTH];
 /*
  * jpeg_data:       Buffer with jpeg data to decode
  * len:             Length of buffer
- * type:            0: Not interlaced
+ * itype:           0: Not interlaced
  *                  1: Interlaced, Odd first
  *                  2: Interlaced, even first
+ * ctype            Chroma format for decompression.
+ *                  Currently always 420 and hence ignored.
  */
 
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
@@ -250,6 +252,7 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
       hsf[i] = dinfo.comp_info[i].h_samp_factor;
       vsf[i] = dinfo.comp_info[i].v_samp_factor;
    }
+   
    if(  hsf[0] != 2 || hsf[1] != 1 || hsf[2] != 1 ||
        (vsf[0] != 1 && vsf[0] != 2)|| vsf[1] != 1 || vsf[2] != 1 )
    {

@@ -271,7 +271,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
    lav_fd->has_audio   = (asize>0 && achans>0);
    lav_fd->bps         = (asize*achans+7)/8;
    lav_fd->is_MJPG     = 1;
-   lav_fd->is_MJPG_422 = 1;
+   lav_fd->MJPG_chroma = CHROMAUNKNOWN;
 
    switch(format)
    {
@@ -626,10 +626,11 @@ int lav_video_is_MJPG(lav_file_t *lav_file)
    return lav_file->is_MJPG;
 }
 
-int lav_video_is_MJPG_422(lav_file_t *lav_file)
+int lav_video_MJPG_chroma(lav_file_t *lav_file)
 {
-   return lav_file->is_MJPG_422;
+	return lav_file->MJPG_chroma;
 }
+
 
 char *lav_video_compressor(lav_file_t *lav_file)
 {
@@ -912,7 +913,7 @@ lav_file_t *lav_open_input_file(char *filename)
    lav_fd->has_audio   = 0;
    lav_fd->bps         = 0;
    lav_fd->is_MJPG     = 0;
-   lav_fd->is_MJPG_422 = 0;
+   lav_fd->MJPG_chroma = CHROMAUNKNOWN;
 
    /* open video file, try AVI first */
 
@@ -1082,8 +1083,22 @@ lav_file_t *lav_open_input_file(char *filename)
          hf[n] = frame[jpeg_image_offset + 10 + 3*n + 1]>>4;
          vf[n] = frame[jpeg_image_offset + 10 + 3*n + 1]&0xf;
       }
-      if( hf[0] == 2*hf[1] && hf[0] == 2*hf[2] && vf[0] == vf[1] && vf[0] == vf[2] )
-         lav_fd->is_MJPG_422 = 1;
+
+	  /* Identify chroma sub-sampling format only 420 and 422 supported
+	   at present...*/
+	  if( hf[0] == 2*hf[1] && hf[0] == 2*hf[2] )
+	  {
+		 if( vf[0] == vf[1] && vf[0] == vf[2] )
+		 {
+			 lav_fd->MJPG_chroma = CHROMA422;
+		 }
+		 else if( vf[0] == 2*vf[1] && vf[0] == 2*vf[2] )
+			 lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+		 else		
+			 lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+	  }
+	  else
+		  lav_fd->MJPG_chroma = CHROMAUNKNOWN;
    }
 
    /* Check if video is interlaced */

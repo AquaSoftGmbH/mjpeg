@@ -23,6 +23,12 @@ typedef void movtar_t;
 #define LAV_INTER_EVEN_FIRST    2
 #define LAV_INTER_UNKNOWN      99
 
+/* chroma_format */
+#define CHROMAUNKNOWN 0
+#define CHROMA420 1
+#define CHROMA422 2
+#define CHROMA444 3
+
 typedef struct
 {
    avi_t       *avi_fd;
@@ -37,7 +43,7 @@ typedef struct
    int         has_audio;
    int         bps;
    int         is_MJPG;
-   int         is_MJPG_422;
+   int         MJPG_chroma;
 } lav_file_t;
 
 int  lav_query_APP_marker(char format);
@@ -55,7 +61,7 @@ int  lav_video_height(lav_file_t *lav_file);
 double lav_frame_rate(lav_file_t *lav_file);
 int  lav_video_interlacing(lav_file_t *lav_file);
 int  lav_video_is_MJPG(lav_file_t *lav_file);
-int  lav_video_is_MJPG_422(lav_file_t *lav_file);
+int  lav_video_MJPG_chroma(lav_file_t *lav_file);
 char *lav_video_compressor(lav_file_t *lav_file);
 int  lav_audio_channels(lav_file_t *lav_file);
 int  lav_audio_bits(lav_file_t *lav_file);
