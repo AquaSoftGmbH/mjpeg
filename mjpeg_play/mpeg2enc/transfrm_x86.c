@@ -33,7 +33,9 @@
 /* Routines written  in pure (NASM) assembler */
 
 extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
-extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
+extern void idct_mmx( int16_t * blk );
+extern void idct_sse( int16_t * blk );
+extern void idct_test( int16_t * blk );
 
 extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
 						  int lx, int16_t *blk);
@@ -259,10 +261,17 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
 
 void init_x86_transform()
 {
+        char *opt_type1="";
+        int flags = cpu_accel();
+
 	pfdct = fdct_mmx;
 	pidct = idct_mmx;
 	padd_pred = add_pred_mmx;
 	psub_pred = sub_pred_mmx;
 	pfield_dct_best = field_dct_best_mmx;
-	mjpeg_info( "SETTING MMX for TRANSFORM!");
+        if( flags & ACCEL_X86_SSE ) {
+            pidct = idct_sse;
+            opt_type1 = "SSE and ";
+        }
+	mjpeg_info( "SETTING %sMMX for TRANSFORM!",opt_type1);
 }

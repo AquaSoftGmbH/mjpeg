@@ -2,7 +2,11 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <math.h>
 #include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "transfrm_ref.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
@@ -46,6 +50,9 @@
 /* this code assumes >> to be a two's-complement arithmetic */
 /* right shift: (-2)>>1 == -1 , (-3)>>1 == -2               */
 
+
+// define if you want to include idct testing code
+#define IDCTTEST
 
 
 #define W1 2841 /* 2048*sqrt(2)*cos(1*pi/16) */
@@ -201,6 +208,148 @@ void idct(int16_t *block)
     idctcol(block+i);
 }
 
+#ifdef IDCTTEST
+
+extern void idct_mmx(int16_t *blk);
+extern void idct_sse(int16_t *blk);
+
+static double coslu[8][8];
+
+void idct_ref(int16_t *block)
+{
+    int x,y,u,v;
+    double tmp, tmp2;
+    double res[8][8];
+
+    for (y=0; y<8; y++) {
+        for (x=0; x<8; x++) {
+            tmp = 0.0;
+            for (v=0; v<8; v++) {
+                tmp2 = 0.0;
+                for (u=0; u<8; u++) {
+                    tmp2 += (double) block[v*8+u] * coslu[x][u];
+                }
+                tmp += coslu[y][v] * tmp2;
+            }
+            res[y][x] = tmp;
+        }
+    }
+
+    for (v=0; v<8; v++) {
+        for (u=0; u<8; u++) {
+            tmp = res[v][u];
+            if (tmp < 0.0) {
+                x = - ((int) (0.5 - tmp));
+            } else {
+                x = (int) (tmp + 0.5);
+            }
+            block[v*8+u] = x;
+        }
+    }
+}
+
+void init_idct_ref(void)
+{
+  int a,b;
+  double tmp;
+
+  for(a=0;a<8;a++)
+    for(b=0;b<8;b++) {
+      tmp = cos((double)((a+a+1)*b) * (3.14159265358979323846 / 16.0));
+      if(b==0)
+	tmp /= sqrt(2.0);
+      coslu[a][b] = tmp * 0.5;
+    }
+}
+
+static int idct_inbounds=0, idct_outbounds=0, idct_max_err=0, idct_iter=0;
+static int idct_mean[64]={
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0
+};
+static int idct_rms[64]={
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0,
+    0,0,0,0, 0,0,0,0
+};
+
+void idct_test(int16_t *block)
+{
+    int16_t origblock[64];
+    int i,e,m,b;
+
+    b=0;
+    for( i=0; i<64; i++ )
+        if( block[i]<-2048 || block[i]>2047 )
+            b++;
+    idct_inbounds+=b;
+
+    memcpy(origblock,block,64*sizeof(int16_t));
+
+    idct_ref(origblock);
+    // idct(origblock);
+
+    idct(block);
+    // idct_mmx(block);
+    // idct_sse(block);
+
+    b=0;
+    m=0;
+    for( i=0; i<64; i++ ) {
+        int x=block[i]-origblock[i];
+        int ax=abs(x);
+        idct_mean[i]+=x;
+        idct_rms[i]+=x*x;
+        if( ax>m )
+            m=ax;
+        if( block[i]<-256 || block[i]>255 )
+            b++;
+        if( origblock[i]<-256 || origblock[i]>255 ) {
+            // mjpeg_info("*********** REFERENCE VERSION OUT OF BOUNDS\n");
+        }
+    }
+    idct_outbounds+=b;
+    if (m > idct_max_err )
+        idct_max_err = m;
+    idct_iter++;
+    if( !(idct_iter&65535) ) {
+        int sme=0,srms=0;
+
+        for( i=0; i<64; i++ ) {
+            sme+=idct_mean[i];
+            srms+=idct_rms[i];
+        }
+        mjpeg_info("idct_test[%d]: max error=%d, mean error=%.8f, rms error=%.8f; bounds err: in=%d, out=%d\n",
+                   idct_iter,idct_max_err,
+                   sme/(idct_iter*64.),
+                   srms/(idct_iter*64.),
+                   idct_inbounds,idct_outbounds);
+        for( i=0; i<8; i++ ) {
+            int j;
+
+            for( j=0; j<8; j++ )
+                fprintf(stderr,"%9.6f%c",((double)idct_mean[i*8+j])/idct_iter,j==7?'\n':' ');
+            for( j=0; j<8; j++ )
+                fprintf(stderr,"%9.6f%c",((double)idct_rms[i*8+j])/idct_iter,j==7?'\n':' ');
+            fprintf(stderr,"\n");
+        }
+    }
+}
+#endif
+
 void init_idct(void)
 {
   int i;
@@ -208,4 +357,8 @@ void init_idct(void)
   iclp = iclip+512;
   for (i= -512; i<512; i++)
     iclp[i] = (i<-256) ? -256 : ((i>255) ? 255 : i);
+
+#ifdef IDCTTEST
+  init_idct_ref();
+#endif
 }
