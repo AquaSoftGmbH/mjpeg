@@ -616,6 +616,7 @@ int main(int argc, char ** argv)
 	struct mjpeg_params bp;
 	struct mjpeg_sync bs;
 	struct sigaction action, old_action;
+	struct video_capability vc;
 
    /* Output Version information - Used by xlav to check for
 	consistency. 
@@ -629,7 +630,7 @@ int main(int argc, char ** argv)
 	if(argc < 2) Usage(argv[0]);
 
 	nerr = 0;
-	while( (n=getopt(argc,argv,"v:a:X:Y:w:s:c:n:t:qSZHCxzg")) != EOF)
+	while( (n=getopt(argc,argv,"v:a:X:Y:s:c:n:t:qSZHCxzg")) != EOF)
 	{
 		switch(n) {
 		case 'a':
@@ -674,10 +675,6 @@ int main(int argc, char ** argv)
 
 		case 'q':
             quit_at_end = 0;
-            break;
-
-		case 'w':
-            playback_width=atoi(optarg);
             break;
 
 		case 'x':
@@ -875,10 +872,16 @@ int main(int argc, char ** argv)
 	hn = bp.norm ? 480 : 576;  /* Height of norm */
    
 	bp.decimation = 0; /* we will set proper params ourselves */
-   
+
 	/* Check dimensions of video, select decimation factors */
 	if (!soft_play && !screen_output)
 	{		
+		/* set correct width of device for hardware
+		   DC10(+): 768 (PAL/SECAM) or 640 (NTSC), Buz/LML33: 720*/
+		res = ioctl(mjpeg->dev, VIDIOCGCAP,&vc);
+		if (res < 0) mjpeg_error("getting device capabilities: %s\n",sys_errlist[errno]);
+		playback_width = vc.maxwidth;
+
 		if( el.video_width > playback_width || el.video_height > hn )
 		{
 			/* This is definitely too large */
