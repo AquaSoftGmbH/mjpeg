@@ -223,12 +223,10 @@ silence_bs=0; silence_ch=0;
                 set_silence(optarg);
                 break;
 	   case 'R':
-		{
-		  silence_sr=44100;
-		  silence_bs=16;
-		  silence_ch=2;
-                  break;
-		}
+		silence_sr=44100;
+		silence_bs=16;
+		silence_ch=2;
+                break;
            case 'f':
 	   case 'c':
 		num_frames = atoi(optarg);
