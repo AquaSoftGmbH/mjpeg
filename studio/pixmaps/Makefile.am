@@ -34,6 +34,7 @@ EXTRA_DIST = \
 	scene_right.xpm \
 	scene_screenshot.xpm \
 	scene_split.xpm \
+	scene_trim.xpm \
 	slider_brightness.xpm \
 	slider_contrast.xpm \
 	slider_hue.xpm \

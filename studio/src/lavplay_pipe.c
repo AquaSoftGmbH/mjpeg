@@ -185,7 +185,7 @@ void process_lavplay_input(char *msg)
 		quit_lavplay_with_error(msg+9);
 	}
 
-	if(strncmp(msg, "--DEBUG:    ", 12) == 0)
+	if(strncmp(msg, "--DEBUG:", 8) == 0)
 	{
 		/* trim the strim */
 		while (msg[0]!=':' && msg[0]!='\0') msg++;

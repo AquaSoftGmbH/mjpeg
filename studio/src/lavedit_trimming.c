@@ -47,6 +47,7 @@ extern int tv_width_edit, tv_height_edit;
 GtkWidget *tv_trimming, *pop_window;
 char command_to_lavplay_trimming[256];
 GtkObject *popup_adj[3];
+static int is_lavplay_active = 0;
 
 void command_to_lavplay_trimming_set(GtkWidget *widget, char *data);
 void lavplay_enhanced_slider_value_changed(GtkAdjustment *adj, gpointer data);
@@ -159,7 +160,8 @@ void open_frame_edit_window()
 	char temp1[256];
 
 	/* first, close the original lavplay */
-	close_pipe(LAVPLAY_E);
+	if ((is_lavplay_active = pipe_is_active(LAVPLAY_E)))
+		close_pipe(LAVPLAY_E);
 
 	pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
 
@@ -236,6 +238,9 @@ int save_trimming_file(char *target)
 	gtk_adjustment_set_value(GTK_ADJUSTMENT(popup_adj[1]),
 		scene->view_start - scene->scene_start);
 	gtk_adjustment_set_value(GTK_ADJUSTMENT(popup_adj[2]),
+		scene->view_end - scene->scene_start);
+	sprintf(command_to_lavplay_trimming, "es %d %d\n",
+		scene->view_start - scene->scene_start,
 		scene->view_end - scene->scene_start);
 
 	return 1;
@@ -348,7 +353,8 @@ void quit_trimming(GtkWidget *widget, gpointer data)
 
 	gtk_widget_destroy(pop_window);
 
-	create_lavplay_edit_child();
+	if (is_lavplay_active)
+		create_lavplay_edit_child();
 }
 
 void lavplay_trimming_callback(char *msg)
@@ -357,8 +363,19 @@ void lavplay_trimming_callback(char *msg)
 	{
 		char norm;
 		int cur_pos,total,speed;
+		int n, tot=0;
 
-		sscanf(msg+1,"%c%d/%d/%d",&norm,&cur_pos,&total,&speed);
+		for (n=0;msg[n];n++)
+			if (msg[n]=='/')
+				tot++;
+		if (tot==2)
+			sscanf(msg+1,"%c%d/%d/%d",&norm,&cur_pos,&total,&speed);
+		else
+		{
+			int norm_num;
+			sscanf(msg+1,"%d/%d/%d/%d",&norm_num,&cur_pos,&total,&speed);
+			norm = (norm_num==25)?'p':'n';
+		}
 		set_lavplay_trimming_log(norm, cur_pos,total);
 
 		/* give command to lavplay if available */

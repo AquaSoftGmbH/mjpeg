@@ -165,18 +165,21 @@ void stop_scene_detection_process(GtkWidget *widget, gpointer data)
 
 void scene_detection_input_cb(char *input)
 {
-	if ((input=strstr(input, "frame"))!=NULL)
+	if (strstr(input, "frame"))
 	{
 		int n1,n2,n3,n4;
 
-		sscanf(input, "frame %d/%d, lum_mean %d, delta_lum %d",
-			&n1, &n2, &n3, &n4);
-		if (scene_detection_status_label)
-			gtk_label_set_text(GTK_LABEL(scene_detection_status_label),
-			input);
-		if (scene_detection_bar)
-			gtk_progress_bar_update(GTK_PROGRESS_BAR(scene_detection_bar),
-			((double)n1)/n2);
+		input = strstr(input, "frame");
+		if (sscanf(input, "frame %d/%d, lum_mean %d, delta_lum %d",
+			&n1, &n2, &n3, &n4) == 4)
+		{
+			if (scene_detection_status_label)
+				gtk_label_set_text(GTK_LABEL(scene_detection_status_label),
+				input);
+			if (scene_detection_bar)
+				gtk_progress_bar_update(GTK_PROGRESS_BAR(scene_detection_bar),
+					((double)n1)/n2);
+		}
 	}
 	else if (strncmp(input, "**ERROR:", 8) == 0)
 	{

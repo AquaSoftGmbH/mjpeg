@@ -43,6 +43,7 @@
 #include "effect_text.xpm"
 #include "effect_picture.xpm"
 #include "effect_transition.xpm"
+#include "scene_screenshot.xpm"
 
 #include "gnome-color-browser.xpm"
 #include "gnome-fontsel.xpm"
@@ -1962,7 +1963,7 @@ GtkWidget *get_effects_notebook_page()
 	vbox2 = gtk_vbox_new(FALSE, 2);
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_image_label_button("Create Scene Transition",
+	button = gtk_image_label_button(" Create Scene Transition ",
 			"Create a Scene Transition between current and next Scene",
 			(gchar**)effect_transition_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
@@ -1975,7 +1976,7 @@ GtkWidget *get_effects_notebook_page()
 
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_image_label_button("Create Image Overlay",
+	button = gtk_image_label_button(" Create Image Overlay ",
 			"Create an Image Overlay over a Video Scene",
 			(gchar**)effect_picture_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
@@ -1988,11 +1989,24 @@ GtkWidget *get_effects_notebook_page()
 
 	hbox3 = gtk_hbox_new(FALSE, 10);
 
-	button = gtk_image_label_button("Create Text Overlay",
+	button = gtk_image_label_button(" Create Text Overlay ",
 			"Create an Text Overlay over a Video Scene",
 			(gchar**)effect_text_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(lavedit_effects_create_overlay), "text");
+	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
+	gtk_widget_show(button);
+
+	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 0);
+	gtk_widget_show(hbox3);
+
+	hbox3 = gtk_hbox_new(FALSE, 10);
+
+	button = gtk_image_label_button(" Create Screenshot ",
+				"Create Screenshot of the Current Frame",
+				scene_screenshot_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+		GTK_SIGNAL_FUNC(create_filesel3), "screen");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 

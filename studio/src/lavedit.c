@@ -45,7 +45,7 @@
 #include "scene_detection.xpm"
 #include "scene_left.xpm"
 #include "scene_right.xpm"
-#include "scene_screenshot.xpm"
+#include "scene_trim.xpm"
 #include "arrow_left.xpm"
 #include "arrow_right.xpm"
 #include "editor_play.xpm"
@@ -91,7 +91,6 @@ void prepare_for_scene_detection( GtkWidget *w, GtkFileSelection *fs );
 void add_scene_movie_change_page( GtkWidget *widget, char *direction);
 int open_add_movie_scene_editlist(void);
 void add_movie_scene_image_clicked( GtkWidget *widget, gpointer data);
-static void create_filesel3(GtkWidget *widget, char *what_to_do);
 void clear_editlist(GtkWidget *widget, gpointer data);
 void save_eli_file(char *target);
 void image_clicked(GtkWidget *widget, GdkEventButton *event, gpointer data);
@@ -947,6 +946,12 @@ void delete_scene(GtkWidget *widget, gpointer data)
 	save_eli_temp_file();
 }
 
+static void
+do_trim (GtkWidget *widget, gpointer data)
+{
+	open_frame_edit_window();
+}
+
 GtkWidget *get_editing_routines_notebook_page()
 {
 	GtkWidget *hbox3, *vbox2, *button;
@@ -1042,11 +1047,11 @@ GtkWidget *get_editing_routines_notebook_page()
 
 	hbox3 = gtk_hbox_new(TRUE, 10);
 
-	button = gtk_image_label_button(" Create Screenshot ",
-				"Create Screenshot of the Current Frame",
-				scene_screenshot_xpm, 0, GTK_POS_BOTTOM);
+	button = gtk_image_label_button(" Trim Scene ",
+				"Trim the Scene - Cut the Ends off a Scene",
+				scene_trim_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(create_filesel3), "screen");
+		GTK_SIGNAL_FUNC(do_trim), NULL);
 	gtk_box_pack_start (GTK_BOX (hbox3), button, FALSE, TRUE, 0);
 	gtk_widget_show(button);
 

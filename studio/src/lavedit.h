@@ -16,6 +16,7 @@ void create_lavplay_trimming_child(void);
 
 /* lavedit.c */
 void save_eli_temp_file(void);
+void create_filesel3(GtkWidget *widget, char *what_to_do);
 
 /* lavedit_effects.c */
 GtkWidget *get_effects_notebook_page(void);
