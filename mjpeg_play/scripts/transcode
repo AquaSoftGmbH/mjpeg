@@ -24,7 +24,6 @@ outpat=".%d"
 outfile=transcoded
 bitrate=""
 sleep=0
-sync="-s"
 decode="YUVh"
 while getopts ":o:b:s:SVTXh" opt
 do
@@ -52,6 +51,7 @@ V)
 echo Generating VCD stream
 MPEGOPTS="-r 16 "
 decode="YUVh"
+;;
 S)
 echo Generating SVCD stream
 MPEGOPTS="-m 2 -F 3 -q 9 -V 200"
@@ -72,11 +72,12 @@ useage
 fi
 shift $[$OPTIND-1]
 sleep $[$sleep*60]
-cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
-fifo=/tmp/tcfifo$$
-mkfifo $fifo
-cat $* |  extract_ac3 -  $sync |  ac3dec -o wav -p $fifo &
-sox -t wav - -r 44100 -t wav - < $fifo | toolame -p 2 -b 224 - $outfile.mp2
-rm -f $fifo
-# Eventually mux-ing goes here!
 
+cat $* | mpeg2dec -s -o $decode | yuv4hdr | \
+	${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
+
+cat $* | extract_ac3 - -s | ac3dec -m wav | \
+	sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | 
+	toolame -p 2 -b 224 /dev/stdin $outfile.mp2
+
+# Eventually mux-ing goes here!
