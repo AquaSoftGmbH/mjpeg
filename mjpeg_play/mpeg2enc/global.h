@@ -233,6 +233,7 @@ EXTERN unsigned short default_intra_quantizer_matrix[64]
 EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
+/* The real default... we're using something else...
 {
 	16, 16, 16, 16, 16, 16, 16, 16,
 	16, 16, 16, 16, 16, 16, 16, 16,
@@ -243,6 +244,19 @@ EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 	16, 16, 16, 16, 16, 16, 16, 16,
 	16, 16, 16, 16, 16, 16, 16, 16
 }
+*/
+
+{
+  16, 17, 18, 19, 20, 21, 22, 23,
+  17, 18, 19, 20, 21, 22, 23, 24,
+  18, 19, 20, 21, 22, 23, 24, 25,
+  19, 20, 21, 22, 23, 24, 26, 27,
+  20, 21, 22, 23, 25, 26, 27, 28,
+  21, 22, 23, 24, 26, 27, 28, 30,
+  22, 23, 24, 26, 27, 28, 30, 31,
+  23, 24, 25, 27, 28, 30, 31, 33
+ 
+}   
 #endif
 ;
 

@@ -103,9 +103,9 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO DEBUG */
-static double avg_KI = 8.0;	/* These values empirically determined 		*/
-static double avg_KB = 13.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
-static double avg_KP = 12.0;
+static double avg_KI = 10.0;	/* These values empirically determined 		*/
+static double avg_KB = 8.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KP = 8.0;
 static double avgsq_KI = 8.0*8.0;
 static double avgsq_KB = 13.0*13.0;
 static double avgsq_KP = 12.0*12.0;
@@ -195,8 +195,8 @@ void rc_init_seq()
 
 	if( pred_ratectl )
 	{
-		Ki = 1.3;
-		Kb = 1.6;
+		Ki = 1.0;
+		Kb = 1.2;
 		Kp = 1.0;
 	}
 	else
@@ -343,7 +343,7 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			d = d0i;
 			avg_K = avg_KI;
-			Si = avg_K*actsum;
+			Si = (Xi + 3.0*avg_K*actsum)/4.0;
 			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		}
 		else
@@ -368,7 +368,7 @@ void rc_init_pict(pict_data_s *picture)
 		{
 			d = d0p;            // I and P frame share ratectl virtual buffer
 			avg_K = avg_KB;
-			Sb = (Xb + avg_K * actsum) / 2.0;
+			Sb = Xb /* + avg_K * actsum) / 2.0 */;
 			T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
 		}
 		else
@@ -394,7 +394,7 @@ void rc_init_pict(pict_data_s *picture)
 	current_Q = scale_quant(picture,62.0*d / r);
 	if( !quiet )
 	{
-		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, T, avg_K  );
+		printf( "AA=%3.1f T=%6.0f K=%.1f ",avg_act, T/8, avg_K  );
 	}
 	
 	if( pred_ratectl )
@@ -402,15 +402,8 @@ void rc_init_pict(pict_data_s *picture)
 		/* We can only carry over as much total undershoot as
 		buffering permits */
 		
-		/* Deliberately allow quantisation to fall to minimum...
-		*/
-		if( target_Q > 6.0 )
-		{	
-		/* If the discrepancy is because we're undershooting we only
-			   adjust if it looks like a serious overshoot may happen */
-			target_Q = (target_Q + current_Q)/2.0;
-			d = (int) (target_Q * r / 62.0);
-		} else if ( current_Q < 2.5 && target_Q > 12.0 )
+
+		if ( current_Q < 2.5 && target_Q > 12.0 )
 		{
 			/* We're undershooting and a serious surge in the data_flow
 			   due to lagging adjustment is possible...
@@ -447,7 +440,7 @@ void rc_init_pict(pict_data_s *picture)
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: start of picture\n");
-	fprintf(statfile," target number of bits: T=%.0f\n",T);
+	fprintf(statfile," target number of bits: T=%.0f\n",T/8);
 #endif
 }
 
@@ -518,7 +511,11 @@ void rc_update_pict(pict_data_s *picture)
 	R-= S;						/* remaining # of bits in GOP */
 	Qsum = 0;
 	for( i = 0; i < mb_per_pict; ++i )
-		Qsum += picture->mbinfo[i].mquant;
+	{
+		Qsum += cur_picture.mbinfo[i].mquant;
+	}
+
+
 	AQ = (double)Qsum/(double)mb_per_pict;
 	/* TODO: The X are used as relative activity measures... so why
 	   bother dividing by 2?  

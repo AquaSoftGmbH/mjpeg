@@ -56,6 +56,7 @@
 #include "simd.h"
 
 
+
 /* Macro-block Motion compensation results record */
 
 typedef struct _blockcrd {

@@ -74,8 +74,8 @@ void init_quantizer()
 			fprintf( stderr, "SETTING EXTENDED MMX for QUANTIZER!\n");
 			use_simd_quantizer = 1;
 			psimd_inter_quant =  quantize_ni_mmx;
-			pquant_weight_coeff_sum = quant_weight_coeff_sum;
-			piquant_non_intra_m1 = iquant_non_intra_m1;
+			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
+			piquant_non_intra_m1 = iquant_non_intra_m1_mmx;
 		}
 		else
 		{
@@ -419,15 +419,14 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat
 {
   int i, val;
 
-#ifdef ORIGINAL_CODE
-  quant_mat = inter_q;
-  i_quant_mat = i_inter_q;
+#ifndef ORIGINAL_CODE
+
   for (i=0; i<64; i++)
   {
     val = src[i];
     if (val!=0)
     {
-      val = (int)((2*val+(val>0 ? 1 : -1))*quant_mat[i]*mquant)/32;
+      val = (int)((2*val+(val>0 ? 1 : -1))*quant_mat[i])/32;
 
       /* mismatch control */
       if ((val&1)==0 && val!=0)
@@ -441,7 +440,7 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat
   
   for (i=0; i<64; i++)
   {
-    val = fastabs(src[i]);
+    val = abs(src[i]);
     if (val!=0)
     {
 		val = ((val+val+1)*quant_mat[i]) >> 5;
