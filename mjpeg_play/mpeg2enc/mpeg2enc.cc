@@ -655,7 +655,7 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "reduction-2x2",  1, 0, '2'},
         { "min-gop-size",      1, 0, 'g'},
         { "max-gop-size",      1, 0, 'G'},
-        { "closed-gop",        1, 0, 'c'},
+        { "closed-gop",        0, 0, 'c'},
         { "force-b-b-p", 0, &preserve_B, 1},
         { "quantisation-reduction", 1, 0, 'Q' },
         { "quant-reduction-max-var", 1, 0, 'X' },
@@ -676,8 +676,8 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
         { "multi-thread",      1, 0, 'M' },
         { "custom-quant-matrices", 1, 0, 'K'},
         { "unit-coeff-elim",   1, 0, 'E'},
-        { "b-per-refframe",           1, 0, 'R' },
-	{ "cbr",               1, 0, 'u'},
+        { "b-per-refframe",    1, 0, 'R' },
+	{ "cbr",               0, 0, 'u'},
         { "help",              0, 0, '?' },
         { 0,                   0, 0, 0 }
     };
@@ -972,6 +972,14 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 		mjpeg_error("Output file name (-o option) is required!");
 		++nerr;
 	}
+
+/* 
+ * Probably not necessary but err on the safe side.  If someone wants to
+ * waste space by using a Constant Bit Rate stream then disable the '-q'
+ * parameter.  Further checks for CBR are made in mpeg2encoptions.cc 
+*/
+    if (force_cbr != 0)
+       quant = 0;
 
     return nerr;
 }

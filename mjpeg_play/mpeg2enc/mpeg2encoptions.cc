@@ -341,7 +341,9 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 	case  MPEG_FORMAT_MPEG2 : 
 		mjpeg_info( "Selecting generic MPEG2 output profile");
 		mpeg = 2;
-		if( video_buffer_size == 0 )
+		if (!force_cbr && quant == 0)
+			quant = 8;
+		if (video_buffer_size == 0)
 			video_buffer_size = 230;
 		break;
 
@@ -354,18 +356,18 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile");
 		mpeg = 2;
-		if( quant == 0 )
+		if (!force_cbr && quant == 0)
 			quant = 8;
 		if( svcd_scan_data == -1 )
 			svcd_scan_data = 1;
 		if( min_GOP_size == -1 )
-            min_GOP_size = 9;
-        seq_hdr_every_gop = 1;
-        if( seq_length_limit == 0 )
-            seq_length_limit = 700;
-        if( nonvid_bitrate == 0 )
-            nonvid_bitrate = 230;
-        break;
+            		min_GOP_size = 9;
+        	seq_hdr_every_gop = 1;
+        	if (seq_length_limit == 0)
+            		seq_length_limit = 700;
+        	if (nonvid_bitrate == 0)
+            		nonvid_bitrate = 230;
+        	break;
 
 	case MPEG_FORMAT_VCD_STILL :
 		mjpeg_info( "Selecting VCD Stills output profile");
@@ -473,17 +475,15 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		max_GOP_size = 1;
 		break;
 
-
 	case MPEG_FORMAT_DVD :
 	case MPEG_FORMAT_DVD_NAV :
 		mjpeg_info( "Selecting DVD output profile");
-		
-		if( bitrate == 0 )
-			bitrate = 7500000;
-        if( video_buffer_size == 0 )
-            video_buffer_size = 230;
 		mpeg = 2;
-		if( quant == 0 )
+		if (bitrate == 0)
+			bitrate = 7500000;
+        	if (video_buffer_size == 0)
+            		video_buffer_size = 230;
+		if (!force_cbr && quant == 0)
 			quant = 8;
 		seq_hdr_every_gop = 1;
 		break;

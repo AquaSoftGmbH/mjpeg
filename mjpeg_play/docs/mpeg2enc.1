@@ -118,7 +118,7 @@ this flag selects the kind of stream to produce.
 .PP
         A basic MPEG-1 profile that lets most parameters
         be adjusted for particular applications using the other flags.
-        Typical applications would be to produce a variable bit-rate MPEG-1
+        Typical applications would be to produce a variable bitrate MPEG-1
         stream with big buffers and a high data-rate software playback
         on a computer.
 .PP
@@ -133,7 +133,7 @@ stream structure are simply ignored.
 .BR -f|--format \ 2 
         -       User VCD.
 .PP
-As for profile 2 but bit-rate and video buffer size can
+As for profile 2 but bitrate and video buffer size can
 be set to non-standard values. Frame size may also be non-standard.
 Bit-rate and buffer sizes default to those for standard VCD.
 .PP
@@ -157,7 +157,7 @@ non-standard stream structure are simply ignored.
 .BR -f|--format \ 5
         -       Non-standard SVCD.
 .PP
-As for profile 4 but bit-rate, video
+As for profile 4 but bitrate, video
 buffer size, GOP sizes and structure can be set to
 non-standard values. Frame size may also be non-standard.
 Bit-rate and buffer sizes default to those for standard SVCD.
@@ -250,13 +250,14 @@ adjusted for the standard VCD and SVCD profiles.
 .PP
 .BR -b|--video-bitrate \ num 
 .PP
-The bit-rate of the output video stream in k Bits/sec.  The default is
-exactly the bit-rate required for VCD streams. Selecting one of the
-non-generic formats sets a default bit-rate that makes sense for the
-selected format. If variable bit-rate mode has been selected (see the
+The bitrate of the output video stream in kBits/sec.  The default is
+exactly the bitrate required for VCD streams.
+If variable bitrate (VBR) mode has been selected (see the
 -q option) this is the
 .I maximum
-bit-rate of the stream.
+bitrate of the stream. \fBNOTE:\fP By default MPEG-2 streams (\fB-f\fP
+3, 4, 5, 8 and 9 are VBR.  Use the \fB--cbr\fP option for generating
+CBR (Constant Bit Rate) streams.
 .PP
 .BR -V|--video-buffer \ num
 .PP
@@ -435,17 +436,22 @@ parallelism used.  Indeed there is a hardcoded limit of 4 worker threads.
 Minimum quantization of the output stream.  Quantisation controls the
 precision with which image information is encoded.  The lower the
 number the higher the quality but the greater the required data-rate.
-For VCD resolution anything below 8 or so produces pretty good quality
-video.  For SVCD the equivalent level is around 10. If this option is
-set a 
-.I variable bit rate 
+\fBNOTE:\fP on IA32 systems it is possible to cause artifacting by setting
+the value too low (3 or less) due to arithmetic overflow/truncation in the
+DCT/iDCT routines.
+If this option is set a 
+.I variable bitrate 
 stream is produced.  This is more efficient
-overall but variable bit-rate MPEG-1 cannot be played by many hardware
-decoders and/or DVD/(S)VCD drives.  If you intend to use a software
-decoder you'd be insane not to use variable bit-rate.
-
-If this option is set without a maximum bit-rate being specified then
-quantization is fixed at the specified value.
+but variable bitrate MPEG-1 cannot be played by some hardware
+decoders and is rejected by some DVD authoring packages.  If you intend 
+to use a software decoder you'd be insane not to use variable bitrate.
+.sp
+If this option is set without a maximum bitrate being specified then
+quantization is fixed at the specified value.  It should be noted that not
+specifying a bitrate is probably an error and may produce unexpected results.
+.sp
+For MPEG-2 streams a default of 8 is used if \fB-q\fP is not explicitly given.
+To force constant bitrate streams use \fB--cbr\fP and \fB-b NOT -q\fP!
 .PP
 .BR -I|--interlace-mode \ 0|1|2
 .PP
@@ -474,7 +480,7 @@ that ensure big changes of image coincide with the fully-encoded
 I-frame starting a new GOP.  This can help prevent transient
 "blockiness".  For VCD/SVCD/DVD the largest GOP size is 15 for PAL or 18 for
 NTSC.  Reasonable minimum GOP sizes are 6 or 9.  A larger GOP size can
-help reduce the bit-rate required for a given quality.  However, this
+help reduce the bitrate required for a given quality.  However, this
 really only applies to high-quality source material with little noise
 (e.g. digital video).  For broadcast material there is little point
 setting GOP size much beyond 21 or 24.  Even with good source material
@@ -482,8 +488,8 @@ diminishing returns set in quite rapidly.
 
 Note: Mpeg2enc is currently hard-wired to produce 2 B frames between
 each I/P frame unless the GOP size forces less.  This is reasonable
-for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
-low-bit-rate encoding.
+for medium to high bitrates (>= 1Mbps) but probably sub-optimal for
+low-bitrate encoding.
 .PP
 .BR -c|--closed-GOPs
 .PP
@@ -560,7 +566,7 @@ A useful number to use would be 1.5 or 1.0.
 Setting this flag makes the encoder encode as much high-frequency information
 as possible.   This is a good setting for maximising quality at VCD
 resolution with good quality low-noise source material.  It can also help
-with "swimmy" material if you can spare the bit-rate!
+with "swimmy" material if you can spare the bitrate!
 .PP
 .BR -D| --intra_dc_prec \ num
 .PP 
@@ -598,11 +604,13 @@ This flag allows this rate to be specified in K bits/sec.
 A good rule of thumb is to use the total rate of all the other streams
 plus 1% of the total rate including video.
 .PP
-.Br -u|--cbr
+.BR -u|--cbr
 .PP
-Force the use of Constant Bit Rate encoding.  Less than optimal of course
-but some folks insist on it.
-.SH "SSE, 3D-Now!, MMX"
+Force the use of Constant Bit Rate encoding.  Less than optimal (and 
+inefficient in almost all cases)
+but some folks insist on it. \fBNOTE:\fP this \fBdisables\fP (overrides)
+the use of the \fB-q\fP option!
+.SH "SSE, 3D-Now!, MMX"!
 mpeg2enc makes extensive use of these SIMD instruction set extension
 on x86 family CPU's.  The routines used are determined dynamically at
 run-time.  It should be noted that using SSE requires operating system
