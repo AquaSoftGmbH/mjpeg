@@ -217,8 +217,8 @@ main (int argc, char *argv[])
 		/* interpolate the other field */
 		if(fast_mode==0)
 		{
-			sinc_interpolation (frame10, field_order);
-			sinc_interpolation (frame11, 1-field_order);
+			aa_interpolation2 (frame10, field_order);
+			aa_interpolation2 (frame11, 1-field_order);
 			
 			/* create working copy */
 
@@ -314,13 +314,13 @@ blend_fields (void)
 	korr3 /= width*height;
 	korr3 = 1-sqrt(korr3)/256;
 
-	if(korr2>=korr1)
+	if(korr2>=(korr1*0.99))
 	{
 		mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: PROGRESSIVE SCAN",korr1*100,korr2*100,korr3*100);
 		mode=1;
 	}
 	else		
-		if(korr3>=korr1)
+		if(korr3>=(korr1*0.99))
 		{
 			mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: TELECINED VIDEO",korr1*100,korr2*100,korr3*100);
 			mode=1;
@@ -607,9 +607,9 @@ void aa_interpolation2( uint8_t * frame[3], int field)
 				d = 	*(frame[0]+z+x     +(y-1)*width) -
 						*(frame[0]+z+x     +(y+1)*width);
 				d *= d;
-				min += d*2;
+				min += d;
 			}
-
+			min=0x00ffffff;
 			for(dx=-w2 ; dx<=w2 ; dx++)
 			{
 				SSE=0;
@@ -619,23 +619,31 @@ void aa_interpolation2( uint8_t * frame[3], int field)
 							*(frame[0]+z+x+dx  +(y+1)*width);
 					d *= d;
 					SSE += d;
-
-					d = 	*(frame[0]+z+x-dx  +(y-1)*width) -
-							*(frame[0]+z+x     +(y+1)*width);
+					d = 	*(frame[0]+z+x     +(y+1)*width) -
+							*(frame[0]+z+x+dx  +(y+3)*width);
+					d *= d;
+					SSE += d;
+					d = 	*(frame[0]+z+x     +(y-3)*width) -
+							*(frame[0]+z+x+dx  +(y-1)*width);
 					d *= d;
 					SSE += d;
 				}
-				if (SSE<min)
+				if (SSE<=min)
 				{
 					min=SSE;
-					v1=dx/2;
+					v1=dx;
 				}
 			}
 
-			d=
-				(	*(frame[0]-v1+(x)+(y-1)*width) +
-					*(frame[0]+v1+(x)+(y+1)*width)	)/2;
 
+			//if(v1==0) d=0;
+			//else
+			{
+				v1/=2;
+				d=
+					(	*(frame[0]-v1+(x)+(y-1)*width) +
+						*(frame[0]+v1+(x)+(y+1)*width)	)/2;
+			}
 			*(frame[0]+(x)+(y)*width) = d;
 		}	
 
