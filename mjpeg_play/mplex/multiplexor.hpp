@@ -60,6 +60,7 @@ public:
 	bool video_buffers_iframe_only;
 	unsigned int audio_buffer_size;
 	unsigned int packets_per_pack;
+	unsigned int min_pes_header_len;
 	clockticks max_PTS;
 
 	int mpeg;
@@ -67,7 +68,7 @@ public:
 	int mux_format;
 	off_t max_segment_size;
 
-
+	Workarounds workarounds;
 
 /* In some situations the system/PES packets are embedded with
    external transport data which has to be taken into account for SCR

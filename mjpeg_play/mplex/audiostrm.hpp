@@ -25,6 +25,9 @@
 #include "inputstrm.hpp"
 #include "stream_params.hpp"
 
+// TODO AudioStream is reall NonVideoStream as it is also a base for
+// SUBPStream (sub)classes
+
 class AudioStream : public ElementaryStream
 {
 public:   
@@ -36,19 +39,7 @@ public:
     bool RunOutComplete();
     virtual unsigned int NominalBitRate() = 0;
 
-    unsigned int num_syncword	;
-    unsigned int num_frames [2];
-    unsigned int size_frames[2];
-	unsigned int version_id ;
-    unsigned int layer		;
-    unsigned int protection	;
-    unsigned int bit_rate_code;
-    unsigned int frequency	;
-    unsigned int mode		;
-    unsigned int mode_extension ;
-    unsigned int copyright      ;
-    unsigned int original_copy  ;
-    unsigned int emphasis	;
+    unsigned int num_syncword;
 
 protected:
     virtual bool AUBufferNeedsRefill();
@@ -56,11 +47,8 @@ protected:
 	void InitAUbuffer();
     
 	/* State variables for scanning source bit-stream */
-    unsigned int framesize;
-    unsigned int skip;
-    unsigned int samples_per_second;
-    uint64_t	 length_sum;
     AAunit access_unit;
+    unsigned int header_skip;
 }; 	
 
 class MPAStream : public AudioStream
@@ -78,11 +66,25 @@ private:
 	unsigned int SizeFrame( int bit_rate, int padding_bit );
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 
-    
+
+    /* Stream information for logging and parsing purposes */
+    unsigned int samples_per_second;
+	unsigned int version_id ;
+    unsigned int layer		;
+    unsigned int protection	;
+    unsigned int bit_rate_code;
+    unsigned int frequency	;
+    unsigned int mode		;
+    unsigned int mode_extension ;
+    unsigned int copyright      ;
+    unsigned int original_copy  ;
+    unsigned int emphasis	;
+
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
-    unsigned int skip;
-    unsigned int samples_per_second;
+    unsigned int num_frames [2];
+    unsigned int size_frames[2];
+
 }; 	
 
 
@@ -108,10 +110,11 @@ private:
     static const unsigned int default_buffer_size;
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
+    unsigned int frequency;
     unsigned int samples_per_second;
     unsigned int bit_rate;
     unsigned int stream_num;
-    unsigned int header_skip;
+    unsigned int num_frames;
 }; 	
 
 class DTSStream : public AudioStream
@@ -129,16 +132,20 @@ public:
 
 private:
 	void OutputHdrInfo();
+#ifdef DEBUG_DTS
     void DisplayDtsHeaderInfo();
+#endif
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
     
     static const unsigned int default_buffer_size;
+
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
     unsigned int samples_per_second;
     unsigned int bit_rate;
     unsigned int stream_num;
-    unsigned int header_skip;
+    unsigned int frequency	;
+    unsigned int num_frames;
 }; 	
 
 class LPCMStream : public AudioStream
@@ -160,6 +167,8 @@ private:
     
     static const unsigned int default_buffer_size;
     static const unsigned int ticks_per_frame_90kHz;
+    unsigned int num_frames;
+
 	/* State variables for scanning source bit-stream */
     unsigned int stream_num;
     unsigned int samples_per_second;
@@ -169,6 +178,33 @@ private:
     unsigned int frame_index;
     unsigned int dynamic_range_code;
     LpcmParams *parms;
+}; 	
+
+class SUBPStream : public AudioStream
+{
+public:   
+    SUBPStream(IBitStream &ibs,Multiplexor &into );
+    virtual void Init(const int stream_num);
+    virtual void Close();
+    // TODO: rough and ready measure...
+    virtual unsigned int NominalBitRate() {return 50*1024;}
+    virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
+    virtual unsigned int StreamHeaderSize() { return 1; }
+    
+
+private:
+	void OutputHdrInfo();
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+    
+    static const unsigned int default_buffer_size;
+
+	/* State variables for scanning source bit-stream */
+    unsigned int framesize;
+    unsigned int samples_per_second;
+    unsigned int bit_rate;
+    unsigned int stream_num;
+    unsigned int frequency	;
+    unsigned int num_frames;
 }; 	
 
 

@@ -71,13 +71,19 @@ void LPCMStream::Init ( const int _stream_num)
 
 {
     stream_num = _stream_num;
+    header_skip = 0;
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
-					 muxinto.vcd_zero_stuffing,
+					 false,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
+    
+    if( muxinto.workarounds.mplayer_pes_headers )
+    {
+        min_pes_header_len = 10;
+    }
     mjpeg_info ("Scanning for header info: LPCM Audio stream %02x (%s)",
                 stream_num,
                 bs.StreamName()
@@ -126,14 +132,11 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
 	mjpeg_debug( "Scanning %d MPEG LPCM audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
-    static int header_skip = 0;        // Initially skipped past  5 bytes of header 
-    int skip;
-
 	while ( !bs.eos() 
             && decoding_order < last_buffered_AU 
             && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
-		skip=access_unit.length-header_skip; 
+		int skip=access_unit.length; 
         bs.SeekFwdBits( skip );
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
@@ -158,7 +161,7 @@ void LPCMStream::FillAUbuffer(unsigned int frames_to_buffer )
 		access_unit.dorder = decoding_order;
 		decoding_order++;
 		aunits.append( access_unit );
-		num_frames[0]++;
+		num_frames++;
 		
 		num_syncword++;
 
@@ -181,7 +184,7 @@ void LPCMStream::Close()
     stream_length = AU_start / 8;
 	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Audio stream length %lld bytes.", stream_length);
-    mjpeg_info   ("Frames         : %8u ",  num_frames[0]);
+    mjpeg_info   ("Frames         : %8u ",  num_frames);
 }
 
 /*************************************************************************
@@ -197,8 +200,8 @@ void LPCMStream::OutputHdrInfo ()
 
     mjpeg_info ("Bit rate       : %8u bytes/sec (%u) bit/sec)",
                 NominalBitRate()/8, NominalBitRate() );
-    mjpeg_info ("Channels       :     %d\n", channels);
-    mjpeg_info ("Bits per sample:     %d\n", bits_per_sample );
+    mjpeg_info ("Channels       :     %d", channels);
+    mjpeg_info ("Bits per sample:     %d", bits_per_sample );
     mjpeg_info ("Frequency      :     %d Hz", samples_per_second );
 
 }

@@ -68,6 +68,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
     sector_transport_size = job.sector_size;
     sector_size = job.sector_size;
 	split_at_seq_end = !job.multifile_segment;
+    workarounds = job.workarounds;
     max_segment_size = static_cast<off_t>(job.max_segment_size)
                        * static_cast<off_t>(1024 * 1024);
     max_PTS = static_cast<clockticks>(job.max_PTS) * CLOCKS;
@@ -1418,7 +1419,6 @@ void Multiplexor::OutputDVDPriv2 (	)
     uint8_t *index;
     uint8_t *sector_buf = new uint8_t[sector_size];
     unsigned int tozero;
-    
     assert( sector_size == 2048 );
     PS_Stream::BufferSectorHeader( sector_buf,
                                 pack_header_ptr,
@@ -1433,6 +1433,7 @@ void Multiplexor::OutputDVDPriv2 (	)
                                    0,      // No timestamps
                                    0,
                                    TIMESTAMPBITS_NO,
+                                   0, // Natural PES header length
                                    packet_size_field,
                                    index );
     tozero = sector_buf+1024-index;
@@ -1449,6 +1450,7 @@ void Multiplexor::OutputDVDPriv2 (	)
                                    0,      // No timestamps
                                    0,
                                    TIMESTAMPBITS_NO,
+                                   0, // Natural PES header length
                                    packet_size_field,
                                    index );
     tozero = sector_buf+2048-index;

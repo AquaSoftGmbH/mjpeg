@@ -90,6 +90,8 @@ static const unsigned int mpa_samples [4] = {384, 1152, 1152, 0};
 MPAStream::MPAStream(IBitStream &ibs, Multiplexor &into) : 
 	AudioStream( ibs, into )
 {
+	for( int i = 0; i <2 ; ++i )
+		num_frames[i] = size_frames[i] = 0;
 }
 
 bool MPAStream::Probe(IBitStream &bs )
@@ -204,7 +206,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
 	{
 
-		skip=access_unit.length-4;
+		int skip=access_unit.length-4;
         bs.SeekFwdBits( skip );
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();

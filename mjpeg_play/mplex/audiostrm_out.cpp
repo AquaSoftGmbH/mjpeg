@@ -35,8 +35,6 @@ AudioStream::AudioStream(IBitStream &ibs, Multiplexor &into) :
 	num_syncword(0)
 {
     FRAME_CHUNK = 24;
-	for( int i = 0; i <2 ; ++i )
-		num_frames[i] = size_frames[i] = 0;
 }
 
 void AudioStream::InitAUbuffer()

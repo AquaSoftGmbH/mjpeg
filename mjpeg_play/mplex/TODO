@@ -15,9 +15,6 @@ muxed out frames...
 - Need to add general facility for enforcing max STD buffer delay for audio
   and for warning if constraints for particular formats are exceeded.
 
-- Complete tidying up the systems.cc structure.   Non-duplication of the
-	header generation stuff would be neat if it can be managed...
-
 - Add checking for changed sequence parameters in mid-sequence
 	sequence headers.
 

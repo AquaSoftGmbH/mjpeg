@@ -289,6 +289,7 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
                                     clockticks   	 PTS,
                                     clockticks   	 DTS,
                                     uint8_t 	 timestamps,
+                                    unsigned    int min_pes_hdr_len,
                                     uint8_t     *&size_field,
                                     uint8_t     *&header_end
     )
@@ -382,6 +383,9 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
                                                (buffer_size >> 8));
 			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
 		}
+        /* If required pad the PES header: needed for some workarounds */
+        while( index-(pes_header_len_field+1) < min_pes_hdr_len )
+            *(index++)=static_cast<uint8_t>(STUFFING_BYTE);
 	}
 
     if( mpeg_version == 2 && type != PADDING_STR )
@@ -389,7 +393,6 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
         *pes_header_len_field = 
             static_cast<uint8_t>(index-(pes_header_len_field+1));	
     }
-
     header_end = index;
 }
 
@@ -412,8 +415,8 @@ void PS_Stream::BufferPacketHeader( uint8_t *buf,
  *
  *  TODO: Should really be called "WriteSector" 
  * 
- * TODO: We need to add a * generic mechanism for sub-headers of
- * private streams to be * generated...
+ * TODO: We need to add a generic mechanism for sub-headers of
+ * private streams to be generated...
  *
  *************************************************************************/
 
@@ -435,7 +438,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     uint8_t *index;
     uint8_t *size_offset;
 	uint8_t *fixed_packet_header_end;
-	uint8_t *pes_header_len_offset = 0;
+	uint8_t *_pes_header_len_offset = 0;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
@@ -452,93 +455,14 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     BufferSectorHeader( index, pack, sys_header, index );
 
-    /* konstante Packet Headerwerte eintragen */
-    /* write constant packet header data */
+    BufferPacketHeader( index, type, mpeg_version,
+                        buffers, buffer_size, buffer_scale,
+                        PTS, DTS, timestamps,
+                        mux_strm.min_pes_header_len,
+                        size_offset,
+                        index );
 
-    *(index++) = static_cast<uint8_t>(PACKET_START)>>16;
-    *(index++) = static_cast<uint8_t>(PACKET_START & 0x00ffff)>>8;
-    *(index++) = static_cast<uint8_t>(PACKET_START & 0x0000ff);
-    *(index++) = type;	
-
-
-    /* we remember this offset so we can fill in the packet size field once
-	   we know the actual size... */
-    size_offset = index;   
-    index += 2;
-    fixed_packet_header_end = index;
-
-	if( mpeg_version == 1 )
-	{
-		/* MPEG-1: buffer information */
-		if (buffers)
-		{
-			*(index++) = static_cast<uint8_t> (0x40 |
-                                               (buffer_scale << 5) | (buffer_size >> 8));
-			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
-		}
-
-		/* MPEG-1: PTS, PTS & DTS, oder gar nichts? */
-		/* should we write PTS, PTS & DTS or nothing at all ? */
-
-		switch (timestamps)
-		{
-		case TIMESTAMPBITS_NO:
-			*(index++) = MARKER_NO_TIMESTAMPS;
-			break;
-		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, index);
-			break;
-		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, index);
-			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, index);
-			break;
-		}
-	}
-	else if( type != PADDING_STR )
-	{
-	  	/* MPEG-2 packet syntax header flags. */
-        /* These *DO NOT* appear in padding packets 			*/
-        /* TODO: They don't appear in several others either!	*/
-		/* First byte:
-		   <1,0><PES_scrambling_control:2=0><PES_priority><data_alignment_ind.=0>
-		   <copyright=0><original=1> */
-		*(index++) = 0x81;
-		/* Second byte: PTS PTS_DTS or neither?  Buffer info?
-		   <PTS_DTS:2><ESCR=0><ES_rate=0>
-		   <DSM_trick_mode:2=0><PES_CRC=0><PES_extension=(!!buffers)>
-		*/
-		*(index++) = (timestamps << 6) | (!!buffers);
-		/* Third byte:
-		   <PES_header_length:8> */
-		pes_header_len_offset = index;  /* To fill in later! */
-		index++;
-		/* MPEG-2: the timecodes if required */
-		switch (timestamps)
-		{
-		case TIMESTAMPBITS_PTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, index);
-			break;
-
-		case TIMESTAMPBITS_PTS_DTS:
-			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, index);
-			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, index);
-			break;
-		}
-
-		/* MPEG-2 The buffer information in a PES_extension */
-		if( buffers )
-		{
-			/* MPEG-2 PES extension header
-			   <PES_private_data:1=0><pack_header_field=0>
-			   <program_packet_sequence_counter=0>
-			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
-			*(index++) = static_cast<uint8_t>(0x1e);
-			*(index++) = static_cast<uint8_t> (0x40 | (buffer_scale << 5) | 
-                                               (buffer_size >> 8));
-			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
-		}
-	}
-
+    
     /* MPEG-1, MPEG-2: data available to be filled is packet_size less
      * header and MPEG-1 trailer... */
 
@@ -582,37 +506,18 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 
     actual_packet_data_size = mux_strm.ReadPacketPayload(index,packet_data_to_read);
 
-    // DVD MPEG2: AC3 in PRIVATE_STR_1: fill in syncword count and offset
+    bytes_short = target_packet_data_size - actual_packet_data_size;
 #ifdef MUX_DEBUG
     if( type == PRIVATE_STR_1 )
     {
-        unsigned int syncwords_found;
-        for( i = 0; i < actual_packet_data_size; ++i )
-        {
-            if( index[i+4] == 0x0b && 
-                i+5 < actual_packet_data_size && index[i+5] == 0x77 )
-            {
-                if( syncwords_found == 0 )
-                {
-                    if(  ac3_header[2] != static_cast<uint8_t>((i+1) >>8) ||
-                         ac3_header[3] != static_cast<uint8_t>((i+1) & 0xff) )
-                        printf( "BROKEN HEADER %2x %2x (%2x %2x)\n",
-                                ac3_header[2],
-                                ac3_header[3],
-                                static_cast<uint8_t>((i+1) >>8),
-                                static_cast<uint8_t>((i+1) & 0xff) );
-                }
-                ++syncwords_found;
-            }
-        }
+        mjpeg_info( "Substream %02x short %d", index[0], bytes_short );
+
     }
 #endif
-    bytes_short = target_packet_data_size - actual_packet_data_size;
 	
     /* Handle the situations where we don't have enough data to fill
-       the packet size fully ...
-       Small shortfalls are dealt with by stuffing, big ones by inserting
-       padding packets.
+       the packet size fully ...  small shortfalls are dealt with here
+       by stuffing, big ones dealt with later by appending padding packets.
     */
 
 
@@ -633,22 +538,21 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
             memmove( index+bytes_short, index,  actual_packet_data_size );
             for( i=0; i< bytes_short; ++i)
                 *(index+i)=static_cast<uint8_t>(STUFFING_BYTE);
+            // Correct PES length field (if present)
+            if( type != PADDING_STR )
+            {
+                uint8_t *pes_header_len_offset = size_offset + 4;
+                unsigned int pes_header_len = 
+                    index+bytes_short-(pes_header_len_offset+1);
+                *pes_header_len_offset = static_cast<uint8_t>(pes_header_len);	            }
         }
         index += bytes_short;
         bytes_short = 0;
     }
 
 	
-    /* MPEG-2: we now know the header length... but we mustn't forget
-       to take into account any non-MPEG headers we've included.
-       Currently this only happens for AC3 audio, but who knows...
+    /* MPEG-2: We now know the final PES header after padding...
      */
-    if( mpeg_version == 2 && type != PADDING_STR )
-    {
-        unsigned int pes_header_len = 
-            index-(pes_header_len_offset+1);
-        *pes_header_len_offset = static_cast<uint8_t>(pes_header_len);	
-    }
     index += actual_packet_data_size;	 
     /* MPEG-1, MPEG-2: Now we know that actual packet size */
     size_offset[0] = static_cast<uint8_t>((index-size_offset-2)>>8);

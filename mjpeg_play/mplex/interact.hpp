@@ -42,6 +42,12 @@ using std::vector;
  *
  *************************************************************************/
 
+struct Workarounds
+{
+  Workarounds();
+  bool mplayer_pes_headers;
+};
+
 class MultiplexParams
 {
 public:
@@ -56,12 +62,19 @@ public:
   bool multifile_segment;
   bool always_system_headers;
   unsigned int max_PTS;
-  bool emul_vcdmplex;
   bool stills;
   int verbose;
   int max_timeouts;
   char *outfile_pattern;
   int max_segment_size;
+  int min_pes_header_len;
+  Workarounds workarounds;      // Special work-around flags that
+                                // constrain the syntax to suit
+                                // the foibles of particular MPEG
+                                // parsers that are (guessed) to be
+                                // actually slightly broken.  Always
+                                // off by default...
+
 };
 
 /***********************************************************************
@@ -119,6 +132,7 @@ protected:
   virtual void Usage(char *program_name);
   virtual bool ParseVideoOpt( const char *optarg );
   virtual bool ParseLpcmOpt( const char *optarg );
+  virtual bool ParseWorkaroundOpt( const char *optarg );
 
 public:  
   vector<JobStream *> streams;
@@ -130,7 +144,6 @@ public:
 #ifdef ZALPHA
   unsigned int z_alpha_tracks;
 #endif
-
 };
 
 

@@ -132,6 +132,7 @@ public:  // TODO should go protected once encapsulation complete
 	unsigned int	min_packet_data;
 	unsigned int    zero_stuffing;
 	unsigned int    nsec;
+    unsigned int    min_pes_header_len;
 	bool buffers_in_header;
 	bool always_buffers_in_header;
 	bool new_au_next_sec;

@@ -211,7 +211,7 @@ void AC3Stream::Init ( const int _stream_num)
 	MuxStream::Init( PRIVATE_STR_1, 
 					 1,  // Buffer scale
 					 default_buffer_size,
-					 muxinto.vcd_zero_stuffing,
+					 false,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
@@ -234,20 +234,9 @@ void AC3Stream::Init ( const int _stream_num)
             (framesize + 1) << 1:
             (framesize <<1);
             
-#ifdef DEBUG_AC3_HEADERS
-        printf( "AC3 FRAME %05d length = %05d\n", num_syncword-1, framesize );
-
-        DisplayAc3HeaderInfo();
-        while( bs.bitcount() % 8 != 0 )
-            bs.GetBits(1);
-        header_skip = (bs.bitcount()-AU_start)/8;
-#else
         header_skip = 5;        // Initially skipped past  5 bytes of header 
-#endif
 
-		size_frames[0] = framesize;
-		size_frames[1] = framesize;
-		num_frames[0]++;
+		num_frames++;
         access_unit.start = AU_start;
 		access_unit.length = framesize;
         mjpeg_info( "AC3 frame size = %d\n", framesize );
@@ -292,6 +281,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     int skip;
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
+           && !muxinto.AfterMaxPTS(access_unit.PTS)
         )
 	{
 		skip=access_unit.length-header_skip; 
@@ -306,9 +296,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
             --decoding_order;
             break;
         }
-
-        if( muxinto.AfterMaxPTS(access_unit.PTS) )
-            break;
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
@@ -338,17 +325,10 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		access_unit.dorder = decoding_order;
 		decoding_order++;
 		aunits.append( access_unit );
-		num_frames[0]++;
+		num_frames++;
 		
 		num_syncword++;
 
-#ifdef DEBUG_AC3_HEADERS
-        printf( "AC3 FRAME %05d length = %05d\n", num_syncword-1, framesize );
-        DisplayAc3HeaderInfo();
-        while( bs.bitcount() % 8 != 0 )
-            bs.GetBits(1);
-        header_skip = (bs.bitcount()-AU_start)/8;
-#endif
 		if (num_syncword >= old_frames+10 )
 		{
 			mjpeg_debug ("Got %d frame headers.", num_syncword);
@@ -358,10 +338,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
-#ifdef DEBUG_AC3_HEADERS
-    if( eoscan )
-        mjpeg_info( "End of AC3 found\n");
-#endif
 }
 
 
@@ -371,9 +347,7 @@ void AC3Stream::Close()
     stream_length = AU_start >> 3;
 	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
     mjpeg_info ("Audio stream length %lld bytes.", stream_length);
-    mjpeg_info   ("Syncwords      : %8u",num_syncword);
-    mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
-    mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
+    mjpeg_info   ("Frames         : %8u",  num_frames);
 }
 
 /*************************************************************************

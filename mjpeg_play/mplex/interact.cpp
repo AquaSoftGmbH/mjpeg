@@ -22,6 +22,8 @@
 
 #include <config.h>
 #include <stdlib.h>
+#include <ctype.h>
+#include <string>
 #ifdef _WIN32
 #include <win32defs.h>
 #else
@@ -43,8 +45,6 @@
 #include "mplexconsts.hpp"
 #include "aunit.hpp"
 
-vector<LpcmParams *> opt_lpcm_param;
-vector<VideoParams *> opt_video_param;
 
 static const char *KindNames[] =
 {
@@ -59,6 +59,11 @@ static const char *KindNames[] =
 const char *JobStream::NameOfKind()
 {
     return KindNames[kind];
+}
+
+Workarounds::Workarounds() :
+    mplayer_pes_headers( false )          // All default to false...
+{
 }
 
 MultiplexJob::MultiplexJob()
@@ -79,7 +84,6 @@ MultiplexJob::MultiplexJob()
     max_segment_size = 0; // MB, default is unlimited (suitable for DVD)
     outfile_pattern = 0;
     packets_per_pack = 1;
-
     audio_tracks = 0;
     video_tracks = 0;
     lpcm_tracks = 0;
@@ -140,12 +144,13 @@ void MultiplexJob::Usage(char *str)
     "  Maximum size of output file(s) in Mbyte (default: 0) (no limit)\n"
 	"--split-segment|-M\n"
     "  Simply split a sequence across files rather than building run-out/run-in\n"
+    "--workaround|-W workaround [, workaround ]\n"
 	"--help|-?\n"
     "  Print this lot out!\n", str);
 	exit (1);
 }
 
-static const char short_options[] = "o:b:r:O:v:f:l:s:S:p:L:VMh";
+static const char short_options[] = "o:b:r:O:v:f:l:s:S:p:W:L:VMh";
 
 #if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] = 
@@ -164,6 +169,7 @@ static struct option long_options[] =
      { "mux-limit",   	    1, 0, 'l' },
      { "packets-per-pack",  1, 0, 'p' },
      { "sector-size",       1, 0, 's' },
+     { "workarounds", 1, 0, 'W' },
      { "help",              0, 0, '?' },
      { 0,                   0, 0, 0   }
  };
@@ -207,6 +213,65 @@ bool MultiplexJob::ParseLpcmOpt( const char *optarg )
     return true;
 }
 
+
+bool MultiplexJob::ParseWorkaroundOpt( const char *optarg )
+{
+    char *endptr, *startptr;
+    unsigned int buffer_size;
+    endptr = const_cast<char *>(optarg);
+    struct { const char *longname; char shortname; bool *flag; } flag_table[] =
+        {
+            { "mplayer_hdr", 'M', &workarounds.mplayer_pes_headers },
+            { 0, '\0', 0 }
+        };
+    for(;;)
+    {
+        // Find start of next flag...
+        while( isspace(*endptr) || *endptr == ',' )
+            ++endptr;
+        if( *endptr == '\0' )
+            break;
+        startptr = endptr;
+        // Find end of current flag...
+        while( *endptr != ' ' && *endptr != ',' && *endptr != '\0' )
+            ++endptr;
+            
+        size_t len = endptr - startptr;
+
+        int flag = 0;
+        while( flag_table[flag].longname != 0 )
+        {
+            if( (len == 1 && *startptr == flag_table[flag].shortname ) ||
+                strncmp( startptr, flag_table[flag].longname, len ) == 0 )
+            {
+                *flag_table[flag].flag = true;
+                break;
+            }
+            ++flag;
+        }
+
+        if( flag_table[flag].longname == 0 )
+        {
+            std::string message( "Illegal work-around option: not one of " );
+            flag = 0;
+            char sep[] = ",";
+            do
+            {
+                message += flag_table[flag].longname;
+                message += sep;
+                message += flag_table[flag].shortname;
+                ++flag;
+                if( flag_table[flag].longname != 0 )
+                    message += sep;
+            }
+            while( flag_table[flag].longname != 0 );
+            mjpeg_error( message.c_str() );
+            return false;
+        }
+
+    } 
+    return true;
+}
 
 bool MultiplexJob::ParseVideoOpt( const char *optarg )
 {
@@ -328,6 +393,12 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
 		case 'M' :
 			multifile_segment = true;
 			break;
+        case 'W' :
+            if( ! ParseWorkaroundOpt( optarg ) )
+            {
+                Usage(argv[0]);
+            }
+            break;
 		case '?' :
 		default :
 			Usage(argv[0]);

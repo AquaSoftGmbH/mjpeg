@@ -52,6 +52,7 @@ void MuxStream::Init( const int strm_id,
 	always_buffers_in_header = always_bufs;
 	new_au_next_sec = true;
 	init = true;
+    min_pes_header_len = 0;
 }
 
 
