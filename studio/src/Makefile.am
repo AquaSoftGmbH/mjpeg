@@ -8,7 +8,7 @@ INCLUDES = ${GTK_CFLAGS} ${GDK_PIXBUF_CFLAGS} ${GLIB_CFLAGS} \
 OBJS= studio.c config.c parseconfig.c gtktvplug.c lavrec_pipe.c \
 	lavplay_pipe.c gtkimageplug.c lavedit.c mixer.c lavencode.c \
 	pipes.c gtkenhancedscale.c lavedit_trimming.c gtkfunctions.c \
-	config_encode.c lavedit_effects.c
+	config_encode.c lavedit_effects.c lavencode_mpeg.c
 
 bin_PROGRAMS = studio
 
