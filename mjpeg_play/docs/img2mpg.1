@@ -1,198 +1,79 @@
-.TH "mplex" "1" "2 June 2001" "MJPEG Tools Team" "MJPEG tools manual"
-
+.TH "img2mpg" "1" "1 January 2003" "Gilles CAULIER" "MJPEG tools manual"
 .SH "NAME"
 .LP 
-.br 
-mplex \- MPEG 1/2 program/system stream multiplexer
-.br 
-.SH "SYNOPSIS"
-.B mplex
-.RB [ -v|--verbose
-.IR num ]
-.RB [ -m|--mpeg\ 1 | 2 ]
-.RB [ -b|--video-buffer
-.IR video_buffer_size_kB [,
-.IR video_buffer_size_kB ...] ]
-.RB [ -L|--lpcm-params
-.IR params [,
-.IR params ... ] ]
-.RB [ -r|--muxed-bitrate
-.IR muxed_bitrate_kbps ]
-.RB [ -l|--mux-limit 
-.IR num ]
-.RB [ -O|--sync-offset
-.IR num ]
-.RB [ -f|--format
-.IR format_code ]
-.RB [ -V|--vbr]
-.RB [ -s|--sector-size
-.IR sector_size_B ]
-.RB [ -p|--packets-per-pack
-.IR num ]
-.RB [ -h|--system-headers ]
-.RB [ -S|--max-segment-size
-.IR output_filesize_limit_MB ]
-.RB [ -M|--split-segment]
-.RB [ -?|--help ]
-.BI -o|--output \ output_filename_pattern \ input_file...
-
+img2mpg \- MPEG portfolio image multiplexer
+.SH "SYNTAX"
+.LP 
+img2mpg [\fIoptions\fP] \fB\-o\fR <\fIoutput MPEG file\fP> \fB\-i\fR <\fIinput image files\fP>
 .SH "DESCRIPTION"
-Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
-It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
-streams and AC3 audio streams and multiplexes them into a combined
-program/system stream according to the constraints specified.  Many
-different types of output structure are supported along with presets
-for standard VCD and SVCD streams.  These latter can be burned to CD
-using tools such as \fBvcdimager\fP(1) and played in stand-alone
-players.
+.LP 
+The 'img2mpg' bash script convert some images on MPEG sequences with a specific 
+duration and merge all images on an single MPEG file. It use the 'MjpegTools' and 
+'ImageMagick' packages.
+.LP 
+You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
 
-It is also capable of automatically splitting the output stream into
-chunks of a specified size either independently or at sequence end/start
-points in the input video stream.
-.SH "GENERAL FUNCTION LETTERS"
-.TP
-.BI -o|-output \ output_filename_pattern
-This (compulsorary) option sets the pattern for the name(s) of output files.
+.SH "OPTIONS"
+.LP 
 
-An integer format code (e.g. %d) in the name is replaced by the number of
-the file generated (see \fBprintf\fP(3)).
-.TP
-.BI -v|--verbose \ num
-Set verbosity level to \fInum\fP:
- 0 - warnings and errors only,
- 1 - information as well,
- 2 - really verbose.
-.TP
-.B -?|--help
-Display a synopsis of the command syntax.
-.br
-.SH "FUNCTION LETTERS"
-.TP
-.BI -f|--format \ format_code
-This command allows one of a number of convenient preset output
-formats or generic MPEG1 or MPEG2 output to be selected. For the 
-generic formats other function letters can be used to control many
-aspects of the multiplexed stream.  For VCD/SVCD/DVD compliant output
-the corresponding formats \fImust\fR be used as the standards require the
-multiplexer to enforce a variety of special constraints on the structure
-of the output stream.
-.IP
- 0 - Generic MPEG1.  A simple general-purpose MPEG1 format primarily suitable
-for software decoders.  Buffer sizes and VBR must be specified.
-Bit-rate can be auto-detected.
- 1 - VCD.  Standard VCD.  Overrides other option settings.
- 2 - User VCD.  VCD format but buffer size, bit rate and VBR can be set
-manually.
- 3 - Generic MPEG2.  Like 0 except MPEG2.
- 4 - SVCD.  Standard SVCD.  Overrides other option settings.
- 5 - User-rate SVCD.  SVCD format but buffer size bit rate and VBR can be set.
- 6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
-	 multiplexed are supported).
- 7 - SVCD Stills stream.
- 8 - DVD (with NAV sectors). Don't get too excited.  This is really a
- very minimal mux format.  It includes empty versions of the peculiar
- VOBU start sectors DVD VOB's include.  This is enough to persuade some
- hardware players to play the stream but is a long way from full DVD authoring.
- 9 - DVD.  As above but without the empty VOBU sectors.
-.TP
-.BI -r|--mux-bitrate \ num
-The total (non VBR) / peak (VBR) bit-rate of the output stream in k
-Bits/sec. If unspecified and not set by a preset it is automatically
-calculated from the input stream.
-.TP
-.BI -b|--video-buffer \ numlist
-A comma-seperateed list of video decoder buffer sizes in KB for the
-video streams (given in the order the video streams appear on the
-command line).  The default is 46KB the (tiny) size specified for VCD.
-The size to use for SVCD is the (more reasonable) 230KB.  If you are
-encoding for a half-decent software decoder it makes sense to push
-this up to 500K or more.
-.TP
-.BI -L|--lpcm-params
-.I samples_per_sec:channels:bits_per_sample
-.br
-[,
-.I samples_per_sec:channels:bits_per_sample
-...]
-.br
-A comma-seperated list of paramter sets for the lpcm audio streams
-(given in the order the lpcm streams appear on the command line).
-Each parameter set comprises the sampling rate in Hz, the number of
-channels, and the number of bits per sample seperated by colons.  For
-example, the default 48kHz two-channel 16-bit audio would be specified
-as 48000:2:16.
-.TP
-.BI -l|--mux-limit \ num
-Multiplex limit.  Multiplex only the specified number of sectors.  Useful
-for tuning and debugging.
-.TP
-.BI -O|--sync-offset \ num
-Set the presentation timestamp offset of video stream w.r.t. audio stream (video-audio) in mSec.   This flag is used to produce a stream with synchronised
-audio/video when one stream started before/after the other.  This is common
-when transcoding as the synchronisation information is typically lost during
-the (seperate) decoding/encoding of audio and video.
-.TP
-.B -V|--vbr
-Set variable bit rate multiplexing.  This is needed to multiplex variable
-bit-rate video streams correctly.
-.TP
-.BI -s|--sector-size \ num
-This option specifies the sector size of the output stream in bytes.
-.TP
-.BI -p|--packets-per-pack \ num
-This option specifies the number of packets per pack in the output stream.
-.TP
-.BI -S|--max-segment-size \ num
-This option specifies the maximum size of output files in MBytes (2^10)
-The default is 2000 Mbytes for the DVD profile and otherwise unlimited.
-When the limit is reached a  new file is started.
-.IP
-Note: This option is 
-.I not
-for splitting a long video across multiple VCD's or SVCD's.
+\fB\-v\fR <\fInum\fP>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
 
-It simply splits a single long sequence into in a way that prevents
-bits of a video GOP(group of pictures) or audio frame being split
-between chunks.  This is fine for formats like that
-used for DVDs where all stream parameters appear every GOP.  However,
-for VCD / SVCD it won't work as the players expect each file to start a 
-new MPEG sequence.
+\fB\-t\fR <\fInum\fP>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
 
-For VCD / SVCD a different technique is used.  If mplex encounters a
-sequence break (sequence end followed by start) in the input video
-stream it starts a new output stream and file at the sequence start.
-Thus to split a long video across VCD's/SVCD's you have to get the
-MPEG video encoder to introduce sequence splits at the right points
-(see mpeg2enc(1) for details of how to do this).
-.TP
-.B -M|--split-segment
-When splitting a long stream in files based on -S mplex does a certain
-amount of careful "running out" to prevent a GOP or audio frame being
-split.  If the files are simply going to be concatenated for playback
-this "run out" is superfluous and makes it harder for the player to 
-maintain audio/video sync. This flag allows the run-out to be turned
-off.  The DVD profile turns this option on automatically.
-.TP
-.B -h|--system-headers
-A system header is generated in every pack rather than just in the first.
-.SH "DIAGNOSTIC OUTPUT"
-When multiplexing using mplex you may get warning or error messages
-complaining about buffer underflow.  This means that the bit-rate you
-have specified is simply too low to permit the video and audio to be
-played back without skipping.  The fix is to either reduce the
-data-rate of the input material or increased the output stream bit-rate.
-.SH "BUGS"
-The multiplexer should handle AC3 and MPEG(5.1) audio too.
-.SH AUTHOR
-This man page was written by Andrew Stevens.
-.br
+\fB\-f\fR <\fIVideo format\fP>       : video format  [XVCD=default, SVCD, VCD].
+
+\fB\-n\fR <\fIVideo type\fP>         : video type    [PAL=default, NTSC, SECAM].
+
+\fB\-b\fR <\fIbackground file\fP>    : 768x576 pixels background image file name [black color = default].
+
+\fB\-c\fR <\fIRGB color\fP>          : hex RGB color for background image (ex: AA001F).
+
+\fB\-d\fR <\fInum\fP>                : duration for each image in MPEG file [10s = default, 1s = mini].
+
+\fB\-a\fR <\fIMPEG audio file\fP>    : MP2 audio file to merge with the video sequence.
+
+\fB\-w\fR <\fIwav audio file\fP>     : WAV audio file to convert in MPEG and to merge with the video sequence.
+
+\fB\-o\fR <\fIoutput MPEG file\fP>   : the ouput MPEG file name [temporary file name = default].
+
+\fB\-i\fR <\fIinput images files\fP> : images files name to merge in MPEG.
+
+\fB\-h | \-\-help\fR                           : output help information and exit.
+
+
+.SH "EXAMPLES"
+.LP 
+#./img2mpg \-f SVCD \-d 15 \-w Music.wav \-o MyPortfolio.mpg \-i 01.jpg 02.jpg 03.jpg 04.jpg
+
+Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this image files sequence :
+
+01.jpg
+02.jpg
+03.jpg
+04.jpg
+
+For each image on the portfolio, the screen show duration is 15 seconds. The output file is 'MyPortfolio.mpg'.
+There isn't transition between images.
+.LP 
+#./img2mpg \-n NTSC \-t 2 \-o MyPortfolio.mpg \-i *.png
+
+Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
+The image files sequence use the local filesystem sort.
+.LP 
+.SH "AUTHORS"
+.LP 
+This man page was written by Gilles CAULIER.
+.br 
 If you have questions, remarks, problems or you just want to contact
-the developers, the main mailing list for the MJPEG\-tools is:
+the author :
+  \fIcaulier.gilles@free.fr\fP
+
+The main mailing list for the MJPEG\-tools is:
   \fImjpeg\-users@lists.sourceforge.net\fP
 
 For more info, see our website at
   \fIhttp://mjpeg.sourceforge.net\fP
 
 .SH "SEE ALSO"
-.BR mpeg2enc "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
-.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)"
+.LP 
+ImageMagick(1), mjpegtools(1), vcdimager(1)

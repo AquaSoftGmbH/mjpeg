@@ -29,7 +29,7 @@
 #
 # -------------------------------------------------------------------------------------------------------
 #
-# ABOUT VIDEO TYPES AND FORMATS :
+# ABOUT VIDEO TYPES AND FORMATS SUPPORTED BY THIS SCRIPT :
 #
 #  Video type   ::         VCD         :        SVCD         :        XVCD         ::        DVD          :
 #               ::          :          :          :          :          :          ::          :          :
@@ -58,7 +58,8 @@
 #  Image        ::        medium       :        good         :       excelent      ::       excelent      :
 #  restitution  ::                     :                     :                     ::                     :
 #
-#  Note : The XVCD resolution is the same of DVD !
+#  Notes : - The XVCD resolution is the same of DVD !
+#          - DVD features are given for to compare. 
 #
 # -------------------------------------------------------------------------------------------------------
 #
@@ -364,25 +365,26 @@ while test $# -gt 0; do
       cat << EOF
 IMG2MPG [MjpegTools Project]
 
-Usage: img2mpg [OPTIONS] -o <output-file> -i <input-files>
+Usage: img2mpg [options] -o <output MPEG file> -i <input image files>
 Options:
-    -v num :                  verbose level [0:none=default, 1:infos+warnings, 2:debug].
-    -t num :                  Enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
-    -f <Video format> :       video format  [XVCD=default, SVCD, VCD].
-    -n <Video type> :         video type    [PAL=default, NTSC, SECAM].
-    -b <background file> :    768x576 pixels background image file name [black color = default].
-    -c <RGB color> :          Hex RGB color for background image (ex: AA001F).
-    -d num :                  duration for each image in MPEG file [10s = default, 1s = mini].
-    -a <MPEG audio file> :    MP2 audio file to merge with the video sequence.
-    -w <wav audio file> :     WAV audio file to convert in MPEG and to merge with the video sequence.
-    -o <output MPEG file> :   the ouput MPEG file name [temporary file name = default].
+    -v <num>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
+    -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
+    -f <Video format>       : video format  [XVCD=default, SVCD, VCD].
+    -n <Video type>         : video type    [PAL=default, NTSC, SECAM].
+    -b <background file>    : 768x576 pixels background image file name [black color = default].
+    -c <RGB color>          : hex RGB color for background image (ex: AA001F).
+    -d <num>                : duration for each image in MPEG file [10s = default, 1s = mini].
+    -a <MPEG audio file>    : MP2 audio file to merge with the video sequence.
+    -w <wav audio file>     : WAV audio file to convert in MPEG and to merge with the video sequence.
+    -o <output MPEG file>   : the ouput MPEG file name [temporary file name = default].
     -i <input images files> : images files name to merge in MPEG.
-    -h : help :               this help.
+    -h | --help             : this help.
 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific
 duration and merge all images on an single MPEG file. It use the 'MjpegTools' &
 'ImageMagick' packages.
-You can use this for to build some X/S/VCD portfolios for your DVD player. Use 'vcdimager' for this...
+You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player.
+Use 'vcdimager' for create this...
 
 Note : the input images files with the '-i' option must be the last command line parameters.
 
@@ -398,17 +400,19 @@ Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this imag
 04.jpg
 
 For each image on the portfolio, the screen show duration is 15 seconds. The output file is 'MyPortfolio.mpg'.
-There is no transition between images.
+There isn't transition between images.
 
-#./img2mpg -n NTSC -f 2 -o MyPortfolio.mpg -i *.png
+#./img2mpg -n NTSC -t 2 -o MyPortfolio.mpg -i *.png
 
-Build NTSC XVCD (default) MPEG file with a transition between image (speed 2) and all local PNG images files.
+Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
 The image files sequence use the local filesystem sort.
 
 Author:
   CAULIER Gilles <caulier.gilles@free.fr>
-  Visit http://caulier.gilles.free.fr/
-  CVS : http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/mjpeg/mjpeg_play/scripts/
+
+Visit :
+  URL PROJECT : http://mjpeg.sourceforge.net/
+  WEBCVS : http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/mjpeg/mjpeg_play/scripts/
 
 EOF
       exit 0
