@@ -132,6 +132,8 @@ int main(int argc, char *argv[])
 		    c = ( o[2] - o[0] ) / 2.f;
 		    
 		    v = a * 0.125 + b * 0.25 + c * 0.5 + o[1];
+		    v = v>240? 240:v;
+		    v = v<16 ? 16:v;
 		    
 		    *(frame1[0]+x+(y+1)*width)=v;
 		}
@@ -167,6 +169,8 @@ int main(int argc, char *argv[])
 	    int vx,vy,tx,ty;
 	    int x,y,xx,yy;
 	    uint32_t SAD;
+	    uint32_t cSAD;
+	    uint32_t min;
 	    uint32_t sum_SAD;
 	    int addr1=0;
 	    int addr2=0;
@@ -175,48 +179,38 @@ int main(int argc, char *argv[])
 	    for(yy=0;yy<height;yy+=16)
 		for(xx=0;xx<width;xx+=16)
 		{
-		    vlist[0].x=0;
-		    vlist[0].y=0;
-		    vlist[0].SAD=0xffffff;
-		    vlist[1].x=0;
-		    vlist[1].y=0;
-		    vlist[1].SAD=0xffffff;
+		    tx=ty=0;
+
+		    addr1=(xx   )+(yy   )*width;
+		    cSAD=psad_00(frame1[0]+addr1,frame2[0]+addr1,width,16,0);
+		    min=cSAD;
 
 		    for(vy=-16;vy<16;vy++)
 			for(vx=-16;vx<16;vx++)
 			{
 			    addr1=(xx   )+(yy   )*width;
 			    addr2=(xx+vx)+(yy+vy)*width;
-			    //SAD=calc_SAD_mmxe(frame5[0]+addr1,frame4[0]+addr2);
+				//SAD=calc_SAD_mmxe(frame5[0]+addr1,frame4[0]+addr2);
 			    SAD=psad_00(frame1[0]+addr1,frame2[0]+addr2,width,16,0);
-
-			    if(SAD<=vlist[0].SAD)
+			    
+			    if(SAD<min)
 			    {
-				vlist[1]=vlist[0];
-				vlist[0].SAD=SAD;
-				vlist[0].x=vx;
-				vlist[0].y=vy;
+				min=SAD;
+				tx=vx;
+				ty=vy;
 			    }  
 			}
-
-		    if(vlist[0].SAD==vlist[1].SAD)
-		    {
-			tx =( vlist[0].x + vlist[1].x )/2;
-			ty =( vlist[0].y + vlist[1].y )/2;
-			SAD=( vlist[0].SAD + vlist[1].SAD )>>1;
-		    }
-		    else
-		    {
-			tx=vlist[0].x;
-			ty=vlist[0].y;
-			SAD=vlist[0].SAD;
-		    }
-
 		    sum_SAD+=SAD;
+
+		    if( ((cSAD)<=(2*min)) && tx!=0 && ty!=0 )
+		    {
+			fprintf(stderr,"!");
+			tx=ty=0;
+		    }
 
 		    // transform the sourceblock by that vector if match is good
 		    // else use interpolation
-		    if(SAD<=(mean_SAD*3))
+		    if(SAD<=(mean_SAD*80) )
 			for(y=0;y<16;y++)
 			    for(x=0;x<16;x++)
 			    {
@@ -236,22 +230,34 @@ int main(int argc, char *argv[])
 	    mean_SAD = sum_SAD>mean_SAD? sum_SAD:mean_SAD;
 	    mean_SAD *= 80;
 	    mean_SAD /= 100;
-	    mean_SAD = mean_SAD <= (3*16*16)? (3*16*16):mean_SAD;
+//	    mean_SAD = mean_SAD <= (3*16*16)? (3*16*16):mean_SAD;
 
 	    fprintf(stderr,"%d\n",mean_SAD);
 	}
 	
 #endif
 
-#if 0	
+#if 1	
 	{
 	    int x,y;
+	    int delta;
 
-	    for(y=0;y<height;y+=2)
+	    for(y=0;y<height;y++)
 		for(x=0;x<width;x++)
 		{
-		    *(frame3[0]+x+y*width)=
-			*(frame2[0]+x+y*width);
+		    delta = 
+			*(frame1[0]+x+y*width) -
+			*(frame3[0]+x+y*width) ;
+
+		    delta = delta<0 ? -delta:delta;
+
+		    if(delta<16)
+			*(frame2[0]+x+y*width)=
+			    (*(frame1[0]+x+y*width)>>1)+
+			    (*(frame3[0]+x+y*width)>>1);
+		    else
+			*(frame2[0]+x+y*width)=
+			    *(frame1[0]+x+y*width);
 		}
 	}
 #endif
