@@ -4,14 +4,14 @@
 lav2divx \- build a .AVI file based on lavtools\-compatible input.
 .SH "SYNTAX"
 .LP 
-lav2divx [\fIoptions\fP] \-o [output AVI] [input files...]
+lav2divx [\fIoptions\fP] \-o [output AVI] lavfile1 [lavfile2 ... lavfileN]
 .SH "DESCRIPTION"
 .LP 
 This utility reads lavtools\-compatible files and uses them to generate a .avi file using avifile.  
 .LP 
 Note that you must have avifile available in order to use this utility.  If building from a CVS snapshot or copy, this will be detected at build time.
 .LP 
-The input files may be any combination of .avi, .mov or edit\-list files so long as they are all lavtools\-readable (e.g. if in avi or mov format, they must be MJPEG encoded).
+The input files may be any combination of AVI (.avi), Movtar (.movtar), Quicktime (.qt/.mov) or editlist files so long as they are all lavtools\-readable (e.g. MJPEG-encoded AVI/Quicktime/Movtar or DV type 2 AVI).
 .SH "OPTIONS"
 .LP 
 .TP 

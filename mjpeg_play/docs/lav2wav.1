@@ -12,7 +12,7 @@ lav2wav \- Extract the audio out of MJPEG container files to stdout
 .RB [ \-v
 .IR num ]
 .RB [ \-I ]
-.IR filename " ..."
+.I lavfile1 \fP[\fIlavfile2 \fP...\fI lavfileN\fP]
 
 .SH "DESCRIPTION"
 \fBlav2wav\fP can be used to extract the audio to stdout.
@@ -20,8 +20,10 @@ This output goes to stdout and can be saved as a wav file, or piped to an
 other sound processing tool, that is able to handle wave. 
 This can be mp2enc and toolame for mpeg layer 2 audio, 
 or for example lame for mpeg layer 3 audio. 
-
-As input sources you can use serveral files, mixing up with edit list files. 
+.LP 
+The input files may be any combination of AVI (.avi), Movtar (.movtar),
+Quicktime (.qt/.mov) or editlist files so long as they are all lavtools\-
+readable (e.g. MJPEG-encoded AVI/Quicktime/Movtar or DV type 2 AVI).
 
 .SH "OPTIONS"
 \fBlav2wav\fP accepts the following options:

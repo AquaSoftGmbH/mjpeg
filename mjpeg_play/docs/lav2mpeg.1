@@ -5,13 +5,18 @@
 .SH NAME
 lav2mpeg \- easy conversion of lav files to mpeg
 .SH SYNOPSIS
-.B lav2mpeg [ options ] lavfile1 [ lavfile2 ] [ lavfileN ] ...
+.B lav2mpeg [ options ]
+.I lavfile1 [lavfile2 ... lavfileN]
 .SH DESCRIPTION
 .B lav2mpeg
 is a shell script to ease the use of the mjpeg utilities, providing a 
 convinient way to convert from MJPEG files to popular MPEG file formats.
 It supports output in VCD, medium and high rate VCD, SVCD, high rate
 SVCD, and generic mpeg1 and mpeg2
+.LP 
+The input files may be any combination of AVI (.avi), Movtar (.movtar),
+Quicktime (.qt/.mov) or editlist files so long as they are all lavtools\-
+readable (e.g. MJPEG-encoded AVI/Quicktime/Movtar or DV type 2 AVI).
 .SH OPTIONS
 .IP -s/S 
 Turn stereo off/on                   (default auto)
