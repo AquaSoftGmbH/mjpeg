@@ -2,30 +2,7 @@
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
-/*
- * Disclaimer of Warranty
- *
- * These software programs are available to the user without any license fee or
- * royalty on an "as is" basis.  The MPEG Software Simulation Group disclaims
- * any and all warranties, whether express, implied, or statuary, including any
- * implied warranties or merchantability or of fitness for a particular
- * purpose.  In no event shall the copyright-holder be liable for any
- * incidental, punitive, or consequential damages of any kind whatsoever
- * arising from the use of these programs.
- *
- * This disclaimer of warranty extends to the user of these programs and user's
- * customers, employees, agents, transferees, successors, and assigns.
- *
- * The MPEG Software Simulation Group does not represent or warrant that the
- * programs furnished hereunder are free of infringement of any third-party
- * patents.
- *
- * Commercial implementations of MPEG-1 and MPEG-2 video, including shareware,
- * are subject to royalty fees to patent holders.  Many of these patents are
- * general enough such that they are unavoidable regardless of implementation
- * design.
- *
- */
+
 /* Modifications and enhancements (C) 2000/2001 Andrew Stevens */
 
 /* These modifications are free software; you can redistribute it
@@ -50,102 +27,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "global.h"
-#include "cpu_accel.h"
-#include "simd.h"
-
-#ifdef HAVE_ALTIVEC
-#include "../utils/altivec/altivec_transform.h"
-#endif
-
-
-extern "C" void init_fdct (void);
-extern "C" void init_idct (void);
-
-
-/*
-  Pointers to version of transform and prediction manipulation
-  routines to be used..
- */
-
-static void (*pfdct)( int16_t * blk );
-static void (*pidct)( int16_t * blk );
-static void (*padd_pred) (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk);
-static void (*psub_pred) (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk);
-static int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
-/*
-  Initialise DCT transformation routines
-  Currently just activates MMX routines if available
- */
-
-
-void init_transform(void)
-{
-	int flags;
-	flags = cpu_accel();
-
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
-	{
-		mjpeg_info( "SETTING MMX for TRANSFORM!");
-		pfdct = fdct_mmx;
-		pidct = idct_mmx;
-		padd_pred = add_pred_mmx;
-		psub_pred = sub_pred_mmx;
-		pfield_dct_best = field_dct_best_mmx;
-	}
-	else
-#endif
-	{
-		pfdct = fdct;
-		pidct = idct;
-		padd_pred = add_pred;
-		psub_pred = sub_pred;
-		pfield_dct_best = field_dct_best;
-	}
-
-#ifdef HAVE_ALTIVEC
-	if (flags > 0)
-	{
-#if ALTIVEC_TEST_TRANSFORM
-#  if defined(ALTIVEC_BENCHMARK)
-	    mjpeg_info("SETTING AltiVec BENCHMARK for TRANSFORM!");
-#  elif defined(ALTIVEC_VERIFY)
-	    mjpeg_info("SETTING AltiVec VERIFY for TRANSFORM!");
-#  endif
-#else
-	    mjpeg_info("SETTING AltiVec for TRANSFORM!");
-#endif
-
-#if ALTIVEC_TEST_FUNCTION(fdct)
-	    pfdct = ALTIVEC_TEST_SUFFIX(fdct);
-#else
-	    pfdct = ALTIVEC_SUFFIX(fdct);
-#endif
-
-#if ALTIVEC_TEST_FUNCTION(idct)
-	    pidct = ALTIVEC_TEST_SUFFIX(idct);
-#else
-	    pidct = ALTIVEC_SUFFIX(idct);
-#endif
-
-#if ALTIVEC_TEST_FUNCTION(add_pred)
-	    padd_pred = ALTIVEC_TEST_SUFFIX(add_pred);
-#else
-	    padd_pred = ALTIVEC_SUFFIX(add_pred);
-#endif
-
-#if ALTIVEC_TEST_FUNCTION(sub_pred)
-	    psub_pred = ALTIVEC_TEST_SUFFIX(sub_pred);
-#else
-	    psub_pred = ALTIVEC_SUFFIX(sub_pred);
-#endif
-	}
-#endif /* HAVE_ALTIVEC */
-	init_fdct();
-	init_idct();
-}
+#include "transfrm_ref.h"
 
 
 
@@ -160,8 +42,8 @@ void MacroBlock::Transform()
 	field_dct =
 		! picture->frame_pred_dct 
 		&& picture->pict_struct == FRAME_PICTURE
-		&& (*pfield_dct_best)( &cur[0][blocktopleft], 
-							   &pred[0][blocktopleft]);
+		&& pfield_dct_best( &cur[0][blocktopleft], 
+							&pred[0][blocktopleft]);
 	int i1, j1, n, cc, offs, lx;
 
 	for (n=0; n<block_count; n++)
@@ -215,8 +97,8 @@ void MacroBlock::Transform()
 				offs +=  opt_phy_chrom_width;
 		}
 
-		(*psub_pred)(pred[cc]+offs,cur[cc]+offs,lx, dctblocks[n]);
-		(*pfdct)(dctblocks[n]);
+		psub_pred(pred[cc]+offs,cur[cc]+offs,lx, dctblocks[n]);
+		pfdct(dctblocks[n]);
 	}
 		
 }
@@ -288,8 +170,8 @@ void MacroBlock::ITransform()
 			if (picture->pict_struct==BOTTOM_FIELD)
 				offs +=  opt_phy_chrom_width;
 		}
-		(*pidct)(qdctblocks[n]);
-		(*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,qdctblocks[n]);
+		pidct(qdctblocks[n]);
+		padd_pred(pred[cc]+offs,cur[cc]+offs,lx,qdctblocks[n]);
 	}
 }
 

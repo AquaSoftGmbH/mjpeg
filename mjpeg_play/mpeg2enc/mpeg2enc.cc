@@ -61,6 +61,9 @@
 
 #include "global.h"
 #include "motionsearch.h"
+#include "predict_ref.h"
+#include "transfrm_ref.h"
+#include "quantize_ref.h"
 #include "format_codes.h"
 #include "mpegconsts.h"
 #include "fastintfns.h"

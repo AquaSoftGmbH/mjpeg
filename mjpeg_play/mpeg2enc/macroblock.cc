@@ -23,6 +23,7 @@
 
 #include "macroblock.hh"
 #include "mpeg2enc.h"
+#include "picture.hh"
 
 void MacroBlock::MotionEstimate()
 {

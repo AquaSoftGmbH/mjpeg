@@ -1,5 +1,7 @@
-/* transfrm_ref.c,   Low-level Architecture neutral quantization /
- * inverse quantization routines */
+/* transfrm.c,   Low-level Architecture neutral DCT/iDCT and prediction
+   difference / addition routines
+   
+*/
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -50,7 +52,33 @@
 #include <config.h>
 #include <math.h>
 #include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "syntaxparams.h"
+#include "transfrm_ref.h"
+#include "cpu_accel.h"
+#include "simd.h"
+
+#ifdef HAVE_ALTIVEC
+#include "../utils/altivec/altivec_transform.h"
+#endif
+
+void fdct( int16_t *blk );
+void idct( int16_t *blk );
+void init_fdct (void);
+void init_idct (void);
+
+/*
+  Pointers to version of transform and prediction manipulation
+  routines to be used..
+ */
+
+void (*pfdct)( int16_t * blk );
+void (*pidct)( int16_t * blk );
+void (*padd_pred) (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
+void (*psub_pred) (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
+int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
 
 
 int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
@@ -143,3 +171,75 @@ void sub_pred(uint8_t *pred, uint8_t *cur, int lx, 	int16_t *blk)
 }
 
 
+/*
+  Initialise DCT transformation routines.  Selects the appropriate
+  architecture dependent SIMD routines and initialises pre-computed tables
+ */
+
+
+void init_transform(void)
+{
+	int flags;
+	flags = cpu_accel();
+
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
+	{
+		mjpeg_info( "SETTING MMX for TRANSFORM!");
+		pfdct = fdct_mmx;
+		pidct = idct_mmx;
+		padd_pred = add_pred_mmx;
+		psub_pred = sub_pred_mmx;
+		pfield_dct_best = field_dct_best_mmx;
+	}
+	else
+#endif
+	{
+		pfdct = fdct;
+		pidct = idct;
+		padd_pred = add_pred;
+		psub_pred = sub_pred;
+		pfield_dct_best = field_dct_best;
+	}
+
+#ifdef HAVE_ALTIVEC
+	if (flags > 0)
+	{
+#if ALTIVEC_TEST_TRANSFORM
+#  if defined(ALTIVEC_BENCHMARK)
+	    mjpeg_info("SETTING AltiVec BENCHMARK for TRANSFORM!");
+#  elif defined(ALTIVEC_VERIFY)
+	    mjpeg_info("SETTING AltiVec VERIFY for TRANSFORM!");
+#  endif
+#else
+	    mjpeg_info("SETTING AltiVec for TRANSFORM!");
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(fdct)
+	    pfdct = ALTIVEC_TEST_SUFFIX(fdct);
+#else
+	    pfdct = ALTIVEC_SUFFIX(fdct);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(idct)
+	    pidct = ALTIVEC_TEST_SUFFIX(idct);
+#else
+	    pidct = ALTIVEC_SUFFIX(idct);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(add_pred)
+	    padd_pred = ALTIVEC_TEST_SUFFIX(add_pred);
+#else
+	    padd_pred = ALTIVEC_SUFFIX(add_pred);
+#endif
+
+#if ALTIVEC_TEST_FUNCTION(sub_pred)
+	    psub_pred = ALTIVEC_TEST_SUFFIX(sub_pred);
+#else
+	    psub_pred = ALTIVEC_SUFFIX(sub_pred);
+#endif
+	}
+#endif /* HAVE_ALTIVEC */
+	init_fdct();
+	init_idct();
+}

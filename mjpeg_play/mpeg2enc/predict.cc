@@ -1,4 +1,4 @@
-/* predict.c, motion compensated prediction                                 */
+/* predict.cc, motion compensated prediction                                 */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -46,99 +46,10 @@
  */
 
 
-#include <config.h>
-#include <stdio.h>
+#include "config.h"
+#include "mjpeg_logging.h"
 #include "global.h"
-#include "cpu_accel.h"
-#include "simd.h"
-
-#ifdef HAVE_ALTIVEC
-#include "../utils/altivec/altivec_predict.h"
-#endif
-
-
-/* private prototypes */
-
-static void pred (
-	uint8_t *src[], int sfield,
-	uint8_t *dst[], int dfield,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-
-extern "C" /* static */ void pred_comp (
-	uint8_t *src, uint8_t *dst,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-static void pred_comp_mmxe(
-	uint8_t *src, uint8_t *dst,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-static void pred_comp_mmx(
-	uint8_t *src, uint8_t *dst,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-#endif
-
-static void calc_DMV(	const Picture &picture,int DMV[][2], 
-						int *dmvector, int mvx, int mvy);
-
-static void clearblock (const Picture &picture,
-						uint8_t *cur[], int i0, int j0);
-
-void init_predict(void);
-
-
-/*
-  Initialise prediction - currently purely selection of which
-  versions of the various low level computation routines to use
-  
-  */
-
-
-static void (*ppred_comp)(
-	uint8_t *src, uint8_t *dst,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
-
-void init_predict(void)
-{
-	int cpucap = cpu_accel();
-
-	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
-	{
-		ppred_comp = pred_comp;
-	}
-
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
-	{
-		mjpeg_info( "SETTING EXTENDED MMX for PREDICTION!");
-		ppred_comp = pred_comp_mmxe;
-	}
-    else if(cpucap & ACCEL_X86_MMX ) /* Original MMX... */
-	{
-		mjpeg_info( "SETTING MMX for PREDICTION!");
-		ppred_comp = pred_comp_mmx;
-	}
-#endif
-#ifdef HAVE_ALTIVEC
-    else
-	{
-#  if ALTIVEC_TEST_PREDICT
-#    if defined(ALTIVEC_BENCHMARK)
-	    mjpeg_info("SETTING AltiVec BENCHMARK for PREDICTION!");
-#    elif defined(ALTIVEC_VERIFY)
-	    mjpeg_info("SETTING AltiVec VERIFY for PREDICTION!");
-#    endif
-#  else
-	    mjpeg_info("SETTING AltiVec for PREDICTION!");
-#  endif
-
-#  if ALTIVEC_TEST_FUNCTION(pred_comp)
-	    ppred_comp = ALTIVEC_TEST_SUFFIX(pred_comp);
-#  else
-	    ppred_comp = ALTIVEC_SUFFIX(pred_comp);
-#  endif
-	}
-#endif /* HAVE_ALTIVEC */
-}
-
+#include "predict_ref.h"
 
 /* form prediction for a complete picture (frontend for predict_mb)
  *
@@ -154,6 +65,53 @@ void predict(Picture *picture)
 	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
 		mbi->Predict();
 }
+
+
+/* predict a rectangular block (all three components)
+ *
+ * src:     source frame (Y,U,V)
+ * sfield:  source field select (0: frame or top field, 1: bottom field)
+ * dst:     destination frame (Y,U,V)
+ * dfield:  destination field select (0: frame or top field, 1: bottom field)
+ *
+ * the following values are in luminance picture (frame or field) dimensions
+ * lx:      distance of vertically adjacent pels (selects frame or field pred.)
+ * w,h:     width and height of block (only 16x16 or 16x8 are used)
+ * x,y:     coordinates of destination block
+ * dx,dy:   half pel motion vector
+ * addflag: store or add (= average) prediction
+ */
+
+void pred (	uint8_t *src[], int sfield,
+			uint8_t *dst[], int dfield,
+			int lx, int w, int h, int x, int y, 
+			int dx, int dy, bool addflag
+	)
+{
+	int cc;
+
+	for (cc=0; cc<3; cc++)
+	{
+		if (cc==1)
+		{
+			/* scale for color components */
+			if (opt_chroma_format==CHROMA420)
+			{
+				/* vertical */
+				h >>= 1; y >>= 1; dy /= 2;
+			}
+			if (opt_chroma_format!=CHROMA444)
+			{
+				/* horizontal */
+				w >>= 1; x >>= 1; dx /= 2;
+				lx >>= 1;
+			}
+		}
+		ppred_comp(	src[cc]+(sfield?lx>>1:0),dst[cc]+(dfield?lx>>1:0),
+					lx,w,h,x,y,dx,dy, (int)addflag);
+	}
+}
+
 
 /* form prediction for one macroblock
  *
@@ -182,17 +140,18 @@ void MacroBlock::Predict()
 	uint8_t **cur = picture.pred;      // Frame to predict
 	int lx = opt_phy_width;
 
-	int addflag, currentfield;
+	bool addflag;
+	int currentfield;
 	uint8_t **predframe;
 	int DMV[2][2];
 
 	if (mb_type&MB_INTRA)
 	{
-		clearblock(picture,cur,bx,by);
+		clearblock(picture.pict_struct,cur,bx,by);
 		return;
 	}
 
-	addflag = 0; /* first prediction is stored, second is added and averaged */
+	addflag = false; /* first prediction is stored, second is added and averaged */
 
 	if ((mb_type & MB_FORWARD) || (picture.pict_type==P_TYPE))
 	{
@@ -205,9 +164,8 @@ void MacroBlock::Predict()
 			if ((motion_type==MC_FRAME) || !(mb_type & MB_FORWARD))
 			{
 				/* frame-based prediction in frame picture */
-				pred(
-					 oldref,0,cur,0,
-					 lx,16,16,bx,by,MV[0][0][0],MV[0][0][1],0);
+				pred( oldref,0,cur,0,
+					 lx,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
 			}
 			else if (motion_type==MC_FIELD)
 			{
@@ -219,34 +177,35 @@ void MacroBlock::Predict()
 
 				/* top field prediction */
 				pred(oldref,mv_field_sel[0][0],cur,0,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,0);
+					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
 
 				/* bottom field prediction */
 				pred(oldref,mv_field_sel[1][0],cur,1,
-					 lx<<1,16,8,bx,by>>1,MV[1][0][0],MV[1][0][1]>>1,0);
+					 lx<<1,16,8,bx,by>>1,MV[1][0][0],MV[1][0][1]>>1,false);
 			}
 			else if (motion_type==MC_DMV)
 			{
 				/* dual prime prediction */
 
 				/* calculate derived motion vectors */
-				calc_DMV(picture,DMV,dmvector,MV[0][0][0],MV[0][0][1]>>1);
+				calc_DMV(picture.pict_struct, picture.topfirst,
+						 DMV,dmvector,MV[0][0][0],MV[0][0][1]>>1);
 
 				/* predict top field from top field */
 				pred(oldref,0,cur,0,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,0);
+					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
 
 				/* predict bottom field from bottom field */
 				pred(oldref,1,cur,1,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,0);
+					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
 
 				/* predict and add to top field from bottom field */
 				pred(oldref,1,cur,0,
-					 lx<<1,16,8,bx,by>>1,DMV[0][0],DMV[0][1],1);
+					 lx<<1,16,8,bx,by>>1,DMV[0][0],DMV[0][1],true);
 
 				/* predict and add to bottom field from top field */
 				pred(oldref,0,cur,1,
-					 lx<<1,16,8,bx,by>>1,DMV[1][0],DMV[1][1],1);
+					 lx<<1,16,8,bx,by>>1,DMV[1][0],DMV[1][1],true);
 			}
 			else
 			{
@@ -271,7 +230,7 @@ void MacroBlock::Predict()
 			{
 				/* field-based prediction in field picture */
 				pred(predframe,mv_field_sel[0][0],cur,currentfield,
-					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],0);
+					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
 			}
 			else if (motion_type==MC_16X8)
 			{
@@ -279,7 +238,7 @@ void MacroBlock::Predict()
 
 				/* upper half */
 				pred(predframe,mv_field_sel[0][0],cur,currentfield,
-					 lx<<1,16,8,bx,by,MV[0][0][0],MV[0][0][1],0);
+					 lx<<1,16,8,bx,by,MV[0][0][0],MV[0][0][1],false);
 
 				/* determine which frame to use for lower half prediction */
 				if ((picture.pict_type==P_TYPE) && picture.secondfield
@@ -290,7 +249,7 @@ void MacroBlock::Predict()
 
 				/* lower half */
 				pred(predframe,mv_field_sel[1][0],cur,currentfield,
-					 lx<<1,16,8,bx,by+8,MV[1][0][0],MV[1][0][1],0);
+					 lx<<1,16,8,bx,by+8,MV[1][0][0],MV[1][0][1],false);
 			}
 			else if (motion_type==MC_DMV)
 			{
@@ -303,15 +262,17 @@ void MacroBlock::Predict()
 					predframe = oldref; /* previous frame */
 
 				/* calculate derived motion vectors */
-				calc_DMV(picture,DMV,dmvector,MV[0][0][0],MV[0][0][1]);
+				calc_DMV(picture.pict_struct,
+						 picture.topfirst,
+						 DMV,dmvector,MV[0][0][0],MV[0][0][1]);
 
 				/* predict from field of same parity */
 				pred(oldref,currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],0);
+					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
 
 				/* predict from field of opposite parity */
 				pred(predframe,!currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,DMV[0][0],DMV[0][1],1);
+					 lx<<1,16,16,bx,by,DMV[0][0],DMV[0][1],true);
 			}
 			else
 			{
@@ -319,7 +280,7 @@ void MacroBlock::Predict()
 				mjpeg_error_exit1("Internal: invalid motion_type");
 			}
 		}
-		addflag = 1; /* next prediction (if any) will be averaged with this one */
+		addflag = true; /* next prediction (if any) will be averaged with this one */
 	}
 
 	if (mb_type & MB_BACKWARD)
@@ -384,341 +345,4 @@ void MacroBlock::Predict()
 			}
 		}
 	}
-}
-
-/* predict a rectangular block (all three components)
- *
- * src:     source frame (Y,U,V)
- * sfield:  source field select (0: frame or top field, 1: bottom field)
- * dst:     destination frame (Y,U,V)
- * dfield:  destination field select (0: frame or top field, 1: bottom field)
- *
- * the following values are in luminance picture (frame or field) dimensions
- * lx:      distance of vertically adjacent pels (selects frame or field pred.)
- * w,h:     width and height of block (only 16x16 or 16x8 are used)
- * x,y:     coordinates of destination block
- * dx,dy:   half pel motion vector
- * addflag: store or add (= average) prediction
- */
-
-static void pred (	uint8_t *src[], int sfield,
-					uint8_t *dst[], int dfield,
-					int lx, int w, int h, int x, int y, 
-					int dx, int dy, int addflag
-	)
-{
-	int cc;
-
-	for (cc=0; cc<3; cc++)
-	{
-		if (cc==1)
-		{
-			/* scale for color components */
-			if (opt_chroma_format==CHROMA420)
-			{
-				/* vertical */
-				h >>= 1; y >>= 1; dy /= 2;
-			}
-			if (opt_chroma_format!=CHROMA444)
-			{
-				/* horizontal */
-				w >>= 1; x >>= 1; dx /= 2;
-				lx >>= 1;
-			}
-		}
-		(*ppred_comp)(	src[cc]+(sfield?lx>>1:0),dst[cc]+(dfield?lx>>1:0),
-						lx,w,h,x,y,dx,dy,addflag);
-	}
-}
-
-/* low level prediction routine
- *
- * src:     prediction source
- * dst:     prediction destination
- * lx:      line width (for both src and dst)
- * x,y:     destination coordinates
- * dx,dy:   half pel motion vector
- * w,h:     size of prediction block
- * addflag: store or add prediction
- *
- * There are also SIMD versions of this routine...
- */
-
-extern "C" /* static */ void pred_comp(
-	uint8_t *src,
-	uint8_t *dst,
-	int lx,
-	int w, int h,
-	int x, int y,
-	int dx, int dy,
-	int addflag)
-{
-	int xint, xh, yint, yh;
-	int i, j;
-	uint8_t *s, *d;
-
-	/* half pel scaling */
-	xint = dx>>1; /* integer part */
-	xh = dx & 1;  /* half pel flag */
-	yint = dy>>1;
-	yh = dy & 1;
-
-	/* origins */
-	s = src + lx*(y+yint) + (x+xint); /* motion vector */
-	d = dst + lx*y + x;
-
-	if (!xh && !yh)
-		if (addflag)
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (unsigned int)(d[i]+s[i]+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-		else
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = s[i];
-				s+= lx;
-				d+= lx;
-			}
-	else if (!xh && yh)
-		if (addflag)
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (d[i] + ((unsigned int)(s[i]+s[i+lx]+1)>>1)+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-		else
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (unsigned int)(s[i]+s[i+lx]+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-	else if (xh && !yh)
-		if (addflag)
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (d[i] + ((unsigned int)(s[i]+s[i+1]+1)>>1)+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-		else
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (unsigned int)(s[i]+s[i+1]+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-	else /* if (xh && yh) */
-		if (addflag)
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (d[i] + ((unsigned int)(s[i]+s[i+1]+s[i+lx]+s[i+lx+1]+2)>>2)+1)>>1;
-				s+= lx;
-				d+= lx;
-			}
-		else
-			for (j=0; j<h; j++)
-			{
-				for (i=0; i<w; i++)
-					d[i] = (unsigned int)(s[i]+s[i+1]+s[i+lx]+s[i+lx+1]+2)>>2;
-				s+= lx;
-				d+= lx;
-			}
-}
-
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-static void pred_comp_mmxe(
-	uint8_t *src,
-	uint8_t *dst,
-	int lx,
-	int w, int h,
-	int x, int y,
-	int dx, int dy,
-	int addflag)
-{
-	int xint, xh, yint, yh;
-	uint8_t *s, *d;
-	
-	/* half pel scaling */
-	xint = dx>>1; /* integer part */
-	xh = dx & 1;  /* half pel flag */
-	yint = dy>>1;
-	yh = dy & 1;
-
-	/* origins */
-	s = src + lx*(y+yint) + (x+xint); /* motion vector */
-	d = dst + lx*y + x;
-
-	if( xh )
-	{
-		if( yh ) 
-			predcomp_11_mmxe(s,d,lx,w,h,addflag);
-		else /* !yh */
-			predcomp_10_mmxe(s,d,lx,w,h,addflag);
-	}
-	else /* !xh */
-	{
-		if( yh ) 
-			predcomp_01_mmxe(s,d,lx,w,h,addflag);
-		else /* !yh */
-			predcomp_00_mmxe(s,d,lx,w,h,addflag);
-	}
-		
-}
-
-static void pred_comp_mmx(
-	uint8_t *src,
-	uint8_t *dst,
-	int lx,
-	int w, int h,
-	int x, int y,
-	int dx, int dy,
-	int addflag)
-{
-	int xint, xh, yint, yh;
-	uint8_t *s, *d;
-	
-	/* half pel scaling */
-	xint = dx>>1; /* integer part */
-	xh = dx & 1;  /* half pel flag */
-	yint = dy>>1;
-	yh = dy & 1;
-
-	/* origins */
-	s = src + lx*(y+yint) + (x+xint); /* motion vector */
-	d = dst + lx*y + x;
-
-	if( xh )
-	{
-		if( yh ) 
-			predcomp_11_mmx(s,d,lx,w,h,addflag);
-		else /* !yh */
-			predcomp_10_mmx(s,d,lx,w,h,addflag);
-	}
-	else /* !xh */
-	{
-		if( yh ) 
-			predcomp_01_mmx(s,d,lx,w,h,addflag);
-		else /* !yh */
-			predcomp_00_mmx(s,d,lx,w,h,addflag);
-	}
-		
-}
-#endif
-
-/* calculate derived motion vectors (DMV) for dual prime prediction
- * dmvector[2]: differential motion vectors (-1,0,+1)
- * mvx,mvy: motion vector (for same parity)
- *
- * DMV[2][2]: derived motion vectors (for opposite parity)
- *
- * uses global variables pict_struct and topfirst
- *
- * Notes:
- *  - all vectors are in field coordinates (even for frame pictures)
- *
- */
-static void calc_DMV(const Picture &picture,int DMV[][2], 
-					 int *dmvector, int mvx, int mvy
-)
-{
-  if (picture.pict_struct==FRAME_PICTURE)
-  {
-    if (picture.topfirst)
-    {
-      /* vector for prediction of top field from bottom field */
-      DMV[0][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-      DMV[0][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] - 1;
-
-      /* vector for prediction of bottom field from top field */
-      DMV[1][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-      DMV[1][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] + 1;
-    }
-    else
-    {
-      /* vector for prediction of top field from bottom field */
-      DMV[0][0] = ((3*mvx+(mvx>0))>>1) + dmvector[0];
-      DMV[0][1] = ((3*mvy+(mvy>0))>>1) + dmvector[1] - 1;
-
-      /* vector for prediction of bottom field from top field */
-      DMV[1][0] = ((mvx  +(mvx>0))>>1) + dmvector[0];
-      DMV[1][1] = ((mvy  +(mvy>0))>>1) + dmvector[1] + 1;
-    }
-  }
-  else
-  {
-    /* vector for prediction from field of opposite 'parity' */
-    DMV[0][0] = ((mvx+(mvx>0))>>1) + dmvector[0];
-    DMV[0][1] = ((mvy+(mvy>0))>>1) + dmvector[1];
-
-    /* correct for vertical field shift */
-    if (picture.pict_struct==TOP_FIELD)
-      DMV[0][1]--;
-    else
-      DMV[0][1]++;
-  }
-}
-
-static void clearblock(	const Picture &picture,
-						uint8_t *cur[], int i0, int j0
-	)
-{
-  int i, j, w, h;
-  uint8_t *p;
-
-  p = cur[0] 
-	  + ((picture.pict_struct==BOTTOM_FIELD) ? opt_phy_width : 0) 
-	  + i0 + opt_phy_width2*j0;
-
-  for (j=0; j<16; j++)
-  {
-    for (i=0; i<16; i++)
-      p[i] = 128;
-    p+= opt_phy_width2;
-  }
-
-  w = h = 16;
-
-  if (opt_chroma_format!=CHROMA444)
-  {
-    i0>>=1; w>>=1;
-  }
-
-  if (opt_chroma_format==CHROMA420)
-  {
-    j0>>=1; h>>=1;
-  }
-
-  p = cur[1] 
-	  + ((picture.pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
-	  + i0 + opt_phy_chrom_width2*j0;
-
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<w; i++)
-      p[i] = 128;
-    p+= opt_phy_chrom_width2;
-  }
-
-  p = cur[2] 
-	  + ((picture.pict_struct==BOTTOM_FIELD) ? opt_phy_chrom_width : 0) 
-	  + i0 + opt_phy_chrom_width2*j0;
-
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<w; i++)
-      p[i] = 128;
-    p+= opt_phy_chrom_width2;
-  }
 }

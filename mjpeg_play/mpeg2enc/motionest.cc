@@ -191,7 +191,7 @@ void motion_subsampled_lum( Picture *picture )
 		linestride = 2*opt_phy_width;
 	}
 
-	(*psubsample_image)( picture->curorg[0], 
+	psubsample_image( picture->curorg[0], 
 					 linestride,
 					 picture->curorg[0]+fsubsample_offset, 
 					 picture->curorg[0]+qsubsample_offset );
@@ -228,7 +228,7 @@ static __inline__ int unidir_pred_var( const mb_motion_s *motion,
 							int lx, 
 							int h)
 {
-	return (*psumsq)(motion->blk, mb, lx, motion->hx, motion->hy, h);
+	return psumsq(motion->blk, mb, lx, motion->hx, motion->hy, h);
 }
 
 
@@ -242,7 +242,7 @@ static __inline__ int bidir_pred_var( const mb_motion_s *motion_f,
 									  uint8_t *mb,  
 									  int lx, int h)
 {
-	return (*pbsumsq)( motion_f->blk, motion_b->blk,
+	return pbsumsq( motion_f->blk, motion_b->blk,
 					   mb, lx, 
 					   motion_f->hx, motion_f->hy,
 					   motion_b->hx, motion_b->hy,
@@ -282,8 +282,8 @@ static int unidir_var_sum( mb_motion_s *lum_mc,
 		(lum_mc->pos.x>>2) + (lum_mc->pos.y>>2)*uvlx;
 	
 	return 	lum_mc->var +
-		((*psumsq_sub22)( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
-		 (*psumsq_sub22)( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh));
+		(psumsq_sub22( ref[1] + cblkoffset, ssblk->umb, uvlx, uvh) +
+		 psumsq_sub22( ref[2] + cblkoffset, ssblk->vmb, uvlx, uvh));
 }
 
 /*
@@ -321,14 +321,14 @@ static int bidir_var_sum( mb_motion_s *lum_mc_f,
 		(lum_mc_b->pos.x>>2) + (lum_mc_b->pos.y>>2)*uvlx;
 	
 	return 	(
-		(*pbsumsq)( lum_mc_f->blk, lum_mc_b->blk,
+		pbsumsq( lum_mc_f->blk, lum_mc_b->blk,
 					ssblk->mb, lx, 
 					lum_mc_f->hx, lum_mc_f->hy,
 					lum_mc_b->hx, lum_mc_b->hy,
 					h) +
-		(*pbsumsq_sub22)( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
+		pbsumsq_sub22( ref_f[1] + cblkoffset_f, ref_b[1] + cblkoffset_b,
 					   ssblk->umb, uvlx, uvh ) +
-		(*pbsumsq_sub22)( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
+		pbsumsq_sub22( ref_f[2] + cblkoffset_f, ref_b[2] + cblkoffset_b,
 					   ssblk->vmb, uvlx, uvh ));
 
 }
@@ -339,8 +339,8 @@ static int bidir_var_sum( mb_motion_s *lum_mc_f,
 
 static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 {
-	return ((*pvariance)(ssblk->umb,(h>>1),(lx>>1)) + 
-			(*pvariance)(ssblk->vmb,(h>>1),(lx>>1))) * 2;
+	return (pvariance(ssblk->umb,(h>>1),(lx>>1)) + 
+			pvariance(ssblk->vmb,(h>>1),(lx>>1))) * 2;
 }
 
 
@@ -354,7 +354,7 @@ static __inline__ int bidir_pred_sad( const mb_motion_s *motion_f,
 									  uint8_t *mb,  
 									  int lx, int h)
 {
-	return (*pbsad)(motion_f->blk, motion_b->blk, 
+	return pbsad(motion_f->blk, motion_b->blk, 
 					 mb, lx, 
 					 motion_f->hx, motion_f->hy,
 					 motion_b->hx, motion_b->hy,
@@ -487,7 +487,7 @@ void MacroBlock::FrameME()
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations... ;-)
 	 */
-	intravar = (*pvariance)(ssmb.mb,16,opt_phy_width) 
+	intravar = pvariance(ssmb.mb,16,opt_phy_width) 
         + chrom_var_sum(&ssmb,16,opt_phy_width);
 
 	if (picture.pict_type==I_TYPE)
@@ -919,7 +919,7 @@ void MacroBlock::FieldME()
 		ssmb.qmb += (opt_phy_width >> 2);
 	}
 
-	var = (*pvariance)(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
+	var = pvariance(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
         
 	if(picture.pict_type==I_TYPE)
     {
@@ -1007,7 +1007,7 @@ void MacroBlock::FieldME()
 			 * (not allowed if ipflag is set)
 			 */
 			if (!picture.ipflag)
-				v0 = (*psumsq)(((picture.pict_struct==BOTTOM_FIELD) ? botref : topref) + i + w2*j,
+				v0 = psumsq(((picture.pict_struct==BOTTOM_FIELD) ? botref : topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
 			else
 				v0 = 1234;			/* Keep Compiler happy... */
@@ -1574,14 +1574,14 @@ static void dpframe_estimate (
 							jb >= 0 && jb <= (opt_enc_height-16))
 						{
 							/* compute prediction error */
-							local_dist = (*pbsumsq)(
+							local_dist = pbsumsq(
 								ref + (is>>1) + (opt_phy_width<<1)*(js>>1),
 								ref + opt_phy_width + (it>>1) + (opt_phy_width<<1)*(jt>>1),
 								ssmb->mb,             /* current mb location */
 								opt_phy_width<<1,       /* adjacent line distance */
 								is&1, js&1, it&1, jt&1, /* half-pel flags */
 								8);             /* block height */
-							local_dist += (*pbsumsq)(
+							local_dist += pbsumsq(
 								ref + opt_phy_width + (is>>1) + (opt_phy_width<<1)*(js>>1),
 								ref + (ib>>1) + (opt_phy_width<<1)*(jb>>1),
 								ssmb->mb + opt_phy_width,     /* current mb location */
@@ -1611,14 +1611,14 @@ static void dpframe_estimate (
 
 	/* TODO: This is now likely to be obsolete... */
 	/* Compute L1 error for decision purposes */
-	local_dist = (*pbsad)(
+	local_dist = pbsad(
 		ref + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
 		ref + opt_phy_width + (imint>>1) + (opt_phy_width<<1)*(jmint>>1),
 		ssmb->mb,
 		opt_phy_width<<1,
 		imins&1, jmins&1, imint&1, jmint&1,
 		8);
-	local_dist += (*pbsad)(
+	local_dist += pbsad(
 		ref + opt_phy_width + (imins>>1) + (opt_phy_width<<1)*(jmins>>1),
 		ref + (iminb>>1) + (opt_phy_width<<1)*(jminb>>1),
 		ssmb->mb + opt_phy_width,
@@ -1707,7 +1707,7 @@ static void dpfield_estimate(
 				jo >= 0 && jo <= (opt_enc_height2-16)<<1)
 			{
 				/* compute prediction error */
-				local_dist = (*pbsumsq)(
+				local_dist = pbsumsq(
 					sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
 					oppref  + (io>>1)    + opt_phy_width2*(jo>>1),
 					mb,             /* current mb location */
@@ -1730,7 +1730,7 @@ static void dpfield_estimate(
 
 	/* Compute L1 error for decision purposes */
 	bestdp_mc->sad =
-		(*pbsad)(
+		pbsad(
 			sameref + (imins>>1) + opt_phy_width2*(jmins>>1),
 			oppref  + (imino>>1) + opt_phy_width2*(jmino>>1),
 			mb,             /* current mb location */
@@ -1842,7 +1842,7 @@ static void mb_me_search(
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
-	best.weight = (*psad_00)(reffld+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
+	best.weight = psad_00(reffld+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
 	best.x = 0;
 	best.y = 0;
 
@@ -1853,7 +1853,7 @@ static void mb_me_search(
 	 */
 
 
-	(*pbuild_sub44_mests)( &sub44set,
+	pbuild_sub44_mests( &sub44set,
 							ilow, jlow, ihigh, jhigh,
 							i0, j0,
 							best.weight,
@@ -1870,7 +1870,7 @@ static void mb_me_search(
 
 	*/
 
-	(*pbuild_sub22_mests)( &sub44set, &sub22set,
+	pbuild_sub22_mests( &sub44set, &sub22set,
 							i0, j0, 
 							ihigh,  jhigh, 
 							best.weight,
@@ -1885,7 +1885,7 @@ static void mb_me_search(
 	*/
 	
 
-	(*pfind_best_one_pel)( &sub22set,
+	pfind_best_one_pel( &sub22set,
 						   reffld, ssblk->mb, 
 						   i0, j0,
 						   ihigh, jhigh, 
@@ -1912,16 +1912,16 @@ static void mb_me_search(
 			if( i&1 )
 			{
 				if( j & 1 )
-					d = (*psad_11)(orgblk,ssblk->mb,lx,h);
+					d = psad_11(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*psad_01)(orgblk,ssblk->mb,lx,h);
+					d = psad_01(orgblk,ssblk->mb,lx,h);
 			}
 			else
 			{
 				if( j & 1 )
-					d = (*psad_10)(orgblk,ssblk->mb,lx,h);
+					d = psad_10(orgblk,ssblk->mb,lx,h);
 				else
-					d = (*psad_00)(orgblk,ssblk->mb,lx,h,res->sad);
+					d = psad_00(orgblk,ssblk->mb,lx,h,res->sad);
 			}
 			d += (intabs(i-(i0<<1)) + intabs(j-(j0<<1)))<<3;
 			if (d<res->sad)
@@ -1935,7 +1935,7 @@ static void mb_me_search(
 			}
 		}
 	}
-	res->var = (*psumsq)(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
+	res->var = psumsq(res->blk, ssblk->mb, lx, res->hx, res->hy, h);
 
 }
 

@@ -20,6 +20,26 @@
  *
  */
 
+#ifndef _QUANTIZE_H
+#define _QUANTIZE_H
+
+#include "config.h"
+#include "mjpeg_types.h"
+
+
+extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
+                                int q_scale_type, 
+                                int mquant, int *nonsat_mquant);
+extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+
+extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
+
+
+#ifdef  __cplusplus
+extern "C" {
+#endif
+
+void init_quantizer(void);
 
 int next_larger_quant( int q_scale_type, int quant );
 int quant_code(  int q_scale_type, int mquant );
@@ -37,6 +57,11 @@ void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
 
 
 
+#ifdef  __cplusplus
+}
+#endif
+
+#endif /*  _QUANTIZE_H */
 
 /* 
  * Local variables:

@@ -27,9 +27,13 @@
  *
  */
 
+#include "stdio.h"
 #include "syntaxparams.h"
 #include "mpeg2enc.h"
 #include "tables.h"
+
+#include "macroblock.hh"
+#include "picture.hh"
 
 
 /* prototypes of global functions */
@@ -48,7 +52,6 @@ void motion_subsampled_lum( Picture *picture );
 void *bufalloc( size_t size );
 
 /* predict.c */
-void init_predict(void);
 
 void predict (Picture *picture);
 
@@ -93,7 +96,6 @@ void putcbp (int cbp);
 /* quantize.c */
 
 void iquantize( Picture *picture );
-void init_quantizer(void);
 
 /* ratectl.c */
 void rc_init_seq (int reinit);
@@ -123,9 +125,7 @@ void stats (void);
 void transform (Picture *picture);
 
 void itransform ( Picture *picture);
-void dct_type_estimation (Picture *picture );
 
-void init_transform(void);
 
 /* writepic.c */
 void writeframe (int frame_num, uint8_t *frame[]);

@@ -42,13 +42,13 @@
  *
  */
 
-#include <config.h>
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <mjpeg_types.h>
-
+#include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "global.h"
 #include "motionsearch.h"
 

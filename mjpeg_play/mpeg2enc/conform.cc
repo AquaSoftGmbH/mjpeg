@@ -27,9 +27,9 @@
  *
  */
 
-#include <config.h>
-#include <stdio.h>
+#include "config.h"
 #include <stdlib.h>
+#include "mjpeg_logging.h"
 
 #include "global.h"
 

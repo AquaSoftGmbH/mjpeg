@@ -30,7 +30,6 @@
 #include <config.h>
 #include "mjpeg_types.h"
 #include "synchrolib.h"
-#include "mjpeg_logging.h"
 
 #define PICTURE_START_CODE 0x100L
 #define SLICE_MIN_START    0x101L
@@ -96,21 +95,6 @@
 /*
   Some enumerated types to give legible indices into motion vector arrays
 */
-
-typedef enum coord { x_crd, y_crd} coord_e;
-typedef enum mc_dir { fwd, bwd } mc_dir_e;
-typedef enum field { top, bot }  field_e;
-
-#include "macroblock.hh"
-#include "picture.hh"
- 
-/* motion data */
-struct motion_data {
-	unsigned int forw_hor_f_code,forw_vert_f_code; /* vector range */
-	unsigned int sxf,syf; /* search range */
-	unsigned int back_hor_f_code,back_vert_f_code;
-	unsigned int sxb,syb;
-};
 
 
 

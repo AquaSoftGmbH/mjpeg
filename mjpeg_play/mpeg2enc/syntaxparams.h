@@ -141,6 +141,14 @@ EXTERN int opt_qscale_tab[3]; 	/* linear/non-linear quantizaton table */
 EXTERN int opt_intravlc_tab[3]; /* intra vlc format (I,P,B) */
 EXTERN int opt_altscan_tab[3]; 	/* alternate scan (I,P,B */
 
+/* motion data */
+struct motion_data {
+	unsigned int forw_hor_f_code,forw_vert_f_code; /* vector range */
+	unsigned int sxf,syf; /* search range */
+	unsigned int back_hor_f_code,back_vert_f_code;
+	unsigned int sxb,syb;
+};
+
 EXTERN struct motion_data *opt_motion_data;
 
 

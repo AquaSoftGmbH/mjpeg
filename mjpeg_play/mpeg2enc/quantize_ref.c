@@ -1,5 +1,5 @@
-/* quantize_ref.c, Low-level Architecture neutral quantization /
- * inverse quantization routines */
+/* quantize.c, Low-level quantization / inverse quantization
+ * routines */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -48,16 +48,29 @@
  */
 
 
-#include <config.h>
-#include <stdio.h>
-#include <stdlib.h>
+#include "config.h"
 #include <math.h>
 #ifdef HAVE_FENV_H
 #include <fenv.h>
 #endif
+#include "mjpeg_logging.h"
 #include "syntaxparams.h"
-#include "simd.h"
 #include "fastintfns.h"
+
+#include "cpu_accel.h"
+#include "simd.h"
+
+#ifdef HAVE_ALTIVEC
+extern "C" void enable_altivec_quantization(int opt_mpeg1);
+#endif
+
+
+int (*pquant_non_intra)( int16_t *src, int16_t *dst,
+                                int q_scale_type, 
+                                int mquant, int *nonsat_mquant);
+int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+
+void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
 
 /* non-linear quantization coefficient table */
 const uint8_t non_linear_mquant_table[32] =
@@ -362,7 +375,7 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 }
 
 
-/* static */ void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
+void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
 {
   int i, val;
 
@@ -446,6 +459,65 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
       dst[63]^= 1;
   }
 }
+
+/*
+  Initialise quantization routines.  Currently just setting up MMX
+  routines if available.  
+
+  TODO: The initialisation of the quantisation tables should move
+  here...
+*/
+
+void init_quantizer(void)
+{
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+	int flags = cpu_accel();
+	const char *opt_type1, *opt_type2;
+	if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
+	{
+		if( (flags & ACCEL_X86_3DNOW) != 0 )
+		{
+			opt_type1 = "3DNOW and";
+			pquant_non_intra = quant_non_intra_3dnow;
+		}
+		else if ( (flags & ACCEL_X86_SSE) != 0 )
+		{
+			opt_type1 = "SSE and";
+			pquant_non_intra = quant_non_intra_sse;
+		}
+		else 
+		{
+			opt_type1 = "MMX and";
+			pquant_non_intra = quant_non_intra_mmx;
+		}
+
+		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		{
+			opt_type2 = "EXTENDED MMX";
+			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
+			piquant_non_intra = iquant_non_intra_mmx;
+		}
+		else
+		{
+			opt_type2 = "MMX";
+			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
+			piquant_non_intra = iquant_non_intra_mmx;
+		}
+		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
+	}
+	else
+#endif
+	{
+		pquant_non_intra = quant_non_intra;	  
+		pquant_weight_coeff_sum = quant_weight_coeff_sum;
+		piquant_non_intra = iquant_non_intra;
+	}
+#ifdef HAVE_ALTIVEC
+	if (cpu_accel())
+	    enable_altivec_quantization(opt_mpeg1);
+#endif
+}
+
 
 /* 
  * Local variables:

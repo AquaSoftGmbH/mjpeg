@@ -20,7 +20,7 @@
 #ifndef __MOTIONSEARCH_H__
 #define __MOTIONSEARCH_H__
 
-#include <config.h>
+#include "config.h"
 #include "mjpeg_types.h"
 
 struct me_result
@@ -80,6 +80,7 @@ extern int (*pbuild_sub22_mests)( me_result_set *sub44set,
  * from the specifed rectangle of candidates in s44org with respect
  * to the reference block s44blk
  */
+
 
 extern int (*pbuild_sub44_mests)( me_result_set *sub44set,
 								  int ilow, int jlow, int ihigh, int jhigh, 

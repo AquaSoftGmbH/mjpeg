@@ -6,7 +6,8 @@ bin_PROGRAMS = mpeg2enc
 mpeg2enc_MMXSSE = \
     fdct_mmx.s fdctdata.c idct_mmx.s idctdata.c \
     quant_mmx.s quantize_x86.c predict_mmx.s \
-    predcomp_mmxe.s predcomp_mmx.s transfrm_x86.c
+    predcomp_mmxe.s predcomp_mmx.s transfrm_x86.c \
+	predict_x86.c
 
 
 EXTRA_DIST = NOTES .ccvsignore
@@ -33,7 +34,7 @@ endif
 # dependent (usually SIMD) implementations
 
 mpeg2enc_REF = quantize_ref.c  quantize_ref.h transfrm_ref.c transfrm_ref.h \
-			fdctref.c idct.c
+			fdctref.c idct.c predict_ref.c predict_ref.h
 
 mpeg2enc_SOURCES = mpeg2enc.cc conform.cc putseq.cc putpic.cc puthdr.cc putmpg.cc \
 	 putvlc.cc putbits.cc motionest.cc predict.cc readpic.cc writepic.cc transfrm.cc \

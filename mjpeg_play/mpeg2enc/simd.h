@@ -48,6 +48,7 @@ extern "C"
 
 #include "quantize_ref.h"
 #include "transfrm_ref.h"
+#include "predict_ref.h"
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
@@ -98,6 +99,14 @@ void predcomp_00_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag
 void predcomp_10_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmx");
 void predcomp_11_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
 void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
+
+
+void pred_comp_mmxe(
+	uint8_t *src, uint8_t *dst,
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
+void pred_comp_mmx(
+	uint8_t *src, uint8_t *dst,
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 
 #endif
 

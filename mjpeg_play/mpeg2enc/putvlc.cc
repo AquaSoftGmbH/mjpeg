@@ -27,11 +27,12 @@
  *
  */
 
-#include <config.h>
+#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include "global.h"
+#include "mjpeg_logging.h"
 #include "vlc.h"
 
 /* private prototypes */

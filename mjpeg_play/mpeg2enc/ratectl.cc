@@ -45,12 +45,11 @@
  *
  */
 
-#include <config.h>
-#include <stdio.h>
+#include "config.h"
 #include <math.h>
 #include <limits.h>
-#include <mjpeg_types.h>
-
+#include "mjpeg_types.h"
+#include "mjpeg_logging.h"
 #include "global.h"
 #include "simd.h"
 #include "fastintfns.h"

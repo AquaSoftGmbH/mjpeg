@@ -3,6 +3,7 @@
 #include <config.h>
 #include <stdio.h>
 #include "mjpeg_types.h"
+#include "transfrm_ref.h"
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 

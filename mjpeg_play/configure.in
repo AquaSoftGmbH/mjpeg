@@ -737,6 +737,7 @@ dnl We do this last as it can screw up library detection etc...
 dnl 
 
 CFLAGS="$ARCHFLAGS $CFLAGS"
+CXXFLAGS="$ARCHFLAGS $CXXFLAGS"
 if test "x${GCC}" != "xyes" ; then
   enable_compile_warnings=no
 fi
@@ -759,6 +760,7 @@ fi
 AC_MSG_RESULT($warnCFLAGS)
 if test "x$cflags_set" != "xyes" ; then
   CFLAGS="$CFLAGS $warnCFLAGS"
+  CXXFLAGS="$CXXFLAGS $warnCFLAGS"
   cflags_set=yes
 fi
 
@@ -787,6 +789,7 @@ mplex/Makefile
 scripts/Makefile
 utils/Makefile
 utils/altivec/Makefile
+utils/mmxsse/Makefile
 mjpegtools-config
 mjpegtools.pc
 mjpegtools.spec

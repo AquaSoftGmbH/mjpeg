@@ -38,13 +38,13 @@ public:
 	int back_hor_f_code, back_vert_f_code; /* motion vector ranges */
 	int dc_prec;				/* DC coefficient prec for intra blocks */
 	int pict_struct;			/* picture structure (frame, top / bottom) */
-	int topfirst;				/* display top field first */
-	int frame_pred_dct;			/* Use only frame prediction... */
+	bool topfirst;				/* display top field first */
+	bool frame_pred_dct;			/* Use only frame prediction... */
 	int intravlc;				/* Intra VLC format */
 	int q_scale_type;			/* Quantiser scale... */
 	int altscan;				/* Alternate scan  */
-	int repeatfirst;			/* repeat first field after second field */
-	int prog_frame;				/* progressive frame */
+	bool repeatfirst;			/* repeat first field after second field */
+	bool prog_frame;				/* progressive frame */
 
 	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
 	   not yet inverse quantised */

@@ -29,7 +29,7 @@
 #include "interact.hh"
 #include "multiplexor.hh"
 
-
+#define DEBUG_AC3_HEADERS
 #define AC3_SYNCWORD            0x0b77
 #define AC3_PACKET_SAMPLES      1536
 
@@ -82,7 +82,6 @@ bool AC3Stream::Probe(IBitStream &bs )
 void  AC3Stream::DisplayAc3HeaderInfo()
 {
         /* Some stuff to generate frame-header information */
-        printf( "AC3 FRAME %d\n", num_syncword-1 );
         printf( "bsid         = %d\n", bs.GetBits(5) );
         printf( "bsmode       = 0x%1x\n", bs.GetBits(3) ); 
         int acmode = bs.GetBits(3);
@@ -235,6 +234,7 @@ void AC3Stream::Init ( const int _stream_num)
             (framesize <<1);
             
 #ifdef DEBUG_AC3_HEADERS
+        printf( "AC3 FRAME %05d length = %05d\n", num_syncword-1, framesize );
 
         DisplayAc3HeaderInfo();
         while( bs.bitcount() % 8 != 0 )
@@ -317,7 +317,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		{
 			if( !bs.eos()   )
 			{
-				mjpeg_error_exit1( "Can't find next AC3 frame @ %lld %04x - broken bit-stream?", AU_start, syncword );
+				mjpeg_error_exit1( "Can't find next AC3 frame: @ %lld we have %04x - broken bit-stream?", AU_start/8, syncword );
             }
             break;
 		}
@@ -344,7 +344,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		num_syncword++;
 
 #ifdef DEBUG_AC3_HEADERS
-
+        printf( "AC3 FRAME %05d length = %05d\n", num_syncword-1, framesize );
         DisplayAc3HeaderInfo();
         while( bs.bitcount() % 8 != 0 )
             bs.GetBits(1);
