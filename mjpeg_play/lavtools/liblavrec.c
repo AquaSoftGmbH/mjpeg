@@ -898,19 +898,32 @@ static void *lavrec_encoding_thread(void* arg)
             continue;
          }
 
-         /* Writing of video and audio data is non-reentrant and must
-          * occur in-order - acquire lock and wait for preceding
-          * frame's encoder to have completed writing that frames data
-          */
          pthread_mutex_lock(&(settings->encoding_mutex));
-         predecessor_frame = (current_frame + settings->softreq.frames-1) %
-            settings->softreq.frames;
-         while( !settings->buffer_completed[predecessor_frame] )
-         {
-            pthread_cond_wait(&(settings->buffer_completion[predecessor_frame]),
-               &(settings->encoding_mutex));
-         }
+      }
+      else
+      {
+         jpegsize = 0;
+      }
 
+      /* Writing of video and audio data is non-reentrant and must
+       * occur in-order - acquire lock and wait for preceding
+       * frame's encoder to have completed writing that frames data
+       * Note that we need to queue the buffers in order, too,
+       * so we need to sync up here even if we're discarding
+       * the frame.
+       */
+      predecessor_frame = (current_frame + settings->softreq.frames-1) %
+         settings->softreq.frames;
+      while( !settings->buffer_completed[predecessor_frame] )
+      {
+         if (settings->state != LAVREC_STATE_RECORDING)
+            break;
+         pthread_cond_wait(&(settings->buffer_completion[predecessor_frame]),
+            &(settings->encoding_mutex));
+      }
+
+      if (jpegsize > 0)
+      {
          if (video_captured(info,
             settings->MJPG_buff+(settings->breq.size*current_frame), jpegsize,
             settings->buffer_valid[current_frame]) != 1)
@@ -1615,6 +1628,7 @@ static void *lavrec_software_sync_thread(void* arg)
       pthread_mutex_unlock(&(settings->queue_mutex));
 
 retry:
+      lavrec_msg(LAVREC_MSG_DEBUG, info, "About to sync on %d", frame);
       if (ioctl(settings->video_fd, VIDIOCSYNC, &frame) < 0)
       {
          if (errno==EINTR && info->software_encoding) goto retry; /* BTTV sync got interrupted */
@@ -1629,6 +1643,7 @@ retry:
       }
       else
       {
+         lavrec_msg(LAVREC_MSG_DEBUG, info, "Synced on %d", frame);
          pthread_mutex_lock(&(settings->software_sync_mutex));
          gettimeofday(&(settings->software_sync_timestamp[frame]), NULL);
          settings->software_sync_ready[frame] = 1;
@@ -1682,6 +1697,9 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
       memcpy(&(bsync->timestamp), &(settings->software_sync_timestamp[bsync->frame]),
          sizeof(struct timeval));
       settings->software_sync_ready[bsync->frame] = 0;
+
+      lavrec_msg(LAVREC_MSG_DEBUG, info,
+         "Soft-synced on frame %ld", bsync->frame);
    }
    else
    {
@@ -1689,9 +1707,9 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
       {
          return 0;
       }
+      lavrec_msg(LAVREC_MSG_DEBUG, info,
+         "Synced on frame %ld", bsync->frame);
    }
-   lavrec_msg(LAVREC_MSG_DEBUG, info,
-      "Syncing on frame %ld", bsync->frame);
 
    return 1;
 }
@@ -2004,7 +2022,8 @@ static void lavrec_record(lavrec_t *info)
       }
 
       /* if (nerr++) we need to stop and quit */
-      if (nerr) lavrec_change_state(info, LAVREC_STATE_STOP);
+      if (nerr)
+         lavrec_change_state(info, LAVREC_STATE_STOP);
    }
 
    if (info->software_encoding)
