@@ -163,7 +163,7 @@ main (int argc, char *argv[])
 	}
 
 	/* initialize motion_library */
-//	init_motion_search ();
+	init_motion_search ();
 
 	/* initialize stream-information */
 	y4m_init_stream_info (&streaminfo);
@@ -455,24 +455,21 @@ motion_compensate_field (void)
 
 			/* the center match is two fields forwards, other than
                the motion search. This stabelizes zero-vectors! */
-			min = 0;
 			addr1 = (xx) + (yy) * w;
-			min = calc_SAD_noaccel (frame20[0] + addr1,
-						       frame10[0] + addr1);
-#if 0
-			min  += psad_00 (frame20[0] + addr1,
+			min  = psad_00 (frame20[0] + addr1,
 					        frame10[0] + addr1, w,
 					        16, 0);
-#endif
+
 			if(bttv_hack==0)
 			{
-#if 0
 				/* match chroma */
 				addr1 = (xx) / 2 + (yy) * w / 4;
 				min += psad_00 (frame20[1] + addr1,
 						frame10[1] + addr1,
 						w / 2, 8, 0);
-#endif
+				min += psad_00 (frame20[2] + addr1,
+						frame10[2] + addr1,
+						w / 2, 8, 0);
 			}
 			/* begin the search */
 			for (vy = -r; vy < r; vy+=2)
@@ -482,24 +479,23 @@ motion_compensate_field (void)
 					addr1 = (xx) + (yy) * w;
 					addr2 = (xx + vx) + (yy + vy) * w;
 
-					SAD = calc_SAD_noaccel (frame20[0] + addr1,
-						       frame21[0] + addr2);
-#if 0
 					SAD = psad_00 (frame20[0] + addr1,
 						       frame21[0] + addr2, w,
 						       16, 0);
-#endif
+
 					if(bttv_hack==0)
 					{
 					/* match chroma */
 					addr1 = (xx) / 2 + (yy) * w / 4;
 					addr2 = (xx + vx) / 2 + (yy +
 								 vy) * w / 4;
-#if 0
 					SAD += psad_00 (frame20[1] + addr1,
 							frame21[1] + addr2,
 							w / 2, 8, 0);
-#endif
+
+					SAD += psad_00 (frame20[2] + addr1,
+							frame21[2] + addr2,
+							w / 2, 8, 0);
 					}
 
 					if (SAD < min)
