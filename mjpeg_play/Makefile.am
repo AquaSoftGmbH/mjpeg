@@ -36,8 +36,7 @@ EXTRA_DIST = \
 	mjpegtools.spec \
 	mjpegtools.spec.in \
 	mjpegtools.pc.in \
-	autogen.sh \
-	strip_fPIC.sh
+	autogen.sh
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = mjpegtools.pc
