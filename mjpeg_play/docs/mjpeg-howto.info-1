@@ -1,5 +1,5 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.2 aus
-/tmp/linuxdoc-dir-1918/sgmltmp.mjpeg-howto.info.2.
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
+/tmp/linuxdoc-dir-2918/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -10,7 +10,7 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 ************************************************
 
      Praschinger Bernhard
-     v1.34
+     v1.35
 
    MJPEG capture/editting/replay and MPEG encoding toolset description
 
@@ -199,6 +199,7 @@ lavrec examples
 `record.avi'
      name of the created file.
 
+
    Recording is finished by pressing Crtl-C (nowadays: Strg-C).
 Sometimes using `-f A' instead of `-f a' might be necessary
 
@@ -234,6 +235,7 @@ Sometimes using `-f A' instead of `-f a' might be necessary
      With this lavrec uses the read instead of mmap for recording this
      is needed if your sound card does not support the mmap for
      recording.
+
 
    Setting the mixer does not work with every sound card.  If you
 record with 2 different settings and both recordings are equally loud
@@ -272,6 +274,7 @@ use the `-l -1' option when you record using lavrec
      recording) it starts a new sequence named record01.avi and so on
      till the recording is stopped or the disk is full
 
+
    Other example:
 
    `> lavrec -f a -i t -q 80 -d 2 -C europe-west:SE20 test.avi'
@@ -298,6 +301,7 @@ use the `-l -1' option when you record using lavrec
      (BTTV-Support is under construction). For more information on how
      to make the TV tuner parts of these cards work, see the
      Marvel/Linux project on: http://marvel.sourceforge.net
+
 
    Last example:
 
@@ -749,6 +753,7 @@ need to recalculate anything.
      generate the list file with the "save all" or "save select"
      buttons in glav.
 
+
 
 File: mjpeg-howto.info,  Node: Unify videos,  Next: Separate sound,  Prev: Edit with glav,  Up: Edit the video
 
@@ -763,6 +768,7 @@ record_n.avi'
 
 `-f m'
      specifies the output format, movtar in this case
+
 
    This is usually not needed. Keep in your mind that there is the 2GB
 file-size-limit on 32Bit systems with an older glibc.
@@ -844,6 +850,7 @@ long.
 `'
      the last 975 frames of epilogue.mov
 
+
    We could get the last 25 frames of intro.avi by calling:
 
    `>lav2yuv -o 225 -f 25 intro.avi'
@@ -884,6 +891,7 @@ the end of the transition:
 
 `-d num'
      duration of transition in frames
+
 
    An opacity of 0 means that the second stream is fully transparent
 (only stream one visible), at 255 stream two is fully opaque.
@@ -1320,6 +1328,7 @@ video.m1v'
      values might be a minimum of 9 and a maximum of 15.  For SVCD 9
      and 15 would be good values. If you only want to play it back on
      SW player you can use other min-max values.
+
 
    Example
 

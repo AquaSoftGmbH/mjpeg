@@ -1,13 +1,13 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.2 aus
-/tmp/linuxdoc-dir-1918/sgmltmp.mjpeg-howto.info.2.
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
+/tmp/linuxdoc-dir-2918/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
 
 Indirect:
 mjpeg-howto.info-1: 139
-mjpeg-howto.info-2: 49992
-mjpeg-howto.info-3: 99654
+mjpeg-howto.info-2: 50001
+mjpeg-howto.info-3: 99896
 
 Tag Table:
 (Indirect)
@@ -16,64 +16,65 @@ Node: Introduction783
 Node: Unsorted list of useful Hints2101
 Node: Recording videos6562
 Node: lavrec examples6935
-Node: Other recording hints10475
-Node: Some information about the typical lavrec output while recording12020
-Node: Notes about "interlace field order - what can go wrong and how to fix it"13587
-Node: There are three bad things that can happen with fields14427
-Node: How can I recognize if I have one of these Problems ?16200
-Node: How can you fix it?17699
-Node: Hey what about NTSC movies ?20990
-Node: Creating videos from images22295
-Node: Checking if recording was successful25251
-Node: Edit the video27464
-Node: Edit with glav27768
-Node: Unify videos29210
-Node: Separate sound29662
-Node: Separate images30093
-Node: Creating movie transitions31083
-Node: Converting the stream to MPEG or DIVx videos34797
-Node: Creating sound36536
-Node: Converting video38075
-Node: Scaling39620
-Node: Putting the streams together41886
-Node: Creating MPEG1 Videos44027
-Node: MPEG1 Audio creation Example44744
-Node: MPEG1 Video creation Example45463
-Node: MPEG1 Multiplexing Example49992
-Node: Creating MPEG2 Videos50856
-Node: MPEG2 Audio creation Example51906
-Node: MPEG2 Video creation Example52412
-Node: Which values should be used for VBR Encoding54787
-Node: Encoding destination TV (interlaced) or Monitor (progressive)56956
-Node: MPEG2 Multiplexing Example59460
-Node: Creating Video-CD's60269
-Node: VCD Audio creation Example61335
-Node: VCD Video creation Example61709
-Node: VCD Multiplexing Example63226
-Node: Creating the CD63583
-Node: Notes64135
-Node: Storing MPEGs65129
-Node: Creating SVCD66526
-Node: SVCD Audio creation Example67293
-Node: SVCD Video creation Example67731
-Node: SVCD Multiplexing Example70119
-Node: SVCD Creating the CD70656
-Node: Creating DVD's71335
-Node: DVD Audio creation Example72187
-Node: DVD Video creation Example72755
-Node: DVD Mplex Example73672
-Node: DVD creation Example74160
-Node: Creating DIVX Videos75153
-Node: lav2divx77393
-Node: A word on avifile codecs77950
-Node: Optimizing the stream78528
-Node: Scaling and offset correction84422
-Node: Frame rate conversion86854
-Node: Transcoding of existing MPEG-289797
-Node: If you want to do every step on your own it has to look like this93076
-Node: Trading Quality/Speed97610
-Node: Creating streams to be played from disk using Software players98833
-Node: SMP and distributed Encoding99654
-Node: Interoperability102952
+Node: Other recording hints10479
+Node: Some information about the typical lavrec output while recording12024
+Node: Notes about "interlace field order - what can go wrong and how to fix it"13591
+Node: There are three bad things that can happen with fields14431
+Node: How can I recognize if I have one of these Problems ?16204
+Node: How can you fix it?17703
+Node: Hey what about NTSC movies ?20994
+Node: Creating videos from images22299
+Node: Checking if recording was successful25255
+Node: Edit the video27468
+Node: Edit with glav27772
+Node: Unify videos29215
+Node: Separate sound29668
+Node: Separate images30099
+Node: Creating movie transitions31089
+Node: Converting the stream to MPEG or DIVx videos34805
+Node: Creating sound36544
+Node: Converting video38083
+Node: Scaling39628
+Node: Putting the streams together41894
+Node: Creating MPEG1 Videos44035
+Node: MPEG1 Audio creation Example44752
+Node: MPEG1 Video creation Example45471
+Node: MPEG1 Multiplexing Example50001
+Node: Creating MPEG2 Videos50865
+Node: MPEG2 Audio creation Example51915
+Node: MPEG2 Video creation Example52421
+Node: Which values should be used for VBR Encoding54796
+Node: Encoding destination TV (interlaced) or Monitor (progressive)56965
+Node: MPEG2 Multiplexing Example59469
+Node: Creating Video-CD's60278
+Node: VCD Audio creation Example61344
+Node: VCD Video creation Example61718
+Node: VCD Multiplexing Example63235
+Node: Creating the CD63592
+Node: Notes64144
+Node: Storing MPEGs65138
+Node: Creating SVCD66535
+Node: SVCD Audio creation Example67302
+Node: SVCD Video creation Example67740
+Node: SVCD Multiplexing Example70129
+Node: SVCD Creating the CD70667
+Node: Creating DVD's71346
+Node: DVD Audio creation Example72198
+Node: DVD Video creation Example72767
+Node: DVD Mplex Example73685
+Node: DVD creation Example74174
+Node: Creating DIVX Videos75143
+Node: lav2divx77398
+Node: lav2avi-sh77941
+Node: A word on avifile codecs80251
+Node: Optimizing the stream80831
+Node: Scaling and offset correction86725
+Node: Frame rate conversion89132
+Node: Transcoding of existing MPEG-292075
+Node: If you want to do every step on your own it has to look like this95356
+Node: Trading Quality/Speed99896
+Node: Creating streams to be played from disk using Software players101119
+Node: SMP and distributed Encoding101940
+Node: Interoperability105238
 
 End Tag Table

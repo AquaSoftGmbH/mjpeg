@@ -1,6 +1,6 @@
   MJPEG HOWTO - An introduction to the MJPEG-tools
   Praschinger Bernhard
-  v1.34
+  v1.35
 
   MJPEG capture/editting/replay and MPEG encoding toolset description
   ______________________________________________________________________
@@ -64,7 +64,8 @@
         7.8.4 DVD creation Example
      7.9 Creating DIVX Videos
         7.9.1 lav2divx
-        7.9.2 A word on avifile codecs
+        7.9.2 lav2avi.sh
+        7.9.3 A word on avifile codecs
 
   8. Optimizing the stream
      8.1 Scaling and offset correction
@@ -75,6 +76,7 @@
 
   10. Trading Quality/Speed
      10.1 Creating streams to be played from disk using Software players
+
   11. SMP and distributed Encoding
   12. Interoperability
 
@@ -204,8 +206,10 @@
 
   There you also find how to create MPEG Still Images for VCD/SVCD.
 
+
   A other nice description of DV (Digital Video) can be found here:
   http://www.iki.fi/znark/video/conversion/
+
 
   3.  Recording videos
 
@@ -334,6 +338,7 @@
   > lavrec -f a -i p -g 352x288 -q 80 -s -l 70 -R l --software-encoding
   test03.avi
 
+
   The two new options are -g 352x288, which sets the size of the video
   to be recorded when using --software-encoding, this enables the
   software encoding of the recorded images. With this option you can
@@ -400,10 +405,8 @@
   o   (td1, td2) time differenceis always floating around 0, unless sync
      correction is disabled (--synchronization!=2, 2 is default).
 
-
   3.4.  Notes about "interlace field order - what can go wrong and how
   to fix it"
-
 
   Firstly, what does it mean for interlace field order to be wrong.
 
@@ -534,9 +537,9 @@
 
   To see if you guessed correctly, extract the frames again, reordering
   them using yuvcorrect:
-
   > lav2yuv -f 40 video.avi | yuvcorrect -T OPTION | y4mtoppm | pnmsplit
   - pnm/image%d.pnm
+
   Where "OPTION" is what you think it will corrects the problem.  This
   is for material converted from film. Material produced directly for TV
   is addressed below.
@@ -600,9 +603,9 @@
   with. The number of images to be processed can be specified with the
   -n number. For example, if your first image is image01.jpg rather than
   image00.jpg, and you only want 60 images to be processed type:
-
   >jpeg2yuv -b 1 -f 25 -n 60 -j image*.jpg | yuv2lav -o
   stream_without_sound.avi
+
   Adding the sound to the stream then:
 
   > lavaddwav stream_without_sound.avi sound.wav stream_with_sound.avi
@@ -664,6 +667,7 @@
 
   Which will play it back using the hardware but to the video output of
   the card.
+
 
   > glav record.avi
 
@@ -728,9 +732,7 @@
 
   You can see all changes to the video and sound NOW and you do not need
   to recalculate anything.
-
   If you want to get a "destructive" version of your edited video use:
-
 
   > lavtrans -o short_version.avi -f a editlist.eli
 
@@ -794,8 +796,8 @@
   If you want to have the image in a single file you can use that
   version
 
-  > lav2yuv -f 1 stream.avi | y4mtoppm -L >file.pnm
 
+  > lav2yuv -f 1 stream.avi | y4mtoppm -L >file.pnm
 
   If you want to split the fields into single files use that:
 
@@ -861,8 +863,6 @@
 
   The output of this is a raw yuv stream that can be fed into
   transist.flt.
-
-
   transist.flt needs to be informed about the duration of the transition
   and the opacity of the second stream at the beginning and at the end
   of the transition:
@@ -1523,7 +1523,7 @@
   to play MPEG streams that are encoded with a search radius greater
   than 16 so do not use the -r option to override the default of 16.
 
-  > lav2yuv streams.eli > mpeg2enc -f 1 -4 1 -2 1 -S 630 -B 260 -P -o
+  > lav2yuv streams.eli | mpeg2enc -f 1 -4 1 -2 1 -S 630 -B 260 -P -o
   video.m1v
 
   Using '-S 630' means that mpeg2enc marks the stream so that mplex
@@ -1781,8 +1781,8 @@
   7.8.4.  DVD creation Example
 
   This topic will be covered by the documentation of the dvdauthor
-  program.  For questions please see dvd-author.sourceforge.net site.
-  In general it will work like this:
+  program.  For questions please see dvdauthor In general it will work
+  like this:
 
   > makedvd stream1.mpg stream2.mpg ... my_dvdlikestream.mpg
 
@@ -1856,7 +1856,58 @@
   video and the audio. Since it's all done in one step, there's no
   opportunity to use any of the YUV filters, scalers, and denoisers.
 
-  7.9.2.  A word on avifile codecs
+  7.9.2.  lav2avi.sh
+
+  A other version of creating DIVX is the program mencoder which is part
+  of mplayer suit http://www.mplayer.hu/.  The script should be self
+  explanatory. For more information about mencoder please read
+  mencoder/mplayer help and docu. A first and a second pass give at the
+  end of pass hints for bitrate, which can be used for encoding to
+  specific size (650 MB, 700 MB and 800 MB). The script lav2avi.sh is
+  using this information, if provided because for short streams is
+  ommited by mencoder.  Look for parameter preferedSize in the script.
+  You can also specify other parameters used for encoding with
+  encoderParam option in the script. For a description of the usable
+  parameters take a look in the mplayer/mencoder manual.
+
+  The outputfilename is that name of your input file (first option) but
+  with the extension avi. If the size of file is less then specified by
+  preferedSize it's because here was too less information for encoding.
+  You usually get 700MB for 1.5 hour film at half image size with
+  bitrate around 900 that means for divx very good quality.
+
+  The script does a 3 step encoding:
+
+
+  o  1st step - audio encoding
+
+  o  2nd step - first video pass
+
+  o  3rd step - second video pass
+
+  For encoding the fast ffmpeg codec (compilation switch of mencoder).
+  It gives nice results together with good performance. For audio
+  encoding mp3 is used. For encoding of all parts is uses unix pipes.
+  This mean that you DO NOT need additional space on your hard drive
+  where all glav manipulations will be done. For audio encoding the
+  script uses a FIFO queue.
+
+  If you want to tweak the script for your own needs, use that hints:
+
+  o  Output of 1st step is file called frameno.avi with encoded audio
+
+  o  2nd step is using frameno.avi and output is text file called
+     lavc_stats.txt with timing informations
+
+  o  3rd step is using frameno.avi and lavc_stats.txt for encoding the
+     stream to the output file movie2.avi
+
+  o  If you want change only video bitrate, keep the file frameno.avi
+     comment out the 1st step encoding and repeate 2nd and 3rd step.
+     Dont forget to remove the line where the frameno.avi is removed.
+
+
+  7.9.3.  A word on avifile codecs
 
   The lav2divx and yuv2divx utilities are primarily intended for
   creating Divx avi files. However, since they use avifile, it's
@@ -1865,7 +1916,6 @@
   above, this is sometimes called the codec's "fourcc").  The ones that
   are available vary greatly depending on the specific libraries
   available to avifile.
-
   8.  Optimizing the stream
 
   Using filters helps to increase the image quality using fixes bitrate
@@ -1931,6 +1981,7 @@
 
   If you want to improve the image you should also use yuvdenoise:
 
+
   > lav2yuv stream.avi | yuvkineco | yuvdenoise | mpeg2enc -o video.m1v
 
   Example
@@ -1982,6 +2033,8 @@
   size video and want to create a DVD with a qality factor of 5 and the
   allowed maximal bitrate of 8500kb/sec.
 
+
+
   o  no denoising : 8300 kb/s (mostly hitting the upper bound)
 
   o  yuvenoise : 7700 kb/s
@@ -1993,6 +2046,7 @@
   o  yuvdenoise + mpeg2enc --reduce-hf : 4900 kb/s
 
   o  all of the above : 3600 kb/s
+
 
   While --reduce-hf or yuvdenoise alone is only a modest improvement,
   together they reduce the bitrate substantially.  There is not really
@@ -2026,11 +2080,11 @@
   ratio.  That means when you look at the stream using yuvplay it looks
   like a square in our example.  After scaling, if the sample (pixel)
   aspect ratio were not changed, the video would not display with the
-  proper 4:3 aspect ratio.  Yuvscaler compensates by adjusting the
-  sample aspect ratio  and because of that you see that 4:3 picture
-  again.  Because of the interlacing, the height and HeightOffset have
-  to be a multiple by 4 if the video is interlaced. Else the values
-  (width, height, widthoffset, heightoffset) have to be a multiple of 2.
+  proper aspect ratio.  Yuvscaler compensates by adjusting the sample
+  aspect ratio.  If you have a interlaced video, the height and
+  HeightOffset have to be a multiple by 4 if the video is interlaced.
+  Else the values (width, height, widthoffset, heightoffset) have to be
+  a multiple of 2.
 
   A other problem that cannot be solved that easy with scaling, is when
   the picture is not centered horizontal. On one side you have no black
@@ -2051,14 +2105,14 @@
   The reason for the black border is the TV (CRT = Catode Ray Tube).
   The TV does not show the full picture. A part of the picture is not
   shown because the manufacturer cover the edges with a black border.
-  Because of that border the image is always centered on a TV. But if
+  Because of that border the image is always centered on a TV. But when
   you capture the video with a card, you see the whole size of the image
   including the border and maybe the offset.
 
   A horizontal offset is usually not a problem of the capture card. It
   is a problem when the film is broadcast and not well synchronized with
   the image.  This means that the scan of the source not exactly
-  synchronized with the carrier signal.
+  synchronized with the carrier signal, you wont see that on TV.
 
   8.2.  Frame rate conversion
 
@@ -2077,12 +2131,12 @@
   have a interlaced source you should also deinterlace before changeing
   the framerate. If you create a higher frame rate it is else very
   likely that you have weird flickers when you play it back. If you
-  convert PAL to NTSC (30000:1001 FPS about 29,97 FPS) The frame rate
-  will lower by about the factor 480/576 (NTSC heigth / PAL height).
+  convert PAL to NTSC (30000:1001 FPS about 29,97 FPS) the frame rate
+  will lower by about the factor 480/576 (NTSC lines / PAL lines).
   Because MPEG's interframe compression is completely compressing the
   duplicated frames. If you lower the frame rate from PAL to NTSC (at
-  24000:1001) or NTSC FILM (24FPS) the frame will be about (480 Lines *
-  24 FPS) / (576 Lines * 25FPS).  If you change the frame rate before
+  24000:1001) or NTSC FILM (24FPS) the bitrate will be about (480 Lines
+  * 24 FPS) / (576 Lines * 25FPS).  If you change the frame rate before
   denoising the yuvdenoise will have problems finding the noise across
   the frames, so the needed bandwith will slightliy increase.
 
@@ -2123,6 +2177,8 @@
   bitrate you still can do this in a single step:
 
   > lav2yuv video.eli | yuvfps -s 24:1 -r 25:1 | mpeg2enc -o video.m1v
+
+
 
   9.  Transcoding of existing MPEG-2
 
@@ -2245,7 +2301,6 @@
   /dev/stdin -t wav -r 44100 /dev/stdout | toolame -p 2 -b 224
   /dev/stdin audio.mp2
 
-
   This should you command look like when you want to use toolame.  One
   of the first lines again output contains the label "SYNC".  You have
   to use this time (referred to as "SYNC_value" below) when doing the
@@ -2256,7 +2311,6 @@
   For VCD creation use:
 
   > cat test2.mpg " mpeg2dec -s -o YUVh " mpeg2enc -s -o video_vcd.m1v
-
 
         mpeg2dec:
 
@@ -2377,7 +2431,6 @@
 
   Adding the sound:
 
-
   > lavaddwav test.avi sound.wav fullvideo.avi
 
   NOTE:You need much disk space. 1GB of video has a size of about 2GB at
@@ -2444,6 +2497,9 @@
   It you more than one computer you can also split the encoding pipeline
   between computers using the standard 'rsh' or 'rcmd' remote shell
   execution commands. For example, if you have two computers:
+
+
+
   > rsh machine1 lav2yuv "mycapture.eli | yuvscaler -O SVCD |
   yuvdenoise" | mpeg2enc -f 4 -o mycapture.m2vi
 
@@ -2518,6 +2574,7 @@
      gtv.html
 
   o  MS Media player version 6 and 7
+
 
   o  SW DVD Player
 

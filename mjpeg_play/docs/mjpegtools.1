@@ -2,7 +2,7 @@
 .TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.34MJPEG capture/editting/replay and MPEG encoding toolset description
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.35MJPEG capture/editting/replay and MPEG encoding toolset description
 .Pp
 Introduction
 
@@ -1589,7 +1589,7 @@ needed. It seems that many VCD players (Avex for example) are not able to
 play MPEG streams that are encoded with a search radius greater than 16 so
 do not use the -r option to override the default of 16.
 .Pp
-\f(CR> lav2yuv streams.eli >
+\f(CR> lav2yuv streams.eli \(br
 mpeg2enc -f 1 -4 1 -2 1 -S 630 -B 260 -P -o video.m1v\fP
 .Pp
 Using \fB'-S 630'\fP means that mpeg2enc marks the stream so
@@ -1871,7 +1871,7 @@ DVD creation Example
 
 .Pp
 This topic will be covered by the documentation of the dvdauthor
-program.  For questions please see dvd-author.sourceforge.net site.
+program.  For questions please see 
 In general it will work like this:
 .Pp
 \f(CR> makedvd stream1.mpg stream2.mpg ... my_dvdlikestream.mpg\fP
@@ -1943,7 +1943,71 @@ step using the lav2divx utility.
 .Pp
 This takes the edit list and uses that as the source for both the
 video and the audio. Since it's all done in one step, there's no
-opportunity to use any of the YUV filters, scalers, and denoisers.A word on avifile codecs
+opportunity to use any of the YUV filters, scalers, and denoisers.lav2avi.sh
+
+.Pp
+A other version of creating DIVX is the program
+\fBmencoder\fP which is part of mplayer suit
+\&. 
+The script should be self explanatory. For more information about mencoder
+please read mencoder/mplayer help and docu. A first and a second pass give at
+the end of pass hints for bitrate, which can be used for encoding to specific
+size (650 MB, 700 MB and 800 MB). The script lav2avi.sh is using this 
+information, if provided because for short streams is ommited by mencoder.
+Look for parameter \fIpreferedSize\fP in the script. You can also 
+specify other parameters used for encoding with \fIencoderParam\fP option 
+in the script. For a description of the usable parameters take a look in the
+mplayer/mencoder manual.
+.Pp
+The outputfilename is that name of your input file (first option)
+but with the extension avi. If the size of file is
+less then specified by \fIpreferedSize\fP it's because here was too
+less information for encoding. You usually get 700MB for 1.5 hour film at half
+image size with bitrate around 900 that means for divx very good quality.
+.Pp
+The script does a 3 step encoding:
+.Pp
+.nr ll +1
+.nr t\n(ll 0
+.if \n(ll>1 .RS
+.nr bi 1
+.Pp
+1st step - audio encoding 
+.nr bi 1
+.Pp
+2nd step - first video pass
+.nr bi 1
+.Pp
+3rd step - second video pass
+.if \n(ll>1 .RE
+.nr ll -1
+.Pp
+For encoding the fast ffmpeg codec (compilation switch of mencoder). It
+gives nice results together with good performance. For audio encoding mp3
+is used. For encoding of all parts is uses unix pipes. This mean that you
+DO NOT need additional space on your hard drive where all glav
+manipulations will be done. For audio encoding the script uses a FIFO queue.
+.Pp
+If you want to tweak the script for your own needs, use that hints:
+.nr ll +1
+.nr t\n(ll 0
+.if \n(ll>1 .RS
+.nr bi 1
+.Pp
+Output of 1st step is file called \fBframeno.avi\fP with encoded audio
+.nr bi 1
+.Pp
+2nd step is using \fBframeno.avi\fP and output is text file called \fIlavc_stats.txt\fP with timing informations
+.nr bi 1
+.Pp
+3rd step is using \fBframeno.avi\fP and \fIlavc_stats.txt\fP for encoding the stream to the output file \fBmovie2.avi\fP
+.nr bi 1
+.Pp
+If you want change only video bitrate, keep the file \fBframeno.avi\fP comment out the 1st step encoding and repeate 2nd and 3rd step. Dont forget to remove the line where the \fBframeno.avi\fP is removed.
+.if \n(ll>1 .RE
+.nr ll -1
+.Pp
+A word on avifile codecs
 
 .Pp
 The lav2divx and yuv2divx utilities are primarily intended for
@@ -2131,12 +2195,11 @@ Here we only take part of the picture and scale it up to the size of
 the original frame.  But yuvscaler also changes the pixel aspect ratio.
 That means when you look at the stream using yuvplay it looks like a square 
 in our example.  After scaling, if the sample (pixel) aspect ratio were not
-changed, the video would not display with the proper 4:3 aspect ratio.
-Yuvscaler compensates by adjusting the sample aspect ratio  and
-because of that you see that 4:3 picture again.
-Because of the interlacing, the height and HeightOffset have to be a multiple
-by 4 if the video is interlaced. Else the values (width, height, widthoffset,
-heightoffset) have to be a multiple of 2.
+changed, the video would not display with the proper aspect ratio.
+Yuvscaler compensates by adjusting the sample aspect ratio.
+If you have a interlaced video, the height and HeightOffset have to be a
+multiple by 4 if the video is interlaced. Else the values (width, height,
+widthoffset, heightoffset) have to be a multiple of 2.
 .Pp
 A other problem that cannot be solved that easy with scaling, is when the 
 picture is not centered horizontal. On one side you have no black pixels and
@@ -2156,14 +2219,14 @@ around the image.
 The reason for the black border is the TV (CRT = Catode Ray Tube).
 The TV does not show the full picture. A part of the picture is not shown
 because the manufacturer cover the edges with a black border. Because of
-that border the image is always centered on a TV. But if you capture
+that border the image is always centered on a TV. But when you capture
 the video with a card, you see the whole size of the image including
 the border and maybe the offset.
 .Pp
 A horizontal offset is usually not a problem of the capture card. It is
 a problem when the film is broadcast and not well synchronized with the image.
 This means that the scan of the source not exactly synchronized with the carrier
-signal.
+signal, you wont see that on TV.
 .SH Frame rate conversion
 
 .Pp
@@ -2182,11 +2245,11 @@ then change the framerate and scale at als last step. If you have a
 interlaced source you should also deinterlace before changeing the
 framerate. If you create a higher frame rate it is else very likely that
 you have weird flickers when you play it back. If you convert PAL to
-NTSC (30000:1001 FPS about 29,97 FPS) The frame rate will lower by about
-the factor 480/576 (NTSC heigth / PAL height).
+NTSC (30000:1001 FPS about 29,97 FPS) the frame rate will lower by about
+the factor 480/576 (NTSC lines / PAL lines).
 Because MPEG's interframe compression is completely compressing the
 duplicated frames. If you lower the frame rate from PAL to NTSC 
-(at 24000:1001) or NTSC FILM (24FPS) the frame will be about 
+(at 24000:1001) or NTSC FILM (24FPS) the bitrate will be about 
 (480 Lines * 24 FPS) / (576 Lines * 25FPS).
 If you change the frame rate before denoising the yuvdenoise 
 will have problems finding the noise across the frames, so the 

@@ -1,5 +1,5 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.2 aus
-/tmp/linuxdoc-dir-1918/sgmltmp.mjpeg-howto.info.2.
+Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
+/tmp/linuxdoc-dir-2918/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -280,7 +280,7 @@ needed. It seems that many VCD players (Avex for example) are not able
 to play MPEG streams that are encoded with a search radius greater than
 16 so do not use the -r option to override the default of 16.
 
-   `> lav2yuv streams.eli > mpeg2enc -f 1 -4 1 -2 1 -S 630 -B 260 -P -o
+   `> lav2yuv streams.eli | mpeg2enc -f 1 -4 1 -2 1 -S 630 -B 260 -P -o
 video.m1v'
 
    Using `'-S 630" means that mpeg2enc marks the stream so that mplex
@@ -434,6 +434,7 @@ SVCD Video creation Example
      (progressive output (no field pictures)) option will also work for
      PAL
 
+
    You can use lower bitrates, but the SVCD standard limits `total
 bit-rate (audio and video) to 2788800 Bit/sec'. So with 224Kbps audio
 and overhead 2550 may already be marginally too tight. Since the SVCD
@@ -486,6 +487,7 @@ SVCD Multiplexing Example
 `-b 300'
      is the buffer available on the playback device (the same value as
      used for the video encoding (mpeg2enc's -V option).
+
 
 
 File: mjpeg-howto.info,  Node: SVCD Creating the CD,  Prev: SVCD Multiplexing Example,  Up: Creating SVCD
@@ -549,6 +551,7 @@ DVD Audio creation Example
      48kHz then no resampling is needed and toolame can be used for the
      encoding (it is much faster than mp2enc).
 
+
 
 File: mjpeg-howto.info,  Node: DVD Video creation Example,  Next: DVD Mplex Example,  Prev: DVD Audio creation Example,  Up: Creating DVD's
 
@@ -563,6 +566,7 @@ DVD Video creation Example
      7500kBps and the video buffer size is set to 230KB. The default
      quality factor is set to 8.  mpeg2enc sets currenty no automatic
      sequence length as it does for VCD/SVCD.
+
 
    The other options to get a low bitrate and high quality stream can
 also be used to override the default settings mentioned above.  You can
@@ -588,6 +592,7 @@ DVD Mplex Example
 `-o'
      there we specify the output filename.
 
+
 
 File: mjpeg-howto.info,  Node: DVD creation Example,  Prev: DVD Mplex Example,  Up: Creating DVD's
 
@@ -595,8 +600,8 @@ DVD creation Example
 --------------------
 
    This topic will be covered by the documentation of the dvdauthor
-program.  For questions please see dvd-author.sourceforge.net site.  In
-general it will work like this:
+program.  For questions please see dvdauthor In general it will work
+like this:
 
    `> makedvd stream1.mpg stream2.mpg ... my_dvdlikestream.mpg'
 
@@ -664,10 +669,11 @@ bitrate remains the same as the same type of encoding is used for both.
 * Menu:
 
 * lav2divx::
+* lav2avi-sh::
 * A word on avifile codecs::
 
 
-File: mjpeg-howto.info,  Node: lav2divx,  Next: A word on avifile codecs,  Up: Creating DIVX Videos
+File: mjpeg-howto.info,  Node: lav2divx,  Next: lav2avi-sh,  Up: Creating DIVX Videos
 
 lav2divx
 --------
@@ -683,7 +689,59 @@ video and the audio. Since it's all done in one step, there's no
 opportunity to use any of the YUV filters, scalers, and denoisers.
 
 
-File: mjpeg-howto.info,  Node: A word on avifile codecs,  Prev: lav2divx,  Up: Creating DIVX Videos
+File: mjpeg-howto.info,  Node: lav2avi-sh,  Next: A word on avifile codecs,  Prev: lav2divx,  Up: Creating DIVX Videos
+
+lav2avi-sh
+----------
+
+   A other version of creating DIVX is the program `mencoder' which is
+part of mplayer suit http://www.mplayer.hu/.  The script should be self
+explanatory. For more information about mencoder please read
+mencoder/mplayer help and docu. A first and a second pass give at the
+end of pass hints for bitrate, which can be used for encoding to
+specific size (650 MB, 700 MB and 800 MB). The script lav2avi.sh is
+using this information, if provided because for short streams is
+ommited by mencoder.  Look for parameter `preferedSize' in the script.
+You can also specify other parameters used for encoding with
+`encoderParam' option in the script. For a description of the usable
+parameters take a look in the mplayer/mencoder manual.
+
+   The outputfilename is that name of your input file (first option)
+but with the extension avi. If the size of file is less then specified
+by `preferedSize' it's because here was too less information for
+encoding. You usually get 700MB for 1.5 hour film at half image size
+with bitrate around 900 that means for divx very good quality.
+
+   The script does a 3 step encoding:
+
+   * 1st step - audio encoding
+
+   * 2nd step - first video pass
+
+   * 3rd step - second video pass
+
+   For encoding the fast ffmpeg codec (compilation switch of mencoder).
+It gives nice results together with good performance. For audio
+encoding mp3 is used. For encoding of all parts is uses unix pipes.
+This mean that you DO NOT need additional space on your hard drive
+where all glav manipulations will be done. For audio encoding the
+script uses a FIFO queue.
+
+   If you want to tweak the script for your own needs, use that hints:
+   * Output of 1st step is file called `frameno.avi' with encoded audio
+
+   * 2nd step is using `frameno.avi' and output is text file called
+     `lavc_stats.txt' with timing informations
+
+   * 3rd step is using `frameno.avi' and `lavc_stats.txt' for encoding
+     the stream to the output file `movie2.avi'
+
+   * If you want change only video bitrate, keep the file `frameno.avi'
+     comment out the 1st step encoding and repeate 2nd and 3rd step.
+     Dont forget to remove the line where the `frameno.avi' is removed.
+
+
+File: mjpeg-howto.info,  Node: A word on avifile codecs,  Prev: lav2avi-sh,  Up: Creating DIVX Videos
 
 A word on avifile codecs
 ------------------------
@@ -865,12 +923,11 @@ or smaler size. The scaling is done by yuvscaler:
 the original frame.  But yuvscaler also changes the pixel aspect ratio.
 That means when you look at the stream using yuvplay it looks like a
 square in our example.  After scaling, if the sample (pixel) aspect
-ratio were not changed, the video would not display with the proper 4:3
+ratio were not changed, the video would not display with the proper
 aspect ratio.  Yuvscaler compensates by adjusting the sample aspect
-ratio  and because of that you see that 4:3 picture again.  Because of
-the interlacing, the height and HeightOffset have to be a multiple by 4
-if the video is interlaced. Else the values (width, height, widthoffset,
-heightoffset) have to be a multiple of 2.
+ratio.  If you have a interlaced video, the height and HeightOffset
+have to be a multiple by 4 if the video is interlaced. Else the values
+(width, height, widthoffset, heightoffset) have to be a multiple of 2.
 
    A other problem that cannot be solved that easy with scaling, is
 when the picture is not centered horizontal. On one side you have no
@@ -891,14 +948,14 @@ border around the image.
    The reason for the black border is the TV (CRT = Catode Ray Tube).
 The TV does not show the full picture. A part of the picture is not
 shown because the manufacturer cover the edges with a black border.
-Because of that border the image is always centered on a TV. But if you
-capture the video with a card, you see the whole size of the image
+Because of that border the image is always centered on a TV. But when
+you capture the video with a card, you see the whole size of the image
 including the border and maybe the offset.
 
    A horizontal offset is usually not a problem of the capture card. It
 is a problem when the film is broadcast and not well synchronized with
 the image.  This means that the scan of the source not exactly
-synchronized with the carrier signal.
+synchronized with the carrier signal, you wont see that on TV.
 
 
 File: mjpeg-howto.info,  Node: Frame rate conversion,  Prev: Scaling and offset correction,  Up: Optimizing the stream
@@ -921,14 +978,14 @@ first and then change the framerate and scale at als last step. If you
 have a interlaced source you should also deinterlace before changeing
 the framerate. If you create a higher frame rate it is else very likely
 that you have weird flickers when you play it back. If you convert PAL
-to NTSC (30000:1001 FPS about 29,97 FPS) The frame rate will lower by
-about the factor 480/576 (NTSC heigth / PAL height).  Because MPEG's
+to NTSC (30000:1001 FPS about 29,97 FPS) the frame rate will lower by
+about the factor 480/576 (NTSC lines / PAL lines).  Because MPEG's
 interframe compression is completely compressing the duplicated frames.
 If you lower the frame rate from PAL to NTSC (at 24000:1001) or NTSC
-FILM (24FPS) the frame will be about (480 Lines * 24 FPS) / (576 Lines
-* 25FPS).  If you change the frame rate before denoising the yuvdenoise
-will have problems finding the noise across the frames, so the needed
-bandwith will slightliy increase.
+FILM (24FPS) the bitrate will be about (480 Lines * 24 FPS) / (576
+Lines * 25FPS).  If you change the frame rate before denoising the
+yuvdenoise will have problems finding the noise across the frames, so
+the needed bandwith will slightliy increase.
 
    Example
 
@@ -1007,6 +1064,7 @@ most of the work.
 `mpeg2src.mpg'
      specifies the source stream
 
+
    The script prints also something like this:
 
    `> SYNC 234 mSec'
@@ -1034,6 +1092,7 @@ mjpegtranscode script prints out after the `SYNC' word.
 
 `lowrate.mpg'
      the VCD compatible output stream
+
 
    Here we have a SVCD (MPEG-2 video) example:
 
@@ -1093,6 +1152,7 @@ generate the mpeg audio file:
 `-o'
      Specifies the output file.
 
+
    cat test2.mpg | extract_ac3 - -s | ac3dec -o wav | sox -t wav
 /dev/stdin -t wav -r 44100 /dev/stdout | toolame -p 2 -b 224 /dev/stdin
 audio.mp2
@@ -1118,6 +1178,7 @@ video_vcd.m1v'
 `-o YUVh'
      the output size of the extracted frames.
 
+
    There are other output modes, try "mpeg2dec -help" but the most
 important here are:
 
@@ -1130,6 +1191,7 @@ important here are:
 `YUVh'
      is VCD size, or about the half of the original size
 
+
    Mplex with:
 
    `> mplex -f 1 -O SYNC_value audio.mp2 video_vcd.m1v -o
@@ -1140,6 +1202,7 @@ vcd_stream.mpg'
 
 `-O SYNC_value'
      the value mentioned above
+
 
    For SVCD creation use:
 
@@ -1155,6 +1218,7 @@ vcd_stream.mpg'
 `-o'
      Output file
 
+
    Mplex with:
 
    `> mplex -f 4 -b 230 audio.mp2 video_svcd -o svcd_stream.mpg'
@@ -1164,6 +1228,7 @@ vcd_stream.mpg'
 
 `-b 200'
      Specify the video buffer size by the playback device.
+
 
    For other video output formats this might work:
 
@@ -1230,47 +1295,4 @@ at SVCD format and of course disk space is needed for some temp files.
 Converting the Video to mjpeg also takes some time.  On my Athlon 500 I
 never get more than 6-7 Frames a second.  You loose quality each time
 you convert a stream into an other format!
-
-
-File: mjpeg-howto.info,  Node: Trading Quality/Speed,  Next: SMP and distributed Encoding,  Prev: Transcoding of existing MPEG-2,  Up: Top
-
-Trading Quality/Speed
-*********************
-
-   If absolute quality is your objective a modest improvement can be
-achieved using the -4 and -2 flags.  These control how ruthlessly
-mpeg2enc discards bad looking matches between sections of adjacent
-frames during the early stages of the search when it is working with
-4*4 and 2*2 clusters of pixels rather than individual pixels. Setting
--4 1 -2 1 maximizes quality. -4 4 -2 4 maximizes speed. Note that
-because the statistical criteria mpeg2enc uses for discarding bad
-looking matches are usually fairly reliable the increase/decrease in
-quality is modest (but noticeable).
-
-   Reducing the radius of the search for matching sections of images
-also increases speed. However due to the way the search algorithm works
-the search radius is in effect rounded to the nearest multiple of 8.
-Furthermore, on modern CPU's the speed gained by reducing the radius
-below 16 is not large enough to make the marked quality reduction
-worthwhile for most applications.
-
-* Menu:
-
-* Creating streams to be played from disk using Software players::
-
-
-File: mjpeg-howto.info,  Node: Creating streams to be played from disk using Software players,  Up: Trading Quality/Speed
-
-Creating streams to be played from disk using Software players
-==============================================================
-
-   Usually MPEG player software is much more flexible than the hardware
-built into DVD and VCD players. This flexibility allows for
-significantly better compression to be achieved for the same quality.
-The trick is to generate video streams that use big video buffers
-(500KB or more) and variable bitrate encoding (the -f, -q flag to
-mpeg2enc). Software players will often also correctly play back the
-much more efficient MPEG layer 3 (yes, "MP3" audio format.  A good Mp3
-encoder like lame will produce results comparable to layer 2 at 224Kbps
-at 128Kbps or 160Kbps.
 
