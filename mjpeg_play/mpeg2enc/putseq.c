@@ -388,8 +388,20 @@ static void gop_start( stream_state_s *ss )
 		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
-	bits_after_mux = bitcount() + 
-		(uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
+    
+    /*
+      For VBR we estimate total bits based on actual stream size and
+      an estimate for the other streams based on time.
+      For CBR we do *both* based on time to account for padding during
+      muxing.
+    */
+    
+    if( ctl_quant_floor > 0.0 )
+        bits_after_mux = bitcount() + 
+            (uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
+    else
+        bits_after_mux = (uint64_t)((frame_periods / opt_frame_rate) * 
+                                    (ctl_nonvid_bit_rate + opt_bit_rate));
 	if( (ss->next_split_point != 0LL && bits_after_mux > ss->next_split_point)
 		|| (ss->i != 0 && opt_seq_end_every_gop)
 		)

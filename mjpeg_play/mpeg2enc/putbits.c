@@ -69,7 +69,6 @@ void initbits()
 /* write rightmost n (0<=n<=32) bits of val to outfile */
 void putbits(uint32_t val, int n)
 {
-#ifndef ORIGINAL_CODE
   val = (n == 32) ? val : (val & (~(0xffffffffU << n)));
   while( n >= outcnt )
   {
@@ -84,27 +83,6 @@ void putbits(uint32_t val, int n)
 	  outbfr = (outbfr<<n) | val;
 	  outcnt -= n;
   }
-#else
-  int i;
-  unsigned int mask;
-  mask = 1 << (n-1); /* selects first (leftmost) bit */
-  for (i=0; i<n; i++)
-  {
-    outbfr <<= 1;
-
-    if (val & mask)
-      outbfr|= 1;
-
-    mask >>= 1; /* select next bit */
-    outcnt--;
-    if (outcnt==0) /* 8 bit buffer full */
-    {
-      putc(outbfr,outfile);
-      outcnt = 8;
-      bytecnt++;
-    }
-  }
-#endif
 }
 
 /* zero bit stuffing to next byte boundary (5.2.3, 6.2.1) */
