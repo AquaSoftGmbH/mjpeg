@@ -122,7 +122,7 @@ gchar *val;
 
 do_not_insert = 0;
 
-  val = gtk_entry_get_text (GTK_ENTRY(enter_machname));
+  val = (char*) gtk_entry_get_text (GTK_ENTRY(enter_machname));
 
   if ((strlen(val)>1) && (strlen(val)<LONGOPT) && (strcmp(val,"localhost")!=0))
   {
@@ -242,7 +242,7 @@ int i;
     {
       menu_item = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (menu_item), "activate", set_mname,
+      gtk_signal_connect (GTK_OBJECT (menu_item), "activate", GTK_SIGNAL_FUNC(set_mname),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menu), menu_item);
     }
@@ -261,7 +261,7 @@ int i;
     {
       item_lav2wav = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_lav2wav), "activate", set_lav2wav,
+      gtk_signal_connect (GTK_OBJECT (item_lav2wav),"activate",GTK_SIGNAL_FUNC(set_lav2wav),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menulav2wav), item_lav2wav);
     }
@@ -281,7 +281,7 @@ int i;
     {
       item_mp2enc = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_mp2enc), "activate", set_mp2enc,
+      gtk_signal_connect (GTK_OBJECT (item_mp2enc), "activate", GTK_SIGNAL_FUNC(set_mp2enc),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menump2enc), item_mp2enc);
     }
@@ -301,7 +301,8 @@ int i;
     {
       item_mpeg2enc = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_mpeg2enc), "activate", set_mpeg2enc,
+      gtk_signal_connect (GTK_OBJECT (item_mpeg2enc), "activate",
+                          GTK_SIGNAL_FUNC(set_mpeg2enc),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menumpeg2enc), item_mpeg2enc);
     }
@@ -321,7 +322,8 @@ int i;
     {
       item_yuv2lav = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_yuv2lav), "activate", set_yuv2lav,
+      gtk_signal_connect (GTK_OBJECT (item_yuv2lav), "activate", 
+                          GTK_SIGNAL_FUNC(set_yuv2lav),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menuyuv2lav), item_yuv2lav);
     }
@@ -340,7 +342,8 @@ int i;
     {
       item_yuvdenoise = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT(item_yuvdenoise),"activate",set_yuvdenoise,
+      gtk_signal_connect (GTK_OBJECT(item_yuvdenoise), "activate",
+                         GTK_SIGNAL_FUNC(set_yuvdenoise),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menuyuvdenoise), item_yuvdenoise);
     }
@@ -359,7 +362,8 @@ int i;
     {
       item_yuvscaler = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT(item_yuvscaler), "activate", set_yuvscaler,
+      gtk_signal_connect (GTK_OBJECT(item_yuvscaler), "activate",
+                          GTK_SIGNAL_FUNC(set_yuvscaler),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menuyuvscaler), item_yuvscaler);
     }
@@ -378,7 +382,8 @@ int i;
     {
       item_yuv2divx = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_yuv2divx), "activate", set_yuv2divx,
+      gtk_signal_connect (GTK_OBJECT (item_yuv2divx), "activate", 
+                          GTK_SIGNAL_FUNC (set_yuv2divx),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menuyuv2divx), item_yuv2divx);
     }
@@ -398,7 +403,9 @@ int i;
     {
       item_lav2yuv = gtk_menu_item_new_with_label
                          ((char*) g_list_nth_data(temp_mnames, i));
-      gtk_signal_connect (GTK_OBJECT (item_lav2yuv), "activate", set_lav2yuv,
+/*      gtk_signal_connect (GTK_OBJECT (item_lav2yuv), "activate", set_lav2yuv,
+                         ((char*) g_list_nth_data(temp_mnames, i)) ); old version GTK 1*/
+      gtk_signal_connect (GTK_OBJECT (item_lav2yuv), "activate",GTK_SIGNAL_FUNC(set_lav2yuv),
                          ((char*) g_list_nth_data(temp_mnames, i)) );
       gtk_menu_append (GTK_MENU (menulav2yuv), item_lav2yuv);
     }
@@ -909,7 +916,7 @@ GtkWidget *vbox, *hbox, *separator;
 
   work_values(data);
 
-  distribute_window = gtk_window_new(GTK_WINDOW_DIALOG);
+  distribute_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   hbox = gtk_hbox_new (FALSE, 10);
  
   vbox = gtk_vbox_new (FALSE, 10);
@@ -941,14 +948,14 @@ GtkWidget *vbox, *hbox, *separator;
   button = gtk_button_new_with_label("OK");
   gtk_signal_connect(GTK_OBJECT(button), "clicked",
                      GTK_SIGNAL_FUNC (accept_option), data);
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                            gtk_widget_destroy, GTK_OBJECT(distribute_window));
+  g_signal_connect_swapped(G_OBJECT(button), "clicked",
+          G_CALLBACK(gtk_widget_destroy), G_OBJECT(distribute_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
   button = gtk_button_new_with_label("Cancel");
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-          gtk_widget_destroy, GTK_OBJECT(distribute_window));
+  g_signal_connect_swapped(G_OBJECT(button), "clicked",
+          G_CALLBACK(gtk_widget_destroy), G_OBJECT(distribute_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 

@@ -300,8 +300,8 @@ GtkWidget *button;
                   GTK_SIGNAL_FUNC (accept_changes), NULL);
   gtk_signal_connect(GTK_OBJECT(button), "clicked", 
                 GTK_SIGNAL_FUNC(quit_cb), button );
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                            gtk_widget_destroy, GTK_OBJECT(control_window));
+  g_signal_connect_swapped(GTK_OBJECT(button), "clicked",
+           G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(control_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
@@ -309,7 +309,7 @@ GtkWidget *button;
   gtk_signal_connect(GTK_OBJECT(button), "clicked", 
                 GTK_SIGNAL_FUNC(quit_cb), button );
   gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                            gtk_widget_destroy, GTK_OBJECT(control_window));
+             G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(control_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
@@ -404,10 +404,11 @@ static void init_drawing_buffer(  )
 /* Hier wird das Bild geladen, und angezeigt */
 void load_image (char filename[FILELEN])
 {
-  
+  GError *err = NULL; 
+ 
   if (verbose)
     printf (" Rendering %s \n", filename);
-  pixbuf1 = gdk_pixbuf_new_from_file(filename);
+  pixbuf1 = gdk_pixbuf_new_from_file(filename, &err);
   width = gdk_pixbuf_get_width(pixbuf1);
   height = gdk_pixbuf_get_height(pixbuf1);
 
@@ -616,7 +617,7 @@ GdkPixbuf *pixbuf;
 
   gtk_widget_push_visual(gdk_rgb_get_visual(  ));
   gtk_widget_push_colormap(gdk_rgb_get_cmap(  ));
-  picture_window = gtk_window_new (GTK_WINDOW_DIALOG);
+  picture_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   gtk_widget_pop_visual(  );
   gtk_widget_pop_colormap(  );
 

@@ -291,7 +291,7 @@ void create_progress_window(int length)
 
 	GtkWidget *window, *button, *hbox, *vbox, *label, *render_progress_bar;
 
-	window = gtk_window_new(GTK_WINDOW_DIALOG);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title (GTK_WINDOW(window), "Linux Video Studio - Video Rendering Status");
 	gtk_container_set_border_width (GTK_CONTAINER (window), 20);
 
@@ -633,7 +633,7 @@ void scene_transition_type_selected(GtkWidget *widget, gpointer data)
 	int type=0;
 	struct scene_transition_options *options = (struct scene_transition_options*)data;
 
-	what = gtk_entry_get_text(GTK_ENTRY(widget));
+	what = (char*)gtk_entry_get_text(GTK_ENTRY(widget));
 	if (strcmp(what,"Blend")==0)
 		type = GTK_TRANSITION_BLEND;
 	else if (strcmp(what,"Left-to-Right Wipe")==0)
@@ -686,7 +686,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	GtkObject *adj;
 	char temp[256];
 
-	window = gtk_window_new(GTK_WINDOW_DIALOG);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
 	gtk_window_set_title (GTK_WINDOW(window),
 		"Linux Video Studio - Create Scene Transition");
@@ -944,14 +944,14 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	button = gtk_button_new_with_label("  Accept  ");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(effects_scene_transition_accept), (gpointer)options);
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
 	gtk_widget_show(button);
 
 	button = gtk_button_new_with_label("  Cancel  ");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
 	gtk_widget_show(button);
 
@@ -1485,7 +1485,7 @@ void image_overlay_file_load(GtkWidget *w, gpointer data)
 	/* select image, load it in gdkpixbuf
 	 * if necessary, change thewidth/height/x/yoffset parameter adjustments/values */
 	char temp[10];
-
+	GError *err = NULL;  /*new for GTK2 */
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
 	/* set the textfield text which contains the filename of the image */
@@ -1494,7 +1494,7 @@ void image_overlay_file_load(GtkWidget *w, gpointer data)
 
 	/* load the image in the gdkpixbuf */
 	options->image = gdk_pixbuf_new_from_file(
-		gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)));
+		gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)), &err);
 	if (!options->image)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
@@ -1608,9 +1608,10 @@ void select_text_overlay_font(GtkWidget *w, gpointer data)
 	gtk_signal_connect_object (GTK_OBJECT (GTK_FONT_SELECTION_DIALOG(options->fs)->cancel_button),
 		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (options->fs));
 	/* Should be used for widescreen adaption */
-	gtk_font_selection_dialog_set_filter(GTK_FONT_SELECTION_DIALOG(options->fs),
+/* Removed in gtk 2.0 , no solution found yet. */
+/*	gtk_font_selection_dialog_set_filter(GTK_FONT_SELECTION_DIALOG(options->fs),
 					     GTK_FONT_FILTER_BASE,GTK_FONT_SCALABLE,
-					     NULL,NULL,NULL,NULL,NULL,NULL);
+					     NULL,NULL,NULL,NULL,NULL,NULL); */
 	if (options->font)
 		gtk_font_selection_dialog_set_font_name(GTK_FONT_SELECTION_DIALOG(options->fs), options->font);
 
@@ -1669,7 +1670,7 @@ void text_overlay_textbox_changed(GtkWidget *w, gpointer data)
 
 	struct image_overlay_options *options = (struct image_overlay_options*)data;
 
-	char *text = gtk_entry_get_text(GTK_ENTRY(w));
+	char *text = (char*) gtk_entry_get_text(GTK_ENTRY(w));
 	int lbea, rbea, wi, asc, desc, wn, h;
 
 	strcpy(options->text, text);
@@ -1713,7 +1714,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 		return;
 	}
 
-	window = gtk_window_new(GTK_WINDOW_DIALOG);
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
 	gtk_window_set_title (GTK_WINDOW(window),
 		"Linux Video Studio - Create Image Overlay");
@@ -1807,10 +1808,10 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 		gtk_signal_connect (GTK_OBJECT (options->adj[i]), "value_changed",
 			GTK_SIGNAL_FUNC (image_overlay_adj_changed), (gpointer)options);
 	}
-	scrollbar = gtk_enhanced_scale_new(options->adj,2);
+	/*scrollbar = gtk_enhanced_scale_new(options->adj,2);
 	GTK_ENHANCED_SCALE(scrollbar)->all_the_same = 1;
 	gtk_box_pack_start (GTK_BOX (vbox3), scrollbar, TRUE, FALSE, 0);
-	gtk_widget_show(scrollbar);
+	gtk_widget_show(scrollbar); */
 
 	gtk_box_pack_start (GTK_BOX (vbox2), vbox3, TRUE, FALSE, 0);
 	gtk_widget_show(vbox3);
@@ -1911,14 +1912,14 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	button = gtk_button_new_with_label("  Accept  ");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		GTK_SIGNAL_FUNC(effects_image_overlay_accept), (gpointer)options);
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK (gtk_widget_destroy), G_OBJECT(window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
 	gtk_widget_show(button);
 
 	button = gtk_button_new_with_label("  Cancel  ");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
 	gtk_widget_show(button);
 

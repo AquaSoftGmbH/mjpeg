@@ -417,7 +417,7 @@ void file_ok_sel_save_as( GtkWidget *w, GtkFileSelection *fs )
 {
 	char *file;
 
-	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
+	file = (char*)gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
 	if (verbose) printf("(Save as/Save) File: %s\n", file);
 	save_eli_file(file);
 }
@@ -426,7 +426,7 @@ void file_ok_sel_open( GtkWidget *w, GtkFileSelection *fs )
 {
 	char *file;
 
-	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
+	file = (char*)gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
 	if (verbose) printf("(Open) File: %s\n", file);
 	open_eli_file(file);
 }
@@ -436,7 +436,7 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 	char *file;
 	char command[256], temp[256];
 
-	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
+	file = (char*)gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
 	if (verbose) printf("(Screenshot to) File: %s\n", file);
 
 	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
@@ -467,7 +467,7 @@ void file_ok_sel_add_scene_to_glist( GtkWidget *w, GtkFileSelection *fs )
 	GList *temp = NULL;
 	int i;
 
-	file = check_editlist(gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
+	file = check_editlist( (char*) gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
 	if (file == NULL) return; /* not an editlist/movie */
 
 	/* check length of list, rather not make it > 5 */
@@ -545,8 +545,9 @@ int open_add_movie_scene_editlist()
 	char temp_entry[256];
 	FILE *fp;
 	int num_movs, a,b,c,d,e,x,y, total=0;
+	GError *err = NULL; /*new for GTK2*/
 
-	file_selected = gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry));
+	file_selected = (char*)gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry));
 
 	/* "" needs no opening, ignore it */
 	if (strcmp(file_selected, "")==0) return 0;
@@ -640,7 +641,7 @@ int open_add_movie_scene_editlist()
 				verbose?"":" >> /dev/null 2>&1");
 			system(command);
 
-			temp = gdk_pixbuf_new_from_file (file);
+			temp = gdk_pixbuf_new_from_file (file, &err);
 			unlink(file);
 
 			gtk_imageplug_set_data(

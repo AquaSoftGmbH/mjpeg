@@ -364,7 +364,7 @@ void set_activewindow (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   strncpy(tempenco.notblacksize,test,LONGOPT);
 
@@ -380,7 +380,7 @@ void set_interlacing (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   interlace_correct = g_list_last (interlace_correct);
 
@@ -409,7 +409,7 @@ int i;
 
   i = 0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   i = atoi ( test );
 
@@ -494,7 +494,7 @@ int i;
 
   i = 0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if(strcmp(test,"from streams") != 0)
   {
@@ -516,7 +516,7 @@ int i;
 
   i = 0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if(strcmp(test,"disabled") != 0)
   {
@@ -538,7 +538,7 @@ int i;
 
   i = 0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if(strcmp(test,"auto") != 0)
   {
@@ -560,7 +560,7 @@ void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
   int i;
 
   i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
 
   muxformat = g_list_last (muxformat);
@@ -589,7 +589,7 @@ void set_scalerstrings (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
 
   if (data == "SCALERINPUT")
@@ -629,7 +629,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if ( strcmp(test, "default") == 0 )
     tempenco.bitrate = 0;
@@ -649,7 +649,7 @@ char *test;
 int i;
 i=0;
  
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if ( strcmp(test, "disabled") == 0 )
     tempenco.qualityfactor = 0;
@@ -671,7 +671,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   i = atoi (test);
 
@@ -695,7 +695,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if ( strncmp(test, "default", 7) == 0)
     tempenco.maxGop = 12;
@@ -715,7 +715,7 @@ void set_searchrad (GtkWidget *widget, gpointer data)
 {
 char *test;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   tempenco.searchradius = atoi ( test );
 
@@ -840,7 +840,7 @@ void set_audiobitrate (GtkWidget *widget, gpointer data)
 {
 char *test;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
   tempenco.audiobitrate = atoi ( test );
 
   if ( (tempenco.audiobitrate < 32) || (tempenco.audiobitrate > 384))
@@ -857,7 +857,7 @@ void set_divxaudio (GtkWidget *widget, gpointer data)
 {
 char *test;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
     
   tempenco.audiobitrate = atoi ( test );
   if ( (tempenco.audiobitrate < 32) || (tempenco.audiobitrate > 384))
@@ -872,7 +872,7 @@ void set_divxvideo (GtkWidget *widget, gpointer data)
 {
 char *test;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
     
   tempenco.bitrate = atoi ( test );
   if ( (tempenco.bitrate < 500 ) || (tempenco.bitrate > 10000))
@@ -887,7 +887,7 @@ void set_divxcodec (GtkWidget *widget, gpointer data)
 {
 char *test;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
   strncpy(tempenco.codec,test,LONGOPT);   
 
   if (verbose)
@@ -902,7 +902,7 @@ int i;
 
   i = 0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   samples = g_list_last (samples);
 
@@ -956,7 +956,7 @@ void set_format (GtkWidget *widget, gpointer data)
   int i;
 
   i = 0;
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   yuv2lav_format = g_list_last (yuv2lav_format);
 
@@ -983,7 +983,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*)gtk_entry_get_text(GTK_ENTRY(widget));
 
   if ( strncmp(test, "default", 7) == 0)
     tempenco.qualityfactor = 80;
@@ -1005,7 +1005,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if ( strncmp(test, "default", 7) == 0)
     tempenco.sequencesize = 0;
@@ -1027,7 +1027,7 @@ char *test;
 int i;
 i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   yuv2lav_interlace = g_list_last (yuv2lav_interlace);
 
@@ -1180,7 +1180,7 @@ void set_sharpen (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if (strcmp(test,"125, default") == 0)
     tempenco.sharpness = 125;
@@ -1207,7 +1207,7 @@ void set_thhold (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if (strcmp(test,thhold_def) == 0)
     tempenco.denois_thhold = 5;
@@ -1232,7 +1232,7 @@ void set_average (GtkWidget *widget, gpointer data)
 
   i=0;
 
-  test = gtk_entry_get_text(GTK_ENTRY(widget));
+  test = (char*) gtk_entry_get_text(GTK_ENTRY(widget));
 
   if (strcmp(test,average_def) == 0)
     tempenco.average_frames = 3;
@@ -2059,7 +2059,7 @@ if (g_list_length (yuv2lav_interlace) == 0)
  /* here the pointers are set to point to the correct set of mpeg options */
  init_tempenco(data);
 
-  options_window = gtk_window_new(GTK_WINDOW_DIALOG);
+  options_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   hbox = gtk_hbox_new (FALSE, 10);
   vbox = gtk_vbox_new (FALSE, 10);
 
@@ -2104,14 +2104,14 @@ if (g_list_length (yuv2lav_interlace) == 0)
   button = gtk_button_new_with_label("OK");
   gtk_signal_connect(GTK_OBJECT(button), "clicked",
                      GTK_SIGNAL_FUNC (accept_mpegoptions), (gpointer) "test");
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                            gtk_widget_destroy, GTK_OBJECT(options_window));
+  g_signal_connect_swapped(G_OBJECT(button), "clicked",
+           G_CALLBACK(gtk_widget_destroy), G_OBJECT(options_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
   button = gtk_button_new_with_label("Cancel");
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-          gtk_widget_destroy, GTK_OBJECT(options_window));
+  g_signal_connect_swapped(G_OBJECT(button), "clicked",
+          G_CALLBACK(gtk_widget_destroy), G_OBJECT(options_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 

@@ -217,7 +217,7 @@ void script_callback(GtkWidget *widget, GtkWidget *script_filename)
 {
 gchar *file;
 
-  file = gtk_entry_get_text(GTK_ENTRY(script_filename));
+  file = (char*)gtk_entry_get_text(GTK_ENTRY(script_filename));
   strcpy(temp_scriptname,file);
 
   if (verbose)
@@ -1109,14 +1109,14 @@ GtkWidget *button;
   button = gtk_button_new_with_label("OK");
   gtk_signal_connect(GTK_OBJECT(button), "clicked",
                      GTK_SIGNAL_FUNC (accept_changes), (gpointer) "test");
-  gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-                            gtk_widget_destroy, GTK_OBJECT(script_window));
+  g_signal_connect_swapped(GTK_OBJECT(button), "clicked",
+          G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(script_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
   button = gtk_button_new_with_label("Cancel");
   gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-          gtk_widget_destroy, GTK_OBJECT(script_window));
+          G_CALLBACK(gtk_widget_destroy), GTK_OBJECT(script_window));
   gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
   gtk_widget_show(button);
 
@@ -1568,7 +1568,7 @@ GtkWidget *script_window, *vbox, *hbox, *separator, *label;
 
   init_temp();
 
-  script_window = gtk_window_new (GTK_WINDOW_DIALOG);
+  script_window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
   vbox = gtk_vbox_new (FALSE, 2);
 
   label = gtk_label_new (" Script Generation ");

@@ -297,7 +297,7 @@ void create_lavplay_child()
 	    lavplay_command[n] = "-pC";
             n++;
           }
-	lavplay_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield2)); n++;
+	lavplay_command[n] = (char*)gtk_entry_get_text(GTK_ENTRY(textfield2)); n++;
 	lavplay_command[n] = NULL;
 
 	start_pipe_command(lavplay_command, LAVPLAY);

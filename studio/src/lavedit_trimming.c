@@ -90,10 +90,10 @@ static GtkWidget *create_tv_stuff_for_trimming(GtkWidget *window)
 	for (i=0;i<3;i++)
 		gtk_signal_connect (GTK_OBJECT (popup_adj[i]), "value_changed",
 			GTK_SIGNAL_FUNC (lavplay_enhanced_slider_value_changed), (gpointer) i);
-	scrollbar = gtk_enhanced_scale_new(popup_adj,3);
+	/*scrollbar = gtk_enhanced_scale_new(popup_adj,3);
 
 	gtk_box_pack_start(GTK_BOX (vbox2), scrollbar, FALSE, FALSE, 10);
-	gtk_widget_show(scrollbar);
+	gtk_widget_show(scrollbar); */
 
 	hbox3 = gtk_hbox_new(TRUE, 20);
 
@@ -162,7 +162,7 @@ void open_frame_edit_window()
 	if ((is_lavplay_active = pipe_is_active(LAVPLAY_E)))
 		close_pipe(LAVPLAY_E);
 
-	pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	pop_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
 	vbox = gtk_vbox_new(FALSE, 5);
 

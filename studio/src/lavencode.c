@@ -357,7 +357,7 @@ void status_progress_window() {
 
    num_frames = number_of_frames(enc_inputfile);
 
-   progress_window = gtk_window_new(GTK_WINDOW_DIALOG);
+   progress_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
    vbox = gtk_vbox_new(FALSE, 5);
 
    gtk_window_set_title (GTK_WINDOW(progress_window), "Linux Video Studio - MPEG Encoding status");
@@ -659,7 +659,7 @@ void input_callback( GtkWidget *widget, GtkWidget *input_select )
 {
  gchar *file;
 
-  file = gtk_entry_get_text(GTK_ENTRY(input_select));
+  file = (char*)gtk_entry_get_text(GTK_ENTRY(input_select));
   strcpy(enc_inputfile, file);
 
   if (verbose)
@@ -671,7 +671,7 @@ void output_callback( GtkWidget *widget, GtkWidget *output_select )
 {
  gchar *file;
 
-  file = gtk_entry_get_text(GTK_ENTRY(output_select));
+  file = (char*)gtk_entry_get_text(GTK_ENTRY(output_select));
   strcpy(enc_outputfile, file);
 
   if (verbose)
@@ -683,7 +683,7 @@ void sound_callback( GtkWidget *widget, GtkWidget *sound_select )
 {
  gchar *file;
 
-  file = gtk_entry_get_text(GTK_ENTRY(sound_select));
+  file = (char*)gtk_entry_get_text(GTK_ENTRY(sound_select));
   strcpy(enc_audiofile, file);
 
   if (verbose) 
@@ -862,7 +862,7 @@ void video_callback ( GtkWidget *widget, GtkWidget *video_entry )
 {
  gchar *file;
 
-  file = gtk_entry_get_text(GTK_ENTRY(video_entry));
+  file = (char*)gtk_entry_get_text(GTK_ENTRY(video_entry));
   strcpy(enc_videofile, file);
 
   if (verbose)

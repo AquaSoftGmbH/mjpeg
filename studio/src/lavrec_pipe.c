@@ -119,7 +119,7 @@ void scene_detection_finished()
 	gtk_widget_destroy(scene_detection_window);
 
 	/* ask to open eli_file */
-	dialog_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	dialog_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
 
 	gtk_window_set_title (GTK_WINDOW(dialog_window),
@@ -135,13 +135,13 @@ void scene_detection_finished()
 	button = gtk_button_new_with_label("Yes");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		(GtkSignalFunc)scene_detection_open_movie, NULL);
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(dialog_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(dialog_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 	button = gtk_button_new_with_label("No");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(dialog_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(dialog_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
@@ -195,7 +195,7 @@ void create_scene_detection_window()
 {
 	GtkWidget *vbox, *button;
 
-	scene_detection_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	scene_detection_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
 
 	gtk_window_set_title (GTK_WINDOW(scene_detection_window),
@@ -285,7 +285,7 @@ void scene_detection()
 {
 	GtkWidget *popup_window, *button, *label, *hbox, *vbox;
 
-	popup_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	popup_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
 	vbox = gtk_vbox_new(FALSE, 5);
 
@@ -300,13 +300,13 @@ void scene_detection()
 	button = gtk_button_new_with_label("Yes");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
 		(GtkSignalFunc)scene_detection_file, NULL);
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(popup_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(popup_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 	button = gtk_button_new_with_label("No");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(popup_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(popup_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 	gtk_box_pack_start (GTK_BOX (vbox), hbox, FALSE, FALSE, 0);
@@ -468,7 +468,7 @@ void create_child()
 		sprintf(lavrec_g, "%ix%i", software_recwidth, software_recheight);
 		lavrec_command[n] = lavrec_g; n++;
 	}
-	lavrec_command[n] = gtk_entry_get_text(GTK_ENTRY(textfield)); n++;
+	lavrec_command[n] = (char*)gtk_entry_get_text(GTK_ENTRY(textfield));n++;
 	lavrec_command[n] = NULL;
 
 	if (verbose)
@@ -503,7 +503,7 @@ void lavrec_quit()
 
 void text_changed(GtkWidget *widget, gpointer data)
 {
-	record_dir = gtk_entry_get_text(GTK_ENTRY(textfield));
+	record_dir = (char*)gtk_entry_get_text(GTK_ENTRY(textfield));
 	save_config();
 }
 
