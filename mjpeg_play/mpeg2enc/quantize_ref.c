@@ -225,8 +225,8 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
  *
  */
 
-int quant_weight_coeff_intra( struct QuantizerWorkSpace *wsp,
-                              int16_t *blk  )
+static int quant_weight_coeff_intra( struct QuantizerWorkSpace *wsp,
+                                     int16_t *blk  )
 {
     uint16_t * i_quant_mat = wsp->i_intra_q_mat;
     int i;
@@ -240,8 +240,8 @@ int quant_weight_coeff_intra( struct QuantizerWorkSpace *wsp,
 	 noisy video are around 20.0.  */
 }
 
-int quant_weight_coeff_inter( struct QuantizerWorkSpace *wsp,
-                              int16_t *blk )
+static int quant_weight_coeff_inter( struct QuantizerWorkSpace *wsp,
+                                     int16_t *blk )
 {
     uint16_t * i_quant_mat = wsp->i_inter_q_mat;
     int i;
@@ -280,7 +280,7 @@ int quant_non_intra( struct QuantizerWorkSpace *wsp,
 					 int *nonsat_mquant)
 {
 	int i;
-	int x, y, d;
+	int x, y, dmquant;
 	int nzflag;
 	int coeff_count;
 	int flags = 0;
@@ -303,14 +303,18 @@ restart:
 		/* RJ: save one divide operation */
 
 		x = abs( ((int)src[i]) ) /*(src[i] >= 0 ? src[i] : -src[i])*/ ;
-		d = (int)quant_mat[(i&63)]; 
-		/* A.Stevens 2000: Given the math of non-intra frame
-		   quantisation / inverse quantisation I always though the
-		   funny little foudning factor was bogus.  It seems to be
-		   the encoder needs less bits if you simply divide!
+		dmquant = (int)quant_mat[(i&63)]; 
+		/* A.Stevens 2003: Given the math of non-intra frame
+		   quantisation / inverse quantisation I always thought the
+		   funny little foudning factor was bogus.  The reconstruction
+           formula for non-intra frames includes a factor that is exactly
+           right for minimising error if quantisation is performed by a simple
+           *truncating* divide!
 		*/
 
-		y = (x<<4) /  (d) /* (32*x + (d>>1))/(d*2*mquant)*/ ;
+		y = (x<<4) /  dmquant; /* NOW: 16*x / d*mquant  
+                                  OLD: round(16*x/d)/mquant) 
+                                  = (32*x+d>>1)/(d*2)/mquant*/ ;
 		if ( y > clipvalue )
 		{
 			if( saturated )
@@ -509,10 +513,13 @@ void init_quantizer( struct QuantizerCalls *calls,
             wsp->inter_q_tbl[q][i] = inter_q[i] * q;
             wsp->intra_q_tblf[q][i] = (float)wsp->intra_q_tbl[q][i];
             wsp->inter_q_tblf[q][i] = (float)wsp->inter_q_tbl[q][i];
-            wsp->i_intra_q_tblf[q][i] = (float)(1.0 / (wsp->intra_q_tblf[q][i] * 0.98));
+            wsp->i_intra_q_tblf[q][i] = (float)(1.0 / (wsp->intra_q_tblf[q][i]));
             wsp->i_intra_q_tbl[q][i] = (IQUANT_SCALE/ wsp->intra_q_tbl[q][i]);
-            wsp->i_inter_q_tblf[q][i] =  (float)(1.0 / (wsp->inter_q_tblf[q][i] * 0.98));
+            wsp->r_intra_q_tbl[q][i] = (IQUANT_SCALE % wsp->intra_q_tbl[q][i]);
+            
+            wsp->i_inter_q_tblf[q][i] =  (float)(1.0 / (wsp->inter_q_tblf[q][i]));
             wsp->i_inter_q_tbl[q][i] = (IQUANT_SCALE/wsp->inter_q_tbl[q][i]);
+            wsp->r_inter_q_tbl[q][i] = (IQUANT_SCALE % wsp->inter_q_tbl[q][i]);
         }
     }
     if( mpeg1 )

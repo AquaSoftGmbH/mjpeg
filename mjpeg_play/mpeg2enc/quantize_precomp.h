@@ -32,6 +32,7 @@ struct QuantizerWorkSpace
 	uint16_t inter_q_mat[64], i_inter_q_mat[64];
 	uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
 	uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+	uint16_t r_intra_q_tbl[113][64], r_inter_q_tbl[113][64];
 
 	float intra_q_tblf[113][64], inter_q_tblf[113][64];
 	float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
