@@ -131,14 +131,18 @@ int main(int argc, char *argv[])
          * interpolated frame of field 1
          */
 
-	motion_compensate_field();
+	//motion_compensate_field();
 	
 	/* blend fields */
 
-	blend_fields();
+	//blend_fields();
 
 	/* write output-frame */
 
+	y4m_write_frame ( fd_out, 
+			  &streaminfo, 
+			  &frameinfo, 
+			  frame1); 
 	y4m_write_frame ( fd_out, 
 			  &streaminfo, 
 			  &frameinfo, 
@@ -169,7 +173,7 @@ void blend_fields(void)
 	    
 	    delta = delta<0 ? -delta:delta;
 	    
-	    if(delta<16)
+	    if(delta<12)
 	    {
 		*(frame2[0]+x+y*width)=
 		    (*(frame1[0]+x+y*width)>>1)+
@@ -207,13 +211,13 @@ void motion_compensate_field(void)
 	    min=psad_00(frame1[0]+addr1,frame2[0]+addr1,width,32,0);
 	    min+=psad_00(frame1[0]+addr1+16,frame2[0]+addr1+16,width,32,0);
 	    
-	    for(vy=-32;vy<32;vy++)
-		for(vx=-32;vx<32;vx++)
+	    for(vy=-24;vy<24;vy++)
+		for(vx=-24;vx<24;vx++)
 		{
 		    addr1=(xx   )+(yy   )*width;
 		    addr2=(xx+vx)+(yy+vy)*width;
-		    SAD=psad_00(frame1[0]+addr1,frame2[0]+addr2,width,32,0);
-		    SAD+=psad_00(frame1[0]+addr1+16,frame2[0]+addr2+16,width,32,0);
+		    SAD  = psad_00(frame1[0]+addr1,frame2[0]+addr2,width,32,0);
+		    SAD += psad_00(frame1[0]+addr1+16,frame2[0]+addr2+16,width,32,0);
 		    
 		    if(SAD<min)
 		    {
@@ -226,8 +230,8 @@ void motion_compensate_field(void)
 	    /* transform the sourceblock by the found vector */
 	    for(y=0;y<32;y++)
 		for(x=0;x<32;x++)
-		{
-		    *(frame3[0]+(xx+x   )+(yy+y   )*width) =
+		{  
+			*(frame3[0]+(xx+x   )+(yy+y   )*width) =
 			*(frame2[0]+(xx+x+tx)+(yy+y+ty)*width);
 		}
 	}
@@ -267,7 +271,9 @@ void mc_interpolation ( uint8_t * frame[3], int field)
 	uint32_t SAD=0x00ffffff;
 	uint32_t minSAD=0x00ffffff;
 	int addr1=0,addr2=0;
+	int addr3=0,addr4=0;
 	int z;
+	int32_t p,lum1,lum2;
 
 	for(y=field;y<height;y+=2)
 	  	for(x=0;x<width;x+=8)
@@ -277,31 +283,32 @@ void mc_interpolation ( uint8_t * frame[3], int field)
 			
 			vx=0;
 			minSAD=0x00ffffff;
-			for(dx=-4;dx<=4;dx++)
+			for(dx=-8;dx<=8;dx++)
 			{
-				addr1=y*width+x;
-				addr2=y*width+width*2+x+dx;
+				addr1=y*width+x-width-dx;
+				addr2=y*width+x+width+dx;
 				
 				SAD=0;
-				for(z=-8;z<16;z++)
+				for(z=0;z<8;z++)
 				{
-					SAD+= fabs(
-						*(frame[0]+addr1+z) -
-						*(frame[0]+addr2+z) );
+					p = *(frame[0]+addr1+z) - 
+					    *(frame[0]+addr2+z) ;
+					p *= p;
+					SAD += p;
 				}
 		
-				if(SAD<minSAD)
+				if( SAD<=minSAD )
 				{
 					vx=dx;
 					minSAD=SAD;
 				}
 			}
 
-			for (dx=-8;dx<16;dx++)
+			for (dx=0;dx<8;dx++)
 			{
-				*(frame[0]+y*width+width+dx+x+vx/2)=
-				  (*(frame[0]+y*width         +dx+x)+
-				   *(frame[0]+y*width+width*2 +dx+x+vx))/2;
+				*(frame[0]+y*width+dx+x)=
+				  (*(frame[0]+y*width-width-vx+dx+x)>>1)+
+				  (*(frame[0]+y*width+width+vx+dx+x)>>1);
 			}
 		}
 }
