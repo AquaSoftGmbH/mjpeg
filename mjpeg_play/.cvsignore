@@ -17,3 +17,8 @@ libtool
 mjpegtools-config
 mjpegtools-*.tar.gz
 mjpegtools.pc
+depcomp
+install-sh
+missing
+mkinstalldirs
+compile
