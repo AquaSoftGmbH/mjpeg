@@ -3,7 +3,7 @@
   *  Copyright (C) 2001 Xavier Biquard <xbiquard@free.fr>
   * 
   *  
-  *  Downscales arbitrary sized yuv frame to yuv frames suitable for VCD, SVCD or specified
+  *  Scales arbitrary sized yuv frame to yuv frames suitable for VCD, SVCD or specified
   * 
   *  yuvscaler is distributed in the hope that it will be useful, but
   *  WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -21,6 +21,7 @@
 // September 2001: line switching
 // September/October 2001: new yuv4m header
 // October 2001: first MMX part for bicubic
+// September/November 2001: what a mess this code! => cleaning and splitting
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -143,6 +144,8 @@ const char LINESWITCH[] = "LINE_SWITCH";
 const char ACTIVE[] = "ACTIVE";
 const char NO_HEADER[] = "NO_HEADER";
 const char MMX[] = "MMX";
+const char BOTT_FORWARD[]  = "BOTT_FORWARD";
+const char BOTT_BACKWARD[] = "BOTT_BACKWARD";
 
 // Special BICUBIC algorithm
 // 2048=2^11
@@ -1082,6 +1085,7 @@ main (int argc, char *argv[])
       input_height = y4m_si_get_height (&streaminfo);
       frame_rate = y4m_si_get_framerate (&streaminfo);
       input_interlaced = y4m_si_get_interlace (&streaminfo);
+       
 //     input_aspectratio=streaminfo->aspectratio;  
     }
   else
@@ -1094,7 +1098,11 @@ main (int argc, char *argv[])
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = mpeg_conform_framerate (el.video_fps);
-	  /* LAV interlace codes are aliases for YUV4MPEG ones */
+      input_interlaced =
+	(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
+	(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
+	(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
+	Y4M_UNKNOWN;
       input_interlaced = el.video_inter;
       // this will be  eventually overrided by user's specification
       // Let's determine the frame rate code
@@ -2115,7 +2123,7 @@ main (int argc, char *argv[])
       input_y_infile = input;
       input_u_infile = input + input_width * input_height;
       input_v_infile = input + (input_width * input_height * 5) / 4;
-      for (frame_num = 0; frame_num < el.video_frames; frame_num++)
+      for (frame_num = 1; frame_num <= el.video_frames; frame_num++)
 	{
 	  // Read frame, taken from lav2yuv
 	  len = el_get_video_frame (jpeg_data, frame_num, &el);
