@@ -7,7 +7,7 @@
 
 function usage ()
 {
-  echo "Usage: avi2mpeg [-s num] [-d num] [-n num] [-S] [-Q] [-M] [-V] [-t] [-c] [-o dstdir] srcfile ..."
+  echo "Usage: $0 [-s num] [-d num] [-n num] [-S] [-Q] [-M] [-V] [-t] [-c] [-o dstdir] srcfile ..."
   echo "s - factor source image to be scaled by for compression"
   echo "Q - High quality MPEG1 mode (1800Kbps video)"
   echo "M - Medium high quality MPEG1 mode (1450Kbps video)"
