@@ -50,12 +50,14 @@ main(int argc, char *argv[])
 	write(output_fd, line, strlen(line));
 
 	for(;;) {
-		eof = read_frame(input_fd, CHROMA420, vert, horz, input_frame);
+		eof = read_frame(input_fd, CHROMA420, horz, vert, input_frame);
 		if (eof) {
 			break;
 		}
 		frame_count++;
-		write_frame(output_fd, CHROMA420, vert, horz, output_frame);
+		filter(horz, vert, CHROMA420, input_frame, output_frame);
+
+		write_frame(output_fd, CHROMA420, horz, vert, output_frame);
 	}
 	fprintf(stderr, "%d frames read\n", frame_count);
 
