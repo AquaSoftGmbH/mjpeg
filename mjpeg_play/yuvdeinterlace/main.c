@@ -46,14 +46,12 @@
 #include "blend_fields.h"
 #include "transform_block.h"
 
-struct vector search_backward_vector(int , int);
-struct vector search_forward_vector(int , int );
+int BLKthreshold=16*16*12;
 
-int BLKthreshold=32*32*16;
 int search_radius=8;
 int verbose = 0;
 int fast_mode = 0;
-int field_order = 1;
+int field_order = -1;
 int bttv_hack = 0;
 int width = 0;
 int height = 0;
@@ -145,6 +143,9 @@ struct vector
 	uint32_t sad;
 };
 
+struct vector search_backward_vector(int , int, struct vector topleft , struct vector top, struct vector left);
+struct vector search_forward_vector(int , int , struct vector topleft , struct vector top, struct vector left);
+
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
@@ -177,7 +178,7 @@ main (int argc, char *argv[])
 	mjpeg_log (LOG_INFO,
 		   "-------------------------------------------------");
 
-	while ((c = getopt (argc, argv, "hbfivr:")) != -1)
+	while ((c = getopt (argc, argv, "hbfivr:s:")) != -1)
 	{
 		switch (c)
 		{
@@ -194,7 +195,9 @@ main (int argc, char *argv[])
 			mjpeg_log (LOG_INFO,
 				   "    this leads to a better quality when using mencoder to record");
 			mjpeg_log (LOG_INFO,
-				   " -r sets the serach-radius (default is 8)");
+				   " -r [n=0...255] sets the serach-radius (default is 8)");
+			mjpeg_log (LOG_INFO,
+				   " -s [n=0/1] forces field-order");
 			exit (0);
 			break;
 		}
@@ -224,6 +227,20 @@ main (int argc, char *argv[])
 			verbose = 1;
 			break;
 		}
+		case 's':
+		{
+			field_order = atoi(optarg);
+			if(field_order!=0) 
+			{
+				mjpeg_log (LOG_INFO,"forced top-field-first!");
+				field_order=1;
+			}
+			else
+			{
+				mjpeg_log (LOG_INFO,"forced bottom-field-first!");
+			}
+			break;
+		}
 		}
 	}
 
@@ -251,22 +268,25 @@ main (int argc, char *argv[])
 	width = y4m_si_get_width (&streaminfo);
 	height = y4m_si_get_height (&streaminfo);
 
-	if (Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&streaminfo))
+	if(field_order==-1)
 	{
-		mjpeg_log (LOG_INFO, "top-field-first");
-		field_order = 1;
-	}
-	else if (Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&streaminfo))
-	{
-		mjpeg_log (LOG_INFO, "bottom-field-first");
-		field_order = 0;
-	}
-	else
-	{
-		mjpeg_log (LOG_WARN, "stream either is marked progressive");
-		mjpeg_log (LOG_WARN, "or stream has unknown field order");
-		mjpeg_log (LOG_WARN, "using top-field-first");
-		field_order = 1;
+		if (Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&streaminfo))
+		{
+			mjpeg_log (LOG_INFO, "top-field-first");
+			field_order = 1;
+		}
+		else if (Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&streaminfo))
+		{
+			mjpeg_log (LOG_INFO, "bottom-field-first");
+			field_order = 0;
+		}
+		else
+		{
+			mjpeg_log (LOG_WARN, "stream either is marked progressive");
+			mjpeg_log (LOG_WARN, "or stream has unknown field order");
+			mjpeg_log (LOG_WARN, "using top-field-first");
+			field_order = 1;
+		}
 	}
 
 	/* the output is not interlaced 4:2:0 */
@@ -343,54 +363,96 @@ main (int argc, char *argv[])
 }
 
 struct vector
-search_forward_vector( int x, int y )
+search_forward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left)
 {
 	struct vector v;
+	struct vector median;
 	int vx,vy;
 	int r=search_radius;
-	uint32_t min;
+	uint32_t min,mmin;
 	uint32_t SAD;
 
-	min=0x00ffffff;
+	median.x = (top.x + left.x + topleft.x)/3;
+	median.y = (top.y + left.y + topleft.y)/3;
+
+	min  = psad_00( frame20[0]+x+y*width, frame21[0]+x+y*width, width, 16, 0 );
+	if (x>=32 && y>=32)
+		mmin  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
+	else
+		mmin  = 0x00ffffff;
+
+	if(mmin>min)
+	{
+		v.x = 0;
+		v.y = 0;
+	}
+	else
+	{
+		v.x = median.x;
+		v.y = median.y;
+	}
+
+	if(min>=BLKthreshold && mmin>=BLKthreshold) // only do a full search if predictors are too bad
 	for(vy = -r ; vy <= r ; vy += 2)
-		for(vx = -r ; vx <= r ; vx += 2)
+		for(vx = -r ; vx <= r ; vx += 1)
 		{
-			SAD  = psad_00( frame20[0]+x+y*width, frame10[0]+(x+vx)+(y+vy)*width, width, 32, 0 );
-			SAD += psad_00( frame20[0]+x+y*width+16, frame10[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
+			SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
 			if(SAD<min)
 			{
 				min   = SAD;
-				v.x   = vx/2;
-				v.y   = vy/2;
-				v.sad = SAD;
+				v.x   = vx;
+				v.y   = vy;
 			}
 		}
+
+	v.sad = psad_00( frame20[0]+x+y*width, frame21[0]+(x+v.x)+(y+v.y)*width, width, 16, 0 );
 	return v;
 }
 
 struct vector
-search_backward_vector( int x, int y )
+search_backward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left)
 {
 	struct vector v;
+	struct vector median;
 	int vx,vy;
 	int r=search_radius;
-	uint32_t min;
+	uint32_t min,mmin;
 	uint32_t SAD;
 
-	min=0x00ffffff;
+	median.x = (top.x + left.x + topleft.x)/3;
+	median.y = (top.y + left.y + topleft.y)/3;
+
+	min  = psad_00( frame20[0]+x+y*width, frame31[0]+x+y*width, width, 16, 0 );
+	if (x>=32 && y>=32)
+		mmin  = psad_00( frame20[0]+x+y*width, frame31[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
+	else
+		mmin  = 0x00ffffff;
+
+	if(mmin>min)
+	{
+		v.x = 0;
+		v.y = 0;
+	}
+	else
+	{
+		v.x = median.x;
+		v.y = median.y;
+	}
+
+	if(min>=BLKthreshold && mmin>=BLKthreshold) // only do a full search if predictors are too bad
 	for(vy = -r ; vy <= r ; vy += 2)
-		for(vx = -r ; vx <= r ; vx += 2)
+		for(vx = -r ; vx <= r ; vx += 1)
 		{
-			SAD  = psad_00( frame20[0]+x+y*width, frame30[0]+(x+vx)+(y+vy)*width, width, 32, 0 );
-			SAD += psad_00( frame20[0]+x+y*width+16, frame30[0]+(x+vx)+(y+vy)*width+16, width, 32, 0 );
+			SAD  = psad_00( frame20[0]+x+y*width, frame31[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
 			if(SAD<min)
 			{
 				min   = SAD;
-				v.x   = vx/2;
-				v.y   = vy/2;
-				v.sad = SAD;
+				v.x   = vx;
+				v.y   = vy;
 			}
 		}
+
+	v.sad = psad_00( frame20[0]+x+y*width, frame31[0]+(x+v.x)+(y+v.y)*width, width, 16, 0 );
 	return v;
 }
 
@@ -398,36 +460,53 @@ void
 motion_compensate_field (void)
 {
 	int x,y;
-	struct vector fv;
-	struct vector bv;
+	struct vector fv[45][36];
+	struct vector bv[45][36];
 	
-	for(y=0;y<height;y+=32)
-		for(x=0;x<width;x+=32)
+	for(y=0;y<height;y+=16)
+	{
+		for(x=0;x<width;x+=16)
 		{
-			fv = search_forward_vector(x,y);
-			bv = search_backward_vector(x,y);
+			fv[x>>4][y>>4] = search_forward_vector (x,y,fv[(x>>4)-1][(y>>4)-1],fv[x>>4][(y>>4)-1],fv[(x>>4)-1][y>>4]);
+			bv[x>>4][y>>4] = search_backward_vector(x,y,bv[(x>>4)-1][(y>>4)-1],bv[x>>4][(y>>4)-1],bv[(x>>4)-1][y>>4]);
+		}
+	}
+	for(y=0;y<height;y+=16)
+		for(x=0;x<width;x+=16)
+		{
+			//fv[x>>4][y>>4].x /= 2;
+			//fv[x>>4][y>>4].y /= 2;
+			//bv[x>>4][y>>4].x /= 2;
+			//bv[x>>4][y>>4].y /= 2;
+			//fprintf(stderr,"(%2i,%2i|",fv[x>>4][y>>4].x,fv[x>>4][y>>4].y);
+			//fprintf(stderr,"%2i,%2i)",bv[x>>4][y>>4].x,bv[x>>4][y>>4].y);
 
-			if(fv.sad < BLKthreshold || bv.sad < BLKthreshold)
+	//		if(fv[x>>4][y>>4].sad < BLKthreshold || bv[x>>4][y>>4].sad < BLKthreshold)
 			{
-				if(fv.sad < bv.sad)
+				if(fv[x>>4][y>>4].sad < bv[x>>4][y>>4].sad)
 				{
-					transform_block_Y  (frame5[0]+x+y*width , frame21[0]+(x+fv.x)+(y+fv.y)*width, width );
-					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame21[1]+(x+fv.x)/2+(y+fv.y)/2*width/2, width/2 );
-					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame21[2]+(x+fv.x)/2+(y+fv.y)/2*width/2, width/2 );
+					transform_block_Y  (frame5[0]+x+y*width,
+										frame21[0]+(x+fv[x>>4][y>>4].x)+(y+fv[x>>4][y>>4].y)*width, width );
+					transform_block_UV  (frame5[1]+x/2+y/2*width/2,
+										frame21[1]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
+					transform_block_UV  (frame5[2]+x/2+y/2*width/2,
+										frame21[2]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
 				}
 				else
 				{
-					transform_block_Y  (frame5[0]+x+y*width , frame31[0]+(x+bv.x)+(y+bv.y)*width, width );
-					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame31[1]+(x+bv.x)/2+(y+bv.y)/2*width/2, width/2 );
-					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame31[2]+(x+bv.x)/2+(y+bv.y)/2*width/2, width/2 );
+					transform_block_Y  (frame5[0]+x+y*width , frame31[0]+(x+bv[x>>4][y>>4].x)+(y+bv[x>>4][y>>4].y)*width, width );
+					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame31[1]+(x+bv[x>>4][y>>4].x)/2+(y+bv[x>>4][y>>4].y)/2*width/2, width/2 );
+					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame31[2]+(x+bv[x>>4][y>>4].x)/2+(y+bv[x>>4][y>>4].y)/2*width/2, width/2 );
 				}
 			}
+#if 0
 			else
 			{
 				transform_block_Y  (frame5[0]+x+y*width , frame20[0]+x+y*width, width );
 				transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame20[1]+x/2+y/2*width/2, width/2 );
 				transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame20[2]+x/2+y/2*width/2, width/2 );
 			}
+#endif
 		}
 }
 
