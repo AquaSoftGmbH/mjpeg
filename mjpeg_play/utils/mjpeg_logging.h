@@ -32,11 +32,16 @@ typedef enum {
 
 void
 mjpeg_log(log_level_t level, const char format[], ...) GNUC_PRINTF(2, 3);
+
+typedef int(*mjpeg_log_filter_t)(log_level_t level);
     
 typedef void(*mjpeg_log_handler_t)(log_level_t level, const char message[]);
 
 mjpeg_log_handler_t
 mjpeg_log_set_handler(mjpeg_log_handler_t new_handler);
+
+int
+mjpeg_default_handler_verbosity(int verbosity);
 
 void
 mjpeg_debug(const char format[], ...) GNUC_PRINTF(1,2);

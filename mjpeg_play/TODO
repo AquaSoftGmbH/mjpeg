@@ -27,19 +27,9 @@ a look at the source code for vcdimager!
 	and lavrec and add proper error handling and break up those oversize
 	functions.
 
-- Consistent format for diagnostic messages.   The style used by vcdimager
-  prefixing all messages with:
-
-"  INFO:"
-"--DEBUG:"
-"++ WARN:"
-
-
-prefixes seems very sensible and worth adopting.  So I pinched the
-code used by vcdimager for use as the seed of a utility library for
-the mjpeg tools.
-
-A start has been made with mplex, mpeg2enc and mp2enc
+- Consistent format for diagnostic messages.  This is almost done
+	with all but the smallest / least-mature utilities now using the
+	mjpeg_* logging utility library.
 
 - The single-letter soup of the various getopts needs to be replaced
 	with getopts_long style command lines.

@@ -42,6 +42,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 
+#include "mjpeg_logging.h"
 
 #ifndef FORK_NOT_THREAD
 #include <pthread.h>
@@ -49,9 +50,6 @@
 
 #define DEBUG(x) 
 
-#ifdef USE_ALSA
-#include <sys/asoundlib.h>
-#endif
 
 /* The shared memory things */
 
@@ -642,8 +640,6 @@ static void system_error(char *str, int use_strerror)
 #endif
 }
 
-#ifndef USE_ALSA
-
 void do_audio(void)
 {
 
@@ -758,8 +754,6 @@ void do_audio(void)
 
    if(ret<0) system_error("in ioctl SNDCTL_DSP_GET[IO]SPACE",1);
 
-//   fprintf( stderr, "Hardware offers %d frags of %d bytes\n", 
-//			info.fragstotal ,info.fragsize );
    if (info.fragsize != audio_buffer_size)
       system_error("Soundcard fragment size unexpected",0);
 
@@ -781,12 +775,11 @@ void do_audio(void)
 
    if (info.fragstotal < 2)
    {
-	fprintf( stderr, "Fragments = %d of %d \n", info.fragstotal, info.fragsize );
-      system_error("Could not get enough audio buffers",0);
+	   system_error("Could not get enough audio buffer fragments",0);
    }
 
    tmp = info.fragstotal*info.fragsize;
-//   fprintf( stderr, "Attempting to map %d byte buffer space\n", tmp );
+
    if (audio_capt)
       buf=mmap(NULL, tmp, PROT_READ , MAP_SHARED, fd, 0);
    else
@@ -857,7 +850,7 @@ void do_audio(void)
 
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_RR, &schedparam ) ) )
 	 {
-	   fprintf( stderr, "Pthread Real-time scheduling could not be enabled.\n"); 
+		 mjpeg_warn("Pthread Real-time scheduling could not be enabled.\n"); 
 	 }
 #endif
 
@@ -920,7 +913,7 @@ void do_audio(void)
 		 problems...
 	   */
 	  /*
-		printf( "CB=%08d ND=%06d BL=%03d NB=%d\n", count.bytes, ndiff, count.blocks, NBUF(nbdone) );
+		mjpeg_info( "CB=%08d ND=%06d BL=%03d NB=%d\n", count.bytes, ndiff, count.blocks, NBUF(nbdone) );
 	  */
       if(ndiff>maxdiff)
 	  {
@@ -1047,255 +1040,3 @@ void do_audio(void)
 
 
 
-#else
-
-
-/* Timeout (in seconds) for playing audio:
- * If all buffers are played and the calling program doesn't
- * deliver anything during that time intervall, the audio task will exit
- */
-
-#define WRITE_TIMEOUT 10
-
-/* do_audio (ALSA version) 
- * The audio playback/record task for ALSA.
- * returns: nothing (paralell task)
- * FIXME:  This code is now very stale and is missing pthreads support...
- */
-
-void do_audio()
-{
-   int nbuff, err, wait_time;
-   int card = 0, device = 0; 
-
-   struct snd_pcm *handle; /* like a file descriptor */
-   struct snd_pcm_playback_params play_fragparam; /* fragmentation buffer setup */
-   struct snd_pcm_playback_status play_info; /* status info record */
-   struct snd_pcm_record_params record_fragparam;
-   struct snd_pcm_record_status record_info;
-   struct snd_pcm_format format; /* sets the record/playback format */
-
-   if (audio_capt)
-     {
-       if ((err = snd_pcm_open(&handle, card, device, 
-			       SND_PCM_OPEN_RECORD)) < 0) 
-	 {  
-	   fprintf(stderr, "ALSA open for record failed: %s\n", snd_strerror( err ));  
-	   shmemptr->audio_status = -1; exit(1);
-	 } 
-     }
-   else
-     {
-       if ((err = snd_pcm_open(&handle, card, device, 
-			       SND_PCM_OPEN_PLAYBACK)) < 0) 
-	 {  
-	   fprintf(stderr, "ALSA open for playback failed: %s\n", snd_strerror( err ));  
-	   shmemptr->audio_status = -1; exit(1);
-	 } 
-     }
-
-   bzero(&format, sizeof(format)); 
-   format.format = (audio_size == 16) ?  SND_PCM_SFMT_S16_LE : SND_PCM_SFMT_U8; 
-   format.rate = audio_rate; 
-   format.channels = stereo ? 2 : 1; 
-
-   if (audio_capt)
-     {
-       if ((err = snd_pcm_record_format(handle, &format)) < 0) 
-	 { 
-	   fprintf(stderr, "format setup for record failed: %s\n", snd_strerror( err ));  
-	   snd_pcm_close(handle); 
-	   shmemptr->audio_status = -1; exit(1);
-	 } 
-     }
-   else
-     {
-       if ((err = snd_pcm_playback_format(handle, &format)) < 0) 
-	 { 
-	   fprintf(stderr, "format setup for playback failed: %s\n", snd_strerror( err ));  
-	   snd_pcm_close(handle); 
-	   shmemptr->audio_status = -1; exit(1);
-	 } 
-     }
-
-
-   /* if somebody plays with BUFFSIZE without knowing what he does ... */
-   if (audio_buffer_size > BUFFSIZE)
-     {
-       fprintf(stderr,"Audio internal error\n");
-       shmemptr->audio_status = -1; exit(1);
-     }
-
-   if (audio_capt)
-     {
-       bzero(&chan_param, sizeof(record_fragparam)); 
-       chan.param.mode = SND_PCM_MODE_BLOCK;
-       chan_param.buf.block.frags_min = 1;
-       chan_param.buf.block.frags_size = audio_buffer_size;
-       record_fragparam.fragments_min = 1;
-       err = snd_pcm_record_params(handle, &record_fragparam); 
-     }
-   else
-     {
-       bzero(&play_fragparam, sizeof(play_fragparam)); 
-       play_fragparam.fragment_size = audio_buffer_size;
-       play_fragparam.fragments_max = -1;
-       play_fragparam.fragments_room = 1;
-       err = snd_pcm_playback_params(handle, &play_fragparam); 
-     }
-   if (err < 0)
-    { 
-      fprintf(stderr, "%s parameter setup failed: %s\n", 
-	      (audio_capt) ? "recording" : "playback", snd_strerror( err ));        
-      snd_pcm_close(handle); 
-      shmemptr->audio_status = -1; exit(1);
-    } 
-
-   /* Pause the playback */
-   /* I have no clue about how to pause recording :-/ */
-   if (!audio_capt)
-       snd_pcm_playback_pause(handle, 1);
-
-/* Wait until the parent tells us it wants to start */
-
-   while (!shmemptr->audio_sync && !shmemptr->exit_flag) usleep(10000);
-   if(shmemptr->exit_flag) exit(0);
-
-   /* "Play" (=queue) all audio samples put into the shared memory so far */
-   nbuff = 0;
-
-   if (!audio_capt)
-     while (shmemptr->used_flag[NBUF(nbuff)]) 
-       {
-	 snd_pcm_write(handle, (void*) shmemptr->audio_data[NBUF(nbuff)],
-		       play_info.fragment_size);
-	 /* Mark the buffer as free */
-	 shmemptr->used_flag[NBUF(nbuff)] = 0;
-	 nbuff++;
-       }
-
-   if (!audio_capt)
-     snd_pcm_playback_pause(handle, 0);
-
-/* Signal the parent that we are ready */
-
-   shmemptr->audio_status = 1;
-
-   /* The record/playback loop */
-   while (1)
-   {
-      /* If we do play: Wait for new audio data available */
-      if(!audio_capt)
-      {
-         wait_time = 0;
-         while(!shmemptr->used_flag[NBUF(nbuff)] &&
-               !shmemptr->exit_flag)
-         {
-            wait_time += 100; /* in ms */
-            if(wait_time > WRITE_TIMEOUT*1000)
-            {
-               fprintf(stderr,"\nAudio playback timeout\n");
-	       snd_pcm_close(handle); 
-               shmemptr->audio_status = -1; exit(1);
-            }
-            usleep(100000); /* sleep 100 ms */
-         }
-      }
-
-      if (audio_capt)
-      { 
-	if ((err = snd_pcm_record_status(handle, &record_info)) < 0) 
-	  { 
-	    fprintf(stderr, "Could not retrieve recording status: %s\n", 
-		    snd_strerror( err ));      
-	    snd_pcm_close(handle); 
-	    shmemptr->audio_status = -1; exit(1);
-	  }; 
-      
-	DEBUG(
-	  { printf("Record status info from ALSA:\n"
-		   "%d fragments with %d bytes size.\n"
-		   "%d bytes readable without blocking. %d overruns.\n",
-		   record_info.fragments, record_info.fragment_size,
-		   record_info.count, record_info.overrun);
-	  })
-      }
-      else
-	{
-	  if ((err = snd_pcm_playback_status(handle, &play_info)) < 0) 
-	    { 
-	      fprintf(stderr, "Could not retrieve playback status: %s\n", 
-		      snd_strerror( err ));      
-	      snd_pcm_close(handle); 
-	      shmemptr->audio_status = -1; exit(1);
-	    } 
-	  
-	  DEBUG(
-	    { printf("Playback status info from ALSA:\n"
-		     "%d fragments with %d bytes size.\n"
-		     "%d bytes writable without blocking. %d bytes in queue.\n",
-		     play_info.fragments, play_info.fragment_size,
-		     play_info.count, play_info.queue);
-	    })
-
-	}
-
-      if(audio_capt)
-      {
-         /* if exit_flag is set, exit immediatly */
-         if(shmemptr->exit_flag)
-         {
-	   snd_pcm_close(handle);
-	   shmemptr->audio_status = -1; exit(0);
-         }
-
-         /* output a warning if a buffer overrun occured during read */
-         if (record_info.overrun)
-            fprintf(stderr,"\n*** %d Audio recording overrun(s) !!\n", 
-		    record_info.overrun);
-
-	 /* Check if buffer nbuff in the ring buffer is free */
-	 if(shmemptr->used_flag[NBUF(nbuff)])
-	   {
-	     fprintf(stderr,"\nAudio ring buffer overflow\n");
-	     shmemptr->audio_status = -1;
-	     exit(1);
-	   }
-
-	 snd_pcm_read (handle, 
-		    (void*) shmemptr->audio_data[NBUF(nbuff)], 
-		       record_info.fragment_size);
-	 shmemptr->used_flag[NBUF(nbuff)] = 1;
-	 
-	 nbuff++;
-      }
-      else /* this is playback */
-      {
-         /* We can have a buffer underrun if no new samples are delivered in time.
-            As long as the buffers are delivered later, there will
-            be some audible artifacts, but we stay in sync
-            - we don't output a warning */
-
-         /* If exit_flag is set and all buffers are played, exit */
-         if(shmemptr->exit_flag)
-         {
-            shmemptr->audio_status = -1;
-			snd_pcm_flush_playback(handle);
-			snd_pcm_close(handle);
-            exit(0);
-         }
-
-	 /* Fill into the soundcard memory as many buffers as are available */
-	 while(shmemptr->used_flag[NBUF(nbuff)])
-	   {
-	     snd_pcm_write(handle, (void*) shmemptr->audio_data[NBUF(nbuff)],
-			   play_info.fragment_size);
-	     /* Mark the buffer as free */
-	     shmemptr->used_flag[NBUF(nbuff)] = 0;
-	     nbuff++;
-	   }
-      }
-   }
-}
-
-#endif

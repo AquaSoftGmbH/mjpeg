@@ -46,7 +46,7 @@ static void usage (){
 
 static void sigint_handler (int signal) {
  
-   fprintf (stderr, "Caugth SIGINT, exiting...\n");
+   fprintf (stderr, "Caught SIGINT, exiting...\n");
    got_sigint = 1;
    
 }

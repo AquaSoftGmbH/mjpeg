@@ -28,6 +28,8 @@
 #include <jpeglib.h>
 #include <jerror.h>
 
+#include "lav_io.h"
+
  /*
  * jpeg_data:       buffer with input / output jpeg
  * len:             Length of jpeg buffer
@@ -434,10 +436,10 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
 
       if (numfields == 2) {
          switch (itype) {
-         case 2: /* even field first */
+         case LAV_INTER_ODD_FIRST:
             yl = yc = (1 - field);
             break;
-         case 1: /* odd field first */
+         case LAV_INTER_EVEN_FIRST:
             yl = yc = field;
             break;
          default:

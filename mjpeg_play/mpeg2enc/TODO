@@ -1,4 +1,5 @@
-1.  Fix field sequence MC/prediction. Something broken there...
+1.  	Bring field sequence MC/prediction to same level as progressive	
+	sequence.
 	
 	
 2.	Get MMX routines written fast_motion_data.
@@ -10,14 +11,10 @@
 	the fact the when a sequence split occurs the I-frame tempref is
 	0 not M-1.
 
-4. The horribly muddled file-naming and function naming conventions
-	*really* need to be 	made consistent. _MMX _MMXE and
-	_mmx.s _mmxe.s...
-
 	The mblockq_ sub-routines intended specification should be documented...
 
 5.	Code Hygiene...
-	Is all the 	block_count dependant code is o.k. for YUV422 and YUV444?
+	Is all theblock_count dependant code is o.k. for YUV422 and YUV444?
 
 	The order of return from block_dist1_MMXE is silly.  Why not
 	retun in the order it is held and adjust find_best_one_pel_MMXE to
@@ -26,17 +23,5 @@
 	The rate control code is now a mess of int64_t , double and int. Needs
 	tidying...
 
-	The setting of encoding parameters from cmd line flags is a mess
-	and needs seriously working through.  There ought to be a flag
-	for selecting frame_pred_dct for progressive mpeg-2 sequences.
-
-	There's lots of redundant copying around of parameters to/from
-	records in putseq and some in parts of motion.c.
-
-	The P-field of a interlaced sequence I-frame needs its own
-	motion vector ranges and f-codes.
-
-	The field/frame encoding sequence in putseq could be packaged into its
-	own function.
 
 6. What the hell was BITCOUNT_OFFSET for?  Probably a debugger that needs purging.

@@ -238,7 +238,7 @@ int lav_query_APP_length(char format)
 
 int lav_query_polarity(char format)
 {
-   /* Quicktime needs EVEN_FIRST, for AVI we have the choice */
+   /* Quicktime needs ODD_FIRST, for AVI we have the choice */
 
    switch(format)
    {
@@ -1190,19 +1190,19 @@ char *lav_strerror(void)
    switch(internal_error)
    {
       case ERROR_JPEG:
-         sprintf(error_string,"Internal Error with JPEG format");
+         sprintf(error_string,"Internal: broken JPEG format");
          internal_error = 0;
          return error_string;
       case ERROR_MALLOC:
-         sprintf(error_string,"Internal Error: Out of memory");
+         sprintf(error_string,"Internal: Out of memory");
          internal_error = 0;
          return error_string;
       case ERROR_FORMAT:
-         sprintf(error_string,"Error: Input file format not recognized");
+         sprintf(error_string,"Input file format not recognized");
          internal_error = 0;
          return error_string;
       case ERROR_NOAUDIO:
-         sprintf(error_string,"Error: Trying to read audio from a video only file");
+         sprintf(error_string,"Trying to read audio from a video only file");
          internal_error = 0;
          return error_string;
    }

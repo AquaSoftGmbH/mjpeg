@@ -78,18 +78,6 @@
 
 unsigned int which_streams;
 
-static mjpeg_log_handler_t default_mjpeg_log_handler;
-
-static void
-mplex_log_handler( log_level_t level, const char message[] )
-{
-	if (level == LOG_DEBUG && verbose > LOG_DEBUG)
-		return;
-	if( level == LOG_INFO && verbose > LOG_INFO )
-		return;
-
-	default_mjpeg_log_handler( level, message );
-}
 int main (argc, argv)
 
 int argc;
@@ -106,7 +94,6 @@ char* argv[];
     double first_frame_PTS = 0.0;
     Vector  vaunits_info, aaunits_info;
 
-	default_mjpeg_log_handler = mjpeg_log_set_handler(mplex_log_handler );
     optargs = intro_and_options (argc, argv, &multi_file);
     check_files (argc-optargs, argv+optargs, 
                  &audio_file, &video_file,

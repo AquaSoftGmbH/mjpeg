@@ -231,20 +231,7 @@ static void Usage(char *str)
 }
 
 
-static int log_level = LOG_INFO;
-static mjpeg_log_handler_t default_mjpeg_log_handler;
-
-static void
-mplex_log_handler( log_level_t level, const char message[] )
-{
-	if (level == LOG_DEBUG && log_level > LOG_DEBUG)
-		return;
-	if( level == LOG_INFO && log_level > LOG_INFO )
-		return;
-
-	default_mjpeg_log_handler( level, message );
-}
-
+static int verbosity = 1;
 
 int main(argc,argv)
 	int argc;
@@ -257,8 +244,6 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	default_mjpeg_log_handler = mjpeg_log_set_handler(mplex_log_handler );
-
 	while( (n=getopt(argc,argv,"m:a:f:n:b:B:q:o:S:F:r:M:4:2:Q:g:G:v:V:stpNhO?")) != EOF)
 	{
 		switch(n) {
@@ -367,8 +352,8 @@ int main(argc,argv)
 			break;
 
 		case 'v':
-			log_level = LOG_WARN-atoi(optarg);
-			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+			verbosity = LOG_WARN-atoi(optarg);
+			if( verbose < 0 || verbose > 2 )
 				++nerr;
 			break;
 		case 'V' :
@@ -436,6 +421,9 @@ int main(argc,argv)
 
     if( nerr )
 		Usage(argv[0]);
+
+	mjpeg_default_handler_verbosity(verbose);
+
 
 	/* Select input stream */
 	if(optind!=argc)

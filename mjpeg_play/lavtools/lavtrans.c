@@ -57,9 +57,11 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <errno.h>
 
 #include "lav_io.h"
 #include "editlist.h"
+#include "mjpeg_logging.h"
 
 static EditList el;
 
@@ -114,9 +116,7 @@ void Usage(char *str)
 
 void system_error(char *str1, char *str2)
 {
-   fprintf(stderr,"Error %s\n",str1);
-   perror(str2);
-   exit(1);
+   mjpeg_error_exit1("%s\n%s: %s\n",str1, str2, sys_errlist[errno]);
 }
 
 int main(int argc, char ** argv)
@@ -158,9 +158,8 @@ int main(int argc, char ** argv)
 
    if (process_image_frame != -1 && format!='i')
    {
-      printf("If you specify \'-i <num>\', you must use jpg (\'-f i\') as output:\n"
-             "   lavtrans -o image.jpg -f i movie.avi -i <frame_num>\n");
-      exit(1);
+      mjpeg_error_exit1("If you specify \'-i <num>\', you must use jpg (\'-f i\') as output:\n"
+						"   lavtrans -o image.jpg -f i movie.avi -i <frame_num>\n");
    }
 
    /* Get and open input files */
@@ -172,8 +171,7 @@ int main(int argc, char ** argv)
 
    if(format == 'q' && el.video_inter == LAV_INTER_ODD_FIRST)
    {
-      fprintf(stderr,"Output is Quicktime - wrong interlacing order\n");
-      exit(1);
+      mjpeg_error_exit1("Output is Quicktime - wrong interlacing order\n");
    }
 
    if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
@@ -184,9 +182,8 @@ int main(int argc, char ** argv)
                                    el.audio_bits,el.audio_chans,el.audio_rate);
       if(!outfd)
       {
-         fprintf(stderr,"Error opening output file %s: %s\n",
-                        outfile,lav_strerror());
-         exit(1);
+		  mjpeg_error_exit1("Opening output file %s: %s\n",
+					  outfile,lav_strerror());
       }
    }
 
@@ -194,8 +191,7 @@ int main(int argc, char ** argv)
    {
       if(!el.has_audio)
       {
-         fprintf(stderr,"WAV output requested but no audio present\n");
-         exit(1);
+         mjpeg_error_exit1("WAV output requested but no audio present\n");
       }
       if( format == 'W' )
       {
@@ -203,8 +199,7 @@ int main(int argc, char ** argv)
 		forcestereo = 1;
           else
           {
-		fprintf( stderr, "STEREOFIED WAV output request but non mono 16-bit audio present\n");
-	        exit(1);
+			  mjpeg_error_exit1("STEREOFIED WAV output request but non mono 16-bit audio present\n");
           }
       }
       wave_hdr.rifftag = FOURCC_RIFF;
@@ -228,7 +223,7 @@ int main(int argc, char ** argv)
    }
 
    vbuff = (char*) malloc(el.max_frame_size);
-   if(vbuff==0) { fprintf(stderr,"malloc failed\n"); exit(1); }
+   if(vbuff==0) { mjpeg_error_exit1("malloc failed\n");  }
 
    /* Quick hack by Ronald to enable one-frame picture grabbing */
    if (process_image_frame != -1)
@@ -240,7 +235,7 @@ int main(int argc, char ** argv)
       res = fwrite(vbuff,nv,1,imgfd);
       if(res!=1) system_error("writing image","fwrite");
       fclose(imgfd);
-      printf("Frame %d grabbed\n", process_image_frame);
+      mjpeg_info("Frame %d grabbed\n", process_image_frame);
       exit(1);
    }
 
@@ -262,8 +257,7 @@ int main(int argc, char ** argv)
                res = lav_write_audio(outfd,abuff,na/el.audio_bps);
             if(res)
             {
-               fprintf(stderr,"Error writing output: %s\n",lav_strerror());
-               exit(1);
+               mjpeg_error_exit1("Error writing output: %s\n",lav_strerror());
             }
             break;
 
@@ -305,8 +299,7 @@ int main(int argc, char ** argv)
       res = lav_close(outfd);
       if(res)
       {
-         fprintf(stderr,"Error closing output file: %s\n",lav_strerror());
-         exit(1);
+         mjpeg_error_exit1("Closing output file: %s\n",lav_strerror());
       }
    }
 

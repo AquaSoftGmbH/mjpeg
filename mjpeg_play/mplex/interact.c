@@ -164,6 +164,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
     {	
 		Usage(argv[0]);
     }
+	(void)mjpeg_default_handler_verbosity(verbose);
 	mjpeg_info( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
 	*multplex_outfile = outfile;
 	return optind-1;

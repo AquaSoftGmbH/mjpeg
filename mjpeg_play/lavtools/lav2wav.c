@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include "lav_io.h"
 #include "editlist.h"
+#include "mjpeg_logging.h"
 
 #define WAVE_FORMAT_PCM  0x0001
 #define FORMAT_MULAW     0x0101
@@ -139,7 +140,7 @@ static void wav_close(int fd)
 	{
 		if( fd > 2 )
 		{
-			fprintf(stderr,"lseek failed - wav-header is corrupt\n");
+			mjpeg_error("lseek failed - wav-header is corrupt\n");
 		}
 		goto EXIT;
 
@@ -148,11 +149,10 @@ static void wav_close(int fd)
 	/* Rewind file */
 	if (lseek(fd, 0, SEEK_SET) < 0) 
 	{
-		fprintf(stderr,"rewind failed - wav-header is corrupt\n");
+		mjpeg_error("rewind failed - wav-header is corrupt\n");
 		goto EXIT;
 	}
-	if (verbose > 1)
-	    fprintf(stderr,"Writing WAV header\n");
+	mjpeg_debug("Writing WAV header\n");
 
 	// Fill out our wav-header with some information. 
 	size -= 8;
@@ -162,11 +162,10 @@ static void wav_close(int fd)
 
 	if (do_write(fd, &wave, sizeof(wave)) < sizeof(wave)) 
 	{
-		fprintf(stderr,"wav-header write failed -- file is corrupt\n");
+		mjpeg_error("wav-header write failed -- file is corrupt\n");
 		goto EXIT;
 	}
-	if (verbose > 1)
-	    fprintf(stderr,"WAV done\n");
+	mjpeg_info("WAV done\n");
 
 EXIT:
 	close(fd);
@@ -227,13 +226,13 @@ char    **argv;
 
     if(!el.has_audio)
     {
-        fprintf(stderr,"Input file(s) have no audio\n");
+        mjpeg_error("Input file(s) have no audio\n");
         exit(1);
     }
 
     if(el.audio_bits!=16)
     {
-        fprintf(stderr,"Input file(s) must have 16 bit audio!\n");
+        mjpeg_error("Input file(s) must have 16 bit audio!\n");
         exit(1);
     }
  
@@ -243,8 +242,8 @@ char    **argv;
        case 32000 :
            break;
        default:
-           fprintf(stderr,"Audio rate is %ld Hz\n",el.audio_rate);
-           fprintf(stderr,"Audio rate must be 32000, 44100 or 48000 !\n");
+           mjpeg_error("Audio rate is %ld Hz\n",el.audio_rate);
+           mjpeg_error("Audio rate must be 32000, 44100 or 48000 !\n");
            exit(1);
     }
 
@@ -254,7 +253,7 @@ char    **argv;
           break;
 
        default:
-          fprintf(stderr,"Audio channels %d not allowed\n",el.audio_chans);
+          mjpeg_error("Audio channels %d not allowed\n",el.audio_chans);
            exit(1);
     }
  
@@ -274,22 +273,21 @@ char    **argv;
 		n = el_get_audio_data((char *)audio_buff, f, &el, 0);
 		if( n < 0 )
 		{
-			fprintf( stderr, "%s: Error: Couldn't get audio for frame %d!\n", argv[0], f );
-			exit(1);
+			mjpeg_error_exit1( "%s: Couldn't get audio for frame %d!\n", argv[0], f );
 		}
 		if( n != 0 )
 		{
 			res = do_write( 1, audio_buff, n );
 			if( res != n )
 			{
-				fprintf( stderr, "%s: Error: Couldn't write audio for frame %d!\n", argv[0], f );
+				mjpeg_error_exit1( "%s: Couldn't write audio for frame %d!\n", argv[0], f );
 				exit(1);
 			}
 		}
 
 		else if( f < num_frames && ! warned )
 		{
-			fprintf( stderr, "%s: Warning: audio ends early at frame %d\n", argv[0], f );
+			mjpeg_warn( "%s: audio ends early at frame %d\n", argv[0], f );
 			warned = 1;
 		}
 	}

@@ -31,6 +31,8 @@
 #include <math.h>
 #include "yuv4mpeg.h"
 
+#include "mjpeg_logging.h"
+
 int luminance_mean(unsigned char *frame, int w, int h);
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
                     int itype, int ctype, int width, int height,
@@ -116,39 +118,32 @@ int verbose = 2;
 
 EditList el;
 
-void error(char *text)
-{
-   fprintf(stderr, text);
-   putc('\n', stderr);
-   exit(1);
-}
-
 
 
 void Usage(char *str)
 {
-   printf("Usage: %s [params] inputfiles\n", str);
-   printf("   where possible params are:\n");
-   printf("   -a widthxhight+x+y\n");
-   printf("   -s num     Special output format option:\n");
-   printf("                 0 output like input, nothing special\n");
-   printf
-       ("                 1 create half height/width output from interlaced input\n");
-   printf
-       ("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
-   printf
-       ("                 3 create 352 wide output from 720 wide input (for vcd)\n");
-   printf
-       ("                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
-   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
-   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
-   printf("   -m         Force mono-chrome\n");
-   printf("   -S list.el Output a scene list with scene detection\n");
-   printf("   -T num     Set scene detection threshold to num (default: 4)\n");
-   printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
-   printf("   -o num     Frame offset - skip num frames in the beginning\n");
-   printf("              if num is negative, all but the last num frames are skipped\n");
-   printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
+   fprintf(stderr,"Usage: %s [params] inputfiles\n", str);
+   fprintf(stderr,"   where possible params are:\n");
+   fprintf(stderr,"   -a widthxhight+x+y\n");
+   fprintf(stderr,"   -s num     Special output format option:\n");
+   fprintf(stderr,"                 0 output like input, nothing special\n");
+   fprintf(stderr,
+		   "                 1 create half height/width output from interlaced input\n");
+   fprintf(stderr,
+		   "                 2 create 480 wide output from 720 wide input (for SVCD)\n");
+   fprintf(stderr,
+		   "                 3 create 352 wide output from 720 wide input (for vcd)\n");
+   fprintf(stderr,
+		   "                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
+   fprintf(stderr,"   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
+   fprintf(stderr,"   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
+   fprintf(stderr,"   -m         Force mono-chrome\n");
+   fprintf(stderr,"   -S list.el Output a scene list with scene detection\n");
+   fprintf(stderr,"   -T num     Set scene detection threshold to num (default: 4)\n");
+   fprintf(stderr,"   -D num     Width decimation to use for scene detection (default: 2)\n");
+   fprintf(stderr,"   -o num     Frame offset - skip num frames in the beginning\n");
+   fprintf(stderr,"              if num is negative, all but the last num frames are skipped\n");
+   fprintf(stderr,"   -f num     Only num frames are written to stdout (0 means all frames)\n");
    exit(0);
 }
 
@@ -260,9 +255,8 @@ int readframe(int numframe, unsigned char *frame[])
    frame[2] = read_buf[2];
 
    if (MAX_JPEG_LEN < el.max_frame_size) {
-      fprintf(stderr, "Max size of JPEG frame = %ld: too big\n",
-              el.max_frame_size);
-      exit(1);
+      mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
+						 el.max_frame_size);
    }
 
    len = el_get_video_frame(jpeg_data, numframe, &el);
@@ -304,7 +298,7 @@ int readframe(int numframe, unsigned char *frame[])
 
 
    if (res) {
-      fprintf(stderr, "Warning: Decoding of Frame %d failed\n", numframe);
+      mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
       /* TODO: Selective exit here... */
       return 1;
    }
@@ -405,11 +399,8 @@ void writeoutYUV4MPEGheader(void)
 {
    int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
 
-   fprintf(stderr, "DEBUG: frame rate code %d set!\n", frame_rate_code);
-   fprintf(stderr, "DEBUG: 24fps = 2, PAL = 3, NTSC = 4\n");
    if (frame_rate_code == 0) {
-      fprintf(stderr,
-              "+++ WARNING: unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
+      mjpeg_warn("unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
    }
 
    yuv_write_header (1, output_width, output_height, frame_rate_code);
@@ -508,8 +499,7 @@ void streamout(void)
       fd = fopen(param_scenefile,"w");
       if(fd==0)
       {
-         fprintf(stderr,"Can not open %s - no edit list written!\n",param_scenefile);
-         exit(0);
+         mjpeg_error_exit1("Can not open %s - no edit list written!\n",param_scenefile);
       }
       fprintf(fd,"LAV Edit List\n");
       fprintf(fd,"%s\n",el.video_norm=='n'?"NTSC":"PAL");
@@ -536,7 +526,7 @@ void streamout(void)
             delta_lum = abs(lum_mean - last_lum_mean);
          last_lum_mean = lum_mean;
 
-         fprintf (stderr, "frame %d, lum_mean %d, delta_lum %d        \r", framenum, lum_mean, delta_lum);
+		 mjpeg_debug( "frame %d, lum_mean %d, delta_lum %d        \n", framenum, lum_mean, delta_lum);
 
          if (delta_lum > delta_lum_threshold || index[N_EL_FILE(el.frame_list[framenum])] != movie_num ||
                oldframe+1 != N_EL_FRAME(el.frame_list[framenum])) {
@@ -546,7 +536,6 @@ void streamout(void)
             sprintf(temp,"%d %ld",index[N_EL_FILE(el.frame_list[framenum])], N_EL_FRAME(el.frame_list[framenum]));
             scene_start = framenum;
             scene_num++;
-            fprintf(stderr, "\n");
          }
 
          oldframe = N_EL_FRAME(el.frame_list[framenum]);
@@ -557,9 +546,9 @@ void streamout(void)
    }
    if (param_scenefile)
    {
-      fprintf(stderr, "\nEditlist written to %s\n", param_scenefile);
       fprintf(fd, "%s %ld\n", temp, N_EL_FRAME(el.video_frames-1));
       fclose(fd);
+      mjpeg_info( "Editlist written to %s\n", param_scenefile);
    }
 }
 
@@ -578,7 +567,7 @@ char *argv[];
          geom = optarg;
          active_width = strtol(geom, &end, 10);
          if (*end != 'x' || active_width < 100) {
-            fprintf(stderr, "Bad width parameter\n");
+			 mjpeg_error("Bad width parameter\n");
             nerr++;
             break;
          }
@@ -586,7 +575,7 @@ char *argv[];
          geom = end + 1;
          active_height = strtol(geom, &end, 10);
          if ((*end != '+' && *end != '\0') || active_height < 100) {
-            fprintf(stderr, "Bad height parameter\n");
+            mjpeg_error( "Bad height parameter\n");
             nerr++;
             break;
          }
@@ -597,7 +586,7 @@ char *argv[];
          geom = end + 1;
          active_x = strtol(geom, &end, 10);
          if ((*end != '+' && *end != '\0') || active_x > 720) {
-            fprintf(stderr, "Bad x parameter\n");
+            mjpeg_error( "Bad x parameter\n");
             nerr++;
             break;
          }
@@ -606,7 +595,7 @@ char *argv[];
          geom = end + 1;
          active_y = strtol(geom, &end, 10);
          if (*end != '\0' || active_y > 240) {
-            fprintf(stderr, "Bad y parameter\n");
+            mjpeg_error( "Bad y parameter\n");
             nerr++;
             break;
          }
@@ -616,7 +605,7 @@ char *argv[];
       case 's':
          param_special = atoi(optarg);
          if (param_special < 0 || param_special > 4) {
-            fprintf(stderr, "-s option requires arg 0, 1, 2 or 3\n");
+            mjpeg_error( "-s option requires arg 0, 1, 2 or 3\n");
             nerr++;
          }
          break;
@@ -628,7 +617,7 @@ char *argv[];
       case 'd':
          param_drop_lsb = atoi(optarg);
          if (param_drop_lsb < 0 || param_drop_lsb > 3) {
-            fprintf(stderr, "-d option requires arg 0..3\n");
+            mjpeg_error( "-d option requires arg 0..3\n");
             nerr++;
          }
          break;
@@ -636,7 +625,7 @@ char *argv[];
       case 'n':
          param_noise_filt = atoi(optarg);
          if (param_noise_filt < 0 || param_noise_filt > 2) {
-            fprintf(stderr, "-n option requires arg 0..2\n");
+            mjpeg_error( "-n option requires arg 0..2\n");
             nerr++;
          }
          break;
@@ -681,12 +670,11 @@ char *argv[];
       param_offset = el.video_frames + param_offset;
    }
    if (param_offset >= el.video_frames) {
-      fprintf (stderr, "error: offset greater than # of frames in input\n");
-      exit (1);
+      mjpeg_error_exit1("offset greater than # of frames in input\n");
    }
    if ((param_offset + param_frames) > el.video_frames) {
-      fprintf (stderr, "warning: input too short for -f %d\n", param_frames);
-      param_frames = el.video_frames - param_offset;
+	   mjpeg_warn("input too short for -f %d\n", param_frames);
+	   param_frames = el.video_frames - param_offset;
    }
    if (param_frames == 0) {
       param_frames = el.video_frames - param_offset;
@@ -699,7 +687,7 @@ char *argv[];
          output_width = (el.video_width / 2) & 0xfffffff0;
          output_height = el.video_height / 2;
       } else {
-         fprintf(stderr,
+         mjpeg_error(
                  "-s 1 may only be set for interlaced video sources\n");
          Usage(argv[0]);
       }
@@ -709,7 +697,7 @@ char *argv[];
       if (el.video_width > 700) {
          output_width = 480;
       } else {
-         fprintf(stderr,
+         mjpeg_error(
                  "-s 2 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -719,7 +707,7 @@ char *argv[];
       if (el.video_width > 700) {
          output_width = 352;
       } else {
-         fprintf(stderr,
+         mjpeg_error(
                  "-s 3 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -730,7 +718,7 @@ char *argv[];
          output_width = 480;
          output_height = 480;
       } else {
-         fprintf(stderr,
+         mjpeg_error(
                  "-s 4 may only be set for 720 pixel wide video sources\n");
          Usage(argv[0]);
       }
@@ -751,12 +739,12 @@ char *argv[];
 
 
    if (active_width + active_x > output_width) {
-      fprintf(stderr, "active offset + acitve width > image size\n");
+      mjpeg_error( "active offset + acitve width > image size\n");
       Usage(argv[0]);
    }
 
    if (active_height + active_y > output_height) {
-      fprintf(stderr, "active offset + active height > image size\n");
+      mjpeg_error( "active offset + active height > image size\n");
       Usage(argv[0]);
    }
 

@@ -107,7 +107,7 @@ musicin.c
 
 FILE               *musicin;
 Bit_stream_struc   bs;
-int		   verbose = LOG_INFO;
+int		   verbose = 1;
 char               *programName;
 
 /* Global variables */
@@ -135,19 +135,6 @@ static void Usage(char *str)
   exit(0);
 }
 
-static mjpeg_log_handler_t default_mjpeg_log_handler;
-
-static void
-mplex_log_handler( log_level_t level, const char message[] )
-{
-	if (level == LOG_DEBUG && verbose > LOG_DEBUG)
-		return;
-	if( level == LOG_INFO && verbose > LOG_INFO )
-		return;
-
-	default_mjpeg_log_handler( level, message );
-}
-
 
 static void
 get_params(argc, argv,fr_ps,psy,num_samples,encoded_file_name)
@@ -171,8 +158,6 @@ char            encoded_file_name[MAX_NAME_SIZE];
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	default_mjpeg_log_handler = mjpeg_log_set_handler(mplex_log_handler );
-
     /* RJ: We set most params to fixed defaults: */
 
     info->lay = 2;
@@ -217,8 +202,8 @@ char            encoded_file_name[MAX_NAME_SIZE];
 			break;
 
 	    case 'v':
-			verbose = LOG_WARN-atoi(optarg);
-			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+			verbose = atoi(optarg);
+			if( verbose < 0 || verbose > 2 )
 				Usage(argv[0]);
 			break;
 
@@ -236,6 +221,9 @@ char            encoded_file_name[MAX_NAME_SIZE];
         Usage(argv[0]);
     }
     strncpy(encoded_file_name,outfilename,MAX_NAME_SIZE);
+
+	mjpeg_default_handler_verbosity(verbose);
+
 
     /* Sanity checks */
 

@@ -30,6 +30,7 @@
 #include <string.h>
 #include <errno.h>
 #include "avilib.h"
+#include "mjpeg_logging.h"
 
 /* The following variable indicates the kind of error */
 
@@ -447,8 +448,7 @@ static int avi_close_output_file(avi_t *AVI)
 
    if(njunk<=0)
    {
-      fprintf(stderr,"AVI_close_output_file: # of header bytes too small\n");
-      exit(1);
+	   mjpeg_error_exit1("AVI_close_output_file: # of header bytes too small\n");
    }
 
    OUT4CC ("JUNK");
@@ -1172,7 +1172,7 @@ void AVI_print_error(char *str)
 
    aerrno = (AVI_errno>=0 && AVI_errno<num_avi_errors) ? AVI_errno : num_avi_errors-1;
 
-   fprintf(stderr,"%s: %s\n",str,avi_errors[aerrno]);
+   mjpeg_error("%s: %s\n",str,avi_errors[aerrno]);
 
    /* for the following errors, perror should report a more detailed reason: */
 

@@ -27,25 +27,51 @@
 #include <stdio.h>
 #include <assert.h>
 
+extern int fred;
 #include "mjpeg_logging.h"
 
 static const char _rcsid[] = "$Id: ";
 
+
+static log_level_t mjpeg_log_verbosity = 0;
+
+
+int default_mjpeg_log_filter( log_level_t level )
+{
+  int verb_from_env;
+  if( mjpeg_log_verbosity == 0 )
+    {
+      char *mjpeg_verb_env = getenv("MJPEG_VERBOSITY");
+      if( mjpeg_verb_env != NULL )
+        {
+          verb_from_env = LOG_WARN-atoi(mjpeg_verb_env);
+          if( verb_from_env >= LOG_DEBUG && verb_from_env <= LOG_ERROR )
+            mjpeg_log_verbosity = verb_from_env;
+        }
+    }
+  return (level < LOG_WARN && level < mjpeg_log_verbosity);
+}
+
+static mjpeg_log_filter_t _filter = default_mjpeg_log_filter;
+
 static void
 default_mjpeg_log_handler(log_level_t level, const char message[])
 {
+  if( (*_filter)( level ) )
+    return;
+
   switch(level) {
   case LOG_ERROR:
     fprintf(stderr, "**ERROR: %s", message);
     break;
   case LOG_DEBUG:
-    fprintf(stdout, "--DEBUG: %s", message);
+    fprintf(stderr, "--DEBUG: %s", message);
     break;
   case LOG_WARN:
-    fprintf(stdout, "++ WARN: %s", message);
+    fprintf(stderr, "++ WARN: %s", message);
     break;
   case LOG_INFO:
-    fprintf(stdout, "   INFO: %s", message);
+    fprintf(stderr, "   INFO: %s", message);
     break;
   default:
     assert(0);
@@ -53,6 +79,7 @@ default_mjpeg_log_handler(log_level_t level, const char message[])
 }
 
 static mjpeg_log_handler_t _handler = default_mjpeg_log_handler;
+
 
 mjpeg_log_handler_t
 mjpeg_log_set_handler(mjpeg_log_handler_t new_handler)
@@ -64,22 +91,37 @@ mjpeg_log_set_handler(mjpeg_log_handler_t new_handler)
   return old_handler;
 }
 
+/***************
+ *
+ * Set default log handlers degree of verboseity.
+ * 0 = quiet, 1 = info, 2 = debug
+ *
+ *************/
+
+int
+mjpeg_default_handler_verbosity(int verbosity)
+{
+  int prev_verb = mjpeg_log_verbosity;
+  mjpeg_log_verbosity = LOG_WARN - verbosity;
+  printf("VERB = %d\n", mjpeg_log_verbosity);
+  return prev_verb;
+}
+
+
 static void
 mjpeg_logv(log_level_t level, const char format[], va_list args)
 {
   char buf[1024] = { 0, };
-  static int in_recursion = 0;
 
-  if(in_recursion)
-    assert(0);
+  /* TODO: Original had a re-entrancy error trap to assist bug
+     finding.  To make this work with multi-threaded applications a
+     lock is needed hence delete.
+  */
 
-  in_recursion = 1;
   
   vsnprintf(buf, sizeof(buf)-1, format, args);
 
   _handler(level, buf);
-
-  in_recursion = 0;
 }
 
 void
