@@ -30,7 +30,7 @@ class BitStream : public BitStreamUndo
 {
 public:
 	FILE *fileh;
-	static const unsigned int BUFFER_SIZE = 1024 * 1024;
+	static const unsigned int BUFFER_SIZE = 2*1024 * 1024;
 public:
 	BitStream();
 	~BitStream();

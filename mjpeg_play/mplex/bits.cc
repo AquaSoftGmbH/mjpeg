@@ -217,7 +217,8 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 	if( readpos+length > buffer_start+bufcount )
 	{
 		if( !feof(fileh) )
-			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%lld + %d bytes\n", 
+			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\n@POS=%lld END=%d REQ=%lld + %d bytes\n", 
+							  readpos,
 							  bufcount, readpos-(bitcount_t)buffer_start,length  );
 		to_read = static_cast<unsigned int>( (buffer_start+bufcount)-readpos );
 	}

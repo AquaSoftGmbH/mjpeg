@@ -52,7 +52,9 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <string.h>
+#ifdef HAVE_GETOPT_H
 #include <getopt.h>
+#endif
 
 #define GLOBAL /* used by global.h */
 
@@ -157,7 +159,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   -B num     Non-video data bitrate to use for sequence splitting\n");
 	fprintf(stderr,"              calculations (see -S).\n");
 	fprintf(stderr,"   -q num     Quality factor [1..31] (1 is best, no default)\n");
-	fprintf(stderr,"              Bitrate and Quality are mutually exclusive!\n");
+	fprintf(stderr,"              Bitrate sets upper-bound rate when q is specified\n");
 	fprintf(stderr,"   -o name    Outputfile name (REQUIRED!!!)\n");
 	fprintf(stderr,"   -T size    Target Size in KB for VCD stills\n");
 	fprintf(stderr,"   -I num     only for MPEG 2 output:\n");

@@ -204,7 +204,8 @@ VideoStream::VideoStream(OutputStream &into )
 	AU_hdr = SEQUENCE_HEADER;  /* GOP or SEQ Header starting AU? */
 	for( int i =0; i<4; ++i )
 		num_frames[i] = avg_frames[i] = 0;
-			
+    FRAME_CHUNK = 6;
+		
 }
 
 void VideoStream::InitAUbuffer()
@@ -221,6 +222,7 @@ AudioStream::AudioStream(OutputStream &into) :
 	ElementaryStream( into,  ElementaryStream::audio ),
 	num_syncword(0)
 {
+    FRAME_CHUNK = 24;
 	for( int i = 0; i <2 ; ++i )
 		num_frames[i] = size_frames[i] = 0;
 }

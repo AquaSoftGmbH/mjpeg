@@ -1,4 +1,3 @@
-
 /*
  *  inptstrm.c:  Members of input stream classes related to raw stream
  *               scanning.
@@ -647,6 +646,8 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
+
+    mjpeg_error( "Reached: %lld\n", bs.bitcount()/8);
 
 }
 

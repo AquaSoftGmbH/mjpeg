@@ -141,7 +141,6 @@ protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;
 	AUStream aunits;
-    static const int FRAME_CHUNK = 6;
 public:
 	enum stream_kind { audio, video };
 
@@ -192,6 +191,7 @@ protected:
 	stream_kind kind;
     int buffer_min;
     int buffer_max;
+    int FRAME_CHUNK;
 									
 };
 
