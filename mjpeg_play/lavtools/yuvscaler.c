@@ -74,7 +74,7 @@
 #include "../utils/mmx.h"
 #endif
 
-#define yuvscaler_VERSION "11-02-2004"
+#define yuvscaler_VERSION "15-02-2004"
 // For pointer address alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 #define MAXWIDTHNEIGHBORS 16
@@ -1189,6 +1189,7 @@ main (int argc, char *argv[])
   uint8_t zero_width_neighbors=1,zero_height_neighbors=1;
   float width_scale,height_scale;
   int16_t cspline_value;
+  int16_t *pointer;
      
 
   // SPECIFIC TO YUV4MPEG 
@@ -1607,7 +1608,6 @@ main (int argc, char *argv[])
 	  )
 	mjpeg_error_exit1
 	  ("Could not allocate memory for bicubic tables. STOP!");
-       int16_t *pointer;
 
        // Initialisation of bicubic tables
        pointer=cspline_h;
