@@ -598,7 +598,6 @@ int unify_movtar()
 		{
 		  read_video_bytes = fread(videobuffer, 1, 300000, jpegfile);
 		  if (verbose) printf("Got %s, size %lld\n", jpegname, read_video_bytes); 
-		  fclose(jpegfile);
 		}
 	      else
 		{
@@ -609,6 +608,7 @@ int unify_movtar()
 		  if (debug) printf("Finishing frame\n");
 		  movtar_write_frame_end(outmovtar);
 		}
+		  fclose(jpegfile);
 	    }	 
 	 }
 
