@@ -248,7 +248,7 @@ if test x$with_aviplay = x ; then
   fi
 else
   if test -d $with_aviplay ; then
-    have_aviplay = true
+    have_aviplay=true
   fi
 fi
 
