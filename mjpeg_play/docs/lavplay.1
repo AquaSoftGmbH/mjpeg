@@ -62,7 +62,8 @@ Invert field order (for videos which are recorded with wrong field
 order interlacing settings)
 .TP 8
 .B \-F/\-\-flicker
-Disable flicker reduction
+Disable stills flicker reduction.  This is useful if you want to see stills
+exactly as they were recorded rather than flicker-free!
 .TP 8
 .BR \-c/\-\-synchronization " [" 0 | 1 ]
 Enables (1) or disables (0) the use of sync corrections. Basically,
@@ -93,6 +94,13 @@ Enables GUI-mode. This is used by glav and Linux Video Studio. It will
 output the current position in the video each frame, so that the glav
 or LVS can keep track of where we are in the video which is being played
 back.
+.TP 8
+.B \-P/\-\-preserve-pathnames
+This is used by glav and Linux Video Studio.  When editlists are
+created the original pathnames for files are used and not the
+canonicalised pathnames from the root directory.  Useful if you've got
+things like automounters active that make directories with the same
+non-canonical name have different canonical names on different machines.
 .TP 8
 .BI \-n/\-\-mjpeg\-buffers " num"
 Number of MJPEG-buffers. Default is 32. Try changing this number if you

@@ -154,3 +154,8 @@ sound card.
 4.	  Questions about encoding with mjpegtools
 
 4.1	  Why does lav2yuv *always* give me a warning
+
+
+5.	  Question about Digital Video in General
+
+	  This section includes mostly material from 
