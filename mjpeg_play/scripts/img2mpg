@@ -6,7 +6,7 @@
 # IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD/DVD portfolio (with vcdimager)
 #
 # This script use this packages :  'ImageMagick' ver >= 5.4.8 [http://www.imagemagick.org/]
-#                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
+#                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/' bash script]
 #
 # You give the images files names on the command line (see the options '--help').
 # The images formats must be reconized by ImageMagick program.
@@ -41,7 +41,7 @@
 #               ::                     :                     :                     :                     :
 #  MPEG type    ::        MPEG1        :        MPEG2        :        MPEG2        :        MPEG2        :
 #               ::                     :                     :                     :                     :
-#  Video CDR    ::        74 mn        :        60 mn        :        50 mn        :        20 mn        :
+#  Video CDR    ::        74 mn        :        60 mn        :        50 mn        :        15 mn        :
 #  duration     ::                     :                     :                     :                     :
 #               ::                     :                     :                     :                     :
 #  Video        ::     1,150 kbit/s    :     2,500 kbit/s    :     2,500 kbit/s    :     8,000 kbit/s    :
@@ -133,6 +133,8 @@
 #                 Change the IFS variable for a correct interpretation of the whitespaces in the path
 #                 files names.
 #                 Add DVD video format option.
+#                 Change trap fonction.
+#                 Change some console messages for the KDE GUI.
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -187,7 +189,7 @@ exit 0
 
 # Trap shell signals fonction.
 
-trap CleanUp 2 
+trap CleanUp 2
 
 # Default parameters values.
 
@@ -522,15 +524,16 @@ else
 fi
 
 # Number of video type for MjpegTools. The possibles values are :
+#
 # 0 -> MPEG1 generic.                                         -> not used.
 # 1 -> VCD standard MPEG1 (PAL/SECAM:352x288 - NTSC:352x240). -> VCD.
 # 2 -> VCD no standard.                                       -> not used.
 # 3 -> MPEG2 generic.                                         -> not used.
 # 4 -> VCD standard MPEG2 (PAL/SECAM:576x480 - NTSC:480x480). -> SVCD.
 # 5 -> SVCD no standard   (PAL/SECAM:720x576 - NTSC:720x480). -> XVCD.
-# 6 -> VCD with fixed images (Still Frame)                    -> not used.
-# 7 -> SVCD with fixed images (Still Frame)                   -> not used.
-# 8 -> DVD MPEG2                                              -> DVD.
+# 6 -> VCD with fixed images (Still Frame).                   -> not used.
+# 7 -> SVCD with fixed images (Still Frame).                  -> not used.
+# 8 -> DVD MPEG2          (PAL/SECAM:720x576 - NTSC:720x480). -> DVD.
 
 case $VIDEO_TYPE in
     PAL)
@@ -700,7 +703,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
     	    echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
 	else 
 	    COUNTERGUI=`echo $((($CPT*100)/$NBFRAMETOTAL))`
-	    echo -ne "Images encoding (%) : $COUNTERGUI   \r" >&2
+	    echo -ne "Images encoding (%) : $COUNTERGUI      [`echo $(($CPF-1))`      \r" >&2
 	fi
 
         if [ $TRANSITIONENABLE = 0 ]; then
