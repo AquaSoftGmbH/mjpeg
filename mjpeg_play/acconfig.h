@@ -3,7 +3,7 @@
 
 @TOP@
 
-#undef X86_CPU 				/* Compiling for x86 CPU */
+#undef HAVE_X86CPU 				/* Compiling for x86 CPU */
 
 #undef P6_CPU				/* Compiling for PPro upwards x86
                                    instruction set? */
