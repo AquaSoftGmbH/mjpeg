@@ -153,7 +153,7 @@ glav_LDADD = -L$(top_srcdir)/utils -lmjpegutils ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c $(lav_headers)
 
-yuvscaler_SOURCES = yuvscaler.c $(lav_headers)
+yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c $(lav_headers)
 yuvscaler_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
 	 liblavfile.la liblavjpeg.la
 
