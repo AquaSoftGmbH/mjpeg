@@ -60,9 +60,14 @@
 //
 // - fixed display bug in audio rate output.
 //
+// 2002-01-21 v0.0.22
+//
+// - _really_ fixed display of audio rate output :)
+//
+
 #define APPNAME "yuv2divx"
-#define APPVERSION "0.0.21"
-#define LastChanged "2001/11/25"
+#define APPVERSION "0.0.22"
+#define LastChanged "2002/01/21"
 
 #include <iostream.h>
 #include <videoencoder.h>
@@ -801,7 +806,7 @@ main ( int argc, char **argv )
 		}
 		mjpeg_info ( "AUDIO: MP3 rate: %i kilobits/second, %i Bytes/second\n" 
 	                , opt_mp3bitrate           
-                        , ( opt_mp3bitrate * 8000 ) );
+                        , ( (opt_mp3bitrate * 1000) / 8 ) );
 
 		astream = avifile->AddAudioStream ( 0x55, &format, ( opt_mp3bitrate * 1000 ) / 8 );
 		astream->Start (  );
