@@ -277,21 +277,18 @@ void clearblock( uint8_t *cur[], int i0, int j0,
 
 void init_predict(void)
 {
-	int cpucap = cpu_accel();
-
-	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
-	{
-		ppred_comp = pred_comp;
-	}
+	int32_t cpucap;
+    cpucap = cpu_accel();
+    ppred_comp = pred_comp;
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-    else
+    if( cpucap &  ACCEL_X86_MMX )
     {
         init_x86_predict();
     }
 #endif
 #ifdef HAVE_ALTIVEC
-    else
+    if( cpucap != 0 )
 	{
 #  if ALTIVEC_TEST_PREDICT
 #    if defined(ALTIVEC_BENCHMARK)
