@@ -1,0 +1,102 @@
+.TH "yuv2lav" "1" "V 1.4" "pHilipp Zabel" "description"
+
+.SH "NAME"
+yuv2lav - encodes lavtool's raw YUV frame streams into MJPEG files
+
+.SH "SYNOPSIS"
+.B yuv2lav
+.RB [ -f \| \ a | A | q | m ]
+.RB [ -q
+.IR num ]
+.RB [ -b
+.IR num ]
+.B -o
+.I output-file
+
+.SH "DESCRIPTION"
+yuv2lav is a simple MJPEG encoder for raw YUV frame
+streams as they are emitted by
+.BR lav2yuv "(1) or " lavpipe "(1),"
+for example. It reads its input from stdin and is capable of
+writing AVI, Quicktime and Gernot Ziegler's movtar format,
+at the time being.
+
+.SH "OPTIONS"
+The command line options allow to specify the output file
+name, JPEG encoding quality and the amount of memory that
+will be allocated for JPEG compressed data.
+
+.TP
+.BI -o \ output-file
+This (compulsorary) option sets the name of the file that
+yuv2lav will write its output to.
+
+.TP
+.BR -f \| \ a | A | q | m
+This sets the output file format, which has to be one of
+.br
+.B \ a
+- for AVI file output,
+.br
+.B \ A
+- for AVI with reversed fields,
+.br
+.B \ q
+- for Quicktime output or
+.br
+.B \ m
+- for movtar output.
+.br
+AVI with reversed field of course only makes sense if yuv2lav's
+feed is an interlaced video source and should only be needed if
+you experience frame reversal problems in your output.
+
+.TP
+.BI -q \ num
+This option specifies the JPEG encoding quality as passed through
+to libjpeg. The default value is 80,
+.I num
+must lie within 24...100 inclusive
+(think of it as percentage values, although with a lossy compression
+algorithm like JPEG, keeping 100% of the original quality is of
+course not really possible).
+
+.TP
+.BI -b \ num
+This option specifies the size of the buffer (in kBytes) that yuv2lav
+allocates in order to store the compressed JPEG data in it. The default
+value (1024k) is more than enough for probably any video stream you will
+ever want to feed into yuv2lav (-q 100 full size PAL/NTSC perfectly
+fits into a 256k buffer), but if you want to compress Super-Mega-HDTV or
+if you are low on memory, you can use this option to suit your needs.
+
+.TP
+.B -?
+Display a synopsis of the command syntax.
+
+.SH "SEE ALSO"
+.BR lav2yuv "(1), " lavpipe "(1), " lavplay "(1),"
+.BR lavrec "(1), " mpeg2enc "(1), " yuvscaler "(1)"
+
+.SH "BUGS"
+As far as I can remember, there's still no file size checking
+implemented, and as the current lavtools AVI routines don't
+support AVI files > 2 GB (btw. it could be possible that your
+file system doesn't support files > 2 GB either), you should
+not try to compress very long YUV streams that will result
+in such large files at the moment.
+.br
+An option to write to multiple files one after another as
+implemented by
+.BR lavrec "(1) or " mpeg2enc "(1)"
+should be added to this tool, too.
+.br
+If you experience any problems with this tool, please feel
+free to contact the developers (see below).
+
+.SH CONTACT
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+For more info, see our website at \fIhttp://mjpeg.sourceforge.net
