@@ -172,6 +172,16 @@ void OutputStream::InitSyntaxParameters()
 		   buffer sizes. */
 		if( opt_buffer_size == 0 )
 			opt_buffer_size = 46;
+		else if( opt_buffer_size > 220 )
+		{
+			mjpeg_error_exit1("VCD stills has max. permissible video buffer size of 220KB\n");
+		}
+		else
+		{
+			/* Add a margin for sequence header overheads for HR stills */
+			/* So the user simply specifies the nominal size... */
+			opt_buffer_size += 4;
+		}		
 		video_buffer_size = opt_buffer_size*1024;
 		break;
 			 
@@ -186,7 +196,9 @@ void OutputStream::InitSyntaxParameters()
 		transport_prefix_sectors = 0;
         sector_size = opt_sector_size;
 		if( opt_buffer_size == 0 )
+		{
 			opt_buffer_size = 46;
+		}
 		video_buffer_size = opt_buffer_size * 1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
@@ -312,7 +324,9 @@ void OutputStream::Init( char *multi_file)
 	   be nicely filled up.
 	*/
 
-	if( vbr )
+	if( MPEG_STILLS_FORMAT( opt_mux_format ) )
+		sectors_delay =  (unsigned int)(1.02*video_buffer_size) / sector_size+2;
+	else if( vbr )
 		sectors_delay = 3*video_buffer_size / ( 4 * sector_size );
 	else
 		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
@@ -322,10 +336,11 @@ void OutputStream::Init( char *multi_file)
 		delay );
 
 	video_delay = delay + 
-	static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
+		static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
 	audio_delay = delay + 
-	static_cast<clockticks>(opt_audio_offset*CLOCKS/1000);
-	mjpeg_debug( "Video delay = %lld Audio delay = %lld\n",
+		static_cast<clockticks>(opt_audio_offset*CLOCKS/1000);
+	mjpeg_info( "Sectors = %d Video delay = %lld Audio delay = %lld\n",
+				sectors_delay,
 				 video_delay / 300,
 				 audio_delay / 300 );
 
