@@ -34,7 +34,11 @@
 #include <signal.h>
 #include <string.h>
 #include <errno.h>
+
+#ifndef IRIX
 #include <linux/soundcard.h>
+#endif
+
 #include <sys/resource.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -639,6 +643,7 @@ static void system_error(char *str, int fd, int use_strerror)
 #endif
 }
 
+#ifndef IRIX 
 void do_audio(void)
 {
 
@@ -1065,6 +1070,12 @@ void do_audio(void)
       }
    }
 }
+#else
+void do_audio()
+{
+  fprintf(stderr, "ILLEGAL CALL TO do_audio in audiolib.c: NOT IMPLEMENTED IN IRIX !\n");
+}
 
+#endif
 
 

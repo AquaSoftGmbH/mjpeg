@@ -190,7 +190,7 @@ static unsigned char *bufalloc(size_t size)
    char *buf = malloc(size + BUFFER_ALIGN);
    int adjust;
    if (buf == NULL) {
-      error("malloc failed\n");
+      perror("malloc failed\n");
    }
    adjust = BUFFER_ALIGN - ((int) buf) % BUFFER_ALIGN;
    if (adjust == BUFFER_ALIGN)

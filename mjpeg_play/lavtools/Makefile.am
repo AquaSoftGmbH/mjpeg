@@ -116,7 +116,7 @@ glav_LDADD = -L$(top_srcdir)/utils -lutils ${GTK_LIBS}
 lavvideo_SOURCES = lavvideo.c
 
 yuvscaler_SOURCES = yuvscaler.c $(lav_headers)
-yuvscaler_LDADD = -L$(top_builddir)/utils -lutils \
+yuvscaler_LDADD = -L$(top_builddir)/utils -lutils -lm \
 	 liblavfile.la liblavjpeg.la
 
 yuvplay_SOURCES = yuvplay.c yuv4mpeg.h yuv4mpeg.c

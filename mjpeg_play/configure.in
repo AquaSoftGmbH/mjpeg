@@ -46,7 +46,7 @@ AC_ARG_WITH(dv,
 AC_ARG_WITH(dv-yv12,
   [  --with-dv-yv12,                   libDV PAL YV12 read-support])
 AC_ARG_WITH(large-file,
-  [ --disable-large-file,              enable large file support n 32 bit systems])
+  [ --disable-large-file,              enable large file support in 32 bit systems])
 AC_ARG_WITH(aviplay,
   [ --with-aviplay                     use aviplay libraries])
 
@@ -71,7 +71,18 @@ else
 AC_DEFINE(_FILE_OFFSET_BITS,32)
 fi
 
-#
+dnl *********************************************************************
+dnl madmac/gernot: This activates architecture specific changes (e g no MMX)
+dnl
+dnl It defines a tag called "IRIX" to circumvent all the Linux video device code (and its includes)
+dnl and defines WORD_BIGENDIAN to flag a big iron system ;-) 
+
+case "$HOSTTYPE" in
+  mips*) 
+   echo NEW: Activating IRIX architecture flags:IRIX and WORD_BIGENDIAN !
+   CFLAGS="$CFLAGS -DIRIX -DWORD_BIGENDIAN";;
+esac
+
 dnl *********************************************************************
 dnl Check for the various libraries we depend on.
 dnl

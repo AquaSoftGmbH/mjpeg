@@ -388,6 +388,7 @@ static void check_command_line_options(int argc, char *argv[])
    int nerr,n,option_index=0;
    char option[2];
 
+#ifndef IRIX /* Gaaaah, IRIX doesn't have getopt_long ! */
    /* getopt_long options */
    static struct option long_options[]={
       {"verbose"       ,1,0,0},     /* -v/--verbose         */
@@ -408,21 +409,28 @@ static void check_command_line_options(int argc, char *argv[])
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
       {0,0,0,0}
    };
+#endif
 
    if(argc < 2) Usage(argv[0]);
 
 /* Get options */
    nerr = 0;
+#ifndef IRIX 
    while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzgF",
       long_options, &option_index)) != EOF)
+#else
+   while( (n=getopt(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzgF")) != EOF)
+#endif
    {
       switch(n)
       {
+#ifndef IRIX
          /* getopt_long values */
          case 0:
             nerr += set_option((char *)long_options[option_index].name,
                optarg);
             break;
+#endif
 
          /* These are the old getopt-values (non-long) */
          default:

@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <linux/types.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -37,8 +37,17 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <sys/vfs.h>
+
+#ifndef IRIX 
 #include <linux/videodev.h>
 #include <linux/soundcard.h>
+#else
+#define VIDEO_MODE_PAL		0
+#define VIDEO_MODE_NTSC		1
+#define VIDEO_MODE_SECAM	2
+#define VIDEO_MODE_AUTO		3
+#endif
+
 #include <videodev_mjpeg.h>
 #include <pthread.h>
 #include <SDL/SDL.h>
@@ -740,6 +749,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
    lavplay_msg(LAVPLAY_MSG_DEBUG, info,
       "Playback thread: was told to exit");
    pthread_exit(NULL);
+   return NULL;
 }
 
 
@@ -765,6 +775,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
    {
       case 'H':
       case 'C':
+#ifndef IRIX
          /* open video device */
          if ((settings->video_fd = open(info->video_dev, O_RDWR)) < 0)
          {
@@ -793,8 +804,12 @@ static int lavplay_mjpeg_open(lavplay_t *info)
                "Error mapping the video buffer: %s", (char *)sys_errlist[errno]);
             return 0;
          }
-
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
          break;
+
 
       case 'S':
          /* Just allocate MJPG_nbuf buffers */
@@ -817,7 +832,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
             settings->valid[i] = 0;
             pthread_cond_init(&(settings->buffer_filled[i]), NULL);
             pthread_cond_init(&(settings->buffer_done[i]), NULL);
-            bzero(&(settings->syncinfo[i]), sizeof(struct mjpeg_sync));
+            memset(&(settings->syncinfo[i]), 0, sizeof(struct mjpeg_sync));
          }
 
          /* Now do the thread magic */
@@ -861,6 +876,7 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
 
    if (info->playback_mode == 'H' || info->playback_mode == 'C')
    {
+#ifndef IRIX 
       /* do a MJPIOC_G_PARAMS ioctl to get proper default values */
       if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, bp) < 0)
       {
@@ -868,6 +884,10 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
             "Error getting video parameters: %s", (char *)sys_errlist[errno]);
          return 0;
       }
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
    else
    {
@@ -902,6 +922,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
   
    if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
     {
+#ifndef IRIX
       struct video_window vw;
       int n;
 
@@ -929,10 +950,15 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       }
 
       bp->VFIFO_FB = 1;
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
 
    if (info->playback_mode == 'H' || info->playback_mode == 'C')
    {
+#ifndef IRIX 
       /* All should be set up now, set the parameters */
       lavplay_msg(LAVPLAY_MSG_DEBUG, info,
          "Hardware video settings: input=%d, norm=%d, fields_per_buf=%d, "
@@ -945,6 +971,10 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
             "Error setting video parameters: %s", (char *)sys_errlist[errno]);
          return 0;
       }
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
    else /* software */
    {
@@ -1020,12 +1050,17 @@ static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods
 
    if (info->playback_mode == 'H' || info->playback_mode == 'C')
    {
+#ifndef IRIX 
       if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &frame) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
             "Error queueing buffer: %s", (char *)sys_errlist[errno]);
          return 0;
       }
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
    else
    {
@@ -1054,6 +1089,7 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
 
    if (info->playback_mode == 'H' || info->playback_mode == 'C')
    {
+#ifndef IRIX 
       if (ioctl(settings->video_fd, MJPIOC_SYNC, bs) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
@@ -1062,6 +1098,10 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
       }
       lavplay_msg(LAVPLAY_MSG_DEBUG, info,
          "frame=%ld, length=%ld, seq=%ld", bs->frame, bs->length, bs->seq);
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
    else
    {
@@ -1102,6 +1142,7 @@ static int lavplay_mjpeg_close(lavplay_t *info)
 
    if (info->playback_mode == 'H' || info->playback_mode == 'C')
    {
+#ifndef IRIX
       n = -1;
       if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &n) < 0)
       {
@@ -1119,6 +1160,10 @@ static int lavplay_mjpeg_close(lavplay_t *info)
             return 0;
          }
       }
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
    else
    {
@@ -1146,7 +1191,11 @@ static int lavplay_init(lavplay_t *info)
 {
    long nqueue;
    struct mjpeg_params bp;
+
+#ifndef IRIX 
    struct video_capability vc;
+#endif 
+
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    EditList *editlist = info->editlist;
    int hn;
@@ -1262,6 +1311,7 @@ static int lavplay_init(lavplay_t *info)
    /* Check dimensions of video, select decimation factors */
    if (info->playback_mode == 'C')
    {
+#ifndef IRIX
       /* set correct width of device for hardware
        * DC10(+): 768 (PAL/SECAM) or 640 (NTSC), Buz/LML33: 720
        */
@@ -1280,8 +1330,13 @@ static int lavplay_init(lavplay_t *info)
             editlist->video_width, editlist->video_height);
          return 0;
       }
+#else
+	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+	 return 0;
+#endif
    }
 
+#ifndef IRIX
    /* if zoom_to_fit is set, HorDcm is independent of interlacing */
    if (info->zoom_to_fit)
    {
@@ -1292,7 +1347,9 @@ static int lavplay_init(lavplay_t *info)
       else
          bp.HorDcm = 1;
    }
-
+#else
+   fprintf(stderr, "WARNING: info->zoom_to_fit is not correctly set in IRIX !\n");
+#endif
    if (editlist->video_inter)
    {
       /* Interlaced video, 2 fields per buffer */
@@ -1319,6 +1376,7 @@ static int lavplay_init(lavplay_t *info)
       bp.field_per_buff = 1;
       bp.TmpDcm = 2;
 
+#ifndef IRIX
       if (info->playback_mode == 'C' && (editlist->video_height > hn/2 ||
          (!info->zoom_to_fit && editlist->video_width > vc.maxwidth/2) ))
       {
@@ -1330,6 +1388,9 @@ static int lavplay_init(lavplay_t *info)
                "Try using the \'zoom-to-fit\'-option");
          return 0;
       }
+#else
+   fprintf(stderr, "WARNING: Deactivated code for non-interlaced video size checks in IRIX !\n");
+#endif
 
       if(info->zoom_to_fit)
       {
@@ -1350,7 +1411,13 @@ static int lavplay_init(lavplay_t *info)
    bp.quality = 100;
    bp.img_width  = bp.HorDcm * editlist->video_width;
    bp.img_height = bp.VerDcm * editlist->video_height/bp.field_per_buff;
+
+#ifndef IRIX
    bp.img_x = (vc.maxwidth  - bp.img_width )/2 + info->horizontal_offset;
+#else
+   bp.img_x = 0;
+#endif
+
    bp.img_y = (hn/2 - bp.img_height)/2 + info->vertical_offset/2;
    lavplay_msg(LAVPLAY_MSG_INFO, info,
       "Output dimensions: %dx%d+%d+%d",

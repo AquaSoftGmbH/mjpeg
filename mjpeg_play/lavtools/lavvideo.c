@@ -33,8 +33,10 @@ Copyright by Gernot Ziegler.
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 
+#ifndef IRIX
 #include <linux/types.h>
 #include <linux/videodev.h>
+
 #include <videodev_mjpeg.h>
 
 #define DEVNAME "/dev/video0"
@@ -109,7 +111,8 @@ void usage(char *prog)
 }
 
 int doIt(void)
-{ int turnon;
+{ 
+  int turnon;
 
   /* V4l initialization */
 
@@ -243,8 +246,13 @@ int main(int argc,char *argv[])
 
   return 0;
 }
-
-
+#else
+int main ()
+{
+  fprintf(stderr, "This program doesn't work in IRIX !\n");
+  return -1;
+}
+#endif
 
 
 

@@ -29,6 +29,7 @@
 
 #include <config.h>
 #include <stdlib.h>
+#include <errno.h> // gernot: for errno
 #include <string.h>
 #include <sys/param.h>
 #include "mjpeg_logging.h"
@@ -58,8 +59,13 @@ void OBitStream::open(char *bs_filename)
 {
   if ((fileh = fopen(bs_filename, "wb")) == NULL)
   {
+#if 0
 	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
 						 bs_filename, sys_errlist[sys_nerr]);
+#else
+	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
+						 bs_filename, strerror(errno));
+#endif
   }
   // Save multiple buffering...
   setvbuf(fileh, 0, _IONBF, 0 );
@@ -86,7 +92,11 @@ void OBitStream::putbyte()
     if (byteidx == BUFFER_SIZE)
     {
 		if (fwrite(bfr, sizeof(unsigned char), BUFFER_SIZE, fileh) != BUFFER_SIZE)
+#if 0 
 			mjpeg_error_exit1( "Write failed: %s\n", sys_errlist[sys_nerr]);
+#else
+			mjpeg_error_exit1( "Write failed: %s\n", strerror(errno));
+#endif
 		byteidx = 0;
     }
 	bitidx = 8;

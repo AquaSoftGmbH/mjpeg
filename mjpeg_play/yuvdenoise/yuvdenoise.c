@@ -12,7 +12,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+
+#ifndef IRIX
 #include <stdint.h>
+#endif
+
 #include <unistd.h>
 #include <time.h>
 

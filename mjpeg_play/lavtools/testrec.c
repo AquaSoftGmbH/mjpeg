@@ -65,7 +65,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
-#include <linux/types.h>
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
@@ -76,6 +76,7 @@
 #include <signal.h>
 #include <stdlib.h>
 
+#ifndef IRIX
 #include <linux/videodev.h>
 #include <linux/soundcard.h>
 
@@ -581,4 +582,10 @@ int main(int argc, char ** argv)
 		lavrec_msg(LAVREC_INFO,"Error exit ...","");
 	exit(0);
 }
+#else
+void main()
+{
+  fprintf(stderr, "This program doesn't work in IRIX !\n");
+}
+#endif
 

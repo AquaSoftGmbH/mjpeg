@@ -515,6 +515,7 @@ static void check_command_line_options(int argc, char *argv[])
 	int n, nerr, option_index = 0;
 	char option[2];
 
+#ifndef IRIX /* Gaaaah, IRIX doesn't have getopt_long ! */
 	/* getopt_long options */
 	static struct option long_options[]={
 		{"format"           ,1,0,0},   /* -f/--format            */
@@ -540,22 +541,29 @@ static void check_command_line_options(int argc, char *argv[])
 		{"use-read"         ,0,0,0},   /* --use-read           */
 		{0,0,0,0}
 	};
+#endif
 
 	/* check usage */
 	if (argc < 2)  Usage(argv[0]);
 
 	/* Get options */
 	nerr = 0;
+#ifndef IRIX
 	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUR:c:n:b:C:",
 		long_options, &option_index)) != EOF)
+#else
+	while( (n=getopt(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUR:c:n:b:C:")) != EOF)
+#endif
 	{
 		switch(n)
 		{
+#ifndef IRIX
 			/* getopt_long values */
 			case 0:
 				nerr += set_option(long_options[option_index].name,
 					optarg);
 				break;
+#endif
 			/* These are the old getopt-values (non-long) */
 			default:
 				sprintf(option, "%c", n);
