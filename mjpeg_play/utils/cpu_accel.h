@@ -38,9 +38,13 @@ extern "C" {
 
 	int32_t cpu_accel (void);
 	void *bufalloc( size_t size );
+#if	!defined(HAVE_FMAX)
+	double fmax(double, double);
+#endif
 
 #ifdef __cplusplus
 }
 #endif
+
 
 #endif

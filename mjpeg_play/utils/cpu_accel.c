@@ -196,6 +196,22 @@ posix_memalign(void **ptr, size_t alignment, size_t size)
 }
 #endif
 
+/***********************
+ * Implement fmax() for systems which do not have it.  Not a strictly
+ * conforming implementation - we don't bother checking for NaN which if
+ * mpeg2enc gets means big trouble I suspect ;)
+************************/
+
+#if	!defined(HAVE_FMAX)
+double
+fmax(double x, double y)
+{
+	if	(x > y)
+		return(x);
+	return(y);
+}
+#endif
+
 void *bufalloc( size_t size )
 {
 	static size_t simd_alignment = 16;
