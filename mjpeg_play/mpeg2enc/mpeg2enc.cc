@@ -563,7 +563,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "--custom-quant-matrices|-K kvcd|tmpgenc|default|hi-res|file=inputfile|help\n"
 "    Request custom or userspecified (from a file) quantization matrices\n"
 "--unit-coeff-elim|-E num\n"
-"    Skip picture blocks satisfying which appear to carry little\n"
+"    Skip picture blocks which appear to carry little information\n"
 "    because they code to only unit coefficients. The number specifies\n"
 "    how aggresively this should be done. A negative value means DC\n"
 "    coefficients are included.  Reasonable values -40 to 40\n"
