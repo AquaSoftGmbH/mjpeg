@@ -28,7 +28,7 @@ EditList el;
 
 int main(int argc, char *argv[])
 {
-char *p;
+  const char *p;
 
    if(argc <=1) {
       printf("Usage: %s file1 [ file2 file3 ... ]\n",argv[0]);
@@ -67,7 +67,21 @@ char *p;
    printf("video_sar_width=%i\n",el.video_sar_width);
    printf("video_sar_height=%i\n",el.video_sar_height);
    printf("max_frame_size=%li\n",el.max_frame_size);
-   printf("MJPG_chroma=%s\n", y4m_chroma_keyword(el.MJPG_chroma));
+   switch (el.MJPG_chroma) {
+   case CHROMA420:
+     p = y4m_chroma_keyword(Y4M_CHROMA_420JPEG);
+     break;
+   case CHROMA422:
+     p = y4m_chroma_keyword(Y4M_CHROMA_422);
+     break;
+   case CHROMA444:
+     p = y4m_chroma_keyword(Y4M_CHROMA_444);
+     break;
+   default:
+     p = "***BOGUS/UNKNOWN*** chroma";
+     break;
+   }
+   printf("MJPG_chroma=%s\n", p);
    /* Audio */
    printf("has_audio=%i\n",el.has_audio);
    printf("audio_bps=%i\n",el.audio_bps);
