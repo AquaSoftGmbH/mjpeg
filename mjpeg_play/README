@@ -63,6 +63,13 @@ compression tools.
 
 - "v4l-conf" is used in X to set up your video framebuffer address
 
+- "yuv2lav", "ypipe" and "transist.flt" for (first decode an mjpeg 
+  input file into raw yuv data (lav2yuv)) putting the data of more than 
+  one yuv stream together (ypipe), making a transition between the two
+  input streams (transist.flt) and for making an mjpeg file out of the 
+  resulting yuv data (yuv2lav). Read README.transist for more info on
+  how to use this.
+
 * The scripts directory
 
 Turning a video stream captured as MJPEG AVI's or Quicktime files
