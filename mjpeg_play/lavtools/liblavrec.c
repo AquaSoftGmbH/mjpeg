@@ -1730,7 +1730,7 @@ static void lavrec_record(lavrec_t *info)
                   for (y=0;y<settings->height;y++)
                      if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
                         yuv_endbuff[0][(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
-                           YUV[(y*settings->width+x)*2 + 1];
+                           YUV[(y*settings->width+x)*2];
 
             for (x=0;x<settings->width/2;x++)
                if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
@@ -1738,9 +1738,9 @@ static void lavrec_record(lavrec_t *info)
                      if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
                      {
                         yuv_endbuff[1][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                           YUV[(y*settings->width+x)*4];
+                           YUV[(y*settings->width+x)*4 + 1];
                         yuv_endbuff[2][(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                           YUV[(y*settings->width+x)*4 + 2];
+                           YUV[(y*settings->width+x)*4 + 3];
                      }
 
             jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
