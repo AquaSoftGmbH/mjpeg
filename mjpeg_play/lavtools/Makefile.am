@@ -174,6 +174,7 @@ glav_LDADD = $(LIBMJPEGUTILS) ${GTK_LIBS}
 
 lavvideo_SOURCES = lavvideo.c frequencies.c
 
+yuvscaler_CFLAGS=@PROGRAM_NOPIC@
 yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c
 yuvscaler_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 
@@ -204,6 +205,7 @@ lavinfo_LDADD = $(LIBMJPEGUTILS) liblavfile.la
 y4mshift_SOURCES = y4mshift.c
 y4mshift_LDADD = $(LIBMJPEGUTILS)
 
+y4mspatialfilter_CFLAGS=@PROGRAM_NOPIC@
 y4mspatialfilter_SOURCES = y4mspatialfilter.c
 y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 

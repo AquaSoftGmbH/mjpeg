@@ -330,26 +330,32 @@ have_asm_mmx=false
 have_asm_nasm=false
 have_x86cpu=false
 have_altivec=false
-AC_MSG_CHECKING([for Intel Pentium architecture (IA32)])
+AC_MSG_CHECKING([Architecture])
 case $host_cpu in
   i[[3-7]]86)
-    AC_MSG_RESULT(yes)
+    AC_MSG_RESULT(IA32)
     AC_DEFINE(HAVE_X86CPU,1, [Compiling for x86 architecture CPU])
     have_x86cpu=true
+    PROGRAM_NOPIC="-fno-PIC"
+    ;;
+  powerpc)
+    AC_MSG_RESULT(PowerPC)
+    AC_DEFINE(HAVE_PPCCPU,1, [Compiling for PowerPC CPU])
+    have_ppccpu=true
+    PROGRAM_NOPIC="-mdynamic-no-pic"
     ;;
   *)
-    AC_MSG_RESULT(no)
+    AC_MSG_RESULT(unknown)
+    PROGRAM_NOPIC=""
     ;;
 esac
 
-AC_MSG_CHECKING([for PowerPC architecture])
-if test "$host_cpu" = "powerpc" ; then
-  AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_PPCCPU,1, [Compiling for PowerPC CPU])
-  have_ppccpu=true
-else
-  AC_MSG_RESULT(no)
-fi
+dnl This flag is used for PROGRAMS not SHARED LIBRARIES.  PIC code is required
+dnl for shared libraries but is slower than non-pic code.  Compute bound 
+dnl programs such as yuvdenoise and y4mspatialfilter can use this flag by
+dnl simply adding programname_CFLAGS=@PROGRAM_NOPIC@ to the Makefile.am
+
+AC_SUBST(PROGRAM_NOPIC)
 
 if test "$enable_simd_accel" != "false" -a "$enable_simd_accel" != "no"
 then
