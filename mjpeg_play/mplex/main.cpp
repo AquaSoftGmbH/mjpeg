@@ -36,10 +36,7 @@
 #ifndef _WIN32
 #include <sys/param.h>
 #endif
-#ifdef __FreeBSD__
 #include <ctype.h>
-#endif
-
 
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
