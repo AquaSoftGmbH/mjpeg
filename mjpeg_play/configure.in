@@ -142,10 +142,10 @@ if test x$os_type = x"Linux"; then
   AC_CHECK_HEADER(linux/videodev.h,
     have_video4linux=true
     AC_DEFINE(HAVE_V4L),
-    AC_MSG_ERROR(videodev.h not found, please install the linux kernel headers)
+    AC_MSG_ERROR([videodev.h not found - please install the linux kernel headers])
     )
 else
-  AC_MSG_WARN(Did not find linux platform - video4linux functionality will be disabled)
+  AC_MSG_WARN([Did not find linux platform - video4linux functionality will be disabled])
 fi
 
 dnl *********************************************************************
