@@ -187,7 +187,7 @@ exit 0
 
 # Trap shell signals fonction.
 
-trap CleanUp 2 9 15
+trap CleanUp 2 
 
 # Default parameters values.
 
