@@ -744,9 +744,9 @@ static inline int encoder_command(struct zoran *zr, int cmd, void *data)
 
 static struct tvnorm f50sqpixel = {944, 768, 83, 880, 625, 576, 16};
 static struct tvnorm f60sqpixel = {780, 640, 51, 716, 525, 480, 12};
-
 static struct tvnorm f50ccir601 = {864, 720, 75, 804, 625, 576, 18};
 static struct tvnorm f60ccir601 = {858, 720, 57, 788, 525, 480, 16};
+
 
 static struct tvnorm *dc10norms[] = {
 	&f50sqpixel,  /* PAL-BDGHI */
@@ -905,17 +905,16 @@ static void zr36057_set_vfe(struct zoran *zr, int video_width, int video_height,
 	hcrop1 = 2 * ((tvn->Wa - We) / 4);
 	hcrop2 = tvn->Wa - We - hcrop1;
 	HStart = tvn->HStart | 1;
-        if (zr->card == LML33) HStart += 62;
-        if (zr->card == BUZ) {   //HStart += 67;
-                HStart += 44;
-        }
+        if (zr->card == LML33) HStart += 48;
+        if (zr->card == BUZ) HStart += 44;
 	HEnd = HStart + tvn->Wa - 1;
 	HStart += hcrop1;
 	HEnd -= hcrop2;
 	reg = ((HStart & ZR36057_VFEHCR_Hmask) << ZR36057_VFEHCR_HStart)
 	    | ((HEnd & ZR36057_VFEHCR_Hmask) << ZR36057_VFEHCR_HEnd);
 	if (zr->card != BUZ)
-                reg |= ZR36057_VFEHCR_HSPol;
+		reg |= ZR36057_VFEHCR_HSPol; /* Negative edge = leading edge
+									  for active low hsync */
 	btwrite(reg, ZR36057_VFEHCR);
 
 	/* Vertical */
@@ -932,7 +931,11 @@ static void zr36057_set_vfe(struct zoran *zr, int video_width, int video_height,
 	VEnd -= vcrop2;
 	reg = ((VStart & ZR36057_VFEVCR_Vmask) << ZR36057_VFEVCR_VStart)
 	    | ((VEnd & ZR36057_VFEVCR_Vmask) << ZR36057_VFEVCR_VEnd);
-	reg |= ZR36057_VFEVCR_VSPol;
+	reg |= ZR36057_VFEVCR_VSPol; /* BUG? Negative egde of Vsync!
+									Since the decoders are set for active high
+									V sync this samples at *trailing* edge.
+									This is probably not a good idea...
+								 */
 	btwrite(reg, ZR36057_VFEVCR);
 
 	/* scaler and pixel format */
@@ -1637,9 +1640,12 @@ static void zr36060_set_video(struct zoran *zr, enum zoran_codec_mode mode)
 	reg = (0 << 7)		/* Video8     */
 	    |(0 << 6)		/* Range      */
 	    |(0 << 3)		/* FlDet      */
-	    |(1 << 2)		/* FlVedge    */
+	    |(1 << 2)		/* FlVedge.  BUG? sampling on trailing edge.
+						   Probably the wrong place for detecting
+						   field reliably!
+						 */
 	    |(0 << 1)		/* FlExt      */
-	    | (0 << 0);		/* SyncMstr   */
+	    |(0 << 0);		/* SyncMstr   */
 
 	if (mode != BUZ_MODE_STILL_DECOMPRESS) {
 		/* limit pixels to range 16..235 as per CCIR-601 */
@@ -1660,14 +1666,15 @@ static void zr36060_set_video(struct zoran *zr, enum zoran_codec_mode mode)
 	            | (1 << 0);  /* VSPol     */
                 break;
         case LML33:
-                reg = (0 << 7)   /* VCLKPol=0 */
+                reg = (0 << 7)   /* VCLKPol=0 (active low valid) */
                     | (0 << 6)   /* PValPol=0 */
                     | (1 << 5)   /* PoePol=1 */
                     | (0 << 4)   /* SImgPol=0 */
                     | (0 << 3)   /* BLPol=0 */
                     | (0 << 2)   /* FlPol=0 */
-                    | (0 << 1)   /* HSPol=0, sync on falling edge */
-                    | (1 << 0);  /* VSPol=1 */
+                    | (0 << 1)   /* HSPol=0, hsync active low (sync on
+								  * falling edge) */
+                    | (1 << 0);  /* VSPol=0, vsync active low */
                 break;
         case BUZ:
         default:
@@ -1746,9 +1753,12 @@ static void zr36060_set_video(struct zoran *zr, enum zoran_codec_mode mode)
 
         HStart =  tvn->HStart;
         if (zr->card == BUZ) {
-                HStart += 44;
-        } else {
-                HStart += 64;
+			HStart += 44;
+        }
+		else if ( zr->card == LML33 ) {
+			HStart += 48;
+		} else {
+			HStart += 64;
         }
         reg = zr->params.img_x + HStart;        /* Hstart */
 	zr36060_write_16(zr, 0x046, reg);
@@ -2122,7 +2132,10 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	btwrite(reg, ZR36057_JMC);
 
 	/* vertical */
-	btor(ZR36057_VFEVCR_VSPol, ZR36057_VFEVCR);
+	btor(ZR36057_VFEVCR_VSPol, ZR36057_VFEVCR);	/* BUG? Sampling on
+												 trailing edge of
+												 active high vsync! */
+
 	reg = (6 << ZR36057_VSP_VsyncSize) | (tvn->Ht << ZR36057_VSP_FrmTot);
 	btwrite(reg, ZR36057_VSP);
 	reg = ((zr->params.img_y + tvn->VStart) << ZR36057_FVAP_NAY)
@@ -2130,7 +2143,9 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 	btwrite(reg, ZR36057_FVAP);
 
 	/* horizontal */
-	btor(ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);
+	btor(ZR36057_VFEHCR_HSPol, ZR36057_VFEHCR);	/* negative edge =
+												   leading edge for
+												   active low hsync */
 	reg = ((tvn->HSyncStart) << ZR36057_HSP_HsyncStart) | (tvn->Wt << ZR36057_HSP_LineTot);
 	btwrite(reg, ZR36057_HSP);
 	reg = ((zr->params.img_x + tvn->HStart + 4) << ZR36057_FHAP_NAX)
@@ -2142,9 +2157,9 @@ static void zr36057_set_jpg(struct zoran *zr, enum zoran_codec_mode mode)
 		reg = ZR36057_FPP_Odd_Even;
 	else
 		reg = 0;
-	if ((mode == BUZ_MODE_MOTION_DECOMPRESS && zr->card != LML33) || zr->card != BUZ)
+	if (mode == BUZ_MODE_MOTION_DECOMPRESS  || 
+		(zr->card != BUZ && zr->card != LML33) )
 		reg ^= ZR36057_FPP_Odd_Even;
-
 	btwrite(reg, ZR36057_FPP);
 
 	/* Set proper VCLK Polarity, else colors will be wrong during playback */
@@ -3211,15 +3226,16 @@ static void zoran_init_hardware (struct zoran *zr)
         if (zr->card == BUZ)
 	    j = zr->params.input == 0 ? 3 : 7;
         else
-	    j = zr->params.input == 0 ? 0 : 7;
-        
+			j = zr->params.input == 0 ? 0 : 7;
+		j = 0;
         decoder_command(zr, 0, NULL);
-	decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
-	decoder_command(zr, DECODER_SET_INPUT, &j);
+		decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
+		printk("%s: zoran_init_hardware %d\n", zr->name, j);
+		decoder_command(zr, DECODER_SET_INPUT, &j);
         
         encoder_command(zr, 0, NULL);
-	encoder_command(zr, ENCODER_SET_NORM, &zr->params.norm);
-	encoder_command(zr, ENCODER_SET_INPUT, &zero);
+		encoder_command(zr, ENCODER_SET_NORM, &zr->params.norm);
+		encoder_command(zr, ENCODER_SET_INPUT, &zero);
 
 	/* toggle JPEG codec sleep to sync PLL */
 	zr36060_sleep(zr, 1);
@@ -3251,6 +3267,8 @@ static int zoran_open(struct video_device *dev, int flags)
 
 	DEBUG1(printk(KERN_INFO "%s: zoran_open, %s pid=[%d]\n", zr->name, current->comm, current->pid));
 
+	printk(KERN_WARNING "%s: XXzoran_open: flags = 0x%x \n", zr->name, flags);
+
 	switch (flags) {
 
 	case 0:
@@ -3269,9 +3287,10 @@ static int zoran_open(struct video_device *dev, int flags)
 		/* default setup */
 
 		if (zr->user == 1) {	/* First device open */
-                        zr36057_restart(zr);
+			printk(KERN_WARNING "%s: XXzoran_reinit: flags = 0x%x \n", zr->name, flags);
+			zr36057_restart(zr);
 			zoran_open_init_params(zr);
-                        zoran_init_hardware(zr);
+			zoran_init_hardware(zr);
 
 			btor(ZR36057_ICR_IntPinEn, ZR36057_ICR);
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,4,19)
@@ -3502,6 +3521,7 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 				zr36057_overlay(zr, 0);
 
 		        // set_videobus_enable(zr, 0);
+			printk("%s: VIDIOCSCHAN %d\n", zr->name, input);
 			decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
 			encoder_command(zr, ENCODER_SET_NORM, &encoder_norm);
@@ -4126,6 +4146,8 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
                         else
 			    input = zr->params.input == 0 ? 0 : 7;
 		        // set_videobus_enable(zr, 0);
+						printk("%s: BUZIOC_G_STATUS REST %d\n", zr->name, input);
+				decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_INPUT, &input);
 			decoder_command(zr, DECODER_SET_NORM, &zr->params.norm);
 		        // set_videobus_enable(zr, 1);

@@ -1,4 +1,4 @@
-#define DEBUGLEVEL 0
+#define DEBUGLEVEL 1
 /* 
     bt819 - BT819A VideoStream Decoder (Rockwell Part)
 
@@ -82,17 +82,22 @@ struct bt819
 
 struct	timing {
 	int	hactive;
-	int	hdelay;
-	int	vactive;
+	int	hdelay;			 /* Must be large enough to avoid run-out/ringing*/
+								/* One right edge of line */
+	int	vactive;		 /* Seems to have zero effect on capture position */
 	int	vdelay;
 	int	hscale;
 	int	vscale;
 };
 
+/* N.b.: hactive/hdelay vactive/vdelay define the PACTIVE signal
+   which appears to drive VCLK (indicating valid pixel data)
+   for the ZR360xx devices.
+ */
+
 struct timing timing_data[] = {
-	{ 864-24, 2, 623, 1, 0x0504, 0x0000 },
- 	{ 858-24, 2, 523, 1, 0x00f8, 0x0000 },
-//	{ 858-68, 64, 523, 1, 0x00f8, 0x0000 },
+	{ 864-24, 8, 623, 1, 0x0504, 0x0000 }, /* PAL */
+ 	{ 858-24, 2, 523, 1, 0x00f8, 0x0000 }, /* NTSC */
 };
 
 #define   I2C_BT819        0x8a
@@ -168,7 +173,7 @@ static int bt819_init(struct i2c_device * device)
 
    static unsigned char init[] = {
 	//0x1f, 0x00,     /* Reset */
-        0x01, 0x59,	/* 0x01 input format */
+    0x01, 0x59,	/* 0x01 input format */
 	0x02, 0x00,	/* 0x02 temporal decimation */
 	0x03, 0x12,	/* 0x03 Cropping msb */
 	0x04, 0x16,	/* 0x04 Vertical Delay, lsb */
@@ -178,15 +183,24 @@ static int bt819_init(struct i2c_device * device)
  	0x08, 0x00,	/* 0x08 Horizontal Scaling msb */
  	0x09, 0xf8,	/* 0x09 Horizontal Scaling lsb */
 	0x0a, 0x00,	/* 0x0a Brightness control */
-	0x0b, 0x30,	/* 0x0b Miscellaneous control */
+	0x0b, 0x30,	/* 0x0b Miscellaneous control
+				   First pixel is Cb, luma decimation disabled
+				   composite video, enable luma notch filer
+				*/
 	0x0c, 0xd8,	/* 0x0c Luma Gain lsb */
 	0x0d, 0xfe,	/* 0x0d Chroma Gain (U) lsb */
 	0x0e, 0xb4,	/* 0x0e Chroma Gain (V) msb */
 	0x0f, 0x00,	/* 0x0f Hue control */
  	0x12, 0x04,	/* 0x12 Output Format */
-	0x13, 0x20,	/* 0x13 Vertial Scaling msb 0x60, */
+	0x13, 0x20,	/* 0x13 Vertical Scaling msb=0x00,
+				   chroma comb OFF, line drop scaling, interlace scaling
+				   BUG? Why does turning the chroma comb on fuck up color?
+				   Bug in the bt819 stepping on my board?
+				 */
 	0x14, 0x00,	/* 0x14 Vertial Scaling lsb */
- 	0x16, 0x04,	/* 0x16 Video Timing Polarity 0x02, */
+ 	0x16, 0x05,	/* 0x16 Video Timing Polarity: 
+				   ACTIVE=active low
+				   FIELD: high=odd, vreset=active low, hreset=active high */
 	0x18, 0x68,	/* 0x18 AGC Delay */
 	0x19, 0x5d,	/* 0x19 Burst Gate Delay */
 	0x1a, 0x80,	/* 0x1a ADC Interface */
@@ -195,18 +209,23 @@ static int bt819_init(struct i2c_device * device)
    struct timing *timing;
    
    decoder = device->data;
+   printk(KERN_ERR "%s: bt819_init: init hware\n", 
+		  decoder->bus->name);
+
    timing = &timing_data[decoder->norm];
 
-   init[3*2-1] = (((timing->vdelay >> 8) & 0x03) << 6) |
+   init[0x03*2-1] = (((timing->vdelay >> 8) & 0x03) << 6) |
 	     (((timing->vactive >> 8) & 0x03) << 4) |
 	     (((timing->hdelay >> 8) & 0x03) << 2) |
 	     ((timing->hactive >> 8) & 0x03);
-   init[4*2-1] = timing->vdelay & 0xff;
-   init[5*2-1] = timing->vactive & 0xff;
-   init[6*2-1] = timing->hdelay & 0xff;
-   init[7*2-1] = timing->hactive & 0xff;
-   init[8*2-1] = timing->hscale >> 8;
-   init[9*2-1] = timing->hscale & 0xff;
+   init[0x04*2-1] = timing->vdelay & 0xff;
+   init[0x05*2-1] = timing->vactive & 0xff;
+   init[0x06*2-1] = timing->hdelay & 0xff;
+   init[0x07*2-1] = timing->hactive & 0xff;
+   init[0x08*2-1] = timing->hscale >> 8;
+   init[0x09*2-1] = timing->hscale & 0xff;
+								/* Set Chroma burst delay */
+   init[0x19*2-1] = decoder->norm == 0 ? 115 : 93;
 
    bt819_write(decoder, 0x1f, 0x00);
    mdelay(1);
@@ -267,14 +286,14 @@ static int bt819_command(struct i2c_device * device, unsigned int cmd, void * ar
    //return 0;
    
    if(!decoder->initialized) {      // First call to bt819_init could be
-        bt819_init(device);         // without #FRST = 0
+	   bt819_init(device);         // without #FRST = 0
         decoder->initialized = 1;
    }
    
    switch (cmd) {
 
    case 0:  // This is just for testing!!!
-        bt819_init(device);
+        bt819_init(device);         // without #FRST = 0
         break;
         
    case DECODER_GET_CAPABILITIES:
