@@ -48,8 +48,8 @@ int verbose = 2;
 
 /* private prototypes */
 static void init (void);
-static void readparmfile();
-static void readquantmat (void);
+static void init_encoding_parms();
+static void init_quantmat (void);
 
 
 
@@ -80,7 +80,7 @@ static int param_seq_length_limit = 2000;
 static int param_min_GOP_size = 12;
 static int param_max_GOP_size = 12;
 static int param_Bgrp_size = 3;
-
+static int param_num_cpus = 1;
 static double framerates[9]=
     {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
 
@@ -110,6 +110,7 @@ void Usage(char *str)
 	printf("   			  Population halving passes 2*2-pel subsampled motion compensation\n" );
 	printf("   -g num     Minimum GOP size (default 12)\n" );
 	printf("   -G num     Maximum GOP size (default 12)\n" );
+	printf("   -M num     Optimise threading for num CPU's (default: 1)\n");
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM).\n");
@@ -130,7 +131,7 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:4:2:Q:g:G:v:stNhO")) != EOF)
+	while( (n=getopt(argc,argv,"m:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stNhO")) != EOF)
 	{
 		switch(n) {
 
@@ -178,6 +179,14 @@ int main(argc,argv)
 			}
 			break;
 
+		case 'M':
+			param_num_cpus = atoi(optarg);
+			if(param_num_cpus<1 || param_num_cpus>32)
+			{
+				fprintf(stderr,"-M option requires arg 1..32\n");
+				nerr++;
+			}
+			break;
 
 		case '4':
 			param_44_red = atoi(optarg);
@@ -389,10 +398,10 @@ int main(argc,argv)
 	printf("Search radius: %d\n",param_searchrad);
 
 	/* set params */
-	readparmfile();
+	init_encoding_parms();
 
 	/* read quantization matrices */
-	readquantmat();
+	init_quantmat();
 
 	/* open output file */
 	if (!(outfile=fopen(outfilename,"wb")))
@@ -439,11 +448,30 @@ static void init()
 {
 	int i, n;
 	static int block_count_tab[3] = {6,8,12};
-	int lum_buffer_size, chrom_buffer_size;
 
 	initbits(); 
 	init_fdct();
 	init_idct();
+
+	/* Tune threading for specified number of CPU's 
+	   Currently pretty crude...
+	 */
+	
+	switch( param_num_cpus )
+	{
+	case 1 :
+		max_encoding_frames = 1;
+		break;
+	case 2:
+		max_encoding_frames = 2;
+		break;
+	default :
+		/* Note: if this is ever made variable it must be kept less
+		   on MAX_WORKER_THREADS */
+		max_encoding_frames = 3;
+		break;
+	}
+
 
 	/* round picture dimensions to nearest multiple of 16 or 32 */
 	mb_width = (horizontal_size+15)/16;
@@ -503,7 +531,6 @@ static void init()
 		 }
 	}
 
-
 	/* TODO: The ref and aux frame buffers are not redundant! */
 	for( i = 0 ; i<3; i++)
 	{
@@ -537,7 +564,7 @@ void error(text)
 
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
 
-static void readparmfile()
+static void init_encoding_parms()
 {
 	int i;
 	int c;
@@ -563,7 +590,7 @@ static void readparmfile()
 	 *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
 	aspectratio     = mpeg1 ? 1 : 2;
 	dctsatlim		= mpeg1 ? 255 : 2047;
-	dctsatlim = 255;
+
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
 		buffer accordingly... */
 #ifdef OUTPUT_STAT
@@ -957,7 +984,7 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 	return (orgquant * qboost + 512)/ 1024;
 }
 
-static void readquantmat()
+static void init_quantmat()
 {
 	int i,v, q;
 	FILE *fd;

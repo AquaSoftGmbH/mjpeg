@@ -166,6 +166,26 @@ void putpict(pict_data_s *picture )
 	short (*quant_blocks)[64] = picture->qblocks;
 	MBAinc = 0;          /* Annoying warning otherwise... */
 
+	/* Handle splitting of output stream into sequences of desired size */
+	if( picture->new_seq )
+	{
+		putseqend();
+		rc_init_seq(1);
+		putseqhdr();
+	}
+	/* Handle start of GOP stuff... */
+	if( picture->gop_start )
+	{
+		rc_init_GOP(picture->np, picture->nb);
+		/* set closed_GOP in first GOP only 
+		   No need for per-GOP seqhdr in first GOP as one
+		   has already been created.
+		*/
+		putgophdr( picture->decode+picture->temp_ref,
+				   picture->decode,
+				   picture->decode != 0 && seq_header_every_gop);
+	}
+
 	calc_vbv_delay(picture);
 	rc_init_pict(picture); /* set up rate control */
 

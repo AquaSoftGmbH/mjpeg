@@ -54,6 +54,7 @@
 #include "math.h"
 #include "cpu_accel.h"
 #include "simd.h"
+#include "fastintfns.h"
 
 
 /* Macro-block Motion compensation results record */
@@ -88,9 +89,14 @@ struct subsampled_mb
 
 typedef struct subsampled_mb subsampled_mb_s;
 
+#define MAX_MATCHES (256*256/4)
 
-/* RJ: parameter if we should not search at all */
-extern int do_not_search;
+typedef struct _mc_result_vec {
+	int len;
+	mc_result_s mcomps[MAX_MATCHES];
+} mc_result_set;
+
+
 
 /* private prototypes */
 
@@ -155,22 +161,32 @@ static void fullsearch (
 	int xmax, int ymax,
 	mb_motion_s *motion );
 
-static void find_best_one_pel( uint8_t *org, uint8_t *blk,
-							   int searched_size,
+static void find_best_one_pel( mc_result_set *sub22set,
+							   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ilow, int jlow,
 							   int xmax, int ymax,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
-static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh, 
+
+static int build_sub22_mcomps( mc_result_set *sub44set,
+							   mc_result_set *sub22set,
+							   int i0,  int j0, int ihigh, int jhigh, 
 								int null_mc_sad,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
-							   int flx, int fh,  int searched_sub44_size );
+							   int flx, int fh );
+
+static int build_sub44_mcomps( mc_result_set *sub44set,
+							   int ilow, int jlow, int ihigh, int jhigh, 
+							   int i0, int j0,
+							   int null_mc_sad,
+							   uint8_t *s44org, uint8_t *s44blk, 
+							   int qlx, int qh );
 
 #ifdef HAVE_X86CPU 
-static void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
-							   int searched_size,
+static void find_best_one_pel_mmxe( mc_result_set *sub22set, 
+									uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ilow, int jlow,
 							   int xmax, int ymax,
@@ -178,10 +194,19 @@ static void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   mb_motion_s *res
 	);
 
-static int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
+static int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
+									mc_result_set *sub22set,
+									int i0,  int j0, int ihigh, int jhigh, 
 							 int null_mc_sad,
 							 uint8_t *s22org,  uint8_t *s22blk, 
-							 int flx, int fh,  int searched_sub44_size );
+									int flx, int fh );
+static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
+								   int ilow, int jlow, int ihigh, int jhigh, 
+								   int i0, int j0,
+								   int null_mc_sad,
+								   uint8_t *s44org, uint8_t *s44blk, 
+								   int qlx, int qh );
+
 static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
@@ -211,19 +236,27 @@ static int bdist2_22( uint8_t *blk1f, uint8_t *blk1b,
 					  int lx, int h);
 
 
-static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
-							   int searched_size,
+static void (*pfind_best_one_pel)( mc_result_set *sub22set,
+								   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ilow, int jlow,
 							   int xmax, int ymax,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
-static int (*pbuild_sub22_mcomps)( int i0,  int j0, int ihigh, int jhigh, 
+static int (*pbuild_sub22_mcomps)( mc_result_set *sub44set,
+									mc_result_set *sub22set,
+									int i0,  int j0, int ihigh, int jhigh, 
 								   int null_mc_sad,
 								   uint8_t *s22org,  uint8_t *s22blk, 
-								   int flx, int fh,  int searched_sub44_size );
+									int flx, int fh );
 
+static int (*pbuild_sub44_mcomps)( mc_result_set *sub44set,
+								  int ilow, int jlow, int ihigh, int jhigh, 
+								  int i0, int j0,
+								  int null_mc_sad,
+								  uint8_t *s44org, uint8_t *s44blk, 
+								  int qlx, int qh );
 static int (*pdist2_22)( uint8_t *blk1, uint8_t *blk2,
 						 int lx, int h);
 static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b, 
@@ -261,6 +294,9 @@ static int (*pbdist2) (uint8_t *pf, uint8_t *pb,
 static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
 					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
+
+
+
 /*
   Initialise motion compensation - currently purely selection of which
   versions of the various low level computation routines to use
@@ -287,6 +323,7 @@ void init_motion()
 		pbdist2_22 = bdist2_22;
 		pfind_best_one_pel = find_best_one_pel;
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
+		pbuild_sub44_mcomps	= build_sub44_mcomps;
 	 }
 #ifdef HAVE_X86CPU 
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
@@ -306,8 +343,8 @@ void init_motion()
 		pbdist2_22 = bdist2_22_mmx;
 		pfind_best_one_pel = find_best_one_pel_mmxe;
 		pbuild_sub22_mcomps	= build_sub22_mcomps_mmxe;
+		pbuild_sub44_mcomps	= build_sub44_mcomps_mmx;
 		pmblock_sub44_dists = mblock_sub44_dists_mmxe;
-
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
@@ -326,9 +363,11 @@ void init_motion()
 		pbdist2_22 = bdist2_22_mmx;
 		pfind_best_one_pel = find_best_one_pel;
 		pbuild_sub22_mcomps	= build_sub22_mcomps;
+		pbuild_sub44_mcomps	= build_sub44_mcomps_mmx;
 		pmblock_sub44_dists = mblock_sub44_dists_mmx;
 	}
 #endif
+
 }
 
 
@@ -918,7 +957,6 @@ static void field_ME(
 	mb_motion_s field8uf_mc, field8lf_mc;
 	mb_motion_s field8ub_mc, field8lb_mc;
 	int var,vmc,v0,dmc,dmcfieldi,dmcfield,dmcfieldf,dmcfieldr,dmc8i;
-	int imins,jmins;
 	int dmc8f,dmc8r;
 	int vmc_dp,dmc_dp;
 
@@ -979,6 +1017,7 @@ static void field_ME(
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 
+		dmc_dp = 100000000;		/* Suppress compiler warning */
 		if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
@@ -988,7 +1027,6 @@ static void field_ME(
 							 &vmc_dp);
 			dmc_dp = dualp_mc.sad;
 		}
-		
 		/* select between dual prime, field and 16x8 prediction */
 		if (M==1 && !ipflag && dmc_dp<dmc8f && dmc_dp<dmcfield)
 		{
@@ -1038,8 +1076,8 @@ static void field_ME(
 				else if (mbi->motion_type==MC_DMV)
 				{
 					/* same parity vector */
-					mbi->MV[0][0][0] = imins - (i<<1);
-					mbi->MV[0][0][1] = jmins - (j<<1);
+					mbi->MV[0][0][0] = fieldsp_mc.pos.x - (i<<1);
+					mbi->MV[0][0][1] = fieldsp_mc.pos.y - (j<<1);
 
 					/* opposite parity vector */
 					mbi->dmvector[0] = dualp_mc.pos.x;
@@ -1483,7 +1521,14 @@ static void dpframe_estimate (
 {
 	int pref,ppred,delta_x,delta_y;
 	int is,js,it,jt,ib,jb,it0,jt0,ib0,jb0;
-	int imins,jmins,imint,jmint,iminb,jminb,imindmv,jmindmv;
+	int imins = 0;
+	int jmins = 0;
+	int imint = 0;
+	int jmint = 0;
+	int iminb = 0;
+	int jminb = 0;
+	int imindmv = 0;
+	int jmindmv = 0;
 	int vmc,local_dist;
 
 	/* Calculate Dual Prime distortions for 9 delta candidates
@@ -1649,9 +1694,13 @@ static void dpfield_estimate(
 {
 	uint8_t *sameref, *oppref;
 	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
-	int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
-	int imins = bestsp_mc->pos.x;
-	int jmins = bestsp_mc->pos.y;
+	int imino = 0;
+	int jmino = 0;
+	int imindmv = 0;
+	int jmindmv = 0;
+	int vmc_dp,local_dist;
+	int imins = 0;
+	int jmins = 0;
 
 	/* Calculate Dual Prime distortions for 9 delta candidates */
 	/* Note: only for P pictures! */
@@ -1689,7 +1738,7 @@ static void dpfield_estimate(
 	jo0 = mvyo0 + (j<<1);
 
 			/* initialize minimum dual prime distortion to large value */
-	vmc_dp = 1 << 30;
+	vmc_dp = INT_MAX;
 
 	for (delta_y = -1; delta_y <= 1; delta_y++)
 	{
@@ -1735,31 +1784,24 @@ static void dpfield_estimate(
 			16);            /* block height */
 
 	bestdp_mc->pos.x = imindmv;
-	bestdp_mc->pos.x = imindmv;
+	bestdp_mc->pos.x = jmindmv;
 	*vmcp = vmc_dp;
 }
 
 
-/* 
- *   Vectors of motion compensations 
- */
 
-#define MAX_44_MATCHES (256*256/(4*4))
-
-static int sub22_num_mcomps;
-static int sub44_num_mcomps;
-static mc_result_s sub44_mcomps[MAX_44_MATCHES];
-static mc_result_s sub22_mcomps[MAX_44_MATCHES*4];
 
 /*
 	Take a vector of motion compensations and repeatedly make passes
 	discarding all elements whose sad "weight" is above the current mean weight.
 */
 
-static void sub_mean_reduction( mc_result_s *matches, int len, 
+static void sub_mean_reduction( mc_result_set *matchset, 
 								int times,
-							    int *newlen_res, int *minweight_res)
+							    int *minweight_res)
 {
+	mc_result_s *matches = matchset->mcomps;
+	int len = matchset->len;
 	int i,j;
 	int weight_sum;
 	int mean_weight;
@@ -1767,7 +1809,7 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 	if( len == 0 )
 	{
 		*minweight_res = 100000;
-		*newlen_res = 0;
+		matchset->len = 0;
 		return;
 	}
 
@@ -1797,48 +1839,53 @@ static void sub_mean_reduction( mc_result_s *matches, int len,
 		len = j;
 		--times;
 	}
-	*newlen_res = len;
+	matchset->len = len;
 	*minweight_res = mean_weight;
 }
 
-/*
-  Build a vector of the top   4*4 sub-sampled motion compensations in the box
-  (ilow,jlow) to (ihigh,jhigh).
+/* Build a vector of the top 4*4 sub-sampled motion compensations in
+  the box (ilow,jlow) to (ihigh,jhigh).
 
-	The algorithm is as follows:
-	1. coarse matches on an 8*8 grid of positions are collected that fall below
-	a (very conservative) sad threshold (basically 50% more than moving average of
-	the mean sad of such matches).
+	The algorithm is as follows: 1. coarse matches on an 8*8 grid of
+	positions are collected that fall below a (very conservative) sad
+	threshold (basically 50% more than moving average of the mean sad
+	of such matches).
 	
 	2. The worse than-average matches are discarded.
 	
-	3. The remaining coarse matches are expanded with the left/lower neighbouring
-	4*4 grid matches. Again only those better than a threshold (this time the mean
-	of the 8*8 grid matches are retained.
+	3. The remaining coarse matches are expanded with the left/lower
+	neighbouring 4*4 grid matches. Again only those better than a
+	threshold (this time the mean of the 8*8 grid matches are
+	retained.
 	
-	4. Multiple passes are made discarding worse than-average matches.  The number of
-	passes is specified by the user.  The default it 2 (leaving roughly 1/4 of the matches).
+	4. Multiple passes are made discarding worse than-average matches.
+	The number of passes is specified by the user.  The default it 2
+	(leaving roughly 1/4 of the matches).
 	
-	The net result is very fast and find good matches if they're to be found.  I.e. the
-	penalty over exhaustive search is pretty low.
+	The net result is very fast and find good matches if they're to be
+	found.  I.e. the penalty over exhaustive search is pretty low.
 	
-	NOTE: The "discard below average" trick depends critically on having some variation in
-	the matches.  The slight penalty imposed for distant matches (reasonably since the 
-	motion vectors have to be encoded) is *vital* as otherwise pathologically bad
-	performance results on highly uniform images.
+	NOTE: The "discard below average" trick depends critically on
+	having some variation in the matches.  The slight penalty imposed
+	for distant matches (reasonably since the motion vectors have to
+	be encoded) is *vital* as otherwise pathologically bad performance
+	results on highly uniform images.
 	
-	TODO: We should probably allow the user to eliminate the initial thinning of 8*8
-	grid matches if ultimate quality is demanded (e.g. for low bit-rate applications).
+	TODO: We should probably allow the user to eliminate the initial
+	thinning of 8*8 grid matches if ultimate quality is demanded
+	(e.g. for low bit-rate applications).
 
 */
 
-
-static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh, 
+static int build_sub44_mcomps( mc_result_set *sub44set,
+							   int ilow, int jlow, int ihigh, int jhigh, 
 							int i0, int j0,
 								int null_mc_sad,
-							uint8_t *s44org, uint8_t *s44blk, int qlx, int qh )
+							   uint8_t *s44org, uint8_t *s44blk, 
+							   int qlx, int qh )
 {
 	uint8_t *s44orgblk;
+	mc_result_s *sub44_mcomps = sub44set->mcomps;
 	int istrt = ilow-i0;
 	int jstrt = jlow-j0;
 	int iend = ihigh-i0;
@@ -1846,18 +1893,11 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 	int mean_weight;
 	int threshold;
 
-#ifdef HAVE_X86CPU 
-
-	/*int rangex, rangey;
-	static int rough_num_mcomps;
-	static mc_result_s rough_mcomps[MAX_44_MATCHES];
-	int k;
-	*/
-#else
 	int i,j;
 	int s1;
 	uint8_t *old_s44orgblk;
-#endif
+	int sub44_num_mcomps;
+
 	/* N.b. we may ignore the right hand block of the pair going over the
 	   right edge as we have carefully allocated the buffer oversize to ensure
 	   no memory faults.  The later motion compensation calculations
@@ -1865,9 +1905,6 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 	   out-of-range blocks...
 	*/
 
-
-	sub44_num_mcomps = 0;
-	
 	threshold = 6*null_mc_sad / (4*4*mc_44_red);
 	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 	
@@ -1875,7 +1912,8 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 		(a)	it is only 16th of the size of the real 1-pel data 
 		(b) we ignore those matches with an sad above our threshold.	
 	*/
-#ifndef HAVE_X86CPU 
+
+	sub44_num_mcomps = 0;
 
 		/* Invariant:  s44orgblk = s44org+(i>>2)+qlx*(j>>2) */
 		s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
@@ -1884,38 +1922,65 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 			old_s44orgblk = s44orgblk;
 			for( i = istrt; i <= iend; i += 4 )
 			{
-				s1 = ((*pdist44)( s44orgblk,s44blk,qlx,qh) & 0xffff) + abs(i-i0) + abs(j-j0);
+			s1 = ((*pdist44)( s44orgblk,s44blk,qlx,qh) & 0xffff);
 				if( s1 < threshold )
 				{
+				threshold = intmin(s1<<2,threshold);
 					sub44_mcomps[sub44_num_mcomps].x = i;
 					sub44_mcomps[sub44_num_mcomps].y = j;
-					sub44_mcomps[sub44_num_mcomps].weight = s1 ;
+				sub44_mcomps[sub44_num_mcomps].weight = s1 + ((intabs(i-i0)+intabs(j-j0))>>3);
 					++sub44_num_mcomps;
 				}
 				s44orgblk += 1;
 			}
 			s44orgblk = old_s44orgblk + qlx;
 		}
+	sub44set->len = sub44_num_mcomps;
 			
-#else
+	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
 
-		sub44_num_mcomps
-			= (*pmblock_sub44_dists)( s44orgblk, s44blk,
+
+	return sub44set->len;
+}
+			
+#ifdef HAVE_X86CPU
+
+static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
+							   int ilow, int jlow, int ihigh, int jhigh, 
+							   int i0, int j0,
+							   int null_mc_sad,
+							   uint8_t *s44org, uint8_t *s44blk, 
+							   int qlx, int qh )
+{
+	uint8_t *s44orgblk;
+	mc_result_s *sub44_mcomps = sub44set->mcomps;
+	int istrt = ilow-i0;
+	int jstrt = jlow-j0;
+	int iend = ihigh-i0;
+	int jend = jhigh-j0;
+	int mean_weight;
+	int threshold;
+
+	
+	threshold = 6*null_mc_sad / (4*4*mc_44_red);
+	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
+	
+	sub44set->len = (*pmblock_sub44_dists)( s44orgblk, s44blk,
 								  istrt, jstrt,
 								  iend, jend, 
 								  qh, qlx, 
 								  threshold,
 								  sub44_mcomps);
 
-#endif	
 		/* If we're really pushing quality we reduce once otherwise twice. */
 			
-		sub_mean_reduction( sub44_mcomps, sub44_num_mcomps, 1+(mc_44_red>1),
-						    &sub44_num_mcomps, &mean_weight);
+	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
 
 
-	return sub44_num_mcomps;
+	return sub44set->len;
 }
+#endif
+
 
 
 /* Build a vector of the best 2*2 sub-sampled motion
@@ -1927,10 +1992,12 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 */
 
 
-static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh, 
+static int build_sub22_mcomps( mc_result_set *sub44set,
+							   mc_result_set *sub22set,
+							   int i0,  int j0, int ihigh, int jhigh, 
 								int null_mc_sad,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
-						   		int flx, int fh,  int searched_sub44_size )
+							   int flx, int fh )
 {
 	int i,k,s;
 	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
@@ -1941,12 +2008,12 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 	blockxy matchrec;
 	uint8_t *s22orgblk;
 
-	sub22_num_mcomps = 0;
-	for( k = 0; k < searched_sub44_size; ++k )
+	sub22set->len = 0;
+	for( k = 0; k < sub44set->len; ++k )
 	{
 
-		matchrec.x = sub44_mcomps[k].x;
-		matchrec.y = sub44_mcomps[k].y;
+		matchrec.x = sub44set->mcomps[k].x;
+		matchrec.y = sub44set->mcomps[k].y;
 
 		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
 		for( i = 0; i < 4; ++i )
@@ -1956,10 +2023,11 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 				s = (*pdist22)( s22orgblk,s22blk,flx,fh);
 				if( s < threshold )
 				{
-					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
-					sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
-					sub22_mcomps[sub22_num_mcomps].weight = s;
-					++sub22_num_mcomps;
+					mc_result_s *mc = &sub22set->mcomps[sub22set->len];
+					mc->x = (int8_t)matchrec.x;
+					mc->y = (int8_t)matchrec.y;
+					mc->weight = s;
+					++(sub22set->len);
 				}
 			}
 
@@ -1979,17 +2047,17 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 
 	}
 
-	
-	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, 2,
-						&sub22_num_mcomps, &min_weight );
-	return sub22_num_mcomps;
+	sub_mean_reduction( sub22set,  1+(mc_22_red>1), &min_weight );
+	return sub22set->len;
 }
 
 #ifdef HAVE_X86CPU 
-int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
+int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
+							 mc_result_set *sub22set,
+							 int i0,  int j0, int ihigh, int jhigh, 
 								int null_mc_sad,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
-						   		int flx, int fh,  int searched_sub44_size )
+							 int flx, int fh )
 {
 	int i,k,s;
 	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
@@ -2005,12 +2073,12 @@ int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh,
        asm code... */
 	int lstrow=(fh-1)*flx;
 
-	sub22_num_mcomps = 0;
-	for( k = 0; k < searched_sub44_size; ++k )
+	sub22set->len = 0;
+	for( k = 0; k < sub44set->len; ++k )
 	{
 
-		matchrec.x = sub44_mcomps[k].x;
-		matchrec.y = sub44_mcomps[k].y;
+		matchrec.x = sub44set->mcomps[k].x;
+		matchrec.y = sub44set->mcomps[k].y;
 
 		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
 		mblockq_dist22_mmxe(s22orgblk+lstrow, s22blk+lstrow, flx, fh, resvec);
@@ -2021,10 +2089,11 @@ int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh,
 				s =resvec[i];
 				if( s < threshold )
 				{
-					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
-					sub22_mcomps[sub22_num_mcomps].y = (int8_t)matchrec.y;
-					sub22_mcomps[sub22_num_mcomps].weight = s;
-					++sub22_num_mcomps;
+					mc_result_s *mc = &sub22set->mcomps[sub22set->len];
+					mc->x = (int8_t)matchrec.x;
+					mc->y = (int8_t)matchrec.y;
+					mc->weight = s;
+					++(sub22set->len);
 				}
 			}
 
@@ -2042,9 +2111,8 @@ int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh,
 	}
 
 	
-	sub_mean_reduction( sub22_mcomps, sub22_num_mcomps, 2,
-						&sub22_num_mcomps, &min_weight );
-	return sub22_num_mcomps;
+	sub_mean_reduction( sub22set, mc_22_red, &min_weight );
+	return sub22set->len;
 }
 
 #endif
@@ -2056,8 +2124,8 @@ int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh,
 */
 
 
-static void find_best_one_pel( uint8_t *org, uint8_t *blk,
-							   int searched_size,
+static void find_best_one_pel( mc_result_set *sub22set,
+							   uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ilow, int jlow,
 							   int xmax, int ymax,
@@ -2072,16 +2140,12 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
 	int penalty;
-	int init_search;
-	int init_size;
 	blockxy matchrec;
  
-	init_search = searched_size;
-	init_size = sub22_num_mcomps;
-	for( k = 0; k < searched_size; ++k )
+	for( k = 0; k < sub22set->len; ++k )
 	{	
-		matchrec.x = i0 + sub22_mcomps[k].x;
-		matchrec.y = j0 + sub22_mcomps[k].y;
+		matchrec.x = i0 + sub22set->mcomps[k].x;
+		matchrec.y = j0 + sub22set->mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
 		penalty = abs(matchrec.x)+abs(matchrec.y);
 
@@ -2118,8 +2182,8 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 }
 
 #ifdef HAVE_X86CPU 
-void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
-							   int searched_size,
+void find_best_one_pel_mmxe( mc_result_set *sub22set,
+							 uint8_t *org, uint8_t *blk,
 							   int i0, int j0,
 							   int ilow, int jlow,
 							   int xmax, int ymax,
@@ -2134,18 +2198,13 @@ void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 	int dmin = INT_MAX;
 	uint8_t *orgblk;
 	int penalty;
-	int init_search;
-	int init_size;
 	blockxy matchrec;
 	int resvec[4];
 
- 
-	init_search = searched_size;
-	init_size = sub22_num_mcomps;
-	for( k = 0; k < searched_size; ++k )
+	for( k = 0; k < sub22set->len; ++k )
 	{	
-		matchrec.x = i0 + sub22_mcomps[k].x;
-		matchrec.y = j0 + sub22_mcomps[k].y;
+		matchrec.x = i0 + sub22set->mcomps[k].x;
+		matchrec.y = j0 + sub22set->mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
 		penalty = abs(matchrec.x)+abs(matchrec.y);
 		
@@ -2229,11 +2288,15 @@ static void fullsearch(
 	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset);
 	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset);
 	uint8_t *orgblk;
+
+
 	int flx = lx >> 1;
 	int qlx = lx >> 2;
 	int fh = h >> 1;
 	int qh = h >> 2;
 
+	mc_result_set sub44set;
+	mc_result_set sub22set;
 
 	/* xmax and ymax into more useful form... */
 	xmax -= 16;
@@ -2265,40 +2328,51 @@ static void fullsearch(
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
-	best.sad = (*pdist1_00)(ref+i0+j0*lx,ssblk->mb,lx,h,best.sad);
+	best.sad = (*pdist1_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
 	best.pos.x = i0;
 	best.pos.y = j0;
 
-	sub44_num_mcomps = build_sub44_mcomps( ilow, jlow, ihigh, jhigh,
+	/* Generate the best matches at 4*4 sub-sampling. 
+	   The precise fraction of the matches included is
+	   controlled by mc_44_red
+	   Note: we use the original picture here for the match...
+	 */
+	(*pbuild_sub44_mcomps)( &sub44set,
+							ilow, jlow, ihigh, jhigh,
 									  i0, j0,
 									  best.sad,
 									  s44org, 
 									  ssblk->qmb, qlx, qh );
 
 	
-	/* Now create a distance-ordered mcomps of possible motion
-	   compensations based on the fast estimation data - 2*2 pel sums
-	   using the best fraction of the 4*4 estimates However we cover
-	   only coarsely... on 4-pel boundaries...  */
+	/* Generate the best 2*2 sub-sampling matches from the
+	   immediate 2*2 neighbourhoods of the 4*4 sub-sampling matches.
+	   The precise fraction of the matches included is controlled
+	   by mc_22_red.
+	   Note: we use the original picture here for the match...
 
-	sub22_num_mcomps = (*pbuild_sub22_mcomps)( i0, j0, ihigh,  jhigh, 
+	*/
+
+	(*pbuild_sub22_mcomps)( &sub44set, &sub22set,
+							i0, j0, ihigh,  jhigh, 
 											   best.sad,
-											   s22org, ssblk->fmb, flx, fh, 
-											   sub44_num_mcomps );
+							s22org, ssblk->fmb, flx, fh );
 
 		
-    /* Now choose best 1-pel match from what approximates (not exact
-	   due to the pre-processing trick with the mean) the top 1/2 of
-	   the 2*2 matches 
+    /* Now choose best 1-pel match from the 2*2 neighbourhoods
+	   of the best 2*2 sub-sampled matches.
+	   Note that here we start using the reference picture not the
+	   original.
 	*/
 	
 
-	(*pfind_best_one_pel)( ref, ssblk->mb, sub22_num_mcomps,
+	(*pfind_best_one_pel)( &sub22set,
+						   ref, ssblk->mb, 
 					   i0, j0,
 					   ilow, jlow, xmax, ymax, 
 					   lx, h, &best );
 
-	/* Final polish: half-pel search of best candidate against
+	/* Final polish: half-pel search of best 1*1 against
 	   reconstructed image. 
 	*/
 
@@ -2409,11 +2483,8 @@ static int dist1_01(uint8_t *blk1,uint8_t *blk2,
 		for (i=0; i<16; i++)
 		{
 
-			v = ((unsigned int)(p1[i]+p1[i+1])>>1) - p2[i];
-			/*
-			  v = ((p1[i]>>1)+(p1[i+1]>>1)>>1) - (p2[i]>>1);
-			*/
-			s+=abs(v);
+			v = ((unsigned int)(p1[i]+p1[i+1]+1)>>1) - p2[i];
+			s+=intabs(v);
 		}
 		p1+= lx;
 		p2+= lx;
@@ -2437,8 +2508,8 @@ static int dist1_10(uint8_t *blk1,uint8_t *blk2,
 	{
 		for (i=0; i<16; i++)
 		{
-			v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
-			s+=abs(v);
+			v = ((unsigned int)(p1[i]+p1a[i]+1)>>1) - p2[i];
+			s+= intabs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;
@@ -2465,8 +2536,8 @@ static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 	{
 		for (i=0; i<16; i++)
 		{
-			v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
-			s+=abs(v);
+			v = ((unsigned int)((p1[i]+p1[i+1])+(p1a[i]+p1a[i+1])+2)>>2) - p2[i];
+			s+=intabs(v);
 		}
 		p1 = p1a;
 		p1a+= lx;

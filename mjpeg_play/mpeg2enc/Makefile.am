@@ -27,12 +27,12 @@ endif
 
 mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	 putvlc.c putbits.c motion.c predict.c readpic.c writepic.c transfrm.c \
-	fdctref.c idct.c quantize.c ratectl.c stats.c cpu_accel.c  \
+	fdctref.c idct.c quantize.c ratectl.c stats.c cpu_accel.c  synchrolib.c \
 	fastintfns.h  global.h mpeg2enc.h vlc.h cpu_accel.h mmx.h attributes.h \
-	simd.h $(mpeg2enc_SIMD)
+	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
 
-mpeg2enc_LDADD=-lm
+mpeg2enc_LDADD=-lm -lpthread
 
 ASM = nasm
 

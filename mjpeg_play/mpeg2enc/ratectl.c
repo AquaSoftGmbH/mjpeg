@@ -333,7 +333,7 @@ void rc_init_GOP(np,nb)
 /* Step 1: compute target bits for current picture being coded */
 void rc_init_pict(pict_data_s *picture)
 {
-	double avg_K;
+	double avg_K = 0.0;
 	double target_Q;
 	double current_Q;
 	double Si, Sp, Sb;
@@ -406,13 +406,8 @@ void rc_init_pict(pict_data_s *picture)
 	target_Q = scale_quant(picture, 
 						   avg_K * avg_act *(mb_per_pict) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
-#ifdef DEBUG
-	if( !quiet )
-	{
-		/* printf( "AA=%3.4f T=%6.0f K=%.1f ",avg_act, (double)T, avg_K  ); */
-		printf( "AA=%3.4f SA==%3.4f ",avg_act, sum_avg_act  ); 
-	}
-#endif	
+	picture->avg_act = avg_act;
+	picture->sum_avg_act = sum_avg_act;
 	
 	if ( current_Q < 3 && target_Q > 12 )
 	{
@@ -518,6 +513,7 @@ void rc_update_pict(pict_data_s *picture)
 
 	 */
 
+	picture->pad = 0;
 	if( gop_undershoot-frame_overshoot > video_buffer_size/3 )
 	{
 		int padding_bytes = 
@@ -528,7 +524,7 @@ void rc_update_pict(pict_data_s *picture)
 		}
 		else
 		{
-			printf( "PAD" );
+			picture->pad = 1;
 			alignbits();
 			for( i = 0; i < padding_bytes/2; ++i )
 			{
@@ -568,12 +564,9 @@ void rc_update_pict(pict_data_s *picture)
 	X = (double)AP*(AQ/2.0);
 	
 	K = X / actsum;
-#ifdef DEBUG
-	if( !quiet )
-	{
-		printf( "AQ=%.1f SQ=%.2f",  AQ,SQ);
-	}
-#endif
+	picture->AQ = AQ;
+	picture->SQ = SQ;
+
 	/* Bits that never got used in the past can't be resurrected
 	   now...  We use an average of past (positive) virtual buffer
 	   fullness in the event of an under-shoot as otherwise we will
@@ -616,16 +609,7 @@ void rc_update_pict(pict_data_s *picture)
 		Nb--;
 		break;
 	}
-#ifdef DEBUG
-	if( !quiet )
-		printf( "\n" );
-#else
-	if( !quiet )
-	{
-		printf( "\r" );
-		fflush( stdout );
-	}	
-#endif
+
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: end of picture\n");
 	fprintf(statfile," actual number of bits: S=%lld\n",S);

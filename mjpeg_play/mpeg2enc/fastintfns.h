@@ -5,7 +5,7 @@
  */
 
 #define fabsshift ((8*sizeof(unsigned int))-1)
-#ifdef HAVE_SSE
+#ifdef HAVE_CMOV
 static __inline__ int intmax( register int x, register int y )
 {
 	asm( "cmpl %1, %0\n"

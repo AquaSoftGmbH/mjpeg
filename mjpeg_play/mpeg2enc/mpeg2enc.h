@@ -1,7 +1,5 @@
 /* mpg2enc.h, defines and types                                             */
 
-#include <inttypes.h>
-
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
 /*
@@ -28,6 +26,9 @@
  * design.
  *
  */
+
+#include <inttypes.h>
+#include "synchrolib.h"
 
 #define PICTURE_START_CODE 0x100L
 #define SLICE_MIN_START    0x101L
@@ -137,6 +138,15 @@ struct motion_data {
 
 struct pict_data
 {
+	int decode;					/* Number of frame in stream */
+
+	/* multiple-reader/single-writer channels Synchronisation  
+	   sync only: no data is "read"/"written"
+	 */
+	sync_guard_t *ref_frame_completion;
+	sync_guard_t *prev_frame_completion;
+	sync_guard_t completion;
+	sync_guard_t ipcompletion;
 
 	/* picture encoding source data */
 	uint8_t **oldorg, **neworg;	/* Images for Old and new reference picts */
@@ -172,7 +182,20 @@ struct pict_data
 
 	/* macroblock side information array */
 	struct mbinfo *mbinfo;
-	/* motion estimation parameters */
+
+	/* Information for GOP start frames */
+	int gop_start;
+	int nb;						/* B frames in GOP */
+	int np;						/* P frames in GOP */
+	int new_seq;				/* GOP starts new sequence */
+
+	/* Statistics... */
+	int pad;
+	int split;
+	double AQ;
+	double SQ;
+	double avg_act;
+	double sum_avg_act;
 };
 
 typedef struct pict_data pict_data_s;

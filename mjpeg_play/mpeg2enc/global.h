@@ -67,7 +67,6 @@ void motion_estimation (
 
 void fast_motion_data (pict_data_s *picture);
 
-void reset_thresholds  (int macroblocks_per_frame );
 /* mpeg2enc.c */
 void error (char *text);
 uint8_t *bufalloc( size_t size );
@@ -314,6 +313,8 @@ EXTERN char pict_type_char[6]
 #endif
 ;
 
+EXTERN int lum_buffer_size, chrom_buffer_size;
+
 int video_buffer_size;
 
 /* Buffers frame data */
@@ -324,6 +325,7 @@ EXTERN uint8_t *newrefframe[3], *oldrefframe[3], *auxframe[3];
 
 /* prediction of current frame */
 EXTERN uint8_t *predframe[3];
+
 /* Buffer for filter pre-processing */
 
 EXTERN struct motion_data *motion_data;
@@ -357,13 +359,14 @@ EXTERN int inputtype; /* format of input frames */
 
 EXTERN int quiet; /* suppress warnings */
 
+EXTERN int max_encoding_frames; /* Maximum number of concurrent
+								   frames to be concurrently encoded */
 
 /* coding model parameters */
 
 EXTERN int N_max; /* number of frames in Group of Pictures (max) */
 EXTERN int N_min;  /* number of frames in Group of Pictures (min) */
 EXTERN int M; /* distance between I/P frames */
-EXTERN int P; /* intra slice refresh interval */
 EXTERN int nframes; /* total number of frames to encode
 					   Note: this may start enormous and shrink
 					   down later if the input stream length is
@@ -380,6 +383,15 @@ EXTERN int fieldpic; /* use field pictures */
 
 #define READ_CHUNK_SIZE 12
 #define FRAME_BUFFER_SIZE 64
+
+/*
+  How many frames encoding may be concurrently under way.
+  N.b. there is no point setting this greater than M.
+  Additional parallelism can be exposed at a finer grain by
+  parallelising per-macro-block computations.
+ */
+
+#define MAX_WORKER_THREADS 3
 
 /* sequence specific data (sequence header) */
 
@@ -435,7 +447,7 @@ EXTERN int display_horizontal_size, display_vertical_size; /* display size */
 
 
 
-/* picture specific data (currently control by global flags) */
+/* picture specific data (currently controlled by global flags) */
 
 EXTERN int opt_dc_prec;
 EXTERN int opt_prog_frame;
