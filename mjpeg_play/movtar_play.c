@@ -38,6 +38,11 @@ struct jpeg_decompress_struct cinfo;
 
 int debug = 1;
 
+
+/***********************************************************
+ * JPEG HACKING (PLUGIN extensions)                        * 
+ ***********************************************************/
+
 /* definition of srcmanager from memory to I/O with libjpeg */
 typedef struct {
   struct jpeg_source_mgr pub;
@@ -434,8 +439,12 @@ ycc_rgb16_convert_mmx (j_decompress_ptr cinfo,
 
   asm ("emms");
 }
-
 /* end of custom color deconverter */
+
+/********************************************************
+ *          MAIN PROGRAM                                *
+ ********************************************************/
+
 void ComplainAndExit(void)
 {
   fprintf(stderr, "Problem: %s\n", SDL_GetError());
@@ -476,8 +485,22 @@ void initmovtar(char *filename)
   /* start sound */
   //audio_init(0,movtarinfo.sound_stereo,movtarinfo.sound_size,movtarinfo.sound_rate);
   //audio_start();
+  /* Set the audio format */
 
-}
+#if 0 /* The SDL audio support was never completed, since development shifted to the lavtools */
+  wanted.freq = movtarinfo.sound_rate;
+  wanted.format = (movtarinfo.sound_size == 16) ? AUDIO_S16 : AUDIO_S8;
+  wanted.channels = movtarinfo.sound_stereo ? 2 : 1;    /* 1 = mono, 2 = stereo */
+  wanted.samples = 1024;  /* Good low-latency value for callback */
+  wanted.callback = fill_audio;
+  wanted.userdata = NULL;
+
+   /* Open the audio device, forcing the desired format */
+  if ( SDL_OpenAudio(&wanted, NULL) < 0 ) 
+    ComplainAndExit();
+#endif
+}  
+
 
 void inline readnext()
 {
@@ -639,7 +662,7 @@ int main(int argc,char** argv)
   SDL_WM_SetCaption(wintitle, "0000000");  
 
 #if 1
-  /* Draw bands of color on the raw surface, as run indicator */
+  /* Draw bands of color on the raw surface, as run indicator for debugging */
     buffer=(unsigned char *)screen->pixels;
   for ( i=0; i < screen->h; ++i ) 
     {
@@ -655,6 +678,8 @@ int main(int argc,char** argv)
       frame++;
     }
   while((frame < 250) && !movtar_eof(movtarfile) && !SDL_PollEvent(&event));
+
+  SDL_CloseAudio();
 
   return 0;
 }
