@@ -161,7 +161,7 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 	r = 0.0;
 	topvar = sumsqtop-sumtop*sumtop/128;
 	botvar = sumsqbot-sumbot*sumbot/128;
-	if ( !((topvar <= 0) ^ (botvar <= 0)) )
+	if ((topvar>0) && (botvar>0))
 	{
 		d = ((double) topvar) * ((double)botvar);
 		r = (sumbottop-(sumtop*sumbot)/128)/sqrt(d);
