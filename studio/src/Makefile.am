@@ -10,7 +10,7 @@ OBJS= studio.c config.c parseconfig.c gtktvplug.c lavrec_pipe.c \
 	pipes.c gtkenhancedscale.c lavedit_trimming.c gtkfunctions.c \
 	config_encode.c lavedit_effects.c lavencode_mpeg.c
 
-bin_PROGRAMS = studio
+bin_PROGRAMS = studio stv
 
 studio_headers = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
 	mixer.h gtkfunctions.h yuv4mpeg.h
@@ -18,3 +18,8 @@ studio_headers = gtktvplug.h gtkimageplug.h studio.h parseconfig.h \
 studio_SOURCES = ${studio_headers} ${OBJS}
 studio_LDADD = ${X_LIBS} -lXv -L$(top_srcdir)/yuv4mpeg -lyuv4mpeg
 studio_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS} ${GDK_PIXBUF_LIBS}
+
+stv_SOURCES = studio-tv.c gtktvplug.c gtktvplug.h gtkfunctions.c \
+	parseconfig.c
+stv_LDADD = ${X_LIBS} -lXv
+stv_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS}

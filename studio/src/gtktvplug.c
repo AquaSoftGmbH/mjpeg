@@ -123,7 +123,8 @@ int guess_port()
 	{
 		if (strcmp(ai[i].name, "video4linux") == 0)
 		{
-			g_print("Found video4linux-device on port %ld\n", ai[i].base_id);
+			g_print("Found video4linux-device on port %ld\n",
+				ai[i].base_id);
 			return ai[i].base_id;
 		}
 	}
@@ -151,24 +152,40 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
 			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
 			tvplug->brightness = val;
+			tvplug->brightness_min = at[j].min_value;
+			tvplug->brightness_max = at[j].max_value;
 		}
 		else if (strcmp(at[j].name, "XV_CONTRAST") == 0)
 		{
 			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
 			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
 			tvplug->contrast = val;
+			tvplug->contrast_min = at[j].min_value;
+			tvplug->contrast_max = at[j].max_value;
 		}
 		else if (strcmp(at[j].name, "XV_SATURATION") == 0)
 		{
 			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
 			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
 			tvplug->saturation = val;
+			tvplug->saturation_min = at[j].min_value;
+			tvplug->saturation_max = at[j].max_value;
 		}
 		else if (strcmp(at[j].name, "XV_HUE") == 0)
 		{
 			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
 			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
 			tvplug->hue = val;
+			tvplug->hue_min = at[j].min_value;
+			tvplug->hue_max = at[j].max_value;
+		}
+		else if (strcmp(at[j].name, "XV_FREQ") == 0)
+		{
+			attr = XInternAtom(GDK_DISPLAY(), at[j].name, False);
+			XvGetPortAttribute(GDK_DISPLAY(), tvplug->port, attr, &val);
+			tvplug->frequency = val;
+			tvplug->frequency_min = at[j].min_value;
+			tvplug->frequency_max = at[j].max_value;
 		}
 	}
 	if (at)
@@ -203,6 +220,11 @@ void gtk_tvplug_set(GtkWidget *widget, char *what, int value)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_SATURATION", False);
 		tvplug->saturation = value;
+	}
+	else if (strcmp(what, "frequency") == 0)
+	{
+		atom = XInternAtom(GDK_DISPLAY(), "XV_FREQ", False);
+		tvplug->frequency = value;
 	}
 	else
 	{
