@@ -46,9 +46,9 @@
 #include "blend_fields.h"
 #include "transform_block.h"
 
-int BLKthreshold=16*16*12;
+int BLKthreshold=5000;
 
-int search_radius=8;
+int search_radius=24;
 int verbose = 0;
 int fast_mode = 0;
 int field_order = -1;
@@ -143,8 +143,7 @@ struct vector
 	uint32_t sad;
 };
 
-struct vector search_backward_vector(int , int, struct vector topleft , struct vector top, struct vector left);
-struct vector search_forward_vector(int , int , struct vector topleft , struct vector top, struct vector left);
+struct vector search_forward_vector(int , int , struct vector topleft , struct vector top, struct vector left, struct vector co);
 
 /***********************************************************
  * helper-functions                                        *
@@ -363,96 +362,150 @@ main (int argc, char *argv[])
 }
 
 struct vector
-search_forward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left)
+search_forward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left, struct vector co)
 {
+	static int initialized=0;
+	static struct
+	{
+		int x;
+		int y;
+	} search_path[5000];
+	static int cnt=0;
+
 	struct vector v;
-	struct vector median;
+	struct vector mean;
 	int vx,vy;
 	int r=search_radius;
 	uint32_t min,mmin;
 	uint32_t SAD;
 
-	median.x = (top.x + left.x + topleft.x)/3;
-	median.y = (top.y + left.y + topleft.y)/3;
 
-	min  = psad_00( frame20[0]+x+y*width, frame21[0]+x+y*width, width, 16, 0 );
-	if (x>=32 && y>=32)
-		mmin  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
-	else
-		mmin  = 0x00ffffff;
-
-	if(mmin>min)
+	if(!initialized)
 	{
+		for(r=1;r<=search_radius;r++)
+		{
+			for(vy=-32;vy<=32;vy++)
+				for(vx=-32;vx<=32;vx++)
+				{
+					if( (vx*vx+vy*vy) <= (r*r) &&
+						(vx*vx+vy*vy) >  ((r-1)*(r-1)) )
+					{
+						search_path[cnt].x = vx;
+						search_path[cnt].y = vy;
+						cnt++;
+					}
+				}
+		}
+		initialized=1;
+		mjpeg_log (LOG_INFO, "Number of maximum search positions : %i",cnt);
+	}
+
+	mean.x = (top.x + left.x + topleft.x + co.x )/4;
+	mean.y = (top.y + left.y + topleft.y + co.y )/4;
+
+	/* initialize best-match with (0,0)MV SAD */
+	min  = 	psad_00( frame20[0]+x+y*width, frame21[0]+x+y*width, width, 16, 0 );
+	v.x  = 0;
+	v.y  = 0;
+
+	/* If we are in a region were we have predicted MVs check them first */
+	if ( (x>>4)>0 && (y>>4)>0 )
+	{
+#if 1
+		/* check colocated predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+co.x)+(y+co.y)*width, width, 16, 0 );
+		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+x/2+y*width/4, width/2, 8 );
+		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+x/2+y*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = co.x;
+			v.y = co.y;
+		}
+#endif
+#if 1
+		/* check top predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+top.x)+(y+top.y)*width, width, 16, 0 );
+		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
+		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+top.x)/2+(y+top.y)*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = top.x;
+			v.y = top.y;
+		}
+#endif
+#if 1
+		/* check left predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+left.x)+(y+left.y)*width, width, 16, 0 );
+		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
+		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+left.x)/2+(y+left.y)*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = left.x;
+			v.y = left.y;
+		}
+#endif
+#if 1
+		/* check top-left predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+topleft.x)+(y+topleft.y)*width, width, 16, 0 );
+		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
+		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+topleft.x)/2+(y+topleft.y)*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = topleft.x;
+			v.y = topleft.y;
+		}
+#endif
+#if 1
+		/* check mean predictor */
+		SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+mean.x)+(y+mean.y)*width, width, 16, 0 );
+		SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+mean.x)/2+(y+mean.y)*width/4, width/2, 8 );
+		if (SAD<min)
+		{
+			min = SAD;
+			v.x = mean.x;
+			v.y = mean.y;
+		}
+#endif
+	}
+
+	/* if one of the predictors is good, we should be below BLKthreshold, now
+     * if not, do a full search for this block ... shit happens... :)
+     */
+	if(min>BLKthreshold )
+	{
+		min  = psad_00( frame20[0]+x+y*width, frame21[0]+x+y*width, width, 16, 0 );
+		min += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+x/2+y*width/4, width/2, 8 );
+		min += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+x/2+y*width/4, width/2, 8 );
 		v.x = 0;
 		v.y = 0;
-	}
-	else
-	{
-		v.x = median.x;
-		v.y = median.y;
-	}
 
-	if(min>=BLKthreshold && mmin>=BLKthreshold) // only do a full search if predictors are too bad
-	for(vy = -r ; vy <= r ; vy += 2)
-		for(vx = -r ; vx <= r ; vx += 1)
+		if(min>(BLKthreshold))
+		for(r = 0 ; r < cnt ; r++)
 		{
+			vx = search_path[r].x;
+			vy = search_path[r].y;
+
 			SAD  = psad_00( frame20[0]+x+y*width, frame21[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
-			if(SAD<min)
+			SAD += psad_sub22( frame20[1]+x/2+y*width/4, frame21[1]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
+			SAD += psad_sub22( frame20[2]+x/2+y*width/4, frame21[2]+(x+vx)/2+(y+vy)*width/4, width/2, 8 );
+			if((SAD*3)<(min*2))
 			{
 				min   = SAD;
 				v.x   = vx;
 				v.y   = vy;
+
 			}
+			/* abort the search as soon, as we get below the threshold */
+			if(min<(BLKthreshold)) break;
 		}
-
-	v.sad = psad_00( frame20[0]+x+y*width, frame21[0]+(x+v.x)+(y+v.y)*width, width, 16, 0 );
-	return v;
-}
-
-struct vector
-search_backward_vector( int x, int y , struct vector topleft , struct vector top, struct vector left)
-{
-	struct vector v;
-	struct vector median;
-	int vx,vy;
-	int r=search_radius;
-	uint32_t min,mmin;
-	uint32_t SAD;
-
-	median.x = (top.x + left.x + topleft.x)/3;
-	median.y = (top.y + left.y + topleft.y)/3;
-
-	min  = psad_00( frame20[0]+x+y*width, frame31[0]+x+y*width, width, 16, 0 );
-	if (x>=32 && y>=32)
-		mmin  = psad_00( frame20[0]+x+y*width, frame31[0]+(x+median.x)+(y+median.y)*width, width, 16, 0 );
-	else
-		mmin  = 0x00ffffff;
-
-	if(mmin>min)
-	{
-		v.x = 0;
-		v.y = 0;
-	}
-	else
-	{
-		v.x = median.x;
-		v.y = median.y;
 	}
 
-	if(min>=BLKthreshold && mmin>=BLKthreshold) // only do a full search if predictors are too bad
-	for(vy = -r ; vy <= r ; vy += 2)
-		for(vx = -r ; vx <= r ; vx += 1)
-		{
-			SAD  = psad_00( frame20[0]+x+y*width, frame31[0]+(x+vx)+(y+vy)*width, width, 16, 0 );
-			if(SAD<min)
-			{
-				min   = SAD;
-				v.x   = vx;
-				v.y   = vy;
-			}
-		}
-
-	v.sad = psad_00( frame20[0]+x+y*width, frame31[0]+(x+v.x)+(y+v.y)*width, width, 16, 0 );
+	v.sad = min;
 	return v;
 }
 
@@ -460,53 +513,40 @@ void
 motion_compensate_field (void)
 {
 	int x,y;
-	struct vector fv[45][36];
+	static struct vector fv[45][36];
 	struct vector bv[45][36];
+	uint32_t BLKmatch=0;
+	int cnt=0;
 	
 	for(y=0;y<height;y+=16)
 	{
 		for(x=0;x<width;x+=16)
 		{
-			fv[x>>4][y>>4] = search_forward_vector (x,y,fv[(x>>4)-1][(y>>4)-1],fv[x>>4][(y>>4)-1],fv[(x>>4)-1][y>>4]);
-			bv[x>>4][y>>4] = search_backward_vector(x,y,bv[(x>>4)-1][(y>>4)-1],bv[x>>4][(y>>4)-1],bv[(x>>4)-1][y>>4]);
+			fv[x>>4][y>>4] = 
+					search_forward_vector ( x, y,
+											fv[(x>>4)-1][(y>>4)-1],
+											fv[x>>4][(y>>4)-1],
+											fv[(x>>4)-1][y>>4],
+											fv[x>>4][y>>4]);
+			BLKmatch+=fv[x>>4][y>>4].sad;
+			cnt++;
 		}
 	}
+	BLKthreshold += (BLKmatch/cnt);
+	BLKthreshold /= 2;
+	if(BLKthreshold<5000) BLKthreshold=5000;
+
 	for(y=0;y<height;y+=16)
 		for(x=0;x<width;x+=16)
 		{
-			//fv[x>>4][y>>4].x /= 2;
-			//fv[x>>4][y>>4].y /= 2;
-			//bv[x>>4][y>>4].x /= 2;
-			//bv[x>>4][y>>4].y /= 2;
-			//fprintf(stderr,"(%2i,%2i|",fv[x>>4][y>>4].x,fv[x>>4][y>>4].y);
-			//fprintf(stderr,"%2i,%2i)",bv[x>>4][y>>4].x,bv[x>>4][y>>4].y);
-
-	//		if(fv[x>>4][y>>4].sad < BLKthreshold || bv[x>>4][y>>4].sad < BLKthreshold)
 			{
-				if(fv[x>>4][y>>4].sad < bv[x>>4][y>>4].sad)
-				{
-					transform_block_Y  (frame5[0]+x+y*width,
-										frame21[0]+(x+fv[x>>4][y>>4].x)+(y+fv[x>>4][y>>4].y)*width, width );
-					transform_block_UV  (frame5[1]+x/2+y/2*width/2,
-										frame21[1]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
-					transform_block_UV  (frame5[2]+x/2+y/2*width/2,
-										frame21[2]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
-				}
-				else
-				{
-					transform_block_Y  (frame5[0]+x+y*width , frame31[0]+(x+bv[x>>4][y>>4].x)+(y+bv[x>>4][y>>4].y)*width, width );
-					transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame31[1]+(x+bv[x>>4][y>>4].x)/2+(y+bv[x>>4][y>>4].y)/2*width/2, width/2 );
-					transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame31[2]+(x+bv[x>>4][y>>4].x)/2+(y+bv[x>>4][y>>4].y)/2*width/2, width/2 );
-				}
+				transform_block_Y  (frame5[0]+x+y*width,
+									frame21[0]+(x+fv[x>>4][y>>4].x)+(y+fv[x>>4][y>>4].y)*width, width );
+				transform_block_UV  (frame5[1]+x/2+y/2*width/2,
+									frame21[1]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
+				transform_block_UV  (frame5[2]+x/2+y/2*width/2,
+									frame21[2]+(x+fv[x>>4][y>>4].x)/2+(y+fv[x>>4][y>>4].y)/2*width/2, width/2 );
 			}
-#if 0
-			else
-			{
-				transform_block_Y  (frame5[0]+x+y*width , frame20[0]+x+y*width, width );
-				transform_block_UV  (frame5[1]+x/2+y/2*width/2 , frame20[1]+x/2+y/2*width/2, width/2 );
-				transform_block_UV  (frame5[2]+x/2+y/2*width/2 , frame20[2]+x/2+y/2*width/2, width/2 );
-			}
-#endif
 		}
 }
 
