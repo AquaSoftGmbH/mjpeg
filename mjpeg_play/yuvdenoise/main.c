@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
   
   /* setup denoiser's global variables */
   denoiser.radius          = 8;
-  denoiser.threshold       = 8; /* assume medium noise material */
+  denoiser.threshold       = 5; /* assume medium noise material */
   denoiser.pp_threshold    = 4; /* same for postprocessing */
   denoiser.delay           = 3; /* short delay for good regeneration of rapid sequences */
   denoiser.postprocess     = 1;
