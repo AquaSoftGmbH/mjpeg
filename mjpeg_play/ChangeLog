@@ -60,9 +60,16 @@
 	* Unified output logging format and consistent command line flags.
 
 	* Lots of bug fixes.
+
+	* Man pages.
+	
+	* Binary packages.
 	
 CVS log:
 $Log$
+Revision 1.11  2001/05/10 19:52:36  wackston
+Tidyings and fixing up to the 1.4 release.
+
 Revision 1.10  2001/05/06 15:59:15  wackston
 Bug fix for m/c type select in motion.c  also made field M/C use
 chroma info.

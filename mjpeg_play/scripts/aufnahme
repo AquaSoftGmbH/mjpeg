@@ -88,3 +88,4 @@ lavrec -f a -i p -c 2 -a 16 $format -s -r 44100 -l 90 -R l -q $qual -t $zeit $di
 # c = Korrektur fÅr audio und video Sync  t=sekunden
 # f = format ( A und a sind Avi )
 #
+

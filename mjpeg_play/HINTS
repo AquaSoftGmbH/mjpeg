@@ -1,18 +1,18 @@
->>>>>>>>>
->>>>>>>>> This HINTS file is now no longer maintained.  
->>>>>>>>>  A much more useful and well maintained HOWTO can be found in:
->>>>>>>>>
+(0)   If you're just starting run, don't walk to the HOWTO.
+	  There's a text copy mjpeg_howto.txt where you found this file.
+	  Its online at http://sourceforge.net/docman/?group_id=5776.
 
-
-
-(0)  Read the README's.  There's a lot of useful info buried in there...
-	There are specialist README's for mpeg2enc and mplex in the corresponding
-	sub-directories as well as the	general README in the top directory.
+	  If you're interested in the source-code and what's buried there
+	  read the README's.  There's a lot of useful info buried in there...
+	  There are specialist README's for mpeg2enc and mplex in the corresponding
+	  sub-directories as well as the	general README in the top directory.
 
 	The scripts directory contains shell scripts that provide
 	a convenient interface for common tasks.  
 	E.g. lav file (editlist, avi, quicktime, movtar) -> MPEG for disk
 	storage, VCD or SVCD.
+
+	
 
 (1) VCD and SVCDs.
 	VCD's have very specific requirements as to the format of the
@@ -132,35 +132,6 @@
 	bite.  If your video threatens to exceed 2G you'll need to do it in
 	seperate chunks (for now). 
 
-	As a completely seperate issue, mplex will automatically split
-	output into multiple files.  By default it creates files suitable
-	for a blank CD written to in XA mode 2 like a VCD.
-
-	Note that it does *not* generate seperate stand-alone MPEG streams
-	in each file.  This would in involve ensuring each sequence
-	started with sequence headers and recalculating buffers and
-	timestamps.  This feature *will*be added soon though...
-
-	What currently happens is that 2nd 3rd etc files are simply 
-	*continuations* of the 1st.  To play them you need to concatenate
-	them and treat them as a single looong stream. This is exactly the
-	same (nasty) approach used on DVD's with their 1G-byte "VOB" files.
-
-	To allow convenient and efficient storage I burn the continuation files
-	into VCD format disks using a slightly hacked version of vcdburn
-	where the sanity checking on the stream being burned can be turned off.
-	The contents of the resulting VCD can then be later read and joined
-	to its predecessors using the "readvcd" utility. Actually, when I
-	use my dxr2 there's no need to concatenate as it simply plays each
-	file in sequence (if they have suitable names).
-
-	Anyway, apologies for this deficiency.  I hope to very soon put a
-	quick and dirty hack into mplex that (for streams that don't
-	change encoding parameters) produces proper stand-alone mpeg
-	streams in each file.  In the interim the other solution is to
-	encode only suitably sized chunks to start with.  The "lav2mpeg"
-	script is already set-up to allow multiple machines (or processes)
-	to work on a set of encoding jobs simultaneously.
 
 
 10)	Interoperability.
@@ -179,7 +150,7 @@
 	xine
 	oms
 	dvdview
-	MS Media player versino 6 (anyone like to test version 7).
+	MS Media player versino 6 (anyone like to test version 7?).
 
 	Obviously, there are some limitations. MPEG-1 players won't play MPEG-2!
 

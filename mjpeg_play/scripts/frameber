@@ -60,3 +60,4 @@ echo -e "\n61870 Frames passen auf die 700MB-CD, 825 MB, 2475 Sekunden\n"
 echo -e "$tot Frames sind bei 2500 Kbit/s ca. $totM MB  $Sek Sek  ->  $Min Min\n"
 # English: echo -e "61870 Frames will fill a 700MB-CD   825 MB  2475 sec  \n"
 # English: echo -e "$tot Frames at 2500 Kbit/s about $totM MB  $Sek sec  ->  $Min min"
+
