@@ -42,24 +42,9 @@
 
 #define min(a,b) ((a) < (b) ? (a) : (b))
 
-enum {
-IMAGE,
-TEXT
-};
-
-enum {
-STUDIO_TRANSITION_BLEND = 0,
-STUDIO_TRANSITION_WIPE_L2R,
-STUDIO_TRANSITION_WIPE_R2L,
-STUDIO_TRANSITION_WIPE_T2B,
-STUDIO_TRANSITION_WIPE_B2T,
-STUDIO_TRANSITION_OVERLAY_ENLARGE,
-STUDIO_TRANSITION_OVERLAY_ENSMALL
-};
-
 /* structs for the various effect utilities here */
 struct scene_transition_options {
-	int type;		/* the name of the effect used */
+	GtkTransitionType type;	/* the name of the effect used */
 	int length;		/* length of the scene transition */
 	int value_start;	/* beginning value for transition (blend) */
 	int value_end;		/* end value for transition (blend) */
@@ -96,9 +81,9 @@ struct image_overlay_options {
 	GdkPixbuf *video_image;	/* First frame of the scene */
 	GdkPixbuf *image;	/* the _original_ gdk-pixbuf of the image (unscaled!) */
 	int opacity;		/* percentage that the image is visible (0-100%) */
-	int type;		/* TEXT or IMAGE */
-	char *font;		/* in case of TEXT, the font to be used */
-	gdouble colors[3];	/* in case of TEXT, the color to be used for the font */
+	GtkEffectType type;	/* GTK_EFFECT_TEXT or GTK_EFFECT_IMAGE */
+	char *font;		/* in case of GTK_EFFECT_TEXT, the font to be used */
+	gdouble colors[3];	/* in case of GTK_EFFECT_TEXT, the color to be used for the font */
 
 	GtkWidget *fs;		/* stupid $%@$%@# needs this object */
 	GtkObject *adj[2];	/* stupid $$ global var for length/offset slider */
@@ -460,7 +445,7 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 	}
 
 	fprintf(fd, "LAV Pipe List\n");
-	fprintf(fd, "%s\n", pal_or_ntsc=='p'?"PAL":"NTSC");
+	fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
 	fprintf(fd, "2\n");
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene1_file);
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene2_file);
@@ -485,30 +470,30 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 		/* here, enter the options for the transition!!  TODO */
 		switch (options->type)
 		{
-			case STUDIO_TRANSITION_BLEND:
+			case GTK_TRANSITION_BLEND:
 				fprintf(fd, "blend.flt -o %d -O %d",
 					options->value_start, options->value_end);
 				break;
-			case STUDIO_TRANSITION_WIPE_R2L:
-			case STUDIO_TRANSITION_WIPE_L2R:
-			case STUDIO_TRANSITION_WIPE_T2B:
-			case STUDIO_TRANSITION_WIPE_B2T:
-				if (options->type == STUDIO_TRANSITION_WIPE_R2L)
+			case GTK_TRANSITION_WIPE_RIGHT_TO_LEFT:
+			case GTK_TRANSITION_WIPE_LEFT_TO_RIGHT:
+			case GTK_TRANSITION_WIPE_TOP_TO_BOTTOM:
+			case GTK_TRANSITION_WIPE_BOTTOM_TO_TOP:
+				if (options->type == GTK_TRANSITION_WIPE_RIGHT_TO_LEFT)
 					temp_int = 2;
-				if (options->type == STUDIO_TRANSITION_WIPE_L2R)
+				if (options->type == GTK_TRANSITION_WIPE_LEFT_TO_RIGHT)
 					temp_int = 1;
-				if (options->type == STUDIO_TRANSITION_WIPE_T2B)
+				if (options->type == GTK_TRANSITION_WIPE_TOP_TO_BOTTOM)
 					temp_int = 3;
-				if (options->type == STUDIO_TRANSITION_WIPE_B2T)
+				if (options->type == GTK_TRANSITION_WIPE_BOTTOM_TO_TOP)
 					temp_int = 4;
 				fprintf(fd, "wipe.flt -d %d -n %d -r %d",
 					temp_int, options->num_rows,
 					options->reposition_second*2+options->reposition_first);
 				break;
-			case STUDIO_TRANSITION_OVERLAY_ENLARGE:
-			case STUDIO_TRANSITION_OVERLAY_ENSMALL:
+			case GTK_TRANSITION_OVERLAY_ENLARGE:
+			case GTK_TRANSITION_OVERLAY_ENSMALL:
 				fprintf(fd, "overlay.flt %s%s-p %d,%d",
-					options->type==STUDIO_TRANSITION_OVERLAY_ENSMALL?"-i ":"",
+					options->type==GTK_TRANSITION_OVERLAY_ENSMALL?"-i ":"",
 					options->scaling?"-s ":"",
 					options->orig_pos_x, options->orig_pos_y);
 				break;
@@ -629,39 +614,39 @@ void scene_transition_type_selected(GtkWidget *widget, gpointer data)
 
 	what = gtk_entry_get_text(GTK_ENTRY(widget));
 	if (strcmp(what,"Blend")==0)
-		type = STUDIO_TRANSITION_BLEND;
+		type = GTK_TRANSITION_BLEND;
 	else if (strcmp(what,"Left-to-Right Wipe")==0)
-		type = STUDIO_TRANSITION_WIPE_L2R;
+		type = GTK_TRANSITION_WIPE_LEFT_TO_RIGHT;
 	else if (strcmp(what,"Right-to-Left Wipe")==0)
-		type = STUDIO_TRANSITION_WIPE_R2L;
+		type = GTK_TRANSITION_WIPE_RIGHT_TO_LEFT;
 	else if (strcmp(what,"Top-to-Bottom Wipe")==0)
-		type = STUDIO_TRANSITION_WIPE_T2B;
+		type = GTK_TRANSITION_WIPE_TOP_TO_BOTTOM;
 	else if (strcmp(what,"Bottom-to-Top Wipe")==0)
-		type = STUDIO_TRANSITION_WIPE_B2T;
+		type = GTK_TRANSITION_WIPE_BOTTOM_TO_TOP;
 	else if (strcmp(what,"Covering Overlay")==0)
-		type = STUDIO_TRANSITION_OVERLAY_ENLARGE;
+		type = GTK_TRANSITION_OVERLAY_ENLARGE;
 	else if (strcmp(what,"Disappearing Overlay")==0)
-		type = STUDIO_TRANSITION_OVERLAY_ENSMALL;
+		type = GTK_TRANSITION_OVERLAY_ENSMALL;
 	else return;
 
 	options->type = type;
-	if (type == STUDIO_TRANSITION_BLEND)
+	if (type == GTK_TRANSITION_BLEND)
 	{
 		gtk_widget_hide(transition_selection_box[1]);
 		gtk_widget_hide(transition_selection_box[2]);
 		gtk_widget_show(transition_selection_box[0]);
 	}
-	if (type == STUDIO_TRANSITION_WIPE_R2L || 
-		type == STUDIO_TRANSITION_WIPE_L2R ||
-		type == STUDIO_TRANSITION_WIPE_T2B ||
-		type == STUDIO_TRANSITION_WIPE_B2T)
+	if (type == GTK_TRANSITION_WIPE_RIGHT_TO_LEFT || 
+		type == GTK_TRANSITION_WIPE_LEFT_TO_RIGHT ||
+		type == GTK_TRANSITION_WIPE_TOP_TO_BOTTOM ||
+		type == GTK_TRANSITION_WIPE_BOTTOM_TO_TOP)
 	{
 		gtk_widget_hide(transition_selection_box[0]);
 		gtk_widget_hide(transition_selection_box[2]);
 		gtk_widget_show(transition_selection_box[1]);
 	}
-	else if (type == STUDIO_TRANSITION_OVERLAY_ENLARGE ||
-		type == STUDIO_TRANSITION_OVERLAY_ENSMALL)
+	else if (type == GTK_TRANSITION_OVERLAY_ENLARGE ||
+		type == GTK_TRANSITION_OVERLAY_ENSMALL)
 	{
 		gtk_widget_hide(transition_selection_box[1]);
 		gtk_widget_hide(transition_selection_box[0]);
@@ -675,6 +660,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 
 	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *hseparator, *button, *listw;
 	GList *list = NULL;
+	GtkScene *scene1, *scene2;
 	GtkWidget *vbox3, *scrollbar, *label, *listbox, *textbox;
 	GtkObject *adj;
 	char temp[256];
@@ -724,11 +710,13 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
 	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
 	gtk_widget_show(label);
+	scene1 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene);
+	scene2 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene + 1);
 	adj = gtk_adjustment_new(options->length, 0,
-		min(GTK_IMAGEPLUG(image[current_image])->stopframe -
-		GTK_IMAGEPLUG(image[current_image])->startframe + 1,
-		GTK_IMAGEPLUG(image[current_image+1])->stopframe -
-		GTK_IMAGEPLUG(image[current_image+1])->startframe + 1), 1, 5, 0);
+		min(scene1->view_end - scene1->view_start + 1,
+		scene2->view_end - scene2->view_start + 1), 1, 5, 0);
 	gtk_signal_connect (GTK_OBJECT (adj), "value_changed",
 		GTK_SIGNAL_FUNC (scene_transition_adj_changed), &(options->length));
 	scrollbar = gtk_hscale_new(GTK_ADJUSTMENT (adj));
@@ -789,7 +777,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_widget_show(listbox);
 	gtk_box_pack_start (GTK_BOX (vbox2),
 		transition_selection_box[0], TRUE, FALSE, 0);
-	if (options->type == STUDIO_TRANSITION_BLEND)
+	if (options->type == GTK_TRANSITION_BLEND)
 		gtk_widget_show(transition_selection_box[0]);
 
 
@@ -845,10 +833,10 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_widget_show(listbox);
 	gtk_box_pack_start (GTK_BOX (vbox2),
 		transition_selection_box[1], TRUE, FALSE, 0);
-	if (options->type == STUDIO_TRANSITION_WIPE_R2L ||
-		options->type == STUDIO_TRANSITION_WIPE_L2R ||
-		options->type == STUDIO_TRANSITION_WIPE_T2B ||
-		options->type == STUDIO_TRANSITION_WIPE_B2T)
+	if (options->type == GTK_TRANSITION_WIPE_RIGHT_TO_LEFT ||
+		options->type == GTK_TRANSITION_WIPE_LEFT_TO_RIGHT ||
+		options->type == GTK_TRANSITION_WIPE_TOP_TO_BOTTOM ||
+		options->type == GTK_TRANSITION_WIPE_BOTTOM_TO_TOP)
 		gtk_widget_show(transition_selection_box[1]);
 
 	/* OVERLAY */
@@ -911,8 +899,8 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_widget_show(listbox);
 	gtk_box_pack_start (GTK_BOX (vbox2),
 		transition_selection_box[2], TRUE, FALSE, 0);
-	if (options->type == STUDIO_TRANSITION_OVERLAY_ENLARGE ||
-		options->type == STUDIO_TRANSITION_OVERLAY_ENSMALL)
+	if (options->type == GTK_TRANSITION_OVERLAY_ENLARGE ||
+		options->type == GTK_TRANSITION_OVERLAY_ENSMALL)
 		gtk_widget_show(transition_selection_box[2]);
 
 	/***********************************/
@@ -962,17 +950,18 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 {
 	struct scene_transition_options *options;
+	GtkScene *scene1, *scene2;
 
 	/* Create a scene transition using lavpipe and transist.flt */
 
-	if (current_image < 0 || current_image >= number_of_files)
+	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
 			"Select an image for the scene transition", NULL);
 		return;
 	}
 
-	if (current_image+1 == number_of_files)
+	if (GTK_SCENELIST(scenelist)->selected_scene+1 == g_list_length(GTK_SCENELIST(scenelist)->scene))
 	{
 		gtk_show_text_window(STUDIO_WARNING,
 			"Don't select the last scene for scene transitions",
@@ -984,7 +973,7 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	options = (struct scene_transition_options*)malloc(sizeof(struct scene_transition_options));
 
 	/* let's start by setting some defaults */
-	options->type = STUDIO_TRANSITION_BLEND;
+	options->type = GTK_TRANSITION_BLEND;
 	options->value_start = 0;
 	options->value_end = 255;
 	options->num_rows = 1;
@@ -993,22 +982,24 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	options->orig_pos_x = 0;
 	options->orig_pos_y = 0;
 	options->scaling = 0;
-	strcpy(options->scene1_file, GTK_IMAGEPLUG(image[current_image])->video_filename);
-	options->scene1_start = GTK_IMAGEPLUG(image[current_image])->startframe;
-	options->scene1_stop = GTK_IMAGEPLUG(image[current_image])->stopframe;
-	strcpy(options->scene2_file, GTK_IMAGEPLUG(image[current_image+1])->video_filename);
-	options->scene2_start = GTK_IMAGEPLUG(image[current_image+1])->startframe;
-	options->scene2_stop = GTK_IMAGEPLUG(image[current_image+1])->stopframe;
+	strcpy(options->scene1_file, gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene));
+	scene1 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene);
+	options->scene1_start = scene1->view_start;
+	options->scene1_stop = scene1->view_end;
+	strcpy(options->scene2_file, gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene + 1));
+	scene2 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene + 1);
+	options->scene2_start = scene2->view_start;
+	options->scene2_stop = scene2->view_end;
 
-	if (min(GTK_IMAGEPLUG(image[current_image])->stopframe -
-		GTK_IMAGEPLUG(image[current_image])->startframe + 1,
-		GTK_IMAGEPLUG(image[current_image+1])->stopframe -
-		GTK_IMAGEPLUG(image[current_image+1])->startframe + 1) < 25)
+	if (min(scene1->view_end - scene1->view_start + 1,
+		scene2->view_end - scene2->view_start + 1) < 25)
 	{
-		options->length = min(GTK_IMAGEPLUG(image[current_image])->stopframe -
-			GTK_IMAGEPLUG(image[current_image])->startframe + 1,
-			GTK_IMAGEPLUG(image[current_image+1])->stopframe -
-			GTK_IMAGEPLUG(image[current_image+1])->startframe + 1);
+		options->length = min(scene1->view_end - scene1->view_start + 1,
+			scene2->view_end - scene2->view_start + 1);
 	}
 	else
 	{
@@ -1306,7 +1297,7 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	}
 	/* unref the image only if it was recreated */
 	if (options->image_width != gdk_pixbuf_get_width(options->image) ||
-		options->image_height != gdk_pixbuf_get_height(options->image) || options->type == TEXT)
+		options->image_height != gdk_pixbuf_get_height(options->image) || options->type == GTK_EFFECT_TEXT)
 		gdk_pixbuf_unref(temp_image);
 
 	fd = fopen(file, "w");
@@ -1318,15 +1309,15 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	}
 
 	fprintf(fd, "LAV Pipe List\n");
-	fprintf(fd, "%s\n", pal_or_ntsc=='p'?"PAL":"NTSC");
+	fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
 	fprintf(fd, "3\n");
 	fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene_file);
 	fprintf(fd, "foreveryuv %d %d %d %s\n",
 		options->movie_width, options->movie_height,
-		pal_or_ntsc=='p'?3:4, yuv_file);
+		GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_file);
 	fprintf(fd, "foreveryuv %d %d %d %s\n",
 		options->movie_width, options->movie_height,
-		pal_or_ntsc=='p'?3:4, yuv_blend_file);
+		GTK_SCENELIST(scenelist)->norm=='p'?3:4, yuv_blend_file);
 
 	if (options->offset > 0)
 	{
@@ -1369,9 +1360,11 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 			return;
 		}
 		fprintf(fd, "LAV Edit List\n");
-		fprintf(fd, "%s\n", pal_or_ntsc=='p'?"PAL":"NTSC");
+		fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
 		fprintf(fd, "1\n");
-		fprintf(fd, "%s\n", GTK_IMAGEPLUG(image[current_image])->video_filename);
+		fprintf(fd, "%s\n",
+			gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+				GTK_SCENELIST(scenelist)->selected_scene));
 		fprintf(fd, "0 %d %d\n", options->scene_start, options->scene_end);
 		fclose(fd);
 	}
@@ -1398,7 +1391,7 @@ void overlay_render_file_selected(GtkWidget *w, gpointer data)
 
 	create_progress_window(options->scene_end - options->scene_start + 1);
 
-	if (options->type == TEXT)
+	if (options->type == GTK_EFFECT_TEXT)
 		play_text_overlay(NULL, (gpointer)options);
 	else
 		play_image_overlay(NULL, (gpointer)options);
@@ -1626,7 +1619,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	GtkObject *adj;
 	int i;
 
-	if (options->type != IMAGE && options->type != TEXT)
+	if (options->type != GTK_EFFECT_IMAGE && options->type != GTK_EFFECT_TEXT)
 	{
 		char temp[256];
 		sprintf(temp, "Unknown overlay type (options->type = %d)", options->type);
@@ -1644,7 +1637,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	gtk_container_set_border_width (GTK_CONTAINER (window), 20);
 
 	hbox = gtk_hbox_new(FALSE, 10);
-	if (options->type == IMAGE)
+	if (options->type == GTK_EFFECT_IMAGE)
 		vbox2 = effects_tv((gpointer)options,
 			GTK_SIGNAL_FUNC(play_image_overlay));
 	else
@@ -1665,9 +1658,9 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	vbox3 = gtk_vbox_new(FALSE, 5);
 
 	label = NULL;
-	if (options->type == IMAGE)
+	if (options->type == GTK_EFFECT_IMAGE)
 		label = gtk_label_new("Image file: ");
-	else if (options->type == TEXT)
+	else if (options->type == GTK_EFFECT_TEXT)
 		label = gtk_label_new("Text, Font and Color: ");
 	gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
 	gtk_box_pack_start (GTK_BOX (vbox3), label, TRUE, FALSE, 0);
@@ -1676,11 +1669,11 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 	hbox2 = gtk_hbox_new(FALSE, 5);
 	options->image_file_textbox = gtk_entry_new();
 	gtk_box_pack_start (GTK_BOX (hbox2), options->image_file_textbox, TRUE, TRUE, 0);
-	if (options->type == TEXT)
+	if (options->type == GTK_EFFECT_TEXT)
 		gtk_signal_connect(GTK_OBJECT(options->image_file_textbox), "changed",
 			GTK_SIGNAL_FUNC(text_overlay_textbox_changed), (gpointer)options);
 	gtk_widget_show(options->image_file_textbox);
-	if (options->type == IMAGE)
+	if (options->type == GTK_EFFECT_IMAGE)
 	{
 		button = gtk_button_new();
 		pixmap_widget = gtk_widget_from_xpm_data(file_widget_open_xpm);
@@ -1690,7 +1683,7 @@ void effects_image_overlay_show_window(struct image_overlay_options *options)
 		gtk_signal_connect(GTK_OBJECT(button), "clicked",
 			GTK_SIGNAL_FUNC(select_image_overlay_file), (gpointer)options);
 	}
-	else if (options->type == TEXT)
+	else if (options->type == GTK_EFFECT_TEXT)
 	{
 		gtk_box_pack_start (GTK_BOX (vbox3), hbox2, TRUE, FALSE, 0);
 		gtk_widget_show(hbox2);
@@ -1858,8 +1851,9 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 	struct image_overlay_options *options;
 	char file[256];
 	char command[256];
+	GtkScene *scene;
 
-	if (current_image < 0 || current_image >= number_of_files)
+	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_WARNING,
 			"Select a scene for the image overlay", NULL);
@@ -1868,9 +1862,12 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 
 	options = (struct image_overlay_options*)malloc(sizeof(struct image_overlay_options));
 
-	sprintf(options->scene_file, GTK_IMAGEPLUG(image[current_image])->video_filename);
-	options->scene_start = GTK_IMAGEPLUG(image[current_image])->startframe;
-	options->scene_end = GTK_IMAGEPLUG(image[current_image])->stopframe;
+	sprintf(options->scene_file, gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene));
+	scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene);
+	options->scene_start = scene->view_start;
+	options->scene_end = scene->view_end;
 	options->length = options->scene_end - options->scene_start + 1;
 	options->offset = 0;
 	options->image_x = 0; /* top left position */
@@ -1896,11 +1893,11 @@ void lavedit_effects_create_overlay(GtkWidget *widget, char *data)
 
 	if (strcmp(data, "image")==0)
 	{
-		options->type = IMAGE;
+		options->type = GTK_EFFECT_IMAGE;
 	}
 	else if (strcmp(data, "text")==0)
 	{
-		options->type = TEXT;
+		options->type = GTK_EFFECT_TEXT;
 	}
 
 	effects_image_overlay_show_window(options);

@@ -1,21 +1,17 @@
 #ifndef __LAVEDIT_FOR_STUDIO__
 #define __LAVEDIT_FOR_STUDIO__
 
-#include "gtkimageplug.h"
+#include "gtkscenelist.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
-int number_of_files;
-GtkWidget *image[MAX_NUM_SCENES];
-int current_image;
-char pal_or_ntsc;
+GtkWidget *scenelist;
 int adjustment_b_changed;
 
 /* lavedit_trimming.c */
 void open_frame_edit_window(void);
-void set_background_color(GtkWidget *widget, int r, int g, int b);
 void create_lavplay_trimming_child(void);
 
 /* lavedit.c */

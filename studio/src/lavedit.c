@@ -32,8 +32,8 @@
 #include "pipes.h"
 #include "lavedit.h"
 #include "gtkfunctions.h"
+#include "gtkimageplug.h"
 
-#include "film.xpm"
 #include "file_new.xpm"
 #include "file_save.xpm"
 #include "file_open.xpm"
@@ -65,19 +65,16 @@ GtkWidget *add_movie_images[NUM_ADD_MOVIE_SCENES];
 int add_movie_scene_page, add_movie_scene_selected_scene = 0;
 int scene_detection_reply = 0;
 
-int movie_number[MAX_NUM_SCENES], number_of_movies;
 int current_position, total_frames_edit;
 GtkObject *lavedit_slider_adj;
 GtkWidget *lavedit_tv, *hbox_scrollwindow;
 GtkWidget *label_lavedit_time, *label_lavedit_frames;
 char editlist_savefile[256];
 int wait_for_add_frame_confirmation = 0;
-char movie_array[MAX_NUM_SCENES][256];
 
 /* Forward declarations */
 void lavplay_edit_stopped(void);
 char *check_editlist(char *editlist);
-static void display_max_num_scenes_warning(void);
 GtkWidget *create_tv_stuff(GtkWidget *window);
 void set_lavplay_edit_log(int norm, int cur_pos, int cur_speed);
 void quit_lavplay_edit_with_error(char *msg);
@@ -100,9 +97,6 @@ void image_clicked(GtkWidget *widget, GdkEventButton *event, gpointer data);
 void lavplay_edit_slider_value_changed(GtkAdjustment *adj);
 void command_to_lavplay_edit(GtkWidget *widget, char *data);
 void add_scene_to_editlist( GtkWidget *widget, gpointer data );
-#if 0
-void add_new_movie_scene( GtkWidget *w, GtkFileSelection *fs );
-#endif
 void play_edit_file(GtkWidget *widget, gpointer data);
 void split_scene(GtkWidget *widget, gpointer data);
 void delete_scene(GtkWidget *widget, gpointer data);
@@ -186,31 +180,12 @@ char *check_editlist(char *editlist)
 	return editlist;
 }
 
-/* displays a warning that we're passing MAX_NUM_SCENES */
-static void display_max_num_scenes_warning()
-{
-	char text[512];
-
-	sprintf(text, "Warning: you were just trying to add a new scene\n"
-		"to your scenelist, but you've already passed\n"
-		"the maximal number of scenes that Linux Video\n"
-		"Studio was compiled with (%d).\n\n"
-		"Please recompile and use --with-max-num-scenes\n"
-		"during configuration to change this.", MAX_NUM_SCENES);
-
-	gtk_show_text_window(STUDIO_WARNING, text, NULL);
-}
-
 GtkWidget *create_tv_stuff(GtkWidget *window)
 {
 	GtkWidget *vbox2, *hbox3, *pixmap_widget, *scrollbar, *button;
-	/*GdkPixmap *pixmap;
-	GdkBitmap *mask;
-	GtkStyle *style;*/
 	GtkTooltips *tooltip;
 
 	tooltip = gtk_tooltips_new();
-/*	style = gtk_widget_get_style(window);*/
 
 	vbox2 = gtk_vbox_new(FALSE,0);
 
@@ -232,9 +207,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	hbox3 = gtk_hbox_new(TRUE, 5);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_fast_i_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_i_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "Play Fast Backwards", NULL);
@@ -246,9 +218,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_play_i_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_play_i_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "Play Backwards", NULL);
@@ -260,9 +229,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_step_i_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_step_i_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "One Frame Backwards", NULL);
@@ -274,9 +240,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_pause_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_pause_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "Pause", NULL);
@@ -288,9 +251,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_step_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_step_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "One Frame Forward", NULL);
@@ -302,9 +262,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_play_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_play_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "Play Forward", NULL);
@@ -316,9 +273,6 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 	gtk_widget_show(button);
 
 	button = gtk_button_new();
-/*	pixmap = gdk_pixmap_create_from_xpm_d( window->window, &mask,
-		&style->bg[GTK_STATE_NORMAL],(gchar **)editor_fast_xpm );
-	pixmap_widget = gtk_pixmap_new(pixmap, mask);*/
 	pixmap_widget = gtk_widget_from_xpm_data(editor_fast_xpm);
 	gtk_widget_show(pixmap_widget);
 	gtk_tooltips_set_tip(tooltip, button, "Play Fast Forward", NULL);
@@ -355,6 +309,7 @@ void set_lavplay_edit_log(int norm, int cur_pos, int cur_speed)
 	int i;
 	int f, h, m, s;
 	char temp[256];
+	GtkScene *scene;
 
 	s = cur_pos/(norm=='p'?25:30);
 	f = cur_pos%(norm=='p'?25:30);
@@ -376,31 +331,19 @@ void set_lavplay_edit_log(int norm, int cur_pos, int cur_speed)
 	sprintf(temp, "%2d:%2.2d:%2.2d:%2.2d",h,m,s,f); 
 	gtk_label_set_text(GTK_LABEL(label_lavedit_time), temp);
 
-	for (i=0;i<number_of_files;i++)
+	for (i=0;i<g_list_length(GTK_SCENELIST(scenelist)->scene);i++)
 	{
-		if (!image[i])
+		scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist), i);
+		if (cur_pos >= scene->start_total &&
+			cur_pos < scene->start_total + scene->view_end - scene->view_start)
 		{
-			printf("***WARNING: number_of_files was not set correctly\n");
-			number_of_files = i-1;
-			break;
-		}
-
-		if (cur_pos >= GTK_IMAGEPLUG(image[i])->start_total &&
-			cur_pos <= GTK_IMAGEPLUG(image[i])->start_total +
-			GTK_IMAGEPLUG(image[i])->stopframe -
-			GTK_IMAGEPLUG(image[i])->startframe)
-		{
-			if (i != current_image)
+			if (GTK_SCENELIST(scenelist)->selected_scene != i)
 			{
-				if (current_image >=0 && current_image < number_of_files)
-				{
-					GTK_IMAGEPLUG(image[current_image])->selection = 0;
-					gtk_imageplug_draw(image[current_image]);
-				}
-				current_image = i;
-				GTK_IMAGEPLUG(image[current_image])->selection = 1;
-				gtk_imageplug_draw(image[current_image]);
+				GTK_SCENELIST(scenelist)->selected_scene = i;
+				gtk_scenelist_draw(scenelist);
 			}
+				//gtk_scenelist_select(GTK_SCENELIST(scenelist), i);
+			break;
 		}
 	}
 }
@@ -416,58 +359,7 @@ void process_lavplay_edit_input(char *msg)
 {
 	char norm;
 	int cur_pos, cur_speed;
-#if 0
-	/* TODO: remove once the add-new-movie-from-scene works */
-	if(strncmp(msg, "--DEBUG: ---", 12) == 0 && wait_for_add_frame_confirmation)
-	{
-		int a,b,i,diff;
-		char filename_img_tmp[256], command[256];
-		char temp[256];
-		GdkPixbuf *temp2;
 
-		sscanf(msg+13,"Added frames %d - %d from movie %s",&a,&b,temp);
-		GTK_IMAGEPLUG(image[current_image+1])->startframe = a;
-		GTK_IMAGEPLUG(image[current_image+1])->stopframe = b;
-		GTK_IMAGEPLUG(image[current_image+1])->startscene = a;
-		GTK_IMAGEPLUG(image[current_image+1])->stopscene = b;
-		if (current_image < number_of_files-2)
-		{
-			diff = b-a+1;
-			for (i=current_image+2;i<number_of_files;i++)
-			{
-				GTK_IMAGEPLUG(image[i])->start_total += diff;
-			}
-		}
-		wait_for_add_frame_confirmation = 0;
-
-		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg",
-			getenv("HOME"),number_of_files);
-		sprintf(command, "%s -o %s -f i %s -i %d%s",
-			LAVTRANS_LOCATION, filename_img_tmp, temp, a,
-			verbose?"":" >> /dev/null 2>&1");
-		system(command);
-		temp2 = gdk_pixbuf_new_from_file (filename_img_tmp);
-		unlink(filename_img_tmp);
-
-		GTK_IMAGEPLUG(image[current_image+1])->picture =
-			gdk_pixbuf_scale_simple(temp2,
-			GTK_IMAGEPLUG(image[current_image])->width,
-			GTK_IMAGEPLUG(image[current_image])->height,
-			GDK_INTERP_NEAREST);
-
-		if (current_image>=0)
-		{
-			GTK_IMAGEPLUG(image[current_image])->selection = 0;
-			gtk_imageplug_draw(image[current_image]);
-		}
-		current_image++;
-		GTK_IMAGEPLUG(image[current_image])->selection = 1;
-		gtk_imageplug_draw(image[current_image]);
-
-		save_eli_temp_file();
-		if (verbose) printf("Editlist updated!\n");
-	}
-#endif
 	if(msg[0]=='@')
 	{
 		sscanf(msg+1,"%c%d/%d/%d",&norm,&cur_pos,&total_frames_edit,&cur_speed);
@@ -480,8 +372,6 @@ void process_lavplay_edit_input(char *msg)
 		/* Error handling */
 		quit_lavplay_edit_with_error(msg+9);
 	}
-	else if (strncmp(msg, "--DEBUG:", 8)==0)
-		return;
 }
 
 void quit_lavplay_edit()
@@ -541,8 +431,6 @@ void file_ok_sel_open( GtkWidget *w, GtkFileSelection *fs )
 	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
 	if (verbose) printf("(Open) File: %s\n", file);
 	open_eli_file(file);
-
-	//create_lavplay_edit_child();
 }
 
 void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
@@ -582,9 +470,6 @@ void file_ok_sel_add_scene_to_glist( GtkWidget *w, GtkFileSelection *fs )
 	GList *temp = NULL;
 	int i;
 
-	/* we should check whether it's an editlist here.
-	 * if not, we should offer scene detection
-	 */
 	file = check_editlist(gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
 	if (file == NULL) return; /* not an editlist/movie */
 
@@ -690,9 +575,9 @@ int open_add_movie_scene_editlist()
 	if (NULL != fgets(temp_entry,255,fp))
 	{
 		if (strcmp(temp_entry, "NTSC\n") == 0)
-			pal_or_ntsc = 'n';
+			GTK_SCENELIST(scenelist)->norm = 'n';
 		else
-			pal_or_ntsc = 'p';
+			GTK_SCENELIST(scenelist)->norm = 'p';
 	}
 	if (NULL != fgets(temp_entry,255,fp))
 	{
@@ -805,139 +690,33 @@ void set_add_scene_movie_selection(GtkWidget *widget, gpointer data)
 void add_scene_to_editlist(GtkWidget *widget, gpointer data)
 {
 	/* a scene has been selected to be added to the editlist, do it! */
-	char temp[256], file_jpg[256];
-	int i, diff;
-	GdkPixbuf *temp_buf;
+	char temp[256];
 	GtkImagePlug *im = GTK_IMAGEPLUG(add_movie_images[add_movie_scene_selected_scene]);
-
-	if (number_of_files >= MAX_NUM_SCENES)
-	{
-		display_max_num_scenes_warning();
-		return;
-	}
 
 	/* if it's data-less */
 	if (im->picture == NULL)
 		return;
 
+	/* tell lavplay */
 	sprintf(temp, "ea %s %d %d %d",
 		im->video_filename,
 		im->startframe,
 		im->stopframe,
-		current_image == -1 ? 0 : GTK_IMAGEPLUG(image[current_image])->stopframe+1); 
+		GTK_SCENELIST(scenelist)->selected_scene==
+			g_list_length(GTK_SCENELIST(scenelist)->scene)-1?
+			0 :
+			gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+				GTK_SCENELIST(scenelist)->selected_scene)->start_total); 
 	command_to_lavplay_edit(NULL,temp);
 
-	/* Move images one step further to make space for the new one */
-	if (current_image < number_of_files-1 || number_of_files == 0)
-	{
-		if (number_of_files > 0)
-		{
-			diff = im->stopframe - im->startframe + 1;
+	/* tell the scenelist */
+	gtk_scenelist_edit_add(GTK_SCENELIST(scenelist),
+		im->video_filename, im->startframe, im->stopframe,
+		im->startscene, im->stopscene,
+		GTK_SCENELIST(scenelist)->selected_scene + 1);
+	gtk_scenelist_select(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene + 1);
 
-			for (i=number_of_files;i>current_image+1;i--)
-			{
-				if (i == number_of_files)
-				{
-					image[i] = gtk_imageplug_new(
-						GTK_IMAGEPLUG(image[i-1])->picture,
-						GTK_IMAGEPLUG(image[i-1])->video_filename,
-						GTK_IMAGEPLUG(image[i-1])->startscene,
-						GTK_IMAGEPLUG(image[i-1])->stopscene,
-						GTK_IMAGEPLUG(image[i-1])->startframe,
-						GTK_IMAGEPLUG(image[i-1])->stopframe,
-						GTK_IMAGEPLUG(image[i-1])->start_total+diff,
-						GTK_IMAGEPLUG(image[i-1])->background, i);
-					gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-						image[i], FALSE, FALSE, 0);
-					gtk_signal_connect(GTK_OBJECT(image[i]),
-						"button_press_event",
-						GTK_SIGNAL_FUNC(image_clicked), NULL);
-					gtk_widget_show(image[i]);
-				}
-				else
-				{
-					gtk_imageplug_copy(
-						GTK_IMAGEPLUG(image[i]), 
-						GTK_IMAGEPLUG(image[i-1]));
-					GTK_IMAGEPLUG(image[i])->start_total += diff;
-				}
-			}
-		}
-
-		/* Add picture to array (current_image+1) */
-		if (number_of_files == 0 && current_image == -1)
-		{
-			if (verbose) printf("Bad, bad programmer! "
-				"If number_of_files == 1, current_image should be -1!!!\n");
-			current_image = -1;
-		}
-
-		GTK_IMAGEPLUG(image[current_image+1])->selection = 0;
-
-		sprintf(file_jpg, "%s/.studio/.temp.jpg", getenv("HOME"));
-		sprintf(temp, "%s -f i -i %d -o %s %s%s",
-			LAVTRANS_LOCATION, im->start_total,
-			file_jpg, im->video_filename,
-			verbose?"":" >> /dev/null 2>&1");
-		system(temp);
-		temp_buf = gdk_pixbuf_new_from_file (file_jpg);
-		unlink(file_jpg);
-		gtk_imageplug_set_data(
-			GTK_IMAGEPLUG(image[current_image+1]),
-				gdk_pixbuf_scale_simple(temp_buf,
-					im->width, im->height,
-					GDK_INTERP_NEAREST),
-				im->video_filename, im->startscene, im->stopscene,
-				im->startframe, im->stopframe,
-				current_image==-1 ? 0 :
-				GTK_IMAGEPLUG(image[current_image])->start_total +
-				GTK_IMAGEPLUG(image[current_image])->stopframe - 
-				GTK_IMAGEPLUG(image[current_image])->startframe + 1 );
-	}
-	else
-	{
-		i = number_of_files;
-/*		image[i] = gtk_imageplug_new_from_video(im->video_filename,
-			im->startframe, im->stopframe,
-			im->startscene, im->stopscene,
-			GTK_IMAGEPLUG(image[i-1])->start_total +
-			GTK_IMAGEPLUG(image[i-1])->stopframe - 
-			GTK_IMAGEPLUG(image[i-1])->startframe + 1,
-			GTK_IMAGEPLUG(image[i-1])->background, i );*/
-		image[i] = gtk_imageplug_new(
-			im->picture, im->video_filename, im->startscene,
-			im->stopscene, im->startframe, im->stopframe,
-			GTK_IMAGEPLUG(image[i-1])->start_total +
-			GTK_IMAGEPLUG(image[i-1])->stopframe - 
-			GTK_IMAGEPLUG(image[i-1])->startframe + 1,
-			GTK_IMAGEPLUG(image[i-1])->background, i);
-		gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-			image[i], FALSE, FALSE, 0);
-		gtk_signal_connect(GTK_OBJECT(image[i]), "button_press_event",
-			GTK_SIGNAL_FUNC(image_clicked), NULL);
-		gtk_widget_show(image[i]);
-	}
-
-	/* If, in the movie list, 'file' is not there - add it */
-	for (i=0;i<number_of_movies;i++)
-	{
-		if(strcmp(movie_array[i], im->video_filename) == 0)
-			break;
-		else if(i == number_of_movies - 1)
-		{
-			strcpy(movie_array[number_of_movies], im->video_filename);
-			number_of_movies++;
-			break;
-		}
-	}
-	/* if number_of_movies == 0 ... */
-	if (number_of_movies == 0)
-	{
-		strcpy(movie_array[number_of_movies], im->video_filename);
-		number_of_movies++;
-	}
-
-	number_of_files++;
 	save_eli_temp_file();
 }
 
@@ -964,99 +743,6 @@ void add_movie_scene_image_clicked(GtkWidget *widget, gpointer data)
 		add_movie_scene_selected_scene = GTK_IMAGEPLUG(widget)->number;
 	}
 }
-
-#if 0
-/* TODO: remove once the add-movie-from-scene works */
-void add_new_movie_scene( GtkWidget *w, GtkFileSelection *fs )
-{
-	char *file;
-	char temp[256];
-	int i;
-
-	if (number_of_files >= MAX_NUM_SCENES)
-	{
-		display_max_num_scenes_warning();
-		return;
-	}
-
-	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
-	if (verbose) printf("(Add new movie/scene) File: %s\n", file);
-
-	sprintf(temp, "ea %s %d %d %d", file, -1, -1,
-		current_image == -1 ? 0 : GTK_IMAGEPLUG(image[current_image])->stopframe+1); 
-	command_to_lavplay_edit(NULL,temp);
-
-	/* Move images one step further to make space for the new one */
-	if (current_image < number_of_files-1)
-	{
-		for (i=number_of_files;i>current_image+1;i--)
-		{
-			if (i == number_of_files)
-			{
-				image[i] = gtk_imageplug_new(
-					GTK_IMAGEPLUG(image[i-1])->picture,
-					GTK_IMAGEPLUG(image[i-1])->video_filename,
-					GTK_IMAGEPLUG(image[i-1])->startscene,
-					GTK_IMAGEPLUG(image[i-1])->stopscene,
-					GTK_IMAGEPLUG(image[i-1])->startframe,
-					GTK_IMAGEPLUG(image[i-1])->stopframe,
-					GTK_IMAGEPLUG(image[i-1])->start_total,
-					GTK_IMAGEPLUG(image[i-1])->background, i);
-				gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-					image[i], FALSE, FALSE, 0);
-				gtk_signal_connect(GTK_OBJECT(image[i]),
-					"button_press_event",
-					GTK_SIGNAL_FUNC(image_clicked), NULL);
-				gtk_widget_show(image[i]);
-			}
-			else
-			{
-				gtk_imageplug_copy(image[i], image[i-1]);
-			}
-		}
-
-		/* Add picture to array (current_image+1) */
-		GTK_IMAGEPLUG(image[current_image+1])->selection = 0;
-		strcpy(GTK_IMAGEPLUG(image[current_image+1])->video_filename,
-			file);
-		gtk_imageplug_draw(image[current_image+1]);
-	}
-	else
-	{
-		i = number_of_files;
-		image[i] = gtk_imageplug_new_from_video(file,0,	0, 0, 0,
-			GTK_IMAGEPLUG(image[i-1])->start_total +
-			GTK_IMAGEPLUG(image[i-1])->stopframe - 
-			GTK_IMAGEPLUG(image[i-1])->startframe + 1,
-			GTK_IMAGEPLUG(image[i-1])->background,i);
-		gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-			image[i], FALSE, FALSE, 0);
-		gtk_signal_connect(GTK_OBJECT(image[i]), "button_press_event",
-			GTK_SIGNAL_FUNC(image_clicked), NULL);
-		gtk_widget_show(image[i]);
-	}
-
-	/* If, in the movie list, 'file' is not there - add it */
-	for (i=0;i<number_of_movies;i++)
-	{
-		if(strcmp(movie_array[i], file) == 0)
-			break;
-		else if(i == number_of_movies - 1)
-		{
-			strcpy(movie_array[number_of_movies], file);
-			number_of_movies++;
-			break;
-		}
-	}
-
-	/* This tells us to wait for the info from the command line
-	to update the start_total of all images after the added one
-	and the stopframes from the added scene */
-	wait_for_add_frame_confirmation = 1;
-	number_of_files++;
-	//save_eli_temp_file();
-}
-#endif
 
 void create_filesel3(GtkWidget *widget, char *what_to_do)
 {
@@ -1090,14 +776,6 @@ void create_filesel3(GtkWidget *widget, char *what_to_do)
 			/* give warning */
 		}
 	}
-#if 0
-	else if (strcmp(what_to_do, "add_new") == 0)
-	{
-		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-			"clicked", (GtkSignalFunc) add_new_movie_scene, filew);
-		temp = "movie.avi";
-	}
-#endif
 	else if (strcmp(what_to_do, "add_movie_selection") == 0)
 	{
 		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
@@ -1123,7 +801,8 @@ void create_filesel3(GtkWidget *widget, char *what_to_do)
 
 void play_edit_file(GtkWidget *widget, gpointer data)
 {
-	if (!pipe_is_active(LAVPLAY_E) && number_of_files > 0)
+	if (!pipe_is_active(LAVPLAY_E) &&
+		g_list_length(GTK_SCENELIST(scenelist)->scene) > 0)
 	{
 		create_lavplay_edit_child();
 	}
@@ -1137,292 +816,21 @@ void command_to_lavplay_edit(GtkWidget *widget, char *data)
 	write_pipe(LAVPLAY_E,command);
 }
 
-void image_clicked(GtkWidget *widget, GdkEventButton *event, gpointer data)
-{
-	GtkImagePlug *imageplug;
-	imageplug = GTK_IMAGEPLUG(widget);
-
-	if (imageplug->picture == NULL)
-	{
-		/*imageplug->selection = 0;
-		gtk_imageplug_draw(widget);*/
-		return;
-	}
-
-	if (event->type == GDK_2BUTTON_PRESS || event->type==GDK_3BUTTON_PRESS)
-	{
-		if (verbose) printf("Image %d gave double-clicked signal, "
-			"starting frame editor...\n",
-			imageplug->number);
-
-		open_frame_edit_window();
-	}
-	else
-	{
-		char out[256];
-
-		if (verbose) printf("Image %d gave clicked signal, "
-			"going to frame %d now\n",
-			imageplug->number, imageplug->start_total);
-
-		sprintf(out,"s%d",imageplug->start_total);
-		command_to_lavplay_edit(NULL,out);
-
-		if (current_image != imageplug->number)
-		{
-			if (current_image>=0)
-			{
-				GTK_IMAGEPLUG(image[current_image])->selection = 0;
-				gtk_imageplug_draw(image[current_image]);
-			}
-
-			current_image = imageplug->number;
-		}
-	}
-}
-
 void clear_editlist(GtkWidget *widget, gpointer data)
 {
-	int line;
-
-	for (line=1;line<MAX_NUM_SCENES;line++)
-	{
-		if (image[line] != NULL)
-		{
-			gtk_widget_hide(image[line]);
-			gtk_widget_destroy(image[line]);
-			image[line] = NULL;
-		}
-		else
-			break;
-	}
-	current_image = -1;
-	current_position = -1;
-	number_of_files = 0;
-	gtk_imageplug_set_data(GTK_IMAGEPLUG(image[0]), NULL, "", 0,0,0,0,0);
-
+	gtk_scenelist_new_editlist(GTK_SCENELIST(scenelist));
 	save_eli_temp_file();
 }
 
 int open_eli_file(char *filename)
 {
-	int line,a,b,c,d,e,x;
-	FILE *fp;
-	GdkPixbuf *bg;
-	char temp_entry[256];
-	char filename_temp[256];
-
-	quit_lavplay_edit();
-
-	for (line=0;line<MAX_NUM_SCENES;line++)
-	{
-		if (image[line] != NULL)
-		{
-			gtk_widget_hide(image[line]);
-			gtk_widget_destroy(image[line]);
-			image[line] = NULL;
-		}
-		else
-			break;
-	}
-
-	bg = gdk_pixbuf_new_from_xpm_data ((const char **)film_xpm);
-
-	if (NULL == (fp = fopen(filename,"r")))
-	{
-		printf("Oops, error opening %s (open_eli_file)\n",filename);
-		goto ERROR_FILE;
-	}
-	if (fgets(temp_entry,255,fp) == NULL)
-	{
-		printf("Error reading the file!\n");
-		fclose(fp);
-		goto ERROR_FILE;
-	}
-	if (strcmp(temp_entry, "LAV Edit List\n") != 0)
-	{
-		/* TODO: we should definately offer scene detection here */
-		printf("Not an editlist!!!\n");
-		fclose(fp);
-		goto ERROR_FILE;
-	}
-	if (fgets(temp_entry,255,fp) == NULL)
-	{
-		printf("Error reading the file!\n");
-		fclose(fp);
-		goto ERROR_FILE;
-	}
-	if (strcmp(temp_entry, "PAL\n")==0)
-		pal_or_ntsc = 'p';
-	else
-		pal_or_ntsc = 'n';
-	if (fgets(temp_entry,255,fp) == NULL)
-	{
-		printf("Error reading the file!\n");
-		fclose(fp);
-		goto ERROR_FILE;
-	}
-	sscanf(temp_entry, "%d\n", &number_of_movies);
-	for (line=0;line<number_of_movies;line++)
-	{
-		if (fgets(temp_entry,255,fp) == NULL)
-		{
-			printf("Error reading the file!\n");
-			fclose(fp);
-			goto ERROR_FILE;
-		}
-		for (x=0;x<strlen(temp_entry);x++)
-		{
-			if (temp_entry[x] == '\n')
-			{
-				temp_entry[x] = '\0';
-				break;
-			}
-		}
-		strcpy(movie_array[line],temp_entry);
-	}
-	number_of_files = 0; x=0; /* x = 'start_total' */
-	while (NULL != fgets(temp_entry,255,fp))
-	{
-		if (number_of_files>=MAX_NUM_SCENES) break; /* editlist is too big */
-		line = sscanf(temp_entry,"%d %d %d (%d %d)",&a,&b,&c,&d,&e);
-		if (line!=3 && line!=5) break; /* invalid entry */
-
-		image[number_of_files] = gtk_imageplug_new_from_video(
-			movie_array[a], b, c, line==5?d:b, line==5?e:c,x,bg,number_of_files);
-		gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-			image[number_of_files], FALSE, FALSE, 0);
-		gtk_signal_connect(GTK_OBJECT(image[number_of_files]),
-			"button_press_event", GTK_SIGNAL_FUNC(image_clicked), NULL);
-		gtk_widget_show(image[number_of_files]);
-
-		number_of_files++;
-		x += c-b+1;
-	}
-
-	if (number_of_files<MAX_NUM_SCENES-1)
-		image[number_of_files+1] = NULL;
-
-	fclose(fp);
-
-	if (number_of_files == 0 || number_of_movies == 0)
-	{
-		printf("Empty editing list file!\n");
-		goto ERROR_FILE;
-	}
-
-	current_position = -1;
-	current_image = -1;
+	gtk_scenelist_open_editlist(GTK_SCENELIST(scenelist), filename);
 	save_eli_temp_file();
-	return 1;
-
-ERROR_FILE:
-	sprintf(filename_temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
-	current_image = -1;
-	current_position = -1;
-	number_of_files = 0;
-	image[0] = gtk_imageplug_new_from_video("",0,0,0,0,0,bg, 0);
-	image[1] = NULL;
-	gtk_box_pack_start(GTK_BOX(hbox_scrollwindow), image[0], FALSE, FALSE, 0);
-	gtk_signal_connect(GTK_OBJECT(image[0]), "button_press_event",
-		GTK_SIGNAL_FUNC(image_clicked), NULL);
-	gtk_widget_show(image[0]);
-	if (strcmp(filename, filename_temp)!=0)
-	{
-		sprintf(filename_temp, "Error opening %s", filename);
-		gtk_show_text_window(STUDIO_WARNING, filename_temp, NULL);
-	}
-	return 0;
 }
 
 void save_eli_file(char *target)
 {
-	FILE *fp;
-	int x,n;
-	char temp[256];
-
-	fp = fopen(target,"w");
-	if (NULL == fp)
-	{
-		char temp[256];
-		fprintf(stderr,"can't open editlist file %s\n",target);
-		sprintf(temp, "Could not save editlist to %s", target);
-		gtk_show_text_window(STUDIO_WARNING, temp, NULL);
-		return;
-	}
-
-	fprintf(fp,"LAV Edit List\n");
-	if (verbose) fprintf(stderr,"Writing - LAV Edit List\n");
-
-	if (pal_or_ntsc == 'p')
-	{
-		if (verbose) fprintf(stderr,"Writing - PAL\n");
-		fprintf(fp,"PAL\n");
-	}
-	else
-	{
-		if (verbose) fprintf(stderr,"Writing - NTSC\n");
-		fprintf(fp,"NTSC\n");
-	}
-
-	/* clean up movie_array */
-	for (n=0;n<number_of_movies;n++)
-	{
-		int m;
-		for (m=0;m<n;m++)
-		{
-			if (strcmp(movie_array[n],movie_array[m])==0)
-			{
-				int i;
-				for (i=n+1;i<number_of_movies;i++)
-				{
-					sprintf(movie_array[i-1], movie_array[i]);
-				}
-				number_of_movies--;
-				break;
-			}
-		}
-	}
-
-	fprintf(fp, "%d\n", number_of_movies);
-
-	for (n=0;n<number_of_movies;n++)
-	{
-		if (verbose) fprintf(stderr,"Writing - %s\n", movie_array[n]);
-		fprintf(fp, "%s\n", movie_array[n]);
-	}
-
-	for (n=0;n<number_of_files;n++)
-	{
-		for (x=0;x<MAX_NUM_SCENES;x++)
-		{
-			if (strcmp(movie_array[x], GTK_IMAGEPLUG(image[n])->video_filename) == 0)
-			break;
-		}
-		/* The last two numbers are new - not part of official editlists!
-		   they will work with normal lavplay, though :-) */
-		if (verbose) fprintf(stderr,"Writing - %d %d %d (%d %d)\n", x,
-			GTK_IMAGEPLUG(image[n])->startframe,
-			GTK_IMAGEPLUG(image[n])->stopframe,
-			GTK_IMAGEPLUG(image[n])->startscene,
-			GTK_IMAGEPLUG(image[n])->stopscene);
-		fprintf(fp, "%d %d %d (%d %d)\n", x,
-			GTK_IMAGEPLUG(image[n])->startframe,
-			GTK_IMAGEPLUG(image[n])->stopframe,
-			GTK_IMAGEPLUG(image[n])->startscene,
-			GTK_IMAGEPLUG(image[n])->stopscene);
-	}
-
-	if (verbose) printf("Editlist saved\n");
-
-	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
-	if (strcmp(target, temp)!=0)
-	{
-		sprintf(temp, "Editlist saved to %s", target);
-		gtk_show_text_window(STUDIO_INFO, temp, NULL);
-	}
-
-	fclose(fp);
+	gtk_scenelist_write_editlist(GTK_SCENELIST(scenelist), target);
 }
 
 void save_eli_temp_file()
@@ -1440,91 +848,13 @@ void reset_lavedit_tv()
 
 void split_scene(GtkWidget *widget, gpointer data)
 {
-	if (number_of_files >= MAX_NUM_SCENES)
+	if (GTK_SCENELIST(scenelist)->selected_scene >= 0)
 	{
-		display_max_num_scenes_warning();
-		return;
-	}
-	if (number_of_files == 0)
-		return;
-
-	if (current_image >= 0 && current_image < number_of_files)
-	{
-		GdkPixbuf *temp;
-		char filename_img_tmp[256], command[256];
-
-		if (current_image < number_of_files-1)
-		{
-			int i;
-			for (i=number_of_files;i>current_image+1;i--)
-			{
-				if (i == number_of_files)
-				{
-					image[i] = gtk_imageplug_new(
-						GTK_IMAGEPLUG(image[i-1])->picture,
-						GTK_IMAGEPLUG(image[i-1])->video_filename,
-						GTK_IMAGEPLUG(image[i-1])->startscene,
-						GTK_IMAGEPLUG(image[i-1])->stopscene,
-						GTK_IMAGEPLUG(image[i-1])->startframe,
-						GTK_IMAGEPLUG(image[i-1])->stopframe,
-						GTK_IMAGEPLUG(image[i-1])->start_total,
-						GTK_IMAGEPLUG(image[i-1])->background, i);
-
-					gtk_box_pack_start(GTK_BOX(hbox_scrollwindow),
-						image[i], FALSE, FALSE, 0);
-					gtk_signal_connect(GTK_OBJECT(image[i]),
-						"button_press_event",
-						GTK_SIGNAL_FUNC(image_clicked), NULL);
-					gtk_widget_show(image[i]);
-				}
-				else
-				{
-					gtk_imageplug_copy(
-						GTK_IMAGEPLUG(image[i]), 
-						GTK_IMAGEPLUG(image[i-1]));
-				}
-				
-			}
-		}
-
-		/* Current scene should be split into two */
-		gtk_imageplug_copy(
-			GTK_IMAGEPLUG(image[current_image+1]),
-			GTK_IMAGEPLUG(image[current_image])   );
-
-		GTK_IMAGEPLUG(image[current_image])->selection = 0;
-		GTK_IMAGEPLUG(image[current_image])->stopframe =
-			current_position - 1 -
-			GTK_IMAGEPLUG(image[current_image])->start_total +
-			GTK_IMAGEPLUG(image[current_image])->startframe;
-		GTK_IMAGEPLUG(image[current_image])->stopscene =
-			GTK_IMAGEPLUG(image[current_image])->stopframe;
-		gtk_imageplug_draw(image[current_image]);
-
-		current_image++;
-
-		sprintf(filename_img_tmp, "%s/.studio/.temp.jpg",
-			getenv("HOME"));
-		sprintf(command, "%s -o %s -f i -i %d %s%s",
-			LAVTRANS_LOCATION, filename_img_tmp, current_position,
-			GTK_IMAGEPLUG(image[current_image])->video_filename,
-			verbose?"":" >> /dev/null 2>&1");
-		system(command);
-		temp = gdk_pixbuf_new_from_file (filename_img_tmp);
-		GTK_IMAGEPLUG(image[current_image])->picture =
-			gdk_pixbuf_scale_simple(temp,
-			GTK_IMAGEPLUG(image[current_image-1])->width,
-			GTK_IMAGEPLUG(image[current_image-1])->height,
-			GDK_INTERP_NEAREST);
-		GTK_IMAGEPLUG(image[current_image])->selection = 1;
-		GTK_IMAGEPLUG(image[current_image])->start_total = current_position;
-		GTK_IMAGEPLUG(image[current_image])->startframe =
-			GTK_IMAGEPLUG(image[current_image-1])->stopframe+1;
-		GTK_IMAGEPLUG(image[current_image])->startscene =
-			GTK_IMAGEPLUG(image[current_image])->startframe;
-
-		gtk_imageplug_draw(image[current_image]);
-		number_of_files++;
+		gtk_scenelist_edit_split(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene,
+			current_position - gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene)->start_total);
+		save_eli_temp_file();
 	}
 	else
 		gtk_show_text_window(STUDIO_INFO,
@@ -1533,15 +863,14 @@ void split_scene(GtkWidget *widget, gpointer data)
 
 void scene_move(GtkWidget *widget, gpointer data)
 {
+	GtkScene *scene1, *scene2;
 	int what = (int) data;
+	char temp[256];
 
-	if (number_of_files == 0)
-		return;
-
-	if ((what == -1 && current_image==0) ||
-		(what == 1 && current_image == number_of_files-1))
+	if ((what == -1 && GTK_SCENELIST(scenelist)->selected_scene==0) ||
+		(what == 1 && GTK_SCENELIST(scenelist)->selected_scene ==
+		g_list_length(GTK_SCENELIST(scenelist)->scene)-1))
 	{
-		char temp[256];
 		sprintf(temp,"Image is already at the %s!\n",
 			what == -1 ? "beginning" : "end");
 		gtk_show_text_window(STUDIO_INFO,
@@ -1550,178 +879,71 @@ void scene_move(GtkWidget *widget, gpointer data)
 		return;
 	}
 
-	if (current_image<0 || current_image>=number_of_files)
+	if (GTK_SCENELIST(scenelist)->selected_scene<0)
 	{
 		gtk_show_text_window(STUDIO_INFO,
 			"Select a scene to move first",NULL);
+		return;
+	}
+	/* Lavplay calls to move scene */
+	if (what == -1)
+	{
+		scene1 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene);
+		scene2 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene-1);
+		sprintf(temp,"em %d %d %d",
+			scene1->start_total,
+			scene1->start_total + scene1->view_end - scene1->view_start,
+			scene2->start_total);
 	}
 	else
 	{
-		char temp[256];
-		int i = -1, diff=0;
-		GtkWidget *temp_imageplug;
-
-		/* let's start making a 'temp imageplug' */
-		temp_imageplug = gtk_imageplug_new(
-			GTK_IMAGEPLUG(image[current_image])->picture,
-			GTK_IMAGEPLUG(image[current_image])->video_filename,
-			GTK_IMAGEPLUG(image[current_image])->startscene,
-			GTK_IMAGEPLUG(image[current_image])->stopscene,
-			GTK_IMAGEPLUG(image[current_image])->startframe,
-			GTK_IMAGEPLUG(image[current_image])->stopscene,
-			GTK_IMAGEPLUG(image[current_image])->start_total,
-			GTK_IMAGEPLUG(image[current_image])->background, 0);
-
-		/* Lavplay calls to move scene */
-		if (what == -1)
-		{
-			sprintf(temp,"em %d %d %d",
-				GTK_IMAGEPLUG(image[current_image])->start_total,
-				GTK_IMAGEPLUG(image[current_image])->start_total + 
-				GTK_IMAGEPLUG(image[current_image])->stopframe -
-				GTK_IMAGEPLUG(image[current_image])->startframe,
-				GTK_IMAGEPLUG(image[current_image-1])->start_total);
-		}
-		else
-		{
-			sprintf(temp,"em %d %d %d",
-				GTK_IMAGEPLUG(image[current_image])->start_total,
-				GTK_IMAGEPLUG(image[current_image])->start_total + 
-				GTK_IMAGEPLUG(image[current_image])->stopframe -
-				GTK_IMAGEPLUG(image[current_image])->startframe,
-				GTK_IMAGEPLUG(image[current_image+1])->start_total -
-				GTK_IMAGEPLUG(image[current_image])->stopframe + 
-				GTK_IMAGEPLUG(image[current_image])->startframe +
-				GTK_IMAGEPLUG(image[current_image+1])->stopframe -
-				GTK_IMAGEPLUG(image[current_image+1])->startframe);
-		}
-		command_to_lavplay_edit(NULL, temp);
-
-		if (what == -1)
-		{
-			i = current_image-1;
-			diff = GTK_IMAGEPLUG(image[i])->start_total;
-		}
-		else if (what == 1)
-		{
-			i = current_image+1;
-			diff = GTK_IMAGEPLUG(image[current_image])->start_total;
-		}
-
-		gtk_imageplug_copy(
-			GTK_IMAGEPLUG(image[current_image]),
-			GTK_IMAGEPLUG(image[i]) );
-		gtk_imageplug_copy(
-			GTK_IMAGEPLUG(image[i]),
-			GTK_IMAGEPLUG(temp_imageplug));
-
-		/* correct start_total - don't understand, this is pobably correct :-) */
-		if (what == -1)
-		{
-			GTK_IMAGEPLUG(image[i])->start_total = diff;
-			GTK_IMAGEPLUG(image[current_image])->start_total = diff + 1 +
-				GTK_IMAGEPLUG(image[i])->stopframe -
-				GTK_IMAGEPLUG(image[i])->startframe;
-		}
-		else if (what == 1)
-		{
-			GTK_IMAGEPLUG(image[current_image])->start_total = diff;
-			GTK_IMAGEPLUG(image[i])->start_total = diff + 1 +
-				GTK_IMAGEPLUG(image[current_image])->stopframe -
-				GTK_IMAGEPLUG(image[current_image])->startframe;
-		}
-
-		/* change selection */
-		GTK_IMAGEPLUG(image[current_image])->selection = 0;
-		gtk_imageplug_draw(image[current_image]);
-		current_image += what;
-		GTK_IMAGEPLUG(image[current_image])->selection = 1;
-		gtk_imageplug_draw(image[current_image]);
+		scene1 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene);
+		scene2 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+			GTK_SCENELIST(scenelist)->selected_scene+1);
+		sprintf(temp,"em %d %d %d",
+			scene1->start_total,
+			scene1->start_total + scene1->view_end - scene1->view_start,
+			scene1->start_total - scene1->view_end + scene1->view_start +
+			scene2->view_end - scene2->view_start);
 	}
+	command_to_lavplay_edit(NULL, temp);
+
+	/* tell scenelist */
+	gtk_scenelist_edit_move(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene,
+		what);
+
+	save_eli_temp_file();
 }
 
 void delete_scene(GtkWidget *widget, gpointer data)
 {
-	if (number_of_files == 0)
-		return;
+	GtkScene *scene;
+	char temp[256];
 
-	if (current_image < 0 || current_image >= number_of_files)
+	if (GTK_SCENELIST(scenelist)->selected_scene < 0)
 	{
 		gtk_show_text_window(STUDIO_INFO,
 			"Select a scene to delete first",NULL);
+		return;
 	}
-	else
-	{
-		int i, current_temp_pos, diff;
-		char temp[256];
 
-		current_temp_pos = current_position;
-		if (current_position > GTK_IMAGEPLUG(image[current_image])->start_total)
-		{
-			if (current_position -
-				GTK_IMAGEPLUG(image[current_image])->stopframe +
-				GTK_IMAGEPLUG(image[current_image])->startframe <
-				GTK_IMAGEPLUG(image[current_image])->start_total)
-				current_temp_pos =
-					GTK_IMAGEPLUG(image[current_image])->start_total;
-			else
-				current_temp_pos = current_position -
-					GTK_IMAGEPLUG(image[current_image])->stopframe +
-					GTK_IMAGEPLUG(image[current_image])->startframe;
-		}
+	/* tell lavplay */
+	scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene);
+	sprintf(temp, "ed %d %d",
+		scene->start_total,
+		scene->start_total + scene->view_end - scene->view_start);
+	command_to_lavplay_edit(NULL,temp);
 
-		diff = GTK_IMAGEPLUG(image[current_image])->stopframe -
-			GTK_IMAGEPLUG(image[current_image])->startframe;
-		sprintf(temp, "ed %d %d",
-			GTK_IMAGEPLUG(image[current_image])->start_total,
-			GTK_IMAGEPLUG(image[current_image])->start_total + diff);
-		command_to_lavplay_edit(NULL,temp);
-		diff++;
+	/* tell scenelist */
+	gtk_scenelist_edit_delete(GTK_SCENELIST(scenelist),
+		GTK_SCENELIST(scenelist)->selected_scene);
 
-		if (current_image != -1)
-		{
-			for (i=current_image;i<MAX_NUM_SCENES;i++)
-			{
-				if (image[i+1] != NULL)
-				{
-					gtk_imageplug_copy(
-						GTK_IMAGEPLUG(image[i]),
-						GTK_IMAGEPLUG(image[i+1]) );
-					GTK_IMAGEPLUG(image[i])->start_total -= diff;
-				}
-				else
-				{
-					if (number_of_files > 1)
-					{
-						gtk_widget_hide(image[i]);
-						gtk_widget_destroy(image[i]);
-						image[i] = NULL;
-					}
-					else
-					{
-						GTK_IMAGEPLUG(image[i])->selection = 0;
-						gtk_imageplug_set_data(
-							GTK_IMAGEPLUG(image[i]),
-							NULL,"",0,0,0,0,0);
-					}
-					break;
-				}
-			}
-		}
-
-		if (current_image == number_of_files-1)
-			current_image--;
-
-		if (current_image >= 0)
-		{
-			GTK_IMAGEPLUG(image[current_image])->selection = 1;
-			gtk_imageplug_draw(image[current_image]);
-		}
-
-		number_of_files--;
-
-		save_eli_temp_file();
-	}
+	save_eli_temp_file();
 }
 
 GtkWidget *get_editing_routines_notebook_page()
@@ -2046,14 +1268,43 @@ GtkWidget *get_add_movie_notebook_page()
 	return vbox2;
 }
 
+static void scene_clicked_signal(GtkWidget *widget, gint scene_num, gpointer data)
+{
+	GtkScene *scene;
+	char buff[256];
+	scene = gtk_scenelist_get_scene(GTK_SCENELIST(widget), GTK_SCENELIST(widget)->selected_scene);
+	if (verbose) g_print("Scene %d (frame %d-%d in %s, frame %d in editlist) was clicked\n",
+		GTK_SCENELIST(widget)->selected_scene, scene->view_start, scene->view_end,
+		(char *)g_list_nth_data(GTK_SCENELIST(widget)->movie, scene->movie_num),
+		scene->start_total);
+
+	sprintf(buff, "s%d", scene->start_total);
+	command_to_lavplay_edit(NULL, buff);
+}
+
+static void scrollbar_expose_event(GtkWidget *widget, GdkEventExpose *event, gpointer data)
+{
+	GtkWidget *scrollbar = GTK_WIDGET(data);
+	GtkObject *adj;
+	gint num;
+
+	gtk_scenelist_get_num_drawn(GTK_SCENELIST(scenelist),&num,NULL);
+	adj = gtk_adjustment_new(GTK_SCENELIST(scenelist)->current_scene,
+		0, g_list_length(GTK_SCENELIST(scenelist)->scene), 1, 3, num);
+	gtk_range_set_adjustment(GTK_RANGE(scrollbar), GTK_ADJUSTMENT(adj));
+	gtk_scenelist_set_adjustment(GTK_SCENELIST(scenelist), GTK_ADJUSTMENT(adj));
+}
+
 GtkWidget *create_lavedit_layout(GtkWidget *window)
 {
-	GtkWidget *hbox, *vbox, *vbox2, *hbox2, *scrolled_window;
+	GtkWidget *hbox, *vbox, *vbox2, *hbox2, *scrollbar;
+	GtkObject *adj;
+	gint num;
 	GtkWidget *edit_notebook, *hbox3, *label;
-	char filename[100];
+	char filename[256];
 
-	current_image = -1;
 	sprintf(editlist_savefile, "project.eli");
+	sprintf(filename, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 
 	vbox = gtk_vbox_new(FALSE,0);
 	hbox = gtk_hbox_new(FALSE,20);
@@ -2127,24 +1378,28 @@ GtkWidget *create_lavedit_layout(GtkWidget *window)
 	gtk_box_pack_start (GTK_BOX (vbox), hbox2, FALSE, FALSE, 10);
 	gtk_widget_show(hbox2);
 
-	hbox_scrollwindow = gtk_hbox_new(FALSE,0);
+	vbox2 = gtk_vbox_new(FALSE, 0);
 
-	sprintf(filename, "%s/.studio/%s", getenv("HOME"), editlist_filename);
-	if (!open_eli_file(filename))
-	{
-		printf("Uh oh, something went wrong when opening the edit list file...\n");
-	}
+	scenelist = gtk_scenelist_new(filename);
+	gtk_signal_connect(GTK_OBJECT(scenelist), "scene_selected",
+		GTK_SIGNAL_FUNC(scene_clicked_signal), NULL);
+	gtk_box_pack_start(GTK_BOX (vbox2), scenelist, TRUE, TRUE, 0);
+	gtk_widget_show(scenelist);
 
-	/* the scroll-window containing the scene-image-widgets */
-	scrolled_window = gtk_scrolled_window_new(NULL, NULL);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window),
-				GTK_POLICY_ALWAYS, GTK_POLICY_NEVER);
-	gtk_scrolled_window_add_with_viewport (GTK_SCROLLED_WINDOW (scrolled_window),
-		hbox_scrollwindow);
-	gtk_widget_show(hbox_scrollwindow);
+	gtk_scenelist_get_num_drawn(GTK_SCENELIST(scenelist),&num,NULL);
+	adj = gtk_adjustment_new(GTK_SCENELIST(scenelist)->current_scene,
+		0, g_list_length(GTK_SCENELIST(scenelist)->scene),
+		1, 3, num);
+	scrollbar = gtk_hscrollbar_new(GTK_ADJUSTMENT(adj));
+	gtk_signal_connect(GTK_OBJECT(window), "size_allocate",
+	      GTK_SIGNAL_FUNC(scrollbar_expose_event), (gpointer)scrollbar);
+	gtk_range_set_adjustment(GTK_RANGE(scrollbar), GTK_ADJUSTMENT(adj));
+	gtk_scenelist_set_adjustment(GTK_SCENELIST(scenelist), GTK_ADJUSTMENT(adj));
+	gtk_box_pack_start(GTK_BOX (vbox2), scrollbar, TRUE, TRUE, 0);
+	gtk_widget_show(scrollbar);
 
-	gtk_box_pack_start (GTK_BOX (vbox), scrolled_window, FALSE, FALSE, 0);
-	gtk_widget_show(scrolled_window);
+	gtk_box_pack_start (GTK_BOX (vbox), vbox2, TRUE, TRUE, 0);
+	gtk_widget_show(vbox2);
 
 	gtk_box_pack_start (GTK_BOX (hbox), vbox, TRUE, TRUE, 0);
 	gtk_widget_show(vbox);
