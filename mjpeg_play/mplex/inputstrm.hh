@@ -83,13 +83,14 @@ protected:
 
 class OutputStream;
 
-class MuxStream
+
+class MuxStream 
 {
 public:
 	MuxStream();
 
-    void Init( const int strm_id, 
-			   const unsigned int _buf_scale,
+    void Init( const int strm_id,
+               const unsigned int _buf_scale,
 			   const unsigned int buf_size,
 			   const unsigned int _zero_stuffing,
 			   const bool bufs_in_first, 
@@ -99,6 +100,7 @@ public:
 	unsigned int BufferSizeCode();
 	inline unsigned int BufferSize() { return buffer_size; }
 	inline unsigned int BufferScale() { return buffer_scale; }
+
 	
 	inline void SetMaxPacketData( unsigned int max )
 		{
@@ -116,20 +118,37 @@ public:
 	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
 
 public:  // TODO should go protected once encapsulation complete
-
-
-	BufferModel bufmodel;
 	int        stream_id;
+	unsigned int    buffer_scale;
+	unsigned int 	buffer_size;
+	BufferModel bufmodel;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
 	unsigned int    zero_stuffing;
 	unsigned int    nsec;
-	unsigned int    buffer_scale;
-	unsigned int 	buffer_size;
 	bool buffers_in_header;
 	bool always_buffers_in_header;
 	bool new_au_next_sec;
 	bool init;
+};
+
+class DummyMuxStream : public MuxStream
+{
+public:
+    DummyMuxStream( const int strm_id,
+                    const unsigned int buf_scale, 
+                    unsigned int buf_size )
+        {
+            stream_id = strm_id;
+            buffer_scale = buf_scale;
+            buffer_size = buf_size;
+        }
+
+    unsigned int ReadStrm(uint8_t *dst, unsigned int to_read)
+        {
+            abort();
+            return 0;
+        }
 };
 
 
@@ -141,8 +160,7 @@ protected:
 	virtual void InitAUbuffer() = 0;
 	AUStream aunits;
 public:
-	enum stream_kind { audio, video };
-
+	enum stream_kind { audio, video, dummy };
 	ElementaryStream( OutputStream &into, 
 					  stream_kind kind
 					  );
@@ -193,6 +211,7 @@ protected:
     int FRAME_CHUNK;
 									
 };
+
 
 
 #endif // __INPUTSTRM_H__

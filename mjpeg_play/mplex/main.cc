@@ -1,12 +1,13 @@
 
 /*************************************************************************
-*  mplex - MPEG/SYSTEMS multiplexer
+*
+*  mplex - General-purpose MPEG-1/2 multiplexer.
+* (C) 2000, 2001 Andrew Stevens <andrew.stevens@philips.com>
+* 
+*  Constructed using mplex - MPEG-1/SYSTEMS multiplexer as starting point
 *  Copyright (C) 1994 1995 Christoph Moar
 *  Siemens ZFE ST SN 11 / T SN 6
 *
-* Modifications and enhancements (C) 2000, 2001 Andrew Stevens
-* <andrew.stevens@philips.com>
-*									 *
 *  This program is free software; you can redistribute it and/or modify
 *  it under the terms of the GNU General Public License as published by
 *  the Free Software Foundation; either version 2 of the License, or
@@ -114,7 +115,6 @@ int main (int argc, char* argv[])
 				audioStrm->Init ( i, mpa_files[i]);
 				strms.push_back(audioStrm);
 			}
-
 			break;
 		default:
 			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...\n");
@@ -151,6 +151,12 @@ int main (int argc, char* argv[])
 		{
 			AudioStream *audioStrm = new MPAStream(ostrm);
 			audioStrm->Init ( i, mpa_files[i]);
+			strms.push_back(audioStrm);
+		}
+		for( i = 0 ; i < ac3_files.size() ; ++i )
+		{
+			AudioStream *audioStrm = new AC3Stream(ostrm);
+			audioStrm->Init ( i, ac3_files[i]);
 			strms.push_back(audioStrm);
 		}
 		

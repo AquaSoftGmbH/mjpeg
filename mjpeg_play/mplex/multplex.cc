@@ -265,9 +265,9 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_size = 2048;
 	  	video_buffer_size = 232*1024;
 		buffers_in_video = true;
-		always_buffers_in_video = true;
+		always_buffers_in_video = false;
 		buffers_in_audio = true;
-		always_buffers_in_audio = true;
+		always_buffers_in_audio = false;
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = true;
@@ -360,8 +360,10 @@ void OutputStream::Init( char *multi_file)
 	psstrm->CreatePack (&dummy_pack, 0, mux_rate);
 	if( always_sys_header_in_pack )
 	{
+        vector<MuxStream *> muxstreams;
+        AppendMuxStreamsOf( *estreams, muxstreams );
 		psstrm->CreateSysHeader (&dummy_sys_header, mux_rate,  
-								 !vbr, 1,  true, true, estreams);
+								 !vbr, 1,  true, true, muxstreams);
 		sys_hdr = &dummy_sys_header;
 	}
 	else
@@ -512,6 +514,7 @@ void OutputStream::MuxStatus(log_level_t level)
 	
 }
 
+
 /******************************************************************
     Program start-up packets.  Generate any irregular packets						needed at the start of the stream...
 	Note: *must* leave a sensible in-stream system header in
@@ -519,9 +522,23 @@ void OutputStream::MuxStatus(log_level_t level)
 	TODO: get rid of this grotty sys_header global.
 ******************************************************************/
 
+void OutputStream::AppendMuxStreamsOf( vector<ElementaryStream *> &elem, 
+                                       vector<MuxStream *> &mux )
+{
+    vector<ElementaryStream *>::iterator str;
+    for( str = elem.begin(); str < elem.end(); ++str )
+    {
+        mux.push_back( static_cast<MuxStream *>( *str ) );
+    }
+}
+
 void OutputStream::OutputPrefix( )
 {
 	vector<ElementaryStream *>::iterator str;
+    vector<MuxStream *> vmux,amux,emux;
+    AppendMuxStreamsOf( vstreams, vmux );
+    AppendMuxStreamsOf( astreams, amux );
+    AppendMuxStreamsOf( *estreams, emux );
 
 	/* Deal with transport padding */
 	SetPosAndSCR( bytes_output + 
@@ -529,6 +546,7 @@ void OutputStream::OutputPrefix( )
 	
 	/* VCD: Two padding packets with video and audio system headers */
 	split_at_seq_end = true;
+
 	switch (opt_mux_format)
 	{
 	case MPEG_FORMAT_VCD :
@@ -540,18 +558,17 @@ void OutputStream::OutputPrefix( )
 		{
 				mjpeg_error_exit1("VCD man only have max. 1 audio and 1 video stream\n");
 		}
-
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
 								 false, true, 
-								 true, true, &vstreams  );
+								 true, true, vmux  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding( false,  false);		
 
 		/* Second packet carries audio-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate,  false, true, 
-								 true, true, &astreams );
+								 true, true, amux );
 
 		
 	  	OutputPadding( false, true );
@@ -561,7 +578,7 @@ void OutputStream::OutputPrefix( )
 	case MPEG_FORMAT_SVCD_NSR :
 		/* First packet carries sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate,  !vbr, true, 
-						   true, true, estreams );
+                                 true, true, emux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding(  false, 0);
@@ -572,7 +589,7 @@ void OutputStream::OutputPrefix( )
 		/* First packet carries small-still sys_header */
 		/* TODO No support mixed-mode stills sequences... */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, false, false,
-								 true, true, estreams );
+								 true, true, emux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 		OutputPadding(  false, false);	
@@ -583,28 +600,47 @@ void OutputStream::OutputPrefix( )
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
 								 false, true, 
-								 true, true, &vstreams  );
+								 true, true, vmux );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
 	  	OutputPadding(   false,  false);		
 		break;
 
     case MPEG_FORMAT_DVD :
-        /* A DVD System header is a weird thing.
-           We need to include stuff about streams 0xb8, 0xb9, 0xbd and 0xbf
-           
-        */
-        psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
-                                 true, true, estreams );
+        /* A DVD System header is a weird thing.  We seem to need to
+           include buffer info about streams 0xb8, 0xb9, 0xbf even if
+           they're not physically present but the buffers for the actual
+           video streams aren't included.  
 
+           TODO: I have no idead about MPEG audio streams if present...
+        */
+    {
+        DummyMuxStream dvd_0xb9_strm_dummy( 0xb9, 1, video_buffer_size );
+        DummyMuxStream dvd_0xb8_strm_dummy( 0xb8, 0, 4096 );
+        DummyMuxStream dvd_0xbf_strm_dummy( 0xbf, 1, 2048 );
+        vector<MuxStream *> dvdmux;
+        vector<MuxStream *>::iterator muxstr;
+        dvdmux.push_back( &dvd_0xb9_strm_dummy );
+        dvdmux.push_back( &dvd_0xb8_strm_dummy );
+        for( muxstr = amux.begin(); muxstr < amux.end(); ++muxstr )
+        {
+            dvdmux.push_back( *muxstr );
+        }
+        dvdmux.push_back( &dvd_0xbf_strm_dummy );
+        psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
+                                 true, true, dvdmux );
+
+        sys_header_ptr = &sys_header;
+        pack_header_ptr = &pack_header;
         /* It is then followed up by a pair of PRIVATE_STR_2 packets which
             we keep empty 'cos we don't know what goes there...
         */
         break;
+    }
     default :
         /* Create the in-stream header in case it is needed */
         psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
-                                 true, true, estreams );
+                                 true, true, emux );
 
 
 	}
@@ -1144,12 +1180,24 @@ void OutputStream::OutputPadding (	bool VBR_pseudo,
 
 }
 
+ /******************************************************************
+ *	OutputGOPControlSector
+ *  DVD System headers are carried in peculiar sectors carrying 2
+ *  PrivateStream2 packets.   We're sticking 0's in the packets
+ *  as we have no idea what's supposed to be in there.
+ *
+ * Thanks to Brent Byeler who worked out this work-around.
+ *
+ ******************************************************************/
+
 void OutputStream::OutputDVDPriv2 (	)
 {
     uint8_t *packet_size_field;
     uint8_t *index;
     uint8_t sector_buf[sector_size];
+    unsigned int tozero;
     
+    assert( sector_size == 2048 );
     PS_Stream::BufferSectorHeader( sector_buf,
                                 pack_header_ptr,
                                 sys_header_ptr,
@@ -1165,8 +1213,9 @@ void OutputStream::OutputDVDPriv2 (	)
                                    TIMESTAMPBITS_NO,
                                    packet_size_field,
                                    index );
-    memset( index, 0, 980);
-    index += 980;
+    tozero = sector_buf+1024-index;
+    memset( index, 0, tozero);
+    index += tozero;
     PS_Stream::BufferPacketSize( packet_size_field, index );    
 
     PS_Stream::BufferPacketHeader( index,
@@ -1180,8 +1229,9 @@ void OutputStream::OutputDVDPriv2 (	)
                                    TIMESTAMPBITS_NO,
                                    packet_size_field,
                                    index );
-    memset( index, 0, sector_buf+sector_size-index );
-    index += sector_buf+sector_size-index;
+    tozero = sector_buf+2048-index;
+    memset( index, 0, tozero );
+    index += tozero;
     PS_Stream::BufferPacketSize( packet_size_field, index );
 
     WriteRawSector( sector_buf, sector_size );

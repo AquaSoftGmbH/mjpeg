@@ -28,8 +28,7 @@
 #include "outputstream.hh"
 
 
-VideoStream::VideoStream(OutputStream &into )
-	:
+VideoStream::VideoStream(OutputStream &into )	:
 	ElementaryStream(into, ElementaryStream::video ),
 	num_sequence(0),
 	num_seq_end(0),

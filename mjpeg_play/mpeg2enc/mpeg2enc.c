@@ -448,7 +448,9 @@ static int check_param_constraints()
 	int nerr = 0;
 	if( param_32_pulldown )
 	{
-		
+		if( param_mpeg == 1 )
+			mjpeg_error_exit1( "MPEG-1 cannot encode 3:2 pulldown (for transcoding to VCD set 24fps)!\n" );
+
 		if( param_frame_rate != 4 && param_frame_rate != 5  )
 		{
 			if( param_frame_rate == 1 || param_frame_rate == 2 )

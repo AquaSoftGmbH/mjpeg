@@ -416,6 +416,7 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	uint8_t *pes_header_len_offset;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
+    unsigned int subheader_size; // Non-MPEG headers before muxed payload
 	int packet_data_to_read;
 	int bytes_short;
 	uint8_t 	 type = strm.stream_id;
@@ -527,7 +528,10 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
                                 // byte: Offset first AC3 syncword (hi)
                                 // byte: Offset 2nd AC2 syncword (lo)
         index += 4;
+        subheader_size = 4;
     }
+    else
+        subheader_size = 0;
 
     
     /* MPEG-1, MPEG-2: data available to be filled is packet_size less
@@ -624,10 +628,15 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     }
 
 	
-    /* MPEG-2: we now know the header length... */
+    /* MPEG-2: we now know the header length... but we mustn't forget
+       to take into account any non-MPEG headers we've included.
+       Currently this only happens for AC3 audio, but who knows...
+     */
     if( mpeg_version == 2 && type != PADDING_STR )
     {
-        *pes_header_len_offset = static_cast<uint8_t>(index-(pes_header_len_offset+1));	
+        unsigned int pes_header_len = 
+            index-(pes_header_len_offset+1)-subheader_size;
+        *pes_header_len_offset = static_cast<uint8_t>(pes_header_len);	
     }
     index += actual_packet_data_size;	 
     /* MPEG-1, MPEG-2: Now we know that actual packet size */
@@ -748,7 +757,7 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
                                 int	     CSPS,
                                 bool	 audio_lock,
                                 bool	 video_lock,
-                                vector<ElementaryStream *> *streams
+                                vector<MuxStream *> &streams
     )
 
 {
@@ -758,16 +767,19 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
     index = sys_header->buf;
     int video_bound = 0;
     int audio_bound = 0;
-    vector<ElementaryStream *>::iterator str;
-    for( str = streams->begin(); str < streams->end(); ++str )
+    vector<MuxStream *>::iterator str;
+    for( str = streams.begin(); str < streams.end(); ++str )
     {
-        switch( (*str)->Kind() )
+        switch( ((*str)->stream_id & 0xe0) )
         {
-        case ElementaryStream::video :
+        case 0xe0 :             // MPEG Video
             ++video_bound;
             break;
-        case ElementaryStream::audio :
-            ++audio_bound;
+        case 0xb9 :             // DVD seems to use this stream id in
+            ++video_bound;      // system headers for video buffer size
+            break;
+        case 0xc0 :
+            ++audio_bound;      // MPEG Audio
             break;
         default :
             break;
@@ -793,22 +805,13 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
                                       (video_lock << 6)|0x20|video_bound);
 
     *(index++) = static_cast<uint8_t>(RESERVED_BYTE);
-    for( str = streams->begin(); str < streams->end(); ++str )
+    for( str = streams.begin(); str < streams.end(); ++str )
     {
-        switch( (*str)->Kind() )
-        {
-        case ElementaryStream::video :
-        case ElementaryStream::audio :
-            *(index++) = (*str)->stream_id;
-            *(index++) = static_cast<uint8_t> 
-                (0xc0 |
-                 ((*str)->BufferScale() << 5) | ((*str)->BufferSizeCode() >> 8));
-            *(index++) = static_cast<uint8_t>((*str)->BufferSizeCode() & 0xff);
-			
-            break;
-        default :
-            break;
-        }
+        *(index++) = (*str)->stream_id;
+        *(index++) = static_cast<uint8_t> 
+            (0xc0 |
+             ((*str)->BufferScale() << 5) | ((*str)->BufferSizeCode() >> 8));
+        *(index++) = static_cast<uint8_t>((*str)->BufferSizeCode() & 0xff);
     }
 
 

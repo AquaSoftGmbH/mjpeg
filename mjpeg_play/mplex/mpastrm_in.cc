@@ -1,6 +1,6 @@
 /*
- *  audiostrm_in.c:  Audio strem class members handling scanning and buffering
- *                   raw input stream.
+ *  audiostrm_in.c: MPEG Audio strem class members handling scanning
+ *  and buffering raw input stream.
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
  *

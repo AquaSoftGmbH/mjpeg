@@ -1,9 +1,10 @@
 /*
- *  audiostrm_in.c:  Audio strem class members handling scanning and buffering
- *                   raw input stream.
+ *  ac3strm_in.c: AC3 Audio strem class members handling scanning and
+ *  buffering raw input stream.
  *
- *  Copyright (C) 2000,2001 Brent Byeler
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *  Copyright (C) 2000,2001 Brent Byeler for original header-structure
+ *                          parsing code.
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -85,11 +86,11 @@ void AC3Stream::Init ( const int stream_num,
     unsigned int framesize_code;
 
 	mjpeg_debug( "SETTING zero stuff to %d\n", muxinto.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d\n", muxinto.audio_buffer_size );
+	mjpeg_debug( "SETTING audio buffer to %d\n", default_buffer_size );
 
 	MuxStream::Init( PRIVATE_STR_1, // TODO Currently hard-wired....
 					 1,  // Buffer scale
-					 muxinto.audio_buffer_size,
+					 default_buffer_size,
 					 muxinto.vcd_zero_stuffing,
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio

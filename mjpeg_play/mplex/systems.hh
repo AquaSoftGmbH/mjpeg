@@ -100,7 +100,7 @@ public:
                            int	     CSPS,
                            bool	 audio_lock,
                            bool	 video_lock,
-                           vector<ElementaryStream *> *streams
+                           vector<MuxStream *> &streams
         );
 
     void Close() { fclose(strm); }

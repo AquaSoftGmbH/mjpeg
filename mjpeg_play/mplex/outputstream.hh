@@ -137,7 +137,8 @@ private:
 	void WriteRawSector( uint8_t *rawpackets,
 						 unsigned int     length
 		);
-	
+	void AppendMuxStreamsOf( vector<ElementaryStream *> &elem, 
+							 vector<MuxStream *> &mux );
 };
 
 

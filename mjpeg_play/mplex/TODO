@@ -1,5 +1,8 @@
 TODO
 
+- Fix the DVD generation bug where the correct system header is only
+  appearing in the first sector...
+
 - Complete tidying up the systems.cc structure.   Non-duplication of the
 	header generation stuff would be neat if it can be managed...
 

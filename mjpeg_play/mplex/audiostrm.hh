@@ -101,7 +101,7 @@ private:
 	void OutputHdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 
-    
+    static const unsigned int default_buffer_size = 8*1024;
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
     unsigned int samples_per_second;
