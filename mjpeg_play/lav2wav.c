@@ -124,7 +124,8 @@ static void wav_close(int fd)
 		fprintf(stderr,"rewind failed - wav-header is corrupt\n");
 		goto EXIT;
 	}
-	fprintf(stderr,"Writing WAV header\n");
+	if (verbose > 1)
+	    fprintf(stderr,"Writing WAV header\n");
 
 	// Fill out our wav-header with some information. 
 	size -= 8;
@@ -137,7 +138,8 @@ static void wav_close(int fd)
 		fprintf(stderr,"wav-header write failed -- file is corrupt\n");
 		goto EXIT;
 	}
-	fprintf(stderr,"WAV done\n");
+	if (verbose > 1)
+	    fprintf(stderr,"WAV done\n");
 
 EXIT:
 	close(fd);
@@ -182,7 +184,8 @@ char    **argv;
  
     /* Open editlist */
 
-	if( argc-optind <= 1)
+
+	if( argc-optind < 1)
 		Usage(argv[0]);
 
     read_video_files(argv + optind, argc - optind, &el);
