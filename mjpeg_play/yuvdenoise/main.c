@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
   denoiser.postprocess     = 1;
   denoiser.luma_contrast   = 100;
   denoiser.chroma_contrast = 100;
-  denoiser.sharpen         = 125; /* very little sharpen by default */
+  denoiser.sharpen         = 0; /* no sharpening by default */
   denoiser.deinterlace     = 0;
   denoiser.mode            = 0; /* initial mode is progressive */
   denoiser.border.x        = 0;
