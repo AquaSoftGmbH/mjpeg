@@ -51,8 +51,9 @@
 #include "mjpeg_logging.h"
 #include "global.h"
 #include "motionsearch.h"
+#include "ratectl.hh"
 
-
+static RateCtl *bitrate_controller = 0;
 static void set_pic_params( int decode,
 							int b_index,
 							Picture *picture )
@@ -737,6 +738,8 @@ static void encodembs(Picture *picture)
 	for( mbi = picture->mbinfo.begin(); mbi < picture->mbinfo.end(); ++mbi)
 	{
         mbi->MotionEstimate();
+        // Temporary eventually we will select by
+        // a quick prediction and complexity estimate...
         mbi->Predict();
         mbi->Transform();
 	}
@@ -783,7 +786,7 @@ static void stencodeworker(Picture *picture)
 #endif
 	/* Depends on previous frame completion for IB and P */
 
-	putpict(picture);
+	picture->PutHeadersAndEncoding(*bitrate_controller);
 
 	reconstruct(picture);
 
@@ -799,7 +802,7 @@ static void stencodeworker(Picture *picture)
 		motion_estimation(picture);
 		predict(picture);
 		transform(picture);
-		putpict(picture);
+		picture->PutHeadersAndEncoding(*bitrate_controller);;
 		reconstruct(picture);
 
 	}
@@ -887,7 +890,7 @@ static void *parencodeworker(void *start_arg)
 #endif
 		/* Depends on previous frame completion for IB and P */
 		sync_guard_test( picture->prev_frame_completion );
-		putpict(picture);
+		picture->PutHeadersAndEncoding(*bitrate_controller);
 
 		reconstruct(picture);
 		/* Handle second field of a frame that is being field encoded */
@@ -903,7 +906,7 @@ static void *parencodeworker(void *start_arg)
 			motion_estimation(picture);
 			predict(picture);
 			transform(picture);
-			putpict(picture);
+            picture->PutHeadersAndEncoding(*bitrate_controller);
 			reconstruct(picture);
 
 		}
@@ -952,6 +955,8 @@ static void parencodepict( Picture *picture )
  
 void putseq(void)
 {
+    OnTheFlyRateCtl ratectl;
+    bitrate_controller = &ratectl;
     /* DEBUG */
 	uint64_t bits_after_mux;
 	double frame_periods;
@@ -977,7 +982,7 @@ void putseq(void)
 	new_ref_picture = &ref_pictures[cur_ref_idx];
 	cur_picture = old_ref_picture;
 	
-	rc_init_seq(0);
+	ratectl.InitSeq(false);
 	
 	ss.i = 0;		                /* Index in current MPEG sequence */
 	ss.g = 0;						/* Index in current GOP */

@@ -145,7 +145,7 @@ void MacroBlock::Predict()
 	uint8_t **predframe;
 	int DMV[2][2];
 
-	if (mb_type&MB_INTRA)
+	if (final_me.mb_type&MB_INTRA)
 	{
 		clearblock(picture.pict_struct,cur,bx,by);
 		return;
@@ -153,7 +153,7 @@ void MacroBlock::Predict()
 
 	addflag = false; /* first prediction is stored, second is added and averaged */
 
-	if ((mb_type & MB_FORWARD) || (picture.pict_type==P_TYPE))
+	if ((final_me.mb_type & MB_FORWARD) || (picture.pict_type==P_TYPE))
 	{
 		/* forward prediction, including zero MV in P pictures */
 
@@ -161,13 +161,14 @@ void MacroBlock::Predict()
 		{
 			/* frame picture */
 
-			if ((motion_type==MC_FRAME) || !(mb_type & MB_FORWARD))
+			if ( (final_me.motion_type==MC_FRAME) 
+				 || !(final_me.mb_type & MB_FORWARD))
 			{
 				/* frame-based prediction in frame picture */
 				pred( oldref,0,cur,0,
-					 lx,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
+					 lx,16,16,bx,by,final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 			}
-			else if (motion_type==MC_FIELD)
+			else if (final_me.motion_type==MC_FIELD)
 			{
 				/* field-based prediction in frame picture
 				 *
@@ -176,36 +177,43 @@ void MacroBlock::Predict()
 				 */
 
 				/* top field prediction */
-				pred(oldref,mv_field_sel[0][0],cur,0,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
+				pred(oldref,final_me.field_sel[0][0],cur,0,
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
 
 				/* bottom field prediction */
-				pred(oldref,mv_field_sel[1][0],cur,1,
-					 lx<<1,16,8,bx,by>>1,MV[1][0][0],MV[1][0][1]>>1,false);
+				pred(oldref,final_me.field_sel[1][0],cur,1,
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[1][0][0],final_me.MV[1][0][1]>>1,false);
 			}
-			else if (motion_type==MC_DMV)
+			else if (final_me.motion_type==MC_DMV)
 			{
 				/* dual prime prediction */
 
 				/* calculate derived motion vectors */
 				calc_DMV(picture.pict_struct, picture.topfirst,
-						 DMV,dmvector,MV[0][0][0],MV[0][0][1]>>1);
+						 DMV,final_me.dualprimeMV,
+						 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1);
 
 				/* predict top field from top field */
 				pred(oldref,0,cur,0,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
 
 				/* predict bottom field from bottom field */
 				pred(oldref,1,cur,1,
-					 lx<<1,16,8,bx,by>>1,MV[0][0][0],MV[0][0][1]>>1,false);
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1,false);
 
 				/* predict and add to top field from bottom field */
 				pred(oldref,1,cur,0,
-					 lx<<1,16,8,bx,by>>1,DMV[0][0],DMV[0][1],true);
+					 lx<<1,16,8,bx,by>>1,
+					 DMV[0][0],DMV[0][1],true);
 
 				/* predict and add to bottom field from top field */
 				pred(oldref,0,cur,1,
-					 lx<<1,16,8,bx,by>>1,DMV[1][0],DMV[1][1],true);
+					 lx<<1,16,8,bx,by>>1,
+					 DMV[1][0],DMV[1][1],true);
 			}
 			else
 			{
@@ -221,37 +229,41 @@ void MacroBlock::Predict()
 
 			/* determine which frame to use for prediction */
 			if ((picture.pict_type==P_TYPE) && picture.secondfield
-				&& (currentfield!=mv_field_sel[0][0]))
+				&& (currentfield!=final_me.field_sel[0][0]))
 				predframe = newref; /* same frame */
 			else
 				predframe = oldref; /* previous frame */
 
-			if ((motion_type==MC_FIELD) || !(mb_type & MB_FORWARD))
+			if ( final_me.motion_type==MC_FIELD
+				 || !(final_me.mb_type & MB_FORWARD))
 			{
 				/* field-based prediction in field picture */
-				pred(predframe,mv_field_sel[0][0],cur,currentfield,
-					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
+				pred(predframe,final_me.field_sel[0][0],cur,currentfield,
+					 lx<<1,16,16,bx,by,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 			}
-			else if (motion_type==MC_16X8)
+			else if (final_me.motion_type==MC_16X8)
 			{
 				/* 16 x 8 motion compensation in field picture */
 
 				/* upper half */
-				pred(predframe,mv_field_sel[0][0],cur,currentfield,
-					 lx<<1,16,8,bx,by,MV[0][0][0],MV[0][0][1],false);
+				pred(predframe,final_me.field_sel[0][0],cur,currentfield,
+					 lx<<1,16,8,bx,by,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 
 				/* determine which frame to use for lower half prediction */
 				if ((picture.pict_type==P_TYPE) && picture.secondfield
-					&& (currentfield!=mv_field_sel[1][0]))
+					&& (currentfield!=final_me.field_sel[1][0]))
 					predframe = newref; /* same frame */
 				else
 					predframe = oldref; /* previous frame */
 
 				/* lower half */
-				pred(predframe,mv_field_sel[1][0],cur,currentfield,
-					 lx<<1,16,8,bx,by+8,MV[1][0][0],MV[1][0][1],false);
+				pred(predframe,final_me.field_sel[1][0],cur,currentfield,
+					 lx<<1,16,8,bx,by+8,
+					 final_me.MV[1][0][0],final_me.MV[1][0][1],false);
 			}
-			else if (motion_type==MC_DMV)
+			else if (final_me.motion_type==MC_DMV)
 			{
 				/* dual prime prediction */
 
@@ -264,15 +276,18 @@ void MacroBlock::Predict()
 				/* calculate derived motion vectors */
 				calc_DMV(picture.pict_struct,
 						 picture.topfirst,
-						 DMV,dmvector,MV[0][0][0],MV[0][0][1]);
+						 DMV,final_me.dualprimeMV,
+						 final_me.MV[0][0][0],final_me.MV[0][0][1]);
 
 				/* predict from field of same parity */
 				pred(oldref,currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,MV[0][0][0],MV[0][0][1],false);
+					 lx<<1,16,16,bx,by,
+					 final_me.MV[0][0][0],final_me.MV[0][0][1],false);
 
 				/* predict from field of opposite parity */
 				pred(predframe,!currentfield,cur,currentfield,
-					 lx<<1,16,16,bx,by,DMV[0][0],DMV[0][1],true);
+					 lx<<1,16,16,bx,by,
+					 DMV[0][0],DMV[0][1],true);
 			}
 			else
 			{
@@ -283,7 +298,7 @@ void MacroBlock::Predict()
 		addflag = true; /* next prediction (if any) will be averaged with this one */
 	}
 
-	if (mb_type & MB_BACKWARD)
+	if (final_me.mb_type & MB_BACKWARD)
 	{
 		/* backward prediction */
 
@@ -291,11 +306,12 @@ void MacroBlock::Predict()
 		{
 			/* frame picture */
 
-			if (motion_type==MC_FRAME)
+			if (final_me.motion_type==MC_FRAME)
 			{
 				/* frame-based prediction in frame picture */
 				pred(newref,0,cur,0,
-					 lx,16,16,bx,by,MV[0][1][0],MV[0][1][1],addflag);
+					 lx,16,16,bx,by,
+					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 			}
 			else
 			{
@@ -306,12 +322,14 @@ void MacroBlock::Predict()
 				 */
 
 				/* top field prediction */
-				pred(newref,mv_field_sel[0][1],cur,0,
-					 lx<<1,16,8,bx,by>>1,MV[0][1][0],MV[0][1][1]>>1,addflag);
+				pred(newref,final_me.field_sel[0][1],cur,0,
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[0][1][0],final_me.MV[0][1][1]>>1,addflag);
 
 				/* bottom field prediction */
-				pred(newref,mv_field_sel[1][1],cur,1,
-					 lx<<1,16,8,bx,by>>1,MV[1][1][0],MV[1][1][1]>>1,addflag);
+				pred(newref,final_me.field_sel[1][1],cur,1,
+					 lx<<1,16,8,bx,by>>1,
+					 final_me.MV[1][1][0],final_me.MV[1][1][1]>>1,addflag);
 			}
 		}
 		else /* TOP_FIELD or BOTTOM_FIELD */
@@ -320,23 +338,26 @@ void MacroBlock::Predict()
 
 			currentfield = (picture.pict_struct==BOTTOM_FIELD);
 
-			if (motion_type==MC_FIELD)
+			if (final_me.motion_type==MC_FIELD)
 			{
 				/* field-based prediction in field picture */
-				pred(newref,mv_field_sel[0][1],cur,currentfield,
-					 lx<<1,16,16,bx,by,MV[0][1][0],MV[0][1][1],addflag);
+				pred(newref,final_me.field_sel[0][1],cur,currentfield,
+					 lx<<1,16,16,bx,by,
+					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 			}
-			else if (motion_type==MC_16X8)
+			else if (final_me.motion_type==MC_16X8)
 			{
 				/* 16 x 8 motion compensation in field picture */
 
 				/* upper half */
-				pred(newref,mv_field_sel[0][1],cur,currentfield,
-					 lx<<1,16,8,bx,by,MV[0][1][0],MV[0][1][1],addflag);
+				pred(newref,final_me.field_sel[0][1],cur,currentfield,
+					 lx<<1,16,8,bx,by,
+					 final_me.MV[0][1][0],final_me.MV[0][1][1],addflag);
 
 				/* lower half */
-				pred(newref,mv_field_sel[1][1],cur,currentfield,
-					 lx<<1,16,8,bx,by+8,MV[1][1][0],MV[1][1][1],addflag);
+				pred(newref,final_me.field_sel[1][1],cur,currentfield,
+					 lx<<1,16,8,bx,by+8,
+					 final_me.MV[1][1][0],final_me.MV[1][1][1],addflag);
 			}
 			else
 			{

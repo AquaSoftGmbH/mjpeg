@@ -35,6 +35,7 @@
 #include "macroblock.hh"
 #include "picture.hh"
 
+class RateCtl;
 
 /* prototypes of global functions */
 
@@ -67,7 +68,7 @@ void putseqext (void);
 void putseqdispext (void);
 void putuserdata (const uint8_t *userdata, int len);
 void putgophdr (int frame, int closed_gop);
-void putpicthdr (Picture *picture);
+void putpicthdr (Picture &picture, RateCtl &ratectl);
 void putpictcodext (Picture *picture);
 void putseqend (void);
 
@@ -76,8 +77,6 @@ void putintrablk (Picture *picture, int16_t *blk, int cc);
 void putnonintrablk (Picture *picture,int16_t *blk);
 void putmv (int dmv, int f_code);
 
-/* putpic.c */
-void putpict (Picture *picture);
 
 /* putseq.c */
 void putseq (void);
@@ -98,13 +97,6 @@ void putcbp (int cbp);
 void iquantize( Picture *picture );
 
 /* ratectl.c */
-void rc_init_seq (int reinit);
-void rc_init_GOP ( int np, int nb);
-void rc_init_pict (Picture *picture);
-void rc_update_pict (Picture *picture);
-int rc_start_mb (Picture *picture);
-void vbv_end_of_picture (Picture *picture);
-void calc_vbv_delay (Picture *picture);
 double inv_scale_quant( int q_scale_type, int raw_code );
 int scale_quant( int q_scale_type, double quant );
 

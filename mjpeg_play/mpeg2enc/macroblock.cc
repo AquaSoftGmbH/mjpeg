@@ -29,26 +29,22 @@ void MacroBlock::MotionEstimate()
 {
 	if (picture->pict_struct==FRAME_PICTURE)
 	{			
-		FrameME();
+		FrameMEs();
 	}
 	else
 	{		
 		FieldME();
 	}
-#ifdef JUNK
-	if (picture->pict_type==P_TYPE)
-	{
-		printf( "MB(%03d,%03d): %1x %1x %03d %03d %03d %03d\n",
-				i,j,
-				mb_type,
-				motion_type,
-				MV[0][0][0], MV[0][0][1],
-                MV[1][0][0], MV[1][0][1] );
-	}
-#endif
+    vector<MotionEst>::iterator i;
+    vector<MotionEst>::iterator min_me = plausible_me.begin();
+    for( i = plausible_me.begin(); i < plausible_me.end(); ++ i)
+        if( i->var < min_me->var )
+            min_me = i;
+    final_me = *min_me;
 }
 
  
+
 
 /* 
  * Local variables:

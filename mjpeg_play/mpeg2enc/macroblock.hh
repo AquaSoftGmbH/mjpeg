@@ -49,12 +49,28 @@
  */
 
 #include "config.h"
+#include <vector>
 #include "mjpeg_types.h"
+
+using namespace std;
 
 class Picture;
 
 
 typedef int16_t DCTblock[64];
+
+class MotionEst
+{
+public:
+	int mb_type; /* intra/forward/backward/interpolated */
+	int motion_type; /* frame/field/16x8/dual_prime */
+	int MV[2][2][2]; /* motion vectors */
+	int field_sel[2][2]; /* motion vertical field select */
+	int dualprimeMV[2]; /* dual prime vectors */
+	int var; 	/* luminance variance after motion compensation 
+                   (measure of activity) */
+};
+
 
 /* macroblock information */
 class MacroBlock
@@ -76,17 +92,19 @@ public:
     
     void MotionEstimate();
     void FrameME();            // In motionest.cc
+    void FrameMEs();            // In motionest.cc
     void FieldME();
     void Predict();            // In predict.cc
     void Quantize();            // In quantize.cc
     void IQuantize();
     void Transform();          // In transfrm.cc
     void ITransform();
-    void SelectQuantization();  // In ratectl.cc
     void PutBlocks();           // In putpic.cc
     void SkippedCoding( bool slice_begin_end );
 
     inline const Picture &ParentPicture() const { return *picture; }
+    inline int BaseLumVariance() const { return lum_variance; }
+    inline double Activity() const { return act; }
     inline const int TopleftX() const { return i; }
     inline const int TopleftY() const { return j; }
     inline DCTblock *RawDCTblocks() const { return dctblocks; }
@@ -109,20 +127,15 @@ private:
 
 public:
 	bool field_dct;             // Field DCT encoded rather than frame DCT
-	int mb_type; /* intra/forward/backward/interpolated */
-	int motion_type; /* frame/field/16x8/dual_prime */
 	int mquant; /* quantization parameter */
 	int cbp; /* coded block pattern */
 	bool skipped; /* skipped macroblock */
-	int MV[2][2][2]; /* motion vectors */
-	int mv_field_sel[2][2]; /* motion vertical field select */
-	int dmvector[2]; /* dual prime vectors */
 	double act; /* activity measure */
 	int i_act;  /* Activity measure if intra coded (I/P-frame) */
 	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
 	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
-	int var; 	/* Macroblock luminance variance (measure of activity) */
-    
+    vector<MotionEst> plausible_me; // Suggestions from motion estimator
+    MotionEst final_me;      // Motion estimate found to work best
 #ifdef OUTPUT_STAT
   double N_act;
 #endif

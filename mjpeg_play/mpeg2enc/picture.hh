@@ -120,15 +120,17 @@ public:
 
 };
 
+class RateCtl;
 
 class Picture : public pict_data_s, public CodingPredictors
 {
 public:
-    void QuantiseAndPutEncoding();
+    void PutHeadersAndEncoding( RateCtl &ratecontrol );
+    void QuantiseAndPutEncoding(RateCtl &ratecontrol);
     void PutHeader(); 
 private:
     void PutSliceHdr( int slice_mb_y );
-    void PutMVs( MacroBlock *mb, bool back );
+    void PutMVs( MotionEst &me, bool back );
     void PutCodingExt();
 };
 

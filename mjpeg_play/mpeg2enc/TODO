@@ -1,7 +1,14 @@
 Near Future improvements
 
 0.  Replace current variance based motion estimation mode selection
-	with DCT based selection.
+	with DCT based selection.  
+	Next Step: split predictors from Picture state and build a
+	new QuantiseAndPutEncoding that predict's and transforms and
+	quantisatises forall the motion estimates and selects the one that
+	worked best for encoding.
+
+	Alternatively: select using the base quantisation and use the old
+	encoder...
 
 1.  Add DCT quantisation reduction for macro blocks whose original image
 	(INTRA) data is low-variance... this should help misty scenes

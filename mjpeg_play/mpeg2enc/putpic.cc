@@ -50,13 +50,13 @@
 #include <stdio.h>
 #include "global.h"
 #include "simd.h"
-
+#include "ratectl.hh"
 
 /* output motion vectors (6.2.5.2, 6.3.16.2)
  *
  * this routine also updates the predictions for motion vectors (PMV)
  */
-void Picture::PutMVs( MacroBlock *mb, bool back )
+void Picture::PutMVs( MotionEst &me, bool back )
 
 {
 	int hor_f_code;
@@ -75,76 +75,76 @@ void Picture::PutMVs( MacroBlock *mb, bool back )
 
 	if (pict_struct==FRAME_PICTURE)
 	{
-		if (mb->motion_type==MC_FRAME)
+		if (me.motion_type==MC_FRAME)
 		{
 			/* frame prediction */
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(mb->MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			PMV[0][back][0]=PMV[1][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=PMV[1][back][1]=mb->MV[0][back][1];
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
-		else if (mb->motion_type==MC_FIELD)
+		else if (me.motion_type==MC_FIELD)
 		{
 			/* field prediction */
 
-			putbits(mb->mv_field_sel[0][back],1);
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv((mb->MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
-			putbits(mb->mv_field_sel[1][back],1);
-			putmv(mb->MV[1][back][0]-PMV[1][back][0],hor_f_code);
-			putmv((mb->MV[1][back][1]>>1)-(PMV[1][back][1]>>1),vert_f_code);
-			PMV[0][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=mb->MV[0][back][1];
-			PMV[1][back][0]=mb->MV[1][back][0];
-			PMV[1][back][1]=mb->MV[1][back][1];
+			putbits(me.field_sel[0][back],1);
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putmv((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
+			putbits(me.field_sel[1][back],1);
+			putmv(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
+			putmv((me.MV[1][back][1]>>1)-(PMV[1][back][1]>>1),vert_f_code);
+			PMV[0][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=me.MV[0][back][1];
+			PMV[1][back][0]=me.MV[1][back][0];
+			PMV[1][back][1]=me.MV[1][back][1];
 
 		}
 		else
 		{
 			/* dual prime prediction */
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putdmv(mb->dmvector[0]);
-			putmv((mb->MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
-			putdmv(mb->dmvector[1]);
-			PMV[0][back][0]=PMV[1][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=PMV[1][back][1]=mb->MV[0][back][1];
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putdmv(me.dualprimeMV[0]);
+			putmv((me.MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
+			putdmv(me.dualprimeMV[1]);
+			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
 	}
 	else
 	{
 		/* field picture */
-		if (mb->motion_type==MC_FIELD)
+		if (me.motion_type==MC_FIELD)
 		{
 			/* field prediction */
-			putbits(mb->mv_field_sel[0][back],1);
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(mb->MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			PMV[0][back][0]=PMV[1][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=PMV[1][back][1]=mb->MV[0][back][1];
+			putbits(me.field_sel[0][back],1);
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
-		else if (mb->motion_type==MC_16X8)
+		else if (me.motion_type==MC_16X8)
 		{
 			/* 16x8 prediction */
-			putbits(mb->mv_field_sel[0][back],1);
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putmv(mb->MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			putbits(mb->mv_field_sel[1][back],1);
-			putmv(mb->MV[1][back][0]-PMV[1][back][0],hor_f_code);
-			putmv(mb->MV[1][back][1]-PMV[1][back][1],vert_f_code);
-			PMV[0][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=mb->MV[0][back][1];
-			PMV[1][back][0]=mb->MV[1][back][0];
-			PMV[1][back][1]=mb->MV[1][back][1];
+			putbits(me.field_sel[0][back],1);
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			putbits(me.field_sel[1][back],1);
+			putmv(me.MV[1][back][0]-PMV[1][back][0],hor_f_code);
+			putmv(me.MV[1][back][1]-PMV[1][back][1],vert_f_code);
+			PMV[0][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=me.MV[0][back][1];
+			PMV[1][back][0]=me.MV[1][back][0];
+			PMV[1][back][1]=me.MV[1][back][1];
 		}
 		else
 		{
 			/* dual prime prediction */
-			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
-			putdmv(mb->dmvector[0]);
-			putmv(mb->MV[0][back][1]-PMV[0][back][1],vert_f_code);
-			putdmv(mb->dmvector[1]);
-			PMV[0][back][0]=PMV[1][back][0]=mb->MV[0][back][0];
-			PMV[0][back][1]=PMV[1][back][1]=mb->MV[0][back][1];
+			putmv(me.MV[0][back][0]-PMV[0][back][0],hor_f_code);
+			putdmv(me.dualprimeMV[0]);
+			putmv(me.MV[0][back][1]-PMV[0][back][1],vert_f_code);
+			putdmv(me.dualprimeMV[1]);
+			PMV[0][back][0]=PMV[1][back][0]=me.MV[0][back][0];
+			PMV[0][back][1]=PMV[1][back][1]=me.MV[0][back][1];
 		}
 	}
 }
@@ -158,7 +158,7 @@ void MacroBlock::PutBlocks( )
         /* block loop */
         if( cbp & (1<<(block_count-1-comp)))
         {
-            if (mb_type & MB_INTRA)
+            if (final_me.mb_type & MB_INTRA)
             {
                 // TODO: 420 Only?
                 cc = (comp<4) ? 0 : (comp&1)+1;
@@ -181,13 +181,13 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          * we have to transmit (0,0) motion vectors
          */
         if (picture->pict_type==P_TYPE && !cbp)
-            mb_type|= MB_FORWARD;
+            final_me.mb_type|= MB_FORWARD;
         return;
     }
 
     MacroBlock *prev_mb = picture->prev_mb;
     /* P picture, no motion vectors -> skip */
-    if (picture->pict_type==P_TYPE && !(mb_type&MB_FORWARD))
+    if (picture->pict_type==P_TYPE && !(final_me.mb_type&MB_FORWARD))
     {
         /* reset predictors */
         picture->Reset_DC_DCT_Pred();
@@ -204,14 +204,14 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          */
 
         if (  picture->pict_struct==FRAME_PICTURE
-              && motion_type==MC_FRAME
-              && ((prev_mb->mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-              && (!(mb_type&MB_FORWARD) ||
-                  (picture->PMV[0][0][0]==MV[0][0][0] &&
-                   picture->PMV[0][0][1]==MV[0][0][1]))
-              && (!(mb_type&MB_BACKWARD) ||
-                  (picture->PMV[0][1][0]==MV[0][1][0] &&
-                   picture->PMV[0][1][1]==MV[0][1][1])))
+              && final_me.motion_type==MC_FRAME
+              && ((prev_mb->final_me.mb_type ^ final_me.mb_type) &(MB_FORWARD|MB_BACKWARD))==0
+              && (!(final_me.mb_type&MB_FORWARD) ||
+                  (picture->PMV[0][0][0]==final_me.MV[0][0][0] &&
+                   picture->PMV[0][0][1]==final_me.MV[0][0][1]))
+              && (!(final_me.mb_type&MB_BACKWARD) ||
+                  (picture->PMV[0][1][0]==final_me.MV[0][1][0] &&
+                   picture->PMV[0][1][1]==final_me.MV[0][1][1])))
         {
             skipped = true;
             return;
@@ -224,16 +224,16 @@ void MacroBlock::SkippedCoding( bool slice_begin_end )
          */
 
         if (picture->pict_struct!=FRAME_PICTURE
-            && motion_type==MC_FIELD
-            && ((prev_mb->mb_type^mb_type)&(MB_FORWARD|MB_BACKWARD))==0
-            && (!(mb_type&MB_FORWARD) ||
-                (picture->PMV[0][0][0]==MV[0][0][0] &&
-                 picture->PMV[0][0][1]==MV[0][0][1] &&
-                 mv_field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
-            && (!(mb_type&MB_BACKWARD) ||
-                (picture->PMV[0][1][0]==MV[0][1][0] &&
-                 picture->PMV[0][1][1]==MV[0][1][1] &&
-                 mv_field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
+            && final_me.motion_type==MC_FIELD
+            && ((prev_mb->final_me.mb_type^final_me.mb_type)&(MB_FORWARD|MB_BACKWARD))==0
+            && (!(final_me.mb_type&MB_FORWARD) ||
+                (picture->PMV[0][0][0]==final_me.MV[0][0][0] &&
+                 picture->PMV[0][0][1]==final_me.MV[0][0][1] &&
+                 final_me.field_sel[0][0]==(picture->pict_struct==BOTTOM_FIELD)))
+            && (!(final_me.mb_type&MB_BACKWARD) ||
+                (picture->PMV[0][1][0]==final_me.MV[0][1][0] &&
+                 picture->PMV[0][1][1]==final_me.MV[0][1][1] &&
+                 final_me.field_sel[0][1]==(picture->pict_struct==BOTTOM_FIELD))))
         {
             skipped = true;
             return;
@@ -328,9 +328,6 @@ void Picture::PutSliceHdr( int slice_mb_y )
     
     putbits(0,1); /* extra_bit_slice */
     
-    /* reset predictors */
-    Reset_DC_DCT_Pred();
-    Reset_MV_Pred();
 } 
 
 
@@ -346,45 +343,45 @@ void Picture::PutSliceHdr( int slice_mb_y )
  *
  ******************/
 
-void putpict(Picture *picture )
+void Picture::PutHeadersAndEncoding( RateCtl &ratecontrol )
 {
 
 	/* Handle splitting of output stream into sequences of desired size */
-	if( picture->new_seq )
+	if( new_seq )
 	{
 		putseqend();
-		rc_init_seq(1);
+		ratecontrol.InitSeq(true);
 	}
 	/* Handle start of GOP stuff... */
-	if( picture->gop_start )
+	if( gop_start )
 	{
-		rc_init_GOP( picture->np, picture->nb);
+		ratecontrol.InitGOP( np, nb);
 	}
 
-	calc_vbv_delay(picture);
-	rc_init_pict(picture); /* set up rate control */
+	ratecontrol.CalcVbvDelay(*this);
+    ratecontrol.InitPict(*this); /* set up rate control */
 
 	/* Sequence header if new sequence or we're generating for a
        format like (S)VCD that mandates sequence headers every GOP to
        do fast forward, rewind etc.
 	*/
 
-    if( picture->new_seq || picture->decode == 0 ||
-        (picture->gop_start && opt_seq_hdr_every_gop) )
+    if( new_seq || decode == 0 ||
+        (gop_start && opt_seq_hdr_every_gop) )
     {
 		putseqhdr();
     }
-	if( picture->gop_start )
+	if( gop_start )
 	{
 		/* set closed_GOP in first GOP only No need for per-GOP seqhdr
 		   in first GOP as one has already been created.
 		*/
         
-		putgophdr( picture->decode,
-				   picture->decode == 0 );
+		putgophdr( decode,
+				   decode == 0 );
 	}
     
-    picture->QuantiseAndPutEncoding();
+    QuantiseAndPutEncoding(ratecontrol);
 }
 
 /* ************************************************
@@ -399,12 +396,12 @@ void putpict(Picture *picture )
  *
  * *********************************************** */
 
-void Picture::QuantiseAndPutEncoding()
+void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 {
 	int i, j, k;
 	int MBAinc;
 	MacroBlock *cur_mb = 0;
-
+    
 	/* picture header and picture coding extension */
     PutHeader();
 
@@ -414,7 +411,7 @@ void Picture::QuantiseAndPutEncoding()
 		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
 	}
 
-	mquant_pred = rc_start_mb(this); /* initialize quantization parameter */
+	mquant_pred = ratectl.InitialMacroBlockQuant(*this);
 
 	k = 0;
     
@@ -426,6 +423,9 @@ void Picture::QuantiseAndPutEncoding()
 	{
 
         PutSliceHdr(j);
+        Reset_DC_DCT_Pred();
+        Reset_MV_Pred();
+
         MBAinc = 1; /* first MBAinc denotes absolute position */
 
         /* Slice macroblocks... */
@@ -434,9 +434,8 @@ void Picture::QuantiseAndPutEncoding()
             prev_mb = cur_mb;
 			cur_mb = &mbinfo[k];
 
-
 			/* determine mquant (rate control) */
-            cur_mb->SelectQuantization( );
+            cur_mb->mquant = ratectl.MacroBlockQuant( *cur_mb );
 
 			/* quantize macroblock : N.b. the MB_PATTERN bit may be
                set as a side-effect of this call. */
@@ -444,7 +443,7 @@ void Picture::QuantiseAndPutEncoding()
 
 			/* output mquant if it has changed */
 			if (cur_mb->cbp && mquant_pred!=cur_mb->mquant)
-				cur_mb->mb_type|= MB_QUANT;
+				cur_mb->final_me.mb_type|= MB_QUANT;
 
             /* Check to see if Macroblock is skippable, this may set
                the MB_FORWARD bit... */
@@ -459,15 +458,15 @@ void Picture::QuantiseAndPutEncoding()
                 putaddrinc(MBAinc); /* macroblock_address_increment */
                 MBAinc = 1;
                 
-                putmbtype(pict_type,cur_mb->mb_type); /* macroblock type */
+                putmbtype(pict_type,cur_mb->final_me.mb_type); /* macroblock type */
 
-                if ( (cur_mb->mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
-                    putbits(cur_mb->motion_type,2);
+                if ( (cur_mb->final_me.mb_type & (MB_FORWARD|MB_BACKWARD)) && !frame_pred_dct)
+                    putbits(cur_mb->final_me.motion_type,2);
 
                 if (pict_struct==FRAME_PICTURE 	&& cur_mb->cbp && !frame_pred_dct)
                     putbits(cur_mb->field_dct,1);
 
-                if (cur_mb->mb_type & MB_QUANT)
+                if (cur_mb->final_me.mb_type & MB_QUANT)
                 {
                     putbits(q_scale_type 
                             ? map_non_linear_mquant[cur_mb->mquant]
@@ -476,19 +475,19 @@ void Picture::QuantiseAndPutEncoding()
                 }
 
 
-                if (cur_mb->mb_type & MB_FORWARD)
+                if (cur_mb->final_me.mb_type & MB_FORWARD)
                 {
                     /* forward motion vectors, update predictors */
-                    PutMVs( cur_mb, false );
+                    PutMVs( cur_mb->final_me, false );
                 }
 
-                if (cur_mb->mb_type & MB_BACKWARD)
+                if (cur_mb->final_me.mb_type & MB_BACKWARD)
                 {
                     /* backward motion vectors, update predictors */
-                    PutMVs( cur_mb,  true );
+                    PutMVs( cur_mb->final_me,  true );
                 }
 
-                if (cur_mb->mb_type & MB_PATTERN)
+                if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
                     putcbp((cur_mb->cbp >> (block_count-6)) & 63);
                     if (opt_chroma_format!=CHROMA420)
@@ -499,11 +498,11 @@ void Picture::QuantiseAndPutEncoding()
 
                 cur_mb->PutBlocks( );
                 /* reset predictors */
-                if (!(cur_mb->mb_type & MB_INTRA))
+                if (!(cur_mb->final_me.mb_type & MB_INTRA))
                     Reset_DC_DCT_Pred();
 
-                if (cur_mb->mb_type & MB_INTRA || 
-                    (pict_type==P_TYPE && !(cur_mb->mb_type & MB_FORWARD)))
+                if (cur_mb->final_me.mb_type & MB_INTRA || 
+                    (pict_type==P_TYPE && !(cur_mb->final_me.mb_type & MB_FORWARD)))
                 {
                     Reset_MV_Pred();
                 }
@@ -512,9 +511,9 @@ void Picture::QuantiseAndPutEncoding()
         } /* Slice MB loop */
     } /* Slice loop */
 
-	rc_update_pict(this);
-	vbv_end_of_picture(this);
+	ratectl.UpdatePict(*this);
 }
+
 
 
 /* 

@@ -53,7 +53,7 @@
 
 void MacroBlock::Quantize()
 {
-    if (mb_type & MB_INTRA)
+    if (final_me.mb_type & MB_INTRA)
     {
         quant_intra( dctblocks[0],
                      qdctblocks[0],
@@ -70,7 +70,7 @@ void MacroBlock::Quantize()
                                    picture->q_scale_type,
                                    &mquant );
         if (cbp)
-            mb_type|= MB_PATTERN;
+            final_me.mb_type|= MB_PATTERN;
     }
 
 }
@@ -78,7 +78,7 @@ void MacroBlock::Quantize()
 void MacroBlock::IQuantize()
 {
     int j;
-    if (mb_type & MB_INTRA)
+    if (final_me.mb_type & MB_INTRA)
     {
         for (j=0; j<block_count; j++)
             iquant_intra(qdctblocks[j], qdctblocks[j], 
