@@ -116,6 +116,18 @@ int doIt(void)
 
   /* V4l initialization */
 
+  /* Figure out which device to use */
+  struct stat vstat;
+  if((stat("/dev/video", &vstat) == 0) && S_ISCHR(vstat.st_mode)) 
+      device = "/dev/video";
+  else if(stat("/dev/video0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+      device = "/dev/video0";
+  else if(stat("/dev/v4l/video0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+      device = "/dev/v4l/video0";
+  else if(stat("/dev/v4l0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+      device = "/dev/v4l0";
+  else if(stat("/dev/v4l", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+      device = "/dev/v4l";
   /* open device */
   if (verbose) printf("Opening device %s\n", device);
   v4ldev = open(device, O_RDWR);

@@ -443,7 +443,29 @@ static void check_command_line_options(int argc, char *argv[])
    if(nerr) Usage(argv[0]);
 
    if (getenv("LAV_VIDEO_DEV")) info->video_dev = getenv("LAV_VIDEO_DEV");
+   else {
+       struct stat vstat;
+       if(stat("/dev/video", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+           info->video_dev = "/dev/video";
+       else if(stat("/dev/video0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+           info->video_dev = "/dev/video0";
+       else if(stat("/dev/v4l/video0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+           info->video_dev = "/dev/v4l/video0";
+       else if(stat("/dev/v4l0", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+           info->video_dev = "/dev/v4l0";
+       else if(stat("/dev/v4l", &vstat) == 0 && S_ISCHR(vstat.st_mode)) 
+           info->video_dev = "/dev/v4l";
+   }
    if (getenv("LAV_AUDIO_DEV")) info->audio_dev = getenv("LAV_AUDIO_DEV");
+   else {
+       struct stat astat;
+       if(stat("/dev/dsp", &astat) == 0 && S_ISCHR(astat.st_mode)) 
+           info->audio_dev = "/dev/dsp";
+       else if(stat("/dev/sound/dsp", &astat) == 0 && S_ISCHR(astat.st_mode)) 
+           info->audio_dev = "/dev/sound/dsp";
+       else if(stat("/dev/audio", &astat) == 0 && S_ISCHR(astat.st_mode)) 
+           info->audio_dev = "/dev/audio";
+   }
 
    mjpeg_default_handler_verbosity(verbose);
 

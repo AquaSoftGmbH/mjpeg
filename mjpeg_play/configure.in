@@ -241,9 +241,9 @@ dnl	  with_quicktime=/usr/include/quicktime
   fi	
 fi
 
+have_quicktime=false
+have_openquicktime=false
 if test x$with_quicktime != x ; then
-  have_quicktime=false
-  have_openquicktime=false
   AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
   if test "$PNG" = "found" ; then
     if test x$have_pthread = xtrue ; then
@@ -253,30 +253,25 @@ if test x$with_quicktime != x ; then
     fi
 dnl Do we have OpenQuicktime instead of Quicktime4Linux?
     if test -f "$with_quicktime/openquicktime.h" ; then
-      if ! test x$with_quicktime = x ; then
-        AC_CHECK_LIB(quicktime, quicktime_open,
+        AC_CHECK_LIB(openquicktime, quicktime_open,
           [ QUICKTIME_LIBS="-L$with_quicktime -lopenquicktime $EXTRA_LIBS"
             QUICKTIME_CFLAGS="-I $with_quicktime"
             AC_DEFINE(HAVE_LIBQUICKTIME)
             have_openquicktime=true],, 
             -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
         EXTRA_LIBS=""
-      fi
     else
-      if ! test x$with_quicktime = x ; then
-        AC_CHECK_LIB(quicktime, quicktime_open,
-          [ QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
-            QUICKTIME_CFLAGS="-I $with_quicktime"
-            AC_DEFINE(HAVE_LIBQUICKTIME)
-            have_quicktime=true],, 
-            -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
-        EXTRA_LIBS=""
-      fi
+      AC_CHECK_LIB(quicktime, quicktime_open,
+        [ QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
+          QUICKTIME_CFLAGS="-I $with_quicktime"
+          AC_DEFINE(HAVE_LIBQUICKTIME)
+          have_quicktime=true],, 
+          -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
+      EXTRA_LIBS=""
     fi
-  else
-    AC_MSG_WARN([
-**** Quicktime record/playback disabled.])
   fi
+else
+  AC_MSG_WARN([**** Quicktime record/playback disabled.])
 fi
 
 if test x$have_quicktime = xtrue ; then
@@ -286,6 +281,8 @@ else
 fi
 if test x$have_openquicktime = xtrue ; then
   HAVE_OPENQUICKTIME=1
+  HAVE_QUICKTIME=1
+  have_quicktime=true
 else
   HAVE_OPENQUICKTIME=0
 fi
@@ -482,7 +479,17 @@ EOF
     fi
     AC_PATH_PROGS(NASM, nasm nasmw)
     if test x$NASM = x -o x$NASM = x'"$NASM"'; then
-      : # no nasm in the path
+        echo "*************************************************************************"
+        echo "** nasm not found!  X86 optimizations disabled!  (MMX/SSE instructions)**"
+        echo "** INSTALL NASM OR PERFORMANCE WILL BE CRAP!                           **"
+        echo "*************************************************************************"
+        enable_3dnow_accel=no
+        enable_cmov_extension=no
+        enable_mmx_accel=no
+        have_asm_mmx=false
+        have_asm_sse=false
+        have_asm_3dnow=false
+        have_asm_nasm=false
     else
      AC_DEFINE(HAVE_ASM_NASM)
      NASMFLAGS="-f elf"

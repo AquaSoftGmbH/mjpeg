@@ -77,11 +77,12 @@
 
 #define NUM_AUDIO_TRIES 500 /* makes 10 seconds with 20 ms pause beetween tries */
 
-#define FIFTEEN_HUNDRED 1500
+#define MAX_MBYTES_PER_FILE_64 ((0x7fffffffffffffffLL >> 20) * 93/100)
+#define MAX_MBYTES_PER_FILE_32 ((0x7fffffff >> 20) * 93/100)
 #if _FILE_OFFSET_BITS == 64
-#define MAX_MBYTES_PER_FILE ((uint32_t)((0x7fffffffffffffffLL >> 20) * 3/4))
+#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_64
 #else
-#define MAX_MBYTES_PER_FILE FIFTEEN_HUNDRED
+#define MAX_MBYTES_PER_FILE MAX_MBYTES_PER_FILE_32
                                   /* Maximum number of Mbytes per file.
                                      We make a conservative guess since we
                                      only count the number of bytes output
@@ -559,7 +560,9 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    }
 
    /* Check if we have to open a new output file */
-   if (settings->output_status > 0 && (uint32_t)(settings->bytes_output_cur>>20) > info->max_file_size_mb)
+   if (settings->output_status > 0 && (((settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE)
+       || ((info->video_format == 'a' || info->video_format == 'A') && 
+            ((settings->bytes_output_cur>>20) > MAX_MBYTES_PER_FILE_32))))
    {
       lavrec_msg(LAVREC_MSG_INFO, info,
          "Max filesize reached, opening next output file");
