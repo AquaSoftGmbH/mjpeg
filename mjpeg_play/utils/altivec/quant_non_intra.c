@@ -29,7 +29,7 @@
 #endif
 
 #include "vectorize.h"
-#include "../fastintfns.h"
+#include <math.h>
 #include "../mjpeg_logging.h"
 #include "../../mpeg2enc/syntaxconsts.h"
 #include "../../mpeg2enc/quantize_precomp.h"
@@ -456,7 +456,7 @@ int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
     nzb1 = quant_non_intra_altivec(QUANT_NON_INTRA_ARGS);
     nsmq1 = *nonsat_mquant;
     for (checksum1 = i = 0; i < len; i++)
-	checksum1 += intabs(dst[i]);
+	checksum1 += abs(dst[i]);
 
     memcpy(dstcpy, dst, len*sizeof(int16_t));
 
@@ -466,7 +466,7 @@ int quant_non_intra_altivec_verify(QUANT_NON_INTRA_PDECL)
     nzb2 = ALTIVEC_TEST_WITH(quant_non_intra)(QUANT_NON_INTRA_ARGS);
     nsmq2 = *nonsat_mquant;
     for (checksum2 = i = 0; i < len; i++)
-	checksum2 += intabs(dst[i]);
+	checksum2 += abs(dst[i]);
 
     if (nzb1 != nzb2 || checksum1 != checksum2 || nsmq1 != nsmq2) {
 	mjpeg_debug("quant_non_intra(" QUANT_NON_INTRA_PFMT ")",

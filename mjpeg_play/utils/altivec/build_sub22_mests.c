@@ -23,7 +23,7 @@
 
 #include "altivec_motion.h"
 #include "vectorize.h"
-#include "../fastintfns.h"
+#include <math.h>
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
@@ -627,15 +627,15 @@ int build_sub22_mests_altivec_verify(BUILD_SUB22_MESTS_PDECL)
   len1 = _build_sub22_mests_altivec(BUILD_SUB22_MESTS_ARGS, 1 /*verify*/);
   for (checksum1 = i = 0; i < len1; i++) {
     checksum1 += sub22set->mests[i].weight;
-    checksum1 += intabs(sub22set->mests[i].x);
-    checksum1 += intabs(sub22set->mests[i].y);
+    checksum1 += abs(sub22set->mests[i].x);
+    checksum1 += abs(sub22set->mests[i].y);
   }
 
   len2 = ALTIVEC_TEST_WITH(build_sub22_mests)(BUILD_SUB22_MESTS_ARGS);
   for (checksum2 = i = 0; i < len2; i++) {
     checksum2 += sub22set->mests[i].weight;
-    checksum2 += intabs(sub22set->mests[i].x);
-    checksum2 += intabs(sub22set->mests[i].y);
+    checksum2 += abs(sub22set->mests[i].x);
+    checksum2 += abs(sub22set->mests[i].y);
   }
 
   if (len1 != len2 || checksum1 != checksum2) {

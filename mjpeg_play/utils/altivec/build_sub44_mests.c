@@ -25,6 +25,7 @@
 #include "vectorize.h"
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"
+#include <math.h>
 
 /* #define AMBER_ENABLE */
 /* #define AMBER_MAX_TRACES 10 */
@@ -54,13 +55,13 @@ extern int sub_mean_reduction_ppc(int len, me_result_set *set, int reduction);
  * uniform images.
  */
 /* C penalty calculation */
-#define DISTANCE_PENALTY(x,y) (intmax(intabs(x - i0),intabs(y - j0))<<1)
+#define DISTANCE_PENALTY(x,y) (intmax(abs(x - i0),abs(y - j0))<<1)
 
 /* MMX penalty calculation */
-/* #define DISTANCE_PENALTY(x,y) (intmax(intabs(x),intabs(y))<<2) */
+/* #define DISTANCE_PENALTY(x,y) (intmax(abs(x),abs(y))<<2) */
 
 /* old MMX penalty calculation */
-/* #define DISTANCE_PENALTY(x,y) (intabs(x)+intabs(y)) */
+/* #define DISTANCE_PENALTY(x,y) (abs(x)+abs(y)) */
 
 
 
@@ -792,15 +793,15 @@ int build_sub44_mests_altivec_verify(BUILD_SUB44_MESTS_PDECL)
   len1 = _build_sub44_mests_altivec(BUILD_SUB44_MESTS_ARGS, 1 /*verify*/);
   for (checksum1 = i = 0; i < len1; i++) {
     checksum1 += sub44set->mests[i].weight;
-    checksum1 += intabs(sub44set->mests[i].x);
-    checksum1 += intabs(sub44set->mests[i].y);
+    checksum1 += abs(sub44set->mests[i].x);
+    checksum1 += abs(sub44set->mests[i].y);
   }
 
   len2 = ALTIVEC_TEST_WITH(build_sub44_mests)(BUILD_SUB44_MESTS_ARGS);
   for (checksum2 = i = 0; i < len2; i++) {
     checksum2 += sub44set->mests[i].weight;
-    checksum2 += intabs(sub44set->mests[i].x);
-    checksum2 += intabs(sub44set->mests[i].y);
+    checksum2 += abs(sub44set->mests[i].x);
+    checksum2 += abs(sub44set->mests[i].y);
   }
 
   if (len1 != len2 || checksum1 != checksum2) {

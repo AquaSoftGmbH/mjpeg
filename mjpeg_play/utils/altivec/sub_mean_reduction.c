@@ -29,7 +29,7 @@
 #endif
 
 #include "vectorize.h"
-#include "../fastintfns.h"
+#include <math.h>
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
@@ -154,8 +154,8 @@ void sub_mean_reduction_altivec_verify(SUB_MEAN_REDUCTION_PDECL)
   mwr1 = *minweight_res;
   for (checksum1 = i = 0; i < len1; i++) {
     checksum1 += matchset->mests[i].weight;
-    checksum1 += intabs(matchset->mests[i].x);
-    checksum1 += intabs(matchset->mests[i].y);
+    checksum1 += abs(matchset->mests[i].x);
+    checksum1 += abs(matchset->mests[i].y);
   }
 
   /* restore len */
@@ -172,8 +172,8 @@ void sub_mean_reduction_altivec_verify(SUB_MEAN_REDUCTION_PDECL)
   mwr2 = *minweight_res;
   for (checksum2 = i = 0; i < len2; i++) {
     checksum2 += matchset->mests[i].weight;
-    checksum2 += intabs(matchset->mests[i].x);
-    checksum2 += intabs(matchset->mests[i].y);
+    checksum2 += abs(matchset->mests[i].x);
+    checksum2 += abs(matchset->mests[i].y);
   }
 
   if (len1 != len2 || checksum1 != checksum2 || mwr1 != mwr2) {

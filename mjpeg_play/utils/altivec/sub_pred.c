@@ -23,7 +23,7 @@
 
 #include "altivec_motion.h"
 #include "vectorize.h"
-#include "../fastintfns.h"
+#include <math.h>
 #include "../mjpeg_logging.h"
 
 /* #define AMBER_ENABLE */
@@ -179,13 +179,13 @@ void sub_pred_altivec_verify(SUB_PRED_PDECL)
 
     sub_pred_altivec(SUB_PRED_ARGS);
     for (checksum1 = i = 0; i < 8*8; i++)
-	checksum1 += intabs(blk[i]);
+	checksum1 += abs(blk[i]);
 
     memcpy(blkcpy, blk, 8*8*sizeof(short));
 
     ALTIVEC_TEST_WITH(sub_pred)(SUB_PRED_ARGS);
     for (checksum2 = i = 0; i < 8*8; i++)
-	checksum2 += intabs(blk[i]);
+	checksum2 += abs(blk[i]);
 
     if (checksum1 != checksum2) {
 	mjpeg_debug("sub_pred(" SUB_PRED_PFMT ")", SUB_PRED_ARGS);
