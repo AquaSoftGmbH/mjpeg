@@ -1178,14 +1178,14 @@ handle_args_dependent (int argc, char *argv[])
 		  break;
 		case Y4M_ILACE_TOP_FIRST:
 		  if (output_interlaced == Y4M_ILACE_BOTTOM_FIRST)
-		    field_move -= 1;
+		    field_move += 1;
 		  else
 		    mjpeg_warn
 		      ("not_interlaced/progressive output required but top-interlaced input: hope you know what you're doing!\n");
 		  break;
 		case Y4M_ILACE_BOTTOM_FIRST:
 		  if (output_interlaced == Y4M_ILACE_TOP_FIRST)
-		    field_move += 1;
+		    field_move -= 1;
 		  else
 		    mjpeg_warn
 		      ("not_interlaced/progressive output required but bottom-interlaced input: hope you know what you're doing!\n");
