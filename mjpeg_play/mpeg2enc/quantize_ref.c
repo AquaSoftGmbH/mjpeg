@@ -63,7 +63,9 @@
 #include "quantize_precomp.h"
 
 #ifdef HAVE_ALTIVEC
-void enable_altivec_quantization(int opt_mpeg1);
+void enable_altivec_quantization(int opt_mpeg1,
+                                 uint16_t *intra_q,
+                                 uint16_t *inter_q);
 #endif
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 void enable_x86_quantization( int mpeg1 );
@@ -544,7 +546,7 @@ void init_quantizer( int mpeg1,
 #endif
 #ifdef HAVE_ALTIVEC
 	if (cpu_accel())
-	    enable_altivec_quantization(mpeg1);
+	    enable_altivec_quantization(mpeg1, intra_q, inter_q);
 #endif
 }
 
