@@ -43,7 +43,7 @@ is also included in MJPEGtools.
 Frame offset:  skip output of the first 'num' frames.  (default: 0)
 .TP 5
 .BI \-f " num"
-Set the frame rate of stream accepts the same numbers. Not default, this option has to be specified.
+Set the frame rate of stream accepts the same numbers.  No default, this option has to be specified.
 .TP 5
 .BI \-I " num"
 interlacing mode:
@@ -56,17 +56,17 @@ b = bottom field first
 No default, this option has to be specified.
 .TP 5
 .BI \-L " num"
-0 = non-interleaved (two successive fields per JPEG file)
+0 = non-interlaced (two successive fields per JPEG file)
 .br
-1 = interleaved fields
+1 = interlaced fields
 .TP 5
 .BI \-l " num"
-Specifies the nummber of loops (default: 0 loops )
+Specifies the number of loops (default: 0 loops )
 .br
-When this option is not used the given range of images is only processed once. If you use this option and as num -1, jpeg2yv will loop forever writing the image to stdout. When you use n > 0 it will loop. n-time till it finishes.
+When this option is not used the given range of images is only processed once. If you use this option with num of -1 jpeg2yuv will loop forever writing the image to stdout. When you use n > 0 it will loop n-times till it finishes.
 .TP 5
 .BI \-n " num"
-Specifies the nummber of frames to process. (default: all = -1)
+Specifies the number of frames to process. (default: all = -1)
 .TP 5 
 .BI \-j " {1}%{2}d{3}"
 Read JPEG frames with the name components as follows:
@@ -79,7 +79,7 @@ A correct description of the files could look like this: picture_%06d.jpg
 Verbosity level (0, 1 or 2)
 
 .SH BUGS
-The frame rate desciption seems not to be up to date. The NTSC integer ratios seems not to be suportet well. As workaround specify a PAL (25) or nativ FILM (24) and set the right frame rate in mpeg2enc with the -F option.
+The frame rate desciption seems not to be up to date. The NTSC integer ratios seem not to be supported. As a workaround specify a PAL (25) or FILM (24) and set the right frame rate in mpeg2enc with the -F option.
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.
