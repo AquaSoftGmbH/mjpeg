@@ -81,12 +81,17 @@ GtkWidget *combo_entry_videobitrate;
 /* Set the tempenco struct to defined values */
 void init_tempenco(gpointer task)
 {
-  printf("Which task to do :%s \n",(char*)task);
 
-  if (strcmp ((char*)task,"mpeg1") == 0)
+  if (verbose)
+    printf("Which task to do :%s \n",(char*)task);
+
+  if (strcmp ((char*)task,"MPEG1") == 0)
     point = &encoding;
-  else
+  else if (strcmp ((char*)task,"MPEG2") == 0)
+    point = &encoding2;
+  else 
     point = &encoding;
+
 
   sprintf(tempenco.notblacksize,"%s",(*point).notblacksize);
   sprintf(tempenco.input_use,"%s",(*point).input_use);
@@ -102,7 +107,6 @@ void init_tempenco(gpointer task)
   sprintf(tempenco.forcestereo,"%s",(*point).forcestereo);
   sprintf(tempenco.forcemono,"%s",(*point).forcemono);
   sprintf(tempenco.forcevcd,"%s",(*point).forcevcd);
-  tempenco.mpeglevel=(*point).mpeglevel;
   tempenco.bitrate=(*point).bitrate;
   tempenco.searchradius=(*point).searchradius;
   tempenco.muxformat=(*point).muxformat;
@@ -158,7 +162,6 @@ char val[LONGOPT];
   for (i = 0; i < tempenco.muxformat ;i++)
     muxformat = g_list_next (muxformat);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_muxfmt), muxformat->data);
-
 }
 
 /* set the noisfilter for lav2yuv */
@@ -250,9 +253,10 @@ void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
   i = 0;
   test = gtk_entry_get_text(GTK_ENTRY(widget));
 
- muxformat = g_list_last (muxformat);
 
- for (i = (g_list_length (g_list_first(muxformat))-1) ; i > 0 ; i--)
+  muxformat = g_list_last (muxformat);
+
+  for (i = (g_list_length (g_list_first(muxformat))-1) ; i > 0 ; i--)
    {
      if (strcmp (test,muxformat->data) == 0)
                break;
@@ -345,14 +349,11 @@ void create_mplex_encoding (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *combo_muxfmt; 
 
-   muxformat = g_list_append (muxformat, "Auto MPEG 1");
-   muxformat = g_list_append (muxformat, "standard VCD");
-   muxformat = g_list_append (muxformat, "user-rate VCD");
-   muxformat = g_list_append (muxformat, "Auto MPEG 2");
-   muxformat = g_list_append (muxformat, "standard SVCD");
-   muxformat = g_list_append (muxformat, "user-rate SVCD");
-   muxformat = g_list_append (muxformat, "DVD");
+  g_list_first(muxformat);
 
+  printf("\n laenge %i \n",g_list_length (g_list_first(muxformat)));
+
+ 
   combo_muxfmt = gtk_combo_new();
   gtk_combo_set_popdown_strings (GTK_COMBO (combo_muxfmt), muxformat);
   combo_entry_muxfmt = GTK_COMBO (combo_muxfmt)->entry;
@@ -803,9 +804,6 @@ ty = 9;
 /* This is done when the OK Button was pressed */
 void accept_mpegoptions(GtkWidget *widget, gpointer data)
 {
-  printf("\n Scheiss %s \n", (char*)data);
-
-
   sprintf((*point).notblacksize,"%s",tempenco.notblacksize);
   sprintf((*point).input_use,"%s",tempenco.input_use);
   sprintf((*point).output_size,"%s",tempenco.output_size);
@@ -820,7 +818,6 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   sprintf((*point).forcestereo,"%s",tempenco.forcestereo);
   sprintf((*point).forcemono,"%s",tempenco.forcemono);
   sprintf((*point).forcevcd,"%s",tempenco.forcevcd);
-  (*point).mpeglevel=tempenco.mpeglevel;
   (*point).bitrate=tempenco.bitrate;
   (*point).searchradius=tempenco.searchradius;
   (*point).muxformat=tempenco.muxformat;
@@ -833,7 +830,17 @@ void open_mpeg_window(GtkWidget *widget, gpointer data)
 GtkWidget *options_window, *button;
 GtkWidget *hbox,*vbox;
  
-  init_tempenco(data);
+  printf("\n laenge %i \n", g_list_length (g_list_first(muxformat)));
+   muxformat = g_list_append (muxformat, "Auto MPEG 1");
+   muxformat = g_list_append (muxformat, "standard VCD");
+   muxformat = g_list_append (muxformat, "user-rate VCD");
+   muxformat = g_list_append (muxformat, "Auto MPEG 2");
+   muxformat = g_list_append (muxformat, "standard SVCD");
+   muxformat = g_list_append (muxformat, "user-rate SVCD");
+   muxformat = g_list_append (muxformat, "DVD");
+ 
+
+ init_tempenco(data);
 
   options_window = gtk_window_new(GTK_WINDOW_DIALOG);
   hbox = gtk_hbox_new (FALSE, 10);
