@@ -76,6 +76,7 @@ static int param_noise_filt = 0;
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
+static int param_hires_quant = 0;
 static double param_act_boost = 2.5;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
@@ -103,6 +104,7 @@ void Usage(char *str)
   printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
   printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
   printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
+  printf("   -h         Maximise high-frequency resolution (useful for high quality sources)\n" );
   exit(0);
 }
 
@@ -115,7 +117,7 @@ char *argv[];
 #define PARAM_LINE_MAX 256
   char param_line[PARAM_LINE_MAX];
 
-  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:tN")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:tNh")) != EOF)
   {
     switch(n) {
 
@@ -198,14 +200,17 @@ char *argv[];
 	case 'N':
 	  param_hfnoise_quant = 1;
 	  break;
+	case 'h':
+	  param_hires_quant = 1;
+	  break;
 	  
-	  case 'Q' :
-	  	param_act_boost = atof(optarg);
-		if( param_act_boost <0.1 || param_act_boost > 10.0)
-		{
+	case 'Q' :
+	  param_act_boost = atof(optarg);
+	  if( param_act_boost <0.1 || param_act_boost > 10.0)
+	  {
 			fprintf( stderr, "-q option requires arg 0.1 .. 10.0\n");
 			nerr++;
-		}
+	  }
 	default:
 	  nerr++;
     }
@@ -859,15 +864,28 @@ static void readquantmat()
 
   if (iqname[0]=='-')
   {
-    /* use default intra matrix */
-    load_iquant = param_hfnoise_quant;
-    for (i=0; i<64; i++)
-    {
-	  v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
-      intra_q[i] = default_intra_quantizer_matrix[i];
-     i_intra_q[i] = (int)(((double)(IQUANT_SCALE)) / 
-     				(double)(default_intra_quantizer_matrix[i]));
-      } 
+  	if( param_hires_quant )
+	{
+	  load_iquant = 1;
+	  intra_q[0] = 8;
+	  for (i=1; i<64; i++)
+	  {
+	     intra_q[i] = 16;
+	  }	
+	}
+	else
+	{
+	  /* use default intra matrix */
+	  load_iquant = param_hfnoise_quant;
+	  for (i=0; i<64; i++)
+	  {
+		v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
+		if (v<1 || v>255)
+          error("value in intra quant matrix invalid (after noise filt adjust)");
+		intra_q[i] = v;
+
+	  } 
+	}
   }
   else
   {
@@ -887,7 +905,6 @@ static void readquantmat()
         error("value in intra quant matrix invalid (after noise filt adjust)");
 
       intra_q[i] = v;
-      i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v));
     }
 
     fclose(fd);
@@ -896,17 +913,28 @@ static void readquantmat()
 	/* TODO: Inv Quant matrix initialisation should check if the fraction fits in 16 bits! */
   if (niqname[0]=='-')
   {
-    /* use default non-intra matrix - this would be all 16's we use something
-    more suitable for domestic sources... which is non-standard...*/
-    load_niquant = 1;
-    
-    for (i=0; i<64; i++)
+
+ 	if( param_hires_quant )
+	{
+	  load_niquant = 0;
+	  for (i=0; i<64; i++)
 	  {
-		/* TODO: A TEST THE SPECIFIED MATRIX WAS SUSPECT....*/
-		v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
-		inter_q[i] = v;
-		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
-	  }
+	     intra_q[i] = 16;
+	  }	
+	}
+	else
+	{
+        /* default non-intra matrix is all 16's. OFr our default we use something
+    	more suitable for domestic analog sources... which is non-standard...*/
+    	load_niquant = 1;
+    	for (i=0; i<64; i++)
+	  	{
+		  v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
+		  if (v<1 || v>255)
+            error("value in non-intra quant matrix invalid (after noise filt adjust)");
+		  inter_q[i] = v;
+	   }
+    }
   }
   else
   {
@@ -927,7 +955,13 @@ static void readquantmat()
         error("value in non-intra quant matrix invalid (after noise filt adjust)");
       i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)v)); 
      }
-
     fclose(fd);
   }
+  
+  for (i=0; i<64; i++)
+  {
+  	i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)intra_q[i]));
+    i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+  }
+  
 }

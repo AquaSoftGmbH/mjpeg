@@ -166,7 +166,7 @@ char    **argv;
 	int res;
 	int warned = 0;
 
-    while( (n=getopt(argc,argv,"v:b:")) != EOF)
+    while( (n=getopt(argc,argv,"v:")) != EOF)
     {
         switch(n) {
 
@@ -174,13 +174,16 @@ char    **argv;
 		verbose = atoi(optarg);
 		break;
 
-            case '?':
-               Usage(argv[0]);
+		case '?':
+			Usage(argv[0]);
         }
     }
 
  
     /* Open editlist */
+
+	if( argc-optind <= 1)
+		Usage(argv[0]);
 
     read_video_files(argv + optind, argc - optind, &el);
 

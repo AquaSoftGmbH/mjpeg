@@ -124,8 +124,10 @@ int dmv,f_code;
 
   /* check value */
   if (dmv<vmin || dmv>vmax)
-    if (!quiet)
-      fprintf(stderr,"invalid motion vector\n");
+  {
+      fprintf(stderr,"INTERNAL error: invalid motion vecto generated\n");
+      exit(1);
+  }
 
   /* split dmv into motion_code and motion_residual */
   temp = ((dmv<0) ? -dmv : dmv) + f - 1;
