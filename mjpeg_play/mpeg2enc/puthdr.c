@@ -241,7 +241,7 @@ void putpictcodext(pict_data_s *picture)
   putbits(picture->back_vert_f_code,4); /* backward_vertical_f_code */
   putbits(picture->dc_prec,2); /* intra_dc_precision */
   putbits(picture->pict_struct,2); /* picture_structure */
-  putbits((picture->pict_struct==FRAME_PICTURE)?picture->topfirst:0,1); /* top_field_first */
+  putbits((picture->pict_struct==FRAME_PICTURE)?picture->topfirst : 0, 1); /* top_field_first */
   putbits(picture->frame_pred_dct,1); /* frame_pred_frame_dct */
   putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
   putbits(picture->q_scale_type,1); /* q_scale_type */

@@ -224,7 +224,6 @@ static void set_format_presets()
 
 	case MPEG_FORMAT_SVCD :
 		mjpeg_info("SVCD standard settings selected\n");
-		param_fieldenc = 3;
 		param_bitrate = 2500000;
 		param_min_GOP_size = 6;
 		param_max_GOP_size = 18;
@@ -233,6 +232,7 @@ static void set_format_presets()
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
 		param_mpeg = 2;
+		param_fieldenc = 3;
 		if( param_quant == 0 )
 			param_quant = 12;
 		param_svcd_scan_data = 1;
