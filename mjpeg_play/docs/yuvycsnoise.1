@@ -1,4 +1,4 @@
-.TH "yuvycsnoise" "1" "10 December 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvycsnoise" "1" "5 February 2002" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 yuvycsnoise \- Noise filter specialized for NTSC Y/C separation noise
@@ -6,22 +6,21 @@ yuvycsnoise \- Noise filter specialized for NTSC Y/C separation noise
 .SH SYNOPSIS
 .B yuvycsnoise
 .RB [ \-t ]
-.RB [ \-m
-{tbic} ]
+.RB [ \-m\ t | b | i | c ]
 .RB [ \-S
 .IR MIN ]
 .RB [ \-T
-.IR ERRT[,MAXT] ]
+.IR ERRT [\fB,\fP MAXT ]]
 .RB [ \-B
-.IR ERRB[,MAXB] ]
+.IR ERRB [\fB,\fP MAXB ]]
 .RB [ \-I
-.IR ERRI[,MAXI] ]
+.IR ERRI [\fB,\fP MAXI ]]
 .RB [ \-C
-.IR ERRC[,MAXC] ]
+.IR ERRC [\fB,\fP MAXC ]]
 
 .SH DESCRIPTION
 If video capture hardware has only a poor Y/C separator,
-at vertical stripe (especialy red/blue), noises appear
+at vertical stripe (especially red/blue), noises appear
 which seem checker flag and bright/dark invert per 1 frame.
 \fByuvycsnoise\fP reduces noises of this type.
 
@@ -32,14 +31,14 @@ which seem checker flag and bright/dark invert per 1 frame.
 test. Instead of noise reduction, noises will be marked as black pixel.
 .TP 8
 .BI \-m \ METHOD
-(default: tbic).
+(default: \fBtbic\fP).
 .br
 Select method.
-METHOD is string in which each charactor mean method.
- t: 'triframe' method of luma noise reduction.
- b: 'biframe' method of luma noise reduction.
- i: 'infield' method of luma noise reduction.
- c: chroma noise reduction. use 3 frames as 'triframe'.
+\fIMETHOD\fP is string in which each character mean method.
+ \fBt\fP: 'triframe' method of luma noise reduction.
+ \fBb\fP: 'biframe' method of luma noise reduction.
+ \fBi\fP: 'infield' method of luma noise reduction.
+ \fBc\fP: chroma noise reduction. use 3 frames as 'triframe'.
 .TP 8
 .BI \-S \ MIN
 (default: 4).
@@ -47,26 +46,26 @@ METHOD is string in which each charactor mean method.
 Set minimum threshold of luma/chroma difference
 which is treated as noise.
 .TP 8
-.BI \-T \ ERRT[,MAXT]
+.BI \-T \ ERRT \fR[\fP, MAXT\fR]\fP
 (default: 32,255).
 .TP 8
-.BI \-B \ ERRB[,MAXB]
+.BI \-B \ ERRB \fR[\fP, MAXB\fR]\fP
 (default: 32,255).
 .TP 8
-.BI \-I \ ERRI[,MAXI]
+.BI \-I \ ERRI \fR[\fP, MAXI\fR]\fP
 (default: 16,255).
 .TP 8
-.BI \-C \ ERRC[,MAXC]
+.BI \-C \ ERRC \fR[\fP, MAXC\fR]\fP
 (default: 12,255).
 .br
 Set threshold of luma/chroma difference of each methods.
-ERRx is maximum error of luma/chroma of pixels arround
+\fIERRx\fP is maximum error of luma/chroma of pixels around
 target pixel, which should be same if target contain noise.
-MAXx is maximum threshold of luma/chroma difference of
+\fIMAXx\fP is maximum threshold of luma/chroma difference of
 target pixel from luma/chroma after noise reduced.
 
 .SH AUTHOR
-This man page was written by Kawamata/Hitoshi.
+\fByuvycsnoise\fP was written by Kawamata/Hitoshi.
 .br
 If you have questions, remarks, problems or you just want to contact
 the developers, the main mailing list for the MJPEG\-tools is:
