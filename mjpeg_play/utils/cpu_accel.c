@@ -61,8 +61,8 @@ static int testsseill()
 	else
 		illegal = 1;
 	signal( SIGILL, old_handler );
-	return illegal;
 #endif
+	return illegal;
 }
 
 static int x86_accel (void)

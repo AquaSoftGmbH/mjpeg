@@ -18,6 +18,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
