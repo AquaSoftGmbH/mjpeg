@@ -318,7 +318,7 @@ void OutputStream::InitSyntaxParameters()
 unsigned int OutputStream::RunInSectors()
 {
 	vector<ElementaryStream *>::iterator str;
-	unsigned int sectors_delay = 0;
+	unsigned int sectors_delay = 1;
 
 	for( str = vstreams.begin(); str < vstreams.end(); ++str )
 	{
@@ -332,6 +332,7 @@ unsigned int OutputStream::RunInSectors()
 		else
 			sectors_delay += 5 *(*str)->BufferSize() / ( 6 * sector_size );
 	}
+    sectors_delay += astreams.size();
 	return sectors_delay;
 }
 
@@ -704,7 +705,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	bool padding_packet;
-	bool video_first = seg_starts_with_video;
+	bool video_first;
 
 	estreams = strms;
 
@@ -721,6 +722,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		}
 		completed.push_back(false);
 	}
+
 
 	Init( multi_file );
 
@@ -801,7 +803,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
             start_of_new_pack = true;
 			include_sys_header = sys_header_in_pack1;
 			buffers_in_video = always_buffers_in_video;
-			video_first = seg_starts_with_video;
+			video_first = seg_starts_with_video & (vstreams.size() > 0);
 			OutputPrefix();
 
 			/* The starting PTS/DTS of AU's may of course be
@@ -890,7 +892,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		clockticks earliest;
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
-
 /* DEBUG
 			fprintf( stderr,"STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
 					 (*str)->stream_id,

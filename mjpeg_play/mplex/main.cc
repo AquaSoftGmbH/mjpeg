@@ -100,8 +100,12 @@ int main (int argc, char* argv[])
 			break;
 		case MPEG_FORMAT_SVCD_STILL :
 			frame_interval = 30;
-			if(  video_files.size() > 1 )
+
+			if( video_files.size() > 1 )
+			{
 				mjpeg_error_exit1("SVCD stills streams may only contain a single video stream\n");
+			}
+			else if(  video_files.size() > 0 )
 			{
 				ConstantFrameIntervals *intervals;
 				StillsStream *str;
@@ -110,6 +114,7 @@ int main (int argc, char* argv[])
 				strms.push_back( str );
 				str->Init();
 			}
+			else 
 			for( i = 0 ; i < mpa_files.size() ; ++i )
 			{
 				AudioStream *audioStrm = new MPAStream( *mpa_files[i], ostrm);
@@ -126,15 +131,13 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
+		ostrm.InitSyntaxParameters();
 
-		if( video_files.size() != 1 )
+		if( video_files.size() < 1 	&& opt_mux_format == MPEG_FORMAT_VCD )
 		{
-			mjpeg_debug( "Multiplexing non-stills currently only tested with exactly 1 video stream\n");
-			mjpeg_debug( "If you want to try it you'll need to modify the source code!\n" );
-			exit(1);
+			mjpeg_warn( "Multiplexing audio-only for a standard VCD is very inefficient\n");
 		}
 
-		ostrm.InitSyntaxParameters();
 		for( i = 0 ; i < video_files.size() ; ++i )
 		{
 			VideoStream *videoStrm;
