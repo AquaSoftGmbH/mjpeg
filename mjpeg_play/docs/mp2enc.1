@@ -1,0 +1,94 @@
+.TH "mp2enc" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH "NAME"
+.LP 
+.br 
+mp2enc \- Simple MPEG-2 layer-II audio encoder
+.br 
+
+.SH "SYNOPSIS"
+.B mp2enc
+.RB [ -v
+.IR num ]
+.RB [ -b
+.IR bitrate_kbps ]
+.RB [ -r
+.IR output_sampling_rate_hz ]
+.RB [ -s
+]
+.RB [ -m
+]
+.RB [ -V
+]
+.RB [ -? ]
+.BI -o \ output_filename
+
+.SH "DESCRIPTION"
+Mp2enc is a simple MPEG layer-II audio encoder.  It is actually a very
+mildly warmed over version of the MPEG Software Simulation Group's
+reference encoder.  It accepts a WAV file or stream on stdin and
+ouputs an a layer-II elementary audio stream.  It is included in the
+\fBmjpegtools\fP(1) primarily for reasons of completeness and because it
+is able to perform sampling rate conversion.
+.PP
+Those seeking a faster (and probably higher quality) encoder are
+recommended to use \fBtoolame\fP(1) which can be obtained from:
+.IP
+\fIhttp://members.dingoblue.net.au/~mikecheng\fP
+
+
+.SH "GENERAL FUNCTION LETTERS"
+.TP
+.BI -o \ output_filename
+Specifies the name for the output file.
+
+An integer format code (e.g. %d) in the name is replaced the number of
+the file generated (see printf(3)).
+.TP
+.BI -v \ num
+Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
+.B -?
+Display a synopsis of the command syntax.
+.br
+.SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
+.TP
+.BI -b \ bitrate
+
+This sets the bit-rate of the output stream i kBit/sec.  Typical
+values might be 224kbps for good-quality audio suitable for capturing
+Dolby pro-logic signals.  A rate of 192kbps or 128kbps is reasonable
+for low quality audio (e.g. mono TV audio).  Really high compression
+is, of course, better achieved using MPEG layer III "MP3" audio
+encoding or AAC.
+
+.TP
+.BI -l \ sampling_rate
+Sets the audio sampling rate of the reconstructed output signal in Hz.
+Legal values are 32000, 44100 and 48000Hz.   mp2enc will automatically
+sample-rate convert the input signal if necessary.
+
+.TP
+.BI -s
+Force stereo output.  A mono input signal is channel doubled before
+encoding to make it stereo.  This is useful for many MPEG players
+which simply can't handle a non-stero signal.
+.TP
+.BI -m
+Force mono output.  A stereo input signal is down-mixed before encoding.
+Useful if you've captured a mono signal in stereo and your player can
+handle mono MPEG.
+
+.SH AUTHOR
+This man page was written by Andrew Stevens.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR mpeg2enc "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)"
