@@ -191,7 +191,7 @@ int PictureReader::LumMean( uint8_t *frame )
 
 void PictureReader::ReadChunk()
 {
-    int j;
+    int j, e;
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
 	   if( encparams.parallel_read )
@@ -211,10 +211,15 @@ void PictureReader::ReadChunk()
       if( LoadFrame() )
       {
           mjpeg_debug( "End of input stream detected" );
-          if( encparams.parallel_read )
-          {
-              if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
-          }
+          if  (encparams.parallel_read)
+              {
+              e = pthread_mutex_lock(&input_imgs_buf_lock);
+              if (e != 0) 
+		 {
+		 fprintf(stderr, "*1 pthread_mutex_lock=%d\n", e);
+		 abort();
+		 }
+              }
           last_frame = frames_read-1;
           istrm_nframes = frames_read;
           mjpeg_info( "Signaling last frame = %d", last_frame );
@@ -235,7 +240,12 @@ void PictureReader::ReadChunk()
 		  // unavailable
 		  //
 		  //mjpeg_info( "PRO:  waiting for frame buf lock @ %d ", frames_read);
-		  if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
+              e = pthread_mutex_lock(&input_imgs_buf_lock);
+              if (e != 0) 
+		 {
+		 fprintf(stderr, "*2 pthread_mutex_lock=%d\n", e);
+		 abort();
+		 }
 	  }
 	  ++frames_read;
 
@@ -264,10 +274,17 @@ void *PictureReader::ReadChunksWrapper( void *picread )
 
 void PictureReader::ReadChunksWorker( )
 {
+    int e;
+
 	//mjpeg_info( "PRO: requesting frame buf lock" );
     //mjpeg_info( "PRO: has frame buf lock @ %d ", frames_read );
     //mjpeg_info( "PRO: Initial fill of frame buf" );
-    if (pthread_mutex_lock( &input_imgs_buf_lock ) != 0) abort();
+    e = pthread_mutex_lock( &input_imgs_buf_lock);
+    if (e != 0)
+        {
+	fprintf(stderr, "*3 pthread_mutex_lock=%d\n", e);
+	abort();
+	}
     ReadChunk();
 	for(;;)
 	{
@@ -349,8 +366,15 @@ void PictureReader::ReadChunkSequential( int num_frame )
 
 void PictureReader::ReadChunkParallel( int num_frame)
 {
+    int e;
+
 	//mjpeg_info( "CON: requesting frame buf lock");
-	if (pthread_mutex_lock( &input_imgs_buf_lock) != 0) abort();
+	e = pthread_mutex_lock( &input_imgs_buf_lock);
+	if (e != 0)
+	   {
+	   fprintf(stderr, "*4 pthread_mutex_lock=%d\n", e);
+	   abort();
+	   }
 	for(;;)
 	{
 		//mjpeg_info( "CON: has frame buf lock @ %d (%d recorded read)", frames_read,  num_frame );
