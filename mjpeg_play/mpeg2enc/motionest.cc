@@ -440,118 +440,110 @@ static bool dpframe_estimate (
      */
     int best_sad = 256*16*16;
     
-	for (pref=0; pref<2; pref++)
+	for (pref=0; pref<=1; pref++)
 	{
-		for (ppred=0; ppred<2; ppred++)
-		{
-			/* convert Cartesian absolute to relative motion vector
-			 * values (wrt current macroblock address (i,j)
-			 */
-            srcblk.x = best_fieldmvs[pref][ppred].x - (i<<1);
-            srcblk.y = best_fieldmvs[pref][ppred].y - (j<<1);
+        /* convert Cartesian absolute to relative motion vector
+         * values (wrt current macroblock address (i,j)
+         */
+        ppred = 1-pref;
+        srcblk.x = best_fieldmvs[pref][ppred].x - (i<<1);
+        srcblk.y = best_fieldmvs[pref][ppred].y - (j<<1);
+        
+        /* vertical field shift adjustment */
+        if (ppred==0)
+            srcblk.y++;
+        else
+            srcblk.y--;
 
-			if (pref!=ppred)
-			{
-				/* vertical field shift adjustment */
-				if (ppred==0)
-					srcblk.y++;
-				else
-					srcblk.y--;
+        /* mvxs and mvys scaling*/
+        srcblk.x<<=1;
+        srcblk.y<<=1;
+        if (picture.topfirst == ppred)
+        {
+            /* second field: scale by 1/3 */
+            srcblk.x = (srcblk.x>=0) ? (srcblk.x+1)/3 : -((srcblk.x-1)/3);
+            srcblk.y = (srcblk.y>=0) ? (srcblk.y+1)/3 : -((srcblk.y-1)/3);
+        }
 
-				/* mvxs and mvys scaling*/
-				srcblk.x<<=1;
-				srcblk.y<<=1;
-				if (picture.topfirst == ppred)
-				{
-					/* second field: scale by 1/3 */
-					srcblk.x = (srcblk.x>=0) ? (srcblk.x+1)/3 : -((-srcblk.x+1)/3);
-					srcblk.y = (srcblk.y>=0) ? (srcblk.y+1)/3 : -((-srcblk.y+1)/3);
-				}
-				else
-					continue;
-			}
+        /* vector for prediction from field of opposite 'parity' */
+        if (picture.topfirst)
+        {
+            /* vector for prediction of top field from bottom field */
+            topblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
+            topblk0.y = ((srcblk.y+(srcblk.y>0))>>1) - 1;
 
-			/* vector for prediction from field of opposite 'parity' */
-			if (picture.topfirst)
-			{
-				/* vector for prediction of top field from bottom field */
-				topblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
-				topblk0.y = ((srcblk.y+(srcblk.y>0))>>1) - 1;
+            /* vector for prediction of bottom field from top field */
+            botblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
+            botblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) + 1;
+        }
+        else
+        {
+            /* vector for prediction of top field from bottom field */
+            topblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
+            topblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) - 1;
 
-				/* vector for prediction of bottom field from top field */
-				botblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
-				botblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) + 1;
-			}
-			else
-			{
-				/* vector for prediction of top field from bottom field */
-				topblk0.x = ((3*srcblk.x+(srcblk.x>0))>>1);
-				topblk0.y = ((3*srcblk.y+(srcblk.y>0))>>1) - 1;
+            /* vector for prediction of bottom field from top field */
+            botblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
+            botblk0.y = ((srcblk.y+(srcblk.y>0))>>1) + 1;
+        }
 
-				/* vector for prediction of bottom field from top field */
-				botblk0.x = ((srcblk.x+(srcblk.x>0))>>1);
-				botblk0.y = ((srcblk.y+(srcblk.y>0))>>1) + 1;
-			}
+        /* convert back to absolute half-pel field picture coordinates */
+        srcblk.x += i<<1;
+        srcblk.y += j<<1;
+        topblk0.x += i<<1;
+        topblk0.y += j<<1;
+        botblk0.x += i<<1;
+        botblk0.y += j<<1;
 
-			/* convert back to absolute half-pel field picture coordinates */
-			srcblk.x += i<<1;
-			srcblk.y += j<<1;
-			topblk0.x += i<<1;
-			topblk0.y += j<<1;
-			botblk0.x += i<<1;
-			botblk0.y += j<<1;
-
-            for (delta_y=-1; delta_y<=1; delta_y++)
+        for (delta_y=-1; delta_y<=1; delta_y++)
+        {
+            for (delta_x=-1; delta_x<=1; delta_x++)
             {
-                for (delta_x=-1; delta_x<=1; delta_x++)
-                {
-                    /* opposite field coordinates */
-                    topblk.x = topblk0.x + delta_x;
-                    topblk.y = topblk0.y + delta_y;
-                    botblk.x = botblk0.x + delta_x;
-                    botblk.y = botblk0.y + delta_y;
+                /* opposite field coordinates */
+                topblk.x = topblk0.x + delta_x;
+                topblk.y = topblk0.y + delta_y;
+                botblk.x = botblk0.x + delta_x;
+                botblk.y = botblk0.y + delta_y;
 
-                    uint8_t *topref = 
-                        ref + (srcblk.x>>1) + (stride<<1)*(srcblk.y>>1);
-                    uint8_t *botref = topref + stride;
-                    /* compute prediction error */
-                    local_dist = pbsad(
-                        topref,
-                        ref + stride + (topblk.x>>1) + (stride<<1)*(topblk.y>>1),
-                        ssmb->mb,
-                        stride<<1,
-                        srcblk.x&1, srcblk.y&1, topblk.x&1, topblk.y&1,
-                        8);
-                    local_dist += pbsad(
-                        botref,
-                        ref + (botblk.x>>1) + (stride<<1)*(botblk.y>>1),
-                        ssmb->mb + stride,
-                        stride<<1,
-                        srcblk.x&1, srcblk.y&1, botblk.x&1, botblk.y&1,
-                        8);
+                uint8_t *topref = 
+                    ref + (srcblk.x>>1) + (stride<<1)*(srcblk.y>>1);
+                uint8_t *botref = topref + stride;
+                /* compute prediction error */
+                local_dist = pbsad(
+                    topref,
+                    ref + stride + (topblk.x>>1) + (stride<<1)*(topblk.y>>1),
+                    ssmb->mb,
+                    stride<<1,
+                    srcblk.x&1, srcblk.y&1, topblk.x&1, topblk.y&1,
+                    8);
+                local_dist += pbsad(
+                    botref,
+                    ref + (botblk.x>>1) + (stride<<1)*(botblk.y>>1),
+                    ssmb->mb + stride,
+                    stride<<1,
+                    srcblk.x&1, srcblk.y&1, botblk.x&1, botblk.y&1,
+                    8);
                     
-                    /* update delta wtopblk.xh legal MV with
-                     * smallest distortion distortion */
+                /* update delta legal MV with smallest distortion */
                     
-                    if ( local_dist < best_sad &&
-                         srcblk.x >= 0 && srcblk.x <= max_x_tgt && 
-                         srcblk.y >= 0 && srcblk.y <= max_y_tgt &&
-                         topblk.x >= 0 && topblk.x <= max_x_tgt &&
-                         topblk.y >= 0 && topblk.y <= max_y_tgt &&
-                         botblk.x >= 0 && botblk.x <= max_x_tgt &&
-                         botblk.y >= 0 && botblk.y <= max_y_tgt )
-                    {
-                        dpmvfound = true;
-                        minsrc = srcblk;
-                        mintop = topblk;
-                        minbot = botblk;
-                        min_dpmv.x = delta_x;
-                        min_dpmv.y = delta_y;
-                        best_sad = local_dist;
-                    }
-                }  /* end delta x loop */
-            } /* end delta y loop */
-		}
+                if ( local_dist < best_sad &&
+                     srcblk.x >= 0 && srcblk.x <= max_x_tgt && 
+                     srcblk.y >= 0 && srcblk.y <= max_y_tgt &&
+                     topblk.x >= 0 && topblk.x <= max_x_tgt &&
+                     topblk.y >= 0 && topblk.y <= max_y_tgt &&
+                     botblk.x >= 0 && botblk.x <= max_x_tgt &&
+                     botblk.y >= 0 && botblk.y <= max_y_tgt )
+                {
+                    dpmvfound = true;
+                    minsrc = srcblk;
+                    mintop = topblk;
+                    minbot = botblk;
+                    min_dpmv.x = delta_x;
+                    min_dpmv.y = delta_y;
+                    best_sad = local_dist;
+                }
+            }  /* end delta x loop */
+        } /* end delta y loop */
 	}
     
     if( dpmvfound )
