@@ -678,7 +678,7 @@ int main(int argc, char ** argv)
             break;
 
 		case 'w':
-            playback_width=768;
+            playback_width=atoi(optarg);
             break;
 
 		case 'x':
