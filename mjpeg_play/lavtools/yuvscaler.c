@@ -404,13 +404,14 @@ yuvscaler_calculate_output_sar (int out_w, int out_h,
 
 // *************************************************************************************
 int
-yuvscaler_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
-			  unsigned long int buflen, uint8_t * buf)
+yuvscaler_y4m_read_frame (int fd, y4m_stream_info_t *si, 
+			y4m_frame_info_t * frameinfo,
+			unsigned long int buflen, uint8_t * buf)
 {
   // This function reads a frame from input stream. It does the same thing as the y4m_read_frame function (from yuv4mpeg.c)
-  // May be replaced dierctly by it in the near future
+  // May be replaced directly by it in the near future
   static int err = Y4M_OK;
-   if ((err = y4m_read_frame_header (fd, frameinfo)) == Y4M_OK)
+   if ((err = y4m_read_frame_header (fd, si, frameinfo)) == Y4M_OK)
      {
 	if ((err = y4m_read (fd, buf, buflen)) != Y4M_OK)
 	  {
@@ -1166,9 +1167,8 @@ main (int argc, char *argv[])
 
   long int frame_num = 0;
   unsigned int *height_coeff = NULL, *width_coeff = NULL;
-  uint8_t *input = NULL, *output = NULL, *line = NULL, *field1 =
-    NULL, *field2 = NULL, *padded_input = NULL, *padded_bottom =
-    NULL, *padded_top = NULL;
+  uint8_t *input = NULL, *output = NULL,
+    *padded_input = NULL, *padded_bottom = NULL, *padded_top = NULL;
   uint8_t *input_y, *input_u, *input_v;
   uint8_t *output_y, *output_u, *output_v;
   uint8_t *frame_y, *frame_u, *frame_v;
@@ -1188,7 +1188,7 @@ main (int argc, char *argv[])
    // Attention ! optimisation vitesse yuvscaler_bicubic.c suppose que zero_width_neighbors=0 ou 1 seulement
   uint8_t zero_width_neighbors=1,zero_height_neighbors=1;
   float width_scale,height_scale;
-  int16_t cspline_value;
+  int16_t cspline_value = NULL;
   int16_t *pointer;
      
 
@@ -1686,14 +1686,11 @@ main (int argc, char *argv[])
 
 
   // Pointers allocations
-  if (!(line = malloc (input_width)) ||
-      !(field1 = malloc (3 * (input_width / 2) * (input_height / 2))) ||
-      !(field2 = malloc (3 * (input_width / 2) * (input_height / 2))) ||
-      !(input = malloc (((input_width * input_height * 3) / 2) + ALIGNEMENT)) ||
+  if (!(input = malloc (((input_width * input_height * 3) / 2) + ALIGNEMENT)) ||
       !(output = malloc (((output_width * output_height * 3) / 2) + ALIGNEMENT))
       )
     mjpeg_error_exit1
-      ("Could not allocate memory for line, field1, field2, input or output tables. STOP!");
+      ("Could not allocate memory for input or output tables. STOP!");
 
   // input and output pointers alignement
   mjpeg_debug ("before alignement: input=%p output=%p", input, output);
@@ -1864,7 +1861,7 @@ main (int argc, char *argv[])
 
   // Master loop : continue until there is no next frame in stdin
   while ((err = yuvscaler_y4m_read_frame
-	  (input_fd, &frameinfo, nb_pixels, input)) == Y4M_OK)
+	  (input_fd, &in_streaminfo, &frameinfo, nb_pixels, input)) == Y4M_OK)
     {
       mjpeg_info ("Frame number %ld", frame_num);
 
@@ -1874,7 +1871,7 @@ main (int argc, char *argv[])
       frame_num++;
 
       // Output Frame Header
-      if (y4m_write_frame_header (output_fd, &frameinfo) != Y4M_OK)
+      if (y4m_write_frame_header (output_fd, &out_streaminfo, &frameinfo) != Y4M_OK)
 	goto out_error;
 
 
