@@ -212,7 +212,6 @@ typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
 typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
 				/* und Packet enthalten.		*/
 {   unsigned char  buf [MAX_SECTOR_SIZE] ;
-    unsigned int   length_of_sector  ;
     unsigned int   length_of_packet_data ;
     clockticks TS                ;
 } Sector_struc;

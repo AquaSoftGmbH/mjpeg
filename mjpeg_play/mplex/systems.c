@@ -215,7 +215,6 @@ void create_sector (Sector_struc 	 *sector,
     {
 		bcopy (pack->buf, index, pack->length);
 		index += pack->length;
-		sector->length_of_sector += pack->length;
     }
 
     /* soll ein System Header mit auf dem Sektor gespeichert werden? */
@@ -225,7 +224,6 @@ void create_sector (Sector_struc 	 *sector,
     {
 		bcopy (sys_header->buf, index, sys_header->length);
 		index += sys_header->length;
-		sector->length_of_sector += sys_header->length;
     }
 
     /* konstante Packet Headerwerte eintragen */

@@ -74,7 +74,6 @@ Aaunit_struc *pointer;
 void empty_sector_struc (pointer)
 Sector_struc *pointer;
 {
-    pointer->length_of_sector  = 0;
     pointer->length_of_packet_data  = 0;
     pointer->TS = 0;
 }

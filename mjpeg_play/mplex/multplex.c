@@ -1213,7 +1213,7 @@ void output_audio ( clockticks SCR,
 #ifdef TIMER
   gettimeofday (&tp_start,NULL);
 #endif 
-  fwrite (cur_sector.buf, cur_sector.length_of_sector, 1, ostream);
+  fwrite (cur_sector.buf, sector_size, 1, ostream);
 #ifdef TIMER
   gettimeofday (&tp_end,NULL);
   total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
@@ -1278,8 +1278,7 @@ void output_padding (
 #ifdef TIMER
 	  gettimeofday (&tp_start,NULL);
 #endif 
-	  fwrite (cur_sector.buf, cur_sector.length_of_sector*sizeof (unsigned char), 1,
-			  ostream);
+	  fwrite (cur_sector.buf, sector_size, 1, ostream);
 	}
 
 #ifdef TIMER
