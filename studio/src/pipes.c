@@ -133,6 +133,9 @@ char *app_name(int number) {
       case YUVDENOISE:
         app = "yuvdenoise";
         break;
+      case YUV2DIVX:
+        app = "yuv2divx";
+        break;
       default:
         app = "unknown";
         break;
