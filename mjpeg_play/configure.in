@@ -339,11 +339,14 @@ dnl *********************************************************************
 dnl  Lets find where xwindows lives on this machine. Punt if not found.
 AC_PATH_XTRA
 
+have_x=false
 if test x"-DX_DISPLAY_MISSING" = x"$X_CFLAGS"; then
   AC_MSG_WARN(can not find X11)
 else
+  have_x=true
   AC_DEFINE(HAVE_X, 1, [Whether XFree86 is available])
 fi
+AM_CONDITIONAL(HAVE_X, test x$have_x = xtrue)
 
 AC_SUBST(X_CFLAGS)
 AC_SUBST(X_PRE_LIBS)
