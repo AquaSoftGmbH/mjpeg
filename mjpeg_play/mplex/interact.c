@@ -37,6 +37,8 @@ int opt_sector_size = 2324;
 int opt_VBR = 0;
 int opt_mpeg = 1;
 int opt_mux_format = 0;
+int opt_multi_segment = 1;
+intmax_t max_system_segment_size = 700*1024*1024;
 
 int intro_and_options(int argc, char *argv[])
 {

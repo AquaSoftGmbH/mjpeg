@@ -92,7 +92,7 @@ char* argv[];
     Video_struc video_info;
     Audio_struc audio_info;
     unsigned int audio_bytes, video_bytes;
-    double secs_per_frame = 0.0;
+    double first_frame_PTS = 0.0;
     Vector  vaunits_info, aaunits_info;
 
 
@@ -104,12 +104,12 @@ char* argv[];
     empty_audio_struc (&audio_info);
 
     if (which_streams & STREAMS_VIDEO) {
-	  get_info_video (video_file, &video_info, &secs_per_frame,
+	  get_info_video (video_file, &video_info, &first_frame_PTS,
 			  video_bytes, &vaunits_info);
     }
     
     if (which_streams & STREAMS_AUDIO) {
-	  get_info_audio (audio_file, &audio_info, secs_per_frame,
+	  get_info_audio (audio_file, &audio_info, first_frame_PTS,
 			  audio_bytes, &aaunits_info);
     }
 

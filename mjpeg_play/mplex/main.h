@@ -47,6 +47,7 @@
 *************************************************************************/
 
 #include <stdio.h>
+#include <inttypes.h>
 #include "bits.h"
 #ifdef TIMER
 #include <sys/time.h>
@@ -55,7 +56,7 @@
 
 #include "vector.h"
 
-typedef __uint64_t clockticks;
+typedef uint64_t clockticks;
 
 /*************************************************************************
     Definitionen
@@ -378,6 +379,8 @@ void outputstream ( char 		*video_file,
 					Vector	   vaunit_info_vec,
 					Vector     aaunit_info_vec
 				 );
+FILE *system_open_init( const char *filename_pat );
+FILE *system_next( FILE *cur_system_strm, const char *filename_pat );
 
 void status_info          ();	/* Statusmitteilung bei Erstellen	*/
 				/* MPEG multiplex stream		*/
@@ -416,6 +419,7 @@ extern int opt_sector_size;
 extern int opt_VBR;
 extern int opt_mpeg;
 extern int opt_mux_format;
+extern int opt_multi_segment;
 
 extern int verbose;
 extern unsigned int which_streams;
@@ -426,4 +430,6 @@ extern int pack_header_size;
 extern int sector_size;
 extern int mux_rate;
 extern int dmux_rate;
+extern int zero_stuffing;
 
+extern intmax_t max_system_segment_size;

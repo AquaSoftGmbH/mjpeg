@@ -178,7 +178,7 @@ void check_files (int argc,
 
 void get_info_video (char *video_file,	
 					 Video_struc *video_info,
-					 double *ret_secs_per_frame,
+					 double *ret_first_frame_PTS,
 					 unsigned int length,
 					 Vector *vid_info_vec)
 {
@@ -187,20 +187,22 @@ void get_info_video (char *video_file,
     bitcount_t stream_length=0LL; 
     bitcount_t prev_stream_length=0LL;
     Vaunit_struc access_unit;
-    unsigned long syncword;
-    unsigned long decoding_order=0;
-    unsigned long group_order=0;
+    unsigned int syncword;
+    unsigned int decoding_order=0;
+    unsigned int group_order=0;
+    unsigned int group_start_pic=0;
     unsigned long temporal_reference=0;
-    double secs_per_frame=0;
+    double frame_interval=0.0;
     unsigned short pict_rate;
     double DTS;
     double PTS;
     int i;
-    unsigned int prozent;
+    unsigned int prozent = 0;
     unsigned int old_prozent=0;
     int frame_rate;
 	unsigned int max_bits_persec = 0;
 	Vector vaunits = NewVector( sizeof(Vaunit_struc));
+	int first_pic_header;
 
 	
   
@@ -230,22 +232,24 @@ void get_info_video (char *video_file,
 
     if (pict_rate >0 && pict_rate<9)
     {
-		secs_per_frame = 1. / picture_rates[pict_rate];
 		frame_rate = picture_rates[pict_rate];
+		frame_interval = 1. / (double)frame_rate;
 	}
     else
     {
-		secs_per_frame = 1. / 25.;	/* invalid pict_rate info */
 		frame_rate = 25;
+		frame_interval = 1. / 25.0;
 	}
 	
-	*ret_secs_per_frame = secs_per_frame;
-    do {
-		if (seek_sync (&video_bs, SYNCWORD_START, 24))
+	/* Skip to the end of the 1st AU (*2nd* Picture start!)
+	*/
+	*ret_first_frame_PTS = 0.0;
+	first_pic_header = 1;
+	while(!end_bs(&video_bs) && seek_sync (&video_bs, SYNCWORD_START, 24))
+	{
+		syncword = (SYNCWORD_START<<8) + getbits (&video_bs, 8);
+		switch (syncword) 
 		{
-			syncword = (SYNCWORD_START<<8) + getbits (&video_bs, 8);
-			switch (syncword) {
-
 			case SEQUENCE_HEADER:
 				video_info->num_sequence++;
 				break;
@@ -256,58 +260,58 @@ void get_info_video (char *video_file,
 				break;
 
 			case PICTURE_START:
-			
+				/* We only know length once we reach the *next* AU */
 				stream_length = bitcount (&video_bs)-32LL;
-			
-				temporal_reference = getbits (&video_bs, 10);
-				access_unit.type   = getbits (&video_bs, 3);
-				/* skip access unit number 0 */
-				if (access_unit.type != 0)
+				if( first_pic_header )
 				{
-
-					access_unit.length = (int) (stream_length - offset_bits)>>3;
-					offset_bits = stream_length;
-					video_info->avg_frames[access_unit.type-1]+=access_unit.length;
-	
+					first_pic_header = 0;
+				}
+				else
+				{
+				  	access_unit.length = (int) (stream_length - offset_bits)>>3;
+				  	offset_bits = stream_length;
+				  	video_info->avg_frames[access_unit.type-1]+=access_unit.length;
+				    VectorAppend( vaunits, &access_unit );					
 				}
 
-				if( video_info->num_pictures % frame_rate == 0 )
+				temporal_reference = getbits (&video_bs, 10);
+				access_unit.type   = getbits (&video_bs, 3);
+	
+				if( access_unit.type == IFRAME )
 				{
-					unsigned int bits_persec = (unsigned int) (stream_length - prev_stream_length);
+					unsigned int bits_persec = 
+						(unsigned int) (stream_length - prev_stream_length) /
+						  (frame_interval * (1+decoding_order - group_start_pic) ;
+
 					if( bits_persec > max_bits_persec )
 					{
-						printf( "SL=%lld  PSL=%lld\n", stream_length, prev_stream_length );
-						printf( "Inc mbps to %d frame %d\n", bits_persec, video_info->num_pictures );
 						max_bits_persec = bits_persec;
 					}
 					prev_stream_length = stream_length;
-
+					group_start_pic = decoding_order;
 				}
 
-
-				DTS = decoding_order * secs_per_frame*CLOCKS;
-				PTS = (temporal_reference - group_order + 1 + 
-					   decoding_order) * secs_per_frame*CLOCKS;
+				DTS = decoding_order * frame_interval*CLOCKS;
+				PTS = (temporal_reference + group_start_pic) * frame_interval*CLOCKS;
+				/* TODO: TIDY PTS = (temporal_reference - group_order + 1 + 
+					   decoding_order) * frame_interval*CLOCKS; */
 
 				access_unit.dorder = decoding_order;
 				make_timecode (DTS,&access_unit.DTS);
 				make_timecode (PTS,&access_unit.PTS);
-
 				decoding_order++;
 				group_order++;
 
 				if ((access_unit.type>0) && (access_unit.type<5))
+				{
 					video_info->num_frames[access_unit.type-1]++;
+				}
 
-				prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
-				video_info->num_pictures++;	
-		    
-				VectorAppend( vaunits, &access_unit );
-
+			    prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
 				if (prozent > old_prozent && verbose > 0 )
 				{
 					printf ("Got %d picture headers. %2d%%%c",
-							video_info->num_pictures, prozent, verbose > 1 ? '\n' : '\r');
+							decoding_order, prozent, verbose > 1 ? '\n' : '\r');
 					fflush (stdout);
 					old_prozent = prozent;
 				}
@@ -323,29 +327,27 @@ void get_info_video (char *video_file,
 				video_info->num_seq_end++;
 				break;		    
 
-			}
-		} else break;
-    } while (!end_bs(&video_bs));
+		}
+	};
 
-    printf ("\nDone, stream bit offset %lld.\n",offset_bits);
+	video_info->num_pictures = decoding_order;	
 
     video_info->stream_length = (unsigned int)(offset_bits / 8);
     for (i=0; i<4; i++)
 		if (video_info->num_frames[i]!=0)
 			video_info->avg_frames[i] /= video_info->num_frames[i];
 
-    if (secs_per_frame >0.)
-        video_info->comp_bit_rate = (unsigned int)
+    video_info->comp_bit_rate = (unsigned int)
 			(
 				(((double)video_info->stream_length) / ((double) video_info->num_pictures)) 
 				* ((double)frame_rate)  + 25.0
 				) / 50;
-    else
-		video_info->comp_bit_rate = 0;
-		
+	
+		/* TODO DELETEME	
 	printf( "Original calc would give video rate of %f\n",
 			ceil ((double)(video_info->stream_length)/
-				  (double)(video_info->num_pictures)/secs_per_frame/1250.)*25);
+				  (double)(video_info->num_pictures)/first_frame_PTS/1250.)*25);
+		*/
 	/* Peak bit rate in 50B/sec units... */
 	video_info->peak_bit_rate = ((max_bits_persec / 8) / 50);
     finish_getbits (&video_bs);
@@ -491,7 +493,7 @@ void output_info_audio (audio_info)
 void get_info_audio (
 	char *audio_file,
 	Audio_struc *audio_info,
-	double secs_per_frame,
+	double first_frame_PTS,
 	unsigned int length,
 	Vector *audio_info_vec
 	)
@@ -517,6 +519,7 @@ void get_info_audio (
     init_getbits (&audio_bs, audio_file);
     empty_aaunit_struc (&access_unit);
 
+	printf( "first_frame_PTS = %f\n", first_frame_PTS );
     if (getbits (&audio_bs, 12)==AUDIO_SYNCWORD)
     {
 		marker_bit (&audio_bs, 1);
@@ -546,7 +549,7 @@ void get_info_audio (
 
 		/* Presentation time-stamping  */
 		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.) + secs_per_frame*CLOCKS;
+			samples_per_second * (CLOCKS/1000.) + first_frame_PTS;
 
 		make_timecode (PTS, &access_unit.PTS);
 		decoding_order++;
@@ -618,7 +621,7 @@ void get_info_audio (
 		access_unit.length = audio_info->size_frames[padding_bit];
 	
 		PTS = decoding_order * samples [3-audio_info->layer] /
-			samples_per_second * (CLOCKS/1000.)+secs_per_frame*CLOCKS;
+			samples_per_second * (CLOCKS/1000.)+first_frame_PTS;
 		make_timecode (PTS, &access_unit.PTS);
 	
 		decoding_order++;

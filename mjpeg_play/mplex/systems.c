@@ -1,5 +1,40 @@
 #include "main.h"
 #include <string.h>
+#include <sys/param.h>
+
+static int segment_num = 1;
+
+FILE *system_open_init( const char *filename_pat )
+{
+char filename[MAXPATHLEN];
+
+	snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
+	return fopen( filename, "wb" );
+}
+
+FILE *system_next( FILE *cur_system_strm, const char *filename_pat )
+{
+char filename[MAXPATHLEN];
+
+	FILE *system_strm = cur_system_strm;
+	intmax_t written = (intmax_t) ftell( cur_system_strm);
+	if( written > max_system_segment_size )
+	{
+		if( !opt_multi_segment )
+		{
+			fprintf( stderr, 
+				"Maximum system file size (%"PRIdMAX") exceeded, single system file specified\n",
+				written );
+			exit(1); 
+		}
+		
+		fclose(cur_system_strm);
+		++segment_num;
+		snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
+		system_strm = fopen( filename, "wb" );
+	}
+	return system_strm;
+}
 
 /* Packet payload
 	compute how much payload a sector-sized packet with the specified headers could carry...
@@ -287,24 +322,33 @@ void create_sector (Sector_struc 	 *sector,
 	   inserting a stuffing packet... */	
 	if ( bytes_short != 0 )
 	{
-		/* assert( bytes_short >= MINIMUM_PADDING_PACKET_SIZE */
-		/* TODO DEBUG */
-		*(index++) = (unsigned char)(PACKET_START)>>16;
-		*(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
-		*(index++) = (unsigned char)(PACKET_START & 0x0000ff);
-		*(index++) = PADDING_STR;
-		*(index++) = (unsigned char)((bytes_short - 6) >> 8);
-		*(index++) = (unsigned char)((bytes_short - 6) & 0xff);
-		if (opt_mpeg == 2)
+		/* TODO: This should really only be permitted in streams where we
+			know zero stuffing is o.k.
+			*/
+		if( zero_stuffing )
 		{
-			for (i = 0; i < bytes_short - 6; i++)
-				*(index++) = (unsigned char) STUFFING_BYTE;
+			for (i = 0; i < bytes_short; i++)
+				  *(index++) = (unsigned char) 0;
 		}
 		else
 		{
-			*(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
-			for (i = 0; i < bytes_short - 7; i++)
-				*(index++) = (unsigned char) STUFFING_BYTE;
+		  *(index++) = (unsigned char)(PACKET_START)>>16;
+		  *(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
+		  *(index++) = (unsigned char)(PACKET_START & 0x0000ff);
+		  *(index++) = PADDING_STR;
+		  *(index++) = (unsigned char)((bytes_short - 6) >> 8);
+		  *(index++) = (unsigned char)((bytes_short - 6) & 0xff);
+		  if (opt_mpeg == 2)
+		  {
+			  for (i = 0; i < bytes_short - 6; i++)
+				  *(index++) = (unsigned char) STUFFING_BYTE;
+		  }
+		  else
+		  {
+			  *(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
+			  for (i = 0; i < bytes_short - 7; i++)
+				  *(index++) = (unsigned char) STUFFING_BYTE;
+		  }
 		}
 		bytes_short = 0;
 	}
