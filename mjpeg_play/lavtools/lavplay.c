@@ -148,7 +148,7 @@ void x_shutdown(int a);
 void add_new_frames(char *movie, int nc1, int nc2, int dest);
 void cut_copy_frames(int nc1, int nc2, char cut_or_copy);
 void paste_frames(int dest);
-
+void check_min_max(void);
 
 int  verbose = 6;
 
@@ -477,6 +477,21 @@ void x_shutdown(int a)
    these easier. Think about a move a scene (nc1, nc2) to position nc3,
    delete a scene (nc1, nc2), etc. */
 
+void check_min_max()
+{
+	/* A few simple checks to make sure things don't go wrong */
+	if (min_frame_num < 0)
+		min_frame_num = 0;
+	if (max_frame_num < 0)
+		max_frame_num = 0;
+	if (min_frame_num >= el.video_frames)
+		min_frame_num = el.video_frames-1;
+	if (max_frame_num >= el.video_frames)
+		max_frame_num = el.video_frames-1;
+	if (min_frame_num>max_frame_num)
+		max_frame_num = min_frame_num;
+}
+
 void add_new_frames(char *movie, int nc1, int nc2, int dest)
 {
 	/* This will add frames nc1->nc2 from new
@@ -519,9 +534,6 @@ void add_new_frames(char *movie, int nc1, int nc2, int dest)
 			el.video_frames = old_n + nc2 - nc1 + 1;
 		}
 
-		if(dest<min_frame_num) min_frame_num+=nc2-nc1+1;
-		if(dest<max_frame_num) max_frame_num+=nc2-nc1+1;
-
 		/* Move frames we want to the dest position */
 		cut_copy_frames(old_n, old_n+nc2-nc1, 'u');
 		paste_frames(dest);
@@ -554,10 +566,11 @@ void cut_copy_frames(int nc1, int nc2, char cut_or_copy)
 			for(i=nc2+1;i<el.video_frames;i++)
 			{
 				el.frame_list[i-k] = el.frame_list[i];
-				if(i-k <= min_frame_num) min_frame_num--;
+				if(i-k < min_frame_num) min_frame_num--;
 				if(i-k <= max_frame_num) max_frame_num--;
 			}
 			el.video_frames -= k;
+			check_min_max();
 		}
 		printf("Cut/Copy done ---- !!!!\n");
 	}
@@ -581,11 +594,12 @@ void paste_frames(int dest)
 	k = dest;
 	for(i=0;i<save_list_len;i++)
 	{
-		if(k<min_frame_num) min_frame_num++;
+		if(k<=min_frame_num) min_frame_num++;
 		if(k<max_frame_num) max_frame_num++;
 		el.frame_list[k++] = save_list[i];
 	}
 	el.video_frames += save_list_len;
+	check_min_max();
 	printf("Paste done ---- !!!!\n");
 
 	inc_frames(dest-nframe);
@@ -1187,10 +1201,11 @@ int main(int argc, char ** argv)
 					for(i=nc2+1;i<el.video_frames;i++)
 					{
 						el.frame_list[i-k] = el.frame_list[i];
-						if(i-k <= min_frame_num) min_frame_num--;
+						if(i-k < min_frame_num) min_frame_num--;
 						if(i-k <= max_frame_num) max_frame_num--;
 					}
 					el.video_frames -= k;
+					check_min_max();
 				}
 
 				if(input_buffer[1]=='a')
@@ -1273,6 +1288,7 @@ int main(int argc, char ** argv)
 
 					for(i=0;i<nc1;i++) el.frame_list[i] = el.frame_list[i+nc1];
 					el.video_frames = nc2-nc1+1;
+					check_min_max();
 				}
 
 				break;
