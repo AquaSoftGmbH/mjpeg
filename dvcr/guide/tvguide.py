@@ -185,8 +185,8 @@ class TvGuide(Guide):
 
 	def  guide_url(self,  url):
 		host = self.config_string("tvguide", "host")
-		http_loop = 20
-		while http_loop:
+		http_loop = 0
+		while http_loop < 20:
 			try:
 				http = HTTP(host)
 				http.putrequest("GET", url)
@@ -196,9 +196,9 @@ class TvGuide(Guide):
 
 				errcode, errmsg, headers = http.getreply()
 			except:
-				print "retry get"
+				http_loop = http_loop + 1
+				print "retry get %d" % http_loop
 				sleep(60)
-				http_loop = http_loop - 1
 				continue
 
 			if errcode != 200:
@@ -211,7 +211,6 @@ class TvGuide(Guide):
 
 		data = http.getfile()
 		guide_data = split(data.read(), "\n")
-		print guide_data
 		self.parse_tvguide_data(guide_data)
 
 	def tvguide_url(self, start, end):

@@ -17,6 +17,7 @@
 from Tkinter import *
 from guide import Guide
 from time import *
+import marshal 
 import Pmw
 import ConfigParser
 
@@ -36,7 +37,6 @@ class EventList:
 			file = open(self.file_name, "r")
 		except:
 			self.record_event = {}
-			print self.record_event
 			return
 
 		self.record_event = marshal.load(file)
@@ -133,8 +133,8 @@ class	Events:
 
 		return time_frame
 
-	def record_event(self, item, start, stop, channel, title):
-		group = Pmw.Group(self.root, tag_text=item)
+	def record_event(self, root, item, start, stop, channel, title):
+		group = Pmw.Group(root, tag_text=item)
 
 		today = strftime("%m/%d/%y",gmtime(start))
 
@@ -180,10 +180,21 @@ class	Events:
 	def edit_events(self):
 		self.record_frame()
 
+		frame = Frame(self.root)
+		frame.pack(fill='both', expand=1)
+
+		scroll_area = Pmw.ScrolledFrame(frame,
+			hscrollmode = 'dynamic')
+		scroll_area.pack(fill='both', expand=1)
+
+		frame_events = scroll_area.interior();
+
 		for tag in self.record_list.tags():
 			start, end, channel, title = \
 				self.record_list.event(tag)
 			print start, end, channel, title
-			self.record_event(tag, start, end, channel, title)
+			self.record_event(frame_events, tag, start, 
+				end, channel, title)
+
 
 		self.root.mainloop()
