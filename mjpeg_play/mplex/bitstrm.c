@@ -522,11 +522,11 @@ Bit_stream_struc *bs;   /* bit stream structure */
 unsigned int val;       /* val to write into the buffer */
 int N;                  /* number of bits of val */
 {
- unsigned long aligning;
+ bitcount_t aligning;
 
  if (N > MAX_LENGTH)
     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
- aligning = (long) sstell(bs)%8;
+ aligning =  bitcount(bs)%8;
  if (aligning)
      putbits(bs, (unsigned int)0, (int)(8-aligning)); 
 
@@ -538,11 +538,11 @@ unsigned long byte_ali_getbits(bs, N)
 Bit_stream_struc *bs;   /* bit stream structure */
 int N;                  /* number of bits of val */
 {
- unsigned long aligning;
+ bitcount_t aligning;
 
  if (N > MAX_LENGTH)
     printf("Cannot read or write more than %d bits at a time.\n", MAX_LENGTH);
- aligning = (long) sstell(bs)%8;
+ aligning =  bitcount(bs)%8;
  if (aligning)
     getbits(bs, (int)(8-aligning));
 
@@ -550,7 +550,7 @@ int N;                  /* number of bits of val */
 }
 
 /*return the current bit stream length (in bits)*/
-unsigned long long sstell(bs)
+bitcount_t bitcount(bs)
 Bit_stream_struc *bs;   /* bit stream structure */
 {
   return(bs->totbit);
@@ -574,11 +574,11 @@ long sync;      /* sync word maximum 32 bits */
 int N;          /* sync word length */
 {
  double pow();
- unsigned long aligning, stell();
+ bitcount_t aligning;
  unsigned long val;
  long maxi = (int)pow(2.0, (FLOAT)N) - 1;
 
- aligning = sstell(bs)%ALIGNING;
+ aligning = bitcount(bs)%ALIGNING;
  if (aligning)
     getbits(bs, (int)(ALIGNING-aligning));
 

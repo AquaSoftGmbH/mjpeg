@@ -113,11 +113,13 @@ bitstrm.h
 
 /* "bit_stream.h" Type Definitions */
 
+typedef long long bitcount_t;
+
 typedef struct  bit_stream_struc {
     FILE        *pt;            /* pointer to bit stream device */
     unsigned char *buf;         /* bit stream buffer */
     int         buf_size;       /* size of buffer (in number of bytes) */
-    long long        totbit;         /* bit counter of bit stream */
+    bitcount_t  totbit;         /* bit counter of bit stream */
     int         buf_byte_idx;   /* pointer to top byte in buffer */
     int         buf_bit_idx;    /* pointer to top bit of top byte in buffer */
     int         mode;           /* bit stream open in read or write mode */
@@ -134,6 +136,8 @@ typedef struct  bit_stream_struc {
 *  Global Function Prototype Declarations
 *
 ***********************************************************************/
+
+
 
 /* The following functions are in the file "common.c" */
 
@@ -157,7 +161,7 @@ extern unsigned long  getbits(Bit_stream_struc*, int);
 extern void           putbits(Bit_stream_struc*, unsigned int, int);
 extern void           byte_ali_putbits(Bit_stream_struc*, unsigned int, int);
 extern unsigned long  byte_ali_getbits(Bit_stream_struc*, int);
-extern unsigned long long  sstell(Bit_stream_struc*);
+extern bitcount_t  bitcount(Bit_stream_struc*);
 extern int            end_bs(Bit_stream_struc*);
 extern int            seek_sync(Bit_stream_struc*, long, int);
 
@@ -181,7 +185,7 @@ extern unsigned long  getbits();
 extern void           putbits();
 extern void           byte_ali_putbits();
 extern unsigned long  byte_ali_getbits();
-extern unsigned long long  sstell();
+extern bitcount_t  bitcount();
 extern int            end_bs();
 extern int            seek_sync();
 

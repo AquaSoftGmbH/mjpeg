@@ -1,8 +1,16 @@
 TODO
 
+- Tidy up the timecode code...
+
+- Make VBR more efficient.
+
+- The checking for VBV underflow/overflow is horribly naive.  The messages are essentially
+	meaningless in typical use of the encoder where the results are later multiplexed
+	into a system stream.
+
+- Tidy up the #ifdef Spaghetti around the removal of temporary files.
+
 - Merge in stuff to deal with MPEG2 from bbmpeg
 
 - Merge in stuff to deal with VCD/DVD's additional bits and pieces
   from bbmpeg.
-
-- Don't merge in the CBR MPEG1 bugs from bbmpeg.

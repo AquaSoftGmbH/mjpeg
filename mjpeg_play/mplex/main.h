@@ -276,13 +276,13 @@ void empty_sector_struc   ();	/* Initialisiert Struktur fuer SUN cc	*/
 void empty_timecode_struc ();	/* Initialisiert Struktur fuer SUN cc	*/
 void init_buffer_struc    ();	/* Initialisiert Struktur fuer SUN cc	*/
 
-void offset_timecode      ();	/* Rechnet Offset zwischen zwei TimeC.	*/
-void copy_timecode        ();	/* setzt 2tes TimeC. dem 1ten gleich	*/
-void make_timecode        ();	/* rechnet aus double einen TimeC.	*/
+void offset_timecode      (Timecode_struc *time1,Timecode_struc *time2,Timecode_struc *offset);	/* Rechnet Offset zwischen zwei TimeC.	*/
+void copy_timecode        (Timecode_struc *,Timecode_struc *);	/* setzt 2tes TimeC. dem 1ten gleich	*/
+void make_timecode        (double, Timecode_struc *);	/* rechnet aus double einen TimeC.	*/
 				/* und schreibt ihn in Timecode_struc   */
-void add_to_timecode      ();	/* addiert 1tes TimeC. zum 2ten		*/ 
-void buffer_timecode      ();	/* schreibt Timecode in Bitstreamformat */
-int  comp_timecode        ();	/* 1tes TimeC. <= 2tes TimeC. ?		*/
+void add_to_timecode      (Timecode_struc *,Timecode_struc *);	/* addiert 1tes TimeC. zum 2ten		*/ 
+void buffer_timecode      (Timecode_struc *, unsigned char, unsigned char **);	/* schreibt Timecode in Bitstreamformat */
+int  comp_timecode        (Timecode_struc *,Timecode_struc *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
 
 void create_sector	  ();	/* erstellt einen Sector		*/
 void create_sys_header	  ();	/* erstellt einen System Header		*/

@@ -28,7 +28,7 @@ static void Usage(char *str)
 int verbose = 1;
 int opt_interactive_mode = 0;
 int opt_buffer_size = 46;
-int opt_data_rate = 1740;
+int opt_data_rate = 0;  /* 1740 would be right for VCD */
 int opt_video_offset = 0;
 int opt_audio_offset = 0;
 int opt_sector_size = 2324;

@@ -39,6 +39,7 @@ double timestamp;
 Timecode_struc *pointer;
 {
   /* Work-around for a tricky compiler bug.... */
+
   pointer->thetime = (unsigned long long) timestamp;
   pointer->msb = (unsigned long)(( pointer->thetime >> 32) & 1);
   pointer->lsb = (unsigned long)( pointer->thetime & 0xffffffffLL);

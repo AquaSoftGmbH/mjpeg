@@ -235,7 +235,6 @@ void outputstream ( char 		*video_file,
 
 	if( opt_interactive_mode )
 	  {
-		printf ("\ncomputed multiplexed stream data rate    : %7.3f\n",dmux_rate);
 		printf ("target data rate (e.g. %6u)           : ",data_rate);
 		scanf  ("%lf", &dmux_rate);
 		printf ("\nstartup sectors_delay                    : ");
@@ -248,6 +247,7 @@ void outputstream ( char 		*video_file,
 	  }
 	else
 	  {
+	  	printf ("\ncomputed multiplexed stream data rate    : %7.3f\n",dmux_rate);
 		if( opt_data_rate == 0 )
 		  {
 			printf( "Setting best-guess data rate:%d\n", data_rate );
@@ -255,12 +255,12 @@ void outputstream ( char 		*video_file,
 		  }
 		else if ( opt_data_rate >= data_rate)
 		  {
-			printf( "Setting user specified data rate: %d\n", data_rate );
+			printf( "Setting user specified data rate: %d\n", opt_data_rate );
 			dmux_rate = (double)opt_data_rate; 
 		  }
 		else if ( opt_data_rate < data_rate )
 		  {
-			fprintf( stderr, "Warning: Target data rate lower than likely requirement!\n");
+			printf( "Warning: Target data rate lower than likely requirement!\n");
 		  }
 
 		if( opt_VBR )
@@ -349,12 +349,12 @@ void outputstream ( char 		*video_file,
 		(video_au.length%min_packet_data)+(sector_size-min_packet_data);
 
 
-	clock_cycles = ((double)(bytes_output+LAST_SCR_BYTE_IN_PACK))*
-	  CLOCKS/dmux_rate;
+	clock_cycles = ((double)(bytes_output+LAST_SCR_BYTE_IN_PACK))*CLOCKS/dmux_rate;
+	
 	audio_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
-		audio_bytes)/dmux_rate*CLOCKS;
+		((double)audio_bytes))*CLOCKS/dmux_rate;
 	video_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
-		video_bytes)/dmux_rate*CLOCKS;
+		((double)video_bytes))*CLOCKS/dmux_rate;
 
 	make_timecode (clock_cycles, &current_SCR);
 	make_timecode (audio_next_clock_cycles, &audio_next_SCR);
@@ -366,22 +366,40 @@ void outputstream ( char 		*video_file,
 	if (which_streams & STREAMS_VIDEO) 
 	  buffer_clean (&video_buffer, &current_SCR);
 	
-	/* Heuristic... if we can we prefer to send audio rather than video. 
-	   Even a few uSec under-run are audible and in any case the data-rate
-	   is trivial compared with video.  Not sending audio is *very* unlikely
-	   to rescue a a video under-run...
-	*/
-
+/*
+	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
+			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
+			video_au.DTS.msb, video_au.DTS.lsb );
+	printf( "VAUL = %d RCS=%lld FCS=%g ANSCR=(%1ld,%ld)\n",
+			video_au.length, 
+			(bytes_output+LAST_SCR_BYTE_IN_PACK)*((unsigned long long)CLOCKS)/((unsigned long long)dmux_rate),
+			((double)(bytes_output+LAST_SCR_BYTE_IN_PACK))*CLOCKS/dmux_rate,
+			audio_next_SCR.msb, audio_next_SCR.lsb);
+*/
 
 	/* FALL: Audio Buffer OK, Audio Daten vorhanden		*/
 	/*       Video Daten werden on time ankommen		*/
 	/* CASE: Audio Buffer OK, Audio Data ready		*/
 	/*	 Video Data will arrive on time			*/
+	
+	/* Heuristic... if we can we prefer to send audio rather than video. 
+	   Even a few uSec under-run are audible and in any case the data-rate
+	   is trivial compared with video.  Not sending audio is *very* unlikely
+	   to rescue a a video under-run.
+	   
+	   We *always* send audio if an audio time-out might occur.  It is very
+	   very unlikely that this would cause a video time-out that we would
+	   otherwise avoid but quite common that we avoid an audio time-out this way.
+		   	   
+	*/
 
 	 if ( (buffer_space (&audio_buffer) >= packet_data_size)
 		  && (audio_au.length>0)
-		  && ((comp_timecode (&video_next_SCR, &video_au.DTS)) ||
-		      (video_au.length==0) ))
+		  && ( comp_timecode (&video_next_SCR, &video_au.DTS)  ||
+		  	   !comp_timecode (&audio_next_SCR, &audio_au.PTS) ||
+		       video_au.length==0 
+		     )
+		)
 	{
 	    /* audio packet schicken */
 	    /* write out audio packet */
@@ -463,9 +481,6 @@ void outputstream ( char 		*video_file,
 #endif 
 	    status_message (STATUS_AUDIO_TIME_OUT);
 
-	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
-			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
-			video_au.DTS.msb, video_au.DTS.lsb );
 
 	    /* status info */
 	    status_info (++nsec_a, nsec_v, nsec_p, bytes_output, 
@@ -502,9 +517,6 @@ void outputstream ( char 		*video_file,
 #endif 
 	    status_message (STATUS_VIDEO_TIME_OUT);
 
-	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
-			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
-			video_au.DTS.msb, video_au.DTS.lsb );
 
 	    /* status info */
 	    status_info (nsec_a, ++nsec_v, nsec_p, bytes_output, 
@@ -743,8 +755,8 @@ void output_video ( Timecode_struc *SCR,
 	sys_header_ptr = sys_header;
     } else
     {
-	pack_ptr = NULL;
-	sys_header_ptr = NULL;
+	  pack_ptr = NULL;
+	  sys_header_ptr = NULL;
     }
 
     /* Wir generieren das Packet				*/

@@ -25,6 +25,37 @@
 *************************************************************************/
 
 
+MODIFICATIONS TO ORIGINAL
+
+July 2000 Andrew Stevens
+	 Trivial modifications to support catenated audio stremas and
+	  non-intractive use.
+August 2000 Andrew Stevens
+	Modifed to support multiplexing of variable bit-rate
+	video streams. Seems to work well.
+August 2000 Andrew Stevens
+	Removed use of temporary files for storing stream data.
+	Increased performance through the use of a more efficient bitstream library.
+	Eliminated arithmetic overflow errors for large streams.
+
+Usage: ./mplex [params] [<input stream1> [<input stream2>] <output system stream
+>
+                                                                                  where possible params are:
+ -q      Quiet mode for unattended batch usage
+ -n      Noisy mode for debugging multiplexing.
+ -V      Variable bit-rate multiplexing.  
+ -i      Interactive mode for user intervention
+ -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]
+ -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from
+source streams)
+ -v num  Specify a video timestamp offset in mSec
+ -a num  Specify an audio timestamp offset in mSec
+ -s num  Specify sector size in bytes (default: 2324) [256..16384]
+
+Defaults all correspond to VCD data streams.
+
+
+
 This is the README file of the MPEG multiplexer 'mplex'.
 Besides this file, you should now own a copy of the following files:
 
@@ -81,28 +112,3 @@ moar@heaven.zfe.siemens.de
 | index.html                            |                   80539 Munich |
 | email:moar@informatik.tu-muenchen.de  |   voice: ++49 - 89 -  23862874 |
 +---------------------------------------+--------------------------------+
-
-MODIFICATIONS TO ORIGINAL
-
-July 2000 Andrew Stevens
-	 Trivial modifications to support catenated audio stremas and
-	  non-intractive use.
-August 2000 Andrew Stevens
-	Modifed to support multiplexing of variable bit-rate
-	video streams. Seems to work well.
-
-Usage: ./mplex [params] [<input stream1> [<input stream2>] <output system stream
->
-                                                                                  where possible params are:
- -q      Quiet mode for unattended batch usage
- -n      Noisy mode for debugging multiplexing.
- -V      Variable bit-rate multiplexing.  
- -i      Interactive mode for user intervention
- -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]
- -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from
-source streams)
- -v num  Specify a video timestamp offset in mSec
- -a num  Specify an audio timestamp offset in mSec
- -s num  Specify sector size in bytes (default: 2324) [256..16384]
-
-Defaults all correspond to VCD data streams.
