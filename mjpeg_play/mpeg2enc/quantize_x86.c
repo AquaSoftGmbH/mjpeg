@@ -366,13 +366,37 @@ static int quant_weight_coeff_x86_intra( struct QuantizerWorkSpace *wsp,
 {
 	return quant_weight_coeff_sum_mmx( blk, wsp->i_intra_q_mat );
 }
+
 static int quant_weight_coeff_x86_inter( struct QuantizerWorkSpace *wsp,
 								  int16_t *blk )
 {
 	return quant_weight_coeff_sum_mmx( blk, wsp->i_inter_q_mat );
 }
 
+
 #if 0
+extern void iquant_non_intra_m2(struct QuantizerWorkSpace *wsp,
+                                int16_t *src, int16_t *dst, int mquant );
+                                
+static void iquant_non_intra_m2_mmxtest( struct QuantizerWorkSpace *wsp,
+                                            int16_t *src, int16_t *dst, 
+                                            int mquant)
+{
+    int i;
+    int16_t ref[64];
+    iquant_non_intra_m2(wsp, src,ref,mquant);
+    iquant_non_intra_m2_mmx(wsp, src,dst,mquant);
+
+    
+    for( i = 0; i < 64; ++i )
+    {
+        if( dst[i] != ref[i] )
+        {
+            printf( "OUCH!!! Bad iquant coeff %d: %d ref=%d\n", dst[i], ref[i] );
+            abort();
+        } 
+    }
+}
 static int quant_non_intra_test(struct QuantizerWorkSpace *wsp,
                                 int16_t *src, int16_t *dst,
                                 int q_scale_type,

@@ -497,7 +497,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    Preserve two B frames between I/P frames when placing GOP boundaries\n"
 "--quantisation-reduction|-Q num\n"
 "    Max. quantisation reduction for highly active blocks\n"
-"    [-4.0 .. 5.0] (default: 0.0)\n"
+"    [0.0 .. 4.0] (default: 0.0)\n"
 "--quant-reduction-max-var|-X num\n"
 "    Luma variance below which quantisation boost (-Q) is used\n"
 "    [0.0 .. 2500.0](default: 0.0)\n"
@@ -907,9 +907,9 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 			break;
 		case 'Q' :
 			act_boost = atof(optarg);
-			if( act_boost <-4.0 || act_boost > 4.0)
+			if( act_boost < 0.0 || act_boost > 4.0)
 			{
-				mjpeg_error( "-Q option requires arg -4.0 .. 5.0");
+				mjpeg_error( "-Q option requires arg 0.0 .. 4.0");
 				++nerr;
 			}
 			break;

@@ -172,29 +172,19 @@ void quant_intra( struct QuantizerWorkSpace *wsp,
 			y = (32*(x >= 0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
 			d = (3*mquant+2)>>2;
 			y = (y+d)/(2*mquant); /* (y+0.75*mquant) / (2*mquant) */
-
-			/* clip to syntax limits */
-			if (y > 255)
-			  {
-				if (mpeg1)
-				  y = 255;
-				else if (y > 2047)
-				  y = 2047;
-			  }
 #else
 			/* RJ: save one divide operation */
 			y = ((abs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)
 				/*(32*abs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
 				;
-			if ( y > clipvalue )
-            {
-				clipping = 1;
-				mquant = next_larger_quant(q_scale_type, mquant );
-				quant_mat = wsp->intra_q_tbl[mquant];
-				break;
-            }
 #endif
-		  
+            if ( y > clipvalue )
+            {
+             clipping = 1;
+              mquant = next_larger_quant(q_scale_type, mquant );
+             quant_mat = wsp->intra_q_tbl[mquant];
+              break;
+            }		  
 		  	pbuf[i] = intsamesign(x,y);
 		  }
 		pbuf += 64;
@@ -377,10 +367,11 @@ void iquant_intra_m2(struct QuantizerWorkSpace *wsp,
 }
 
 
-
-static void iquant_non_intra_m1_low(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
+void iquant_non_intra_m1(struct QuantizerWorkSpace *wsp,
+                         int16_t *src, int16_t *dst, int mquant )
 {
-  int i, val;
+    uint16_t *quant_mat = wsp->inter_q_tbl[mquant];
+    int i, val;
 
 #ifndef ORIGINAL_CODE
 
@@ -406,25 +397,17 @@ static void iquant_non_intra_m1_low(int16_t *src, int16_t *dst,  uint16_t *quant
     val = abs(src[i]);
     if (val!=0)
     {
-		val = ((val+val+1)*quant_mat[i]) >> 5;
-		/* mismatch control */
-		val -= (~(val&1))&(val!=0);
-		val = fastmin(val, 2047); /* Saturation */
+       val = ((val+val+1)*quant_mat[i]) >> 5;
+     /* mismatch control */
+     val -= (~(val&1))&(val!=0);
+        val = fastmin(val, 2047); /* Saturation */
     }
-	dst[i] = intsamesign(src[i],val);
-	
+   dst[i] = intsamesign(src[i],val);
+  
   }
   
 #endif
-}
 
-
-
-
-void iquant_non_intra_m1(struct QuantizerWorkSpace *wsp,
-                         int16_t *src, int16_t *dst, int mquant )
-{
-    iquant_non_intra_m1_low(src,dst,wsp->inter_q_tbl[mquant]);
 }
 
 void iquant_non_intra_m2(struct QuantizerWorkSpace *wsp,

@@ -76,9 +76,7 @@ void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 	   and specified speed parameters.
 	 */
     
-	act_boost =  options.act_boost >= 0.0 
-        ? (options.act_boost+1.0)
-        : (options.act_boost-1.0);
+	act_boost =  1.0+options.act_boost;
     boost_var_ceil = options.boost_var_ceil;
 	switch( options.num_cpus )
 	{
