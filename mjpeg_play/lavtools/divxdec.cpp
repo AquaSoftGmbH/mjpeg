@@ -36,10 +36,8 @@
 // behaviour, and just plain Wrongness.  Helpful, constructive criticism is
 // encouraged.  Flames... well... you know where you can stick them.
 //
-// 2001/11/04 Changes
-//
-// added playback through lavplay.  This required a *bit* of a reorganization of
-// the code.
+// 2001/11/04 - added playback through lavplay.  This required a *bit* of 
+// 		a reorganization of the code.
 //
 // 2001/11/06 Oversized handling, new options
 //
@@ -78,28 +76,23 @@
 // system, but not on some others with different versions of win32 codecs in
 // avifile.
 //
-// 2002/01/15
+// 2002/01/15 - Fixed compilation problems under g++-3.0.  
+//		Also removed another possible segfault (overzealous 'delete's).
 //
-// Fixed compilation problems under g++-3.0.  Also removed another possible
-// segfault (overzealous 'delete's).
+// 2002/02/16 - Removed last couple of compiler warnings.
 //
-// 2002/02/16
+// 2002/02/24 - Fixed a problem with overzealous flip detection.  Replaced the 
+//		flip detection with an explicit option --flip to allow flipping
+//		when necessary (rarely).
 //
-// Removed last couple of compiler warnings.
+// 2002/02/25 - Fixed problem with method name drift in upstream avifile.  Detection 
+// 		of old method is done in configuration time, and handled here by ifdef.
 //
-// 2002/02/24
-//
-// Fixed a problem with overzealous flip detection.  Replaced the flip detection
-// with an explicit option --flip to allow flipping when necessary (rarely).
-//
-// 2002/02/25
-//
-// Fixed problem with method name drift in upstream avifile.  Detection of
-// old method is done in configuration time, and handled here by ifdef.
+// 2002/03/02 - fix broken call to guess_sar; using y4m_guess_sample_ratio instead.
 //
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.29"
-#define LastChanged "2002/02/25"
+#define APPVERSION "0.0.30"
+#define LastChanged "2002/03/02"
 // uncomment this if you want lots of not usually useful debugging info.
 //#define DEBUG_DIVXDEC 1
 
@@ -136,9 +129,9 @@ typedef unsigned int framepos_t;
 
 extern "C"
 {
-#include "lav_common.h"
-// #include "yuv4mpeg.h"
-// #include "mjpeg_logging.h"
+//#include "lav_common.h"
+#include "yuv4mpeg.h"
+#include "mjpeg_logging.h"
 #include "lav2wav.h"	// for wave structs, etc.
 #include "jpegutils.h"
 #include "liblavplay.h"
@@ -1804,7 +1797,10 @@ main (int argc, char **argv)
 		}
 		else
 		{
-			y4m_ratio_t y4m_aspect = guess_sar ( input.width, input.height );
+			// GUESS!  Assume that the image_aspect_code is "2" (4:3).
+			// If there's a way to derive this that doesn't more directly derive
+			// the pixel aspect ratio itself, I'm not sure of it.
+			y4m_ratio_t y4m_aspect = y4m_guess_sample_ratio ( input.width, input.height, 2 );
 			if ( ( y4m_aspect.n == 0 ) || ( y4m_aspect.d == 0 ) )
 			{
 				mjpeg_warn ( "could not guess aspect ratio\n" );
