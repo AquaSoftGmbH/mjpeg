@@ -61,9 +61,6 @@
 #include "main.h"
 
 
-
-
-
 /*************************************************************************
     Main
 *************************************************************************/
@@ -80,6 +77,8 @@
 #endif
 
 int verbose;
+unsigned int which_streams;
+
 int main (argc, argv)
 
 int argc;
@@ -89,13 +88,10 @@ char* argv[];
     char        *video_file = NULL;
     char        *multi_file = NULL;	
 
-    char	*video_units = NULL;
-    char	*audio_units = NULL;
 	int     optargs;
     Video_struc video_info;
     Audio_struc audio_info;
     unsigned int audio_bytes, video_bytes;
-    unsigned int which_streams=0;
     double	startup_delay=0;
     Vector  vaunits_info, aaunits_info;
 
@@ -103,26 +99,24 @@ char* argv[];
     optargs = intro_and_options (argc, argv);
     check_files (argc-optargs, argv+optargs, 
                  &audio_file, &video_file, &multi_file,
-		 &audio_bytes, &video_bytes, &which_streams);
-
+		 &audio_bytes, &video_bytes);
+	init_stream_syntax_parameters();
     empty_video_struc (&video_info);
     empty_audio_struc (&audio_info);
 
     if (which_streams & STREAMS_AUDIO) {
-	  audio_units=tempnam ("./","tmp_a");
-	  get_info_audio (audio_file, audio_units, &audio_info, &startup_delay,
+	  get_info_audio (audio_file, &audio_info, &startup_delay,
 			  audio_bytes, &aaunits_info);
     }
 
     if (which_streams & STREAMS_VIDEO) {
-	  video_units=tempnam ("./","tmp_v");
-	  get_info_video (video_file, video_units, &video_info, &startup_delay,
+	  get_info_video (video_file, &video_info, &startup_delay,
 			  video_bytes, &vaunits_info);
     }
 
 
-    outputstream (video_file, video_units, &video_info,
-		  audio_file, audio_units, &audio_info, multi_file, which_streams, vaunits_info, aaunits_info );
+    outputstream (video_file, &video_info,
+		  audio_file,  &audio_info, multi_file, vaunits_info, aaunits_info );
 
     return (0);	
 }

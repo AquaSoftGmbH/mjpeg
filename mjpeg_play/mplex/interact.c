@@ -16,12 +16,16 @@ static void Usage(char *str)
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
 	fprintf( stderr, " -i      Interactive mode for user intervention\n" );
 	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
+	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
     fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from source streams)\n" );
 	fprintf( stderr, " -v num  Specify a video timestamp offset in mSec\n");
 	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
 	fprintf( stderr, " -a num  Specify an audio timestamp offset in mSec \n" );
-	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]");
+	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
+	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
+	fprintf( stderr, "         [1 = Auto MPEG1, 2 = VCD, 3 = Auto MPEG2, 4 = SVCD, 5 = DVD]\n");
+	fprintf( stderr, "         (N.b only 1 and 2 currently implemented!*)\n" ); 
 	exit (1);
 }
 
@@ -33,6 +37,8 @@ int opt_video_offset = 0;
 int opt_audio_offset = 0;
 int opt_sector_size = 2324;
 int opt_VBR = 0;
+int opt_mpeg = 1;
+int opt_mux_format = 0;
 
 int intro_and_options(int argc, char *argv[])
 {
@@ -50,11 +56,17 @@ int intro_and_options(int argc, char *argv[])
     printf(  "***************************************************************\n\n");
 
 
-  while( (n=getopt(argc,argv,"b:r:v:a:qiVn")) != EOF)
+  while( (n=getopt(argc,argv,"b:r:v:a:m:f:qiVn")) != EOF)
   {
     switch(n)
 	  {
 	  
+	  case 'm' :
+		opt_mpeg = atoi(optarg);
+		if( opt_mpeg < 1 || opt_mpeg > 2 )
+		  Usage(argv[0]);
+  	
+	  	break;
 	  case 'q' :
 		verbose = 0;
 		break;
@@ -95,7 +107,11 @@ int intro_and_options(int argc, char *argv[])
 		  Usage(argv[0]);
 		break;
 	  
-	  
+	  case 'f' :
+	    opt_mux_format = atoi(optarg);
+	    if( opt_mux_format < MPEG_MPEG1 || opt_mux_format > MPEG_VCD )
+	    	Usage(argv[0]);
+		break;
 	  case 's' :
 		opt_sector_size = atoi(optarg);
 		if( opt_sector_size < 256 || opt_sector_size > 16384 )

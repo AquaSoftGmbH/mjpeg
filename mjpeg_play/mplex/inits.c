@@ -44,14 +44,14 @@ Audio_struc *pointer;
         pointer->num_frames [i]	= 0;
         pointer->size_frames[i]	= 0;
     }
-    pointer->layer		= 0;
+    pointer->layer			= 0;
     pointer->protection 	= 0;
     pointer->bit_rate 		= 0;
     pointer->frequency 		= 0;
-    pointer->mode 		= 0;
-    pointer->mode_extension 	= 0;
-    pointer->copyright      	= 0;
-    pointer->original_copy  	= 0;
+    pointer->mode 			= 0;
+    pointer->mode_extension = 0;
+    pointer->copyright      = 0;
+    pointer->original_copy  = 0;
     pointer->emphasis		= 0;
 }
 

@@ -67,4 +67,12 @@ void *VectorNext( Vector v )
 	return loc;
 }
 
-
+void *VectorLookAhead( Vector v, int lookahead )
+{
+	void *loc;
+	int look = (lookahead-1) * v->recsize;
+	if( v->ptr+look >= v->end )
+		return NULL;
+	loc = &v->buf[v->ptr+look];
+	return loc;
+}

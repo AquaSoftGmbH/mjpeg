@@ -1,8 +1,13 @@
 TODO
 
-- Tidy up the timecode code...
+- Tidy up the timecode code... (now only need to strip to old #ifdef-ed stuff
 
 - Make VBR more efficient.
+
+- Need to get rid of crappy code that hard-wires sizes at top leve rather than
+  deriving them from included headers when sectors are created...
+
+- Need to add facility to drop sys headers
 
 - The checking for VBV underflow/overflow is horribly naive.  The messages are essentially
 	meaningless in typical use of the encoder where the results are later multiplexed

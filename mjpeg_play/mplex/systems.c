@@ -1,6 +1,46 @@
 #include "main.h"
 #include <string.h>
 
+/* Packet payload
+	compute how much payload a sector-sized packet with the specified headers could carry...
+	*/
+	
+		/* TODO: are the packet payload calculations correct if some stream is missing? */
+		
+int packet_payload( int sys_header, int pack_header, int buffers, int PTSstamp, int DTSstamp )
+{
+	int payload = sector_size - PACKET_HEADER_SIZE ;
+	if( sys_header )
+		payload -= SYS_HEADER_SIZE;
+	if( buffers )
+		payload -=  BUFFERINFO_LENGTH;
+	if( opt_mpeg == 2 )
+	{
+		payload -= MPEG2_AFTER_PACKET_LENGTH_MIN;
+		if( pack_header )
+			payload -= MPEG2_PACK_HEADER_SIZE;
+		if( DTSstamp )
+			payload -= DTS_PTS_TIMESTAMP_LENGTH;
+		if ( PTSstamp )
+			payload -= DTS_PTS_TIMESTAMP_LENGTH;
+	}
+	else
+	{
+		payload -= MPEG1_AFTER_PACKET_LENGTH_MIN;
+		if( pack_header )
+			payload -= MPEG1_PACK_HEADER_SIZE;
+		if( DTSstamp )
+			payload -= DTS_PTS_TIMESTAMP_LENGTH;
+		if (PTSstamp )
+			payload -= DTS_PTS_TIMESTAMP_LENGTH;
+		if( DTSstamp || PTSstamp )
+			payload += 1;  /* No need for nostamp marker ... */
+
+	}
+	
+	return payload;
+}
+
 /*************************************************************************
 	Create_Sector
 	erstellt einen gesamten Sektor.
@@ -13,33 +53,40 @@
 	Also copies Pack and Sys_Header informations into the
 	sector buffer, then reads a packet full of data from
 	the input stream into the sector buffer.
+	
+	N.b. note that we allow for situations where want to
+	deliberately reduce the payload carried by stuffing.
+	This allows us to deal with tricky situations where the
+	header overhead of adding in additional information
+	would exceed the remaining payload capacity.
 *************************************************************************/
 
 
-void create_sector (sector, pack, sys_header,
-			packet_size, inputstream, type, 
-			buffer_scale, buffer_size, buffers,
-			PTS, DTS, timestamps, which_streams )
+void create_sector (Sector_struc 	 *sector,
+					Pack_struc	 *pack,
+					Sys_header_struc *sys_header,
+					unsigned int     max_packet_data_size,
+					FILE		 *inputstream,
 
-Sector_struc 	 *sector;
-Pack_struc	 *pack;
-Sys_header_struc *sys_header;
-unsigned int 	 packet_size;
-FILE		 *inputstream;
-
-unsigned char 	 type;
-unsigned char 	 buffer_scale;
-unsigned int 	 buffer_size;
-unsigned char 	 buffers;
-Timecode_struc   *PTS;
-Timecode_struc   *DTS;
-unsigned char 	 timestamps;
-unsigned int     which_streams;
+				  unsigned char 	 type,
+				  unsigned char 	 buffer_scale,
+				  unsigned int 	 buffer_size,
+				  unsigned char 	 buffers,
+				  Timecode_struc   *PTS,
+				  Timecode_struc   *DTS,
+				  unsigned char 	 timestamps
+				  )
 
 {
-    int i,j,tmp;
+    int i,j;
     unsigned char *index;
     unsigned char *size_offset;
+	unsigned char *packet_header_start_offset;
+	unsigned char *pes_header_len_offset = 0; /* Silence compiler... */
+	int target_packet_data_size;
+	int actual_packet_data_size;
+	int packet_data_to_read;
+	int bytes_short;
 
     index = sector->buf;
     sector->length_of_sector=0;
@@ -49,10 +96,9 @@ unsigned int     which_streams;
 
     if (pack != NULL)
     {
-	i = sizeof(pack->buf);
-	bcopy (pack->buf, index, i);
-	index += i;
-	sector->length_of_sector += i;
+	  bcopy (pack->buf, index, pack_header_size);
+	  index += pack_header_size;
+	  sector->length_of_sector += pack_header_size;
     }
 
     /* soll ein System Header mit auf dem Sektor gespeichert werden? */
@@ -60,115 +106,209 @@ unsigned int     which_streams;
 
     if (sys_header != NULL)
     {
-	i = sizeof(sys_header->buf);
+	  i = SYS_HEADER_SIZE;
 
-	/* only one stream? 3 bytes less in sys header */
-	if (which_streams != STREAMS_BOTH) i -= 3;
+	  /* only one stream? 3 bytes less in sys header */
+	  if (which_streams != STREAMS_BOTH) i -= 3;
 
-	bcopy (sys_header->buf, index, i);
-	index += i;
-	sector->length_of_sector += i;
+	  bcopy (sys_header->buf, index, i);
+	  index += i;
+	  sector->length_of_sector += i;
     }
 
     /* konstante Packet Headerwerte eintragen */
     /* write constant packet header data */
-
+	packet_header_start_offset = index;
     *(index++) = (unsigned char)(PACKET_START)>>16;
     *(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
     *(index++) = (unsigned char)(PACKET_START & 0x0000ff);
     *(index++) = type;	
 
     /* wir merken uns diese Position, falls sich an der Paketlaenge noch was tut */
-    /* we remember this offset in case we will have to shrink this packet */
-    
-    size_offset = index;
-    *(index++) = (unsigned char)((packet_size - PACKET_HEADER_SIZE)>>8);
-    *(index++) = (unsigned char)((packet_size - PACKET_HEADER_SIZE)&0xff);
+    /* we remember this offset so we can fill in the packet size field once
+	   we know the actual size... */
+    size_offset = index;   
+	index += 2;
+ 
 
-    *(index++) = STUFFING_BYTE;
-    *(index++) = STUFFING_BYTE;
-    *(index++) = STUFFING_BYTE;
-
-    i = 0;
-
-    if (!buffers) i +=2;
-    if (timestamps == TIMESTAMPS_NO) i+=9;
-    else if (timestamps == TIMESTAMPS_PTS) i+=5;
-
-    
-    for (j=0; j<i; j++)
-	*(index++) = STUFFING_BYTE;
-
-    /* soll Buffer Info angegeben werden ? */
-    /* should we write buffer info ? */
-
-    if (buffers)
-    {
-	*(index++) = (unsigned char) (0x40 |
+	if( opt_mpeg == 1 )
+	  {
+		/* MPEG 1: 3 stuffing bytes where MPEG-2 puts its top-level
+		   packet syntax flags */
+		*(index++) = STUFFING_BYTE;
+		*(index++) = STUFFING_BYTE;
+		*(index++) = STUFFING_BYTE;
+		
+		/* MPEG-1: buffer information */
+		if (buffers)
+		  {
+			*(index++) = (unsigned char) (0x40 |
 			(buffer_scale << 5) | (buffer_size >> 8));
-	*(index++) = (unsigned char) (buffer_size & 0xff);
-    }
+			*(index++) = (unsigned char) (buffer_size & 0xff);
+		  }
 
-    /* PTS, PTS & DTS, oder gar nichts? */
-    /* should we write PTS, PTS & DTS or nothing at all ? */
+		/* MPEG-1: PTS, PTS & DTS, oder gar nichts? */
+		/* should we write PTS, PTS & DTS or nothing at all ? */
 
-    switch (timestamps)
-    {
-	case TIMESTAMPS_NO:
-	    *(index++) = MARKER_NO_TIMESTAMPS;
-	    break;
-	case TIMESTAMPS_PTS:
-	    buffer_timecode (PTS, MARKER_JUST_PTS, &index);
-	    copy_timecode (PTS, &sector->TS);
-	    break;
-	case TIMESTAMPS_PTS_DTS:
-	    buffer_timecode (PTS, MARKER_PTS, &index);
-	    buffer_timecode (DTS, MARKER_DTS, &index);
-	    copy_timecode (DTS, &sector->TS);
-	    break;
-    }
+		switch (timestamps)
+		  {
+		  case TIMESTAMPBITS_NO:
+			*(index++) = MARKER_NO_TIMESTAMPS;
+			break;
+		  case TIMESTAMPBITS_PTS:
+			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_JUST_PTS, &index);
+			copy_timecode (PTS, &sector->TS);
+			break;
+		  case TIMESTAMPBITS_PTS_DTS:
+			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_PTS, &index);
+			buffer_dtspts_mpeg1scr_timecode (DTS, MARKER_DTS, &index);
+			copy_timecode (DTS, &sector->TS);
+			break;
+		  }
+	  }
+	else
+	  {
+	  	/* MPEG-2 packet syntax header flags. */
+		/* First byte:
+		   <1,0><PES_scrambling_control:2=0><data_alignment_ind.=0>
+		   <copyright=0><original=0> */
+		*(index++) = 0x80;
+		/* Second byte: PTS PTS_DTS or neither?  Buffer info?
+		   <PTS_DTS:2><ESCR=0><ES_rate=0>
+		   <DSM_trick_mode:2=0><PES_CRC=0><PES_extension=(!!buffers)>
+		*/
+		*(index++) = (timestamps << 6) | (!!buffers);
+		/* Third byte:
+		   <PES_header_length:8> */
+		pes_header_len_offset = index;  /* To fill in later! */
+		index++;
+		/* MPEG-2: the timecodes if required */
+		switch (timestamps)
+		  {
+		  case TIMESTAMPBITS_PTS:
+			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_JUST_PTS, &index);
+			copy_timecode(PTS, &sector->TS);
+          break;
 
-    /* Packet Daten eintragen */
-    /* read in packet data */
+		  case TIMESTAMPBITS_PTS_DTS:
+			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_PTS, &index);
+			buffer_dtspts_mpeg1scr_timecode(DTS, MARKER_DTS, &index);
+			copy_timecode(DTS, &sector->TS);
+          break;
+		  }
+
+		/* MPEG-2 The buffer information in a PES_extension */
+		if( buffers )
+		{
+			/* MPEG-2 PES extension header
+			   <PES_private_data:1=0><pack_header_field=0>
+			   <program_packet_sequence_counter=0>
+			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
+			*(index++) = (unsigned char) (0x40 | (buffer_scale << 5) | 
+										  (buffer_size >> 8));
+			*(index++) = (unsigned char) (buffer_size & 0xff);
+		}
+	  }
+
+	/* MPEG-1, MPEG-2: data available to be filled is packet_size less header and MPEG-1 trailer... */
+
+	target_packet_data_size = sector_size - (index - sector->buf);
+	
+	/* If a maximum payload data size is specified (!=0) and is smaller than the space available
+	   thats all we read (the remaining space is stuffed) */
+	if( max_packet_data_size != 0 && max_packet_data_size < target_packet_data_size )
+	  packet_data_to_read = max_packet_data_size;
+	else
+	  packet_data_to_read = target_packet_data_size;
+
+
+	/* TODO DEBUG: */		
+	if( target_packet_data_size != packet_payload( sys_header!=0, pack!=0, buffers,
+												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
+	{ 
+		printf("Packet size calculation error %d %d %d!\n ", timestamps,
+		target_packet_data_size , 
+		packet_payload( sys_header!=0, pack!=0, buffers,
+					    timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
+		exit(1);
+	}
+	
+	/* MPEG-1, MPEG-2: read in available packet data ... */
     
-    i = (packet_size - PACKET_HEADER_SIZE - AFTER_PACKET_LENGTH);
-
     if (type == PADDING_STR)
     {
-	for (j=0; j<i; j++)
-	    *(index++)=(unsigned char) STUFFING_BYTE;
-	tmp = i;
+	  for (j=0; j<target_packet_data_size; j++)
+	    *(index+j)=(unsigned char) STUFFING_BYTE;
+	  actual_packet_data_size = target_packet_data_size;
+	  bytes_short = 0;
     } 
     else
     {   
-	tmp = fread (index, sizeof (unsigned char), i, inputstream);
-        index += tmp;
+	  actual_packet_data_size = fread (index, sizeof (unsigned char), 
+			                           packet_data_to_read, 
+			                           inputstream);
+	  bytes_short = target_packet_data_size - actual_packet_data_size;
 
-	/* falls nicht genuegend Datenbytes, Paketlaenge verkuerzen */
-	/* if we did not get enough data bytes, shorten the Packet length */
-
-	if (tmp != i)
-	{   
-	    packet_size -= (i-tmp);
-	    *(size_offset++) = (unsigned char)((packet_size - PACKET_HEADER_SIZE)>>8);
-	    *(size_offset++) = (unsigned char)((packet_size - PACKET_HEADER_SIZE)&0xff);
-	    
-	    /* zero stuffing bytes beim letzten Packet eines Streams*/
-	    /* braucht es seit Verkuerzung des Paketes nicht mehr */
-	    /* zero byte stuffing in the last Packet of a stream */
-	    /* we don't need this any more, since we shortenend the packet */
-/* 	    for (j=tmp; j<i; j++) */
-/* 		*(index++)=(unsigned char) ZERO_STUFFING_BYTE; */
 	}
-    }
+	
+	/* Handle the situations where we don't have enough data to fill
+	   the packet size fully at the end of the stream... */
 
 
-    /* sonstige Strukturdaten eintragen */
-    /* write other struct data */
+	/* The case where we have fallen short, but only so much that we
+	   can deal with it by stuffing (max 255) */
+	/* TODO: MPEG-1: is it o.k. to merrily stuff like this...?        */
+	if( bytes_short < 25 && bytes_short > 0 )
+	{
+	  memmove( index+bytes_short, index,  actual_packet_data_size );
+	  for( j=0; j< bytes_short; ++j)
+		*(index+j)=(unsigned char) STUFFING_BYTE;
 
-    sector->length_of_sector += packet_size;
-    sector->length_of_packet_data = tmp;
-    
+	  actual_packet_data_size = target_packet_data_size;
+	  bytes_short = 0;
+	}
+	  
+	/* MPEG-2: we now know the header length... */
+	if (opt_mpeg == 2 )
+	{
+		*pes_header_len_offset = 
+		(unsigned char)(index-(pes_header_len_offset+1));
+	}
+	
+	index += actual_packet_data_size;	 
+
+	/* The case where we have fallen short enough to allow it to be dealt with by
+		inserting a stuffing packet... */	
+	if ( bytes_short != 0 )
+	{
+	   *(index++) = (unsigned char)(PACKET_START)>>16;
+	   *(index++) = (unsigned char)(PACKET_START & 0x00ffff)>>8;
+	   *(index++) = (unsigned char)(PACKET_START & 0x0000ff);
+	   *(index++) = PADDING_STR;
+	   *(index++) = (unsigned char)((bytes_short - 6) >> 8);
+	   *(index++) = (unsigned char)((bytes_short - 6) & 0xff);
+	   if (opt_mpeg == 2)
+	   {
+		  for (i = 0; i < bytes_short - 6; i++)
+			*(index++) = (unsigned char) STUFFING_BYTE;
+	   }
+	   else
+	   {
+		  *(index++) = 0x0F;  /* TODO: A.Stevens 2000 Why is this here? */
+		  for (i = 0; i < bytes_short - 7; i++)
+			*(index++) = (unsigned char) STUFFING_BYTE;
+	   }
+	   actual_packet_data_size = target_packet_data_size;
+	   bytes_short = 0;
+	}
+	  
+	/* MPEG-1, MPEG-2: Now we know that actual packet size */
+	size_offset[0] = (unsigned char)((index-size_offset-2)>>8);
+	size_offset[1] = (unsigned char)((index-size_offset-2)&0xff);
+
+    sector->length_of_sector = sector_size - bytes_short;
+    sector->length_of_packet_data = actual_packet_data_size;
+
 }
 
 /*************************************************************************
@@ -182,12 +322,11 @@ unsigned int     which_streams;
 	the sector buffer
 *************************************************************************/
 
-void create_pack (pack, SCR, mux_rate)
-
-Pack_struc	 *pack;
-unsigned int 	 mux_rate;
-Timecode_struc   *SCR;
-
+void create_pack (
+				  Pack_struc	 *pack,
+				  Timecode_struc   *SCR,
+				  unsigned int 	 mux_rate
+				)
 {
     unsigned char *index;
 
@@ -197,11 +336,25 @@ Timecode_struc   *SCR;
     *(index++) = (unsigned char)((PACK_START & 0x00ff0000)>>16);
     *(index++) = (unsigned char)((PACK_START & 0x0000ff00)>>8);
     *(index++) = (unsigned char)(PACK_START & 0x000000ff);
-    buffer_timecode (SCR, MARKER_SCR, &index);
-    *(index++) = (unsigned char)(0x80 | (mux_rate >>15));
-    *(index++) = (unsigned char)(0xff & (mux_rate >> 7));
-    *(index++) = (unsigned char)(0x01 | ((mux_rate & 0x7f)<<1));
-    copy_timecode (SCR,&pack->SCR);
+        
+	if (opt_mpeg == 2)
+    {
+    	/* Annoying: MPEG-2's SCR pack header time is different from
+		all the rest... */
+      buffer_mpeg2scr_timecode(SCR, &index);
+      *(index++) = (unsigned char)(mux_rate >> 14);
+      *(index++) = (unsigned char)(0xff & (mux_rate >> 6));
+      *(index++) = (unsigned char)(0x03 | ((mux_rate & 0x3f) << 2));
+      *(index++) = (unsigned char)(RESERVED_BYTE << 3 | 0); /* No pack stuffing */
+    }
+    else
+    {
+      buffer_dtspts_mpeg1scr_timecode(SCR, MARKER_MPEG1_SCR, &index);
+      *(index++) = (unsigned char)(0x80 | (mux_rate >> 15));
+      *(index++) = (unsigned char)(0xff & (mux_rate >> 7));
+      *(index++) = (unsigned char)(0x01 | ((mux_rate & 0x7f) << 1));
+    }
+    copy_timecode(SCR, &pack->SCR);
 }
 
 
@@ -216,29 +369,24 @@ Timecode_struc   *SCR;
 	the sector buffer
 *************************************************************************/
 
-void create_sys_header (sys_header, rate_bound, audio_bound, 
-			fixed, CSPS, audio_lock, video_lock,
-			video_bound,
-			stream1, buffer1_scale, buffer1_size,
-			stream2, buffer2_scale, buffer2_size,
-			which_streams)
+void create_sys_header (
+						Sys_header_struc *sys_header,
+						unsigned int	 rate_bound,
+						unsigned char	 audio_bound,
+						unsigned char	 fixed,
+						unsigned char	 CSPS,
+						unsigned char	 audio_lock,
+						unsigned char	 video_lock,
+						unsigned char	 video_bound,
 
-Sys_header_struc *sys_header;
-unsigned int	 rate_bound;
-unsigned char	 audio_bound;
-unsigned char	 fixed;
-unsigned char	 CSPS;
-unsigned char	 audio_lock;
-unsigned char	 video_lock;
-unsigned char	 video_bound;
-
-unsigned char 	 stream1;
-unsigned char 	 buffer1_scale;
-unsigned int 	 buffer1_size;
-unsigned char 	 stream2;
-unsigned char 	 buffer2_scale;
-unsigned int 	 buffer2_size;
-unsigned int     which_streams;
+						unsigned char 	 stream1,
+						unsigned char 	 buffer1_scale,
+						unsigned int 	 buffer1_size,
+						unsigned char 	 stream2,
+						unsigned char 	 buffer2_scale,
+						unsigned int 	 buffer2_size,
+						unsigned int     which_streams
+						)
 
 {
     unsigned char *index;

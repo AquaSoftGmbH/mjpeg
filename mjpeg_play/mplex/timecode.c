@@ -9,8 +9,6 @@
 void empty_timecode_struc (timecode)
 Timecode_struc *timecode;
 {
-    timecode->msb=0;
-    timecode->lsb=0;
 	timecode->thetime = 0LL;
 }
 
@@ -18,19 +16,12 @@ void offset_timecode (time1, time2, offset)
 Timecode_struc *time1, *time2, *offset;
 {
   offset->thetime = time2->thetime - time1->thetime;
-  offset->msb = (unsigned long)(( offset->thetime >> 32) & 1);
-  offset->lsb = (unsigned long)( offset->thetime & 0xffffffffLL);  
-	/* Original code 
-    offset->msb = time2->msb - time1->msb;
-    offset->lsb = time2->lsb - time1->lsb;
-	*/
+
 }
 
 void copy_timecode (time_original, time_copy)
 Timecode_struc *time_original, *time_copy;
 {
-    time_copy->lsb=time_original->lsb;
-    time_copy->msb=time_original->msb;
 	time_copy->thetime=time_original->thetime;
 }
 
@@ -40,21 +31,7 @@ Timecode_struc *pointer;
 {
   /* Work-around for a tricky compiler bug.... */
 
-  pointer->thetime = (unsigned long long) timestamp;
-  pointer->msb = (unsigned long)(( pointer->thetime >> 32) & 1);
-  pointer->lsb = (unsigned long)( pointer->thetime & 0xffffffffLL);
-#ifdef ORIGINAL_CODE
-    if (timestamp > MAX_FFFFFFFF)
-    {
-	  pointer->msb= 1;
-	  timestamp -= MAX_FFFFFFFF;
-	  pointer->lsb=(unsigned long)timestamp;
-    } else
-    {
-	  pointer->msb=0;
-	  pointer->lsb=(unsigned long)timestamp;
-    }
-#endif
+  pointer->thetime = (clockticks) timestamp;
 }
 
 
@@ -63,38 +40,6 @@ Timecode_struc *add;
 Timecode_struc *to;
 {
   to->thetime += add->thetime;
-  to->msb = (unsigned long)(( to->thetime >> 32) & 1);
-  to-> lsb = (unsigned long)(to->thetime & 0xffffffffLL);
-#ifdef ORIGINAL_CODE
-    to->msb = (add->msb + to->msb);
-
-    /* oberstes bit in beiden Feldern gesetzt */
-    /* high bit set in both fields */
-
-    if (((add->lsb & 0x80000000) & (to->lsb & 0x80000000))>>31)
-    {
-	to->msb = to->msb ^ 1;
-	to->lsb = (to->lsb & 0x7fffffff)+(add->lsb & 0x7fffffff);
-    }
-
-    /* oberstes bit in einem der beiden gesetzt */
-    /* high bit set in one of both fields */
-
-    else if (((add->lsb & 0x80000000) | (to->lsb & 0x80000000))>>31)
-    {
-	to->msb = to->msb ^ 
-	  ((((add->lsb & 0x7fffffff)+(to->lsb & 0x7fffffff)) & 0x80000000)>>31);
-	to->lsb = ((to->lsb & 0x7fffffff)+(add->lsb & 0x7fffffff)^0x80000000);
-    }
-
-    /* kein Ueberlauf moeglich */
-    /* no overflow possible */
-
-    else
-    {
-	  to->lsb = to->lsb + add->lsb;
-    }
-#endif
 }
 
 
@@ -103,30 +48,80 @@ Timecode_struc *to;
     MPEG-Verfahren in bits aufgesplittet.
 
     Makes a Copy of a TimeCode in a Buffer, splitting it into bitfields
-    according to MPEG-System
+    for MPEG-1/2 DTS/PTS fields and MPEG-1 pack scr fields
 *************************************************************************/
 
-void buffer_timecode (pointer, marker, buffer)
-
-Timecode_struc *pointer;
-unsigned char  marker;
-unsigned char **buffer;
+void buffer_dtspts_mpeg1scr_timecode (Timecode_struc *pointer,
+									 unsigned char  marker,
+									 unsigned char **buffer)
 
 {
+	clockticks thetime_base;
     unsigned char temp;
+    unsigned int msb, lsb;
+     
+ 	/* MPEG-1 uses a 90KHz clock, extended to 300*90KHz = 27Mhz in MPEG-2 */
+	/* For these fields we only encode to MPEG-1 90Khz resolution... */
+	
+	thetime_base = pointer->thetime /300;
+	msb = (thetime_base >> 32) & 1;
+	lsb = (thetime_base & 0xFFFFFFFFLL);
+		
+    temp = (marker << 4) | (msb <<3) |
+		((lsb >> 29) & 0x6) | 1;
+    *((*buffer)++)=temp;
+    temp = (lsb & 0x3fc00000) >> 22;
+    *((*buffer)++)=temp;
+    temp = ((lsb & 0x003f8000) >> 14) | 1;
+    *((*buffer)++)=temp;
+    temp = (lsb & 0x7f80) >> 7;
+    *((*buffer)++)=temp;
+    temp = ((lsb & 0x007f) << 1) | 1;
+    *((*buffer)++)=temp;
 
-    temp = (marker << 4) | (pointer->msb <<3) |
-		((pointer->lsb >> 29) & 0x6) | 1;
-    *((*buffer)++)=temp;
-    temp = (pointer->lsb & 0x3fc00000) >> 22;
-    *((*buffer)++)=temp;
-    temp = ((pointer->lsb & 0x003f8000) >> 14) | 1;
-    *((*buffer)++)=temp;
-    temp = (pointer->lsb & 0x7f80) >> 7;
-    *((*buffer)++)=temp;
-    temp = ((pointer->lsb & 0x007f) << 1) | 1;
-    *((*buffer)++)=temp;
+}
 
+/*************************************************************************
+    Makes a Copy of a TimeCode in a Buffer, splitting it into bitfields
+    for MPEG-2 pack scr fields  which use the full 27Mhz resolution
+    
+    Did they *really* need to put a 27Mhz
+    clock source into the system stream.  Does anyone really need it
+    for their decoders?  Get real... I guess they thought it might allow
+    someone somewhere to save on a proper clock circuit.
+*************************************************************************/
+
+
+void buffer_mpeg2scr_timecode( Timecode_struc *pointer,
+								unsigned char **buffer
+							 )
+{
+ 	clockticks thetime_base;
+	unsigned int thetime_ext;
+    unsigned char temp;
+    unsigned int msb, lsb;
+     
+	thetime_base = pointer->thetime /300;
+	thetime_ext =  pointer->thetime % 300;
+	msb = (thetime_base>> 32) & 1;
+	lsb = thetime_base & 0xFFFFFFFFLL;
+
+
+      temp = (MARKER_MPEG2_SCR << 6) | (msb << 5) |
+		  ((lsb >> 27) & 0x18) | 0x4 | ((lsb >> 28) & 0x3);
+      *((*buffer)++)=temp;
+      temp = (lsb & 0x0ff00000) >> 20;
+      *((*buffer)++)=temp;
+      temp = ((lsb & 0x000f8000) >> 12) | 0x4 |
+             ((lsb & 0x00006000) >> 13);
+      *((*buffer)++)=temp;
+      temp = (lsb & 0x00001fe0) >> 5;
+      *((*buffer)++)=temp;
+      temp = ((lsb & 0x0000001f) << 3) | 0x4 |
+             ((thetime_ext & 0x00000180) >> 7);
+      *((*buffer)++)=temp;
+      temp = ((thetime_ext & 0x0000007F) << 1) | 1;
+      *((*buffer)++)=temp;
 }
 
 /******************************************************************
@@ -141,13 +136,5 @@ Timecode_struc *TS1;
 Timecode_struc *TS2;
 {
   return TS1->thetime < TS2->thetime;
-  /* Original code...
-    double Time1;
-    double Time2;
 
-    Time1 = (TS1->msb * MAX_FFFFFFFF) + (TS1->lsb);
-    Time2 = (TS2->msb * MAX_FFFFFFFF) + (TS2->lsb);
-
-    return (Time1 <= Time2);
-  */
 }
