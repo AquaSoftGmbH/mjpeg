@@ -1,6 +1,6 @@
 /* Form definition file generated with fdesign. */
 
-#include "X11/forms.h"
+#include "forms.h"
 #include <stdlib.h>
 #include "xlav.h"
 

@@ -31,7 +31,9 @@ pre-hacked version downloadable from where you got this package.
 
 The file is called "quicktime4linux-1.2njpg.tar.gz"
 
-Either way: compile and install/
+Either way: compile the library.  The best place to put the directory
+is /usr/local/src or in the same directory as this one, as that's where
+the configuration scripts will search for it.
 
 2) The MMX enhanced jpeg library from the same place you got this package.
 
@@ -45,7 +47,16 @@ However, by far the simplest solution is to the faster patched MMX
 version that can be found with where you obtained this software.  The
 file is called:
 
-"jpeg-mxx-0.1.1.tar.gz"
+"jpeg-mxx-0.1.2.tar.gz"
+
+Compile and install: 
+
+./configure
+make
+make install     
+
+You'll need to have write permission to /usr/local/lib and /usr/local/include
+for the install.
 
 It is *strongly* recommended you compile and install this.  Don't
 worry about it messing up your precious system jpeg libs.  Its default
@@ -58,7 +69,14 @@ Very handy for hacking around, moving between formats, and experimentation.
 
 The file is called: "libmovtar-0.1.1.tar.gz".
 
-Compile and install.
+Compile and install: 
+
+./configure
+make
+make install     
+
+You'll need to be able to write to /usr/local/lib and /usr/local/include
+for the install.
 
 
 
@@ -76,6 +94,14 @@ Compile and install.
 
 *** Software you'll find useful
 
+5) A reasonably up-to-date installation of the "xforms" library.
+In RedHat land xforms-0.88.1-1 (you need the -devel too) is known to work.
+
+Irritatingly some older installation make the header "X11/forms.h" whilst
+more recent ones use "forms.h".  If compilation stops with one of these
+files missing make sure you have forms installed.  The 0.88.1-1 rpm's
+for RedHat seem to work fine.
+
 
 1) The "toolame" MP2 encoder and the "sox" audio processing tool.
 
@@ -88,16 +114,25 @@ versions.
 
 To build the package just type :
 
-./configure 
+./autogen.sh
+
+(This sets up the configuration script ./configure, 
+ and runs it to autoconfigure and create the Makefile's)
+
 make
+
+(This actually compiles the programs).
 
 Then (with root privileges if needed) :
 
 make install
 
+
+(This installs them in /usr/local/bin).
+
 If you have installed Quicktime4Linux and/or the jpeg libraries in
-unusual places you may need to use some options to persuade
-./configure to find them.
+unusual places you may need to run ./configure manually with
+options set to tell it where they are.
 
 You should now be able to run the lavtools and MPEG compressors at least.
 
