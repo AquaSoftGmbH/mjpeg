@@ -38,6 +38,8 @@ typedef struct
   unsigned long int nb_y;
   // UV characteristics
   uint8_t *u, *v;
+  unsigned int ss_h;
+  unsigned int ss_v;
   unsigned int uv_width;
   unsigned int uv_height;
   unsigned long int nb_uv;

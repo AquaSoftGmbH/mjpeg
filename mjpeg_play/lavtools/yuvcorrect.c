@@ -356,6 +356,8 @@ main (int argc, char *argv[])
 
   unsigned long int frame_num = 0;
 
+  y4m_accept_extensions(1);
+
   // Information output
   mjpeg_info("yuvcorrect "LAVPLAY_VERSION" ("yuvcorrect_VERSION") is a general image correction utility for yuv frames");
   mjpeg_info

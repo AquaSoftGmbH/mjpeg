@@ -352,53 +352,28 @@ void initialisation1(int fd,frame_t * frame, general_correction_t * gen_correct,
 		    
 {
    uint8_t *u_c_p;		//u_c_p = uint8_t pointer
-   int SS_H = 2;
-   int SS_V = 2;
 
   // gen_correct 
   gen_correct->no_header = gen_correct->line_switch =
   gen_correct->field_move = 0;
 
-   y4m_init_stream_info (&gen_correct->streaminfo);
-   if (y4m_read_stream_header (fd, &gen_correct->streaminfo) != Y4M_OK)
-     mjpeg_error_exit1 ("Couldn't read yuv4mpeg header!");
-   else
-     {
-       /* try to find a chromass xtag... */
-       y4m_xtag_list_t *xtags = y4m_si_xtags(&gen_correct->streaminfo);
-       const char *tag = NULL;
-       int n;
-       for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
-         {
-           tag = y4m_xtag_get(xtags, n);
-           if (!strncmp("XYSCSS=", tag, 7)) break;
-         }
-       if ((tag != NULL) && (n >= 0))
-         {
-           /* parse the tag */
-           tag += 7;
-           if (!strcmp("411", tag))
-             {
-               SS_H = 4;
-               SS_V = 1;
-             } 
-	   else if (!strcmp(tag, "420") || !strcmp(tag, "420MPEG2") || 
-                    !strcmp(tag, "420PALDV") || !strcmp(tag,"420JPEG"))
-             {
-               SS_H = 2;
-               SS_V = 2;
-             } 
-         }
-     }
+  y4m_init_stream_info (&gen_correct->streaminfo);
+  if (y4m_read_stream_header (fd, &gen_correct->streaminfo) != Y4M_OK)
+      mjpeg_error_exit1("Couldn't read yuv4mpeg header!");
+
+  if (y4m_si_get_plane_count(&gen_correct->streaminfo) != 3)
+      mjpeg_error_exit1("Only 3 plane formats supported");
 
    // frame
   frame->y_width = y4m_si_get_width (&gen_correct->streaminfo);
   frame->y_height = y4m_si_get_height (&gen_correct->streaminfo);
   frame->nb_y = frame->y_width * frame->y_height;
-  frame->uv_width = frame->y_width / SS_H;
-  frame->uv_height = frame->y_height / SS_V;
-  frame->nb_uv = frame->nb_y / (SS_H*SS_V);
-  frame->length = (frame->nb_y * 3) >> 1;	// * 3/2
+  frame->ss_h = y4m_chroma_ss_x_ratio(y4m_si_get_chroma(&gen_correct->streaminfo)).d;
+  frame->ss_v = y4m_chroma_ss_y_ratio(y4m_si_get_chroma(&gen_correct->streaminfo)).d;
+  frame->uv_width = y4m_si_get_plane_width(&gen_correct->streaminfo, 1);  /* planes 1&2 = U+V */
+  frame->uv_height = y4m_si_get_plane_height(&gen_correct->streaminfo, 1);
+  frame->nb_uv = frame->uv_width * frame->uv_height;
+  frame->length = frame->nb_y + 2 * frame->nb_uv;
   if (!(u_c_p = malloc (frame->length + ALIGNEMENT)))
     mjpeg_error_exit1 ("Could not allocate memory for frame table. STOP!");
   mjpeg_debug ("before alignement: %p", u_c_p);
@@ -1284,7 +1259,7 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
   u_p = frame->u;
   v_p = frame->v;
 
-  if (frame->y_height==2*frame->uv_height) // 4:2:0
+  if (frame->ss_h==2 && frame->ss_v==2) // 4:2:0
     {
       for (i = 0; i < frame->uv_height; i++)
         {
@@ -1346,7 +1321,7 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
           line2 += frame->y_width;
         }
     }
-  else // 4:1:1
+  else if (frame->ss_h==4 && frame->ss_v==1) // 4:1:1
     {
       for (i = 0; i < frame->uv_height; i++)
         {
@@ -1406,6 +1381,79 @@ yuvcorrect_RGB_treatment (frame_t * frame, rgb_correction_t * rgb_correct)
             }
         }
     }
+  else if (frame->ss_h==2 && frame->ss_v==1) // 4:2:2
+    {
+      for (i = 0; i < frame->uv_height; i++)
+        {
+          for (j = 0; j < frame->uv_width; j++)
+            {
+              R_UV = rgb_correct->RUV_v[*v_p];
+              G_UV = rgb_correct->GUV_v[*v_p] + rgb_correct->GUV_u[*u_p];
+              B_UV = rgb_correct->BUV_u[*u_p];
+              //         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
+              // Calculate the value of the two pixels concerned by the single (u,v) values
+              // Upper Left
+              R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              //         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
+              //                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
+              *line1++ = clip_0_255 ((uint16_t) rgb_correct->luma_r[R1]
+                                     + rgb_correct->luma_g[G1] +
+                                     rgb_correct->luma_b[B1]);
+              
+              R2 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G2 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B2 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              
+              // Compute new y value
+              *line1++ = clip_0_255 ((int16_t) rgb_correct->luma_r[R2]
+                                     + (int16_t) rgb_correct->luma_g[G2] +
+                                     (int16_t) rgb_correct->luma_b[B2]);
+              
+              moy_r = clip_0_255 (((int16_t) 1 + R1 + R2) >> 1);
+              moy_g = clip_0_255 (((int16_t) 1 + G1 + G2) >> 1);
+              moy_b = clip_0_255 (((int16_t) 1 + B1 + B2) >> 1);
+              //        mjpeg_info("B : %u %u %u %u moyennes %u %u %u",B1,B2,B3,B4,moy_r,moy_g,moy_b);
+              *u_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->u_r[moy_r] +
+                            rgb_correct->u_g[moy_g] + rgb_correct->u_b[moy_b]);
+              *v_p++ =
+                clip_0_255 ((int16_t) 128 + rgb_correct->v_r[moy_r] +
+                            rgb_correct->v_g[moy_g] + rgb_correct->v_b[moy_b]);
+            }
+        }
+    }
+  else if (frame->ss_h==1 && frame->ss_v==1) // 4:4:4
+    {
+      for (i = 0; i < frame->uv_height; i++)
+        {
+          for (j = 0; j < frame->uv_width; j++)
+            {
+              R_UV = rgb_correct->RUV_v[*v_p];
+              G_UV = rgb_correct->GUV_v[*v_p] + rgb_correct->GUV_u[*u_p];
+              B_UV = rgb_correct->BUV_u[*u_p];
+              //         mjpeg_info("YUV = %u + %d %d %d = %d %d %d",*line1,R_UV,G_UV,B_UV,(int16_t)*line1+R_UV,(int16_t)*line1+G_UV,(int16_t)*line1+B_UV);
+              // here we have 1-1 correspondence between RGB and YUV
+              R1 = rgb_correct->new_red  [OFFSET + *line1 + R_UV];
+              G1 = rgb_correct->new_green[OFFSET + *line1 + G_UV];
+              B1 = rgb_correct->new_blue [OFFSET + *line1 + B_UV];
+              // Compute new y value
+              //         mjpeg_info("line1 = %u %u %u %d",rgb_correct->luma_r[R1],rgb_correct->luma_g[G1],rgb_correct->luma_b[B1],clip_0_255((uint16_t)rgb_correct->luma_r[R1]
+              //                                            +rgb_correct->luma_g[G1]+rgb_correct->luma_b[B1]));
+              *line1++ = clip_0_255 ((uint16_t) rgb_correct->luma_r[R1]
+                                     + rgb_correct->luma_g[G1] +
+                                     rgb_correct->luma_b[B1]);
+              *u_p++ = clip_0_255 ((int16_t) 128 + rgb_correct->u_r[R1] +
+                            rgb_correct->u_g[G1] + rgb_correct->u_b[B1]);
+              *v_p++ = clip_0_255 ((int16_t) 128 + rgb_correct->v_r[R1] +
+                            rgb_correct->v_g[G1] + rgb_correct->v_b[B1]);
+            }
+        }
+    }
+  else
+      mjpeg_error_exit1 ("Sorry, RGB corrections not supported with that chroma subsampling");
   return (0);
 }
 
