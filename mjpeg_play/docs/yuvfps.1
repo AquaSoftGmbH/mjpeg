@@ -1,0 +1,71 @@
+.TH "yuvfps" "1" "19 November 2002" "MJPEG Linux Square" "MJPEG tools manual"
+
+.SH NAME
+yuvfps \- Converts to a different frame rate
+
+.SH SYNOPSIS
+.B yuvfps 
+.RB [ -r 
+.IR Num:Den ]
+.RB [ -s 
+.IR Num:Den ]
+.RB [ -c 
+.IR Num:Den ]
+.RB [ -v\ 0 - 2 ]
+.RB [ -h ]
+
+.SH DESCRIPTION
+\fByuvfps\fP is a general (UP or DOWN) resampling utility that is provided to
+allow the generation of video streams with the frame rates required for each
+standard video format. \fByuvfps\fP reads a YUV4MPEG stream from the standard
+input and outputs a YUV4MPEG stream to the standard output in which frames from
+the original ones are skipped (downsampling) or duplicated (upsampling).
+This allows for other mjpegtools that require a specific frame rate to 
+process the stream.
+
+\fByuvfps\fP uses Bresenham's algorithm to do the resampling so that the new
+video stream is similar to the original one. Note, however, that downscaling
+is a non-reversible operation because frames are dropped. Moreover, the resulting
+video stream may not have the exact same duration as the original one if the
+new frame rate is not a whole multiple of the original rate.
+  
+\fByuvfps\fP also can "fix" the framerate specified in the YUV4MPEG header. 
+This allows for the generation of effects (fast-forwarding, slow motion) and
+also when the source stream has some framerate that is very close, but not 
+exactly, the rate required for some standard video (for example, 24.9 vs 25). 
+
+.SH OPTIONS
+
+.TP 
+.B -r \fBNum:Den\fP
+.IP
+Specifies the resulting stream frame rate.
+.TP 
+.B -c
+.IP
+Changes the stream header frame rate in the output stream, but copies withouth
+changing the frames from the original stream.
+
+.TP 
+.B -s \fBNum:Den\fP
+.IP
+Ignores the frame rate in the input stream and assumes this frame rate for the 
+input stream. 
+
+.SH AUTHOR
+This man page was written by Alfonso García-Patiño Barbolani.
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP
+For more info, see our website at
+.I http://mjpeg.sourceforge.net/
+
+.SH SEE ALSO
+.BR yuvscaler (1),
+.BR mjpegtools (1),
+.BR lavpipe (1),
+.BR lav2yuv (1)
+.BR mpeg2enc (1)
