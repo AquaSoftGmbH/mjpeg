@@ -8,12 +8,12 @@ Minor
 	from the stream extraction.  An extractor is needed for the favoured
 	format of the mpeg2dec developer.
 
-- Diff the plug-in's with the livid source-base and send it to the developers.
-
 - Mention transcoding in the Documentation.  Mention the stuff relating to
   seq headers and similar VCD tricker too...
 
 - Change the build structure to seperate the MPEG from the lav tools.
+
+- Fix the overly pessimistic data-rate estimation in mplex.
 
 - Turn the crappy "HINTS" file into nice introductory documentation on
   working with these programs to achieve the best results in typical
@@ -36,7 +36,7 @@ Medium
 
 - Get lavtools to use the new up-to-date headers from the drivers...
 
-- Add support for software playback of raw (YUV and RGB) AVI files.  	
+- Add support for encoding raw (YUV and RGB) AVI files.  	
 
 - Modify mplex to a decent job at mpeg stream splitting.  The solution
 	would be to get mpeg2enc to insert regular sequence headers at the
@@ -45,15 +45,12 @@ Medium
 - Beef up xlav to make splitting an editted stream set into multiple
   edit lists for parallel compression less tedious.
 
-- The new quantizer is only used on the most crucial (non-intra frame)
-routine. A fast intra quantizer would be nice too.
-
-- Add the code to do DVD and SVCD multiplexing into mplex.  This is
+- Add the code to do DVD multiplexing into mplex.  This is
 mainly the addition of facilities to mux in AC-3 as stream PRIVATE1.
 As ever Brent Byeler's "bbmpeg" is a good source here.
 
 - Get rid of the silly compulsorary two-pass thing in mplex, replace with a
-look-ahead reader instead?
+look-ahead reader instead.
 
 Major
 

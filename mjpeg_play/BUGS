@@ -1,33 +1,29 @@
-1.	mpeg2enc has only been tested cursorarily on MPEG-2 streams.
-	It was hard enough to make sure the MPEG-1 stuff worked really
-	reliably ;-). Progressive sequences seem o.k. but field sequences
-	need work on the MC selection code.
+1.	MPEG2 support for progressive sequences frame (-F 0) and  
+	field-interlaced (-F 3) is now well tested.  Field
+	sequences (-F 1 and -F 2) appear to be working but aren't yet thoroughly
+	tested and lack some recent optimisations available for
+	progressive sequences.
 
-2.  The bit-rate control algorithm in mpeg2enc is relatively new and must
-	therefore be regarded with some suspicion.  It *looks* to have corrected
-	some annoying problems with overshoots in earlier versions and
-	poor handling of unusually active blocks but I'd want more evidence...
-
-3.	The lavplay / xlav apps fail rather than automatically switch to software
-	decoding if no MJPEG hardware is present.
-
-4.	At least for my install of SDL software playback MJPEG function sizes
+2.	At least for my install of SDL software playback MJPEG function sizes
 	its window inconsistently with what it claims it is going to do.
 	Playback speed
 
-6.	The VBVbuffer delay code is hopeless broken.  It is currently turned off
-	and needs re-implementing from scratch.  Not urgent though since no
-	decoder ever seems to take any notice of it.  Certainly I never figured
-	out the the damn thing would be useful for once your mux-er has
-	checked for /ensured video buffer size bounding.
+3.  There are probably some minor issues relating to capture sizing when
+	capturing using the Matrox hardware.
+
+4.	The VBVbuffer delay code is hopeless broken.  It is currently turned off
+	and needs re-implementing from scratch.  Not urgent though since
+	no decoder ever seems to take any notice of it.  Certainly I never
+	figured out the the damn thing would be useful for once your
+	mux-er has	checked for /ensured video buffer size bounding.
 
 
-7.	The sourcecode needs to be updated a little to permit the full use of the
+5.	The sourcecode needs to be updated a little to permit the full use of the
 	autoconf scriptology.  E.g. You can't not include libmovtar because the
 	#ifdef-ing isn't quite right and some movtar only stuff is referred to in
 	places compiled when libmovtar isn't present.
 
-8.	mpeg2enc is currently broken for 422 and 444 video.   The problem is that
+6.	mpeg2enc is currently broken for 422 and 444 video.   The problem is that
 	the calculations for checking chrominance in the the motion compensation
 	search assume 2-pel sub-sampled U and V in X and Y.
 

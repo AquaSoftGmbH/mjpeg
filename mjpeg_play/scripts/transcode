@@ -2,18 +2,20 @@
 
 function usage ()
 {
-echo "Usage: transcode [-S] [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
-echo "S - Single system file mode..."
+echo "Usage: transcode [-S][-V] [-T] [-s mins] [-b bitrate]  [-o dstfile] srcfile ..."
 echo "o - output file root name"
 echo "b - bitrate for video in kbps"
 echo "s - sleep for specified number of minutes before starting work"
 echo "T - Use test encoder"
+echo "V - Transcode for VCD"
+echo "S - Transcode for SVCD"
 exit 0
 }
 
 #  Use this commented-out version if you haven't got sox and toolame
-#MP2ENC="nice -n 29 mp2enc -v -o" 
+#MP2ENC="nice -n 29 wav2mp2 -v -o" 
 MPEG2ENC=mpeg2enc
+MPLEX=mplex
 if [ $[$# < 3 ] = 1 ]
 then
 usage
@@ -22,11 +24,11 @@ outpat=".%d"
 outfile=transcoded
 bitrate=""
 sleep=0
+sync="-s"
+decode="YUVh"
 while getopts ":o:b:s:STXh" opt
 do
 case $opt in
-S) outpat="" 
-;;
 s) sleep=$OPTARG
 ;;
 b) bitrate="-b $OPTARG"
@@ -34,16 +36,28 @@ b) bitrate="-b $OPTARG"
 o) outfile=$OPTARG
 ;;
 T)
-echo Using test encoder
+echo Using test encoder and multiplexer
 MPEG2ENC="mpeg2enc.test"
+MPLEX=mplex.test
 ;;
 h)
 echo hi-res mode
-opts=-h
+MPEGOPTS="$MPEGOPTS -h"
 ;;
 X)
 echo Using test encoder max speed
-MPEG2ENC="mpeg2enc.test -4 1 -2 1"
+MPEG2OPTS="$MPEG2OPTS -4 1 -2 1"
+;;
+V)
+echo Generating VCD stream
+MPEGOPTS="-s"
+bitrate=""
+;;
+S)
+echo Generating SVCD stream
+MPEGOPTS="-m 2 -F 3 -q 9 -v 200"
+bitrate="-b 2500"
+decode="YUVs"
 ;;
 l)
 lavargs=$OPTARG
@@ -55,7 +69,13 @@ done
 
 shift $[$OPTIND-1]
 sleep $[$sleep*60]
-cat $* |  mpeg2dec -s -m YUVh |  buffer -b 4M | ${MPEG2ENC} -r 24 $bitrate $opts -o $outfile.m1v
-cat $* |  extract_ac3 -  $sync |  ac3dec -m wav |   sox -t wav - -r 44100 -t wav - | toolame -p 2 -b 224 - $outfile.mp2
+#cat $* |  mpeg2dec -s -o $decode |  buffer -b 4M | ${MPEG2ENC} ${MPEGOPTS} $bitrate -r 24 -o $outfile.m1v
+fifo=/tmp/tcfifo$$
+sync=/tmp/sync$$
+mkfifo $fifo
+cat $* |  extract_ac3 -  -s 2> $sync |  ac3dec -o wav -p $fifo &
+sox -t wav - -r 44100 -t wav - < $fifo | toolame -p 2 -b 224 - $outfile.mp2
+echo "Multiplex with video delay (-v) of " `grep SYNC $sync | cut -d ' ' -f 2` " mSec"
+rm -f $fifo $sync
 # Eventually mux-ing goes here!
-# See lav2mpeg for an example of how to invoke the multiplexer.
+

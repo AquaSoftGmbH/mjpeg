@@ -32,15 +32,25 @@
 
 2001-01-25 Andrew Stevens (as@comlab.ox.ac.uk)
 
-	* 1.3b3 release.  Tag (forthcoming): Rel1_3Beta3
+	* 1.3b3 release.  Tag: Rel1_3Beta3
 
 	* Refinement if field based motion compensation type selection.
 	Replacing sad with variance as selection criterion.
        
-	* Initial SVCD support.
+	* Initial SVCD support in mplex and mpeg2enc.  Initial support for
+	handling poor chrominance matching in motion compensation.
+
+	* Support for new combined LML33/buz/DC10/DC10+ driver.
+
+	* Support for 422 MJPEG from xawtv capture tool.
+
+	* More robust audio driver handling (SB-Live now works!).
 	
 CVS log:
 $Log$
+Revision 1.8  2001/01/25 20:11:29  wackston
+Initial SVCD support in mplex. Update TODO files..
+
 Revision 1.7  2000/12/19 14:34:06  wackston
 *** empty log message ***
 

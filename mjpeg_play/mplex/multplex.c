@@ -150,7 +150,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_size = 2324;
 		opt_data_rate = 150*2324;
 	  	opt_VBR = 1;
-	  	video_buffer_size = 234*1024;
+	  	video_buffer_size = 230*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
 		zero_stuffing = 0;
@@ -226,10 +226,9 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		if( opt_VBR )
 		{
 			video_rate = video_info->peak_bit_rate *50;
-			if( video_buffer_size < video_rate * 2 / 3 )
+			if( video_buffer_size < video_rate / 2 )
 			{
-				fprintf( stderr, "WARNING: VBR specified with implausibly small buffer\nIncreasing to 2/3rds sec peak rate!\n" );
-				video_buffer_size = video_rate * 2 / 3;
+				fprintf( stderr, "WARNING: VBR specified with implausibly small buffer\nLess than to 1/2 sec at peak rate!\n" );
 			}
 			printf( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
 					video_rate*8, video_buffer_size/1024 );
@@ -273,7 +272,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		else if ( opt_data_rate < dmux_rate )
 		{
 			printf( "Warning: Target data rate lower than computed requirement!\n");
-			printf( "N.b. a *small* discrepancy is	common and harmless.\n"); 
+			printf( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
 			dmux_rate = opt_data_rate;
 		}
 

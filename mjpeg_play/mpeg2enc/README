@@ -45,8 +45,9 @@ Andrew Stevens added a new much faster MMX / 3Dnow / ISSE
 based quantization routines.
 
 Andrew Stevens replaced the use of SAD with variance for selecting
-field-based motion compensation. Slightly more expensive but produces
-*markedly* better results.  
+ motion compensations. Slightly more expensive but produces *markedly*
+ better results.  Similarly added initial support for checking the
+ quality of the chrominance match achieved.
 
 In case you're wondering: the upshot of this disclaimer is that the
 functionality is exactly as per the original but the software now runs
@@ -69,37 +70,36 @@ Usage: ./mpeg2enc [params]
                0 = progressive output (no field pictures)
                1 = field pictures, bottom field first
                2 = field pictures, top field first
-   -r num     Search radius [0..32] (default 0: don't search at all)
+		       3 = progressive output, field-wise encoding
+   -r num     Motionc compensation search radius [0..32] (default 16)
    -4 num     (default: 2)
 			  Threshold  to divide 4*4 sub-sampled motion search by.
 				1 will guarantee practically no match likely to lead to
-			 and optimum will be discarded but is slow.  4 is fast but
-			will cause the odd match to be missed.
+			 an optimum solution will be discarded but is slow.  4 is fast but
+			 will cause the odd optimum to be missed.
    -2 num     (default: 2)
 				Same as -4 but for the 2*2 sub-sampled stage of motion
 			 compensation search.
    -Q num     Amount quantisation of highly active blocks is 
-			  reduced by [0.1 .. 10.0] [2.0]
-(default: 2.5)   -v num     Target video buffer size in KB (default 46)
-   -t         Activate dynamic thresholding of motion compensation window size
+			  reduced by [0.1 .. 10.0] [2.0] (default: 2.5)   
+   -v num     Target video buffer size in KB (default 46)
    -N         Noise filter via quantisation adjustment (experimental)
    -h         Maximise high-frequency resolution (useful for high 
-			  quality sources)
-   -o         Use old style lag rate control (not recommended, probably buggy) 
+			  quality sources at VCD resolutions)
 
 FAST MOTION COMPENSATION:
 
 For MPEG to achieve good quality results it has to find a good match
-between each 8*8 "macro-block" of pixels in the current frame and
-an 8*8 region in a preceding or following frame.  The better the match
+between each 16*16 "macro-block" of pixels in the current frame and
+a 16*16 region in a preceding or following frame.  The better the match
 the less information it has to drop when compressing.  Obviously, finding
 such a good match in *moving* pictures requires a lot of searching.
 
 To do this (reasonably) quickly we use a trick: we first search
-coarsely first comparing sums of 4*4 pixel groups and then 2*2 pixel
+coarsely comparing sums of 4*4 pixel groups and then 2*2 pixel
 groups rather than individual pixels. Technically: we do an initial
 search using sub-sampled data and use this to choose the places to
-search for detail single pixel and sub-pixel matches.
+search for detailed single pixel and sub-pixel matches.
 This reduces the amount of search *dramatically*.  
 
 
@@ -107,12 +107,11 @@ Since a good exact matches (down to half-pixels) will also give a good
 2*2 match we know the best match should be in amoungst the best 2*2
 matches. Similarly for the 2*2 in the 4*4 matches.  However, there may
 be some false positives.  So we can't just work with the very best 4*4
-and the best 2*2 near that.  Instead we discard those above some
-threshold these good 2*2 matches.  Experiments and a bit of simple
-statistics revealed that it was exceedingly rare to miss the best
-match doing this, and even when we did miss the match found was
-*almost* as good.  You can adjust the threshold with the -4 and -2
-flags.
+and the best 2*2 near that.  Instead we discard only those above some
+threshold.  Experiments and a bit of simple statistics revealed that
+it was exceedingly rare to miss the best match doing this, and even
+when we did miss the match found was *almost* as good.  You can adjust
+the threshold with the -4 and -2 flags.
 
 Between the settings
 
@@ -120,16 +119,12 @@ Between the settings
 
 -4 4 -2 4	(fastest)
 
-Quality is impacted by about 10% quantisation (typically around 0.2 of
-a bit precision in texture coefficients).  Speed is impacted by a
+Quality is impacted by about 10% quantisation (thats around 0.2 of a
+bit of precision in texture coefficients).  Speed is impacted by a
 factor of 2.  For most purposes the default settings will be fine.
-However, even in the fastest mode all but sequences on the verge of
-what is possible should encode fine.
-
-Anyway, motion compensation is now fast enough on modern CPU's that it
-is only a fraction of total run-time even with big search radii set.
-There's very little point going below a radius of 16 as the speed gains
-are pretty limited.
+For MPEG-2 encoding it is better to have the search radius set higher
+than the default of 16. There's very little point going below a radius
+of 16 as the speed gains are pretty limited.
 
 Obviously, your mileage may vary so you may want to fiddle with the
 setting if you're getting rotten results.  Contact

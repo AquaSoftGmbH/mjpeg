@@ -64,7 +64,7 @@ int do_not_search = 0;
 
 static int param_bitrate    = 0;
 static int param_quant      = 0;
-static int param_searchrad  = 0;
+static int param_searchrad  = 16;
 static int param_mpeg       = 1;
 static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, field MC and DCT in picture */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
@@ -74,7 +74,6 @@ static int param_22_red	= 3;
 static int param_hfnoise_quant = 0;
 static int param_hires_quant = 0;
 static double param_act_boost = 2.0;
-static int param_pred_ratectl = 1;
 static int param_video_buffer_size = 46;
 static int param_seq_hdr_every_gop = 0;
 
@@ -98,7 +97,7 @@ void Usage(char *str)
 	printf("               1 = field pictures, bottom field first\n");
 	printf("               2 = field pictures, top field first\n");
 	printf("               3 = progressive output, field MC and MDCT\n");
-	printf("   -r num     Search radius [0..32] (default 0: don\'t search at all)\n");
+	printf("   -r num     Search radius for motion compensation [0..32] (default 16)\n");
 	printf("   -4 num     (default: 2)\n");
 	printf("   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
 	printf("   -2 num     (default: 3)\n");
@@ -108,8 +107,7 @@ void Usage(char *str)
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
-	printf("   -h         Maximise high-frequency resolution (useful for high quality sources)\n" );
-	printf("   -o         Use old style lag rate control (deprecated)\n");
+	printf("   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
 	exit(0);
 }
 
@@ -208,9 +206,6 @@ int main(argc,argv)
 			break;
 		case 'h':
 			param_hires_quant = 1;
-			break;
-		case 'O' :
-			param_pred_ratectl = 0;
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);

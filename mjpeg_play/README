@@ -139,12 +139,12 @@ of authorship, usage, and implementation/compilation details.
 
 
 Attention: lavplay is mainly intended to play back files created by
-lavrec and should also be able to play back AVI files created from the
-Iomega BUZ under Win98.  The vast majority of AVI/Quicktime files will
-not be played by lavplay!!!  (see http://dix.euro.ru for such codecs)
-The reason is that lavplay needs specially coded AVI files (stored
-with an MJPG codec), all other files don't use that codec and can
-therefore not be played back by the BUZ.
+lavrec and should also be able to play back MJPEG AVI files created
+from the Iomega BUZ under Win98 or the xawtv capture tool under linux.
+The vast majority of AVI/Quicktime files will not be played by
+lavplay!!!  (see http://dix.euro.ru for such codecs) The reason is
+that lavplay only handles AVI that use an MJPG codec, all other files
+don't use that codec and can therefore not be played back by the BUZ.
 
 
 

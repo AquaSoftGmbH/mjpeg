@@ -111,7 +111,7 @@ char               *programName;
 /* Global variables */
 
 int freq_in=0;
-int freq_out=0;
+int freq_out=44100;
 int chans_in=0;
 int chans_out=0;
 int audio_bits=0;
@@ -123,9 +123,9 @@ void Usage(char *str)
   printf("   where possible params are:\n");
   printf("   -b num     Bitrate in KBit/sec (default: 224 KBit/s)\n");
   printf("   -o name    Outputfile name (REQUIRED)\n");
-  printf("   -r num     Force output rate to be num Hz\n");
+  printf("   -r num     Force output rate to be num Hz (default: 44100)\n");
   printf("              num must be one of 32000, 44100, 48000\n");
-  printf("   -s         Force stereo output\n");
+  printf("   -s         Force stereo output (default)\n");
   printf("   -m         Force mono output\n");
   printf("   -v         Force VCD compatible output (same as: -b 224 -r 44100 -s)\n");
   exit(0);
@@ -142,9 +142,9 @@ unsigned long   *num_samples;
 char            encoded_file_name[MAX_NAME_SIZE];
 {
     layer *info = fr_ps->header;
-    int brt=0;
+    int brt=224;
     char *outfilename = 0;
-    int stereo = 0;
+    int stereo = 1;
     int mono = 0;
     int video_cd = 0;
     int j, n;
