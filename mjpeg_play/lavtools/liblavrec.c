@@ -569,6 +569,10 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
       OpenNewFlag = 1;
    }
 
+   /* JPEG = always open new file */
+   if (info->video_format == 'j')
+     OpenNewFlag = 1;
+
    /* If a file is open and we should open a new one or exit, close current file */
    if (settings->output_status > 0 && (OpenNewFlag || settings->state == LAVREC_STATE_STOP))
    {
@@ -629,9 +633,16 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
       {
          if (settings->stats->current_output_file >= info->num_files)
          {
-            lavrec_msg(LAVREC_MSG_WARNING, info,
-               "Number of given output files reached");
-            OUTPUT_VIDEO_ERROR_RETURN;
+            if (info->video_format == 'j')
+            {
+               settings->stats->current_output_file = 0;
+            }
+            else
+            {
+               lavrec_msg(LAVREC_MSG_WARNING, info,
+                  "Number of given output files reached");
+               OUTPUT_VIDEO_ERROR_RETURN;
+            }
          }
          strncpy(settings->stats->output_filename,
             info->files[settings->stats->current_output_file++],

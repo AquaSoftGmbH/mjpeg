@@ -27,6 +27,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <fcntl.h>
 #define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
@@ -72,6 +73,8 @@ static int check_YUV420_input(lav_file_t *lav_fd);
 #ifdef SUPPORT_READ_DV2
 static int check_DV2_input(lav_file_t *lav_fd);
 #endif
+
+#define TMP_EXTENSION ".tmp"
 
 
 /*
@@ -227,6 +230,7 @@ int lav_query_APP_marker(char format)
    {
       case 'a': return 0;
       case 'A': return 0;
+      case 'j': return 0;
       case 'q': return 1;
       case 'm': return 0;
       default:  return 0;
@@ -241,6 +245,7 @@ int lav_query_APP_length(char format)
    {
       case 'a': return 14;
       case 'A': return 14;
+      case 'j': return 14;
       case 'q': return 40;
       case 'm': return 0;
       default:  return 0;
@@ -255,6 +260,7 @@ int lav_query_polarity(char format)
    {
       case 'a': return LAV_INTER_TOP_FIRST;
       case 'A': return LAV_INTER_BOTTOM_FIRST;
+      case 'j': return LAV_INTER_TOP_FIRST;
       case 'q': return LAV_INTER_TOP_FIRST;
       case 'm': return LAV_INTER_TOP_FIRST;
       default:  return LAV_INTER_TOP_FIRST;
@@ -290,6 +296,11 @@ lav_file_t *lav_open_output_file(char *filename, char format,
         internal_error = ERROR_FORMAT;
         return 0;
       }
+      if(format == 'j' && strcmp(rindex(filename, '.')+1, "jpg")
+           && strcmp(rindex(filename, '.')+1, "jpeg")) {
+        internal_error = ERROR_FORMAT;
+        return 0;
+      }
    }
    /* does movtar have a default extension? */
    lav_fd->interlacing = interlaced ? lav_query_polarity(format) :
@@ -312,6 +323,19 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          if (asize) AVI_set_audio(lav_fd->avi_fd, achans, arate, asize, WAVE_FORMAT_PCM);
          return lav_fd;
 
+      case 'j': {
+
+        /* Open JPEG output file */
+        char tempfile[256];
+
+        strcpy(tempfile, filename);
+        strcat(tempfile, TMP_EXTENSION);
+
+        lav_fd->jpeg_filename = strdup(filename);
+        lav_fd->jpeg_fd = open(tempfile, O_CREAT | O_TRUNC | O_WRONLY, 0644);
+
+        return lav_fd;
+      }
       case 'q':
 
 #ifdef HAVE_LIBQUICKTIME
@@ -369,6 +393,15 @@ int lav_close(lav_file_t *lav_file)
       case 'A':
          res = AVI_close( lav_file->avi_fd );
          break;
+      case 'j': {
+         char tempfile[256];
+         strcpy(tempfile, lav_file->jpeg_filename);
+         strcat(tempfile, TMP_EXTENSION);
+         res = close(lav_file->jpeg_fd);
+         rename(tempfile, lav_file->jpeg_filename);
+         free(lav_file->jpeg_filename);
+         break;
+      }
 #ifdef HAVE_LIBQUICKTIME
       case 'q':
          res = quicktime_close( lav_file->qt_fd );
@@ -391,8 +424,8 @@ int lav_close(lav_file_t *lav_file)
 int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
 {
    int res, n;
-   unsigned char *jpgdata;
-   long jpglen;
+   unsigned char *jpgdata = NULL;
+   long jpglen = 0;
 
    video_format = lav_file->format; internal_error = 0; /* for error messages */
 
@@ -434,6 +467,12 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
                jpgdata += jpeg_padded_len;
                jpglen  -= jpeg_padded_len;
             }
+            break;
+
+         case 'j':
+
+            jpgdata = buff;
+            jpglen = size;
             break;
 
 #ifdef HAVE_LIBQUICKTIME
@@ -496,6 +535,10 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
                res = AVI_write_frame( lav_file->avi_fd, buff, size );
             else
                res = AVI_dup_frame( lav_file->avi_fd );
+            break;
+         case 'j':
+            if (n==0)
+               write(lav_file->jpeg_fd, buff, size);
             break;
 #ifdef HAVE_LIBQUICKTIME
          case 'q':

@@ -45,6 +45,8 @@ typedef void movtar_t;
 typedef struct
 {
    avi_t       *avi_fd;
+   int         jpeg_fd;
+   char        *jpeg_filename;
 #ifdef HAVE_LIBQUICKTIME
    quicktime_t *qt_fd;
 #endif

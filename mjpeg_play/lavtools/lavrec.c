@@ -19,6 +19,7 @@
  *   -f/--format [aAqm] --- Output file format:
  *      'a': AVI (default)
  *      'A': AVI with fields exchanged
+ *      'j': JPEG image(s)
  *      'q': quicktime (if compiled with quicktime support)
  *      'm': movtar (if compiled with movtar support)
  *      Hint: If your AVI video looks strange, try 'A' instead 'a'
@@ -209,7 +210,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "lavtools version " VERSION ": lavrec\n");
 	fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
 	fprintf(stderr, "where options are:\n");
-	fprintf(stderr, "  -f/--format [aA"
+	fprintf(stderr, "  -f/--format [aAj"
 #ifdef HAVE_LIBQUICKTIME
            "q"
 #else
@@ -220,7 +221,7 @@ static void Usage(char *progname)
 #else
            " "
 #endif
-           "]          Format AVI/Quicktime/movtar\n");
+           "]         Format AVI/Quicktime/movtar\n");
 	fprintf(stderr, "  -i/--input [pPnNsStTa]      Input Source\n");
 	fprintf(stderr, "  -d/--decimation num         Decimation (either 1,2,4 or two digit number)\n");
 	fprintf(stderr, "  -g/--geometry WxH+X+Y       X-style geometry string (part of 768/720x576/480)\n");
@@ -618,7 +619,7 @@ static int set_option(const char *name, char *value)
 	if (strcmp(name, "format")==0 || strcmp(name, "f")==0)
 	{
 		info->video_format = value[0];
-		if(value[0]!='a' && value[0]!='A'
+		if(value[0]!='a' && value[0]!='A' && value[0]!='j'
 #ifdef HAVE_LIBQUICKTIME
                    && value[0]!='q'
 #endif
@@ -627,7 +628,7 @@ static int set_option(const char *name, char *value)
 #endif
                    )
 		{
-			mjpeg_error("Format (-f/--format) must be a"
+			mjpeg_error("Format (-f/--format) must be j, a"
 #if !defined(HAVE_LIBMOVTAR) && !defined(HAVE_LIBQUICKTIME)
                            " or"
 #else
@@ -994,6 +995,9 @@ static void check_command_line_options(int argc, char *argv[])
 
 	mjpeg_default_handler_verbosity(verbose);
 
+	/* disable audio for jpeg */
+	if (info->video_format == 'j') info->audio_size = 0;
+
 	info->num_files = argc - optind;
 	info->files = argv + optind;
 	/* If the first filename contains a '%', the user wants file patterns */
@@ -1022,7 +1026,7 @@ static void lavrec_print_properties()
 	const char *source;
 	mjpeg_info("Recording parameters:\n\n");
 	mjpeg_info("Output format:      %s\n",info->video_format=='q'?"Quicktime":
-		(info->video_format=='m'?"Movtar":"AVI"));
+		(info->video_format=='m'?"Movtar":(info->video_format=='j'?"JPEG":"AVI")));
 	switch(input_source)
 	{
 		case 'p': source = info->software_encoding?"BT8x8 PAL\n":"Composite PAL\n"; break;
