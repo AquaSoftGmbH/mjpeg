@@ -629,6 +629,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
 			/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;
+		access_unit.dorder = decoding_order;
 		decoding_order++;
 		aunits.append( access_unit );
 		num_frames[padding_bit]++;

@@ -103,8 +103,9 @@ void OutputStream::InitSyntaxParameters()
 		buffers_in_audio = 1;
 		always_buffers_in_audio = 0;
 		vcd_zero_stuffing = 20;
-		dtspts_for_all_vau = 1;
+		dtspts_for_all_vau = false;
 		sector_align_iframeAUs = false;
+        timestamp_iframe_only = false;
 		seg_starts_with_video = true;
 		break;
 		
@@ -775,9 +776,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			}
 			else if( master != 0 && master->EndSeq() )
 			{
-                mjpeg_info( "Reached end of sequence at frame  %d\n",
-                            master->au->dorder
-                            );
 				if(  split_at_seq_end && master->Lookahead( ) != 0 )
 				{
 					if( ! master->SeqHdrNext() || 
@@ -1125,7 +1123,6 @@ void VideoStream::OutputSector ( )
 	old_au_then_new_payload = muxinto.PacketPayload( *this,
 													 buffers_in_header, 
 													 true, true);
-
 	PTS = au->PTS + timestamp_delay;
 	DTS = au->DTS + timestamp_delay;
 
@@ -1148,6 +1145,7 @@ void VideoStream::OutputSector ( )
 
 	/* CASE: Packet begins with old access unit, no new one	*/
 	/*	     begins in the very same packet					*/
+
 	else if ( ! new_au_next_sec &&
 			  (au_unsent >= old_au_then_new_payload))
 	{
@@ -1171,16 +1169,20 @@ void VideoStream::OutputSector ( )
 		/* is there a new access unit anyway? */
 		if( !MuxCompleted() )
 		{
+            autype = AUType();
+            /* No timestamps if sector restricted to only current */
+            /* AU (new Au though possible is not muxed)           */
+            uint8_t timestamps = 
+                max_packet_payload != 0 && prev_au_tail >= max_packet_payload
+                ? TIMESTAMPBITS_NO 
+                : NewAUTimestamps(autype) ;
+
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
-				max_packet_payload = au_unsent+prev_au_tail;
-			new_au_next_sec = true;
+				max_packet_payload = prev_au_tail + au_unsent;
+
 			PTS = au->PTS + timestamp_delay;
 			DTS = au->DTS + timestamp_delay;
 
-            autype = AUType();
-            uint8_t timestamps = 
-                max_packet_payload > 0 ? TIMESTAMPBITS_NO 
-                                       : NewAUTimestamps(autype) ;
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
 									  *this,
@@ -1286,7 +1288,6 @@ void AudioStream::OutputSector ( )
 		/* is there another access unit anyway ? */
 		if( !MuxCompleted()  )
 		{
-			new_au_next_sec = true;
 			PTS = au->DTS + timestamp_delay;
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_data,
