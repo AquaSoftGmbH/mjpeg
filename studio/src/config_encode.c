@@ -113,10 +113,11 @@ int i;
 
   for (i=0; i < LONGOPT; i++)
     {
-      (*point).notblacksize[i] ='\0';
-      (*point).input_use[i]    ='\0';
-      (*point).output_size[i]  ='\0';
-      (*point).mode_keyword[i] ='\0';
+      (*point).notblacksize[i]  ='\0';
+      (*point).interlacecorr[i] ='\0';
+      (*point).input_use[i]     ='\0';
+      (*point).output_size[i]   ='\0';
+      (*point).mode_keyword[i]  ='\0';
       (*point).ininterlace_type[i] ='\0';
     }
 
@@ -236,6 +237,11 @@ int i;
   else
       sprintf((*point).notblacksize,"as is");
 
+  if (NULL != (val = cfg_get_str(section,"Encode_Interlacing_Correction")))
+      sprintf((*point).interlacecorr, val);
+  else
+      sprintf((*point).interlacecorr,"not needed");
+
   if (NULL != (val = cfg_get_str(section,"Encode_Input_use")))
       sprintf((*point).input_use, val);
   else
@@ -328,6 +334,7 @@ void print_encoding_options(char section[LONGOPT], struct encodingoptions *point
 {
   printf("\n Encoding options of %s \n",section);
   printf("Encoding Active Window set to \'%s\' \n",    (*point).notblacksize);
+  printf("Encoding Interlacing correction \'%s\' \n", (*point).interlacecorr);
   printf("Encoding Input use to \'%s\' \n",               (*point).input_use);
   printf("Encoding Output size to \'%s\' \n",           (*point).output_size);
   printf("Encoding yvscaler scaling Mode to \'%s\' \n",(*point).mode_keyword);
@@ -458,6 +465,11 @@ void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT]
     fprintf(fp,"Encode_Notblack_size = %s\n", (*point).notblacksize);
   else
     fprintf(fp,"Encode_Notblack_size = %s\n", "as is");
+
+  if (strlen ((*point).notblacksize) > 0)
+    fprintf(fp,"Encode_Interlacing_Correction =%s\n", (*point).interlacecorr);
+  else
+    fprintf(fp,"Encode_Interlacing_Correction = %s\n", "not needed");
 
   if (strlen ((*point).input_use) > 0)
     fprintf(fp,"Encode_Input_use = %s\n",(*point).input_use);
