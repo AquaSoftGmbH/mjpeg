@@ -1,0 +1,218 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(src/studio.h)
+
+PACKAGE="Linux Video Studio"
+VERSION="0.1.5-dev"
+
+AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(${PACKAGE},${VERSION})
+dnl Add parameters for aclocal
+dnl (This must come after AM_INIT_AUTOMAKE, since it modifies ACLOCAL)
+ACLOCAL="$ACLOCAL $ACLOCAL_FLAGS"
+AM_MAINTAINER_MODE
+AC_CANONICAL_HOST
+
+dnl **********************************************************************
+dnl Options
+
+dnl AC_ARG_ENABLE(compile-warnings,     
+dnl   [  --enable-compile-warnings,        Turn on compiler warnings.])
+dnl AC_ARG_ENABLE(warnings_as_errors,   
+dnl  [  --enable-warnings_as_errors,      Compiler warnings are errors.])
+AC_ARG_WITH(max-num-scenes,
+  [  --with-max-num-scenes,  The maximum number of scenes for the editor.])
+dnl Checks for programs.
+AC_PROG_CC
+AC_PROG_INSTALL
+AC_PROG_RANLIB
+
+dnl *********************************************************************
+dnl Check for the various libraries we depend on.
+dnl
+
+dnl Check for X11 extensions
+AC_PATH_XTRA
+if test "-DX_DISPLAY_MISSING" = "$X_CFLAGS"; then
+  AC_MSG_ERROR(can not find X11)
+fi
+AC_SUBST(X_CFLAGS)
+AC_SUBST(X_PRE_LIBS)
+AC_SUBST(X_EXTRA_LIBS)
+AC_SUBST(X_LIBS)
+
+dnl Xv in XFree
+AC_CHECK_LIB(Xv, XvQueryExtension,
+  HAVE_LIBXV=yes,
+  HAVE_LIBXV=no,
+  $X_LIBS $X_PRE_LIBS -lXext -lX11 $X_EXTRA_LIBS
+)
+if test "x$HAVE_LIBXV" = xno; then
+  AC_MSG_ERROR(Could not find Xv libraries)
+fi
+
+AC_CHECK_HEADER(X11/extensions/Xv.h, :, HAVE_LIBXV=no)
+AC_CHECK_HEADER(X11/extensions/Xvlib.h, :, HAVE_LIBXV=no)
+if test "x$HAVE_LIBXV" = xno; then
+  AC_MSG_ERROR(Could not find Xv headers)
+fi
+
+dnl OSS
+AC_CHECK_HEADER(sys/soundcard.h, :, HAVE_OSS=no)
+if test "x$HAVE_OSS" = xno; then
+  AC_MSG_ERROR(Could not find OSS headers)
+fi
+
+dnl glib
+AM_PATH_GLIB(1.2.0,,AC_MSG_ERROR(Could not find glib-config))
+
+dnl gtk+
+AM_PATH_GTK(1.2.0,,AC_MSG_ERROR(Could not find gtk-config), gthread)
+
+dnl gdk-pixbuf
+AC_PATH_PROG(GDK_PIXBUF_CONFIG, gdk-pixbuf-config, no)
+if test x$GDK_PIXBUF_CONFIG = xno; then
+  AC_MSG_ERROR(Could not find gdk-pixbuf-config)
+else
+  GDK_PIXBUF_LIBS=`gdk-pixbuf-config --libs`
+  GDK_PIXBUF_CFLAGS=`gdk-pixbuf-config --cflags`
+  HAVE_GDK_PIXBUF=yes
+fi
+AC_SUBST(GDK_PIXBUF_LIBS)
+AC_SUBST(GDK_PIXBUF_CFLAGS)
+
+dnl Let's search for the lavtools and their versions
+AC_PATH_PROG(LAVPLAY_LOCATION, lavplay, no)
+if test x$LAVPLAY_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lavplay)
+fi
+
+AC_PATH_PROG(LAVREC_LOCATION, lavrec, no)
+if test x$LAVREC_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lavrec)
+fi
+
+AC_PATH_PROG(LAV2YUV_LOCATION, lav2yuv, no)
+if test x$LAV2YUV_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lav2yuv)
+fi
+
+AC_PATH_PROG(LAV2WAV_LOCATION, lav2wav, no)
+if test x$LAV2WAV_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lav2wav)
+fi
+
+AC_PATH_PROG(MPEG2ENC_LOCATION, mpeg2enc, no)
+if test x$MPEG2ENC_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find mpeg2enc)
+fi
+
+AC_PATH_PROG(MP2ENC_LOCATION, mp2enc, no)
+if test x$MP2ENC_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find mp2enc)
+fi
+
+AC_PATH_PROG(YUVSCALER_LOCATION, yuvscaler, no)
+if test x$YUVSCALER_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find yuvscaler)
+fi
+
+AC_PATH_PROG(MPLEX_LOCATION, mplex, no)
+if test x$MPLEX_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find mplex)
+fi
+
+AC_PATH_PROG(LAVTRANS_LOCATION, lavtrans, no)
+if test x$LAVTRANS_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lavtrans)
+fi
+
+AC_PATH_PROG(LAVPIPE_LOCATION, lavpipe, no)
+if test x$LAVPIPE_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lavpipe)
+fi
+
+AC_PATH_PROG(YUVPLAY_LOCATION, yuvplay, no)
+if test x$YUVPLAY_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find yuvplay)
+fi
+
+AC_PATH_PROG(YUV2LAV_LOCATION, yuv2lav, no)
+if test x$YUV2LAV_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find yuv2lav)
+fi
+
+AC_PATH_PROG(LAVADDWAV_LOCATION, lavaddwav, no)
+if test x$LAVADDWAV_LOCATION = xno; then
+  AC_MSG_ERROR(Could not find lavaddwav)
+fi
+
+dnl The maximum number of scenes to be opened in the editor
+if test x$with_max_num_scenes = xyes ; then
+  AC_MSG_ERROR(--with-max-num-scenes option requires an argument)
+fi
+if test x$with_max_num_scenes = x ; then
+    with_max_num_scenes=256
+fi
+
+dnl **********************************************************************
+dnl Configure the things
+dnl
+AC_DEFINE_UNQUOTED(YUVSCALER_LOCATION, "${YUVSCALER_LOCATION}")
+AC_SUBST(YUVSCALER_LOCATION)
+AC_DEFINE_UNQUOTED(LAV2WAV_LOCATION, "${LAV2WAV_LOCATION}")
+AC_SUBST(LAV2WAV_LOCATION)
+AC_DEFINE_UNQUOTED(LAV2YUV_LOCATION, "${LAV2YUV_LOCATION}")
+AC_SUBST(LAV2YUV_LOCATION)
+AC_DEFINE_UNQUOTED(MPEG2ENC_LOCATION, "${MPEG2ENC_LOCATION}")
+AC_SUBST(MPEG2ENC_LOCATION)
+AC_DEFINE_UNQUOTED(MP2ENC_LOCATION, "${MP2ENC_LOCATION}")
+AC_SUBST(MP2ENC_LOCATION)
+AC_DEFINE_UNQUOTED(LAVPLAY_LOCATION, "${LAVPLAY_LOCATION}")
+AC_SUBST(LAVPLAY_LOCATION)
+AC_DEFINE_UNQUOTED(LAVREC_LOCATION, "${LAVREC_LOCATION}")
+AC_SUBST(LAVREC_LOCATION)
+AC_DEFINE_UNQUOTED(MPLEX_LOCATION, "${MPLEX_LOCATION}")
+AC_SUBST(MPLEX_LOCATION)
+AC_DEFINE_UNQUOTED(LAVTRANS_LOCATION, "${LAVTRANS_LOCATION}")
+AC_SUBST(LAVTRANS_LOCATION)
+AC_DEFINE_UNQUOTED(LAVPIPE_LOCATION, "${LAVPIPE_LOCATION}")
+AC_SUBST(LAVPIPE_LOCATION)
+AC_DEFINE_UNQUOTED(YUVPLAY_LOCATION, "${YUVPLAY_LOCATION}")
+AC_SUBST(YUVPLAY_LOCATION)
+AC_DEFINE_UNQUOTED(YUV2LAV_LOCATION, "${YUV2LAV_LOCATION}")
+AC_SUBST(YUV2LAV_LOCATION)
+AC_DEFINE_UNQUOTED(LAVADDWAV_LOCATION, "${LAVADDWAV_LOCATION}")
+AC_SUBST(LAVADDWAV_LOCATION)
+AC_DEFINE_UNQUOTED(DEFAULT_MIXER, "/dev/mixer")
+AC_SUBST(DEFAULT_MIXER)
+AC_DEFINE_UNQUOTED(DEFAULT_VIDEO, "/dev/video")
+AC_SUBST(DEFAULT_VIDEO)
+AC_DEFINE_UNQUOTED(DEFAULT_AUDIO, "/dev/dsp")
+AC_SUBST(DEFAULT_AUDIO)
+AC_DEFINE_UNQUOTED(MAX_NUM_SCENES, ${with_max_num_scenes})
+AC_SUBST(MAX_NUM_SCENES)
+
+dnl **********************************************************************
+dnl we use OSS, ALSA doesn't work yet
+dnl
+AC_DEFINE(OSS,1)
+AC_SUBST(OSS)
+
+dnl **********************************************************************
+dnl Output Makefiles
+dnl
+AC_OUTPUT([
+Makefile
+yuv4mpeg/Makefile
+src/Makefile
+transitions/Makefile
+docs/Makefile
+])
+
+dnl ************************************************************************
+dnl The conclusion
+dnl
+echo ""
+echo "Type \"make\" to compile Linux Video Studio"
+echo ""
+

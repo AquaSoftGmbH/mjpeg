@@ -1,0 +1,72 @@
+.TH "studio" "1" "V 0.1.5-dev" "Ronald Bultje" "description"
+.SH NAME
+Linux Video Studio - a MJPEG-tools GUI
+.SH SYNOPSIS
+studio [\-h] [\-v] [\-p num] [\-t] [\-d] [\-c name]
+.SH DESCRIPTION
+\fBLinux Video Studio\fP is a small\-'n-simple GUI for the MJPEG\-tools
+(http://mjpeg.sourceforge.net/). The MJPEG\-tools can be used to record
+video from a zoran\-based capture card (DC10+, Buz, LML33), playback
+video to the same card and encode video to MPEG.
+Linux Video Studio tries to extend this with simple editing functions,
+like deleting frames, adding frames from new videos, moving frames,
+scene detection etc. All this hoping to be useful.
+
+.SH OPTIONS
+\fBLinux Video Studio\fP ('studio') accepts the following options:
+.TP 8
+.B  \-h
+Prints a help/usage message and quits
+.TP 8
+.B \-v
+Prints version information and quits
+.TP 8
+.B \-p num
+Gives you the possibility to select a Video4Linux Xvideo port to be used.
+By default (if you omit this option or if you give 0 as an argument),
+Linux Video Studio will try to select one automatically. You can select
+another one with this option or in the Options window.
+.TP 8
+.B \-t
+Prints Video4Linux Xvideo ports information and quits.
+.TP 8
+.B \-d
+Enables verbose/debugging mode.
+.TP 8
+.B \-c name
+The name (default: 'studio') is used to safe the configuration. By using
+multiple names, you can use multiple configurations all for one user. For
+example, if you have both a Buz and a DC10+, you could use '\-c buz' for
+the Buz and '\-c dc10' for the DC10+ card so that the two configurations
+will both be saved separately.
+.SH SEE ALSO
+.BR mjpegtools (1),
+.BR lav2yuv (1),
+.BR lav2wav (1),
+.BR lavplay (1),
+.BR lavrec (1),
+.BR lavtrans (1),
+.BR mp2enc (1),
+.BR mpeg2enc (1),
+.BR yuvscaler (1)
+
+.SH BUGS
+Do we contain bugs? Yes, very likely. We just don't know which bugs
+yet, so that's for the user (you) to find out! If you've found bugs,
+please mail a bug report to the developers (see \fBCONTACTING\fP).
+Before sending bug reports saying nothing more than "it won't work",
+please try running in a terminal window with the -d (debug) option
+and attach the output to the bug report. Also, if it gives a segfault, 
+please run the core-file through gdb or run studio within gdb and attach 
+the output of gdb too, so that we know where it crashed.
+
+.SH CONTACTING
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for Linux Video Studio is:
+\fImjpeg\-users@lists.sourceforge.net\fP
+
+You may also want to reach the developers individually:
+  Ronald Bultje        <\fIrbultje@ronald.bitfreak.net\fP>
+  Bernhard Praschinger <\fIpraschinger@netaway.at\fP>
+
+Also see our homepage at \fIhttp://ronald.bitfreak.net/\fP

@@ -1,0 +1,22 @@
+Linux Video Studio was mainly written by:
+	Ronald Bultje <rbultje@ronald.bitfreak.net>
+	Bernhard Praschinger <praschinger@netway.at>
+
+-- Homepage: http://ronald.bitfreak.net/
+
+
+Linux Video Studio is based on the work of all the MJPEG-tools hackers:
+	Rainer Johanni	<rainer@johanni.de>
+	Andrew Stevens <Andrew.Stevens@philips.com>
+	Gernot Ziegler <gz@lysator.liu.se>
+	Ronald Bultje <rbultje@ronald.bitfreak.net>
+	Bernhard Praschinger <praschinger@netway.at>
+	Xavier Biquard <xbiquard@free.fr>
+	Philipp Zabel <zabel@wolfsburg.de>
+	and many others
+And of course we depend on the work of our driver hackers:
+	Rainer Johanni <rainer@johanni.de>
+	Serguei Miridonov <mirsev@cicese.mx>
+	Wolfgang Scherr <scherr@net4you.net>
+
+--	http://mjpeg.sourceforge.net/

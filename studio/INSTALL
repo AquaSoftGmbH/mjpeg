@@ -1,0 +1,25 @@
+Installation
+---------------
+You need Gtk to use this application. You also need the MJPEG-Tools  
+installed. Besides that, you now also need an X-server with the Xvideo 
+extension installed (i.e. you need XFree 4.x). In the XF86Config file, add 
+the line 'Load "v4l"' in the modules-section. Next, restart X (you must 
+have the zoran drivers loaded before staring X, or the V4L-module won't 
+work!). For some distros, you might have to install this module first 
+(RedHat 7.0: you need the XFree86-V4L-.... RPM).
+ 
+After that, it's simple:
+# ./configure
+# make
+# make install
+ 
+Then, you can start it up by simply calling "studio" at the prompt. When 
+first starting, Studio will grab the first V4L-port it encounters. If 
+you're using more than one v4l-card (for example, a bttv-card), it might 
+choose the wrong one. You can change this in the Options-window. You 
+can also use 'studio -t' (from the command-line) to see which modules/cards
+are using which ports and specify the video-for-linux port using 'studio -p
+<x>' (in my case, the port number was 49). Studio will save this in the
+config file so you only need to do this once.
+ 
+After that, have fun!

@@ -1,0 +1,58 @@
+The *.flt.c files in this directory are transition samples which can be 
+used to make transitions between two videos/scenes. Normally, you should 
+just use the "create scene transition" button in Linux Video Studio. 
+However, you can also use them on the command-line with lavpipe without 
+Linux Video Studio.
+
+They are all based on Philipp Zabel's transist.flt, which is part of the 
+MJPEG-tools package (http://mjpeg.sourceforge.net/), and should be used in 
+combination with lavpipe, part of the MJPEG-tools as well.
+
+If you want more transitions than these, feel free to write your own :-). 
+blend.flt is basically the same as transist.flt and is probably easiest to 
+understand, you can take that as an example. If you'd like to see your 
+scene transitions in Linux Video Studio, send it to me so I can include a 
+wrapper for it. Contacting information is included in the README file in 
+the toplevel directory or in the manpage ('man studio').
+
+Options for all scene transitions:
+    -l [num] = length of the scene transition in frames (required)
+    -v [num] = level of verbosity, although most scene transitions don't 
+        use this option internally, it is a required option (0..2)
+    -h = print out usage information (and exit)
+
+Current transitions and their command-line options:
+
+blend.flt:
+  Starts with only scene 1 and makes a color gradient between scene 1 and 
+  scene 2 for each frame, where scene 1 gradually disappears and scene 2 
+  becomes more and more visible. Opacity can be configured but generall, 
+  the opacity of the second scene is 255 at the end and 0 at the 
+  beginning.
+    -o [num] = opacity of scene 2 at the start (default: 0)
+    -O [num] = opacity of scene 2 at the end (default: 255)
+
+wipe.flt:
+  A typical "wipe" transition, where the first scene is overridden by the 
+  second scene which comes over the other scene like a horizontal or 
+  vertical "bar".
+    -d [num] = direction of the "wipe" (required):
+        1: left-to-right      2: right-to-left
+        3: top-to-bottom      4: bottom-to-top
+    -n [num] = number of columns/rows (default: 1)
+    -r [num] = enable/disable reposition (default: 0):
+        0: don't reposition   1: scene 1 only
+        2: scene 2 only       3: both scene 1 and 2
+
+overlay.flt:
+  Either the second scene enlarges itself and by doing so pops up over the 
+  first scene, or the first scene makes itself smaller and by doing so 
+  makes the second scene appear behind it.
+    -p [num],[num] = point position of either scene 1 (when enlarging)
+        at the beginning or scene 2 (when ensmalling) at the end 
+        (required)
+    -s = enable scaling - which means that scene 1 (when enlarging) or 
+        scene 2 (when ensmalling) will be scaled according to its size
+        (default: disabled)
+    -i = normally, scene 2 will be enlarged. With this option, scene 1 
+        will be ensmalled instead (default: disabled)

@@ -1,0 +1,23 @@
+Updates from 0.1.3 to 0.1.4
+---------------------------
+* lavplay works now (removed the floating point error, which was a
+   "divide-by-zero" beginner mistake)
+* updates the pipes system a bit to give a better-to-understand mode
+   in verbose mode (-d)
+* fixed the bug where the lavrec part wouldn't show that it was ready
+* fixed some minor bugs in lavencode.c
+* updated the error handling system which should now actually do something
+
+Updates compared to version 0.1.2a
+----------------------------------
+Well, I'd better ask what stayed the same.
+A lot changed. The recording part is near completion, I think, I really
+am starting to like it. The looks may of course change, but the back-engine
+works as it's supposed to. It even includes scene recognition.
+The editing part is completely new. This has caused a *lot* of changes in
+lavplay itself too. You can do simple move, delete, add scenes/frames,
+and this is show to the user with scene-images. There's also the option
+of 'trimming', so cutting parts of the video off (double click a scene
+image and see).
+Bernhard Praschinger wrote a wrapper for lav2yuv, mpeg2enc, yuvscaler,
+mp2enc, lav2wav and mplex for MPEG-encoding. Should work quite nicely.

@@ -1,0 +1,72 @@
+                    Linux Video Studio README
+================================================================
+
+Introduction
+---------------
+Linux Video Studio is a small-'n-simple GUI for the MJPEG-tools
+(http://mjpeg.sourceforge.net/). The MJPEG-tools can be used to record
+video from a zoran-based capture card (DC10+, Buz, LML33), playback
+video to the same card and encode video to MPEG.
+Linux Video Studio tries to extend this with simple editing functions,
+like deleting frames, adding frames from new videos, moving frames,
+scene detection etc. All this hoping to be useful.
+
+Basically, just install and start the application - you'll see.
+
+A dream/story
+----------------
+I once started doing this application with a dream about an easy-to-use,
+good-looking video editor for linux, maybe like Apple's iMovie.
+I've learned a lot and see that Linux Video Studio itself will probably
+never fullfill this dream. I hope to start working on a new-generation
+video-editing library, based on Gstreamer (http://www.gstreamer.net/).
+This should lead to a new video-editor which *should* come closer to my
+'dream-video-editor'.
+
+But does that mean this sucks? No, of course not. I've tried to include
+the 'basic video-editing-options' in this program.
+You can record, playback to hardware, do simple editing and encode the
+video to MPEG. Seems like a nice and simple application to me. I hope
+I'm not the only one who likes it that way.
+
+Linux Video Studio is still what it wanted to be - a GUI for the MJPEG-
+tools. And that's all I really need for now :-).
+
+Installation
+---------------
+Moved to INSTALL
+
+Updates compared to previous versions
+----------------------------------------
+Moved to ChangeLog
+
+Credits
+----------
+Parts of Studio are based on or have been written with the help of:
+XawTV, lavtools/MJPEG-tools, bluefish.
+Lots of thanks to anyone on all the mailinglists where I posted questions 
+(gtk-list@gnome.org, mjpeg-developer@lists.sourceforge.net and 
+mjpeg-users@lists.sourceforge.net) that solved problems for me
+in some way.
+Thanks also to the comp.unix.programmer newsgroup where I learned a lot
+about unix programming in general.
+Thanks to Gerd Knorr <kraxel@bytesex.org> for the help on the brightness,
+saturation etc. sliders in the recording part.
+
+Disclaimer
+-------------
+If it doesn't work, if it formats your hard disk, if it does something 
+it shouldn't do, if you see a bird flying by, don't blame me. This is test 
+software in alpa/development state, it can do anything or nothing at all. 
+I'd be happy if you reported bugs to me, though :-) (see contacting).
+
+Contacting
+-------------
+This application was created by:
+	Ronald Bultje <rbultje@ronald.bitfreak.net>
+	Bernhard Praschinger <praschinger@netway.at>
+
+You can contact us individually or by the mjpeg-users@lists.sourceforge.net
+mailinglist. The mailinglist is the preferred way of contacting us.
+For bug reports, please make sure you're using the newest version. The newest
+version can always be downloaded from http://ronald.bitfreak.net/
