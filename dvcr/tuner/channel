@@ -1,0 +1,17 @@
+#!/usr/bin/python
+
+import sony, string, sys
+
+if len(sys.argv) != 2:
+	print "Usage: channel channel-number"
+	sys.exit(1)
+
+tuner = sony.Sony()
+
+try: 
+	channel = string.atoi(sys.argv[1])
+except:
+	print "channel must b a number"
+	sys.exit(1)
+
+tuner.channel(channel)
