@@ -1,0 +1,74 @@
+%define name    @PACKAGE@
+%define version @VERSION@
+%define release 1
+%define prefix  @prefix@
+
+Name:           %name
+Version:        %version
+Release:        %release
+Summary:	A simple Video Editing Application
+License:	GPL
+Url:		http://ronald.bitfreak.net/
+Group:		Video
+Source:		http://ronald.bitfreak.net/download/%{name}-%{version}.tar.gz
+BuildRoot:      %{_tmppath}/%{name}-buildroot-%{version}-%{release}
+
+Requires:	glib gtk+ gdk-pixbuf
+
+BuildRequires:  glib-devel gtk+-devel gdk-pixbuf-devel mjpegtools-devel
+
+Prefix:		%{prefix}
+
+%description
+Linux Video Studio is a simple Non-Lineair Editor, based on the famous mjpegtools.
+You can record, edit, playback and render video. Recording is mostly done via
+hardware-MJPEG boards such as the Pinnacle DC10+ or the Iomega Buz. BT8x8 cards
+(*only* with the BTTV-0.8 driver!) are also supported. Editing provides simple
+editing functions such as deleting, adding or moving scenes and creating simple
+effects such as scene transitions or image overlays. Playback s done via hardware
+MJPEG playback on boards such as the Pinnacle DC10+ or Iomega Buz.
+Rendering of movies provides functions such as MJPEG, divx or MPEG encoding.
+Functions such as video scaling, video denoising or distributed encoding (i.e.,
+dividing the work over more than one computer) are all supported.
+
+%prep
+%setup -q
+./configure --prefix=%{prefix}
+
+%build
+make
+
+%install
+[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
+ && rm -rf ${RPM_BUILD_ROOT}/
+
+make prefix=${RPM_BUILD_ROOT}%{prefix} install
+
+%post
+/sbin/ldconfig
+
+%clean
+[ -n "${RPM_BUILD_ROOT}" -a "${RPM_BUILD_ROOT}" != / ] \
+ && rm -rf ${RPM_BUILD_ROOT}/
+
+%files
+%defattr(-,root,root)
+%doc AUTHORS COPYING ChangeLog README TODO README.stv ChangeLog.stv INSTALL.stv INSTALL
+%{_bindir}/*
+%{prefix}/man/man1/*
+
+%package tv
+Summary: Linux Video Studio's TV application studio-tv
+Group: Video
+
+%description tv
+The TV-application studio-tv
+
+%files tv
+%doc AUTHORS COPYING ChangeLog.stv README.stv INSTALL.stv
+%{_bindir}/stv
+%{prefix}/man/man1/stv.1*
+
+%changelog
+* Tue Aug 20 2002 Ronald Bultje <rbultje@ronald.bitfreak.net>
+- Added RPM build options for 0.1.6

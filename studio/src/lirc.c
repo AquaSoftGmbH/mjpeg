@@ -202,7 +202,7 @@ gint lirc_init()
       return 0;
    }
 
-   if(connect(fd, &addr, sizeof(addr)) == -1)
+   if(connect(fd, (struct sockaddr *) &addr, sizeof(addr)) == -1)
    {
       printf("**ERROR: LIRC connect init failed: %s\n",
          (char *)sys_errlist[errno]);

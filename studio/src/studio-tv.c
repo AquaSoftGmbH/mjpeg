@@ -1202,7 +1202,7 @@ static void input_init()
 int main(int argc, char *argv[])
 {
    int p=0, w=0, h=0, x=-1000000, y=-1000000;
-   GdkGeometry geom;
+   //GdkGeometry geom;
 
    channels = NULL;
    current_channel = -1;
