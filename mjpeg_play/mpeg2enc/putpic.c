@@ -208,7 +208,7 @@ void putpict(pict_data_s *picture )
 		   has already been created.
 		*/
 		putgophdr( picture->decode+picture->temp_ref,
-				   picture->decode,
+				   picture->decode == 0,
 				   picture->decode != 0 && opt_seq_hdr_every_gop);
 	}
 

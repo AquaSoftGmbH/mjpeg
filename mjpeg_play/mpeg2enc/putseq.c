@@ -112,6 +112,8 @@ static void set_pic_params( int decode,
 	case I_TYPE :
 		picture->forw_hor_f_code = 15;
 		picture->forw_vert_f_code = 15;
+		picture->back_hor_f_code = 15;
+		picture->back_vert_f_code = 15;
 		picture->sxf = opt_motion_data[0].sxf;
 		picture->syf = opt_motion_data[0].syf;
 		break;
