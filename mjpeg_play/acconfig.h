@@ -2,8 +2,6 @@
 								 facilities... */
 
 @TOP@
-#undef X86_CPU /* autobreak is finding this somewhere in cvs */
-
 #define VERSION   "x.x.x"		/* Mjpeg tools release version */
 
 /* Define if the installed GCC tool chain can generate MMX instructions */
@@ -27,8 +25,8 @@
 /* Define if the libmovtar library is available */
 #undef HAVE_LIBMOVTAR
 
-/* Define for SSE Support P6 and greater. */
-#undef HAVE_SSE
+/* Define for availability of CMOV instruction (P6, P7 and  Athlon cores).*/
+#undef HAVE_CMOV
 
 /* Define for an Intel based CPU */
 #undef HAVE_X86CPU 	

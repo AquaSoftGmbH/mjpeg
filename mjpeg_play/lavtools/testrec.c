@@ -222,11 +222,6 @@ void set_mixer(int flag)
 
 	switch(audio_recsrc)
 	{
-	case 'l':
-		sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
-		sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
-		sound_mask_input        = SOUND_MASK_LINE;
-		break;
 	case 'm':
 		sound_mixer_read_input  = SOUND_MIXER_READ_MIC;
 		sound_mixer_write_input = SOUND_MIXER_WRITE_MIC;
@@ -236,6 +231,12 @@ void set_mixer(int flag)
 		sound_mixer_read_input  = SOUND_MIXER_READ_CD;
 		sound_mixer_write_input = SOUND_MIXER_WRITE_CD;
 		sound_mask_input        = SOUND_MASK_CD;
+		break;
+	case 'l':
+	default :
+		sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
+		sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
+		sound_mask_input        = SOUND_MASK_LINE;
 		break;
 	}
 

@@ -62,18 +62,6 @@ static unsigned long jpeg_app1_offset    = 0;
 
 #define QUICKTIME_MJPG_TAG 0x6d6a7067  /* 'mjpg' */
 
-/*
-   put_int4:
-   store a 4 byte integer value in a character array as big endian number
- */
-
-static void put_int4(unsigned char *buff, unsigned long num)
-{
-   buff[0] = (num>>24) & 0xff;
-   buff[1] = (num>>16) & 0xff;
-   buff[2] = (num>> 8) & 0xff;
-   buff[3] =  num      & 0xff;
-}
 
 /*
    get_int2:
@@ -886,7 +874,7 @@ int lav_filetype(lav_file_t *lav_file)
 lav_file_t *lav_open_input_file(char *filename)
 {
    int n;
-   char *video_comp;
+   char *video_comp = NULL;
 #ifdef	BUILD_QUICKTIME
    char *audio_comp;
 #endif

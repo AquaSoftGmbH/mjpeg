@@ -2,7 +2,7 @@
 
 INCLUDES =  -I$(top_srcdir) -I$(top_srcdir)/mjpeg -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(MOVTAR_CFLAGS) -I /usr/X11R6/include/X11
+	$(MOVTAR_CFLAGS) -I /usr/X11R6/include/X11 -I /usr/X11R6/include
 # *********************************************************************
 # Support lib
 

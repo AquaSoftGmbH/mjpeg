@@ -77,7 +77,7 @@ error:
 int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
                     int *format, unsigned long *bytes)
 {
-   unsigned long riff_len, fmt_len, data_len, m;
+   unsigned long riff_len, fmt_len, m;
    unsigned char data[16];
    int n;
 
@@ -105,7 +105,7 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
    if(fmt_len<0) return -1;
    if(fmt_len&1) fmt_len++;
    if(fmt_len<16) {
-      fprintf(stderr,"WAV format len %d too short\n",fmt_len);
+      fprintf(stderr,"WAV format len %ld too short\n",fmt_len);
       return -1;
    }
 
@@ -139,8 +139,8 @@ int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
 
    if(*bytes+hdr_len != riff_len+8) {
       fprintf(stderr,"Warning:\n");
-      fprintf(stderr,"File length according data tag: %u\n",*bytes+hdr_len);
-      fprintf(stderr,"File length according RIFF tag: %u\n",riff_len+8);
+      fprintf(stderr,"File length according data tag: %lu\n",*bytes+hdr_len);
+      fprintf(stderr,"File length according RIFF tag: %lu\n",riff_len+8);
    }
 
    return 0;

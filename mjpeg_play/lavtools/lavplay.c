@@ -453,7 +453,7 @@ int main(int argc, char ** argv)
 	struct timeval audio_tmstmp;
 	struct timeval time_now;
 	long nb_out, nb_err;
-	long audio_buffer_size;
+	long audio_buffer_size = 0;
 	unsigned char * buff;
 	int nerr, n, i, k, skipv, skipa, skipi, nskip;
 	double tdiff, tdiff1, tdiff2;

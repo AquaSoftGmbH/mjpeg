@@ -119,13 +119,14 @@ void system_error(char *str1, char *str2)
 
 int main(int argc, char ** argv)
 {
-   lav_file_t *outfd;
-   FILE *wavfd;
-   FILE *imgfd;
+   lav_file_t *outfd = NULL;
+   FILE *wavfd = NULL;
+   FILE *imgfd = NULL;
    char *vbuff;
    char imgfname[4096];
    long audio_bytes_out = 0;
-   int res, n, nframe, nv, na;
+   int res, n, nframe;
+   int nv = 0, na = 0;
    int forcestereo = 0;
 
    while( (n=getopt(argc,argv,"o:f:i:")) != EOF)

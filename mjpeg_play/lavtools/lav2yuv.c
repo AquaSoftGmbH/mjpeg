@@ -53,7 +53,6 @@ static char roundadj[4] = { 0, 0, 1, 2 };
 #define BUFFER_ALIGN 16
  
 unsigned char *filter_buf;
-int noise_filt;
 int drop_lsb;
 int chroma_format = CHROMA420;
 
@@ -263,14 +262,14 @@ int readframe(int numframe, unsigned char *frame[])
 		 }
 	 }
 
-   if( noise_filt )
+   if( param_noise_filt )
 	 {
 	   unsigned char *bp;
 	   unsigned char *p = frame[0]+output_width+1;
 	   unsigned char *end = frame[0]+output_width*(output_height-1);
 
 	   bp = filter_buf + output_width+1;
-	   if( noise_filt == 1 )
+	   if( param_noise_filt == 1 )
 	   	 {
 		   for( p = frame[0]+output_width+1; p < end; ++p )
 			 {
@@ -282,7 +281,7 @@ int readframe(int numframe, unsigned char *frame[])
 			   ++bp;
 			 }
 		 }
-	   else if( noise_filt == 2 )
+	   else if( param_noise_filt == 2 )
 		 {
 		   for( p = frame[0]+output_width+1; p < end; ++p )
 			 {
@@ -664,6 +663,7 @@ char *argv[];
     }
   }
 
+  
   /* Round sizes to multiples of 16 ... */
   output_width = ((output_width + 15) / 16) * 16;
   output_height = ((output_height + 15) / 16) * 16;

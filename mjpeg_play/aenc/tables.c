@@ -3,11 +3,11 @@
 #include "encoder.h"
 
 /***********************************************************************
-/*
-/* Read one of the data files ("alloc_*") specifying the bit allocation/
-/* quatization parameters for each subband in layer II encoding
-/*
-/**********************************************************************/
+ *
+ * Read one of the data files ("alloc_*") specifying the bit allocation/
+ * quatization parameters for each subband in layer II encoding
+ *
+ **********************************************************************/
 
 #include "table_alloc.h"
 
@@ -31,13 +31,13 @@ al_table *alloc;
    return alloc_sblim[table];
 }
  
-/************************************************************************/
-/*
-/* read_ana_window()
-/*
-/* PURPOSE:  Reads encoder window file "enwindow" into array #ana_win#
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * read_ana_window()
+ *
+ * PURPOSE:  Reads encoder window file "enwindow" into array #ana_win#
+ *
+ ************************************************************************/
  
 #include "table_enwindow.h"
 

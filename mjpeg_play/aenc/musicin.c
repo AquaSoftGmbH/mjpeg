@@ -98,6 +98,7 @@ musicin.c
 #ifdef MS_DOS
 #include <dos.h>
 #endif
+#include <stdlib.h>
 #include "common.h"
 #include "encoder.h"
 
@@ -263,7 +264,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     printf("Opened WAV file, freq = %d Hz, channels = %d, bits = %d\n",
            freq_in, chans_in, audio_bits);
-    printf("   format = 0x%x, audio length = %u bytes\n",audio_format,audio_bytes);
+    printf("   format = 0x%x, audio length = %lu bytes\n",audio_format,audio_bytes);
 
     if(audio_format!=1)
     {
@@ -334,12 +335,12 @@ char            encoded_file_name[MAX_NAME_SIZE];
 }
 
 /************************************************************************
-/*
-/* print_config
-/*
-/* PURPOSE:  Prints the encoding parameters used
-/*
-/************************************************************************/
+ *
+ * print_config
+ *
+ * PURPOSE:  Prints the encoding parameters used
+ *
+ ************************************************************************/
  
 void
 print_config(fr_ps, psy, num_samples, outPath)
@@ -370,50 +371,50 @@ char    outPath[MAX_NAME_SIZE];
 }
  
 /************************************************************************
-/*
-/* main
-/*
-/* PURPOSE:  MPEG I Encoder supporting layers 1 and 2, and
-/* psychoacoustic models 1 (MUSICAM) and 2 (AT&T)
-/*
-/* SEMANTICS:  One overlapping frame of audio of up to 2 channels are
-/* processed at a time in the following order:
-/* (associated routines are in parentheses)
-/*
-/* 1.  Filter sliding window of data to get 32 subband
-/* samples per channel.
-/* (window_subband,filter_subband)
-/*
-/* 2.  If joint stereo mode, combine left and right channels
-/* for subbands above #jsbound#.
-/* (*_combine_LR)
-/*
-/* 3.  Calculate scalefactors for the frame, and if layer 2,
-/* also calculate scalefactor select information.
-/* (*_scale_factor_calc)
-/*
-/* 4.  Calculate psychoacoustic masking levels using selected
-/* psychoacoustic model.
-/* (*_Psycho_One, psycho_anal)
-/*
-/* 5.  Perform iterative bit allocation for subbands with low
-/* mask_to_noise ratios using masking levels from step 4.
-/* (*_main_bit_allocation)
-/*
-/* 6.  If error protection flag is active, add redundancy for
-/* error protection.
-/* (*_CRC_calc)
-/*
-/* 7.  Pack bit allocation, scalefactors, and scalefactor select
-/* information (layer 2) onto bitstream.
-/* (*_encode_bit_alloc,*_encode_scale,II_transmission_pattern)
-/*
-/* 8.  Quantize subbands and pack them into bitstream
-/* (*_subband_quantization, *_sample_encoding)
-/*
-/************************************************************************/
+ *
+ * main
+ *
+ * PURPOSE:  MPEG I Encoder supporting layers 1 and 2, and
+ * psychoacoustic models 1 (MUSICAM) and 2 (AT&T)
+ *
+ * SEMANTICS:  One overlapping frame of audio of up to 2 channels are
+ * processed at a time in the following order:
+ * (associated routines are in parentheses)
+ *
+ * 1.  Filter sliding window of data to get 32 subband
+ * samples per channel.
+ * (window_subband,filter_subband)
+ *
+ * 2.  If joint stereo mode, combine left and right channels
+ * for subbands above #jsbound#.
+ * (*_combine_LR)
+ *
+ * 3.  Calculate scalefactors for the frame, and if layer 2,
+ * also calculate scalefactor select information.
+ * (*_scale_factor_calc)
+ *
+ * 4.  Calculate psychoacoustic masking levels using selected
+ * psychoacoustic model.
+ * (*_Psycho_One, psycho_anal)
+ *
+ * 5.  Perform iterative bit allocation for subbands with low
+ * mask_to_noise ratios using masking levels from step 4.
+ * (*_main_bit_allocation)
+ *
+ * 6.  If error protection flag is active, add redundancy for
+ * error protection.
+ * (*_CRC_calc)
+ *
+ * 7.  Pack bit allocation, scalefactors, and scalefactor select
+ * information (layer 2) onto bitstream.
+ * (*_encode_bit_alloc,*_encode_scale,II_transmission_pattern)
+ *
+ * 8.  Quantize subbands and pack them into bitstream
+ * (*_subband_quantization, *_sample_encoding)
+ *
+ ************************************************************************/
 
-main(argc, argv)
+int main(argc, argv)
 int     argc;
 char    **argv;
 {

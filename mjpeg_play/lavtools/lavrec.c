@@ -324,11 +324,6 @@ void set_mixer(int flag)
 
 	switch(audio_recsrc)
 	{
-	case 'l':
-		sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
-		sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
-		sound_mask_input        = SOUND_MASK_LINE;
-		break;
 	case 'm':
 		sound_mixer_read_input  = SOUND_MIXER_READ_MIC;
 		sound_mixer_write_input = SOUND_MIXER_WRITE_MIC;
@@ -338,6 +333,12 @@ void set_mixer(int flag)
 		sound_mixer_read_input  = SOUND_MIXER_READ_CD;
 		sound_mixer_write_input = SOUND_MIXER_WRITE_CD;
 		sound_mask_input        = SOUND_MASK_CD;
+		break;
+	case 'l':
+	default :
+		sound_mixer_read_input  = SOUND_MIXER_READ_LINE;
+		sound_mixer_write_input = SOUND_MIXER_WRITE_LINE;
+		sound_mask_input        = SOUND_MASK_LINE;
 		break;
 	}
 
@@ -551,6 +552,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 		string++;  /* ignore possible '=' at beg of geometry spec */
 
 	strind = (char *)string;
+	tempWidth = 0;
 	if (*strind != '+' && *strind != '-' && *strind != 'x') {
 		tempWidth = ReadInteger(strind, &nextCharacter);
 		if (strind == nextCharacter) 
@@ -559,6 +561,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 		mask |= WidthValue;
 	}
 
+	tempHeight = 0;
 	if (*strind == 'x' || *strind == 'X') {	
 		strind++;
 		tempHeight = ReadInteger(strind, &nextCharacter);
@@ -568,6 +571,7 @@ int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned i
 		mask |= HeightValue;
 	}
 
+	tempX = tempY = 0;
 	if ((*strind == '+') || (*strind == '-')) {
 		if (*strind == '-') {
   			strind++;
@@ -988,17 +992,17 @@ int main(int argc, char ** argv)
 	struct video_channel vch;
 	char * MJPG_buff;
 	char AUDIO_buff[8192];
-	long audio_offset, nb;
+	long audio_offset = 0, nb;
 	int write_frame;
 	char input_buffer[256];
 	int i, n, nerr, nfout;
-	unsigned long first_lost, num_lost;
+	unsigned long first_lost = 0, num_lost;
 	unsigned long num_syncs;
 	unsigned long num_ins, num_del;
 	unsigned long num_aerr;
 	int stats_changed;
 	int astat;
-	long audio_buffer_size;
+	long audio_buffer_size = 0;
 	double time;
 	double tdiff1, tdiff2;
 	char *video_dev_name;

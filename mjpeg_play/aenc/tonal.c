@@ -68,14 +68,15 @@ tonal.c
 #define LONDON                  /* enable "LONDON" modification */
 #define MAKE_SENSE              /* enable "MAKE_SENSE" modification */
 #define MI_OPTION               /* enable "MI_OPTION" modification */
-/**********************************************************************/
-/*
-/*        This module implements the psychoacoustic model I for the
-/* MPEG encoder layer II. It uses simplified tonal and noise masking
-/* threshold analysis to generate SMR for the encoder bit allocation
-/* routine.
-/*
-/**********************************************************************/
+
+/**********************************************************************
+ *
+ *        This module implements the psychoacoustic model I for the
+ * MPEG encoder layer II. It uses simplified tonal and noise masking
+ * threshold analysis to generate SMR for the encoder bit allocation
+ * routine.
+ *
+ **********************************************************************/
 
 extern int crit_band;
 extern int FAR *cbound;
@@ -99,11 +100,11 @@ double a,b;
  return 10 * log10(a+b);
 }
 
-/****************************************************************/
-/*
-/*        Fast Fourier transform of the input samples.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        Fast Fourier transform of the input samples.
+ *
+ ****************************************************************/
 
 void II_f_f_t(sample, power)      /* this function calculates an */
 double FAR sample[FFT_SIZE];  /* FFT analysis for the freq.  */
@@ -136,7 +137,7 @@ mask FAR power[HAN_SIZE];     /* domain                      */
     }
     for(i=0;i<FFT_SIZE;rev[i] = l,i++) for(j=0,l=0;j<10;j++){
        k=(i>>j) & 1;
-       l |= (k<<9-j);                
+       l |= (k<<(9-j));                
     }
     init = 1;
  }
@@ -190,11 +191,11 @@ mask FAR power[HAN_SIZE];     /* domain                      */
  mem_free((void **) &energy);
 }
 
-/****************************************************************/
-/*
-/*         Window the incoming audio signal.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *         Window the incoming audio signal.
+ *
+ ****************************************************************/
 
 void II_hann_win(sample)          /* this function calculates a  */
 double FAR sample[FFT_SIZE];  /* Hann window for PCM (input) */
@@ -216,13 +217,13 @@ double FAR sample[FFT_SIZE];  /* Hann window for PCM (input) */
  for(i=0;i<FFT_SIZE;i++) sample[i] *= window[i];
 }
 
-/*******************************************************************/
-/*
-/*        This function finds the maximum spectral component in each
-/* subband and return them to the encoder for time-domain threshold
-/* determination.
-/*
-/*******************************************************************/
+/*******************************************************************
+ *
+ *        This function finds the maximum spectral component in each
+ * subband and return them to the encoder for time-domain threshold
+ * determination.
+ *
+ *******************************************************************/
 #ifndef LONDON
 void II_pick_max(power, spike)
 double FAR spike[SBLIMIT];
@@ -252,12 +253,12 @@ mask FAR power[HAN_SIZE];
                                                    /* 4-16               */
 #endif
 
-/****************************************************************/
-/*
-/*        This function labels the tonal component in the power
-/* spectrum.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function labels the tonal component in the power
+ * spectrum.
+ *
+ ****************************************************************/
 
 void II_tonal_label(power, tone)  /* this function extracts (tonal) */
 mask FAR power[HAN_SIZE];     /* sinusoidals from the spectrum  */
@@ -326,13 +327,13 @@ int *tone;
  }
 }
 
-/****************************************************************/
-/*
-/*        This function groups all the remaining non-tonal
-/* spectral lines into critical band where they are replaced by
-/* one single line.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function groups all the remaining non-tonal
+ * spectral lines into critical band where they are replaced by
+ * one single line.
+ *
+ ****************************************************************/
         
 void noise_label(power, noise, ltg)
 g_thres FAR *ltg;
@@ -375,7 +376,9 @@ int *noise;
 #ifdef MI_OPTION
      /* Masahiro Iwadare's fix for infinite looping problem? */
      if(power[centre].type == TONE) 
+	 {
        if (power[centre+1].type == TONE) centre++; else centre--;
+	 }
 #else
      /* Mike Li's fix for infinite looping problem */
      if(power[centre].type == FALSE) centre++;
@@ -399,12 +402,12 @@ int *noise;
  }        
 }
 
-/****************************************************************/
-/*
-/*        This function reduces the number of noise and tonal
-/* component for further threshold analysis.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function reduces the number of noise and tonal
+ * component for further threshold analysis.
+ *
+ ****************************************************************/
 
 void subsampling(power, ltg, tone, noise)
 mask FAR power[HAN_SIZE];
@@ -461,12 +464,12 @@ int *tone, *noise;
  }
 }
 
-/****************************************************************/
-/*
-/*        This function calculates the individual threshold and
-/* sum with the quiet threshold to find the global threshold.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function calculates the individual threshold and
+ * sum with the quiet threshold to find the global threshold.
+ *
+ ****************************************************************/
 
 void threshold(power, ltg, tone, noise, bit_rate)
 mask FAR power[HAN_SIZE];
@@ -475,6 +478,7 @@ int *tone, *noise, bit_rate;
 {
  int k, t;
  double dz, tmps, vf;
+ vf = 0.0; /* Suppress compiler warning */
 
  for(k=1;k<sub_size;k++){
     ltg[k].x = DBMIN;
@@ -516,12 +520,12 @@ int *tone, *noise, bit_rate;
  }
 }
 
-/****************************************************************/
-/*
-/*        This function finds the minimum masking threshold and
-/* return the value to the encoder.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function finds the minimum masking threshold and
+ * return the value to the encoder.
+ *
+ ****************************************************************/
 
 void II_minimum_mask(ltg,ltmin,sblimit)
 g_thres FAR *ltg;
@@ -545,12 +549,12 @@ int sblimit;
  }
 }
 
-/*****************************************************************/
-/*
-/*        This procedure is called in musicin to pick out the
-/* smaller of the scalefactor or threshold.
-/*
-/*****************************************************************/
+/*****************************************************************
+ *
+ *        This procedure is called in musicin to pick out the
+ * smaller of the scalefactor or threshold.
+ *
+ *****************************************************************/
 
 void II_smr(ltmin, spike, scale, sblimit)
 double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
@@ -567,12 +571,12 @@ int sblimit;
  }
 }
         
-/****************************************************************/
-/*
-/*        This procedure calls all the necessary functions to
-/* complete the psychoacoustic analysis.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This procedure calls all the necessary functions to
+ * complete the psychoacoustic analysis.
+ *
+ ****************************************************************/
 
 void II_Psycho_One(buffer, scale, ltmin, fr_ps)
 short FAR buffer[2][1152];
@@ -625,20 +629,20 @@ frame_params *fr_ps;
  mem_free((void **) &spike);
 }
 
-/**********************************************************************/
-/*
-/*        This module implements the psychoacoustic model I for the
-/* MPEG encoder layer I. It uses simplified tonal and noise masking
-/* threshold analysis to generate SMR for the encoder bit allocation
-/* routine.
-/*
-/**********************************************************************/
+/**********************************************************************
+ *
+ *        This module implements the psychoacoustic model I for the
+ * MPEG encoder layer I. It uses simplified tonal and noise masking
+ * threshold analysis to generate SMR for the encoder bit allocation
+ * routine.
+ *
+ **********************************************************************/
 
-/****************************************************************/
-/*
-/*        Fast Fourier transform of the input samples.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        Fast Fourier transform of the input samples.
+ *
+ ****************************************************************/
 
 void I_f_f_t(sample, power)         /* this function calculates */
 double FAR sample[FFT_SIZE/2];  /* an FFT analysis for the  */
@@ -671,7 +675,7 @@ mask FAR power[HAN_SIZE/2];     /* freq. domain             */
     }
     for(i=0;i<FFT_SIZE/2;rev[i] = l,i++) for(j=0,l=0;j<9;j++){
        k=(i>>j) & 1;
-       l |= (k<<8-j);                
+       l |= (k<<(8-j));                
     }
     init = 1;
  }
@@ -725,11 +729,11 @@ mask FAR power[HAN_SIZE/2];     /* freq. domain             */
  mem_free((void **) &energy);
 }
 
-/****************************************************************/
-/*
-/*         Window the incoming audio signal.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *         Window the incoming audio signal.
+ *
+ ****************************************************************/
 
 void I_hann_win(sample)             /* this function calculates a  */
 double FAR sample[FFT_SIZE/2];  /* Hann window for PCM (input) */
@@ -751,13 +755,13 @@ double FAR sample[FFT_SIZE/2];  /* Hann window for PCM (input) */
  for(i=0;i<FFT_SIZE/2;i++) sample[i] *= window[i];
 }
 
-/*******************************************************************/
-/*
-/*        This function finds the maximum spectral component in each
-/* subband and return them to the encoder for time-domain threshold
-/* determination.
-/*
-/*******************************************************************/
+/*******************************************************************
+ *
+ *        This function finds the maximum spectral component in each
+ * subband and return them to the encoder for time-domain threshold
+ * determination.
+ *
+ *******************************************************************/
 #ifndef LONDON
 void I_pick_max(power, spike)
 double FAR spike[SBLIMIT];
@@ -784,12 +788,13 @@ mask FAR power[HAN_SIZE];
    sum += pow(10.0,0.1*power[i+j].x);              /* component in each  */
 }                                                  /* subband from bound */
 #endif
-/****************************************************************/
-/*
-/*        This function labels the tonal component in the power
-/* spectrum.
-/*
-/****************************************************************/
+
+/****************************************************************
+ *
+ *        This function labels the tonal component in the power
+ * spectrum.
+ *
+ ****************************************************************/
 
 void I_tonal_label(power, tone)     /* this function extracts   */
 mask FAR power[HAN_SIZE/2];     /* (tonal) sinusoidals from */
@@ -858,12 +863,12 @@ int *tone;                          /* the spectrum             */
  }
 }                        
                                 
-/****************************************************************/
-/*
-/*        This function finds the minimum masking threshold and
-/* return the value to the encoder.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This function finds the minimum masking threshold and
+ * return the value to the encoder.
+ *
+ ****************************************************************/
 
 void I_minimum_mask(ltg,ltmin)
 g_thres FAR *ltg;
@@ -886,12 +891,12 @@ double FAR ltmin[SBLIMIT];
     }
 }
 
-/*****************************************************************/
-/*
-/*        This procedure is called in musicin to pick out the
-/* smaller of the scalefactor or threshold.
-/*
-/*****************************************************************/
+/*****************************************************************
+ *
+ *        This procedure is called in musicin to pick out the
+ * smaller of the scalefactor or threshold.
+ *
+ *****************************************************************/
 
 void I_smr(ltmin, spike, scale)
 double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
@@ -907,12 +912,12 @@ double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
  }
 }
         
-/****************************************************************/
-/*
-/*        This procedure calls all the necessary functions to
-/* complete the psychoacoustic analysis.
-/*
-/****************************************************************/
+/****************************************************************
+ *
+ *        This procedure calls all the necessary functions to
+ * complete the psychoacoustic analysis.
+ *
+ ****************************************************************/
 
 void I_Psycho_One(buffer, scale, ltmin, fr_ps)
 short FAR buffer[2][1152];

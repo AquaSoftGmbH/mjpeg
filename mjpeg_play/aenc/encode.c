@@ -86,6 +86,13 @@ encode.c
 extern unsigned _stklen = 16384;
 #endif
 
+#include <stdlib.h>
+
+#ifdef UNIX
+#include <unistd.h>
+extern void swab( void *, void *, size_t );
+#endif
+
 extern int freq_in;
 extern int freq_out;
 extern int chans_in;
@@ -180,7 +187,7 @@ static void read_and_resample()
 
    nseconds++;
    if (verbose > 0) {
-     printf("%4d seconds done\r",nseconds);
+     printf("%4ld seconds done\r",nseconds);
      fflush(stdout);
    }
 }
@@ -282,23 +289,23 @@ int get_samples(short *abuff, int num, int stereo)
 \=======================================================================*/
  
 
-/************************************************************************/
-/*
-/* get_audio()
-/*
-/* PURPOSE:  reads a frame of audio data from a file to the buffer,
-/*   aligns the data for future processing, and separates the
-/*   left and right channels
-/*
-/*  SEMANTICS:
-/* Calls read_samples() to read a frame of audio data from filepointer
-/* #musicin# to #insampl[]#.  The data is shifted to make sure the data
-/* is centered for the 1024pt window to be used by the psychoacoustic model,
-/* and to compensate for the 256 sample delay from the filter bank. For
-/* stereo, the channels are also demultiplexed into #buffer[0][]# and
-/* #buffer[1][]#
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * get_audio()
+ *
+ * PURPOSE:  reads a frame of audio data from a file to the buffer,
+ *   aligns the data for future processing, and separates the
+ *   left and right channels
+ *
+ *  SEMANTICS:
+ * Calls read_samples() to read a frame of audio data from filepointer
+ * #musicin# to #insampl[]#.  The data is shifted to make sure the data
+ * is centered for the 1024pt window to be used by the psychoacoustic model,
+ * and to compensate for the 256 sample delay from the filter bank. For
+ * stereo, the channels are also demultiplexed into #buffer[0][]# and
+ * #buffer[1][]#
+ *
+ ************************************************************************/
  
 unsigned long get_audio(musicin, buffer, num_samples, stereo, lay)
 FILE *musicin;
@@ -357,19 +364,19 @@ int stereo, lay;
    return res;
 }
 
-/************************************************************************/
-/*
-/* window_subband()
-/*
-/* PURPOSE:  Overlapping window on PCM samples
-/*
-/* SEMANTICS:
-/* 32 16-bit pcm samples are scaled to fractional 2's complement and
-/* concatenated to the end of the window buffer #x#. The updated window
-/* buffer #x# is then windowed by the analysis window #c# to produce the
-/* windowed sample #z#
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * window_subband()
+ *
+ * PURPOSE:  Overlapping window on PCM samples
+ *
+ * SEMANTICS:
+ * 32 16-bit pcm samples are scaled to fractional 2's complement and
+ * concatenated to the end of the window buffer #x#. The updated window
+ * buffer #x# is then windowed by the analysis window #c# to produce the
+ * windowed sample #z#
+ *
+ ************************************************************************/
  
 void window_subband(buffer, z, k)
 short FAR **buffer;
@@ -379,7 +386,7 @@ int k;
     typedef double FAR XX[2][HAN_SIZE];
     static XX FAR *x;
     int i, j;
-    static off[2] = {0,0};
+    static int off[2] = {0,0};
     static char init = 0;
     static double FAR *c;
     if (!init) {
@@ -395,24 +402,24 @@ int k;
     /* replace 32 oldest samples with 32 new samples */
     for (i=0;i<32;i++) (*x)[k][31-i+off[k]] = (double) *(*buffer)++/SCALE;
     /* shift samples into proper window positions */
-    for (i=0;i<HAN_SIZE;i++) z[i] = (*x)[k][(i+off[k])&HAN_SIZE-1] * c[i];
+    for (i=0;i<HAN_SIZE;i++) z[i] = (*x)[k][(i+off[k])&(HAN_SIZE-1)] * c[i];
     off[k] += 480;              /*offset is modulo (HAN_SIZE-1)*/
     off[k] &= HAN_SIZE-1;
 
 }
  
-/************************************************************************/
-/*
-/* create_ana_filter()
-/*
-/* PURPOSE:  Calculates the analysis filter bank coefficients
-/*
-/* SEMANTICS:
-/* Calculates the analysis filterbank coefficients and rounds to the
-/* 9th decimal place accuracy of the filterbank tables in the ISO
-/* document.  The coefficients are stored in #filter#
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * create_ana_filter()
+ *
+ * PURPOSE:  Calculates the analysis filter bank coefficients
+ *
+ * SEMANTICS:
+ * Calculates the analysis filterbank coefficients and rounds to the
+ * 9th decimal place accuracy of the filterbank tables in the ISO
+ * document.  The coefficients are stored in #filter#
+ *
+ ************************************************************************/
  
 void create_ana_filter(filter)
 double FAR filter[SBLIMIT][64];
@@ -429,19 +436,19 @@ double FAR filter[SBLIMIT][64];
    }
 }
 
-/************************************************************************/
-/*
-/* filter_subband()
-/*
-/* PURPOSE:  Calculates the analysis filter bank coefficients
-/*
-/* SEMANTICS:
-/*      The windowed samples #z# is filtered by the digital filter matrix #m#
-/* to produce the subband samples #s#. This done by first selectively
-/* picking out values from the windowed samples, and then multiplying
-/* them by the filter matrix, producing 32 subband samples.
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * filter_subband()
+ *
+ * PURPOSE:  Calculates the analysis filter bank coefficients
+ *
+ * SEMANTICS:
+ *      The windowed samples #z# is filtered by the digital filter matrix #m#
+ * to produce the subband samples #s#. This done by first selectively
+ * picking out values from the windowed samples, and then multiplying
+ * them by the filter matrix, producing 32 subband samples.
+ *
+ ************************************************************************/
  
 void filter_subband(z,s)
 double FAR z[HAN_SIZE], s[SBLIMIT];
@@ -472,14 +479,14 @@ static MM FAR *m;
        for (j=0, s[i]= 0;j<64;j++) s[i] += (*m)[i][j] * y[j];
 }
 
-/************************************************************************/
-/*
-/* encode_info()
-/*
-/* PURPOSE:  Puts the syncword and header information on the output
-/* bitstream.
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * encode_info()
+ *
+ * PURPOSE:  Puts the syncword and header information on the output
+ * bitstream.
+ *
+ ************************************************************************/
  
 void encode_info(fr_ps,bs)
 frame_params *fr_ps;
@@ -502,13 +509,13 @@ Bit_stream_struc *bs;
         putbits(bs,info->emphasis,2);
 }
  
-/************************************************************************/
-/*
-/* mod()
-/*
-/* PURPOSE:  Returns the absolute value of its argument
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * mod()
+ *
+ * PURPOSE:  Returns the absolute value of its argument
+ *
+ ************************************************************************/
  
 double mod(a)
 double a;
@@ -516,19 +523,19 @@ double a;
     return (a > 0) ? a : -a;
 }
  
-/************************************************************************/
-/*
-/* I_combine_LR    (Layer I)
-/* II_combine_LR   (Layer II)
-/*
-/* PURPOSE:Combines left and right channels into a mono channel
-/*
-/* SEMANTICS:  The average of left and right subband samples is put into
-/* #joint_sample#
-/*
-/* Layer I and II differ in frame length and # subbands used
-/*
-/************************************************************************/
+/************************************************************************
+ *
+ * I_combine_LR    (Layer I)
+ * II_combine_LR   (Layer II)
+ *
+ * PURPOSE:Combines left and right channels into a mono channel
+ *
+ * SEMANTICS:  The average of left and right subband samples is put into
+ * #joint_sample#
+ *
+ * Layer I and II differ in frame length and # subbands used
+ *
+ ************************************************************************/
  
 void I_combine_LR(sb_sample, joint_sample)
 double FAR sb_sample[2][3][SCALE_BLOCK][SBLIMIT];
@@ -557,21 +564,21 @@ int sblimit;
 }
  
 /************************************************************************
-/*
-/* I_scale_factor_calc     (Layer I)
-/* II_scale_factor_calc    (Layer II)
-/*
-/* PURPOSE:For each subband, calculate the scale factor for each set
-/* of the 12 subband samples
-/*
-/* SEMANTICS:  Pick the scalefactor #multiple[]# just larger than the
-/* absolute value of the peak subband sample of 12 samples,
-/* and store the corresponding scalefactor index in #scalar#.
-/*
-/* Layer II has three sets of 12-subband samples for a given
-/* subband.
-/*
-/************************************************************************/
+ *
+ * I_scale_factor_calc     (Layer I)
+ * II_scale_factor_calc    (Layer II)
+ *
+ * PURPOSE:For each subband, calculate the scale factor for each set
+ * of the 12 subband samples
+ *
+ * SEMANTICS:  Pick the scalefactor #multiple[]# just larger than the
+ * absolute value of the peak subband sample of 12 samples,
+ * and store the corresponding scalefactor index in #scalar#.
+ *
+ * Layer II has three sets of 12-subband samples for a given
+ * subband.
+ *
+ ************************************************************************/
  
 void I_scale_factor_calc(sb_sample,scalar,stereo)
 double FAR sb_sample[][3][SCALE_BLOCK][SBLIMIT];
@@ -623,15 +630,15 @@ int stereo,sblimit;
 }
 
 /************************************************************************
-/*
-/* pick_scale  (Layer II)
-/*
-/* PURPOSE:For each subband, puts the smallest scalefactor of the 3
-/* associated with a frame into #max_sc#.  This is used
-/* used by Psychoacoustic Model I.
-/* (I would recommend changin max_sc to min_sc)
-/*
-/************************************************************************/
+ *
+ * pick_scale  (Layer II)
+ *
+ * PURPOSE:For each subband, puts the smallest scalefactor of the 3
+ * associated with a frame into #max_sc#.  This is used
+ * used by Psychoacoustic Model I.
+ * (I would recommend changin max_sc to min_sc)
+ *
+ ************************************************************************/
  
 void pick_scale(scalar, fr_ps, max_sc)
 unsigned int scalar[2][3][SBLIMIT];
@@ -650,43 +657,42 @@ double FAR max_sc[2][SBLIMIT];
 }
 
 /************************************************************************
-/*
-/* put_scale   (Layer I)
-/*
-/* PURPOSE:Sets #max_sc# to the scalefactor index in #scalar.
-/* This is used by Psychoacoustic Model I
-/*
-/************************************************************************/
+ *
+ * put_scale   (Layer I)
+ *
+ * PURPOSE:Sets #max_sc# to the scalefactor index in #scalar.
+ * This is used by Psychoacoustic Model I
+ *
+ ************************************************************************/
  
 void put_scale(scalar, fr_ps, max_sc)
 unsigned int scalar[2][3][SBLIMIT];
 frame_params *fr_ps;
 double FAR max_sc[2][SBLIMIT];
 {
-   int i,j,k, max;
+   int i,k;
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
  
    for (k=0;k<stereo;k++) for (i=0;i<SBLIMIT;i++)
         max_sc[k][i] = multiple[scalar[k][0][i]];
 }
  
 /************************************************************************
-/*
-/* II_transmission_pattern (Layer II only)
-/*
-/* PURPOSE:For a given subband, determines whether to send 1, 2, or
-/* all 3 of the scalefactors, and fills in the scalefactor
-/* select information accordingly
-/*
-/* SEMANTICS:  The subbands and channels are classified based on how much
-/* the scalefactors changes over its three values (corresponding
-/* to the 3 sets of 12 samples per subband).  The classification
-/* will send 1 or 2 scalefactors instead of three if the scalefactors
-/* do not change much.  The scalefactor select information,
-/* #scfsi#, is filled in accordingly.
-/*
-/************************************************************************/
+ *
+ * II_transmission_pattern (Layer II only)
+ *
+ * PURPOSE:For a given subband, determines whether to send 1, 2, or
+ * all 3 of the scalefactors, and fills in the scalefactor
+ * select information accordingly
+ *
+ * SEMANTICS:  The subbands and channels are classified based on how much
+ * the scalefactors changes over its three values (corresponding
+ * to the 3 sets of 12 samples per subband).  The classification
+ * will send 1 or 2 scalefactors instead of three if the scalefactors
+ * do not change much.  The scalefactor select information,
+ * #scfsi#, is filled in accordingly.
+ *
+ ************************************************************************/
  
 void II_transmission_pattern(scalar, scfsi, fr_ps)
 unsigned int scalar[2][3][SBLIMIT];
@@ -697,11 +703,11 @@ frame_params *fr_ps;
    int sblimit = fr_ps->sblimit;
    int dscf[2];
    int class[2],i,j,k;
-static int pattern[5][5] = {0x123, 0x122, 0x122, 0x133, 0x123,
-                            0x113, 0x111, 0x111, 0x444, 0x113,
-                            0x111, 0x111, 0x111, 0x333, 0x113,
-                            0x222, 0x222, 0x222, 0x333, 0x123,
-                            0x123, 0x122, 0x122, 0x133, 0x123};
+static int pattern[5][5] = {{0x123, 0x122, 0x122, 0x133, 0x123},
+                            {0x113, 0x111, 0x111, 0x444, 0x113},
+                            {0x111, 0x111, 0x111, 0x333, 0x113},
+                            {0x222, 0x222, 0x222, 0x333, 0x123},
+                            {0x123, 0x122, 0x122, 0x133, 0x123}};
  
    for (k=0;k<stereo;k++)
      for (i=0;i<sblimit;i++) {
@@ -743,19 +749,19 @@ static int pattern[5][5] = {0x123, 0x122, 0x122, 0x133, 0x123,
    }
 }
  
-/************************************************************************
-/*
-/* I_encode_scale  (Layer I)
-/* II_encode_scale (Layer II)
-/*
-/* PURPOSE:The encoded scalar factor information is arranged and
-/* queued into the output fifo to be transmitted.
-/*
-/* For Layer II, the three scale factors associated with
-/* a given subband and channel are transmitted in accordance
-/* with the scfsi, which is transmitted first.
-/*
-/************************************************************************/
+ /************************************************************************
+ *
+ * I_encode_scale  (Layer I)
+ * II_encode_scale (Layer II)
+ *
+ * PURPOSE:The encoded scalar factor information is arranged and
+ * queued into the output fifo to be transmitted.
+ *
+ * For Layer II, the three scale factors associated with
+ * a given subband and channel are transmitted in accordance
+ * with the scfsi, which is transmitted first.
+ *
+ ************************************************************************/
  
 void I_encode_scale(scalar, bit_alloc, fr_ps, bs)
 unsigned int scalar[2][3][SBLIMIT];
@@ -764,7 +770,6 @@ frame_params *fr_ps;
 Bit_stream_struc *bs;
 {
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int i,j;
  
    for (i=0;i<SBLIMIT;i++) for (j=0;j<stereo;j++)
@@ -781,7 +786,6 @@ Bit_stream_struc *bs;
 {
    int stereo  = fr_ps->stereo;
    int sblimit = fr_ps->sblimit;
-   int jsbound = fr_ps->jsbound;
    int i,j,k;
  
    for (i=0;i<sblimit;i++) for (k=0;k<stereo;k++)
@@ -811,33 +815,33 @@ Bit_stream_struc *bs;
 \=======================================================================*/
  
 /************************************************************************
-/*
-/* I_bits_for_nonoise  (Layer I)
-/* II_bits_for_nonoise (Layer II)
-/*
-/* PURPOSE:Returns the number of bits required to produce a
-/* mask-to-noise ratio better or equal to the noise/no_noise threshold.
-/*
-/* SEMANTICS:
-/* bbal = # bits needed for encoding bit allocation
-/* bsel = # bits needed for encoding scalefactor select information
-/* banc = # bits needed for ancillary data (header info included)
-/*
-/* For each subband and channel, will add bits until one of the
-/* following occurs:
-/* - Hit maximum number of bits we can allocate for that subband
-/* - MNR is better than or equal to the minimum masking level
-/*   (NOISY_MIN_MNR)
-/* Then the bits required for scalefactors, scfsi, bit allocation,
-/* and the subband samples are tallied (#req_bits#) and returned.
-/*
-/* (NOISY_MIN_MNR) is the smallest MNR a subband can have before it is
-/* counted as 'noisy' by the logic which chooses the number of JS
-/* subbands.
-/*
-/* Joint stereo is supported.
-/*
-/************************************************************************/
+ *
+ * I_bits_for_nonoise  (Layer I)
+ * II_bits_for_nonoise (Layer II)
+ *
+ * PURPOSE:Returns the number of bits required to produce a
+ * mask-to-noise ratio better or equal to the noise/no_noise threshold.
+ *
+ * SEMANTICS:
+ * bbal = # bits needed for encoding bit allocation
+ * bsel = # bits needed for encoding scalefactor select information
+ * banc = # bits needed for ancillary data (header info included)
+ *
+ * For each subband and channel, will add bits until one of the
+ * following occurs:
+ * - Hit maximum number of bits we can allocate for that subband
+ * - MNR is better than or equal to the minimum masking level
+ *   (NOISY_MIN_MNR)
+ * Then the bits required for scalefactors, scfsi, bit allocation,
+ * and the subband samples are tallied (#req_bits#) and returned.
+ *
+ * (NOISY_MIN_MNR) is the smallest MNR a subband can have before it is
+ * counted as 'noisy' by the logic which chooses the number of JS
+ * subbands.
+ *
+ * Joint stereo is supported.
+ *
+ ************************************************************************/
 
 static double snr[18] = {0.00, 7.00, 11.00, 16.00, 20.84,
                          25.28, 31.59, 37.75, 43.84,
@@ -850,7 +854,6 @@ frame_params *fr_ps;
 {
    int i,j,k;
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int jsbound = fr_ps->jsbound;
    int req_bits = 0;
  
@@ -925,30 +928,30 @@ static int sfsPerScfsi[] = { 3,2,1,2 };    /* lookup # sfs per scfsi */
 }
  
 /************************************************************************
-/*
-/* I_main_bit_allocation   (Layer I)
-/* II_main_bit_allocation  (Layer II)
-/*
-/* PURPOSE:For joint stereo mode, determines which of the 4 joint
-/* stereo modes is needed.  Then calls *_a_bit_allocation(), which
-/* allocates bits for each of the subbands until there are no more bits
-/* left, or the MNR is at the noise/no_noise threshold.
-/*
-/* SEMANTICS:
-/*
-/* For joint stereo mode, joint stereo is changed to stereo if
-/* there are enough bits to encode stereo at or better than the
-/* no-noise threshold (NOISY_MIN_MNR).  Otherwise, the system
-/* iteratively allocates less bits by using joint stereo until one
-/* of the following occurs:
-/* - there are no more noisy subbands (MNR >= NOISY_MIN_MNR)
-/* - mode_ext has been reduced to 0, which means that all but the
-/*   lowest 4 subbands have been converted from stereo to joint
-/*   stereo, and no more subbands may be converted
-/*
-/*     This function calls *_bits_for_nonoise() and *_a_bit_allocation().
-/*
-/************************************************************************/
+ *
+ * I_main_bit_allocation   (Layer I)
+ * II_main_bit_allocation  (Layer II)
+ *
+ * PURPOSE:For joint stereo mode, determines which of the 4 joint
+ * stereo modes is needed.  Then calls *_a_bit_allocation(), which
+ * allocates bits for each of the subbands until there are no more bits
+ * left, or the MNR is at the noise/no_noise threshold.
+ *
+ * SEMANTICS:
+ *
+ * For joint stereo mode, joint stereo is changed to stereo if
+ * there are enough bits to encode stereo at or better than the
+ * no-noise threshold (NOISY_MIN_MNR).  Otherwise, the system
+ * iteratively allocates less bits by using joint stereo until one
+ * of the following occurs:
+ * - there are no more noisy subbands (MNR >= NOISY_MIN_MNR)
+ * - mode_ext has been reduced to 0, which means that all but the
+ *   lowest 4 subbands have been converted from stereo to joint
+ *   stereo, and no more subbands may be converted
+ *
+ *     This function calls *_bits_for_nonoise() and *_a_bit_allocation().
+ *
+ ************************************************************************/
  
 void I_main_bit_allocation(perm_smr, bit_alloc, adb, fr_ps)
 double FAR perm_smr[2][SBLIMIT];
@@ -958,7 +961,7 @@ frame_params *fr_ps;
 {
    int  noisy_sbs;
    int  mode, mode_ext, lay, i;
-   int  rq_db, av_db = *adb;
+   int  rq_db;
 static  int init = 0;
  
    if(init == 0) {
@@ -972,7 +975,7 @@ static  int init = 0;
      fr_ps->header->mode = MPG_MD_STEREO;
      fr_ps->header->mode_ext = 0;
      fr_ps->jsbound = fr_ps->sblimit;
-     if(rq_db = I_bits_for_nonoise(perm_smr, fr_ps) > *adb) {
+     if((rq_db = I_bits_for_nonoise(perm_smr, fr_ps)) > *adb) {
        fr_ps->header->mode = MPG_MD_JOINT_STEREO;
        mode_ext = 4;           /* 3 is least severe reduction */
        lay = fr_ps->header->lay;
@@ -996,9 +999,9 @@ unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
 {
-   int  noisy_sbs, nn;
+   int  noisy_sbs;
    int  mode, mode_ext, lay;
-   int  rq_db, av_db = *adb;
+   int  rq_db;
  
    if((mode = fr_ps->actual_mode) == MPG_MD_JOINT_STEREO) {
      fr_ps->header->mode = MPG_MD_STEREO;
@@ -1020,30 +1023,30 @@ frame_params *fr_ps;
 }
  
 /************************************************************************
-/*
-/* I_a_bit_allocation  (Layer I)
-/* II_a_bit_allocation (Layer II)
-/*
-/* PURPOSE:Adds bits to the subbands with the lowest mask-to-noise
-/* ratios, until the maximum number of bits for the subband has
-/* been allocated.
-/*
-/* SEMANTICS:
-/* 1. Find the subband and channel with the smallest MNR (#min_sb#,
-/*    and #min_ch#)
-/* 2. Calculate the increase in bits needed if we increase the bit
-/*    allocation to the next higher level
-/* 3. If there are enough bits available for increasing the resolution
-/*    in #min_sb#, #min_ch#, and the subband has not yet reached its
-/*    maximum allocation, update the bit allocation, MNR, and bits
-/*    available accordingly
-/* 4. Repeat until there are no more bits left, or no more available
-/*    subbands. (A subband is still available until the maximum
-/*    number of bits for the subband has been allocated, or there
-/*    aren't enough bits to go to the next higher resolution in the
-/*    subband.)
-/*
-/************************************************************************/
+ *
+ * I_a_bit_allocation  (Layer I)
+ * II_a_bit_allocation (Layer II)
+ *
+ * PURPOSE:Adds bits to the subbands with the lowest mask-to-noise
+ * ratios, until the maximum number of bits for the subband has
+ * been allocated.
+ *
+ * SEMANTICS:
+ * 1. Find the subband and channel with the smallest MNR (#min_sb#,
+ *    and #min_ch#)
+ * 2. Calculate the increase in bits needed if we increase the bit
+ *    allocation to the next higher level
+ * 3. If there are enough bits available for increasing the resolution
+ *    in #min_sb#, #min_ch#, and the subband has not yet reached its
+ *    maximum allocation, update the bit allocation, MNR, and bits
+ *    available accordingly
+ * 4. Repeat until there are no more bits left, or no more available
+ *    subbands. (A subband is still available until the maximum
+ *    number of bits for the subband has been allocated, or there
+ *    aren't enough bits to go to the next higher resolution in the
+ *    subband.)
+ *
+ ************************************************************************/
  
 int I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps) /* return noisy sbs */
 double FAR perm_smr[2][SBLIMIT];
@@ -1052,13 +1055,11 @@ int *adb;
 frame_params *fr_ps;
 {
    int i, k, smpl_bits, scale_bits, min_sb, min_ch, oth_ch;
-   int bspl, bscf, ad, noisy_sbs, done = 0, bbal ;
+   int bspl, bscf, ad, noisy_sbs, bbal ;
    double mnr[2][SBLIMIT], small;
    char used[2][SBLIMIT];
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int jsbound = fr_ps->jsbound;
-   al_table *alloc = fr_ps->alloc;
 static char init= 0;
 static int banc=32, berr=0;
  
@@ -1238,22 +1239,22 @@ static int sfsPerScfsi[] = { 3,2,1,2 };    /* lookup # sfs per scfsi */
 }
  
 /************************************************************************
-/*
-/* I_subband_quantization  (Layer I)
-/* II_subband_quantization (Layer II)
-/*
-/* PURPOSE:Quantizes subband samples to appropriate number of bits
-/*
-/* SEMANTICS:  Subband samples are divided by their scalefactors, which
-/* makes the quantization more efficient. The scaled samples are
-/* quantized by the function a*x+b, where a and b are functions of
-/* the number of quantization levels. The result is then truncated
-/* to the appropriate number of bits and the MSB is inverted.
-/*
-/* Note that for fractional 2's complement, inverting the MSB for a
-/* negative number x is equivalent to adding 1 to it.
-/*
-/************************************************************************/
+ *
+ * I_subband_quantization  (Layer I)
+ * II_subband_quantization (Layer II)
+ *
+ * PURPOSE:Quantizes subband samples to appropriate number of bits
+ *
+ * SEMANTICS:  Subband samples are divided by their scalefactors, which
+ * makes the quantization more efficient. The scaled samples are
+ * quantized by the function a*x+b, where a and b are functions of
+ * the number of quantization levels. The result is then truncated
+ * to the appropriate number of bits and the MSB is inverted.
+ *
+ * Note that for fractional 2's complement, inverting the MSB for a
+ * negative number x is equivalent to adding 1 to it.
+ *
+ ************************************************************************/
  
 static double a[17] = {
   0.750000000, 0.625000000, 0.875000000, 0.562500000, 0.937500000,
@@ -1279,7 +1280,6 @@ frame_params *fr_ps;
 {
    int i, j, k, n, sig;
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int jsbound = fr_ps->jsbound;
    double d;
 static char init = 0;
@@ -1386,17 +1386,17 @@ frame_params *fr_ps;
 }
  
 /************************************************************************
-/*
-/* I_encode_bit_alloc  (Layer I)
-/* II_encode_bit_alloc (Layer II)
-/*
-/* PURPOSE:Writes bit allocation information onto bitstream
-/*
-/* Layer I uses 4 bits/subband for bit allocation information,
-/* and Layer II uses 4,3,2, or 0 bits depending on the
-/* quantization table used.
-/*
-/************************************************************************/
+ *
+ * I_encode_bit_alloc  (Layer I)
+ * II_encode_bit_alloc (Layer II)
+ *
+ * PURPOSE:Writes bit allocation information onto bitstream
+ *
+ * Layer I uses 4 bits/subband for bit allocation information,
+ * and Layer II uses 4,3,2, or 0 bits depending on the
+ * quantization table used.
+ *
+ ************************************************************************/
  
 void I_encode_bit_alloc(bit_alloc, fr_ps, bs)
 unsigned int bit_alloc[2][SBLIMIT];
@@ -1405,7 +1405,6 @@ Bit_stream_struc *bs;
 {
    int i,k;
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int jsbound = fr_ps->jsbound;
  
    for (i=0;i<SBLIMIT;i++)
@@ -1431,18 +1430,18 @@ Bit_stream_struc *bs;
 }
  
 /************************************************************************
-/*
-/* I_sample_encoding   (Layer I)
-/* II_sample_encoding  (Layer II)
-/*
-/* PURPOSE:Put one frame of subband samples on to the bitstream
-/*
-/* SEMANTICS:  The number of bits allocated per sample is read from
-/* the bit allocation information #bit_alloc#.  Layer 2
-/* supports writing grouped samples for quantization steps
-/* that are not a power of 2.
-/*
-/************************************************************************/
+ *
+ * I_sample_encoding   (Layer I)
+ * II_sample_encoding  (Layer II)
+ *
+ * PURPOSE:Put one frame of subband samples on to the bitstream
+ *
+ * SEMANTICS:  The number of bits allocated per sample is read from
+ * the bit allocation information #bit_alloc#.  Layer 2
+ * supports writing grouped samples for quantization steps
+ * that are not a power of 2.
+ *
+ ************************************************************************/
  
 void I_sample_encoding(sbband, bit_alloc, fr_ps, bs)
 unsigned int FAR sbband[2][3][SCALE_BLOCK][SBLIMIT];
@@ -1452,7 +1451,6 @@ Bit_stream_struc *bs;
 {
    int i,j,k;
    int stereo  = fr_ps->stereo;
-   int sblimit = fr_ps->sblimit;
    int jsbound = fr_ps->jsbound;
  
    for(j=0;j<SCALE_BLOCK;j++) {
@@ -1497,10 +1495,10 @@ Bit_stream_struc *bs;
 }
  
 /************************************************************************
-/*
-/* encode_CRC
-/*
-/************************************************************************/
+ *
+ * encode_CRC
+ *
+ ************************************************************************/
  
 void encode_CRC(crc, bs)
 unsigned int crc;

@@ -40,6 +40,8 @@ encoder.h
  * 9/22/92  jddevine@aware.com  Fix protos for _scale_factor_calc()   *
  **********************************************************************/
 
+#define PROTO_ARGS
+
 /***********************************************************************
 *
 *  Encoder Include Files
@@ -320,3 +322,11 @@ extern void        fft(FLOAT[BLKSIZE], FLOAT[BLKSIZE], FLOAT[BLKSIZE],
 extern void        fft();
 #endif
 
+/* The following functions are in the file "wav_io.c" */
+
+#ifdef PROTO_ARGS
+extern int wav_read_header(FILE *fd, int *rate, int *chans, int *bits,
+                    int *format, unsigned long *bytes);
+#else
+extern int wav_read_header();
+#endif

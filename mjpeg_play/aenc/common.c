@@ -77,7 +77,7 @@ common.c
 *  Global Include Files
 *
 ***********************************************************************/
-
+#include        <stdlib.h>
 #include        "common.h"
 
 #ifdef  MACINTOSH
@@ -127,11 +127,11 @@ double FAR multiple[64] = {
 };
 
 /***********************************************************************
-/*
-/* Using the decoded info the appropriate possible quantization per
-/* subband table is loaded
-/*
-/**********************************************************************/
+ *
+ * Using the decoded info the appropriate possible quantization per
+ * subband table is loaded
+ *
+ **********************************************************************/
 
 int pick_table(fr_ps)   /* choose table, load if necess, return # sb's */
 frame_params *fr_ps;
@@ -566,9 +566,9 @@ FILE            *file_ptr;
 IFF_AIFF        *aiff_ptr;
 {
 
-register char   i;
+register int   i;
 register long   seek_offset;
-register long   sound_position;
+register long   sound_position = 0L;
 
 char            temp_sampleRate[10];
 
@@ -713,7 +713,7 @@ FILE            *file_ptr;
 IFF_AIFF        *aiff_ptr;
 {
 
-register char   i;
+register int   i;
 register long   seek_offset;
 
 char            temp_sampleRate[10];
@@ -831,7 +831,7 @@ SoundDataChunk  SndDChunk;
 /*                 otherwise returns 0                                      */
 
 /* refill the buffer from the input device when the buffer becomes empty    */
-int refill_buffer(bs)
+void refill_buffer(bs)
 Bit_stream_struc *bs;   /* bit stream structure */
 {
    register int i=bs->buf_size-2-bs->buf_byte_idx;
@@ -883,8 +883,6 @@ Bit_stream_struc *bs;   /* bit stream structure */
 
     }
 }
-
-static char *he = "0123456789ABCDEF";
 
 /* empty the buffer to the output device when the buffer becomes full */
 void empty_buffer(bs, minimum)

@@ -57,11 +57,15 @@ common.h
 ***********************************************************************/
 
 #define      UNIX            /* Unix conditional compile switch */
-/* #define      MACINTOSH       /* Macintosh conditional compile switch */
-/* #define      MS_DOS          /* IBM PC conditional compile switch */
-/* #define      MSC60           /* Compiled for MS_DOS with MSC v6.0 */
+
+#ifdef ALTERNATE_OS_SWITCH
+#define      MACINTOSH       /* Macintosh conditional compile switch */
+#define      MS_DOS          /* IBM PC conditional compile switch */
+#define      MSC60           /* Compiled for MS_DOS with MSC v6.0 */
+#define      CONVEX          /* CONVEX conditional compile switch */
+#endif
+
 #define      AIX             /* AIX conditional compile switch    */
-/* #define      CONVEX          /* CONVEX conditional compile switch */
 
 #if defined(MSC60) 
 #ifndef MS_DOS
@@ -80,7 +84,7 @@ common.h
 #endif  /* UNIX */
 
 #ifdef  MACINTOSH
-/* #define      TABLES_PATH ":tables:"  /* where to find data files */
+#define      TABLES_PATH ":tables:"  /* where to find data files */
 #endif  /* MACINTOSH */
 
 /* 
@@ -388,7 +392,7 @@ extern void           extended_to_double(char[10], double*);
 extern int            aiff_read_headers(FILE*, IFF_AIFF*);
 extern int            aiff_seek_to_sound_data(FILE*);
 extern int            aiff_write_headers(FILE*, IFF_AIFF*);
-extern int            refill_buffer(Bit_stream_struc*);
+extern void           refill_buffer(Bit_stream_struc*);
 extern void           empty_buffer(Bit_stream_struc*, int);
 extern void           open_bit_stream_w(Bit_stream_struc*, char*, int);
 extern void           open_bit_stream_r(Bit_stream_struc*, char*, int);
