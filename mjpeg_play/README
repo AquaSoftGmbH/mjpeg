@@ -1,4 +1,5 @@
 lavtools: Linux Audio and Video TOOLS
+=====================================
 
 Programs for recording and playback and simple cut-and-paste editting
 and compression of audio and video under Linux.  Currently only the
@@ -13,6 +14,11 @@ with the lav tools edit lists and AVI and quicktime files.  Some
 and functionality enhancements.   They're all bundled together here to
 save you the tedious hunting around we have to go through ;-)
 
+the movtar/ and the mjpeg/ directory contain libraries to handle
+the new MJPEG movtar video format and a library 
+to simplify MJPEG software and hardware playback, respectively.
+Please read the accompanying README files in these directories
+for more information. 
 
 - "lavrec" is a program to record AVI and Quicktime files with
    the Iomega BUZ including sound recording from the soundcard.
@@ -23,13 +29,17 @@ save you the tedious hunting around we have to go through ;-)
 - "xlav" in the directory xlav is a GUI for lavplay which permits
   fast forward/reverse, single frame stepping and simple editing.
 	
-
 - "lavtrans" (in directory utils) converts a mixture of AVI files,
   Quicktime files  or Edit Lists into a single AVI or Quicktime file
   into single images or into WAV files.
 
 - "lavaddwav" (in directory utils) lets you add another soundtrack
   (a WAV file) to an AVI/Quicktime file
+
+- "lavvideo" is a small test application for the video overlay
+   capabilities of your V4L hardware device.
+
+- "v4l-conf" is used in X to set up your video framebuffer address
 
 - "mpeg2enc" for encoding AVI/Quicktime files and Edit Lists
   to MPEG-1/2 video streams
@@ -53,15 +63,16 @@ save you the tedious hunting around we have to go through ;-)
 	giving example usage of various files.
 
 See the README's of the various programs for further details
-of authorship, usage, and implementatation/compilation details.
+of authorship, usage, and implementation/compilation details.
 
 
 Attention: lavplay is mainly intended to play back files created by lavrec and
 should also be able to play back AVI files created from the Iomega BUZ
 under Win98.
 The vast majority of AVI/Quicktime files will not be played by lavplay!!!
-The reason is that lavplay needs specialy coded AVI files (MJPG codec),
-all other files don't have that codec and can not be used by the BUZ.
+(see http://dix.euro.ru for such codecs)
+The reason is that lavplay needs specially coded AVI files (stored with an MJPG codec),
+all other files don't use that codec and can therefore not be played back by the BUZ.
 
 
 
@@ -132,4 +143,8 @@ You reach us by email:
 
 lav* : Rainer@Johanni.de
 mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
+libmovtar and libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
+
+
+
 

@@ -3,8 +3,6 @@ These are some of my new ideas, I don't know if I am going to realize them - eve
 
 for the movtar directory:
 
-.) movtar_avi, movtar_setinfo
-
 .) Plugins for GIMP
 
 .) Blender output plugin or at least a movtar enpacking program
@@ -17,11 +15,12 @@ for the movtar directory:
 .) "Normal" read/write support (position in the file, and then 
     start writing over there (needs a new internal writing position info))
 
-.) Read/write support with a special feature: 
+.) (frozen because of assumed low demand)
+   Read/write support with a special feature: 
    If the new written frame is smaller than the old one, preserve the old 
    filestructure, and mark the rest of the unused old filespace as "junk", 
    which can be reused the next time -> allows a new kind of clipping
-   in without having to render a new movie all the time .. 
+   in without having to render a new movie all the time . 
    
    Long, in the far distant future:
    Program a Virtual File system with these features

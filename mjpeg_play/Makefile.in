@@ -1,4 +1,3 @@
-# Generated automatically from Makefile.in by configure.
 # Makefile.in generated automatically by automake 1.4 from Makefile.am
 
 # Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
@@ -16,44 +15,45 @@
 #are suspect to change 
 
 
-SHELL = /bin/sh
+SHELL = @SHELL@
 
-srcdir = .
-top_srcdir = .
-prefix = /usr/local
-exec_prefix = ${prefix}
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
 
-bindir = ${exec_prefix}/bin
-sbindir = ${exec_prefix}/sbin
-libexecdir = ${exec_prefix}/libexec
-datadir = ${prefix}/share
-sysconfdir = ${prefix}/etc
-sharedstatedir = ${prefix}/com
-localstatedir = ${prefix}/var
-libdir = ${exec_prefix}/lib
-infodir = ${prefix}/info
-mandir = ${prefix}/man
-includedir = ${prefix}/include
+bindir = @bindir@
+sbindir = @sbindir@
+libexecdir = @libexecdir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
 oldincludedir = /usr/include
 
 DESTDIR =
 
-pkgdatadir = $(datadir)/lavtools
-pkglibdir = $(libdir)/lavtools
-pkgincludedir = $(includedir)/lavtools
+pkgdatadir = $(datadir)/@PACKAGE@
+pkglibdir = $(libdir)/@PACKAGE@
+pkgincludedir = $(includedir)/@PACKAGE@
 
 top_builddir = .
 
-ACLOCAL = aclocal
-AUTOCONF = autoconf
-AUTOMAKE = automake
-AUTOHEADER = autoheader
+ACLOCAL = @ACLOCAL@
+AUTOCONF = @AUTOCONF@
+AUTOMAKE = @AUTOMAKE@
+AUTOHEADER = @AUTOHEADER@
 
-INSTALL = /usr/bin/install -c
-INSTALL_PROGRAM = ${INSTALL} $(AM_INSTALL_PROGRAM_FLAGS)
-INSTALL_DATA = ${INSTALL} -m 644
-INSTALL_SCRIPT = ${INSTALL_PROGRAM}
-transform = s,x,x,
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@ $(AM_INSTALL_PROGRAM_FLAGS)
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+transform = @program_transform_name@
 
 NORMAL_INSTALL = :
 PRE_INSTALL = :
@@ -61,37 +61,37 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
-CC = gcc
-GLIB_CFLAGS = -I/usr/lib/glib/include
-GLIB_CONFIG = /usr/bin/glib-config
-GLIB_LIBS = -L/usr/lib -lglib
-JPEG = -ljpeg
-MAKEINFO = /usr/src/mjpeg_play/missing makeinfo
-PACKAGE = lavtools
-RANLIB = ranlib
-SDL = -lSDL -lpthread
-SDL_CFLAGS = -I/usr/include/SDL -D_REENTRANT
-SDL_CONFIG = /usr/bin/sdl-config
-SDL_LIBS = -L/usr/lib -Wl,-rpath,/usr/lib -lSDL -lpthread
-VERSION = 0.1.0
-X_CFLAGS =  -I/usr/X11R6/include
-X_EXTRA_LIBS = 
-X_LIBS =  -L/usr/X11R6/lib
-X_PRE_LIBS =  -lSM -lICE
-build_MJPEG = yes
-x_libraries = /usr/X11R6/lib
+CC = @CC@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GLIB_LIBS = @GLIB_LIBS@
+JPEG = @JPEG@
+MAKEINFO = @MAKEINFO@
+PACKAGE = @PACKAGE@
+RANLIB = @RANLIB@
+SDL = @SDL@
+SDL_CFLAGS = @SDL_CFLAGS@
+SDL_CONFIG = @SDL_CONFIG@
+SDL_LIBS = @SDL_LIBS@
+VERSION = @VERSION@
+X_CFLAGS = @X_CFLAGS@
+X_EXTRA_LIBS = @X_EXTRA_LIBS@
+X_LIBS = @X_LIBS@
+X_PRE_LIBS = @X_PRE_LIBS@
+build_MJPEG = @build_MJPEG@
+x_libraries = @x_libraries@
 
-INCLUDES = -I./mjpeg -I./movtar -I./quicktime/quicktime -I/usr/X11R6/lib -I/usr/lib/glib/include 
+INCLUDES = -I./mjpeg -I./movtar -I./quicktime/quicktime -I/usr/X11R6/lib @GLIB_CFLAGS@ 
 SUBDIRS = mjpeg movtar quicktime . aenc mpegjoin mplex utils xlav
 
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf
 lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
-lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime -L/usr/lib -lglib
-lavplay_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread -lSDL -lpthread -ljpeg 
+lavplay_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime @GLIB_LIBS@
+lavplay_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread @SDL@ @JPEG@ 
 
 lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
-lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime -L/usr/lib -lglib
-lavrec_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread -ljpeg 
+lavrec_LDFLAGS = -L./movtar/ -L./mjpeg/ -L./quicktime/quicktime @GLIB_LIBS@
+lavrec_LDADD = -lmovtar -lmjpeg -lquicktime -lpng -lpthread @JPEG@ 
 
 lavvideo_SOURCES = lavvideo.c
 
@@ -104,10 +104,10 @@ CONFIG_CLEAN_FILES =
 PROGRAMS =  $(bin_PROGRAMS)
 
 
-DEFS =  -DPACKAGE=\"lavtools\" -DVERSION=\"0.1.0\" -DSTDC_HEADERS=1 -DRETSIGTYPE=void -DBUILD_MJPEG=1  -I. -I$(srcdir) 
-CPPFLAGS = 
-LDFLAGS = 
-LIBS = 
+DEFS = @DEFS@ -I. -I$(srcdir) 
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
 lavplay_OBJECTS =  lavplay.o avilib.o audiolib.o lav_io.o editlist.o
 lavplay_DEPENDENCIES = 
 lavrec_OBJECTS =  lavrec.o avilib.o audiolib.o lav_io.o
@@ -120,7 +120,7 @@ v4l_conf_OBJECTS =  v4l-conf.o
 v4l_conf_LDADD = $(LDADD)
 v4l_conf_DEPENDENCIES = 
 v4l_conf_LDFLAGS = 
-CFLAGS = -g -O2
+CFLAGS = @CFLAGS@
 COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
 CCLD = $(CC)
 DIST_COMMON =  README AUTHORS COPYING ChangeLog INSTALL Makefile.am \
@@ -220,7 +220,7 @@ v4l-conf: $(v4l_conf_OBJECTS) $(v4l_conf_DEPENDENCIES)
 #     (which will cause the Makefiles to be regenerated when you run `make');
 # (2) otherwise, pass the desired values on the `make' command line.
 
-
+@SET_MAKE@
 
 all-recursive install-data-recursive install-exec-recursive \
 installdirs-recursive install-recursive uninstall-recursive  \

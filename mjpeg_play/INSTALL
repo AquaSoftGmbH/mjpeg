@@ -1,0 +1,21 @@
+                                   XMPS
+				   ----
+
+XMPS stands for the X MPEG Player System and is ditributed under the General GNU Public Licence, see the COPYING file for details.
+
+Instalation:
+------------
+
+To install XMPS you will need GTK 1.2 or later, SDL 1.0.5 or later and any version of the SMPEG library (prefer 0.3.3 or later).
+
+To build the pakage just type :
+
+./configure -prefix=/where/you/want/to/install
+make
+
+Then (with root privileges if needed) :
+
+make install
+
+And then you are ready to launch xmps.
+
