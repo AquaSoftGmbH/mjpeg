@@ -7,5 +7,8 @@ man_MANS = lavplay.1  lavrec.1  mjpegtools.1  mpeg2enc.1  mplex.1 \
         yuvkineco.1 yuvycsnoise.1 yuvmedianfilter.1 \
 	lav2divx.1 yuv2divx.1 divxdec.1 lav2mpeg.1 \
 	yuv4mpeg.5
+install-exec-hook:
+	./install-info.sh $(infodir)
 EXTRA_DIST = $(man_MANS) authors.sgml lavtools.sgml .cvsignore
+
 MAINTAINERCLEANFILES = Makefile.in
