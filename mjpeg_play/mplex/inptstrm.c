@@ -266,7 +266,6 @@ void get_info_video (char *video_file,
 
 					access_unit.length = (int) (stream_length - offset_bits)>>3;
 					offset_bits = stream_length;
-					VectorAppend( vaunits, &access_unit );
 					video_info->avg_frames[access_unit.type-1]+=access_unit.length;
 	
 				}
@@ -288,11 +287,16 @@ void get_info_video (char *video_file,
 				DTS = decoding_order * secs_per_frame*CLOCKS;
 				PTS = (temporal_reference - group_order + 1 + 
 					   decoding_order) * secs_per_frame*CLOCKS;
-
+				/* TODO DEBUG */
+				printf( "DecN=%ld PresN=%ld type=%d\n", decoding_order, temporal_reference - group_order + 1 + 
+					   decoding_order, access_unit.type);
 				*startup_delay=(PTS<*startup_delay ? PTS : *startup_delay);
 
 				make_timecode (DTS,&access_unit.DTS);
 				make_timecode (PTS,&access_unit.PTS);
+				printf( "DTS=%lld PTS=%lld \n", access_unit.DTS.thetime/300, access_unit.PTS.thetime/300 );
+
+
 				decoding_order++;
 				group_order++;
 
@@ -302,7 +306,7 @@ void get_info_video (char *video_file,
 				prozent =(int) (((float)bitcount(&video_bs)/8/(float)length)*100);
 				video_info->num_pictures++;	
 		    
-
+				VectorAppend( vaunits, &access_unit );
 
 				if (prozent > old_prozent && verbose > 0 )
 				{

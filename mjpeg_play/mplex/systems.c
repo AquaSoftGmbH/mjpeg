@@ -124,6 +124,9 @@ void create_sector (Sector_struc 	 *sector,
     size_offset = index;   
 	index += 2;
  
+ 	if( PTS != NULL && DTS != NULL )
+		printf( "V DTS=%lld PTS=%lld\n", DTS->thetime/300, PTS->thetime/300);
+
 
 	if( opt_mpeg == 1 )
 	{

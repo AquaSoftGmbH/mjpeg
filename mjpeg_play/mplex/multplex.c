@@ -48,6 +48,8 @@ static int last_scr_byte_in_pack;
 static int rate_restriction_flag;
 static int always_sys_header_in_pack;
 static int sys_header_in_pack1;
+static int buffers_in_video;
+static int always_buffers_in_video;
 static int trailing_pad_pack;
 
 static int audio_max_packet_data;
@@ -98,11 +100,13 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	trailing_pad_pack = 1;
 	  	opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2352;	        /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 30;
+	  	transport_prefix_sectors = 1;
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
 	  	video_buffer_size = 46*1024;
+		buffers_in_video = 1;
+		always_buffers_in_video = 0;
 		break;
 	
 		case 2 : 
@@ -117,6 +121,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
 	  	video_buffer_size = 46*1024;
+		buffers_in_video = 1;
+		always_buffers_in_video = 0;
 		break;
 		
 		case 3 :   /* alternate VCD 2 */
@@ -130,7 +136,9 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
-	  	video_buffer_size = 46*1024;	
+	  	video_buffer_size = 46*1024;
+		buffers_in_video = 1;
+		always_buffers_in_video = 0;
 		break;
 		
 		case 4 : /* Atlernate VCD 3 */
@@ -140,12 +148,13 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	trailing_pad_pack = 1;
 	  	opt_data_rate = 75*2324;  			 /* 75 raw CD sectors/sec */ 
 	  	sector_transport_size = 2324;	        /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 0;
+	  	transport_prefix_sectors = 1;
 	  	sector_size = 2324;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
 	  	video_buffer_size = 46*1024;
-		
+		buffers_in_video = 1;
+		always_buffers_in_video = 0;		
 		break;
 	 
 	 	default : /* MPEG_MPEG1 - auto format MPEG1 */
@@ -157,6 +166,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		transport_prefix_sectors = 0;
 		sector_size = opt_sector_size;
 		video_buffer_size = opt_buffer_size * 1024;
+		buffers_in_video = 1;
+		always_buffers_in_video = 1;
 		break;
 	}
 	
@@ -279,22 +290,10 @@ void outputstreamprefix( Timecode_struc *current_SCR)
 
 	/* VCD: Two padding packets with video and audio system headers */
 	
-	if ( opt_mux_format == MPEG_VCD )
+	if ( opt_mux_format != MPEG_MPEG1 )
 	{
-		/* First packet carries audio-info-only sys_header */
-		create_sys_header (&sys_header, mux_rate, 1, 0, 0, 0, 0, 0,
-					   AUDIO_STR_0, 0, audio_buffer_size/128,
-					   VIDEO_STR_0, 1, video_buffer_size/1024, 
-					   which_streams  & STREAMS_AUDIO );
-	  	output_padding( current_SCR, ostream,
-					  	TRUE,
-					 	 TRUE,
-					 	 FALSE);
-		bytes_output += sector_transport_size;
-		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, current_SCR);
-		
-		/* Second packet carries video-info-only sys_header */
-		create_sys_header (&sys_header, mux_rate,0, 0, 0, 0, 0, 1,
+		/* First packet carries video-info-only sys_header */
+		create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
 					   AUDIO_STR_0, 0, audio_buffer_size/128,
 					   VIDEO_STR_0, 1, video_buffer_size/1024, 
 					   which_streams  & STREAMS_VIDEO);
@@ -303,7 +302,21 @@ void outputstreamprefix( Timecode_struc *current_SCR)
 					 	 TRUE,
 					 	 FALSE);					 
 		bytes_output += sector_transport_size;			 
-		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, current_SCR);
+		bytepos_timecode ( bytes_output, current_SCR);
+		
+				/* Second packet carries audio-info-only sys_header */
+		create_sys_header (&sys_header, mux_rate, 1, 0, 1, 1, 1, 0,
+					   AUDIO_STR_0, 0, audio_buffer_size/128,
+					   VIDEO_STR_0, 1, video_buffer_size/1024, 
+					   which_streams  & STREAMS_AUDIO );
+	  	output_padding( current_SCR, ostream,
+					  	TRUE,
+					 	 TRUE,
+					 	 FALSE);
+		bytes_output += sector_transport_size;
+		bytepos_timecode ( bytes_output, current_SCR);
+		
+
 	}
 }
 
@@ -391,6 +404,7 @@ void outputstream ( char 		*video_file,
 
 	Timecode_struc SCR_audio_delay;
 	Timecode_struc SCR_video_delay;
+	Timecode_struc transport_delay;
 	Timecode_struc current_SCR;
 	Timecode_struc audio_next_SCR;
 	Timecode_struc video_next_SCR;
@@ -419,7 +433,9 @@ void outputstream ( char 		*video_file,
 
 	empty_vaunit_struc (&video_au);
 	empty_aaunit_struc (&audio_au);
-
+	picture_start     = FALSE;
+	audio_frame_start = FALSE;
+	
 	if (which_streams & STREAMS_AUDIO) {
 		audio_au = *(Aaunit_struc*)VectorNext( aaunit_info_vec );
 		audio_frame_start = TRUE;
@@ -428,6 +444,8 @@ void outputstream ( char 		*video_file,
 		video_au = *(Vaunit_struc*)VectorNext( vaunit_info_vec );
 		picture_start = TRUE;
 	}
+
+	printf( "III DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime, video_au.PTS.thetime, video_au.type );
 
 
 	/* Bufferstrukturen Initialisieren				*/
@@ -439,8 +457,6 @@ void outputstream ( char 		*video_file,
 	printf("\nMerging elementary streams to MPEG/SYSTEMS multiplexed stream.\n");
 
 	packets_left_in_pack = packets_per_pack;
-	picture_start     = FALSE;
-	audio_frame_start = FALSE;
 	include_sys_header = sys_header_in_pack1;
  
 	/* Set the SCR to the appropriate time for the first payload sector of the eventual transport
@@ -448,7 +464,7 @@ void outputstream ( char 		*video_file,
 	*/
 
 	bytes_output = transport_prefix_sectors*sector_transport_size;
-	bytepos_timecode ( bytes_output+last_scr_byte_in_pack, &current_SCR);
+	bytepos_timecode ( bytes_output, &current_SCR);
 
     /*  DTS of the first units is supposed to be zero. To avoid
 	  Buffer underflow, we have to compute how long it takes for
@@ -485,7 +501,8 @@ void outputstream ( char 		*video_file,
 	add_to_timecode	(&SCR_video_delay, &video_au.PTS);
 	add_to_timecode	(&SCR_audio_delay, &audio_au.PTS);
 
-	
+	printf( "II DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime, video_au.PTS.thetime, video_au.type );
+
 	/* Output any special prefix packets required by the specified stream format 	*/
 	/* bytes_output and current_SCR will be correctly updated...                  	*/
 	outputstreamprefix( &current_SCR );
@@ -520,7 +537,7 @@ void outputstream ( char 		*video_file,
 		}
 
 
-
+		printf( "DTS=%lld PTS=%lld kind =%d\n", video_au.DTS.thetime/300, video_au.PTS.thetime/300, video_au.type );
 
 		/* Calculate amount of data to be moved for the next AU's.
 		   Slightly pessimistic - assumes worst-case packet data capacity
@@ -540,7 +557,7 @@ void outputstream ( char 		*video_file,
 		*/
 		
 		
-		bytepos_timecode ( bytes_output+last_scr_byte_in_pack, &current_SCR);
+		bytepos_timecode ( bytes_output, &current_SCR);
 		bytepos_timecode (bytes_output+(sector_transport_size+audio_bytes), &audio_next_SCR);
 		bytepos_timecode (bytes_output+(sector_transport_size+video_bytes), &video_next_SCR);
 
@@ -577,6 +594,7 @@ void outputstream ( char 		*video_file,
 					 ! comp_timecode (&video_next_SCR, &video_au.DTS) &&
 					 comp_timecode (&audio_next_SCR, &audio_au.PTS ) 
 				 )
+			 && nsec_v != 0
 			)
 		{
 			/* Calculate actual time current AU is likely to arrive. */
@@ -811,7 +829,7 @@ void output_video ( Timecode_struc *SCR,
 	 fields so there is a dead spot where we *have* to stuff the packet rather than start
 	 fitting in an extra AU.
   */
-
+		printf( "OV DTS=%lld PTS=%lld\n", video_au->DTS.thetime/300, video_au->PTS.thetime/300);
   next_vau = VectorLookAhead( vaunit_info_vec, 1 );
   if( next_vau != NULL )
 	{
@@ -838,9 +856,9 @@ void output_video ( Timecode_struc *SCR,
 	  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 					  0,
 					  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
-					  TRUE, &video_au->PTS, &video_au->DTS,
+					  buffers_in_video, &video_au->PTS, &video_au->DTS,
 					  timestamps );
-
+	  
 	  bytes_left = cur_sector.length_of_packet_data;
 	  next_video_access_unit (buffer, video_au, &bytes_left, 
 							  picture_start, SCR_delay, vaunit_info_vec);
@@ -857,7 +875,7 @@ void output_video ( Timecode_struc *SCR,
 	  create_sector( &cur_sector, pack_ptr, sys_header_ptr,
 					 video_au->length,
 					 istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
-					 TRUE, NULL, NULL,
+					 buffers_in_video, NULL, NULL,
 					 TIMESTAMPBITS_NO );
 
 	  bytes_left = cur_sector.length_of_packet_data;	
@@ -895,7 +913,7 @@ void output_video ( Timecode_struc *SCR,
 		  create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						 0,
 						 istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
-						 TRUE, &video_au->PTS, &video_au->DTS,
+						 buffers_in_video, &video_au->PTS, &video_au->DTS,
 						 timestamps );
 		  bytes_left = cur_sector.length_of_packet_data - temp;
 		  next_video_access_unit (buffer, video_au, &bytes_left, 
@@ -908,7 +926,7 @@ void output_video ( Timecode_struc *SCR,
 		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 						  0,
 						  istream_v, VIDEO_STR_0, 1, video_buffer_size/1024,
-						  TRUE, NULL, NULL,
+						  buffers_in_video, NULL, NULL,
 						  TIMESTAMPBITS_NO );
 		};
 #ifdef TIMER
@@ -939,6 +957,8 @@ void output_video ( Timecode_struc *SCR,
 	cur_sector.length_of_sector,sector_size  );
 	exit(1);
   }
+  
+  buffers_in_video = always_buffers_in_video;
 	
 }
 
