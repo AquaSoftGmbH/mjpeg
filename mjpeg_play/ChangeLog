@@ -7,8 +7,9 @@
 
 	* Created libmjpeg
 
-2000-12-07
+2000-12-07 Andrew Stevens (as@comlab.ox.ac.uk)
 
+	* 1.3b2 release.  Tag: 1_3Beta2
 
 	* Initial support for Software-only mjpeg playback.
 
@@ -27,9 +28,16 @@
 	Initial MPEG-2 video support.  Supports layer 3 audio and (hopefully)
 	MPEG audio V2 and V2.5 though these don't look too useful...
 
-	
+        * Bug fixes and support for software-only playback of mjpeg.	
+       
 CVS log:
 $Log$
+Revision 1.5  2000/12/15 19:34:09  wackston
+MPEG-2 encoding has been restored to working order. Still some doubts about
+whether its 100% correct again but as far as I can tell any remaining bugs are just sub-optimality rather than crass errors.
+
+mplex now support MPEG-2 mux-ing *and* layer 3 audio.
+
 Revision 1.4  2000/12/07 19:09:04  wackston
 *** empty log message ***
 
