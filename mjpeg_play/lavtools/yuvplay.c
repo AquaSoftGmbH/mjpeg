@@ -23,6 +23,8 @@
 #include <signal.h>
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include <mpegconsts.h>
+#include <mpegtimecode.h>
 #include <SDL/SDL.h>
 #include <sys/time.h>
 
@@ -53,15 +55,13 @@ static long get_time_diff(struct timeval time_now) {
 }
 
 static char *print_status(int frame, double framerate) {
-   int m, h, s, f;
+   MPEG_timecode_t tc;
    static char temp[256];
 
-   m = frame / (60 * framerate);
-   h = m / 60;
-   m = m % 60;
-   s = (int)(frame/framerate) % 60;
-   f = frame % (int)framerate;
-   sprintf(temp, "%d:%2.2d:%2.2d.%2.2d", h, m, s, f);
+   mpeg_timecode(&tc, frame,
+		 mpeg_framerate_code(mpeg_conform_framerate(framerate)),
+		 framerate);
+   sprintf(temp, "%d:%2.2d:%2.2d.%2.2d", tc.h, tc.m, tc.s, tc.f);
    return temp;
 }
 

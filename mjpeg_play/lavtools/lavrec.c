@@ -178,6 +178,7 @@
 #endif
 #include "liblavrec.h"
 #include "mjpeg_logging.h"
+#include <mpegtimecode.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -540,7 +541,7 @@ static void statechanged(int new)
 
 static void batch_stats(video_capture_stats *stats)
 {
-    int nf, ns, nm, nh;
+	MPEG_timecode_t tc;
 	static int first_stats = 1;
 	static video_capture_stats prev_stats;
 	return;
@@ -561,23 +562,11 @@ static void batch_stats(video_capture_stats *stats)
 	}
 
 	prev_stats = *stats;
-    if(info->video_norm!=1)
-    {
-      nf = stats->num_frames % 25;
-      ns = stats->num_frames / 25;
-    }
-    else
-    {
-      nf = stats->num_frames % 30;
-      ns = stats->num_frames / 30;
-    }
-    nm = ns / 60;
-    ns = ns % 60;
-    nh = nm / 60;
-    nm = nm % 60;
+	mpeg_timecode(&tc, stats->num_frames, ((info->video_norm!=1)? 3: 4),
+				  ((info->video_norm!=1)? 25.: 30000./1001.));
 	printf("%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
 		   "ae:%3d td1=%.3f td2=%.3f\n",
-		   nh, nm, ns, nf, 
+		   tc.h, tc.m, tc.s, tc.f,
 		   (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
         stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);
 
@@ -587,23 +576,11 @@ static void output_stats(video_capture_stats *stats)
 {
   if (show_stats > 0)
   {
-    int nf, ns, nm, nh;
+    MPEG_timecode_t tc;
     char infostring[1024];
 
-    if(info->video_norm!=1)
-    {
-      nf = stats->num_frames % 25;
-      ns = stats->num_frames / 25;
-    }
-    else
-    {
-      nf = stats->num_frames % 30;
-      ns = stats->num_frames / 30;
-    }
-    nm = ns / 60;
-    ns = ns % 60;
-    nh = nm / 60;
-    nm = nm % 60;
+    mpeg_timecode(&tc, stats->num_frames, ((info->video_norm!=1)? 3: 4),
+				  ((info->video_norm!=1)? 25.: 30000./1001.));
     if( stats->prev_sync.tv_usec > stats->cur_sync.tv_usec )
       stats->prev_sync.tv_usec -= 1000000;
     if (info->single_frame)
@@ -612,7 +589,7 @@ static void output_stats(video_capture_stats *stats)
       sprintf(infostring,
         "%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
         "ae:%3d td1=%.3f td2=%.3f\r",
-        nh, nm, ns, nf, 
+        tc.h, tc.m, tc.s, tc.f,
         (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
         stats->num_ins, stats->num_del, stats->num_aerr, stats->tdiff1, stats->tdiff2);
      printf(infostring);

@@ -125,6 +125,8 @@
 
 #include "liblavplay.c"
 #include "mjpeg_logging.h"
+#include <mpegconsts.h>
+#include <mpegtimecode.h>
 #include <signal.h>
 #ifdef HAVE_GETOPT_H
 #include <getopt.h>
@@ -217,19 +219,17 @@ static void stats(video_playback_stats *stats)
 
   if (gui_mode)
   {
-    printf("@%c%d/%ld/%d\n",stats->norm==1?'n':'p',stats->frame,
+    printf("@%g/%d/%ld/%d\n",info->editlist->video_fps,stats->frame,
       info->editlist->video_frames,stats->play_speed);
   }
   else
   {
-    int h,m,s,f, fps;
-    fps = stats->norm==1?30:25;
-    h = stats->frame / (3600 * fps);
-    m = (stats->frame / (60 * fps)) % 60;
-    s = (stats->frame / fps) % 60;
-    f = stats->frame % fps;
+    MPEG_timecode_t tc;
+    mpeg_timecode(&tc, stats->frame, mpeg_framerate_code
+		  (mpeg_conform_framerate(info->editlist->video_fps)),
+		  info->editlist->video_fps);
     printf("%d:%2.2d:%2.2d.%2.2d (%6.6d/%6.6ld) - Speed: %c%d, Norm: %s, Diff: %f\r",
-      h,m,s,f,stats->frame, info->editlist->video_frames,
+      tc.h, tc.m, tc.s, tc.f, stats->frame, info->editlist->video_frames,
       stats->play_speed>0?'+':(stats->play_speed<0?'-':' '), abs(stats->play_speed),
       stats->norm==1?"NTSC":"PAL", stats->tdiff);
   }

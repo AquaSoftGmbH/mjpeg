@@ -9,6 +9,8 @@
 #include "glav.h"
 #include <gdk/gdkkeysyms.h>
 #include <unistd.h>
+#include <mpegconsts.h>
+#include <mpegtimecode.h>
 
 #define PLAY_PROG "lavplay"
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION /* Expected version info */
@@ -21,7 +23,8 @@ static int out_pipe;
 
 static int pid;
 
-static int norm, cur_pos, total_frames, cur_speed=1, old_speed=999999;
+static double fps;
+static int cur_pos, total_frames, cur_speed=1, old_speed=999999;
 static int slider_pause = 0;
 
 static int ff_stat=0, fr_stat=0;
@@ -54,26 +57,12 @@ static void skip_num_frames(int num) {
 
 static void calc_timecode(int pos, int do_frames)
 {
-   int h, m, s, f;
+   MPEG_timecode_t tc;
 
-   /* Calculate hours:min:sec:frames */
-
-   if(norm=='n')
-   {
-      f = cur_pos%30;
-      s = cur_pos/30;
-   }
-   else
-   {
-      f = cur_pos%25;
-      s = cur_pos/25;
-   }
-   m = s/60;
-   s = s%60;
-   h = m/60;
-   m = m%60;
-   if (!do_frames) f=0;
-   sprintf(timecode,"%2d:%2.2d:%2.2d:%2.2d",h,m,s,f);
+   mpeg_timecode(&tc, pos,
+		 mpeg_framerate_code(mpeg_conform_framerate(fps)), fps);
+   if (!do_frames) tc.f=0;
+   sprintf(timecode,"%2d:%2.2d:%2.2d:%2.2d",tc.h,tc.m,tc.s,tc.f);
 }
 
 void store_filename(GtkFileSelection *selector, gpointer user_data) {
@@ -248,7 +237,6 @@ void quick_message(char *message) {
 
 void dispatch_input(void)
 {
-	char normc;
    /* A line starting with '-' should be ignored */
 
    if(inpbuff[0]=='-') return;
@@ -257,9 +245,7 @@ void dispatch_input(void)
 
    if(inpbuff[0]=='@')
    {
-      double cp, tf;
-      sscanf(inpbuff+1,"%c%d/%d/%d",&normc,&cur_pos,&total_frames,&cur_speed);
-	  norm = normc;
+      sscanf(inpbuff+1,"%lg/%d/%d/%d",&fps,&cur_pos,&total_frames,&cur_speed);
       calc_timecode(cur_pos,cur_speed==0);
       gtk_label_set_text(GTK_LABEL(gtk_xlav->Timer),timecode);
       // fl_set_object_label(gtk_xlav->Timer,timecode);
