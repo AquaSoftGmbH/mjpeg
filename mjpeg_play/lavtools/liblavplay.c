@@ -1830,6 +1830,7 @@ lavplay_t *lavplay_malloc()
    info->exchange_fields = 0;
    info->zoom_to_fit = 0;
    info->flicker_reduction = 1;
+   info->preserve_pathnames = 0;
    info->sdl_width = 0; /* use video size */
    info->sdl_height = 0; /* use video size */
    info->vw_x_offset = 0;
@@ -2206,7 +2207,7 @@ int lavplay_edit_addmovie(lavplay_t *info, char *movie, long start, long end, lo
    EditList *editlist = info->editlist;
    int n, i;
 
-   n = open_video_file(movie, editlist);
+   n = open_video_file(movie, editlist, info->preserve_pathnames);
 
    if (start < 0)
    {
@@ -2403,7 +2404,7 @@ int lavplay_open(lavplay_t *info, char **files, int num_files)
    }
 
    /* open the new movie(s) */
-   read_video_files(files, num_files, new_eli);
+   read_video_files(files, num_files, new_eli, info->preserve_pathnames);
 
    if (settings->state == LAVPLAY_STATE_STOP)
    {

@@ -37,36 +37,30 @@ EditList el;
 
 void Usage(char *str)
 {
-   printf("Usage: %s [params] inputfiles\n", str);
-   printf("   where possible params are:\n");
-   printf("   -a widthxhight+x+y\n");
-   printf("   -s num     Special output format option:\n");
-   printf("                 0 output like input, nothing special\n");
-   printf
-       ("                 1 create half height/width output from interlaced input\n");
-   printf
-       ("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
-   printf
-       ("                 3 create 352 wide output from 720 wide input (for vcd)\n");
-   printf
-       ("                 4 create 480 x 480 output from 720 x 240 input (for svcd)\n");
-   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
-   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
-   printf("   -m         Force mono-chrome\n");
-   printf("   -x         Exchange fields for interlaced frames\n");
-   printf("   -F         Shift fields (corrects capturing frames wrong field first)\n");
-   printf("   -S list.el Output a scene list with scene detection\n");
-   printf("   -T num     Set scene detection threshold to num (default: 4)\n");
-   printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
-   printf("   -A w:h     Set output sample aspect ratio (default is to detect\n");
-   printf("               and/or guess from the first input frame)\n");
-   printf("   -o num     Frame offset - skip num frames in the beginning\n");
-   printf("              if num is negative, all but the last num frames are skipped\n");
-   printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
-   printf("   -I num     De-Interlacing mode for DV input (0,1,2,3)\n");
-   printf("   -i num     De-Interlacing spatial threshold (default: 440)\n");
-   printf("   -j num     De-Interlacing temporal threshold (default: 220)\n");
-   printf("   -Y         switch field order in DV input\n");
+   fprintf(stderr,
+   "Usage: %s [params] inputfiles\n"
+   "   where possible params are:\n"
+   "   -a widthxhight+x+y\n"
+   "   -n num     Noise filter (low-pass) [0..2] (default: 0)\n"
+   "   -m         Force mono-chrome\n"
+   "   -x         Exchange fields for interlaced frames\n"
+   "   -F         Shift fields (corrects capturing frames wrong field first)\n"
+   "   -S list.el Output a scene list with scene detection\n"
+   "   -T num     Set scene detection threshold to num (default: 4)\n"
+   "   -D num     Width decimation to use for scene detection (default: 2)\n"
+   "   -A w:h     Set output sample aspect ratio (default is to guess)\n"
+   "   -P [1..4]  Label output with intended display (picture) aspect ratio code\n"
+   "              1 = square pixels, 2 = 4:3, 2=16:9, 3=2.21:1\n"
+   "              Not setting this option = unknown display aspect ratio\n"
+   "               and/or guess from the first input frame)\n"
+   "   -o num     Frame offset - skip num frames in the beginning\n"
+   "              if num is negative, all but the last num frames are skipped\n"
+   "   -f num     Only num frames are written to stdout (0 means all frames)\n"
+   "   -I num     De-Interlacing mode for DV input (0,1,2,3)\n"
+   "   -i num     De-Interlacing spatial threshold (default: 440)\n"
+   "   -j num     De-Interlacing temporal threshold (default: 220)\n"
+   "   -Y         switch field order in DV input\n",
+  str);
    exit(0);
 }
 
@@ -75,12 +69,10 @@ static int last_lum_mean;
 static int delta_lum;
 static int scene_num;
 static int scene_start;
-static int param_exchange_fields=0;
-static int param_shift_fields=0;
 static int source_inter;
 
 LavBounds bounds;
-LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
+LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0, 0 };
 LavBuffers buffer;
 
 void streamout(void)
@@ -94,17 +86,10 @@ void streamout(void)
    
 	char temp[32];
 	uint8_t *frame_buf[3];
-	uint8_t *prev_frame_buf[3];
 	y4m_frame_info_t frameinfo;
 
 	y4m_init_frame_info(&frameinfo);
 
-	if( param_shift_fields )
-	{
-		prev_frame_buf[0] = malloc( param.output_width*param.output_height );
-		prev_frame_buf[1] = malloc( param.output_width/2*param.output_height/2 );
-		prev_frame_buf[2] = malloc( param.output_width/2*param.output_height/2 );
-	}
 
 	if (!param.scenefile)
 		writeoutYUV4MPEGheader(fd_out, &param, el);
@@ -175,103 +160,6 @@ void streamout(void)
 			movie_num = N_EL_FILE(el.frame_list[framenum]);
 
 		} 
-		else if( param_shift_fields )
-		{
-			int i,j;
-			int Y_offset;
-			int C_offset;
-			int64_t tmp;
-			uint8_t **buffer_frame;
-			int64_t *cur,*prev,*buf;
-
-			if( framenum == param.offset )
-			{
-				buffer_frame = frame_buf;
-			}
-			else
-			{
-				buffer_frame = prev_frame_buf;
-			}
-
-			/* We need to use the field captured 2nd of the previous
-			   frame as the corresponding field of our current frame.
-			   Since we're going to use the captured 2nd field of the
-			   current frame for the next frame we simply swap the captured
-			   2nd field with a buffer...
-			*/
-
-			if( source_inter == LAV_INTER_BOTTOM_FIRST )
-			{
-				Y_offset = 0;
-				C_offset = 0;
-			}
-			else				/* LAV_INTER_TOP_FIRST */
-			{
-				Y_offset = param.output_width;
-				C_offset = param.output_width>>1;
-			}
-
-			for( j = 0; j < param.output_height; j += 4 )
-			{
-				/* Swap first row of luma data 4:2:2 video!*/
-				cur = (int64_t *)(frame_buf[0]+Y_offset);
-				prev = (int64_t *)(prev_frame_buf[0]+Y_offset);
-				buf = (int64_t *)(buffer_frame[0]+Y_offset);
-				for( i = 0; i < param.output_width/8; i += 2 )
-				{
-					tmp = cur[i];
-					cur[i] = buf[i];
-					prev[i] = tmp;
-					tmp = cur[i+1];
-					cur[i+1] = buf[i+1];
-					prev[i+1] = tmp;
-				}
-				Y_offset += (param.output_width*2);
-				
-				/* Swap second row of luma data 4:2:2 video!*/
-				cur = (int64_t *)(frame_buf[0]+Y_offset);
-				prev = (int64_t *)(prev_frame_buf[0]+Y_offset);
-				buf = (int64_t *)(buffer_frame[0]+Y_offset);
-				for( i = 0; i < param.output_width/8; i +=2 )
-				{
-					tmp = cur[i];
-					cur[i] = buf[i];
-					prev[i] = tmp;
-					tmp = cur[i+1];
-					cur[i+1] = buf[i+1];
-					prev[i+1] = tmp;
-				}
-				Y_offset += (param.output_width*2);
-
-				
-				/* Swap row of U data 4:2:2 video!*/
-				cur = (int64_t *)(frame_buf[1]+C_offset);
-				prev = (int64_t *)(prev_frame_buf[1]+C_offset);
-				buf = (int64_t *)(buffer_frame[1]+C_offset);
-				for( i = 0; i < param.output_width/(8*2); ++i )
-				{
-					tmp = cur[i];
-					cur[i] = buf[i];
-					prev[i] = tmp;
-				}
-
-				/* Swap row of V data 4:2:2 video!*/
-				cur = (int64_t *)(frame_buf[2]+C_offset);
-				prev = (int64_t *)(prev_frame_buf[2]+C_offset);
-				buf = (int64_t *)(buffer_frame[2]+C_offset);
-				for( i = 0; i < param.output_width/(8*2); ++i )
-				{
-					tmp = cur[i];
-					cur[i] = buf[i];
-					prev[i] = tmp;
-				}
-				
-				C_offset += (param.output_width);
-			}
-			writeoutframeinYUV4MPEG(fd_out, frame_buf, &bounds, &param, &buffer, &frameinfo);
-
-
-		}
 		else
 		{
 			writeoutframeinYUV4MPEG(fd_out, frame_buf, &bounds, &param, &buffer, &frameinfo);
@@ -299,7 +187,7 @@ int main(argc, argv)
 
 	param.sar = y4m_sar_UNKNOWN;
 
-	while ((n = getopt(argc, argv, "mYv:a:s:d:n:S:T:D:o:f:I:i:j:xFA:")) != EOF) {
+	while ((n = getopt(argc, argv, "mYv:a:n:S:T:D:o:f:I:i:j:P:A:")) != EOF) {
 		switch (n) {
 
 		case 'a':
@@ -341,26 +229,10 @@ int main(argc, argv)
 			break;
 
 
-		case 's':
-			param.special = atoi(optarg);
-			if (param.special < 0 || param.special > 4) {
-				mjpeg_error( "-s option requires arg 0, 1, 2 or 3\n");
-				nerr++;
-			}
-			break;
-
 		case 'v':
 			verbose = atoi(optarg);
 			if (verbose < 0 ||verbose > 2) {
 				mjpeg_error( "-v option requires arg 0, 1, or 2\n");
-				nerr++;
-			}
-			break;
-
-		case 'd':
-			param.drop_lsb = atoi(optarg);
-			if (param.drop_lsb < 0 || param.drop_lsb > 3) {
-				mjpeg_error( "-d option requires arg 0..3\n");
 				nerr++;
 			}
 			break;
@@ -383,7 +255,8 @@ int main(argc, argv)
 
 		case 'i':
 			param.spatial_tolerance = atoi(optarg);
-			if (param.spatial_tolerance < 0 || param.spatial_tolerance > 65025) {
+			if (param.spatial_tolerance < 0 || param.spatial_tolerance > 65025)
+			{
 				mjpeg_error( "-i option requires a spatial tolerance between 0 and 65025\n");
 				nerr++;
 			}
@@ -419,13 +292,6 @@ int main(argc, argv)
 		case 'f':
 			param.frames = atoi(optarg);
 			break;
-		case 'x':
-			param_exchange_fields = 1;
-			break;
-
-		case 'F':
-			param_shift_fields = 1;
-			break;
 
 		case 'A':
 		  if (y4m_parse_ratio(&(param.sar), optarg)) {
@@ -433,7 +299,11 @@ int main(argc, argv)
 		    nerr++;
 		  }
 		  break;
-
+		case 'P':
+			param.dar_code = atoi(optarg);
+			if( param.dar_code < 0 || param.dar_code > 3 )
+				nerr++;
+			break;
 		default:
 			nerr++;
 		}
@@ -450,7 +320,7 @@ int main(argc, argv)
 
 	/* Open editlist */
 
-	read_video_files(argv + optind, argc - optind, &el);
+	read_video_files(argv + optind, argc - optind, &el,0);
 
 	param.output_width = el.video_width;
 	param.output_height = el.video_height;
@@ -468,56 +338,6 @@ int main(argc, argv)
 	if (param.frames == 0) {
 		param.frames = el.video_frames - param.offset;
 	}
-
-	switch (param.special) {
-
-	case 1:
-		if (el.video_inter) {
-			param.output_width = (el.video_width / 2) & 0xfffffff0;
-			param.output_height = el.video_height / 2;
-		} else {
-			mjpeg_error(
-				"-s 1 may only be set for interlaced video sources\n");
-			Usage(argv[0]);
-		}
-		break;
-
-	case 2:
-		if (el.video_width > 700) {
-			param.output_width = 480;
-		} else {
-			mjpeg_error(
-				"-s 2 may only be set for 720 pixel wide video sources\n");
-			Usage(argv[0]);
-		}
-		break;
-
-	case 3:
-		if (el.video_width > 700) {
-			param.output_width = 352;
-		} else {
-			mjpeg_error(
-				"-s 3 may only be set for 720 pixel wide video sources\n");
-			Usage(argv[0]);
-		}
-		break;
-
-	case 4:
-		if (el.video_width > 700) {
-			param.output_width = 480;
-			param.output_height = 480;
-		} else {
-			mjpeg_error(
-				"-s 4 may only be set for 720 pixel wide video sources\n");
-			Usage(argv[0]);
-		}
-	}
-
-	/* Round sizes to multiples of 16 ... */
-
-	//since when does JPEG need to be *16 size? That's only zoran limitation...
-	//param.output_width = ((param.output_width + 15) / 16) * 16;
-	//param.output_height = ((param.output_height + 15) / 16) * 16;
 
 	if (bounds.active_width == 0) {
 		bounds.active_width = param.output_width;
@@ -542,26 +362,6 @@ int main(argc, argv)
 	/* exchange fields if wanted */
 	source_inter = el.video_inter;
 
-	if ( param_exchange_fields || param_shift_fields )
-	{
-		if( param_shift_fields &&
-			el.video_inter != LAV_INTER_TOP_FIRST &&
-			el.video_inter != LAV_INTER_BOTTOM_FIRST )
-		{
-            mjpeg_warn("Input not interlaced - cannot shift field order\n");
-		}
-			
-		if( param_exchange_fields )
-		{
-			el.video_inter ^= (LAV_INTER_BOTTOM_FIRST^LAV_INTER_TOP_FIRST);
-		}
-		
-		if( param_shift_fields )
-		{
-			param.interlace ^= (LAV_INTER_BOTTOM_FIRST^LAV_INTER_TOP_FIRST);
-		}
-		
-	}
 
 	init(&bounds, &param, &buffer);
 

@@ -67,9 +67,7 @@ const static char roundadj[4] = { 0, 0, 1, 2 };
 typedef struct {
    int offset;
    int frames;
-   int drop_lsb;
    int noise_filt;
-   int special;
    int mono;
    char *scenefile;
    int YUV_swap_lines; // = 0;
@@ -81,8 +79,9 @@ typedef struct {
    unsigned int scene_detection_decimation; // = 2;
    int output_width;
    int output_height;
-   int interlace;				/* LAV not Y4M coding... */
+   int interlace;
    y4m_ratio_t sar; /* sample aspect ratio (default 0:0 == unspecified) */
+	int dar_code;				/* MPEG-2 Display aspect ratio code */
 } LavParam;
 //=
 //{ 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 } ;

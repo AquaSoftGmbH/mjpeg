@@ -1,5 +1,5 @@
 
-1.		Questions  Motion JPEG (MJPEG) (and MJPEG AVI)
+1.		Questions about Motion JPEG (MJPEG) (and MJPEG AVI)
 
 1.1		What is MJPEG?
 
@@ -151,3 +151,6 @@ solution is to wait for the problem to be fixed or to get another
 sound card.
 
 
+4.	  Questions about encoding with mjpegtools
+
+4.1	  Why does lav2yuv *always* give me a warning

@@ -34,14 +34,20 @@ static void malloc_error(void)
 	mjpeg_error_exit1("Out of memory - malloc failed\n");
 }
 
-int open_video_file(char *filename, EditList *el)
+int open_video_file(char *filename, EditList *el, int preserve_pathname)
 {
    int i, n, nerr;
    char realname[PATH_MAX];
 
-   /* Get full pathname of file */
+   /* Get full pathname of file if the user hasn't specified preservation
+	  of pathnames...
+	*/
 
-   if(realpath(filename,realname)==0)
+   if( preserve_pathname )
+   {
+	   strcpy(realname, filename);
+   }
+   else if(realpath(filename,realname)==0)
    {
 	   mjpeg_error_exit1( "Cannot deduce real filename: %s\n", sys_errlist[errno]);
    }
@@ -222,7 +228,8 @@ int open_video_file(char *filename, EditList *el)
 
 */
 
-void read_video_files(char **filename, int num_files, EditList *el)
+void read_video_files(char **filename, int num_files, EditList *el, 
+					  int preserve_pathnames)
 {
    FILE *fd;
    char line[1024];
@@ -307,7 +314,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
             }
             line[n-1] = 0; /* Get rid of \n at end */
 
-            index_list[i] = open_video_file(line,el);
+            index_list[i] = open_video_file(line,el,preserve_pathnames);
          }
 
          /* Read edit list entries */
@@ -341,7 +348,7 @@ void read_video_files(char **filename, int num_files, EditList *el)
 
          fclose(fd);
 
-         n = open_video_file(filename[nf],el);
+         n = open_video_file(filename[nf],el, preserve_pathnames);
 
          el->frame_list = (long*) realloc(el->frame_list,
                              (el->video_frames+el->num_frames[n])*sizeof(long));

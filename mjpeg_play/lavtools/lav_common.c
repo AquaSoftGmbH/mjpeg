@@ -410,57 +410,10 @@ int readframe(	int numframe,
 	default:
 		mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
 
-		if (param->special == 4) {
-			res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-								  chroma_format, param->output_width, param->output_height / 2,
-								  frame[0], frame[1], frame[2]);
-		} else {
-			res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-								  chroma_format, param->output_width, param->output_height,
-								  frame[0], frame[1], frame[2]);
-		}
+		res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
+							  chroma_format, param->output_width, param->output_height,
+							  frame[0], frame[1], frame[2]);
 
-		if (param->special == 4) 
-		{
-			/* Allocate the extra buffering if we actually need it... */
-			if( buffer->double_buf[0] == NULL )
-			{
-				for (i = 0; i < 3; i++) 
-				{
-					if (i == 0)
-						buffer->double_buf[i] = 
-							bufalloc(param->output_width * 
-									 param->output_height);
-					else
-						buffer->double_buf[i] = 
-							bufalloc( bounds->chroma_output_width * 
-									  bounds->chroma_output_height );
-				}
-			}
-
-			for (i = 0; i < param->output_height / 2; i++) {
-				memcpy(&buffer->double_buf[0][i * param->output_width * 2],
-					   &buffer->read_buf[0][i * param->output_width], param->output_width);
-				memcpy(&buffer->double_buf[0][i * param->output_width * 2 + param->output_width],
-					   &buffer->read_buf[0][i * param->output_width], param->output_width);
-			}
-
-			for (i = 0; i < bounds->chroma_height / 2; i++) {
-				memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2],
-					   &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
-				memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2 + bounds->chroma_width],
-					   &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
-
-				memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2],
-					   &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
-				memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2 + bounds->chroma_width],
-					   &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
-			}
-
-			frame[0] = buffer->double_buf[0];
-			frame[1] = buffer->double_buf[1];
-			frame[2] = buffer->double_buf[2];
-		}
 	}
 
 
@@ -470,35 +423,7 @@ int readframe(	int numframe,
 		return 1;
 	}
 
-	if (param->drop_lsb) {
-		int *p, *end, c;
-		int mask;
-		int round;
-		end = 0;                  /* Silence compiler */
-		for (c = 0; c < sizeof(int); ++c) {
-			((char *) &mask)[c] = (0xff << param->drop_lsb) & 0xff;
-			((char *) &round)[c] = roundadj[param->drop_lsb];
-		}
 
-
-		/* we know output_width is multiple of 16 so doing lsb dropping
-		   int-wise will work for sane (32-bit or 64-bit) machines
-		*/
-
-		for (c = 0; c < 3; ++c) {
-			p = (int *) frame[c];
-			if (c == 0) {
-				end = (int *) (frame[c] + param->output_width * param->output_height);
-			} else {
-				end =
-					(int *) (frame[c] +
-							 bounds->chroma_output_width * bounds->chroma_output_height);
-			}
-			while (p++ < end) {
-				*p = (*p & mask) + round;
-			}
-		}
-	}
 
 	if (param->noise_filt) {
 		uint8_t *bp;
@@ -611,12 +536,6 @@ void writeoutYUV4MPEGheader(
    int n;
    y4m_stream_info_t stream_info;
 
-#if 0
-   if (frame_rate_code == 0) {
-      mjpeg_warn("unrecognised frame-rate -  no MPEG2 rate code can be specified... "
-         "encoder is likely to fail!\n");
-   }
-#endif
 
    /* this is old YUV4MPEG stream stuff - obsolete
     * yuv_write_header (out_fd, param->output_width, param->output_height, frame_rate_code);
@@ -641,6 +560,13 @@ void writeoutYUV4MPEGheader(
      y4m_si_set_sampleaspect(&stream_info,
 			     guess_sar(param->output_width,
 				       param->output_height));
+   }
+
+   if( param->dar_code != 0 )
+   {
+	   char buf[20];
+	   snprintf( buf, 19, "XM2AR%03d", param->dar_code );
+	   y4m_xtag_add( y4m_si_xtags(&stream_info), buf );
    }
 
    n = y4m_write_stream_header(out_fd, &stream_info);

@@ -161,6 +161,7 @@ static void Usage(char *progname)
    fprintf(stderr, "  -x/--exchange-fields       Exchange fields of an interlaced video\n");
    fprintf(stderr, "  -z/--zoom                  Zoom video to fill screen as much as possible\n");
    fprintf(stderr, "  -Z/--full-screen           Switch to fullscreen\n");
+   fprintf(stderr, "  -P/--preserve-pathnames    Do not 'canonicalise' pathnames in editlists\n" );
    fprintf(stderr, "  -p/--playback ["
 #ifdef HAVE_SDL
       "S"
@@ -390,6 +391,10 @@ static int set_option(const char *name, char *value)
    {
       info->soft_full_screen = 1;
    }
+   else if( strcmp( name, "preserve-pathnames") == 0 || strcmp(name, "P")==0)
+   {
+	   info->preserve_pathnames = 1;
+   }
    else if (strcmp(name, "playback")==0 || strcmp(name, "p")==0)
    {
       switch (value[0])
@@ -457,6 +462,7 @@ static void check_command_line_options(int argc, char *argv[])
       {"exchange-fields" ,0,0,0},   /* -x/--exchange-fields */
       {"zoom"            ,0,0,0},   /* -z/--zoom            */
       {"full-screen"     ,0,0,0},   /* -Z/--full-screen     */
+      {"preserve-pathnames" ,0,0,0},   /* -P/--preserve-pathnames    */	  
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
       {"audio"           ,1,0,0},   /* -a/--audio [01]      */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
@@ -474,10 +480,10 @@ static void check_command_line_options(int argc, char *argv[])
 /* Get options */
    nerr = 0;
 #ifdef HAVE_GETOPT_LONG
-   while( (n=getopt_long(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgF",
+   while( (n=getopt_long(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgPF",
       long_options, &option_index)) != EOF)
 #else
-   while( (n=getopt(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgF")) != EOF)
+   while( (n=getopt(argc,argv,"S:a:v:H:V:s:c:n:t:qZp:xrzgPF")) != EOF)
 #endif
    {
       switch(n)

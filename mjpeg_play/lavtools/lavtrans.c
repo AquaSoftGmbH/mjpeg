@@ -190,7 +190,7 @@ int main(int argc, char ** argv)
 
    /* Get and open input files */
 
-   read_video_files(argv + optind, argc - optind, &el);
+   read_video_files(argv + optind, argc - optind, &el,0);
 
 
    if(format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';

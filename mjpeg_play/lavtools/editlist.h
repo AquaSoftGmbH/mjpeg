@@ -28,8 +28,8 @@ typedef struct
    int  audio_bits;
    int  audio_bps;
 
-   long num_video_files;
-   char *(video_file_list[MAX_EDIT_LIST_FILES]);
+	long num_video_files;
+	char *(video_file_list[MAX_EDIT_LIST_FILES]);
    lav_file_t *(lav_fd[MAX_EDIT_LIST_FILES]);
    long num_frames[MAX_EDIT_LIST_FILES];
    long *frame_list;
@@ -40,9 +40,8 @@ typedef struct
 EditList;
 
 int el_get_video_frame(char *vbuff, long nframe, EditList *el);  
-void read_video_files(char **filename, int num_files, EditList *el); 
 int el_get_audio_data(char *abuff, long nframe, EditList *el, int mute);
-void read_video_files(char **filename, int num_files, EditList *el);
+void read_video_files(char **filename, int num_files, EditList *el, int preserve_pathnames);
 int write_edit_list(char *name, long n1, long n2, EditList *el);
-int open_video_file(char *filename, EditList *el);
+int open_video_file(char *filename, EditList *el, int preserve_pathname);
 int el_video_frame_data_format(long nframe, EditList *el);

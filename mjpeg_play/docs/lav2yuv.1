@@ -36,22 +36,11 @@ which is used by linux video studio.
 .TP 5
 .BI \-a " widthxhight+x+y"
 Sets everything that is not in the described area to black
-.TP 4
-.BI \-s " num"
-Special output format option:
- 0 output like input, nothing special
- 1 create half height/width output from input
- 2 create 480 wide output from 720 wide input (SVCD)
- 3 create 352 wide output from 720 wide input (VCD)
- 4 create 480 x 480 output from 720 x 240 input (SVCD)
- This does basic scaling. If you want a more flexible scaling use yuvscaler
-
-.TP 5
-.BI \-d \ [0..3]
-Drop lsbs of samples (default: 0) Improves the quality a bit, because the less sigificant bits of every sample are dropped. Reduces the number of different colors
 .TP 5
 .BI \-n \ [0..2]
-Noise filter (low\-pass) (default: 0) This removes low fequency noise in the picture
+Noise filter (low\-pass) (default: 0) This removes reduce
+high-frequency components in the picture.  1 is mild.  2 is quite
+strong.
 
 .TP 5
 .BI \-m 
@@ -77,7 +66,7 @@ Frame offset skip num frames in the beginning if num is negative,
 all but the last num frames are skipped
 .TP 5
 .BI \-f " num"
-Only num frames are written to stdout. 0 means that all frames aure procced. 
+Only num frames are written to stdout. 0 means that all frames are processed. 
 .TP 5
 .BI \-I \ [0..3]
 De-Interlacing mode for DV input 
@@ -91,9 +80,25 @@ De-Interlacing temporal threshold (default: 220) for DV
 .BI \-Y
 switch field order in DV input
 .TP 5
-.BI \-A width:height
+.BI \-A \ width:height
 Set/override the sample aspect ratio (SAR) emitted in the output stream
 header.  (Currently, the SAR is only auto-detected for DV files.)
+.TP 5
+.BI \-P \ code
+Label the output stream with an intended display aspect ratio - that
+is a code identifying aspect ratio of the hwole the picture when it is
+displayed.  This is primarily intended for MPEG encoders.
+.IP
+1 indicates
+square pixels (the aspect ratio is given by the dimensions of the
+sampling grid).
+.IP
+2 indicates a 4:3 aspect ratio.
+.IP
+3 indicates a 16:9 aspect ratio.
+.IP
+4 indicates a 2.21:1 aspect ratio.
+
 
 .SH "AUTHOR"
 This man page was written by Bernhard Praschinger.

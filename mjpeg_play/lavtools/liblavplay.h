@@ -85,6 +85,8 @@ typedef struct {
    int  sync_ins_frames;        /* [0-1] If video is ahead of audio: 1 = insert video, 0 = skip audio */
    int  MJPG_numbufs;           /* Number of MJPEG-buffers */
 
+	int preserve_pathnames;		/* [0-1] Don't canonicalise pathnames
+								 * when creating edit lists */
    EditList *editlist;          /* the main editlist */
 
    void (*output_statistics)(video_playback_stats *stats);     /* speaks for itself */

@@ -6,7 +6,7 @@ int verbose = -1;
 EditList el;
 
 LavBounds bounds;
-LavParam param = { 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
+LavParam param = { 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 };
 LavBuffers buffer;
 
 int main(argc, argv)
@@ -22,7 +22,7 @@ int main(argc, argv)
       exit(1);
    }
 	(void)mjpeg_default_handler_verbosity(verbose);
-	read_video_files(argv+1, argc-1, &el);
+	read_video_files(argv+1, argc-1, &el,0);
 
    // Video 
    printf("video_frames=%li\n",el.video_frames);

@@ -1337,7 +1337,7 @@ main (int argc, char *argv[])
   else
     {
       // INPUT comes from FILES
-      read_video_files (filename, infile, &el);
+      read_video_files (filename, infile, &el,0);
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
 	mjpeg_error_exit1 ("yuvscaler: Editlist not in chroma 422 format, exiting...\n");

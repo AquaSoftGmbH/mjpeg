@@ -200,7 +200,7 @@ char    **argv;
 
 	(void)mjpeg_default_handler_verbosity(verbose);
 
-    read_video_files(argv + optind, argc - optind, &el);
+    read_video_files(argv + optind, argc - optind, &el,0);
 
     if(!el.has_audio)
     {
