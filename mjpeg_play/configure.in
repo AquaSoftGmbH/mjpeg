@@ -43,7 +43,7 @@ dnl AC_SUBST(GLIB_LIBS)
 
 dnl Check for jpeg...
 have_jpeg="no"
-AC_ARG_ENABLE(jpeg, "Use jpeg library",
+AC_ARG_ENABLE(jpeg, --enable-jpeg   Use jpeg library,
 			  [
 				if [ ! $enableval = "no" ]
 				then
@@ -92,7 +92,7 @@ if test -r /usr/local/src/quicktime
 then
   DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime
 else
-  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime-1.1.9
+  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime4linux-1.2
 fi
 	            
 AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime source dir [/usr/local/src/quicktime] ], 
@@ -105,7 +105,7 @@ AC_SUBST(QUICKTIME_INCLUDE)
 AC_CHECK_LIB( quicktime, quicktime_open,
 	          [ 
 		        AC_DEFINE(BUILD_QUICKTIME)
-				LIBS="$LIBS -lquicktime -lm -lpng -lpthread `glib-config --libs --cflags`"
+				LIBS="$LIBS -lquicktime -lm -lz -lpng -lpthread `glib-config --libs --cflags`"
 			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
 			    have_quicktime="yes"
 		      ],
