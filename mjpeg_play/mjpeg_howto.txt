@@ -749,7 +749,7 @@
 
   6.2.  Unify videos
 
-  > lavtrans -o stream.qt -f m record_1.avi record_2.avi ...
+  > lavtrans -o stream.qt -f q record_1.avi record_2.avi ...
   record_n.avi
 
 
