@@ -186,6 +186,7 @@ typedef struct video_struc	/* Informationen ueber Video Stream	*/
     unsigned int picture_rate	;
     unsigned int bit_rate 	;
     unsigned int comp_bit_rate	;
+    unsigned int peak_bit_rate  ;
     unsigned int vbv_buffer_size;
     unsigned int CSPF 		;
 } Video_struc; 		
@@ -290,7 +291,9 @@ void status_message	  ();	/* Event (end, time_out) mitteilen	*/
 void status_footer	  ();	/* Endzeile				*/
 
 void ask_continue	  ();	/* Soll weiter gearbeitet werden ?	*/
-unsigned char ask_verbose ();	/* Soll verbose gearbeitet werden ?	*/
+int ask_verbose ();	/* Soll verbose gearbeitet werden ?	*/
+
+extern int verbose;
 
 /*************************************************************************
     Statische Arrays
@@ -332,3 +335,5 @@ extern int opt_data_rate;
 extern int opt_video_offset;
 extern int opt_audio_offset;
 extern int opt_sector_size;
+extern int opt_VBR;
+

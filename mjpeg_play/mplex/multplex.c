@@ -101,7 +101,7 @@ unsigned int    which_streams;
     unsigned long write_pack;
     unsigned char marker_pack;
     unsigned long packet_data_size;
-    unsigned char verbose;
+
 
     /* Oeffne alle Ein- und Ausgabefiles			*/
     /* Open in- and outputstream				*/
@@ -167,11 +167,6 @@ unsigned int    which_streams;
 	   min_packet_data += 3; 
      } 	
 
-    /* Bufferstrukturen Initialisieren				*/
-    /* initialize buffer structure				*/
-
-    init_buffer_struc (&video_buffer,video_buffer_size);
-    init_buffer_struc (&audio_buffer,audio_buffer_size);
 
     /*	DTS ist in den ersten Units i.d.R. gleich null. Damit
 	kein Bufferunterlauf passiert, muss berechnet werden, 
@@ -189,16 +184,33 @@ unsigned int    which_streams;
 	a ceiling based on the number of sectors we will have
 	to transport for the first access units */
 
-    if (which_streams & STREAMS_VIDEO) {
-	if (video_info->bit_rate > video_info->comp_bit_rate)
-	    video_rate = video_info->bit_rate * 50;
-	else
-	    video_rate = video_info->comp_bit_rate * 50;
+    if (which_streams & STREAMS_VIDEO) 
+    {
+    	if( opt_VBR )
+		{
+		      video_rate = video_info->peak_bit_rate *50;
+		      video_buffer_size = video_rate  / 2;  /* 1/3 sec buffer */
+		      	printf( "VBR set - pseudo bit rate = %d vbuffer = %d\n",
+						video_rate, video_buffer_size );
+		 }
+		else
+		{
+			if (video_info->bit_rate > video_info->comp_bit_rate)
+	   		  video_rate = video_info->bit_rate * 50;
+			else
+	    	  video_rate = video_info->comp_bit_rate * 50;
+		}
     }
     if (which_streams & STREAMS_AUDIO)
 	audio_rate = bitrate_index[3-audio_info->layer][audio_info->bit_rate]*128;
 
     data_rate = video_rate + audio_rate;
+    
+    /* Bufferstrukturen Initialisieren				*/
+    /* initialize buffer structure				*/
+
+    init_buffer_struc (&video_buffer,video_buffer_size);
+    init_buffer_struc (&audio_buffer,audio_buffer_size);
 
     dmux_rate =  ceil((double)(data_rate) *
 		 ((double)(sector_size)/(double)(min_packet_data) +
@@ -249,8 +261,6 @@ unsigned int    which_streams;
 		verbose=ask_verbose();
 		printf ("\n");
 	  }
-	else
-	  verbose = ! opt_quiet_mode;
 
 #ifdef TIMER
     gettimeofday (&tp_global_start,NULL);
@@ -333,45 +343,21 @@ unsigned int    which_streams;
 
 	if (which_streams & STREAMS_AUDIO) buffer_clean (&audio_buffer, &current_SCR);
 	if (which_streams & STREAMS_VIDEO) buffer_clean (&video_buffer, &current_SCR);
+	
+	/* Heuristic... if we can we prefer to send audio rather than video. 
+	   Even a few uSec under-run are audible and in any case the data-rate
+	   is trivial compared with video.  Not sending audio is *very* unlikely
+	   to rescue a a video under-run...
+	*/
 
-	/* FALL: Video Buffer OK, Video Daten vorhanden		*/
-	/*       Audio Daten werden on time ankommen		*/
-	/* CASE: Video Buffer OK, Video Data ready		*/
-	/*	 Audio Data will arrive on time			*/
 
-	if ( (buffer_space (&video_buffer) >= packet_data_size)
-	     && (video_au.length>0)
-	     && ((comp_timecode (&audio_next_SCR, &audio_au.PTS)) ||
-		 (audio_au.length==0) ))
-	{
-	    /* video packet schicken */
-	    /* write out video packet */
-	    output_video (&current_SCR, &SCR_video_delay, vunits_info,
-		istream_v, ostream, &pack, &sys_header, &sector,
-		&video_buffer, &video_au, &picture_start,
-		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
-		packet_data_size, marker_pack, which_streams);
-
-	    /* status info */
-#ifdef TIMER
-            gettimeofday (&tp_start,NULL);
-#endif 
-	    status_info (nsec_a, ++nsec_v, nsec_p, bytes_output,
-			 buffer_space(&video_buffer),
-			 buffer_space(&audio_buffer),verbose);
-#ifdef TIMER
-            gettimeofday (&tp_end,NULL);
-            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
-	}
 
 	/* FALL: Audio Buffer OK, Audio Daten vorhanden		*/
 	/*       Video Daten werden on time ankommen		*/
 	/* CASE: Audio Buffer OK, Audio Data ready		*/
 	/*	 Video Data will arrive on time			*/
 
-	else if ( (buffer_space (&audio_buffer) >= packet_data_size)
+	 if ( (buffer_space (&audio_buffer) >= packet_data_size)
 		  && (audio_au.length>0)
 		  && ((comp_timecode (&video_next_SCR, &video_au.DTS)) ||
 		      (video_au.length==0) ))
@@ -399,7 +385,37 @@ unsigned int    which_streams;
 #endif
 	}
 
+	/* FALL: Video Buffer OK, Video Daten vorhanden		*/
+	/*       Audio Daten werden on time ankommen		*/
+	/* CASE: Video Buffer OK, Video Data ready		*/
+	/*	 Audio Data will arrive on time			*/
 
+	else if ( (buffer_space (&video_buffer) >= packet_data_size)
+	     && (video_au.length>0)
+	     && ((comp_timecode (&audio_next_SCR, &audio_au.PTS)) ||
+		 (audio_au.length==0) ))
+	{
+	    /* video packet schicken */
+	    /* write out video packet */
+	    output_video (&current_SCR, &SCR_video_delay, vunits_info,
+		istream_v, ostream, &pack, &sys_header, &sector,
+		&video_buffer, &video_au, &picture_start,
+		&bytes_output, mux_rate, audio_buffer_size, video_buffer_size,
+		packet_data_size, marker_pack, which_streams);
+
+	    /* status info */
+#ifdef TIMER
+            gettimeofday (&tp_start,NULL);
+#endif 
+	    status_info (nsec_a, ++nsec_v, nsec_p, bytes_output,
+			 buffer_space(&video_buffer),
+			 buffer_space(&audio_buffer),verbose);
+#ifdef TIMER
+            gettimeofday (&tp_end,NULL);
+            total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
+            total_usec += (tp_end.tv_usec - tp_start.tv_usec);
+#endif
+	}
 	/* FALL: Audio Buffer OK, Audio Daten vorhanden		*/
 	/*       Audio Daten werden nicht on time ankommen	*/
 	/* CASE: Audio Buffer OK, Audio data ready		*/
@@ -486,9 +502,12 @@ unsigned int    which_streams;
 #ifdef TIMER
             gettimeofday (&tp_start,NULL);
 #endif 
-	    status_info (nsec_a, nsec_v, ++nsec_p, bytes_output, 
-			 buffer_space(&video_buffer),
-			 buffer_space(&audio_buffer),verbose);
+		/* In case of VBR "padding" packets are stripped */
+		if( ! opt_VBR )
+	    	status_info (nsec_a, nsec_v, ++nsec_p, bytes_output, 
+			 	buffer_space(&video_buffer),
+			 	buffer_space(&audio_buffer),verbose);
+		
 #ifdef TIMER
             gettimeofday (&tp_end,NULL);
             total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
@@ -516,8 +535,7 @@ unsigned int    which_streams;
     /* status info*/
     status_info (nsec_a, nsec_v, nsec_p, bytes_output, 
 		 buffer_space(&video_buffer),
-		 buffer_space(&audio_buffer),verbose);
-    if (!verbose) printf ("\n");
+		 buffer_space(&audio_buffer),2); 
     status_footer ();
 #ifdef TIMER
             gettimeofday (&tp_end,NULL);
@@ -1069,6 +1087,15 @@ unsigned int which_streams;
 
 	generates Pack/Sys Header/Packet information for a 
 	padding stream and saves the sector
+	
+	This is at the heart of a simple implementation of
+	VBR multiplexing.  We treat VBR as CBR albeit with
+	a bit-rate rather higher than the peak bit-rate observed
+	in the stream.  
+	
+	The stream we generate is then simply a CBR stream
+	for this bit-rate for a large buffer and *with
+	padding blocks stripped*.
 ******************************************************************/
 
 void output_padding (SCR,  ostream,
@@ -1095,39 +1122,43 @@ unsigned int which_streams;
     Pack_struc *pack_ptr;
     Sys_header_struc *sys_header_ptr;
 
-    if (marker_pack)
-    {
-    	/* Wir generieren den Pack Header				*/
-	/* let's generate the pack header				*/
-    	create_pack (pack, SCR, mux_rate);
+	if( ! opt_VBR  )
+	{
 
-    	/* Wir generieren den System Header				*/
-	/* let's generate the system header				*/
-    	create_sys_header (sys_header, mux_rate, 1, 1, 1, 1, 1, 1,
-			AUDIO_STR_0, 0, audio_buffer_size/128,
-			VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
-	pack_ptr = pack;
-	sys_header_ptr = sys_header;
-    }
-    else
-    {
-	pack_ptr = NULL;
-	sys_header_ptr = NULL;
-    }
+	  if (marker_pack)
+	  {
+		  /* Wir generieren den Pack Header				*/
+		  /* let's generate the pack header				*/
+		  create_pack (pack, SCR, mux_rate);
 
-    /* Wir generieren das Packet				*/
-    /* let's generate the packet				*/
-    create_sector (sector, pack_ptr, sys_header_ptr,
-		packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
-		NULL, PADDING_STR, 0, 0,
-		FALSE, NULL, NULL,
-		TIMESTAMPS_NO, which_streams );
+		  /* Wir generieren den System Header				*/
+  	      /* let's generate the system header				*/
+		  create_sys_header (sys_header, mux_rate, 1, 1, 1, 1, 1, 1,
+			  AUDIO_STR_0, 0, audio_buffer_size/128,
+			  VIDEO_STR_0, 1, video_buffer_size/1024, which_streams );
+	  pack_ptr = pack;
+	  sys_header_ptr = sys_header;
+	  }
+	  else
+	  {
+	  pack_ptr = NULL;
+	  sys_header_ptr = NULL;
+	  }
+
+	  /* Wir generieren das Packet				*/
+	  /* let's generate the packet				*/
+	  create_sector (sector, pack_ptr, sys_header_ptr,
+		  packet_data_size+PACKET_HEADER_SIZE+AFTER_PACKET_LENGTH,
+		  NULL, PADDING_STR, 0, 0,
+		  FALSE, NULL, NULL,
+		  TIMESTAMPS_NO, which_streams );
 
 #ifdef TIMER
-            gettimeofday (&tp_start,NULL);
+			  gettimeofday (&tp_start,NULL);
 #endif 
-    fwrite (sector->buf, sector->length_of_sector*sizeof (unsigned char), 1,
-	    ostream);
+	  fwrite (sector->buf, sector->length_of_sector*sizeof (unsigned char), 1,
+		  ostream);
+	}
 #ifdef TIMER
             gettimeofday (&tp_end,NULL);
             total_sec  += (tp_end.tv_sec - tp_start.tv_sec);

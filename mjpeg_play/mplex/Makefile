@@ -21,8 +21,8 @@
 
 CFLAGS =  -O3
 LDFLAGS=  -lm
-CC     =  egcs
-#CC    =  gcc
+#CC     =  egcs
+CC    =  gcc
 RM     =  /bin/rm -f
 
 OBJS = main.o bitstrm.o buffer.o inits.o inptstrm.o interact.o multplex.o systems.o timecode.o

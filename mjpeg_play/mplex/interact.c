@@ -13,21 +13,24 @@ static void Usage(char *str)
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );
 	fprintf( stderr, " -i      Interactive mode for user intervention\n" );
+	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
     fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from source streams)\n" );
 	fprintf( stderr, " -v num  Specify a video timestamp offset in mSec\n");
+	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
 	fprintf( stderr, " -a num  Specify an audio timestamp offset in mSec \n" );
-	fprintf( stderr, " -s num  Specify sectory size in bytes (default: 2324) [256..16384]");
+	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]");
 	exit (1);
 }
 
-int opt_quiet_mode = 1;
+int verbose = 1;
 int opt_interactive_mode = 0;
 int opt_buffer_size = 46;
 int opt_data_rate = 1740;
 int opt_video_offset = 0;
 int opt_audio_offset = 0;
 int opt_sector_size = 2324;
+int opt_VBR = 0;
 
 int intro_and_options(int argc, char *argv[])
 {
@@ -45,14 +48,22 @@ int intro_and_options(int argc, char *argv[])
     printf(  "***************************************************************\n\n");
 
 
-  while( (n=getopt(argc,argv,"b:r:v:a:qi")) != EOF)
+  while( (n=getopt(argc,argv,"b:r:v:a:qiVn")) != EOF)
   {
     switch(n)
 	  {
 	  
 	  case 'q' :
-		opt_quiet_mode = 1;
+		verbose = 0;
 		break;
+	
+	  case 'n' :
+		verbose = 2;
+		break;
+	
+	  case 'V' :
+	    opt_VBR = 1;
+	    break;
 	  
 	  case 'i' :
 		opt_interactive_mode = 1;
@@ -98,7 +109,6 @@ int intro_and_options(int argc, char *argv[])
     {	
 	  Usage(argv[0]);
     }
-  
   return optind-1;
 }
 
@@ -165,7 +175,7 @@ void ask_continue ()
 	Should we print the MPEG/SYSTEM table very verbose or not?
 *************************************************************************/
 
-unsigned char ask_verbose ()
+int ask_verbose ()
 {
     char input[20];
 
@@ -194,13 +204,16 @@ unsigned int nsectors_p;
 unsigned int nbytes;
 unsigned int buf_v;
 unsigned int buf_a;
-unsigned char verbose;
+int verbose;
 {
-    printf ("| %7d | %7d |",nsectors_a,nsectors_v);
-    printf (" %7d | %11d |",nsectors_p,nbytes);
-    printf (" %6d | %6d |",buf_a,buf_v);
-    printf ((verbose?"\n":"\r"));
-    fflush (stdout);
+	if( verbose > 0 )
+	{
+	  printf ("| %7d | %7d |",nsectors_a,nsectors_v);
+	  printf (" %7d | %11d |",nsectors_p,nbytes);
+	  printf (" %6d | %6d |",buf_a,buf_v);
+	  printf ((verbose > 1?"\n":"\r"));
+	  fflush (stdout);
+	}
 }
 
 void status_header ()

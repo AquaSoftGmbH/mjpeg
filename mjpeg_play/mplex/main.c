@@ -75,6 +75,7 @@
     struct timeval  tp_global_end;
 #endif
 
+int verbose;
 int main (argc, argv)
 
 int argc;

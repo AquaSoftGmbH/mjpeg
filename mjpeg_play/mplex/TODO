@@ -1,0 +1,8 @@
+TODO
+
+- Merge in stuff to deal with MPEG2 from bbmpeg
+
+- Merge in stuff to deal with VCD/DVD's additional bits and pieces
+  from bbmpeg.
+
+- Don't merge in the CBR MPEG1 bugs from bbmpeg.

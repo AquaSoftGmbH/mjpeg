@@ -1,4 +1,5 @@
 #include "main.h"
+
 /*************************************************************************
     MPEG Streams Kontrolle
 
@@ -174,7 +175,8 @@ unsigned int length;
     FILE* info_file;
     Bit_stream_struc video_bs;
     unsigned int offset_bits=0;
-    unsigned int stream_length=0; 
+    unsigned long long stream_length=0LL; 
+    unsigned long long prev_stream_length=0LL;
     Vaunit_struc access_unit;
     unsigned long syncword;
     unsigned long decoding_order=0;
@@ -187,7 +189,9 @@ unsigned int length;
     int i;
     unsigned int prozent;
     unsigned int old_prozent=0;
-   
+    int frame_rate;
+	unsigned int max_bits_persec;
+  
     printf ("\nScanning Video stream for access units information.\n");
     info_file = fopen (video_units, "wb");
     open_bit_stream_r (&video_bs, video_file, BUFFER_SIZE);
@@ -195,31 +199,36 @@ unsigned int length;
 
     if (getbits (&video_bs, 32)==SEQUENCE_HEADER)
     {
-	video_info->num_sequence++;
-	video_info->horizontal_size	= getbits (&video_bs, 12);
-	video_info->vertical_size	= getbits (&video_bs, 12);
-	video_info->aspect_ratio	= getbits (&video_bs,  4);
-	pict_rate 			= getbits (&video_bs,  4);
-	video_info->picture_rate	= pict_rate;
-	video_info->bit_rate		= getbits (&video_bs, 18);
-	marker_bit (&video_bs, 1);
-	video_info->vbv_buffer_size	= getbits (&video_bs, 10);
-	video_info->CSPF		= get1bit (&video_bs);
+	  video_info->num_sequence++;
+	  video_info->horizontal_size	= getbits (&video_bs, 12);
+	  video_info->vertical_size	= getbits (&video_bs, 12);
+	  video_info->aspect_ratio	= getbits (&video_bs,  4);
+	  pict_rate 			= getbits (&video_bs,  4);
+	  video_info->picture_rate	= pict_rate;
+	  video_info->bit_rate		= getbits (&video_bs, 18);
+	  marker_bit (&video_bs, 1);
+	  video_info->vbv_buffer_size	= getbits (&video_bs, 10);
+	  video_info->CSPF		= get1bit (&video_bs);
 
     } else
     {
-	printf ("Invalid MPEG Video stream header.\n");
-	exit (1);
+		printf ("Invalid MPEG Video stream header.\n");
+		exit (1);
     }
 
     empty_vaunit_struc (&access_unit);
     *startup_delay = 2*MAX_FFFFFFFF;
 
     if (pict_rate >0 && pict_rate<9)
-	secs_per_frame = 1. / picture_rates[pict_rate];
+    {
+	  secs_per_frame = 1. / picture_rates[pict_rate];
+	  frame_rate = picture_rates[pict_rate];
+	 }
     else
-	secs_per_frame = 1. / 25.;	/* invalid pict_rate info */
-
+    {
+	  secs_per_frame = 1. / 25.;	/* invalid pict_rate info */
+	  frame_rate = 25;
+	}
     do {
 	if (seek_sync (&video_bs, SYNCWORD_START, 24))
 	{
@@ -236,17 +245,31 @@ unsigned int length;
 		    break;
 
 		case PICTURE_START:
+			
+			stream_length = sstell (&video_bs)-32;
 		    /* skip access unit number 0 */
 		    if (access_unit.type != 0)
-		    {
-			stream_length = sstell (&video_bs)-32;
-			access_unit.length = (stream_length - offset_bits)>>3;
-			offset_bits = stream_length;
-		        fwrite (&access_unit, sizeof (Vaunit_struc),
-			    1, info_file);
-			video_info->avg_frames[access_unit.type-1]+=
-			    access_unit.length;
+			{
+
+			  access_unit.length = (stream_length - offset_bits)>>3;
+			  offset_bits = stream_length;
+				  fwrite (&access_unit, sizeof (Vaunit_struc),
+				  1, info_file);
+			  video_info->avg_frames[access_unit.type-1]+=
+				  access_unit.length;
+	
 		    }
+
+			  if( video_info->num_pictures % frame_rate == 0 )
+			  {
+			  	unsigned int bits_persec = (unsigned int) (stream_length - prev_stream_length);
+				if( bits_persec > max_bits_persec )
+				{
+					max_bits_persec = bits_persec;
+				}
+				prev_stream_length = stream_length;
+
+			  }
 
 		    temporal_reference = getbits (&video_bs, 10);
 		    access_unit.type   = getbits (&video_bs, 3);
@@ -266,16 +289,18 @@ unsigned int length;
 		        video_info->num_frames[access_unit.type-1]++;
 
 		    prozent =(int) (((float)sstell(&video_bs)/8/(float)length)*100);
-		    video_info->num_pictures++;		    
+		    video_info->num_pictures++;	
+		    
 
-		    if (prozent > old_prozent)
+
+		    if (prozent > old_prozent && verbose > 0 )
 		    {
-			printf ("Got %d picture headers. %2d%%\r",
-			    video_info->num_pictures, prozent);
+			  printf ("Got %d picture headers. %2d%%%c",
+			           video_info->num_pictures, prozent, verbose > 1 ? '\n' : '\r');
 			fflush (stdout);
 			old_prozent = prozent;
 		    }
-
+			
 		    break;		    
 
 		case SEQUENCE_END:
@@ -295,7 +320,7 @@ unsigned int length;
 
     printf ("\nDone, stream bit offset %ld.\n",offset_bits);
 
-    video_info->stream_length = offset_bits >> 3;
+    video_info->stream_length = (unsigned int)(offset_bits >> 3);
     for (i=0; i<4; i++)
 	if (video_info->num_frames[i]!=0)
 	   video_info->avg_frames[i] /= video_info->num_frames[i];
@@ -304,13 +329,17 @@ unsigned int length;
         video_info->comp_bit_rate = ceil ((double)(video_info->stream_length)/
 	(double)(video_info->num_pictures)/secs_per_frame/1250.)*25;
     else
-	video_info->comp_bit_rate = 0;
+		video_info->comp_bit_rate = 0;
+	
+	/* Peak bit rate in 50kbps units... */
+	video_info->peak_bit_rate = ((max_bits_persec >> 3) / 50);
 
     close_bit_stream_r (&video_bs);
     fclose (info_file);
     output_info_video (video_info);
 
     ask_continue ();
+ 
 }
 
 /*************************************************************************
@@ -374,6 +403,7 @@ printf("\n+------------------ VIDEO STREAM INFORMATION -----------------+\n");
 	       video_info->bit_rate*50,video_info->bit_rate*400);
 
     printf   ("Computed rate  : %8u bytes/sec\n",video_info->comp_bit_rate*50);
+    printf   ("Peak     rate  : %8u  bytes/sec\n",video_info->peak_bit_rate*50);
     printf   ("Vbv buffer size: %8u bytes\n",video_info->vbv_buffer_size*2048);
     printf   ("CSPF           : %8u\n",video_info->CSPF);
 }
@@ -565,10 +595,10 @@ unsigned int length;
 	  marker_bit (&audio_bs, 1);
 	  prozent =(int) (((float) sstell(&audio_bs)/8/(float)length)*100);
 	  audio_info->num_syncword++;
-	  if (prozent > old_prozent)
+	  if (prozent > old_prozent && verbose > 0)
 		{
-		  printf ("Got %d frame headers. %2d%%\r",
-				  audio_info->num_syncword,prozent);
+		  printf ("Got %d frame headers. %2d%%%c",
+				  audio_info->num_syncword,prozent, verbose > 1? '\n' : '\r');
 		  fflush (stdout);
 		  old_prozent=prozent;
 		
@@ -586,7 +616,7 @@ unsigned int length;
 	
 	  fwrite (&access_unit, sizeof (Aaunit_struc),1, info_file);
 	  audio_info->num_frames[padding_bit]++;
-	
+
 	  getbits (&audio_bs, 9);
 	
     } while (!end_bs(&audio_bs));
