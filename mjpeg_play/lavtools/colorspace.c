@@ -39,7 +39,7 @@ static int conv_inited = 0;
 #define FP_BITS 18
 
 #include <stdio.h>
-
+#include "colorspace.h"
 
 
 static int myround(double n)
