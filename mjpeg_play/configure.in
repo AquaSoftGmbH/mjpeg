@@ -275,9 +275,9 @@ if test x$with_quicktime != x ; then
   LIBS="$OLD_LIBS"
   if test x$PNG = xtrue ; then
     if test x$have_pthread = xtrue ; then
-      EXTRA_LIBS=" $GLIB_LIBS $PTHREAD_LIBS -lpng -lz $LIBM_LIBS"
+      EXTRA_LIBS="$GLIB_LIBS $PTHREAD_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
     else
-      EXTRA_LIBS=" -L$with_quicktime -L$with_quicktime/$(uname -m) $GLIB_LIBS -lpng $LIBM_LIBS"
+      EXTRA_LIBS="-L$with_quicktime -L$with_quicktime/$(uname -m) $GLIB_LIBS -lpng $LIBM_LIBS -L/lib -ldl"
     fi
 dnl Do we have OpenQuicktime instead of Quicktime4Linux?
     if test -f "$with_quicktime/openquicktime.h" ; then
@@ -286,7 +286,7 @@ dnl Do we have OpenQuicktime instead of Quicktime4Linux?
             QUICKTIME_CFLAGS="-I $with_quicktime"
             AC_DEFINE(HAVE_LIBQUICKTIME)
             have_openquicktime=true],, 
-            -L$with_quicktime $EXTRA_LIBS  $JPEG_LIBS )
+            -L$with_quicktime $EXTRA_LIBS $JPEG_LIBS )
         EXTRA_LIBS=""
     else
       AC_CHECK_LIB(quicktime, quicktime_open,
@@ -294,7 +294,7 @@ dnl Do we have OpenQuicktime instead of Quicktime4Linux?
           QUICKTIME_CFLAGS="-I $with_quicktime"
           AC_DEFINE(HAVE_LIBQUICKTIME)
           have_quicktime=true],, 
-          -L$with_quicktime -L$with_quicktime/$(uname -m) $EXTRA_LIBS  $JPEG_LIBS )
+          -L$with_quicktime -L$with_quicktime/$(uname -m) $EXTRA_LIBS $JPEG_LIBS )
       EXTRA_LIBS=""
     fi
   fi
