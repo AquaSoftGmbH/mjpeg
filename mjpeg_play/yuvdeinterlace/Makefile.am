@@ -10,17 +10,16 @@ bin_PROGRAMS = yuvdeinterlace
 
 noinst_HEADERS = \
 	blend_fields.h \
-	copy_frame.h \
-	interleave.h \
 	sinc_interpolation.h \
-	transform_block.h
-
+	transform_block.h \
+    motionsearch_deint.h \
+    vector.h
+    
 yuvdeinterlace_SOURCES = blend_fields.c \
-	copy_frame.c \
-	interleave.c \
 	main.c \
 	sinc_interpolation.c \
-	transform_block.c
+	transform_block.c \
+    motionsearch_deint.c
 
 yuvdeinterlace_LDADD = \
 	$(top_builddir)/utils/libmotion.la \

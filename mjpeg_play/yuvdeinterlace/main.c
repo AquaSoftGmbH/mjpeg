@@ -7,6 +7,9 @@
  * License version 2 or if you prefer any later version of *
  * that license). See the file LICENSE for detailed infor- *
  * mation.                                                 *
+ *                                                         *
+ * FILE: main.c                                            *
+ *                                                         *
  ***********************************************************/
 
 /* dedicated to my grand-pa */
@@ -44,31 +47,18 @@
  *
  */
 
-#include "config.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <math.h>
+#include "config.h"
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 #include "cpu_accel.h"
 #include "motionsearch.h"
 #include "sinc_interpolation.h"
-#include "interleave.h"
-#include "copy_frame.h"
 #include "blend_fields.h"
-#include "transform_block.h"
-
-#ifdef STATFILE
-FILE *statistics;
-#endif
-
-int BLKmedian = 256;
-
-uint32_t predicted_count = 0;
-uint32_t search_count = 0;
+#include "motionsearch_deint.h"
 
 int search_radius = 32;
 int verbose = 0;
@@ -80,103 +70,22 @@ int input_chroma_subsampling = 0;
 int output_chroma_subsampling = 0;
 int non_interleaved_fields = 0;
 
-struct vector forward_vector[768 / 16][576 / 16];
-struct vector last_forward_vector[768 / 16][576 / 16];
-struct vector last_forward_vector2[768 / 16][576 / 16];
-
 uint8_t *inframe[3];
 uint8_t *outframe[3];
 uint8_t *frame1[3];
 uint8_t *frame2[3];
 uint8_t *frame3[3];
-uint8_t *frame4[3];
-uint8_t *frame1_[3];
-uint8_t *frame2_[3];
 uint8_t *reconstructed[3];
 
 int buff_offset;
 int buff_size;
 
-struct vector mv_table[1024][1024];
-//{
-// int x;
-// int y;
-// uint32_t SAD;
-//} mv_table[1024][1024];
-
-struct vector
-{
-  int x;
-  int y;
-  uint32_t min;
-  uint32_t min23;
-  uint32_t min21;
-};
-
-struct
-{
-  int x;
-  int y;
-  uint32_t SAD;
-} mv_table2[1024][1024];
-
-struct 
-      { 
-      int x;
-      int y;
-      }
-pattern[255];
-int pattern_length;
-  
-uint32_t mean_SAD=0;
-  
-struct vector search_forward_vector (int, int);
-
 /***********************************************************
  * helper-functions                                        *
  ***********************************************************/
 
-void motion_compensate_field (void);
 void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
 void film_fx (void);
-
-void init_search_pattern (void)
-  {
-  int x,y,r,cnt,i;
-  int allready_in_path;
-  
-  cnt=0;
-  fprintf(stderr,"\n\n\n");
-  for(r=0;r<=100;r++)
-      {
-      for(y=-8;y<=8;y+=2)
-          for(x=-8;x<=8;x++)
-              {
-              if( r > (x*x+y*y) )
-                  {
-                  /* possible candidate */
-                  /* check if it's allready in the path */
-                  allready_in_path=0;
-                  for(i=0;i<=cnt;i++)
-                      {
-                      if( pattern[i].x == x &&
-                          pattern[i].y == y )
-                          {
-                          allready_in_path=1;
-                          }
-                      }
-                  /* if it's not allready in the path, store it */
-                  if( allready_in_path == 0 )
-                      {
-                      pattern[cnt].x = x;
-                      pattern[cnt].y = y;
-                      cnt++;
-                      }
-                  }
-              }
-      }
-  pattern_length = cnt + 1;
-  }
 
 /***********************************************************
  * Main Loop                                               *
@@ -334,46 +243,50 @@ main (int argc, char *argv[])
 			   y4m_si_get_sampleaspect (&istreaminfo));
 
 /* fixme, test for field dominance */
-	
-//	mjpeg_log (LOG_INFO, "");
+  mjpeg_log (LOG_WARN, "## FIXME !!! ####################################################");
+  mjpeg_log (LOG_WARN, "Currently, you *must* set the field-dominance as the deinterlacer");
+  mjpeg_log (LOG_WARN, "does not check the according Y4M-Flag.                           ");
+  mjpeg_log (LOG_WARN, "BTTV-recordings typicaly require top-field-first.                ");
+  mjpeg_log (LOG_WARN, "All others require bottom-field-first. (miniDV + lavrec)         ");
+  mjpeg_log (LOG_WARN, "#################################################################");
 
   /* write the outstream header */
   y4m_write_stream_header (fd_out, &ostreaminfo);
 
   /* now allocate the needed buffers */
   {
-	/* calculate the memory offset needed to allow the processing
-	 * functions to overshot. The biggest overshot is needed for the
-	 * MC-functions, so we'll use 8*width...
-	 */
-	buff_offset = width*8;
-	buff_size = buff_offset*2 + width*height;
-	
-    inframe[0] = buff_offset + malloc (buff_size);
-    inframe[1] = buff_offset + malloc (buff_size);
-    inframe[2] = buff_offset + malloc (buff_size);
+    /* calculate the memory offset needed to allow the processing
+     * functions to overshot. The biggest overshot is needed for the
+     * MC-functions, so we'll use 8*width...
+     */
+    buff_offset = width * 8;
+    buff_size = buff_offset * 2 + width * height;
 
-    reconstructed[0] = buff_offset + malloc (buff_size);
-    reconstructed[1] = buff_offset + malloc (buff_size);
-    reconstructed[2] = buff_offset + malloc (buff_size);
+    inframe[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    inframe[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    inframe[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame1[0] = buff_offset + malloc (buff_size);
-    frame1[1] = buff_offset + malloc (buff_size);
-    frame1[2] = buff_offset + malloc (buff_size);
+    reconstructed[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    reconstructed[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    reconstructed[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame2[0] = buff_offset + malloc (buff_size);
-    frame2[1] = buff_offset + malloc (buff_size);
-    frame2[2] = buff_offset + malloc (buff_size);
+    frame1[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame1[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame1[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
-    frame3[0] = buff_offset + malloc (buff_size);
-    frame3[1] = buff_offset + malloc (buff_size);
-    frame3[2] = buff_offset + malloc (buff_size);
+    frame2[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame2[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame2[2] = buff_offset + (uint8_t *) malloc (buff_size);
+
+    frame3[0] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame3[1] = buff_offset + (uint8_t *) malloc (buff_size);
+    frame3[2] = buff_offset + (uint8_t *) malloc (buff_size);
 
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
   /* initialize motion-search-pattern */
-  init_search_pattern();
+  init_search_pattern ();
 
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
@@ -381,101 +294,73 @@ main (int argc, char *argv[])
 					    &iframeinfo, inframe)))
     {
 
-		/* store one field behind in a ringbuffer */
-		
-	  memcpy (frame3[0], frame1[0], width*height );
-	  memcpy (frame3[1], frame1[1], width*height/4 );
-	  memcpy (frame3[2], frame1[2], width*height/4 );
+      /* store one field behind in a ringbuffer */
 
-	/* interpolate the missing field in the frame by 
-	 * bandlimited sinx/x interpolation 
-	 *
-	 * field-order-flag has the following meaning:
-	 * 0 == interpolate top field    
-	 * 1 == interpolate bottom field 
-	 */
-      if (0)
-      {
-      int x,y,v;
-      for(y=0;y<height;y++)
-          {
-              for(x=0;x<width;x++)
-                  {
-                  v  = *(inframe[0]+(x-1)+(y  )*width);
-                  v += *(inframe[0]+(x  )+(y-2)*width);
-                  v += *(inframe[0]+(x+1)+(y  )*width);
-                  v += *(inframe[0]+(x  )+(y+2)*width);
-                  v += *(inframe[0]+(x  )+(y  )*width)*2;
-                  v /= 6;
-                  *(inframe[0]+x+y*width)=v;
-                  }
-                  y++;
-              for(x=0;x<width;x++)
-                  {
-                  v  = *(inframe[0]+(x-1)+(y  )*width);
-                  v += *(inframe[0]+(x  )+(y-2)*width);
-                  v += *(inframe[0]+(x+1)+(y  )*width);
-                  v += *(inframe[0]+(x  )+(y+2)*width);
-                  v += *(inframe[0]+(x  )+(y  )*width)*2;
-                  v /= 6;
-                  *(inframe[0]+x+y*width)=v;
-                  }
-          }
-      }
-      sinc_interpolation (frame1[0], inframe[0], 1-field_order);
+      memcpy (frame3[0], frame1[0], width * height);
+      memcpy (frame3[1], frame1[1], width * height / 4);
+      memcpy (frame3[2], frame1[2], width * height / 4);
+
+      /* interpolate the missing field in the frame by 
+       * bandlimited sinx/x interpolation 
+       *
+       * field-order-flag has the following meaning:
+       * 0 == interpolate top field    
+       * 1 == interpolate bottom field 
+       */
+      sinc_interpolation (frame1[0], inframe[0], 1 - field_order);
       sinc_interpolation (frame2[0], inframe[0], field_order);
 
-	  /* for the chroma-planes the function remains the same
-	   * just the dimension of the processed frame differs
-	   * so we temporarily adjust width and height
-	   */
+      /* for the chroma-planes the function remains the same
+       * just the dimension of the processed frame differs
+       * so we temporarily adjust width and height
+       */
       width >>= 1;
-	  height >>= 1;
-      sinc_interpolation (frame1[1], inframe[1], 1-field_order);
-      sinc_interpolation (frame1[2], inframe[2], 1-field_order);
+      height >>= 1;
+      sinc_interpolation (frame1[1], inframe[1], 1 - field_order);
+      sinc_interpolation (frame1[2], inframe[2], 1 - field_order);
       sinc_interpolation (frame2[1], inframe[1], field_order);
       sinc_interpolation (frame2[2], inframe[2], field_order);
-	  width <<=1;
-	  height <<=1;
-	/* at this stage we have three buffers containing the following
-	 * sequence of fields:
-	 *
-	 * frame3
-	 * frame2 current field (to be reconstructed frame)
-	 * frame1
-	 *
-	 * So we motion-compensate frame3 and frame1 against frame2 and
-	 * try to interpolate frame2 by blending the artificially generated
-	 * frame into frame2 ...
-	 */
-      motion_compensate_field();
-      blend_fields ( reconstructed, frame2 );
-	 /* all left is to write out the reconstructed frame
-      */
+      width <<= 1;
+      height <<= 1;
+      /* at this stage we have three buffers containing the following
+       * sequence of fields:
+       *
+       * frame3
+       * frame2 current field (to be reconstructed frame)
+       * frame1
+       *
+       * So we motion-compensate frame3 and frame1 against frame2 and
+       * try to interpolate frame2 by blending the artificially generated
+       * frame into frame2 ...
+       */
+      motion_compensate_field ();
+      blend_fields (reconstructed, frame2);
+      /* all left is to write out the reconstructed frame
+       */
       y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
     }
 
   /* free allocated buffers */
   {
-    free (inframe[0]-buff_offset);
-    free (inframe[1]-buff_offset);
-    free (inframe[2]-buff_offset);
+    free (inframe[0] - buff_offset);
+    free (inframe[1] - buff_offset);
+    free (inframe[2] - buff_offset);
 
-    free (reconstructed[0]-buff_offset);
-    free (reconstructed[1]-buff_offset);
-    free (reconstructed[2]-buff_offset);
+    free (reconstructed[0] - buff_offset);
+    free (reconstructed[1] - buff_offset);
+    free (reconstructed[2] - buff_offset);
 
-    free (frame1[0]-buff_offset);
-    free (frame1[1]-buff_offset);
-    free (frame1[2]-buff_offset);
+    free (frame1[0] - buff_offset);
+    free (frame1[1] - buff_offset);
+    free (frame1[2] - buff_offset);
 
-    free (frame2[0]-buff_offset);
-    free (frame2[1]-buff_offset);
-    free (frame2[2]-buff_offset);
+    free (frame2[0] - buff_offset);
+    free (frame2[1] - buff_offset);
+    free (frame2[2] - buff_offset);
 
-    free (frame3[0]-buff_offset);
-    free (frame3[1]-buff_offset);
-    free (frame3[2]-buff_offset);
+    free (frame3[0] - buff_offset);
+    free (frame3[1] - buff_offset);
+    free (frame3[2] - buff_offset);
 
     mjpeg_log (LOG_INFO, "Buffers freed.");
   }
@@ -486,238 +371,4 @@ main (int argc, char *argv[])
 
   /* Exit gently */
   return (0);
-}
-
-inline uint32_t
-median3 (uint32_t a, uint32_t b, uint32_t c)
-{
-  return (a < b && b < c) ? b : (a < b && c < b) ? c : a;
-}
-
-inline uint32_t
-min3 (uint32_t a, uint32_t b, uint32_t c)
-{
-  return (a <= b && a <= c) ? a : (b <= a && b <= c) ? b : c;
-}
-
-inline uint32_t
-max3 (uint32_t a, uint32_t b, uint32_t c)
-{
-  return (a >= b && a >= c) ? a : (b >= a && b >= c) ? b : c;
-}
-
-struct vector
-search_forward_vector (int x, int y)
-{
-	uint32_t min,SAD;
-	int dx,dy;
-    int i;
-	struct vector v;
-	
-x -= 4;
-y -= 4;
-
-#if 0	
-    min = psad_00
-      (frame2[0] + (x) + (y) * width,
-       frame1[0] + (x) + (y) * width, width, 16, 0x00ffffff);
-	
-    v.x = v.y = 0;
-	
-    for (dy = -6; dy <= +6; dy+=2)
-      for (dx = -6; dx <= +6; dx+=1)
-	{
-	  SAD = psad_00
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame1[0] + (x - dx) + (y - dy ) * width, width, 16, 0x00ffffff);
-
-	if (SAD <= min)
-	    {
-	      min = SAD;
-	      v.x = dx;
-	      v.y = dy;
-	    }
-	}
-#endif
-
-    min = psad_00
-      (frame2[0] + (x) + (y) * width,
-       frame1[0] + (x) + (y) * width, width, 16, 0x00ffffff);
-	v.x = v.y = 0;
-	
-    for(i=1;i<pattern_length;i++)
-    {
-        dx = pattern[i].x;
-    dy = pattern[i].y;
-    
-	  SAD = psad_00
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame1[0] + (x - dx) + (y - dy ) * width, width, 16, 0x00ffffff);
-
-	if (SAD < min)
-	    {
-	      min = SAD;
-	      v.x = dx;
-	      v.y = dy;
-	    }
-    if ( min<(mean_SAD/1) )
-        {
-        break;
-        }
-    }
-
-  v.min = min;
-  return v;			/* return the found vector */
-}
-
-struct vector
-search_backward_vector (int x, int y)
-{
-	uint32_t min,SAD;
-	int dx,dy;
-	struct vector v;
-    int i;
-    
-    x -= 4;
-    y -= 4;
-    
-    min = psad_00
-      (frame2[0] + (x) + (y) * width,
-       frame3[0] + (x) + (y) * width, width, 16, 0x00ffffff );
-	v.x = v.y = 0;
-
-#if 0	
-    for (dy = -6; dy <= +6; dy+=2)
-      for (dx = -6; dx <= +6; dx+=1)
-	{
-	  SAD = psad_00
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 16, 0x00ffffff );
-
-    if ( min<(mean_SAD/2) )
-	    {
-	      min = SAD;
-	      v.x = dx;
-	      v.y = dy;
-	    }
-	}
-#endif
-
-for(i=1;i<=pattern_length;i++)
-    {
-        dx = pattern[i].x;
-    dy = pattern[i].y;
-    
-	  SAD = psad_00
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 16, 0x00ffffff);
-
-	if (SAD < min)
-	    {
-	      min = SAD;
-	      v.x = dx;
-	      v.y = dy;
-	    }
-    if ( min<(mean_SAD/1) )
-        {
-        break;
-        }
-    }
-
-  v.min = min;
-
-  return v;			/* return the found vector */
-}
-
-struct vector
-search_direct_vector (int x, int y, struct vector v1, struct vector v2)
-{
-	uint32_t min,SAD;
-	int dx,dy;
-	struct vector v;
-		
-    min = 2 * psad_00
-      (frame1[0] + (x-v1.x) + (y-v1.y) * width,
-       frame3[0] + (x+v2.x) + (y+v2.y) * width, width, 16, 0x00ffffff);
-    v.x =v.y =0;
-    
-    dx=0;
-    for (dy = -4; dy <= +4; dy++)
-    //for (dx = -4; dx <= +4; dx++)
-	{
-    SAD = psad_00
-      (frame1[0] + (x-v1.x) + (y-v1.y) * width,
-       frame3[0] + (x+v2.x+dx) + (y+v2.y+dy) * width, width, 16, 0x00ffffff);
-    SAD += psad_00
-      (frame1[0] + (x-v1.x-dx) + (y-v1.y-dy) * width,
-       frame3[0] + (x+v2.x) + (y+v2.y) * width, width, 16, 0x00ffffff);
-
-	if (SAD <= min)
-	    {
-	      v.x = dx;
-	      v.y = dy;
-        }
-	}
-
-  return v;			/* return the found vector */
-}
-
-void
-motion_compensate_field (void)
-{
-  int x, y;
-  struct vector dv;
-  float match_coeff21;
-  float match_coeff23;
-  uint32_t accuSAD;
-  
-  /* search the vectors */
-match_coeff21 = 0;
-match_coeff23 = 0;
-
-    accuSAD = 0;
-  for (y = 0; y < height; y += 8)
-    {
-      for (x = 0; x < width; x += 8)
-	{
-	  fv = search_forward_vector (x, y);
-	  bv = search_backward_vector (x, y);
-#if 0    
-	  dv = search_direct_vector (x, y, fv, bv);
-
-      bv.y = bv.y - dv.y/2 ;
-      bv.x = bv.x - dv.x/2 ;
-      fv.y = fv.y + dv.y/2 ;
-      fv.x = fv.x + dv.x/2 ;
-#endif
-	  match_coeff21 += fv.min;
-	  match_coeff23 += bv.min;
-      accuSAD += (fv.min+bv.min)/2;
-    
-	  transform_block
-	    (reconstructed[0] + x + y * width,
-	     frame1[0] + (x - fv.x) + (y - fv.y) * width,
-	     frame3[0] + (x + bv.x) + (y + bv.y) * width, width);
-	transform_block_chroma
-	    (reconstructed[1] + x/2 + y/2 * width/2,
-	     frame1[1] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
-	     frame3[1] + (x + bv.x)/2 + (y + bv.y)/2 * width/2, width/2);
-		transform_block_chroma
-	    (reconstructed[2] + x/2 + y/2 * width/2,
-		frame1[2] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
-	     frame3[2] + (x + bv.x)/2 + (y + bv.y)/2 * width/2, width/2);
-	}
-    }
-    mean_SAD = accuSAD / (width*height/64);
-    fprintf(stderr,"mean_SAD:%i\n",mean_SAD);
-
-    match_coeff21 = match_coeff21/match_coeff23;
-
-    if(match_coeff21<0.5 || match_coeff21>2)
-	{
-        mjpeg_log (LOG_INFO, "Scene-Change or field-mismatch. Copying field.");
-		memcpy( reconstructed[0], frame2[0], width*height );
-		memcpy( reconstructed[1], frame2[1], width*height/4 );
-		memcpy( reconstructed[2], frame2[2], width*height/4 );
-	}
 }
