@@ -670,7 +670,7 @@ echo "$ac_t""$ac_cv_prog_gcc" 1>&6
 
 if test $ac_cv_prog_gcc = yes; then
   GCC=yes
-  test "${CFLAGS+set}" = set || CFLAGS="-O6"
+  test "${CFLAGS+set}" = set || CFLAGS="-O2"
 else
   GCC=
   test "${CFLAGS+set}" = set || CFLAGS="-O"
