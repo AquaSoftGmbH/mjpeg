@@ -73,12 +73,10 @@ void pred_comp_mmxe(
 }
 
 
-#if defined(HAVE_ASM_NASM) 
-
-void predcomp_00_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmx");
-void predcomp_10_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmx");
-void predcomp_11_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
-void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
+void predcomp_00_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag);
+void predcomp_10_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag);
+void predcomp_11_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag);
+void predcomp_01_mmx(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag);
 
 
 void pred_comp_mmx(
@@ -120,8 +118,6 @@ void pred_comp_mmx(
 		
 }
 
-#endif
-
 
 void init_x86_predict( int32_t cpucap )
 {
@@ -130,11 +126,9 @@ void init_x86_predict( int32_t cpucap )
 		mjpeg_info( "SETTING EXTENDED MMX for PREDICTION!");
 		ppred_comp = pred_comp_mmxe;
 	}
-#if defined(HAVE_ASM_NASM) 
     	else if(cpucap & ACCEL_X86_MMX ) /* Original MMX... */
 	{
 		mjpeg_info( "SETTING MMX for PREDICTION!");
 		ppred_comp = pred_comp_mmx;
 	}
-#endif
 }
