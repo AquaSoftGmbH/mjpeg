@@ -40,6 +40,7 @@
 /* for the "scene_selected" signal */
 enum {
 	SCENE_SELECTED,
+	SCENELIST_CHANGED,
 	LAST_SIGNAL
 };
 
@@ -120,6 +121,10 @@ static void gtk_scenelist_class_init (GtkSceneListClass *class)
 		GTK_SIGNAL_OFFSET(GtkSceneListClass, scene_selected),
 		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 1,
 		GTK_TYPE_INT);
+	gtk_scenelist_signals[SCENELIST_CHANGED] = gtk_signal_new("scenelist_changed",
+		GTK_RUN_FIRST, object_class->type,
+		GTK_SIGNAL_OFFSET(GtkSceneListClass, scene_selected),
+		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 0);
 	gtk_object_class_add_signals(object_class, gtk_scenelist_signals, LAST_SIGNAL);
 }
 
@@ -672,6 +677,7 @@ void gtk_scenelist_edit_move(GtkSceneList *scenelist, gint scene_num, gint direc
 	scenelist->items = g_list_insert(scenelist->items,
 		(gpointer)scene1, n);
 
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
 	gtk_scenelist_draw(GTK_WIDGET(scenelist));
 }
 
@@ -710,6 +716,9 @@ no_insert:
 		scene1 = gtk_scenelist_get_scene(scenelist, i);
 		scene1->start_total += (view_end - view_start + 1);
 	}
+
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
+	gtk_scenelist_draw(GTK_WIDGET(scenelist));
 }
 
 
@@ -732,6 +741,7 @@ void gtk_scenelist_edit_delete(GtkSceneList *scenelist, gint scene_num)
 		scene->start_total -= diff;
 	}
 
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
 	if (scenelist->selected_scene >= g_list_length(scenelist->scene))
 		gtk_scenelist_select(scenelist, scenelist->selected_scene - 1);
 	else
@@ -766,5 +776,6 @@ void gtk_scenelist_edit_split(GtkSceneList *scenelist, gint scene_num, gint fram
 		((gint)(g_list_nth(scenelist->scene, i)->data))++;
 	}
 
+	gtk_signal_emit_by_name(GTK_OBJECT(scenelist), "scenelist_changed");
 	gtk_scenelist_draw(GTK_WIDGET(scenelist));
 }

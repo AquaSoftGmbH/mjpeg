@@ -38,8 +38,9 @@ create.
 
 Keyboard keys
 ----------------
-arrows right/down - next channel
-arrows left/up    - previous channel
+arrow down        - next channel
+arrow up          - previous channel
+arrows left/right - Volume control
 q                 - quit
 a                 - toggle audio
 0-9               - choose a channel by number

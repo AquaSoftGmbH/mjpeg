@@ -340,7 +340,21 @@ void set_lavplay_edit_log(int norm, int cur_pos, int cur_speed)
 		{
 			if (GTK_SCENELIST(scenelist)->selected_scene != i)
 			{
+				int drawn;
 				GTK_SCENELIST(scenelist)->selected_scene = i;
+
+				/* hack */
+				gtk_scenelist_get_num_drawn(GTK_SCENELIST(scenelist),
+					&drawn, NULL);
+				if (GTK_SCENELIST(scenelist)->selected_scene - drawn + 1 >
+				    GTK_SCENELIST(scenelist)->current_scene && scene >= 0)
+					gtk_scenelist_view(GTK_SCENELIST(scenelist),
+						GTK_SCENELIST(scenelist)->selected_scene-drawn+1);
+				if (GTK_SCENELIST(scenelist)->selected_scene <
+				    GTK_SCENELIST(scenelist)->current_scene && scene >= 0)
+					gtk_scenelist_view(GTK_SCENELIST(scenelist),
+						GTK_SCENELIST(scenelist)->selected_scene);
+
 				gtk_scenelist_draw(scenelist);
 			}
 				//gtk_scenelist_select(GTK_SCENELIST(scenelist), i);
@@ -1292,12 +1306,12 @@ static void scene_clicked_signal(GtkWidget *widget, gint scene_num, gpointer dat
 	command_to_lavplay_edit(NULL, buff);
 }
 
-static void scrollbar_expose_event(GtkWidget *widget, GdkEventExpose *event, gpointer data)
+static void scrollbar_expose_event(GtkWidget *widget, gpointer data)
 {
 	GtkWidget *scrollbar = GTK_WIDGET(data);
 	GtkObject *adj;
 	gint num;
-
+printf("Signal\n");
 	gtk_scenelist_get_num_drawn(GTK_SCENELIST(scenelist),&num,NULL);
 	adj = gtk_adjustment_new(GTK_SCENELIST(scenelist)->current_scene,
 		0, g_list_length(GTK_SCENELIST(scenelist)->scene), 1, 3, num);
@@ -1401,7 +1415,9 @@ GtkWidget *create_lavedit_layout(GtkWidget *window)
 		0, g_list_length(GTK_SCENELIST(scenelist)->scene),
 		1, 3, num);
 	scrollbar = gtk_hscrollbar_new(GTK_ADJUSTMENT(adj));
-	gtk_signal_connect(GTK_OBJECT(window), "size_allocate",
+	gtk_signal_connect(GTK_OBJECT(scenelist), "scenelist_changed",
+	      GTK_SIGNAL_FUNC(scrollbar_expose_event), (gpointer)scrollbar);
+	gtk_signal_connect(GTK_OBJECT(scenelist), "realize",
 	      GTK_SIGNAL_FUNC(scrollbar_expose_event), (gpointer)scrollbar);
 	gtk_range_set_adjustment(GTK_RANGE(scrollbar), GTK_ADJUSTMENT(adj));
 	gtk_scenelist_set_adjustment(GTK_SCENELIST(scenelist), GTK_ADJUSTMENT(adj));

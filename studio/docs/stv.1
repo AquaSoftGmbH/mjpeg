@@ -2,12 +2,12 @@
 .SH NAME
 Linux Video Studio TV - a TV application
 .SH SYNOPSIS
-stv [\-h] [\-v] [\-p num] [\-t] [\-d] [\-c name] [\-g WxH+X+Y] [\l device] [\m device]
+stv [\-h] [\-v] [\-p num] [\-t] [\-d] [\-c name] [\-g WxH+X+Y] [\-l device] [\-m device]
 .SH DESCRIPTION
 \fBLinux Video Studio TV\fP is a simple TV-app for linux, based
-on Gtk+. It works, that's all. It has no fancy special features,
-like video capturing, image grabbing, bladiebla. Nothing of this
-all. It just shows TV. Because that's all it needs to do.
+on Gtk+ and the XFree Xv/v4l module. It works, that's all. It
+has no fancy special features, like video capturing. It just
+shows TV.
 
 .SH OPTIONS
 \fBLinux Video Studio TV\fP ('stv') accepts the following options:
@@ -47,8 +47,31 @@ multiple names, you can use multiple configurations all for one user. For
 example, if you have both a Buz and a DC10+, you could use '\-c buz' for
 the Buz and '\-c dc10' for the DC10+ card so that the two configurations
 will both be saved separately.
-.SH SEE ALSO
-.BR studio (1)
+
+.SH CONTROL
+You can control stv in three ways: with an infrared (LIRC-compatible)
+remote control, with the mouse or with your keyboard.
+
+.P
+.B Keyboard
+ arrow down        - next channel
+ arrow up          - previous channel
+ arrows left/right - Volume control
+ q                 - quit
+ a                 - toggle audio
+ 0-9               - choose a channel by number
+ enter/escape      - toggle fullscreen
+
+.P
+.B Mouse
+ Wheel down        - next channel
+ Wheel up          - previous channel
+ Middle button     - toggle fullscreen
+ Left mouse button - control window
+
+.P
+.B Infrared Remote Control (LIRC)
+ Can be manually configured in the options screen
 
 .SH BUGS
 Do we contain bugs? Yes, very likely. We just don't know which bugs
@@ -61,8 +84,15 @@ please run the core-file through gdb or run studio within gdb and attach
 the output of gdb too, so that we know where it crashed.
 
 .SH CONTACTING
-This application was created by:
-        Ronald Bultje <\fIrbultje@ronald.bitfreak.net\fP>
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for Linux Video Studio is:
+\fImjpeg\-users@lists.sourceforge.net\fP
 
-For bug reports, please make sure you're using the newest version. The 
-newest version can always be downloaded from \fIhttp://ronald.bitfreak.net/\fP
+You may also want to reach the developers individually:
+  Ronald Bultje        <\fIrbultje@ronald.bitfreak.net\fP>
+  Bernhard Praschinger <\fIpraschinger@netaway.at\fP>
+
+Also see our homepage at \fIhttp://ronald.bitfreak.net/\fP
+
+.SH SEE ALSO
+.BR studio (1)

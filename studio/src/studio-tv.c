@@ -1228,7 +1228,7 @@ int main(int argc, char *argv[])
    if (!tv)
    {
       g_print("ERROR: no suitable video4linux device found\n");
-      g_print("Please supply a video4linux Xv-port manually (\'stv -p <num\')\n");
+      g_print("Please supply a video4linux Xv-port manually (\'stv -p <num>\')\n");
       return 1;
    }
    if (channels)

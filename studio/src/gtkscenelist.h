@@ -138,6 +138,7 @@ struct _GtkSceneListClass
 
 	void (*scene_selected)		(GtkWidget *widget,
 					 gint scene_num);
+	void (*scenelist_changed)	(GtkWidget *widget);
 };
 
 /* scenelist widget object */
