@@ -86,33 +86,41 @@ sinc_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
 void
 interpolation_420JPEG_to_444_chroma (uint8_t * frame, uint8_t * inframe, int field)
 {
-	uint8_t * s0 = inframe+field*(width/2);
-	uint8_t * d0 = frame;
-	uint8_t * d1 = frame+width;
-	uint8_t * d2 = frame+width*2;
-	uint8_t * d3 = frame+width*3;
-	int offset1 = width*4;
-	int offset2 = width;
-
 	int x,y;
-	for(y=0;y<height/4;y++)
+	int w2 = width/2;
+	int h2 = height/2;
+
+	if(field==0)
+	for(y=0;y<h2;y+=2)
 	{
-		for(x=0;x<width/2;x++)
+		for(x=0;x<w2;x++)
 		{
-			*( d0+(x<<1)     ) = *(s0+x);
-			*( d0+(x<<1) + 1 ) = *(s0+x);
-			*( d1+(x<<1)     ) = *(s0+x);
-			*( d1+(x<<1) + 1 ) = *(s0+x);
-			*( d2+(x<<1)     ) = *(s0+x);
-			*( d2+(x<<1) + 1 ) = *(s0+x);
-			*( d3+(x<<1)     ) = *(s0+x);
-			*( d3+(x<<1) + 1 ) = *(s0+x);
+			*(frame+(x*2)+(y*2  )*width) = 
+			*(frame+(x*2)+(y*2+1)*width) = 
+			*(frame+(x*2)+(y*2+2)*width) = 
+			*(frame+(x*2)+(y*2+3)*width) = 
+
+			*(frame+(x*2+1)+(y*2  )*width) = 
+			*(frame+(x*2+1)+(y*2+1)*width) = 
+			*(frame+(x*2+1)+(y*2+2)*width) = 
+			*(frame+(x*2+1)+(y*2+3)*width) = *(inframe+(x)+(y)*w2);
 		}
-		d0 += offset1;
-		d1 += offset1;
-		d2 += offset1;
-		d3 += offset1;
-		s0 += offset2;
+	}
+	else
+	for(y=1;y<h2;y+=2)
+	{
+		for(x=0;x<w2;x++)
+		{
+			*(frame+(x*2)+(y*2  )*width) = 
+			*(frame+(x*2)+(y*2-1)*width) = 
+			*(frame+(x*2)+(y*2-2)*width) = 
+			*(frame+(x*2)+(y*2+1)*width) = 
+
+			*(frame+(x*2+1)+(y*2  )*width) = 
+			*(frame+(x*2+1)+(y*2-1)*width) = 
+			*(frame+(x*2+1)+(y*2-2)*width) = 
+			*(frame+(x*2+1)+(y*2+1)*width) = *(inframe+(x)+(y)*w2);
+		}
 	}
 }
 

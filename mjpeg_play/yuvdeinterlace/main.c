@@ -88,31 +88,11 @@ uint8_t *inframe[3];
 uint8_t *outframe[3];
 uint8_t *frame1[3];
 uint8_t *frame2[3];
-
-uint8_t f1y_s1	[1024 * 768];
-uint8_t f1cr_s1 [1024 * 768];
-uint8_t f1cb_s1	[1024 * 768];
-uint8_t *frame1_sub1[3] = { f1y_s1, f1cr_s1, f1cb_s1 };
-
-uint8_t f2y_s1	[1024 * 768];
-uint8_t f2cr_s1 [1024 * 768];
-uint8_t f2cb_s1	[1024 * 768];
-uint8_t *frame2_sub1[3] = { f2y_s1, f2cr_s1, f2cb_s1 };
-
-uint8_t f1y_s2	[1024 * 768];
-uint8_t f1cr_s2 [1024 * 768];
-uint8_t f1cb_s2	[1024 * 768];
-uint8_t *frame1_sub2[3] = { f1y_s2, f1cr_s2, f1cb_s2 };
-
-uint8_t f2y_s2	[1024 * 768];
-uint8_t f2cr_s2 [1024 * 768];
-uint8_t f2cb_s2	[1024 * 768];
-uint8_t *frame2_sub2[3] = { f2y_s2, f2cr_s2, f2cb_s2 };
-
-uint8_t ry	[1024 * 768];
-uint8_t rcr [1024 * 768];
-uint8_t rcb	[1024 * 768];
-uint8_t *reconstructed[3] = { ry, rcr, rcb };
+uint8_t *frame1_sub1[3];
+uint8_t *frame2_sub1[3];
+uint8_t *frame1_sub2[3];
+uint8_t *frame2_sub2[3];
+uint8_t *reconstructed[3];
 
 struct
 {
@@ -297,6 +277,7 @@ main (int argc, char *argv[])
 	/* the output is not interlaced 4:2:0 MPEG 1 */
 	y4m_si_set_interlace    (&ostreaminfo, Y4M_ILACE_NONE);
 	y4m_si_set_chroma       (&ostreaminfo, Y4M_CHROMA_420JPEG);
+//	y4m_si_set_chroma       (&ostreaminfo, Y4M_CHROMA_444);
 	y4m_si_set_width        (&ostreaminfo, width);
 	y4m_si_set_height       (&ostreaminfo, height);
 	y4m_si_set_framerate    (&ostreaminfo, y4m_si_get_framerate(&istreaminfo));
@@ -315,6 +296,10 @@ main (int argc, char *argv[])
         outframe[1] = malloc ( width*height );
         outframe[2] = malloc ( width*height );
 
+        reconstructed[0] = malloc ( width*height );
+        reconstructed[1] = malloc ( width*height );
+        reconstructed[2] = malloc ( width*height );
+
         frame1[0] = malloc ( width*height );
         frame1[1] = malloc ( width*height );
         frame1[2] = malloc ( width*height );
@@ -322,6 +307,22 @@ main (int argc, char *argv[])
         frame2[0] = malloc ( width*height );
         frame2[1] = malloc ( width*height );
         frame2[2] = malloc ( width*height );
+
+        frame1_sub1[0] = malloc ( width*height );
+        frame1_sub1[1] = malloc ( width*height );
+        frame1_sub1[2] = malloc ( width*height );
+
+        frame2_sub1[0] = malloc ( width*height );
+        frame2_sub1[1] = malloc ( width*height );
+        frame2_sub1[2] = malloc ( width*height );
+
+        frame1_sub2[0] = malloc ( width*height );
+        frame1_sub2[1] = malloc ( width*height );
+        frame1_sub2[2] = malloc ( width*height );
+
+        frame2_sub2[0] = malloc ( width*height );
+        frame2_sub2[1] = malloc ( width*height );
+        frame2_sub2[2] = malloc ( width*height );
 	}
 
 	/* read every frame until the end of the input stream and process it */
@@ -336,40 +337,40 @@ main (int argc, char *argv[])
 			/* chroma is handled like luma in this case ... */
 
 			/* interpolate first frame */
-			sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-			//interpolation_420JPEG_to_444_chroma (frame1[1],inframe[1],field_order);
-			//interpolation_420JPEG_to_444_chroma (frame1[2],inframe[2],field_order);
+			sinc_interpolation_luma (frame1[0],inframe[0],0);
+			interpolation_420JPEG_to_444_chroma (frame1[1],inframe[1],0);
+			interpolation_420JPEG_to_444_chroma (frame1[2],inframe[2],0);
 
 			/* interpolate second frame */
-			sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-			interpolation_420JPEG_to_444_chroma (frame2[1],inframe[1],1-field_order);
-			interpolation_420JPEG_to_444_chroma (frame2[2],inframe[2],1-field_order);
+			sinc_interpolation_luma (frame2[0],inframe[0],1);
+			interpolation_420JPEG_to_444_chroma (frame2[1],inframe[1],1);
+			interpolation_420JPEG_to_444_chroma (frame2[2],inframe[2],1);
 		}
 		else
 			if( input_chroma_subsampling == Y4M_CHROMA_420MPEG2 )
 			{
 				/* interpolate first frame */
-				sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-				interpolation_420MPEG2_to_444_chroma (frame1[1],inframe[1],field_order);
-				interpolation_420MPEG2_to_444_chroma (frame1[2],inframe[2],field_order);
+				sinc_interpolation_luma (frame1[0],inframe[0],0);
+				interpolation_420MPEG2_to_444_chroma (frame1[1],inframe[1],0);
+				interpolation_420MPEG2_to_444_chroma (frame1[2],inframe[2],0);
 	
 				/* interpolate second frame */
-				sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-				interpolation_420MPEG2_to_444_chroma (frame2[1],inframe[1],1-field_order);
-				interpolation_420MPEG2_to_444_chroma (frame2[2],inframe[2],1-field_order);
+				sinc_interpolation_luma (frame2[0],inframe[0],1);
+				interpolation_420MPEG2_to_444_chroma (frame2[1],inframe[1],1);
+				interpolation_420MPEG2_to_444_chroma (frame2[2],inframe[2],1);
 			}
 			else
 				if( input_chroma_subsampling == Y4M_CHROMA_420PALDV )
 				{
 					/* interpolate first frame */
-					sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-					interpolation_420PALDV_to_444_chroma (frame1[1],inframe[1],field_order);
-					interpolation_420PALDV_to_444_chroma (frame1[2],inframe[2],field_order);
+					sinc_interpolation_luma (frame1[0],inframe[0],0);
+					interpolation_420PALDV_to_444_chroma (frame1[1],inframe[1],0);
+					interpolation_420PALDV_to_444_chroma (frame1[2],inframe[2],0);
 
 					/* interpolate second frame */
-					sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-					interpolation_420PALDV_to_444_chroma (frame2[1],inframe[1],1-field_order);
-					interpolation_420PALDV_to_444_chroma (frame2[2],inframe[2],1-field_order);
+					sinc_interpolation_luma (frame2[0],inframe[0],1);
+					interpolation_420PALDV_to_444_chroma (frame2[1],inframe[1],1);
+					interpolation_420PALDV_to_444_chroma (frame2[2],inframe[2],1);
 				}
 				else
 					if( input_chroma_subsampling == Y4M_CHROMA_444 )
@@ -377,40 +378,40 @@ main (int argc, char *argv[])
 						/* chroma is handled like luma in this case ... */
 
 						/* interpolate first frame */
-						sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-						sinc_interpolation_luma (frame1[1],inframe[1],field_order);
-						sinc_interpolation_luma (frame1[2],inframe[2],field_order);
+						sinc_interpolation_luma (frame1[0],inframe[0],0);
+						sinc_interpolation_luma (frame1[1],inframe[1],0);
+						sinc_interpolation_luma (frame1[2],inframe[2],0);
 
 						/* interpolate second frame */
-						sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-						sinc_interpolation_luma (frame2[1],inframe[1],1-field_order);
-						sinc_interpolation_luma (frame2[2],inframe[2],1-field_order);
+						sinc_interpolation_luma (frame2[0],inframe[0],1);
+						sinc_interpolation_luma (frame2[1],inframe[1],1);
+						sinc_interpolation_luma (frame2[2],inframe[2],1);
 					}
 					else
 						if( input_chroma_subsampling == Y4M_CHROMA_422 )
 						{
 							/* interpolate first frame */
-							sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-							interpolation_422_to_444_chroma (frame1[1],inframe[1],field_order);
-							interpolation_422_to_444_chroma (frame1[2],inframe[2],field_order);
+							sinc_interpolation_luma (frame1[0],inframe[0],0);
+							interpolation_422_to_444_chroma (frame1[1],inframe[1],0);
+							interpolation_422_to_444_chroma (frame1[2],inframe[2],0);
 
 							/* interpolate second frame */
-							sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-							interpolation_422_to_444_chroma (frame2[1],inframe[1],1-field_order);
-							interpolation_422_to_444_chroma (frame2[2],inframe[2],1-field_order);
+							sinc_interpolation_luma (frame2[0],inframe[0],1);
+							interpolation_422_to_444_chroma (frame2[1],inframe[1],1);
+							interpolation_422_to_444_chroma (frame2[2],inframe[2],1);
 						}
 						else
 							if( input_chroma_subsampling == Y4M_CHROMA_411 )
 							{
 								/* interpolate first frame */
-								sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-								interpolation_411_to_444_chroma (frame1[1],inframe[1],field_order);
-								interpolation_411_to_444_chroma (frame1[2],inframe[2],field_order);
+								sinc_interpolation_luma (frame1[0],inframe[0],0);
+								interpolation_411_to_444_chroma (frame1[1],inframe[1],0);
+								interpolation_411_to_444_chroma (frame1[2],inframe[2],0);
 	
 								/* interpolate second frame */
-								sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-								interpolation_411_to_444_chroma (frame2[1],inframe[1],1-field_order);
-								interpolation_411_to_444_chroma (frame2[2],inframe[2],1-field_order);
+								sinc_interpolation_luma (frame2[0],inframe[0],1);
+								interpolation_411_to_444_chroma (frame2[1],inframe[1],1);
+								interpolation_411_to_444_chroma (frame2[2],inframe[2],1);
 							}			
 
 		/* subsample by 2 */
@@ -434,7 +435,7 @@ main (int argc, char *argv[])
  		/* write out reconstructed fields */
 		if(framenr++>0)
 		{
-	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
 		}
 
 	}
@@ -449,6 +450,10 @@ main (int argc, char *argv[])
         free(outframe[1]);
         free(outframe[2]);
 
+        free(reconstructed[0]);
+        free(reconstructed[1]);
+        free(reconstructed[2]);
+
         free(frame1[0]);
         free(frame1[1]);
         free(frame1[2]);
@@ -456,6 +461,22 @@ main (int argc, char *argv[])
         free(frame2[0]);
         free(frame2[1]);
         free(frame2[2]);
+
+        free(frame1_sub1[0]);
+        free(frame1_sub1[1]);
+        free(frame1_sub1[2]);
+
+        free(frame2_sub1[0]);
+        free(frame2_sub1[1]);
+        free(frame2_sub1[2]);
+
+        free(frame1_sub2[0]);
+        free(frame1_sub2[1]);
+        free(frame1_sub2[2]);
+
+        free(frame2_sub2[0]);
+        free(frame2_sub2[1]);
+        free(frame2_sub2[2]);
 
 		mjpeg_log (LOG_INFO,"Buffers freed.");
 	}
@@ -479,12 +500,12 @@ search_forward_vector( int x, int y )
 	int sr4=search_radius/4;
 
 	struct vector v;
-	static struct vector me_candidates1[5];
+	static struct vector me_candidates1[17];
 	int cc1=0; // candidate count
-	static struct vector me_candidates2[5];
+	static struct vector me_candidates2[17];
 	int cc2=0; // candidate count
 	int i;
-	int max_candidates = 4;
+	int max_candidates = 16;
 	uint32_t SAD;
 	uint32_t cSAD;
 	uint32_t min;
