@@ -66,9 +66,11 @@ void set_vbr (GtkWidget *widget, gpointer data);
 void set_qualityfa (GtkWidget *widget, gpointer data);
 void set_minGop (GtkWidget *widget, gpointer data);
 void set_maxGop (GtkWidget *widget, gpointer data);
+void set_sequencesize (GtkWidget *widget, gpointer data);
+void set_nonvideorate (GtkWidget *widget, gpointer data);
 
 /* Some variables */
-GList *samples = NULL;
+GList *samples = NULL; 
 GList *muxformat = NULL;
 GList *outputformat = NULL;
 struct encodingoptions tempenco;
@@ -81,7 +83,7 @@ GtkWidget *combo_entry_samplebitrate, *button_force_stereo, *button_force_mono;
 GtkWidget *button_force_vcd, *combo_entry_searchradius, *combo_entry_muxfmt;
 GtkWidget *combo_entry_videobitrate, *combo_entry_decoderbuffer, *switch_vbr; 
 GtkWidget *combo_entry_streamrate, *combo_entry_qualityfa, *combo_entry_minGop;
-GtkWidget *combo_entry_maxGop;
+GtkWidget *combo_entry_maxGop, *combo_entry_sequencemb, *combo_entry_nonvideo;
 /* =============================================================== */
 /* Start of the code */
 
@@ -347,6 +349,51 @@ int i;
     printf(" Set Stream data rate to : %i kB\n", tempenco.streamdatarate);
 }
 
+/* Set the sequencesize of the final multiplexed stream */
+void set_sequencesize(GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+
+  i = 0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if(strcmp(test,"disabled") != 0)
+  {
+    i = atoi ( test );
+    tempenco.sequencesize = i;
+  }
+  else
+    tempenco.sequencesize = 0;
+
+  if (verbose)
+    printf(" Set the sequence size to %i MB\n",tempenco.sequencesize); 
+}
+
+/* Set the non video rate of the final multiplexed stream */
+void set_nonvideorate(GtkWidget *widget, gpointer data)
+{
+char *test;
+int i;
+
+  i = 0;
+
+  test = gtk_entry_get_text(GTK_ENTRY(widget));
+
+  if(strcmp(test,"auto") != 0)
+  {
+    i = atoi ( test );
+    tempenco.nonvideorate = i;
+  }
+  else
+    tempenco.nonvideorate = 0;
+
+  if (verbose)
+    printf(" Set the non video rate in the final stream to: %i kBit/s\n", 
+                                               tempenco.nonvideorate);
+}
+
 /* set the mplex format */
 void set_mplex_muxfmt (GtkWidget *widget, gpointer data)
 {
@@ -524,8 +571,11 @@ char *test;
 void create_mplex_encoding (GtkWidget *table, int *tx, int *ty)
 {
 GtkWidget *label1, *combo_muxfmt, *combo_decoderbuffer, *combo_streamrate;
+GtkWidget *combo_sequencemb, *combo_nonvideo;
 GList *streamdata = NULL;
 GList *decoderbuffer = NULL;
+GList *sequence_mb = NULL;
+GList *nonvideorate = NULL;
 
   decoderbuffer = g_list_append (decoderbuffer, "20");
   decoderbuffer = g_list_append (decoderbuffer, "46");
@@ -538,6 +588,15 @@ GList *decoderbuffer = NULL;
   streamdata = g_list_append (streamdata, "1770");
   streamdata = g_list_append (streamdata, "2280");
   streamdata = g_list_append (streamdata, "2780");
+
+  sequence_mb = g_list_append (sequence_mb, "disabled");
+  sequence_mb = g_list_append (sequence_mb, "640");
+  sequence_mb = g_list_append (sequence_mb, "700");
+
+  nonvideorate = g_list_append (nonvideorate, "disabled");
+  nonvideorate = g_list_append (nonvideorate, "138");
+  nonvideorate = g_list_append (nonvideorate, "170");
+  nonvideorate = g_list_append (nonvideorate, "238");
 
   g_list_first(muxformat);
 
@@ -596,8 +655,38 @@ GList *decoderbuffer = NULL;
                       GTK_SIGNAL_FUNC (set_vbr), NULL);
   gtk_table_attach_defaults (GTK_TABLE(table), switch_vbr, *tx+1,*tx+2,*ty,*ty+1);
   gtk_widget_show (switch_vbr);
+  (*ty)++;
 
+  label1 = gtk_label_new ("  Sequence every MB: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
+  gtk_widget_show (label1);
 
+  combo_sequencemb = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_sequencemb), sequence_mb);
+  combo_entry_sequencemb = GTK_COMBO (combo_sequencemb)->entry;
+  gtk_signal_connect(GTK_OBJECT(combo_entry_sequencemb), "changed",
+                      GTK_SIGNAL_FUNC (set_sequencesize), NULL);
+  gtk_widget_set_usize (combo_sequencemb, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table), 
+                             combo_sequencemb, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_sequencemb);
+  (*ty)++;
+
+  label1 = gtk_label_new ("  Non video data bitrate: ");
+  gtk_misc_set_alignment(GTK_MISC(label1), 0.0, GTK_MISC(label1)->yalign);
+  gtk_table_attach_defaults (GTK_TABLE (table), label1, *tx, *tx+1, *ty, *ty+1);
+  gtk_widget_show (label1);
+
+  combo_nonvideo = gtk_combo_new();
+  gtk_combo_set_popdown_strings (GTK_COMBO (combo_nonvideo), nonvideorate);
+  combo_entry_nonvideo = GTK_COMBO (combo_nonvideo)->entry;
+//  gtk_signal_connect(GTK_OBJECT(combo_entry_nonvideo), "changed",
+//                      GTK_SIGNAL_FUNC (set_datarate), NULL);
+  gtk_widget_set_usize (combo_nonvideo, 60, -2);
+  gtk_table_attach_defaults (GTK_TABLE(table), 
+                             combo_nonvideo, *tx+1,*tx+2,*ty,*ty+1);
+  gtk_widget_show (combo_nonvideo);
 }
 
 /* set output bitrate for the audio */
@@ -623,6 +712,7 @@ int i;
 
   i = 0;
   test = gtk_entry_get_text(GTK_ENTRY(widget));
+  
   samples = g_list_last (samples);
 
   for (i = (g_list_length (g_list_first(samples))) ; i > 0 ; i--)
@@ -668,18 +758,19 @@ void create_sound_encoding (GtkWidget *table,int *tx,int *ty)
 GtkWidget *label1, *combo_audiobit, *combo_samplerate, *button_force_no; 
 GSList *group_force;
 GList *abitrate = NULL;
+GList *samples = NULL;
 
    abitrate = g_list_append (abitrate, "224");
    abitrate = g_list_append (abitrate, "160");
    abitrate = g_list_append (abitrate, "128");
    abitrate = g_list_append (abitrate, "96");
 
-   if (!samples)
-   {
-      samples = g_list_append (samples, "44100");
-      samples = g_list_append (samples, "48000");
-      samples = g_list_append (samples, "32000");
-   }
+if (!samples)
+  {
+    samples = g_list_append (samples, "44100");
+    samples = g_list_append (samples, "48000");
+    samples = g_list_append (samples, "32000");
+  }
 
   /* Creating 1st line iwth the Bitrate selection */
   label1 = gtk_label_new ("  Bitrate: ");
@@ -774,14 +865,14 @@ GList *input_active_size = NULL;
    droplsb = g_list_append (droplsb, "2");
    droplsb = g_list_append (droplsb, "3");
 
-   if (!outputformat)
-   {
-      outputformat = g_list_append (outputformat, "as is");
-      outputformat = g_list_append (outputformat, "half height/width from input");
-      outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
-      outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
-      outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
-   }
+if (!outputformat)
+  {
+   outputformat = g_list_append (outputformat, "as is");
+   outputformat = g_list_append (outputformat, "half height/width from input");
+   outputformat = g_list_append (outputformat, "wide of 720 to 480 for SVCD");
+   outputformat = g_list_append (outputformat, "wide of 720 to 352 for VCD");
+   outputformat = g_list_append (outputformat, "720x240 to 480x480 for SVCD");
+  }
 
    input_active_size = g_list_append (input_active_size, "as is");
    input_active_size = g_list_append (input_active_size, "348x278+2+2");
@@ -1144,6 +1235,8 @@ void accept_mpegoptions(GtkWidget *widget, gpointer data)
   (*point).streamdatarate=tempenco.streamdatarate;
   (*point).decoderbuffer=tempenco.decoderbuffer;
 
+  g_list_first (muxformat);
+
 }
 
 /* open a new window with all the options in it */
@@ -1151,18 +1244,21 @@ void open_mpeg_window(GtkWidget *widget, gpointer data)
 {
 GtkWidget *options_window, *button;
 GtkWidget *hbox,*vbox;
- 
+
+if (g_list_length (muxformat) == 0)
+  {
+    muxformat = g_list_append (muxformat, "Auto MPEG 1");
+    muxformat = g_list_append (muxformat, "standard VCD");
+    muxformat = g_list_append (muxformat, "user-rate VCD");
+    muxformat = g_list_append (muxformat, "Auto MPEG 2");
+    muxformat = g_list_append (muxformat, "standard SVCD");
+    muxformat = g_list_append (muxformat, "user-rate SVCD");
+    muxformat = g_list_append (muxformat, "DVD");
+  } 
+
   printf("\n laenge %i \n", g_list_length (g_list_first(muxformat)));
-   if (!muxformat)
-   {
-      muxformat = g_list_append (muxformat, "Auto MPEG 1");
-      muxformat = g_list_append (muxformat, "standard VCD");
-      muxformat = g_list_append (muxformat, "user-rate VCD");
-      muxformat = g_list_append (muxformat, "Auto MPEG 2");
-      muxformat = g_list_append (muxformat, "standard SVCD");
-      muxformat = g_list_append (muxformat, "user-rate SVCD");
-      muxformat = g_list_append (muxformat, "DVD");
-   }
+//  printf("\n laenge samples %i \n", g_list_length (g_list_first(samples)));
+  printf("\n laenge outputformat %i \n", g_list_length (g_list_first(outputformat)));
  
 
  init_tempenco(data);
@@ -1207,4 +1303,5 @@ GtkWidget *hbox,*vbox;
   gtk_widget_show(options_window);
 
   show_data(data);
+  
 }
