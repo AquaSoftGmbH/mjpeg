@@ -92,7 +92,7 @@ bool VideoStream::RunOutComplete()
 bool VideoStream::MuxPossible()
 {
 	return ( ElementaryStream::MuxPossible() 
-             && muxinto.current_SCR+CLOCKS > au->DTS );
+             && muxinto.current_SCR+CLOCKS > au->DTS + timestamp_delay );
 }
 
 /*********************************
