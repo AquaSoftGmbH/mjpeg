@@ -97,6 +97,7 @@ bin_PROGRAMS = \
 	multiblend.flt lavpipe \
 	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
 	ppmtoy4m y4mtoppm y4mcolorbars lavinfo y4mshift yuvfps \
+	y4mblackfix \
 	$(PNG_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
@@ -188,6 +189,9 @@ yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.
 yuv2divx_SOURCES = yuv2divx.cpp libavifile.h $(lav_headers)
 yuv2divx_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a \
 	$(AVIPLAY_LIBS) $(LIBM_LIBS) liblavfile.la
+
+y4mblackfix_SOURCES = y4mblackfix.c
+y4mblackfix_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
 ppmtoy4m_LDADD = $(top_builddir)/utils/libmjpegutils.a
