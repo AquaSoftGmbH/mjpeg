@@ -62,7 +62,7 @@ char *binString(int value, int length)
 {
     char *bin = (char *) malloc((length + 1) * sizeof(char));
     int index;
-    int dummy = 1 << length - 1;
+    int dummy = 1 << (length - 1);
 
     for(index = 0; index < length; index++)
     {
