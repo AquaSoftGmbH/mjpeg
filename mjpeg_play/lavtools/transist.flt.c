@@ -26,16 +26,16 @@
 
 #include "yuv4mpeg.h"
 
-static void usage () {
-
-   fprintf (stderr, "usage:  transist.flt [params]\n"
-                    "params: -o num   opacity of second input at the beginning [0-255]\n"
-                    "        -O num   opacity of second input at the end [0-255]\n"
-                    "        -d num   duration of transistion in frames (REQUIRED!)\n"
-                    "        -s num   skip first num frames of transistion\n"
-                    "        -n num   only process num frames of the transistion\n"
-                    "        -v num   verbosity [0..2]\n");
-
+static void usage () 
+{
+  fprintf(stderr, 
+	  "usage:  transist.flt [params]\n"
+	  "params: -o num   opacity of second input at the beginning [0-255]\n"
+	  "        -O num   opacity of second input at the end [0-255]\n"
+	  "        -d num   duration of transistion in frames (REQUIRED!)\n"
+	  "        -s num   skip first num frames of transistion\n"
+	  "        -n num   only process num frames of the transistion\n"
+	  "        -v num   verbosity [0..2]\n");
 }
 
 static void blend (unsigned char *src0[3], unsigned char *src1[3],
@@ -67,13 +67,18 @@ int main (int argc, char *argv[])
    unsigned char *yuv0[3]; /* input 0 */
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv[3];  /* output */
-   int w, h, rate;
+   int w, h;
    int i, j, opacity, frame;
    unsigned int param_opacity0   = 0;     /* opacity of input1 at the beginning */
    unsigned int param_opacity1   = 255;   /* opacity of input1 at the end */
    unsigned int param_duration   = 0;     /* duration of transistion effect */
    unsigned int param_skipframes = 0;     /* # of frames to skip */
    unsigned int param_numframes  = 0;    /* # of frames to process - skip+num <= duration */
+   y4m_stream_info_t streaminfo;
+   y4m_frame_info_t frameinfo;
+
+   y4m_init_stream_info (&streaminfo);
+   y4m_init_frame_info (&frameinfo);
 
    while ((i = getopt(argc, argv, "v:o:O:d:s:n:")) != -1) {
       switch (i) {
@@ -125,28 +130,44 @@ int main (int argc, char *argv[])
 
    (void)mjpeg_default_handler_verbosity(verbose);
 
-   i = yuv_read_header (in_fd, &w, &h, &rate);
-   
-   yuv[0] = (char *)malloc (w*h);   (char *)yuv0[0] = malloc (w*h);   (char *)yuv1[0] = malloc (w*h);
-   yuv[1] = (char *)malloc (w*h/4); (char *)yuv0[1] = malloc (w*h/4); (char *)yuv1[1] = malloc (w*h/4);
-   yuv[2] = (char *)malloc (w*h/4); (char *)yuv0[2] = malloc (w*h/4); (char *)yuv1[2] = malloc (w*h/4);
 
-   yuv_write_header (out_fd, w, h, rate);
+   i = y4m_read_stream_header (in_fd, &streaminfo);
+   if (i != Y4M_OK) {
+      fprintf (stderr, "%s: input stream error - %s\n", 
+	       argv[0], y4m_strerr(i));
+      exit (1);
+   }
+   w = y4m_si_get_width(&streaminfo);
+   h = y4m_si_get_height(&streaminfo);
+   
+   yuv[0] = malloc (w*h);
+   yuv0[0] = malloc (w*h);
+   yuv1[0] = malloc (w*h);
+   yuv[1] = malloc (w*h/4);
+   yuv0[1] = malloc (w*h/4);
+   yuv1[1] = malloc (w*h/4);
+   yuv[2] = malloc (w*h/4); 
+   yuv0[2] = malloc (w*h/4); 
+   yuv1[2] = malloc (w*h/4);
+
+   y4m_write_stream_header (out_fd, &streaminfo);
 
    frame = param_skipframes;
    while (1) {
-      i = yuv_read_frame(in_fd, yuv0, w, h);
-      if (i<=0)
-         exit (frame < (param_skipframes + param_numframes));
-      j = yuv_read_frame(in_fd, yuv1, w, h);
-      if (j<=0)
-         exit (frame < (param_skipframes + param_numframes));
+
+      i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv0);
+      if (i != Y4M_OK)
+	exit (frame < (param_skipframes + param_numframes));
+
+      j = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv1);
+      if (j != Y4M_OK)
+	exit (frame < (param_skipframes + param_numframes));
 
       opacity = (1 - frame/((double)param_duration-1)) * param_opacity0
                   + (frame/((double)param_duration-1)) * param_opacity1;
 
       blend (yuv0, yuv1, opacity, w, h, yuv);
-      yuv_write_frame (out_fd, yuv, w, h);
+      y4m_write_frame (out_fd, &streaminfo, &frameinfo, yuv);
       if (++frame == (param_skipframes + param_numframes))
          exit (0);
    }

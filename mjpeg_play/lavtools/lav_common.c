@@ -28,6 +28,7 @@
 */
 
 #include "lav_common.h"
+#include "mpegconsts.h"
 
 static unsigned char jpeg_data[MAX_JPEG_LEN];
 
@@ -518,7 +519,7 @@ void writeoutYUV4MPEGheader(
 {
    //int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
    int n;
-   y4m_stream_info_t *stream_info = NULL;
+   y4m_stream_info_t stream_info;
 
 #if 0
    if (frame_rate_code == 0) {
@@ -532,40 +533,38 @@ void writeoutYUV4MPEGheader(
     */
 
    /* new YUV4MPEG streaming */
-   stream_info = y4m_init_stream_info(NULL);
-   stream_info->width = param->output_width;
-   stream_info->height = param->output_height;
-   stream_info->interlace = el.video_inter;
-   stream_info->framerate = el.video_fps;
+   y4m_init_stream_info(&stream_info);
+   y4m_si_set_width(&stream_info, param->output_width);
+   y4m_si_set_height(&stream_info, param->output_height);
+   y4m_si_set_interlace(&stream_info, 
+			(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
+			(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
+			(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
+			Y4M_UNKNOWN
+			);
+   y4m_si_set_framerate(&stream_info, mpeg_conform_framerate(el.video_fps));
    //stream_info->aspectratio = param->output_width / param->output_height;
-   n = y4m_write_stream_header(out_fd, stream_info);
+   n = y4m_write_stream_header(out_fd, &stream_info);
    if (n != Y4M_OK)
-      mjpeg_error("Failed to write stream header: %s\n", y4m_errstr(n));
-   y4m_free_stream_info(stream_info);
+      mjpeg_error("Failed to write stream header: %s\n", y4m_strerr(n));
+   y4m_fini_stream_info(&stream_info);
 }
 
-void writeoutframeinYUV4MPEG(
-	int out_fd
-	, unsigned char *frame[]
-	, LavBounds *bounds
-	, LavParam *param
-	, LavBuffers *buffer
-	)
+void writeoutframeinYUV4MPEG(int out_fd,
+			     unsigned char *frame[],
+			     LavBounds *bounds,
+			     LavParam *param,
+			     LavBuffers *buffer,
+			     y4m_frame_info_t *frame_info)
 {
-   int n = 0;
    int i;
    char *ptr;
-   //y4m_frame_info_t frame_info;
-
-   /* old YUVMPEG stream info, obsolete
-    * pipewrite(out_fd, "FRAME\n", 6);
-    */
 
    /* new YUV4MPEG stream info */
    /* NB: TODO - there's no frame info yet, since we don't need it yet */
-   i = y4m_write_frame_header(out_fd, NULL); /* &frame_info */ 
+   i = y4m_write_frame_header(out_fd, frame_info); /* &frame_info */ 
    if (i != Y4M_OK)
-      mjpeg_error("Failed to write frame header: %s\n", y4m_errstr(i));
+      mjpeg_error("Failed to write frame header: %s\n", y4m_strerr(i));
 
    for (i = 0; i < bounds->active_height; i++) {
       ptr = &frame[0][bounds->luma_offset + (i * param->output_width)];
@@ -599,28 +598,28 @@ void writeoutframeinYUV4MPEG(
    }
 
    if (bounds->luma_top_size) {
-      n += pipewrite(out_fd, buffer->luma_blank, bounds->luma_top_size);
+      y4m_write(out_fd, buffer->luma_blank, bounds->luma_top_size);
    }
-   n += pipewrite(out_fd, &frame[0][bounds->luma_offset], bounds->luma_size);
+   y4m_write(out_fd, &frame[0][bounds->luma_offset], bounds->luma_size);
    if (bounds->luma_bottom_size) {
-      n += pipewrite(out_fd, buffer->luma_blank, bounds->luma_bottom_size);
+      y4m_write(out_fd, buffer->luma_blank, bounds->luma_bottom_size);
    }
 
 
    if (bounds->chroma_top_size) {
-      n += pipewrite(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
+      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
    }
-   n += pipewrite(out_fd, &frame[1][bounds->chroma_offset], bounds->chroma_size);
+   y4m_write(out_fd, &frame[1][bounds->chroma_offset], bounds->chroma_size);
    if (bounds->chroma_bottom_size) {
-      n += pipewrite(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
+      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
    }
 
    if (bounds->chroma_top_size) {
-      n += pipewrite(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
+      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_top_size);
    }
-   n += pipewrite(out_fd, &frame[2][bounds->chroma_offset], bounds->chroma_size);
+   y4m_write(out_fd, &frame[2][bounds->chroma_offset], bounds->chroma_size);
    if (bounds->chroma_bottom_size) {
-      n += pipewrite(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
+      y4m_write(out_fd, buffer->chroma_blank, bounds->chroma_bottom_size);
    }
 }
 

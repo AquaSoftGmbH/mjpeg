@@ -117,9 +117,9 @@ static void DisplayFrameRates()
 {
  	int i;
 	printf("Frame-rate codes:\n");
-	for( i = 0; i < mpeg_num_frame_rates; ++i )
+	for( i = 0; i < mpeg_num_framerates; ++i )
 	{
-		printf( "%2d - %s\n", i, mpeg_frame_rate_code_definition(i));
+		printf( "%2d - %s\n", i, mpeg_framerate_code_definition(i));
 	}
 	exit(0);
 }
@@ -369,12 +369,12 @@ static int infer_default_params()
 	{
 		if( opt_frame_rate_code != param_frame_rate && 
 			opt_frame_rate_code > 0 && 
-			opt_frame_rate_code < mpeg_num_frame_rates )
+			opt_frame_rate_code < mpeg_num_framerates )
 		{
 			mjpeg_warn( "Specified output frame-rate %3.2f will over-ride\n", 
-						mpeg_frame_rate(param_frame_rate));
+						Y4M_RATIO_DBL(mpeg_framerate(param_frame_rate)));
 			mjpeg_warn( "(different!) frame-rate %3.2f of the input stream\n",
-						mpeg_frame_rate(opt_frame_rate_code));
+						Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code)));
 		}
 		opt_frame_rate_code = param_frame_rate;
 	}
@@ -521,10 +521,10 @@ int main(argc,argv)
             if( param_frame_rate == 0 )
 				DisplayFrameRates();
 			if( param_frame_rate < 0 || 
-				param_frame_rate >= mpeg_num_frame_rates)
+				param_frame_rate >= mpeg_num_framerates)
 			{
 				mjpeg_error( "-F option must be [0..%d]\n", 
-						 mpeg_num_frame_rates-1);
+						 mpeg_num_framerates-1);
 				++nerr;
 			}
 			break;
@@ -693,7 +693,7 @@ int main(argc,argv)
 
 	/* Read parameters inferred from input stream */
 	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
-						&opt_frame_rate_code );
+			    &opt_frame_rate_code, &param_topfirst );
 
 	if(opt_horizontal_size<=0)
 	{
@@ -748,7 +748,7 @@ int main(argc,argv)
 			mpeg_aspect_code_definition(param_mpeg,param_aspect_ratio));
 	mjpeg_info("Frame rate code:   %d = %s\n",
 			opt_frame_rate_code,
-			mpeg_frame_rate_code_definition(opt_frame_rate_code));
+			mpeg_framerate_code_definition(opt_frame_rate_code));
 
 	if(param_bitrate) 
 		mjpeg_info("Bitrate: %d KBit/s\n",param_bitrate/1000);
@@ -1123,7 +1123,7 @@ static void init_mpeg_parms(void)
 	/* make sure MPEG specific parameters are valid */
 	range_checks();
 
-	opt_frame_rate = mpeg_frame_rate(opt_frame_rate_code);
+	opt_frame_rate = Y4M_RATIO_DBL(mpeg_framerate(opt_frame_rate_code));
 
 
 	if ( !opt_mpeg1)

@@ -65,44 +65,59 @@ int main (int argc, char *argv[])
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv2[3]; /* input 2 */
    unsigned char *yuv[3];  /* output */
-   y4m_stream_info_t *streaminfo;
-   y4m_frame_info_t *frameinfo;
+   y4m_stream_info_t streaminfo;
+   y4m_frame_info_t frameinfo;
    int i;
+   int w, h;
 
    if (argc > 1) {
       usage ();
       exit (1);
    }
 
-   streaminfo = y4m_init_stream_info (NULL);
-   frameinfo = y4m_init_frame_info (NULL);
+   y4m_init_stream_info (&streaminfo);
+   y4m_init_frame_info (&frameinfo);
 
-   i = y4m_read_stream_header (in_fd, streaminfo);
+   i = y4m_read_stream_header (in_fd, &streaminfo);
    if (i != Y4M_OK) {
-      fprintf (stderr, "%s: input stream error\n", argv[0]);
+      fprintf (stderr, "%s: input stream error - %s\n", 
+	       argv[0], y4m_strerr(i));
       exit (1);
    }
+   w = y4m_si_get_width(&streaminfo);
+   h = y4m_si_get_height(&streaminfo);
 
-   yuv[0] = (char *)malloc (streaminfo->width*streaminfo->height);   (char *)yuv0[0] = malloc (streaminfo->width*streaminfo->height);   (char *)yuv1[0] = malloc (streaminfo->width*streaminfo->height);   (char *)yuv2[0] = malloc (streaminfo->width*streaminfo->height);
-   yuv[1] = (char *)malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv0[1] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv1[1] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv2[1] = malloc ((streaminfo->width*streaminfo->height)/4);
-   yuv[2] = (char *)malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv0[2] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv1[2] = malloc ((streaminfo->width*streaminfo->height)/4); (char *)yuv2[2] = malloc ((streaminfo->width*streaminfo->height)/4);
+   yuv[0] =  malloc (w * h);
+   yuv0[0] = malloc (w * h);
+   yuv1[0] = malloc (w * h);
+   yuv2[0] = malloc (w * h);
+   yuv[1] =  malloc (w * h / 4);
+   yuv0[1] = malloc (w * h / 4);
+   yuv1[1] = malloc (w * h / 4);
+   yuv2[1] = malloc (w * h / 4);
+   yuv[2] =  malloc (w * h / 4);
+   yuv0[2] = malloc (w * h / 4);
+   yuv1[2] = malloc (w * h / 4);
+   yuv2[2] = malloc (w * h / 4);
 
-   y4m_write_stream_header (out_fd, streaminfo);
+   y4m_write_stream_header (out_fd, &streaminfo);
 
    while (1) {
-      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv0);
-      if (i != Y4M_OK)
-         exit (0);
-      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv1);
+      i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv0);
+      if (i == Y4M_ERR_EOF)
+	exit (0);
+      else if (i != Y4M_OK)
+         exit (1);
+      i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv1);
       if (i != Y4M_OK)
          exit (1);
-      i = y4m_read_frame(in_fd, streaminfo, frameinfo, yuv2);
+      i = y4m_read_frame(in_fd, &streaminfo, &frameinfo, yuv2);
       if (i != Y4M_OK)
          exit (1);
 
-      blend (yuv0, yuv1, yuv2, streaminfo->width, streaminfo->height, yuv);
+      blend (yuv0, yuv1, yuv2, w, h, yuv);
 
-      y4m_write_frame (out_fd, streaminfo, frameinfo, yuv);
+      y4m_write_frame (out_fd, &streaminfo, &frameinfo, yuv);
 
    }
 

@@ -118,9 +118,9 @@ void VideoStream::ScanFirstSeqHeader()
 		exit (1);
     }
 
-	if (pict_rate >0 && pict_rate <= mpeg_num_frame_rates)
+	if (pict_rate >0 && pict_rate <= mpeg_num_framerates)
     {
-		frame_rate = mpeg_frame_rate(pict_rate);
+		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(pict_rate));
 		film_rate = 1;
 	}
     else
@@ -390,9 +390,9 @@ void VideoStream::OutputSeqhdrInfo ()
 
     if (picture_rate == 0)
 		mjpeg_info( "Picture rate    : forbidden\n");
-    else if (picture_rate <=mpeg_num_frame_rates)
+    else if (picture_rate <= mpeg_num_framerates)
 		mjpeg_info( "Picture rate    : %2.3f frames/sec\n",
-					mpeg_frame_rate(picture_rate) );
+					Y4M_RATIO_DBL(mpeg_framerate(picture_rate)) );
     else
 		mjpeg_info( "Picture rate    : %x reserved\n",picture_rate);
 

@@ -32,6 +32,7 @@
 #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
+#include "mpegconsts.h"
 #include "inttypes.h"
 #include "yuvscaler.h"
 
@@ -150,7 +151,6 @@ float framerates[] =
 // 2048=2^11
 #define FLOAT2INTEGER 2048
 #define FLOAT2INTEGERPOWER 11
-int dummy = 0;
 uint8_t blacky = 16;
 uint8_t blackuv = 128;
 uint8_t no_header = 0;		// =1 for no stream header output 
@@ -167,10 +167,10 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
     {
       if (!line_switching)
 	{
-	  if ((err = y4m_read (fd, buf, buflen, &dummy)) != Y4M_OK)
+	  if ((err = y4m_read (fd, buf, buflen)) != Y4M_OK)
 	    {
 	      mjpeg_info ("Couldn't read FRAME content: %s!\n",
-			  y4m_errstr (err));
+			  y4m_strerr (err));
 	      return (err);
 	    }
 	}
@@ -181,17 +181,17 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	  for (line = 0; line < input_height; line += 2)
 	    {
 	      buf += input_width;	// buf points to next line on output, store input line there
-	      if ((err = y4m_read (fd, buf, input_width, &dummy)) != Y4M_OK)
+	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
-			      line, y4m_errstr (err));
+			      line, y4m_strerr (err));
 		  return (err);
 		}
 	      buf -= input_width;	// buf points to former line on output, store input line there
-	      if ((err = y4m_read (fd, buf, input_width, &dummy)) != Y4M_OK)
+	      if ((err = y4m_read (fd, buf, input_width)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
-			      line + 1, y4m_errstr (err));
+			      line + 1, y4m_strerr (err));
 		  return (err);
 		}
 	      buf += 2 * input_width;	// two line were read and stored
@@ -201,18 +201,18 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	    {
 	      buf += input_width / 2;	// buf points to next line on output, store input line there
 	      if ((err =
-		   y4m_read (fd, buf, input_width / 2, &dummy)) != Y4M_OK)
+		   y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
-			      line, y4m_errstr (err));
+			      line, y4m_strerr (err));
 		  return (err);
 		}
 	      buf -= input_width / 2;	// buf points to former line on output, store input line there
 	      if ((err =
-		   y4m_read (fd, buf, input_width / 2, &dummy)) != Y4M_OK)
+		   y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
-			      line + 1, y4m_errstr (err));
+			      line + 1, y4m_strerr (err));
 		  return (err);
 		}
 	      buf += input_width;	// two line were read and stored
@@ -221,8 +221,8 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
     }
   else
     {
-      if (err != Y4M_EOF)
-	mjpeg_info ("Couldn't read FRAME header: %s!\n", y4m_errstr (err));
+      if (err != Y4M_ERR_EOF)
+	mjpeg_info ("Couldn't read FRAME header: %s!\n", y4m_strerr (err));
       else
 	mjpeg_info ("End of stream!\n");
       return (err);
@@ -997,7 +997,7 @@ main (int argc, char *argv[])
   int n, res, len, err = Y4M_OK, nb;
   unsigned long int i, j;
 //  int frame_rate_code = 0;
-  double frame_rate = -1.0;
+  y4m_ratio_t frame_rate = y4m_fps_UNKNOWN;
 
 //  int input_fd = 0;
   long int frame_num = 0;
@@ -1019,14 +1019,13 @@ main (int argc, char *argv[])
   unsigned int *in_line = NULL, *in_col = NULL, out_line, out_col;
   unsigned long int somme;
   int m;
-  int dummy;
   float *a = NULL, *b = NULL;
   int16_t *cubic_spline_m = NULL, *cubic_spline_n = NULL;
 
   // SPECIFIC TO YUV4MPEG 
   unsigned long int nb_pixels;
-  y4m_frame_info_t *frameinfo = NULL;
-  y4m_stream_info_t *streaminfo = NULL;
+  y4m_frame_info_t frameinfo;
+  y4m_stream_info_t streaminfo;
 
 
   mjpeg_info ("yuvscaler (version " YUVSCALER_VERSION
@@ -1036,22 +1035,23 @@ main (int argc, char *argv[])
 
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
-  streaminfo = y4m_init_stream_info (NULL);
-  y4m_init_frame_info (frameinfo);
+
+  y4m_init_stream_info(&streaminfo);
+  y4m_init_frame_info(&frameinfo);
 
 
   if (infile == 0)
     {
       // INPUT comes from stdin, we check for a correct file header
-      if (y4m_read_stream_header (0, streaminfo) != Y4M_OK)
+      if (y4m_read_stream_header (0, &streaminfo) != Y4M_OK)
 	{
 	  mjpeg_error ("Could'nt read YUV4MPEG header!\n");
 	  exit (1);
 	}
-      input_width = streaminfo->width;
-      input_height = streaminfo->height;
-      frame_rate = streaminfo->framerate;
-      input_interlaced = streaminfo->interlace;
+      input_width = y4m_si_get_width(&streaminfo);
+      input_height = y4m_si_get_height(&streaminfo);
+      frame_rate = y4m_si_get_framerate(&streaminfo);
+      input_interlaced = y4m_si_get_interlace(&streaminfo);
 //     input_aspectratio=streaminfo->aspectratio;  
     }
   else
@@ -1063,30 +1063,35 @@ main (int argc, char *argv[])
 	mjpeg_error_exit1 ("Editlist not in chroma 422 format, exiting...\n");
       input_width = el.video_width;
       input_height = el.video_height;
-      frame_rate = el.video_fps;
-      input_interlaced = el.video_inter;	// this will be  eventually overrided by user's specification
+      frame_rate = mpeg_conform_framerate(el.video_fps);
+      input_interlaced = 
+	(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
+	(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
+	(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
+	Y4M_UNKNOWN;
+      // this will be  eventually overrided by user's specification
       // Let's determine the frame rate code
 //      frame_rate_code = 0;
 //      while ((framerates[++frame_rate_code] != frame_rate)
 //           && (frame_rate_code <= 8));
-      streaminfo->width = input_width;
-      streaminfo->height = input_height;
-      streaminfo->interlace = input_interlaced;
-      streaminfo->framerate = frame_rate;
-      streaminfo->aspectratio = 0.0;
+      y4m_si_set_width(&streaminfo, input_width);
+      y4m_si_set_height(&streaminfo, input_height);
+      y4m_si_set_interlace(&streaminfo, input_interlaced);
+      y4m_si_set_framerate(&streaminfo, frame_rate);
+      y4m_si_set_aspectratio(&streaminfo, y4m_aspect_UNKNOWN);
     }
 
   // INITIALISATIONS
   // Norm determination (we eventually overwrite user's specification through the -n flag
-  if (frame_rate == Y4M_FPS_PAL)
+  if (Y4M_RATIO_EQL(frame_rate, y4m_fps_PAL))
     norm = 0;
-  if (frame_rate == Y4M_FPS_NTSC)
+  if (Y4M_RATIO_EQL(frame_rate, y4m_fps_NTSC))
     norm = 1;
   if (norm < 0)
     {
       mjpeg_warn
-	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%.3f fps)!!\n",
-	 input_width, input_height, frame_rate);
+	("Could not infer norm (PAL/SECAM or NTSC) from input data (frame size=%dx%d, frame rate=%d:%d fps)!!\n",
+	 input_width, input_height, frame_rate.n, frame_rate.d);
     }
 
 
@@ -1112,7 +1117,7 @@ main (int argc, char *argv[])
 
   // USER'S INFORMATION OUTPUT
 
-//  y4m_print_stream_info(output_fd,streaminfo);
+  y4m_log_stream_info(LOG_INFO, "yuvscaler: ", &streaminfo);
 
   switch (input_interlaced)
     {
@@ -1219,7 +1224,7 @@ main (int argc, char *argv[])
       mjpeg_info ("skipped columns: %u left and %u right\n",
 		  output_skip_col_left, output_skip_col_right);
     }
-  mjpeg_info ("yuvscaler frame rate: %.3f fps\n", frame_rate);
+  mjpeg_info ("yuvscaler frame rate: %.3f fps\n", Y4M_RATIO_DBL(frame_rate));
 
 
   divider = pgcd (input_useful_width, output_active_width);
@@ -1437,7 +1442,8 @@ main (int argc, char *argv[])
       mjpeg_info ("skipped columns: %u left and %u right\n",
 		  output_skip_col_left, output_skip_col_right);
     }
-	mjpeg_info ("yuvscaler frame rate: %.3f fps\n", frame_rate);
+	mjpeg_info ("yuvscaler frame rate: %.3f fps\n", 
+		    Y4M_RATIO_DBL(frame_rate));
      }
 
    
@@ -1766,11 +1772,11 @@ main (int argc, char *argv[])
 
   // Output file header
   // Should use functions y4m_copy, but I didn't find them inside yuv4mpeg.c (16 Sept 2001)
-  streaminfo->width = display_width;
-  streaminfo->height = display_height;
-  streaminfo->interlace = output_interlaced;
+  y4m_si_set_width(&streaminfo, display_width);
+  y4m_si_set_height(&streaminfo, display_height);
+  y4m_si_set_interlace(&streaminfo, output_interlaced);
   if (no_header == 0)
-    y4m_write_stream_header (output_fd, streaminfo);
+    y4m_write_stream_header (output_fd, &streaminfo);
 
 //   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
 //   if (!fwrite_complete (header, 19, out_file))
@@ -1783,13 +1789,13 @@ main (int argc, char *argv[])
       // Je sais pas pourquoi, mais y4m_read_frame merde, y4m_read_frame_header suivi de y4m_read marche !!!!!!!
        // Line switch if necessary
       while (my_y4m_read_frame
-	     (0, frameinfo, nb_pixels, input, line_switching) == Y4M_OK)
+	     (0, &frameinfo, nb_pixels, input, line_switching) == Y4M_OK)
 	{
 	  frame_num++;
 	  mjpeg_info ("yuvscaler Frame number %ld\r", frame_num);
 
 	  // Output Frame Header
-	  if (y4m_write_frame_header (output_fd, frameinfo) != Y4M_OK)
+	  if (y4m_write_frame_header (output_fd, &frameinfo) != Y4M_OK)
 	    goto out_error;
 
 	  // Blackout if necessary
@@ -1956,7 +1962,7 @@ main (int argc, char *argv[])
 	    }
 	}
       // End of master loop
-      if (err != Y4M_EOF)
+      if (err != Y4M_ERR_EOF)
 	mjpeg_info ("Couldn't read FRAME number %ld!\n", frame_num);
       else
 	mjpeg_info ("End of stream with FRAME number %ld!\n", frame_num);
@@ -1985,7 +1991,7 @@ main (int argc, char *argv[])
 	  if (line_switching)
 	    line_switch (input, line);
 	  // Output Frame Header
-	  if (y4m_write_frame_header (output_fd, frameinfo) != Y4M_OK)
+	  if (y4m_write_frame_header (output_fd, &frameinfo) != Y4M_OK)
 	    goto out_error;
 
 	  // Blackout if necessary
@@ -2153,6 +2159,9 @@ main (int argc, char *argv[])
       // End of master loop
     }
 
+
+  y4m_fini_stream_info(&streaminfo);
+  y4m_fini_frame_info(&frameinfo);
   return 0;
 
 out_error:

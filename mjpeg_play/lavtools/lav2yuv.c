@@ -88,6 +88,9 @@ void streamout(void)
    int fd_out = 1; // stdout.
    
    char temp[32];
+   y4m_frame_info_t frameinfo;
+
+   y4m_init_frame_info(&frameinfo);
 
    if (!param.scenefile)
       writeoutYUV4MPEGheader(fd_out, &param, el);
@@ -150,7 +153,7 @@ void streamout(void)
       } 
       else
       {
-         writeoutframeinYUV4MPEG(fd_out, buffer.frame_buf, &bounds, &param, &buffer);
+         writeoutframeinYUV4MPEG(fd_out, buffer.frame_buf, &bounds, &param, &buffer, &frameinfo);
       }
    }
    if (param.scenefile)
@@ -159,6 +162,8 @@ void streamout(void)
       fclose(fd);
       mjpeg_info( "Editlist written to %s\n", param.scenefile);
    }
+   
+   y4m_fini_frame_info(&frameinfo);
 }
 
 int main(argc, argv)

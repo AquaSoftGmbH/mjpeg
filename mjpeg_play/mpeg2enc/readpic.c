@@ -181,8 +181,8 @@ static void read_chunk()
 
       if ((y = y4m_read_frame_header (istrm_fd, &fi)) != Y4M_OK) 
 	  {
-		  if( y != Y4M_EOF )
-			  mjpeg_log (LOG_WARN, "Couldn't read FRAME header: %s!\n", y4m_errstr (n));
+		  if( y != Y4M_ERR_EOF )
+			  mjpeg_log (LOG_WARN, "Couldn't read FRAME header: %s!\n", y4m_strerr (n));
          goto EOF_MARK;
       }
       
@@ -403,18 +403,24 @@ int frame_lum_mean( int num_frame )
 }
 
 
-void read_stream_params( int *hsize, int *vsize, int *frame_rate_code )
+void read_stream_params( int *hsize, int *vsize, int *frame_rate_code,
+			 int *topfirst)
 {
    int n;
    y4m_stream_info_t si;
 
    y4m_init_stream_info (&si);   
    if ((n = y4m_read_stream_header (istrm_fd, &si)) != Y4M_OK) {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_errstr (n));
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (n));
       exit (1);
    }
 
-   *hsize = si.width;
-   *vsize = si.height;
-   *frame_rate_code = mpeg_frame_rate_code (si.framerate);
+   *hsize = y4m_si_get_width(&si);
+   *vsize = y4m_si_get_height(&si);
+   *frame_rate_code = mpeg_framerate_code(y4m_si_get_framerate(&si));
+   if (y4m_si_get_interlace(&si) == Y4M_ILACE_TOP_FIRST)
+     *topfirst = 1;
+   else if (y4m_si_get_interlace(&si) == Y4M_ILACE_BOTTOM_FIRST)
+     *topfirst = 0;
+   y4m_fini_stream_info (&si);
 }

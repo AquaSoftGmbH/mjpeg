@@ -4,6 +4,7 @@
  *                 and conversion to format used for yuv4mpeg
  *
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *  Copyright (C) 2001 Matthew Marjanovic <maddog@mir.com>
  *
  *
  *  This program is free software; you can redistribute it and/or
@@ -25,25 +26,38 @@
 #include "yuv4mpeg.h"
 #include "yuv4mpeg_intern.h"
 
-static double 
-mpeg_framerates[]=
-    {0.0, 24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
 
-#define MPEG_NUM_RATES (sizeof(mpeg_framerates)/sizeof(double))
-const mpeg_frame_rate_code_t mpeg_num_frame_rates = MPEG_NUM_RATES;
+#define Y4M_ASPECT_MULT (1<<20)   /* temporary! until aspect fixed up (mdog) */
+
+static y4m_ratio_t
+mpeg_framerates[] = {
+  Y4M_FPS_UNKNOWN,
+  Y4M_FPS_NTSC_FILM,
+  Y4M_FPS_FILM,
+  Y4M_FPS_PAL,
+  Y4M_FPS_NTSC,
+  Y4M_FPS_30,
+  Y4M_FPS_PAL_FIELD,
+  Y4M_FPS_NTSC_FIELD,
+  Y4M_FPS_60
+};
+
+
+#define MPEG_NUM_RATES (sizeof(mpeg_framerates)/sizeof(mpeg_framerates[0]))
+const mpeg_framerate_code_t mpeg_num_framerates = MPEG_NUM_RATES;
 
 static const char *
-frame_rate_definitions[MPEG_NUM_RATES] =
+framerate_definitions[MPEG_NUM_RATES] =
 {
-    "illegal", 
-	"24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
-	"24.0 (NATIVE FILM)",
-	"25.0 (PAL/SECAM VIDEO / converted FILM)",
-	"30000.0/1001.0 (NTSC VIDEO)",
-	"30.0",
-	"50.0 (PAL FIELD RATE)",
-	"60000.0/1001.0 (NTSC FIELD RATE)",
-	"60.0"
+  "illegal", 
+  "24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)",
+  "24.0 (NATIVE FILM)",
+  "25.0 (PAL/SECAM VIDEO / converted FILM)",
+  "30000.0/1001.0 (NTSC VIDEO)",
+  "30.0",
+  "50.0 (PAL FIELD RATE)",
+  "60000.0/1001.0 (NTSC FIELD RATE)",
+  "60.0"
 };
 
 
@@ -123,38 +137,62 @@ const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] =
  * Convert MPEG frame-rate code to corresponding frame-rate
  */
 
-const double 
-mpeg_frame_rate( mpeg_frame_rate_code_t code )
+const y4m_ratio_t
+mpeg_framerate( mpeg_framerate_code_t code )
 {
-	if( code <= 0 || code > mpeg_num_frame_rates )
-		return 0.0;
+	if( code <= 0 || code > mpeg_num_framerates )
+		return y4m_fps_UNKNOWN;
 	else
 		return mpeg_framerates[code];
 }
 
 /*
- * Look-up MPEG frame rate code for a frame rate - tolerance
- * is Y4M_FPS_MULT used by YUV4MPEG (see yuv4mpeg_intern.h)
+ * Look-up MPEG frame rate code for a (exact) frame rate.
  */
 
-const mpeg_frame_rate_code_t 
-mpeg_frame_rate_code( double frame_rate )
-{
-	mpeg_frame_rate_code_t i;
-	for( i = 1; i < mpeg_num_frame_rates; ++i )
-	{
-		if( (int)(mpeg_framerates[i]*Y4M_FPS_MULT) ==
-			(int)(frame_rate*Y4M_FPS_MULT) )
-			return i;
-	}
 
-	return 0;
-			
+const mpeg_framerate_code_t 
+mpeg_framerate_code( y4m_ratio_t framerate )
+{
+  mpeg_framerate_code_t i;
+  
+  y4m_ratio_reduce(&framerate);
+  for (i = 1; i < mpeg_num_framerates; ++i) {
+    if (Y4M_RATIO_EQL(framerate, mpeg_framerates[i]))
+      return i;
+  }
+  return 0;
 }
 
 
+/* small enough to distinguish 1/1000 from 1/1001 */
+#define MPEG_FPS_TOLERANCE 0.0001
+
+
+const y4m_ratio_t
+mpeg_conform_framerate( double fps )
+{
+  mpeg_framerate_code_t i;
+  y4m_ratio_t result;
+
+  /* try to match it to a standard frame rate */
+  for (i = 1; i < mpeg_num_framerates; i++) {
+    double deviation = 1.0 - (Y4M_RATIO_DBL(mpeg_framerates[i]) / fps);
+    if ( (deviation > -MPEG_FPS_TOLERANCE) &&
+	 (deviation < +MPEG_FPS_TOLERANCE) )
+      return mpeg_framerates[i];
+  }
+  /* no luck?  just turn it into a ratio (6 decimal place accuracy) */
+  result.n = (fps * 1000000.0) + 0.5;
+  result.d = 1000000;
+  y4m_ratio_reduce(&result);
+  return result;
+}
+
+  
+
 /*
- * Convert MPEG frame-rate code to corresponding frame-rate
+ * Convert MPEG aspect-ratio code to corresponding aspect-ratio
  */
 
 const double 
@@ -182,14 +220,14 @@ mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
 const mpeg_aspect_code_t 
 mpeg_frame_aspect_code( int mpeg_version, double aspect_ratio )
 {
-	mpeg_frame_rate_code_t i;
+	mpeg_aspect_code_t i;
 	if( mpeg_version < 1 || mpeg_version > 2 )
 		return 0;
 
 	for( i = 1; i < mpeg_num_aspect_ratios[mpeg_version-1]; ++i )
 	{
 		if( (int)(mpeg_aspect_ratios[mpeg_version-1][i-1]*Y4M_ASPECT_MULT) ==
-			(int)(aspect_ratio*Y4M_FPS_MULT) )
+			(int)(aspect_ratio*Y4M_ASPECT_MULT) )
 			return i;
 	}
 
@@ -204,12 +242,12 @@ mpeg_frame_aspect_code( int mpeg_version, double aspect_ratio )
 
 
 const char *
-mpeg_frame_rate_code_definition(   mpeg_frame_rate_code_t code  )
+mpeg_framerate_code_definition(   mpeg_framerate_code_t code  )
 {
-	if( code <= 0 || code >=  mpeg_num_frame_rates )
+	if( code <= 0 || code >=  mpeg_num_framerates )
 		return "UNDEFINED: illegal/reserved frame-rate ratio code\n";
 
-	return frame_rate_definitions[code];
+	return framerate_definitions[code];
 }
 
 /*

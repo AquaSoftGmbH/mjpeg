@@ -3,6 +3,7 @@
  *                  list files, the "recipes" for lavpipe
  *
  *  Copyright (C) 2001, pHilipp Zabel <pzabel@gmx.de>
+ *  Copyright (C) 2001, Matthew Marjanovic <maddog@mir.com>
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -28,7 +29,7 @@
 
 extern int verbose;
 
-int open_pipe_list (char *name, PipeList *pl)
+int read_pipe_list (char *name, PipeList *pl)
 {
    FILE *fd;
    char  line[1024];
@@ -56,16 +57,16 @@ int open_pipe_list (char *name, PipeList *pl)
       /* 2. input streams */
 
       fgets (line, 1024, fd);
-      if (sscanf (line, "%d", &(pl->input_num)) != 1) {
+      if (sscanf (line, "%d", &(pl->source_count)) != 1) {
          mjpeg_error( "pipelist: # of input streams expected, \"%s\" found\n", line);
          return -1;
       }
 	  
-	  mjpeg_info( "Pipe list contains %d input streams\n", pl->input_num);
+	  mjpeg_info( "Pipe list contains %d input streams\n", pl->source_count);
 
-      pl->input_cmd = (char **) malloc (pl->input_num * sizeof (char *));
+      pl->source_cmd = (char **) malloc (pl->source_count * sizeof (char *));
 
-      for (i=0; i<pl->input_num; i++) {
+      for (i=0; i<pl->source_count; i++) {
          fgets(line,1024,fd);
          n = strlen(line);
          if(line[n-1]!='\n') {
@@ -73,55 +74,55 @@ int open_pipe_list (char *name, PipeList *pl)
             exit(1);
          }
          line[n-1] = 0; /* Get rid of \n at end */
-         pl->input_cmd[i] = (char *) malloc (n);
-         strncpy (pl->input_cmd[i], line, n);
+         pl->source_cmd[i] = (char *) malloc (n);
+         strncpy (pl->source_cmd[i], line, n);
       }
       
       /* 3. sequences */
       
-      pl->frame_num = 0;
-      pl->seq_num = 0;
-      pl->seq_ptr = (PipeSequence **) malloc (32 * sizeof (PipeSequence *));
+      pl->frame_count = 0;
+      pl->segment_count = 0;
+      pl->segments = (PipeSegment **) malloc (32 * sizeof (PipeSegment *));
       while (fgets (line, 1024, fd)) {
 
-         PipeSequence *seq = (PipeSequence *) malloc (sizeof (PipeSequence));
+         PipeSegment *seq = (PipeSegment *) malloc (sizeof (PipeSegment));
          
          /* 3.1. frames in sequence */
 
-         if (sscanf (line, "%d", &(seq->frame_num)) != 1) {
+         if (sscanf (line, "%d", &(seq->frame_count)) != 1) {
             mjpeg_error( "pipelist: # of frames in sequence expected, \"%s\" found\n", line);
             return -1;
          }
-         if (seq->frame_num < 1) {
+         if (seq->frame_count < 1) {
 			 mjpeg_error_exit1( "Pipe list contains sequence of length < 1 frame\n");
          }
 
 		 mjpeg_debug( "Pipe list sequence %d contains %d frames\n", 
-					  pl->seq_num, seq->frame_num);
-         pl->frame_num += seq->frame_num;
+					  pl->segment_count, seq->frame_count);
+         pl->frame_count += seq->frame_count;
          
          /* 3.2. input streams */
      
          n = !fgets (line, 1024, fd);
-         if (sscanf (line, "%d", &(seq->input_num)) != 1) {
+         if (sscanf (line, "%d", &(seq->input_count)) != 1) {
             mjpeg_error( "pipelist: # of streams in sequence expected, \"%s\" found\n", line);
             return -1;
          }
-         seq->input_ptr = (int *) malloc (seq->input_num * sizeof (int));
-         seq->input_ofs = (unsigned long *) malloc (seq->input_num * sizeof (unsigned long));
-         for (i=0; i<seq->input_num; i++) {
+         seq->input_index = (int *) malloc (seq->input_count * sizeof (int));
+         seq->input_offset = (unsigned long *) malloc (seq->input_count * sizeof (unsigned long));
+         for (i=0; i<seq->input_count; i++) {
             if (!fgets (line, 1024, fd)) n++;
-            j = sscanf (line, "%d %lud", &(seq->input_ptr[i]), &(seq->input_ofs[i]));
+            j = sscanf (line, "%d %lud", &(seq->input_index[i]), &(seq->input_offset[i]));
             if (j == 1) {
                /* if no offset is given, assume ofs = 0 */
-               seq->input_ofs[i] = 0;
+               seq->input_offset[i] = 0;
                j++;
             }
             if (j != 2) {
                mjpeg_error( "pipelist: input stream index & offset expected, \"%s\" found\n", line);
                return -1;
             }
-            if (seq->input_ptr[i] >= pl->input_num) {
+            if (seq->input_index[i] >= pl->source_count) {
                mjpeg_error( "Sequence requests input stream that is not contained in pipe list\n");
                exit (1);
             }
@@ -144,9 +145,9 @@ int open_pipe_list (char *name, PipeList *pl)
          seq->output_cmd = (char *) malloc (n);
          strncpy (seq->output_cmd, line, n);
          
-         pl->seq_ptr[pl->seq_num++] = seq;
-         if ((pl->seq_num % 32) == 0)
-            pl->seq_ptr = (PipeSequence **) realloc (pl->seq_ptr, sizeof (pl->seq_ptr) + 32 * sizeof (PipeSequence *));
+         pl->segments[pl->segment_count++] = seq;
+         if ((pl->segment_count % 32) == 0)
+            pl->segments = (PipeSegment **) realloc (pl->segments, sizeof (pl->segments) + 32 * sizeof (PipeSegment *));
       }
       return 0;
    }
@@ -169,26 +170,26 @@ int write_pipe_list (char *name, PipeList *pl)
 
    /* 2. input streams */
 
-   fprintf (fd, "%d\n", pl->input_num);
+   fprintf (fd, "%d\n", pl->source_count);
 
-   for (i=0; i<pl->input_num; i++)
-      fprintf (fd, "%s\n", pl->input_cmd[i]);
+   for (i=0; i<pl->source_count; i++)
+      fprintf (fd, "%s\n", pl->source_cmd[i]);
 
    /* 3. sequences */
 
-   for (i=0; i<pl->seq_num; i++) {
+   for (i=0; i<pl->segment_count; i++) {
       
-      PipeSequence *seq = pl->seq_ptr[i];
+      PipeSegment *seq = pl->segments[i];
 
       /* 3.1. frames in sequence */
       
-      fprintf (fd, "%d\n", seq->frame_num);
+      fprintf (fd, "%d\n", seq->frame_count);
 
       /* 3.2. input streams */
       
-      fprintf (fd, "%d\n", seq->input_num);
-      for (n=0; n<seq->input_num; n++)
-         fprintf (fd, "%d %lud\n", seq->input_ptr[n], seq->input_ofs[n]);
+      fprintf (fd, "%d\n", seq->input_count);
+      for (n=0; n<seq->input_count; n++)
+         fprintf (fd, "%d %lud\n", seq->input_index[n], seq->input_offset[n]);
 
       /* 3.3. output cmd */
       

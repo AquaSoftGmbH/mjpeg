@@ -40,32 +40,32 @@ static int got_sigint = 0;
 
 static int verbose = 1;
 
-static void usage (){
-  
-   fprintf (stderr, "Usage:  yuv2lav [params] -o <filename>\n"
-                    "where possible params are:\n"
-			        "   -v num      Verbosity [0..2] (default 1)\n"
-                    "   -f [aA"
+static void usage() 
+{
+  fprintf(stderr,
+	  "Usage:  yuv2lav [params] -o <filename>\n"
+	  "where possible params are:\n"
+	  "   -v num      Verbosity [0..2] (default 1)\n"
+	  "   -f [aA"
 #ifdef HAVE_LIBQUICKTIME
-                             "q"
+                   "q"
 #endif
 #ifdef HAVE_LIBMOVTAR
-                              "m"
+                    "m"
 #endif
-                               "]   output format (AVI"
+                     "]   output format (AVI"
 #ifdef HAVE_LIBQUICKTIME
-                                                     "/Quicktime"
+                                           "/Quicktime"
 #endif
 #ifdef HAVE_LIBMOVTAR
-                                                               "/movtar"
+                                                     "/movtar"
 #endif
-                                                                      ") [%c]\n"
-                    "   -I num      force output interlacing 0:no 1:top 2:bottom field first\n"
-                    "   -q num      JPEG encoding quality [%d%%]\n"
-                    "   -b num      size of MJPEG buffer [%d kB]\n"
-                    "   -o file     output mjpeg file (REQUIRED!) \n",
-                    param_format, param_quality, param_bufsize/1024);
-
+                                                            ") [%c]\n"
+	  "   -I num      force output interlacing 0:no 1:top 2:bottom field first\n"
+	  "   -q num      JPEG encoding quality [%d%%]\n"
+	  "   -b num      size of MJPEG buffer [%d kB]\n"
+	  "   -o file     output mjpeg file (REQUIRED!) \n",
+	  param_format, param_quality, param_bufsize/1024);
 }
 
 static void sigint_handler (int signal) {
@@ -87,8 +87,8 @@ int main(int argc, char *argv[])
    int   jpegsize = 0;
    unsigned char *yuv[3];
 
-   y4m_frame_info_t *frameinfo = NULL;
-   y4m_stream_info_t *streaminfo = NULL;
+   y4m_frame_info_t frameinfo;
+   y4m_stream_info_t streaminfo;
 
    while ((n = getopt(argc, argv, "v:f:I:q:b:o:")) != -1) {
       switch (n) {
@@ -167,23 +167,31 @@ int main(int argc, char *argv[])
    (void)mjpeg_default_handler_verbosity(verbose);   
    fd_in = 0;                   /* stdin */
 
-   streaminfo = y4m_init_stream_info(NULL);
-   frameinfo = y4m_init_frame_info(NULL);
-   if (y4m_read_stream_header(fd_in, streaminfo) != Y4M_OK) {
-      mjpeg_error( "Could'nt read YUV4MPEG header!\n");
+   y4m_init_stream_info(&streaminfo);
+   y4m_init_frame_info(&frameinfo);
+   if (y4m_read_stream_header(fd_in, &streaminfo) != Y4M_OK) {
+      mjpeg_error( "Couldn't read YUV4MPEG header!\n");
       exit (1);
    }
 
-   if (param_interlace < 0) param_interlace = streaminfo->interlace;
+   if (param_interlace < 0) {
+       int ylace = y4m_si_get_interlace(&streaminfo);
+       param_interlace = 
+	 (ylace == Y4M_ILACE_NONE) ? LAV_NOT_INTERLACED :
+	 (ylace == Y4M_ILACE_TOP_FIRST) ? LAV_INTER_TOP_FIRST :
+	 (ylace == Y4M_ILACE_BOTTOM_FIRST) ? LAV_INTER_BOTTOM_FIRST :
+	 LAV_INTER_UNKNOWN;
+   }
    if (param_interlace == LAV_INTER_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
    else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')
       param_format = 'A';
 
    output = lav_open_output_file (param_output, param_format,
-                                  streaminfo->width, streaminfo->height,
-                                  param_interlace,
-                                  streaminfo->framerate,
+                                  y4m_si_get_width(&streaminfo),
+				  y4m_si_get_height(&streaminfo),
+				  param_interlace,
+                                  Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo)),
                                   0, 0, 0);
 //                                audio_bits, audio_chans, audio_rate);
    if (!output) {
@@ -191,21 +199,29 @@ int main(int argc, char *argv[])
       exit(1);
    }
 
-   yuv[0] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char));
-   yuv[1] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
-   yuv[2] = malloc(streaminfo->width * streaminfo->height * sizeof(unsigned char) / 4);
+   yuv[0] = malloc(y4m_si_get_width(&streaminfo) *
+		   y4m_si_get_height(&streaminfo) *
+		   sizeof(unsigned char));
+   yuv[1] = malloc(y4m_si_get_width(&streaminfo) * 
+		   y4m_si_get_height(&streaminfo) *
+		   sizeof(unsigned char) / 4);
+   yuv[2] = malloc(y4m_si_get_width(&streaminfo) * 
+		   y4m_si_get_height(&streaminfo) *
+		   sizeof(unsigned char) / 4);
    jpeg = malloc(param_bufsize);
    
    signal (SIGINT, sigint_handler);
 
    frame = 0;
-   while (y4m_read_frame(fd_in, streaminfo, frameinfo, yuv)==Y4M_OK && (!got_sigint)) {
+   while (y4m_read_frame(fd_in, &streaminfo, &frameinfo, yuv)==Y4M_OK && (!got_sigint)) {
 
       fprintf (stdout, "frame %d\r", frame);
       fflush (stdout);
       jpegsize = encode_jpeg_raw (jpeg, param_bufsize, param_quality,
-                                  streaminfo->interlace, 0 /* ctype */,
-                                  streaminfo->width, streaminfo->height,
+                                  param_interlace,
+				  0 /* ctype */,
+                                  y4m_si_get_width(&streaminfo),
+				  y4m_si_get_height(&streaminfo),
                                   yuv[0], yuv[1], yuv[2]);
       if (jpegsize==-1) {
          mjpeg_error( "Couldn't compress YUV to JPEG\n");
@@ -228,8 +244,8 @@ int main(int argc, char *argv[])
       free(yuv[n]);
    }
 
-   y4m_free_frame_info(frameinfo);
-   y4m_free_stream_info(streaminfo);
+   y4m_fini_frame_info(&frameinfo);
+   y4m_fini_stream_info(&streaminfo);
 
    return 0;
 }

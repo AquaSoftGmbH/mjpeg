@@ -24,11 +24,13 @@
 #define __MPEGCONSTS_H__
 
 
-typedef unsigned int mpeg_frame_rate_code_t;
+#include "yuv4mpeg.h"
+
+
+typedef unsigned int mpeg_framerate_code_t;
 typedef unsigned int mpeg_aspect_code_t;
 
-
-extern const mpeg_frame_rate_code_t mpeg_num_frame_rates;
+extern const mpeg_framerate_code_t mpeg_num_framerates;
 extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
 
 #ifdef __cplusplus
@@ -37,21 +39,31 @@ extern "C" {
 
 /*
  * Convert MPEG frame-rate code to corresponding frame-rate
- * 0.0 = Undefined/resrerved code.
+ *  y4m_fps_UNKNOWN = { 0, 0 } = Undefined/resrerved code.
  */
 
-const double 
-mpeg_frame_rate( mpeg_frame_rate_code_t code );
+const y4m_ratio_t
+mpeg_framerate( mpeg_framerate_code_t code );
 
 
 /*
- * Look-up MPEG frame rate code for a frame rate - tolerance
- * is Y4M_FPS_MULT used by YUV4MPEG (see yuv4mpeg_intern.h)
- * 0 = No MPEG code defined for frame-rate
+ * Look-up MPEG frame rate code for a (exact) frame rate.
+ *  0 = No MPEG code defined for frame-rate
  */
 
-const mpeg_frame_rate_code_t 
-mpeg_frame_rate_code( double frame_rate );
+const mpeg_framerate_code_t 
+mpeg_framerate_code( y4m_ratio_t framerate );
+
+
+/*
+ * Convert floating-point framerate to an exact ratio.
+ *  Uses a standard MPEG rate, if it finds one within MPEG_FPS_TOLERANCE
+ *  (see mpegconsts.c), otherwise uses "fps:1000000" as the ratio.
+ */
+
+const y4m_ratio_t
+mpeg_conform_framerate( double fps );
+
 
 /*
  * Convert MPEG aspect ratio code to corresponding aspect ratio
@@ -96,7 +108,7 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  );
  */
 
 const char *
-mpeg_frame_rate_code_definition( mpeg_frame_rate_code_t code  );
+mpeg_framerate_code_definition( mpeg_framerate_code_t code  );
 
 #ifdef __cplusplus
 };

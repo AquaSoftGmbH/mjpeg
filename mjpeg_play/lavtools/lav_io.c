@@ -1081,6 +1081,8 @@ lav_file_t *lav_open_input_file(char *filename)
        lav_fd->MJPG_chroma = CHROMA422;
 #endif
        if (ierr) goto ERREXIT;
+       /* DV is always interlaced, bottom first */
+       lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 
    }
 #endif // SUPPORT_READ_DV2
 #ifdef SUPPORT_READ_YUV420

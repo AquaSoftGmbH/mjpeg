@@ -122,15 +122,6 @@ uint32_t SAD_matrix[1024][768];
 
 
 /*****************************************************************************
- * pointers to stream-info used by Mato's Y4M-library                        *
- *****************************************************************************/
-
-y4m_frame_info_t *frameinfo = NULL;
-y4m_stream_info_t *streaminfo = NULL;
-
-
-
-/*****************************************************************************
  * declaration of used functions                                             *
  *****************************************************************************/
 
@@ -217,6 +208,11 @@ main (int argc, char *argv[])
   int errnr;
   char c;
   int i;
+  y4m_frame_info_t frameinfo;
+  y4m_stream_info_t streaminfo;
+
+  y4m_init_stream_info(&streaminfo);
+  y4m_init_frame_info(&frameinfo);
 
   display_greeting ();
   X86_CAP=cpu_accel ();
@@ -288,19 +284,19 @@ main (int argc, char *argv[])
 
   /* initialize stream-information */
 
-  streaminfo = y4m_init_stream_info (NULL);
-  frameinfo = y4m_init_frame_info (NULL);
+  y4m_init_stream_info (&streaminfo);
+  y4m_init_frame_info (&frameinfo);
 
-  if ((errnr = y4m_read_stream_header (fd_in, streaminfo)) != Y4M_OK)
+  if ((errnr = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
     {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_errstr (errnr));
+      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n", y4m_strerr (errnr));
       exit (1);
     }
 
   /* calculate frame constants used for YUV-processing */
 
-  width = streaminfo->width;
-  height = streaminfo->height;
+  width = y4m_si_get_width(&streaminfo);
+  height = y4m_si_get_height(&streaminfo);
   u_offset = width * height;
   v_offset = width * height * 1.25;
   uv_width = width >> 1;
@@ -360,13 +356,13 @@ main (int argc, char *argv[])
 
 /* if needed, deinterlace frame */
 
-  if (streaminfo->interlace != Y4M_ILACE_NONE)
+  if (y4m_si_get_interlace(&streaminfo) != Y4M_ILACE_NONE)
     {
       mjpeg_log (LOG_INFO, "stream read is interlaced: using deinterlacer.\n");
       mjpeg_log (LOG_INFO, "stream written is frame-based.\n");
 
       /* setting Y4M header to non-interlaced video */
-      streaminfo->interlace = Y4M_ILACE_NONE;
+      y4m_si_set_interlace(&streaminfo, Y4M_ILACE_NONE);
 
       /* turning on deinterlacer */
       deinterlace = 1;
@@ -374,11 +370,11 @@ main (int argc, char *argv[])
 
 /* write the outstream header */
 
-  y4m_write_stream_header (fd_out, streaminfo);
+  y4m_write_stream_header (fd_out, &streaminfo);
 
 /* read every single frame until the end of the input stream */
 
-  while ((errnr = y4m_read_frame (fd_in, streaminfo, frameinfo, yuv)) == Y4M_OK)
+  while ((errnr = y4m_read_frame (fd_in, &streaminfo, &frameinfo, yuv)) == Y4M_OK)
     {
       /* process the frame */
 
@@ -402,14 +398,14 @@ main (int argc, char *argv[])
       generate_black_border(BX0,BY0,BX1,BY1,yuv);
         
       /* write the frame */
-      y4m_write_frame (fd_out, streaminfo, frameinfo, yuv);
+      y4m_write_frame (fd_out, &streaminfo, &frameinfo, yuv);
     }
 
 
   /* free all used buffers and structures */
 
-  y4m_free_stream_info (streaminfo);
-  y4m_free_frame_info (frameinfo);
+  y4m_fini_stream_info(&streaminfo);
+  y4m_fini_frame_info(&frameinfo);
 
   for (i = 0; i < 3; i++)
     {

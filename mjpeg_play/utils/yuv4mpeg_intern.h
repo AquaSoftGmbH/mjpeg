@@ -22,7 +22,7 @@
 #define __YUV4MPEG_INTERN_H__
 
 
-#define Y4M_MAGIC "YUV4MPEG"
+#define Y4M_MAGIC "YUV4MPEG2"
 #define Y4M_FRAME_MAGIC "FRAME"
 
 #define Y4M_DELIM " "  /* single-character(space) separating tagged fields */
@@ -31,9 +31,23 @@
                                (including the '\n', but not the '\0') */
 
 
-#define Y4M_FPS_MULT (1<<20)	/* Nice exact binary multiplier    */
-#define Y4M_ASPECT_MULT (1<<20)	/* To ensure no rounding errors    */
+/* standard framerate ratios */
+#define Y4M_FPS_UNKNOWN    { 0, 0 }
+#define Y4M_FPS_NTSC_FILM  { 24000, 1001 }
+#define Y4M_FPS_FILM       { 24, 1 }
+#define Y4M_FPS_PAL        { 25, 1 }
+#define Y4M_FPS_NTSC       { 30000, 1001 }
+#define Y4M_FPS_30         { 30, 1 }
+#define Y4M_FPS_PAL_FIELD  { 50, 1 }
+#define Y4M_FPS_NTSC_FIELD { 60000, 1001 }
+#define Y4M_FPS_60         { 60, 1 }
+
+/* standard (MPEG-2) display aspect ratios */
+#define Y4M_ASPECT_UNKNOWN { 0, 0 }
+#define Y4M_ASPECT_1_1     { 1, 1 }
+#define Y4M_ASPECT_4_3     { 4, 3 }
+#define Y4M_ASPECT_16_9    { 16, 9 }
+#define Y4M_ASPECT_221_100 { 221, 100 }
 
 
-
-#endif /* __YUV4MPEG_INTERN_H__ */
+#endif __YUV4MPEG_INTERN_H__

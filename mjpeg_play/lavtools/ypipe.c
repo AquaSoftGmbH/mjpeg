@@ -31,43 +31,44 @@
 
 #include "yuv4mpeg.h"
 
-static char **parse_cmdline (char *cmdline) {
-
-   char **argv;
-   char *p = cmdline;
-   int i, argc = 0;
-
-   if (!p) return 0;
-   if (!*p) return 0;
-
-   while (*p) {    
-      while (!isspace(*p)) {
-         p++;
-         if (!*p) {
-            argc++;
-            goto EOL_HANDLE;
-         }
+static char **parse_cmdline (char *cmdline)
+{
+  char **argv;
+  char *p = cmdline;
+  int i, argc = 0;
+  
+  if (!p) return 0;
+  if (!*p) return 0;
+  
+  while (*p) {    
+    while (!isspace(*p)) {
+      p++;
+      if (!*p) {
+	argc++;
+	goto EOL_HANDLE;
       }
-      argc++;     
-      while (isspace(*p)) {
-         p++;
-         if (!*p) goto EOL_HANDLE;
-      }
-   }
-EOL_HANDLE:
-   argv = (char **) malloc (argc+1 * sizeof (char *));
-   for (p=cmdline, i=0; i<argc; i++) {
-      argv[i] = p;
-      while (!isspace(*(++p)));
-      p[0] = '\0';
-      while (isspace(*(++p)))
-         if (!p[0]) break;
-   }
-   argv[argc] = NULL;
+    }
+    argc++;     
+    while (isspace(*p)) {
+      p++;
+      if (!*p) goto EOL_HANDLE;
+    }
+  }
 
-   return argv;
-
+ EOL_HANDLE:
+  argv = malloc((argc + 1) * sizeof(argv[0]));
+  for (p = cmdline, i = 0; i < argc; i++) {
+    argv[i] = p;
+    while (!isspace(*(++p)));
+    p[0] = '\0';
+    while (isspace(*(++p)))
+      if (!p[0]) break;
+  }
+  argv[argc] = NULL;
+  
+  return argv;
 }
+
 
 static int fork_child (char *child) {
 
@@ -75,7 +76,7 @@ static int fork_child (char *child) {
    int pid;
    int mypipe[2];
    char **myargv;
-   
+
    if (pipe (mypipe)) {
       mjpeg_error( "Couldn't create pipe to %s\n", child);
       exit (1);
@@ -110,70 +111,105 @@ static void usage( char *name )
 	exit (1);
 }
 
-int main (int argc, char *argv[]) {
 
-   int stream0;   /* read from input 1 */
-   int stream1;   /* read from input 2 */
-   int w0, h0, w1, h1;
-   int rate0, rate1;
-   int outstream = 1;
-   int i,j;
-   int fstarg;
-   unsigned char *yuv0[3];
-   unsigned char *yuv1[3];
+int main (int argc, char *argv[])
+{
+  int stream0;   /* read from input 1 */
+  int stream1;   /* read from input 2 */
+  int outstream = 1;  /* output to stdout */
+  int w, h;
+  int fstarg;
+  unsigned char *yuv0[3];
+  unsigned char *yuv1[3];
+  y4m_stream_info_t sinfo0;
+  y4m_stream_info_t sinfo1;
+  y4m_stream_info_t osinfo;
+  y4m_frame_info_t finfo0;
+  y4m_frame_info_t finfo1;
+  int err;
+  char *command0, *command1;
+  
+  y4m_init_stream_info(&sinfo0);
+  y4m_init_stream_info(&sinfo1);
+  y4m_init_stream_info(&osinfo);
+  y4m_init_frame_info(&finfo0);
+  y4m_init_frame_info(&finfo1);
+  
+  if ((argc != 3) && (argc != 5)) 
+    usage(argv[0]);
+  
+  if (argc == 5) {
+     int verbose;
+     if (strcmp(argv[1],"-v") != 0) 
+       usage(argv[0]);
+     verbose = atoi(argv[2]);
+     if (verbose < 0 || verbose > 2)
+       usage(argv[0]);
+     (void)mjpeg_default_handler_verbosity(verbose);
+     fstarg = 3;
+   } else
+     fstarg = 1;
 
-   if (argc |= 3 || argc != 5) {
-	   usage(argv[0]);
-   }
-
-   if( argc == 5 )
-   {
-	   int verbose;
-	   if( strcmp(argv[1],"-v") != 0 )
-	   {
-		   usage(argv[0]);
-	   }
-	   verbose = atoi(argv[2]);
-	   if ( verbose < 0 || verbose > 2 )
-		   usage(argv[0]);
-	   (void)mjpeg_default_handler_verbosity(verbose);
-	   fstarg = 3;
-   }
-   else
-	   fstarg = 1;
-
-   stream0 = fork_child (argv[fstarg]);
-   stream1 = fork_child (argv[fstarg+1]);
-
-   i = yuv_read_header (stream0, &w0, &h0, &rate0);
-   j = yuv_read_header (stream1, &w1, &h1, &rate1);
-   if (i || j) {
-      mjpeg_error( "Couldn't read YUV4MPEG header (%d/%d)\n", !!i, !!j);
-      exit (1);
-   }
-   if ((w0 != w1)||(h0 != h1)) {
-      mjpeg_error( "Different dimensions: (%dx%d) contra (%dx%d)\n", w0, h0, w1, h1);
-      exit (1);
-   }
-   if (rate0 != rate1) {
-      mjpeg_warn( "not the same frame_rate_code - different frame rates!\n");
-   }
+  command0 = strdup(argv[fstarg]);
+  command1 = strdup(argv[fstarg + 1]);
    
-   (char *)yuv0[0] = malloc (w0*h0);   (char *)yuv1[0] = malloc (w0*h0);
-   (char *)yuv0[1] = malloc (w0*h0/4); (char *)yuv1[1] = malloc (w0*h0/4);
-   (char *)yuv0[2] = malloc (w0*h0/4); (char *)yuv1[2] = malloc (w0*h0/4);
+  mjpeg_info("0 Trying to create pipe to '%s'\n", command0);
+  stream0 = fork_child(command0);
+  mjpeg_info("1 Trying to create pipe to '%s'\n", command1);
+  stream1 = fork_child(command1);
 
-   yuv_write_header (outstream, w0, h0, rate0);
-   
-   while ((i = yuv_read_frame(stream0, yuv0, w0, h0)) &&
-          (j = yuv_read_frame(stream1, yuv1, w1, h1))) {
-      if ((i<0)||(j<0)) exit (1);
-
-      yuv_write_frame (outstream, yuv0, w0, h0);    
-      yuv_write_frame (outstream, yuv1, w0, h0);
-   }
-   fflush (stderr);
-   fflush (stdout);
-   return 0;
+  if ((err = y4m_read_stream_header(stream0, &sinfo0)) != Y4M_OK)
+    mjpeg_error_exit1("Failed to read first stream header:  %s\n",
+		      y4m_strerr(err));
+  if ((err = y4m_read_stream_header(stream1, &sinfo1)) != Y4M_OK)
+    mjpeg_error_exit1("Failed to read second stream header:  %s\n",
+		      y4m_strerr(err));
+  
+  mjpeg_info("First stream parameters:\n");
+  y4m_log_stream_info(LOG_INFO, "1> ", &sinfo0);
+  mjpeg_info("Second stream parameters:\n");
+  y4m_log_stream_info(LOG_INFO, "2> ", &sinfo1);
+  
+  if (y4m_si_get_width(&sinfo0) != y4m_si_get_width(&sinfo1))
+    mjpeg_error_exit1("Width mismatch\n");
+  if (y4m_si_get_height(&sinfo0) != y4m_si_get_height(&sinfo1))
+    mjpeg_error_exit1("Height mismatch\n");
+  if (!(Y4M_RATIO_EQL(y4m_si_get_framerate(&sinfo0),
+		      y4m_si_get_framerate(&sinfo1))))
+    mjpeg_error_exit1("Framerate mismatch\n");
+  if (y4m_si_get_interlace(&sinfo0) != y4m_si_get_interlace(&sinfo1))
+    mjpeg_error_exit1("Interlace mismatch\n");
+  
+  w = y4m_si_get_width(&sinfo0);
+  h = y4m_si_get_height(&sinfo0);
+  
+  y4m_copy_stream_info(&osinfo, &sinfo0);
+  
+  yuv0[0] = malloc (w*h);   yuv1[0] = malloc (w*h);
+  yuv0[1] = malloc (w*h/4); yuv1[1] = malloc (w*h/4);
+  yuv0[2] = malloc (w*h/4); yuv1[2] = malloc (w*h/4);
+  
+  if ((err = y4m_write_stream_header(outstream, &sinfo0)) != Y4M_OK)
+    mjpeg_error_exit1("Failed to write output header:  %s\n",
+		      y4m_strerr(err));
+  
+  while ( ((err = y4m_read_frame(stream0, &sinfo0, &finfo0, yuv0)) 
+	   == Y4M_OK) &&
+	  ((err = y4m_write_frame(outstream, &osinfo, &finfo0, yuv0))
+	   == Y4M_OK) &&
+	  ((err = y4m_read_frame(stream1, &sinfo1, &finfo1, yuv1)) 
+	   == Y4M_OK) &&
+	  ((err = y4m_write_frame(outstream, &osinfo, &finfo1, yuv1))
+	   == Y4M_OK) ) {}
+  
+  if (err != Y4M_ERR_EOF)
+    mjpeg_error_exit1("Some error somewhere:  %s\n", y4m_strerr(err));
+  
+  y4m_fini_stream_info(&sinfo0);
+  y4m_fini_stream_info(&sinfo1);
+  y4m_fini_stream_info(&osinfo);
+  y4m_fini_frame_info(&finfo0);
+  y4m_fini_frame_info(&finfo1);
+  return 0;
 }
 

@@ -127,7 +127,7 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
 
 int readframe(int numframe, unsigned char *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, EditList el);
 void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el);
-void writeoutframeinYUV4MPEG(int out_fd, unsigned char *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer);
+void writeoutframeinYUV4MPEG(int out_fd, unsigned char *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, y4m_frame_info_t *frame_info);
 void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer);
 
 #ifdef SUPPORT_READ_DV2

@@ -6,6 +6,7 @@ jpeg2yuv
   (see jpeg2yuv -h for help (or have a look at the function "usage"))
   
   Copyright (C) 1999 Gernot Ziegler (gz@lysator.liu.se)
+  Copyright (C) 2001 Matthew Marjanovic (maddog@mir.com)
 
   This program is free software; you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -29,37 +30,41 @@ jpeg2yuv
 #include <unistd.h>
 
 #include <string.h>
+#include <errno.h>
 #include <jpeglib.h>
 #include "jpegutils.h"
+#include "lav_io.h"
+
 #include <sys/types.h>
 
 #include "mjpeg_logging.h"
 #include "mjpeg_types.h"
 
 #include "yuv4mpeg.h"
+#include "mpegconsts.h"
 
 #define MAXPIXELS (1280*1024)  /* Maximum size of final image */
 
-static unsigned char *jpegformatstr   = NULL;
 
-static float framerate = -1.0;
-static uint32_t begin = 0; /* the video frame start */
-static uint32_t numframes = -1; /* -1 means: take all frames */
 
-static int verbose = 1; /* the verbosity of the program (see mjpeg_logging.h) */
-static int interlaced = 0; /* tells if the YUV4MPEG stream shall be interlaced */
-static int interlaced_mode = Y4M_ILACE_NONE; /* tells if the YUV4MPEG's frames are bottom first or top first */
+typedef struct _parameters {
+  char *jpegformatstr;
+  uint32_t begin;       /* the video frame start */
+  uint32_t numframes;   /* -1 means: take all frames */
+  y4m_ratio_t framerate;
+  int interlace;   /* will the YUV4MPEG stream be interlaced? */
+  int interleave;  /* are the JPEG frames field-interleaved? */
+  int verbose; /* the verbosity of the program (see mjpeg_logging.h) */
 
-static y4m_stream_info_t *streaminfo = NULL;
-static y4m_frame_info_t *frameinfo = NULL;
+  int width;
+  int height;
+} parameters_t;
+
 
 static struct jpeg_decompress_struct dinfo;
 static struct jpeg_error_mgr jerr;
 
-void usage(char *prog);
-void parse_commandline(int argc, char ** argv);
-int generate_YUV4MPEG(void);
-int init_parse_files(void);
+
 
 /*
  * The User Interface parts 
@@ -69,116 +74,133 @@ int init_parse_files(void);
  * Prints a short description of the program, including default values 
  * in: prog: The name of the program 
  */
-void usage(char *prog)
+static void usage(char *prog)
 {
-    char *h;
-
-    if (NULL != (h = (char *)strrchr(prog,'/')))
-	prog = h+1;
-    
-  mjpeg_error(
-	  "%s pipes a stream of JPEG files to stdout,\n"
+  char *h;
+  
+  if (NULL != (h = (char *)strrchr(prog,'/')))
+    prog = h+1;
+  
+  fprintf(stderr, 
+	  "usage: %s [ options ]\n"
+	  "\n"
+	  "where options are ([] shows the defaults):\n"
+	  "  -v num        verbosity (0,1,2)                  [1]\n"
+	  "  -b framenum   starting frame number              [0]\n"
+	  "  -f framerate  framerate for output stream (fps)     \n"
+	  "  -n numframes  number of frames to process        [-1 = all]\n"
+	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
+	  "               {1} JPEG filename prefix (e g rendered_ )\n"
+	  "               {2} Counting placeholder (like in C, printf, eg 06 ))\n"
+	  "  -I x  interlacing mode:  p = none/progressive\n"
+	  "                           t = top-field-first\n"
+	  "                           b = bottom-field-first\n"
+	  "  -L x  interleaving mode:  0 = non-interleaved (two successive\n"
+	  "                                 fields per JPEG file)\n"
+	  "                            1 = interleaved fields\n"
+	  "\n"
+	  "%s pipes a sequence of JPEG files to stdout,\n"
 	  "making the direct encoding of MPEG files possible under mpeg2enc.\n"
 	  "Any JPEG format supported by libjpeg can be read.\n"
 	  "stdout will be filled with the YUV4MPEG movie data stream,\n"
 	  "so be prepared to pipe it on to mpeg2enc or to write it into a file.\n"
 	  "\n"
-	  "usage: %s [ options ]\n"
-	  "\n"
-	  "where options are ([] shows the defaults):\n"
-	  "  -v num      Verbosity [0..2] (default 1)\n"
-	  "  -b framenr. start at given frame nr.               [0]\n"
-	  "  -f framerate the framerate that should be used     [must be given !]\n"
-	  "  -n numframes processes the given nr. of frames     [all]\n"
-	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
-	  "               {1} JPEG filename prefix (e g rendered_ )\n"
-	  "               {2} Counting placeholder (like in C, printf, eg 06 ))\n"
-	  "  -I force interlaced mode (default:autodetect)\n"
-	  "     ONLY for concattenated JPEGs, like from MJPEG hardware !\n"
-	  "  -T x : (only for Interlaced) x=1: Top picture first, x=0: Bottom picture first\n"
-	  "         (can NOT be autodetected !)\n"
-	  "\n"
 	  "\n"
 	  "examples:\n"
 	  "  %s -j in_%%06d.jpeg -b 100000 > result.yuv\n"
-          "  | combines all the available JPEGs that match \n"
-          "    in_??????.jpeg, starting with 100000 (in_100000.jpeg, \n"
-          "    in_100001.jpeg, etc...) into the uncompressed YUV4MPEG videofile result.yuv\n"
-	  "  %s -j abc_%%04d.jpeg | mpeg2enc -f3 -o out.m2v\n"
-          "  | combines all the available JPEGs that match \n"
-          "    abc_??????.jpeg, starting with 0000 (abc_0000.jpeg, \n"
-          "    abc_0001.jpeg, etc...) and pipes it to mpeg2enc which encodes\n"
-          "    an MPEG2-file called out.m2v out of it\n"
-	  "\n"
-	  "--\n"
-	  "(c) 2001 Gernot Ziegler <gz@lysator.liu.se>\n",
+	  "  | combines all the available JPEGs that match \n"
+	  "    in_??????.jpeg, starting with 100000 (in_100000.jpeg, \n"
+	  "    in_100001.jpeg, etc...) into the uncompressed YUV4MPEG videofile result.yuv\n"
+	  "  %s -It -L0 -j abc_%%04d.jpeg | mpeg2enc -f3 -o out.m2v\n"
+	  "  | combines all the available JPEGs that match \n"
+	  "    abc_??????.jpeg, starting with 0000 (abc_0000.jpeg, \n"
+	  "    abc_0001.jpeg, etc...) and pipes it to mpeg2enc which encodes\n"
+	  "    an MPEG2-file called out.m2v out of it\n"
+	  "\n",
 	  prog, prog, prog, prog);
 }
+
+
 
 /* parse_commandline
  * Parses the commandline for the supplied parameters.
  * in: argc, argv: the classic commandline parameters
  */
-void parse_commandline(int argc, char ** argv)
-{ int c;
+static void parse_commandline(int argc, char ** argv, parameters_t *param)
+{
+  int c;
+  
+  param->jpegformatstr = NULL;
+  param->begin = 0;
+  param->numframes = -1;
+  param->framerate = y4m_fps_UNKNOWN;
+  param->interlace = Y4M_UNKNOWN;
+  param->interleave = -1;
+  param->verbose = 1;
 
-/* parse options */
- for (;;) {
-   if (-1 == (c = getopt(argc, argv, "Ihv:T:b:j:n:f:")))
-     break;
-   switch (c) {
-   case 'j':
-     jpegformatstr = optarg;
-     break;
-   case 'b':
-     begin = atol(optarg);
-     break;
-   case 'n':
-     numframes = atol(optarg);
-     break;
-   case 'f':
-     framerate = atof(optarg);
-     break;
-   case 'I':
-     interlaced = 1;
-     break;
-   case 'T':
-     switch (atoi(optarg))
-       {
-       case 0:
-         interlaced_mode = Y4M_ILACE_BOTTOM_FIRST;
-         break;
-       case 1:
-         interlaced_mode = Y4M_ILACE_TOP_FIRST;
-         break;
-       default:
-         mjpeg_error_exit1 ("-T option requires arg 0 or 1\n");
-       }
-     break;
-   case 'v':
-     verbose = atoi(optarg);
-     if (verbose < 0 ||verbose > 2) 
-       mjpeg_error_exit1( "-v option requires arg 0, 1, or 2\n");    
-     break;     
-   case 'h':
-   default:
-     usage(argv[0]);
-     exit(1);
-   }
- }
- if (jpegformatstr == NULL)
-   { 
-     mjpeg_error("%s needs an input filename to proceed. (-j option)\n\n", argv[0]); 
-     usage(argv[0]); 
-     exit(1);
-   }
-
- if (framerate == -1.0)
-   { mjpeg_error("%s needs the framerate of the forthcoming YUV4MPEG movie. (-f option)\n\n", argv[0]); 
-     usage(argv[0]); 
-     exit(1);
-   }
+  /* parse options */
+  for (;;) {
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:")))
+      break;
+    switch (c) {
+    case 'j':
+      param->jpegformatstr = strdup(optarg);
+      break;
+    case 'b':
+      param->begin = atol(optarg);
+      break;
+    case 'n':
+      param->numframes = atol(optarg);
+      break;
+    case 'f':
+      param->framerate = mpeg_conform_framerate(atof(optarg));
+      break;
+    case 'I':
+      switch (optarg[0]) {
+      case 'p':
+	param->interlace = Y4M_ILACE_NONE;
+	break;
+      case 't':
+	param->interlace = Y4M_ILACE_TOP_FIRST;
+	break;
+      case 'b':
+	param->interlace = Y4M_ILACE_BOTTOM_FIRST;
+	break;
+      default:
+	mjpeg_error_exit1 ("-I option requires arg p, t, or b\n");
+      }
+      break;
+    case 'L':
+      param->interleave = atoi(optarg);
+      if ((param->interleave != 0) &&
+	  (param->interleave != 1)) 
+	mjpeg_error_exit1 ("-L option requires arg 0 or 1\n");
+      break;
+    case 'v':
+      param->verbose = atoi(optarg);
+      if (param->verbose < 0 || param->verbose > 2) 
+	mjpeg_error_exit1( "-v option requires arg 0, 1, or 2\n");    
+      break;     
+    case 'h':
+    default:
+      usage(argv[0]);
+      exit(1);
+    }
+  }
+  if (param->jpegformatstr == NULL) { 
+    mjpeg_error("%s:  input format string not specified. (Use -j option.)\n\n",
+		argv[0]); 
+    usage(argv[0]); 
+    exit(1);
+  }
+  if (Y4M_RATIO_EQL(param->framerate, y4m_fps_UNKNOWN)) {
+    mjpeg_error("%s:  framerate not specified.  (Use -f option)\n\n",
+		argv[0]); 
+    usage(argv[0]); 
+    exit(1);
+  }
 }
+
 
 /*
  * The file handling parts 
@@ -186,187 +208,182 @@ void parse_commandline(int argc, char ** argv)
 
 /** init_parse_files
  * Verifies the JPEG input files and prepares YUV4MPEG header information.
- * @returns 1 on success
+ * @returns 0 on success
  */
-int init_parse_files()
+static int init_parse_files(parameters_t *param)
 { 
   unsigned char jpegname[255];
   FILE *jpegfile;
-
-  snprintf(jpegname, sizeof(jpegname), jpegformatstr, begin);
+  
+  snprintf(jpegname, sizeof(jpegname), 
+	   param->jpegformatstr, param->begin);
   mjpeg_debug("Analyzing %s to get the right pic params\n", jpegname);
   jpegfile = fopen(jpegname, "r");
-
+  
   if (jpegfile == NULL)
-    {
-      mjpeg_error("While opening: \"%s\"\n", jpegname);
-      perror("Fatal: Couldn't open first given JPEG frame"); 
-      exit(1);
-    }
-  else
-    {
-      /* Now open this JPEG file, and examine its header to retrieve the 
-	 YUV4MPEG info that shall be written */
-      dinfo.err = jpeg_std_error(&jerr);
-      jpeg_create_decompress(&dinfo);
-      jpeg_stdio_src(&dinfo, jpegfile);
-      
-      jpeg_read_header(&dinfo, 1);
-      dinfo.out_color_space = JCS_YCbCr;      
-      jpeg_start_decompress(&dinfo);
-      
-      if(dinfo.output_components != 3)
-	mjpeg_error_exit1("Output components of JPEG image = %d, must be 3\n", dinfo.output_components);
-      
-      mjpeg_info("Image dimensions are %dx%d, framerate = %f frames/s\n",
-	      dinfo.image_width, dinfo.image_height, framerate);
-      streaminfo->width = dinfo.image_width;
-      streaminfo->height = dinfo.image_height;
+    mjpeg_error_exit1("System error while opening: \"%s\": %s\n",
+		      jpegname, strerror(errno));
 
-      jpeg_destroy_decompress(&dinfo);
-      fclose(jpegfile);
-    }
+  /* Now open this JPEG file, and examine its header to retrieve the 
+     YUV4MPEG info that shall be written */
+  dinfo.err = jpeg_std_error(&jerr);  /* ?????????? */
+  jpeg_create_decompress(&dinfo);
+  jpeg_stdio_src(&dinfo, jpegfile);
+  jpeg_read_header(&dinfo, 1);
+  dinfo.out_color_space = JCS_YCbCr;      
+  jpeg_start_decompress(&dinfo);
+  
+  if (dinfo.output_components != 3)
+    mjpeg_error_exit1("Output components of JPEG image = %d, must be 3.\n",
+		      dinfo.output_components);
+  
+  mjpeg_info("Image dimensions are %dx%d\n",
+	     dinfo.image_width, dinfo.image_height);
+  param->width = dinfo.image_width;
+  param->height = dinfo.image_height;
+  
+  jpeg_destroy_decompress(&dinfo);
+  fclose(jpegfile);
 
-  streaminfo->framerate = framerate;
-  mjpeg_info("movie frame rate is: %f frames/s\n", framerate);
+  mjpeg_info("Movie frame rate is:  %f frames/second\n",
+	     Y4M_RATIO_DBL(param->framerate));
 
-  if (!interlaced)
-    {
-      if (streaminfo->height / streaminfo->width >= 2)
-	{
-	  mjpeg_info("INTERLACED format detected, doubling frame height to %d\n", streaminfo->height*2);      
-	  interlaced = 1;
-	}
-      else
-	{
-	  mjpeg_info("(non_interlaced input assumed)\n");      
-	}
-    }
+  switch (param->interlace) {
+  case Y4M_ILACE_NONE:
+    mjpeg_info("Non-interlaced/progressive frames.\n");
+    break;
+  case Y4M_ILACE_BOTTOM_FIRST:
+    mjpeg_info("Interlaced frames, bottom field first.\n");      
+    break;
+  case Y4M_ILACE_TOP_FIRST:
+    mjpeg_info("Interlaced frames, top field first.\n");      
+    break;
+  default:
+    mjpeg_error_exit1("Interlace has not been specified (use -I option)\n");
+    break;
+  }
 
-  if (interlaced == 1)
-    {
-      switch(interlaced_mode)
-	{
-	case Y4M_ILACE_NONE:
-	  mjpeg_error_exit1("You have not specified the order of the frames (use the -T option)\n");      
-	  break;
-	case Y4M_ILACE_BOTTOM_FIRST:
-	  mjpeg_info("Interlaced frame order: Bottom frame first.\n");      
-	  break;
-	case Y4M_ILACE_TOP_FIRST:
-	  mjpeg_info("Interlaced frame order: Top frame first.\n");      
-	  break;
-	default:
-	  mjpeg_error_exit1("Invalid Top/Bottom paramter (only 0 or 1 allowed for -T)\n");      
-	}
-    }
+  if ((param->interlace != Y4M_ILACE_NONE) && (param->interleave == -1))
+    mjpeg_error_exit1("Interleave has not been specified (use -L option)\n");
 
-    streaminfo->interlace = interlaced_mode;
+  if (!(param->interleave) && (param->interlace != Y4M_ILACE_NONE)) {
+    param->height *= 2;
+    mjpeg_info("Non-interleaved fields (image height doubled)\n");
+  }
+  mjpeg_info("Frame size:  %d x %d\n", param->width, param->height);
 
-  return 1;
+  return 0;
 }
 
-int generate_YUV4MPEG()
-{
-  int newpicsavail = 1;
 
-  uint32_t vid_index = begin;
-  uint32_t jpegsize;
+
+static int generate_YUV4MPEG(parameters_t *param)
+{
+  uint32_t frame;
+  size_t jpegsize;
   unsigned char jpegname[FILENAME_MAX];
   FILE *jpegfile;
-  static unsigned char ybuffer[MAXPIXELS]; // the YUV-buffers for the decoded JPEG content
-  static unsigned char ubuffer[MAXPIXELS];
-  static unsigned char vbuffer[MAXPIXELS];
+  unsigned char *yuv[3];  /* buffer for Y/U/V planes of decoded JPEG */
   static unsigned char jpegdata[MAXPIXELS]; // that ought to be enough
-  unsigned char *yuvbufptr[3];
+  y4m_stream_info_t streaminfo;
+  y4m_frame_info_t frameinfo;
 
   mjpeg_info("Now generating YUV4MPEG stream.\n");
+  y4m_init_stream_info(&streaminfo);
+  y4m_init_frame_info(&frameinfo);
 
-  yuvbufptr[0] = ybuffer; 
-  yuvbufptr[1] = ubuffer; 
-  yuvbufptr[2] = vbuffer; 
+  y4m_si_set_width(&streaminfo, param->width);
+  y4m_si_set_height(&streaminfo, param->height);
+  y4m_si_set_interlace(&streaminfo, param->interlace);
+  y4m_si_set_framerate(&streaminfo, param->framerate);
 
-  y4m_write_stream_header(STDOUT_FILENO, streaminfo);
-  
-  while (newpicsavail)
-    {
-      sprintf(jpegname, jpegformatstr, vid_index);
-      jpegfile = fopen(jpegname, "r");
+  yuv[0] = malloc(param->width * param->height * sizeof(yuv[0][0]));
+  yuv[1] = malloc(param->width * param->height / 4 * sizeof(yuv[1][0]));
+  yuv[2] = malloc(param->width * param->height / 4 * sizeof(yuv[2][0]));
 
-      if (jpegfile == NULL)
-	{ 
-	  mjpeg_info("While opening %s:\n", jpegname);
-	  
-	  if (numframes != -1)
-	    {
-	      if (verbose) perror("Warning: Read from jpeg file failed (non-critical)");
-	      mjpeg_info("(Rewriting latest frame instead)\n");
+  y4m_write_stream_header(STDOUT_FILENO, &streaminfo);
+ 
+  for (frame = param->begin;
+       (frame < param->numframes + param->begin) || (param->numframes == -1);
+       frame++) {
 
-	      mjpeg_debug("Old frame recycled, now writing to output stream.\n");
-              y4m_write_frame (STDOUT_FILENO, streaminfo, frameinfo, yuvbufptr);
-	    }
-	  else
-	    {
-	      mjpeg_info("Last frame encountered (%s invalid). Stop.\n", jpegname);
-	      newpicsavail = 0;
-	    }
-	} 
-      else
-	{
-	  mjpeg_debug("Preparing frame\n");
-	  
-	  jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
-	  fclose(jpegfile);
-	  
-	  /* decode_jpeg_raw:s parameters from 20010826
-	   * jpeg_data:       buffer with input / output jpeg
-	   * len:             Length of jpeg buffer
-	   * itype:           0: Not interlaced
-	   *                  1: Interlaced, Top field first
-	   *                  2: Interlaced, Bottom field first
-	   * ctype            Chroma format for decompression.
-	   *                  Currently always 420 and hence ignored.
-	   * raw0             buffer with input / output raw Y channel
-	   * raw1             buffer with input / output raw U/Cb channel
-	   * raw2             buffer with input / output raw V/Cr channel
-	   * width            width of Y channel (width of U/V is width/2)
-	   * height           height of Y channel (height of U/V is height/2)
-	   */
-          switch (interlaced_mode)
-            {
-            case Y4M_ILACE_NONE:
-              mjpeg_info("Processing non-interlaced %s, size %d.\n", jpegname, jpegsize);
-              decode_jpeg_raw (jpegdata, jpegsize,
-                               0, 420, streaminfo->width, streaminfo->height,
-                               ybuffer, ubuffer, vbuffer);
-              break;
+    snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
+    jpegfile = fopen(jpegname, "r");
+    
+    if (jpegfile == NULL) { 
+      mjpeg_info("Read from '%s' failed:  %s\n", jpegname, strerror(errno));
+      if (param->numframes == -1) {
+	mjpeg_info("No more frames.  Stopping.\n");
+	break;  /* we are done; leave 'while' loop */
+      } else {
+	mjpeg_info("Rewriting latest frame instead.\n");
+      }
+    } else {
+      mjpeg_debug("Preparing frame\n");
+      
+      jpegsize = fread(jpegdata, sizeof(unsigned char), MAXPIXELS, jpegfile); 
+      fclose(jpegfile);
+      
+      /* decode_jpeg_raw:s parameters from 20010826
+       * jpeg_data:       buffer with input / output jpeg
+       * len:             Length of jpeg buffer
+       * itype:           0: Interleaved/Progressive
+       *                  1: Not-interleaved, Top field first
+       *                  2: Not-interleaved, Bottom field first
+       * ctype            Chroma format for decompression.
+       *                  Currently always 420 and hence ignored.
+       * raw0             buffer with input / output raw Y channel
+       * raw1             buffer with input / output raw U/Cb channel
+       * raw2             buffer with input / output raw V/Cr channel
+       * width            width of Y channel (width of U/V is width/2)
+       * height           height of Y channel (height of U/V is height/2)
+       */
 
-            case Y4M_ILACE_TOP_FIRST:
-              mjpeg_info("Processing interlaced, top-first %s, size %d.\n", jpegname, jpegsize);
-              decode_jpeg_raw (jpegdata, jpegsize,
-                               1, 420, streaminfo->width, streaminfo->height,
-                               ybuffer, ubuffer, vbuffer);
-              break;
-
-            case Y4M_ILACE_BOTTOM_FIRST:
-              mjpeg_info("Processing interlaced, bottom-first %s, size %d.\n", jpegname, jpegsize);
-              decode_jpeg_raw (jpegdata, jpegsize,
-                               2, 420, streaminfo->width, streaminfo->height,
-                               ybuffer, ubuffer, vbuffer);
-              break;
-	    }
-
-	  mjpeg_debug("Frame decoded, now writing to output stream.\n");
-          y4m_write_frame (STDOUT_FILENO, streaminfo, frameinfo, yuvbufptr);
+      if ((param->interlace == Y4M_ILACE_NONE) || (param->interleave == 1)) {
+	mjpeg_info("Processing non-interlaced/interleaved %s, size %d.\n", 
+		   jpegname, jpegsize);
+	decode_jpeg_raw(jpegdata, jpegsize,
+			0, 420, param->width, param->height,
+			yuv[0], yuv[1], yuv[2]);
+      } else {
+	switch (param->interlace) {
+	case Y4M_ILACE_TOP_FIRST:
+	  mjpeg_info("Processing interlaced, top-first %s, size %d.\n",
+		     jpegname, jpegsize);
+	  decode_jpeg_raw(jpegdata, jpegsize,
+			  LAV_INTER_TOP_FIRST,
+			  420, param->width, param->height,
+			  yuv[0], yuv[1], yuv[2]);
+	  break;
+	case Y4M_ILACE_BOTTOM_FIRST:
+	  mjpeg_info("Processing interlaced, bottom-first %s, size %d.\n", 
+		     jpegname, jpegsize);
+	  decode_jpeg_raw(jpegdata, jpegsize,
+			  LAV_INTER_BOTTOM_FIRST,
+			  420, param->width, param->height,
+			  yuv[0], yuv[1], yuv[2]);
+	  break;
+	default:
+	  mjpeg_error_exit1("FATAL logic error?!?\n");
+	  break;
 	}
-
-      vid_index++; /* reached the end of the file, or the desired number of frames ? */
-      if ((numframes != -1 && vid_index == numframes + begin))
-	newpicsavail = 0;
+      }
+      mjpeg_debug("Frame decoded, now writing to output stream.\n");
     }
 
-  return 1;
+    y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
+  }
+  
+  y4m_fini_stream_info(&streaminfo);
+  y4m_fini_frame_info(&frameinfo);
+  free(yuv[0]);
+  free(yuv[1]);
+  free(yuv[2]);
+
+  return 0;
 }
+
+
 
 /* main
  * in: argc, argv:  Classic commandline parameters. 
@@ -374,20 +391,17 @@ int generate_YUV4MPEG()
  */
 int main(int argc, char ** argv)
 { 
-  streaminfo = y4m_init_stream_info (NULL);
-  frameinfo = y4m_init_frame_info (NULL);
+  parameters_t param;
 
-  parse_commandline(argc, argv);
-
-  mjpeg_default_handler_verbosity(verbose);
+  parse_commandline(argc, argv, &param);
+  mjpeg_default_handler_verbosity(param.verbose);
 
   mjpeg_info("Parsing & checking input files.\n");
-  if (init_parse_files() == 0)
-  { mjpeg_error_exit1("* Error processing the JPEG input.\n"); }
+  if (init_parse_files(&param)) {
+    mjpeg_error_exit1("* Error processing the JPEG input.\n");
+  }
 
-  mjpeg_debug("Now generating YUV4MPEG output stream.\n");
-  if (generate_YUV4MPEG() == 0)
-  { 
+  if (generate_YUV4MPEG(&param)) { 
     mjpeg_error_exit1("* Error processing the input files.\n");
   }
 
