@@ -1,4 +1,4 @@
-/* fast int primitives. min,max,abs,samesign
+/* fast int primitives. min,max,abs,rnddiv2
  *
  * WARNING: Assumes 2's complement arithmetic.
  */
@@ -16,7 +16,6 @@ static __inline__ int intabs( register int x )
 {
 	return x < 0 ? -x : x;
 }
-
 
 static __inline__ int rnddiv2( int x )
 {
