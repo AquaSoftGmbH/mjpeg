@@ -526,7 +526,8 @@ void streamout(void)
             delta_lum = abs(lum_mean - last_lum_mean);
          last_lum_mean = lum_mean;
 
-		 mjpeg_debug( "frame %d, lum_mean %d, delta_lum %d        \n", framenum, lum_mean, delta_lum);
+		 mjpeg_debug( "frame %d/%ld, lum_mean %d, delta_lum %d        \n", framenum,
+		    el.video_frames, lum_mean, delta_lum);
 
          if (delta_lum > delta_lum_threshold || index[N_EL_FILE(el.frame_list[framenum])] != movie_num ||
                oldframe+1 != N_EL_FRAME(el.frame_list[framenum])) {
