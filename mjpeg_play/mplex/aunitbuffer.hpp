@@ -1,8 +1,5 @@
 #ifndef __AUNITBUFFER_H__
 #define __AUNITBUFFER_H__
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <deque>
 #include "mjpeg_logging.h"

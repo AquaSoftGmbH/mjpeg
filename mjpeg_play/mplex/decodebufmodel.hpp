@@ -23,9 +23,6 @@
 #ifndef __DECODEBUFMODEL_H__
 #define __DECODEBUFMODEL_H__
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 #include "aunit.hpp"
 #include <deque>
 
