@@ -404,11 +404,9 @@ int y4m_si_get_plane_height(const y4m_stream_info_t *si, int plane)
       return (si->height) / 2;
     case Y4M_CHROMA_444:
     case Y4M_CHROMA_444ALPHA:
-      return (si->height);
     case Y4M_CHROMA_422:
-      return (si->height) / 2;
     case Y4M_CHROMA_411:
-      return (si->height) / 4;
+      return (si->height);
     default:
       return Y4M_UNKNOWN;
     }
