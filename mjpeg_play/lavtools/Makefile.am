@@ -88,7 +88,7 @@ bin_PROGRAMS = \
 	ypipe yuv2lav transist.flt matteblend.flt \
 	multiblend.flt lavpipe \
 	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
-	ppmtoy4m y4mtoppm y4mcolorbars lavinfo y4mshift
+	ppmtoy4m y4mtoppm y4mcolorbars lavinfo y4mshift yuvfps
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
 	yuvscaler.h yuvcorrect.h frequencies.h lav_common.h lav2wav.h
@@ -196,3 +196,6 @@ lavinfo_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 
 y4mshift_SOURCES = y4mshift.c $(lav_headers)
 y4mshift_LDADD = -L$(top_builddir)/utils -lmjpegutils
+
+yuvfps_SOURCES = yuvfps.c ${lav_headers}
+yuvfps_LDADD = -L${top_builddir}/utils -lmjpegutils
