@@ -115,7 +115,7 @@ void range_checks()
   if (opt_dc_prec<0 || opt_dc_prec>3)
     mjpeg_error_exit1("intra_dc_precision must be in range 0...3");
 
-  for (i=0; i<opt_M; i++)
+  for (i=0; i<ctl_M; i++)
   {
     if (opt_motion_data[i].forw_hor_f_code<1 || opt_motion_data[i].forw_hor_f_code>9)
       mjpeg_error_exit1("f_code x must be between 1 and 9");
@@ -223,7 +223,7 @@ void profile_and_level_checks(void)
 
   /* profile (syntax) constraints */
 
-  if (opt_profile==SP && opt_M!=1)
+  if (opt_profile==SP && ctl_M!=1)
     mjpeg_error_exit1("Simple Profile does not allow B pictures");
 
   if (opt_profile!=HP && opt_chroma_format!=CHROMA420)
@@ -250,7 +250,7 @@ void profile_and_level_checks(void)
   if (opt_frame_rate_code>5 && opt_level>=ML)
     mjpeg_error_exit1("Picture rate greater than permitted in specified Level");
 
-  for (i=0; i<opt_M; i++)
+  for (i=0; i<ctl_M; i++)
   {
     if (opt_motion_data[i].forw_hor_f_code > maxval->hor_f_code)
       mjpeg_error_exit1("forward horizontal f_code greater than permitted in specified Level");

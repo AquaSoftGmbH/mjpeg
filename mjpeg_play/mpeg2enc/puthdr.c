@@ -74,7 +74,7 @@ void putseqhdr()
 	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
 	   sent 
 	*/
-	if(opt_mpeg1 && quant_floor != 0) {
+	if(opt_mpeg1 && ctl_quant_floor != 0) {
 		putbits(-1,18);
 	} else {
 		putbits((int)ceil(opt_bit_rate/400.0),18); /* bit_rate_value */
@@ -111,7 +111,7 @@ void putseqext()
   putbits(opt_chroma_format,2); /* chroma_format */
   putbits(opt_horizontal_size>>12,2); /* horizontal_size_extension */
   putbits(opt_vertical_size>>12,2); /* vertical_size_extension */
-  if(opt_mpeg1 && quant_floor != 0) {
+  if(opt_mpeg1 && ctl_quant_floor != 0) {
     putbits(-1,12);
   } else {
     putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
@@ -146,7 +146,7 @@ void putseqdispext()
  *
  * string must not emulate start codes
  */
-void putuserdata(uint8_t *userdata, int len)
+void putuserdata(const uint8_t *userdata, int len)
 {
 	int i;
   alignbits();

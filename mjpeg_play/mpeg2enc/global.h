@@ -83,7 +83,7 @@ int64_t bitcount (void);
 void putseqhdr (void);
 void putseqext (void);
 void putseqdispext (void);
-void putuserdata (uint8_t *userdata, int len);
+void putuserdata (const uint8_t *userdata, int len);
 void putgophdr (int frame, int closed_gop, int seq_header);
 void putpicthdr (pict_data_s *picture);
 void putpictcodext (pict_data_s *picture);
@@ -164,20 +164,20 @@ void writeframe (int frame_num, uint8_t *frame[]);
 
 /* global variables */
 
-EXTERN char version[]
+EXTERN const char version[]
 #ifdef GLOBAL
-  ="MSSG+ 1.2 2001/3/10 (development of mpeg2encode V1.2, 96/07/19)"
+  ="MSSG+ 1.3 2001/6/10 (development of mpeg2encode V1.2, 96/07/19)"
 #endif
 ;
 
-EXTERN char author[]
+EXTERN const char author[]
 #ifdef GLOBAL
-  ="(C) 1996, MPEG Software Simulation Group, (C) 2000 Andrew Stevens, Rainer Johanni"
+  ="(C) 1996, MPEG Software Simulation Group, (C) 2000, 2001 Andrew Stevens, Rainer Johanni"
 #endif
 ;
 
 /* zig-zag scan */
-EXTERN uint8_t zig_zag_scan[64]
+EXTERN const uint8_t zig_zag_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -190,7 +190,7 @@ EXTERN uint8_t zig_zag_scan[64]
 ;
 
 /* alternate scan */
-EXTERN uint8_t alternate_scan[64]
+EXTERN const uint8_t alternate_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -203,7 +203,7 @@ EXTERN uint8_t alternate_scan[64]
 ;
 
 /* default intra quantization matrix */
-EXTERN uint16_t default_intra_quantizer_matrix[64]
+EXTERN const uint16_t default_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -219,7 +219,7 @@ EXTERN uint16_t default_intra_quantizer_matrix[64]
 #endif
 ;
 
-EXTERN uint16_t hires_intra_quantizer_matrix[64]
+EXTERN const uint16_t hires_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -238,7 +238,7 @@ EXTERN uint16_t hires_intra_quantizer_matrix[64]
 /* Our default non intra quantization matrix
 	This is *not* the MPEG default
 	 */
-EXTERN uint16_t default_nonintra_quantizer_matrix[64]
+EXTERN const uint16_t default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 
@@ -258,7 +258,7 @@ EXTERN uint16_t default_nonintra_quantizer_matrix[64]
 
 /* Hires non intra quantization matrix.  THis *is*
 	the MPEG default...	 */
-EXTERN uint16_t hires_nonintra_quantizer_matrix[64]
+EXTERN const uint16_t hires_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -275,7 +275,7 @@ EXTERN uint16_t hires_nonintra_quantizer_matrix[64]
 ;
 
 /* non-linear quantization coefficient table */
-EXTERN uint8_t non_linear_mquant_table[32]
+EXTERN const uint8_t non_linear_mquant_table[32]
 #ifdef GLOBAL
 =
 {
@@ -292,7 +292,7 @@ EXTERN uint8_t non_linear_mquant_table[32]
  * it is up to the designer to determine most of the quantization levels
  */
 
-EXTERN uint8_t map_non_linear_mquant[113] 
+EXTERN const uint8_t map_non_linear_mquant[113] 
 #ifdef GLOBAL
 =
 {
@@ -305,55 +305,35 @@ EXTERN uint8_t map_non_linear_mquant[113]
 #endif
 ;
 
-EXTERN char pict_type_char[6]
+EXTERN const char pict_type_char[6]
 #ifdef GLOBAL
 = {'X', 'I', 'P', 'B', 'D', 'X'}
 #endif
 ;
 
-EXTERN int lum_buffer_size, chrom_buffer_size;
+/* Support for the picture layer(!) insertion of scan data fieldsas
+   MPEG user-data section as part of I-frames.  */
 
-int opt_video_buffer_size;
+EXTERN const uint8_t dummy_svcd_scan_data[14]
+#ifdef GLOBAL
+= {
+	0x10,                       /* Scan data tag */
+	14,                         /* Length */
+	0x01, 0x82, 0x83,            /* Dummy data - this will be filled */
+	0x01, 0x82, 0x83,            /* By the multiplexor or cd image   */        
+	0x01, 0x82, 0x83,            /* creation software                */        
+	0x01, 0x82, 0x83
 
-/* Buffers frame data */
-EXTERN uint8_t ***frame_buffers;
-
-/* Buffer for filter pre-processing */
-
-EXTERN struct motion_data *opt_motion_data;
-
-/* Orginal intra / non_intra quantization matrices */
-EXTERN uint16_t opt_intra_q[64], opt_inter_q[64];
-
-
-
-/* Table driven intra / non-intra quantization matrices */
-EXTERN uint16_t i_intra_q[64], i_inter_q[64];
-EXTERN uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-EXTERN uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];
-EXTERN float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
+  }
+#endif
+;
 
 
-
-EXTERN uint16_t chrom_intra_q[64],chrom_inter_q[64];
-/* prediction values for DCT coefficient (0,0) */
-EXTERN int dc_dct_pred[3];
-/* clipping (=saturation) table */
-EXTERN uint8_t *clp;
-
-/* name strings */
-EXTERN char id_string[256], tplorg[256], tplref[256];
-EXTERN char iqname[256], niqname[256];
-EXTERN char statname[256];
-EXTERN char errortext[256];
-
-EXTERN FILE *outfile, *statfile; /* file descriptors */
-EXTERN int inputtype; /* format of input frames */
-
-EXTERN int max_encoding_frames; /* Maximum number of concurrent
-								   frames to be concurrently encoded */
-
+EXTERN const char *statname
+#ifdef GLOBAL
+ = "mpeg2enc.stat"
+#endif
+;
 
 /*
   How many frames to read in one go and the size of the frame data buffer.
@@ -369,23 +349,14 @@ EXTERN int max_encoding_frames; /* Maximum number of concurrent
   parallelising per-macro-block computations.
  */
 
-#define MAX_WORKER_THREADS 3
+#define MAX_WORKER_THREADS 8
 
-/* sequence specific data (sequence header) */
+
+/* *************************************
+ * global flags controlling MPEG syntax
+ ************************************ */
 
 EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
-EXTERN int chrom_width,chrom_height,block_count;
-EXTERN int mb_width, mb_height; /* frame size (macroblocks) */
-EXTERN int width2, height2, mb_height2, chrom_width2; /* picture size */
-EXTERN int qsubsample_offset, 
-           fsubsample_offset,
-	       rowsums_offset,
-	       colsums_offset;		/* Offset from picture buffer start of sub-sampled data... */
-EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						
-
-/* ************************
- * global flags controlling MPEG produced
- *************************/
 
 EXTERN int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
 
@@ -398,6 +369,7 @@ EXTERN int opt_seq_hdr_every_gop;
 EXTERN int opt_svcd_scan_data;
 EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (* 16 kbit) */
 EXTERN double opt_vbv_buffer_size;
+
 EXTERN int opt_constrparms;         /* constrained parameters flag (MPEG-1 only) */
 EXTERN int opt_load_iquant, 
 	opt_load_niquant;               /* use non-default quant. matrices */
@@ -442,85 +414,109 @@ EXTERN int opt_qscale_tab[3]; 	/* linear/non-linear quantizaton table */
 EXTERN int opt_intravlc_tab[3]; /* intra vlc format (I,P,B) */
 EXTERN int opt_altscan_tab[3]; 	/* alternate scan (I,P,B */
 
+EXTERN struct motion_data *opt_motion_data;
+
+
+
+/* Orginal intra / non_intra quantization matrices */
+EXTERN uint16_t opt_intra_q[64], opt_inter_q[64];
+
 
 /* **************************
  * Global flags controlling encoding behaviour 
  ************************** */
 
-EXTERN int opt_N_max;				/* number of frames in Group of Pictures (max) */
-EXTERN int opt_N_min;				/* number of frames in Group of Pictures (min) */
-EXTERN int opt_M;					/* distance between I/P frames */
-EXTERN int nframes;				/* total number of frames to encode
-								   Note: this may start enormous and shrink
-								   down later if the input stream length is
-								   unknown at the start of encoding.
-								*/
+EXTERN int ctl_video_buffer_size;    /* Video buffer requirement target */
 
+EXTERN int ctl_N_max;				/* number of frames in Group of Pictures (max) */
+EXTERN int ctl_N_min;				/* number of frames in Group of Pictures (min) */
+EXTERN int ctl_M;					/* distance between I/P frames */
 
-EXTERN int mc_refine_from_rec;	/* Is final refinement of motion
+EXTERN int ctl_refine_from_rec;	/* Is final refinement of motion
 								   compensation computed from
 								   reconstructed reference frame image
 								   (slightly higher quality, bad for
 								   multi-threading) or original
 								   reference frame (opposite) */
 
-EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
-EXTERN int mc_22_red;			/* Motion compensation stages						*/
-EXTERN int seq_length_limit;
-EXTERN double nonvid_bit_rate;	/* Bit-rate for non-video to assume for
+EXTERN int ctl_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
+EXTERN int ctl_22_red;			/* Motion compensation stages						*/
+EXTERN int ctl_seq_length_limit;
+EXTERN double ctl_nonvid_bit_rate;	/* Bit-rate for non-video to assume for
 								   sequence splitting calculations */
 
-EXTERN double quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
-EXTERN int output_stats;	    /* Display debugging statistics during coding */
-EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
+EXTERN double ctl_quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
 
-/* Support for the picture layer(!) insertion of scan data fieldsas
-   MPEG user-data section as part of I-frames.  */
 
-EXTERN uint8_t dummy_svcd_scan_data[14]
-#ifdef GLOBAL
-= {
-	0x10,                       /* Scan data tag */
-	14,                         /* Length */
-	0x01, 0x82, 0x83,            /* Dummy data - this will be filled */
-	0x01, 0x82, 0x83,            /* By the multiplexor or cd image   */        
-	0x01, 0x82, 0x83,            /* creation software                */        
-	0x01, 0x82, 0x83
+EXTERN double ctl_act_boost;		/* Quantisation reduction for highly active blocks */
 
-  }
-#endif
-;
 
-/* Useful for triggering debug information */
+EXTERN int ctl_max_encoding_frames; /* Maximum number of concurrent
+								   frames to be concurrently encoded */
 
-EXTERN int frame_num;			
-EXTERN int input_fd;
 
-EXTERN int tst_counter
-#ifdef GLOBAL
-= 0
-#endif
-;
+/* *************************
+ * Input stream attributes
+ ************************* */
 
-/* Some macros for stuff that is (tediously) absent from the standard
-   C libraries.
+EXTERN int istrm_nframes;				/* total number of frames to encode
+								   Note: this may start enormous and shrink
+								   down later if the input stream length is
+								   unknown at the start of encoding.
+								   */
+EXTERN int istrm_fd;
+
+/* ***************************
+ * Encoder internal derived values and parameters
+ *************************** */
+
+/* Miscellaneous derived values and internal parameters */
+
+EXTERN int lum_buffer_size, chrom_buffer_size;
+
+/* Buffers frame data */
+EXTERN uint8_t ***frame_buffers;
+
+
+
+/* Table driven intra / non-intra quantization matrices */
+EXTERN uint16_t i_intra_q[64], i_inter_q[64];
+EXTERN uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
+EXTERN uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];
+EXTERN float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
+
+
+
+EXTERN FILE *outfile, *statfile; /* file descriptors */
+EXTERN int inputtype; /* format of input frames */
+
+/* sequence specific data (sequence header) */
+
+EXTERN int chrom_width,chrom_height,block_count;
+EXTERN int mb_width, mb_height; /* frame size (macroblocks) */
+EXTERN int width2, height2, mb_height2, chrom_width2; /* picture size */
+EXTERN int qsubsample_offset, 
+           fsubsample_offset,
+	       rowsums_offset,
+	       colsums_offset;		/* Offset from picture buffer start of sub-sampled data... */
+
+EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						
+
+
+EXTERN int frame_num;			/* Useful for triggering debug information */
+
+
+ 
+/* prediction values for DCT coefficient (0,0) 
+   TODO: This is a per-picture value and thus should be part of
+   a picture record.
 */
+EXTERN int dc_dct_pred[3];
 
-EXTERN int ctr_44 
-#ifdef GLOBAL 
-= 0
-#endif
-;
-
-EXTERN int ctr_22
-#ifdef GLOBAL 
-= 0
-#endif
-;
-
-EXTERN int ctr_11
-#ifdef GLOBAL 
-= 0
-#endif
-;
-
+/* clipping (=saturation) table 
+   This is really a pseudo-constant.  
+   Probably best handled by initialising only once with a re-entrancy
+   check...
+*/
+EXTERN uint8_t *clp_0_255;

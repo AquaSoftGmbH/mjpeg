@@ -57,7 +57,7 @@
 #include "fastintfns.h"
 
 
-/* Macro-block Motion compensation results record */
+/* Macro-block Motion estimation results record */
 
 typedef struct _blockcrd {
 	int16_t x;
@@ -100,7 +100,7 @@ typedef struct _mc_result_vec {
 
 
 /*
-  Main field and frame based motion compensation entry points.
+  Main field and frame based motion estimation entry points.
 */
 
 static void frame_ME (pict_data_s *picture,
@@ -157,7 +157,7 @@ static void dpfield_estimate (
 	mb_motion_s *dpbest,
 	int *vmcp);
 
-static void mb_mc_search (
+static void mb_me_search (
 	uint8_t *org, uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
@@ -310,7 +310,7 @@ static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
 
 
 /*
- *  Initialise motion compensation - currently only selection of which
+ *  Initialise motion estimation - currently only selection of which
  * versions of the various low level computation routines to use
  * 
  */
@@ -484,11 +484,11 @@ static __inline__ int bidir_pred_var( const mb_motion_s *motion_f,
  *
  * Compute the combined variance of luminance and
  * chrominance information for a particular non-intra macro block
- * after unidirectional motion compensation...
+ * after unidirectional motion estimation...
  *
  *  Note: results are scaled to give chrominance equal weight to
  *  chrominance.  The variance of the luminance portion is computed
- *  at the time the motion compensation is computed.
+ *  at the time the motion estimation is computed.
  *
  *  TODO: Perhaps we should compute the whole thing in mb_mc_search
  *  not seperate it.  However, that would involve a lot of fiddling
@@ -520,11 +520,11 @@ static int unidir_var_sum( mb_motion_s *lum_mc,
  *  bidir_var_sum
  *  Compute the combined variance of luminance and chrominance information
  *  for a particular non-intra macro block after bidirectional
- *  motion compensation...  
+ *  motion estimation...  
  *
  *  Note: results are scaled to give chrominance equal weight to
  *  chrominance.  The variance of the luminance portion is computed
- *  at the time the motion compensation is computed.
+ *  at the time the motion estimation is computed.
  *
  *  Note: results scaled to give chrominance equal weight to chrominance.
  * 
@@ -673,8 +673,8 @@ static void frame_ME(pict_data_s *picture,
 	int imindmv,jmindmv,vmc_dp;
 	
 	/* Select between the original or the reconstructed image for
-	   final refinement of motion compensation */
-	if( mc_refine_from_rec )
+	   final refinement of motion estimation */
+	if( ctl_refine_from_rec )
 	{
 		oldrefimg = picture->oldref;
 		newrefimg = picture->newref;
@@ -729,7 +729,7 @@ static void frame_ME(pict_data_s *picture,
 
 		if (picture->frame_pred_dct)
 		{
-			mb_mc_search(picture->oldorg[0],oldrefimg[0],&ssmb,
+			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,16,width,height,
 					    &framef_mc);
 			framef_mc.fieldoff = 0;
@@ -758,7 +758,7 @@ static void frame_ME(pict_data_s *picture,
 				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (width<<1), 8 ) +
 				
 				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (width<<1), 8 );
-			if ( opt_M==1)
+			if ( ctl_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
 								 i,j>>1,imins,jmins,
@@ -768,7 +768,7 @@ static void frame_ME(pict_data_s *picture,
 
 			/* NOTE: Typically M =3 so DP actually disabled... */
 			/* select between dual prime, frame and field prediction */
-			if ( opt_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
+			if ( ctl_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				mbi->motion_type = MC_DMV;
 				/* No chrominance squared difference measure yet.
@@ -874,7 +874,7 @@ static void frame_ME(pict_data_s *picture,
 			var = (*pvariance)(ssmb.mb,16,width) +
 				  chrom_var_sum(&ssmb,16,width);
 			/* forward */
-			mb_mc_search(picture->oldorg[0],oldrefimg[0],&ssmb,
+			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,
 					   16,width,height,
 					   &framef_mc
@@ -883,7 +883,7 @@ static void frame_ME(pict_data_s *picture,
 			vmcf = unidir_var_sum( &framef_mc, oldrefimg, &ssmb, width, 16 );
 
 			/* backward */
-			mb_mc_search(picture->neworg[0],newrefimg[0],&ssmb,
+			mb_me_search(picture->neworg[0],newrefimg[0],&ssmb,
 						 width,i,j,picture->sxb,picture->syb,
 						 16,width,height,
 						 &frameb_mc);
@@ -1118,12 +1118,12 @@ static void field_ME(
 	mb_motion_s field8ub_mc, field8lb_mc;
 	int var,vmc,v0,dmc,dmcfieldi,dmcfield,dmcfieldf,dmcfieldr,dmc8i;
 	int dmc8f,dmc8r;
-	int vmc_dp,dmc_dp;
+	int vmc_dp,dctl_dp;
 
 
 	/* Select between the original or the reconstructed image for
-	   final refinement of motion compensation */
-	if( mc_refine_from_rec )
+	   final refinement of motion estimation */
+	if( ctl_refine_from_rec )
 	{
 		oldrefimg = picture->oldref;
 		newrefimg = picture->newref;
@@ -1192,18 +1192,18 @@ static void field_ME(
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 
-		dmc_dp = 100000000;		/* Suppress compiler warning */
-		if (opt_M==1 && !ipflag)  /* generic condition which permits Dual Prime */
+		dctl_dp = 100000000;		/* Suppress compiler warning */
+		if (ctl_M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
 							 &fieldsp_mc,
 							 &dualp_mc,
 							 &vmc_dp);
-			dmc_dp = dualp_mc.sad;
+			dctl_dp = dualp_mc.sad;
 		}
 		/* select between dual prime, field and 16x8 prediction */
-		if (opt_M==1 && !ipflag && dmc_dp<dmc8f && dmc_dp<dmcfield)
+		if (ctl_M==1 && !ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
 		{
 			/* Dual Prime prediction */
 			mbi->motion_type = MC_DMV;
@@ -1439,17 +1439,17 @@ static void frame_estimate(
 	mb_motion_s botfld_mc;
 
 	/* frame prediction */
-	mb_mc_search(org,ref,topssmb,width,i,j,sx,sy,16,width,height,
+	mb_me_search(org,ref,topssmb,width,i,j,sx,sy,16,width,height,
 						  bestfr );
 	bestfr->fieldsel = 0;
 	bestfr->fieldoff = 0;
 
 	/* predict top field from top field */
-	mb_mc_search(org,ref,topssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
+	mb_me_search(org,ref,topssmb,width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 			   &topfld_mc);
 
 	/* predict top field from bottom field */
-	mb_mc_search(org+width,ref+width,topssmb, width<<1,i,j>>1,sx,sy>>1,8,
+	mb_me_search(org+width,ref+width,topssmb, width<<1,i,j>>1,sx,sy>>1,8,
 			   width,height>>1, &botfld_mc);
 
 	/* set correct field selectors... */
@@ -1474,12 +1474,12 @@ static void frame_estimate(
 	}
 
 	/* predict bottom field from top field */
-	mb_mc_search(org,ref,botssmb,
+	mb_me_search(org,ref,botssmb,
 					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 					&topfld_mc);
 
 	/* predict bottom field from bottom field */
-	mb_mc_search(org+width,ref+width,botssmb,
+	mb_me_search(org+width,ref+width,botssmb,
 					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 					&botfld_mc);
 
@@ -1560,7 +1560,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536; /* infinity */
 	else
-		mb_mc_search(toporg,topref,ssmb,width<<1,
+		mb_me_search(toporg,topref,ssmb,width<<1,
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1568,7 +1568,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536; /* infinity */
 	else
-		mb_mc_search(botorg,botref,ssmb,width<<1,
+		mb_me_search(botorg,botref,ssmb,width<<1,
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &botfld_mc);
 	db = botfld_mc.sad;
@@ -1599,14 +1599,14 @@ static void field_estimate (
 	}
 
 
-	/* 16x8 motion compensation */
+	/* 16x8 motion estimation */
 
 	/* predict upper half field from top field */
 
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		mb_mc_search(toporg,topref,ssmb,width<<1,
+		mb_me_search(toporg,topref,ssmb,width<<1,
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &topfld_mc);
 	dt = topfld_mc.sad;
@@ -1614,7 +1614,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_mc_search(botorg,botref,ssmb,width<<1,
+		mb_me_search(botorg,botref,ssmb,width<<1,
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &botfld_mc);
 	db = botfld_mc.sad;
@@ -1649,7 +1649,7 @@ static void field_estimate (
 	if (notop)
 		topfld_mc.sad = dt = 65536;
 	else
-		mb_mc_search(toporg,topref,&botssmb,
+		mb_me_search(toporg,topref,&botssmb,
 				   width<<1,
 				   i,j+8,sx,sy>>1,8,width,height>>1,
 				    &topfld_mc);
@@ -1658,7 +1658,7 @@ static void field_estimate (
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
-		mb_mc_search(botorg,botref,&botssmb,width<<1,
+		mb_me_search(botorg,botref,&botssmb,width<<1,
 				   i,j+8,sx,sy>>1,8,width,height>>1,
 				   &botfld_mc);
 	db = botfld_mc.sad;
@@ -1962,7 +1962,7 @@ static void dpfield_estimate(
 
 
 /*
-	Take a vector of motion compensations and repeatedly make passes
+	Take a vector of motion estimations and repeatedly make passes
 	discarding all elements whose sad "weight" is above the current mean weight.
 */
 
@@ -2014,7 +2014,7 @@ static void sub_mean_reduction( mc_result_set *matchset,
 }
 
 /* 
- * Build a vector of the top 4*4 sub-sampled motion compensations in
+ * Build a vector of the top 4*4 sub-sampled motion estimations in
  * the box (ilow,jlow) to (ihigh,jhigh).
  *
  *	The algorithm is as follows: 
@@ -2045,7 +2045,7 @@ static void sub_mean_reduction( mc_result_set *matchset,
 static int build_sub44_mcomps( mc_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
 							   int i0, int j0,
-							   int null_mc_sad,
+							   int null_ctl_sad,
 							   uint8_t *s44org, uint8_t *s44blk, 
 							   int qlx, int qh )
 {
@@ -2065,12 +2065,12 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 
 	/* N.b. we may ignore the right hand block of the pair going over the
 	   right edge as we have carefully allocated the buffer oversize to ensure
-	   no memory faults.  The later motion compensation calculations
+	   no memory faults.  The later motion estimation calculations
 	   performed on the results of this pass will filter out
 	   out-of-range blocks...
 	*/
 	
-	threshold = 6*null_mc_sad / (4*4*mc_44_red);
+	threshold = 6*null_ctl_sad / (4*4*ctl_44_red);
 	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 	
 	/* Exhaustive search on 4*4 sub-sampled data.  This is affordable because
@@ -2102,7 +2102,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 	}
 	sub44set->len = sub44_num_mcomps;
 			
-	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
+	sub_mean_reduction( sub44set, 1+(ctl_44_red>1),  &mean_weight);
 
 
 	return sub44set->len;
@@ -2113,7 +2113,7 @@ static int build_sub44_mcomps( mc_result_set *sub44set,
 static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 							   int ilow, int jlow, int ihigh, int jhigh, 
 							   int i0, int j0,
-							   int null_mc_sad,
+							   int null_ctl_sad,
 							   uint8_t *s44org, uint8_t *s44blk, 
 							   int qlx, int qh )
 {
@@ -2127,7 +2127,7 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 	int threshold;
 
 	
-	threshold = 6*null_mc_sad / (4*4*mc_44_red);
+	threshold = 6*null_ctl_sad / (4*4*ctl_44_red);
 	s44orgblk = s44org+(ilow>>2)+qlx*(jlow>>2);
 	
 	sub44set->len = (*pmblock_sub44_dists)( s44orgblk, s44blk,
@@ -2139,7 +2139,7 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 	
    /* If we're really pushing quality we reduce once otherwise twice. */
 			
-	sub_mean_reduction( sub44set, 1+(mc_44_red>1),  &mean_weight);
+	sub_mean_reduction( sub44set, 1+(ctl_44_red>1),  &mean_weight);
 
 
 	return sub44set->len;
@@ -2148,7 +2148,7 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 
 
 
-/*  Build a vector of the best 2*2 sub-sampled motion * compensations
+/*  Build a vector of the best 2*2 sub-sampled motion * estimations
  *   using the best 4*4 matches as starting points.  As * with with
  *   the 4*4 matches We don't collect them densely as they're * just
  *   search starting points for 1-pel search and ones that are 1 out *
@@ -2161,12 +2161,12 @@ static int build_sub44_mcomps_mmx( mc_result_set *sub44set,
 static int build_sub22_mcomps( mc_result_set *sub44set,
 							   mc_result_set *sub22set,
 							   int i0,  int j0, int ihigh, int jhigh, 
-							   int null_mc_sad,
+							   int null_ctl_sad,
 							   uint8_t *s22org,  uint8_t *s22blk, 
 							   int flx, int fh )
 {
 	int i,k,s;
-	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
+	int threshold = 6*null_ctl_sad / (2 * 2*ctl_22_red);
 	
 	int min_weight;
 	int ilim = ihigh-i0;
@@ -2213,7 +2213,7 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 
 	}
 
-	sub_mean_reduction( sub22set,  1+(mc_22_red>1), &min_weight );
+	sub_mean_reduction( sub22set,  1+(ctl_22_red>1), &min_weight );
 	return sub22set->len;
 }
 
@@ -2221,12 +2221,12 @@ static int build_sub22_mcomps( mc_result_set *sub44set,
 int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 							 mc_result_set *sub22set,
 							 int i0,  int j0, int ihigh, int jhigh, 
-							 int null_mc_sad,
+							 int null_ctl_sad,
 							 uint8_t *s22org,  uint8_t *s22blk, 
 							 int flx, int fh )
 {
 	int i,k,s;
-	int threshold = 6*null_mc_sad / (2 * 2*mc_22_red);
+	int threshold = 6*null_ctl_sad / (2 * 2*ctl_22_red);
 
 	int min_weight;
 	int ilim = ihigh-i0;
@@ -2277,7 +2277,7 @@ int build_sub22_mcomps_mmxe( mc_result_set *sub44set,
 	}
 
 	
-	sub_mean_reduction( sub22set, mc_22_red, &min_weight );
+	sub_mean_reduction( sub22set, ctl_22_red, &min_weight );
 	return sub22set->len;
 }
 
@@ -2412,7 +2412,7 @@ void find_best_one_pel_mmxe( mc_result_set *sub22set,
 }
 #endif 
  
-/* Hierarchical block matching motion compensation search
+/* Hierarchical block matching motion estimation search
  *
  * A.Stevens 2000: This is now a big misnomer.  The search is now a
  * hierarchical/sub-sampling search not a full search.  However,
@@ -2442,7 +2442,7 @@ void find_best_one_pel_mmxe( mc_result_set *sub22set,
 
 
 
-static void mb_mc_search(
+static void mb_me_search(
 	uint8_t *org,
 	uint8_t *ref,
 	subsampled_mb_s *ssblk,
@@ -2457,7 +2457,7 @@ static void mb_mc_search(
 	int i,j,ilow,ihigh,jlow,jhigh;
 	int d;
 
-	/* NOTE: Surprisingly, the initial motion compensation search
+	/* NOTE: Surprisingly, the initial motion estimation search
 	   works better when the original image not the reference (reconstructed)
 	   image is used. 
 	*/
@@ -2483,7 +2483,7 @@ static void mb_mc_search(
 	   in the initial 4*4 pel search.  This is handled by the
 	   parameter checking/processing code in readparmfile() */
   
-	/* Create a distance-order mcomps of possible motion compensations
+	/* Create a distance-order mcomps of possible motion estimations
 	  based on the fast estimation data - 4*4 pel sums (4*4
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
 	jlow = j0-sy;
@@ -2498,9 +2498,9 @@ static void mb_mc_search(
 	/*
  	   Very rarely this may fail to find matchs due to all the good
 	   looking ones being over threshold. hence we make sure we
-	   fall back to a 0 motion compensation in this case.
+	   fall back to a 0 motion estimation in this case.
 	   
-		 The sad for the 0 motion compensation is also very useful as
+		 The sad for the 0 motion estimation is also very useful as
 		 a basis for setting thresholds for rejecting really dud 4*4
 		 and 2*2 sub-sampled matches.
 	*/
@@ -2510,7 +2510,7 @@ static void mb_mc_search(
 
 	/* Generate the best matches at 4*4 sub-sampling. 
 	   The precise fraction of the matches included is
-	   controlled by mc_44_red
+	   controlled by ctl_44_red
 	   Note: we use the original picture here for the match...
 	 */
 	(*pbuild_sub44_mcomps)( &sub44set,
@@ -2524,7 +2524,7 @@ static void mb_mc_search(
 	/* Generate the best 2*2 sub-sampling matches from the
 	   immediate 2*2 neighbourhoods of the 4*4 sub-sampling matches.
 	   The precise fraction of the matches included is controlled
-	   by mc_22_red.
+	   by ctl_22_red.
 	   Note: we use the original picture here for the match...
 
 	*/
@@ -2833,7 +2833,7 @@ static int dist22( uint8_t *s22blk1, uint8_t *s22blk2,int flx,int fh)
 /*
  * Same as dist1_00 except for 4*4 sub-sampled data.  
  *
- * N.b.: currently assumes only 16*16 or 16*8 motion compensation will
+ * N.b.: currently assumes only 16*16 or 16*8 motion estimation will
  * be used...  I.e. 4*4 or 4*2 sub-sampled blocks will be compared.  
  *
  *

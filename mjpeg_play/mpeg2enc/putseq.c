@@ -287,8 +287,8 @@ static int find_gop_length( int gop_start_frame,
 		mjpeg_debug( "GOP nonstandard size %d\n", i );
 
 	/* last GOP may contain less frames */
-	if (i > nframes-gop_start_frame)
-		i = nframes-gop_start_frame;
+	if (i > istrm_nframes-gop_start_frame)
+		i = istrm_nframes-gop_start_frame;
 	return i;
 
 }
@@ -372,7 +372,7 @@ static void gop_start( stream_state_s *ss )
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
 	bits_after_mux = bitcount() + 
-		(uint64_t)((frame_periods / opt_frame_rate) * nonvid_bit_rate);
+		(uint64_t)((frame_periods / opt_frame_rate) * ctl_nonvid_bit_rate);
 	if( ss->next_split_point != 0LL && 	bits_after_mux > ss->next_split_point )
 	{
 		mjpeg_info( "Splitting sequence this GOP start\n" );
@@ -398,11 +398,11 @@ static void gop_start( stream_state_s *ss )
 	if( ss->i == 0 )
 		ss->gop_length =  
 			find_gop_length( ss->gop_start_frame, 0, 
-							 opt_N_min-(opt_M-1), opt_N_max-(opt_M-1));
+							 ctl_N_min-(ctl_M-1), ctl_N_max-(ctl_M-1));
 	else
 		ss->gop_length = 
-			find_gop_length( ss->gop_start_frame, opt_M-1, 
-							 opt_N_min, opt_N_max);
+			find_gop_length( ss->gop_start_frame, ctl_M-1, 
+							 ctl_N_min, ctl_N_max);
 	
 			
 	/* First figure out how many B frames we're short from
@@ -414,9 +414,9 @@ static void gop_start( stream_state_s *ss )
 	   A complication is the extra I-frame in the initial
 	   closed GOP of a sequence.
 	*/
-	if( opt_M-1 > 0 )
+	if( ctl_M-1 > 0 )
 	{
-		ss->bs_short = (opt_M - ((ss->gop_length-(ss->i==0)) % opt_M))%opt_M;
+		ss->bs_short = (ctl_M - ((ss->gop_length-(ss->i==0)) % ctl_M))%ctl_M;
 		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
 	}
 	else
@@ -426,18 +426,18 @@ static void gop_start( stream_state_s *ss )
 	}
 	
 	/* We aim to spread the dropped B's evenly across the GOP */
-	ss->bigrp_length = (opt_M-1);
+	ss->bigrp_length = (ctl_M-1);
 	
 	/* number of P frames */
 	if (ss->i == 0)
 	{
 		ss->bigrp_length = 1;
-		np = (ss->gop_length + 2*(opt_M-1))/opt_M - 1; /* first GOP */
+		np = (ss->gop_length + 2*(ctl_M-1))/ctl_M - 1; /* first GOP */
 	}
 	else
 	{
-		ss->bigrp_length = opt_M;
-		np = (ss->gop_length + (opt_M-1))/opt_M - 1;
+		ss->bigrp_length = ctl_M;
+		np = (ss->gop_length + (ctl_M-1))/ctl_M - 1;
 	}
 			/* number of B frames */
 	nb = ss->gop_length - np - 1;
@@ -476,8 +476,8 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 		picture->present = ss->i+(ss->bigrp_length);
 	}
 
-	if (picture->temp_ref >= (nframes-ss->gop_start_frame))
-		picture->temp_ref = (nframes-ss->gop_start_frame) - 1;
+	if (picture->temp_ref >= (istrm_nframes-ss->gop_start_frame))
+		picture->temp_ref = (istrm_nframes-ss->gop_start_frame) - 1;
 
 	picture->present = (ss->i-ss->g)+picture->temp_ref;
 	if (ss->g==0) /* first displayed frame in GOP is I */
@@ -533,12 +533,12 @@ static void next_seq_state( stream_state_s *ss )
 		   come out right ? */
 		if( ss->bs_short != 0 && ss->g > (int)ss->next_b_drop )
 		{
-			ss->bigrp_length = opt_M - 1;
+			ss->bigrp_length = ctl_M - 1;
 			if( ss->bs_short )
 				ss->next_b_drop += ((double)ss->gop_length) / (double)(ss->bs_short+1) ;
 		}
 		else
-			ss->bigrp_length = opt_M;
+			ss->bigrp_length = ctl_M;
 	}
 
     /* Are we starting a new GOP? */
@@ -766,7 +766,7 @@ static void *parencodeworker(void *start_arg)
 		   a special case.  We have to wait for completion of the I field
 		   before starting the P field
 		*/
-		if( mc_refine_from_rec )
+		if( ctl_refine_from_rec )
 		{
 			sync_guard_test( picture->ref_frame_completion );
 			motion_estimation(picture);
@@ -863,7 +863,7 @@ void putseq()
 
 	init_pictures( ref_pictures, b_pictures );
 #ifndef SINGLE_THREADED
-	create_threads( worker_threads, max_encoding_frames, parencodeworker );
+	create_threads( worker_threads, ctl_max_encoding_frames, parencodeworker );
 #endif
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
@@ -884,7 +884,7 @@ void putseq()
 	ss.seq_start_frame = 0;		/* Index start current sequence in
 								 input stream */
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
-	ss.seq_split_length = ((int64_t)seq_length_limit)*(8*1024*1024);
+	ss.seq_split_length = ((int64_t)ctl_seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
 	mjpeg_debug( "Split len = %lld\n", ss.seq_split_length );
 
@@ -893,7 +893,7 @@ void putseq()
 	gop_start(&ss);
 
 	/* loop through all frames in encoding/decoding order */
-	while( frame_num<nframes )
+	while( frame_num<istrm_nframes )
 	{
 		old_picture = cur_picture;
 

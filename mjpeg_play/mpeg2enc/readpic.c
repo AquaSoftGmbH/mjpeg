@@ -150,7 +150,7 @@ static void read_chunk()
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
 	   n = frames_read % FRAME_BUFFER_SIZE;
-      if(piperead(input_fd,magic,6)!=6) goto EOF_MARK;
+      if(piperead(istrm_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
       {
 		  magic[6]='\0';
@@ -159,7 +159,7 @@ static void read_chunk()
       v = opt_vertical_size;
       h = opt_horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(input_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
 
       border_extend(frame_buffers[n][0],h,v,width,height);
 	  
@@ -170,9 +170,9 @@ static void read_chunk()
       h = opt_chroma_format!=CHROMA444 ? 
 		  opt_horizontal_size/2 : opt_horizontal_size;
       for(i=0;i<v;i++)
-         if(piperead(input_fd,frame_buffers[n][1]+i*chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][1]+i*chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)
-         if(piperead(input_fd,frame_buffers[n][2]+i*chrom_width,h)!=h) goto EOF_MARK;
+         if(piperead(istrm_fd,frame_buffers[n][2]+i*chrom_width,h)!=h) goto EOF_MARK;
 
       border_extend(frame_buffers[n][1],h,v,chrom_width,chrom_height);
       border_extend(frame_buffers[n][2],h,v,chrom_width,chrom_height);
@@ -185,7 +185,7 @@ static void read_chunk()
    EOF_MARK:
    mjpeg_debug( "End of input stream detected\n" );
    last_frame = frames_read-1;
-   nframes = frames_read;
+   istrm_nframes = frames_read;
 }
 
 static void load_frame( int num_frame, int look_ahead )
@@ -198,7 +198,7 @@ static void load_frame( int num_frame, int look_ahead )
 		   read_chunk();
    }
 
-   if(last_frame>=0 && num_frame>last_frame &&num_frame<nframes)
+   if(last_frame>=0 && num_frame>last_frame &&num_frame<istrm_nframes)
    {
 	   mjpeg_error("Internal:readframe: internal error reading beyond end of frames\n");
 	   abort();
@@ -207,7 +207,7 @@ static void load_frame( int num_frame, int look_ahead )
    /* Read in chunk(s) of frames if we have insufficient look-ahead margin
 	*/
 
-   while(frames_read - num_frame <= look_ahead && frames_read < nframes ) 
+   while(frames_read - num_frame <= look_ahead && frames_read < istrm_nframes ) 
    {
 	   read_chunk();
    }
@@ -259,7 +259,7 @@ void read_stream_params( int *hsize, int *vsize, int *frame_rate_code )
 	char param_line[PARAM_LINE_MAX];
 	for(n=0;n<PARAM_LINE_MAX;n++)
 	{
-		if(!read(input_fd,param_line+n,1))
+		if(!read(istrm_fd,param_line+n,1))
 		{
 			fprintf(stderr,"Error reading header from input stream\n");
 			exit(1);

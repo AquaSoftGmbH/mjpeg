@@ -242,7 +242,7 @@ void rc_init_seq(int reinit)
 	if( reinit )
 		return;
 
-    undershoot_carry = opt_video_buffer_size / 5;
+    undershoot_carry = ctl_video_buffer_size / 5;
 	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
@@ -565,7 +565,7 @@ void rc_update_pict(pict_data_s *picture)
 	{
 		int padding_bytes = 
 			((gop_undershoot-frame_overshoot)-undershoot_carry)/8;
-		if( quant_floor != 0 )	/* VBR case pretend to pad */
+		if( ctl_quant_floor != 0 )	/* VBR case pretend to pad */
 		{
 			PP = AP + padding_bytes;
 		}
@@ -678,7 +678,7 @@ void rc_update_pict(pict_data_s *picture)
 }
 
 /* compute initial quantization stepsize (at the beginning of picture) 
-   quant_floor != 0 is the VBR case where we set a bitrate as a (high)
+   ctl_quant_floor != 0 is the VBR case where we set a bitrate as a (high)
    maximum and then put a floor on quantisation to achieve a reasonable
    overall size.
  */
@@ -686,7 +686,7 @@ int rc_start_mb(pict_data_s *picture)
 {
 	
 	int mquant = scale_quant( picture, d*62.0/r );
-	mquant = intmax(mquant, quant_floor);
+	mquant = intmax(mquant, ctl_quant_floor);
 
 /*
   fprintf(statfile,"rc_start_mb:\n");
@@ -720,7 +720,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 
 	/* scale against dynamic range of mquant and the bits/picture count.
-	   quant_floor != 0.0 is the VBR case where we set a bitrate as a (high)
+	   ctl_quant_floor != 0.0 is the VBR case where we set a bitrate as a (high)
 	   maximum and then put a floor on quantisation to achieve a reasonable
 	   overall size.
 	   Not that this *is* baseline quantisation.  Not adjust for local activity.
@@ -729,7 +729,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 
 	Qj = dj*62.0/r;
 
-	Qj = (Qj > quant_floor) ? Qj : quant_floor;
+	Qj = (Qj > ctl_quant_floor) ? Qj : ctl_quant_floor;
 	/*  Heuristic: Decrease quantisation for blocks with lots of
 		sizeable coefficients.  We assume we just get a mess if
 		a complex texture's coefficients get chopped...
@@ -740,7 +740,7 @@ int rc_calc_mquant( pict_data_s *picture,int j)
 		
 	N_actj =  ( actj < avg_act || picture->pict_type == B_TYPE ) ? 
 		1.0 : 
-		(actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
+		(actj + ctl_act_boost*avg_act)/(ctl_act_boost*actj +  avg_act);
    
 	mquant = scale_quant(picture,Qj*N_actj);
 

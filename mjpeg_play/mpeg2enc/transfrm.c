@@ -279,7 +279,7 @@ static void add_pred(pred,cur,lx,blk)
 	for (j=0; j<8; j++)
 	{
 		for (i=0; i<8; i++)
-			cur[i] = clp[blk[i] + pred[i]];
+			cur[i] = clp_0_255[blk[i] + pred[i]];
 		blk+= 8;
 		cur+= lx;
 		pred+= lx;

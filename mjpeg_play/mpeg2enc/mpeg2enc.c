@@ -588,8 +588,8 @@ int main(argc,argv)
 	{
 		if( optind == argc-1 )
 		{
-			input_fd = open( argv[optind], O_RDONLY );
-			if( input_fd < 0 )
+			istrm_fd = open( argv[optind], O_RDONLY );
+			if( istrm_fd < 0 )
 			{
 				mjpeg_error( "Unable to open: %s: ",argv[optind] );
 				perror("");
@@ -600,7 +600,7 @@ int main(argc,argv)
 			++nerr;
 	}
 	else
-		input_fd = 0; /* stdin */
+		istrm_fd = 0; /* stdin */
 
 	/* Read parameters inferred from input stream */
 	read_stream_params( &opt_horizontal_size, &opt_vertical_size, 
@@ -731,27 +731,27 @@ static void init_encoder()
 	/* Tune threading and motion compensation for specified number of CPU's 
 	   and specified speed parameters.
 	 */
-	act_boost = (param_act_boost+1.0);
+	ctl_act_boost = (param_act_boost+1.0);
 	switch( param_num_cpus )
 	{
 	case 1 :
-		max_encoding_frames = 1;
-		mc_refine_from_rec = 1;
+		ctl_max_encoding_frames = 1;
+		ctl_refine_from_rec = 1;
 		break;
 	case 2:
-		max_encoding_frames = 2;
-		mc_refine_from_rec = 1;
+		ctl_max_encoding_frames = 2;
+		ctl_refine_from_rec = 1;
 		break;
 	default :
-		max_encoding_frames = param_num_cpus > MAX_WORKER_THREADS-1 ?
+		ctl_max_encoding_frames = param_num_cpus > MAX_WORKER_THREADS-1 ?
 			                  MAX_WORKER_THREADS-1 :
 			                  param_num_cpus;
-		mc_refine_from_rec = 0;
+		ctl_refine_from_rec = 0;
 		break;
 	}
 
-	mc_44_red		= param_44_red;
-	mc_22_red		= param_22_red;
+	ctl_44_red		= param_44_red;
+	ctl_22_red		= param_22_red;
 	
 	/* round picture dimensions to nearest multiple of 16 or 32 */
 	mb_width = (opt_horizontal_size+15)/16;
@@ -790,11 +790,11 @@ static void init_encoder()
 
 
 	/* clip table */
-	if (!(clp = (uint8_t *)malloc(1024)))
+	if (!(clp_0_255 = (uint8_t *)malloc(1024)))
 		mjpeg_error_exit1("malloc failed\n");
-	clp+= 384;
+	clp_0_255 += 384;
 	for (i=-384; i<640; i++)
-		clp[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
+		clp_0_255[i] = (i<0) ? 0 : ((i>255) ? 255 : i);
 	
 	/* Allocate the frame data buffers */
 
@@ -810,15 +810,14 @@ static void init_encoder()
 				 bufalloc( (i==0) ? lum_buffer_size : chrom_buffer_size );
 		 }
 	}
-
+#ifdef OUTPUT_STAT
 	/* open statistics output file */
-	if (statname[0]=='-')
-		statfile = stdout;
-	else if (!(statfile = fopen(statname,"w")))
+	if (!(statfile = fopen(statname,"w")))
 	{
 		mjpeg_error_exit1( "Couldn't create statistics output file %s",
 						   statname);
 	}
+#endif
 }
 
 
@@ -836,18 +835,12 @@ static void init_mpeg_parms(void)
 {
 	int i;
 
-	sprintf(id_string,"Converted by mjpegtools mpeg2enc 1.3");
-	strcpy(tplorg,"%8d"); /* Name of input files */
-	strcpy(tplref,"-");
-	strcpy(iqname,"-");
-	strcpy(niqname,"-");
-
 	inputtype = 0;  /* doesnt matter */
-	nframes = 999999999; /* determined by EOF of stdin */
+	istrm_nframes = 999999999; /* determined by EOF of stdin */
 
-	opt_N_min = param_min_GOP_size;      /* I frame distance */
-	opt_N_max = param_max_GOP_size;
-	opt_M = param_Bgrp_size;             /* I or P frame distance */
+	ctl_N_min = param_min_GOP_size;      /* I frame distance */
+	ctl_N_max = param_max_GOP_size;
+	ctl_M = param_Bgrp_size;             /* I or P frame distance */
 	opt_mpeg1           = (param_mpeg == 1);
 	opt_fieldpic        = (param_fieldenc!=0 && param_fieldenc != 3);
 	opt_pulldown_32     = param_32_pulldown;
@@ -857,11 +850,6 @@ static void init_mpeg_parms(void)
 
 	/* If we're using a non standard (VCD?) profile bit-rate adjust	the vbv
 		buffer accordingly... */
-#ifdef OUTPUT_STAT
-	strcpy(statname, opt_mpeg1 ? "mp1stats.log" : "mp2stats.log" );
-#else
-	strcpy(statname,"-");
-#endif
 
 	if( param_bitrate == 0 )
 	{
@@ -883,19 +871,19 @@ static void init_mpeg_parms(void)
 
 	if( param_quant )
 	{
-		quant_floor = (double)param_quant;
+		ctl_quant_floor = (double)param_quant;
 	}
 	else
 	{
-		quant_floor = 0.0;		/* Larger than max quantisation */
+		ctl_quant_floor = 0.0;		/* Larger than max quantisation */
 	}
 
-	opt_video_buffer_size = param_video_buffer_size * 1024 * 8;
+	ctl_video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
 	opt_seq_hdr_every_gop = param_seq_hdr_every_gop;
 	opt_svcd_scan_data = param_svcd_scan_data;
-	seq_length_limit = param_seq_length_limit;
-	nonvid_bit_rate = param_nonvid_bitrate * 1000;
+	ctl_seq_length_limit = param_seq_length_limit;
+	ctl_nonvid_bit_rate = param_nonvid_bitrate * 1000;
 	opt_low_delay       = 0;
 	opt_constrparms     = param_mpeg == 1;       /* Will be reset, if not coompliant */
 	opt_profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
@@ -947,9 +935,9 @@ static void init_mpeg_parms(void)
 		for the new fast motion compensation search to work correctly.
 		We simply round it up if needs be.  */
 
-	if(param_searchrad*opt_M>127)
+	if(param_searchrad*ctl_M>127)
 	{
-		param_searchrad = 127/opt_M;
+		param_searchrad = 127/ctl_M;
 		mjpeg_warn("Search radius reduced to %d\n",param_searchrad);
 	}
 	
@@ -960,28 +948,28 @@ static void init_mpeg_parms(void)
 		/* TODO: These f-codes should really be adjusted for each
 		   picture type... */
 
-		opt_motion_data = (struct motion_data *)malloc(opt_M*sizeof(struct motion_data));
+		opt_motion_data = (struct motion_data *)malloc(ctl_M*sizeof(struct motion_data));
 		if (!opt_motion_data)
 			mjpeg_error_exit1("malloc failed\n");
 
-		for (i=0; i<opt_M; i++)
+		for (i=0; i<ctl_M; i++)
 		{
 			if(i==0)
 			{
-				opt_motion_data[i].sxf = MAX(1,radius_x*opt_M);
+				opt_motion_data[i].sxf = MAX(1,radius_x*ctl_M);
 				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = MAX(1,radius_y*opt_M);
+				opt_motion_data[i].syf = MAX(1,radius_y*ctl_M);
 				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
 			}
 			else
 			{
-				opt_motion_data[i].sxf = MAX(1,radius_x*opt_M);
+				opt_motion_data[i].sxf = MAX(1,radius_x*ctl_M);
 				opt_motion_data[i].forw_hor_f_code  = f_code(opt_motion_data[i].sxf);
-				opt_motion_data[i].syf = MAX(1,radius_y*opt_M);
+				opt_motion_data[i].syf = MAX(1,radius_y*ctl_M);
 				opt_motion_data[i].forw_vert_f_code  = f_code(opt_motion_data[i].syf);
-				opt_motion_data[i].sxb = MAX(1,radius_x*(opt_M-i));
+				opt_motion_data[i].sxb = MAX(1,radius_x*(ctl_M-i));
 				opt_motion_data[i].back_hor_f_code  = f_code(opt_motion_data[i].sxb);
-				opt_motion_data[i].syb = MAX(1,radius_y*(opt_M-i));
+				opt_motion_data[i].syb = MAX(1,radius_y*(ctl_M-i));
 				opt_motion_data[i].back_vert_f_code  = f_code(opt_motion_data[i].syb);
 			}
 		}
@@ -1018,7 +1006,7 @@ static void init_mpeg_parms(void)
 
 		if (opt_constrparms)
 		{
-			for (i=0; i<opt_M; i++)
+			for (i=0; i<ctl_M; i++)
 			{
 				if (opt_motion_data[i].forw_hor_f_code>4)
 				{
@@ -1128,7 +1116,7 @@ static void init_mpeg_parms(void)
 	}
 
 	/* search windows */
-	for (i=0; i<opt_M; i++)
+	for (i=0; i<ctl_M; i++)
 	{
 		if (opt_motion_data[i].sxf > (4<<opt_motion_data[i].forw_hor_f_code)-1)
 		{
@@ -1198,100 +1186,51 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 static void init_quantmat()
 {
 	int i,v, q;
-	FILE *fd;
 	opt_load_iquant = 0;
 	opt_load_niquant = 0;
-	if (iqname[0]=='-')
+	if( param_hires_quant )
 	{
-		if( param_hires_quant )
+		opt_load_iquant |= 1;
+		mjpeg_info( "Setting hi-res intra Quantisation matrix\n" );
+		for (i=0; i<64; i++)
 		{
-			opt_load_iquant |= 1;
-			mjpeg_info( "Setting hi-res intra Quantisation matrix\n" );
-			for (i=0; i<64; i++)
-			{
-				opt_intra_q[i] = hires_intra_quantizer_matrix[i];
-			}	
-		}
-		else
-		{
-			/* use default intra matrix */
-			opt_load_iquant = param_hfnoise_quant;
-			for (i=0; i<64; i++)
-			{
-				v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
-				if (v<1 || v>255)
-					mjpeg_error_exit1("value in intra quant matrix invalid (after noise filt adjust)");
-				opt_intra_q[i] = v;
-
-			} 
-		}
+			opt_intra_q[i] = hires_intra_quantizer_matrix[i];
+		}	
 	}
 	else
 	{
-		/* read customized intra matrix */
-		opt_load_iquant = 1;
-		if (!(fd = fopen(iqname,"r")))
-		{
-			mjpeg_error_exit1("Couldn't open quant matrix file %s",iqname);
-		}
-
+		/* use default intra matrix */
+		opt_load_iquant = param_hfnoise_quant;
 		for (i=0; i<64; i++)
 		{
-			fscanf(fd,"%d",&v);
-			v = quant_hfnoise_filt(v,i);
+			v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
 			if (v<1 || v>255)
 				mjpeg_error_exit1("value in intra quant matrix invalid (after noise filt adjust)");
-
-			opt_intra_q[i] = v;
-		}
-
-		fclose(fd);
+				opt_intra_q[i] = v;
+				
+		} 
 	}
-
 	/* TODO: Inv Quant matrix initialisation should check if the fraction fits in 16 bits! */
-	if (niqname[0]=='-')
+	if( param_hires_quant )
 	{
-
-		if( param_hires_quant )
+		mjpeg_info( "Setting hi-res non-intra quantiser matrix\n" );
+		for (i=0; i<64; i++)
 		{
-			mjpeg_info( "Setting hi-res non-intra quantiser matrix\n" );
-			for (i=0; i<64; i++)
-			{
-				opt_inter_q[i] = hires_nonintra_quantizer_matrix[i];
-			}	
-		}
-		else
-		{
-			/* default non-intra matrix is all 16's. For *our* default we use something
-			   more suitable for domestic analog sources... which is non-standard...*/
-			opt_load_niquant |= 1;
-			for (i=0; i<64; i++)
-			{
-				v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
-				if (v<1 || v>255)
-					mjpeg_error_exit1("value in non-intra quant matrix invalid (after noise filt adjust)");
-				opt_inter_q[i] = v;
-			}
-		}
+			opt_inter_q[i] = hires_nonintra_quantizer_matrix[i];
+		}	
 	}
 	else
 	{
-		/* read customized non-intra matrix */
-		opt_load_niquant = 1;
-		if (!(fd = fopen(niqname,"r")))
-		{
-			mjpeg_error_exit1("Couldn't open quant matrix file %s",niqname);
-		}
-
+		/* default non-intra matrix is all 16's. For *our* default we use something
+		   more suitable for domestic analog sources... which is non-standard...*/
+		opt_load_niquant |= 1;
 		for (i=0; i<64; i++)
 		{
-			fscanf(fd,"%d",&v);
-			v = quant_hfnoise_filt(v,i);
-			opt_inter_q[i] = v;
+			v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
 			if (v<1 || v>255)
 				mjpeg_error_exit1("value in non-intra quant matrix invalid (after noise filt adjust)");
+			opt_inter_q[i] = v;
 		}
-		fclose(fd);
 	}
   
 	for (i=0; i<64; i++)
