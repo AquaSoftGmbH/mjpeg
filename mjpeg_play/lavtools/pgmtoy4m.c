@@ -223,6 +223,7 @@ usage(void)
 
 	fprintf(stderr, "%s usage: [-v n] [-i t|b|p] [-a sample aspect] [-r rate]\n",
 		__progname);
+	fprintf(stderr, "%s\taspect and rate in ratio form: -a  10:11 and -r 30000:1001 or -r 25:1 for example\n", __progname);
 	exit(0);
 	}
 
