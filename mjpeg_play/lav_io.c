@@ -816,7 +816,7 @@ lav_file_t *lav_open_input_file(char *filename)
    {
       if(!quicktime_check_sig(filename))
       {
-	movtar_init(TRUE, FALSE);
+	movtar_init(FALSE, FALSE);
 	if (!movtar_check_sig(filename))
 	  {
 	    /* None of the known formats */

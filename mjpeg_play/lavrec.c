@@ -3,6 +3,7 @@
 
     Copyright (C) 2000 Rainer Johanni <Rainer@Johanni.de>
 
+    Extended by: Gernot Ziegler <gz@lysator.liu.se>
 
 
     Capture motion video from the IOMEGA Buz to an AVI or Quicktime
@@ -12,16 +13,17 @@
 
     where options are as follows:
 
-    -f [aAq]     Format, 'a' for AVI (default), 'A' for AVI with fields
-                 exchanged, 'q' for quicktime
+    -f [aAqm]    Format, 'a' for AVI (default), 'A' for AVI with fields
+                 exchanged, 'q' for quicktime, 'm' for movtar
                  Hint: If your AVI video looks strange, try 'A' instead 'a'
                  and vice versa.
-
+		 
     -i [pPnNa]   Input Source:
                  'p' PAL  Composite Input
                  'P' PAL  SVHS-Input
                  'n' NTSC Composite Input
                  'N' NTSC SVHS-Input
+                 't' TV tuner input (if available)
                  'a' (or every other letter) Autosense (default)
 
    -d num        decimation, must be either 1, 2 or 4 for identical decimation
@@ -403,8 +405,8 @@ void Usage(char *progname)
 {
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
-   fprintf(stderr, "   -f [aAq]   Format AVI/Quicktime\n");
-   fprintf(stderr, "   -i [pPnNa] Input Source\n");
+   fprintf(stderr, "   -f [aAqm]   Format AVI/Quicktime/movtar\n");
+   fprintf(stderr, "   -i [pPnNat] Input Source\n");
    fprintf(stderr, "   -d num     Decimation (either 1,2,4 or two digit number)\n");
    fprintf(stderr, "   -g WxH+X+Y X-style geometry string (part of 720x576/480 field)\n");
    fprintf(stderr, "   -q num     Quality [%%]\n");
@@ -968,9 +970,9 @@ int main(int argc, char ** argv)
       switch(n) {
          case 'f':
             video_format = optarg[0];
-            if(optarg[0]!='a' && optarg[0]!='A' && optarg[0]!='q')
+            if(optarg[0]!='a' && optarg[0]!='A' && optarg[0]!='q' && optarg[0]!='m')
             {
-               fprintf(stderr,"Format (-f option) must be a, A or q\n");
+               fprintf(stderr,"Format (-f option) must be a, A, q or m\n");
                nerr++;
             }
             break;
@@ -1139,6 +1141,7 @@ int main(int argc, char ** argv)
       case 'P': printf("S-VHS PAL\n"); break;
       case 'n': printf("Composite NTSC\n"); break;
       case 'N': printf("S-VHS NTSC\n"); break;
+      case 't': printf("TV tuner\n"); break;
       default:  printf("Auto detect\n");
    }
    if(hordcm==verdcm)
@@ -1227,12 +1230,13 @@ int main(int argc, char ** argv)
       case 'P': input = 1; norm = 0; break;
       case 'n': input = 0; norm = 1; break;
       case 'N': input = 1; norm = 1; break;
+      case 't': input = 2; norm = 1; break;
       default:
          n = 0;
          lavrec_msg(LAVREC_INFO,"Auto detecting input and norm ...","");
          for(i=0;i<2;i++)
          {
-            sprintf(infostring,"Trying %s ...",i==0?"Composite":"S-Video");
+            sprintf(infostring,"Trying %s ...",(i==2) ? "TV tuner" : (i==0?"Composite":"S-Video"));
             lavrec_msg(LAVREC_INFO,infostring,"");
             bstat.input = i;
             res = ioctl(video_dev,MJPIOC_G_STATUS,&bstat);

@@ -141,6 +141,8 @@ static int soft_fullscreen = 0;
 /* gz: This is the new handle for MJPEG library */
 struct mjpeg_handle *mjpeg;
 
+/* gz: This forces lavplay to output on the screen (in hardware !) */
+int screen_output = 0;
 
 /* The following variable enables flicker reduction by doubling/reversing
    the fields. If this leads to problems during play (because of
@@ -359,6 +361,7 @@ void Usage(char *progname)
    fprintf(stderr, "   -z         Zoom video to fill screen as much as possible\n");
    fprintf(stderr, "   -S         Use software MJPEG playback (based on SDL and libmjpeg)\n");
    fprintf(stderr, "   -Z         If using software MJPEG playback, switch to fullscreen\n");
+   fprintf(stderr, "   -H         Use hardware MJPEG on-screen playback\n");
    exit(1);
 }
 
@@ -411,7 +414,7 @@ main(int argc, char ** argv)
    if(argc < 2) Usage(argv[0]);
 
    nerr = 0;
-   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSZxzg")) != EOF)
+   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSZHxzg")) != EOF)
    {
       switch(n) {
 
@@ -471,6 +474,11 @@ main(int argc, char ** argv)
          case 'Z':
             soft_fullscreen = 1;
             break;
+
+         case 'H':
+	    printf("Choosing hardware MJPEG playback (on-screen)\n");
+            screen_output = 1;
+            break;
       }
    }
 
@@ -529,7 +537,10 @@ main(int argc, char ** argv)
    if (soft_play)
      mjpeg = mjpeg_open(MJPEG_OUTPUT_SOFTWARE, MJPG_nbufs, el.max_frame_size);
    else 
-     mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_VIDEO, MJPG_nbufs, el.max_frame_size);
+     if (screen_output)
+       mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_SCREEN, MJPG_nbufs, el.max_frame_size);
+     else
+       mjpeg = mjpeg_open(MJPEG_OUTPUT_HARDWARE_VIDEO, MJPG_nbufs, el.max_frame_size);
 
    buff = mjpeg_get_io_buffer(mjpeg);
 
@@ -743,18 +754,20 @@ main(int argc, char ** argv)
       {
 	mjpeg_sync_buf(mjpeg, &bs);
 
-         frame = bs.frame;
-         /* Since we queue the frames in order, we have to get them back in order */
-         if(frame != nsync % mjpeg->br.count)
-         {
+	frame = bs.frame;
+	/* Since we queue the frames in order, we have to get them back in order */
+	if(frame != nsync % mjpeg->br.count)
+	  {
+	    printf("frame = %ld, nsync = %ld, mjpeg->br.count = %d\n", frame, nsync, mjpeg->br.count);
             lavplay_msg(LAVPLAY_INTERNAL,"Wrong frame order on sync","");
+	    mjpeg_close(mjpeg);
             exit(1);
-         }
-         nsync++;
-         /* Look on clock */
-         gettimeofday(&time_now,0);
-         tdiff =  time_now.tv_sec  - bs.timestamp.tv_sec +
-                 (time_now.tv_usec - bs.timestamp.tv_usec)*1.e-6;
+	  }
+	nsync++;
+	/* Look on clock */
+	gettimeofday(&time_now,0);
+	tdiff =  time_now.tv_sec  - bs.timestamp.tv_sec +
+	  (time_now.tv_usec - bs.timestamp.tv_usec)*1.e-6;
       }
       while(tdiff>spvf && (nsync-first_free)<mjpeg->br.count-1);
 
