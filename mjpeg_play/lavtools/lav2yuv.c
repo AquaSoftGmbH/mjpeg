@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <lav_io.h>
 #include <editlist.h>
@@ -34,6 +35,7 @@ EditList el;
 
 #define MAX_JPEG_LEN (512*1024)
 
+int out_fd;
 static unsigned char jpeg_data[MAX_JPEG_LEN];
 
 int	active_x = 0;
@@ -386,6 +388,30 @@ void median_filter(void)
 	frame_buf[2] = median_buf[2];
 }
 
+/*
+  Raw write does *not* guarantee to write the entire buffer load if it
+  becomes possible to do so.  This does...
+ */
+
+static size_t do_write( int fd, void *buf, size_t count )
+{
+	char *cbuf = buf;
+	size_t count_left = count;
+	size_t written;
+	while( count_left > 0 )
+	{
+		written = write( fd, cbuf, count_left );
+		if( written < 0 )
+		{
+			perror( "Error writing: " );
+			exit(1);
+		}
+		count_left -= written;
+		cbuf += written;
+	}
+	return count;
+}
+
 void writeoutYUV4MPEGheader()
 {
 	 char str[256];
@@ -395,7 +421,7 @@ void writeoutYUV4MPEGheader()
 	 
 	 sprintf(str,"YUV4MPEG %d %d %d\n",
 			 output_width,output_height,el.video_norm == 'n' ? 4 : 3);
-	 write(1,str,strlen(str));
+	 do_write(out_fd,str,strlen(str));
 }
 
 void writeoutframeinYUV4MPEG(unsigned char *frame[])
@@ -404,7 +430,7 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
   int	i;
   char	*ptr;
 
-  write(1,"FRAME\n",6);
+  do_write(out_fd,"FRAME\n",6);
 
 	for(i=0; i < active_height; i++) {
 		ptr = &frame[0][luma_offset + (i * output_width)];
@@ -438,28 +464,28 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 	}
 
 	if (luma_top_size) {
-		n +=write(1, luma_blank, luma_top_size);
+		n +=do_write(out_fd, luma_blank, luma_top_size);
 	}
-	n += write(1, &frame[0][luma_offset], luma_size);
+	n += do_write(out_fd, &frame[0][luma_offset], luma_size);
 	if (luma_bottom_size) {
-		n += write(1, luma_blank, luma_bottom_size);
+		n += do_write(out_fd, luma_blank, luma_bottom_size);
 	}
 
 
 	if (chroma_top_size) {
-		n += write(1, chroma_blank, chroma_top_size);
+		n += do_write(out_fd, chroma_blank, chroma_top_size);
 	}
-	n += write(1,&frame[1][chroma_offset], chroma_size);
+	n += do_write(out_fd,&frame[1][chroma_offset], chroma_size);
 	if (chroma_bottom_size) {
-		n += write(1, chroma_blank, chroma_bottom_size);
+		n += do_write(out_fd, chroma_blank, chroma_bottom_size);
 	}
 
 	if (chroma_top_size) {
-		n += write(1, chroma_blank, chroma_top_size);
+		n += do_write(out_fd, chroma_blank, chroma_top_size);
 	}
-	n += write(1,&frame[2][chroma_offset], chroma_size);
+	n += do_write(out_fd,&frame[2][chroma_offset], chroma_size);
 	if (chroma_bottom_size) {
-		n += write(1, chroma_blank, chroma_bottom_size);
+		n += do_write(out_fd, chroma_blank, chroma_bottom_size);
 	}
 }
 
@@ -641,6 +667,7 @@ char *argv[];
 	Usage(argv[0]);
   }
 
+  out_fd = 1; /* stdout */
   init();
   streamout();
 

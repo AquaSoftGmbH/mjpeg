@@ -73,6 +73,29 @@ struct wave_header wave;
 int verbose = 2;
 
 
+/*
+  Raw write does *not* guarantee to write the entire buffer load if it
+  becomes possible to do so.  This does...
+ */
+
+static size_t do_write( int fd, void *buf, size_t count )
+{
+	char *cbuf = buf;
+	size_t count_left = count;
+	size_t written;
+	while( count_left > 0 )
+	{
+		written = write( fd, cbuf, count_left );
+		if( written < 0 )
+		{
+			return count-count_left;
+		}
+		count_left -= written;
+		cbuf += written;
+	}
+	return count;
+}
+
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )
 {
 	/* Write out a ZEROD wave header first */
@@ -92,7 +115,7 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	wave.common.wBitsPerSample = bits;
 
 	strncpy(wave.data.id, "data",4);
-	if (write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
+	if (do_write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
 	{
 		return 1;
 	}
@@ -133,7 +156,7 @@ static void wav_close(int fd)
 	size -= 20+sizeof(struct common_struct);
 	wave.data.len = size;
 
-	if (write(fd, &wave, sizeof(wave)) < sizeof(wave)) 
+	if (do_write(fd, &wave, sizeof(wave)) < sizeof(wave)) 
 	{
 		fprintf(stderr,"wav-header write failed -- file is corrupt\n");
 		goto EXIT;
@@ -237,7 +260,7 @@ char    **argv;
 		}
 		if( n != 0 )
 		{
-			res = write( 1, audio_buff, n );
+			res = do_write( 1, audio_buff, n );
 			if( res != n )
 			{
 				fprintf( stderr, "%s: Error: Couldn't write audio for frame %d!\n", argv[0], f );
