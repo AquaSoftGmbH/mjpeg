@@ -163,7 +163,7 @@ The maximum file size per JPEG file. By default, lavrec uses the maximum
 possible size for that specific recording format.
 
 .TP 8
-.BR \-\-file\-flush " num"
+.BI \-\-file\-flush " num"
 Flush the file to disk after every num frames captured.
 
 .TP 8
@@ -181,6 +181,29 @@ The audio device. Default is /dev/dsp
 .TP 8
 .B LAV_MIXER_DEV
 The mixer device. Default is /dev/mixer
+
+.SH OUTPUT
+Lavrec will output the current recording state. Typically, this looks like:
+.br
+0.06.14:22 int: 00040 lst:0 ins:0 del:0 ae:0 td1=0.014 td2=0.029
+.br
+The first part is the time that has been spent recording (hours \- minutes \-
+seconds \- frames). 
+.B int
+is the interval (in milliseconds) between two captured frames (this should
+be around 40 for PAL/SECAM and 33 for NTSC).
+.B lst
+is the number of lost frames.
+.B ins
+and
+.B del
+are the number of frames inserted and deleted for sync correction.
+.B ae
+is the number of audio errors.
+.B td1
+and
+.B td2
+are the audio/video time-difference (out\-of\-sync'ness).
 
 .SH TYPICAL RECORDING SESSIONS
 Okay, that's a lot of options. Now how would I normally record video?
@@ -201,7 +224,8 @@ JPEG encoding or whether to use the card's hardware JPEG encoding
 features (if available).
 
 Besides that, software JPEG encoding seems, for some people, to cause
-small out-of-sync'ness.
+small out-of-sync'ness. SMP support for JPEG encoding is currently
+work-in-progress.
 
 .SH AUTHOR
 This man page was written by Ronald Bultje.
