@@ -29,6 +29,7 @@
 #include <lav_io.h>
 #include <editlist.h>
 #include <math.h>
+#include "yuv4mpeg.h"
 
 int luminance_mean(unsigned char *frame, int w, int h);
 int decode_jpeg_raw(unsigned char *jpeg_data, int len,
@@ -103,10 +104,6 @@ int chroma_width;
 int chroma_left_size;
 int chroma_right_size;
 int chroma_right_offset;
-
-const int num_mpeg2_framerates = 9;
-static float mpeg2_framerates[] =
-    { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
 
 unsigned char *frame_buf[3];    /* YUV... */
 unsigned char *read_buf[3];
@@ -404,42 +401,9 @@ int readframe(int numframe, unsigned char *frame[])
 
 }
 
-/*
-  Raw write does *not* guarantee to write the entire buffer load if it
-  becomes possible to do so.  This does...
- */
-
-static size_t do_write(int fd, void *buf, size_t count)
-{
-   char *cbuf = buf;
-   size_t count_left = count;
-   size_t written;
-   while (count_left > 0) {
-      written = write(fd, cbuf, count_left);
-      if (written < 0) {
-         perror("Error writing: ");
-         exit(1);
-      }
-      count_left -= written;
-      cbuf += written;
-   }
-   return count;
-}
-
 void writeoutYUV4MPEGheader(void)
 {
-   char str[256];
-   int i;
-   int frame_rate_code = 0;
-   /* RJ: Framerate specification should be based on
-      something more reliable than height */
-   for (i = 0; i < num_mpeg2_framerates; ++i) {
-      if (fabs(mpeg2_framerates[i] - el.video_fps) / mpeg2_framerates[i]
-          < 0.001) {
-         frame_rate_code = i;
-         break;
-      }
-   }
+   int frame_rate_code = yuv_fps2mpegcode (el.video_fps);
 
    fprintf(stderr, "DEBUG: frame rate code %d set!\n", frame_rate_code);
    fprintf(stderr, "DEBUG: 24fps = 2, PAL = 3, NTSC = 4\n");
@@ -448,9 +412,7 @@ void writeoutYUV4MPEGheader(void)
               "+++ WARNING: unrecognised frame-rate -  no MPEG2 rate code can be specified... encoder is likely to fail!\n");
    }
 
-   sprintf(str, "YUV4MPEG %d %d %d\n", output_width, output_height,
-           frame_rate_code);
-   do_write(out_fd, str, strlen(str));
+   yuv_write_header (1, output_width, output_height, frame_rate_code);
 }
 
 void writeoutframeinYUV4MPEG(unsigned char *frame[])
@@ -459,7 +421,7 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
    int i;
    char *ptr;
 
-   do_write(out_fd, "FRAME\n", 6);
+   pipewrite(out_fd, "FRAME\n", 6);
 
    for (i = 0; i < active_height; i++) {
       ptr = &frame[0][luma_offset + (i * output_width)];
@@ -493,28 +455,28 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
    }
 
    if (luma_top_size) {
-      n += do_write(out_fd, luma_blank, luma_top_size);
+      n += pipewrite(out_fd, luma_blank, luma_top_size);
    }
-   n += do_write(out_fd, &frame[0][luma_offset], luma_size);
+   n += pipewrite(out_fd, &frame[0][luma_offset], luma_size);
    if (luma_bottom_size) {
-      n += do_write(out_fd, luma_blank, luma_bottom_size);
+      n += pipewrite(out_fd, luma_blank, luma_bottom_size);
    }
 
 
    if (chroma_top_size) {
-      n += do_write(out_fd, chroma_blank, chroma_top_size);
+      n += pipewrite(out_fd, chroma_blank, chroma_top_size);
    }
-   n += do_write(out_fd, &frame[1][chroma_offset], chroma_size);
+   n += pipewrite(out_fd, &frame[1][chroma_offset], chroma_size);
    if (chroma_bottom_size) {
-      n += do_write(out_fd, chroma_blank, chroma_bottom_size);
+      n += pipewrite(out_fd, chroma_blank, chroma_bottom_size);
    }
 
    if (chroma_top_size) {
-      n += do_write(out_fd, chroma_blank, chroma_top_size);
+      n += pipewrite(out_fd, chroma_blank, chroma_top_size);
    }
-   n += do_write(out_fd, &frame[2][chroma_offset], chroma_size);
+   n += pipewrite(out_fd, &frame[2][chroma_offset], chroma_size);
    if (chroma_bottom_size) {
-      n += do_write(out_fd, chroma_blank, chroma_bottom_size);
+      n += pipewrite(out_fd, chroma_blank, chroma_bottom_size);
    }
 }
 
