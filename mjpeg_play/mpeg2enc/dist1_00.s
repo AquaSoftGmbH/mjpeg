@@ -48,9 +48,9 @@ dist1_00_SSE:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 
-	push ebx		; save the pigs
-	push ecx		; make them squeal
-	push edx		; lets have pigs for every meal
+	push ebx
+	push ecx
+	push edx
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -62,9 +62,9 @@ dist1_00_SSE:
 	movd mm1, [ebp+24]	; get distlim
 	mov ecx,2		; 1 loop does 2 rows
 	movd mm3, ecx		; MMX(TM) it!
-	jmp nextrow		; snap to it
+	jmp nextrow00		; snap to it
 align 32
-nextrow:
+nextrow00:
 	movq mm4, [eax]		; load first 8 bytes of p1 (row 1)
 	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
 	paddd mm0, mm4		; accumulate difference
@@ -94,7 +94,7 @@ nextrow:
 	add ebx, edx		; ditto
 	
 	test ecx, ecx		; check rowsleft
-	jnz nextrow		; rinse and repeat
+	jnz nextrow00		; rinse and repeat
 
 	movd eax, mm0		; store return value
 	

@@ -316,11 +316,13 @@ static void init()
 	/* A.Stevens 2000 for liminance data we allow space for
 	   fast motion estimation data.  This is actually 2*2 pixel sub-sampled
 	   mcompuint followed by 4*4 sub-sampled.
+	   We add an extra row to act as a margin to allow us to neglect exact
+	   postpone condition checking in critical loops...
 	*/
 	if (i==0)
 	  size = (width*height) + 
-		sizeof(mcompuint) *(width>>1)*(height>>1) +
-		sizeof(mcompuint) *(width>>2)*(height>>2);
+		sizeof(mcompuint) *(width/2)*(height/2) +
+		sizeof(mcompuint) *(width/4)*(height/4+1);
 		
 	else
 	  size = chrom_width*chrom_height;

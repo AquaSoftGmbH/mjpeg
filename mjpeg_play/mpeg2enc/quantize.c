@@ -127,11 +127,22 @@ int mquant;
 double quant_weight_coeff_sum( short *blk, unsigned char * quant_mat )
 {
   int i;
-  double sum;
-  for( i = 0; i < 64; ++i )
-	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
-
-  return sum;
+  /* double sum = 1000.0; */
+  int sum = 1000;    /* TODO: This base weight ought to be exposed.... */
+  for( i = 0; i < 64; i+=2 )
+	{
+	  register int abs1, abs2;
+	  abs1 = (fastabs(blk[i]) <<(4+8)) / quant_mat[i];
+	  abs2 = (fastabs(blk[i+1]) <<(4+8)) ;
+	  sum += abs1+abs2/ quant_mat[i+1];
+	}
+  /*
+	sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]) +
+	  ((double)(fastabs(blk[i+1]) * 16)) / ((double) quant_mat[i+1]);
+	  sum += ((double)(fastabs(blk[i]) * 16)) / ((double) quant_mat[i]);
+  */
+	  
+  return (double) (sum / 256);
 }
 
 int quant_non_intra(src,dst,quant_mat,mquant, mquant_ret)
@@ -142,6 +153,7 @@ int *mquant_ret;
 {
   int i;
   int x, y, d;
+  int x1, y1, d1, x2, y2, d2;
   int nzflag;
   int clipping;
 
@@ -155,11 +167,12 @@ int *mquant_ret;
 	{
 	  clipping = 0;
 	  nzflag = 0;
-	  for (i=0; i<64; i++)
+	  for (i=0; i<64; i+=2)
 		{
-		  x = src[i];
-		  d = quant_mat[i];
 #ifdef ORIG_CODE
+		  x = src[i];
+		  d = quant_mat[i]; 
+
 		  y = (32*(x>=0 ? x : -x) + (d>>1))/d; /* round(32*x/quant_mat) */
 		  y /= (2*mquant);
 		  /* clip to syntax limits */
@@ -171,19 +184,32 @@ int *mquant_ret;
 				y = 2047;
 			}
 #else
-		  /* RJ: save one divide operation */
+		  /* RJ: save one divide operation 
+		  x = src[i];
+		  d = quant_mat[i]; 
 		  y = (32*fastabs(x) + (d>>1))/(d*2*mquant);
-		  if ( (y > 255) && (mpeg1 || (y > 2047)) )
-			{
-			  clipping = 1;
-			  mquant += 2;
-			  break;
-			}		  
-#endif
-		  
-		  if ((tmp[i] = samesign(x,y)) != 0)
-			nzflag=1;
+		  clipping |= ((y > 255) & (mpeg1 | (y > 2047)));
+		  nzflag |= ((tmp[i] = samesign(x,y)) != 0);
+		  */
+		  x1 = src[i];
+		  d1 = quant_mat[i];
+		  y1 = (fastabs(x1)<<5) + (d1>>1);
+
+		  x2 = src[i+1];
+		  y1 /= (d1<<1)*mquant;
+
+		  d2 = quant_mat[i+1];
+		  y2 = (fastabs(x2)<<5) + (d2>>1);  
+		  clipping |= ((y1 > 255) & (mpeg1 | (y1 > 2047)));
+
+		  y2 /= (d2<<1)*mquant;
+ 		  nzflag |= ((tmp[i] = samesign(x1,y1))!=0);
+	 	  clipping |= ((y2 > 255) & (mpeg1 | (y2 > 2047)));
+		  nzflag |= ((tmp[i+1] = samesign(x2,y2))!=0);
+
 		}
+	  mquant += !!clipping;
+#endif
 	}
   while( clipping );
 

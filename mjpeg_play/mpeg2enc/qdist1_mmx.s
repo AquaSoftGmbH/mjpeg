@@ -33,13 +33,13 @@ global qdist1_MMX
 ; esi = rowsleft
 
 ; mm0 = distance accumulator left block p1
-; mm1 = Eventually:		 distance accumulator right block p1
-; mm2 = rowsleft
-; mm3 = 0
-; mm4 = temp
-; mm5 = temp
+; mm1 = distance accumulator right block p1
+; mm2 = 0
+; mm3 = right block of p1
+; mm4 = left block of p1
+; mm5 = p2
 ; mm6 = temp
-
+; mm7 = temp
 
 align 32
 qdist1_MMX:
@@ -52,7 +52,8 @@ qdist1_MMX:
 	push esi     
 
 	pxor mm0, mm0		; zero acculumator
-	pxor mm3, mm3
+	pxor mm1, mm1
+	pxor mm2, mm2
 	mov eax, [ebp+8]	; get p1
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get qlx
@@ -65,38 +66,56 @@ nextrowqd:
 		;; Beware loop obfuscated by interleaving to try to
 		;; hide latencies...
 		;; 
-	mov  ecx, [eax]				; mm4 =  4 bytes of p1 in words 
-	movd mm4, ecx
-    mov  ecx, [ebx]             ; mm5 = 4 bytes of p2 in words		
-	punpcklbw mm4, mm3			
-	movd  mm5,  ecx
-	punpcklbw mm5, mm3
-		
+	movq mm4, [eax]				; mm4 =  first 4 bytes of p1 in words
+	movq mm5, [ebx]             ; mm5 = 4 bytes of p2 in words
+	movq mm3, mm4
+	punpcklbw mm4, mm2			
+	punpcklbw mm5, mm2
+	
+				
 	movq  mm7,mm4
 	pcmpgtw mm7,mm5				; mm7 := [i : W0..3,mm4>mm5]
-
 	movq  mm6,mm4				; mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)]
  	psubw mm6,mm5
 	pand  mm6, mm7
 
+	add eax, edx		; update a pointer to next row
+		
+	paddw mm0, mm6				; accumulate positive differences
 
 	movq  mm7,mm5				; mm7 := [i : W0..3,mm5>mm4]
 	pcmpgtw mm7,mm4	    
+	movq mm6, mm5
+ 	psubw mm6,mm4				; mm6 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]
+	pand  mm6, mm7		
 
-	paddw mm0, mm6				; accumulate positive differences
+	punpckhbw mm3, mm2			; mm3 = 2nd 4 bytes of p1 in words
 
- 	psubw mm5,mm4				; mm5 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]
+	paddw mm0, mm6				; Add to accumulators again...
+	
+	movq  mm7,mm3
+	pcmpgtw mm7,mm5				; mm7 := [i : W0..3,mm4>mm5]
+	movq  mm6,mm3				; mm6 := [i : W0..3, (mm4-mm5)*(mm4-mm5 > 0)]
+ 	psubw mm6,mm5
+	pand  mm6, mm7
+		;;  *
+		
+	movq  mm7,mm5				; mm7 := [i : W0..3,mm5>mm4]
+
+	paddw mm1, mm6				; accumulate positive differences * above
+		
+	pcmpgtw mm7,mm3	    
+ 	psubw mm5,mm3				; mm6 := [i : B0..7, (mm5-mm4)*(mm5-mm4 > 0)]
+	add ebx, edx		; update a pointer to next row
+
 	pand  mm5, mm7		
 
-	
-	add eax, edx		; update pointer to next row
-	add ebx, edx		; ditto
-
-	paddw mm0, mm5				; Add to accumulators again...
-		
 	sub   esi, 1
+
+	paddw mm1, mm5				; Add to accumulators again...
+		
 	test esi, esi		; check rowsleft
-	jnz nextrowqd		; rinse and repeat
+	jnz nextrowqd		
 
 		;;		Sum the accumulators
 
@@ -107,9 +126,19 @@ nextrowqd:
 	psrlq mm6, 16
 	paddw mm0, mm6
 	movd eax, mm0		; store return value
+
+	movq  mm4, mm1
+	psrlq mm4, 32
+	paddw mm1, mm4
+	movq  mm6, mm1
+	psrlq mm6, 16
+	paddw mm1, mm6
+	movd ebx, mm1
+
 	and  eax, 0xffff		
-
-
+	sal  ebx, 16
+	or   eax, ebx
+		
 	pop esi
 	pop edx
 	pop ecx
