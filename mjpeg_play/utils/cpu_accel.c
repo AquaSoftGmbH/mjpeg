@@ -24,6 +24,7 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <stdlib.h>
+#include <malloc.h>
 #include <unistd.h>
 #include <errno.h>
 #include "cpu_accel.h"

@@ -57,7 +57,6 @@ mpeg2enc \- MPEG-1/2 encoder
 .RB [ -H | --keep-hf ]
 .RB [ -d | --no-dummy-svcd-SOF ]
 .RB [ -C | --correct-svcd-hds ]
-.RB [ --hack-dxr2-bug ]
 .RB [ --no-constraints ]
 .RB [ -K | --custom-quant-matrices
 .IR kvcd|tmpgenc|default|hi-res|file=inputfile|help ]
@@ -225,11 +224,14 @@ worth trying 20 or -20.
 .BR -R|--b-per-refframe \ 0..2
 .PP
 Specify how many bi-directionally (B type) difference-encoded frames
-should be encoded between reference (I or P) frames.  Experts differ
-on how much using B frames improves compression.  For noisy material
-they tend to be less useful.  Encoding is significantly faster and
-uses less memory if no B frames are encoded and compression is rarely
-more than marginally worse...
+should be encoded between reference (I or P) frames.  The default is 0
+except for VCD encoding where it is 2 B frames as required by the
+standard.  Experts differ on how much using B frames improves
+compression. In practice unless you have really clean material they
+tend to be fairly useless and sometimes even harmful.  Encoding is
+significantly faster and uses less memory if no B frames are encoded
+and compression is rarely more than marginally worse.
+
 .PP
 .BR -?|--help
 .PP
@@ -295,12 +297,6 @@ resolution to decode the stream to is supposed to take the values 540
 players don't work unless the value is 480. This flag, forces mpeg2enc
 to follow the official standard. It is worth trying if 16:9 sequences
 play at 4:3 aspect ratio.
-.PP
-.BR --hack-dxr2-bug
-.PP
-This flag, as its name suggests, works around what appears to be a bug
-in MPEG-2 decoding in the firmware of the DXR2 board. Useful for
-encoding DVD-like streams for playback using a DXR2.
 .PP
 .BR --no-constraints
 .PP
@@ -414,17 +410,17 @@ quantization is fixed at the specified value.
 .BR -I|--interlace-mode \ 0|1|2
 .PP
 This sets the sequences picture structure and block encoding type for
-MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
-interlaced video turned off.  This is the most efficient option for
-encoding material that is not interlaced (e.g. movies in PAL 25
-frame/sec or NTSC 24 frames/sec in 3:2 pulldown format).  However, it
-produces rotten results for interlaced video material.  For such
-material use -I 1 which encodes frame-by-frame with interlace-adapted
-motion compensation and block encoding.  Alternatively, for highly
-textured interlaced material with lots of motion you may with to try
--I 2 which switches to field-by-field encoding.  This is generally
-less efficient than frame-by-frame encoding but will produce more
-accurate results.   
+MPEG-2 streams.  Setting 0 (the default) encodes frame-by-frame with
+support for interlaced video turned off.  This is the most efficient
+option for encoding material that is not interlaced (e.g. movies in
+PAL 25 frame/sec or NTSC 24 frames/sec in 3:2 pulldown format) or has
+been externally deinterlaced.  However, it produces rotten results for
+interlaced video material.  For such material use -I 1 which encodes
+frame-by-frame with interlace-adapted motion compensation and block
+encoding.  Alternatively, for highly textured interlaced material with
+lots of motion you may with to try -I 2 which switches to
+field-by-field encoding.  This is generally less efficient than
+frame-by-frame encoding but will produce more accurate results.
 .IP
 Note that setting -I 1 for non-interlaced material will not do any
 harm but the encoder will waste a lot of time on calculations that
