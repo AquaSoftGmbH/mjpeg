@@ -20,6 +20,9 @@
 // TODO:
 // Slow down possibility at 1:2 => all preprocessing in a new utility called yuvcorrect
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
