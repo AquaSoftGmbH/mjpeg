@@ -1,11 +1,29 @@
+
+/*
+ *  interact.h:  Program/System stream packet generator
+ *
+ *  Copyright (C) 2003 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 #ifndef __SYSTEMS_HH__
 #define __SYSTEMS_HH__
 
-#ifndef _WIN32
-#include <sys/param.h>
-#endif
 #include "inputstrm.hpp"
-
+#include "outputstrm.hpp"
 #include <vector>
 
 using std::vector;
@@ -43,18 +61,17 @@ class PS_Stream
 public:
     PS_Stream( unsigned _mpeg,
                unsigned int _sector_size,
-               const char *filename_pat,
+               OutputStream &_output_strm, 
                off_t max_segment_size // 0 = No Limit
         );
+    ~PS_Stream();
 
-    virtual bool FileLimReached( );
-    virtual void NextFile();
-    virtual unsigned int PacketPayload( MuxStream &strm,
+    unsigned int PacketPayload( MuxStream &strm,
                                 Sys_header_struc *sys_header, 
                                 Pack_struc *pack_header, 
                                 int buffers, int PTSstamp, int DTSstamp );
 
-    virtual unsigned int CreateSector (Pack_struc	 	 *pack,
+    unsigned int CreateSector (Pack_struc	 	 *pack,
                                Sys_header_struc *sys_header,
                                unsigned int     max_packet_data_size,
                                MuxStream        &strm,
@@ -64,7 +81,6 @@ public:
                                clockticks   	 DTS,
                                uint8_t 	 timestamps
         );
-    virtual void RawWrite(uint8_t *data, unsigned int len);
     static void BufferSectorHeader( uint8_t *buf,
                              Pack_struc	 	 *pack,
                              Sys_header_struc *sys_header,
@@ -104,11 +120,17 @@ public:
                            vector<MuxStream *> &streams
         );
 
-    virtual void Close() { fclose(strm); }
-    virtual int  Open( );
+    inline int Open() { return output_strm.Open(); }
+    inline void Close() { output_strm.Close(); }
+    inline void RawWrite(uint8_t *data, unsigned int len)
+        {
+            return output_strm.Write( data, len );
+        }
+    inline void NextSegment() { output_strm.NextSegment(); }
+    bool SegmentLimReached();
+
 
 private:
-
     static void 
     BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
                                   uint8_t  marker,
@@ -118,13 +140,10 @@ private:
     void BufferPaddingPacket( int padding,
                               uint8_t *&buffer );
 private:
+    OutputStream &output_strm; 
     unsigned int mpeg_version;
     unsigned int sector_size;
-    int segment_num;
     off_t max_segment_size;
-    FILE *strm;
-    char filename_pat[MAXPATHLEN];
-    char cur_filename[MAXPATHLEN];
     uint8_t *sector_buf;
 };
 #endif // __SYSTEMS_HH__

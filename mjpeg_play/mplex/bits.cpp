@@ -31,9 +31,6 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#ifndef _WIN32
-#include <sys/param.h>
-#endif
 #include <assert.h>
 #include "mjpeg_logging.h"
 #include "bits.hpp"
@@ -378,52 +375,6 @@ unsigned int IBitStream::GetBytes(uint8_t *dst, unsigned int length)
 	//flush( bytereadpos );
 	bytereadpos += to_read;
 	return to_read;
-}
-
-
-/********
- *
- * Input stream from a standard File I/O data-source
- *
- ********/
-
-IFileBitStream::IFileBitStream( const char *bs_filename,
-                                unsigned int buf_size) :
-    IBitStream()
-{
-	if ((fileh = fopen(bs_filename, "rb")) == NULL)
-	{
-		mjpeg_error_exit1( "Unable to open file %s for reading.", bs_filename);
-	}
-	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
-    streamname = filename;
-
-    SetBufSize(buf_size);
-	eobs = false;
-    byteidx = 0;
-	if (!ReadIntoBuffer())
-	{
-		if (buffered==0)
-		{
-			mjpeg_error_exit1( "Unable to read from %s.", bs_filename);
-		}
-	}
-}
-
-
-/**
-   Destructor: close the device containing the bit stream after a read
-   process
-*/
-IFileBitStream::~IFileBitStream()
-{
-	if (fileh)
-	{
-		fclose(fileh);
-		delete filename;
-	}
-	fileh = 0;
-    Release();
 }
 
 

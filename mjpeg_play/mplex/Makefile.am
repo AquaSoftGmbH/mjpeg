@@ -11,6 +11,8 @@ INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
 bin_PROGRAMS = mplex
 
+lib_LTLIBRARIES = libmplex2.la
+
 if HAVE_ZALPHA
   ZALPHA_FILES = zalphastrm.hpp zalphastrm_in.cpp zalphastrm_out.cpp
   ZALPHA_FLAGS = -DZALPHA
@@ -19,7 +21,8 @@ else
   ZALPHA_FLAGS =
 endif
 
-mplex_SOURCES = \
+
+libmplex2_la_SOURCES = \
 	ac3strm_in.cpp \
 	audiostrm_out.cpp \
 	bits.cpp \
@@ -28,7 +31,6 @@ mplex_SOURCES = \
 	inputstrm.cpp \
 	interact.cpp \
 	lpcmstrm_in.cpp \
-	main.cpp \
 	mpastrm_in.cpp \
 	multiplexor.cpp \
 	padstrm.cpp \
@@ -56,8 +58,20 @@ noinst_HEADERS = \
 	vector.hpp \
 	videostrm.hpp
 
+libmplex2_la_LDFLAGS =  \
+	-version-info $(LT_CURRENT):$(LT_REVISION):$(LT_AGE) \
+	-release $(LT_RELEASE) \
+	-export-dynamic 
+
+libmplex2_la_LIBADD = \
+	$(top_builddir)/utils/libmjpegutils.a
+
+libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
+
+mplex_SOURCES = main.cpp 
+
 mplex_LDADD = \
 	$(top_builddir)/utils/libmjpegutils.a \
+	$(top_builddir)/mplex/libmplex2.la \
 	@LIBGETOPT_LIB@ $(LIBM_LIBS) 
 
-mplex_CXXFLAGS = $(ZALPHA_FLAGS)

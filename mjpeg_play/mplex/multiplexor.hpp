@@ -14,7 +14,7 @@
 class Multiplexor
 {
 public:
-	Multiplexor(MultiplexJob &job);
+	Multiplexor(MultiplexJob &job, OutputStream &output);
 	void Multiplex ();
 
 
@@ -45,7 +45,6 @@ public:
 	   by the input stream objects.
 	 */
 	
-	char *output_filename_pattern;
 	bool always_sys_header_in_pack;
 	bool dtspts_for_all_vau;
 	bool sys_header_in_pack1;

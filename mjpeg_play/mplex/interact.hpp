@@ -117,22 +117,11 @@ class MultiplexJob : public MultiplexParams
 public:
   MultiplexJob();
   virtual ~MultiplexJob();
-  virtual void SetFromCmdLine( unsigned int argc, char *argv[]);
-  virtual PS_Stream *GetOutputStream(
-			   unsigned mpeg,
-               unsigned int sector_size,
-               const char *filename_pat,
-               off_t max_segment_size // 0 = No Limit
-			   );
   unsigned int NumberOfTracks( StreamKind kind );
-  void GetJobStreams( vector<JobStream *> &streams, StreamKind kind );
+  void GetInputStreams( vector<JobStream *> &streams, StreamKind kind );
 
+  void SetupInputStreams( vector<IBitStream *> &inputs );
 protected:
-  virtual void InputStreamsFromCmdLine (unsigned int argc, char* argv[] );
-  virtual void Usage(char *program_name);
-  virtual bool ParseVideoOpt( const char *optarg );
-  virtual bool ParseLpcmOpt( const char *optarg );
-  virtual bool ParseWorkaroundOpt( const char *optarg );
 
 public:  
   vector<JobStream *> streams;

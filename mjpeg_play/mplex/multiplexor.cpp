@@ -1,3 +1,23 @@
+/*
+ *  multiplexor.cpp:  Program/System stream Multiplex despatcher 
+ *
+ *  Copyright (C) 2003 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
 
 #include <config.h>
 #include <math.h>
@@ -25,7 +45,7 @@
  *
  ***************/
 
-Multiplexor::Multiplexor(MultiplexJob &job)
+Multiplexor::Multiplexor(MultiplexJob &job, OutputStream &output)
 {
     underrun_ignore = 0;
     underruns = 0;
@@ -33,13 +53,7 @@ Multiplexor::Multiplexor(MultiplexJob &job)
     InitSyntaxParameters(job);
     InitInputStreams(job);
 
-	/* Get an output stream object for the job */
-	psstrm = job.GetOutputStream( mpeg, sector_size,
-								  output_filename_pattern, max_segment_size );
-	if( !psstrm )
-	{
-		mjpeg_error_exit1("Failed to optain an output stream");
-	}
+    psstrm = new PS_Stream(mpeg, sector_size, output, max_segment_size );
 
 }
 
@@ -56,7 +70,6 @@ Multiplexor::Multiplexor(MultiplexJob &job)
 
 void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 {
-    output_filename_pattern = job.outfile_pattern;
 	seg_starts_with_video = false;
 	audio_buffer_size = 4 * 1024;
     mux_format = job.mux_format;
@@ -282,9 +295,9 @@ void Multiplexor::InitInputStreamsForStills(MultiplexJob & job )
     unsigned int frame_interval;
     unsigned int i;
     vector<JobStream *> video_strms;
-    job.GetJobStreams( video_strms, MPEG_VIDEO );
+    job.GetInputStreams( video_strms, MPEG_VIDEO );
     vector<JobStream *> mpa_strms;
-    job.GetJobStreams( mpa_strms, MPEG_AUDIO );
+    job.GetInputStreams( mpa_strms, MPEG_AUDIO );
 
     switch( job.mux_format )
     {
@@ -1028,7 +1041,7 @@ void Multiplexor::Multiplex()
 			/* Otherwise we write the stream suffix and start a new
 			   stream file */
 			OutputSuffix();
-			psstrm->NextFile();
+			psstrm->NextSegment();
 
 			running_out = false;
 			seg_state = start_segment;
@@ -1100,12 +1113,12 @@ void Multiplexor::Multiplex()
 			master = 
 				vstreams.size() > 0 ? 
 				static_cast<VideoStream*>(vstreams[0]) : 0 ;
-			if( psstrm->FileLimReached() )
+			if( psstrm->SegmentLimReached() )
 			{
 				if( split_at_seq_end )
                     mjpeg_warn( "File size exceeded before split-point in video stream" );
                 mjpeg_info( "Starting new output file...");
-                psstrm->NextFile();
+                psstrm->NextSegment();
 			}
 			else if( master != 0 && master->EndSeq() )
 			{

@@ -162,40 +162,6 @@ protected:
 
 };
 
-/********************************
- *
- * IFileBitStream - Input bit stream class for bit streams sourced
- * from standard file I/O (this of course *includes* network sockets,
- * fifo's, et al).
- *
- * OLAF: To hook into your PES reader/reconstructor you need to define
- * a class like this one, where 'ReadStreamBytes' calls you code to
- * generate the required number of bytes of ES data and transfer it 
- * to the specified buffer.  The logical way to do this would be to
- * inherit IBitStream as a base class of the top-level classes for the ES
- * reconstructors.
- *
- ********************************/
-
-class IFileBitStream : public IBitStream
-{
-public:
- 	IFileBitStream( const char *bs_filename, 
-					unsigned int buf_size = BUFFER_SIZE);
-	~IFileBitStream();
-
-private:
-	FILE *fileh;
-	char *filename;
-	virtual size_t ReadStreamBytes( uint8_t *buf, size_t number ) 
-		{
-			return fread(buf,sizeof(uint8_t), number, fileh ); 
-		}
-	virtual bool EndOfStream() { return feof(fileh) != 0; }
-	
-};
-
-
 #ifdef REDUNDANT_CODE
 class OBitStreamUndo : public BitStreamBuffering
 {

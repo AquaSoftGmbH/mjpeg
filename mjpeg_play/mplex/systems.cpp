@@ -1,75 +1,68 @@
+
+/*
+ *  systems.cpp: Program/System stream packet generator 
+ *
+ *
+ *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
+
 #include <config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <memory>
 
 #ifdef _WIN32
 #include <win32defs.h>
 #else
 #include <sys/param.h>
 #endif
-#include <sys/stat.h>
 #include "systems.hpp"
 #include "mplexconsts.hpp"
 
-using std::auto_ptr;
 
 PS_Stream:: PS_Stream( unsigned _mpeg,
                        unsigned int _sector_size,
-                       const char *name_pat, 
+                       OutputStream &_output_strm, 
                        off_t max_seg_size )
     : mpeg_version( _mpeg),
       sector_size( _sector_size ),
-      segment_num( 1 ),
+      output_strm(_output_strm ),
       max_segment_size( max_seg_size )
 {
     sector_buf = new uint8_t[sector_size];
 	max_segment_size = max_seg_size;
-	strncpy( filename_pat, name_pat, MAXPATHLEN );
-	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
 }
 
-int PS_Stream::Open()
+PS_Stream::~PS_Stream()
 {
-	strm = fopen( cur_filename, "wb" );
-	if( strm == NULL )
-	{
-		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
-	}
-
-	return 0;
+    delete [] sector_buf;
 }
+
 
 bool
-PS_Stream::FileLimReached()
+PS_Stream::SegmentLimReached()
 {
-	struct stat stb;
-    fstat(fileno(strm), &stb);
-	off_t written = stb.st_size;
+	off_t written = output_strm.SegmentSize();
 	return max_segment_size != 0 && written > max_segment_size;
 }
 
-void 
-PS_Stream::NextFile( )
-{
-    auto_ptr<char> prev_filename_buf( new char[strlen(cur_filename)+1] );
-    char *prev_filename = prev_filename_buf.get();
-	fclose(strm);
-	++segment_num;
-    strcpy( prev_filename, cur_filename );
-	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
-	if( strcmp( prev_filename, cur_filename ) == 0 )
-	{
-		mjpeg_error_exit1( 
-			"Need to split output but there appears to be no %%d in the filename pattern %s", filename_pat );
-	}
-	strm = fopen( cur_filename, "wb" );
-	if( strm == NULL )
-	{
-		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
-	}
-}
+
+
 
 /**************************************************************
 
@@ -742,14 +735,6 @@ PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
 }
 
 
-void
-PS_Stream::RawWrite( uint8_t *buf, unsigned int len )
-{
-    if( fwrite( buf, 1, len, strm ) != len )
-    {
-        mjpeg_error_exit1( "Failed write: %s", cur_filename );
-    }
-}
 
 
 /* 
