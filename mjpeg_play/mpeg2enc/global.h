@@ -125,6 +125,9 @@ void iquantize( pict_data_s *picture );
 void quant_intra (	pict_data_s *picture,
 					int16_t *src, int16_t *dst, 
 					int mquant, int *nonsat_mquant);
+int quant_non_intra( pict_data_s *picture,
+						   int16_t *src, int16_t *dst,
+							int mquant, int *nonsat_mquant);
 void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
 void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
 void init_quantizer();

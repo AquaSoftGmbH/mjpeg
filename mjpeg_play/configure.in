@@ -186,7 +186,7 @@ AC_ARG_ENABLE(x86-cpu,
 			)
 
 case "${hwaretype}" in
-i686) 
+foofofoi686) 
 	x86cpu="yes"
     AC_DEFINE(X86_CPU)
 	AC_DEFINE(P6_CPU)
@@ -216,7 +216,7 @@ AM_PATH_MOVTAR(0.0.2,
 AC_SUBST(MOVTAR_CFLAGS)
 AC_SUBST(MOVTAR_LIBS)
 
-AM_CONDITIONAL(X86CPU, test $x86cpu=yes   )
+AM_CONDITIONAL(X86CPU, test $x86cpu = yes   )
 
 
 AC_OUTPUT(Makefile

@@ -77,6 +77,7 @@ void init_transform()
 	int flags;
 	flags = cpu_accel();
 
+#ifdef X86_CPU
 	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
 		fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
@@ -86,6 +87,7 @@ void init_transform()
 		psub_pred = sub_pred_mmx;
 	}
 	else
+#endif
 	{
 		pfdct = fdct;
 		pidct = idct;

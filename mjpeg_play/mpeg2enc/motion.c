@@ -168,8 +168,9 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 								int null_mc_sad,
 						   		uint8_t *s22org,  uint8_t *s22blk, 
 							   int flx, int fh,  int searched_sub44_size );
+
 #ifdef X86_CPU
-void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
+static void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   int searched_size,
 							   int i0, int j0,
 							   int ilow, int jlow,
@@ -178,10 +179,16 @@ void find_best_one_pel_mmxe( uint8_t *org, uint8_t *blk,
 							   mb_motion_s *res
 	);
 
-int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
+static int build_sub22_mcomps_mmxe( int i0,  int j0, int ihigh, int jhigh, 
 							 int null_mc_sad,
 							 uint8_t *s22org,  uint8_t *s22blk, 
 							 int flx, int fh,  int searched_sub44_size );
+static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
+							int ilow, int jlow,
+							int ihigh, int jhigh, 
+							int h, int rowstride, 
+							int threshold,
+							mc_result_s *resvec);
 #endif
 
 static int unidir_pred_var( const mb_motion_s *motion, 
@@ -204,10 +211,6 @@ static int bdist2_22( uint8_t *blk1f, uint8_t *blk1b,
 					  uint8_t *blk2,
 					  int lx, int h);
 
-static int (*pbuild_sub22_mcomps)( int i0,  int j0, int ihigh, int jhigh, 
-								   int null_mc_sad,
-								   uint8_t *s22org,  uint8_t *s22blk, 
-								   int flx, int fh,  int searched_sub44_size );
 
 static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
 							   int searched_size,
@@ -217,12 +220,11 @@ static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
 							   int lx, int h, 
 							   mb_motion_s *res
 	);
-static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
-							int ilow, int jlow,
-							int ihigh, int jhigh, 
-							int h, int rowstride, 
-							int threshold,
-							mc_result_s *resvec);
+static int (*pbuild_sub22_mcomps)( int i0,  int j0, int ihigh, int jhigh, 
+								   int null_mc_sad,
+								   uint8_t *s22org,  uint8_t *s22blk, 
+								   int flx, int fh,  int searched_sub44_size );
+
 static int (*pdist2_22)( uint8_t *blk1, uint8_t *blk2,
 						 int lx, int h);
 static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b, 
@@ -1840,10 +1842,10 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 	int iend = ihigh-i0;
 	int jend = jhigh-j0;
 	int mean_weight;
+	int threshold;
 
 #ifdef X86_CPU
 
-	int threshold;
 	/*int rangex, rangey;
 	static int rough_num_mcomps;
 	static mc_result_s rough_mcomps[MAX_44_MATCHES];
@@ -1885,7 +1887,6 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 				{
 					sub44_mcomps[sub44_num_mcomps].x = i;
 					sub44_mcomps[sub44_num_mcomps].y = j;
-					sub44_mcomps[sub44_num_mcomps].blk = s44orgblk-s44org;
 					sub44_mcomps[sub44_num_mcomps].weight = s1 ;
 					++sub44_num_mcomps;
 				}

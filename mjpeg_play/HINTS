@@ -26,7 +26,8 @@
      unless it is *very* good or you like Artefacts. 
 
 (4) If you want to compress MPEG-2: feel free to try it, however, its
-	not tested.  Fully tested version coming next...
+    not nearly as well tested as MPEG-1.  However, the development focus
+    is now on MPEG-2 so get those bug reports flowing!
 
 (5) Storing MPEG's.  If you record the data as XA mode 2 tracks you
 	can fit appreciably more on a CD (at the expense of error
@@ -115,7 +116,7 @@
 	To allow convenient and efficient storage I burn the continuation files
 	into VCD format disks using a slightly hacked version of vcdburn
 	where the sanity checking on the stream being burned can be turned off.
-	The contents of the resulting VCD can then be later read and joint
+	The contents of the resulting VCD can then be later read and joined
 	to its predecessors using the "readvcd" utility. Actually, when I
 	use my dxr2 there's no need to concatenate as it simply plays each
 	file in sequence (if they have suitable names).

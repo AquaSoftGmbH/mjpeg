@@ -50,8 +50,6 @@ int quant_non_intra_sse(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
 int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
-int quant_non_intra(	struct pict_data *picture,int16_t *src, int16_t *dst,
-							int mquant, int *nonsat_mquant);
 							
 int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
 						   short *i_quant_mat, 
