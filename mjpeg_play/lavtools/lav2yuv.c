@@ -609,7 +609,7 @@ char *argv[];
    char *geom;
    char *end;
 
-   while ((n = getopt(argc, argv, "v:a:s:d:n:S:T:D:o:f:")) != EOF) {
+   while ((n = getopt(argc, argv, "mv:a:s:d:n:S:T:D:o:f:")) != EOF) {
       switch (n) {
 
       case 'a':
