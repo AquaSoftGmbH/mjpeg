@@ -14,14 +14,13 @@
 /* Anjuta is most cool ! */
 
 #include <stdio.h>
-#include <signal.h>
-#include <setjmp.h>
 #include <math.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include "mjpeg_types.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
+#include "cpu_accel.h"
 #include "config.h"
 
 /*****************************************************************************
@@ -198,12 +197,6 @@ uint32_t (*calc_SAD_uv) (uint8_t * frm,
                      int div);
 
 
-/*****************************************************************************
- * needed to test if Operating System supports SSE/SSE2                      *
- * ... it's just, we want to get back to life in case off SIGILL             *
- *****************************************************************************/
- 
-static sigjmp_buf jmp_buffer;
 
 /*****************************************************************************
  * MAIN                                                                      *
@@ -219,17 +212,19 @@ main (int argc, char *argv[])
   int i;
 
   display_greeting ();
-  X86_CAP=test_CPU ();
+  X86_CAP=cpu_accel ();
   
   mjpeg_log ( LOG_INFO, "\n");
-  if(X86_CAP>=2) /* MMX+SSE */
+  if( (X86_CAP & ACCEL_X86_MMXEXT)!=0 ||
+      (X86_CAP & ACCEL_X86_SSE   )!=0 
+    ) /* MMX+SSE */
   {
     calc_SAD    = &calc_SAD_sse;
     calc_SAD_uv = &calc_SAD_uv_sse;
-    mjpeg_log (LOG_INFO, "Using MMX+SSE SAD-functions.\n");
+    mjpeg_log (LOG_INFO, "Using MMXEXT/SSE SAD-functions.\n");
   }
   else
-    if(X86_CAP==1) /* MMX */
+    if( (X86_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
     {
       calc_SAD    = &calc_SAD_mmx;
       calc_SAD_uv = &calc_SAD_uv_mmx;
@@ -1766,6 +1761,14 @@ denoise_frame (uint8_t * frame[3])
     }
 }
 
+
+/* deactivating my own functions for cpu detection and switching over to 
+ * cpu_accel.h . This is a far better solution, as changes on cpu_accel.h
+ * will make a benefit for all programmers using MMX/MMXext/SSE/SSE2/3Dnow!
+ * and 3Dnow!ext... All further changes on the code will go to cpu_accel.h!
+ */
+
+#if 0
 /* well, as I have seen, now... these are pretty much the same than cpu_accel()
  * [:*] It' important to reinvent the wheel ... *argh* Hours of ... *sigh*
  * OK, if these do not work, i'll switch to cpu_accel.h 
@@ -1842,8 +1845,7 @@ test_CPU ()
   int cap = 0;
 
   asm volatile
-    (" pushal                     ;/* save all registers and flags               */"
-     " pushfl                     ;                                                "
+    (
      "                            ;                                                "
      " pushfl                     ;/* do we have CPUID ? Bit 21 of Eflags can be */"
      " popl                 %%eax ;/* set and unset ? Copy Eflags to EAX.        */"
@@ -1866,6 +1868,7 @@ test_CPU ()
      " movl             $1, %%eax ;/* now read feature flags                     */"
      " cpuid                      ;                                                "
      " movl          %%edx,    %0 ;/* store in (feature)                         */"
+     " movl       $0x0387f9ff, %0 ;/* store in (feature)                         */"
      " jmp                   L992 ;                                                "
      "                            ;                                                "
      "L991:                       ;                                                "
@@ -1874,11 +1877,12 @@ test_CPU ()
      "                            ;                                                "
      "L992:                       ;                                                "
      "                            ;                                                "
-     " popfl                      ;/* restore all registers and flags            */"
-     " popal                      ;                                                "
      :"=X" (feature)
      :"m" (regs)
+     : "eax", "ebx", "ecx", "edx", "cc"
      );
+     
+/* 0x756e65476c65746e49656e69 */
 
   mjpeg_log (LOG_INFO, "\n");
   mjpeg_log (LOG_INFO, "compiled for an IA32 CPU.\n");
@@ -1889,8 +1893,15 @@ test_CPU ()
   }
   else
   {
-    mjpeg_log (LOG_INFO, "CPU-identifies as : unknown Vendor, probably Intel ? :)\n");
-    mjpeg_log (LOG_INFO, "                    0x%08x%08x%08x\n",regs[0],regs[1],regs[2]);
+    if(regs[0]==0x756e6547 && regs[1]==0x6c65746e && regs[2]==0x49656e69)
+    {
+      mjpeg_log (LOG_INFO, "CPU-identifies as : Genuine Intel(TM)\n");
+    }
+    else
+    {
+      mjpeg_log (LOG_INFO, "CPU-identifies as : unknown Vendor\n");
+      mjpeg_log (LOG_INFO, "                    0x%08x%08x%08x\n",regs[0],regs[1],regs[2]);
+    }
   }
   
   mjpeg_log (LOG_INFO, "found following accelerations:\n");
@@ -1944,4 +1955,5 @@ test_CPU ()
   " cmpl           %%eax, %%ebx; "
   " je                 no_cpuid; /* no, CPU is too old ...*/"
   "                            ; " " no_cpuid:                  ; "
+#endif
 #endif
