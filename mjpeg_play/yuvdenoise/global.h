@@ -104,4 +104,6 @@ struct DNSR_VECTOR
   uint32_t SAD;
 };
 
+uint8_t luma_contrast_vector[256];
+
 #endif

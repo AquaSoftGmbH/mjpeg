@@ -187,6 +187,9 @@ int main(int argc, char *argv[])
   /* turn on accelerations if any */
   turn_on_accels();
   
+  /* precompute luma contrast values for lookup table */
+  init_luma_contrast_vector();
+  
   /* read every single frame until the end of the input stream */
   while 
     (
@@ -609,12 +612,14 @@ display_help(void)
   "                   on 4:3 (VCD and SVCD) (default=%i,%i,%i,%i)\n"
   "\n"
   "-L <0...255>       Set luminance contrast in percent. (default=%i)\n"
+  "                   100 = no effect\n"
   "\n"
   "-C <0...255>       Set chrominance contrast in percent. AKA \"Saturation\"\n"
-  "                   (default=%i)"
+  "                   (default=%i) 100 = no effect\n"
   "\n"
   "-S <0...255>       Set sharpness in percent. WARNING: do not set too high\n"
   "                   as this will gain bit-noise. (default=%i)\n"
+  "                   0 = no effect\n"
   "\n"
   "-F                 Force deinterlacing. By default denoise interlaced.\n"
   "\n"

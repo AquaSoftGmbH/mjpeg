@@ -61,16 +61,20 @@ turn the same area into black.
 
 .TP 4
 .BI \-L " [0..255] luminance contrast"
-Set luminance (Y Contrast) in percent. (default=100)
+Set luminance (Y Contrast) in percent. (default=100)  The default value of
+100 skips performing luminance contrast adjustment entirely.
 
 .TP 4
 .BI \-C " [0..255] chrominance contrast"
 Set chrominance (Cr/Cb Contrast) in percent. AKA "Saturation" (default=100)
+The default value of 100 skips performing chroninance contract adjustment
+entirely.
 
 .TP 4
 .BI \-S " [0..255] sharpness in percent"
 Set sharpness in percent. WARNING: do not set too high
-as this will gain bit-noise. (default=125)
+as this will gain bit-noise. (default=125)  A sharpness value of 0 will skip
+performing the sharpening pass.
 
 .TP 4
 .BI \-F " deinterlacing"

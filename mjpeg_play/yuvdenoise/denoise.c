@@ -69,6 +69,30 @@ void black_border (void)
 
 }
 
+/* lookup table implimentation of luma_contrast */
+/* idea from yuvcorrect */
+
+void init_luma_contrast_vector (void)
+{
+  int c;
+  int value;
+
+  for(c=0;c<256;c++)
+    {
+      value=c;
+	  
+      value-=128;
+      value*=denoiser.luma_contrast;
+      value=(value+50)/100;
+      value+=128;
+	  
+      value=(value>Y_HI_LIMIT)? Y_HI_LIMIT:value;
+      value=(value<Y_LO_LIMIT)? Y_LO_LIMIT:value;
+	  
+      luma_contrast_vector[c]=value;
+  }
+}  
+
 void contrast_frame (void)
 {
   register int c;
@@ -81,17 +105,7 @@ void contrast_frame (void)
     {
       for(c=0;c<(W*H);c++)
 	{
-	  value=*(p);
-	  
-	  value-=128;
-	  value*=denoiser.luma_contrast;
-	  value=(value+50)/100;
-	  value+=128;
-	  
-	  value=(value>Y_HI_LIMIT)? Y_HI_LIMIT:value;
-	  value=(value<Y_LO_LIMIT)? Y_LO_LIMIT:value;
-	  
-	  *(p++)=value;
+	  *(p++)=luma_contrast_vector[*(p)];
 	}
     }
 

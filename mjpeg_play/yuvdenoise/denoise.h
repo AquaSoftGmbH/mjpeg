@@ -8,3 +8,4 @@ void difference_frame (void);
 void correct_frame2 (void);
 void denoise_frame_pass2 (void);
 void sharpen_frame(void);
+void init_luma_contrast_vector(void);
