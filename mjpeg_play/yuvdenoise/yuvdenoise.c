@@ -285,11 +285,13 @@ main (int argc, char *argv[])
   int errnr;
   char c;
   int i;
+  uint8_t *output_from[3];
   y4m_frame_info_t frameinfo;
   y4m_stream_info_t streaminfo;
 
   y4m_init_stream_info(&streaminfo);
   y4m_init_frame_info(&frameinfo);
+
 
   display_greeting ();
   CPU_CAP=cpu_accel ();
@@ -502,6 +504,20 @@ main (int argc, char *argv[])
 
   y4m_write_stream_header (fd_out, &streaminfo);
 
+/* if only deinterlacing, need to get output from the yuv buffer, not avrg */
+  if ( deinterlace_only )
+  {
+    output_from[0] = yuv[0];
+    output_from[1] = yuv[1];
+    output_from[2] = yuv[2];
+  }
+  else
+  {
+    output_from[0] = avrg[0];
+    output_from[1] = avrg[1];
+    output_from[2] = avrg[2];
+  }
+
 /* read every single frame until the end of the input stream */
 
   while ((errnr = y4m_read_frame (fd_in, &streaminfo, &frameinfo, yuv)) == Y4M_OK)
@@ -528,10 +544,10 @@ main (int argc, char *argv[])
 	    //denoise2();
 	}
 
-    generate_black_border(BX0,BY0,BX1,BY1,avrg);
+    generate_black_border(BX0,BY0,BX1,BY1,output_from);
 
       /* write the frame */
-    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
+    y4m_write_frame (fd_out, &streaminfo, &frameinfo, output_from);
 //      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
     }
 
