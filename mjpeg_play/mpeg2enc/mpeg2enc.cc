@@ -143,6 +143,9 @@ static unsigned int strm_frame_rate_code;
 /* reserved: for later use */
 int param_422 = 0;
 
+static uint16_t custom_intra_quantizer_matrix[64];
+static uint16_t custom_nonintra_quantizer_matrix[64];
+
 
 static void DisplayFrameRates(void)
 {
@@ -165,6 +168,113 @@ static void DisplayAspectRatios(void)
 	}
 	exit(0);
 }
+
+static int 
+parse_custom_matrixfile(char *fname, int dbug)
+    {
+    FILE  *fp;
+    uint16_t  q[128];
+    int  i, j, row;
+    char line[80];
+
+    fp = fopen(fname, "r");
+    if  (!fp)
+        {
+        mjpeg_error("can not open custom matrix file '%s'", fname);
+        return(-1);
+        }
+
+    row = i = 0;
+    while   (fgets(line, sizeof(line), fp))
+            {
+            row++;
+            /* Empty lines (\n only) and comments are ignored */
+            if  ((strlen(line) == 1) || line[0] == '#')
+                continue;
+            j = sscanf(line, "%hu,%hu,%hu,%hu,%hu,%hu,%hu,%hu\n",
+                    &q[i+0], &q[i+1], &q[i+2], &q[i+3],
+		    &q[i+4], &q[i+5], &q[i+6], &q[i+7]);
+            if  (j != 8)
+                {
+                mjpeg_error("line %d ('%s') of '%s' malformed", row, line, fname);
+                break;
+                }
+            for (j = 0; j < 8; j++)
+                {
+                if  (q[i + j] < 1 || q[i + j] > 255)
+                    {
+                    mjpeg_error("entry %d (%u) in line %d from '%s' invalid",
+                        j, q[i + j], row, fname);
+                    i = -1;
+                    break;
+                    }
+                }
+            i += 8;
+            }
+
+        fclose(fp);
+
+        if  (i != 128)
+            {
+            mjpeg_error("file '%s' did NOT have 128 values - ignoring custom matrix file", fname);
+            return(-1);
+            }
+
+        for (j = 0; j < 64; j++)
+            {
+            custom_intra_quantizer_matrix[j] = q[j];
+            custom_nonintra_quantizer_matrix[j] = q[j + 64];
+            }
+
+        if  (dbug)
+            {
+            mjpeg_info("INTRA and NONINTRA tables from '%s'",fname);
+            for (j = 0; j < 128; j += 8)
+                {
+                mjpeg_info("%u %u %u %u %u %u %u %u", 
+                    q[j + 0], q[j + 1], q[j + 2], q[j + 3], 
+                    q[j + 4], q[j + 5], q[j + 6], q[j + 7]);
+                }
+            }
+        return(0);
+        }
+
+static void
+parse_custom_option(char *arg)
+    {
+
+    if	(strcmp(arg, "kvcd") == 0)
+    	param_hf_quant = 3;
+    else if (strcmp(arg, "hi-res") == 0)
+    	param_hf_quant = 2;
+    else if (strcmp(arg, "default") == 0)
+    	{
+    	param_hf_quant = 0;
+    	param_hf_q_boost = 0;
+    	}
+    else if (strcmp(arg, "tmpgenc") == 0)
+    	param_hf_quant = 4;
+    else if (strncasecmp(arg, "file=", 5) == 0)
+    	{
+    	if  (parse_custom_matrixfile(arg + 5, arg[0] == 'F' ? 1 : 0) == 0)
+    	    param_hf_quant = 5;
+    	}
+    else if (strcmp(arg, "help") == 0)
+    	{
+    	fprintf(stderr, "Quantization matrix names:\n\n");
+    	fprintf(stderr, "\thelp - this message\n");
+    	fprintf(stderr, "\tkvcd - matrices from http://www.kvcd.net\n");
+    	fprintf(stderr, "\thi-res - high resolution tables (same as -H)\n");
+    	fprintf(stderr, "\tdefault - turn off -N or -H (use standard tables)\n");
+    	fprintf(stderr, "\ttmpgenc - TMPGEnc tables (http://www.tmpgenc.com)\n");
+    	fprintf(stderr, "\tfile=filename - filename contains custom matrices\n");
+    	fprintf(stderr, "\t\t8 comma separated values per line.  8 lines per matrix, INTRA matrix first, then NONINTRA\n");
+    	exit(0);
+    	}
+    else
+    	mjpeg_error_exit1("Unknown type '%s' used with -K/--custom-quant", arg);
+    return;
+    }
 
 static void Usage(char *str)
 {
@@ -261,6 +371,8 @@ static void Usage(char *str)
 "--no-constraints\n"
 "    Deactivate the constraints for maximum video resolution and sample rate.\n"
 "    Could expose bugs in the software at very high resolutions !\n"
+"--custom-quant-matrices|-K kvcd|tmpgenc|default|hi-res|file=inputfile|help\n"
+"    Request custom or userspecified (from a file) quantization matrices\n"
 "--help|-?\n"
 "    Print this lot out!\n"
 	);
@@ -661,7 +773,7 @@ int main( int argc,	char *argv[] )
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:N:tpdsZHOcCPK:";
 
 #ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
@@ -698,6 +810,7 @@ static struct option long_options[]={
      { "no-altscan-mpeg2", 0, &param_hack_altscan_bug, 1},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
+     { "custom-quant-matrices", 1, 0, 'K'},
      { "help",              0, 0, '?' },
      { 0,                   0, 0, 0 }
 };
@@ -896,24 +1009,29 @@ static struct option long_options[]={
 		case 'G' :
 			param_max_GOP_size = atoi(optarg);
 			break;
-        case 'c' :
-            param_closed_GOPs = true;
-            break;
+        	case 'c' :
+            		param_closed_GOPs = true;
+            		break;
 		case 'P' :
 			param_preserve_B = true;
 			break;
 		case 'N':
-			param_hf_quant = 1;
-            param_hf_q_boost = atof(optarg);
-            if( param_hf_q_boost <0.0 || param_hf_q_boost > 2.0 )
-            {
-                mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
-                ++nerr;
-            }
+                        param_hf_q_boost = atof(optarg);
+            		if (param_hf_q_boost <0.0 || param_hf_q_boost > 2.0)
+            		   {
+                	   mjpeg_error( "-N option requires arg 0.0 .. 2.0" );
+                	   ++nerr;
+			   param_hf_q_boost = 0.0;
+            		   }
+			if (param_hf_quant == 0 && param_hf_q_boost != 0.0)
+			   param_hf_quant = 1;
 			break;
 		case 'H':
 			param_hf_quant = 2;
-            break;
+            		break;
+		case 'K':
+			parse_custom_option(optarg);
+			break;
 		case 's' :
 			param_seq_hdr_every_gop = 1;
 			break;
@@ -1751,107 +1869,119 @@ static void init_mpeg_parms(void)
 */
 
 static int quant_hfnoise_filt(int orgquant, int qmat_pos )
-{
-	int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
-	double qboost;
+    {
+    int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
+    double qboost;
 
-	if( param_hf_quant != 1)
-	{
-		return orgquant;
-	}
+    /* Maximum param_hf_q_boost quantisation boost for HF components.. */
+    qboost = 1.0 + ((param_hf_q_boost * orgdist) / 8);
+    return static_cast<int>(orgquant * qboost);
+    }
 
-    /* Maximum param_hf_q_boost quantisation boost for HF
-     * components.. */
-    qboost = 1.0+param_hf_q_boost*orgdist/8;
+static void
+init_quantmat(void)
+    {
+    int i, v, q;
+    const char *msg = NULL;
+    const uint16_t *qmat, *niqmat;
+    opt_load_iquant = 0;
+    opt_load_niquant = 0;
 
-	return static_cast<int>(orgquant * qboost);
-}
+    /* bufalloc to ensure alignment */
+    opt_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    opt_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
 
-static void init_quantmat(void)
-{
-	int i,v, q;
-	opt_load_iquant = 0;
-	opt_load_niquant = 0;
+    switch  (param_hf_quant)
+        {
+        case  0:    /* No -N, -H or -K used.  Default matrices */
+            msg = "Using default unmodified quantization matrices";
+            qmat = default_intra_quantizer_matrix;
+            niqmat = default_nonintra_quantizer_matrix;
+            break;
+        case  1:    /* "-N value" used but not -K or -H */
+            msg = "Using -N modified default quantization matrices";
+            qmat = default_intra_quantizer_matrix;
+            niqmat = default_nonintra_quantizer_matrix;
+            opt_load_iquant = 1;
+            opt_load_niquant = 1;
+            break;
+        case  2:    /* -H used OR -H followed by "-N value" */
+            msg = "Setting hi-res intra Quantisation matrix";
+            qmat = hires_intra_quantizer_matrix;
+            niqmat = hires_nonintra_quantizer_matrix;
+            opt_load_iquant = 1;
+            if  (param_hf_q_boost)
+                opt_load_niquant = 1;   /* Custom matrix if -N used */
+            break;
+        case  3:
+            msg = "KVCD Notch Quantization Matrix";
+            qmat = kvcd_intra_quantizer_matrix;
+            niqmat = kvcd_nonintra_quantizer_matrix;
+            opt_load_iquant = 1;
+            opt_load_niquant = 1;
+            break;
+        case  4:
+            msg = "TMPGEnc Quantization matrix";
+            qmat = tmpgenc_intra_quantizer_matrix;
+            niqmat = tmpgenc_nonintra_quantizer_matrix;
+            opt_load_iquant = 1;
+            opt_load_niquant = 1;
+            break;
+        case  5:            /* -K file=qmatrixfilename */
+            msg = "Loading custom matrices from user specified file";
+            opt_load_iquant = 1;
+            opt_load_niquant = 1;
+            qmat = custom_intra_quantizer_matrix;
+            niqmat = custom_nonintra_quantizer_matrix;
+            break;
+        default:
+            mjpeg_error_exit1("Help!  Unknown param_hf_quant value %d",
+		param_hf_quant);
+            /* NOTREACHED */
+        }
 
-	/* bufalloc to ensure alignment */
-	opt_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-	opt_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-	i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-	i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
+    if  (msg)
+        mjpeg_info(msg);
+    
+    for (i = 0; i < 64; i++)
+        {
+        v = quant_hfnoise_filt(qmat[i], i);
+        if  (v < 1 || v > 255)
+            mjpeg_error_exit1("bad intra value after -N adjust");
+        opt_intra_q[i] = v;
 
-	if( param_hf_quant == 2)
-	{
-		opt_load_iquant |= 1;
-		mjpeg_info( "Setting hi-res intra Quantisation matrix" );
-		for (i=0; i<64; i++)
-		{
-			opt_intra_q[i] = hires_intra_quantizer_matrix[i];
-		}	
-	}
-	else
-	{
-		/* use default intra matrix */
-		opt_load_iquant = (param_hf_quant == 1);
-		for (i=0; i<64; i++)
-		{
-			v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
-			if (v<1 || v>255)
-				mjpeg_error_exit1("value in intra quant matrix invalid (after noise filt adjust)");
-				opt_intra_q[i] = v;
-				
-		} 
-	}
-	
-    /* MPEG default non-intra matrix is all 16's. For *our* default we
-	    use something more suitable for domestic analog
-	    sources... which is non-standard...
-	*/
-	if( param_hf_quant == 2 )
-	{
-		mjpeg_info( "Setting hi-res non-intra quantiser matrix" );
-		for (i=0; i<64; i++)
-		{
-			opt_inter_q[i] = hires_nonintra_quantizer_matrix[i];
-		}	
-	}
-	else
-	{
-		opt_load_niquant |= (param_hf_quant == 1);
-		for (i=0; i<64; i++)
-		{
-			v = quant_hfnoise_filt(default_nonintra_quantizer_matrix[i],i);
-			if (v<1 || v>255)
-				mjpeg_error_exit1("value in non-intra quant matrix invalid (after noise filt adjust)");
-			opt_inter_q[i] = v;
-		}
-	}
+        v = quant_hfnoise_filt(niqmat[i], i);
+        if  (v < 1 || v > 255)
+            mjpeg_error_exit1("bad nonintra value after -N adjust");
+        opt_inter_q[i] = v;
+        }
 
-	/* TODO: Inv Quant matrix initialisation should check if the
-	 * fraction fits in 16 bits! */
+    /* TODO: Inv Quant matrix initialisation should check if the
+     * fraction fits in 16 bits! */
   
-	for (i=0; i<64; i++)
-	{
-		i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_intra_q[i]));
-		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_inter_q[i]));
-	}
-
-	
-	for( q = 1; q <= 112; ++q )
-	{
-		for (i=0; i<64; i++)
-		{
-			intra_q_tbl[q][i] = opt_intra_q[i] * q;
-			inter_q_tbl[q][i] = opt_inter_q[i] * q;
-			intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
-			inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
-			i_intra_q_tblf[q][i] = 1.0f/ ( intra_q_tblf[q][i] * 0.98);
-			i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
-			i_inter_q_tblf[q][i] =  1.0f/ (inter_q_tblf[q][i] * 0.98);
-			i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i] );
-		}
-	}
-  
-}
+    for (i = 0; i < 64; i++)
+        {
+        i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_intra_q[i]));
+        i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_inter_q[i]));
+        }
+    
+    for (q = 1; q <= 112; ++q)
+        {
+        for (i = 0; i < 64; i++)
+            {
+            intra_q_tbl[q][i] = opt_intra_q[i] * q;
+            inter_q_tbl[q][i] = opt_inter_q[i] * q;
+            intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
+            inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
+            i_intra_q_tblf[q][i] = 1.0f / ( intra_q_tblf[q][i] * 0.98);
+            i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
+            i_inter_q_tblf[q][i] =  1.0f / (inter_q_tblf[q][i] * 0.98);
+            i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
+            }
+        }
+    }
 
 
 /* 
