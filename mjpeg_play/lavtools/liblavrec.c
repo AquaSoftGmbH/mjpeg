@@ -677,6 +677,18 @@ static int lavrec_output_video_frame(lavrec_t *info, char *buff, long size, long
    settings->bytes_output_cur += size*count; 
    settings->stats->num_frames += count;
 
+   /*
+	* If the user has specified flushing of file buffers
+	* flush every time the specified number of unflushed frames has
+	* been reached.
+	*/
+
+   if( info->flush_count > 0 &&  settings->stats->num_frames % info->flush_count == 0)
+   {
+	   int fd = lav_fileno( settings->video_file );
+	   if( fd >= 0 )
+		   fdatasync(fd);
+   }
    return 1;
 }
 
@@ -2021,7 +2033,7 @@ lavrec_t *lavrec_malloc(void)
 
    info->files = NULL;
    info->num_files = 0;
-
+   info->flush_count = 60;
    info->output_statistics = NULL;
    info->audio_captured = NULL;
    info->video_captured = NULL;

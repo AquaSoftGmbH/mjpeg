@@ -1,5 +1,7 @@
 # Process this file with Automake to produce Makefile.in
 
+
+
 INCLUDES = -I$(top_srcdir)
 
 
@@ -30,5 +32,5 @@ EXTRA_DIST = videodev_mjpeg.h format_codes.h mblock_sub44_sads_x86_h.c .cvsignor
 
 MAINTAINERCLEANFILES = Makefile.in
 
-.s.o:
-	$(AS) $(ASFLAGS) -o $@ $<
+%.o: %.s ; 	$(AS) $(ASFLAGS) -o $@ $<
+

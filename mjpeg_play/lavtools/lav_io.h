@@ -87,5 +87,5 @@ int  lav_filetype(lav_file_t *lav_file);
 lav_file_t *lav_open_input_file(char *filename);
 int  lav_get_field_size(unsigned char * jpegdata, long jpeglen);
 char *lav_strerror(void);
-
+int  lav_fileno( lav_file_t *lav_file );
 #endif

@@ -106,9 +106,9 @@ typedef struct {
    int  MJPG_bufsize;           /* buffer size (in kB) per MJPEG-buffer */
 
    char **files;                /* the files where to capture the video to */
-   int  num_files;              /* number of files in the files[]-array */
-   int  max_file_size_mb;        /* the maximum file size per file (default: let liblavrec decide) */
-
+	int  num_files;              /* number of files in the files[]-array */
+	int max_file_size_mb;
+	int flush_count;			/* How often (in frames) to flush data to disk */
    void (*output_statistics)(video_capture_stats *stats);      /* speaks for itself */
    void (*audio_captured)(char *audio, long sampes);           /* callback when audio has been grabbed */
    void (*video_captured)(char *video, long size, long count); /* callback when a frame has been grabbed */

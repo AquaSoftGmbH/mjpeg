@@ -127,6 +127,7 @@ int  AVI_dup_frame(avi_t *AVI);
 int  AVI_write_audio(avi_t *AVI, char *data, long bytes);
 long AVI_bytes_remain(avi_t *AVI);
 int  AVI_close(avi_t *AVI);
+int  AVI_fileno(avi_t *AVI);
 
 avi_t *AVI_open_input_file(char *filename, int getIndex);
 

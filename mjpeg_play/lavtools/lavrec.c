@@ -93,6 +93,12 @@
  *      format and need a specific filesize limit, for example to be
  *      able to burn the video files to CD (650 MB).
  *
+ *   --file-flush  --- How often (in frames) the current output 
+ *       file (if any) should be flushed to disk.  (default:60).
+ *       Set to 0 if your chosen file-system and system tuning
+ *       ensures you don't get lengthy periods of disk activity
+ *       during which lavrec writing is held up.
+ *
  **** Audio settings ***
  *
  *   -a/--audio-bitsize num --- audio bitsize:
@@ -228,7 +234,9 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
-	fprintf(stderr, "  --max-file-size             Maximum size per file (in MB)\n");
+	fprintf(stderr, "  --max-file-size num         Maximum size per file (in MB)\n");
+	fprintf(stderr, "  --file-flush num            Flush capture file to disk every num frames\n");
+
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
 	fprintf(stderr, "Environment variables recognized:\n");
 	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
@@ -868,6 +876,13 @@ static int set_option(const char *name, char *value)
 	else if (strcmp(name, "max-file-size")==0)
 	{
 		info->max_file_size_mb = atoi(optarg);
+	}
+	else if (strcmp(name, "file-flush")==0)
+	{
+		info->flush_count = atoi(optarg);
+		if( info->flush_count < 0 )
+			info->flush_count = 0;
+			
 	}
 	else nerr++; /* unknown option - error */
 

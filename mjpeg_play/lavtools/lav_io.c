@@ -1361,6 +1361,36 @@ ERREXIT:
 }
 #endif
 
+int lav_fileno(lav_file_t *lav_file)
+{
+   int res;
+
+   video_format = lav_file->format; 
+
+   switch(lav_file->format)
+   {
+      case 'a':
+      case 'A':
+         res = AVI_fileno( lav_file->avi_fd );
+         break;
+#ifdef HAVE_LIBQUICKTIME
+      case 'q':
+         res = fileno(lav_file->qt_fd->stream);
+         break;
+#endif
+#ifdef HAVE_LIBMOVTAR
+      case 'm':
+		  res = fileno( lav_file->movtar_fd->file );
+         break;
+#endif
+      default:
+         res = -1;
+   }
+
+   return res;
+}
+
+
 
 
 

@@ -592,6 +592,12 @@ int AVI_close(avi_t *AVI)
 }
 
 
+int AVI_fileno(avi_t *AVI)
+{
+	return AVI->fdes;
+}
+
+
 #define ERR_EXIT(x) \
 { \
    AVI_close(AVI); \
