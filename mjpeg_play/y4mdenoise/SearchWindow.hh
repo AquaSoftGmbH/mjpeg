@@ -143,7 +143,8 @@ public:
 #endif // OPTIONALLY_SORT_PIXEL_GROUPS
 
 	template <class REGION>
-	void Prune (const REGION &a_rAppliedRegion);
+	void Prune (const REGION &a_rAppliedRegion,
+			PIXELINDEX a_tnOffsetX, PIXELINDEX a_tnOffsetY);
 		// Prune the search-window, i.e. find all pixel-groups that now
 		// contain used reference-pixels, and remove them from the
 		// window and from the pixel-sorter.
@@ -1096,7 +1097,8 @@ template <class REGION>
 void
 SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,
-	REFERENCEFRAME>::Prune (const REGION &a_rAppliedRegion)
+	REFERENCEFRAME>::Prune (const REGION &a_rAppliedRegion,
+	PIXELINDEX a_tnOffsetX, PIXELINDEX a_tnOffsetY)
 {
 	typename REGION::ConstIterator itExtent;
 		// Used to loop through applied-region extents.
@@ -1121,10 +1123,11 @@ SearchWindow<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	
 		// Determine the range of search-window cells invalidated by
 		// this extent.
-		tnTop = rExtent.m_tnY - PGH + PIXELINDEX (1);
-		tnBottom = rExtent.m_tnY + PIXELINDEX (1);
-		tnLeft = rExtent.m_tnXStart - PGW + PIXELINDEX (1);
-		tnRight = rExtent.m_tnXEnd;
+		tnTop = rExtent.m_tnY - PGH + PIXELINDEX (1) + a_tnOffsetY;
+		tnBottom = rExtent.m_tnY + PIXELINDEX (1) + a_tnOffsetY;
+		tnLeft = rExtent.m_tnXStart - PGW + PIXELINDEX (1)
+			+ a_tnOffsetX;
+		tnRight = rExtent.m_tnXEnd + a_tnOffsetX;
 		if (tnTop < 0)
 			tnTop = 0;
 		if (tnBottom > m_tnHeight - PGH + PIXELINDEX (1))
