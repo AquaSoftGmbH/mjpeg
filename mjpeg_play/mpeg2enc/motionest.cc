@@ -134,7 +134,7 @@ static void mb_me_search (
 
 inline int mv_coding_penalty( int mv_x, int mv_y )
 {
-    return (intabs(mv_x) + intabs(mv_y))<<3;
+    return (abs(mv_x) + abs(mv_y))<<3;
 }
 
 
