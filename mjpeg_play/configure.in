@@ -23,7 +23,8 @@ AC_ARG_WITH(jpeg-mmx,
   [  --with-jpeg-mmx,                  use the mmx accelerated jpeg lib])
 AC_ARG_WITH(quicktime,
   [  --with-quicktime,                 quicktime support for record/playback])
-
+AC_ARG_WITH(large-file,
+  [ --enable-large-file,               enable large file support n 32 bit systems])
 dnl Checks for programs.
 AC_PROG_AWK
 AC_PROG_CC
@@ -37,6 +38,10 @@ AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
 
+if test x$enable_large_file = xyes
+then
+AC_DEFINE(_FILE_OFFSET_BITS,64)
+fi
 
 dnl *********************************************************************
 dnl Check for the various libraries we depend on.
@@ -290,30 +295,36 @@ dnl enabled. We have to check this independantly as cmov is independant
 dnl of MMX and 3DNow stuff.
 dnl
 have_cmov=false
-if test x$have_x86cpu = xtrue ; then
- AC_MSG_CHECKING(for CMOV support)
- if test "$enable_cmov_extension" != "no" ; then
 
-  cpu_family=`grep "cpu family" /proc/cpuinfo | awk 'BEGIN { FS = ":"; } { printf "%d", $2 + 0;}'`
-  if test "$cpu_family" -gt 5 ; then
-    have_cmov=true
-    AC_DEFINE(HAVE_CMOV)
-  fi
- fi
- AC_MSG_RESULT($have_cmov);
-fi
-
-dnl *********************************************************************
-dnl For x86 machines only check which code model we should use
+dnl First cmov
 dnl 
 if test x$have_x86cpu = xtrue ; then
 AC_MSG_CHECKING(x86 sub-architecture settings)
 
-  if test "$enable_cmov_extension" != "no" ; then
+  if test "$enable_cmov_extension" = "yes" ; then
     arch=`uname --machine`
   else
     arch=i586
   fi
+
+  case $arch in
+  i786)
+    have_cmov=true
+    AC_DEFINE(HAVE_CMOV)
+  ;;
+  i686)
+    have_cmov=true
+    AC_DEFINE(HAVE_CMOV)
+  ;;
+  *)
+  ;;
+  esac
+
+AC_MSG_RESULT($have_cmov);
+
+dnl
+dnl Then cpu architecture.
+
   case `uname --machine` in
   i786) ARCHFLAGS="-mcpu=i786 -march=$arch"
   ;;
@@ -326,6 +337,7 @@ AC_MSG_CHECKING(x86 sub-architecture settings)
   esac
 AC_MSG_RESULT($ARCHFLAGS)
 fi
+
 
 dnl **********************************************************************
 dnl All the conditional stuff for the Makefiles

@@ -35,6 +35,7 @@ static void Usage(char *str)
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
 	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
 	fprintf( stderr, " -?      Print this lot out!\n");
+	fprintf( stderr, "SIZE_T %d\n", sizeof(off_t) );
 			
 	exit (1);
 }

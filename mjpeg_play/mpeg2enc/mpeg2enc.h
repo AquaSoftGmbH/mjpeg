@@ -27,6 +27,7 @@
  *
  */
 
+#include <config.h>
 #include <inttypes.h>
 #include "synchrolib.h"
 #include "mjpeg_logging.h"

@@ -1,8 +1,12 @@
 #define _GNU_SOURCE 1			/* We make some use of C9X and POSIX and GNU
 								 facilities... */
 
+
 @TOP@
 #define VERSION   "x.x.x"		/* Mjpeg tools release version */
+
+/* Lagre file support ? */
+#undef _FILE_OFFSET_BITS
 
 /* Define pthread lib stack size */
 #undef HAVE_PTHREADSTACKSIZE
