@@ -188,8 +188,8 @@ void pred_comp(
  *
  */
 
-void calc_DMV( int pict_struct,  bool topfirst,
-			   int DMV[][2], int *dmvector, int mvx, int mvy
+void calc_DMV( int pict_struct,  int topfirst,
+			   int DMV[2][2], int dmvector[2], int mvx, int mvy
 )
 {
   if (pict_struct==FRAME_PICTURE)

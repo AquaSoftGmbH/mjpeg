@@ -193,7 +193,8 @@ void MacroBlock::Predict()
 				/* dual prime prediction */
 
 				/* calculate derived motion vectors */
-				calc_DMV(picture.pict_struct, picture.topfirst,
+				calc_DMV(picture.pict_struct, 
+						 static_cast<int>(picture.topfirst),
 						 DMV,final_me.dualprimeMV,
 						 final_me.MV[0][0][0],final_me.MV[0][0][1]>>1);
 
@@ -277,7 +278,7 @@ void MacroBlock::Predict()
 
 				/* calculate derived motion vectors */
 				calc_DMV(picture.pict_struct,
-						 picture.topfirst,
+						 static_cast<int>(picture.topfirst),
 						 DMV,final_me.dualprimeMV,
 						 final_me.MV[0][0][0],final_me.MV[0][0][1]);
 

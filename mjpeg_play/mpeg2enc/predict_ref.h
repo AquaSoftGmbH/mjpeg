@@ -36,9 +36,9 @@ void pred_comp( uint8_t *src, uint8_t *dst,
                 int stride, int w, int h, int x, int y, int dx, int dy,
                 int addflag);
 
-void calc_DMV( int picture_struct, bool topfirst,
-			   int DMV[][2], 
-			   int *dmvector, int mvx, int mvy);
+void calc_DMV( int picture_struct, int topfirst,
+			   int DMV[2][2], 
+			   int dmvector[2], int mvx, int mvy);
 
 void clearblock ( uint8_t *cur[3], int i0, int j0, 
                   int field_off,

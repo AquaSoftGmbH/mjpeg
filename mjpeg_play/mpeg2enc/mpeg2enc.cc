@@ -747,6 +747,11 @@ static int check_param_constraints(void)
 		++nerr;
 	}
 
+    if( param_preserve_B && param_Bgrp_size == 0 )
+    {
+		mjpeg_error_exit1("Preserving I/P frame spacing is impossible for still encoding" );
+    }
+
 	if( param_preserve_B && 
 		( param_min_GOP_size % param_Bgrp_size != 0 ||
 		  param_max_GOP_size % param_Bgrp_size != 0 )
@@ -1202,7 +1207,7 @@ static struct option long_options[]={
 		mjpeg_error_exit1("Couldn't create output file %s",outfilename);
 	}
 	init_encoder();
-	init_quantizer( encparams.mpeg1, encparams.intra_q, encparams.inter_q );
+	init_quantizer( static_cast<int>(encparams.mpeg1), encparams.intra_q, encparams.inter_q );
 	init_motion();
 	init_transform();
 	init_predict();

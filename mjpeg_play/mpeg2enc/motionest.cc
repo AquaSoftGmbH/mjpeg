@@ -1,7 +1,7 @@
 /* motion.c, motion estimation                                              */
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
-
+#define DUALPRIME 1
 
 /*
  * Disclaimer of Warranty
@@ -540,7 +540,7 @@ void MacroBlock::FrameME()
 				
 				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, 
                                 (encparams.phy_width<<1), 8 );
-			if ( ctl_M==1)
+			if ( DUALPRIME && ctl_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
 								 i,j>>1,imins,jmins,
@@ -550,7 +550,7 @@ void MacroBlock::FrameME()
 
 			/* NOTE: Typically M =3 so DP actually disabled... */
 			/* select between dual prime, frame and field prediction */
-			if ( ctl_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
+			if ( DUALPRIME && ctl_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				me.motion_type = MC_DMV;
 				/* No chrominance squared difference measure yet.
@@ -1034,7 +1034,7 @@ void MacroBlock::FrameMEs()
 
             best_of_kind_me.push_back( me );
 
-			if ( ctl_M==1)
+			if ( DUALPRIME && ctl_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
 								 i,j>>1,imins,jmins,
@@ -1276,7 +1276,8 @@ void MacroBlock::FieldME()
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 		dctl_dp = 100000000;		/* Suppress compiler warning */
-		if (ctl_M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
+
+		if (DUALPRIME && ctl_M==1 && !picture.ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
@@ -1286,7 +1287,7 @@ void MacroBlock::FieldME()
 			dctl_dp = dualp_mc.sad;
 		}
 		/* select between dual prime, field and 16x8 prediction */
-		if (ctl_M==1 && !picture.ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
+		if (DUALPRIME && ctl_M==1 && !picture.ipflag && dctl_dp<dmc8f && dctl_dp<dmcfield)
 		{
 			/* Dual Prime prediction */
 			me.motion_type = MC_DMV;
