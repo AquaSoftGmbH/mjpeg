@@ -1735,7 +1735,7 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	t_useread = use_read;
 	strncpy(t_picture_aspect,picture_aspect,8);
 
-	options_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	options_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new (FALSE, 10);
 	options_notebook = gtk_notebook_new ();
 
@@ -1791,14 +1791,14 @@ void open_options_window(GtkWidget *widget, gpointer data)
 	button = gtk_button_new_with_label("OK");
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_encoptions), NULL);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked", GTK_SIGNAL_FUNC (accept_options), NULL);
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(options_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
 	gtk_widget_show(button);
 
 	button = gtk_button_new_with_label("Cancel");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(options_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, TRUE, 20);
 	gtk_widget_show(button);
 

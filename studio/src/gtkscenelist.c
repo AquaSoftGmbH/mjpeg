@@ -89,8 +89,9 @@ guint gtk_scenelist_get_type ()
 			sizeof (GtkSceneListClass),
 			(GtkClassInitFunc) gtk_scenelist_class_init,
 			(GtkObjectInitFunc) gtk_scenelist_init,
-			(GtkArgSetFunc) NULL,
-			(GtkArgGetFunc) NULL,
+			/* reserved */ NULL,
+			/* reserved */ NULL,
+			(GtkClassInitFunc) NULL,
 		};
 		scenelist_type = gtk_type_unique (gtk_widget_get_type (), &scenelist_info);
 	}
@@ -117,16 +118,17 @@ static void gtk_scenelist_class_init (GtkSceneListClass *class)
 	widget_class->button_press_event = gtk_scenelist_button_press;
 
 	/* for the "scene_selected" signal */
-	gtk_scenelist_signals[SCENE_SELECTED] = gtk_signal_new("scene_selected",
-		GTK_RUN_FIRST, object_class->type,
-		GTK_SIGNAL_OFFSET(GtkSceneListClass, scene_selected),
-		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 1,
+/*	gtk_scenelist_signals[SCENE_SELECTED] = gtk_signal_new("scene_selected",
+ wieso		GTK_RUN_FIRST, object_class->type,
+ all 		GTK_SIGNAL_OFFSET(GtkSceneListClass, scene_selected),
+ das ?		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 1,
 		GTK_TYPE_INT);
 	gtk_scenelist_signals[SCENELIST_CHANGED] = gtk_signal_new("scenelist_changed",
 		GTK_RUN_FIRST, object_class->type,
 		GTK_SIGNAL_OFFSET(GtkSceneListClass, scene_selected),
-		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 0);
-	gtk_object_class_add_signals(object_class, gtk_scenelist_signals, LAST_SIGNAL);
+		gtk_marshal_NONE__NONE, GTK_TYPE_NONE, 0); */
+/* Should not be needed any more */
+/*	gtk_object_class_add_signals(object_class, gtk_scenelist_signals, LAST_SIGNAL); */
 }
 
 
@@ -152,6 +154,7 @@ static GtkScene *gtk_scene_new(gint view_start, gint view_end,
 	GtkScene *scene;
 	char command[512], filename[256];
 	GdkPixbuf *temp;
+	GError *err = NULL;
 
 	scene = (GtkScene *) malloc(sizeof(GtkScene));
 
@@ -167,7 +170,7 @@ static GtkScene *gtk_scene_new(gint view_start, gint view_end,
 		app_location(LAVTRANS), filename, view_start, movie,
 		verbose?"":" >> /dev/null 2>&1");
 	system(command);
-	temp = gdk_pixbuf_new_from_file (filename);
+	temp = gdk_pixbuf_new_from_file (filename, &err);
 	unlink(filename);
 	scene->image = gdk_pixbuf_scale_simple(temp, SCENE_IMAGE_WIDTH,
 		SCENE_IMAGE_HEIGHT, GDK_INTERP_NEAREST);

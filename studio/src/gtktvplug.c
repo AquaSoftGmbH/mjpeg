@@ -64,8 +64,9 @@ guint gtk_tvplug_get_type ()
 			sizeof (GtkTvPlugClass),
 			(GtkClassInitFunc) gtk_tvplug_class_init,
 			(GtkObjectInitFunc) gtk_tvplug_init,
-			(GtkArgSetFunc) NULL,
-			(GtkArgGetFunc) NULL,
+			 NULL,
+			 NULL,
+			 (GtkClassInitFunc) NULL,
 		};
 		tvplug_type = gtk_type_unique (gtk_widget_get_type (), &tvplug_info);
 	}

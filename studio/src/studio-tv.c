@@ -723,7 +723,7 @@ static void show_channel_editor(GtkWidget *widget, gpointer data)
    if (verbose) g_print("Showing channel editor\n");
    show = 1;
 
-   pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
+   pop_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
    gtk_window_set_title (GTK_WINDOW(pop_window), "Linux Video Studio TV - Settings");
    gtk_container_set_border_width (GTK_CONTAINER (pop_window), 5);
@@ -907,7 +907,7 @@ static void show_options_window()
    if (verbose) g_print("Showing options window\n");
    show=1;
 
-   pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
+   pop_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
    gtk_window_set_title (GTK_WINDOW(pop_window), "Linux Video Studio TV - Control");
    gtk_container_set_border_width (GTK_CONTAINER (pop_window), 15);

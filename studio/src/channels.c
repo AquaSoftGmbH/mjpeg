@@ -96,7 +96,7 @@ static void save_data(GtkWidget *widget, GtkCList *clist)
       }
    }
 
-   data[0] = gtk_entry_get_text(GTK_ENTRY(chanlist_entry));
+   data[0] = (char*) gtk_entry_get_text(GTK_ENTRY(chanlist_entry));
    sprintf(buf, "%.1f", GTK_TVPLUG(tv)->frequency_adj->value);
    data[1] = buf;
    gtk_clist_append(clist, data);

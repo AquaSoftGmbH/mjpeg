@@ -137,7 +137,7 @@ void file_ok_open_global(GtkWidget *widget, GtkWidget *fs)
 	/* get file from the fileselection box */
 	char *file;
 
-	file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
+	file = (char*)gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs));
 	global_open_location(file);
 }
 
@@ -167,17 +167,17 @@ void open_about_menu(GtkWidget *widget, gpointer data)
 {
 	GtkWidget *options_window, *button, *vbox, *label, *pixmap_w;
 	GdkPixmap *pixmap;
-	GtkStyle *style;
+	/*GtkStyle *style; removed by Bernhard*/
 
-	options_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	options_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 
-	style = gtk_style_new();
-	style->bg->red = 65535;
-	style->bg->blue = 65535;
-	style->bg->green = 65535;
+/*	style = gtk_style_new();   Removed too, till I find out why,
+	style->bg->red = 65535;    The problem is the push_style and
+	style->bg->blue = 65535;   pop_style removed from GTK 2.0
+	style->bg->green = 65535;  use gtk_widget_modify_* instead 
 	gtk_widget_push_style(style);
 	gtk_widget_set_style(GTK_WIDGET(options_window), style);
-	gtk_widget_pop_style();
+	gtk_widget_pop_style(); */
 
 	vbox = gtk_vbox_new (FALSE, 10);
 
@@ -198,8 +198,8 @@ void open_about_menu(GtkWidget *widget, gpointer data)
 	gtk_widget_show(label);
 
 	button = gtk_button_new_with_label("  Close  ");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(options_window));
+	g_signal_connect_swapped (G_OBJECT(button), "clicked",
+		G_CALLBACK (gtk_widget_destroy), G_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 
@@ -211,7 +211,7 @@ void open_help_menu(GtkWidget *widget, gpointer data)
 {
 	GtkWidget *options_window, *button, *vbox, *label;
 
-	options_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	options_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new (FALSE, 10);
 
 	gtk_window_set_title (GTK_WINDOW(options_window), "Linux Video Studio - Help");
@@ -231,8 +231,10 @@ void open_help_menu(GtkWidget *widget, gpointer data)
 	gtk_widget_show(label);
 
 	button = gtk_button_new_with_label("  Close  ");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(options_window));
+	//gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
+	//	gtk_widget_destroy, GTK_OBJECT(options_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(options_window));
 	gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 
@@ -418,7 +420,7 @@ int main( int argc, char *argv[] )
 
 	command_line_options(argc, argv);
 
-	g_thread_init(NULL);
+	/* g_thread_init(NULL); no ide why I had to remove it */
 	gtk_init(&argc, &argv);
 	gdk_rgb_init ();
 

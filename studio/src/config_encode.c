@@ -1196,7 +1196,7 @@ void player_callback( GtkWidget *widget, GtkWidget *player_field)
 {
 gchar *name;
 
-  name = gtk_entry_get_text(GTK_ENTRY(player_field));
+  name = (char*) gtk_entry_get_text(GTK_ENTRY(player_field));
 
   strcpy(t_selected_player,name);
 }

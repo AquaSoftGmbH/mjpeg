@@ -102,7 +102,7 @@ done:
 			break;
 	}
 
-	pop_window = gtk_window_new(GTK_WINDOW_DIALOG);
+	pop_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
 
 	gtk_window_set_title (GTK_WINDOW(pop_window),title);
@@ -132,8 +132,8 @@ done:
 	gtk_widget_show (hseparator);
 
 	button = gtk_button_new_with_label("  Close  ");
-	gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
-		gtk_widget_destroy, GTK_OBJECT(pop_window));
+	g_signal_connect_swapped(G_OBJECT(button), "clicked",
+		G_CALLBACK(gtk_widget_destroy), G_OBJECT(pop_window));
 	gtk_box_pack_start (GTK_BOX (vbox), button, FALSE, FALSE, 0);
 	gtk_widget_show(button);
 

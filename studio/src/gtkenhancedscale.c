@@ -35,7 +35,8 @@
 #include <malloc.h>
 #include <math.h>
 
-#define ENHANCED_SCALE_CLASS(w)  GTK_ENHANCED_SCALE_CLASS (GTK_OBJECT (w)->klass)
+#define ENHANCED_SCALE_CLASS(w)  GTK_ENHANCED_SCALE_GET_CLASS (G_OBJECT (w)->klass)
+//#define ENHANCED_SCALE_CLASS(w)  GTK_ENHANCED_SCALE_CLASS (G_OBJECT (w)->klass)
 //#define DEBUG
 
 static void gtk_enhanced_scale_class_init (GtkEnhancedScaleClass *klass);
@@ -86,8 +87,9 @@ guint gtk_enhanced_scale_get_type ()
 			sizeof (GtkEnhancedScaleClass),
 			(GtkClassInitFunc) gtk_enhanced_scale_class_init,
 			(GtkObjectInitFunc) gtk_enhanced_scale_init,
-			(GtkArgSetFunc) NULL,
-			(GtkArgGetFunc) NULL,
+			 NULL,
+			 NULL,
+			(GtkClassInitFunc) NULL,
 		};
 		enhanced_scale_type = gtk_type_unique (gtk_widget_get_type (),
 			&enhanced_scale_info);

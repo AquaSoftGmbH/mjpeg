@@ -72,8 +72,9 @@ guint gtk_imageplug_get_type ()
 			sizeof (GtkImagePlugClass),
 			(GtkClassInitFunc) gtk_imageplug_class_init,
 			(GtkObjectInitFunc) gtk_imageplug_init,
-			(GtkArgSetFunc) NULL,
-			(GtkArgGetFunc) NULL,
+			 NULL,
+			 NULL,
+			(GtkClassInitFunc) NULL,
 		};
 		imageplug_type = gtk_type_unique (gtk_widget_get_type (), &imageplug_info);
 	}
@@ -165,6 +166,7 @@ GtkWidget* gtk_imageplug_new_from_video (char *filename, int start, int stop,
 	GtkImagePlug *imageplug;
 	char filename_img_tmp[256], command[256];
 	GdkPixbuf *temp = NULL;
+	GError *err = NULL; /*new by bernhard for GTK2*/
 
 	imageplug = gtk_type_new (gtk_imageplug_get_type ());
 
@@ -178,7 +180,7 @@ GtkWidget* gtk_imageplug_new_from_video (char *filename, int start, int stop,
 			app_location(LAVTRANS), filename_img_tmp, start, filename,
 			verbose?"":" >> /dev/null 2>&1");
 		system(command);
-		temp = gdk_pixbuf_new_from_file (filename_img_tmp);
+		temp = gdk_pixbuf_new_from_file (filename_img_tmp, &err);
 		unlink(filename_img_tmp);
 	}
 

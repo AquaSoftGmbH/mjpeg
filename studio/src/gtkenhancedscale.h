@@ -31,9 +31,30 @@
 extern "C" {
 #endif /* __cplusplus */
 
-#define GTK_ENHANCED_SCALE(obj)          GTK_CHECK_CAST (obj, gtk_enhanced_scale_get_type (), GtkEnhancedScale)
-#define GTK_ENHANCED_SCALE_CLASS(klass)  GTK_CHECK_CLASS_CAST (klass, gtk_enhanced_scale_get_type (), GtkEnhancedScaleClass)
-#define GTK_IS_ENHANCED_SCALE(obj)       GTK_CHECK_TYPE (obj, gtk_enhanced_scale_get_type ())
+/* #define GTK_ENHANCED_SCALE(obj)  \
+           GTK_CHECK_CAST (obj, gtk_enhanced_scale_get_type (), GtkEnhancedScale)
+
+#define GTK_ENHANCED_SCALE_CLASS(klass) \
+        GTK_CHECK_CLASS_CAST (klass, gtk_enhanced_scale_get_type (), GtkEnhancedScaleClass)
+
+#define GTK_IS_ENHANCED_SCALE(obj) \
+        GTK_CHECK_TYPE (obj, gtk_enhanced_scale_get_type ()) */
+
+#define GTK_ENHANCED_TYPE_SCALE (gtk_enhanced_scale_get_type() )
+
+#define GTK_ENHANCED_SCALE(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GTK_ENHANCED_TYPE_SCALE, GtkEnhancedScale))
+#define GTK_ENHANCED_SCALE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GTK_ENHANCED_TYPE_SCALE, GtkEnhancedScaleClass))
+
+#define GTK_IS_ENHANCED_SCALE(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GTK_ENHANCED_TYPE_SCALE))
+#define GTK_IS_ENHANCED_SCALE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GTK_ENHANCED_TYPE_SCALE))
+
+#define GTK_ENHANCED_SCALE_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GTK_TYPE_ENHANCED_SCALE, \
+  GtkEnhancedScaleClass))
 
 typedef struct _GtkEnhancedScale      GtkEnhancedScale;
 typedef struct _GtkEnhancedScaleClass GtkEnhancedScaleClass;

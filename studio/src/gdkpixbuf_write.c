@@ -229,7 +229,7 @@ static void gdk_pixbuf_file_name_chosen(GtkWidget *widget, gpointer data)
 	struct pixbuf_and_fs *paf = (struct pixbuf_and_fs *) data;
 	GdkPixbuf *buf = paf->buf;
 	gboolean result = FALSE;
-	char *file = gtk_file_selection_get_filename (GTK_FILE_SELECTION (paf->fs));
+	char *file = (char*) gtk_file_selection_get_filename (GTK_FILE_SELECTION (paf->fs));
 	gdk_pixbuf_ref(buf);
 
 #ifdef HAVE_JPEG
@@ -282,10 +282,10 @@ void gdk_pixbuf_save_to_file (GdkPixbuf *pixbuf)
 
 	gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
 		"clicked", (GtkSignalFunc) gdk_pixbuf_file_name_chosen, (gpointer)paf);
-	gtk_signal_connect_object(GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-		"clicked", gtk_widget_destroy, GTK_OBJECT(filew));
-	gtk_signal_connect_object(GTK_OBJECT (GTK_FILE_SELECTION (filew)->cancel_button),
-		"clicked", gtk_widget_destroy, GTK_OBJECT(filew));
+	g_signal_connect_swapped(G_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
+		"clicked", G_CALLBACK(gtk_widget_destroy), G_OBJECT(filew));
+	g_signal_connect_swapped(G_OBJECT (GTK_FILE_SELECTION (filew)->cancel_button),
+		"clicked", G_CALLBACK(gtk_widget_destroy), G_OBJECT(filew));
 	gtk_signal_connect(GTK_OBJECT(filew), "unrealize",
 		GTK_SIGNAL_FUNC(gdk_pixbuf_file_selection_unrealize), (gpointer)paf);
 
