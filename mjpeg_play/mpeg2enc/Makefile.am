@@ -84,8 +84,9 @@ mpeg2enc_DEPENDENCIES = libmpeg2encpp.la \
 			            $(top_builddir)/utils/libmotion.a
 
 mpeg2enc_LDADD= libmpeg2encpp.la \
-				$(top_builddir)/utils/libmjpegutils.a \
 				$(top_builddir)/utils/libmotion.a \
+				$(LIBSIMDASM_LIB) \
+				$(top_builddir)/utils/libmjpegutils.a \
 		        @PTHREAD_LIBS@ @LIBGETOPT_LIB@ $(LIBM_LIBS)
 
 
