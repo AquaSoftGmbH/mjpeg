@@ -38,8 +38,7 @@ LAV_ALL_LIB_OPTS = \
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS)
-liblavfile_la_LDADD = $(DV_LIBS)
+	$(MOVTAR_LIBS) $(QUICKTIME_LIBS) $(JPEG_LIBS) $(DV_LIBS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
