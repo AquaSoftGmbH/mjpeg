@@ -96,8 +96,15 @@ VCD format (equivalent to -M WIDE2STD -O VCD).
 \fBFAST_WIDE2VCD\fP to transcode full-sized anamorphic (16:9) frames to 
 letter-boxed VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see below).
 .IP
-\fBLINE_SWITCH\fP to switch lines between input and output, no line
-switching by default.
+\fBLINE_SWITCH\fP to preprocess frames by switching lines two by two
+.IP
+\fBBOTT_FORWARD\fP to preprocess frames by moving bottom field one frame forward
+.IP
+\fBTOP_FORWARD\fP  to preprocess frames by moving top field one frame forward
+.IP
+\fBNO_HEADER\fP to suppress stream header generation on output
+.IP
+\fBMMX\fP to use MMX functions for BICUBIC scaling (experimental feature!!)
 
 .TP 
 .B -O \fIoutput_keyword\fP
