@@ -242,15 +242,15 @@ void rc_init_seq(int reinit)
 	if( reinit )
 		return;
 
-    undershoot_carry = video_buffer_size / 5;
-	bits_per_mb = (double)bit_rate / (mb_per_pict);
+    undershoot_carry = opt_video_buffer_size / 5;
+	bits_per_mb = (double)opt_bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
 	   rate as encoder is currently tending to under/over-shoot... in
 	   rate TODO: Reaction parameter is *same* for every frame type
 	   despite different weightings...  */
 	if (r==0)  
-		r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
+		r = (int)floor(2.0*opt_bit_rate/opt_frame_rate + 0.5);
 
 	Ki = 1.2;
 	Kb = 1.4;
@@ -294,9 +294,7 @@ static double T_sum;
 void rc_init_GOP(int np, int nb)
 {
 	double per_gop_bits = 
-		(double)(1 + np + nb) * bit_rate / frame_rate;
-
-
+		(double)(1 + np + nb) * opt_bit_rate / opt_frame_rate;
 
 	/* A.Stevens Aug 2000: at last I've found the wretched
 	   rate-control overshoot bug...  Simply "topping up" R here means
@@ -343,8 +341,8 @@ void rc_init_GOP(int np, int nb)
 
 	gop_start = bitcount();
 
-	Np = fieldpic ? 2*np+1 : np;
-	Nb = fieldpic ? 2*nb : nb;
+	Np = opt_fieldpic ? 2*np+1 : np;
+	Nb = opt_fieldpic ? 2*nb : nb;
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: new group of pictures (GOP)\n");
@@ -808,47 +806,47 @@ void calc_vbv_delay(pict_data_s *picture)
 	/* number of 1/90000 s ticks until next picture is to be decoded */
 	if (picture->pict_type == B_TYPE)
 	{
-		if (prog_seq)
+		if (opt_prog_seq)
 		{
 			if (!picture->repeatfirst)
-				picture_delay = 90000.0/frame_rate; /* 1 frame */
+				picture_delay = 90000.0/opt_frame_rate; /* 1 frame */
 			else
 			{
 				if (!picture->topfirst)
-					picture_delay = 90000.0*2.0/frame_rate; /* 2 frames */
+					picture_delay = 90000.0*2.0/opt_frame_rate; /* 2 frames */
 				else
-					picture_delay = 90000.0*3.0/frame_rate; /* 3 frames */
+					picture_delay = 90000.0*3.0/opt_frame_rate; /* 3 frames */
 			}
 		}
 		else
 		{
 			/* interlaced */
-			if (fieldpic)
-				picture_delay = 90000.0/(2.0*frame_rate); /* 1 field */
+			if (opt_fieldpic)
+				picture_delay = 90000.0/(2.0*opt_frame_rate); /* 1 field */
 			else
 			{
 				if (!picture->repeatfirst)
-					picture_delay = 90000.0*2.0/(2.0*frame_rate); /* 2 flds */
+					picture_delay = 90000.0*2.0/(2.0*opt_frame_rate); /* 2 flds */
 				else
-					picture_delay = 90000.0*3.0/(2.0*frame_rate); /* 3 flds */
+					picture_delay = 90000.0*3.0/(2.0*opt_frame_rate); /* 3 flds */
 			}
 		}
 	}
 	else
 	{
 		/* I or P picture */
-		if (fieldpic)
+		if (opt_fieldpic)
 		{
 			if(picture->topfirst && (picture->pict_struct==TOP_FIELD))
 			{
 				/* first field */
-				picture_delay = 90000.0/(2.0*frame_rate);
+				picture_delay = 90000.0/(2.0*opt_frame_rate);
 			}
 			else
 			{
 				/* second field */
 				/* take frame reordering delay into account */
-				picture_delay = next_ip_delay - 90000.0/(2.0*frame_rate);
+				picture_delay = next_ip_delay - 90000.0/(2.0*opt_frame_rate);
 			}
 		}
 		else
@@ -858,32 +856,32 @@ void calc_vbv_delay(pict_data_s *picture)
 			picture_delay = next_ip_delay;
 		}
 
-		if (!fieldpic || 
+		if (!opt_fieldpic || 
 			picture->topfirst!=(picture->pict_struct==TOP_FIELD))
 		{
 			/* frame picture or second field */
-			if (prog_seq)
+			if (opt_prog_seq)
 			{
 				if (!picture->repeatfirst)
-					next_ip_delay = 90000.0/frame_rate;
+					next_ip_delay = 90000.0/opt_frame_rate;
 				else
 				{
 					if (!picture->topfirst)
-						next_ip_delay = 90000.0*2.0/frame_rate;
+						next_ip_delay = 90000.0*2.0/opt_frame_rate;
 					else
-						next_ip_delay = 90000.0*3.0/frame_rate;
+						next_ip_delay = 90000.0*3.0/opt_frame_rate;
 				}
 			}
 			else
 			{
-				if (fieldpic)
-					next_ip_delay = 90000.0/(2.0*frame_rate);
+				if (opt_fieldpic)
+					next_ip_delay = 90000.0/(2.0*opt_frame_rate);
 				else
 				{
 					if (!picture->repeatfirst)
-						next_ip_delay = 90000.0*2.0/(2.0*frame_rate);
+						next_ip_delay = 90000.0*2.0/(2.0*opt_frame_rate);
 					else
-						next_ip_delay = 90000.0*3.0/(2.0*frame_rate);
+						next_ip_delay = 90000.0*3.0/(2.0*opt_frame_rate);
 				}
 			}
 		}
@@ -893,9 +891,9 @@ void calc_vbv_delay(pict_data_s *picture)
 	{
 		/* first call of calc_vbv_delay */
 		/* we start with a 7/8 filled VBV buffer (12.5% back-off) */
-		picture_delay = ((vbv_buffer_size*7)/8)*90000.0/bit_rate;
-		if (fieldpic)
-			next_ip_delay = (int)(90000.0/frame_rate+0.5);
+		picture_delay = ((opt_vbv_buffer_size*7)/8)*90000.0/opt_bit_rate;
+		if (opt_fieldpic)
+			next_ip_delay = (int)(90000.0/opt_frame_rate+0.5);
 	}
 
 	/* VBV checks */
@@ -912,11 +910,11 @@ void calc_vbv_delay(pict_data_s *picture)
 
 	/* check for underflow (previous picture).
 	*/
-	if (!low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/bit_rate))
+	if (!opt_low_delay && (decoding_time < (double)bitcnt_EOP*90000.0/opt_bit_rate))
 	{
 		/* picture not completely in buffer at intended decoding time */
 		mjpeg_warn("vbv_delay underflow frame %d (target=%.1f, actual=%.1f\n)",
-				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/bit_rate);
+				   frame_num-1, decoding_time, bitcnt_EOP*90000.0/opt_bit_rate);
 	}
 
 
@@ -934,7 +932,7 @@ void calc_vbv_delay(pict_data_s *picture)
 	if ( decoding_time * ((double)bit_rate  / 90000.0) - ((double)bitcnt_EOP)
 		> vbv_buffer_size )
 	{
-		double oversize = vbv_buffer_size -
+		double oversize = opt_vbv_buffer_size -
 			(decoding_time / 90000.0 * bit_rate - (double)(bitcnt_EOP+gop_undershoot));
 		if(!quiet || oversize > 0.0  )
 			mjpeg_warn("vbv_delay overflow frame %d - %f.0 bytes!\n", 
@@ -965,10 +963,10 @@ void calc_vbv_delay(pict_data_s *picture)
 		picture->vbv_delay = 65535;
 	}
 #else
-	if( !mpeg1 )
+	if( !opt_mpeg1 )
 		picture->vbv_delay =  0xffff;
 	else
-		picture->vbv_delay =  90000.0/frame_rate/4;
+		picture->vbv_delay =  90000.0/opt_frame_rate/4;
 #endif
 
 }

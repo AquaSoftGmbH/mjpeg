@@ -80,7 +80,7 @@ int quant_non_intra_3dnow(
 	int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = dctsatlim;
+	int satlim = opt_dctsatlim;
 	float *i_quant_matf; 
 	int   coeff_count = 64*block_count;
 	uint32_t nzflag, flags;
@@ -221,7 +221,7 @@ int quant_non_intra_sse(
 	int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = dctsatlim;
+	int satlim = opt_dctsatlim;
 	float *i_quant_matf; 
 	int   coeff_count = 64*block_count;
 	uint32_t nzflag, flags;
@@ -361,7 +361,7 @@ int quant_non_intra_mmx(
 {
 
 	int nzflag;
-	int clipvalue  = dctsatlim;
+	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
 	uint16_t *quant_mat = inter_q;

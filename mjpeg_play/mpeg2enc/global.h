@@ -83,7 +83,7 @@ int64_t bitcount (void);
 void putseqhdr (void);
 void putseqext (void);
 void putseqdispext (void);
-void putuserdata (char *userdata);
+void putuserdata (uint8_t *userdata, int len);
 void putgophdr (int frame, int closed_gop, int seq_header);
 void putpicthdr (pict_data_s *picture);
 void putpictcodext (pict_data_s *picture);
@@ -313,7 +313,7 @@ EXTERN char pict_type_char[6]
 
 EXTERN int lum_buffer_size, chrom_buffer_size;
 
-int video_buffer_size;
+int opt_video_buffer_size;
 
 /* Buffers frame data */
 EXTERN uint8_t ***frame_buffers;
@@ -358,20 +358,6 @@ EXTERN int inputtype; /* format of input frames */
 EXTERN int max_encoding_frames; /* Maximum number of concurrent
 								   frames to be concurrently encoded */
 
-/* coding model parameters */
-
-EXTERN int N_max;				/* number of frames in Group of Pictures (max) */
-EXTERN int N_min;				/* number of frames in Group of Pictures (min) */
-EXTERN int M;					/* distance between I/P frames */
-EXTERN int nframes;				/* total number of frames to encode
-								   Note: this may start enormous and shrink
-								   down later if the input stream length is
-								   unknown at the start of encoding.
-								*/
-EXTERN int mpeg1;				/* ISO/IEC IS 11172-2 sequence */
-EXTERN int fieldpic;			/* use field pictures */
-EXTERN int pulldown_32;			/* 3:2 Pulldown of movie material */
-
 
 /*
   How many frames to read in one go and the size of the frame data buffer.
@@ -391,7 +377,6 @@ EXTERN int pulldown_32;			/* 3:2 Pulldown of movie material */
 
 /* sequence specific data (sequence header) */
 
-EXTERN int horizontal_size, vertical_size; /* frame size (pels) */
 EXTERN int width, height; /* encoded frame size (pels) multiples of 16 or 32 */
 EXTERN int chrom_width,chrom_height,block_count;
 EXTERN int mb_width, mb_height; /* frame size (macroblocks) */
@@ -400,43 +385,43 @@ EXTERN int qsubsample_offset,
            fsubsample_offset,
 	       rowsums_offset,
 	       colsums_offset;		/* Offset from picture buffer start of sub-sampled data... */
-EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						      
-EXTERN int aspectratio;			/* aspect ratio information (pel or display) */
-EXTERN int frame_rate_code;		/* coded value of frame rate */
-EXTERN int dctsatlim;			/* Value to saturated DCT coeffs to */
-EXTERN double frame_rate;		/* frames per second */
-EXTERN double bit_rate;			/* bits per second */
-EXTERN double nonvid_bit_rate;	/* Bit-rate for non-video to assume for
-								 sequuence splitting calculations */
+EXTERN int mb_per_pict;			/* Number of macro-blocks in a picture */						
 
-EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
-EXTERN int mc_22_red;			/* Motion compensation stages						*/
+/* ************************
+ * global flags controlling MPEG produced
+ *************************/
 
-EXTERN int seq_header_every_gop;
-EXTERN int seq_length_limit;
-EXTERN int vbv_buffer_code;   /* Code for size of VBV buffer (* 16 kbit) */
-EXTERN double vbv_buffer_size; /* Size code codes for... */
-EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
-EXTERN int load_iquant, load_niquant; /* use non-default quant. matrices */
-EXTERN int load_ciquant,load_cniquant;
-EXTERN int search_radius[2];	/* Radius for motion compensation search */
-EXTERN int b_frame_jitter;		/* Small extra search in B-frames above
-								 that derived from the following P frame */
-/* sequence specific data (sequence extension) */
+EXTERN int opt_horizontal_size, opt_vertical_size; /* frame size (pels) */
 
-EXTERN int profile, level; /* syntax / parameter constraints */
-EXTERN int prog_seq; /* progressive sequence */
-EXTERN int chroma_format;
-EXTERN int low_delay; /* no B pictures, skipped pictures */
+EXTERN int opt_aspectratio;			/* aspect ratio information (pel or display) */
+EXTERN int opt_frame_rate_code;		/* coded value of frame rate */
+EXTERN int opt_dctsatlim;			/* Value to saturated DCT coeffs to */
+EXTERN double opt_frame_rate;		/* frames per second */
+EXTERN double opt_bit_rate;			/* bits per second */
+EXTERN int opt_seq_hdr_every_gop;
+EXTERN int opt_svcd_scan_data;
+EXTERN int opt_vbv_buffer_code;      /* Code for size of VBV buffer (* 16 kbit) */
+EXTERN double opt_vbv_buffer_size;
+EXTERN int opt_constrparms;         /* constrained parameters flag (MPEG-1 only) */
+EXTERN int opt_load_iquant, 
+	opt_load_niquant;               /* use non-default quant. matrices */
+
+
+
+EXTERN int opt_profile, opt_level; /* syntax / parameter constraints */
+EXTERN int opt_prog_seq; /* progressive sequence */
+EXTERN int opt_chroma_format;
+EXTERN int opt_low_delay; /* no B pictures, skipped pictures */
 
 
 /* sequence specific data (sequence display extension) */
 
-EXTERN int video_format; /* component, PAL, NTSC, SECAM or MAC */
-EXTERN int color_primaries; /* source primary chromaticity coordinates */
-EXTERN int transfer_characteristics; /* opto-electronic transfer char. (gamma) */
-EXTERN int matrix_coefficients; /* Eg,Eb,Er / Y,Cb,Cr matrix coefficients */
-EXTERN int display_horizontal_size, display_vertical_size; /* display size */
+EXTERN int opt_video_format; /* component, PAL, NTSC, SECAM or MAC */
+EXTERN int opt_color_primaries; /* source primary chromaticity coordinates */
+EXTERN int opt_transfer_characteristics; /* opto-electronic transfer char. (gamma) */
+EXTERN int opt_matrix_coefficients; /* Eg,Eb,Er / Y,Cb,Cr matrix coefficients */
+EXTERN int opt_display_horizontal_size, 
+	       opt_display_vertical_size; /* display size */
 
 
 
@@ -448,6 +433,34 @@ EXTERN int opt_prog_frame;
 EXTERN int opt_repeatfirst;
 EXTERN int opt_topfirst;
 
+
+EXTERN int opt_mpeg1;				/* ISO/IEC IS 11172-2 sequence */
+EXTERN int opt_fieldpic;			/* use field pictures */
+EXTERN int opt_pulldown_32;			/* 3:2 Pulldown of movie material */
+
+
+
+/* use only frame prediction and frame DCT (I,P,B) */
+EXTERN int opt_frame_pred_dct_tab[3];
+EXTERN int opt_qscale_tab[3]; 	/* linear/non-linear quantizaton table */
+EXTERN int opt_intravlc_tab[3]; /* intra vlc format (I,P,B) */
+EXTERN int opt_altscan_tab[3]; 	/* alternate scan (I,P,B */
+
+
+/* **************************
+ * Global flags controlling encoding behaviour 
+ ************************** */
+
+EXTERN int opt_N_max;				/* number of frames in Group of Pictures (max) */
+EXTERN int opt_N_min;				/* number of frames in Group of Pictures (min) */
+EXTERN int opt_M;					/* distance between I/P frames */
+EXTERN int nframes;				/* total number of frames to encode
+								   Note: this may start enormous and shrink
+								   down later if the input stream length is
+								   unknown at the start of encoding.
+								*/
+
+
 EXTERN int mc_refine_from_rec;	/* Is final refinement of motion
 								   compensation computed from
 								   reconstructed reference frame image
@@ -455,20 +468,32 @@ EXTERN int mc_refine_from_rec;	/* Is final refinement of motion
 								   multi-threading) or original
 								   reference frame (opposite) */
 
-/* use only frame prediction and frame DCT (I,P,B) */
-EXTERN int frame_pred_dct_tab[3];
-EXTERN int qscale_tab[3]; 	/* linear/non-linear quantizaton table */
-EXTERN int intravlc_tab[3]; /* intra vlc format (I,P,B) */
-EXTERN int altscan_tab[3]; 	/* alternate scan (I,P,B */
-
-/* Currently unused... */
-EXTERN int conceal_tab[3]; 	/* use concealment motion vectors (I,P,B) */
-
-/* Global flags controlling encoding behaviour */
+EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
+EXTERN int mc_22_red;			/* Motion compensation stages						*/
+EXTERN int seq_length_limit;
+EXTERN double nonvid_bit_rate;	/* Bit-rate for non-video to assume for
+								   sequence splitting calculations */
 
 EXTERN double quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
 EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
+
+/* Support for the picture layer(!) insertion of scan data fieldsas
+   MPEG user-data section as part of I-frames.  */
+
+EXTERN uint8_t dummy_svcd_scan_data[14]
+#ifdef GLOBAL
+= {
+	0x10,                       /* Scan data tag */
+	14,                         /* Length */
+	0x01, 0x02, 0x03,            /* Dummy data - this will be filled */
+	0x01, 0x02, 0x03,            /* By the multiplexor or cd image   */        
+	0x01, 0x02, 0x03,            /* creation software                */        
+	0x01, 0x02, 0x03
+
+  }
+#endif
+;
 
 /* Useful for triggering debug information */
 

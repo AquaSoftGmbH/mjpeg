@@ -758,7 +758,7 @@ static void frame_ME(pict_data_s *picture,
 				unidir_var_sum( &topfldf_mc, oldrefimg, &ssmb, (width<<1), 8 ) +
 				
 				unidir_var_sum( &botfldf_mc, oldrefimg, &botssmb, (width<<1), 8 );
-			if ( M==1)
+			if ( opt_M==1)
 			{
 				dpframe_estimate(picture,oldrefimg[0],&ssmb,
 								 i,j>>1,imins,jmins,
@@ -768,7 +768,7 @@ static void frame_ME(pict_data_s *picture,
 
 			/* NOTE: Typically M =3 so DP actually disabled... */
 			/* select between dual prime, frame and field prediction */
-			if ( M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
+			if ( opt_M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				mbi->motion_type = MC_DMV;
 				/* No chrominance squared difference measure yet.
@@ -1193,7 +1193,7 @@ static void field_ME(
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 
 		dmc_dp = 100000000;		/* Suppress compiler warning */
-		if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
+		if (opt_M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
 							 topref,botref,ssmb.mb,i,j,
@@ -1203,7 +1203,7 @@ static void field_ME(
 			dmc_dp = dualp_mc.sad;
 		}
 		/* select between dual prime, field and 16x8 prediction */
-		if (M==1 && !ipflag && dmc_dp<dmc8f && dmc_dp<dmcfield)
+		if (opt_M==1 && !ipflag && dmc_dp<dmc8f && dmc_dp<dmcfield)
 		{
 			/* Dual Prime prediction */
 			mbi->motion_type = MC_DMV;
@@ -2736,7 +2736,7 @@ void fast_motion_data( pict_data_s *picture )
 	/* In an interlaced field the "next" line is 2 width's down 
 	   rather than 1 width down                                 */
 
-	if (!fieldpic)
+	if (!opt_fieldpic)
 	{
 		nextfieldline = width;
 	}

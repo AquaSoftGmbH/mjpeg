@@ -40,91 +40,91 @@ void range_checks()
 
   /* range and value checks */
 
-  if (horizontal_size<1 || horizontal_size>16383)
+  if (opt_horizontal_size<1 || opt_horizontal_size>16383)
     mjpeg_error_exit1("horizontal_size must be between 1 and 16383");
-  if (mpeg1 && horizontal_size>4095)
+  if (opt_mpeg1 && opt_horizontal_size>4095)
     mjpeg_error_exit1("horizontal_size must be less than 4096 (MPEG-1)");
-  if ((horizontal_size&4095)==0)
+  if ((opt_horizontal_size&4095)==0)
     mjpeg_error_exit1("horizontal_size must not be a multiple of 4096");
-  if (chroma_format!=CHROMA444 && horizontal_size%2 != 0)
+  if (opt_chroma_format!=CHROMA444 && opt_horizontal_size%2 != 0)
     mjpeg_error_exit1("horizontal_size must be a even (4:2:0 / 4:2:2)");
 
-  if (vertical_size<1 || vertical_size>16383)
+  if (opt_vertical_size<1 || opt_vertical_size>16383)
     mjpeg_error_exit1("vertical_size must be between 1 and 16383");
-  if (mpeg1 && vertical_size>4095)
+  if (opt_mpeg1 && opt_vertical_size>4095)
     mjpeg_error_exit1("vertical size must be less than 4096 (MPEG-1)");
-  if ((vertical_size&4095)==0)
+  if ((opt_vertical_size&4095)==0)
     mjpeg_error_exit1("vertical_size must not be a multiple of 4096");
-  if (chroma_format==CHROMA420 && vertical_size%2 != 0)
+  if (opt_chroma_format==CHROMA420 && opt_vertical_size%2 != 0)
     mjpeg_error_exit1("vertical_size must be a even (4:2:0)");
-  if(fieldpic)
+  if(opt_fieldpic)
   {
-    if (vertical_size%2 != 0)
+    if (opt_vertical_size%2 != 0)
       mjpeg_error_exit1("vertical_size must be a even (field pictures)");
-    if (chroma_format==CHROMA420 && vertical_size%4 != 0)
+    if (opt_chroma_format==CHROMA420 && opt_vertical_size%4 != 0)
       mjpeg_error_exit1("vertical_size must be a multiple of 4 (4:2:0 field pictures)");
   }
 
-  if (mpeg1)
+  if (opt_mpeg1)
   {
-    if (aspectratio<1 || aspectratio>14)
+    if (opt_aspectratio<1 || opt_aspectratio>14)
       mjpeg_error_exit1("pel_aspect_ratio must be between 1 and 14 (MPEG-1)");
   }
   else
   {
-    if (aspectratio<1 || aspectratio>4)
+    if (opt_aspectratio<1 || opt_aspectratio>4)
       mjpeg_error_exit1("aspect_ratio_information must be 1, 2, 3 or 4");
   }
 
-  if (frame_rate_code<1 || frame_rate_code>8)
+  if (opt_frame_rate_code<1 || opt_frame_rate_code>8)
     mjpeg_error_exit1("frame_rate code must be between 1 and 8");
 
-  if (bit_rate<=0.0)
-    mjpeg_error_exit1("bit_rate must be positive");
-  if (bit_rate > ((1<<30)-1)*400.0)
-    mjpeg_error_exit1("bit_rate must be less than 429 Gbit/s");
-  if (mpeg1 && bit_rate > ((1<<18)-1)*400.0)
-    mjpeg_error_exit1("bit_rate must be less than 104 Mbit/s (MPEG-1)");
+  if (opt_bit_rate<=0.0)
+    mjpeg_error_exit1("opt_bit_rate must be positive");
+  if (opt_bit_rate > ((1<<30)-1)*400.0)
+    mjpeg_error_exit1("opt_bit_rate must be less than 429 Gbit/s");
+  if (opt_mpeg1 && opt_bit_rate > ((1<<18)-1)*400.0)
+    mjpeg_error_exit1("opt_bit_rate must be less than 104 Mbit/s (MPEG-1)");
 
-  if (vbv_buffer_code<1 || vbv_buffer_code>0x3ffff)
-    mjpeg_error_exit1("vbv_buffer_size must be in range 1..(2^18-1)");
-  if (mpeg1 && vbv_buffer_code>=1024)
+  if (opt_vbv_buffer_code<1 || opt_vbv_buffer_code>0x3ffff)
+    mjpeg_error_exit1("opt_vbv_buffer_size must be in range 1..(2^18-1)");
+  if (opt_mpeg1 && opt_vbv_buffer_code>=1024)
     mjpeg_error_exit1("vbv_buffer_size must be less than 1024 (MPEG-1)");
 
-  if (chroma_format<CHROMA420 || chroma_format>CHROMA444)
+  if (opt_chroma_format<CHROMA420 || opt_chroma_format>CHROMA444)
     mjpeg_error_exit1("chroma_format must be in range 1...3");
 
-  if (video_format<0 || video_format>5)
+  if (opt_video_format<0 || opt_video_format>5)
     mjpeg_error_exit1("video_format must be in range 0...5");
 
-  if (color_primaries<1 || color_primaries>7 || color_primaries==3)
+  if (opt_color_primaries<1 || opt_color_primaries>7 || opt_color_primaries==3)
     mjpeg_error_exit1("color_primaries must be in range 1...2 or 4...7");
 
-  if (transfer_characteristics<1 || transfer_characteristics>7
-      || transfer_characteristics==3)
+  if (opt_transfer_characteristics<1 || opt_transfer_characteristics>7
+      || opt_transfer_characteristics==3)
     mjpeg_error_exit1("transfer_characteristics must be in range 1...2 or 4...7");
 
-  if (matrix_coefficients<1 || matrix_coefficients>7 || matrix_coefficients==3)
+  if (opt_matrix_coefficients<1 || opt_matrix_coefficients>7 || opt_matrix_coefficients==3)
     mjpeg_error_exit1("matrix_coefficients must be in range 1...2 or 4...7");
 
-  if (display_horizontal_size<0 || display_horizontal_size>16383)
+  if (opt_display_horizontal_size<0 || opt_display_horizontal_size>16383)
     mjpeg_error_exit1("display_horizontal_size must be in range 0...16383");
-  if (display_vertical_size<0 || display_vertical_size>16383)
+  if (opt_display_vertical_size<0 || opt_display_vertical_size>16383)
     mjpeg_error_exit1("display_vertical_size must be in range 0...16383");
 
   if (opt_dc_prec<0 || opt_dc_prec>3)
     mjpeg_error_exit1("intra_dc_precision must be in range 0...3");
 
-  for (i=0; i<M; i++)
+  for (i=0; i<opt_M; i++)
   {
     if (motion_data[i].forw_hor_f_code<1 || motion_data[i].forw_hor_f_code>9)
-      mjpeg_error_exit1("f_code must be between 1 and 9");
+      mjpeg_error_exit1("f_code x must be between 1 and 9");
     if (motion_data[i].forw_vert_f_code<1 || motion_data[i].forw_vert_f_code>9)
-      mjpeg_error_exit1("f_code must be between 1 and 9");
-    if (mpeg1 && motion_data[i].forw_hor_f_code>7)
-      mjpeg_error_exit1("f_code must be le less than 8");
-    if (mpeg1 && motion_data[i].forw_vert_f_code>7)
-      mjpeg_error_exit1("f_code must be le less than 8");
+      mjpeg_error_exit1("f_code y must be between 1 and 9");
+    if (opt_mpeg1 && motion_data[i].forw_hor_f_code>7)
+      mjpeg_error_exit1("f_code x must be less than 8");
+    if (opt_mpeg1 && motion_data[i].forw_vert_f_code>7)
+      mjpeg_error_exit1("f_code y must be less than 8");
     if (motion_data[i].sxf<=0)
       mjpeg_error_exit1("search window must be positive"); /* doesn't belong here */
     if (motion_data[i].syf<=0)
@@ -135,9 +135,9 @@ void range_checks()
         mjpeg_error_exit1("f_code must be between 1 and 9");
       if (motion_data[i].back_vert_f_code<1 || motion_data[i].back_vert_f_code>9)
         mjpeg_error_exit1("f_code must be between 1 and 9");
-      if (mpeg1 && motion_data[i].back_hor_f_code>7)
+      if (opt_mpeg1 && motion_data[i].back_hor_f_code>7)
         mjpeg_error_exit1("f_code must be le less than 8");
-      if (mpeg1 && motion_data[i].back_vert_f_code>7)
+      if (opt_mpeg1 && motion_data[i].back_vert_f_code>7)
         mjpeg_error_exit1("f_code must be le less than 8");
       if (motion_data[i].sxb<=0)
         mjpeg_error_exit1("search window must be positive");
@@ -164,7 +164,7 @@ static struct level_limits {
   int hor_size;
   int vert_size;
   int sample_rate;
-  int bit_rate; /* Mbit/s */
+  int opt_bit_rate; /* Mbit/s */
   int vbv_buffer_size; /* 16384 bit steps */
 } maxval_tab[4] =
 {
@@ -193,64 +193,64 @@ void profile_and_level_checks(void)
   int i;
   struct level_limits *maxval;
 
-  if (profile<0 || profile>15)
+  if (opt_profile<0 || opt_profile>15)
     mjpeg_error_exit1("profile must be between 0 and 15");
 
-  if (level<0 || level>15)
+  if (opt_level<0 || opt_level>15)
     mjpeg_error_exit1("level must be between 0 and 15");
 
-  if (profile>=8)
+  if (opt_profile>=8)
   {
 	  mjpeg_warn("profile uses a reserved value, conformance checks skipped\n");
     return;
   }
 
-  if (profile<HP || profile>SP)
+  if (opt_profile<HP || opt_profile>SP)
     mjpeg_error_exit1("undefined Profile");
 
-  if (profile==SNR || profile==SPAT)
+  if (opt_profile==SNR || opt_profile==SPAT)
     mjpeg_error_exit1("This encoder currently generates no scalable bitstreams");
 
-  if (level<HL || level>LL || level&1)
+  if (opt_level<HL || opt_level>LL || opt_level&1)
     mjpeg_error_exit1("undefined Level");
 
-  maxval = &maxval_tab[(level-4) >> 1];
+  maxval = &maxval_tab[(opt_level-4) >> 1];
 
   /* check profile@level combination */
-  if(!profile_level_defined[profile-1][(level-4) >> 1])
+  if(!profile_level_defined[opt_profile-1][(opt_level-4) >> 1])
     mjpeg_error_exit1("undefined profile@level combination");
   
 
   /* profile (syntax) constraints */
 
-  if (profile==SP && M!=1)
+  if (opt_profile==SP && opt_M!=1)
     mjpeg_error_exit1("Simple Profile does not allow B pictures");
 
-  if (profile!=HP && chroma_format!=CHROMA420)
+  if (opt_profile!=HP && opt_chroma_format!=CHROMA420)
     mjpeg_error_exit1("chroma format must be 4:2:0 in specified Profile");
 
-  if (profile==HP && chroma_format==CHROMA444)
+  if (opt_profile==HP && opt_chroma_format==CHROMA444)
     mjpeg_error_exit1("chroma format must be 4:2:0 or 4:2:2 in High Profile");
 
-  if (profile>=MP) /* SP, MP: constrained repeat_first_field */
+  if (opt_profile>=MP) /* SP, MP: constrained repeat_first_field */
   {
-    if (frame_rate_code<=2 && opt_repeatfirst)
+    if (opt_frame_rate_code<=2 && opt_repeatfirst)
       mjpeg_error_exit1("repeat_first_first must be zero");
-    if (frame_rate_code<=6 && prog_seq && opt_repeatfirst)
+    if (opt_frame_rate_code<=6 && opt_prog_seq && opt_repeatfirst)
       mjpeg_error_exit1("repeat_first_first must be zero");
   }
 
-  if (profile!=HP && opt_dc_prec==3)
+  if (opt_profile!=HP && opt_dc_prec==3)
     mjpeg_error_exit1("11 bit DC precision only allowed in High Profile");
 
 
   /* level (parameter value) constraints */
 
   /* Table 8-8 */
-  if (frame_rate_code>5 && level>=ML)
+  if (opt_frame_rate_code>5 && opt_level>=ML)
     mjpeg_error_exit1("Picture rate greater than permitted in specified Level");
 
-  for (i=0; i<M; i++)
+  for (i=0; i<opt_M; i++)
   {
     if (motion_data[i].forw_hor_f_code > maxval->hor_f_code)
       mjpeg_error_exit1("forward horizontal f_code greater than permitted in specified Level");
@@ -269,21 +269,22 @@ void profile_and_level_checks(void)
   }
 
   /* Table 8-10 */
-  if (horizontal_size > maxval->hor_size)
+  if (opt_horizontal_size > maxval->hor_size)
     mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level");
 
-  if (vertical_size > maxval->vert_size)
+  if (opt_vertical_size > maxval->vert_size)
     mjpeg_error_exit1("Horizontal size is greater than permitted in specified Level");
 
   /* Table 8-11 */
-  if (horizontal_size*vertical_size*frame_rate > maxval->sample_rate)
+  if (opt_horizontal_size*opt_vertical_size*opt_frame_rate > 
+	  maxval->sample_rate)
     mjpeg_error_exit1("Sample rate is greater than permitted in specified Level");
 
   /* Table 8-12 */
-  if (bit_rate> 1.0e6 * maxval->bit_rate)
+  if (opt_bit_rate> 1.0e6 * maxval->opt_bit_rate)
     mjpeg_error_exit1("Bit rate is greater than permitted in specified Level");
 
   /* Table 8-13 */
-  if (vbv_buffer_code > maxval->vbv_buffer_size)
+  if (opt_vbv_buffer_code > maxval->vbv_buffer_size)
     mjpeg_error_exit1("vbv_buffer_size exceeds High Level limit");
 }

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+#include <format_codes.h>
 
 unsigned int    which_streams;
 int 			system_header_size;
@@ -102,12 +103,12 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 	switch( opt_mux_format  )
 	{
-	case MPEG_VCD :
+	case MPEG_FORMAT_VCD :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	video_buffer_size = 46*1024;
 	  	opt_VBR = 0;
  
-	case MPEG_VCD_NSR : /* VCD format, non-standard rate */
+	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile\n");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
@@ -127,7 +128,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		dtspts_for_all_vau = 1;
 		break;
 		
-	case  MPEG_MPEG2 : 
+	case  MPEG_FORMAT_MPEG2 : 
 		mjpeg_info( "Selecting generic MPEG2 output profile\n");
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
@@ -148,11 +149,11 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
         dtspts_for_all_vau = 0;
 		break;
 
-	case MPEG_SVCD :
+	case MPEG_FORMAT_SVCD :
 		opt_data_rate = 150*2324;
 	  	video_buffer_size = 230*1024;
 
-	case  MPEG_SVCD_NSR :		/* Non-standard data-rate */
+	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
@@ -178,7 +179,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 
 		break;
 			 
-	default : /* MPEG_MPEG1 - auto format MPEG1 */
+	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile\n");
 		opt_mpeg = 1;
 	  	packets_per_pack = opt_packets_per_pack;
@@ -327,7 +328,7 @@ void outputstreamprefix( clockticks *current_SCR)
 
 	switch (opt_mux_format)
 		{
-		case MPEG_VCD :
+		case MPEG_FORMAT_VCD :
 
 		/* First packet carries video-info-only sys_header */
 		create_sys_header (&sys_header, mux_rate,0, 0, 1, 1, 1, 1,
@@ -368,7 +369,7 @@ void outputstreamprefix( clockticks *current_SCR)
 
 		break;
 		
-		case MPEG_SVCD :
+		case MPEG_FORMAT_SVCD :
 
 		/* First packet carries sys_header */
 		create_sys_header (&sys_header, mux_rate,1, !opt_VBR, 1, 1, 1, 1,

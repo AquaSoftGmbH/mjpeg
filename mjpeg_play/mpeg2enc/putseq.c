@@ -63,7 +63,7 @@ static void set_pic_params( int decode,
 
 		
 	/* Handle picture structure... */
-	if( fieldpic )
+	if( opt_fieldpic )
 	{
 		picture->pict_struct = opt_topfirst ? TOP_FIELD : BOTTOM_FIELD;
 		picture->topfirst = 0;
@@ -71,7 +71,7 @@ static void set_pic_params( int decode,
 	}
 
 	/* Handle 3:2 pulldown frame pictures */
-	else if( pulldown_32 )
+	else if( opt_pulldown_32 )
 	{
 		picture->pict_struct = FRAME_PICTURE;
 		switch( picture->present % 4 )
@@ -134,10 +134,10 @@ static void set_pic_params( int decode,
 		break;
 	}
 
-		picture->frame_pred_dct = frame_pred_dct_tab[picture->pict_type-1];
-		picture->q_scale_type = qscale_tab[picture->pict_type-1];
-		picture->intravlc = intravlc_tab[picture->pict_type-1];
-		picture->altscan = altscan_tab[picture->pict_type-1];
+		picture->frame_pred_dct = opt_frame_pred_dct_tab[picture->pict_type-1];
+		picture->q_scale_type = opt_qscale_tab[picture->pict_type-1];
+		picture->intravlc = opt_intravlc_tab[picture->pict_type-1];
+		picture->altscan = opt_altscan_tab[picture->pict_type-1];
 
 #ifdef OUTPUT_STAT
 		fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
@@ -367,12 +367,12 @@ static void gop_start( stream_state_s *ss )
 	ss->b = 0;
 	ss->new_seq = 0;
 	
-	if( pulldown_32 )
+	if( opt_pulldown_32 )
 		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
 	else
 		frame_periods = (double)(ss->seq_start_frame + ss->i);
 	bits_after_mux = bitcount() + 
-		(uint64_t)((frame_periods / frame_rate) * nonvid_bit_rate);
+		(uint64_t)((frame_periods / opt_frame_rate) * nonvid_bit_rate);
 	if( ss->next_split_point != 0LL && 	bits_after_mux > ss->next_split_point )
 	{
 		mjpeg_info( "Splitting sequence this GOP start\n" );
@@ -396,12 +396,13 @@ static void gop_start( stream_state_s *ss )
 	*/
 	
 	if( ss->i == 0 )
-		ss->gop_length =  find_gop_length( ss->gop_start_frame, 0, 
-										  N_min-(M-1), N_max-(M-1));
+		ss->gop_length =  
+			find_gop_length( ss->gop_start_frame, 0, 
+							 opt_N_min-(opt_M-1), opt_N_max-(opt_M-1));
 	else
 		ss->gop_length = 
-			find_gop_length( ss->gop_start_frame, M-1, 
-							 N_min, N_max);
+			find_gop_length( ss->gop_start_frame, opt_M-1, 
+							 opt_N_min, opt_N_max);
 	
 			
 	/* First figure out how many B frames we're short from
@@ -413,9 +414,9 @@ static void gop_start( stream_state_s *ss )
 	   A complication is the extra I-frame in the initial
 	   closed GOP of a sequence.
 	*/
-	if( M-1 > 0 )
+	if( opt_M-1 > 0 )
 	{
-		ss->bs_short = (M - ((ss->gop_length-(ss->i==0)) % M))%M;
+		ss->bs_short = (opt_M - ((ss->gop_length-(ss->i==0)) % opt_M))%opt_M;
 		ss->next_b_drop = ((double)ss->gop_length) / (double)(ss->bs_short+1)-1.0 ;
 	}
 	else
@@ -425,18 +426,18 @@ static void gop_start( stream_state_s *ss )
 	}
 	
 	/* We aim to spread the dropped B's evenly across the GOP */
-	ss->bigrp_length = (M-1);
+	ss->bigrp_length = (opt_M-1);
 	
 	/* number of P frames */
 	if (ss->i == 0)
 	{
 		ss->bigrp_length = 1;
-		np = (ss->gop_length + 2*(M-1))/M - 1; /* first GOP */
+		np = (ss->gop_length + 2*(opt_M-1))/opt_M - 1; /* first GOP */
 	}
 	else
 	{
-		ss->bigrp_length = M;
-		np = (ss->gop_length + (M-1))/M - 1;
+		ss->bigrp_length = opt_M;
+		np = (ss->gop_length + (opt_M-1))/opt_M - 1;
 	}
 			/* number of B frames */
 	nb = ss->gop_length - np - 1;
@@ -532,12 +533,12 @@ static void next_seq_state( stream_state_s *ss )
 		   come out right ? */
 		if( ss->bs_short != 0 && ss->g > (int)ss->next_b_drop )
 		{
-			ss->bigrp_length = M - 1;
+			ss->bigrp_length = opt_M - 1;
 			if( ss->bs_short )
 				ss->next_b_drop += ((double)ss->gop_length) / (double)(ss->bs_short+1) ;
 		}
 		else
-			ss->bigrp_length = M;
+			ss->bigrp_length = opt_M;
 	}
 
     /* Are we starting a new GOP? */
@@ -786,7 +787,7 @@ static void *parencodeworker(void *start_arg)
 
 		reconstruct(picture);
 		/* Handle second field of a frame that is being field encoded */
-		if( fieldpic )
+		if( opt_fieldpic )
 		{
 			set_2nd_field_params(picture);
 

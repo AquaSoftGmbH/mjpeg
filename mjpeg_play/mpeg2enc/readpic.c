@@ -156,8 +156,8 @@ static void read_chunk()
 		  magic[6]='\0';
 		  mjpeg_error_exit1("Start of frame %d is not \"FRAME<NL>\"\n",frames_read);
       }
-      v = vertical_size;
-      h = horizontal_size;
+      v = opt_vertical_size;
+      h = opt_horizontal_size;
       for(i=0;i<v;i++)
          if(piperead(input_fd,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
 
@@ -165,8 +165,10 @@ static void read_chunk()
 	  
 	  lum_mean[n] = luminance_mean(frame_buffers[n][0], width, height );
 
-      v = chroma_format==CHROMA420 ? vertical_size/2 : vertical_size;
-      h = chroma_format!=CHROMA444 ? horizontal_size/2 : horizontal_size;
+      v = opt_chroma_format==CHROMA420 ? 
+		  opt_vertical_size/2 : opt_vertical_size;
+      h = opt_chroma_format!=CHROMA444 ? 
+		  opt_horizontal_size/2 : opt_horizontal_size;
       for(i=0;i<v;i++)
          if(piperead(input_fd,frame_buffers[n][1]+i*chrom_width,h)!=h) goto EOF_MARK;
       for(i=0;i<v;i++)

@@ -65,34 +65,34 @@ void putseqhdr()
 
 	alignbits();
 	putbits(SEQ_START_CODE,32); /* sequence_header_code */
-	putbits(horizontal_size,12); /* horizontal_size_value */
-	putbits(vertical_size,12); /* vertical_size_value */
-	putbits(aspectratio,4); /* aspect_ratio_information */
-	putbits(frame_rate_code,4); /* frame_rate_code */
+	putbits(opt_horizontal_size,12); /* horizontal_size_value */
+	putbits(opt_vertical_size,12); /* vertical_size_value */
+	putbits(opt_aspectratio,4); /* aspect_ratio_information */
+	putbits(opt_frame_rate_code,4); /* frame_rate_code */
 
 	/* MPEG-1 VBR is FFFF rate code. 
 	   MPEG-2 VBR is a matter of mux-ing.  The ceiling bit_rate is always
 	   sent 
 	*/
-	if(mpeg1 && quant_floor != 0) {
+	if(opt_mpeg1 && quant_floor != 0) {
 		putbits(-1,18);
 	} else {
-		putbits((int)ceil(bit_rate/400.0),18); /* bit_rate_value */
+		putbits((int)ceil(opt_bit_rate/400.0),18); /* bit_rate_value */
 	}
 	putbits(1,1); /* marker_bit */
-	putbits(vbv_buffer_code,10); /* vbv_buffer_size_value */
-	putbits(constrparms,1); /* constrained_parameters_flag */
+	putbits(opt_vbv_buffer_code,10); /* vbv_buffer_size_value */
+	putbits(opt_constrparms,1); /* constrained_parameters_flag */
 
-	putbits(load_iquant,1); /* load_intra_quantizer_matrix */
-	if (load_iquant)
+	putbits(opt_load_iquant,1); /* load_intra_quantizer_matrix */
+	if (opt_load_iquant)
 		for (i=0; i<64; i++)  /* matrices are always downloaded in zig-zag order */
 			putbits(intra_q[zig_zag_scan[i]],8); /* intra_quantizer_matrix */
 
-	putbits(load_niquant,1); /* load_non_intra_quantizer_matrix */
-	if (load_niquant)
+	putbits(opt_load_niquant,1); /* load_non_intra_quantizer_matrix */
+	if (opt_load_niquant)
 		for (i=0; i<64; i++)
 			putbits(inter_q[zig_zag_scan[i]],8); /* non_intra_quantizer_matrix */
-	if (!mpeg1)
+	if (!opt_mpeg1)
 	{
 		putseqext();
 		putseqdispext();
@@ -106,18 +106,18 @@ void putseqext()
   alignbits();
   putbits(EXT_START_CODE,32); /* extension_start_code */
   putbits(SEQ_ID,4); /* extension_start_code_identifier */
-  putbits((profile<<4)|level,8); /* profile_and_level_indication */
-  putbits(prog_seq,1); /* progressive sequence */
-  putbits(chroma_format,2); /* chroma_format */
-  putbits(horizontal_size>>12,2); /* horizontal_size_extension */
-  putbits(vertical_size>>12,2); /* vertical_size_extension */
-  if(mpeg1 && quant_floor != 0) {
+  putbits((opt_profile<<4)|opt_level,8); /* profile_and_level_indication */
+  putbits(opt_prog_seq,1); /* progressive sequence */
+  putbits(opt_chroma_format,2); /* chroma_format */
+  putbits(opt_horizontal_size>>12,2); /* horizontal_size_extension */
+  putbits(opt_vertical_size>>12,2); /* vertical_size_extension */
+  if(opt_mpeg1 && quant_floor != 0) {
     putbits(-1,12);
   } else {
-    putbits(((int)ceil(bit_rate/400.0))>>18,12); /* bit_rate_extension */
+    putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
   }
   putbits(1,1); /* marker_bit */
-  putbits(vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
+  putbits(opt_vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
   putbits(0,1); /* low_delay  -- currently not implemented */
   putbits(0,2); /* frame_rate_extension_n */
   putbits(0,5); /* frame_rate_extension_d */
@@ -132,27 +132,27 @@ void putseqdispext()
   alignbits();
   putbits(EXT_START_CODE,32); /* extension_start_code */
   putbits(DISP_ID,4); /* extension_start_code_identifier */
-  putbits(video_format,3); /* video_format */
+  putbits(opt_video_format,3); /* video_format */
   putbits(1,1); /* colour_description */
-  putbits(color_primaries,8); /* colour_primaries */
-  putbits(transfer_characteristics,8); /* transfer_characteristics */
-  putbits(matrix_coefficients,8); /* matrix_coefficients */
-  putbits(display_horizontal_size,14); /* display_horizontal_size */
+  putbits(opt_color_primaries,8); /* colour_primaries */
+  putbits(opt_transfer_characteristics,8); /* transfer_characteristics */
+  putbits(opt_matrix_coefficients,8); /* matrix_coefficients */
+  putbits(opt_display_horizontal_size,14); /* display_horizontal_size */
   putbits(1,1); /* marker_bit */
-  putbits(display_vertical_size,14); /* display_vertical_size */
+  putbits(opt_display_vertical_size,14); /* display_vertical_size */
 }
 
 /* output a zero terminated string as user data (6.2.2.2.2, 6.3.4.1)
  *
  * string must not emulate start codes
  */
-void putuserdata(userdata)
-char *userdata;
+void putuserdata(uint8_t *userdata, int len)
 {
+	int i;
   alignbits();
   putbits(USER_START_CODE,32); /* user_data_start_code */
-  while (*userdata)
-    putbits(*userdata++,8);
+  for( i =0; i < len; ++i )
+    putbits(userdata[i],8);
 }
 
 /* generate group of pictures header (6.2.2.6, 6.3.9)
@@ -163,8 +163,8 @@ void putgophdr(int frame,int closed_gop, int seq_header )
 {
   int tc;
 
-  /* Some VCD players, it seems, need sequence headers every GOP
-     to do fast forward, fast rev.
+  /* (S)VCD mandates sequence headers every GOP
+     to do fast forward, rewind etc.
    */
   if( seq_header )
   {
@@ -187,7 +187,7 @@ int frame;
 {
   int fps, pict, sec, minute, hour, tc;
 
-  fps = (int)(frame_rate+0.5);
+  fps = (int)(opt_frame_rate+0.5);
   pict = frame%fps;
   frame = (frame-pict)/fps;
   sec = frame%60;
@@ -212,7 +212,7 @@ void putpicthdr(pict_data_s *picture)
   if (picture->pict_type==P_TYPE || picture->pict_type==B_TYPE)
   {
     putbits(0,1); /* full_pel_forward_vector */
-    if (mpeg1)
+    if (opt_mpeg1)
       putbits(picture->forw_hor_f_code,3);
     else
       putbits(7,3); /* forward_f_code */
@@ -221,7 +221,7 @@ void putpicthdr(pict_data_s *picture)
   if (picture->pict_type==B_TYPE)
   {
     putbits(0,1); /* full_pel_backward_vector */
-    if (mpeg1)
+    if (opt_mpeg1)
       putbits(picture->back_hor_f_code,3);
     else
       putbits(7,3); /* backward_f_code */

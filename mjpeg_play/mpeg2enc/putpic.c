@@ -209,15 +209,16 @@ void putpict(pict_data_s *picture )
 		*/
 		putgophdr( picture->decode+picture->temp_ref,
 				   picture->decode,
-				   picture->decode != 0 && seq_header_every_gop);
+				   picture->decode != 0 && opt_seq_hdr_every_gop);
 	}
 
 	/* picture header and picture coding extension */
 	putpicthdr(picture);
 
-	if ( !mpeg1 )
+	if ( !opt_mpeg1 )
 		putpictcodext(picture);
-
+	if( opt_svcd_scan_data && picture->pict_type == I_TYPE )
+		putuserdata( dummy_svcd_scan_data, sizeof(dummy_svcd_scan_data) );
 	prev_mquant = rc_start_mb(picture); /* initialize quantization parameter */
 
 	k = 0;
@@ -236,7 +237,7 @@ void putpict(pict_data_s *picture )
 				/* slice header (6.2.4) */
 				alignbits();
 
-				if (mpeg1 || vertical_size<=2800)
+				if (opt_mpeg1 || opt_vertical_size<=2800)
 					putbits(SLICE_MIN_START+j,32); /* slice_start_code */
 				else
 				{
@@ -421,7 +422,7 @@ void putpict(pict_data_s *picture )
 			if (mb_type & MB_PATTERN)
 			{
 				putcbp((cbp >> (block_count-6)) & 63);
-				if (chroma_format!=CHROMA420)
+				if (opt_chroma_format!=CHROMA420)
 					putbits(cbp,block_count-6);
 			}
 

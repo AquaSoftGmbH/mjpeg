@@ -81,9 +81,7 @@ static void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat)
 void init_quantizer()
 {
   int flags;
-  char *opt_type1;
-  char *opt_type2;
-  
+  char *opt_type1, *opt_type2;
   flags = cpu_accel();
 #ifdef HAVE_X86CPU 
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
@@ -181,7 +179,7 @@ void quant_intra(
   int i,comp;
   int x, y, d;
   int clipping;
-  int clipvalue  = dctsatlim;
+  int clipvalue  = opt_dctsatlim;
   uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
 
 
@@ -294,7 +292,7 @@ int quant_non_intra(
 	int x, y, d;
 	int nzflag;
 	int coeff_count;
-	int clipvalue  = dctsatlim;
+	int clipvalue  = opt_dctsatlim;
 	int flags = 0;
 	int saturated = 0;
 	uint16_t *quant_mat = inter_q_tbl[mquant]/* inter_q */;
@@ -380,7 +378,7 @@ void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
-  if ( mpeg1  )
+  if ( opt_mpeg1  )
     iquant1_intra(src,dst,dc_prec, mquant);
   else
   {
@@ -446,7 +444,7 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
   int i, val, sum;
   uint16_t *quant_mat;
 
-  if ( mpeg1 )
+  if ( opt_mpeg1 )
     (*piquant_non_intra_m1)(src,dst,inter_q_tbl[mquant]);
   else
   {

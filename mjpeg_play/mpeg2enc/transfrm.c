@@ -164,11 +164,11 @@ void transform(
 					/* chrominance */
 
 					/* scale coordinates */
-					i1 = (chroma_format==CHROMA444) ? i : i>>1;
-					j1 = (chroma_format!=CHROMA420) ? j : j>>1;
+					i1 = (opt_chroma_format==CHROMA444) ? i : i>>1;
+					j1 = (opt_chroma_format!=CHROMA420) ? j : j>>1;
 
 					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
-						&& (chroma_format!=CHROMA420))
+						&& (opt_chroma_format!=CHROMA420))
 					{
 						/* field DCT */
 						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
@@ -239,11 +239,11 @@ void itransform(pict_data_s *picture)
 					/* chrominance */
 
 					/* scale coordinates */
-					i1 = (chroma_format==CHROMA444) ? i : i>>1;
-					j1 = (chroma_format!=CHROMA420) ? j : j>>1;
+					i1 = (opt_chroma_format==CHROMA444) ? i : i>>1;
+					j1 = (opt_chroma_format!=CHROMA420) ? j : j>>1;
 
 					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
-						&& (chroma_format!=CHROMA420))
+						&& (opt_chroma_format!=CHROMA420))
 					{
 						/* field DCT */
 						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));

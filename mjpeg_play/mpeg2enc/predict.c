@@ -425,12 +425,12 @@ static void pred (
 		if (cc==1)
 		{
 			/* scale for color components */
-			if (chroma_format==CHROMA420)
+			if (opt_chroma_format==CHROMA420)
 			{
 				/* vertical */
 				h >>= 1; y >>= 1; dy /= 2;
 			}
-			if (chroma_format!=CHROMA444)
+			if (opt_chroma_format!=CHROMA444)
 			{
 				/* horizontal */
 				w >>= 1; x >>= 1; dx /= 2;
@@ -705,12 +705,12 @@ static void clearblock(
 
   w = h = 16;
 
-  if (chroma_format!=CHROMA444)
+  if (opt_chroma_format!=CHROMA444)
   {
     i0>>=1; w>>=1;
   }
 
-  if (chroma_format==CHROMA420)
+  if (opt_chroma_format==CHROMA420)
   {
     j0>>=1; h>>=1;
   }

@@ -428,13 +428,6 @@ extern unsigned int bitrate_index [4][3][16];
     Command line options and derived parameters
 *************************************************************************/
 
-#define MPEG_MPEG1   0
-#define MPEG_VCD     1
-#define MPEG_VCD_NSR 2
-#define MPEG_MPEG2   3
-#define MPEG_SVCD     4
-#define MPEG_SVCD_NSR 5
-#define MPEG_DVD      6
 
 
 extern int opt_quiet_mode;
