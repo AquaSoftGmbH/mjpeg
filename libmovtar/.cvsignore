@@ -3,9 +3,12 @@ Makefile
 Makefile.in
 aclocal.m4
 config.cache
+config.guess
 config.log
 config.status
+config.sub
 configure
+ltmain.sh
 movtar-config
 movtar_index
 movtar_play
