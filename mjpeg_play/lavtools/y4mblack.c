@@ -194,7 +194,7 @@ void usage(void)
 void chroma_usage(void)
 	{
 	int mode = 0;
-	char *keyword;
+	const char *keyword;
 
 	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
 		__progname);

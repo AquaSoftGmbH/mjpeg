@@ -39,6 +39,8 @@ static uint8_t audio_buff[2*256*1024]; /* Enough for 1fps, 48kHz ... */
 int silence_sr, silence_bs, silence_ch ; 
 EditList el;
 
+uint32_t reorder_32(uint32_t);
+void set_silence (char *);
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd );
 void Usage(char *str);
 

@@ -57,6 +57,7 @@
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #include "yuv4mpeg.h"
 
@@ -212,7 +213,7 @@ static void usage()
 void chroma_usage(void)
 	{
 	int mode = 0;
-	char *keyword;
+	const char *keyword;
 
 	fprintf(stderr, "%s -x usage: Only the 3 plane formats are actually supported\n",
 		__progname);
