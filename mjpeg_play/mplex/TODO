@@ -1,23 +1,19 @@
 TODO
 
-- When truncated last frame detected in audio streams the last AU in the
-  AU list should be deleted as well as generating a warning!
+- Figure out why dvdauthor barfs on mplex' output but not the hacked bbmplex in
+	transcode...
+
+
+- Reduce use of muxinto.<global> by encapsulating run-out info...
 
 - Complete encapsulation by utilising stream interface rather than
   direct access to C-style file I/O 
 
-- Check if video and MPEG audio streams have the same eof bug as I found
-in AC3 audio.
-
 - Need to add general facility for enforcing max STD buffer delay for audio
   and for warning if constraints for particular formats are exceeded.
 
-- Make VBR more efficient (a skip for long periods where no sector is emitted).
-
-
 - Complete tidying up the systems.cc structure.   Non-duplication of the
 	header generation stuff would be neat if it can be managed...
-
 
 - Add checking for changed sequence parameters in mid-sequence sequence headers.
 

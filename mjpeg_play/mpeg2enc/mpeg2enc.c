@@ -439,6 +439,7 @@ static void set_format_presets(void)
 
 
 	case MPEG_FORMAT_DVD :
+	case MPEG_FORMAT_DVD_NAV :
 		mjpeg_info( "Selecting DVD output profile");
 		
 		if( param_bitrate == 0 )

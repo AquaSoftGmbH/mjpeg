@@ -89,10 +89,11 @@ manually.
  6 - VCD Stills stream (mixed mode with hi-res and standard-res image streams
 	 multiplexed are supported).
  7 - SVCD Stills stream.
- 8 - DVD. Don't get too excited.  This is really a very minimal 
-	 mux format.   It includes empty versions of the peculiar GOP start
-	 sectors DVD VOB's include.   This is enough to persuade some hardware
-	 players to play the stream but is a long way from full DVD authoring.
+ 8 - DVD (with NAV sectors). Don't get too excited.  This is really a
+ very minimal mux format.  It includes empty versions of the peculiar
+ VOBU start sectors DVD VOB's include.  This is enough to persuade some
+ hardware players to play the stream but is a long way from full DVD authoring.
+ 9 - DVD.  As above but without the empty VOBU sectors.
 .TP
 .BI -r|--mux-bitrate \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
