@@ -469,3 +469,12 @@ void putpict(pict_data_s *picture )
 	rc_update_pict(picture);
 	vbv_end_of_picture(picture);
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

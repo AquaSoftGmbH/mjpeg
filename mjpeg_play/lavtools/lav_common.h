@@ -47,7 +47,7 @@
 #define MAX_EDIT_LIST_FILES 256
 #define MAX_JPEG_LEN (3*576*768/2)
 
-static char roundadj[4] = { 0, 0, 1, 2 };
+const static char roundadj[4] = { 0, 0, 1, 2 };
 
 #define BUFFER_ALIGN 16
 

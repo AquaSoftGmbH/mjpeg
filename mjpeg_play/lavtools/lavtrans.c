@@ -242,7 +242,7 @@ int main(int argc, char ** argv)
       wave_hdr.datatag = FOURCC_DATA;
       wave_hdr.datalen = 0; /* to be filled later */
       
-      wavfd = fopen(outfile,"w");
+      wavfd = fopen(outfile,"wb");
       if(wavfd==0) system_error("opening WAV file","fopen");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
       if(res!=1) system_error("writing WAV file","fwrite");
@@ -256,7 +256,7 @@ int main(int argc, char ** argv)
    {
       nv = el_get_video_frame(vbuff, process_image_frame, &el);
       sprintf(imgfname,outfile);
-      imgfd = fopen(imgfname,"w");
+      imgfd = fopen(imgfname,"wb");
       if(imgfd==0) system_error("opening image file","fopen");
       res = fwrite(vbuff,nv,1,imgfd);
       if(res!=1) system_error("writing image","fwrite");
@@ -289,7 +289,7 @@ int main(int argc, char ** argv)
 
          case 'i':
             sprintf(imgfname,outfile,nframe);
-            imgfd = fopen(imgfname,"w");
+            imgfd = fopen(imgfname,"wb");
             if(imgfd==0) system_error("opening image file","fopen");
             res = fwrite(vbuff,nv,1,imgfd);
             if(res!=1) system_error("writing image","fwrite");

@@ -120,7 +120,7 @@ typedef struct
 
 
 avi_t* AVI_open_output_file(char * filename);
-void AVI_set_video(avi_t *AVI, int width, int height, double fps, char *compressor);
+void AVI_set_video(avi_t *AVI, int width, int height, double fps, const char *compressor);
 void AVI_set_audio(avi_t *AVI, int channels, long rate, int bits, int format);
 int  AVI_write_frame(avi_t *AVI, char *data, long bytes);
 int  AVI_dup_frame(avi_t *AVI);
@@ -154,8 +154,8 @@ int  AVI_read_data(avi_t *AVI, char *vidbuf, long max_vidbuf,
                                char *audbuf, long max_audbuf,
                                long *len);
 
-void AVI_print_error(char *str);
-char *AVI_strerror(void);
-char *AVI_syserror(void);
+void AVI_print_error(const char *str);
+const char *AVI_strerror(void);
+const char *AVI_syserror(void);
 
 #endif

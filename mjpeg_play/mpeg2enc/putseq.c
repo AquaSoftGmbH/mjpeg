@@ -146,31 +146,31 @@ static void set_pic_params( int decode,
 	picture->altscan = opt_altscan_tab[picture->pict_type-1];
 
 #ifdef OUTPUT_STAT
-		fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
-		fprintf(statfile," picture_type=%c\n",pict_type_char[picture->pict_type]);
-		fprintf(statfile," temporal_reference=%d\n",picture->temp_ref);
-		fprintf(statfile," frame_pred_frame_dct=%d\n",picture->frame_pred_dct);
-		fprintf(statfile," q_scale_type=%d\n",picture->q_scale_type);
-		fprintf(statfile," intra_vlc_format=%d\n",picture->intravlc);
-		fprintf(statfile," alternate_scan=%d\n",picture->altscan);
+	fprintf(statfile,"\nFrame %d (#%d in display order):\n",decode,display);
+	fprintf(statfile," picture_type=%c\n",pict_type_char[picture->pict_type]);
+	fprintf(statfile," temporal_reference=%d\n",picture->temp_ref);
+	fprintf(statfile," frame_pred_frame_dct=%d\n",picture->frame_pred_dct);
+	fprintf(statfile," q_scale_type=%d\n",picture->q_scale_type);
+	fprintf(statfile," intra_vlc_format=%d\n",picture->intravlc);
+	fprintf(statfile," alternate_scan=%d\n",picture->altscan);
 
-		if (picture->pict_type!=I_TYPE)
-		{
-			fprintf(statfile," forward search window: %d...%d / %d...%d\n",
-					-sxf,sxf,-syf,syf);
-			fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
-					-(4<<picture->forw_hor_f_code),(4<<picture->forw_hor_f_code)-1,
-					-(4<<picture->forw_vert_f_code),(4<<picture->forw_vert_f_code)-1);
-		}
+	if (picture->pict_type!=I_TYPE)
+	{
+		fprintf(statfile," forward search window: %d...%d / %d...%d\n",
+				-sxf,sxf,-syf,syf);
+		fprintf(statfile," forward vector range: %d...%d.5 / %d...%d.5\n",
+				-(4<<picture->forw_hor_f_code),(4<<picture->forw_hor_f_code)-1,
+				-(4<<picture->forw_vert_f_code),(4<<picture->forw_vert_f_code)-1);
+	}
 
-		if (picture->pict_type==B_TYPE)
-		{
-			fprintf(statfile," backward search window: %d...%d / %d...%d\n",
-					-sxb,sxb,-syb,syb);
-			fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
-					-(4<<picture->back_hor_f_code),(4<<picture->back_hor_f_code)-1,
-					-(4<<picture->back_vert_f_code),(4<<picture->back_vert_f_code)-1);
-		}
+	if (picture->pict_type==B_TYPE)
+	{
+		fprintf(statfile," backward search window: %d...%d / %d...%d\n",
+				-sxb,sxb,-syb,syb);
+		fprintf(statfile," backward vector range: %d...%d.5 / %d...%d.5\n",
+				-(4<<picture->back_hor_f_code),(4<<picture->back_hor_f_code)-1,
+				-(4<<picture->back_vert_f_code),(4<<picture->back_vert_f_code)-1);
+	}
 #endif
 
 
@@ -242,7 +242,7 @@ static int find_gop_length( int gop_start_frame,
 
 	/* Search backwards from max gop length for I-frame candidate
 	   adjusting for I-frame temporal reference
-	 */
+	*/
 	for( i = gop_max_len; i >= gop_min_len; i -= min_b_grp )
 	{
 		pred_lum_mean = frame_lum_mean( gop_start_frame+i+I_frame_temp_ref-min_b_grp );
@@ -282,8 +282,8 @@ static int find_gop_length( int gop_start_frame,
 			{
 				mjpeg_info("GOP min length too small to permit scene-change on GOP boundary %d\n", j);
 				/* Its better to put the missed transition at the end
-				of a GOP so any eventual artefacting is soon washed
-				out by an I-frame*/
+				   of a GOP so any eventual artefacting is soon washed
+				   out by an I-frame*/
 				i = gop_min_len;
 			}
 			else
@@ -316,22 +316,22 @@ static int find_gop_length( int gop_start_frame,
 
 
 struct _stream_state 
- {
-	 int i;						/* Index in current sequence */
-	 int g;						/* Index in current GOP */
-	 int b;						/* Index in current B frame group */
-	 int seq_start_frame;		/* Index start current sequence in
+{
+	int i;						/* Index in current sequence */
+	int g;						/* Index in current GOP */
+	int b;						/* Index in current B frame group */
+	int seq_start_frame;		/* Index start current sequence in
 								   input stream */
-	 int gop_start_frame;		/* Index start current gop in input stream */
-	 int gop_length;			/* Length of current gop */
-	 int bigrp_length;			/* Length of current B-frame group */
-	 int bs_short;				/* Number of B frame GOP is short of
+	int gop_start_frame;		/* Index start current gop in input stream */
+	int gop_length;			/* Length of current gop */
+	int bigrp_length;			/* Length of current B-frame group */
+	int bs_short;				/* Number of B frame GOP is short of
 								   having M-1 B's for each I/P frame
-								 */
-	 int np;					/* P frames in current GOP */
-	 int nb;					/* B frames in current GOP */
-	 double next_b_drop;		/* When next B frame drop is due in GOP */
-	 int new_seq;				/* Current GOP/frame starts new sequence */
+								*/
+	int np;					/* P frames in current GOP */
+	int nb;					/* B frames in current GOP */
+	double next_b_drop;		/* When next B frame drop is due in GOP */
+	int new_seq;				/* Current GOP/frame starts new sequence */
 	int64_t next_split_point;
 	int64_t seq_split_length;
 };
@@ -348,17 +348,17 @@ static void create_threads( pthread_t *threads, int num, void *(*start_routine)(
 	*/
 #ifdef HAVE_PTHREADSTACKSIZE
 #define MINSTACKSIZE 200000
-       pthread_attr_t attr;
-       size_t stacksize;
+	pthread_attr_t attr;
+	size_t stacksize;
 
-       pthread_attr_init(&attr);
-       pthread_attr_getstacksize(&attr, &stacksize);
+	pthread_attr_init(&attr);
+	pthread_attr_getstacksize(&attr, &stacksize);
 
-       if (stacksize < MINSTACKSIZE) {
-		   pthread_attr_setstacksize(&attr, MINSTACKSIZE);
-       }
+	if (stacksize < MINSTACKSIZE) {
+		pthread_attr_setstacksize(&attr, MINSTACKSIZE);
+	}
 
-       pattr = &attr;
+	pattr = &attr;
 #endif
 	for(i = 0; i < num; ++i )
 	{
@@ -470,7 +470,7 @@ static void gop_start( stream_state_s *ss )
 		ss->bigrp_length = ctl_M;
 		np = (ss->gop_length + (ctl_M-1))/ctl_M - 1;
 	}
-			/* number of B frames */
+	/* number of B frames */
 	nb = ss->gop_length - np - 1;
 
 	ss->np = np;
@@ -491,11 +491,11 @@ static void gop_start( stream_state_s *ss )
 */
 
 static void I_or_P_frame_struct( stream_state_s *ss,
-                         pict_data_s *picture )
+								 pict_data_s *picture )
 {
 	/* Temp ref of I frame in initial closed GOP of sequence is 0 
 	   We have to be a little careful with the end of stream special-case.
-	 */
+	*/
 	if( ss->i == 0 )
 	{
 		picture->temp_ref =  ss->i;
@@ -535,7 +535,7 @@ static void I_or_P_frame_struct( stream_state_s *ss,
 
 
 static void B_frame_struct(  stream_state_s *ss,
-					  pict_data_s *picture )
+							 pict_data_s *picture )
 {
 	picture->temp_ref = ss->g - 1;
 	picture->present = ss->i-1;
@@ -546,7 +546,7 @@ static void B_frame_struct(  stream_state_s *ss,
 
 /*
   Update ss to the next sequence state.
- */
+*/
 
 static void next_seq_state( stream_state_s *ss )
 {
@@ -583,7 +583,7 @@ static void next_seq_state( stream_state_s *ss )
 static void init_pict_data( pict_data_s *picture )
 {
 	int i;
-		/* Allocate buffers for picture transformation */
+	/* Allocate buffers for picture transformation */
 	picture->qblocks =
 		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
 	picture->mbinfo = 
@@ -666,15 +666,15 @@ static void reconstruct( pict_data_s *picture)
 {
 
 #ifndef OUTPUT_STAT
-		if( picture->pict_type!=B_TYPE)
-		{
+	if( picture->pict_type!=B_TYPE)
+	{
 #endif
-			iquantize( picture );
-			itransform(picture);
-			calcSNR(picture);
-			stats();
+		iquantize( picture );
+		itransform(picture);
+		calcSNR(picture);
+		stats();
 #ifndef OUTPUT_STAT
-		}
+	}
 #endif
 }
 
@@ -685,7 +685,7 @@ static mp_semaphore_t picture_started = SEMAPHORE_INITIALIZER;
 
 static void stencodeworker(pict_data_s *picture)
 {
-		/* ALWAYS do-able */
+	/* ALWAYS do-able */
 	mjpeg_info("Frame start %d %c %d %d\n",
 			   picture->decode, 
 			   pict_type_char[picture->pict_type],
@@ -699,55 +699,55 @@ static void stencodeworker(pict_data_s *picture)
 				   picture->pict_struct
 			);
 
-		motion_subsampled_lum(picture);
+	motion_subsampled_lum(picture);
 
 		
-		/* DEPEND on completion previous Reference frames (P) or on old
-		   and new Reference frames B.  However, since new reference frame
-		   cannot complete until old reference frame completed (see below)
-		   suffices just to check new reference frame... 
-		   N.b. completion guard of picture is always reset to false
-		   before this function is called...
+	/* DEPEND on completion previous Reference frames (P) or on old
+	   and new Reference frames B.  However, since new reference frame
+	   cannot complete until old reference frame completed (see below)
+	   suffices just to check new reference frame... 
+	   N.b. completion guard of picture is always reset to false
+	   before this function is called...
 		   
-		   In field picture encoding the P field of an I frame is
-		   a special case.  We have to wait for completion of the I field
-		   before starting the P field
-		*/
+	   In field picture encoding the P field of an I frame is
+	   a special case.  We have to wait for completion of the I field
+	   before starting the P field
+	*/
+
+	motion_estimation(picture);
+	predict(picture);
+
+	/* No dependency */
+	transform(picture);
+	/* Depends on previous frame completion for IB and P */
+
+	putpict(picture);
+
+	reconstruct(picture);
+
+	/* Handle second field of a frame that is being field encoded */
+	if( opt_fieldpic )
+	{
+		set_2nd_field_params(picture);
+		mjpeg_info("Field %s (%d)\n",
+				   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
+				   picture->pict_struct
+			);
 
 		motion_estimation(picture);
 		predict(picture);
-
-		/* No dependency */
 		transform(picture);
-		/* Depends on previous frame completion for IB and P */
-
 		putpict(picture);
-
 		reconstruct(picture);
 
-		/* Handle second field of a frame that is being field encoded */
-		if( opt_fieldpic )
-		{
-			set_2nd_field_params(picture);
-			mjpeg_info("Field %s (%d)\n",
-					   (picture->pict_struct == TOP_FIELD) ? "top" : "bot",
-					   picture->pict_struct
-				);
-
-			motion_estimation(picture);
-			predict(picture);
-			transform(picture);
-			putpict(picture);
-			reconstruct(picture);
-
-		}
+	}
 
 
-		mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
-					picture->decode, 
-					picture->pad ? "PAD" : "   ",
-					picture->avg_act, picture->sum_avg_act,
-					picture->AQ, picture->SQ);
+	mjpeg_debug("Frame end %d %s %3.2f %.2f %2.1f %.2f\n",
+				picture->decode, 
+				picture->pad ? "PAD" : "   ",
+				picture->avg_act, picture->sum_avg_act,
+				picture->AQ, picture->SQ);
 			
 }
 
@@ -840,7 +840,7 @@ static void *parencodeworker(void *start_arg)
 					picture->AQ, picture->SQ);
 
 		/* We're finished - let anyone depending on us know...
-		*/
+		 */
 		sync_guard_update( &picture->completion, 1 );
 			
 	}
@@ -904,9 +904,9 @@ void putseq()
 	ss.g = 0;						/* Index in current GOP */
 	ss.b = 0;						/* B frames since last I/P */
 	ss.gop_length = 0;				/* Length of current GOP init 0
-								   0 force new GOP at start 1st sequence */
+									   0 force new GOP at start 1st sequence */
 	ss.seq_start_frame = 0;		/* Index start current sequence in
-								 input stream */
+								   input stream */
 	ss.gop_start_frame = 0;		/* Index start current gop in input stream */
 	ss.seq_split_length = ((int64_t)ctl_seq_length_limit)*(8*1024*1024);
 	ss.next_split_point = BITCOUNT_OFFSET + ss.seq_split_length;
@@ -981,3 +981,12 @@ void putseq()
 		sync_guard_test( &cur_picture->completion );
 	putseqend();
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

@@ -92,7 +92,7 @@ static int avi_sampsize(avi_t *AVI)
 /* Add a chunk (=tag and data) to the AVI file,
    returns -1 on write error, 0 on success */
 
-static int avi_add_chunk(avi_t *AVI, unsigned char *tag, unsigned char *data, int length)
+static int avi_add_chunk(avi_t *AVI, const unsigned char *tag, unsigned char *data, int length)
 {
    unsigned char c[8];
 
@@ -122,7 +122,7 @@ static int avi_add_chunk(avi_t *AVI, unsigned char *tag, unsigned char *data, in
    return 0;
 }
 
-static int avi_add_index_entry(avi_t *AVI, unsigned char *tag, long flags, long pos, long len)
+static int avi_add_index_entry(avi_t *AVI, const unsigned char *tag, long flags, long pos, long len)
 {
    void *ptr;
 
@@ -206,7 +206,7 @@ avi_t* AVI_open_output_file(char * filename)
    return AVI;
 }
 
-void AVI_set_video(avi_t *AVI, int width, int height, double fps, char *compressor)
+void AVI_set_video(avi_t *AVI, int width, int height, double fps, const char *compressor)
 {
    /* may only be called if file is open for writing */
 
@@ -1151,7 +1151,7 @@ int AVI_read_data(avi_t *AVI, char *vidbuf, long max_vidbuf,
 
 /* AVI_print_error: Print most recent error (similar to perror) */
 
-char *(avi_errors[]) =
+const char *(avi_errors[]) =
 {
   /*  0 */ "avilib - No Error",
   /*  1 */ "avilib - AVI file size limit reached",
@@ -1173,7 +1173,7 @@ static int num_avi_errors = sizeof(avi_errors)/sizeof(char*);
 
 static char error_string[4096];
 
-void AVI_print_error(char *str)
+void AVI_print_error(const char *str)
 {
    int aerrno;
 
@@ -1193,7 +1193,7 @@ void AVI_print_error(char *str)
    }
 }
 
-char *AVI_strerror(void)
+const char *AVI_strerror(void)
 {
    int aerrno;
 

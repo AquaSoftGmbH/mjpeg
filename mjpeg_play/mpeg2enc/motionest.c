@@ -1954,3 +1954,12 @@ static void mb_me_search(
 }
 
 
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

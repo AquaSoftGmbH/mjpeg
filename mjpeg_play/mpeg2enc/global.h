@@ -318,10 +318,10 @@ EXTERN const uint8_t dummy_svcd_scan_data[14]
 = {
 	0x10,                       /* Scan data tag */
 	14,                         /* Length */
-	0x01, 0x82, 0x83,            /* Dummy data - this will be filled */
-	0x01, 0x82, 0x83,            /* By the multiplexor or cd image   */        
-	0x01, 0x82, 0x83,            /* creation software                */        
-	0x01, 0x82, 0x83
+	0x00, 0x80, 0x81,            /* Dummy data - this will be filled */
+	0x00, 0x80, 0x81,            /* By the multiplexor or cd image   */        
+	0xff, 0xff, 0xff,            /* creation software                */        
+	0xff, 0xff, 0xff
 
   }
 #endif

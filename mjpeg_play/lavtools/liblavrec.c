@@ -386,7 +386,7 @@ static int lavrec_autodetect_signal(lavrec_t *info)
          {
             lavrec_msg (LAVREC_MSG_ERROR, info,
                "Error getting video input status: %s",
-               (char*)sys_errlist[errno]);
+               (const char*)sys_errlist[errno]);
             return 0;
          }
 

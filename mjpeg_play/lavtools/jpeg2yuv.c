@@ -218,7 +218,7 @@ static int init_parse_files(parameters_t *param)
   snprintf(jpegname, sizeof(jpegname), 
 	   param->jpegformatstr, param->begin);
   mjpeg_debug("Analyzing %s to get the right pic params\n", jpegname);
-  jpegfile = fopen(jpegname, "r");
+  jpegfile = fopen(jpegname, "rb");
   
   if (jpegfile == NULL)
     mjpeg_error_exit1("System error while opening: \"%s\": %s\n",
@@ -308,7 +308,7 @@ static int generate_YUV4MPEG(parameters_t *param)
        frame++) {
 
     snprintf(jpegname, sizeof(jpegname), param->jpegformatstr, frame);
-    jpegfile = fopen(jpegname, "r");
+    jpegfile = fopen(jpegname, "rb");
     
     if (jpegfile == NULL) { 
       mjpeg_info("Read from '%s' failed:  %s\n", jpegname, strerror(errno));

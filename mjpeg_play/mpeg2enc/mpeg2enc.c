@@ -73,8 +73,9 @@ static void init_quantmat (void);
 #define MAX(a,b) ( (a)>(b) ? (a) : (b) )
 #define MIN(a,b) ( (a)<(b) ? (a) : (b) )
 
-
-
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
 
 /* Command Parameter values.  These are checked and processed for
    defaults etc after parsing.  The resulting values then set the opt_
@@ -93,18 +94,17 @@ static int param_fieldenc   = -1; /* 0: progressive, 1: bottom first, 2: top fir
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_44_red	= 2;
 static int param_22_red	= 3;	
-static int param_hfnoise_quant = 0;
-static int param_hires_quant = 0;
+static int param_hf_quant = 0;
 static double param_act_boost = 0.0;
 static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 2000;
 static int param_min_GOP_size = 12;
 static int param_max_GOP_size = 12;
-static bool param_preserve_B = false;
+static int param_preserve_B = 0;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
 static int param_32_pulldown = 0;
-static int param_svcd_scan_data = 0;
+static int param_svcd_scan_data = -1;
 static int param_seq_hdr_every_gop = 0;
 static int param_seq_end_every_gop = 0;
 static int param_still_size = 0;
@@ -148,51 +148,87 @@ static void DisplayAspectRatios()
 static void Usage(char *str)
 {
 	fprintf(stderr,
-" -v num     Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n"
-" -f fmt     Set pre-defined mux format.\n"
-"            [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n"
-"             3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
-"             6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
-" -a num     Aspect ratio displayed image [1..4] (default: 4:3)\n"
-"            0 - Display aspect ratio code tables\n"
-" -F num     Playback frame rate of encoded video\n"
-"            (default: frame rate of input stream)\n"
-"            0 - Display frame rate code table\n"
-" -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n"
-" -B num     Non-video data bitrate to use for sequence splitting\n"
-"            calculations (see -S).\n"
-" -q num     Quality factor [1..31] (1 is best, no default)\n"
-"            Bitrate sets upper-bound rate when q is specified\n"
-" -o name    Outputfile name (REQUIRED!!!)\n"
-" -T size    Target Size in KB for VCD stills\n"
-" -I num     only for MPEG 2 output:\n"
-"             0 = encode by frame (progressive - per frame MC / MDCT)\n"
-"             1 = encode by field, bottom fields before top first\n"
-"             2 = encode by field, top fields before bottom\n"
-"             3 = encode by frame (per-field MC and MDCT)\n"
-"             4 = encode by frame (as 0 but with DXR2 bug workaround)\n)"
-" -r num     Search radius for motion compensation [0..32] (default 16)\n"
-" -4 num     Population halving passes 4*4-pel subsampled motion compensation\n"
-"            (default: 2)\n"
-" -2 num     Population halving passes 2*2-pel subsampled motion compensation\n"
-"            (default: 3)\n"
-" -g num     Minimum GOP size (default 12)\n"
-" -G num     Maximum GOP size (default 12)\n"
-" -P         Preserve 2 B frames between I/P even when adjusting GOP size\n"
-" -M num     Optimise threading for num CPU's (default: 1)\n"
-" -Q num     Quality factor decrement for highly active blocks [0.0 .. 10]\n"
-"            (default: 2.5)\n"
-" -V num     Target video buffer size in KB (default 46)\n"
-" -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL)\n"
-" -S num     Start a new sequence every num Mbytes in the final mux-ed\n"
-"            stream.  -B specifies the bitrate of non-video data\n"
-" -p         Generate header flags for 32 pull down of 24fps movie\n"
-" -N         Noise filter via quantisation adjustment\n"
-" -h         Maximise high-frequency resolution\n"
-"            (useful for high quality sources at high bit-rates)\n"
-" -s         Include a sequence header every GOP\n"
-" -z b|t     Force playback field order of bottom or top first\n"
-" -?         Print this lot out!\n"
+"--verbose|-v num\n" 
+"    Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n"
+"--format-f fmt\n"
+"    Set pre-defined mux format fmt.\n"
+"    [0 = Generic MPEG1, 1 = standard VCD, 2 = VCD,\n"
+"     3 = Generic MPEG2, 4 = standard SVCD, 5 = user SVCD,\n"
+"     6 = VCD Stills sequences, 7 = SVCD Stills sequences, 8 = DVD]\n"
+"--aspect|-a num\n"
+"    Set displayed image aspect ratio image (default: 2 = 4:3)\n"
+"    [1 = 1:1, 2 = 4:3, 3 = 16:9, 4 = 2.21:1]\n"
+"--frame-rate|-F num\n"
+"    Set playback frame rate of encoded video\n"
+"    (default: frame rate of input stream)\n"
+"    0 = Display frame rate code table\n"
+"--video-bitrate|-b num\n"
+"    Set Bitrate of compress video in KBit/sec\n"
+"    (default: 1152 for VCD, 2500 for SVCD, 3800 for DVD)\n"
+"--nonvideo-birate|-B num\n"
+"    Non-video data bitrate to assume for sequence splitting\n"
+"    calculations (see also --sequence-length).\n"
+"--quantisation|-q num\n"
+"    Image data quantisation factor [1..31] (1 is best quality, no default)\n"
+"    When quantisation is set variable bit-rate encoding is activated and\n"
+"    the --bitrate value sets an *upper-bound* video data-rate\n"
+"--output|-o pathname\n"
+"    pathname of output file or fifo (REQUIRED!!!)\n"
+"--vcd-still-size|-T size\n"
+"    Size in KB of VCD stills\n"
+"--interlace-mode|-I num\n"
+"    Sets MPEG 2 motino estimation and encoding modes:\n"
+"    0 = Progressive (non-interlaced)(Movies)\n"
+"    1 = Interlaced source material (video)\n"
+"    2 = Progressive with DXR2 playback bug workaround\n)"
+"--motion-search-radius|-r num\n"
+"    Motion compensation search radius [0..32] (default 16)\n"
+"--reduction-4x4|num\n"
+"    Reduction factor for 4x4 subsampled candidate motion estimates\n"
+"    [1..4] [1 = max quality, 4 = max. speed] (default: 2)\n"
+"--reduction-2x2|-2 num\n"
+"    Reduction factor for 2x2 subsampled candidate motion estimates\n"
+"    [1..4] [1 = max quality, 4 = max. speed] (default: 3)\n"
+"--min-gop-size|-g num\n"
+"    Minimum size Group-of-Pictures (default 12)\n"
+"--max-gop-size|-G num\n"
+"    Maximum size Group-of-Pictures (default 12)\n"
+"    If min-gop is less than  max-gop, mpeg2enc attempts to place GOP\n"
+"    boundaries to coincide with scene changes\n"
+"--force-b-b-p|-P\n"
+"    Preserve two B frames between I/P frames when placing GOP boundaries\n"
+"--quantisation-reduction|-Q num\n"
+"    Max. quantisation reduction for highly active blocks\n"
+"    [0.0 .. 5] (default: 0.0)\n"
+"--video-buffer|-V num\n"
+"    Target decoders video buffer size in KB (default 46)\n"
+"--video-norm|-n n|p|s\n"
+"    Tag output to suit playback in specified video norm\n"
+"    (n = NTSC, p = PAL, s = SECAM) (default: PAL)\n"
+"--sequence-length|-S num\n"
+"    Place a sequence boundary in the video stream so they occur every\n"
+"    num Mbytes once the video is multiplexed with audio etc.\n"
+"    N.b. --non-video-bitrate is used to the bitrate of the other\n"
+"    data that will be multiplexed with this video stream\n"
+"--3-2-pulldown|-p\n"
+"    Generate header flags for 3-2 pull down of 24fps movie material\n"
+"--reduce-hf|-N\n"
+"    Reduce high frequency resolution - useful as a mild noise reduction\n"
+"--keep-hf|-h\n"
+"    Maximise high-frequency resolution - useful for high quality sources\n"
+"    and/or high bit-rates)\n"
+"--sequence-header-every-gop|-s\n"
+"    Include a sequence header every GOP if the selected format doesn't\n"
+"    do so by default.\n"
+"--no-dummy-svcd-SOF|-d\n"
+"    Don't generate of dummy SVCD scan-data for the ISO CD image\n"
+"    generator \"vcdimager\" to fill in.\n"
+"--playback-field-order|-z b|t\n"
+"    Force setting of playback field order to bottom or top first\n"
+"--multi-thread|-M num\n"
+"    Activate multi-threading to optimise through on a system with num CPU's\n""    [0..32], 0=no multithreading, (default: 1)\n"
+"--help|-?\n"
+"    Print this lot out!\n"
 	);
 	exit(0);
 }
@@ -251,7 +287,8 @@ static void set_format_presets()
 			param_fieldenc = 3;
 		if( param_quant == 0 )
 			param_quant = 8;
-		param_svcd_scan_data = 1;
+		if( param_svcd_scan_data == -1 )
+			param_svcd_scan_data = 1;
 		param_seq_hdr_every_gop = 1;
 		break;
 
@@ -375,6 +412,9 @@ static void set_format_presets()
 		param_seq_hdr_every_gop = 1;
 		break;
 	}
+
+	if( param_svcd_scan_data == -1 )
+		param_svcd_scan_data = 0;
 }
 
 static int infer_mpeg1_aspect_code( char norm, mpeg_aspect_code_t mpeg2_code )
@@ -421,12 +461,12 @@ static int infer_default_params()
 
 	if( param_norm == 0 && (strm_frame_rate_code==3 || strm_frame_rate_code == 2) )
 	{
-		mjpeg_warn("Assuming norm PAL\n");
+		mjpeg_info("Assuming norm PAL\n");
 		param_norm = 'p';
 	}
 	if( param_norm == 0 && (strm_frame_rate_code==4 || strm_frame_rate_code == 1) )
 	{
-		mjpeg_warn("Assuming norm NTSC\n");
+		mjpeg_info("Assuming norm NTSC\n");
 		param_norm = 'n';
 	}
 
@@ -455,7 +495,7 @@ static int infer_default_params()
 
 	if( param_aspect_ratio == 0 )
 	{
-		mjpeg_warn( "Aspect ratio specifed and no guess possible: assuming 4:3 display aspect!\n");
+		mjpeg_warn( "No aspect ratio specifed and no guess possible: assuming 4:3 display aspect!\n");
 		param_aspect_ratio = 2;
 	}
 
@@ -551,6 +591,11 @@ static int check_param_constraints()
 	case MPEG_FORMAT_SVCD : 
 		if( param_aspect_ratio != 2 && param_aspect_ratio != 3 )
 			mjpeg_error_exit1("SVCD only supports 4:3 and 16:9 aspect ratios\n");
+		if( param_svcd_scan_data )
+		{
+			mjpeg_warn( "Generating dummy SVCD scan-data offsets to be filled in by \"vcdimager\"\n");
+			mjpeg_warn( "If you're not using vcdimager you may wish to turn this off using -d\n");
+		}
 		break;
 	}
 	return nerr;
@@ -567,8 +612,47 @@ int main(argc,argv)
 
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
-	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpsZNhOP")) != EOF)
+
+static const char	short_options[]=
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpdsZNhOP";
+
+#ifdef HAVE_GETOPT_LONG
+	static struct option long_options[]={
+		{ "verbose",           1, 0, 'v' },
+		{ "format",            1, 0, 'f' },
+		{ "aspect",            1, 0, 'a' },
+		{ "frame-rate",        1, 0, 'F' },
+        { "video-bitrate",     1, 0, 'b' },
+		{ "nonvideo-bitrate",  1, 0, 'B' },
+		{ "quantisation",      1, 0, 'q' },
+        { "output",            1, 0, 'o' },
+        { "vcd-still-size",    1, 0, 'T' },
+		{ "interlace-mode",    1, 0, 'I' },
+        { "motion-search-radius", 1, 0, 'r'},
+		{ "reduction-4x4",  1, 0, '4'},
+        { "reduction-2x2",  1, 0, '2'},
+		{ "min-gop-size",      1, 0, 'g'},
+		{ "max-gop-size",      1, 0, 'G'},
+		{ "force-b-b-p", 0, &param_preserve_B, 1},
+		{ "quantisation-reduction", 1, 0, 'Q' },
+		{ "video-buffer",      1, 0, 'V' },
+		{ "video-norm",        1, 0, 'n' },
+		{ "sequence-length",   1, 0, 'S' },
+		{ "3-2-pulldown",      1, &param_32_pulldown, 1 },
+		{ "keep-hf",           0, &param_hf_quant, 2 },
+		{ "reduce-hf",         0, &param_hf_quant, 1 },
+		{ "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
+		{ "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
+		{ "playback-field-order", 1, 0, 'z'},
+		{ "multi-thread",      1, 0, 'M' },
+		{ "help",              0, 0, '?' },
+		{ 0,                   0, 0, 0 }
+	};
+
+	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+#else
+	while( (n=getopt(argc,argv,short_options)) != -1)
+#endif
 	{
 		switch(n) {
 
@@ -751,13 +835,16 @@ int main(argc,argv)
 			param_preserve_B = true;
 			break;
 		case 'N':
-			param_hfnoise_quant = 1;
+			param_hf_quant = 1;
 			break;
 		case 'h':
-			param_hires_quant = 1;
+			param_hf_quant = 2;
 			break;
 		case 's' :
 			param_seq_hdr_every_gop = 1;
+			break;
+		case 'd' :
+			param_svcd_scan_data = 0;
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
@@ -767,6 +854,8 @@ int main(argc,argv)
 				++nerr;
 			}
 			break;
+		case ':' :
+			mjpeg_error( "Missing parameter to option!\n" );
 		case '?':
 		default:
 			++nerr;
@@ -784,7 +873,7 @@ int main(argc,argv)
 	{
 		if( optind == argc-1 )
 		{
-			istrm_fd = open( argv[optind], O_RDONLY );
+			istrm_fd = open( argv[optind], O_RDONLY | O_BINARY );
 			if( istrm_fd < 0 )
 			{
 				mjpeg_error( "Unable to open: %s: ",argv[optind] );
@@ -1461,7 +1550,7 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 	int orgdist = intmax(qmat_pos % 8, qmat_pos/8);
 	int qboost = 1024;
 
-	if( ! param_hfnoise_quant )
+	if( param_hf_quant != 1)
 	{
 		return orgquant;
 	}
@@ -1478,7 +1567,7 @@ static void init_quantmat()
 	int i,v, q;
 	opt_load_iquant = 0;
 	opt_load_niquant = 0;
-	if( param_hires_quant )
+	if( param_hf_quant == 2)
 	{
 		opt_load_iquant |= 1;
 		mjpeg_info( "Setting hi-res intra Quantisation matrix\n" );
@@ -1490,7 +1579,7 @@ static void init_quantmat()
 	else
 	{
 		/* use default intra matrix */
-		opt_load_iquant = param_hfnoise_quant;
+		opt_load_iquant = (param_hf_quant == 1);
 		for (i=0; i<64; i++)
 		{
 			v = quant_hfnoise_filt( default_intra_quantizer_matrix[i], i);
@@ -1500,8 +1589,12 @@ static void init_quantmat()
 				
 		} 
 	}
-	/* TODO: Inv Quant matrix initialisation should check if the fraction fits in 16 bits! */
-	if( param_hires_quant )
+	
+    /* MPEG default non-intra matrix is all 16's. For *our* default we
+	    use something more suitable for domestic analog
+	    sources... which is non-standard...
+	*/
+	if( param_hf_quant == 2 )
 	{
 		mjpeg_info( "Setting hi-res non-intra quantiser matrix\n" );
 		for (i=0; i<64; i++)
@@ -1511,8 +1604,6 @@ static void init_quantmat()
 	}
 	else
 	{
-		/* default non-intra matrix is all 16's. For *our* default we use something
-		   more suitable for domestic analog sources... which is non-standard...*/
 		opt_load_niquant |= 1;
 		for (i=0; i<64; i++)
 		{
@@ -1522,12 +1613,16 @@ static void init_quantmat()
 			opt_inter_q[i] = v;
 		}
 	}
+
+	/* TODO: Inv Quant matrix initialisation should check if the
+	 * fraction fits in 16 bits! */
   
 	for (i=0; i<64; i++)
 	{
 		i_intra_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_intra_q[i]));
 		i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)opt_inter_q[i]));
 	}
+
 	
 	for( q = 1; q <= 112; ++q )
 	{
@@ -1545,3 +1640,12 @@ static void init_quantmat()
 	}
   
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

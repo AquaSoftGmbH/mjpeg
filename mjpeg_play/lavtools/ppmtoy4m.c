@@ -36,7 +36,9 @@
 #include "subsample.h"
 #include "colorspace.h"
 
-
+#ifndef O_BINARY
+# define O_BINARY 0
+#endif
 
 /* command-line parameters */
 typedef struct _cl_info {
@@ -180,7 +182,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   }
   /* optional remaining argument is a filename */
   if (optind == (argc - 1)) {
-    if ((cl->fdin = open(argv[optind], O_RDONLY)) == -1)
+    if ((cl->fdin = open(argv[optind], O_RDONLY | O_BINARY)) == -1)
       mjpeg_error_exit1("Failed to open '%s':  %s\n",
 			argv[optind], strerror(errno));
   } else if (optind != argc) 

@@ -24,6 +24,7 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <setjmp.h>
 #include <jpeglib.h>
 #include <jerror.h>

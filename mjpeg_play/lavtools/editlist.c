@@ -90,7 +90,7 @@ int open_video_file(char *filename, EditList *el)
    mjpeg_debug("   width:       %8d\n",lav_video_width (el->lav_fd[n]));
    mjpeg_debug("   height:      %8d\n",lav_video_height(el->lav_fd[n]));
    {
-	   char *int_msg;
+	   const char *int_msg;
 	   switch(  lav_video_interlacing(el->lav_fd[n]))
 	   {
 	   case LAV_NOT_INTERLACED :

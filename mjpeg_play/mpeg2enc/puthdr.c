@@ -103,20 +103,20 @@ void putseqhdr()
 /* generate sequence extension (6.2.2.3, 6.3.5) header (MPEG-2 only) */
 void putseqext()
 {
-  alignbits();
-  putbits(EXT_START_CODE,32); /* extension_start_code */
-  putbits(SEQ_ID,4); /* extension_start_code_identifier */
-  putbits((opt_profile<<4)|opt_level,8); /* profile_and_level_indication */
-  putbits(opt_prog_seq,1); /* progressive sequence */
-  putbits(opt_chroma_format,2); /* chroma_format */
-  putbits(opt_horizontal_size>>12,2); /* horizontal_size_extension */
-  putbits(opt_vertical_size>>12,2); /* vertical_size_extension */
-  putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
-  putbits(1,1); /* marker_bit */
-  putbits(opt_vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
-  putbits(0,1); /* low_delay  -- currently not implemented */
-  putbits(0,2); /* frame_rate_extension_n */
-  putbits(0,5); /* frame_rate_extension_d */
+	alignbits();
+	putbits(EXT_START_CODE,32); /* extension_start_code */
+	putbits(SEQ_ID,4); /* extension_start_code_identifier */
+	putbits((opt_profile<<4)|opt_level,8); /* profile_and_level_indication */
+	putbits(opt_prog_seq,1); /* progressive sequence */
+	putbits(opt_chroma_format,2); /* chroma_format */
+	putbits(opt_horizontal_size>>12,2); /* horizontal_size_extension */
+	putbits(opt_vertical_size>>12,2); /* vertical_size_extension */
+	putbits(((int)ceil(opt_bit_rate/400.0))>>18,12); /* bit_rate_extension */
+	putbits(1,1); /* marker_bit */
+	putbits(opt_vbv_buffer_code>>10,8); /* vbv_buffer_size_extension */
+	putbits(0,1); /* low_delay  -- currently not implemented */
+	putbits(0,2); /* frame_rate_extension_n */
+	putbits(0,5); /* frame_rate_extension_d */
 }
 
 /* generate sequence display extension (6.2.2.4, 6.3.6)
@@ -125,17 +125,17 @@ void putseqext()
  */
 void putseqdispext()
 {
-  alignbits();
-  putbits(EXT_START_CODE,32); /* extension_start_code */
-  putbits(DISP_ID,4); /* extension_start_code_identifier */
-  putbits(opt_video_format,3); /* video_format */
-  putbits(1,1); /* colour_description */
-  putbits(opt_color_primaries,8); /* colour_primaries */
-  putbits(opt_transfer_characteristics,8); /* transfer_characteristics */
-  putbits(opt_matrix_coefficients,8); /* matrix_coefficients */
-  putbits(opt_display_horizontal_size,14); /* display_horizontal_size */
-  putbits(1,1); /* marker_bit */
-  putbits(opt_display_vertical_size,14); /* display_vertical_size */
+	alignbits();
+	putbits(EXT_START_CODE,32); /* extension_start_code */
+	putbits(DISP_ID,4); /* extension_start_code_identifier */
+	putbits(opt_video_format,3); /* video_format */
+	putbits(1,1); /* colour_description */
+	putbits(opt_color_primaries,8); /* colour_primaries */
+	putbits(opt_transfer_characteristics,8); /* transfer_characteristics */
+	putbits(opt_matrix_coefficients,8); /* matrix_coefficients */
+	putbits(opt_display_horizontal_size,14); /* display_horizontal_size */
+	putbits(1,1); /* marker_bit */
+	putbits(opt_display_vertical_size,14); /* display_vertical_size */
 }
 
 /* output a zero terminated string as user data (6.2.2.2.2, 6.3.4.1)
@@ -145,10 +145,10 @@ void putseqdispext()
 void putuserdata(const uint8_t *userdata, int len)
 {
 	int i;
-  alignbits();
-  putbits(USER_START_CODE,32); /* user_data_start_code */
-  for( i =0; i < len; ++i )
-    putbits(userdata[i],8);
+	alignbits();
+	putbits(USER_START_CODE,32); /* user_data_start_code */
+	for( i =0; i < len; ++i )
+		putbits(userdata[i],8);
 }
 
 /* generate group of pictures header (6.2.2.6, 6.3.9)
@@ -157,21 +157,21 @@ void putuserdata(const uint8_t *userdata, int len)
  */
 void putgophdr(int frame,int closed_gop, int seq_header )
 {
-  int tc;
+	int tc;
 
-  /* (S)VCD mandates sequence headers every GOP
-     to do fast forward, rewind etc.
-   */
-  if( seq_header )
-  {
-	  putseqhdr();
-  }
-  alignbits();
-  putbits(GOP_START_CODE,32); /* group_start_code */
-  tc = frametotc(frame);
-  putbits(tc,25); /* time_code */
-  putbits(closed_gop,1); /* closed_gop */
-  putbits(0,1); /* broken_link */
+	/* (S)VCD mandates sequence headers every GOP
+	   to do fast forward, rewind etc.
+	*/
+	if( seq_header )
+	{
+		putseqhdr();
+	}
+	alignbits();
+	putbits(GOP_START_CODE,32); /* group_start_code */
+	tc = frametotc(frame);
+	putbits(tc,25); /* time_code */
+	putbits(closed_gop,1); /* closed_gop */
+	putbits(0,1); /* broken_link */
 }
 
 /* convert frame number to time_code
@@ -196,37 +196,37 @@ static int frametotc(int gop_timecode0_frame)
 	hour = frame%24;
 	tc = (hour<<19) | (minute<<13) | (1<<12) | (sec<<6) | pict;
 
-  return tc;
+	return tc;
 }
 
 /* generate picture header (6.2.3, 6.3.10) */
 void putpicthdr(pict_data_s *picture)
 {
-  alignbits();
-  putbits(PICTURE_START_CODE,32); /* picture_start_code */
-  putbits(picture->temp_ref,10); /* temporal_reference */
-  putbits(picture->pict_type,3); /* picture_coding_type */
-  putbits(picture->vbv_delay,16); /* vbv_delay */
+	alignbits();
+	putbits(PICTURE_START_CODE,32); /* picture_start_code */
+	putbits(picture->temp_ref,10); /* temporal_reference */
+	putbits(picture->pict_type,3); /* picture_coding_type */
+	putbits(picture->vbv_delay,16); /* vbv_delay */
 
-  if (picture->pict_type==P_TYPE || picture->pict_type==B_TYPE)
-  {
-    putbits(0,1); /* full_pel_forward_vector */
-    if (opt_mpeg1)
-      putbits(picture->forw_hor_f_code,3);
-    else
-      putbits(7,3); /* forward_f_code */
-  }
+	if (picture->pict_type==P_TYPE || picture->pict_type==B_TYPE)
+	{
+		putbits(0,1); /* full_pel_forward_vector */
+		if (opt_mpeg1)
+			putbits(picture->forw_hor_f_code,3);
+		else
+			putbits(7,3); /* forward_f_code */
+	}
 
-  if (picture->pict_type==B_TYPE)
-  {
-    putbits(0,1); /* full_pel_backward_vector */
-    if (opt_mpeg1)
-      putbits(picture->back_hor_f_code,3);
-    else
-      putbits(7,3); /* backward_f_code */
-  }
+	if (picture->pict_type==B_TYPE)
+	{
+		putbits(0,1); /* full_pel_backward_vector */
+		if (opt_mpeg1)
+			putbits(picture->back_hor_f_code,3);
+		else
+			putbits(7,3); /* backward_f_code */
+	}
 
-  putbits(0,1); /* extra_bit_picture */
+	putbits(0,1); /* extra_bit_picture */
 }
 
 /* generate picture coding extension (6.2.3.1, 6.3.11)
@@ -235,31 +235,40 @@ void putpicthdr(pict_data_s *picture)
  */
 void putpictcodext(pict_data_s *picture)
 {
-  alignbits();
-  putbits(EXT_START_CODE,32); /* extension_start_code */
-  putbits(CODING_ID,4); /* extension_start_code_identifier */
-  putbits(picture->forw_hor_f_code,4); /* forward_horizontal_f_code */
-  putbits(picture->forw_vert_f_code,4); /* forward_vertical_f_code */
-  putbits(picture->back_hor_f_code,4); /* backward_horizontal_f_code */
-  putbits(picture->back_vert_f_code,4); /* backward_vertical_f_code */
-  putbits(picture->dc_prec,2); /* intra_dc_precision */
-  putbits(picture->pict_struct,2); /* picture_structure */
-  putbits((picture->pict_struct==FRAME_PICTURE)?picture->topfirst : 0, 1); /* top_field_first */
-  putbits(picture->frame_pred_dct,1); /* frame_pred_frame_dct */
-  putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
-  putbits(picture->q_scale_type,1); /* q_scale_type */
-  putbits(picture->intravlc,1); /* intra_vlc_format */
-  putbits(picture->altscan,1); /* alternate_scan */
-  putbits(picture->repeatfirst,1); /* repeat_first_field */
+	alignbits();
+	putbits(EXT_START_CODE,32); /* extension_start_code */
+	putbits(CODING_ID,4); /* extension_start_code_identifier */
+	putbits(picture->forw_hor_f_code,4); /* forward_horizontal_f_code */
+	putbits(picture->forw_vert_f_code,4); /* forward_vertical_f_code */
+	putbits(picture->back_hor_f_code,4); /* backward_horizontal_f_code */
+	putbits(picture->back_vert_f_code,4); /* backward_vertical_f_code */
+	putbits(picture->dc_prec,2); /* intra_dc_precision */
+	putbits(picture->pict_struct,2); /* picture_structure */
+	putbits((picture->pict_struct==FRAME_PICTURE)?picture->topfirst : 0, 1); /* top_field_first */
+	putbits(picture->frame_pred_dct,1); /* frame_pred_frame_dct */
+	putbits(0,1); /* concealment_motion_vectors  -- currently not implemented */
+	putbits(picture->q_scale_type,1); /* q_scale_type */
+	putbits(picture->intravlc,1); /* intra_vlc_format */
+	putbits(picture->altscan,1); /* alternate_scan */
+	putbits(picture->repeatfirst,1); /* repeat_first_field */
 
-  putbits(picture->prog_frame,1); /* chroma_420_type */
-  putbits(picture->prog_frame,1); /* progressive_frame */
-  putbits(0,1); /* composite_display_flag */
+	putbits(picture->prog_frame,1); /* chroma_420_type */
+	putbits(picture->prog_frame,1); /* progressive_frame */
+	putbits(0,1); /* composite_display_flag */
 }
 
 /* generate sequence_end_code (6.2.2) */
 void putseqend()
 {
-  alignbits();
-  putbits(SEQ_END_CODE,32);
+	alignbits();
+	putbits(SEQ_END_CODE,32);
 }
+
+
+/* 
+ * Local variables:
+ *  c-file-style: "stroustrup"
+ *  tab-width: 4
+ *  indent-tabs-mode: nil
+ * End:
+ */

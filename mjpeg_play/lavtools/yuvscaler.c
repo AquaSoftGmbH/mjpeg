@@ -29,19 +29,18 @@
 #include <string.h>
 #include <math.h>
 #include <signal.h>
+#include "mjpeg_types.h"
 #include "lav_io.h"
 #include "editlist.h"
 #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
-#include "inttypes.h"
 #include "yuvscaler.h"
 #include "mpegconsts.h"
 // #include "config.h"
 #include "attributes.h"
 #include "../utils/mmx.h"
 #include "../utils/yuv4mpeg.h"
-
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
 // For pointer adress alignement
@@ -167,7 +166,7 @@ unsigned long int diviseur;
 uint8_t *divide;
 unsigned short int *u_i_p;
 unsigned int out_nb_col_slice, out_nb_line_slice;
-static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
+const static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
 int verbose = 1;
 #define PARAM_LINE_MAX 256
 
