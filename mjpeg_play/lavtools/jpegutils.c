@@ -30,6 +30,7 @@
 
 #include "mjpeg_logging.h"
 
+#include "jpegutils.h"
 #include "lav_io.h"
 
  /*
@@ -47,15 +48,6 @@
  * height           height of Y channel (height of U/V is height/2)
  */
 
-int decode_jpeg_raw (unsigned char *jpeg_data, int len,
-                     int itype, int ctype, int width, int height,
-                     unsigned char *raw0, unsigned char *raw1,
-                     unsigned char *raw2);
-
-int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
-                     int itype, int ctype, int width, int height,
-                     unsigned char *raw0, unsigned char *raw1,
-                     unsigned char *raw2);
 
 static void jpeg_buffer_src  (j_decompress_ptr cinfo, unsigned char *buffer,
                        long num);
@@ -765,6 +757,11 @@ int encode_jpeg_raw (unsigned char *jpeg_data, int len, int quality,
       jpeg_start_compress (&cinfo, FALSE);
       
       if (numfields == 2) {
+         static const JOCTET marker0[40];
+
+	 jpeg_write_marker(&cinfo, JPEG_APP0,   marker0, 14);
+	 jpeg_write_marker(&cinfo, JPEG_APP0+1, marker0, 40);
+
          switch (itype) {
          case 2: /* even field first */
             yl = yc = (1 - field);
