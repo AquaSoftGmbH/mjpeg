@@ -454,53 +454,6 @@ void SeqEncoder::NextSeqState( StreamState *ss )
 
 
 
-/* 
-   Initialize picture data buffers for reference and B pictures
-
-   There *must* be 2 more of each than active frame encoding threads.
-   Fortunately, there is no point having very large numbers of threads
-   as concurency is limited by each frame's encoding depending (at
-   the very minimum) on the completed encoding of the preceding reference
-   frame.
-
-   In practice the current bit allocation algorithm means that a
-   frame cannot be completed until its predecessor is completed.
-
-   Thus for reasonable M (bigroup length) there is no point in having
-   more than M threads.   
-*/
-
-
-void SeqEncoder::LinkRefPictureRing( Picture *ref_pictures[] )
-{
-
-	int i,j;
-
-	for( i = 0; i < encparams.max_active_ref_frames; ++i )
-	{
-		j = (i + 1) % encparams.max_active_ref_frames;
-
-		ref_pictures[j]->fwd_org = ref_pictures[i]->org_img;
-		ref_pictures[j]->fwd_rec = ref_pictures[i]->rec_img;
-		//ref_pictures[j]->bwd_org = ref_pictures[j]->org_img;
-		//ref_pictures[j]->bwd_rec = ref_pictures[j]->rec_img;
-	}
-
-}
-
-
-
-#ifdef DEBUG_BLOCK_STRIPED
-static unsigned int checksum( uint8_t *buf, unsigned int len )
-{
-    unsigned int acc = 0;
-    unsigned int i;
-    for( i = 0; i < len; ++i )
-        acc += buf[i];
-    return acc;
-}
-#endif
-
 
 void SeqEncoder::EncodePicture(Picture *picture)
 {
@@ -609,16 +562,16 @@ void SeqEncoder::Init()
         ref_pictures[i] = new Picture(encparams, coder, quantizer);
     }
 
-	LinkRefPictureRing( ref_pictures );
 
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
 	   must wait on.
 	*/
-	cur_ref_idx = 0;
-	cur_b_idx = 0;
+
 	old_ref_picture = ref_pictures[encparams.max_active_ref_frames-1];
-	new_ref_picture = ref_pictures[cur_ref_idx];
+	new_ref_picture = ref_pictures[0];
+    cur_ref_idx = 0;
+    cur_b_idx = 0;
 	cur_picture = new_ref_picture;
 	
 	ratecontroller.InitSeq(false);
@@ -653,8 +606,12 @@ bool SeqEncoder::EncodeFrame()
         cur_ref_idx = (cur_ref_idx + 1) % encparams.max_active_ref_frames;
         old_ref_picture = new_ref_picture;
         new_ref_picture = ref_pictures[cur_ref_idx];
-        new_ref_picture->ref_frame = old_ref_picture;
         cur_picture = new_ref_picture;
+        
+        cur_picture->fwd_org = old_ref_picture->org_img;
+        cur_picture->fwd_rec = old_ref_picture->rec_img;
+        cur_picture->fwd_ref_frame = old_ref_picture;
+        cur_picture->bwd_ref_frame = 0;
     }
     else
     {
@@ -665,12 +622,14 @@ bool SeqEncoder::EncodeFrame()
         */
         cur_b_idx = ( cur_b_idx + 1) % encparams.max_active_b_frames;
         new_b_picture = b_pictures[cur_b_idx];
-        new_b_picture->fwd_org = new_ref_picture->fwd_org;
-        new_b_picture->fwd_rec = new_ref_picture->fwd_rec;
-        new_b_picture->bwd_org = new_ref_picture->bwd_org;
-        new_b_picture->bwd_rec = new_ref_picture->bwd_rec;
-        new_b_picture->ref_frame = new_ref_picture;
         cur_picture = new_b_picture;
+        
+        cur_picture->fwd_org = old_ref_picture->org_img;
+        cur_picture->fwd_rec = old_ref_picture->rec_img;
+        cur_picture->bwd_org = new_ref_picture->org_img;
+        cur_picture->bwd_rec = new_ref_picture->rec_img;
+        cur_picture->fwd_ref_frame = new_ref_picture;
+        cur_picture->bwd_ref_frame = old_ref_picture;
     }
    cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
 

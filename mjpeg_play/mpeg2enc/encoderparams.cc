@@ -83,25 +83,20 @@ void EncoderParams::InitEncodingControls( const MPEG2EncOptions &options)
 
 	case 0 : /* Special case for debugging... turns of multi-threading */
 		encoding_parallelism = 0;
-		refine_from_rec = true;
 		parallel_read = false;
 		break;
-
 	case 1 :
 		encoding_parallelism = 1;
-		refine_from_rec = true;
 		parallel_read = options.allow_parallel_read;
 		break;
 	case 2:
 		encoding_parallelism = 2;
-		refine_from_rec = true;
 		parallel_read = options.allow_parallel_read ;
 		break;
 	default :
 		encoding_parallelism = options.num_cpus > MAX_WORKER_THREADS-1 ?
 			                  MAX_WORKER_THREADS-1 :
 			                  options.num_cpus;
-		refine_from_rec = false;
 		parallel_read =  options.allow_parallel_read;
 		break;
 	}

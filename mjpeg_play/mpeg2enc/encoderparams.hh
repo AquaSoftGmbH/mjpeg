@@ -235,13 +235,6 @@ public:
                              * for satisfying requirements for
                              * multi-angle DVD authoring */
 
-    bool refine_from_rec;	/* Is final refinement of motion
-                             * compensation computed from
-                             * reconstructed reference frame image
-                             * (slightly higher quality, bad for
-                             * multi-threading) or original reference
-                             * frame (opposite) */
-
     int me44_red;			/* Sub-mean population reduction passes
                             * for 4x4 and 2x2 */
     int me22_red;			/* Motion compensation stages  */

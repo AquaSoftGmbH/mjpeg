@@ -175,8 +175,9 @@ public:
 	/* multiple-reader/single-writer channels Synchronisation  
 	   sync only: no data is "read"/"written"
 	 */
-    Picture *ref_frame;
-
+    Picture *fwd_ref_frame;
+    Picture *bwd_ref_frame;     // 0 if Not B_TYPE
+    
 	/* picture encoding source data  */
 	ImagePlanes fwd_org, bwd_org;	// Original Images of fwd and bwd
                                     // reference pictures
