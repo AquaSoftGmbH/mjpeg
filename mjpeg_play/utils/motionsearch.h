@@ -21,6 +21,7 @@
 #define __MOTIONSEARCH_H__
 
 #include <config.h>
+#include "mjpeg_types.h"
 
 struct mc_result
 {

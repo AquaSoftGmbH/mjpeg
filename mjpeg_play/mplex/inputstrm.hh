@@ -4,10 +4,10 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
 #include <vector>
 #include <sys/stat.h>
-#include <vector>
+#include "mjpeg_types.h"
+
 
 #include "bits.hh"
 #include "aunit.hh"
@@ -85,12 +85,18 @@ class OutputStream;
 class MuxStream
 {
 public:
-	MuxStream( const int strm_id, 
+	MuxStream();
+
+    void Init( const int strm_id, 
 			   const unsigned int _buf_scale,
 			   const unsigned int buf_size,
-		       const unsigned int _zero_stuffing );
+			   const unsigned int _zero_stuffing,
+			   const bool bufs_in_first, 
+			   const bool always_bufs
+		  );
 
 	unsigned int BufferSizeCode();
+	inline unsigned int BufferSize() { return buffer_size; }
 	inline unsigned int BufferScale() { return buffer_scale; }
 	
 	inline void SetMaxPacketData( unsigned int max )
@@ -117,8 +123,10 @@ public:  // TODO should go protected once encapsulation complete
 	unsigned int    nsec;
 	unsigned int    buffer_scale;
 	unsigned int 	buffer_size;
-
-
+	bool buffers_in_header;
+	bool always_buffers_in_header;
+	bool new_au_next_sec;
+	bool init;
 };
 
 
@@ -133,21 +141,16 @@ protected:
 public:
 	enum stream_kind { audio, video };
 
-	ElementaryStream( OutputStream &into, const int stream_id,
-					  const unsigned int _zero_stuff,
-					  const unsigned int buf_scale,
-					  const unsigned int buf_size,
-					  bool bufs_in_first, bool bufs_always,
+	ElementaryStream( OutputStream &into, 
 					  stream_kind kind
 					  );
-	virtual void Init( const char *input_file) = 0;
 	virtual void Close() = 0;
 
 	bool NextAU();
 	Aunit *Lookahead();
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
 	bool MuxCompleted();
-	bool MuxPossible();
+	virtual bool MuxPossible();
 	void Muxed( unsigned int bytes_muxed );
 	void DemuxedTo( clockticks SCR );
 	clockticks RequiredDTS();
@@ -180,17 +183,16 @@ protected:
 	Aunit *next();
 	OutputStream &muxinto;
 	stream_kind kind;
-	bool buffers_in_header;
-	bool always_buffers_in_header;
-	bool new_au_next_sec;
+
 };
 
 
 class VideoStream : public ElementaryStream
 {
 public:
-	VideoStream(OutputStream &into, const int stream_num);
-	void Init(const char *input_file);
+	VideoStream(OutputStream &into);
+	void Init( const int stream_num,
+			   const char *input_file);
 	void Close();
 
 	inline int AUType()
@@ -223,11 +225,13 @@ public:
 	bool RunOutComplete();
 
 	void OutputSector();
-private:
+protected:
 	void OutputSeqhdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 	virtual void InitAUbuffer();
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
+	void ScanFirstSeqHeader();
+
 public:	
     unsigned int num_sequence 	;
     unsigned int num_seq_end	;
@@ -303,27 +307,41 @@ private:
 class StillsStream : public VideoStream
 {
 public:
-	StillsStream(OutputStream &into, const int stream_num,
-				 FrameIntervals *frame_ints) :
-		VideoStream( into, stream_num ),
+	StillsStream(OutputStream &into, FrameIntervals *frame_ints) :
+		VideoStream( into ),
 		current_PTS(0LL),
 		current_DTS(0LL),
 		intervals( frame_ints )
 		{}
+	void Init( const char *input_file);
 private:
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
 	clockticks current_PTS;
 	clockticks current_DTS;
 	FrameIntervals *intervals;
 };
+
+class VCDMixedStillsStream : public StillsStream
+{
+public:
+	VCDMixedStillsStream(OutputStream &into, FrameIntervals *frame_ints) :
+		StillsStream( into, frame_ints ),
+		sibling( 0 )
+		{}
+	void SetSibling( VCDMixedStillsStream * );
+	virtual bool MuxPossible();
+private:
+	VCDMixedStillsStream *sibling;
+	
+};
 	
 
 class AudioStream : public ElementaryStream
 {
 public:   
-	AudioStream(OutputStream &into, const int stream_num);
+	AudioStream(OutputStream &into );
 
-	void Init(const char *audio_file);
+	void Init(const int stream_num, const char *audio_file);
 	void OutputSector();
 
 	void Close();
@@ -361,9 +379,9 @@ private:
 class PaddingStream : public MuxStream
 {
 public:
-	PaddingStream() :
-		MuxStream( PADDING_STR, 0, 0,  0 )
+	PaddingStream()
 		{
+			MuxStream::Init( PADDING_STR, 0, 0,  0, false,false );
 		}
 
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
@@ -372,9 +390,10 @@ public:
 class VCDAPadStream : public MuxStream
 {
 public:
-	VCDAPadStream() :
-		MuxStream( PADDING_STR, 0, 0, 20 )
+	VCDAPadStream()
 		{
+			Init( PADDING_STR, 0, 0, 20, false, false );
+
 		}
 
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);

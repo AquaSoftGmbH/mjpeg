@@ -9,17 +9,28 @@
 #include "inputstrm.hh"
 #include "outputstream.hh"
 
-MuxStream::MuxStream( const int strm_id, 
+MuxStream::MuxStream() : init(false) 
+{
+}
+
+void MuxStream::Init( const int strm_id, 
 					  const unsigned int _buf_scale,
 					  const unsigned int buf_size,
-					  const unsigned int _zero_stuffing ) : 
-	stream_id(strm_id), 
-	nsec(0),
-	zero_stuffing( _zero_stuffing ),
-	buffer_scale( _buf_scale ),
-	buffer_size( buf_size )
+					  const unsigned int _zero_stuffing,
+					  bool bufs_in_first, 
+					  bool always_bufs
+	) 
 {
+	stream_id = strm_id;
+	nsec = 0;
+	zero_stuffing = _zero_stuffing;
+	buffer_scale = _buf_scale;
+	buffer_size = buf_size;
 	bufmodel.init( buf_size );
+	buffers_in_header = bufs_in_first;
+	always_buffers_in_header = always_bufs;
+	new_au_next_sec = true;
+	init = true;
 }
 
 
@@ -37,21 +48,14 @@ MuxStream::BufferSizeCode()
 
 
 
-ElementaryStream::ElementaryStream( OutputStream &into, const int stream_id,
-									const unsigned int zero_stuffing,
-									const unsigned int buf_scale,
-									const unsigned int buf_size,
-									bool bufs_in_first, bool always_bufs,
+ElementaryStream::ElementaryStream( OutputStream &into, 
 									stream_kind _kind) : 
-	MuxStream( stream_id,  buf_scale, buf_size, zero_stuffing ),
+//	MuxStream( stream_id,  buf_scale, buf_size, zero_stuffing ),
 	muxinto( into ),
-	buffers_in_header( bufs_in_first ),
-	always_buffers_in_header( always_bufs ),
-	kind(_kind),
-	new_au_next_sec(true)
-
+	kind(_kind)
 {
 }
+
 
 bool 
 ElementaryStream::NextAU()
@@ -144,23 +148,15 @@ Aunit *ElementaryStream::next()
 
 
 
-VideoStream::VideoStream(OutputStream &into, const int stream_num )
+VideoStream::VideoStream(OutputStream &into )
 	:
-	ElementaryStream(into, VIDEO_STR_0+stream_num,
-					 0,  // Zero stuffing
-					 1,  // Buffer scale
-					 into.video_buffer_size,
-					 into.buffers_in_video,
-					 into.always_buffers_in_video,
-					 ElementaryStream::video
-					 ),
+	ElementaryStream(into, ElementaryStream::video ),
 	num_sequence(0),
 	num_seq_end(0),
 	num_pictures(0),
 	num_groups(0),
 	dtspts_for_all_au( into.dtspts_for_all_vau )
 {
-	mjpeg_debug( "SETTING video buffer to %d\n", into.video_buffer_size );
 	prev_offset=0;
     decoding_order=0;
 	fields_presented=0;
@@ -184,20 +180,10 @@ void VideoStream::InitAUbuffer()
 		aunits.init( new VAunit );
 }
 
-AudioStream::AudioStream(OutputStream &into, const int stream_num) : 
-	ElementaryStream( into, AUDIO_STR_0 + stream_num, 
-					  into.vcd_zero_stuffing,
-					  0,  // Buffer scale
-					  into.audio_buffer_size,
-					  into.buffers_in_audio,
-					  into.always_buffers_in_audio,
-					  ElementaryStream::audio
-		),
+AudioStream::AudioStream(OutputStream &into) : 
+	ElementaryStream( into,  ElementaryStream::audio ),
 	num_syncword(0)
 {
-	mjpeg_debug( "SETTING zero stuff to %d\n", into.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d\n", into.audio_buffer_size );
-
 	for( int i = 0; i <2 ; ++i )
 		num_frames[i] = size_frames[i] = 0;
 }

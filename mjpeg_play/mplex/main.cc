@@ -74,7 +74,7 @@ int main (int argc, char* argv[])
 			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...\n");
 		}
 		ConstantFrameIntervals intervals( frame_interval );
-		StillsStream stillStrm(ostrm,stream_num,  
+		StillsStream stillStrm(ostrm, 
 							   &intervals);
 		stillStrm.Init( video_file );
 		ostrm.OutputMultiplex( &stillStrm , 
@@ -86,15 +86,15 @@ int main (int argc, char* argv[])
 	{
 		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
 		ostrm.InitSyntaxParameters();
-        VideoStream videoStrm(ostrm,0);
-        AudioStream audioStrm(ostrm,0);
+        VideoStream videoStrm(ostrm);
+        AudioStream audioStrm(ostrm);
 
 		if (video_file) {
-			videoStrm.Init( video_file);
+			videoStrm.Init( 0, video_file);
 		}
     
 		if (audio_file) {
-			audioStrm.Init (audio_file);
+			audioStrm.Init ( 0, audio_file);
 		}
 
 		ostrm.OutputMultiplex( video_file ? &videoStrm : NULL, 

@@ -1,6 +1,6 @@
 
 #include "main.hh"
-
+#include "format_codes.h"
 #include <math.h>
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -207,26 +207,8 @@ void check_files (int argc,
 
 }
 
-/*************************************************************************
-	Get_Info_Video
-	holt Informationen zu den einzelnen Access-Units (Frames) des
-	Videofiles ein und speichert sie in einer temporaeren Datei
-	ab. Wird spaeter zum Aufbau der gemultiplexten Datei gebraucht.
-
-	Gets informations on the single access units (frames) of the
-	video stream and saves them in a tmp file for further
-	processing. We need it for building the multiplex file.
-*************************************************************************/
-
-
-void VideoStream::Init (const char *video_file )
+void VideoStream::ScanFirstSeqHeader()
 {
-    mjpeg_info( "Scanning Video stream %d for access units information.\n",
-				 stream_id-VIDEO_STR_0);
-	InitAUbuffer();
-
-	
-	InputStream::Init( video_file );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
 		num_sequence++;
@@ -256,6 +238,28 @@ void VideoStream::Init (const char *video_file )
 		frame_rate = 25.0;
 		film_rate = 1;
 	}
+
+}
+
+
+
+
+void VideoStream::Init ( const int stream_num,
+						 const char *video_file )
+{
+	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
+	MuxStream::Init( VIDEO_STR_0+stream_num,
+					 1,  // Buffer scale
+					 muxinto.video_buffer_size,
+					 0,  // Zero stuffing
+					 muxinto.buffers_in_video,
+					 muxinto.always_buffers_in_video);
+    mjpeg_info( "Scanning Video stream %d for access units information.\n",
+				 stream_num);
+	InitAUbuffer();
+
+	InputStream::Init( video_file );
+	ScanFirstSeqHeader();
 
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
 	*/
@@ -330,7 +334,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				{
 					stream_length = bs.bitcount()-32LL;
 					AU_start = stream_length;
-					AU_hdr = SEQUENCE_HEADER;
+					syncword  = AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
 					if( opt_multifile_segment )
 						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!\n" );
@@ -350,6 +354,8 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 		switch (syncword) 
 		{
 		case SEQUENCE_HEADER:
+			/* TODO: Really we should update the info here so we can handle
+			 streams where parameters change on-the-fly... */
 			num_sequence++;
 			break;
 			
@@ -567,6 +573,79 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 
 }
 
+
+
+void StillsStream::Init ( const char *video_file )
+{
+	int stream_id;
+	int buffer_size;
+    mjpeg_info( "Scanning Stills stream for access units information.\n" );
+	InitAUbuffer();
+	InputStream::Init( video_file );
+	ScanFirstSeqHeader();
+
+	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
+	switch( opt_mux_format )
+	{
+	case  MPEG_FORMAT_VCD_STILL :
+		if( horizontal_size > 352 )
+		{
+			stream_id = VIDEO_STR_0+2 ;
+			buffer_size = vbv_buffer_size*2048;
+			mjpeg_info( "Stream %d: high-resolution VCD stills %d KB each\n", 
+						stream_id,
+						buffer_size );
+			if( buffer_size < 46*1024 )
+				mjpeg_error_exit1( "I Can't multiplex high-res stills smaller than normal res stills - sorry!\n");
+
+		}
+		else
+		{
+			stream_id = VIDEO_STR_0+1 ;
+			buffer_size = 46*1024;
+			mjpeg_info( "Stream %d: normal VCD stills\n", stream_id );
+		}
+		break;
+	case MPEG_FORMAT_SVCD_STILL :
+		if( horizontal_size > 352 )
+		{
+			stream_id = VIDEO_STR_0+1;
+			buffer_size = 230*1024;
+			mjpeg_info( "Stream %d: high-resolution SVCD stills.\n", 
+						stream_id );
+		}
+		else
+		{
+			stream_id = VIDEO_STR_0+1 ;
+			buffer_size = 230*1024;
+			mjpeg_info( "Stream %d: normal-resolution SVCD stills.\n", stream_id );
+		}
+		break;
+	defaut:
+		mjpeg_error_exit1( "Only SVCD and VCD Still currently supported\n");
+	}
+
+
+	MuxStream::Init( stream_id,
+					 1,  // Buffer scale
+					 buffer_size,
+					 0,  // Zero stuffing
+					 muxinto.buffers_in_video,
+					 muxinto.always_buffers_in_video);
+	
+	/* Skip to the end of the 1st AU (*2nd* Picture start!)
+	*/
+	AU_hdr = SEQUENCE_HEADER;
+	AU_pict_data = 0;
+	AU_start = 0LL;
+
+    OutputSeqhdrInfo();
+
+}
+
+
+
+
 //
 // Compute DTS / PTS for a VCD/SVCD Stills sequence
 // TODO: Very crude. Simply assumes each still stays for the specified
@@ -579,15 +658,24 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 	clockticks interval = static_cast<clockticks>
 		(intervals->NextFrameInterval() * CLOCKS / frame_rate);
 	clockticks time_for_xfer;
-	muxinto.ByteposTimecode( 
-		static_cast<bitcount_t>(vbv_buffer_size * (2048*8)),
-		time_for_xfer );
+	muxinto.ByteposTimecode( BufferSize(), time_for_xfer );
 		
 	DTS = current_PTS + time_for_xfer;	// This frame decoded just after
 	                                    // Predecessor completed.
 	PTS = current_PTS + time_for_xfer + interval;
 	current_PTS = PTS;
 	current_DTS = DTS;
+}
+
+void VCDMixedStillsStream::SetSibling( VCDMixedStillsStream *_sibling )
+{
+	assert( sibling != NULL );
+	sibling = _sibling;
+	if( sibling->stream_id == stream_id )
+	{
+		mjpeg_error_exit1("VCD mixed stills stream cannot contain two streams of the same type!\n");
+	}
+
 }
 
 /*************************************************************************
@@ -597,12 +685,22 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 *************************************************************************/
 
 
-void AudioStream::Init (const char *audio_file)
+void AudioStream::Init ( const int stream_num, 
+						 const char *audio_file)
 
 {
     unsigned int i;
 	int padding_bit;
+	mjpeg_debug( "SETTING zero stuff to %d\n", muxinto.vcd_zero_stuffing );
+	mjpeg_debug( "SETTING audio buffer to %d\n", muxinto.audio_buffer_size );
 
+	MuxStream::Init( AUDIO_STR_0 + stream_num, 
+					 0,  // Buffer scale
+					 muxinto.audio_buffer_size,
+					 muxinto.vcd_zero_stuffing,
+					 muxinto.buffers_in_audio,
+					 muxinto.always_buffers_in_audio
+		);
     mjpeg_info ("Scanning Audio stream for access units information. \n");
 
 	InitAUbuffer();

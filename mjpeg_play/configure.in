@@ -60,7 +60,7 @@ AC_PROG_LN_S
 AC_C_BIGENDIAN
 AC_C_CONST
 AC_C_INLINE
-AC_CHECK_HEADERS(fenv.h)
+AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h stdbool.h alloca.h)
 
 
 dnl Set up the usual compiler infos...

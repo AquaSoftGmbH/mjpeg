@@ -1,6 +1,3 @@
-0.  Currently large file support has not been tested.
-	Thus it is impossible to create mpeg video streams longer than 2GB.
-    For SVCD this is a real pain in the bottom.
 
 1.	MPEG2 support for progressive sequences frame (-F 0) and  
 	field-interlaced (-F 3) is now well tested.  Field
@@ -9,10 +6,10 @@
 	progressive sequences.  Mplex *DOES NOT* support field -F 1 and -F 2 
 	streams.
 
-2.	At least for my install of SDL software playback MJPEG function sizes
-	its window inconsistently with what it claims it is going to do.
-	Playback speed
-
+2. Currently the VCD HR Stills muxing stuff assumes *all* HR stills
+  are the same size which is given in the initial vbv_buffer_size...
+	This will work with mpeg2enc (which does this) but will fail fail fail
+	with other streams.
 
 3.	The VBVbuffer delay code in the MPEG encoder is hopeless broken.  
 	It is currently turned off

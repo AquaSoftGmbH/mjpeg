@@ -21,12 +21,13 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
 #include <signal.h>
 #include <setjmp.h>
 #include "cpu_accel.h"
 
 #ifdef HAVE_X86CPU 
+
+#include "mjpeg_types.h"
 
 /* Some miscelaneous stuff to allow checking whether SSE instructions cause
    illegal instruction errors.
@@ -56,9 +57,9 @@ int testsseill()
 
 static int x86_accel (void)
 {
-    int eax, ebx, ecx, edx;
-    int AMD;
-    int caps;
+    int32_t eax, ebx, ecx, edx;
+    int32_t AMD;
+    int32_t caps;
 
 #define cpuid(op,eax,ebx,ecx,edx)	\
     asm ("cpuid"			\

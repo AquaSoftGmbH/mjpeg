@@ -28,7 +28,7 @@
  */
 
 #include <config.h>
-#include <inttypes.h>
+#include "mjpeg_types.h"
 #include "synchrolib.h"
 #include "mjpeg_logging.h"
 

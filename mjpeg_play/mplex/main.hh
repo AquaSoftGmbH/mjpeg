@@ -25,7 +25,7 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
+#include "mjpeg_types.h"
 #include "bits.hh"
 #include "inputstrm.hh"
 #include "outputstream.hh"

@@ -28,7 +28,7 @@
 #ifndef __SIMD_H__
 #define __SIMD_H__
 #include <config.h>
-#include <inttypes.h>
+#include "mjpeg_types.h"
 
 
 #ifdef HAVE_X86CPU

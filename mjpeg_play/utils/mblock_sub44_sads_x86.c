@@ -35,7 +35,7 @@
  */
 
 #include <config.h>
-#include <inttypes.h>
+#include "mjpeg_types.h"
 #include "attributes.h"
 #include "mmx.h"
 #include "fastintfns.h"

@@ -632,7 +632,7 @@ void rc_update_pict(pict_data_s *picture)
 	{
 		if( frame_overshoot > frame_overshoot_margin )
 		{
-			mjpeg_warn( "Rate overshoot: hi-res still %d bytes too large! \n", 
+			mjpeg_warn( "Rate overshoot: VCD hi-res still %d bytes too large! \n", 
 						((int)AP)/8-opt_still_size);
 		}
 		frame_overshoot -= frame_overshoot_margin;

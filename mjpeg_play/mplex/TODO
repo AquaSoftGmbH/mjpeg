@@ -1,9 +1,19 @@
 TODO
 
+- Currently the VCD HR Stills muxing stuff assumes *all* HR stills
+  are the same size which is given in the initial vbv_buffer_size...
+	This will work with mpeg2enc (which does this) but will fail fail fail
+	with other streams.
+
 - Rebuild initial delay / sequence splitting DTS adjustment stuff so
 	different streams can have different starting delays based on
 	*stream* parameters.  I.e. delay should be delegated to the elementary
 	streams with only a sector_prefix offset set centrally.
+
+- Tidy code so Elementary streams handle their mux parameter initialisation
+	from cmd-line parameters *not* the output stream.
+
+- Add checking for changed sequence parameters in mid-sequence sequence headers.
 
 - Add basic DVD support ( needs predecessor really).
 

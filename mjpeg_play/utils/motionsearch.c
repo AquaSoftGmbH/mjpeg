@@ -47,15 +47,15 @@
  */
 
 #include <config.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
 #include "math.h"
 #include "cpu_accel.h"
 #include "fastintfns.h"
-#include "mjpeg_logging.h"
 #include "motionsearch.h"
+#include "mjpeg_logging.h"
+
 
 
 

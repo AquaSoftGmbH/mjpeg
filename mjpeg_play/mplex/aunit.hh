@@ -2,8 +2,7 @@
 #define __AUNIT_H__
 
 #include <config.h>
-#include <inttypes.h>
-
+#include "mjpeg_types.h"
 #include "bits.hh"
 
 typedef int64_t clockticks;		// This value *must* be signed

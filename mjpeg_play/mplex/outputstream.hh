@@ -4,7 +4,7 @@
 
 #include <config.h>
 #include <stdio.h>
-#include <inttypes.h>
+#include "mjpeg_types.h"
 
 #include "inputstrm.hh"
 #include "systems.hh"

@@ -13,9 +13,7 @@
 #include <math.h>
 #include <stdlib.h>
 
-#ifndef IRIX
-#include <stdint.h>
-#endif
+#include "mjpeg_types.h"
 
 #include <unistd.h>
 #include <time.h>

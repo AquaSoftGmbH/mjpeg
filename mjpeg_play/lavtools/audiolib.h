@@ -1,7 +1,7 @@
 #ifndef __AUDIOLIB_H__
 #define __AUDIOLIB_H__
 
-#include <inttypes.h>
+#include "mjpeg_types.h"
 
 void audio_shutdown();
 

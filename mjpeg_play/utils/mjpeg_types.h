@@ -20,6 +20,7 @@
 
 #ifndef __MJPEG_TYPES_H__
 #define __MJPEG_TYPES_H__
+#include <config.h>
 
 #if defined(HAVE_STDINT_H)
 # include <stdint.h>
@@ -44,7 +45,7 @@ typedef u_int64_t uint64_t;
 /* fixme */
 #endif /* HAVE_STDINT_H */
 
-#if defined(HAVE_STDBOOL_H)
+#if defined(HAVE_STDBOOL_H) && !defined(__cplusplus)
 #include <stdbool.h>
 #else
 /* ISO/IEC 9899:1999 <stdbool.h> missing -- enabling workaround */

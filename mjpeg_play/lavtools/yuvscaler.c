@@ -21,8 +21,8 @@
 #include "lav_io.h"
 #include "editlist.h"
 #include "jpegutils.c"
+#include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "inttypes.h"
 #include "yuvscaler.h"
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
