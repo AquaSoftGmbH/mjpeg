@@ -1093,7 +1093,7 @@ lav_file_t *lav_open_input_file(char *filename)
 			 lav_fd->MJPG_chroma = CHROMA422;
 		 }
 		 else if( vf[0] == 2*vf[1] && vf[0] == 2*vf[2] )
-			 lav_fd->MJPG_chroma = CHROMAUNKNOWN;
+			 lav_fd->MJPG_chroma = CHROMA420;
 		 else		
 			 lav_fd->MJPG_chroma = CHROMAUNKNOWN;
 	  }
