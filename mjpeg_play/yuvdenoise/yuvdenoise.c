@@ -11,7 +11,7 @@
  *                                                                          *
  ****************************************************************************/
 
-/* now 66% of the processing is spend in motion-search
+/* now 66% of the processing is spend in motion-search */
 
 /* Anjuta is most cool ! */
 
@@ -44,7 +44,7 @@
 
 #define BLOCKSIZE     8
 #define BLOCKOFFSET   2
-#define RADIUS        8
+#define RADIUS        16
 
 
 
@@ -84,6 +84,7 @@ int fixed_search_radius=0;      /* set to 1 if fixed search radius should be use
 int despeckle_filter = 1;       /* set to 0 if despeckle filter should not be used */
 int verbose = 0;                /* set to 1 and it's very noisy on stderr... */
 int CPU_CAP = 0;                /* 0== no Accel - see cpu_accel.h  */
+int BW_mode = 0;                /* normaly use color mode */
 
 /*****************************************************************************
  * some global variables needed for handling the YUV planar frames.          *
@@ -119,21 +120,39 @@ int BY1=0;
 int matrix[1024][768][2];
 uint32_t SAD_matrix[1024][768];
 
+/* allways keep a few possibilities */
+int save_population=3;             // This should be sufficient for 
+                                   // nearly every type of image&motion
+int best_match_44_x[16];
+int best_match_44_y[16];
+int nr_of_44_matches;
 
+int best_match_22_x[16];
+int best_match_22_y[16];
+int nr_of_22_matches;
 
 /*****************************************************************************
  * declaration of used functions                                             *
  *****************************************************************************/
 
-void display_greeting ();
-void display_help ();
+void display_greeting (void);
+void display_help (void);
+void average_frames (uint8_t * ref[3], uint8_t * avg[3]);
+void subsample_frame (uint8_t * ref[3], uint8_t * src[3]);
 void denoise_frame (uint8_t * ref[3]);
 void antiflicker_reference (uint8_t * frame[3]);
 void despeckle_frame_hard (uint8_t * frame[3]);
 void despeckle_frame_soft (uint8_t * frame[3]);
 void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]);
 void preblocking_frame (uint8_t * avg[3]);
-int test_CPU ();
+void kill_chroma (uint8_t * avg[3]);
+void mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3]);
+void mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3]);
+void mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3]);
+uint32_t mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3]);
+void copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3]);
+void calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3]);
+void transform_frame (uint8_t * avg[3]);
 
 /* SAD functions */
 uint32_t
@@ -318,7 +337,7 @@ main (int argc, char *argv[])
 
   /* process commandline */
 
-  while ((c = getopt (argc, argv, "?hvb:r:fDI")) != -1)
+  while ((c = getopt (argc, argv, "?hvBb:r:fDI")) != -1)
     {
       switch (c)
         {
@@ -352,11 +371,11 @@ main (int argc, char *argv[])
           mjpeg_log (LOG_INFO, "Search area set to: (%i,%i)-(%i,%i)\n",BX0,BY0,BX1,BY1);
           break;
         case 'r':
-          radius = atoi(optarg)*2;
+          radius = atoi(optarg) * 2;
           if(radius<8)
           {
-            mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
-            radius=8;
+	      mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
+	      radius=8;
           }
           if(radius>256)
           {
@@ -365,6 +384,10 @@ main (int argc, char *argv[])
           }
           mjpeg_log (LOG_INFO, "Maximum search radius set to %i pixel.\n",radius/2);
           break;
+	case 'B':
+	  BW_mode=true;
+          mjpeg_log (LOG_INFO, "Using B&W mode. This kills all chroma.\n");
+	  break;
         }
     }
 
@@ -454,23 +477,25 @@ main (int argc, char *argv[])
       /* process the frame */
 
       /* if needed, deinterlace frame */
-      if (deinterlace)
-		  (*deinterlace_frame) (yuv);
+
+	if (deinterlace)
+	    (*deinterlace_frame) (yuv);
+
+	if (BW_mode)
+	    kill_chroma (yuv);
+
+      //debug stuff
+      //memcpy(yuv2[0],yuv[0],width*height);
 
       /* should we only deinterlace frames ? */
       if (!deinterlace_only)
       {
-	  /* deflicker */
-	  //antiflicker_reference (yuv);
+	  /* despeckling */
+	  //despeckle_frame_soft (yuv);
 
 	  /* main denoise processing */
 	  denoise_frame (yuv);
-
-	  /* despeckling */
-	  despeckle_frame_soft (avrg);
       }
-
-      //preblocking_frame (yuv);
 
 #if 0
       {
@@ -480,8 +505,8 @@ main (int argc, char *argv[])
 		  for (ix=0;ix<width;ix++)
 		  {
 		      *(yuv2[0]+ix+iy*width)=
-			  *(yuv[0]+ix+iy*width)-
-			  *(avrg[0]+ix+iy*width)+128;
+			  (*(yuv2[0]+ix+iy*width)-
+			   *(avrg[0]+ix+iy*width))*32+128;
 		      *(yuv2[1]+((ix+iy*width)>>2))=128;
 		      *(yuv2[2]+((ix+iy*width)>>2))=128;
 		  }
@@ -490,23 +515,8 @@ main (int argc, char *argv[])
 
       generate_black_border(BX0,BY0,BX1,BY1,yuv);
 
-// debugging only
-#if 0
-      {
-	  int ix,iy;
-	      for(iy=0;iy<height/2;iy++)
-		  for(ix=0;ix<width/2;ix++)
-		  {
-		      *(yuv[0]+ix+iy*width)=*(sub_r2[0]+ix+(iy*width/2));
-		      *(yuv[1]+ix/2+iy/2*uv_width)=*(sub_r2[1]+ix/2+(iy/2*uv_width/2));
-		      *(yuv[2]+ix/2+iy/2*uv_width)=*(sub_r2[2]+ix/2+(iy/2*uv_width/2));
-		  }
-      }
-#endif
-
       /* write the frame */
-      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
-//      y4m_write_frame (fd_out, &streaminfo, &frameinfo, yuv2);
+      y4m_write_frame (fd_out, &streaminfo, &frameinfo, yuv);
     }
 
   if(  errnr !=  Y4M_ERR_EOF )
@@ -1224,39 +1234,28 @@ deinterlace_frame_mmx (uint8_t * yuv[3])
 void
 average_frames (uint8_t * ref[3], uint8_t * avg[3])
 {
-  int __attribute__ ((aligned (32))) x, y;
-  uint8_t __attribute__ ((aligned (32))) * av = avg[0];
-  uint8_t __attribute__ ((aligned (32))) * rf = ref[0];
-  uint8_t __attribute__ ((aligned (32))) * av2 = avg[2];
-  uint8_t __attribute__ ((aligned (32))) * rf2 = ref[2];
+  int c;
+  uint8_t * av = avg[0];
+  uint8_t * rf = ref[0];
+  uint8_t * av2 = avg[2];
+  uint8_t * rf2 = ref[2];
 
   /* blend Y component */
 
-  for (y = 0; y < height; y++)
+  for (c = 0; c < (height*width); c++)
   {
-    for (x = 0; x < width; x++)
-      {
-        *(av + x ) = (*(av + x ) * 7 + *(rf + x ) * 1) >>3;
-      }
-    av+=width;
-    rf+=width;
+      *(av) = (*(av++) * 7 + *(rf++)) >>3;
   }
 
   /* blend U and V components */
 
   av = avg[1];
   rf = ref[1];
-  for (y = 0; y < uv_height; y++)
+
+  for (c = 0; c < (uv_height*uv_width); c++)
   {
-    for (x = 0; x < uv_width; x++)
-      {
-        *(av + x ) = (*(av + x) * 6 + *(rf + x) * 2) >>3;
-        *(av2 + x ) = (*(av2 + x) * 6 + *(rf2 + x) * 2) >>3;
-      }
-    av+=uv_width;
-    rf+=uv_width;
-    av2+=uv_width;
-    rf2+=uv_width;
+      *(av) = (*(av++) * 7 + *(rf++)) >>3;
+      *(av2) = (*(av2++) * 7 + *(rf2++)) >>3;
   }
 }
 
@@ -1390,10 +1389,6 @@ calc_SAD_half_noaccel (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t
 uint32_t
 calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
 {
-  int dx = 0;
-  int dy = 0;
-  int Y = 0;
-  uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
   uint8_t *rs = ref + ref_offs;
@@ -1434,10 +1429,6 @@ calc_SAD_half_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t re
 uint32_t
 calc_SAD_half_mmx (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, int xx, int yy)
 {
-  int dx = 0;
-  int dy = 0;
-  int Y = 0;
-  uint32_t d = 0;
   uint8_t *fs = frm + frm_offs;
   uint8_t *fs2 = frm + frm_offs+xx+yy*width;
   uint8_t *rs = ref + ref_offs;
@@ -1634,8 +1625,6 @@ calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_off
              :"%eax", "%ebx", "%ecx"
              );
 
-              return a[0];
-              
           break;
 
         case 2:                /* 4x4 */
@@ -1662,10 +1651,10 @@ calc_SAD_mmxe (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_off
              :"%eax", "%ebx", "%ecx"
              );
 
-              return a[0];
               
           break;
         }
+      return a[0];
 }
 
 #endif
@@ -1906,10 +1895,12 @@ calc_SAD_uv_mmxe (uint8_t * frm,
 void 
 mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
-  int __attribute__ ((aligned (32))) qy, qx, dx, dy,dr;
-  uint32_t __attribute__ ((aligned (32))) d,d_uv=0;
-  uint32_t __attribute__ ((aligned (32))) CAD = (256 * BLOCKSIZE * BLOCKSIZE);
-  uint32_t __attribute__ ((aligned (32))) SAD = (256 * BLOCKSIZE * BLOCKSIZE);
+    int i=0;
+    int qy, qx, dx, dy,dr,dr_uv;
+    uint32_t d=0;
+    uint32_t  d_uv=0;
+    uint32_t SAD = 3*(256 * BLOCKSIZE * BLOCKSIZE);
+    int offs;
 
   /* search_radius has to be devided by 2 as radius is given in */
   /* half-pixels ...                                            */
@@ -1917,88 +1908,137 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   dx=x-BLOCKOFFSET;
   dy=y-BLOCKOFFSET;
   dr=(dx>>2) + (dy>>2) * width;
+  dr_uv=(dx>>3) + (dy>>3) * uv_width;
+
+  nr_of_44_matches=0;
 
   for (qy = -(mod_radius >>1); qy <= (mod_radius >>1); qy += 4)
-    for (qx = -(mod_radius >>1); qx <= (mod_radius >>1); qx += 4)
-      {
-        d = calc_SAD (tgt_frame[0],
-                      ref_frame[0],
-                      ((dx + qx ) >>2) + ((dy + qy ) >>2) * width,dr,2);
-
-        if (d < SAD)
-          {
-            matrix[x][y][0] = qx<<1;
-            matrix[x][y][1] = qy<<1;
-            SAD = d;
-          }
-
-	if(qx==0 && qy==0)
-	    CAD=d;
-      }
-  if(CAD<=SAD)
   {
-      matrix[x][y][0] = 0;
-      matrix[x][y][1] = 0;
+    for (qx = -(mod_radius >>1); qx <= (mod_radius >>1); qx += 4)
+	{
+	    d = calc_SAD (tgt_frame[0],
+			  ref_frame[0],
+			  ((dx + qx ) >>2) + ((dy + qy ) >>2)*width,
+			  dr,
+			  2);
+
+	    if(!BW_mode && !qx&7 && !qy&7)
+	    {
+		d_uv = calc_SAD_uv (tgt_frame[1],
+				    ref_frame[1],
+				    ((dx + qx ) >>3) + ((dy + qy ) >>3) * uv_width,dr_uv,2);
+		
+		d_uv += calc_SAD_uv (tgt_frame[2],
+				     ref_frame[2],
+				     ((dx + qx ) >>3) + ((dy + qy ) >>3) * uv_width,dr_uv,2);
+	    }
+	    d+=d_uv;
+
+        if (d < SAD) // find some good matches...
+          {
+	      for(i=1;i<2;i++)
+	      {
+		  best_match_44_x[i] = best_match_44_x[i-1];
+		  best_match_44_y[i] = best_match_44_y[i-1];
+	      }
+
+	      best_match_44_x[0] = qx;
+	      best_match_44_y[0] = qy;
+	      SAD = d;
+
+          }
+      }
+    offs+=width;
   }
+  nr_of_44_matches=(nr_of_44_matches<save_population)? nr_of_44_matches:save_population;
 }
 
 void
 mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
-  int __attribute__ ((aligned (32))) qy, qx,dx,dy,dr;
-  uint32_t __attribute__ ((aligned (32))) d,d_uv;
-  uint32_t __attribute__ ((aligned (32))) CAD = (256 * BLOCKSIZE * BLOCKSIZE);
-  uint32_t __attribute__ ((aligned (32))) SAD = (256 * BLOCKSIZE * BLOCKSIZE);
-  int __attribute__ ((aligned (32))) bx;
-  int __attribute__ ((aligned (32))) by;
+    int i=nr_of_44_matches;
+    int qy, qx,dx,dy,dr,dr_uv;
+    uint32_t  d=0;
+    uint32_t  d_uv=0;
+    uint32_t  SAD = (256 * BLOCKSIZE * BLOCKSIZE)*3;
+    int  bx;
+    int  by;
 
-  dx=x-BLOCKOFFSET;
-  dy=y-BLOCKOFFSET;
-  dr=(dx>>1) + (dy>>1) * width;
+    dx=x-BLOCKOFFSET;
+    dy=y-BLOCKOFFSET;
+    dr   =(dx>>1) + (dy>>1) * width;
+    dr_uv=(dx>>2) + (dy>>2) * uv_width;
+    
+    nr_of_22_matches=0;
 
-  bx = matrix[x][y][0] / 2;
-  by = matrix[x][y][1] / 2;
+    i=2;
+    while(i--)
+    {
+	// Use the four best matches from 4x4 search
+	bx = best_match_44_x[i];
+	by = best_match_44_y[i];
 
-  for (qy = (by - 2); qy <= (by + 2); qy += 2)
-    for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
-      {
-        d = calc_SAD (tgt_frame[0],
-                      ref_frame[0],
-                      ((dx + qx ) >>1) + ((dy + qy ) >>1) * width,dr, 2);
+	for (qy = (by - 2); qy <= (by + 2); qy += 2)
+	    for (qx = (bx - 2); qx <= (bx + 2); qx += 2)
+	    {
+		d = calc_SAD (tgt_frame[0],
+			      ref_frame[0],
+			      ((dx + qx ) >>1) + ((dy + qy ) >>1) * width,dr, 2);
 
-        if (d < SAD)
-	{
-            matrix[x][y][0] = qx<<1 ;
-            matrix[x][y][1] = qy<<1 ;
-            SAD = d;
-	}
+		if(!BW_mode && !qx&3 && !qy&3)
+		{
+		    d_uv = calc_SAD_uv (tgt_frame[1],
+					ref_frame[1],
+					((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
+		    
+		    d_uv += calc_SAD_uv (tgt_frame[2],
+					 ref_frame[2],
+					 ((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
+		}
+		d+=d_uv;
 
-	if(qx==bx && qy==by)
-	    CAD=d;
-      }
-  if(CAD<=SAD)
-  {
-      matrix[x][y][0] = bx<<1;
-      matrix[x][y][1] = by<<1;
-  }
+		if (d < SAD )
+		{
+		    int j;
+		    nr_of_22_matches++;
+
+		    for(j=1;j<2;j++)
+		    {
+			best_match_22_x[j] = best_match_22_x[j-1];
+			best_match_22_y[j] = best_match_22_y[j-1];
+		    }
+
+		    best_match_22_x[0] = qx;
+		    best_match_22_y[0] = qy;
+		    SAD = d;
+		}
+	    }
+    }
+  nr_of_22_matches=(nr_of_22_matches<save_population)? nr_of_22_matches:save_population;
 }
 
 void
 mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
-    int __attribute__ ((aligned (32))) qy, qx,dx,dy,dr;
-    uint32_t __attribute__ ((aligned (32))) d=0,d_uv=0;
-    uint32_t __attribute__ ((aligned (32))) CAD = (256 * BLOCKSIZE * BLOCKSIZE);
-    uint32_t __attribute__ ((aligned (32))) SAD = (256 * BLOCKSIZE * BLOCKSIZE);
-    int __attribute__ ((aligned (32))) bx;
-    int __attribute__ ((aligned (32))) by;
-    
-    bx = matrix[x][y][0] >>1;
-    by = matrix[x][y][1] >>1;
+    int i=nr_of_22_matches;
+    int qy, qx,dx,dy,dr,dr_uv;
+    uint32_t d=0;
+    uint32_t d_uv=0;
+    uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE)*3;
+    int bx;
+    int by;
     
     dx=x-BLOCKOFFSET;
     dy=y-BLOCKOFFSET;
     dr=dx + dy* width;
+    dr_uv=dr>>2;
+
+    i=2;
+    while(i--)
+    {
+	// Use the best matches from 2x2 search
+	bx = best_match_22_x[i];
+	by = best_match_22_y[i];
 
     for (qy = (by - 1); qy <= (by + 1); qy++)
 	for (qx = (bx - 1); qx <= (bx + 1); qx++)
@@ -2008,30 +2048,34 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 			  (dx + qx) + (dy + qy) * width,
 			  dr, 1);
 
+	    if(!BW_mode && !qx&1 && !qy&1)
+	    {
+		d_uv = calc_SAD_uv (tgt_frame[1],
+				    ref_frame[1],
+				    ((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+
+		d_uv += calc_SAD_uv (tgt_frame[2],
+				     ref_frame[2],
+				     ((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+	    }
+	    d+=d_uv;
+
 	    if (d < SAD)
 	    {
 		matrix[x][y][0] = qx<<1;
 		matrix[x][y][1] = qy<<1;
 		SAD = d;
 	    }
-
-	    if(qx==bx && qy==by)
-		CAD=d;
 	}
-    if(CAD<=SAD)
-    {
-	matrix[x][y][0] = bx<<1;
-	matrix[x][y][1] = by<<1;
     }
 }
 
-void
+uint32_t
 mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
   int qy, qx, ds, dr;
-  uint32_t d,d_uv;
+  uint32_t d;
   uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE);
-  uint32_t CAD = (256 * BLOCKSIZE * BLOCKSIZE);
   int bx;
   int by;
 
@@ -2041,10 +2085,6 @@ mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
   ds=(x + bx - BLOCKOFFSET) + (y + by - BLOCKOFFSET) * width;
   dr=(x - BLOCKOFFSET) + (y - BLOCKOFFSET) * width;
 
-  CAD = calc_SAD_half (tgt_frame[0],
-			   ref_frame[0],
-			   ds, dr, 0, 0 );
-        
   for (qy = -1; qy <= +1; qy++)
     for (qx = -1; qx <= +1; qx++)
       {
@@ -2058,22 +2098,15 @@ mb_search_half (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
             matrix[x][y][1] = (by<<1)+qy;
             SAD = d;
           }
-
-	if(qx==0 && qy==0)
-	    CAD=d;
       }
-  if(CAD<=SAD)
-  {
-      matrix[x][y][0] = bx<<1;
-      matrix[x][y][1] = by<<1;
-  }
+  return SAD;
 }
 
 
 void
 copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
 {
-  int dx,dy;
+  int dy;
   int qx = matrix[x][y][0]/2;
   int qy = matrix[x][y][1]/2;
   int sx = matrix[x][y][0]-(qx<<1);
@@ -2085,35 +2118,66 @@ copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
   uint8_t * src_addr2 = srce[0]+(x+qx+sx)+(y+qy+sy)*width;
   uint8_t * src_addr3 = yuv[0] +(x)+(y)*width;
 
-  for (dy=0;dy<4;dy++)
+  int w=width-4;
+
+  if(sx!=0 || sy!=0) for (dy=0;dy<4;dy++)
   {
-    for (dx=0;dx<4;dx++)
-    {
       *(dest_addr++)=
 	  ( (*(src_addr1++) + *(src_addr2++))*(q1>>1)+  
 	    *(src_addr3++)*(q2   ) )>>8;
-    }
-      dest_addr += width-4;
-      src_addr1 += width-4;
-      src_addr2 += width-4;
-      src_addr3 += width-4;
+      *(dest_addr++)=
+	  ( (*(src_addr1++) + *(src_addr2++))*(q1>>1)+  
+	    *(src_addr3++)*(q2   ) )>>8;
+      *(dest_addr++)=
+	  ( (*(src_addr1++) + *(src_addr2++))*(q1>>1)+  
+	    *(src_addr3++)*(q2   ) )>>8;
+      *(dest_addr++)=
+	  ( (*(src_addr1++) + *(src_addr2++))*(q1>>1)+  
+	    *(src_addr3++)*(q2   ) )>>8;
+
+      dest_addr += w;
+      src_addr1 += w;
+      src_addr2 += w;
+      src_addr3 += w;
+  }
+  else for (dy=0;dy<4;dy++)
+  {
+      *(dest_addr++)=
+	  ( *(src_addr1++)*q1 +  
+	    *(src_addr3++)*q2 )>>8;
+      *(dest_addr++)=
+	  ( *(src_addr1++)*q1 +  
+	    *(src_addr3++)*q2 )>>8;
+      *(dest_addr++)=
+	  ( *(src_addr1++)*q1 +  
+	    *(src_addr3++)*q2 )>>8;
+      *(dest_addr++)=
+	  ( *(src_addr1++)*q1 +  
+	    *(src_addr3++)*q2 )>>8;
+
+      dest_addr += w;
+      src_addr1 += w;
+      src_addr3 += w;
   }
 
   dest_addr = dest[1]+(x>>1)+(y>>1)*uv_width;
   src_addr1 = srce[1]+((x+qx)>>1)+((y+qy)>>1)*uv_width;
   src_addr2 = yuv[1] +(x>>1)+(y>>1)*uv_width;
 
+  w=uv_width-2;
+
   for (dy=0;dy<2;dy++)
   {
-    for (dx=0;dx<2;dx++)
-    {
       *(dest_addr++)=
-	  ( *(src_addr1++) * q1 )+
-	  ( *(src_addr2++) * q2 )>>8;
-    }
-      dest_addr += uv_width-2;
-      src_addr1 += uv_width-2;
-      src_addr2 += uv_width-2;
+	  ( ( *(src_addr1++) * q1 ) +
+	    ( *(src_addr2++) * q2 ) )>>8;
+      *(dest_addr++)=
+	  ( ( *(src_addr1++) * q1 ) +
+	    ( *(src_addr2++) * q2 ) )>>8;
+
+      dest_addr += w;
+      src_addr1 += w;
+      src_addr2 += w;
   }
 
   dest_addr = dest[2]+(x>>1)+(y>>1)*uv_width;
@@ -2122,15 +2186,16 @@ copy_filtered_block (int x, int y, uint8_t * dest[3], uint8_t * srce[3])
 
   for (dy=0;dy<2;dy++)
   {
-    for (dx=0;dx<2;dx++)
-    {
       *(dest_addr++)=
-	  ( *(src_addr1++) * q1 )+
-	  ( *(src_addr2++) * q2 )>>8;
-    }
-      dest_addr += uv_width-2;
-      src_addr1 += uv_width-2;
-      src_addr2 += uv_width-2;
+	  ( ( *(src_addr1++) * q1 ) +
+	    ( *(src_addr2++) * q2 ) )>>8;
+      *(dest_addr++)=
+	  ( ( *(src_addr1++) * q1 ) +
+	    ( *(src_addr2++) * q2 ) )>>8;
+
+      dest_addr += w;
+      src_addr1 += w;
+      src_addr2 += w;
   }
 }  
 
@@ -2224,51 +2289,6 @@ despeckle_frame_soft (uint8_t * frame[3])
 }
 
 
-void
-line (uint8_t * image, int x0, int y0, int x1, int y1)
-{
-  int x, y;
-  float sx, sy;
-
-  sx = ((x1 - x0) > 0) ? 1 : -1;
-  sy = (float) (y1 - y0) / (float) (x1 - x0);
-
-  for (x = x0; x != x1; x += sx)
-    {
-      y = sy * (x - x0) + y0;
-      *(image + x + y * width) = 200;
-    }
-}
-
-
-int block_detailed(int x, int y, uint8_t * yuv[3])
-{
-  int xx, yy;
-  uint32_t avg;
-  int d,dy;
-
-  avg=0;
-  for (yy=0;yy<(BLOCKSIZE);yy++)
-      for (xx=0;xx<(BLOCKSIZE);xx++)
-      {
-	  avg+=*(yuv[0]+xx+x+(yy+y)*width);
-      }
-  avg/=BLOCKSIZE*BLOCKSIZE;
-
-  dy=0;
-  for (yy=0;yy<(BLOCKSIZE);yy++)
-      for (xx=0;xx<(BLOCKSIZE);xx++)
-      {
-	  d=fabs(avg-*(yuv[0]+xx+x+(yy+y)*width));
-	  dy= (dy>d)? dy:d;
-      }
-
-  if(dy<8)
-      return 0;
-  else
-      return 1;
-}
-
 /*********************************************************** 
  *                                                         * 
  * Hirarchical Motion-Search-Algorithm                     * 
@@ -2286,15 +2306,14 @@ int block_detailed(int x, int y, uint8_t * yuv[3])
 void
 calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 {
+  static int init=2;
   int x, y, dx, dy;
-  uint32_t center_SAD=0;
   uint32_t vector_SAD=0;
   uint32_t sum_of_SADs=0;
   uint32_t avrg_SAD=0;
   int nr_of_blocks = 0;
   static uint32_t last_mean_SAD=100;
-  float mod=1;
-  
+
   /* subsample reference frame by 2 and by 4                 */
   /* store subsampled frame in sub_r[3]                      */
   subsample_frame (sub_r2, ref_frame);
@@ -2322,73 +2341,41 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
       {
         nr_of_blocks++;
 
-        /* calculate center's SAD 
-         * if there isn't a reasonable change, then don't
-         * do a motion-search ...
-         */
+	mod_radius=radius;
 
-        center_SAD = calc_SAD (target[0],
-                               ref_frame[0], (x) + (y) * width, (x) + (y) * width, 2);
+	matrix[x][y][0]=0;
+	matrix[x][y][1]=0;
 
+	/* search best matching block in the 4x4 subsampled
+	 * image and store the result in best_match_44_x/y[0..3]
+	 */
 
-        center_SAD += calc_SAD_uv (target[1],
-                                   ref_frame[1],
-                                   ((x) >>1) + ((y) >>1) * uv_width,
-                                   ((x) >>1) + ((y) >>1) * uv_width, 2)>>1;
+	mb_search_44 (x, y, sub_r4, sub_t4);
+	
+	/* search best matching block in the 2x2 subsampled
+	 * image and store the result in best_match_22_x/y[0..3]
+	 */
+	
+	mb_search_22 (x, y, sub_r2, sub_t2);
+	
+	/* based on that 2x2 search we start a search in the
+	 * real frame and store the result in matrix[x][y][d]
+	 */
 
-        center_SAD += calc_SAD_uv (target[2],
-                                   ref_frame[2],
-                                   ((x) >>1) + ((y) >>1) * uv_width,
-                                   ((x) >>1) + ((y) >>1) * uv_width, 2)>>1;
-                                   
-        /* depending on the quality of the center SAD modulate
-         * the search radius ...
-         */
-        if (center_SAD<(mean_SAD))
-	{
-	    mod_radius=0;
-	}
-	else
-	{
-	    mod_radius = RADIUS;
-        }
-
-        if(fixed_search_radius)
-          mod_radius=radius;
-
-        matrix[x][y][0]=0;
-        matrix[x][y][1]=0;
-
-	if(mod_radius!=0)
-	{
-            /* search best matching block in the 4x4 subsampled
-             * image and store the result in matrix[x][y][d]
-             */
-	    mb_search_44 (x, y, sub_r4, sub_t4);
-            /* search best matching block in the 2x2 subsampled
-             * image and store the result in matrix[x][y][d]
-             */
-            mb_search_22 (x, y, sub_r2, sub_t2);
-
-            /* based on that 2x2 search we start a search in the
-             * real frame and store the result in matrix[x][y][d]
-             */
-            mb_search (x, y, ref_frame, target);
-
-            /* now, we need(!!) to check if the vector is valid...  
-             * to do so, the center-SAD is calculated and compared  
-             * with the vectors-SAD. If it's not better by at least 
-             * a factor of 2 it's discarded...                      
-             */
-
-          }
-	mb_search_half (x, y, ref_frame, target);
+	mb_search (x, y, ref_frame, target);
+	
+	vector_SAD=
+	    mb_search_half (x, y, ref_frame, target)>>2;
+	
 	dx = matrix[x][y][0] >>1;
 	dy = matrix[x][y][1] >>1;
 
+#if 0
         vector_SAD = calc_SAD (target[0],
-                               ref_frame[0],
-                               (x + dx) + (y + dy) * width, (x) + (y) * width, 2);
+                               ref_frame[0], 
+			       (x) + (y) * width, 
+			       (x) + (y) * width, 2);
+#endif
 
         vector_SAD += calc_SAD_uv (target[1],
                                    ref_frame[1],
@@ -2400,6 +2387,15 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    ((x + dx) >>1) + ((y + dy)>>1) * uv_width,
                                    ((x)      >>1) + ((y)     >>1) * uv_width, 2);
 
+#if 0
+	if(vector_SAD>center_SAD)
+	{
+	    matrix[x][y][0]=0;
+	    matrix[x][y][1]=0;
+	    vector_SAD = center_SAD;	
+	}
+#endif
+
 	SAD_matrix[x][y] = vector_SAD;	
         sum_of_SADs += vector_SAD;
       }
@@ -2407,27 +2403,38 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
   avrg_SAD = sum_of_SADs / nr_of_blocks;
 
   last_mean_SAD = mean_SAD;
-  mean_SAD = (mean_SAD * 127 + avrg_SAD + 1)>>7;
+  mean_SAD = mean_SAD * 2000 + avrg_SAD * 100;
+  mean_SAD /= 2100;
 
   if (mean_SAD < 50)            /* don't go too low !!! */
-    mean_SAD = 50;              /* a SAD of 100 is nearly noisefree source material */
+      mean_SAD = 50;            /* a SAD of 100 is nearly noisefree source material */
 
-  if (avrg_SAD > (mean_SAD *1.5) && framenr++ > 12)
+  framenr++;                     /* Allow a scenechange every 6 frames */
+  if ((avrg_SAD > (mean_SAD*2)) && framenr>10)
     {
-	framenr=0;
 	mean_SAD = last_mean_SAD;
+	//framenr=0;
 	scene_change = 1;
 	if (verbose)
         {
 	    mjpeg_log (LOG_INFO, " *** scene change or very high activity detected  ***\n");
 	    mjpeg_log (LOG_INFO, " *** its better to freeze MSAD and copy reference ***\n");
         }
+	return;
     }
   else
   {
       scene_change = 0;
   }
-  
+
+  if (init>0)
+  {
+      init--;
+      mean_SAD=avrg_SAD;
+      scene_change=1;
+      framenr=0;
+  }
+
   if (verbose)
   {
     mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel below %2.1f Pixel (approximate) \n",
@@ -2439,93 +2446,44 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
 }
 
 void
-preblocking_frame (uint8_t * yuv[3])
-{
-  int x, y, xx, yy;
-  int distance;
-  uint32_t avg,avgu,avgv;
-  int d,dy;
-
-  for (y = 0; y < height; y += (BLOCKSIZE/2))
-    for (x = 0; x < width; x += (BLOCKSIZE/2))
-    {
-	avg=0;
-	for (yy=0;yy<(BLOCKSIZE/2);yy++)
-	    for (xx=0;xx<(BLOCKSIZE/2);xx++)
-	    {
-		avg+=*(yuv[0]+xx+x+(yy+y)*width);
-	    }
-	avg/=BLOCKSIZE*BLOCKSIZE/4;
-
-	dy=0;
-	for (yy=-BLOCKSIZE;yy<(BLOCKSIZE*2);yy++)
-	    for (xx=-BLOCKSIZE;xx<(BLOCKSIZE*2);xx++)
-	    {
-		d=fabs(avg-*(yuv[0]+xx+x+(yy+y)*width));
-		dy= (dy>d)? dy:d;
-	    }
-
-	if(dy<4)
-	{
-	    avgu=avgv=0;
-	    for (yy=0;yy<(BLOCKSIZE/4);yy++)
-		for (xx=0;xx<(BLOCKSIZE/4);xx++)
-		{
-		    avgu+=*(yuv[1]+(xx+x/2)+(yy+y/2)*uv_width);
-		}
-	    for (yy=0;yy<(BLOCKSIZE/4);yy++)
-		for (xx=0;xx<(BLOCKSIZE/4);xx++)
-		{
-		    avgv+=*(yuv[2]+(xx+x/2)+(yy+y/2)*uv_width);
-		}
-
-	    avgu/=BLOCKSIZE*BLOCKSIZE/16;
-	    avgv/=BLOCKSIZE*BLOCKSIZE/16;
-
-	    for (yy=0;yy<(BLOCKSIZE/2);yy++)
-		for (xx=0;xx<(BLOCKSIZE/2);xx++)
-		{
-		    *(yuv[0]+xx+x+(yy+y)*width)=avg;
-		    *(yuv[1]+xx/2+x/2+(yy/2+y/2)*uv_width)=avgu;
-		    *(yuv[2]+xx/2+x/2+(yy/2+y/2)*uv_width)=avgv;
-		}
-	}
-    }
-}
-
-void
 transform_frame (uint8_t * avg[3])
 {
-  int x, y;
+    uint32_t SAD;
+    int x, y;
 
   for (y = 0; y < height; y += (BLOCKSIZE >>1))
     for (x = 0; x < width; x += (BLOCKSIZE >>1))
-      if(x>(BX0-4) && x<(BX1+4) && y>(BY0-4) && y<(BY1+4))
+	//if(x>(BX0-4) && x<(BX1+4) && y>(BY0-4) && y<(BY1+4))
       {
-        if (SAD_matrix[x][y] < (mean_SAD))
+	  SAD=SAD_matrix[x][y];
+#if 0
+	  r = matrix[x][y][0]*matrix[x][y][0]+
+	      matrix[x][y][1]*matrix[x][y][1];
+
+	  if (SAD<(mean_SAD/2) && r<32 )
+	      SAD/=4;
+#endif
+
+        if (SAD < (mean_SAD/2))
 	{
 	    block_quality = 0;
 	}	
-        else
-	    if (SAD_matrix[x][y] < (mean_SAD*2))
-	    {
-		block_quality = .25;
-	    }	
-	    else
-		if (SAD_matrix[x][y] < (mean_SAD*3))
-		{
-		    block_quality = .50;
-		}	
-		else
-		    if (SAD_matrix[x][y] < (mean_SAD*4))
-		    {
-			block_quality = .75;
-		    }
-		    else
-		    {
-			block_quality = 1;
-		    }
-
+        else if (SAD < (mean_SAD))
+	{
+	    block_quality = .25;
+	}	
+        else if (SAD < (mean_SAD*2))
+	{
+	    block_quality = .5;
+	}	
+        else if (SAD < (mean_SAD*3))
+	{
+	    block_quality = .75;
+	}	
+	else
+	{
+	    block_quality=1;
+	}
         copy_filtered_block (x, y, yuv1, avg);
 
 #if DEBUG
@@ -2631,11 +2589,27 @@ denoise_frame (uint8_t * frame[3])
       memcpy (avrg[1], frame[1], width * height / 4);
       memcpy (avrg[2], frame[2], width * height / 4);
     }
-//  else
-//    {
-//      /* Copy filtered frame into frame[x] ... */
-//      memcpy (frame[0], avrg[0], width * height);
-//      memcpy (frame[1], avrg[1], width * height / 4);
-//      memcpy (frame[2], avrg[2], width * height / 4);
-//    }
+  else
+    {
+      /* Copy filtered frame into frame[x] ... */
+      memcpy (frame[0], avrg[0], width * height);
+      memcpy (frame[1], avrg[1], width * height / 4);
+      memcpy (frame[2], avrg[2], width * height / 4);
+    }
+}
+
+void 
+kill_chroma (uint8_t * avg[3])
+{
+    uint8_t * c=avg[1];
+    int i;
+
+    for (i=0;i<(uv_width*uv_height);i++)
+	*(c+i)=128;
+
+    c=avg[2];
+
+    for (i=0;i<(uv_width*uv_height);i++)
+	*(c+i)=128;
+    
 }
