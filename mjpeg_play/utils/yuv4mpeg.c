@@ -1101,33 +1101,6 @@ void y4m_log_stream_info(log_level_t level, const char *prefix,
 	      i->sampleaspect.n, i->sampleaspect.d);
 }
 
-int y4m_get_chroma_ss(int chroma, int *horiz, int *vert)
-{
-  switch(chroma) {
-  case Y4M_CHROMA_420JPEG:
-  case Y4M_CHROMA_420MPEG2:
-  case Y4M_CHROMA_420PALDV:
-       *horiz = 2;
-       *vert = 2;
-       return Y4M_OK;
-  case Y4M_CHROMA_444:
-  case Y4M_CHROMA_MONO:
-  case Y4M_CHROMA_444ALPHA:
-       *horiz = 1;
-       *vert = 1;
-       return Y4M_OK;
-  case Y4M_CHROMA_422:
-       *horiz = 2;
-       *vert = 1;
-       return Y4M_OK;
-  case Y4M_CHROMA_411:
-       *horiz = 4;
-       *vert = 1;
-       return Y4M_OK;
-  default:
-       return Y4M_ERR_SYSTEM;
-  }
-}
 
 /*************************************************************************
  *
@@ -1154,3 +1127,92 @@ const char *y4m_strerr(int err)
 }
 
 
+/*************************************************************************
+ *
+ * Chroma subsampling stuff
+ *
+ *************************************************************************/
+
+y4m_ratio_t y4m_chroma_ss_x_ratio(int chroma_mode)
+{
+  y4m_ratio_t r;
+  switch (chroma_mode) {
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+    r.n = 1; r.d = 1; break;
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+  case Y4M_CHROMA_422:
+    r.n = 1; r.d = 2; break;
+  case Y4M_CHROMA_411:
+    r.n = 1; r.d = 4; break;
+  default:
+    r.n = 0; r.d = 0;
+  }
+  return r;
+}
+
+y4m_ratio_t y4m_chroma_ss_y_ratio(int chroma_mode)
+{
+  y4m_ratio_t r;
+  switch (chroma_mode) {
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+  case Y4M_CHROMA_422:
+  case Y4M_CHROMA_411:
+    r.n = 1; r.d = 1; break;
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+    r.n = 1; r.d = 2; break;
+  default:
+    r.n = 0; r.d = 0;
+  }
+  return r;
+}
+
+
+#if 0  /* unfinished work here */
+y4m_ratio_t y4m_chroma_ss_x_offset(int chroma_mode, int field, int plane)
+{
+  y4m_ratio_t r;
+  switch (chroma_mode) {
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+  case Y4M_CHROMA_422:
+  case Y4M_CHROMA_411:
+    r.n = 0; r.d = 1; break;
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+    r.n = 1; r.d = 2; break;
+  default:
+    r.n = 0; r.d = 0;
+  }
+  return r;
+}
+
+y4m_ratio_t y4m_chroma_ss_y_offset(int chroma_mode, int field, int plane);
+{
+  y4m_ratio_t r;
+  switch (chroma_mode) {
+  case Y4M_CHROMA_444ALPHA:
+  case Y4M_CHROMA_444:
+  case Y4M_CHROMA_MONO:
+  case Y4M_CHROMA_422:
+  case Y4M_CHROMA_411:
+    r.n = 0; r.d = 1; break;
+  case Y4M_CHROMA_420JPEG:
+  case Y4M_CHROMA_420MPEG2:
+  case Y4M_CHROMA_420PALDV:
+    r.n = 1; r.d = 2; break;
+  default:
+    r.n = 0; r.d = 0;
+  }
+  return r;
+}
+#endif
