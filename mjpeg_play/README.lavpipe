@@ -211,33 +211,45 @@ A filter program consists only of 4 parts:
 2. Read in and write out the YUV headers, could look like this:
 
    int fd_in = 0, fd_out = 1; /* stdin, stdout */
+   y4m_stream_info_t istream, ostream;
    int res, width, height, frame_rate_code;
 
-   if ((res = yuv_read_header (fd_in, &width, &height, &frame_rate_code)) != 0)
+   y4m_init_stream_info(&istream);
+   y4m_init_frame_info(&iframe);
+
+   if (y4m_read_stream_header (fd_in, &istream) != Y4M_OK)
       exit (1);
-   yuv_write_header (fd_out, width, heigth, frame_rate_code);
+
+   y4m_init_stream_info(&ostream);
+   y4m_copy_stream_info(&ostream,&istream);
+   y4m_write_stream_header (fd_out, width, heigth, frame_rate_code);
    
 3. Allocate the YUV buffer(s) - one for each input stream and perhaps one
    for the output or an arbitrary number of temporary buffers (no bloated
    code, please ;-) )
    
    char *yuv_buffer[3]; /* this is one yuv buffer */
-   yuv_buffer[0] = (char *) malloc (width   * height);   /* luminance */
-   yuv_buffer[1] = (char *) malloc (width/2 * height/2); /* chrominance_b */
-   yuv_buffer[2] = (char *) malloc (width/2 * height/2); /* chrominance_r */
+   yuv_buffer[0] = (char *) malloc(y4m_si_get_plane_length(&istream, 0)); /* Y' */
+   yuv_buffer[1] = (char *) malloc(y4m_si_get_plane_length(&istream, 1)); /* Cr */
+   yuv_buffer[2] = (char *) malloc(y4m_si_get_plane_length(&istream, 2)); /* Cb */
 
 4. The loop - while (number of frames processed) < (-n parameter)
 
 4.1. Read the input frames, one of those for each input stream (e.g. yuv_buffer[123])
 
-   if (res = yuv_read_frame (fd_in, yuv_buffer, width, height)) <= 0)
-      exit (0);
-
+   while (y4m_read_frame (fd_in, &istream, &iframe, yuv_buffer) == Y4M_OK)
+         {
 4.2. Process the input buffers in any way you want.
 
 5. Write out the result:
 
-   yuv_write_frame (fd_out, yuv_buffer, width, height);
+         y4m_write_frame(fd_out, &ostream, &iframe, yuv_buffer);
+         }
+
+6. Clean up:
+     y4m_fini_frame(&iframe);
+     y4m_fini_stream_info(&istream);
+     y4m_fini_stream_info(&ostream);
 
 That's all. You should in any case have a look at the existing filters,
 transist.flt.c and matteblend.flt.c.
