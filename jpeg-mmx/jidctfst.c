@@ -397,12 +397,12 @@ jpeg_idct_ifast (j_decompress_ptr cinfo, jpeg_component_info * compptr,
 #endif
 #define __int64 long long /* This won't work for Intel compilers - tell Gernot to help fixing ! */ 
 #define int16 short /* And this won't either */
-const __int64 _fix_141	     =0x5a825a825a825a82;
-const	  __int64 _fix_184n261	= 0xcf04cf04cf04cf04;
-const	  __int64 _fix_184		= 0x7641764176417641;
-const	  __int64 _fix_n184		= 0x896f896f896f896f;
-const	  __int64 _fix_108n184	= 0xcf04cf04cf04cf04;
-const	  __int64 _const_0x0080	= 0x0080008000800080;
+const __int64 _fix_141	     =0x5a825a825a825a82LL;
+const	  __int64 _fix_184n261	= 0xcf04cf04cf04cf04LL;
+const	  __int64 _fix_184		= 0x7641764176417641LL;
+const	  __int64 _fix_n184		= 0x896f896f896f896fLL;
+const	  __int64 _fix_108n184	= 0xcf04cf04cf04cf04LL;
+const	  __int64 _const_0x0080	= 0x0080008000800080LL;
 
 __inline GLOBAL(void)
 jpeg_idct_ifast_mmx (j_decompress_ptr cinfo, jpeg_component_info * compptr,

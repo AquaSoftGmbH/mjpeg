@@ -172,33 +172,39 @@
 /*
  * Perform dequantization and inverse DCT on one block of coefficients.
  */
+#ifdef __GNUC__
+#define USED __attribute__((__used__))
+#else
+#define USED
+#endif
 #define __int64 unsigned long long
-	static	__int64 fix_029_n089n196	= 0x098ea46e098ea46e;
-	static	__int64 fix_n196_n089		= 0xc13be333c13be333;
-	static	__int64 fix_205_n256n039	= 0x41b3a18141b3a181;
-	static	__int64 fix_n039_n256		= 0xf384adfdf384adfd;
-	static	__int64 fix_307n256_n196	= 0x1051c13b1051c13b;
-	static	__int64 fix_n256_n196		= 0xadfdc13badfdc13b;
-	static	__int64 fix_150_n089n039	= 0x300bd6b7300bd6b7;
-	static	__int64 fix_n039_n089		= 0xf384e333f384e333;
-	static	__int64 fix_117_117			= 0x25a125a125a125a1;
-	static	__int64 fix_054_054p076		= 0x115129cf115129cf;
-	static	__int64 fix_054n184_054		= 0xd6301151d6301151;
+	static	__int64 USED fix_029_n089n196	= 0x098ea46e098ea46eULL;
+	static	__int64 USED fix_n196_n089	= 0xc13be333c13be333ULL;
+	static	__int64 USED fix_205_n256n039	= 0x41b3a18141b3a181ULL;
+	static	__int64 USED fix_n039_n256	= 0xf384adfdf384adfdULL;
+	static	__int64 USED fix_307n256_n196	= 0x1051c13b1051c13bULL;
+	static	__int64 USED fix_n256_n196	= 0xadfdc13badfdc13bULL;
+	static	__int64 USED fix_150_n089n039	= 0x300bd6b7300bd6b7ULL;
+	static	__int64 USED fix_n039_n089	= 0xf384e333f384e333ULL;
+	static	__int64 USED fix_117_117	= 0x25a125a125a125a1ULL;
+	static	__int64 USED fix_054_054p076	= 0x115129cf115129cfULL;
+	static	__int64 USED fix_054n184_054	= 0xd6301151d6301151ULL;
 
-	static	__int64 fix_054n184 		= 0xd630d630d630d630;
-	static	__int64 fix_054				= 0x1151115111511151;
-	static	__int64 fix_054p076			= 0x29cf29cf29cf29cf;
-	static	__int64 fix_n196p307n256	= 0xd18cd18cd18cd18c;
-	static	__int64 fix_n089n039p150	= 0x06c206c206c206c2;
-	static	__int64 fix_n256			= 0xadfdadfdadfdadfd;
-	static	__int64 fix_n039			= 0xf384f384f384f384;
-	static	__int64 fix_n256n039p205	= 0xe334e334e334e334;
-	static	__int64 fix_n196			= 0xc13bc13bc13bc13b;
-	static	__int64 fix_n089			= 0xe333e333e333e333;
-	static	__int64 fixn089n196p029		= 0xadfcadfcadfcadfc;
+	static	__int64 USED fix_054n184 	= 0xd630d630d630d630ULL;
+	static	__int64 USED fix_054		= 0x1151115111511151ULL;
+	static	__int64 USED fix_054p076	= 0x29cf29cf29cf29cfULL;
+	static	__int64 USED fix_n196p307n256	= 0xd18cd18cd18cd18cULL;
+	static	__int64 USED fix_n089n039p150	= 0x06c206c206c206c2ULL;
+	static	__int64 USED fix_n256		= 0xadfdadfdadfdadfdULL;
+	static	__int64 USED fix_n039		= 0xf384f384f384f384ULL;
+	static	__int64 USED fix_n256n039p205	= 0xe334e334e334e334ULL;
+	static	__int64 USED fix_n196		= 0xc13bc13bc13bc13bULL;
+	static	__int64 USED fix_n089		= 0xe333e333e333e333ULL;
+	static	__int64 USED fixn089n196p029	= 0xadfcadfcadfcadfcULL;
 
-	static  __int64 const_0x2xx8		= 0x0000010000000100;
-	static  __int64 const_0x0808		= 0x0808080808080808;
+	static  __int64 USED const_0x2xx8	= 0x0000010000000100ULL;
+	static  __int64 USED const_0x0808	= 0x0808080808080808ULL;
+#undef USED
 
 __inline void domidct8x8llmW(short *inptr, short *quantptr, int *wsptr,
 				   JSAMPARRAY outptr, int output_col);

@@ -124,18 +124,25 @@ build_ycc_rgb_table (j_decompress_ptr cinfo)
 #define int64 unsigned long long
 #endif
 
+#ifdef __GNUC__
+#define USED __attribute__((__used__))
+#else
+#define USED
+#endif
+
 #if defined(HAVE_MMX_INTEL_MNEMONICS)
 static const int64 bpte0 = 0x0080008000800080; // 128
 static const int64 bpte1 = 0x7168e9f97168e9f9; // for cb (Cb/b, Cb/g, Cb/b, Cb/g)
 static const int64 bpte2 = 0xd21a59bad21a59ba; // for cr (Cr/g, Cr/r, Cr/g, Cr/r)
 #else
-static const int64 te0 = 0x0200020002000200; // -128 << 2
-static const int64 te1 = 0xe9fa7168e9fa7168; // for cb
-static const int64 te2 = 0x59bad24d59bad24d; // for cr
+static const int64 USED te0 = 0x0200020002000200ULL; // -128 << 2
+static const int64 USED te1 = 0xe9fa7168e9fa7168ULL; // for cb
+static const int64 USED te2 = 0x59bad24d59bad24dULL; // for cr
 #endif
 //static const int64 te2 = 0x59ba524b59ba524b; // for cr
 /* How to calculate the constants (see constants from above for YCbCr->RGB):
    trunc(-0.34414*16384) << 16 + trunc(1.772 * 16348) || mind that negative numbers are in 2-complement form (2^32+x+1) */
+#undef USED
 
 /* *	R = Y                + 1.40200 * Cr
  *	G = Y - 0.34414 * Cb - 0.71414 * Cr

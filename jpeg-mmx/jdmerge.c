@@ -40,22 +40,22 @@
 
 #if defined(HAVE_MMX_INTEL_MNEMONICS) || defined(HAVE_MMX_ATT_MNEMONICS)
 #define __int64 unsigned long long
-  __int64 const1 = 0x59BA0000D24B59BA;       // Cr_r Cr_b Cr_g Cr_r
-  __int64 const2 = 0x00007168E9FA0000;		 // Cb-r Cb_b Cb_g Cb_r
-  __int64 const5 = 0x0000D24B59BA0000;		 // Cr_b Cr_g Cr_r Cr_b
-  __int64 const6 = 0x7168E9FA00007168;		 // Cb_b Cb_g Cb_r Cb_b
+  __int64 const1 = 0x59BA0000D24B59BAULL;       // Cr_r Cr_b Cr_g Cr_r
+  __int64 const2 = 0x00007168E9FA0000ULL;	// Cb-r Cb_b Cb_g Cb_r
+  __int64 const5 = 0x0000D24B59BA0000ULL;	// Cr_b Cr_g Cr_r Cr_b
+  __int64 const6 = 0x7168E9FA00007168ULL;	// Cb_b Cb_g Cb_r Cb_b
 
   // constants for factors (One_Half/fix(x)) << 2
 
-  __int64 const05 = 0x0001000000000001;	// Cr_r Cr_b Cr_g Cr_r
-  __int64 const15 = 0x00000001FFFA0000;	// Cb-r Cb_b Cb_g Cb_r
-  __int64 const45 = 0x0000000000010000;	// Cr_b Cr_g Cr_r Cr_b
-  __int64 const55 = 0x0001FFFA00000001;	// Cb_b Cb_g Cb_r Cb_b
+  __int64 const05 = 0x0001000000000001ULL;	// Cr_r Cr_b Cr_g Cr_r
+  __int64 const15 = 0x00000001FFFA0000ULL;	// Cb-r Cb_b Cb_g Cb_r
+  __int64 const45 = 0x0000000000010000ULL;	// Cr_b Cr_g Cr_r Cr_b
+  __int64 const55 = 0x0001FFFA00000001ULL;	// Cb_b Cb_g Cb_r Cb_b
 
   // added for MMX
-  __int64 const128 = 0x0080008000800080;
-  __int64 empty = 0x0000000000000000;
-  __int64 davemask = 0x0000FFFFFFFF0000;
+  __int64 const128 = 0x0080008000800080ULL;
+  __int64 empty = 0x0000000000000000ULL;
+  __int64 davemask = 0x0000FFFFFFFF0000ULL;
   ////////////////////////////////
 #endif
 
