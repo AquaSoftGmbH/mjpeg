@@ -14,3 +14,5 @@ config.sub
 .deps
 confdefs.h
 ltmain.sh
+libtool
+mjpegtools-*.tar.gz

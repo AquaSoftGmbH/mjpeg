@@ -1,3 +1,5 @@
+.deps
 lavtrans
 lavaddwav
+Makefile
 Makefile.in
