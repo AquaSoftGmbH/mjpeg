@@ -9,7 +9,7 @@ mpeg2enc_MMXSSE = \
     predcomp_mmxe.s predcomp_mmx.s
 
 
-EXTRA_DIST = mblock_sub44_sads_x86_h.c NOTES .cvsignore
+EXTRA_DIST = NOTES .cvsignore
 
 
 MAINTAINERCLEANFILES = Makefile.in
@@ -27,7 +27,7 @@ endif
 mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	 putvlc.c putbits.c motionest.c predict.c readpic.c writepic.c transfrm.c \
 	fdctref.c idct.c quantize.c ratectl.c stats.c synchrolib.c \
-	fastintfns.h  global.h mpeg2enc.h  vlc.h mmx.h attributes.h \
+	global.h mpeg2enc.h vlc.h \
 	simd.h synchrolib.h $(mpeg2enc_SIMD)
 
 mpeg2enc_DEPENDENCIES = $(top_srcdir)/utils/libutils.a $(top_srcdir)/utils/libmotion.a
