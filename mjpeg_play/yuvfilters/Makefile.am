@@ -44,11 +44,10 @@ INSTALL_SCRIPT  = cp -f -d
 INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/mjpegtools -I$(top_srcdir)/utils
 DEPENDENCIES	= $(top_srcdir)/utils/libmjpegutils.a
 LDADD		= -L$(top_srcdir)/utils -lmjpegutils
-CLEANFILES	= $(BINARIES) $(MAINS) $L
+CLEANFILES	= $(BINARIES) $(MAINS) $L $(SYMLINKS)
 YFSOURCES	= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
 EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore $(YFSOURCES)
 MAINTAINERCLEANFILES = Makefile.in
-CLEANFILES      = $(SYMLINKS)
 
 #%$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)
 #	$(CC) $(LDFLAGS) -o $@ $< $L $(LDADD)
