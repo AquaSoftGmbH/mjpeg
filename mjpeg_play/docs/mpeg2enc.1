@@ -46,6 +46,7 @@ mpeg2enc \- MPEG 1/2 encoder
 .RB [ -C | --correct-svcd-hds]
 .RB [ --hack-dxr2-bug]
 .RB [ --no-constraints]
+.RB [ -K | --custom-quant-matrices kvcd|tmpgenc|default|hi-res|file=inputfile|help
 .RB [ -? | --help ]
 .BI -o \ output_filename
 .SH "DESCRIPTION"
@@ -177,6 +178,17 @@ permitted by the DVD specification.
 Set verbosity level to num.  0 = warnings and errors only, 1 =
 information as well, 2=really verbose.
 .PP
+.BR  -K|--custom-quant-matrices kvcd|tmpgenc|default|hi-res|file=inputfile|he
+lp
+Specify which quantization matrices to use instead of the defaults
+(which can be specified by using "-K default").   Using "-K hi-res" is
+identical to using the -H option.   The value kvcd uses the Kvcd.Net
+matrices from http://www.kvcd.net and the value tmpgenc invokes the
+TMPGEnc matrices from http://www.tmpgenc.net/e_main.html.   On average
+(and it is somewhat source material dependent) the tmpgenc tables reduce
+the average bitrate about 10% and the kvcd tables about 16% compared to
+the default tables.
+.PP
 .BR -?|--help
 .PP
 Display a synopsis of the command syntax.
@@ -259,7 +271,7 @@ Force the input stream to be treated as NTSC|PAL|SECAM regardless of
 what the stream header might suggest.  Basically this just sets the
 defaults for a bunch of other options.
 .PP
-.BI -F|--frame-rate \ num
+.BR -F|--frame-rate \ num
 Set the frame-rate of the output-stream.  Currently only the standard
 MPEG rates are supported.  Eventually more-or-less arbitrary rates
 will be possible.
@@ -283,7 +295,7 @@ will be possible.
  8 - 60.0
 .br
 .PP
-.BI -a|--aspect \ num
+.BR -a|--aspect \ num
 Set the playback aspect ratio code of the encoded video.
 .br
  1 - 1  - 1:1 display
@@ -424,7 +436,7 @@ be boosted at random.  The default is 0.0 (off).
 
 
 .PP
-.BI -r|--motion-search-radius \ num
+.BR -r|--motion-search-radius \ num
 .PP
 This flag sets the motion estimation search radius.  For most
 purposes the default (16) should be just fine.  For high-resolution
@@ -473,7 +485,7 @@ with "swimmy" material if you can spare the bit-rate!
 
 .SH "OPTION LETTERS FOR CHUNKING THE OUTPUT STREAM"
 .PP
-.BI -S|--sequence-length \ num
+.BR -S|--sequence-length \ num
 .PP
 This flag allows the target size of individual sequences in the final
 multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
@@ -487,7 +499,7 @@ played as a stand-alone MPEG sequence.   For the SVCD and VCD profiles
 the default target sequence length is 700M bytes. For other profiles the
 default is that sequence length is unlimited.
 .PP
-.BI -B|-nonvideo-bitrate \ num
+.BR -B|-nonvideo-bitrate \ num
 .PP
 Since mpeg2enc can't read minds it cannot know in advance what other
 material will be multiplexed with the output video stream.  Thus to
