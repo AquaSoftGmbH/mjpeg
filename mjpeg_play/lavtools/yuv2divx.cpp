@@ -780,7 +780,7 @@ main ( int argc, char **argv )
 
 	if ( audioexist > 0 )
 	{
-		if ( opt_mp3bitrate = -1 )
+		if ( opt_mp3bitrate == -1 )
 		{
 			switch ( format.nSamplesPerSec )
 			{
