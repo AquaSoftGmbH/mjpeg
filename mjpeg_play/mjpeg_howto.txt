@@ -1327,12 +1327,10 @@ too short for the encoded audio.
 
 The transcoding can be made to work but it must be done manually:
 > cat mpeg2src.mpg | mpeg2dec -s -o YUVs | 
-> mpeg2enc -I 0 -f 4 -q 9 -V 200 -b 2500 -F 1 -p -o svcd_stream.m2v
+> mpeg2enc -I 0 -f 4 -q 9 -V 200 -b 2500 -p -o svcd_stream.m2v
 
-The -F 1 options tells mpeg2enc the frame rate for the encoded video has to
-be 24000.0/1001.0 (NTSC 3:2 pulldown converted FILM). The -p tells mpeg2enc
-to generate header flags for 3:2 pull down of 24fps movie. It may also work if
-you do not add the -p flag. 
+The -p tells mpeg2enc to generate header flags for 3:2 pull down of 24fps movie.
+It may also work if you do not add the -p flag. 
 
 You do not need the -p flag when transcoding to VCD format because it is 
 not supported in mpeg1.
