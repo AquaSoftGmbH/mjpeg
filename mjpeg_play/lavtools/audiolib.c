@@ -191,7 +191,7 @@ char *audio_strerror()
 
 int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
 {
-   int tmp, i;
+   int i;
 
    /* Check if the audio task is allready initialized */
 
@@ -235,7 +235,7 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
 
    /* Do not change the following calculations,
       they are this way to avoid overflows ! */
-   usecs_per_buff  = audio_buffer_size*100000/tmp;
+   usecs_per_buff  = audio_buffer_size*100000/audio_byte_rate;
    usecs_per_buff *= 10;
 
 #ifdef FORK_NOT_THREAD
