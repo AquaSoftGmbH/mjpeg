@@ -533,8 +533,8 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
       CHROMA420,
       editlist->video_width, editlist->video_height, 
       settings->yuv_overlay->pixels[0], 
-      settings->yuv_overlay->pixels[1],
-      settings->yuv_overlay->pixels[2]);
+      settings->yuv_overlay->pixels[2],
+      settings->yuv_overlay->pixels[1]);
 #if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
       break;
 # ifdef SUPPORT_READ_YUV420
@@ -542,10 +542,10 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
       memcpy(settings->yuv_overlay->pixels[0],
 	     jpeg_buffer,
 	     editlist->video_width * editlist->video_height);
-      memcpy(settings->yuv_overlay->pixels[1],
+      memcpy(settings->yuv_overlay->pixels[2],
 	     jpeg_buffer + (editlist->video_width * editlist->video_height),
 	     (editlist->video_width * editlist->video_height / 4));
-      memcpy(settings->yuv_overlay->pixels[2],
+      memcpy(settings->yuv_overlay->pixels[1],
 	     jpeg_buffer + (editlist->video_width * editlist->video_height * 5 / 4),
 	     (editlist->video_width * editlist->video_height / 4));
       break;
@@ -607,9 +607,16 @@ static int lavplay_SDL_init(lavplay_t *info)
 
    SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
    SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
-
+   /* since IYUV ordering is not supported by Xv accel on maddog's system
+    *  (Matrox G400 --- although, the alias I420 is, but this is not
+    *  recognized by SDL), we use YV12 instead, which is identical,
+    *  except for ordering of Cb and Cr planes...
+    * we swap those when we copy the data to the display buffer...
+    */
    settings->yuv_overlay = SDL_CreateYUVOverlay(editlist->video_width,
-      editlist->video_height, SDL_IYUV_OVERLAY, settings->screen);
+						editlist->video_height,
+						SDL_YV12_OVERLAY,
+						settings->screen);
    if (!settings->yuv_overlay)
    {
       lavplay_msg(LAVPLAY_MSG_ERROR, info,

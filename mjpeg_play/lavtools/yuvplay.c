@@ -26,6 +26,7 @@
 #include <SDL/SDL.h>
 #include <sys/time.h>
 
+
 /* SDL variables */
 SDL_Surface *screen;
 SDL_Overlay *yuv_overlay;
@@ -155,12 +156,21 @@ int main(int argc, char *argv[])
          screenheight, screen->format->BitsPerPixel);
    }
 
+   /* since IYUV ordering is not supported by Xv accel on maddog's system
+    *  (Matrox G400 --- although, the alias I420 is, but this is not
+    *  recognized by SDL), we use YV12 instead, which is identical,
+    *  except for ordering of Cb and Cr planes...
+    * we swap those when we copy the data to the display buffer...
+    */
    yuv_overlay = SDL_CreateYUVOverlay(frame_width, frame_height,
-				      SDL_IYUV_OVERLAY, screen);
+				      SDL_YV12_OVERLAY,
+				      screen);
    if ( yuv_overlay == NULL ) {
       mjpeg_log(LOG_ERROR, "SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
       exit(1);
    }
+   if ( yuv_overlay->hw_overlay ) 
+     mjpeg_debug("SDL: Using hardware overlay.\n");
 
    rect.x = 0;
    rect.y = 0;
@@ -194,7 +204,9 @@ int main(int argc, char *argv[])
       if (SDL_LockYUVOverlay(yuv_overlay) < 0) break;
 
       /* let's draw the data (*yuv[3]) on a SDL screen (*screen) */
-      yuv_overlay->pixels = yuv;
+      memcpy(yuv_overlay->pixels[0], yuv[0], frame_width * frame_height);
+      memcpy(yuv_overlay->pixels[1], yuv[2], frame_width * frame_height / 4);
+      memcpy(yuv_overlay->pixels[2], yuv[1], frame_width * frame_height / 4);
 
       /* Unlock SDL_yuv_overlay */
       if ( SDL_MUSTLOCK(screen) ) {
@@ -202,13 +214,12 @@ int main(int argc, char *argv[])
       }
       SDL_UnlockYUVOverlay(yuv_overlay);
 
+
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
-      SDL_UpdateRect(screen, 0, 0, frame_width, frame_height);
 
-      fprintf(stdout, "Playing frame %4.4d - %s\r", frame,
+      fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
 			  print_status(frame, frame_rate));
-      fflush(stdout);
 
       while(get_time_diff(time_now) < time_between_frames) {
          usleep(1000);
