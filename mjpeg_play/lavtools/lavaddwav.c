@@ -87,10 +87,10 @@ int main(int argc, char **argv)
    /* Open WAV file */
 
    wav_fd = open(argv[2],O_RDONLY);
-   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", sys_errlist[errno]);}
+   if(wav_fd<0) { mjpeg_error_exit1("Open WAV file: %s", strerror(errno));}
 
    n = read(wav_fd,(char*)data,20);
-   if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", sys_errlist[errno]); }
+   if(n!=20) { mjpeg_error_exit1("Read WAV file: %s", strerror(errno)); }
 
    if(data[0] != FOURCC_RIFF || data[2] != FOURCC_WAVE ||
       data[3] != FOURCC_FMT  || data[4] > sizeof(data) )
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
    if(audio_bps==0) audio_bps = 1; /* safety first */
 
    n = read(wav_fd,(char*)data,8);
-   if(n!=8) { mjpeg_error_exit1("Read WAV header: %s", sys_errlist[errno]); }
+   if(n!=8) { mjpeg_error_exit1("Read WAV header: %s", strerror(errno)); }
 
    if(data[0] != FOURCC_DATA)
    {

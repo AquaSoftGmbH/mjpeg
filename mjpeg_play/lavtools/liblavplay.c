@@ -982,7 +982,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
          if ((settings->video_fd = open(info->video_dev, O_RDWR)) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error opening %s: %s", info->video_dev, sys_errlist[errno]);
+               "Error opening %s: %s", info->video_dev, strerror(errno));
             return 0;
          }
 
@@ -993,7 +993,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
          if (ioctl(settings->video_fd, MJPIOC_REQBUFS, &(settings->br)) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error requesting buffers: %s", sys_errlist[errno]);
+               "Error requesting buffers: %s", strerror(errno));
             return 0;
          }
 
@@ -1003,7 +1003,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
          if (settings->buff == MAP_FAILED)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error mapping the video buffer: %s", sys_errlist[errno]);
+               "Error mapping the video buffer: %s", strerror(errno));
             return 0;
          }
          break;
@@ -1085,7 +1085,7 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
          if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, bp) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error getting video parameters: %s", sys_errlist[errno]);
+               "Error getting video parameters: %s", strerror(errno));
             return 0;
          }
          break;
@@ -1147,7 +1147,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
             "Error getting device capabilities: %s",
-            sys_errlist[errno]);
+            strerror(errno));
          return 0;
       }
       /* hack for wrong return value of marvel cards..... */
@@ -1212,14 +1212,14 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
             "Could not set on-screen window parameters (check framebuffer-params with v4l-conf): %s",
-            sys_errlist[errno]);
+            strerror(errno));
          return 0;
       }
       n = 1;
       if (ioctl(settings->video_fd, VIDIOCCAPTURE, &n) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Could not activate on-screen window: %s", sys_errlist[errno]);
+            "Could not activate on-screen window: %s", strerror(errno));
          return 0;
       }
 
@@ -1241,7 +1241,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
          if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, bp) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error setting video parameters: %s", sys_errlist[errno]);
+               "Error setting video parameters: %s", strerror(errno));
             return 0;
          }
          break;
@@ -1333,7 +1333,7 @@ static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods
          if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &frame) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error queueing buffer: %s", sys_errlist[errno]);
+               "Error queueing buffer: %s", strerror(errno));
             return 0;
          }
          break;
@@ -1377,7 +1377,7 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
          if (ioctl(settings->video_fd, MJPIOC_SYNC, bs) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error syncing on a buffer: %s", sys_errlist[errno]);
+               "Error syncing on a buffer: %s", strerror(errno));
             return 0;
          }
          lavplay_msg(LAVPLAY_MSG_DEBUG, info,
@@ -1436,7 +1436,7 @@ static int lavplay_mjpeg_close(lavplay_t *info)
          if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &n) < 0)
          {
             lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Error de-queueing the buffers: %s", sys_errlist[errno]);
+               "Error de-queueing the buffers: %s", strerror(errno));
             return 0;
          }
          if (info->playback_mode == 'H')
@@ -1445,7 +1445,7 @@ static int lavplay_mjpeg_close(lavplay_t *info)
             if (ioctl(settings->video_fd, VIDIOCCAPTURE, &n) < 0)
             {
                lavplay_msg(LAVPLAY_MSG_ERROR, info,
-                  "Could not deactivate on-screen window: %s", sys_errlist[errno]);
+                  "Could not deactivate on-screen window: %s", strerror(errno));
                return 0;
             }
          }
@@ -1589,7 +1589,7 @@ static int lavplay_init(lavplay_t *info)
    if(seteuid(getuid()) < 0)
    {
       lavplay_msg(LAVPLAY_MSG_ERROR, info,
-         "Can't set effective user-id: %s", sys_errlist[errno]);
+         "Can't set effective user-id: %s", strerror(errno));
       return 0;
    }
 
@@ -1624,7 +1624,7 @@ static int lavplay_init(lavplay_t *info)
       if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Error getting device capabilities: %s", sys_errlist[errno]);
+            "Error getting device capabilities: %s", strerror(errno));
          return 0;
       }
       /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */

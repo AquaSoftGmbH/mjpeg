@@ -49,7 +49,7 @@ int open_video_file(char *filename, EditList *el, int preserve_pathname)
    }
    else if(realpath(filename,realname)==0)
    {
-	   mjpeg_error_exit1( "Cannot deduce real filename: %s", sys_errlist[errno]);
+	   mjpeg_error_exit1( "Cannot deduce real filename: %s", strerror(errno));
    }
 
    /* Check if this filename is allready present */
@@ -259,7 +259,7 @@ void read_video_files(char **filename, int num_files, EditList *el,
 
       if(fd==0)
       {
-         mjpeg_error_exit1("Error opening %s: %s",filename[nf], sys_errlist[errno]);
+         mjpeg_error_exit1("Error opening %s: %s",filename[nf], strerror(errno));
       }
 
       fgets(line,1024,fd);
@@ -427,7 +427,7 @@ int write_edit_list(char *name, long n1, long n2, EditList *el)
 
    if(n<=0)
    {
-	   mjpeg_error("Error writing edit list: %s", sys_errlist[errno]);
+	   mjpeg_error("Error writing edit list: %s", strerror(errno));
 	   return -1;
    }
 

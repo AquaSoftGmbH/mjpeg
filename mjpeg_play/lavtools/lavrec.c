@@ -1112,7 +1112,7 @@ int main(int argc, char **argv)
     if (setfsuid(getuid()) < 0)
     {
       mjpeg_error("Failed to set filesystem user ID: %s",
-        sys_errlist[errno]);
+        strerror(errno));
       return 0;
     }
   }
