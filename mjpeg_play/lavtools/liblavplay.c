@@ -77,15 +77,11 @@
 /*#include "editlist.h" */
 #include "jpegutils.h"
 
-#ifdef	SUPPORT_READ_DV2
+#ifdef	HAVE_LIBDV
 #include <libdv/dv.h>
 
 dv_decoder_t *decoder;
-#ifdef LIBDV_PRE_0_9_5
-gint pitches[3];
-#else
 int pitches[3];
-#endif
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 /*
  * As far as I (maddog) can tell, this is what is going on with libdv-0.9
@@ -239,20 +235,14 @@ typedef struct {
    long currently_processed_entry;
 #endif
 
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
    int data_format[MJPEG_MAX_BUF];
-#endif
-
    struct mjpeg_sync syncinfo[MJPEG_MAX_BUF]; /* synchronization info */
-
    unsigned long *save_list;                  /* for editing purposes */
    long save_list_len;                        /* for editing purposes */
-
    uint8_t abuff[16384];                       /* the audio buffer */
    double spas;                               /* seconds per audio sample */
    long   audio_buffer_size;                  /* audio stream buffer size */
    int    audio_mute;                         /* controls whether to currently play audio or not */
-
    int    state;                              /* playing, paused or stoppped */
    pthread_t playback_thread;                 /* the thread for the whole playback-library */
 } video_playback_setup;
@@ -460,9 +450,7 @@ static int lavplay_get_audio(lavplay_t *info, uint8_t *buff, long frame_num, int
  ******************************************************/
 
 static int lavplay_queue_next_frame(lavplay_t *info, uint8_t *vbuff,
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 				    int data_format,
-#endif
 				    int skip_video, int skip_audio, int skip_incr)
 {
    int res, mute, i, jpeg_len1, jpeg_len2, new_buff_no;
@@ -474,9 +462,7 @@ static int lavplay_queue_next_frame(lavplay_t *info, uint8_t *vbuff,
    if (!skip_video)
    {
       if (info->flicker_reduction && editlist->video_inter &&
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 	  data_format == DATAFORMAT_MJPG &&
-#endif	  
 	  settings->current_playback_speed <= 0)
       {
          if (settings->current_playback_speed == 0)
@@ -637,13 +623,11 @@ static int lavplay_SDL_unlock(lavplay_t *info)
 
 #ifdef HAVE_SDL
 static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 			      int data_format,
-#endif
 			      int buf_len)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
-# ifdef SUPPORT_READ_DV2
+# ifdef HAVE_LIBDV
    uint8_t *output[3];
 #endif
    EditList *editlist = info->editlist;
@@ -652,10 +636,8 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    if (!lavplay_SDL_lock(info)) return 0;
 
    /* decode frame to yuv */
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
    switch (data_format) {
    case DATAFORMAT_MJPG:
-#endif
    decode_jpeg_raw (jpeg_buffer, buf_len,
       editlist->video_inter>0&&info->exchange_fields?(editlist->video_inter+1)%2+1:editlist->video_inter,
       CHROMA420,
@@ -663,9 +645,7 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
       settings->yuv_overlay->pixels[0], 
       settings->yuv_overlay->pixels[2],
       settings->yuv_overlay->pixels[1]);
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
       break;
-# ifdef SUPPORT_READ_YUV420
    case DATAFORMAT_YUV420:
       memcpy(settings->yuv_overlay->pixels[0],
 	     jpeg_buffer,
@@ -677,8 +657,8 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
 	     jpeg_buffer + (editlist->video_width * editlist->video_height * 5 / 4),
 	     (editlist->video_width * editlist->video_height / 4));
       break;
-# endif
-# ifdef SUPPORT_READ_DV2
+
+# ifdef HAVE_LIBDV
    case DATAFORMAT_DV2:
       dv_parse_header(decoder, jpeg_buffer);
       switch(decoder->sampling) {
@@ -697,13 +677,8 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
          pitches[1] = 0;
          pitches[2] = 0;
 
-#ifdef LIBDV_PRE_0_9_5
-	 dv_decode_full_frame(decoder, jpeg_buffer, e_dv_color_yuv,
-		(guchar **) dv_frame, pitches);
-#else
 	 dv_decode_full_frame(decoder, jpeg_buffer, e_dv_color_yuv,
 		dv_frame, pitches);
-#endif
 
 	 output[0] = settings->yuv_overlay->pixels[0];
 	 output[1] = settings->yuv_overlay->pixels[2];
@@ -718,13 +693,12 @@ static int lavplay_SDL_update(lavplay_t *info, uint8_t *jpeg_buffer,
    default:
      return 0;
    }
-#endif
 
    if (!lavplay_SDL_unlock(info)) return 0;
    SDL_DisplayYUVOverlay(settings->yuv_overlay, &(settings->jpegdims));
    return 1;
 }
-#endif
+#endif /* HAVE_SDL */
 
 
 /******************************************************
@@ -918,9 +892,7 @@ static void *lavplay_mjpeg_playback_thread(void * arg)
       /* There is one buffer to play - get ready to rock ! */
       if (settings->currently_processed_entry != settings->buffer_entry[settings->currently_processed_frame] &&
 	  !lavplay_SDL_update(info, settings->buff+settings->currently_processed_frame*settings->br.size,
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
          settings->data_format[settings->currently_processed_frame],
-#endif
          settings->br.size))
       {
          /* something went wrong - give a warning (don't exit yet) */
@@ -1556,13 +1528,8 @@ static int lavplay_init(lavplay_t *info)
    }
 #endif
 
-#ifdef	SUPPORT_READ_DV2
-#ifdef LIBDV_PRE_0_9_5
-   decoder = dv_decoder_new();
-   dv_init();
-#else
+#ifdef	HAVE_LIBDV
    decoder = dv_decoder_new(0,0,0);
-#endif
    decoder->quality = DV_QUALITY_BEST;
    dv_frame[0] = (uint8_t *)malloc(3 * /*param->output_width * param->output_height */ 720 * 480 * 4);
    dv_frame[1] = NULL;
@@ -1597,10 +1564,8 @@ static int lavplay_init(lavplay_t *info)
    for(nqueue=0;nqueue<settings->br.count;nqueue++)
    {
       if (!lavplay_queue_next_frame(info, settings->buff+nqueue* settings->br.size,
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 				    (settings->data_format[nqueue] =
 				     el_video_frame_data_format(settings->current_frame_num, editlist)),
-#endif
 				    0,0,0)) break;
    }
 
@@ -1899,10 +1864,8 @@ static void lavplay_playback_cycle(lavplay_t *info)
 	 settings->buffer_entry[frame] = editlist->frame_list[settings->current_frame_num];
 #endif
          if (!lavplay_queue_next_frame(info, settings->buff+frame*settings->br.size,
-#if defined(SUPPORT_READ_DV2) || defined(SUPPORT_READ_YUV420)
 				       (settings->data_format[frame] =
 					el_video_frame_data_format(settings->current_frame_num, editlist)),
-#endif
 				       skipv,skipa,skipi))
          {
             lavplay_change_state(info, LAVPLAY_STATE_STOP);

@@ -31,7 +31,7 @@
 #define COMPILE_LAV_IO_C
 #include "lav_io.h"
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 #include <libdv/dv.h>
 #endif
 
@@ -67,10 +67,9 @@ static unsigned long jpeg_app1_offset    = 0;
 
 #define QUICKTIME_MJPG_TAG 0x6d6a7067  /* 'mjpg' */
 
-#ifdef SUPPORT_READ_YUV420
 static int check_YUV420_input(lav_file_t *lav_fd);
-#endif
-#ifdef SUPPORT_READ_DV2
+
+#ifdef HAVE_LIBDV
 static int check_DV2_input(lav_file_t *lav_fd);
 #endif
 
@@ -1124,7 +1123,7 @@ lav_file_t *lav_open_input_file(char *filename)
       strncasecmp(video_comp,"mjpa",4)!=0 &&
       strncasecmp(video_comp,"jpeg",4)!=0 )
    {
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
    if(strncasecmp(video_comp,"dvsd",4)==0
 #ifdef HAVE_LIBQUICKTIME
       || strncasecmp(video_comp,QUICKTIME_DV,4)==0
@@ -1140,8 +1139,8 @@ lav_file_t *lav_open_input_file(char *filename)
        /* DV is always interlaced, bottom first */
        lav_fd->interlacing = LAV_INTER_BOTTOM_FIRST; 
    }
-#endif /* SUPPORT_READ_DV2 */
-#ifdef SUPPORT_READ_YUV420
+#endif /* HAVE_LIBDV */
+
    if(strncasecmp(video_comp,"yuv",3)==0
 #ifdef HAVE_LIBQUICKTIME
 /*    || strncasecmp(video_comp,QUICKTIME_YUV4,4)==0 */
@@ -1160,7 +1159,6 @@ lav_file_t *lav_open_input_file(char *filename)
 #endif
        if (ierr) goto ERREXIT;
    }
-#endif /* SUPPORT_READ_YUV420 */
       return lav_fd;
    }
 
@@ -1361,7 +1359,7 @@ const char *lav_strerror(void)
 
 
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 static int check_DV2_input(lav_file_t *lav_fd)
 {
    int ierr = 0;
@@ -1378,13 +1376,9 @@ static int check_DV2_input(lav_file_t *lav_fd)
 
    if ( lav_read_frame(lav_fd,frame) <= 0 ) goto ERREXIT;
    {
-#ifdef LIBDV_PRE_0_9_5
-     dv_decoder_t *decoder = dv_decoder_new();
-     dv_init();
-#else
      dv_decoder_t *decoder = dv_decoder_new(0,0,0);
-#endif
      dv_parse_header(decoder, frame);
+
      switch (decoder->system) {
      case e_dv_system_525_60:
        if (dv_format_wide(decoder)) {
@@ -1409,11 +1403,7 @@ static int check_DV2_input(lav_file_t *lav_fd)
        lav_fd->sar_h = 0;
        break;
      }
-#ifdef LIBDV_PRE_0_9_5
-     free(decoder);
-#else
      dv_decoder_free(decoder);
-#endif
    }
 
    /* reset video position to 0 */
@@ -1430,7 +1420,6 @@ ERREXIT:
 
 
 
-#ifdef SUPPORT_READ_YUV420
 static int check_YUV420_input(lav_file_t *lav_fd)
 {
    int ierr = 0;
@@ -1456,7 +1445,6 @@ ERREXIT:
    if (ierr) internal_error = ierr;
    return 1;
 }
-#endif
 
 int lav_fileno(lav_file_t *lav_file)
 {

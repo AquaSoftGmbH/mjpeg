@@ -275,7 +275,7 @@ int main(argc, argv)
 
 	init(&param, frame_buf /*&buffer*/);
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 	lav_init_dv_decoder();
 #endif
 	if (param.delta_lum_threshold != -1) 

@@ -413,60 +413,35 @@ if test x$have_aviplay = xtrue; then
 fi
 
 dnl *********************************************************************
-dnl Check for the libdv
-dnl At the end of this mess, DV_LIBS will contain the libraries and 
-dnl flags needed to link with the jpeg library and DV_CFLAGS will 
-dnl have the needed flags to compile against said library
+dnl Check for libdv
+dnl At the end of this DV_LIBS will contain the libraries and 
+dnl flags needed for linking and DV_CFLAGS will have the flags for compilation.
 AC_SUBST(DV_LIBS)
 AC_SUBST(DV_CFLAGS)
 if test x$with_dv = xyes ; then
   AC_MSG_ERROR([
 *** A directory must be specified for the --with-dv option.])
-else if test x$with_dv = x ; then
-  with_dv_l=/usr/local/lib
-  with_dv_i=/usr/local/include
 fi
-fi
-have_dv=false
-if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
-else
-  EXTRA_LIBS="-L$with_dv$with_dv_l $LIBM_LIBS $GLIB_LIBS -ldl "
-fi
-AC_CHECK_LIB(dv, dv_init,
-  [ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
-    DV_CFLAGS="-I$with_dv$with_dv_i"
-    AC_DEFINE(SUPPORT_READ_DV2)
-    AC_DEFINE(SUPPORT_READ_YUV420)
-    have_dv=true],, 
-    -L$with_dv$with_dv_l  ${EXTRA_LIBS})
 
-dnl ******************
-dnl ...and now if we have libdv, check if version >= 0.9.5
-dnl (by checking if the new function dv_decoder_free() exists)
-have_dv_gte_0_9_5=false
-if test x$have_dv = xtrue; then
-   AC_CHECK_LIB(dv, dv_decoder_free,
-	[ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
-	  DV_CFLAGS="-I$with_dv$with_dv_i"
-	  have_dv_gte_0_9_5=true ],
-	[ AC_DEFINE(LIBDV_PRE_0_9_5) ],
-    -L$with_dv$with_dv_l  ${EXTRA_LIBS})
+if test x$with_dv = x ; then
+  with_dv=/usr/local
 fi
+
+have_dv=false
+EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
+AC_CHECK_LIB(dv, dv_decoder_free,
+  [ DV_LIBS="-L${with_dv}/lib -ldv ${EXTRA_LIBS}"
+    DV_CFLAGS="-I${with_dv}/include"
+    AC_DEFINE(HAVE_LIBDV)
+    have_dv=true],, 
+    -L${with_dv}/lib -ldv ${EXTRA_LIBS})
 
 dnl *********************************************************************
 dnl Check for libDV YV12 read-support
-if test x$with_dv_yv12 = xyes; then
-if test x$have_pthread = xtrue ; then
-  EXTRA_LIBS=" $LIBM_LIBS $GLIB_LIBS  $PTHREAD_LIBS -ldl "
-else
-  EXTRA_LIBS="-L$with_dv$with_dv_l $LIBM_LIBS $GLIB_LIBS -ldl "
-fi
-AC_CHECK_LIB(dv, dv_init,
-  [ DV_LIBS="-L$with_dv$with_dv_l -ldv ${EXTRA_LIBS}"
-    DV_CFLAGS="-I$with_dv$with_dv_i"
-    AC_DEFINE(LIBDV_PAL_YV12)],,
-    -L$with_dv$with_dv_l  ${EXTRA_LIBS})
+have_dv_yv12=false
+if test x$with_dv_yv12 = xyes -a $have_dv = true; then
+    AC_DEFINE(LIBDV_PAL_YV12)
+    have_dv_yv12=true
 fi
 
 dnl *********************************************************************
@@ -831,16 +806,8 @@ if test "$have_quicktime" = "true" ; then
 echo "      - Quicktime source in         : ${with_quicktime}"
 fi
 echo "    - AVI MJPEG playback/recording  : true (always)"
-echo -n "    - libDV (digital video) support : ${have_dv} "
-if test "x$have_dv" = "xtrue" ; then
-  if test "x$have_dv_gte_0_9_5" = "xtrue" ; then
-    echo "(>= v0.9.5)"
-  else
-    echo "(< v0.9.5)"
-  fi
-else
-  echo " "
-fi
+echo "    - libDV (digital video) support : ${have_dv} "
+echo "    - libDV PAL YV12 read support   : ${have_dv_yv12} "
 echo "    - AVIFILE divx encoding support : ${have_aviplay}"
 echo "    - Gtk+ support for glav         : ${have_gtk}"
 echo "    - glibc support for >2GB files  : ${have_large_file}"

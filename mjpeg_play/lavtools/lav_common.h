@@ -89,13 +89,11 @@ void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el,
 void init(LavParam *param, uint8_t *frame[]);
 
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 
 #include <libdv/dv.h>
 
 void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
 			     int width, int height);
 void lav_init_dv_decoder(void);
-
-#endif /* SUPPORT_READ_DV2 */
-
+#endif

@@ -60,10 +60,8 @@
 #undef BUILD_MJPEG
 
 /* Define for libDV and possibly YV12 support */
+#undef HAVE_LIBDV
 #undef LIBDV_PAL_YV12
-#undef SUPPORT_READ_DV2
-#undef SUPPORT_READ_YUV420
-#undef LIBDV_PRE_0_9_5
 
 /* whether we have avifile/gtk+/sdl */
 #undef HAVE_AVIFILE

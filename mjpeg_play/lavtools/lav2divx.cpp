@@ -749,7 +749,7 @@ main ( int argc, char **argv )
 
 	init(&param, lavframe);	// initialize lav2yuv code.
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 	lav_init_dv_decoder();
 #endif
 

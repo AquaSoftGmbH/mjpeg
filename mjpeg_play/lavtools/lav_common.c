@@ -42,14 +42,10 @@
 static uint8_t jpeg_data[MAX_JPEG_LEN];
 
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 
 dv_decoder_t *decoder;
-#ifdef LIBDV_PRE_0_9_5
-gint pitches[3];
-#else
 int pitches[3];
-#endif
 uint8_t *dv_frame[3] = {NULL,NULL,NULL};
 
 /*
@@ -156,7 +152,7 @@ void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input,
     }
 }
 
-#endif /* SUPPORT_READ_DV2 */
+#endif /* HAVE_LIBDV */
 
 
 
@@ -240,7 +236,7 @@ void init(LavParam *param, uint8_t *buffer[])
    buffer[1] = bufalloc(param->chroma_size);
    buffer[2] = bufalloc(param->chroma_size);
    
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
    dv_frame[0] = bufalloc(3 * param->output_width * param->output_height);
    dv_frame[1] = NULL;
    dv_frame[2] = NULL;
@@ -269,7 +265,7 @@ int readframe(int numframe,
   switch(data_format) {
 
   case DATAFORMAT_DV2 :
-#ifndef SUPPORT_READ_DV2
+#ifndef HAVE_LIBDV
     mjpeg_error("DV input was not configured at compile time");
     res = 1;
 #else
@@ -291,13 +287,8 @@ int readframe(int numframe,
 	mjpeg_error("for DV 4:2:0 only full width output is supported");
 	res = 1;
       } else {
-#ifdef LIBDV_PRE_0_9_5
-	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     (guchar **) frame, pitches);
-#else
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     frame, pitches);
-#endif
 	/* swap the U and V components */
 	frame_tmp = frame[2];
 	frame[2] = frame[1];
@@ -320,13 +311,8 @@ int readframe(int numframe,
 	mjpeg_error("for DV only full width output is supported");
 	res = 1;
       } else {
-#ifdef LIBDV_PRE_0_9_5
-	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-			     (guchar **) dv_frame, pitches);
-#else
 	dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
 			     dv_frame, pitches);
-#endif
 	frame_YUV422_to_YUV420P(frame, dv_frame[0],
 				decoder->width,	decoder->height);
 	
@@ -336,7 +322,7 @@ int readframe(int numframe,
       res = 1;
       break;
     }
-#endif /* SUPPORT_READ_DV2 */
+#endif /* HAVE_LIBDV */
     break;
 
   case DATAFORMAT_YUV420 :
@@ -415,15 +401,10 @@ void writeoutYUV4MPEGheader(int out_fd,
 
 
 
-#ifdef SUPPORT_READ_DV2
+#ifdef HAVE_LIBDV
 void lav_init_dv_decoder()
 {
-#ifdef LIBDV_PRE_0_9_5
-   decoder = dv_decoder_new();
-   dv_init();
-#else
    decoder = dv_decoder_new(0,0,0);
-#endif
    decoder->quality = DV_QUALITY_BEST;
 }
 #endif
