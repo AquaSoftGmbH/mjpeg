@@ -30,9 +30,11 @@
 
 void process_commandline(int argc, char *argv[]);
 void alloc_buffers (void);
+void display_help (void);
 
 DNSR_GLOBAL denoiser;
 int frame = 0;
+int verbose = 1;
 char *g_pszInputFile = NULL;		// HACK
 
 /***********************************************************
@@ -63,6 +65,8 @@ int main(int argc, char *argv[])
   denoiser.bwonly             = 0;
   denoiser.radiusY            = 16;
   denoiser.radiusCbCr         = -1;
+  denoiser.zThresholdY        = 2; /* assume medium noise material */
+  denoiser.zThresholdCbCr     = -1;
   denoiser.thresholdY         = 3; /* assume medium noise material */
   denoiser.thresholdCbCr      = -1;
   denoiser.matchCountThrottle = 10;
@@ -74,6 +78,8 @@ int main(int argc, char *argv[])
   	denoiser.radiusCbCr = denoiser.radiusY;
   if (denoiser.thresholdCbCr == -1)
   	denoiser.thresholdCbCr = denoiser.thresholdY;
+  if (denoiser.zThresholdCbCr == -1)
+  	denoiser.zThresholdCbCr = denoiser.zThresholdY;
 
 	/* HACK: open input file. */
 	if (g_pszInputFile != NULL)
@@ -241,7 +247,7 @@ process_commandline(int argc, char *argv[])
 {
   char c;
 
-  while ((c = getopt (argc, argv, "t:T:r:R:m:M:s:f:BI:i:")) != -1)	// HACK
+  while ((c = getopt (argc, argv, "h?z:Z:t:T:r:R:m:M:s:f:BI:v:i:")) != -1)	// HACK
   {
     switch (c)
     {
@@ -250,6 +256,18 @@ process_commandline(int argc, char *argv[])
 	  	g_pszInputFile = optarg;
 		break;
 	  }
+      case 'h':
+      {
+        display_help();
+        exit (0);
+        break;
+      }
+      case '?':
+      {
+        display_help();
+        exit (0);
+        break;
+      }
       case 'r':
       {
         denoiser.radiusY = atoi(optarg);
@@ -268,6 +286,16 @@ process_commandline(int argc, char *argv[])
           denoiser.radiusCbCr=4;
   	      mjpeg_log (LOG_WARN, "Minimum allowed color search radius is 4 pixel.");
         }
+        break;
+      }
+      case 'z':
+      {
+        denoiser.zThresholdY = atoi(optarg);
+        break;
+      }
+      case 'Z':
+      {
+        denoiser.zThresholdCbCr = atoi(optarg);
         break;
       }
       case 't':
@@ -316,6 +344,17 @@ process_commandline(int argc, char *argv[])
         denoiser.interlaced = interlaced;
         break;
       }
+      case 'v':
+        verbose = atoi (optarg);
+        if (verbose < 0 || verbose > 2)
+        {
+          mjpeg_error_exit1 ("Verbose level must be [0..2]");
+        }
+        break;
+	default:
+	  fprintf (stderr, "Unknown option '%c'\n", c);
+	  display_help();
+	  exit (1);
     }
   }
 }
@@ -345,4 +384,32 @@ void alloc_buffers(void)
 	|| denoiser.frame.out[2] == NULL)
 		mjpeg_error_exit1( "Out of memory "
 			"when allocating frame buffers");
+}
+
+void
+display_help (void)
+{
+	fprintf (stderr,
+	"y4mdenoise options\n"
+	"------------------\n"
+	"-r    Radius for motion-search (default: 16)\n"
+	"-R    Radius for color motion-search (default: -r setting)\n"
+	"-t    Error tolerance (default: 3)\n"
+	"-T    Color error tolerance (default: -t setting)\n"
+	"-z    Error tolerance for zero-motion pass (default: 2)\n"
+	"-Z    Error tolerance for color's zero-motion pass (default: -Z setting)\n"
+	"-m    Match-count throttle (keep this many of the best pixel-group\n"
+	"      matches found in a radius search) (default: 10)\n"
+	"-M    Match-size throttle (apply first match whose flood-fill is the\n"
+	"      size of this many pixel-groups or greater) (default: 3)\n"
+	"-s    Beginning frames to skip (i.e. leave undenoised) (default: 0)\n"
+	"-f    Number of reference frames (default: 10)\n"
+	"-B    Black-and-white mode; denoise intensity, set color to white\n"
+	"-I    Interlacing type: 0=frame, 1=top-field-first, 2=bottom-field-first\n"
+	"      (default: taken from stream header)\n"
+	"-v    Verbosity (0=none, 1=normal 2=debug)\n"
+	"-h,-? Help\n"
+	"Intensity pixel-groups are 4x2 (i.e. 4 across and 2 down).\n"
+	"Color pixel-groups are 2x2.\n"
+	);
 }

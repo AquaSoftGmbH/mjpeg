@@ -49,6 +49,8 @@ typedef struct DNSR_GLOBAL
 	int bwonly;				/* 1 if we're to denoise intensity only */
 	int radiusY;			/* search radius for intensity */
 	int radiusCbCr;			/* search radius for color */
+	int zThresholdY;		/* zero-motion intensity error threshold */
+	int zThresholdCbCr;		/* zero-motion color error threshold */
 	int thresholdY;			/* intensity error threshold */
 	int thresholdCbCr;		/* color error threshold */
 	int matchCountThrottle;	/* match throttle on count */

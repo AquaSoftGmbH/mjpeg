@@ -5,6 +5,8 @@ y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
 
 .SH SYNOPSIS
 .B y4mdenoise
+.RB [ -v
+.IR verbosity ]
 .RB [ -r
 .IR motion-search_radius ]
 .RB [ -R
@@ -13,6 +15,10 @@ y4mdenoise \- Motion-compensating YUV4MPEG-frame denoiser
 .IR error_tolerance ]
 .RB [ -T
 .IR color_error_tolerance ]
+.RB [ -z
+.IR zero_motion_error_tolerance ]
+.RB [ -Z
+.IR color_zero_motion_error_tolerance ]
 .RB [ -m
 .IR match-count_throttle ]
 .RB [ -M
@@ -64,8 +70,16 @@ At the end of the frame, any new-frame pixels not resolved yet
 are considered to be new information, and a new reference-pixel is
 generated for each one.
 
+A "zero-motion pass" happens each frame, before motion-detection, in an
+attempt to resolve most of the frame cheaply.  Its error-tolerance can
+be set separately.
+
 .SH OPTIONS
 \fBy4mdenoise\fP accepts the following options:
+
+.TP 4
+.BI \-v " [0..2] verbosity"
+0 = none, 1 = normal (per-frame pixel-detection totals), 2=debug.
 
 .TP 4
 .BI \-r " [4..] search radius"
@@ -92,6 +106,15 @@ in order to avoid undesirable results.  See the instructions below.)
 .TP 4
 .BI \-T " [0..255] Error tolerance for color"
 The default is whatever the main error-tolerance was set to.
+
+.TP 4
+.BI \-z " [0..255] Error tolerance for zero-motion pass"
+The error-tolerance used on pixels that haven't moved.  Usually equal
+to the main error-tolerance or one less than that.  Default is 2.
+
+.TP 4
+.BI \-Z " [0..255] Error tolerance for color's zero-motion pass"
+The default is whatever the main zero-motion error-tolerance was set to.
 
 .TP 4
 .BI \-m " [num] Match-count throttle"

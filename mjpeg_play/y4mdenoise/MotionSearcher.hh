@@ -108,7 +108,7 @@
 // and reference frames to operate on.
 // When constructed, it's configured with the number of frames over
 // which to accumulate pixel values, the search radius (in separate x
-// and y directions), the error tolerance, and throttle values for the
+// and y directions), the error tolerances, and throttle values for the
 // number of matches and the size of matches.
 //
 // Pixel values are tracked over several frames.  The idea is, if the
@@ -120,27 +120,14 @@
 //
 // The motion-searcher works on groups of pixels.  It iterates
 // through a frame, looking for groups of pixels within the search
-// radius that match the current group (within the error tolerance), and
-// builds contiguous regions of matches, each with the appropriate
-// motion vector.  Once that's done, it applies the largest regions to
-// the reference frame, working its way down to the smallest regions.
-// Any areas of the frame not resolved by this method are new
-// information, and new reference pixels are allocated for them.
-//
-// The aforementioned throttle for the number of matches comes into use
-// when several pixel groups within the search radius match the
-// current pixel group.  If there are too many matches, the chances
-// are high that the area is a pattern (e.g. all one color, all one
-// intensity, etc.), and so analyzing it using the standard methdods
-// will take up too much time and space.  So once the number of matches
-// exceeds the throttle value, it uses an alternative motion-searching
-// algorithm to deal with highly patterned areas.  Therefore, the
-// throttle value should be set high enough to avoid this alternative
-// algorithm from being used unless it's necessary (since it may lead
-// to less accurate results), but low enough to keep from wasting too
-// much time and space meanwhile.  The match-size throttle is similar;
-// if the largest region in the area is that many times the size of a
-// pixel-group, use the alternative motion-searching algorithm.
+// radius that match the current group (within the error tolerance).
+// It sorts the found pixel-groups by sum-of-absolute-differences,
+// and keeps the best match-count-throttle matches.  Once the search is
+// done, it tries to flood-fill each match, and the first match to be
+// large enough (i.e.  to be match-size-throttle pixel-groups in size or
+// larger) is applied to the image.  Any areas of the frame not resolved
+// by this method are new information, and new reference pixels are
+// allocated for them.
 template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
 	class FRAMESIZE, PIXELINDEX PGW, PIXELINDEX PGH,
 	class SORTERBITMASK,
@@ -177,13 +164,11 @@ public:
 	void Init (Status_t &a_reStatus, int a_nFrames,
 			PIXELINDEX a_tnWidth, PIXELINDEX a_tnHeight,
 			PIXELINDEX a_tnSearchRadiusX, PIXELINDEX a_tnSearchRadiusY,
-			PixelValue_t a_nTolerance,
+			PixelValue_t a_nZeroTolerance, PixelValue_t a_nTolerance,
 			int a_nMatchCountThrottle, int a_nMatchSizeThrottle);
 		// Initializer.  Provide the number of frames over which to
 		// accumulate pixel data, the dimensions of the frames, the
-		// search radius, the error tolerance, and the match throttles.
-		// (The match throttle parameters are described above, in the
-		// comment describing the motion-searcher class.)
+		// search radius, the error tolerances, and the match throttles.
 
 	const ReferenceFrame_t *GetFrameReadyForOutput (void);
 		// If a frame is ready to be output, return it, otherwise return
@@ -225,6 +210,9 @@ private:
 		// The error tolerance, i.e. the largest difference we're
 		// willing to tolerate between pixels before considering them
 		// to be different.  Also, twice the tolerance.
+
+	Tolerance_t m_tnZeroTolerance;
+		// The error tolerance for the zero-motion pass.
 
 	int m_nMatchCountThrottle;
 		// How many matches we're willing to have for the current
@@ -520,7 +508,8 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 	// No information on the sort of search to do yet.
 	m_tnSearchRadiusX = m_tnSearchRadiusY = PIXELINDEX (0);
-	m_tnTolerance = m_tnTwiceTolerance = PIXEL_TOL (0);
+	m_tnZeroTolerance = m_tnTolerance = m_tnTwiceTolerance
+		= PIXEL_TOL (0);
 	m_nMatchCountThrottle = 0;
 	m_nMatchSizeThrottle = 0;
 
@@ -588,8 +577,9 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	PGW,PGH,SORTERBITMASK,PIXEL,REFERENCEPIXEL,REFERENCEFRAME>::Init
 	(Status_t &a_reStatus, int a_nFrames, PIXELINDEX a_tnWidth,
 	PIXELINDEX a_tnHeight, PIXELINDEX a_tnSearchRadiusX,
-	PIXELINDEX a_tnSearchRadiusY, PixelValue_t a_tnTolerance,
-	int a_nMatchCountThrottle, int a_nMatchSizeThrottle)
+	PIXELINDEX a_tnSearchRadiusY, PixelValue_t a_tnZeroTolerance,
+	PixelValue_t a_tnTolerance, int a_nMatchCountThrottle,
+	int a_nMatchSizeThrottle)
 {
 	int i;
 		// Used to loop through things.
@@ -704,6 +694,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	m_tnPixels = tnPixels;
 	m_tnSearchRadiusX = a_tnSearchRadiusX;
 	m_tnSearchRadiusY = a_tnSearchRadiusY;
+	m_tnZeroTolerance = Pixel_t::MakeTolerance (a_tnZeroTolerance);
 	m_tnTolerance = Pixel_t::MakeTolerance (a_tnTolerance);
 	m_tnTwiceTolerance = Pixel_t::MakeTolerance (2 * a_tnTolerance);
 	m_nMatchCountThrottle = a_nMatchCountThrottle;
@@ -771,7 +762,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 
 
 // HACK: developer debugging output.
-extern "C" { extern int frame; };
+extern "C" { extern int frame, verbose; };
 
 // Add another frame to be analyzed into the system.
 template <class PIXEL_NUM, int DIM, class PIXEL_TOL, class PIXELINDEX,
@@ -880,7 +871,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	
 					// Compare them.
 					if (rPrevPixel.IsWithinTolerance (rNewPixel,
-						m_tnTolerance))
+						m_tnZeroTolerance))
 					{
 						// Remember it matched.
 						bPixelMatched = true;
@@ -1003,7 +994,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 		
 						// Compare them.
 						if (!rPrevPixel.IsWithinTolerance (rNewPixel,
-							m_tnTolerance))
+							m_tnZeroTolerance))
 						{
 							// No match.
 							goto noMatch;
@@ -1872,16 +1863,18 @@ nextGroup:
 	m_pNewFramePixels = NULL;
 
 	// HACK: print the pixel statistics.
+	if (verbose >= 1)
 	fprintf (stderr, "Frame %d: %.1f%% not-moved, "
 		//"%.1f%%+%.1f%% flood, %.1f%% moved, %.1f%%+%.1f%% new\n",
-		"%.1f%%+%.1f%% moved, %.1f%%+%.1f%% new\n",
-		frame,
-		(float (tnNotMovedPixels) * 100.0f / float (m_tnPixels)),
-		(float (tnNotMovedFloodedPixels) * 100.0f / float (m_tnPixels)),
-		(float (tnFloodedPixels) * 100.0f / float (m_tnPixels)),
-		//(float (tnMovedPixels) * 100.0f / float (m_tnPixels)),
-		(float (tnNoMatchNewPixels) * 100.0f / float (m_tnPixels)),
-		(float (tnNewPixels) * 100.0f / float (m_tnPixels)));
+			"%.1f%%+%.1f%% moved, %.1f%%+%.1f%% new\n",
+			frame,
+			(float (tnNotMovedPixels) * 100.0f / float (m_tnPixels)),
+			(float (tnNotMovedFloodedPixels) * 100.0f
+				/ float (m_tnPixels)),
+			(float (tnFloodedPixels) * 100.0f / float (m_tnPixels)),
+			//(float (tnMovedPixels) * 100.0f / float (m_tnPixels)),
+			(float (tnNoMatchNewPixels) * 100.0f / float (m_tnPixels)),
+			(float (tnNewPixels) * 100.0f / float (m_tnPixels)));
 	
 #ifndef NDEBUG
 	// Print the allocation totals.
@@ -2373,7 +2366,7 @@ MotionSearcher<PIXEL_NUM,DIM,PIXEL_TOL,PIXELINDEX,FRAMESIZE,
 	// If the new pixel is close enough to the reference pixel, the
 	// point is in the region.
 	if (rNewPixel.IsWithinTolerance
-		(pRefPixel->GetValue(), m_pMotionSearcher->m_tnTolerance))
+		(pRefPixel->GetValue(), m_pMotionSearcher->m_tnZeroTolerance))
 	{
 		// Accumulate the value from the new frame.
 		pRefPixel->AddSample (rNewPixel);

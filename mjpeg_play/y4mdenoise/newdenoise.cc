@@ -89,8 +89,8 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 		g_oMotionSearcherY.Init (eStatus, nInterlace * a_nFrames,
 			a_nWidthY, a_nHeightY / nInterlace,
 			denoiser.radiusY, denoiser.radiusY,
-			denoiser.thresholdY, denoiser.matchCountThrottle,
-			denoiser.matchSizeThrottle);
+			denoiser.zThresholdY, denoiser.thresholdY,
+			denoiser.matchCountThrottle, denoiser.matchSizeThrottle);
 		if (eStatus != g_kNoError)
 		{
 			delete[] g_pPixelsY;
@@ -112,7 +112,7 @@ int newdenoise_init (int a_nFrames, int a_nWidthY, int a_nHeightY,
 			a_nWidthCbCr, a_nHeightCbCr / nInterlace,
 			denoiser.radiusCbCr / denoiser.frame.ss_h,
 			denoiser.radiusCbCr / denoiser.frame.ss_v,
-			denoiser.thresholdCbCr,
+			denoiser.zThresholdCbCr, denoiser.thresholdCbCr,
 			denoiser.matchCountThrottle, denoiser.matchSizeThrottle);
 		if (eStatus != g_kNoError)
 			return -1;
