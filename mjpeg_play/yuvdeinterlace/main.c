@@ -507,9 +507,7 @@ search_forward_vector( int x, int y )
 	int i;
 	int max_candidates = 16;
 	uint32_t SAD;
-	uint32_t cSAD;
 	uint32_t min;
-	uint32_t cmin;
 
 	/* subsampled full-search with radius 16*4=64 */
 	min = psad_sub44 ( frame1_sub2[0]+(x4)+(y4)*width, frame2_sub2[0]+(x4)+(y4)*width, width, 4 );
