@@ -1,0 +1,385 @@
+.TH "mpeg2enc" "1" "V 1.4" "Andrew Stevens" "description"
+.SH "NAME"
+.LP 
+.br 
+mpeg2enc \- MPEG 1/2 encoder
+.br 
+.SH "SYNOPSIS"
+.LP 
+.B mpeg2enc
+ [
+.B -v num
+]
+[
+.B -m 1|2
+]
+[
+.B -b num
+]
+[
+.B -V num
+]
+[
+.B -q num
+]
+[
+.B -F num
+]
+[
+.B -r num
+]
+[
+.B -Q num
+]
+[
+.B -p
+]
+[
+.B -s
+]
+[
+.B -g num
+]
+[
+.B -G num
+]
+[
+.B -n n|p|s
+]
+[
+.B -a 0..14
+]
+[
+.B -f num
+]
+[
+.B -4 num 
+]
+[
+.B -2 num
+]
+[
+.B -S num
+]
+[
+.B -B num
+]
+[
+.B -N
+]
+[
+.B -h
+]
+[
+.B -?
+] 
+.B -o output_stream
+.br 
+
+.SH "DESCRIPTION"
+.br
+
+mpeg2enc is heavily enhanced derivative of the MPEG Software Simulation
+Group's MPEG-2 reference encoder.  It accepts streams in a simple
+planar YUV format "YUV4MPEG" produced by the mjpegtools and the yuv
+output plug-in to mpeg2dec and produces and produces an elementary
+MPEG-1/2 video stream.
+
+For most purposes this output will need to be multiplexed with
+layer-II MPEG audio into a program/systems stream using the
+.B mplex(1)
+tool.
+
+Note that although this manual page aims to explain how mpeg2enc can
+be used effectively it is not intended as an introduction to MPEG-1/2
+video which is a fairly complex topic in its own right due to the
+baroque nature of the standard itself and the rather revolting things
+done with it on VCD and SVCD disks.
+
+
+.SH "GENERAL FUNCTION LETTERS"
+.TP
+.B -v num
+Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
+.B -?
+Display a synopsis of the command syntax.
+.br
+.SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
+.TP
+.B -m 1|2
+Set MPEG-1 or MPEG-2 encoding.
+Use the former for encoding VCD's or lower bit-rate / resolution applications or where portability is important.
+.TP
+.B -b num
+The bit-rate of the output video stream in k Bits/sec.  The default is
+exactly the bit-rate required for VCD streams. A sensible bit-rate to
+set for SVCD is 2500.  If variable bit-rate mode has been selected (see the -q option) this
+is the 
+.I maximum
+bit-rate of the stream.
+.TP
+.B -V num
+The maximum video buffer usage required to decode the stream in k
+Bytes.  The default is 46KB the (tiny) size specified for VCD.  The
+size to use for SVCD is the (more reasonable) 230KB.  If you are
+encoding for a half-decent software decoder it makes sense to push
+this up to 500K or more.
+.TP
+.B -q 2..31
+Minimum quantisation of the output stream.  Quantisation controls the
+precision with which image information is encoded.  The lower the
+number the higher the quality but the greater the required data-rate.
+For VCD resolution anything below 8 or so produces pretty good quality
+video.  For SVCD the equivalent level is around 16. If this option is
+set a 
+.I variable bit rate 
+stream is produced.  This is more efficient
+overall but variable bit-rate MPEG-1 cannot be played by many hardware
+decoders and/or DVD/(S)VCD drives.  If you intend to use a software
+decoder you'd be insane not to use variable bit-rate.
+
+If this option is set without a maximum bit-rate being specified then
+quantisation is fixed at the specified value.
+.TP
+.B -F 0|1|2|3
+
+This sets the sequences picture structure and block encoding type for
+MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
+interlaced video turned off.  This is the most efficient option for
+encoding material that is not interlaced (e.g. movies in PAL 25
+frame/sec or NTSC 24 frames/sec 3:2 pulldown format).  However, it
+produces rotten results for interlaced video material.  For such
+material use -F 3 which encodes frame-by-frame with interlace-adapted
+motion compensation and block encoding.  Setting 1 or 2 will encode
+field-by-field (2 is "top field first", 3 is "bottom field first").
+Its use is deprecated as implementation is somewhat less refined than
+frame-by-frame and results, even if implemented to the same level, are
+inferior.
+.IP
+It should be noted that encoding -F 3 takes appreciably longer than -F 0.
+.TP
+.B -p
+Setting -p only makes sense for 24 fps Movie source material.  It sets
+flags in the output stream that tell the decoder to play the movie as
+NTSC 60field/sec video using "3:2 pulldown".  This is vastly more
+efficient than encoding as 60field/sec video.  The classic application
+is to transcode a PAL-encoded movie (24fps played too fast at 25 fps!)
+into NTSC (see the -f flag).
+.TP
+.B 
+-g num, -G num
+
+These flags set the minimum and maximum group-of-picture (GOP) size
+for the output MPEG stream.  By default both are set to 12 to suit VCD
+encoding.  If the two values are not identical mpeg2enc applies a
+simple scene-change detection procedure to try to select GOP sizes
+that ensure big changes of image coincide with the fully-encoded
+I-frame starting a new GOP.  This can help prevent transient
+"blockiness".  For SVCD the largest GOP size is 15 for PAL or 18 for
+NTSC.  Reasonable minimum GOP sizes are 6 or 9.  A larger GOP size can
+help reduce the bit-rate required for a given quality.  However, this
+really only applies to high-quality source material with little noise
+(e.g. digital video).  For broadcast material there is little point
+setting GOP size much beyond 21 or 24.  Even with good source material
+diminishing returns set in quite rapidly.
+
+.IP
+Note: mpeg2enc is currently hard-wired to produce 2 B frames between
+each I/P frame unless the GOP size forces less.  This is reasonable
+for medium to high bit-rates (>= 1Mbps) but probably sub-optimal for
+low-bit-rate encoding.
+.TP
+.B
+-Q 0.0 .. 4.0 
+
+This flag sets the amount quantisation is reduce for
+blocks containing unusually large amounts of sharp image detail.
+Setting this value 0.0 produces the most efficient use of bits but may
+cause visible/artefacting around detailed sections.  A larger value
+may help suppress artefacts, however, on noisy source material this may cause
+a "swimming" effect on textured backgrounds as the noise cause blocks to
+be boosted at random.  The default is 1.0 (which is actually pretty mild)
+if swimminess occurs turn set to 0.0.
+.TP
+.B
+-s
+
+This flag forces the encoder to generate a "sequence header" at the start
+of every group-of-pictures.  This is needed by some player hardware to
+support fast forward/rewind/random access functions but is a waste of bits
+otherwise.
+
+.SH "OPTION LETTERS CONTROLLING FORMAT OF DECODED VIDEO"
+.TP
+.B -n n|p|s
+
+Force the input stream to be treated as NTSC|PAL|SECAM regardless of
+what the stream header might suggest.  Basically this just sets the
+defaults for a bunch of other options.
+.TP
+.B -f num
+
+Set the frame-rate of the output-stream.  Currently only the standard
+MPEG rates are supported.  Eventually more-or-less arbitrary rates
+will be possible.
+.br
+ 0 - illegal
+.br
+ 1 - 24000.0/1001.0 (NTSC 3:2 pulldown converted FILM)
+.br
+ 2 - 24.0 (NATIVE FILM)
+.br
+ 3 - 25.0 (PAL/SECAM VIDEO / converted FILM)
+.br
+ 4 - 30000.0/1001.0 (NTSC VIDEO)
+.br
+ 5 - 30.0
+.br
+ 6 - 50.0 (PAL FIELD RATE)
+.br
+ 7 - 60000.0/1001.0 (NTSC FIELD RATE)
+.br
+ 8 - 60.0
+.br
+.TP
+.B -a num
+
+Set the playback aspect ratio code of the encoded video.
+The exact interpretation of the code varies between MPEG-1 and MPEG-2.
+.IP
+MPEG1 pixel aspect ratio codes:
+.br
+ 1 - 1:1 (square pixels)
+.br
+ 2 - 1:0.6735
+.br
+ 3 - 1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)
+.br
+ 4 - 1:0.7615
+.br
+ 5 - 1:0.8055
+.br
+ 6 - 1:0.8437 (16:9 Anamorphic NTSC for 720x480/352x240 images)
+.br
+ 7 - 1:0.8935
+.br
+ 8 - 1:0.9375 (4:3 PAL/SECAM for 720x578/352x288 images)
+.br
+ 9 - 1:0.9815
+.br
+10 - 1:1.0255
+.br
+11 - 1:1:0695
+.br
+12 - 1:1.125  (4:3 NTSC for 720x480/352x240 images)
+.br
+13 - 1:1575
+.br
+14 - 1:1.2015
+.IP 
+MPEG2 display aspect ratio codes:
+.br
+ 1 - 1  - 1:1 display
+.br
+ 2 - 2  - 4:3 display
+.br
+ 3 - 3  - 16:9 display
+.br
+ 4 - 4  - 2.21:1 display
+.IP
+Note that "Anamorphic" video is video where the original (16:9 say) image
+has been squished so that the whole picture fits in a standard 4:3
+format frame.  Obviously, telling the decoder the original was
+anamorphic gives it the option to correctly "stretch" or letter-box
+the image to suit the display device that has been attached.  MPEG-2
+is vastly more sensible than MPEG-1 in that instead of saying what
+shape the pixels actually should be after decoding it simply says what
+shape the correctly decoded image should ideally have an leaves it up
+to the decoder to do the best it can.
+
+.SH "OPTION LETTERS FOR QUALITY TUNING"
+.TP
+.B -r num
+This flag sets the motion compensation search radius.  For most
+purposes the default (16) should be just fine.  For high-resolution
+MPEG-2 and active scenes it may be worth bumping it up.  However, this
+will make encoding significantly slower.  There is little point
+reducing the radius.  Speed gains are not huge and the impact on quality
+can be marked.
+.TP
+.B -4 1..4 -2 1..4
+These options control how radical the encoder is in throwing away
+apparently poor candidate blocks during motion compensation.  A
+setting of 1 means very few blocks are discarded early which makes for
+slow encoding but quality as good as it gets a setting of 4 makes for
+fast encoding but can impact quality.  The -4 flag controls discarding
+during the initial 4*4 search stage, the -2 flag controls discarding
+during the secondary 2*2 stage.  
+.IP
+These flags are useful as the speed quality trade-off is markedly
+different depending on which CPU you have.  On modern machines the
+impact of speed is around a factor 2 on older machines a factor 3.
+The impact on quality is around 10% quantisation (0.2 of a bit of
+precision in encoding textures).  For most purposes the default
+settings will be fine.  However on P-III Katmai etc -4 2 -2 1 gives a
+good near-optimum quality setting with reasonably speed.
+.IP
+.B  -N
+Setting this flag adjusts the way texture detail is quantised to
+reduce the maount of high-frequency information encoded. This is very
+useful for 
+.I mildy
+noisy sources.  If you have really noisy material the filtering tools
+available in mjpegtools are a much better bet.
+.B -h
+Setting this flag makes the encoder encode has much high-frequency information as possible.   This is a good setting for maximising quality at VCD
+resolution with good quality low-noise source material.  It can also help
+with "swimmy" material if you can spare the bit-rate!
+
+.SH "OPTION LETTERS FOR CHUNKING THE OUTPUT STREAM"
+.TP
+.B -S num
+
+This flag allows the target size of individual sequences in the final
+multiplexed stream to be set in MBytes. If set  mpeg2enc keeps track
+of how large the eventual stream is likely to be and inserts a sequence
+split (actually: sequence end / sequence start) into the output stream
+each time it reaches the specified limit.  The multiplexor mplex(1) can
+recognise these splits and start a new multiplexed output file each time
+it encounters one.   In this way it is easy to automatically ensure
+each component sequence file can be burnt onto a CD-R and still be
+played as a stand-alone MPEG sequence.
+.TP
+.B -B num
+Since mpeg2enc can't read minds it cannot know in advance what other
+material will be multiplexed with the output video stream.  Thus to
+get its calculations of where to insert split point right it needs to be
+told the combined data-rate of the other material that is eventually to
+be multiplexed with the video.   This flag allows this rate to be specified in K bits/sec.
+
+.SH "SSE/3D-Now!/MMX"
+
+Mpeg2enc makes extensive use of these SIMD instruction set extension
+on x86 family CPU's.  The routines used are determined dynamically at
+run-time.  It should be noted that using SSE requires operating system
+support.  Old 2.2.x Linux kernels (unless patched ones like RedHat) do
+not have this and so SSE, although physically present, won't be activated.
+.SH "SEE ALSO"
+.BR mplex "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)"
+.SH "BUGS"
+There should be an option to force GOP sizes that permit 2 B frames
+between I/P frames.  Some decoders (even software)  can't handle the case
+where I/P frames come back to back or with only 1 B frame between them.
+
+There really should be some kind of dynamic noise-reduction algorithm
+someplace in the mpegtools tool chain.
+
+There needs to be a facility for writing dummy user-data fields so
+that the multiplexer/imager can insert forward/backward pointers when
+muxing/imaging an SVCD.
+
+Is there some kind soul out there with source-code for a good SSE
+(not MMX) DCT and iDCT?
+
+

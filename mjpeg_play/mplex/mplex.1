@@ -1,0 +1,208 @@
+.TH "mplex" "1" "V 1.4" "Andrew Stevens" "description"
+.SH "NAME"
+.LP 
+.br 
+mplex \- MPEG 1/2 program/system stream multiplexer
+.br 
+.SH "SYNOPSIS"
+.LP 
+.B mplex
+[
+.B -v num
+]
+[
+.B -m 1|2
+]
+[
+.B -b num
+]
+[
+.B -r num
+]
+[
+.B -l num
+]
+[
+.B -O num
+]
+[ 
+.B -f fmtcode
+]
+[
+.B -V
+]
+[
+.B -s num
+]
+[
+.B -p num
+]
+[
+.B -S num
+]
+[
+.B -M
+]
+[
+.B -h
+]
+[
+.B -?
+] 
+.B -o output_stream_pattern
+.br 
+
+.SH "DESCRIPTION"
+.br
+
+mplex is a simple two-stream audio/video multiplexer for
+MPEG-1/MPEG-2.  It accepts an MPEG-1/2 video stream and/or an MPEG
+layer II/III audio stream and multiplexes them into a combined
+program/system stream according to the constraints specified.  Many
+different types of output structure are supported along with presets
+for standard VCD and SVCD streams.  These latter can be burned to CD using
+tools such as vcdimager(1) and played in stand-alone players.
+
+It is also capable of automatically splitting the output stream into
+chunks of a specified size either independently or a sequence end/start
+points in the input video stream.
+
+.SH "GENERAL FUNCTION LETTERS"
+.TP
+.B -o output_filename_pattern
+This (compulsorary) option sets the pattern for the name(s) of output files.
+
+An integer format code (e.g. %d) in the name is replaced the number of
+the file generated (see printf(3)).
+.TP
+.B -v num
+Set verbosity level to num.  0 = warnings and errors only, 1 = information as well, 2=really verbose.
+.B -?
+Display a synopsis of the command syntax.
+.br
+.SH "FUNCTION LETTERS CONTROLLING OUTPUT STREAM STRUCTURE"
+.TP
+.B -f format_code
+
+This command allows one of a number of convenient preset output
+formats to be selected without the need to individually set numerous
+parameters.  In particular producing VCD or SVCD compliant output requires
+the use of the appropriate presets as these require a number of (rather odd)
+VCD-specific constraints to be activated.
+.IP
+0 - Auto MPEG1.
+  A simple general-purpose MPEG1 format primarily suitable for software decoders.  Buffer sizes and VBR must be specified.  Bit-rate can be auto-detected.
+.br
+1 - VCD.   Standard VCD.  Overrides other option settings.
+.br
+2 - User VCD.  VCD format but buffer size, bit rate and VBR can be set
+manually.
+.br
+3 - Auto MPEG2.  Like 0 expect MPEG2.
+.br
+4 - SVCD.  Standard SVCD.  Overrides other option settings.
+.br
+5 - User-rate SVCD.  SVCD format but buffer size and bit rate  can be set.
+.TP
+.B -m 1|2
+Set MPEG-1 or MPEG-2 multiplexing.
+.TP
+.B -r num
+The total (non VBR) / peak (VBR) bit-rate of the output stream in k
+Bits/sec. If unspecified and not set by a preset it is automatically
+calculated from the input stream.
+.B -b num
+The size of the video input buffer available in the target decoder.
+The default is 46KB the (tiny) size specified for VCD.  The
+size to use for SVCD is the (more reasonable) 230KB.  If you are
+encoding for a half-decent software decoder it makes sense to push
+this up to 500K or more.
+.TP
+.B -l num
+Multiplex limit.  Multiplex only the specified number of sectors.  Useful
+for tuning and debugging.
+.TP
+.B -O num
+Set the presentation timestamp offset of video stream w.r.t. audio stream (video-audio) in mSec.   This flag is used to produce a stream with synchronised
+audio/video when one stream started before/after the other.  This is common
+when transcoding as the synchronisation information is typically lost during
+the (seperate) decoding/encoding of audio and video.
+.TP
+.B -V
+Set variable bit rate multiplexing.  This is needed to multiplex variable
+bit-rate video streams correctly.
+.TP
+.B -s num
+This option specifies the sector size of the output stream in bytes.
+.TP
+.B -p num
+This option specifies the number of packets per pack in the output stream.
+.TP
+.B -S num
+This option specifies the maximum size of output files in MBytes (2^10).
+The default is 2000 Mbytes (splitting output before 2G limits can hit).
+When the limit is reached a  new file is started.
+.IP
+Note: that this option is 
+.I not
+suitable for splitting a long video across multiple VCD's or SVCD's.
+It simply splits a single long sequenctreame into chunks.  To replay the
+sequence the chunks have to be concatenated.  For VCD / SVCD a different
+technique is used.  If mplex encounters a sequence break (sequence end followed
+by start) in the input video stream it starts a new output stream and file
+at the sequence start.  Thus to split a long video across VCD's/SVCD's you
+have to get the MPEG video encoder to introduce sequence splits at the
+right points (see mpeg2enc(1) for details of how to do this).
+.TP
+.B -M
+When splitting a long stream in files based on -S mplex does a certain
+amount of sanity checking.  If the files are going to be concatenated
+for playback this checking is superfluous.  -M suppresses this checking.
+
+
+.I variable bit rate 
+stream is produced.  This is more efficient
+overall but variable bit-rate MPEG-1 cannot be played by many hardware
+decoders and/or DVD/(S)VCD drives.  If you intend to use a software
+decoder you'd be insane not to use variable bit-rate.
+
+If this option is set without a maximum bit-rate being specified then
+quantisation is fixed at the specified value.
+.TP
+.B -F 0|1|2|3
+
+This sets the sequences picture structure and block encoding type for
+MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
+interlaced video turned off.  This is the most efficient option for
+encoding material that is not interlaced (e.g. movies in PAL 25
+frame/sec or NTSC 24 frames/sec 3:2 pulldown format).  However, it
+produces rotten results for interlaced video material.  For such
+material use -F 3 which encodes frame-by-frame with interlace-adapted
+motion compensation and block encoding.  Setting 1 or 2 will encode
+field-by-field (2 is "top field first", 3 is "bottom field first").
+Its use is deprecated as implementation is somewhat less refined than
+frame-by-frame and results, even if implemented to the same level, are
+inferior.
+.IP
+It should be noted that encoding -F 3 takes appreciably longer than -F 0.
+.TP
+.B -p
+.SH "DIAGNOSTIC OUTPUT"
+When multiplexing using mplex you may get warning or error messages
+complaining about buffer underflow.  This means that the bit-rate you
+have specified is simply too low to permit the video and audio to be
+played back without skipping.  The fix is to either reduce the
+data-rate of the input material or increased the output stream bit-rate.
+.SH "SEE ALSO"
+.BR mpeg2enc "(1), " mp2enc "(1), " lavrec "(1), " lavplay "(1), "
+.BR lav2yuv "(1), " lav2wav "(1), " yuvscaler "(1)"
+
+.SH "BUGS"
+Variable bit-rate should be auto-detected and supported for audio
+as well as video.
+
+The ludicrous two-pass parsing structure should be made single pass.
+
+The multiplexer should handle AC3 and MPEG(5.1) audio too.
+
+

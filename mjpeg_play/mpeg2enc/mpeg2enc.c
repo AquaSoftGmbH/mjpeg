@@ -405,7 +405,7 @@ int main(argc,argv)
 			break;
 		case 'Q' :
 			param_act_boost = atof(optarg);
-			if( param_act_boost <0.1 || param_act_boost > 10.0)
+			if( param_act_boost <0.0 || param_act_boost > 10.0)
 			{
 				mjpeg_error( "-q option requires arg 0.1 .. 10.0\n");
 				++nerr;

@@ -15,22 +15,23 @@ static void Usage(char *str)
 	fprintf( stderr, "Usage: %s [params] -o <output file> [<input file1> [<input file2>] \n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
-	fprintf( stderr, " -n      Noisy (verbose) mode for debugging streams\n" );
 	fprintf( stderr, " -m      Mpeg version (default: 1) [1..2]\n");
 	fprintf( stderr, " -b num  Specify decoder buffers size in kB. (default: 46) [ 20...1000]\n" );
-    fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec (default 0=Compute from source streams)\n" );
+    fprintf( stderr, " -r num  Specify data rate of output stream in kbit/sec\n"
+			         "(default 0=Compute from source streams)\n" );
 	fprintf( stderr, " -l num  Multiplex only num frames (default 0=multiplex all)\n");
 	fprintf( stderr, " -O num  Specify offset of timestamps (video-audio) in mSec\n");
 	fprintf( stderr, " -s num  Specify sector size in bytes (default: 2324) [256..16384]\n");
-	fprintf( stderr, " -V      Multiplex variable bit-rate (experimental)\n");
+	fprintf( stderr, " -V      Multiplex variable bit-rate video\n");
 	fprintf( stderr, " -p num  Number of packets per pack (default: 20) [1..100]\n"  );
 	fprintf( stderr, " -h      System header in every pack rather than just in first\n" );
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = user-rate VCD,\n");
 	fprintf( stderr, "          3 = Auto MPEG2, 4 = SVCD, 5 = user-rate SVCD, 6 = DVD]\n");
 	fprintf( stderr, "         (N.b only 0 .. 5 currently implemented!*)\n" ); 
-	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680) (0 = no limit)\n" );
-	fprintf( stderr, " -M      Generate a *single* multi-file program per sequence rather a program per file\n");
+	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 2000) (0 = no limit)\n" );
+	fprintf( stderr, " -M      Generate a *single* multi-file program per\n"
+			         "sequence rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
 	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
 	fprintf( stderr, " -?      Print this lot out!\n");
@@ -55,7 +56,7 @@ clockticks opt_max_PTS = 0LL;
 int opt_emul_vcdmplex = 0;
 
 /* Should fit nicely on an ordinary CD ... */
-intmax_t max_system_segment_size =  680*1024*1024;
+intmax_t max_system_segment_size =  2000*1024*1024;
 
 int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 {
@@ -80,14 +81,6 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 				Usage(argv[0]);
 			break;
 
-		case 'q' :
-			verbose = LOG_WARN;
-			break;
-	
-		case 'n' :
-			verbose = LOG_DEBUG;
-			break;
-	
 		case 'V' :
 			opt_VBR = 1;
 			break;

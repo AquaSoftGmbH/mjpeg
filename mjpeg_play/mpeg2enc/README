@@ -148,7 +148,7 @@ of 16 as the speed gains are pretty limited.
 
 Obviously, your mileage may vary so you may want to fiddle with the
 setting if you're getting rotten results.  Contact
-andrew.stevens@comlab.ox.ac.uk@planet-interkom.de
+andrew.stevens@planet-interkom.de
 if you think you have found a case where the fast compensation fails!
 
 In case you're wondering: the performance gain over brute force search
