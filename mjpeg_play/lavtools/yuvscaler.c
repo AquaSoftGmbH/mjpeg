@@ -678,12 +678,13 @@ main (int argc, char *argv[])
   int n, nerr = 0, res, len;
   unsigned long int i, j;
   int frame_rate_code = 0;
-  float frame_rate;
+  float frame_rate=-1.0;
 
   int input_fd = 0;
   long int frame_num = 0;
-  uint8_t magic[] = "123456";	// : the last character of magic is the string termination character 
+  uint8_t magic[] = "123456";	// : the last character of magic is the string termination character
   const uint8_t key[] = "FRAME\n";
+   uint8_t header[] = "YUV4MPEG XXX XXX X\n";
   unsigned int *height_coeff, *width_coeff;
   uint8_t *input, *output, *padded_input, *padded_odd, *padded_even;
   uint8_t *input_y, *input_u, *input_v;
@@ -695,18 +696,22 @@ main (int argc, char *argv[])
   unsigned int divider;
   FILE *in_file = stdin;
   FILE *out_file = stdout;
+  char *info_str="If you see this, please report to the author that info_str was faulty used unitialized <xbiquard@free.fr>\n";
+
+   // SPECIFIC TO BICUBIC
   unsigned int *in_line, *in_col, out_line, out_col;
   unsigned long int somme;
   int m;
   float *a, *b;
   long int *cubic_spline_m, *cubic_spline_n;
-  char *info_str;
-
-
 
   mjpeg_info ("yuvscaler is a general scaling utility for yuv frames\n");
   mjpeg_info ("(C) 2001 Xavier Biquard <xbiquard@free.fr>\n");
   mjpeg_info ("%s -h for help\n", argv[0]);
+   
+   // To avoid the famous "might be used unitialized" warnings! we allocate pointers here, even if we do not use them
+
+   
 
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
@@ -718,26 +723,14 @@ main (int argc, char *argv[])
       for (n = 0; n < PARAM_LINE_MAX; n++)
 	{
 	  if (!read (input_fd, param_line + n, 1))
-	    {
-	      mjpeg_error ("yuvscaler Unable to read header from stdin\n");
-
-	      exit (1);
-	    }
+	     mjpeg_error_exit1 ("yuvscaler Unable to read header from stdin\n");
 	  if (param_line[n] == '\n')
 	    break;
 	}
 
       if (n == PARAM_LINE_MAX)
-	{
-	  mjpeg_error
-	    ("yuvscaler Didn't get linefeed in first %d characters of data\n",
-	     PARAM_LINE_MAX);
-	  exit (1);
-	}
+	 mjpeg_error_exit1("yuvscaler Didn't get linefeed in first %d characters of data\n",PARAM_LINE_MAX);
 
-//     mjpeg_info("Header : %s\n",param_line);
-      //   param_line[n] = 0; /* Replace linefeed by end of string */
-      // 
       if (strncmp (param_line, "YUV4MPEG", 8) == 0)
 	{
 	  mjpeg_info ("YUV4MPEG header\n");
@@ -810,10 +803,7 @@ main (int argc, char *argv[])
       read_video_files (filename, infile, &el);
       chroma_format = el.MJPG_chroma;
       if (chroma_format != CHROMA422)
-	{
-	  fprintf (stderr, "Editlist not in chroma 422 format, exiting...\n");
-	  exit (1);
-	}
+	 mjpeg_error_exit1("Editlist not in chroma 422 format, exiting...\n");
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = el.video_fps;
@@ -822,9 +812,6 @@ main (int argc, char *argv[])
       frame_rate_code = 0;
       while ((framerates[++frame_rate_code] != frame_rate)
 	     && (frame_rate_code <= 8));
-//    if (norm < 0)
-//      mjpeg_error_exit1 ("Unkown frame rate code for frame rate %.3f fps!!\n",
-//                       frame_rate);
     }
 
   // INITIALISATIONS
@@ -861,6 +848,8 @@ main (int argc, char *argv[])
 	algorithm = 0;
     }
 
+   // USER'S INFORMATION OUTPUT
+   
   if (input_interlaced == 0)
     strcpy (info_str, NOT_INTER);
   if (input_interlaced == 1)
@@ -998,6 +987,7 @@ main (int argc, char *argv[])
   // BICUBIC BICUBIC BICUBIC  
   if (algorithm == 1)
     {
+
       // To speed up scaling, we need to tabulate several values
       // To the output pixel of coordinates (out_col,out_line) corresponds the input pixel (in_col,in_line), in_col and in_line being the nearest smaller values.
       in_col =
@@ -1222,15 +1212,10 @@ main (int argc, char *argv[])
   // END OF INITIALISATION
 
   // Output file header
-  if (fprintf
-      (stdout, "YUV4MPEG %3d %3d %1d\n", display_width, display_height,
-       frame_rate_code) != 19)
-    {
-      mjpeg_error ("Error writing output header. Stop\n");
-      exit (1);
-    }
-
-
+   sprintf(header,"YUV4MPEG %3d %3d %1d\n", display_width, display_height,frame_rate_code);
+   if (!fwrite_complete (header, 19, out_file))
+     goto out_error;
+   
   if (infile == 0)
     {
       // input comes from stdin
@@ -1714,14 +1699,27 @@ average_coeff (unsigned int input_length, unsigned int output_length,
 unsigned int
 pgcd (unsigned int num1, unsigned int num2)
 {
-  // Calculates the biggest common divider between num1 and num2, with num2<=num1
-  unsigned int i;
-  for (i = num2; i >= 2; i--)
-    {
-      if (((num2 % i) == 0) && ((num1 % i) == 0))
-	return (i);
-    }
-  return (1);
+  // Calculates the biggest common divider between num1 and num2, after Euclid's
+  // pgdc(a,b)=pgcd(b,a%b)
+  // My thanks to Chris Atenasio <chris@crud.net>
+  unsigned int c, bigger, smaller;
+
+   if (num2 < num1) {
+      smaller = num2;
+      bigger = num1;
+   }
+   else {
+      smaller = num1;
+      bigger = num2;
+   }
+
+   while (smaller) 
+     {
+	c=bigger%smaller;
+	bigger=smaller;
+	smaller=c;
+     }
+  return (bigger);
 }
 
 // *************************************************************************************
@@ -2362,6 +2360,7 @@ padding (uint8_t * padded_input, uint8_t * input, unsigned int half)
   memcpy (padded_input + (local_padded_height - 2) * local_padded_width,
 	  padded_input + (local_padded_height - 3) * local_padded_width,
 	  local_padded_width);
+   return (0);
 }
 
 // *************************************************************************************
