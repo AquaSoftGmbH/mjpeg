@@ -22,7 +22,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include "yuv4mpeg.h"
+#include "y4m12.h"
 
 static void usage () {
 
@@ -64,7 +64,7 @@ int main (int argc, char *argv[])
    unsigned char *yuv0[3]; /* input 0 */
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv[3];  /* output */
-   int w, h, rate;
+   y4m12_t *y4m12;
    int i, opacity, frame;
    unsigned int param_opacity0   = 0;     /* opacity of input1 at the beginning */
    unsigned int param_opacity1   = 255;   /* opacity of input1 at the end */
@@ -109,27 +109,50 @@ int main (int argc, char *argv[])
       exit(1);
    }
 
-   i = yuv_read_header (in_fd, &w, &h, &rate);
+   y4m12 = y4m12_malloc();
+   i = y4m12_read_header (y4m12, in_fd);
    
-   yuv[0] = (char *)malloc (w*h);   (char *)yuv0[0] = malloc (w*h);   (char *)yuv1[0] = malloc (w*h);
-   yuv[1] = (char *)malloc (w*h/4); (char *)yuv0[1] = malloc (w*h/4); (char *)yuv1[1] = malloc (w*h/4);
-   yuv[2] = (char *)malloc (w*h/4); (char *)yuv0[2] = malloc (w*h/4); (char *)yuv1[2] = malloc (w*h/4);
+   yuv[0] = (char *)malloc (y4m12->width * y4m12->height);
+   yuv0[0] = (char *)malloc (y4m12->width * y4m12->height);
+   yuv1[0] = (char *)malloc (y4m12->width * y4m12->height);
 
-   yuv_write_header (out_fd, w, h, rate);
+   yuv[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv0[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv1[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+
+   yuv[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv0[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv1[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+
+   y4m12_write_header (y4m12, out_fd);
 
    for (frame=0;frame<param_duration;frame++)
    {
-      i = yuv_read_frame(in_fd, yuv0, w, h);
-      if (i<=0) exit (1);
-      i = yuv_read_frame(in_fd, yuv1, w, h);
-      if (i<=0) exit (1);
+      y4m12->buffer[0] = yuv0[0];
+      y4m12->buffer[1] = yuv0[1];
+      y4m12->buffer[2] = yuv0[2];
+      i = y4m12_read_frame(y4m12, in_fd);
+      if (i<0) exit (1);
+
+      y4m12->buffer[0] = yuv1[0];
+      y4m12->buffer[1] = yuv1[1];
+      y4m12->buffer[2] = yuv1[2];
+      i = y4m12_read_frame(y4m12, in_fd);
+      if (i<0) exit (1);
 
       opacity = (1 - frame/((double)param_duration-1)) * param_opacity0
                   + (frame/((double)param_duration-1)) * param_opacity1;
+      blend(yuv0, yuv1, opacity,
+        y4m12->width, y4m12->height, yuv);
 
-      blend (yuv0, yuv1, opacity, w, h, yuv);
-      yuv_write_frame (out_fd, yuv, w, h);
+      y4m12->buffer[0] = yuv[0];
+      y4m12->buffer[1] = yuv[1];
+      y4m12->buffer[2] = yuv[2];
+      y4m12_write_frame (y4m12, out_fd);
+      if (i<0) exit(1);
    }
+
+   y4m12_free(y4m12);
 
    return 0;
 }

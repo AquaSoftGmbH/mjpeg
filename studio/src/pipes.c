@@ -31,13 +31,12 @@
 #include <signal.h>
 
 #include "pipes.h"
-#include "yuv4mpeg.h"
+#include "y4m12.h"
 #include "gtkfunctions.h"
 
 extern int verbose;
 
-static unsigned char *l2y_yuv[3];
-static int l2y_h,l2y_w; /* width/height for lav2yuv YUV4MPEG data */
+y4m12_t *l2y_y4m12;
 
 int pipe_out[NUM], pipe_in[NUM];
 int pid[NUM];
@@ -144,7 +143,7 @@ static void read_lav2yuv_data(gint source)
    if (!active[LAV2YUV_DATA])
    {
       int f;
-      if (yuv_read_header (source, &l2y_w, &l2y_h, &f)<0)
+      if (y4m12_read_header (l2y_y4m12, source)<0)
       {
          /* auch, bad */
          gtk_show_text_window(STUDIO_ERROR,
@@ -154,23 +153,26 @@ static void read_lav2yuv_data(gint source)
       }
       else
       {
-         l2y_yuv[0] = malloc(l2y_w * l2y_h * sizeof(unsigned char));
-         l2y_yuv[1] = malloc(l2y_w * l2y_h * sizeof(unsigned char) / 4);
-         l2y_yuv[2] = malloc(l2y_w * l2y_h * sizeof(unsigned char) / 4);
+         l2y_y4m12->buffer[0] = malloc(l2y_y4m12->width * l2y_y4m12->height
+                           * sizeof(unsigned char));
+         l2y_y4m12->buffer[1] = malloc(l2y_y4m12->width * l2y_y4m12->height
+                           * sizeof(unsigned char) / 4);
+         l2y_y4m12->buffer[2] = malloc(l2y_y4m12->width * l2y_y4m12->height
+                           * sizeof(unsigned char) / 4);
 
          /* write header to mpeg2enc/yuvscaler and yuvplay */
          if (use_yuvplay_pipe) {
-            yuv_write_header (pipe_out[YUVPLAY], l2y_w, l2y_h, f); }
+            y4m12_write_header (l2y_y4m12, pipe_out[YUVPLAY]); }
          if (use_yuvscaler_pipe)
-            yuv_write_header (pipe_out[YUVSCALER], l2y_w, l2y_h, f);
+            y4m12_write_header (l2y_y4m12, pipe_out[YUVSCALER]);
          else
-            yuv_write_header (pipe_out[MPEG2ENC], l2y_w, l2y_h, f);
+            y4m12_write_header (l2y_y4m12, pipe_out[MPEG2ENC]);
       }
    }
    else
    {
       /* read frames */
-      if (yuv_read_frame(source, l2y_yuv, l2y_w, l2y_h)==0)
+      if (y4m12_read_frame(l2y_y4m12, source)<0)
       {
          if (active[LAV2YUV])
          {
@@ -190,11 +192,11 @@ static void read_lav2yuv_data(gint source)
       else
       {
          if (use_yuvscaler_pipe)
-            yuv_write_frame (pipe_out[YUVSCALER], l2y_yuv, l2y_w, l2y_h);
+            y4m12_write_frame (l2y_y4m12, pipe_out[YUVSCALER]);
          else
-            yuv_write_frame (pipe_out[MPEG2ENC], l2y_yuv, l2y_w, l2y_h);
-         if (use_yuvplay_pipe) {
-            yuv_write_frame (pipe_out[YUVPLAY], l2y_yuv, l2y_w, l2y_h); }
+            y4m12_write_frame (l2y_y4m12, pipe_out[MPEG2ENC]);
+         if (use_yuvplay_pipe)
+            y4m12_write_frame (l2y_y4m12, pipe_out[YUVPLAY]);
       }
    }
 }
@@ -474,4 +476,6 @@ void init_pipes()
    {
       active[i] = 0;
    }
+
+   l2y_y4m12 = y4m12_malloc();
 }

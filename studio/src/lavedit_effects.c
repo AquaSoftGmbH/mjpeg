@@ -30,7 +30,7 @@
 #include <math.h>
 #include <gdk-pixbuf/gdk-pixbuf.h>
 
-#include "yuv4mpeg.h"
+//#include "y4m12.h"
 #include "lavedit.h"
 #include "gtkfunctions.h"
 #include "pipes.h"

@@ -494,7 +494,7 @@ GtkWidget *create_lavplay_layout()
 	gtk_widget_set_usize(GTK_WIDGET(lavplay_tv), tv_width_process, tv_height_process);
 	if (port == -1)
 		exit(1);
-	gtk_box_pack_start (GTK_BOX (vbox2), lavplay_tv,TRUE, FALSE, 0);
+	gtk_box_pack_start (GTK_BOX (vbox2), lavplay_tv, TRUE, FALSE, 0);
 	gtk_widget_show(lavplay_tv);
 
 	lavplay_slider_adj = gtk_adjustment_new(0, 0, 2500000, 10000, 100000, 0);

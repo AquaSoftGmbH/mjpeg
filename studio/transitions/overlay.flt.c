@@ -1,7 +1,6 @@
 /*
  *  overlay.flt - reads two frame-interlaced YUV4MPEG streams from stdin
  *                and writes out a transistion from one to the other
- *
  *  Copyright (C) 2001, Ronald Bultje
  *
  *  This program is free software; you can redistribute it and/or
@@ -25,7 +24,7 @@
 #include <signal.h>
 #include <fcntl.h>
 
-#include "yuv4mpeg.h"
+#include "y4m12.h"
 
 int pid, to_yuvscaler, from_yuvscaler_e, from_yuvscaler_o;
 
@@ -97,24 +96,45 @@ static void create_pipe(int w, int h)
    }
 }
 
-static void rescale(unsigned char *yuv[3], int width, int height, int rate, int dest_width, int dest_height)
+static void rescale(unsigned char *yuv[3], int width, int height, y4m12_t *y4m12, int dest_width, int dest_height)
 {
+   y4m12_t *a, *b;
+
+   a = y4m12_malloc();
+   memcpy(a, y4m12, sizeof(y4m12_t));
+   a->width = width;
+   a->height = height;
+   a->buffer[0] = yuv[0];
+   a->buffer[1] = yuv[1];
+   a->buffer[2] = yuv[2];
+
+   b = y4m12_malloc();
+   memcpy(b, y4m12, sizeof(y4m12_t));
+   b->width = dest_width;
+   b->height = dest_height;
+   b->buffer[0] = yuv[0];
+   b->buffer[1] = yuv[1];
+   b->buffer[2] = yuv[2];
+
    if (dest_width > 0 && dest_height > 0) {
       create_pipe(dest_width, dest_height);
-      yuv_write_header(to_yuvscaler, width, height, rate);
-      yuv_write_frame(to_yuvscaler, yuv, width, height);
+      y4m12_write_header(a, to_yuvscaler);
+      y4m12_write_frame(a, to_yuvscaler);
       close(to_yuvscaler);
-      yuv_read_header(from_yuvscaler_o, &dest_width, &dest_height, &rate);
-      yuv_read_frame(from_yuvscaler_o, yuv, dest_width, dest_height);
+      y4m12_read_header(b, from_yuvscaler_o);
+      y4m12_read_frame(b, from_yuvscaler_o);
       close(from_yuvscaler_o);
       close(from_yuvscaler_e);
       kill(pid, SIGINT);
       waitpid (pid, NULL, 0);
    }
+
+   y4m12_free(a);
+   y4m12_free(b);
 }
 
 static void overlay (unsigned char *src0[3], unsigned char *src1[3],
-                   int pos_x, int pos_y, int rate,
+                   int pos_x, int pos_y, y4m12_t *y4m12,
                    int use_scale, int inverse, double progress_phase,
                    unsigned int width,     unsigned int height,
                    unsigned char *dst[3])
@@ -140,7 +160,7 @@ static void overlay (unsigned char *src0[3], unsigned char *src1[3],
    if (use_scale) {
       if (second_w%4) second_w = (second_w/4)*4;
       if (second_h%4) second_h = (second_h/4)*4;
-      rescale(dynamic_src, width, height, rate, second_w, second_h);
+      rescale(dynamic_src, width, height, y4m12, second_w, second_h);
    }
 
    for (i=0;i<len;i++) {
@@ -177,7 +197,7 @@ int main (int argc, char *argv[])
    unsigned char *yuv0[3]; /* input 0 */
    unsigned char *yuv1[3]; /* input 1 */
    unsigned char *yuv[3];  /* output */
-   int w, h, rate;
+   y4m12_t *y4m12;
    int i, frame;
    unsigned int param_duration   = 0;     /* duration of transistion effect */
    int param_start_x    = 0;     /* starting position of the second stream */
@@ -220,29 +240,51 @@ int main (int argc, char *argv[])
       exit(1);
    }
 
-   i = yuv_read_header (in_fd, &w, &h, &rate);
+   y4m12 = y4m12_malloc();
+   i = y4m12_read_header (y4m12, in_fd);
    
-   yuv[0] = (char *)malloc (w*h);   (char *)yuv0[0] = malloc (w*h);   (char *)yuv1[0] = malloc (w*h);
-   yuv[1] = (char *)malloc (w*h/4); (char *)yuv0[1] = malloc (w*h/4); (char *)yuv1[1] = malloc (w*h/4);
-   yuv[2] = (char *)malloc (w*h/4); (char *)yuv0[2] = malloc (w*h/4); (char *)yuv1[2] = malloc (w*h/4);
+   yuv[0] = (char *)malloc (y4m12->width * y4m12->height);
+   yuv0[0] = (char *)malloc (y4m12->width * y4m12->height);
+   yuv1[0] = (char *)malloc (y4m12->width * y4m12->height);
 
-   yuv_write_header (out_fd, w, h, rate);
+   yuv[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv0[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv1[1] = (char *)malloc (y4m12->width * y4m12->height/4);
+
+   yuv[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv0[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+   yuv1[2] = (char *)malloc (y4m12->width * y4m12->height/4);
+
+   y4m12_write_header (y4m12, out_fd);
 
    for (frame=0;frame<param_duration;frame++)
    {
-      i = yuv_read_frame(in_fd, yuv0, w, h);
-      if (i<=0) exit (1);
-      i = yuv_read_frame(in_fd, yuv1, w, h);
-      if (i<=0) exit (1);
+      y4m12->buffer[0] = yuv0[0];
+      y4m12->buffer[1] = yuv0[1];
+      y4m12->buffer[2] = yuv0[2];
+      i = y4m12_read_frame(y4m12, in_fd);
+      if (i<0) exit (1);
+
+      y4m12->buffer[0] = yuv1[0];
+      y4m12->buffer[1] = yuv1[1];
+      y4m12->buffer[2] = yuv1[2];
+      i = y4m12_read_frame(y4m12, in_fd);
+      if (i<0) exit (1);
 
       overlay (yuv0, yuv1,
          ((param_inverse?frame:(param_duration-frame))/(double)param_duration)*param_start_x,
          ((param_inverse?frame:(param_duration-frame))/(double)param_duration)*param_start_y,
-         rate, param_scale, param_inverse, frame/(double)param_duration,
-         w, h, yuv);
+         y4m12, param_scale, param_inverse, frame/(double)param_duration,
+         y4m12->width, y4m12->height, yuv);
 
-      yuv_write_frame (out_fd, yuv, w, h);
+      y4m12->buffer[0] = yuv[0];
+      y4m12->buffer[1] = yuv[1];
+      y4m12->buffer[2] = yuv[2];
+      y4m12_write_frame (y4m12, out_fd);
+      if (i<0) exit(1);
    }
+
+   y4m12_free(y4m12);
 
    return 0;
 }

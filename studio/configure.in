@@ -85,6 +85,20 @@ fi
 AC_SUBST(GDK_PIXBUF_LIBS)
 AC_SUBST(GDK_PIXBUF_CFLAGS)
 
+dnl mjpegtools
+AC_PATH_PROG(MJPEGTOOLS_CONFIG, mjpegtools-config, no)
+if test x$MJPEGTOOLS_CONFIG = xno; then
+  HAVE_MJPEGTOOLS_15=0
+else
+  MJPEGTOOLS_LIBS=`mjpegtools-config --libs`
+  MJPEGTOOLS_CFLAGS=`mjpegtools-config --cflags`
+  MJPEGTOOLS_PREFIX=`mjpegtools-config --prefix`
+  HAVE_MJPEGTOOLS_15=1
+fi
+AC_SUBST(MJPEGTOOLS_LIBS)
+AC_SUBST(MJPEGTOOLS_CFLAGS)
+AC_SUBST(MJPEGTOOLS_PREFIX)
+
 dnl Let's search for the lavtools and their versions
 AC_PATH_PROG(LAVPLAY_LOCATION, lavplay, no)
 if test x$LAVPLAY_LOCATION = xno; then
@@ -222,6 +236,9 @@ AC_SUBST(HAVE_PNG)
 AC_DEFINE_UNQUOTED(HAVE_JPEG, ${HAVE_JPEG})
 AM_CONDITIONAL(HAVE_JPEG, test ${HAVE_JPEG} = 1)
 AC_SUBST(HAVE_JPEG)
+AC_DEFINE_UNQUOTED(HAVE_MJPEGTOOLS_15, ${HAVE_MJPEGTOOLS_15})
+AM_CONDITIONAL(HAVE_MJPEGTOOLS_15, test ${HAVE_MJPEGTOOLS_15} = 1)
+AC_SUBST(HAVE_MJPEGTOOLS_15)
 
 dnl **********************************************************************
 dnl we use OSS, ALSA doesn't work yet
