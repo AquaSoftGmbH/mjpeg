@@ -426,8 +426,8 @@ static double calc_actj(void)
 			   if it can be guaranteed that activity is always distinctly
 			   non-zero.
 			 */
-			actj = 16.0;
-			actj  = (double) (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) /
+			actj = 1.0;
+			actj += (double) (*pquant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[0], i_q_mat ) /
 				(double) COEFFSUM_SCALE ;
 			actj += (double) (*quant_weight_coeff_sum)( &cur_picture.mbinfo[k].dctblocks[1], i_q_mat ) / 
 				(double) COEFFSUM_SCALE;

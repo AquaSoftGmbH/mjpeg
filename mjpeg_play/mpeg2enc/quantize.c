@@ -199,9 +199,8 @@ int quant_weight_coeff_sum( short *blk, unsigned short * i_quant_mat )
 		sum += abs((int)blk[i]) * (i_quant_mat[i]) + abs((int)blk[i+1]) * (i_quant_mat[i+1]);
 	}
     return sum;
-  /* In case you're wondering typical average coeff_sum's for a rather noisy video
-  	are around 20.0.
-	*/
+  /* In case you're wondering typical average coeff_sum's for a rather
+  	noisy video are around 20.0.  */
 }
 
 
