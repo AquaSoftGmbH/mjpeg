@@ -222,8 +222,6 @@ int detect_altivec()
 {
     volatile int detected = 0; /* volatile (modified after sigsetjmp) */
     struct sigaction act, oact;
-    unsigned char copyvec[32];
-    int alignOffset = 15;
 
     act.sa_handler = sig_ill;
     sigemptyset(&act.sa_mask);

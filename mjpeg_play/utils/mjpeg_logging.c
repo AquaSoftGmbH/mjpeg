@@ -36,8 +36,6 @@
 extern int fred;
 #include "mjpeg_logging.h"
 
-static const char _rcsid[] = "$Id: ";
-
 #define MAX_DEFAULT_ID_SIZE 16
 #define DEFAULT_DEFAULT_ID "???"
 
