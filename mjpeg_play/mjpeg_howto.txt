@@ -148,11 +148,13 @@ parts of these cards work, see the Marvel/Linux project on:
 http://marvel.sourceforge.net .
 
 Last example:
-lavrec -f a -i p -d 2 -q 80 -s -l 70 -R l --software-encoding test03.avi
-The only not known option is --software-encoding, this enables the software
-encoding of the recorded images. With this option you can also record from
-a bttv based card. The processor load is high. It also works with zoran based
-cards but only with -d 4.
+lavrec -f a -i p -g 352x288 -q 80 -s -l 70 -R l --software-encoding test03.avi
+The two new options are -g 352x288, which sets the size of the video to
+be recorded when using --software-encoding, this enables the software encoding 
+of the recorded images.  With this options you can also record from a 
+bttv based card. The processor load is high. This option only works for 
+generic video4linux cards (such as the brooktree-848/878 based cards), it 
+doesn't work for zoran-based cards.
 
 All lavtools accept the %02d file description, so you do not have to name each 
 file, but that would also be a posibillity to do. 
