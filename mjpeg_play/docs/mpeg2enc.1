@@ -17,11 +17,11 @@ mpeg2enc \- MPEG-1/2 encoder
 .IR video_buf_size_kB ]
 .RB [ -T | --target-still-size
 .IR still_size_kB ] 
-.RB [ -q | --quantisation
+.RB [ -q | --quantization
 .IR quantization ]
 .RB [ -r | --motion-search-radius
 .IR motion_search_radius ]
-.RB [ -Q | --quantisation-reduction
+.RB [ -Q | --quantization-reduction
 .IR 0.0..4.0 ]
 .RB [ -X | --quant-reduction-max-var
 .IR 0.0 .. 2500.0]
@@ -394,9 +394,9 @@ even if the CPU's are available due to the fairly coarse-grained
 parallelism used.
 
 .PP
-.BR -q|--quantisation \ 1 .. 31
+.BR -q|--quantization \ 1 .. 31
 .PP
-Minimum quantisation of the output stream.  Quantisation controls the
+Minimum quantization of the output stream.  Quantisation controls the
 precision with which image information is encoded.  The lower the
 number the higher the quality but the greater the required data-rate.
 For VCD resolution anything below 8 or so produces pretty good quality
@@ -409,7 +409,7 @@ decoders and/or DVD/(S)VCD drives.  If you intend to use a software
 decoder you'd be insane not to use variable bit-rate.
 
 If this option is set without a maximum bit-rate being specified then
-quantisation is fixed at the specified value.
+quantization is fixed at the specified value.
 .PP
 .BR -I|--interlace-mode \ 0|1|2
 .PP
@@ -470,9 +470,9 @@ that ensure 2 B frames appear between adjacent I/P frames.
 Several common MPEG-1 decoders can't handle streams where less than
 2 B-frames appear between I/P frames.
 .PP
-.BR -Q|--quantisation-reduction \ 0.0..5.0 
+.BR -Q|--quantization-reduction \ 0.0..5.0 
 .PP
-This flag sets the amount quantisation is reduced for
+This flag sets the amount quantization is reduced for
 blocks containing unusually large amounts of sharp image detail.
 Setting this value 0.0 produces the most efficient use of bits but may
 cause visible/artifacting around detailed sections.  A larger value
@@ -481,7 +481,8 @@ a "swimming" effect on textured backgrounds as the noise cause blocks to
 be boosted at random.  The default is 0.0 (off).
 .PP
 .BR -X|--quant-reduction-max-var \ 0.0..2500.0
-Luma variance below which quantisation boost (-Q) is activated.
+.PP
+Luma variance below which quantization boost (-Q) is activated.
 .PP
 .BR -r|--motion-search-radius \ num
 .PP
@@ -507,20 +508,20 @@ discarding during the secondary 2*2 sub-sampled stage.
 These flags are useful as the speed quality trade-off is markedly
 different depending on which CPU you have.  On modern machines the
 impact on speed is around a factor 2 on older machines a factor 3.
-The impact on quality is around 10% quantisation (0.2 of a bit of
+The impact on quality is around 10% quantization (0.2 of a bit of
 precision in encoding textures).  For most purposes the default
 settings will be fine.  However on P-III Katmai etc -4 2 -2 1 gives a
 good near-optimum quality setting with reasonably speed.
 .PP
 .BR -N|--reduce-HF \ num
 .PP
-Setting this flag adjusts the way texture detail is quantised to
+Setting this flag adjusts the way texture detail is quantized to
 reduce the precision with which of high-frequency information
 encoded. This is very useful for
 .I mildy
 noisy sources.  If you have really noisy material the filtering tools
 available in mjpegtools are a much better bet.  The specified number
-must be in the range 0.0 to 2.0 gives the maxium quantisation boost.
+must be in the range 0.0 to 2.0 gives the maxium quantization boost.
 A useful number to use would be 1.5 or 1.0.
 .PP
 .BR -H|--keep-hf
