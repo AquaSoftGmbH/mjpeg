@@ -35,7 +35,6 @@ void print_settings(void);
 void turn_on_accels(void);
 void display_help(void);
 
-static uint8_t *bufalloc(size_t size);
 
 struct DNSR_GLOBAL denoiser;
 
@@ -253,13 +252,6 @@ int main(int argc, char *argv[])
 
 
 
-static uint8_t *bufalloc(size_t size)
-{
-  uint8_t *ret = (uint8_t *)malloc(size);
-  if( ret == NULL )
-    mjpeg_error_exit1( "Out of memory: could not allocate buffer" );
-  return ret;
-}
 
 
 

@@ -172,6 +172,29 @@ int32_t cpu_accel (void)
  *
  ****************************/
 
+#if	!defined(HAVE_POSIX_MEMALIGN)
+
+#include <stdlib.h>
+#include <errno.h>
+
+#define powerof2(x)     ((((x)-1)&(x))==0)
+
+int
+posix_memalign(void **ptr, size_t alignment, size_t size)
+{
+	void *mem;
+
+	if	(alignment % sizeof (void *) != 0 || !powerof2(alignment) != 0)
+		return(EINVAL);
+	mem = malloc((size + alignment - 1) & ~(alignment - 1));
+	if	(mem != NULL)
+	{
+		*ptr = mem;
+		return(0);
+	}
+	return(ENOMEM);
+}
+#endif
 
 void *bufalloc( size_t size )
 {
