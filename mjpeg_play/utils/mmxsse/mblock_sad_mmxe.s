@@ -766,15 +766,16 @@ global	mblock_nearest4_sads_mmxe:function
 ; ecx = unused
 ; edx = lx;
 ; edi = rowsleft
-; esi = h
 		
-; mm0 = SAD (x+0,y+0),SAD (x+0,y+2)
-; mm1 = SAD (x+2,y+0),SAD (x+2,y+2)
-		
-; mm4 = temp
-; mm5 = temp
-; mm6 = temp
-; mm7 = temp						
+; mm0 = SAD (x+0,y+0),SAD (x+2,y+0)
+; mm1 = SAD (x+0,y+2),SAD (x+2,y+2)
+
+; mm2 = [eax]   cache
+; mm3 = [eax+8] cache
+; mm4 = [eax+1] cache
+; mm5 = [eax+9] cache
+; mm6 = [ebx]   cache
+; mm7 = [ebx+8] cache			
 
 align 32
 mblock_nearest4_sads_mmxe:
@@ -785,7 +786,6 @@ mblock_nearest4_sads_mmxe:
 	push ecx
 	push edx
 	push edi
-	push esi
 
 	mov eax, [ebp+8]	; get p1
 	prefetcht0 [eax]
@@ -793,108 +793,95 @@ mblock_nearest4_sads_mmxe:
 	pxor mm1, mm1
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
+	sub ebx,eax
 	
 	mov edi, [ebp+20]	; get rowsleft
-	mov esi, edi
 
-	jmp nextrow_block_e1
+	movq	mm2, [eax]
+	movq	mm3, [eax+8]
+	movq	mm4, [eax+1]
+	movq	mm5, [eax+9]
+
+	jmp firstrowe
 align 32
 nextrow_block_e1:		
 
-		;; Do the (+0,+0) SAD
 	prefetcht0 [eax+edx]		
-	movq mm4, [eax]		; load 1st 8 bytes of p1
-	movq mm6, mm4
-	movq mm5, [ebx]
-	psadbw mm4, mm5	; compare to 1st 8 bytes of p2 
-	paddd mm0, mm4		; accumulate difference
-	movq mm4, [eax+8]	; load 2nd 8 bytes of p1
-	movq mm7, mm4		
-	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2 
-	paddd mm0, mm4		; accumulate difference
-
-		
-    cmp edi, esi
-	jz  firstrowe0
 
 		;; Do the (0,+2) SAD
-	sub ebx, edx
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	movq   mm2, [ebx]
-	psadbw mm6, mm2	    ; compare to next 8 bytes of p2 (row 1)
-	paddd mm0, mm6		; accumulate difference
-	movq  mm3, [ebx+8]
-	psadbw mm7, mm3	;  next 8 bytes of p1 (row 1)
-	add ebx, edx
-	paddd mm0, mm7	
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
-firstrowe0:
+	movq	mm4, [eax]
+	movq	mm2, mm4
+	psadbw	mm4, mm6		; compare to next 8 bytes of p2 (row 1)
+	paddd	mm1, mm4		; accumulate difference
+	
+	movq	mm5, [eax+8]
+	movq	mm3, mm5
+	psadbw	mm5, mm7		;  next 8 bytes of p1 (row 1)
+	paddd	mm1, mm5	
+	
+		;; Do the (+2, +2 ) SAD
+	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+
+	movq	mm4, [eax+1]
+	psadbw	mm6, mm4		; compare to 1st 8 bytes of prev p2
+	paddd	mm1, mm6		; accumulate difference
+
+	movq	mm5, [eax+9]
+	psadbw	mm7, mm5		;  2nd 8 bytes of prev p2
+	paddd	mm1, mm7
+	
+	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+
+firstrowe:
+
+		;; Do the (+0,+0) SAD
+	movq	mm6, [eax+ebx]
+	psadbw	mm2, mm6		; compare to 1st 8 bytes of p2 
+	paddd	mm0, mm2		; accumulate difference
+
+	movq	mm7, [eax+ebx+8]
+	psadbw	mm3, mm7		; compare to 2nd 8 bytes of p2 
+	paddd	mm0, mm3		; accumulate difference
 
 		;; Do the (+2,0) SAD
+	pshufw	mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
 	
-	movq mm4, [eax+1]
-	movq mm6, mm4
+	psadbw	mm4, mm6		; compare to 1st 8 bytes of p2
+	paddd	mm0, mm4		; accumulate difference
 
-	psadbw mm4, mm5	; compare to 1st 8 bytes of p2
-	paddd mm1, mm4		; accumulate difference
+	psadbw	mm5, mm7		; compare to 2nd 8 bytes of p2
+	paddd	mm0, mm5		; accumulate difference
 
-	movq mm4, [eax+9]
-	movq mm7, mm4
-
-	psadbw mm4, [ebx+8]	; compare to 2nd 8 bytes of p2
-	paddd mm1, mm4		; accumulate difference
-
-    cmp edi, esi
-	jz  firstrowe1
-
-		;; Do the (+2, +2 ) SAD
-	sub ebx, edx
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
-	psadbw mm6, mm2	; compare to 1st 8 bytes of prev p2 
-	psadbw mm7, mm3	;  2nd 8 bytes of prev p2
-	add ebx, edx
-	paddd mm1, mm6		; accumulate difference
-	paddd mm1, mm7
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 
-firstrowe1:		
-
-	add eax, edx				; update pointer to next row
-	add ebx, edx		; ditto
+	pshufw	mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	
+	add	eax, edx		; update pointer to next row
+	; add	ebx, edx
 		
-	sub edi, 1
-	jnz near nextrow_block_e1
+	sub	edi, 1
+	jnz	near nextrow_block_e1
 
 		;; Do the last row of the (0,+2) SAD
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	movq mm4, [eax]		; load 1st 8 bytes of p1
-	movq mm5, [eax+8]	; load 2nd 8 bytes of p1
-	sub  ebx, edx
-	psadbw mm4, [ebx]	; compare to next 8 bytes of p2 (row 1)
-	psadbw mm5, [ebx+8]	;  next 8 bytes of p1 (row 1)
-	paddd mm0, mm4		; accumulate difference
-	paddd mm0, mm5
+	movq	mm2, [eax]
+	movq	mm3, [eax+8]
+	psadbw	mm2, mm6		; compare to next 8 bytes of p2 (row 1)
+	psadbw	mm3, mm7		;  next 8 bytes of p1 (row 1)
+	paddd	mm1, mm2		; accumulate difference
+	paddd	mm1, mm3
 
 		
 		;; Do the last row of rhw (+2, +2) SAD
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
-	movq mm4, [eax+1]
-	movq mm5, [eax+9]
-
-	psadbw mm4, [ebx]	; compare to 1st 8 bytes of prev p2 
-	psadbw mm5, [ebx+8]	;  2nd 8 bytes of prev p2
-	paddd mm1, mm4		; accumulate difference
-	paddd mm1, mm5
+	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
+	psadbw	mm6, [eax+1]		; compare to 1st 8 bytes of prev p2 
+	psadbw	mm7, [eax+9]		;  2nd 8 bytes of prev p2
+	paddd	mm1, mm6		; accumulate difference
+	paddd	mm1, mm7
+	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
 		
 
-	mov eax, [ebp+24]			; Weightvec
-	movd [eax+8], mm0
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	movd [eax+12], mm1
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	movd [eax+0], mm0
-	movd [eax+4], mm1
+	mov	eax, [ebp+24]			; Weightvec
+	movq	[eax+0], mm0
+	movq	[eax+8], mm1
 		
-	pop esi
 	pop edi
 	pop edx	
 	pop ecx	

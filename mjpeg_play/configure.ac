@@ -15,7 +15,7 @@ AX_CONFIG_PREFIXED_HEADER([mjpegtools-config.h], [MJPEGTOOLS], [config.h])
 AC_CANONICAL_HOST
 dnl CANONICAL-TARGET is only there because SDL's sdl.m4 is broken.  bleah.
 AC_CANONICAL_TARGET
-AM_INIT_AUTOMAKE([1.6])
+AM_INIT_AUTOMAKE([1.7])
 AM_MAINTAINER_MODE
 
 
