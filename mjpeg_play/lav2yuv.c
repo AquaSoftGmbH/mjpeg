@@ -89,6 +89,7 @@ void Usage(char *str)
   printf("                 0 output like input, nothing special\n");
   printf("                 1 create half height/width output from interlaced input\n");
   printf("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
+  printf("                 3 create 352 wide output from 720 wide input (for vcd)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   exit(0);
@@ -301,9 +302,9 @@ char *argv[];
 
       case 's':
         param_special = atoi(optarg);
-        if(param_special<0 || param_special>2)
+        if(param_special<0 || param_special>3)
         {
-          fprintf(stderr,"-s option requires arg 0, 1 or 2\n");
+          fprintf(stderr,"-s option requires arg 0, 1, 2 or 3\n");
           nerr++;
         }
         break;
@@ -365,6 +366,19 @@ char *argv[];
     else
     {
       fprintf(stderr,"-s 2 may only be set for 720 pixel wide video sources\n");
+      Usage(argv[0]);
+    }
+  }
+
+  if(param_special==3)
+  {
+    if(el.video_width == 720)
+    {
+      output_width  = 352;
+    }
+    else
+    {
+      fprintf(stderr,"-s 3 may only be set for 720 pixel wide video sources\n");
       Usage(argv[0]);
     }
   }
