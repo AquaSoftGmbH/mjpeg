@@ -34,12 +34,13 @@ extern  char    *__progname;
 #define HALFSHIFT (shiftnum / 2)
 
 	void	black_border(u_char **, char *, int, int);
+	void	vertical_shift(u_char **, int, int, int);
 static  void    usage();
 
 int main(int argc, char **argv)
         {
         int     i, c, width, height, frames, err, uvlen;
-        int     shiftnum = 0, rightshift;
+        int     shiftnum = 0, rightshift, vshift = 0;
         int     verbose = 0, fdin;
         u_char  *yuv[3], *line;
 	char	*borderarg = NULL;
@@ -49,7 +50,7 @@ int main(int argc, char **argv)
         fdin = fileno(stdin);
 
         opterr = 0;
-        while   ((c = getopt(argc, argv, "hvn:b:")) != EOF)
+        while   ((c = getopt(argc, argv, "hvn:N:b:")) != EOF)
                 {
                 switch  (c)
                         {
@@ -59,6 +60,9 @@ int main(int argc, char **argv)
                         case    'n':
                                 shiftnum = atoi(optarg);
                                 break;
+			case	'N':
+				vshift = atoi(optarg);
+				break;
                         case    'v':
                                 verbose++;
                                 break;
@@ -71,6 +75,9 @@ int main(int argc, char **argv)
 
         if      (shiftnum & 1)
                 usage();
+
+	if	(vshift & 0x3)
+		usage();
 
         if      (shiftnum > 0)
                 rightshift = 1;
@@ -187,6 +194,8 @@ int main(int argc, char **argv)
                                 }
                         }
 outputframe:
+		if	(vshift)
+			vertical_shift(yuv, vshift, width, height);
 		if	(borderarg)
 			black_border(yuv, borderarg, width, height);
                 y4m_write_frame(fileno(stdout), &ostream, &iframe, yuv);
@@ -282,17 +291,64 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 		}
 
 	}
+
+void vertical_shift(u_char **yuv, int vshift, int width, int height)
+	{
+	int	downshift, w2 = width / 2, v2;
+
+	if	(vshift > 0)
+		downshift = 1;
+	else
+		{
+		downshift = 0;
+		vshift = abs(vshift);
+		}
+	v2 = vshift / 2;
+
+	if	(downshift)
+		{
+		memmove(&yuv[0][vshift * width], &yuv[0][0],
+			(height - vshift) * width);
+		memmove( &yuv[1][v2 * w2], &yuv[1][0],
+			(height - vshift) / 2 * w2);
+		memmove( &yuv[2][v2 * w2], &yuv[2][0],
+			(height - vshift) / 2 * w2);
+
+		memset(&yuv[0][0], 16, vshift * width);
+		memset(&yuv[1][0], 128, v2 * w2);
+		memset(&yuv[2][0], 128, v2 * w2);
+		}
+	else
+		{
+		memmove(&yuv[0][0], &yuv[0][vshift * width],
+			(height - vshift) * width);
+		memmove(&yuv[1][0], &yuv[1][v2 * w2],
+			(height - vshift) / 2 * w2);
+		memmove(&yuv[2][0], &yuv[2][v2 * w2],
+			(height - vshift) / 2 * w2);
+
+		memset(&yuv[0][(height - vshift) * width], 16, vshift * width);
+		memset(&yuv[1][((height - vshift) / 2) * w2], 128, v2 * w2);
+		memset(&yuv[2][((height - vshift) / 2) * w2], 128, v2 * w2);
+		}
+	}
+
 static void usage()
         {
 
-        fprintf(stderr, "%s: usage: [-v] [-h] [-b xoff,yoff,xsize,ysize] -n N\n", __progname);
-        fprintf(stderr, "%s:\tN = number of pixels to shift - must be even!!\n",
+        fprintf(stderr, "%s: usage: [-v] [-h] [-b xoff,yoff,xsize,ysize] [-N num] -n N\n", __progname);
+        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be even!\n",
                 __progname);
-        fprintf(stderr, "%s:\t\tpositive count means shift right\n",__progname);
+        fprintf(stderr, "%s:\t\tpositive count shifts right\n",__progname);
         fprintf(stderr, "%s:\t\t0 passes the data thru unchanged\n",__progname);
-        fprintf(stderr, "%s:\t\tnegative count means shift left\n", __progname);
+        fprintf(stderr, "%s:\t\tnegative count shifts left\n", __progname);
+	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4!\n", __progname);
+	fprintf(stderr, "%s:\t\tnegative count shifts up\n", __progname);
+	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", __progname);
+	fprintf(stderr, "%s:\t\tpositive count shifts down\n", __progname);
 	fprintf(stderr, "%s:\t-b creates black border\n", __progname);
 	fprintf(stderr, "%s:\t\tusage is same as yuvdenoise.\n", __progname);
+	fprintf(stderr, "%s:\tShifting is done before border creation\n", __progname);
         fprintf(stderr, "%s:\t-v progress report every 100 frames\n", 
                 __progname);
         fprintf(stderr, "%s:\t-h print this usage summary\n", __progname);
