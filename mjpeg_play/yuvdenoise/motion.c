@@ -247,6 +247,7 @@ calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref)
   static uint16_t a[4];
   
 #ifdef HAVE_ASM_MMX
+  int32_t halfwidth = denoiser.frame.w / 2;
   __asm__ __volatile__
     (
     " pxor        %%mm0 , %%mm0;           /* clear mm0                                          */\n"
@@ -274,7 +275,7 @@ calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref)
     "                                      /*                                                    */\n"
     " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */\n"
     :"=m" (a)     
-    :"m" (frm), "m" (ref), "m" (denoiser.frame.w/2)
+    :"m" (frm), "m" (ref), "m" (halfwidth)
     :"%eax", "%ebx", "%ecx"
     );
 #endif
@@ -342,6 +343,7 @@ calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref)
   static uint32_t a;
 
 #ifdef HAVE_ASM_MMX
+  int32_t halfwidth = denoiser.frame.w / 2;
   __asm__ __volatile__
     (
     " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */\n"
@@ -360,7 +362,7 @@ calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref)
     "                                      /*                                                    */\n"
     " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */\n"
     :"=m" (a)     
-    :"m" (frm), "m" (ref), "m" (denoiser.frame.w/2)
+    :"m" (frm), "m" (ref), "m" (halfwidth)
     :"%eax", "%ebx", "%ecx"
     );
 #endif
@@ -472,7 +474,7 @@ calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2)
 	  "                                      /*                                                    */"
 	  " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */"
 	  :"=m" (a)     
-	  :"m" (frm1),"m" (frm2), "m" (ref), "m" (denoiser.frame.w), "m" (bit_mask)
+	  :"m" (frm1),"m" (frm2), "m" (ref), "m" (denoiser.frame.w), "m" (*bit_mask)
 	  :"%eax", "%ebx", "%ecx", "%edx"
 	  );
 #endif
