@@ -371,7 +371,7 @@ disable_simd(char *name)
  * explicitly specified.  If "all" is seen as the only name in the environment
  * variable then always return 1.
 */
-	if	(strcasecmp(name, "all") == 0)
+	if	(strcasecmp(cp, "all") == 0)
 		return(1);
 
 /*
