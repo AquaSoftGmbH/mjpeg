@@ -520,6 +520,11 @@ void turn_on_accels(void)
 	mjpeg_log (LOG_INFO, "Using 4:2:0 extended MMX SIMD optimisations.");
 	calc_SAD_uv = &calc_SAD_uv420_mmxe;
       }
+    else if (denoiser.frame.ss_h==2 && denoiser.frame.ss_v==1)
+      {
+	mjpeg_log (LOG_INFO, "Using 4:2:2 extended MMX SIMD optimisations.");
+	calc_SAD_uv = &calc_SAD_uv422_mmxe;
+      }
     else if (denoiser.frame.ss_h==1 && denoiser.frame.ss_v==1)
 	{
 	    mjpeg_log (LOG_INFO, "Using 4:4:4 extended MMX SIMD optimisations.");
@@ -545,6 +550,11 @@ void turn_on_accels(void)
 	{
 	  mjpeg_log (LOG_INFO, "Using 4:2:0 MMX SIMD optimisations.");
 	  calc_SAD_uv = &calc_SAD_uv420_mmx;
+	}
+      else if (denoiser.frame.ss_h==2 && denoiser.frame.ss_v==1)
+	{
+	  mjpeg_log (LOG_INFO, "Using 4:2:2 MMX SIMD optimisations.");
+	  calc_SAD_uv = &calc_SAD_uv422_mmx;
 	}
     else if (denoiser.frame.ss_h==1 && denoiser.frame.ss_v==1)
 	{

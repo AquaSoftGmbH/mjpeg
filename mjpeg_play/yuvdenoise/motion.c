@@ -284,6 +284,53 @@ calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref)
 
 /*********************************************************************
  *                                                                   *
+ * SAD-function for 4:2:2 UV with MMX                                *
+ *                                                                   *
+ *********************************************************************/
+
+uint32_t
+calc_SAD_uv422_mmx (uint8_t * frm, uint8_t * ref)
+{
+  static uint16_t a[4];
+  
+#ifdef HAVE_ASM_MMX
+  int32_t halfwidth = denoiser.frame.w / 2;
+  __asm__ __volatile__
+    (
+    " pxor        %%mm0 , %%mm0;           /* clear mm0                                          */\n"
+    " pxor        %%mm7 , %%mm7;           /* clear mm7                                          */\n"
+    "                                      /*                                                    */\n"
+    " movl         %1    , %%eax;          /* load frameadress into eax                          */\n"
+    " movl         %2    , %%ebx;          /* load frameadress into ebx                          */\n"
+    " movl         %3    , %%ecx;          /* load width       into ecx                          */\n"
+    "                                      /*                                                    */\n"
+    ".rept 8                    ;          /* Loop for 4 lines                                   */\n"
+    " movd        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */\n"
+    " movd        (%%ebx), %%mm2;          /* 4 Pixels from reference frame to mm2               */\n"
+    " movq         %%mm2 , %%mm3;          /* hold a copy of mm2 in mm3                          */\n"
+    " psubusb      %%mm1 , %%mm3;          /* positive differences between mm2 and mm1           */\n"
+    " psubusb      %%mm2 , %%mm1;          /* positive differences between mm1 and mm3           */\n"
+    " paddusb      %%mm3 , %%mm1;          /* mm2 now contains abs(mm1-mm2)                      */\n"
+    " movq         %%mm1 , %%mm2;          /* copy mm1 to mm2                                    */\n"
+    " punpcklbw    %%mm7 , %%mm1;          /* unpack mm1 into mm1 and mm2                        */\n"
+    " punpckhbw    %%mm7 , %%mm2;          /*                                                    */\n"
+    " paddusw      %%mm1 , %%mm2;          /* add mm1 (stored in mm1 and mm2...)                 */\n"
+    " paddusw      %%mm2 , %%mm0;          /* to mm0                                             */\n"
+    " addl         %%ecx , %%eax;          /* add framewidth to frameaddress                     */\n"
+    " addl         %%ecx , %%ebx;          /* add framewidth to frameaddress                     */\n"
+    " .endr                                /* end loop                                           */\n"
+    "                                      /*                                                    */\n"
+    " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */\n"
+    :"=m" (a)     
+    :"m" (frm), "m" (ref), "m" (halfwidth)
+    :"%eax", "%ebx", "%ecx"
+    );
+#endif
+  return (uint32_t)(a[0]+a[1]+a[2]+a[3]);
+}
+
+/*********************************************************************
+ *                                                                   *
  * SAD-function for 4:1:1 UV with MMX                                *
  *                                                                   *
  *********************************************************************/
@@ -352,6 +399,45 @@ calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref)
     " movl         %3    , %%ecx;          /* load width       into ecx                          */\n"
     "                           ;          /*                                                    */\n"
     " .rept 4                   ;          /*                                                    */\n"
+    " movd        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */\n"
+    " movd        (%%ebx), %%mm2;          /* 4 Pixels from filtered frame to mm2                */\n"
+    " psadbw       %%mm2 , %%mm1;          /* 4 Pixels difference to mm1                         */\n"
+    " paddusw      %%mm1 , %%mm0;          /* add result to mm0                                  */\n"
+    " addl         %%ecx , %%eax;          /* add framewidth to frameaddress                     */\n"
+    " addl         %%ecx , %%ebx;          /* add framewidth to frameaddress                     */\n"
+    " .endr                     ;          /*                                                    */\n"
+    "                                      /*                                                    */\n"
+    " movq         %%mm0 , %0   ;          /* make mm0 available to gcc ...                      */\n"
+    :"=m" (a)     
+    :"m" (frm), "m" (ref), "m" (halfwidth)
+    :"%eax", "%ebx", "%ecx"
+    );
+#endif
+  return a;
+}
+
+
+/*********************************************************************
+ *                                                                   *
+ * SAD-function for 4:2:2 UV with MMXE                               *
+ *                                                                   *
+ *********************************************************************/
+
+uint32_t
+calc_SAD_uv422_mmxe (uint8_t * frm, uint8_t * ref)
+{
+  static uint32_t a;
+
+#ifdef HAVE_ASM_MMX
+  int32_t halfwidth = denoiser.frame.w / 2;
+  __asm__ __volatile__
+    (
+    " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */\n"
+    " movl         %1    , %%eax;          /* load frameadress into eax                          */\n"
+    " movl         %2    , %%ebx;          /* load frameadress into ebx                          */\n"
+    " movl         %3    , %%ecx;          /* load width       into ecx                          */\n"
+    "                           ;          /*                                                    */\n"
+    " .rept 8                   ;          /*                                                    */\n"
     " movd        (%%eax), %%mm1;          /* 4 Pixels from filtered frame to mm1                */\n"
     " movd        (%%ebx), %%mm2;          /* 4 Pixels from filtered frame to mm2                */\n"
     " psadbw       %%mm2 , %%mm1;          /* 4 Pixels difference to mm1                         */\n"

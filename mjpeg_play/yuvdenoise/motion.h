@@ -33,6 +33,9 @@ uint32_t
 calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref);
 
 uint32_t
+calc_SAD_uv422_mmxe (uint8_t * frm, uint8_t * ref);
+
+uint32_t
 calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref);
 
 uint32_t
@@ -44,6 +47,9 @@ calc_SAD_mmx (uint8_t * frm, uint8_t * ref);
 
 uint32_t
 calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref);
+
+uint32_t
+calc_SAD_uv422_mmx (uint8_t * frm, uint8_t * ref);
 
 uint32_t
 calc_SAD_uv411_mmx (uint8_t * frm, uint8_t * ref);
