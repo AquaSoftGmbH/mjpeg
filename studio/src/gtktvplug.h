@@ -41,21 +41,34 @@ struct _GtkTvPlug
 {
 	GtkWidget widget;
 	int port;
+
 	int hue;
 	int hue_min;
 	int hue_max;
+
 	int brightness;
 	int brightness_min;
 	int brightness_max;
+
 	int saturation;
 	int saturation_min;
 	int saturation_max;
+
 	int contrast;
 	int contrast_min;
 	int contrast_max;
+
 	int frequency;
 	int frequency_min;
 	int frequency_max;
+
+	int width_min;
+	int width_best;
+	int width_max;
+
+	int height_min;
+	int height_best;
+	int height_max;
 };
 
 struct _GtkTvPlugClass

@@ -42,7 +42,7 @@ static void gtk_tvplug_size_request (GtkWidget *widget, GtkRequisition *requisit
 static void gtk_tvplug_size_allocate (GtkWidget *widget, GtkAllocation *allocation);
 static gint gtk_tvplug_expose (GtkWidget *widget, GdkEventExpose *event);
 static void gtk_tvplug_set_properties (GtkTvPlug *tvplug, int port);
-int guess_port(void);
+int guess_port(int v);
 void gtk_tvplug_query_attributes(GtkWidget *widget);
 void show_info(void);
 
@@ -98,7 +98,7 @@ static void gtk_tvplug_init (GtkTvPlug *tvplug)
 	tvplug->hue = 0;
 }
 
-int guess_port()
+int guess_port(int v)
 {
 	XvAdaptorInfo *ai;
 	int ver, rel, req, ev, err;
@@ -117,13 +117,13 @@ int guess_port()
 		return 0;
 	}
 
-	g_print("Guessing port..... ");
+	if (v) g_print("Guessing port..... ");
 
 	for (i = 0; i < adaptors; i++)
 	{
 		if (strcmp(ai[i].name, "video4linux") == 0)
 		{
-			g_print("Found video4linux-device on port %ld\n",
+			if (v) g_print("Found video4linux-device on port %ld\n",
 				ai[i].base_id);
 			return ai[i].base_id;
 		}
@@ -137,12 +137,46 @@ void gtk_tvplug_query_attributes(GtkWidget *widget)
 	GtkTvPlug *tvplug;
 	Atom attr;
 	XvAttribute *at;
+	XvEncodingInfo *ei;
 	int j;
-	int attributes, val;
+	int attributes, val, encodings;
 
 	g_return_if_fail (widget != NULL);
 	g_return_if_fail (GTK_IS_TVPLUG (widget));
 	tvplug = GTK_TVPLUG (widget);
+
+	if (Success != XvQueryEncodings(GDK_DISPLAY(), tvplug->port, &encodings, &ei))
+	{
+		puts("Oops: XvQueryEncodings failed");
+	}
+	else for (j=0;j<encodings;j++)
+	{
+		if (j==0)
+		{
+			tvplug->height_min = tvplug->height_max = ei[j].height;
+			tvplug->width_min = tvplug->width_max = ei[j].width;
+		}
+		else
+		{
+			if (ei[j].height < tvplug->height_min)
+				tvplug->height_min = ei[j].height;
+			if (ei[j].height > tvplug->height_max)
+				tvplug->height_max = ei[j].height;
+
+			if (ei[j].width < tvplug->width_min)
+				tvplug->width_min = ei[j].width;
+			if (ei[j].width > tvplug->width_max)
+				tvplug->width_max = ei[j].width;
+		}
+	}
+	XvFreeEncodingInfo(ei);
+
+	if ( Success != XvQueryBestSize(GDK_DISPLAY(), tvplug->port, 1,
+		tvplug->width_max*2, tvplug->height_max*2, tvplug->width_max*2, tvplug->height_max*2,
+		&(tvplug->width_best), &(tvplug->height_best)) )
+	{
+		g_print("XvQueryBestSize() failed\n");
+	}
 
 	at = XvQueryPortAttributes(GDK_DISPLAY(),tvplug->port,&attributes);
 	for (j = 0; j < attributes; j++)
@@ -225,6 +259,10 @@ void gtk_tvplug_set(GtkWidget *widget, char *what, int value)
 	{
 		atom = XInternAtom(GDK_DISPLAY(), "XV_FREQ", False);
 		tvplug->frequency = value;
+	}
+	else if (strcmp(what, "mute") == 0)
+	{
+		atom = XInternAtom(GDK_DISPLAY(), "XV_MUTE", False);
 	}
 	else
 	{
@@ -348,7 +386,7 @@ GtkWidget* gtk_tvplug_new (int port)
 	}
 	else if (port == 0)
 	{
-		port = guess_port();
+		port = guess_port(1);
 		if (port == 0)
 		{
 			g_print("No suitable video4linux port found,"
@@ -501,6 +539,11 @@ static gint gtk_tvplug_expose (GtkWidget *widget, GdkEventExpose *event)
 
 	gdk_window_clear_area (widget->window,
 		0, 0,
+		widget->allocation.width,
+		widget->allocation.height);
+	gdk_draw_rectangle(widget->window,
+		widget->style->black_gc,
+		1, 0, 0,
 		widget->allocation.width,
 		widget->allocation.height);
 
