@@ -551,6 +551,8 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
     
         for(i=8;i!=0;i--)
         {
+          /* pure MMX */
+          #ifndef HAVE_ASM_3DNOW
           movq_m2r        ( *(fs), mm1 );       /* 8 Pixels from filtered frame to mm1 */
           movq_m2r        ( *(rs), mm2 );       /* 8 Pixels from reference frame to mm2 */
   
@@ -569,10 +571,33 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
         
           fs += width;                          /* next row */
           rs += width;
+
+          #else
+          
+          /* SSE */
+          movq_m2r        ( *(fs), mm1 );       /* 8 Pixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 8 Pixels from reference frame to mm2 */
+          psadbw_r2r      (  mm1 , mm2 );       /* Calculate SAD of that line of pixels, store in mm2 */
+          paddusw_r2r     (  mm2 , mm0 );       /* add result to mm0 */
+          
+          fs += width;                          /* next row ... */
+          rs += width;
+
+          #endif
         }
         
         movq_r2m ( mm0, *a );
+        
+        #ifndef HAVE_ASM_3DNOW
+        
         d=a[0]+a[1]+a[2]+a[3];
+        
+        #else
+        
+        d=a[0];
+        
+        #endif
+        
       break;
         
       case 2: /* 4x4 */
@@ -582,6 +607,8 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
     
         for(i=4;i!=0;i--)
         {
+          /* pure MMX */
+          #ifndef HAVE_ASM_3DNOW
           movd_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
           movd_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
                                                 /* Bits 32-63 are zero'd ... */
@@ -600,10 +627,33 @@ calc_SAD (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs, in
         
           fs += width;                          /* next row */
           rs += width;
+        
+          #else
+          
+          /* SSE */
+          movq_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
+          psadbw_r2r      (  mm1 , mm2 );       /* Calculate SAD of that line of pixels, store in mm2 */
+          paddusw_r2r     (  mm2 , mm0 );       /* add result to mm0 */
+          
+          fs += width;                          /* next row */
+          rs += width;
+
+          #endif
         }
         
         movq_r2m ( mm0, *a );
+        
+        #ifndef HAVE_ASM_3DNOW
+        
         d=a[0]+a[1]+a[2]+a[3];
+        
+        #else
+        
+        d=a[0];
+        
+        #endif
+        
       break;
     }
   
@@ -662,6 +712,8 @@ calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs,
     
         for(i=4;i!=0;i--)
         {
+          /* pure MMX */
+          #ifndef HAVE_ASM_3DNOW
           movd_m2r        ( *(fs), mm1 );       /* 4 Chroma-Pixels from filtered frame to mm1 */
           movd_m2r        ( *(rs), mm2 );       /* 4 Chroma-Pixels from reference frame to mm2 */
                                                 /* high words are zero'd automatically */
@@ -681,10 +733,33 @@ calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs,
         
           fs += uv_width;                       /* next row */
           rs += uv_width;
+          
+          #else
+          
+          /* SSE */
+          movq_m2r        ( *(fs), mm1 );       /* 4 ChromaPixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 4 ChromaPixels from reference frame to mm2 */
+          psadbw_r2r      (  mm1 , mm2 );       /* Calculate SAD of that line of pixels, store in mm2 */
+          paddusw_r2r     (  mm2 , mm0 );       /* add result to mm0 */
+          
+          fs += width;                          /* next row */
+          rs += width;
+
+          #endif
         }
         
         movq_r2m ( mm0, *a );
+        
+        #ifndef HAVE_ASM_3DNOW
+        
         d=a[0]+a[1]+a[2]+a[3];
+        
+        #else
+        
+        d=a[0];
+        
+        #endif
+        
       break;
         
       case 2: /* 2x2 */
@@ -692,7 +767,9 @@ calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs,
         pxor_r2r ( mm0, mm0 );                    /* clear mm0 */
         pxor_r2r ( mm7, mm7 );                    /* clear mm7 */
     
-        /* loop is not needed... (is MMX really faster here?!?) */
+          /* pure MMX */
+          #ifndef HAVE_ASM_3DNOW
+          /* loop is not needed... (is MMX really faster here?!?) */
       
           movd_m2r        ( *(fs), mm1 );       /* 4 Pixels from filtered frame to mm1 */
           movd_m2r        ( *(rs), mm2 );       /* 4 Pixels from reference frame to mm2 */
@@ -733,11 +810,40 @@ calc_SAD_uv (uint8_t * frm, uint8_t * ref, uint32_t frm_offs, uint32_t ref_offs,
           paddusw_r2r     ( mm1, mm2 );         /* add mm1 (stored in mm1 and mm2...) */
           paddusw_r2r     ( mm2, mm0 );         /* to mm0 */
         
-          fs += uv_width;                       /* next row */
-          rs += uv_width;
-                
+          #else
+          
+          /* perhaps not, but SSE is ...*/
+          movq_m2r        ( *(fs), mm1 );       /* 4 Chroma-Pixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 4 Chroma-Pixels from reference frame to mm2 */
+          psrlq_i2r       (  16, mm1 );         /* kick 2 Pixels  ... */
+          psrlq_i2r       (  16, mm2 );         /* kick 2 Pixels  ... */
+          psadbw_r2r      (  mm1 , mm2 );       /* Calculate SAD of that line of pixels, store in mm2 */
+          paddusw_r2r     (  mm2 , mm0 );       /* add result to mm0 */
+          
+          fs += width;                          /* next row */
+          rs += width;
+
+          movq_m2r        ( *(fs), mm1 );       /* 4 Chroma-Pixels from filtered frame to mm1 */
+          movq_m2r        ( *(rs), mm2 );       /* 4 Chroma-Pixels from reference frame to mm2 */
+          psrlq_i2r       (  16, mm1 );         /* kick 2 Pixels  ... */
+          psrlq_i2r       (  16, mm2 );         /* kick 2 Pixels  ... */
+          psadbw_r2r      (  mm1 , mm2 );       /* Calculate SAD of that line of pixels, store in mm2 */
+          paddusw_r2r     (  mm2 , mm0 );       /* add result to mm0 */
+          
+          #endif
+          
         movq_r2m ( mm0, *a );
+        
+        #ifndef HAVE_ASM_3DNOW
+        
         d=a[0]+a[1]+a[2]+a[3];
+        
+        #else
+        
+        d=a[0];
+        
+        #endif
+        
       break;
     }
   
@@ -1149,9 +1255,9 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
                                    (x) / 2 + (y) / 2 * uv_width,
                                    (x) / 2 + (y) / 2 * uv_width, 2);
 
-        if(center_SAD>(mean_SAD/2)) /* if the center SAD is below half the mean SAD 
-                                 * a motion-search wouldn't be very clever...
-                                 */
+        if(center_SAD>(mean_SAD*0.75)) /* if the center SAD is below 75% of the mean SAD 
+                                        * a motion-search wouldn't be very clever...
+                                        */
         {
         /* search best matching block in the 4x4 subsampled
          * image and store the result in matrix[x][y][d]
@@ -1213,25 +1319,26 @@ calculate_motion_vectors (uint8_t *ref_frame[3], uint8_t *target[3])
   if( mean_SAD<96 ) /* don't go too low !!! 48==2*3*4*4 */
     mean_SAD=96;    /* a SAD of 96 is nearly noisefree source material */
     
-  if (avrg_SAD > (mean_SAD * 2) && framenr++ > 12)
+  if (avrg_SAD > (mean_SAD * 4) && framenr++ > 12)
     {
       mean_SAD = last_mean_SAD;
       scene_change = 1;
-      mjpeg_log (LOG_INFO, " *** Scene Change ***\n");
+      mjpeg_log (LOG_INFO, " *** scene change or very high activity detected  ***\n");
+      mjpeg_log (LOG_INFO, " *** its better to freeze MSAD and copy reference ***\n");
     }
   else
     {
       scene_change = 0;
     }
 
+  mjpeg_log (LOG_INFO, " MSAD : %d  --- Noiselevel : %2.1f Pixel (approximate) \n", 
+                       mean_SAD,((float)mean_SAD/16.0/3.0-1.5));
 }
 
 void
 transform_frame (uint8_t *avg[3])
 {
   int x, y;
-
-  mjpeg_log (LOG_INFO, " MSAD : %d \n", mean_SAD);
 
   for (y = 0; y < height; y += (BLOCKSIZE / 2))
     for (x = 0; x < width; x += (BLOCKSIZE / 2))
