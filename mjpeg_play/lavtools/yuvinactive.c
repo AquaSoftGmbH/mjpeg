@@ -43,12 +43,20 @@ struct area_s {
       int voffset;  /**< vertical offset from the top left boarder */
       int hoffset;  /**< horizontal offest from the top left boarder */
               };
+
+struct color_yuv {
+      int luma;       /**< the luma to use */
+      int croma_b;    /**< the croma Cb to use */
+      int croma_r;    /**< the croma Cr to use */
+         };
+
 int verbose = 1;
 
 /* protoypes */
 static void print_usage();
 void fillarea(char area[20], struct area_s *inarea);
-void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[]);
+void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[], struct color_yuv *coloryuv);
+void set_yuvcolor(char area[20], struct color_yuv *coloryuv);
 
 /* Here we start the programm */
 
@@ -59,8 +67,39 @@ static void print_usage()
   fprintf(stderr, " -h -H            - print out this help\n");
   fprintf(stderr, " -i X+Y+XOFF+YOFF - the area which will be set inactive, from top left\n");
   fprintf(stderr, "                  - X=Width, Y=Height, XOFF=VerticalOffset, YOFF=HorizonalOffset\n");
+  fprintf(stderr, " -s luma,Cb,Cr    - set the filling color in yuv format");
   fprintf(stderr, "\n");
   exit(1);
+}
+
+/** Here we set the color to use for filling the area */
+void set_yuvcolor(char area[20], struct color_yuv *coloryuv)
+{
+int i;
+unsigned int u1, u2, u3;
+
+  i = sscanf (area, "%i,%i,%i", &u1, &u2, &u3);
+
+  if ( 3 == i )
+    {
+      (*coloryuv).luma    = u1;
+      (*coloryuv).croma_b = u2;
+      (*coloryuv).croma_r = u3;
+      if ( ((*coloryuv).luma > 235) || ((*coloryuv).luma < 16) )
+        mjpeg_error_exit1("out of range value for luma given: %i, \n"
+                          " allowed values 16-235", (*coloryuv).luma);
+      if ( ((*coloryuv).croma_b > 240) || ((*coloryuv).croma_b < 16) )
+        mjpeg_error_exit1("out of range value for Cb given: %i, \n"
+                          " allowed values 16-240", (*coloryuv).croma_b);
+      if ( ((*coloryuv).croma_r > 240) || ((*coloryuv).croma_r < 16) )
+        mjpeg_error_exit1("out of range value for Cr given: %i, \n"
+                          " allowed values 16-240", (*coloryuv).croma_r);
+
+       mjpeg_info("got luma %i, Cb %i, Cr %i ", 
+                 (*coloryuv).luma, (*coloryuv).croma_b, (*coloryuv).croma_r );
+    }
+  else 
+    mjpeg_error_exit1("Wrong number of colors given, %s", area);
 }
 
 /** Here we cut out the number of the area string */
@@ -72,14 +111,14 @@ unsigned int u1, u2, u3, u4;
   /* Cuting out the numbers of the stream */
   i = sscanf (area, "%ix%i+%i+%i", &u1, &u2, &u3, &u4);
 
-  if ( 4 == i)  /* Checing if we have got 4 numbers */
+  if ( 4 == i)  /* Checking if we have got 4 numbers */
     {
        (*inarea).width = u1;
        (*inarea).height = u2;
        (*inarea).voffset = u3;
        (*inarea).hoffset = u4;
       if (verbose >= 1)
-         mjpeg_info("got values W %i, H %i, Xoff %i, Yoff %i",
+         mjpeg_info("got the area : W %i, H %i, Xoff %i, Yoff %i",
          (*inarea).width,(*inarea).height,(*inarea).voffset,(*inarea).hoffset); 
     }
   else 
@@ -88,7 +127,8 @@ unsigned int u1, u2, u3, u4;
 }
 
 /** Here is the first stage of setting the stream to black */
-void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[])
+void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[],
+                  struct color_yuv *coloryuv)
 {
 int i, hoffset_pix;
 uint8_t *plane_l, *plane_cb, *plane_cr;
@@ -102,7 +142,7 @@ hoffset_pix = (horz * inarea.hoffset) + inarea.voffset;
 
 for (i = 0; i < inarea.height; i++) /* Setting the Luma */
   {
-    memset( (plane_l + hoffset_pix), LUMA, inarea.width);
+    memset( (plane_l + hoffset_pix), (*coloryuv).luma , inarea.width);
     hoffset_pix = hoffset_pix + horz;
   }
 
@@ -111,8 +151,8 @@ hoffset_pix = ((horz / 2)  * (inarea.hoffset/2) ) + (inarea.voffset / 2 );
 
 for (i = 0; i < ((inarea.height/2)); i++) /*Setting the croma */
   {
-    memset( (plane_cb + hoffset_pix), CROMA, (inarea.width/2) );
-    memset( (plane_cr + hoffset_pix), CROMA, (inarea.width/2) );
+    memset( (plane_cb + hoffset_pix), (*coloryuv).croma_b, (inarea.width/2) );
+    memset( (plane_cr + hoffset_pix), (*coloryuv).croma_r, (inarea.width/2) );
     hoffset_pix = hoffset_pix + (horz/2);
   }
 
@@ -126,12 +166,17 @@ int horz, vert;      /* width and height of the frame */
 uint8_t *frame[3];  /*pointer to the 3 color planes of the input frame */
 char area [20];
 struct area_s inarea;
+struct color_yuv coloryuv;
 int input_fd = 0;    /* std in */
 int output_fd = 1;   /* std out */
 y4m_stream_info_t istream, ostream;
 y4m_frame_info_t iframe;
 
-  while ((c = getopt(argc, argv, "Hhv:i:")) != -1)
+coloryuv.luma    = LUMA;  /*Setting the luma to black */
+coloryuv.croma_b = CROMA; /*Setting the croma to center, means white */
+coloryuv.croma_r = CROMA; /*Setting the croma to center, means white */
+
+  while ((c = getopt(argc, argv, "Hhv:i:s:")) != -1)
     {
     switch (c)
       {
@@ -144,7 +189,11 @@ y4m_frame_info_t iframe;
            break;
          case 'i':
            strncpy(area, optarg, 20); /* This part shows how to process */
-           fillarea(area, &inarea);    /* command line options */
+           fillarea(area, &inarea);   /* command line options */
+           break;
+         case 's':
+           strncpy(area, optarg, 20); 
+           set_yuvcolor(area, &coloryuv);
            break;
          case 'H':
          case 'h':
@@ -202,7 +251,7 @@ y4m_frame_info_t iframe;
            frame_count++; 
 
            /* You can do something usefull here */
-           set_inactive(inarea, horz, vert, frame);
+           set_inactive(inarea, horz, vert, frame, &coloryuv);
 
            /* Now we put out the read frame */
            y4m_write_frame(output_fd, &ostream, &iframe, frame);
