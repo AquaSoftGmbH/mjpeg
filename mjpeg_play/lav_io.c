@@ -303,7 +303,7 @@ lav_file_t *lav_open_output_file(char *filename, char format,
 
          /* Open movtar output file */
 
-         lav_fd->movtar_fd = movtar_open(filename, 0, 1);
+         lav_fd->movtar_fd = movtar_open(filename, 0, 1, 0x0);
          if(!lav_fd->movtar_fd) { free(lav_fd); return 0; }
          movtar_set_video(lav_fd->movtar_fd, 1, width, height, fps, "MJPG", 0); /* BUUUUUUG !! interlaced !*/
          if (asize) movtar_set_audio(lav_fd->movtar_fd, achans, arate, asize, "LPCM");
