@@ -13,6 +13,14 @@ INCLUDES = -I $(top_srcdir) -I $(top_srcdir)/utils
 
 bin_PROGRAMS = mplex
 
+if HAVE_ZALPHA
+  ZALPHA_FILES = zalphastrm.hpp zalphastrm_in.cpp zalphastrm_out.cpp
+  ZALPHA_FLAGS = -DZALPHA
+else
+  ZALPHA_FILES =
+  ZALPHA_FLAGS =
+endif
+
 mplex_SOURCES = \
     Makefile.am \
 	main.cpp	\
@@ -29,7 +37,10 @@ mplex_SOURCES = \
 	vector.cpp	vector.hpp	mplexconsts.hpp \
 	inputstrm.cpp inputstrm.hpp aunit.hpp \
 	stillsstream.cpp stillsstream.hpp \
-	stream_params.cpp stream_params.hpp
+	stream_params.cpp stream_params.hpp \
+        $(ZALPHA_FILES)
 
 mplex_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 		@LIBGETOPT_LIB@ $(LIBM_LIBS) 
+
+mplex_CXXFLAGS = $(ZALPHA_FLAGS)

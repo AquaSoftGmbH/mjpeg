@@ -429,13 +429,14 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         }
         break;
 #ifdef ZALPHA
+        // just copies the video parameters from the first video stream
         case Z_ALPHA :
         {
-            ZAlphaStream *zalphaStrm = new ZAlphaStream( *(*i)->bs, *vidparm, *this);
-            zalphaStrm->Init ( i );
+            ZAlphaStream *zalphaStrm = new ZAlphaStream( *(*i)->bs, *(job.video_param.begin()), *this);
+            zalphaStrm->Init (0);
             estreams.push_back(zalphaStrm);
             vstreams.push_back(zalphaStrm);
-            ++vidparm;
+            //++vidparm;
         }
 #endif		
         }

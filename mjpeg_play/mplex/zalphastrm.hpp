@@ -1,6 +1,6 @@
 
 /*
- *  videostrm.hh:  Z/Alpha video elementary input stream
+ *  zalphastrm.hpp:  Z/Alpha video elementary input stream
  *
  *  Copyright (C) 2002 Gernot Ziegler <gz@lysator.liu.se>
  *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
@@ -23,11 +23,12 @@
 #ifndef __ZALPHASTRM_H__
 #define __ZALPHASTRM_H__
 
-#include "videostrm.hh"
+#include "videostrm.hpp"
 
 class ZAlphaStream : public VideoStream
 {
 public:
+	//ZAlphaStream(IBitStream &ibs, OutputStream &into);
 	ZAlphaStream(IBitStream &ibs, VideoParams *parms, 
                 Multiplexor &into);
 	void Init( const int stream_num );
@@ -40,10 +41,11 @@ public:
 	void OutputSector();
 protected:
 	void OutputSeqhdrInfo();
-    void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer);
+    void FillAUbuffer(unsigned int frames_to_buffer);
     virtual bool AUBufferNeedsRefill();
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS);
 	virtual void ScanFirstSeqHeader();
+    bool ZAlphaStream::RunOutComplete();
 
 private:
     float z_min; 

@@ -1,5 +1,5 @@
 /*
- *  inptstrm.c:  Members of video stream class related to raw stream
+ *  zalphastrm_in.cpp:  Members of Z/Alpha stream class related to raw stream
  *               scanning and buffering.
  *
  *  Copyright (C) 2001 Gernot Ziegler <gz@lysator.liu.se>
@@ -24,9 +24,9 @@
 #include <math.h>
 #include <stdlib.h>
 
-#include "zalphastrm.hh"
-#include "interact.hh"
-#include "multiplexor.hh"
+#include "zalphastrm.hpp"
+#include "interact.hpp"
+#include "multiplexor.hpp"
 
 
 
@@ -57,8 +57,7 @@ void ZAlphaStream::ScanFirstSeqHeader()
 
 #if 0 
 		aspect_ratio	= bs.GetBits(  4);
-		pict_rate 		= bs.GetBits(  4);
-		picture_rate	= pict_rate;
+		picture_rate 	= bs.GetBits(  4);
 		bit_rate		= bs.GetBits( 18);
 		marker_bit( bs, 1);
 		vbv_buffer_size	= bs.GetBits( 10);
@@ -66,11 +65,11 @@ void ZAlphaStream::ScanFirstSeqHeader()
 #else
         // hardcoded here, but should really be copied from the video stream... 
 		aspect_ratio	= 2;
-		pict_rate 		= 3;
-		picture_rate	= pict_rate;
-		bit_rate		= 1829;
+		picture_rate	= 3;
+		bit_rate		= 3000;
+        //bit_rate = 0x3ffff;
 		//marker_bit( bs, 1);
-		vbv_buffer_size	= 100;
+		vbv_buffer_size	= 50;
 		CSPF		= 0;
 #endif
         uint8_t conv[4];
@@ -100,9 +99,9 @@ void ZAlphaStream::ScanFirstSeqHeader()
 		exit (1);
     }
 
-	if (pict_rate >0 && pict_rate <= mpeg_num_framerates)
+	if (picture_rate >0 && picture_rate <= mpeg_num_framerates)
     {
-		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(pict_rate));
+		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(picture_rate));
 	}
     else
     {
@@ -119,11 +118,11 @@ void ZAlphaStream::Init ( const int stream_num )
 	mjpeg_debug( "SETTING video buffer to %d", parms->DecodeBufferSize() );
 	MuxStream::Init( ZALPHA_STR_0+stream_num,
 					 1,  // Buffer scale
-					 parms->DecodeBufferSize(),
+					 parms->DecodeBufferSize()*1024,
 					 0,  // Zero stuffing
 					 muxinto.buffers_in_video,
 					 muxinto.always_buffers_in_video);
-    mjpeg_info( "Scanning for header info: Z/Alpha stream %02x (%s) ",
+    mjpeg_debug( "Scanning for header info: Z/Alpha stream %02x (%s)",
                 ZALPHA_STR_0+stream_num,
                 bs.StreamName()
                 );
@@ -198,8 +197,9 @@ bool ZAlphaStream::AUBufferNeedsRefill()
 
 void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 {
-    int frame_num = -1;
+    int frame_num;
     unsigned int bits_persec;
+    int headerlen;
 
     if( eoscan )
         return;
@@ -211,13 +211,11 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
     // We set a limit of 2M to seek before we give up.
     // This is intentionally very high because some heavily
     // padded still frames may have a loooong gap before
-    // a following sequence end marker. (probably irrelevant for Z/Alpha, though)
-    // IMPORTANT: SeekSync *must* come last otherwise a header
-    // will be lost!!!!
+    // a following sequence end marker.
 	while(!bs.eos() 
-          && decoding_order < last_buffered_AU  
+          && decoding_order < last_buffered_AU 
           && !muxinto.AfterMaxPTS(access_unit.PTS)
-		  && bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024)
+          && bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024)
 		)
 	{
 		syncword = (SYNCWORD_START<<8) + bs.GetBits( 8);
@@ -240,11 +238,11 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.start = AU_start;
 				access_unit.length = (int) (stream_length - AU_start)>>3;
 				access_unit.end_seq = 0;
+                access_unit.type = IFRAME;
 				avg_frames[access_unit.type-1]+=access_unit.length;
                 access_unit.dorder = decoding_order;
                 access_unit.seq_header = 1; //( AU_hdr == SEQUENCE_HEADER);
 
-                access_unit.type = IFRAME;
                 
                 bits_persec = 
 					(unsigned int) ( ((double)(stream_length - prev_offset)) *
@@ -259,11 +257,13 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 				prev_offset = stream_length;
 
+                headerlen = bs.GetBits(16);
                 frame_num = bs.GetBits(8);
-				mjpeg_debug( "Found AU %d (real: %d): DTS=%f", access_unit.dorder, frame_num,
-							 access_unit.DTS/300.0);
+                //mjpeg_info("Header frame number is %d", frame_num);
 
-
+				mjpeg_debug( "Found Z/Alpha AU %d (real: %d): DTS=%d", access_unit.dorder, frame_num,
+							 access_unit.DTS/300);
+                
                 if ( decoding_order >= old_frames+1000 )
                 {
                     mjpeg_debug("Got %d picture headers.", decoding_order);
@@ -303,7 +303,7 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
                 access_unit.seq_header = 1; //( AU_hdr == SEQUENCE_HEADER);
 
                 access_unit.type = IFRAME;
-				mjpeg_debug( "Adding final AU %d (real: %d): DTS=%lld", access_unit.dorder, frame_num,
+				mjpeg_debug( "Adding final AU %d (real: %d): DTS=%d", access_unit.dorder, frame_num,
 							 access_unit.DTS/300);
                 NextDTSPTS( access_unit.DTS, access_unit.PTS);
 				aunits.append( access_unit ); // INSERTING NEW AUNIT ! 
@@ -312,7 +312,7 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 				//access_unit.length = ((stream_length - AU_start)>>3)+4;
 				//access_unit.end_seq = 1;
 				//aunits.append( access_unit );
-				mjpeg_debug( "Z/Alpha: Scanned to end AU %d at %lld", access_unit.dorder, stream_length/8 );
+				mjpeg_debug( "Z/Alpha: Scanned to end AU %d at %d", access_unit.dorder, stream_length/8 );
 				avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
@@ -344,7 +344,7 @@ void ZAlphaStream::FillAUbuffer(unsigned int frames_to_buffer)
 
 void ZAlphaStream::Close()
 {
-    stream_length = (unsigned int)(AU_start / 8);
+    stream_length = (unsigned int)(bs.bitcount() / 8);
     for (int i=0; i<4; i++)
 	{
 		avg_frames[i] /= num_frames[i] == 0 ? 1 : num_frames[i];
@@ -359,7 +359,7 @@ void ZAlphaStream::Close()
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
 	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
-    mjpeg_info ("Video Stream length: %11llu bytes",stream_length/8);
+    mjpeg_info ("Video Stream length: %11llu bytes",stream_length);
     mjpeg_info ("Sequence headers: %8u",num_sequence);
     mjpeg_info ("Sequence ends   : %8u",num_seq_end);
     mjpeg_info ("No. Pictures    : %8u",num_pictures);

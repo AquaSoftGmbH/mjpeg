@@ -1,6 +1,6 @@
 
 /*
- *  inptstrm.c:  Members of input stream classes related to muxing out into
+ *  zalphastrm_out.cpp:  Members of input stream classes related to muxing out into
  *               the output stream.
  *
  *  Copyright (C) 2001 Gernot Ziegler <gz@lysator.liu.se>
@@ -25,14 +25,15 @@
 #include <config.h>
 #include <assert.h>
 #include "fastintfns.h"
-#include "videostrm.hh"
-#include "zalphastrm.hh"
-#include "multiplexor.hh"
+#include "zalphastrm.hpp"
+#include "multiplexor.hpp"
 
-ZAlphaStream::ZAlphaStream(IBitStream &ibs, 
-             VideoParams *parms, 
-             Multiplexor &into):
+
+ZAlphaStream::ZAlphaStream(IBitStream &ibs, VideoParams *parms, 
+                         Multiplexor &into ) :
 	VideoStream( ibs, parms, into)
+//ZAlphaStream::ZAlphaStream(IBitStream &ibs, OutputStream &into )	:
+//	VideoStream( ibs, into)
 {
 	prev_offset=0;
     decoding_order=0;
@@ -91,28 +92,29 @@ bool ZAlphaStream::MuxPossible( clockticks currentSCR )
 
 void ZAlphaStream::OutputSector ( )
 
+#if 1
 {
 
 	unsigned int max_packet_payload; 	 
 	unsigned int actual_payload;
-	unsigned int prev_au_tail;
-	//VAunit *vau;
 	unsigned int old_au_then_new_payload;
 	clockticks  DTS,PTS;
     int autype;
 
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
- 	   We're now in the last AU of a segment. 
-		So we don't want to go beyond its end when filling
-		sectors. Hence we limit packet payload size to (remaining) AU length.
-		The same applies when we wish to ensure sequence headers starting
-		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
+ 	   We're now in the last AU of a segment.  So we don't want to go
+ 	   beyond it's end when filling sectors. Hence we limit packet
+ 	   payload size to (remaining) AU length.  The same applies when
+ 	   we wish to ensure sequence headers starting ACCESS-POINT AU's
+ 	   in (S)VCD's etc are sector-aligned.  
+
+       N.b.runout_PTS is the PTS of the first I picture following the
+       run-out is recorded.
 	*/
 	int nextAU = NextAUType();
-	if( (muxinto.running_out && nextAU == IFRAME && 
-		 NextRequiredPTS() > muxinto.runout_PTS) ||
-		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
+	if( ( muxinto.running_out && nextAU == IFRAME && NextRequiredPTS() >= muxinto.runout_PTS) 
+        || (muxinto.sector_align_iframeAUs && nextAU == IFRAME  )
 		) 
 	{
 		max_packet_payload = au_unsent;
@@ -120,7 +122,7 @@ void ZAlphaStream::OutputSector ( )
 
 	/* Figure out the threshold payload size below which we can fit more
 	   than one AU into a packet N.b. because fitting more than one in
-	   imposes an overhead of additional header fields so there is a
+	   imposses an overhead of additional header fields so there is a
 	   dead spot where we *have* to stuff the packet rather than start
 	   fitting in an extra AU.  Slightly over-conservative in the case
 	   of the last packet...  */
@@ -143,8 +145,9 @@ void ZAlphaStream::OutputSector ( )
             OutputGOPControlSector();
         }
 
-		if( dtspts_for_all_au && max_packet_payload == 0 )
-			max_packet_payload = au_unsent;
+        if(  dtspts_for_all_au  && max_packet_payload == 0 )
+            max_packet_payload = au_unsent;
+
         PTS = RequiredPTS();
         DTS = RequiredDTS();
 		actual_payload =
@@ -153,23 +156,20 @@ void ZAlphaStream::OutputSector ( )
 								  NewAUBuffers(autype), 
                                   PTS, DTS,
 								  NewAUTimestamps(autype) );
-		Muxed( actual_payload);
 
 	}
 
 	/* CASE: Packet begins with old access unit, no new one	*/
-	/*	     begins in the very same packet					*/
+	/*	     can begin in the very same packet					*/
 
-	else if ( ! new_au_next_sec &&
-			  (au_unsent >= old_au_then_new_payload))
+	else if ( au_unsent >= old_au_then_new_payload ||
+              (max_packet_payload != 0 && au_unsent >= max_packet_payload) )
 	{
 		actual_payload = 
 			muxinto.WritePacket( au_unsent,
 								  *this,
 								  false, 0, 0,
 								  TIMESTAMPBITS_NO );
-		Muxed ( actual_payload );
-
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
@@ -177,52 +177,161 @@ void ZAlphaStream::OutputSector ( )
 	else /* if ( !new_au_next_sec  && 
 			(au_unsent < old_au_then_new_payload)) */
 	{
-		prev_au_tail = au_unsent;
-
-		Muxed( au_unsent );
-		/* is there a new access unit anyway? */
-        //mjpeg_info("MuxCompleted says %s", MuxCompleted()?"yes":"no");
-
-		if( !MuxCompleted() )
+		/* Is there a new access unit ? */
+		if( Lookahead() != 0 )
 		{
-            autype = AUType();
-            /* No timestamps if sector restricted to only current */
-            /* AU (new Au though possible is not muxed)           */
-            uint8_t timestamps = 
-                max_packet_payload != 0 && prev_au_tail >= max_packet_payload
-                ? TIMESTAMPBITS_NO 
-                : NewAUTimestamps(autype) ;
-
+            autype = NextAUType();
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
-				max_packet_payload = prev_au_tail + au_unsent;
+				max_packet_payload = au_unsent + Lookahead()->length;
 
-			PTS = RequiredPTS();
-			DTS = RequiredDTS();
-
-            //fprintf(stderr, "Z/Alpha PTS: %d; timestamps: %d, TIMESTAMPS_NO = %d\n", PTS, timestamps, TIMESTAMPBITS_NO);
+			PTS = NextRequiredPTS();
+			DTS = NextRequiredDTS();
 
 			actual_payload = 
 				muxinto.WritePacket ( max_packet_payload,
 									  *this,
 									  NewAUBuffers(autype), 
                                       PTS, DTS,
-									  timestamps );
-			Muxed( actual_payload - prev_au_tail );
+									  NewAUTimestamps(autype) );
 		} 
 		else
 		{
-			(void) muxinto.WritePacket ( 0,
+			actual_payload = muxinto.WritePacket ( au_unsent,
 										 *this,
 										 false, 0, 0,
 										 TIMESTAMPBITS_NO);
-		};
-
+		}
 
 	}
 	++nsec;
 	buffers_in_header = always_buffers_in_header;
 }
 
+#else
+{
+
+	unsigned int max_packet_payload; 	 
+	unsigned int actual_payload;
+	unsigned int prev_au_tail;
+	VAunit *vau;
+	unsigned int old_au_then_new_payload;
+	clockticks  DTS,PTS;
+    int autype;
+
+	max_packet_payload = 0;	/* 0 = Fill sector */
+  	/* 	
+ 	   We're now in the last AU of a segment. 
+		So we don't want to go beyond it's end when filling
+		sectors. Hence we limit packet payload size to (remaining) AU length.
+		The same applies when we wish to ensure sequence headers starting
+		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
+	*/
+	int nextAU = NextAUType();
+	if( (muxinto.running_out && nextAU == IFRAME && 
+		 NextRequiredPTS() > muxinto.runout_PTS) ||
+		(muxinto.sector_align_iframeAUs && nextAU == IFRAME )
+		) 
+	{
+		max_packet_payload = au_unsent;
+	}
+
+	/* Figure out the threshold payload size below which we can fit more
+	   than one AU into a packet N.b. because fitting more than one in
+	   imposses an overhead of additional header fields so there is a
+	   dead spot where we *have* to stuff the packet rather than start
+	   fitting in an extra AU.  Slightly over-conservative in the case
+	   of the last packet...  */
+
+	old_au_then_new_payload = muxinto.PacketPayload( *this,
+													 buffers_in_header, 
+													 true, true);
+
+	/* CASE: Packet starts with new access unit			*/
+	if (new_au_next_sec  )
+	{
+        autype = AUType();
+        //
+        // Some types of output format (e.g. DVD) require special
+        // control sectors before the sector starting a new GOP
+        // N.b. this implies muxinto.sector_align_iframeAUs
+        //
+        if( gop_control_packet && autype == IFRAME )
+        {
+            OutputGOPControlSector();
+        }
+
+        if(  dtspts_for_all_au  && max_packet_payload == 0 )
+            max_packet_payload = au_unsent;
+
+        PTS = RequiredPTS();
+        DTS = RequiredDTS();
+		actual_payload =
+			muxinto.WritePacket ( max_packet_payload,
+								  *this,
+								  NewAUBuffers(autype), 
+                                  PTS, DTS,
+								  NewAUTimestamps(autype) );
+
+	}
+
+	/* CASE: Packet begins with old access unit, no new one	*/
+	/*	     can begin in the very same packet					*/
+
+	else if ( au_unsent >= old_au_then_new_payload ||
+              (max_packet_payload != 0 && au_unsent >= max_packet_payload) )
+	{
+		actual_payload = 
+			muxinto.WritePacket( au_unsent,
+								  *this,
+								  false, 0, 0,
+								  TIMESTAMPBITS_NO );
+	}
+
+	/* CASE: Packet begins with old access unit, a new one	*/
+	/*	     could begin in the very same packet			*/
+	else /* if ( !new_au_next_sec  && 
+			(au_unsent < old_au_then_new_payload)) */
+	{
+		/* Is there a new access unit ? */
+		if( Lookahead() != 0 )
+		{
+            autype = NextAUType();
+			if(  dtspts_for_all_au  && max_packet_payload == 0 )
+				max_packet_payload = au_unsent + Lookahead()->length;
+
+			PTS = NextRequiredPTS();
+			DTS = NextRequiredDTS();
+
+			actual_payload = 
+				muxinto.WritePacket ( max_packet_payload,
+									  *this,
+									  NewAUBuffers(autype), 
+                                      PTS, DTS,
+									  NewAUTimestamps(autype) );
+		} 
+		else
+		{
+			actual_payload = muxinto.WritePacket ( 0,
+										 *this,
+										 false, 0, 0,
+										 TIMESTAMPBITS_NO);
+		}
+
+	}
+	++nsec;
+	buffers_in_header = always_buffers_in_header;
+}
+#endif
+
+
+bool ZAlphaStream::RunOutComplete()
+{
+ 
+	return (au_unsent == 0);
+// || 
+//			( muxinto.running_out &&
+//			  au->type == IFRAME && RequiredPTS() >= muxinto.runout_PTS));
+}
 
 
 /* 
