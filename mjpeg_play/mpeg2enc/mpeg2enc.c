@@ -556,6 +556,7 @@ static void readparmfile()
 		if( param_bitrate == 0 )
 		{
 			fprintf(stderr, "MPEG-2 specified - must specify bit-rate!\n" );
+			exit(1);
 		}
 		bit_rate = MAX(10000, param_bitrate*1000);
 		vbv_buffer_code = 112;

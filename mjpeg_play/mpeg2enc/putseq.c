@@ -220,7 +220,7 @@ void putseq()
 #endif
 		if (!quiet)
 		{
-			printf("Frame %d %d %c ",i, cur_picture.pict_type,  pict_type_char[cur_picture.pict_type]);
+			printf("Frame %d %c ",i, pict_type_char[cur_picture.pict_type]);
 			fflush(stdout);
 		}
 
