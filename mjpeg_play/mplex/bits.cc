@@ -286,7 +286,7 @@ uint32_t IBitStream::get1bit()
   unsigned int bit;
 
   if (eobs)
-    return false;
+    return 0;
 
   bit = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
   totbits++;
@@ -336,7 +336,7 @@ uint32_t IBitStream::getbits(int N)
     while (i > 0)
     {
       if (eobs)
-        return false;
+        return 0;
 
       j = (bfr[byteidx] & masks[bitidx - 1]) >> (bitidx - 1);
       totbits++;

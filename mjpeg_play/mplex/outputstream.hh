@@ -38,10 +38,10 @@ public:
 							  uint8_t 	 timestamps
 		);
 
-	void WriteRawSector( Sys_header_struc *system_header,
-						 uint8_t *rawpackets,
-						 unsigned int     length
-		);
+	/* Special "unusual" sector types needed for particular formats 
+	 */
+	  
+	void OutputDVDPriv2 ();
 
 	/* Syntax control parameters, public becaus they're partly referenced
 	   by the input stream objects.
@@ -118,6 +118,7 @@ private:
 	
 	PaddingStream pstrm;
 	VCDAPadStream vcdapstrm;
+	DVDPriv2Stream dvdpriv2strm;
 
 private:
 	unsigned int RunInSectors();
@@ -130,14 +131,12 @@ private:
 	void OutputPrefix( );
 
 	void OutputSuffix();
-	void OutputPadding ( clockticks SCR,
-						 bool start_of_new_pack,
-						 bool include_sys_header,
-						 bool pseudo_VBR,
-						 bool vcd_audio_pad
-		);
-
+	void OutputPadding ( bool pseudo_VBR, bool vcd_audio_pad );
 	void MuxStatus( log_level_t level );
+
+	void WriteRawSector( uint8_t *rawpackets,
+						 unsigned int     length
+		);
 	
 };
 

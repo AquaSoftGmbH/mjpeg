@@ -29,18 +29,17 @@
 class AudioStream : public ElementaryStream
 {
 public:   
-  AudioStream(OutputStream &into );
-  void Init(const int stream_num, const char *audio_file);
-  void OutputSector();
-  
-  void Close();
+    AudioStream(OutputStream &into );
+    virtual void Init(const int stream_num, const char *audio_file) = 0;
+    virtual void Close() = 0;
 
-  virtual unsigned int NominalBitRate();
-  bool RunOutComplete();
+    void OutputSector();
+    bool RunOutComplete();
+    virtual unsigned int NominalBitRate() = 0;
 
-  unsigned int num_syncword	;
-  unsigned int num_frames [2]	;
-  unsigned int size_frames[2] ;
+    unsigned int num_syncword	;
+    unsigned int num_frames [2];
+    unsigned int size_frames[2];
 	unsigned int version_id ;
     unsigned int layer		;
     unsigned int protection	;
@@ -52,11 +51,9 @@ public:
     unsigned int original_copy  ;
     unsigned int emphasis	;
 
-private:
-	void OutputHdrInfo();
-	unsigned int SizeFrame( int bit_rate, int padding_bit );
-	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-	virtual void InitAUbuffer();
+protected:
+	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
+	void InitAUbuffer();
     
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
@@ -66,6 +63,50 @@ private:
     AAunit access_unit;
 }; 	
 
+class MPAStream : public AudioStream
+{
+public:   
+    MPAStream(OutputStream &into );
+    virtual void Init(const int stream_num, const char *audio_file);
+    static bool Probe(IBitStream &bs);
+    virtual void Close();
+    virtual unsigned int NominalBitRate();
+
+
+private:
+	void OutputHdrInfo();
+	unsigned int SizeFrame( int bit_rate, int padding_bit );
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+
+    
+	/* State variables for scanning source bit-stream */
+    unsigned int framesize;
+    unsigned int skip;
+    unsigned int samples_per_second;
+}; 	
+
+
+
+class AC3Stream : public AudioStream
+{
+public:   
+    AC3Stream(OutputStream &into );
+    virtual void Init(const int stream_num, const char *audio_file);
+    static bool Probe(IBitStream &bs);
+    virtual void Close();
+    virtual unsigned int NominalBitRate();
+
+
+private:
+	void OutputHdrInfo();
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+
+    
+	/* State variables for scanning source bit-stream */
+    unsigned int framesize;
+    unsigned int samples_per_second;
+    unsigned int bit_rate;
+}; 	
 
 #endif // __AUDIOSTRM_H__
 

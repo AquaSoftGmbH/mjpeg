@@ -41,7 +41,11 @@ unsigned int VCDAPadStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 	return to_read;
 }
 
-
+unsigned int DVDPriv2Stream::ReadStrm(uint8_t *dst, unsigned int to_read)
+{
+	memset( dst, 0, to_read );
+	return to_read;
+}
 
 /* 
  * Local variables:

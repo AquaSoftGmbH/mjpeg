@@ -55,6 +55,11 @@ VideoStream::VideoStream(OutputStream &into )
 		
 }
 
+bool VideoStream::Probe(IBitStream &bs )
+{
+    return bs.getbits( 32)  == 0x1b3;
+}
+
 void VideoStream::InitAUbuffer()
 {
 	int i;
@@ -262,10 +267,16 @@ void VideoStream::OutputGOPControlSector()
     abort();
 }
 
+ /******************************************************************
+ *	OutputGOPControlSector
+ *  DVD System headers are carried in peculiar sectors carrying 2
+ *  PrivateStream2 packets.   We're sticking 0's in the packets
+ *  as we have no idea what's supposed to be in there.
+ ******************************************************************/
+
 void DVDVideoStream::OutputGOPControlSector()
 {
-    uint8_t dummy[1];
-    muxinto.WriteRawSector( muxinto.SystemHeader(), dummy, 0U );
+    muxinto.OutputDVDPriv2 ();
 }
 
 

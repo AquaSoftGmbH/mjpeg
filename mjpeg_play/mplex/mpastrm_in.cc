@@ -28,7 +28,7 @@
 #include "outputstream.hh"
 
 
-char *audio_version[4] =
+static const char *mpa_audio_version[4] =
 {
 	"2.5",
 	"2.0",
@@ -36,7 +36,7 @@ char *audio_version[4] =
 	"1.0"
 };
 
-unsigned int bitrates_kbps [4][3][16] =
+static const unsigned int mpa_bitrates_kbps [4][3][16] =
 {
 	{ /* MPEG audio V2.5 */
 		{0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
@@ -62,7 +62,7 @@ unsigned int bitrates_kbps [4][3][16] =
 };
 
 
-static int freq_table [4][4] = 
+static const int mpa_freq_table [4][4] = 
 {
 	/* MPEG audio V2.5 */
 	{11025,12000,8000,0},
@@ -73,29 +73,39 @@ static int freq_table [4][4] =
 	/* MPEG audio V1 */
 	{44100, 48000, 32000, 0}
 };
-static char stereo_mode [4][15] =
+
+static const char mpa_stereo_mode [4][15] =
 { "stereo", "joint stereo", "dual channel", "single channel" };
-static char copyright_status [2][20] =
+static const char mpa_copyright_status [2][20] =
 { "no copyright","copyright protected" };
-static char original_bit [2][10] =
+static const char mpa_original_bit [2][10] =
 { "copy","original" };
-static char emphasis_mode [4][20] =
+static const char mpa_emphasis_mode [4][20] =
 { "none", "50/15 microseconds", "reserved", "CCITT J.17" };
-static unsigned int slots [4] = {12, 144, 144, 0};
-static unsigned int samples [4] = {384, 1152, 1152, 0};
+static const unsigned int mpa_slots [4] = {12, 144, 144, 0};
+static const unsigned int mpa_samples [4] = {384, 1152, 1152, 0};
 
 
 
+MPAStream::MPAStream(OutputStream &into) : 
+	AudioStream( into )
+{
+}
+
+bool MPAStream::Probe(IBitStream &bs )
+{
+    return bs.getbits(11) == AUDIO_SYNCWORD;
+}
 
 
 /*************************************************************************
-	Get_Info_Audio
-	holt Informationen zu den einzelnen Audio Access Units
-	(Audio frames) and records it.
-*************************************************************************/
+ *
+ * Reads initial stream parameters and displays feedback banner to users
+ *
+ *************************************************************************/
 
 
-void AudioStream::Init ( const int stream_num, 
+void MPAStream::Init ( const int stream_num, 
 						 const char *audio_file)
 
 {
@@ -118,7 +128,7 @@ void AudioStream::Init ( const int stream_num,
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
-    if (bs.getbits( 11)==AUDIO_SYNCWORD)
+    if (bs.getbits(11)==AUDIO_SYNCWORD)
     {
 		num_syncword++;
 		version_id = bs.getbits( 2);
@@ -135,9 +145,9 @@ void AudioStream::Init ( const int stream_num,
 		emphasis		= bs.getbits( 2);
 
 		framesize =
-			bitrates_kbps[version_id][layer][bit_rate_code]  * 
-			slots[layer] *1000 /
-			freq_table[version_id][frequency];
+			mpa_bitrates_kbps[version_id][layer][bit_rate_code]  * 
+			mpa_slots[layer] *1000 /
+			mpa_freq_table[version_id][frequency];
 
 		size_frames[0] = framesize;
 		size_frames[1] = framesize+( layer == 0 ? 4 : 1);
@@ -145,11 +155,11 @@ void AudioStream::Init ( const int stream_num,
 	
 		access_unit.length = size_frames[padding_bit];
 	  
-		samples_per_second = freq_table[version_id][frequency];
+		samples_per_second = mpa_freq_table[version_id][frequency];
 
 		/* Presentation time-stamping  */
 		access_unit.PTS = static_cast<clockticks>(decoding_order) * 
-			static_cast<clockticks>(samples [layer]) * 
+			static_cast<clockticks>(mpa_samples [layer]) * 
 			static_cast<clockticks>(CLOCKS)	/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
@@ -166,20 +176,20 @@ void AudioStream::Init ( const int stream_num,
 	OutputHdrInfo();
 }
 
-unsigned int AudioStream::NominalBitRate()
+unsigned int MPAStream::NominalBitRate()
 { 
-	return bitrates_kbps[version_id][layer][bit_rate_code]*128;
+	return mpa_bitrates_kbps[version_id][layer][bit_rate_code]*128;
 }
 
 
-unsigned int AudioStream::SizeFrame( int rate_code, int padding )
+unsigned int MPAStream::SizeFrame( int rate_code, int padding )
 {
-	return bitrates_kbps[version_id][layer][rate_code]  * 
-		slots [layer] *1000 /
-		freq_table[version_id][frequency] + padding;
+	return mpa_bitrates_kbps[version_id][layer][rate_code]  * 
+		mpa_slots [layer] *1000 /
+		mpa_freq_table[version_id][frequency] + padding;
 }
 
-void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
+void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 {
 	unsigned int i;
 	unsigned int padding_bit;
@@ -238,7 +248,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 		padding_bit=bs.get1bit();
 		access_unit.start = AU_start;
 		access_unit.length = SizeFrame( rate_code, padding_bit );
-		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[layer]) * static_cast<clockticks>(CLOCKS)
+		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(mpa_samples[layer]) * static_cast<clockticks>(CLOCKS)
 			/ samples_per_second;
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
@@ -267,7 +277,7 @@ void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 
 
 
-void AudioStream::Close()
+void MPAStream::Close()
 {
     stream_length = AU_start >> 3;
 	mjpeg_info ("AUDIO_STATISTICS: %02x\n", stream_id); 
@@ -286,14 +296,14 @@ void AudioStream::Close()
 	Prints information on audio access units
 *************************************************************************/
 
-void AudioStream::OutputHdrInfo ()
+void MPAStream::OutputHdrInfo ()
 {
     unsigned int bitrate;
-    bitrate = bitrates_kbps[version_id][layer][bit_rate_code];
+    bitrate = mpa_bitrates_kbps[version_id][layer][bit_rate_code];
 
 
 	mjpeg_info("AUDIO STREAM:\n");
-	mjpeg_info("Audio version  : %s\n", audio_version[version_id]);
+	mjpeg_info("Audio version  : %s\n", mpa_audio_version[version_id]);
     mjpeg_info("Layer          : %8u\n",4-layer);
 
     if (protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
@@ -311,17 +321,17 @@ void AudioStream::OutputHdrInfo ()
 		mjpeg_info ("Frequency      : reserved\n");
     else
 		mjpeg_info ("Frequency      :     %d Hz\n",
-				freq_table[version_id][frequency]);
+				mpa_freq_table[version_id][frequency]);
 
     mjpeg_info   ("Mode           : %8u %s\n",
-			  mode,stereo_mode[mode]);
+			  mode,mpa_stereo_mode[mode]);
     mjpeg_info   ("Mode extension : %8u\n",mode_extension);
     mjpeg_info   ("Copyright bit  : %8u %s\n",
-			  copyright,copyright_status[copyright]);
+			  copyright,mpa_copyright_status[copyright]);
     mjpeg_info   ("Original/Copy  : %8u %s\n",
-			  original_copy,original_bit[original_copy]);
+			  original_copy,mpa_original_bit[original_copy]);
     mjpeg_info   ("Emphasis       : %8u %s\n",
-			  emphasis,emphasis_mode[emphasis]);
+			  emphasis,mpa_emphasis_mode[emphasis]);
 }
 
 

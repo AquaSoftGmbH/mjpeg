@@ -30,6 +30,8 @@ public:
 	VideoStream(OutputStream &into);
 	void Init( const int stream_num,
 			   const char *input_file);
+    static bool Probe(IBitStream &bs );
+
 	void Close();
 
 	inline int AUType()

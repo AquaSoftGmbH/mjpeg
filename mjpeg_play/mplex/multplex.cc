@@ -547,14 +547,14 @@ void OutputStream::OutputPrefix( )
 								 true, true, &vstreams  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding( current_SCR,  true, true, false,  false);		
+	  	OutputPadding( false,  false);		
 
 		/* Second packet carries audio-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate,  false, true, 
 								 true, true, &astreams );
 
 		
-	  	OutputPadding( current_SCR, true, true, false, true );
+	  	OutputPadding( false, true );
 		break;
 		
 	case MPEG_FORMAT_SVCD :
@@ -564,7 +564,8 @@ void OutputStream::OutputPrefix( )
 						   true, true, estreams );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding( current_SCR, true,	true, false, 0);					 		break;
+	  	OutputPadding(  false, 0);
+        break;
 
 	case MPEG_FORMAT_VCD_STILL :
 		split_at_seq_end = false;
@@ -574,7 +575,8 @@ void OutputStream::OutputPrefix( )
 								 true, true, estreams );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-		OutputPadding( current_SCR, true, true, false, false);							break;
+		OutputPadding(  false, false);	
+        break;
 			
 	case MPEG_FORMAT_SVCD_STILL :
 		/* TODO: Video only at present */
@@ -584,16 +586,20 @@ void OutputStream::OutputPrefix( )
 								 true, true, &vstreams  );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
-	  	OutputPadding( current_SCR,  true, true, false,  false);		
+	  	OutputPadding(   false,  false);		
 		break;
 
     case MPEG_FORMAT_DVD :
-        /* TODO: This is *not* accurate.  The DVD's I've seen write weird
-           shit involving streams b8 and b9 instead e0 and c0... very odd.
-
+        /* A DVD System header is a weird thing.
+           We need to include stuff about streams 0xb8, 0xb9, 0xbd and 0xbf
+           
         */
         psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
                                  true, true, estreams );
+
+        /* It is then followed up by a pair of PRIVATE_STR_2 packets which
+            we keep empty 'cos we don't know what goes there...
+        */
         break;
     default :
         /* Create the in-stream header in case it is needed */
@@ -899,9 +905,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		else
 		{
 
-			OutputPadding (current_SCR, 
-							start_of_new_pack, include_sys_header, vbr,
-							false);
+			OutputPadding (	vbr,false);
 			padding_packet =true;
 		}
 
@@ -1003,28 +1007,22 @@ OutputStream::WritePacket( unsigned int     max_packet_data_size,
 }
 
 /***************************************************
-
-  WriteControlPacket - Write out a packet carrying data for
-                     a control packet with irregular content.
-                     E.g. the control packet preceding each GOP
-                     in a DVD systems stream.
-***************************************************/
+ *
+ * WriteRawSector - Write out a packet carrying data for
+ *                    a control packet with irregular content.
+ ***************************************************/
 
 void
-OutputStream::WriteRawSector(  Sys_header_struc *system_header,
-                               uint8_t *rawpackets,
+OutputStream::WriteRawSector(  uint8_t *rawsector,
                                unsigned int     length
 	)
 {
     //
-    // Write raw sectors when packs stretch over multiple sectors
+    // Writing raw sectors when packs stretch over multiple sectors
     // is a reciped for disaster!
     //
     assert( packets_per_pack == 1 );
-	psstrm->CreateRawSector ( pack_header_ptr,
-                              system_header,
-                              rawpackets,
-                              length );
+	psstrm->RawWrite( rawsector, length );
 	NextPosAndSCR();
 
 }
@@ -1118,10 +1116,7 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 ******************************************************************/
 
 
-void OutputStream::OutputPadding (	clockticks SCR,
-									bool start_of_new_pack,
-									bool include_sys_header,
-									bool VBR_pseudo,
+void OutputStream::OutputPadding (	bool VBR_pseudo,
 									bool vcd_audio_pad
 	)
 
@@ -1149,6 +1144,48 @@ void OutputStream::OutputPadding (	clockticks SCR,
 
 }
 
+void OutputStream::OutputDVDPriv2 (	)
+{
+    uint8_t *packet_size_field;
+    uint8_t *index;
+    uint8_t sector_buf[sector_size];
+    
+    PS_Stream::BufferSectorHeader( sector_buf,
+                                pack_header_ptr,
+                                sys_header_ptr,
+                                index );
+    PS_Stream::BufferPacketHeader( index,
+                                   PRIVATE_STR_2,
+                                   2,      // MPEG 2
+                                   false,  // No buffers
+                                   0,
+                                   0,
+                                   0,      // No timestamps
+                                   0,
+                                   TIMESTAMPBITS_NO,
+                                   packet_size_field,
+                                   index );
+    memset( index, 0, 980);
+    index += 980;
+    PS_Stream::BufferPacketSize( packet_size_field, index );    
+
+    PS_Stream::BufferPacketHeader( index,
+                                   PRIVATE_STR_2,
+                                   2,      // MPEG 2
+                                   false,  // No buffers
+                                   0,
+                                   0,
+                                   0,      // No timestamps
+                                   0,
+                                   TIMESTAMPBITS_NO,
+                                   packet_size_field,
+                                   index );
+    memset( index, 0, sector_buf+sector_size-index );
+    index += sector_buf+sector_size-index;
+    PS_Stream::BufferPacketSize( packet_size_field, index );
+
+    WriteRawSector( sector_buf, sector_size );
+}
 
 
 /* 

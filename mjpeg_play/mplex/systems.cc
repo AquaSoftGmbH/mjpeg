@@ -53,6 +53,7 @@ PS_Stream::NextFile( )
 
  	 Packet payload compute how much payload a sector-sized packet with the 
 	 specified headers can carry...
+     TODO: Should really be called "Sector Payload"
 **************************************************************/
 	
 		
@@ -77,6 +78,11 @@ PS_Stream::PacketPayload( MuxStream &strm,
 	    payload -= DTS_PTS_TIMESTAMP_LENGTH;
 	  if ( PTSstamp )
 	    payload -= DTS_PTS_TIMESTAMP_LENGTH;
+
+      // DVD AC3 stream is in PRIVATE_STR_1 and follows MPEG header
+      // with audio stream num, syncword count and offset to first syncword
+      if( strm.stream_id == PRIVATE_STR_1 )
+          payload -= 4; 
 	}
 	else
 	{
@@ -190,8 +196,8 @@ BufferPaddingPacket - Insert a padding packet of the desired length
 
 **************************************************************************/
 
-
-void PS_Stream::BufferPaddingPacket( int padding,  uint8_t *&buffer  )
+void
+PS_Stream::BufferPaddingPacket( int padding,  uint8_t *&buffer  )
 {
     uint8_t *index = buffer;
     int i;
@@ -221,6 +227,154 @@ void PS_Stream::BufferPaddingPacket( int padding,  uint8_t *&buffer  )
 }
 
 
+void 
+PS_Stream::BufferSectorHeader( uint8_t *index,
+                               Pack_struc	 	 *pack,
+                               Sys_header_struc *sys_header,
+                               uint8_t     *&header_end
+    )
+{
+    /* Pack header if present */
+
+    if (pack != NULL)
+    {
+		memcpy ( index, pack->buf, pack->length);
+		index += pack->length;
+    }
+
+    /* System header if present */
+
+    if (sys_header != NULL)
+    {
+		memcpy (index, sys_header->buf, sys_header->length);
+		index += sys_header->length;
+    }
+    header_end = index;
+}
+
+/******************************************
+ *
+ * BufferPacketHeader
+ * Construct and MPEG-1/2 header for a packet in the specified
+ * buffer (which *MUST* be long enough) and set points to the start of
+ * the payload and packet length fields.
+ *
+ ******************************************/
+
+
+void PS_Stream::BufferPacketHeader( uint8_t *buf,
+                                    uint8_t type,
+                                    unsigned int mpeg_version,
+                                    bool buffers,
+                                    unsigned int buffer_size,
+                                    uint8_t buffer_scale,
+                                    clockticks   	 PTS,
+                                    clockticks   	 DTS,
+                                    uint8_t 	 timestamps,
+                                    uint8_t     *&size_field,
+                                    uint8_t     *&header_end
+    )
+{
+
+    uint8_t *index = buf;
+	uint8_t *pes_header_len_field;
+
+
+    /* konstante Packet Headerwerte eintragen */
+    /* write constant packet header data */
+
+    *(index++) = static_cast<uint8_t>(PACKET_START)>>16;
+    *(index++) = static_cast<uint8_t>(PACKET_START & 0x00ffff)>>8;
+    *(index++) = static_cast<uint8_t>(PACKET_START & 0x0000ff);
+    *(index++) = type;	
+
+
+    /* we remember this offset so we can fill in the packet size field once
+	   we know the actual size... */
+    size_field = index;   
+    index += 2;
+
+	if( mpeg_version == 1 )
+	{
+		/* MPEG-1: buffer information */
+		if (buffers)
+		{
+			*(index++) = static_cast<uint8_t> (0x40 |
+                                               (buffer_scale << 5) | (buffer_size >> 8));
+			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
+		}
+
+		/* MPEG-1: PTS, PTS & DTS, oder gar nichts? */
+		/* should we write PTS, PTS & DTS or nothing at all ? */
+
+		switch (timestamps)
+		{
+		case TIMESTAMPBITS_NO:
+			*(index++) = MARKER_NO_TIMESTAMPS;
+			break;
+		case TIMESTAMPBITS_PTS:
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, &index);
+			break;
+		case TIMESTAMPBITS_PTS_DTS:
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, &index);
+			break;
+		}
+	}
+	else if( type != PADDING_STR )
+	{
+	  	/* MPEG-2 packet syntax header flags. */
+        /* These *DO NOT* appear in padding packets 			*/
+        /* TODO: They don't appear in several others either!	*/
+		/* First byte:
+		   <1,0><PES_scrambling_control:2=0><PES_priority><data_alignment_ind.=0>
+		   <copyright=0><original=1> */
+		*(index++) = 0x81;
+		/* Second byte: PTS PTS_DTS or neither?  Buffer info?
+		   <PTS_DTS:2><ESCR=0><ES_rate=0>
+		   <DSM_trick_mode:2=0><PES_CRC=0><PES_extension=(!!buffers)>
+		*/
+		*(index++) = (timestamps << 6) | (!!buffers);
+		/* Third byte:
+		   <PES_header_length:8> */
+		pes_header_len_field = index;  /* To fill in later! */
+		index++;
+		/* MPEG-2: the timecodes if required */
+		switch (timestamps)
+		{
+		case TIMESTAMPBITS_PTS:
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, &index);
+			break;
+
+		case TIMESTAMPBITS_PTS_DTS:
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, &index);
+			break;
+		}
+
+		/* MPEG-2 The buffer information in a PES_extension */
+		if( buffers )
+		{
+			/* MPEG-2 PES extension header
+			   <PES_private_data:1=0><pack_header_field=0>
+			   <program_packet_sequence_counter=0>
+			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
+			*(index++) = static_cast<uint8_t>(0x1e);
+			*(index++) = static_cast<uint8_t> (0x40 | (buffer_scale << 5) | 
+                                               (buffer_size >> 8));
+			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
+		}
+	}
+
+    if( mpeg_version == 2 && type != PADDING_STR )
+    {
+        *pes_header_len_field = 
+            static_cast<uint8_t>(index-(pes_header_len_field+1));	
+    }
+
+    header_end = index;
+}
+
 /*************************************************************************
 	Create_Sector
 	creates a complete sector to carry a padding packet or
@@ -237,6 +391,7 @@ void PS_Stream::BufferPaddingPacket( int padding,  uint8_t *&buffer  )
     unfilled.   Zero stuffing after the end of a packet is also supported
     to allow thos wretched audio packets from VCD's to be handled.
 
+  TODO: Should really be called "WriteSector"
 *************************************************************************/
 
 
@@ -255,9 +410,10 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 {
     int i,j;
     uint8_t *index;
+    uint8_t *ac3_header;
     uint8_t *size_offset;
 	uint8_t *fixed_packet_header_end;
-	uint8_t *pes_header_len_offset = 0; /* Silence compiler... */
+	uint8_t *pes_header_len_offset;
 	unsigned int target_packet_data_size;
 	unsigned int actual_packet_data_size;
 	int packet_data_to_read;
@@ -271,21 +427,8 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 	sector_pack_area = sector_size - strm.zero_stuffing;
 	if( end_marker )
 		sector_pack_area -= 4;
-    /* Pack header if present */
 
-    if (pack != NULL)
-    {
-		memcpy ( index, pack->buf, pack->length);
-		index += pack->length;
-    }
-
-    /* System header if present */
-
-    if (sys_header != NULL)
-    {
-		memcpy (index, sys_header->buf, sys_header->length);
-		index += sys_header->length;
-    }
+    BufferSectorHeader( index, pack, sys_header, index );
 
     /* konstante Packet Headerwerte eintragen */
     /* write constant packet header data */
@@ -373,9 +516,22 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 			*(index++) = static_cast<uint8_t> (buffer_size & 0xff);
 		}
 	}
-              
 
-    /* MPEG-1, MPEG-2: data available to be filled is packet_size less header and MPEG-1 trailer... */
+    // DVD MPEG2: AC3 in PRIVATE_STR_1
+    if( type == PRIVATE_STR_1 )
+    {
+        ac3_header = index;
+        // TODO: should allow multiple AC3 streams...
+        ac3_header[0] = AC3_SUB_STR_1; // byte: Audio stream number
+                                // byte: num of AC3 syncwords
+                                // byte: Offset first AC3 syncword (hi)
+                                // byte: Offset 2nd AC2 syncword (lo)
+        index += 4;
+    }
+
+    
+    /* MPEG-1, MPEG-2: data available to be filled is packet_size less
+     * header and MPEG-1 trailer... */
 
     target_packet_data_size = sector_pack_area - (index - sector_buf );
 	
@@ -416,6 +572,25 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
     /* MPEG-1, MPEG-2: read in available packet data ... */
 
     actual_packet_data_size = strm.ReadStrm(index,packet_data_to_read);
+
+    // DVD MPEG2: AC3 in PRIVATE_STR_1: fill in syncword count and offset
+    if( type == PRIVATE_STR_1 )
+    {
+        unsigned int syncwords_found;
+        for( i = 0; i < actual_packet_data_size-1; ++i )
+        {
+            if( index[i] == 0x0b && index[i+1] )
+            {
+                if( syncwords_found == 0 )
+                {
+                    ac3_header[2] = static_cast<uint8_t>(i >>8);
+                    ac3_header[3] = static_cast<uint8_t>(i & 0xff);
+                }
+                ++syncwords_found;
+            }
+        }
+        ac3_header[1] = static_cast<uint8_t>(syncwords_found);
+    }
 
     bytes_short = target_packet_data_size - actual_packet_data_size;
 	
@@ -504,59 +679,6 @@ PS_Stream::CreateSector (Pack_struc	 	 *pack,
 }
 
 
-/*************************************************************************
-	CreateRawSector
-	creates a complete sector to carry pre-construct packet data
-    Usually used for "control" sectors that don't carry padding
-    or elementary stream data.
-    Pack and System headers are prepended if required.
-
-
-    A padding packet is appended if the sector is unfilled.
-
-*************************************************************************/
-
-void
-PS_Stream::CreateRawSector (Pack_struc	 	 *pack,
-                            Sys_header_struc *sys_header,
-                            uint8_t *rawpackets,
-                            unsigned int length)
-{
-    uint8_t *index = sector_buf;
-    int i;
-
-    /* Pack header if present */
-
-    if (pack != NULL)
-    {
-		memcpy ( index, pack->buf, pack->length);
-		index += pack->length;
-    }
-
-    /* System header if present */
-
-    if (sys_header != NULL)
-    {
-		memcpy (index, sys_header->buf, sys_header->length);
-		index += sys_header->length;
-    }
-
-    if( sector_buf + sector_size < index + length )
-    {
-        mjpeg_error_exit1("INTERNAL ERROR: CreateRawSector attempted to over-fill sector!\n" );
-    }
-
-    memcpy( index, rawpackets, length );
-    index += length;
-
-    int bytes_short = (sector_buf + sector_size) - index;
-    if( bytes_short != 0 )
-    {
-        BufferPaddingPacket( bytes_short, index );
-    }
-
-    RawWrite( sector_buf, sector_size );
-}
 
 
 /*************************************************************************

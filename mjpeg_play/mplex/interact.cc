@@ -10,6 +10,8 @@
 #include <format_codes.h>
 
 #include "interact.hh"
+#include "videostrm.hh"
+#include "audiostrm.hh"
 #include "mplexconsts.hh"
 
 
@@ -189,12 +191,13 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 
 
 /*************************************************************************
-    Check if files are valid MPEG streams
+    Check if files are valid MPEG / AC3 streams
 *************************************************************************/
 
 void check_files (int argc,
 				  char* argv[],
-                  vector<char *> &audio_files,
+                  vector<char *> &mpa_files,
+                  vector<char *> &ac3_files,
 				  vector<char *> &video_files
 	)
 {
@@ -202,31 +205,38 @@ void check_files (int argc,
     BitStreamUndo undo;
     int i;
     bool bad_file = false;
-
+    
 	for( i = 1; i < argc; ++i )
     {
         bs.open( argv[i] );
         bs.prepareundo( undo);
-        if (bs.getbits( 12 )  == 0xfff)
+        if( MPAStream::Probe( bs ) )
         {
-            mjpeg_info ("File %s looks like an MPEG Audio stream.\n",argv[i]);
-            audio_files.push_back( argv[i] );
+            mjpeg_info ("File %s looks like an MPEG Audio stream.\n" ,argv[i]);
+            mpa_files.push_back( argv[i] );
+            goto recognised;
         }
-        else
-        { 
-            bs.undochanges( undo);
-            if (  bs.getbits( 32)  == 0x1b3)
-            {
-                mjpeg_info ("File %s looks like an MPEG-1/2 Video stream.\n",
-                            argv[i]);
-                video_files.push_back( argv[i] );
-            }
-            else 
-            {
-                mjpeg_error ("Files %s unrecogniseable!\n", argv[i]);
-                bad_file = true;
-            }
+
+        bs.undochanges( undo);
+        if( AC3Stream::Probe( bs ) )
+        {
+            mjpeg_info ("File %s looks like an AC3 Audio stream.\n",
+                        argv[i]);
+            ac3_files.push_back( argv[i] );
+            goto recognised;
         }
+        bs.undochanges( undo);
+        if( VideoStream::Probe( bs ) )
+        {
+            mjpeg_info ("File %s looks like an MPEG Video stream.\n",
+                        argv[i]);
+            video_files.push_back( argv[i] );
+            goto recognised;
+        }
+
+        mjpeg_error ("Files %s unrecogniseable!\n", argv[i]);
+
+recognised:
         bs.close();
     }
     

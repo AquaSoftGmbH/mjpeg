@@ -1,5 +1,11 @@
 TODO
 
+- Complete tidying up the systems.cc structure.   Non-duplication of the
+	header generation stuff would be neat if it can be managed...
+
+- Start testing the AC3/DVD muxing stuff.  I reckommend AC3 first, then
+	DVD.
+
 - Currently the VCD HR Stills muxing stuff assumes *all* HR stills
   are the same size which is given in the initial vbv_buffer_size...
 	This will work with mpeg2enc (which does this) but will fail fail fail

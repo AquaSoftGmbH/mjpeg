@@ -37,7 +37,8 @@
 int intro_and_options( int, char **, char**);
 
 void check_files (int argc, char* argv[],
-                  vector<char *> &audio_file,
+                  vector<char *> &mpa_file,
+                  vector<char *> &ac3_file,                  
                   vector<char *> &video_file
 	);
 bool open_file(const char *name);

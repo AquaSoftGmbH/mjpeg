@@ -51,6 +51,10 @@
 #define AUDIO_STR_0		0xc0		/* Marker Audio Stream0	*/
 #define VIDEO_STR_0		0xe0		/* Marker Video Stream0	*/
 #define PADDING_STR		0xbe		/* Marker Padding Stream*/
+#define PRIVATE_STR_1   0xbd            /* private stream 1 */
+#define PRIVATE_STR_2   0xbf            /* private stream 2 */
+#define AC3_SUB_STR_1   0x80            /* AC3 substream id 1 */
+#define AC3_SUB_STR_2   0x81            /* AC3 substream id 2 */
 
 #define ZERO_STUFFING_BYTE	0
 #define STUFFING_BYTE		0xff

@@ -48,6 +48,17 @@ public:
 	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
 };
 
+class DVDPriv2Stream : public MuxStream
+{
+public:
+	DVDPriv2Stream()
+		{
+			Init( PRIVATE_STR_2, 0, 0, 0, false, false );
+
+		}
+
+	unsigned int ReadStrm(uint8_t *dst, unsigned int to_read);
+};
 
 
 #endif // __PADSTRM_H__

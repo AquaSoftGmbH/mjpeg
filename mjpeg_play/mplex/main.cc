@@ -44,7 +44,8 @@
 
 int main (int argc, char* argv[])
 {
-    vector<char *> audio_files;
+    vector<char *> mpa_files;
+    vector<char *> ac3_files;
     vector<char *> video_files;
     char    *multi_file = NULL;	
 	int     i;
@@ -55,10 +56,14 @@ int main (int argc, char* argv[])
     clockticks first_frame_PTS = 0;
 
     optargs = intro_and_options (argc, argv, &multi_file);
-	check_files (argc-optargs, argv+optargs,  audio_files, video_files);
-	mjpeg_info( "Found %d video streams and %d audio streams\n",
+	check_files (argc-optargs, argv+optargs,  
+				 mpa_files,
+				 ac3_files,
+				 video_files);
+	mjpeg_info( "Found %d video streams %d MPEG audio streams and %d AC3 streams\n",
 				video_files.size(),
-				audio_files.size() );
+				mpa_files.size(),
+				ac3_files.size());
 
 
 	if( MPEG_STILLS_FORMAT(opt_mux_format) )
@@ -71,7 +76,7 @@ int main (int argc, char* argv[])
 		{
 		case MPEG_FORMAT_VCD_STILL :
 			frame_interval = 30; // 30 Frame periods
-			if( audio_files.size() > 0 && video_files.size() > 2  )
+			if( mpa_files.size() > 0 && video_files.size() > 2  )
 				mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible\n");
 			{
 				VCDStillsStream *str[2];
@@ -103,10 +108,10 @@ int main (int argc, char* argv[])
 				strms.push_back( str );
 				str->Init( video_files[0] );
 			}
-			for( i = 0 ; i < audio_files.size() ; ++i )
+			for( i = 0 ; i < mpa_files.size() ; ++i )
 			{
-				AudioStream *audioStrm = new AudioStream(ostrm);
-				audioStrm->Init ( i, audio_files[i]);
+				AudioStream *audioStrm = new MPAStream(ostrm);
+				audioStrm->Init ( i, mpa_files[i]);
 				strms.push_back(audioStrm);
 			}
 
@@ -142,10 +147,10 @@ int main (int argc, char* argv[])
 			videoStrm->Init( i, video_files[i] );
 			strms.push_back( videoStrm );
 		}
-		for( i = 0 ; i < audio_files.size() ; ++i )
+		for( i = 0 ; i < mpa_files.size() ; ++i )
 		{
-			AudioStream *audioStrm = new AudioStream(ostrm);
-			audioStrm->Init ( i, audio_files[i]);
+			AudioStream *audioStrm = new MPAStream(ostrm);
+			audioStrm->Init ( i, mpa_files[i]);
 			strms.push_back(audioStrm);
 		}
 		
