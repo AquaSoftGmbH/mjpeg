@@ -111,7 +111,6 @@ int main (int argc, char *argv[])
       case 'n':
          param_numframes = atoi (optarg);
          break;
-      default:
       }
    }
    if (param_numframes == 0)

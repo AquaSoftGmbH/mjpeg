@@ -389,16 +389,18 @@ FINISH_CHECK:
                input_in[i] = -1;
             } else {
                for (j=0; j<pl.seq_ptr[sequence]->input_num; j++)
-                  if (i == pl.seq_ptr[sequence]->input_ptr[j])
-                     if (pl.seq_ptr[sequence]->input_ofs[j] == seq->input_ofs[i] + frame) {
+                  if (i == pl.seq_ptr[sequence]->input_ptr[j] &&
+					  pl.seq_ptr[sequence]->input_ofs[j] == seq->input_ofs[i] + frame) 
+				  {
                         mjpeg_info( "using input %d (\"%s\") further\n", i, pl.input_cmd[i]);
-                        goto DO_NOT_CLOSE;
-                     }
-               mjpeg_info( "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
-               close (input_in[i]);
-               kill (input_pid[i], SIGINT);
-               input_in[i] = -1;
-DO_NOT_CLOSE:
+				  }
+				  else
+				  {
+					  mjpeg_info( "closing input %d: \"%s\"\n", i, pl.input_cmd[i]);
+					  close (input_in[i]);
+					  kill (input_pid[i], SIGINT);
+					  input_in[i] = -1;
+				  }
             }
          }
       }

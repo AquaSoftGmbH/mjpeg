@@ -25,6 +25,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <string.h>
 
 #include "mjpeg_logging.h"
 
