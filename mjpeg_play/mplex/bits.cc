@@ -61,7 +61,7 @@ void OBitStream::open(char *bs_filename, unsigned int buf_size)
 {
 	if ((fileh = fopen(bs_filename, "wb")) == NULL)
 	{
-		mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
+		mjpeg_error_exit1( "Unable to open file %s for writing; %s", 
 						   bs_filename, strerror(errno));
 	}
 	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
@@ -99,7 +99,7 @@ void OBitStream::putbyte()
     if (byteidx == bfr_size)
     {
 		if (fwrite(bfr, sizeof(unsigned char), bfr_size, fileh) != bfr_size)
-			mjpeg_error_exit1( "Write failed: %s\n", strerror(errno));
+			mjpeg_error_exit1( "Write failed: %s", strerror(errno));
 		byteidx = 0;
     }
 	bitidx = 8;
@@ -175,10 +175,10 @@ bool IBitStream::refill_buffer()
 void IBitStream::flush(bitcount_t flush_upto )
 {
 	if( flush_upto > buffer_start+bufcount )
-		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input beyond buffered amount\n" );
+		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input beyond buffered amount" );
 
 	if( flush_upto < buffer_start )
-		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %d last is %d\n", flush_upto, buffer_start );
+		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %d last is %d", flush_upto, buffer_start );
 	unsigned int bytes_to_flush = 
 		static_cast<unsigned int>(flush_upto - buffer_start);
 	//
@@ -217,13 +217,13 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 {
 	unsigned int to_read = length;
 	if( readpos < buffer_start)
-		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)\n", readpos, buffer_start );
-    mjpeg_debug( "Writing to %lld\n",  readpos+length );
+		mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer @ %d: before first buffered byte (%d)", readpos, buffer_start );
+    mjpeg_debug( "Writing to %lld",  readpos+length );
 	if( readpos+length > buffer_start+bufcount )
 	{
 		if( !feof(fileh) )
         {
-			mjpeg_error("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\n@POS=%lld END=%d REQ=%lld + %d bytes\n", 
+			mjpeg_error("INTERNAL ERROR: access to input stream buffer beyond last buffered byte @POS=%lld END=%d REQ=%lld + %d bytes", 
                         readpos,
                         bufcount, readpos-(bitcount_t)buffer_start,length  );
             abort();
@@ -247,7 +247,7 @@ void IBitStream::open( char *bs_filename, unsigned int buf_size)
 
 	if ((fileh = fopen(bs_filename, "rb")) == NULL)
 	{
-		mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
+		mjpeg_error_exit1( "Unable to open file %s for reading.", bs_filename);
 	}
 	filename = strcpy( new char[strlen(bs_filename)+1], bs_filename );
 
@@ -269,7 +269,7 @@ void IBitStream::open( char *bs_filename, unsigned int buf_size)
 	{
 		if (bufcount==0)
 		{
-			mjpeg_error_exit1( "Unable to read from file %s.\n", bs_filename);
+			mjpeg_error_exit1( "Unable to read from file %s.", bs_filename);
 		}
 	}
 }

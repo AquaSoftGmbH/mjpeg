@@ -36,7 +36,7 @@ void StillsStream::Init ( )
 	InitAUbuffer();
 	ScanFirstSeqHeader();
 
-	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
+	mjpeg_debug( "SETTING video buffer to %d", muxinto.video_buffer_size );
 	switch( opt_mux_format )
 	{
 	case  MPEG_FORMAT_VCD_STILL :
@@ -44,18 +44,18 @@ void StillsStream::Init ( )
 		{
 			stream_id = VIDEO_STR_0+2 ;
 			buffer_size = vbv_buffer_size*2048;
-			mjpeg_info( "Stills Stream %02x: high-resolution VCD stills %d KB each\n", 
+			mjpeg_info( "Stills Stream %02x: high-resolution VCD stills %d KB each", 
 						stream_id,
 						buffer_size );
 			if( buffer_size < 46*1024 )
-				mjpeg_error_exit1( "I Can't multiplex high-res stills smaller than normal res stills - sorry!\n");
+				mjpeg_error_exit1( "I Can't multiplex high-res stills smaller than normal res stills - sorry!");
 
 		}
 		else
 		{
 			stream_id = VIDEO_STR_0+1 ;
 			buffer_size = 46*1024;
-			mjpeg_info( "Stills Stream %02x: normal VCD stills\n", stream_id );
+			mjpeg_info( "Stills Stream %02x: normal VCD stills", stream_id );
 		}
 		break;
 	case MPEG_FORMAT_SVCD_STILL :
@@ -63,18 +63,18 @@ void StillsStream::Init ( )
 		{
 			stream_id = VIDEO_STR_0+1;
 			buffer_size = 230*1024;
-			mjpeg_info( "Stills Stream %02x: high-resolution SVCD stills.\n", 
+			mjpeg_info( "Stills Stream %02x: high-resolution SVCD stills.", 
 						stream_id );
 		}
 		else
 		{
 			stream_id = VIDEO_STR_0+1 ;
 			buffer_size = 230*1024;
-			mjpeg_info( "Stills Stream %02x: normal-resolution SVCD stills.\n", stream_id );
+			mjpeg_info( "Stills Stream %02x: normal-resolution SVCD stills.", stream_id );
 		}
 		break;
 	defaut:
-		mjpeg_error_exit1( "Only SVCD and VCD Still currently supported\n");
+		mjpeg_error_exit1( "Only SVCD and VCD Still currently supported");
 	}
 
 
@@ -133,7 +133,7 @@ void VCDStillsStream::SetSibling( VCDStillsStream *_sibling )
 	sibling = _sibling;
 	if( sibling->stream_id == stream_id )
 	{
-		mjpeg_error_exit1("VCD mixed stills stream cannot contain two streams of the same type!\n");
+		mjpeg_error_exit1("VCD mixed stills stream cannot contain two streams of the same type!");
 	}
 
 }
@@ -172,7 +172,7 @@ bool VCDStillsStream::MuxPossible()
 {
     if( bufmodel.Size() < au_unsent )
     {
-        mjpeg_error_exit1( "Illegal VCD still: larger than maximum permitted by its buffering parameters!\n");
+        mjpeg_error_exit1( "Illegal VCD still: larger than maximum permitted by its buffering parameters!");
     }
 	if (RunOutComplete() ||	bufmodel.Space() < au_unsent)
 	{
@@ -185,8 +185,8 @@ bool VCDStillsStream::MuxPossible()
         {
             if( !stream_mismatch_warned && sibling->NextAUType() != NOFRAME  )
             {
-                mjpeg_warn( "One VCD stills stream runs significantly longer than the other!\n");
-                mjpeg_warn( "Simultaneous stream ending recommended by standard not possible\n" );
+                mjpeg_warn( "One VCD stills stream runs significantly longer than the other!");
+                mjpeg_warn( "Simultaneous stream ending recommended by standard not possible" );
                 return true;
             }
             return sibling->MuxCompleted() || sibling->LastSectorLastAU();

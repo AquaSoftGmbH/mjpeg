@@ -210,7 +210,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 		Usage(argv[0]);
     }
 	(void)mjpeg_default_handler_verbosity(opt_verbosity);
-	mjpeg_info( "mplex version %s (%s)\n",MPLEX_VER,MPLEX_DATE );
+	mjpeg_info( "mplex version %s (%s)",MPLEX_VER,MPLEX_DATE );
 	*multplex_outfile = outfile;
 	return optind-1;
 }
@@ -250,7 +250,7 @@ void check_files (int argc,
         bs->prepareundo( undo);
         if( MPAStream::Probe( *bs ) )
         {
-            mjpeg_info ("File %s looks like an MPEG Audio stream.\n" ,argv[i]);
+            mjpeg_info ("File %s looks like an MPEG Audio stream." ,argv[i]);
             bs->undochanges( undo);
             mpa_files.push_back( bs );
             continue;
@@ -259,7 +259,7 @@ void check_files (int argc,
         bs->undochanges( undo);
         if( AC3Stream::Probe( *bs ) )
         {
-            mjpeg_info ("File %s looks like an AC3 Audio stream.\n",
+            mjpeg_info ("File %s looks like an AC3 Audio stream.",
                         argv[i]);
             bs->undochanges( undo);
             ac3_files.push_back( bs );
@@ -268,7 +268,7 @@ void check_files (int argc,
         bs->undochanges( undo);
         if( VideoStream::Probe( *bs ) )
         {
-            mjpeg_info ("File %s looks like an MPEG Video stream.\n",
+            mjpeg_info ("File %s looks like an MPEG Video stream.",
                         argv[i]);
             bs->undochanges( undo);
             video_files.push_back( bs );
@@ -277,12 +277,12 @@ void check_files (int argc,
         bad_file = true;
         bs->close();
         delete bs;
-        mjpeg_error ("File %s unrecogniseable!\n", argv[i]);
+        mjpeg_error ("File %s unrecogniseable!", argv[i]);
     }
     
     if( bad_file )
     {
-        mjpeg_error_exit1( "Unrecogniseable file(s)... exiting.\n");
+        mjpeg_error_exit1( "Unrecogniseable file(s)... exiting.");
     }
         
 }
@@ -303,7 +303,7 @@ bool open_file(const char *name)
 
     if (datei==NULL)
     {	
-		mjpeg_error("File %s not found.\n", name);
+		mjpeg_error("File %s not found.", name);
 		return (true);
     }
     fclose(datei);

@@ -84,8 +84,8 @@ void AC3Stream::Init ( const int stream_num)
     unsigned int i;
     unsigned int framesize_code;
 
-	mjpeg_debug( "SETTING zero stuff to %d\n", muxinto.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d\n", default_buffer_size );
+	mjpeg_debug( "SETTING zero stuff to %d", muxinto.vcd_zero_stuffing );
+	mjpeg_debug( "SETTING audio buffer to %d", default_buffer_size );
 
 	MuxStream::Init( PRIVATE_STR_1, // TODO Currently hard-wired....
 					 1,  // Buffer scale
@@ -94,7 +94,7 @@ void AC3Stream::Init ( const int stream_num)
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)\n",
+    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)",
                 AUDIO_STR_0 + stream_num,
                 bs.filename
                 );
@@ -132,7 +132,7 @@ void AC3Stream::Init ( const int stream_num)
 
     } else
     {
-		mjpeg_error ( "Invalid AC3 Audio stream header.\n");
+		mjpeg_error ( "Invalid AC3 Audio stream header.");
 		exit (1);
     }
 
@@ -152,7 +152,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int framesize_code;
 	last_buffered_AU += frames_to_buffer;
 
-	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d\n", 
+	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
 	while (!bs.eos() && 
@@ -179,7 +179,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		{
 			if( !bs.eobs   )
 			{
-				mjpeg_warn( "Can't find next AC3 frame - broken bit-stream?\n" );
+				mjpeg_warn( "Can't find next AC3 frame - broken bit-stream?" );
             }
             break;
 		}
@@ -210,7 +210,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 
 		if (num_syncword >= old_frames+10 )
 		{
-			mjpeg_debug ("Got %d frame headers.\n", num_syncword);
+			mjpeg_debug ("Got %d frame headers.", num_syncword);
 			old_frames=num_syncword;
 		
 		}
@@ -227,11 +227,11 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 void AC3Stream::Close()
 {
     stream_length = AU_start >> 3;
-	mjpeg_info ("AUDIO_STATISTICS: %02x\n", stream_id); 
-    mjpeg_info ("Audio stream length %lld bytes.\n", stream_length);
-    mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
-    mjpeg_info   ("Frames         : %8u padded\n",  num_frames[0]);
-    mjpeg_info   ("Frames         : %8u unpadded\n", num_frames[1]);
+	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
+    mjpeg_info ("Audio stream length %lld bytes.", stream_length);
+    mjpeg_info   ("Syncwords      : %8u",num_syncword);
+    mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
+    mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
 	
     bs.close();
 }
@@ -245,15 +245,15 @@ void AC3Stream::Close()
 
 void AC3Stream::OutputHdrInfo ()
 {
-	mjpeg_info("AC3 AUDIO STREAM:\n");
+	mjpeg_info("AC3 AUDIO STREAM:");
 
-    mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",
+    mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)",
 				bit_rate*128, bit_rate);
 
     if (frequency == 3)
-		mjpeg_info ("Frequency      : reserved\n");
+		mjpeg_info ("Frequency      : reserved");
     else
-		mjpeg_info ("Frequency      :     %d Hz\n",
+		mjpeg_info ("Frequency      :     %d Hz",
 				ac3_frequency[frequency]);
 
 }

@@ -118,7 +118,7 @@ void OutputStream::InitSyntaxParameters()
 	  	opt_VBR = 0;
  
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
-		mjpeg_info( "Selecting VCD output profile\n");
+		mjpeg_info( "Selecting VCD output profile");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
 		vbr = opt_VBR;
@@ -143,7 +143,7 @@ void OutputStream::InitSyntaxParameters()
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
-		mjpeg_info( "Selecting generic MPEG2 output profile\n");
+		mjpeg_info( "Selecting generic MPEG2 output profile");
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 1;
@@ -169,7 +169,7 @@ void OutputStream::InitSyntaxParameters()
 	  	video_buffer_size = 230*1024;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
-		mjpeg_info( "Selecting SVCD output profile\n");
+		mjpeg_info( "Selecting SVCD output profile");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 2;
@@ -215,7 +215,7 @@ void OutputStream::InitSyntaxParameters()
 			opt_buffer_size = 46;
 		else if( opt_buffer_size > 220 )
 		{
-			mjpeg_error_exit1("VCD stills has max. permissible video buffer size of 220KB\n");
+			mjpeg_error_exit1("VCD stills has max. permissible video buffer size of 220KB");
 		}
 		else
 		{
@@ -227,7 +227,7 @@ void OutputStream::InitSyntaxParameters()
 		break;
 
 	case MPEG_FORMAT_SVCD_STILL :
-		mjpeg_info( "Selecting SVCD output profile\n");
+		mjpeg_info( "Selecting SVCD output profile");
 		if( opt_data_rate == 0 )
 			opt_data_rate = 150*2324;
 	  	video_buffer_size = 230*1024;
@@ -251,7 +251,7 @@ void OutputStream::InitSyntaxParameters()
 		break;
 
     case MPEG_FORMAT_DVD :
-		mjpeg_info( "Selecting DVD output profile (INCOMEPLETE!!!!)\n");
+		mjpeg_info( "Selecting DVD output profile (INCOMEPLETE!!!!)");
         opt_data_rate = 1260000;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
@@ -276,7 +276,7 @@ void OutputStream::InitSyntaxParameters()
         break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
-		mjpeg_info( "Selecting generic MPEG1 output profile\n");
+		mjpeg_info( "Selecting generic MPEG1 output profile");
 		opt_mpeg = 1;
 		vbr = opt_VBR;
 	  	packets_per_pack = opt_packets_per_pack;
@@ -345,7 +345,7 @@ void OutputStream::Init( char *multi_file)
 	Sys_header_struc *sys_hdr;
 	unsigned int nominal_rate_sum;
 	
-	mjpeg_info("SYSTEMS/PROGRAM stream:\n");
+	mjpeg_info("SYSTEMS/PROGRAM stream:");
 	psstrm = new PS_Stream(opt_mpeg, sector_size );
 
 	psstrm->Init( multi_file,
@@ -395,12 +395,12 @@ void OutputStream::Init( char *multi_file)
 				);
 			break;
 		default :
-			mjpeg_error_exit1("INTERNAL: Only audio and video payload calculations implemented!\n");
+			mjpeg_error_exit1("INTERNAL: Only audio and video payload calculations implemented!");
 			
 		}
 
 		if( (*str)->NominalBitRate() == 0 && opt_data_rate == 0)
-			mjpeg_error_exit1( "Variable bit-rate stream present: output stream (max) data-rate *must* be specified!\n");
+			mjpeg_error_exit1( "Variable bit-rate stream present: output stream (max) data-rate *must* be specified!");
 		nominal_rate_sum += (*str)->NominalBitRate();
 
 	}
@@ -413,24 +413,24 @@ void OutputStream::Init( char *multi_file)
 	dmux_rate = static_cast<int>(1.015 * nominal_rate_sum);
 	dmux_rate = (dmux_rate/50 + 25)*50;
 	
-	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d\n",dmux_rate * 8);
+	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d",dmux_rate * 8);
 	if( opt_data_rate != 0 )
-		mjpeg_info ("target data-rate specified               : %7d\n", opt_data_rate*8 );
+		mjpeg_info ("target data-rate specified               : %7d", opt_data_rate*8 );
 
 	if( opt_data_rate == 0 )
 	{
-		mjpeg_info( "Setting best-guess data rate.\n");
+		mjpeg_info( "Setting best-guess data rate.");
 	}
 	else if ( opt_data_rate >= dmux_rate)
 	{
-		mjpeg_info( "Setting specified specified data rate: %7d\n", opt_data_rate*8 );
+		mjpeg_info( "Setting specified specified data rate: %7d", opt_data_rate*8 );
 		dmux_rate = opt_data_rate;
 	}
 	else if ( opt_data_rate < dmux_rate )
 	{
-		mjpeg_warn( "Target data rate lower than computed requirement!\n");
-		mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\n");
-		mjpeg_warn( "streams is common and harmless provided no time-outs will occur\n"); 
+		mjpeg_warn( "Target data rate lower than computed requirement!");
+		mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate");
+		mjpeg_warn( "streams is common and harmless provided no time-outs will occur"); 
 		dmux_rate = opt_data_rate;
 	}
 
@@ -452,7 +452,7 @@ void OutputStream::Init( char *multi_file)
 		static_cast<clockticks>(opt_video_offset*CLOCKS/1000);
 	audio_delay = delay + 
 		static_cast<clockticks>(opt_audio_offset*CLOCKS/1000);
-	mjpeg_info( "Sectors = %d Video delay = %lld Audio delay = %lld\n",
+	mjpeg_info( "Sectors = %d Video delay = %lld Audio delay = %lld",
 				sectors_delay,
 				 video_delay / 300,
 				 audio_delay / 300 );
@@ -557,7 +557,7 @@ void OutputStream::OutputPrefix( )
 		if( astreams.size() > 1 || vstreams.size() > 1 ||
 			astreams.size() + vstreams.size() != estreams->size() )
 		{
-				mjpeg_error_exit1("VCD man only have max. 1 audio and 1 video stream\n");
+				mjpeg_error_exit1("VCD man only have max. 1 audio and 1 video stream");
 		}
 		/* First packet carries video-info-only sys_header */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, 
@@ -802,7 +802,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			*/
 
 		case start_segment :
-			mjpeg_info( "New sequence commences...\n" );
+			mjpeg_info( "New sequence commences..." );
 			SetPosAndSCR(0);
 			MuxStatus( LOG_INFO );
 
@@ -846,7 +846,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			seg_state = mid_segment;
             //for( str = estreams->begin(); str < estreams->end(); ++str )
             //{
-            //mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+            //mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
             //(*str)->stream_id,
             //current_SCR /300,
             //(*str)->MuxPossible(current_SCR),
@@ -880,7 +880,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					{
 						seg_state = runout_segment;
 						runout_PTS = master->NextRequiredPTS();
-						mjpeg_debug("Running out to (raw) PTS %lld SCR=%lld\n", 
+						mjpeg_debug("Running out to (raw) PTS %lld SCR=%lld", 
 								   runout_PTS/300, current_SCR/300 );
 						running_out = true;
 						seg_state = runout_segment;
@@ -894,11 +894,11 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					if( ! master->SeqHdrNext() || 
 						master->NextAUType() != IFRAME)
 					{
-						mjpeg_error_exit1( "Sequence split detected %d but no following sequence found...\n", master->NextAUType());
+						mjpeg_error_exit1( "Sequence split detected %d but no following sequence found...", master->NextAUType());
 					}
 						
 					runout_PTS = master->NextRequiredPTS();
-                    mjpeg_debug("Running out to %lld SCR=%lld\n", 
+                    mjpeg_debug("Running out to %lld SCR=%lld", 
                                 runout_PTS/300, 
                                 current_SCR/300 );
                     MuxStatus( LOG_INFO );
@@ -928,7 +928,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		for( str = estreams->begin(); str < estreams->end(); ++str )
 		{
 /*
-                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld\n", 
+                mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
                            (*str)->stream_id,
                            current_SCR /300,
                            (*str)->MuxPossible(current_SCR),
@@ -956,7 +956,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)
 			{
-				mjpeg_warn( "Stream %02x: data will arrive too late sent(SCR)=%lld required(DTS)=%d\n", 
+				mjpeg_warn( "Stream %02x: data will arrive too late sent(SCR)=%lld required(DTS)=%d", 
 							despatch->stream_id, 
 							current_SCR/300, 
 							earliest/300 );
@@ -966,7 +966,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 				++underruns;
 				if( underruns > 10 && ! opt_ignore_underrun )
 				{
-					mjpeg_error_exit1("Too many frame drops -exiting\n" );
+					mjpeg_error_exit1("Too many frame drops -exiting" );
 				}
 			}
             if( despatch->nsec > 50 &&
@@ -1033,7 +1033,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 		{
 			if( !(*pcomp) && (*str)->MuxCompleted() )
 			{
-				mjpeg_info( "STREAM %02x completed @ %d.\n", (*str)->stream_id, (*str)->au->dorder );
+				mjpeg_info( "STREAM %02x completed @ %d.", (*str)->stream_id, (*str)->au->dorder );
 				MuxStatus( LOG_DEBUG );
 				(*pcomp) = true;
 			}
@@ -1045,15 +1045,15 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	
 	OutputSuffix( );
 	psstrm->Close();
-	mjpeg_info( "Multiplex completion at SCR=%lld.\n", current_SCR/300);
+	mjpeg_info( "Multiplex completion at SCR=%lld.", current_SCR/300);
 	MuxStatus( LOG_INFO );
 	for( str = estreams->begin(); str < estreams->end(); ++str )
 	{
 		(*str)->Close();
         if( (*str)->nsec <= 50 )
-            mjpeg_info( "BUFFERING stream too short for useful statistics\n");
+            mjpeg_info( "BUFFERING stream too short for useful statistics");
         else
-            mjpeg_info( "BUFFERING min %d Buf max %d\n",
+            mjpeg_info( "BUFFERING min %d Buf max %d",
                         (*str)->BufferMin(),
                         (*str)->BufferMax() 
                 );
@@ -1061,13 +1061,13 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
     if( underruns> 0 )
 	{
-		mjpeg_error("\n");
-		mjpeg_error_exit1( "MUX STATUS: Frame data under-runs detected!\n" );
+		mjpeg_error("");
+		mjpeg_error_exit1( "MUX STATUS: Frame data under-runs detected!" );
 	}
 	else
 	{
-		mjpeg_info( "\n" );
-		mjpeg_info( "MUX STATUS: no under-runs detected.\n");
+		mjpeg_info( "" );
+		mjpeg_info( "MUX STATUS: no under-runs detected.");
 	}
 }
 

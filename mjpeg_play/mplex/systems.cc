@@ -17,7 +17,7 @@ PS_Stream::Init( const char *name_pat, off_t max_seg_size )
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
 	{
-		mjpeg_error_exit1( "Could not open for writing: %s\n", cur_filename );
+		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
 	}
 }
 
@@ -46,7 +46,7 @@ PS_Stream::NextFile( )
 	strm = fopen( cur_filename, "wb" );
 	if( strm == NULL )
 	{
-		mjpeg_error_exit1( "Could not open for writing: %s\n", cur_filename );
+		mjpeg_error_exit1( "Could not open for writing: %s", cur_filename );
 	}
 }
 
@@ -829,7 +829,7 @@ PS_Stream::RawWrite( uint8_t *buf, unsigned int len )
 {
     if( fwrite( buf, 1, len, strm ) != len )
     {
-        mjpeg_error_exit1( "Failed write: %s\n", cur_filename );
+        mjpeg_error_exit1( "Failed write: %s", cur_filename );
     }
 }
 

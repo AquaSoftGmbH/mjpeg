@@ -33,7 +33,7 @@ static void marker_bit (IBitStream &bs, unsigned int what)
 {
     if (what != bs.get1bit())
     {
-        mjpeg_error ("Illegal MPEG stream at offset (bits) %lld: supposed marker bit not found.\n",bs.bitcount());
+        mjpeg_error ("Illegal MPEG stream at offset (bits) %lld: supposed marker bit not found.",bs.bitcount());
         exit (1);
     }
 }
@@ -56,7 +56,7 @@ void VideoStream::ScanFirstSeqHeader()
 
     } else
     {
-		mjpeg_error ("Invalid MPEG Video stream header.\n");
+		mjpeg_error ("Invalid MPEG Video stream header.");
 		exit (1);
     }
 
@@ -76,14 +76,14 @@ void VideoStream::ScanFirstSeqHeader()
 
 void VideoStream::Init ( const int stream_num )
 {
-	mjpeg_debug( "SETTING video buffer to %d\n", muxinto.video_buffer_size );
+	mjpeg_debug( "SETTING video buffer to %d", muxinto.video_buffer_size );
 	MuxStream::Init( VIDEO_STR_0+stream_num,
 					 1,  // Buffer scale
 					 muxinto.video_buffer_size,
 					 0,  // Zero stuffing
 					 muxinto.buffers_in_video,
 					 muxinto.always_buffers_in_video);
-    mjpeg_info( "Scanning for header info: Video stream %02x (%s) \n",
+    mjpeg_info( "Scanning for header info: Video stream %02x (%s) ",
                 VIDEO_STR_0+stream_num,
                 bs.filename
                 );
@@ -157,7 +157,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
         return;
 
 	last_buffered_AU += frames_to_buffer;
-	mjpeg_debug( "Scanning %d video frames to frame %d\n", 
+	mjpeg_debug( "Scanning %d video frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
     // We set a limit of 2M to seek before we give up.
@@ -192,7 +192,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
-				mjpeg_debug( "Found AU %d: DTS=%d\n", access_unit.dorder,
+				mjpeg_debug( "Found AU %d: DTS=%d", access_unit.dorder,
 							 access_unit.DTS/300 );
 				AU_hdr = syncword;
 				AU_start = stream_length;
@@ -202,7 +202,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
 				aunits.append( access_unit );
-				mjpeg_info( "Scanned to end AU %d\n", access_unit.dorder );
+				mjpeg_info( "Scanned to end AU %d", access_unit.dorder );
 				avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
@@ -214,12 +214,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 					syncword  = AU_hdr = SEQUENCE_HEADER;
 					AU_pict_data = 0;
 					if( opt_multifile_segment )
-						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!\n" );
+						mjpeg_warn("Sequence end marker found in video stream but single-segment splitting specified!" );
 				}
 				else
 				{
 					if( !bs.eos() && ! opt_multifile_segment )
-						mjpeg_warn("No seq. header starting new sequence after seq. end!\n");
+						mjpeg_warn("No seq. header starting new sequence after seq. end!");
 				}
 					
 				num_seq_end++;
@@ -306,7 +306,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			
 			if ( decoding_order >= old_frames+1000 )
 			{
-				mjpeg_debug("Got %d picture headers.\n", decoding_order);
+				mjpeg_debug("Got %d picture headers.", decoding_order);
 				old_frames = decoding_order;
 			}
 			
@@ -339,22 +339,22 @@ void VideoStream::Close()
 	
 	/* Peak bit rate in 50B/sec units... */
 	peak_bit_rate = ((max_bits_persec / 8) / 50);
-	mjpeg_info ("VIDEO_STATISTICS: %02x\n", stream_id); 
-    mjpeg_info ("Video Stream length: %11llu bytes\n",stream_length/8);
-    mjpeg_info ("Sequence headers: %8u\n",num_sequence);
-    mjpeg_info ("Sequence ends   : %8u\n",num_seq_end);
-    mjpeg_info ("No. Pictures    : %8u\n",num_pictures);
-    mjpeg_info ("No. Groups      : %8u\n",num_groups);
-    mjpeg_info ("No. I Frames    : %8u avg. size%6u bytes\n",
+	mjpeg_info ("VIDEO_STATISTICS: %02x", stream_id); 
+    mjpeg_info ("Video Stream length: %11llu bytes",stream_length/8);
+    mjpeg_info ("Sequence headers: %8u",num_sequence);
+    mjpeg_info ("Sequence ends   : %8u",num_seq_end);
+    mjpeg_info ("No. Pictures    : %8u",num_pictures);
+    mjpeg_info ("No. Groups      : %8u",num_groups);
+    mjpeg_info ("No. I Frames    : %8u avg. size%6u bytes",
 			  num_frames[0],avg_frames[0]);
-    mjpeg_info ("No. P Frames    : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. P Frames    : %8u avg. size%6u bytes",
 			  num_frames[1],avg_frames[1]);
-    mjpeg_info ("No. B Frames    : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. B Frames    : %8u avg. size%6u bytes",
 			  num_frames[2],avg_frames[2]);
-    mjpeg_info ("No. D Frames    : %8u avg. size%6u bytes\n",
+    mjpeg_info ("No. D Frames    : %8u avg. size%6u bytes",
 			  num_frames[3],avg_frames[3]);
-    mjpeg_info("Average bit-rate : %8u bits/sec\n",comp_bit_rate*400);
-    mjpeg_info("Peak bit-rate    : %8u  bits/sec\n",peak_bit_rate*400);
+    mjpeg_info("Average bit-rate : %8u bits/sec",comp_bit_rate*400);
+    mjpeg_info("Peak bit-rate    : %8u  bits/sec",peak_bit_rate*400);
 	
 }
 	
@@ -369,38 +369,38 @@ void VideoStream::Close()
 void VideoStream::OutputSeqhdrInfo ()
 {
 	const char *str;
-	mjpeg_info("VIDEO STREAM: %02x\n", stream_id);
+	mjpeg_info("VIDEO STREAM: %02x", stream_id);
 
-    mjpeg_info ("Frame width     : %u\n",horizontal_size);
-    mjpeg_info ("Frame height    : %u\n",vertical_size);
+    mjpeg_info ("Frame width     : %u",horizontal_size);
+    mjpeg_info ("Frame height    : %u",vertical_size);
 	if( aspect_ratio <= mpeg_num_aspect_ratios[opt_mpeg-1] )
 		str =  mpeg_aspect_code_definition(opt_mpeg,aspect_ratio);
 	else
 		str = "forbidden";
-    mjpeg_info ("Aspect ratio    : %s\n", str );
+    mjpeg_info ("Aspect ratio    : %s", str );
 				
 
     if (picture_rate == 0)
-		mjpeg_info( "Picture rate    : forbidden\n");
+		mjpeg_info( "Picture rate    : forbidden");
     else if (picture_rate <= mpeg_num_framerates)
-		mjpeg_info( "Picture rate    : %2.3f frames/sec\n",
+		mjpeg_info( "Picture rate    : %2.3f frames/sec",
 					Y4M_RATIO_DBL(mpeg_framerate(picture_rate)) );
     else
-		mjpeg_info( "Picture rate    : %x reserved\n",picture_rate);
+		mjpeg_info( "Picture rate    : %x reserved",picture_rate);
 
     if (bit_rate == 0x3ffff)
 		{
 			bit_rate = 0;
-			mjpeg_info( "Bit rate        : variable\n"); 
+			mjpeg_info( "Bit rate        : variable"); 
 		}
     else if (bit_rate == 0)
-		mjpeg_info( "Bit rate       : forbidden\n");
+		mjpeg_info( "Bit rate       : forbidden");
     else
-		mjpeg_info( "Bit rate        : %u bits/sec\n",
+		mjpeg_info( "Bit rate        : %u bits/sec",
 					bit_rate*400);
 
-    mjpeg_info("Vbv buffer size : %u bytes\n",vbv_buffer_size*2048);
-    mjpeg_info("CSPF            : %u\n",CSPF);
+    mjpeg_info("Vbv buffer size : %u bytes",vbv_buffer_size*2048);
+    mjpeg_info("CSPF            : %u",CSPF);
 }
 
 //

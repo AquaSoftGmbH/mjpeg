@@ -61,7 +61,7 @@ int main (int argc, char* argv[])
 				 mpa_files,
 				 ac3_files,
 				 video_files);
-	mjpeg_info( "Found %d video streams %d MPEG audio streams and %d AC3 streams\n",
+	mjpeg_info( "Found %d video streams %d MPEG audio streams and %d AC3 streams",
 				video_files.size(),
 				mpa_files.size(),
 				ac3_files.size());
@@ -69,7 +69,7 @@ int main (int argc, char* argv[])
 
 	if( MPEG_STILLS_FORMAT(opt_mux_format) )
 	{
-		mjpeg_info( "Multiplexing stills stream!\n" );
+		mjpeg_info( "Multiplexing stills stream!" );
 		ostrm.InitSyntaxParameters();
 		unsigned int frame_interval;
 
@@ -78,7 +78,7 @@ int main (int argc, char* argv[])
 		case MPEG_FORMAT_VCD_STILL :
 			frame_interval = 30; // 30 Frame periods
 			if( mpa_files.size() > 0 && video_files.size() > 2  )
-				mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible\n");
+				mjpeg_error_exit1("VCD stills: no more than two streams (one normal one hi-res) possible");
 			{
 				VCDStillsStream *str[2];
 				ConstantFrameIntervals *intervals[2];
@@ -103,7 +103,7 @@ int main (int argc, char* argv[])
 
 			if( video_files.size() > 1 )
 			{
-				mjpeg_error_exit1("SVCD stills streams may only contain a single video stream\n");
+				mjpeg_error_exit1("SVCD stills streams may only contain a single video stream");
 			}
 			else if(  video_files.size() > 0 )
 			{
@@ -123,7 +123,7 @@ int main (int argc, char* argv[])
 			}
 			break;
 		default:
-			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...\n");
+			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...");
 		}
 
 		ostrm.OutputMultiplex( &strms,  multi_file);
@@ -135,7 +135,7 @@ int main (int argc, char* argv[])
 
 		if( video_files.size() < 1 	&& opt_mux_format == MPEG_FORMAT_VCD )
 		{
-			mjpeg_warn( "Multiplexing audio-only for a standard VCD is very inefficient\n");
+			mjpeg_warn( "Multiplexing audio-only for a standard VCD is very inefficient");
 		}
 
 		for( i = 0 ; i < video_files.size() ; ++i )

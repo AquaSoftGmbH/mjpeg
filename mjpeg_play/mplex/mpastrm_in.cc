@@ -110,8 +110,8 @@ void MPAStream::Init ( const int stream_num )
 {
     unsigned int i;
 	int padding_bit;
-	mjpeg_debug( "SETTING zero stuff to %d\n", muxinto.vcd_zero_stuffing );
-	mjpeg_debug( "SETTING audio buffer to %d\n", muxinto.audio_buffer_size );
+	mjpeg_debug( "SETTING zero stuff to %d", muxinto.vcd_zero_stuffing );
+	mjpeg_debug( "SETTING audio buffer to %d", muxinto.audio_buffer_size );
 
 	MuxStream::Init( AUDIO_STR_0 + stream_num, 
 					 0,  // Buffer scale
@@ -120,7 +120,7 @@ void MPAStream::Init ( const int stream_num )
 					 muxinto.buffers_in_audio,
 					 muxinto.always_buffers_in_audio
 		);
-    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)\n",
+    mjpeg_info ("Scanning for header info: Audio stream %02x (%s)",
                 AUDIO_STR_0 + stream_num,
                 bs.filename
                 );
@@ -169,7 +169,7 @@ void MPAStream::Init ( const int stream_num )
 
     } else
     {
-		mjpeg_error ( "Invalid MPEG Audio stream header.\n");
+		mjpeg_error ( "Invalid MPEG Audio stream header.");
 		exit (1);
     }
 
@@ -196,7 +196,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
 
-	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d\n", 
+	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
 				 frames_to_buffer, last_buffered_AU );
 
 	while (!bs.eos() && 
@@ -224,7 +224,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 			{
 				/* There appears to be another catenated stream... */
 				int next;
-				mjpeg_warn( "End of component bit-stream ... seeking next\n" );
+				mjpeg_warn( "End of component bit-stream ... seeking next" );
 				/* Catenated stream must start on byte boundary */
 				syncword = (syncword<<(8-AU_start % 8));
 				next = bs.getbits(8-(AU_start % 8) );
@@ -232,7 +232,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 				syncword = syncword | next;
 				if( syncword != AUDIO_SYNCWORD )
 				{
-					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !\n", AU_start/8, prev_offset/8 );
+					mjpeg_warn("Failed to find start of next stream at %lld prev %lld !", AU_start/8, prev_offset/8 );
 					break;
 				}
 			}
@@ -263,7 +263,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 
 		if (num_syncword >= old_frames+10 )
 		{
-			mjpeg_debug ("Got %d frame headers.\n", num_syncword);
+			mjpeg_debug ("Got %d frame headers.", num_syncword);
 			old_frames=num_syncword;
 		
 		}
@@ -281,11 +281,11 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 void MPAStream::Close()
 {
     stream_length = AU_start >> 3;
-	mjpeg_info ("AUDIO_STATISTICS: %02x\n", stream_id); 
-    mjpeg_info ("Audio stream length %lld bytes.\n", stream_length);
-    mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
-    mjpeg_info   ("Frames         : %8u padded\n",  num_frames[0]);
-    mjpeg_info   ("Frames         : %8u unpadded\n", num_frames[1]);
+	mjpeg_info ("AUDIO_STATISTICS: %02x", stream_id); 
+    mjpeg_info ("Audio stream length %lld bytes.", stream_length);
+    mjpeg_info   ("Syncwords      : %8u",num_syncword);
+    mjpeg_info   ("Frames         : %8u padded",  num_frames[0]);
+    mjpeg_info   ("Frames         : %8u unpadded", num_frames[1]);
 	
     bs.close();
 }
@@ -303,35 +303,35 @@ void MPAStream::OutputHdrInfo ()
     bitrate = mpa_bitrates_kbps[version_id][layer][bit_rate_code];
 
 
-	mjpeg_info("AUDIO STREAM:\n");
-	mjpeg_info("Audio version  : %s\n", mpa_audio_version[version_id]);
-    mjpeg_info("Layer          : %8u\n",4-layer);
+	mjpeg_info("AUDIO STREAM:");
+	mjpeg_info("Audio version  : %s", mpa_audio_version[version_id]);
+    mjpeg_info("Layer          : %8u",4-layer);
 
-    if (protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
-    else  mjpeg_info ("CRC checksums  :       no\n");
+    if (protection == 0) mjpeg_info ("CRC checksums  :      yes");
+    else  mjpeg_info ("CRC checksums  :       no");
 
     if (bit_rate_code == 0)
-		mjpeg_info ("Bit rate       :     free\n");
+		mjpeg_info ("Bit rate       :     free");
     else if (bit_rate_code == 0xf)
-		mjpeg_info ("Bit rate       : reserved\n");
+		mjpeg_info ("Bit rate       : reserved");
     else
-		mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",
+		mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)",
 				bitrate*128, bitrate);
 
     if (frequency == 3)
-		mjpeg_info ("Frequency      : reserved\n");
+		mjpeg_info ("Frequency      : reserved");
     else
-		mjpeg_info ("Frequency      :     %d Hz\n",
+		mjpeg_info ("Frequency      :     %d Hz",
 				mpa_freq_table[version_id][frequency]);
 
-    mjpeg_info   ("Mode           : %8u %s\n",
+    mjpeg_info   ("Mode           : %8u %s",
 			  mode,mpa_stereo_mode[mode]);
-    mjpeg_info   ("Mode extension : %8u\n",mode_extension);
-    mjpeg_info   ("Copyright bit  : %8u %s\n",
+    mjpeg_info   ("Mode extension : %8u",mode_extension);
+    mjpeg_info   ("Copyright bit  : %8u %s",
 			  copyright,mpa_copyright_status[copyright]);
-    mjpeg_info   ("Original/Copy  : %8u %s\n",
+    mjpeg_info   ("Original/Copy  : %8u %s",
 			  original_copy,mpa_original_bit[original_copy]);
-    mjpeg_info   ("Emphasis       : %8u %s\n",
+    mjpeg_info   ("Emphasis       : %8u %s",
 			  emphasis,mpa_emphasis_mode[emphasis]);
 }
 
