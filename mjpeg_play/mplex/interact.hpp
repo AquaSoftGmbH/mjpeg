@@ -75,6 +75,7 @@ class MultiplexJob : public MultiplexParams
 {
 public:
   MultiplexJob();
+  virtual ~MultiplexJob() {}
   virtual void SetFromCmdLine( unsigned int argc, char *argv[]);
   virtual PS_Stream *GetOutputStream(
 			   unsigned mpeg,

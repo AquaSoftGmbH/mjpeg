@@ -29,8 +29,8 @@
 
 void StillsStream::Init ( )
 {
-	int stream_id;
-	int buffer_size;
+	int stream_id = -1;
+	int buffer_size = -1;
 
 	SetBufSize( 4*1024*1024 );
 	InitAUbuffer();

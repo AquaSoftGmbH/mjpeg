@@ -837,10 +837,10 @@ void Multiplexor::OutputPrefix( )
             // We mux *many* substreams on PRIVATE_STR_1
             // we set the system header buffer size to the maximum
             // of all those we find
-            if( (*muxstr)->stream_id == PRIVATE_STR_1 
-                && (*muxstr)->BufferSize() > max_priv1_buffer )
+            if( (*muxstr)->stream_id == PRIVATE_STR_1 ) 
             {
-                max_priv1_buffer = (*muxstr)->BufferSize();
+                if( (*muxstr)->BufferSize() > max_priv1_buffer )
+                    max_priv1_buffer = (*muxstr)->BufferSize();
             }
             else
                 dvdmux.push_back( *muxstr );
