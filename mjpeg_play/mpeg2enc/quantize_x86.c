@@ -81,8 +81,10 @@ int quant_non_intra_3dnow(
 	int mquant,
 	int *nonsat_mquant)
 {
-	int satshift = mpeg1 ? 8 : 4;
-	float *i_quant_matf = i_inter_q_tblf[mquant]; 
+	/*int satshift = mpeg1 ? 8 : 4;*/
+	int saturated;
+	int satlim = mpeg1 ? 255 : 2047;
+	float *i_quant_matf; 
 	int   coeff_count = 64*block_count;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
@@ -91,24 +93,25 @@ int quant_non_intra_3dnow(
 	uint32_t tmp;
 
 	/* Initialise zero block flags */
+	/* Load 1 into mm6 */
+	__asm__ ( "movl %0, %%eax\n" 
+			  "movd %%eax, %%mm6\n"
+			  : :"g" (1) : "eax" );
+	/* Load satlim into mm1 */
+	movd_m2r( satlim, mm1 );
+	punpcklwd_r2r( mm1, mm1 );
+	punpckldq_r2r( mm1, mm1 );
+restart:
+	i_quant_matf = i_inter_q_tblf[mquant];
+	flags = 0;
+	piqf = i_quant_matf;
+	saturated = 0;
 	nzflag = 0;
 	psrc = src;
 	pdst = dst;
-	flags = 0;
 	for (i=0; i < coeff_count ; i+=4)
 	{
 
-		if( (i & 63) == 0 )
-		{
-			nzflag = (nzflag<<1) | !!flags;
-			flags = 0;
-			piqf = i_quant_matf;
-		}
-
-		/* Load 1 into mm6 */
-		__asm__ ( "movl %0, %%eax\n" 
-				  "movd %%eax, %%mm6\n"
-				  : :"g" (1) : "eax" );
 		/* Load 4 words, unpack into mm2 and mm3 (with sign extension!)
 		 */
 
@@ -134,30 +137,44 @@ int quant_non_intra_3dnow(
 		movq_m2r( *(mmx_t*)&piqf[2], mm5);
 		pi2fd_r2r( mm3, mm3);
 
-		/* "Divide" by multiplying by inverse quantisation */
+		/* "Divide" by multiplying by inverse quantisation
+		 and convert back to integers*/
 		pfmul_r2r( mm4, mm2 );
-		pfmul_r2r( mm5, mm3);
-
-
-		/* Convert back to integers */
 		pf2id_r2r( mm2, mm2);
+		pfmul_r2r( mm5, mm3);
 		pf2id_r2r( mm3, mm3);
+
 
 		/* Convert the two pairs of double words into four words */
 		packssdw_r2r(  mm3, mm2);
 
 
-		/* Saturate by replicating the top-bits */
+		/* Accumulate saturation... */
 		movq_r2r( mm2, mm4 );
+
+		pxor_r2r( mm5, mm5 );	// mm5 = -mm2
+		pcmpgtw_r2r( mm1, mm4 ); // mm4 = (mm2 > satlim) 
+		psubw_r2r( mm2, mm5 );
+		pcmpgtw_r2r( mm1, mm5 ); // mm5 = -mm2 > satlim
+		por_r2r( mm5, mm4 );  // mm4 = abs(mm2) > satlim
+		movq_r2r( mm4, mm5 );
+		psrlq_i2r( 32, mm5);
+		por_r2r( mm5, mm4 );
+
+		movd_m2r( saturated, mm5 ); // saturated |= mm4
+		por_r2r( mm4, mm5 );
+		movd_r2m( mm5, saturated );
+
+/* OLD CODE - saturate instead of changing quantisation...
 		psraw_i2r( 16, mm4 );
 		psllw_i2r( 15, mm4 );
 		movd_m2r( satshift, mm3 );
 		psllw_r2r( mm3, mm2 );
 		psrlw_i2r( 1, mm2 );
-		psubb_r2r( mm6, mm3 );	/* mm6 has 1 in it! */
+		psubb_r2r( mm6, mm3 );	// mm6 has 1 in it!
 		por_r2r( mm4, mm2 );
 		psraw_r2r( mm3, mm2 );
-
+*/
 		/* Store and accumulate zero-ness */
 		movq_r2r( mm2, mm3 );
 		movq_r2m( mm2, *(mmx_t*)pdst );
@@ -165,52 +182,38 @@ int quant_non_intra_3dnow(
 		por_r2r( mm3, mm2 );
 		movd_r2m( mm2, tmp );
 		flags |= tmp;
-/*
-		{
-			int i,j;
-			int x, d, y;
-			for( j = 0; j < 4; ++j )
-			{
-				i = (&psrc[j]-src);
-				x = (psrc[j] >= 0 ? psrc[j] : -psrc[j]);
-				d = (int)inter_q[(i&63)]; 
-				y = (32*x + (d>>1))/(d*2*mquant);
-				if( y > 255 )
-					y = 255;
-				y = psrc[j] >= 0 ? y : -y;
-				if( y != pdst[j] )
-				{
 
-					if( y == 2)
-					{
-						printf( "\n%08d  %08d  %08d  %08d\n",
-								psrc[0], psrc[1], psrc[2], psrc[3]  );
-						printf( "%3.4f  %3.4f  %3.4f  %3.4f\n",
-								ir[0], ir[1], ir[2], ir[3] );
-						printf( "%08x %08x   %08x %08x\n", 
-								id[0], id[1], id[2], id[3] );
-						printf( "%08x %08x   %08x %08x\n", 
-								is[0], is[1], is[2], is[3] );
-
-					}
-
-					printf( "%03d:(%d) src=%04d dst=%04d ref=%04d i=%02.02f mq=%03d qm=%03d iiqf=%.0f\n", 
-							i, j,
-							(int)psrc[j], (int)pdst[j], 
-							 y, ir[j], mquant, inter_q[(i&63)] ,
-							1.0/piqf[j]);
-				}
-			}
-		}
-*/
 		piqf += 4;
 		pdst += 4;
 		psrc += 4;
+
+		if( (i & 63) == (63/4)*4 )
+		{
+
+			if( saturated )
+			{
+				int new_mquant = next_larger_quant( picture, mquant );
+				if( new_mquant != mquant )
+				{
+					mquant = new_mquant;
+					goto restart;
+				}
+				else
+				{
+					return quant_non_intra(picture, src, dst, mquant, 
+										   nonsat_mquant);
+				}
+			}
+
+			nzflag = (nzflag<<1) | !!flags;
+			flags = 0;
+			piqf = i_quant_matf;
+		}
 			
 	}
 	femms();
 
-	nzflag = (nzflag<<1) | (!!flags);
+	//nzflag = (nzflag<<1) | (!!flags);
 	return nzflag;
 }
 

@@ -62,7 +62,7 @@ void init_quantizer()
 #ifdef X86_CPU
   if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
 	{
-		if( flags & ACCEL_X86_3DNOW )
+		if( (flags & ACCEL_X86_3DNOW) != 0 )
 		{
 			fprintf( stderr, "SETTING 3DNOW for QUANTIZER!\n");
 			pquant_non_intra = quant_non_intra_3dnow;
@@ -148,7 +148,7 @@ void quant_intra(
   int x, y, d;
   int clipping;
   int clipvalue  = dctsatlim;
-  uint16_t *quant_mat = intra_q;
+  uint16_t *quant_mat = /*intra_q_tbl[mquant] */ intra_q ;
 
 
   /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
@@ -185,11 +185,13 @@ void quant_intra(
 			  }
 #else
 			/* RJ: save one divide operation */
-			y = (32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
+			y = /*((intabs(x)<<5)+ ((3*quant_mat[i])>>2))/(quant_mat[i]<<1)*/
+				(32*intabs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant);
 			if ( y > clipvalue )
 			  {
 				clipping = 1;
 				mquant = next_larger_quant( picture, mquant );
+				/*quant_mat = intra_q_tbl[mquant];*/
 				break;
 			  }
 #endif
@@ -260,7 +262,7 @@ int quant_non_intra(
 	int clipvalue  = dctsatlim;
 	int flags = 0;
 	int saturated = 0;
-	uint16_t *quant_mat = inter_q;
+	uint16_t *quant_mat = inter_q_tbl[mquant]/* inter_q */;
 	
 	coeff_count = 64*block_count;
 	flags = 0;
@@ -276,9 +278,15 @@ restart:
 		}
 		/* RJ: save one divide operation */
 
-		x = (src[i] >= 0 ? src[i] : -src[i]);
+		x = intabs( ((int)src[i]) ) /*(src[i] >= 0 ? src[i] : -src[i])*/ ;
 		d = (int)quant_mat[(i&63)]; 
-		y = (32*x + (d>>1))/(d*2*mquant);
+		/* A.Stevens 2000: Given the math of non-intra frame
+		   quantisation / inverse quantisation I always though the
+		   funny little foudning factor was bogus.  It seems to be
+		   the encoder needs less bits if you simply divide!
+		*/
+
+		y = (x<<4) /  (d) /* (32*x + (d>>1))/(d*2*mquant)*/ ;
 		if ( y > clipvalue )
 		{
 			if( saturated )
@@ -289,7 +297,10 @@ restart:
 			{
 				int new_mquant = next_larger_quant( picture, mquant );
 				if( new_mquant != mquant )
+				{
 					mquant = new_mquant;
+					quant_mat = inter_q_tbl[mquant];
+				}
 				else
 				{
 					saturated = 1;
@@ -299,7 +310,7 @@ restart:
 				goto restart;
 			}
 		}
-		dst[i] = (src[i] >= 0 ? y : -y);
+		dst[i] = intsamesign(src[i], y) /* (src[i] >= 0 ? y : -y) */;
 		flags |= dst[i];
 	}
 	nzflag = (nzflag<<1) | !!flags;

@@ -138,7 +138,8 @@ nextquadniq:
     ;;  However we get very very few wrong and none too low (the most
     ;; important) and no errors for small coefficients (also important)
 	;; 	if we simply add abs(*psrc)
-	
+
+			
 	movq    mm3, mm2				
 	pmullw  mm3, [ecx]          
 	movq    mm7, mm2
@@ -162,13 +163,14 @@ nextquadniq:
 
 	;;
 	;; Do the second multiplication, again we ned to make a rounding adjustment
-	movq    mm3, mm2				
-	pmullw  mm3, mm0          
-	movq    mm7, mm2
-	psrlw   mm7, 1            ; Want to see if adding p would carry into upper 16 bits
-	psrlw   mm3, 1
-	paddw mm3, mm7
-	psrlw   mm3, 15           ; High bit in lsb rest 0's
+	;; EXPERIMENT:	 see comments in quantize.c:quant_non_intra don't adjust...
+;	movq    mm3, mm2				
+;	pmullw  mm3, mm0          
+;	movq    mm7, mm2
+;	psrlw   mm7, 1            ; Want to see if adding p would carry into upper 16 bits
+;	psrlw   mm3, 1
+;	paddw mm3, mm7
+;	psrlw   mm3, 15           ; High bit in lsb rest 0's
 
 	pmulhw  mm2, mm0     ; mm2 ~= (p/(qm*mquant)) 
 
@@ -178,7 +180,7 @@ nextquadniq:
 	add   ebx, 8
 
 	;; Correct rounding and the factor of two (we want p/(qm*2*mquant)
-	paddw mm2, mm3
+;	paddw mm2, mm3
 	psrlw mm2, 1
 
 

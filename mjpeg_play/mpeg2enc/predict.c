@@ -57,6 +57,10 @@ static void pred_comp_mmxe(
 	pict_data_s *picture,
 	unsigned char *src, unsigned char *dst,
 	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
+static void pred_comp_mmx(
+	pict_data_s *picture,
+	unsigned char *src, unsigned char *dst,
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 #endif
 static void calc_DMV 
 	(	pict_data_s *picture,int DMV[][2], 
@@ -86,11 +90,17 @@ void init_predict()
 	{
 		ppred_comp = pred_comp;
 	}
+
 #ifdef X86_CPU
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
 	{
 		fprintf( stderr, "SETTING EXTENDED MMX for PREDICTION!\n");
 		ppred_comp = pred_comp_mmxe;
+	}
+    else if(cpucap & ACCEL_X86_MMX ) /* Original MMX... */
+	{
+		fprintf( stderr, "SETTING MMX for PREDICTION!\n");
+		ppred_comp = pred_comp_mmx;
 	}
 #endif
     else
@@ -528,6 +538,7 @@ static void pred_comp(
       }
 }
 
+#ifdef X86_CPU
 static void pred_comp_mmxe(
 	pict_data_s *picture,
 	unsigned char *src,
@@ -567,6 +578,47 @@ static void pred_comp_mmxe(
 	}
 		
 }
+
+static void pred_comp_mmx(
+	pict_data_s *picture,
+	unsigned char *src,
+	unsigned char *dst,
+	int lx,
+	int w, int h,
+	int x, int y,
+	int dx, int dy,
+	int addflag)
+{
+	int xint, xh, yint, yh;
+	unsigned char *s, *d;
+	
+	/* half pel scaling */
+	xint = dx>>1; /* integer part */
+	xh = dx & 1;  /* half pel flag */
+	yint = dy>>1;
+	yh = dy & 1;
+
+	/* origins */
+	s = src + lx*(y+yint) + (x+xint); /* motion vector */
+	d = dst + lx*y + x;
+
+	if( xh )
+	{
+		if( yh ) 
+			predcomp_11_mmx(s,d,lx,w,h,addflag);
+		else /* !yh */
+			predcomp_10_mmx(s,d,lx,w,h,addflag);
+	}
+	else /* !xh */
+	{
+		if( yh ) 
+			predcomp_01_mmx(s,d,lx,w,h,addflag);
+		else /* !yh */
+			predcomp_00_mmx(s,d,lx,w,h,addflag);
+	}
+		
+}
+#endif
 
 /* calculate derived motion vectors (DMV) for dual prime prediction
  * dmvector[2]: differential motion vectors (-1,0,+1)

@@ -371,7 +371,6 @@ void rc_init_pict(pict_data_s *picture)
 			d = d0i;
 			avg_K = avg_KI;
 			Si = (Xi + 3.0*avg_K*actsum)/4.0;
-						printf( "Si = %.2f\n", Si );
 			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		}
 		else

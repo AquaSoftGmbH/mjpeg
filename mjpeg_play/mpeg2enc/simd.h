@@ -120,4 +120,9 @@ void predcomp_10_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
 void predcomp_11_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
 void predcomp_01_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
 
+void predcomp_00_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_10_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_11_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_01_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+
 #endif

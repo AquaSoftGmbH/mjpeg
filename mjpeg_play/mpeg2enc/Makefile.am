@@ -10,7 +10,7 @@ mpeg2enc_MMXSSE = \
 	bdist1_mmx.s predict_mmx.s \
 	fdist1_00.s dist1_00.s dist1_01.s dist1_10.s dist1_11.s \
     qdist1_sse.s quantize_x86.c  qblock_sad_x86.c \
-    predcomp_mmxe.s
+    predcomp_mmxe.s predcomp_mmx.s
 
 EXTRA_DIST = \
     fdist1_mmx.o dist1_00_mmx.o dist1_01_mmx.o dist1_10_mmx.o dist1_11_mmx.o \

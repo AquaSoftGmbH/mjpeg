@@ -64,14 +64,14 @@ dist1_00_SSE:
 	;movd mm3, ecx		; MMX(TM) it!
 	;movd mm1, [ebp+24]	; get distlim
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow00		; snap to it
+	jmp nextrow00sse
 align 32
-nextrow00:
+nextrow00sse:
 	movq mm4, [eax]		; load first 8 bytes of p1 (row 1)
+	movq mm5, [eax+8]	; load next 8 bytes of p1 (row 1)
 	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
 	paddd mm0, mm4		; accumulate difference
 	
-	movq mm5, [eax+8]	; load next 8 bytes of p1 (row 1)
 	psadbw mm5, [ebx+8]	; compare to next 8 bytes of p2 (row 1)
 	paddd mm0, mm5		; accumulate difference
 
@@ -79,10 +79,10 @@ nextrow00:
 	add ebx, edx		; ditto
 
 	movq mm6, [eax]		; load first 8 bytes of p1 (row 2)
+	movq mm4, [eax+8]	; load next 8 bytes of p1 (row 2)
 	psadbw mm6, [ebx]	; compare to first 8 bytes of p2 (row 2)
 	paddd mm0, mm6		; accumulate difference
 	
-	movq mm4, [eax+8]	; load next 8 bytes of p1 (row 2)
 	psadbw mm4, [ebx+8]	; compare to next 8 bytes of p2 (row 2)
 	paddd mm0, mm4		; accumulate difference
 
@@ -97,7 +97,7 @@ nextrow00:
 	
 	;test ecx, ecx		; check rowsleft
 	sub  ecx, 2
-	jnz nextrow00		; rinse and repeat
+	jnz nextrow00sse
 
 	movd eax, mm0		; store return value
 	
