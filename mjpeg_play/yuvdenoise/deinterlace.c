@@ -114,7 +114,9 @@ void
 deinterlace_mmx(void)
 {
   uint32_t d=0;
+#ifdef HAVE_ASM_MMX
   uint16_t a[4]={0,0,0,0};
+#endif
   unsigned int min;
   register int x;
   register int y;

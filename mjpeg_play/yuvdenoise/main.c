@@ -419,9 +419,9 @@ void print_settings(void)
 
 void turn_on_accels(void)
 {
+#ifdef HAVE_ASM_MMX
   int CPU_CAP=cpu_accel ();
   
-#ifdef HAVE_ASM_MMX
   if( (CPU_CAP & ACCEL_X86_MMXEXT)!=0 ||
       (CPU_CAP & ACCEL_X86_SSE   )!=0 
     ) /* MMX+SSE */

@@ -347,9 +347,9 @@ uint32_t
 calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2) 
 {
   static uint32_t a;
+#ifdef HAVE_ASM_MMX
   static uint32_t bit_mask[2] = {0x7f7f7f7f,0x7f7f7f7f};
 
-#ifdef HAVE_ASM_MMX
   __asm__ __volatile__
       (
 	  " pxor         %%mm0 , %%mm0;          /* clear mm0                                          */"

@@ -640,6 +640,7 @@ int main(argc,argv)
 static const char	short_options[]=
 	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:D:g:G:v:V:F:tpdsZNhOCP";
 
+#ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
      { "verbose",           1, 0, 'v' },
      { "format",            1, 0, 'f' },
@@ -674,7 +675,7 @@ static struct option long_options[]={
      { "help",              0, 0, '?' },
      { 0,                   0, 0, 0 }
 };
-#ifdef HAVE_GETOPT_LONG
+
     while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1)
