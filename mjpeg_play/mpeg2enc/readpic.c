@@ -107,7 +107,7 @@ static void read_gop()
    unsigned char magic[7];
 
    s = frames_read % (2*READ_LOOK_AHEAD);
-
+   fprintf( stderr,"\nREADING FORWARD TO %d\n", frames_read+READ_LOOK_AHEAD/2);
    for(n=s;n<s+READ_LOOK_AHEAD/2;n++)
    {
 
@@ -166,13 +166,13 @@ void load_frame( int num_frame, int look_ahead )
 
    if(num_frame >= frames_read)
    {
-      fprintf(stderr,"readframe: internal error 2\n");
+      fprintf(stderr,"readframe: internal error - reading beyond end of frame read buffer\n");
       exit(1);
    }
 
    if(last_frame>=0 && num_frame>last_frame)
    {
-      fprintf(stderr,"readframe: internal error 3\n");
+      fprintf(stderr,"readframe: internal error reading beyond end of frames\n");
       exit(1);
    }
 
@@ -189,7 +189,7 @@ void load_frame( int num_frame, int look_ahead )
 
    if(num_frame < frames_read - 2*READ_LOOK_AHEAD)
    {
-      fprintf(stderr,"readframe: internal error 1\n");
+      fprintf(stderr,"readframe: internal error - buffer flusshed too soon\n");
       exit(1);
    }
 
