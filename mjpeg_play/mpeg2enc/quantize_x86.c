@@ -102,7 +102,7 @@ static int quant_non_intra_3dnow(	struct QuantizerWorkSpace *wsp,
 			  "movd %%eax, %%mm6\n"
 			  : :"g" (1) : "eax" );
 	/* Load satlim into mm1 */
-	movd_m2r( satlim, mm1 );
+	movd_g2r( satlim, mm1 );
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
@@ -169,16 +169,16 @@ restart:
 		psrlq_i2r( 32, mm5);
 		por_r2r( mm5, mm4 );
 
-		movd_m2r( saturated, mm5 ); // saturated |= mm4
+		movd_g2r( saturated, mm5 ); // saturated |= mm4
 		por_r2r( mm4, mm5 );
-		movd_r2m( mm5, saturated );
+		movd_r2g( mm5, saturated );
 
 		/* Store and accumulate zero-ness */
 		movq_r2r( mm2, mm3 );
 		movq_r2m( mm2, *(mmx_t*)pdst );
 		psrlq_i2r( 32, mm3 );
 		por_r2r( mm3, mm2 );
-		movd_r2m( mm2, tmp );
+		movd_r2g( mm2, tmp );
 		flags |= tmp;
 
 		piqf += 4;
