@@ -196,7 +196,7 @@ void get_info_video (char *video_file,
     int i;
     unsigned int prozent = 0;
     unsigned int old_prozent=0;
-    int frame_rate;
+    double frame_rate;
 	unsigned int max_bits_persec = 0;
 	Vector vaunits = NewVector( sizeof(Vaunit_struc));
 	int first_pic_header;
@@ -233,7 +233,7 @@ void get_info_video (char *video_file,
 	}
     else
     {
-		frame_rate = 25;
+		frame_rate = 25.0;
 	}
 	
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
@@ -276,8 +276,8 @@ void get_info_video (char *video_file,
 				if( access_unit.type == IFRAME )
 				{
 					unsigned int bits_persec = 
-						(unsigned int) (stream_length - prev_stream_length) *
-							frame_rate / (1+decoding_order - group_start_pic);
+						(unsigned int) ( ((double)(stream_length - prev_stream_length)) *
+										 frame_rate / ((double)(1+decoding_order - group_start_pic)));
 
 					if( bits_persec > max_bits_persec )
 					{
@@ -287,9 +287,11 @@ void get_info_video (char *video_file,
 					group_start_pic = decoding_order;
 				}
 
-				access_unit.DTS =  (clockticks)decoding_order * (clockticks)CLOCKS / frame_rate;
-				access_unit.PTS =  (clockticks)(temporal_reference + group_start_pic) * (clockticks)CLOCKS  / frame_rate;
+				access_unit.DTS =  (clockticks) (decoding_order * (double)CLOCKS / frame_rate);
 				access_unit.dorder = decoding_order;
+				access_unit.PTS =  (clockticks) ((temporal_reference + group_start_pic) * (double)CLOCKS
+												 / frame_rate);
+				access_unit.porder = temporal_reference + group_start_pic;
 				decoding_order++;
 				group_order++;
 
@@ -535,7 +537,8 @@ void get_info_audio (
 		access_unit.PTS = (clockticks)
 			decoding_order * samples [3-audio_info->layer] * (clockticks)(CLOCKS) /
 			samples_per_second + first_frame_PTS;
-		decoding_order++;
+		access_unit.dorder = decoding_order;
+		++decoding_order;
 		VectorAppend( aaunits, &access_unit );
 
     } else

@@ -31,6 +31,7 @@ static void Usage(char *str)
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 680)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program rather a program per file\n");
 	fprintf( stderr, "         %%d in the output file name is replaced by a segment counter\n");
+	fprintf( stderr, " -e      Vcdmplex style start-up (debugging tool)\n");
 			
 	exit (1);
 }
@@ -48,6 +49,7 @@ int opt_multifile_segment = 1;
 int opt_always_system_headers = 0;
 int opt_packets_per_pack = 20;
 clockticks opt_max_PTS = 0LL;
+int opt_emul_vcdmplex = 0;
 
 /* Should fit nicely on an ordinary CD ... */
 intmax_t max_system_segment_size =  680*1024*1024;
@@ -68,7 +70,7 @@ int intro_and_options(int argc, char *argv[])
     printf(  "***************************************************************\n\n");
 
 
-  while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnM")) != EOF)
+  while( (n=getopt(argc,argv,"b:r:v:a:m:f:l:S:qiVnMe")) != EOF)
   {
     switch(n)
 	  {
@@ -153,6 +155,9 @@ int intro_and_options(int argc, char *argv[])
 	  case 'M' :
 	  	 opt_multifile_segment = 1;
 		 break;
+	  case 'e' :
+	  	 opt_emul_vcdmplex = 1;
+		 break;
 	  default :
 		Usage(argv[0]);
 		break;
@@ -199,15 +204,14 @@ unsigned int *bytes;
 	prints a status line during multiplexing
 ******************************************************************/
 
-void status_info (nsectors_a, nsectors_v, nsectors_p, nbytes, 
-		  buf_v, buf_a,verbose)
-unsigned int nsectors_a;
-unsigned int nsectors_v;
-unsigned int nsectors_p;
-unsigned long long nbytes;
-unsigned int buf_v;
-unsigned int buf_a;
-int verbose;
+void status_info (	unsigned int nsectors_a,
+					unsigned int nsectors_v,
+					unsigned int nsectors_p,
+					unsigned long long nbytes,
+					unsigned int buf_v,
+					unsigned int buf_a,
+					int verbose
+				 )
 {
 	if( verbose > 0 )
 	{
@@ -219,7 +223,7 @@ int verbose;
 	}
 }
 
-void status_header ()
+void status_header (void)
 {
     status_footer();
     printf("|  Audio  |  Video  | Padding | Bytes  MPEG | Audio  | Video  |\n");
@@ -228,8 +232,8 @@ void status_header ()
 }
 
 
-void status_message (what)
-unsigned char what;
+void status_message (int what, int decode_number)
+
 {
   if( verbose == 1 )
 	printf( "\n" );
@@ -239,17 +243,17 @@ unsigned char what;
   printf("|file  end|         |         |             |        |        |\n");
   break;
   case STATUS_AUDIO_TIME_OUT:
-  printf("|time  out|         |         |             |        |        |\n");
+  printf("|TO%07d   |         |         |             |        |        |\n", decode_number);
   break;
   case STATUS_VIDEO_END:
   printf("|         |file  end|         |             |        |        |\n");
   break;
   case STATUS_VIDEO_TIME_OUT:
-  printf("|         |time  out|         |             |        |        |\n");
+  printf("|         |TO%07d|         |             |        |        |\n", decode_number);
   }
 }
 
-void status_footer ()
+void status_footer (void)
 {
   printf("+---------+---------+---------+-------------+--------+--------+\n");
 }

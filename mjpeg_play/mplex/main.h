@@ -164,12 +164,14 @@ typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
     unsigned int type		;
     clockticks DTS		;
     clockticks PTS		;
-    int            dorder;
+    int        dorder;
+    int		   porder;
 } Vaunit_struc;
 
 typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
 {   unsigned long length	;
     clockticks PTS		;
+    int        dorder;
 } Aaunit_struc;
 
 typedef struct video_struc	/* Informationen ueber Video Stream	*/
@@ -381,11 +383,18 @@ FILE *system_open_init( const char *filename_pat );
 int system_file_lim_reached(  FILE *cur_system_strm );
 FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat );
 
-void status_info          ();	/* Statusmitteilung bei Erstellen	*/
-				/* MPEG multiplex stream		*/
-void status_header	  ();	/* Titelzeilen Statusblock		*/
-void status_message	  ();	/* Event (end, time_out) mitteilen	*/
-void status_footer	  ();	/* Endzeile				*/
+void status_info (	unsigned int nsectors_a,
+					unsigned int nsectors_v,
+					unsigned int nsectors_p,
+					unsigned long long nbytes,
+					unsigned int buf_v,
+					unsigned int buf_a,
+					int verbose
+				 );	/* Status line update	*/
+
+void status_header	  (void);	/* Titelzeilen Statusblock		*/
+void status_message	  (int what, int decode_number);	/* Event (end, time_out) mitteilen	*/
+void status_footer	  (void);	/* Endzeile				*/
 
 
 
@@ -422,6 +431,7 @@ extern int opt_multifile_segment;
 extern int opt_always_system_headers;
 extern int opt_packets_per_pack;
 extern clockticks opt_max_PTS;
+extern int opt_emul_vcdmplex;
 
 extern int verbose;
 extern unsigned int which_streams;
