@@ -102,6 +102,8 @@ void create_option_button(GSList *task_group, GtkWidget *table,
 void create_task_layout(GtkWidget *table);
 void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
 void set_task(GtkWidget *widget, gpointer data);
+void play_output_stream ( GtkWidget *widget, gpointer data);
+void play_video_stream ( GtkWidget *widget, gpointer data);
 
 /*************************** Programm starts here **************************/
 
@@ -316,7 +318,8 @@ void status_progress_window() {
 
       tv_preview = gtk_event_box_new();
       gtk_box_pack_start (GTK_BOX (hbox), tv_preview, TRUE, FALSE, 0);
-      gtk_widget_set_usize(GTK_WIDGET(tv_preview), 240, 180); /* TODO: make sizes configurable */
+      gtk_widget_set_usize(GTK_WIDGET(tv_preview), 240, 180); 
+      /* TODO: make sizes configurable */
       gtk_widget_show(tv_preview);
       set_background_color(tv_preview,0,0,0);
 
@@ -465,11 +468,11 @@ void video_convert()
    char *yuvplay_command[256];
    char command[600];
    char command_temp[256];
-   static char temp1[16],temp2[16],temp3[16],temp4[16],temp5[16],temp6[16], temp7[4];
-   static char temp8[4], temp9[4], temp10[4],temp11[4],temp12[4],temp13[4];
+   static char temp1[16],temp2[16],temp3[16],temp5[16],temp6[16], temp7[4];
+   static char temp8[4], temp9[4], temp10[4],temp12[4],temp13[4];
    static char temp14[4],temp15[4],temp16[4],temp17[4];
    error = 0;
-   scale_140    = 0; /* this 3 variabels are used for spliting up */ 
+   scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
                      /* for the encoding process                  */
 
@@ -932,6 +935,50 @@ GtkWidget *input_select, *output_select;
 
 }
 
+/* Play back the created output (mplexed video and audio) */
+void play_output_stream ( GtkWidget *widget, gpointer data)
+{
+FILE *play_video, *video_file;
+char command[100], errors[100];
+
+video_file = fopen(enc_outputfile, "r");
+if (video_file == NULL)
+  {
+   sprintf(errors,"Error opening : %s \n",enc_outputfile);
+   show_executing(errors);
+  }
+else if (strcmp(selected_player,"no player selected") == 0)
+    show_executing(selected_player);
+else
+  {
+    sprintf(command, "%s %s",selected_player, enc_outputfile);
+    play_video = popen(command, "w");
+    pclose(play_video);
+  }
+}
+
+/* Play back the created video */
+void play_video_stream ( GtkWidget *widget, gpointer data)
+{
+FILE *play_video, *video_file;
+char command[100], errors[100];
+
+video_file = fopen(enc_videofile, "r");
+if (video_file == NULL)
+  {
+   sprintf(errors,"Error opening : %s \n",enc_videofile);
+   show_executing(errors);
+  }
+else if (strcmp(selected_player,"no player selected") == 0)
+    show_executing(selected_player);
+else
+  {
+    sprintf(command, "%s %s",selected_player, enc_videofile);
+    play_video = popen(command, "w");
+    pclose(play_video);
+  }
+}
+
 /* Ups, no comment, how could this happen, change me */
 void video_callback ( GtkWidget *widget, GtkWidget *video_entry )
 {
@@ -1078,21 +1125,19 @@ void create_buttons1 (GtkWidget *hbox1)
 /* the Second line with the Load an Save options */
 void create_buttons2 (GtkWidget *hbox1)
 {
-  GtkWidget *create_vcd, *create_svcd, *set_defaults;
+  GtkWidget *play_output, *play_video, *set_defaults;
 
-  create_vcd = gtk_button_new_with_label ("Out of order");
-/* This buttons will be reused *
- * gtk_signal_connect (GTK_OBJECT (create_vcd), "clicked",
- *                     GTK_SIGNAL_FUNC (do_vcd), NULL);  */
-  gtk_box_pack_start (GTK_BOX (hbox1), create_vcd, TRUE, TRUE, 0);
-  gtk_widget_show(create_vcd);
+  play_output = gtk_button_new_with_label ("Play output file");
+  gtk_signal_connect (GTK_OBJECT (play_output), "clicked",
+                      GTK_SIGNAL_FUNC (play_output_stream), NULL);
+  gtk_box_pack_start (GTK_BOX (hbox1), play_output, TRUE, TRUE, 0);
+  gtk_widget_show(play_output);
 
-  create_svcd = gtk_button_new_with_label ("Out of order");
-/* This buttons will be reused *
- * gtk_signal_connect (GTK_OBJECT (create_svcd), "clicked",
- *                     GTK_SIGNAL_FUNC (do_svcd), NULL);    */
-  gtk_box_pack_start (GTK_BOX (hbox1), create_svcd, TRUE, TRUE, 0);
-  gtk_widget_show(create_svcd);
+  play_video = gtk_button_new_with_label ("Play video file");
+  gtk_signal_connect (GTK_OBJECT (play_video), "clicked",
+                      GTK_SIGNAL_FUNC (play_video_stream), NULL);
+  gtk_box_pack_start (GTK_BOX (hbox1), play_video, TRUE, TRUE, 0);
+  gtk_widget_show(play_video);
 
   set_defaults = gtk_button_new_with_label ("Load Default Options");
   gtk_signal_connect (GTK_OBJECT (set_defaults), "clicked",
