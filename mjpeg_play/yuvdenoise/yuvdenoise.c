@@ -524,15 +524,15 @@ main (int argc, char *argv[])
 	{
 	    /* main denoise processing */
 	    denoise_frame (yuv);
-	    deflicker();
-	    denoise2();
+	    //deflicker();
+	    //denoise2();
 	}
 
-    generate_black_border(BX0,BY0,BX1,BY1,avrg2);
+    generate_black_border(BX0,BY0,BX1,BY1,avrg);
 
       /* write the frame */
-    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
-//      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
+    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
+//      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
     }
 
   if(  errnr !=  Y4M_ERR_EOF )
