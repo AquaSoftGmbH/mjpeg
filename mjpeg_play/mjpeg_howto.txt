@@ -88,15 +88,22 @@ If you're aiming to create VCD's then there is little to be gained recording
 at full resolution as you need to reduce to -d 2 resolution later anyway.
 
 Other example:
->lavrec -w -f a -i S -d 2 -l -1 record.avi
+>lavrec -w -f a -i S -d 2 -l -1 record%02d.avi
 Should start recoding:
 -w   : Waits for user confirmation to start (press enter)
 -f a : use AVI as output format,
 -i S : use SECAM SVHS-Input (SECAM Composit recording is also possible: -i s)
 -d 2 : the size of the pictures are half size
 -l -1: do not touch the mixer settings.
-Note: More options are described in the lavrec.c file.
+record%02d.avi : Here lavrec creates the first file named record00.avi after 
+the file has reached a size of 1.6GB (after about 20 Minutes recording) it 
+starts a new sequence named record01.avi and so on, till the recording is 
+stopped, or the disk ist full. 
 
+All lavtools accept the %02d file description, so you do not have to name each 
+file, but that would also be a posibillity to do. 
+
+Note: More options are described in the lavrec.c file.
 
 
 CHECKING IF RECORDING WAS SUCCESFUL
@@ -125,8 +132,11 @@ the other way around, the computer might crash.
 
 >xlav record.avi
 
-Does the same as lavplay, but you have an nice gui.
-Using the option -H or -C, the hardware playback is used.
+Does the same as lavplay, but you have an nice gui. The options for xlav and 
+lavplay are nearly the same.
+Using no option HW playback is used. 
+
+Using hardware playback a signal for the Composit and SVHS OUT is generated, so you can view the movie on your TV.
 
 NOTE: After loading the driver's you have to start xawtv to set up some things
 lavplay and xlav do not, but they are needed for HW-Playback. Don't forget to
@@ -356,14 +366,15 @@ This creates an video file with the default bitrate of 1152kBit/sec. This is
 the bitrate that you need if you want to create VCD's.
 
 Example:
-> lav2yuv -d 2 stream.avi | mpeg2enc -b 1500 -r 16 -o video.m1v
+> lav2yuv -d 2 stream%02d.avi | mpeg2enc -b 1500 -r 16 -o video.m1v
 
 There lav2yuv drops the 2 lsb (Less Significant Byte) of the each pixel. Then
 mpeg2enc creates a video with a bitrate of 1500kBit/s uses an search radius of
 16. That when trying to find similar 16*16 macroblocks of pixels in between
 frames the encoder looks up to 16 pixels away from the current position of
 each block.  It looks twice as far when comparing frames 1 frame apart and so
-on. Reasonable values are 16 or 24.
+on. Reasonable values are 16 or 24. With the file description of stream%02d.avi
+all files are procced that match this pattern beginning with 00, 01....
 
 Example:
 > lav2yuv -n 1 editlist.eli | mpeg2enc -b 2000 -r 24 -q 6 -o video.m1v
@@ -406,7 +417,7 @@ The -4 1 and -2 1 options improve the quality about 10% , but conversion is
 slower.
 
 At the size of: 352x288 (1/2 PAL size, created when using the -d 2 option when
-recording) the needed bitrate is/shloud be between 1000 - 1500kBit/s.
+recording) the needed bitrate is/should be between 1000 - 1500kBit/s.
 
 But anyways, the major factor is quality of the original and the degree of
 filtering. Poor quality unfiltered material typically needs a higher rate 
@@ -427,6 +438,19 @@ For VCD's sensible values might be a minimum of 9 and a maximum of 15. For
 SVCD 9 and 18 would be good values. If you only want to play it back on SW 
 player you can use other min-max values.
 
+Example: 
+> lav2yuv -n 1 -a 352x220+0+34 stream%02d.avi | mpeg2enc -b 1500 -r 16 -4 1 \
+> -2 1 -S 630 -B 260 -o video_n1_1500_r16_41_21_S630_B240.m1v
+
+Here lav2yuv uses the low pass filter for optimizeing the pictures, also the a
+part top and bottom border are set to black. lav2yuv processes all the stream
+files. Then mpeg2enc uses some options that make the encoded stream look nicer.
+But mpeg2enc also mark the stream so that mplex generates after 630MB a new 
+stream is begun. But the imprtant thing that this works is that you specifie 
+with the -B option the non video (audio and mplex information) bitrate. 260 
+should be fine for audio with 224kBit and mplex information. For further 
+information take a look at the encoding scripts in the scripts directory.
+
 Example:
 > lav2yuv stream.avi | lav2dfilter | mpeg2enc -o video.m1v
 Here the lav2filter programm is used enhance the image. This has the effect of
@@ -442,36 +466,38 @@ using yuvscaler, one can now also scale the video before encoding it. This can
 be useful for, for example, users with a DC10+ card, which captures at 
 384x288 (PAL/SECAM) or 640x480 (NTSC) when using full resolution with
 decimation two during recording.
->lav2yuv stream.avi | yuvscaler -k VCD | mpeg2enc -o video.m1v
+>lav2yuv stream.avi | yuvscaler -o VCD | mpeg2enc -o video.m1v
 This will rescale the 384x288 or 768x576 (PAL/SECAM) or 320x240 or 640x480
 (NTSC) stream to the VCD-size 352x288 (PAL/SECAM) or 352x240 (NTSC) and
 encode the resulting output YUV data to an mpeg stream.
 It can also do SVCD-scaling to 480x480 (NTSC) or 480x567 (PAL/SECAM):
->lav2yuv stream.avi | yuvscaler -k SVCD | mpeg2enc -o video.m2v
+>lav2yuv stream.avi | yuvscaler -o SVCD | mpeg2enc -o video.m2v
 
 Testing is done by:
 > plaympeg video.m1v
 
 Note: This are only examples there are more options you can use, you can use
 most of them together, to create high quality videos, with the lowest 
-possible bitrate. Note2: The higher you set the search radius, the longer 
-the converstation will take. In common you can say the more options used 
-the longer it takes. Note3: Maybe you should give better names than 
-video.m1v . A good idea would be if you see the filename you know the 
-options you've used. (Ex: video_b1500_r16_41_21.m1v) An other possibility 
-is to call all the layer 2 files ".mp2" all the MPEG-1 video files ".m1v" 
-and all MPEG-2 video files ".m2v".  Easy to see what's happening then.
+possible bitrate. 
+Note2: The higher you set the search radius, the longer the converstation will 
+take. In common you can say the more options used the longer it takes. 
+Note3: Maybe you should give better names than video.m1v . 
+A good idea would be if you see the filename you know the options you've used. 
+(Ex: video_b1500_r16_41_21.m1v) 
+An other possibility is to call all the layer 2 files ".mp2" all the MPEG-1 
+video files ".m1v" and all MPEG-2 video files ".m2v".  Easy to see what's 
+happening then.
 And reserve .mpg for multiplexed MPEG-1/2 streams.
 
 PUTTING THE STREAMS TOGETHER
 =====================================
 Example:
->mplex sound.mp2 video.m1v my_video.mpg
+>mplex sound.mp2 video.m1v -o my_video.mpg
 
 Puts the sound.mp2 and the video.m1v stream together to my_video.mpg
 
 Example:
->mplex -S 1500 sound.mp2 video.m1v my_film.mpg
+>mplex -S 1500 sound.mp2 video.m1v -o my_film.mpg
 
 Puts the sound.mp2 and video.m1v together, but the file size can be up to 1,5GB
 before an second file is created. (default is 680MB)
@@ -487,6 +513,11 @@ their 1G-byte "VOB" files.
 Now you can use your prefered MPEG player, and watch it.
 All players based on the SMPG library work well.
 Other Players are: xtheater, xmovie, xine, gtv for example.
+
+Note: If you have specfied the -S option for mpeg2enc mplex will 
+automatically split the files if there is in the output filename a %d (looks 
+like: -o test%d.mpg) 
+The files generated this way are sepereate stand-alone MPEG steams!
 
 Note: xine might have a problem with seeking through videos.
 
@@ -539,7 +570,7 @@ audio and video using the "-v" is printed by the extract_ac3 tool labelled
 "SYNC" when run with the "-s" flag.
 
 Then you need to multiplex them like this:
-> mplex -f 1 -v 234 vcd_stream.mp2 vcd_stream.m1v lowrate.mpg
+> mplex -f 1 -v 234 vcd_stream.mp2 vcd_stream.m1v -o lowrate.mpg
 
 -f 1   : Mux format is VCD
 -v 234 : Video timestamp offset in mSec, generated by the lavtrans script
@@ -608,7 +639,7 @@ for example) are not able to play MPEG streams that are encoded with an search
 radius greater than 16. But -r 16 workes fine.
 
 Mplex with:
-> mplex -f 1 sound.mp2 video.m1v vcd_out.mpg
+> mplex -f 1 sound.mp2 video.m1v -o vcd_out.mpg
 
 The -f 1 option turns on a lot of weird stuff that otherwise has no place
 in a respectable multiplexer!
@@ -702,7 +733,8 @@ For SVCD-encoding, you can of course also use yuvscaler for the downscaling
 rather than letting mpeg2enc doing that.
 
 Multiplex with:
-> mplex -f 3 sound.mp2 video.m2v vcd_out.mpg
+ 
+> mplex -f 3 sound.mp2 video.m2v -o vcd_out.mpg
 
 Creating the CD:
 
