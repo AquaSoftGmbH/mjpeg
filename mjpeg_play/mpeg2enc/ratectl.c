@@ -483,7 +483,7 @@ void rc_init_pict(pict_data_s *picture)
 		}
 		else
 		{
-			T =(int32_t)(fields_per_pict*available_bits*Si/Xsum);
+			T = (int32_t)(fields_per_pict*available_bits*Si/Xsum);
 		}
 		frame_base_bits = I_frame_base_bits;
 		break;
@@ -522,6 +522,15 @@ void rc_init_pict(pict_data_s *picture)
 
 		break;
 	}
+
+	/* 
+	   If we're fed a sequences of identical or near-identical images
+	   we can get actually get allocations for frames that exceed
+	   the video buffer size!  This of course won't work so we arbitrarily
+	   limit any individual frame to 3/4's of the buffer.
+	*/
+
+	T = intmin( T, ctl_video_buffer_size*3/4 );
 
 	mjpeg_debug( "T=%05d A=%06d D=%06d (%06d) \n", (int)T/8, (int)available_bits/8, (int)buffer_variation/8, (int)(buffer_variation + gop_buffer_correction)/8 );
 
