@@ -73,6 +73,9 @@ struct wave_header
 struct wave_header wave;
 int verbose = 2;
 
+int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd );
+void Usage(char *str);
+
 
 /*
   Raw write does *not* guarantee to write the entire buffer load if it

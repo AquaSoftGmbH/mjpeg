@@ -1171,7 +1171,7 @@ int lav_get_field_size(unsigned char * jpegdata, long jpeglen)
 
 static char error_string[4096];
 
-char *lav_strerror()
+char *lav_strerror(void)
 {
 
    switch(internal_error)

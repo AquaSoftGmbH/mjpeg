@@ -26,7 +26,7 @@ extern	int	verbose;
 
 /* Since we use malloc often, here the error handling */
 
-static void malloc_error()
+static void malloc_error(void)
 {
    fprintf(stderr,"Out of memory - malloc failed\n");
    exit(1);

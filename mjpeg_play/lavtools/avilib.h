@@ -154,7 +154,7 @@ int  AVI_read_data(avi_t *AVI, char *vidbuf, long max_vidbuf,
                                long *len);
 
 void AVI_print_error(char *str);
-char *AVI_strerror();
-char *AVI_syserror();
+char *AVI_strerror(void);
+char *AVI_syserror(void);
 
 #endif

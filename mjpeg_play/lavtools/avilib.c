@@ -1186,7 +1186,7 @@ void AVI_print_error(char *str)
    }
 }
 
-char *AVI_strerror()
+char *AVI_strerror(void)
 {
    int aerrno;
 

@@ -45,9 +45,15 @@ int	threshold_chroma = 2;
 int	radus_luma = 2;
 int	radus_chroma = 2;
 
+int	avg_replace[64];
+int	ovr_replace = 0;
+int	chg_replace = 0;
+
 int
 main(int argc, char *argv[])
 {
+	int	i;
+	int	avg;
 	int	input_fd;
 	int	output_fd;
 	int	horz;
@@ -77,7 +83,6 @@ main(int argc, char *argv[])
 	read_yuv(input_fd, &horz, &vert, &frame_rate);
 
 	fprintf(stderr, "width=%d height=%d rate=%d\n", horz, vert, frame_rate);
-
 	input_frame[0] = malloc(horz * vert);
 	input_frame[1] = malloc(horz * vert);
 	input_frame[2] = malloc(horz * vert);
@@ -102,7 +107,15 @@ main(int argc, char *argv[])
 
 		write_frame(output_fd, CHROMA420, horz, vert, output_frame);
 	}
-	fprintf(stderr, "%d frames read\n", frame_count);
+
+	for(avg=0, i=0; i < 64; i++)
+		avg += avg_replace[i];
+
+	fprintf(stderr, "\nframes=%d avg=%d replaced=%d\n", avg, chg_replace, ovr_replace);
+	for(i=0; i < 32; i++) {
+		fprintf(stderr, "%2d: %8d %6.2f\n", i, avg_replace[i],
+			(((double)avg_replace[i]) * 100.0)/(double)(avg));
+	}
 
 	exit(0);
 }
@@ -271,10 +284,30 @@ filter_buffer(int width, int height, int radus, int threshold, unsigned char *in
 	int	highy;
 	int	a;
 	int	b;
+	int	min_count;
 	unsigned char *pixel;
 
-	for(y=0; y < height; y++) {
-		for(x=0; x < width; x++) {
+	switch(radus) {
+
+	case 1:
+		min_count = 3;
+		break;
+
+	case 2:
+	default: 
+		min_count = 5;
+		break;
+	}
+
+	for(y=0; y < radus; y++)
+		memcpy(&output[y * width], &input[width * radus], width);
+
+	for(y=height - radus; y < height; y++)
+		memcpy(&output[y* width], &input[width * (height - radus-1)], width);
+	count = 0;
+
+	for(y=radus; y < height-radus; y++) {
+		for(x=radus; x < width - radus; x++) {
 			lowx = -radus;
 			highx = radus;
 
@@ -291,14 +324,14 @@ filter_buffer(int width, int height, int radus, int threshold, unsigned char *in
 			if (y + highy > height-1)
 				highy = (height-1) - y;
 
-			total = input[width * y + x];
-			reference = total;
-			count = 1;
+			reference = input[width * y + x];
+			total = 0;
+			count = 0;
 
-			for(b=lowy; b < highy; b++) {
+			for(b=lowy; b <= highy; b++) {
 //				pixel = &input[y * width + lowx];
-				for(a = lowx; a < highx; a++) {
-					pixel = &input[(y + b) * width + x + lowx];
+				for(a = lowx; a <= highx; a++) {
+					pixel = &input[(y + b) * width + x + a];
 					diff = reference - *pixel;
 					if (diff < threshold && diff > -threshold) {
 						total += *pixel;
@@ -306,7 +339,18 @@ filter_buffer(int width, int height, int radus, int threshold, unsigned char *in
 					}
 				}
 			}
-			output[width * y + x] = total / count;
+			avg_replace[count]++;
+			if (count < min_count) {
+				ovr_replace++;
+				 output[width * y + x] = 
+					(input[y * width + x-1] +
+					input[y * width + x+1] +
+					input[(y-1) * width + x] +
+					input[(y+1) * width + x])/4;
+			} else {
+				output[width * y + x] = total / count;
+				chg_replace++;
+			}
 		}
 	}
 }

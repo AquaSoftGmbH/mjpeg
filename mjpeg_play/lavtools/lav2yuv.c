@@ -33,6 +33,18 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
                     int itype, int ctype, int width, int height,
                     unsigned char *raw0, unsigned char *raw1,
                     unsigned char *raw2);
+void error(char *text);
+void Usage(char *str);
+int readframe(int numframe, unsigned char *frame[]);
+int median_cmp(const void *p1, const void *p2);
+void median_filter_area(unsigned char *input, unsigned char *output, 
+			int width, int height, int span);
+void median_filter(void);
+void writeoutYUV4MPEGheader(void);
+void writeoutframeinYUV4MPEG(unsigned char *frame[]);
+void streamout(void);
+
+
 EditList el;
 
 #define MAX_JPEG_LEN (512*1024)
@@ -102,8 +114,7 @@ EditList el;
 
 
 
-void error(text)
-char *text;
+void error(char *text)
 {
   fprintf(stderr,text);
   putc('\n',stderr);
@@ -413,7 +424,7 @@ static size_t do_write( int fd, void *buf, size_t count )
 	return count;
 }
 
-void writeoutYUV4MPEGheader()
+void writeoutYUV4MPEGheader(void)
 {
 	 char str[256];
 	 int i;
@@ -509,7 +520,7 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 }
 
 
-void streamout()
+void streamout(void)
 {
 	int framenum;
 	writeoutYUV4MPEGheader();

@@ -162,7 +162,14 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
 long audio_get_buffer_size();
 int audio_read(char *buf, int size, int swap, struct timeval *tmstmp, int *status);
 
-char *audio_strerror();
+char *audio_strerror(void);
+void set_mixer(int flag);
+void CleanUpAudio(void);
+void SigHandler(int sig_num);
+void Usage(char *progname);
+int XParseGeometry(char *string, int *x, int *y, unsigned int *width, unsigned int *height);
+int parse_geometry (char *geom, int *x, int *y, int *width, int *height);
+
 
 /* Set the default options here */
 

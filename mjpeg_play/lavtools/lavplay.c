@@ -127,19 +127,27 @@
 
 #define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
 
-char *audio_strerror();
+char *audio_strerror(void);
+void malloc_error(void);
+void sig_cont(int sig);
+int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr);
+void Usage(char *progname);
+void lock_screen(void);
+void unlock_update_screen(void);
+void x_shutdown(int a);
+
 
 int  verbose = 6;
 
 static EditList el;
 
 /* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
-void audio_shutdown();
+void audio_shutdown(void);
 int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
-long audio_get_buffer_size();
+long audio_get_buffer_size(void);
 int audio_write(char *buf, int size, int swap);
 void audio_get_output_status(struct timeval *tmstmp, long *nb_out, long *nb_err);
-int audio_start();
+int audio_start(void);
 
 static int  h_offset = 0;
 static int  v_offset = 0;
@@ -212,7 +220,7 @@ int sync_ins_frames  = 1;
 SDL_Surface *screen;
 SDL_Rect jpegdims;
 
-void audio_shutdown();
+void audio_shutdown(void);
 
 #define LAVPLAY_INTERNAL 0
 #define LAVPLAY_DEBUG    1
@@ -250,7 +258,7 @@ static void system_error(char *str1,char *str2)
 
 /* Since we use malloc often, here the error handling */
 
-void malloc_error()
+void malloc_error(void)
 {
    lavplay_msg(LAVPLAY_ERROR,"Out of memory - malloc failed","");
    exit(1);
@@ -402,7 +410,7 @@ void Usage(char *progname)
    exit(1);
 }
 
-void lock_screen()
+void lock_screen(void)
 {
        /* lock the screen for current decompression */
        if ( SDL_MUSTLOCK(screen) ) 
@@ -412,7 +420,7 @@ void lock_screen()
 	 }
 }
 
-void unlock_update_screen()
+void unlock_update_screen(void)
 {
   /* unlock it again */
   if ( SDL_MUSTLOCK(screen) ) 

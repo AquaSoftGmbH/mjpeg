@@ -112,7 +112,22 @@ static int usecs_per_buff;
 
 /* Forward declarations: */
 
-void do_audio();
+void do_audio(void);
+char *audio_strerror(void);
+void audio_shutdown(void);
+long audio_get_buffer_size(void);
+void audio_start(void);
+void set_timestamp(struct timeval tmstmp);
+void swpcpy(char *dst, char *src, int num);
+int audio_read(char *buf, int size, int swap, struct timeval *tmstmp, int *status);
+void audio_get_output_status(struct timeval *tmstmp, int *nb_out, int *nb_err);
+int audio_write(char *buf, int size, int swap);
+
+
+
+int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
+
+
 typedef void *(*start_routine_p)(void *);
 
 
@@ -133,7 +148,7 @@ static int audio_errno = 0;
 
 static char errstr[4096];
 
-char *audio_strerror()
+char *audio_strerror(void)
 {
    switch(audio_errno)
    {
@@ -349,7 +364,7 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
  *
  */
 
-void audio_shutdown()
+void audio_shutdown(void)
 {
    if(!initialized) return;
 
@@ -365,7 +380,7 @@ void audio_shutdown()
    initialized = 0;
 }
 
-long audio_get_buffer_size()
+long audio_get_buffer_size(void)
 {
    return audio_buffer_size;
 }
@@ -378,7 +393,7 @@ long audio_get_buffer_size()
  *      returns 0 for success, -1 for failure
  */
 
-void audio_start()
+void audio_start(void)
 {
    /* signal the audio task that we want to start */
 
@@ -629,7 +644,7 @@ static void system_error(char *str, int use_strerror)
 
 #ifndef USE_ALSA
 
-void do_audio()
+void do_audio(void)
 {
 
    int fd, tmp, ret, caps, afmt, frag;
