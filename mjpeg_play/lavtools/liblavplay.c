@@ -1034,7 +1034,6 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
             vw.y, vw.height, wts.height);
          return 0;
       }
-      
       if (ioctl(settings->video_fd, VIDIOCSWIN, &vw) < 0)
       {
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
@@ -1923,7 +1922,7 @@ int lavplay_stop(lavplay_t *info)
 
    if (settings->state == LAVPLAY_STATE_STOP)
    {
-      lavplay_msg(LAVPLAY_MSG_WARNING, info,
+      lavplay_msg(LAVPLAY_MSG_DEBUG, info,
          "We weren't even initialized!");
       return 0;
    }

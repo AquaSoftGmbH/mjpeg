@@ -588,7 +588,7 @@ static void output_stats(video_capture_stats *stats)
       sprintf(infostring, "%06d frames captured, press enter for more>", stats->num_frames);
     else
       sprintf(infostring,
-        "%2d.%2.2d.%2.2d:%2.2d int: %05ld lst:%4d ins:%3d del:%3d "
+        "%d.%2.2d.%2.2d:%2.2d int:%03ld lst:%3d ins:%3d del:%3d "
         "ae:%3d td1=%.3f td2=%.3f\r",
         tc.h, tc.m, tc.s, tc.f,
         (stats->cur_sync.tv_usec - stats->prev_sync.tv_usec)/1000, stats->num_lost,
@@ -1096,6 +1096,8 @@ int main(int argc, char **argv)
 
   pthread_cancel(msg_thr);
   pthread_join(msg_thr, NULL);
+
+  fprintf(stderr, "\n");
 
   return 0;
 }

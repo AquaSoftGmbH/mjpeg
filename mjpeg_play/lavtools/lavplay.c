@@ -565,5 +565,7 @@ int main(int argc, char **argv)
    lavplay_busy(info); /* wait for all the nice goodies to shut down */
    lavplay_free(info);
 
+   fprintf(stderr, "\n");
+
    return 0;
 }
