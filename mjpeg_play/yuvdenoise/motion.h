@@ -1,6 +1,6 @@
 
 void
-subsample_frame (uint8_t * dst[3], uint8_t * src[3]);
+subsample_frame (uint8_t * dst[3], uint8_t * src[3], int w, int h);
 
 /* search steps */
 void 
@@ -30,7 +30,10 @@ uint32_t
 calc_SAD_mmxe (uint8_t * frm, uint8_t * ref);
 
 uint32_t
-calc_SAD_uv_mmxe (uint8_t * frm, uint8_t * ref);
+calc_SAD_uv420_mmxe (uint8_t * frm, uint8_t * ref);
+
+uint32_t
+calc_SAD_uv411_mmxe (uint8_t * frm, uint8_t * ref);
 
 uint32_t
 calc_SAD_half_mmxe (uint8_t * ref, uint8_t * frm1, uint8_t * frm2);
@@ -40,7 +43,10 @@ uint32_t
 calc_SAD_mmx (uint8_t * frm, uint8_t * ref);
 
 uint32_t
-calc_SAD_uv_mmx (uint8_t * frm, uint8_t * ref);
+calc_SAD_uv420_mmx (uint8_t * frm, uint8_t * ref);
+
+uint32_t
+calc_SAD_uv411_mmx (uint8_t * frm, uint8_t * ref);
 
 uint32_t
 calc_SAD_half_mmx (uint8_t * ref, uint8_t * frm1, uint8_t * frm2);

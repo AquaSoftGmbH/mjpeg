@@ -23,8 +23,13 @@
 
 #define W  (denoiser.frame.w)
 #define H  (denoiser.frame.h)
-#define W2 (denoiser.frame.w/2)
-#define H2 (denoiser.frame.h/2)
+#define W2 (denoiser.frame.Cw)
+#define H2 (denoiser.frame.Ch)
+#define SS_H (denoiser.frame.ss_h)
+#define SS_V (denoiser.frame.ss_v)
+#define BUF_OFF (32)
+#define BUF_COFF (32/denoiser.frame.ss_v)
+
 
 struct DNSR_GLOBAL
   {
@@ -38,11 +43,16 @@ struct DNSR_GLOBAL
     uint8_t   radius;
 
     /* Copy threshold */
-    uint8_t   threshold;
+    uint8_t   thresholdY;
+    uint8_t   thresholdCb;
+    uint8_t   thresholdCr;
+    uint8_t   chroma_flicker;
     uint8_t   pp_threshold;
     
     /* Time-average-delay */
-    uint8_t   delay;
+    uint8_t   delayY;
+    uint8_t   delayCb;
+    uint8_t   delayCr;
     
     /* Deinterlacer to be turned on? */    
     uint8_t   deinterlace;
@@ -58,6 +68,10 @@ struct DNSR_GLOBAL
     {
       int32_t  w;
       int32_t  h;
+      int32_t  Cw;
+      int32_t  Ch;
+      uint8_t  ss_h;
+      uint8_t  ss_v;
 
       uint8_t *io[3];
       uint8_t *ref[3];

@@ -54,10 +54,14 @@ int main(int argc, char *argv[])
   int fd_out = 1;
   int errno  = 0;
   int frame_offset;
+  int frame_Coffset;
   int uninitialized = 1;
   
   y4m_frame_info_t frameinfo;
   y4m_stream_info_t streaminfo;
+  y4m_xtag_list_t *xtags;
+  const char *tag = NULL;
+  int n;
 
   /* display greeting */
   display_greeting();
@@ -68,9 +72,14 @@ int main(int argc, char *argv[])
   
   /* setup denoiser's global variables */
   denoiser.radius          = 8;
-  denoiser.threshold       = 5; /* assume medium noise material */
+  denoiser.thresholdY      = 5; /* assume medium noise material */
+  denoiser.thresholdCr     = 5;
+  denoiser.thresholdCb     = 5;
+  denoiser.chroma_flicker  = 1;
   denoiser.pp_threshold    = 4; /* same for postprocessing */
-  denoiser.delay           = 3; /* short delay for good regeneration of rapid sequences */
+  denoiser.delayY          = 3; /* short delay for good regeneration of rapid sequences */
+  denoiser.delayCr         = 3;
+  denoiser.delayCb         = 3;
   denoiser.postprocess     = 1;
   denoiser.luma_contrast   = 100;
   denoiser.chroma_contrast = 100;
@@ -91,9 +100,51 @@ int main(int argc, char *argv[])
       mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!", y4m_strerr (errno));
       exit (1);
     }
-  denoiser.frame.w         = y4m_si_get_width(&streaminfo);
-  denoiser.frame.h         = y4m_si_get_height(&streaminfo);
-  frame_offset             = 32*denoiser.frame.w;
+  else
+    {
+      denoiser.frame.w         = y4m_si_get_width(&streaminfo);
+      denoiser.frame.h         = y4m_si_get_height(&streaminfo);
+      /* default chromass is 4:2:0 */
+      denoiser.frame.Cw=denoiser.frame.w/2;
+      denoiser.frame.Ch=denoiser.frame.h/2;
+      denoiser.frame.ss_h=2;
+      denoiser.frame.ss_v=2;
+      /* try to find a chromass xtag... */
+
+      xtags = y4m_si_xtags(&streaminfo);
+      for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
+	{
+	  tag = y4m_xtag_get(xtags, n);
+	  if (!strncmp("XYSCSS=", tag, 7)) break;
+	}
+      if ((tag != NULL) && (n >= 0))
+	{
+	  /* parse the tag */
+	  tag += 7;
+	  if (!strcmp("411", tag))
+	    {
+	      if (denoiser.deinterlace==1)
+		{
+		  mjpeg_error_exit1("Sorry, deinterlacing only currently supported for 4:2:0");
+		}
+	      else
+		{
+		  denoiser.frame.ss_h=4;
+		  denoiser.frame.ss_v=1;
+		}
+	    } 
+	  else if (!strcmp("420", tag))
+	    {
+	      denoiser.frame.ss_h=2;
+	      denoiser.frame.ss_v=2;
+	    } 
+	}
+    }
+
+  denoiser.frame.Cw=denoiser.frame.w/denoiser.frame.ss_h;
+  denoiser.frame.Ch=denoiser.frame.h/denoiser.frame.ss_v;
+  frame_offset             = BUF_OFF*denoiser.frame.w;
+  frame_Coffset            = BUF_COFF*denoiser.frame.Cw;
   if(denoiser.border.w == 0)
   {
       denoiser.border.x        = 0;
@@ -146,28 +197,28 @@ int main(int argc, char *argv[])
     )
     {
       
-      /* Move frame down by 32 lines into reference buffer */
-      memcpy(denoiser.frame.ref[Yy]+frame_offset  ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
-      memcpy(denoiser.frame.ref[Cr]+frame_offset/4,denoiser.frame.io[Cr],denoiser.frame.w*denoiser.frame.h/4);
-      memcpy(denoiser.frame.ref[Cb]+frame_offset/4,denoiser.frame.io[Cb],denoiser.frame.w*denoiser.frame.h/4);
+      /* Move frame down by BUF_OFF lines into reference buffer */
+      memcpy(denoiser.frame.ref[Yy]+frame_offset ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
+      memcpy(denoiser.frame.ref[Cr]+frame_Coffset,denoiser.frame.io[Cr],denoiser.frame.Cw*denoiser.frame.Ch);
+      memcpy(denoiser.frame.ref[Cb]+frame_Coffset,denoiser.frame.io[Cb],denoiser.frame.Cw*denoiser.frame.Ch);
       
       if(uninitialized)
       {
         uninitialized=0;
-        memcpy(denoiser.frame.avg[Yy]+frame_offset  ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
-        memcpy(denoiser.frame.avg[Cr]+frame_offset/4,denoiser.frame.io[Cr],denoiser.frame.w*denoiser.frame.h/4);
-        memcpy(denoiser.frame.avg[Cb]+frame_offset/4,denoiser.frame.io[Cb],denoiser.frame.w*denoiser.frame.h/4);
-        memcpy(denoiser.frame.avg2[Yy]+frame_offset  ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
-        memcpy(denoiser.frame.avg2[Cr]+frame_offset/4,denoiser.frame.io[Cr],denoiser.frame.w*denoiser.frame.h/4);
-        memcpy(denoiser.frame.avg2[Cb]+frame_offset/4,denoiser.frame.io[Cb],denoiser.frame.w*denoiser.frame.h/4);
+        memcpy(denoiser.frame.avg[Yy]+frame_offset ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
+        memcpy(denoiser.frame.avg[Cr]+frame_Coffset,denoiser.frame.io[Cr],denoiser.frame.Cw*denoiser.frame.Ch);
+        memcpy(denoiser.frame.avg[Cb]+frame_Coffset,denoiser.frame.io[Cb],denoiser.frame.Cw*denoiser.frame.Ch);
+        memcpy(denoiser.frame.avg2[Yy]+frame_offset ,denoiser.frame.io[Yy],denoiser.frame.w*denoiser.frame.h  );
+        memcpy(denoiser.frame.avg2[Cr]+frame_Coffset,denoiser.frame.io[Cr],denoiser.frame.Cw*denoiser.frame.Ch);
+        memcpy(denoiser.frame.avg2[Cb]+frame_Coffset,denoiser.frame.io[Cb],denoiser.frame.Cw*denoiser.frame.Ch);
       }
       
       denoise_frame();
       
-      /* Move frame up by 32 lines into I/O buffer */
-      memcpy(denoiser.frame.io[Yy],denoiser.frame.avg2[Yy]+frame_offset  ,denoiser.frame.w*denoiser.frame.h  );
-      memcpy(denoiser.frame.io[Cr],denoiser.frame.avg2[Cr]+frame_offset/4,denoiser.frame.w*denoiser.frame.h/4);
-      memcpy(denoiser.frame.io[Cb],denoiser.frame.avg2[Cb]+frame_offset/4,denoiser.frame.w*denoiser.frame.h/4);
+      /* Move frame up by BUF_OFF lines into I/O buffer */
+      memcpy(denoiser.frame.io[Yy],denoiser.frame.avg2[Yy]+frame_offset ,denoiser.frame.w*denoiser.frame.h );
+      memcpy(denoiser.frame.io[Cr],denoiser.frame.avg2[Cr]+frame_Coffset,denoiser.frame.Cw*denoiser.frame.Ch);
+      memcpy(denoiser.frame.io[Cb],denoiser.frame.avg2[Cb]+frame_Coffset,denoiser.frame.Cw*denoiser.frame.Ch);
 
       y4m_write_frame ( fd_out, 
                         &streaminfo, 
@@ -202,15 +253,15 @@ static uint8_t *bufalloc(size_t size)
 void allc_buffers(void)
 {
   int luma_buffsize = denoiser.frame.w * denoiser.frame.h;
-  int chroma_buffsize = (denoiser.frame.w * denoiser.frame.h) / 4;
-  
+  int chroma_buffsize = denoiser.frame.Cw * denoiser.frame.Ch;
+ 
   /* now, the MC-functions really(!) do go beyond the vertical
    * frame limits so we need to make the buffers larger to avoid
    * bound-checking (memory vs. speed...)
    */
   
-  luma_buffsize += 64*denoiser.frame.w;
-  chroma_buffsize += 64*denoiser.frame.w;
+  luma_buffsize += 2*BUF_OFF*denoiser.frame.w;
+  chroma_buffsize += 2*BUF_COFF*denoiser.frame.Cw;
   
   denoiser.frame.io[0] = bufalloc (luma_buffsize);
   denoiser.frame.io[1] = bufalloc (chroma_buffsize);
@@ -301,7 +352,7 @@ process_commandline(int argc, char *argv[])
   char c;
   int i1,i2,i3,i4;
 
-  while ((c = getopt (argc, argv, "h?t:b:r:l:S:L:C:p:Ff")) != -1)
+  while ((c = getopt (argc, argv, "h?t:u:v:b:r:l:m:n:c:S:L:C:p:Ff")) != -1)
   {
     switch (c)
     {
@@ -346,7 +397,19 @@ process_commandline(int argc, char *argv[])
       }
       case 't':
       {
-        denoiser.threshold = atoi(optarg);
+        denoiser.thresholdY = atoi(optarg);
+	denoiser.thresholdCr = denoiser.thresholdY;
+	denoiser.thresholdCb = denoiser.thresholdY;
+        break;
+      }
+      case 'u':
+      {
+        denoiser.thresholdCr = atoi(optarg);
+        break;
+      }
+      case 'v':
+      {
+        denoiser.thresholdCb = atoi(optarg);
         break;
       }
       case 'p':
@@ -381,16 +444,36 @@ process_commandline(int argc, char *argv[])
       }
       case 'l':
       {
-        denoiser.delay = atoi(optarg);
-        if(denoiser.delay<1)
-        {
-          denoiser.delay=1;
-  	      mjpeg_log (LOG_WARN, "Minimum allowed frame delay is 1.");
-        }
-        if(denoiser.delay>8)
+        denoiser.delayY = atoi(optarg);
+        if(denoiser.delayY>8)
         {
   	      mjpeg_log (LOG_WARN, "Maximum suggested frame delay is 8.");
         }
+	denoiser.delayCr =denoiser.delayY; 
+	denoiser.delayCb =denoiser.delayY; 
+        break;
+      }
+      case 'm':
+      {
+        denoiser.delayCr = atoi(optarg);
+        if(denoiser.delayCr>8)
+        {
+  	      mjpeg_log (LOG_WARN, "Maximum suggested frame delay is 8.");
+        }
+        break;
+      }
+      case 'n':
+      {
+        denoiser.delayCb = atoi(optarg);
+        if(denoiser.delayCb>8)
+        {
+  	      mjpeg_log (LOG_WARN, "Maximum suggested frame delay is 8.");
+        }
+        break;
+      }
+      case 'c':
+      {
+        denoiser.chroma_flicker = atoi(optarg);
         break;
       }
     }
@@ -409,10 +492,16 @@ void print_settings(void)
     (denoiser.mode==0)? "Progressive frames" : (denoiser.mode==1)? "Interlaced frames": "PASS II only");
   mjpeg_log (LOG_INFO, " Deinterlacer     : %s",(denoiser.deinterlace==0)? "Off":"On");
   mjpeg_log (LOG_INFO, " Postprocessing   : %s",(denoiser.postprocess==0)? "Off":"On");
+  mjpeg_log (LOG_INFO, " Y frame size     : w:%3i h:%3i",denoiser.frame.w,denoiser.frame.h);
+  mjpeg_log (LOG_INFO, " CbCr frame size  : w:%3i h:%3i",denoiser.frame.Cw,denoiser.frame.Ch);
   mjpeg_log (LOG_INFO, " Frame border     : x:%3i y:%3i w:%3i h:%3i",denoiser.border.x,denoiser.border.y,denoiser.border.w,denoiser.border.h);
   mjpeg_log (LOG_INFO, " Search radius    : %3i",denoiser.radius);
-  mjpeg_log (LOG_INFO, " Filter delay     : %3i",denoiser.delay);
-  mjpeg_log (LOG_INFO, " Filter threshold : %3i",denoiser.threshold);
+  mjpeg_log (LOG_INFO, " Y  Filter delay     : %3i",denoiser.delayY);
+  mjpeg_log (LOG_INFO, " Cr Filter delay     : %3i",denoiser.delayCr);
+  mjpeg_log (LOG_INFO, " Cb Filter delay     : %3i",denoiser.delayCb);
+  mjpeg_log (LOG_INFO, " Y  Filter threshold : %3i",denoiser.thresholdY);
+  mjpeg_log (LOG_INFO, " Cr Filter threshold : %3i",denoiser.thresholdCr);
+  mjpeg_log (LOG_INFO, " Cb Filter threshold : %3i",denoiser.thresholdCb);
   mjpeg_log (LOG_INFO, " Pass 2 threshold : %3i",denoiser.pp_threshold);
   mjpeg_log (LOG_INFO, " Y - contrast     : %3i %%",denoiser.luma_contrast);
   mjpeg_log (LOG_INFO, " Cr/Cb - contrast : %3i %%",denoiser.chroma_contrast);
@@ -431,19 +520,35 @@ void turn_on_accels(void)
     ) /* MMX+SSE */
   {
     calc_SAD    = &calc_SAD_mmxe;
-    calc_SAD_uv = &calc_SAD_uv_mmxe;
+    if (denoiser.frame.Cw==denoiser.frame.w/4 && denoiser.frame.Ch==denoiser.frame.h)
+      {
+	mjpeg_log (LOG_INFO, "Using 4:1:1 extended MMX SIMD optimisations.");
+	calc_SAD_uv = &calc_SAD_uv411_mmxe;
+      }
+    else
+      {
+	mjpeg_log (LOG_INFO, "Using 4:2:0 extended MMX SIMD optimisations.");
+	calc_SAD_uv = &calc_SAD_uv420_mmxe;
+      }
     calc_SAD_half = &calc_SAD_half_mmxe;
     deinterlace = &deinterlace_mmx;
-    mjpeg_log (LOG_INFO, "Using extended MMX SIMD optimisations.");
   }
   else
     if( (CPU_CAP & ACCEL_X86_MMX)!=0 ) /* MMX */
     {
       calc_SAD    = &calc_SAD_mmx;
-      calc_SAD_uv = &calc_SAD_uv_mmx;
+      if (denoiser.frame.Cw==denoiser.frame.w/4 && denoiser.frame.Ch==denoiser.frame.h)
+	{
+	  mjpeg_log (LOG_INFO, "Using 4:1:1 MMX SIMD optimisations.");
+	  calc_SAD_uv = &calc_SAD_uv411_mmx;
+	}
+      else
+	{
+	  mjpeg_log (LOG_INFO, "Using 4:2:0 MMX SIMD optimisations.");
+	  calc_SAD_uv = &calc_SAD_uv420_mmx;
+	}
       calc_SAD_half = &calc_SAD_half_mmx;
       deinterlace = &deinterlace_mmx;
-      mjpeg_log (LOG_INFO, "Using MMX SIMD optimisations.");
     }
     else
 #endif
@@ -465,19 +570,34 @@ display_help(void)
   "Y4M2 - Denoiser Usage:\n"
   "===========================================================================\n"
   "\n"
-  "-t <0...255>       Denoiser threshold\n"
+  "-t <0...255>       Y Denoiser threshold\n"
   "                   accept any image-error up to +/- threshold for a single\n"
   "                   pixel to be accepted as valid for the image. If the\n"
   "                   absolute error is greater than this, exchange the pixel\n"
   "                   with the according pixel of the reference image.\n"
   "                   (default=%i)"
   "\n"
-  "-l <1...255>       Average 'n' frames for a time-lowpassed pixel. Values\n"
+  "-u <0...255>       Cr Denoiser threshold\n"
+  "                   (default=%i)"
+  "\n"
+  "-v <0...255>       Cb Denoiser threshold\n"
+  "                   (default=%i)"
+  "\n"
+  "-c <0|1>           Chroma-flicker reduction\n"
+  "                   (default=%i)"
+  "\n"
+  "-l <0...255>       Average 'n' Y frames for a time-lowpassed pixel. Values\n"
   "                   below 2 will lead to a good response to the reference\n"
   "                   frame, while larger values will cut out more noise (and\n"
   "                   as a drawback will lead to noticable artefacts on high\n"
   "                   motion scenes.) Values above 8 are allowed but rather\n"
   "                   useless. (default=%i)\n"
+  "\n"
+  "-m <0...255>       Average 'n' Cr frames for a time-lowpassed pixel.\n"
+  "                   (default=%i)\n"
+  "\n"
+  "-n <0...255>       Average 'n' Cb frames for a time-lowpassed pixel.\n"
+  "                   (default=%i)\n"
   "\n"
   "-r <8...24>        Limit the search radius to that value. Usually it will\n"
   "                   not make sense to go higher than 16. Esp. for VCD sizes.\n"
@@ -504,8 +624,13 @@ display_help(void)
   "-p <0...255>       Pass II threshold (same as -t).\n"
   "                   WARNING: If set to values greater than 8 you *will* see\n"
   "                   artefacts...(default=%i)\n\n",
-  denoiser.threshold,
-  denoiser.delay,
+  denoiser.thresholdY,
+  denoiser.thresholdCr,
+  denoiser.thresholdCb,
+  denoiser.chroma_flicker,
+  denoiser.delayY,
+  denoiser.delayCr,
+  denoiser.delayCb,
   denoiser.radius,
   denoiser.border.x,
   denoiser.border.y,
