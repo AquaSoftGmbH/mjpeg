@@ -38,6 +38,10 @@
 
 #define DEFAULT_CHROMA_MODE Y4M_CHROMA_444
 
+#define IQ_MODE_IQ20    0  /* 20 percent -I,+Q                         */
+#define IQ_MODE_IQ50    1  /* 50 percent -I,+Q                         */
+#define IQ_MODE_CBCR100 2  /* 100 percent -Cb,+Cr  (original behavior) */
+
 
 typedef struct _cl_info {
   y4m_ratio_t aspect;
@@ -48,6 +52,7 @@ typedef struct _cl_info {
   int width;
   int height;
   int verbosity;
+  int iq_mode;
 } cl_info_t;
 
 
@@ -58,7 +63,7 @@ void usage(const char *progname)
   fprintf(stdout, "usage: %s [options]\n", progname);
   fprintf(stdout, "\n");
   fprintf(stdout, "Creates a YUV4MPEG2 stream consisting of frames containing a standard\n");
-  fprintf(stdout, " colorbar test pattern.\n");
+  fprintf(stdout, " colorbar test pattern (SMPTE, 75%%).\n");
   fprintf(stdout, "\n");
   fprintf(stdout, "Options:  (defaults specified in [])\n");
   fprintf(stdout, "\n");
@@ -72,6 +77,10 @@ void usage(const char *progname)
   fprintf(stdout, "             p = none/progressive\n");
   fprintf(stdout, "             t = top-field-first\n");
   fprintf(stdout, "             b = bottom-field-first\n");
+  fprintf(stdout, "  -Q n     content of -I/Q areas:  [0]\n");
+  fprintf(stdout, "             0 = 20%% -I,+Q\n");
+  fprintf(stdout, "             1 = 50%% -I,+Q\n");
+  fprintf(stdout, "             2 = 100%% +Cb,+Cr\n");
   fprintf(stdout, "\n");
   {
     int m;
@@ -105,8 +114,9 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
   cl->height = 480;
   cl->aspect = y4m_sar_NTSC_CCIR601;
   cl->verbosity = 1;
+  cl->iq_mode = IQ_MODE_IQ20;
 
-  while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:v:h")) != -1) {
+  while ((c = getopt(argc, argv, "A:F:I:W:H:n:S:Q:v:h")) != -1) {
     switch (c) {
     case 'W':
       if ((cl->width = atoi(optarg)) <= 0) {
@@ -156,6 +166,16 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 	goto ERROR_EXIT;
       } else if (!chroma_sub_implemented(cl->ss_mode)) {
 	mjpeg_error("Unsupported subsampling mode option:  %s", optarg);
+	goto ERROR_EXIT;
+      }
+      break;
+    case 'Q':
+      switch (atoi(optarg)) {
+      case 0:  cl->iq_mode = IQ_MODE_IQ20;     break;
+      case 1:  cl->iq_mode = IQ_MODE_IQ50;     break;
+      case 2:  cl->iq_mode = IQ_MODE_CBCR100;  break;
+      default:
+	mjpeg_error("Unknown -I/+Q mode:  %d", atoi(optarg));
 	goto ERROR_EXIT;
       }
       break;
@@ -246,8 +266,95 @@ static uint8_t *wobnair[3] = {
 };
 
 
+/* The ancient Y'IQ
+ * 
+ * Classic colorbars have -I and +Q in the PLUGE section.
+ *
+ * Following Poynton, "Digital Video and HDTV", p367:
+ *
+ *    -I = (-0.955987, +0.272013, +1.106740) R'G'B'
+ *    +Q = (+0.620825, -0.647204, +1.704231) R'G'B'
+ *
+ * Converting to Y'PbPr and Y'CbCr:
+ *
+ *    -I = (0, 0.624571 -0.681873) -> (16, 268, -25)
+ *    +Q = (0, 0.961755  0.442815) -> (16, 343, 227)
+ *
+ * Uh, oh:  these are outside of the Y'CbCr gamut.
+ * We can get around this, kind of, by reducing the magnitude until they
+ *  fit, keeping the phase the same.  Q is the worst offender, and a factor
+ *  of 0.5 does the trick:
+ *
+ *   (0.5)*(-I) = (0 0.312286 -0.340937) -> (16, 198, 52)
+ *   (0.5)*(+Q) = (0 0.480878  0.221407) -> (16, 236, 178)
+ * 
+ *   (0.2)*(-I) = (0 0.124914 -0.136375) -> (16 156  97)
+ *   (0.2)*(+Q) = (0 0.192351  0.088563) -> (16 171 148)
+
+10, 9E, 5F   16, 158, 95    
+10, AE, 95   16, 174, 149
+
+i  244 612 395  61 153 99
+q  141 697 606  35 174 151
+
+-4  29 512 512   7.25 128 128
++4  99 512 512  24.75 128 128
+
+
+AD-723:  burst ampl: 185-250-315 mV
+Bt860:       285.7 mV --> 40 IRE         (per RS-170A -- 40 IRE top-bottom?)
+
+Maxim app notes:   NTSC: 286mV peak-to-peak
+                    PAL: 300mV peak-to-peak
+
+ *
+ */
+static uint8_t negI_50percent[] = { 16, 198,  52 };
+static uint8_t posQ_50percent[] = { 16, 236, 178 };
+
+static uint8_t negI_20percent[] = { 16, 156,  97 };
+static uint8_t posQ_20percent[] = { 16, 171, 148 };
+
+/* static uint8_t negCb_100percent[] = { 16,  16, 128 }; */
+static uint8_t posCb_100percent[] = { 16, 240, 128 };
+
+/* static uint8_t negCr_100percent[] = { 16, 128,  16 }; */
+static uint8_t posCr_100percent[] = { 16, 128, 240 };
+
+
+/* PLUGE  (SMPTE EG-1-1990)
+ *
+ * This part of the signal can never be truly synthesized in Y'CbCr space,
+ * because it is fundamentally tied to the analog signal specification.
+ *
+ * The two main components are a (Black - 4 IRE) and (Black + 4 IRE).
+ * Simple enough, except that the relation between "IRE" and Y' units depends
+ *  on the specific analog output format, which sets the black-white range:
+ *
+ *                    Y':  16-235       -> excursion of 219
+ *    NTSC with 0% setup:  0-100 IRE    -> excursion of 100 IRE
+ *  NTSC with 7.5% setup:  7.5-100 IRE  -> excursion of 92.5 IRE
+ *
+ * It's the analog output stage (e.g. graphics card, decoder chip) that
+ *  converts the Y'CbCr digital values to an analog voltage appropriate
+ *  for whatever analog equipment comes next.
+ * To perfectly synthesize a 4-IRE signal in a 0% setup system, we'd
+ *  want 8.76 "Y' units".  For a 7.5% setup system, we'd want 9.47.
+ *  Lucky for us, we're not allowed to use fractions anyway, so we
+ *  just split the difference and settle for "9".
+ * 
+ */
+static uint8_t neg4IRE[] = { (16 - 9), 128, 128 };
+static uint8_t pos4IRE[] = { (16 + 9), 128, 128 };
+
+static uint8_t black[] = {  16, 128, 128 };
+static uint8_t white[] = { 235, 128, 128 };
+
+
+
+
 static
-void create_bars(uint8_t *ycbcr[], int width, int height)
+void create_bars(uint8_t *ycbcr[], int width, int height, int iq_mode)
 {
   int i, x, y, w;
   int bnb_start;
@@ -262,8 +369,27 @@ void create_bars(uint8_t *ycbcr[], int width, int height)
   uint8_t *Cb = ycbcr[1];
   uint8_t *Cr = ycbcr[2];
 
+  uint8_t *i_pixel;
+  uint8_t *q_pixel;
+
   convert_RGB_to_YCbCr(rainbow, 7);
   convert_RGB_to_YCbCr(wobnair, 7);
+
+  switch (iq_mode) {
+  case IQ_MODE_CBCR100:
+    i_pixel = posCb_100percent;
+    q_pixel = posCr_100percent;
+    break;
+  case IQ_MODE_IQ50:
+    i_pixel = negI_50percent;
+    q_pixel = posQ_50percent;
+    break;
+  case IQ_MODE_IQ20:
+  default:
+    i_pixel = negI_20percent;
+    q_pixel = posQ_20percent;
+    break;
+  }
 
   bnb_start = height * 2 / 3;
   pluge_start = height * 3 / 4;
@@ -308,51 +434,51 @@ void create_bars(uint8_t *ycbcr[], int width, int height)
 
   /* Bottom:  PLUGE */
   pl_width = 5 * stripe_width / 4;
-  /* -I -- well, we use -Cb here */
+  /* -I patch */
   for (x = 0; x < pl_width; x++) {
-    lineY[x] =    0;
-    lineCb[x] =  16;
-    lineCr[x] = 128;
+    lineY[x] = i_pixel[0];
+    lineCb[x] = i_pixel[1];
+    lineCr[x] = i_pixel[2];
   }
   /* white */
   for (; x < (2 * pl_width); x++) {
-    lineY[x] =  235;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  white[0];
+    lineCb[x] = white[1];
+    lineCr[x] = white[2];
   }
-  /* +Q -- well, we use +Cr here */
+  /* +Q patch */
   for (; x < (3 * pl_width); x++) {
-    lineY[x] =    0;
-    lineCb[x] = 128;
-    lineCr[x] = 240;
+    lineY[x] = q_pixel[0];
+    lineCb[x] = q_pixel[1];
+    lineCr[x] = q_pixel[2];
   }
   /* black */
   for (; x < (5 * stripe_width); x++) {
-    lineY[x] =   16;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  black[0];
+    lineCb[x] = black[1];
+    lineCr[x] = black[2];
   }
-  /* black - 8 (3.75IRE) | black | black + 8  */
+  /* (black - 4IRE) | black | (black + 4IRE)  */
   for (; x < (5 * stripe_width) + (stripe_width / 3); x++) {
-    lineY[x] =    8;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  neg4IRE[0];
+    lineCb[x] = neg4IRE[1];
+    lineCr[x] = neg4IRE[2];
   }
   for (; x < (5 * stripe_width) + (2 * (stripe_width / 3)); x++) {
-    lineY[x] =    16;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  black[0];
+    lineCb[x] = black[1];
+    lineCr[x] = black[2];
   }
   for (; x < (6 * stripe_width); x++) {
-    lineY[x] =   24;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  pos4IRE[0];
+    lineCb[x] = pos4IRE[1];
+    lineCr[x] = pos4IRE[2];
   }
   /* black */
   for (; x < width; x++) {
-    lineY[x] =   16;
-    lineCb[x] = 128;
-    lineCr[x] = 128;
+    lineY[x] =  black[0];
+    lineCb[x] = black[1];
+    lineCr[x] = black[2];
   }
   for (; y < height; y++) {
     memcpy(Y, lineY, width);
@@ -401,7 +527,7 @@ int main(int argc, char **argv)
   /* Create the colorbars frame */
   for (i = 0; i < 3; i++)
     planes[i] = malloc(cl.width * cl.height * sizeof(planes[i][0]));
-  create_bars(planes, cl.width, cl.height);
+  create_bars(planes, cl.width, cl.height, cl.iq_mode);
   chroma_subsample(cl.ss_mode, planes, cl.width, cl.height);
 
   /* We're on the air! */
