@@ -380,7 +380,7 @@ merging:
 				diff = 0;
 			value = *i_ptr + (uv_amount * diff);
 /*
- * For video the limits are 16 and 235 for the chroma rather than 0 and 255!
+ * For video the limits are 16 and 240 for the chroma rather than 0 and 255!
 */
 			if	(value < lowuv)
 				value = lowuv;
@@ -398,12 +398,12 @@ merging:
 				diff = 0;
 			value = *i_ptr + (uv_amount * diff);
 /*
- * For video the limits are 16 and 235 for the chroma rather than 0 and 255!
+ * For video the limits are 16 and 240 for the chroma rather than 0 and 255!
 */
 			if	(value < 16)
 				value = 16;
-			else if	(value > 235)
-				value = 235;
+			else if	(value > highuv)
+				value = highuv;
 			*o_ptr = value;
 			}
 		}
