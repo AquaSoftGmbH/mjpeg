@@ -496,7 +496,7 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
   YfTask_t *h = (YfTask_t *)handle;
   int framebytes = FRAMEBYTES(h->_.width, h->_.height);
   int iadjust = ((h->_.fpscode == h->fpscode0)? 1:
-		 ((h->iuse * fp1001s[h->_.fpscode] /
+                (((int64_t)h->iuse * fp1001s[h->_.fpscode] /
 		   fp1001s[h->fpscode0]) - h->iput));
 
   /* copy frame to buffer */
