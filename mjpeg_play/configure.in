@@ -45,7 +45,7 @@ AC_ARG_WITH(dv-yv12,
 AC_ARG_ENABLE(large-file,
   [  --disable-large-file,             disable large file support (>2GB)])
 AC_ARG_ENABLE(zalpha,
-  [  --enable-zalpha,                  include MPEG Z/Alpha support in mplex])
+  [  --enable-zalpha,                  include MPEG Z/Alpha support in mplex (www.geofront.se/products_software_mza.php)])
 
 dnl Checks for programs.
 AC_GNU_SOURCE
