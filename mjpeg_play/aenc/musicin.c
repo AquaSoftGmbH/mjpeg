@@ -165,7 +165,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
 
     brt = 0;
 
-    while( (n=getopt(argc,argv,"b:o:r:smv")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:r:smvV:")) != EOF)
     {
         switch(n) {
 
@@ -192,6 +192,10 @@ char            encoded_file_name[MAX_NAME_SIZE];
             case 'v':
                video_cd = 1;
                break;
+
+	    case 'V':
+		verbose = atoi(optarg);
+		break;
 
             case '?':
                Usage(argv[0]);

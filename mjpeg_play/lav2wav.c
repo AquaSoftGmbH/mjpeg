@@ -25,6 +25,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include "lav_io.h"
@@ -147,8 +148,11 @@ EditList el;
 
 void Usage(char *str)
 {
-  printf("Usage: %s inputfiles\n",str);
-  exit(0);
+   fprintf(stderr, "Usage: %s [options] inputfiles\n",str);
+   fprintf(stderr, "where options are:\n");
+   fprintf(stderr, "-v num        verbose level\n");
+ 
+   exit(0);
 }
 
 static short audio_buff[256*1024]; /* Enough for 1fps, 48kHz ... */
@@ -162,9 +166,13 @@ char    **argv;
 	int res;
 	int warned = 0;
 
-    while( (n=getopt(argc,argv,"b:")) != EOF)
+    while( (n=getopt(argc,argv,"v:b:")) != EOF)
     {
         switch(n) {
+
+	   case 'v':
+		verbose = atoi(optarg);
+		break;
 
             case '?':
                Usage(argv[0]);
