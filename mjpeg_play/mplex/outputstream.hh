@@ -55,10 +55,10 @@ public:
 	Sys_header_struc 	sys_header;
 	
 	/* Output stream... */
-	unsigned long long bytes_output;
+	bitcount_t bytes_output;
 	clockticks current_SCR;
-	clockticks SCR_audio_delay;
-	clockticks SCR_video_delay;
+	clockticks audio_delay;
+	clockticks video_delay;
 	PS_Stream *psstrm;
 
 
@@ -68,14 +68,18 @@ private:
 			   char *multi_file );
 	
 	void ByteposTimecode( bitcount_t bytepos, clockticks &ts );
-	void OutputStream::OutputPrefix( clockticks &current_SCR, 
-									 VideoStream &vstrm,
-									 AudioStream &astrm);
-	void OutputSuffix(clockticks &SCR, 
-					  unsigned long long  *bytes_output);
+
+	void NextPosAndSCR();
+	void SetPosAndSCR( bitcount_t bytepos );
+
+	void OutputPrefix( VideoStream &vstrm,
+						AudioStream &astrm);
+
+	void OutputSuffix();
 
 	void NextVideoAU( unsigned int bytes_muxed,
 					  VideoStream  &vstrm );
+
 	void OutputVideo ( VideoStream &vstrm,
 					   bool marker_pack,
 					   bool include_sys_header
@@ -96,6 +100,7 @@ private:
 						 bool pseudo_VBR,
 						 int packet_data_limit
 		);
+
 	
 };
 

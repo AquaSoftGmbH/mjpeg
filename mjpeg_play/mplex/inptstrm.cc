@@ -1,3 +1,4 @@
+
 #include "main.hh"
 
 #include <math.h>
@@ -124,7 +125,8 @@ void check_files (int argc,
 				  char* *video_file
 	)
 {
-    IBitStream bs1, bs2, undo;
+    IBitStream bs1, bs2;
+    BitStreamUndo undo;
 	
 	/* As yet no streams determined... */
     if (argc == 2) {
@@ -234,7 +236,9 @@ void VideoStream::Init (const char *video_file )
 	
     mjpeg_info( "Scanning Video stream %d for access units information.\n",
 				 stream_id-VIDEO_STR_0);
+	InitAUbuffer();
 
+	
 	InputStream::Init( video_file );
     if (bs.getbits( 32)==SEQUENCE_HEADER)
     {
@@ -562,6 +566,8 @@ void AudioStream::Init (char *audio_file)
 	int padding_bit;
 
     mjpeg_info ("Scanning Audio stream for access units information. \n");
+
+	InitAUbuffer();
 	InputStream::Init( audio_file );
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5

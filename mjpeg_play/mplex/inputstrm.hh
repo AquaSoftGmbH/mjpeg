@@ -28,6 +28,7 @@ public:
 class BufferModel
 {
 public:
+	BufferModel() : max_size(0),first(0) {}
 void init( unsigned int size);
 
 void cleaned(  clockticks timenow);
@@ -97,6 +98,7 @@ public:
 		}
 
 	void SetMuxParams( unsigned int buf_size );
+	void SetSyncOffset( clockticks timestamp_delay );
 	unsigned int BufferSizeCode();
 
 	virtual unsigned int ReadStrm(uint8_t *dst, unsigned int to_read) = 0;
@@ -111,31 +113,33 @@ public:  // TODO should go protected once encapsulation complete
 	unsigned int 	buffer_size;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
+	clockticks timestamp_delay;
 	bool       init;
 };
 
 
-template <class T, const int frame_chunk>
 class ElementaryStream : public InputStream,
 						 public MuxStream
 {
 protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
+	virtual void InitAUbuffer() = 0;
 
-	AUStream<T> aunits;
-    static const int FRAME_CHUNK = frame_chunk;
+	AUStream aunits;
+    static const int FRAME_CHUNK = 4;
 public:
 	ElementaryStream( const int stream_id,
 					  const int buf_scale ) : 
 		MuxStream( stream_id, buf_scale )
-		{}
+		{
+		}
 
 	bool NextAU()
 		{
-			T *p_au = next();
+			Aunit *p_au = next();
 			if( p_au != NULL )
 			{
-				au = *p_au;
+				au = p_au;
 				au_unsent = p_au->length;
 				return true;
 			}
@@ -147,22 +151,7 @@ public:
 		}
 
 
-	int NextAUType()
-		{
-			T *p_au = Lookahead(1);
-			if( p_au != NULL )
-				return p_au->type;
-			else
-				return NOFRAME;
-		}
-
-	bool SeqHdrNext()
-		{
-			T *p_au = Lookahead(1);
-			return p_au != NULL && p_au->seq_header;
-		}
-
-	T *Lookahead( unsigned int i )
+	Aunit *Lookahead( unsigned int i )
 		{
 			assert( i < FRAME_CHUNK-1 );
 			return aunits.lookahead(i);
@@ -188,18 +177,13 @@ public:  // TODO should go protected once encapsulation complete
 	     // N.b. currently length=0 is used to indicate an ended
 	     // stream.
 	     // au itself should simply disappear
-	T au;
+	Aunit *au;
 	unsigned int au_unsent;
 private:
-	T *next()
+	Aunit *next()
 		{
-			if( !eoscan && aunits.curpos()+FRAME_CHUNK > last_buffered_AU  )
+			if( !eoscan && aunits.current()+FRAME_CHUNK > last_buffered_AU  )
 			{
-				if( aunits.curpos() > FRAME_CHUNK )
-				{
-					T *p_au = aunits.lookahead(0);
-					aunits.flush(FRAME_CHUNK);
-				}
 				FillAUbuffer(FRAME_CHUNK);
 			}
 			
@@ -209,11 +193,11 @@ private:
 };
 
 
-class VideoStream : public ElementaryStream<VAunit, 4>
+class VideoStream : public ElementaryStream
 {
 public:
 	VideoStream(const int stream_num) :
-		ElementaryStream<VAunit, 4>(VIDEO_STR_0+stream_num,1),
+		ElementaryStream(VIDEO_STR_0+stream_num,1),
 		num_sequence(0),
 		num_seq_end(0),
 		num_pictures(0),
@@ -226,11 +210,38 @@ public:
 	void Init(const char *input_file);
 	void Close();
 
+	inline int AUType()
+		{
+			return au->type;
+		}
+
+	inline bool EndSeq()
+		{
+			return au->end_seq;
+		}
+
+	int NextAUType()
+		{
+			VAunit *p_au = Lookahead(1);
+			if( p_au != NULL )
+				return p_au->type;
+			else
+				return NOFRAME;
+		}
+
+	bool SeqHdrNext()
+		{
+			VAunit *p_au = Lookahead(1);
+			return p_au != NULL && p_au->seq_header;
+		}
+
+
 	unsigned int NominalBitRate() { return bit_rate * 50; }
 
 private:
 	void OutputSeqhdrInfo();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+	virtual void InitAUbuffer();
 
 public:	
     unsigned int num_sequence 	;
@@ -276,11 +287,11 @@ public:							// TODO make private once encapsulation comple
 	int next_sec_AU_type;
 }; 		
 
-class AudioStream : public ElementaryStream<AAunit, 4>
+class AudioStream : public ElementaryStream
 {
 public:   
 	AudioStream(const int stream_num) : 
-		ElementaryStream<AAunit, 4>( AUDIO_STR_0 + stream_num, 0),
+		ElementaryStream( AUDIO_STR_0 + stream_num, 0),
 		num_syncword(0)
 		{
 			for( int i = 0; i <2 ; ++i )
@@ -311,6 +322,7 @@ private:
 	void OutputHdrInfo();
 	unsigned int SizeFrame( int bit_rate, int padding_bit );
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+	virtual void InitAUbuffer();
 
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;

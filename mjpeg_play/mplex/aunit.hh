@@ -11,26 +11,24 @@ typedef uint64_t clockticks;
 class Aunit
 {
 public:
-	inline Aunit() : length(0), PTS(0), DTS(0) {}
-	inline void markempty() { length = 0; }
+	Aunit() : length(0), PTS(0), DTS(0) {}
+	void markempty() { length = 0; }
 	bitcount_t start;
 	unsigned int length;
     clockticks PTS;
-    clockticks DTS;
     int        dorder;
-};
-
-class VAunit : public Aunit
-{
-public:
-    unsigned int type;
+	// Used only for video AU's but otherwise
+	// you have to go crazy on templates.
+    clockticks DTS;
     int		   porder;
+    unsigned int type;
 	bool	   seq_header;
 	bool	   end_seq;
+
 };
 
-class AAunit : public Aunit
-{
-};
+typedef Aunit VAunit;
+
+typedef Aunit AAunit;
 
 #endif // __AUNIT_H__

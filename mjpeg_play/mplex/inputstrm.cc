@@ -4,6 +4,7 @@
  *
  ***********************/
 
+#include <config.h>
 #include <assert.h>
 #include "inputstrm.hh"
 
@@ -14,6 +15,11 @@ void MuxStream::SetMuxParams( unsigned int buf_size )
 	init = true;
 }
 
+
+void MuxStream::SetSyncOffset( clockticks sync_offset )
+{
+	timestamp_delay = sync_offset;
+}
 
 unsigned int MuxStream::BufferSizeCode()
 {
@@ -26,6 +32,22 @@ unsigned int MuxStream::BufferSizeCode()
 		assert(false);
 }
 
+
+void VideoStream::InitAUbuffer()
+{
+	int i;
+	mjpeg_info( "aunits.cur_wr = %d\n", aunits.cur_wr );
+	for( i = 0; i < aunits.BUF_SIZE; ++i )
+		aunits.init( new VAunit );
+}
+
+
+void AudioStream::InitAUbuffer()
+{
+	int i;
+	for( i = 0; i < aunits.BUF_SIZE; ++i )
+		aunits.init( new AAunit );
+}
 
 //
 // Generator for padding packets in a padding stream...

@@ -8,11 +8,9 @@
 
 typedef uint64_t bitcount_t;
 
-class BitStream 
+class BitStreamUndo
 {
-public:
-	FILE *fileh;
-//protected:	
+protected:
 	uint8_t outbyte;
 	unsigned int byteidx;
 	int bitidx;
@@ -20,18 +18,22 @@ public:
 	fpos_t actpos;
 	bitcount_t totbits;
 	bitcount_t buffer_start;
-	bool eobs;
 	// TODO THis should be replaced with something based on bit-rate...
-	static const unsigned int BUFFER_SIZE=4*1024*1024;
-	uint8_t *bfr;
 	bitcount_t readpos;
-
+	uint8_t *bfr;
 public:
-	BitStream() : fileh(0), totbits(0LL), buffer_start(0LL),
-				  eobs(true), readpos(0LL)
-		{
-			bfr = new uint8_t[BUFFER_SIZE];
-		}
+	bool eobs;
+
+};
+
+class BitStream : public BitStreamUndo
+{
+public:
+	FILE *fileh;
+	const static int BUFFER_SIZE = 4*1024*1024;
+public:
+	BitStream();
+	~BitStream();
 	inline bitcount_t bitcount() { return totbits; }
 	inline bool eos() { return eobs; }
 };
@@ -50,8 +52,8 @@ public:
 	void close();
 	uint32_t get1bit();
 	uint32_t getbits(int N);
-	void prepareundo(BitStream &undobuf);
-	void undochanges(BitStream &undobuf);
+	void prepareundo(BitStreamUndo &undobuf);
+	void undochanges(BitStreamUndo &undobuf);
 	bool seek_sync( unsigned int sync, int N, int lim);
 	void flush( bitcount_t bitposition );
 	unsigned int read_buffered_bytes( uint8_t *dst,

@@ -3,56 +3,63 @@
 
 #include <config.h>
 #include <deque>
+#include "mjpeg_logging.h"
 #include "aunit.hh"
 
-template <class T>
 class AUStream
 {
 public:
-	AUStream() : cur( 0 ), totalctr(0) {}
+	AUStream();
 
-	inline void append( T &rec )
+	void init( Aunit *rec );
+
+	void append( Aunit &rec )
 	{
-		buf.push_back( rec );
+		if( size == BUF_SIZE )
+			mjpeg_error_exit1( "INTERNAL ERROR: AU buffer overflow\n" );
+		*buf[cur_wr] = rec;
+		++size;
+		++cur_wr;
+		cur_wr = cur_wr >= BUF_SIZE ? 0 : cur_wr;
 	}
 
-	inline T *next( ) 
+	inline Aunit *next( ) 
 	{ 
-		if( cur==buf.size() )
+		if( size==0 )
 		{
 			return 0;
 		}
 	    else
 		{
+			Aunit *ret;
+			ret = buf[cur_rd];
+			++cur_rd;
 			++totalctr;
-			return &buf[cur++];
+			--size;
+			cur_rd = cur_rd >= BUF_SIZE ? 0 : cur_rd;
+			return ret;
 		}
 	}
 
-	inline T *lookahead( int lookahead )
+	inline Aunit *lookahead( int lookahead )
 	{
-		if( cur+lookahead >= buf.size() )
+		if( lookahead >= size )
 		{
 			return 0;
 		}
 		else
-			return &buf[cur+lookahead];
+			return buf[(cur_rd+lookahead)%BUF_SIZE];
     }
 
-	void flush( unsigned int flush )
-	{
-		assert( flush < cur );
-		// Do nothing if flush would purge current entry in deque
-		cur -= flush;
-		for( unsigned int i =0; i < flush ; ++i )
-			buf.pop_front();
-    }
+	static const int BUF_SIZE = 128;
 
-	inline unsigned int curpos() { return totalctr; }
-private:
-	unsigned int cur;
+	inline unsigned int current() { return totalctr; }
+//private:
+	unsigned int cur_rd;
+	unsigned int cur_wr;
 	unsigned int totalctr;
-	deque<T> buf;
+	unsigned int size;
+	Aunit **buf;
 };
 
 

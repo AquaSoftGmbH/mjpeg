@@ -104,5 +104,5 @@ void BufferModel::queued (unsigned int bytes,
 void BufferModel::init ( unsigned int size)
 {
     max_size = size;
-    first = NULL;
+    first = 0;
 }

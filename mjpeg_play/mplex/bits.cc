@@ -34,6 +34,25 @@
 #include "mjpeg_logging.h"
 #include "bits.hh"
 
+
+//
+// TODO: The buffer size should be set dynamically to sensible sizes.
+//
+BitStream::BitStream() : 
+	fileh(0)
+{
+	totbits = 0LL;
+	buffer_start = 0LL;
+	eobs = true;
+	readpos =0LL;
+	bfr = new uint8_t[BUFFER_SIZE];
+}
+
+BitStream::~BitStream()
+{
+	delete bfr;
+}
+
 /* initialize buffer, call once before first putbits or alignbits */
 void OBitStream::open(char *bs_filename)
 {
@@ -165,15 +184,15 @@ void IBitStream::flush(bitcount_t flush_upto )
   Undo scanning / reading
   N.b buffer *must not* be flushed between prepareundo and undochanges.
 */
-void IBitStream::prepareundo( BitStream &undo)
+void IBitStream::prepareundo( BitStreamUndo &undo)
 {
-  undo = *(static_cast<BitStream*>(this));
+  undo = *(static_cast<BitStreamUndo*>(this));
 }
 
 
-void IBitStream::undochanges( BitStream &undo)
+void IBitStream::undochanges( BitStreamUndo &undo)
 {
-	*(static_cast<BitStream *>(this)) = undo;
+	*(static_cast<BitStreamUndo*>(this)) = undo;
 }
 
 
