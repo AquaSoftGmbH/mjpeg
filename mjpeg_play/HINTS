@@ -1,19 +1,21 @@
 (0)  Read the README's.  There's a lot of useful info buried in there...
 
 (1) If you want to play on hardware decoders don't build variable
-bit-rate video streams.  If you intend to use software players they're
-a *much* better bet. HOWEVER: The variable bit-rate support in "mplex"
-is new so there could be bugs. Similarly, modifications to mpeg2enc
-may also have broken that side of things. They're next on the "get
-fixed" list. Let us know if/when you encounter problems.
+	bit-rate video streams.  If you intend to use software players
+	variable bit-rate is a much more efficient way of encoding and
+	guarantees decent quality.  All in all a *much* better
+	bet. HOWEVER: the variable bit-rate support in "mpeg2enc" is new
+	so there could be bugs. As ever let me know if something weird
+	happens.  The code for the "-V" flags in the lav2mpeg script shows
+	an example for typical usage.
 
 	 Buffer sizes.  For hardware players experimentation is the order
 	 of the day.  My DXR2 seems to use a nice big > 100K buffer for
-	 VCD as well as DVD streams and be happy too read MPEG-1 streams
+	 VCD as well as DVD streams and be happy to read MPEG-1 streams
 	 *much* faster than the official VCD 170K/sec.  300K seems fine.
 	 
 	 Generally, you'll probably need a buffer size of around 1/4
-	 data-rate to avoid buffer underflows (signalled as "time out"'s
+	 data-rate to avoid buffer underflows (signalled as "TO<framenum>"'s
 	 by mplex).
 	 
 (2)  If you want to play MPEG-1 stuff on hardware decoders stick to
@@ -33,32 +35,97 @@ fixed" list. Let us know if/when you encounter problems.
 	developers before you read this!
  
 (6) For encoding a typical (45 minute running time) show or 90 odd
-minute movie from an analog broadcast I have found a CBR bit-rate of
-1900 to be ideal.  The resulting files are around 700M for 45 minutes
-which fits nicely as a raw XA MODE2 data track on a CD-R.  (I use
-cdrdao to write such CD's and a hacked version of vcdread - soon to be
-included to extract them).
+	minute movie from an analog broadcast I have found a CBR bit-rate
+	of 1900 to be ideal.  The resulting files are around 700M for 45
+	minutes which fits nicely as a raw XA MODE2 data track on a CD-R.
+	(I use cdrdao to write such CD's and a hacked version of vcdread -
+	soon to be included to extract them).
 
-Update: I've now got a digital cable provider.  Digital TV sources
-(even when captured via an analog interface) give *much* better
-results.  There doesn't seem much point going above 1400 or 1500Kbps.
-Often even VCD 1152 works fine.  However, IMHO that rate is silly 'cos
-it means every movie still needs two CD's but the second is mostly
-empty.  Might as well crank the rate (and quality) up until you come
-in at just under 2 CD's.
+	Update: I've now got a digital cable provider.  Digital TV sources
+	(even when captured via an analog interface) give *much* better
+	results.  There doesn't seem much point going above 1400 or
+	1500Kbps.  Often even VCD 1152 works fine. It depends a bit on the
+	quality of the original. However, IMHO the VCD rate is silly 'cos
+	it means every movie still needs two CD's but the second is mostly
+	empty.  Might as well crank the rate (and quality) up until you
+	come in at just under 2 CD's.
 
-On modern 400Mhz+ CPU's there is *no point* running with a motion
-compensation setting less than 16.  The speed gains aren't huge as
-other parts of the encoder take a significant fraction of the
-time. See the mpeg2enc README.
+	On modern 400Mhz+ CPU's there is *no point* running with a motion
+	compensation setting less than 16.  The speed gains aren't huge as
+	other parts of the encoder take a significant fraction of the
+	time. See the mpeg2enc README.
 
 (7) For transcoding existing MPEG-2 streams a still lower data-rate
-than for broadcast will give good results. Standard VCD 1152 Kbps
-typically works just fine.  The difference is in the Signal/Noise
-ratio of the original.  The noise in the analog stuff makes it much
-harder to compress.
+	than for broadcast will give good results. Standard VCD 1152 Kbps
+	typically works just fine.  The difference is in the Signal/Noise
+	ratio of the original.  The noise in the analog stuff makes it
+	much harder to compress.
 
+	You will also need to manually adjust the audio delay offset
+	relative to video when multiplexing.  Very often around 150ms
+	delay seems to do the trick.
 
+(8) Variable bit-rate.  Remember to tell mplex you're encoding VBR as
+	well as mpeg2enc (see the example scripts).  It *could*
+	auto-detect but I haven't got around to that yet.  You should tell
+	mplex a video buffer size at least as large as the one you
+	specified to "mpeg2enc".  Sensible numbers for MPEG-1 might be a
+	ceiling bit-rate of 2800Kbps, a quality ceiling (quantisation
+	floor) of 6 and a buffer size of 400K.
 
+(9) 	VCDs.
+	VCD's have very specific requirements as to the format of the
+	multiplexed systems stream.  In parts these are actually at least
+	"bendings" of the original MPEG standard and are far from optimal
+	as far as maximising possible quality goes.  Anyway, to build a
+	VCD you absolutely *must* used the VCD format option for mplex "-f
+	1".  This turns on a lot of weird stuff that otherwise has no place 
+	in a respectable multiplexer!
 
-	 
+	Obviously, to play on all players your original MPEG video must be the	
+	standard 1151Kbps and audio must be 224Kbps MPEG-1 layer 2 (as produced by
+	the "-v" flag of mp2enc.
+
+	The systems streams generated by "-f 1" have been tested and succesfully 
+	burned onto CD using vcdimager and vcdburn.
+
+	The "-v" flag to the lav2mpeg script does the right thing.
+
+(10) Big files.  Under typical linux 2.2 systems files are limited to
+	2G bytes.   This is rarely a problem for MPEG-1 video files but it could
+	bite.  If your video threatens to exceed 2G you'll need to do it in
+	seperate chunks (for now). 
+
+	As a completely seperate issue, mplex will automatically split
+	output into files at the usual size for a blank CD written to in
+	XA mode 2 like a VCD.
+
+	Note that it does *not* generate seperate stand-alone MPEG streams
+	in each file.  This would in involve all kinds of jiggery pokery
+	with inserting new sequence headers, and recalculating buffers. To
+	do it properly the splitting would have to be done by mpeg2enc and
+	mp2enc and would open a whole can of worms to do with synchronisation.
+
+	What currently happens is that 2nd 3rd etc files are simply 
+	*continuations* of the 1st.  To play them you need to concatenate
+	them and treat them as a single looong stream. This is exactly the
+	same (nasty) approach used on DVD's with their 1G-byte "VOB" files.
+
+	To allow convenient and efficient storage I burn the continuation files
+	into VCD format disks using a slightly hacked version of vcdburn
+	where the sanity checking on the stream being burned can be turned off.
+	The contents of the resulting VCD can then be later read and joint
+	to its predecessors using the "readvcd" utility. Actually, when I
+	use my dxr2 there's no need to concatenate as it simply plays each
+	file in sequence (if they have suitable names).
+
+	Anyway, apologies for this deficiency.  I hope to very soon put a
+	quick and dirty hack into mplex that (for streams that don't
+	change encoding parameters) produces proper stand-alone mpeg
+	streams in each file.  In the interim the other solution is to
+	encode only suitably sized chunks to start with.  The "lav2mpeg"
+	script is already set-up to allow multiple machines (or processes)
+	to work on a set of encoding jobs simultaneously.
+
+Andrew
+

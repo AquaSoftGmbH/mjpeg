@@ -1,9 +1,0 @@
-#!/bin/bash
-root=$1
-pat=$2
-target=$3
-joinedmpv=${root}.mpv
-joinedmpa=${root}.mpa
-mpegjoin ${joinedmpv} ${root}${pat}.mpv
-cat ${root}${pat}.mpa > ${joinedmpa}
-mplex -r 0 ${joinedmpv} ${joinedmpa} ${target}

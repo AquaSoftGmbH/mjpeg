@@ -89,7 +89,7 @@ void Usage(char *str)
 	printf("Usage: %s [params]\n",str);
 	printf("   where possible params are:\n");
 	printf("   -m num     MPEG level (1 or 2) default: 1\n");
-	printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s)\n");
+	printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
 	printf("   -q num     Quality factor [1..31] (1 is best, no default)\n");
 	printf("              Bitrate and Quality are mutually exclusive!\n");
 	printf("   -o name    Outputfile name (REQUIRED!!!)\n");
@@ -536,7 +536,8 @@ static void readparmfile()
 		/* Handle the default VCD case... or scale accordingly */
 		if( param_bitrate == 0 && param_quant == 0 )
 		{
-			bit_rate = 1152000;
+			bit_rate = 1151929;	/* Weird and wonderful max rate specified  */
+								/* No, it's *not* 1152Kbps ... VCD bleah!! */
 			vbv_buffer_code = 20;	/* = 40KB */
 		}
 		else

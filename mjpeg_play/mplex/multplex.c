@@ -205,10 +205,13 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 		if( opt_VBR )
 		{
 			video_rate = video_info->peak_bit_rate *50;
-			video_buffer_size = video_rate * 4 / 25 ;  
-			/* > 3 frames out of 25 or 30 */
-			printf( "VBR set - pseudo bit rate = %d vbuffer = %d\n",
-					video_rate, video_buffer_size );
+			if( video_buffer_size < video_rate * 2 / 3 )
+			{
+				fprintf( stderr, "WARNING: VBR specified with implausibly small buffer\nIncreasing to 2/3rds sec peak rate!\n" );
+				video_buffer_size = video_rate * 2 / 3;
+			}
+			printf( "VBR set - pseudo bit rate = %dKbps vbuffer = %dKB\n",
+					video_rate*8, video_buffer_size/1024 );
 		}
 		else
 		{
@@ -465,7 +468,7 @@ void outputstream ( char 		*video_file,
 
 	/* Calculate start delay in SCR units */
 	if( opt_VBR )
-		sectors_delay = video_buffer_size / ( 4 * sector_size );
+		sectors_delay = 3*video_buffer_size / ( 4 * sector_size );
 	else
 		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
 
@@ -698,8 +701,9 @@ void outputstream ( char 		*video_file,
 			--packets_left_in_pack;
 			if (packets_left_in_pack == 0) 
 				packets_left_in_pack = packets_per_pack;
-			bytes_output += sector_transport_size;
 		}
+		bytes_output += sector_transport_size;
+
 #ifdef TIMER
 			gettimeofday (&tp_start,NULL);
 #endif 

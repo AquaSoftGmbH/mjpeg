@@ -44,7 +44,7 @@ int opt_audio_offset = 0;
 int opt_sector_size = 2324;
 int opt_VBR = 0;
 int opt_mpeg = 1;
-int opt_mux_format = 0;
+int opt_mux_format = 1;			/* VCD as default */
 int opt_multifile_segment = 1;
 int opt_always_system_headers = 0;
 int opt_packets_per_pack = 20;
@@ -213,10 +213,15 @@ void status_info (	unsigned int nsectors_a,
 					int verbose
 				 )
 {
+
 	if( verbose > 0 )
 	{
 	  printf ("| %7d | %7d |",nsectors_a,nsectors_v);
-	  printf (" %7d | %11lld |",nsectors_p,nbytes);
+	  if( opt_VBR )
+		  printf( "   VBR   |");
+	  else
+		  printf (" %7d |",nsectors_p);
+	  printf ("%11lld  |",nbytes);
 	  printf (" %6d | %6d |",buf_a,buf_v);
 	  printf ((verbose > 1?"\n":"\r"));
 	  fflush (stdout);
