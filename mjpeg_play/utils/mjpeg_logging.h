@@ -44,6 +44,9 @@ mjpeg_log_handler_t
 mjpeg_log_set_handler(mjpeg_log_handler_t new_handler);
 
 int
+mjpeg_default_handler_identifier(const char *new_id);
+
+int
 mjpeg_default_handler_verbosity(int verbosity);
 
 void

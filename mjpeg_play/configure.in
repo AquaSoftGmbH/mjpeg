@@ -227,7 +227,8 @@ dnl Check for the libmovtar library
 AC_SUBST(MOVTAR_CFLAGS)
 AC_SUBST(MOVTAR_LIBS)
 have_movtar=false
-AM_PATH_MOVTAR(0.0.2, [ AC_DEFINE(HAVE_LIBMOVTAR) have_movtar=true],,)
+ifdef(AM_PATH_MOVTAR,
+      AM_PATH_MOVTAR(0.0.2, [ AC_DEFINE(HAVE_LIBMOVTAR) have_movtar=true],,))
 
 dnl *********************************************************************
 dnl Check for the quicktime for linux library
@@ -429,7 +430,27 @@ AC_SUBST(X_CFLAGS)
 AC_SUBST(X_PRE_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
 AC_SUBST(X_LIBS)
-AC_SUBST(x_libraries)                                                           
+AC_SUBST(x_libraries)
+
+dnl ********************************************************************
+dnl Check to see if __progname is provided by the system
+dnl ********************************************************************
+AC_MSG_CHECKING(for __progname)
+AC_CACHE_VAL(ac_cv_extern__progname,
+AC_TRY_LINK([],
+	[extern char *__progname;
+	puts(__progname)],
+	ac_cv_extern___progname=yes,
+	ac_cv_extern___progname=no))
+if test x$ac_cv_extern___progname = xyes ; then
+	AC_DEFINE(HAVE___PROGNAME,,[Is __progname defined by system?])
+	AC_MSG_RESULT(yes)
+else
+	AC_MSG_RESULT(no)
+fi
+
+
+
 
 dnl ********************************************************************
 dnl Check for DGA (for v4l-conf)

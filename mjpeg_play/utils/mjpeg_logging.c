@@ -26,14 +26,22 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <assert.h>
+#include <string.h>
 
 extern int fred;
 #include "mjpeg_logging.h"
 
 static const char _rcsid[] = "$Id: ";
 
+#define MAX_DEFAULT_ID_SIZE 16
+#define DEFAULT_DEFAULT_ID "???"
+
+#ifdef HAVE___PROGNAME
+extern const char *__progname;
+#endif
 
 static log_level_t mjpeg_log_verbosity = 0;
+static char *default_handler_id = NULL;
 
 
 static int default_mjpeg_log_filter( log_level_t level )
@@ -57,25 +65,30 @@ static mjpeg_log_filter_t _filter = default_mjpeg_log_filter;
 static void
 default_mjpeg_log_handler(log_level_t level, const char message[])
 {
+  const char *ids = default_handler_id;
+
   if( (*_filter)( level ) )
     return;
 
+  if (ids == NULL) {
+#ifdef HAVE___PROGNAME
+    ids = __progname;
+#else
+    ids = DEFAULT_DEFAULT_ID;
+#endif
+  }
   switch(level) {
   case LOG_ERROR:
-    fprintf(stderr, "**ERROR: %s", message);
-    fflush(stdout);
+    fprintf(stderr, "**ERROR: [%s] %s", ids, message);
     break;
   case LOG_DEBUG:
-    fprintf(stderr, "--DEBUG: %s", message);
-    fflush(stdout);
+    fprintf(stderr, "--DEBUG: [%s] %s", ids, message);
     break;
   case LOG_WARN:
-    fprintf(stderr, "++ WARN: %s", message);
-    fflush(stdout);
+    fprintf(stderr, "++ WARN: [%s] %s", ids, message);
     break;
   case LOG_INFO:
-    fprintf(stderr, "   INFO: %s", message);
-    fflush(stdout);
+    fprintf(stderr, "   INFO: [%s] %s", ids, message);
     break;
   default:
     assert(0);
@@ -108,6 +121,26 @@ mjpeg_default_handler_verbosity(int verbosity)
   int prev_verb = mjpeg_log_verbosity;
   mjpeg_log_verbosity = LOG_WARN - verbosity;
   return prev_verb;
+}
+
+/*
+ * Set identifier string used by default handler
+ *
+ */
+
+int
+mjpeg_default_handler_identifier(const char *new_id)
+{
+  const char *s;
+  if (default_handler_id != NULL) free(default_handler_id);
+  if (new_id == NULL) {
+    default_handler_id = NULL;
+    return 0;
+  }
+  /* find basename of new_id (remove any directory prefix) */
+  if ((s = strrchr(new_id, '/')) == NULL) s = new_id;
+  default_handler_id = strndup(s, MAX_DEFAULT_ID_SIZE);
+  return (default_handler_id == NULL);
 }
 
 
