@@ -21,6 +21,15 @@ corner.
 \fBlavrec\fP accepts the following options:
 
 .TP 8
+.B filename
+The file to record to (*.avi, *.qt, *.movtar). Use a % to record
+to multiple files (using file%02d.avi will record to file00.avi,
+file01.avi, etc). You can also give more than one filename, which
+will have the same effect. This will avoid problems resulting
+from filetype or filesystem size limits. AVI, for example, has a
+2 GB limit, as does ext2fs in 2.2.x kernels.
+
+.TP 8
 .BR \-\-software\-encoding
 By default, lavrec will capture in a mode that is only suitable
 for recording from hardware MJPEG devices. Using this option
@@ -31,10 +40,13 @@ devices (such as Bt848/Bt878\-based ones).
 .TP 8
 .BR \-f/\-\-format " [" a | A | q | m ]
 The format in which the video should be saved to the harddisk.
-  a - MJPEG AVI (default)
+  a - MJPEG AVI
   A - MJPEG AVI with fields exchanged
   q - Quicktime
   m - Movtar
+.br
+By default, lavrec will look at the extension of the first file
+(*.avi, *.qt, *.movtar) and choose a format based on that.
 
 .TP 8
 .BR \-i/\-\-input " [" p | P | n | N | s | S | t | T | a ]
