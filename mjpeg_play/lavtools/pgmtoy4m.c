@@ -223,6 +223,7 @@ usage(void)
 
 	fprintf(stderr, "%s usage: [-v n] [-i t|b|p] [-a sample aspect] [-r rate]\n",
 		__progname);
+	exit(0);
 	}
 
 static int
