@@ -194,25 +194,28 @@ static void read_and_resample()
 
 int get_samples(short *abuff, int num, int stereo)
 {
-   char c[2];
-   short *s;
    int n;
 
    if(num_out<0)
    {
       /* Initialize */
+      unsigned int fred;
+      char *pfred;
+      fred = 2 | (1 << (sizeof(int)*8-8));
+      pfred = (char *)&fred;
 
-      c[0] = 0x12;
-      c[1] = 0x34;
-      s = (short*) c;
-
-      if(*s==0x1234) {
+      if(*pfred == 1)
+      {
          big_endian = 1;
          printf("System is big endian\n");
-      } else if(*s==0x3412) {
+      }
+      else if(*pfred == 2)
+      {
          big_endian = 0;
          printf("System is little endian\n");
-      } else {
+      }
+      else
+      {
          fprintf(stderr,"Can not determine if system is big/lttle endian\n");
          fprintf(stderr,"Are you running on a Cray - or what?\n");
          exit(1);
