@@ -687,10 +687,10 @@ denoise_frame(void)
         vector.x=0;
         vector.y=0;
 
-        if( !low_contrast_block(x,y) && 
-          x>(denoiser.border.x) && y>(denoiser.border.y+BUF_OFF) &&
-          x<(denoiser.border.x+denoiser.border.w) && y<(denoiser.border.y+BUF_OFF+denoiser.border.h) 
-          )        
+//        if( !low_contrast_block(x,y) && 
+//          x>(denoiser.border.x) && y>(denoiser.border.y+BUF_OFF) &&
+//          x<(denoiser.border.x+denoiser.border.w) && y<(denoiser.border.y+BUF_OFF+denoiser.border.h) 
+//          )        
         {
         mb_search_44(x,y);
         mb_search_22(x,y);

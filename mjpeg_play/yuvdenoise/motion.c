@@ -631,11 +631,12 @@ mb_search_44 (uint16_t x, uint16_t y)
 
   SAD = calc_SAD ( denoiser.frame.sub4ref[0]+MB_ref_offset, 
                    denoiser.frame.sub4avg[0]+MB_ref_offset );
-      
+#if 0      
   SAD += calc_SAD_uv ( denoiser.frame.sub4ref[1]+MB_ref_offset_uv, 
                        denoiser.frame.sub4avg[1]+MB_ref_offset_uv );
   SAD += calc_SAD_uv ( denoiser.frame.sub4ref[2]+MB_ref_offset_uv, 
                        denoiser.frame.sub4avg[2]+MB_ref_offset_uv );
+#endif
   
   for(yy=-radius;yy<=radius;yy++)
     for(xx=-radius;xx<=radius;xx++)
@@ -646,6 +647,7 @@ mb_search_44 (uint16_t x, uint16_t y)
       SAD = calc_SAD ( denoiser.frame.sub4ref[0]+MB_ref_offset, 
                        denoiser.frame.sub4avg[0]+MB_avg_offset );
 
+#if 0
       if(MB_ref_offset_uv != last_uv_offset)
         {
           last_uv_offset=MB_ref_offset_uv;
@@ -657,6 +659,7 @@ mb_search_44 (uint16_t x, uint16_t y)
         SAD += SAD_uv;
       
       SAD += xx*xx + yy*yy; /* favour center matches... */
+#endif
         
       if(SAD<=best_SAD)
       {
@@ -701,7 +704,8 @@ mb_search_22 (uint16_t x, uint16_t y)
       
       SAD = calc_SAD ( denoiser.frame.sub2ref[0]+MB_ref_offset, 
                        denoiser.frame.sub2avg[0]+MB_avg_offset );
-      
+
+#if 0      
       if(MB_ref_offset_uv != last_uv_offset)
       {
         last_uv_offset=MB_ref_offset_uv;
@@ -711,6 +715,7 @@ mb_search_22 (uint16_t x, uint16_t y)
                                 denoiser.frame.sub2avg[2]+MB_avg_offset_uv );
       }
       SAD += SAD_uv;
+#endif
       
       if(SAD<=best_SAD)
       {
@@ -761,7 +766,7 @@ mb_search_11 (uint16_t x, uint16_t y)
       
         SAD = calc_SAD ( denoiser.frame.ref[0]+MB_ref_offset, 
                          denoiser.frame.avg[0]+MB_avg_offset );
- 
+#if 0 
       if(MB_ref_offset_uv != last_uv_offset)
       {
         last_uv_offset=MB_ref_offset_uv;
@@ -771,6 +776,7 @@ mb_search_11 (uint16_t x, uint16_t y)
                                 denoiser.frame.sub2avg[2]+MB_avg_offset_uv );
       }
       SAD += SAD_uv;
+#endif
        
       if(SAD<best_SAD)
       {
@@ -782,7 +788,7 @@ mb_search_11 (uint16_t x, uint16_t y)
     }
     
   /* finally do a zero check against the found vector */
-    
+#if 0    
   SAD = calc_SAD ( denoiser.frame.ref[0]+MB_ref_offset, 
                    denoiser.frame.avg[0]+MB_ref_offset );
   
@@ -792,6 +798,7 @@ mb_search_11 (uint16_t x, uint16_t y)
     vector.y = 0;
     vector.SAD = SAD;
   }
+#endif
 }
 
 
