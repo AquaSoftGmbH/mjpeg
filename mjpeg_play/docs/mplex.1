@@ -138,36 +138,6 @@ When splitting a long stream in files based on -S mplex does a certain
 amount of sanity checking.  If the files are going to be concatenated
 for playback this checking is superfluous.  -M suppresses this checking.
 
-
-.I variable bit rate 
-stream is produced.  This is more efficient
-overall but variable bit-rate MPEG-1 cannot be played by many hardware
-decoders and/or DVD/(S)VCD drives.  If you intend to use a software
-decoder you'd be insane not to use variable bit-rate.
-
-If this option is set without a maximum bit-rate being specified then
-quantisation is fixed at the specified value.
-.TP
-.BR -F\ 0 | 1 | 2 | 3
-
-This sets the sequences picture structure and block encoding type for
-MPEG-2 streams.  Setting 0 encodes frame-by-frame with support for
-interlaced video turned off.  This is the most efficient option for
-encoding material that is not interlaced (e.g. movies in PAL 25
-frame/sec or NTSC 24 frames/sec 3:2 pulldown format).  However, it
-produces rotten results for interlaced video material.  For such
-material use -F 3 which encodes frame-by-frame with interlace-adapted
-motion compensation and block encoding.  Setting 1 or 2 will encode
-field-by-field (2 is "top field first", 3 is "bottom field first").
-Its use is deprecated as implementation is somewhat less refined than
-frame-by-frame and results, even if implemented to the same level, are
-inferior.
-.IP
-It should be noted that encoding -F 3 takes appreciably longer than -F 0.
-.TP
-.B -p
-Number of PES packets per MPEG systems pack.
-
 .SH "DIAGNOSTIC OUTPUT"
 When multiplexing using mplex you may get warning or error messages
 complaining about buffer underflow.  This means that the bit-rate you
