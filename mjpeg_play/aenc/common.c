@@ -595,9 +595,9 @@ Bit_stream_struc *bs;   /* bit stream structure */
 void close_bit_stream_w(bs)
 Bit_stream_struc *bs;   /* bit stream structure */
 {
-   empty_buffer(bs, bs->buf_byte_idx);
-   if( bs->pt != stdout )
-	   fclose(bs->pt);
+   putbits(bs, 0, 7);
+   empty_buffer(bs, bs->buf_byte_idx + 1);
+   fclose(bs->pt);
    desalloc_buffer(bs);
 }
 
