@@ -48,11 +48,21 @@ typedef	union {
 #define	mmx_m2r(op,mem,reg) \
 	__asm__ __volatile__ (#op " %0, %%" #reg \
 			      : /* nothing */ \
-			      : "X" (mem))
+			      : "m" (mem))
 
 #define	mmx_r2m(op,reg,mem) \
 	__asm__ __volatile__ (#op " %%" #reg ", %0" \
-			      : "=X" (mem) \
+			      : "=m" (mem) \
+			      : /* nothing */ )
+
+#define	mmx_g2r(op,mem,reg) \
+	__asm__ __volatile__ (#op " %0, %%" #reg \
+			      : /* nothing */ \
+			      : "rm" (mem))
+
+#define	mmx_r2g(op,reg,mem) \
+	__asm__ __volatile__ (#op " %%" #reg ", %0" \
+			      : "=rm" (mem) \
 			      : /* nothing */ )
 
 #define	mmx_r2r(op,regs,regd) \
@@ -64,6 +74,8 @@ typedef	union {
 
 #define	movd_m2r(var,reg)	mmx_m2r (movd, var, reg)
 #define	movd_r2m(reg,var)	mmx_r2m (movd, reg, var)
+#define	movd_g2r(var,reg)	mmx_g2r (movd, var, reg)
+#define	movd_r2g(reg,var)	mmx_r2g (movd, reg, var)
 #define	movd_r2r(regs,regd)	mmx_r2r (movd, regs, regd)
 
 #define	movq_m2r(var,reg)	mmx_m2r (movq, var, reg)
@@ -194,16 +206,16 @@ typedef	union {
 #define mmx_m2ri(op,mem,reg,imm) \
         __asm__ __volatile__ (#op " %1, %0, %%" #reg \
                               : /* nothing */ \
-                              : "X" (mem), "X" (imm))
+                              : "m" (mem), "i" (imm))
 #define mmx_r2ri(op,regs,regd,imm) \
         __asm__ __volatile__ (#op " %0, %%" #regs ", %%" #regd \
                               : /* nothing */ \
-                              : "X" (imm) )
+                              : "i" (imm) )
 
 #define	mmx_fetch(mem,hint) \
 	__asm__ __volatile__ ("prefetch" #hint " %0" \
 			      : /* nothing */ \
-			      : "X" (mem))
+			      : "m" (mem))
 
 /* 3DNow goodies */
 #define pfmul_m2r(var,reg) mmx_m2r( pfmul, var, reg )
