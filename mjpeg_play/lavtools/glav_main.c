@@ -610,7 +610,7 @@ static void create_child(const char **args)
       n = dup(1);
       if(n!=2) exit(1);
 
-      execvp(PLAY_PROG,args);
+      execvp(PLAY_PROG,(char *const*)args);
 
       /* if exec returns, an error occured */
       exit(1);
