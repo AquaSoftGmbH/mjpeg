@@ -460,7 +460,7 @@ void rc_init_pict(pict_data_s *picture)
 			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		break;
 	case P_TYPE:
-		d = d0p;
+		d = d0pb;
 		avg_K = avg_KP;
 		Sp = avg_K * actsum;
 		if( first_P )
@@ -471,7 +471,7 @@ void rc_init_pict(pict_data_s *picture)
 			T =  R/(Np+Nb*Kp*Xb/(Kb*Sp));
 		break;
 	case B_TYPE:
-		d = d0b;
+		d = d0pb;
 		avg_K = avg_KB;
 		Sb = avg_K * actsum;
 		if( first_B )
@@ -764,7 +764,7 @@ void rc_update_pict(pict_data_s *picture)
 		break;
 	case P_TYPE:
 		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
-		d0b = d;
+		d0pb = d;
 		if( first_P )
 		{
 			Xp = X;
@@ -778,7 +778,7 @@ void rc_update_pict(pict_data_s *picture)
 		break;
 	case B_TYPE:
 		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
-		d0p = d;
+		d0pb = d;
 		if( first_B )
 		{
 			Xb = X;
