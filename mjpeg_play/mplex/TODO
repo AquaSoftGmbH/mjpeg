@@ -1,16 +1,20 @@
 TODO
 
-- Need to add facility for enforcing max STD buffer delay for audio
+- Check if video and MPEG audio streams have the same eof bug as I found
+in AC3 audio.
+
+- Need to add general facility for enforcing max STD buffer delay for audio
   and for warning if constraints for particular formats are exceeded.
-
-
-- Add checking for changed sequence parameters in mid-sequence sequence headers.
 
 - Make VBR more efficient (a skip for long periods where no sector is emitted).
 
 
 - Complete tidying up the systems.cc structure.   Non-duplication of the
 	header generation stuff would be neat if it can be managed...
+
+
+- Add checking for changed sequence parameters in mid-sequence sequence headers.
+
 
 - Currently the VCD HR Stills muxing stuff assumes *all* HR stills
   are the same size which is given in the initial vbv_buffer_size...
@@ -31,4 +35,7 @@ TODO
 Eventually:
 
 - Full SVCD (MPEG audio extension) support.
+
+- DVD muxing and generation of info for .IFO's etc.
+
 

@@ -624,14 +624,29 @@ void OutputStream::OutputPrefix( )
         vector<MuxStream *>::iterator muxstr;
         dvdmux.push_back( &dvd_0xb9_strm_dummy );
         dvdmux.push_back( &dvd_0xb8_strm_dummy );
+        unsigned int max_priv1_buffer = 0;
         for( muxstr = amux.begin(); muxstr < amux.end(); ++muxstr )
         {
-            dvdmux.push_back( *muxstr );
+            // We mux *many* substreams on PRIVATE_STR_1
+            // we set the system header buffer size to the maximum
+            // of all those we find
+            if( (*muxstr)->stream_id == PRIVATE_STR_1 
+                && (*muxstr)->BufferSize() > max_priv1_buffer )
+            {
+                max_priv1_buffer = (*muxstr)->BufferSize();
+            }
+            else
+                dvdmux.push_back( *muxstr );
         }
+        
+        DummyMuxStream dvd_priv1_strm_dummy( PRIVATE_STR_1, 1, 
+                                             max_priv1_buffer );
+        if( max_priv1_buffer > 0 )
+            dvdmux.push_back( &dvd_priv1_strm_dummy );
+
         dvdmux.push_back( &dvd_0xbf_strm_dummy );
         psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, false, 
                                  true, true, dvdmux );
-
         sys_header_ptr = &sys_header;
         pack_header_ptr = &pack_header;
         /* It is then followed up by a pair of PRIVATE_STR_2 packets which

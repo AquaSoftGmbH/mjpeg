@@ -234,6 +234,7 @@ void check_files (int argc,
 				  char* argv[],
                   vector<IBitStream *> &mpa_files,
                   vector<IBitStream *> &ac3_files,
+                  vector<IBitStream *> &lpcm_files,
 				  vector<IBitStream *> &video_files
 	)
 {
@@ -272,6 +273,15 @@ void check_files (int argc,
                         argv[i]);
             bs->undochanges( undo);
             video_files.push_back( bs );
+            continue;
+        }
+        bs->undochanges( undo);
+        if( LPCMStream::Probe( *bs ) )
+        {
+            mjpeg_info ("File %s looks like an LPCM Audio stream.",
+                        argv[i]);
+            bs->undochanges( undo);
+            lpcm_files.push_back( bs );
             continue;
         }
         bad_file = true;

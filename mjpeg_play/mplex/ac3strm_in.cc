@@ -100,7 +100,7 @@ void AC3Stream::Init ( const int stream_num)
                 );
 
 	InitAUbuffer();
-	
+	AU_start = bs.bitcount();
     if (bs.getbits(16)==AC3_SYNCWORD)
     {
 		num_syncword++;
@@ -117,6 +117,7 @@ void AC3Stream::Init ( const int stream_num)
 		size_frames[0] = framesize;
 		size_frames[1] = framesize;
 		num_frames[0]++;
+        access_unit.start = AU_start;
 		access_unit.length = framesize;
         if( framesize != 1792 )
         {
@@ -324,9 +325,6 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 
     unsigned int syncwords = 0;
     int bytes_muxed = bytes_read;
-    int nextl = 0;
-    if( Lookahead() != 0 )
-        nextl = Lookahead()->length;
   
 	if (bytes_muxed == 0 || MuxCompleted() )
     {
@@ -341,8 +339,7 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 
 	   The DTS/PTS field for the packet in this case would have been
 	   given the that for the first AU to start in the packet.
-	   Whether Joe-Blow's hardware VCD player handles this properly is
-	   another matter of course!
+
 	*/
 
 	decode_time = RequiredDTS();
@@ -358,7 +355,6 @@ AC3Stream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
         aus += au->length;
 		if( !NextAU() )
         {
-            printf( "FINI 1\n" );
             goto completion;
         }
 		new_au_next_sec = true;
@@ -391,7 +387,7 @@ completion:
     // Generate the AC3 header...
     // Note the index counts from the low byte of the offset so
     // the smallest value is 1!
-    dst[0] = AC3_SUB_STR_1 + stream_num;
+    dst[0] = AC3_SUB_STR_0 + stream_num;
     dst[1] = syncwords;
     dst[2] = (first_header+1)>>8;
     dst[3] = (first_header+1)&0xff;

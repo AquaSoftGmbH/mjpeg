@@ -113,6 +113,36 @@ private:
     unsigned int stream_num;
 }; 	
 
+class LPCMStream : public AudioStream
+{
+public:   
+    LPCMStream(IBitStream &ibs,OutputStream &into );
+    virtual void Init(const int stream_num);
+    static bool Probe(IBitStream &bs);
+    virtual void Close();
+    virtual unsigned int NominalBitRate();
+
+    virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
+    virtual unsigned int StreamHeaderSize() { return 7; }
+    
+
+private:
+	void OutputHdrInfo();
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
+    
+    static const unsigned int default_buffer_size = 232*1024;
+    static const unsigned int ticks_per_frame_90kHz = 150;
+	/* State variables for scanning source bit-stream */
+    unsigned int stream_num;
+    unsigned int samples_per_second;
+    unsigned int channels;
+    unsigned int bits_per_sample;
+    unsigned int bytes_per_frame;
+    unsigned int frame_index;
+    unsigned int dynamic_range_code;
+}; 	
+
+
 #endif // __AUDIOSTRM_H__
 
 

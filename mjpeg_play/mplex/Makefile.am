@@ -19,7 +19,8 @@ mplex_SOURCES = \
 	bits.cc			bits.hh	\
 	buffer.cc		buffer.hh \
 	videostrm.hh	audiostrm.hh	padstrm.hh \
-	videostrm_in.cc	mpastrm_in.cc	ac3strm_in.cc padstrm.cc \
+	videostrm_in.cc	 padstrm.cc \
+	lpcmstrm_in.cc mpastrm_in.cc	ac3strm_in.cc \
 	videostrm_out.cc	audiostrm_out.cc	\
 	multplex.cc	outputstream.hh	\
 	systems.cc		systems.hh \

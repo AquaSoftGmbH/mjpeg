@@ -129,6 +129,7 @@ void MPAStream::Init ( const int stream_num )
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
+    AU_start = bs.bitcount();
     if (bs.getbits(11)==AUDIO_SYNCWORD)
     {
 		num_syncword++;
@@ -153,7 +154,7 @@ void MPAStream::Init ( const int stream_num )
 		size_frames[0] = framesize;
 		size_frames[1] = framesize+( layer == 0 ? 4 : 1);
 		num_frames[padding_bit]++;
-	
+        access_unit.start  = AU_start;
 		access_unit.length = size_frames[padding_bit];
 	  
 		samples_per_second = mpa_freq_table[version_id][frequency];

@@ -30,7 +30,10 @@
 
 #define MAX_FFFFFFFF		4294967295.0 	/* = 0xffffffff in dec.	*/
 
-#define CLOCKS			(300 *90000)		/* MPEG-2 System Clock Hertz - we divide down by 300.0 for MPEG-1*/
+#define CLOCKS_per_90Kth_sec 300
+
+#define CLOCKS			(CLOCKS_per_90Kth_sec*90000)	
+/* MPEG-2 System Clock Hertz - we divide down by 300.0 for MPEG-1*/
 
 /* Range of sizes of the fields following the packet length field in packet header:
 	used to calculate if recieve buffers will have enough space... */
@@ -57,8 +60,9 @@
 #define PADDING_STR		0xbe		/* Marker Padding Stream*/
 #define PRIVATE_STR_1   0xbd            /* private stream 1 */
 #define PRIVATE_STR_2   0xbf            /* private stream 2 */
-#define AC3_SUB_STR_1   0x80            /* AC3 substream id 1 */
-#define AC3_SUB_STR_2   0x81            /* AC3 substream id 2 */
+#define AC3_SUB_STR_0   0x80            /* AC3 substream id 0 */
+
+#define LPCM_SUB_STR_0  0xa0	        /* LPCM substream id 0 */
 
 #define ZERO_STUFFING_BYTE	0
 #define STUFFING_BYTE		0xff

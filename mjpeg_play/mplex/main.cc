@@ -47,6 +47,7 @@ int main (int argc, char* argv[])
 {
     vector<IBitStream *> mpa_files;
     vector<IBitStream *> ac3_files;
+    vector<IBitStream *> lpcm_files;
     vector<IBitStream *> video_files;
     char    *multi_file = NULL;	
 	int     i;
@@ -60,10 +61,12 @@ int main (int argc, char* argv[])
 	check_files (argc-optargs, argv+optargs,  
 				 mpa_files,
 				 ac3_files,
+				 lpcm_files,
 				 video_files);
-	mjpeg_info( "Found %d video streams %d MPEG audio streams and %d AC3 streams",
+	mjpeg_info( "Found %d video streams %d MPEG audio streams %d LPCM audio streams and %d AC3 streams",
 				video_files.size(),
 				mpa_files.size(),
+				lpcm_files.size(),
 				ac3_files.size());
 
 
@@ -160,6 +163,12 @@ int main (int argc, char* argv[])
 		for( i = 0 ; i < ac3_files.size() ; ++i )
 		{
 			AudioStream *audioStrm = new AC3Stream( *ac3_files[i], ostrm);
+			audioStrm->Init ( i );
+			strms.push_back(audioStrm);
+		}
+		for( i = 0 ; i < lpcm_files.size() ; ++i )
+		{
+			AudioStream *audioStrm = new LPCMStream( *lpcm_files[i], ostrm);
 			audioStrm->Init ( i );
 			strms.push_back(audioStrm);
 		}
