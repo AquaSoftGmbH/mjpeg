@@ -120,19 +120,24 @@ main(int argc, char **argv)
       "v"
 #endif
       "hVp:f:";
+#ifdef HAVE_GETOPT_LONG
     const static struct option opts_long[] = {
-#ifdef USE_DLFCN_H
+# ifdef USE_DLFCN_H
       { "any-verion", no_argument,       NULL, 'a', },
-#endif
-#ifdef MJPEGTOOLS
+# endif
+# ifdef MJPEGTOOLS
       { "verbose",    required_argument, NULL, 'v', },
-#endif
+# endif
       { "help",       no_argument,       NULL, 'h', },
       { "version",    no_argument,       NULL, 'V', },
       { "property",   required_argument, NULL, 'p', },
       { "format",     required_argument, NULL, 'f', },
       { NULL, 0, NULL, 0, },
     };
+#else
+# define getopt_long(argc,argv,opts_short,opts_long,longindex) \
+ getopt(argc,argv,opts_short)
+#endif
 
     yst_stream_info_get(in, &sinfodata, &xsinfo);
     for (;;) {
