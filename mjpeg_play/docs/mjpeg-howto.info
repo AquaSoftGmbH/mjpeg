@@ -1,5 +1,6 @@
-This is mjpeg-howto.info, produced by makeinfo version 4.5 from
-/tmp/linuxdoc-dir-6277/sgmltmp.mjpeg-howto.info.2.
+START-INFO-DIR-ENTRY
+* mjpegtools: (mjpeg-howto).       command line tools for MPEG audio and video.
+END-INFO-DIR-ENTRY
 
    \input texinfo
 
