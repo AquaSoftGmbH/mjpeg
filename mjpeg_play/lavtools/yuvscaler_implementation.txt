@@ -185,7 +185,54 @@ value to be divided by $$diviseur$$
 
 BICUBIC ALGORITHM (see file yuvscaler_bicubic.c)
 -----------------
-Not so simple to explain and understand, but I will give it a try.... later!
+      // Given the scaling factor S, to an output pixel of coordinates (out_col,out_line) corresponds an input pixel of coordinates (in_col,in_line), 
+      // where in_col = out_col/S and in_line = out_line/S. As pixel coordinates are integer values, we take for in_col and out_col the nearest smaller integer
+      // value: in_col = floor(out_col/S) and in_line = floor(out_line/S). Thus, we make an error conventionnally named "b" for columns and "a" for lines
+      // with b = out_col/S - floor(out_col/S) and a = out_line/S - floor(out_line/S). a and b are inside range [0,1[. 
+      // Finally, the scaling ratio may be different for width and height and may be smaller or **larger** than 1.0. 
+      // 
+      // In the bicubic algorithm, the output pixel value depends on its 4x4 nearest neighbors in the input image.
+      // Therefore, output pixel (out_col,out_line) depends on the 16 input pixels (in_col+n,in_line+m) with n=-1,0,1,2 and m=-1,0,1,2.
+      // As a consequence, on the border of the image, the bicubic algorithm will try to find values outside the input image => to avoid this, we pad the input
+      // image 1 pixel on the top and on the left, and 2 pixels on the right and on the bottom. The padded image is stored inside either padded_input vector if the input image is not-interlaced/progressive 
+      // or inside two vectors named padded_top and padded_bottom if input image is interlaced.
+      // 
+      // The bicubic formula giving the value of the output pixel as a function of the 4x4 input pixels is:
+      // OutputPixel(out_col,out_line)=Sum(m=-1,0,1,2)Sum(n=-1,0,1,2)InputPixel(in_col+n,in_line+m)*BicubicCoefficient(m-a)*BicubicCoefficient(b-n)
+      // For calculation of the BicubicCoefficient function, see file yuvscaler_bicubic.c
+      // 
+      // We will call cubic_spline_n, the various possible values of BicubicCoefficient(b-n) and cubic_spline_m the various possible values of BicubicCoefficient(m-a)
+      // 
+
+Now, let us speak about implementation and speed.
+
+A padded input image is stored in either padded_input (not-interlaced/progressive video) or the couple padded_top/padded_bottom (interlaced video). As the input
+frames are padded 1 pixel on the top and on the left, we have InputPixel(in_col+n,in_line+m)=padded(in_col+n+1,in_line+m+1). Thus, the bicubic formula may be
+rewritten with n=0,1,2,3 and m=0,1,2,3 as 
+OutputPixel(out_col,out_line)=Sum(m=0,1,2,3)Sum(n=0,1,2,3)PaddedPixel(in_col+n,in_line+m)*BicubicCoefficient((m-1)-a)*BicubicCoefficient(b-(n-1))
+
+For speed sake, it is vital to tabulate every values that do not depend on pixel values. So, we will tabulate values of in_col, in_line, b, a, 
+BicubicCoefficient((m-1)-a) for m=0,1,2,3 and BicubicCoefficient(b-(n-1)) for n=0,1,2,3. We choose to tabulate these values as a function of the coordinates
+of the OutputPixel, that is as a function of either out_col or out_line. Therefore, we define:
+cubic_spline_n_0[out_col] = BicubicCoefficient(b[out_col]-(n-1)) for n=0 and every possible out_col values
+cubic_spline_n_1[out_col] = BicubicCoefficient(b[out_col]-(n-1)) for n=1 and every possible out_col values
+cubic_spline_n_2[out_col] = BicubicCoefficient(b[out_col]-(n-1)) for n=2 and every possible out_col values
+cubic_spline_n_3[out_col] = BicubicCoefficient(b[out_col]-(n-1)) for n=3 and every possible out_col values
+
+cubic_spline_m_0[out_line] = BicubicCoefficient((m-1)-a[out_line]) for m=0 and every possible out_line values
+cubic_spline_m_1[out_line] = BicubicCoefficient((m-1)-a[out_line]) for m=1 and every possible out_line values
+cubic_spline_m_2[out_line] = BicubicCoefficient((m-1)-a[out_line]) for m=2 and every possible out_line values
+cubic_spline_m_3[out_line] = BicubicCoefficient((m-1)-a[out_line]) for m=3 and every possible out_line values
+
+All these values are float ... as operations with float are notibly slower than operations with integer, we will work under fixed-point precision, that is 
+these floats will be transformed into integer by multiplying them by a fixed integer value and round them off. The chosen fixed value here is 2048, 
+that is a power of 2 to allow for multiplication and division operation to become simple and fast bit shifts. 2048 is also a sufficiently large value 
+as compared to maximal pixel value to allow for calculations to have a sufficient precision.
+
+
+
+
+
 
 
 
