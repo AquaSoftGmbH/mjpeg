@@ -1,0 +1,19 @@
+(1)  Never, never, never build variable bit-rate video streams.
+     Mplex doesn't like them and other multiplexers are buggy,
+     hardware decoders (e.g. your DVD/SVC card/player) barf on them.
+
+(2)  If you want to play MPEG-1 stuff on hardware decoders stick to
+     44.1 Stereo layer-2 audio.   
+
+(3)  Use the noise filters when MPEG compressing broadcast material
+     unless it is *very* good or you like Artefacts.   Use a motion
+     compensation search setting around 10 or 15.
+
+(4)  If you want to compress MPEG-2: dream on or develop real patience.
+
+(5)  If you want to compress MPEG-1: buy fast CPU's, lots of them.
+     Seriously, my "gang" a 2*PIII-450, a K6-2-500, and a 
+	 Celeron-366 take around3 hours to compress 1 hour of video to VCD 
+	 standard. Interestingly, the Celeron runs *very* well almost as
+     fast as the PIII-450 on identical code.  I expect Coppermine and
+     Athlon based CPU's will *fly* on this work.

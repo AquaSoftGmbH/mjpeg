@@ -1,0 +1,8 @@
+1.	mpeg2enc has only been tested cursorarily on MPEG-2 streams.
+	I have no easy way of testing them and they take forever to
+	encode...
+
+2.	You can't current easily steal your friend's Windows Athlon
+	for your evil purposes 	using cygwin32 as the quicktime lib
+	demands pthreads.
+

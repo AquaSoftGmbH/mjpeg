@@ -1,8 +1,17 @@
 lavtools: Linux Audio and Video TOOLS
 
-Programs for recording and playback of audio and video under Linux.
-Currently only the Iomega Buz is supported - more hardware can follow
-if somebody wants that.
+Programs for recording and playback and simple cut-and-paste editting
+and compression of audio and video under Linux.  Currently only the
+Iomega Buz is supported - more hardware can follow if somebody wants
+that.  Matrox marvel support is *almost* ready if I recall recent
+announcements correctly.
+
+N.b. Only the "lav" programs have been written from scratch.  The
+rest are from diverse open source sources, modified slightly to work
+with the lav tools edit lists and AVI and quicktime files.  Some
+(especially the MPEG tools) have had also more major perfomance 
+and functionality enhancements.   They're all bundled together here to
+save you the tedious hunting around we have to go through ;-)
 
 
 - "lavrec" is a program to record AVI and Quicktime files with
@@ -12,7 +21,8 @@ if somebody wants that.
   (including sound).
 
 - "xlav" in the directory xlav is a GUI for lavplay which permits
-  fast forward/reverse, single frame stepping and simple editing
+  fast forward/reverse, single frame stepping and simple editing.
+	
 
 - "lavtrans" (in directory utils) converts a mixture of AVI files,
   Quicktime files  or Edit Lists into a single AVI or Quicktime file
@@ -26,6 +36,24 @@ if somebody wants that.
 
 - "aenc" for encoding AVI/Quicktime files and Edit Lists
   to MPEG-1/2 audio streams
+
+- mplex multiplexes (interleaves) MPEG-1 video and audio streams
+  into a combined "system stream" that can be played back smoothly.
+  This is *not* a trivial task (see the authors excellent paper on
+  the subject - copy is in the documentation). 
+  
+- mpegjoin joins *video* (not audio, not system) streams into a single
+  stream.  This is very useful if you want to divide compressing
+  a big video stream into smaller bite-size chunks (e.g. to allow
+  multiple machines to work in parallel).  To join *audio* for mplex
+  simply "cat" the files together (its has been modified to handle this).
+
+
+- Scripts is a collection of usefulcontains sample shell scripts
+	giving example usage of various files.
+
+See the README's of the various programs for further details
+of authorship, usage, and implementatation/compilation details.
 
 
 Attention: lavplay is mainly intended to play back files created by lavrec and
@@ -61,11 +89,16 @@ that directory and change the Makefiles accordingly.
 
 - go into directory utils, type make
 
-- go into directory mpeg2enc, type make
+- go into directory mpeg2enc, edit the Makefile to suit the intended
+  CPU's (No MXX at all, only ordinary MMX, SSE/Athlon MMX) 
+  type make
 
-- go into directory mpeg2audio, type make
+- go into directory aenc, type make
+
+- go into directory mplex, edit the Makefile to suit your CPU, type make
 
 
+Now put all the programs where you want them and enjoy.
 
 Run:
 
@@ -81,7 +114,7 @@ version of lavplay is found!
 
 Read the 'README' in mpeg2eng!
 
-Read the 'README' in mpegaudio!
+Read the 'README' in aenc!
 
 UTILS:
 
@@ -95,4 +128,8 @@ lavaddwav AVI_or_QT_file WAV_file Output_file
 
 
 
-You reach me per email: Rainer@Johanni.de
+You reach us by email:
+
+lav* : Rainer@Johanni.de
+mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
+

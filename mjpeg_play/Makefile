@@ -60,7 +60,7 @@ realclean:
 #		cd utils; make clean
 #		cd xlav; make clean
 #		cd mpeg2enc; make clean
-#		cd mpegaudio; make clean
+#		cd aenc; make clean
 
 
 

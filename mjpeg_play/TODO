@@ -1,0 +1,26 @@
+TASKS OUTSTANDING
+
+Minor
+
+- Tidy up linkage to quicktime, sort out whether lavtools and the
+  MPEG stuff is going to be embedded or not... 
+
+- A proper co-ordinate autoconf/automake environment for the whole shebang!
+
+Medium
+
+- Modify mplex to improve speed and remove the need for mpegjoin
+
+- Beef up xlav to make splitting an editted stream set into multiple
+  edit lists for parallel compression less tedious.
+
+- Turn the crappy "HINTS" file into nice introductory documentation on
+  working with these programs to achieve the best results in typical
+  scenarios.
+
+Major
+
+- Improve quality of mpeg2enc's output to the level of the best commercial
+  encoders.  Make it go *still faster*  ;-)
+
+

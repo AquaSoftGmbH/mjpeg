@@ -1,3 +1,11 @@
+Changes to lavtools-1.2
+
+- A.Stevens Merged in improvements to mpeg2enc plus useful additional
+tools.
+
+- G.Ziegler Initial merge of mmx-ed JPEG libs and movtar support.
+
+
 Changes to lavtools-1.1
 
 - added MPEG video and audi encoders for usage with
