@@ -40,6 +40,7 @@ char enc_inputfile [FILELEN];
 char enc_outputfile[FILELEN];
 char enc_audiofile [FILELEN];
 char enc_videofile [FILELEN];
+char selected_player [FILELEN];       /* the player for the video playback */
 int  use_yuvplay_pipe;                          /* Encoding Preview on/off */
 int  encoding_syntax_style;	/* Used to set the syntax for the encoding */
 int  fourpelmotion;             /* Common Quality setting */
