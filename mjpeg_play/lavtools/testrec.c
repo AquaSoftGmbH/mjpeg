@@ -132,9 +132,9 @@ static char infostring[4096];
 
 static int need_newline=0;
 
-static void lavrec_msg(int type, char *str1, char *str2)
+static void lavrec_msg(int type, const char *str1, const char *str2)
 {
-	char *ctype;
+	const char *ctype;
 
 	switch(type) {
 
@@ -209,7 +209,7 @@ void set_mixer(int flag)
 	int sound_mixer_read_input;
 	int sound_mixer_write_input;
 	int sound_mask_input;
-	char *mixer_dev_name;
+	const char *mixer_dev_name;
 
 	/* Avoid restoring anything when nothing was set */
 

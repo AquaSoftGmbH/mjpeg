@@ -65,7 +65,7 @@ static void calc_timecode(int pos, int do_frames)
    sprintf(timecode,"%2d:%2.2d:%2.2d:%2.2d",tc.h,tc.m,tc.s,tc.f);
 }
 
-void store_filename(GtkFileSelection *selector, gpointer user_data) {
+static void store_filename(GtkFileSelection *selector, gpointer user_data) {
    char str[256];
    const char *name;
    selected_filename = gtk_file_selection_get_filename (GTK_FILE_SELECTION(file_selector));
@@ -81,7 +81,7 @@ void store_filename(GtkFileSelection *selector, gpointer user_data) {
    printf("Wrote to %s\n",name);
 }
 
-void create_file_selection() {
+static void create_file_selection() {
    /* Create the selector */
    char label[32];
    switch (savetype) {
@@ -248,7 +248,7 @@ gint key_press_cb(GtkWidget * widget, GdkEventKey* event, gpointer data )
    return 0;
 }
 
-void quick_message(char *message) {
+static void quick_message(const char *message) {
 
    GtkWidget *dialog, *label, *okay_button;
    
@@ -317,12 +317,13 @@ void dispatch_input(void)
       }
       return;
    }
-   // Note: no need to pass through ordinary lavplay logging output as it comes through
-   // stderr not stdout...
-
+   else
+   {
+      fprintf(stderr, "++: %s\n", inpbuff);
+   }
 }
 
-void get_input(gpointer data, gint fd, GdkInputCondition condition) 
+static void get_input(gpointer data, gint fd, GdkInputCondition condition) 
 {
    char input[4096];
    int i, n;
@@ -332,13 +333,14 @@ void get_input(gpointer data, gint fd, GdkInputCondition condition)
 
    for(i=0;i<n;i++)
    {
-      if(inplen<MAXINP-1) inpbuff[inplen++] = input[i];
       if(input[i]=='\n')
       {
-         inpbuff[inplen] = 0;
+         inpbuff[inplen] = '\0';
          dispatch_input();
          inplen = 0;
+         continue;
       }
+      if(inplen<MAXINP-1) inpbuff[inplen++] = input[i];
    }
 }
 
@@ -379,7 +381,7 @@ void button_cb(GtkWidget *ob, long data)
    }
 }
 
-guint skip_frame(char *mychar) {
+static guint skip_frame(char *mychar) {
    if (frame_skip_button_up == 0 ) {
       char out[10];
       sprintf(out,"%c\n",frame_skip_char);
@@ -567,7 +569,7 @@ void selection_cb(GtkWidget *ob, long data)
    }
 }
 
-void create_child(char **args)
+static void create_child(const char **args)
 {
    int ipipe[2], opipe[2];
    int n, vlen;
@@ -630,11 +632,10 @@ void create_child(char **args)
 int main(int argc, char *argv[])
 {
    int i;
-   char **argvn;
-
+   
    /* copy our argument list */
-
-   argvn = (char**) malloc(sizeof(char*)*(argc+3));
+   const char **argvn = (const char **) malloc(sizeof(char*)*(argc+3));
+   
    if(argvn==0) { fprintf(stderr,"malloc failed\n"); exit(1); }
    argvn[0] = PLAY_PROG;
    argvn[1] = "-q";

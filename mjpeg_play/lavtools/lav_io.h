@@ -78,7 +78,7 @@ int  lav_video_interlacing(lav_file_t *lav_file);
 void lav_video_sampleaspect(lav_file_t *lav_file, int *sar_w, int *sar_h);
 int  lav_video_is_MJPG(lav_file_t *lav_file);
 int  lav_video_MJPG_chroma(lav_file_t *lav_file);
-char *lav_video_compressor(lav_file_t *lav_file);
+const char *lav_video_compressor(lav_file_t *lav_file);
 int  lav_audio_channels(lav_file_t *lav_file);
 int  lav_audio_bits(lav_file_t *lav_file);
 long lav_audio_rate(lav_file_t *lav_file);

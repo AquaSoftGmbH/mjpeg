@@ -41,7 +41,7 @@ Copyright by Gernot Ziegler.
 
 #define DEVNAME "/dev/video0"
 
-static char *device   = DEVNAME;
+static const char *device   = DEVNAME;
 
 int v4ldev;
 int file;

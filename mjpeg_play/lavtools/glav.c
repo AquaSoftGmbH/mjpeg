@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "glav.h"
 
-GtkWidget* glav_create_button(GtkWidget * parent, gchar * label, gchar * tipstring, GtkSignalFunc callback, gpointer val) {
+static GtkWidget* glav_create_button(GtkWidget * parent, const gchar * label, const gchar * tipstring, GtkSignalFunc callback, gpointer val) {
    GtkWidget * obj;
    GtkTooltips * tooltip;
    obj = gtk_button_new_with_label(label);
@@ -18,7 +18,7 @@ GtkWidget* glav_create_button(GtkWidget * parent, gchar * label, gchar * tipstri
    return obj;
 }
 
-GtkWidget* glav_create_label(GtkWidget * parent, gchar * label) {
+static GtkWidget* glav_create_label(GtkWidget * parent, const gchar * label) {
    GtkWidget * obj;
    obj = gtk_label_new(label);
    gtk_box_pack_start(GTK_BOX(parent),obj, TRUE, TRUE, 0); 

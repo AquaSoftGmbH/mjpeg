@@ -624,12 +624,12 @@ int audio_write(uint8_t *buf, int size, int swap)
  * The audio task
  */
 
-static void system_error(char *str, int fd, int use_strerror)
+static void system_error(const char *str, int fd, int use_strerror)
 {
    if(use_strerror)
-      sprintf((char*)shmemptr->error_string,"Error %s - %s",str,strerror(errno));
+      sprintf((char*)shmemptr->error_string, "Error %s - %s",str,strerror(errno));
    else
-      sprintf((char*)shmemptr->error_string,"Error %s",str);
+      sprintf((char*)shmemptr->error_string, "Error %s",str);
 
    shmemptr->audio_status = -1;
    if( fd >= 0 )
@@ -656,7 +656,7 @@ void do_audio(void)
    struct audio_buf_info info;
    struct timeval tv;
 
-   char *audio_dev_name;
+   const char *audio_dev_name;
 
 #ifndef FORK_NOT_THREAD
    struct sched_param schedparam;

@@ -99,7 +99,7 @@ static char abuff[16384];
 
 int	verbose = 1;
 void Usage(char *str);
-void system_error(char *str1, char *str2);
+void system_error(const char *str1, const char *str2);
 
 void Usage(char *str)
 {
@@ -115,7 +115,7 @@ void Usage(char *str)
 }
 
 
-void system_error(char *str1, char *str2)
+void system_error(const char *str1, const char *str2)
 {
    mjpeg_error_exit1("%s\n%s: %s\n",str1, str2, sys_errlist[errno]);
 }

@@ -59,7 +59,6 @@ extern GTK_xlav * create_form_xlav(void);
 extern	void dispatch_input(void);
 extern  void do_real_exit(int ID, void *data);
 extern	void signal_cb(int signum, void *data);
-extern	void create_child(char **args);
 
 
 #endif /* GTK_xlav_h_ */

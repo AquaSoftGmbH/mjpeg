@@ -665,7 +665,7 @@ int lav_video_MJPG_chroma(lav_file_t *lav_file)
 }
 
 
-char *lav_video_compressor(lav_file_t *lav_file)
+const char *lav_video_compressor(lav_file_t *lav_file)
 {
    video_format = lav_file->format; internal_error = 0; /* for error messages */
    switch(lav_file->format)
@@ -919,7 +919,7 @@ int lav_filetype(lav_file_t *lav_file)
 lav_file_t *lav_open_input_file(char *filename)
 {
    int n;
-   char *video_comp = NULL;
+   const char *video_comp = NULL;
 #ifdef	HAVE_LIBQUICKTIME
    char *audio_comp;
 #endif
