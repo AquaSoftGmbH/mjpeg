@@ -46,8 +46,6 @@ AC_ARG_WITH(dv-yv12,
   [  --with-dv-yv12,                   libDV PAL YV12 read-support])
 AC_ARG_ENABLE(large-file,
   [  --disable-large-file,             disable large file support (>2GB)])
-AC_ARG_WITH(aviplay,
-  [  --with-aviplay                    use aviplay libraries])
 
 dnl Checks for programs.
 AC_GNU_SOURCE
@@ -294,21 +292,6 @@ LIBS="$LIBS -lz $LIBM_LIBS"
 AC_CHECK_LIB(png, png_read_info, [have_png=true])
 LIBS="$OLD_LIBS"
 
-dnl *********************************************************************
-dnl Check for the aviplay for linux library
-dnl At the end of this mess, AVIPLAY_LIBS will contain the libraries and
-dnl flags needed to link with the aviplay library and AVIPLAY_CFLAGS
-dnl will have the needed flags to compile against said library
-AC_SUBST(AVIPLAY_LIBS)
-AC_SUBST(AVIPLAY_CFLAGS)
-
-have_aviplay=false
-dnl check that there's an argument
-if test x$with_aviplay = xyes ; then
-  AC_MSG_ERROR([
-  *** A directory must be specified for the --with-aviplay option.])
-fi
-
 dnl some more libs which are probably needed.  Don't add -ldl unconditionally
 dnl Some systems lack -ldl and adding it here breaks things.
 EXTRA_LIBS="$LIBM_LIBS $GLIB_LIBS"
@@ -319,44 +302,6 @@ fi
 AC_CHECK_LIB([dl],[dlopen],
     [AC_DEFINE(HAVE_LIBDL,1,dlopen support) LIBDL_LIB="-ldl"])
 AC_SUBST(LIBDL_LIB)
-
-dnl if the argument was not given, try finding it ourselves
-if test x$with_aviplay = x ; then
-  AC_PATH_PROG(AVIFILE_CONFIG, avifile-config)
-  if test x$AVIFILE_CONFIG = x; then
-    AC_MSG_WARN([avifile-config could not be found, divx support disabled])
-  else
-    AVIPLAY_CFLAGS=`$AVIFILE_CONFIG --cflags`
-    AVIPLAY_LIBS=`$AVIFILE_CONFIG --libs`
-    have_aviplay=true
-  fi
-else
-  if test -d $with_aviplay ; then
-    if test -d $with_aviplay/include ; then
-      if test -d $with_aviplay/lib/.libs ; then
-        AVIPLAY_CFLAGS="-I$with_aviplay/include"
-        AVIPLAY_LIBS="-L$with_aviplay/lib/.libs -laviplay"
-        have_aviplay=true
-      fi
-    fi
-  fi
-fi
-
-if test x$have_aviplay = xtrue; then
-  AC_DEFINE(HAVE_AVIFILE,1,
-			[avifile library present])
-  dnl ** Check for GetDestFmt (new) or DestFmt (old)
-  OLD_CPPFLAGS="$CPPFLAGS"
-  CPPFLAGS="$CPPFLAGS $AVIPLAY_CFLAGS"
-  AC_REQUIRE_CPP()
-  AC_MSG_CHECKING([for IVideoDecoder::GetDestFmt() in avifile])
-  AC_EGREP_HEADER([BITMAPINFOHEADER& GetDestFmt()],avifile.h,AC_MSG_RESULT([yes]),[
-        AC_DEFINE(AVIFILE_USE_DESTFMT,1,
-				  [GetDestFmt defined in avifile lib])
-        AC_MSG_RESULT([no, using workaround])
-        ])
-  CPPFLAGS="$OLD_CPPFLAGS"
-fi
 
 dnl *********************************************************************
 dnl Check for libdv
@@ -652,7 +597,6 @@ AM_CONDITIONAL(HAVE_X86CPU, test x$have_x86cpu = xtrue)
 AM_CONDITIONAL(HAVE_PPCCPU, test x$have_ppccpu = xtrue)
 AM_CONDITIONAL(HAVE_ALTIVEC, test x$have_altivec = xtrue)
 AM_CONDITIONAL(BUILD_MJPEG, test x$have_sdl = xtrue)
-AM_CONDITIONAL(HAVE_AVIFILE, test x$have_aviplay = xtrue)
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
@@ -769,7 +713,6 @@ echo "    - PNG input support             : ${have_png}"
 echo "    - AVI MJPEG playback/recording  : true (always)"
 echo "    - libDV (digital video) support : ${have_dv} "
 echo "    - libDV PAL YV12 read support   : ${have_dv_yv12} "
-echo "    - AVIFILE divx encoding support : ${have_aviplay}"
 echo "    - Gtk+ support for glav         : ${have_gtk}"
 echo "    - glibc support for >2GB files  : ${have_large_file}"
 echo ""

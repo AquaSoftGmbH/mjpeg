@@ -7,7 +7,7 @@ INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
 	$(MOVTAR_CFLAGS) $(DV_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
         -I /usr/X11R6/include -I$(top_srcdir)/utils \
-	$(AVIPLAY_CFLAGS) ${GTK_CFLAGS} $(JPEG_CFLAGS)
+	${GTK_CFLAGS} $(JPEG_CFLAGS)
 
 # *********************************************************************
 # Support lib
@@ -54,12 +54,6 @@ liblavplay_la_CFLAGS = $(AM_CFLAGS)
 # *********************************************************************
 # The tools themselves
 
-if HAVE_AVIFILE
-  AVIFILE_BIN = lav2divx yuv2divx divxdec
-else
-  AVIFILE_BIN = 
-endif
-
 if HAVE_GTK
   GLAV_BIN = glav
 else
@@ -95,7 +89,7 @@ bin_PROGRAMS = \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
 	ypipe yuv2lav transist.flt matteblend.flt \
 	multiblend.flt lavpipe \
-	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
+	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(YUVPLAY_BIN) \
 	ppmtoy4m y4mtoppm pgmtoy4m y4mcolorbars lavinfo y4mshift yuvfps \
 	$(PNG_BIN)
 
@@ -142,11 +136,6 @@ jpeg2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a \
 png2yuv_SOURCES = png2yuv.c colorspace.h colorspace.c subsample.h subsample.c
 png2yuv_LDADD = $(top_builddir)/utils/libmjpegutils.a -lpng -lz -lm
 
-lav2divx_SOURCES = lav2divx.cpp libavifile.h lav_common.c $(lav_headers)
-lav2divx_LDADD = $(top_builddir)/utils/libmjpegutils.a \
-	liblavfile.la liblavjpeg.la $(DV_LIBS) \
-	$(AVIPLAY_LIBS) $(LIBM_LIBS)
-
 lavpipe_SOURCES = lavpipe.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
@@ -185,10 +174,6 @@ yuvcorrect_tune_LDADD = $(top_builddir)/utils/libmjpegutils.a $(LIBM_LIBS) \
 yuvplay_SOURCES = yuvplay.c $(lav_headers)
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a
 
-yuv2divx_SOURCES = yuv2divx.cpp libavifile.h $(lav_headers)
-yuv2divx_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a \
-	$(AVIPLAY_LIBS) $(LIBM_LIBS) liblavfile.la
-
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
 ppmtoy4m_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
@@ -200,11 +185,6 @@ y4mtoppm_LDADD = $(top_builddir)/utils/libmjpegutils.a
 
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
 y4mcolorbars_LDADD = $(top_builddir)/utils/libmjpegutils.a
-
-divxdec_SOURCES = divxdec.cpp riffinfo.h libavifile.h lav_common.c
-divxdec_LDADD = $(PTHREAD_LIBS) $(top_builddir)/utils/libmjpegutils.a \
-	$(AVIPLAY_LIBS) $(LIBM_LIBS) ${SDL_LIBS} ${X_LIBS} -lX11 \
-	liblavfile.la liblavplay.la liblavjpeg.la
 
 lavinfo_SOURCES = lavinfo.c $(lav_headers)
 lavinfo_LDADD = $(top_builddir)/utils/libmjpegutils.a \
