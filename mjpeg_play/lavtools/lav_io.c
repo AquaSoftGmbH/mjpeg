@@ -885,7 +885,7 @@ lav_file_t *lav_open_input_file(char *filename)
    int n;
    char *video_comp;
 #ifdef	BUILD_QUICKTIME
-   char **audio_comp;
+   char *audio_comp;
 #endif
    unsigned char *frame;
    long len;
