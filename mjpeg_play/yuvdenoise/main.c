@@ -60,9 +60,7 @@ int main(int argc, char *argv[])
   
   y4m_frame_info_t frameinfo;
   y4m_stream_info_t streaminfo;
-  y4m_xtag_list_t *xtags;
-  const char *tag = NULL;
-  int n;
+  int chroma_mode;
 
   /* display greeting */
   display_greeting();
@@ -97,56 +95,21 @@ int main(int argc, char *argv[])
 
   /* open input stream */
   if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
-    {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!", y4m_strerr (errno));
-      exit (1);
-    }
-  else
-    {
-      denoiser.frame.w         = y4m_si_get_width(&streaminfo);
-      denoiser.frame.h         = y4m_si_get_height(&streaminfo);
-      /* default chromass is 4:2:0 */
-      denoiser.frame.Cw=denoiser.frame.w/2;
-      denoiser.frame.Ch=denoiser.frame.h/2;
-      denoiser.frame.ss_h=2;
-      denoiser.frame.ss_v=2;
-      /* try to find a chromass xtag... */
+      mjpeg_error_exit1("Couldn't read YUV4MPEG header: %s!",y4m_strerr(errno));
 
-      xtags = y4m_si_xtags(&streaminfo);
-      for (n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
-	{
-	  tag = y4m_xtag_get(xtags, n);
-	  if (!strncmp("XYSCSS=", tag, 7)) break;
-	}
-      if ((tag != NULL) && (n >= 0))
-	{
-	  /* parse the tag */
-	  tag += 7;
-	  if (!strcmp("411", tag))
-	    {
-	      if (denoiser.deinterlace==1)
-		{
-		  mjpeg_error_exit1("Sorry, deinterlacing only currently supported for 4:2:0");
-		}
-	      else
-		{
-		  denoiser.frame.ss_h=4;
-		  denoiser.frame.ss_v=1;
-		}
-	    } 
-	  else if (!strcmp("420MPEG2", tag) || !strcmp(tag, "420JPEG") || 
-		   !strcmp("420PALDV", tag) || !strcmp(tag, "420"))
-	    {
-	      denoiser.frame.ss_h=2;
-	      denoiser.frame.ss_v=2;
-	    } 
-	}
-    }
+  denoiser.frame.w         = y4m_si_get_width(&streaminfo);
+  denoiser.frame.h         = y4m_si_get_height(&streaminfo);
+
+  chroma_mode = y4m_si_get_chroma(&streaminfo);
+  denoiser.frame.ss_h = y4m_chroma_ss_x_ratio(chroma_mode).d;
+  denoiser.frame.ss_v = y4m_chroma_ss_y_ratio(chroma_mode).d;
 
   denoiser.frame.Cw=denoiser.frame.w/denoiser.frame.ss_h;
   denoiser.frame.Ch=denoiser.frame.h/denoiser.frame.ss_v;
+
   frame_offset             = BUF_OFF*denoiser.frame.w;
   frame_Coffset            = BUF_COFF*denoiser.frame.Cw;
+
   if(denoiser.border.w == 0)
   {
       denoiser.border.x        = 0;
