@@ -224,7 +224,7 @@ static const vector signed short SpecialConstants =
 #ifdef ORIGINAL_SOURCE
 void DCT(short *input, short *output) {
 #else
-void fdct_altivec(short *blocks) {
+void fdct_altivec_old(short *blocks) {
 #endif
 
   vector signed short t0, t1, t2, t3, t4, t5, t6, t7, t8, t9, t10;
