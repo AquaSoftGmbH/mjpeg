@@ -1,3 +1,7 @@
+2001-08-02  Kawamata/Hitoshi  <kwmt@din.or.jp>
+
+	* yuvycsnoise: chroma noise detection case increased.
+
 2001-07-31  Kawamata/Hitoshi  <kwmt@din.or.jp>
 
 	* yuvycsnoise: reduce noise detection miss.
