@@ -5,7 +5,7 @@ srcdir=`dirname $0`
 test -z "$srcdir" && srcdir=.
 
 PKG_NAME="The Linux Audio Video tools"
-ACLOCAL_FLAGS="-I movtar"
+ACLOCAL_FLAGS=""
 
 (test -f $srcdir/configure.in \
   && test -d $srcdir/mpeg2enc) || {

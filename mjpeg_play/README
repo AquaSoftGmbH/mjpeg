@@ -20,10 +20,9 @@ with the lav tools edit lists and AVI and quicktime files.  Some
 and functionality enhancements.   They're all bundled together here to
 save you the tedious hunting around we have to go through ;-)
 
-the movtar/ and the mjpeg/ directory contain libraries to handle
-the new MJPEG movtar video format and a library 
-to simplify MJPEG software and hardware playback, respectively.
-Please read the accompanying README files in these directories
+The mjpeg/ directory contains a library 
+to simplify MJPEG software and hardware playback.
+Please read the accompanying README files in thise directory
 for more information. 
 
 - "lavrec" is a program to record AVI and Quicktime files with
@@ -155,7 +154,7 @@ You reach us by email:
 
 lav* : Rainer@Johanni.de
 mpeg2enc mplex : Andrew.Stevens@comlab.ox.ac.uk
-libmovtar and libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
+libmjpeg: Gernot Ziegler <gz@lysator.liu.se>
 
 
 

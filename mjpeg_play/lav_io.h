@@ -8,7 +8,9 @@
 #include <quicktime.h>
 #endif
 
+#ifdef BUILD_MOVTAR
 #include <movtar.h>
+#endif
 #else
 typedef void avi_t;
 typedef void quicktime_t;
@@ -26,7 +28,9 @@ typedef struct
 #ifdef BUILD_QUICKTIME
    quicktime_t *qt_fd;
 #endif
+#ifdef BUILD_MOVTAR
    movtar_t    *movtar_fd;
+#endif
    int         format;
    int         interlacing;
    int         has_audio;

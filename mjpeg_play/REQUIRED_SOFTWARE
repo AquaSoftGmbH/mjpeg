@@ -26,10 +26,8 @@ A remark regarding RPM packages:
 If you want to install RPM packages instead, always keep in mind that 
 you need to install the developing 
 ---
-.) libmovtar (movtar video format library)
-   and
-   libmjpeg (MJPEG hardware/software playback) 
-   are currently included, but being prepared to become separate packages.
+.) libmjpeg (MJPEG hardware/software playback) 
+   is currently included, but being prepared to become a separate package.
 
 And for people who want to use ALSA support (currently not useful, since it only uses emulation):
 .) ALSA driver/lib (http://alsa.jcu.cz)

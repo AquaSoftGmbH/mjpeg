@@ -4,7 +4,7 @@ Changes to lavtools-1.2
 tools.
 
 - G.Ziegler Initial merge of mmx-ed JPEG libs and movtar support.
-
+            Detached jpeg-6b-mmx and libmovtar into own packages.
 
 Changes to lavtools-1.1
 

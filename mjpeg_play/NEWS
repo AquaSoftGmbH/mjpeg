@@ -4,7 +4,7 @@
 New in version 1.2.1:
 ---------------------
 
-** movtar read/write support, including manipulation tools (see movtar/)
+** movtar read/write support
 
 ** MJPEG playback in software, and experimental MJPEG hardware overlay playback (see mjpeg/)
 
