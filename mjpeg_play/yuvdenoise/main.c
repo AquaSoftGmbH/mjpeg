@@ -65,6 +65,8 @@ int main(int argc, char *argv[])
   /* display greeting */
   display_greeting();
   
+  y4m_accept_extensions(1);
+
   /* initialize stream-information */
   y4m_init_stream_info (&streaminfo);
   y4m_init_frame_info (&frameinfo);
