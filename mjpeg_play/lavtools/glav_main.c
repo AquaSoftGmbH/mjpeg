@@ -479,7 +479,7 @@ void do_real_exit(int ID, void *data)
    /* Kill all our children and exit */
 
    printf("real exit here\n");
-   kill(0,9);
+   kill(pid,9);
    waitpid(pid,&status,0);
    exit(0);
 }
