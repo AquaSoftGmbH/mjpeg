@@ -91,6 +91,8 @@ int	chroma_right_size;
 int	chroma_right_offset;
 
 unsigned char *frame_buf[3]; /* YUV... */
+unsigned char *read_buf[3];
+unsigned char *median_buf[3];
 
 unsigned char luma_blank[720 * 480];
 unsigned char chroma_blank[720 * 480];
@@ -191,7 +193,8 @@ static void init()
 	else
 		size = chroma_output_width*chroma_output_height;
 
-    frame_buf[i] = bufalloc(size);
+    read_buf[i] = bufalloc(size);
+    median_buf[i] = bufalloc(size);
   }
 
   filter_buf =  bufalloc( output_width*output_height );
@@ -201,6 +204,10 @@ static void init()
 int readframe(int numframe, unsigned char *frame[])
 {
    int len, res;
+
+   frame[0] = read_buf[0];
+   frame[1] = read_buf[1];
+   frame[2] = read_buf[2];
 
    if(MAX_JPEG_LEN < el.max_frame_size)
    {
@@ -315,6 +322,65 @@ int readframe(int numframe, unsigned char *frame[])
 
 }
 
+int median_cmp(const void *p1, const void *p2)
+{
+	return *(unsigned char *)p1 - *(unsigned char *)p2;
+}
+
+
+void median_filter_area(unsigned char *input, unsigned char *output, 
+			int width, int height, int span)
+{
+	unsigned char	list[9];
+	unsigned char	*ptr;
+	unsigned char	*ptr1;
+	unsigned char	*ptr2;
+	unsigned char	*ptr3;
+	int		y;
+	int		x;
+
+	for(y=1; y < height -1; y++) {
+		ptr1 = &input[(y-1) * span];
+		ptr2 = ptr1 + span;
+		ptr3 = ptr2 + span;
+		ptr  = &output[y * span];
+
+		for(x=1;  x < width-1; x++) {
+			list[0] = ptr1[0];
+			list[1] = ptr1[1];
+			list[2] = ptr1++[2];
+			list[3] = ptr2[0];
+			list[4] = ptr2[1];
+			list[5] = ptr2++[2];
+			list[6] = ptr3[0];
+			list[7] = ptr3[1];
+			list[8] = ptr3++[2];
+			qsort(list, 9, 1, median_cmp);
+			*ptr++ = list[4];
+		}
+	}
+
+}
+
+void median_filter(void)
+{
+	median_filter_area(&frame_buf[0][luma_offset+luma_left_size], &median_buf[0][luma_offset+luma_left_size], 
+		active_width, active_height, output_width);
+
+	median_filter_area(&frame_buf[1][chroma_offset+chroma_left_size], 
+		&median_buf[1][chroma_offset+chroma_left_size], 
+		chroma_width, chroma_height, chroma_output_width);
+
+	median_filter_area(&frame_buf[2][chroma_offset+chroma_left_size], 
+		&median_buf[2][chroma_offset+chroma_left_size], 
+		chroma_width, chroma_height, chroma_output_width);
+
+
+	frame_buf[0] = median_buf[0];
+	frame_buf[1] = median_buf[1];
+	frame_buf[2] = median_buf[2];
+}
+
 void writeoutYUV4MPEGheader()
 {
 	 char str[256];
@@ -348,20 +414,20 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 	for(i=0; i < chroma_height; i++) {
 		ptr = &frame[1][chroma_offset + (i * chroma_output_width)];
 		if (chroma_left_size) {
-			memset(ptr, 0x00, chroma_left_size);
+			memset(ptr, 0x80, chroma_left_size);
 		}
 
 		if (chroma_right_size) {
-			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
+			memset(&ptr[chroma_right_offset], 0x80, chroma_right_size);
 		}
 
 		ptr = &frame[2][chroma_offset + (i * chroma_output_width)];
 		if (chroma_left_size) {
-			memset(ptr, 0x00, chroma_left_size);
+			memset(ptr, 0x80, chroma_left_size);
 		}
 
 		if (chroma_right_size) {
-			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
+			memset(&ptr[chroma_right_offset], 0x80, chroma_right_size);
 		}
 
 	}
@@ -400,6 +466,9 @@ void streamout()
 	for( framenum = 0; framenum < el.video_frames ; ++framenum )
 	{
 		readframe(framenum,frame_buf);
+#ifdef	NEVER
+		median_filter();
+#endif
 		writeoutframeinYUV4MPEG(frame_buf);
 	}
 }

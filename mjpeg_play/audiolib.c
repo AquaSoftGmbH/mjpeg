@@ -745,8 +745,8 @@ void do_audio()
 
    if(ret<0) system_error("in ioctl SNDCTL_DSP_GET[IO]SPACE",1);
 
-   fprintf( stderr, "Hardware offers %d frags of %d bytes\n", 
-			info.fragstotal ,info.fragsize );
+//   fprintf( stderr, "Hardware offers %d frags of %d bytes\n", 
+//			info.fragstotal ,info.fragsize );
    if (info.fragsize != audio_buffer_size)
       system_error("Soundcard fragment size unexpected",0);
 
@@ -776,7 +776,7 @@ void do_audio()
 	see how well it works.*/
    /* info.fragstotal = 2; */
    tmp = info.fragstotal*info.fragsize;
-   fprintf( stderr, "Attempting to map %d byte buffer space\n", tmp );
+//   fprintf( stderr, "Attempting to map %d byte buffer space\n", tmp );
    if (audio_capt)
       buf=mmap(NULL, tmp, PROT_READ , MAP_SHARED, fd, 0);
    else
