@@ -1207,9 +1207,11 @@ static void field_ME(
 			if (!ipflag)
 				v0 = (*pdist2)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
+			else
+				v0 = 1234;			/* Keep Compiler happy... */
+
 			if (ipflag  || (4*v0>5*vmc && v0>=9*256))
 			{
-				var = vmc;
 				mbi->mb_type = MB_FORWARD;
 				if (mbi->motion_type==MC_FIELD)
 				{
@@ -1240,7 +1242,6 @@ static void field_ME(
 			else
 			{
 				/* No MC */
-				var = v0;
 				mbi->mb_type = 0;
 				mbi->motion_type = MC_FIELD;
 				mbi->MV[0][0][0] = 0;
@@ -1344,7 +1345,6 @@ static void field_ME(
 			mbi->mb_type = MB_INTRA;
 		else
 		{
-			var = vmc;
 			if (mbi->motion_type==MC_FIELD)
 			{
 				/* forward */

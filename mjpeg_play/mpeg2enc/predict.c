@@ -261,8 +261,7 @@ static void predict_mb (
 			else
 			{
 				/* invalid mbi->motion_type in frame picture */
-				mjpeg_error("Internal: invalid motion_type\n");
-				abort();
+				mjpeg_error_exit1("Internal: invalid motion_type\n");
 			}
 		}
 		else /* TOP_FIELD or BOTTOM_FIELD */
@@ -327,8 +326,7 @@ static void predict_mb (
 			else
 			{
 				/* invalid motion_type in field picture */
-				mjpeg_error("Internal: invalid motion_type\n");
-				abort();
+				mjpeg_error_exit1("Internal: invalid motion_type\n");
 			}
 		}
 		addflag = 1; /* next prediction (if any) will be averaged with this one */
@@ -392,8 +390,7 @@ static void predict_mb (
 			else
 			{
 				/* invalid motion_type in field picture */
-				mjpeg_error("Internal: invalid motion_type\n");
-				abort();
+				mjpeg_error_exit1("Internal: invalid motion_type\n");
 			}
 		}
 	}
