@@ -89,6 +89,7 @@ void usage(char *prog)
 	  "where options are ([] shows the defaults):\n"
 	  "  -v num      Verbosity [0..2] (default 1)\n"
 	  "  -b framenr. start at given frame nr.               [0]\n"
+	  "  -f framerate the framerate that should be used     [must be given !]\n"
 	  "  -n numframes processes the given nr. of frames     [all]\n"
 	  "  -j {1}%%{2}d{3} Read JPEG frames with the name components as follows:\n"
 	  "               {1} JPEG filename prefix (e g rendered_ )\n"
