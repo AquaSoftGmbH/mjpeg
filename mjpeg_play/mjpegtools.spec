@@ -32,14 +32,15 @@ make libjpeg-mmx.a
 make
 
 %setup -b 2 -n libmovtar
-./configure
-make --prefix=%{prefix}
+./configure --prefix=%{prefix}
+make
 make install
 
 %setup -b 0 -n mjpegtools-%{version}
 ./configure --with-quicktime=`pwd`/../quicktime4linux-1.4-patch \
 	--with-jpeg-mmx=`pwd`/../jpeg-mmx \
 	--with-movtar-prefix=`pwd`/../libmovtar-0.1.2 \
+	--with-movtar-exec-prefix=%{prefix} \
 	--enable-large-file --prefix=%{prefix}
 
 %build

@@ -895,7 +895,7 @@ static void check_command_line_options(int argc, char *argv[])
 	char option[2];
         char* dotptr;
 
-#ifndef IRIX /* Gaaaah, IRIX doesn't have getopt_long ! */
+#ifdef HAVE_GETOPT_LONG
 	/* getopt_long options */
 	static struct option long_options[]={
 		{"format"           ,1,0,0},   /* -f/--format            */
@@ -932,7 +932,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* Get options */
 	nerr = 0;
-#ifndef IRIX
+#ifdef HAVE_GETOPT_LONG
 	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUBR:c:n:b:C:",
 		long_options, &option_index)) != EOF)
 #else
@@ -941,7 +941,7 @@ static void check_command_line_options(int argc, char *argv[])
 	{
 		switch(n)
 		{
-#ifndef IRIX
+#ifdef HAVE_GETOPT_LONG
 			/* getopt_long values */
 			case 0:
 				nerr += set_option(long_options[option_index].name,

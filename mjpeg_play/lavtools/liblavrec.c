@@ -44,18 +44,13 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
-
-#ifdef IRIX
 #include <sys/statfs.h>
-#endif
 
 #include <sys/vfs.h>
 #include <stdlib.h>
 
-#ifndef IRIX
 #include <linux/videodev.h>
-#include <linux/soundcard.h>
-#endif 
+#include <sys/soundcard.h>
 
 #include <videodev_mjpeg.h>
 #include <pthread.h>
@@ -211,7 +206,6 @@ static int lavrec_set_mixer(lavrec_t *info, int flag)
    /* Avoid restoring anything when nothing was set */
    if (flag==0 && settings->mixer_set==0) return 1;
 
-#ifndef IRIX
    /* Open the audio device */
    fd = open(info->mixer_dev, O_RDONLY);
    if (fd == -1)
@@ -309,10 +303,7 @@ static int lavrec_set_mixer(lavrec_t *info, int flag)
    }
 
    close(fd);
-#else
-   fprintf(stderr, "Audio mixer setting not supported in IRIX !\n");
 
-#endif
    return 1;
 }
 
@@ -326,7 +317,6 @@ static int lavrec_set_mixer(lavrec_t *info, int flag)
 
 static int lavrec_autodetect_signal(lavrec_t *info)
 {
-#ifndef IRIX 
    struct mjpeg_status bstat;
    int i;
 
@@ -418,11 +408,6 @@ static int lavrec_autodetect_signal(lavrec_t *info)
    }
 
    return 1;
-#else
-   fprintf(stderr, "Auto detection of video signal not supported in IRIX !\n");
-
-   return 1;
-#endif
 }
 
 
@@ -439,7 +424,6 @@ static uint64_t lavrec_get_free_space(video_capture_setup *settings)
    struct statfs statfs_buf;
    int64_t MBytes_fs_free;
 
-#ifndef IRIX
    /* check the disk space again */
    if (statfs(settings->stats->output_filename, &statfs_buf))
    {
@@ -452,20 +436,6 @@ static uint64_t lavrec_get_free_space(video_capture_setup *settings)
       MBytes_fs_free = statfs_buf.f_bavail/blocks_per_MB;
    }
    settings->bytes_last_checked = settings->bytes_output_cur;
-#else
-   /* check the disk space again */
-   if (statfs(settings->stats->output_filename, &statfs_buf, sizeof(struct statfs), 0))
-   {
-      /* some error happened */
-      MBytes_fs_free = MAX_MBYTES_PER_FILE; /* some fake value */
-   }
-   else
-   {
-      blocks_per_MB = (1024*1024) / statfs_buf.f_bsize;
-      MBytes_fs_free = statfs_buf.f_bfree/blocks_per_MB;
-   }
-   settings->bytes_last_checked = settings->bytes_output_cur;
-#endif
 
    return MBytes_fs_free;
 }
@@ -1248,9 +1218,7 @@ static int lavrec_hardware_init(lavrec_t *info)
 
 static int lavrec_init(lavrec_t *info)
 {
-#ifndef IRIX
    struct video_channel vch;
-#endif
 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
@@ -1345,7 +1313,6 @@ static int lavrec_init(lavrec_t *info)
    if (lavrec_autodetect_signal(info) == 0)
       return 0;
 
-#ifndef IRIX 
    vch.channel = info->video_src;
    vch.norm = info->video_norm;
    if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
@@ -1408,9 +1375,6 @@ static int lavrec_init(lavrec_t *info)
    {
       if (!lavrec_hardware_init(info)) return 0;
    }   
-#else 
-   fprintf(stderr, "FATAL: Can't make necessary videosettings in IRIX !\n");
-#endif
 
    /* Try to get a reliable timestamp for Audio */
    if (info->audio_size && info->sync_correction > 1)
@@ -1447,13 +1411,9 @@ static int lavrec_init(lavrec_t *info)
    if( getpriority(PRIO_PROCESS, 0) > -5 )
       setpriority(PRIO_PROCESS, 0, -5 );
 
-#ifndef IRIX
    /* Seconds per video frame: */
    settings->spvf = (info->video_norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
    settings->sync_lim = settings->spvf*1.5;
-#else
-   fprintf(stderr, "FATAL: Can't even set video norm dependent frames/s in IRIX !\n");
-#endif
 
    /* Seconds per audio sample: */
    if(info->audio_size)
@@ -1565,10 +1525,10 @@ static int lavrec_sync_buffer(lavrec_t *info, struct mjpeg_sync *bsync)
 
 static void lavrec_record(lavrec_t *info)
 {
-	unsigned long frame_cnt;
-	int x,y, write_frame, nerr, nfout, jpegsize=0;
-	video_capture_stats stats;
-	unsigned int first_lost;
+   unsigned long frame_cnt;
+   int x,y, write_frame, nerr, nfout, jpegsize=0;
+   video_capture_stats stats;
+   unsigned int first_lost;
    long audio_offset = 0;
    double time;
    struct timeval first_time;
@@ -1582,7 +1542,6 @@ static void lavrec_record(lavrec_t *info)
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    settings->stats = &stats;
 
-#ifndef IRIX
    /* Queue all buffers, this also starts streaming capture */
    if (info->software_encoding)
    {
@@ -1620,10 +1579,6 @@ static void lavrec_record(lavrec_t *info)
          break;
       }
    }
-#else
-   fprintf(stderr, "Recording disabled in IRIX !\n");
-   return;
-#endif
 
    /* reset the counter(s) */
    nerr = 0;
@@ -1644,7 +1599,6 @@ static void lavrec_record(lavrec_t *info)
    /* The video capture loop */
    while (settings->state == LAVREC_STATE_RECORDING)
    {
-#ifndef IRIX
       /* sync on a frame */
       if (!lavrec_sync_buffer(info, &bsync))
       {
@@ -1855,13 +1809,8 @@ static void lavrec_record(lavrec_t *info)
 
       /* if (nerr++) we need to stop and quit */
       if (nerr) lavrec_change_state(info, LAVREC_STATE_STOP);
-#else
-      fprintf(stderr, "Nope, no recording in IRIX (yet) !\n");
-      return;
-#endif
    }
 
-#ifndef IRIX
    /* stop streaming capture */
    if (info->software_encoding)
    {
@@ -1882,9 +1831,6 @@ static void lavrec_record(lavrec_t *info)
             "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
       }
    }
-#else
-   fprintf(stderr, "Can't stop capturing in IRIX !\n");
-#endif
 }
 
 
@@ -1944,7 +1890,6 @@ static void *lavrec_capture_thread(void *arg)
    if (info->audio_size)
       lavrec_set_mixer(info, 0);
 
-#ifndef IRIX
    /* Re-mute tuner audio if this is a tuner */
    if (info->video_src == 2) {
       struct video_audio vau;
@@ -1958,9 +1903,6 @@ static void *lavrec_capture_thread(void *arg)
             "Error resetting tuner audio params: %s", (char *)sys_errlist[errno]);
       }
    }
-#else
-   fprintf(stderr, "Can't set tuner in IRIX !\n");
-#endif
 
    /* and at last, we need to get rid of the video device */
    close(settings->video_fd);
@@ -2084,7 +2026,7 @@ lavrec_t *lavrec_malloc(void)
 int lavrec_main(lavrec_t *info)
 {
    video_capture_setup *settings = (video_capture_setup *)info->settings;
-#ifndef FORK_NOT_THREAD
+
    int ret;
    struct sched_param schedparam;
    /* Now we're ready to go move to Real-time scheduling... */
@@ -2095,7 +2037,6 @@ int lavrec_main(lavrec_t *info)
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
       mjpeg_info("Pthread Real-time scheduling for main thread could not be enabled.\n"); 
    }
-#endif
 
    /* Flush the Linux File buffers to disk */
    sync();

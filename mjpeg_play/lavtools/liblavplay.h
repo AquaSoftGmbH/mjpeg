@@ -68,10 +68,8 @@ typedef struct {
    int  exchange_fields;        /* [0-1] whether to exchange the fields (for interlaced video) */
    int  zoom_to_fit;            /* [0-1] zooms video to fit the screen as good as possible */
    int  flicker_reduction;      /* [0-1] whether to use flicker reduction */
-#ifdef HAVE_SDL
    int  sdl_width;              /* width of the SDL playback window in case of software playback */
    int  sdl_height;             /* height of the SDL playback window in case of software playback */
-#endif
    int  soft_full_screen;       /* [0-1] set software-driven full-screen/screen-output, 1 = yes, 0 = no */
    char *video_dev;             /* the video device */
    char *display;               /* the X-display (only important for -H) */

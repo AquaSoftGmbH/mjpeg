@@ -35,9 +35,7 @@
 #include <string.h>
 #include <errno.h>
 
-#ifndef IRIX
-#include <linux/soundcard.h>
-#endif
+#include <sys/soundcard.h>
 
 #include <sys/resource.h>
 #include <sys/mman.h>

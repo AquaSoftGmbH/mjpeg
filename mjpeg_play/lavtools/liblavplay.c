@@ -42,14 +42,16 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/wait.h>
+#ifdef HAVE_V4L
 #include <sys/vfs.h>
+#endif
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
+#include <sys/soundcard.h>
 #ifdef HAVE_V4L 
 #include <linux/videodev.h>
-#include <linux/soundcard.h>
 #else
 #define VIDEO_MODE_PAL		0
 #define VIDEO_MODE_NTSC		1
