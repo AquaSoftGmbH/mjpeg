@@ -41,6 +41,8 @@ void OBitStream::open(char *bs_filename)
 	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
 						 bs_filename, sys_errlist[sys_nerr]);
   }
+  // Save multiple buffering...
+  setvbuf(bitfile, 0, _IONBF, 0 );
   bitidx = 8;
   byteidx = 0;
   totbits = 0LL;
@@ -146,8 +148,6 @@ void IBitStream::open( char *bs_filename)
   {
 	  mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
   }
-  // Save multiple buffering...
-  setvbuf(bitfile, 0, _IONBF, 0 );
   byteidx = 0;
   bitidx = 8;
   totbits = 0LL;
