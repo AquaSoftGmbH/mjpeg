@@ -71,7 +71,7 @@ shift $[$OPTIND-1]
 sleep $[$sleep*60]
 
 cat $* | mpeg2dec -s -o $decode | \
-        ${MPEG2ENC} -F 4 ${MPEGOPTS} $bitrate -o $outfile.m1v
+        ${MPEG2ENC} ${MPEGOPTS} $bitrate -o $outfile.m1v
 
 cat $* | extract_ac3 - -s | ac3dec -m wav | \
         sox -t wav /dev/stdin -t wav -r 44100 /dev/stdout | \
