@@ -47,7 +47,7 @@ mpeg2enc_noinst_header_REF = \
 mpeg2enc_inst_header_REF = \
 	predict_ref.h
 
-mpeg2enc_SOURCES = mpeg2enc.cc streamstate.cc
+mpeg2enc_SOURCES = mpeg2enc.cc
 
 libmpeg2encpp_la_SOURCES = \
 	conform.cc \
@@ -76,7 +76,7 @@ libmpeg2encpp_la_SOURCES = \
 	$(SIMD_INLINE)
 
 noinst_HEADERS = channel.hh 	mpeg2syntaxcodes.h 	quantize_precomp.h 	simd.h \
-		tables.h 	$(mpeg2enc_noinst_header_REF) streamstate.h
+		tables.h 	$(mpeg2enc_noinst_header_REF)
 
 libmpeg2encpp_includedir = $(pkgincludedir)/mpeg2enc
 
