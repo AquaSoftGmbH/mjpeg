@@ -4,7 +4,7 @@ MAINTAINERCLEANFILES = Makefile.in
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 	-DG_LOG_DOMAIN=\"lavtools\" -DLAVPLAY_VERSION=\"$(VERSION)\" \
-	$(DV_CFLAGS) $(QUICKTIME_CFLAGS) ${X_CFLAGS} \
+	$(LIBDV_CFLAGS) $(LIBQUICKTIME_CFLAGS) ${X_CFLAGS} \
         -I /usr/X11R6/include -I$(top_srcdir)/utils \
 	${GTK_CFLAGS} $(JPEG_CFLAGS)
 
@@ -13,20 +13,15 @@ LIBMJPEGUTILS = $(top_builddir)/utils/libmjpegutils.la
 # *********************************************************************
 # Support lib
 
+lib_LTLIBRARIES = liblavfile.la liblavjpeg.la
+
 if HAVE_V4L
-  LAVREC_LIB_FILE = liblavrec.la
-else
-  LAVREC_LIB_FILE =
+  lib_LTLIBRARIES += liblavrec.la
 endif
-
 if HAVE_V4L_OR_SDL
-  LAVPLAY_LIB_FILE = liblavplay.la
-else
-  LAVPLAY_LIB_FILE =
+  lib_LTLIBRARIES += liblavplay.la
 endif
 
-lib_LTLIBRARIES = liblavfile.la liblavjpeg.la $(LAVREC_LIB_FILE) \
-	$(LAVPLAY_LIB_FILE)
 
 liblavincludedir = $(pkgincludedir)
 liblavinclude_HEADERS = \
@@ -45,7 +40,7 @@ LAV_ALL_LIB_OPTS = \
 
 liblavfile_la_SOURCES = editlist.c lav_io.c avilib.c
 liblavfile_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) \
-	$(QUICKTIME_LIBS) $(JPEG_LIBS) $(DV_LIBS)
+	$(LIBQUICKTIME_LIBS) $(JPEG_LIBS) $(LIBDV_LIBS)
 
 liblavjpeg_la_SOURCES = jpegutils.c
 liblavjpeg_la_LDFLAGS = $(LAV_ALL_LIB_OPTS) $(JPEG_LIBS)
@@ -61,45 +56,12 @@ liblavplay_la_CFLAGS = $(AM_CFLAGS)
 # *********************************************************************
 # The tools themselves
 
-if HAVE_GTK
-  GLAV_BIN = glav
-else
-  GLAV_BIN = 
-endif
-
-if HAVE_SDL
-  YUVPLAY_BIN = yuvplay
-else
-  YUVPLAY_BIN =
-endif
-
-if HAVE_V4L
-  LAVREC_BIN = lavrec testrec lavvideo
-else
-  LAVREC_BIN =
-endif
-
-if HAVE_V4L_OR_SDL
-  LAVPLAY_BIN = lavplay
-else
-  LAVPLAY_BIN =
-endif
-
-if HAVE_PNG
-  PNG_BIN = png2yuv
-else
-  PNG_BIN =
-endif
-
 bin_PROGRAMS = \
-	$(LAVPLAY_BIN) \
-	$(LAVREC_BIN) \
 	lav2wav \
 	lav2yuv \
 	yuvmedianfilter \
 	lavaddwav \
 	lavtrans \
-	$(GLAV_BIN) \
 	ypipe yuv2lav \
 	transist.flt \
 	matteblend.flt \
@@ -109,7 +71,6 @@ bin_PROGRAMS = \
 	yuvcorrect \
 	yuvcorrect_tune \
 	jpeg2yuv \
-	$(YUVPLAY_BIN) \
 	ppmtoy4m \
 	y4mtoppm \
 	pgmtoy4m \
@@ -123,8 +84,23 @@ bin_PROGRAMS = \
 	y4mtoyuv \
 	y4minterlace \
 	yuv4mpeg \
-	yuvinactive \
-	$(PNG_BIN)
+	yuvinactive
+
+if HAVE_GTK
+  bin_PROGRAMS += glav
+endif
+if HAVE_SDL
+  bin_PROGRAMS += yuvplay
+endif
+if HAVE_V4L
+  bin_PROGRAMS += lavrec testrec lavvideo
+endif
+if HAVE_V4L_OR_SDL
+  bin_PROGRAMS += lavplay
+endif
+if HAVE_LIBPNG
+  bin_PROGRAMS += png2yuv
+endif
 
 noinst_HEADERS = \
 	colorspace.h \
@@ -140,7 +116,7 @@ ypipe_SOURCES = ypipe.c
 ypipe_LDADD = $(LIBMJPEGUTILS)
 
 yuv2lav_SOURCES = yuv2lav.c
-yuv2lav_LDADD = $(LIBMJPEGUTILS) liblavfile.la liblavjpeg.la ${LIBM_LIBS}
+yuv2lav_LDADD = $(LIBMJPEGUTILS) liblavfile.la liblavjpeg.la $(LIBM_LIBS)
 
 transist_flt_SOURCES = transist.flt.c
 transist_flt_LDADD = $(LIBMJPEGUTILS)
@@ -158,7 +134,7 @@ endif
 lavplay_SOURCES = lavplay.c
 lavplay_LDADD = $(LIBMJPEGUTILS) \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} $(LAVPLAY_X_LIBS)
+	@LIBGETOPT_LIB@ $(PTHREAD_LIBS) $(SDL_LIBS) $(LAVPLAY_X_LIBS)
 
 lavrec_SOURCES = lavrec.c
 lavrec_LDADD = $(LIBMJPEGUTILS) \
@@ -170,7 +146,7 @@ testrec_LDADD = $(PTHREAD_LIBS) $(LIBMJPEGUTILS)
 
 lav2yuv_SOURCES = lav2yuv.c lav_common.c
 lav2yuv_LDADD = $(LIBMJPEGUTILS) \
-		liblavfile.la liblavjpeg.la $(DV_LIBS)
+		liblavfile.la liblavjpeg.la $(LIBDV_LIBS)
 
 jpeg2yuv_SOURCES = jpeg2yuv.c
 jpeg2yuv_LDADD = $(LIBMJPEGUTILS) liblavjpeg.la $(JPEG_LIBS)
@@ -229,7 +205,7 @@ y4mshift_SOURCES = y4mshift.c
 y4mshift_LDADD = $(LIBMJPEGUTILS)
 
 y4mspatialfilter_SOURCES = y4mspatialfilter.c
-y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) -lm
+y4mspatialfilter_LDADD = $(LIBMJPEGUTILS) $(LIBM_LIBS)
 
 y4mstabilizer_SOURCES = y4mstabilizer.c subsample.c
 y4mstabilizer_LDADD = $(LIBMJPEGUTILS)

@@ -9,6 +9,9 @@ MJPEG_MICRO_VERSION=0
 MJPEG_VERSION=$MJPEG_MAJOR_VERSION.$MJPEG_MINOR_VERSION.$MJPEG_MICRO_VERSION
 
 AC_CONFIG_HEADERS([config.h])
+dnl Create an installable config header
+AX_CONFIG_PREFIXED_HEADER([mjpegtools-config.h], [MJPEGTOOLS], [config.h])
+
 AC_CANONICAL_HOST
 dnl CANONICAL-TARGET is only there because SDL's sdl.m4 is broken.  bleah.
 AC_CANONICAL_TARGET
@@ -43,15 +46,16 @@ AC_ARG_ENABLE(zalpha,
               AC_HELP_STRING([--enable-zalpha],
                              [include MPEG Z/Alpha support in mplex (see
                               http://www.geofront.se/products_software_mza.php)]))
-AC_ARG_WITH(quicktime,
-            AC_HELP_STRING([--without-quicktime], [Do not use libquicktime.]),
-            [], [with_quicktime=yes])
-AC_ARG_WITH(dv,
-            AC_HELP_STRING([--without-dv], [Do not use libdv.]),
-            [], [with_dv=yes])
-AC_ARG_WITH(png,
-            AC_HELP_STRING([--without-png], [Do not use libpng.]),
-            [], [with_png=yes])
+AC_ARG_WITH(libquicktime,
+            AC_HELP_STRING([--without-libquicktime],
+                           [Do not use libquicktime.]),
+            [], [with_libquicktime=yes])
+AC_ARG_WITH(libdv,
+            AC_HELP_STRING([--without-libdv], [Do not use libdv.]),
+            [], [with_libdv=yes])
+AC_ARG_WITH(libpng,
+            AC_HELP_STRING([--without-libpng], [Do not use libpng.]),
+            [], [with_libpng=yes])
 AC_ARG_WITH(jpeg-mmx,
             AC_HELP_STRING([--with-jpeg-mmx=PFX],
                            [Prefix where jpeg-mmx is installed (optional).]))
@@ -83,6 +87,11 @@ AM_PROG_AS
 dnl maddog:  What about CHECK-ALLOCA????
 AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/soundcard.h malloc.h])
 
+AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_STDINT_H])
+AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_INTTYPES_H])
+
+
+
 dnl sizeof PRId64 etc...
 AC_CHECK_SIZEOF(int)
 AC_CHECK_SIZEOF(long)
@@ -104,6 +113,7 @@ AC_DEFINE_UNQUOTED(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64",
 #maddog:  Is this AC-SUBST actually necessary????
 #  (And, is the result quoted properly????)
 AC_SUBST(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64")
+AX_PREFIXED_DEFINE([MJPEGTOOLS], [PRID64_STRING_FORMAT])
 
 #maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
 #maddog:  (How does this interact with cpml stuff below???????)
@@ -250,9 +260,9 @@ fi
 
 dnl *********************************************************************
 dnl Check for the libquicktime library
+dnl   (creates LIBQUICKTIME_CFLAGS, LIBQUICKTIME_LIBS;
+dnl    defines HAVE_LIBQUICKTIME)
 dnl *********************************************************************
-AC_SUBST(QUICKTIME_LIBS)
-AC_SUBST(QUICKTIME_CFLAGS)
 dnl have_quicktime=false
 dnl if test x$with_quicktime != xno ; then
 dnl   AC_PATH_PROG(LQT_CONFIG, lqt-config, no)
@@ -267,46 +277,49 @@ dnl     AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])
 dnl     AC_MSG_RESULT(yes)
 dnl   fi
 dnl fi
-have_quicktime=false
-if test x$with_quicktime != xno ; then
+have_libquicktime=false
+if test x$with_libquicktime != xno ; then
   AC_PATH_LIB_LIBCONFIG
-  AC_PATH_LIB(quicktime, [], [], [lqt-config], [],
-              [have_quicktime=true
+  AC_PATH_LIB(libquicktime, [], [], [lqt-config], [],
+              [have_libquicktime=true
                AC_DEFINE(HAVE_LIBQUICKTIME, 1, [libquicktime is present])])
 fi
 
 
 dnl *********************************************************************
 dnl Check for PNG library
+dnl   (creates LIBPNG_CFLAGS, LIBPNG_LIBS)
 dnl *********************************************************************
-AC_SUBST(PNG_LIBS)
-AC_SUBST(PNG_CFLAGS)
-have_png=false
-if test x$with_png != xno ; then
-  PKG_CHECK_MODULES(PNG, [libpng], [have_png=true], [have_png=false])
+have_libpng=false
+if test x$with_libpng != xno ; then
+  PKG_CHECK_MODULES(LIBPNG, [libpng], [have_libpng=true], [have_libpng=false])
 fi
-AM_CONDITIONAL(HAVE_PNG, test x$have_png = xtrue)
+AM_CONDITIONAL(HAVE_LIBPNG, test x$have_libpng = xtrue)
 
 
 dnl *********************************************************************
 dnl Check for libdv
+dnl   (creates LIBDV_CFLAGS, LIBDV_LIBS; defines HAVE_LIBDV)
 dnl *********************************************************************
-AC_SUBST(DV_LIBS)
-AC_SUBST(DV_CFLAGS)
 dnl PKG_CHECK_MODULES(DV, [libdv >= 0.9],
 dnl                  [AC_CHECK_LIB(dv, dv_decoder_free,
 dnl                                [have_dv=true
 dnl                                 AC_DEFINE(HAVE_DV, 1, [libdv is present])],
 dnl                                [have_dv=false])],
 dnl                  [have_dv=false])
-have_dv=false
-if test x$with_dv != xno ; then
-  PKG_CHECK_MODULES(DV, [libdv >= 0.9], [have_dv=true], [have_dv=false])
+have_libdv=false
+if test x$with_libdv != xno ; then
+  PKG_CHECK_MODULES(LIBDV, [libdv >= 0.9],
+                    [have_libdv=true
+                     AC_DEFINE(HAVE_LIBDV, 1, [libdv is present])],
+                    [have_libdv=false])
 fi
 
 
 dnl *********************************************************************
 dnl  Look for X Window System.
+dnl   (creates X_CFLAGS, X_PRE_LIBS, X_EXTRA_LIBS, X_LIBS;
+dnl    defines X_DISPLAY_MISSING if no X)
 dnl *********************************************************************
 AC_PATH_XTRA
 
@@ -332,10 +345,10 @@ dnl AM_CONDITIONAL(HAVE_X, test x$no_x != xyes)
 dnl maddog:  even better -- all that other stuff was unnecessary.
 AM_CONDITIONAL(HAVE_X, test x$have_x = xyes)
 
-AC_SUBST(X_CFLAGS)
-AC_SUBST(X_PRE_LIBS)
-AC_SUBST(X_EXTRA_LIBS)
-AC_SUBST(X_LIBS)
+dnl AC-_SUBST(X_CFLAGS)
+dnl AC-_SUBST(X_PRE_LIBS)
+dnl AC-_SUBST(X_EXTRA_LIBS)
+dnl AC-_SUBST(X_LIBS)
 dnl AC_SUBST(x_libraries)
 
 dnl ********************************************************************
@@ -407,6 +420,24 @@ case $host_cpu in
     AC_MSG_RESULT(no)
     ;;
 esac
+
+dnl #maddog  cache-happy version of above:
+dnl AC_CACHE_CHECK([for host x86 architecture (IA32)],
+dnl                [mjt_cv_host_arch_x86],
+dnl                [case $host_cpu in
+dnl                   i[[3-7]]86)  mjt_cv_host_arch_x86=true  ;;
+dnl                   *)           mjt_cv_host_arch_x86=false ;;
+dnl                 esac])
+dnl 
+dnl AC_CACHE_CHECK([for host PowerPC architecture],
+dnl                [mjt_cv_host_arch_ppc],
+dnl                [case $host_cpu in
+dnl                   powerpc)  mjt_cv_host_arch_ppc=true  ;;
+dnl                   *)        mjt_cv_host_arch_ppc=false ;;
+dnl                 esac])
+dnl #if test x$mjt_cv_extern___progname = xyes ; then
+dnl #  AC_DEFINE([HAVE___PROGNAME], 1, [Is __progname defined by system?])
+dnl #fi
 
 
 AC_MSG_CHECKING([for PowerPC architecture])
@@ -653,9 +684,9 @@ fi
 AC_MSG_NOTICE([  - video4linux recording/playback: ${have_video4linux}])
 AC_MSG_NOTICE([  - software MJPEG playback       : ${have_sdl}])
 AC_MSG_NOTICE([  - MPEG Z/Alpha                  : ${use_zalpha}])
-AC_MSG_NOTICE([  - Quicktime playback/recording  : ${have_quicktime}])
-AC_MSG_NOTICE([  - PNG input support             : ${have_png}])
+AC_MSG_NOTICE([  - Quicktime playback/recording  : ${have_libquicktime}])
+AC_MSG_NOTICE([  - PNG input support             : ${have_libpng}])
 AC_MSG_NOTICE([  - AVI MJPEG playback/recording  : true (always)])
-AC_MSG_NOTICE([  - libDV (digital video) support : ${have_dv} ])
+AC_MSG_NOTICE([  - libDV (digital video) support : ${have_libdv} ])
 AC_MSG_NOTICE([  - Gtk+ support for glav         : ${have_gtk}])
 AC_MSG_NOTICE([])

@@ -842,3 +842,152 @@ AC_DEFUN([AC_PATH_LIB_CHECK_REGISTER_DEFAULTS],
        ])
 ])
 
+
+
+
+
+
+dnl *************************************************************************
+dnl AX_CONFIG_PREFIXED_HEADER and AX_PREFIXED_DEFINE
+dnl
+dnl @synopsis AX_CONFIG_PREFIXED_HEADER(OUTPUT, PREFIX, INPUT)
+dnl @synopsis AX_PREFIXED_DEFINE(PREFIX, SYMBOL)
+dnl
+dnl This pair of macros is used to create an installable version of a
+dnl configure-generated config file (such as the usual 'config.h', which
+dnl itself should never be installed by a package).
+dnl
+dnl The classic example is the creation of a "mypkg-config.h" file
+dnl which will be installed along with mypkg's other header files.
+dnl Your configure.ac should contain:
+dnl
+dnl    AC_CONFIG_HEADERS([config.h])
+dnl    ...
+dnl    AX_CONFIG_PREFIXED_HEADER([mypkg-config.h], [MYPKG], [config.h])
+dnl
+dnl This declares that 'mypkg-config.h' will be generated at the end of
+dnl config.status from 'config.h' by prefixing the desired symbols with
+dnl "MYPKG_".  To schedule symbols for inclusion in 'mypkg-config.h',
+dnl you would add the following to configure.ac:
+dnl
+dnl    AX_PREFIXED_DEFINE([MYPKG], [HAVE_FEATURE_Q])
+dnl    ...
+dnl    AX_PREFIXED_DEFINE([MYPKG], [HAVE_ALLOCA_H])
+dnl    ...
+dnl    AX_PREFIXED_DEFINE([MYPKG], [SPECIAL_PRINTING_STRING])
+dnl        etc.
+dnl
+dnl Each instance of AX_PREFIXED_DEFINE() should correspond to an instance
+dnl of the usual AC_DEFINE(); the AX_PREFIXED_DEFINE() merely declares that
+dnl the DEFINE'd symbol should be prefixed with "MYPKG_" and added to the
+dnl 'mypkg-config.h' output file.  
+dnl
+dnl AX_CONFIG_PREFIXED_HEADER will only transfer over "#define SYMBOL ..."
+dnl and "/* #undef SYMBOL ... */" declarations.  It will also attempt to
+dnl transfer an immediately preceding (no intervening blank lines) C-style
+dnl comment block.
+dnl
+dnl The mutual ordering of AC_CONFIG_PREFIXED_HEADER, AC_CONFIG_HEADERS,
+dnl AX_PREFIXED_DEFINE, and AC_DEFINE is unimportant.  All the real work
+dnl is done at AC_OUTPUT and during execution of config.status.
+dnl
+dnl @version v1.0 (last modified: 2004-08-08)
+dnl @author Matthew Marjanovic <maddog@mir.com>
+dnl
+dnl *************************************************************************
+AC_DEFUN([AX_CONFIG_PREFIXED_HEADER],[dnl
+AC_CONFIG_COMMANDS([$1],[dnl
+AS_VAR_PUSHDEF([_OUT],[ax_config_prefixed_OUT])dnl
+AS_VAR_PUSHDEF([_PFX],[ax_config_prefixed_PFX])dnl
+AS_VAR_PUSHDEF([_INP],[ax_config_prefixed_INP])dnl
+AS_VAR_PUSHDEF([_DFN],[ax_config_prefixed_DFN])dnl
+AS_VAR_PUSHDEF([_TMP],[ax_config_prefixed_TMP])dnl
+AS_VAR_PUSHDEF([_SCRIPT],[ax_config_prefixed_SCRIPT])dnl
+_OUT="$1"
+_PFX=AS_TR_CPP([$2])
+_INP=`echo "$3" | sed -e 's/ *//'`
+_DFN=AS_TR_CPP([_$_OUT])
+_TMP="$tmp/$_OUT"
+_SCRIPT="$tmp/${_OUT}.sed"
+if test -z "$_PFX" ; then
+   AC_MSG_ERROR([missing prefix in [$0]])
+else
+  if test ! -f "$_INP" ; then 
+    if test -f "$srcdir/$_INP" ; then
+       _INP="$srcdir/$_INP"
+    fi
+  fi
+  AC_MSG_NOTICE([creating $_OUT (prefix $_PFX for $_INP)])
+  if test ! -f $_INP ; then
+    AC_MSG_ERROR([input file $_INP does not exist])
+  else
+    # Create the transformation script
+    cat <<_EOF >$_SCRIPT
+@%:@ look for requested keywords and prefix them
+m4_ifdef([_AX_PREFIXED_DEFINE_VARS($2)],
+         [AC_FOREACH([AC_Var], m4_defn([_AX_PREFIXED_DEFINE_VARS($2)]),
+[s/@%:@\\( *\\)\\(def[]ine\\|undef\\)  *\\(AC_Var\\)\\(.*\\)/@%:@\\1\\2 ${_PFX}_\\3 \\4/
+])])dnl
+@%:@ successful?  then go print
+tPrint
+@%:@ else, try to collect a comment
+\\,/\\*, bCommentBegin
+@%:@ else, clear comment if a blank li[]ne is encountered
+/ */ h
+d
+@%:@ Comments:  collect lines in hold buffer until end marker found.
+:CommentBegin
+\\,\\*/, bCommentEnd
+N; bCommentBegin
+:CommentEnd
+h; d
+@%:@ append pattern/nl to hold buffer, remove any blank, print, clear hold.
+:Print
+s/\\(.*\\)/\\1\\n/
+H; x; s/^\\n//; p
+s/.*//; x; d
+_EOF
+    # Run _INP through _SCRIPT to create _TMP
+    cat <<_EOF >$_TMP
+/*
+   $_OUT
+   This is an architecture-specific fi[]le which was generated
+   automatically by configure.
+
+   Do not edit it manually.
+*/
+
+@%:@ifndef $_DFN
+@%:@def[]ine $_DFN
+
+_EOF
+    sed -nf $_SCRIPT $_INP >>$_TMP
+    cat <<_EOF >>$_TMP
+
+@%:@endif /* $_DFN */
+_EOF
+    # Check if new output is different from existing...
+    # ...move to destination if so.
+    if cmp -s $_OUT $_TMP 2>/dev/null; then
+      AC_MSG_NOTICE([$_OUT is unchanged])
+    else
+      ac_dir=`AS_DIRNAME(["$_OUT"])`
+      AS_MKDIR_P(["$ac_dir"])
+      rm -f "$_OUT"
+      mv "$_TMP" "$_OUT"
+    fi
+  fi
+fi
+AS_VAR_POPDEF([_SCRIPT])dnl
+AS_VAR_POPDEF([_TMP])dnl
+AS_VAR_POPDEF([_DFN])dnl
+AS_VAR_POPDEF([_INP])dnl
+AS_VAR_POPDEF([_PFX])dnl
+AS_VAR_POPDEF([_OUT])dnl
+],[PACKAGE_TARNAME="$PACKAGE_TARNAME"])])# AX_CONFIG_PREFIXED_HEADER
+
+AC_DEFUN([AX_PREFIXED_DEFINE],
+[m4_append_uniq([_AX_PREFIXED_DEFINE_VARS($1)], [$2], [ ])dnl
+])# AX_PREFIXED_DEFINE
+
+
