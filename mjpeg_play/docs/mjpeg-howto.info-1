@@ -1,5 +1,5 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.0 aus
-/tmp/linuxdoc-dir-1751/sgmltmp.mjpeg-howto.info.2.
+This is mjpeg-howto.info, produced by makeinfo version 4.2 from
+/tmp/linuxdoc-dir-2692/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -10,7 +10,7 @@ MJPEG HOWTO - An introduction to the MJPEG-tools
 ************************************************
 
      Praschinger Bernhard
-     v1.30
+     v1.31
 
    MJPEG capture/editting/replay and MPEG encoding toolset description
 

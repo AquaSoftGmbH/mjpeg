@@ -1,8 +1,8 @@
 .\"
-.TH "MJPEG tools" "1" "2 June 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.30MJPEG capture/editting/replay and MPEG encoding toolset description
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.31MJPEG capture/editting/replay and MPEG encoding toolset description
 
 .Pp
 Introduction
@@ -329,7 +329,7 @@ All lavtools accept a file description like file*.avi, so you do not have
 to name each file, but that would also be a posibillity to do. 
 
 .Pp
-Note: More options are described in the man-pager, but with this you should be able to start.
+Note: More options are described in the man-page, but with this you should be able to start.
 
 .Pp
 How about some hints as to sensible settings. Turn the quality to 80%
@@ -819,7 +819,7 @@ Most tasks can be easily done by glav. Like deleting parts of the video,
 cut paste and copy parts of the videos.
 
 .Pp
-glav button decsription
+glav button description
 
 .Pp
 
@@ -954,7 +954,7 @@ If you want to have the image in a single file you can use that version
 If you want to split the fields into single files use that:
 
 .Pp
-\f(CR>  lav2yuv -f 5 ../aufnahme/attomic.avi \(br y4mtoppm \(br
+\f(CR>  lav2yuv -f 5 ../stream.avi \(br y4mtoppm \(br
 pnmsplit - image%d.pnm\fP
 
 .Pp
@@ -1757,7 +1757,7 @@ in the according sections.Which values should be used for VBR Encoding
 .Pp
 The -q option controls the minimum quantization of the output stream.
 Quantization controls the precision with which image information is
-encoded. The higher the value the better the image quality.
+encoded. The lower the value the better the image quality.
 
 .Pp
 Usually you have to set up a maximum bitrate with the -b option. So
@@ -1777,7 +1777,7 @@ A combination that will produce more artefacts you can count, is a
 SVCD with a maximal video bitrate of 2500kBit and a qualitfactor set
 to 1 or 2.
 For SVCD with a video limit of 2500kBit a quality factor of 7-11 fits
-quite good.If you use filter programs or have a very good source like 
+quite good. If you use filter programs or have a very good source like 
 digital TV, DVD like material or rendered pictures. If your SVCD/DVD
 player supports higher bitrates than the official 2788kBit/sec for the
 video and audio. Use the higher bitrate and a higher quality factor,  
@@ -2379,7 +2379,19 @@ A command would look like this:
 
 .Pp
 \f(CR> lav2yuv stream.eli \(br yuvdenoise -options \(br
-yuvscaler -options \(br yuvplay\fPTranscoding of existing MPEG-2
+yuvscaler -options \(br yuvplay\fP
+
+.Pp
+If you are looking for a hardware device that can make the vide to look
+better before you record it. We currently know about two firms that produce
+such boxes. 
+
+.Pp
+One produced by SIMA: , that device will work with NTSC.
+And a one other produced by ELV (german distributor): 
+
+there you find in the SHOP area, a section where you can take a look at
+their Video - Audio devices. Most of that devices work only with PAL.Transcoding of existing MPEG-2
 
 
 .Pp
@@ -3000,3 +3012,52 @@ mistakes.
 .Pp
 And there a some people that helped me with program descriptions and
 hints, \fBthanks\fP
+.SH "SEE ALSO"
+.br 
+.LP 
+The mjpeg homepage is at:
+.br 
+http://mjpeg.sourceforge.net/
+.br 
+http://sourceforge.net/projects/mjpeg
+
+vcdimager  is aviable at: 
+.br 
+http://www.vcdimager.org/
+.br 
+
+cdrdao   is aviable at:
+.br 
+http://cdrdao.sourceforge.net/index.html
+.br 
+
+Linux Video Studio is aviable at:
+.br 
+http://ronald.bitfreak.net
+
+The lavtools:
+.br 
+.BR jpeg2yuv(1),
+.BR lav2wav(1),
+.BR lav2yuv(1),
+.BR lavpipe(1),
+.BR lavplay(1),
+.BR lavrec(1),
+.BR lavtrans(1),
+.BR mp2enc(1),
+.BR mpeg2enc(1),
+.BR mplex(1),
+.BR ppmtoy4m (1),
+.BR yuv2lav(1),
+.BR yuvdenoise(1),
+.BR yuvkineco(1),
+.BR yuvmedianfilter(1),
+.BR yuvplay(1),
+.BR yuvscaler(1),
+.BR yuvycsnoise(1),
+.BR y4mcolorbars(1),
+.BR y4mtoppm(1).
+
+.br
+Tools without a man page: lavaddwaw, glav
+

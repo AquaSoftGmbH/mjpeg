@@ -1,5 +1,5 @@
-Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.0 aus
-/tmp/linuxdoc-dir-1751/sgmltmp.mjpeg-howto.info.2.
+This is mjpeg-howto.info, produced by makeinfo version 4.2 from
+/tmp/linuxdoc-dir-2692/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -98,7 +98,7 @@ Which values should be used for VBR Encoding
 
    The -q option controls the minimum quantization of the output stream.
 Quantization controls the precision with which image information is
-encoded. The higher the value the better the image quality.
+encoded. The lower the value the better the image quality.
 
    Usually you have to set up a maximum bitrate with the -b option. So
 the tricky task is to set a value for the -q option and the -b option
@@ -114,7 +114,7 @@ for the maximal bitrate or a to high quality factor.
    A combination that will produce more artefacts you can count, is a
 SVCD with a maximal video bitrate of 2500kBit and a qualitfactor set to
 1 or 2.  For SVCD with a video limit of 2500kBit a quality factor of
-7-11 fits quite good.If you use filter programs or have a very good
+7-11 fits quite good. If you use filter programs or have a very good
 source like digital TV, DVD like material or rendered pictures. If your
 SVCD/DVD player supports higher bitrates than the official 2788kBit/sec
 for the video and audio. Use the higher bitrate and a higher quality
@@ -635,6 +635,16 @@ choosen are making the thing better or worse.
 
    `> lav2yuv stream.eli | yuvdenoise -options | yuvscaler -options |
 yuvplay'
+
+   If you are looking for a hardware device that can make the vide to
+look better before you record it. We currently know about two firms
+that produce such boxes.
+
+   One produced by SIMA: http://www.simacorp.com/scc.htm, that device
+will work with NTSC.  And a one other produced by ELV (german
+distributor): http://www.elv.de there you find in the SHOP area, a
+section where you can take a look at their Video - Audio devices. Most
+of that devices work only with PAL.
 
 
 File: mjpeg-howto.info,  Node: Transcoding of existing MPEG-2,  Next: Trading Quality/Speed,  Prev: Optimizing the stream,  Up: Top

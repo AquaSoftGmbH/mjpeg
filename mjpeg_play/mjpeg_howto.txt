@@ -1,6 +1,6 @@
   MJPEG HOWTO - An introduction to the MJPEG-tools
   Praschinger Bernhard
-  v1.30
+  v1.31
 
   MJPEG capture/editting/replay and MPEG encoding toolset description
   ______________________________________________________________________
@@ -299,7 +299,7 @@
   All lavtools accept a file description like file*.avi, so you do not
   have to name each file, but that would also be a posibillity to do.
 
-  Note: More options are described in the man-pager, but with this you
+  Note: More options are described in the man-page, but with this you
   should be able to start.
 
   How about some hints as to sensible settings. Turn the quality to 80%
@@ -655,7 +655,7 @@
 
 
 
-                         glav button decsription
+                         glav button description
 
 
 
@@ -743,8 +743,7 @@
 
   If you want to split the fields into single files use that:
 
-  >  lav2yuv -f 5 ../aufnahme/attomic.avi | y4mtoppm | pnmsplit -
-  image%d.pnm
+  >  lav2yuv -f 5 ../stream.avi | y4mtoppm | pnmsplit - image%d.pnm
 
   Maybe interesting if you need sample images and do not want to play
   around with grabbing a single image.
@@ -796,6 +795,7 @@
   > lav2yuv -f 25 epilogue.mov
 
   -o defaults to an offset of zero
+
 
   But we need to combine the two streams with lavpipe. So the call would
   be:
@@ -1324,7 +1324,7 @@
 
   The -q option controls the minimum quantization of the output stream.
   Quantization controls the precision with which image information is
-  encoded. The higher the value the better the image quality.
+  encoded. The lower the value the better the image quality.
 
   Usually you have to set up a maximum bitrate with the -b option. So
   the tricky task is to set a value for the -q option and the -b option
@@ -1340,9 +1340,9 @@
   A combination that will produce more artefacts you can count, is a
   SVCD with a maximal video bitrate of 2500kBit and a qualitfactor set
   to 1 or 2.  For SVCD with a video limit of 2500kBit a quality factor
-  of 7-11 fits quite good.If you use filter programs or have a very good
-  source like digital TV, DVD like material or rendered pictures. If
-  your SVCD/DVD player supports higher bitrates than the official
+  of 7-11 fits quite good. If you use filter programs or have a very
+  good source like digital TV, DVD like material or rendered pictures.
+  If your SVCD/DVD player supports higher bitrates than the official
   2788kBit/sec for the video and audio. Use the higher bitrate and a
   higher quality factor, action scenes for example will look much
   better.
@@ -1797,6 +1797,16 @@
   > lav2yuv stream.eli | yuvdenoise -options | yuvscaler -options |
   yuvplay
 
+  If you are looking for a hardware device that can make the vide to
+  look better before you record it. We currently know about two firms
+  that produce such boxes.
+
+  One produced by SIMA: http://www.simacorp.com/scc.htm, that device
+  will work with NTSC.  And a one other produced by ELV (german
+  distributor): http://www.elv.de there you find in the SHOP area, a
+  section where you can take a look at their Video - Audio devices. Most
+  of that devices work only with PAL.
+
   9.  Transcoding of existing MPEG-2
 
   For transcoding existing MPEG-2 streams from digital TV cards or DVD a
@@ -1834,6 +1844,7 @@
 
   > SYNC 234 mSec
 
+
   You will need to adjust the audio/video startup delays when
   multiplexing to ensure audio and video are synchronized.  The exact
   delay (in milliseconds) that you need to pass to mplex to synchronize
@@ -1844,6 +1855,7 @@
   Then you need to multiplex them like this:
 
   > mplex -f 1 -O 234 vcd_stream.mp2 vcd_stream.m1v -o lowrate.mpg
+
 
      -f 1
         Mux format is set to VCD
@@ -1898,7 +1910,6 @@
   generate the mpeg audio file:
 
   > cat sound.wav | mp2enc -V -v 2 -o audio.mp2
-
 
      -V forces VCD format, the sampling rate is converted to 44.1kHz
         from 48kHz
@@ -1976,7 +1987,6 @@
   > mplex -f 4 -b 230 audio.mp2 video_svcd -o svcd_stream.mpg
 
 
-
      -f 4
         generate an SVCD stream
 
@@ -2033,7 +2043,6 @@
   YUV. Using YUVh makes the video the half size!  The rest can be done
   just like editing and encoding other streams.  If you have videos with
   ac3 sound you only have to adapt the commands above.
-
   Extracting Audio:
 
   > cat test2.mpg | extract_ac3 - -s | ac3dec -o wav 2>dev/null
@@ -2164,6 +2173,7 @@
 
 
   o  dxr2 (hardware decoder card)
+
 
   o  xine http://xine.sourceforge.net/
 
