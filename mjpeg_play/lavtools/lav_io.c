@@ -365,11 +365,8 @@ lav_file_t *lav_open_output_file(char *filename, char format,
          if(!lav_fd->qt_fd) { free(lav_fd); return 0; }
          quicktime_set_video(lav_fd->qt_fd, 1, width, height, fps,
                              (interlaced ? QUICKTIME_MJPA : QUICKTIME_JPEG));
-
-         /* The sound system wants unsigned data (QUICKTIME_RAW) for 8 bit
-            and signed twos complement data (QUICKTIME_TWOS) for 16 bit! */
-         if (asize) quicktime_set_audio(lav_fd->qt_fd, achans, arate,
-                             asize, (asize==8) ? QUICKTIME_RAW : QUICKTIME_TWOS);
+         if (asize)
+	    quicktime_set_audio(lav_fd->qt_fd, achans, arate, asize, QUICKTIME_TWOS);
          return lav_fd;
 #else
 	 internal_error = ERROR_FORMAT;
@@ -958,21 +955,13 @@ lav_file_t *lav_open_input_file(char *filename)
 	    }
 	  /* Check for audio tracks */
 	  lav_fd->has_audio = 0;
-	  if(quicktime_audio_tracks(lav_fd->qt_fd))
-	    {
-	      audio_comp = quicktime_audio_compressor(lav_fd->qt_fd,0);
-	      /* in order to be able to play the audio correctly,
-		 size must either be 8 bits and compressor "raw "
-		 or 16 bits and compressor "twos" */
-	      if( ( quicktime_audio_bits(lav_fd->qt_fd,0)==8 &&
-		    strncasecmp(audio_comp,QUICKTIME_RAW,4)==0 ) ||
-		  ( quicktime_audio_bits(lav_fd->qt_fd,0)==16 &&
-		    strncasecmp(audio_comp,QUICKTIME_TWOS,4)==0 ) )
-		{
-		  lav_fd->has_audio = 1;
-		}
-	    }
-	}
+	  if (quicktime_audio_tracks(lav_fd->qt_fd))
+	     {
+	     audio_comp = quicktime_audio_compressor(lav_fd->qt_fd,0);
+	     if (strncasecmp(audio_comp, QUICKTIME_TWOS,4)==0 ))
+		lav_fd->has_audio = 1;
+	      }
+	 }
 #endif
    }
    else
