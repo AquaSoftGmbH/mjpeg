@@ -16,10 +16,12 @@
 #    along with this program; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import tvguide
-import time
+from time import *
+import guide
 
-guide = tvguide.TvGuide()
-guide.guide_whole_day(0)
-guide.save(time.time())
-guide.output()
+guide = guide.Guide()
+#listing = mktime(2000,12,27,12,30,0, 0, 360, -1)
+#listing = localtime(time())
+listing = time()
+guide.display_guide(0, 0, 640, 480, listing)
+

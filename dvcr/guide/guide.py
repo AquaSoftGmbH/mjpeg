@@ -19,6 +19,8 @@ from time import *
 from Tkinter import *
 import marshal 
 import ConfigParser
+import Pmw
+import table
 
 class GuideCmd:
 	def __init__(self, func, *args, **kw):
@@ -34,16 +36,31 @@ class GuideCmd:
 def print_data(data):
 	print data
 
-class Guide:
+def set_weight(grid, start_row=0, start_column=0):
+	columns, rows = grid.grid_size()
+	print "cols=%d rows=%d" % (columns, rows)
 
+	column = start_column
+	while column < columns:
+		grid.grid_columnconfigure(column, weight=1)
+		column = column + 1
+
+	row = start_row
+	while row < rows:
+		grid.grid_rowconfigure(row, weight=1)
+		row = row + 1
+
+class Guide:
 	def __init__(self):
-		self.listing = []
 		self.list_dict = {}
 		self.config_data = ConfigParser.ConfigParser()
 		self.config_data.read("/etc/dvcr")
 		self.root = None
+		self.columns = 3
+		self.column_list = (1, 2, 3)
 		self.seconds_per_day = 24 * 60 * 60
 		self.zone_offset = timezone
+		self.station_width = 0
 		self.time_label = ( 
 			"12:00 AM", "12:30 AM", " 1:00 AM", " 1:30 AM", 
 			" 2:00 AM", " 2:30 AM", " 3:00 AM", " 3:30 AM", 
@@ -82,11 +99,13 @@ class Guide:
 		
 
 	def output(self):
-		self.listing.sort()
+		list_keys = self.list_dict.keys()
+		list_keys.sort()
 
-		for data in self.listing:
-			print "%s %6.6s %-10s %3d mins. %s" % \
-				(strftime("%m/%d/%y %H:%M", gmtime(data[0])), 
+		for key in list_keys:
+			data = self.list_dict[key]
+			print "%s %s %6.6s %-10s %3d mins. %s" % \
+				(key, strftime("%m/%d/%y %H:%M", gmtime(data[0])), 
 				data[2], data[1], data[3], data[4])
 
 	def search(self, station_id, list_time):
@@ -94,12 +113,15 @@ class Guide:
 		if end > -1:
 			station_id = station_id[end + 1:]
 
+		print localtime(list_time)
 		list_time = list_time - self.zone_offset
+		print gmtime(list_time)
 		key_time = list_time - (list_time % 1800)
 		zero_time = list_time - 3600 * 5
 
 		while key_time > zero_time:
 			key = strftime("%d%H%M", gmtime(key_time)) + station_id
+			print "searching key=%s" % key
 			if self.list_dict.has_key(key):
 				return self.list_dict[key]
 			key_time = key_time - 1800
@@ -157,12 +179,12 @@ class Guide:
 		print listing
 
 	def time_button(self, time_index, col):
-		label = Button(self.root, 
-			text=self.time_label[time_index], 
-			width=20)
-		label.grid(row=0, 
-			column=col,
-			sticky="nsew")
+		label = Button(self.listing_frame, 
+			text=self.time_label[time_index])
+		self.listing_widget.add(label, 
+			row=0, 
+			column=col)
+		self.buttons.append(label)
 		return label
 
 	def station_button(self,station_id, row):
@@ -170,33 +192,33 @@ class Guide:
 		if end > -1:
 			station_id = station_id[:end]
 
-		label = Button(self.root, 
+		label = Button(self.listing_frame, 
 			text=station_id, 
 			command=GuideCmd(print_data, station_id))
-		label.grid(row=row,
-			column=0,
-			sticky="nsew")
+		self.listing_widget.add(label, 
+			row=row, 
+			column=0)
+		if len(station_id) > self.station_width:
+			self.station_width = len(station_id)
 		return label
 
 	def listing_button(self,list_time, station_id, row, col, command):
 		listing = self.search(station_id, list_time)
-		print "search=" , listing
 		if listing == None:
-			return 	-1
+			return 	1
 		listing_next = self.next(station_id, list_time)
-		print "next=", listing_next
 		if (listing_next != None):
 			list_time = list_time - self.zone_offset
-			list_time = list_time % self.seconds_per_day
-			current_index = int(list_time / 1800)
-			time_today = listing_next[0] % self.seconds_per_day
-			end_index = int(time_today / 1800)
-			span = end_index - current_index
+			next_time = listing_next[0] - (listing_next[0] % 1800)
+			span = int((next_time - list_time)/1800) + 1
 		else:
-			span = 5
+			span = self.columns
 
 		if span < 1:
 			span = 1
+
+		if span + col  > self.columns:
+			span = self.columns - col + 1
 
 		end = find(station_id, ":")
 		if end > -1:
@@ -204,14 +226,14 @@ class Guide:
 		key_time = listing[0] - (listing[0] % 1800)
 		key = strftime("%d%H%M", gmtime(key_time)) + station_id
 
-
-		label = Button(self.root,
+		label = Button(self.listing_frame,
 			command=GuideCmd(self.info, key),
 			text=listing[4])
-		label.grid(row=row,
+		self.listing_widget.add(label, 
 			column=col,
-			columnspan=span,
-			sticky="nsew")
+			row=row,
+			columnspan=span)
+#			sticky="NSEW")
 		return span
 
 	def display_guide(self, x, y, width, height, seconds):
@@ -219,27 +241,55 @@ class Guide:
 		date_string = strftime("%m/%d/%Y %I:%M %p", localtime(seconds))
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
+
 		self.load(seconds)
+
+		self.info_frame = Frame(self.root, background="green")
+		self.listing_widget = table.Table(self.root, 
+			fixedcol=1,
+			fixedrow=1)
+		self.listing_frame = self.listing_widget.component("table")
 
 		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
 		time_index = hour * 2 + min / 30
 
-		self.time_button(time_index, 1)
-		self.time_button(time_index+1, 2)
-		self.time_button(time_index+2, 3)
-		self.time_button(time_index+3, 4)
+		self.buttons = []
+
+		label = Button(self.listing_frame, 
+			text=" ")
+		label.grid(row=0, column=0, sticky='NSEW')
+		self.buttons.append(label)
+
+		Label(self.info_frame, background="red",text="Info frame").grid(row=0,column=0,stick='NSEW')
+		set_weight(self.info_frame)
 
 		current_row = 1
 		for station in station_list:
 			self.station_button(station, current_row)
 			col = 1
-			while col <= 4:
+			while col <= self.columns:
 				span = self.listing_button(seconds + (col-1)
 					* 1800, station, current_row,col, "")
+				print "col = %d span = %d " % (col, span)
 				col = col + span
-
 			current_row = current_row + 1
 
+
+		set_weight(self.listing_frame, start_column=1)
+
+		self.info_frame.pack(expand=YES, fill=BOTH, side='top')
+		self.listing_widget.pack(expand=YES, fill=BOTH, side='top')
+
+		self.info_frame.grid_propagate(flag=1)
+		self.listing_widget.grid_propagate(flag=1)
+
+#		self.base_frame.bind("<Configure>", 
+#			lambda event=None, self=self: self.callback1())
+#		self.base_frame.bind("<Map>", 
+#			lambda event=None, self=self: self.callback1())
+
 		self.root.mainloop()
+
+
 		
-		
+

@@ -222,9 +222,8 @@ class TvGuide(Guide):
 
 
 	def guide_whole_day(self, offset):
-		current = mktime(localtime(time()))
+		current = time() - timezone
 		current = current - (current % (24 * 60 * 60))
-		current = current + offset * 24 * 60 * 60
 		
 		start = self.seconds_tvguide(current - (4 * 60 * 60))
 		end = self.seconds_tvguide(current + 28 * 60 * 60)
