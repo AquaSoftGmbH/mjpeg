@@ -44,11 +44,16 @@ then
   DEFAULT_JPEGDIR=`pwd`/../jpeg-mmx
 else
   if test -r /usr/local/src/jpeg-mmx
+  then
+    DEFAULT_JPEGDIR=/usr/local/src/jpeg-mmx
+  else
+    if test -r /usr/local/lib/libjpeg-mmx.a
     then
-      DEFAULT_JPEGDIR=/usr/local/src/jpeg-mmx
+      DEFAULT_JPEGDIR=/usr/local/lib
     else
-      DEFAULT_JPEGDIR=/usr/local/src/quicktime4linux-1.2
+      echo "No JPEG-MMX lib found"
     fi
+  fi
 fi
 
 AC_ARG_WITH(jpeg-mmx, [  --with-jpeg-mmx=PFX  Where to find the jpeg-mmx source dir [../jpeg-mmx:/usr/local/src/jpeg-mmx] ], 
