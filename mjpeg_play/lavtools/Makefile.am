@@ -87,11 +87,11 @@ bin_PROGRAMS = \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
 	ypipe yuv2lav transist.flt matteblend.flt \
 	multiblend.flt lavpipe \
-	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
+	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
 	ppmtoy4m y4mtoppm y4mcolorbars lavinfo
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
-	yuvscaler.h frequencies.h lav_common.h lav2wav.h
+	yuvscaler.h yuvcorrect.h frequencies.h lav_common.h lav2wav.h
 
 ypipe_SOURCES = ypipe.c $(lav_headers)
 ypipe_LDADD = -L$(top_builddir)/utils -lmjpegutils
@@ -160,6 +160,14 @@ lavvideo_SOURCES = lavvideo.c $(lav_headers)
 yuvscaler_SOURCES = yuvscaler.c yuvscaler_resample.c yuvscaler_bicubic.c $(lav_headers)
 yuvscaler_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
 	 liblavfile.la liblavjpeg.la
+
+yuvcorrect_SOURCES = yuvcorrect.c yuvcorrect_functions.c $(lav_headers)
+yuvcorrect_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
+        liblavfile.la liblavjpeg.la
+
+yuvcorrect_tune_SOURCES = yuvcorrect_tune.c yuvcorrect_functions.c $(lav_headers)
+yuvcorrect_tune_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
+        liblavfile.la liblavjpeg.la
 
 yuvplay_SOURCES = yuvplay.c $(lav_headers)
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils
