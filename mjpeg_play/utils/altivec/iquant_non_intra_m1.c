@@ -39,36 +39,54 @@
 #endif
 
 
-#define IQUANT_NON_INTRA_M1_PDECL int16_t *src, int16_t *dst, uint16_t *qmat
+/* initialized in enable_altivec_quantization() */
+extern vector unsigned short *inter_q_altivec;
 
-#define IQUANT_NON_INTRA_M1_ARGS src, dst, qmat
+
+#define IQUANT_NON_INTRA_M1_PDECL int16_t *src, int16_t *dst, int mquant
+
+#define IQUANT_NON_INTRA_M1_ARGS src, dst, mquant
 
 void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_M1_PDECL)
 {
     int i;
     vector signed short vsrc;
+    uint16_t *qmat;
     vector unsigned short vqmat;
+    vector unsigned short vmquant;
     vector signed short val, t0, t1;
     vector bool short ltzero, eqzero;
     vector signed short zero, one;
     vector unsigned int five;
     vector signed short saturation;
+    union {
+	vector unsigned short v;
+	unsigned short mquant[8];
+    } vu;
 #ifdef ALTIVEC_DST
     DataStreamControl dsc;
 #endif
 
 #ifdef ALTIVEC_VERIFY /* {{{ */
-    if (NOT_VECTOR_ALIGNED(qmat))
-	mjpeg_error_exit1("iquant_non_intra_m1: qmat %% 16 != 0, (%d)", qmat);
+    if (NOT_VECTOR_ALIGNED(inter_q_altivec))
+	mjpeg_error_exit1("iquant_non_intra_m1: inter_q %% 16 != 0, (%d)",
+	    inter_q_altivec);
 
     if (NOT_VECTOR_ALIGNED(src))
 	mjpeg_error_exit1("iquant_non_intra_m1: src %% 16 != 0, (%d)", src);
 
     if (NOT_VECTOR_ALIGNED(dst))
 	mjpeg_error_exit1("iquant_non_intra_m1: dst %% 16 != 0, (%d)", dst);
+
+    for (i = 0; i < 64; i++)
+	if (src[i] < -256 || src[i] > 255)
+	    mjpeg_error_exit1("iquant_non_intra_m1: -256 > src[%i] > 255, (%d)",
+		i, src[i]);
 #endif /* }}} */
 
     AMBER_START;
+
+    qmat = (uint16_t*)inter_q_altivec;
 
 #ifdef ALTIVEC_DST
     dsc.control = DATA_STREAM_CONTROL(64/8,1,0);
@@ -76,8 +94,11 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_M1_PDECL)
     vec_dst(qmat, dsc.control, 1);
 #endif
 
+    vu.mquant[0] = (unsigned short)mquant;
+    vmquant = vec_splat(vu.v, 0);
+
     vsrc = vec_ld(0, (signed short*)src);
-    vqmat = vec_ld(0, (unsigned short*)qmat);
+    vqmat = vec_ld(0, qmat);
     zero = vec_splat_s16(0);
     one = vec_splat_s16(1);
     five = vec_splat_u32(5);
@@ -87,6 +108,9 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_M1_PDECL)
 
     i = (64/8)-1;
     do {
+	/* inter_q[i] * mquant */
+	vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
+
 	ltzero = vec_cmplt(vsrc, zero);
 	eqzero = vec_cmpeq(vsrc, zero);
 
@@ -131,6 +155,9 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_M1_PDECL)
 	vec_st(val, 0, dst);
 	dst += 8;
     } while (--i);
+
+    /* inter_q[i] * mquant */
+    vu16(vqmat) = vec_mulo(vu8(vqmat), vu8(vmquant));
 
     ltzero = vec_cmplt(vsrc, zero);
     eqzero = vec_cmpeq(vsrc, zero);
@@ -262,7 +289,7 @@ void iquant_non_intra_m1_altivec(IQUANT_NON_INTRA_M1_PDECL) /* {{{ */
 #endif
 
 #if ALTIVEC_TEST_FUNCTION(iquant_non_intra_m1) /* {{{ */
-#define IQUANT_NON_INTRA_M1_PFMT "src=0x%X, dst=0x%X, qmat=0x%X"
+#define IQUANT_NON_INTRA_M1_PFMT "src=0x%X, dst=0x%X, mquant=%d"
 
 #  ifdef ALTIVEC_VERIFY
 void iquant_non_intra_m1_altivec_verify(IQUANT_NON_INTRA_M1_PDECL)
@@ -270,6 +297,9 @@ void iquant_non_intra_m1_altivec_verify(IQUANT_NON_INTRA_M1_PDECL)
     int i;
     unsigned long checksum1, checksum2;
     int16_t srccpy[64], dstcpy[64];
+    uint16_t *qmat;
+
+    qmat = (uint16_t*) inter_q_altivec;
 
     /* in case src == dst */
     memcpy(srccpy, src, 64*sizeof(int16_t));
@@ -296,7 +326,7 @@ void iquant_non_intra_m1_altivec_verify(IQUANT_NON_INTRA_M1_PDECL)
     for (i = 0; i < 64; i++) {
 	if (dstcpy[i] != dst[i]) {
 	    mjpeg_debug("iquant_non_intra_m1: src[%d]=%d, qmat=%d, "
-			"dst %d != %d", i, srccpy[i], qmat[i],
+			"dst %d != %d", i, srccpy[i], qmat[i]*mquant,
 			dstcpy[i], dst[i]);
 	}
     }

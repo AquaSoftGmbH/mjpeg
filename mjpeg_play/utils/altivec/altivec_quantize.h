@@ -49,7 +49,7 @@ ALTIVEC_FUNCTION(quant_weight_coeff_intra, int, (int16_t *blk));
 ALTIVEC_FUNCTION(quant_weight_coeff_inter, int, (int16_t *blk));
 
 ALTIVEC_FUNCTION(iquant_non_intra_m1, void,
-	(int16_t *src, int16_t *dst, uint16_t *qmat));
+	(int16_t *src, int16_t *dst, int mquant));
 
 #ifdef __cplusplus
 }

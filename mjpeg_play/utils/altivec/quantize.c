@@ -24,13 +24,16 @@
 #include "altivec_quantize.h"
 #include "../mjpeg_logging.h"
 
-extern vector unsigned short *inter_q_altivec;
+
 extern int (*pquant_non_intra)(int16_t *src, int16_t *dst, int q_scale_type,
                                int dctsatlim, int *nonsat_mquant);
 extern int (*pquant_weight_coeff_intra)(int16_t *blk);
 extern int (*pquant_weight_coeff_inter)(int16_t *blk);
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant);
 
+
+vector unsigned short *intra_q_altivec;
+vector unsigned short *inter_q_altivec;
 
 
 void enable_altivec_quantization(int opt_mpeg1, uint16_t *intra_q,
@@ -46,6 +49,7 @@ void enable_altivec_quantization(int opt_mpeg1, uint16_t *intra_q,
     mjpeg_info("SETTING AltiVec for QUANTIZER!");
 #endif
 
+    intra_q_altivec = (vector unsigned short*)intra_q;
     inter_q_altivec = (vector unsigned short*)inter_q;
 
 #if ALTIVEC_TEST_FUNCTION(quant_non_intra)

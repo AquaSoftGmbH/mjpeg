@@ -43,7 +43,7 @@
 
 
 /* initialized in enable_altivec_quantization() */
-vector unsigned short *inter_q_altivec;
+extern vector unsigned short *inter_q_altivec;
 
 /*
  * The original C version would start-over from the beginning each time
