@@ -734,6 +734,7 @@ static void init_encoder()
 	case 1 :
 		ctl_max_encoding_frames = 1;
 		ctl_refine_from_rec = 1;
+		ctl_parallel_read = false;
 		break;
 	case 2:
 		ctl_max_encoding_frames = 2;
