@@ -2,8 +2,8 @@
 
 MAINTAINERCLEANFILES = Makefile.in
 
-y4mdenoise_CFLAGS = -DNDEBUG -finline-functions -frename-registers
-y4mdenoise_CXXFLAGS = -DNDEBUG -finline-functions -frename-registers
+y4mdenoise_CFLAGS = -DNDEBUG -finline-functions
+y4mdenoise_CXXFLAGS = -DNDEBUG -finline-functions
 
 INCLUDES =  -I$(top_srcdir) -I$(includedir) -I$(top_srcdir)/utils
 
