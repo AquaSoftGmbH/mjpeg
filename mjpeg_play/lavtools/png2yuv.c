@@ -47,6 +47,8 @@ png2yuv
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
 
+#include "subsample.h"
+#include "colorspace.h"
 //#include "mplexconsts.hh"
 
 #define MAXPIXELS (2800*1152)  /**< Maximum size of final image */
@@ -63,15 +65,16 @@ typedef struct _parameters
 
   png_uint_32 width;
   png_uint_32 height;
+  int ss_mode; /**< subsampling mode (based on ssm_id from subsample.h) */
+
   int new_width; /// new MPEG2 width, in case the original one is uneven
-  int rescale_YUV;
 } parameters_t;
 
 
 struct _parameters *sh_param; 
 png_structp png_ptr;
 png_infop info_ptr, end_info;
-uint8_t *raw0, *raw1, *raw2;  /* buffer for Y/U/V planes of decoded PNG */
+uint8_t *raw0, *raw1, *raw2;  /* buffer for RGB first, and then Y/Cb/Cr planes of decoded PNG */
 
 /*
  * The User Interface parts 
@@ -106,6 +109,7 @@ static void usage(char *prog)
 	  "                                 fields per PNG file)\n"
 	  "                            1 = interleaved fields\n"
 	  "  -R 1/0 ... 1: rescale YUV color values from 0-255 to 16-235 (default: 1)\n"
+          "  -S mode  chroma subsampling mode [%s]\n"
 	  "\n"
 	  "%s pipes a sequence of PNG files to stdout,\n"
 	  "making the direct encoding of MPEG files possible under mpeg2enc.\n"
@@ -126,7 +130,7 @@ static void usage(char *prog)
 	  "    abc_0001.png, etc...) and pipes it to mpeg2enc which encodes\n"
 	  "    an MPEG2-file called out.m2v out of it\n"
 	  "\n",
-	  prog, prog, prog, prog);
+	  prog, ssm_id[SSM_420_JPEG], prog, prog, prog);
 }
 
 
@@ -137,7 +141,7 @@ static void usage(char *prog)
  */
 static void parse_commandline(int argc, char ** argv, parameters_t *param)
 {
-  int c;
+  int c, i;
   
   param->pngformatstr = NULL;
   param->begin = 0;
@@ -146,19 +150,17 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
   param->interlace = Y4M_UNKNOWN;
   param->interleave = -1;
   param->verbose = 1;
+  param->ss_mode = SSM_420_JPEG;
   //param->mza_filename = NULL;
   //param->make_z_alpha = 0;
 
   /* parse options */
   for (;;) {
-    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:z:R:")))
+    if (-1 == (c = getopt(argc, argv, "I:hv:L:b:j:n:f:z:S:")))
       break;
     switch (c) {
     case 'j':
       param->pngformatstr = strdup(optarg);
-      break;
-    case 'R':
-      param->rescale_YUV = atoi(optarg);
       break;
 #if 0 
     case 'z':
@@ -171,6 +173,16 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       exit(-1);
       break;
 #endif
+    case 'S':
+      for (i = 0; i < SSM_COUNT; i++) {
+	if (!(strcmp(optarg, ssm_id[i]))) break;
+      }
+      if (i < SSM_COUNT)
+	param->ss_mode = i;
+      else {
+	param->ss_mode = -1;
+      }
+      break;
     case 'b':
       param->begin = atol(optarg);
       break;
@@ -219,6 +231,13 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
       usage(argv[0]); 
       exit(1);
     }
+  if (param->ss_mode == -1) 
+    { 
+      mjpeg_error("Unknown subsampling mode option:  %s", optarg);
+      usage(argv[0]); 
+      exit(1);
+    }
+
   if (Y4M_RATIO_EQL(param->framerate, y4m_fps_UNKNOWN)) 
     {
       mjpeg_error("%s:  framerate not specified.  (Use -f option)",
@@ -228,35 +247,11 @@ static void parse_commandline(int argc, char ** argv, parameters_t *param)
     }
 }
 
-/**
-  Rescales the YUV values from the range 0..255 to the range 16..235 
-  @param yp: buffer for Y plane of decoded JPEG 
-  @param up: buffer for U plane of decoded JPEG 
-  @param vp: buffer for V plane of decoded JPEG 
-*/
-static void rescale_color_vals(int width, int height, uint8_t *yp, uint8_t *up, uint8_t *vp) 
-{
-  int x,y;
-  for (y = 0; y < height; y++)
-    for (x = 0; x < width; x++)
-      yp[x+y*width] = (float)(yp[x+y*width])/255.0 * (235.0 - 16.0) + 16.0;
-
-  for (y = 0; y < height/2; y++)
-    for (x = 0; x < width/2; x++)
-      {
-	up[x+y*width/2] = (float)(up[x+y*width/2])/255.0 * (240.0 - 16.0) + 16.0;
-	vp[x+y*width/2] = (float)(vp[x+y*width/2])/255.0 * (240.0 - 16.0) + 16.0;
-      }
-}
-
-
 void png_separation(png_structp png_ptr, png_row_infop row_info, png_bytep data)
 {
   int row_nr = png_ptr->row_number; // internal variable ? 
   int i, width = row_info->width; 
   int new_width = sh_param->new_width;
-  int uv_width = new_width/2;
-  float r, g, b;
 
   /* contents of row_info:
    *  png_uint_32 width      width of row
@@ -275,13 +270,9 @@ void png_separation(png_structp png_ptr, png_row_infop row_info, png_bytep data)
       //mjpeg_debug("Grayscale to YUV, row %d", row_nr);
       for (i = 0; i < width; i++)
 	{
-	  raw0[i + row_nr * new_width] =  (uint8_t)data[i]; 
-	  
-	  if (((i & 1) == 0) && ((row_nr & 1) == 0))
-	    {
-	      raw1[i/2 + uv_width * row_nr/2] = 0;
-	      raw2[i/2 + uv_width * row_nr/2] = 0;
-	    }
+	  raw0[i + row_nr * new_width] = data[i];
+	  raw1[i + row_nr * new_width] = data[i];
+	  raw2[i + row_nr * new_width] = data[i];
 	}
       return;
     }
@@ -291,16 +282,9 @@ void png_separation(png_structp png_ptr, png_row_infop row_info, png_bytep data)
       //mjpeg_info("RGB to YUV, row %d", row_nr);
       for (i = 0; i < width; i++)
 	{
-	  r = data[i*3];
-	  g = data[i*3 + 1];
-	  b = data[i*3 + 2];
-	  raw0[i + row_nr * new_width] =  (uint8_t) (0.299 * r + 0.587 * g + 0.114 * b); 
-	  
-	  if (((i & 1) == 0) && ((row_nr & 1) == 0))
-	    {
-	      raw1[i/2 + uv_width * row_nr/2] = (uint8_t) (-0.16874 * r - 0.33126 * g + 0.5 * b + 127.5); 
-	      raw2[i/2 + uv_width * row_nr/2] = (uint8_t) (0.5 * r - 0.41869 * g - 0.08131 * b + 127.5); 
-	    }
+	  raw0[i + row_nr * new_width] = data[i*3];
+	  raw1[i + row_nr * new_width] = data[i*3 + 1];
+	  raw2[i + row_nr * new_width] = data[i*3 + 2];
 	}
       return;
     }
@@ -511,8 +495,8 @@ static int generate_YUV4MPEG(parameters_t *param)
   y4m_si_set_framerate(&streaminfo, param->framerate);
 
   yuv[0] = (uint8_t *)malloc(param->new_width * param->height * sizeof(yuv[0][0]));
-  yuv[1] = (uint8_t *)malloc(param->new_width * param->height / 4 * sizeof(yuv[1][0]));
-  yuv[2] = (uint8_t *)malloc(param->new_width * param->height / 4 * sizeof(yuv[2][0]));
+  yuv[1] = (uint8_t *)malloc(param->new_width * param->height * sizeof(yuv[1][0]));
+  yuv[2] = (uint8_t *)malloc(param->new_width * param->height * sizeof(yuv[2][0]));
 
   y4m_write_stream_header(STDOUT_FILENO, &streaminfo);
 
@@ -596,15 +580,14 @@ static int generate_YUV4MPEG(parameters_t *param)
 		}
 	    }
 #endif
-	  mjpeg_debug("Frame decoded, now writing to output stream.");
+	  mjpeg_debug("Converting frame to YUV format.");
+	  /* Transform colorspace, then subsample (in place) */
+	  convert_RGB_to_YCbCr(yuv, param->height *  param->new_width);
+	  chroma_subsample(param->ss_mode, yuv, param->new_width, param->height);
 
+	  mjpeg_debug("Frame decoded, now writing to output stream.");
 	}
       
-      if (param->rescale_YUV)
-	{
-	  mjpeg_info("Rescaling color values.");
-	  rescale_color_vals(param->width, param->height, yuv[0], yuv[1], yuv[2]);
-	}
       mjpeg_debug("Frame decoded, now writing to output stream.");
       y4m_write_frame(STDOUT_FILENO, &streaminfo, &frameinfo, yuv);
     }

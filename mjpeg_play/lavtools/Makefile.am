@@ -84,13 +84,20 @@ else
   LAVPLAY_BIN =
 endif
 
+if HAVE_PNG
+  PNG_BIN = png2yuv
+else
+  PNG_BIN =
+endif
+
 bin_PROGRAMS = \
 	$(LAVPLAY_BIN) $(LAVREC_BIN) lav2wav  lav2yuv \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
 	ypipe yuv2lav transist.flt matteblend.flt \
 	multiblend.flt lavpipe \
 	yuvscaler yuvcorrect yuvcorrect_tune jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
-	ppmtoy4m y4mtoppm y4mcolorbars lavinfo y4mshift yuvfps
+	ppmtoy4m y4mtoppm y4mcolorbars lavinfo y4mshift yuvfps \
+	$(PNG_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
 	yuvscaler.h yuvcorrect.h frequencies.h lav_common.h lav2wav.h
@@ -130,6 +137,9 @@ lav2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 
 jpeg2yuv_SOURCES = jpeg2yuv.c $(lav_headers)
 jpeg2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
+
+png2yuv_SOURCES = png2yuv.c colorspace.h colorspace.c subsample.h subsample.c
+png2yuv_LDADD = -L$(top_builddir)/utils -lmjpegutils -lpng -lz
 
 lav2divx_SOURCES = lav2divx.cpp libavifile.h lav_common.c $(lav_headers)
 lav2divx_LDADD = -L$(top_builddir)/utils -lmjpegutils \

@@ -299,13 +299,15 @@ dnl	  with_quicktime=/usr/include/quicktime
   fi	
 fi
 
+dnl test for PNG lib, moved out of Quicktime checks because of png2yuv /gz
+OLD_LIBS="$LIBS"
+LIBS="$LIBS -lz $LIBM_LIBS"
+AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng -lz $LIBM_LIBS" PNG=true have_png=true])
+LIBS="$OLD_LIBS"
+
 have_quicktime=false
 have_openquicktime=false
 if test x$with_quicktime != x ; then
-  OLD_LIBS="$LIBS"
-  LIBS="$LIBS -lz $LIBM_LIBS"
-  AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng -lz $LIBM_LIBS" PNG=true])
-  LIBS="$OLD_LIBS"
   if test x$PNG = xtrue ; then
     if test x$have_pthread = xtrue ; then
       EXTRA_LIBS="$GLIB_LIBS $PTHREAD_LIBS -lpng -lz $LIBM_LIBS -L/lib -ldl"
@@ -720,6 +722,7 @@ AM_CONDITIONAL(HAVE_AVIFILE, test x$have_aviplay = xtrue)
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
+AM_CONDITIONAL(HAVE_PNG, test x$have_png = xtrue)
 have_v4l_or_sdl=false
 if test x$have_video4linux = xtrue; then
   have_v4l_or_sdl=true
@@ -823,6 +826,7 @@ echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
 echo "    - movtar playback/recording     : ${have_movtar}"
 echo "    - Quicktime playback/recording  : ${have_quicktime}"
+echo "    - PNG input support             : ${have_png}"
 if test "$have_quicktime" = "true" ; then
 echo "      - Quicktime source in         : ${with_quicktime}"
 fi
