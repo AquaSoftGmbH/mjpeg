@@ -18,12 +18,12 @@
 ;
 ;
 ;
-;  quant_mmx.s:  MMX optimized coefficient quantization sub-routine
-;  NOT VERY ACCURATE!!!
+;  quant_mmx.s:  MMX optimized DCT coefficient quantization sub-routine
 
 
 global jcquant_mmx
-;void jcquant_mmx( INT16 *psrc, INT16, *pdst, INT16 *pqf, INT16 *piqf )
+;void jcquant_mmx( INT16 *psrc, INT16, *pdst, INT16 *pqf, INT16 *piqf,
+;				   unsigned int shift )
 
 
 ; eax = row counter...
@@ -38,7 +38,7 @@ global jcquant_mmx
 ; mm2 = *psrc -> src
 ; mm3 = rounding corrections... / temp
 ; mm4 = sign
-; FREE mm5
+; mm5 = shift
 ; FREE mm6
 ; mm7 = temp
 
@@ -54,7 +54,6 @@ jcquant_mmx:
 	push eax
 	push ebx
 	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -62,8 +61,10 @@ jcquant_mmx:
 	mov edi, [ebp+12]   ; get pdst
 	mov ebx, [ebp+16]	; get pqf
 	mov ecx,  [ebp+20]  ; get piqf
+	movd mm5, [ebp+24]			; get shift
 	mov eax,  16		; 16 quads to do
 	pxor mm0, mm0
+		
 	jmp nextquadniq
 
 align 32
@@ -71,7 +72,8 @@ nextquadniq:
 	movq mm4, mm0			; mm4 = 0
 	movq mm2, [esi]			; mm2 = *psrc
 	add  esi, 8
-	
+
+								;
 	pcmpgtw mm4, mm2       ; mm4 = *psrc < 0
 	movq    mm7, mm2       ; mm7 = *psrc
 	psllw   mm7, 1         ; mm7 = 2*(*psrc)
@@ -81,7 +83,12 @@ nextquadniq:
 
 	;;
 	;; Now less do the div...
-		;; First we add rounding factor... (*pqf)/2
+    ;;  We assuming the DCT coefficients are held to 3 binary places.
+    ;; To avoid overflows we first halve them and then later divide by 4
+    ;; instead of 8. 
+
+		
+	;; First we add rounding factor... (*pqf)/2
 	movq    mm7, [ebx]     ; mm7 = *pqf>>1
 	psrlw   mm7, 1
 	paddw   mm2, mm7       ; mm2 = abs(*psrc)+((*pqf)/2) = "p"
@@ -94,7 +101,7 @@ nextquadniq:
 	;; To hide the latency lets update some more pointers...
 	sub   eax, 1
 	add   ecx, 8		; 4 word's 
-	psrlw mm2, 3		; DCT is scaled by 8 to preserved prec.
+	psrlw mm2, mm5		; Correct for DCT / quantisation coefficient scaling
 	add   ebx, 8
 
 	;;
@@ -120,7 +127,6 @@ nextquadniq:
 return:
 	pop edi
 	pop esi
-	pop edx
 	pop ecx
 	pop ebx
 	pop eax

@@ -103,7 +103,8 @@ EXTERN(void) jpeg_fdct_float JPP((FAST_FLOAT * data));
 EXTERN(void) jpeg_fdct_ifast_mmx JPP((INT16 * data));
 EXTERN(void) jcquant_3dnow( INT16 *psrc, INT16 *pdst, float *piqf );
 EXTERN(void) jcquant_sse( INT16 *psrc, INT16 *pdst, float *piqf );
-EXTERN(void) jcquant_mmx( INT16 *psrc, INT16 *pdst, INT16 *piqf, INT16 *pqf );
+EXTERN(void) jcquant_mmx( INT16 *psrc, INT16 *pdst, INT16 *piqf, INT16 *pqf,
+						  unsigned int shift);
 
 EXTERN(void) jpeg_idct_islow
     JPP((j_decompress_ptr cinfo, jpeg_component_info * compptr,

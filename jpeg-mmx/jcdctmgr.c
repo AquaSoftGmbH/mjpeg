@@ -38,8 +38,9 @@ typedef struct {
 	 * Each table is given in normal array order.
 	 */
 	DCTELEM * divisors[NUM_QUANT_TBLS];
-	INT16 *int16_divisors[NUM_QUANT_TBLS];
+	UINT16 *int16_divisors[NUM_QUANT_TBLS];
 	FLOAT32 *float32_divisors[NUM_QUANT_TBLS];
+	unsigned int shift;
 #ifdef DCT_FLOAT_SUPPORTED
 	/* Same as above for the floating-point case. */
 	float_DCT_method_ptr do_float_dct;
@@ -78,7 +79,7 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 	jpeg_component_info *compptr;
 	JQUANT_TBL * qtbl;
 	DCTELEM * dtbl;
-	INT16 *idtbl;
+	UINT16 *idtbl;
 	FAST_FLOAT * fdtbl;
   
 
@@ -162,25 +163,51 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 			dtbl = fdct->divisors[qtblno];
 			idtbl = fdct->int16_divisors[qtblno];
 			fdtbl = fdct->float32_divisors[qtblno];
-			for (i = 0; i < DCTSIZE2; i++) 
+			switch( fdct->fast_quantiser )
 			{
-				switch( fdct->fast_quantiser )
+			case QUANT_INT :
+				for (i = 0; i < DCTSIZE2; i++) 
 				{
-				case QUANT_INT :
 					dtbl[i] = (DCTELEM)
 						DESCALE(MULTIPLY16V16((INT32) qtbl->quantval[i],
 											  (INT32) aanscales[i]),
 								CONST_BITS-3);
-					break;
-				case QUANT_INT16 :
-					idtbl[i] = (1<<16)/(qtbl->quantval[i]);
-					dtbl[i] = qtbl->quantval[i];
-					break;
-				case QUANT_FLOAT32 :
-					fdtbl[i] = 1.0f/((FLOAT32)(qtbl->quantval[i]<<3));
-					break;
 				}
-
+				break;
+			case QUANT_INT16 :
+			{
+				int overflow = 0;
+				unsigned int scalebase = 1<<17;
+				unsigned int shift = 4;
+				unsigned int divprod;
+				for (i = 0; i < DCTSIZE2; i++) 
+				{
+				restart:
+					divprod = scalebase/qtbl->quantval[i];
+					/*
+					  Rescale product coefficients if quantisation is too
+					  low
+					*/
+					
+					if( divprod >= (1U<<15) )
+					{
+						i = 0;
+						--shift;
+						scalebase = (scalebase >> 1);
+						goto restart;
+					}
+					idtbl[i] = (UINT16)divprod;
+					dtbl[i] = qtbl->quantval[i];
+				}
+				fdct->shift = shift;
+				break;
+			}
+			case QUANT_FLOAT32 :
+				for (i = 0; i < DCTSIZE2; i++) 
+				{
+					fdtbl[i] = 1.0f/((FLOAT32)(qtbl->quantval[i]<<3));
+				}
+				break;
 			}
 		}
 		break;
@@ -495,9 +522,11 @@ METHODDEF(void)
 		(*do_dct)(workspace);
 		
 		jcquant_mmx( workspace,
-					   coef_blocks[bi],  
-					   fdct->divisors[compptr->quant_tbl_no],
-					   fdct->int16_divisors[compptr->quant_tbl_no]);
+					 coef_blocks[bi],  
+					 fdct->divisors[compptr->quant_tbl_no],
+					 fdct->int16_divisors[compptr->quant_tbl_no],
+					 fdct->shift
+			);
 
 	}
 }
@@ -609,13 +638,13 @@ jinit_forward_dct (j_compress_ptr cinfo)
 	  {
 
 		  fdct->do_dct = jpeg_fdct_ifast_mmx;
-		  if( cpu_flags & ACCEL_X86_SSE )
+		  if( 0 && cpu_flags & ACCEL_X86_SSE )
 		  {
 			  fdct->fast_quantiser = QUANT_FLOAT32;
 			  fdct->pub.forward_DCT = forward_DCT_x86float32;
 			  fdct->do_float32_quant = jcquant_sse;
 		  }
-		  else if( cpu_flags & ACCEL_X86_3DNOW )
+		  else if( 0 && cpu_flags & ACCEL_X86_3DNOW )
 		  {
 			  fdct->fast_quantiser = QUANT_FLOAT32;
 			  fdct->pub.forward_DCT = forward_DCT_x86float32;
