@@ -169,11 +169,10 @@ int main(int argc, char **argv)
 
 gotenough:
 /*
- * Log the stats at INFO level - print the frame number, number of dark pixels
- * found and an 'X' if the frame is going to undergo the actual substitution 
- * process.
+ * Log the stats at INFO level - print the frame number and an 'X' if the 
+ * frame is going to undergo the actual substitution process.
 */
-		mjpeg_info("frame %d num_dark: %d %s", frames, num_dark,
+		mjpeg_info("frame %d %s", frames,
 			num_dark < pixel_thresh ? "" : "X");
 
 		if	(num_dark < pixel_thresh || nomodify)
