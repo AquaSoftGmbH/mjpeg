@@ -79,19 +79,13 @@ encode.c
  *                              if( ad > ...) to if(ad >= ...)        *
  **********************************************************************/
 
+#include "config.h"
 #include "common.h"
 #include "encoder.h"
 
-#ifdef MS_DOS
-extern unsigned _stklen = 16384;
-#endif
-
 #include <stdlib.h>
 
-#ifdef UNIX
 #include <unistd.h>
-extern void swab( void *, void *, size_t );
-#endif
 
 extern int freq_in;
 extern int freq_out;

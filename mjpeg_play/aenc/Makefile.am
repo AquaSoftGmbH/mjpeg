@@ -8,5 +8,5 @@ mp2enc_SOURCES = musicin.c common.c encode.c subs.c psy.c tonal.c \
 	common.h table_absthr.h table_cb.h  table_th.h \
 	encoder.h  table_alloc.h   table_enwindow.h 
 
-mp2enc_LDADD = -L $(top_srcdir)/utils -lutils -lm
+mp2enc_LDADD = -L$(top_srcdir)/utils -lutils -lm
 
