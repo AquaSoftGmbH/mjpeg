@@ -269,7 +269,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    When quantisation is set variable bit-rate encoding is activated and\n"
 "    the --bitrate value sets an *upper-bound* video data-rate\n"
 "--output|-o pathname\n"
-"    pathname of output file or fifo (REQUIRED!!!)\n"
+"    Pathname of output file or fifo (REQUIRED!!!)\n"
 "--vcd-still-size|-T size\n"
 "    Size in KB of VCD stills\n"
 "--interlace-mode|-I num\n"
@@ -346,7 +346,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "    coefficients are included.  Reasonable values -40 to 40\n"
 "--b-per-refframe| -R 0|1|2\n"
 "    The number of B frames to generate between each I/P frame\n"
-"    --help|-?\n"
+"--help|-?\n"
 "    Print this lot out!\n"
 	);
 	exit(0);
