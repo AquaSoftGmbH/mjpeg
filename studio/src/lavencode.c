@@ -64,6 +64,7 @@ int use_yuvplay_pipe = 0; /* see preview window while video is being encoded or 
 GtkWidget *progress_window;
 GtkWidget *tv_preview;
 int error = 0;
+int studio_enc_format;  /* tells what the desired output format is */
 struct encodingoptions *pointenc;    /* points to the encoding struct to be encodet */
 
 /*-------------------------------------------------------------*/
@@ -188,8 +189,9 @@ void lavencode_callback(int number, char *input)
   if (progress_status_label)
   {
     int n1, n2;
+    float f1, f2;
     char c;
-    if (number == MPEG2ENC)
+    if ((number == MPEG2ENC) && (studio_enc_format == STUDIO_ENC_FORMAT_MPEG))
     {
       if ( (encoding_syntax_style == 140) && 
            (sscanf(input, "   INFO: Frame %d %c %d", &n1, &c, &n2)==3) )
@@ -205,6 +207,10 @@ void lavencode_callback(int number, char *input)
        if (num_frames>0) gtk_adjustment_set_value(GTK_ADJUSTMENT(progress_adj), n1);
       }
     }
+    if ((number == YUV2DIVX) && (studio_enc_format == STUDIO_ENC_FORMAT_DIVX))
+    {
+    /* Here is the counting of the frames missing */
+    } 
     else if (number == MP2ENC && sscanf(input, "--DEBUG: %d seconds done", &n1)==1)
     {
        gtk_label_set_text(GTK_LABEL(progress_status_label), input+9);
@@ -283,7 +289,8 @@ void stop_encoding_process(GtkWidget *widget, gpointer data) {
       close_pipe(LAV2YUV);
       if (use_yuvdenoise_pipe) close_pipe(YUVDENOISE);
       if (use_yuvscaler_pipe) close_pipe(YUVSCALER);
-      close_pipe(MPEG2ENC);
+      if (studio_enc_format==STUDIO_ENC_FORMAT_MPEG) close_pipe(MPEG2ENC);
+      if (studio_enc_format==STUDIO_ENC_FORMAT_DIVX) close_pipe(YUV2DIVX);
       break;
    case 3:
       close_pipe(MPLEX);
@@ -461,7 +468,7 @@ void audio_convert()
    show_executing(command);
 }
 
-/* Here the mpeg2 enc command is set together with all options */
+/* Here the yuv2divx command is set together with all options */
 void create_command_yuv2divx(char *yuv2divx_command[256])
 {
 int n;
@@ -494,7 +501,7 @@ yuv2divx_command[n] = NULL;
 
 }
 
-/* Here the mpeg2 enc command is set together with all options */
+/* Here the mpeg2enc command is set together with all options */
 void create_command_mpeg2enc(char *mpeg2enc_command[256])
 {
 int n;
@@ -621,12 +628,19 @@ void video_convert()
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding video");
 
-   create_command_mpeg2enc(mpeg2enc_command);
+   if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)
+     {
+       create_command_mpeg2enc(mpeg2enc_command);
+  
+       start_pipe_command(mpeg2enc_command, MPEG2ENC);
+     }
+   else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
+     {
+       create_command_yuv2divx(yuv2divx_command);
 
-   create_command_yuv2divx(yuv2divx_command);
-
-   start_pipe_command(mpeg2enc_command, MPEG2ENC);
-
+       start_pipe_command(yuv2divx_command, YUV2DIVX);
+     }
+ 
    /* let's start yuvplay to show video while it's being encoded */
    if (use_yuvplay_pipe)
    {
@@ -785,13 +799,21 @@ void video_convert()
       sprintf(command_progress, "%s yuvscaler |", command_progress);
    }
 
-   
-   sprintf(command_progress, "%s mpeg2enc", command_progress);
+   if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)
+   {
+     command2string(mpeg2enc_command, command_temp);
+     sprintf(command, "%s %s ", command, command_temp);
+     sprintf(command_progress, "%s mpeg2enc", command_progress);
+   }
+   else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
+   {
+     command2string(yuv2divx_command, command_temp);
+     sprintf(command, "%s %s ", command, command_temp);
+     sprintf(command_progress, "%s yuv2divx", command_progress);
+   }
 
    gtk_label_set_text(GTK_LABEL(progress_label), command_progress);
 
-   command2string(mpeg2enc_command, command_temp);
-   sprintf(command, "%s %s", command, command_temp);
    if (verbose)
       printf("Executing : %s\n", command);
    show_executing(command);
@@ -1177,9 +1199,18 @@ GtkWidget *label1;
 /* here all steps of the convert are started */
 void encode_all (GtkWidget *widget, gpointer data)
 {
-  status_progress_window();
-  go_all_the_way = 1;
-  audio_convert();   /* using go_all_the_way only one call is needed */
+
+if (studio_enc_format == STUDIO_ENC_FORMAT_MPEG)
+  {
+    status_progress_window();
+    go_all_the_way = 1;
+    audio_convert();   /* using go_all_the_way only one call is needed */
+  }
+else if (studio_enc_format == STUDIO_ENC_FORMAT_DIVX)
+  {
+    status_progress_window();
+    video_convert();
+  }
 }
 
 /* Create the first line of the buttons shown */
@@ -1303,6 +1334,8 @@ gtk_widget_set_sensitive(video_entry, TRUE);
 gtk_widget_set_sensitive(video_select, TRUE);
 gtk_widget_set_sensitive(remove_files_after_completion, TRUE);
 
+studio_enc_format = STUDIO_ENC_FORMAT_MPEG;
+
 for (i = 0; i < 3; i++)
   temp[i]='\0';
 
@@ -1361,7 +1394,7 @@ for (i = 0; i < 3; i++)
    }
   else if (strcmp ((char*)data,"DIVx")  == 0)
    {
-      pointenc = &encoding_svcd;
+      pointenc = &encoding_divx;
       gtk_widget_set_sensitive(create_sound, FALSE); 
       gtk_widget_set_sensitive(do_video, FALSE); 
       gtk_widget_set_sensitive(mplex_only, FALSE);
@@ -1370,6 +1403,8 @@ for (i = 0; i < 3; i++)
       gtk_widget_set_sensitive(video_entry, FALSE);
       gtk_widget_set_sensitive(video_select, FALSE);
       gtk_widget_set_sensitive(remove_files_after_completion, FALSE);
+
+      studio_enc_format = STUDIO_ENC_FORMAT_DIVX;
 
       sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
                             enc_outputfile[strlen(enc_outputfile)-2], 
@@ -1462,6 +1497,7 @@ int enc_x,enc_y;
   enc_x=0;
   enc_y=0; 
   pointenc = &encoding; /* Needed for startup if the task is not selected */
+  studio_enc_format = STUDIO_ENC_FORMAT_MPEG;
 
   /* main box (with borders) */
   hbox = gtk_hbox_new(FALSE,0);
