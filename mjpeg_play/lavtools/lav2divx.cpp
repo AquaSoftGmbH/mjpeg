@@ -63,74 +63,33 @@
 //   it is dependent on what avifile thinks is available, and is mostly
 //   for troubleshooting.  Warning: it can be a LONG list.
 //
-// 2002-02-24 v0.0.22
+// 2002-02-24 v0.0.22 - fixed breakage caused by editlist changes
 //
-// - fixed breakage caused by editlist changes
+// 2002-03-03 v0.0.23 - now using "libavifile.h" to hide avifile versioning tricks.
 //
 
 #define APPNAME "lav2divx"
-#define APPVERSION "0.0.22"
-#define LastChanged "2002/02/24"
+#define APPVERSION "0.0.23"
+#define LastChanged "2002/03/02"
+#define __MODULE__ APPNAME	// Needed for avifile exceptions
 
 #include <iostream.h>
-#include <videoencoder.h>
-#include <avifile.h>
-#include <aviplay.h>
-#include <avifile/version.h>
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-#include <fourcc.h>
-#include <image.h>
-#else
-#include <aviutil.h>
-#endif
-// More defines to map from deprecated fcc's to RIFFINFOs
-// eventually, these should go away.
-#ifndef RIFFINFO_YV12
-#define RIFFINFO_YV12 fccYV12
-#endif
-#ifndef RIFFINFO_DIV3
-#define RIFFINFO_DIV3 fccDIV3
-#endif
-#ifndef RIFFINFO_DIV4
-#define RIFFINFO_DIV4 fccDIV4
-#endif
-
-#include <avifile/except.h>
-				// To be sure to get avifile version
-				// header. Needed if some programmer puts version.h
-				// in the standard include directory. Also allows 
-				// local version.h
 #include <math.h>		// M_PI is better than included PI constant
 #include <sys/time.h>
 #include <unistd.h>		// Needed for the access call to check if file exists
 #include <getopt.h>		// getopt
 #include <stdint.h>		// standard integer types
 #include <stdlib.h>		// standard library with integer division
-#define __MODULE__ APPNAME	// Needed for avifile exceptions
-#include <stdio.h>
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-#include <creators.h>
-#endif
-
 #include <config.h>
 #include <stdio.h>
 #include <fcntl.h>
-#include <unistd.h>
 #include <string.h>
-#include <math.h>
 
 extern "C"
 {
 #include "lav_common.h"
 }
-
-#ifndef min
-#define min(a,b) (a<b)?(a):(b)
-#endif
-
-#ifndef max
-#define max(a,b) (a>b)?(a):(b)
-#endif
+#include "libavifile.h"
 
 #define NTSC 'n'
 
@@ -259,7 +218,7 @@ print_help ( void )
 	printf ( "  -s --forcedaudiorate\taudio sample rate of input file (Hz);\n\t\t\tuse only if avifile gets it wrong\n" );
 	printf ( "  -n --noise\t\tnoise filter (0..2, default 0)\n" );
 	printf ( "  -g --guess\t\tguess values for -c and -z options\n" );
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 	printf ( "  -L --listcodecs\tdisplay available avifile codecs (LONG)\n" );
 	printf ( "  -k --keyframes\tset keyframes attribute (default 15)\n" );
 	printf ( "  -C --crispness\tset crispness attribute (default 20)\n" );
@@ -297,7 +256,7 @@ displayGreeting (  )
 	mjpeg_info ( "-----------------------------\n" );
 }
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 static void
 listCodecs ( )
 {
@@ -356,7 +315,7 @@ main ( int argc, char **argv )
 	int opt_h = 0;
 
 	int opt_mono = 0;
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 	int opt_keyframes = 15;
 	int opt_crispness = 20;
 #endif
@@ -412,7 +371,7 @@ main ( int argc, char **argv )
 			{"number_cpus", required_argument, NULL, 'U'},
 			{"outputfile", required_argument, NULL, 'o'},
 			{"noise", required_argument, NULL, 'n'},
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			{"keyframes", required_argument, NULL, 'k'},
 			{"crispness", required_argument, NULL, 'C'},
 			{"listcodecs", no_argument, NULL, 'L'},
@@ -424,7 +383,7 @@ main ( int argc, char **argv )
 		};
 
 		copt =
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			getopt_long ( argc, argv, "LE:fa:e:c:b:o:s:n:gmvk:C:", long_options, &option_index );
 #else
 			getopt_long ( argc, argv, "E:fa:e:c:b:o:s:n:gmv", long_options, &option_index );
@@ -482,7 +441,7 @@ main ( int argc, char **argv )
 			outputfile = optarg;
 			break;
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 		case 'k':
 			opt_keyframes = atoi ( optarg );
 			break;
@@ -723,7 +682,7 @@ main ( int argc, char **argv )
 
 	avifile = CreateIAviWriteFile ( outputfile );
 
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 	const CodecInfo *codecInfo = CodecInfo::match ( fccHandler );
 	if (codecInfo == NULL)
 	{
@@ -732,18 +691,6 @@ main ( int argc, char **argv )
 	Creators::SetCodecAttr ( *codecInfo, "BitRate", opt_divxbitrate );
 	Creators::SetCodecAttr ( *codecInfo, "Crispness", opt_crispness );
 	Creators::SetCodecAttr ( *codecInfo, "KeyFrames", opt_keyframes );
-
-/*	fprintf ( stderr, "Bitrate set to %i\n", opt_divxbitrate );
-	cerr << "Found " << codecInfo->encoder_info.size (  ) << " attributes\n";
-	for ( int attr = 0; attr < codecInfo->encoder_info.size (  ); attr++ )
-	{
-		AttributeInfo foo = codecInfo->encoder_info[attr];
-		cerr << attr << ": " << foo.GetName (  ) << " : ";
-		int value;
-		Creators::GetCodecAttr ( *codecInfo, foo.GetName (  ), *&value );
-		cerr << value << "\n";
-	}
-*/
 #else
 	IVideoEncoder::SetExtendedAttr ( fccHandler, "BitRate", opt_divxbitrate );
 #endif

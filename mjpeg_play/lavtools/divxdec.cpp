@@ -90,9 +90,12 @@
 //
 // 2002/03/02 - fix broken call to guess_sar; using y4m_guess_sample_ratio instead.
 //
+// 2002/03/03 - use "libavfile.h" to hide avifile includes and versioning tricks.
+//
 #define APPNAME "divxdec"
 #define APPVERSION "0.0.30"
 #define LastChanged "2002/03/02"
+#define __MODULE__ APPNAME	// Needed for avifile exceptions
 // uncomment this if you want lots of not usually useful debugging info.
 //#define DEBUG_DIVXDEC 1
 
@@ -111,25 +114,8 @@
 #include <string.h>
 #include <signal.h>
 
-// avifile includes.
-#include <videoencoder.h>
-#include <avifile.h>
-#include <aviplay.h>
-#include <avifile/version.h>
-#include <avifile/except.h>
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
-#include <image.h>
-#include <fourcc.h>
-#include <creators.h>
-#else
-#include <aviutil.h>
-typedef unsigned int framepos_t;
-#endif
-#define __MODULE__ APPNAME	// Needed for avifile exceptions
-
 extern "C"
 {
-//#include "lav_common.h"
 #include "yuv4mpeg.h"
 #include "mjpeg_logging.h"
 #include "lav2wav.h"	// for wave structs, etc.
@@ -137,15 +123,7 @@ extern "C"
 #include "liblavplay.h"
 }
 
-#include "riffinfo.h"
-
-#ifndef min
-#define min(a,b) (a<b)?(a):(b)
-#endif
-
-#ifndef max
-#define max(a,b) (a>b)?(a):(b)
-#endif
+#include "libavifile.h"
 
 #define FD_STDOUT 1
 #define NORM_NTSC 'n'
@@ -233,7 +211,7 @@ readyDestination ( 	IAviReadStream *instream
 		fmt = RIFFINFO_IYUV;
 	}
 // only in avifile-0.6
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 	else if ( caps & IVideoDecoder::CAP_I420 )
 	{
 		fmt = RIFFINFO_I420;
@@ -617,7 +595,7 @@ readInputFrame ()
 			// end of data, yes?
 			return 0;
 		}
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 		currentFrame.inputBuffer = imsrc->Data ();
 #else
 		currentFrame.inputBuffer = imsrc->data ();
@@ -656,7 +634,7 @@ readInputFrame ()
 			break;
 		}
 		// done with image.  ( was delete imsrc; )
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 		imsrc->Release() ;
 #else
 		imsrc->release() ;
@@ -966,7 +944,7 @@ nextFile ()
 		mjpeg_debug ( "VIDEO: Using decoder %s\n", sFourCC );
 		fourCCToString ( input.files[input.currentFile].outputCodec, sFourCC );
 		mjpeg_debug ( "VIDEO: Using interim YUV format %s\n", sFourCC );
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 		input.files[input.currentFile].frames = input.invstream->GetLength ();
 #else
 		input.files[input.currentFile].frames = input.invstream->GetEndPos ();
@@ -979,7 +957,7 @@ nextFile ()
 		input.inastream->StartStreaming ();
 		if ( input.files[input.currentFile].frames == 0)
 		{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			input.files[input.currentFile].frames = input.inastream->GetLength ();
 #else
 			input.files[input.currentFile].frames = input.inastream->GetEndPos ();
@@ -995,14 +973,14 @@ nextFile ()
 		// key frame.
 		if ( input.processVideo )
 		{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			framepos_t fp = input.invstream->SeekToKeyFrame ( firstFrame );
 #else
 			framepos_t fp = input.invstream->SeekToKeyframe ( firstFrame );
 #endif
 			if ( input.processAudio )
 			{
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 				double pos = input.invstream->GetTime ( max( 0, fp - 1 ) );
 				input.inastream->SeekTime ( pos );
 #else
@@ -1605,7 +1583,7 @@ main (int argc, char **argv)
 				inastream = file->GetStream ( 0, AviStream::Audio );
 				mjpeg_debug ( "AUDIO stream queried\n" );
 			}
-#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION >= 60
 			input.files[i].frames = invstream->GetLength();
 #else
 			input.files[i].frames = invstream->GetEndPos ();
