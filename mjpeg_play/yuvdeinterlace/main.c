@@ -276,13 +276,13 @@ main (int argc, char *argv[])
 	{
 	  /* got it: Top-field-first... */
 	  mjpeg_log (LOG_INFO, " Stream is interlaced, top-field-first.");
-	  field_order = 0;
+	  field_order = 1;
 	}
       else if (y4m_si_get_interlace (&istreaminfo) == Y4M_ILACE_BOTTOM_FIRST)
 	{
 	  /* got it: Bottom-field-first... */
 	  mjpeg_log (LOG_INFO, " Stream is interlaced, bottom-field-first.");
-	  field_order = 1;
+	  field_order = 0;
 	}
       else
 	{
@@ -397,6 +397,8 @@ main (int argc, char *argv[])
       /* all left is to write out the reconstructed frame
        */
       y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, reconstructed);
+//      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame2);
+//      y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
     }
 
   /* free allocated buffers */

@@ -40,10 +40,17 @@ sinc_interpolation (uint8_t * frame, uint8_t * inframe, int field)
 
   memcpy (frame, inframe, width * height);
 
-  ip = inframe + (field) * width;
+  /* fill up top-/bottom-out-of-range lines to avoid ringing */
+  for (y = -7; y < 0; y ++)
+    memcpy (frame+width*y,frame,width);
+  for (y = height; y < (height+7); y ++)
+    memcpy (frame+width*y,frame+(height-1)*width,width);
+
+  ip = frame + (field) * width;
   op = frame + (field) * width;
 
-  for (y = 0; y < (height + 4); y += 2)
+  /* interpolate missing lines */ 
+  for (y = 0; y < height ; y += 2)
     {
       for (x = 0; x < width; x++)
 	{
