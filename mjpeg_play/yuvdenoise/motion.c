@@ -225,14 +225,12 @@ calc_SAD_uv_noaccel (uint8_t * frm, uint8_t * ref)
 {
   register uint8_t dx = 0;
   register uint8_t dy = 0;
-  int32_t Y = 0;
   uint32_t d = 0;
   
   for(dy=0;dy<8/SS_V;dy++)
     for(dx=0;dx<8/SS_H;dx++)
     {
-      Y=*(frm+dx+dy*W2)-*(ref+dx+dy*W2);
-      d+=(Y<0)? -Y:Y;
+      d += abs(*(frm+dx+dy*W2)-*(ref+dx+dy*W2));
     }
   return d;
 }
