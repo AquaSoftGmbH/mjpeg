@@ -65,10 +65,9 @@ course not really possible).
 .BI -b \ num
 This option specifies the size of the buffer (in kBytes) that yuv2lav
 allocates in order to store the compressed JPEG data in it. The default
-value (1024k) is more than enough for probably any video stream you will
-ever want to feed into yuv2lav (-q 100 full size PAL/NTSC perfectly
-fits into a 256k buffer), but if you want to compress Super-Mega-HDTV or
-if you are low on memory, you can use this option to suit your needs.
+value (256k) is perfectly enough for 100% quality full sized PAL/NTSC,
+but if you want to compress Super-Mega-HDTV or if you are low on memory,
+you can use this option to suit your needs.
 
 .TP
 .B -?
