@@ -36,9 +36,10 @@
 #undef HANDLE_ALL
 
 
-#define VARIANCE_PDECL uint8_t *p, int size, int rowstride
-#define VARIANCE_ARGS p, size, rowstride
-#define VARIANCE_PFMT "p=0x%X, size=%d, rowstride=%d"
+#define VARIANCE_PDECL uint8_t *p, int size, int rowstride, \
+                       unsigned int *p_var, unsigned int *p_mean
+#define VARIANCE_ARGS p, size, rowstride, p_var, p_mean
+#define VARIANCE_PFMT "p=0x%X, size=%d, rowstride=%d, p_var=0x%X, p_mean=0x%X"
 
 /*
  * variance of a (size*size) block, multiplied by 256
@@ -46,10 +47,9 @@
  * rowstride: distance (in bytes) of vertically adjacent pels
  * SIZE is a multiple of 8.
  */
-int variance_altivec(VARIANCE_PDECL)
+void variance_altivec(VARIANCE_PDECL)
 {
     unsigned int s, s2, sz;
-    int var;
 #ifdef ALTIVEC_DST
     unsigned int dst;
 #endif
@@ -209,14 +209,37 @@ int variance_altivec(VARIANCE_PDECL)
     s = vo.s.sum;
     s2 = vo.s.msum;
 
-    var = s2 - ((s * s) >> sz); /* ((s*s)/(size*size)) size=8|16 */
+    /* var = s2 - ((s * s) >> sz); */ /* ((s*s)/(size*size)) size=8|16 */
+
+    *p_var = s2 - ((s * s) >> sz); /* ((s*s)/(size*size)) size=8|16 */
+    *p_mean = s >> sz;             /* (s/(size*size))     size=8|16 */
 
     AMBER_STOP;
-
-    return var;
 }
 
 #if ALTIVEC_TEST_FUNCTION(variance)
-ALTIVEC_TEST(variance, int, (VARIANCE_PDECL), VARIANCE_PFMT, VARIANCE_ARGS);
+#  ifdef ALTIVEC_VERIFY
+void variance_altivec_verify(VARIANCE_PDECL)
+{
+  unsigned int c_var, c_mean;
+  unsigned int v_var, v_mean;
+
+  ALTIVEC_TEST_WITH(variance)(p, size, rowstride, &c_var, &c_mean);
+  variance_altivec(p, size, rowstride, &v_var, &v_mean);
+
+  if (v_var != c_var)
+    mjpeg_debug("*p_var: %d != %d variance(" VARIANCE_PFMT ")",
+	v_var, c_var, VARIANCE_ARGS);
+
+  if (v_mean != c_mean)
+    mjpeg_debug("*p_mean: %d != %d variance(" VARIANCE_PFMT ")",
+	v_mean, c_mean, VARIANCE_ARGS);
+
+  *p_var = c_var;
+  *p_mean = c_mean;
+}
+#  else
+ALTIVEC_TEST(variance, void, (VARIANCE_PDECL), VARIANCE_PFMT, VARIANCE_ARGS);
+#  endif
 #endif
 /* vim:set foldmethod=marker foldlevel=0: */

@@ -120,8 +120,9 @@ ALTIVEC_FUNCTION(subsample_image, void,
 	(uint8_t *image, int rowstride,
 	 uint8_t *sub22_image, uint8_t *sub44_image));
 
-ALTIVEC_FUNCTION(variance, int,
-	(uint8_t *p, int size, int rowstride));
+ALTIVEC_FUNCTION(variance, void,
+	(uint8_t *p, int size, int rowstride,
+	 unsigned int *p_var, unsigned int *p_mean));
 
 #ifdef __cplusplus
 }
