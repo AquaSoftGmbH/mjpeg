@@ -332,8 +332,8 @@ motion_compensate_field (void)
 			/* center ... */
 
 			addr1 = (xx) + (yy) * w;
-			min  = psad_00 (frame20[0] + addr1, frame21[0] + addr1, w, 32, 0);
-			min += psad_00 (frame20[0] + addr1+16, frame21[0] + addr1+16, w, 32, 0);
+			min  = psad_00 (frame20[0] + addr1, frame10[0] + addr1, w, 32, 0);
+			min += psad_00 (frame20[0] + addr1+16, frame10[0] + addr1+16, w, 32, 0);
 			min >>= 4;
 
 			mv_table[xx][yy].x = 0;
