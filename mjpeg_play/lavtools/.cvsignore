@@ -1,0 +1,15 @@
+.deps
+Makefile
+Makefile.in
+lav2dfilter
+lav2wav
+lav2yuv
+lavaddwav
+lavplay
+lavrec
+lavtrans
+lavvideo
+testrec
+v4l-conf
+xlav
+
