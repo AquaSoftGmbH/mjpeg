@@ -1,21 +1,84 @@
 .TH "img2mpg" "1" "1 January 2003" "Gilles CAULIER" "MJPEG tools manual"
 .SH "NAME"
 .LP 
-img2mpg \- MPEG portfolio image multiplexer
+img2mpg \- MPEG portfolio images multiplexer
 .SH "SYNTAX"
 .LP 
 img2mpg [\fIoptions\fP] \fB\-o\fR <\fIoutput MPEG file\fP> \fB\-i\fR <\fIinput image files\fP>
+.SH "REQUIREMENTS"
+.LP 
+This script use this packages :
+.LP   
+ImageMagick ver >= 5.2.0 [ http://www.imagemagick.org/ ]
+.br 
+MjpegTools  ver >= 1.6.0 [ http://mjpeg.sourceforge.net/ ]
+.LP 
+This script used this externals binary programs :
+
+\- 'montage'   from ImageMagick for resize the images for the TV screen size.
+.br 
+\- 'composite' from ImageMagick for make the transition between images.
+.br 
+\- 'convert'   from ImageMagick for convert the images before MPEG encoding.
+.br 
+\- 'identify'  from ImageMagick for check the background image file size.
+.br 
+\- 'ppmtoy4m'  from MjpegTools for create a video stream from the image.
+.br 
+\- 'yuvscaler' from MjpegTools for adapt the video stream size before MPEG encoding.
+.br 
+\- 'mpeg2enc'  from MjpegTools for encode the video stream in MPEG file.
+.br 
+\- 'mp2enc'    from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
+.br 
+\- 'mplex'     from MjpegTools for multiplexe the MPEG file and the MP2 sound and converte the final MPEG file to a X/S/VCD format compatible with vcdimager program.
 .SH "DESCRIPTION"
 .LP 
-The 'img2mpg' bash script convert some images on MPEG sequences with a specific 
-duration and merge all images on an single MPEG file. It use the 'MjpegTools' and 
-'ImageMagick' packages.
+The 'img2mpg' bash script convert some images on MPEG sequences with a specific duration and merge all images on an single MPEG file. It use the MjpegTools and ImageMagick packages.
 .LP 
 You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player. Use 'vcdimager' for create this...
+.LP 
+The video types and formats supported by this script are :
+.LP 
+VCD :
+.LP 
+  Resolution : 352x288 (PAL/SECAM) / 352x240 (NTSC).
+  Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
+  MPEG type : MPEG\-1.
+  Video CDR duration : 74mn.
+  Video bitrate : 1,150 kbit/s.
+  Sound format : MP2.
+  Audio bitrate : 224 kbit/s.
+  DVD player compatibility : medium.
+  Image restitution : medium.
+.LP 
+SVCD :
+.LP 
+  Resolution : 576x480 (PAL/SECAM) / 480x480 (NTSC).
+  Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
+  MPEG type : MPEG\-2.
+  Video CDR duration : 60mn.
+  Video bitrate : 2,500 kbit/s.
+  Sound format : MP2.
+  Audio bitrate : 224 kbit/s.
+  DVD player compatibility : good.
+  Image restitution : good.
+.LP 
+XVCD :
+.LP 
+  Resolution : 720x576 (PAL/SECAM) / 720x480 (NTSC).
+  Frames / s : 25 (PAL/SECAM) / 30 (NTSC).
+  MPEG type : MPEG\-2.
+  Video CDR duration : 60mn.
+  Video bitrate : 2,500 kbit/s.
+  Sound format : MP2.
+  Audio bitrate : 224 kbit/s.
+  DVD player compatibility : medium.
+  Image restitution : excelent.
 
+Note : \- The XVCD resolution is the same of DVD !
 .SH "OPTIONS"
 .LP 
-
 \fB\-v\fR <\fInum\fP>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
 
 \fB\-t\fR <\fInum\fP>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
@@ -39,8 +102,11 @@ You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD pl
 \fB\-i\fR <\fIinput images files\fP> : images files name to merge in MPEG.
 
 \fB\-h | \-\-help\fR                           : output help information and exit.
-
-
+.SH "RETURN VALUES"
+.LP 
+0 \-> Process finish succefuly.
+.br 
+1 \-> Error.
 .SH "EXAMPLES"
 .LP 
 #./img2mpg \-f SVCD \-d 15 \-w Music.wav \-o MyPortfolio.mpg \-i 01.jpg 02.jpg 03.jpg 04.jpg
@@ -73,7 +139,6 @@ The main mailing list for the MJPEG\-tools is:
 
 For more info, see our website at
   \fIhttp://mjpeg.sourceforge.net\fP
-
 .SH "SEE ALSO"
 .LP 
 ImageMagick(1), mjpegtools(1), vcdimager(1)
