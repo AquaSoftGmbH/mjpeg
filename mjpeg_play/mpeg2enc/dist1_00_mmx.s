@@ -23,7 +23,7 @@
 ;
 
 
-global dist1_MMX
+global dist1_00_MMX
 
 ; int dist1_MMX(unsigned char *blk1,unsigned char *blk2,int lx,int h, int distlim);
 
@@ -44,7 +44,7 @@ global dist1_MMX
 
 
 align 32
-dist1_MMX:
+dist1_00_MMX:
 	push ebp		; save stack pointer
 	mov ebp, esp	; so that we can do this
 
@@ -65,9 +65,9 @@ dist1_MMX:
 	movd mm3, eax
 	movd mm4, eax
 	punpcklwd mm3, mm4
-	jmp nextrow					; snap to it
+	jmp nextrowmm00					; snap to it
 align 32
-nextrow:
+nextrowmm00:
 	movq mm4, [esi]		; load first 8 bytes of p1 row 
 	movq mm5, [edi]		; load first 8 bytes of p2 row
 		
@@ -161,25 +161,25 @@ nextrow:
 	add edi, edx		; ditto
 
 		;; Sum the Accumulators
-	movq  mm4, mm0
-	psrlq mm4, 16
-	movq  mm5, mm0
+	movq  mm5, mm0				; mm5 := [W0+W2,W1+W3, mm0
 	psrlq mm5, 32
 	movq  mm6, mm0
-	psrlq mm6, 48
-	paddw mm4, mm0
-	paddw mm5, mm6
-	paddw mm4, mm5		
-	movd eax, mm4		; store return value
+	paddw mm6, mm5
+
+	movq  mm7, mm6              ; mm6 := [W0+W2+W1+W3, mm0]
+	psrlq mm7, 16
+	paddw mm6, mm7
+		
+	movd eax, mm6		; store return value
 	and  eax, 0xffff
 	cmp ebx, eax		;  Return early if distlim exceeded
-	jle  returnd1				;
+	jle  returnmm00
 			
 	sub  ecx,1
 	test ecx, ecx		; check rowsleft
-	jnz near nextrow
+	jnz near nextrowmm00
 		
-returnd1:	
+returnmm00:	
 
 
 	pop edi

@@ -87,9 +87,9 @@ static void update_fast_motion_threshold _ANSI_ARGS_(( int match_dist ));
 #ifdef SSE
 
 int dist1_00_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int distlim);
-int dist1_01_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int distlim);
-int dist1_10_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int distlim);
-int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h, int distlim);
+int dist1_01_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+int dist1_10_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+int dist1_11_SSE(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 #define dist1_00 dist1_00_SSE
 #define dist1_01 dist1_01_SSE
 #define dist1_10 dist1_10_SSE
@@ -102,8 +102,15 @@ int fdist1_SSE ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 
 #else
 #ifdef MMX
-int dist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
+int dist1_00_MMX ( mcompuint *blk1, mcompuint *blk2,  int lx, int h, int distlim);
+int dist1_01_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+int dist1_10_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
+int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 #define dist1_00 dist1_00_MMX
+#define dist1_01 dist1_01_MMX
+#define dist1_10 dist1_10_MMX
+#define dist1_11 dist1_11_MMX
+
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 #define fdist1 fdist1_MMX
 
@@ -1874,6 +1881,7 @@ int distlim;
   int i,j;
   int s;
   register int v;
+  int fast;
 
   s = 0;
   p1 = blk1;
@@ -1881,7 +1889,7 @@ int distlim;
 
   if (!hx && !hy)
 	{
-#ifdef SSE
+#if defined( SSE ) || defined(MMX)
 	  return dist1_00( blk1,blk2,lx,h,distlim);
 #else
 #ifndef ORIGINAL_CODE
@@ -1921,80 +1929,87 @@ int distlim;
 #endif		
 	}
   else if (hx && !hy)
-#ifdef SSE
-	return dist1_01( blk1,blk2,lx,h,distlim);
+	{
+#if defined(SSE) || defined(MMX)
+	  return dist1_01( blk1,blk2,lx,h);
 #else
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1[i+1]+1)>>1) - p2[i];
-#ifdef ORIGINAL_CODE
-        if (v>=0)
-          s+= v;
-        else
-          s-= v;
-#else
-		s+=fastabs(v);
-#endif
-      }
-      p1+= lx;
-      p2+= lx;
-    }
-#endif
-  else if (!hx && hy)
-  {
-#ifdef SSE
-	return dist1_10( blk1,blk2,lx,h,distlim);
-#else
-    p1a = p1 + lx;
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1a[i]+1)>>1) - p2[i];
-#ifdef ORIGINAL_CODE
-        if (v>=0)
-          s+= v;
-        else
-          s-= v;
-#else
-		s+=fastabs(v);
-#endif
-      }
-      p1 = p1a;
-      p1a+= lx;
-      p2+= lx;
-    }
-#endif
-  }
-  else /* if (hx && hy) */
-  {
-#ifdef SSE
-	return dist1_11( blk1,blk2,lx,h,distlim);
-#else
-    p1a = p1 + lx;
-    for (j=0; j<h; j++)
-    {
-      for (i=0; i<16; i++)
-      {
-        v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1]+2)>>2) - p2[i];
-#ifdef ORIGINAL_CODE
-        if (v>=0)
-          s+= v;
-        else
-          s-= v;
-#else
-		s+=fastabs(v);
-#endif
-      }
-      p1 = p1a;
-      p1a+= lx;
-      p2+= lx;
-    }
-#endif
-  }
+	  for (j=0; j<h; j++)
+		{
+		  for (i=0; i<16; i++)
+			{
 
+			  v = ((unsigned int)(p1[i]+p1[i+1])>>1) - p2[i];
+		  /*
+			  v = ((p1[i]>>1)+(p1[i+1]>>1)>>1) - (p2[i]>>1);
+		  */
+#ifdef ORIGINAL_CODE
+			  if (v>=0)
+				s+= v;
+			  else
+				s-= v;
+#else
+			  s+=fastabs(v);
+#endif
+			}
+		  p1+= lx;
+		  p2+= lx;
+		}
+#endif
+	}
+  else if (!hx && hy)
+	{
+#if defined(SSE) || defined(MMX)
+	  return dist1_10( blk1,blk2,lx,h);
+#else
+	  p1a = p1 + lx;
+	  for (j=0; j<h; j++)
+		{
+		  for (i=0; i<16; i++)
+			{
+			  v = ((unsigned int)(p1[i]+p1a[i])>>1) - p2[i];
+#ifdef ORIGINAL_CODE
+			  if (v>=0)
+				s+= v;
+			  else
+				s-= v;
+#else
+			  s+=fastabs(v);
+#endif
+			}
+		  p1 = p1a;
+		  p1a+= lx;
+		  p2+= lx;
+		}
+#endif
+	}
+  else /* if (hx && hy) */
+	{
+#if defined(SSE) || defined(MMX)
+	  return dist1_11( blk1,blk2,lx,h);
+#else
+	  p1a = p1 + lx;
+	  
+	  for (j=0; j<h; j++)
+		{
+		  for (i=0; i<16; i++)
+			{
+			  v = ((unsigned int)(p1[i]+p1[i+1]+p1a[i]+p1a[i+1])>>2) - p2[i];
+#ifdef ORIGINAL_CODE
+			  if (v>=0)
+				s+= v;
+			  else
+				s-= v;
+#else
+			  s+=fastabs(v);
+#endif
+			}
+		  p1 = p1a;
+		  p1a+= lx;
+		  p2+= lx;
+		}
+	
+#endif
+	}
   return s;
 }
 
