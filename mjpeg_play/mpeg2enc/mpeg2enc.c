@@ -125,8 +125,6 @@ int main(argc,argv)
 #define PARAM_LINE_MAX 256
 	char param_line[PARAM_LINE_MAX];
 
-	printf( "%d %d\n", (int)(1.0f/1.99f+0.5), (int) (-1.0f / 1.99f+0.5f) );
-
 	while( (n=getopt(argc,argv,"m:b:q:o:F:r:4:2:Q:v:tNhO")) != EOF)
 	{
 		switch(n) {
@@ -351,6 +349,7 @@ int main(argc,argv)
 	init_quantizer();
 	init_motion();
 	init_transform();
+	init_predict();
 	putseq();
 
 	fclose(outfile);

@@ -75,6 +75,8 @@ void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 void error _ANSI_ARGS_((char *text));
 
 /* predict.c */
+void init_predict();
+
 void predict _ANSI_ARGS_((pict_data_s *picture,
 						  unsigned char *reff[], unsigned char *refb[],
 						  unsigned char *cur[3], 

@@ -115,4 +115,9 @@ int bdist1_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int lx, 
 				int hxf, int hyf, int hxb, int hyb, int h);
 
+void predcomp_00_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_10_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_11_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_01_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+
 #endif

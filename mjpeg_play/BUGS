@@ -9,7 +9,7 @@
 	some annoying problems with overshoots in earlier versions and
 	poor handling of unusually active blocks but I'd want more evidence...
 
-3.	The lacplay / xlav apps fail rather than automatically switch to software
+3.	The lavplay / xlav apps fail rather than automatically switch to software
 	decoding if no MJPEG hardware is present.
 
 4.	At least for my install of SDL software playback MJPEG function sizes

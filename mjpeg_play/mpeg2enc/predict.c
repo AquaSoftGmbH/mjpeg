@@ -30,35 +30,74 @@
 #include <stdio.h>
 #include "config.h"
 #include "global.h"
+#include "cpu_accel.h"
+#include "simd.h"
+
 
 /* private prototypes */
-static void predict_mb _ANSI_ARGS_((
+static void predict_mb (
 	pict_data_s *picture,
 	unsigned char *oldref[], unsigned char *newref[], unsigned char *cur[],
 	int lx, int bx, int by,  int mb_type,
 	int motion_type, int secondfield,
-	int PMV[2][2][2], int mv_field_sel[2][2], int dmvector[2]));
+	int PMV[2][2][2], int mv_field_sel[2][2], int dmvector[2]);
 
-static void pred _ANSI_ARGS_((
+static void pred (
 	pict_data_s *picture,
 	unsigned char *src[], int sfield,
 	unsigned char *dst[], int dfield,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag));
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
 
-static void pred_comp _ANSI_ARGS_((
+static void pred_comp (
 	pict_data_s *picture,
 	unsigned char *src, unsigned char *dst,
-	int lx, int w, int h, int x, int y, int dx, int dy, int addflag));
-
-static void calc_DMV _ANSI_ARGS_(
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
+#ifdef X86_CPU
+static void pred_comp_mmxe(
+	pict_data_s *picture,
+	unsigned char *src, unsigned char *dst,
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
+#endif
+static void calc_DMV 
 	(	pict_data_s *picture,int DMV[][2], 
-		int *dmvector, int mvx, int mvy)
-);
+		int *dmvector, int mvx, int mvy);
 
 static void clearblock _ANSI_ARGS_(
 	(pict_data_s *picture,
 	 unsigned char *cur[], int i0, int j0)
 	);
+
+/*
+  Initialise prediction - currently purely selection of which
+  versions of the various low level computation routines to use
+  
+  */
+
+static void (*ppred_comp)(
+	pict_data_s *picture,
+	unsigned char *src, unsigned char *dst,
+	int lx, int w, int h, int x, int y, int dx, int dy, int addflag);
+
+void init_predict()
+{
+	int cpucap = cpu_accel();
+
+	if( cpucap  == 0 )	/* No MMX/SSE etc support available */
+	{
+		ppred_comp = pred_comp;
+	}
+#ifdef X86_CPU
+	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
+	{
+		fprintf( stderr, "SETTING EXTENDED MMX for PREDICTION!\n");
+		ppred_comp = pred_comp_mmxe;
+	}
+#endif
+    else
+	{
+		ppred_comp = pred_comp;
+	}
+}
 
 
 /* form prediction for a complete picture (frontend for predict_mb)
@@ -376,7 +415,7 @@ static void pred (
         lx >>= 1;
       }
     }
-    pred_comp(	picture,
+    (*ppred_comp)(	picture,
 				src[cc]+(sfield?lx>>1:0),dst[cc]+(dfield?lx>>1:0),
 				lx,w,h,x,y,dx,dy,addflag);
   }
@@ -391,6 +430,8 @@ static void pred (
  * dx,dy:   half pel motion vector
  * w,h:     size of prediction block
  * addflag: store or add prediction
+ *
+ * There are also SIMD versions of this routine...
  */
 
 static void pred_comp(
@@ -487,6 +528,45 @@ static void pred_comp(
       }
 }
 
+static void pred_comp_mmxe(
+	pict_data_s *picture,
+	unsigned char *src,
+	unsigned char *dst,
+	int lx,
+	int w, int h,
+	int x, int y,
+	int dx, int dy,
+	int addflag)
+{
+	int xint, xh, yint, yh;
+	unsigned char *s, *d;
+	
+	/* half pel scaling */
+	xint = dx>>1; /* integer part */
+	xh = dx & 1;  /* half pel flag */
+	yint = dy>>1;
+	yh = dy & 1;
+
+	/* origins */
+	s = src + lx*(y+yint) + (x+xint); /* motion vector */
+	d = dst + lx*y + x;
+
+	if( xh )
+	{
+		if( yh ) 
+			predcomp_11_mmxe(s,d,lx,w,h,addflag);
+		else /* !yh */
+			predcomp_10_mmxe(s,d,lx,w,h,addflag);
+	}
+	else /* !xh */
+	{
+		if( yh ) 
+			predcomp_01_mmxe(s,d,lx,w,h,addflag);
+		else /* !yh */
+			predcomp_00_mmxe(s,d,lx,w,h,addflag);
+	}
+		
+}
 
 /* calculate derived motion vectors (DMV) for dual prime prediction
  * dmvector[2]: differential motion vectors (-1,0,+1)

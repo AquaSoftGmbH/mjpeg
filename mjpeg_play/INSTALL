@@ -95,9 +95,18 @@ Then (with root privileges if needed) :
 
 make install
 
-If you have installed Quicktime4Linux and/or the jpeg libraries in unusual places you may need to use some options to persuade ./configure to find them.
+If you have installed Quicktime4Linux and/or the jpeg libraries in
+unusual places you may need to use some options to persuade
+./configure to find them.
 
 You should now be able to run the lavtools and MPEG compressors at least.
+
+For the best results you probably want to make the lavplay and lavrec
+programs setuid root.  I.e. make them owned by root and set the "s"
+bit permissions bit with chmod.  This will allow them to run key
+threads with real-time priority.  Its not done by the installer as it
+is a bit risky and we'd prefer people to be able to try it under
+controlled conditions.
 
 Have a look at the README to see how the lavtools (ought to ;) ) work ...
 

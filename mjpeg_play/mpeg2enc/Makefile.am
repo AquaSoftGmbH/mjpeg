@@ -8,7 +8,8 @@ mpeg2enc_MMXSSE = 	fdist1_mmx.s dist1_00_mmx.s dist1_01_mmx.s dist1_10_mmx.s dis
     qdist1_mmx.s quant_mmx.s rcdist_mmx.s dist2_mmx.s bdist2_mmx.s\
 	bdist1_mmx.s predict_mmx.s \
 	fdist1_00.s dist1_00.s dist1_01.s dist1_10.s dist1_11.s \
-    qdist1_sse.s quantize_x86.c  qblock_sad_x86.c
+    qdist1_sse.s quantize_x86.c  qblock_sad_x86.c \
+    predcomp_mmxe.s
 
 if X86CPU
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)
@@ -26,7 +27,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 
 INCLUDES = 
 CPPFLAGS = @MTYPEFLAGS@
-CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized -DDEBUG -DOUTPUT_STAT
+CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized
 ASM = nasm
 
 
