@@ -104,6 +104,10 @@ int main(int argc, char *argv[])
    if (screenheight <= 0) screenheight = height;
 
    switch (frame_rate_code) {
+      case 1:
+         time_between_frames = 1000000 * 1.0 / 23.976;
+         framerate = 23.976;
+         break;
       case 2:
          time_between_frames = 1000000 * 1.0 / 24.0;
          framerate = 24.0;

@@ -189,7 +189,7 @@ int main(int argc, char ** argv)
    {
       outfd = lav_open_output_file(outfile,format,
                                    el.video_width,el.video_height,el.video_inter, 
-                                   el.video_norm=='n' ? 30000.0/1001.0 : 25.0,
+                                   el.video_fps /* was:video_norm=='n' ? 30000.0/1001.0 : 25.0*/ ,
                                    el.audio_bits,el.audio_chans,el.audio_rate);
       if(!outfd)
       {

@@ -403,6 +403,7 @@ void Usage(char *progname)
    fprintf(stderr, "  -Z/--full-screen           Switch to fullscreen\n");
    fprintf(stderr, "  -p/--playback [SHC]        playback: (S)oftware, (H)ardware (screen) or (C)ard\n");
    fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
+   fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
    fprintf(stderr, "  --size NxN                 width X height for SDL window (software)\n");
    exit(1);
 }
@@ -1002,6 +1003,10 @@ static int set_option(char *name, char *value)
 			nerr++;
 		}
 	}
+	else if (strcmp(name, "flicker")==0 || strcmp(name, "F")==0)
+	{
+		flicker_reduction = 0;
+	}
 	else nerr++; /* unknown option - error */
 
 	return nerr;
@@ -1029,6 +1034,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"audio"           ,1,0,0},   /* -a/--audio [01]      */
 		{"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
 		{"size"            ,1,0,0},   /* --size               */
+		{"flicker"         ,0,0,0},   /* -F/--flicker         */
 		{0,0,0,0}
 	};
 
@@ -1036,7 +1042,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* Get options */
 	nerr = 0;
-	while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzg",
+	while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzgF",
 		long_options, &option_index)) != EOF)
 	{
 		switch(n)

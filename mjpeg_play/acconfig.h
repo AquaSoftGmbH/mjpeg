@@ -44,3 +44,7 @@
 #undef LIBDV_PAL_YV12
 #undef SUPPORT_READ_DV2
 #undef SUPPORT_READ_YUV420
+
+/* whether we have avifile/gtk+ */
+#undef HAVE_AVIFILE
+#undef HAVE_GTK
