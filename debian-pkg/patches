@@ -1,0 +1,25 @@
+mjpegtools:configure.in
+
+
+AC_SUBST(QUICKTIME_LIBS)
+AC_SUBST(QUICKTIME_CFLAGS)
+with_quicktime=`pwd`/../quicktime4linux
+have_quicktime=true
+AC_CHECK_LIB(png, png_read_info, [QUICKTIME_LIBS="-lpng" PNG="found"])
+if test "$PNG" = "found" ; then
+  if test x$have_pthread = xtrue ; then
+    EXTRA_LIBS=" $GLIB_LIBS  $PTHREAD_LIBS  -lpng -ldl"
+  else
+    EXTRA_LIBS="-L$with_quicktime$GLIB_LIBS -lpng -ldl"
+  fi
+QUICKTIME_LIBS="-L$with_quicktime -lquicktime $EXTRA_LIBS"
+QUICKTIME_CFLAGS="-I $with_quicktime"
+
+libmovtar:configure.in
+
+dnl DEBIAN PACKAGING MOD: force jpeg-mmx from parent dir...
+JPEGDIR=`pwd`/../jpeg-mmx
+
+LIBS="-L $JPEGDIR $LIBS -ljpeg-mmx"
+AC_SUBST(JPEG_INCLUDE)
+JPEG_INCLUDE="-I $JPEGDIR"

@@ -61,7 +61,7 @@ host_alias = i686-pc-linux-gnu
 host_triplet = i686-pc-linux-gnu
 MAKEINFO = makeinfo
 PACKAGE = mjpegtools-deb
-VERSION = 1.4pre2-0.0.1
+VERSION = 1.4pre3-0.0.1
 
 SUBDIRS = jpeg-mmx quicktime4linux libmovtar mjpegtools
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4

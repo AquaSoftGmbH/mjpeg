@@ -1,0 +1,27 @@
+mjpegtools was brought to you by...
+
+Rainer Johanni	- The original lavtools
+The MPEG Software Simulation Group - The MPEG2 reference encoder
+Andrew Stevens - Turning the MPEG2 reference encoder into a half-capable tool,
+and further development of lavtools
+Gernot Ziegler - movtar support and software playback support
+Ronald Bultje - Further development
+Bernhard Parschinger - Doco.
+Xavier Biquard - yuvscaler
+
+
+See mjpeg.sourceforge.net for current contact details documentation
+and mailing lists etc.
+
+Included in this package are also slightly modified versions of:
+
+quicktime4linux	by Adam Williams
+jpeg libraries and utilities version 6b by the independent JPEG group.
+
+Please *do not* contact the respective authors regarding issues with the
+included versions of these packages.  They are modified and are quite
+likely now out-of-date.  If you wish to use these packages you almost
+certainly want to the use the originals rather than the hacked versions here.
+
+The necessity for these modified versions will in any case disappear
+shortly.
