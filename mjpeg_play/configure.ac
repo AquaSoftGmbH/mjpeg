@@ -28,19 +28,29 @@ dnl **********************************************************************
 dnl Options
 
 AC_ARG_ENABLE(compile-warnings,     
-  [  --enable-compile-warnings,        Turn on compiler warnings.])
+              AC_HELP_STRING([--enable-compile-warnings],
+                             [Turn on compiler warnings.]))
 AC_ARG_ENABLE(warnings_as_errors,   
-  [  --enable-warnings_as_errors,      Compiler warnings are errors.])
+              AC_HELP_STRING([--enable-warnings_as_errors],
+                             [Compiler warnings are errors.]))
 AC_ARG_ENABLE(simd-accel,
-  [  --enable-simd-accel,              use SIMD multimedia instructions (MMX,AltiVec etc) if possible])
-AC_ARG_WITH(quicktime,
-  [  --with-quicktime,                 quicktime support for record/playback])
-AC_ARG_WITH(dv,
-  [  --with-dv,                        libDV (digital video) support])
-AC_ARG_WITH(dv-yv12,
-  [  --with-dv-yv12,                   libDV PAL YV12 read-support])
+              AC_HELP_STRING([--enable-simd-accel],
+                             [use SIMD multimedia instructions
+                              (MMX, AltiVec, etc.) if possible]))
 AC_ARG_ENABLE(zalpha,
-  [  --enable-zalpha,                  include MPEG Z/Alpha support in mplex (www.geofront.se/products_software_mza.php)])
+              AC_HELP_STRING([--enable-zalpha],
+                             [include MPEG Z/Alpha support in mplex (see
+                              http://www.geofront.se/products_software_mza.php)]))
+AC_ARG_WITH(quicktime,
+            AC_HELP_STRING([--with-quicktime],
+                           [quicktime support for record/playback]))
+AC_ARG_WITH(dv,
+            AC_HELP_STRING([--with-dv],
+                           [libDV (digital video) support]))
+AC_ARG_WITH(dv-yv12,
+            AC_HELP_STRING([--with-dv-yv12],
+                           [libDV PAL YV12 read-support]))
+
 
 AC_GNU_SOURCE
 
@@ -580,7 +590,8 @@ if test "x$cflags_set" != "xyes" ; then
 fi
 
 AC_ARG_ENABLE(assert,
- [  --disable-assert        Do not assert parameters to functions in libraries.],
+              AC_HELP_STRING([--disable-assert],
+                             [Disable assertions (compile with NDEBUG).]),
  [ case "$enableval" in yes|no) : ;; *) AC_MSG_ERROR(bad value for --enable-assert)                ;; esac ],
  [ enable_assert=yes ])
 
@@ -626,27 +637,27 @@ AC_DEFINE(VERSION, ${VERSION},
 dnl ************************************************************************
 dnl Summarize the config for the user.
 dnl
-echo ""
-echo " MJPEG tools ${VERSION} build configuration :"
-echo ""
+AC_MSG_NOTICE([])
+AC_MSG_NOTICE([ MJPEG tools ${VERSION} build configuration :])
+AC_MSG_NOTICE([])
 if test "$have_x86cpu" = "true" ; then
-echo "    - X86 Optimizations:"
-echo "      - MMX/3DNow! enabled          : ${have_asm_mmx}"
+  AC_MSG_NOTICE([  - X86 Optimizations:])
+  AC_MSG_NOTICE([    - MMX/3DNow!/SSE enabled      : ${have_asm_mmx}])
 fi
 if test "$have_ppccpu" = "true" ; then
-echo "    - PowerPC Optimizations:"
-echo "      - AltiVec enabled             : ${have_altivec}"
+  AC_MSG_NOTICE([  - PowerPC Optimizations:])
+  AC_MSG_NOTICE([    - AltiVec enabled             : ${have_altivec}])
 fi
 if test x"$ARCHFLAGS" != x; then
-echo "    - arch/cpu compiler flags:      : ${ARCHFLAGS}"
+  AC_MSG_NOTICE([  - arch/cpu compiler flags:      : ${ARCHFLAGS}])
 fi
-echo "    - video4linux recording/playback: ${have_video4linux}"
-echo "    - software MJPEG playback       : ${have_sdl}"
-echo "    - MPEG Z/Alpha                  : ${use_zalpha}"
-echo "    - Quicktime playback/recording  : ${have_quicktime}"
-echo "    - PNG input support             : ${have_png}"
-echo "    - AVI MJPEG playback/recording  : true (always)"
-echo "    - libDV (digital video) support : ${have_dv} "
-echo "    - libDV PAL YV12 read support   : ${have_dv_yv12} "
-echo "    - Gtk+ support for glav         : ${have_gtk}"
-echo ""
+AC_MSG_NOTICE([  - video4linux recording/playback: ${have_video4linux}])
+AC_MSG_NOTICE([  - software MJPEG playback       : ${have_sdl}])
+AC_MSG_NOTICE([  - MPEG Z/Alpha                  : ${use_zalpha}])
+AC_MSG_NOTICE([  - Quicktime playback/recording  : ${have_quicktime}])
+AC_MSG_NOTICE([  - PNG input support             : ${have_png}])
+AC_MSG_NOTICE([  - AVI MJPEG playback/recording  : true (always)])
+AC_MSG_NOTICE([  - libDV (digital video) support : ${have_dv} ])
+AC_MSG_NOTICE([  - libDV PAL YV12 read support   : ${have_dv_yv12} ])
+AC_MSG_NOTICE([  - Gtk+ support for glav         : ${have_gtk}])
+AC_MSG_NOTICE([])
