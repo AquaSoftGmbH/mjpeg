@@ -1,42 +1,51 @@
-#include "main.hh"
+#include <config.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
 #include <sys/stat.h>
+#include "systems.hh"
+#include "mpegconsts.hh"
 
-static int segment_num = 1;
-
-FILE *system_open_init( const char *filename_pat )
+void
+PS_Stream::Init( const char *name_pat, off_t max_seg_size )
 {
-char filename[MAXPATHLEN];
-
-	snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
-	return fopen( filename, "wb" );
+	max_segment_size = max_seg_size;
+	strncpy( filename_pat, name_pat, MAXPATHLEN );
+	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
+	strm = fopen( cur_filename, "wb" );
+	if( strm == NULL )
+	{
+		mjpeg_error_exit1( "Could not open for writing: %s\n", cur_filename );
+	}
 }
 
-int system_file_lim_reached( FILE *cur_system_strm )
+bool
+PS_Stream::FileLimReached()
 {
 	struct stat stb;
-    fstat(fileno(cur_system_strm), &stb);
+    fstat(fileno(strm), &stb);
 	off_t written = stb.st_size;
-	return max_system_segment_size != 0 && written > max_system_segment_size;
+	return max_segment_size != 0 && written > max_segment_size;
 }
 
-FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat )
+void 
+PS_Stream::NextFile( )
 {
-char filename[MAXPATHLEN];
-
 	if( strstr( filename_pat, "%d" ) == NULL )
 	{
-		fprintf( stderr, 
+		mjpeg_error_exit1( 
 			"Need to start new file but there is no %%d in filename pattern %s\n", filename_pat );
-		exit(1); 
 	}
 		
-	fclose(cur_system_strm);
+	fclose(strm);
 	++segment_num;
-	snprintf( filename, MAXPATHLEN, filename_pat, segment_num );
-	return fopen( filename, "wb" );
+	snprintf( cur_filename, MAXPATHLEN, filename_pat, segment_num );
+	strm = fopen( cur_filename, "wb" );
+	if( strm == NULL )
+	{
+		mjpeg_error_exit1( "Could not open for writing: %s\n", cur_filename );
+	}
 }
 
 /**************************************************************
@@ -46,14 +55,15 @@ char filename[MAXPATHLEN];
 **************************************************************/
 	
 		
-unsigned int packet_payload( Sys_header_struc *sys_header, 
-							 Pack_struc *pack_header, 
-							 int buffers, int PTSstamp, int DTSstamp )
+unsigned int 
+PS_Stream::PacketPayload( Sys_header_struc *sys_header, 
+						  Pack_struc *pack_header, 
+						  int buffers, int PTSstamp, int DTSstamp )
 {
   int payload = sector_size - PACKET_HEADER_SIZE ;
 	if( sys_header != NULL )
 		payload -= sys_header->length;
-	if( opt_mpeg == 2 )
+	if( mpeg_version == 2 )
 	{
 	  if( buffers )
 	    payload -= MPEG2_BUFFERINFO_LENGTH;
@@ -96,9 +106,10 @@ unsigned int packet_payload( Sys_header_struc *sys_header,
     for MPEG-1/2 DTS/PTS fields and MPEG-1 pack scr fields
 *************************************************************************/
 
-void buffer_dtspts_mpeg1scr_timecode (clockticks    timecode,
-									 uint8_t  marker,
-									 uint8_t **buffer)
+void 
+PS_Stream::BufferDtsPtsMpeg1ScrTimecode (clockticks    timecode,
+										 uint8_t  marker,
+										 uint8_t **buffer)
 
 {
 	clockticks thetime_base;
@@ -137,9 +148,10 @@ void buffer_dtspts_mpeg1scr_timecode (clockticks    timecode,
 *************************************************************************/
 
 
-void buffer_mpeg2scr_timecode( clockticks    timecode,
-								uint8_t **buffer
-							 )
+void 
+PS_Stream::BufferMpeg2ScrTimecode( clockticks    timecode,
+								   uint8_t **buffer
+	)
 {
  	clockticks thetime_base;
 	unsigned int thetime_ext;
@@ -191,22 +203,17 @@ void buffer_mpeg2scr_timecode( clockticks    timecode,
 	would exceed the remaining payload capacity.
 *************************************************************************/
 
-void create_sector (Sector_struc 	 *sector,
-					Pack_struc	 	 *pack,
-					Sys_header_struc *sys_header,
-					unsigned int     max_packet_data_size,
-					FILE		 	 *inputstream,
-					MuxStream        &strm,
-#ifdef REDUNDANT
-
-					uint8_t 	 _type,
-					uint8_t 	 _buffer_scale,
-					unsigned int 	 _buffer_size,
-#endif
-					bool 	 buffers,
-					clockticks   	 PTS,
-					clockticks   	 DTS,
-					uint8_t 	 timestamps
+void 
+PS_Stream::CreateSector (Sector_struc 	 *sector,
+						 Pack_struc	 	 *pack,
+						 Sys_header_struc *sys_header,
+						 unsigned int     max_packet_data_size,
+						 FILE		 	 *inputstream,
+						 MuxStream        &strm,
+						 bool 	 buffers,
+						 clockticks   	 PTS,
+						 clockticks   	 DTS,
+						 uint8_t 	 timestamps
 	)
 
 {
@@ -258,7 +265,7 @@ void create_sector (Sector_struc 	 *sector,
 	index += 2;
  	fixed_packet_header_end = index;
 
-	if( opt_mpeg == 1 )
+	if( mpeg_version == 1 )
 	{
 		/* MPEG-1: buffer information */
 		if (buffers)
@@ -277,12 +284,12 @@ void create_sector (Sector_struc 	 *sector,
 			*(index++) = MARKER_NO_TIMESTAMPS;
 			break;
 		case TIMESTAMPBITS_PTS:
-			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_JUST_PTS, &index);
 			sector->TS = PTS;
 			break;
 		case TIMESTAMPBITS_PTS_DTS:
-			buffer_dtspts_mpeg1scr_timecode (PTS, MARKER_PTS, &index);
-			buffer_dtspts_mpeg1scr_timecode (DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (PTS, MARKER_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode (DTS, MARKER_DTS, &index);
 			sector->TS = DTS;
 			break;
 		}
@@ -307,13 +314,13 @@ void create_sector (Sector_struc 	 *sector,
 		switch (timestamps)
 		{
 		case TIMESTAMPBITS_PTS:
-			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_JUST_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_JUST_PTS, &index);
 			sector->TS = PTS;
 			break;
 
 		case TIMESTAMPBITS_PTS_DTS:
-			buffer_dtspts_mpeg1scr_timecode(PTS, MARKER_PTS, &index);
-			buffer_dtspts_mpeg1scr_timecode(DTS, MARKER_DTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(PTS, MARKER_PTS, &index);
+			BufferDtsPtsMpeg1ScrTimecode(DTS, MARKER_DTS, &index);
 			sector->TS = DTS;
 			break;
 		}
@@ -339,14 +346,14 @@ void create_sector (Sector_struc 	 *sector,
 		
 	/* DEBUG: A handy consistency check when we're messing around */
 #ifndef NDEBUG		
-	if( target_packet_data_size != packet_payload( sys_header, pack, buffers,
-												   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
+	if( target_packet_data_size != PacketPayload( sys_header, pack, buffers,
+												  timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS) )
 	{ 
 		printf("\nPacket size calculation error %d S%d P%d B%d %d %d!\n ", timestamps,
 			   sys_header!=0, pack!=0, buffers,
 			   target_packet_data_size , 
-			   packet_payload( sys_header, pack, buffers,
-							   timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
+			   PacketPayload( sys_header, pack, buffers,
+							  timestamps & TIMESTAMPBITS_PTS, timestamps & TIMESTAMPBITS_DTS));
 		exit(1);
 	}
 #endif	
@@ -364,7 +371,7 @@ void create_sector (Sector_struc 	 *sector,
     
     if (type == PADDING_STR)
     {
-    	/* TODO DEBUG */
+    	/* Lets play safe... */
 		for (j=0; j< packet_data_to_read; j++)
 			*(index+j)=static_cast<uint8_t>(STUFFING_BYTE);
 		actual_packet_data_size = packet_data_to_read;
@@ -388,7 +395,7 @@ void create_sector (Sector_struc 	 *sector,
 
 	if(  bytes_short < MINIMUM_PADDING_PACKET_SIZE && bytes_short > 0 )
 	{
-		if (opt_mpeg == 1 )
+		if (mpeg_version == 1 )
 		{
 			/* MPEG-1 stuffing happens *before* header data fields. */
 			memmove( fixed_packet_header_end+bytes_short, 
@@ -410,7 +417,7 @@ void create_sector (Sector_struc 	 *sector,
 
 	
 	/* MPEG-2: we now know the header length... */
-	if( opt_mpeg == 2 )
+	if( mpeg_version == 2 )
 	{
 		*pes_header_len_offset = static_cast<uint8_t>(index-(pes_header_len_offset+1));	
 	}
@@ -436,7 +443,7 @@ void create_sector (Sector_struc 	 *sector,
 		  *(index++) = PADDING_STR;
 		  *(index++) = static_cast<uint8_t>((bytes_short - 6) >> 8);
 		  *(index++) = static_cast<uint8_t>((bytes_short - 6) & 0xff);
-		  if (opt_mpeg == 2)
+		  if (mpeg_version == 2)
 		  {
 			  for (i = 0; i < bytes_short - 6; i++)
 				  *(index++) = static_cast<uint8_t>(STUFFING_BYTE);
@@ -471,10 +478,10 @@ void create_sector (Sector_struc 	 *sector,
 	the sector buffer
 *************************************************************************/
 
-void create_pack (
-	Pack_struc	 *pack,
-	clockticks   SCR,
-	unsigned int 	 mux_rate
+void 
+PS_Stream::CreatePack ( Pack_struc	 *pack,
+						clockticks   SCR,
+						unsigned int 	 mux_rate
 	)
 {
     uint8_t *index;
@@ -486,11 +493,11 @@ void create_pack (
     *(index++) = static_cast<uint8_t>((PACK_START & 0x0000ff00)>>8);
     *(index++) = static_cast<uint8_t>(PACK_START & 0x000000ff);
         
-	if (opt_mpeg == 2)
+	if (mpeg_version == 2)
     {
     	/* Annoying: MPEG-2's SCR pack header time is different from
 		   all the rest... */
-		buffer_mpeg2scr_timecode(SCR, &index);
+		BufferMpeg2ScrTimecode(SCR, &index);
 		*(index++) = static_cast<uint8_t>(mux_rate >> 14);
 		*(index++) = static_cast<uint8_t>(0xff & (mux_rate >> 6));
 		*(index++) = static_cast<uint8_t>(0x03 | ((mux_rate & 0x3f) << 2));
@@ -498,7 +505,7 @@ void create_pack (
     }
     else
     {
-		buffer_dtspts_mpeg1scr_timecode(SCR, MARKER_MPEG1_SCR, &index);
+		BufferDtsPtsMpeg1ScrTimecode(SCR, MARKER_MPEG1_SCR, &index);
 		*(index++) = static_cast<uint8_t>(0x80 | (mux_rate >> 15));
 		*(index++) = static_cast<uint8_t>(0xff & (mux_rate >> 7));
 		*(index++) = static_cast<uint8_t>(0x01 | ((mux_rate & 0x7f) << 1));
@@ -520,18 +527,17 @@ void create_pack (
 	RETURN: Length of header created...
 *************************************************************************/
 
-void create_sys_header (
-	Sys_header_struc *sys_header,
-	unsigned int	 rate_bound,
-	int	 fixed,
-	int	 CSPS,
-	bool	 audio_lock,
-	bool	 video_lock,
-	int video_bound,
-	int audio_bound,
-
-	MuxStream      &strm1,					// Usually 1 is audio
-	MuxStream      &strm2					// Usually 2 is video
+void 
+PS_Stream::CreateSysHeader (	Sys_header_struc *sys_header,
+								unsigned int	 rate_bound,
+								bool	 fixed,
+								int	     CSPS,
+								bool	 audio_lock,
+								bool	 video_lock,
+								int video_bound,
+								int audio_bound,
+								MuxStream      &strm1,	// Usually 1 is audio
+								MuxStream      &strm2	// Usually 2 is video
 	)
 
 {
@@ -582,4 +588,14 @@ void create_sys_header (
 	len_index[0] = static_cast<uint8_t>((system_header_size-6) >> 8);
 	len_index[1] = static_cast<uint8_t>((system_header_size-6) & 0xff);
 	sys_header->length = system_header_size;
+}
+
+
+void
+PS_Stream::RawWrite( uint8_t *buf, unsigned int len )
+{
+	if( fwrite( buf, 1, len, strm ) != len )
+	{
+		mjpeg_error_exit1( "Failed write: %s\n", cur_filename );
+	}
 }

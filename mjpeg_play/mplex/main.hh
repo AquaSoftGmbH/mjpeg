@@ -27,12 +27,8 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include "bits.hh"
-#ifdef TIMER
-#include <sys/time.h>
-#endif
-
 #include "inputstrm.hh"
-
+#include "outputstream.hh"
 #include "mjpeg_logging.h"
 
 
@@ -43,11 +39,6 @@
 #define MPLEX_VER    "1.5.1"
 #define MPLEX_DATE   "$Date$"
 
-/* Buffer size parameters */
-
-#define MAX_SECTOR_SIZE         16384
-#define MAX_PACK_HEADER_SIZE	255
-#define MAX_SYS_HEADER_SIZE     255
 
 
 	/* 
@@ -79,27 +70,6 @@
 #define STATUS_AUDIO_TIME_OUT	2		/* Statusmessage A out	*/
 #define STATUS_VIDEO_TIME_OUT	3		/* Statusmessage V out	*/
 
-/*************************************************************************
-    Typ- und Strukturdefinitionen
-*************************************************************************/
-
-typedef struct sector_struc	/* Ein Sektor, kann Pack, Sys Header	*/
-				/* und Packet enthalten.		*/
-{   unsigned char  buf [MAX_SECTOR_SIZE] ;
-    unsigned int   length_of_packet_data ;
-    clockticks TS                ;
-} Sector_struc;
-
-typedef struct pack_struc	/* Pack Info				*/
-{   unsigned char  buf [MAX_PACK_HEADER_SIZE];
-	int length;
-    clockticks SCR;
-} Pack_struc;
-
-typedef struct sys_header_struc	/* System Header Info			*/
-{   unsigned char  buf [MAX_SYS_HEADER_SIZE];
-	int length;
-} Sys_header_struc;
 
     
     
@@ -144,66 +114,6 @@ void buffer_mpeg2scr_timecode( clockticks timecode,
 							 );
 
 int  comp_timecode        (clockticks *,clockticks *);	/* 1tes TimeC. <= 2tes TimeC. ?		*/
-unsigned int packet_payload(  Sys_header_struc *sys_header,  
-							  Pack_struc *pack_header, 
-							  int buffers, int PTSstamp, int DTSstamp );
-	/* Compute available packet payload in a sector... */
-void create_sector (Sector_struc 	 *sector,
-					Pack_struc	     *pack,
-					Sys_header_struc *sys_header,
-					unsigned int     max_packet_data_size,
-
-					FILE		 *inputstream,
-					MuxStream	&strm,
-#ifdef REDUNDANT
-				  uint8_t 	 type,
-				  uint8_t 	 buffer_scale,
-				  unsigned int 	 	buffer_size,
-#endif
-					bool 	 buffers,
-					clockticks   		PTS,
-					clockticks   		DTS,
-					uint8_t 	 timestamps
-				  );
-				  
-void create_sys_header (
-						Sys_header_struc *sys_header,
-						unsigned int	 rate_bound,
-						int	 fixed,
-						int	 CSPS,
-						bool audio_lock,
-						bool video_lock,
-						int	 audio_bound,
-						int	 video_bound,
-
-						MuxStream      &strm1,
-#ifdef REDUNDANT
-						unsigned int 	 buffer1_scale,
-						unsigned int 	 buffer1_size,
-#endif
-						MuxStream      &strm2
-#ifdef REDUNDANT
-						unsigned int 	 buffer2_scale,
-						unsigned int 	 buffer2_size
-#endif
-						);						/* erstellt einen System Header		*/
-void create_pack (
-				  Pack_struc	 *pack,
-				  clockticks     SCR,
-				  unsigned int 	 mux_rate
-				);	/* erstellt einen Pack Header		*/
-
-
-void outputstream ( VideoStream &vstrm,
-					AudioStream &astrm,
-					char 		*audio_file,
-					char 		*multi_file
-					
-				 );
-
-FILE *system_open_init( const char *filename_pat );
-int system_file_lim_reached(  FILE *cur_system_strm );
-FILE *system_next_file( FILE *cur_system_strm, const char *filename_pat );
 
 void status_info (	unsigned int nsectors_a,
 					unsigned int nsectors_v,
@@ -256,9 +166,9 @@ extern unsigned int audio_buffer_size;
 extern unsigned int video_buffer_size;
 
 extern int packet_overhead;
-extern int sector_size;
-extern int mux_rate;
-extern int dmux_rate;
-extern int zero_stuffing;
+//extern int sector_size;
+//extern int mux_rate;
+//extern int dmux_rate;
+//extern int zero_stuffing;
 
 extern off_t max_system_segment_size;

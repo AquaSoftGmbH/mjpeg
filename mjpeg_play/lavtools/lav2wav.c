@@ -110,9 +110,10 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 
 	strncpy(wave.riff.id, "RIFF", 4);
 	strncpy(wave.riff.wave_id, "WAVE",4);
-	strncpy(wave.format.id, "fmt ",4);
 	dummy_size -=8;
 	wave.riff.len =  dummy_size;
+	strncpy(wave.format.id, "fmt ",4);
+	wave.format.len = sizeof(struct common_struct);
 
 	/* Store information */
 	wave.common.wFormatTag = WAVE_FORMAT_PCM;

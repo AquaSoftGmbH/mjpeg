@@ -14,8 +14,8 @@ mplex_SOURCES = \
 	inits.cc 		\
 	inptstrm.cc 		\
 	interact.cc		\
-	multplex.cc 		\
-	systems.cc 		\
+	multplex.cc 	outputstream.hh	\
+	systems.cc 		systems.hh \
 	vector.cc 	vector.hh \
 	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh
 

@@ -44,6 +44,8 @@ int main (int argc, char* argv[])
 	int     optargs;
     VideoStream videoStrm(0);
     AudioStream audioStrm(0);
+	OutputStream ostrm;
+
     off_t audio_bytes, video_bytes;
     clockticks first_frame_PTS = 0;
 
@@ -52,18 +54,18 @@ int main (int argc, char* argv[])
 	// handle stills. We'll get there in the end though...
 	if(  opt_stills )
 	{
+		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
 		vector<const char *> stills;
 		check_stills(argc-optargs, argv+optargs, stills);
-		init_stream_syntax_parameters();
+		ostrm.InitSyntaxParameters();
 		VideoStream stillStrm(0);
 		stillStrm.Init( stills[0] );
-		mjpeg_error_exit1( "Still stream muxing not (yet) implemented\n");
 		//outputstream( stillStrm, audioStrm, multi_file );
 	}
 	else
 	{
 		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
-		init_stream_syntax_parameters();
+		ostrm.InitSyntaxParameters();
 
 		if (video_file) {
 			videoStrm.Init( video_file);
@@ -75,9 +77,9 @@ int main (int argc, char* argv[])
 			audioStrm.SetMuxParams( audio_buffer_size );
 		}
 
-    outputstream (videoStrm,  audioStrm, audio_file,  multi_file );
-	videoStrm.Close();
-	audioStrm.Close();
+		ostrm.OutputMultiplex(videoStrm,  audioStrm, multi_file);
+		videoStrm.Close();
+		audioStrm.Close();
 	}
     return (0);	
 }
