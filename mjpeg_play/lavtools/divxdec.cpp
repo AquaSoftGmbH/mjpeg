@@ -83,9 +83,18 @@
 // Fixed compilation problems under g++-3.0.  Also removed another possible
 // segfault (overzealous 'delete's).
 //
+// 2002/02/16
+//
+// Removed last couple of compiler warnings.
+//
+// 2002/02/24
+//
+// Fixed a problem with overzealous flip detection.  Replaced the flip detection
+// with an explicity option --flip to allow flipping when necessary (rarely).
+//
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.26"
-#define LastChanged "2002/01/15"
+#define APPVERSION "0.0.28"
+#define LastChanged "2002/02/24"
 //#define DEBUG_DIVXDEC 1
 
 #include <vector>
@@ -121,8 +130,9 @@ typedef unsigned int framepos_t;
 
 extern "C"
 {
-#include "yuv4mpeg.h"
-#include "mjpeg_logging.h"
+#include "lav_common.h"
+// #include "yuv4mpeg.h"
+// #include "mjpeg_logging.h"
 #include "lav2wav.h"	// for wave structs, etc.
 #include "jpegutils.h"
 #include "liblavplay.h"
@@ -255,7 +265,12 @@ readyDestination ( 	IAviReadStream *instream
 	{
 		mjpeg_warn ( "Decoder didn't like dest format\n");
 	}
-	instream->GetDecoder ()->SetDirection ( flip );
+	if ( flip )
+	{
+		flip = ( instream->GetDecoder ()->DestFmt ().biHeight > 0 );
+		instream->SetDirection ( flip );
+		instream->GetDecoder ()->SetDirection ( flip );
+	}
 	return fmt;
 }
 
@@ -372,7 +387,6 @@ struct FileData
 	int32_t inputCodec; // = 0;
 	int32_t outputCodec; // = 0;
 	int frames; // = 0;
-	int flip ;
 } ;
 
 // struct for all files
@@ -387,6 +401,9 @@ struct InputData
 	double frameTime; // = 0;
 	double frameRate; // = 0;
 	int totalFrames; // = 0;
+	int xPelsPerMetre;
+	int yPelsPerMetre;
+ 	int flip ;
 
 	int audioTotalBytes; // = 0;
 	int audioBytesPerFrame;
@@ -415,7 +432,7 @@ struct InputData
 	std::vector<FileData> files; // = NULL;
 };
 static InputData input = 
-	{ 0,-1,-1, 0,0,0,0,0, 0,0,0,0,0,0,0,0,
+	{ 0,-1,-1, 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,
 #ifdef DEBUG_DIVXDEC
 	 	0, 
 #endif		
@@ -503,6 +520,7 @@ print_help ( void )
 	printf ( "  -V --version\t\tVersion and license.\n" );
 	printf ( "  -v --verbose\t\tVerbosity level [0-2]\n" );
 	printf ( "  -h --help\t\tPrint this help list.\n\n" );
+	printf ( "  -F --flip\t\tFlip the video.\n\n" );
 	exit ( 0 );
 }
 
@@ -646,7 +664,7 @@ readInputFrame ()
 		// int targetBytes = ( output.processedFrames + 1 ) * input.audioBytesPerFrame ;
 		double targetBytes = ( output.processedFrames + 1.0 ) * input.dAudioBytesPerFrame;
 		int readSoFar = 0;
-		int leftToGo = targetBytes - input.audioReadBytes; // - currentFrame.audioOffset;
+		int leftToGo = (int) ( targetBytes - input.audioReadBytes ); // - currentFrame.audioOffset;
 		unsigned int bytesRead = 1;
 		unsigned int samplesRead = 0;
 		unsigned int audioSize = 0;
@@ -938,7 +956,7 @@ nextFile ()
 
 		input.files[input.currentFile].outputCodec
 			= readyDestination ( input.invstream
-					, input.files[input.currentFile].flip
+					, input.flip
 					, input.files[input.currentFile].inputCodec );
 		char sFourCC[5];
 		fourCCToString ( input.files[input.currentFile].inputCodec, sFourCC ) ;
@@ -1293,13 +1311,22 @@ main (int argc, char **argv)
 	// redirect stdout, so that avifile log messages don't appear in normal std out, but go
 	// to stderr where they SHOULD be.
 	// the better way to do it than cout = cerr;
-	// 1. retain the original streambuf for later reassignment
-	streambuf * real_cout = std::cout.rdbuf ();
-	// 2. reset the output buffer so that nothing buffered before now
+	//
+	// 1. reset the output buffer so that nothing buffered before now
 	//    (avifile initialisation) is output.  
-	real_cout->pubseekpos ( 0, ios::out );
+	//
+	//    2002-02-16: I have one report of this not solving all of the output problems.
+	//                I've moved it from #2 to #1.  Hopefully this will help.
+	//                Anyone have further suggestions?
+	//
+	std::cout.rdbuf()->pubseekpos ( 0, ios::out );
+	//
+	// 2. retain the original streambuf for later reassignment
+	streambuf * real_cout = std::cout.rdbuf ();
+	//
 	// 3. use cerr's streambuf for cout.
 	std::cout.rdbuf ( std::cerr.rdbuf () );
+	//
 	// 4. keep old stdout FILE, and use stderr in its place (for printf ("...") ; )
 	real_stdout = stdout ;
 	stdout = stderr;
@@ -1358,10 +1385,11 @@ main (int argc, char **argv)
 			{"norm", required_argument, NULL, 'n'},
 			{"verbose", required_argument, NULL, 'v'},
 			{"maxfilesize", required_argument, NULL, 'm'},
+			{"flip", no_argument, NULL, 'F' },
 			{0, 0, 0, 0}
 		};
 
-		copt = getopt_long ( argc, argv, "b:Irv:hW:Y:L:f:Ve:n:q:p:m:", long_options, &option_index );
+		copt = getopt_long ( argc, argv, "b:Irv:hW:Y:L:f:Ve:n:q:p:m:F", long_options, &option_index );
 		if (copt == -1)
 		{
 			break;
@@ -1503,6 +1531,9 @@ main (int argc, char **argv)
 				mjpeg_error_exit1 ( "maxfilesize cannot be negative\n" );
 			}
 			break;
+		case 'F':
+			input.flip = true;
+			break;
 		case '?':
 			print_usage ();
 			break;
@@ -1586,9 +1617,12 @@ main (int argc, char **argv)
 				if ( input.processVideo )
 				{
 					mjpeg_debug ( "VIDEO: framesize: %i\n", invstream->GetFrameSize ());
+					mjpeg_debug ( "VIDEO: width x height: %i x %i\n", bmpHeader.biWidth, bmpHeader.biHeight );
 					// not needed as it's just used as a pointer into CImage
 					// currentFrame.inputBuffer = new unsigned char [invstream->GetFrameSize ()];
-					input.files[i].flip = ( bmpHeader.biHeight < 0 ) ? 0 : 1;
+					input.yPelsPerMetre = bmpHeader.biYPelsPerMeter ;
+					input.xPelsPerMetre = bmpHeader.biXPelsPerMeter;
+					mjpeg_debug ( "VIDEO: aspect ratio: %i:%i\n", input.xPelsPerMetre, input.yPelsPerMetre );
 				}							
 				if ( input.processAudio )
 				{
@@ -1607,8 +1641,9 @@ main (int argc, char **argv)
 //						input.dAudioBytesPerFrame = input.audioBytesPerFrame;
 						currentFrame.audioOffset = 0;
 
-						input.audioTotalBytes = input.totalFrames 
-									* input.dAudioBytesPerFrame;
+						input.audioTotalBytes = ( int ) ( input.totalFrames 
+										* input.dAudioBytesPerFrame
+										);
 						mjpeg_debug ( "AUDIO length of file: %i\n", input.audioTotalBytes );
 						
 					}
@@ -1626,7 +1661,6 @@ main (int argc, char **argv)
 				if ( input.processVideo )
 				{
 					invstream->GetOutputFormat ( &this_bh, sizeof this_bh );
-					input.files[i].flip = ( this_bh.biHeight > 0 ) ? 0 : 1;
 					if ( ( bmpHeader.biWidth != this_bh.biWidth )
 						 || ( bmpHeader.biHeight != this_bh.biHeight ) )
 					{
@@ -1751,11 +1785,26 @@ main (int argc, char **argv)
 
 		y4m_si_set_framerate ( &output.y4m_info, y4m_framerate );
 
-		//y4m_ratio_t y4m_aspect;
-		//y4m_aspect.n = input.width;
-		//y4m_aspect.d = input.height;
-
-		y4m_si_set_sampleaspect ( &output.y4m_info, y4m_sar_UNKNOWN );
+		if ( ( input.xPelsPerMetre > 0 ) && ( input.yPelsPerMetre > 0 ) )
+		{
+			y4m_ratio_t y4m_aspect;
+			y4m_aspect.n = input.width;
+			y4m_aspect.d = input.height;
+			y4m_si_set_sampleaspect ( &output.y4m_info, y4m_aspect );
+		}
+		else
+		{
+			y4m_ratio_t y4m_aspect = guess_sar ( input.width, input.height );
+			if ( ( y4m_aspect.n == 0 ) || ( y4m_aspect.d == 0 ) )
+			{
+				mjpeg_warn ( "could not guess aspect ratio\n" );
+			}
+			else
+			{
+				mjpeg_warn ( "no aspect ratio... guessing %i:%i\n", y4m_aspect.n, y4m_aspect.d );
+			}
+			y4m_si_set_sampleaspect ( &output.y4m_info, y4m_aspect );
+		}
 		y4m_write_stream_header ( output.fdYUV, &output.y4m_info);
 
 	}
