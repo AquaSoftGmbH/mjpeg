@@ -247,6 +247,7 @@ int movtar_track_channels(movtar_t *movtar);
 /* Other routines you might find useful for getting audio information are: */
 /* quicktime_audio_length gives you the total number of samples. The sample rate is samples per second. */
 gint64 movtar_audio_length(movtar_t *movtar);
+int movtar_audio_tracks(movtar_t *movtar);
 int movtar_sample_rate(movtar_t *movtar);
 
 /* The bits parameter returns the number of bits in an audio sample. */
@@ -259,6 +260,7 @@ int movtar_audio_bits(movtar_t *movtar);
   number of bits per pixel on disk but the number of bits per pixel in 
   the decompressed data returned by one of the
   video decoding routines. */
+int movtar_video_tracks(movtar_t *movtar);
 long movtar_video_length(movtar_t *movtar);
 int movtar_video_width(movtar_t *movtar);
 int movtar_video_height(movtar_t *movtar);
@@ -325,6 +327,7 @@ int movtar_set_audio(movtar_t *movtar, int channels, int sample_rate, int bits, 
 /* Likewise, don't call the video command if you're just going to save audio. */
 int movtar_set_video(movtar_t *movtar, int tracks, int frame_w, int frame_h, 
 		      float frame_rate, char *compressor, int interlaced); 
+void movtar_show_fake_frames(movtar_t *movtar, int yes);
 
 /* Now some of you are going to want to write frames directly to a file descriptor using another library like libjpeg or something. For every frame start by calling movtar_write_frame_init to initialize the output. */
 int movtar_write_frame_init(movtar_t *movtar); 
