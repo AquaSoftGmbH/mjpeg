@@ -745,6 +745,9 @@ movtar_t *movtar_open(const char *movtarfilename, int read, int write, gint32 fl
 
     case MOVTAR_MODE_WRITE:
 	{
+	  char *user = getenv("USER");
+	  time_t now;
+	  
 	  thefile = fopen(movtarfilename, "w");
 	  if(thefile == NULL)
 	    {
@@ -754,6 +757,19 @@ movtar_t *movtar_open(const char *movtarfilename, int read, int write, gint32 fl
 	  
 	  movtar->file = thefile;
 	  movtar->index_avail = FALSE;
+	  
+	  movtar->version = g_strdup_printf("%s", VERSION);
+	  //FIXME: is ctime() threadsafe?
+	  time(&now);
+	  movtar_set_info(user ? user : "", /* gen_author */
+	    ctime(&now), /* gen_date */
+	    "", /* gen_software */
+	    0, /* gen_jpeg_quality */
+	    "", /* gen_device */
+	    "", /* gen_input */
+	    "", /* gen_classification */
+	    "", /* gen_description */
+	    movtar);
 	}; break;
 
     case MOVTAR_MODE_READWRITE:
