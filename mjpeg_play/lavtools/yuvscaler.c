@@ -67,7 +67,7 @@
 
 
 
-#define yuvscaler_VERSION "08-01-2003"
+#define yuvscaler_VERSION "03-02-2003"
 // For pointer adress alignement
 #define ALIGNEMENT 16		// 16 bytes alignement for mmx registers in SIMD instructions for Pentium
 
@@ -885,7 +885,7 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size",
+		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size",
 		       optarg);
 		  if (interlaced != Y4M_ILACE_NONE)
 		    {
@@ -1006,14 +1006,26 @@ handle_args_dependent (int argc, char *argv[])
   output_height =
     output_active_height >
     display_height ? output_active_height : display_height;
-  if ((output_active_width % 4 != 0) || (output_active_height % 4 != 0)
-      || (display_width % 4 != 0) || (display_height % 4 != 0))
-    mjpeg_error_exit1
-      ("Output sizes are not multiple of 4! %ux%u, %ux%u being displayed",
-       output_active_width, output_active_height, display_width,
-       display_height);
-
-  // Skip and black initialisations
+  if (interlaced == Y4M_ILACE_NONE) 
+     {
+	if ((output_active_width % 2 !=0) || (output_active_height % 2 != 0)
+	    || (display_width % 2 != 0) || (display_height % 2 != 0))
+	  mjpeg_error_exit1
+	  ("Output sizes are not multiple of 2 !!! %ux%u, %ux%u being displayed",
+	   output_active_width, output_active_height, display_width,
+	   display_height);
+     }
+   else
+     {
+	if ((output_active_width % 2 != 0) || (output_active_height % 4 != 0)
+	    || (display_width % 2 != 0) || (display_height % 4 != 0))
+	  mjpeg_error_exit1
+	  ("Output sizes are not multiple of 2 on width and 4 on height (interlaced)! %ux%u, %ux%u being displayed",
+	   output_active_width, output_active_height, display_width,
+	   display_height);
+     }
+   
+	// Skip and black initialisations
   // 
   if (output_active_width > display_width)
     {
