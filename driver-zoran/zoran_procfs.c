@@ -58,45 +58,65 @@ static void setparam(struct zoran *zr, char *name, char *sval)
 	}
 }
 
-/* This macro was stolen from /usr/src/drivers/char/nvram.c and modified */
-#define	PRINT_PROC(args...)					\
-	do {							\
-		if (begin + len > offset + size) {		\
-			*eof = 0;                               \
-                        break;				        \
-		}                                               \
-                len += sprintf( buffer+len, ##args );	        \
-		if (begin + len < offset) {			\
-			begin += len;				\
-			len = 0;				\
-		}						\
-	} while(0)
+struct procfs_io {
+        char *buffer;
+        char *end;
+        int  neof;
+        int  count;
+        int  count_current;
+};
+
+static int print_procfs (struct procfs_io *io, const char *fmt, ...)
+{
+        va_list args;
+        int i;
+
+        if (io->buffer >= io->end) {
+            io->neof++;
+            return 0;
+        }
+        if (io->count > io->count_current++)
+            return 0;
+        va_start(args, fmt);
+        i = vsprintf(io->buffer, fmt, args);
+        io->buffer += i;
+        va_end(args);
+        return i;
+}
+
+static void zoran_procfs_output(struct procfs_io *io,  void *data)
+{
+	int i;
+	struct zoran *zr;
+	zr = (struct zoran *) data;
+
+	print_procfs(io, "ZR36067 registers:");
+	for (i = 0; i < 0x130; i += 4) {
+		if (!(i % 16)) {
+			print_procfs(io, "\n%03X", i);
+		};
+		print_procfs(io, " %08X ", btread(i));
+	};
+	print_procfs(io, "\n");
+}
 
 static int zoran_read_proc(char *buffer, char **start, off_t offset, int size, int *eof, void *data)
 {
 #ifdef CONFIG_PROC_FS
-	int len = 0;
-	off_t begin = 0;
+        struct procfs_io io;
+        int    nbytes;
 
-	int i;
-	struct zoran *zr;
-
-	zr = (struct zoran *) data;
 	DEBUG2(printk(KERN_INFO "%s: read_proc: buffer=%x, offset=%d, size=%d, data=%x\n", zr->name, (int) buffer, (int) offset, size, (int) data));
-	*eof = 1;
-	PRINT_PROC("ZR36067 registers:");
-	for (i = 0; i < 0x130; i += 4) {
-		if (!(i % 16)) {
-			PRINT_PROC("\n%03X", i);
-		}
-		PRINT_PROC(" %08X ", btread(i));
-	}
-	PRINT_PROC("\n");
-	if (offset >= len + begin) {
-		return 0;
-	}
-	*start = buffer + begin - offset;
-	return ((size < begin + len - offset) ? size : begin + len - offset);
+        io.buffer = buffer;
+        io.end    = buffer + size - 128; // Just to make it a little bit safer
+        io.count  = offset;
+        io.count_current = 0;
+        io.neof   = 0;
+        zoran_procfs_output(&io, data);
+        *start    = (char *)(io.count_current - io.count);
+        nbytes = (int)(io.buffer - buffer);
+        *eof = !io.neof;
+        return nbytes;
 #endif
 	return 0;
 }
@@ -147,6 +167,7 @@ static int zoran_proc_init(int i)
 		zoran[i].zoran_proc->read_proc = zoran_read_proc;
 		zoran[i].zoran_proc->write_proc = zoran_write_proc;
 		zoran[i].zoran_proc->data = &zoran[i];
+                zoran[i].zoran_proc->owner = THIS_MODULE;
 		printk(KERN_INFO "%s: procfs entry /proc/%s allocated. data=%x\n", zoran[i].name, name, (int) zoran[i].zoran_proc->data);
 	} else {
 		printk(KERN_ERR "%s: Unable to initialise /proc/%s\n", zoran[i].name, name);
