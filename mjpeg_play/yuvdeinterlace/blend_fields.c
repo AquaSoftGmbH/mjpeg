@@ -26,23 +26,23 @@ blend_fields_non_accel (void)
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
-			*(outframe[0]) = ( *(outframe[0]) + *(frame1[0]) )>>1;
-			frame1[0]++;
+			*(outframe[0]) = ( *(outframe[0]) + *(frame4[0]) )>>1;
+			frame4[0]++;
 			outframe[0]++;
 
-			*(outframe[1]) = ( *(outframe[1]) + *(frame1[1]) )>>1;
-			frame1[1]++;
+			*(outframe[1]) = ( *(outframe[1]) + *(frame4[1]) )>>1;
+			frame4[1]++;
 			outframe[1]++;
 
-			*(outframe[2]) = ( *(outframe[2]) + *(frame1[2]) )>>1;
-			frame1[2]++;
+			*(outframe[2]) = ( *(outframe[2]) + *(frame4[2]) )>>1;
+			frame4[2]++;
 			outframe[2]++;
 		}
-	frame1[0] -= offs1;
+	frame4[0] -= offs1;
 	outframe[0] -= offs1;
-	frame1[1] -= offs1;
+	frame4[1] -= offs1;
 	outframe[1] -= offs1;
-	frame1[2] -= offs1;
+	frame4[2] -= offs1;
 	outframe[2] -= offs1;
 
 #if 0
