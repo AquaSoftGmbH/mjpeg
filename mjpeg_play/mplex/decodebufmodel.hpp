@@ -20,40 +20,46 @@
  */
 
 
-#ifndef __BUFFER_H__
-#define __BUFFER_H__
+#ifndef __DECODEBUFMODEL_H__
+#define __DECODEBUFMODEL_H__
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "aunit.hpp"
+#include <deque>
 
-class BufferQueue
+
+struct DecodeBufEntry
 {
-public:
 	unsigned int size	;	/* als verkettete Liste implementiert	*/
     clockticks DTS	;
-    BufferQueue *next	;
 };
     
 
-class BufferModel
+class DecodeBufModel
 {
 public:
-  BufferModel() : max_size(0),first(0) {}
-  void Init( unsigned int size);
+  DecodeBufModel() : buffer_size(0) {}
+  void Init ( unsigned int size)
+  {
+    buffer_size = size;
+  }
   
   void Cleaned(  clockticks timenow);
   clockticks NextChange();
   void Flushed( );
   unsigned int Space();
   void Queued( unsigned int bytes, clockticks removaltime);
-  inline unsigned int Size() { return max_size; }
+  inline unsigned int Size() { return buffer_size; }
 private:
-  unsigned int max_size;
-  BufferQueue *first;
+  unsigned int buffer_size;
+  std::deque<DecodeBufEntry> bufstate ;
 };
 
 
 
-#endif // __BUFFER_H__
+#endif // __DECODEBUFMODEL_H__
 
 
 /* 

@@ -40,7 +40,7 @@ public:
 		{}
 	void Init( );
 private:
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
+	virtual void NextDTSPTS( );
 	clockticks current_PTS;
 	clockticks current_DTS;
 };

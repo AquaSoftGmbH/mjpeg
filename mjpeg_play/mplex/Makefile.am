@@ -26,7 +26,7 @@ libmplex2_la_SOURCES = \
 	ac3strm_in.cpp \
 	audiostrm_out.cpp \
 	bits.cpp \
-	buffer.cpp \
+	decodebufmodel.cpp \
 	dtsstrm_in.cpp \
 	inputstrm.cpp \
 	interact.cpp \
@@ -37,7 +37,6 @@ libmplex2_la_SOURCES = \
 	stillsstream.cpp \
 	stream_params.cpp \
 	systems.cpp \
-	vector.cpp \
 	videostrm_in.cpp \
 	videostrm_out.cpp \
 	$(ZALPHA_FILES)
@@ -47,8 +46,9 @@ libmplex_includedir = $(pkgincludedir)/mplex
 libmplex_include_HEADERS = \
 	audiostrm.hpp \
 	aunit.hpp \
+	aunitbuffer.hpp \
 	bits.hpp \
-	buffer.hpp \
+	decodebufmodel.hpp \
 	inputstrm.hpp \
 	interact.hpp \
 	mplexconsts.hpp \
@@ -58,7 +58,6 @@ libmplex_include_HEADERS = \
 	stillsstream.hpp \
 	stream_params.hpp \
 	systems.hpp \
-	vector.hpp \
 	videostrm.hpp
 
 libmplex2_la_LDFLAGS =  \

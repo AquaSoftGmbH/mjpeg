@@ -7,17 +7,23 @@
 typedef int64_t clockticks;		// This value *must* be signed
                                 // because we frequently compute *offsets*
 
-class Aunit
+class AUnit
 {
 public:
-	Aunit() : length(0), PTS(0), DTS(0) {}
+	AUnit() : length(0), PTS(0), DTS(0) {}
+	//
+	// How many payload bytes muxing AU will require.  Eventually will be more
+	// complex for input streams where AU are no contiguous
+	//
+	inline unsigned int PayloadSize() const { return length; }
 	void markempty() { length = 0; }
 	bitcount_t start;
 	unsigned int length;
     clockticks PTS;
     int        dorder;
-	// Used only for video AU's but otherwise
-	// you have to go crazy on templates.
+	//
+	// Remainder Used only for video AU's... 
+	//
     clockticks DTS;
     int		   porder;
     unsigned int type;
@@ -26,10 +32,5 @@ public:
 
 };
 
-typedef Aunit *AunitPtr;
-
-typedef Aunit VAunit;
-
-typedef Aunit AAunit;
 
 #endif // __AUNIT_H__

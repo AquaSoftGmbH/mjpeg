@@ -64,13 +64,6 @@ bool VideoStream::Probe(IBitStream &bs )
     return bs.GetBits( 32)  == 0x1b3;
 }
 
-void VideoStream::InitAUbuffer()
-{
-	unsigned int i;
-	for( i = 0; i < aunits.BUF_SIZE; ++i )
-		aunits.init( new VAunit );
-}
-
 
 /*********************************
  * Signals when video stream has completed mux run-out specified
@@ -97,10 +90,17 @@ bool VideoStream::RunOutComplete()
 
 bool VideoStream::MuxPossible( clockticks currentSCR )
 {
-
 	return ( ElementaryStream::MuxPossible(currentSCR) && 
              RequiredDTS() < currentSCR + max_STD_buffer_delay );
 }
+
+
+void VideoStream::AUMuxed( bool first_in_sector )
+{
+    //DEBUG
+    //mjpeg_info( "VidMuxed: %d %lld ", au->dorder, RequiredDTS()/300 );
+}
+
 
 /*********************************
  * Work out the timestamps to be set in the header of sectors starting
@@ -131,6 +131,82 @@ bool VideoStream::NewAUBuffers( int AUtype )
         !(muxinto.video_buffers_iframe_only && AUtype != IFRAME);
 }
 
+/********************************
+ *
+ * Check if the next sector could potentially include parts of AUs
+ * following a sequence end marker... in this case a run-out may be needed
+ *
+ *******************************/
+
+bool VideoStream::SeqEndRunOut()
+{
+    unsigned int payload = au_unsent;
+    unsigned int ahead = 0;
+    AUnit *next_au = au;
+    for(;;)
+    {
+        if( next_au->end_seq || payload >= muxinto.sector_size)
+            break;  
+        ++ahead;
+        next_au = Lookahead(ahead);
+        if( next_au == 0 )
+            break;
+        payload += next_au->PayloadSize();
+    }
+    
+    // We don't need to start run-out if the next sector cannot contain
+    // next sequence or there is no next sequence (no AU after the one with
+    // the sequence end marker
+    return next_au != 0 && next_au->end_seq 
+        && payload < muxinto.sector_size
+        && Lookahead(ahead+1) != 0;
+
+}
+
+/********************************
+ *
+ * Check if the next sector could potentially include a seq_end marker
+ *
+ *******************************/
+
+const AUnit *VideoStream::NextIFrame()
+{
+    unsigned int ahead = 0;
+    AUnit *au_ahead = Lookahead(ahead);
+    while( au_ahead != 0 && au_ahead->type != IFRAME 
+           && ahead < MAX_GOP_LENGTH )
+    {
+        ++ahead;
+        au_ahead = Lookahead(ahead);
+    }
+    return au_ahead;
+}
+
+
+/********************************
+ *
+ * Calculate how much payload can be muxed next sector without
+ * including the next IFRAME.
+ *
+ *******************************/
+
+unsigned int VideoStream::ExcludeNextIFramePayload()
+{
+    unsigned int payload = au_unsent;
+    unsigned int ahead = 0;
+    AUnit *au_ahead;
+    for(;;)
+    {
+        au_ahead = Lookahead(ahead);
+        if( au_ahead == 0 || payload >= muxinto.sector_size || au_ahead->type == IFRAME )
+            break;
+        payload += au_ahead->PayloadSize();
+        ++ahead;
+    }
+    assert( eoscan || au_ahead != 0 );
+    return payload;
+}
+
 /******************************************************************
 	Output_Video
 	generiert Pack/Sys_Header/Packet Informationen aus dem
@@ -152,21 +228,25 @@ void VideoStream::OutputSector ( )
 
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
- 	   We're now in the last AU of a segment.  So we don't want to go
- 	   beyond it's end when filling sectors. Hence we limit packet
- 	   payload size to (remaining) AU length.  The same applies when
- 	   we wish to ensure sequence headers starting ACCESS-POINT AU's
- 	   in (S)VCD's etc are sector-aligned.  
+       I-frame aligning.  For the last AU of segment or for formats
+       with ACCESS-POINT sectors where I-frame (and preceding headers)
+       are sector aligned.
 
-       N.b.runout_PTS is the PTS of the first I picture following the
-       run-out is recorded.
+       We need to look ahead to see how much we may put into the current packet
+       without without touching the next I-frame (which is supposed to be
+       placed at the start of its own sector).
+
+       N.b.runout_PTS is the PTS of the after which the next I frame
+       marks the start of the next sequence.
 	*/
-	int nextAU = NextAUType();
-	if( ( muxinto.running_out && nextAU == IFRAME && NextRequiredPTS() >= muxinto.runout_PTS) 
-        || (muxinto.sector_align_iframeAUs && nextAU == IFRAME  )
-		) 
+    
+    /* TODO finish this: Need to look-ahead sufficiently far to
+       guarantee finding an I-FRAME even if its predecessors are very
+       small.  
+    */
+	if( muxinto.sector_align_iframeAUs || muxinto.running_out )
 	{
-		max_packet_payload = au_unsent;
+		max_packet_payload = ExcludeNextIFramePayload();
 	}
 
 	/* Figure out the threshold payload size below which we can fit more
@@ -259,6 +339,7 @@ void VideoStream::OutputSector ( )
 	++nsec;
 	buffers_in_header = always_buffers_in_header;
 }
+
 
 
 /***********************************************

@@ -86,7 +86,6 @@ void VideoStream::Init ( const int stream_num )
                 VIDEO_STR_0+stream_num,
                 bs.StreamName()
                 );
-	InitAUbuffer();
 
 	SetBufSize( 4*1024*1024 );
 	ScanFirstSeqHeader();
@@ -97,6 +96,9 @@ void VideoStream::Init ( const int stream_num )
 	AU_pict_data = 0;
 	AU_start = 0;
     
+    fields_presented = 0;
+    group_start_pic = 0;
+    group_start_field = 0;
     OutputSeqhdrInfo();
 }
 
@@ -128,22 +130,6 @@ void VideoStream::SetMaxStdBufferDelay( unsigned int dmux_rate )
 
 }
 
-//
-// Return whether AU buffer needs refilling.  There are two cases:
-// 1. We have less than our look-ahead "FRAME_CHUNK" buffer AU's
-// buffered 2. AU's are very small and we could have less than 1
-// sector's worth of data buffered.
-//
-
-bool VideoStream::AUBufferNeedsRefill()
-{
-    return 
-        !eoscan
-        && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
-             ||
-             bs.BufferedBytes() < muxinto.sector_size 
-            );
-}
 
 //
 // Refill the AU unit buffer setting  AU PTS DTS from the scanned
@@ -186,19 +172,24 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			switch (syncword) 
 			{
 			case SEQUENCE_HEADER :
+                mjpeg_debug( "Seq hdr @ %lld", bs.bitcount() / 8-4 );
 			case GROUP_START :
+                mjpeg_debug( "Group hdr @ %lld", bs.bitcount() / 8-4 );
 			case PICTURE_START :
 				access_unit.start = AU_start;
 				access_unit.length = static_cast<int>(stream_length - AU_start)>>3;
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
-				aunits.append( access_unit );					
-                decoding_order++;
-				mjpeg_debug( "Found start AU %d @ %lld: DTS=%ud", 
+				mjpeg_debug( "AU %d %d %d @ %lld: DTS=%ud", 
                              decoding_order,
+                             access_unit.type,
+                             access_unit.length,
                              bs.bitcount() / 8-4,
 							 static_cast<unsigned int>(access_unit.DTS/300) );
 
+
+				aunits.Append( access_unit );					
+                decoding_order++;
 				AU_hdr = syncword;
 				AU_start = stream_length;
 				AU_pict_data = 0;
@@ -206,7 +197,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 			case SEQUENCE_END:
 				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
-				aunits.append( access_unit );
+				aunits.Append( access_unit );
 				mjpeg_info( "Scanned to end AU %d", access_unit.dorder );
 				avg_frames[access_unit.type-1]+=access_unit.length;
 
@@ -226,7 +217,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 					if( !bs.eos() && muxinto.split_at_seq_end )
 						mjpeg_warn("No seq. header starting new sequence after seq. end!");
 				}
-					
+                decoding_order++;
 				num_seq_end++;
 				break;
 			}
@@ -248,6 +239,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 		case PICTURE_START:
 			/* We have reached AU's picture data... */
 			AU_pict_data = 1;
+            mjpeg_debug( "Picture start @ %lld", bs.bitcount() / 8-4 );
 			
             prev_temp_ref = temporal_reference;
 			temporal_reference = bs.GetBits( 10);
@@ -294,10 +286,11 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				group_start_field = fields_presented;
 			}
 
-			NextDTSPTS( access_unit.DTS, access_unit.PTS );
+			NextDTSPTS( );
 
 			access_unit.dorder = decoding_order;
 			access_unit.porder = temporal_reference + group_start_pic;
+
 			access_unit.seq_header = ( AU_hdr == SEQUENCE_HEADER);
 
 			if ((access_unit.type>0) && (access_unit.type<5))
@@ -410,51 +403,86 @@ void VideoStream::OutputSeqhdrInfo ()
 // etc!).
 //
 
-void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
+int gopfields_32pd( int temporal_ref, bool repeat_first_field )
 {
+    int frames2field;
+    int frames3field;
+    //
+    // Assume first presented frame of GOP has temporal ref 0
+    if( repeat_first_field )
+    {
+        frames2field = (temporal_ref+1) / 2;
+        frames3field = temporal_ref / 2;
+    }
+    else
+    {
+        frames2field = (temporal_ref) / 2;
+        frames3field = (temporal_ref+1) / 2;
+    }
+
+    return frames2field*2 + frames3field*3;
+
+}
+
+/****************************************************
+ *
+ * Work out DTS PTS stamps for the current AU.
+ * Note: Current strategy assumes decoders model 'ideal'
+ * timing with instantaneous decoding.
+ * This makes sense it is what is assumed for B-frames anyway
+ * (no seperate DTS).
+ *
+ ******************************************************/
+
+void VideoStream::NextDTSPTS()
+{
+    const int decode_delay = 0;
+    int startup_skew = 2;
+    int decode_fields, present_fields;
     if( pict_struct != PIC_FRAME )
     {
-		DTS = static_cast<clockticks>
-			(fields_presented * (double)(CLOCKS/2) / frame_rate);
-        int dts_fields = temporal_reference*2 + group_start_field+1;
+		decode_fields = fields_presented;
+        present_fields = temporal_reference*2 + group_start_field+decode_delay/2;
         if( temporal_reference == prev_temp_ref )
-            dts_fields += 1;
-        PTS =
-            static_cast<clockticks>(dts_fields* (double)(CLOCKS/2) / frame_rate);
-		access_unit.porder = temporal_reference + group_start_pic;
+            present_fields += 1;
         fields_presented += 1;
     }	
     else if( pulldown_32 )
 	{
-		int frames2field;
-		int frames3field;
-		DTS = static_cast<clockticks>
-			(fields_presented * (double)(CLOCKS/2) / frame_rate);
-		if( repeat_first_field )
-		{
-			frames2field = (temporal_reference+1) / 2;
-			frames3field = temporal_reference / 2;
-			fields_presented += 3;
-		}
-		else
-		{
-			frames2field = (temporal_reference) / 2;
-			frames3field = (temporal_reference+1) / 2;
-			fields_presented += 2;
-		}
-		PTS = static_cast<clockticks>
-			((frames2field*2 + frames3field*3 + group_start_field+1) * (double)(CLOCKS/2) / frame_rate);
-		access_unit.porder = temporal_reference + group_start_pic;
+        present_fields = group_start_field  + startup_skew + decode_delay +
+            gopfields_32pd( temporal_reference, repeat_first_field );
+        
+        if( decoding_order == 0 )
+        {
+            // Special case... first IFRAME is not decoded during presentation
+            // of previous ref frame but immediately at start
+            decode_fields = 0;
+            prev_ref_present = present_fields ;
+        }
+        else if( access_unit.type == IFRAME || access_unit.type == PFRAME )
+        {
+            decode_fields = prev_ref_present-decode_delay;
+            prev_ref_present = present_fields;
+        }
+        else
+        {
+            decode_fields = present_fields - decode_delay;
+        }
+        fields_presented += repeat_first_field ? 3 : 2;
 	}
     else
 	{
-		DTS = static_cast<clockticks> 
-			(decoding_order * (double)CLOCKS / frame_rate);
-		PTS = static_cast<clockticks>
-			((temporal_reference + group_start_pic+1) * (double)CLOCKS / frame_rate);
+        decode_fields = decoding_order*2;
+        present_fields = (temporal_reference + group_start_pic)*2
+            + startup_skew + decode_delay;
 		fields_presented += 2;
 	}
 
+    access_unit.DTS = static_cast<clockticks>
+        (decode_fields * (double)(CLOCKS/2) / frame_rate);
+    
+    access_unit.PTS = static_cast<clockticks>
+        (present_fields * (double)(CLOCKS/2) / frame_rate);
 }
 
 

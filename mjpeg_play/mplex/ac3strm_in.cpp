@@ -220,7 +220,6 @@ void AC3Stream::Init ( const int _stream_num)
                 bs.StreamName()
                 );
 
-	InitAUbuffer();
 	AU_start = bs.bitcount();
     if (bs.GetBits(16)==AC3_SYNCWORD)
     {
@@ -250,7 +249,7 @@ void AC3Stream::Init ( const int _stream_num)
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
 		++decoding_order;
-		aunits.append( access_unit );
+		aunits.Append( access_unit );
 
     } else
     {
@@ -292,7 +291,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
         {
             mjpeg_warn( "Discarding incomplete final frame AC3 stream %d!",
                        stream_num);
-            aunits.droplast();
+            aunits.DropLast();
             --decoding_order;
             break;
         }
@@ -324,7 +323,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
 		decoding_order++;
-		aunits.append( access_unit );
+		aunits.Append( access_unit );
 		num_frames++;
 		
 		num_syncword++;

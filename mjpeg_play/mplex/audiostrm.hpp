@@ -42,12 +42,10 @@ public:
     unsigned int num_syncword;
 
 protected:
-    virtual bool AUBufferNeedsRefill();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
-	void InitAUbuffer();
     
 	/* State variables for scanning source bit-stream */
-    AAunit access_unit;
+    AUnit access_unit;
     unsigned int header_skip;
 }; 	
 

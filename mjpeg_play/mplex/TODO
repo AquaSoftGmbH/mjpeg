@@ -1,5 +1,11 @@
 TODO
 
+-Fix the bug with excessibe run-in in AC3 with small packets (no buffering time limit) validate using stereo-96-1min-1st-five.tar.gz
+
+
+- Replace the stream-specific ReadPacketPayload stuff with
+  proper AUMuxed StreamHeaderSize based stuff
+
 - Replace the current peak rate estimation with one based on
 monitoring SCR and position in original stream every so-and-so many
 muxed out frames...

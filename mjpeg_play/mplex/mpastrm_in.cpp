@@ -124,8 +124,6 @@ void MPAStream::Init ( const int stream_num )
                 bs.StreamName()
                 );
 
-	InitAUbuffer();
-	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
     AU_start = bs.bitcount();
@@ -165,7 +163,7 @@ void MPAStream::Init ( const int stream_num )
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
 		++decoding_order;
-		aunits.append( access_unit );
+		aunits.Append( access_unit );
 
     } else
     {
@@ -215,7 +213,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
             mjpeg_warn("Discarding incomplete final frame MPEG audio stream %02x!",
                        stream_id
                        );
-            aunits.droplast();
+            aunits.DropLast();
             --decoding_order;
             break;
         }
@@ -247,7 +245,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 		access_unit.DTS = access_unit.PTS;
 		access_unit.dorder = decoding_order;
 		decoding_order++;
-		aunits.append( access_unit );
+		aunits.Append( access_unit );
 		num_frames[padding_bit]++;
 
 		bs.GetBits( 9);

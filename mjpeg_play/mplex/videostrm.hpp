@@ -32,34 +32,28 @@ public:
 	VideoStream(IBitStream &ibs, VideoParams *parms, 
                 Multiplexor &into);
 	void Init( const int stream_num );
+
     static bool Probe(IBitStream &bs );
 
 	void Close();
 
-	inline int AUType()
-		{
-			return au->type;
-		}
+    inline int DecoderOrder() { return au->dorder; }
+	inline int AUType()	{ return au->type; }
 
-	inline bool EndSeq()
-		{
-			return au->end_seq;
-		}
+    bool SeqEndRunOut();
+
+    const AUnit *NextIFrame();
+
 
 	inline int NextAUType()
 		{
-			VAunit *p_au = Lookahead();
-			if( p_au != NULL )
+			AUnit *p_au = Lookahead();
+			if( p_au != 0 )
 				return p_au->type;
 			else
 				return NOFRAME;
 		}
 
-	inline bool SeqHdrNext()
-		{
-			VAunit *p_au = Lookahead();
-			return  p_au != NULL && p_au->seq_header;
-		}
 
 	virtual unsigned int NominalBitRate() 
 		{ 
@@ -69,18 +63,22 @@ public:
     virtual void OutputGOPControlSector();
 	bool RunOutComplete();
 	virtual bool MuxPossible(clockticks currentSCR);
+    virtual void AUMuxed( bool first_in_sector ) ;
+
     void SetMaxStdBufferDelay( unsigned int demux_rate );
 	void OutputSector();
 
+
 protected:
+    static const unsigned int MAX_GOP_LENGTH = 128;
 	void OutputSeqhdrInfo();
-    virtual bool AUBufferNeedsRefill();
 	virtual void FillAUbuffer(unsigned int frames_to_buffer);
-	virtual void InitAUbuffer();
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
+	virtual void NextDTSPTS(  );
 	void ScanFirstSeqHeader();
     uint8_t NewAUTimestamps( int AUtype );
     bool NewAUBuffers( int AUtype );
+
+    unsigned int ExcludeNextIFramePayload();
 
 public:	
     unsigned int num_sequence 	;
@@ -106,8 +104,9 @@ public:
 
 protected:
 
+
 	/* State variables for scanning source bit-stream */
-    VAunit access_unit;
+    AUnit access_unit;
 	int fields_presented;
     int group_start_pic;
 	int group_start_field;
@@ -117,6 +116,8 @@ protected:
 	int pulldown_32;
 	int repeat_first_field;
 	int prev_temp_ref;
+    int ref_present;
+    int prev_ref_present;
     double frame_rate;
 	double max_bits_persec;
 	int AU_pict_data;

@@ -37,13 +37,6 @@ AudioStream::AudioStream(IBitStream &ibs, Multiplexor &into) :
     FRAME_CHUNK = 24;
 }
 
-void AudioStream::InitAUbuffer()
-{
-	unsigned int i;
-	for( i = 0; i < aunits.BUF_SIZE; ++i )
-		aunits.init( new AAunit );
-}
-
 
 
 /*********************************
@@ -57,15 +50,6 @@ bool AudioStream::RunOutComplete()
 			( muxinto.running_out && RequiredPTS() >= muxinto.runout_PTS));
 }
 
-bool AudioStream::AUBufferNeedsRefill()
-{
-    return 
-        !eoscan
-        && ( aunits.current()+FRAME_CHUNK > last_buffered_AU
-             || 
-             bs.BufferedBytes() < muxinto.sector_size
-            );
-}
 
 /******************************************************************
 	Output_Audio

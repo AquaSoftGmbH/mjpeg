@@ -18,7 +18,7 @@
  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 
-
+#define STREAM_LOGGING
 #include <config.h>
 #include <math.h>
 #include <stdlib.h>
@@ -267,7 +267,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
         video_buffers_iframe_only = false;
 		break;
 	}
-	printf( "MAX = %lld\n", max_segment_size );
 }
 
 /**************************************
@@ -746,7 +745,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 			mjpeg_log( level,
 					   "Video %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
-					   (*str)->bufmodel.Space(),
+					   (*str)->BufferSize()-(*str)->bufmodel.Space(),
 					   (*str)->DecodeOrder(),
 					   (*str)->nsec
 				);
@@ -755,7 +754,7 @@ void Multiplexor::MuxStatus(log_level_t level)
 			mjpeg_log( level,
 					   "Audio %02x: buf=%7d frame=%06d sector=%08d",
 					   (*str)->stream_id,
-					   (*str)->bufmodel.Space(),
+					   (*str)->BufferSize()-(*str)->bufmodel.Space(),
 					   (*str)->DecodeOrder(),
 					   (*str)->nsec
 				);
@@ -1120,25 +1119,25 @@ void Multiplexor::Multiplex()
                 mjpeg_info( "Starting new output file...");
                 psstrm->NextSegment();
 			}
-			else if( master != 0 && master->EndSeq() )
+			else if( master != 0 && master->SeqEndRunOut() )
 			{
-				if(  split_at_seq_end && master->Lookahead( ) != 0 )
+                const AUnit *nextIframe = master->NextIFrame();
+				if(  split_at_seq_end && nextIframe != 0)
 				{
-					if( ! master->SeqHdrNext() || 
-						master->NextAUType() != IFRAME)
-					{
-						mjpeg_error_exit1( "Sequence split detected %d but no following sequence found...", master->NextAUType());
-					}
-						
-					runout_PTS = master->NextRequiredPTS();
+					runout_PTS = master->RequiredPTS(nextIframe);
                     mjpeg_info( "Sequence end marker! Running out...");
-                    mjpeg_debug("Run out PTS limit to %lld SCR=%lld", 
-                                runout_PTS/300, 
-                                current_SCR/300 );
+                    mjpeg_info("Run out PTS limit to AU %d %lld SCR=%lld", 
+                               nextIframe->dorder,
+                               runout_PTS/300, 
+                               current_SCR/300 );
                     MuxStatus( LOG_INFO );
 					running_out = true;
 					seg_state = runout_segment;
 				}
+                else
+                {
+                    mjpeg_warn( "Sequence end without following I-frame!" );
+                }
 			}
 			break;
 			
@@ -1162,11 +1161,14 @@ void Multiplexor::Multiplex()
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
 #ifdef STREAM_LOGGING
-            mjpeg_debug("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
+            mjpeg_debug("%02x: SCR=%lld (%.3f) mux=%d %d reqDTS=%lld ", 
                         (*str)->stream_id,
-                        current_SCR /300,
+                        current_SCR,
+                        static_cast<double>(current_SCR) /(90.0*300.0),
                         (*str)->MuxPossible(current_SCR),
+                        (*str)->BufferSize()-(*str)->bufmodel.Space(),
                         (*str)->RequiredDTS()/300
+                        
 				);
 #endif
 			if( (*str)->MuxPossible(current_SCR) && 
@@ -1228,8 +1230,11 @@ void Multiplexor::Multiplex()
                 {
                     clockticks change_time = (*str)->bufmodel.NextChange();
                     if( next_change == 0 || change_time < next_change )
+                    {
                         next_change = change_time;
+                    }
                 }
+
                 unsigned int bumps = 5;
                 while( bumps > 0 
                        && next_change > current_SCR + ticks_per_sector)
@@ -1237,6 +1242,7 @@ void Multiplexor::Multiplex()
                     NextPosAndSCR();
                     --bumps;
                 }
+                            
             }
             else
             {

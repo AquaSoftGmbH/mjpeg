@@ -42,10 +42,9 @@ public:
 protected:
 	void OutputSeqhdrInfo();
     void FillAUbuffer(unsigned int frames_to_buffer);
-    virtual bool AUBufferNeedsRefill();
-	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS);
+	virtual void NextDTSPTS( );
 	virtual void ScanFirstSeqHeader();
-    bool ZAlphaStream::RunOutComplete();
+    bool RunOutComplete();
 
 private:
     float z_min; 

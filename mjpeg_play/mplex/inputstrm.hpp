@@ -33,9 +33,8 @@
 
 #include "mplexconsts.hpp"
 #include "bits.hpp"
-#include "aunit.hpp"
-#include "vector.hpp"
-#include "buffer.hpp"
+#include "aunitbuffer.hpp"
+#include "decodebufmodel.hpp"
 
 using std::vector;
 
@@ -71,10 +70,6 @@ protected:
     unsigned int old_frames;
 
 };
-
-//
-// Abstract forward reference...
-//
 
 class Multiplexor;
 
@@ -126,7 +121,7 @@ public:  // TODO should go protected once encapsulation complete
 	int        stream_id;
 	unsigned int    buffer_scale;
 	unsigned int 	buffer_size;
-	BufferModel bufmodel;
+	DecodeBufModel  bufmodel;
 	unsigned int 	max_packet_data;
 	unsigned int	min_packet_data;
 	unsigned int    zero_stuffing;
@@ -171,7 +166,7 @@ public:
 	virtual void Close() = 0;
 
 	bool NextAU();
-	Aunit *Lookahead();
+	AUnit *Lookahead( unsigned int n = 0);
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
 	bool MuxCompleted();
 	virtual bool MuxPossible(clockticks currentSCR );
@@ -183,22 +178,30 @@ public:
     inline unsigned int BufferMax() { return buffer_max; }
     inline clockticks BaseDTS() { return au->DTS; };
     inline clockticks BasePTS() { return au->PTS; };
-    inline clockticks RequiredDTS() { return au->DTS + timestamp_delay; };
-    inline clockticks RequiredPTS() { return au->PTS + timestamp_delay; };
+
     inline int        DecodeOrder() { return au->dorder; }
+
+    inline clockticks RequiredDTS( const AUnit *unit )  
+        { return unit->DTS + timestamp_delay; };
+    inline clockticks RequiredPTS( const AUnit *unit ) 
+        { return unit->PTS + timestamp_delay; };
+    inline clockticks RequiredDTS()  
+        { return RequiredDTS(au); };
+    inline clockticks RequiredPTS() 
+        { return  RequiredPTS(au); };
     inline clockticks NextRequiredDTS()
         { 
-            Aunit *next = Lookahead();
+            AUnit *next = Lookahead();
             if( next != 0 )
-                return next->DTS + timestamp_delay; 
+                return RequiredDTS(next); 
             else
                 return 0;
         };
     inline clockticks NextRequiredPTS()
         { 
-            Aunit *next = Lookahead();
+            AUnit *next = Lookahead();
             if( next != 0 )
-                return next->PTS + timestamp_delay; 
+                return RequiredPTS(next); 
             else
                 return 0;
         };
@@ -213,21 +216,52 @@ public:
 	virtual unsigned int NominalBitRate() = 0;
 	virtual bool RunOutComplete() = 0;
 
+
+    /******************************************************************
+     *  Reads the stream data from actual input stream, updates decode
+     *  buffer model and current access unit information from the
+     *  look-ahead scanning buffer to account for bytes_muxed bytes being
+     *  muxed out.  
+     * TODO: No longer needs to be virtual
+     *
+     ******************************************************************/
 	virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 
+    /********************************************************************
+     * Update stream-specific mux state information to reflect muxing of
+     * current AU.  first_in_sector is set true if AU is first muxed into
+     * the current sector.
+     *
+     *******************************************************************/
+
+    virtual void AUMuxed( bool first_in_sector ) {}
+
+    /**************************************************************
+     * The size of the stream-specific  sub-header (if any)
+     *************************************************************/
+    virtual unsigned int StreamHeaderSize() { return 0; }
+    
+    /*****************************************************************
+     * Reads/generates the stream-specific sub-header for AUs muxed
+     * since last call AUMuxed( true );
+     ****************************************************************/
+
+    virtual void ReadStreamHeader( uint8_t *dst, unsigned int len ) {}
+
     bitcount_t bytes_read;
+private:
+    void AUBufferLookaheadFill( unsigned int look_ahead);
+
 protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
-	virtual void InitAUbuffer() = 0;
-    virtual bool AUBufferNeedsRefill() = 0;
     virtual void OutputSector() = 0;
 	AUStream aunits;
 	void Muxed( unsigned int bytes_muxed );
-	Aunit *au;
+	AUnit *au;
 	clockticks timestamp_delay;
 
 	unsigned int au_unsent;
-	Aunit *next();
+	AUnit *OLDnext();
 	Multiplexor &muxinto;
 	stream_kind kind;
     unsigned int buffer_min;

@@ -37,7 +37,6 @@ void StillsStream::Init ( )
 	int buffer_size = -1;
 
 	SetBufSize( 4*1024*1024 );
-	InitAUbuffer();
 	ScanFirstSeqHeader();
 
 	mjpeg_debug( "Stills: Video buffer suggestion ignored!" );
@@ -110,7 +109,7 @@ void StillsStream::Init ( )
  *
  */
 
-void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
+void StillsStream::NextDTSPTS( )
 {
     StillsParams *sparms = static_cast<StillsParams*>(parms);
 
@@ -119,11 +118,11 @@ void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 	clockticks time_for_xfer;
 	muxinto.ByteposTimecode( BufferSize(), time_for_xfer );
 		
-	DTS = current_PTS + time_for_xfer;	// This frame decoded just after
+	access_unit.DTS = current_PTS + time_for_xfer;	// This frame decoded just after
 	                                    // Predecessor completed.
-	PTS = current_PTS + time_for_xfer + interval;
-	current_PTS = PTS;
-	current_DTS = DTS;
+	access_unit.PTS = current_PTS + time_for_xfer + interval;
+	current_PTS = access_unit.PTS;
+	current_DTS = access_unit.DTS;
     fields_presented += 2;
 }
 

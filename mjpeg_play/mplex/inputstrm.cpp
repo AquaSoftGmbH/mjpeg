@@ -75,6 +75,7 @@ ElementaryStream::ElementaryStream( IBitStream &ibs,
                                     Multiplexor &into, 
 									stream_kind _kind) : 
     InputStream( ibs ),
+    au(0),
 	muxinto( into ),
 	kind(_kind),
     buffer_min(INT_MAX),
@@ -82,11 +83,43 @@ ElementaryStream::ElementaryStream( IBitStream &ibs,
 {
 }
 
+/***********************************
+ *
+ * Scan ahead to buffer enough info on the coming Access Units to
+ * permit look-ahead of look_ahead/processing AUs forward from the
+ * current AU *and* the muxing of at least one sector.
+ *
+ **********************************/
+
+void 
+ElementaryStream::AUBufferLookaheadFill( unsigned int look_ahead)
+{
+    while( !eoscan 
+           && ( look_ahead > aunits.MaxAULookahead() 
+                || aunits.MaxPayloadLookahead() < muxinto.sector_size ) )
+    {
+        FillAUbuffer(FRAME_CHUNK);
+    }
+}
+
+/******************************************
+ *
+ * Move on to the next Access unit in the Elementary stream
+ *
+ *****************************************/
 
 bool 
 ElementaryStream::NextAU()
 {
-	Aunit *p_au = next();
+    // Free up no longer needed AU record
+    if( au != 0 )
+        delete au;
+
+    // Ensure we have enough in the AU buffer!
+    AUBufferLookaheadFill(1);
+
+    // Get the details of the next AU to be muxed....
+	AUnit *p_au = aunits.Next();
 	if( p_au != NULL )
 	{
 		au = p_au;
@@ -101,10 +134,11 @@ ElementaryStream::NextAU()
 }
 
 
-Aunit *
-ElementaryStream::Lookahead( )
+AUnit *
+ElementaryStream::Lookahead( unsigned int n)
 {
-    return aunits.lookahead();
+    AUBufferLookaheadFill(n);
+    return aunits.Lookahead( n );
 }
 
 unsigned int 
@@ -137,10 +171,15 @@ ElementaryStream::BytesToMuxAUEnd(unsigned int sector_transport_size)
 unsigned int 
 ElementaryStream::ReadPacketPayload(uint8_t *dst, unsigned int to_read)
 {
+    //
+    // Allow for the possibility that stream sub-headers might be needed
+    // E.g. AC3, LPCM, DTS....
+    unsigned int header_size = StreamHeaderSize();
     bitcount_t read_start = bs.GetBytePos();
-    unsigned int actually_read = bs.GetBytes( dst, to_read );
+    unsigned int actually_read = bs.GetBytes( dst+header_size, to_read-header_size );
     bs.Flush( read_start );
     Muxed( actually_read );
+    ReadStreamHeader(dst, header_size);
 	return actually_read;
 }
 
@@ -169,12 +208,13 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 	decode_time = RequiredDTS();
 	while (au_unsent < bytes_muxed)
 	{	  
-
+        AUMuxed(true);          // Update stream specific tracking 
+                                // of AUs muxed...
 		bufmodel.Queued(au_unsent, decode_time);
 		bytes_muxed -= au_unsent;
-		if( !NextAU() )
+        new_au_next_sec = NextAU();
+        if( !new_au_next_sec )
 			return;
-		new_au_next_sec = true;
 		decode_time = RequiredDTS();
 	};
 
@@ -186,17 +226,16 @@ void ElementaryStream::Muxed (unsigned int bytes_muxed)
 	
 	if (au_unsent > bytes_muxed)
 	{
-
+        AUMuxed(false);
 		bufmodel.Queued( bytes_muxed, decode_time);
 		au_unsent -= bytes_muxed;
 		new_au_next_sec = false;
 	} 
 	else //  if (au_unsent == bytes_muxed)
 	{
+        AUMuxed(false);
 		bufmodel.Queued(bytes_muxed, decode_time);
-		if( ! NextAU() )
-			return;
-		new_au_next_sec = true;
+		new_au_next_sec = NextAU();
 	}	   
 
 }
@@ -239,37 +278,11 @@ ElementaryStream::SetSyncOffset( clockticks sync_offset )
 	timestamp_delay = sync_offset;
 }
 
-Aunit *ElementaryStream::next()
-{
-    Aunit *res;
-    while( AUBufferNeedsRefill() )
-	{
-        FillAUbuffer(FRAME_CHUNK);
-	}
-    res = aunits.next();
-	return res;
-}
-
-
-
-//
-// TODO: The buffer refilling is a mess.  We not only refull here but
-// TODO: also refill in next().  However, neither is *guaranteed* to put
-// TODO: enough data in the buffer.  What we need to ensure is that we have
-// TODO: read enough input stream into the buffer to guarantee a sectors
-// TODO: worth of payload.  A reasonable approximation would be simply to
-// TODO: try to read-ahead 2* the sector size. However, this will break for
-// TODO: streams which have big inclusions.  One example might be direct AVI
-// TODO: reading of mixed streams or reading of program streams.
-//
 
 
 void ElementaryStream::BufferAndOutputSector( )
 {
-    while( AUBufferNeedsRefill() )
-	{
-        FillAUbuffer(FRAME_CHUNK);
-	}
+    AUBufferLookaheadFill(1);   // TODO is this really needed here?
     OutputSector();
 }
 
