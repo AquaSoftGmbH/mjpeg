@@ -159,7 +159,7 @@ SAA7111A
 */
 
 #define MAJOR_VERSION 0		/* driver major version */
-#define MINOR_VERSION 7		/* driver minor version */
+#define MINOR_VERSION 8		/* driver minor version */
 
 #define ZORAN_NAME    "ZORAN"	/* name of the device */
 
