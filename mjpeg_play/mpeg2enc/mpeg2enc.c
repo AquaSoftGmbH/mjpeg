@@ -56,6 +56,7 @@
 #define GLOBAL /* used by global.h */
 
 #include "global.h"
+#include "motionsearch.h"
 #include <format_codes.h>
 
 int verbose = 1;

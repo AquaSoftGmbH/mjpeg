@@ -57,12 +57,11 @@ void fdct (int16_t *block);
 void idct (int16_t *block);
 void init_idct (void);
 
-/* motion.c */
+/* motionest.c */
 
 void init_motion (void);
 void motion_estimation (pict_data_s *picture);
-void fast_motion_data (pict_data_s *picture);
-int round_search_radius(int);
+void motion_subsampled_lum( pict_data_s *picture );
 
 /* mpeg2enc.c */
 uint8_t *bufalloc( size_t size );

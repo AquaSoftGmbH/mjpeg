@@ -50,7 +50,7 @@
 #include <assert.h>
 
 #include "global.h"
-
+#include "motionsearch.h"
 
 
 static void set_pic_params( int decode,
@@ -681,7 +681,7 @@ static void stencodeworker(pict_data_s *picture)
 				   picture->pict_struct
 			);
 
-		fast_motion_data(picture);
+		motion_subsampled_lum(picture);
 
 		
 		/* DEPEND on completion previous Reference frames (P) or on old
@@ -764,7 +764,7 @@ static void *parencodeworker(void *start_arg)
 					   picture->pict_struct
 				);
 
-		fast_motion_data(picture);
+		motion_subsampled_lum(picture);
 
 		
 		/* DEPEND on completion previous Reference frames (P) or on old

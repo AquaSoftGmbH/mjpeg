@@ -201,14 +201,6 @@ struct pict_data
 
 typedef struct pict_data pict_data_s;
 
-struct mc_result
-{
-	uint16_t weight;
-	int8_t x;
-	int8_t y;
-};
-
-typedef struct mc_result mc_result_s;
 
 
 /* 4*4 sub-sampled pel Threshold below which initial 8*8 grid motion

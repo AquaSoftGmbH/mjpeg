@@ -1,7 +1,6 @@
 1.  	Bring field sequence MC/prediction to same level as progressive	
 	sequence.
 	
-	
 2.	Get MMX routines written fast_motion_data.
 
 3.  Check out using dist2 for initial MC calculations as well as final
@@ -27,4 +26,7 @@
 	tidying...
 
 
-6. What the hell was BITCOUNT_OFFSET for?  Probably a debugger that needs purging.
+
+6.	The rate control based on per-GOP allocation and virtual buffers is *lame*.
+	Needs to be replaced with a frame-by-frame bit-pool and more sensible
+	measures that don't constantly under-run...

@@ -35,11 +35,11 @@
  */
 
 #include <config.h>
-#include "mpeg2enc.h"
-#include "simd.h"
+#include <inttypes.h>
 #include "attributes.h"
 #include "mmx.h"
 #include "fastintfns.h"
+#include "motionsearch.h"
 
 /*
   Register usage:

@@ -70,7 +70,7 @@ static double calc_actj ( pict_data_s *picture);
 
 double Xi = 0, Xp = 0, Xb = 0;
 int r;
-int	d0i = 0, d0pb = 0;
+int	d0i = 0, d0pb = 0, d0p = 0, d0b = 0;
 
 
 /* R - Remaining bits available in GOP
@@ -139,14 +139,18 @@ static int min_q, max_q;
 static double avg_KI = 5.0;	/* TODO: These values empirically determined 		*/
 static double avg_KB = 10.0*2.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 10.0*2.0;
-#define K_AVG_WINDOW_I 4.0		/* TODO: MPEG-1, hard-wired settings */
+#define K_AVG_WINDOW_I 4.0
 #define K_AVG_WINDOW_P   10.0
 #define K_AVG_WINDOW_B   20.0
 static double bits_per_mb;
 
 static double SQ = 0.0;
 static double sum_vbuf_Q = 0.0;
-
+static int fast_tune = 0;
+static int first_gop = 1;
+static int first_B = 0;
+static int first_P = 0;
+static int first_I = 0;
 
 /* Scaling and clipping of quantisation factors
    One floating point used in predictive calculations.  
@@ -255,6 +259,8 @@ void rc_init_seq(int reinit)
 	if( reinit )
 		return;
 
+	first_gop = 1;
+
 	/* If its stills with a size we have to hit then make then
 	   we have to pad every byte undershot...
 	*/
@@ -285,15 +291,10 @@ void rc_init_seq(int reinit)
 	*/
 
 
-	/* global complexity (Chi! not X!) measure of different frame types */
-	/* These are just some sort-of sensible initial values for start-up */
-
-	Xi = 1500*mb_per_pict;   /* Empirically derived values */
-	Xp = 550*mb_per_pict;
-	Xb = 170*mb_per_pict;
 	d0i = 0;					/* Force initial quuantisation to be */
 	d0pb = 0;					/* predice from image complexity */
-
+	d0p = 0;
+	d0b = 0;
 
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: sequence initialization\n");
@@ -369,6 +370,16 @@ void rc_init_GOP(int np, int nb)
 	Np = opt_fieldpic ? 2*np+1 : np;
 	Nb = opt_fieldpic ? 2*nb : nb;
 
+	if( first_gop )
+	{
+		fast_tune = 1;
+		first_I = first_B = first_P = 1;
+		first_gop = 0;
+	}
+	else
+	{
+		fast_tune = 0;
+	}
 #ifdef OUTPUT_STAT
 	fprintf(statfile,"\nrate control: new group of pictures (GOP)\n");
 	fprintf(statfile," target number of bits for GOP: R=%.0f\n",R);
@@ -439,21 +450,36 @@ void rc_init_pict(pict_data_s *picture)
 
 		d = d0i;
 		avg_K = avg_KI;
-		Si = avg_K*actsum; /* TODO TEST (Xi + 3.0*avg_K*actsum)/4.0;*/
-		T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
-
+		Si = avg_K*actsum;
+		if( first_I )
+		{
+			T = R/(1.0+(Np/1.7)+Nb/(2.0*1.7));
+			first_I = 0;
+		}
+		else
+			T = R/(1.0+Np*Xp*Ki/(Si*Kp)+Nb*Xb*Ki/(Si*Kb));
 		break;
 	case P_TYPE:
-		d = d0pb;
+		d = d0p;
 		avg_K = avg_KP;
-		Sp = avg_K * actsum; /* TODO TEST: (Xp + avg_K*actsum) / 2.0; */
-		T =  R/(Np+Nb*Kp*Xb/(Kb*Sp)) + 0.5;
+		Sp = avg_K * actsum;
+		if( first_P )
+		{
+			T = R/(Np+Nb/2.0);
+		}
+		else
+			T =  R/(Np+Nb*Kp*Xb/(Kb*Sp));
 		break;
 	case B_TYPE:
-		d = d0pb;            // B and P frame share ratectl virtual buffer
+		d = d0b;
 		avg_K = avg_KB;
-		Sb = avg_K * actsum; /* TODO TEST: Xb; */
-		T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
+		Sb = avg_K * actsum;
+		if( first_B )
+		{
+			T =  R/(Nb+Np*2.0);
+		}
+		else
+			T =  R/(Nb+Np*Kb*Xp/(Kp*Sb));
 		break;
 	}
 
@@ -480,6 +506,9 @@ void rc_init_pict(pict_data_s *picture)
 		T -= frame_overshoot_margin;
 	}
 
+	//fprintf( stderr, "(%d,%d):R=%6.0f T=%6.0f act=%6.0f K=%f ", 
+//			 Nb, Np,
+//			 R/8, T/8, actsum, avg_K);
 		
 
 	T_sum += T;
@@ -664,20 +693,26 @@ void rc_update_pict(pict_data_s *picture)
 		Qsum += picture->mbinfo[i].mquant;
 	}
 
-
+	
+    /* AQ is the average Quantisation of the block.
+	   Its only used for stats display as the integerisation
+	   of the quantisation value makes it rather coarse for use in
+	   estimating bit-demand */
 	AQ = (double)Qsum/(double)mb_per_pict;
-	/* TODO: The X are used as relative activity measures... so why
-	   bother dividing by 2?  
-	   Note we have to be careful to measure the actual data not the
-	   padding too!
-	*/
 	SQ += AQ;
 	
-	/* AQ is good for X but too coarse for computing K due to
-	   quantisation of mquant */
-	/*TODO TEST: X = (double)AP*AQ;*/
-	X = AP * sum_vbuf_Q / mb_per_pict;
-	K = AP * sum_vbuf_Q / (mb_per_pict*actsum);
+	/* X (Chi - Complexity!) is an estimate of "bit-demand" for the
+	frame.  I.e. how many bits it would need to be encoded without
+	quantisation.  It is used in adaptively allocating bits to busy
+	frames. It is simply calculated as bits actually used times
+	average target (not rounded!) quantisation.
+
+	K is a running estimate of how bit-demand relates to frame
+	activity - bits demand per activity it is used to allow
+	prediction of quantisation needed to hit a bit-allocation.
+	*/
+	X = AP  * sum_vbuf_Q /  mb_per_pict;
+	K = X / actsum;
 	picture->AQ = AQ;
 	picture->SQ = SQ;
 
@@ -710,18 +745,39 @@ void rc_update_pict(pict_data_s *picture)
 	case I_TYPE:
 		avg_KI = (K + avg_KI * K_AVG_WINDOW_I) / (K_AVG_WINDOW_I+1.0) ;
 		d0i = d;
-		Xi = (X + 2.0*Xi)/3.0;
+		if( first_I )
+			Xi = X;
+		else
+			Xi = (X + 2.0*Xi)/3.0;
 		break;
 	case P_TYPE:
 		avg_KP = (K + avg_KP * K_AVG_WINDOW_P) / (K_AVG_WINDOW_P+1.0) ;
-		d0pb = d;
-		Xp = (X + Xp*10.0)/11.0;
+		d0b = d;
+		if( first_P )
+		{
+			Xp = X;
+			first_P = 0;
+		}
+		else if( fast_tune )
+			Xp = (X+Xp*2.0)/3.0;
+		else
+			Xp = (X + Xp*K_AVG_WINDOW_P)/(K_AVG_WINDOW_P+1.0);
 		Np--;
 		break;
 	case B_TYPE:
 		avg_KB = (K + avg_KB * K_AVG_WINDOW_B) / (K_AVG_WINDOW_B+1.0) ;
-		d0pb = d;
-		Xb = (X + Xb*20.0)/21.0;
+		d0p = d;
+		if( first_B )
+		{
+			Xb = X;
+			first_B = 0;
+		}
+		else if( fast_tune )
+		{
+			Xb = (X + Xb * 3.0) / 4.0;
+		}
+		else
+			Xb = (X + Xb*K_AVG_WINDOW_B)/(K_AVG_WINDOW_B+1.0);
 		Nb--;
 		break;
 	}
