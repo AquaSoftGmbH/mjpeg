@@ -77,7 +77,7 @@ static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
 static int param_hires_quant = 0;
-static double param_act_boost = 2.5;
+static double param_act_boost = 1.0;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
 

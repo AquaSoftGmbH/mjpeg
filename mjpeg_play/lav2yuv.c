@@ -164,7 +164,7 @@ static void init()
 	luma_right_offset = active_x + active_width;
 	luma_right_size = output_width - luma_right_offset;
 
-	chroma_width = (chroma_format==CHROMA444) ? active_width : active_width/2;
+	chroma_width = (chroma_format!=CHROMA420) ? active_width : active_width/2;
 	chroma_height = (chroma_format!=CHROMA420) ? active_height : active_height/2;
 
 	chrom_top = (chroma_format!=CHROMA420) ? active_y : active_y/2;
@@ -175,9 +175,9 @@ static void init()
 	chroma_top_size = (chroma_format!=CHROMA420) ? luma_top_size : luma_top_size/4;
 	chroma_bottom_size = (chroma_format!=CHROMA420) ? luma_bottom_size : luma_bottom_size/4;
 
-	chroma_output_width = (chroma_format==CHROMA444) ? output_width : output_width/2;
-	chroma_output_height = (chroma_format==CHROMA444) ? output_height : output_height/2;
-	chroma_left_size = (chroma_format==CHROMA444) ? active_x : active_x/2;
+	chroma_output_width = (chroma_format!=CHROMA420) ? output_width : output_width/2;
+	chroma_output_height = (chroma_format!=CHROMA420) ? output_height : output_height/2;
+	chroma_left_size = (chroma_format!=CHROMA420) ? active_x : active_x/2;
 	chroma_right_offset = chroma_left_size + chroma_width;
 	chroma_right_size = chroma_output_width - chroma_right_offset;
 
@@ -350,6 +350,7 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 		if (chroma_left_size) {
 			memset(ptr, 0x00, chroma_left_size);
 		}
+
 		if (chroma_right_size) {
 			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
 		}
@@ -358,9 +359,11 @@ void writeoutframeinYUV4MPEG(unsigned char *frame[])
 		if (chroma_left_size) {
 			memset(ptr, 0x00, chroma_left_size);
 		}
+
 		if (chroma_right_size) {
 			memset(&ptr[chroma_right_offset], 0x00, chroma_right_size);
 		}
+
 	}
 
 	if (luma_top_size) {

@@ -303,7 +303,6 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
 	   audio_errno = AUDIO_ERR_FORK;
 	   return -1;
 	 }
-
    
 #endif
    /* Since most probably errors happen during initialization,
@@ -819,7 +818,14 @@ void do_audio()
       while(!shmemptr->audio_start)
       {
          usleep(10000);
-         if(shmemptr->exit_flag) exit(0);
+         if(shmemptr->exit_flag)
+		 {
+#ifndef FORK_NOT_THREAD
+			 exit(0);
+#else
+			 pthread_exit(NULL);
+#endif
+		 }
       }
       /* Copy as many buffers as are allready here */
       for(nbque=0;nbque<info.fragstotal;nbque++)
@@ -841,8 +847,7 @@ void do_audio()
 
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_RR, &schedparam ) ) )
 	 {
-	   fprintf( stderr, "Pthread RT scheduling attempt failed! with %d\n", ret  ); 
-	   system_error( "Bad pthread", 0 );
+	   fprintf( stderr, "Pthread Real-time scheduling could not be enabled.\n"); 
 	 }
 #endif
 
@@ -1024,6 +1029,7 @@ void do_audio()
 /* do_audio (ALSA version) 
  * The audio playback/record task for ALSA.
  * returns: nothing (paralell task)
+ * FIXME:  This code is now very stale and is missing pthreads support...
  */
 
 void do_audio()
@@ -1243,8 +1249,8 @@ void do_audio()
          if(shmemptr->exit_flag)
          {
             shmemptr->audio_status = -1;
-	    snd_pcm_flush_playback(handle);
-	    snd_pcm_close(handle);
+			snd_pcm_flush_playback(handle);
+			snd_pcm_close(handle);
             exit(0);
          }
 

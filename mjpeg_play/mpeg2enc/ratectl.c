@@ -53,8 +53,8 @@ static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
 /* X's global complexity (Chi! not X!) measures.
    Actually: average quantisation * bits allocated in *previous* frame
    d's  virtual reciever buffer fullness
-   r - Rate control feedback gain (in bits/frame)  I.e if the virtual
-       buffer is x% full
+   r - Rate control feedback gain (in bits/frame)  I.e if the "virtual
+       buffer" is x% full and
 */
 
 int Xi, Xp, Xb, r, d0i, d0p, d0b;
@@ -98,8 +98,11 @@ static int min_q, max_q;
 void rc_init_seq()
 {
 
-  /* reaction parameter (constant) */
-  if (r==0)  r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
+  /* reaction parameter (constant) decreased to increase response rate as encoder
+  	is currently tending to under/over-shoot... in rate
+  */
+  if (r==0)  
+  	r = (int)floor(2.0*bit_rate/frame_rate + 0.5);
 
   /* average activity */
   if (avg_act==0.0)  avg_act = 400.0;
@@ -127,11 +130,11 @@ void rc_init_seq()
 
   /* virtual buffer fullness - Originally initialised for initial quantisation
      around 10 (1/3 maximum).  This, however proved excessive so now
-     its 0.15 */
+     its 0.25 */
   
-  if (d0i==0) d0i = (int)floor(Ki*r*0.15 + 0.5);
-  if (d0p==0) d0p = (int)floor(Kp*r*0.15 + 0.5);
-  if (d0b==0) d0b = (int)floor(Kb*r*0.15 + 0.5);
+  if (d0i==0) d0i = (int)floor(Ki*r*0.25 + 0.5);
+  if (d0p==0) d0p = (int)floor(Kp*r*0.25 + 0.5);
+  if (d0b==0) d0b = (int)floor(Kb*r*0.25 + 0.5);
 /*
   if (d0i==0) d0i = (int)floor(10.0*r/(qscale_tab[0] ? 56.0 : 31.0) + 0.5);
   if (d0p==0) d0p = (int)floor(10.0*r/(qscale_tab[1] ? 56.0 : 31.0) + 0.5);
@@ -190,7 +193,6 @@ int np,nb;
 void rc_init_pict(frame)
 unsigned char *frame;
 {
-  double Tmin;
 
   /* Allocate target bits for frame based on frames numbers in GOP
 	 weighted by global complexity estimates and B-frame scale factor
@@ -221,15 +223,22 @@ unsigned char *frame;
     d = d0b;
     break;
   }
+  
+  if( !quiet )
+  {
+   	printf( "init d=%6d ",d  );
+  }
 
-  /* Never let any frame type bit target drop below 1/8th share to
+  /* TODO:
+  	This is a good idea but currently may lead to over-shoots...
+  	Never let any frame type bit target drop below 1/8th share to
 	 prevent starvation under extreme circumstances
-  */
-  Tmin = (int) floor(bit_rate/(8.0*frame_rate) + 0.5);
 
+  Tmin = (int) floor(bit_rate/(8.0*frame_rate) + 0.5);
   if (T<Tmin)
     T = Tmin;
-
+  */
+  
   S = bitcount();
   Q = 0;
 
@@ -338,17 +347,27 @@ unsigned char *frame;
 void rc_update_pict()
 {
   double X;
-  bitcount_t OLD_S = S;
+   
   S = bitcount() - S; /* total # of bits in picture */
   R-= S; /* remaining # of bits in GOP */
   X = (int) floor((double)S*((0.5*(double)Q)/(mb_width*mb_height2)) + 0.5);
+  
+  printf( "S = %6lld T = %6lld ", S, T );
   d += (int) (S - T);
+  if( !quiet )
+  {
+   	printf( "AQ=%.1f final d=%6d\n", (double)Q/(mb_width*mb_height2),d   );
+  }
 
   /* Bits that never got used in the past can't be resurrected now... 
    */
   /* TODO: The actual minimum D setting should be some number tuned
 	 to ensure sensible response once activity picks up...
+	 CLimbing from 0 will tend produce long over-shoots before throttling back...
   */
+  
+
+	
   if( d < 0 )
 	d = 0;
 
@@ -386,13 +405,7 @@ void rc_update_pict()
   fprintf(statfile," remaining number of B pictures in GOP: Nb=%d\n",Nb);
   fprintf(statfile," average activity: avg_act=%.1f \n", avg_act );
 #endif
-  if( !quiet )
-  {
-   	printf( "AA=%.1f AQ=%.1f  L=%.0f R=%lld T=%lld\n", 
-		avg_act, ((double)Q) / (double) (mb_width*mb_height2), 
-		(double)(bitcount()-OLD_S),
-		R, T   );
-	}
+
  }
 
 /* compute initial quantization stepsize (at the beginning of picture) */
@@ -460,8 +473,6 @@ int j;
 	
   dj = ((double)d) + ( (double)(bitcount()-S) - actcovered * ((double)T) / actsum);
 
-  if( (double)(bitcount()-S) < 100.0 )
-  	printf( "BS double conv...%f\n", (double)(bitcount()-S) );
 #else
   /* measure virtual buffer discrepancy from uniform distribution model */
 	dj = d + (double)(bitcount()-S) - j*(T/(mb_width*mb_height2));
