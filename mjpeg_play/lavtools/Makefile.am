@@ -16,34 +16,36 @@ CFLAGS=-Wall -Werror -g
 ##
 bin_PROGRAMS = lavplay lavrec lavvideo v4l-conf lav2wav lav2yuv lavtrans lavaddwav xlav
 
-include_HEADERS = lav_io.h editlist.h xlav.h avilib.h
+lav_headers = lav_io.h editlist.h xlav.h avilib.h
 
 
-lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c
+lavplay_SOURCES = lavplay.c avilib.c audiolib.c lav_io.c editlist.c  $(lav_headers)
 lavplay_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@
 lavplay_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
-lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c
+lavrec_SOURCES = lavrec.c avilib.c audiolib.c lav_io.c $(lav_headers)
 lavrec_LDFLAGS = -L../mjpeg/ @GLIB_LIBS@
 lavrec_LDADD = @MOVTAR_LIBS@ -lmjpeg
 
+lav2yuv_SOURCES = lav2yuv.c  jpegutils.c $(lav_headers)
 lav2yuv_LDFLAGS  = -L movtar 
-lav2yuv_LDADD = editlist.o lav_io.o avilib.o -lmovtar
-lav2yuv_SOURCES = lav2yuv.c  jpegutils.c
+lav2yuv_LDADD = editlist.o lav_io.o avilib.o -lmovtar 
 
-lav2wav_SOURCES = lav2wav.c
+
+lav2wav_SOURCES = lav2wav.c  $(lav_headers)
 lav2wav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
 
+lavtrans_SOURCES = lavtrans.c $(lav_headers)
+
 lavtrans_LDFLAGS  = -L movtar 
-lavtrans_SOURCES = lavtrans.c
 lavtrans_LDADD = editlist.o lav_io.o avilib.o -lmovtar
 
+lavaddwav_SOURCES = lavaddwav.c $(lav_headers)
 lavaddwav_LDFLAGS  = -L movtar 
-lavaddwav_SOURCES = lavaddwav.c
 lavaddwav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
 
 
-xlav_SOURCES = xlav.c xlav_main.c
+xlav_SOURCES = xlav.c xlav_main.c  $(lav_headers)
 xlav_LDFLAGS  = -L movtar -L /usr/X11R6/lib 
 xlav_LDADD = editlist.o lav_io.o avilib.o -lmovtar -lforms -lX11 -lm
 

@@ -59,6 +59,14 @@ static double var_sblk _ANSI_ARGS_((unsigned char *p, int lx));
 
 int Xi, Xp, Xb, r, d0i, d0p, d0b;
 
+/* Virtual reciever fullness moving averages.  Used to allow sensible
+ rate-control recovery after a period of bit-rate undershoot
+*/
+static int sliding_d_avg = 0;
+static int sliding_di_avg = 0;
+static int sliding_db_avg = 0;
+static int sliding_dp_avg = 0;
+
 /* R - Remaining bits available in GOP
    T - Target bits for current frame 
    d - Current d for quantisation purposes updated using 
@@ -211,16 +219,25 @@ unsigned char *frame;
 	   account for with the remaining pool of bits R.
 	*/
 
+	  /* TODO BUG: The relative
+		 weightings for different frame types are historical.
+		 Actually they should be based on the bit-demand in the *frames
+		 to come*!
+	  */
+
     T = (bitcount_t) floor(R/(1.0+Np*Xp*Ki/(Xi*Kp)+Nb*Xb*Ki/(Xi*Kb)) + 0.5);
     d = d0i;
+	sliding_d_avg = sliding_di_avg;
     break;
   case P_TYPE:
     T = (bitcount_t) floor(R/(Np+Nb*Kp*Xb/(Kb*Xp)) + 0.5);
     d = d0p;
+	sliding_d_avg = sliding_dp_avg;
     break;
   case B_TYPE:
     T = (bitcount_t) floor(R/(Nb+Np*Kb*Xp/(Kp*Xb)) + 0.5);
     d = d0b;
+	sliding_d_avg = sliding_db_avg;
     break;
   }
   
@@ -347,6 +364,7 @@ unsigned char *frame;
 void rc_update_pict()
 {
   double X;
+
    
   S = bitcount() - S; /* total # of bits in picture */
   R-= S; /* remaining # of bits in GOP */
@@ -360,31 +378,40 @@ void rc_update_pict()
   }
 
   /* Bits that never got used in the past can't be resurrected now... 
-   */
-  /* TODO: The actual minimum D setting should be some number tuned
-	 to ensure sensible response once activity picks up...
-	 CLimbing from 0 will tend produce long over-shoots before throttling back...
+	 We use an average of past (positive) virtual buffer fullness
+	 in the event of an under-shoot as otherwise we will tend to over-shoot
+	 heavily when activity picks up.
+	 
+	 TODO BUG: Overshoots in one type of frame have no effect on other types.
+	 Thus we can overshoot in an I a B and a P before *any* corrective 
+	 adjustment  is made to quantisation.
+
   */
   
 
 	
   if( d < 0 )
-	d = 0;
+	d = sliding_d_avg / 2;
+  else
+	  sliding_d_avg = (127 * sliding_d_avg + d) / 128;
 
   switch (pict_type)
   {
   case I_TYPE:
     Xi = X;
     d0i = d;
+	sliding_di_avg = sliding_d_avg;
     break;
   case P_TYPE:
     Xp = X;
     d0p = d;
+	sliding_dp_avg = sliding_d_avg;
     Np--;
     break;
   case B_TYPE:
     Xb = X;
     d0b = d;
+	sliding_db_avg = sliding_d_avg;
     Nb--;
     break;
   }

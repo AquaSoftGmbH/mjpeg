@@ -19,9 +19,10 @@ endif
 mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	 putvlc.c putbits.c motion.c predict.c readpic.c writepic.c transfrm.c \
 	fdctref.c idct.c quantize.c ratectl.c stats.c \
+	 config.h global.h mpeg2enc.h vlc.h \
 	$(mpeg2enc_SIMD)
 
-include_HEADERS = config.h global.h mpeg2enc.h vlc.h
+
 
 INCLUDES = 
 CPPFLAGS = @MTYPEFLAGS@

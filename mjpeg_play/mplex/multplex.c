@@ -466,6 +466,9 @@ void outputstream ( char 		*video_file,
 	else
 		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
 
+	/* TODO: DEebugger to allow easy comparison with vcdmplex */
+	if( opt_mux_format == 1 )
+		sectors_delay = 30;
 
 	delay = (clockticks)(sectors_delay +
 			 (video_au.length+video_min_packet_data-1)/video_min_packet_data  +
