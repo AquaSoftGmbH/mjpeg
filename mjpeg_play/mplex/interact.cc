@@ -28,7 +28,9 @@ static void Usage(char *str)
 	fprintf( stderr, " -h      System header in every pack rather than just in first\n" );
 	fprintf( stderr, " -f fmt  Set pre-defined mux format.\n");
 	fprintf( stderr, "         [0 = Auto MPEG1, 1 = VCD, 2 = user-rate VCD,\n");
-	fprintf( stderr, "          3 = Auto MPEG2, 4 = SVCD, 5 = user-rate SVCD, 6 = DVD]\n");
+	fprintf( stderr, "          3 = Auto MPEG2, 4 = SVCD, 5 = user-rate SVCD\n");
+	fprintf( stderr, "          6 = VCD Stills, 7 = SVCD Stills, 8 = DVD\n");
+
 	fprintf( stderr, "         (N.b only 0 .. 5 currently implemented!*)\n" ); 
 	fprintf( stderr, " -S size Maximum size of output file in M bytes (default: 2000) (0 = no limit)\n" );
 	fprintf( stderr, " -M      Generate a *single* multi-file program per\n"

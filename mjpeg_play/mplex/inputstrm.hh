@@ -250,7 +250,7 @@ public:
 	
 	bool dtspts_for_all_au;
 
-private:
+protected:
 
 	/* State variables for scanning source bit-stream */
     VAunit access_unit;
@@ -276,7 +276,7 @@ private:
 class FrameIntervals
 {
 public:
-	virtual double NextFrameInterval() = 0;
+	virtual int NextFrameInterval() = 0;
 };
 
 //
@@ -286,13 +286,13 @@ public:
 class ConstantFrameIntervals : public FrameIntervals
 {
 public:
-	ConstantFrameIntervals( double _frame_interval ) :
+	ConstantFrameIntervals( int _frame_interval ) :
 		frame_interval( _frame_interval )
 		{
 		}
-	double NextFrameInterval() { return frame_interval; };
+	int NextFrameInterval() { return frame_interval; };
 private:
-	double frame_interval;
+	int frame_interval;
 };
 
 

@@ -64,10 +64,14 @@ int main (int argc, char* argv[])
 		{
 		case MPEG_FORMAT_VCD_STILL :
 			stream_num = 1;
-			frame_interval = 10.0; // 10 Seconds!
+			frame_interval = 10; // 10 Frame periods
+			break;
+		case MPEG_FORMAT_SVCD_STILL :
+			stream_num = 1;
+			frame_interval = 10;
 			break;
 		default:
-			mjpeg_error_exit1("Only VCD stills format for the moment...\n");
+			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...\n");
 		}
 		ConstantFrameIntervals intervals( frame_interval );
 		StillsStream stillStrm(ostrm,stream_num,  

@@ -184,6 +184,28 @@ void OutputStream::InitSyntaxParameters()
 		}		
 		video_buffer_size = opt_buffer_size*1024;
 		break;
+
+	case MPEG_FORMAT_SVCD_STILL :
+		mjpeg_info( "Selecting SVCD output profile\n");
+		if( opt_data_rate == 0 )
+			opt_data_rate = 150*2324;
+	  	video_buffer_size = 230*1024;
+		opt_mpeg = 2;
+	 	packets_per_pack = 1;
+	  	sys_header_in_pack1 = 0;
+	  	always_sys_header_in_pack = 0;
+	  	sector_transport_size = 2324;
+	  	transport_prefix_sectors = 0;
+	  	sector_size = 2324;
+		vbr = opt_VBR = 1;
+		buffers_in_video = 0;
+		always_buffers_in_video = 0;
+		buffers_in_audio = 0;
+		always_buffers_in_audio = 0;
+		vcd_zero_stuffing = 0;
+        dtspts_for_all_vau = 0;
+		sector_align_iframeAUs = true;
+		break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile\n");
@@ -460,7 +482,7 @@ void OutputStream::OutputPrefix( )
 	case MPEG_FORMAT_VCD_STILL :
 		split_at_seq_end = false;
 		/* First packet carries small-still sys_header */
-		/* TODO COMPLETELY BOGUS!!!! */
+		/* TODO No support mixed-mode stills sequences... */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, false, false,
 								 true, true, estreams );
 		sys_header_ptr = &sys_header;
@@ -468,7 +490,16 @@ void OutputStream::OutputPrefix( )
 		OutputPadding( current_SCR, true, true, false, false);							break;
 			
 	case MPEG_FORMAT_SVCD_STILL :
-		mjpeg_error_exit1("SVCD STILLS NOT YET IMPLEMENTED!\n");
+		/* TODO: Video only at present */
+		/* First packet carries video-info-only sys_header */
+		psstrm->CreateSysHeader (&sys_header, mux_rate, 
+								 false, true, 
+								 true, true, vstreams  );
+		sys_header_ptr = &sys_header;
+		pack_header_ptr = &pack_header;
+	  	OutputPadding( current_SCR,  true, true, false,  false);		
+
+
 		break;
 	}
 
@@ -1123,7 +1154,7 @@ void VideoStream::OutputSector ( )
 	}
 
 	/* CASE: Packet begins with old access unit, a new one	*/
-	/*	     begins in the very same packet			*/
+	/*	     could begin in the very same packet			*/
 	else /* if ( !new_au_next_sec  && 
 			(au_unsent < old_au_then_new_payload)) */
 	{
@@ -1136,7 +1167,11 @@ void VideoStream::OutputSector ( )
 			if(  dtspts_for_all_au  && max_packet_payload == 0 )
 				max_packet_payload = au_unsent+prev_au_tail;
 
-			if (AUType() == BFRAME)
+			/* Set time-stamp bits appropriately if new AU
+			   starts in packet */
+			if( max_packet_payload > 0 )
+				timestamps = TIMESTAMPBITS_NO;
+			else if (AUType() == BFRAME)
 				timestamps=TIMESTAMPBITS_PTS;
 			else
 				timestamps=TIMESTAMPBITS_PTS_DTS;

@@ -577,7 +577,7 @@ void VideoStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 {
 	clockticks interval = static_cast<clockticks>
-		(intervals->NextFrameInterval() * CLOCKS);
+		(intervals->NextFrameInterval() * CLOCKS / frame_rate);
 	clockticks time_for_xfer;
 	muxinto.ByteposTimecode( 
 		static_cast<bitcount_t>(vbv_buffer_size * (2048*8)),
