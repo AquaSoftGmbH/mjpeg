@@ -105,18 +105,26 @@ static int testsseill()
 
 static int x86_accel (void)
 {
-    int32_t eax, ebx, ecx, edx;
+    long eax, ebx, ecx, edx;
     int32_t AMD;
     int32_t caps;
 
 	/* Slightly weirdified cpuid that preserves the ebx and edi required
 	   by gcc for PIC offset table and frame pointer */
+
+#ifdef ARCH_X86_64
+#  define REG_b "rbx"
+#  define REG_S "rsi"
+#else
+#  define REG_b "ebx"
+#  define REG_S "esi"
+#endif
 	   
 #define cpuid(op,eax,ebx,ecx,edx)	\
-    asm ( "pushl %%ebx\n" \
+    asm ( "push %%"REG_b"\n" \
 	      "cpuid\n" \
-	      "movl   %%ebx, %%esi\n" \
-	      "popl   %%ebx\n"  \
+	      "mov   %%"REG_b", %%"REG_S"\n" \
+	      "pop   %%"REG_b"\n"  \
 	 : "=a" (eax),			\
 	   "=S" (ebx),			\
 	   "=c" (ecx),			\
@@ -124,14 +132,14 @@ static int x86_accel (void)
 	 : "a" (op)			\
 	 : "cc", "edi")
 
-    asm ("pushfl\n\t"
-	 "popl %0\n\t"
-	 "movl %0,%1\n\t"
-	 "xorl $0x200000,%0\n\t"
-	 "pushl %0\n\t"
-	 "popfl\n\t"
-	 "pushfl\n\t"
-	 "popl %0"
+    asm ("pushf\n\t"
+	 "pop %0\n\t"
+	 "mov %0,%1\n\t"
+	 "xor $0x200000,%0\n\t"
+	 "push %0\n\t"
+	 "popf\n\t"
+	 "pushf\n\t"
+	 "pop %0"
          : "=a" (eax),
 	       "=c" (ecx)
 	 :
@@ -344,15 +352,15 @@ void *bufalloc( size_t size )
 */
 	if (posix_memalign( &buf, simd_alignment, size))
 		buf = memalign(pgsize, size);
-	if (buf && ((int)buf & (simd_alignment - 1)))
+	if (buf && ((size_t)buf & (simd_alignment - 1)))
 	{
 		free(buf);
 		buf = memalign(pgsize, size);
 	}
 	if (buf == NULL)
-		mjpeg_error_exit1("malloc of %d bytes failed", size);
-	if ((int)buf & (simd_alignment - 1))
-		mjpeg_error_exit1("could not allocate %d bytes aligned on a %d byte boundary", size, simd_alignment);
+		mjpeg_error_exit1("malloc of %d bytes failed", (int)size);
+	if ((size_t)buf & (simd_alignment - 1))
+		mjpeg_error_exit1("could not allocate %d bytes aligned on a %d byte boundary", (int)size, (int)simd_alignment);
 	return buf;
 }
 
@@ -396,7 +404,7 @@ disable_simd(char *name)
 */
 	simd_env = strdup(cp);
 	cp = simd_env;
-	while	(cp = parse_next(&simd_env, ","))
+	while	((cp = parse_next(&simd_env, ",")))
 		{
 		foundit = 0;
 		if	(strcasecmp(cp, name) == 0)
