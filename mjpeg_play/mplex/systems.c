@@ -309,8 +309,9 @@ void create_sector (Sector_struc 	 *sector,
 			   <PES_private_data:1=0><pack_header_field=0>
 			   <program_packet_sequence_counter=0>
 			   <P-STD_buffer=1><reserved:3=1><{PES_extension_flag_2=0> */
-			*(index++) = (unsigned char) (0x40 | (buffer_scale << 5) | 
-										  (buffer_size >> 8));
+
+			*(index++) = (unsigned char) (0x1E);
+			*(index++) = (unsigned char) ((buffer_scale << 5) | (buffer_size >> 8));
 			*(index++) = (unsigned char) (buffer_size & 0xff);
 		}
 	}
