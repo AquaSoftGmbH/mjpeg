@@ -2,7 +2,7 @@
 .TH "MJPEG tools" "MJPEG Linux Square" "MJPEG tools manual"
 .LP
 
-MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.35MJPEG capture/editting/replay and MPEG encoding toolset description
+MJPEG HOWTO - An introduction to the MJPEG-toolsPraschinger Bernhardv1.37MJPEG capture/editting/replay and MPEG encoding toolset description
 .PP
 Introduction
 
@@ -1892,58 +1892,7 @@ some more information in the
 dvdauthor package. There is no guarantee that it will work at all !!!
 .SH Creating DIVX Videos
 
-.PP
-The yuv2divx in the mjpeg tools uses the codecs of the avifile library
-to generate videos. The output formats you can create are dependent on
-the avifile version you use. It is recommended that you use at least
-version 0.6 of avifile. (Some distributions come with avifile-0.53, which
-is no longer supported by the avifile maintainers.)
-.PP
-The processing is a little bit different because the audio and video
-files do not need to be multiplexed afterwards. The output is created
-in a single pass. You can use the normal video encoding process. The
-audio file, or the sound that is already in the recorded avi, has to
-be given yuv2divx as an option. You can specify a WAV file, an edit
-list, or, as in this case, the same file we're getting the video from.
-.PP
-Enough talk here is an example:
-.PP
-\fB> lav2yuv stream.avi \(br yuv2divx -A stream.avi -o lowrate.avi\fP
-.PP
-Looks a bit strange because yuv2divx reads the YUV video stream from
-stdin but has the audio passed in by an option. The -A specifies the
-audio stream. In this case, it is also in our stream.avi. The output
-is also a .avi file because Divx is also named avi. The .divx
-extension is also sometimes used.
-.PP
-Example:
-.PP
-\fB> lav2yuv stream.avi \(br yuvdenoise \(br yuvscaler -O SIZE_640x480 \(br yuv2divx -b 2500 -a 196 -E DIV5
--A stream.avi -o output.avi\fP
-.PP
-You see that using other tools to get the stream in the proper form is
-no problem. Here we set the maximum bitrate to 2500kBit/s, and the  
-audio bitrate to 192kBit/s. The video coded this time used is the DIV5.
-.PP
-A bitrate of 2500 is considered rather high for Divx encoding. Divx
-encoding offers its greatest utility (giving decent images at high
-compression) at bitrates that MPEG2 encoding would generate poor
-quality. Experimentation is encouraged, of course, but the general  
-rule of thumb appears to be that Divx offers similar quality at
-two-thirds of the bitrate of MPEG2 -- note that this is video bitrate 
-only, audio bitrate remains the same as the same type of encoding is
-used for both.lav2divx
-
-.PP
-If you do not need to perform any audio or video alteration of the
-audio or video streams you can perform a conversion to divx in one 
-step using the lav2divx utility.
-.PP
-\fB> lav2divx -b 1000 -E DIV5 -o output.avi input.editlist\fP
-.PP
-This takes the edit list and uses that as the source for both the
-video and the audio. Since it's all done in one step, there's no
-opportunity to use any of the YUV filters, scalers, and denoisers.lav2avi.sh
+lav2avi.sh
 
 .PP
 A other version of creating DIVX is the program
@@ -2007,16 +1956,7 @@ If you want change only video bitrate, keep the file \fBframeno.avi\fP comment o
 .if \n(ll>1 .RE
 .nr ll -1
 .PP
-A word on avifile codecs
-
-.PP
-The lav2divx and yuv2divx utilities are primarily intended for
-creating Divx avi files. However, since they use avifile, it's   
-possible to generate output in any video format avifile is aware of. You
-specify the codec by its four letter code (\(rqDIV5\(rq in the examples
-above, this is sometimes called the codec's \(rqfourcc\(rq).
-The ones that are available vary greatly depending on the specific libraries
-available to avifile.Optimizing the stream
+Optimizing the stream
 
 .PP
 Using filters helps to increase the image quality using fixes bitrate

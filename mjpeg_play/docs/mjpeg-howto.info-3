@@ -1,50 +1,7 @@
 Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
-/tmp/linuxdoc-dir-2175/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-3370/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
-
-
-File: mjpeg-howto.info,  Node: Trading Quality/Speed,  Next: SMP and distributed Encoding,  Prev: Transcoding of existing MPEG-2,  Up: Top
-
-Trading Quality/Speed
-*********************
-
-   If absolute quality is your objective a modest improvement can be
-achieved using the -4 and -2 flags.  These control how ruthlessly
-mpeg2enc discards bad looking matches between sections of adjacent
-frames during the early stages of the search when it is working with
-4*4 and 2*2 clusters of pixels rather than individual pixels. Setting
--4 1 -2 1 maximizes quality. -4 4 -2 4 maximizes speed. Note that
-because the statistical criteria mpeg2enc uses for discarding bad
-looking matches are usually fairly reliable the increase/decrease in
-quality is modest (but noticeable).
-
-   Reducing the radius of the search for matching sections of images
-also increases speed. However due to the way the search algorithm works
-the search radius is in effect rounded to the nearest multiple of 8.
-Furthermore, on modern CPU's the speed gained by reducing the radius
-below 16 is not large enough to make the marked quality reduction
-worthwhile for most applications.
-
-* Menu:
-
-* Creating streams to be played from disk using Software players::
-
-
-File: mjpeg-howto.info,  Node: Creating streams to be played from disk using Software players,  Up: Trading Quality/Speed
-
-Creating streams to be played from disk using Software players
-==============================================================
-
-   Usually MPEG player software is much more flexible than the hardware
-built into DVD and VCD players. This flexibility allows for
-significantly better compression to be achieved for the same quality.
-The trick is to generate video streams that use big video buffers
-(500KB or more) and variable bitrate encoding (the -f, -q flag to
-mpeg2enc). Software players will often also correctly play back the
-much more efficient MPEG layer 3 (yes, "MP3" audio format.  A good Mp3
-encoder like lame will produce results comparable to layer 2 at 224Kbps
-at 128Kbps or 160Kbps.
 
 
 File: mjpeg-howto.info,  Node: SMP and distributed Encoding,  Next: Interoperability,  Prev: Trading Quality/Speed,  Up: Top

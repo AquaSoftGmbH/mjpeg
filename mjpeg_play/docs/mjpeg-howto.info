@@ -1,5 +1,5 @@
 Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
-/tmp/linuxdoc-dir-2175/sgmltmp.mjpeg-howto.info.2.
+/tmp/linuxdoc-dir-3370/sgmltmp.mjpeg-howto.info.2.
 
    \input texinfo
 
@@ -7,7 +7,7 @@ Dies ist mjpeg-howto.info, hergestellt von Makeinfo Version 4.5 aus
 Indirect:
 mjpeg-howto.info-1: 139
 mjpeg-howto.info-2: 49998
-mjpeg-howto.info-3: 99893
+mjpeg-howto.info-3: 98706
 
 Tag Table:
 (Indirect)
@@ -64,17 +64,15 @@ Node: DVD Video creation Example72764
 Node: DVD Mplex Example73682
 Node: DVD creation Example74171
 Node: Creating DIVX Videos75140
-Node: lav2divx77395
-Node: lav2avi-sh77938
-Node: A word on avifile codecs80248
-Node: Optimizing the stream80828
-Node: Scaling and offset correction86722
-Node: Frame rate conversion89129
-Node: Transcoding of existing MPEG-292072
-Node: If you want to do every step on your own it has to look like this95353
-Node: Trading Quality/Speed99893
-Node: Creating streams to be played from disk using Software players101116
-Node: SMP and distributed Encoding101937
-Node: Interoperability105235
+Node: lav2avi-sh75337
+Node: Optimizing the stream77597
+Node: Scaling and offset correction83491
+Node: Frame rate conversion85898
+Node: Transcoding of existing MPEG-288841
+Node: If you want to do every step on your own it has to look like this92122
+Node: Trading Quality/Speed96662
+Node: Creating streams to be played from disk using Software players97885
+Node: SMP and distributed Encoding98706
+Node: Interoperability102004
 
 End Tag Table
