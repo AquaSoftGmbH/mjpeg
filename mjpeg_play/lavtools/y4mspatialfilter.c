@@ -249,7 +249,7 @@ void convolve1D(u_char data[], int datalength, int datastride, float **filter, i
 	    /*	    for(k=n+1; k<=filterlength; k++)
 		    tempout+=filter[n][k]*data[(n+k)*datastride]; */
 	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout,0),255);
+	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
 	}
     /* center, use full-width filter */
     for(n=filterlength; n<datalength-filterlength; n++)
@@ -258,7 +258,7 @@ void convolve1D(u_char data[], int datalength, int datastride, float **filter, i
 	    for(k=1; k<=filterlength; k++)
 		tempout+=filter[filterlength][k]*(data[(n-k)*datastride]+data[(n+k)*datastride]);
 	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout,0),255);
+	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
 	}
     /* trailing edge, use filters of decreasing width */
     for(n=datalength-filterlength;n<datalength;n++)
@@ -270,7 +270,7 @@ void convolve1D(u_char data[], int datalength, int datastride, float **filter, i
 	    /*	    for(k=datalength-n; k<=filterlength; k++)
 		    tempout+=filter[datalength-n-1][k]*data[(n-k)*datastride]; */
 	    /* clip and cast to integer */
-	    output[n*datastride]=MIN(MAX(tempout,0),255);
+	    output[n*datastride]=MIN(MAX(tempout+0.5,0),255);
 	}
 }
 
