@@ -17,7 +17,7 @@
  *
  *    Filter Based on code from Jim Cassburi filter: 2dclean
  *
- *    This filter look around the current point for a radus and averages
+ *    This filter look around the current point for a radius and averages
  *    this values that fall inside a threshold.
  */
 #include <config.h>
@@ -55,7 +55,8 @@ int	chg_replace = 0;
 static void Usage(char *name )
 {
 	fprintf(stderr,
-			"Usage: %s: [-r num] [-t num] [-v num]\n"
+			"Usage: %s: [-h] [-r num] [-t num] [-v num]\n"
+                        "-h   - Print out this help\n"
 			"-r   - Radius for median (default: 2 pixels)\n"
 			"-t   - Trigger threshold (default: 2)\n"
 			"-v   - Verbosity [0..2]\n", name);
@@ -75,7 +76,7 @@ main(int argc, char *argv[])
 	y4m_stream_info_t istream, ostream;
 	y4m_frame_info_t iframe;
 
-	while((c = getopt(argc, argv, "r:t:v:")) != EOF) {
+	while((c = getopt(argc, argv, "r:t:v:h")) != EOF) {
 		switch(c) {
 			case 'r':
 				radus_luma = radus_chroma = atoi(optarg);
@@ -92,6 +93,8 @@ main(int argc, char *argv[])
 			}
 			break;		  
 			
+		case 'h':
+                        Usage (argv[0]);
 		default:
 			exit(0);
 		}
