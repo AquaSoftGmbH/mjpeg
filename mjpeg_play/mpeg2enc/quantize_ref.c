@@ -61,7 +61,7 @@
 #include "simd.h"
 
 #ifdef HAVE_ALTIVEC
-extern "C" void enable_altivec_quantization(int opt_mpeg1);
+void enable_altivec_quantization(int opt_mpeg1);
 #endif
 
 
