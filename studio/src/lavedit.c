@@ -188,7 +188,7 @@ GtkWidget *create_tv_stuff(GtkWidget *window)
 
 	lavedit_tv = gtk_event_box_new();
 	gtk_box_pack_start (GTK_BOX (vbox2), lavedit_tv, FALSE, FALSE, 0);
-	gtk_widget_set_usize(GTK_WIDGET(lavedit_tv), tv_width_edit, tv_height_edit);
+	gtk_widget_set_size_request(GTK_WIDGET(lavedit_tv), tv_width_edit, tv_height_edit);
 	gtk_widget_show(lavedit_tv);
 	set_background_color(lavedit_tv,0,0,0);
 	lavedit_slider_adj = gtk_adjustment_new(0, 0, 2500000, 10000, 100000, 0);
@@ -405,7 +405,7 @@ void create_lavplay_edit_child()
 	lavplay_command[n] = "--size"; n++;
 	sprintf(temp2, "%dx%d", tv_width_edit, tv_height_edit);
 	lavplay_command[n] = temp2; n++;
-        lavplay_command[n] = "-pS"; n++;
+	lavplay_command[n] = "-pS"; n++;
 	sprintf(temp1, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 	lavplay_command[n] = temp1; n++;
 	lavplay_command[n] = NULL;
@@ -441,7 +441,7 @@ void file_ok_sel_screeny( GtkWidget *w, GtkFileSelection *fs )
 
 	sprintf(temp, "%s/.studio/%s", getenv("HOME"), editlist_filename);
 	sprintf(command, "\"%s\" -o \"%s\" -f i \"%s\" -i %d%s",
-		app_location(LAVTRANS), file, temp, current_position,
+			app_location(LAVTRANS), file, temp, current_position,
 			verbose?"":" >> /dev/null 2>&1");
 	system(command);
 
@@ -455,7 +455,7 @@ void prepare_for_scene_detection( GtkWidget *w, GtkFileSelection *fs )
 
 	current_file = 1;
 	strcpy(files_recorded[0],
-		gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
+			gtk_file_selection_get_filename (GTK_FILE_SELECTION (fs)));
 
 	scene_detection();
 }
@@ -497,7 +497,7 @@ void file_ok_sel_add_scene_to_glist( GtkWidget *w, GtkFileSelection *fs )
 
 	/* tell the combo-box that we have a new member */
 	gtk_combo_set_popdown_strings (GTK_COMBO (current_open_movies_combo),
-		temp);
+			temp);
 
 	/* set the new movie to be the active one (for the signal handler) */
 	gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry),file);
@@ -532,8 +532,8 @@ void add_scene_movie_change_page(GtkWidget *widget, char *direction)
 		/* oops something went wrong */
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
 		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
-			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
-			strerror(errno));
+				gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
+				strerror(errno));
 	}
 }
 
@@ -625,8 +625,8 @@ int open_add_movie_scene_editlist()
 			else
 			{
 				gtk_imageplug_set_data(
-					GTK_IMAGEPLUG(add_movie_images[x]),
-					NULL,"",0,0,0,0,0);
+						GTK_IMAGEPLUG(add_movie_images[x]),
+						NULL,"",0,0,0,0,0);
 			}
 		}
 		else
@@ -637,20 +637,20 @@ int open_add_movie_scene_editlist()
 			y = sscanf(temp_entry, "%d %d %d (%d %d)\n", &a, &b, &c, &d, &e);
 			sprintf(file, "%s/.studio/.temp.jpg", getenv("HOME"));
 			sprintf(command, "\"%s\" -f i -o \"%s\" -i %d \"%s\"%s",
-				app_location(LAVTRANS), file, total, file_selected,
-				verbose?"":" >> /dev/null 2>&1");
+					app_location(LAVTRANS), file, total, file_selected,
+					verbose?"":" >> /dev/null 2>&1");
 			system(command);
 
 			temp = gdk_pixbuf_new_from_file (file, &err);
 			unlink(file);
 
 			gtk_imageplug_set_data(
-				GTK_IMAGEPLUG(add_movie_images[x]),
-				gdk_pixbuf_scale_simple(temp,
-					GTK_IMAGEPLUG(add_movie_images[x])->width,
-					GTK_IMAGEPLUG(add_movie_images[x])->height,
-					GDK_INTERP_NEAREST),
-				movies[a], y==5?d:b, y==5?e:c, b, c, total);
+					GTK_IMAGEPLUG(add_movie_images[x]),
+					gdk_pixbuf_scale_simple(temp,
+						GTK_IMAGEPLUG(add_movie_images[x])->width,
+						GTK_IMAGEPLUG(add_movie_images[x])->height,
+						GDK_INTERP_NEAREST),
+					movies[a], y==5?d:b, y==5?e:c, b, c, total);
 
 			total += c-b+1;
 		}
@@ -677,8 +677,8 @@ void set_add_scene_movie_selection(GtkWidget *widget, gpointer data)
 		/* oops something went wrong */
 		gtk_entry_set_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry), "");
 		gtk_show_text_window(STUDIO_WARNING, "Error opening \'%s\': %s",
-			gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
-			strerror(errno));
+				gtk_entry_get_text(GTK_ENTRY(GTK_COMBO(current_open_movies_combo)->entry)),
+				strerror(errno));
 	}
 }
 
@@ -694,22 +694,22 @@ void add_scene_to_editlist(GtkWidget *widget, gpointer data)
 
 	/* tell lavplay */
 	sprintf(temp, "ea %s %d %d %d",
-		im->video_filename,
-		im->startframe,
-		im->stopframe,
-		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
+			im->video_filename,
+			im->startframe,
+			im->stopframe,
+			GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
 			gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
 				GTK_SCENELIST(scenelist)->selected_scene)->start_total); 
 	command_to_lavplay_edit(NULL,temp);
 
 	/* tell the scenelist */
 	gtk_scenelist_edit_add(GTK_SCENELIST(scenelist),
-		im->video_filename, im->startframe, im->stopframe,
-		im->startscene, im->stopscene,
-		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
+			im->video_filename, im->startframe, im->stopframe,
+			im->startscene, im->stopscene,
+			GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
 			GTK_SCENELIST(scenelist)->selected_scene);
 	gtk_scenelist_select(GTK_SCENELIST(scenelist),
-		GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
+			GTK_SCENELIST(scenelist)->selected_scene<0 ? 0 :
 			GTK_SCENELIST(scenelist)->selected_scene);
 
 	save_eli_temp_file();
@@ -722,13 +722,13 @@ void add_movie_scene_image_clicked(GtkWidget *widget, gpointer data)
 	if (GTK_IMAGEPLUG(widget)->picture == NULL)
 	{
 		/*GTK_IMAGEPLUG(widget)->selection = 0;
-		gtk_imageplug_draw(widget);*/
+		  gtk_imageplug_draw(widget);*/
 		return;
 	}
 
 	if (verbose)
 		printf("Add-movie-scene-image %d gave clicked signal\n",
-			GTK_IMAGEPLUG(widget)->number);
+				GTK_IMAGEPLUG(widget)->number);
 
 	if (add_movie_scene_selected_scene != GTK_IMAGEPLUG(widget)->number)
 	{
@@ -743,19 +743,19 @@ void create_filesel3(GtkWidget *widget, char *what_to_do)
 {
 	GtkWidget *filew;
 	char *temp = NULL;
-	
+
 	filew = gtk_file_selection_new ("Linux Video Studio - Select Location");
 
 	if (strcmp(what_to_do, "save_as") == 0)
 	{
 		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-			"clicked", (GtkSignalFunc) file_ok_sel_save_as, filew);
+				"clicked", (GtkSignalFunc) file_ok_sel_save_as, filew);
 		temp = editlist_savefile;
 	}
 	else if (strcmp(what_to_do, "open") == 0)
 	{
 		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-			"clicked", (GtkSignalFunc) file_ok_sel_open, filew);
+				"clicked", (GtkSignalFunc) file_ok_sel_open, filew);
 		temp = editlist_savefile;
 	}
 	else if (strcmp(what_to_do, "screen") == 0)
@@ -763,7 +763,7 @@ void create_filesel3(GtkWidget *widget, char *what_to_do)
 		if (current_position >= 0)
 		{
 			gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-				"clicked", (GtkSignalFunc) file_ok_sel_screeny, filew);
+					"clicked", (GtkSignalFunc) file_ok_sel_screeny, filew);
 			temp = "image.jpg";
 		}
 		else
@@ -774,21 +774,21 @@ void create_filesel3(GtkWidget *widget, char *what_to_do)
 	else if (strcmp(what_to_do, "add_movie_selection") == 0)
 	{
 		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-			"clicked", (GtkSignalFunc) file_ok_sel_add_scene_to_glist, filew);
+				"clicked", (GtkSignalFunc) file_ok_sel_add_scene_to_glist, filew);
 		temp = "scene_list.eli";
 	}
 	else if (strcmp(what_to_do, "scene_detection") == 0)
 	{
 		gtk_signal_connect (GTK_OBJECT (GTK_FILE_SELECTION (filew)->ok_button),
-			"clicked", (GtkSignalFunc) prepare_for_scene_detection, filew);
+				"clicked", (GtkSignalFunc) prepare_for_scene_detection, filew);
 		temp = "movie.avi";
 	}
 
 
 	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(filew)->ok_button),
-		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
+			"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
 	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(filew)->cancel_button),
-		"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
+			"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (filew));
 	gtk_file_selection_set_filename (GTK_FILE_SELECTION(filew), temp);
 	gtk_widget_show(filew);
 
