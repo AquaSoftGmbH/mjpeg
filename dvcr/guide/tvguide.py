@@ -20,8 +20,15 @@ from httplib import *
 from string import *
 from time import *
 import ConfigParser
+from os import *
+from sys import *
 import re
+import signal
 from guide import Guide
+
+def http_timeout(signum, frame):
+	print "http timeout!";
+	raise IOError, "Host not responding."
 
 class TvGuide(Guide):
 
@@ -180,7 +187,10 @@ class TvGuide(Guide):
 
 	def  guide_url(self,  url, host, translate, filter):
 		http_loop = 0
+
 		while http_loop < 20:
+			signal.alarm(240);
+			signal.signal(signal.SIGALRM, http_timeout);
 			try:
 				http = HTTP(host)
 				http.putrequest("GET", url)
@@ -189,9 +199,18 @@ class TvGuide(Guide):
 				http.endheaders()
 
 				errcode, errmsg, headers = http.getreply()
+
+				data = http.getfile()
+				guide_data = split(data.read(), "\n")
+				self.parse_tvguide_data(guide_data, translate, filter)
+				stdout.flush()
+				signal.alarm(0);
+
 			except:
 				http_loop = http_loop + 1
+				print
 				print "retry get %d" % http_loop
+				stdout.flush()
 				sleep(60)
 				continue
 
@@ -199,13 +218,10 @@ class TvGuide(Guide):
 				print
 				print "http://%s%s" % (host, url)
 				print "Error Code %d: %s" % (errcode, errmsg)
+				stdout.flush()
 				return
-
 			break
 
-		data = http.getfile()
-		guide_data = split(data.read(), "\n")
-		self.parse_tvguide_data(guide_data, translate, filter)
 
 	def tvguide_url(self, start, end):
 		service_id = self.config_list("tvguide", "serviceid")

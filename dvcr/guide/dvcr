@@ -7,7 +7,7 @@ stations: 909, 910, 911, 912, 20, 50, 501, 502, 503, 504, 505, 507, 508, 512, 51
 
 [b50]
 recorder: /usr/local/bin/lavrec
-record_params:  -l80, -iN, -v0, -s, -d12, -q30,  -t, %size, %file-name
+record_params:  -l80, -iN, -v0, -s, -d1, -q30,  -t, %size, %file-name
 channel: /usr/local/bin/channel
 channel_params: %station
 
