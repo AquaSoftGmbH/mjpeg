@@ -479,8 +479,8 @@ correct_frame2 (void)
 void
 denoise_frame_pass2 (void)
 {
-  register uint8_t * src[3];
-  register uint8_t * dst[3];
+  uint8_t * src[3];
+  uint8_t * dst[3];
   register int d;
   register int c;
   int f1=0;
@@ -553,7 +553,7 @@ denoise_frame_pass2 (void)
 void
 sharpen_frame(void)
 {
-  register uint8_t * dst[3];
+  uint8_t * dst[3];
   register int d;
   register int m;
   register int c;
