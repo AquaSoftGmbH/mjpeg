@@ -51,6 +51,7 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -110,7 +111,7 @@ void system_error(char *str1, char *str2)
    exit(1);
 }
 
-main(int argc, char ** argv)
+int main(int argc, char ** argv)
 {
    lav_file_t *outfd;
    FILE *wavfd;
@@ -284,4 +285,5 @@ main(int argc, char ** argv)
       if(res!=1) system_error("writing WAV file","fwrite");
       fclose(wavfd);
    }
+   return 0;
 }

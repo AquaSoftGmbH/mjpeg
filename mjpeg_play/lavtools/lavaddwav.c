@@ -22,7 +22,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 #include "lav_io.h"
 
 #define FOURCC(a,b,c,d) ( (d<<24) | ((c&0xff)<<16) | ((b&0xff)<<8) | (a&0xff) )
@@ -32,7 +32,9 @@
 #define FOURCC_FMT      FOURCC ('f', 'm', 't', ' ')
 #define FOURCC_DATA     FOURCC ('d', 'a', 't', 'a')
 
-main(int argc, char **argv)
+int verbose = 0;
+
+int main(int argc, char **argv)
 {
    int i, n, res, fmtlen, max_frame_size;
    long video_frames;
@@ -69,7 +71,7 @@ main(int argc, char **argv)
    /* Debug Output */
 
    printf("File: %s\n",argv[1]);
-   printf("   frames:      %8d\n",lav_video_frames(lav_fd));
+   printf("   frames:      %8ld\n",lav_video_frames(lav_fd));
    printf("   width:       %8d\n",lav_video_width (lav_fd));
    printf("   height:      %8d\n",lav_video_height(lav_fd));
    printf("   interlacing: %8d\n",lav_video_interlacing(lav_fd));
@@ -129,10 +131,10 @@ main(int argc, char **argv)
    /* Debug Output */
 
    printf("File: %s\n",argv[2]);
-   printf("   audio samps: %8d\n",audio_samps);
+   printf("   audio samps: %8ld\n",audio_samps);
    printf("   audio chans: %8d\n",audio_chans);
    printf("   audio bits:  %8d\n",audio_bits);
-   printf("   audio rate:  %8d\n",audio_rate);
+   printf("   audio rate:  %8ld\n",audio_rate);
    printf("\n");
    printf("Length of video:  %15.3f sec\n",video_frames/fps);
    printf("Length of audio:  %15.3f sec\n",(double)audio_samps/(double)audio_rate);
@@ -231,8 +233,9 @@ main(int argc, char **argv)
    while(n>0);
 
    if(na_out != audio_samps)
-      fprintf(stderr,"Warning: audio samples expected: %d, written: %d\n",
+      fprintf(stderr,"Warning: audio samples expected: %ld, written: %ld\n",
                       audio_samps, na_out);
 
    lav_close(lav_out);
+   return 0;
 }

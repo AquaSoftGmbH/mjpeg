@@ -58,6 +58,11 @@ audio compressor "mp2enc" (see below.  If you output to a pipe it
 simply sticks a maxium length in the header.  Most programs processing
 streams will  work fine with this, ending cleanly when they reach the actual end.
 
+- "lavtrans" Takes a list of edit lists and/or files and produces the
+corresponding singleAVI or Quicktime file.
+
+- "lavaddwav" Adds an audio stream to a Quicktime or AVI without one.
+
 - "v4l-conf" is used in X to set up your video framebuffer address
 
 * The scripts directory
