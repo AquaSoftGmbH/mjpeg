@@ -436,7 +436,7 @@ void Multiplexor::NextPosAndSCR()
 
 /**********
  *
- * NextPosAndSCR - Update nominal (may be >= actual) byte count
+ * SetPosAndSCR - Update nominal (may be >= actual) byte count
  * and SCR to next output sector.
  * @param bytepos byte position in the stream
  ********/
@@ -1321,6 +1321,7 @@ Multiplexor::WriteRawSector(  uint8_t *rawsector,
     // Writing raw sectors when packs stretch over multiple sectors
     // is a recipe for disaster!
     //
+    mjpeg_info( "RAW !!! \n");
     assert( packets_per_pack == 1 );
 	psstrm->RawWrite( rawsector, length );
 	NextPosAndSCR();

@@ -273,9 +273,6 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
-    if( eoscan )
-        mjpeg_info( "Scan ends %02x %lld (%lld) %d last=%d", stream_id, bs.bitcount(), bs.GetBytePos()+bs.BufferedBytes(), bs.eos(), last_buffered_AU );
-
 }
 
 

@@ -164,10 +164,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
     // This is intentionally very high because some heavily
     // padded still frames may have a loooong gap before
     // a following sequence end marker.
-	while(!bs.eos() && 
-		  bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024) &&
-	      decoding_order < last_buffered_AU  &&
-		  (!max_PTS || access_unit.PTS < max_PTS ) 
+    // IMPORTANT: SeekSync *must* come last otherwise a header
+    // will be lost!!!!
+	while(!bs.eos() 
+          && decoding_order < last_buffered_AU  
+          && (!max_PTS || access_unit.PTS < max_PTS)
+		  && bs.SeekSync( SYNCWORD_START, 24, 2*1024*1024)
 		)
 	{
 		syncword = (SYNCWORD_START<<8) + bs.GetBits( 8);
@@ -192,7 +194,8 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
-				mjpeg_debug( "Found AU %d: DTS=%d", access_unit.dorder,
+				mjpeg_debug( "Found AU %d @ %lld: DTS=%d", access_unit.dorder,
+                             bs.bitcount() / 8-4,
 							 access_unit.DTS/300 );
 				AU_hdr = syncword;
 				AU_start = stream_length;
