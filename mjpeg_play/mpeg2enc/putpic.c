@@ -152,6 +152,7 @@ static void putmvs(
  *
  ******************/
 
+/*static int16_t testblock[64*6];*/
 
 void putpict(pict_data_s *picture )
 {
@@ -237,6 +238,9 @@ void putpict(pict_data_s *picture )
 			}
 			else
 			{
+/*				int tcbp, tmq;
+				cbp = quant_non_intra_sse( picture,  picture->blocks[cur_mb_blocks],
+				testblock, cur_mb->mquant, &tmq );*/
 				cbp = (*pquant_non_intra)(picture,
 									  picture->blocks[cur_mb_blocks],
 									  quant_blocks[cur_mb_blocks],

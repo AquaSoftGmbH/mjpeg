@@ -86,3 +86,90 @@ nextrowfd:
 
 	emms
 	ret
+
+
+
+global block_dist22_SSE
+
+; void block_dist22_SSE(unsigned char *blk1,unsigned char *blk2,int flx,int fh, int* resvec);
+
+; eax = p1
+; ebx = p2
+; ecx = counter temp
+; edx = flx;
+
+; mm0 = distance accumulator
+; mm1 = distance accumulator
+; mm2 = previous p1 row
+; mm3 = previous p1 displaced by 1 byte...
+; mm4 = temp
+; mm5 = temp
+; mm6 = temp
+; mm7 = temp / 0 if first row 0xff otherwise
+
+
+align 32
+block_dist22_SSE:
+	push ebp		; save frame pointer
+	mov ebp, esp
+	push eax
+	push ebx	
+	push ecx
+	push edx	
+
+	pxor mm0, mm0		; zero acculumator
+	pxor mm1, mm1		; zero acculumator
+	pxor mm2, mm2		; zero acculumator
+	pxor mm3, mm3		; zero acculumator						
+
+	mov eax, [ebp+8]	; get p1
+	mov ebx, [ebp+12]	; get p2
+	mov edx, [ebp+16]	; get lx
+	mov ecx, [ebp+20]
+	movq mm2, [eax+edx]
+	movq mm3, [eax+edx+1]
+	jmp nextrowbd22
+align 32
+nextrowbd22:
+	movq   mm5, [ebx]			; load previous row reference block
+								; mm2 /mm3 containts current row target block
+		
+	psadbw mm2, mm5				; Comparse (x+0,y+2)
+	paddd  mm1, mm2
+		
+	psadbw mm3, mm5				; Compare (x+2,y+2)
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	paddd  mm1, mm3
+
+	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 					
+
+	movq mm2, [eax]				; Load current row traget block into mm2 / mm3
+	movq mm6, mm2
+	movq mm3, [eax+1]
+	sub	   eax, edx
+	sub	   ebx, edx
+	prefetcht0 [eax]
+	movq mm7, mm3		
+
+	psadbw	mm6, mm5			; Compare (x+0,y+0)
+	paddd   mm0, mm6
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	psadbw  mm7, mm5			; Compare (x+2,y+0)
+	paddd   mm0, mm7
+	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+
+	sub ecx, 1
+	jnz nextrowbd22
+
+	mov  eax, [ebp+24]
+	movq [eax+0], mm0
+	movq [eax+8], mm1
+	pop edx	
+	pop ecx	
+	pop ebx	
+	pop eax
+	pop ebp
+
+	emms
+	ret
+		

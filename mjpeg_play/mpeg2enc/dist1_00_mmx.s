@@ -62,7 +62,7 @@ dist1_00_MMX:
 	mov edx, [ebp+16]			; get lx
 	mov  ecx, [ebp+20]			; get rowsleft
 	;mov ebx, [ebp+24]	        ; distlim
-	jmp nextrowmm00					; snap to it
+	jmp nextrowmm00
 align 32
 nextrowmm00:
 	movq mm4, [esi]		; load first 8 bytes of p1 row 
@@ -74,50 +74,34 @@ nextrowmm00:
 	paddb   mm5, mm7
 
 	;;  Add the abs(mm4-mm5) bytes to the accumulators
+	movq mm2, [esi+8]		; load second 8 bytes of p1 row (interleaved)
 	movq  mm7,mm5				; mm7 := [i :	B0..3, mm1]W
 	punpcklbw mm7,mm6
+	movq mm3, [edi+8]		; load second 8 bytes of p2 row (interleaved)
 	paddw mm0, mm7
 	punpckhbw mm5,mm6
 	paddw mm0, mm5
 
-
-	movq mm4, [esi+8]		; load second 8 bytes of p1 row 
-	movq mm5, [edi+8]		; load second 8 bytes of p2 row
+		;; This is logically where the mm2, mm3 loads would go...
 		
-	movq mm7, mm4       ; mm5 = abs(mm4-mm5)
-	psubusb mm7, mm5
-	psubusb mm5, mm4
-	paddb   mm5, mm7
+	movq mm7, mm2       ; mm3 = abs(mm2-mm3)
+	psubusb mm7, mm3
+	psubusb mm3, mm2
+	paddb   mm3, mm7
 
 	;;  Add the abs(mm4-mm5) bytes to the accumulators
-	movq  mm7,mm5				; mm7 := [i :	B0..3, mm1]W
+	movq  mm7,mm3				; mm7 := [i :	B0..3, mm1]W
 	punpcklbw mm7,mm6
-	punpckhbw mm5,mm6
+	punpckhbw mm3,mm6
 	paddw mm0, mm7
 	
 	add esi, edx		; update pointer to next row
 	add edi, edx		; ditto	
 
-	paddw mm0, mm5
+	paddw mm0, mm3
 
 
 
-		;; Sum the Accumulators
-		; No longer used...
-	;movq  mm5, mm0				; mm5 := [W0+W2,W1+W3, mm0
-	;psrlq mm5, 32
-	;movq  mm4, mm0
-	;paddw mm4, mm5
-
-	;movq  mm7, mm4              ; mm6 := [W0+W2+W1+W3, mm0]
-	;psrlq mm7, 16
-	;paddw mm4, mm7
-		
-	;movd eax, mm4		; store return value
-	;and  eax, 0xffff
-	;cmp ebx, eax		;  Return early if distlim exceeded
-	;jle  returnmm00
-	;		
 	sub  ecx,1
 	jnz near nextrowmm00
 		

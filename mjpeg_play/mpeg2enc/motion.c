@@ -151,6 +151,24 @@ static void fullsearch (
 	int sx, int sy, int h, 
 	int xmax, int ymax,
 	mb_motion_s *motion );
+static void find_best_one_pel( uint8_t *org, uint8_t *blk,
+							   int searched_size,
+							   int i0, int j0,
+							   int ilow, int jlow,
+							   int xmax, int ymax,
+							   int lx, int h, 
+							   mb_motion_s *res
+	);
+#ifdef X86_CPU
+static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
+							   int searched_size,
+							   int i0, int j0,
+							   int ilow, int jlow,
+							   int xmax, int ymax,
+							   int lx, int h, 
+							   mb_motion_s *res
+	);
+#endif
 
 static int unidir_pred_var( const mb_motion_s *motion, 
 							uint8_t *mb,  int lx, int h);
@@ -167,6 +185,15 @@ static int qdist1 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
 static int fdist1 ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 
+
+static void (*pfind_best_one_pel)( uint8_t *org, uint8_t *blk,
+							   int searched_size,
+							   int i0, int j0,
+							   int ilow, int jlow,
+							   int xmax, int ymax,
+							   int lx, int h, 
+							   mb_motion_s *res
+	);
 int (*pqblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
@@ -185,6 +212,7 @@ static int bdist2 (uint8_t *pf, uint8_t *pb,
 	uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 static int bdist1 (uint8_t *pf, uint8_t *pb,
 				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+
 
 static int (*pfdist1) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 static int (*pqdist1) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
@@ -224,6 +252,7 @@ void init_motion()
 		pbdist1 = bdist1;
 		pdist2 = dist2;
 		pbdist2 = bdist2;
+		pfind_best_one_pel = find_best_one_pel;
 	}
 #ifdef X86_CPU
 	else if(cpucap & ACCEL_X86_MMXEXT ) /* AMD MMX or SSE... */
@@ -238,7 +267,9 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pfind_best_one_pel = find_best_one_pel_MMXE;
 		pqblock_8grid_dists = qblock_8grid_dists_sse;
+
 	}
 	else if(cpucap & ACCEL_X86_MMX) /* Ordinary MMX CPU */
 	{
@@ -252,6 +283,7 @@ void init_motion()
 		pbdist1 = bdist1_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
+		pfind_best_one_pel = find_best_one_pel;
 		pqblock_8grid_dists = qblock_8grid_dists_mmx;
 	}
 #endif
@@ -1756,7 +1788,9 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 	int jlim = jhigh-j0;
 	blockxy matchrec;
 	uint8_t *s22orgblk;
-  
+	int resvec[4];
+	int lstrow=(fh-1)*flx;
+
 	sub22_num_mcomps = 0;
 	for( k = 0; k < searched_sub44_size; ++k )
 	{
@@ -1765,12 +1799,13 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 		matchrec.y = sub44_mcomps[k].y;
 
 		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
-		  
+		block_dist22_SSE(s22orgblk+lstrow, s22blk+lstrow, flx, fh, resvec);
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )
 			{	
-				s = (*pfdist1)( s22orgblk,s22blk,flx,fh);
+				/*s = (*pfdist1)( s22orgblk,s22blk,flx,fh);*/
+				s =resvec[i];
 				if( s < threshold )
 				{
 					sub22_mcomps[sub22_num_mcomps].x = (int8_t)matchrec.x;
@@ -1828,8 +1863,6 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	int init_search;
 	int init_size;
 	blockxy matchrec;
-	/*	int resvec[4];*/
-
  
 	init_search = searched_size;
 	init_size = sub22_num_mcomps;
@@ -1839,17 +1872,12 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 		matchrec.y = j0 + sub22_mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
 		penalty = abs(matchrec.x)+abs(matchrec.y);
-		
-		/* EXPERIMENTAL
-		   block_dist1_SSE(orgblk,blk,lx,h, resvec);
-		*/
+
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= xmax && matchrec.y <= ymax )
 			{
-				/*EXPERIMENTAL
-				  d = penalty+resvec[i];*/
-
+		
 				d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
 				if (d<dmin)
 				{
@@ -1869,17 +1897,6 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 				matchrec.x += 1;
 			}
 		}
-		/*
-		if( bad )
-		{
-			for(i=0; i< 4; ++i )
-			{
-					fprintf( stderr, "BAD%d: B=%d R=%d\n", i, resvec[i], refvec[i] );
-			}
-			exit(1);
-		}
-		*/
-
 	}
 
 	res->pos = minpos;
@@ -1887,6 +1904,74 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	res->sad = dmin;
 
 }
+
+#ifdef X86_CPU
+static void find_best_one_pel_MMXE( uint8_t *org, uint8_t *blk,
+							   int searched_size,
+							   int i0, int j0,
+							   int ilow, int jlow,
+							   int xmax, int ymax,
+							   int lx, int h, 
+							   mb_motion_s *res
+	)
+
+{
+	int i,k;
+	int d;
+	blockxy minpos = res->pos;
+	int dmin = INT_MAX;
+	uint8_t *orgblk;
+	int penalty;
+	int init_search;
+	int init_size;
+	blockxy matchrec;
+	int resvec[4];
+
+ 
+	init_search = searched_size;
+	init_size = sub22_num_mcomps;
+	for( k = 0; k < searched_size; ++k )
+	{	
+		matchrec.x = i0 + sub22_mcomps[k].x;
+		matchrec.y = j0 + sub22_mcomps[k].y;
+		orgblk = org + matchrec.x+lx*matchrec.y;
+		penalty = abs(matchrec.x)+abs(matchrec.y);
+		
+
+		block_dist1_MMXE(orgblk,blk,lx,h, resvec);
+
+		for( i = 0; i < 4; ++i )
+		{
+			if( matchrec.x <= xmax && matchrec.y <= ymax )
+			{
+		
+				d = penalty+resvec[i];
+				if (d<dmin)
+				{
+					dmin = d;
+					minpos = matchrec;
+				}
+			}
+			if( i == 1 )
+			{
+				orgblk += lx-1;
+				matchrec.x -= 1;
+				matchrec.y += 1;
+			}
+			else
+			{
+				orgblk += 1;
+				matchrec.x += 1;
+			}
+		}
+	}
+
+	res->pos = minpos;
+	res->blk = org + minpos.x+lx*minpos.y;
+	res->sad = dmin;
+
+}
+#endif 
  
 /*
  * full search block matching
@@ -1997,7 +2082,7 @@ static void fullsearch(
 	*/
 	
 
-	find_best_one_pel( ref, ssblk->mb, sub22_num_mcomps,
+	(*pfind_best_one_pel)( ref, ssblk->mb, sub22_num_mcomps,
 					   i0, j0,
 					   ilow, jlow, xmax, ymax, 
 					   lx, h, &best );

@@ -1,13 +1,9 @@
 /*
  *
- * qblockdist_sse.
+ * qblockdist_sse.simd.h
  * Copyright (C) 2000 Andrew Stevens <as@comlab.ox.ac.uk>
  *
- * Fast block sum-absolute difference computation for a rectangular area 4*x
- * by y where y > h against a 4 by h block.
  *
- * Used for 4*4 sub-sampled motion compensation calculations.
- * 
  *
  * This file is part of mpeg2enc, a free MPEG-2 video stream encoder
  * based on the original MSSG reference design
@@ -42,11 +38,6 @@ int qblock_8grid_dists_sse( uint8_t *blk,  uint8_t *ref,
 							int h, int rowstride, 
 							int threshold,
 							mc_result_s *resvec);
-int qblock_near_dist_sse( uint8_t *blk,  uint8_t *ref,
-					  int basex, int basey,
-					  int across, int down,
-					  int threshold,
-					  int h, int rowstride, mc_result_s *resvec);
 int qblock_8grid_dists_mmx( uint8_t *blk,  uint8_t *ref,
 							int ilow, int jlow,
 							int ihigh, int jhigh, 
@@ -54,6 +45,8 @@ int qblock_8grid_dists_mmx( uint8_t *blk,  uint8_t *ref,
 							int h, int rowstride, mc_result_s *resvec);
 
 int quant_non_intra_3dnow(	struct pict_data *picture,int16_t *src, int16_t *dst,
+							int mquant, int *nonsat_mquant);
+int quant_non_intra_sse(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
 int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							int mquant, int *nonsat_mquant);
@@ -71,6 +64,9 @@ void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
 
 int dist1_00_SSE(uint8_t *blk1, uint8_t *blk2, int lx, int h, int distlim);
 void block_dist1_SSE(uint8_t *blk1, uint8_t *blk2, int lx, int h, int *resvec);
+void block_dist1_SSEC(uint8_t *blk1, uint8_t *blk2, int lx, int h, int *resvec);
+void block_dist1_MMXE(uint8_t *blk1, uint8_t *blk2, int lx, int h, int *resvec);
+void block_dist22_SSE(unsigned char *blk1,unsigned char *blk2,int flx,int fh, int* resvec);
 int dist1_01_SSE(uint8_t *blk1, uint8_t *blk2, int lx, int h);
 int dist1_10_SSE(uint8_t *blk1, uint8_t *blk2, int lx, int h);
 int dist1_11_SSE(uint8_t *blk1, uint8_t *blk2, int lx, int h);

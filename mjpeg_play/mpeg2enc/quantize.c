@@ -68,9 +68,14 @@ void init_quantizer()
 			fprintf( stderr, "3DNOW and ");
 			pquant_non_intra = quant_non_intra_3dnow;
 		}
+		else if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		{
+			fprintf( stderr, "SSE and ");
+			pquant_non_intra = quant_non_intra_sse;
+		}
 		else 
 		{
-			pquant_non_intra = quant_non_intra_mmx;
+			pquant_non_intra = quant_non_intra;
 		}
 
 		if ( (flags & ACCEL_X86_MMXEXT) != 0 )

@@ -69,9 +69,6 @@
 /*
  * 3D-Now version: simply truncates to zero, however, the tables have a 2% bias
  * upwards which partly compensates.
- * Currently doesn't bother to adjust quantisation in the event of saturation.
- * though this would be pretty easy to do. I want to wait and see what the implications
- * for quality are.
  */
  
 int quant_non_intra_3dnow(	
@@ -109,6 +106,10 @@ restart:
 	pdst = dst;
 	for (i=0; i < coeff_count ; i+=4)
 	{
+
+		/* TODO: For maximum efficiency this should be unrolled to allow
+		   f.p. and int MMX to be interleaved... 
+		*/
 
 		/* Load 4 words, unpack into mm2 and mm3 (with sign extension!)
 		 */
@@ -163,16 +164,6 @@ restart:
 		por_r2r( mm4, mm5 );
 		movd_r2m( mm5, saturated );
 
-/* OLD CODE - saturate instead of changing quantisation...
-		psraw_i2r( 16, mm4 );
-		psllw_i2r( 15, mm4 );
-		movd_m2r( satshift, mm3 );
-		psllw_r2r( mm3, mm2 );
-		psrlw_i2r( 1, mm2 );
-		psubb_r2r( mm6, mm3 );	// mm6 has 1 in it!
-		por_r2r( mm4, mm2 );
-		psraw_r2r( mm3, mm2 );
-*/
 		/* Store and accumulate zero-ness */
 		movq_r2r( mm2, mm3 );
 		movq_r2m( mm2, *(mmx_t*)pdst );
@@ -215,6 +206,140 @@ restart:
 	return nzflag;
 }
 
+/*
+ * SSE version: simply truncates to zero, however, the tables have a 2% bias
+ * upwards which partly compensates.
+ */
+static int trunc_mxcsr = 0x7f80;
+ 
+int quant_non_intra_sse(	
+	pict_data_s *picture,
+	int16_t *src, int16_t *dst,
+	int mquant,
+	int *nonsat_mquant)
+{
+	int saturated;
+	int satlim = dctsatlim;
+	float *i_quant_matf; 
+	int   coeff_count = 64*block_count;
+	uint32_t nzflag, flags;
+	int16_t *psrc, *pdst;
+	float *piqf;
+	int i;
+	uint32_t tmp;
+
+	/* Initialise zero block flags */
+	/* Load 1 into mm6 */
+	__asm__ ( "movl %0, %%eax\n" 
+			  "movd %%eax, %%mm6\n"
+			  : :"g" (1) : "eax" );
+	/* Set up SSE rounding mode */
+	__asm__ ( "ldmxcsr %0\n" : : "X" (trunc_mxcsr) );
+
+	/* Load satlim into mm1 */
+	movd_m2r( satlim, mm1 );
+	punpcklwd_r2r( mm1, mm1 );
+	punpckldq_r2r( mm1, mm1 );
+restart:
+	i_quant_matf = i_inter_q_tblf[mquant];
+	flags = 0;
+	piqf = i_quant_matf;
+	saturated = 0;
+	nzflag = 0;
+	psrc = src;
+	pdst = dst;
+	for (i=0; i < coeff_count ; i+=4)
+	{
+
+		/* Load 4 words, unpack into mm2 and mm3 (with sign extension!)
+		 */
+
+		movq_m2r( *(mmx_t *)&psrc[0], mm2 );
+		movq_r2r( mm2, mm7 );
+		psraw_i2r( 16, mm7 );	/* Replicate sign bits mm2 in mm7 */
+		movq_r2r( mm2, mm3 );
+		punpcklwd_r2r( mm7, mm2 ); /* Unpack with sign extensions */
+		punpckhwd_r2r( mm7, mm3);
+
+		/* Multiply by sixteen... */
+		pslld_i2r( 4, mm2 );
+		pslld_i2r( 4, mm3 );
+		
+		/*
+		  Convert mm2 and mm3 to float's  in xmm2 and xmm3
+		 */
+		cvtpi2ps_r2r( mm2, xmm2 );
+		cvtpi2ps_r2r( mm3, xmm3 );
+		shufps_r2ri(  xmm3, xmm2, 0*1 + 1*4 + 0 * 16 + 1 * 64 );
+
+		/* "Divide" by multiplying by inverse quantisation
+		 and convert back to integers*/
+		mulps_m2r( *(mmx_t*)&piqf[0], xmm2 );
+		cvtps2pi_r2r( xmm2, mm2 );
+		shufps_r2ri( xmm2, xmm2, 2*1 + 3*4 + 0 * 16 + 1 * 64 );
+		cvtps2pi_r2r( xmm2, mm3 );
+
+		/* Convert the two pairs of double words into four words */
+		packssdw_r2r(  mm3, mm2);
+
+
+		/* Accumulate saturation... */
+		movq_r2r( mm2, mm4 );
+
+		pxor_r2r( mm5, mm5 );	// mm5 = -mm2
+		pcmpgtw_r2r( mm1, mm4 ); // mm4 = (mm2 > satlim) 
+		psubw_r2r( mm2, mm5 );
+		pcmpgtw_r2r( mm1, mm5 ); // mm5 = -mm2 > satlim
+		por_r2r( mm5, mm4 );  // mm4 = abs(mm2) > satlim
+		movq_r2r( mm4, mm5 );
+		psrlq_i2r( 32, mm5);
+		por_r2r( mm5, mm4 );
+
+		movd_m2r( saturated, mm5 ); // saturated |= mm4
+		por_r2r( mm4, mm5 );
+		movd_r2m( mm5, saturated );
+
+		/* Store and accumulate zero-ness */
+		movq_r2r( mm2, mm3 );
+		movq_r2m( mm2, *(mmx_t*)pdst );
+		psrlq_i2r( 32, mm3 );
+		por_r2r( mm3, mm2 );
+		movd_r2m( mm2, tmp );
+		flags |= tmp;
+				
+		piqf += 4;
+		pdst += 4;
+		psrc += 4;
+
+		if( (i & 63) == (63/4)*4 )
+		{
+
+			if( saturated )
+			{
+				int new_mquant = next_larger_quant( picture, mquant );
+				if( new_mquant != mquant )
+				{
+					mquant = new_mquant;
+					goto restart;
+				}
+				else
+				{
+					return quant_non_intra(picture, src, dst, mquant, 
+										   nonsat_mquant);
+				}
+			}
+
+			nzflag = (nzflag<<1) | !!flags;
+			flags = 0;
+			piqf = i_quant_matf;
+		}
+			
+	}
+	emms();
+
+	//nzflag = (nzflag<<1) | (!!flags);
+	return nzflag;
+}
 
 /*
  * The ordinary MMX version.  Due to the limited dynamic range afforded by working
@@ -315,3 +440,22 @@ int quant_non_intra_mmx(
 	return nzflag;
 }
 
+
+void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
+{
+  int i, val;
+  uint16_t *quant_mat = intra_q;
+
+  dst[0] = src[0] << (3-dc_prec);
+  for (i=1; i<64; i++)
+  {
+    val = (int)(src[i]*quant_mat[i]*mquant)/16;
+
+    /* mismatch control */
+    if ((val&1)==0 && val!=0)
+      val+= (val>0) ? -1 : 1;
+
+    /* saturation */
+    dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
+  }
+}

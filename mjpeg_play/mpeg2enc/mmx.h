@@ -186,14 +186,6 @@ typedef	union {
 #define	pxor_m2r(var, reg)	mmx_m2r (pxor, var, reg)
 #define	pxor_r2r(regs, regd)	mmx_r2r (pxor, regs, regd)
 
-/* 3DNow goodies */
-#define pfmul_m2r(var,reg) mmx_m2r( pfmul, var, reg )
-#define pfmul_r2r(regs,regd) mmx_r2r( pfmul, regs, regd )
-#define pfadd_m2r(var,reg) mmx_m2r( pfadd, var, reg )
-#define pfadd_r2r(regs,regd) mmx_r2r( pfadd, regs, regd )
-#define pf2id_r2r(regs,regd) mmx_r2r( pf2id, regs, regd )
-#define pi2fd_r2r(regs,regd) mmx_r2r( pi2fd, regs, regd )
-
 /* AMD MMX extensions - also available in intel SSE */
 
 
@@ -210,6 +202,25 @@ typedef	union {
 	__asm__ __volatile__ ("prefetch" #hint " %0" \
 			      : /* nothing */ \
 			      : "X" (mem))
+
+/* 3DNow goodies */
+#define pfmul_m2r(var,reg) mmx_m2r( pfmul, var, reg )
+#define pfmul_r2r(regs,regd) mmx_r2r( pfmul, regs, regd )
+#define pfadd_m2r(var,reg) mmx_m2r( pfadd, var, reg )
+#define pfadd_r2r(regs,regd) mmx_r2r( pfadd, regs, regd )
+#define pf2id_r2r(regs,regd) mmx_r2r( pf2id, regs, regd )
+#define pi2fd_r2r(regs,regd) mmx_r2r( pi2fd, regs, regd )
+
+/* SSE goodies */
+#define mulps_r2r( regs, regd) mmx_r2r( mulps, regs, regd )
+#define mulps_m2r( var, regd) mmx_m2r( mulps, var, regd )
+#define movups_m2r(var, reg) mmx_m2r( movups, var, reg )
+#define movaps_m2r(var, reg) mmx_m2r( movaps, var, reg )
+#define movups_r2m(reg, var) mmx_r2m( movups, reg, var )
+#define movaps_r2m(reg, var) mmx_r2m( movaps, reg, var )
+#define cvtps2pi_r2r(regs,regd) mmx_r2r( cvtps2pi, regs, regd )
+#define cvtpi2ps_r2r(regs,regd) mmx_r2r( cvtpi2ps, regs, regd )
+#define shufps_r2ri(regs, regd, imm) mmx_r2ri( shufps, regs, regd, imm )
 
 
 #define	maskmovq(regs,maskreg)		mmx_r2ri (maskmovq, regs, maskreg)
@@ -251,7 +262,7 @@ typedef	union {
 #define	psadbw_m2r(var,reg)		mmx_m2r (psadbw, var, reg)
 #define	psadbw_r2r(regs,regd)		mmx_r2r (psadbw, regs, regd)
 
-#define	pshufw_m2r(var,reg,imm)		mmx_m2ri(pshufw, var, reg, imm)
-#define	pshufw_r2r(regs,regd,imm)	mmx_r2ri(pshufw, regs, regd, imm)
+#define	pshufw_m2ri(var,reg,imm)	mmx_m2ri( pshufw, var, reg, imm)
+#define	pshufw_r2ri(regs,regd,imm)	mmx_r2ri( pshufw, regs, regd, imm)
 
 #define	sfence() __asm__ __volatile__ ("sfence\n\t")
