@@ -340,7 +340,7 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
                                       encoding.ininterlace_type);
     
       if (t_encoding_syntax_style != encoding_syntax_style)
-        printf(" Encoding Syntax set to %i \n", encoding_syntax_style);
+        printf(" Encoding Syntax set to %i \n", t_encoding_syntax_style);
     }
   
   use_yuvplay_pipe = t_use_yuvplay_pipe;
@@ -385,10 +385,8 @@ int i;
 /* Set the encoding syntax syle */
 void set_encoding_syntax(GtkWidget *widget, gpointer data)
 {
-int old_style;
 
-  old_style = encoding_syntax_style;
-  encoding_syntax_style = atoi ((char*)data);
+  t_encoding_syntax_style = atoi ((char*)data);
 }
 
 /* Here the fist page of the layout is created */
