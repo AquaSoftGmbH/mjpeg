@@ -33,7 +33,7 @@
 #include "mjpeg_logging.h"
 
 #ifdef HAVE_ALTIVEC
-extern int detect_altivec();
+extern int altivec_copy_v0();
 #endif
 
 #ifdef HAVE_X86CPU 
@@ -157,6 +157,62 @@ static int x86_accel (void)
     return caps;
 }
 #endif
+
+
+#ifdef HAVE_ALTIVEC
+/* AltiVec optimized library for MJPEG tools MPEG-1/2 Video Encoder
+ * Copyright (C) 2002  James Klicman <james@klicman.org>
+ *
+ * The altivec_detect() function has been moved here to workaround a bug in a
+ * released version of GCC (3.3.3). When -maltivec and -mabi=altivec are
+ * specified, the bug causes VRSAVE instructions at the beginning and end of
+ * functions which do not use AltiVec. GCC 3.3.3 also lacks support for
+ * '#pragma altivec_vrsave off' which would have been the preferred workaround.
+ *
+ * This AltiVec detection code relies on the operating system to provide an
+ * illegal instruction signal if AltiVec is not present. It is known to work
+ * on Mac OS X and Linux.
+ */
+
+static sigjmp_buf jmpbuf;
+
+static void sig_ill(int sig)
+{
+    siglongjmp(jmpbuf, 1);
+}
+
+int detect_altivec()
+{
+    volatile int detected = 0; /* volatile (modified after sigsetjmp) */
+    struct sigaction act, oact;
+    unsigned char copyvec[32];
+    int alignOffset = 15;
+
+    act.sa_handler = sig_ill;
+    sigemptyset(&act.sa_mask);
+    act.sa_flags = 0;
+
+    if (sigaction(SIGILL, &act, &oact)) {
+	perror("sigaction");
+	return 0;
+    }
+
+    if (sigsetjmp(jmpbuf, 1))
+	goto noAltiVec;
+
+    /* try to read an AltiVec register */ 
+    altivec_copy_v0();
+
+    detected = 1;
+
+noAltiVec:
+    if (sigaction(SIGILL, &oact, (struct sigaction *)0))
+	perror("sigaction");
+
+    return detected;
+}
+#endif
+
 
 int32_t cpu_accel (void)
 {

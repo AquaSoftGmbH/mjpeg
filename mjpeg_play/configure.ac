@@ -339,11 +339,18 @@ case $host_cpu in
     have_x86cpu=true
     PROGRAM_NOPIC="-fno-PIC"
     ;;
-  powerpc)
+  powerpc | powerpc64)
     AC_MSG_RESULT(PowerPC)
     AC_DEFINE(HAVE_PPCCPU,1, [Compiling for PowerPC CPU])
     have_ppccpu=true
-    PROGRAM_NOPIC="-mdynamic-no-pic"
+    case $host in
+      *-apple-darwin*)
+       PROGRAM_NOPIC="-mdynamic-no-pic" # dynamic-no-pic is an Apple gcc option
+       ;;
+      *)
+       PROGRAM_NOPIC=""
+       ;;
+    esac
     ;;
   *)
     AC_MSG_RESULT(unknown)
