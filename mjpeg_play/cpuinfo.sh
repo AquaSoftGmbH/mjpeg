@@ -172,6 +172,9 @@ esac
 cat > conftest.c << EOF
 int main(void) { return 0; }
 EOF
+if  test "$proc" = "athlon64" ; then
+	do_cc -march=$proc -mcpu=$proc || proc=athlon-xp
+fi
 
 if test "$proc" = "athlon-xp" || test "$proc" = "athlon-4" || test "$proc" = "athlon-tbird"; then
 	do_cc -march=$proc -mcpu=$proc || proc=athlon
