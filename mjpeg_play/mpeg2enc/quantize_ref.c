@@ -65,6 +65,14 @@
 void enable_altivec_quantization(struct QuantizerCalls *calls, int opt_mpeg1);
 #endif
 
+static __inline__ int intsamesign(int x, int y)
+{
+   if (x < 0) 
+      return(-abs(y));
+   else
+      return(abs(y));
+}
+
 /* non-linear quantization coefficient table */
 const uint8_t non_linear_mquant_table[32] =
 {
@@ -87,7 +95,6 @@ const uint8_t map_non_linear_mquant[113] =
 	26,26,26,26,26,26,27,27,27,27,27,27,27,27,28,28,28,28,28,28,28,29,
 	29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,31,31,31,31,31
 };
-
 
 
 /*
