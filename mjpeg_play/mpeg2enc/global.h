@@ -420,7 +420,7 @@ EXTERN int    fast_mc_threshold; /* Use a sliding threshold technique to
 									window size */
 EXTERN int mc_44_red;			/* Sub-mean [opulation reduction passes for 4x4 and 2x2 */
 EXTERN int mc_22_red;			/* Motion compensation stages						*/
-EXTERN int pred_ratectl;      /* Use new predictive rate controller  */
+
 EXTERN int vbv_buffer_code;   /* Code for size of VBV buffer (* 16 kbit) */
 EXTERN double vbv_buffer_size; /* Size code codes for... */
 EXTERN int constrparms; /* constrained parameters flag (MPEG-1 only) */
@@ -466,8 +466,7 @@ EXTERN int conceal_tab[3]; 	/* use concealment motion vectors (I,P,B) */
 
 /* Global flags controlling encoding behaviour */
 
-EXTERN int fix_mquant;    		/* use fixed quant, range 1 ... 31 */
-EXTERN int constant_bitrate;  	/* Original CBR encoding strategy  */
+EXTERN int quant_floor;    		/* quantisation floor [1..10] (0 for CBR) */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
 EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 

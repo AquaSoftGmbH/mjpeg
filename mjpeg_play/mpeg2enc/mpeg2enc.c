@@ -145,9 +145,9 @@ int main(argc,argv)
 
 		case 'q':
 			param_quant = atoi(optarg);
-			if(param_quant<1 || param_quant>31)
+			if(param_quant<1 || param_quant>16)
 			{
-				fprintf(stderr,"-q option requires arg 1 .. 31\n");
+				fprintf(stderr,"-q option requires arg 1 .. 16\n");
 				nerr++;
 			}
 			break;
@@ -234,11 +234,6 @@ int main(argc,argv)
 		nerr++;
 	}
 
-	if(param_bitrate!=0 && param_quant!=0)
-	{
-		fprintf(stderr,"-b and -q options are mutually exclusive\n");
-		nerr++;
-	}
 
 	if(optind!=argc)
 	{
@@ -260,7 +255,14 @@ int main(argc,argv)
 
 	if(nerr) Usage(argv[0]);
 
-	fix_mquant = param_quant;
+	if( param_quant )
+	{
+		quant_floor = param_quant;
+	}
+	else
+	{
+		quant_floor = 0;		/* Larger than max quantisation */
+	}
 	act_boost = (param_act_boost+1.0);
   
 
@@ -506,8 +508,6 @@ static void readparmfile()
 	int c;
 	static double ratetab[8]=
     {24000.0/1001.0,24.0,25.0,30000.0/1001.0,30.0,50.0,60000.0/1001.0,60.0};
-	extern int r,Xi,Xb,Xp,d0i,d0p,d0b; /* rate control */
-	extern double avg_act; /* rate control */
 
 	sprintf(id_string,"Converted by aq2mpeg v0.1");
 	strcpy(tplorg,"%8d"); /* Name of input files */
@@ -567,7 +567,6 @@ static void readparmfile()
 	fast_mc_threshold = param_threshold;
 	mc_44_red		= param_44_red;
 	mc_22_red		= param_22_red;
-	pred_ratectl       = param_pred_ratectl;
 	video_buffer_size = param_video_buffer_size * 1024 * 8;
 	
 
@@ -617,16 +616,6 @@ static void readparmfile()
 	opt_repeatfirst     = 0;
 	opt_prog_frame      = prog_seq;
 
-	P       = 0;
-	r       = 0;
-	avg_act = 0;
-	Xi      = 0;
-	Xp      = 0;
-	Xb      = 0;
-	d0i     = 0;
-	d0p     = 0;
-	d0b     = 0;
-  
 	if (N<1)
 		error("N must be positive");
 	if (M<1)
