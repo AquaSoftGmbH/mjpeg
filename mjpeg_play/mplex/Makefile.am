@@ -71,7 +71,6 @@ libmplex2_la_CXXFLAGS = $(ZALPHA_FLAGS)
 mplex_SOURCES = main.cpp 
 
 mplex_LDADD = \
-	$(top_builddir)/utils/libmjpegutils.a \
 	$(top_builddir)/mplex/libmplex2.la \
 	@LIBGETOPT_LIB@ $(LIBM_LIBS) 
 
