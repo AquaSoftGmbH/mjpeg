@@ -84,7 +84,11 @@ typedef struct
   int show_fake_mode; /* Signals the lib that fake frames should be shown with frame size set to 1 byte
 			 (and not hidden in special handling) */
   int INFO_written; /* Internal: Signals movtarlib that the INFO file has been written */
+#ifdef	NEVER
   fpos_t writepos; /*to be able to measure the bytes the application has written */
+#else
+  size_t   writepos;
+#endif
 
   gint32 flags; /* This stores all the given flags that were passed in movtar_open */
 } movtar_t;

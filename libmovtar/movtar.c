@@ -1290,7 +1290,11 @@ int movtar_write_frame_init(movtar_t *movtar)
 int movtar_write_frame_end(movtar_t *movtar)
 {
   struct tarinfotype frameinfo, frcopyinfo;
+#ifdef	NEVER
   fpos_t newpos, filesize;
+#else
+  size_t newpos, filesize;
+#endif
   gchar jpegname[255], jpegcopyname[255];
   movtar_video_frag_t video_frag;
   
