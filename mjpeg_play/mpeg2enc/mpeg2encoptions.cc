@@ -144,8 +144,7 @@ int MPEG2EncOptions::InferStreamDataParams( const MPEG2EncInVidParams &strm)
 	if( frame_rate != 0 )
 	{
 		if( strm.frame_rate_code != frame_rate && 
-			strm.frame_rate_code > 0 && 
-			strm.frame_rate_code < mpeg_num_framerates )
+            mpeg_valid_framerate_code(strm.frame_rate_code) )
 		{
 			mjpeg_warn( "Specified display frame-rate %3.2f will over-ride", 
 						Y4M_RATIO_DBL(mpeg_framerate(frame_rate)));
@@ -261,11 +260,10 @@ int MPEG2EncOptions::CheckBasicConstraints()
     }
 
 
-	if(  aspect_ratio > mpeg_num_aspect_ratios[mpeg-1] ) 
+	if(  !mpeg_valid_aspect_code(mpeg, aspect_ratio) )
 	{
-		mjpeg_error("For MPEG-%d aspect ratio code  %d > %d illegal", 
-					mpeg, aspect_ratio, 
-					mpeg_num_aspect_ratios[mpeg-1]);
+		mjpeg_error("For MPEG-%d, aspect ratio code  %d is illegal", 
+					mpeg, aspect_ratio);
 		++nerr;
 	}
 		

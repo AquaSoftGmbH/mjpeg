@@ -59,7 +59,7 @@ void VideoStream::ScanFirstSeqHeader()
 		exit (1);
     }
 
-	if (picture_rate >0 && picture_rate <= mpeg_num_framerates)
+	if (mpeg_valid_framerate_code(picture_rate))
     {
 		frame_rate = Y4M_RATIO_DBL(mpeg_framerate(picture_rate));
 	}
@@ -373,7 +373,7 @@ void VideoStream::OutputSeqhdrInfo ()
 
     mjpeg_info ("Frame width     : %u",horizontal_size);
     mjpeg_info ("Frame height    : %u",vertical_size);
-	if( aspect_ratio <= mpeg_num_aspect_ratios[muxinto.mpeg-1] )
+	if (mpeg_valid_aspect_code(muxinto.mpeg, aspect_ratio))
 		str =  mpeg_aspect_code_definition(muxinto.mpeg,aspect_ratio);
 	else
 		str = "forbidden";
@@ -382,7 +382,7 @@ void VideoStream::OutputSeqhdrInfo ()
 
     if (picture_rate == 0)
 		mjpeg_info( "Picture rate    : forbidden");
-    else if (picture_rate <= mpeg_num_framerates)
+    else if (mpeg_valid_framerate_code(picture_rate))
 		mjpeg_info( "Picture rate    : %2.3f frames/sec",
 					Y4M_RATIO_DBL(mpeg_framerate(picture_rate)) );
     else

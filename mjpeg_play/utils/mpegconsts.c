@@ -41,7 +41,7 @@ mpeg_framerates[] = {
 
 
 #define MPEG_NUM_RATES (sizeof(mpeg_framerates)/sizeof(mpeg_framerates[0]))
-const mpeg_framerate_code_t mpeg_num_framerates = MPEG_NUM_RATES;
+static const mpeg_framerate_code_t mpeg_num_framerates = MPEG_NUM_RATES;
 
 static const char *
 framerate_definitions[MPEG_NUM_RATES] =
@@ -60,6 +60,7 @@ framerate_definitions[MPEG_NUM_RATES] =
 
 static const char *mpeg1_aspect_ratio_definitions[] =
 {
+    "illegal",
 	"1:1 (square pixels)",
 	"1:0.6735",
 	"1:0.7031 (16:9 Anamorphic PAL/SECAM for 720x578/352x288 images)",
@@ -78,6 +79,7 @@ static const char *mpeg1_aspect_ratio_definitions[] =
 
 static const y4m_ratio_t mpeg1_aspect_ratios[] =
 {
+    Y4M_SAR_UNKNOWN,
 	Y4M_SAR_MPEG1_1,
 	Y4M_SAR_MPEG1_2,
 	Y4M_SAR_MPEG1_3, /* Anamorphic 16:9 PAL */
@@ -96,6 +98,7 @@ static const y4m_ratio_t mpeg1_aspect_ratios[] =
 
 static const char *mpeg2_aspect_ratio_definitions[] = 
 {
+    "illegal",
 	"1:1 pixels",
 	"4:3 display",
 	"16:9 display",
@@ -105,6 +108,7 @@ static const char *mpeg2_aspect_ratio_definitions[] =
 
 static const y4m_ratio_t mpeg2_aspect_ratios[] =
 {
+    Y4M_DAR_UNKNOWN,
 	Y4M_DAR_MPEG2_1,
 	Y4M_DAR_MPEG2_2,
  	Y4M_DAR_MPEG2_3,
@@ -123,11 +127,23 @@ static const y4m_ratio_t *mpeg_aspect_ratios[2] =
 	mpeg2_aspect_ratios
 };
 
-const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] = 
+static const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] = 
 {
   sizeof(mpeg1_aspect_ratios)/sizeof(mpeg1_aspect_ratios[0]),
   sizeof(mpeg2_aspect_ratios)/sizeof(mpeg2_aspect_ratios[0])
 };
+
+
+/*
+ * Is code a valid MPEG framerate code?
+ */
+
+int
+mpeg_valid_framerate_code( mpeg_framerate_code_t code )
+{
+    return ((code > 0) && (code < mpeg_num_framerates)) ? 1 : 0;
+}
+
 
 /*
  * Convert MPEG frame-rate code to corresponding frame-rate
@@ -136,10 +152,10 @@ const mpeg_aspect_code_t mpeg_num_aspect_ratios[2] =
 y4m_ratio_t
 mpeg_framerate( mpeg_framerate_code_t code )
 {
-	if( code == 0 || code > mpeg_num_framerates )
-		return y4m_fps_UNKNOWN;
-	else
+    if ((code > 0) && (code < mpeg_num_framerates))
 		return mpeg_framerates[code];
+    else
+		return y4m_fps_UNKNOWN;
 }
 
 /*
@@ -153,6 +169,7 @@ mpeg_framerate_code( y4m_ratio_t framerate )
 	mpeg_framerate_code_t i;
   
 	y4m_ratio_reduce(&framerate);
+    /* start at '1', because 0 is unknown/illegal */
 	for (i = 1; i < mpeg_num_framerates; ++i) {
 		if (Y4M_RATIO_EQL(framerate, mpeg_framerates[i]))
 			return i;
@@ -172,6 +189,7 @@ mpeg_conform_framerate( double fps )
 	y4m_ratio_t result;
 
 	/* try to match it to a standard frame rate */
+    /* (start at '1', because 0 is unknown/illegal) */
 	for (i = 1; i < mpeg_num_framerates; i++) 
 	{
 		double deviation = 1.0 - (Y4M_RATIO_DBL(mpeg_framerates[i]) / fps);
@@ -189,6 +207,20 @@ mpeg_conform_framerate( double fps )
   
 
 /*
+ * Is code a valid MPEG aspect-ratio code?
+ */
+
+int
+mpeg_valid_aspect_code( int version, mpeg_framerate_code_t c )
+{
+	if ((version == 1) || (version == 2))
+        return ((c > 0) && (c < mpeg_num_aspect_ratios[version-1])) ? 1 : 0;
+    else
+        return 0;
+}
+
+
+/*
  * Convert MPEG aspect-ratio code to corresponding aspect-ratio
  */
 
@@ -196,17 +228,18 @@ y4m_ratio_t
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code )
 {
 	y4m_ratio_t ratio;
-	if( mpeg_version < 1 || mpeg_version > 2 )
-		return y4m_sar_UNKNOWN;
-	if( code == 0 || code > mpeg_num_aspect_ratios[mpeg_version-1] )
-		return y4m_sar_UNKNOWN;
-	else
+    if ((mpeg_version >= 1) && (mpeg_version <= 2) &&
+        (code > 0) && (code < mpeg_num_aspect_ratios[mpeg_version-1]))
 	{
-		ratio = mpeg_aspect_ratios[mpeg_version-1][code-1];
+		ratio = mpeg_aspect_ratios[mpeg_version-1][code];
 		y4m_ratio_reduce(&ratio);
 		return ratio;
 	}
+    else
+		return y4m_sar_UNKNOWN;
 }
+
+
 
 /*
  * Look-up corresponding MPEG aspect ratio code given an exact aspect ratio.
@@ -226,9 +259,10 @@ mpeg_frame_aspect_code( int mpeg_version, y4m_ratio_t aspect_ratio )
 	y4m_ratio_reduce( &red_ratio );
 	if( mpeg_version < 1 || mpeg_version > 2 )
 		return 0;
+    /* (start at '1', because 0 is unknown/illegal) */
 	for( i = 1; i < mpeg_num_aspect_ratios[mpeg_version-1]; ++i )
 	{
-		y4m_ratio_t red_entry =  mpeg_aspect_ratios[mpeg_version-1][i-1];
+		y4m_ratio_t red_entry =  mpeg_aspect_ratios[mpeg_version-1][i];
 		y4m_ratio_reduce( &red_entry );
 		if(  Y4M_RATIO_EQL( red_entry, red_ratio) )
 			return i;
@@ -298,10 +332,10 @@ mpeg_guess_mpeg_aspect_code(int mpeg_version, y4m_ratio_t sampleaspect,
 				(double)(sampleaspect.n * frame_width) /
 				(double)(sampleaspect.d * frame_height);
 			/* start at '2'... */
-			for (i = 2; i <= (int)(mpeg_num_aspect_ratios[mpeg_version-1]); i++) 
+			for (i = 2; i < (int)(mpeg_num_aspect_ratios[mpeg_version-1]); i++) 
 			{
 				double ratio = 
-					true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i-1]);
+					true_far / Y4M_RATIO_DBL(mpeg_aspect_ratios[mpeg_version-1][i]);
 				if ( (ratio > (1.0 - GUESS_ASPECT_TOLERANCE)) &&
 					 (ratio < (1.0 + GUESS_ASPECT_TOLERANCE)) )
 					return i;
@@ -349,8 +383,8 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 		}
 		break;
 	case 2:
-		/* MPEG-2 codes turn into Frame Aspect Ratios, though not exactly the
-		   FAR's used in practice.  For common/standard frame sizes, we provide
+		/* MPEG-2 codes turn into Display Aspect Ratios, though not exactly the
+		   DAR's used in practice.  For common/standard frame sizes, we provide
 		   the original SAR; otherwise, we say we don't know. */
 		if (code == 1) 
 		{
@@ -359,7 +393,7 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 		else if ((code >= 2) && (code <= 4))
 		{
             return y4m_guess_sar(frame_width, frame_height,
-                                 mpeg2_aspect_ratios[code-1]);
+                                 mpeg2_aspect_ratios[code]);
 		} 
 		else
 		{
@@ -403,10 +437,10 @@ mpeg_aspect_code_definition( int mpeg_version,  mpeg_aspect_code_t code  )
 	if( mpeg_version < 1 || mpeg_version > 2 )
 		return "UNDEFINED: illegal MPEG version";
 	
-	if( code < 1 || code >  mpeg_num_aspect_ratios[mpeg_version-1] )
+	if( code < 1 || code >=  mpeg_num_aspect_ratios[mpeg_version-1] )
 		return "UNDEFINED: illegal aspect ratio code";
 
-	return aspect_ratio_definitions[mpeg_version-1][code-1];
+	return aspect_ratio_definitions[mpeg_version-1][code];
 }
 
 

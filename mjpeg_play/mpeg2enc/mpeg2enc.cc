@@ -340,7 +340,7 @@ void MPEG2EncCmdLineOptions::DisplayFrameRates(void)
 {
  	unsigned int i;
 	printf("Frame-rate codes:\n");
-	for( i = 0; i < mpeg_num_framerates; ++i )
+	for( i = 1; mpeg_valid_framerate_code(i); ++i )
 	{
 		printf( "%2d - %s\n", i, mpeg_framerate_code_definition(i));
 	}
@@ -351,7 +351,7 @@ void MPEG2EncCmdLineOptions::DisplayAspectRatios(void)
 {
  	unsigned int i;
 	printf("\nDisplay aspect ratio codes:\n");
-	for( i = 1; i <= mpeg_num_aspect_ratios[1]; ++i )
+	for( i = 1; mpeg_valid_aspect_code(2, i); ++i )
 	{
 		printf( "%2d - %s\n", i, mpeg_aspect_code_definition(2,i));
 	}
@@ -732,11 +732,9 @@ int MPEG2EncCmdLineOptions::SetFromCmdLine( int argc,	char *argv[] )
 			frame_rate = atoi(optarg);
             if( frame_rate == 0 )
 				DisplayFrameRates();
-			if( frame_rate < 0 || 
-				frame_rate >= mpeg_num_framerates)
+			if( !mpeg_valid_framerate_code(frame_rate) )
 			{
-				mjpeg_error( "-F option must be [0..%d]", 
-						 mpeg_num_framerates-1);
+				mjpeg_error( "illegal -F value (use -F 0 to list options)" );
 				++nerr;
 			}
 			break;

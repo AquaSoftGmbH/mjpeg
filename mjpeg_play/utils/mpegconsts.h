@@ -31,11 +31,15 @@ typedef unsigned int mpeg_framerate_code_t;
 typedef unsigned int mpeg_aspect_code_t;
 
 #ifdef __cplusplus
-extern "C" {
+#define START_CPP_WRAP extern "C" {
+#define END_CPP_WRAP };
+#else
+#define START_CPP_WRAP
+#define END_CPP_WRAP
 #endif
 
-extern const mpeg_framerate_code_t mpeg_num_framerates;
-extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
+START_CPP_WRAP
+
 
 /*
  * Convert MPEG frame-rate code to corresponding frame-rate
@@ -44,6 +48,15 @@ extern const mpeg_aspect_code_t mpeg_num_aspect_ratios[2];
 
 y4m_ratio_t
 mpeg_framerate( mpeg_framerate_code_t code );
+
+
+/*
+ * Is code a valid MPEG frame-rate code?
+ * Return 1 if true; 0 otherwise.
+ */
+
+int
+mpeg_valid_framerate_code( mpeg_framerate_code_t code );
 
 
 /*
@@ -77,6 +90,16 @@ mpeg_conform_framerate( double fps );
 
 y4m_ratio_t
 mpeg_aspect_ratio( int mpeg_version,  mpeg_aspect_code_t code );
+
+
+/*
+ * Is code a valid MPEG(1,2) aspect-ratio code?
+ * Return 1 if true; 0 otherwise.
+ */
+
+int
+mpeg_valid_aspect_code( int mpeg_version, mpeg_aspect_code_t code );
+
 
 /*
  * Look-up MPEG aspect ratio code for an aspect ratio - tolerance
@@ -140,10 +163,7 @@ mpeg_guess_sample_aspect_ratio(int mpeg_version,
 			       int frame_width, int frame_height);
 
 
-#ifdef __cplusplus
-};
-#endif
-
+END_CPP_WRAP
 
 
 #endif /* __MPEGCONSTS_H__ */
