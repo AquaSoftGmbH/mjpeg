@@ -54,6 +54,7 @@ int verbose = 1;
 
 /* protoypes */
 static void print_usage(char *progname);
+void copy_area(struct area_s , int , int , uint8_t *frame[], int );
 void process_commandline(int argc, char *argv[], struct area_s *inarea, 
  int *darker, int *copy_pixel, struct color_yuv *coloryuv, int *average_pixel);
 void fillarea(char area[20], struct area_s *inarea);
