@@ -310,7 +310,12 @@ This flag deactivates the use of the 'alternate' macroblock scan pattern for MPE
 .PP
 .BR --no-dualprime-mpeg2
 .PP
-MPEG-2 supports a special motion compensation mode for P-frame only streams that can somewhat improve compression.  A number of software plays do not support this mode (which means they're not really MPEG-2 or even DVD players!).  If you want to use such players (e.g. ogle) you need to turn on this flag.
+MPEG-2 supports a special motion compensation mode for P-frame only streams 
+that can somewhat improve compression.  A number of software players do not 
+support this mode (which means they're not really MPEG-2 or even DVD 
+players!).  If you want to use such players (e.g. ogle) you need to turn 
+on this flag.   Surprisingly at least 1 hardware/set-top player  is known
+to be allergic to DP (Dual Prime) being used.
 .PP
 .BR -z|--playback-field-order b|t
 .PP
