@@ -362,6 +362,8 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 			quant = 8;
 		if( svcd_scan_data == -1 )
 			svcd_scan_data = 1;
+		if (video_buffer_size == 0)
+			video_buffer_size = 230;
 		if( min_GOP_size == -1 )
             		min_GOP_size = 9;
         	seq_hdr_every_gop = 1;
@@ -374,9 +376,11 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 	case MPEG_FORMAT_VCD_STILL :
 		mjpeg_info( "Selecting VCD Stills output profile");
 		mpeg = 1;
-		/* We choose a generous nominal bit-rate as its VBR anyway
-		   there's only one frame per sequence ;-). It *is* too small
-		   to fill the frame-buffer in less than one PAL/NTSC frame
+		quant = 0;	/* We want to try and hit our size target */
+
+		/* We choose a generous nominal bit-rate as there's only 
+		   one frame per sequence ;-).  It *is* too small to fill 
+		   the frame-buffer in less than one PAL/NTSC frame
 		   period though...*/
 		bitrate = 8000000;
 
@@ -420,8 +424,6 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 			mjpeg_error("VCD normal resolution stills must be 352x288 (PAL) or 352x240 (NTSC)");
 			mjpeg_error_exit1( "VCD high resolution stills must be 704x576 (PAL) or 704x480 (NTSC)");
 		}
-		quant = 0;		/* We want to try and hit our size target */
-		
 		seq_hdr_every_gop = 1;
 		seq_end_every_gop = 1;
 		min_GOP_size = 1;
@@ -431,11 +433,13 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 	case MPEG_FORMAT_SVCD_STILL :
 		mjpeg_info( "Selecting SVCD Stills output profile");
 		mpeg = 2;
-		/* We choose a generous nominal bit-rate as its VBR anyway
-		   there's only one frame per sequence ;-). It *is* too small
-		   to fill the frame-buffer in less than one PAL/NTSC frame
-		   period though...*/
+		quant = 0;	/* We want to try and hit our size target */
 
+		/* We choose a generous nominal bitrate as there's only one 
+		   frame per sequence ;-). It *is* too small to fill the 
+		   frame-buffer in less than one PAL/NTSC frame 
+		   period though...
+		*/
 		bitrate = 2500000;
 		video_buffer_size = 230;
 		vbv_buffer_still_size = 220*1024;
