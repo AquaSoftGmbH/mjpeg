@@ -195,9 +195,6 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
 	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
 
-	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d", 
-				 frames_to_buffer, last_buffered_AU );
-
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
@@ -207,6 +204,14 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
         bs.SeekFwdBits( skip );
 		prev_offset = AU_start;
 		AU_start = bs.bitcount();
+        if( AU_start - prev_offset != access_unit.length*8 )
+        {
+            mjpeg_warn("Last sector MPEG audio stream %02x appears incomplete",
+                       stream_id
+                       );
+            exit(1);
+            break;
+        }
 
 		/* Check we have reached the end of have  another catenated 
 		   stream to process before finishing ... */
@@ -265,6 +270,7 @@ void MPAStream::FillAUbuffer(unsigned int frames_to_buffer )
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);
+
 }
 
 
@@ -294,7 +300,7 @@ void MPAStream::OutputHdrInfo ()
     bitrate = mpa_bitrates_kbps[version_id][layer][bit_rate_code];
 
 
-	mjpeg_info("AUDIO STREAM:");
+	mjpeg_info("MPEG AUDIO STREAM: %02x", stream_id);
 	mjpeg_info("Audio version  : %s", mpa_audio_version[version_id]);
     mjpeg_info("Layer          : %8u",layer+1);
 

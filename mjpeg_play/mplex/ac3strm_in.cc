@@ -160,7 +160,7 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
     IBitStream undo;
     static int header_skip = 5;        // Initially skipped past  5 bytes of header 
     int skip;
-    bool bad_last_frame = false;
+
 	while( !bs.eos() 
            && decoding_order < last_buffered_AU 
            && !muxinto.AfterMaxPTS(access_unit.PTS) )
@@ -171,7 +171,8 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		AU_start = bs.bitcount();
         if( AU_start - prev_offset != access_unit.length*8 )
         {
-            bad_last_frame = true;
+            mjpeg_warn("Last sector AC3 audio stream %02x appears incomplete",
+                       stream_id);
             break;
         }
 
@@ -243,10 +244,6 @@ void AC3Stream::FillAUbuffer(unsigned int frames_to_buffer )
 		}
 
 
-    }
-    if( bad_last_frame )
-    {
-        mjpeg_error_exit1( "Last AC3 frame ended prematurely!\n" );
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || muxinto.AfterMaxPTS(access_unit.PTS);

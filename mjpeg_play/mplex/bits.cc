@@ -117,7 +117,8 @@ void BitStreamBuffering::SetBufSize( unsigned int new_buf_size)
 uint8_t *BitStreamBuffering::StartAppendPoint( unsigned int to_append )
 {
     unsigned int resize_size = bfr_size;
-    while( bfr_size - buffered < to_append )
+    assert( resize_size != 0 );
+    while( resize_size - buffered < to_append )
     {
         resize_size *= 2;
     }
@@ -309,6 +310,7 @@ bool IBitStream::SeekFwdBits( unsigned int bytes_to_seek_fwd)
     }
     
     eobs = ( req_byteidx >= buffered );
+    bitreadpos += bytes_to_seek_fwd*8;
     byteidx = req_byteidx;
 }
 

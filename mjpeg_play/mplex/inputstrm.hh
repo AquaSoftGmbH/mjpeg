@@ -57,6 +57,7 @@ public:
 		}
 
     bitcount_t stream_length;
+
 protected:
 	off_t      file_length;
     IBitStream &bs;
@@ -209,7 +210,7 @@ public:
 
 	virtual unsigned int ReadPacketPayload(uint8_t *dst, unsigned int to_read);
 
-
+    bitcount_t bytes_read;
 protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;

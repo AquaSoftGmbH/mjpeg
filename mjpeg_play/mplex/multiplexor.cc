@@ -587,9 +587,9 @@ void Multiplexor::Init()
 	   
 	 
 	dmux_rate = static_cast<int>(1.015 * nominal_rate_sum);
-	dmux_rate = (dmux_rate/50 + 25)*50;
+	dmux_rate = (dmux_rate/50 + 25)*50/8;
 	
-	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d",dmux_rate );
+	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d", dmux_rate*8 );
 	if( data_rate != 0 )
 		mjpeg_info ("target data-rate specified               : %7d", data_rate*8 );
 
@@ -1108,7 +1108,7 @@ void Multiplexor::Multiplex()
 		clockticks earliest;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
-            /* DEBUG
+            /*
                 mjpeg_info("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
                            (*str)->stream_id,
                            current_SCR /300,
