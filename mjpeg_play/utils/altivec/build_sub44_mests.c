@@ -26,6 +26,7 @@
 #include "../fastintfns.h"
 #include "../mjpeg_logging.h"
 #include <math.h>
+#include <stdlib.h>
 
 /* #define AMBER_ENABLE */
 /* #define AMBER_MAX_TRACES 10 */
