@@ -573,7 +573,7 @@ int readframe(int numframe, unsigned char *frame[])
                                                          1] +
                  p[output_width] + p[output_width + 1]);
             f = f + ((*p) << 3) + ((*p) << 4);	/* 8 + (8 + 16) = 32 */
-            *bp = (f + 8) >> (4 + 1);
+            *bp = (f + 16) >> (4 + 1);
             ++bp;
          }
       } else if (param_noise_filt == 2) {
@@ -585,7 +585,7 @@ int readframe(int numframe, unsigned char *frame[])
                  p[output_width] + p[output_width + 1]);
 
             f = f + ((*p) << 3);
-            *bp = (f + 16) >> (3 + 1);
+            *bp = (f + 8) >> (3 + 1);
             ++bp;
          }
       } else {
