@@ -176,8 +176,16 @@ char val[LONGOPT];
   if (tempenco.forcevcd[0] == '-')
     gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON(button_force_vcd),TRUE);
 
+  /* Video Options */
+
   sprintf(val,"%i",tempenco.bitrate);
   gtk_entry_set_text(GTK_ENTRY(combo_entry_videobitrate),val);
+
+  if (tempenco.qualityfactor != 0)
+    sprintf(val,"%i",tempenco.qualityfactor);
+  else
+    sprintf(val,"disabled");
+  gtk_entry_set_text(GTK_ENTRY(combo_entry_qualityfa),val);
 
   if (tempenco.minGop == 12)
     gtk_entry_set_text(GTK_ENTRY(combo_entry_minGop),"default 12");
