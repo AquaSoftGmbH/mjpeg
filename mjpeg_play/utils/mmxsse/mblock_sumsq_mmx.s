@@ -58,8 +58,6 @@ sumsq_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -70,14 +68,14 @@ sumsq_mmx:
 
     pxor      mm5, mm5      ; sum
 	test      edi, edi     ; h = 0?
-	jle       near d2exit
+	jle       d2exit
 
 	pxor	  mm7, mm7     ; get zeros i mm7
 
 	test      eax, eax     ; hx != 0?
-	jne       near d2is10
+	jne       d2is10
 	test      edx, edx     ; hy != 0?
-	jne       near d2is10
+	jne       d2is10
 
 	mov       eax, [ebp+8]
     mov       ebx, [ebp+12]
@@ -131,15 +129,15 @@ d2top00:
 	add       ebx, esi
 	dec       edi
 	jg        d2top00
-        jmp       near d2exit
+        jmp       d2exit
 	;jmp         d2exit changes made because of problems with nasm 0.98.23
 
 
 d2is10:
 	test      eax, eax
-	je        near d2is01
+	je        d2is01
 	test      edx, edx
-	jne       near d2is01
+	jne       d2is01
 
  
 	mov       eax, [ebp+8] ; blk1
@@ -216,17 +214,17 @@ d2top10:
 	add       eax, esi
 	add       ebx, esi
 	dec       edi
-	jg        near d2top10
+	jg        d2top10
 	
 	
-	jmp       near d2exit
+	jmp       d2exit
 	;jmp       d2exit   changes made because of problems with nasm 0.98.23
 
 d2is01:
 	test      eax, eax
-	jne       near d2is11
+	jne       d2is11
 	test      edx, edx
-	je        near d2is11
+	je        d2is11
 
 	mov       eax, [ebp+8] ; blk1
 	mov       edx, [ebp+12] ; blk2
@@ -303,8 +301,8 @@ d2top01:
 	add       edx, esi    ; edx = edx + lx
 	add       ebx, esi    ; ebx = ebx + lx
 	dec       edi
-	jg        near d2top01
-	jmp       near d2exit
+	jg        d2top01
+	jmp       d2exit
 	;jmp       d2exit    changes made because of problems with nasm 0.98.23
 
 d2is11:
@@ -411,7 +409,7 @@ d2top11:
 	add       ebx, esi   
 	add       edx, esi
 	dec       edi
-	jg        near d2top11
+	jg        d2top11
 
 
 d2exit:
@@ -423,8 +421,6 @@ d2exit:
 
 	pop edi
 	pop esi
-	pop edx
-	pop ecx
 	pop ebx
 
 	pop ebp			; restore stack pointer
@@ -457,8 +453,6 @@ sumsq_sub22_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -467,7 +461,7 @@ sumsq_sub22_mmx:
 
     pxor      mm5, mm5      ; sum
 	test      edi, edi     ; h = 0?
-	jle       near d2exit
+	jle       d2exit
 
 	pxor	  mm7, mm7     ; get zeros i mm7
 
@@ -527,8 +521,6 @@ bsumsq_sub22_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -537,7 +529,7 @@ bsumsq_sub22_mmx:
 
     pxor      mm5, mm5      ; sum
 	test      edi, edi     ; h = 0?
-	jle       near d2exit
+	jle       d2exit
 
 	pxor	  mm7, mm7     ; get zeros i mm7
 
@@ -598,10 +590,7 @@ global	variance_mmx:function
 variance_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
-	push eax
 	push ebx
-	push ecx
-	push edx
 
 	mov     eax, 0              ; col offset...
 	mov		edx, [ebp+16]       ; lx
@@ -677,10 +666,7 @@ var8_8:
 	mov			[eax], ebx
 	mov			[edx], ecx
 
-	pop edx
-	pop ecx
 	pop ebx
-	pop eax
 		
 	pop ebp			; restore stack pointer
 

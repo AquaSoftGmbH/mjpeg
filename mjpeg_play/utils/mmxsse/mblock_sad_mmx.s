@@ -54,9 +54,7 @@ sad_00_mmx:
 	mov ebp, esp
 
 	push ebx		; Saves registers (called saves convention in
-	push ecx		; x86 GCC it seems)
-	push edx		; 
-	push esi
+	push esi		; x86 GCC it seems)
 	push edi
 		
 	pxor mm0, mm0				; zero acculumators
@@ -107,7 +105,7 @@ nextrowmm00:
 
 
 	sub  ecx,1
-	jnz near nextrowmm00
+	jnz nextrowmm00
 		
 returnmm00:	
 
@@ -125,8 +123,6 @@ returnmm00:
 
 	pop edi
 	pop esi	
-	pop edx	
-	pop ecx	
 	pop ebx	
 
 	pop ebp	
@@ -189,9 +185,7 @@ sad_01_mmx:
 	mov ebp, esp	; so that we can do this
 
 	push ebx		; Saves registers (called saves convention in
-	push ecx		; x86 GCC it seems)
-	push edx		; 
-	push esi
+	push esi		; x86 GCC it seems)
 	push edi
 		
 	pxor mm0, mm0				; zero acculumators
@@ -348,7 +342,7 @@ nextrowmm01:
 			
 	sub  ecx,1
 	test ecx, ecx		; check rowsleft
-	jnz near nextrowmm01
+	jnz nextrowmm01
 		
 
 		;; Sum the Accumulators
@@ -363,8 +357,6 @@ nextrowmm01:
 
 	pop edi
 	pop esi	
-	pop edx			
-	pop ecx			
 	pop ebx			
 
 	pop ebp			; restore stack pointer
@@ -428,9 +420,7 @@ sad_10_mmx:
 	mov ebp, esp	; so that we can do this
 
 	push ebx		; Saves registers (called saves convention in
-	push ecx		; x86 GCC it seems)
-	push edx		; 
-	push esi
+	push esi		; x86 GCC it seems)
 	push edi
 		
 	pxor mm0, mm0				; zero acculumators
@@ -590,7 +580,7 @@ nextrowmm10:
 
 	sub  ecx,1
 	test ecx, ecx		; check rowsleft
-	jnz near nextrowmm10
+	jnz nextrowmm10
 		
 		;; Sum the Accumulators
 	movq  mm4, mm0
@@ -605,8 +595,6 @@ nextrowmm10:
 		
 	pop edi
 	pop esi	
-	pop edx			
-	pop ecx			
 	pop ebx			
 
 	pop ebp			; restore stack pointer
@@ -665,9 +653,7 @@ sad_11_mmx:
 	mov ebp, esp	; so that we can do this
 
 	push ebx		; Saves registers (called saves convention in
-	push ecx		; x86 GCC it seems)
-	push edx		; 
-	push esi
+	push esi		; x86 GCC it seems)
 	push edi
 		
 	pxor mm0, mm0				; zero acculumators
@@ -859,7 +845,7 @@ nextrowmm11:
 
 	sub  ecx,1
 	test ecx, ecx		; check rowsleft
-	jnz near nextrowmm11
+	jnz nextrowmm11
 		
 		;; Sum the Accumulators
 	movq  mm4, mm0
@@ -873,8 +859,6 @@ nextrowmm11:
 		
 	pop edi
 	pop esi	
-	pop edx			
-	pop ecx			
 	pop ebx			
 
 	pop ebp			; restore stack pointer
@@ -908,8 +892,7 @@ sad_sub22_mmx:
 	mov ebp, esp	; so that we can do this
 
 	push ebx		; Saves registers (called saves convention in
-	push ecx		; x86 GCC it seems)
-	push edx		; 
+				; x86 GCC it seems)
 
 	pxor mm0, mm0				; zero acculumators
 	pxor mm6, mm6
@@ -974,8 +957,6 @@ nextrow:
 	movd eax, mm0		; store return value
 	and  eax, 0xffff
 	
-	pop edx			; pop pop
-	pop ecx			; fizz fizz
 	pop ebx			; ia86 needs a fizz instruction
 
 	pop ebp			; restore stack pointer
@@ -1011,8 +992,6 @@ sad_sub44_mmx:
 	mov ebp, esp		; so that we can do this
 
 	push ebx
-	push ecx
-	push edx
 	push esi     
 
 	pxor mm0, mm0		; zero acculumator
@@ -1084,8 +1063,6 @@ nextrowqd:
 ;	or   eax, ebx
 		
 	pop esi
-	pop edx
-	pop ecx
 	pop ebx
 
 	pop ebp			; restore stack pointer

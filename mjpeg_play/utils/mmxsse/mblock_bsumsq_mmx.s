@@ -65,8 +65,6 @@ bsumsq_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -103,7 +101,7 @@ bsumsq_mmx:
 
 	mov       edi, h
 	test      edi, edi  ; h = 0?
-	jle       near bsumsqexit
+	jle       bsumsqexit
 
 	pxor	  mm7, mm7
 	pxor	  mm6, mm6
@@ -303,7 +301,7 @@ bsumsqtop:
 	add       pbc, eax
 
 	dec       edi
-	jg        near bsumsqtop
+	jg        bsumsqtop
     mov       eax, esi
 
 bsumsqexit:
@@ -316,8 +314,6 @@ bsumsqexit:
 	;;
 	pop edi
 	pop esi
-	pop edx
-	pop ecx
 	pop ebx
 
 	pop ebp			; restore stack pointer

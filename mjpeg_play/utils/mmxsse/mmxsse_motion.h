@@ -30,11 +30,11 @@ void sub_mean_reduction( me_result_set *matchset,
 
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,
-									 int frowstride,int fh, int* resvec
+                                    int frowstride,int fh, int* resvec
 	) __asm__ ("mblock_sub22_nearest4_sads_mmxe" );
 	
-void mblock_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2, 
-								   int rowstride, int h, int *resvec
+int mblock_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2, 
+								   int rowstride, int h, int *resvec, int peakerror
 	) __asm__ ("mblock_nearest4_sads_mmxe");
 
 int sad_00_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, 

@@ -49,14 +49,12 @@ global	sad_00_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_00_mmxe:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 
 	push ebx
-	push ecx
-	push edx
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -66,9 +64,9 @@ sad_00_0misalign:
 	mov edx, [ebp+16]	; get lx
 
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow00sse
-align 32
-nextrow00sse:
+	jmp .loop
+align 16
+.loop:
 	movq mm4, [eax]		; load first 8 bytes of p1 (row 1)
 	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
 	movq mm5, [eax+8]	; load next 8 bytes of p1 (row 1)
@@ -91,12 +89,10 @@ nextrow00sse:
 	paddd mm0, mm4		; accumulate difference
 
 	sub  ecx, 2
-	jnz nextrow00sse
+	jnz .loop
 
 	movd eax, mm0		; store return value
 	
-	pop edx	
-	pop ecx	
 	pop ebx	
 
 	pop ebp	
@@ -128,14 +124,12 @@ global	sad_00_Ammxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_00_Ammxe:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
 
 	push ebx
-	push ecx
-	push edx
 		
 	pxor mm0, mm0		; zero acculumator
 
@@ -155,9 +149,9 @@ sad_00_Ammxe:
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow00ssea
-align 32
-nextrow00ssea:
+	; jmp .loop
+align 16
+.loop:
 	movq mm4, [eax]				; load first 8 bytes of aligned p1 (row 1)
 	movq mm5, [eax+8]			; load next 8 bytes of aligned p1 (row 1)
 	movq mm6, mm5
@@ -180,12 +174,10 @@ nextrow00ssea:
 	paddd mm0, mm6		; accumulate difference
 
 	sub  ecx, 1
-	jnz nextrow00ssea
+	jnz .loop
 
 	movd eax, mm0		; store return value
 
-	pop edx	
-	pop ecx	
 	pop ebx	
 
 	pop ebp	
@@ -211,14 +203,12 @@ global	sad_01_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_01_mmxe:
 	push ebp	
 	mov ebp, esp
 
 	push ebx
-	push ecx
-	push edx
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -227,9 +217,9 @@ sad_01_mmxe:
 	mov edx, [ebp+16]	; get lx
 
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow01		; snap to it
-align 32
-nextrow01:
+	jmp .loop		; snap to it
+align 16
+.loop:
 	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
 	pavgb mm4, [eax+1]			; Interpolate...
 	psadbw mm4, [ebx]			; compare to first 8 bytes of p2 (row 1)
@@ -257,12 +247,10 @@ nextrow01:
 	add ebx, edx		; ditto
 	
 	sub ecx, 2			; check rowsleft
-	jnz nextrow01		; rinse and repeat
+	jnz .loop		; rinse and repeat
 
 	movd eax, mm0		; store return value
 	
-	pop edx	
-	pop ecx		
 	pop ebx	
 
 	pop ebp			; restore stack pointer
@@ -289,14 +277,12 @@ global	sad_10_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_10_mmxe:
 	push ebp		; save stack pointer
 	mov ebp, esp
 
 	push ebx
-	push ecx
-	push edx
 	push edi
 
 	pxor mm0, mm0		; zero acculumator
@@ -307,9 +293,9 @@ sad_10_mmxe:
 	mov edi, eax
 	add edi, edx
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow10		; snap to it
-align 32
-nextrow10:
+	jmp .loop		; snap to it
+align 16
+.loop:
 	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
 	pavgb mm4, [edi]			; Interpolate...
 	psadbw mm4, [ebx]			; compare to first 8 bytes of p2 (row 1)
@@ -341,13 +327,11 @@ nextrow10:
 	add edi, edx
 	
 	sub ecx, 2			; check rowsleft (we're doing 2 at a time)
-	jnz nextrow10		; rinse and repeat
+	jnz .loop		; rinse and repeat
 
 	movd eax, mm0		; store return value
 	
 	pop edi
-	pop edx	
-	pop ecx	
 	pop ebx	
 
 	pop ebp			; restore stack pointer
@@ -375,14 +359,12 @@ global	sad_11_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_11_mmxe:
 	push ebp		; save stack pointer
 	mov ebp, esp		; so that we can do this
 
 	push ebx		; save the pigs
-	push ecx		; make them squeal
-	push edx		; lets have pigs for every meal
 	push edi
 
 	pxor mm0, mm0		; zero acculumator
@@ -393,9 +375,9 @@ sad_11_mmxe:
 	mov edi, eax
 	add edi, edx
 	mov ecx, [ebp+20]	; get rowsleft
-	jmp nextrow11		; snap to it
-align 32
-nextrow11:
+	jmp .loop		; snap to it
+align 16
+.loop:
 	movq mm4, [eax]				; load first 8 bytes of p1 (row 1)
 	pavgb mm4, [edi]			; Interpolate...
 	movq mm5, [eax+1]
@@ -438,13 +420,11 @@ nextrow11:
 
 			
 	sub ecx, 2				; check rowsleft
-	jnz near nextrow11			; rinse and repeat
+	jnz .loop			; rinse and repeat
 
 	movd eax, mm0				; store return value
 	
 	pop edi
-	pop edx	
-	pop ecx		
 	pop ebx			
 	
 	pop ebp			; restore stack pointer
@@ -469,14 +449,12 @@ global	sad_sub22_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_sub22_mmxe:
 	push ebp		; save frame pointer
 	mov ebp, esp
 
 	push ebx	
-	push ecx
-	push edx	
 
 	pxor mm0, mm0		; zero acculumator
 
@@ -485,9 +463,9 @@ sad_sub22_mmxe:
 	mov edx, [ebp+16]	; get lx
 
 	mov ecx, [ebp+20]
-	jmp nextrowfd
-align 32
-nextrowfd:
+	jmp .loop
+align 16
+.loop:
 	movq   mm4, [eax]	 ; load first 8 bytes of p1 (row 1) 
 	add eax, edx		; update pointer to next row
 	psadbw mm4, [ebx]	; compare to first 8 bytes of p2 (row 1)
@@ -503,12 +481,10 @@ nextrowfd:
 	
 
 	sub ecx, 2
-	jnz nextrowfd
+	jnz .loop
 
 	movd eax, mm0
 	
-	pop edx	
-	pop ecx	
 	pop ebx	
 
 	pop ebp
@@ -539,14 +515,12 @@ global	sad_sub44_mmxe:function
 ; mm6 = temp
 
 
-align 32
+align 64
 sad_sub44_mmxe:
 	push ebp
 	mov ebp, esp
 
 	push ebx
-	push ecx
-	push edx
 	push esi     
 
 	pxor mm0, mm0		; zero acculumator
@@ -557,9 +531,9 @@ sad_sub44_mmxe:
 	mov edx, [ebp+16]	; get qlx
 
 	mov esi, [ebp+20]	; get rowsleft
-	jmp nextrowqd		; snap to it
-align 32
-nextrowqd: 
+	; jmp .loop		; snap to it
+align 16
+.loop: 
 	movq mm4, [eax]				; load 8 bytes of p1 (two blocks!)
 	add eax, edx		; update pointer to next row
 	movq mm6, mm4				  ;
@@ -580,7 +554,7 @@ nextrowqd:
 ;	paddd mm1, mm6				; accumulate difference right block
 		
 	sub esi, 1
-	jnz nextrowqd
+	jnz .loop
 
 	movd eax, mm0
 ;	movd ebx, mm1				
@@ -588,8 +562,6 @@ nextrowqd:
 ;	or   eax, ebx
 	
 	pop esi
-	pop edx
-	pop ecx
 	pop ebx
 
 	pop ebp			; restore stack pointer
@@ -636,14 +608,11 @@ global	mblockq_sad_REF:function
 ; mm6 = temp
 ; mm7 = temp						
 
-align 32
+align 64
 mblockq_sad_REF:
 	push ebp					; save frame pointer
 	mov ebp, esp				; link
-	push eax
 	push ebx
-	push ecx
-	push edx
 	push edi
 	push esi
 
@@ -658,9 +627,9 @@ mblockq_sad_REF:
 	mov edi, [ebp+20]	; get rowsleft
 	mov esi, edi
 
-	jmp nextrow_block_d1
-align 32
-nextrow_block_d1:		
+	; jmp .nextrow_block_d1
+align 16
+.nextrow_block_d1:		
 
 		;; Do the (+0,+0) SAD
 		
@@ -676,7 +645,7 @@ nextrow_block_d1:
 
 		
     cmp edi, esi
-	jz  firstrow0
+	jz  .firstrow0
 
 		;; Do the (0,+2) SAD
 	sub ebx, edx
@@ -686,7 +655,7 @@ nextrow_block_d1:
 	add ebx, edx
 	paddd mm2, mm7	
 
-firstrow0:
+.firstrow0:
 
 		;; Do the (+2,0) SAD
 	
@@ -701,7 +670,7 @@ firstrow0:
 	paddd mm1, mm4		; accumulate difference
 
     cmp edi, esi
-	jz  firstrow1
+	jz  .firstrow1
 
 		;; Do the (+2, +2 ) SAD
 	sub ebx, edx
@@ -710,13 +679,13 @@ firstrow0:
 	add ebx, edx
 	paddd mm3, mm6		; accumulate difference
 	paddd mm3, mm7	
-firstrow1:		
+.firstrow1:		
 
 	add eax, edx				; update pointer to next row
 	add ebx, edx		; ditto
 		
 	sub edi, 1
-	jnz near nextrow_block_d1
+	jnz .nextrow_block_d1
 
 		;; Do the last row of the (0,+2) SAD
 
@@ -746,10 +715,7 @@ firstrow1:
 		
 	pop esi
 	pop edi
-	pop edx	
-	pop ecx	
 	pop ebx	
-	pop eax
 		
 	pop ebp	
 	emms
@@ -761,132 +727,117 @@ global	mblock_nearest4_sads_mmxe:function
 
 ; void mblock_nearest4_sads_mmxe(char *blk1,char *blk2,int lx,int h,int *weightvec);
 
-; eax = p1
+; eax = temp min SAD
 ; ebx = p2
-; ecx = unused
+; ecx = p1
 ; edx = lx;
 ; edi = rowsleft
-		
+; esi = SAD cutoff
+			
 ; mm0 = SAD (x+0,y+0),SAD (x+2,y+0)
 ; mm1 = SAD (x+0,y+2),SAD (x+2,y+2)
 
-; mm2 = [eax]   cache
-; mm3 = [eax+8] cache
-; mm4 = [eax+1] cache
-; mm5 = [eax+9] cache
+; mm2 = [ecx]   cache
+; mm3 = [ecx+8] cache
+; mm4 = [ecx+1] cache
+; mm5 = [ecx+9] cache
 ; mm6 = [ebx]   cache
 ; mm7 = [ebx+8] cache			
 
-align 32
+align 64
 mblock_nearest4_sads_mmxe:
-	push ebp					; save frame pointer
-	mov ebp, esp				; link
-	push eax
+	push ebp		; save frame pointer
+	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push edi
+	push esi
 
-	mov eax, [ebp+8]	; get p1
-	prefetcht0 [eax]
+	mov ecx, [ebp+8]	; get p1
 	pxor mm0, mm0		; zero accumulators
 	pxor mm1, mm1
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
-	sub ebx,eax
 	
 	mov edi, [ebp+20]	; get rowsleft
+	mov	esi, [ebp+28]
 
-	movq	mm2, [eax]
-	movq	mm3, [eax+8]
-	movq	mm4, [eax+1]
-	movq	mm5, [eax+9]
+	movq	mm2, [ecx]
+	movq	mm3, [ecx+8]
+	movq	mm4, [ecx+1]
+	movq	mm5, [ecx+9]
 
-	jmp firstrowe
-align 32
-nextrow_block_e1:		
-
-	prefetcht0 [eax+edx]		
-
-		;; Do the (0,+2) SAD
-	movq	mm4, [eax]
-	movq	mm2, mm4
-	psadbw	mm4, mm6		; compare to next 8 bytes of p2 (row 1)
-	paddd	mm1, mm4		; accumulate difference
-	
-	movq	mm5, [eax+8]
-	movq	mm3, mm5
-	psadbw	mm5, mm7		;  next 8 bytes of p1 (row 1)
-	paddd	mm1, mm5	
-	
-		;; Do the (+2, +2 ) SAD
-	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-
-	movq	mm4, [eax+1]
-	psadbw	mm6, mm4		; compare to 1st 8 bytes of prev p2
-	paddd	mm1, mm6		; accumulate difference
-
-	movq	mm5, [eax+9]
-	psadbw	mm7, mm5		;  2nd 8 bytes of prev p2
-	paddd	mm1, mm7
-	
-	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-
-firstrowe:
+	;; the loop is too close to issue a jump, just no-op our way there
+	; jmp	.loop
+align 16
+.loop:
 
 		;; Do the (+0,+0) SAD
-	movq	mm6, [eax+ebx]
-	psadbw	mm2, mm6		; compare to 1st 8 bytes of p2 
-	paddd	mm0, mm2		; accumulate difference
-
-	movq	mm7, [eax+ebx+8]
-	psadbw	mm3, mm7		; compare to 2nd 8 bytes of p2 
-	paddd	mm0, mm3		; accumulate difference
+	movq	mm6, [ebx]		; 0.0.1.0 ld,  1st 8
+	movq	mm7, [ebx+8]		; 0.0.2.0 ld,  2nd 8
+	psadbw	mm2, mm6		; 0.0.1.1 SAD, 1st 8
+	psadbw	mm3, mm7		; 0.0.2.1 SAD, 2nd 8
+	paddd	mm0, mm2		; 0.0.1.2 acc, 1st 8
+	paddd	mm0, mm3		; 0.0.2.2 acc, 2nd 8
 
 		;; Do the (+2,0) SAD
-	pshufw	mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	pshufw	mm0, mm0, 2*1 + 3*4 + 0*16 + 1*64 ; 2.0.0.0 shuffle
 	
-	psadbw	mm4, mm6		; compare to 1st 8 bytes of p2
-	paddd	mm0, mm4		; accumulate difference
+	psadbw	mm4, mm6		; 2.0.1.0 SAD, 1st 8
+	psadbw	mm5, mm7		; 2.0.2.0 SAD, 2nd 8
+	paddd	mm0, mm4		; 2.0.1.1 acc, 1st 8
+	paddd	mm0, mm5		; 2.0.2.1 acc, 2nd 8
 
-	psadbw	mm5, mm7		; compare to 2nd 8 bytes of p2
-	paddd	mm0, mm5		; accumulate difference
+	pshufw	mm0, mm0, 2*1 + 3*4 + 0*16 + 1*64 ; 2.0.3.0 shuffle
 
-	pshufw	mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
+	add	ecx, edx		; update pointer to next row
+	add	ebx, edx		; update pointer to next row
+		
+	movq	mm3, mm1		; exit.0
+	pminsw	mm3, mm0		; exit.1
+	pshufw	mm2, mm3, 2*1 + 3*4 + 0*16 + 1*64 ; exit.2
+	pminsw	mm3, mm2		; exit.3
+	movd	eax, mm3		; exit.4
+	cmp	eax, esi		; exit.5
+	jg	.earlyexit		; exit.6
 	
-	add	eax, edx		; update pointer to next row
-	; add	ebx, edx
-		
-	sub	edi, 1
-	jnz	near nextrow_block_e1
+		;; Do the (0,+2) SAD
+	movq	mm4, [ecx]		; 0.2.1.0 ld,  1st 8
+	movq	mm5, [ecx+8]		; 0.2.2.0 ld,  2nd 8
+	movq	mm2, mm4		; 0.2.1.1 mov, 1st 8
+	movq	mm3, mm5		; 0.2.2.1 mov, 2nd 8
+	psadbw	mm4, mm6		; 0.2.1.2 SAD, 1st 8
+	psadbw	mm5, mm7		; 0.2.2.2 SAD, 2nd 8
+	paddd	mm1, mm4		; 0.2.1.3 acc, 1st 8	
+	paddd	mm1, mm5		; 0.2.2.3 acc, 2nd 8
+	
+		;; Do the (+2,+2) SAD
+	pshufw	mm1, mm1, 2*1 + 3*4 + 0*16 + 1*64 ; 2.2.0.0 shuffle
 
-		;; Do the last row of the (0,+2) SAD
-	movq	mm2, [eax]
-	movq	mm3, [eax+8]
-	psadbw	mm2, mm6		; compare to next 8 bytes of p2 (row 1)
-	psadbw	mm3, mm7		;  next 8 bytes of p1 (row 1)
-	paddd	mm1, mm2		; accumulate difference
-	paddd	mm1, mm3
+	movq	mm4, [ecx+1]		; 2.2.1.0 ld,  1st 8
+	movq	mm5, [ecx+9]		; 2.2.2.0 ld,  2nd 8
+	psadbw	mm6, mm4		; 2.2.1.1 SAD, 1st 8
+	psadbw	mm7, mm5		; 2.2.2.1 SAD, 2nd 8
+	paddd	mm1, mm6		; 2.2.1.2 acc, 1st 8
+	paddd	mm1, mm7		; 2.2.2.2 acc, 2nd 8
+	
+	pshufw	mm1, mm1, 2*1 + 3*4 + 0*16 + 1*64 ; 2.2.3.0 shuffle
 
-		
-		;; Do the last row of rhw (+2, +2) SAD
-	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
-	psadbw	mm6, [eax+1]		; compare to 1st 8 bytes of prev p2 
-	psadbw	mm7, [eax+9]		;  2nd 8 bytes of prev p2
-	paddd	mm1, mm6		; accumulate difference
-	paddd	mm1, mm7
-	pshufw	mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64				
-		
+	sub	edi,1			; loop.0 (sub avoids flag register stall on P4)
+	jnz	.loop			; loop.1
 
-	mov	eax, [ebp+24]			; Weightvec
-	movq	[eax+0], mm0
-	movq	[eax+8], mm1
-		
+	mov	ecx, [ebp+24]			; Weightvec
+	movq	[ecx+0], mm0
+	movq	[ecx+8], mm1
+
+	pminsw	mm0,mm1
+	pshufw	mm1,mm0, 2*1 + 3*4 + 0*16 + 1*64
+	pminsw	mm0,mm1
+	movd	eax,mm0
+
+.earlyexit:
+	pop esi		
 	pop edi
-	pop edx	
-	pop ecx	
 	pop ebx	
-	pop eax
 		
 	pop ebp	
 	emms
@@ -911,66 +862,51 @@ global	mblock_sub22_nearest4_sads_mmxe:function
 ; mm7 = temp / 0 if first row 0xff otherwise
 
 
-align 32
+align 64
 mblock_sub22_nearest4_sads_mmxe:
 	push ebp		; save frame pointer
 	mov ebp, esp
-	push eax
 	push ebx	
-	push ecx
-	push edx	
 
 	pxor mm0, mm0		; zero acculumator
 	pxor mm1, mm1		; zero acculumator
-	pxor mm2, mm2		; zero acculumator
-	pxor mm3, mm3		; zero acculumator						
 
 	mov eax, [ebp+8]	; get p1
 	mov ebx, [ebp+12]	; get p2
 	mov edx, [ebp+16]	; get lx
 	mov ecx, [ebp+20]
-	movq mm2, [eax+edx]
-	movq mm3, [eax+edx+1]
-	jmp nextrowbd22
-align 32
-nextrowbd22:
-	movq   mm5, [ebx]			; load previous row reference block
-								; mm2 /mm3 containts current row target block
+	movq mm2, [eax+edx]	; row[+0] load
+	movq mm3, [eax+edx+1]	; row[+2] load
+	; jmp .loop
+align 16
+.loop:
+	movq	mm5, [ebx]	; load previous row reference block
 		
-	psadbw mm2, mm5				; Comparse (x+0,y+2)
-	paddd  mm1, mm2
-		
-	psadbw mm3, mm5				; Compare (x+2,y+2)
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	paddd  mm1, mm3
+	psadbw	mm2, mm5	; (+0,+2) SAD
+	psadbw	mm3, mm5	; (+2,+2) SAD
+	paddd	mm1, mm2	; (+0,+2) acc		
+	pshufw	mm3, mm3, 2*1 + 3*4 + 0*16 + 1*64 ; (+2,+2) shufl
+	paddd	mm1, mm3	; (+2,+2) acc
 
-	pshufw  mm1, mm1, 2*1 + 3 * 4 + 0 * 16 + 1 * 64 					
+	movq	mm6, [eax]	; row[+0] load
+	movq	mm3, [eax+1]	; row[+2] load
+	sub	eax, edx
+	sub	ebx, edx
 
-	movq mm2, [eax]				; Load current row traget block into mm2 / mm3
-	movq mm6, mm2
-	movq mm3, [eax+1]
-	sub	   eax, edx
-	sub	   ebx, edx
-	prefetcht0 [eax]
-	movq mm7, mm3		
+	movq	mm2, mm6	; (+0,+0) ld
+	psadbw	mm6, mm5	; (+0,+0) SAD
+	psadbw	mm5, mm3	; (+2,+0) SAD
+	paddd	mm0, mm6	; (+0,+0) acc
+	pshufw	mm5, mm5, 2*1 + 3*4 + 0*16 + 1*64 ; (+2,0) shufl
+	paddd	mm0, mm5	; (+2,+0) acc
 
-	psadbw	mm6, mm5			; Compare (x+0,y+0)
-	paddd   mm0, mm6
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-	psadbw  mm7, mm5			; Compare (x+2,y+0)
-	paddd   mm0, mm7
-	pshufw  mm0, mm0, 2*1 + 3 * 4 + 0 * 16 + 1 * 64
-
-	sub ecx, 1
-	jnz nextrowbd22
+	sub	ecx, 1
+	jnz	.loop
 
 	mov  eax, [ebp+24]
 	movq [eax+0], mm0
 	movq [eax+8], mm1
-	pop edx	
-	pop ecx	
 	pop ebx	
-	pop eax
 	pop ebp
 
 	emms

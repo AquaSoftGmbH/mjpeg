@@ -26,7 +26,8 @@ void find_best_one_pel_mmxe( me_result_set *sub22set,
 	int resvec[4];
 
 	for( k = 0; k < sub22set->len; ++k )
-	{	
+	{
+                int x;
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
 		penalty = intmax(abs(matchrec.x),abs(matchrec.y))<<5;
@@ -35,9 +36,11 @@ void find_best_one_pel_mmxe( me_result_set *sub22set,
 		   orgblk(0,+1), and orgblk(+1,+1)
 		   Done all in one go to reduce memory bandwidth demand
 		*/
-		mblock_nearest4_sads_mmxe(orgblk,blk,rowstride,h,
-		resvec);
-
+                if( penalty>=dmin )
+                    continue;
+		x=mblock_nearest4_sads_mmxe(orgblk,blk,rowstride,h,resvec,dmin-penalty);
+                if( x+penalty>=dmin )
+                    continue;
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )

@@ -383,7 +383,7 @@ then
 	 AC_DEFINE(HAVE_ASM_MMX,1,[Inline MMX assembly accepted by C compiler])
       fi
       if test $have_asm_nasm = true; then
-	 ASFLAGS="-f elf"
+	 ASFLAGS="-f elf -O5"
 	 AC_DEFINE(HAVE_ASM_NASM,1,[nasm assembler found])
 	 AC_SUBST(ASFLAGS)
       fi

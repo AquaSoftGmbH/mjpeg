@@ -64,8 +64,6 @@ bsad_mmx:
 	push ebp			; save frame pointer
 	mov ebp, esp		; link
 	push ebx
-	push ecx
-	push edx
 	push esi     
 	push edi
 
@@ -103,7 +101,7 @@ bsad_mmx:
 
 	mov       edi, h
 	test      edi, edi  ; h = 0?
-	jle       near bsadexit
+	jle       bsadexit
 
 	pxor	  mm7, mm7
 	pxor	  mm6, mm6
@@ -303,7 +301,7 @@ bsadtop:
 	add       pbc, eax
 
 	dec       edi
-	jg        near bsadtop
+	jg        bsadtop
     mov       eax, esi
 
 bsadexit:
@@ -317,8 +315,6 @@ bsadexit:
 	;;
 	pop edi
 	pop esi
-	pop edx
-	pop ecx
 	pop ebx
 
 	pop ebp			; restore stack pointer
