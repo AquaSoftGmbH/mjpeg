@@ -193,16 +193,20 @@ static y4m_ratio_t calculate_output_sar(int out_w, int out_h,
                                         int in_w,  int in_h,
                                         y4m_ratio_t in_sar)
 {
-  y4m_ratio_t out_sar;
-  /*
+  if (Y4M_RATIO_EQL(in_sar, y4m_sar_UNKNOWN)) {
+    return y4m_sar_UNKNOWN;
+  } else {
+    y4m_ratio_t out_sar;
+    /*
       out_SAR_w     in_SAR_w    input_W   output_H
       ---------  =  -------- *  ------- * --------
       out_SAR_h     in_SAR_h    input_H   output_W
-  */
-  out_sar.n = in_sar.n * in_w * out_h;
-  out_sar.d = in_sar.d * in_h * out_w;
-  y4m_ratio_reduce(&out_sar);
-  return out_sar;
+    */
+    out_sar.n = in_sar.n * in_w * out_h;
+    out_sar.d = in_sar.d * in_h * out_w;
+    y4m_ratio_reduce(&out_sar);
+    return out_sar;
+  }
 }
 
 
