@@ -6,6 +6,12 @@
  *                Ronald Bultje   <rbultje@ronald.bitfreak.net>
  *              & many others
  *
+ * A library for playing back MJPEG video via software MJPEG
+ * decompression (using SDL) or via hardware MJPEG video
+ * devices such as the Pinnacle/Miro DC10(+), Iomega Buz,
+ * the Linux Media Labs LML33, the Matrox Marvel G200,
+ * Matrox Marvel G400 and the Rainbow Runner G-series.
+ * 
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
@@ -38,6 +44,9 @@
 #include <sys/wait.h>
 #include <sys/vfs.h>
 
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+
 #ifndef IRIX 
 #include <linux/videodev.h>
 #include <linux/soundcard.h>
@@ -69,6 +78,7 @@
 
 #define HZ 100
 
+#define VALUE_NOT_FILLED -10000
 
 typedef struct {
    char   *buff;                              /* the buffer for JPEG frames */
@@ -924,10 +934,18 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
     {
 #ifndef IRIX
       struct video_window vw;
+      XWindowAttributes wts;
+      Display *dpy;
       int n;
 
-      vw.x = 0;
-      vw.y = 0;
+      if (NULL == (dpy = XOpenDisplay(strchr(info->display, ':'))))
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info, "Can't open X11 display %s\n", info->display);
+         return 0;
+      }
+      XGetWindowAttributes(dpy, DefaultRootWindow(dpy), &wts);
+      vw.x = info->soft_full_screen ? 0: (wts.width-704)/2;
+      vw.y = info->soft_full_screen ? 0: (wts.height-((bp->norm == 0) ? 576 : 480))/2;
       vw.width = info->soft_full_screen ? 1024 : 704;
       vw.height = info->soft_full_screen ? 768 : (bp->norm == 0) ? 576 : 480;
       vw.clips = NULL;
@@ -1306,10 +1324,8 @@ static int lavplay_init(lavplay_t *info)
    lavplay_msg(LAVPLAY_MSG_INFO, info,
       "Output norm: %s", bp.norm==VIDEO_MODE_NTSC?"NTSC":"PAL");
    hn = bp.norm==VIDEO_MODE_NTSC?480:576; /* Height of norm */
-   bp.decimation = 0; /* we will set proper params ourselves later on */
 
-   /* Check dimensions of video, select decimation factors */
-   if (info->playback_mode == 'C')
+   if (info->playback_mode != 'S')
    {
 #ifndef IRIX
       /* set correct width of device for hardware
@@ -1321,113 +1337,118 @@ static int lavplay_init(lavplay_t *info)
             "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
          return 0;
       }
+      /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
+      if (vc.maxwidth != 768 && vc.maxwidth != 640) vc.maxwidth = 720;
+
+      bp.decimation = 0; /* we will set proper params ourselves later on */
 
       if (editlist->video_width > vc.maxwidth || editlist->video_height > hn )
       {
          /* the video is too big */
          lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Video dimensions too large: %ld x %ld",
-            editlist->video_width, editlist->video_height);
+            "Video dimensions too large: %ld x %ld, device max = %dx%d",
+            editlist->video_width, editlist->video_height, vc.maxwidth, hn);
          return 0;
       }
-#else
-	 fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
-	 return 0;
-#endif
-   }
 
-#ifndef IRIX
-   /* if zoom_to_fit is set, HorDcm is independent of interlacing */
-   if (info->zoom_to_fit)
-   {
-      if (editlist->video_width <= vc.maxwidth/4 )
-         bp.HorDcm = 4;
-      else if (editlist->video_width <= vc.maxwidth/2)
-         bp.HorDcm = 2;
-      else
-         bp.HorDcm = 1;
-   }
-#else
-   fprintf(stderr, "WARNING: info->zoom_to_fit is not correctly set in IRIX !\n");
-#endif
-   if (editlist->video_inter)
-   {
-      /* Interlaced video, 2 fields per buffer */
-      bp.field_per_buff = 2;
-      bp.TmpDcm = 1;
-
+      /* if zoom_to_fit is set, HorDcm is independent of interlacing */
       if (info->zoom_to_fit)
       {
-         if (editlist->video_height <= hn/2)
-            bp.VerDcm = 2;
+         if (editlist->video_width <= vc.maxwidth/4 )
+            bp.HorDcm = 4;
+         else if (editlist->video_width <= vc.maxwidth/2)
+            bp.HorDcm = 2;
          else
+            bp.HorDcm = 1;
+      }
+
+      if (editlist->video_inter)
+      {
+         /* Interlaced video, 2 fields per buffer */
+         bp.field_per_buff = 2;
+         bp.TmpDcm = 1;
+
+         if (info->zoom_to_fit)
+         {
+            if (editlist->video_height <= hn/2)
+               bp.VerDcm = 2;
+            else
+               bp.VerDcm = 1;
+         }
+         else
+         {
+            /* if zoom_to_fit is not set, we always use decimation 1 */
+            bp.HorDcm = 1;
             bp.VerDcm = 1;
+         }
       }
       else
       {
-         /* if zoom_to_fit is not set, we always use decimation 1 */
-         bp.HorDcm = 1;
-         bp.VerDcm = 1;
+         /* Not interlaced, 1 field per buffer */
+         bp.field_per_buff = 1;
+         bp.TmpDcm = 2;
+
+         if (editlist->video_height > hn/2 ||
+            (!info->zoom_to_fit && editlist->video_width > vc.maxwidth/2))
+         {
+            lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Video dimensions (not interlaced) too large: %ld x %ld",
+               editlist->video_width, editlist->video_height);
+            if (editlist->video_width > vc.maxwidth/2) 
+               lavplay_msg(LAVPLAY_MSG_ERROR, info,
+               "Try using the \'zoom-to-fit\'-option");
+            return 0;
+         }
+
+         if(info->zoom_to_fit)
+         {
+            if (editlist->video_height <= hn/4 )
+               bp.VerDcm = 2;
+            else
+               bp.VerDcm = 1;
+         }
+         else
+         {
+            /* the following is equivalent to decimation 2 in lavrec: */
+            bp.HorDcm = 2;
+            bp.VerDcm = 1;
+         }
       }
+
+      /* calculate height, width and offsets from the above settings */
+      bp.quality = 100;
+      bp.img_width  = bp.HorDcm * editlist->video_width;
+      bp.img_height = bp.VerDcm * editlist->video_height/bp.field_per_buff;
+
+      if (info->horizontal_offset == VALUE_NOT_FILLED)
+         bp.img_x = (vc.maxwidth - bp.img_width)/2;
+      else
+         bp.img_x = info->horizontal_offset;
+
+      if (info->vertical_offset == VALUE_NOT_FILLED)
+         bp.img_y = (hn/2 - bp.img_height)/2;
+      else
+         bp.img_y = info->vertical_offset/2;
+
+      lavplay_msg(LAVPLAY_MSG_INFO, info,
+         "Output dimensions: %dx%d+%d+%d",
+         bp.img_width, bp.img_height*2, bp.img_x, bp.img_y*2);
+      lavplay_msg(LAVPLAY_MSG_INFO, info,
+         "Output zoom factors: %d (hor) %d (ver)",
+         bp.HorDcm,bp.VerDcm*bp.TmpDcm);
+
+#else
+      fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+      return 0;
+#endif
    }
    else
    {
-      /* Not interlaced, 1 field per buffer */
-      bp.field_per_buff = 1;
-      bp.TmpDcm = 2;
-
-#ifndef IRIX
-      if (info->playback_mode == 'C' && (editlist->video_height > hn/2 ||
-         (!info->zoom_to_fit && editlist->video_width > vc.maxwidth/2) ))
-      {
-         lavplay_msg(LAVPLAY_MSG_ERROR, info,
-            "Video dimensions (not interlaced) too large: %ld x %ld",
-            editlist->video_width, editlist->video_height);
-         if (editlist->video_width > vc.maxwidth/2) 
-            lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Try using the \'zoom-to-fit\'-option");
-         return 0;
-      }
-#else
-   fprintf(stderr, "WARNING: Deactivated code for non-interlaced video size checks in IRIX !\n");
-#endif
-
-      if(info->zoom_to_fit)
-      {
-         if (editlist->video_height <= hn/4 )
-            bp.VerDcm = 2;
-         else
-            bp.VerDcm = 1;
-      }
-      else
-      {
-         /* the following is equivalent to decimation 2 in lavrec: */
-         bp.HorDcm = 2;
-         bp.VerDcm = 1;
-      }
+      /* software playback */
+      lavplay_msg(LAVPLAY_MSG_INFO, info,
+         "Output dimensions: %ldx%ld",
+         editlist->video_width, editlist->video_height);
    }
-
-   /* calculate height, width and offsets from the above settings */
-   bp.quality = 100;
-   bp.img_width  = bp.HorDcm * editlist->video_width;
-   bp.img_height = bp.VerDcm * editlist->video_height/bp.field_per_buff;
-
-#ifndef IRIX
-   if(info->playback_mode == 'C')
-       bp.img_x = (vc.maxwidth  - bp.img_width )/2 + info->horizontal_offset;
-   else 
-       bp.img_x = info->horizontal_offset;
-#else
-   bp.img_x = 0;
-#endif
-
-   bp.img_y = (hn/2 - bp.img_height)/2 + info->vertical_offset/2;
-   lavplay_msg(LAVPLAY_MSG_INFO, info,
-      "Output dimensions: %dx%d+%d+%d",
-      bp.img_width, bp.img_height*2, bp.img_x, bp.img_y*2);
-   lavplay_msg(LAVPLAY_MSG_INFO, info,
-      "Output zoom factors: %d (hor) %d (ver)",
-      bp.HorDcm,bp.VerDcm*bp.TmpDcm);
    
    /* Set field polarity for interlaced video */
    bp.odd_even = (editlist->video_inter==LAV_INTER_TOP_FIRST);
@@ -1439,8 +1460,6 @@ static int lavplay_init(lavplay_t *info)
 
    if (!lavplay_mjpeg_set_playback_rate(info, editlist->video_fps, bp.norm))
       return 0;
-
-   /* TODO: instead of returning 0, close down first throughtout this whole function */
 
    return 1;
 }
@@ -1681,8 +1700,8 @@ lavplay_t *lavplay_malloc()
       return NULL;
    }
    info->playback_mode = 'S';
-   info->horizontal_offset = 0;
-   info->vertical_offset = 0;
+   info->horizontal_offset = VALUE_NOT_FILLED;
+   info->vertical_offset = VALUE_NOT_FILLED;
    info->exchange_fields = 0;
    info->zoom_to_fit = 0;
    info->flicker_reduction = 1;
@@ -1690,6 +1709,7 @@ lavplay_t *lavplay_malloc()
    info->sdl_height = 0; /* use video size */
    info->soft_full_screen = 0;
    info->video_dev = "/dev/video";
+   info->display = ":0.0";
 
    info->audio = 1;
    info->audio_dev = "/dev/dsp";
