@@ -1,0 +1,12 @@
+The programs in the directory are for python version 2.0 and higher.
+
+The programs use a package call Pmw for a few widgets. The program
+wants versio  8.1 of the pacakage. 
+
+Configure:
+dvcr		Configure file that needs to live in /etc.
+
+Programs:
+
+tvguide		Program to load guides for watching tv from www.tv.com
+dtv		Program to display guides and set recording events

@@ -15,11 +15,14 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 from Tkinter import *
-from time import *
 from string import *
+import time
 import marshal 
 import Pmw
 import ConfigParser
+
+def aa():
+	print "command aa executed"
 
 class Event:
 	def __init__(self):
@@ -34,6 +37,7 @@ class Event:
 		self.day= IntVar()
 		self.month = IntVar()
 		self.year = IntVar()
+		self.repeat = StringVar()
 		self.group_data = None
 		self.group_frame = None
 
@@ -49,23 +53,28 @@ class Event:
 			hour = 0
 		if lower(self.start_ampm.get()) == 'pm':
 			hour = hour + 12
-		return mktime(2000 + self.year.get(), 
+
+		current = (self.year.get(), 
 			self.month.get(), self.day.get(),
-			hour, self.start_min.get(), 0, 0, 0, -1) - timezone
+			hour, self.start_min.get(), 0, 0, 0, -1)
+		return time.mktime(current) - time.timezone
 
 	def set_start(self, time_value):
+		if self.get_start() == time_value:
+			return
+
 		if time_value == None:
-			time_value = time() - timezone
+			time_value = time() - time.timezone
 			time_value = time_value - (time_value % (30 * 60))
 			time_value = time_value + 30 * 60
 
-		self.start_hour.set(strftime("%l",gmtime(time_value)))
-		self.start_min.set(strftime("%M",gmtime(time_value)))
-		self.start_ampm.set(strftime("%p",gmtime(time_value)))
+		self.start_hour.set(time.strftime("%l",time.gmtime(time_value)))
+		self.start_min.set(time.strftime("%M",time.gmtime(time_value)))
+		self.start_ampm.set(time.strftime("%p",time.gmtime(time_value)))
 
-		self.day.set(strftime("%d",gmtime(time_value)))
-		self.month.set(strftime("%m",gmtime(time_value)))
-		self.year.set(strftime("%g",gmtime(time_value)))
+		self.day.set(time.strftime("%d",time.gmtime(time_value)))
+		self.month.set(time.strftime("%m",time.gmtime(time_value)))
+		self.year.set(time.strftime("%g",time.gmtime(time_value)))
 
 	def get_stop(self):
 		hour = self.stop_hour.get()
@@ -73,24 +82,31 @@ class Event:
 			hour = 0
 		if lower(self.stop_ampm.get()) == 'pm':
 			hour = hour + 12
-		return mktime(2000 + self.year.get(), 
+		current = (self.year.get(), 
 			self.month.get(), self.day.get(),
-			hour, self.stop_min.get(), 0, 0, 0, -1) - timezone
+			hour, self.start_min.get(), 0, 0, 0, -1)
+
+		return time.mktime(current) - time.timezone
 
 	def set_stop(self, time_value):
+		if self.get_stop() == time_value:
+			return
+
 		if time_value == None:
 			self.stop_hour.set("")
 			self.stop_min.set("")
 			self.stop_ampm.set("")
 		else:
-			self.stop_hour.set(strftime("%l",gmtime(time_value)))
-			self.stop_min.set(strftime("%M",gmtime(time_value)))
-			self.stop_ampm.set(strftime("%p",gmtime(time_value)))
+			self.stop_hour.set(time.strftime("%l",time.gmtime(time_value)))
+			self.stop_min.set(time.strftime("%M",time.gmtime(time_value)))
+			self.stop_ampm.set(time.strftime("%p",time.gmtime(time_value)))
 
 	def get_title(self):
 		return self.title.get()
 
 	def set_title(self, title):
+		if self.title.get() == title:
+			return
 		if title == None:
 			self.title.set("")
 		else:
@@ -101,13 +117,27 @@ class Event:
 		return self.channel.get()
 	
 	def set_channel(self, channel):
+		if self.channel.get() == channel:
+			return
+
 		if channel == None:
 			self.channel.set("")
 		else:
 			self.channel.set(channel)
 
 	def get_repeat(self):
-		return None
+		return self.repeat.get()
+
+	def set_repeat(self, repeat):
+		if self.repeat.get() == repeat:
+			return
+
+		if repeat == "":
+			repeat = "Once"
+		if repeat == None:
+			self.repeat.set("Once")
+		else:
+			self.repeat.set(repeat)
 
 	def withdraw(self):
 		self.group_data.grid_forget()
@@ -116,9 +146,40 @@ class Event:
 		self.group_data.grid(row=row, column=0, sticky='NSEW', 
 			ipadx=4, ipady=4)
 
+	def once(self):
+		self.set_repeat("Once")
+
+	def week(self):
+		self.set_repeat("Monday-Friday")
+
+	def weekly(self):
+		self.set_repeat("Weekly")
+
+	def daily(self):
+		self.set_repeat("Daily")
+
+	def delete(self):
+		self.set_repeat("Delete")
+
 	def group(self, root, row):
-		self.group_data = Pmw.Group(root, tag_text=" ")
+		self.group_data = Pmw.Group(root, 
+			tag_textvariable=self.repeat,
+			tag_pyclass=Menubutton)
 		self.group_frame = self.group_data.interior()
+
+		command_button = self.group_data.component('tag')
+		command_button.menu = Menu(command_button)
+		command_button.menu.add_command(label='Once',
+			underline=0, command=self.once)
+		command_button.menu.add_command(label='Monday-Friday', 
+			underline=0, command=self.week)
+		command_button.menu.add_command(label='Weekly', 
+			underline=0, command=self.weekly)
+		command_button.menu.add_command(label='Daily', 
+			underline=0, command=self.daily)
+		command_button.menu.add_command(label='Delete', 
+			underline=0, command=self.delete)
+		command_button['menu'] = command_button.menu
 
 		date_frame = Frame(self.group_frame)
 
@@ -189,7 +250,7 @@ class Event:
 
 		channel = Entry(self.group_frame,
 			textvariable=self.channel,
-			width = 8)
+			width = 12)
 
 		title = Entry(self.group_frame,
 			textvariable=self.title,
@@ -223,6 +284,54 @@ class EventList:
 		dir = self.config_string("global", "recorddir") + "/"
 		self.file_name = dir + "directtv"
 
+	def repeat(self):
+		changes = 0
+		current_time = time.time() - time.timezone 
+
+		for tag in self.tags():
+			start, end, channel, title, repeat = \
+				self.event(tag)
+
+			if repeat == "Delete":
+				self.delete(tag)
+				changes = changes + 1
+				continue
+
+			start, end, channel, title, repeat = \
+				self.event(tag)
+			event = self.event_group[tag]
+
+			if end < current_time:
+				if repeat == 'Once':
+					self.delete(tag)
+					changes = changes + 1
+					continue
+
+				if repeat == "Daily":
+					start = start + 24 * 60 * 60
+					end = end + 24 * 60 * 60
+
+				if repeat == "Weekly":
+					start = start + 24 * 60 * 60 * 7
+					end = end + 24 * 60 * 60 * 7
+
+				if repeat == "Monday-Friday":
+					start = start + 24 * 60 * 60
+					end = end + 24 * 60 * 60
+
+				dict = self.record_event[tag]
+				event = self.event_groups[tag]
+				dict['start'] = start
+				dict['stop'] = stop
+
+				event.set_start(start)
+				event.set_stop(stop)
+
+		if changes > 0:
+			self.save()
+
+				
+
 	def load(self):
 		try:
 			file = open(self.file_name, "r")
@@ -233,7 +342,7 @@ class EventList:
 		self.record_event = marshal.load(file)
 		row = 0
 		for tag in self.tags():
-			start, end, channel, title = \
+			start, end, channel, title, repeat = \
 				self.event(tag)
 			current = Event()
 			self.event_groups[tag] = current
@@ -241,6 +350,7 @@ class EventList:
 			current.set_stop(end)
 			current.set_title(title)
 			current.set_channel(channel)
+			current.set_repeat(repeat)
 			current.group(self.scroll_area.interior(), row)
 			row = row + 1
 
@@ -268,6 +378,7 @@ class EventList:
 		current.set_stop(stop)
 		current.set_title(title)
 		current.set_channel(channel)
+		current.set_repeat(repeat)
 		current.group(self.scroll_area.interior(), 
 			len(self.event_groups)-1)
 
@@ -303,7 +414,8 @@ class EventList:
 			return dict['start'], \
 				dict['stop'], \
 				dict['channel'], \
-				dict['title']
+				dict['title'] , \
+				dict['repeat']
 		return None
 
 	def list(self):
@@ -319,15 +431,19 @@ class EventList:
 	def execute(self, button):
 		if button == 'OK':
 			self.dialog.deactivate()
-			self.last_add = []		
+			self.last_add = []
 			for tag in self.tags():
 				dict = self.record_event[tag]
 				event = self.event_groups[tag]
-				dict['channel'] = event.get_channel()
-				dict['start'] = event.get_start()
-				dict['stop'] = event.get_stop()
-				dict['title'] = event.get_title()
-				dict['repeat'] = event.get_repeat()
+
+				if event.get_repeat() == "Delete":
+					self.delete(tag)
+				else:
+					dict['channel'] = event.get_channel()
+					dict['start'] = event.get_start()
+					dict['stop'] = event.get_stop()
+					dict['title'] = event.get_title()
+					dict['repeat'] = event.get_repeat()
 			self.save()
 			return
 
@@ -335,6 +451,16 @@ class EventList:
 			self.dialog.deactivate()
 			self.last_delete()
 			self.last_add = []		
+			for tag in self.tags():
+				dict = self.record_event[tag]
+				event = self.event_groups[tag]
+
+				event.set_channel(dict['channel'])
+				event.set_start(dict['start'])
+				event.set_stop(dict['stop'])
+				event.set_title(dict['title'])
+				event.set_repeat(dict['repeat'])
+
 
 		if button == "Add":
 			self.add("x1")

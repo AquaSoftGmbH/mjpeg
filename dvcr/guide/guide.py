@@ -15,9 +15,9 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 from string import *
-from time import *
 from Tkinter import *
 from events import *
+import time
 import sys
 import marshal 
 import ConfigParser
@@ -60,7 +60,7 @@ class Guide:
 		self.columns = 3
 		self.column_list = (1, 2, 3)
 		self.seconds_per_day = 24 * 60 * 60
-		self.zone_offset = timezone
+		self.zone_offset = time.timezone
 		self.station_width = 0
 		self.time_label = ( 
 			"12:00 AM", "12:30 AM", " 1:00 AM", " 1:30 AM", 
@@ -104,7 +104,7 @@ class Guide:
 		for key in list_keys:
 			data = self.list_dict[key]
 			print "%s %s %6.6s %-10s %3d mins. %s" % \
-				(key, strftime("%m/%d/%y %H:%M", gmtime(data[0])), 
+				(key, time.strftime("%m/%d/%y %H:%M", time.gmtime(data[0])), 
 				data[2], data[1], data[3], data[4])
 
 	def search(self, station_id, list_time):
@@ -117,7 +117,7 @@ class Guide:
 		zero_time = list_time - 3600 * 5
 
 		while key_time > zero_time:
-			key = strftime("%d%H%M", gmtime(key_time)) + station_id
+			key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
 			if self.list_dict.has_key(key):
 				return self.list_dict[key]
 			key_time = key_time - 1800
@@ -134,7 +134,7 @@ class Guide:
 		zero_time = list_time + 3600 * 5
 
 		while key_time < zero_time:
-			key = strftime("%d%H%M", gmtime(key_time)) + station_id
+			key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
 			if self.list_dict.has_key(key):
 				return self.list_dict[key]
 			key_time = key_time + 1800
@@ -152,20 +152,20 @@ class Guide:
 							listing[3]
 
 		key_time = new_entry[0] - (new_entry[0] % 1800)
-		key = strftime("%d%H%M", gmtime(key_time)) + new_entry[2]
+		key = time.strftime("%d%H%M", time.gmtime(key_time)) + new_entry[2]
 		if self.list_dict.has_key(key):
 			del self.list_dict[key]
 		self.list_dict[key] = new_entry
 		
 	def save(self, seconds):
 		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir+strftime("%y.%m.%d", localtime(seconds))
+		file_name = dir+time.strftime("%y.%m.%d", time.localtime(seconds))
 		file = open(file_name, "w")
 		marshal.dump(self.list_dict, file)
 
 	def load(self, seconds):
 		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir + strftime("%y.%m.%d", localtime(seconds))
+		file_name = dir + time.strftime("%y.%m.%d", time.localtime(seconds))
 		file = open(file_name, "r")
 		self.list_dict = marshal.load(file)
 
@@ -174,14 +174,15 @@ class Guide:
 		listing = self.list_dict[key]
 		print "listing=", listing
 		stop = listing[0] + listing[3] * 60;
-		self.events.add(key,  listing[2], listing[0], stop,
-			"aa", listing[4])
+		channel = listing[2] + ":" + listing[1]
+		self.events.add(key,  channel, listing[0], stop,
+			"Once", listing[4])
 		self.events.display_events(key)
 
 	def info_in(self, key, aa):
 		listing = self.list_dict[key]
-		start = strftime("%l:%M %p",gmtime(listing[0]))
-		end = strftime("%l:%M %p",gmtime(listing[0] + listing[3] * 60))
+		start = time.strftime("%l:%M %p", time.gmtime(listing[0]))
+		end = time.strftime("%l:%M %p",time.gmtime(listing[0] + listing[3] * 60))
 
 		output = "%s   %s-%s %d mins" % (listing[4], start, end, listing[3])
 		self.info_time.configure(text=output)
@@ -234,7 +235,7 @@ class Guide:
 		if end > -1:
 			station_id = station_id[end + 1:]
 		key_time = listing[0] - (listing[0] % 1800)
-		key = strftime("%d%H%M", gmtime(key_time)) + station_id
+		key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
 
 		label = Button(self.listing_frame,
 			command=GuideCmd(self.info, key),
@@ -258,9 +259,7 @@ class Guide:
 	def display_guide(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
 		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
-		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
-		seconds = mktime(year, month, day, 0, 0, 0, weekday, julday, saving)
-		date_string = strftime("%m/%d/%Y", localtime(seconds))
+		date_string = time.strftime("%m/%d/%Y", time.localtime(seconds))
 
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
@@ -294,7 +293,7 @@ class Guide:
 			displaycol=4)
 		self.listing_frame = self.listing_widget.component("table")
 
-		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
+		year, month, day, hour, min, sec, weekday, julday, saving = time.localtime(seconds)
 		time_index = hour * 2 + min / 30
 
 		self.buttons = []
