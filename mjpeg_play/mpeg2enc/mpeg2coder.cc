@@ -322,7 +322,7 @@ void  MPEG2Coder::PutMV(int dmv, int f_code)
   }
 
   /* split dmv into motion_code and motion_residual */
-  temp = ((dmv<0) ? -dmv : dmv) + f - 1;
+  temp = abs(dmv) + f - 1;
   motion_code = temp>>r_size;
   if (dmv<0)
     motion_code = -motion_code;
