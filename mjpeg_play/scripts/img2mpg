@@ -3,7 +3,7 @@
 # -------------------------------------------------------------------------------------------------------
 # DESCRIPTION :
 #
-# IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD portfolio (with vcdimager)
+# IMG2MPG : convert images sequence on a MPEG files for create a VCD/SVCD/XVCD/DVD portfolio (with vcdimager)
 #
 # This script use this packages :  'ImageMagick' ver >= 5.4.8 [http://www.imagemagick.org/]
 #                                  'MjpegTools'  ver >= 1.6.0 [http://mjpeg.sourceforge.net/]
@@ -22,7 +22,7 @@
 # - 'mpeg2enc'  from MjpegTools for encode the video stream in MPEG file.
 # - 'mp2enc'    from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
 # - 'mplex'     from MjpegTools for multiplexe the MPEG file and the MP2 sound and convert
-#               the final MPEG file to a X/S/VCD format compatible with vcdimager program.
+#               the final MPEG file to a DVD/XVCD/SVCD/VCD format compatible with vcdimager program.
 #
 # Return value : 0 -> Process finish succefuly.
 #                1 -> Error.
@@ -31,35 +31,34 @@
 #
 # ABOUT VIDEO TYPES AND FORMATS SUPPORTED BY THIS SCRIPT :
 #
-#  Video type   ::         VCD         :        SVCD         :        XVCD         ::        DVD          :
-#               ::          :          :          :          :          :          ::          :          :
-#  Video format :: PAL/SECAM:   NTSC   : PAL/SECAM:   NTSC   : PAL/SECAM:   NTSC   :: PAL/SECAM:   NTSC   :
-#               ::          :          :          :          :          :          ::          :          :
-#  Resolution   ::  352x288 :  352x240 :  576x480 :  480x480 :  720x576 :  720x480 ::  720x576 :  720x480 :
-#               ::          :          :          :          :          :          ::          :          :
-#  Frame/s      ::    25    :    30    :     25   :     30   :     25   :    30    ::     25   :    30    :
-#               ::                     :                     :                     ::                     :
-#  MPEG type    ::        MPEG1        :        MPEG2        :        MPEG2        ::        MPEG2        :
-#               ::                     :                     :                     ::                     :
-#  Video CDR    ::        74 mn        :        60 mn        :        60 mn        ::        20 mn        :
-#  duration     ::                     :                     :                     ::                     :
-#               ::                     :                     :                     ::                     :
-#  Video        ::     1,150 kbit/s    :     2,500 kbit/s    :     2,500 kbit/s    ::     8,000 kbit/s    :
-#  bitrate      ::                     :                     :                     ::                     :
-#               ::                     :                     :                     ::                     :
-#  Sound format ::         MP2         :         MP2         :         MP2         ::       MP2/MP3       :
-#               ::                     :                     :                     ::                     :
-#  Audio        ::       224 kbit/s    :       224 kbit/s    :       224 kbit/s    ::       224 kbit/s    :
-#  biterate     ::                     :                     :                     ::                     :
-#               ::                     :                     :                     ::                     :
-#  DVD player   ::       excelent      :        good         :        medium       ::       excelent      :
-#  compatibility::                     :                     :                     ::                     :
-#               ::                     :                     :                     ::                     :
-#  Image        ::        medium       :        good         :       excelent      ::       excelent      :
-#  restitution  ::                     :                     :                     ::                     :
+#  Video type   ::         VCD         :        SVCD         :        XVCD         :         DVD         :
+#               ::          :          :          :          :          :          :          :          :
+#  Video format :: PAL/SECAM:   NTSC   : PAL/SECAM:   NTSC   : PAL/SECAM:   NTSC   : PAL/SECAM:   NTSC   :
+#               ::          :          :          :          :          :          :          :          :
+#  Resolution   ::  352x288 :  352x240 :  576x480 :  480x480 :  720x576 :  720x480 :  720x576 :  720x480 :
+#               ::          :          :          :          :          :          :          :          :
+#  Frame/s      ::    25    :    30    :     25   :     30   :     25   :    30    :     25   :    30    :
+#               ::                     :                     :                     :                     :
+#  MPEG type    ::        MPEG1        :        MPEG2        :        MPEG2        :        MPEG2        :
+#               ::                     :                     :                     :                     :
+#  Video CDR    ::        74 mn        :        60 mn        :        50 mn        :        20 mn        :
+#  duration     ::                     :                     :                     :                     :
+#               ::                     :                     :                     :                     :
+#  Video        ::     1,150 kbit/s    :     2,500 kbit/s    :     2,500 kbit/s    :     8,000 kbit/s    :
+#  bitrate      ::                     :                     :                     :                     :
+#               ::                     :                     :                     :                     :
+#  Sound format ::         MP2         :         MP2         :         MP2         :         MP2         :
+#               ::                     :                     :                     :                     :
+#  Audio        ::       224 kbit/s    :       224 kbit/s    :       224 kbit/s    :       224 kbit/s    :
+#  biterate     ::                     :                     :                     :                     :
+#               ::                     :                     :                     :                     :
+#  DVD player   ::       excelent      :        good         :        medium       :       excelent      :
+#  compatibility::                     :                     :                     :                     :
+#               ::                     :                     :                     :                     :
+#  Image        ::        medium       :        good         :       excelent      :       excelent      :
+#  restitution  ::                     :                     :                     :                     :
 #
 #  Notes : - The XVCD resolution is the same of DVD !
-#          - DVD features are given for to compare. 
 #
 # -------------------------------------------------------------------------------------------------------
 #
@@ -131,6 +130,9 @@
 # January 2003  : Add a manual page (on MjpegTools project package).
 #                 Add an option for use a temporary folder.
 #                 Add '--with-gui' option for run with 'kimg2mpg' KDE gui frontend program.
+#                 Change the IFS variable for a correct interpretation of the whitespaces in the path
+#                 files names.
+#                 Add DVD video format option.
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -244,12 +246,15 @@ while test $# -gt 0; do
 
     # Temporary folder...
     -T)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       if [ -z $1 ]; then
          echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
          exit -1
       fi
       TEMPORARYFOLDER=$1
+      IFS=$OLD_IFS
       ;;
 
     # Transition between images...
@@ -292,6 +297,8 @@ while test $# -gt 0; do
 
     # Background image file...
     -b)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       if [ -z $1 ]; then
          echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
@@ -309,6 +316,7 @@ while test $# -gt 0; do
          echo -e "The background image file '$1' don't exist or can't be open !!!"
          exit -1
       fi
+      IFS=$OLD_IFS
       ;;
 
     # Background color...
@@ -338,6 +346,8 @@ while test $# -gt 0; do
 
     # MP2 audio file...
     -a)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       if [ -z $1 ]; then
          echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
@@ -349,10 +359,13 @@ while test $# -gt 0; do
          echo -e "The MP2 audio file '$1' don't exist or can't be open !!!"
          exit -1
       fi
+      IFS=$OLD_IFS	
       ;;
 
     # WAV audio file...
     -w)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       if [ -z $1 ]; then
          echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
@@ -364,26 +377,33 @@ while test $# -gt 0; do
          echo -e "The WAV audio file '$1' don't exist or can't be open !!!"
          exit -1
       fi
+      IFS=$OLD_IFS	
       ;;
 
     # MPEG output file...
     -o)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       if [ -z $1 ]; then
          echo -e "Missing parameter after '$OPTIONMESSAGE' option !"
          exit -1
       fi
       OUTPUT_MPEG_FILE=$1
+      IFS=$OLD_IFS	
       ;;
 
     # Image input files...
     -i)
+      OLD_IFS=$IFS	
+      IFS="\""
       shift
       while [ $1 ]; do
           INPUT_IMAGE_FILES[CPT_IMG_FILE]=$1
     	  CPT_IMG_FILE=`echo $(($CPT_IMG_FILE+1))`
 	  shift
       done
+      IFS=$OLD_IFS	
       ;;
 
     # Help...
@@ -399,7 +419,7 @@ Options:
    --with-gui              : running with 'kimg2mpg' KDE GUI frontend.
    -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
    -T <Temporary folder>   : use a specific folder for creating the temporary files (ex: '/tmp').
-   -f <Video format>       : video format  [XVCD=default, SVCD, VCD].
+   -f <Video format>       : video format  [DVD, XVCD=default, SVCD, VCD].
    -n <Video type>         : video type    [PAL=default, NTSC, SECAM].
    -b <background file>    : 768x576 pixels background image file name [black color = default].
    -c <RGB color>          : hex RGB color for background image (ex: AA001F).
@@ -413,10 +433,13 @@ Options:
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific
 duration and merge all images on an single MPEG file. It use the 'MjpegTools' &
 'ImageMagick' packages.
-You can use this for to build some XVCD/SVCD/VCD portfolios for your home DVD player.
+You can use this for to build some DVD/XVCD/SVCD/VCD portfolios for your home DVD player.
 Use 'vcdimager' for create this...
 
-Note : the input images files with the '-i' option must be the last command line parameters.
+Notes : 
+
+  - The input images files with the '-i' option must be the last command line parameters.
+  - If you use some whitespaces in the path folders/files, use '"' around the complete path string.
 
 Examples :
 
@@ -434,8 +457,8 @@ Examples :
 
 #./img2mpg -n NTSC -t 2 -o MyPortfolio.mpg -i *.png
 
-   Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
-   The image files sequence use the local filesystem sort.
+   Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all
+   local PNG images files. The image files sequence use the local filesystem sort.
 
 Author:
    CAULIER Gilles <caulier.gilles@free.fr>
@@ -479,7 +502,7 @@ else
         if [ $WITHGUI = 0 ]; then     
     	    echo -e "$INPUT_FILE_NAME"
 	fi
-        if [ -s $INPUT_FILE_NAME ]; then
+        if [ -s "$INPUT_FILE_NAME" ]; then
            CPT=`echo $(($CPT-1))`
         else
            echo -e "The image file '$INPUT_FILE_NAME' don't exist or can't be open !!!"
@@ -507,7 +530,7 @@ fi
 # 5 -> SVCD no standard   (PAL/SECAM:720x576 - NTSC:720x480). -> XVCD.
 # 6 -> VCD with fixed images (Still Frame)                    -> not used.
 # 7 -> SVCD with fixed images (Still Frame)                   -> not used.
-# 8 -> DVD MPEG2                                              -> not used.
+# 8 -> DVD MPEG2                                              -> DVD.
 
 case $VIDEO_TYPE in
     PAL)
@@ -554,6 +577,17 @@ case $VIDEO_FORMAT in
       BIT_RATE=2500
       BUFFER_SIZE=230
       VIDEOFORMAT_MESSAGE="XVCD"
+      ;;
+    DVD)
+      VIDEO_FORMAT_NUMBER=8
+      if [ $VIDEO_TYPE = "NTSC" ]; then
+        VIDEO_FORMAT="SIZE_720x480"
+      else
+        VIDEO_FORMAT="SIZE_720x576"
+      fi
+      BIT_RATE=8000
+      BUFFER_SIZE=230
+      VIDEOFORMAT_MESSAGE="DVD"
       ;;
     *)
       echo "Video format '$VIDEO_FORMAT' not recognized..."
@@ -660,7 +694,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
         CPT=`echo $(($CPT+1))`
 
         # For debugging...
-        # echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      - DISSOLVE=$DISSOLVEVALUE    - Image Num. $CPF / $CPT_IMG_FILE [${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}] \n" >&2
+        # echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      - DISSOLVE=$DISSOLVEVALUE    - Image Num. $CPF / $CPT_IMG_FILE ["${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}"] \n" >&2
 
         if [ $WITHGUI = 0 ]; then     
     	    echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
@@ -673,7 +707,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
 	    if [ $CPT = `echo $((($CPF*$NBFRAMEIMAGE)-$NBFRAMEIMAGE+1))` ]; then
 
 		# Conversion and resizing the curent image file with ImageMagick.
-    		montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK ${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]} $TMPFILENAME.tmp.jpg
+    		montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" $TMPFILENAME.tmp.jpg
 		convert -type TrueColor -quality 100 $TMPFILENAME.tmp.jpg $TMPFILENAME.tmp.pnm
 
 		# Next input image...
@@ -685,7 +719,7 @@ while test $CPT -lt $NBFRAMETOTAL;\
 		if [ $[$CPT <= `echo $((($CPF*($NBFRAMEIMAGE+$NBFRAMETRANSITION)-$NBFRAMEIMAGE)))`] = 1 ]; then
 
 		    if [ $DISSOLVEVALUE = 99 ]; then
-    			montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK ${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]} $TMPFILENAME.tmp.jpg
+    			montage -type TrueColor -quality 100 -geometry 768x576 -texture $MASK "${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}" $TMPFILENAME.tmp.jpg
     			convert -type TrueColor -quality 100 $TMPFILENAME.tmp.jpg $TMPFILENAME.next_trans.tmp.pnm
 		    fi
 		
@@ -717,7 +751,7 @@ DATE_FIN=`date +%s`
 TEMPSCALCUL=`echo $(($DATE_FIN-DATE_DEBUT))`
 
 if [ $WITHGUI = 0 ]; then     
-    echo -e "\n$CPT_IMG_FILE image file(s) MPEG encoding terminated [$NBFRAMETOTAL frames - Encoding time : $TEMPSCALCUL s]."
+    echo -e "\nMPEG encoding terminated [$NBFRAMETOTAL frames - Encoding time : $TEMPSCALCUL s]."
 fi
 
 # Building sound track if necessary...
