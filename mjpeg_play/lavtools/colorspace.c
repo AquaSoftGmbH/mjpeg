@@ -235,6 +235,53 @@ void convert_YCbCr_to_RGB(uint8_t *planes[], int length)
 }
 
 
+static uint8_t Y219_255[256];
+static int conv_Y219_Y255_inited = 0;
+static uint8_t Y255_219[256];
+static int conv_Y255_Y219_inited = 0;
+
+static void init_Y255_to_Y219_tables(void)
+{
+  int i;
+  for (i = 0; i < 256; i++)
+    Y255_219[i] = myround((double)i * 219.0 / 255.0) + 16;
+  conv_Y255_Y219_inited = 1;
+}
+
+static void init_Y219_to_Y255_tables(void)
+{
+  int i = 0;
+  for ( ; i < 16; i++)  Y219_255[i] = 0;
+  for ( ; i < 236; i++) Y219_255[i] = myround((double)(i-16) * 255.0 / 219.0);
+  for ( ; i < 256; i++) Y219_255[i] = 255;
+  conv_Y219_Y255_inited = 1;
+}
+
+
+
+
+void convert_Y255_to_Y219(uint8_t *plane, int length)
+{
+  if (!conv_Y255_Y219_inited) init_Y255_to_Y219_tables();
+  while (length > 0) {
+    *plane = Y255_219[*plane];
+    plane++;
+    length--;
+  }
+}
+
+void convert_Y219_to_Y255(uint8_t *plane, int length)
+{
+  if (!conv_Y219_Y255_inited) init_Y219_to_Y255_tables();
+  while (length > 0) {
+    *plane = Y219_255[*plane];
+    plane++;
+    length--;
+  }
+}
+
+
+
 #if 0
 
 /* This stuff ain't ready for prime-time yet,

@@ -72,7 +72,9 @@ bin_PROGRAMS = \
 	yuvcorrect_tune \
 	jpeg2yuv \
 	ppmtoy4m \
+	pnmtoy4m \
 	y4mtoppm \
+	y4mtopnm \
 	pgmtoy4m \
 	y4mcolorbars \
 	lavinfo \
@@ -190,11 +192,17 @@ yuvplay_LDADD = $(SDL_LIBS) $(LIBMJPEGUTILS)
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.c subsample.c
 ppmtoy4m_LDADD = $(LIBMJPEGUTILS)
 
+pnmtoy4m_SOURCES = pnmtoy4m.c colorspace.c
+pnmtoy4m_LDADD = $(LIBMJPEGUTILS)
+
 pgmtoy4m_SOURCES = pgmtoy4m.c
 pgmtoy4m_LDADD = $(LIBMJPEGUTILS)
 
 y4mtoppm_SOURCES = y4mtoppm.c colorspace.c subsample.c
 y4mtoppm_LDADD = $(LIBMJPEGUTILS)
+
+y4mtopnm_SOURCES = y4mtopnm.c colorspace.c
+y4mtopnm_LDADD = $(LIBMJPEGUTILS)
 
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.c subsample.c
 y4mcolorbars_LDADD = $(LIBMJPEGUTILS)

@@ -28,4 +28,6 @@ void convert_RGB_to_YCbCr(uint8_t *planes[], int length);
 
 void convert_YCbCr_to_RGB(uint8_t *planes[], int length);
 
+void convert_Y255_to_Y219(uint8_t *plane, int length);
+void convert_Y219_to_Y255(uint8_t *plane, int length);
 
