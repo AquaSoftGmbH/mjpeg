@@ -736,7 +736,7 @@ PS_Stream::CreatePack ( Pack_struc	 *pack,
         *(index++) = static_cast<uint8_t>(mux_rate >> 14);
         *(index++) = static_cast<uint8_t>(0xff & (mux_rate >> 6));
         *(index++) = static_cast<uint8_t>(0x03 | ((mux_rate & 0x3f) << 2));
-        *(index++) = static_cast<uint8_t>(RESERVED_BYTE << 3 | 0); /* No pack stuffing */
+        *(index++) = (uint8_t)(RESERVED_BYTE << 3 | 0); /* No pack stuffing */
     }
     else
     {
