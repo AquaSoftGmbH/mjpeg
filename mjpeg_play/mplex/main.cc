@@ -59,7 +59,6 @@ int main (int argc, char* argv[])
     vector<IBitStream *> ac3_files;
     vector<IBitStream *> lpcm_files;
     vector<IBitStream *> video_files;
-    char    *multi_file = NULL;	
 	int     i;
 	int     optargs;
 	OutputStream ostrm;
@@ -67,7 +66,7 @@ int main (int argc, char* argv[])
     off_t audio_bytes, video_bytes;
     clockticks first_frame_PTS = 0;
 
-    optargs = intro_and_options (argc, argv, &multi_file);
+    optargs = intro_and_options (argc, argv);
 	check_files (argc-optargs, argv+optargs,  
 				 mpa_files,
 				 ac3_files,
@@ -79,7 +78,34 @@ int main (int argc, char* argv[])
 				lpcm_files.size(),
 				ac3_files.size());
 
+	//
+	// Where no parameters for streams have been specified
+	// simply set the default values (these will depend on the format
+	// we're muxing of course...)
+	//
 
+	for( i = opt_video_param.size(); i < video_files.size(); ++i )
+	{
+		opt_video_param.push_back(VideoParams::Default( opt_mux_format ));
+	}
+	for( i = opt_lpcm_param.size(); i < lpcm_files.size(); ++i )
+	{
+		opt_lpcm_param.push_back(LpcmParams::Default(opt_mux_format));
+	}
+
+	//
+	// Set standard values if the selected profile implies this...
+	//
+	for( i = 0; i < video_files.size(); ++i )
+	{
+		if( opt_video_param[i]->Force(opt_mux_format) )
+		{
+			mjpeg_info( "Video stream %d: profile %d selected - ignoring non-srtandard options!", i, opt_mux_format );
+		}
+	}
+
+	vector<VideoParams *>::iterator vidparm = opt_video_param.begin();
+	vector<LpcmParams *>::iterator lpcmparm = opt_lpcm_param.begin();
 	if( MPEG_STILLS_FORMAT(opt_mux_format) )
 	{
 		mjpeg_info( "Multiplexing stills stream!" );
@@ -95,14 +121,18 @@ int main (int argc, char* argv[])
 			{
 				VCDStillsStream *str[2];
 				ConstantFrameIntervals *intervals[2];
-			
+
 				for( i = 0; i<video_files.size(); ++i )
 				{
-					intervals[i] = new ConstantFrameIntervals( frame_interval );
-					str[i] = new VCDStillsStream( *video_files[i],
-												  ostrm, intervals[i] );
+					FrameIntervals *ints = 
+						new ConstantFrameIntervals( frame_interval );
+					str[i] = 
+						new VCDStillsStream( *video_files[i],
+											 new StillsParams( *vidparm, ints),
+											 ostrm );
 					strms.push_back( str[i] );
 					str[i]->Init();
+					++vidparm;
 				}
 				if( video_files.size() == 2 )
 				{
@@ -123,23 +153,25 @@ int main (int argc, char* argv[])
 				ConstantFrameIntervals *intervals;
 				StillsStream *str;
 				intervals = new ConstantFrameIntervals( frame_interval );
-				str = new StillsStream( *video_files[0],ostrm, intervals );
+				str = new StillsStream( *video_files[0],
+										new StillsParams( *vidparm, intervals ),
+										ostrm );
 				strms.push_back( str );
 				str->Init();
 			}
 			else 
-			for( i = 0 ; i < mpa_files.size() ; ++i )
-			{
-				AudioStream *audioStrm = new MPAStream( *mpa_files[i], ostrm);
-				audioStrm->Init ( i);
-				strms.push_back(audioStrm);
-			}
+				for( i = 0 ; i < mpa_files.size() ; ++i )
+				{
+					AudioStream *audioStrm = new MPAStream( *mpa_files[i], ostrm);
+					audioStrm->Init ( i);
+					strms.push_back(audioStrm);
+				}
 			break;
 		default:
 			mjpeg_error_exit1("Only VCD and SVCD stills format for the moment...");
 		}
 
-		ostrm.OutputMultiplex( &strms,  multi_file);
+		ostrm.OutputMultiplex( &strms,  opt_multplex_outfile);
 		
 	}
 	else
@@ -158,11 +190,17 @@ int main (int argc, char* argv[])
 			// The first DVD video stream is made the master stream...
 			//
 			if( i == 0 && opt_mux_format ==  MPEG_FORMAT_DVD )
-				videoStrm = new DVDVideoStream( *video_files[i], ostrm);
+				videoStrm = new DVDVideoStream( *video_files[i], 
+												*vidparm,
+												ostrm);
 			else
-				videoStrm = new VideoStream( *video_files[i],ostrm);
+				videoStrm = new VideoStream( *video_files[i],
+											 *vidparm,
+											 ostrm);
 			videoStrm->Init( i );
 			strms.push_back( videoStrm );
+			++vidparm;
+
 		}
 		for( i = 0 ; i < mpa_files.size() ; ++i )
 		{
@@ -178,12 +216,16 @@ int main (int argc, char* argv[])
 		}
 		for( i = 0 ; i < lpcm_files.size() ; ++i )
 		{
-			AudioStream *audioStrm = new LPCMStream( *lpcm_files[i], ostrm);
+			AudioStream *audioStrm = 
+				new LPCMStream( *lpcm_files[i], 
+								*lpcmparm,
+								ostrm);
 			audioStrm->Init ( i );
 			strms.push_back(audioStrm);
+			++lpcmparm;
 		}
 		
-		ostrm.OutputMultiplex( &strms,  multi_file);
+		ostrm.OutputMultiplex( &strms,  opt_multplex_outfile);
 	}
 	for( i = 0; i < strms.size(); ++i )
 		delete strms[i];

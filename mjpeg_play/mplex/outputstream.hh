@@ -60,8 +60,6 @@ public:
 	bool timestamp_iframe_only;
 	bool video_buffers_iframe_only;
 	unsigned int audio_buffer_size;
-	unsigned int video_buffer_size;
-
 
 	/* Sequence run-out control */
 	bool running_out;

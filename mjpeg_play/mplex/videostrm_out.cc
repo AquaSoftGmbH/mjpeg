@@ -28,14 +28,16 @@
 #include "outputstream.hh"
 
 
-VideoStream::VideoStream(IBitStream &ibs, OutputStream &into )	:
+VideoStream::VideoStream(IBitStream &ibs, VideoParams *parms, 
+                         OutputStream &into ) :
 	ElementaryStream( ibs, into, ElementaryStream::video ),
 	num_sequence(0),
 	num_seq_end(0),
 	num_pictures(0),
 	num_groups(0),
 	dtspts_for_all_au( into.dtspts_for_all_vau ),
-    gop_control_packet( false )
+    gop_control_packet( false ),
+    parms(parms)
 {
 	prev_offset=0;
     decoding_order=0;

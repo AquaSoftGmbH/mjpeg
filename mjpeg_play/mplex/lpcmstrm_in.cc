@@ -33,8 +33,9 @@
 
 
 
-LPCMStream::LPCMStream(IBitStream &ibs, OutputStream &into) : 
-	AudioStream( ibs, into )
+LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, OutputStream &into) : 
+	AudioStream( ibs, into ),
+    parms(parms)
 {
 }
 
@@ -44,6 +45,7 @@ bool LPCMStream::Probe(IBitStream &bs )
     return 
         last_dot != NULL 
         && strcmp( last_dot+1, "lpcm") == 0;
+
 }
 
 
@@ -73,14 +75,15 @@ void LPCMStream::Init ( const int stream_num)
                 );
 
 	InitAUbuffer();
-
+    
 	AU_start = bs.bitcount();
 
     // This is a dummy debug version that simply assumes 48kHz
     // two channel 16 bit sample LPCM
-    samples_per_second = 48000;
-    channels = 2;
-    bits_per_sample = 16;
+    
+    samples_per_second = parms->SamplesPerSec();
+    channels = parms->Channels();
+    bits_per_sample = parms->BitsPerSample();
     bytes_per_frame = 
         samples_per_second * channels * bits_per_sample / 8
         * ticks_per_frame_90kHz
@@ -195,7 +198,7 @@ void LPCMStream::OutputHdrInfo ()
 {
 	mjpeg_info("LPCM AUDIO STREAM:");
 
-    mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)",
+    mjpeg_info ("Bit rate       : %8u bytes/sec (%u) bit/sec)",
                 NominalBitRate()/8, NominalBitRate() );
     mjpeg_info ("Channels       :     %d\n", channels);
     mjpeg_info ("Bits per sample:     %d\n", bits_per_sample );

@@ -36,7 +36,7 @@ void StillsStream::Init ( )
 	InitAUbuffer();
 	ScanFirstSeqHeader();
 
-	mjpeg_debug( "SETTING video buffer to %d", muxinto.video_buffer_size );
+	mjpeg_debug( "Stills: Video buffer suggestion ignored!" );
 	switch( opt_mux_format )
 	{
 	case  MPEG_FORMAT_VCD_STILL :
@@ -108,8 +108,10 @@ void StillsStream::Init ( )
 
 void StillsStream::NextDTSPTS( clockticks &DTS, clockticks &PTS )
 {
+    StillsParams *sparms = static_cast<StillsParams*>(parms);
+
 	clockticks interval = static_cast<clockticks>
-		(intervals->NextFrameInterval() * CLOCKS / frame_rate);
+		(sparms->Intervals()->NextFrameInterval() * CLOCKS / frame_rate);
 	clockticks time_for_xfer;
 	muxinto.ByteposTimecode( BufferSize(), time_for_xfer );
 		

@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <vector>
 #include "mjpeg_types.h"
-
+#include "stream_params.hh"
 #include "aunit.hh"
 
 /*************************************************************************
@@ -34,8 +34,9 @@
 *************************************************************************/
 
 using std::vector;
+
     
-int intro_and_options( int, char **, char**);
+int intro_and_options( int argc, char *argv[]);
 
 void check_files (int argc, char* argv[],
                   vector<IBitStream *> &mpa_file,
@@ -49,16 +50,17 @@ bool open_file(const char *name);
 
 
 
-
 /*************************************************************************
     Command line options and derived parameters
 *************************************************************************/
 
-
+const unsigned int default_video_buffer_size = 46;
 
 extern int opt_quiet_mode;
 extern int opt_interactive_mode;
-extern int opt_buffer_size;
+extern vector<LpcmParams *> opt_lpcm_param;
+extern vector<VideoParams *> opt_video_param;
+//extern int opt_buffer_size; = 46
 extern int opt_data_rate;
 extern int opt_video_offset;
 extern int opt_audio_offset;
@@ -74,7 +76,7 @@ extern int opt_emul_vcdmplex;
 extern bool opt_stills;
 extern bool opt_ignore_underrun;
 extern int verbose;
-
+extern char *opt_multplex_outfile;
 extern off_t opt_max_segment_size;
 
 /*************************************************************************

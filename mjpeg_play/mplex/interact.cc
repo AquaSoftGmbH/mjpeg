@@ -1,3 +1,25 @@
+
+/*
+ *  interact.cc:  Simple command-line front-end
+ *
+ *  Copyright (C) 2001 Andrew Stevens <andrew.stevens@philips.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of version 2 of the GNU General Public License
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+
+
 #include <config.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -14,9 +36,10 @@
 #include "audiostrm.hh"
 #include "mplexconsts.hh"
 
+vector<LpcmParams *> opt_lpcm_param;
+vector<VideoParams *> opt_video_param;
 
 int opt_verbosity = 1;
-int opt_buffer_size = 46;
 int opt_data_rate = 0;  /* 3486 = 174300B/sec would be right for VCD */
 int opt_video_offset = 0;
 int opt_audio_offset = 0;
@@ -33,6 +56,7 @@ int opt_emul_vcdmplex = 0;
 bool opt_ignore_underrun = false;
 bool opt_split_at_seq_end = true;
 off_t opt_max_segment_size = 0;
+char *opt_multplex_outfile = 0;
 
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
@@ -40,6 +64,7 @@ off_t opt_max_segment_size = 0;
     Intro Screen and argument check
 *************************************************************************/
 
+    
 static void Usage(char *str)
 {
     fprintf( stderr,
@@ -57,8 +82,9 @@ static void Usage(char *str)
     "--mux-bitrate|-r num\n"
     "  Specify data rate of output stream in kbit/sec\n"
 	"    (default 0=Compute from source streams)\n"
-	"--video-buffer|-b num\n"
+	"--video-buffer|-b num [, num...] \n"
     "  Specifies decoder buffers size in kB.  [ 20...2000]\n"
+    "--lpcm-params | -L samppersec:chan:bits [, samppersec:chan:bits]\n"
 	"--mux-limit|-l num\n"
     "  Multiplex only num seconds of material (default 0=multiplex all)\n"
 	"--sync-offset|-O num\n"
@@ -80,14 +106,16 @@ static void Usage(char *str)
 	exit (1);
 }
 
-static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:VXMeh";
+static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:L:VXMeh";
 
 #if defined(HAVE_GETOPT_LONG)
-static struct option long_options[]={
+static struct option long_options[] = 
+{
      { "verbose",           1, 0, 'v' },
      { "format",            1, 0, 'f' },
      { "mux-bitrate",       1, 0, 'r' },
      { "video-buffer",      1, 0, 'b' },
+     { "lpcm-params",       1, 0, 'L' },
      { "output",            1, 0, 'o' },
      { "sync-offset",    	1, 0, 'O' },
      { "vbr",      	        1, 0, 'V' },
@@ -102,14 +130,84 @@ static struct option long_options[]={
  };
 #endif
 
-int intro_and_options(int argc, char *argv[], char **multplex_outfile)
+
+bool parse_lpcm_opt( char *optarg )
+{
+    char *endptr, *startptr;
+    long number;
+    unsigned int samples_sec;
+    unsigned int channels;
+    unsigned int bits_sample;
+    endptr = optarg;
+    do 
+    {
+        startptr = endptr;
+        samples_sec = static_cast<unsigned int>(strtol(startptr, &endptr, 10));
+        if( startptr == endptr || *endptr != ':' )
+            return false;
+
+
+        startptr = endptr+1;
+        channels = static_cast<unsigned int>(strtol(startptr, &endptr, 10));
+        if(startptr == endptr || *endptr != ':' )
+            return false;
+
+        startptr = endptr+1;
+        bits_sample = static_cast<unsigned int>(strtol(startptr, &endptr, 10));
+        if( startptr == endptr )
+            return false;
+
+        LpcmParams *params = LpcmParams::Checked( samples_sec,
+                                                  channels,
+                                                  bits_sample );
+        if( params == 0 )
+            return false;
+        opt_lpcm_param.push_back(params);
+        if( *endptr == ',' )
+            ++endptr;
+    } while( *endptr != '\0' );
+    return true;
+}
+
+
+bool parse_video_opt( char *optarg )
+{
+    char *endptr, *startptr;
+    long number;
+    unsigned int buffer_size;
+    endptr = optarg;
+    do 
+    {
+        startptr = endptr;
+        mjpeg_info( "BUFFER: %s", optarg );
+        buffer_size = static_cast<unsigned int>(strtol(startptr, &endptr, 10));
+        if( startptr == endptr )
+            return false;
+
+        VideoParams *params = VideoParams::Checked( buffer_size );
+        if( params == 0 )
+            return false;
+        opt_video_param.push_back(params);
+        if( *endptr == ',' )
+            ++endptr;
+    } 
+    while( *endptr != '\0' );
+    return true;
+}
+
+int intro_and_options(int argc, char *argv[])
 {
     int n;
 	char *outfile = NULL;
+    long number;
+    char *numptr, *endptr;
+
 #if defined(HAVE_GETOPT_LONG)
 	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1 )
+    {
+    switch(n)
 #endif
 	{
 		switch(n)
@@ -139,11 +237,21 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 			opt_always_system_headers = 1;
 			break;
 
-		case 'b':
-			opt_buffer_size = atoi(optarg);
-			if( opt_buffer_size < 0 || opt_buffer_size > 1000 )
-				Usage(argv[0]);
-			break;
+		case 'b' :
+            if( ! parse_video_opt( optarg ) )
+            {
+                mjpeg_error( "Illegal video decoder buffer size(s): %s", 
+                             optarg );
+                Usage(argv[0]);
+            }
+            break;
+        case 'L':
+            if( ! parse_lpcm_opt( optarg ) )
+            {
+                mjpeg_error( "Illegal LPCM option(s): %s", optarg );
+                Usage(argv[0]);
+            }
+            break;
 
 		case 'r':
 			opt_data_rate = atoi(optarg);
@@ -211,7 +319,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
     }
 	(void)mjpeg_default_handler_verbosity(opt_verbosity);
 	mjpeg_info( "mplex version %s (%s)",MPLEX_VER,MPLEX_DATE );
-	*multplex_outfile = outfile;
+	opt_multplex_outfile = outfile;
 	return optind-1;
 }
 

@@ -86,6 +86,7 @@ void OBitStream::open(char *bs_filename, unsigned int buf_size)
 	outbyte = 0;
 }
 
+
 /** 
     Closes the OBitStream. Flushes the output buffer and closes the output file if one was open. 
  */
@@ -187,8 +188,7 @@ bool IBitStream::refill_buffer()
 }
 
 /**
-  Flushes all read input up-to *but not including* bit
-  unbuffer_upto.
+  Flushes all read input up-to *but not including* byte  unbuffer_upto.
 @param flush_to the number of bits to flush
 */
 
@@ -199,6 +199,7 @@ void IBitStream::flush(bitcount_t flush_upto )
 
 	if( flush_upto < buffer_start )
 		mjpeg_error_exit1("INTERNAL ERROR: attempt to flush input stream before  first buffered byte %d last is %d", flush_upto, buffer_start );
+
 	unsigned int bytes_to_flush = 
 		static_cast<unsigned int>(flush_upto - buffer_start);
 	//
@@ -304,6 +305,42 @@ void IBitStream::open( char *bs_filename, unsigned int buf_size)
 	}
 }
 
+/** Skips forward longer sections fairly efficiently, flushing up to
+    the seek point as it goes.
+    Constraint: stream read point must be byte aligned...
+    
+*/
+void IBitStream::skip_flush_bytes( unsigned int bytes_to_skip )
+{
+    assert( bitidx == 8 );
+    if( byteidx + bytes_to_skip >= bufcount )
+    {
+        long to_seek = (buffer_start+byteidx+bytes_to_skip) -
+                       (buffer_start+bufcount);
+        readpos = buffer_start+byteidx+bytes_to_skip ;
+        buffer_start = readpos;
+        byteidx = 0;
+        bufcount = 0;
+        totbits += bytes_to_skip*8;
+        if( ! fseek( fileh, to_seek, SEEK_CUR ) )
+        {
+            eobs = true;
+        }
+        else
+            refill_buffer();
+    }
+    else
+    {
+        byteidx += bytes_to_skip;
+        //
+        // Move readpos so it corresponds to the byte buffered
+        // at position byteidx in the read buffer.
+        // N.b. readpos-buffer_start is always in buffer and <=
+        // byteidx
+        readpos += byteidx - (readpos-buffer_start);
+        flush( readpos );
+    }
+}
 
 /** sets the internal buffer size. 
     @param new_buf_size the new internal buffer size 

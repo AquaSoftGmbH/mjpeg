@@ -76,10 +76,10 @@ void VideoStream::ScanFirstSeqHeader()
 
 void VideoStream::Init ( const int stream_num )
 {
-	mjpeg_debug( "SETTING video buffer to %d", muxinto.video_buffer_size );
+	mjpeg_debug( "SETTING video buffer to %d", parms->DecodeBufferSize() );
 	MuxStream::Init( VIDEO_STR_0+stream_num,
 					 1,  // Buffer scale
-					 muxinto.video_buffer_size,
+					 parms->DecodeBufferSize()*1024,
 					 0,  // Zero stuffing
 					 muxinto.buffers_in_video,
 					 muxinto.always_buffers_in_video);

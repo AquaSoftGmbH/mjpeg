@@ -173,7 +173,7 @@ EXTERN const char version[]
 
 EXTERN const char author[]
 #ifdef GLOBAL
-  ="(C) 1996, MPEG Software Simulation Group, (C) 2000, 2001 Andrew Stevens, Rainer Johanni"
+  ="(C) 1996, MPEG Software Simulation Group, (C) 2000, 2001,2002 Andrew Stevens, Rainer Johanni"
 #endif
 ;
 

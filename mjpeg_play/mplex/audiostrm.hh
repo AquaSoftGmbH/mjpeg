@@ -25,6 +25,7 @@
 #define __AUDIOSTRM_H__
 
 #include "inputstrm.hh"
+#include "stream_params.hh"
 
 class AudioStream : public ElementaryStream
 {
@@ -116,7 +117,7 @@ private:
 class LPCMStream : public AudioStream
 {
 public:   
-    LPCMStream(IBitStream &ibs,OutputStream &into );
+    LPCMStream(IBitStream &ibs, LpcmParams *parms, OutputStream &into );
     virtual void Init(const int stream_num);
     static bool Probe(IBitStream &bs);
     virtual void Close();
@@ -140,6 +141,7 @@ private:
     unsigned int bytes_per_frame;
     unsigned int frame_index;
     unsigned int dynamic_range_code;
+    LpcmParams *parms;
 }; 	
 
 

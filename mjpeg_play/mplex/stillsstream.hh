@@ -23,29 +23,6 @@
 
 #include "videostrm.hh"
 
-class FrameIntervals
-{
-public:
-	virtual int NextFrameInterval() = 0;
-};
-
-//
-// Class of sequence of frame intervals.
-//
-
-class ConstantFrameIntervals : public FrameIntervals
-{
-public:
-	ConstantFrameIntervals( int _frame_interval ) :
-		frame_interval( _frame_interval )
-		{
-		}
-	int NextFrameInterval() { return frame_interval; };
-private:
-	int frame_interval;
-};
-
-
 //
 // Class for video stills sequence for (S)VCD non-mixed stills segment 
 // item
@@ -55,18 +32,17 @@ class StillsStream : public VideoStream
 {
 public:
 	StillsStream( IBitStream &ibs, 
-                  OutputStream &into, FrameIntervals *frame_ints) :
-		VideoStream( ibs, into ),
+                  StillsParams *parms,
+                  OutputStream &into) :
+		VideoStream( ibs, parms, into ),
 		current_PTS(0LL),
-		current_DTS(0LL),
-		intervals( frame_ints )
+		current_DTS(0LL)
 		{}
 	void Init( );
 private:
 	virtual void NextDTSPTS( clockticks &DTS, clockticks &PTS );
 	clockticks current_PTS;
 	clockticks current_DTS;
-	FrameIntervals *intervals;
 };
 
 //
@@ -76,9 +52,10 @@ private:
 class VCDStillsStream : public StillsStream
 {
 public:
-	VCDStillsStream( IBitStream &ibs,  
-                     OutputStream &into, FrameIntervals *frame_ints) :
-		StillsStream( ibs, into, frame_ints ),
+	VCDStillsStream( IBitStream &ibs,
+                     StillsParams *vparms,
+                     OutputStream &into ) :
+		StillsStream( ibs, vparms, into ),
 		sibling( 0 ),
         stream_mismatch_warned( false )
 		{}

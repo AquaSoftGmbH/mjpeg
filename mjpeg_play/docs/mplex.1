@@ -7,11 +7,15 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .br 
 .SH "SYNOPSIS"
 .B mplex
-.RB [ -v|--vervose
+.RB [ -v|--verbose
 .IR num ]
 .RB [ -m|--mpeg\ 1 | 2 ]
 .RB [ -b|--video-buffer
-.IR video_buffer_size_kB ]
+.IR video_buffer_size_kB [,
+.IR video_buffer_size_kB ...] ]
+.RB [ -L|--lpcm-params
+.IR params [,
+.IR params ... ] ]
 .RB [ -r|--muxed-bitrate
 .IR muxed_bitrate_kbps ]
 .RB [ -l|--mux-limit 
@@ -30,7 +34,8 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .IR output_filesize_limit_MB ]
 .RB [ -M|--split-segment]
 .RB [ -?|--help ]
-.BI -o|--output \ output_filename_pattern input_file...
+.BI -o|--output \ output_filename_pattern \ input_file...
+
 .SH "DESCRIPTION"
 Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
 It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
@@ -94,12 +99,27 @@ The total (non VBR) / peak (VBR) bit-rate of the output stream in k
 Bits/sec. If unspecified and not set by a preset it is automatically
 calculated from the input stream.
 .TP
-.BI -b|--video-buffer \ num
-The size of the video input buffer available in the target decoder.
-The default is 46KB the (tiny) size specified for VCD.  The
-size to use for SVCD is the (more reasonable) 230KB.  If you are
+.BI -b|--video-buffer \ numlist
+A comma-seperateed list of video decoder buffer sizes in KB for the
+video streams (given in the order the video streams appear on the
+command line).  The default is 46KB the (tiny) size specified for VCD.
+The size to use for SVCD is the (more reasonable) 230KB.  If you are
 encoding for a half-decent software decoder it makes sense to push
 this up to 500K or more.
+.TP
+.BI -L|--lpcm-params
+.I samples_per_sec:channels:bits_per_sample
+.br
+[,
+.I samples_per_sec:channels:bits_per_sample
+...]
+.br
+A comma-seperated list of paramter sets for the lpcm audio streams
+(given in the order the lpcm streams appear on the command line).
+Each parameter set comprises the sampling rate in Hz, the number of
+channels, and the number of bits per sample seperated by colons.  For
+example, the default 48kHz two-channel 16-bit audio would be specified
+as 48000:2:16.
 .TP
 .BI -l|--mux-limit \ num
 Multiplex limit.  Multiplex only the specified number of sectors.  Useful

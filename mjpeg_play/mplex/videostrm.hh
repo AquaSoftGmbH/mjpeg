@@ -23,11 +23,12 @@
 #define __VIDEOSTRM_H__
 
 #include "inputstrm.hh"
+#include "stream_params.hh"
 
 class VideoStream : public ElementaryStream
 {
 public:
-	VideoStream(IBitStream &ibs, OutputStream &into);
+	VideoStream(IBitStream &ibs, VideoParams *parms, OutputStream &into);
 	void Init( const int stream_num );
     static bool Probe(IBitStream &bs );
 
@@ -60,7 +61,7 @@ public:
 
 	virtual unsigned int NominalBitRate() 
 		{ 
-			return bit_rate * 50;
+			return bit_rate * 400;
 		}
 
     virtual void OutputGOPControlSector();
@@ -121,6 +122,7 @@ protected:
 	int AU_hdr;
 	clockticks max_PTS;
     clockticks max_STD_buffer_delay;
+    VideoParams *parms;
 }; 	
 
 //
@@ -130,8 +132,8 @@ protected:
 class DVDVideoStream : public VideoStream
 {
 public:
-	DVDVideoStream(IBitStream &ibs,OutputStream &into) : 
-        VideoStream( ibs, into )
+	DVDVideoStream(IBitStream &ibs,VideoParams *parms,OutputStream &into) : 
+        VideoStream( ibs, parms, into )
         {
             gop_control_packet = true;
         }

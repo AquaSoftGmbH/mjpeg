@@ -144,7 +144,7 @@ void AC3Stream::Init ( const int stream_num)
 /// @returns the current bitrate
 unsigned int AC3Stream::NominalBitRate()
 { 
-	return bit_rate;
+	return bit_rate*1024;
 }
 
 /// Prefills the internal buffer for output multiplexing.

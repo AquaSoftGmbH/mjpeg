@@ -108,20 +108,16 @@ segment_state;
 
 void OutputStream::InitSyntaxParameters()
 {
-	video_buffer_size = 0;
 	seg_starts_with_video = false;
 	audio_buffer_size = 4 * 1024;
 	switch( opt_mux_format  )
 	{
 	case MPEG_FORMAT_VCD :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
-	  	video_buffer_size = 46*1024;
 	  	opt_VBR = 0;
  
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile");
-		if( video_buffer_size == 0 )
-			video_buffer_size = opt_buffer_size * 1024;
 		vbr = opt_VBR;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
@@ -152,7 +148,6 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_transport_size = 2048;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2048;
-	  	video_buffer_size = 234*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
@@ -167,12 +162,9 @@ void OutputStream::InitSyntaxParameters()
 
 	case MPEG_FORMAT_SVCD :
 		opt_data_rate = 150*2324;
-	  	video_buffer_size = 230*1024;
 
-	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
+	case MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile");
-		if( video_buffer_size == 0 )
-			video_buffer_size = opt_buffer_size * 1024;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
@@ -212,6 +204,7 @@ void OutputStream::InitSyntaxParameters()
 		sector_align_iframeAUs = true;
         timestamp_iframe_only = false;
         video_buffers_iframe_only = false;
+#ifdef JUNK
 		if( opt_buffer_size == 0 )
 			opt_buffer_size = 46;
 		else if( opt_buffer_size > 220 )
@@ -225,13 +218,13 @@ void OutputStream::InitSyntaxParameters()
 			opt_buffer_size += 4;
 		}		
 		video_buffer_size = opt_buffer_size*1024;
+#endif
 		break;
 
 	case MPEG_FORMAT_SVCD_STILL :
 		mjpeg_info( "Selecting SVCD output profile");
 		if( opt_data_rate == 0 )
 			opt_data_rate = 150*2324;
-	  	video_buffer_size = 230*1024;
 		opt_mpeg = 2;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
@@ -261,7 +254,6 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_transport_size = 2048;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2048;
-	  	video_buffer_size = 232*1024;
 		buffers_in_video = true;
 		always_buffers_in_video = false;
 		buffers_in_audio = true;
@@ -286,11 +278,6 @@ void OutputStream::InitSyntaxParameters()
 		sector_transport_size = opt_sector_size;
 		transport_prefix_sectors = 0;
         sector_size = opt_sector_size;
-		if( opt_buffer_size == 0 )
-		{
-			opt_buffer_size = 46;
-		}
-		video_buffer_size = opt_buffer_size * 1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 1;
 		buffers_in_audio = 0;
@@ -420,7 +407,7 @@ void OutputStream::Init( char *multi_file)
 	dmux_rate = static_cast<int>(1.015 * nominal_rate_sum);
 	dmux_rate = (dmux_rate/50 + 25)*50;
 	
-	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d",dmux_rate * 8);
+	mjpeg_info ("rough-guess multiplexed stream data rate    : %07d",dmux_rate );
 	if( opt_data_rate != 0 )
 		mjpeg_info ("target data-rate specified               : %7d", opt_data_rate*8 );
 
@@ -631,7 +618,7 @@ void OutputStream::OutputPrefix( )
            TODO: I have no idead about MPEG audio streams if present...
         */
     {
-        DummyMuxStream dvd_0xb9_strm_dummy( 0xb9, 1, video_buffer_size );
+        DummyMuxStream dvd_0xb9_strm_dummy( 0xb9, 1, 230 );
         DummyMuxStream dvd_0xb8_strm_dummy( 0xb8, 0, 4096 );
         DummyMuxStream dvd_0xbf_strm_dummy( 0xbf, 1, 2048 );
         vector<MuxStream *> dvdmux;
