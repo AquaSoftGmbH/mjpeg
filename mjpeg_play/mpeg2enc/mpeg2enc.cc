@@ -1314,6 +1314,7 @@ static void init_mpeg_parms(void)
     case MPEG_FORMAT_SVCD_NSR :
     case MPEG_FORMAT_SVCD_STILL :
     case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
         opt_prog_seq = 0;
         break;
     default :
@@ -1416,6 +1417,7 @@ static void init_mpeg_parms(void)
 	case MPEG_FORMAT_SVCD_NSR :
 	case MPEG_FORMAT_SVCD :
     case MPEG_FORMAT_DVD :
+    case MPEG_FORMAT_DVD_NAV :
         /* It would seem DVD and perhaps SVCD demand a 540 pixel display size
            for 4:3 aspect video. However, many players expect 480 and go weird
            if this isn't set...
@@ -1457,6 +1459,10 @@ static void init_mpeg_parms(void)
 	else
 		opt_topfirst = 0;
 
+    // Restrict to frame motion estimation and DCT modes only when MPEG1
+    // or when progressive content is specified for MPEG2.
+    // Note that for some profiles although we have progressive sequence 
+    // header bit = 0 we still only encode with frame modes (for speed).
 	opt_frame_pred_dct_tab[0] 
 		= opt_frame_pred_dct_tab[1] 
 		= opt_frame_pred_dct_tab[2] 
