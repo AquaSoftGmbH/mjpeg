@@ -19,14 +19,17 @@
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 
-#define HAVE_STDINT_H
-#include <mjpegtools/yuv4mpeg.h>
+#include "yuv4mpeg.h"
 
 #define YUVFPS_VERSION "0.1"
 
