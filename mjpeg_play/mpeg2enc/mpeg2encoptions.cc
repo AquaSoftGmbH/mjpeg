@@ -301,8 +301,10 @@ int MPEG2EncOptions::CheckBasicConstraints()
 
 bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 {
+    int nerr = 0;
     in_img_width = strm.horizontal_size;
     in_img_height = strm.vertical_size;
+
 	switch( format  )
 	{
 	case MPEG_FORMAT_MPEG1 :  /* Generic MPEG1 */
@@ -489,6 +491,18 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
 		break;
 	}
 
+/*
+ * At this point the command line arguments have been processed, the format (-f)
+ * selection has had a chance to set the bitrate.  IF --cbr was used and we
+ * STILL do not have a bitrate set then declare an error because a Constant
+ * Bit Rate of 0 makes no sense (most of the time CBR doesn't either ... ;))
+*/
+     if (force_cbr && bitrate == 0)
+        {
+        nerr++;
+        mjpeg_error("--cbr used but no bitrate set with -b or -f!");
+        }
+
     switch( mpeg )
     {
     case 1 :
@@ -506,16 +520,11 @@ bool MPEG2EncOptions::SetFormatPresets( const MPEG2EncInVidParams &strm )
     }
 	if( svcd_scan_data == -1 )
 		svcd_scan_data = 0;
-
-	int nerr = 0;
 	nerr += InferStreamDataParams(strm);
 	nerr += CheckBasicConstraints();
 
 	return nerr != 0;
-    
 }
-
-
 
 /* 
  * Local variables:
