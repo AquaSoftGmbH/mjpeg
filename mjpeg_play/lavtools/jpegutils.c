@@ -348,8 +348,6 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
       else
          yl=yc=0;
 
-	  fprintf( stderr, "OS = %d BL = %d\n", dinfo.output_scanline, dinfo.src->bytes_in_buffer);
-
       while (dinfo.output_scanline < dinfo.output_height)
       {
          jpeg_read_raw_data(&dinfo, scanarray, 8*vsf[0]);
@@ -431,7 +429,6 @@ int decode_jpeg_raw(unsigned char *jpeg_data, int len,
             }
          }
       }
-	  fprintf( stderr, "OS = %d BL = %d\n", dinfo.output_scanline, dinfo.src->bytes_in_buffer);
 
       (void) jpeg_finish_decompress(&dinfo);
       if(field==0 && numfields>1) jpeg_skip_ff(&dinfo);
