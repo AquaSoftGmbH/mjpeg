@@ -1,0 +1,178 @@
+.TH "yuv2divx" "1" "2001 December 19" "MJPEG Linux Square" "MJPEG tools manual"
+.SH "NAME"
+.LP 
+yuv2divx \- build a .AVI file based on a YUV stream via avifile.
+.SH "SYNTAX"
+.LP 
+yuv2divx [\fIoption\fP] \-o [output AVI]
+.SH "DESCRIPTION"
+.LP 
+This utility reads a YUV stream off of \fBstdin\fR (in YUV4MPEG2 format) and compresses it via avifile into a .avi file for playback.  There are options for adding audio and selecting the video codec.
+.br 
+Note that you must have avifile available in order to use this utility.  If building from a CVS snapshot or copy, this will be detected at build time.
+.SH "OPTIONS"
+.LP 
+.TP 
+\fB\-o\fR <\fIfilename\fP>
+.TP 
+\fB\-\-outputfile\fR <\fIfilename\fP>
+.br 
+\fBMandatory</fR> (except for \-\-help, \-V).  The resulting encoded avi file is written to \fIfilename\fP.
+.TP 
+\fB\-b\fR <\fIkbps\fP>
+.TP 
+\fB\-\-divxbitrate\fR <\fIkbps\fP>
+.br 
+Specifies the output \fIvideo\fR bitrate (kilobits per second). Default is 1800.
+.TP 
+\fB\-a\fR <\fIkbps\fP>
+.TP 
+\fB\-\-mp3bitrate\fR <\fIkbps\fP>
+.br 
+Specifies the output \fIaudio\fR bitrate (kilobits per second). Default is 56 for mono audio and 128 for stereo.
+.TP 
+\fB\-e\fR <\fIframes\fP>
+.TP 
+\fB\-\-endframe\fR <\fIframes\fP>
+.br 
+Encode only \fIframes\fP frames. Default is to encode all frames present in video on stdin (extra audio, if available, is ignored).
+.TP 
+\fB\-c\fR <\fIwidth\fP>x<\fIheight\fP>+<\fIleft\fP>+<\fItop\fP>
+.TP 
+\fB\-\-crop\fR <\fIwidth\fP>x<\fIheight\fP>+<\fIleft\fP>+<\fItop\fP>
+.br 
+Include only the specified rectangle in the encoded output.  Default is no cropping, entire frame is encoded.
+.TP 
+\fB\-w\fR <\fIx\fP>
+.TP 
+\fB\-\-width\fR <\fIx\fP>
+.br 
+Output width. Use only if not available in video stream.
+.TP 
+\fB\-h\fR <\fIy\fP>
+.TP 
+\fB\-\-height\fR <\fIy\fP>
+.br 
+Output height. Use only if not available in video stream.
+.TP 
+\fB\-V\fR
+.TP 
+\fB\-\-version\fR
+.br 
+Output version and exit.
+.TP 
+\fB\-s\fR <\fIrate\fP>
+.TP 
+\fB\-\-forcedaudiorate\fR <\fIrate\fP>
+.br 
+Overrides audio rate (if audio is present).  Should only be used if rate is not correct in wav or input lav file.  (This option may disappear, I can no longer find any cases where it is needed.)
+.TP 
+\fB\-g\fR
+.TP 
+\fB\-\-guess\fR
+.br 
+Attempt to guess the argument to use for \-c.  This looks at the first 100 hundred frames and attempts to determine where the transition from a black border to active content occurs.  It does not always work (that's why it's a guess!) but can help narrow the process down some.  This is useful as an invariant border can usually be discarded to increase the available bandwidth for the active portion of the frame.  When using this option, the utility exits after the first 100 frames.
+.TP 
+\fB\-k\fR <\fInum\fP>
+.TP 
+\fB\-\-keyframes\fR <\fInum\fP>
+.br 
+Sets the keyframes attribute of the video encoder.  Not all avifile encoders use this attribute, but when an encoder does, the attribute specifies the number of frames between keyframes.  The default depends on the codec being used.
+.TP 
+\fB\-C\fR <\fInum\fP>
+.TP 
+\fB\-\-crispness\fR <\fInum\fP>
+.br 
+Sets the crispness attribute of the video encoder.  Not all avifile encoders use this attribute.  When it is used, it affects how edges are detected and encoded.  I have found that higher values may cause increased bandwidth usage with some codecs.  Default 50.
+.TP 
+\fB\-A\fR <\fIfile\fP>
+.TP 
+\fB\-\-audiofile\fR <\fIfile\fP>
+.br 
+Specifies the audio source for the output.  This may be either a .wav (PCM) file, or a file readable by another of the lav utilities (i.e. an MJPEG AVI, MOV file or an edit\-list file).
+.TP 
+\fB\-E\fR <\fIfourcc\fP>
+.TP 
+\fB\-\-encoder\fR <\fIfourcc\fP>
+.br 
+Specifies which video encoder to use.  You must specify the encoder using the "fourcc" of the codec.  The default is "DIV3". Common ones include:
+.br 
+.IP 
+MJPG \- MJPEG (though why you'd use this utility for this is a bit of a mystery)
+.IP 
+DIV3 \- Divx ;\-) low motion
+.IP 
+DIV4 \- Divx ;\-) fast motion
+.IP 
+DIV5 \- Divx ;\-) low motion variable keyframe
+.IP 
+DIV6 \- Divx ;\-) fast motion variable keyframe
+.IP 
+There are many others.  Consult your version of avifile to see which ones might be available for you.
+.TP 
+\fB\-F\fR <\fIframes\fP>
+.TP 
+\fB\-\-frames\fR <\fIframes\fP>
+.br 
+Specifies the number of frames yuv2divx should expect in the video stream.  This is used only for display of the progress line.  If this value is missing, the utility will try to guess based on the amount of audio available (\-A option).  If no audio is given and this option isn't specified, no 'time left' will be displayed.
+.TP 
+\fB\-v\fR <\fIlevel\fP>
+.TP 
+\fB\-\-verbose\fR <\fIlevel\fP>
+.br 
+Specifies the level of verbosity on output.  All output occurs to stderr. 2 shows progress and all logging, 1 shows informative output and 0 shows only important messages.
+.TP 
+\fB\-\-help\fR
+.br 
+Display a brief summary of help and exit.
+.SH "EXAMPLES"
+.LP 
+By itself (no audio is present in the output):
+.LP 
+yuv2divx \-o output.avi < input.yuv
+.LP 
+As part of a processing chain (preserving audio):
+.LP 
+lav2yuv input.eli | \\
+.br 
+    yuvdenoise | \\
+.br 
+    yuv2divx \-o output.avi \-A input.eli
+.LP 
+A more complicated case, including a framerate change (and a workaround for the sound source framerate problem):
+.LP 
+mkfifo sound.fifo
+.br 
+lav2wav input.eli > sound.fifo &
+.br 
+lav2yuv input.eli | \\
+.br 
+    yuvkineco \-F 1 | \\
+.br 
+    yuvdenoise | \\
+.br 
+    yuv2divx \-o output.avi \-A sound.fifo
+.SH "BUGS"
+.LP 
+.TP 
+No checking or handling of large output avi files is performed (i.e. output files larger than 2 GiB may break on your installation depending on a number of installation\-specific parameters).
+.TP 
+If an AVI, MOV or edit list file is specified for \-A, no comparison of framerates between the audio and video streams is done.  If they do not match and the audio file's framerate is higher than the input YUV stream, not enough audio will be encoded.  This might happen after using lav2yuv foo.eli | yuvkineco | yuv2divx \-A foo.eli (etc) or a similar chain that alters the framerate of an original.
+.TP 
+<insert general pithy comment about additional hidden bugs remaining here>
+.SH "AUTHOR"
+.LP 
+Shawn Sulma <lav2divx@athos.cx>
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+.br
+    \fImjpeg\-users@lists.sourceforge.net\fP
+.br
+.br
+For more info, see our website at
+.br
+    \fIhttp://mjpeg.sourceforge.net/\fP
+.SH "SEE ALSO"
+.LP 
+lav2divx(1), lav2yuv(1), divxdec(1), lav2wav(1)

@@ -1,0 +1,153 @@
+.TH "divxdec" "1" "2001 December 19" "MJPEG Linux Square" "MJPEG tools manual"
+.SH "NAME"
+.LP 
+divxdec \- decompose an avifile\-compatible .avi file into lavtools\-compatible data
+.SH "SYNTAX"
+.LP 
+divxdec [\fIoptions\fP] [input AVI]
+.SH "DESCRIPTION"
+.LP 
+This utility uses avifile to read an avi file and output various components of it.  You may output lavtools\-compatible MJPEGs, YUV4MPEG2 streams, PCM .wav files, or even playback on a MJPEG playback device.  
+.LP 
+Note that you must have avifile available in order to use this utility.  If building from a CVS snapshot or copy, this will be detected at build time.
+.LP 
+MJPEG playback is very CPU intensive.  The video is decoded to YUV by avifile, then re\-encoded using software MJPEG and output to the desired destination (often an MJPEG hardware playback device).  software MJPEG is still slow.  Expect a 352x240 avi to play back properly via "\-p C" with quality 60 on an 800 MHz\-class machine with 75+% CPU use.  Using the default decimation I have been able to get 640x420 playback to work (barely) with quality 24 on an Athlon T\-Bird 1400 MHz.
+.SH "OPTIONS"
+.LP 
+For PCM .wav output:
+.TP 
+\fB\-W\fR [ <\fIfilename\fP> ]
+.TP 
+\fB\-\-wavefile\fR [ <\fIfilename\fP> ]
+.br 
+\fBThe wave audio data from the avi file is written to \fIfilename\fP.  If omitted, stdout is assumed.
+.LP 
+For YUV4MPEG2 output:
+.TP 
+\fB\-Y\fR [ <\fIfilename\fP> ]
+.TP 
+\fB\-\-yuvfile\fR [ <\fIfilename\fP> ]
+.br 
+\fBThe video data from the avi file is output as YUV4MPEG2 data to \fIfilename\fP.  If omitted, stdout is assumed.
+.LP 
+For LAV file output:
+.TP 
+\fB\-L\fR [ <\fIfilename\fP> ]
+.TP 
+\fB\-\-lavfile\fR [ <\fIfilename\fP> ]
+.br 
+The avifile is re\-encoded as an MJPEG file to \fIfilename\fP.  Format should be given by the \-f option.  (See further options below.
+.LP 
+For MJPEG device playback:
+.TP 
+\fB\-p\fR { "S", "H", "C" }
+.TP 
+\fB\-\-play\fR { "S", "H", "C" }
+.br 
+The avifile is re\-encoded as an MJPEG and output through liblavplay.  The argument indicates the destination of the playback (Software, Hardware or external device (C)).
+.LP 
+Options for \-L (LAV file) output.
+.TP 
+\-f, \-\-format { "a", "A", "q", "m" }
+.br 
+Specify the format of the output file. (a,A for avifile, m for movtar, q for quicktime)
+.TP 
+\-m, \-\-maxfilesize <\fInum\fP>
+.br 
+Specify the maximum size of an output LAV file, in MiB.  Defaults to 1500.  To be able to output multiple files, specify the \-L option as a format string (e.g. "output\-%02d.lav.avi" will generate "output\-01.lav.avi", "output\-02.lav.avi" etc).
+.LP 
+Options for \-L (LAV file) and \-p (MJPEG device playback) output.
+.TP 
+\-q, \-\-quality <\fInum\fP>
+.br 
+Specify quality of the output, default 50.
+.LP 
+Options for \-p (MJPEG device playback):
+.TP 
+\-n, \-\-norm { "p", "n" }
+.br 
+Specifies the output norm for MJPEG playback.  If \-p is omitted, detection is attempted but it is not guaranteed.
+.TP 
+\-I, \-\-interlace 
+.br 
+Identifies the treatment of avi files too large to be displayed non\-interlaced.  They will be displayed as interlaced if this option is asserted.  Since MJPEG hardware playback uses software encoding of the JPEG data, the large frames become a significant performance problem.  The default is not to use this option.  If this option is not specified, MJPEG output will be decimated to fit in the hardware device's dimensions.  Only really useful if the \-p argument is "C" or "H".
+.TP 
+\-r, \-\-rationalise
+.br 
+Performs a quick filter on the video before output, to ensure all luma values are in the valid range 16\-235.  Values outside of this range can look odd on some output devices.
+.LP 
+Options for all output types:
+.TP 
+\fB\-e\fR [ <\fInum\fP> ]
+.TP 
+\fB\-\-endframe\fR [ <\fInum\fP> ]
+.br 
+Specify the frame number of the last frame to decode.  Note that this is not the number of frames to decode.
+.TP 
+\fB\-b\fR [ <\fInum\fP> ]
+.TP 
+\fB\-\-beginframe\fR [ <\fInum\fP> ]
+.br 
+Specify the frame number of the first frame to decode.
+.TP 
+\fB\-V\fR
+.TP 
+\fB\-\-version\fR
+.br 
+Output version and exit.
+.TP 
+\fB\-v\fR <\fIlevel\fP>
+.TP 
+\fB\-\-verbose\fR <\fIlevel\fP>
+.br 
+Specifies the level of verbosity on output.  All output occurs to stderr. 2 shows progress and all logging, 1 shows informative output and 0 shows only important messages.
+.SH "EXAMPLES"
+.LP 
+Save audio:
+.TP 
+divxdec \-W output.wav input.divx.avi
+.LP 
+Output YUV and audio to files
+.TP 
+divxdec \-W output.wav \-Y output.yuv input.divx.avi
+.LP 
+Output to LAV files
+divxdec \-L output\-%02d.lav.mov \-f q \\
+.br 
+    \-q 70 \-m 1900 input.divx.avi
+.LP 
+Output the second 500 frames to an MJPEG device:
+.TP 
+divxdec \-p C \-n p \-q 50 \-r \-b 500 \-e 1000 input.divx.avi
+.LP 
+Everything!  Hope you've got a monster system to try this...
+.br 
+divxdec \-L output\-%02d.lav.mov \-f q \-q 70 \-m 1900 \\
+.br 
+    \-W output.wav \-Y output.yuv \\
+.br 
+    input.divx.avi
+.SH "BUGS"
+.LP 
+.TP 
+Output WAV and YUV files are not checked for sizes.  If your system and lavtools can handle files > 2GiB, you won't have a problem.  If not, you will get errors when you reach this size.
+.TP 
+The whole MJPEG hardware playback thing is a hack.  It can certainly be improved.
+.TP 
+<insert general pithy comment about additional hidden bugs remaining here>
+.SH "AUTHOR"
+.LP 
+Shawn Sulma <lav2divx@athos.cx>
+.br
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+.br
+    \fImjpeg\-users@lists.sourceforge.net\fP
+.br
+.br
+For more info, see our website at
+.br
+    \fIhttp://mjpeg.sourceforge.net/\fP
+.SH "SEE ALSO"
+.LP 
+yuv2divx(1), lav2yuv(1), lav2divx(1), lav2wav(1)
