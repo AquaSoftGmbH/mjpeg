@@ -1039,8 +1039,6 @@ void output_video ( clockticks SCR,
 	  if(  dtspts_for_all_vau && max_packet_payload == 0 )
 	  	max_packet_payload = video_au->length;
 
-  if( video_au->dorder == 1499 )
-		
 	  if (video_au->type == BFRAME)
 		timestamps=TIMESTAMPBITS_PTS;
 	  else

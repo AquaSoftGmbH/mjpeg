@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 
 static int segment_num = 1;
 
@@ -15,7 +16,9 @@ char filename[MAXPATHLEN];
 
 int system_file_lim_reached( FILE *cur_system_strm )
 {
-	int64_t written = (int64_t) ftell( cur_system_strm);
+	struct stat stb;
+    fstat(fileno(cur_system_strm), &stb);
+	off_t written = stb.st_size;
 	return max_system_segment_size != 0 && written > max_system_segment_size;
 }
 
