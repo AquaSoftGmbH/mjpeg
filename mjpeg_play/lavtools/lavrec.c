@@ -732,6 +732,7 @@ static void check_command_line_options(int argc, char *argv[])
 {
 	int n, nerr, option_index = 0;
 	char option[2];
+        char* dotptr;
 
 #ifndef IRIX /* Gaaaah, IRIX doesn't have getopt_long ! */
 	/* getopt_long options */
@@ -803,6 +804,21 @@ static void check_command_line_options(int argc, char *argv[])
 	info->files = argv + optind;
 	/* If the first filename contains a '%', the user wants file patterns */
 	if(strstr(argv[optind],"%")) info->num_files = 0;
+        /* Try to guess the file type by looking at the extension. */
+        if(info->video_format == '\0') {
+            if((dotptr = strrchr(argv[optind], '.'))) {
+#ifdef HAVE_LIBMOVTAR
+                if(!strcasecmp(dotptr+1, "tar") || !strcasecmp(dotptr+1, "movtar"))
+                    info->video_format = 'm';
+#endif
+#ifdef HAVE_LIBQUICKTIME
+                if(!strcasecmp(dotptr+1, "mov") || !strcasecmp(dotptr+1, "qt")
+                    || !strcasecmp(dotptr+1, "moov")) info->video_format = 'q';
+#endif
+                if(!strcasecmp(dotptr+1, "avi")) info->video_format = 'a';
+            }
+            if(info->video_format == '\0') info->video_format = 'a';
+        }
 }
 
 
@@ -877,7 +893,9 @@ int main(int argc, char **argv)
 {
   pthread_t msg_thr;
   fcntl(0,F_SETFL,O_NONBLOCK);
-  signal(SIGINT,SigHandler);
+  signal(SIGINT, SigHandler);  /* Control-C handler */
+  signal(SIGTERM, SigHandler); /* Handle kill */
+  signal(SIGHUP, SigHandler);  /* Handle kill -HUP */
 
   info = lavrec_malloc();
   info->state_changed = statechanged;
