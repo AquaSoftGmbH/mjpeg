@@ -26,17 +26,17 @@ mp2enc \- Simple MPEG-1 layer-II audio encoder
 .BI -o \ output_filename
 
 .SH "DESCRIPTION"
-Mp2enc is a simple MPEG-1 layer-II audio encoder.  It is actually a very
+Mp2enc is a simple MPEG-1 layer-I/II audio encoder.  It is actually a very
 mildly warmed over version of the MPEG Software Simulation Group's
 reference encoder.  It accepts a WAV file or stream on stdin and
-ouputs an a layer-II elementary audio stream.  It is included in the
+ouputs an a layer-I/II elementary audio stream.  It is included in the
 \fBmjpegtools\fP(1) primarily for reasons of completeness and because it
 is able to perform sampling rate conversion.
 .PP
-Those seeking a faster (and probably higher quality) encoder are
+Those seeking a faster (and probably higher quality) layer II encoder are
 recommended to use \fBtoolame\fP(1) which can be obtained from:
 .IP
-\fIhttp://members.dingoblue.net.au/~mikecheng\fP
+\fIhttp://www.planckenergy.com\fP
 
 
 .SH "GENERAL FUNCTION LETTERS"
@@ -56,18 +56,23 @@ Display a synopsis of the command syntax.
 .TP
 .BI -b \ bitrate
 
-This sets the bit-rate of the output stream i kBit/sec.  Typical
-values might be 224kbps for good-quality audio suitable for capturing
+This sets the bit-rate of the output stream in kBit/sec.  Typical
+values for layer II might be 224kbps for good-quality audio suitable for capturing
 Dolby pro-logic signals.  A rate of 192kbps or 128kbps is reasonable
 for low quality audio (e.g. mono TV audio).  Really high compression
 is, of course, better achieved using MPEG-1 layer III ("MP3") audio
-encoding or AAC.
+encoding or AAC. A more appropriate value for layer I might be 384kbps.
 
 .TP
 .BI -r \ sampling_rate
 Sets the audio sampling rate of the reconstructed output signal in Hz.
 Legal values are 32000, 44100 and 48000Hz.   mp2enc will automatically
 sample-rate convert the input signal if necessary.
+
+.TP
+.BI -l \ layer
+Sets the audio layer.
+Legal values are 1 and 2. The default is layer II.
 
 .TP
 .BI -s
@@ -93,6 +98,8 @@ The defaults (unless -m or -b are used) are stereo at 224 kbits/sec.
 .TP
 .BI -o \ outputpathname
 The name of the output file to generate.  If '-' is given as the pathname output is written to standard output.
+.SH "BUGS"
+Mono output does not work for layer I.
 .SH AUTHOR
 This man page was written by Andrew Stevens.
 .br

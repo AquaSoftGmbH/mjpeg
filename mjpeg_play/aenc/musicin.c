@@ -141,6 +141,7 @@ static void Usage(char *str)
   printf("   where possible params are:\n");
   printf( "  -v num  Level of verbosity. 0 = quiet, 1 = normal 2 = verbose/debug\n");
   printf("   -b num     Bitrate in KBit/sec (default: 224 KBit/s)\n");
+  printf("   -l num     Layer number 1 or 2 (default: 2)\n");
   printf("   -o name    Outputfile name (REQUIRED)\n");
   printf("   -r num     Force output sampling rate to be num Hz (default: 48000)\n");
   printf("              num must be one of 32000, 44100, 48000\n");
@@ -184,7 +185,7 @@ char            **encoded_file_name;
     *psy = 2;
     *num_samples = MAX_U_32_NUM; /* Unlimited */
 
-    while( (n=getopt(argc,argv,"b:o:r:smeVv:")) != EOF)
+    while( (n=getopt(argc,argv,"b:o:l:r:smeVv:")) != EOF)
     {
         switch(n) {
 
@@ -198,6 +199,11 @@ char            **encoded_file_name;
 			freq_out = atoi(optarg);
     			if (freq_out!=32000 && freq_out!=44100 && freq_out!=48000)
        			mjpeg_error_exit1("-r requires one of 32000 44100 48000!");
+			break;
+		case 'l':
+			info->lay = atoi(optarg);
+    			if (info->lay!=2 && info->lay!=1)
+       			mjpeg_error_exit1("-l requires 1 or 2!");
 			break;
 		case 's':
 			stereo = 1;
@@ -265,7 +271,8 @@ char            **encoded_file_name;
        info->mode = MPG_MD_MONO;
     else
        info->mode = MPG_MD_STEREO;
-
+    if(video_cd && info->lay != 2 )
+       mjpeg_error_exit1("Option -V requires layer II!");
     if	(video_cd)
         {
         freq_out=44100;
@@ -314,7 +321,12 @@ char            **encoded_file_name;
 
     *num_samples = audio_bytes/(audio_bits/8);
 
-    if (brt==0) brt = (info->mode == MPG_MD_MONO) ? 112 : 224;
+    if (brt==0)
+        if (info->lay==2)
+            brt = (info->mode == MPG_MD_MONO) ? 112 : 224;
+        else
+            brt = (info->mode == MPG_MD_MONO) ? 192 : 384;
+
 
     for(j=0;j<15;j++) if (bitrate[info->lay-1][j] == brt) break;
 
@@ -617,7 +629,7 @@ static unsigned int crc;
            (FLOAT) sentBits / (frameNum * samplesPerFrame) *
                                s_freq[info.sampling_frequency]);
 
-	mjpeg_info("Encoding with psychoacoustic model %d is finished", model);
+	mjpeg_info("Encoding to layer %d with psychoacoustic model %d is finished", info.lay, model);
 	mjpeg_info("The MPEG encoded output file name is \"%s\"",
 			   encoded_file_name);
     exit(0);
