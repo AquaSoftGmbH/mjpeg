@@ -13,7 +13,7 @@ M_OBJS       = movtar_play
 # uncomment if you want to use ALSA, 
 # the Advanced Linux Sound Architecture (http://alsa.jcu.cz) 
 #USE_ALSA = -DUSE_ALSA -lasound
-C_FLAGS  = -Wall `glib-config glib --cflags` -pg
+C_FLAGS  = -Wall `glib-config glib --cflags` -pg -O6
 L_FLAGS  = `glib-config glib --libs` -lpthread -lSDL 
 
 all:    $(M_OBJS)
