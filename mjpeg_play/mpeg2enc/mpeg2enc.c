@@ -230,6 +230,9 @@ static void set_format_presets()
 	case  MPEG_FORMAT_MPEG2 : 
 		param_mpeg = 2;
 		mjpeg_info( "Selecting generic MPEG2 output profile\n");
+		param_mpeg = 2;
+		if( param_fieldenc == -1 )
+			param_fieldenc = 3;
 		if( param_video_buffer_size == 0 )
 			param_video_buffer_size = 46 * param_bitrate / 1151929;
 		break;
@@ -627,9 +630,9 @@ int main(argc,argv)
 
 		case 'I':
 			param_fieldenc = atoi(optarg);
-			if(param_fieldenc<0 || param_fieldenc>3)
+			if(param_fieldenc != 0 && param_fieldenc != 3)
 			{
-				mjpeg_error("-I option requires 0 ... 3\n");
+				mjpeg_error("-I option requires 0 or 3, (1 and 2 not current supported)\n");
 				++nerr;
 			}
 			break;
