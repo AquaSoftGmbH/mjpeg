@@ -62,13 +62,13 @@ MAINS		= $(BINARIES:$X=_main$O)
 
 SYMLINKS        = $(YUVFILTER:lib%.la=%)
 bin_SCRIPTS	= $(BINARIES) $(SYMLINKS)
-INSTALL_SCRIPT  = cp -f -d
+INSTALL_SCRIPT  = sh install_symlink.sh
 INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/mjpegtools -I$(top_srcdir)/utils
 DEPENDENCIES	= $(top_srcdir)/utils/libmjpegutils.a
 LDADD		= -L$(top_srcdir)/utils -lmjpegutils
 CLEANFILES	= $(BINARIES) $(MAINS) $L $(SYMLINKS)
 YFSOURCES	= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
-EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore $(YFSOURCES)
+EXTRA_DIST	= README.yuvkineco README.2-3pulldown .cvsignore install_symlink.sh $(YFSOURCES)
 MAINTAINERCLEANFILES = Makefile.in
 
 #%$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)
