@@ -97,6 +97,9 @@ int main(int argc, char *argv[])
   if ((errno = y4m_read_stream_header (fd_in, &streaminfo)) != Y4M_OK)
       mjpeg_error_exit1("Couldn't read YUV4MPEG header: %s!",y4m_strerr(errno));
 
+  if (y4m_si_get_plane_count(&streaminfo) != 3)
+     mjpeg_error_exit1("Only 3 plane formats supported");
+
   denoiser.frame.w         = y4m_si_get_width(&streaminfo);
   denoiser.frame.h         = y4m_si_get_height(&streaminfo);
 
