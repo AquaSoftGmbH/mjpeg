@@ -488,7 +488,7 @@ void MPEG2EncCmdLineOptions::Usage()
 "--video-bitrate|-b num\n"
 "    Set Bitrate of compressed video in KBit/sec\n"
 "    (default: 1152 for VCD, 2500 for SVCD, 7500 for DVD)\n"
-"--nonvideo-birate|-B num\n"
+"--nonvideo-bitrate|-B num\n"
 "    Non-video data bitrate to assume for sequence splitting\n"
 "    calculations (see also --sequence-length).\n"
 "--quantisation|-q num\n"
