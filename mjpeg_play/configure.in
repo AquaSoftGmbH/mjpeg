@@ -292,6 +292,7 @@ else
 fi
 
 dnl test for PNG lib, moved out of Quicktime checks because of png2yuv /gz
+have_png=false
 OLD_LIBS="$LIBS"
 LIBS="$LIBS -lz $LIBM_LIBS"
 AC_CHECK_LIB(png, png_read_info, [have_png=true])
