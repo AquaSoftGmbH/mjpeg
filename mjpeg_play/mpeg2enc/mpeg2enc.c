@@ -108,7 +108,7 @@ static int param_seq_end_every_gop = 0;
 static int param_still_size = 40*1024;
 static int param_pad_stills_to_vbv_buffer_size = 0;
 static int param_vbv_buffer_still_size = 0;
-
+static int param_topfirst =  1;
 /* reserved: for later use */
 int param_422 = 0;
 
@@ -181,6 +181,7 @@ static void Usage(char *str)
 	fprintf(stderr,"   -p         Generate header flags for 32 pull down of 24fps movie.\n");
 	fprintf(stderr,"   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	fprintf(stderr,"   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
+	fprintf(stderr,"   -z         Assume bottom-first rather than top-first interlaced video\n");
 	printf("   -?         Print this lot out!\n");
 	exit(0);
 }
@@ -467,7 +468,7 @@ int main(argc,argv)
 	/* Set up error logging.  The initial handling level is LOG_INFO
 	 */
 	
-	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpNhOP?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpZNhOPz?")) != EOF)
 	{
 		switch(n) {
 
@@ -600,6 +601,12 @@ int main(argc,argv)
 		case 'p' :
 			param_32_pulldown = 1;
 			break;
+
+		case 'z' :
+			param_topfirst = 0;
+			mjpeg_info ("Setting bottom-first video\n");
+			break;
+
 		case 'f' :
 			param_format = atoi(optarg);
 			if( param_format < MPEG_FORMAT_FIRST ||
@@ -1018,7 +1025,15 @@ static void init_mpeg_parms(void)
 	opt_display_vertical_size    = opt_vertical_size;
 
 	opt_dc_prec         = 0;  /* 8 bits */
-	opt_topfirst        = (param_fieldenc==2) || (param_fieldenc == 3);
+	if( param_fieldenc == 2 )
+		opt_topfirst  = 1;
+	else if (param_fieldenc == 1)
+		opt_topfirst = 0;
+	else if( ! opt_prog_seq )
+		opt_topfirst = param_topfirst;
+	else
+		opt_topfirst = 0;
+
 	opt_repeatfirst     = 0;
 	opt_prog_frame      = (param_fieldenc==0);
 

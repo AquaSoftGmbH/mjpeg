@@ -159,8 +159,22 @@ static void read_chunk()
    int n, v, h, i,j, y;
    y4m_frame_info_t fi;
 
+
    for(j=0;j<READ_CHUNK_SIZE;++j)
    {
+	   if( ctl_parallel_read )
+	   {
+		   // Unlock during the actual I/O filling buffers to allow
+		   // the main thread to run if there are still the frames
+		   // it needs.  The main thread atomically signals new_chunk_req 
+		   // before waiting on new_chunk_ack.
+		   // This thread atomically signals new_chunk_ack before
+		   // waiting on new_chunk_req.
+		   // Thus neither can suspend without first
+		   // starting the other.
+
+		   pthread_mutex_unlock( &frame_buffer_lock );
+	   }
       n = frames_read % FRAME_BUFFER_SIZE;
 
       y4m_init_frame_info (&fi);
@@ -195,16 +209,27 @@ static void read_chunk()
 
 	  if( ctl_parallel_read )
 	  {
+		  //
+		  // Lock to atomically signal the availability of additional
+		  // material from a chunk - waking the main thread
+		  // if it suspended because a required frame was
+		  // unavailable
+		  //
 		  pthread_mutex_lock( &frame_buffer_lock );
 	  }
 	  ++frames_read;
 	  if( ctl_parallel_read )
 	  {
 		  pthread_cond_broadcast( &new_chunk_ack );
-		  pthread_mutex_unlock( &frame_buffer_lock );
 	  }
 
    }
+
+   //
+   // When we exit we're holding the lock again so we can
+   // ensure we're waiting on new_chunk_req if the main thread is
+   // currently running.
+   //
    return;
 
    EOF_MARK:
@@ -218,7 +243,6 @@ static void read_chunk()
    if( ctl_parallel_read )
    {
 	   pthread_cond_broadcast( &new_chunk_ack );
-	   pthread_mutex_unlock( &frame_buffer_lock );
    }
 
 }
@@ -234,7 +258,6 @@ static void *read_chunks_worker(void *_dummy)
 		pthread_cond_wait( &new_chunk_req, &frame_buffer_lock );
 		if( frames_read < istrm_nframes ) 
 		{
-			pthread_mutex_unlock( &frame_buffer_lock );
 			read_chunk();
 		}
 	}
