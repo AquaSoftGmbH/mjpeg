@@ -997,7 +997,7 @@ handle_args_dependent (int argc, char *argv[])
        if ((interlaced == Y4M_ILACE_TOP_FIRST)
 	   || (interlaced == Y4M_ILACE_BOTTOM_FIRST))
 	 mjpeg_warn
-	 ("Interlaced input frames will be downscaled to non-interlaced VCD frames\nIf quality is an issue, please consider deinterlacing input frames with yuvdenoise -I");
+	 ("Interlaced input frames will be downscaled to non-interlaced VCD frames\nIf quality is an issue, please consider deinterlacing input frames with yuvdeinterlace");
        interlaced = Y4M_ILACE_NONE;
     }
 
