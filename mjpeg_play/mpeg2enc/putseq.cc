@@ -591,11 +591,13 @@ void SeqEncoder::ParallelEncodeWorker()
 		}
 
 
-		mjpeg_info("Frame end %d %s %3.2f %.2f %2.1f %.2f",
-					picture->decode, 
-					picture->pad ? "PAD" : "   ",
-					picture->avg_act, picture->sum_avg_act,
-					picture->AQ, picture->SQ);
+	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.5f %s", 
+               picture->decode, 
+			   pict_type_char[picture->pict_type],
+               picture->AQ,
+               picture->sum_avg_act,
+               picture->pad ? "PAD" : "   "
+        );
 
 		/* We're finished - let anyone depending on us know...
 		 */
