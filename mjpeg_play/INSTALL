@@ -1,219 +1,80 @@
 Linux MPEG/MJPEG Audio/Video tools - MJPEG TOOLS
 ================================================
 
-The lavtools stand for "Linux/Audio video tools" and are released
-under the General GNU Public Licence, see the COPYING file for
-details.
-
-Recomended Software
------------------
-
-***
-*** Software you should have installed 
-***
-*** Note: Not all programms work on every platform
-***
-
-0) automake - Tool for automatically generating GNU style Makefile.in's
-Here the version 1.5 is needed
-Look at: http://www.gnu.org/software/automake
-
-1) The GLib library - http://www.gtk.org
-(libglib .... is included in the standard distributions)
-
-Version 1.2.0 or newer. 
-
-2) The GTKMM libary - http://www.iki.fi/terop/gtk/gtk--.html
-Aviable with the most distributions.
-
-Is a C++ wrapper for GTK, needed for glav
-
-3) The SDL library -  http://www.libsdl.org/
-   I used SDL 1.1.6 for development (minimal SDL version 1.1.3) 
-
-	Some rather tricky and difficult to repeat problems centred around the
-	use of pre-compiled versions of this library.  If software
-	playback crashes out on you immediately try compiling and
-	installing SDL from source-code.
-
-4) The MMX enhanced jpeg library from the same place you got this package.
-
-http://sourceforge.net/project/showfiles.php?group_id=5776
-
-The configure scripts look for this in same parent directory as the
-directory containing this file, /usr/local/src/jpeg-mmx by default.
-You can specify another directory using the --with-jpeg-mmx flag to
-the ./configure script.
-
-Experienced developers should note that you *need* this. libjpeg6
-(libjpeg6a or 6b is included in the standard distributions) along with
-the corresponding "jpegint.h" header file from the source code will
-do. This header file is needed so that the colour-space conversion
-routines to be used by the jpeg library can be correctly set for the
-state of the X display.
-
-Compile: 
-./configure
-make
-
-Note do *not* "make install".
-
-The configure script for mjpegtool looks for the library in 
-/usr/local/src/jpeg-mmx by default.  If you unpacked and compiled it 
-elsewhere use the --jpeg-mmx flag to tell it where.
-
-***
-***
-*** Software you'll find useful
-***
-***
-
-1)Quicktime4Linux - http://heroine.linuxave.net/quicktime.html
-
-If you want to be able to read/write/edit video in Quicktime
-format you'll need Adam William's Quicktime librery. 
-This is not the original Quicktime librery it it patched to fit 
-better into the mjpegtools.
-
-The configure scripts look for this:
-/usr/local/src/quicktime4linux-1.4 
-/usr/local/src/quicktime4linux-1.3 
-/usr/local/src/quicktime
-/usr/src/quicktime
-
-You can specify another directory
-using the --with-quicktime flag to the ./configure script.
-
-IMPORTANT NOTE:  Although you can compile mjpegtools with the stock
-1.4 release this will prevent effective use of the MMX JPEG library
-for software playback.  This is because Quicktime4linux includes its
-own version of the JPEG library.   To make full use of the JPEG library
-you need to prevent Quicktime4linux linking in its own JPEG library.
-A (tiny) patch to the Quicktime4linux source that does this can be found
-
-http://sourceforge.net/project/showfiles.php?group_id=5776
-
-./configure
-make
-
-2) The "xawtv" Package for Linux TV
-
-- Using the v4l-conf utility that comes with xawtv you can set-up the
-Zoran hardware's frame-grabbing / displaying facilities to allow
-Hardware accelerated playback under X-windows.   
-
-- You can also watch TV using your Card using "xawtv".
-
-- You can do software capture of raw (and compressed!) video if your
-machine is fast enough.
-
-3) The "toolame" MP2 encoder and the "sox" audio processing tool.
-
-A remark regarding RPM packages: If you want to install RPM packages
-instead, always keep in mind that you need to install the developer
-versions.
-
-(www.freshmeat.net is also a good source for all kind of Linux soft !)
-
-4) If you want to transcode MPEG-2 video from DTV or DVD formats
-you'll want to get the ac3dec and mpeg2dec decoder tools with the
-appropriate output plugin's for producing streamed wav and lavtools
-"yuv" format.  At the time of writing rapid change in both programs
-code bases meant that the necessary patches hadn't been merged into
-their main cvs branches / distributions.  As a stop-gap a couple of
-working snapshots in tarball form can be found in the ftp files
-area of mjpeg.sourceforge.net.
-
-http://sourceforge.net/project/showfiles.php?group_id=5776
-
-5) The libmovtar library for handling audio/video streams in "movtar" format.
-Very handy for hacking around, moving between formats, and experimentation.
-
-http://sourceforge.net/project/showfiles.php?group_id=5776
-
-Compile and install:
-
-./configure
-make
-make install
-
-You'll need to be able to write to /usr/local/lib and /usr/local/include
-for the install.
-
-
-6) A recent version of the "nasm" assembler for compiling the pure
-assembly language routines in the MPEG encoder.
-
-7) libDV - digital video supoort (IEEE 1394 (a.k.a. FireWire or i.Link))
-
-http://libdv.sourceforge.net/
-
-Needed if you want to capture from a IEEE 1394 device (camcorder).
-
-8) AVIFILE - divx encoding support
-
-http://avifile.sourceforge.net/
-
-Needed for lav2divx, encoding from lav videos to divx.
-
-***
-***
-*** How to build and install it...
-***
-***
-
-If you're building from cvs rather than the distribution tarball do :
-
-> aclocal
-
-Performs a search for macros that are used, and generates the aclocal.m4 
-that ist used for the configure process. 
-If you encounter Problem run it with --verbose, and search for the missing 
-files add the paths with -I . Defaut searched in /usr/share/aclocal 
-For SUSE 7.2 it seems that you have to add "-I /usr/local/share/aclocal/"
-
-./autogen.sh
-
-(This sets up the configuration script ./configure, 
- and runs it to autoconfigure and create the Makefile's)
-
-Next configure
-
-./configure
-
-(Obviously you may want to pass flags if you're installing in
-non-default places etc).  Frequently used options are 
---jpeg-mmx=<jpeg-mmx directory> and --with-quicktime=<quicktime directory>
-
-make
-
-(This actually compiles the programs).
-
-Then (with root privileges if needed) :
-
-make install
-
-
-(This installs them in /usr/local/bin by default).
-
-If you have installed Quicktime4Linux and/or the jpeg libraries in
-unusual places you may need to run ./configure manually with
-options set to tell it where they are.
-
-You should now be able to run the lavtools and MPEG compressors at least.
-
-For the best results you probably want to make the lavplay and lavrec
-programs setuid root.  I.e. make them owned by root and set the "s"
-bit permissions bit with chmod.  This will allow them to run key
-threads with real-time priority.  Its not done by the installer as it
-is a bit risky and we'd prefer people to be able to try it under
-controlled conditions.
-
-Have a look at the HINTS file to see how the lavtools (ought to ;) )
-work ...  Have a look at the README for more detailed explanation of
-the internals history and source-code layout
-
-/Andrew <as@comlab.ox.ac.uk>
+The mjpegtools are a set of utilities for video-decoding, -recording,
+-playback, -editing and -encoding. Most parts of this software are
+distributed under the terms of the Gnu Public License (GPL). See
+the individual source files for the exact terms. We are known to
+install on Linux, BSD and IRIX. On other systems, you are on yor own,
+but maybe you're lucky.
+
+REQUIRED/RECOMMENDED SOFTWARE
+=============================
+For compiling the mjpegtools, you will at least need the following
+pieces of software:
+
+glib           : http://www.gtk.org/
+(g)cc/g++/c++  : http://gcc.gnu.org/ 
+libjpeg        : http://www.ijg.org/
+XFree86        : http://www.xfree86.org/
+(x86 only) nasm: http://nasm.2y.net/
+
+These are almost always included with every distribution by default.
+
+However, with this, many of the tools and many features of the tools
+will not be compiled by default. The following software is advised
+for getting the extra features of the mjpegtools:
+
+Avifile        : http://avifile.sourceforge.net/
+Gtk+           : http://www.gtk.org/
+libDV          : http://libdv.sourceforge.net/
+SDL            : http://www.libsdl.org/
+
+Some of these are not installed with default distributions. If any
+of them is not found, you will find out after the ./configure process.
+
+COMPILING SUPPORT LIBRARIES
+===========================
+The following libraries are strongly recommended for compiling
+the mjpegtools:
+
+JPEG-MMX
+libmovtar
+quicktime4linux
+
+You can download each of them at http://sourceforge.net/projects/mjpeg/
+
+First, install JPEG-MMX, simply unpack, './configure' and 'make'.
+Do *not* run 'make install'! Next, unpack libmovtar and run
+'./configure --with-jpeg-mmx=/path/to/jpeg-mmx, where /path/to/jpeg-mmx
+is the directory where you just compiled JPEG-MMX. Next, run 'make'
+and 'make install'. Lastly, unpack quicktime4linux and run
+'./configure' and 'make'. Do *not* run 'make install'!
+
+COMPILING THE MJPEGTOOLS
+========================
+Unpack the tarball and run './configure --with-jpeg-mmx=/path/to/jpeg-mmx
+--with-quicktime=/path/to/quicktime4linux', where /path/to/jpeg-mmx
+and /path/to/quicktime4linux are the directories where you just
+compiled JPEG-MMX and quicktime4linux. You can possibly use other
+options, such as '--enable-cmov-extensions' or '--enable-large-file' to
+enable CMOV CPU extensions or > 2GB file support. Please note that
+CMOV-binaries will *not* run on CPUs that lack CMOV support! Binaries
+compiled with large file support will *not* run on systems lacking
+large file support! Next, run 'make' and 'make install'. You're now ready
+to use the mjpegtools! The MJPEG HOWTO (mjpeg_howto.txt or 'man
+mjpegtools') is probably a good place to start.
+
+HELP
+====
+For problems, bugs or questions, please send your e-mails to the
+mjpegtools malinglist (mjpeg-users@lists.sourceforge.net), or to
+one of the developers individually.
+
+Have fun,
+
+/Andrew <andrew.stevens@nexgo.de>
 /Gernot <gz@lysator.liu.se>
 /Ronald <rbultje@ronald.bitfreak.net>
 /Bernhard <praschinger@netway.at>
+/many others (see AUTHORS)
