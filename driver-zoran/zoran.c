@@ -3353,7 +3353,7 @@ static int zoran_ioctl(struct video_device *dev, unsigned int cmd, void *arg)
 			struct video_capability b;
 			DEBUG2(printk("%s: ioctl VIDIOCGCAP\n", zr->name));
 
-			strncpy(b.name, zr->video_dev.name, sizeof(b.name));
+			strncpy(b.name, zr->name, sizeof(b.name));
 			b.type = ZORAN_VID_TYPE;
 
 			if(zr->card == DC10 || zr->card == DC10plus) {
