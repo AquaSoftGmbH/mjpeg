@@ -1540,6 +1540,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
         else
           mod_radius = RADIUS;
         
+        if(mod_radius<4)
+          mod_radius=4;
         
           {
             /* search best matching block in the 4x4 subsampled
