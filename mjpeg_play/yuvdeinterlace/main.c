@@ -113,6 +113,8 @@ void aa_interpolation (uint8_t * frame[3], int field);
 void aa_interpolation2 (uint8_t * frame[3], int field);
 void aa_interpolation3 (uint8_t * frame[3], int field);
 
+uint32_t calc_SAD_noaccel (uint8_t * frm, uint8_t * ref);
+
 /***********************************************************
  * Main Loop                                               *
  ***********************************************************/
@@ -161,7 +163,7 @@ main (int argc, char *argv[])
 	}
 
 	/* initialize motion_library */
-	init_motion_search ();
+//	init_motion_search ();
 
 	/* initialize stream-information */
 	y4m_init_stream_info (&streaminfo);
@@ -283,40 +285,40 @@ blend_fields (void)
 	static float mean_korr1=0.95;
 
 	korr1 = 0;
-	for (y = 0; y < height; y++)
+	for (y = 0; y < height; y+=2)
 		for (x = 0; x < width; x++)
 		{
-			delta =	*(frame20[0] + x + y * width) -
-						*(frame5[0] + x + y * width) ;
+			delta =	( *(frame20[0] + x + y * width) + *(frame20[0] + x + (y+1) * width) )/2 -
+					( *(frame5[0]  + x + y * width) + *(frame5[0]  + x + (y+1) * width) )/2 ;
 			delta *= delta;
 			korr1 += delta;
 		}
-	korr1 /= width*height;
+	korr1 /= width*(height/2);
 	korr1 = 1-sqrt(korr1)/256;
 	mean_korr1 = mean_korr1*0.97 + 0.03*korr1;
 
 	korr2 = 0;
-	for (y = 0; y < height; y++)
+	for (y = 0; y < height; y+=2)
 		for (x = 0; x < width; x++)
 		{
-			delta =	*(frame20[0] + x + y * width) -
-						*(frame21[0] + x + y * width) ;
+			delta =	( *(frame20[0] + x + y * width) + *(frame20[0] + x + (y+1) * width) )/2 -
+					( *(frame21[0] + x + y * width) + *(frame21[0] + x + (y+1) * width) )/2 ;
 			delta *= delta;
 			korr2 += delta;
 		}
-	korr2 /= width*height;
+	korr2 /= width*(height/2);
 	korr2 = 1-sqrt(korr2)/256;
 
 	korr3 = 0;
-	for (y = 0; y < height; y++)
+	for (y = 0; y < height; y+=2)
 		for (x = 0; x < width; x++)
 		{
-			delta =	*(frame20[0] + x + y * width) -
-						*(frame31[0] + x + y * width) ;
+			delta =	( *(frame20[0] + x + y * width) + *(frame20[0] + x + (y+1) * width) )/2 -
+					( *(frame31[0] + x + y * width) + *(frame31[0] + x + (y+1) * width) )/2 ;
 			delta *= delta;
 			korr3 += delta;
 		}
-	korr3 /= width*height;
+	korr3 /= width*(height/2);
 	korr3 = 1-sqrt(korr3)/256;
 
 	if(korr2>=korr1)
@@ -455,16 +457,22 @@ motion_compensate_field (void)
                the motion search. This stabelizes zero-vectors! */
 			min = 0;
 			addr1 = (xx) + (yy) * w;
+			min = calc_SAD_noaccel (frame20[0] + addr1,
+						       frame10[0] + addr1);
+#if 0
 			min  += psad_00 (frame20[0] + addr1,
 					        frame10[0] + addr1, w,
 					        16, 0);
+#endif
 			if(bttv_hack==0)
 			{
+#if 0
 				/* match chroma */
 				addr1 = (xx) / 2 + (yy) * w / 4;
 				min += psad_00 (frame20[1] + addr1,
 						frame10[1] + addr1,
 						w / 2, 8, 0);
+#endif
 			}
 			/* begin the search */
 			for (vy = -r; vy < r; vy+=2)
@@ -473,19 +481,25 @@ motion_compensate_field (void)
 					/* match luma */
 					addr1 = (xx) + (yy) * w;
 					addr2 = (xx + vx) + (yy + vy) * w;
+
+					SAD = calc_SAD_noaccel (frame20[0] + addr1,
+						       frame21[0] + addr2);
+#if 0
 					SAD = psad_00 (frame20[0] + addr1,
 						       frame21[0] + addr2, w,
 						       16, 0);
-
+#endif
 					if(bttv_hack==0)
 					{
 					/* match chroma */
 					addr1 = (xx) / 2 + (yy) * w / 4;
 					addr2 = (xx + vx) / 2 + (yy +
 								 vy) * w / 4;
+#if 0
 					SAD += psad_00 (frame20[1] + addr1,
 							frame21[1] + addr2,
 							w / 2, 8, 0);
+#endif
 					}
 
 					if (SAD < min)
@@ -570,3 +584,19 @@ sinc_interpolation (uint8_t * frame[3], int field)
     }
 }
 
+uint32_t
+calc_SAD_noaccel (uint8_t * frm, uint8_t * ref)
+{
+  uint8_t dx = 0;
+  uint8_t dy = 0;
+  int32_t Y = 0;
+  uint32_t d = 0;
+                                                                                               
+  for(dy=0;dy<16;dy++)
+    for(dx=0;dx<16;dx++)
+    {
+      Y=*(frm+dx+dy*width)-*(ref+dx+dy*width);
+      d+=(Y<0)? -Y:Y;
+    }
+  return d;
+}
