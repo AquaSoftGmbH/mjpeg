@@ -79,7 +79,8 @@ void pred_comp_mmx(
  * implementations 
  */
 
-extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+extern int (*pquant_weight_coeff_intra)(int16_t *blk);
+extern int (*pquant_weight_coeff_inter)(int16_t *blk);
 
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
 
