@@ -1,4 +1,6 @@
 #include "main.h"
+#include <stdlib.h>
+
 /******************************************************************
 	Buffer_Clean
 	entfern aus der verketteten Buffereintragsliste diejenigen
@@ -21,9 +23,9 @@ Timecode_struc *SCR;
     while ((buffer->first != NULL) &&
 	(comp_timecode(&buffer->first->DTS, SCR)))
     {
-	pointer = buffer->first;
-	buffer->first = buffer->first->next;
-	free (pointer);	
+	  pointer = buffer->first;
+	  buffer->first = buffer->first->next;
+	  free (pointer);	
     }
 }
 

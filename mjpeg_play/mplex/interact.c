@@ -1,5 +1,7 @@
 #include "main.h"
+#include <stdlib.h>
 #include <unistd.h>
+
 
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
@@ -34,7 +36,7 @@ int opt_VBR = 0;
 
 int intro_and_options(int argc, char *argv[])
 {
-    int n, nerr = 0;
+    int n;
     printf("\n***************************************************************\n");
     printf(  "*               MPEG1/SYSTEMS      Multiplexer                *\n");
     printf(  "*               (C)  Christoph Moar, 1994/1995                *\n");
@@ -105,7 +107,7 @@ int intro_and_options(int argc, char *argv[])
 		break;
 	  }
   }
-  if (argc - optind < 3)
+  if (argc - optind < 2)
     {	
 	  Usage(argv[0]);
     }
@@ -201,7 +203,7 @@ void status_info (nsectors_a, nsectors_v, nsectors_p, nbytes,
 unsigned int nsectors_a;
 unsigned int nsectors_v;
 unsigned int nsectors_p;
-unsigned int nbytes;
+unsigned long long nbytes;
 unsigned int buf_v;
 unsigned int buf_a;
 int verbose;
@@ -209,7 +211,7 @@ int verbose;
 	if( verbose > 0 )
 	{
 	  printf ("| %7d | %7d |",nsectors_a,nsectors_v);
-	  printf (" %7d | %11d |",nsectors_p,nbytes);
+	  printf (" %7d | %11lld |",nsectors_p,nbytes);
 	  printf (" %6d | %6d |",buf_a,buf_v);
 	  printf ((verbose > 1?"\n":"\r"));
 	  fflush (stdout);
@@ -228,19 +230,21 @@ void status_header ()
 void status_message (what)
 unsigned char what;
 {
+  if( verbose == 1 )
+	printf( "\n" );
   switch (what)
   {
   case STATUS_AUDIO_END:
-  printf("\n|file  end|         |         |             |        |        |\n");
+  printf("|file  end|         |         |             |        |        |\n");
   break;
   case STATUS_AUDIO_TIME_OUT:
-  printf("\n|time  out|         |         |             |        |        |\n");
+  printf("|time  out|         |         |             |        |        |\n");
   break;
   case STATUS_VIDEO_END:
-  printf("\n|         |file  end|         |             |        |        |\n");
+  printf("|         |file  end|         |             |        |        |\n");
   break;
   case STATUS_VIDEO_TIME_OUT:
-  printf("\n|         |time  out|         |             |        |        |\n");
+  printf("|         |time  out|         |             |        |        |\n");
   }
 }
 

@@ -10,11 +10,11 @@ bitstrm.h
 ***********************************************************************/
 
 #define      UNIX            /* Unix conditional compile switch */
-/* #define      MACINTOSH       /* Macintosh conditional compile switch */
+/* #define      MACINTOSH       Macintosh conditional compile switch */
 #define      MS_DOS          /* IBM PC conditional compile switch */
-/* #define      MSC60           /* Compiled for MS_DOS with MSC v6.0 */
+/* #define      MSC60            Compiled for MS_DOS with MSC v6.0 */
 #define      AIX             /* AIX conditional compile switch    */
-/* #define      CONVEX          /* CONVEX conditional compile switch */
+/* #define      CONVEX           CONVEX conditional compile switch */
 
 #if defined(MSC60) 
 #ifndef MS_DOS
@@ -141,7 +141,7 @@ typedef struct  bit_stream_struc {
 extern int            memcheck(char*, int, int);
 extern void           FAR *mem_alloc(unsigned long, char*);
 extern void           mem_free(void**);
-extern int            refill_buffer(Bit_stream_struc*);
+extern void            refill_buffer(Bit_stream_struc*);
 extern void           empty_buffer(Bit_stream_struc*, int);
 extern void           open_bit_stream_w(Bit_stream_struc*, char*, int);
 extern void           open_bit_stream_r(Bit_stream_struc*, char*, int);

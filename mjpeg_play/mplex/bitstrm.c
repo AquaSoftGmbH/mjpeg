@@ -10,6 +10,7 @@ bitstrm.c
 ***********************************************************************/
 
 #include        "bitstrm.h"
+#include        <stdlib.h>
 
 #ifdef  MACINTOSH
 
@@ -140,7 +141,7 @@ int num;
 /*                 otherwise returns 0                                      */
 
 /* refill the buffer from the input device when the buffer becomes empty    */
-int refill_buffer(bs)
+void refill_buffer(bs)
 Bit_stream_struc *bs;   /* bit stream structure */
 {
    register int i=bs->buf_size-2-bs->buf_byte_idx;
@@ -193,7 +194,8 @@ Bit_stream_struc *bs;   /* bit stream structure */
     }
 }
 
-static char *he = "0123456789ABCDEF";
+/* static char *he = "0123456789ABCDEF";
+ */
 
 /* empty the buffer to the output device when the buffer becomes full */
 void empty_buffer(bs, minimum)

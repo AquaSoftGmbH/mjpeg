@@ -1,5 +1,32 @@
 #include "main.h"
 
+
+
+static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
+	30000./1001., 30., 50., 60000./1001., 60. };
+
+unsigned int bitrate_index [3][16] =
+    {{0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},
+     {0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},
+     {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0}};
+
+static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
+	0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
+	1.2015, 0.};
+
+static double frequency [4] = {44.1, 48, 32, 0};
+static char mode [4][15] =
+    { "stereo", "joint stereo", "dual channel", "single channel" };
+static char copyright [2][20] =
+    { "no copyright","copyright protected" };
+static char original [2][10] =
+    { "copy","original" };
+static char emphasis [4][20] =
+    { "none", "50/15 microseconds", "reserved", "CCITT J.17" };
+static unsigned int slots [4] = {12, 144, 0, 0};
+static unsigned int samples [4] = {384, 1152, 0, 0};
+
+
 /*************************************************************************
     MPEG Streams Kontrolle
 
@@ -12,7 +39,7 @@ unsigned int what;
 {
     if (what != get1bit(bs))
     {
-        printf ("\nError in MPEG stream at offset (bits) %ul: supposed marker bit not found.\n",sstell(bs));
+        printf ("\nError in MPEG stream at offset (bits) %llu: supposed marker bit not found.\n",sstell(bs));
         exit (1);
     }
 }
@@ -174,7 +201,7 @@ unsigned int length;
 {
     FILE* info_file;
     Bit_stream_struc video_bs;
-    unsigned int offset_bits=0;
+    unsigned long long offset_bits=0LL;
     unsigned long long stream_length=0LL; 
     unsigned long long prev_stream_length=0LL;
     Vaunit_struc access_unit;
@@ -190,7 +217,7 @@ unsigned int length;
     unsigned int prozent;
     unsigned int old_prozent=0;
     int frame_rate;
-	unsigned int max_bits_persec;
+	unsigned int max_bits_persec = 0;
   
     printf ("\nScanning Video stream for access units information.\n");
     info_file = fopen (video_units, "wb");
@@ -246,7 +273,7 @@ unsigned int length;
 
 		case PICTURE_START:
 			
-			stream_length = sstell (&video_bs)-32;
+			stream_length = sstell (&video_bs)-32LL;
 		    /* skip access unit number 0 */
 		    if (access_unit.type != 0)
 			{
@@ -265,6 +292,7 @@ unsigned int length;
 			  	unsigned int bits_persec = (unsigned int) (stream_length - prev_stream_length);
 				if( bits_persec > max_bits_persec )
 				{
+				  printf( "Inc mbps to %d\n", bits_persec );
 					max_bits_persec = bits_persec;
 				}
 				prev_stream_length = stream_length;
@@ -318,7 +346,7 @@ unsigned int length;
 	} else break;
     } while (!end_bs(&video_bs));
 
-    printf ("\nDone, stream bit offset %ld.\n",offset_bits);
+    printf ("\nDone, stream bit offset %lld.\n",offset_bits);
 
     video_info->stream_length = (unsigned int)(offset_bits >> 3);
     for (i=0; i<4; i++)
@@ -355,7 +383,7 @@ Video_struc *video_info;
 {
 printf("\n+------------------ VIDEO STREAM INFORMATION -----------------+\n");
 
-    printf ("\nStream length  : %8u\n",video_info->stream_length);
+    printf ("\nStream length  : %11llu\n",video_info->stream_length);
     printf   ("Sequence start : %8u\n",video_info->num_sequence);
     printf   ("Sequence end   : %8u\n",video_info->num_seq_end);
     printf   ("No. Pictures   : %8u\n",video_info->num_pictures);
@@ -420,7 +448,7 @@ void output_info_audio (audio_info)
 Audio_struc *audio_info;
 {
     unsigned int layer;
-    unsigned long bitrate;
+    unsigned int bitrate;
 
     layer=3-audio_info->layer;
     bitrate = bitrate_index[layer][audio_info->bit_rate];
@@ -428,7 +456,7 @@ Audio_struc *audio_info;
 
 printf("\n+------------------ AUDIO STREAM INFORMATION -----------------+\n");
 
-    printf ("\nStream length  : %8u\n",audio_info->stream_length);
+    printf ("\nStream length  : %11llu\n",audio_info->stream_length);
     printf   ("Syncwords      : %8u\n",audio_info->num_syncword);
     printf   ("Frames         : %8u size %6u bytes\n",
 	audio_info->num_frames[0],audio_info->size_frames[0]);
@@ -486,16 +514,14 @@ unsigned int length;
 {
     FILE* info_file;
     Bit_stream_struc audio_bs;
-    unsigned long offset_bits=0;
-	unsigned long prev_offset;
-    unsigned int stream_length=0; 
+    unsigned long long offset_bits=0;
+	unsigned long long prev_offset;
     unsigned int framesize;
 	unsigned int padding_bit;
     unsigned int skip;
     unsigned int decoding_order=0;
     double PTS;
     double samples_per_second;
-	Audio_struc  nextfilestruc;
     Aaunit_struc access_unit;
     unsigned long syncword;
     int i;
@@ -583,7 +609,7 @@ unsigned int length;
 					  offset_bits % 8, syncword, next ); */
 			  if( syncword != AUDIO_SYNCWORD )
 				{
-				  printf( "Warning: Failed to find start of next stream at %d prev %d !\n", offset_bits/8, prev_offset/8 );
+				  printf( "Warning: Failed to find start of next stream at %lld prev %lld !\n", offset_bits/8, prev_offset/8 );
 				  break;
 				}
 			}
@@ -621,7 +647,7 @@ unsigned int length;
 	
     } while (!end_bs(&audio_bs));
 
-    printf ("\nDone, stream bit offset %ld.\n",offset_bits);
+    printf ("\nDone, stream bit offset %lld.\n",offset_bits);
 
     audio_info->stream_length = offset_bits >> 3;
     close_bit_stream_r (&audio_bs);

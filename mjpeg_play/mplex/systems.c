@@ -38,7 +38,6 @@ unsigned int     which_streams;
     int i,j,tmp;
     unsigned char *index;
     unsigned char *size_offset;
-    FILE* file;
 
     index = sector->buf;
     sector->length_of_sector=0;

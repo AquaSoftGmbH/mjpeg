@@ -154,9 +154,11 @@
     Typ- und Strukturdefinitionen
 *************************************************************************/
 
+/* TODO: Eventually this should be dealt with as a union... */
 typedef struct timecode_struc	/* Time_code Struktur laut MPEG		*/
 {   unsigned long msb;		/* fuer SCR, DTS, PTS			*/
     unsigned long lsb;
+    unsigned long long thetime;  /* The actual time... (for comparisons)*/
 } Timecode_struc;	
 
 typedef struct vaunit_struc	/* Informationen ueber Video AU's 	*/
@@ -172,7 +174,7 @@ typedef struct aaunit_struc	/* Informationen ueber Audio AU's 	*/
 } Aaunit_struc;
 
 typedef struct video_struc	/* Informationen ueber Video Stream	*/
-{   unsigned int stream_length  ;
+{   unsigned long long stream_length  ;
     unsigned int num_sequence 	;
     unsigned int num_seq_end	;
     unsigned int num_pictures 	;
@@ -192,7 +194,7 @@ typedef struct video_struc	/* Informationen ueber Video Stream	*/
 } Video_struc; 		
 
 typedef struct audio_struc	/* Informationen ueber Audio Stream	*/
-{   unsigned int stream_length  ;
+{   unsigned long long stream_length  ;
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
     unsigned int size_frames[2] ;
@@ -241,7 +243,7 @@ typedef struct buffer_struc	/* Simuliert STD Decoder Buffer		*/
     Funktionsprototypen, keine Argumente, K&R Style
 *************************************************************************/
 
-void intro                ();	/* Anzeigen des Introbildschirmes und	*/
+int intro_and_options( int, char **);	/* Anzeigen des Introbildschirmes und	*/
 				/* Ueberpruefen der Argumente		*/
 void check_files          ();	/* Kontrolliert ob Files vorhanden und	*/
 				/* weist sie Audio/Video Pointern zu	*/
@@ -299,30 +301,7 @@ extern int verbose;
     Statische Arrays
 *************************************************************************/
 
-static double picture_rates [9] = { 0., 24000./1001., 24., 25., 
-	30000./1001., 30., 50., 60000./1001., 60. };
-
-static double ratio [16] = { 0., 1., 0.6735, 0.7031, 0.7615, 0.8055,
-	0.8437, 0.8935, 0.9157, 0.9815, 1.0255, 1.0695, 1.0950, 1.1575,
-	1.2015, 0.};
-
-static unsigned int bitrate_index [3][16] =
-    {{0,32,64,96,128,160,192,224,256,288,320,352,384,416,448,0},
-     {0,32,48,56,64,80,96,112,128,160,192,224,256,320,384,0},
-     {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320,0}};
-
-static double frequency [4] = {44.1, 48, 32, 0};
-static unsigned int slots [4] = {12, 144, 0, 0};
-static unsigned int samples [4] = {384, 1152, 0, 0};
-
-static char mode [4][15] =
-    { "stereo", "joint stereo", "dual channel", "single channel" };
-static char copyright [2][20] =
-    { "no copyright","copyright protected" };
-static char original [2][10] =
-    { "copy","original" };
-static char emphasis [4][20] =
-    { "none", "50/15 microseconds", "reserved", "CCITT J.17" };
+extern unsigned int bitrate_index [3][16];
 
 /*************************************************************************
     Command line options

@@ -10,6 +10,10 @@
     extern struct timeval  tp_global_end;
 #endif
 
+
+
+
+
 /******************************************************************
 	Hauptschleife Multiplexroutinenaufruf
 	Kuemmert sich um oeffnen und schliessen alles beteiligten
@@ -45,11 +49,11 @@ unsigned int    which_streams;
 
 {
 
-    FILE *istream_v;			/* Inputstream Video	*/
-    FILE *istream_a;			/* Inputstream Audio	*/
+    FILE *istream_v =NULL;			/* Inputstream Video	*/
+    FILE *istream_a =NULL;			/* Inputstream Audio	*/
     FILE *ostream;			/* Outputstream MPEG	*/
-    FILE *vunits_info;			/* Input Video Units	*/
-    FILE *aunits_info;			/* Input Audio Units	*/
+    FILE *vunits_info = NULL;			/* Input Video Units	*/
+    FILE *aunits_info = NULL;			/* Input Audio Units	*/
 
     Vaunit_struc video_au;		/* Video Access Unit	*/
     Aaunit_struc audio_au;		/* Audio Access Unit	*/
@@ -61,13 +65,12 @@ unsigned int    which_streams;
     double clock_cycles;
     double audio_next_clock_cycles;
     double video_next_clock_cycles;
-    unsigned int bytes_output;
+    unsigned long long bytes_output;
     double dmux_rate;
-    unsigned long sectors_delay,video_delay_ms,audio_delay_ms;
+    unsigned int sectors_delay,video_delay_ms,audio_delay_ms;
     unsigned int mux_rate;
     unsigned char picture_start;
     unsigned char audio_frame_start;
-    unsigned int bytes_left;
     unsigned int audio_bytes;
     unsigned int video_bytes;
 
@@ -89,18 +92,17 @@ unsigned int    which_streams;
     Pack_struc 		pack;
     Sys_header_struc 	sys_header;
     Sector_struc 	sector;
-    Timecode_struc	timestamp;
 
-    unsigned long sector_size;
-    unsigned long min_packet_data;
-    unsigned long max_packet_data;
-    unsigned long packets_per_pack;
-    unsigned long audio_buffer_size;
-    unsigned long video_buffer_size;
+    unsigned int sector_size;
+    unsigned int min_packet_data;
+    unsigned int max_packet_data;
+    unsigned int packets_per_pack;
+    unsigned int audio_buffer_size;
+    unsigned int video_buffer_size;
 
-    unsigned long write_pack;
-    unsigned char marker_pack;
-    unsigned long packet_data_size;
+    unsigned int write_pack;
+    unsigned int marker_pack;
+    unsigned int packet_data_size;
 
 
     /* Oeffne alle Ein- und Ausgabefiles			*/
@@ -142,15 +144,15 @@ unsigned int    which_streams;
 		do 
 		  {
 			printf ("\nsector size (CD-ROM 2324 bytes)          : ");
-			scanf ("%ld", &sector_size);
+			scanf ("%d", &sector_size);
 		  } while (sector_size>MAX_SECTOR_SIZE);
 
 		printf   ("packs to packets ratio                 1 : ");
-		scanf ("%ld", &packets_per_pack);
+		scanf ("%d", &packets_per_pack);
 		printf ("\nSTD video buffer in kB (CSPS: max 46 kB) : ");
-		scanf ("%ld", &video_buffer_size);
+		scanf ("%d", &video_buffer_size);
 		printf   ("STD audio buffer in kB (CSPS: max  4 kB) : ");
-		scanf ("%ld", &audio_buffer_size);
+		scanf ("%d", &audio_buffer_size);
 
 	  }
 
@@ -189,7 +191,8 @@ unsigned int    which_streams;
     	if( opt_VBR )
 		{
 		      video_rate = video_info->peak_bit_rate *50;
-		      video_buffer_size = video_rate  / 2;  /* 1/3 sec buffer */
+		      video_buffer_size = video_rate * 4 / 25 ;  
+			  /* > 3 frames out of 25 or 30 */
 		      	printf( "VBR set - pseudo bit rate = %d vbuffer = %d\n",
 						video_rate, video_buffer_size );
 		 }
@@ -247,7 +250,11 @@ unsigned int    which_streams;
 		  {
 			fprintf( stderr, "Warning: Target data rate lower than likely requirement!\n");
 		  }
-		sectors_delay = video_buffer_size / ( 2* sector_size);
+
+		if( opt_VBR )
+		  sectors_delay = video_buffer_size / ( 4 * sector_size );
+		else
+		  sectors_delay = video_buffer_size / ( 2* sector_size);
 		video_delay_ms = opt_video_offset;
 		audio_delay_ms = opt_audio_offset;
 		  
@@ -330,26 +337,28 @@ unsigned int    which_streams;
 		(video_au.length%min_packet_data)+(sector_size-min_packet_data);
 
 
-	clock_cycles = (double)(bytes_output+LAST_SCR_BYTE_IN_PACK)*
-		CLOCKS/dmux_rate;
-	audio_next_clock_cycles = (double)(bytes_output+sector_size+
+	clock_cycles = ((double)(bytes_output+LAST_SCR_BYTE_IN_PACK))*
+	  CLOCKS/dmux_rate;
+	audio_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
 		audio_bytes)/dmux_rate*CLOCKS;
-	video_next_clock_cycles = (double)(bytes_output+sector_size+
+	video_next_clock_cycles = (((double)bytes_output)+((double)sector_size)+
 		video_bytes)/dmux_rate*CLOCKS;
 
 	make_timecode (clock_cycles, &current_SCR);
 	make_timecode (audio_next_clock_cycles, &audio_next_SCR);
 	make_timecode (video_next_clock_cycles, &video_next_SCR);
 
-	if (which_streams & STREAMS_AUDIO) buffer_clean (&audio_buffer, &current_SCR);
-	if (which_streams & STREAMS_VIDEO) buffer_clean (&video_buffer, &current_SCR);
+
+	if (which_streams & STREAMS_AUDIO) 
+	  buffer_clean (&audio_buffer, &current_SCR);
+	if (which_streams & STREAMS_VIDEO) 
+	  buffer_clean (&video_buffer, &current_SCR);
 	
 	/* Heuristic... if we can we prefer to send audio rather than video. 
 	   Even a few uSec under-run are audible and in any case the data-rate
 	   is trivial compared with video.  Not sending audio is *very* unlikely
 	   to rescue a a video under-run...
 	*/
-
 
 
 	/* FALL: Audio Buffer OK, Audio Daten vorhanden		*/
@@ -439,6 +448,11 @@ unsigned int    which_streams;
             gettimeofday (&tp_start,NULL);
 #endif 
 	    status_message (STATUS_AUDIO_TIME_OUT);
+#ifdef DEBUG_ARITH
+	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
+			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
+			video_au.DTS.msb, video_au.DTS.lsb );
+#endif
 	    /* status info */
 	    status_info (++nsec_a, nsec_v, nsec_p, bytes_output, 
 			 buffer_space(&video_buffer),
@@ -473,7 +487,11 @@ unsigned int    which_streams;
             gettimeofday (&tp_start,NULL);
 #endif 
 	    status_message (STATUS_VIDEO_TIME_OUT);
-
+#ifdef DEBUG_ARITH
+	printf( "BO=%lld VNCF=%f VNSCR=(%1ld,%ld) VDTS=(%1ld,%ld)\n",
+			bytes_output, video_next_clock_cycles, video_next_SCR.msb, video_next_SCR.lsb,
+			video_au.DTS.msb, video_au.DTS.lsb );
+#endif
 	    /* status info */
 	    status_info (nsec_a, ++nsec_v, nsec_p, bytes_output, 
 			 buffer_space(&video_buffer),
@@ -684,7 +702,7 @@ Sector_struc *sector;
 Buffer_struc *buffer;
 Vaunit_struc *video_au;
 unsigned char *picture_start;
-unsigned int  *bytes_output;
+unsigned long long *bytes_output;
 unsigned int mux_rate;
 unsigned long audio_buffer_size;
 unsigned long video_buffer_size;
@@ -941,7 +959,7 @@ Sector_struc *sector;
 Buffer_struc *buffer;
 Aaunit_struc *audio_au;
 unsigned char *audio_frame_start;
-unsigned int  *bytes_output;
+unsigned long long  *bytes_output;
 unsigned int mux_rate;
 unsigned long audio_buffer_size;
 unsigned long video_buffer_size;
@@ -1108,7 +1126,7 @@ FILE *ostream;
 Pack_struc *pack;
 Sys_header_struc *sys_header;
 Sector_struc *sector;
-unsigned int  *bytes_output;
+unsigned long long  *bytes_output;
 unsigned int mux_rate;
 unsigned long audio_buffer_size;
 unsigned long video_buffer_size;
@@ -1117,8 +1135,6 @@ unsigned char marker_pack;
 unsigned int which_streams;
 
 {
-    unsigned int bytes_left;
-    unsigned int temp;
     Pack_struc *pack_ptr;
     Sys_header_struc *sys_header_ptr;
 
