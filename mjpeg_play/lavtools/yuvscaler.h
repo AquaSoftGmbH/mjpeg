@@ -14,3 +14,7 @@ int cubic_scale_interlaced (uint8_t *, uint8_t *, uint8_t *, unsigned int * ,flo
 int  my_y4m_read_frame(int, y4m_frame_info_t *, unsigned long int, char *, int);
 int line_switch (uint8_t * input, uint8_t *line);
 int blackout(uint8_t *input_y,uint8_t *input_u,uint8_t *input_v);
+int bottom_field_replace(uint8_t *,int,uint8_t *,uint8_t *);
+int bottom_field_storage(uint8_t *,int,uint8_t *,uint8_t *);
+int top_field_replace(uint8_t *,int,uint8_t *,uint8_t *);
+int top_field_storage(uint8_t *,int,uint8_t *,uint8_t *);
