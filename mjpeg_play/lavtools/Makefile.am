@@ -53,7 +53,7 @@ liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 # The tools themselves
 
 if HAVE_AVIFILE
-  AVIFILE_BIN = lav2divx yuv2divx
+  AVIFILE_BIN = lav2divx yuv2divx divxdec
 else
   AVIFILE_BIN = 
 endif
@@ -90,7 +90,7 @@ bin_PROGRAMS = \
 	ppmtoy4m y4mcolorbars
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
-	yuvscaler.h frequencies.h lav_common.h
+	yuvscaler.h frequencies.h lav_common.h lav2wav.h
 
 ypipe_SOURCES = ypipe.c $(lav_headers)
 ypipe_LDADD = -L$(top_srcdir)/utils -lmjpegutils
@@ -122,10 +122,10 @@ lav2yuv_SOURCES = lav2yuv.c lav_common.c $(lav_headers)
 lav2yuv_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 		liblavfile.la liblavjpeg.la $(DV_LIBS)
 
-jpeg2yuv_SOURCES = jpeg2yuv.c jpegutils.c 
+jpeg2yuv_SOURCES = jpeg2yuv.c $(lav_headers)
 jpeg2yuv_LDADD = -L$(top_srcdir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
 
-lav2divx_SOURCES = lav2divx.cpp lav_common.c jpegutils.c $(lav_headers)
+lav2divx_SOURCES = lav2divx.cpp lav_common.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
 	$(AVIPLAY_LIBS) -lm
@@ -151,16 +151,16 @@ lavaddwav_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 glav_SOURCES = glav.c glav_main.c  $(lav_headers)
 glav_LDADD = -L$(top_srcdir)/utils -lmjpegutils ${GTK_LIBS}
 
-lavvideo_SOURCES = lavvideo.c
+lavvideo_SOURCES = lavvideo.c $(lav_headers)
 
 yuvscaler_SOURCES = yuvscaler.c $(lav_headers)
 yuvscaler_LDADD = -L$(top_builddir)/utils -lmjpegutils $(LIBM_LIBS) \
 	 liblavfile.la liblavjpeg.la
 
-yuvplay_SOURCES = yuvplay.c
+yuvplay_SOURCES = yuvplay.c $(lav_headers)
 yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils
 
-yuv2divx_SOURCES = yuv2divx.cpp
+yuv2divx_SOURCES = yuv2divx.cpp $(lav_headers)
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) -lm liblavfile.la
 
@@ -169,3 +169,7 @@ ppmtoy4m_LDADD = -L$(top_srcdir)/utils -lmjpegutils
 
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
 y4mcolorbars_LDADD = -L$(top_srcdir)/utils -lmjpegutils
+
+divxdec_SOURCES = divxdec.cpp
+divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
+	$(AVIPLAY_LIBS) -lm liblavfile.la liblavplay.la liblavjpeg.la

@@ -494,6 +494,7 @@ int el_video_frame_data_format(long nframe, EditList *el)
    int n;
    char *comp;
 
+   if(el->video_frames<=0) return DATAFORMAT_MJPG; /* empty editlist, return default */
    if(nframe<0) nframe = 0;
    if(nframe>el->video_frames) nframe = el->video_frames;
    n = N_EL_FILE(el->frame_list[nframe]);
