@@ -597,4 +597,95 @@ bd2top22:
 		dec       edi
 		jg        bd2top22
 		jmp       d2exit
-				
+
+
+global variance_mmx
+		
+;;;  variance of a (size*size) block, multiplied by 256
+;;; p:  address of top left pel of block
+;;; lx: seperation (in bytes) of vertically adjacent pels
+;;; NOTE:		 size  is 8 or 16
+
+;;; int variance_mmx(uint8_t *p, int size,	int lx)
+
+		
+variance_mmx:
+	push ebp			; save frame pointer
+	mov ebp, esp		; link
+	push ebx
+	push ecx
+	push edx
+
+	mov     eax, 0              ; col offset...
+	mov		edx, [ebp+16]       ; lx
+
+	pxor    mm0, mm0
+	pxor    mm7, mm7			; Zero sum accumulator (4 words) 
+	pxor    mm6, mm6			; Zero squares accumulator (2 dwords)
+varcols:
+	mov		ebx, [ebp+8]		; p
+	mov     ecx, [ebp+12]		; size
+varrows:		
+	
+	movq		mm2, [ebx+eax]
+	movq		mm3, mm2 
+	punpcklbw   mm2, mm0
+	punpckhbw   mm3, mm0
+	
+	movq		mm4, mm2
+	movq		mm5, mm3
+
+	pmaddwd		mm4, mm2		;  Squares 0:3
+	paddw		mm7, mm2		; Accumulate sum 0:3 (words)
+	paddd		mm6, mm4		; Accumulate sum squares 0:3 (dwords)
+
+	pmaddwd		mm5, mm3		;  Squares 4:7 (words)
+	paddw		mm7, mm3		; Accumulate sum 0:3 (words)
+	paddd		mm6, mm5		; Accumulate sum squares 4:7 (dwords)
+
+	
+	add			ebx, edx		; Next row
+	dec			ecx
+	jnz			varrows
+
+	add			eax, 8
+	cmp			eax, [ebp+12]
+	jl			varcols
+
+		;; Sum squared -> eax
+
+	movq		mm1, mm7
+	psrlq		mm1, 32
+	paddw		mm7, mm1
+	movq		mm1, mm7
+	psrlq		mm1, 16
+	paddw		mm7, mm1
+	movd		eax, mm7
+	and			eax, 0xffff
+	imul		eax, eax
+
+		;; Squares sum -> ecx
+
+	movq		mm1, mm6
+	psrlq		mm1, 32
+	paddd		mm6, mm1
+	movd		ecx, mm6
+	
+	mov			ebx, [ebp+12]
+	shr			eax, 6			; Divide sum squared by 64 for 8*8
+	cmp			ebx, 8
+	jz			var8_8			; If 16 * 16 divide again by 4 (256)
+	shr			eax, 2
+var8_8:			
+
+	sub			ecx, eax
+	mov			eax, ecx
+
+	pop edx
+	pop ecx
+	pop ebx
+
+	pop ebp			; restore stack pointer
+
+	emms			; clear mmx registers
+	ret	

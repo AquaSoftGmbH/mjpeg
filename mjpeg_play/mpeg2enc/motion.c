@@ -144,7 +144,7 @@ static void dpfield_estimate (
 	uint8_t *botref, 
 	uint8_t *mb,
 	int i, int j, 
-	int imins, int jmins, 
+	mb_motion_s *bestsp_mc,
 	mb_motion_s *dpbest,
 	int *vmcp);
 
@@ -231,6 +231,8 @@ static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b,
 						  uint8_t *blk2,
 						  int lx, int h);
 
+static int (*pvariance)(uint8_t *mb, int size, int lx);
+
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
 static int dist1_01(uint8_t *blk1, uint8_t *blk2, int lx, int h);
 static int dist1_10(uint8_t *blk1, uint8_t *blk2, int lx, int h);
@@ -279,6 +281,7 @@ void init_motion()
 		pdist1_10 = dist1_10;
 		pdist1_11 = dist1_11;
 		pbdist1 = bdist1;
+		pvariance = variance;
 		pdist2 = dist2;
 		pbdist2 = bdist2;
 		pdist2_22 = dist2_22;
@@ -297,6 +300,7 @@ void init_motion()
 		pdist1_10 = dist1_10_mmxe;
 		pdist1_11 = dist1_11_mmxe;
 		pbdist1 = bdist1_mmx;
+		pvariance = variance_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
 		pdist2_22 = dist2_22_mmx;
@@ -316,6 +320,7 @@ void init_motion()
 		pdist1_10 = dist1_10_mmx;
 		pdist1_11 = dist1_11_mmx;
 		pbdist1 = bdist1_mmx;
+		pvariance = variance_mmx;
 		pdist2 = dist2_mmx;
 		pbdist2 = bdist2_mmx;
 		pdist2_22 = dist2_22_mmx;
@@ -515,8 +520,8 @@ int bidir_chrom_var_sum( mb_motion_s *lum_mc_f,
 
 static int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 {
-	return (variance(ssblk->umb,(h>>1),(lx>>1)) + 
-			variance(ssblk->vmb,(h>>1),(lx>>1))) * 2;
+	return ((*pvariance)(ssblk->umb,(h>>1),(lx>>1)) + 
+			(*pvariance)(ssblk->vmb,(h>>1),(lx>>1))) * 2;
 }
 
 static void frame_ME(pict_data_s *picture,
@@ -557,7 +562,7 @@ static void frame_ME(pict_data_s *picture,
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations...
 	 */
-	var = variance(ssmb.mb,16,width);
+	var = (*pvariance)(ssmb.mb,16,width);
 
 	if (picture->pict_type==I_TYPE)
 	{
@@ -594,7 +599,6 @@ static void frame_ME(pict_data_s *picture,
 				unidir_chrom_var_sum( &topfldf_mc, mc->oldref, &ssmb, (width<<1), 8 ) +
 				botfldf_mc.var + 
 				unidir_chrom_var_sum( &botfldf_mc, mc->oldref, &ssmb, (width<<1), 8 );
-			/* DEBUG DP currently disabled... */
 			if ( M==1)
 			{
 				dpframe_estimate(picture,mc->oldref[0],&ssmb,
@@ -608,7 +612,7 @@ static void frame_ME(pict_data_s *picture,
 			if ( M==1 && vmc_dp<vmcf && vmc_dp<vmcfieldf)
 			{
 				mbi->motion_type = MC_DMV;
-				/* No chrominance squared difference  measure yet.
+				/* No chrominance squared difference measure yet.
 				   Assume identical to luminance */
 				vmc = vmc_dp + vmc_dp;
 			}
@@ -708,7 +712,7 @@ static void frame_ME(pict_data_s *picture,
 	{
 		if (picture->frame_pred_dct)
 		{
-			var = variance(ssmb.mb,16,width);
+			var = (*pvariance)(ssmb.mb,16,width);
 			/* forward */
 			fullsearch(mc->oldorg[0],mc->oldref[0],&ssmb,
 					   width,i,j,mc->sxf,mc->syf,
@@ -915,7 +919,7 @@ static void field_ME(
 	int w2;
 	uint8_t *toporg, *topref, *botorg, *botref;
 	subsampled_mb_s ssmb;
-	mb_motion_s fields_mc, dualp_mc;
+	mb_motion_s fieldsp_mc, dualp_mc;
 	mb_motion_s fieldf_mc, fieldb_mc;
 	mb_motion_s field8uf_mc, field8lf_mc;
 	mb_motion_s field8ub_mc, field8lb_mc;
@@ -942,8 +946,8 @@ static void field_ME(
 		ssmb.qmb += (width >> 2);
 	}
 
-	var = variance(ssmb.mb,16,w2) + 
-		( variance(ssmb.umb,8,(width>>1)) + variance(ssmb.vmb,8,(width>>1)))*2;
+	var = (*pvariance)(ssmb.mb,16,w2) + 
+		( (*pvariance)(ssmb.umb,8,(width>>1)) + (*pvariance)(ssmb.vmb,8,(width>>1)))*2;
 
 	if (picture->pict_type==I_TYPE)
 		mbi->mb_type = MB_INTRA;
@@ -977,14 +981,15 @@ static void field_ME(
 					   &fieldf_mc,
 					   &field8uf_mc,
 					   &field8lf_mc,
-					   &fields_mc);
+					   &fieldsp_mc);
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 
 		if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
 			dpfield_estimate(picture,
-							 topref,botref,ssmb.mb,i,j,imins,jmins,
+							 topref,botref,ssmb.mb,i,j,
+							 &fieldsp_mc,
 							 &dualp_mc,
 							 &vmc_dp);
 			dmc_dp = dualp_mc.sad;
@@ -1078,7 +1083,7 @@ static void field_ME(
 					   &fieldf_mc,
 					   &field8uf_mc,
 					   &field8lf_mc,
-					   &fields_mc);
+					   &fieldsp_mc);
 		dmcfieldf = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
 
@@ -1090,7 +1095,7 @@ static void field_ME(
 					   &fieldb_mc,
 					   &field8ub_mc,
 					   &field8lb_mc,
-					   &fields_mc);
+					   &fieldsp_mc);
 		dmcfieldr = fieldb_mc.sad;
 		dmc8r = field8ub_mc.sad + field8lb_mc.sad;
 
@@ -1443,17 +1448,17 @@ static void field_estimate (
 		topfld_mc.sad = dt = 65536;
 	else
 		fullsearch(toporg,topref,&botssmb,
-						width<<1,
-						i,j+8,sx,sy>>1,8,width,height>>1,
-				   /* &imint,&jmint, &dt,*/ &topfld_mc);
+				   width<<1,
+				   i,j+8,sx,sy>>1,8,width,height>>1,
+				    &topfld_mc);
 	dt = topfld_mc.sad;
 	/* predict lower half field from bottom field */
 	if (nobot)
 		botfld_mc.sad = db = 65536;
 	else
 		fullsearch(botorg,botref,&botssmb,width<<1,
-						i,j+8,sx,sy>>1,8,width,height>>1,
-				   /* &iminb,&jminb, &db,*/ &botfld_mc);
+				   i,j+8,sx,sy>>1,8,width,height>>1,
+				   &botfld_mc);
 	db = botfld_mc.sad;
 	/* Set correct field selectors */
 	topfld_mc.fieldsel = 0;
@@ -1641,7 +1646,8 @@ static void dpfield_estimate(
 	uint8_t *topref,
 	uint8_t *botref, 
 	uint8_t *mb,
-	int i, int j, int imins, int jmins, 
+	int i, int j, 
+	mb_motion_s *bestsp_mc,
 	mb_motion_s *bestdp_mc,
 	int *vmcp
 	)
@@ -1650,6 +1656,8 @@ static void dpfield_estimate(
 	uint8_t *sameref, *oppref;
 	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
 	int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
+	int imins = bestsp_mc->pos.x;
+	int jmins = bestsp_mc->pos.y;
 
 	/* Calculate Dual Prime distortions for 9 delta candidates */
 	/* Note: only for P pictures! */
@@ -2212,7 +2220,6 @@ static void fullsearch(
 	int lx, int i0, int j0, 
 	int sx, int sy, int h,
 	int xmax, int ymax,
-	/* int *iminp, int *jminp, int *sadminp, */
 	mb_motion_s *res
 	)
 {
@@ -2474,49 +2481,6 @@ static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 	return s;
 }
 
-/* USED only during debugging...
-void check_fast_motion_data(uint8_t *blk, char *label )
-{
-  uint8_t *b, *nb;
-  uint8_t *pb,*p;
-  uint8_t *qb;
-  uint8_t *start_s22blk, *start_s44blk;
-  int i;
-  unsigned int mismatch;
-  int nextfieldline;
-  start_s22blk = (blk+height*width);
-  start_s44blk = (blk+height*width+(height>>1)*(width>>1));
-
-  if (pict_struct==FRAME_PICTURE)
-	{
-	  nextfieldline = width;
-	}
-  else
-	{
-	  nextfieldline = 2*width;
-	}
-
-	mismatch = 0;
-	pb = start_s22blk;
-	qb = start_s44blk;
-	p = blk;
-	while( pb < qb )
-	{
-		for( i = 0; i < nextfieldline/2; ++i )
-		{
-			mismatch |= ((p[0] + p[1] + p[nextfieldline] + p[nextfieldline+1])>>2) != *pb;
-			p += 2;
-			++pb;			
-		}
-		p += nextfieldline;
-	}
-		if( mismatch )
-			{
-				printf( "Mismatch detected check %s for buffer %08x\n", label,  blk );
-					exit(1);
-			}
-}
-*/
 
 /* 
    Append fast motion estimation data to original luminance
@@ -2533,16 +2497,6 @@ void fast_motion_data(uint8_t *blk, int picture_struct )
 	uint16_t *start_rowblk, *start_colblk;
 	int i;
 	int nextfieldline;
-#ifdef TEST_RCSEARCH
-	uint16_t *pc, *pr,*p;
-	int rowsum;
-	int j,s;
-	int down16 = width*16;
-	uint16_t sums[32];
-	uint16_t rowsums[2048];
-	uint16_t colsums[2048];  /* TODO: BUG: should resize with width */
-#endif 
-  
 
 	/* In an interlaced field the "next" line is 2 width's down 
 	   rather than 1 width down                                 */
@@ -2975,12 +2929,13 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
  * variance of a (size*size) block, multiplied by 256
  * p:  address of top left pel of block
  * lx: distance (in bytes) of vertically adjacent pels
+ * SIZE is a multiple of 8.
  */
 static int variance(uint8_t *p, int size,	int lx)
 {
 	int i,j;
 	unsigned int v,s,s2;
-
+	int var;
 	s = s2 = 0;
 
 	for (j=0; j<size; j++)
@@ -2993,7 +2948,9 @@ static int variance(uint8_t *p, int size,	int lx)
 		}
 		p+= lx-size;
 	}
-	return s2 - (s*s)/(size*size);
+	var = s2 - (s*s)/(size*size);
+
+	return var;
 }
 
 /*

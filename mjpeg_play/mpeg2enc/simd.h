@@ -84,6 +84,7 @@ int bdist1_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int lx,
 				int hxf, int hyf, int hxb, int hyb, int h);
 
+int variance_mmx( uint8_t *p, int size,	int lx);
 
 int dist1_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
 int dist1_01_mmx(uint8_t *blk1, uint8_t *blk2, int lx, int h);
