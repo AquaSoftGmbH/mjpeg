@@ -5,8 +5,9 @@ READERS		=
 WRITERS		=
 FILTERS		= yuvycsnoise$X yuvkineco$X
 COREOBJS	= addtask$O
-STDOBJS		= $(COREOBJS) alloctask$O initframe$O putframe$O yuvstdin$O yuvstdout$O timecode$O
+STDOBJS		= $(COREOBJS) alloctask$O initframe$O putframe$O yuvstdin$O yuvstdout$O
 CORECFLAGS	= $(DEBUG) -O2 -Wall -Wpointer-arith -Wcast-align -Wwrite-strings
+CPPFLAGS	= $(INCLUDES) -DMJPEGTOOLS=1
 CFLAGS		= $(CORECFLAGS) -Wcast-qual
 L		= libyuvfilters.a
 BINARIES	= $(READERS) $(WRITERS) $(FILTERS)
@@ -16,13 +17,16 @@ FILTERMAINS	= $(FILTERS:$X=_main$O)
 MAINS		= $(BINARIES:$X=_main$O)
 
 bin_SCRIPTS	= $(BINARIES)
+INCLUDES	= -I$(top_srcdir) -I$(top_srcdir)/utils
+DEPENDENCIES	= $(top_srcdir)/utils/libutils.a
+LDADD		= -L$(top_srcdir)/utils -lutils
 CLEANFILES	= $(BINARIES) $(MAINS) $L
-SOURCES		= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h timecode.h timecode.h
+SOURCES		= main.c $(BINARIES:$X=.c) $(STDOBJS:$O=.c) yuvfilters.h
 EXTRA_DIST	= README.yuvkineco .cvsignore
 MAINTAINERCLEANFILES = Makefile.in
 
-%$X: %_main$O $L(%$O $(STDOBJS))
-	$(CC) $(LDFLAGS) -o $@ $< $L
+%$X: %_main$O $L(%$O $(STDOBJS)) $(DEPENDENCIES)
+	$(CC) $(LDFLAGS) -o $@ $< $L $(LDADD)
 yuvkineco$X: $L(yuvycsnoise$O)
 
 $(MAINS): main.c yuvfilters.h
@@ -36,4 +40,3 @@ $L(%$O): %.c yuvfilters.h
 	$(AR) r $L $*$O
 	$(RM) $*$O
 $L($(COREOBJS)): override CFLAGS = $(CORECFLAGS)
-$L(timecode$O yuvctrlbytty$O yuvkineco$O): timecode.h
