@@ -274,6 +274,7 @@ void rc_init_GOP(np,nb)
 	double per_gop_bits = 
 		(double)(1 + np + nb) * (double)bit_rate / frame_rate;
 
+
 	/* A.Stevens Aug 2000: at last I've found the wretched
 	   rate-control overshoot bug...  Simply "topping up" R here means
 	   that we can accumulate an indefinately large pool of bits
@@ -511,16 +512,16 @@ void rc_update_pict(pict_data_s *picture)
 	d += frame_overshoot;
 	
 	/* If the cummulative undershoot is getting too large (as
-	   a rough and ready heuristic we use 1/2 video buffer size)
+	   a rough and ready heuristic we use 1/3 video buffer size)
 	   we start padding the stream.  Or, in the case of VBR,
 	   we pretend we're padding but don't actually write anything!
 
 	 */
 
-	if( gop_undershoot-frame_overshoot > video_buffer_size/2 )
+	if( gop_undershoot-frame_overshoot > video_buffer_size/3 )
 	{
 		int padding_bytes = 
-			((gop_undershoot-frame_overshoot)-video_buffer_size/2)/8;
+			((gop_undershoot-frame_overshoot)-video_buffer_size/3)/8;
 		if( quant_floor != 0 )	/* VBR case pretend to pad */
 		{
 			PP = AP + padding_bytes;

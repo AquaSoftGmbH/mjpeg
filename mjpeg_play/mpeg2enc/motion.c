@@ -1009,14 +1009,14 @@ static void field_ME(
 			/* 16x8 prediction */
 			mbi->motion_type = MC_16X8;
 			/* upper and lower half blocks */
-			vmc =  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
-			vmc += unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
+			vmc =  field8uf_mc.var + unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
+			vmc += field8lf_mc.var + unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
 		}
 		else
 		{
 			/* field prediction */
 			mbi->motion_type = MC_FIELD;
-			vmc = unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16 );
+			vmc = fieldf_mc.var + unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16 );
 		}
 
 		/* select between intra and non-intra coding */
@@ -1114,7 +1114,7 @@ static void field_ME(
 			/* field, interpolated */
 			mbi->mb_type = MB_FORWARD|MB_BACKWARD;
 			mbi->motion_type = MC_FIELD;
-			vmc = bidir_pred_var( &fieldf_mc, &fieldb_mc, ssmb.mb, w2, 16);
+			vmc = fieldf_mc.var + bidir_pred_var( &fieldf_mc, &fieldb_mc, ssmb.mb, w2, 16);
 		}
 		else if (dmc8i<dmcfieldf && dmc8i<dmc8f
 				 && dmc8i<dmcfieldr && dmc8i<dmc8r)
@@ -1124,15 +1124,15 @@ static void field_ME(
 			mbi->motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
-			vmc =  bidir_pred_var( &field8uf_mc, &field8ub_mc, ssmb.mb, w2, 8);
-			vmc += bidir_pred_var( &field8lf_mc, &field8lb_mc, ssmb.mb, w2, 8);
+			vmc =  field8uf_mc.var + bidir_pred_var( &field8uf_mc, &field8ub_mc, ssmb.mb, w2, 8);
+			vmc += field8lf_mc.var + bidir_pred_var( &field8lf_mc, &field8lb_mc, ssmb.mb, w2, 8);
 		}
 		else if (dmcfieldf<dmc8f && dmcfieldf<dmcfieldr && dmcfieldf<dmc8r)
 		{
 			/* field, forward */
 			mbi->mb_type = MB_FORWARD;
 			mbi->motion_type = MC_FIELD;
-			vmc = unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16);
+			vmc = fieldf_mc.var + unidir_pred_var( &fieldf_mc, ssmb.mb, w2, 16);
 		}
 		else if (dmc8f<dmcfieldr && dmc8f<dmc8r)
 		{
@@ -1141,15 +1141,15 @@ static void field_ME(
 			mbi->motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
-			vmc =  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
-			vmc += unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
+			vmc = field8uf_mc.var +  unidir_pred_var( &field8uf_mc, ssmb.mb, w2, 8);
+			vmc += field8lf_mc.var + unidir_pred_var( &field8lf_mc, ssmb.mb, w2, 8);
 		}
 		else if (dmcfieldr<dmc8r)
 		{
 			/* field, backward */
 			mbi->mb_type = MB_BACKWARD;
 			mbi->motion_type = MC_FIELD;
-			vmc = unidir_pred_var( &fieldb_mc, ssmb.mb, w2, 16 );
+			vmc = fieldb_mc.var + unidir_pred_var( &fieldb_mc, ssmb.mb, w2, 16 );
 		}
 		else
 		{
@@ -1158,8 +1158,8 @@ static void field_ME(
 			mbi->motion_type = MC_16X8;
 
 			/* upper and lower half blocks */
-			vmc =  unidir_pred_var( &field8ub_mc, ssmb.mb, w2, 8);
-			vmc += unidir_pred_var( &field8lb_mc, ssmb.mb, w2, 8);
+			vmc =  field8ub_mc.var + unidir_pred_var( &field8ub_mc, ssmb.mb, w2, 8);
+			vmc += field8lb_mc.var + unidir_pred_var( &field8lb_mc, ssmb.mb, w2, 8);
 
 		}
 

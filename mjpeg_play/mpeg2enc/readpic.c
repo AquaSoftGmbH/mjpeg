@@ -93,10 +93,12 @@ static void read_gop()
 
    for(n=s;n<s+READ_LOOK_AHEAD/2;n++)
    {
+
       if(piperead(input_fd,magic,6)!=6) goto EOF_MARK;
       if(strncmp(magic,"FRAME\n",6))
       {
-         fprintf(stderr,"\n\nStart of new frame is not \"FRAME<NL>\"\n");
+		  magic[6]='\0';
+         fprintf(stderr,"\n\nStart of frame %d is not \"FRAME<NL>\"\n",n);
          fprintf(stderr,"Exiting!!!!\n");
          exit(1);
       }
