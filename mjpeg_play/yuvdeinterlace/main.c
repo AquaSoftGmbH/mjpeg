@@ -276,6 +276,7 @@ blend_fields (void)
 	int delta,delta1,delta2,delta3,delta4,delta5;
 
 	float korr1,korr2,korr3;
+	static float mean_korr1=0.95;
 	float blend;
 
 	korr1 = 0;
@@ -289,6 +290,7 @@ blend_fields (void)
 		}
 	korr1 /= width*height;
 	korr1 = 1-sqrt(korr1)/256;
+	mean_korr1 = mean_korr1*0.95 + 0.05*korr1;
 
 	korr2 = 0;
 	for (y = 0; y < height; y++)
@@ -314,39 +316,77 @@ blend_fields (void)
 	korr3 /= width*height;
 	korr3 = 1-sqrt(korr3)/256;
 
-	if(korr2>=(korr1*0.99))
+	if(korr2>=(korr1*0.999))
 	{
-		mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: PROGRESSIVE SCAN",korr1*100,korr2*100,korr3*100);
+		mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: PROGRESSIVE SCAN",
+			korr1*100,mean_korr1*100,korr2*100,korr3*100);
 		mode=1;
 	}
 	else		
-		if(korr3>=(korr1*0.99))
+		if(korr3>=(korr1*0.999))
 		{
-			mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: TELECINED VIDEO",korr1*100,korr2*100,korr3*100);
+			mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: TELECINED VIDEO",
+				korr1*100,mean_korr1*100,korr2*100,korr3*100);
 			mode=1;
 		}
 		else		
 		{
-			mjpeg_log(LOG_INFO," %3.1f %3.1f %3.1f -- mode: INTERLACED VIDEO",korr1*100,korr2*100,korr3*100);
 			mode=0;
+
+			if(korr1<(mean_korr1*0.99))
+			{
+				mode=3;
+				mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: INTERLACED VIDEO (M2)",
+					korr1*100,mean_korr1*100,korr2*100,korr3*100);
+			}
+			else
+			{
+				mjpeg_log(LOG_INFO," %3.1f(%3.1f) %3.1f %3.1f -- mode: INTERLACED VIDEO (M1)",
+					korr1*100,mean_korr1*100,korr2*100,korr3*100);
+			}
 		}
 
 	if(mode==0)
 	for (y = 0; y < height; y++)
 		for (x = 0; x < width; x++)
 		{
+			int thres=18;
 
-			delta1 = 
-				  *(frame4[0] + x + (y+0) * width) -
-				  *(frame5[0] + x + (y+0) * width);
-			delta1 *= delta1;
-			delta1 /= 256;
+			delta1 = 	*(frame4[0] + (x-1) + (y-1) * width) +
+				  		*(frame4[0] + (x+0) + (y-1) * width) +
+				  		*(frame4[0] + (x+1) + (y-1) * width) +
+				  		*(frame4[0] + (x-1) + (y+0) * width) +
+				  		*(frame4[0] + (x+0) + (y+0) * width) +
+				  		*(frame4[0] + (x+1) + (y+0) * width) +
+				  		*(frame4[0] + (x-1) + (y+1) * width) +
+				  		*(frame4[0] + (x+0) + (y+1) * width) +
+				  		*(frame4[0] + (x+1) + (y+1) * width) ;
+			delta1 -=	*(frame5[0] + (x-1) + (y-1) * width) +
+				  		*(frame5[0] + (x+0) + (y-1) * width) +
+				  		*(frame5[0] + (x+1) + (y-1) * width) +
+				  		*(frame5[0] + (x-1) + (y+0) * width) +
+				  		*(frame5[0] + (x+0) + (y+0) * width) +
+				  		*(frame5[0] + (x+1) + (y+0) * width) +
+				  		*(frame5[0] + (x-1) + (y+1) * width) +
+				  		*(frame5[0] + (x+0) + (y+1) * width) +
+				  		*(frame5[0] + (x+1) + (y+1) * width) ;
+			delta1 /= 18;
+			delta1 = delta1<0? -delta1:delta1;
 
-			blend = (256.f-delta1)/(256.f*2);
+			if(delta1<thres)
+			{
+				blend=0.5;
+			}
+			else
+			{
+				blend=(float)(delta1-thres)/(float)(thres*2);
+				if(blend>.5) blend=0.5;
+				blend += 0.5;
+			}
 
 			*(frame6[0] + x + y * width)=
-			*(frame4[0] + x + y * width)*(  blend)+
-			*(frame5[0] + x + y * width)*(1-blend);
+				*(frame4[0] + x + y * width)*(  blend)+
+				*(frame5[0] + x + y * width)*(1-blend);
 		}
 	else
 		if(mode==1)
@@ -365,6 +405,14 @@ blend_fields (void)
 					*(frame6[0] + x + y * width)=
 						*(frame11[0] + x + y * width)*0.5+
 						*(frame20[0] + x + y * width)*0.5;
+				}
+	else
+		if(mode==3)
+			for (y = 0; y < height; y++)
+				for (x = 0; x < width; x++)
+				{
+					*(frame6[0] + x + y * width)=
+						*(frame20[0] + x + y * width);
 				}
 }
 
@@ -590,63 +638,57 @@ void aa_interpolation( uint8_t * frame[3], int field)
 
 void aa_interpolation2( uint8_t * frame[3], int field)
 {
-	int x,y,dx,v1,v2,z,d;
+	int x,y,dx,v1,v2,z,d,m1,m2,d1,d2,index;
 	uint32_t SSE;
 	uint32_t min;
-	int w1=3;
-	int w2=3;
+	int w1=2;
+	int w2=29;
+	int offset[29]={0,1,-1,2,-2,3,-3,4,-4,5,-5,6,-6,7,-7,8,-8,9,-9,10,-10,11,-11,12,-12,13,-13,14,-14};
 
 	for (y = (field + 2); y < (height - 2); y += 2)
 		for (x = 0; x < width; x++)
 		{
-			
 			v1=v2=0;
-			min=0;
-			for(z=-w1; z <= w1 ;z++)
-			{
-				d = 	*(frame[0]+z+x     +(y-1)*width) -
-						*(frame[0]+z+x     +(y+1)*width);
-				d *= d;
-				min += d;
-			}
 			min=0x00ffffff;
-			for(dx=-w2 ; dx<=w2 ; dx++)
-			{
-				SSE=0;
-				for(z=-w1; z <= w1 ;z++)
+			for(index=0 ; index<w2 ; index++)
 				{
-					d = 	*(frame[0]+z+x     +(y-1)*width) -
-							*(frame[0]+z+x+dx  +(y+1)*width);
-					d *= d;
-					SSE += d;
-					d = 	*(frame[0]+z+x     +(y+1)*width) -
-							*(frame[0]+z+x+dx  +(y+3)*width);
-					d *= d;
-					SSE += d;
-					d = 	*(frame[0]+z+x     +(y-3)*width) -
-							*(frame[0]+z+x+dx  +(y-1)*width);
-					d *= d;
-					SSE += d;
+					dx=offset[index];
+
+					SSE=0;
+					for(z=-w1; z <= w1 ;z++)
+					{
+						d = 	*(frame[0]+z+x     +(y-1)*width) -
+								*(frame[0]+z+x+dx  +(y+1)*width);
+						d *= d;
+						SSE += d;
+
+						d = 	*(frame[0]+z+x-dx  +(y-1)*width) -
+								*(frame[0]+z+x     +(y+1)*width);
+						d *= d;
+						SSE += d;
+
+						d = 	*(frame[0]+z+x-dx/2+(y-1)*width) -
+								*(frame[0]+z+x+dx/2+(y+1)*width);
+						d *= d;
+						SSE += d;
+					}
+					if (SSE<min)
+					{
+						min=SSE/2;
+						v1=dx;
+					}
 				}
-				if (SSE<=min)
-				{
-					min=SSE;
-					v1=dx;
-				}
-			}
+			v1 /= 2;
 
+			m1=
+				(	*(frame[0]-v1+(x)+(y-1)*width) +
+					*(frame[0]+v1+(x)+(y+1)*width)	)/2;
+			m2=
+				(	*(frame[0]+(x)+(y-1)*width) +
+					*(frame[0]+(x)+(y+1)*width)	)/2;
 
-			//if(v1==0) d=0;
-			//else
-			{
-				v1/=2;
-				d=
-					(	*(frame[0]-v1+(x)+(y-1)*width) +
-						*(frame[0]+v1+(x)+(y+1)*width)	)/2;
-			}
-			*(frame[0]+(x)+(y)*width) = d;
-		}	
-
+			*(frame[0]+(x)+(y)*width) = (m1+m2)/2;
+		}
 	if(bttv_hack==0)
 	{
 	// Chroma 
