@@ -593,6 +593,7 @@ static void save_list(GtkWidget *widget, GtkCList *clist)
          (char *) g_list_nth_data(GTK_TVPLUG(tv)->encoding_list, i)))
       {
          gtk_tvplug_set(tv, "encoding", i);
+         encoding_id = i;
       }
    }
 
