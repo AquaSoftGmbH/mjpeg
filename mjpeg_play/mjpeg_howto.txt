@@ -20,9 +20,11 @@ Creating MPEG1 Videos
 Creating MPEG2 Videos
 Creating VideoCD's
 Creating SVCD's
+Creating DIVX Videos
 Optimizing the stream: 
 Transcoding
 Trading Quality/Speed
+SMP and distributed encoding
 Interoperability:
 
 
@@ -1105,6 +1107,34 @@ Note: The VCD SVCD stuff may work on your HW player or not. There are
 many reports that it works quite well. Don't be woried if it does not
 work. Nor am I responsible for unusable CDs. ("coasters")
 
+CREATING DIVX VIDEOS
+=====================================
+
+The yuv2divx in the mjpeg tools uses the codecs of the avifile libary to
+generate videos. The output formats you can create are depended of the avifile
+version you use. It is recomended that you the avifile you use is at least 
+version 0.6. 
+
+The prossesing is a little bit different because the audio and video files are
+not multiplex afterwards. The output is created in a single step. You can use
+the normal vide encoding procces. The audio file, or the sound that is already
+in the recorded avi, has to be given yuv2divx as option. 
+
+Enougth talk here is an example:
+> lav2yuv stream.avi | yuv2divx -A stream.avi -o lowrate.avi 
+
+Lookes a bit strange because the yuv2divx reads the YUV video stream from 
+stdin. The -A specifies the audio stream, that is also in our stream.avi.
+The output is also a .avi file because Divx is also named avi. 
+
+Example:
+> lav2yuv stream.avi | yuvdenoise | yuvscaler -O SIZE_640x480 | \
+> yuv2divx -b 2500 -a 196 -E DIV6 -A stream.avi -o output.avi
+
+You see that using other tools to get the stream in the proper form is no 
+problem.  Here we set the maximum bitrate to 2500kBit/s, and the audio 
+bitrate to 192kBit/s. The video coded this time used is the DIV6.
+
 
 OPTIMIZING THE STREAM:
 =====================================
@@ -1368,7 +1398,66 @@ also correctly play back the much more efficient MPEG layer 3 (yes, "MP3")
 audio format. A good Mp3 encoder like lame will produce results comparable to 
 layer 2 at 224Kbps at 128Kbps or 160Kbps.
 
+SMP AND DISTRIBUTED ENCODING
+=====================================
 
+The degree to which mpeg2enc tries to split work between concurrently 
+executing threads is controlled by the -M oder --multi-thread [0..32] option.
+This optimises mpeg2enc for the specified number of CPUs. By default (-M 1), 
+mpeg2enc runs with just a little multi-threading: reading of frames happens 
+concurrently with compression. This is done to allow encoding pipelines that 
+are split across several machines (see below) to work efficiently without the 
+need for special buffering programs.   
+If you are encoding on a single-CPU machine where RAM is tight you may find 
+turning off multithreading altogether by setting -M 0 works slightly more 
+efficiently.
+
+For SMP machines with two ore more processors you can speed up mpeg2enc by 
+setting the number of concurrently executing encoding threads's you wish to 
+utilise (e.g. -M 2). Setting -M 2 or -M 3 on a 2-way machine should allow 
+you to speed up encoding by around 80%.
+
+Obviously, if your encoding pipeline contains several filtering stages it is 
+likely that you can keep two or more CPU's busy simultaneously even without
+using -M. Denoising using yuvdenoise is particular demanding and uses almost 
+as much processing power as MPEG encoding.
+
+It you more than one computer you can also split the encoding pipeline between
+computers using the standard "rsh" or "rcmd" remote shell execution commands. 
+For example, if you have two computers:
+
+> rsh machine1 lav2yuv "mycapture.eli | yuvscaler -O SVCD | yuvdenoise" | \
+> mpeg2enc -f 4 -o mycapture.m2v
+
+Here  the computer where you execute the command is doing the MPEG encoding
+whilst "machine1" is the machine that is decoding scaling and denoising the 
+captured video.
+
+Obviously, for this to work "machine1" has to be able to access the video and 
+the computer where the command is executed has to have space for the encoded 
+video. In practice, it is usually well worth setting up network file-storage 
+using "NFS" or other packages if you are going to do stuff like this.  
+If you have three computers you can take this a stage further, one computer 
+could do the decoding and scaling, the next could do denoising and the third 
+could do MPEG encoding:
+
+> rsh machine1 "lav2yuv mycapture.eli | yuvscaler -O SVCD" | yuvdenoise | \
+> rsh machine3 mpeg2enc -f 4 -o mycapture.m2v
+
+Note how the remote command executions are set up so that the data is sent 
+direct from the machine that produces it to the machine that consumes it.
+
+In practice for this to be worthwhile the network you are using must be fast 
+enough to avoid becoming a bottleneck. For Pentium-III class machines or above 
+you will need a 100Mbps Ethernet.
+For really fast machines a switched 100MBps Ethernet (or better!) may be needed.
+Setting up the rshd ("Remote SHell Daemon") needed for rsh to do its work and 
+configuring "rsh" is beyond the scope of this document, but its a standard 
+package and should be easily installed and activated on any Linux or BSD 
+distribution.
+
+Be aware that this is potentially a  security issue so use with care on 
+machines that are visible to outside networks!  
 
 INTEROPERABILITY
 =====================================
