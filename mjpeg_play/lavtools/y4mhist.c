@@ -13,7 +13,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <mjpegtools/yuv4mpeg.h>
+#include <yuv4mpeg.h>
 
 	unsigned long long y_stats[256], u_stats[256], v_stats[256];
 
