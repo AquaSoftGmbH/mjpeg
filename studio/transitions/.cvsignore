@@ -1,0 +1,9 @@
+transitions/Makefile
+transitions/Makefile.in
+transitions/blend.flt
+transitions/fade.flt
+transitions/fade_s.flt
+transitions/overlay.flt
+transitions/wipe.flt
+.deps
+.libs
