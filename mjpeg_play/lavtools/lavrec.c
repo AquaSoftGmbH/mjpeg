@@ -433,6 +433,7 @@ void SigHandler(int sig_num)
 
 void Usage(char *progname)
 {
+	fprintf(stderr, "lavtools version " VERSION ": lavrec\n");
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
    fprintf(stderr, "   -f [aAqm]   Format AVI/Quicktime/movtar\n");

@@ -4,8 +4,8 @@ TASKS OUTSTANDING
 
 Minor
 
-- Do  a purge through the code replacing clunky code with fast in-line
-	"abs", "min" and "max" operations. 
+- Do a purge through the mpeg2enc code replacing clunky code with fast
+in-line	"abs", "min" and "max" operations. 
 
 - Update the included scripts to reflect the new seperate input filter
 architecture for the  mpeg decoder.

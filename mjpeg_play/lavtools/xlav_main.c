@@ -8,8 +8,7 @@
 #include "xlav.h"
 
 #define PLAY_PROG "lavplay"
-#define stringify(str) #str
-#define LAVPLAY_VERSION "lavplay" stringify(VERSION) ".0" /* Expected version info */
+#define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
 
 int verbose = 1;
 static FD_xlav *fd_xlav;
@@ -348,10 +347,10 @@ void create_child(char **args)
 
    /* Check if child sends right version number */
 
-   vlen = strlen(LAVPLAY_VERSION);
+   vlen = strlen(LAVPLAY_VSTR);
    n = read(inp_pipe,version,vlen+1); /* vlen+1: for trailing \n */
    version[vlen] = 0;
-   if(n!=vlen+1 || strncmp(version,LAVPLAY_VERSION,vlen)!=0)
+   if(n!=vlen+1 || strncmp(version,LAVPLAY_VSTR,vlen)!=0)
    {
       fprintf(stderr,"%s did not send correct version info\n",PLAY_PROG);
       fprintf(stderr,"Got: \"%s\" Expected: \"%s\"\n",version,VERSION);

@@ -122,6 +122,8 @@
 #include "lav_io.h"
 #include "editlist.h"
 
+#define LAVPLAY_VSTR "lavplay" LAVPLAY_VERSION  /* Expected version info */
+
 char *audio_strerror();
 
 int  verbose = 2;
@@ -439,10 +441,14 @@ int main(int argc, char ** argv)
    struct mjpeg_sync bs;
    struct sigaction action, old_action;
    
-   /* Output Version information */
+   /* Output Version information - Used by xlav to check for
+	consistency. 
+   */
 
-   printf("lavplay" stringify(VERSION) ".0\n");
+   printf( LAVPLAY_VSTR "\n" );
    fflush(stdout);
+   printf( "lavtools version " VERSION "\n" );
+
 
    if(argc < 2) Usage(argv[0]);
 

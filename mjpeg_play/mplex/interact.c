@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-
 /*************************************************************************
     Startbildschirm und Anzahl der Argumente
 
@@ -11,6 +10,7 @@
 
 static void Usage(char *str)
 {
+	fprintf( stderr, "lavtools mplex version " VERSION "\n" );
 	fprintf( stderr, "Usage: %s [params] [<input file1> [<input file2>] <output file>\n\n", str);
 	fprintf( stderr, "  where possible params are:\n" );
 	fprintf( stderr, " -q      Quiet mode for unattended batch usage\n" );

@@ -91,6 +91,7 @@ int param_422 = 0;
 
 void Usage(char *str)
 {
+	printf("lavtools mpeg2enc version " VERSION "\n" );
 	printf("Usage: %s [params]\n",str);
 	printf("   where possible params are:\n");
 	printf("   -m num     MPEG level (1 or 2) default: 1\n");
