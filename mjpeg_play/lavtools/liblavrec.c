@@ -1543,6 +1543,13 @@ static void lavrec_record(lavrec_t *info)
       y_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h);
       u_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
       v_buff = (unsigned char *) malloc(sizeof(unsigned char)*info->geometry->w*info->geometry->h/4);
+
+      if (!y_buff || !u_buff || !v_buff)
+      {
+         lavrec_msg (LAVREC_MSG_ERROR, info,
+            "Malloc error, you\'re probably out of memory");
+         lavrec_change_state(info, LAVREC_STATE_STOP);
+      }
    }
    for (x=0;x<(info->software_encoding?settings->softreq.frames:settings->breq.count);x++)
    {
@@ -1660,53 +1667,51 @@ static void lavrec_record(lavrec_t *info)
       /* write it out */
       if(write_frame && nfout > 0)
       {
-#if 0
          if (info->software_encoding)
          {
+#if 0
             pthread_mutex_lock(&(settings->valid_mutex));
             settings->buffer_valid[settings->currently_encoded_frame] = nfout;
             pthread_cond_broadcast(&(settings->buffer_filled[settings->currently_encoded_frame]));
             pthread_mutex_unlock(&(settings->valid_mutex));
-         }
 #endif
-         /* TEST: move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
-         YUV = settings->YUV_buff + (settings->softreq.offsets[bsync.frame]);
+            /* move Y-pixels over, not a good method but good enough (seems to be UYVY???) */
+            YUV = settings->YUV_buff + (settings->softreq.offsets[bsync.frame]);
 
-         /* sit down for this - it's really easy except if you try to understand it :-) */
-         for (x=0;x<settings->width;x++)
-            if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
-               for (y=0;y<settings->height;y++)
-                  if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
-                     y_buff[(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
-                        YUV[(y*settings->width+x)*2 + 1];
+            /* sit down for this - it's really easy except if you try to understand it :-) */
+            for (x=0;x<settings->width;x++)
+               if (x>=info->geometry->x && x<(info->geometry->x+info->geometry->w))
+                  for (y=0;y<settings->height;y++)
+                     if (y>=info->geometry->y && y<(info->geometry->y+info->geometry->h))
+                        y_buff[(y-info->geometry->y)*info->geometry->w + (x-info->geometry->x)] =
+                           YUV[(y*settings->width+x)*2 + 1];
 
-         for (x=0;x<settings->width/2;x++)
-            if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
-               for (y=0;y<settings->height/2;y++)
-                  if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
-                  {
-                     u_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                        YUV[(y*settings->width+x)*4];
-                     v_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
-                        YUV[(y*settings->width+x)*4 + 2];
-                  }
+            for (x=0;x<settings->width/2;x++)
+               if (x>=info->geometry->x/2 && x<(info->geometry->x+info->geometry->w)/2)
+                  for (y=0;y<settings->height/2;y++)
+                     if (y>=(info->geometry->y/2) && y<((info->geometry->y+info->geometry->h)/2))
+                     {
+                        u_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                           YUV[(y*settings->width+x)*4];
+                        v_buff[(y-info->geometry->y/2)*info->geometry->w/2 + (x-info->geometry->x/2)] =
+                           YUV[(y*settings->width+x)*4 + 2];
+                     }
 
-         jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
-            settings->breq.size, info->quality, settings->interlaced,
-            CHROMA420, info->geometry->w, info->geometry->h,
-            y_buff,u_buff, v_buff);
-         if (jpegsize<0)
-         {
-            lavrec_msg(LAVREC_MSG_ERROR, info,
-               "Error encoding frame to JPEG");
-            lavrec_change_state(info, LAVREC_STATE_STOP);
+            jpegsize = encode_jpeg_raw(settings->MJPG_buff+bsync.frame*settings->breq.size,
+               settings->breq.size, info->quality, settings->interlaced,
+               CHROMA420, info->geometry->w, info->geometry->h,
+               y_buff,u_buff, v_buff);
+            if (jpegsize<0)
+            {
+               lavrec_msg(LAVREC_MSG_ERROR, info,
+                  "Error encoding frame to JPEG");
+               lavrec_change_state(info, LAVREC_STATE_STOP);
+            }
          }
-         //else
-         //{
-            if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
-               info->software_encoding?jpegsize:bsync.length, nfout) != 1)
-               nerr++; /* Done or error occured */
-         //}
+
+         if (video_captured(info, settings->MJPG_buff+bsync.frame*settings->breq.size,
+            info->software_encoding?jpegsize:bsync.length, nfout) != 1)
+            nerr++; /* Done or error occured */
       }
 
       /* Re-queue the buffer */
