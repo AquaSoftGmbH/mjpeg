@@ -167,6 +167,7 @@ public:
                       Multiplexor &into, 
 					  stream_kind kind
 					  );
+    virtual ~ElementaryStream () { }
 	virtual void Close() = 0;
 
 	bool NextAU();
