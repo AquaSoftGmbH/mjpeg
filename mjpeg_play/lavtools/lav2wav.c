@@ -67,7 +67,7 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 {
 	uint16_t temp_16; /* temp variables for swapping the bytes */
 	uint32_t temp_32; /* temp variables for swapping the bytes */
-        unsigned int dummy_size = 0x7fffff00+sizeof(wave);
+        uint32_t dummy_size = 0x7fffff00+sizeof(wave);
 
 	/* Write out a ZEROD wave header first */
 	memset(&wave, 0, sizeof(wave));
@@ -75,16 +75,10 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	strncpy((char*)wave.riff.id, "RIFF", 4);
 	strncpy((char*)wave.riff.wave_id, "WAVE",4);
 	dummy_size -=8;
-        if (big_endian == 0)
-	  wave.riff.len =  dummy_size;
-	else 
-	  wave.riff.len = reorder_32((uint32_t)dummy_size);
+	wave.riff.len = reorder_32(dummy_size, big_endian);
 
 	strncpy((char*)wave.format.id, "fmt ",4);
-        if (big_endian == 0)
-	  wave.format.len = sizeof(struct common_struct);
-        else
-          wave.format.len = reorder_32((uint32_t)sizeof(struct common_struct));
+        wave.format.len = reorder_32((uint32_t)sizeof(struct common_struct), big_endian);
 
 	/* Store information */
         if (big_endian == 0) 
@@ -103,9 +97,9 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
              temp_16 = channels;
              swab(&temp_16, &wave.common.wChannels, 2);
              temp_32 = rate;
-             wave.common.dwSamplesPerSec = reorder_32 (temp_32);
+             wave.common.dwSamplesPerSec = reorder_32 (temp_32, big_endian);
              temp_32 = channels*rate*bits/8;
-             wave.common.dwAvgBytesPerSec = reorder_32 (temp_32);
+             wave.common.dwAvgBytesPerSec = reorder_32 (temp_32, big_endian);
              temp_16 = channels*bits/8;
              swab(&temp_16, &wave.common.wBlockAlign, 2);
              temp_16 = bits;
@@ -115,14 +109,9 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	strncpy((char*)wave.data.id, "data",4);
 	dummy_size -= 20+sizeof(struct common_struct);
 
-        if (big_endian == 0) 
-	    wave.data.len = dummy_size;
-        else
-            wave.data.len = reorder_32 ((uint32_t)dummy_size);
+        wave.data.len = reorder_32 (dummy_size, big_endian);
 	if (do_write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
-	{
 		return 1;
-	}
 	return 0;
 }
 
@@ -152,16 +141,10 @@ static void wav_close(int fd)
 
 	/* Fill out our wav-header with some information.  */
 	size -= 8;
-        if (big_endian == 0)
-	  wave.riff.len = size;
-        else
-          wave.riff.len = reorder_32 ((uint32_t)size);
+        wave.riff.len = reorder_32 ((uint32_t)size, big_endian);
 
 	size -= 20+sizeof(struct common_struct);
-        if (big_endian == 0)
-	  wave.data.len = size;
-	else
-	  wave.data.len = reorder_32 ((uint32_t)size);
+	wave.data.len = reorder_32 ((uint32_t)size, big_endian);
 
 	if (do_write(fd, &wave, sizeof(wave)) < sizeof(wave)) 
 	{

@@ -141,23 +141,12 @@ wave_hdr.rifflen = 0; /* to be filled later */
 wave_hdr.datalen = 0; /* to be filled later */
 wave_hdr.wFormatTag = 1;  /* PCM */
 
-if (big_endian == 0)
-  {
-     wave_hdr.rifftag = FOURCC_RIFF;
-     wave_hdr.wavetag = FOURCC_WAVE;
-     wave_hdr.fmt_tag = FOURCC_FMT;
-     wave_hdr.fmt_len = 16;
-     wave_hdr.datatag = FOURCC_DATA;
-  }
-else if (big_endian == 1)
-  {
-     wave_hdr.rifftag = reorder_32(FOURCC_RIFF);
-     wave_hdr.wavetag = reorder_32(FOURCC_WAVE);
-     wave_hdr.fmt_tag = reorder_32(FOURCC_FMT);
-     wave_hdr.fmt_len = reorder_32(16);
-     wave_hdr.datatag = reorder_32(FOURCC_DATA);
+     wave_hdr.rifftag = reorder_32(FOURCC_RIFF, big_endian);
+     wave_hdr.wavetag = reorder_32(FOURCC_WAVE, big_endian);
+     wave_hdr.fmt_tag = reorder_32(FOURCC_FMT, big_endian);
+     wave_hdr.fmt_len = reorder_32(16, big_endian);
+     wave_hdr.datatag = reorder_32(FOURCC_DATA, big_endian);
      swab(&wave_hdr.wFormatTag, &wave_hdr.wFormatTag ,2);
-  }
 }
 
 void Usage(char *str)
@@ -186,8 +175,7 @@ int main(int argc, char ** argv)
    char *dotptr;
    char imgfname[4096];
    long audio_bytes_out = 0;
-   int res, n, nframe;
-   int nv = 0, na = 0;
+   int res, n, nv = 0, na = 0, nframe;
    int forcestereo = 0;
 
    while( (n=getopt(argc,argv,"o:f:i:v:")) != EOF)
@@ -290,19 +278,15 @@ int main(int argc, char ** argv)
       wave_hdr.nChannels       = forcestereo ? 2 : el.audio_chans;
       wave_hdr.nBlockAlign     = el.audio_bps;
       wave_hdr.wBitsPerSample  = el.audio_bits;
-      if (big_endian == 0)
-        {
-           wave_hdr.nSamplesPerSec  = el.audio_rate;
-           wave_hdr.nAvgBytesPerSec = el.audio_rate*el.audio_bps;
-        }
-      else
-        {
-           wave_hdr.nSamplesPerSec  = reorder_32(el.audio_rate);
-           wave_hdr.nAvgBytesPerSec = reorder_32(el.audio_rate*el.audio_bps);
-           swab(&wave_hdr.nChannels, &wave_hdr.nChannels, 2);
-           swab(&wave_hdr.nBlockAlign, &wave_hdr.nBlockAlign, 2);
-           swab(&wave_hdr.wBitsPerSample, &wave_hdr.wBitsPerSample, 2);
-        }
+
+      wave_hdr.nSamplesPerSec  = reorder_32(el.audio_rate, big_endian);
+      wave_hdr.nAvgBytesPerSec = reorder_32(el.audio_rate*el.audio_bps, big_endian);
+      if (big_endian)
+	 {
+         swab(&wave_hdr.nChannels, &wave_hdr.nChannels, 2);
+         swab(&wave_hdr.nBlockAlign, &wave_hdr.nBlockAlign, 2);
+         swab(&wave_hdr.wBitsPerSample, &wave_hdr.wBitsPerSample, 2);
+	 }
 
       wavfd = fopen(outfile,"wb");
       if(wavfd==0) system_error("opening WAV file","fopen");
@@ -392,16 +376,8 @@ int main(int argc, char ** argv)
 
    if(format == 'w' || format == 'W')
    {
-      if (big_endian == 0)
-        {
-           wave_hdr.rifflen = sizeof(wave_hdr) - 8 + audio_bytes_out;
-           wave_hdr.datalen = audio_bytes_out;
-        }
-      else
-        {
-           wave_hdr.rifflen = reorder_32(sizeof(wave_hdr) -8+ audio_bytes_out);
-           wave_hdr.datalen = reorder_32(audio_bytes_out);
-        }
+     wave_hdr.rifflen = reorder_32(sizeof(wave_hdr) -8+ audio_bytes_out, big_endian);
+      wave_hdr.datalen = reorder_32(audio_bytes_out, big_endian);
       res = fseek(wavfd,0,SEEK_SET);
       if(res) system_error("writing WAV file","fseek");
       res = fwrite(&wave_hdr,sizeof(wave_hdr),1,wavfd);
