@@ -36,6 +36,13 @@ AC_ARG_WITH(m4data-prefix, [  --with-m4data-prefix=PFX  Where to put the libmovt
     M4DATADIR="$withval/aclocal", 
     M4DATADIR="/usr/share/aclocal")
 
+dnl This activates IRIX specific changes (e g no MMX)
+case "$HOSTTYPE" in
+  mips*) 
+   echo Activating IRIX changes !
+   CFLAGS="$CFLAGS -DIRIX";;
+esac
+
 dnl No jpeg yet... try for a local jpeg-mmx first!
 dnl -- Quicktime checks --
 

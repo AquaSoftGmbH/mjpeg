@@ -342,11 +342,11 @@ int init_parse_files()
 	      outmovtar->mov_norm = MOVTAR_NORM_PAL;
 	      framerate = 25.0; /* We are guessing this to be PAL */
 	    }
+	  
+	  /* Added May 27/2001 by Dennis Grant (trog@wincom.net)
+	   * DC10+ has a 288x240 mode that is NTSC
+	   */
 
-          /* Added May 27/2001 by Dennis Grant (trog@wincom.net)
-           *
-           * DC10+ has a 288 x 240 mode that is NTSC
-           */
 
 	  if (dinfo.output_width == 640 || dinfo.output_width == 320 ||
              dinfo.output_width == 160 || dinfo.output_width == 288)

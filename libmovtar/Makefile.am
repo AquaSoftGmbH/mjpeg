@@ -6,12 +6,11 @@ libmovtar_a_SOURCES = movtar.c tar.c
 INCLUDES = @GLIB_CFLAGS@ @JPEG_INCLUDE@
 include_HEADERS = movtar.h
 
-movtar_play_LDFLAGS = -lSDL -lpthread 
-movtar_unify_LDFLAGS = 
-movtar_yuv422_LDFLAGS =
-LDFLAGS = @GLIB_LIBS@
+movtar_play_LDADD = -lSDL -lpthread -ljpeg ./libmovtar.a @GLIB_LIBS@
+movtar_unify_LDADD = ./libmovtar.a -ljpeg @GLIB_LIBS@
+movtar_yuv422_LDADD = -ljpeg
 
-LDADD = ./libmovtar.a
+LDADD = ./libmovtar.a @GLIB_LIBS@
 
 EXTRA_DIST = README.movtar.implement movtar.m4
 

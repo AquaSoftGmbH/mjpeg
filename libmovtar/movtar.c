@@ -40,7 +40,6 @@ movtar.c (part of libmovtar)
 #include <tar.h>
 #include <glib.h>
 #include <sys/types.h>
-#include <linux/types.h>
 
 #include "movtar.h"
 

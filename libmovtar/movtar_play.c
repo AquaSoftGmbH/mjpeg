@@ -1,6 +1,5 @@
 #include <unistd.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -12,8 +11,10 @@
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
 
+#ifndef IRIX
 #define JPEG_INTERNALS
 #include <jinclude.h>
+#endif
 #include <jpeglib.h>
 
 #include <glib.h>
@@ -113,6 +114,7 @@ jpeg_mem_src_reset (j_decompress_ptr cinfo, int size)
 
 /* end of data source manager */
 
+#ifndef IRIX 
 /* Colorspace conversion */
 /* RGB, 32 bits, 8bits each: (Junk), R, G, B */ 
 #if defined(__GNUC__)
@@ -439,6 +441,8 @@ ycc_rgb16_convert_mmx (j_decompress_ptr cinfo,
 
   asm ("emms");
 }
+#endif // ifndef IRIX
+
 /* end of custom color deconverter */
 
 /********************************************************
@@ -485,12 +489,20 @@ void inline readpicfrommem(void *inbuffer, long size)
   switch (screen->format->BytesPerPixel)
     {
     case 4:
+#ifndef IRIX
       cconvert = cinfo.cconvert;
       cconvert->color_convert = ycc_rgb32_convert_mmx;
+#else
+      fprintf(stderr, "32 bits per pixel can't be decoded by libjpeg on IRIX !\n");
+#endif
       break;
     case 2:
+#ifndef IRIX
       cconvert = cinfo.cconvert;
       cconvert->color_convert = ycc_rgb16_convert_mmx;
+#else
+      fprintf(stderr, "15/16 bits per pixel can't be decoded by libjpeg on IRIX!");
+#endif
       break;
     default: break;
     }
@@ -607,13 +619,21 @@ int main(int argc,char** argv)
   printf("wxh: %dx%d@%f fr/s\n", width, height, movtar_frame_rate(movtar));
 
   /* Set the video mode (at least the movtar resolution, with native bitdepth) */
-  screen = SDL_SetVideoMode(width, height, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
+#ifndef IRIX /* let the hardware choose its mode */
+  screen = SDL_SetVideoMode(width, height, 0, SDL_HWSURFACE /* | SDL_HWSURFACE *//*| SDL_FULLSCREEN */);
+#else /* must force it to a mode */
+  screen = SDL_SetVideoMode(width, height, 24, SDL_HWSURFACE /* | SDL_HWSURFACE *//*| SDL_FULLSCREEN */);
+#endif
   SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
 
-  // dump_pixel_format(screen->format);
+  dump_pixel_format(screen->format);
 
+#ifdef IRIX
+  fprintf(stderr, "Screen parameters haven't been determined yet !\n");
+#else
   calc_rgb16_params(screen->format);
+#endif
 
   if ( screen == NULL )  
     ComplainAndExit(); 
@@ -629,7 +649,7 @@ int main(int argc,char** argv)
   do
     {
       framesize = movtar_read_frame(movtar, readbuffer);
-      // printf("Now showing frame %d (size %ld)\n", frame, framesize);
+      printf("Now showing frame %d (size %ld)\n", frame, framesize);
 
       if (framesize != 0)
 	{
