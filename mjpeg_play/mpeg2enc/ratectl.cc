@@ -678,7 +678,7 @@ int OnTheFlyRateCtl::UpdatePict(Picture &picture, int64_t _bitcount_EOP)
 	prev_bitcount = bitcount_EOP;
     
 	bits_transported += per_pict_bits;
-	mjpeg_debug( "TR=%" PRId64 " USD=%" PRId64 "", bits_transported/8, bits_used/8);
+	mjpeg_debug( "TR=%lld USD=%lld", bits_transported/8, bits_used/8);
 	buffer_variation  = (int32_t)(bits_transported - bits_used);
 
 	if( buffer_variation > 0 )

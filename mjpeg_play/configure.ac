@@ -90,36 +90,10 @@ AC_CHECK_HEADERS([fenv.h stdint.h inttypes.h sys/types.h getopt.h alloca.h sys/s
 AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_STDINT_H])
 AX_PREFIXED_DEFINE([MJPEGTOOLS], [HAVE_INTTYPES_H])
 
-
-
-dnl sizeof PRId64 etc...
-AC_CHECK_SIZEOF(int)
-AC_CHECK_SIZEOF(long)
-AC_CHECK_SIZEOF(long long)
-
-AC_CACHE_CHECK([the string format of PRId64],
-               [mjt_cv_format_prid64],
-               [case 8 in
-	        $ac_cv_sizeof_int)        mjt_cv_format_prid64="d"   ;;
-                $ac_cv_sizeof_long)       mjt_cv_format_prid64="ld"  ;;
-                $ac_cv_sizeof_long_long)  mjt_cv_format_prid64="lld" ;;
-                *)
-                  AC_MSG_WARN([No suitable variant for 64bits integers found])
-                  mjt_cv_format_prid64=""
-                  ;;
-                esac])
-AC_DEFINE_UNQUOTED(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64",
-                   [Format string for 64 bit integers])
-#maddog:  Is this AC-SUBST actually necessary????
-#  (And, is the result quoted properly????)
-AC_SUBST(PRID64_STRING_FORMAT, "$mjt_cv_format_prid64")
-AX_PREFIXED_DEFINE([MJPEGTOOLS], [PRID64_STRING_FORMAT])
-
 #maddog:  check for math lib, and add it to LIBS (needed for fmax, lround...)
 #maddog:  (How does this interact with cpml stuff below???????)
 AC_CHECK_LIB([m],[sin])
 AC_CHECK_FUNCS([posix_memalign memalign fmax lround])
-
 
 #maddog:  FIX UP?????????????
 AC_CHECK_FUNC(getopt_long,
@@ -131,8 +105,6 @@ AC_CHECK_FUNC(getopt_long,
                              LIBGETOPT_LIB="-lgnugetopt"])
               ])
 AC_SUBST(LIBGETOPT_LIB)
-
-
 
 AC_TYPE_SIGNAL
 
