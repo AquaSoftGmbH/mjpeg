@@ -1,4 +1,4 @@
-.TH "yuvdenoise" "1" "20th of January 2001" "MJPEG Linux Square" "MJPEG tools manual"
+.TH "yuvdenoise" "1" "24th May 2002" "MJPEG Linux Square" "MJPEG tools manual"
 
 .SH NAME
 yuvdenoise \- Motion-Compensating-YUV4MPEG-frame-denoiser
@@ -17,56 +17,31 @@ needed to encode your captured movies for VCD and SVCD creation.
 .SH OPTIONS
 \fByuvdenoise\fP accepts the following options:
 
-.TP 8
-.BR \-v
-Verbose
+.TP 4
+.BI \-t " [0..255] Denoiser threshold"
+Accept any image-error up to +/- threshold for a single
+pixel to be accepted as valid for the image. If the
+absolute error is greater than this, exchange the pixel
+with the according pixel of the reference image.
+(default=5)
 
-You will get some statistical information on the input video-stream as
-mean-SAD so far and the average SAD of the last image. Additionaly you
-will have a translation of these values on a single Pixel
-(Noiselevel). 
+.TP 4
+.BI \-l " [1..255] frames for a time-lowpassed pixel"
+Average 'n' frames for a time-lowpassed pixel. Values
+below 2 will lead to a good response to the reference
+frame, while larger values will cut out more noise (and
+as a drawback will lead to noticable artefacts on high
+motion scenes.) Values above 8 are allowed but rather
+useless. (default=3)
 
-.TP 8
-.BR \-r  
-Maximum Search Radius
+.TP 4
+.BI \-r " [8..24] search radius"
+Limit the search radius to that value. Usually it will
+not make sense to go higher than 16. Esp. for VCD sizes.
+(default=8)
 
-By adding this option you may limit the search radius. Search radius
-may internally be reduced by the algorithm depending on the quality of
-the center match.      
-
-yuvdenoise -r 16                                        
-
-This sets the maximum search radius to 16 pixels.            
-
-.TP 8
-.BR \-I
-Deinterlace Only
-
-This turns off the denoiser completly. Only the deinterlacer (if
-needed) and the black-border-code remain functional. This gives a
-great speed-boost if you don't want to denoise but only to turn
-borders black and/or to deinterlace.
-
-.TP 8
-.BR \-B
-B&W Mode
-
-This is usefull if your material is (our should be) B&W only. This
-flag does turn color-MC and all Chroma off. This should help the
-encoder to save a few bits when such material is used. Especially if
-your recording does come from an old videotape or a bad
-TV-transmission.
-
-.TP 8
-.BR \-?
-Display Help
-
-Displays a brief description of the available options.
-
-.TP 8
-.BR \-b
-Border Setting.
-
+.TP 4
+.BI \-b " <x>,<y>,<w>,<h> Border Setting"
 If you allready know parts of the image are and remain black all over
 the complete sequence of images, you may use something like this:
 
@@ -83,6 +58,33 @@ yuvdenoise -b 16,16,-16,-16
 
 Provided there is a PAL-frame with 720x576 pixels both options will
 turn the same area into black.
+
+.TP 4
+.BI \-L " [0..255] luminance contrast"
+Set luminance (Y Contrast) in percent. (default=100)
+
+.TP 4
+.BI \-C " [0..255] chrominance contrast"
+Set chrominance (Cr/Cb Contrast) in percent. AKA "Saturation" (default=100)
+
+.TP 4
+.BI \-S " [0..255] sharpness in percent"
+Set sharpness in percent. WARNING: do not set too high
+as this will gain bit-noise. (default=125)
+
+.TP 4
+.BI \-F " deinterlacing"
+Force deinterlacing. By default denoise interlaced.
+
+.TP 4
+.BI \-f " fast mode"
+Fast mode. Use only Pass II (bitnoise-reduction) for
+low to very low noise material. (default off)
+
+.TP 4
+.BI \-p " [0..255] Pass II threshold"
+Pass II threshold (same as -t). WARNING: If set to values greater than 8 
+you *will* see artefacts...(default=4)
 
 
 .SH HOW IT WORKS
