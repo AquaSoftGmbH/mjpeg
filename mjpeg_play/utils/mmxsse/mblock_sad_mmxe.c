@@ -326,29 +326,40 @@ int mblock_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,int lx,int h,int32_t *
 {
     int32_t rv;
 
-#define SADACC(s1,s2,d1,d2,a) \
-    psadbw_r2r(s1,d1);        \
-    psadbw_r2r(s2,d2);        \
-    paddd_r2r(d1,a);          \
-    paddd_r2r(d2,a);
-
-    pxor_r2r(mm0,mm0); // zero accumulators
-    pxor_r2r(mm1,mm1);
-
     movq_m2r(blk1[0],mm2);
     movq_m2r(blk1[8],mm3);
     movq_m2r(blk1[1],mm4);
     movq_m2r(blk1[9],mm5);
-    do {
-        // +0, +0
-        movq_m2r(blk2[0],mm6);
-        movq_m2r(blk2[8],mm7);
-        SADACC(mm6,mm7,mm2,mm3,mm0);
+    pxor_r2r(mm0,mm0); // zero accumulators
+    pxor_r2r(mm1,mm1);
 
-        // +2, +0
-        pshufw_r2ri(mm0,mm0,SHUFFLEMAP(2,3,0,1));
-        SADACC(mm6,mm7,mm4,mm5,mm0);
-        pshufw_r2ri(mm0,mm0,SHUFFLEMAP(2,3,0,1));
+    do {
+        /* Yes, the idea of using packssdw is kinda silly.  But it efficiently moves
+           the result into place, reducing the number of instructions.  Instead of:
+
+           mm0 += mm2;
+           mm4 <<= 32;
+           mm0 += mm4;
+
+           we get:
+
+           mm2 = pack(mm4,mm2);
+           mm0 += mm2;
+           
+           Yes, this makes a difference (though admittedly slight).
+        */
+
+        movq_m2r(blk2[0],mm6);
+        psadbw_r2r(mm6,mm2);
+        psadbw_r2r(mm6,mm4);
+        packssdw_r2r(mm4,mm2);
+        paddd_r2r(mm2,mm0);
+
+        movq_m2r(blk2[8],mm7);
+        psadbw_r2r(mm7,mm3);
+        psadbw_r2r(mm7,mm5);
+        packssdw_r2r(mm5,mm3);
+        paddd_r2r(mm3,mm0);
 
         // advance pointers to next row
         blk1+=lx;
@@ -363,18 +374,21 @@ int mblock_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,int lx,int h,int32_t *
         if( rv > peakerror )
             goto safeexit;
 
-        // +0, +2
-        movq_m2r(blk1[0],mm4);
-        movq_m2r(blk1[8],mm5);
-        movq_r2r(mm4,mm2);
-        movq_r2r(mm5,mm3);
-        SADACC(mm6,mm7,mm4,mm5,mm1);
-
-        pshufw_r2ri(mm1,mm1,SHUFFLEMAP(2,3,0,1));
+        movq_m2r(blk1[0],mm2);
         movq_m2r(blk1[1],mm4);
+        movq_r2r(mm6,mm3);
+        psadbw_r2r(mm2,mm6);
+        psadbw_r2r(mm4,mm3);
+        packssdw_r2r(mm3,mm6);
+        paddd_r2r(mm6,mm1);
+
+        movq_m2r(blk1[8],mm3);
         movq_m2r(blk1[9],mm5);
-        SADACC(mm4,mm5,mm6,mm7,mm1);
-        pshufw_r2ri(mm1,mm1,SHUFFLEMAP(2,3,0,1));
+        movq_r2r(mm7,mm6);
+        psadbw_r2r(mm3,mm7);
+        psadbw_r2r(mm5,mm6);
+        packssdw_r2r(mm6,mm7);
+        paddd_r2r(mm7,mm1);
 
         h--;
     } while(h);
@@ -389,8 +403,6 @@ int mblock_nearest4_sads_mmxe(uint8_t *blk1,uint8_t *blk2,int lx,int h,int32_t *
  safeexit:
     emms();
     return rv;
-
-#undef SADACC
 }
 
 void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2,
