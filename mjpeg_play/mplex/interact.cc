@@ -190,90 +190,47 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 
 void check_files (int argc,
 				  char* argv[],
-				  char* *audio_file,
-				  char* *video_file
+                  vector<char *> &audio_files,
+				  vector<char *> &video_files
 	)
 {
-    IBitStream bs1, bs2;
+    IBitStream bs;
     BitStreamUndo undo;
-	
-	/* As yet no streams determined... */
-    if (argc == 2) {
-		if (open_file(argv[1]))
-			exit (1); }
-    else if (argc == 3) {
-		if (open_file(argv[1]) || open_file(argv[2]))
-			exit (1); }
-	    
-    bs1.open(argv[1]);
- 
-    if (argc == 3)
-		bs2.open(argv[2]);
+    int i;
+    bool bad_file = false;
 
-	bs1.prepareundo( undo);
-	if (bs1.getbits( 12 )  == 0xfff)
+	for( i = 1; i < argc; ++i )
     {
-		*audio_file = argv[1];
-		mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[1]);
-		if (argc == 3 ) {
-			if (  bs2.getbits( 32) != 0x1b3)
-			{
-				mjpeg_info ("File %s is not a MPEG-1/2 Video stream.\n",argv[2]);
-				bs1.close();
-				bs2.close();
-				exit (1);
-			} 
-			else
-			{
-				mjpeg_info ("File %s is a MPEG-1/2 Video stream.\n",argv[2]);
-				*video_file = argv[2];
-			}
-		}
-
+        bs.open( argv[i] );
+        bs.prepareundo( undo);
+        if (bs.getbits( 12 )  == 0xfff)
+        {
+            mjpeg_info ("File %s looks like an MPEG Audio stream.\n",argv[i]);
+            audio_files.push_back( argv[i] );
+        }
+        else
+        { 
+            bs.undochanges( undo);
+            if (  bs.getbits( 32)  == 0x1b3)
+            {
+                mjpeg_info ("File %s looks like an MPEG-1/2 Video stream.\n",
+                            argv[i]);
+                video_files.push_back( argv[i] );
+            }
+            else 
+            {
+                mjpeg_error ("Files %s unrecogniseable!\n", argv[i]);
+                bad_file = true;
+            }
+        }
+        bs.close();
     }
-    else
-    { 
-		bs1.undochanges( undo);
-		if (  bs1.getbits( 32)  == 0x1b3)
-		{
-			*video_file = argv[1];
-			mjpeg_info ("File %s is an MPEG-1/2 Video stream.\n",argv[1]);
-			if (argc == 3 ) {
-				if ( bs2.getbits( 12 ) != 0xfff)
-				{
-					mjpeg_info ("File %s is not a 11172-3 Audio stream.\n",argv[2]);
-					bs1.close();
-					bs2.close();
-					exit (1);
-				} 
-				else
-				{
-					mjpeg_info ("File %s is a 11172-3 Audio stream.\n",argv[2]);
-					*audio_file = argv[2];
-				}
-			}
-		}
-		else 
-		{
-			if (argc == 3) {
-				mjpeg_error ("Files %s and %s are not valid MPEG streams.\n",
-						argv[1],argv[2]);
-				bs1.close();
-				bs2.close();
-				exit (1);
-			}
-			else {
-				mjpeg_error ("File %s is not a valid MPEG stream.\n", argv[1]);
-				bs1.close();
-				exit (1);
-			}
-		}
-	}
-
-	bs1.close();
-    if (argc == 3)
-		bs2.close();
-
+    
+    if( bad_file )
+    {
+        mjpeg_error_exit1( "Bad file(s)... exiting.\n");
+    }
+        
 }
 
 

@@ -148,7 +148,7 @@ void VideoStream::Init ( const int stream_num,
 				 stream_num);
 	InitAUbuffer();
 
-	InputStream::Init( video_file );
+	InputStream::Init( video_file, 4*1024*1024 );
 	ScanFirstSeqHeader();
 
 	/* Skip to the end of the 1st AU (*2nd* Picture start!)
@@ -482,7 +482,7 @@ void AudioStream::Init ( const int stream_num,
     mjpeg_info ("Scanning Audio stream for access units information. \n");
 
 	InitAUbuffer();
-	InputStream::Init( audio_file );
+	InputStream::Init( audio_file, 512*1024 );
 	
 	/* A.Stevens 2000 - update to be compatible up to  MPEG2.5
 	 */
@@ -504,7 +504,7 @@ void AudioStream::Init ( const int stream_num,
 
 		framesize =
 			bitrates_kbps[version_id][3-layer][bit_rate_code]  * 
-			slots [3-layer] *1000 /
+			slots[3-layer] *1000 /
 			freq_table[version_id][frequency];
 
         mjpeg_info( "rate %d slots %d freq %d size = %d\n",

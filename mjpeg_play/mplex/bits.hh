@@ -19,6 +19,7 @@ protected:
 	// TODO THis should be replaced with something based on bit-rate...
 	bitcount_t readpos;
 	uint8_t *bfr;
+	unsigned int bfr_size;
 public:
 	bool eobs;
 
@@ -28,7 +29,7 @@ class BitStream : public BitStreamUndo
 {
 public:
 	FILE *fileh;
-	const static int BUFFER_SIZE = 4*1024*1024;
+	static const unsigned int BUFFER_SIZE = 1024 * 1024;
 public:
 	BitStream();
 	~BitStream();
@@ -46,7 +47,7 @@ public:
 
 class IBitStream : public BitStream {
 public:
-	void open( char *bs_filename);
+	void open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
 	void close();
 	uint32_t get1bit();
 	uint32_t getbits(int N);
@@ -63,7 +64,7 @@ private:
 
 class OBitStream : public BitStream {
 public:
-	void open( char *bs_filename);
+	void open( char *bs_filename, unsigned int buf_size = BUFFER_SIZE);
 	void close();
 	void putbits( int val, int n);
 	void put1bit( int val);

@@ -60,6 +60,11 @@ public:
 			bs.open( const_cast<char *>(file_name) );
 		}
 
+	void Init( const char *file_name, int buf_size )
+		{
+			bs.open( const_cast<char *>(file_name), buf_size );
+		}
+
     bitcount_t stream_length;
 protected:
 	off_t      file_length;
@@ -136,7 +141,7 @@ protected:
 	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 	virtual void InitAUbuffer() = 0;
 	AUStream aunits;
-    static const int FRAME_CHUNK = 4;
+    static const int FRAME_CHUNK = 6;
 public:
 	enum stream_kind { audio, video };
 

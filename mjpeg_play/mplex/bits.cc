@@ -46,7 +46,7 @@ BitStream::BitStream() :
 	buffer_start = 0LL;
 	eobs = true;
 	readpos =0LL;
-	bfr = new uint8_t[BUFFER_SIZE];
+	bfr = 0;
 }
 
 BitStream::~BitStream()
@@ -55,12 +55,20 @@ BitStream::~BitStream()
 }
 
 /* initialize buffer, call once before first putbits or alignbits */
-void OBitStream::open(char *bs_filename)
+void OBitStream::open(char *bs_filename, unsigned int buf_size)
 {
   if ((fileh = fopen(bs_filename, "wb")) == NULL)
   {
 	  mjpeg_error_exit1( "Unable to open file %s for writing; %s\n", 
 						 bs_filename, strerror(errno));
+  }
+  bfr_size = buf_size;
+  if( bfr == 0 )
+	  bfr = new uint8_t[buf_size];
+  else
+  {
+	  delete bfr;
+	  bfr = new uint8_t[buf_size];
   }
   // Save multiple buffering...
   setvbuf(fileh, 0, _IONBF, 0 );
@@ -84,9 +92,9 @@ void OBitStream::close()
 void OBitStream::putbyte()
 {
     bfr[byteidx++] = outbyte;
-    if (byteidx == BUFFER_SIZE)
+    if (byteidx == bfr_size)
     {
-		if (fwrite(bfr, sizeof(unsigned char), BUFFER_SIZE, fileh) != BUFFER_SIZE)
+		if (fwrite(bfr, sizeof(unsigned char), bfr_size, fileh) != bfr_size)
 			mjpeg_error_exit1( "Write failed: %s\n", strerror(errno));
 		byteidx = 0;
     }
@@ -137,13 +145,16 @@ void OBitStream::alignbits()
 bool IBitStream::refill_buffer()
 {
 	size_t i;
-	if( bufcount == BUFFER_SIZE )
+	if( bufcount >= bfr_size )
 	{
 		mjpeg_error_exit1("INTERNAL ERROR: additional data required but
  no free space in input buffer\n");
 	}
-	i = fread(bfr+bufcount, sizeof(uint8_t), BUFFER_SIZE-bufcount, fileh);
+
+	i = fread(bfr+bufcount, sizeof(uint8_t), 
+			  static_cast<size_t>(bfr_size-bufcount), fileh);
 	bufcount += i;
+
 	if ( i == 0 )
 	{
 		eobs = true;
@@ -171,7 +182,7 @@ void IBitStream::flush(bitcount_t flush_upto )
 	// will be cleared.
 	//
 
-	if( bytes_to_flush < BUFFER_SIZE*3/4 )
+	if( bytes_to_flush < bfr_size*3/4 )
 		return;
 
 	bufcount -= bytes_to_flush;
@@ -208,7 +219,7 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 		if( !feof(fileh) )
 			mjpeg_error_exit1("INTERNAL ERROR: access to input stream buffer beyond last buffered byte\nEND=%d REQ=%lld + %d bytes\n", 
 							  bufcount, readpos-(bitcount_t)buffer_start,length  );
-		to_read = static_cast<unsigned int>(totbits/8-readpos);
+		to_read = static_cast<unsigned int>( bufcount );
 	}
 	memcpy( dst, 
 			bfr+(static_cast<unsigned int>(readpos-buffer_start)), 
@@ -219,13 +230,23 @@ unsigned int IBitStream::read_buffered_bytes(uint8_t *dst, unsigned int length)
 }
 
 /* open the device to read the bit stream from it */
-void IBitStream::open( char *bs_filename)
+void IBitStream::open( char *bs_filename, unsigned int buf_size)
 {
 
   if ((fileh = fopen(bs_filename, "rb")) == NULL)
   {
 	  mjpeg_error_exit1( "Unable to open file %s for reading.\n", bs_filename);
   }
+
+  bfr_size = buf_size;
+  if( bfr == NULL )
+	  bfr = new uint8_t[buf_size];
+  else
+  {
+	  delete bfr;
+	  bfr = new uint8_t[buf_size];
+  }
+
   byteidx = 0;
   bitidx = 8;
   totbits = 0LL;

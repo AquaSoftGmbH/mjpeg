@@ -42,8 +42,8 @@
 
 int main (int argc, char* argv[])
 {
-    char 	*audio_file = NULL;
-    char    *video_file = NULL;
+    vector<char *> audio_files;
+    vector<char *> video_files;
     char    *multi_file = NULL;	
 	int     i;
 	int     optargs;
@@ -53,15 +53,19 @@ int main (int argc, char* argv[])
     clockticks first_frame_PTS = 0;
 
     optargs = intro_and_options (argc, argv, &multi_file);
-	// 
-	// TODO: Just crude single-stream stills for the momement
-	// TODO: Clean up interface to muxing routine...
-	//
-	if(  MPEG_STILLS_FORMAT(opt_mux_format) )
+	check_files (argc-optargs, argv+optargs,  audio_files, video_files);
+
+	if( video_files.size() != 1 )
 	{
-		mjpeg_debug( "Multiplexing stills stream!\n" );
+		mjpeg_debug( "Multiplexing currently only tested with exactly one (1) video stream\n");
+		mjpeg_debug( "If you want to try it you'll need to modify the source code!\n" );
+		exit(1);
+	}
+
+	if( MPEG_STILLS_FORMAT(opt_mux_format) )
+	{
+		mjpeg_info( "Multiplexing stills stream!\n" );
 		ostrm.InitSyntaxParameters();
-		int stream_num = argc-optargs-1;
 		unsigned int frame_interval;
 
 		switch( opt_mux_format )
@@ -69,20 +73,20 @@ int main (int argc, char* argv[])
 
 		case MPEG_FORMAT_VCD_STILL :
 			frame_interval = 30; // 30 Frame periods
-			if( stream_num > 2 )
-				mjpeg_error_exit1("VCD stills streams may contain no more than two video streams\n");
+			if( audio_files.size() > 0 && video_files.size() > 2  )
+				mjpeg_error_exit1("VCD stills stream: no audio and no more than two video streams\n");
 			{
 				VCDStillsStream *str[2];
 				ConstantFrameIntervals *intervals[2];
 			
-				for( i = 0; i<stream_num; ++i )
+				for( i = 0; i<video_files.size(); ++i )
 				{
 					intervals[i] = new ConstantFrameIntervals( frame_interval );
 					str[i] = new VCDStillsStream(ostrm, intervals[i] );
 					strms.push_back( str[i] );
-					str[i]->Init( argv[optargs+i+1] );
+					str[i]->Init( video_files[i] );
 				}
-				if( stream_num == 2 )
+				if( video_files.size() == 2 )
 				{
 					str[0]->SetSibling(str[1]);
 					str[1]->SetSibling(str[0]);
@@ -91,7 +95,7 @@ int main (int argc, char* argv[])
 			break;
 		case MPEG_FORMAT_SVCD_STILL :
 			frame_interval = 30;
-			if( stream_num > 1 )
+			if(  video_files.size() > 1 )
 				mjpeg_error_exit1("SVCD stills streams may only contain a single video stream\n");
 			{
 				ConstantFrameIntervals *intervals;
@@ -99,7 +103,7 @@ int main (int argc, char* argv[])
 				intervals = new ConstantFrameIntervals( frame_interval );
 				str = new StillsStream(ostrm, intervals );
 				strms.push_back( str );
-				str->Init( argv[optargs+1] );
+				str->Init( video_files[0] );
 			}
 			break;
 		default:
@@ -111,23 +115,27 @@ int main (int argc, char* argv[])
 	}
 	else
 	{
-		check_files (argc-optargs, argv+optargs,  &audio_file, &video_file);
 		ostrm.InitSyntaxParameters();
-        VideoStream videoStrm(ostrm);
-        AudioStream audioStrm(ostrm);
-
-		if (video_file) {
-			videoStrm.Init( 0, video_file);
-			strms.push_back(&videoStrm);
+		mjpeg_info( "Found %d video streams and %d audio streams\n",
+					video_files.size(),
+					audio_files.size() );
+		for( i = 0 ; i < video_files.size() ; ++i )
+		{
+			VideoStream *videoStrm = new VideoStream(ostrm);
+			videoStrm->Init( i, video_files[i] );
+			strms.push_back( videoStrm );
 		}
-    
-		if (audio_file) {
-			audioStrm.Init ( 0, audio_file);
-			strms.push_back(&audioStrm);
+		for( i = 0 ; i < audio_files.size() ; ++i )
+		{
+			AudioStream *audioStrm = new AudioStream(ostrm);
+			audioStrm->Init ( i, audio_files[i]);
+			strms.push_back(audioStrm);
 		}
 		
 		ostrm.OutputMultiplex( &strms,  multi_file);
 	}
+	for( i = 0; i < strms.size(); ++i )
+		delete strms[i];
     return (0);	
 }
 
