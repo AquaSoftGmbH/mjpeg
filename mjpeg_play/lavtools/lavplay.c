@@ -136,6 +136,7 @@
 #include <mjpeg.h>
 
 #include "jpegutils.h" 
+#include "audiolib.h"
 #include "lav_io.h"
 #include "editlist.h"
 #include "mjpeg_logging.h"
@@ -152,16 +153,7 @@
 #define stringify( str ) #str
 
 
-/************************** PROTOTYPES **************************/
-/* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
-void audio_shutdown(void);
-int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
-long audio_get_buffer_size(void);
-int audio_write(char *buf, int size, int swap);
-void audio_get_output_status(struct timeval *tmstmp, long *nb_out, long *nb_err);
-int audio_start(void);
 
-char *audio_strerror(void);
 void malloc_error(void);
 void sig_cont(int sig);
 int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr);
@@ -192,6 +184,7 @@ static int    skip_seconds = 0;
 static double test_factor = 1.0;     /* Internal test of synchronization only */
 static int    audio_enable = 1;
 static int    playback_width = 720;  /* playback_width for hardware */
+static int    opt_use_read = 0;
 
 /* gz (Gernot) variables */
 static int soft_play = 0; /* software */
@@ -1009,7 +1002,6 @@ static int set_option(char *name, char *value)
 			nerr++;
 		}
 	}
-
 	else nerr++; /* unknown option - error */
 
 	return nerr;
@@ -1044,7 +1036,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* Get options */
 	nerr = 0;
-	while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xzg",
+	while( (n=getopt_long(argc,argv,"a:v:H:V:s:c:n:t:qZp:xrzg",
 		long_options, &option_index)) != EOF)
 	{
 		switch(n)
@@ -1081,7 +1073,7 @@ int main(int argc, char ** argv)
 	long nqueue, nsync, first_free;
 	struct timeval audio_tmstmp;
 	struct timeval time_now;
-	long nb_out, nb_err;
+	int nb_out, nb_err;
 	long audio_buffer_size = 0;
 	uint8_t * buff;
 	int n, skipv, skipa, skipi;
@@ -1142,7 +1134,9 @@ int main(int argc, char ** argv)
 		initialize_SDL_window();
 	if (el.has_audio && audio_enable)
 	{
-		res = audio_init(0,(el.audio_chans>1),el.audio_bits,
+		res = audio_init(0,
+						 opt_use_read,
+						 (el.audio_chans>1),el.audio_bits,
 						 (int)(el.audio_rate*test_factor));
 		if(res)
 		{

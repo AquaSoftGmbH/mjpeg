@@ -163,6 +163,7 @@
 #include <videodev_mjpeg.h>
 
 #include "frequencies.h"
+#include "audiolib.h"
 #include "lav_io.h"
 #include "mjpeg_logging.h"
 
@@ -196,12 +197,6 @@
 #define CHECK_INTERVAL 50         /* Interval for checking free space on file system */
 
 
-/************************** PROTOTYPES **************************/
-/* These are explicit prototypes for the compiler, to prepare separation of audiolib.c */
-void audio_shutdown();
-int audio_init(int a_read, int a_stereo, int a_size, int a_rate);
-long audio_get_buffer_size();
-int audio_read(char *buf, int size, int swap, struct timeval *tmstmp, int *status);
 
 char *audio_strerror(void);
 void set_mixer(int flag);
@@ -227,6 +222,7 @@ static int  quality        = 50;     /* determines target size of JPEG code,
                                         100=max. quality */
 static int  record_time    = 100000; /* "unlimited" */
 static int  single_frame   = 0;      /* continous capture */
+static int  opt_use_read   = 0;      /* Use read instead of mmap for capture */
 static int  time_lapse     = 1;      /* no time lapse */
 static int  wait_for_start = 0;      /* Wait for user confirmation to start */
 static int  audio_size     = 16;     /* Audio sample size: 8/16 bits, 0 = no audio */
@@ -452,6 +448,7 @@ void Usage(char *progname)
 	fprintf(stderr, "  -n/--mjpeg-buffers num      Number of MJPEG buffers (default: 64)\n");
 	fprintf(stderr, "  -b/--mjpeg-buffer-size num  Size of MJPEG buffers [Kb] (default: 256)\n");
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
+	fprintf(stderr, "  -r/--use-read               Mute audio output during recording\n");
 	fprintf(stderr, "  -v/--verbose [012]          verbose level (default: 0)\n");
 	fprintf(stderr, "Environment variables recognized:\n");
 	fprintf(stderr, "   LAV_VIDEO_DEV, LAV_AUDIO_DEV, LAV_MIXER_DEV\n");
@@ -1002,6 +999,10 @@ static int set_option(const char *name, char *value)
 	{
 		single_frame = 1;
 	}
+	else if (strcmp(name, "use-read")==0 || strcmp(name, "U")==0)
+	{
+		opt_use_read = 1;
+	}
 	else if (strcmp(name, "time-lapse")==0 || strcmp(name, "T")==0)
 	{
 		time_lapse = atoi(value);
@@ -1139,6 +1140,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"mjpeg-buffers"    ,1,0,0},   /* -n/--mjpeg_buffers     */
 		{"mjpeg-buffer-size",1,0,0},   /* -b/--mjpeg-buffer-size */
 		{"channel"          ,1,0,0},   /* -C/--channel           */
+		{"use-read"        ,0,0,0},   /* --use-read           */
 		{0,0,0,0}
 	};
 
@@ -1147,7 +1149,7 @@ static void check_command_line_options(int argc, char *argv[])
 
 	/* Get options */
 	nerr = 0;
-	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mR:c:n:b:C:",
+	while( (n=getopt_long(argc,argv,"v:f:i:d:g:q:t:ST:wa:r:sl:mUR:c:n:b:C:",
 		long_options, &option_index)) != EOF)
 	{
 		switch(n)
@@ -1271,7 +1273,7 @@ static void lavrec_setup(int *p_video_dev, struct mjpeg_requestbuffers *breq,
 	audio_bps = 0;
 	if (audio_size)
 	{
-		res = audio_init(1,stereo,audio_size,audio_rate);
+		res = audio_init(1,opt_use_read,stereo,audio_size,audio_rate);
 		if(res)
 		{
 			set_mixer(0);
