@@ -37,8 +37,8 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 
 .SH "DESCRIPTION"
 Mplex is a general-purpose audio/video multiplexer for MPEG-1/MPEG-2.
-It accepts one or more MPEG-1/2 video stream, MPEG layer II/III audio
-streams and AC3 audio streams and multiplexes them into a combined
+It accepts one or more MPEG-1/2 video stream, MPEG layer II/III, DTS
+and AC3 audio streams and multiplexes them into a combined
 program/system stream according to the constraints specified.  Many
 different types of output structure are supported along with presets
 for standard VCD and SVCD streams.  These latter can be burned to CD
@@ -93,6 +93,16 @@ manually.
  VOBU start sectors DVD VOB's include.  This is enough to persuade some
  hardware players to play the stream but is a long way from full DVD authoring.
  9 - DVD.  As above but without the empty VOBU sectors.
+.TP
+.BI -W|--workarounds \ workaround_flag\  \fR [, \fIworkaround_flag\fR ...]
+.br
+A comma-seperated list of flags that set special work-arounds for what
+are suspected to be parser Bugs in widely used players. The currently
+supported workarounds are:
+.IP
+mplayer_hdr - Ensure LPCM audio headers are stuffed to be at least 10
+bytes long so that mplayer can seek propely.
+
 .TP
 .BI -r|--mux-bitrate \ num
 The total (non VBR) / peak (VBR) bit-rate of the output stream in k
