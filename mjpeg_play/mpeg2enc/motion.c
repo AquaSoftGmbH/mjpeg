@@ -143,7 +143,6 @@ int dist1_11_MMX(unsigned char *blk1, unsigned char *blk2, int lx, int h);
 
 int fdist1_MMX ( mcompuint *blk1, mcompuint *blk2,  int flx, int fh);
 
-#error qdist1_MMX needs to checked!!!!
 int qdist1_MMX (mcompuint *blk1, mcompuint *blk2,  int qlx, int qh);
 
 int dist2_mmx( unsigned char *blk1, unsigned char *blk2,

@@ -35,20 +35,21 @@
 # GNU gcc
 #
 CC = gcc
-SSEFLAGS=-DSSE
-#MMXFLAGS=-DMMX
+#SSEFLAGS=-DSSE
+MMXFLAGS=-DMMX
 
-CFLAGS = -pg -O6 $(SSEFLAGS) $(MMXFLAGS) -mpentiumpro -Wall -I .. -I ../jpeg-6b 
+CFLAGS = -O6 $(SSEFLAGS) $(MMXFLAGS) -mpentiumpro -Wall -I .. -I ../jpeg-6b 
 QT_LIBS= ../quicktime/quicktime/libquicktime.a ../jpeg-6b-mmx/libjpeg.a -lpthread -lpng -lz
 #QT_LIBS= ../jpeg-6b/libjpeg.a -lpng -lz
 
-#MMXOBJ = fdist1_mmx.o dist1_00_mmx.o dist1_01_mmx.o dist1_10_mmx.o dist1_11_mmx.o \
-          fdct_mmx.o fdctdata.o qdist1_mmx.o quant_mmx.o rcdist_mmx.o dist2_mmx.o bdist2_mmx.o\
+MMXOBJ = fdist1_mmx.o dist1_00_mmx.o dist1_01_mmx.o dist1_10_mmx.o dist1_11_mmx.o \
+          fdct_mmx.o fdctdata.o idct_mmx.o idctdata.o \
+          qdist1_mmx.o quant_mmx.o rcdist_mmx.o dist2_mmx.o bdist2_mmx.o\
 	  	  bdist1_mmx.o predict_mmx.o
-SSEOBJ = fdist1_00.o dist1_00.o dist1_01.o dist1_10.o dist1_11.o fdct_mmx.o \
-         fdctdata.o idct_mmx.o idctdata.o qdist1_sse.o qdist1_mmx.o  \
+#SSEOBJ = fdist1_00.o dist1_00.o dist1_01.o dist1_10.o dist1_11.o fdct_mmx.o \
+         fdctdata.o idct_mmx.o idctdata.o qdist1_sse.o  \
 	 	 quant_mmx.o rcdist_mmx.o dist2_mmx.o bdist2_mmx.o bdist1_mmx.o predict_mmx.o
-				
+
 
 COBJ = mpeg2enc.o conform.o putseq.o putpic.o puthdr.o putmpg.o putvlc.o putbits.o motion.o predict.o readpic.o writepic.o transfrm.o fdctref.o idct.o quantize.o ratectl.o stats.o jpegutils.o
 
@@ -64,10 +65,10 @@ clean:
 .s.o:
 	nasm -o $@ -f elf $<
 
-mpeg2enc.exe: mpeg2enc
+mpeg2enc.exe: mpeg2enc 
 	coff2exe mpeg2enc
 
-mpeg2enc: $(OBJ)
+mpeg2enc: $(OBJ) Makefile
 	$(CC) $(CFLAGS) -o mpeg2enc $(OBJ) ../editlist.o ../lav_io.o ../avilib.o $(QT_LIBS) -lm
 
 conform.o : conform.c config.h global.h mpeg2enc.h 

@@ -780,7 +780,6 @@ static void readquantmat()
     	{
 			/* TODO: A TEST THE SPECIFIED MATRIX WAS SUSPECT....*/
       		inter_q[i] = default_nonintra_quantizer_matrix[i];
-			inter_q[i] = 16;
 			i_inter_q[i] = (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
 		}
   }

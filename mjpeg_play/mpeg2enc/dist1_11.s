@@ -26,7 +26,7 @@
 
 global dist1_11_SSE
 
-; int dist1_11(char *blk1,char *blk2,int lx,int h,int distlim);
+; int dist1_11(char *blk1,char *blk2,int lx,int h);
 
 ; eax = p1
 ; ebx = p2
@@ -36,7 +36,6 @@ global dist1_11_SSE
 
 		  
 ; mm0 = distance accumulator
-; mm1 = distlim
 ; mm2 = rowsleft
 ; mm3 = 2 (rows per loop)
 ; mm4 = temp
@@ -61,10 +60,7 @@ dist1_11_SSE:
 	mov edx, [ebp+16]	; get lx
 	mov edi, eax
 	add edi, edx
-	movd mm2, [ebp+20]	; get rowsleft
-	movd mm1, [ebp+24]	; get distlim
-	mov ecx,2		; 1 loop does 2 rows
-	movd mm3, ecx		; MMX(TM) it!
+	mov ecx, [ebp+20]	; get rowsleft
 	jmp nextrow11		; snap to it
 align 32
 nextrow11:
@@ -104,18 +100,12 @@ nextrow11:
 	psadbw mm6, [ebx+8]			; compare to next 8 bytes of p2 (row 1)
 	paddd mm0, mm6				; accumulate difference
 		
-	psubd mm2, mm3		; decrease rowsleft
-	movq mm5, mm1		; copy distlim
-	pcmpgtd mm5, mm0	; distlim > dist?
-	pand mm2, mm5		; mask rowsleft with answer
-	movd ecx, mm2		; move rowsleft to ecx
-
 	add eax, edx		; update pointer to next row
 	add ebx, edx		; ditto
 	add edi, edx
 
 			
-	test ecx, ecx				; check rowsleft
+	sub ecx, 2				; check rowsleft
 	jnz near nextrow11			; rinse and repeat
 
 	movd eax, mm0				; store return value
