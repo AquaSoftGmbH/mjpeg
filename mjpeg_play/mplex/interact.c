@@ -75,8 +75,8 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
   	
 			break;
 		case 'v' :
-			verbose = LOG_WARN-atoi(optarg);
-			if( verbose < LOG_DEBUG || verbose > LOG_WARN )
+			verbose = atoi(optarg);
+			if( verbose < 0 || verbose > 2 )
 				Usage(argv[0]);
 			break;
 
