@@ -8,37 +8,47 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 .LP 
 .B mplex
 [
-.B -v num
+.B -v 
+.I num
 ]
 [
-.B -m 1|2
+.B -m 1
+|
+.B 2
 ]
 [
-.B -b num
+.B -b 
+.I video_buffer_size_kB
 ]
 [
-.B -r num
+.B -r 
+.I muxed_bitrate_kbps
 ]
 [
-.B -l num
+.B -l 
+.I num
 ]
 [
 .B -O num
 ]
 [ 
-.B -f fmtcode
+.B -f 
+.I format_code
 ]
 [
 .B -V
 ]
 [
-.B -s num
+.B -s 
+.I sector_size_B
 ]
 [
-.B -p num
+.B -p 
+.I num
 ]
 [
-.B -S num
+.B -S 
+.I output_filesize_limit_MB
 ]
 [
 .B -M
@@ -49,13 +59,14 @@ mplex \- MPEG 1/2 program/system stream multiplexer
 [
 .B -?
 ] 
-.B -o output_stream_pattern
+.B -o 
+.I output_filename_pattern
 .br 
 
 .SH "DESCRIPTION"
 .br
 
-mplex is a simple two-stream audio/video multiplexer for
+Mplex is a simple two-stream audio/video multiplexer for
 MPEG-1/MPEG-2.  It accepts an MPEG-1/2 video stream and/or an MPEG
 layer II/III audio stream and multiplexes them into a combined
 program/system stream according to the constraints specified.  Many

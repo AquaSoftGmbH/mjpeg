@@ -7,29 +7,38 @@ mpeg2enc \- MPEG 1/2 encoder
 .SH "SYNOPSIS"
 .LP 
 .B mpeg2enc
- [
-.B -v num
+[
+.B -v 
+.I num
 ]
 [
-.B -m 1|2
+.B -m 1
+|
+.B 2
 ]
 [
-.B -b num
+.B -b 
+.I bitrate_kbps
 ]
 [
-.B -V num
+.B -V
+.I video_buf_size_kB
 ]
 [
-.B -q num
+.B -q 
+.I quantisation
 ]
 [
-.B -F num
+.B -F 
+format_code
 ]
 [
-.B -r num
+.B -r
+.I motion_search_radius
 ]
 [
-.B -Q num
+.B -Q 
+0.0-4.0
 ]
 [
 .B -p
@@ -38,31 +47,40 @@ mpeg2enc \- MPEG 1/2 encoder
 .B -s
 ]
 [
-.B -g num
+.B -g min_gop_size
 ]
 [
-.B -G num
+.B -G max_gop_size
 ]
 [
-.B -n n|p|s
+.B -n n
+|
+.B p
+|
+.B s
 ]
 [
-.B -a 0..14
+.B -a 
+0..14
 ]
 [
-.B -f num
+.B -f 
+.I frame_rate_code
 ]
 [
-.B -4 num 
+.B -4
+1..4
 ]
 [
-.B -2 num
+.B -2 
+1..4
 ]
 [
-.B -S num
+.B -S size_MB
 ]
 [
-.B -B num
+.B -B 
+.I bitrate_kbps
 ]
 [
 .B -N
@@ -73,7 +91,7 @@ mpeg2enc \- MPEG 1/2 encoder
 [
 .B -?
 ] 
-.B -o output_stream
+.B -o output_filename
 .br 
 
 .SH "DESCRIPTION"
@@ -104,7 +122,7 @@ not all of which necessarily easy to explain or even particular useful
 in the context of a software encoder.
 
 Much useful practical information for novices can be found in the
-mjpeg-HOWTO document that should have been installed with \fBmjpegtools\B(1)
+mjpeg-HOWTO document that should have been installed with \fBmjpegtools\fP(1)
 package.  Further information and useful supporting software can be found
 on the mjpegtools web-site:
 .br
@@ -310,10 +328,11 @@ has been squished so that the whole picture fits in a standard 4:3
 format frame.  Obviously, telling the decoder the original was
 anamorphic gives it the option to correctly "stretch" or letter-box
 the image to suit the display device that has been attached.  MPEG-2
-is vastly more sensible than MPEG-1 in that instead of saying what
-shape the pixels actually should be after decoding it simply says what
-shape the correctly decoded image should ideally have an leaves it up
-to the decoder to do the best it can.
+is vastly more sensible/flexible than MPEG-1 in that instead of saying what
+shape the pixels actually have after decoding it simply says what
+shape the correctly decoded image should have ideally.  This allows widely
+resolution and data-rate to be traded-off without require huge numbers of
+scaling codes.
 
 .SH "OPTION LETTERS FOR QUALITY TUNING"
 
