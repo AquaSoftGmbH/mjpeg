@@ -74,6 +74,7 @@ uint32_t framenr = 0;
  * four global flags which control the behaveiour of the denoiser.           *
  *****************************************************************************/
 
+int deinterlace_only = 0;       /* set to 1 if only deinterlacing needed */
 int deinterlace = 0;            /* set to 1 if deinterlacing needed */
 int scene_change = 0;           /* set to 1 if a scene change was detected */
 int fixed_search_radius=0;      /* set to 1 if fixed search radius should be used */
@@ -133,6 +134,7 @@ void antiflicker_reference (uint8_t * frame[3]);
 void despeckle_frame_hard (uint8_t * frame[3]);
 void despeckle_frame_soft (uint8_t * frame[3]);
 void generate_black_border(int BX0, int BY0, int BX1, int BY1, uint8_t *frame[3]);
+void distance_blur_frame (uint8_t * avg[3]);
 int test_CPU ();
 
 /* SAD functions */
@@ -240,48 +242,6 @@ main (int argc, char *argv[])
       mjpeg_log (LOG_INFO, "Using standard SAD-functions.\n");
     }
 
-  /* process commandline */
-  /* REMARK: at present no commandline options are really taken into account */
-
-  while ((c = getopt (argc, argv, "?vb:r:hD")) != -1)
-    {
-      switch (c)
-        {
-        case '?':
-          display_help ();
-          break;
-        case 'h':
-          fixed_search_radius=1;
-          mjpeg_log (LOG_INFO, "Using fixed radius. Radius optimization turned off.\n");
-          break;
-        case 'D':
-          despeckle_filter=0;
-          mjpeg_log (LOG_INFO, "Turning off despeckle filter.\n");
-          break;
-        case 'v':
-          verbose = 1;
-          break;
-        case 'b':
-          sscanf( optarg, "%i,%i,%i,%i", &BX0,&BY0,&BX1,&BY1);
-          mjpeg_log (LOG_INFO, "Search area set to: (%i,%i)-(%i,%i)\n",BX0,BY0,BX1,BY1);
-          break;
-        case 'r':
-          radius = atoi(optarg)*2;
-          if(radius<8)
-          {
-            mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
-            radius=8;
-          }
-          if(radius>256)
-          {
-            mjpeg_log (LOG_WARN, "Maximum sensfull search radius is 128 pixel.\n");
-            radius=256;
-          }
-          mjpeg_log (LOG_INFO, "Maximum search radius set to %i pixel.\n",radius/2);
-          break;
-        }
-    }
-
   /* initialize stream-information */
 
   y4m_init_stream_info (&streaminfo);
@@ -301,6 +261,55 @@ main (int argc, char *argv[])
   v_offset = width * height * 1.25;
   uv_width = width >> 1;
   uv_height = height >> 1;
+
+  /* process commandline */
+
+  while ((c = getopt (argc, argv, "?vb:r:hDI")) != -1)
+    {
+      switch (c)
+        {
+        case '?':
+          display_help ();
+          break;
+        case 'h':
+          fixed_search_radius=1;
+          mjpeg_log (LOG_INFO, "Using fixed radius. Radius optimization turned off.\n");
+          break;
+        case 'D':
+          despeckle_filter=0;
+          mjpeg_log (LOG_INFO, "Turning off despeckle filter.\n");
+          break;
+        case 'I':
+          deinterlace_only=1;
+          mjpeg_log (LOG_INFO, "Turning off denoising filter.\n");
+          mjpeg_log (LOG_INFO, "Only deinterlacing material.\n");
+          break;
+        case 'v':
+          verbose = 1;
+          break;
+        case 'b':
+          sscanf( optarg, "%i,%i,%i,%i", &BX0,&BY0,&BX1,&BY1);
+	  if(BX1<0) BX1=width+BX1;
+	  if(BY1<0) BY1=height+BY1;
+
+          mjpeg_log (LOG_INFO, "Search area set to: (%i,%i)-(%i,%i)\n",BX0,BY0,BX1,BY1);
+          break;
+        case 'r':
+          radius = atoi(optarg)*2;
+          if(radius<8)
+          {
+            mjpeg_log (LOG_WARN, "Minimum allowed search radius is 4 pixel.\n");
+            radius=8;
+          }
+          if(radius>256)
+          {
+            mjpeg_log (LOG_WARN, "Maximum sensfull search radius is 128 pixel.\n");
+            radius=256;
+          }
+          mjpeg_log (LOG_INFO, "Maximum search radius set to %i pixel.\n",radius/2);
+          break;
+        }
+    }
 
   /* was a border set ? */
   if(BX0==0 && BY0==0 && BX1==0 && BY1==0)
@@ -382,18 +391,25 @@ main (int argc, char *argv[])
       if (deinterlace)
         deinterlace_frame (yuv);
 
-      /* deflicker */
-      antiflicker_reference (yuv);
+      /* should we only deinterlace frames ? */
+      if (!deinterlace_only)
+      {
+	  /* deflicker */
+	  antiflicker_reference (yuv);
 
-      /* main denoise processing */
-      denoise_frame (yuv);
+	  /* main denoise processing */
+	  denoise_frame (yuv);
 
-      /* despeckling */
-      if (scene_change && despeckle_filter)
-        despeckle_frame_hard (yuv);
-      else
-        if(despeckle_filter)
-          despeckle_frame_soft (yuv);
+	  /* blur depending on distance */
+	  distance_blur_frame (yuv);
+
+	  /* despeckling */
+	  if (scene_change && despeckle_filter)
+	      despeckle_frame_hard (yuv);
+	  else
+	      if(despeckle_filter)
+		  despeckle_frame_soft (yuv);
+      }
 
       generate_black_border(BX0,BY0,BX1,BY1,yuv);
         
@@ -1494,8 +1510,8 @@ despeckle_frame_hard (uint8_t * frame[3])
            *(frame[0] + (x + 1) + (y + 0) * width) +
            *(frame[0] + (x - 1) + (y + 1) * width) +
            *(frame[0] + (x + 0) + (y + 1) * width) +
-           *(frame[0] + (x + 1) + (y + 1) * width)) / 8 * 0.3 +
-          *(frame[0] + (x + 0) + (y + 0) * width) * 0.7;
+           *(frame[0] + (x + 1) + (y + 1) * width)) / 8 * 0.2 +
+          *(frame[0] + (x + 0) + (y + 0) * width) * 0.8;
       }
   /* copy yuv2[0] to frame[0] */
   memcpy (frame[0], yuv2[0], width * height);
@@ -1525,12 +1541,11 @@ despeckle_frame_soft (uint8_t * frame[3])
         v2 = *(frame[0] + (x + 0) + (y + 0) * width);
 
         delta=fabs(v1-v2);
-        delta=(delta>6)? 6:delta;
         
         if (delta <= 3) /* range -3...+3 ~= 2 bits ... */
           *(yuv2[0] + (x + 0) + (y + 0) * width) = v1;
         else
-          *(yuv2[0] + (x + 0) + (y + 0) * width) = v2*(delta/6)+v1*(1-(delta/6));
+          *(yuv2[0] + (x + 0) + (y + 0) * width) = v2*0.85+v1*0.15;
 
       }
   /* copy yuv2[0] to frame[0] */
@@ -1691,8 +1706,8 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                                    (x) / 2 + (y) / 2 * uv_width, 1);
 
 
-        if (vector_SAD > (center_SAD * 0.80))   /* only choose vector if result is */
-          {                     /* at least better by 20% ...      */
+        if (vector_SAD > (center_SAD * 0.50))   /* only choose vector if result is */
+          {                     /* at least better by 30% ...      */
             //vector_SAD = center_SAD;
             matrix[x][y][0] = 0;
             matrix[x][y][1] = 0;
@@ -1731,6 +1746,43 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
                mean_SAD, ((float) mean_SAD / 16.0 / 3.0));
     mjpeg_log (LOG_INFO, " ASAD : %d  \n\n",avrg_SAD);
   }
+}
+
+void
+distance_blur_frame (uint8_t * yuv[3])
+{
+  int x, y, xx, yy;
+  int distance;
+
+  /* distance dependend blur */
+
+  for (y = 0; y < height; y += (BLOCKSIZE / 2))
+    for (x = 0; x < width; x += (BLOCKSIZE / 2))
+    {
+	distance=
+	    sqrt(
+		matrix[x][y][0]*matrix[x][y][0]+
+		matrix[x][y][1]*matrix[x][y][1]
+		);
+
+	if(distance>16)
+	    for(yy=y;yy<y+4;yy++)
+		for(xx=x;xx<x+4;xx++)
+		{
+		    *(yuv[0]+xx+yy*width)=
+			(
+			    *(yuv[0]+(xx-1)+(yy-1)*width)+
+			    *(yuv[0]+(xx+0)+(yy-1)*width)+
+			    *(yuv[0]+(xx+1)+(yy-1)*width)+
+			    *(yuv[0]+(xx-1)+(yy+0)*width)+
+			    *(yuv[0]+(xx+0)+(yy+0)*width)+
+			    *(yuv[0]+(xx+1)+(yy+0)*width)+
+			    *(yuv[0]+(xx-1)+(yy+1)*width)+
+			    *(yuv[0]+(xx+0)+(yy+1)*width)+
+			    *(yuv[0]+(xx+1)+(yy+1)*width)
+			    )/9;
+		}
+    }
 }
 
 void
