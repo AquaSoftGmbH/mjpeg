@@ -47,7 +47,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <inttypes.h>
+#include <mjpeg_types.h>
 
 #include "global.h"
 #include "motionsearch.h"

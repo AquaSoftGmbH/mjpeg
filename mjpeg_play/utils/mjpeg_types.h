@@ -67,6 +67,10 @@ typedef enum
 # endif
 #endif
 
+#ifndef PRId64
+#define PRId64 PRID64_STRING_FORMAT
+#endif
+
 #if __GNUC__ > 2 || (__GNUC__ == 2 && __GNUC_MINOR__ > 4)
 #define GNUC_PRINTF( format_idx, arg_idx )    \
   __attribute__((format (printf, format_idx, arg_idx)))

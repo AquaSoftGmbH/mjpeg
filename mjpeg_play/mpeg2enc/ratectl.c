@@ -49,7 +49,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <limits.h>
-#include <inttypes.h>
+#include <mjpeg_types.h>
 
 #include "global.h"
 #include "fastintfns.h"

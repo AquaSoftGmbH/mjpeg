@@ -108,7 +108,7 @@ matteblend_flt_LDADD = -L$(top_builddir)/utils -lmjpegutils
 lavplay_SOURCES = lavplay.c ${lav_headers}
 lavplay_LDADD = -L$(top_builddir)/utils -lmjpegutils \
 	liblavplay.la liblavjpeg.la liblavfile.la \
-	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS}
+	@LIBGETOPT_LIB@ ${PTHREAD_LIBS} ${SDL_LIBS} ${X_LIBS} -lX11
 
 lavrec_SOURCES = lavrec.c $(lav_headers)
 lavrec_LDADD = -L$(top_builddir)/utils -lmjpegutils \

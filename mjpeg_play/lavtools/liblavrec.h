@@ -29,7 +29,7 @@
  */
 
 #include <sys/time.h>
-#include <stdint.h>
+#include <mjpeg_types.h>
 #include "frequencies.h"
 
 #define AUDIO_BUFFER_SIZE 8192

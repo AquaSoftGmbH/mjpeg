@@ -46,7 +46,7 @@
 #include <sys/resource.h>
 #include <sys/wait.h>
 #include <sys/statfs.h>
-#include <stdint.h>
+#include <mjpeg_types.h>
 #include <sys/vfs.h>
 #include <stdlib.h>
 

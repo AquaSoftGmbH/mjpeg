@@ -26,7 +26,7 @@
 #define __YUV4MPEG_H__
 
 #include <stdlib.h>
-#include <stdint.h>
+#include <mjpeg_types.h>
 #include <unistd.h>
 #include <mjpeg_logging.h>
 

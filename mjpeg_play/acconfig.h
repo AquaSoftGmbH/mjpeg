@@ -49,7 +49,8 @@
 /* Define if the libmovtar library is available */
 #undef HAVE_LIBMOVTAR
 
-
+/* do we have some cool thing for 64bits integers? */
+#undef PRID64_STRING_FORMAT
 
 /* Define for software MJPEG playback */
 #undef BUILD_MJPEG

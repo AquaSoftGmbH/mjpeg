@@ -64,6 +64,27 @@ AM_PROG_LIBTOOL
 
 AC_CHECK_HEADERS(fenv.h stdint.h inttypes.h sys/types.h stdbool.h getopt.h alloca.h sys/soundcard.h)
 
+dnl sizeof PRId64 etc...
+AC_CHECK_SIZEOF(int)
+AC_CHECK_SIZEOF(long)
+AC_CHECK_SIZEOF(long long)
+case 8 in
+$ac_cv_sizeof_int)
+  PRID64_STRING_FORMAT="d"
+  ;;
+$ac_cv_sizeof_long)
+  PRID64_STRING_FORMAT="ld"
+  ;;
+$ac_cv_sizeof_long_long)
+  PRID64_STRING_FORMAT="lld"
+  ;;
+*)
+  AC_MSG_WARN(No suitable variant for 64bits integers found)
+  ;;
+esac
+AC_DEFINE_UNQUOTED(PRID64_STRING_FORMAT, "$PRID64_STRING_FORMAT")
+AC_SUBST(PRID64_STRING_FORMAT)
+
 AC_CHECK_FUNC(getopt_long,[AC_DEFINE(HAVE_GETOPT_LONG,1,long getopt support)],
 [ # FreeBSD and BSD/OS have a gnugetopt library for this:
   AC_CHECK_LIB([gnugetopt],[getopt_long],
