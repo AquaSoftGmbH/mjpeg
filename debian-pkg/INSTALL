@@ -1,0 +1,25 @@
+Installation - Actually: creation of Debian binary packages
+-----------------------------------------------------------
+
+1.  Untar the latest source tarballs for: 
+
+	jpeg-mmx, libmovtar, quicktime4linux and mjpegtools
+
+	OR:
+
+    Get the latest CVS versions.
+
+2.  Rename the directories to the *above* names 
+
+	(get rid of the version numbers etc!).
+
+3.  aclocal
+    autoconf
+    automake --add-missing
+
+    You'll need to build the ./configure files for the sub-directories
+    if you used the CVS version...
+
+    ./configure
+    make
+
