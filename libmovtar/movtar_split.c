@@ -187,12 +187,49 @@ void parse_commandline(int argc, char ** argv)
  * The file handling parts 
  */
 
+int write_inteldw(unsigned long outlong, FILE *outwav)
+{
+  unsigned char out[4];
+  out[0] = (outlong >> 0) & 0xff;
+  out[1] = (outlong >> 8) & 0xff;
+  out[2] = (outlong >> 16) & 0xff;
+  out[3] = (outlong >> 24) & 0xff;
+  fwrite(out, sizeof(unsigned char), 4, outwav);
+}
+
+int write_intelword(unsigned int outlong, FILE *outwav)
+{
+  unsigned char out[2];
+  out[0] = (outlong >> 0) & 0xff;
+  out[1] = (outlong >> 8) & 0xff;
+  fwrite(out, sizeof(unsigned char), 2, outwav);
+}
+
+int write_wavheader(struct wav_header *wh, FILE *outwav)
+{
+  /* write a WAVE-header */
+  write_inteldw(wh->main_chunk, outwav);
+  write_inteldw(wh->length, outwav);
+  write_inteldw(wh->chunk_type, outwav);
+  write_inteldw(wh->sub_chunk, outwav);
+  write_inteldw(wh->sc_len, outwav);
+  write_intelword(wh->format, outwav);
+  write_intelword(wh->modus, outwav);
+  write_inteldw(wh->sample_fq, outwav);
+  write_inteldw(wh->byte_p_sec, outwav);
+  write_intelword(wh->byte_p_spl, outwav);
+  write_intelword(wh->bit_p_spl, outwav);
+  write_inteldw(wh->data_chunk, outwav);
+  write_inteldw(wh->data_length, outwav);
+  return 1;
+} 
+
 /* init_parse_files
  * Parses the input movtar INFO and generates the new files with
  * the according headers.
- * in: filename: movtar filename
- *     buzdev:   UNIX file descriptor for the Buz video character device 
- * out:vb:       MJPEG buffer information. 
+ * @param filename: movtar filename
+ * @param buzdev:   UNIX file descriptor for the Buz video character device 
+ * @returns      MJPEG buffer information. 
  */
 int init_parse_files()
 { 
@@ -255,11 +292,16 @@ int init_parse_files()
   wh.bit_p_spl = inmovtar->sound_size;
   wh.data_chunk = WAV_DATA;
   wh.data_length = 65536; /* Preliminarily WRONG !!! see below */
+#if 0  /* NOT PORTABLE ! */
   if (fwrite(&wh, sizeof(WaveHeader), 1, outwav) != 1) 
     { perror("Writing wav header failed.\n"); exit(1); }
   /* This writes the header a first time, but its size is invalid !! */
   /* The file size is not known at this time, therefore the header has to be rewritten */
   /* at the end of the conversion process -> bad header design */
+#else
+  //printf("Using new, portable WAV header code\n");
+  write_wavheader(&wh, outwav);
+#endif
  
   if (verbose) printf("File parsing complete\n");
   return TRUE;
@@ -307,8 +349,14 @@ int split_movtar()
    fseek(outwav, 0, SEEK_SET);
    wh.length = movtar_audio_length(inmovtar) - samplestart + sizeof(WaveHeader) - 8;
    wh.data_length = movtar_audio_bytes(inmovtar, movtar_audio_length(inmovtar) - samplestart);
+#if 0 
    if (fwrite(&wh, sizeof(WaveHeader), 1, outwav) != 1) 
      { perror("Writing wav header failed.\n"); exit(1); }   
+#else
+  printf("Using new, portable WAV header code\n");
+  write_wavheader(&wh, outwav);
+#endif
+
   fclose(outwav);
 
   if (jpegprefix || outmovtarname)
