@@ -9,7 +9,6 @@
 
 2000-12-07
 
-Summary of changes since 2000-08-15
 
 	* Initial support for Software-only mjpeg playback.
 
@@ -30,6 +29,9 @@ Summary of changes since 2000-08-15
 	
 CVS log:
 $Log$
+Revision 1.3  2000/12/07 16:44:50  wackston
+Still more minor updates to doco files for release.
+
 Revision 1.2  2000/12/05 09:34:05  wackston
 
 

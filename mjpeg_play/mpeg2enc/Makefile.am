@@ -9,7 +9,7 @@ mpeg2enc_MMXSSE = \
     qdist1_mmx.s quant_mmx.s dist2_mmx.s bdist2_mmx.s\
 	bdist1_mmx.s predict_mmx.s \
 	fdist1_00.s dist1_00.s dist1_01.s dist1_10.s dist1_11.s \
-    qdist1_sse.s quantize_x86.c  qblock_sad_x86.c \
+    qdist1_sse.s quantize_x86.c  qblock_sad_x86.c  \
     predcomp_mmxe.s predcomp_mmx.s
 
 EXTRA_DIST = \
@@ -17,7 +17,7 @@ EXTRA_DIST = \
     fdct_mmx.o idct_mmx.o  qdist1_mmx.o quant_mmx.o dist2_mmx.o bdist2_mmx.o\
 	bdist1_mmx.o predict_mmx.o \
 	fdist1_00.o dist1_00.o dist1_01.o dist1_10.o dist1_11.o \
-    qdist1_sse.o predcomp_mmxe.o 
+    qdist1_sse.o predcomp_mmxe.o qblock_sad_x86_h.c
 
 if X86CPU
 mpeg2enc_SIMD = $(mpeg2enc_MMXSSE)
