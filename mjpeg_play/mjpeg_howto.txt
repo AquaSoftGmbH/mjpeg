@@ -802,7 +802,7 @@ encode the video now 30frames/sec video is created. This video is now much
 too short for the encoded audio.
 
 The transcoding can be made to work but it must be done manually:
-> cat mpeg2src.mpg | mpeg2dec -s -o YUVs | buffer -b 4M | \
+> cat mpeg2src.mpg | mpeg2dec -s -o YUVs | 
 > mpeg2enc -I 0 -f 4 -q 9 -V 200 -b 2500 -F 1 -p -o svcd_stream.m2v
 
 The -F 1 options tells mpeg2enc the frame rate for the endoded video has to
@@ -841,7 +841,7 @@ You can generate VCD and SVCD videos, and own mpeg1/2 videos.
 
 For VCD creation use:
 
-> cat test2.mpg | mpeg2dec -s -o YUVh | mpeg2enc -s -o video_vcd.m1v
+> cat test2.mpg | mpeg2dec -s -o YUVh | mpeg2enc -f 1 -o video_vcd.m1v
 
 mpeg2dec:
 -s     : tells mpeg2dec to use program stream demultiplexer
@@ -1046,18 +1046,18 @@ while typically producing files that are rather less than twice as big.
 
 CREATING SVCD'S
 =====================================
-Record at full TV resolution (means: -d 1  for PAL this is 720x568)
+Record at full TV resolution (means: -d 1  for PAL this is 720x568 for the Buz)
 
 Convert the sound with:
-> lav2wav stream.avi | mp2enc -v -o sound.mp2
+> lav2wav stream.avi | mp2enc -V -o sound.mp2
 
 NOTE: The SVCD specifications permit a much wider choice of audio rates, it
 is not necessary to use 224 kBit/sec. Any audio rate between 32 and
 384 kBit/sec is permitted. The audio may be VBR (Variable Bit Rate).
 
 Convert the video with:
-> lav2yuv stream.avi | yuvscaler -O SVCD | 
-> \ mpeg2enc -f 4 -q 7 -I 3 -V 200 -o video.m2v
+> lav2yuv stream.avi | yuvscaler -O SVCD |\ 
+> mpeg2enc -f 4 -q 7 -I 3 -V 200 -o video.m2v
 
 -f 4 sets the options for mpeg2enc to SVCD.
 -q 7 tell mpeg2enc to generat a variable bitrate stream
