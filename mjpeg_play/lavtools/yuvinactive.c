@@ -55,11 +55,13 @@ int verbose = 1;
 /* protoypes */
 static void print_usage();
 void process_commandline(int argc, char *argv[], struct area_s *inarea, 
-                   int *darker, int *copy_pixel, struct color_yuv *coloryuv);
+ int *darker, int *copy_pixel, struct color_yuv *coloryuv, int *average_pixel);
 void fillarea(char area[20], struct area_s *inarea);
 void set_darker(struct area_s inarea, int horz, int vert, uint8_t *frame[], int darker);
 void set_inactive(struct area_s inarea, int horz, int vert, uint8_t *frame[], struct color_yuv *coloryuv);
 void set_yuvcolor(char area[20], struct color_yuv *coloryuv);
+void average_area(struct area_s inarea, int horz, int vert, uint8_t *frame[], int average_pixel);
+void average_block(int go_h, int go_w, int horz, int plane, int *orig_offset, uint8_t *frame[]);
 
 /* Here we start the programm */
 
@@ -73,18 +75,19 @@ static void print_usage()
   fprintf(stderr, " -s luma,Cb,Cr    - set the filling color in yuv format\n");
   fprintf(stderr, " -d num [1-100]   - set how much darker the area will be, in percent\n");
   fprintf(stderr, " -c num           - copy num sourrounding lines into the area\n");
+  fprintf(stderr, " -a num           - use num pixles for on square to average the area\n");
   fprintf(stderr, "\n");
   exit(1);
 }
 
 /** Here we process the command line options */
 void process_commandline(int argc, char *argv[], struct area_s *inarea, 
-                   int *darker, int *copy_pixel, struct color_yuv *coloryuv)
+  int *darker, int *copy_pixel, struct color_yuv *coloryuv, int *average_pixel)
 {
 int c;
 char area [20];
 
-while ((c = getopt(argc, argv, "Hhv:i:s:d:c:")) != -1)
+while ((c = getopt(argc, argv, "Hhv:i:s:d:c:a:")) != -1)
   {
   switch (c)
     {
@@ -108,6 +111,9 @@ while ((c = getopt(argc, argv, "Hhv:i:s:d:c:")) != -1)
          break;
        case 'c':
          *copy_pixel = atoi(optarg);
+         break;
+       case 'a':
+         *average_pixel = atoi(optarg);
          break;
        case 'H':
        case 'h':
@@ -144,6 +150,18 @@ if (*copy_pixel != 0)
   mjpeg_info("Number of rows using for coping into the area %i", *copy_pixel);
   }
 
+/* Checking the average pixel option */
+if (*average_pixel != 0)
+  {
+    if ( (*average_pixel > (*inarea).height) || 
+         (*average_pixel > (*inarea).width) )
+      mjpeg_error_exit1("The pixles used for the average must be less the the inactive area");
+
+  if ( (*average_pixel % 2) != 0)  
+   mjpeg_error_exit1("you have to use a even number for the average pixels"); 
+
+  mjpeg_info("Number of pixels used for averaging %i", *average_pixel);
+  }
 }
   
 /** Here we set the color to use for filling the area */
@@ -224,15 +242,16 @@ plane_cr = frame[2];
 /* In the first step we copy the luma data*/
 offset_pix = (horz * inarea.voffset) + inarea.hoffset;
 i=0;
-while (i < (inarea.height/2)) /* copying lins from the top down */
+while (i < (inarea.height/2)) /* copying lines from the top down */
   {
   copy_offset_pix = (horz * (inarea.voffset - copy_pixel) + inarea.hoffset);
 
   for (j = 0; j < copy_pixel; j++)
     {
-       memcpy(temp_pix_l, (plane_l+copy_offset_pix+(j*horz)), inarea.width);
+       memcpy(temp_pix_l, (plane_l+(copy_offset_pix+(j*horz))), inarea.width);
        memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
        offset_pix += horz;
+mjpeg_info("copy_offset %i, offset %i von j %i, von i %i", copy_offset_pix, offset_pix, j ,i);
     } 
     i += copy_pixel; /* we copy more lines in one step */
   }
@@ -246,6 +265,7 @@ while (i < inarea.height) /* copying lines from the bottom up */
        memcpy(temp_pix_l, (plane_l+copy_offset_pix+(j*horz)), inarea.width);
        memcpy((plane_l+offset_pix), temp_pix_l, inarea.width);
        offset_pix += horz;
+mjpeg_info("wert von offset_pix %i, von j %i, von i %i", copy_offset_pix, j ,i);
     } 
     i += copy_pixel; /* we copy more lines in one step */
   }
@@ -294,6 +314,103 @@ free(temp_pix_cb);
 temp_pix_cb = NULL;
 free(temp_pix_cr);
 temp_pix_cr = NULL;
+}
+
+/** Here we set a n x n area to a average color */
+void average_block(int go_h, int go_w, int horz, int plane, int *orig_offset, uint8_t *frame[])
+{
+unsigned char *temp_pix;
+int i, j, summe, offset_pix;
+
+temp_pix = (unsigned char*)malloc(1);
+*temp_pix=0;
+offset_pix = *orig_offset;
+summe = 0;
+
+for ( i=0; i < go_h; i++)
+  {
+    for (j=0; j < go_w; j++)
+      {
+         memcpy(temp_pix,(frame[plane]+offset_pix),1);
+         summe += (int)*temp_pix;
+         offset_pix++;
+      } 
+    offset_pix += horz - j;
+  }
+
+*temp_pix = (unsigned char)(summe / (go_h * go_w));
+offset_pix = *orig_offset;
+ 
+for (i = 0; i < go_h; i++)
+  {
+     for (j = 0; j < go_w; j++)
+       memcpy((frame[plane]+offset_pix+j), temp_pix, 1);
+        
+     offset_pix += horz;
+  }
+
+free(temp_pix);
+temp_pix=NULL;
+}
+
+/** Here we average the area */
+void average_area(struct area_s inarea, int horz, int vert, uint8_t *frame[],
+                  int average_pixel)
+{
+int orig_offset, sub_offset, plane;
+int go_w, go_h, togo_w, togo_h;
+
+orig_offset = (horz* inarea.voffset) + inarea.hoffset; 
+sub_offset = ((horz/2) * (inarea.voffset/2)) + (inarea.hoffset/2);
+
+go_w = average_pixel; 
+go_h = average_pixel; 
+togo_w = inarea.width - go_w ; /* we decrease here one block, else we  */
+togo_h = inarea.height - go_h; /* that solves a problem in the while */ 
+plane = 0; /* here we set that we wnat to use the first plane of the frame */
+
+while ( go_h != 0 )
+  { 
+    while ( go_w != 0)
+    {
+     average_block(go_h, go_w, horz, plane, &orig_offset, frame);
+     average_block(go_h/2, go_w/2, horz/2, plane+1, &sub_offset, frame);
+     average_block(go_h/2, go_w/2, horz/2, plane+2, &sub_offset, frame);
+
+     orig_offset += go_w;
+     sub_offset += go_w/2;
+
+     if ( (togo_w - go_w) >= 0 )
+       togo_w -= go_w;   /* normal decrease of the square horicontal*/
+     else if (togo_w != 0)
+       {
+       go_w = togo_w;    /* the last few pixels */
+       togo_w = 0;
+       }
+     else
+       go_w = 0;         /* this row finished averaging the pixels */
+    }
+
+   /* Here we go to the next row we have to average,first line+ (width-1line) */
+   orig_offset = orig_offset+ (horz -inarea.width) + (horz *(average_pixel -1));
+   sub_offset = sub_offset+ ((horz/2) - (inarea.width/2) +
+                            ((horz/2) *(average_pixel/2) -1)); 
+   /* we also have to reset the go_w variable, that cost me hours .... */ 
+   go_w = average_pixel;
+   togo_w = inarea.width - average_pixel ; 
+
+   if ( (togo_h - go_h) >= 0 )
+     togo_h -= go_h;   /* normal decrease of the square vertical */
+   else if (togo_h != 0)
+     {
+     go_h = togo_h;    /* the last few pixels */
+     togo_h = 0;
+     }
+   else
+     go_h = 0;         /* this field finished averaging the pixels */
+
+  }
+
 }
 
 /** Here we set the area darker, only touching luma */
@@ -374,6 +491,7 @@ int input_fd = 0;    /* std in */
 int output_fd = 1;   /* std out */
 int darker = 0;  /* how much darker should the image be */
 int copy_pixel = 0; /* how much pixels we should use for filling up the area */
+int average_pixel = 0; /* how much pixel to use for average */
 y4m_stream_info_t istream, ostream;
 y4m_frame_info_t iframe;
 
@@ -386,7 +504,8 @@ coloryuv.chroma_r = CHROMA; /*Setting the chroma to center, means white */
 (void)mjpeg_default_handler_verbosity(verbose);
 
   /* processing commandline */
-  process_commandline(argc, argv, &inarea, &darker, &copy_pixel, &coloryuv);
+  process_commandline(argc, argv, &inarea, &darker, &copy_pixel, &coloryuv,
+                      &average_pixel);
 
   y4m_init_stream_info(&istream);
   y4m_init_stream_info(&ostream);
@@ -408,10 +527,10 @@ coloryuv.chroma_r = CHROMA; /*Setting the chroma to center, means white */
       horz = y4m_si_get_width(&istream);   /* get the width of the frame */
       vert = y4m_si_get_height(&istream);  /* get the height of the frame */
 
-      if ( (inarea.width + inarea.voffset) > horz)
+      if ( (inarea.width + inarea.hoffset) > horz)
       mjpeg_error_exit1("Input width and offset larger than framewidth,exit");
-       
-      if ( (inarea.height + inarea.hoffset) > vert)
+ 
+      if ( (inarea.height + inarea.voffset) > vert)
       mjpeg_error_exit1("Input height and offset larger than frameheight,exit");
 
       /* Here we allocate the memory for on frame */
@@ -436,6 +555,8 @@ coloryuv.chroma_r = CHROMA; /*Setting the chroma to center, means white */
              set_darker(inarea, horz, vert, frame, darker);
            else if (copy_pixel != 0)
              copy_area(inarea, horz, vert, frame, copy_pixel);
+           else if (average_pixel != 0)
+             average_area(inarea, horz, vert, frame, average_pixel);
            else
              set_inactive(inarea, horz, vert, frame, &coloryuv);
 
