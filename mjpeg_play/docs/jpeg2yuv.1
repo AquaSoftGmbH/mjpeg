@@ -15,18 +15,23 @@ jpeg2yuv \- Convert jpeg images to the yuv format.
 .IR num ]
 .RB [ \-n 
 .RB num ]
-.RB [ \-l 
-.RB num ]
 .RB [ \-j
 .IR filename ]
 
 .SH "DESCRIPTION"
-\fBjpeg2yuv\fP pipes a sequence of JPEG files to stdout,
-making the direct encoding of MPEG files possible under mpeg2enc.
+\fBjpeg2yuv\fP decompresses a sequence of JPEG files
+and pipes the image data to stdout as a YUV4MPEG2 stream.
 Any JPEG format supported by libjpeg can be read.
 stdout will be filled with the YUV4MPEG2 movie data stream,
 so be prepared to pipe it on to mpeg2enc or to write it into a file.
 
+\fBThis is not the utility you are looking for.\fP  This program is
+primarily a diagnostic utility for debugging MJPEG recordings, not for
+making movies from standard graphics JPEG images.  It does
+not make any attempt to convert the full-range pixel data from standard
+JPEG's into the padded-range pixel data used in digital video.
+The utility you are probably looking for is \fBppmtoy4m\fP(1), which
+is also included in MJPEGtools.
 
 .SH "OPTIONS"
 \fBjpeg2yuv\fP accepts the following options:
@@ -52,11 +57,6 @@ No default, this option has to be specified.
 0 = non-interleaved (two successive fields per JPEG file)
 .br
 1 = interleaved fields
-.TP 5
-.BI \-l " num"
-Specifies the nummber of loops (default: 0 loops )
-.br
-When this option is not used the given range of images is only processed once. If you use this option and as number 1, jpeg2yv will loop forever writing the image to stdout. When you use n > 1 it will loop. n-time till it finishes.  
 .TP 5
 .BI \-n " num"
 Specifies the nummber of frames to process. (default: all = -1)
