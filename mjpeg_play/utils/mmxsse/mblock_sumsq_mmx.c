@@ -34,7 +34,7 @@
  
 int sumsq_mmx(uint8_t  *blk1, uint8_t *blk2, int lx, int hx, int hy, int h)
 {
-	const uint16_t twos[4]={2,2,2,2};
+	static const uint16_t twos[4]={2,2,2,2};
 	int sum,sum1,sum2;
 
 	pxor_r2r(mm5, mm5);
@@ -254,7 +254,7 @@ int sumsq_mmx(uint8_t  *blk1, uint8_t *blk2, int lx, int hx, int hy, int h)
 				paddw_r2r(mm6, mm3);
 				paddw_r2r(mm2, mm0);
 				paddw_r2r(mm3, mm1);
-				movq_m2r(twos[0], mm6);
+				movq_m2r(*twos, mm6);
 				paddw_r2r(mm6, mm0); /* round mm0 */
 				paddw_r2r(mm6, mm1); /* round mm1 */
 				psrlw_i2r(2, mm0);
@@ -299,7 +299,7 @@ int sumsq_mmx(uint8_t  *blk1, uint8_t *blk2, int lx, int hx, int hy, int h)
 				paddw_r2r(mm3, mm1);
 				paddw_r2r(mm4, mm2);
 				
-				movq_m2r(twos[0], mm6);
+				movq_m2r(*twos, mm6);
 				paddw_r2r(mm6, mm1);
 				paddw_r2r(mm6, mm2);
 				
@@ -407,6 +407,7 @@ int sumsq_sub22_mmx(uint8_t *blk1, uint8_t *blk2, int lx, int h)
 
 int bsumsq_sub22_mmx(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, int lx, int h)
 {
+	static const uint16_t ones[4]={1,1,1,1};
 	int sum,sum1,sum2;
 
 	pxor_r2r(mm5, mm5);
@@ -431,10 +432,12 @@ int bsumsq_sub22_mmx(uint8_t *blk1f, uint8_t *blk1b, uint8_t *blk2, int lx, int 
 			punpckhbw_r2r(mm7, mm3);
 			
 				paddw_r2r(mm4, mm0);
+				paddw_m2r(*ones, mm0);
 				psrlw_i2r(1, mm0);
 			psubw_r2r(mm2, mm0);
 			pmaddwd_r2r(mm0, mm0);
 				paddw_r2r(mm6, mm1);
+				paddw_m2r(*ones, mm1);
 				psrlw_i2r(1, mm1);
 			psubw_r2r(mm3, mm1);
 			pmaddwd_r2r(mm1, mm1);
