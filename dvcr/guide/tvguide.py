@@ -1,6 +1,6 @@
 #!/usr/bin/python
 #
-#    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
+#    Copyright (C) 2000-2001 Mike Bernson <mike@mlb.org>
 #
 #    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -190,8 +190,8 @@ class TvGuide(Guide):
 			try:
 				http = HTTP(host)
 				http.putrequest("GET", url)
-				http.putheader("Accept", "text/html")
-				http.putheader("Accept", "text/plain");
+				http.putheader("Host", host)
+				http.putheader("Accept", "*/*")
 				http.endheaders()
 
 				errcode, errmsg, headers = http.getreply()
@@ -200,14 +200,23 @@ class TvGuide(Guide):
 				sleep(60)
 				http_loop = http_loop - 1
 				continue
+
+			if errcode != 200:
+				print
+				print "http://%s%s" % (host, url)
+				print "Error Code %d: %s" % (errcode, errmsg)
+				return
+
 			break
 
-		data = http.getfile()	
+		data = http.getfile()
 		guide_data = split(data.read(), "\n")
+		print guide_data
 		self.parse_tvguide_data(guide_data)
 
 	def tvguide_url(self, start, end):
 		service_id = self.config_list("tvguide", "serviceid")
+
 		for id in service_id:
 			while start < end:
 				time_st = "%f" % start

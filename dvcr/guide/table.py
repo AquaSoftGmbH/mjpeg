@@ -274,12 +274,12 @@ class Table(Pmw.MegaWidget):
 
 		self.lastX = column
 		self.lastY = row
+		print "redisplaying column=", column
 		
 		list = self.widgets.keys()
 
 		for widget in self.table.grid_slaves():
 			widget.grid_forget()
-
 
 		for pos in list:
 			widget, widget_column, widget_row, widget_span = \
@@ -338,8 +338,3 @@ class Table(Pmw.MegaWidget):
 				row=widget_row,
 				columnspan=widget_span,
 				sticky="NSEW")
-
-
-
-
-		

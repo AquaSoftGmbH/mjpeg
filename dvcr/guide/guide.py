@@ -80,8 +80,6 @@ class Guide:
 			" 8:00 AM", " 8:30 AM", " 9:00 AM", " 9:30 AM", 
 			)
 
-
-
 	def config_string(self, section, name):
 		try:
 			return self.config_data.get(section, name)
@@ -174,13 +172,25 @@ class Guide:
 		listing = self.list_dict[key]
 		print listing
 
+
+	def info_in(self, key, aa):
+		listing = self.list_dict[key]
+		start = strftime("%l:%M %p",gmtime(listing[0]))
+		end = strftime("%l:%M %p",gmtime(listing[0] + listing[3] * 60))
+
+		output = "%s   %s-%s %d mins" % (listing[4], start, end, listing[3])
+		self.info_time.configure(text=output)
+
+	def info_out(self, key, aa):
+		self.info_time.configure(text=" ")
+
+
 	def time_button(self, time_index, col):
 		label = Button(self.listing_frame, 
-			text=self.time_label[time_index])
+			text=self.time_label[time_index], width=15)
 		self.listing_widget.add(label, 
 			row=0, 
 			column=col)
-		self.buttons.append(label)
 		return label
 
 	def station_button(self,station_id, row):
@@ -188,14 +198,13 @@ class Guide:
 		if end > -1:
 			station_id = station_id[:end]
 
-		print "startion id = %s", station_id, "    row=",row
-
 		label = Button(self.listing_frame, 
 			text=station_id, 
 			command=GuideCmd(print_data, station_id))
 		self.listing_widget.add(label, 
 			row=row, 
 			column=0)
+		print label.bbox()
 		return label
 
 	def listing_button(self,list_time, station_id, row, col, command):
@@ -206,15 +215,12 @@ class Guide:
 		if (listing_next != None):
 			list_time = list_time - self.zone_offset
 			next_time = listing_next[0] - (listing_next[0] % 1800)
-			span = int((next_time - list_time)/1800) + 1
+			span = int((next_time - list_time)/1800)
 		else:
 			span = self.columns
 
 		if span < 1:
 			span = 1
-
-#		if span + col  > self.columns:
-#			span = self.columns - col + 1
 
 		end = find(station_id, ":")
 		if end > -1:
@@ -229,7 +235,9 @@ class Guide:
 			column=col,
 			row=row,
 			columnspan=span)
-#			sticky="NSEW")
+		label.bind("<Enter>", GuideCmd(self.info_in, key)) 
+		label.bind("<Leave>", GuideCmd(self.info_out, key)) 
+
 		return span
 
 	def display_guide(self, x, y, width, height, seconds):
@@ -237,14 +245,13 @@ class Guide:
 		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
 		year, month, day, hour, min, sec, weekday, julday, saving = localtime(seconds)
 		seconds = mktime(year, month, day, 0, 0, 0, weekday, julday, saving)
-		date_string = strftime("%m/%d/%Y %I:%M %p", localtime(seconds))
-		print date_string
+		date_string = strftime("%m/%d/%Y", localtime(seconds))
+
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
 
 		self.load(seconds)
 
-		
 		self.info_frame = Frame(self.root, background="green")
 		self.listing_widget = Table(self.root,
 			fixedcol=1,
@@ -258,13 +265,25 @@ class Guide:
 
 		self.buttons = []
 
-		label = Button(self.listing_frame, 
-			text=" ")
-		label.grid(row=0, column=0, sticky='NSEW')
-		self.buttons.append(label)
+		station_size = 0
+		for station_id in station_list:
+			end = find(station_id, ":")
+			if end < 0:
+				end = len(station_id)
+			if end > station_size:
+				station_size = end
+					
 
-		Label(self.info_frame, background="red",text="Info frame").grid(row=0,column=0,stick='NSEW')
+		self.info_time = Label(self.info_frame, text="")
+		self.info_time.grid(row=0, column=0, sticky="NSEW")
 		set_weight(self.info_frame)
+
+		label = Button(self.listing_frame, 
+			text=" ", width=station_size + 2)
+		self.listing_widget.add(label, 
+			row=0, 
+			column=0)
+		label.grid(row=0, column=0, sticky='NSEW' )
 
 		col = 1
 		while col <= 48:
