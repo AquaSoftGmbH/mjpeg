@@ -708,7 +708,7 @@ void calc_vbv_delay()
 	padding as if it would take up space in the buffer...  Hence we comment
 	it out until we replace it with a more sensible calculation.
   */
-#ifdef THIS_CRIES_WOLF_ALL_THE_TIME
+#ifdef TODO_VBV_NEEDS_FIXING
   if ((decoding_time - ((double)bitcnt_EOP)*90000.0/bit_rate)
       > (vbv_buffer_size*16384)*90000.0/bit_rate)
   {
@@ -730,10 +730,12 @@ void calc_vbv_delay()
     vbv_delay = 0;
   }
 
+#ifdef TODO_VBV_NEEDS_FIXING
   if (vbv_delay>65535)
   {
     if (!quiet)
       fprintf(stderr,"vbv_delay overflow: %d\n",vbv_delay);
     vbv_delay = 65535;
   }
+#endif
 }

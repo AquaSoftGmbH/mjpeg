@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 
 #define GLOBAL /* used by global.h */
 #include "config.h"
@@ -60,45 +61,39 @@ int fix_mquant = 0; /* use fixed quant, range 1 ... 31 */
 
 int do_not_search = 0;
 
-/* RJ: additional variables */
-
-#include "lav_io.h"
-#include "editlist.h"
-
-EditList el;
-
 /* RJ: Parameters for creation of the MPEG file */
 
 static int param_bitrate    = 0;
 static int param_quant      = 0;
 static int param_searchrad  = 0;
 static int param_mpeg       = 1;
-static int param_special    = 0;
+static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first */
+static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_drop_lsb   = 0;
 static int param_noise_filt = 0;
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
 
+static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
+
 /* reserved: for later use */
 int param_422 = 0;
 
-static int output_width, output_height;
-
 void Usage(char *str)
 {
-  printf("Usage: %s [params] inputfiles\n",str);
+  printf("Usage: %s [params]\n",str);
   printf("   where possible params are:\n");
   printf("   -m num     MPEG level (1 or 2) default: 1\n");
   printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s)\n");
   printf("   -q num     Quality factor [1..31] (1 is best, no default)\n");
   printf("              Bitrate and Quality are mutually exclusive!\n");
   printf("   -o name    Outputfile name (REQUIRED!!!)\n");
+  printf("   -F num     only for MPEG 2 output:\n");
+  printf("               0 = progressive output (no field pictures)\n");
+  printf("               1 = field pictures, bottom field first\n");
+  printf("               2 = field pictures, top field first\n");
   printf("   -r num     Search radius [0..32] (default 0: don\'t search at all)\n");
-  printf("   -s num     Special output format option:\n");
-  printf("                 0 output like input, nothing special\n");
-  printf("                 1 create half height/width output from interlaced input\n");
-  printf("                 2 create 480 wide output from 720 wide input (for SVCD)\n");
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
@@ -113,8 +108,10 @@ char *argv[];
 {
   char *outfilename=0;
   int n, nerr = 0;
+#define PARAM_LINE_MAX 256
+  char param_line[PARAM_LINE_MAX];
 
-  while( (n=getopt(argc,argv,"m:b:q:o:r:s:f:d:n:tN")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:tN")) != EOF)
   {
     switch(n) {
 
@@ -144,20 +141,20 @@ char *argv[];
         outfilename = optarg;
         break;
 
+      case 'F':
+        param_fieldpic = atoi(optarg);
+        if(param_fieldpic<0 || param_fieldpic>2)
+        {
+          fprintf(stderr,"-F option requires 0, 1 or 2\n");
+          nerr++;
+        }
+        break;
+
       case 'r':
         param_searchrad = atoi(optarg);
         if(param_searchrad<0 || param_searchrad>32)
         {
           fprintf(stderr,"-r option requires arg 0 .. 32\n");
-          nerr++;
-        }
-        break;
-
-      case 's':
-        param_special = atoi(optarg);
-        if(param_special<0 || param_special>2)
-        {
-          fprintf(stderr,"-s option requires arg 0, 1 or 2\n");
           nerr++;
         }
         break;
@@ -214,7 +211,7 @@ char *argv[];
     nerr++;
   }
 
-  if(optind>=argc) nerr++;
+  if(optind!=argc) nerr++;
 
   if(nerr) Usage(argv[0]);
 
@@ -223,45 +220,74 @@ char *argv[];
 
   if(param_searchrad==0) do_not_search = 1;
 
-  /* Open editlist */
+  /* Read stdin until linefeed is seen */
 
-  read_video_files(argv + optind, argc - optind, &el);
-
-  output_width  = el.video_width;
-  output_height = el.video_height;
-
-  if(param_special==1)
+  for(n=0;n<PARAM_LINE_MAX;n++)
   {
-    if(el.video_inter)
+    if(!read(0,param_line+n,1))
     {
-      output_width  = (el.video_width/2) &0xfffffff0;
-      output_height = el.video_height/2;
+      fprintf(stderr,"Error reading header from stdin\n");
+      exit(1);
     }
-    else
-    {
-      fprintf(stderr,"-s 1 may only be set for interlaced video sources\n");
-      Usage(argv[0]);
-    }
+    if(param_line[n]=='\n') break;
+  }
+  if(n==PARAM_LINE_MAX)
+  {
+    fprintf(stderr,"Didn't get linefeed in first %d characters of data\n",
+            PARAM_LINE_MAX);
+    exit(1);
+  }
+  param_line[n] = 0; /* Replace linefeed by end of string */
+
+  if(strncmp(param_line,"YUV4MPEG",8))
+  {
+    fprintf(stderr,"Input starts not with \"YUV4MPEG\"\n");
+    fprintf(stderr,"This is not a valid input for me\n");
+    exit(1);
   }
 
-  if(param_special==2)
+
+  sscanf(param_line+8,"%d %d %d",&horizontal_size,&vertical_size,&frame_rate_code);
+
+  nerr = 0;
+  fprintf(stderr,"Horizontal size: %d\n",horizontal_size);
+  if(horizontal_size<=0)
   {
-    if(el.video_width==720)
-    {
-      output_width  = 480;
-    }
-    else
-    {
-      fprintf(stderr,"-s 2 may only be set for 720 pixel wide video sources\n");
-      Usage(argv[0]);
-    }
+    fprintf(stderr,"Horizontal size illegal\n");
+    nerr++;
+  }
+  fprintf(stderr,"Vertical size: %d\n",vertical_size);
+  if(vertical_size<=0)
+  {
+    fprintf(stderr,"Vertical size size illegal\n");
+    nerr++;
+  }
+  fprintf(stderr,"Frame rate code: %d",frame_rate_code);
+  if(frame_rate_code<1 || frame_rate_code>8)
+  {
+    fprintf(stderr," illegal !!!!\n");
+    nerr++;
+  }
+  else
+    fprintf(stderr," = %.3f fps\n",framerates[frame_rate_code]);
+
+  if(nerr) exit(1);
+
+  if(frame_rate_code==3)
+  {
+    fprintf(stderr,"Assuming norm PAL\n");
+    param_norm = 'p';
+  }
+  if(frame_rate_code==4)
+  {
+    fprintf(stderr,"Assuming norm NTSC\n");
+    param_norm = 'n';
   }
 
   printf("\nEncoding MPEG-%d video to %s\n",param_mpeg,outfilename);
   if(param_bitrate) printf("Bitrate: %d KBit/s\n",param_bitrate);
   if(param_quant) printf("Quality factor: %d (1=best, 31=worst)\n",param_quant);
   printf("Search radius: %d\n",param_searchrad);
-  printf("Output dimensions: %d x %d\n\n",output_width,output_height);
 
   /* set params */
   readparmfile();
@@ -426,20 +452,19 @@ static void readparmfile()
   strcpy(statname,"-");
 #endif
   inputtype = 0;  /* doesnt matter */
-  nframes = el.video_frames; /* leave 2 away */
+  nframes = 999999999; /* determined by EOF of stdin */
   frame0  = 0;
   h = m = s = f = 0;
   N = 12;      /* I frame distance */
   M = 3;       /* I or P frame distance */
   mpeg1           = param_mpeg == 1;
-  fieldpic        = (el.video_inter!=0) && (param_special!=1);
-  horizontal_size = output_width;
-  vertical_size   = output_height;
+  fieldpic        = (param_fieldpic!=0);
+  /* RJ: horizontal_size, vertical_size, frame_rate_code
+         are read from stdin! */
   /* RJ: aspectratio is differently coded for MPEG1 and MPEG2.
    *     For MPEG2 aspect ratio is for total image: 2 means 4:3
    *     For MPEG1 aspect ratio is for the pixels:  1 means square Pixels */
   aspectratio     = mpeg1 ? 1 : 2;
-  frame_rate_code = el.video_norm == 'n' ? 4 : 3;
   bit_rate        = MAX(1000,param_bitrate*1000);
   drop_lsb        = param_drop_lsb;
   noise_filt	  = param_noise_filt;
@@ -450,16 +475,28 @@ static void readparmfile()
   constrparms     = mpeg1;             /* Will be reset, if not coompliant */
   profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
   level           = 8;                 /* Main Level      CCIR 601 rates */
-  prog_seq        = (el.video_inter==0)||(param_special==1);
+  prog_seq        = (fieldpic==0);
   chroma_format   = param_422 ? CHROMA422 : CHROMA420;
-  video_format    = el.video_norm == 'n' ? 2 : 1;
+  switch(param_norm)
+  {
+      case 'p': video_format = 1; break;
+      case 'n': video_format = 2; break;
+      case 's': video_format = 3; break;
+      default:  video_format = 5; break; /* unspec. */
+  }
   color_primaries = 5;
   transfer_characteristics = 5;
-  matrix_coefficients      = el.video_norm == 'n' ? 4 : 5;
+  switch(param_norm)
+  {
+      case 'p': matrix_coefficients = 5; break;
+      case 'n': matrix_coefficients = 4; break;
+      case 's': matrix_coefficients = 5; break; /* ???? */
+      default:  matrix_coefficients = 2; break; /* unspec. */
+  }
   display_horizontal_size  = horizontal_size;
   display_vertical_size    = vertical_size;
   dc_prec         = 0;  /* 8 bits */
-  topfirst        = (el.video_inter==2)&&(param_special!=1); /* 2: LAV_INTER_EVEN_FIRST */
+  topfirst        = (param_fieldpic==2);
   frame_pred_dct_tab[0] = mpeg1 ? 1 : 0;
   frame_pred_dct_tab[1] = mpeg1 ? 1 : 0;
   frame_pred_dct_tab[2] = mpeg1 ? 1 : 0;
@@ -472,9 +509,9 @@ static void readparmfile()
   intravlc_tab[0] = mpeg1 ? 0 : 1;
   intravlc_tab[1] = mpeg1 ? 0 : 1;
   intravlc_tab[2] = mpeg1 ? 0 : 1;
-  altscan_tab[0]  = mpeg1 ? 0 : (el.video_inter!=0);
-  altscan_tab[1]  = mpeg1 ? 0 : (el.video_inter!=0);
-  altscan_tab[2]  = mpeg1 ? 0 : (el.video_inter!=0);
+  altscan_tab[0]  = mpeg1 ? 0 : (fieldpic!=0);
+  altscan_tab[1]  = mpeg1 ? 0 : (fieldpic!=0);
+  altscan_tab[2]  = mpeg1 ? 0 : (fieldpic!=0);
   repeatfirst     = 0;
   prog_frame      = prog_seq;
   P       = 0;
@@ -497,20 +534,20 @@ static void readparmfile()
   motion_data = (struct motion_data *)malloc(M*sizeof(struct motion_data));
   if (!motion_data)
     error("malloc failed\n");
-    
-    /*	A.Stevens 2000: The search radius has to be a multiple of 4 for the new fast motion
-    	compensation search to work correctly.  We simply round it up if needs be.
-	*/
 
-  if(param_searchrad*M>127 )
+  /*  A.Stevens 2000: The search radius has to be a multiple of 4 for the new fast motion
+      compensation search to work correctly.  We simply round it up if needs be.
+      */  
+
+  if(param_searchrad*M>127)
   {
-     fprintf(stderr,"Search radius too large (radius * %d > 127)\n");
-     exit(1);
+     param_searchrad = 127/M;
+     fprintf(stderr,"Search radius reduced to %d\n",param_searchrad);
   }
   if( param_searchrad % 4 != 0 )
   {
-  	param_searchrad = (param_searchrad / 4) * 4;
-  	fprintf( stderr, "Adjusting search radius to a multiple of 4: %d\n", param_searchrad);
+     param_searchrad = (param_searchrad / 4) * 4;
+     fprintf( stderr, "Adjusting search radius to a multiple of 4: %d\n", param_searchrad);
   }
   c = 5;
   if(param_searchrad*M<64) c = 4;
@@ -524,19 +561,19 @@ static void readparmfile()
     {
       motion_data[i].forw_hor_f_code  = c;
       motion_data[i].forw_vert_f_code = c;
-      motion_data[i].sxf = MAX(4,param_searchrad*M);
-      motion_data[i].syf = MAX(4,param_searchrad*M);
+      motion_data[i].sxf = MAX(1,param_searchrad*M);
+      motion_data[i].syf = MAX(1,param_searchrad*M);
     }
     else
     {
       motion_data[i].forw_hor_f_code  = c;
       motion_data[i].forw_vert_f_code = c;
-      motion_data[i].sxf = MAX(4,param_searchrad*i);
-      motion_data[i].syf = MAX(4,param_searchrad*i);
+      motion_data[i].sxf = MAX(1,param_searchrad*i);
+      motion_data[i].syf = MAX(1,param_searchrad*i);
       motion_data[i].back_hor_f_code  = c;
       motion_data[i].back_vert_f_code = c;
-      motion_data[i].sxb = MAX(4,param_searchrad*(M-i));
-      motion_data[i].syb = MAX(4,param_searchrad*(M-i));
+      motion_data[i].sxb = MAX(1,param_searchrad*(M-i));
+      motion_data[i].syb = MAX(1,param_searchrad*(M-i));
     }
   }
 

@@ -29,17 +29,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 #include "config.h"
 #include "global.h"
-
-#include <lav_io.h>
-#include <editlist.h>
-
-extern EditList el;
-
-#define MAX_JPEG_LEN (512*1024)
-
-static unsigned char jpeg_data[MAX_JPEG_LEN];
 
 static char roundadj[4] = { 0, 0, 1, 2 };
  
@@ -47,143 +40,262 @@ unsigned char *filter_buf;
 int noise_filt;
 int drop_lsb;
 
+static int frames_read = 0;
+static int last_frame = -1;
+static unsigned char ***frame_buffers;
+
+static int cwidth, cheight;
+
+static void do_drop_lsb(unsigned char *frame[])
+{
+   int *p, *end, c;
+   int mask;
+   int round;
+
+   for( c = 0; c < sizeof(int); ++c )
+   {
+      ((char *)&mask)[c] = (0xff << drop_lsb) & 0xff;
+      ((char *)&round)[c] = roundadj[drop_lsb];
+   }
+   
+
+   /* N.b. we know width is multiple of 16 so doing lsb dropping
+	  int-wise will work for sane (32-bit or 64-bit) machines
+   */
+   
+   for( c = 0; c < 3 ; ++c )
+   {
+      p = (int *)frame[c];
+      if( c == 0 )
+      { 
+         end = (int *)(frame[c]+ width*height);
+      }
+      else
+      {
+         end = (int *)(frame[c] + cwidth*cheight);
+      }
+      while( p++ < end )
+      {
+         *p = (*p & mask) + round;
+       }
+   }
+}
+
+static void do_noise_filt(unsigned char *frame[])
+{
+   unsigned char *bp;
+   unsigned char *p = frame[0]+width+1;
+   unsigned char *end = frame[0]+width*(height-1);
+
+   bp = filter_buf + width+1;
+   if( noise_filt == 1 )
+	 {
+	   for( p = frame[0]+width+1; p < end; ++p )
+		 {
+		   register int f=(p[-width-1]+p[-width]+p[-width+1]+
+							p[-1] + p[1] +
+							p[width-1]+p[width]+p[width+1]);
+		   /* f = f + (f<<1) + (*p << 3);
+			*bp = (f + (1 << 4)) >> (3+2); */
+		   f = f + (*p<<3);
+		   *bp = (f + 8) >> (3 + 1);
+		   ++bp;
+		 }
+	 }
+   else
+	 {
+	   for( p = frame[0]+width+1; p < end; ++p )
+		 {
+		   register int f=(p[-width-1]+p[-width]+p[-width+1]+
+							p[-1] + p[1] +
+							p[width-1]+p[width]+p[width+1]);
+		   /* f = f + (f<<1) + (*p << 3);
+			*bp = (f + (1 << 4)) >> (3+2); */
+		   f = f + (*p<<3);
+		   *bp = (f + (1 << 2)) >> (3 + 1);
+		   ++bp;
+		 }
+	 }
+	  
+   bp = filter_buf + width+1;
+   for( p = frame[0]+width+1; p < end; ++p )
+	 {
+	   *p = *bp;
+	   ++bp;
+	 }
+   
+   
+}
+
+static void border_extend(frame,w1,h1,w2,h2)
+unsigned char *frame;
+int w1,h1,w2,h2;
+{
+  int i, j;
+  unsigned char *fp;
+ 
+  /* horizontal pixel replication (right border) */
+ 
+  for (j=0; j<h1; j++)
+  {
+    fp = frame + j*w2;
+    for (i=w1; i<w2; i++)
+      fp[i] = fp[i-1];
+  }
+ 
+  /* vertical pixel replication (bottom border) */
+ 
+  for (j=h1; j<h2; j++)
+  {
+    fp = frame + j*w2;
+    for (i=0; i<w2; i++)
+      fp[i] = fp[i-w2];
+  }
+}
+
+int piperead(int fd, char *buf, int len)
+{
+   int n, r;
+
+   r = 0;
+
+   while(r<len)
+   {
+      n = read(fd,buf+r,len-r);
+      if(n==0) return r;
+      r += n;
+   }
+   return r;
+}
+
+
+static void read_gop()
+{
+   int n, v, h, i, s;
+
+   unsigned char magic[6];
+
+   s = frames_read % (2*N);
+
+   for(n=s;n<s+N;n++)
+   {
+      if(piperead(0,magic,6)!=6) goto EOF_MARK;
+      if(strncmp(magic,"FRAME\n",6))
+      {
+         fprintf(stderr,"\n\nStart of new frame is not \"FRAME<NL>\"\n");
+         fprintf(stderr,"Exiting!!!!\n");
+         exit(1);
+      }
+      v = vertical_size;
+      h = horizontal_size;
+      for(i=0;i<v;i++)
+         if(piperead(0,frame_buffers[n][0]+i*width,h)!=h) goto EOF_MARK;
+
+      border_extend(frame_buffers[n][0],h,v,width,height);
+
+      v = chroma_format==CHROMA420 ? vertical_size/2 : vertical_size;
+      h = chroma_format!=CHROMA444 ? horizontal_size/2 : horizontal_size;
+      for(i=0;i<v;i++)
+         if(piperead(0,frame_buffers[n][1]+i*cwidth,h)!=h) goto EOF_MARK;
+      for(i=0;i<v;i++)
+         if(piperead(0,frame_buffers[n][2]+i*cwidth,h)!=h) goto EOF_MARK;
+
+      border_extend(frame_buffers[n][1],h,v,cwidth,cheight);
+      border_extend(frame_buffers[n][2],h,v,cwidth,cheight);
+
+      if( drop_lsb ) do_drop_lsb(frame_buffers[n]);
+      if( noise_filt ) do_noise_filt(frame_buffers[n]);
+
+      frames_read++;
+   }
+   return;
+
+   EOF_MARK:
+   last_frame = frames_read-1;
+   nframes = frames_read;
+}
+
 int readframe(fname,frame)
 char *fname;
 unsigned char *frame[];
 {
-   int numframe, len, res;
+   int n, num_frame;
 
-   if(MAX_JPEG_LEN < el.max_frame_size)
+   if(frames_read == 0)
    {
-      fprintf(stderr,"Max size of JPEG frame = %ld: too big\n",el.max_frame_size);
+      /* some initializations */
+
+      /* Calculate width and height of chroma components
+         (at the moment only CHROMA420 is used) */
+
+      switch ( chroma_format ) 
+      {
+         case CHROMA420 :
+           cwidth = width / 2;
+           cheight = height / 2; 
+           break;
+         case CHROMA422 :
+           cwidth = width / 2;
+           cheight = height;
+           break;
+         case CHROMA444 :
+           cwidth = width;
+           cheight = height;
+         default :
+           abort();
+      }
+
+      /* Allocate frame buffers for a complete GOP */
+
+      frame_buffers = (unsigned char ***) malloc(2*N*sizeof(unsigned char**));
+      if(!frame_buffers) { fprintf(stderr,"malloc failed\n"); exit(1); }
+
+      for(n=0;n<2*N;n++)
+      {
+         frame_buffers[n] = (unsigned char **) malloc(3*sizeof(unsigned char*));
+         if(!frame_buffers[n]) { fprintf(stderr,"malloc failed\n"); exit(1); }
+         frame_buffers[n][0] = (unsigned char *) malloc(width*height);
+         frame_buffers[n][1] = (unsigned char *) malloc(cwidth*cheight);
+         frame_buffers[n][2] = (unsigned char *) malloc(cwidth*cheight);
+         if(!frame_buffers[n][0] || !frame_buffers[n][1] || !frame_buffers[n][2])
+         { fprintf(stderr,"malloc failed\n"); exit(1); }
+      }
+
+      /* Read first + second GOP */
+
+      read_gop();
+      read_gop();
+   }
+
+   num_frame = atoi(fname);
+
+   if(num_frame < frames_read - 2*N)
+   {
+      fprintf(stderr,"readframe: internal error 1\n");
       exit(1);
    }
 
-   numframe = atoi(fname);
+   if(num_frame >= frames_read)
+   {
+      fprintf(stderr,"readframe: internal error 2\n");
+      exit(1);
+   }
 
-   len = el_get_video_frame(jpeg_data, numframe, &el);
+   if(last_frame>=0 && num_frame>last_frame)
+   {
+      fprintf(stderr,"readframe: internal error 3\n");
+      exit(1);
+   }
 
-   res = decode_jpeg_raw(jpeg_data,len,el.video_inter,
-                         chroma_format,width,height,
-                         frame[0],frame[1],frame[2]);
-   if(res) 
-	 { 
-	   fprintf(stderr,"Warning: Decoding of Frame %d failed\n",numframe);
-	   /* TODO: Selective exit here... */
-	   return 1;
-	 }
-   
-   
- 
-   if( drop_lsb )
-	 {
-	   int cwidth, cheight;
-	   int *p, *end, c;
-	   int mask;
-	   int round;
+   n = num_frame % (2*N);
 
-	   for( c = 0; c < sizeof(int); ++c )
-		 {
-		   ((char *)&mask)[c] = (0xff << drop_lsb) & 0xff;
-		   ((char *)&round)[c] = roundadj[drop_lsb];
-		 }
-	   
-		 
-	   switch ( chroma_format ) 
-		 {
-		 case CHROMA420 :
-		   cwidth = width / 2;
-		   cheight = height / 2; 
-		   break;
-		 case CHROMA422 :
-		   cwidth = width / 2;
-		   cheight = height;
-		   break;
-		 case CHROMA444 :
-		   cwidth = width;
-		   cheight = height;
-		 default :
-		   abort();
-		 }
+   memcpy(frame[0],frame_buffers[n][0],width*height);
+   memcpy(frame[1],frame_buffers[n][1],cwidth*cheight);
+   memcpy(frame[2],frame_buffers[n][2],cwidth*cheight);
 
-	   /* N.b. we know width is multiple of 16 so doing lsb dropping
-		  int-wise will work for sane (32-bit or 64-bit) machines
-	   */
-	   
-	   for( c = 0; c < 3 ; ++c )
-		 {
-		   p = (int *)frame[c];
-		   if( c == 0 )
-			 { 
-			   end = (int *)(frame[c]+ width*height);
-			 }
-		   else
-			 {
-			   end = (int *)(frame[c] + cwidth*cheight);
-			 }
-		   while( p++ < end )
-			 {
-			   *p = (*p & mask) + round;
-			 }
-		 }
-	 }
+   /* Read next GOP if this was the last frame of current one */
 
-   if( noise_filt )
-	 {
-	   unsigned char *bp;
-	   unsigned char *p = frame[0]+width+1;
-	   unsigned char *end = frame[0]+width*(height-1);
+   if(num_frame%N == N-1) read_gop();
 
-	   bp = filter_buf + width+1;
-	   if( noise_filt == 1 )
-	   	 {
-		   for( p = frame[0]+width+1; p < end; ++p )
-			 {
-			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
-								p[-1] + p[1] +
-								p[width-1]+p[width]+p[width+1]);
-			   f = f + ((*p)<<3) + ((*p)<<4);   /* 8 + (8 + 16) = 32 */
-			   *bp = (f + 8) >> (4 + 1);
-			   ++bp;
-			 }
-		 }
-	   else if( noise_filt == 2 )
-		 {
-		   for( p = frame[0]+width+1; p < end; ++p )
-			 {
-			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
-								p[-1] + p[1] +
-								p[width-1]+p[width]+p[width+1]);
-
-			   f = f + ((*p)<<3);
-			   *bp = (f + 16) >> (3 + 1);
-			   ++bp;
-			 }
-		 }
-	   else
-		 {
-		   for( p = frame[0]+width+1; p < end; ++p )
-			 {
-			   register int f=(p[-width-1]+p[-width]+p[-width+1]+
-								p[-1] + p[1] +
-								p[width-1]+p[width]+p[width+1]);
-			   /* f = f + (f<<1) + (*p << 3);
-				*bp = (f + (1 << 4)) >> (3+2); */
-			   f = f + (*p<<3);
-			   *bp = (f + (1 << 2)) >> (3 + 1);
-			   ++bp;
-			 }
-		 }
-		  
-	   bp = filter_buf + width+1;
-	   for( p = frame[0]+width+1; p < end; ++p )
-		 {
-		   *p = *bp;
-		   ++bp;
-		 }
-	   
-	   
-	 }
    return 0;
-
 }
