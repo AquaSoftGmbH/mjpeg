@@ -20,6 +20,7 @@
 // July 2001: upscaling capable version
 // September 2001: line switching
 // September/October 2001: new yuv4m header
+// October 2001: first MMX part for bicubic
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -32,9 +33,12 @@
 #include "jpegutils.c"
 #include "mjpeg_logging.h"
 #include "yuv4mpeg.h"
-#include "mpegconsts.h"
 #include "inttypes.h"
 #include "yuvscaler.h"
+#include "mpegconsts.h"
+// #include "config.h"
+#include "attributes.h"
+#include "../utils/mmx.h"
 
 #define YUVSCALER_VERSION LAVPLAY_VERSION
 // For pointer adress alignement
@@ -137,23 +141,42 @@ const char BICUBIC[] = "BICUBIC";
 const char LINESWITCH[] = "LINE_SWITCH";
 const char ACTIVE[] = "ACTIVE";
 const char NO_HEADER[] = "NO_HEADER";
+const char MMX[] = "MMX";
+
+// Special BICUBIC algorithm
+// 2048=2^11
+#define FLOAT2INTEGER 2048
+#define FLOAT2INTEGERPOWER 11
+long int FLOAT2INTOFFSET = 2097152;
+unsigned int bicubic_div_width = FLOAT2INTEGER, bicubic_div_height =
+  FLOAT2INTEGER;
+float bicubic_negative_max = 0.04, bicubic_positive_max = 1.08;
+long int bicubic_offset = 0;
+unsigned long int bicubic_max = 0;
+unsigned int multiplicative;
+
 
 // Unclassified
 unsigned long int diviseur;
 uint8_t *divide;
 unsigned short int *u_i_p;
 unsigned int out_nb_col_slice, out_nb_line_slice;
-static char *legal_opt_flags = "k:I:d:n:v:M:O:whtg";
+static char *legal_opt_flags = "k:I:d:n:v:M:m:O:whtg";
 int verbose = 1;
 #define PARAM_LINE_MAX 256
 float framerates[] =
   { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
-// 2048=2^11
-#define FLOAT2INTEGER 2048
-#define FLOAT2INTEGERPOWER 11
+
+
 uint8_t blacky = 16;
 uint8_t blackuv = 128;
 uint8_t no_header = 0;		// =1 for no stream header output 
+
+// MMX
+int16_t *mmx_padded, *mmx_cubic;
+int32_t *mmx_res;
+long int max_lint_neg = -2147483647;	// maximal negative number available for long int
+int mmx = 0;			// =1 for mmx activated
 
 
 // *************************************************************************************
@@ -200,16 +223,14 @@ my_y4m_read_frame (int fd, y4m_frame_info_t * frameinfo,
 	  for (line = 0; line < input_height; line += 2)
 	    {
 	      buf += input_width / 2;	// buf points to next line on output, store input line there
-	      if ((err =
-		   y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
+	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line, y4m_strerr (err));
 		  return (err);
 		}
 	      buf -= input_width / 2;	// buf points to former line on output, store input line there
-	      if ((err =
-		   y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
+	      if ((err = y4m_read (fd, buf, input_width / 2)) != Y4M_OK)
 		{
 		  mjpeg_info ("Couldn't read FRAME content line %d : %s!\n",
 			      line + 1, y4m_strerr (err));
@@ -357,8 +378,9 @@ print_usage (char *argv[])
 	   "\t WIDE2VCD to transcode wide (16:9) frames  to VCD (equivalent to -M WIDE2STD -O VCD)\n"
 	   "\t FASTVCD to transcode full sized frames to VCD (equivalent to -M RATIO_2_1_2_1 -O VCD, see after)\n"
 	   "\t FAST_WIDE2VCD to transcode full sized wide (16:9) frames to VCD (equivalent to -M WIDE2STD -M RATIO_2_1_2_1 -O VCD, see after)\n"
-	   "\t LINE_SWITCH to switch lines between input and output, no line switching by default\n"
+	   "\t LINE_SWITCH to switch lines two by two between input and output, no line switching by default\n"
 	   "\t NO_HEADER to suppress stream header generation on output\n"
+	   "\t MMX to use MMX functions for BICUBIC scaling (experimental feature!!)\n"
 	   "\n"
 	   "Possible output keywords are:\n"
 	   "\t MONOCHROME to generate monochrome frames on output\n"
@@ -428,8 +450,6 @@ handle_args_global (int argc, char *argv[])
 	    }
 	  break;
 
-	case 'M':
-	  break;
 
 	case 'h':
 	case '?':
@@ -537,14 +557,14 @@ handle_args_dependent (int argc, char *argv[])
 		    }
 		  else
 		    mjpeg_error_exit1
-		     ("Unconsistent SIZE keyword, not multiple of 2: %s\n",
+		      ("Unconsistent SIZE keyword, not multiple of 2: %s\n",
 		       optarg);
-		   if (output_interlaced!=Y4M_ILACE_NONE)
-		     { 
-			if (display_height % 4 != 0)
-			    mjpeg_error_exit1
+		  if (output_interlaced != Y4M_ILACE_NONE)
+		    {
+		      if (display_height % 4 != 0)
+			mjpeg_error_exit1
 			  ("Unconsistent SIZE keyword, Height not multiple of 4 but output interlaced!!");
-		     }
+		    }
 		}
 	      else
 		mjpeg_error_exit1 ("Uncorrect SIZE keyword: %s\n", optarg);
@@ -592,6 +612,12 @@ handle_args_dependent (int argc, char *argv[])
 	    {
 	      mode = 1;
 	      algorithm = 0;
+	    }
+
+	  if (strcmp (optarg, MMX) == 0)
+	    {
+	      mode = 1;
+	      mmx = 1;
 	    }
 
 	  if (strcmp (optarg, BICUBIC) == 0)
@@ -721,43 +747,44 @@ handle_args_dependent (int argc, char *argv[])
 	      input = 1;
 	      if (sscanf (optarg, "USE_%ux%u+%u+%u", &ui1, &ui2, &ui3, &ui4)
 		  == 4)
-		 {
-		   // Coherence check: 
-		   // every values must be multiple of 2
-		   // and if input is interlaced, height offsets must be multiple of 4
-		   // since U and V have half Y resolution and are interlaced
-		   // and the required zone must be inside the input size
-		   if ((ui1 % 2 == 0) && (ui2 % 2 == 0) && (ui3 % 2 == 0)
+		{
+		  // Coherence check: 
+		  // every values must be multiple of 2
+		  // and if input is interlaced, height offsets must be multiple of 4
+		  // since U and V have half Y resolution and are interlaced
+		  // and the required zone must be inside the input size
+		  if ((ui1 % 2 == 0) && (ui2 % 2 == 0) && (ui3 % 2 == 0)
 		      && (ui4 % 2 == 0) && (ui1 + ui3 <= input_width)
 		      && (ui2 + ui4 <= input_height))
-		     {
-		       input_useful_width = ui1;
-		       input_useful_height = ui2;
-		       input_discard_col_left = ui3;
-		       input_discard_line_above = ui4;
-		       input_discard_col_right =
-			 input_width - input_useful_width -
-			 input_discard_col_left;
-		       input_discard_line_under =
-			 input_height - input_useful_height -
-			 input_discard_line_above;
-		       input_useful = 1;
+		    {
+		      input_useful_width = ui1;
+		      input_useful_height = ui2;
+		      input_discard_col_left = ui3;
+		      input_discard_line_above = ui4;
+		      input_discard_col_right =
+			input_width - input_useful_width -
+			input_discard_col_left;
+		      input_discard_line_under =
+			input_height - input_useful_height -
+			input_discard_line_above;
+		      input_useful = 1;
 		    }
-		   else
-		     mjpeg_error_exit1
-		     ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size\n",
+		  else
+		    mjpeg_error_exit1
+		      ("Unconsistent USE keyword: %s, offsets/sizes not multiple of 2 or offset+size>input size\n",
 		       optarg);
-		   if (input_interlaced!=Y4M_ILACE_NONE) 
-		     {
-			if ((input_useful_height % 4 != 0) || (input_discard_line_above % 4 != 0))
-			  mjpeg_error_exit1
+		  if (input_interlaced != Y4M_ILACE_NONE)
+		    {
+		      if ((input_useful_height % 4 != 0)
+			  || (input_discard_line_above % 4 != 0))
+			mjpeg_error_exit1
 			  ("Unconsistent USE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
 			   optarg);
-		     }
-		   
+		    }
+
 		}
 	    }
-	   
+
 
 	  if (strncmp (optarg, ACTIVE, 6) == 0)
 	    {
@@ -788,14 +815,15 @@ handle_args_dependent (int argc, char *argv[])
 		    mjpeg_error_exit1
 		      ("Unconsistent ACTIVE keyword: %s, offsets/sizes not multiple of 4 or offset+size>input size\n",
 		       optarg);
-		   if (input_interlaced!=Y4M_ILACE_NONE) 
-		     {
-			if ((input_active_height % 4 != 0) || (input_black_line_above % 4 != 0))
-			  mjpeg_error_exit1
+		  if (input_interlaced != Y4M_ILACE_NONE)
+		    {
+		      if ((input_active_height % 4 != 0)
+			  || (input_black_line_above % 4 != 0))
+			mjpeg_error_exit1
 			  ("Unconsistent ACTIVE keyword: %s, height offset or size not multiple of 4 but input is interlaced!!\n",
 			   optarg);
-		     }
-		   
+		    }
+
 		}
 	      else
 		mjpeg_error_exit1 ("Uncorrect input flag argument: %s\n",
@@ -1019,8 +1047,10 @@ main (int argc, char *argv[])
   unsigned int *in_line = NULL, *in_col = NULL, out_line, out_col;
   unsigned long int somme;
   int m;
+//  int dummy;
   float *a = NULL, *b = NULL;
   int16_t *cubic_spline_m = NULL, *cubic_spline_n = NULL;
+  long int value, lint;
 
   // SPECIFIC TO YUV4MPEG 
   unsigned long int nb_pixels;
@@ -1035,9 +1065,8 @@ main (int argc, char *argv[])
 
   handle_args_global (argc, argv);
   mjpeg_default_handler_verbosity (verbose);
-
-  y4m_init_stream_info(&streaminfo);
-  y4m_init_frame_info(&frameinfo);
+  y4m_init_stream_info (&streaminfo);
+  y4m_init_frame_info (&frameinfo);
 
 
   if (infile == 0)
@@ -1048,10 +1077,10 @@ main (int argc, char *argv[])
 	  mjpeg_error ("Could'nt read YUV4MPEG header!\n");
 	  exit (1);
 	}
-      input_width = y4m_si_get_width(&streaminfo);
-      input_height = y4m_si_get_height(&streaminfo);
-      frame_rate = y4m_si_get_framerate(&streaminfo);
-      input_interlaced = y4m_si_get_interlace(&streaminfo);
+      input_width = y4m_si_get_width (&streaminfo);
+      input_height = y4m_si_get_height (&streaminfo);
+      frame_rate = y4m_si_get_framerate (&streaminfo);
+      input_interlaced = y4m_si_get_interlace (&streaminfo);
 //     input_aspectratio=streaminfo->aspectratio;  
     }
   else
@@ -1063,29 +1092,30 @@ main (int argc, char *argv[])
 	mjpeg_error_exit1 ("Editlist not in chroma 422 format, exiting...\n");
       input_width = el.video_width;
       input_height = el.video_height;
-      frame_rate = mpeg_conform_framerate(el.video_fps);
-      input_interlaced = 
+      frame_rate = mpeg_conform_framerate (el.video_fps);
+      input_interlaced =
 	(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
 	(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
 	(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
 	Y4M_UNKNOWN;
+      input_interlaced = el.video_inter;
       // this will be  eventually overrided by user's specification
       // Let's determine the frame rate code
 //      frame_rate_code = 0;
 //      while ((framerates[++frame_rate_code] != frame_rate)
 //           && (frame_rate_code <= 8));
-      y4m_si_set_width(&streaminfo, input_width);
-      y4m_si_set_height(&streaminfo, input_height);
-      y4m_si_set_interlace(&streaminfo, input_interlaced);
-      y4m_si_set_framerate(&streaminfo, frame_rate);
-      y4m_si_set_aspectratio(&streaminfo, y4m_aspect_UNKNOWN);
+      y4m_si_set_width (&streaminfo, input_width);
+      y4m_si_set_height (&streaminfo, input_height);
+      y4m_si_set_interlace (&streaminfo, input_interlaced);
+      y4m_si_set_framerate (&streaminfo, frame_rate);
+      y4m_si_set_aspectratio (&streaminfo, y4m_aspect_UNKNOWN);
     }
 
   // INITIALISATIONS
   // Norm determination (we eventually overwrite user's specification through the -n flag
-  if (Y4M_RATIO_EQL(frame_rate, y4m_fps_PAL))
+  if (Y4M_RATIO_EQL (frame_rate, y4m_fps_PAL))
     norm = 0;
-  if (Y4M_RATIO_EQL(frame_rate, y4m_fps_NTSC))
+  if (Y4M_RATIO_EQL (frame_rate, y4m_fps_NTSC))
     norm = 1;
   if (norm < 0)
     {
@@ -1117,7 +1147,8 @@ main (int argc, char *argv[])
 
   // USER'S INFORMATION OUTPUT
 
-  y4m_log_stream_info(LOG_INFO, "yuvscaler: ", &streaminfo);
+  y4m_log_stream_info (LOG_INFO, "yuvscaler: ", &streaminfo);
+  //  y4m_print_stream_info(output_fd,streaminfo);
 
   switch (input_interlaced)
     {
@@ -1224,7 +1255,7 @@ main (int argc, char *argv[])
       mjpeg_info ("skipped columns: %u left and %u right\n",
 		  output_skip_col_left, output_skip_col_right);
     }
-  mjpeg_info ("yuvscaler frame rate: %.3f fps\n", Y4M_RATIO_DBL(frame_rate));
+  mjpeg_info ("yuvscaler frame rate: %.3f fps\n", Y4M_RATIO_DBL (frame_rate));
 
 
   divider = pgcd (input_useful_width, output_active_width);
@@ -1252,204 +1283,213 @@ main (int argc, char *argv[])
 	      output_width_slice);
   mjpeg_info ("and is %u to %u for height\n", input_height_slice,
 	      output_height_slice);
-   
-   
+
+
   // Now that we know about scaling ratios, we can optimize treatment of an active input zone:
   // we must also check final new size is multiple of 2 on width and 2 or 4 on height
-   if (input_black==1)
-     { 
-	if (((nb=input_black_line_above/input_height_slice)>0)&&((nb*input_height_slice)%2==0))
-	  {
-	     if (input_interlaced==Y4M_ILACE_NONE)
-	       {
-		    input_useful = 1;
-		    black = 1;
-		    black_line = 1;
-		    output_black_line_above  += nb*output_height_slice;
-		    input_black_line_above   -= nb*input_height_slice;
-		    input_discard_line_above += nb*input_height_slice;
-	       }
-	     if ((input_interlaced!=Y4M_ILACE_NONE)&&((nb*input_height_slice)%4==0))
-		 {
-		    input_useful = 1;
-		    black = 1;
-		    black_line = 1;
-		    output_black_line_above  += nb*output_height_slice;
-		    input_black_line_above   -= nb*input_height_slice;
-		    input_discard_line_above += nb*input_height_slice;
-		 }
-	  }
-	if (((nb=input_black_line_under/input_height_slice)>0)&&((nb*input_height_slice)%2==0))
-	  {
-	     if (input_interlaced==Y4M_ILACE_NONE)
-		 {
-		    input_useful = 1;
-		    black = 1;
-		    black_line = 1;
-		    output_black_line_under  += nb*output_height_slice;
-		    input_black_line_under   -= nb*input_height_slice;
-		    input_discard_line_under += nb*input_height_slice;
-		 }	
-	     if ((input_interlaced!=Y4M_ILACE_NONE)&&((nb*input_height_slice)%4==0))
-		 {
-		    input_useful = 1;
-		    black = 1;
-		    black_line = 1;
-		    output_black_line_under  += nb*output_height_slice;
-		    input_black_line_under   -= nb*input_height_slice;
-		    input_discard_line_under += nb*input_height_slice;
-		 }
-	  }
-	if (((nb=input_black_col_left/input_width_slice)>0)&&((nb*input_height_slice)%2==0))
-	  {
-	     input_useful = 1;
-	     black = 1;
-	     black_col = 1;
-	     output_black_col_left  += nb*output_width_slice;
-	     input_black_col_left   -= nb*input_width_slice;
-	     input_discard_col_left += nb*input_width_slice;
-	  }
-	if (((nb=input_black_col_right/input_width_slice)>0)&&((nb*input_height_slice)%2==0))
-	  {
-	     input_useful = 1;
-	     black = 1;
-	     black_col = 1;
-	     output_black_col_right  += nb*output_width_slice;
-	     input_black_col_right   -= nb*input_width_slice;
-	     input_discard_col_right += nb*input_width_slice;
-	  }
-	input_useful_height = input_height-input_discard_line_above -input_discard_line_under;
-	input_useful_width  = input_width -input_discard_col_left   -input_discard_col_right;
-	input_active_width =
-	  input_useful_width - input_black_col_left - input_black_col_right;
-	input_active_height =
-	  input_useful_height - input_black_line_above - input_black_line_under;
-	if ((input_active_width == input_useful_width)
-	    && (input_active_height == input_useful_height))
-	  input_black = 0;	// black zone doesn't go beyong useful zone
-	output_active_width =
-	    (input_useful_width / input_width_slice) * output_width_slice;
-	output_active_height =
-	  (input_useful_height / input_height_slice) * output_height_slice;
-
-  // USER'S INFORMATION OUTPUT
-
-//  y4m_print_stream_info(output_fd,streaminfo);
-  mjpeg_info (" --- Newly speed optimized parameters ---\n");
-
-  switch (input_interlaced)
-    {
-    case Y4M_ILACE_NONE:
-      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
-		  input_width, input_height,
-		  input_useful_width, input_useful_height,
-		  input_discard_col_left, input_discard_line_above,
-		  NOT_INTER);
-      break;
-    case Y4M_ILACE_TOP_FIRST:
-      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
-		  input_width, input_height,
-		  input_useful_width, input_useful_height,
-		  input_discard_col_left, input_discard_line_above,
-		  TOP_FIRST);
-      break;
-    case Y4M_ILACE_BOTTOM_FIRST:
-      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
-		  input_width, input_height,
-		  input_useful_width, input_useful_height,
-		  input_discard_col_left, input_discard_line_above,
-		  BOT_FIRST);
-      break;
-    default:
-      mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u\n",
-		  input_width, input_height,
-		  input_useful_width, input_useful_height,
-		  input_discard_col_left, input_discard_line_above);
-
-    }
   if (input_black == 1)
     {
-      mjpeg_info ("yuvscaler: with %u and %u black line above and under\n",
-		  input_black_line_above, input_black_line_under);
-      mjpeg_info ("yuvscaler: and %u and %u black col left and right\n",
-		  input_black_col_left, input_black_col_right);
-      mjpeg_info ("yuvscaler: %u %u\n", input_active_width,
-		  input_active_height);
+      if (((nb = input_black_line_above / input_height_slice) > 0)
+	  && ((nb * input_height_slice) % 2 == 0))
+	{
+	  if (input_interlaced == Y4M_ILACE_NONE)
+	    {
+	      input_useful = 1;
+	      black = 1;
+	      black_line = 1;
+	      output_black_line_above += nb * output_height_slice;
+	      input_black_line_above -= nb * input_height_slice;
+	      input_discard_line_above += nb * input_height_slice;
+	    }
+	  if ((input_interlaced != Y4M_ILACE_NONE)
+	      && ((nb * input_height_slice) % 4 == 0))
+	    {
+	      input_useful = 1;
+	      black = 1;
+	      black_line = 1;
+	      output_black_line_above += nb * output_height_slice;
+	      input_black_line_above -= nb * input_height_slice;
+	      input_discard_line_above += nb * input_height_slice;
+	    }
+	}
+      if (((nb = input_black_line_under / input_height_slice) > 0)
+	  && ((nb * input_height_slice) % 2 == 0))
+	{
+	  if (input_interlaced == Y4M_ILACE_NONE)
+	    {
+	      input_useful = 1;
+	      black = 1;
+	      black_line = 1;
+	      output_black_line_under += nb * output_height_slice;
+	      input_black_line_under -= nb * input_height_slice;
+	      input_discard_line_under += nb * input_height_slice;
+	    }
+	  if ((input_interlaced != Y4M_ILACE_NONE)
+	      && ((nb * input_height_slice) % 4 == 0))
+	    {
+	      input_useful = 1;
+	      black = 1;
+	      black_line = 1;
+	      output_black_line_under += nb * output_height_slice;
+	      input_black_line_under -= nb * input_height_slice;
+	      input_discard_line_under += nb * input_height_slice;
+	    }
+	}
+      if (((nb = input_black_col_left / input_width_slice) > 0)
+	  && ((nb * input_height_slice) % 2 == 0))
+	{
+	  input_useful = 1;
+	  black = 1;
+	  black_col = 1;
+	  output_black_col_left += nb * output_width_slice;
+	  input_black_col_left -= nb * input_width_slice;
+	  input_discard_col_left += nb * input_width_slice;
+	}
+      if (((nb = input_black_col_right / input_width_slice) > 0)
+	  && ((nb * input_height_slice) % 2 == 0))
+	{
+	  input_useful = 1;
+	  black = 1;
+	  black_col = 1;
+	  output_black_col_right += nb * output_width_slice;
+	  input_black_col_right -= nb * input_width_slice;
+	  input_discard_col_right += nb * input_width_slice;
+	}
+      input_useful_height =
+	input_height - input_discard_line_above - input_discard_line_under;
+      input_useful_width =
+	input_width - input_discard_col_left - input_discard_col_right;
+      input_active_width =
+	input_useful_width - input_black_col_left - input_black_col_right;
+      input_active_height =
+	input_useful_height - input_black_line_above - input_black_line_under;
+      if ((input_active_width == input_useful_width)
+	  && (input_active_height == input_useful_height))
+	input_black = 0;	// black zone doesn't go beyong useful zone
+      output_active_width =
+	(input_useful_width / input_width_slice) * output_width_slice;
+      output_active_height =
+	(input_useful_height / input_height_slice) * output_height_slice;
+
+      // USER'S INFORMATION OUTPUT
+
+//  y4m_print_stream_info(output_fd,streaminfo);
+      mjpeg_info (" --- Newly speed optimized parameters ---\n");
+
+      switch (input_interlaced)
+	{
+	case Y4M_ILACE_NONE:
+	  mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		      input_width, input_height,
+		      input_useful_width, input_useful_height,
+		      input_discard_col_left, input_discard_line_above,
+		      NOT_INTER);
+	  break;
+	case Y4M_ILACE_TOP_FIRST:
+	  mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		      input_width, input_height,
+		      input_useful_width, input_useful_height,
+		      input_discard_col_left, input_discard_line_above,
+		      TOP_FIRST);
+	  break;
+	case Y4M_ILACE_BOTTOM_FIRST:
+	  mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u, %s\n",
+		      input_width, input_height,
+		      input_useful_width, input_useful_height,
+		      input_discard_col_left, input_discard_line_above,
+		      BOT_FIRST);
+	  break;
+	default:
+	  mjpeg_info ("yuvscaler: from %ux%u, take %ux%u+%u+%u\n",
+		      input_width, input_height,
+		      input_useful_width, input_useful_height,
+		      input_discard_col_left, input_discard_line_above);
+
+	}
+      if (input_black == 1)
+	{
+	  mjpeg_info
+	    ("yuvscaler: with %u and %u black line above and under\n",
+	     input_black_line_above, input_black_line_under);
+	  mjpeg_info ("yuvscaler: and %u and %u black col left and right\n",
+		      input_black_col_left, input_black_col_right);
+	  mjpeg_info ("yuvscaler: %u %u\n", input_active_width,
+		      input_active_height);
+	}
+
+
+      switch (output_interlaced)
+	{
+	case Y4M_ILACE_NONE:
+	  mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		      output_active_width, output_active_height,
+		      display_width, display_height, NOT_INTER);
+	  break;
+	case Y4M_ILACE_TOP_FIRST:
+	  mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		      output_active_width, output_active_height,
+		      display_width, display_height, TOP_FIRST);
+	  break;
+	case Y4M_ILACE_BOTTOM_FIRST:
+	  mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
+		      output_active_width, output_active_height,
+		      display_width, display_height, BOT_FIRST);
+	  break;
+	default:
+	  mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
+		      output_active_width, output_active_height,
+		      display_width, display_height);
+	}
+
+      switch (algorithm)
+	{
+	case 0:
+	  mjpeg_info ("Scaling uses the %s algorithm, ", RESAMPLE);
+	  break;
+	case 1:
+	  mjpeg_info ("Scaling uses the %s algorithm, ", BICUBIC);
+	  break;
+	default:
+	  mjpeg_error_exit1 ("Unknown algorithm %d\n", algorithm);
+	}
+
+      switch (line_switching)
+	{
+	case 0:
+	  mjpeg_info ("without line switching\n");
+	  break;
+	case 1:
+	  mjpeg_info ("with line switching\n");
+	  break;
+	default:
+	  mjpeg_error_exit1 ("Unknown line switching status: %d\n",
+			     line_switching);
+	}
+
+
+
+      if (black == 1)
+	{
+	  mjpeg_info ("black lines: %u above and %u under\n",
+		      output_black_line_above, output_black_line_under);
+	  mjpeg_info ("black columns: %u left and %u right\n",
+		      output_black_col_left, output_black_col_right);
+	}
+      if (skip == 1)
+	{
+	  mjpeg_info ("skipped lines: %u above and %u under\n",
+		      output_skip_line_above, output_skip_line_under);
+	  mjpeg_info ("skipped columns: %u left and %u right\n",
+		      output_skip_col_left, output_skip_col_right);
+	}
+      mjpeg_info ("yuvscaler frame rate: %.3f fps\n",
+		  Y4M_RATIO_DBL (frame_rate));
     }
 
 
-  switch (output_interlaced)
-    {
-    case Y4M_ILACE_NONE:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
-		  output_active_width, output_active_height, display_width,
-		  display_height, NOT_INTER);
-      break;
-    case Y4M_ILACE_TOP_FIRST:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
-		  output_active_width, output_active_height, display_width,
-		  display_height, TOP_FIRST);
-      break;
-    case Y4M_ILACE_BOTTOM_FIRST:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed, %s\n",
-		  output_active_width, output_active_height, display_width,
-		  display_height, BOT_FIRST);
-      break;
-    default:
-      mjpeg_info ("scale to %ux%u, %ux%u being displayed\n",
-		  output_active_width, output_active_height, display_width,
-		  display_height);
-    }
-
-  switch (algorithm)
-    {
-    case 0:
-      mjpeg_info ("Scaling uses the %s algorithm, ", RESAMPLE);
-      break;
-    case 1:
-      mjpeg_info ("Scaling uses the %s algorithm, ", BICUBIC);
-      break;
-    default:
-      mjpeg_error_exit1 ("Unknown algorithm %d\n", algorithm);
-    }
-
-  switch (line_switching)
-    {
-    case 0:
-      mjpeg_info ("without line switching\n");
-      break;
-    case 1:
-      mjpeg_info ("with line switching\n");
-      break;
-    default:
-      mjpeg_error_exit1 ("Unknown line switching status: %d\n",
-			 line_switching);
-    }
-
-
-
-  if (black == 1)
-    {
-      mjpeg_info ("black lines: %u above and %u under\n",
-		  output_black_line_above, output_black_line_under);
-      mjpeg_info ("black columns: %u left and %u right\n",
-		  output_black_col_left, output_black_col_right);
-    }
-  if (skip == 1)
-    {
-      mjpeg_info ("skipped lines: %u above and %u under\n",
-		  output_skip_line_above, output_skip_line_under);
-      mjpeg_info ("skipped columns: %u left and %u right\n",
-		  output_skip_col_left, output_skip_col_right);
-    }
-	mjpeg_info ("yuvscaler frame rate: %.3f fps\n", 
-		    Y4M_RATIO_DBL(frame_rate));
-     }
-
-   
 // exit(1);   
-	
-   
+
+
 
   // RESAMPLE RESAMPLE RESAMPLE   
   if (algorithm == 0)
@@ -1528,11 +1568,108 @@ main (int argc, char *argv[])
 
       // SPECIFIC
       // Is a specific downscaling speed enhanced treatment is available?
-/*      if ((output_height_slice == 1) && (input_height_slice == 1))
-	specific = 1;
+      if ((output_height_slice == 1) && (input_height_slice == 1))
+	{
+	  specific = 1;
+	  bicubic_div_height = 18;
+	  bicubic_offset =
+	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+				      bicubic_negative_max * 255.0);
+	  bicubic_max =
+	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+				      bicubic_positive_max * 255.0);
+	  // en hauteur, les coefficients bicubic  cubic_spline_m valent 1/18, 16/18, 1/18 et 0
+	}
+      if ((output_height_slice == 1) && (input_height_slice == 1)
+	  && (output_width_slice == 2) && (input_width_slice == 3))
+	{
+	  specific = 6;
+	  bicubic_div_height = 18;
+	  bicubic_div_width = 144;
+	  bicubic_offset =
+	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+				      bicubic_negative_max * 255.0);
+	  bicubic_max =
+	    (unsigned long int) ceil (bicubic_div_height * bicubic_div_width *
+				      bicubic_positive_max * 255.0);
+//          fprintf(stderr,"%ld %ld %ld %ld\n",bicubic_div_height,bicubic_div_width,bicubic_offset,bicubic_max);
+	  // en hauteur, les coefficients bicubic cubic_spline_m valent 1/18, 16/18, 1/18 et 0 (a=0)
+	  // en largeur, les coefficients bicubic cubic_spline_n valent pour les numéros de colonnes impaires (b=0.5) :
+	  // -5/144, 77/144, 77/144 et -5/144. Même chose qu'en hauteur pour les numéros de colonnes paires 
+	}
       if (specific)
-	mjpeg_info ("Specific downscaling routing number %u\n", specific);
-*/// To speed up scaling, we need to tabulate several values
+	{
+	  mjpeg_info ("Specific downscaling routing number %u\n", specific);
+	  divide =
+	    (uint8_t *) malloc ((bicubic_offset + bicubic_max) *
+				sizeof (uint8_t) + ALIGNEMENT);
+//                fprintf (stderr, "%p\n", divide);
+	  // alignement instructions
+	  if (((unsigned int) divide % ALIGNEMENT) != 0)
+	    divide =
+	      (uint8_t *) ((((unsigned int) divide / ALIGNEMENT) + 1) *
+			   ALIGNEMENT);
+//                fprintf (stderr, "%p\n", divide);
+	  // 
+	  u_c_p = divide;
+
+	  for (lint = 0; lint < bicubic_max + bicubic_offset; lint++)
+	    {
+	      value =
+		(lint - bicubic_offset +
+		 (long int) (bicubic_div_height * bicubic_div_width / 2)) /
+		(long int) (bicubic_div_height * bicubic_div_width);
+	      if (value < 0)
+		value = 0;
+	      if (value > 255)
+		value = 255;
+	      *(u_c_p++) = (uint8_t) value;
+	    }
+	}
+
+/*       mjpeg_info("Specific routing for BICUBIC desactivated!!!!!!\n");       
+       specific = 0;
+       bicubic_div_height=FLOAT2INTEGER;
+       bicubic_div_width=FLOAT2INTEGER;
+*/
+
+
+      if (!
+	  (mmx_padded =
+	   (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
+	  || !(mmx_cubic =
+	       (int16_t *) malloc (4 * sizeof (int16_t) + ALIGNEMENT))
+	  || !(mmx_res =
+	       (int32_t *) malloc (2 * sizeof (int32_t) + ALIGNEMENT)))
+	mjpeg_error_exit1
+	  ("Could not allocate memory for mmx registers. STOP!\n");
+
+      mjpeg_info ("Before alignement\n");
+      mjpeg_info ("%p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
+      mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
+		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
+
+      // alignement instructions
+      if (((unsigned int) mmx_padded % ALIGNEMENT) != 0)
+	mmx_padded =
+	  (int16_t *) ((((unsigned int) mmx_padded / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      if (((unsigned int) mmx_cubic % ALIGNEMENT) != 0)
+	mmx_cubic =
+	  (int16_t *) ((((unsigned int) mmx_cubic / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+      if (((unsigned int) mmx_res % ALIGNEMENT) != 0)
+	mmx_res =
+	  (int32_t *) ((((unsigned int) mmx_res / ALIGNEMENT) + 1) *
+		       ALIGNEMENT);
+
+      mjpeg_info ("After Alignement\n");
+      mjpeg_info ("%p %p %p\n", mmx_padded, mmx_cubic, mmx_res);
+      mjpeg_info ("%u %u %u\n", (unsigned int) mmx_padded,
+		  (unsigned int) mmx_cubic, (unsigned int) mmx_res);
+
+
+      // Then, we can also tabulate several values
       // To the output pixel of coordinates (out_col,out_line) corresponds the input pixel (in_col,in_line), in_col and in_line being the nearest smaller values.
       in_col =
 	(unsigned int *) alloca (output_active_width * sizeof (unsigned int));
@@ -1572,7 +1709,7 @@ main (int argc, char *argv[])
 	  for (out_col = 0; out_col < output_active_width; out_col++)
 	    {
 	      cubic_spline_n[out_col + (n + 1) * output_active_width] =
-		cubic_spline (b[out_col] - (float) n);
+		cubic_spline (b[out_col] - (float) n, bicubic_div_width);
 //                     fprintf(stderr,"n=%d,out_col=%u,cubic=%ld\n",n,out_col,cubic_spline(b[out_col]-(float)n));;
 	    }
 	}
@@ -1584,9 +1721,13 @@ main (int argc, char *argv[])
 	    + cubic_spline_n[out_col + 1 * output_active_width]
 	    + cubic_spline_n[out_col + 2 * output_active_width]
 	    + cubic_spline_n[out_col + 3 * output_active_width];
-	  if (somme != FLOAT2INTEGER)
-	    cubic_spline_n[out_col + 3 * output_active_width] -=
-	      somme - FLOAT2INTEGER;
+	  if (somme != bicubic_div_width)
+	    {
+//              fprintf(stderr,"somme = %d\n",somme);
+	      cubic_spline_n[out_col + 3 * output_active_width] -=
+		somme - bicubic_div_width;
+	    }
+
 	}
 
 
@@ -1595,7 +1736,7 @@ main (int argc, char *argv[])
 	  {
 
 	    cubic_spline_m[out_line + (m + 1) * output_active_height] =
-	      cubic_spline ((float) m - a[out_line]);
+	      cubic_spline ((float) m - a[out_line], bicubic_div_height);
 //                  fprintf(stderr,"m=%d,out_line=%u,cubic=%ld\n",m,out_line,cubic_spline((float)m-a[out_line]));
 	  }
       // Normalisation test and normalisation
@@ -1605,9 +1746,13 @@ main (int argc, char *argv[])
 	    + cubic_spline_m[out_line + 1 * output_active_height]
 	    + cubic_spline_m[out_line + 2 * output_active_height]
 	    + cubic_spline_m[out_line + 3 * output_active_height];
-	  if (somme != FLOAT2INTEGER)
-	    cubic_spline_m[out_line + 3 * output_active_height] -=
-	      somme - FLOAT2INTEGER;
+	  if (somme != bicubic_div_height)
+	    {
+//              fprintf(stderr,"somme = %d\n",somme);
+	      cubic_spline_m[out_line + 3 * output_active_height] -=
+		somme - bicubic_div_height;
+	    }
+
 	}
 
       if ((output_interlaced == Y4M_ILACE_NONE)
@@ -1722,7 +1867,7 @@ main (int argc, char *argv[])
     }
 
 
-  // Various initialisatiosn for functions average_y and average_uv   
+  // Various initialisatiosn for input and output   
   out_nb_col_slice = output_active_width / output_width_slice;
   out_nb_line_slice = output_active_height / output_height_slice;
   input_y =
@@ -1772,9 +1917,9 @@ main (int argc, char *argv[])
 
   // Output file header
   // Should use functions y4m_copy, but I didn't find them inside yuv4mpeg.c (16 Sept 2001)
-  y4m_si_set_width(&streaminfo, display_width);
-  y4m_si_set_height(&streaminfo, display_height);
-  y4m_si_set_interlace(&streaminfo, output_interlaced);
+  y4m_si_set_width (&streaminfo, display_width);
+  y4m_si_set_height (&streaminfo, display_height);
+  y4m_si_set_interlace (&streaminfo, output_interlaced);
   if (no_header == 0)
     y4m_write_stream_header (output_fd, &streaminfo);
 
@@ -1787,7 +1932,7 @@ main (int argc, char *argv[])
       // input comes from stdin
       // Master loop : continue until there is no next frame in stdin
       // Je sais pas pourquoi, mais y4m_read_frame merde, y4m_read_frame_header suivi de y4m_read marche !!!!!!!
-       // Line switch if necessary
+      // Line switch if necessary
       while (my_y4m_read_frame
 	     (0, &frameinfo, nb_pixels, input, line_switching) == Y4M_OK)
 	{
@@ -2158,10 +2303,8 @@ main (int argc, char *argv[])
 	}
       // End of master loop
     }
-
-
-  y4m_fini_stream_info(&streaminfo);
-  y4m_fini_frame_info(&frameinfo);
+  y4m_fini_stream_info (&streaminfo);
+  y4m_fini_frame_info (&frameinfo);
   return 0;
 
 out_error:
@@ -2534,207 +2677,321 @@ cubic_scale (uint8_t * padded_input, uint8_t * output, unsigned int *in_col,
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
 
+  unsigned long int ulint, base_0, base_1, base_2, base_3;
+  int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
+    cubic_spline_n_3;
+  int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
+    cubic_spline_m_3;
+
 
 //   uint8_t zero=0;
   uint8_t *output_p;
   long int value;
-  long int value1;
+  long int value1, value2;
+  int32_t value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
 
-  mjpeg_debug ("Start of cubic_scale\n");
-
-/*   if (specific==1) 
+   /* *INDENT-OFF* */
+   if (mmx==1) 
      {
-	for (out_line = 0; out_line < local_output_active_height; out_line++)
-	  {
-	     output_p = output + out_line * local_output_width;
-	     for (out_col = 0; out_col < local_output_active_width; out_col++)
+	mjpeg_debug ("-- MMX --");
+	if ((specific==1) || (specific==6)) 
+	  {  
+	     for (out_line = 0; out_line < local_output_active_height; out_line++)
 	       {
-		  value1 =
-		    (padded_input
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       0) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_input[in_col[out_col] + 1 +
-				    (in_line[out_line] +
-				     0) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_input[in_col[out_col] + 2 +
-				  (in_line[out_line] +
-				   0) * local_padded_width] * cubic_spline_n[out_col +
-									     2 *
-									     output_active_width]
-		     + padded_input[in_col[out_col] + 3 +
-				    (in_line[out_line] +
-				     0) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]) +
-		    ((padded_input
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       1) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_input[in_col[out_col] + 1 +
-				    (in_line[out_line] +
-				     1) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_input[in_col[out_col] + 2 +
-				  (in_line[out_line] +
-				   1) * local_padded_width] * cubic_spline_n[out_col +
-									     2 *
-									     output_active_width]
-		     + padded_input[in_col[out_col] + 3 +
-				    (in_line[out_line] +
-				     1) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width])<<4) +
-		    (padded_input
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       2) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_input[in_col[out_col] + 1 +
-				    (in_line[out_line] +
-				     2) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_input[in_col[out_col] + 2 +
-				  (in_line[out_line] +
-				   2) * local_padded_width] * cubic_spline_n[out_col +
-									     2 *
-									     output_active_width]
-		     + padded_input[in_col[out_col] + 3 +
-				    (in_line[out_line] +
-				     2) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]);
-		    value=(value1/18 +
-		     ((1 << (FLOAT2INTEGERPOWER - 1))+9)) >> (FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  if (value > 255)
-		    value = 255;
-		  *(output_p++) = (uint8_t) value;
+		  output_p = output + out_line * local_output_width;
+		  // MMX Calculations:
+		  // We use the fact the on height, we have a 1 to 1 ratio => cubic_spline_3 are 1, 16, 1 and 0 => 
+		  // we factorise cubic_spline_n 	     
+		  // This implies that value_mmx_? never exceed 9330 => 
+		  // may be stored on a signed 16 bits integer => mmx maybe used 5 times (+last calculation), not only 4 
+
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       
+		       mmx_cubic[0]=1;
+		       mmx_cubic[1]=16;
+		       mmx_cubic[2]=1;
+		       mmx_cubic[3]=0;
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_0++];
+		       mmx_padded[1]=(int16_t)padded_input[base_1++];
+		       mmx_padded[2]=(int16_t)padded_input[base_2++];
+		       mmx_padded[3]=0;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_0++];
+		       mmx_padded[1]=(int16_t)padded_input[base_1++];
+		       mmx_padded[2]=(int16_t)padded_input[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_0++];
+		       mmx_padded[1]=(int16_t)padded_input[base_1++];
+		       mmx_padded[2]=(int16_t)padded_input[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_0++];
+		       mmx_padded[1]=(int16_t)padded_input[base_1++];
+		       mmx_padded[2]=(int16_t)padded_input[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+
+		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
+		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
+		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
+		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
+		       mmx_padded[0]=(int16_t)value_mmx_1;
+		       mmx_padded[1]=(int16_t)value_mmx_2;
+		       mmx_padded[2]=(int16_t)value_mmx_3;
+		       mmx_padded[3]=(int16_t)value_mmx_4;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value2 = mmx_res[0]+mmx_res[1];
+		       if (value2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
+		    }
+	       }
+	  }
+	
+	else
+	  {
+	     for (out_line = 0; out_line < local_output_active_height; out_line++)
+	       {
+		  output_p = output + out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
+
+		       mmx_padded[0]=(int16_t)padded_input[base_0++];
+		       mmx_padded[1]=(int16_t)padded_input[base_0++];
+		       mmx_padded[2]=(int16_t)padded_input[base_0++];
+		       mmx_padded[3]=(int16_t)padded_input[base_0];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_1++];
+		       mmx_padded[1]=(int16_t)padded_input[base_1++];
+		       mmx_padded[2]=(int16_t)padded_input[base_1++];
+		       mmx_padded[3]=(int16_t)padded_input[base_1];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_padded[0]=(int16_t)padded_input[base_2++];
+		       mmx_padded[1]=(int16_t)padded_input[base_2++];
+		       mmx_padded[2]=(int16_t)padded_input[base_2++];
+		       mmx_padded[3]=(int16_t)padded_input[base_2];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+
+		       mmx_padded[0]=(int16_t)padded_input[base_3++];
+		       mmx_padded[1]=(int16_t)padded_input[base_3++];
+		       mmx_padded[2]=(int16_t)padded_input[base_3++];
+		       mmx_padded[3]=(int16_t)padded_input[base_3];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       value2 =
+			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
+			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
+			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
+			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
+			 FLOAT2INTOFFSET;
+		       
+		       if (value2 < 0)
+			 *(output_p++) = (uint8_t) 0;
+		       else {
+			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
+			  if (ulint > 255)
+			    *(output_p++) = (uint8_t) 255;
+			  else
+			    *(output_p++) = (uint8_t) ulint;
+		       }
+		       
+		    }
+		  
+	       }
+	     
+	  }
+     }
+   else
+     {
+	// NON-MMX algorithms
+	if ((specific==1) || (specific==6)) 
+	  {  
+	     for (out_line = 0; out_line < local_output_active_height; out_line++)
+	       {
+		  output_p = output + out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 =
+			 (
+			  padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_0
+			  + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_1
+			  + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_2
+			  + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_3
+			  ) + ((
+				padded_input[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_0
+				+ padded_input[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+				* cubic_spline_n_1
+				+ padded_input[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_2
+				+ padded_input[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_3
+				)<<4) + ( 
+					  padded_input[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_0
+					  + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_1
+					  + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_2
+					  + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_3
+					  );
+		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
+		    }
+   
+	       }
+	  }
+	else
+	  {
+	     for (out_line = 0; out_line < local_output_active_height; out_line++)
+	       {
+		  cubic_spline_m_0 = cubic_spline_m[out_line + 0 * output_active_height];
+		  cubic_spline_m_1 = cubic_spline_m[out_line + 1 * output_active_height];
+		  cubic_spline_m_2 = cubic_spline_m[out_line + 2 * output_active_height];
+		  cubic_spline_m_3 = cubic_spline_m[out_line + 3 * output_active_height];
+		  output_p = output + out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 = 
+			 cubic_spline_m_0 *
+			 (
+			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_0
+			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_1 *
+			 ( 
+			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_2 *
+			 ( 
+			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_1
+			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) +  
+			 cubic_spline_m_3 *
+			 (
+ 			   padded_input[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_input[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   * cubic_spline_n_1
+			   + padded_input[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   * cubic_spline_n_2
+			   + padded_input[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   );
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
 	       }
 	  }
      }
-   else 
-     {
-*/ for (out_line = 0; out_line < local_output_active_height; out_line++)
-    {
-      output_p = output + out_line * local_output_width;
-      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	{
-	  // Remplissage des variables mmx
-	  /*       memcpy(var_mmx_1  ,padded_input[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width],1);
-	     memcpy(var_mmx_1+1,&zero,1);
-	     memcpy(var_mmx_1+2,padded_input[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width],1);
-	     memcpy(var_mmx_1+3,&zero,1);
-	     memcpy(var_mmx_1+4,padded_input[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width],1);
-	     memcpy(var_mmx_1+5,&zero,1);
-	     memcpy(var_mmx_1+6,padded_input[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width],1);
-	     memcpy(var_mmx_1+7,&zero,1);
-	     * 
-	     memcpy(var_mmx_2  ,cubic_spline_n[out_col + 0 * output_active_width],2);
-	     memcpy(var_mmx_2+2,cubic_spline_n[out_col + 1 * output_active_width],2);
-	     memcpy(var_mmx_2+4,cubic_spline_n[out_col + 2 * output_active_width],2);
-	     memcpy(var_mmx_2+6,cubic_spline_n[out_col + 3 * output_active_width],2);
-	   */
-	  value1 =
-	    cubic_spline_m[out_line + 0 * output_active_height] *
-	    (padded_input
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       0) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_input[in_col[out_col] + 1 +
-			    (in_line[out_line] +
-			     0) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_input[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_input[in_col[out_col] + 3 +
-			    (in_line[out_line] +
-			     0) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   1 * output_active_height] *
-	    (padded_input
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       1) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_input[in_col[out_col] + 1 +
-			    (in_line[out_line] +
-			     1) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_input[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_input[in_col[out_col] + 3 +
-			    (in_line[out_line] +
-			     1) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   2 * output_active_height] *
-	    (padded_input
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       2) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_input[in_col[out_col] + 1 +
-			    (in_line[out_line] +
-			     2) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_input[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_input[in_col[out_col] + 3 +
-			    (in_line[out_line] +
-			     2) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   3 * output_active_height] *
-	    (padded_input
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       3) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_input[in_col[out_col] + 1 +
-			    (in_line[out_line] +
-			     3) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_input[in_col[out_col] + 2 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] * cubic_spline_n[out_col +
-								     2 *
-								     output_active_width]
-	     + padded_input[in_col[out_col] + 3 +
-			    (in_line[out_line] +
-			     3) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]);
-	  value =
-	    (value1 +
-	     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-	  if (value < 0)
-	    value = 0;
-	  if (value > 255)
-	    value = 255;
-	  *(output_p++) = (uint8_t) value;
-	}
-    }
-//     }
 
+
+   /* *INDENT-ON* */
   mjpeg_debug ("End of cubic_scale\n");
   return (0);
 }
@@ -2757,358 +3014,589 @@ cubic_scale_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
   unsigned int local_padded_width = local_input_useful_width + 3;
   unsigned int out_line, out_col;
 
-  long int value, value1;
+  long int value1, value2, value;
+  long int value_mmx_1, value_mmx_2, value_mmx_3, value_mmx_4;
+  unsigned long int ulint, base_0, base_1, base_2, base_3;
+  int16_t cubic_spline_n_0, cubic_spline_n_1, cubic_spline_n_2,
+    cubic_spline_n_3;
+  int16_t cubic_spline_m_0, cubic_spline_m_1, cubic_spline_m_2,
+    cubic_spline_m_3;
   uint8_t *output_p;
 
   mjpeg_debug ("Start of cubic_scale_interlaced\n");
 
-/*   if (specific==1) 
-     {  
-	for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
-	  {
-	     output_p = output + 2 * out_line * local_output_width;
-	     for (out_col = 0; out_col < local_output_active_width; out_col++)
+   /* *INDENT-OFF* */
+   if (mmx==1) 
+     {
+	mjpeg_debug ("-- MMX --");
+	if ((specific==1) || (specific==6)) 
+	  {  
+	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
 	       {
-		  value1 =
-		    (padded_top
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       0) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_top[in_col[out_col] + 1 +
-				  (in_line[out_line] +
-				   0) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_top[in_col[out_col] + 2 +
-				(in_line[out_line] +
-				 0) * local_padded_width] * cubic_spline_n[out_col +
-									   2 *
-									   output_active_width]
-		     + padded_top[in_col[out_col] + 3 +
-				  (in_line[out_line] +
-				   0) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]) +
-		    ((padded_top
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       1) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_top[in_col[out_col] + 1 +
-				  (in_line[out_line] +
-				   1) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_top[in_col[out_col] + 2 +
-				(in_line[out_line] +
-			 1) * local_padded_width] * cubic_spline_n[out_col +
-								   2 *
-								   output_active_width]
-		     + padded_top[in_col[out_col] + 3 +
-				  (in_line[out_line] +
-				   1) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width])<<4) +
-		    (padded_top
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       2) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_top[in_col[out_col] + 1 +
-				  (in_line[out_line] +
-				   2) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_top[in_col[out_col] + 2 +
-				(in_line[out_line] +
-				 2) * local_padded_width] * cubic_spline_n[out_col +
-									   2 *
-									   output_active_width]
-		     + padded_top[in_col[out_col] + 3 +
-				  (in_line[out_line] +
-				   2) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]);
-		  value =
-		    (value1/18 +
-		     ((1 << (FLOAT2INTEGERPOWER - 1))+9)) >> (FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  if (value > 255)
-		    value = 255;
-		  *(output_p++) = (uint8_t) value;
-	       }
-	     for (out_col = 0; out_col < local_output_active_width; out_col++)
-	       {
-		  value1 =
-		    (padded_bottom
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       0) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-							 output_active_width]
-		     + padded_bottom[in_col[out_col] + 1 +
-				     (in_line[out_line] +
-				      0) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 2 +
-				   (in_line[out_line] +
-				    0) * local_padded_width] *
-		     cubic_spline_n[out_col + 2 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 3 +
-				   (in_line[out_line] +
-				    0) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]) +
-		    ((padded_bottom
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       1) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_bottom[in_col[out_col] + 1 +
-				     (in_line[out_line] +
-				      1) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 2 +
-				   (in_line[out_line] +
-				    1) * local_padded_width] *
-		     cubic_spline_n[out_col + 2 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 3 +
-				   (in_line[out_line] +
-				    1) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width])<<4) +
-		    (padded_bottom
-		     [in_col[out_col] + 0 +
-		      (in_line[out_line] +
-		       2) * local_padded_width] * cubic_spline_n[out_col +
-								 0 *
-								 output_active_width]
-		     + padded_bottom[in_col[out_col] + 1 +
-				     (in_line[out_line] +
-				      2) * local_padded_width] *
-		     cubic_spline_n[out_col + 1 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 2 +
-				   (in_line[out_line] +
-				    2) * local_padded_width] *
-		     cubic_spline_n[out_col + 2 * output_active_width] +
-		     padded_bottom[in_col[out_col] + 3 +
-				   (in_line[out_line] +
-				    2) * local_padded_width] *
-		     cubic_spline_n[out_col + 3 * output_active_width]);
-		  value =
-		    (value1/18 +
-		     ((1 << (FLOAT2INTEGERPOWER - 1))+9)) >> (FLOAT2INTEGERPOWER);
-		  if (value < 0)
-		    value = 0;
-		  if (value > 255)
-		    value = 255;
-		  *(output_p++) = (uint8_t) value;
+		  output_p = output + 2 * out_line * local_output_width;
+		  // MMX Calculations:
+		  // We use the fact the on height, we have a 1 to 1 ratio => cubic_spline_3 are 1, 16, 1 and 0 => 
+		  // we factorise cubic_spline_n 	     
+		  // This implies that value_mmx_? never exceed 9330 => 
+		  // may be stored on a signed 16 bits integer => mmx maybe used 5 times (+last calculation), not only 4 
+
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       
+		       mmx_cubic[0]=1;
+		       mmx_cubic[1]=16;
+		       mmx_cubic[2]=1;
+		       mmx_cubic[3]=0;
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_0++];
+		       mmx_padded[1]=(int16_t)padded_top[base_1++];
+		       mmx_padded[2]=(int16_t)padded_top[base_2++];
+		       mmx_padded[3]=0;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_0++];
+		       mmx_padded[1]=(int16_t)padded_top[base_1++];
+		       mmx_padded[2]=(int16_t)padded_top[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_0++];
+		       mmx_padded[1]=(int16_t)padded_top[base_1++];
+		       mmx_padded[2]=(int16_t)padded_top[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_0++];
+		       mmx_padded[1]=(int16_t)padded_top[base_1++];
+		       mmx_padded[2]=(int16_t)padded_top[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+
+		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
+		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
+		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
+		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
+		       mmx_padded[0]=(int16_t)value_mmx_1;
+		       mmx_padded[1]=(int16_t)value_mmx_2;
+		       mmx_padded[2]=(int16_t)value_mmx_3;
+		       mmx_padded[3]=(int16_t)value_mmx_4;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value2 = mmx_res[0]+mmx_res[1];
+		       if (value2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
+		    }
+		  // First line output is now finished. We jump to the beginning of the next line
+		  output_p+=local_output_width-local_output_active_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       
+		       mmx_cubic[0]=1;
+		       mmx_cubic[1]=16;
+		       mmx_cubic[2]=1;
+		       mmx_cubic[3]=0;
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
+		       mmx_padded[3]=0;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 ==  max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
+		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
+		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
+		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
+		       mmx_padded[0]=(int16_t)value_mmx_1;
+		       mmx_padded[1]=(int16_t)value_mmx_2;
+		       mmx_padded[2]=(int16_t)value_mmx_3;
+		       mmx_padded[3]=(int16_t)value_mmx_4;
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value2 = mmx_res[0]+mmx_res[1];
+		       if (value2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       *(output_p++) = (uint8_t) divide[value2+bicubic_offset];
+		    }
 	       }
 	  }
 	
+	else
+	  {
+	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	       {
+		  output_p = output + 2 * out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
+
+		       mmx_padded[0]=(int16_t)padded_top[base_0++];
+		       mmx_padded[1]=(int16_t)padded_top[base_0++];
+		       mmx_padded[2]=(int16_t)padded_top[base_0++];
+		       mmx_padded[3]=(int16_t)padded_top[base_0];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_1++];
+		       mmx_padded[1]=(int16_t)padded_top[base_1++];
+		       mmx_padded[2]=(int16_t)padded_top[base_1++];
+		       mmx_padded[3]=(int16_t)padded_top[base_1];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_padded[0]=(int16_t)padded_top[base_2++];
+		       mmx_padded[1]=(int16_t)padded_top[base_2++];
+		       mmx_padded[2]=(int16_t)padded_top[base_2++];
+		       mmx_padded[3]=(int16_t)padded_top[base_2];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+
+		       mmx_padded[0]=(int16_t)padded_top[base_3++];
+		       mmx_padded[1]=(int16_t)padded_top[base_3++];
+		       mmx_padded[2]=(int16_t)padded_top[base_3++];
+		       mmx_padded[3]=(int16_t)padded_top[base_3];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       value2 =
+			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
+			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
+			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
+			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
+			 FLOAT2INTOFFSET;
+		       
+		       if (value2 < 0)
+			 *(output_p++) = (uint8_t) 0;
+		       else {
+			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
+			  if (ulint > 255)
+			    *(output_p++) = (uint8_t) 255;
+			  else
+			    *(output_p++) = (uint8_t) ulint;
+		       }
+		       
+		    }
+		  
+		  // First line output is now finished. We jump to the beginning of the next line
+		  output_p+=local_output_width-local_output_active_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       base_0 = in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width;
+		       base_1 = in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width;
+		       base_2 = in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width;
+		       base_3 = in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width;
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_0++];
+		       mmx_padded[3]=(int16_t)padded_bottom[base_0];
+		       mmx_cubic[0]=cubic_spline_n[out_col + 0 * output_active_width];
+		       mmx_cubic[1]=cubic_spline_n[out_col + 1 * output_active_width];
+		       mmx_cubic[2]=cubic_spline_n[out_col + 2 * output_active_width];
+		       mmx_cubic[3]=cubic_spline_n[out_col + 3 * output_active_width];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_1 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_1 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+		       
+		       
+		       mmx_padded[0]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_1++];
+		       mmx_padded[3]=(int16_t)padded_bottom[base_1];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_2 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_2 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+
+		    
+		       mmx_padded[0]=(int16_t)padded_bottom[base_2++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_2++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_2++];
+		       mmx_padded[3]=(int16_t)padded_bottom[base_2];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_3 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_3 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+
+		       mmx_padded[0]=(int16_t)padded_bottom[base_3++];
+		       mmx_padded[1]=(int16_t)padded_bottom[base_3++];
+		       mmx_padded[2]=(int16_t)padded_bottom[base_3++];
+		       mmx_padded[3]=(int16_t)padded_bottom[base_3];
+		       movq_m2r(*mmx_padded,mm1);
+		       movq_m2r(*mmx_cubic ,mm2);
+		       pmaddwd_r2r(mm1,mm2);
+		       movq_r2m(mm2,*mmx_res);
+		       value_mmx_4 = mmx_res[0]+mmx_res[1];
+		       if (value_mmx_4 == max_lint_neg)
+			 fprintf(stderr,"MMX MAGIC NECESSITY\n");
+
+		       value2 =
+			 cubic_spline_m[out_line + 0 * output_active_height] * value_mmx_1 +
+			 cubic_spline_m[out_line + 1 * output_active_height] * value_mmx_2 +
+			 cubic_spline_m[out_line + 2 * output_active_height] * value_mmx_3 +
+			 cubic_spline_m[out_line + 3 * output_active_height] * value_mmx_4 +
+			 FLOAT2INTOFFSET;
+		       
+		       if (value2 < 0)
+			 *(output_p++) = (uint8_t) 0;
+		       else {
+			  ulint = ((unsigned long int) value2) >> (2 * FLOAT2INTEGERPOWER);
+			  if (ulint > 255)
+			    *(output_p++) = (uint8_t) 255;
+			  else
+			    *(output_p++) = (uint8_t) ulint;
+		       }
+		       
+		    }
+	       }
+	     
+	  }
      }
    else
      {
-*/ for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
-    {
-      output_p = output + 2 * out_line * local_output_width;
-      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	{
-	  value1 =
-	    cubic_spline_m[out_line + 0 * output_active_height] *
-	    (padded_top
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       0) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_top[in_col[out_col] + 2 +
-			(in_line[out_line] +
-			 0) * local_padded_width] * cubic_spline_n[out_col +
-								   2 *
-								   output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   0) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   1 * output_active_height] *
-	    (padded_top
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       1) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_top[in_col[out_col] + 2 +
-			(in_line[out_line] +
-			 1) * local_padded_width] * cubic_spline_n[out_col +
-								   2 *
-								   output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   1) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   2 * output_active_height] *
-	    (padded_top
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       2) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_top[in_col[out_col] + 2 +
-			(in_line[out_line] +
-			 2) * local_padded_width] * cubic_spline_n[out_col +
-								   2 *
-								   output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   2) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   3 * output_active_height] *
-	    (padded_top
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       3) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_top[in_col[out_col] + 1 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_top[in_col[out_col] + 2 +
-			(in_line[out_line] +
-			 3) * local_padded_width] * cubic_spline_n[out_col +
-								   2 *
-								   output_active_width]
-	     + padded_top[in_col[out_col] + 3 +
-			  (in_line[out_line] +
-			   3) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]);
-	  value =
-	    (value1 +
-	     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-	  if (value < 0)
-	    value = 0;
-	  if (value > 255)
-	    value = 255;
-	  *(output_p++) = (uint8_t) value;
-	}
-      for (out_col = 0; out_col < local_output_active_width; out_col++)
-	{
-	  value1 =
-	    cubic_spline_m[out_line + 0 * output_active_height] *
-	    (padded_bottom
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       0) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			     (in_line[out_line] +
-			      0) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			   (in_line[out_line] +
-			    0) * local_padded_width] *
-	     cubic_spline_n[out_col + 2 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    0) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   1 * output_active_height] *
-	    (padded_bottom
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       1) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			     (in_line[out_line] +
-			      1) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			   (in_line[out_line] +
-			    1) * local_padded_width] *
-	     cubic_spline_n[out_col + 2 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    1) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   2 * output_active_height] *
-	    (padded_bottom
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       2) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			     (in_line[out_line] +
-			      2) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			   (in_line[out_line] +
-			    2) * local_padded_width] *
-	     cubic_spline_n[out_col + 2 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    2) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]) +
-	    cubic_spline_m[out_line +
-			   3 * output_active_height] *
-	    (padded_bottom
-	     [in_col[out_col] + 0 +
-	      (in_line[out_line] +
-	       3) * local_padded_width] * cubic_spline_n[out_col +
-							 0 *
-							 output_active_width]
-	     + padded_bottom[in_col[out_col] + 1 +
-			     (in_line[out_line] +
-			      3) * local_padded_width] *
-	     cubic_spline_n[out_col + 1 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 2 +
-			   (in_line[out_line] +
-			    3) * local_padded_width] *
-	     cubic_spline_n[out_col + 2 * output_active_width] +
-	     padded_bottom[in_col[out_col] + 3 +
-			   (in_line[out_line] +
-			    3) * local_padded_width] *
-	     cubic_spline_n[out_col + 3 * output_active_width]);
-	  value =
-	    (value1 +
-	     (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
-	  if (value < 0)
-	    value = 0;
-	  if (value > 255)
-	    value = 255;
-	  *(output_p++) = (uint8_t) value;
-	}
-    }
-//     }
+	// NON-MMX algorithms
+	if ((specific==1) || (specific==6)) 
+	  {  
+	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	       {
+		  output_p = output + 2 * out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 =
+			 (
+			  padded_top[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_0
+			  + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_1
+			  + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_2
+			  + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_3
+			  ) + ((
+				padded_top[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_0
+				+ padded_top[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+				* cubic_spline_n_1
+				+ padded_top[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_2
+				+ padded_top[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_3
+				)<<4) + ( 
+					  padded_top[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_0
+					  + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_1
+					  + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_2
+					  + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_3
+					  );
+		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
+		    }
+		  // First line output is now finished. We jump to the beginning of the next line
+		  output_p+=local_output_width-local_output_active_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 =
+			 (
+			  padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_0
+			  + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			  * cubic_spline_n_1
+			  + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_2
+			  + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			  * cubic_spline_n_3
+			  ) + ((
+				padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_0
+				+ padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+				* cubic_spline_n_1
+				+ padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_2
+				+ padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+				* cubic_spline_n_3
+				)<<4) + ( 
+					  padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_0
+					  + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_1
+					  + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_2
+					  + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+					  * cubic_spline_n_3
+					  );
+		       *(output_p++) = (uint8_t) divide[value1+bicubic_offset];
+		    }
+   
+	       }
+	  }
+	else
+	  {
+	     for (out_line = 0; out_line < local_output_active_height / 2; out_line++)
+	       {
+		  cubic_spline_m_0 = cubic_spline_m[out_line + 0 * output_active_height];
+		  cubic_spline_m_1 = cubic_spline_m[out_line + 1 * output_active_height];
+		  cubic_spline_m_2 = cubic_spline_m[out_line + 2 * output_active_height];
+		  cubic_spline_m_3 = cubic_spline_m[out_line + 3 * output_active_height];
+		  output_p = output + 2 * out_line * local_output_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 = 
+			 cubic_spline_m_0 *
+			 (
+			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_0
+			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_1 *
+			 ( 
+			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_2 *
+			 ( 
+			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_1
+			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) +  
+			 cubic_spline_m_3 *
+			 (
+ 			   padded_top[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_top[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   * cubic_spline_n_1
+			   + padded_top[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   * cubic_spline_n_2
+			   + padded_top[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   );
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
+		  output_p+=local_output_width-local_output_active_width;
+		  for (out_col = 0; out_col < local_output_active_width; out_col++)
+		    {
+		       cubic_spline_n_0 =  cubic_spline_n[out_col + 0 * output_active_width];
+		       cubic_spline_n_1 =  cubic_spline_n[out_col + 1 * output_active_width];
+		       cubic_spline_n_2 =  cubic_spline_n[out_col + 2 * output_active_width];
+		       cubic_spline_n_3 =  cubic_spline_n[out_col + 3 * output_active_width];
+		       value1 = 
+			 cubic_spline_m_0 *
+			 (
+			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_0
+			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 0) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 0) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_1 *
+			 ( 
+			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 1) * local_padded_width] 
+			   * cubic_spline_n_1
+			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 1) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) + 
+			 cubic_spline_m_2 *
+			 ( 
+			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_1
+			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_2
+			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   ) +  
+			 cubic_spline_m_3 *
+			 (
+			   padded_bottom[in_col[out_col] + 0 + (in_line[out_line] + 3) * local_padded_width]
+			   * cubic_spline_n_0
+			   + padded_bottom[in_col[out_col] + 1 + (in_line[out_line] + 3) * local_padded_width]                                          
+			   * cubic_spline_n_1
+			   + padded_bottom[in_col[out_col] + 2 + (in_line[out_line] + 2) * local_padded_width]                                          
+			   * cubic_spline_n_2
+			   + padded_bottom[in_col[out_col] + 3 + (in_line[out_line] + 2) * local_padded_width]
+			   * cubic_spline_n_3
+			   );
+		       value =
+			 (value1 +
+			  (1 << (2 * FLOAT2INTEGERPOWER - 1))) >> (2 * FLOAT2INTEGERPOWER);
+		       if (value < 0)
+			 value = 0;
+		       
+		       if (value > 255) 
+			 value = 255;
+		       
+		       *(output_p++) = (uint8_t) value;
+		    }
+		  
+	       }
+	  }
+     }
 
+
+/* *INDENT-ON* */
   mjpeg_debug ("End of cubic_scale_interlaced\n");
   return (0);
 }
 
 // *************************************************************************************
-
+// 
 
 // *************************************************************************************
 int16_t
-cubic_spline (float x)
+cubic_spline (float x, unsigned int multiplicative)
 {
   // Implementation of the Mitchell-Netravalli cubic spline, with recommended parameters B and C
   // [after Reconstruction filters in Computer Graphics by P. Mitchel and N. Netravali : Computer Graphics, Volume 22, Number 4, pp 221-228]
@@ -3124,19 +3612,21 @@ cubic_spline (float x)
 	    floor (0.5 +
 		   (((12.0 - 9.0 * B -
 		      6.0 * C) * fabs (x) * fabs (x) * fabs (x) + (-18.0 +
-								   12.0 * B +
-								   6.0 * C) *
+								   12.0 *
+								   B +
+								   6.0 *
+								   C) *
 		     fabs (x) * fabs (x) + (6.0 -
 					    2.0 * B)) / 6.0) *
-		   FLOAT2INTEGER));
+		   multiplicative));
   if (fabs (x) < 2)
     return ((long int)
 	    floor (0.5 +
 		   (((-B - 6.0 * C) * fabs (x) * fabs (x) * fabs (x) +
-		     (6.0 * B + 30.0 * C) * fabs (x) * fabs (x) + (-12.0 * B -
-								   48.0 * C) *
-		     fabs (x) + (8.0 * B +
-				 24.0 * C)) / 6.0) * FLOAT2INTEGER));
+		     (6.0 * B + 30.0 * C) * fabs (x) * fabs (x) +
+		     (-12.0 * B - 48.0 * C) * fabs (x) + (8.0 * B +
+							  24.0 * C)) /
+		    6.0) * multiplicative));
 //   fprintf(stderr,"Bizarre!\n");
   return (0);
 }
@@ -3229,11 +3719,12 @@ padding_interlaced (uint8_t * padded_top, uint8_t * padded_bottom,
     {
       *(padded_bottom + 0 + line * local_padded_width)
 	= *(padded_bottom + 1 + line * local_padded_width);
-      *(padded_bottom + (local_padded_width - 1) + line * local_padded_width)
-	= *(padded_bottom + (local_padded_width - 2) +
-	    line * local_padded_width)
-	= *(padded_bottom + (local_padded_width - 3) +
-	    line * local_padded_width);
+      *(padded_bottom + (local_padded_width - 1) +
+	line * local_padded_width) =
+	*(padded_bottom + (local_padded_width - 2) +
+	  line * local_padded_width) =
+	*(padded_bottom + (local_padded_width - 3) +
+	  line * local_padded_width);
     }
   // borders padding: 1 pixel on top and 2 on the bottom
   memcpy (padded_top, padded_top + 1 * local_padded_width,
@@ -3418,8 +3909,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		input + out_line * input_height_slice * local_input_width;
 	      input_line_p[1] = input_line_p[0] + local_input_width;
 	      out_line_p = output + out_line * local_output_width;
-	      for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
-		   out_col_slice++)
+	      for (out_col_slice = 0;
+		   out_col_slice < local_out_nb_col_slice; out_col_slice++)
 		{
 		  W = width_coeff;
 		  for (out_col = 0; out_col < output_width_slice; out_col++)
@@ -3561,7 +4052,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		}
 	      u_c_p =
 		output +
-		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		((out_line_slice & ~(unsigned int) 1) *
+		 output_height_slice +
 		 out_line_slice % 2) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
@@ -3671,7 +4163,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		}
 	      u_c_p =
 		output +
-		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		((out_line_slice & ~(unsigned int) 1) *
+		 output_height_slice +
 		 (out_line_slice % 2)) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
@@ -3841,8 +4334,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		  output_line_p[out_line] = u_c_p;
 		  u_c_p += local_output_width;
 		}
-	      for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
-		   out_col_slice++)
+	      for (out_col_slice = 0;
+		   out_col_slice < local_out_nb_col_slice; out_col_slice++)
 		{
 		  W = width_coeff;
 		  for (out_col = 0; out_col < output_width_slice; out_col++)
@@ -3913,7 +4406,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		}
 	      u_c_p =
 		output +
-		((out_line_slice & ~(unsigned int) 1) * output_height_slice +
+		((out_line_slice & ~(unsigned int) 1) *
+		 output_height_slice +
 		 (out_line_slice % 2)) * local_output_width;
 	      for (out_line = 0; out_line < output_height_slice; out_line++)
 		{
@@ -3921,8 +4415,8 @@ average_specific (uint8_t * input, uint8_t * output,
 		  u_c_p += 2 * local_output_width;
 		}
 
-	      for (out_col_slice = 0; out_col_slice < local_out_nb_col_slice;
-		   out_col_slice++)
+	      for (out_col_slice = 0;
+		   out_col_slice < local_out_nb_col_slice; out_col_slice++)
 		{
 		  H = height_coeff;
 		  first_line = 0;
@@ -3984,17 +4478,18 @@ average_specific (uint8_t * input, uint8_t * output,
 }
 
 // *************************************************************************************
-
-  // For interlaced treatment, line numbers may be switched as a function of the interlacing type of the image.
-  // So, if line_index varies from 0 to output_active_height, input line number is 2*(line_index/2)*input_height_slice + (line_switching+line_index)%2
-  // and output line number is 2*(line_index/2)*output_height_slice + (0+line_index)%2
-  // For speed reason, /half is replaced by >>half, 2*(line_index/2) by line_index&~1. Please note that %2 or &~1 take the same amount of time
-  // Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlaced) are treated alike
-//         "\t if frames come from stdin, input frames interlacing type is not known from header. For interlacing specification, use:\n"
-//         "\t NOT_INTERLACED to select not interlaced input frames\n"
-//         "\t INTERLACED_ODD_FIRST  to select an interlaced, odd  first frame input stream from stdin\n"
-//         "\t INTERLACED_EVEN_FIRST to select an interlaced, even first frame input stream from stdin\n"
-//         "\t If you wish to specify interlacing of output frames, use:\n"
-//         "\t INTERLACED_TOP_FIRST  to select an interlaced, top first frame output stream\n"
-//         "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom first frame output stream\n"
-//         "\t NOT_INTERLACED to select not interlaced output frames\n"
+/*
+For interlaced treatment, line numbers may be switched as a function of the interlacing type of the image.
+So, if line_index varies from 0 to output_active_height, input line number is 2*(line_index/2)*input_height_slice + (line_switching+line_index)%2
+and output line number is 2*(line_index/2)*output_height_slice + (0+line_index)%2
+For speed reason, /half is replaced by >>half, 2*(line_index/2) by line_index&~1. Please note that %2 or &~1 take the same amount of time
+Please note that interlaced==0 (non-interlaced) or interlaced==2 (even interlaced) are treated alike
+       "\t if frames come from stdin, input frames interlacing type is not known from header. For interlacing specification, use:\n"
+       "\t NOT_INTERLACED to select not interlaced input frames\n"
+       "\t INTERLACED_ODD_FIRST  to select an interlaced, odd  first frame input stream from stdin\n"
+       "\t INTERLACED_EVEN_FIRST to select an interlaced, even first frame input stream from stdin\n"
+       "\t If you wish to specify interlacing of output frames, use:\n"
+       "\t INTERLACED_TOP_FIRST  to select an interlaced, top first frame output stream\n"
+       "\t INTERLACED_BOTTOM_FIRST to select an interlaced, bottom first frame output stream\n"
+       "\t NOT_INTERLACED to select not interlaced output frames\n"
+*/
