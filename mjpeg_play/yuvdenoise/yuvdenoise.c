@@ -1047,12 +1047,12 @@ antiflicker_reference ()
 	{
 	  YUV1[x + y * uv_width + u_offset] =
 	    YUV1[x + y * uv_width + u_offset] * 0.4 +
-	    DEL0[x + y * uv_width + u_offset] * 0.4 +
-	    DEL1[x + y * uv_width + u_offset] * 0.2;
+	    DEL0[x + y * uv_width + u_offset] * 0.3 +
+	    DEL1[x + y * uv_width + u_offset] * 0.3;
 	  YUV1[x + y * uv_width + v_offset] =
 	    YUV1[x + y * uv_width + v_offset] * 0.4 +
-	    DEL0[x + y * uv_width + v_offset] * 0.4 +
-	    DEL1[x + y * uv_width + v_offset] * 0.2;
+	    DEL0[x + y * uv_width + v_offset] * 0.3 +
+	    DEL1[x + y * uv_width + v_offset] * 0.3;
 	}
 }
 
@@ -1081,13 +1081,13 @@ denoise_image ()
 	mean_U_SQD = mean_V_SQD = init_SQD/100;
     }
 
-  /* fill the delay loop */
-  delay_images ();
-
   /* remove color-flicker and do heavy
      filtering of the reference frame
    */
   antiflicker_reference ();
+
+  /* fill the delay loop */
+  delay_images ();
 
   /* calculate the time averaged image */
   time_average_images ();
