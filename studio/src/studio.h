@@ -85,12 +85,15 @@ struct encodingoptions{ char notblacksize[LONGOPT];  /* lav2yuv options */
                         char muxvbr[SHORTOPT];
                         int  streamdatarate;
 			int  decoderbuffer;     /* also used for mpeg2enc */
+                        char codec[LONGOPT];           /* yuv2divx option */
+          /* for the other options needed for divx, other fields are used */
                       };
 /************************* END *********************/
 struct encodingoptions encoding;  /* for mpeg1 */
 struct encodingoptions encoding2; /* for mpeg2 */
 struct encodingoptions encoding_vcd; /* for mpeg2 */
 struct encodingoptions encoding_svcd; /* for mpeg2 */
+struct encodingoptions encoding_divx; /* for divx */
 
 char *record_dir;
 int scene_detection_width_decimation;

@@ -107,6 +107,9 @@ void create_temp_files (GtkWidget *hbox1, GtkWidget *vbox);
 void set_task(GtkWidget *widget, gpointer data);
 void play_output_stream ( GtkWidget *widget, gpointer data);
 void play_video_stream ( GtkWidget *widget, gpointer data);
+void check_mpegname(gpointer data);
+void create_command_mpeg2enc(char *mpeg2enc_command[256]);
+void create_command_yuv2divx(char *mpeg2enc_command[256]);
 
 /*************************** Programm starts here **************************/
 
@@ -457,11 +460,149 @@ void audio_convert()
    show_executing(command);
 }
 
+/* Here the mpeg2 enc command is set together with all options */
+void create_command_yuv2divx(char *yuv2divx_command[256])
+{
+int n;
+static char temp1[4], temp2[4];
+n=0;
+
+yuv2divx_command[n] = YUV2DIVX_LOCATION; n++;
+
+if ((*pointenc).audiobitrate != 0) {
+   yuv2divx_command[n] = "-a"; n++; 
+   sprintf(temp1, "%i", (*pointenc).audiobitrate);
+   yuv2divx_command[n] = temp1; n++;
+  }
+
+yuv2divx_command[n] = "-A"; n++;
+yuv2divx_command[n] = enc_inputfile; n++;
+
+if ((*pointenc).bitrate != 0) {
+   yuv2divx_command[n] = "-b"; n++; 
+   sprintf(temp2, "%i", (*pointenc).bitrate);
+   yuv2divx_command[n] = temp2; n++;
+  }
+
+yuv2divx_command[n] = "-E"; n++;
+yuv2divx_command[n] = (*pointenc).codec; n++;
+
+yuv2divx_command[n] = "-o"; n++;
+yuv2divx_command[n] = enc_outputfile; n++;
+yuv2divx_command[n] = NULL;
+
+}
+
+/* Here the mpeg2 enc command is set together with all options */
+void create_command_mpeg2enc(char *mpeg2enc_command[256])
+{
+int n;
+static char temp1[4], temp2[4], temp3[4], temp4[4], temp5[4], temp6[4];
+static char temp7[4], temp8[4], temp9[4], temp10[4], temp11[4];
+
+n=0;
+
+mpeg2enc_command[n] = MPEG2ENC_LOCATION; n++;
+mpeg2enc_command[n] = "-v1"; n++;
+
+if((*pointenc).bitrate != 0) {
+   mpeg2enc_command[n] = "-b"; n++;
+   sprintf(temp1, "%i", (*pointenc).bitrate);
+   mpeg2enc_command[n] =  temp1; n++;
+  }
+if((*pointenc).qualityfactor != 0) {
+   mpeg2enc_command[n] = "-q"; n++;
+   sprintf(temp2, "%i", (*pointenc).qualityfactor);
+   mpeg2enc_command[n] =  temp2; n++;
+  }
+if((*pointenc).searchradius != 16) {
+   sprintf(temp3, "%i", (*pointenc).searchradius);
+   mpeg2enc_command[n] =  "-r"; n++;
+   mpeg2enc_command[n] =  temp3; n++;
+  }
+if ( fourpelmotion != 2 )
+  {
+    sprintf(temp4,"%i", fourpelmotion);
+    mpeg2enc_command[n] = "-4"; n++;
+    mpeg2enc_command[n] = temp4; n++;
+  }
+if ( twopelmotion != 3 )
+  {
+    sprintf(temp5,"%i", twopelmotion);
+    mpeg2enc_command[n] = "-2"; n++;
+    mpeg2enc_command[n] = temp5; n++;
+  }
+if((*pointenc).decoderbuffer != 46) {
+   sprintf(temp6, "%i", (*pointenc).decoderbuffer);
+   mpeg2enc_command[n] =  "-V"; n++;
+   mpeg2enc_command[n] =  temp6; n++;
+  }
+if((*pointenc).sequencesize != 0) {
+   sprintf(temp7, "%i", (*pointenc).sequencesize);
+   mpeg2enc_command[n] =  "-S"; n++;
+   mpeg2enc_command[n] =  temp7; n++;
+  }
+if(((*pointenc).sequencesize != 0i) && ((*pointenc).nonvideorate != 0)) {
+   sprintf(temp8, "%i", (*pointenc).nonvideorate);
+   mpeg2enc_command[n] =  "-B"; n++;
+   mpeg2enc_command[n] =  temp8; n++;
+  }
+if ( ( (*pointenc).minGop != 12 ) && 
+     ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
+   sprintf(temp9, "%i", (*pointenc).minGop);
+   mpeg2enc_command[n] =  "-g"; n++;
+   mpeg2enc_command[n] =  temp9; n++;
+  }
+if ( ( (*pointenc).maxGop != 12 ) && 
+     ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
+   sprintf(temp10, "%i", (*pointenc).maxGop);
+   mpeg2enc_command[n] =  "-G"; n++;
+   mpeg2enc_command[n] =  temp10; n++;
+  }
+
+/* And here the support fpr the different versions vo mjpeg tools */
+/* And the different mpeg versions */
+if (encoding_syntax_style == 140)
+{
+  if ((*pointenc).muxformat >= 3)
+    {
+      mpeg2enc_command[n] = "-m"; n++;
+      mpeg2enc_command[n] = "2"; n++; 
+    }
+  if (((*pointenc).muxformat != 0) && ((*pointenc).muxformat != 3))
+    {
+      mpeg2enc_command[n] = "-s"; n++;
+    }
+}
+if (encoding_syntax_style == 150)
+{
+  if((*pointenc).muxformat != 0) 
+    {
+      sprintf(temp11, "%i",(*pointenc).muxformat);
+      mpeg2enc_command[n] =  "-f"; n++;
+      mpeg2enc_command[n] =  temp11; n++;
+    }
+  if((*pointenc).muxformat >= 3)
+    {
+      mpeg2enc_command[n] = "-P";
+      n++;
+    }
+}
+
+/* And here again some common stuff */
+mpeg2enc_command[n] = "-o"; n++;
+mpeg2enc_command[n] = enc_videofile; n++;
+mpeg2enc_command[n] = NULL;
+ 
+
+}
+
 /* video encoding */
 void video_convert()
 {
    int n, scale_140, scale_150;
    char *mpeg2enc_command[256];
+   char *yuv2divx_command[256];
    char *lav2yuv_command[256];
    char *yuvscaler_command[256];
    char *yuvplay_command[256];
@@ -469,9 +610,7 @@ void video_convert()
    char command[600];
    char command_temp[256];
    char command_progress[256];
-   static char temp1[16],temp2[16],temp3[16],temp5[16],temp6[16], temp7[4];
-   static char temp8[4], temp9[4], temp10[4],temp12[4],temp13[4];
-   static char temp14[6],temp15[4],temp16[4],temp17[4];
+   static char temp1[16], temp2[16], temp3[16], temp7[4];
    error = 0;
    scale_140    = 0; /* this 2 variabels are used for spliting up */ 
    scale_150    = 0; /* the detection if yuvscaler has to be used */
@@ -481,99 +620,10 @@ void video_convert()
    if (progress_label) gtk_label_set_text(GTK_LABEL(progress_label),
       "Encoding video");
 
-   n = 0;
-   mpeg2enc_command[n] = MPEG2ENC_LOCATION; n++;
-   mpeg2enc_command[n] = "-v1"; n++;
-   
-   if((*pointenc).bitrate != 0) {
-      mpeg2enc_command[n] = "-b"; n++;
-      sprintf(temp14, "%i", (*pointenc).bitrate);
-      mpeg2enc_command[n] =  temp14; n++;
-     }
-   if((*pointenc).qualityfactor != 0) {
-      mpeg2enc_command[n] = "-q"; n++;
-      sprintf(temp15, "%i", (*pointenc).qualityfactor);
-      mpeg2enc_command[n] =  temp15; n++;
-     }
-   if((*pointenc).searchradius != 16) {
-      sprintf(temp6, "%i", (*pointenc).searchradius);
-      mpeg2enc_command[n] =  "-r"; n++;
-      mpeg2enc_command[n] =  temp6; n++;
-     }
-   if ( fourpelmotion != 2 )
-     {
-       sprintf(temp8,"%i", fourpelmotion);
-       mpeg2enc_command[n] = "-4"; n++;
-       mpeg2enc_command[n] = temp8; n++;
-     }
-   if ( twopelmotion != 3 )
-     {
-       sprintf(temp9,"%i", twopelmotion);
-       mpeg2enc_command[n] = "-2"; n++;
-       mpeg2enc_command[n] = temp9; n++;
-     }
-   if((*pointenc).decoderbuffer != 46) {
-      sprintf(temp10, "%i", (*pointenc).decoderbuffer);
-      mpeg2enc_command[n] =  "-V"; n++;
-      mpeg2enc_command[n] =  temp10; n++;
-     }
-   if((*pointenc).sequencesize != 0) {
-      sprintf(temp12, "%i", (*pointenc).sequencesize);
-      mpeg2enc_command[n] =  "-S"; n++;
-      mpeg2enc_command[n] =  temp12; n++;
-     }
-   if(((*pointenc).sequencesize != 0i) && ((*pointenc).nonvideorate != 0)) {
-      sprintf(temp13, "%i", (*pointenc).nonvideorate);
-      mpeg2enc_command[n] =  "-B"; n++;
-      mpeg2enc_command[n] =  temp13; n++;
-     }
-   if ( ( (*pointenc).minGop != 12 ) && 
-        ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
-      sprintf(temp16, "%i", (*pointenc).minGop);
-      mpeg2enc_command[n] =  "-g"; n++;
-      mpeg2enc_command[n] =  temp16; n++;
-     }
-   if ( ( (*pointenc).maxGop != 12 ) && 
-        ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
-      sprintf(temp17, "%i", (*pointenc).maxGop);
-      mpeg2enc_command[n] =  "-G"; n++;
-      mpeg2enc_command[n] =  temp17; n++;
-     }
-   
-/* And here the support fpr the different versions vo mjpeg tools */
-/* And the different mpeg versions */
-   if (encoding_syntax_style == 140)
-   {
-     if ((*pointenc).muxformat >= 3)
-       {
-         mpeg2enc_command[n] = "-m"; n++;
-         mpeg2enc_command[n] = "2"; n++; 
-       }
-     if (((*pointenc).muxformat != 0) && ((*pointenc).muxformat != 3))
-       {
-         mpeg2enc_command[n] = "-s"; n++;
-       }
-   }
-   if (encoding_syntax_style == 150)
-   {
-     if((*pointenc).muxformat != 0) 
-       {
-         sprintf(temp5, "%i",(*pointenc).muxformat);
-         mpeg2enc_command[n] =  "-f"; n++;
-         mpeg2enc_command[n] =  temp5; n++;
-       }
-     if((*pointenc).muxformat >= 3)
-       {
-         mpeg2enc_command[n] = "-P";
-         n++;
-       }
-   }
+   create_command_mpeg2enc(mpeg2enc_command);
 
-/* And here again some common stuff */
-   mpeg2enc_command[n] = "-o"; n++;
-   mpeg2enc_command[n] = enc_videofile; n++;
-   mpeg2enc_command[n] = NULL;
- 
+   create_command_yuv2divx(yuv2divx_command);
+
    start_pipe_command(mpeg2enc_command, MPEG2ENC);
 
    /* let's start yuvplay to show video while it's being encoded */
@@ -664,22 +714,6 @@ void video_convert()
    {
       /* set variable in pipes.h to tell not to use yuvscaler */
       use_yuvscaler_pipe = 0;
-   }
-
-   /* Here, the command for the pipe for yuvdenoise may be added */
-   if ( ((*pointenc).use_yuvdenoise == 1) && (encoding_syntax_style == 150) )
-     {
-      n = 0;
-      yuvdenoise_command[n] = YUVDENOISE_LOCATION; n++;     
-      yuvdenoise_command[n] = NULL;
- 
-      start_pipe_command(yuvdenoise_command, YUVDENOISE);
-      use_yuvdenoise_pipe = 1;
-     }
-   else 
-     {
-      /* set variable in pipes.h to tell not to use yuvdenoise */
-      use_yuvdenoise_pipe = 0;
      }
 
    n = 0;
@@ -1147,7 +1181,7 @@ void encode_all (GtkWidget *widget, gpointer data)
   audio_convert();   /* using go_all_the_way only one call is needed */
 }
 
-/* Create the irst line of the buttons shown */
+/* Create the first line of the buttons shown */
 void create_buttons1 (GtkWidget *table1)
 {
   GtkWidget *do_all;
@@ -1253,33 +1287,18 @@ GtkWidget *button_option;
 
 }
 
-/* set the task to do and the video extension */
-void set_task(GtkWidget *widget, gpointer data)
+/* Check the name for the mpeg */
+void check_mpegname(gpointer data)
 {
 char temp[3];
 int i;
 
+gtk_widget_show(create_sound); 
+gtk_widget_show(do_video); 
+gtk_widget_show(mplex_only); 
+
 for (i = 0; i < 3; i++)
   temp[i]='\0';
-
-  if      (strcmp ((char*)data,"MPEG1") == 0)
-    pointenc = &encoding;
-  else if (strcmp ((char*)data,"MPEG2") == 0)
-   {
-      pointenc = &encoding2;
-      gtk_widget_hide(create_sound); 
-      gtk_widget_show(mplex_only); 
-   }
-  else if (strcmp ((char*)data,"VCD")   == 0)
-   {
-      pointenc = &encoding_vcd;
-      gtk_widget_show(mplex_only); 
-   }
-  else if (strcmp ((char*)data,"SVCD")  == 0)
-   {
-      pointenc = &encoding_svcd;
-      gtk_widget_hide(mplex_only); 
-   }
 
   sprintf(temp,"%c",enc_videofile[strlen(enc_videofile)-2]);
 
@@ -1293,9 +1312,68 @@ for (i = 0; i < 3; i++)
       gtk_entry_set_text(GTK_ENTRY(video_entry), enc_videofile);
     }       
 
+    sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
+                          enc_outputfile[strlen(enc_outputfile)-2], 
+                          enc_outputfile[strlen(enc_outputfile)-1] );
+    if ( strcmp(temp,"avi") == 0)
+      {
+        enc_outputfile[strlen(enc_outputfile)-3] = 'm';
+        enc_outputfile[strlen(enc_outputfile)-2] = 'p';
+        enc_outputfile[strlen(enc_outputfile)-1] = 'g';
+      }
+    gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
+}
+
+/* set the task to do and the video extension */
+void set_task(GtkWidget *widget, gpointer data)
+{
+char temp[3];
+int i;
+
+for (i = 0; i < 3; i++)
+  temp[i]='\0';
+
+  if      (strcmp ((char*)data,"MPEG1") == 0)
+   {
+      pointenc = &encoding;
+      check_mpegname(data);
+   }
+  else if (strcmp ((char*)data,"MPEG2") == 0)
+   {
+      pointenc = &encoding2;
+      check_mpegname(data);
+   }
+  else if (strcmp ((char*)data,"VCD")   == 0)
+   {
+      pointenc = &encoding_vcd;
+      check_mpegname(data);
+   }
+  else if (strcmp ((char*)data,"SVCD")  == 0)
+   {
+      pointenc = &encoding_svcd;
+      check_mpegname(data);
+   }
+  else if (strcmp ((char*)data,"DIVx")  == 0)
+   {
+      pointenc = &encoding_svcd;
+      gtk_widget_hide(create_sound); 
+      gtk_widget_hide(do_video); 
+      gtk_widget_hide(mplex_only); 
+
+      sprintf(temp,"%c%c%c",enc_outputfile[strlen(enc_outputfile)-3],
+                            enc_outputfile[strlen(enc_outputfile)-2], 
+                            enc_outputfile[strlen(enc_outputfile)-1] );
+      if ( strcmp(temp,"mpg") == 0)
+        {
+          enc_outputfile[strlen(enc_outputfile)-3] = 'a';
+          enc_outputfile[strlen(enc_outputfile)-2] = 'v';
+          enc_outputfile[strlen(enc_outputfile)-1] = 'i';
+        }
+      gtk_entry_set_text(GTK_ENTRY(output_entry), enc_outputfile);
+   }
+
   if (verbose)
     printf(" Set encoding task to %s \n",(char*)data);
-    
 }
 
 /* Create the task layout, and the Option buttons */
@@ -1304,10 +1382,11 @@ void create_task_layout(GtkWidget *table)
 {
 int encx, ency;
 GtkWidget *button_mpeg1, *button_mpeg2, *button_vcd, *button_svcd;
+GtkWidget *button_divx;
 GSList *task_group;
 
 encx=0;
-ency=2;
+ency=5;
 
 
   button_mpeg1 = gtk_radio_button_new_with_label (NULL, "MPEG - 1");
@@ -1348,6 +1427,16 @@ ency=2;
   task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_svcd));
   gtk_widget_show (button_svcd);
   create_option_button(task_group, table, "SVCD", encx+1, ency);
+  ency++;
+
+  button_divx = gtk_radio_button_new_with_label(task_group, "DIVx ");
+  gtk_signal_connect (GTK_OBJECT (button_divx), "toggled",
+                      GTK_SIGNAL_FUNC (set_task), (gpointer) "DIVx");
+  gtk_table_attach_defaults (GTK_TABLE (table), button_divx, 
+                                    encx, encx+1, ency, ency+1);
+  task_group = gtk_radio_button_group (GTK_RADIO_BUTTON (button_divx));
+  gtk_widget_show (button_divx);
+  create_option_button(task_group, table, "DIVx", encx+1, ency);
   ency++;
 
 }
