@@ -3,12 +3,12 @@
 #include "fastintfns.h"
 
 int build_sub22_mests_mmxe( me_result_set *sub44set,
-							me_result_set *sub22set,
-							int i0,  int j0, int ihigh, int jhigh, 
-							int null_ctl_sad,
-							uint8_t *s22org,  uint8_t *s22blk, 
-							int frowstride, int fh,
-							int reduction)
+				me_result_set *sub22set,
+				int i0,  int j0, int ihigh, int jhigh, 
+				int null_ctl_sad,
+				uint8_t *s22org,  uint8_t *s22blk, 
+				int frowstride, int fh,
+				int reduction)
 {
 	int i,k,s;
 	int threshold = 6*null_ctl_sad / (2 * 2*reduction);
@@ -42,7 +42,7 @@ int build_sub22_mests_mmxe( me_result_set *sub44set,
 		{
 			if( x <= ilim && y <= jlim )
 			{	
-				s =resvec[i]+(intmax(intabs(x),intabs(y))<<3);
+				s =resvec[i]+(intmax(abs(x), abs(y))<<3);
 				if( s < threshold )
 				{
 					me_result_s *mc = &sub22set->mests[sub22set->len];

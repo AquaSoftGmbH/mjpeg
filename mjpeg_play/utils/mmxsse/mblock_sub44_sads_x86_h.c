@@ -34,6 +34,8 @@
 #include "config.h"
 #endif
 
+#include <stdlib.h>
+
 #define PREFETCH_OPT
 /*
  *
@@ -55,17 +57,17 @@
  * */
 
 int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
-									  int ilow,int jlow,
-									  int ihigh, int jhigh, 
-									  int h, int rowstride, 
-									  int threshold,
-									  me_result_s *resvec)
+					int ilow,int jlow,
+					int ihigh, int jhigh, 
+					int h, int rowstride, 
+					int threshold,
+					me_result_s *resvec)
 {
 	int32_t x,y;
 	uint8_t *currowblk = blk;
 	uint8_t *curblk;
 	me_result_s *cres = resvec;
-	int      gridrowstride = (rowstride);
+	int      gridrowstride = rowstride;
 	int weight;
 
 	for( y=jlow; y <= jhigh ; y+=4)
@@ -89,7 +91,7 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 				   as otherwise the sub-mean filtering won't work on very
 				   uniform images.
 				 */
-				cres->weight = (uint16_t)(weight+(intmax(intabs(x),intabs(y))<<2));
+				cres->weight = (uint16_t)(weight+(intmax(abs(x),abs(y))<<2));
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
 				++cres;
@@ -102,5 +104,3 @@ int SIMD_SUFFIX(mblocks_sub44_mests)( uint8_t *blk,  uint8_t *ref,
 	emms();
 	return cres - resvec;
 }
-
-#undef concat
