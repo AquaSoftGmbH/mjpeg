@@ -774,12 +774,13 @@ bottom_field_storage (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field1 += frame->y_width;
 	}
-      u_c_p -= frame->uv_width;
+      u_c_p -= frame->y_width;
+      u_c_p += frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (field1, u_c_p, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field1 += frame->uv_width;
 	}
     }
@@ -793,12 +794,13 @@ bottom_field_storage (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field2 += frame->y_width;
 	}
-      u_c_p -= frame->uv_width;
+      u_c_p -= frame->y_width;
+      u_c_p += frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (field2, u_c_p, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field2 += frame->uv_width;
 	}
     }
@@ -817,7 +819,6 @@ top_field_storage (frame_t * frame, uint8_t oddeven, uint8_t * field1,
   uint8_t *u_c_p;
   // This function stores the current bottom field into tabular field[1 or 2] 
   u_c_p = frame->y;
-//  u_c_p += frame->y_width; // first pixel of the bottom field
   if (oddeven)
     {
       // field1
@@ -828,12 +829,11 @@ top_field_storage (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field1 += frame->y_width;
 	}
-//      u_c_p -= frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (field1, u_c_p, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field1 += frame->uv_width;
 	}
     }
@@ -847,12 +847,11 @@ top_field_storage (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field2 += frame->y_width;
 	}
-//      u_c_p -= frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (field2, u_c_p, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field2 += frame->uv_width;
 	}
     }
@@ -883,12 +882,13 @@ bottom_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field2 += frame->y_width;
 	}
-      u_c_p -= frame->uv_width;
+      u_c_p -= frame->y_width;
+      u_c_p += frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (u_c_p, field2, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field2 += frame->uv_width;
 	}
     }
@@ -902,12 +902,13 @@ bottom_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field1 += frame->y_width;
 	}
-      u_c_p -= frame->uv_width;
+      u_c_p -= frame->y_width;
+      u_c_p += frame->uv_width;
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (u_c_p, field1, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field1 += frame->uv_width;
 	}
     }
@@ -926,7 +927,6 @@ top_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
   uint8_t *u_c_p;
   // This function replaces the current bottom field with tabular field[1 or 2] 
   u_c_p = frame->y;
-//  u_c_p += frame->y_width;
 
   if (oddeven)
     {
@@ -938,12 +938,11 @@ top_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field2 += frame->y_width;
 	}
-//      u_c_p -= (frame->y_width >> 1);
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (u_c_p, field2, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field2 += frame->uv_width;
 	}
     }
@@ -957,12 +956,11 @@ top_field_replace (frame_t * frame, uint8_t oddeven, uint8_t * field1,
 	  u_c_p += (frame->y_width << 1);
 	  field1 += frame->y_width;
 	}
-//      u_c_p -= (frame->y_width >> 1);
       // U and V COMPONENTS
-      for (ligne = 0; ligne < frame->y_height; ligne += 2)
+      for (ligne = 0; ligne < (frame->uv_height << 1); ligne += 2)
 	{
 	  memcpy (u_c_p, field1, frame->uv_width);
-	  u_c_p += frame->y_width;
+	  u_c_p += (frame->uv_width << 1);
 	  field1 += frame->uv_width;
 	}
     }
