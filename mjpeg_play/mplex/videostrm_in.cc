@@ -120,8 +120,12 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 	mjpeg_debug( "Scanning %d video frames to frame %d\n", 
 				 frames_to_buffer, last_buffered_AU );
 
+    // We set a limit of 2M to seek before we give up.
+    // This is intentionally very high because some heavily
+    // padded still frames may have a loooong gap before
+    // a following sequence end marker.
 	while(!bs.eos() && 
-		  bs.seek_sync( SYNCWORD_START, 24, 100000) &&
+		  bs.seek_sync( SYNCWORD_START, 24, 2*1024*1024) &&
 	      decoding_order < last_buffered_AU  &&
 		  (!opt_max_PTS || access_unit.PTS < opt_max_PTS ) 
 		)
@@ -148,7 +152,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.end_seq = 0;
 				avg_frames[access_unit.type-1]+=access_unit.length;
 				aunits.append( access_unit );					
-				mjpeg_debug( "Found AU %d: DTS=%d\n", access_unit.dorder,
+				mjpeg_info( "Found AU %d: DTS=%d\n", access_unit.dorder,
 							 access_unit.DTS/300 );
 				AU_hdr = syncword;
 				AU_start = stream_length;
@@ -158,7 +162,7 @@ void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 				access_unit.length = ((stream_length - AU_start)>>3)+4;
 				access_unit.end_seq = 1;
 				aunits.append( access_unit );
-				mjpeg_debug( "Completed end AU %d\n", access_unit.dorder );
+				mjpeg_info( "Scanned to end AU %d\n", access_unit.dorder );
 				avg_frames[access_unit.type-1]+=access_unit.length;
 
 				/* Do we have a sequence split in the video stream? */
