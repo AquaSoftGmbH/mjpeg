@@ -214,7 +214,7 @@ void *my_malloc(size_t size)
 {
     void *tmp = malloc(size);
     if (tmp == NULL)
-	    mjpeg_error_exit1("malloc(%d) failed\n", size);
+	    mjpeg_error_exit1("malloc(%ld) failed\n", size);
     return tmp;
 }
 
