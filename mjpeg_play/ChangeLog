@@ -53,7 +53,7 @@
 	* Dynamic GOP sizing and SMP support in mpeg2enc.  Minor refinements to
 	  motion compensation.
 
-	* Signficant enhancement and bug-fixing of lavrec and lavtools
+	* Signficant enhancement and bug-fixing of lavrec and lavtools.
 
 	* Addition of yuvscaler and yuvplay, ypipe and yuv2lav utilities
 
@@ -63,6 +63,12 @@
 	
 CVS log:
 $Log$
+Revision 1.10  2001/05/06 15:59:15  wackston
+Bug fix for m/c type select in motion.c  also made field M/C use
+chroma info.
+
+Minor fixes elewhere related consistenct logging / command lines.
+
 Revision 1.9  2001/02/07 14:45:05  wackston
 Minor tidyings and bug-fixes ready for 1.3b3 release.
 

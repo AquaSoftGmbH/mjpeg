@@ -60,17 +60,26 @@ compression tools.
   streams will  work fine with this, ending cleanly when they reach the
   actual end.
 
-- "lav2dfilter".  A median filter for noise reduction.  Useful when MPEG
-  encoding TV material.
+There are also some handy image processing and automated processing
+filter utilities.
 
-- "v4l-conf" is used in X to set up your video framebuffer address
+- "yuvmedianfilter".  A median filter for noise reduction.  Used between
+	lav2yuv and mpeg2enc
 
-- "yuv2lav", "ypipe" and "transist.flt" for (first decode an mjpeg 
-  input file into raw yuv data (lav2yuv)) putting the data of more than 
-  one yuv stream together (ypipe), making a transition between the two
-  input streams (transist.flt) and for making an mjpeg file out of the 
-  resulting yuv data (yuv2lav). Read README.transist for more info on
-  how to use this.
+- "yuvplay".  Simply displays YUV onscreen.  Astonishingly useful for checking
+	what your processing pipeline is up to!
+
+- "yuvscaler". A flexible image scaling utility.  If you want to squeeze
+   letterbox video to fit a 4:3 frame for encoding to MPEG
+	 or similar things this is 	the tool for you. 
+
+
+- "yuv2lav", "ypipe", "matteblend.flt" and "transist.flt" 
+	for  putting the data of more than 
+    one yuv stream together (ypipe), making a transition between the two
+    input streams (*.flt) and for making an mjpeg file out of the 
+    resulting yuv data (yuv2lav). Read README.transist for more info on
+    how to use this.
 
 * The scripts directory
 
@@ -87,11 +96,7 @@ intended as examples of typical uses.
 - "mpeg2enc" for encoding the output of lav2yuv or suitable
   output plugins in mpeg2dec to MPEG-1/2 video streams.
 
-See the README for further details.
-In the current beta release MPEG-2 is untested and variable
-bit-rate probably won't work.  HOWEVER: speed and quality for
-MPEG-1 are really rather good. Encoding 352x288 PAL at 18
-fps on a 700Mhz Duron or 11ps on a 450Mhz P-III.
+	See the mpeg2enc/README for further details.
 
 * The aenc directory - 
 
@@ -123,12 +128,13 @@ This is *not* quite as trivial a task as it might seem (see the
 original authors paper on the subject - copy is in the
 documentation). Note that the program has been pretty heavily
 modified since then.
-MPEG-2 multiplexing is implemented but is currently untested.
+MPEG-2 multiplexing is implemented but is currently tested only for
+SVCD.
 DVD VOB multiplexing (AC3 audio in addition to MPEG) is not implemented.
 
 
 
-* The mjpeg directory
+* The mjpeg and utils director
 
 Contains libraries to handle the new MJPEG movtar video format and a
 library to simplify MJPEG software and hardware playback,

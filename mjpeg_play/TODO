@@ -1,7 +1,5 @@
 IMMEDIATE
 
-Fix mplex so useful info about where streams end is displayed in info
-diagnostics
 
 Fix all the BUGS (see BUGS) of course!
 
@@ -26,10 +24,6 @@ a look at the source code for vcdimager!
 - Go through MJPEG lib and add proper error returns.  Go through lavplay
 	and lavrec and add proper error handling and break up those oversize
 	functions.
-
-- Consistent format for diagnostic messages.  This is almost done
-	with all but the smallest / least-mature utilities now using the
-	mjpeg_* logging utility library.
 
 - The single-letter soup of the various getopts needs to be replaced
 	with getopts_long style command lines.

@@ -1,5 +1,5 @@
-Linux Audio/Video tools - LAVTOOLS
-==================================
+Linux MPEG/MJPEG Audio/Video tools - MJPEG TOOLS
+================================================
 
 The lavtools stand for "Linux/Audio video tools" and are released
 under the General GNU Public Licence, see the COPYING file for
@@ -33,6 +33,10 @@ Irritatingly some older installation make the header "X11/forms.h" whilst
 more recent ones use "forms.h".  If compilation stops with one of these
 files missing make sure you have forms installed.  The 0.88.1-1 rpm's
 for RedHat seem to work fine.
+
+Warning: there's a bug in the Debian testing that means attempting to
+install the xforms .deb tends to force dselect to deselect XFree86-4.0.x!
+Be careful!
 
 Hopefully in the next release xforms will be replaced by a more stable
 library like gtk+.

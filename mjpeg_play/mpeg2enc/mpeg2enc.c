@@ -223,7 +223,6 @@ static void Usage(char *str)
 	printf("              stream.  -B specifies the bitrate of non-video data\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -p         Generate header flags for 32 pull down of 24fps movie.\n");
-	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
 	printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
 	printf("   -h         Maximise high-frequency resolution (useful for high quality sources at high bit-rates)\n" );
 	printf("   -?         Print this lot out!\n");

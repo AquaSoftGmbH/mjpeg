@@ -751,7 +751,7 @@ void get_info_audio (
     } while (!end_bs(&audio_bs) && 
     		(!opt_max_PTS || access_unit.PTS < opt_max_PTS));
 
-    mjpeg_info ("\nDone, stream bit offset %lld.\n",AU_start);
+    mjpeg_info ("Done, stream bit offset %lld.\n",AU_start);
 
     audio_info->stream_length = AU_start >> 3;
     finish_getbits (&audio_bs);

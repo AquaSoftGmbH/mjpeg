@@ -84,7 +84,8 @@ int main(int argc, char *argv[])
                exit(1);
             }
             break;
-         case 'h':
+	  case 'h':
+	  case '?':
             usage();
             exit(1);
             break;

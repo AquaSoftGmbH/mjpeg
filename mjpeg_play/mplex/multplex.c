@@ -5,17 +5,6 @@
 #include <unistd.h>
 
 
-#ifdef TIMER
-extern long total_sec;
-extern long total_usec;
-extern long global_sec;
-extern long global_usec;
-extern struct timeval  tp_start;
-extern struct timeval  tp_end;
-extern struct timeval  tp_global_start;
-extern struct timeval  tp_global_end;
-#endif
-
 unsigned int    which_streams;
 int 			system_header_size;
 int 			sector_size;
@@ -306,7 +295,8 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	else if ( opt_data_rate < dmux_rate )
 	{
 			mjpeg_warn( "Target data rate lower than computed requirement!\n");
-			mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\nstreams is common and harmless provided no time-outs will occur\n"); 
+			mjpeg_warn( "N.b. a 20%% or so discrepancy in variable bit-rate\n");
+			mjpeg_warn( "streams is common and harmless provided no time-outs will occur\n"); 
 			dmux_rate = opt_data_rate;
 		}
 
@@ -516,6 +506,8 @@ void outputstream ( char 		*video_file,
 	Buffer_struc video_buffer;
 	Buffer_struc audio_buffer;
 
+	int video_ended = 0;
+	int audio_ended = 0;
 
 	unsigned int packets_left_in_pack = 0; /* Suppress warning */
 	unsigned char padding_packet;
@@ -812,11 +804,12 @@ void outputstream ( char 		*video_file,
 							start_of_new_pack, include_sys_header, opt_VBR,
 							0);
 			padding_packet =TRUE;
-			++nsec_p;
+			if( ! opt_VBR )
+				++nsec_p;
 		}
 	
-		/* Update the counter for pack packets.  VBR is a tricky case as here padding
-		   packets are "virtual" */
+		/* Update the counter for pack packets.  VBR is a tricky 
+		   case as here padding packets are "virtual" */
 		
 		if( ! (opt_VBR && padding_packet) )
 		{
@@ -826,39 +819,37 @@ void outputstream ( char 		*video_file,
 		}
 		bytes_output += sector_transport_size;
 
-#ifdef TIMER
-			gettimeofday (&tp_start,NULL);
-#endif 
+
 			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
 						 buffer_space(&video_buffer),
 						 buffer_space(&audio_buffer),
 						 LOG_DEBUG);
 
-#ifdef TIMER
-			gettimeofday (&tp_end,NULL);
-			total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-			total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 		/* Unless sys headers are always required we turn them off after the first
 		   packet has been generated */
 		include_sys_header = always_sys_header_in_pack;
+
+		if( !video_ended && video_au.length == 0 )
+		{
+			mjpeg_info( "Video stream ended.\n" );
+			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
+						 buffer_space(&video_buffer),
+						 buffer_space(&audio_buffer),
+						 LOG_INFO);
+			video_ended = 1;
+		}
+
+		if( !audio_ended && audio_au.length == 0 )
+		{
+			mjpeg_info( "Audio stream ended.\n" );
+			status_info (nsec_a, nsec_v, nsec_p, bytes_output,
+						 buffer_space(&video_buffer),
+						 buffer_space(&audio_buffer),
+						 LOG_INFO);
+			audio_ended = 1;
+		}
 	}
 
-
-
-#ifdef TIMER
-	gettimeofday (&tp_start,NULL);
-#endif 
-	/* status info*/
-	status_info (nsec_a, nsec_v, nsec_p, bytes_output, 
-				 buffer_space(&video_buffer),
-				 buffer_space(&audio_buffer),
-				 LOG_INFO); 
-#ifdef TIMER
-	gettimeofday (&tp_end,NULL);
-	total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-	total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 
 	outputstreamsuffix( &current_SCR, ostream, &bytes_output);
 
@@ -870,17 +861,6 @@ void outputstream ( char 		*video_file,
 	if (which_streams & STREAMS_VIDEO) fclose (istream_v);
 
 
-#ifdef TIMER
-	gettimeofday (&tp_global_end, NULL);
-	global_sec = 10*(tp_global_end.tv_sec - tp_global_start.tv_sec);
-	global_usec= 10*(tp_global_end.tv_usec - tp_global_start.tv_usec);
-	global_sec += (global_usec / 100000);
-	total_sec *= 10;
-	total_sec  += (total_usec  / 100000);
-
-	printf ("Timing global: %10.1f secs\n",(float)global_sec/10.);
-	printf ("Timing IO    : %10.1f secs\n",(float)total_sec/10.);
-#endif
     
 }
 
@@ -929,7 +909,6 @@ void next_video_access_unit (Buffer_struc *buffer,
 	  else
 	    {
 		  empty_vaunit_struc (video_au);
-		  status_message(STATUS_VIDEO_END,0);
 		  return;
 	    }
 	  *AU_starting_next_sec = video_au->type;
@@ -956,7 +935,6 @@ void next_video_access_unit (Buffer_struc *buffer,
 		  else
 			{
 			  empty_vaunit_struc (video_au);
-			  status_message(STATUS_VIDEO_END,0);
 			  return;
 			}
 		  *AU_starting_next_sec = video_au->type;
@@ -1112,7 +1090,6 @@ void output_video ( clockticks SCR,
 		} 
 	  else
 		{
-		  status_message(STATUS_VIDEO_END,0);
 		  empty_vaunit_struc (video_au);
 		  create_sector ( &cur_sector, pack_ptr, sys_header_ptr,
 						  0,
@@ -1122,28 +1099,11 @@ void output_video ( clockticks SCR,
 		};
 
 
-#ifdef TIMER
-	  gettimeofday (&tp_end,NULL);
-	  total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-	  total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
-
 	}
 
 
   /* Sector auf Platte schreiben				*/
-  /* write out sector						*/
-#ifdef TIMER
-  gettimeofday (&tp_start,NULL);
-#endif 
   fwrite (cur_sector.buf, sector_size, 1, ostream);
-#ifdef TIMER
-  gettimeofday (&tp_end,NULL);
-  total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-  total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
-
-
   
   buffers_in_video = always_buffers_in_video;
 	
@@ -1185,7 +1145,6 @@ void next_audio_access_unit (Buffer_struc *buffer,
 	  else
 	    {
 		  empty_aaunit_struc (audio_au);
-		  status_message(STATUS_AUDIO_END,0);
 		  return;
 	    }
 	  *audio_frame_start = TRUE;
@@ -1207,7 +1166,6 @@ void next_audio_access_unit (Buffer_struc *buffer,
 		  else
 			{
 			  empty_aaunit_struc (audio_au);
-			  status_message(STATUS_AUDIO_END,0);
 			  return;
 			}
 		  *audio_frame_start = TRUE;
@@ -1339,7 +1297,6 @@ void output_audio ( clockticks SCR,
 								  audio_frame_start, SCR_delay, aaunit_info_vec );
 		} else
 		  {
-			status_message(STATUS_AUDIO_END,0);
 			empty_aaunit_struc (audio_au);
 			create_sector (&cur_sector, pack_ptr, sys_header_ptr,
 						   0,
@@ -1347,26 +1304,12 @@ void output_audio ( clockticks SCR,
 						   buffers_in_audio, 0, 0,
 						   TIMESTAMPBITS_NO );
 		  };
-#ifdef TIMER
-	  gettimeofday (&tp_end,NULL);
-	  total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-	  total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
-
 
     }
 
   /* Sector auf Platte schreiben				*/
   /* write out sector onto disk				*/
-#ifdef TIMER
-  gettimeofday (&tp_start,NULL);
-#endif 
   fwrite (cur_sector.buf, sector_size, 1, ostream);
-#ifdef TIMER
-  gettimeofday (&tp_end,NULL);
-  total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-  total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 
   buffers_in_audio = always_buffers_in_audio;
 	
@@ -1430,17 +1373,9 @@ void output_padding (
 					 FALSE, 0, 0,
 					 TIMESTAMPBITS_NO );
 
-#ifdef TIMER
-	  gettimeofday (&tp_start,NULL);
-#endif 
 	  fwrite (cur_sector.buf, sector_size, 1, ostream);
 	}
 
-#ifdef TIMER
-  gettimeofday (&tp_end,NULL);
-  total_sec  += (tp_end.tv_sec - tp_start.tv_sec);
-  total_usec += (tp_end.tv_usec - tp_start.tv_usec);
-#endif
 
 	
 }

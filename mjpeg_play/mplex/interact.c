@@ -210,27 +210,11 @@ void status_info (	unsigned int nsectors_a,
 					log_level_t level
 				 )
 {
-	mjpeg_log( level, "A secs=%6d V secs=%7d P secs=%7d\n" ,nsectors_a,nsectors_v,nsectors_p);
+	mjpeg_log( level, "sectors muxed: audio=%07d video=%08d padding=%07d\n" ,nsectors_a,nsectors_v,nsectors_p);
 	mjpeg_log( LOG_DEBUG,"l=%11lld abuf=%6d vbuf=%6d\n",nbytes,buf_a,buf_v);
 }
 
 
-
-
-void status_message (int what, int decode_number)
-
-{
-  switch (what)
-  {
-  case STATUS_AUDIO_END:
-	  mjpeg_info("Audio stream end at sector %07d\n", decode_number);
-  break;
-  case STATUS_VIDEO_END:
-	  mjpeg_info("Video stream end at sector %07d\n", decode_number);
-  break;
-  }
-
-}
 
 void timeout_error(int what, int decode_number)
 {
@@ -238,10 +222,10 @@ void timeout_error(int what, int decode_number)
 	switch (what)
 		{
 		case STATUS_AUDIO_TIME_OUT:
-			mjpeg_error("Timeout in audio at sector %07d\n",decode_number);
+			mjpeg_error("Likely buffer under-run at  audio sector %d\n",decode_number);
 			break;
 		case STATUS_VIDEO_TIME_OUT:
-			mjpeg_error("Timeout in video at sector %07d\n",decode_number);
+			mjpeg_error("Likely buffer under-run  at video sector %d\n",decode_number);
 			break;
 		}
 	if( ++timeouts > opt_max_timeouts )

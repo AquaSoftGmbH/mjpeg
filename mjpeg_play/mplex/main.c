@@ -65,16 +65,6 @@
     Main
 *************************************************************************/
 
-#ifdef TIMER
-    long total_sec = 0;
-    long total_usec = 0;
-    long global_sec = 0;
-    long global_usec = 0;
-    struct timeval  tp_start;
-    struct timeval  tp_end;
-    struct timeval  tp_global_start;
-    struct timeval  tp_global_end;
-#endif
 
 unsigned int which_streams;
 
