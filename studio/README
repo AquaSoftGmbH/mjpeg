@@ -32,6 +32,11 @@ I'm not the only one who likes it that way.
 Linux Video Studio is still what it wanted to be - a GUI for the MJPEG-
 tools. And that's all I really need for now :-).
 
+It's also recomeended that you read the doku of the mjpeg tools, So you 
+understand how they work. And you can set up the option the right way. 
+Take a look at the mjpeg-howto. (man mjpegtools, if installed) Or check out 
+the doku on sourceforge (http://mjpeg.sourceforge.net).
+
 Installation
 ---------------
 Moved to INSTALL
