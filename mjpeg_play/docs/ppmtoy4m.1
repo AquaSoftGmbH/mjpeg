@@ -6,7 +6,7 @@ ppmtoy4m \- Convert PPM images to YUV4MPEG2 stream
 .SH "SYNOPSIS"
 .B ppmtoy4m
 .RI [ options ]
-.I [ filename ] " ..."
+.I [ filename ]
 
 .SH "DESCRIPTION"
 \fBppmtoy4m\fP converts one or more raw PPM images into a YUV4MPEG2 stream
@@ -26,6 +26,14 @@ The input images must have 8 bits per channel (i.e. 'maxval' must be 255).
 
 Input images should be in the usual R'G'B' colorspace.  They are converted
 to the Y'CbCr colorspace (ITU-R BT.601) and chroma subsampled before output.
+
+\fBppmtoy4m\fP and \fBy4mtoppm\fP are inverses of each other; you can
+pipe the output of one into the other, and vice-versa.  Note that the
+subsampling and colorspace operations are lossy in both directions.  And,
+when converting to PPM, information on interlacing and sample aspect ratio
+is lost (but can be reconstructed by supplying command-line arguments to
+\fBppmtoy4m\fP.
+
 
 .SH "OPTIONS"
 \fBppmtoy4m\fP accepts the following options:

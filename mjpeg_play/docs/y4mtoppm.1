@@ -1,0 +1,88 @@
+.\" 
+.TH "y4mtoppm" "1" "11 April 2002" "MJPEG Linux Square" "MJPEG tools manual"
+.SH "NAME"
+y4mtoppm \- Convert YUV4MPEG2 stream to PPM images
+
+.SH "SYNOPSIS"
+.B y4mtoppm
+.RI [ options ]
+
+.SH "DESCRIPTION"
+\fBy4mtoppm\fP converts a YUV4MPEG2 stream into a sequence
+of raw PPM images.
+
+Input is read from stdin, like all other YUV4MPEG2 filters and tools.
+
+Output is to stdout (but feel free to have the shell redirect to a file).
+YUV4MPEG2 streams contain 4:2:0 subsampled frames using the Y'CbCr colorspace
+(ITU-R BT.601).  \fBy4mtoppm\fP will upsample each frame (to 4:4:4) and
+convert each pixel to the usual R'G'B' colorspace used for computer graphics.
+
+For interlaced streams, these operations are performed on each field
+individually.  Fields can be output as separate PPM images in time-order
+(default), or interleaved into full-frame images.
+
+If multiple PPM images are generated, they are simply output one after
+another.  If you want to turn such a "multi-image" PPM stream/file into
+individual files, use \fBpnmsplit\fP.  (Some PNM filters can process
+multi-image files/streams; however, many written before June 2000 will
+only process the first image.)
+
+\fBy4mtoppm\fP and \fBppmtoy4m\fP are inverses of each other; you can
+pipe the output of one into the other, and vice-versa.  Note that the
+subsampling and colorspace operations are lossy in both directions.  And,
+when converting to PPM, information on interlacing and sample aspect ratio
+is lost (but can be reconstructed by supplying command-line arguments to
+\fBppmtoy4m\fP.
+
+
+.SH "OPTIONS"
+\fBy4mtoppm\fP accepts the following options:
+
+.TP 5
+.BI \-L
+For interlaced streams, output a single PPM image for each frame, containing
+two interleaved fields.
+(Otherwise, two PPM images will be generated for each frame; one per field.)
+.TP 5
+.BI \-S " mode"
+Set chroma supersampling mode.  (default:  420_jpeg)
+  420_jpeg - 4:2:0 JPEG/MPEG-1, interstitial cositing 
+ 420_mpeg2 - 4:2:0 MPEG-2, horizontal cositing [NOT YET IMPLEMENTED]
+
+Changing the supersampling mode from the default won't necessarily
+make anything better.  This option is just for experimenting.
+.TP 5
+.BI \-v " [0,1,2]"
+Set verbosity level.  
+ 0 = warnings and errors only.
+ 1 = add informative messages, too.
+ 2 = add chatty debugging message, too.
+
+.SH "EXAMPLES"
+.hw y4mtoppm pnmsplit lav2yuv
+To turn the first 15 frames of an (MJPEG or DV) AVI file into individual
+PPM files:
+
+.RS 5
+lav2yuv -f 15 your-video.avi | y4mtoppm | pnmsplit - "your-video-%d.ppm"
+.RE
+
+.SH "AUTHOR"
+This man page was written by Matt Marjanovic.
+.br 
+If you have questions, remarks, problems or you just want to contact
+the developers, the main mailing list for the MJPEG\-tools is:
+  \fImjpeg\-users@lists.sourceforge.net\fP
+
+.TP 
+For more info, see our website at
+.I http://mjpeg.sourceforge.net
+
+.SH "SEE ALSO"
+.BR ppm (5),
+.BR pnm (5),
+.BR mjpegtools (1),
+.BR mpeg2enc (1),
+.BR lav2yuv (1),
+.BR pnmsplit (1)

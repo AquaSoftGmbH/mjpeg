@@ -450,6 +450,18 @@ void setup_output_stream(int fdout, cl_info_t *cl,
 			 y4m_stream_info_t *sinfo, ppm_info_t *ppm,
 			 int *field_height) 
 {
+  if ((ppm->width % 2) != 0) {
+    mjpeg_error("PPM width (%d) is not a multiple of 2!\n", ppm->width);
+    exit(1);
+  }
+  if (((ppm->height % 2) != 0) && (cl->interlace == Y4M_ILACE_NONE)) {
+    mjpeg_error("PPM height (%d) is not a multiple of 2!\n", ppm->height);
+    exit(1);
+  } else if (((ppm->height % 4) != 0) && (cl->interlace != Y4M_ILACE_NONE)) {
+    mjpeg_error("PPM height (%d) is not a multiple of 4!\n", ppm->height);
+    exit(1);
+  }
+
   y4m_si_set_width(sinfo, ppm->width);
   if (cl->interlace == Y4M_ILACE_NONE) {
     y4m_si_set_height(sinfo, ppm->height);

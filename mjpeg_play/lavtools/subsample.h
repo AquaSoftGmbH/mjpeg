@@ -44,3 +44,6 @@ extern const char *ssm_description[SSM_COUNT];
 
 void chroma_subsample(subsample_mode_t mode, uint8_t *ycbcr[],
 		      int width, int height);
+
+void chroma_supersample(subsample_mode_t mode, uint8_t *ycbcr[],
+			int width, int height);

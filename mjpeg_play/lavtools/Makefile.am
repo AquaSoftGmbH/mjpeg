@@ -87,7 +87,7 @@ bin_PROGRAMS = \
 	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
 	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
 	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN) \
-	ppmtoy4m y4mcolorbars lavinfo
+	ppmtoy4m y4mtoppm y4mcolorbars lavinfo
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h lav2wav.h
@@ -166,6 +166,9 @@ yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_builddir)/utils -lmjpegutils \
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
 ppmtoy4m_LDADD = -L$(top_builddir)/utils -lmjpegutils
+
+y4mtoppm_SOURCES = y4mtoppm.c colorspace.h colorspace.c subsample.h subsample.c
+y4mtoppm_LDADD = -L$(top_builddir)/utils -lmjpegutils
 
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
 y4mcolorbars_LDADD = -L$(top_builddir)/utils -lmjpegutils
