@@ -169,6 +169,7 @@ int piperead(int fd, char *buf, int len)
 }
 
 
+
 static void read_gop()
 {
    int n, v, h, i, s;
@@ -215,11 +216,11 @@ static void read_gop()
    nframes = frames_read;
 }
 
-int readframe(fname,frame)
-char *fname;
-unsigned char *frame[];
+int readframe( int num_frame,
+               unsigned char *frame[]
+	       	)
 {
-   int n, num_frame;
+   int n;
 
    if(frames_read == 0)
    {
@@ -267,7 +268,6 @@ unsigned char *frame[];
       read_gop();
    }
 
-   num_frame = atoi(fname);
 
    if(num_frame < frames_read - 2*N)
    {

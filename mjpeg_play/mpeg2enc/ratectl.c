@@ -441,6 +441,7 @@ int j;
 	 My proposal: we measure how much *information* (total activity)
 	 has been covered and aim to release bits in proportion.  Indeed,
 	 complex blocks get an disproprortionate boost of allocated bits.
+	 To avoid visible "ringing" effects...
 
   */
 	
@@ -469,11 +470,15 @@ int j;
   /*  Heuristic: Decrease quantisation for blocks with lots of
 	  sizeable coefficients.  We assume we just get a mess if
 	  a complex texture's coefficients get chopped...
-
   */
 
-
-  N_actj =  actj < avg_act ? 1.0 : (2.0*actj + avg_act)/(actj +  2.0*avg_act);
+	/* TODO: The boosdt given to high activity blocks should be modulated according
+		to the generosity of the data-rate with respect to average activity.
+		High activity to date rate means its probably better to be too generous
+		with bits
+		*/
+		
+  N_actj =  actj < avg_act ? 1.0 : (actj + act_boost*avg_act)/(act_boost*actj +  avg_act);
 
 #else
 
@@ -495,7 +500,8 @@ int j;
       mquant = 112;
 
     /* map to legal quantization level */
-    if(fix_mquant>0) mquant = 2*fix_mquant;
+    if(fix_mquant>0) 
+    	mquant = 2*fix_mquant;
     mquant = non_linear_mquant_table[map_non_linear_mquant[mquant]];
   }
   else

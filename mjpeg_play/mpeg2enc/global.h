@@ -153,7 +153,7 @@ void vbv_end_of_picture _ANSI_ARGS_((void));
 void calc_vbv_delay _ANSI_ARGS_((void));
 
 /* readpic.c */
-int readframe _ANSI_ARGS_((char *fname, unsigned char *frame[]));
+int readframe _ANSI_ARGS_((int frame_num, unsigned char *frame[]));
 
 /* stats.c */
 void calcSNR _ANSI_ARGS_((unsigned char *org[3], unsigned char *rec[3]));
@@ -170,20 +170,20 @@ void dct_type_estimation _ANSI_ARGS_((unsigned char *pred, unsigned char *cur,
 void init_transform();
 
 /* writepic.c */
-void writeframe _ANSI_ARGS_((char *fname, unsigned char *frame[]));
+void writeframe _ANSI_ARGS_((int frame_num, unsigned char *frame[]));
 
 
 /* global variables */
 
 EXTERN char version[]
 #ifdef GLOBAL
-  ="mpeg2encode V1.2, 96/07/19"
+  ="MSSG+ 1.01 (development of mpeg2encode V1.2, 96/07/19)"
 #endif
 ;
 
 EXTERN char author[]
 #ifdef GLOBAL
-  ="(C) 1996, MPEG Software Simulation Group"
+  ="(C) 1996, MPEG Software Simulation Group, (C) 2000 Andrew Stevens, Rainer Johanni"
 #endif
 ;
 
@@ -406,7 +406,7 @@ typedef unsigned char mcompuint;
 EXTERN int fix_mquant;    		/* use fixed quant, range 1 ... 31 */
 EXTERN int constant_bitrate;  	/* Original CBR encoding strategy  */
 EXTERN int output_stats;	    /* Display debugging statistics during coding */
-
+EXTERN double act_boost;		/* Quantisation reduction for highly active blocks */
 /* Useful for triggering debug information */
 
 EXTERN int frame_num;			

@@ -32,10 +32,12 @@
 #include "config.h"
 #include "global.h"
 
-void writeframe(fname,frame)
-char *fname;
-unsigned char *frame[];
+void writeframe(int frame_num,
+				unsigned char *frame[]
+				)
+				
 {
+#ifdef ORIGINAL_CODE
   int chrom_hsize, chrom_vsize;
   char name[128];
   FILE *fd;
@@ -50,7 +52,7 @@ unsigned char *frame[];
     return;
 
   /* Y */
-  sprintf(name,"%s.Y",fname);
+  sprintf(name,"%d.Y",frame_num);
   if (!(fd = fopen(name,"wb")))
   {
     sprintf(errortext,"Couldn't create %s\n",name);
@@ -78,4 +80,5 @@ unsigned char *frame[];
   }
   fwrite(frame[2],1,chrom_hsize*chrom_vsize,fd);
   fclose(fd);
+#endif
 }

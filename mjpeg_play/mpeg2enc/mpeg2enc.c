@@ -74,13 +74,12 @@ static int param_noise_filt = 0;
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
 static int param_hfnoise_quant = 0;
+static double param_act_boost = 2.5;
 
 static float framerates[] = { 0, 23.976, 24.0, 25.0, 29.970, 30.0, 50.0, 59.940, 60.0 };
 
 /* reserved: for later use */
 int param_422 = 0;
-
-int verbose = 2;
 
 void Usage(char *str)
 {
@@ -99,9 +98,9 @@ void Usage(char *str)
   printf("   -d num     Drop lsbs of samples [0..3] (default: 0)\n");
   printf("   -n num     Noise filter (low-pass) [0..2] (default: 0)\n");
   printf("   -f num     Fraction of fast motion estimates to consider in detail (1/num) [2..20] (default: 10)\n" );
+  printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)");
   printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
   printf("   -N         Noise filter via quantisation adjustment (experimental)\n" );
-  printf("   -v num	verbose level\n");
   exit(0);
 }
 
@@ -114,9 +113,8 @@ char *argv[];
 #define PARAM_LINE_MAX 256
   char param_line[PARAM_LINE_MAX];
 
-  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:tNv:")) != EOF)
+  while( (n=getopt(argc,argv,"m:b:q:o:F:r:f:d:n:Q:tN")) != EOF)
   {
-printf("optind=%d optarg=%s\n", optind, optarg);
     switch(n) {
 
       case 'm':
@@ -198,11 +196,14 @@ printf("optind=%d optarg=%s\n", optind, optarg);
 	case 'N':
 	  param_hfnoise_quant = 1;
 	  break;
-
-	case 'v':
-	  verbose = atoi(optarg);
-	  break;
-
+	  
+	  case 'Q' :
+	  	param_act_boost = atof(optarg);
+		if( param_act_boost <0.1 || param_act_boost > 10.0)
+		{
+			fprintf( stderr, "-q option requires arg 0.1 .. 10.0\n");
+			nerr++;
+		}
 	default:
 	  nerr++;
     }
@@ -220,12 +221,13 @@ printf("optind=%d optarg=%s\n", optind, optarg);
     nerr++;
   }
 
-printf("optind=%d argc=%d nerr=%d\n", optind, argc, nerr);
   if(optind!=argc) nerr++;
 
   if(nerr) Usage(argv[0]);
 
   fix_mquant = param_quant;
+  act_boost = param_act_boost;
+  
   if(param_bitrate==0 && param_quant==0) param_bitrate = 1152;
 
   if(param_searchrad==0) do_not_search = 1;

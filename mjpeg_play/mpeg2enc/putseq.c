@@ -38,7 +38,6 @@ void putseq()
   int i, j, k, f, f0, n, np, nb;
   int ipflag;
   int sxf, sxb, syf, syb;
-  char name[256];
   unsigned char *neworg[3], *newref[3];
   unsigned char *prevframe[3];
   char fkind;
@@ -220,9 +219,7 @@ void putseq()
     }
 
 
-
-    sprintf(name,tplorg,f+frame0);
-    if( readframe(name,neworg) )
+    if( readframe(f+frame0,neworg) )
 	  {
 			/* Corrupt source frame, re-use predecessor! */
 			neworg[0] = prevframe[0];
@@ -358,8 +355,8 @@ void putseq()
       stats();
     }
 
-    sprintf(name,tplref,f+frame0);
-    writeframe(name,newref);
+
+    writeframe(f+frame0,newref);
 
   }
 
