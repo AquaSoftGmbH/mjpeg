@@ -203,11 +203,11 @@ main(int argc, char *argv[])
 	  }
 	}
 
-	if( interlace && istream.height % 2 != 0 )
+	if( interlace && y4m_si_get_height(&istream) % 2 != 0 )
 		mjpeg_error_exit1("Input images have odd number of lines - can't treats as interlaced!" );
 
-	horz = istream.width;
-	vert = istream.height;
+	horz = y4m_si_get_width(&istream);
+	vert = y4m_si_get_height(&istream);
 	mjpeg_debug("width=%d height=%d luma_r=%d chroma_r=%d luma_t=%d chroma_t=%d", horz, vert, radius_luma, radius_chroma, threshold_luma, threshold_chroma);
 
 	y4m_copy_stream_info(&ostream, &istream);
