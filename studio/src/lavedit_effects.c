@@ -17,6 +17,8 @@
 
  * Michael Hanke, September 6, 2003
  *   - correction for still effects with interlaced material
+ *  Michael Hanke, May 26, 2004
+ *   - Introduced new fade effect
  */
 
 #ifdef HAVE_CONFIG_H
@@ -48,6 +50,7 @@
 #include "effect_picture.xpm"
 #include "effect_transition.xpm"
 #include "scene_screenshot.xpm"
+#include "effect_fade.xpm"
 
 #include "gnome-color-browser.xpm"
 #include "gnome-fontsel.xpm"
@@ -74,6 +77,19 @@ struct scene_transition_options {
 	int scene2_stop;
 
 	GtkWidget *fs;
+};
+
+struct fade_options {
+       GtkTransitionType type; /* the name of the effect used */
+       int frame_offset;       /* length of the scene transition */
+       int fade_start;         /* beginning value for transition (blend) */
+       int fade_end;           /* end value for transition (blend) */
+       char scene_file[256];
+       int scene_start;        /* filename, start/end framenum for scene */
+       int scene_stop;
+       GtkObject *adj[2];      /* global var for length/offset slider */
+
+       GtkWidget *fs;
 };
 
 struct image_overlay_options {
@@ -109,7 +125,7 @@ struct image_overlay_options {
 extern int verbose;
 GtkWidget *lavpipe_preview_tv;
 int preview_or_render; /* 0=preview, 1=render */
-char renderfile[256], soundfile[256];
+static char renderfile[256], soundfile[256], soundcommand[4096];
 static GtkWidget *render_button_label = NULL, *render_progress_label = NULL, *render_progress_status_label = NULL;
 static GtkObject *render_progress_adj = NULL;
 static GtkWidget *progress_label = NULL;
@@ -146,6 +162,17 @@ void scene_transition_adj_changed(GtkAdjustment *adj, int *i);
 void effects_scene_transition_accept(GtkWidget *widget, gpointer data);
 void effects_scene_transition_show_window(struct scene_transition_options *options);
 
+void effects_fade_accept(GtkWidget *widget, gpointer data);
+void play_fade(GtkWidget *widget, gpointer data);
+void fade_render_file_selected(GtkWidget *w, gpointer data);
+void fade_type_changed_FFW(GtkWidget *widget, gpointer data);
+void fade_type_changed_FTW(GtkWidget *widget, gpointer data);
+void fade_type_changed_FFB(GtkWidget *widget, gpointer data);
+void fade_type_changed_FTB(GtkWidget *widget, gpointer data);
+void fade_adj_changed(GtkWidget *widget, gpointer data);
+GtkWidget *make_menu_item(gchar *name, GtkSignalFunc callback, gpointer data);
+void effects_fade_show_window(struct fade_options *options);
+
 void overlay_render_file_selected(GtkWidget *w, gpointer data);
 void scene_transition_render_file_selected(GtkWidget *w, gpointer data);
 void image_overlay_file_load(GtkWidget *w, gpointer data);
@@ -161,7 +188,8 @@ void text_overlay_color_load(GtkWidget *w, gpointer data);
 void select_text_overlay_color(GtkWidget *w, gpointer data);
 void text_overlay_textbox_changed(GtkWidget *w, gpointer data);
 
-void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data);
+void lavedit_effects_create_scene_transition(GtkWidget *widget, char *data);
+void lavedit_effects_create_fade(GtkWidget *widget, char *data);
 void lavedit_effects_create_overlay(GtkWidget *widget, char *data);
 
 /* ================================================================= */
@@ -174,7 +202,7 @@ void effects_finished()
 		/* lavpipe | yuv2lav */
 		if (soundfile[0] != '\0')
 		{
-			char command[256], file[256], new_renderfile[256];
+			char file[256], new_renderfile[256];
 
 			if (render_progress_label)
 				gtk_label_set_text(GTK_LABEL(render_progress_label), "Creating sound");
@@ -182,10 +210,9 @@ void effects_finished()
 				gtk_label_set_text(GTK_LABEL(render_progress_status_label), "...");
 
 			sprintf(file, "/tmp/.sound.wav");
-			sprintf(command, "\"%s\" \"%s\" > \"%s\"%s",
-				app_location(LAV2WAV), soundfile, file,
-				verbose?"":" 2>/dev/null");
-			system(command);
+                        strcat(soundcommand, " >");
+                        strcat(soundcommand, file);
+                        system(soundcommand);
 
 			if (render_progress_label)
 				gtk_label_set_text(GTK_LABEL(render_progress_label), "Adding sound");
@@ -200,10 +227,11 @@ void effects_finished()
 			  strcpy(new_renderfile+stl-3,renderfile+stl-4);
 			}
 			else new_renderfile[stl-5] = new_renderfile[stl-5] == '~'? '#' : '~';
-			sprintf(command, "\"%s\" \"%s\" \"%s\" \"%s\"%s",
+                        sprintf(soundcommand, "\"%s\" \"%s\" \"%s\" \"%s\"%s",
 				app_location(LAVADDWAV), renderfile, file, new_renderfile,
-				verbose?"":" > /dev/null 2>&1");
-			system(command);
+                               verbose?"":" > /dev/null 2>&1");
+                        /* What happens if cancelled?? */
+                        system(soundcommand);
 
 			unlink(file);
 			unlink(renderfile);
@@ -518,6 +546,7 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 					options->scaling?"-s ":"",
 					options->orig_pos_x, options->orig_pos_y);
 				break;
+                        default:
 		}
 		/* length */
 		fprintf(fd, " -l %d\n", options->length);
@@ -534,6 +563,11 @@ void play_scene_transition(GtkWidget *widget, gpointer data)
 	}
 
 	fclose(fd);
+
+        if (preview_or_render == 1) {
+            /* Wish: Need a sound transition, too */
+            soundfile[0] = '\0';
+        }
 
 	/* done! now start lavpipe | yuvplay */
 	if (preview_or_render == 0)
@@ -685,6 +719,21 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	GtkWidget *vbox3, *scrollbar, *label, *listbox, *textbox;
 	GtkObject *adj;
 	char temp[256];
+
+        switch (options->type) {
+            case GTK_TRANSITION_BLEND:
+            case GTK_TRANSITION_WIPE_RIGHT_TO_LEFT:
+            case GTK_TRANSITION_WIPE_LEFT_TO_RIGHT:
+            case GTK_TRANSITION_WIPE_TOP_TO_BOTTOM:
+            case GTK_TRANSITION_WIPE_BOTTOM_TO_TOP:
+            case GTK_TRANSITION_OVERLAY_ENLARGE:
+            case GTK_TRANSITION_OVERLAY_ENSMALL:
+                break;
+            default:
+                gtk_show_text_window(STUDIO_WARNING,
+                                     "Unknown transition type(%d)",
+                                     options->type);
+        }
 
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	vbox = gtk_vbox_new(FALSE, 5);
@@ -968,7 +1017,7 @@ void effects_scene_transition_show_window(struct scene_transition_options *optio
 	gtk_widget_show(window);
 }
 
-void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
+void lavedit_effects_create_scene_transition(GtkWidget *widget, char *data)
 {
 	struct scene_transition_options *options;
 	GtkScene *scene1, *scene2;
@@ -1009,8 +1058,10 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 		GTK_SCENELIST(scenelist)->selected_scene);
 	options->scene1_start = scene1->view_start;
 	options->scene1_stop = scene1->view_end;
-	strcpy(options->scene2_file, gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
-		GTK_SCENELIST(scenelist)->selected_scene + 1));
+	strcpy(options->scene2_file,
+               gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+                                GTK_SCENELIST(scenelist)->selected_scene + 1));
+
 	scene2 = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
 		GTK_SCENELIST(scenelist)->selected_scene + 1);
 	options->scene2_start = scene2->view_start;
@@ -1019,7 +1070,7 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 	if (min(scene1->view_end - scene1->view_start + 1,
 		scene2->view_end - scene2->view_start + 1) < 25)
 	{
-		options->length = min(scene1->view_end - scene1->view_start + 1,
+ 		options->length = min(scene1->view_end - scene1->view_start + 1,
 			scene2->view_end - scene2->view_start + 1);
 	}
 	else
@@ -1027,12 +1078,444 @@ void lavedit_effects_create_scene_transition(GtkWidget *widget, gpointer data)
 		options->length = 25;
 	}
 	/* Set preview aspect ratio */
-	if (strncmp(picture_aspect,"16:9",8))
+	if (strncmp(picture_aspect,"4:3",8))
 	  lavedit_effects_preview_width = (lavedit_effects_preview_height*16)/9;
 	else
 	  lavedit_effects_preview_width = (lavedit_effects_preview_height*4)/3;
 
 	effects_scene_transition_show_window(options);
+}
+
+void play_fade(GtkWidget *w, gpointer data)
+{
+    /* write a lavpipe .pli list and start lavpipe | yuvplay */
+    FILE *fd;
+    char file[256];
+    int inout, type, scene_length;
+
+    struct fade_options *options = (struct fade_options*)data;
+
+    /* let's start writing an editlist for lavpipe
+       It's not really necessary because we are dealing with only
+       one input file. But it shortens coding ... */
+    scene_length = options->scene_stop-options->scene_start+1;
+    switch (options->type) {
+       case GTK_FADE_TO_BLACK:
+           type = 1;
+           break;
+       case GTK_FADE_FROM_BLACK:
+           type = 2;
+           break;
+       case GTK_FADE_TO_WHITE:
+           type = 3;
+           break;
+       case GTK_FADE_FROM_WHITE:
+           type = 4;
+           break;
+       default:
+           gtk_show_text_window(STUDIO_WARNING,
+                                "This error should not happen!");
+      return;
+    }
+    inout = type & 1;
+    sprintf(file, "%s/.studio/effect.pli", getenv("HOME"));
+    fd = fopen(file, "w");
+    if (fd == NULL)
+    {
+       gtk_show_text_window(STUDIO_ERROR, "Error opening \'%s\': %s",
+                            file, strerror(errno) );
+       return;
+    }
+
+    fprintf(fd, "LAV Pipe List\n");
+    fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
+    fprintf(fd, "1\n");
+    fprintf(fd, "lav2yuv -o $o -f $n %s\n", options->scene_file);
+
+    if (preview_or_render == 0 && options->fade_start > 0 && inout == 1) {
+       fprintf(fd, "%d\n", options->fade_start);
+       fprintf(fd, "1\n");
+       fprintf(fd, "0 %d\n", options->scene_start);
+       fprintf(fd, "-\n");
+    }
+
+if (inout == 1) {
+        /* fade out */
+       fprintf(fd, "%d\n", scene_length-options->fade_start);
+       fprintf(fd, "1\n");
+       fprintf(fd, "0 %d\n", options->scene_start+options->fade_start);
+       fprintf(fd, "fade.flt -d %d -t %d\n",
+               options->fade_end-options->fade_start+1, type);
+    }
+    else {
+        /* fade in */
+       fprintf(fd, "%d\n", options->fade_end+1);
+       fprintf(fd, "1\n");
+       fprintf(fd, "0 %d\n", options->scene_start);
+       fprintf(fd, "fade.flt -s %d -d %d -t %d\n", options->fade_start,
+               options->fade_end-options->fade_start+1, type);
+    }
+
+    if (preview_or_render == 0 && options->fade_end < scene_length-1
+       && inout == 0) {
+       fprintf(fd, "%d\n", scene_length-1-options->fade_end);
+       fprintf(fd, "1\n");
+       fprintf(fd, "0 %d\n", options->scene_start+options->fade_end+1);
+       fprintf(fd, "-\n");
+    }
+
+fclose(fd);
+
+    /* OK. Start rendering */
+    if (preview_or_render == 0) {
+       num_frames = options->scene_stop-options->scene_start+1;
+       start_lavpipe_preview(file);
+    }
+    else {
+       /* Need to prepare the sound filter first */
+       sprintf(soundfile, "%s/.studio/effect.eli", getenv("HOME"));
+       fd = fopen(soundfile, "w");
+       if (fd == NULL)
+       {
+           gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
+			   soundfile, strerror(errno));
+	   soundfile[0] = '\0';
+	   return;
+       }
+       sprintf(soundcommand,"\"%s\" %s %s | fade_s.flt -n %c -s %d -d %d -t %d",
+		       app_location(LAV2WAV),
+		       soundfile,
+		       verbose? " " : "2>/dev/null",
+		       GTK_SCENELIST(scenelist)->norm,
+		       inout ? 0 : options->fade_start,
+		       options->fade_end-options->fade_start+1,
+		       type);
+       fprintf(fd, "LAV Edit List\n");
+       fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
+       fprintf(fd, "1\n");
+       fprintf(fd, "%s\n", options->scene_file);
+       if (inout == 1) {
+	       fprintf(fd, "0 %d %d\n", options->scene_start+options->fade_start,
+			       options->scene_stop);
+	       num_frames = scene_length-options->fade_start;
+       }
+       else {
+	       fprintf(fd, "0 %d %d\n", options->scene_start,
+			       options->scene_start+options->fade_end);
+	       num_frames = options->fade_end+1;
+       }
+       fclose(fd);
+
+       create_progress_window(num_frames);
+       start_lavpipe_render(file, renderfile);
+    }
+}
+
+void fade_render_file_selected(GtkWidget *w, gpointer data)
+{
+	/* file has been selected, fetch it and let's render! */
+
+	struct fade_options *options = (struct fade_options *) data;
+
+	/* set mode to "render" */
+	preview_or_render = 1;
+	sprintf(renderfile, gtk_file_selection_get_filename (GTK_FILE_SELECTION (options->fs)));
+
+	play_fade(NULL, (gpointer) options);
+}
+
+void effects_fade_accept(GtkWidget *w, gpointer data)
+{
+	extern char video_format;
+	char *temp;
+
+	struct fade_options *options = (struct fade_options *) data;
+
+	if (pipe_is_active(LAVPIPE) || pipe_is_active(YUVPLAY))
+	{
+		gtk_show_text_window(STUDIO_WARNING,
+				"Lavpipe is already active");
+		return;
+	}
+
+	options->fs =gtk_file_selection_new("Linux Video Studio - Select Location");
+	gtk_signal_connect(GTK_OBJECT (GTK_FILE_SELECTION (options->fs)->ok_button),
+			"clicked", (GtkSignalFunc) fade_render_file_selected, (gpointer)options);
+	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(options->fs)->ok_button),
+			"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (options->fs));
+	gtk_signal_connect_object (GTK_OBJECT (GTK_FILE_SELECTION(options->fs)->cancel_button),
+			"clicked", (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT (options->fs));
+
+	switch (video_format)
+	{
+		case 'a':
+		case 'A':
+			temp = "movie.avi";
+			break;
+		case 'q':
+			temp = "movie.mov";
+			break;
+		case 'm':
+			temp = "movie.movtar";
+			break;
+		default:
+			temp = "movie.avi";
+			break;
+	}
+	gtk_file_selection_set_filename (GTK_FILE_SELECTION(options->fs), temp);
+
+	gtk_grab_add(options->fs);
+	gtk_widget_show(options->fs);
+}
+
+void fade_type_changed_FFW(GtkWidget *w, gpointer data)
+{
+	struct fade_options *options = (struct fade_options *) data;
+
+	options->type = GTK_FADE_FROM_WHITE;
+}
+
+void fade_type_changed_FTW(GtkWidget *w, gpointer data)
+{
+	struct fade_options *options = (struct fade_options *) data;
+
+	options->type = GTK_FADE_TO_WHITE;
+}
+
+void fade_type_changed_FFB(GtkWidget *w, gpointer data)
+{
+	struct fade_options *options = (struct fade_options *) data;
+
+	options->type = GTK_FADE_FROM_BLACK;
+}
+
+void fade_type_changed_FTB(GtkWidget *w, gpointer data)
+{
+	struct fade_options *options = (struct fade_options *) data;
+
+	options->type = GTK_FADE_TO_BLACK;
+}
+
+void fade_adj_changed(GtkWidget *w, gpointer data)
+{
+	int value1, value2;
+	struct fade_options *options = (struct fade_options *) data;
+
+	value1 = GTK_ADJUSTMENT(options->adj[0])->value-options->frame_offset;
+	value2 = GTK_ADJUSTMENT(options->adj[1])->value-options->frame_offset;
+	if (value1 < value2) {
+		options->fade_start = value1;
+		options->fade_end = value2;
+	}
+	else {
+		options->fade_start = value2;
+		options->fade_end = value1;
+	}
+}
+
+GtkWidget *make_menu_item(gchar *name, GtkSignalFunc callback, gpointer data)
+{
+	GtkWidget * item;
+
+	item = gtk_menu_item_new_with_label(name);
+	gtk_signal_connect(GTK_OBJECT(item), "activate", callback, data);
+	gtk_widget_show(item);
+
+	return(item);
+}
+
+void effects_fade_show_window(struct fade_options *options)
+{
+	GtkWidget *window, *vbox, *hbox, *vbox2, *hbox2, *vbox3, *opt, *scale,
+	*menu, *item, *hseparator, *button, *label;
+	char temp[256];
+	int fin, i, a;
+
+	switch (options->type) {
+		case GTK_FADE_TO_BLACK:
+		case GTK_FADE_FROM_BLACK:
+		case GTK_FADE_TO_WHITE:
+		case GTK_FADE_FROM_WHITE:
+			break;
+		default:
+			gtk_show_text_window(STUDIO_WARNING,
+					"Unknown fade type(%d)",
+					options->type);
+	}
+
+	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    /* window contents */
+    vbox = gtk_vbox_new(FALSE, 5);
+    gtk_window_set_title (GTK_WINDOW(window),
+                         "Linux Video Studio - Create Fade In/Out");
+    gtk_container_set_border_width (GTK_CONTAINER (window), 20);
+
+    /* tv/effects related */
+    hbox = gtk_hbox_new(FALSE, 10);
+    vbox2 = effects_tv((gpointer)options, GTK_SIGNAL_FUNC(play_fade));
+    gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, FALSE, 0);
+    gtk_widget_show(vbox2);
+
+    /* Control elements */
+    vbox2 = gtk_vbox_new(FALSE, 10);
+    /* transition type */
+    hbox2 = gtk_hbox_new(FALSE, 5);
+    label = gtk_label_new("Fade type:");
+    gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+    gtk_box_pack_start (GTK_BOX (hbox2), label, TRUE, FALSE, 5);
+    gtk_widget_show(label);
+
+    opt = gtk_option_menu_new();
+    menu = gtk_menu_new();
+    item = make_menu_item("Fade to black",
+                         GTK_SIGNAL_FUNC(fade_type_changed_FTB),
+                         (gpointer) options);
+    gtk_menu_append(GTK_MENU(menu), item);
+    item = make_menu_item("Fade from black",
+                         GTK_SIGNAL_FUNC(fade_type_changed_FFB),
+                         (gpointer) options);
+    gtk_menu_append(GTK_MENU(menu), item);
+    item = make_menu_item("Fade to white",
+                         GTK_SIGNAL_FUNC(fade_type_changed_FTW),
+                         (gpointer) options);
+    gtk_menu_append(GTK_MENU(menu), item);
+    item = make_menu_item("Fade from white",
+                         GTK_SIGNAL_FUNC(fade_type_changed_FFW),
+                         (gpointer) options);
+    gtk_menu_append(GTK_MENU(menu), item);
+    gtk_option_menu_set_menu(GTK_OPTION_MENU(opt), menu);
+    gtk_box_pack_start(GTK_BOX(hbox2), opt, TRUE, FALSE, 0);
+    gtk_widget_show(opt);
+
+    gtk_box_pack_start(GTK_BOX(vbox2), hbox2, FALSE, FALSE, 0);
+    gtk_widget_show(hbox2);
+
+/* slider related */
+    vbox3 = gtk_vbox_new(FALSE,10);
+    hbox2 = gtk_hbox_new(FALSE, 5);
+    sprintf(temp, "%d", options->frame_offset);
+    label = gtk_label_new(temp);
+    gtk_box_pack_start(GTK_BOX(hbox2), label, FALSE, FALSE, 0);
+    gtk_widget_show(label);
+    fin = options->frame_offset+options->scene_stop-options->scene_start;
+    sprintf(temp, "%d", fin);
+    label = gtk_label_new(temp);
+    gtk_box_pack_end(GTK_BOX(hbox2), label, FALSE, FALSE, 0);
+    gtk_widget_show(label);
+    gtk_box_pack_start(GTK_BOX(vbox3), hbox2, TRUE, FALSE, 0);
+    gtk_widget_show(hbox2);
+
+    /* enhanced scale widget */
+    a = options->fade_start+options->frame_offset;
+    for (i = 0; i < 2; i++) {
+       options->adj[i] = gtk_adjustment_new(a, options->frame_offset, fin,
+                                            1.0, 10.0, 0.0);
+       gtk_signal_connect(GTK_OBJECT(options->adj[i]), "value_changed",
+                         GTK_SIGNAL_FUNC(fade_adj_changed), (gpointer) options);
+       a = options->fade_end+options->frame_offset;
+    }
+    scale = gtk_enhanced_scale_new(options->adj, 2);
+    GTK_ENHANCED_SCALE(scale)->all_the_same = 1;
+    gtk_box_pack_start(GTK_BOX(vbox3), scale, TRUE, FALSE, 0);
+    gtk_widget_show(scale);
+
+    /* text input */
+    hbox2 = gtk_hbox_new(FALSE, 5);
+    label = gtk_spin_button_new(GTK_ADJUSTMENT(options->adj[0]), 0.1, 0);
+  gtk_spin_button_set_update_policy(GTK_SPIN_BUTTON(label),GTK_UPDATE_IF_VALID);
+    gtk_box_pack_start(GTK_BOX(hbox2), label, FALSE, FALSE, 0);
+    gtk_widget_show(label);
+    label = gtk_spin_button_new(GTK_ADJUSTMENT(options->adj[1]), 0.1, 0);
+  gtk_spin_button_set_update_policy(GTK_SPIN_BUTTON(label),GTK_UPDATE_IF_VALID);
+    gtk_box_pack_end(GTK_BOX(hbox2), label, FALSE, FALSE, 0);
+    gtk_widget_show(label);
+    gtk_box_pack_start(GTK_BOX(vbox3), hbox2, TRUE, FALSE, 0);
+    gtk_widget_show(hbox2);
+
+    gtk_box_pack_start(GTK_BOX(vbox2), vbox3, FALSE, FALSE, 0);
+    gtk_widget_show(vbox3);
+
+    gtk_box_pack_start (GTK_BOX (hbox), vbox2, TRUE, FALSE, 0);
+    gtk_widget_show(vbox2);
+
+    gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, FALSE, 0);
+    gtk_widget_show(hbox);
+
+    hseparator = gtk_hseparator_new();
+    gtk_box_pack_start (GTK_BOX (vbox), hseparator, TRUE, TRUE, 0);
+    gtk_widget_show (hseparator);
+
+    hbox = gtk_hbox_new(TRUE, 20);
+
+    button = gtk_button_new_with_label("  Accept  ");
+    gtk_signal_connect(GTK_OBJECT(button), "clicked",
+                      GTK_SIGNAL_FUNC(effects_fade_accept), (gpointer)options);
+    gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
+                      (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT(window));
+    gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
+    gtk_widget_show(button);
+
+    button = gtk_button_new_with_label("  Cancel  ");
+    gtk_signal_connect_object(GTK_OBJECT(button), "clicked",
+                      (GtkSignalFunc) gtk_widget_destroy, GTK_OBJECT(window));
+    gtk_box_pack_start (GTK_BOX (hbox), button, TRUE, FALSE, 0);
+    gtk_widget_show(button);
+
+    gtk_box_pack_start (GTK_BOX (vbox), hbox, TRUE, FALSE, 0);
+    gtk_widget_show(hbox);
+
+    gtk_container_add (GTK_CONTAINER (window), vbox);
+    gtk_widget_show(vbox);
+
+    /* prepare preview-mode */
+    preview_or_render = 0;
+
+    gtk_grab_add(window);
+    gtk_widget_show(window);
+}
+
+void lavedit_effects_create_fade(GtkWidget *widget, char *data)
+{
+       struct fade_options *options;
+       GtkScene *scene;
+       int i;
+
+       /* Create fade in/out using lavpipe and transist.flt */
+
+       if (GTK_SCENELIST(scenelist)->selected_scene < 0)
+       {
+               gtk_show_text_window(STUDIO_WARNING,
+                       "Select an image for fade in/out");
+               return;
+       }
+
+       /* okay, so we're allrighty, let's now start a wizzard-kinda thingy */
+       options = (struct fade_options*)malloc(sizeof(struct fade_options));
+
+       /* let's start by setting some defaults */
+       options->type = GTK_FADE_TO_BLACK;
+       options->frame_offset = 0;
+
+       for (i = 0; i < GTK_SCENELIST(scenelist)->selected_scene; i++) {
+           scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist), i);
+           options->frame_offset += scene->view_end - scene->view_start + 1;
+       }
+        options->fade_start = 0;
+   strcpy(options->scene_file, gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
+               GTK_SCENELIST(scenelist)->selected_scene));
+       scene = gtk_scenelist_get_scene(GTK_SCENELIST(scenelist),
+               GTK_SCENELIST(scenelist)->selected_scene);
+       options->scene_start = scene->view_start;
+       options->scene_stop = scene->view_end;
+       options->fade_end = min(scene->view_end - scene->view_start + 1,125);
+
+       /* Set preview aspect ratio */
+       if (strncmp(picture_aspect,"4:3",8))
+         lavedit_effects_preview_width = (lavedit_effects_preview_height*16)/9;
+       else
+         lavedit_effects_preview_width = (lavedit_effects_preview_height*4)/3;
+
+       effects_fade_show_window(options);
 }
 
 /* rgb-to-yuv(), does 24/32bpp RGB to YUV422 colorspace conversion
@@ -1290,14 +1773,23 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 	      yuv_blend[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
 	    }
 
-	  rgb_to_yuv(options->movie_width, options->movie_height,
-		     gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
-		     yuv, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
-		     options->image_width, options->image_height);
-	  alpha_to_yuv(options->movie_width, options->movie_height,
-		       gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
-		       yuv_blend, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
-		       options->image_width, options->image_height, options->opacity);
+yuv[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
+ yuv_blend[0] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height);
+         for(i=1;i<3;i++)
+           {
+             yuv[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
+             yuv_blend[i] = (guchar*)malloc(sizeof(guchar)*options->movie_width*options->movie_height/4);
+           }
+
+         rgb_to_yuv(options->movie_width, options->movie_height,
+                    gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
+                    yuv, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
+                    options->image_width, options->image_height);
+         alpha_to_yuv(options->movie_width, options->movie_height,
+                      gdk_pixbuf_get_rowstride(temp_image), gdk_pixbuf_get_pixels(temp_image),
+                      yuv_blend, gdk_pixbuf_get_has_alpha(options->image), options->image_x, options->image_y,
+                      options->image_width, options->image_height, options->opacity);
+
 
 	  /* create the YUV files */
 	  sprintf(yuv_file, "%s/.studio/image.yuv", getenv("HOME"));
@@ -1396,14 +1888,15 @@ void play_image_overlay(GtkWidget *widget, gpointer data)
 		{
 			gtk_show_text_window(STUDIO_ERROR,"Error opening \'%s\': %s",
 				soundfile, strerror(errno));
+			soundfile[0] = '\0';
 			return;
 		}
+		sprintf(soundcommand, "\"%s\" \"%s\" %s", app_location(LAV2WAV),
+                       soundfile, verbose? " " : "2>/dev/null");
 		fprintf(fd, "LAV Edit List\n");
 		fprintf(fd, "%s\n", GTK_SCENELIST(scenelist)->norm=='p'?"PAL":"NTSC");
 		fprintf(fd, "1\n");
-		fprintf(fd, "%s\n",
-			gtk_scenelist_get_movie(GTK_SCENELIST(scenelist),
-				GTK_SCENELIST(scenelist)->selected_scene));
+		fprintf(fd, "%s\n",options->scene_file);
 		fprintf(fd, "0 %d %d\n", options->scene_start, options->scene_end);
 		fclose(fd);
 	}
@@ -2049,7 +2542,7 @@ GtkWidget *get_effects_notebook_page()
 			"Create a Scene Transition between current and next Scene",
 			(gchar**)effect_transition_xpm, 0, GTK_POS_BOTTOM);
 	gtk_signal_connect(GTK_OBJECT(button), "clicked",
-		GTK_SIGNAL_FUNC(lavedit_effects_create_scene_transition), NULL);
+	    GTK_SIGNAL_FUNC(lavedit_effects_create_scene_transition), "trans");
 	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
 	gtk_widget_show(button);
 
@@ -2094,6 +2587,21 @@ GtkWidget *get_effects_notebook_page()
 
 	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 0);
 	gtk_widget_show(hbox3);
+
+	hbox3 = gtk_hbox_new(FALSE, 10);
+
+	button = gtk_image_label_button(" Create Fadein/out ",
+                        "Create a fade in or out in the current scene",
+                        effect_fade_xpm, 0, GTK_POS_BOTTOM);
+	gtk_signal_connect(GTK_OBJECT(button), "clicked",
+        GTK_SIGNAL_FUNC(lavedit_effects_create_fade), "fade");
+	gtk_box_pack_start (GTK_BOX (hbox3), button, TRUE, TRUE, 0);
+	gtk_widget_show(button);
+
+	gtk_box_pack_start (GTK_BOX (vbox2), hbox3, FALSE, FALSE, 0);
+	gtk_widget_show(hbox3);
+
+	soundfile[0] = '\0';
 
 	return vbox2;
 }

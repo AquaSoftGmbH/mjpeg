@@ -1,6 +1,10 @@
 Updates from 0.1.8 to current
 -----------------------------
 not yet done
+* included the huge patch from Michael Hanke which adds basic sound transititon
+  support and a new effect for fading in and fading out 
+* added the support for sceduling scripts with at
+* converted LVS to GTK 2.0 
 
 Updates from 0.1.7 to 0.1.8
 -----------------------------
