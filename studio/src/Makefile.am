@@ -39,6 +39,7 @@ MIXER_OBJECTS =
 endif
 
 stv_SOURCES = studio-tv.c gtktvplug.c gtktvplug.h gtkfunctions.c \
-	parseconfig.c gdkpixbuf_write.c ${MIXER_OBJECTS}
+	parseconfig.c gdkpixbuf_write.c ${MIXER_OBJECTS} lirc.c \
+	lirc.h channels.c channels.h
 stv_LDADD = ${X_LIBS} -lXv ${PNG_LIBS} ${JPEG_LIBS}
 stv_LDFLAGS = ${GTK_LIBS} ${GLIB_LIBS} ${GDK_PIXBUF_LIBS}
