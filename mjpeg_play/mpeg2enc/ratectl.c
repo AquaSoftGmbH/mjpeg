@@ -126,9 +126,9 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO DEBUG */
-static double avg_KI = 5.0;	/* These values empirically determined 		*/
-static double avg_KB = 8.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
-static double avg_KP = 8.0;
+static double avg_KI = 6.0;	/* These values empirically determined 		*/
+static double avg_KB = 10.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
+static double avg_KP = 10.0;
 static double avgsq_KI = 8.0*8.0;
 static double avgsq_KB = 13.0*13.0;
 static double avgsq_KP = 12.0*12.0;
@@ -539,8 +539,10 @@ void rc_update_pict(pict_data_s *picture)
 	AP = bitcount() - S;
 	frame_overshoot = (int)AP-(int)T;
 
-	/* Can't have negative undershoot - would imply we could "borrow"
-	bits */
+	/* For the virtual buffers for quantisation feedback it is the
+	   actual under/overshoot that counts, not what's left after padding
+	*/
+	d += frame_overshoot;
 	
 	/* If the cummulative undershoot is getting too large (as
 	   a rough and ready heuristic we use 1/2 buffer size)
@@ -590,7 +592,6 @@ void rc_update_pict(pict_data_s *picture)
 	SQ += AQ;
 	X = (double)AP*(AQ/2.0);
 	
-	d += frame_overshoot;
 	K = X / actsum;
 #ifdef DEBUG
 	if( !quiet )
