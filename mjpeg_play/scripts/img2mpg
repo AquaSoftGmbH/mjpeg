@@ -130,6 +130,7 @@
 #                 Add this script to the MjpegTools project on sourceforge repository.
 # January 2003  : Add a manual page (on MjpegTools project package).
 #                 Add an option for use a temporary folder.
+#                 Add '--with-gui' option for run with 'kimg2mpg' KDE gui frontend program.
 #
 # -------------------------------------------------------------------------------------------------------
 
@@ -208,6 +209,9 @@ TRANSITIONDURATION=0
 # Default temporary folder is local folder.
 TEMPORARYFOLDER=""
 
+# Not running with 'kimg2mpg' KDE gui frontend.
+WITHGUI=0
+
 # Command line parameters analyse...
 CPT_IMG_FILE=0
 
@@ -230,7 +234,12 @@ while test $# -gt 0; do
       fi
       VERBOSE=$1
       ;;
-    
+
+    # Running with 'kimg2mpg' KDE frontend...
+    --with-gui)
+      WITHGUI=1
+      ;;
+
     # Temporary folder...
     -T)
       shift
@@ -378,23 +387,26 @@ while test $# -gt 0; do
     # Help...
     -h | --help)
       cat << EOF
-IMG2MPG [MjpegTools Project]
+
+IMG2MPG [MjpegTools Project] - MPEG portfolio images multiplexer.
 
 Usage: img2mpg [options] -o <output MPEG file> -i <input image files>
+
 Options:
-    -v <num>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
-    -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
-    -T <Temporary folder>   : use a specific folder for creating the temporary files (ex: '/tmp').
-    -f <Video format>       : video format  [XVCD=default, SVCD, VCD].
-    -n <Video type>         : video type    [PAL=default, NTSC, SECAM].
-    -b <background file>    : 768x576 pixels background image file name [black color = default].
-    -c <RGB color>          : hex RGB color for background image (ex: AA001F).
-    -d <num>                : duration for each image in MPEG file [10s = default, 1s = mini].
-    -a <MPEG audio file>    : MP2 audio file to merge with the video sequence.
-    -w <wav audio file>     : WAV audio file to convert in MPEG and to merge with the video sequence.
-    -o <output MPEG file>   : the ouput MPEG file name [temporary file name = default].
-    -i <input images files> : images files name to merge in MPEG.
-    -h | --help             : this help.
+   -v <num>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
+   --with-gui              : running with 'kimg2mpg' KDE GUI frontend.
+   -t <num>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
+   -T <Temporary folder>   : use a specific folder for creating the temporary files (ex: '/tmp').
+   -f <Video format>       : video format  [XVCD=default, SVCD, VCD].
+   -n <Video type>         : video type    [PAL=default, NTSC, SECAM].
+   -b <background file>    : 768x576 pixels background image file name [black color = default].
+   -c <RGB color>          : hex RGB color for background image (ex: AA001F).
+   -d <num>                : duration for each image in MPEG file [10s = default, 1s = mini].
+   -a <MPEG audio file>    : MP2 audio file to merge with the video sequence.
+   -w <wav audio file>     : WAV audio file to convert in MPEG and to merge with the video sequence.
+   -o <output MPEG file>   : the ouput MPEG file name [temporary file name = default].
+   -i <input images files> : images files name to merge in MPEG.
+   -h | --help             : this help.
 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific
 duration and merge all images on an single MPEG file. It use the 'MjpegTools' &
@@ -408,27 +420,27 @@ Examples :
 
 #./img2mpg -f SVCD -d 15 -w Music.wav -o MyPortfolio.mpg -i 01.jpg 02.jpg 03.jpg 04.jpg
 
-Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this image files sequence :
+   Build PAL (default) SVCD MPEG file with the 'Music.wav' sound file and this image files sequence :
 
-01.jpg
-02.jpg
-03.jpg
-04.jpg
+   01.jpg
+   02.jpg
+   03.jpg
+   04.jpg
 
-For each image on the portfolio, the screen show duration is 15 seconds. The output file is 'MyPortfolio.mpg'.
-There isn't transition between images.
+   For each image on the portfolio, the screen show duration is 15 seconds. The output file
+   is 'MyPortfolio.mpg'. There isn't transition between images.
 
 #./img2mpg -n NTSC -t 2 -o MyPortfolio.mpg -i *.png
 
-Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
-The image files sequence use the local filesystem sort.
+   Build XVCD (default) NTSC MPEG file with a transition between image (speed 2) and all local PNG images files.
+   The image files sequence use the local filesystem sort.
 
 Author:
-  CAULIER Gilles <caulier.gilles@free.fr>
+   CAULIER Gilles <caulier.gilles@free.fr>
 
 Visit :
-  URL PROJECT : http://mjpeg.sourceforge.net/
-  WEBCVS : http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/mjpeg/mjpeg_play/scripts/
+   URL PROJECT : http://mjpeg.sourceforge.net/
+   WEBCVS : http://cvs.sourceforge.net/cgi-bin/viewcvs.cgi/mjpeg/mjpeg_play/scripts/
 
 EOF
       exit 0
@@ -448,19 +460,23 @@ if [ $CPT_IMG_FILE = 0 ]; then
     echo -e "\nNo image file to convert !!!"
     exit -1
 else
-    echo -e "------------------------------------------------"
-    echo -e "\nNumber of image file(s)       :  $CPT_IMG_FILE."
-    echo -e "Processing sequence :"
-
+    if [ $WITHGUI = 0 ]; then     
+	echo -e "------------------------------------------------"
+	echo -e "\nNumber of image file(s)       :  $CPT_IMG_FILE."
+	echo -e "Processing sequence :"
+    fi
+    
     CPT=$CPT_IMG_FILE
 
     while test $CPT -gt 0; do
         INPUT_FILE_NAME="${INPUT_IMAGE_FILES[`echo $(($CPT_IMG_FILE-CPT))`]}"
-        echo -e "$INPUT_FILE_NAME"
+        if [ $WITHGUI = 0 ]; then     
+    	    echo -e "$INPUT_FILE_NAME"
+	fi
         if [ -s $INPUT_FILE_NAME ]; then
            CPT=`echo $(($CPT-1))`
         else
-           echo -e "This image file don't exist or can't be open !!!"
+           echo -e "The image file '$INPUT_FILE_NAME' don't exist or can't be open !!!"
            exit -1
         fi
     done
@@ -586,28 +602,32 @@ if [ $[$TOTALDURATION <= 3] = 1 ]; then
    WARNINGTOTALDURATION="(WARNING : total duration <= 3s !!!)"
 fi
 
-echo -e "Video format                  : '$VIDEOFORMAT_MESSAGE'."
-echo -e "Video type                    : '$VIDEO_TYPE'."
-if [ $AUDIO_MPEG ]; then
-    echo -e "MPEG audio file               : '$AUDIO_MPEG'."
+if [ $WITHGUI = 0 ]; then     
+    echo -e "Video format                  : '$VIDEOFORMAT_MESSAGE'."
+    echo -e "Video type                    : '$VIDEO_TYPE'."
+    if [ $AUDIO_MPEG ]; then
+	echo -e "MPEG audio file               : '$AUDIO_MPEG'."
+    fi
+    if [ $AUDIO_WAV ]; then
+	echo -e "WAV audio file                : '$AUDIO_WAV'."
+    fi
+    echo -e "Frames per second             : '$IMAGES_SEC'."
+    echo -e "Image duration                :  $IMAGEDURATION s."
+    echo -e "Total video sequence duration :  $TOTALDURATION s $WARNINGTOTALDURATION."
+    if [ $TRANSITIONENABLE = 1 ]; then
+	echo -e "Transition frames             :  $NBFRAMETRANSITION."
+    fi
+    echo -e "Total frames processing       :  $NBFRAMETOTAL."
+    echo -e "Background image file         : '$MASK'."
+    echo -e "Verbosity                     : '$VERBOSITY'.\n"
+    echo -e "------------------------------------------------"
 fi
-if [ $AUDIO_WAV ]; then
-    echo -e "WAV audio file                : '$AUDIO_WAV'."
-fi
-echo -e "Frames per second             : '$IMAGES_SEC'."
-echo -e "Image duration                :  $IMAGEDURATION s."
-echo -e "Total video sequence duration :  $TOTALDURATION s $WARNINGTOTALDURATION."
-if [ $TRANSITIONENABLE = 1 ]; then
-    echo -e "Transition frames             :  $NBFRAMETRANSITION."
-fi
-echo -e "Total frames processing       :  $NBFRAMETOTAL."
-echo -e "Background image file         : '$MASK'."
-echo -e "Verbosity                     : '$VERBOSITY'.\n"
-echo -e "------------------------------------------------"
 
 # Creating a MPEG flux with the images.
 
-echo -e "Encoding $CPT_IMG_FILE image(s) MPEG sequence with ImageMagick and MjpegTools.\n"
+if [ $WITHGUI = 0 ]; then     
+    echo -e "Encoding $CPT_IMG_FILE image(s) MPEG sequence with ImageMagick and MjpegTools.\n"
+fi
 
 # Counter of frames for the MPEG conversion.
 CPT=0
@@ -633,7 +653,13 @@ while test $CPT -lt $NBFRAMETOTAL;\
 
         # For debugging...
         # echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      - DISSOLVE=$DISSOLVEVALUE    - Image Num. $CPF / $CPT_IMG_FILE [${INPUT_IMAGE_FILES[`echo $(($CPF-1))`]}] \n" >&2
-        echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
+
+        if [ $WITHGUI = 0 ]; then     
+    	    echo -ne "Frame Num. $CPT / $NBFRAMETOTAL      \r" >&2
+	else 
+	    COUNTERGUI=`echo $((($CPT*100)/$NBFRAMETOTAL))`
+	    echo -ne "Images encoding $COUNTERGUI%\r" >&2
+	fi
 
         if [ $TRANSITIONENABLE = 0 ]; then
 	    if [ $CPT = `echo $((($CPF*$NBFRAMEIMAGE)-$NBFRAMEIMAGE+1))` ]; then
@@ -682,7 +708,9 @@ while test $CPT -lt $NBFRAMETOTAL;\
 DATE_FIN=`date +%s`
 TEMPSCALCUL=`echo $(($DATE_FIN-DATE_DEBUT))`
 
-echo -e "\n$CPT_IMG_FILE image file(s) MPEG encoding terminated [$NBFRAMETOTAL frames - Encoding time : $TEMPSCALCUL s]."
+if [ $WITHGUI = 0 ]; then     
+    echo -e "\n$CPT_IMG_FILE image file(s) MPEG encoding terminated [$NBFRAMETOTAL frames - Encoding time : $TEMPSCALCUL s]."
+fi
 
 # Building sound track if necessary...
 
@@ -692,7 +720,9 @@ if [ $AUDIO_MPEG ]; then
     AUDIOFILENAME=$AUDIO_MPEG
 else
     if [ $AUDIO_WAV ]; then
-	echo -e "\nEncoding MPG layer 2 audio file from $AUDIO_WAV WAV file with MjpegTools."
+        if [ $WITHGUI = 0 ]; then     
+            echo -e "\nEncoding MPG layer 2 audio file from $AUDIO_WAV WAV file with MjpegTools."
+	fi
 	cat $AUDIO_WAV | mp2enc -v $VERBOSE -V -o $TMPFILENAME.tmp.mp2
         AUDIOFILENAME=$TMPFILENAME.tmp.mp2
     fi
@@ -700,7 +730,9 @@ fi
 
 # Video and audio streams final merge for VCDImager compatibility.
 
-echo -e "\nMerging MPEG flux with MjpegTools."
+if [ $WITHGUI = 0 ]; then     
+    echo -e "\nMerging MPEG flux with MjpegTools."
+fi
 
 # No output MPEG file name on command line -> take a temporary file.
 if [ -z $OUTPUT_MPEG_FILE ]; then
@@ -709,7 +741,9 @@ fi
 
 mplex -v $VERBOSE -f $VIDEO_FORMAT_NUMBER -b $BUFFER_SIZE $AUDIOFILENAME $TMPFILENAME.tmp.m2v -o $OUTPUT_MPEG_FILE
 
-echo -e "\nThe video MPEG output file is '$OUTPUT_MPEG_FILE'."
+if [ $WITHGUI = 0 ]; then     
+    echo -e "\nThe video MPEG output file is '$OUTPUT_MPEG_FILE'."
+fi
 
 # Clean up & Bye...
 CleanUp
