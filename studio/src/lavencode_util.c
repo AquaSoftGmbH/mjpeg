@@ -273,16 +273,18 @@ void accept_changes(GtkWidget *widget, gpointer data)
  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_s)) == TRUE )
    {
      sprintf(area_size, "%s", gtk_entry_get_text(GTK_ENTRY(actfield_s)));
-     printf("\n button S: %s \n", area_size);
      gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),area_size);
    }
  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_l)) == TRUE )
    {
-     printf("\n button L\n");
+     sprintf(area_size, "%s", gtk_entry_get_text(GTK_ENTRY(actfield_l)));
+     gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),area_size);
    }
  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button_m)) == TRUE )
    {
-     printf("\n button M\n");
+     sprintf(area_size, "%s", gtk_entry_get_text(GTK_ENTRY(actfield_m)));
+     if (strlen(area_size) >= 7)
+       gtk_entry_set_text(GTK_ENTRY(combo_entry_scalerinput),area_size);
    }
 }
 
