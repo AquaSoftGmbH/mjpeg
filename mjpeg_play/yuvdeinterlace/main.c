@@ -136,10 +136,8 @@ main (int argc, char *argv[])
 	    mjpeg_log (LOG_INFO,
 		       " of the luma-channel. You may (if you don't care of the");
 	    mjpeg_log (LOG_INFO, " bitrate) add some noise and blur the result with");
-	    mjpeg_log (LOG_INFO, " y4mspatialfilter (but not too much ...).");
-	    mjpeg_log (LOG_INFO, "");
+	    mjpeg_log (LOG_INFO, " y4mspatialfilter (but not too much ...).\n");
 	    mjpeg_log (LOG_INFO, " y4mdeinterlace understands the following options:");
-	    mjpeg_log (LOG_INFO, "");
 	    mjpeg_log (LOG_INFO, " -v verbose/debug");
 	    mjpeg_log (LOG_INFO,
 		       " -f film-FX processing to give DV a more film-like-look...");
