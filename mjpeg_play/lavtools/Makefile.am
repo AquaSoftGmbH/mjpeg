@@ -83,6 +83,7 @@ bin_PROGRAMS = \
 	y4mspatialfilter \
 	y4mstabilizer \
 	yuvfps \
+	y4mhist \
 	y4mblack \
 	y4mtoyuv \
 	y4minterlace \
@@ -241,3 +242,7 @@ yuvfps_LDADD = $(LIBMJPEGUTILS)
 
 yuvinactive_SOURCES = yuvinactive.c
 yuvinactive_LDADD = $(LIBMJPEGUTILS)
+
+y4mhist_SOURCES = y4mhist.c
+y4mhist_CFLAGS=@PROGRAM_NOPIC@
+y4mhist_LDADD = $(LIBMJPEGUTILS)
