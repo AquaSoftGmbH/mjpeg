@@ -1,0 +1,98 @@
+#!/bin/sh
+#
+# If you wish to run this script as not a superuser
+# you should have program sudo installed and properly
+# configured.
+#
+# If you run this script as root, or if you have /sbin/insmod setuid root,
+# comment out the next line
+# SUDO=sudo
+#
+LINUX_VERSION=`uname -r`
+sync;sync
+
+# Unload everything
+$SUDO /sbin/rmmod dc10 > /dev/null 2>&1     # Just in case if old driver was loaded
+$SUDO /sbin/rmmod zoran > /dev/null 2>&1
+# If you don't have DC10 or DC10plus card comment out next two lines
+$SUDO /sbin/rmmod adv7175 > /dev/null 2>&1
+$SUDO /sbin/rmmod saa7110 > /dev/null 2>&1
+# If you don't have BUZ card comment out next two lines
+$SUDO /sbin/rmmod saa7111 > /dev/null 2>&1
+$SUDO /sbin/rmmod saa7185 > /dev/null 2>&1
+# If you don't have LML33 card comment out next two lines
+$SUDO /sbin/rmmod bt819 > /dev/null 2>&1
+$SUDO /sbin/rmmod bt856 > /dev/null 2>&1
+if echo $LINUX_VERSION | grep '2\.4' > /dev/null
+then
+    $SUDO /sbin/rmmod i2c-old > /dev/null 2>&1
+else
+    $SUDO /sbin/rmmod i2c > /dev/null 2>&1
+fi
+$SUDO /sbin/rmmod videodev > /dev/null 2>&1
+
+# Load driver
+
+sync;sync
+$SUDO /sbin/insmod -f videodev
+if echo $LINUX_VERSION | grep '2\.4' > /dev/null
+then
+    $SUDO /sbin/insmod -f i2c-old
+else
+    $SUDO /sbin/insmod -f i2c
+fi
+
+incompat=""
+cards=""
+
+while [ "$1" != "" ]
+do
+    case "$1" in
+    
+        'dc10'|'dc10plus')
+            $SUDO /sbin/insmod -f ./saa7110.o
+            $SUDO /sbin/insmod -f ./adv7175.o
+            cards="$cards $1"
+            ;;
+        'lml33')
+            if [ "$incompat" = "buz" ]
+            then
+                echo "Using of Buz and LML33 cards in the same system is not yet supported"
+                echo "Installation aborted."
+                exit 1
+            fi
+            $SUDO /sbin/insmod -f ./bt819.o
+            $SUDO /sbin/insmod -f ./bt856.o
+            cards="$cards $1"
+            incompat="lml33"
+            ;;
+        'buz')
+            if [ "$incompat" = "lml33" ]
+            then
+                echo "Using of Buz and LML33 cards in the same system is not yet supported"
+                echo "Installation aborted."
+                exit 1
+            fi
+            $SUDO /sbin/insmod -f ./saa7111.o
+            $SUDO /sbin/insmod -f ./saa7185.o
+            cards="$cards $1"
+            incompat="buz"
+            ;;
+        *)
+            ;;
+    esac
+    shift
+done
+
+if [ "$cards" = "" ]
+then
+    echo "No cards were specified. Installation aborted."
+    exit 1
+fi
+
+sync;sync
+sleep 1
+# For information about options, please, check file README.
+# If you have PAL signal in you country, change to default_norm=0 in the next line
+$SUDO /sbin/insmod -f ./zoran.o default_norm=1 lock_norm=0 pass_through=1 lml33dpath=0 # v4l_bufsize=1280
+sync;sync
