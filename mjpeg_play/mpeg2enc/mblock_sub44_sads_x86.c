@@ -75,15 +75,14 @@ static __inline__ void load_blk(uint8_t *blk,uint32_t rowstride,int h)
 
 /*
  * Do a shift right on the 4*4 block in the MMX registers
- *
+ * We do this as a macro as otherwise we get warnings from the
+ * pre-optimised asm generated. 
  */
-static __inline__ void shift_blk(const uint32_t shift)
-{
-	psrlq_i2r( shift,mm0);
-	psrlq_i2r( shift,mm1);
-	psrlq_i2r( shift,mm2);
+#define shift_blk(shift)\
+	psrlq_i2r( shift,mm0);\
+	psrlq_i2r( shift,mm1);\
+	psrlq_i2r( shift,mm2);\
 	psrlq_i2r( shift,mm3);
-}
 
 /*
  * Compute the Sum absolute differences between the 4*h block in

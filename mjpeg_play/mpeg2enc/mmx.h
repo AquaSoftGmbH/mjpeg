@@ -38,10 +38,10 @@ typedef	union {
 } ATTR_ALIGN(8) mmx_t;	/* On an 8-byte (64-bit) boundary */
 
 
-#define	mmx_i2r(op,imm,reg) \
+#define	mmx_si2r(op,imm,reg) \
 	__asm__ __volatile__ (#op " %0, %%" #reg \
 			      : /* nothing */ \
-			      : "X" (imm) )
+			      : "J" (imm) )
 
 #define	mmx_m2r(op,mem,reg) \
 	__asm__ __volatile__ (#op " %0, %%" #reg \
@@ -125,30 +125,30 @@ typedef	union {
 #define	por_m2r(var,reg)	mmx_m2r (por, var, reg)
 #define	por_r2r(regs,regd)	mmx_r2r (por, regs, regd)
 
-#define	pslld_i2r(imm,reg)	mmx_i2r (pslld, imm, reg)
+#define	pslld_i2r(imm,reg)	mmx_si2r (pslld, imm, reg)
 #define	pslld_m2r(var,reg)	mmx_m2r (pslld, var, reg)
 #define	pslld_r2r(regs,regd)	mmx_r2r (pslld, regs, regd)
-#define	psllq_i2r(imm,reg)	mmx_i2r (psllq, imm, reg)
+#define	psllq_i2r(imm,reg)	mmx_si2r (psllq, imm, reg)
 #define	psllq_m2r(var,reg)	mmx_m2r (psllq, var, reg)
 #define	psllq_r2r(regs,regd)	mmx_r2r (psllq, regs, regd)
-#define	psllw_i2r(imm,reg)	mmx_i2r (psllw, imm, reg)
+#define	psllw_i2r(imm,reg)	mmx_si2r (psllw, imm, reg)
 #define	psllw_m2r(var,reg)	mmx_m2r (psllw, var, reg)
 #define	psllw_r2r(regs,regd)	mmx_r2r (psllw, regs, regd)
 
-#define	psrad_i2r(imm,reg)	mmx_i2r (psrad, imm, reg)
+#define	psrad_i2r(imm,reg)	mmx_si2r (psrad, imm, reg)
 #define	psrad_m2r(var,reg)	mmx_m2r (psrad, var, reg)
 #define	psrad_r2r(regs,regd)	mmx_r2r (psrad, regs, regd)
-#define	psraw_i2r(imm,reg)	mmx_i2r (psraw, imm, reg)
+#define	psraw_i2r(imm,reg)	mmx_si2r (psraw, imm, reg)
 #define	psraw_m2r(var,reg)	mmx_m2r (psraw, var, reg)
 #define	psraw_r2r(regs,regd)	mmx_r2r (psraw, regs, regd)
 
-#define	psrld_i2r(imm,reg)	mmx_i2r (psrld, imm, reg)
+#define	psrld_i2r(imm,reg)	mmx_si2r (psrld, imm, reg)
 #define	psrld_m2r(var,reg)	mmx_m2r (psrld, var, reg)
 #define	psrld_r2r(regs,regd)	mmx_r2r (psrld, regs, regd)
-#define	psrlq_i2r(imm,reg)	mmx_i2r (psrlq, imm, reg)
+#define	psrlq_i2r(imm,reg)	mmx_si2r (psrlq, imm, reg)
 #define	psrlq_m2r(var,reg)	mmx_m2r (psrlq, var, reg)
 #define	psrlq_r2r(regs,regd)	mmx_r2r (psrlq, regs, regd)
-#define	psrlw_i2r(imm,reg)	mmx_i2r (psrlw, imm, reg)
+#define	psrlw_i2r(imm,reg)	mmx_si2r (psrlw, imm, reg)
 #define	psrlw_m2r(var,reg)	mmx_m2r (psrlw, var, reg)
 #define	psrlw_r2r(regs,regd)	mmx_r2r (psrlw, regs, regd)
 
