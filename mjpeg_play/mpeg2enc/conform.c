@@ -94,8 +94,8 @@ void range_checks()
   if (chroma_format<CHROMA420 || chroma_format>CHROMA444)
     mjpeg_error_exit1("chroma_format must be in range 1...3");
 
-  if (video_format<0 || video_format>4)
-    mjpeg_error_exit1("video_format must be in range 0...4");
+  if (video_format<0 || video_format>5)
+    mjpeg_error_exit1("video_format must be in range 0...5");
 
   if (color_primaries<1 || color_primaries>7 || color_primaries==3)
     mjpeg_error_exit1("color_primaries must be in range 1...2 or 4...7");

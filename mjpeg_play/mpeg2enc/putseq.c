@@ -317,6 +317,7 @@ struct _stream_state
 
 typedef struct _stream_state stream_state_s;
 
+#ifndef SINGLE_THREADED
 static void create_threads( pthread_t *threads, int num, void *(*start_routine)(void *) )
 {
 	int i;
@@ -348,7 +349,7 @@ static void create_threads( pthread_t *threads, int num, void *(*start_routine)(
 		}
 	}
 }
-
+#endif
 
 static void gop_start( stream_state_s *ss )
 {
@@ -644,9 +645,8 @@ static void reconstruct( pict_data_s *picture)
 semaphore_t worker_available =  SEMAPHORE_INITIALIZER;
 semaphore_t picture_available = SEMAPHORE_INITIALIZER;
 semaphore_t picture_started = SEMAPHORE_INITIALIZER;
-static volatile pict_data_s *picture_to_encode;
 
-#ifdef SINGLE_THREADED_FOR_DEBUG
+#ifdef SINGLE_THREADED
 static void stencodeworker(pict_data_s *picture)
 {
 		/* ALWAYS do-able */
@@ -715,7 +715,10 @@ static void stencodeworker(pict_data_s *picture)
 					picture->AQ, picture->SQ);
 			
 }
-#endif
+#else
+
+static volatile pict_data_s *picture_to_encode;
+
 
 static void *parencodeworker(void *start_arg)
 {
@@ -804,6 +807,7 @@ static void *parencodeworker(void *start_arg)
 	return NULL;
 }
 
+
 static void parencodepict( pict_data_s *picture )
 {
 
@@ -812,7 +816,7 @@ static void parencodepict( pict_data_s *picture )
 	mp_semaphore_signal( &picture_available, 1 );
 	mp_semaphore_wait( &picture_started );
 }
-
+#endif
 
 
 /*********************
@@ -837,13 +841,16 @@ void putseq()
 	int cur_b_idx = 0;
 	pict_data_s b_pictures[B_PICS];
 	pict_data_s ref_pictures[R_PICS];
+#ifndef SINGLE_THREADED
 	pthread_t worker_threads[MAX_WORKER_THREADS];
+#endif
 	pict_data_s *cur_picture, *old_picture;
 	pict_data_s *new_ref_picture, *old_ref_picture;
 
 	init_pictures( ref_pictures, b_pictures );
+#ifndef SINGLE_THREADED
 	create_threads( worker_threads, max_encoding_frames, parencodeworker );
-
+#endif
 	/* Initialize image dependencies and synchronisation.  The
 	   first frame encoded has no predecessor whose completion it
 	   must wait on.
@@ -918,7 +925,11 @@ void putseq()
 
 
 		set_pic_params( ss.i, ss.b,   cur_picture );
+#ifdef  SINGLE_THREADED
+		stencodeworker( cur_picture );
+#else
 		parencodepict( cur_picture );
+#endif
 
 #ifdef DEBUG
 		writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->curref);
@@ -929,6 +940,8 @@ void putseq()
 	}
 	
 	/* Wait for final frame's encoding to complete */
+#ifndef SINGLE_THREADED
 	sync_guard_test( &cur_picture->completion );
+#endif
 	putseqend();
 }
