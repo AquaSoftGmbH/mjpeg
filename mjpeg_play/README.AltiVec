@@ -3,6 +3,9 @@ AltiVec optimized library for MJPEG tools MPEG-1/2 Video Encoder
 
 Copyright (C) 2002  James Klicman <james@klicman.org>
 
+Performance statistics for these optimizations are available at
+http://klicman.org/altivec/.
+
 
 Platform specific comments:
 
