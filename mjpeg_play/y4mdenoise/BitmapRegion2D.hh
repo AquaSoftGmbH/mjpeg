@@ -250,7 +250,7 @@ template <class INDEX, class SIZE>
 class BitmapRegion2D<INDEX,SIZE>::FloodFillControl
 #ifndef GCC_295_WORKAROUND
 	: public Region2D<INDEX,SIZE>::
-		FloodFillControl<BitmapRegion2D<INDEX,SIZE> >
+		template FloodFillControl<BitmapRegion2D<INDEX,SIZE> >
 #endif // ! GCC_295_WORKAROUND
 {
 public:
@@ -1418,13 +1418,13 @@ BitmapRegion2D<INDEX,SIZE>::FloodFillControl::Init
 	assert (a_reStatus == g_kNoError);
 
 	// Initialize our helper regions.
-	m_oToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
-	m_oAlreadyDone.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oAlreadyDone.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
-	m_oNextToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
+	BitmapRegion2D<INDEX,SIZE>::FloodFillControl::m_oNextToDo.Init (a_reStatus, a_tnWidth, a_tnHeight);
 	if (a_reStatus != g_kNoError)
 		return;
 }

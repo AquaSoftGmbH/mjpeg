@@ -151,7 +151,7 @@ public:
 
 	// A structure that implements flood-fills using SetRegion2D<> to
 	// do the work.
-	typedef BaseClass::FloodFillControl<SetRegion2D<INDEX,SIZE> >
+	typedef typename BaseClass::template FloodFillControl<SetRegion2D<INDEX,SIZE> >
 		FloodFillControl;
 
 	template <class CONTROL>

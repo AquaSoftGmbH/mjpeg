@@ -133,19 +133,19 @@ public:
 		public:
 			Iterator() : ConstIterator() {}
 			Iterator (Node *a_pNode) : ConstIterator (a_pNode) {}
-			VALUE &operator*() {return m_pNode->m_oValue; }
-			Iterator& operator++() { m_pNode = m_pNode->m_apForward[0];
+			VALUE &operator*() {return ConstIterator::m_pNode->m_oValue; }
+			Iterator& operator++() { ConstIterator::m_pNode = ConstIterator::m_pNode->m_apForward[0];
 				return *this; }
 			Iterator operator++(int) { Iterator oTmp = *this; ++*this;
 				return oTmp; }
-			Iterator& operator--() { m_pNode = m_pNode->m_pBackward;
+			Iterator& operator--() { ConstIterator::m_pNode = ConstIterator::m_pNode->m_pBackward;
 				return *this; }
 			Iterator operator--(int) { Iterator oTmp = *this; --*this;
 				return oTmp; }
 			bool operator== (const Iterator &a_rOther) const
-				{ return (m_pNode == a_rOther.m_pNode) ? true : false; }
+				{ return (ConstIterator::m_pNode == a_rOther.m_pNode) ? true : false; }
 			bool operator!= (const Iterator &a_rOther) const
-				{ return (m_pNode != a_rOther.m_pNode) ? true : false; }
+				{ return (ConstIterator::m_pNode != a_rOther.m_pNode) ? true : false; }
 	};
 	
 	//

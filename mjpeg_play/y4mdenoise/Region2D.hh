@@ -380,7 +380,7 @@ Region2D<INDEX,SIZE>::Assign (Status_t &a_reStatus,
 	assert (a_reStatus == g_kNoError);
 
 	// Assign the other region's extents to ourselves.
-	Clear();
+	Region2D<INDEX,SIZE>::Clear();
 	for (typename REGION::ConstIterator itHere = a_rOther.Begin();
 		 itHere != a_rOther.End();
 		 ++itHere)
@@ -621,7 +621,7 @@ Region2D<INDEX,SIZE>::Subtract (Status_t &a_reStatus,
 	{
 		// Subtract this extent from the current region.
 		Subtract (a_reStatus, (*itHere).m_tnY, (*itHere).m_tnXStart,
-			(*itHere).m_tnXEnd, a_rOther, itNext);
+			(*itHere).m_tnXEnd, a_rOther, itHere.itNext);
 		if (a_reStatus != g_kNoError)
 			return;
 	}
@@ -753,7 +753,7 @@ Region2D<INDEX,SIZE>::FloodFill (Status_t &a_reStatus,
 			a_rControl.m_oToDo.Assign (a_reStatus, *this);
 			if (a_reStatus != g_kNoError)
 				return;
-			Clear();
+			Region2D<INDEX,SIZE>::Clear();
 		}
 	}
 	else
@@ -888,7 +888,7 @@ Region2D<INDEX,SIZE>::MakeBorder (Status_t &a_reStatus,
 	assert (a_reStatus == g_kNoError);
 
 	// Start with an empty region.
-	Clear();
+	Region2D<INDEX,SIZE>::Clear();
 
 	// For every extent in the other region, add every surrounding
 	// extent.  That creates a region that looks like the other region,
