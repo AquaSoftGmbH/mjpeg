@@ -71,6 +71,8 @@ typedef struct {
    int  sdl_width;              /* width of the SDL playback window in case of software playback */
    int  sdl_height;             /* height of the SDL playback window in case of software playback */
    int  soft_full_screen;       /* [0-1] set software-driven full-screen/screen-output, 1 = yes, 0 = no */
+   int  vw_x_offset;            /* onscreen hardware playback video window X offset */
+   int  vw_y_offset;            /* onscreen hardware playback video window Y offset */
    char *video_dev;             /* the video device */
    char *display;               /* the X-display (only important for -H) */
 

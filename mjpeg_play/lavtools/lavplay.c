@@ -60,6 +60,10 @@
  *      'C': hardware playback to the output of the card
  *      For 'C', you need xawtv to see what you're playing
  *
+ *   --s-x-offset and --s-y-offset <num>
+ *     Video window offset from top left corner when using onscreen video
+ *     playback (--playback=H). Default: centered
+ *
  * Following the options, you may give a optional +p/+n parameter (for forcing
  * the use of PAL or NTSC) and the several AVI files, Quicktime files
  * or Edit Lists arbitrarily mixed (as long as all files have the same
@@ -147,8 +151,8 @@ static void Usage(char *progname)
    fprintf(stderr, "Usage: %s [options] <filename> [<filename> ...]\n", progname);
    fprintf(stderr, "where options are:\n");
    fprintf(stderr, "  -o/--norm [np]             NTSC or PAL (default: guess from framerate)\n");
-   fprintf(stderr, "  -H/--H-offset num          Horizontal offset\n");
-   fprintf(stderr, "  -V/--V-offset num          Vertical offset\n");
+   fprintf(stderr, "  -H/--H-offset num          Horizontal offset (for hardware playback)\n");
+   fprintf(stderr, "  -V/--V-offset num          Vertical offset (for hardware playback)\n");
    fprintf(stderr, "  -s/--skip num              skip num seconds before playing\n");
    fprintf(stderr, "  -c/--synchronization [01]  Sync correction off/on (default on)\n");
    fprintf(stderr, "  -n/--mjpeg-buffers num     Number of MJPEG buffers\n");
@@ -178,9 +182,9 @@ static void Usage(char *progname)
       "\n");
    fprintf(stderr, "  -a/--audio [01]            Enable audio playback\n");
    fprintf(stderr, "  -F/--flicker               Disable flicker reduction\n");
-#ifdef HAVE_SDL
-   fprintf(stderr, "  --size NxN                 width X height for SDL window (software)\n");
-#endif
+   fprintf(stderr, "  --size NxN                 width X height for SDL (S) or video (H) window\n");
+   fprintf(stderr, "  --s-x-offset num           Video Window X offset from topleft corner\n");
+   fprintf(stderr, "  --s-y-offset num           Video Window Y offset from topleft corner\n");
    fprintf(stderr, "  --display :x.x             The X-display to use (default: \':0.0\')\n");
    fprintf(stderr, "  -v/--verbose [012]         verbosity\n");
    exit(1);
@@ -405,7 +409,6 @@ static int set_option(char *name, char *value)
             break;
       }
    }
-#ifdef HAVE_SDL
    else if (strcmp(name, "size")==0)
    {
       if (sscanf(value, "%dx%d", &info->sdl_width, &info->sdl_height)!=2)
@@ -414,7 +417,6 @@ static int set_option(char *name, char *value)
          nerr++;
       }
    }
-#endif
    else if (strcmp(name, "flicker")==0 || strcmp(name, "F")==0)
    {
       info->flicker_reduction = 0;
@@ -422,6 +424,14 @@ static int set_option(char *name, char *value)
    else if (strcmp(name, "display")==0)
    {
       info->display = optarg;
+   }
+   else if (strcmp(name, "s-x-offset")==0)
+   {
+      info->vw_x_offset = atoi(optarg);
+   }
+   else if (strcmp(name, "s-y-offset")==0)
+   {
+      info->vw_y_offset = atoi(optarg);
    }
    else nerr++; /* unknown option - error */
 
@@ -450,11 +460,11 @@ static void check_command_line_options(int argc, char *argv[])
       {"playback"        ,1,0,0},   /* -p/--playback [SHC]  */
       {"audio"           ,1,0,0},   /* -a/--audio [01]      */
       {"gui-mode"        ,1,0,0},   /* -g/--gui-mode        */
-#ifdef HAVE_SDL
       {"size"            ,1,0,0},   /* --size               */
-#endif
       {"flicker"         ,0,0,0},   /* -F/--flicker         */
       {"display"         ,1,0,0},   /* --display            */
+      {"s-x-offset"      ,1,0,0},   /* --s-x-offset         */
+      {"s-y-offset"      ,1,0,0},   /* --s-y-offset         */
       {0,0,0,0}
    };
 #endif

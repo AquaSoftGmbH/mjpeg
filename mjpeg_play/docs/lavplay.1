@@ -26,18 +26,18 @@ below for details.
 .TP 8
 .BR \-p/\-\-playback " [" S | C | H ]
 The playback mode to be used. 'S' means software\-playback using SDL.
-'H' means hardware\-playback on the monitor (full\-screen). 'C' means
+'H' means hardware\-playback on the monitor (on\-screen). 'C' means
 hardware\-playback to the video-out of the zoran video-capture device.
 Obviously, 'C' and 'H' only work on computers with zoran video\-capture
 devices.
 .TP 8
 .B \-Z/\-\-full\-screen
-Software full-screen playback. This only works if SDL-playback is chosen
-(-S), and will playback the video full-screen instead of in a window.
+Full-screen playback. This works if SDL- or onscreen-playback is
+chosen.
 .TP 8
 .BI \-\-size " NxN"
 Size of the video window (default: size of the input video) when using
-software (SDL) playback
+software (SDL) or hardware onscreen playback
 .TP 8
 .BR \-a/\-\-audio " [" 0 | 1 ]
 Enables (1) or disables (0) audio playback.
@@ -70,8 +70,14 @@ you almost certainly want this.  Disabling is really there for
 diagnostic purposes and not much else.
 .TP 8
 .BI \-H/\-\-H\-offset " num", \-V/\-\-V-offset " num"
-Horizontal (-H) and vertical (-V) offset when using hardware-playback of
-a video which does not cover the full video hardware-resolution.
+Horizontal (-H) and vertical (-V) offset when using hardware-playback.
+Offset plus width or height should be smaller than or equal to the
+playback device's maximum allowed size (DC10+: 640x480 or 768x576,
+LML33/Marvel/Buz: 720x480/576).
+.TP 8
+.BI \-\-s\-x\-offset " num", \-\-s\-y\-offset " num"
+Offset for the video window (from top left screen corner) when using
+hardware onscreen playback in non\-fullscreen mode.
 .TP 8
 .BI \-\-display " :x.x"
 When using hardware fullsreen video playback (\-pH), this setting can be

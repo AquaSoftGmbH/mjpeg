@@ -989,61 +989,51 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
       if (vc.maxwidth!=640 && vc.maxwidth!=768)
          vc.maxwidth=720;
       XGetWindowAttributes(dpy, DefaultRootWindow(dpy), &wts);
-      vw.x = info->soft_full_screen ? 0: (wts.width-vc.maxwidth)/2;
-      if (info->vertical_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
-      {
-         if (info->vertical_offset < 0 ||
-             info->vertical_offset > 2*vw.y)
-         {
-            lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Y-offset (%d) is out of range",
-               info->vertical_offset);
-            return 0;
-         }
-         vw.y = info->vertical_offset;
-      }
-      if (info->horizontal_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
-      {
-         if (info->horizontal_offset < 0 ||
-             info->horizontal_offset > 2*vw.x)
-         {
-            lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "X-offset (%d) is out of range",
-               info->horizontal_offset);
-            return 0;
-         }
-         vw.x = info->horizontal_offset;
-      }
+
       vw.y = info->soft_full_screen ? 0: (wts.height-((bp->norm == 0) ? 576 : 480))/2;
+      if (info->vw_y_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
+         vw.y = info->vw_y_offset;
+      vw.x = info->soft_full_screen ? 0: (wts.width-vc.maxwidth)/2;
+      if (info->vw_x_offset != VALUE_NOT_FILLED && !info->soft_full_screen)
+         vw.x = info->vw_x_offset;
       vw.width = info->soft_full_screen ? wts.width : vc.maxwidth;
-      if (info->sdl_width && !info->soft_full_screen)
-      {
-         if (info->sdl_width < 0 ||
-             info->sdl_width > wts.width)
-         {
-            lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Screen width (%d) out of range",
-               info->sdl_width);
-            return 0;
-         }
+      if (info->sdl_width > 0 && !info->soft_full_screen)
          vw.width = info->sdl_width;
-      }
       vw.height = info->soft_full_screen ? wts.height : ((bp->norm == 0) ? 576 : 480);
-      if (info->sdl_height && !info->soft_full_screen)
-      {
-         if (info->sdl_height < 0 ||
-             info->sdl_height > wts.height)
-         {
-            lavplay_msg(LAVPLAY_MSG_ERROR, info,
-               "Screen height (%d) out of range",
-               info->sdl_height);
-            return 0;
-         }
+      if (info->sdl_height > 0 && !info->soft_full_screen)
          vw.height = info->sdl_height;
-      }
       vw.clips = NULL;
       vw.clipcount = 0;
       vw.chromakey = -1;
+
+      if (vw.x < 0)
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "X offset (%d) would be < 0",
+            vw.x);
+         return 0;
+      }
+      if (vw.y < 0)
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "Y offset (%d) would be < 0",
+            vw.y);
+         return 0;
+      }
+      if (vw.x + vw.width > wts.width)
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "X offset + width (%d+%d) would be > screensize (%d)",
+            vw.x, vw.width, wts.width);
+         return 0;
+      }
+      if (vw.y + vw.height > wts.height)
+      {
+         lavplay_msg(LAVPLAY_MSG_ERROR, info,
+            "Y offset + height (%d+%d) would be > screensize (%d)",
+            vw.y, vw.height, wts.height);
+         return 0;
+      }
       
       if (ioctl(settings->video_fd, VIDIOCSWIN, &vw) < 0)
       {
@@ -1822,10 +1812,10 @@ lavplay_t *lavplay_malloc()
    info->exchange_fields = 0;
    info->zoom_to_fit = 0;
    info->flicker_reduction = 1;
-#ifdef HAVE_SDL
    info->sdl_width = 0; /* use video size */
    info->sdl_height = 0; /* use video size */
-#endif
+   info->vw_x_offset = 0;
+   info->vw_y_offset = 0;
    info->soft_full_screen = 0;
    info->video_dev = "/dev/video";
    info->display = ":0.0";
