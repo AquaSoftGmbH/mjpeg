@@ -30,7 +30,8 @@ somewhat faster MMX version available (see 2. below).  It is easy to
 hack out the jpeg stuff but if you don't fancy that you can use a
 pre-hacked version downloadable from where you got this package.
 
-The file is called "quicktime4linux-1.2njpg.tar.gz"
+http://download.sourceforge.net/mjpeg/quicktime4linux-1.2njpg.tar.gz
+
 
 ./configure
 make
@@ -48,10 +49,9 @@ is needed so that the colour-space conversion routines to be used by
 the jpeg library can be correctly set for the state of the X display.
 
 However, by far the simplest solution is to the faster patched MMX
-version that can be found with where you obtained this software.  The
-file is called:
+version that can be found with where you obtained this software. 
 
-"jpeg-mxx-0.1.2.tar.gz"
+http://download.sourceforge.net/mjpeg/jpeg-mmx-1.1.2.tar.gz
 
 Compile and install: 
 
@@ -72,7 +72,8 @@ prevent clashes.
 3) The libmovtar library for handling audio/video streams in "movtar" format.
 Very handy for hacking around, moving between formats, and experimentation.
 
-The file is called: "libmovtar-0.1.1.tar.gz".
+
+http://download.sourceforge.net/mjpeg/libmovtar-0.1.1.tar.gz
 
 Compile and install: 
 
@@ -97,8 +98,9 @@ for the install.
 	playback crashes out on you immediately try compiling and
 	installing SDL from source-code.
 
-5) A reasonably up-to-date installation of the "xforms" library.
-In RedHat land xforms-0.88.1-1 (you need the -devel too) is known to work.
+5) A reasonably up-to-date installation of the "xforms" library.  For
+RedHat systems the xforms-0.88.1-1 rpm's (you need the -devel too) on
+the RedHat rpm mirrors are known to work.
 
 
 6) If you wish to recompile the mpeg encoder you'll need a recent version

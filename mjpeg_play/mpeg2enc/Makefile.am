@@ -29,7 +29,7 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	 putvlc.c putbits.c motion.c predict.c readpic.c writepic.c transfrm.c \
 	fdctref.c idct.c quantize.c ratectl.c stats.c cpu_accel.c  \
 	 config.h global.h mpeg2enc.h vlc.h cpu_accel.h mmx.h attributes.h \
-	$(mpeg2enc_SIMD)
+	simd.h $(mpeg2enc_SIMD)
 
 
 
