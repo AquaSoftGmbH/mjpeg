@@ -671,7 +671,9 @@ do_frame(YfTaskCore_t *handle, const YfTaskCore_t *h0, const YfFrame_t *frame0)
       while (0 <= idrp && notdrop[idrp] != '0')
 	idrp--;
       if (idrp < 0) {
-	idrp = (h->nframes / 2) + 1;
+	idrp = h->nframes / 2;
+	if (h->iget - h->iuse - 1 < idrp)
+	  idrp = h->iget - h->iuse - 1;
 	while (0 <= idrp && (notdrop[idrp] & 1))
 	  idrp--;
       }
