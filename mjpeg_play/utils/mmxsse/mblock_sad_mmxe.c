@@ -413,7 +413,7 @@ void mblock_sub22_nearest4_sads_mmxe(uint8_t *blk1, uint8_t *blk2,
         paddd_r2r(mm3, mm1);
 
         movq_m2r(blk1[0], mm6);
-        movq_m2r(blk1[8], mm3);
+        movq_m2r(blk1[1], mm3);
         blk1-=rowstride;
         blk2-=rowstride;
 
