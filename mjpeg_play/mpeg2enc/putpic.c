@@ -410,6 +410,8 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 				PMV[0][0][0]=PMV[0][0][1]=PMV[1][0][0]=PMV[1][0][1]=0;
 				PMV[0][1][0]=PMV[0][1][1]=PMV[1][1][0]=PMV[1][1][1]=0;
 			}
+			if( picture->pict_type == P_TYPE )
+				update_mc_range( picture, cur_mb );
 
 			cur_mb->mb_type = mb_type;
 			k++;

@@ -177,7 +177,8 @@ struct pict_data
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */
 
-	int max_MV[2][2];			/* Maximum absolute motion compensation 	*/
+	int max_MV_x;				/* Sub squares non-local motion vector 	*/
+	int max_MV_y;				/* Sub squares non-local motion vector 	*/
 
 	/* 8*8 block data, raw (unquantised) and quantised */
 	short (*blocks)[64];

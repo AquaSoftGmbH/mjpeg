@@ -71,7 +71,7 @@ void motion_estimation _ANSI_ARGS_((
 
 void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
 void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
-
+void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi);
 void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
 void error _ANSI_ARGS_((char *text));

@@ -31,7 +31,7 @@
 #include <limits.h>
 #include "config.h"
 #include "global.h"
-
+#include "math.h"
 /*
 
 This links in the prototype version of an experimental gradient-descent
@@ -386,29 +386,31 @@ void reset_thresholds(int macroblocks_per_frame)
  *
  */
 
-#ifdef ORIGINAL_CODE
-static void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi)
+void update_mc_range(  pict_data_s *picture, mbinfo_s *mbi)
 {
-	int i;
+	int i,lim;
 	/* This is a little hacky but perfectly legit in C - we treat the
 	   2*2 arrays as a 1 * 4 ...
 	*/
-	int  *max_MV = &picture->max_MV[0][0];
-	int  *mb_MV = &mbi->MV[0][0][0];
 	
-	for( i = 0; i < 3; ++i )
-		if( max_MV[i] < abs(mb_MV[i]) )
-			max_MV[i] = abs(mb_MV[i]);
+	if ( mbi->motion_type == MC_FIELD )
+		lim = 2;
+	else
+		lim = 1;
 
-	if( mbi->motion_type == MC_FIELD )
+	for( i = 0 ; i < lim; ++i )
 	{
-		mb_MV = &mbi->MV[1][0][0];
-		for( i = 0; i < 3; ++i )
-			if( max_MV[i] < abs(mb_MV[i]) )
-				max_MV[i] = abs(mb_MV[i]);
+		if( abs(mbi->MV[i][0][0]) > picture->max_MV_x)
+		{
+			picture->max_MV_x = abs(mbi->MV[i][0][0]);
+		}
+		if(	abs(mbi->MV[i][0][1]) > picture->max_MV_y)
+		{
+			picture->max_MV_y = abs( mbi->MV[i][0][1]);
+		}
 	}
 }
-#endif
+
 /*
  * Set the motion compensation search limits.
  * We use the range of vectors found for a P frame as a bound for search
@@ -431,10 +433,9 @@ void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  )
 		/* Motion vectors are calculated in 1/2-pel's but we
 		   need specify range in pel's.
 		*/
-		/*int x_range = mc_data->lastIP_max_MV[x_crd] / 2;
-		  int y_range = mc_data->lastIP_max_MV[y_crd] / 2;*/
-		int x_range = search_radius[x_crd];
-		int y_range = search_radius[x_crd];
+
+		int x_range = mc_data->lastIP_max_MV[x_crd] / 2;
+		int y_range = mc_data->lastIP_max_MV[y_crd] / 2;
 		i = mc_data->temp_ref_lastIP - picture->temp_ref;
 		// TODO DEBUG
 		if( i < 1 || i >= M )
@@ -442,16 +443,17 @@ void set_motion_search_limits(	pict_data_s *picture,motion_comp_s *mc_data  )
 			fprintf( stderr, "Bogus temportal calculation?\n" );
 			exit(1);
 		}
-		mc_data->search_limits[fwd][x_crd] = 
-			round_search_radius((M-i) * x_range / M + 1);
-		mc_data->search_limits[fwd][y_crd] = 
-			round_search_radius((M-i) * y_range / M + 1);
-		mc_data->search_limits[bwd][x_crd] =
-			round_search_radius( i * x_range / M + 1);
-		mc_data->search_limits[bwd][y_crd] = 
-			round_search_radius(i * y_range / M + 1);
+
+		mc_data->sxf = round_search_radius((M-i) * x_range / M + 1);
+		mc_data->syf = round_search_radius((M-i) * y_range / M + 1);
+		mc_data->sxb = round_search_radius( i * x_range / M + 1);
+		mc_data->syb = round_search_radius(i * y_range / M + 1);
+
 		
 	}
+
+	picture->max_MV_x = picture->max_MV_y = 0;
+
 }
 
 
@@ -470,12 +472,16 @@ void record_range_of_motion( pict_data_s *picture,motion_comp_s *mc_data  )
 	{
 		mc_data->lastIP_max_MV[x_crd] = search_radius[x_crd];
 		mc_data->lastIP_max_MV[y_crd] = search_radius[y_crd];
+		printf( "RANGE: X=%03d Y=%03d\n", search_radius[x_crd],search_radius[y_crd]);
 	}
 	else if( picture->pict_type == P_TYPE)
 	{
-		mc_data->lastIP_max_MV[x_crd] = picture->max_MV[fwd][x_crd];
-		mc_data->lastIP_max_MV[y_crd] = picture->max_MV[fwd][y_crd];
+		mc_data->lastIP_max_MV[x_crd] = picture->max_MV_x/2;
+		mc_data->lastIP_max_MV[y_crd] = picture->max_MV_y/2;
+		printf( "RANGE: X=%03d Y=%03d\n", picture->max_MV_x/2+1,
+				picture->max_MV_y/2+1);
 	}
+
 }
 
 
@@ -540,6 +546,8 @@ void motion_estimation(
 			{
 				field_ME(picture, mc_data, mb_row_start, i,j,
 						 mbi,secondfield,ipflag);
+				if( picture->pict_type == P_TYPE )
+					update_mc_range( picture, mbi );
 				mbi++;
 			}
 			mb_row_start += mb_row_incr;

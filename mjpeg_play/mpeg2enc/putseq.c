@@ -243,11 +243,11 @@ void putseq()
 		mc_data.syb = syb;
 
 		set_motion_search_limits( &cur_picture, &mc_data  );
-		printf( "\nLIMS: MXF=%02d MYF=%02d MXB=%02d MYB=%02d\n", 
+		/*printf( "\nLIMS: MXF=%02d MYF=%02d MXB=%02d MYB=%02d\n", 
 				mc_data.search_limits[fwd][x_crd], 
 				mc_data.search_limits[fwd][y_crd],
 				mc_data.search_limits[bwd][x_crd], 
-				mc_data.search_limits[bwd][y_crd] );
+				mc_data.search_limits[bwd][y_crd] ); */
         if (fieldpic)
 		{
 			if (!quiet)
@@ -358,7 +358,7 @@ void putseq()
 			transform(&cur_picture,predframe,curorg);
 
 			putpict(&cur_picture,qblocks);	/* Quantisation: blocks -> qblocks */
-
+			
 			for (k=0; k<mb_height*mb_width; k++)
 			{
 				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
