@@ -93,16 +93,16 @@ musicin.c
  * 8/27/93 Seymour Shlien,      Fixes in Unix and MSDOS ports,        *
  *         Daniel Lauzon, and                                         *
  *         Bill Truerniet                                             *
+ * 2004/7/29  Steven Schultzt   Cleanup and fix the pathname limit    *
+ *                              once and for all.                     *
  **********************************************************************/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
  
-#ifdef MS_DOS
-#include <dos.h>
-#endif
 #include <stdlib.h>
+#include <string.h>
 #include "common.h"
 #include "encoder.h"
 #include "wav_io.h"
@@ -148,7 +148,7 @@ char**          argv;
 frame_params    *fr_ps;
 int             *psy;
 unsigned long   *num_samples;
-char            encoded_file_name[MAX_NAME_SIZE];
+char            **encoded_file_name;
 {
     layer *info = fr_ps->header;
     int brt=224;
@@ -185,43 +185,37 @@ char            encoded_file_name[MAX_NAME_SIZE];
 		case 'b':
 			brt = atoi(optarg);
 			break;
-			
 		case 'o':
 			outfilename = optarg;
 			break;
-			
 		case 'r':
 			freq_out = atoi(optarg);
 			break;
-			
 		case 's':
 			stereo = 1;
 			mono = 0;
 			break;
-			
 		case 'm':
 			mono = 1;
 			stereo = 0;
 			break;
-
 		case 'e':
                         info->error_protection = 1;
 			break;
-			
 		case 'V':
 			video_cd = 1;
 			break;
-
-	    case 'v':
+	        case 'v':
 			verbose = atoi(optarg);
 			if( verbose < 0 || verbose > 2 )
 				Usage(argv[0]);
 			break;
-
 		case '?':
 			Usage(argv[0]);
         }
     }
+
+    (void)mjpeg_default_handler_verbosity(verbose);
 
     if(argc!=optind) 
 		Usage(argv[0]);
@@ -231,10 +225,10 @@ char            encoded_file_name[MAX_NAME_SIZE];
         mjpeg_error("Output file name (-o option) is required!");
         Usage(argv[0]);
     }
-    strncpy(encoded_file_name,outfilename,MAX_NAME_SIZE);
 
-	(void)mjpeg_default_handler_verbosity(verbose);
-
+    *encoded_file_name = strdup(outfilename);
+    if (*encoded_file_name == NULL)
+       mjpeg_error_exit1("can not malloc %ld bytes", strlen(outfilename));
 
     /* Sanity checks */
 
@@ -355,7 +349,7 @@ char            encoded_file_name[MAX_NAME_SIZE];
         exit(1);
     }
  
-    open_bit_stream_w(&bs, encoded_file_name, BUFFER_SIZE);
+    open_bit_stream_w(&bs, *encoded_file_name, BUFFER_SIZE);
 }
 
 /************************************************************************
@@ -371,7 +365,7 @@ print_config(fr_ps, psy, num_samples, outPath)
 frame_params *fr_ps;
 int     *psy;
 unsigned long *num_samples;
-char    outPath[MAX_NAME_SIZE];
+char    *outPath;
 {
 	layer *info = fr_ps->header;
 
@@ -440,22 +434,22 @@ int     argc;
 char    **argv;
 {
 typedef double SBS[2][3][SCALE_BLOCK][SBLIMIT];
-    SBS  FAR        *sb_sample;
+    SBS  *sb_sample;
 typedef double JSBS[3][SCALE_BLOCK][SBLIMIT];
-    JSBS FAR        *j_sample;
+    JSBS *j_sample;
 typedef double IN[2][HAN_SIZE];
-    IN   FAR        *win_que;
+    IN   *win_que;
 typedef unsigned int SUB[2][3][SCALE_BLOCK][SBLIMIT];
-    SUB  FAR        *subband;
+    SUB  *subband;
  
     frame_params fr_ps;
     layer info;
-    char encoded_file_name[MAX_NAME_SIZE];
-    short FAR **win_buf;
-static short FAR buffer[2][1152];
+    char *encoded_file_name;
+    short **win_buf;
+static short buffer[2][1152];
 static unsigned int bit_alloc[2][SBLIMIT], scfsi[2][SBLIMIT];
 static unsigned int scalar[2][3][SBLIMIT], j_scale[3][SBLIMIT];
-static double FAR ltmin[2][SBLIMIT], lgmin[2][SBLIMIT], max_sc[2][SBLIMIT];
+static double ltmin[2][SBLIMIT], lgmin[2][SBLIMIT], max_sc[2][SBLIMIT];
     FLOAT snr32[32];
     short sam[2][1056];
     int whole_SpF, extra_slot = 0;
@@ -467,19 +461,14 @@ static unsigned int crc;
     unsigned long frameBits, sentBits = 0;
     unsigned long num_samples;
 
-#ifdef  MACINTOSH
-    console_options.nrows = MAC_WINDOW_SIZE;
-    argc = ccommand(&argv);
-#endif
-
     /* Most large variables are declared dynamically to ensure
        compatibility with smaller machines */
 
-    sb_sample = (SBS FAR *) mem_alloc(sizeof(SBS), "sb_sample");
-    j_sample = (JSBS FAR *) mem_alloc(sizeof(JSBS), "j_sample");
-    win_que = (IN FAR *) mem_alloc(sizeof(IN), "Win_que");
-    subband = (SUB FAR *) mem_alloc(sizeof(SUB),"subband");
-    win_buf = (short FAR **) mem_alloc(sizeof(short *)*2, "win_buf");
+    sb_sample = (SBS *) mem_alloc(sizeof(SBS), "sb_sample");
+    j_sample = (JSBS *) mem_alloc(sizeof(JSBS), "j_sample");
+    win_que = (IN *) mem_alloc(sizeof(IN), "Win_que");
+    subband = (SUB *) mem_alloc(sizeof(SUB),"subband");
+    win_buf = (short **) mem_alloc(sizeof(short *)*2, "win_buf");
  
     /* clear buffers */
     memset((char *) buffer, 0, sizeof(buffer));
@@ -499,7 +488,7 @@ static unsigned int crc;
     info.version = MPEG_AUDIO_ID;
 
     programName = argv[0];
-    get_params(argc, argv, &fr_ps, &model, &num_samples, encoded_file_name);
+    get_params(argc, argv, &fr_ps, &model, &num_samples, &encoded_file_name);
     print_config(&fr_ps, &model, &num_samples, encoded_file_name);
 
     hdr_to_frps(&fr_ps);
@@ -655,11 +644,6 @@ static unsigned int crc;
            (FLOAT) sentBits / (frameNum * samplesPerFrame),
            (FLOAT) sentBits / (frameNum * samplesPerFrame) *
            s_freq[info.sampling_frequency]);
-
-#ifdef  MACINTOSH
-    set_mac_file_attr(encoded_file_name, VOL_REF_NUM, CREATOR_ENCODE,
-                      FILETYPE_ENCODE);
-#endif
 
 	mjpeg_info("Encoding with psychoacoustic model %d is finished", model);
 	mjpeg_info("The MPEG encoded output file name is \"%s\"",

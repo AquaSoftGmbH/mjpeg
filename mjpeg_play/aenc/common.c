@@ -70,13 +70,9 @@ common.c
  * 8/27/93 Seymour Shlien,      Fixes in Unix and MSDOS ports,        *
  *         Daniel Lauzon, and                                         *
  *         Bill Truerniet                                             *
+ * 2004/7/29 Steven Schultz     Cleanup & modernize.  Remove unused   *
+ *                              (unreferenced) code.                  *
  **********************************************************************/
-
-/***********************************************************************
-*
-*  Global Include Files
-*
-***********************************************************************/
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -84,22 +80,12 @@ common.c
 
 #include        <stdlib.h>
 #include        <string.h>
+#include	<ctype.h>
 #include        "common.h"
 
-#ifdef  MACINTOSH
-
-#include        <SANE.h>
-#include        <pascal.h>
-
-#endif
-
-#include <ctype.h>
-
-/***********************************************************************
-*
-*  Global Variable Definitions
-*
-***********************************************************************/
+/*
+ *  Global Variable Definitions
+*/
 
 const char *mode_names[4] = { "stereo", "j-stereo", "dual-ch", "single-ch" };
 const char *layer_names[3] = { "I", "II", "III" };
@@ -112,7 +98,7 @@ int     bitrate[3][15] = {
           {0,32,40,48,56,64,80,96,112,128,160,192,224,256,320}
         };
 
-double FAR multiple[64] = {
+double multiple[64] = {
 2.00000000000000, 1.58740105196820, 1.25992104989487,
 1.00000000000000, 0.79370052598410, 0.62996052494744, 0.50000000000000,
 0.39685026299205, 0.31498026247372, 0.25000000000000, 0.19842513149602,
@@ -159,7 +145,7 @@ frame_params *fr_ps;
         if (fr_ps->tab_num != table) {
            if (fr_ps->tab_num >= 0)
               mem_free((void **)&(fr_ps->alloc));
-           fr_ps->alloc = (al_table FAR *) mem_alloc(sizeof(al_table),
+           fr_ps->alloc = (al_table *) mem_alloc(sizeof(al_table),
                                                          "alloc");
            sblim = read_bit_alloc(fr_ps->tab_num = table, fr_ps->alloc);
         }
@@ -276,7 +262,7 @@ int i,j,k;
 
 void WriteSamples(ch, sample, bit_alloc, fr_ps, s)
 int ch;
-unsigned int FAR sample[SBLIMIT];
+unsigned int sample[SBLIMIT];
 unsigned int bit_alloc[SBLIMIT];
 frame_params *fr_ps;
 FILE *s;
@@ -352,40 +338,23 @@ long sRate;             /* legal rates 32000, 44100, 48000 */
 *
 *******************************************************************************/
 
-void  FAR *mem_alloc(block, item)
+void  *mem_alloc(block, item)
 unsigned long   block;
 const char      *item;
 {
-
     void    *ptr;
 
-#ifdef  MACINTOSH
-    ptr = NewPtr(block);
-#endif
+    ptr = (void *) malloc(block);
 
-#ifdef MSC60
-    /*ptr = (void FAR *) _fmalloc((unsigned int)block);*/ /* far memory, 92-07-08 sr */
-    ptr = (void FAR *) malloc((unsigned int)block); /* far memory, 93-08-24 ss */
-#endif
-
-#if ! defined (MACINTOSH) && ! defined (MSC60)
-    ptr = (void FAR *) malloc(block);
-#endif
-
-    if (ptr != NULL){
-#ifdef  MSC60
-        _fmemset(ptr, 0, (unsigned int)block); /* far memory, 92-07-08 sr */
-#else
+    if (ptr != NULL)
         memset(ptr, 0, block);
-#endif
-    }
-    else{
+    else
+        {
         printf("Unable to allocate %s\n", item);
         exit(0);
-    }
+        }
     return(ptr);
 }
-
 
 /****************************************************************************
 *
@@ -398,409 +367,9 @@ void    **ptr_addr;
 {
 
     if (*ptr_addr != NULL){
-#ifdef  MACINTOSH
-        DisposPtr(*ptr_addr);
-#else
         free(*ptr_addr);
-#endif
         *ptr_addr = NULL;
     }
-
-}
-
-/*******************************************************************************
-*
-*  Check block of memory all equal to a single byte, else return FALSE
-*
-*******************************************************************************/
-
-int memcheck(array, test, num)
-char *array;
-int test;       /* but only tested as a char (bottom 8 bits) */
-int num;
-{
- int i=0;
-
-   while (array[i] == test && i<num) i++;
-   if (i==num) return TRUE;
-   else return FALSE;
-}
-
-/****************************************************************************
-*
-*  Routines to convert between the Apple SANE extended floating point format
-*  and the IEEE double precision floating point format.  These routines are
-*  called from within the Audio Interchange File Format (AIFF) routines.
-*
-*****************************************************************************/
-
-/*
-*** Apple's 80-bit SANE extended has the following format:
-
- 1       15      1            63
-+-+-------------+-+-----------------------------+
-|s|       e     |i|            f                |
-+-+-------------+-+-----------------------------+
-  msb        lsb   msb                       lsb
-
-The value v of the number is determined by these fields as follows:
-If 0 <= e < 32767,              then v = (-1)^s * 2^(e-16383) * (i.f).
-If e == 32767 and f == 0,       then v = (-1)^s * (infinity), regardless of i.
-If e == 32767 and f != 0,       then v is a NaN, regardless of i.
-
-*** IEEE Draft Standard 754 Double Precision has the following format:
-
-MSB
-+-+---------+-----------------------------+
-|1| 11 Bits |           52 Bits           |
-+-+---------+-----------------------------+
- ^     ^                ^
- |     |                |
- Sign  Exponent         Mantissa
-*/
-
-/*****************************************************************************
-*
-*  double_to_extended()
-*
-*  Purpose:     Convert from IEEE double precision format to SANE extended
-*               format.
-*
-*  Passed:      Pointer to the double precision number and a pointer to what
-*               will hold the Apple SANE extended format value.
-*
-*  Outputs:     The SANE extended format pointer will be filled with the
-*               converted value.
-*
-*  Returned:    Nothing.
-*
-*****************************************************************************/
-
-void    double_to_extended(pd, ps)
-double  *pd;
-char    ps[10];
-{
-
-#ifdef  MACINTOSH
-
-        x96tox80(pd, (extended *) ps);
-
-#else
-
-register unsigned long  top2bits;
-
-register unsigned short *ps2;
-register IEEE_DBL       *p_dbl;
-register SANE_EXT       *p_ext;
- 
-   p_dbl = (IEEE_DBL *) pd;
-   p_ext = (SANE_EXT *) ps;
-   top2bits = p_dbl->hi & 0xc0000000;
-   p_ext->l1 = ((p_dbl->hi >> 4) & 0x3ff0000) | top2bits;
-   p_ext->l1 |= ((p_dbl->hi >> 5) & 0x7fff) | 0x8000;
-   p_ext->l2 = (p_dbl->hi << 27) & 0xf8000000;
-   p_ext->l2 |= ((p_dbl->lo >> 5) & 0x07ffffff);
-   ps2 = (unsigned short *) & (p_dbl->lo);
-   ps2++;
-   p_ext->s1 = (*ps2 << 11) & 0xf800;
-
-#endif
-
-}
-
-/*****************************************************************************
-*
-*  extended_to_double()
-*
-*  Purpose:     Convert from SANE extended format to IEEE double precision
-*               format.
-*
-*  Passed:      Pointer to the Apple SANE extended format value and a pointer
-*               to what will hold the the IEEE double precision number.
-*
-*  Outputs:     The IEEE double precision format pointer will be filled with
-*               the converted value.
-*
-*  Returned:    Nothing.
-*
-*****************************************************************************/
-
-void    extended_to_double(ps, pd)
-char    ps[10];
-double  *pd;
-{
-
-#ifdef  MACINTOSH
-
-   x80tox96((extended *) ps, pd);
-
-#else
-
-register unsigned long  top2bits;
-
-register IEEE_DBL       *p_dbl;
-register SANE_EXT       *p_ext;
-
-   p_dbl = (IEEE_DBL *) pd;
-   p_ext = (SANE_EXT *) ps;
-   top2bits = p_ext->l1 & 0xc0000000;
-   p_dbl->hi = ((p_ext->l1 << 4) & 0x3ff00000) | top2bits;
-   p_dbl->hi |= (p_ext->l1 << 5) & 0xffff0;
-   p_dbl->hi |= (p_ext->l2 >> 27) & 0x1f;
-   p_dbl->lo = (p_ext->l2 << 5) & 0xffffffe0;
-   p_dbl->lo |= (unsigned long) ((p_ext->s1 >> 11) & 0x1f);
-
-#endif
-
-}
-
-
-/****  for debugging 
-showchar(str)
-char str[4];
-{
-int i;
-for (i=0;i<4;i++) printf("%c",str[i]);
-printf("\n");
-}
-****/
-
-/*****************************************************************************
-*
-*  Read Audio Interchange File Format (AIFF) headers.
-*
-*****************************************************************************/
-
-int             aiff_read_headers(file_ptr, aiff_ptr)
-FILE            *file_ptr;
-IFF_AIFF        *aiff_ptr;
-{
-
-register int   i;
-register long   seek_offset;
-register long   sound_position = 0L;
-
-char            temp_sampleRate[10];
-
-ChunkHeader     Header;
-Chunk           FormChunk;
-CommonChunk     CommChunk;
-SoundDataChunk  SndDChunk;
-
-   if (fseek(file_ptr, 0, SEEK_SET) != 0)
-      return(-1);
-
-   if (fread(&FormChunk, sizeof(Chunk), 1, file_ptr) != 1)
-      return(-1);
-
-#ifdef IFF_LONG 
-   if (*(unsigned long *) FormChunk.ckID != IFF_ID_FORM ||
-       *(unsigned long *) FormChunk.formType != IFF_ID_AIFF)
-      return(-1);
-#else
-
-   if (strncmp(FormChunk.ckID,IFF_ID_FORM,4) ||
-       strncmp(FormChunk.formType,IFF_ID_AIFF,4))
-      return(-1);
-#endif
-
-   /*
-    * chunks need not be in any particular order
-    */
-
-   while (fread(&Header, sizeof(ChunkHeader), 1, file_ptr) == 1) {
-
-#ifdef IFF_LONG  
-      if (*(unsigned long *)Header.ckID == IFF_ID_COMM) {
-
-#else
-      if (strncmp(Header.ckID,IFF_ID_COMM,4) == 0) {
-#endif
-
-	 /*
-	  * read comm chunk
-	  */
-         if (fread(&CommChunk.numChannels, sizeof(short), 1, file_ptr) != 1)
-            return(-1);
-
-         if (fread(&CommChunk.numSampleFrames, sizeof(unsigned long), 1,
-                   file_ptr) != 1)
-            return(-1);
-
-         if (fread(&CommChunk.sampleSize, sizeof(short), 1, file_ptr) != 1)
-            return(-1);
-
-         if (fread(CommChunk.sampleRate, sizeof(char[10]), 1, file_ptr) != 1)
-            return(-1);
-
-         for (i = 0; i < sizeof(char[10]); i++)
-            temp_sampleRate[i] = CommChunk.sampleRate[i];
-
-         extended_to_double(temp_sampleRate, &aiff_ptr->sampleRate);
-
-	 aiff_ptr->numChannels = CommChunk.numChannels;
-	 aiff_ptr->numSampleFrames = CommChunk.numSampleFrames;
-	 aiff_ptr->sampleSize = CommChunk.sampleSize;
-
-#ifdef IFF_LONG 
-      } else if (*(unsigned long *)Header.ckID == IFF_ID_SSND) { 
-#else
-      } else if (strncmp(Header.ckID,IFF_ID_SSND,4) == 0) {
-#endif
-	 /*
-	  * read ssnd chunk
-	  */
-	 if (fread(&SndDChunk.offset, sizeof(long), 1, file_ptr) != 1)
-	    return(-1);
-
-	 if (fread(&SndDChunk.blockSize, sizeof(long), 1, file_ptr) != 1)
-	    return(-1);
-
-	 aiff_ptr->blkAlgn.offset = SndDChunk.offset;
-	 aiff_ptr->blkAlgn.blockSize = SndDChunk.blockSize;
-	 aiff_ptr->sampleType = *(unsigned long *)Header.ckID;
-	 
-	 /*
-	  * record position of sound data
-	  */
-
-	 sound_position = ftell(file_ptr);
-
-	 /*
-	  * skip over sound data to look at remaining chunks
-	  */
-
-         seek_offset = Header.ckSize - sizeof(SoundDataChunk) +
-            sizeof(ChunkHeader);
-
-         if (fseek(file_ptr, seek_offset, SEEK_CUR) != 0)
-            return(-1);
-
-      } else {
-
-	 /*
-	  * skip unknown chunk
-	  */
-
-	 seek_offset = Header.ckSize;
-
-         if (fseek(file_ptr, seek_offset, SEEK_CUR) != 0)
-            return(-1);
-
-      }
-
-   }
-
-   return(sound_position);
-
-}
-
-/*****************************************************************************
-*
-*  Seek past some Audio Interchange File Format (AIFF) headers to sound data.
-*
-*****************************************************************************/
-
-int   aiff_seek_to_sound_data(file_ptr)
-FILE  *file_ptr;
-{
-
-   if (fseek(file_ptr, sizeof(Chunk) + sizeof(SoundDataChunk), SEEK_SET) != 0)
-      return(-1);
-
-   return(0);
-
-}
-
-/*******************************************************************************
-*
-*  Write Audio Interchange File Format (AIFF) headers.
-*
-*******************************************************************************/
-
-int             aiff_write_headers(file_ptr, aiff_ptr)
-FILE            *file_ptr;
-IFF_AIFF        *aiff_ptr;
-{
-
-register int   i;
-register long   seek_offset;
-
-char            temp_sampleRate[10];
-
-Chunk           FormChunk;
-CommonChunk     CommChunk;
-SoundDataChunk  SndDChunk;
-
-#ifdef IFF_LONG 
-   *(unsigned long *) FormChunk.ckID     = IFF_ID_FORM;
-   *(unsigned long *) FormChunk.formType = IFF_ID_AIFF;
-   *(unsigned long *) CommChunk.ckID     = IFF_ID_COMM;
-#else
-   strncpy(FormChunk.ckID,IFF_ID_FORM,4);
-   strncpy(FormChunk.formType,IFF_ID_AIFF,4);
-   strncpy(CommChunk.ckID,IFF_ID_COMM,4);
-#endif
-
-   double_to_extended(&aiff_ptr->sampleRate, temp_sampleRate);
-
-   for (i = 0; i < sizeof(char[10]); i++)
-      CommChunk.sampleRate[i] = temp_sampleRate[i];
-
-   CommChunk.numChannels             = aiff_ptr->numChannels;
-   CommChunk.numSampleFrames         = aiff_ptr->numSampleFrames;
-   CommChunk.sampleSize              = aiff_ptr->sampleSize;
-   SndDChunk.offset                  = aiff_ptr->blkAlgn.offset;
-   SndDChunk.blockSize               = aiff_ptr->blkAlgn.blockSize;
-   *(unsigned long *) SndDChunk.ckID = aiff_ptr->sampleType;
-
-   CommChunk.ckSize = sizeof(CommChunk.numChannels) +
-      sizeof(CommChunk.numSampleFrames) + sizeof(CommChunk.sampleSize) +
-      sizeof(CommChunk.sampleRate);
-
-   SndDChunk.ckSize = sizeof(SoundDataChunk) - sizeof(ChunkHeader) +
-      (CommChunk.sampleSize + BITS_IN_A_BYTE - 1) / BITS_IN_A_BYTE *
-      CommChunk.numChannels * CommChunk.numSampleFrames;
-
-   FormChunk.ckSize = sizeof(Chunk) + SndDChunk.ckSize + sizeof(ChunkHeader) +
-      CommChunk.ckSize;
-
-   if (fseek(file_ptr, 0, SEEK_SET) != 0)
-      return(-1);
-
-   if (fwrite(&FormChunk, sizeof(Chunk), 1, file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(&SndDChunk, sizeof(SoundDataChunk), 1, file_ptr) != 1)
-      return(-1);
-
-   seek_offset = SndDChunk.ckSize - sizeof(SoundDataChunk) +
-      sizeof(ChunkHeader);
-
-   if (fseek(file_ptr, seek_offset, SEEK_CUR) != 0)
-      return(-1);
-
-   if (fwrite(CommChunk.ckID, sizeof(ID), 1, file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(&CommChunk.ckSize, sizeof(long), 1, file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(&CommChunk.numChannels, sizeof(short), 1, file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(&CommChunk.numSampleFrames, sizeof(unsigned long), 1,
-              file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(&CommChunk.sampleSize, sizeof(short), 1, file_ptr) != 1)
-      return(-1);
-
-   if (fwrite(CommChunk.sampleRate, sizeof(char[10]), 1, file_ptr) != 1)
-      return(-1);
-
-   return(0);
-
 }
 
 /*****************************************************************************
@@ -1037,7 +606,7 @@ void alloc_buffer(bs, size)
 Bit_stream_struc *bs;   /* bit stream structure */
 int size;
 {
-   bs->buf = (unsigned char FAR *) mem_alloc(size*sizeof(unsigned
+   bs->buf = (unsigned char *) mem_alloc(size*sizeof(unsigned
               char), "buffer");
    bs->buf_size = size;
 }
@@ -1384,66 +953,3 @@ unsigned int data, length, *crc;
 *  End of CRC error protection package
 *
 *****************************************************************************/
-
-#ifdef  MACINTOSH
-/*****************************************************************************
-*
-*  Set Macintosh file attributes.
-*
-*****************************************************************************/
-
-void    set_mac_file_attr(fileName, vRefNum, creator, fileType)
-char    fileName[MAX_NAME_SIZE];
-short   vRefNum;
-OsType  creator;
-OsType  fileType;
-{
-
-short   theFile;
-char    pascal_fileName[MAX_NAME_SIZE];
-FInfo   fndrInfo;
-
-        CtoPstr(strcpy(pascal_fileName, fileName));
-
-        FSOpen(pascal_fileName, vRefNum, &theFile);
-        GetFInfo(pascal_fileName, vRefNum, &fndrInfo);
-        fndrInfo.fdCreator = creator;
-        fndrInfo.fdType = fileType;
-        SetFInfo(pascal_fileName, vRefNum, &fndrInfo);
-        FSClose(theFile);
-
-}
-#endif
-
-
-#ifdef  MS_DOS
-/* ------------------------------------------------------------------------
-new_ext.
-Puts a new extension name on a file name <filename>.
-Removes the last extension name, if any.
-92-08-19 shn
------------------------------------------------------------------------- */
-char *new_ext(char *filename, char *extname)
-{
-  int found, dotpos;
-  char newname[80];
-
-  /* First, strip the extension */
-  dotpos=strlen(filename); found=0;
-  do
-  {
-    switch (filename[dotpos])
-    {
-      case '.' : found=1; break;
-      case '\\':                  /* used by MS-DOS */
-      case '/' :                  /* used by UNIX */
-      case ':' : found=-1; break; /* used by MS-DOS in drive designation */
-      default  : dotpos--; if (dotpos<0) found=-1; break;
-    }
-  } while (found==0);
-  if (found==-1) strcpy(newname,filename);
-  if (found== 1) strncpy(newname,filename,dotpos); newname[dotpos]='\0';
-  strcat(newname,extname);
-  return(newname);
-}
-#endif

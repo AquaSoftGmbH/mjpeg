@@ -1,5 +1,4 @@
-aenc encodes MJPEG AVIs, Quicktime Files or Edit List Files
-to MPEG-1 layer 2 audio streams.
+aenc encodes WAV Files to MPEG-1 layer 2 audio streams.
 
 DISCLAIMER:
 
@@ -16,4 +15,4 @@ Usage: aenc [params] inputfiles
 
 Input files MUST have a sampling frequency of 48 KHz, 44.1 KHz or 32 KHz
 
-Sampling rate and mono/stereo setting is taken from the input files
+Sampling rate and mono/stereo setting is taken from the input WAV file

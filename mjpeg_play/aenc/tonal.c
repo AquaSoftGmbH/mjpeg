@@ -61,6 +61,7 @@ tonal.c
  *                              tonal and non-tonal components        *
  * 5/28/93 Sriram Jayasimha     "London" mod. to psychoacoustic model1*
  * 8/05/93 Masahiro Iwadare     noise_label modification "option"     *
+ * 2004/7/29 Steven Schultz     cleanup and modernize                 *
  **********************************************************************/
 
 #ifdef HAVE_CONFIG_H
@@ -83,12 +84,12 @@ tonal.c
  **********************************************************************/
 
 extern int crit_band;
-extern int FAR *cbound;
+extern int *cbound;
 extern int sub_size;
 
 void make_map(power, ltg)       /* this function calculates the */
-mask FAR power[HAN_SIZE];   /* global masking threshold     */
-g_thres FAR *ltg;
+mask power[HAN_SIZE];   /* global masking threshold     */
+g_thres *ltg;
 {
  int i,j;
 
@@ -111,8 +112,8 @@ double a,b;
  ****************************************************************/
 
 void II_f_f_t(sample, power)      /* this function calculates an */
-double FAR sample[FFT_SIZE];  /* FFT analysis for the freq.  */
-mask FAR power[HAN_SIZE];     /* domain                      */
+double sample[FFT_SIZE];  /* FFT analysis for the freq.  */
+mask power[HAN_SIZE];     /* domain                      */
 {
  int i,j,k,L,l=0;
  int ip, le, le1;
@@ -202,15 +203,15 @@ mask FAR power[HAN_SIZE];     /* domain                      */
  ****************************************************************/
 
 void II_hann_win(sample)          /* this function calculates a  */
-double FAR sample[FFT_SIZE];  /* Hann window for PCM (input) */
+double sample[FFT_SIZE];  /* Hann window for PCM (input) */
 {                                 /* samples for a 1024-pt. FFT  */
  register int i;
  register double sqrt_8_over_3;
  static int init = 0;
- static double FAR *window;
+ static double *window;
 
  if(!init){  /* calculate window function for the Fourier transform */
-    window = (double FAR *) mem_alloc(sizeof(DFFT), "window");
+    window = (double *) mem_alloc(sizeof(DFFT), "window");
     sqrt_8_over_3 = pow(8.0/3.0, 0.5);
     for(i=0;i<FFT_SIZE;i++){
        /* Hann window formula */
@@ -230,8 +231,8 @@ double FAR sample[FFT_SIZE];  /* Hann window for PCM (input) */
  *******************************************************************/
 #ifndef LONDON
 void II_pick_max(power, spike)
-double FAR spike[SBLIMIT];
-mask FAR power[HAN_SIZE];
+double spike[SBLIMIT];
+mask power[HAN_SIZE];
 {
  double max;
  int i,j;
@@ -243,8 +244,8 @@ mask FAR power[HAN_SIZE];
                                                    /* 4-16               */
 #else
 void II_pick_max(power, spike)
-double FAR spike[SBLIMIT];
-mask FAR power[HAN_SIZE];
+double spike[SBLIMIT];
+mask power[HAN_SIZE];
 {
  double sum;
  int i,j;
@@ -265,7 +266,7 @@ mask FAR power[HAN_SIZE];
  ****************************************************************/
 
 void II_tonal_label(power, tone)  /* this function extracts (tonal) */
-mask FAR power[HAN_SIZE];     /* sinusoidals from the spectrum  */
+mask power[HAN_SIZE];     /* sinusoidals from the spectrum  */
 int *tone;
 {
  int i,j, last = LAST, first, run, last_but_one = LAST; /* dpwe */
@@ -340,8 +341,8 @@ int *tone;
  ****************************************************************/
         
 void noise_label(power, noise, ltg)
-g_thres FAR *ltg;
-mask FAR *power;
+g_thres *ltg;
+mask *power;
 int *noise;
 {
  int i,j, centre, last = LAST;
@@ -414,8 +415,8 @@ int *noise;
  ****************************************************************/
 
 void subsampling(power, ltg, tone, noise)
-mask FAR power[HAN_SIZE];
-g_thres FAR *ltg;
+mask power[HAN_SIZE];
+g_thres *ltg;
 int *tone, *noise;
 {
  int i, old;
@@ -476,8 +477,8 @@ int *tone, *noise;
  ****************************************************************/
 
 void threshold(power, ltg, tone, noise, bit_rate)
-mask FAR power[HAN_SIZE];
-g_thres FAR *ltg;
+mask power[HAN_SIZE];
+g_thres *ltg;
 int *tone, *noise, bit_rate;
 {
  int k, t;
@@ -532,8 +533,8 @@ int *tone, *noise, bit_rate;
  ****************************************************************/
 
 void II_minimum_mask(ltg,ltmin,sblimit)
-g_thres FAR *ltg;
-double FAR ltmin[SBLIMIT];
+g_thres *ltg;
+double ltmin[SBLIMIT];
 int sblimit;
 {
  double min;
@@ -561,7 +562,7 @@ int sblimit;
  *****************************************************************/
 
 void II_smr(ltmin, spike, scale, sblimit)
-double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
+double spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
 int sblimit;
 {
  int i;
@@ -583,8 +584,8 @@ int sblimit;
  ****************************************************************/
 
 void II_Psycho_One(buffer, scale, ltmin, fr_ps)
-short FAR buffer[2][1152];
-double FAR scale[2][SBLIMIT], ltmin[2][SBLIMIT];
+short buffer[2][1152];
+double scale[2][SBLIMIT], ltmin[2][SBLIMIT];
 frame_params *fr_ps;
 {
  layer *info = fr_ps->header;
@@ -596,15 +597,15 @@ frame_params *fr_ps;
  double *sample;
  DSBL *spike;
  static D1408 *fft_buf;
- static mask_ptr FAR power;
- static g_ptr FAR ltg;
+ static mask_ptr power;
+ static g_ptr ltg;
 
  sample = (double *) mem_alloc(sizeof(DFFT), "sample");
  spike = (DSBL *) mem_alloc(sizeof(D2SBL), "spike");
      /* call functions for critical boundaries, freq. */
  if(!init){  /* bands, bark values, and mapping */
     fft_buf = (D1408 *) mem_alloc((long) sizeof(D1408) * 2, "fft_buf");
-    power = (mask_ptr FAR ) mem_alloc(sizeof(mask) * HAN_SIZE, "power");
+    power = (mask_ptr ) mem_alloc(sizeof(mask) * HAN_SIZE, "power");
     read_cbound(info->lay,info->sampling_frequency);
     read_freq_band(&ltg,info->lay,info->sampling_frequency);
     make_map(power,ltg);
@@ -649,8 +650,8 @@ frame_params *fr_ps;
  ****************************************************************/
 
 void I_f_f_t(sample, power)         /* this function calculates */
-double FAR sample[FFT_SIZE/2];  /* an FFT analysis for the  */
-mask FAR power[HAN_SIZE/2];     /* freq. domain             */
+double sample[FFT_SIZE/2];  /* an FFT analysis for the  */
+mask power[HAN_SIZE/2];     /* freq. domain             */
 {
  int i,j,k,L,l=0;
  int ip, le, le1;
@@ -740,15 +741,15 @@ mask FAR power[HAN_SIZE/2];     /* freq. domain             */
  ****************************************************************/
 
 void I_hann_win(sample)             /* this function calculates a  */
-double FAR sample[FFT_SIZE/2];  /* Hann window for PCM (input) */
+double sample[FFT_SIZE/2];  /* Hann window for PCM (input) */
 {                                   /* samples for a 512-pt. FFT   */
  register int i;
  register double sqrt_8_over_3;
  static int init = 0;
- static double FAR *window;
+ static double *window;
 
  if(!init){  /* calculate window function for the Fourier transform */
-    window = (double FAR *) mem_alloc(sizeof(DFFT2), "window");
+    window = (double *) mem_alloc(sizeof(DFFT2), "window");
     sqrt_8_over_3 = pow(8.0/3.0, 0.5);
     for(i=0;i<FFT_SIZE/2;i++){
       /* Hann window formula */
@@ -768,8 +769,8 @@ double FAR sample[FFT_SIZE/2];  /* Hann window for PCM (input) */
  *******************************************************************/
 #ifndef LONDON
 void I_pick_max(power, spike)
-double FAR spike[SBLIMIT];
-mask FAR power[HAN_SIZE/2];
+double spike[SBLIMIT];
+mask power[HAN_SIZE/2];
 {
  double max;
  int i,j;
@@ -780,8 +781,8 @@ mask FAR power[HAN_SIZE/2];
 }
 #else
 void I_pick_max(power, spike)
-double FAR spike[SBLIMIT];
-mask FAR power[HAN_SIZE];
+double spike[SBLIMIT];
+mask power[HAN_SIZE];
 {
  double sum;
  int i,j;
@@ -801,7 +802,7 @@ mask FAR power[HAN_SIZE];
  ****************************************************************/
 
 void I_tonal_label(power, tone)     /* this function extracts   */
-mask FAR power[HAN_SIZE/2];     /* (tonal) sinusoidals from */
+mask power[HAN_SIZE/2];     /* (tonal) sinusoidals from */
 int *tone;                          /* the spectrum             */
 {
  int i,j, last = LAST, first, run;
@@ -875,8 +876,8 @@ int *tone;                          /* the spectrum             */
  ****************************************************************/
 
 void I_minimum_mask(ltg,ltmin)
-g_thres FAR *ltg;
-double FAR ltmin[SBLIMIT];
+g_thres *ltg;
+double ltmin[SBLIMIT];
 {
  double min;
  int i,j;
@@ -903,7 +904,7 @@ double FAR ltmin[SBLIMIT];
  *****************************************************************/
 
 void I_smr(ltmin, spike, scale)
-double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
+double spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
 {
  int i;
  double max;
@@ -924,8 +925,8 @@ double FAR spike[SBLIMIT], scale[SBLIMIT], ltmin[SBLIMIT];
  ****************************************************************/
 
 void I_Psycho_One(buffer, scale, ltmin, fr_ps)
-short FAR buffer[2][1152];
-double FAR scale[2][SBLIMIT], ltmin[2][SBLIMIT];
+short buffer[2][1152];
+double scale[2][SBLIMIT], ltmin[2][SBLIMIT];
 frame_params *fr_ps;
 {
  int stereo = fr_ps->stereo;
@@ -936,15 +937,15 @@ frame_params *fr_ps;
  double *sample;
  DSBL *spike;
  static D640 *fft_buf;
- static mask_ptr FAR power;
- static g_ptr FAR ltg;
+ static mask_ptr power;
+ static g_ptr ltg;
 
  sample = (double *) mem_alloc(sizeof(DFFT2), "sample");
  spike = (DSBL *) mem_alloc(sizeof(D2SBL), "spike");
             /* call functions for critical boundaries, freq. */
  if(!init){ /* bands, bark values, and mapping              */
     fft_buf = (D640 *) mem_alloc(sizeof(D640) * 2, "fft_buf");
-    power = (mask_ptr FAR ) mem_alloc(sizeof(mask) * HAN_SIZE/2, "power");
+    power = (mask_ptr ) mem_alloc(sizeof(mask) * HAN_SIZE/2, "power");
     read_cbound(info->lay,info->sampling_frequency);
     read_freq_band(&ltg,info->lay,info->sampling_frequency);
     make_map(power,ltg);

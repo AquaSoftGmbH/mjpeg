@@ -1,7 +1,7 @@
-/**********************************************************************
-Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
-common.h
-**********************************************************************/
+/*
+ * Copyright (c) 1991 MPEG/audio software simulation group, All Rights Reserved
+ *   common.h
+*/
 /**********************************************************************
  * MPEG/audio coding/decoding software, work in progress              *
  *   NOT for public distribution until verified and approved by the   *
@@ -48,114 +48,19 @@ common.h
  * 8/27/93 Seymour Shlien,      Fixes in Unix and MSDOS ports,        *
  *         Daniel Lauzon, and                                         *
  *         Bill Truerniet                                             *
+ * 2004/7/29 Steven Schultz     Cleanup and modernize                 *
  **********************************************************************/
-
-/***********************************************************************
-*
-*  Global Conditional Compile Switches
-*
-***********************************************************************/
-
-#define      UNIX            /* Unix conditional compile switch */
-
-#ifdef ALTERNATE_OS_SWITCH
-#define      MACINTOSH       /* Macintosh conditional compile switch */
-#define      MS_DOS          /* IBM PC conditional compile switch */
-#define      MSC60           /* Compiled for MS_DOS with MSC v6.0 */
-#define      CONVEX          /* CONVEX conditional compile switch */
-#endif
-
-#define      AIX             /* AIX conditional compile switch    */
-
-#if defined(MSC60) 
-#ifndef MS_DOS
-#define MS_DOS
-#endif
-#ifndef PROTO_ARGS
-#define PROTO_ARGS
-#endif
-#endif
-
-#ifdef  UNIX
-#define         TABLES_PATH     "tables"  /* to find data files */
-/* name of environment variable holding path of table files */
-#define         MPEGTABENV      "MPEGTABLES"
-#define         PATH_SEPARATOR  "/"        /* how to build paths */
-#endif  /* UNIX */
-
-#ifdef  MACINTOSH
-#define      TABLES_PATH ":tables:"  /* where to find data files */
-#endif  /* MACINTOSH */
-
-/* 
- * Don't define FAR to far unless you're willing to clean up the 
- * prototypes
- */
-#define FAR /*far*/
-
-#ifdef __STDC__
-#ifndef PROTO_ARGS
-#define PROTO_ARGS
-#endif
-#endif
-
-#ifdef CONVEX
-#define SEEK_SET        0
-#define SEEK_CUR        1
-#define SEEK_END        2
-#endif
-
-/* MS_DOS and VMS do not define TABLES_PATH, so OpenTableFile will default
-   to finding the data files in the default directory */
-
-/***********************************************************************
-*
-*  Global Include Files
-*
-***********************************************************************/
 
 #include        <stdio.h>
 #include        <string.h>
 #include        <math.h>
-
-#ifdef  UNIX
 #include        <unistd.h>
-#endif  /* UNIX */
-
-#ifdef  MACINTOSH
 #include        <stdlib.h>
-#include        <console.h>
-#endif  /* MACINTOSH */
-
-#ifdef  MS_DOS
-#include        <stdlib.h>
-#ifdef MSC60
-#include        <memory.h>
-#else
-#include        <alloc.h>
-#include        <mem.h>
-#endif  /* MSC60 */
-#endif  /* MS_DOS */
-
 #include "mjpeg_logging.h"
 
-/***********************************************************************
-*
-*  Global Definitions
-*
-***********************************************************************/
-
-/* General Definitions */
-
-#ifdef  MS_DOS
-#define         FLOAT                   double
-#else
 #define         FLOAT                   float
-#endif
-
 #define         FALSE                   0
 #define         TRUE                    1
-#define         NULL_CHAR               '\0'
 
 #define         MAX_U_32_NUM            0xFFFFFFFF
 #define         PI                      3.14159265358979
@@ -163,15 +68,11 @@ common.h
 #define         PI64                    PI/64
 #define         LN_TO_LOG10             0.2302585093
 
-#define         VOL_REF_NUM             0
 #define         MPEG_AUDIO_ID           1
-#define         MAC_WINDOW_SIZE         24
 
 #define         MONO                    1
 #define         STEREO                  2
 #define         BITS_IN_A_BYTE          8
-#define         WORD                    16
-#define         MAX_NAME_SIZE           81
 #define         SBLIMIT                 32
 #define         FFT_SIZE                1024
 #define         HAN_SIZE                512
@@ -186,27 +87,6 @@ common.h
 #define         MPG_MD_JOINT_STEREO     1
 #define         MPG_MD_DUAL_CHANNEL     2
 #define         MPG_MD_MONO             3
-
-/* AIFF Definitions */
-
-/* 
- * Note:  The value of a multi-character constant
- *        is implementation-defined.
- */
-#if !defined(MS_DOS) && !defined(AIX)  
-#define         IFF_LONG
-#define         IFF_ID_FORM             'FORM'
-#define         IFF_ID_AIFF             'AIFF'
-#define         IFF_ID_COMM             'COMM'
-#define         IFF_ID_SSND             'SSND'
-#define         IFF_ID_MPEG             'MPEG'
-#else
-#define         IFF_ID_FORM             "FORM"
-#define         IFF_ID_AIFF             "AIFF"
-#define         IFF_ID_COMM             "COMM"
-#define         IFF_ID_SSND             "SSND"
-#define         IFF_ID_MPEG             "MPEG"
-#endif
 
 /* "bit_stream.h" Definitions */
 
@@ -268,68 +148,10 @@ typedef struct {
     int         stereo;         /* 1 for mono, 2 for stereo */
     int         jsbound;        /* first band of joint stereo coding */
     int         sblimit;        /* total number of sub bands */
-	int         in_freq;		/* Freq. input in Hz */
-	int         down_freq;		/* Freq. to downsample input to for encoding
+    int         in_freq;	/* Freq. input in Hz */
+    int         down_freq;	/* Freq. to downsample input to for encoding
 								   in Hz */
 } frame_params;
-
-/* Double and SANE Floating Point Type Definitions */
-
-typedef struct  IEEE_DBL_struct {
-    unsigned long   hi;
-    unsigned long   lo;
-} IEEE_DBL;
-
-typedef struct  SANE_EXT_struct {
-    unsigned long   l1;
-    unsigned long   l2;
-    unsigned short  s1;
-} SANE_EXT;
-
-/* AIFF Type Definitions */
-
-typedef char    ID[4];
-
-typedef struct  ChunkHeader_struct {
-    ID      ckID;
-    long    ckSize;
-} ChunkHeader;
-
-typedef struct  Chunk_struct {
-    ID      ckID;
-    long    ckSize;
-    ID      formType;
-} Chunk;
-
-typedef struct  CommonChunk_struct {
-    ID              ckID;
-    long            ckSize;
-    short           numChannels;
-    unsigned long   numSampleFrames;
-    short           sampleSize;
-    char            sampleRate[10];
-} CommonChunk;
-
-typedef struct  SoundDataChunk_struct {
-    ID              ckID;
-    long            ckSize;
-    unsigned long   offset;
-    unsigned long   blockSize;
-} SoundDataChunk;
-
-typedef struct  blockAlign_struct {
-    unsigned long   offset;
-    unsigned long   blockSize;
-} blockAlign;
-
-typedef struct  IFF_AIFF_struct {
-    short           numChannels;
-    unsigned long   numSampleFrames;
-    short           sampleSize;
-    double          sampleRate;
-    unsigned long   sampleType;
-    blockAlign      blkAlgn;
-} IFF_AIFF;
 
 /* "bit_stream.h" Type Definitions */
 
@@ -358,7 +180,7 @@ extern const char  *mode_names[4];
 extern const char  *layer_names[3];
 extern double      s_freq[4];
 extern int         bitrate[3][15];
-extern double FAR  multiple[64];
+extern double multiple[64];
 extern int	   verbose;
 
 /***********************************************************************
@@ -369,7 +191,6 @@ extern int	   verbose;
 
 /* The following functions are in the file "common.c" */
 
-#ifdef  PROTO_ARGS
 extern FILE           *OpenTableFile(char*);
 extern int            read_bit_alloc(int, al_table*);
 extern int            pick_table(frame_params*);
@@ -381,19 +202,13 @@ extern void           WriteBitAlloc(unsigned int[2][SBLIMIT], frame_params*,
 extern void           WriteScale(unsigned int[2][SBLIMIT],
                         unsigned int[2][SBLIMIT], unsigned int[2][3][SBLIMIT],
                         frame_params*, FILE*);
-extern void           WriteSamples(int, unsigned int FAR [SBLIMIT],
+extern void           WriteSamples(int, unsigned int [SBLIMIT],
                         unsigned int[SBLIMIT], frame_params*, FILE*);
 extern int            NumericQ(char*);
 extern int            BitrateIndex(int, int);
 extern int            SmpFrqIndex(long);
-extern int            memcheck(char*, int, int);
-extern void           FAR *mem_alloc(unsigned long, const char*);
+extern void           *mem_alloc(unsigned long, const char*);
 extern void           mem_free(void**);
-extern void           double_to_extended(double*, char[10]);
-extern void           extended_to_double(char[10], double*);
-extern int            aiff_read_headers(FILE*, IFF_AIFF*);
-extern int            aiff_seek_to_sound_data(FILE*);
-extern int            aiff_write_headers(FILE*, IFF_AIFF*);
 extern void           refill_buffer(Bit_stream_struc*);
 extern void           empty_buffer(Bit_stream_struc*, int);
 extern void           open_bit_stream_w(Bit_stream_struc*, char*, int);
@@ -419,61 +234,3 @@ extern void           II_CRC_calc(frame_params*, unsigned int[2][SBLIMIT],
                         unsigned int[2][SBLIMIT], unsigned int*);
 extern void           update_CRC(unsigned int, unsigned int, unsigned int*);
 extern void           read_absthr(FLOAT*, int);
-
-#ifdef  MACINTOSH
-extern void           set_mac_file_attr(char[MAX_NAME_SIZE], short, OsType,
-                        OsType);
-#endif
-#ifdef MS_DOS
-extern char           *new_ext(char *filename, char *extname); 
-#endif
-
-#else
-extern FILE           *OpenTableFile();
-extern int            read_bit_alloc();
-extern int            pick_table();
-extern int            js_bound();
-extern void           hdr_to_frps();
-extern void           WriteHdr();
-extern void           WriteBitAlloc();
-extern void           WriteScale();
-extern void           WriteSamples();
-extern int            NumericQ();
-extern int            BitrateIndex();
-extern int            SmpFrqIndex();
-extern int            memcheck();
-extern void           FAR *mem_alloc();
-extern void           mem_free();
-extern void           double_to_extended();
-extern void           extended_to_double();
-extern int            aiff_read_headers();
-extern int            aiff_seek_to_sound_data();
-extern int            aiff_write_headers();
-extern int            refill_buffer();
-extern void           empty_buffer();
-extern void           open_bit_stream_w();
-extern void           open_bit_stream_r();
-extern void           close_bit_stream_r();
-extern void           close_bit_stream_w();
-extern void           alloc_buffer();
-extern void           desalloc_buffer();
-extern void           back_track_buffer();
-extern unsigned int   get1bit();
-extern void           put1bit();
-extern unsigned long  look_ahead();
-extern unsigned long  getbits();
-extern void           putbits();
-extern void           byte_ali_putbits();
-extern unsigned long  byte_ali_getbits();
-extern unsigned long  sstell();
-extern int            end_bs();
-extern int            seek_sync();
-extern void           I_CRC_calc();
-extern void           II_CRC_calc();
-extern void           update_CRC();
-extern void           read_absthr();
-
-#ifdef MS_DOS
-extern char           *new_ext(); 
-#endif
-#endif

@@ -80,12 +80,11 @@ encode.c
  **********************************************************************/
 
 #include "config.h"
-#include "common.h"
-#include "encoder.h"
 
 #include <stdlib.h>
-
 #include <unistd.h>
+#include "common.h"
+#include "encoder.h"
 
 extern int freq_in;
 extern int freq_out;
@@ -307,7 +306,7 @@ static int get_samples(short *abuff, int num, int stereo)
  
 unsigned long get_audio(musicin, buffer, num_samples, stereo, lay)
 FILE *musicin;
-short FAR buffer[2][1152];
+short buffer[2][1152];
 unsigned long num_samples;
 int stereo, lay;
 {
@@ -376,20 +375,20 @@ int stereo, lay;
  ************************************************************************/
  
 void window_subband(buffer, z, k)
-short FAR **buffer;
-double FAR z[HAN_SIZE];
+short **buffer;
+double z[HAN_SIZE];
 int k;
 {
-    typedef double FAR XX[2][HAN_SIZE];
-    static XX FAR *x;
+    typedef double XX[2][HAN_SIZE];
+    static XX *x;
     int i, j;
     static int off[2] = {0,0};
     static char init = 0;
-    static double FAR *c;
+    static double *c;
     if (!init) {
-        c = (double FAR *) mem_alloc(sizeof(double) * HAN_SIZE, "window");
+        c = (double *) mem_alloc(sizeof(double) * HAN_SIZE, "window");
         read_ana_window(c);
-        x = (XX FAR *) mem_alloc(sizeof(XX),"x");
+        x = (XX *) mem_alloc(sizeof(XX),"x");
         for (i=0;i<2;i++)
             for (j=0;j<HAN_SIZE;j++)
                 (*x)[i][j] = 0;
@@ -419,7 +418,7 @@ int k;
  ************************************************************************/
  
 void create_ana_filter(filter)
-double FAR filter[SBLIMIT][64];
+double filter[SBLIMIT][64];
 {
    register int i,k;
  
@@ -448,29 +447,20 @@ double FAR filter[SBLIMIT][64];
  ************************************************************************/
  
 void filter_subband(z,s)
-double FAR z[HAN_SIZE], s[SBLIMIT];
+double z[HAN_SIZE], s[SBLIMIT];
 {
    double y[64];
    int i,j;
-static char init = 0;
+   static char init = 0;
    typedef double MM[SBLIMIT][64];
-static MM FAR *m;
-#ifdef MS_DOS
-   long    SIZE_OF_MM;
-   SIZE_OF_MM      = SBLIMIT*64;
-   SIZE_OF_MM      *= 8;
+   static MM *m;
+
    if (!init) {
-       m = (MM FAR *) mem_alloc(SIZE_OF_MM, "filter");
+       m = (MM *) mem_alloc(sizeof(MM), "filter");
        create_ana_filter(*m);
        init = 1;
    }
-#else
-   if (!init) {
-       m = (MM FAR *) mem_alloc(sizeof(MM), "filter");
-       create_ana_filter(*m);
-       init = 1;
-   }
-#endif
+
    for (i=0;i<64;i++) for (j=0, y[i] = 0;j<8;j++) y[i] += z[i+64*j];
    for (i=0;i<SBLIMIT;i++)
        for (j=0, s[i]= 0;j<64;j++) s[i] += (*m)[i][j] * y[j];
@@ -535,8 +525,8 @@ double a;
  ************************************************************************/
  
 void I_combine_LR(sb_sample, joint_sample)
-double FAR sb_sample[2][3][SCALE_BLOCK][SBLIMIT];
-double FAR joint_sample[3][SCALE_BLOCK][SBLIMIT];
+double sb_sample[2][3][SCALE_BLOCK][SBLIMIT];
+double joint_sample[3][SCALE_BLOCK][SBLIMIT];
 {   /* make a filtered mono for joint stereo */
     int sb, smp;
  
@@ -547,8 +537,8 @@ double FAR joint_sample[3][SCALE_BLOCK][SBLIMIT];
 }
  
 void II_combine_LR(sb_sample, joint_sample, sblimit)
-double FAR sb_sample[2][3][SCALE_BLOCK][SBLIMIT];
-double FAR joint_sample[3][SCALE_BLOCK][SBLIMIT];
+double sb_sample[2][3][SCALE_BLOCK][SBLIMIT];
+double joint_sample[3][SCALE_BLOCK][SBLIMIT];
 int sblimit;
 {  /* make a filtered mono for joint stereo */
    int sb, smp, sufr;
@@ -578,7 +568,7 @@ int sblimit;
  ************************************************************************/
  
 void I_scale_factor_calc(sb_sample,scalar,stereo)
-double FAR sb_sample[][3][SCALE_BLOCK][SBLIMIT];
+double sb_sample[][3][SCALE_BLOCK][SBLIMIT];
 unsigned int scalar[][3][SBLIMIT];
 int stereo;
 {
@@ -603,7 +593,7 @@ int stereo;
 /******************************** Layer II ******************************/
  
 void II_scale_factor_calc(sb_sample,scalar,stereo,sblimit)
-double FAR sb_sample[][3][SCALE_BLOCK][SBLIMIT];
+double sb_sample[][3][SCALE_BLOCK][SBLIMIT];
 unsigned int scalar[][3][SBLIMIT];
 int stereo,sblimit;
 {
@@ -640,7 +630,7 @@ int stereo,sblimit;
 void pick_scale(scalar, fr_ps, max_sc)
 unsigned int scalar[2][3][SBLIMIT];
 frame_params *fr_ps;
-double FAR max_sc[2][SBLIMIT];
+double max_sc[2][SBLIMIT];
 {
   int i,j,k,max;
   int stereo  = fr_ps->stereo;
@@ -665,7 +655,7 @@ double FAR max_sc[2][SBLIMIT];
 void put_scale(scalar, fr_ps, max_sc)
 unsigned int scalar[2][3][SBLIMIT];
 frame_params *fr_ps;
-double FAR max_sc[2][SBLIMIT];
+double max_sc[2][SBLIMIT];
 {
    int i,k;
    int stereo  = fr_ps->stereo;
@@ -846,7 +836,7 @@ static double snr[18] = {0.00, 7.00, 11.00, 16.00, 20.84,
                          80.03, 86.05, 92.01, 98.01};
 
 int I_bits_for_nonoise(perm_smr, fr_ps)
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 frame_params *fr_ps;
 {
    int i,j,k;
@@ -873,7 +863,7 @@ frame_params *fr_ps;
 /***************************** Layer II  ********************************/
  
 int II_bits_for_nonoise(perm_smr, scfsi, fr_ps)
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 unsigned int scfsi[2][SBLIMIT];
 frame_params *fr_ps;
 {
@@ -951,7 +941,7 @@ static int sfsPerScfsi[] = { 3,2,1,2 };    /* lookup # sfs per scfsi */
  ************************************************************************/
  
 void I_main_bit_allocation(perm_smr, bit_alloc, adb, fr_ps)
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
@@ -990,7 +980,7 @@ static  int init = 0;
 /***************************** Layer II  ********************************/
  
 void II_main_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps)
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 unsigned int scfsi[2][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
@@ -1046,7 +1036,7 @@ frame_params *fr_ps;
  ************************************************************************/
  
 int I_a_bit_allocation(perm_smr, bit_alloc, adb, fr_ps) /* return noisy sbs */
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
 frame_params *fr_ps;
@@ -1133,7 +1123,7 @@ static int banc=32, berr=0;
 /***************************** Layer II  ********************************/
  
 int II_a_bit_allocation(perm_smr, scfsi, bit_alloc, adb, fr_ps)
-double FAR perm_smr[2][SBLIMIT];
+double perm_smr[2][SBLIMIT];
 unsigned int scfsi[2][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 int *adb;
@@ -1268,11 +1258,11 @@ static double b[17] = {
 void I_subband_quantization(scalar, sb_samples, j_scale, j_samps,
                             bit_alloc, sbband, fr_ps)
 unsigned int scalar[2][3][SBLIMIT];
-double FAR sb_samples[2][3][SCALE_BLOCK][SBLIMIT];
+double sb_samples[2][3][SCALE_BLOCK][SBLIMIT];
 unsigned int j_scale[3][SBLIMIT];
-double FAR j_samps[3][SCALE_BLOCK][SBLIMIT]; /* L+R for j-stereo if necess */
+double j_samps[3][SCALE_BLOCK][SBLIMIT]; /* L+R for j-stereo if necess */
 unsigned int bit_alloc[2][SBLIMIT];
-unsigned int FAR sbband[2][3][SCALE_BLOCK][SBLIMIT];
+unsigned int sbband[2][3][SCALE_BLOCK][SBLIMIT];
 frame_params *fr_ps;
 {
    int i, j, k, n, sig;
@@ -1326,11 +1316,11 @@ static char init = 0;
 void II_subband_quantization(scalar, sb_samples, j_scale, j_samps,
                              bit_alloc, sbband, fr_ps)
 unsigned int scalar[2][3][SBLIMIT];
-double FAR sb_samples[2][3][SCALE_BLOCK][SBLIMIT];
+double sb_samples[2][3][SCALE_BLOCK][SBLIMIT];
 unsigned int j_scale[3][SBLIMIT];
-double FAR j_samps[3][SCALE_BLOCK][SBLIMIT];
+double j_samps[3][SCALE_BLOCK][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
-unsigned int FAR sbband[2][3][SCALE_BLOCK][SBLIMIT];
+unsigned int sbband[2][3][SCALE_BLOCK][SBLIMIT];
 frame_params *fr_ps;
 {
    int i, j, k, s, n, qnt, sig;
@@ -1359,17 +1349,8 @@ frame_params *fr_ps;
              if (d >= 0) sig = 1;
              else { sig = 0; d += 1.0; }
              n = 0;
-#ifndef MS_DOS
              stps = (*alloc)[i][bit_alloc[k][i]].steps;
              while ((1L<<n) < stps) n++;
-#else
-             while  ( ( (unsigned long)(1L<<(long)n) <
-                       ((unsigned long) ((*alloc)[i][bit_alloc[k][i]].steps)
-                        & 0xffff
-                        )
-                       ) && ( n <16)
-                     ) n++;
-#endif
              n--;
              sbband[k][s][j][i] = (unsigned int) (d * (double) (1L<<n));
              /* tag the inverted sign bit to sbband at position N */
@@ -1441,7 +1422,7 @@ Bit_stream_struc *bs;
  ************************************************************************/
  
 void I_sample_encoding(sbband, bit_alloc, fr_ps, bs)
-unsigned int FAR sbband[2][3][SCALE_BLOCK][SBLIMIT];
+unsigned int sbband[2][3][SCALE_BLOCK][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 frame_params *fr_ps;
 Bit_stream_struc *bs;
@@ -1460,7 +1441,7 @@ Bit_stream_struc *bs;
 /***************************** Layer II  ********************************/
  
 void II_sample_encoding(sbband, bit_alloc, fr_ps, bs)
-unsigned int FAR sbband[2][3][SCALE_BLOCK][SBLIMIT];
+unsigned int sbband[2][3][SCALE_BLOCK][SBLIMIT];
 unsigned int bit_alloc[2][SBLIMIT];
 frame_params *fr_ps;
 Bit_stream_struc *bs;

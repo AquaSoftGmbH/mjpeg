@@ -46,7 +46,7 @@ al_table *alloc;
 #include "table_enwindow.h"
 
 void read_ana_window(ana_win)
-double FAR ana_win[HAN_SIZE];
+double ana_win[HAN_SIZE];
 {
     int i;
 
@@ -68,7 +68,7 @@ int table;
 }
 
 int crit_band;
-int FAR *cbound;
+int *cbound;
 int sub_size;
 
 #include "table_cb.h"
@@ -81,7 +81,7 @@ int lay, freq;              /* band boundaries                 */
  n = (lay-1)*3 + freq;
 
  crit_band = cb_len[n];
- cbound = (int FAR *) mem_alloc(sizeof(int) * crit_band, "cbound");
+ cbound = (int *) mem_alloc(sizeof(int) * crit_band, "cbound");
  for(i=0;i<crit_band;i++) cbound[i] = cb_tab[n][i];
 
 }        
@@ -90,14 +90,14 @@ int lay, freq;              /* band boundaries                 */
 
 void read_freq_band(ltg,lay,freq)  /* this function reads in   */
 int lay, freq;                     /* frequency bands and bark */
-g_ptr FAR *ltg;                /* values                   */
+g_ptr *ltg;                /* values                   */
 {
  int i,n;
 
  n = (lay-1)*3 + freq;
 
  sub_size = th_len[n];
- *ltg = (g_ptr FAR ) mem_alloc(sizeof(g_thres) * sub_size, "ltg");
+ *ltg = (g_ptr ) mem_alloc(sizeof(g_thres) * sub_size, "ltg");
  (*ltg)[0].line = 0;          /* initialize global masking threshold */
  (*ltg)[0].bark = 0;
  (*ltg)[0].hear = 0;
