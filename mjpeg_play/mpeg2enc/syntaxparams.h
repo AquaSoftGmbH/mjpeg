@@ -198,7 +198,11 @@ EXTERN double ctl_quant_floor;    /* quantisation floor [1..10] (0 for
 										 * CBR) */
 
 
-EXTERN double ctl_act_boost;		/* Quantisation reduction for highly active blocks */
+EXTERN double ctl_act_boost;		/* Quantisation reduction factor for blocks
+									 with little texture (low variance) */
+
+EXTERN double ctl_boost_var_ceil;		/* Variance below which
+									 * quantisation boost cuts in */
 
 
 EXTERN int ctl_max_encoding_frames; /* Maximum number of concurrent

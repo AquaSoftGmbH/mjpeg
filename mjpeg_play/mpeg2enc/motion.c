@@ -230,7 +230,8 @@ static int (*pmblock_sub44_dists)( uint8_t *blk,  uint8_t *ref,
 #endif
 
 
-static int variance(  uint8_t *mb, int size, int lx);
+void variance(  uint8_t *mb, int size, int lx, 
+				uint32_t *p_var, uint32_t *p_mean);
 
 static int dist22 ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 
@@ -286,7 +287,8 @@ static int (*pbdist2_22)( uint8_t *blk1f, uint8_t *blk1b,
 						  uint8_t *blk2,
 						  int lx, int h);
 
-static int (*pvariance)(uint8_t *mb, int size, int lx);
+static void (*pvariance)(uint8_t *mb, int size, int lx, 
+						uint32_t *p_var, uint32_t *p_mean);
 
 
 static int (*pdist22) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
@@ -3105,14 +3107,15 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
 	return s;
 }
 
-
+#ifdef JUNK
 /*
  * variance of a (size*size) block, multiplied by 256
  * p:  address of top left pel of block
  * lx: distance (in bytes) of vertically adjacent pels
- * SIZE is a multiple of 8.
+ * SIZE is either 16 or 8
  */
-static int variance(uint8_t *p, int size,	int lx)
+static void variance(uint8_t *p, int size,	int lx,
+					 unsigned int *p_var, unsigned int *p_mean)
 {
 	int i,j;
 	unsigned int v,s,s2;
@@ -3129,8 +3132,10 @@ static int variance(uint8_t *p, int size,	int lx)
 		}
 		p+= lx-size;
 	}
-	var = s2 - (s*s)/(size*size);
+	*p_mean = s/(size*size);
+	*p_var = s2 - (s*s)/(size*size);
 
 	return var;
 }
 
+#endif

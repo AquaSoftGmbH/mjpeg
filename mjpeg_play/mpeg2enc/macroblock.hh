@@ -80,24 +80,32 @@ public:
     void Predict();            // In predict.cc
     void Transform();          // In transfrm.cc
     void ITransform();
+    void SelectQuantization();  // In ratectl.cc
+    
 
     inline const Picture &ParentPicture() const { return *picture; }
     inline const int TopleftX() const { return i; }
     inline const int TopleftY() const { return j; }
     inline DCTblock *RawDCTblocks() const { return dctblocks; }
     inline DCTblock *QuantDCTblocks() const { return qdctblocks; }
-//private:
+
+
+private:
     Picture *picture;   
     unsigned int i,j;       // Co-ordinates top-left in picture
 
     DCTblock *dctblocks;
     DCTblock *qdctblocks;
-	bool field_dct;             // Field DCT encoded rather than frame DCT
+
+    unsigned int lum_mean;
+    unsigned int lum_variance;
 
     /* Old public struct information...
        TODO: This will gradually disappear as C++-ification continues
     */
+
 public:
+	bool field_dct;             // Field DCT encoded rather than frame DCT
 	int mb_type; /* intra/forward/backward/interpolated */
 	int motion_type; /* frame/field/16x8/dual_prime */
 	int mquant; /* quantization parameter */

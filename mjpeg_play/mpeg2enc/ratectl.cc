@@ -944,6 +944,7 @@ void rc_update_pict(Picture *picture)
    overall size.
  */
 static int init_quant;
+
 int rc_start_mb(Picture *picture)
 {
 	
@@ -957,27 +958,30 @@ int rc_start_mb(Picture *picture)
 	return mquant;
 }
 
-/* Step 2: measure virtual buffer - estimated buffer discrepancy */
-int rc_calc_mquant( Picture *picture,int j)
-{
-	int mquant;
-	double dj, Qj, actj, N_actj, varj; 
 
+/*************
+ *
+ * SelectQuantization - select a quantisation for the current
+ * macroblock based on the fullness of the virtual decoder buffer.
+ *
+ ************/
+
+void MacroBlock::SelectQuantization( )
+{
 	/* A.Stevens 2000 : we measure how much *information* (total activity)
-	   has been covered and aim to release bits in proportion.  Indeed,
-	   complex blocks get an disproprortionate boost of allocated bits.
-	   To avoid visible "ringing" effects...
+	   has been covered and aim to release bits in proportion.
+
+	   We keep track of a virtual buffer that catches the difference
+	   between the bits allocated and the bits we actually used.  The
+	   fullness of this buffer controls quantisation.
 
 	*/
 
-	actj = picture->mbinfo[j].act;
-	varj =  picture->mbinfo[j].var;
 	/* Guesstimate a virtual buffer fullness based on
 	   bits used vs. bits in proportion to activity encoded
 	*/
 
-
-	dj = ((double)d) + 
+	double dj = ((double)d) + 
 		((double)(bitcount()-S) - actcovered * ((double)T) / actsum);
 
 
@@ -990,40 +994,45 @@ int rc_calc_mquant( Picture *picture,int j)
 	   macroblocks. Silly in a VBR context.
 	*/
 
-	Qj = dj*62.0/r;
+	double Qj = dj*62.0/r;
 	Qj = (Qj > ctl_quant_floor) ? Qj : ctl_quant_floor;
 
-	/*  Heuristic: Decrease quantisation for blocks with lots of
-		sizeable coefficients.  We assume we just get a mess if
-		a complex texture's coefficients get chopped...
-		We don't bother for B frames as the effect can only be transient, 
-		and hence not really noticeable.  The bits can be better "spent"
-		on improving P and I frames.
+	/*  Heuristic: We decrease quantisation for macroblocks
+		with markedly low luminace variance.  This helps make
+		gentle gradients (e.g. smooth backgrounds) look better at
+		(hopefully) small additonal cost  in coding bits
 	*/
 
-#ifndef NEW_QUANTISATION_STEARING
-	N_actj =  ( actj < avg_act || picture->pict_type == B_TYPE ) ? 
+	double act_boost;
+#ifdef OLD_QUANTISATION_STEARING
+	double N_act =  ( act < avg_act || picture->pict_type == B_TYPE ) ? 
 		1.0 : 
-		(ctl_act_boost*actj +  avg_act)/(actj + ctl_act_boost*avg_act);
+		(ctl_act_boost*act +  avg_act)/(act + ctl_act_boost*avg_act);
+	act_boost = 1.0/N_act;
 #else
-	N_actj = (ctl_act_boost*varj +  avg_var)/(varj + ctl_act_boost*avg_var);
-	if( N_actj > 1.3 )
-		N_actj = 1.3;
-	if( N_actj < 0.7 )
-		N_actj = 0.7;
-#endif	
-	sum_vbuf_Q += scale_quantf(picture->q_scale_type,Qj*N_actj);
-	mquant = scale_quant(picture->q_scale_type,Qj*N_actj);
-
-#ifdef PER_FRAME_STEARING
-	if( j % 23 == 0 )
-		init_quant = mquant;
+	if( lum_variance < ctl_boost_var_ceil )
+	{
+		if( lum_variance < ctl_boost_var_ceil/2)
+			act_boost = ctl_act_boost;
+		else
+		{
+			double max_boost_var = ctl_boost_var_ceil/2;
+			double above_max_boost = 
+				(static_cast<double>(lum_variance)-max_boost_var)
+				/ max_boost_var;
+			act_boost = 1.0 + (ctl_act_boost-1.0) * (1.0-above_max_boost);
+		}
+	}
 	else
-		mquant = init_quant;
-#endif
+		act_boost = 1.0;
+
+#endif	
+	sum_vbuf_Q += scale_quantf(picture->q_scale_type,Qj/act_boost);
+	mquant = scale_quant(picture->q_scale_type,Qj/act_boost);
+
 	/* Update activity covered */
 
-	actcovered += actj;
+	actcovered += act;
 	 
 #ifdef OUTPUT_STAT
 /*
@@ -1031,11 +1040,9 @@ int rc_calc_mquant( Picture *picture,int j)
   fprintf(statfile,"dj=%.0f, Qj=%1.1f, actj=3.1%f, N_actj=1.1%f, mquant=%03d\n",
   dj,Qj,actj,N_actj,mquant);
 */
-	picture->mbinfo[j].N_act = N_actj;
+	//picture->mbinfo[j].N_act = N_actj;
 #endif
-	return mquant;
 }
-
 
 /* VBV calculations
  *

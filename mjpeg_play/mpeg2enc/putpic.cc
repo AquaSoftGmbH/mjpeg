@@ -280,7 +280,8 @@ void putpict(Picture *picture )
 
 
 			/* determine mquant (rate control) */
-			cur_mb->mquant = rc_calc_mquant(picture,k);
+            cur_mb->SelectQuantization();
+			//cur_mb->mquant = rc_calc_mquant(picture,k);
 
 			/* quantize macroblock */
 			if (mb_type & MB_INTRA)

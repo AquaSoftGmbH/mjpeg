@@ -56,6 +56,7 @@
 #include "simd.h"
 #include "fastintfns.h"
 #include "motionsearch.h"
+#include "mjpeg_logging.h"
 
 /* Macro-block Motion estimation results record */
 
@@ -339,8 +340,12 @@ static int bidir_var_sum( mb_motion_s *lum_mc_f,
 
 static __inline__ int chrom_var_sum( subsampled_mb_s *ssblk, int h, int lx )
 {
-	return (pvariance(ssblk->umb,(h>>1),(lx>>1)) + 
-			pvariance(ssblk->vmb,(h>>1),(lx>>1))) * 2;
+    uint32_t var1, var2, dummy_mean;
+    assert( (h>>1) == 8 || (h>>1) == 16 );
+    pvariance(ssblk->umb,(h>>1),(lx>>1), &var1, &dummy_mean);
+    pvariance(ssblk->vmb,(h>>1),(lx>>1), &var2, &dummy_mean);
+    
+	return (var1+var2)*2;
 }
 
 
@@ -487,8 +492,11 @@ void MacroBlock::FrameME()
 	   for sub-sampling.  Silly MPEG forcing chrom/lum to have same
 	   quantisations... ;-)
 	 */
-	intravar = pvariance(ssmb.mb,16,opt_phy_width) 
-        + chrom_var_sum(&ssmb,16,opt_phy_width);
+
+    pvariance(ssmb.mb,16,opt_phy_width, &lum_variance, &lum_mean );
+	intravar = lum_variance + chrom_var_sum(&ssmb,16,opt_phy_width);
+
+
 
 	if (picture.pict_type==I_TYPE)
 	{
@@ -919,7 +927,8 @@ void MacroBlock::FieldME()
 		ssmb.qmb += (opt_phy_width >> 2);
 	}
 
-	var = pvariance(ssmb.mb,16,w2) + chrom_var_sum(&ssmb,16,w2);
+    pvariance( ssmb.mb, 16, w2, &lum_variance, &lum_mean );
+	var = lum_variance + chrom_var_sum(&ssmb,16,w2);
         
 	if(picture.pict_type==I_TYPE)
     {

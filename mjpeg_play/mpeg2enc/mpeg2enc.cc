@@ -110,6 +110,7 @@ static int param_44_red	= 2;
 static int param_22_red	= 3;	
 static int param_hf_quant = 0;
 static double param_act_boost = 0.0;
+static double param_boost_var_ceil = 10*10;
 static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 0;
 static int param_min_GOP_size = -1;
@@ -658,7 +659,7 @@ int main( int argc,	char *argv[] )
 	 */
 
 static const char	short_options[]=
-	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:D:g:G:v:V:F:tpdsZNhOcCP";
+	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:X:D:g:G:v:V:F:tpdsZNhOcCP";
 
 #ifdef HAVE_GETOPT_LONG
 static struct option long_options[]={
@@ -681,6 +682,7 @@ static struct option long_options[]={
      { "closed-gop",        1, 0, 'c'},
      { "force-b-b-p", 0, &param_preserve_B, 1},
      { "quantisation-reduction", 1, 0, 'Q' },
+     { "quant-reduction-max-var", 1, 0, 'X' },
      { "video-buffer",      1, 0, 'V' },
      { "video-norm",        1, 0, 'n' },
      { "sequence-length",   1, 0, 'S' },
@@ -918,6 +920,14 @@ static struct option long_options[]={
 				++nerr;
 			}
 			break;
+		case 'X' :
+			param_boost_var_ceil = atof(optarg);
+			if( param_act_boost <0 || param_act_boost > 50*50 )
+			{
+				mjpeg_error( "-X option requires arg 0 .. 2500" );
+				++nerr;
+			}
+			break;
 		case ':' :
 			mjpeg_error( "Missing parameter to option!" );
 		case '?':
@@ -1131,6 +1141,7 @@ static void init_encoder(void)
 	ctl_act_boost = param_act_boost >= 0.0 
         ? (param_act_boost+1.0)
         : (param_act_boost-1.0);
+    ctl_boost_var_ceil = param_boost_var_ceil;
 	switch( param_num_cpus )
 	{
 
