@@ -41,8 +41,8 @@ mpeg2enc \- MPEG 1/2 encoder
 .RB [ -N | --reduce-hf]
 .RB [ -h | --keep-hf ]
 .RB [ -d | --no-dummy-svcd-SOF]
+.RB [ -C | --correct-svcd-hds]
 .RB [ --hack-dxr2-bug]
-.RB [ --hack-svcd-hds-bug]
 .RB [ -? | --help ]
 .BI -o \ output_filename
 .SH "DESCRIPTION"
@@ -217,20 +217,22 @@ image. Currently the GNU vcdimager tool handles this task.  However,
 in some circumstances the dummy offsets can cause problems.   This
 flags stops mpeg2enc generating them.
 .PP
+.BR --correct-svcd-hds
+.PP
+In the official SVCD standards the field in the MPEG-2 header
+information that passes on the encoders "recommended" horizontal
+resolution to decode the stream to is supposed to take the values 540
+(for 4:3 sequences) or 720 (for 16:9 sequences).  In practice many
+players don't work unless the value is 480. This flag, forces mpeg2enc
+to follow the official standard. It is worth trying if 16:9 sequences
+play at 4:3 aspect ratio.
+.PP
 .BR --hack-dxr2-bug
 .PP
 This flag, as its name suggests, works around what appears to be a bug
 in MPEG-2 decoding in the firmware of the DXR2 board. Useful for
 encoding DVD-like streams for playback using a DXR2.
 .PP
-.BR --hack-svcd-hds-bug
-.PP
-This flag, works around a common issue in SVCD playback in DVD/SVCD
-players.  In the official standards the field in the MPEG-2 header
-information that passes on the encoders "recommended" horizontal
-resolution to decode the stream to is supposed to take the values 540
-or 720.  In practice many players don't work unless the value is 480.
-This flag forces 480 to be used.
 
 .SH "OPTION LETTERS CONTROLLING VIDEO PARAMETERS"
 .PP
