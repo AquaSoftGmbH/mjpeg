@@ -380,8 +380,9 @@ char *argv[];
 
 
    /* Round sizes to multiples of 16 ... */
-   param.output_width = ((param.output_width + 15) / 16) * 16;
-   param.output_height = ((param.output_height + 15) / 16) * 16;
+   //since when does JPEG need to be *16 size? That's only zoran limitation...
+   //param.output_width = ((param.output_width + 15) / 16) * 16;
+   //param.output_height = ((param.output_height + 15) / 16) * 16;
 
    if (bounds.active_width == 0) {
       bounds.active_width = param.output_width;
