@@ -66,6 +66,7 @@ static const unsigned int ac3_frequency[4] =
 AC3Stream::AC3Stream(IBitStream &ibs, Multiplexor &into) : 
 	AudioStream( ibs, into )
 {
+num_frames = 0;
 }
 
 bool AC3Stream::Probe(IBitStream &bs )
@@ -235,9 +236,9 @@ void AC3Stream::Init ( const int _stream_num)
             
         header_skip = 5;        // Initially skipped past  5 bytes of header 
 
-		num_frames++;
+	num_frames++;
         access_unit.start = AU_start;
-		access_unit.length = framesize;
+	access_unit.length = framesize;
         mjpeg_info( "AC3 frame size = %d\n", framesize );
         bit_rate = ac3_bitrate_index[framesize_code>>1];
 		samples_per_second = ac3_frequency[frequency];

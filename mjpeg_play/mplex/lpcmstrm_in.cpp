@@ -45,6 +45,7 @@ LPCMStream::LPCMStream(IBitStream &ibs, LpcmParams *parms, Multiplexor &into) :
 	AudioStream( ibs, into ),
     parms(parms)
 {
+	num_frames = 0;
 }
 
 

@@ -51,6 +51,7 @@ static const unsigned int dts_packet_samples[4] =
 DTSStream::DTSStream(IBitStream &ibs, Multiplexor &into) : 
 	AudioStream( ibs, into )
 {
+	num_frames = 0;
 }
 
 bool DTSStream::Probe(IBitStream &bs )
