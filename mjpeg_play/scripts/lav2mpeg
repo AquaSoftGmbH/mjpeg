@@ -461,12 +461,14 @@ case ${mode} in
       mpeg2enc_flags="-a 2 -f 4 ${mpeg2enc_flags}"
       mplex_flags="-f 4 ${mplex_flags}"
       aencbpr=$useraencbpr
+      audioenc_flags="-e $audioenc_flags"
       ;;
    svcd_high)
       yuvscaler_flags="-O SVCD ${yuvscaler_flags}"
       mpeg2enc_flags="-a 2 -f 5 -b ${SVCD_HIGH_BR} -V ${SVCD_HIGH_BUFFSIZE} -q ${SVCD_HIGH_QUAL} ${mpeg2enc_flags}"
       mplex_flags="-f 5 ${mplex_flags}"
       aencbpr=$useraencbpr
+      audioenc_flags="-e $audioenc_flags"
       ;;
    mpeg2)
       yuvscaler_flags="-O SIZE_${output_width}x${output_height} ${yuvscaler_flags}"
