@@ -32,7 +32,6 @@
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/major.h>
-#include <linux/malloc.h>
 #include <linux/mm.h>
 #include <linux/pci.h>
 #include <linux/signal.h>
@@ -49,8 +48,10 @@
 #include <asm/uaccess.h>
 
 #if LINUX_VERSION_CODE >= 0x020300
+#include <linux/slab.h>
 #include <linux/i2c-old.h>
 #else
+#include <linux/malloc.h>
 #include <linux/i2c.h>
 #endif
 #include <linux/video_decoder.h>

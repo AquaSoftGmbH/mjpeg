@@ -54,7 +54,6 @@
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/major.h>
-#include <linux/malloc.h>
 #include <linux/mm.h>
 #include <linux/pci.h>
 #include <linux/signal.h>
@@ -69,6 +68,7 @@
 #if LINUX_VERSION_CODE < 0x20400
 #include <asm/spinlock.h>
 #include <linux/i2c.h>
+#include <linux/malloc.h>
 #define     ZORAN_HARDWARE  VID_HARDWARE_BT848
 #define     ZORAN_VID_TYPE  ( \
                             VID_TYPE_CAPTURE | \
@@ -81,6 +81,7 @@
 	       but this is not even implemented in the BTTV driver */
 #else
 #include <linux/spinlock.h>
+#include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/i2c-old.h>
 #define     MAP_NR(x)       virt_to_page(x)

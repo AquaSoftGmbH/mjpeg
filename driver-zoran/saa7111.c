@@ -27,7 +27,6 @@
 #include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/major.h>
-#include <linux/malloc.h>
 #include <linux/mm.h>
 #include <linux/pci.h>
 #include <linux/signal.h>
@@ -44,8 +43,10 @@
 #include <asm/uaccess.h>
 
 #if LINUX_VERSION_CODE < 0x20400
+#include <linux/malloc.h>
 #include <linux/i2c.h>
 #else
+#include <linux/slab.h>
 #include <linux/i2c-old.h>
 #endif
 
