@@ -48,6 +48,7 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <limits.h>
 #include "global.h"
 #include "math.h"

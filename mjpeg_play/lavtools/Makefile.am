@@ -9,7 +9,7 @@
 
 ## EXTRA-DIST = README PLANS
 INCLUDES =  -I../mjpeg -I /usr/X11R6/include -I /usr/X11R6/include/X11 @MOVTAR_CFLAGS@  @GLIB_CFLAGS@ @QUICKTIME_INCLUDE@
-CFLAGS=-Wall -Wno-uninitialized -Werror -O3 -DLAVPLAY_VERSION=\"1.3\"
+CFLAGS=-Wall -Wno-uninitialized -Werror -O3 -DLAVPLAY_VERSION=\"1.3\" -DHAVE_LIBXXF86DGA
 
 ##
 ## TODO: Need to include the mpeg programs in bin_PROGRAMS for installation
@@ -52,7 +52,7 @@ lavaddwav_LDADD = editlist.o lav_io.o avilib.o -lmovtar
 
 xlav_SOURCES = xlav.c xlav_main.c  $(lav_headers)
 xlav_LDFLAGS  = -L movtar -L /usr/X11R6/lib 
-xlav_LDADD = editlist.o lav_io.o avilib.o -lmovtar -lforms -lX11 -lm
+xlav_LDADD = editlist.o lav_io.o avilib.o -lmovtar -lforms -lXpm -lX11 -lm
 
 lavvideo_SOURCES = lavvideo.c
 

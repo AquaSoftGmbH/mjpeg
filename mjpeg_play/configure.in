@@ -190,14 +190,14 @@ i686)
 	x86cpu="yes"
     AC_DEFINE(X86_CPU)
 	AC_DEFINE(P6_CPU)
-    MTYPEFLAGS="-mpentiumpro"
+    MTYPEFLAGS="-march=i586 -mcpu=i686 -mpentiumpro"
 	echo "Compiling in MMX/SSE support for Pentium Pro (or better) CPU"
     echo "WARNING: this code will not run on K6 or Pentium CPUs!"
 ;;
 i586) 
 	x86cpu="yes"
     AC_DEFINE(X86_CPU)
-	MTYPEFLAGS="-mpentium"
+	MTYPEFLAGS="-march=i586 -mcpu=i586 -mpentium"
 	echo "Compiling in MMX/SSE support for Pentium CPU"
 ;;
 *) x86cpu="no"

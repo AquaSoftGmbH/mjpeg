@@ -29,6 +29,7 @@
 
 #include <config.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include "global.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */

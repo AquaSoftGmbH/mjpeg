@@ -1,6 +1,7 @@
 #include "main.h"
 
 #include <math.h>
+#include <stdlib.h>
 
 
 static double picture_rates [9] = { 0., 24000./1001., 24., 25., 

@@ -864,7 +864,7 @@ int main(int argc, char ** argv)
 		}
 		while(tdiff>spvf && (nsync-first_free)<mjpeg->br.count-1);
 
-		if(gui_mode) printf("@%lc%ld/%ld/%d\n",el.video_norm,frame_number[frame],
+		if(gui_mode) printf("@%c%ld/%ld/%d\n",(unsigned int)el.video_norm,frame_number[frame],
 							el.video_frames,play_speed);
 
 		if((nsync-first_free)> mjpeg->br.count-3)
