@@ -152,6 +152,8 @@ int read_pipe_list (char *name, PipeList *pl)
          
          pl->segments[pl->segment_count++] = seq;
          if ((pl->segment_count % 32) == 0)
+         pl->segments = (PipeSegment **) realloc (pl->segments, 
+                   (pl->segment_count + 32) * sizeof (PipeSegment *));
             pl->segments = (PipeSegment **) realloc (pl->segments, sizeof (pl->segments) + 32 * sizeof (PipeSegment *));
       }
       return 0;
