@@ -963,12 +963,12 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
 {
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
-   struct video_capability vc;
   
 #ifdef HAVE_V4L
    if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
    {
       struct video_window vw;
+      struct video_capability vc;
       XWindowAttributes wts;
       Display *dpy;
       int n;
