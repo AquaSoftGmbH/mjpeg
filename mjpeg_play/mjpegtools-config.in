@@ -89,7 +89,7 @@ if test "$echo_exec_prefix" = "yes"; then
     echo $exec_prefix
 fi
 
-cflags="-I$include_dir -I$includedir/mpeg2enc -I$includedir/mplex"
+cflags="-I$include_dir -I$include_dir/mpeg2enc -I$include_dir/mplex"
 
 if test "$lib_dir" != "/usr/lib"; then
     libs="-L$lib_dir -lmjpegutils"
