@@ -121,8 +121,6 @@ main(int argc, char **argv)
 		if	(y4m_read(fd_in, yuv[2], uvlen) != Y4M_OK)
 			break;
 		frames++;
-		if	(y4m_write_frame_header(fd_out, &iframe) != Y4M_OK)
-			break;
 		if	(y4m_write(fd_out, yuv[0], height * width) != Y4M_OK)
 			break;
 		if	(y4m_write(fd_out, yuv[1], uvlen) != Y4M_OK)
