@@ -624,44 +624,43 @@ int main(argc,argv)
 static const char	short_options[]=
 	"m:a:f:n:b:z:T:B:q:o:S:I:r:M:4:2:Q:g:G:v:V:F:tpdsZNhOP";
 
+static struct option long_options[]={
+     { "verbose",           1, 0, 'v' },
+     { "format",            1, 0, 'f' },
+     { "aspect",            1, 0, 'a' },
+     { "frame-rate",        1, 0, 'F' },
+     { "video-bitrate",     1, 0, 'b' },
+     { "nonvideo-bitrate",  1, 0, 'B' },
+     { "quantisation",      1, 0, 'q' },
+     { "output",            1, 0, 'o' },
+     { "vcd-still-size",    1, 0, 'T' },
+     { "interlace-mode",    1, 0, 'I' },
+     { "motion-search-radius", 1, 0, 'r'},
+     { "reduction-4x4",  1, 0, '4'},
+     { "reduction-2x2",  1, 0, '2'},
+     { "min-gop-size",      1, 0, 'g'},
+     { "max-gop-size",      1, 0, 'G'},
+     { "force-b-b-p", 0, &param_preserve_B, 1},
+     { "quantisation-reduction", 1, 0, 'Q' },
+     { "video-buffer",      1, 0, 'V' },
+     { "video-norm",        1, 0, 'n' },
+     { "sequence-length",   1, 0, 'S' },
+     { "3-2-pulldown",      1, &param_32_pulldown, 1 },
+     { "keep-hf",           0, &param_hf_quant, 2 },
+     { "reduce-hf",         0, &param_hf_quant, 1 },
+     { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
+     { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
+     { "hack-dxr2-bug",     0, &param_hack_dxr2_bug, 1},
+     { "hack-svcd-hds-bug", 0, &param_hack_svcd_hds_bug, 1},
+     { "playback-field-order", 1, 0, 'z'},
+     { "multi-thread",      1, 0, 'M' },
+     { "help",              0, 0, '?' },
+     { 0,                   0, 0, 0 }
+};
 #ifdef HAVE_GETOPT_LONG
-	static struct option long_options[]={
-		{ "verbose",           1, 0, 'v' },
-		{ "format",            1, 0, 'f' },
-		{ "aspect",            1, 0, 'a' },
-		{ "frame-rate",        1, 0, 'F' },
-        { "video-bitrate",     1, 0, 'b' },
-		{ "nonvideo-bitrate",  1, 0, 'B' },
-		{ "quantisation",      1, 0, 'q' },
-        { "output",            1, 0, 'o' },
-        { "vcd-still-size",    1, 0, 'T' },
-		{ "interlace-mode",    1, 0, 'I' },
-        { "motion-search-radius", 1, 0, 'r'},
-		{ "reduction-4x4",  1, 0, '4'},
-        { "reduction-2x2",  1, 0, '2'},
-		{ "min-gop-size",      1, 0, 'g'},
-		{ "max-gop-size",      1, 0, 'G'},
-		{ "force-b-b-p", 0, &param_preserve_B, 1},
-		{ "quantisation-reduction", 1, 0, 'Q' },
-		{ "video-buffer",      1, 0, 'V' },
-		{ "video-norm",        1, 0, 'n' },
-		{ "sequence-length",   1, 0, 'S' },
-		{ "3-2-pulldown",      1, &param_32_pulldown, 1 },
-		{ "keep-hf",           0, &param_hf_quant, 2 },
-		{ "reduce-hf",         0, &param_hf_quant, 1 },
-		{ "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
-		{ "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
-        { "hack-dxr2-bug",     0, &param_hack_dxr2_bug, 1},
-        { "hack-svcd-hds-bug", 0, &param_hack_svcd_hds_bug, 1},
-		{ "playback-field-order", 1, 0, 'z'},
-		{ "multi-thread",      1, 0, 'M' },
-		{ "help",              0, 0, '?' },
-		{ 0,                   0, 0, 0 }
-	};
-
-	while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
+    while( (n=getopt_long(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
-	while( (n=getopt(argc,argv,short_options)) != -1)
+    while( (n=getopt(argc,argv,short_options)) != -1)
 #endif
 	{
 		switch(n) {

@@ -209,7 +209,7 @@ void putpict(pict_data_s *picture )
 
 		putgophdr( picture->decode,
 				   picture->decode == 0,
-				   picture->decode != 0 && opt_seq_hdr_every_gop);
+				   picture->decode == 0 || opt_seq_hdr_every_gop);
 	}
 
 	/* picture header and picture coding extension */
