@@ -66,7 +66,7 @@ static size_t do_write( int fd, void *buf, size_t count )
 
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )
 {
-	off_t dummy_size = 0x7fffff00+sizeof(wave);
+        unsigned int dummy_size = 0x7fffff00+sizeof(wave);
 
 	/* Write out a ZEROD wave header first */
 	memset(&wave, 0, sizeof(wave));
@@ -100,7 +100,7 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 
 static void wav_close(int fd)
 {
-	off_t size;
+        unsigned int size;
 
 	/* Find how long our file is in total, including header */
 	size = lseek(fd, 0, SEEK_CUR);
