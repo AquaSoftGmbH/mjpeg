@@ -393,7 +393,9 @@ void Multiplexor::InitInputStreamsForVideo(MultiplexJob & job )
         {
             AudioStream *audioStrm = new MPAStream( *(*i)->bs, *this);
             audioStrm->Init ( audio_track );
-            ++audio_track;
+            estreams.push_back(audioStrm);
+            astreams.push_back(audioStrm);
+           ++audio_track;
         }
         break;
         case AC3_AUDIO :
