@@ -64,6 +64,7 @@ void change_four(GtkAdjustment *adjust_scale);
 void change_two(GtkAdjustment *adjust_scale);
 void set_bicubicuse(GtkWidget *widget, gpointer data);
 void player_callback( GtkWidget *widget, GtkWidget *player_field);
+void set_saveonexit(GtkWidget *widget, gpointer data);
 
 /* used from config.c */
 int chk_dir(char *name);
@@ -78,7 +79,7 @@ int chk_dir(char *name);
 #define Encoptions_Table_x 2
 #define Encoptions_Table_y 9
 int t_use_yuvplay_pipe, t_encoding_syntax_style, t_addoutputnorm;
-int t_fourpelmotion, t_twopelmotion, t_use_bicubic;
+int t_fourpelmotion, t_twopelmotion, t_use_bicubic, t_saveonexit;
 char t_selected_player[FILELEN];
 char t_ininterlace_type[LONGOPT];
 GtkWidget *fourpel_scale, *twopel_scale;
@@ -104,6 +105,7 @@ encoding_syntax_style = 0;
 fourpelmotion = 2;
 twopelmotion  = 3;
 use_bicubic   = 0;
+saveonexit    = 1;
 }
 
 /* set the structs to default values */
@@ -226,6 +228,9 @@ int i;
         use_yuvplay_pipe = 1;
     else 
         use_yuvplay_pipe = 0;
+  
+  if (-1 != (i = cfg_get_int("Studio","Encoding_save_on_exit")))
+    saveonexit = i;
 }
 
 void load_section(char section[LONGOPT],struct encodingoptions *point)
@@ -408,6 +413,7 @@ int have_config;
       printf("Encoding Syntax Style :\'%i\' \n",encoding_syntax_style);
       printf("Encoding 4*4-pel motion compensation :\'%i\' \n",fourpelmotion);
       printf("Encoding 2*2-pel motion compensation :\'%i\' \n",twopelmotion);
+      printf("Encoding save on exit :\'%i\' \n",saveonexit);
     }
 
   strncpy(section,"MPEG1",LONGOPT);
@@ -460,6 +466,9 @@ void save_common(FILE *fp)
     fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "yes");
   else
     fprintf(fp,"Encode_Bicubic_Scaling = %s\n", "no");
+
+  fprintf(fp,"Encoding_save_on_exit = %i\n",saveonexit);
+
 }
 
 void save_section(FILE *fp, struct encodingoptions *point, char section[LONGOPT])
@@ -608,6 +617,9 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
       
       if (strcmp(t_selected_player,selected_player) != 0)
         printf(" Setting the player to : %s \n", t_selected_player);
+
+      if (t_saveonexit != saveonexit)
+        printf(" Save on when exit set to  %i \n", t_saveonexit);
     }
  
   use_yuvplay_pipe = t_use_yuvplay_pipe;
@@ -618,6 +630,7 @@ void accept_encoptions(GtkWidget *widget, gpointer data)
   fourpelmotion = t_fourpelmotion;
   twopelmotion = t_twopelmotion;
   strcpy(selected_player,t_selected_player);
+  saveonexit =t_saveonexit;
 }
 
 /* Set the value of the Slider 4 to the variable */
@@ -665,6 +678,15 @@ int i;
     sprintf(t_ininterlace_type,"%s",(char*)data);
 }
 
+/* Set if the saveing of the option when exiting */
+void set_saveonexit(GtkWidget *widget, gpointer data)
+{
+  if (GTK_TOGGLE_BUTTON (widget)->active)
+    t_saveonexit = 1;
+  else
+    t_saveonexit = 0;
+}
+
 /* Set if the bicubic rescaling algorithm is used */ 
 void set_bicubicuse(GtkWidget *widget, gpointer data)
 {
@@ -695,7 +717,7 @@ void create_encoding_layout(GtkWidget *table)
 {
 GtkWidget *preview_button, *label, *addnorm_button, *int_asis_button;
 GtkWidget *int_odd_button, *int_even_button, *style_14x, *style_15x;
-GtkWidget *bicubic_button, *player_field;
+GtkWidget *bicubic_button, *player_field, *saveonexit_button;
 GSList *interlace_type, *encoding_style;
 GtkObject *adjust_scale, *adjust_scale_n;
 int table_line;
@@ -710,6 +732,23 @@ table_line = 0;
   t_fourpelmotion = fourpelmotion;
   t_twopelmotion = twopelmotion;
   sprintf(t_selected_player, "%s", selected_player);
+  t_saveonexit = saveonexit;
+
+  label = gtk_label_new ("Save the encoding options when exiting : ");
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                             label, 0, 1, table_line, table_line+1);
+  gtk_misc_set_alignment(GTK_MISC(label), 0.0, GTK_MISC(label)->yalign);
+  gtk_widget_show (label);
+  saveonexit_button = gtk_check_button_new();
+  gtk_widget_ref (saveonexit_button);
+  if (saveonexit)
+    gtk_toggle_button_set_active (GTK_TOGGLE_BUTTON (saveonexit_button), TRUE);
+  gtk_signal_connect (GTK_OBJECT (saveonexit_button), "toggled",
+                      GTK_SIGNAL_FUNC (set_saveonexit), NULL );
+  gtk_table_attach_defaults (GTK_TABLE (table), 
+                            saveonexit_button, 1, 2, table_line, table_line+1);
+  gtk_widget_show (saveonexit_button);
+  table_line++;
 
   label = gtk_label_new ("Show video while encoding : ");
   gtk_table_attach_defaults (GTK_TABLE (table), 
