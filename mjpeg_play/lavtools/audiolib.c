@@ -732,7 +732,11 @@ void do_audio(void)
 
    tmp = audio_rate;
    ret = ioctl(fd, SNDCTL_DSP_SPEED, &tmp);
-   if(ret<0 || abs(tmp-audio_rate) > 100) system_error("setting sound rate",fd,0);
+   if(ret<0) {
+       system_error("setting sound rate",fd,0);
+   } else if(tmp != audio_rate) {
+       mjpeg_warn("Sound card told us it's using rate %dHz instead of %dHz\n", tmp, audio_rate);
+   }
 
 /* Calculate number of bytes corresponding to TIME_STAMP_TOL */
 
