@@ -435,17 +435,17 @@ esac
 case ${mode} in
    vcd)
       yuvscaler_flags="-O VCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 1 ${mpeg2enc_flags}"
+      mpeg2enc_flags="-a 2 -f 1 ${mpeg2enc_flags}"
       mplex_flags="-f 1 ${mplex_flags}"
       ;;
    vcd_medium)
       yuvscaler_flags="-O VCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 2 -b ${VCD_MEDIUM_BR} ${mpeg2enc_flags}"
+      mpeg2enc_flags="-a 2 -f 2 -b ${VCD_MEDIUM_BR} ${mpeg2enc_flags}"
       mplex_flags="-f 2 ${mplex_flags}"
       ;;
    vcd_high)
       yuvscaler_flags="-O VCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 2 -b ${VCD_HIGH_BR} ${mpeg2enc_flags}"
+      mpeg2enc_flags="-a 2 -f 2 -b ${VCD_HIGH_BR} ${mpeg2enc_flags}"
       mplex_flags="-f 2 ${mplex_flags}"
       ;;
    mpeg1)
@@ -456,13 +456,13 @@ case ${mode} in
       ;;
    svcd)
       yuvscaler_flags="-O SVCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 4 ${mpeg2enc_flags}"
+      mpeg2enc_flags="-a 2 -f 4 ${mpeg2enc_flags}"
       mplex_flags="-f 4 ${mplex_flags}"
       aencbpr=$useraencbpr
       ;;
    svcd_high)
       yuvscaler_flags="-O SVCD ${yuvscaler_flags}"
-      mpeg2enc_flags="-f 5 -b ${SVCD_HIGH_BR} -V ${SVCD_HIGH_BUFFSIZE} -q ${SVCD_HIGH_QUAL} ${mpeg2enc_flags}"
+      mpeg2enc_flags="-a 2 -f 5 -b ${SVCD_HIGH_BR} -V ${SVCD_HIGH_BUFFSIZE} -q ${SVCD_HIGH_QUAL} ${mpeg2enc_flags}"
       mplex_flags="-f 5 ${mplex_flags}"
       aencbpr=$useraencbpr
       ;;
