@@ -203,12 +203,11 @@ void putpict(pict_data_s *picture )
 	/* Sequence header if new sequence or we're generating for a
        format like (S)VCD that mandates sequence headers every GOP to
        do fast forward, rewind etc.
-       The first sequence header of the first sequence is generated
-       elsewhere...
 	*/
 
-    if( picture->decode != 0 &&
-        (picture->new_seq || (picture->gop_start && opt_seq_hdr_every_gop)) )
+    if( picture->new_seq ||
+        picture->decode == 0 ||
+        (picture->gop_start && opt_seq_hdr_every_gop) )
     {
 		putseqhdr();
     }

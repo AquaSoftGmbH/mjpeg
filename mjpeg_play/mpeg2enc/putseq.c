@@ -910,7 +910,6 @@ void putseq()
 	cur_picture = old_ref_picture;
 	
 	rc_init_seq(0);
-	putseqhdr();
 	
 	ss.i = 0;		                /* Index in current MPEG sequence */
 	ss.g = 0;						/* Index in current GOP */
