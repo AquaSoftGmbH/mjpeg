@@ -1,7 +1,6 @@
 #include <unistd.h>
 #include <math.h>
 #include <stdio.h>
-#include "jpeg-6b-mmx/jpeglib.h"
 #include "movtar.h"
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -12,6 +11,10 @@
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_timer.h>
+
+#define JPEG_INTERNALS
+#include "jpeg-6b-mmx/jinclude.h"
+#include "jpeg-6b-mmx/jpeglib.h"
 
 //#include <Hermes/Hermes.h>
 
@@ -33,6 +36,7 @@ struct movtarinfotype movtarinfo;
 SDL_Surface *screen;
 SDL_Surface *jpeg;
 SDL_Rect jpegdims;
+struct jpeg_decompress_struct cinfo; 
 
 int debug = 1;
 
@@ -54,7 +58,7 @@ init_source (j_decompress_ptr cinfo)
 METHODDEF(boolean)
 fill_input_buffer (j_decompress_ptr cinfo)
 {
-  printf("fel i bufferten\n");
+  printf("Error in the JPEG buffer !\n");
   return TRUE;
 }
 
@@ -82,7 +86,6 @@ jpeg_mem_src (j_decompress_ptr cinfo,void * buff, int size)
 				 sizeof(mem_src_mgr));
 
   src = (mem_src_ptr) cinfo->src;
-
   src->buffer = (JOCTET *) buff;
   
   src = (mem_src_ptr) cinfo->src;
@@ -95,8 +98,144 @@ jpeg_mem_src (j_decompress_ptr cinfo,void * buff, int size)
   src->pub.next_input_byte = src->buffer;
 }
 
+GLOBAL(void)
+jpeg_mem_src_reset (j_decompress_ptr cinfo, int size)
+{
+  mem_src_ptr src;
+
+  src = (mem_src_ptr) cinfo->src;
+  src->pub.bytes_in_buffer = size;
+  src->pub.next_input_byte = src->buffer;
+}
+
 /* end of data source manager */
 
+/* Colorspace conversion */
+/* RGB, 32 bits, 8bits each: (Junk), R, G, B */ 
+#if defined(__GNUC__)
+#define int64 unsigned long long
+#endif
+static int64 te0 = 0x0080008000800080; // -128
+static int64 te1 = 0xd8186aa1d8186aa1; // for cb 
+static int64 te2 = 0x59ba308159ba3081; // for cr
+
+METHODDEF(void)
+ycc_rgb32_convert_mmx (j_decompress_ptr cinfo,
+		     JSAMPIMAGE input_buf, JDIMENSION input_row,
+		     JSAMPARRAY output_buf, int num_rows)
+{
+  JSAMPROW outptr;
+  JSAMPROW inptr0, inptr1, inptr2;
+  JDIMENSION col;
+  JDIMENSION num_cols = cinfo->output_width;
+
+  while (--num_rows >= 0) {
+    inptr0 = input_buf[0][input_row];
+    inptr1 = input_buf[1][input_row];
+    inptr2 = input_buf[2][input_row];
+    input_row++;
+    outptr = *output_buf++;
+    num_cols/=4;    for (col = 0; col < num_cols; col++) {
+#if defined(HAVE_MMX_INTEL_MNEMONICS)
+#error "MMX routines haven't been converted to INTEL assembler yet - contact JPEGlib/MMX"
+#endif
+#if defined(HAVE_MMX_ATT_MNEMONICS)
+      asm("movd (%%eax),%%mm0\n"   // mm0: 0 0 0 0 y3 y2 y1 y0 - 8 bit
+	  "movd (%%ebx),%%mm1\n"   // mm1: 0 0 0 0 cb3 cb2 cb1 cb0
+	  "movd (%%ecx),%%mm2\n"   // mm2: 0 0 0 0 cr3 cr2 cr1 cr0
+	  "pxor %%mm7,%%mm7\n"     // mm7 = 0
+	  "punpcklbw %%mm7,%%mm0\n"// mm0: y3 y2 y1 y0 - expand to 16 bit
+	  "punpcklbw %%mm7,%%mm1\n"// mm1: cb3 cb2 cb1 cb0
+	  "punpcklbw %%mm7,%%mm2\n"// mm2: cr3 cr2 cr1 cr0
+	  "psubw te0,%%mm1\n"  //minus 128 for cb and cr
+	  "psubw te0,%%mm2\n"
+	  "psllw $2,%%mm1\n"       // shift left 2 bits for Cr and Cb to fit the mult constants
+	  "psllw $2,%%mm2\n"
+
+	  // prepare for RGB 1 & 0
+	  "movq %%mm1,%%mm3\n"     // mm3_16: cb3 cb2 cb1 cb0
+	  "movq %%mm2,%%mm4\n"     // mm4_16: cr3 cr2 cr1 cr0
+	  "punpcklwd %%mm3,%%mm3\n"// expand to 32 bit: mm3: cb1 cb1 cb0 cb0
+	  "punpcklwd %%mm4,%%mm4\n"// mm4: cr1 cr1 cr0 cr0
+	  
+	  // Y    Y     Y    Y 
+	  // 0    CB*g  CB*b 0
+	  // CR*r CR*g  0    0
+	  //------------------
+	  // R    G     B  
+
+	  "pmulhw te1,%%mm3\n"// multiplicate in the constants: mm3: cb1/green cb1/blue cb0/green cb0/blue
+	  "pmulhw te2,%%mm4\n"// mm4: cr1/red cb1/green cr0/red cr0/green
+
+	  "movq %%mm0,%%mm5\n"      // mm5: y3 y2 y1 y0
+	  "punpcklwd %%mm5,%%mm5\n" // expand to 32 bit: y1 y1 y0 y0
+	  "movq %%mm5,%%mm6\n"      // mm6: y1 y1 y0 y0
+	  "punpcklwd %%mm5,%%mm5\n" // mm5: y0 y0 y0 y0
+	  "punpckhwd %%mm6,%%mm6\n" // mm6: y1 y1 y1 y1
+
+	  // RGB 0
+	  "movq %%mm3,%%mm7\n"      // mm7: cb1 cb1 cb0 cb0
+	  "psllq $32,%%mm7\n"       // shift left 32 bits: mm7: cb0 cb0 0 0
+	  "psrlq $16,%%mm7\n"       // mm7 = 0 cb0 cb0 0
+	  "paddw %%mm7,%%mm5\n"     // add: mm7: y+cb
+	  "movq %%mm4,%%mm7\n"      // mm7 = cr1 cr1 cr0 cr0
+	  "psllq $32,%%mm7\n"       // shift left 32 bits: mm7: cr0 cr0 0 0
+	  "paddw %%mm7,%%mm5\n"     // y+cb+cr r g b ?
+	  
+	  // RGB 1
+	  "psrlq $32,%%mm4\n"       // mm4: 0 0 cr1 cr1 
+	  "psllq $16,%%mm4\n"       // mm4: 0 cr1 cr1 0 
+	  "paddw %%mm4,%%mm6\n"     //y+cr
+	  "psrlq $32,%%mm3\n"       // mm3: 0 0 cb1 cb1
+	  "paddw %%mm3,%%mm6\n"     //y+cr+cb: mm6 = r g b
+
+	  "psrlq $16,%%mm5\n"        // mm5: 0 r0 g0 b0
+	  "packuswb %%mm6,%%mm5\n"   //mm5 = ? r1 g1 b1 0 r0 g0 b0
+	  "movq %%mm5,%0\n"         // store mm5
+
+	  // prepare for RGB 2 & 3
+	  "punpckhwd %%mm0,%%mm0\n" //mm0 = y3 y3 y2 y2
+	  "punpckhwd %%mm1,%%mm1\n" //mm1 = cb3 cb3 cb2 cb2
+	  "punpckhwd %%mm2,%%mm2\n" //mm2 = cr3 cr3 cr2 cr2
+	  "pmulhw te1,%%mm1\n"      //mm1 = cb * ?
+	  "pmulhw te2,%%mm2\n"      //mm2 = cr * ?
+	  "movq %%mm0,%%mm3\n"      //mm3 = y3 y3 y2 y2
+	  "punpcklwd %%mm3,%%mm3\n" //mm3 = y2 y2 y2 y2
+	  "punpckhwd %%mm0,%%mm0\n" //mm0 = y3 y3 y3 y3
+
+	  // RGB 2
+	  "movq %%mm1,%%mm4\n"      //mm4 = cb3 cb3 cb2 cb2
+	  "movq %%mm2,%%mm5\n"      //mm5 = cr3 cr3 cr2 cr2
+	  "psllq $32,%%mm4\n"       //mm4 = cb2 cb2 0 0
+ 	  "psllq $32,%%mm5\n"       //mm5 = cr2 cr2 0 0
+	  "psrlq $16,%%mm4\n"       //mm4 = 0 cb2 cb2 0
+	  "paddw %%mm4,%%mm3\n"     // y+cb
+	  "paddw %%mm5,%%mm3\n"     //mm3 = y+cb+cr
+
+	  // RGB 3
+	  "psrlq $32,%%mm2\n"       //mm2 = 0 0 cr3 cr3
+	  "psrlq $32,%%mm1\n"       //mm1 = 0 0 cb3 cb3
+	  "psllq $16,%%mm2\n"       //mm1 = 0 cr3 cr3 0
+	  "paddw %%mm2,%%mm0\n"     //y+cr
+	  "paddw %%mm1,%%mm0\n"     //y+cb+cr
+
+	  "psrlq $16,%%mm3\n"        // shift to the right corner
+	  "packuswb %%mm0,%%mm3\n"  // pack in a quadword
+	  "movq %%mm3,8%0\n"       //  save two more RGB pixels
+
+	  :"=m"(outptr[0])
+	  :"eax"(inptr0),"ebx"(inptr1),"ecx"(inptr2) //y cb cr
+	  :"eax","ebx","ecx","edx", "st");
+#endif
+      outptr+=16;
+      inptr0+=4;
+      inptr1+=4;
+      inptr2+=4;
+    }
+  }
+}
+
+/* end of custom color deconverter */
 void ComplainAndExit(void)
 {
   fprintf(stderr, "Problem: %s\n", SDL_GetError());
@@ -109,13 +248,11 @@ void callback_AbortProg(int num)
 }
 
 /* forward reference */
-void readpicfrommem(void * inbuffer,int size);
+void inline readpicfrommem(void * inbuffer,int size);
 
 void initmovtar(char *filename)
 {
-  //char *readbuffer;
   int datasize;
-  int datatype;
 
   /* allocate memory for readbuffer */
   readbuffer=(char *)malloc(readbuffsize);
@@ -142,7 +279,7 @@ void initmovtar(char *filename)
 
 }
 
-void readnext()
+void inline readnext()
 {
   static int played=0;
   static int viewed=0; 
@@ -177,72 +314,40 @@ void readnext()
   while(!(datatype & MOVTAR_DATA_VIDEO));
 }
 
-void inline triple_swap(unsigned char *a, unsigned char *b, unsigned char *c)
+void inline readpicfrommem(void *inbuffer,int size)
 {
-  unsigned char tmp_a = *a;
-  //unsigned char tmp_b = *b;
-  unsigned char tmp_c = *c;
-  *a = tmp_c;
-  //*b = tmp_b;
-  *c = tmp_a;
-}
+  static struct jpeg_color_deconverter *cconvert;
+  int i;
 
-void inline swap(unsigned char *a, unsigned char *b)
-{
-  unsigned char tmp = *a;
-  *a = *b;
-  *b = tmp;
-}
-
-#undef BYPASS_CONVERSION
-
-void readpicfrommem(void *inbuffer,int size)
-{
-  struct jpeg_error_mgr jerr;
-  struct jpeg_decompress_struct cinfo; 
-  JSAMPARRAY buffer;
-  
-
-  int i, x, y;
-  unsigned long pixelval;
-  unsigned long mask;
-
-  cinfo.err = jpeg_std_error(&jerr);
-	
-  jpeg_create_decompress(&cinfo);
-
-  jpeg_mem_src(&cinfo,inbuffer, size);
+  jpeg_mem_src_reset(&cinfo, size);
   jpeg_read_header(&cinfo, TRUE);
 
-  cinfo.out_color_space = JCS_RGB;
-  cinfo.dct_method = JDCT_IFAST;
-
   jpeg_start_decompress(&cinfo);
-  
-#if defined(BYPASS_CONVERSION)
+
+  if (screen->format->BytesPerPixel == 4)
+    {
+      cconvert = cinfo.cconvert;
+      cconvert->color_convert = ycc_rgb32_convert_mmx;
+    }
+
   /* lock the screen for current decompression */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       if ( SDL_LockSurface(screen) < 0 )
 	ComplainAndExit();
     }
-#endif
 
   if(img == NULL)
     {
-#if defined(BYPASS_CONVERSION)
       img = screen->pixels;
-#else
-      img = jpeg->pixels;
-#endif
-      /* and WHERE are they deallocated ?? */
+
       if((imglines = (char **)calloc(cinfo.output_height, sizeof(char *)))==NULL)
 	{
 	  fprintf(stderr, "couldn't allocate memory for imglines\n");
 	  exit(0);
 	}
       for(i=0;i < cinfo.output_height;i++)
-	imglines[i]= img + i * 3 * screen->w;
+	imglines[i]= screen->pixels + i * screen->format->BytesPerPixel * screen->w;
 
       jpegdims.x = 0; // This is not going to work with interlaced pics !!
       jpegdims.y = 0;
@@ -253,19 +358,15 @@ void readpicfrommem(void *inbuffer,int size)
   while (cinfo.output_scanline < cinfo.output_height) 
     {       
       /* try to save the picture directly */
-      jpeg_read_scanlines(&cinfo, (JSAMPARRAY) &imglines[cinfo.output_scanline], 10);
+      jpeg_read_scanlines(&cinfo, (JSAMPARRAY) &imglines[cinfo.output_scanline], 100);
     }
 
-#if defined(BYPASS_CONVERSION)
   /* unlock it again */
   if ( SDL_MUSTLOCK(screen) ) 
     {
       SDL_UnlockSurface(screen);
     }
-#else
-  /* Only blit and update the neccessary parts */
-  SDL_BlitSurface(jpeg, &jpegdims, screen, &jpegdims);
-#endif
+
   SDL_UpdateRect(screen, 0, 0, jpegdims.w, jpegdims.h);
                           
   jpeg_finish_decompress(&cinfo);
@@ -297,8 +398,8 @@ int main(int argc,char** argv)
   unsigned char *buffer;
   char wintitle[255];
   int frame =0;
-  Uint8 *keys;
   SDL_Event event;
+  struct jpeg_error_mgr jerr;
 
   /* Initialize SDL library */
   if ( SDL_Init(SDL_INIT_VIDEO) < 0 ) 
@@ -308,13 +409,9 @@ int main(int argc,char** argv)
   atexit(SDL_Quit);
   
   /* Set the video mode (800x600 at native depth) */
-  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN*/);
+  screen = SDL_SetVideoMode(800, 600, 0, SDL_HWSURFACE /*| SDL_FULLSCREEN */);
   SDL_EventState(SDL_KEYDOWN, SDL_ENABLE);
   SDL_EventState(SDL_MOUSEMOTION, SDL_IGNORE);
-
-  dump_pixel_format(screen->format);
-  jpeg = SDL_CreateRGBSurface (SDL_SWSURFACE, 800, 600, 24, 0x0ff0000, 0x00ff00, 0x0000ff, 0xff000000); 
-  dump_pixel_format(jpeg->format);
 
   if ( screen == NULL )  
     ComplainAndExit(); 
@@ -322,24 +419,32 @@ int main(int argc,char** argv)
   /* init the movtar library */
   initmovtar(argv[1]);
 
+  cinfo.err = jpeg_std_error(&jerr);	
+  jpeg_create_decompress(&cinfo);
+  cinfo.out_color_space = JCS_RGB;
+  cinfo.dct_method = JDCT_IFAST;
+  jpeg_mem_src(&cinfo, readbuffer, 200000);
+
   sprintf(wintitle, "movtar_play %s", argv[1]);
   SDL_WM_SetCaption(wintitle, "0000000");  
 
   /* Draw bands of color on the raw surface */
-  buffer=(unsigned char *)screen->pixels;
+#if 1
+    buffer=(unsigned char *)screen->pixels;
   for ( i=0; i < screen->h; ++i ) 
     {
       memset(buffer,(i*255)/screen->h,
 	     screen->w*screen->format->BytesPerPixel);
       buffer += screen->pitch;
     }
+#endif
 
   do
     {
       readnext();
       frame++;
     }
-  while((frame < 100) && !movtar_eof(movtarfile) && !SDL_PollEvent(&event));
+  while((frame < 250) && !movtar_eof(movtarfile) && !SDL_PollEvent(&event));
 
   return 0;
 }
