@@ -156,10 +156,16 @@ main (int argc, char **argv)
 	{
       case Y4M_CHROMA_420JPEG:
       case Y4M_CHROMA_420MPEG2:
+      case Y4M_CHROMA_444:
 	break;
+      case Y4M_CHROMA_MONO:
+	 mjpeg_error_exit1("MONO (1 plane) chroma not supported!\n");
+      case Y4M_CHROMA_444ALPHA:
+	 mjpeg_error_exit1("444ALPHA (4 plane) chroma not supported!\n");
       default:
 	if (!Stab.nosuper)
-	    mjpeg_log(LOG_INFO, "Cannot supersample chroma");
+	    mjpeg_log(LOG_INFO, "Cannot supersample %s chroma",
+		y4m_chroma_description(chroma_ss));
 	Stab.nosuper = 1;
 	break;
 	}
