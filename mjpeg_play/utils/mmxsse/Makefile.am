@@ -7,8 +7,7 @@ noinst_LTLIBRARIES = libmmxsse.la
 if HAVE_ASM_NASM
 libmmxsse_NASM_SOURCES = \
 	mblock_bsad_mmx.s \
-	mblock_sad_mmx.s \
-	mblock_sumsq_mmx.s
+	mblock_sad_mmx.s 
 endif
 
 libmmxsse_la_SOURCES = \
@@ -17,6 +16,7 @@ libmmxsse_la_SOURCES = \
 	find_best_one_pel.c \
 	mblock_sad_mmxe.c \
 	mblock_sub44_sads_x86.c \
+	mblock_sumsq_mmx.c \
 	mblock_bsumsq_mmx.c \
 	motion.c \
 	$(libmmxsse_NASM_SOURCES)

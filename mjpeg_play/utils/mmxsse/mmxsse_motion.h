@@ -45,13 +45,10 @@ int sad_11_mmxe(uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
 int sad_sub22_mmxe ( uint8_t *blk1, uint8_t *blk2,  int frowstride, int fh);
 int sad_sub44_mmxe ( uint8_t *blk1, uint8_t *blk2,  int qrowstride, int qh);
 int sumsq_mmx( uint8_t *blk1, uint8_t *blk2,
-			   int rowstride, int hx, int hy, int h
-	) __asm__ ("sumsq_mmx");
-int sumsq_sub22_mmx( uint8_t *blk1, uint8_t *blk2, int rowstride, int h
-	) __asm__ ("sumsq_sub22_mmx");
+			   int rowstride, int hx, int hy, int h);
+int sumsq_sub22_mmx( uint8_t *blk1, uint8_t *blk2, int rowstride, int h);
 int bsumsq_sub22_mmx( uint8_t *blk1f, uint8_t *blk1b, 
-		      uint8_t *blk2, int rowstride, int h
-	) __asm__ ("bsumsq_sub22_mmx");
+		      uint8_t *blk2, int rowstride, int h);
 int bsumsq_mmx (uint8_t *pf, uint8_t *pb,
 				uint8_t *p2, int rowstride,
 				int hxf, int hyf, int hxb, int hyb, int h);
@@ -61,8 +58,7 @@ int bsad_mmx (uint8_t *pf, uint8_t *pb,
 	) __asm__ ("bsad_mmx");
 
 void variance_mmx (uint8_t *p, int size, int rowstride,
-				   uint32_t *p_variance, uint32_t *p_mean
-	 ) __asm__ ("variance_mmx");
+				   uint32_t *p_variance, uint32_t *p_mean);
 
 int sad_00_mmx ( uint8_t *blk1, uint8_t *blk2,  int rowstride,
 				 int h, int distlim
