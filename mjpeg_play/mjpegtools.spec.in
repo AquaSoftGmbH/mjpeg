@@ -29,10 +29,6 @@ BuildRequires:  glib-devel gtk+-devel
 BuildRequires:  gcc-c++
 BuildRequires:	libquicktime-devel
 
-%ifarch i386
-BuildRequires:  nasm
-%endif
-
 Prefix:		%{_prefix}
 
 %description
