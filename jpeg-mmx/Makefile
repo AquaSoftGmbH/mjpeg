@@ -190,7 +190,7 @@ wrjpgcom: wrjpgcom.$(O)
 
 # Installation rules:
 
-install: cjpeg djpeg jpegtran rdjpgcom wrjpgcom 
+install-prog: cjpeg djpeg jpegtran rdjpgcom wrjpgcom 
 	$(INSTALL_PROGRAM) cjpeg $(bindir)/$(binprefix)cjpeg
 	$(INSTALL_PROGRAM) djpeg $(bindir)/$(binprefix)djpeg
 	$(INSTALL_PROGRAM) jpegtran $(bindir)/$(binprefix)jpegtran
@@ -202,12 +202,13 @@ install: cjpeg djpeg jpegtran rdjpgcom wrjpgcom
 	$(INSTALL_DATA) $(srcdir)/rdjpgcom.1 $(mandir)/$(manprefix)rdjpgcom.$(manext)
 	$(INSTALL_DATA) $(srcdir)/wrjpgcom.1 $(mandir)/$(manprefix)wrjpgcom.$(manext)
 
-install-lib: libjpeg.$(A) install-headers
-	$(INSTALL_LIB) libjpeg.$(A) $(libdir)/$(binprefix)libjpeg.$(A)
+install: libjpeg.$(A) install-headers
+	$(INSTALL_LIB) libjpeg.$(A) $(libdir)/$(binprefix)libjpeg-mmx.$(A)
 
 install-headers: jconfig.h
 	$(INSTALL_DATA) jconfig.h $(includedir)/jconfig.h
 	$(INSTALL_DATA) $(srcdir)/jpeglib.h $(includedir)/jpeglib.h
+	$(INSTALL_DATA) $(srcdir)/jpegint.h $(includedir)/jpegint.h
 	$(INSTALL_DATA) $(srcdir)/jmorecfg.h $(includedir)/jmorecfg.h
 	$(INSTALL_DATA) $(srcdir)/jerror.h $(includedir)/jerror.h
 
