@@ -1,4 +1,4 @@
-.TH "yuv4mpeg" "5" "22 April 2002" "MJPEG Linux Square" "MJPEG Tools Manual"
+.TH "yuv4mpeg" "5" "25 November 2002" "MJPEG Linux Square" "MJPEG Tools Manual"
 
 .SH "NAME"
 yuv4mpeg \- video stream format used by pipe-based MJPEGtools
@@ -46,9 +46,10 @@ unlimited number of \fIFRAME\fPs
 .PP
 \fISTREAM-HEADER\fP consists of
 .IP - 3 
-string "YUV4MPEG2 "  (note the trailing space)
+magic string "YUV4MPEG2"
 .IP - 3 
-unlimited number of '\ ' (single space) separated \fITAGGED-FIELD\fPs
+unlimited number of \fITAGGED-FIELD\fPs,
+each preceeded by a '\ ' (single space) separator
 .IP - 3
 single '\en' line terminator
 
@@ -63,9 +64,10 @@ with proper spatial ordering.)
 .PP
 \fIFRAME-HEADER\fP consists of
 .IP - 3
-string "FRAME "  (note the space after the 'E')
+magic string "FRAME"
 .IP - 3
-unlimited number of ' ' (single space) separated \fITAGGED-FIELD\fPs
+unlimited number of \fITAGGED-FIELD\fPs,
+each preceeded by a '\ ' (single space) separator
 .IP - 3
 single '\en' line terminator
 

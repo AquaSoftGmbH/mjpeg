@@ -425,13 +425,13 @@ int y4m_allow_unknown_tags(int yn);
 
 
   STREAM-HEADER consists of
-     o string "YUV4MPEG2 "  (note the space after the '2')
-     o unlimited number of ' ' separated TAGGED-FIELDs
+     o string "YUV4MPEG2"
+     o unlimited number TAGGED-FIELDs, each preceded by ' ' separator
      o '\n' line terminator
 
   FRAME-HEADER consists of
-     o string "FRAME "  (note the space after the 'E')
-     o unlimited number of ' ' separated TAGGED-FIELDs
+     o string "FRAME"
+     o unlimited number of TAGGED-FIELDs, each preceded by ' ' separator
      o '\n' line terminator
 
 
