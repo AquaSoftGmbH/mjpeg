@@ -1,0 +1,66 @@
+include global_config
+
+OUTPUT = libquicktime.a
+
+LIBS = ${OUTPUT} -ljpeg -lpng -lz -lpthread -lglib -ldl
+
+all: $(OUTPUT)
+
+install: 
+	echo dummy install
+
+$(OUTPUT): $(OBJS)
+	if [ ${USE_DV} = 1 ]; then \
+	$(MAKE) -C libdv-qt; \
+	fi
+	if [ ${USE_FIREWIRE} = 1 ]; then \
+	$(MAKE) -C libraw1394; \
+	fi
+	ar rcs $(OUTPUT) $(OBJS) $(JPEGOBJS) $(DVOBJS) $(FIREWIREOBJS) $(DVMMXOBJS)
+#	g++ -shared -o libquicktime.so  $(OBJS) $(DVOBJS) $(FIREWIREOBJS) $(DVMMXOBJS)
+
+qtdump: dump.o $(OUTPUT)
+	$(CC) -o qtdump dump.o $(LIBS)
+
+make_streamable: make_streamable.o $(OUTPUT)
+	$(CC) -o make_streamable make_streamable.o $(LIBS)
+
+dechunk: dechunk.o $(OUTPUT)
+	$(CC) -o dechunk dechunk.o $(LIBS)
+
+recover: recover.o $(OUTPUT)
+	$(CC) -o recover recover.o $(LIBS)
+
+yuv4toyuv: yuv4toyuv.o $(OUTPUT)
+	$(CC) -o yuv4toyuv yuv4toyuv.o $(LIBS)
+
+qtinfo: qtinfo.o
+	$(CC) -o qtinfo qtinfo.o $(LIBS)
+
+util:  qtdump make_streamable qtinfo dechunk yuv4toyuv recover
+	
+
+quicktime.o: quicktime.h  quicktime.c
+
+.c.o:
+	$(CC) -c `./c_flags` $*.c
+
+clean:
+	rm -f core
+	rm -f *.o *.so
+	rm -f $(OUTPUT)
+	rm -f debug recover dump qtdump make_streamable a.out qtinfo dechunk yuv4toyuv
+	rm -rf .deps
+	if [ ${USE_DV} = 1 ]; then \
+	$(MAKE) -C libdv-qt clean; \
+	fi
+	if [ ${USE_FIREWIRE} = 1 ]; then \
+	$(MAKE) -C libraw1394 clean; \
+	fi
+
+wc:
+	cat *.c *.h | wc
+
+backup: clean
+	cd .. && \
+	tar zcvf quicktime.tar.gz quicktime
