@@ -2,11 +2,7 @@
 
 from events import *
 
-test = Events()
-#test.add("1", "901:HB0", 0, 1, None, "testing 1")
-#test.add("2", "901:HB0", 0, 1, None, "testing 2")
-#test.add("3", "901:HB0", 0, 1, None, "testing 3")
-#test.add("4", "901:HB0", 0, 1, None, "testing 4")
-test.edit_events()
-
+root = Tk()
+test = EventList(root)
+test.display_events(None)
 

@@ -1,0 +1,31 @@
+#!/usr/bin/python
+
+
+import MySQLdb
+
+guide = MySQLdb.Connect(db='tvguide');
+cursor = guide.cursor();
+
+
+stmt = "Drop Table if exists events"
+cursor.execute(stmt);
+
+
+stmt = """CREATE TABLE events (
+	id int unsigned not null auto_increment,
+	channel_id int unsigned not null,
+	listing_id int unsigned not null,
+	start_time DateTime not null,
+	end_time DateTime not null,
+	length smallint not null,
+	repeat char(16),
+	description char(80),
+	primary key (id),
+	key start_time (start_time),
+	key channel_id (channel_id)
+)"""
+cursor.execute(stmt)
+
+		
+
+

@@ -177,7 +177,7 @@ class TvGuide(Guide):
 
 				if run_time == None:
 					continue
-
+				
 				self.append([curr_time, name, channel, 
 					run_time, show_name,
 					svcid +','+titleid])
@@ -231,10 +231,11 @@ class TvGuide(Guide):
 
 	def guide_whole_day(self, offset):
 		current = time() - timezone
-		current = current - (current % (24 * 60 * 60))
+		current = int(current/(24*60*60)) * (24*60*60)
 		
-		start = self.seconds_tvguide(current - (4 * 60 * 60))
-		end = self.seconds_tvguide(current + 28 * 60 * 60)
+		start = self.seconds_tvguide(current)
+		end = self.seconds_tvguide(current + 24 * 60 * 60)
+		print "start=",start,"  end=",end
 		self.tvguide_url(start, end)
 
 

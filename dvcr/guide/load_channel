@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+
+import MySQLdb
+
+guide = MySQLdb.Connect(db='tvguide');
+cursor = guide.cursor();
+
+
+channel_list = [
+	["501", "HBO", 	"HBO", 		"DIRECT-TV", "501"],
+	["502", "HBOP",	"HBOP",		"DIRECT-TV", "502"],
+	["503", "HBOS",	"HBOS",		"DIRECT-TV", "502"],
+	["504", "HBOW",	"HBOW",		"DIRECT-TV", "504"],
+	["505", "HBOPW","HBPW",		"DIRECT-TV", "505"],
+	["507", "HBOF",	"HBOF",		"DIRECT-TV", "507"],
+	["508", "HBFW",	"HBFW",		"DIRECT-TV", "508"],
+	["512", "MAX",	"MAX",		"DIRECT-TV", "512"],
+	["513", "MMAX",	"MMAX",		"DIRECT-TV", "513"],
+	["514", "MAXW",	"MAXW",		"DIRECT-TV", "514"],
+	["521", "STZW", "STZW",		"DIRECT-TV", "521"],
+	["522", "SZ2E", "SZ2E",		"DIRECT-TV", "522"],
+	["523", "BSTZ", "BSTZ",		"DIRECT-TV", "523"],
+	["526", "ENCE", "ENCE",		"DIRECT-TV", "526"],
+	["527", "ENCW", "ENCW",		"DIRECT-TV", "527"],
+	["528", "LOVE", "LOVE",		"DIRECT-TV", "528"],
+	["529", "WSTN", "WSTN",		"DIRECT-TV", "529"],
+	["530",	"MYST", "MYST",		"DIRECT-TV", "530"],
+	["531", "TRUE", "TRUE",		"DIRECT-TV", "521"],
+	["532", "ACTN", "ACTN",		"DIRECT-TV", "532"],
+	["533",	"WAM",	"WAM",		"DIRECT-TV", "533"],
+	["537",	"SHO",	"SHO",		"DIRECT-TV", "537"],
+	["538", "SHO2",	"SHOW2",	"DIRECT-TV", "538"],
+	["539",	"SHO3", "SHO3",		"DIRECT-TV", "539"],
+	["540", "SHOW", "SHOW",		"DIRECT-TV", "540"],
+	["542", "EXTR", "EXTR",		"DIRECT-TV", "542"],
+	["544", "TMC",	"TMC",		"DIRECT-TV", "544"],
+	["545", "TMCW", "TMCW",		"DIRECT-TV", "545"],
+	["547", "FLIX",	"FLIX",		"DIRECT-TV", "547"],
+	["549", "SUND",	"SUND",		"DIRECT-TV", "549"],
+	["550", "IFC",	"IFC",		"DIRECT-TV", "550"],
+	["909", "DT2",	"DT2",		"DIRECT-TV", "909"],
+	["910", "DT4",  "DT4",		"DIRECT-TV", "910"],
+	["911", "DT7",	"DT7",		"DIRECT-TV", "911"],
+	["912", "DT62", "DT62",		"DIRECT-TV", "912"]
+	];
+
+cursor.execute("Delete from stations")
+
+for station, name, des, tuner, channel in channel_list:
+
+	stmt = """Insert into stations (station, name, description, 
+			tuner, channel)
+			Values ('%s', '%s', '%s', '%s', '%s')""" % \
+			(station, name, des, tuner, channel)
+	cursor.execute(stmt);
+

@@ -16,10 +16,18 @@
 #
 from Tkinter import *
 from string import *
+from DateTime import Date, Time, Timestamp, ISO, \
+	DateTimeType, DateTimeDeltaType
+import MySQLdb
 import time
-import marshal 
 import Pmw
 import ConfigParser
+import re
+
+def TicksDateTime(DateTime):
+	aDateTime = "%s" % DateTime
+	date = ISO.ParseDateTime(aDateTime)
+	return date.ticks()
 
 class Event:
 	def __init__(self):
@@ -65,9 +73,9 @@ class Event:
 			time_value = time_value - (time_value % (30 * 60))
 			time_value = time_value + 30 * 60
 
-		self.start_hour.set(time.strftime("%l",time.gmtime(time_value)))
-		self.start_min.set(time.strftime("%M",time.gmtime(time_value)))
-		self.start_ampm.set(time.strftime("%p",time.gmtime(time_value)))
+		self.start_hour.set(time.strftime("%l",time.localtime(time_value)))
+		self.start_min.set(time.strftime("%M",time.localtime(time_value)))
+		self.start_ampm.set(time.strftime("%p",time.localtime(time_value)))
 
 		self.day.set(time.strftime("%d",time.gmtime(time_value)))
 		self.month.set(time.strftime("%m",time.gmtime(time_value)))
@@ -94,9 +102,9 @@ class Event:
 			self.stop_min.set("")
 			self.stop_ampm.set("")
 		else:
-			self.stop_hour.set(time.strftime("%l",time.gmtime(time_value)))
-			self.stop_min.set(time.strftime("%M",time.gmtime(time_value)))
-			self.stop_ampm.set(time.strftime("%p",time.gmtime(time_value)))
+			self.stop_hour.set(time.strftime("%l",time.localtime(time_value)))
+			self.stop_min.set(time.strftime("%M",time.localtime(time_value)))
+			self.stop_ampm.set(time.strftime("%p",time.localtime(time_value)))
 
 	def get_title(self):
 		return self.title.get()
@@ -266,6 +274,9 @@ class EventList:
 		self.config_data.read("/etc/dvcr")
 		self.last_add = []
 
+		self.guide = MySQLdb.Connect(db='tvguide');
+		self.cursor = self.guide.cursor();
+
 		self.record_event = {}
 		self.event_groups = {}
 		if root != None:
@@ -280,8 +291,18 @@ class EventList:
 				hscrollmode = 'dynamic')
 			self.scroll_area.pack(fill=BOTH, expand=1, pady=4, padx=4)
 
-		dir = self.config_string("global", "recorddir") + "/"
-		self.file_name = dir + "directtv"
+	def channel_lookup(self, id):
+		stmt = """Select name, description From stations
+			Where id=%d""" % id
+		self.cursor.execute(stmt);
+		
+		name = id
+		desc = name
+		if self.cursor.rowcount > 0:
+			name, desc = self.cursor.fetchone();
+
+		return [name, desc]
+
 
 	def repeat(self, tag):
 		changes = 0
@@ -321,60 +342,98 @@ class EventList:
 			event.set_start(start)
 			event.set_stop(end)
 
-	def load(self):
-		try:
-			file = open(self.file_name, "r")
-		except:
-			self.record_event = {}
-			return
+	def load_data(self):
+		self.record_event = {}
+		self.event_groups = {}
 
-		self.record_event = marshal.load(file)
+		stmt = """Select id, channel_id, start_time, end_time, length,
+				repeat, description From events
+				Where start_time > FROM_UNIXTIME(%d)
+				Order by start_time, channel_id""" % 0
+		self.cursor.execute(stmt);
+
 		row = 0
-		for tag in self.tags():
-			start, end, channel, title, repeat = \
-				self.event(tag)
+		for i, ch_id, start, end, length, repeat, desc in i\
+			self.cursor.fetchall():
+
+			id = int(i)
+			c_id = int(ch_id)
+			channel, channel_desc = self.channel_lookup(c_id)
+			start_time = TicksDateTime(start)
+			end_time = TicksDateTime(end)
+
 			if self.root != None:
 				current = Event()
-				self.event_groups[tag] = current
-				current.set_start(start)
-				current.set_stop(end)
-				current.set_title(title)
+				self.event_groups[id] = current
+				current.set_start(start_time)
+				current.set_stop(end_time)
+				current.set_title(desc)
 				current.set_channel(channel)
 				current.set_repeat(repeat)
 				current.group(self.scroll_area.interior(), row)
 			row = row + 1
 
-#		self.repeat()
 
-	def save(self):
-		try:
-			file = open(self.file_name, "w")
-		except:
-			print "could not create evnt file ", self.file_name
-			return
+	def add(self, id=None, channel_id=None, start=None, stop=None, repeat=None, title=None):
+		length = int((stop - start)/60)
+		t = re.escape(title);
+		stmt = """Insert into events(channel_id, listing_id, 
+				start_time, end_time, length, repeat,
+				description) 
+			Values (%s, %d, FROM_UNIXTIME(%d), 
+				FROM_UNIXTIME(%d), %d, '%s', '%s')""" % \
+			(channel_id, id, start, stop, length, repeat, t)
+		self.cursor.execute(stmt);
 
-		marshal.dump(self.record_event, file)
+		self.last_add = []
+		stmt = "Select id From events Where id=LAST_INSERT_ID()"
+		self.cursor.execute(stmt);
+		for last_id in self.cursor.fetchall():
+			self.last_add.append(int(last_id[0]))
 
-	def add(self, id, channel=None, start=None, stop=None, repeat=None, title=None):
-		self.record_event[id] = { 
-			"channel" : channel, 
-			"start": start, 
-			"stop" : stop,
-			"repeat" : repeat,
-			"title" : title
-			}
-		if self.root != None:
-			current = Event()
-			self.event_groups[id] = current
-			current.set_start(start)
-			current.set_stop(stop)
-			current.set_title(title)
-			current.set_channel(channel)
-			current.set_repeat(repeat)
-			current.group(self.scroll_area.interior(), 
-				len(self.event_groups)-1)
+	def update(self):
+		print "updateing data:", self.tags()
+		for tag in self.tags():
+			print "updateing tag:", tag
+			event = self.event_groups[tag];
+			if event.get_repeat() == "Delete":
+				print "Deleting tag:", tag
+				self.delete(tag)
+			else:
+				print "checking tag:", tag
+				stmt = """Select id, channel_id, start_time, 
+					end_time, length, repeat, description 
+					From events While id=%d""" % tag
+				self.cursor.execute(stmt);
+				id, c_id, start, end, length, repeat, desc = \
+					self.cursor.fetchone()
+				ch_id = int(ch_id)
+				start_time = TicksDateTime(start)
+				end_time = TicksDateTime(end)
 
-		self.last_add.append(id)
+				ch_id_new = event.get_channel()
+				start_new = event.get_start()
+				end_new = event.get_end()
+				repeat_new = event.get_repeat()
+				desc_new = event.get_desc()
+				new_length = end_new - start_new
+				if ch_id != ch_id_new | start != start_new |\
+				   end != end_new | repeat != repeat_new |\
+				   desc != desc_new:
+					print "updateing new items"
+					stmt = """update events
+						channel_id=%d,
+						start_time=FROM_UNIXTIME(%d),
+						end_time=FROM_UNIXTIME(%D),
+						length=%d, 
+						repeat='%s', 
+						description='%s' 
+						Where id=%d""" % \
+						(ch_id_new, start_new, end_new,
+						length_new, repeast_new, 
+						desc_new,id)
+					self.cursor.execute(stmt);
+
 
 	def last_delete(self):
 		for tag in self.last_add:
@@ -385,6 +444,8 @@ class EventList:
 			del self.record_event[id]
 		if self.event_groups.has_key(id):
 			del self.event_groups[id]
+		stmt = "Delete From events where id=%d" %id
+		self.cursor.execute(stmt);
 
 	def event_cmp(self, a1, a2):
 		diff = self.record_event[a1]['start'] - \
@@ -408,8 +469,6 @@ class EventList:
 				return
 
 			self.repeat(tag)
-
-		
 
 	def event(self, tag):
 		if self.record_event.has_key(tag):
@@ -435,36 +494,13 @@ class EventList:
 		if button == 'OK':
 			self.dialog.deactivate()
 			self.last_add = []
-			for tag in self.tags():
-				dict = self.record_event[tag]
-				event = self.event_groups[tag]
-
-				if event.get_repeat() == "Delete":
-					self.delete(tag)
-				else:
-					dict['channel'] = event.get_channel()
-					dict['start'] = event.get_start()
-					dict['stop'] = event.get_stop()
-					dict['title'] = event.get_title()
-					dict['repeat'] = event.get_repeat()
-#			self.repeat()
-			self.save()
+			self.update();
 			return
 
 		if button == 'Cancel':
 			self.dialog.deactivate()
 			self.last_delete()
 			self.last_add = []		
-			for tag in self.tags():
-				dict = self.record_event[tag]
-				event = self.event_groups[tag]
-
-				event.set_channel(dict['channel'])
-				event.set_start(dict['start'])
-				event.set_stop(dict['stop'])
-				event.set_title(dict['title'])
-				event.set_repeat(dict['repeat'])
-
 
 		if button == "Add":
 			self.add("x1")
@@ -472,6 +508,7 @@ class EventList:
 
 
 	def display_events(self, group_tag):
+		self.load_data()
 
 		if group_tag != None:
 			if self.event_groups.has_key(group_tag):
@@ -489,3 +526,4 @@ class EventList:
 			row = row + 1
 
 		result = self.dialog.activate()
+		

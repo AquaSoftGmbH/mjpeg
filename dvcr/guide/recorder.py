@@ -61,7 +61,6 @@ class Recorder:
 				list.append(item)
 				continue
 
-			print "replacing ", item
 			if item == "%file-name":
 				file_name = "/video/" + \
 					time.strftime("%y%m%d.%H%M.", \
@@ -71,7 +70,8 @@ class Recorder:
 				continue
 
 			if item == "%size":
-				list.append("30")
+				amount = "%d" % (end - time.time() - 2)
+				list.append(amount)
 				continue
 
 			print "Unknown item ", item

@@ -1,6 +1,5 @@
 #    Copyright (C) 2000 Mike Bernson <mike@mlb.org>
 #
-#    This program is free software; you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
 #    the Free Software Foundation; either version 2 of the License, or
 #    (at your option) any later version.
@@ -17,11 +16,14 @@
 from string import *
 from Tkinter import *
 from events import *
+from DateTime import Date, Time, Timestamp, ISO, \
+	DateTimeType, DateTimeDeltaType
+import MySQLdb
 import time
 import sys
-import marshal 
 import ConfigParser
 import Pmw
+import re
 from table import *
 
 class GuideCmd:
@@ -51,36 +53,25 @@ def set_weight(grid, start_row=0, start_column=0):
 		grid.grid_rowconfigure(row, weight=1)
 		row = row + 1
 
+def TicksDateTime(DateTime):
+	aDateTime = "%s" % DateTime
+	date = ISO.ParseDateTime(aDateTime)
+	return date.ticks()
+
 class Guide:
 	def __init__(self):
 		self.list_dict = {}
 		self.config_data = ConfigParser.ConfigParser()
 		self.config_data.read("/etc/dvcr")
 		self.root = None
-		self.columns = 3
+		self.columns = 5
 		self.column_list = (1, 2, 3)
 		self.seconds_per_day = 24 * 60 * 60
 		self.zone_offset = time.timezone
 		self.station_width = 0
-		self.time_label = ( 
-			"12:00 AM", "12:30 AM", " 1:00 AM", " 1:30 AM", 
-			" 2:00 AM", " 2:30 AM", " 3:00 AM", " 3:30 AM", 
-			" 4:00 AM", " 4:30 AM", " 5:00 AM", " 5:30 AM",
-			" 6:00 AM", " 6:30 AM", " 7:00 AM", " 7:30 AM", 
-			" 8:00 AM", " 8:30 AM", " 9:00 AM", " 9:30 AM", 
-			"10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
-			"12:00 PM", "12:30 PM", " 1:00 PM", " 1:30 PM", 
-			" 2:00 PM", " 2:30 PM", " 3:00 PM", " 3:30 PM", 
-			" 4:00 PM", " 4:30 PM", " 5:00 PM", " 5:30 PM",
-			" 6:00 PM", " 6:30 PM", " 7:00 PM", " 7:30 PM", 
-			" 8:00 PM", " 8:30 PM", " 9:00 PM", " 9:30 PM", 
-			"10:00 PM", "10:30 PM", "11:00 PM", "11:30 PM",
-			"12:00 AM", "12:30 AM", " 1:00 AM", " 1:30 AM", 
-			" 2:00 AM", " 2:30 AM", " 3:00 AM", " 3:30 AM", 
-			" 4:00 AM", " 4:30 AM", " 5:00 AM", " 5:30 AM",
-			" 6:00 AM", " 6:30 AM", " 7:00 AM", " 7:30 AM", 
-			" 8:00 AM", " 8:30 AM", " 9:00 AM", " 9:30 AM", 
-			)
+
+		self.guide = MySQLdb.Connect(db='tvguide');
+		self.cursor = self.guide.cursor();
 
 	def config_string(self, section, name):
 		try:
@@ -107,81 +98,136 @@ class Guide:
 				(key, time.strftime("%m/%d/%y %H:%M", time.gmtime(data[0])), 
 				data[2], data[1], data[3], data[4])
 
+	def station_id(self, station_id):
+		stmt = """Select id, name, description From stations
+			Where station = '%s'""" % station_id
+		self.cursor.execute(stmt);
+		
+		name = station_id
+		desc = name
+		i = int(name)
+		if self.cursor.rowcount > 0:
+			id, name, desc = self.cursor.fetchone();
+			i = int(id)
+
+		return [i, name, desc]
+
+	def listing_id(self, id):
+		stmt = """Select id, station, start_time, end_time,
+		length, title from listings 
+			Where id = %d""" % id
+		self.cursor.execute(stmt);
+		if self.cursor.rowcount < 1:
+			return None
+
+		id, channel, start, end, length, title = self.cursor.fetchone()
+		s_time = TicksDateTime(start)
+		e_time = TicksDateTime(end)
+		i = int(id)
+		l = int(length)
+
+		return [i, channel, s_time, e_time, l, title, ""]
+
 	def search(self, station_id, list_time):
-		end = find(station_id, ":")
-		if end > -1:
-			station_id = station_id[end + 1:]
+		stmt = """Select id, station, start_time, end_time,
+			length, title from listings 
+			Where start_time<FROM_UNIXTIME(%d) and 
+				end_time>FROM_UNIXTIME(%d) and 
+				station=%s Order by start_time""" % \
+				(list_time + (30 * 60), list_time, station_id)
+		self.cursor.execute(stmt);
+		if self.cursor.rowcount < 1:
+			return None
 
-		key_time = list_time - (list_time % 1800)
-		zero_time = list_time - 3600 * 5
+		id, channel, start, end, length, title = self.cursor.fetchone()
+		s_time = TicksDateTime(start)
+		e_time = TicksDateTime(end)
+		i = int(id)
+		l = int(length)
 
-		while key_time > zero_time:
-			key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
-			if self.list_dict.has_key(key):
-				return self.list_dict[key]
-			key_time = key_time - 1800
-		return None
+		return [i, channel, s_time, e_time, l, title, ""]
 
-	def next(self, station_id, list_time):
-		end = find(station_id, ":")
-		if end > -1:
-			station_id = station_id[end + 1:]
-
-		key_time = list_time - (list_time % 1800)
-		key_time = key_time + 1800
-		zero_time = list_time + 3600 * 5
-
-		while key_time < zero_time:
-			key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
-			if self.list_dict.has_key(key):
-				return self.list_dict[key]
-			key_time = key_time + 1800
-		return None
-		
+#
+#	add new record to the data base for listing. Check to see that 
+#	record is not already loaded.
+#		
 	def append(self, new_entry):
-		listing = self.search(new_entry[2], 
-			new_entry[0] + self.zone_offset)
-		if listing != None:
-			if listing[0] + listing[3] * 60 == new_entry[0]:
-				if listing[2] == new_entry[2]:
-					if listing[5] == new_entry[5]:
-						new_entry[0] = listing[0]
-						new_entry[3] = new_entry[3] + \
-							listing[3]
+		start_time = new_entry[0] + self.zone_offset;
+		end_time = start_time + (new_entry[3] * 60)
+		length = new_entry[3];
+		station_id = new_entry[2]
+		title = re.escape(new_entry[4]);
+		#
+		# check to see if entry already exists 
+		#
+		stmt = """Select id, start_time, end_time, length, station, title
+				From listings Where 
+				(start_time=FROM_UNIXTIME(%d) or
+				  end_time=FROM_UNIXTIME(%d)) and
+				station='%s'""" % \
+				(start_time, end_time, station_id)
+		self.cursor.execute(stmt);
+		if self.cursor.rowcount > 0:
+			return;
+		#
+		# check to see if we are added to end of existing entry
+		#
+		stmt = """Select id, start_time, end_time, length, station, title
+				From listings Where 
+				end_time=FROM_UNIXTIME(%d) and
+				station='%s' and title='%s'""" % \
+				(start_time, station_id, title)
+		self.cursor.execute(stmt);
+		if self.cursor.rowcount > 0:
+			id, s_time, etime, len, ch, t = self.cursor.fetchone()
+			length = length + len;
+			stmt = """Update listings Set length=%d,
+					end_time=FROM_UNIXTIME(%d)
+					Where id=%d""" % \
+					(length, end_time, id)
+			self.cursor.execute(stmt)
+			return
+		#
+		# New data record add to data base.
+		#
+		stmt = """Insert  into listings (start_time, end_time, length, 
+			station, title) 
+			Values (FROM_UNIXTIME(%d),
+				FROM_UNIXTIME(%d),
+				%d, '%s', '%s')""" % (start_time, end_time,
+				length, station_id, title)
 
-		key_time = new_entry[0] - (new_entry[0] % 1800)
-		key = time.strftime("%d%H%M", time.gmtime(key_time)) + new_entry[2]
-		if self.list_dict.has_key(key):
-			del self.list_dict[key]
-		self.list_dict[key] = new_entry
+		self.cursor.execute(stmt);
 		
-	def save(self, seconds):
-		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir+time.strftime("%y.%m.%d", time.gmtime(seconds))
-		file = open(file_name, "w")
-		marshal.dump(self.list_dict, file)
-
-	def load(self, seconds):
-		dir = self.config_string("global", "guidedir") + "/"
-		file_name = dir + time.strftime("%y.%m.%d", time.gmtime(seconds))
-		file = open(file_name, "r")
-		self.list_dict = marshal.load(file)
-
 	def info(self, key):
-		listing = self.list_dict[key]
-		stop = listing[0] + listing[3] * 60;
-		channel = listing[2] + ":" + listing[1]
-		self.events.add(key,  channel, listing[0], stop,
-			"Once", listing[4])
+		listing = self.listing_id(key)
+		if listing == None:
+			return
+
+		id,channel,start_time,end_time,length,title,des_id = listing
+		station_id, station_name, station_des = \
+			self.station_id(channel)
+		self.events.add(id, station_id, start_time, \
+			end_time, "None", title)
 		self.events.display_events(key)
 
 	def info_in(self, key, aa):
-		listing = self.list_dict[key]
-		start = time.strftime("%l:%M %p", time.gmtime(listing[0]))
-		end = time.strftime("%l:%M %p",time.gmtime(listing[0] + listing[3] * 60))
+		listing = self.listing_id(key)
+		if listing == None:
+			return
 
-		output = "%s   %s-%s %d mins" % (listing[4], start, end, listing[3])
+		id,channel,start_time,end_time,length,title,des_id = listing
+
+		station_id, station_name, station_desc = \
+			self.station_id(channel)
+
+		start = time.strftime("%l:%M %p", time.localtime(start_time))
+		end = time.strftime("%l:%M %p",time.localtime(end_time))
+
+		output = "%s %s  %s - %s   %d mins" % \
+			(station_name, title, start, end, length)
 		self.info_time.configure(text=output)
+
 
 	def info_out(self, key, aa):
 		self.info_time.configure(text=" ")
@@ -190,22 +236,25 @@ class Guide:
 	def event_add(self, data):
 		print event_add
 
-	def time_button(self, time_index, col):
-		label = Button(self.listing_frame, 
-			text=self.time_label[time_index], width=15)
+	def time_button(self, sec, col):
+		sec = int(sec/(60 * 30)) * 60 * 30
+		time_text = time.strftime("%I:%M %p", time.localtime(sec))
+		label = Button(self.listing_frame, text=time_text, width=15)
 		self.listing_widget.add(label, 
 			row=0, 
 			column=col)
 		return label
-
+	#
+	# lookup station id in database and get name 
+	# of station. Then make a button at row for 
+	# that station.
+	#
 	def station_button(self,station_id, row):
-		end = find(station_id, ":")
-		if end > -1:
-			station_id = station_id[:end]
+		station_id, name, desc = self.station_id(station_id)
 
 		label = Button(self.listing_frame, 
-			text=station_id, 
-			command=GuideCmd(print_data, station_id))
+			text=name, 
+			command=GuideCmd(print_data, name))
 		self.listing_widget.add(label, 
 			row=row, 
 			column=0)
@@ -215,31 +264,27 @@ class Guide:
 		listing = self.search(station_id, list_time)
 		if listing == None:
 			return 	1
-		listing_next = self.next(station_id, list_time)
-		if (listing_next != None):
-			next_time = listing_next[0] - (listing_next[0] % 1800)
-			span = int((next_time - list_time)/1800)
-		else:
-			span = self.columns
 
+		id,channel,start_time,end_time,length,title,des_id = listing
+		span = int((end_time - list_time) / 1800)
+
+		if span + col > self.columns + 1:
+			span = self.columns - col + 1
 		if span < 1:
 			span = 1
 
-		end = find(station_id, ":")
-		if end > -1:
-			station_id = station_id[end + 1:]
-		key_time = listing[0] - (listing[0] % 1800)
-		key = time.strftime("%d%H%M", time.gmtime(key_time)) + station_id
-
+		if len(title) > span * 12:
+			title = title[:span * 12]
+		
 		label = Button(self.listing_frame,
-			command=GuideCmd(self.info, key),
-			text=listing[4])
+			command=GuideCmd(self.info, id),
+			text=title)
 		self.listing_widget.add(label, 
 			column=col,
 			row=row,
 			columnspan=span)
-		label.bind("<Enter>", GuideCmd(self.info_in, key)) 
-		label.bind("<Leave>", GuideCmd(self.info_out, key)) 
+		label.bind("<Enter>", GuideCmd(self.info_in, id)) 
+		label.bind("<Leave>", GuideCmd(self.info_out, id)) 
 
 		return span
 
@@ -252,19 +297,15 @@ class Guide:
 
 	def display_guide(self, x, y, width, height, seconds):
 		station_list = self.config_list("display", "stations")
-#		seconds = (seconds/(24 * 60 * 60)) * (24 * 60 * 60)
-		seconds = seconds - self.zone_offset;
-		seconds = int((seconds/(24 * 60 * 60))) * (24 * 60 * 60) 
+		starting = int((seconds/(24 * 60 * 60))) * (24 * 60 * 60) 
 
-		date_string = time.strftime("%m/%d/%Y", time.gmtime(seconds))
+		date_string = time.strftime("%m/%d/%Y", 
+			time.localtime(seconds))
 
 		self.root = Tk()
 		self.root.title("Program Listings for " + date_string)
 
 		self.events = EventList(self.root)
-		self.events.load()
-
-		self.load(seconds)
 
 		menu_bar = Pmw.MenuBar(self.root,
 			hull_relief = 'raised',
@@ -282,7 +323,12 @@ class Guide:
 
 		self.menu_bar = menu_bar
 
-		self.info_frame = Frame(self.root, background="green")
+		self.info_frame = Frame(self.root)
+		self.info_time = Label(self.info_frame, text="")
+		self.info_time.grid(row=0, column=0, sticky="NSW")
+		set_weight(self.info_frame)
+		set_weight(self.info_time)
+
 		self.listing_widget = Table(self.root,
 			fixedcol=1,
 			fixedrow=1,
@@ -290,49 +336,37 @@ class Guide:
 			displaycol=4)
 		self.listing_frame = self.listing_widget.component("table")
 
-		year, month, day, hour, min, sec, weekday, julday, saving = time.localtime(seconds)
-		time_index = hour * 2 + min / 30
-
 		self.buttons = []
 
-		station_size = 0
-		for station_id in station_list:
-			end = find(station_id, ":")
-			if end < 0:
-				end = len(station_id)
-			if end > station_size:
-				station_size = end
-					
-
-
-		self.info_time = Label(self.info_frame, text="")
-		self.info_time.grid(row=0, column=0, sticky="NSEW")
-		set_weight(self.info_frame)
 
 		label = Button(self.listing_frame, 
-			text=" ", width=station_size + 2)
+			text=" ", width=8)
 		self.listing_widget.add(label, 
 			row=0, 
 			column=0)
 		label.grid(row=0, column=0, sticky='NSEW' )
 
 		col = 1
-		while col <= 48:
-			self.time_button(col-1, col)
+		sec = seconds
+		while col <= self.columns:
+			self.time_button(sec, col)
+			sec = sec + (30 * 60)
 			col = col + 1
 
 		current_row = 1
 		for station in station_list:
 			self.station_button(station, current_row)
 			col = 1
-			while col <= 48:
-				span = self.listing_button(seconds + (col-1)
-					* 1800, station, current_row,col, "")
+			sec = int(seconds/1800) * 1800
+
+			while col <= self.columns:
+				span = self.listing_button(sec,
+					station, current_row,col, "")
 				if span < 1:
 					span = 1
 				col = col + span
+				sec = sec + span * (30 * 60)
 			current_row = current_row + 1
-
 
 		set_weight(self.listing_frame, start_column=1)
 
