@@ -18,6 +18,8 @@
 #include <math.h>
 #include "yuv4mpeg.h"
 
+extern  char    *__progname;
+
 #define MIN(a,b) ((a)<(b))?(a):(b)
 #define MAX(a,b) ((a)>(b))?(a):(b)
 
@@ -44,7 +46,7 @@ int main(int argc, char **argv)
 
     /* read command line */
     opterr = 0;
-    while   ((c = getopt(argc, argv, "hvL:C:")) != EOF)
+    while   ((c = getopt(argc, argv, "hvL:C:x:X:y:Y:")) != EOF)
 	{
 	    switch  (c)
 		{
@@ -53,6 +55,18 @@ int main(int argc, char **argv)
 		    break;
 		case    'C':
 		    sscanf(optarg,"%d,%f,%d,%f",&NchromaX,&BWchromaX,&NchromaY,&BWchromaY);
+		    break;
+		case    'x':
+		    sscanf(optarg,"%d,%f",&NchromaX,&BWchromaX);
+		    break;
+		case    'X':
+		    sscanf(optarg,"%d,%f",&NlumaX,&BWlumaX);
+		    break;
+		case    'y':
+		    sscanf(optarg,"%d,%f",&NchromaY,&BWchromaY);
+		    break;
+		case    'Y':
+		    sscanf(optarg,"%d,%f",&NlumaY,&BWlumaY);
 		    break;
 		case    'v':
 		    verbose++;
@@ -277,8 +291,10 @@ void convolve1D(u_char data[], int datalength, int datastride, float **filter, i
 
 static void usage(void)
 {
-    fprintf(stderr, "usage: y4mspatialfilter [-h] [-v] [-L lumaXtaps,lumaXBW,lumaYtaps,lumaYBW] \n");
-    fprintf(stderr, "                                  [-C chromaXtaps,chromaXBW,chromaYtaps,chromaYBW]\n");
+    fprintf(stderr, "usage: %s [-h] [-v] [-L lumaXtaps,lumaXBW,lumaYtaps,lumaYBW] ", __progname);
+    fprintf(stderr, "[-C chromaXtaps,chromaXBW,chromaYtaps,chromaYBW] ");
+    fprintf(stderr, "[-x chromaXtaps,chromaXBW] [-X lumaXtaps,lumaXBW] ");
+    fprintf(stderr, "[-y chromaYtaps,chromaYBW] [-Y lumaYtaps,lumaYBW]\n");
     fprintf(stderr, "\t-v be somewhat verbose\n");
     fprintf(stderr, "\t-h print this usage summary\n");
     fprintf(stderr, "\tlumaXtaps: length of horizontal luma filter (0 to disable)\n");
@@ -289,5 +305,6 @@ static void usage(void)
     fprintf(stderr, "\tchromaXBW: fractional bandwidth of horizontal chroma filter [0-1.0]\n");
     fprintf(stderr, "\tchromaYtaps: length of vertical chroma filter (0 to disable)\n");
     fprintf(stderr, "\tchromaYBW: fractional bandwidth of vertical chroma filter [0-1.0]\n");
+    fprintf(stderr, "\n\t-x/-X/-y/-Y change a vertical/horizontal parameter without affecting the other dimension's value\n");
     exit(1);
 }
