@@ -43,6 +43,10 @@
 #include <sys/time.h>
 
 
+#ifndef FORK_NOT_THREAD
+#include <pthread.h>
+#endif
+
 #define DEBUG(x) 
 
 #ifdef USE_ALSA
@@ -54,14 +58,21 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#ifdef FORK_NOT_THREAD
 static int pid; /* pid of child */
 static int shm_seg;
-
+#else
+static pthread_t capture_thread;
+#endif
 #define TIME_STAMP_TOL 1000  /* tolerance for timestamps in us */
 
 #define N_SHM_BUFFS 256 /* Number of buffers, must be a power of 2 */
 #define SHM_BUFF_MASK (N_SHM_BUFFS-1)
-#define BUFFSIZE (8192)
+/* #define BUFFSIZE (8192) */
+/* A.Stevens Jul 2000: Several drivers for modern PCI cards can't deliver
+   frags larger than 4096 so lets not even try for 8192 byte buffer chunks
+*/
+#define BUFFSIZE (4096)
 #define NBUF(x) ((x)&SHM_BUFF_MASK)
 
 struct shm_buff_s
@@ -101,6 +112,8 @@ static int usecs_per_buff;
 /* Forward declarations: */
 
 void do_audio();
+typedef void *(*start_routine_p)(void *);
+
 
 /* some (internally used only) error numbers */
 
@@ -213,16 +226,18 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
 
    /* Set audio buffer size */
 
-   audio_buffer_size = 8192;
-   if(tmp<88200) audio_buffer_size = 4096;
-   if(tmp<44100) audio_buffer_size = 2048;
-   if(tmp<22050) audio_buffer_size = 1024;
+   audio_buffer_size = BUFFSIZE;
+   /* A.Stevens Jul 2000 modified to allow cards with max frag size of
+	  4096.... if(tmp<88200) audio_buffer_size = 4096; */
+   if(tmp<44100) audio_buffer_size = BUFFSIZE/2;
+   if(tmp<22050) audio_buffer_size = BUFFSIZE/4;
 
    /* Do not change the following calculations,
       they are this way to avoid overflows ! */
    usecs_per_buff  = audio_buffer_size*100000/tmp;
    usecs_per_buff *= 10;
 
+#ifdef FORK_NOT_THREAD
    /* Allocate shared memory segment */
 
    shm_seg = shmget(IPC_PRIVATE, sizeof(struct shm_buff_s), IPC_CREAT | 0777);
@@ -241,7 +256,11 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
       audio_errno = AUDIO_ERR_SHMEM;
       return -1;
    }
-
+#else
+   shmemptr = (struct shm_buff_s *) malloc(sizeof(struct shm_buff_s));
+   if( shmemptr == NULL )
+	  { audio_errno = AUDIO_ERR_SHMEM; return -1; }
+#endif
    /* set the flags in the shared memory */
 
    for(i=0;i<N_SHM_BUFFS;i++) shmemptr->used_flag[i] = 0;
@@ -252,6 +271,7 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
 
    /* do the fork */
 
+#ifdef FORK_NOT_THREAD
    pid = fork();
    if(pid<0)
    {
@@ -276,7 +296,16 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
       do_audio();
       exit(0);
    }
+#else
+   
+   if( pthread_create( &capture_thread, NULL, (start_routine_p)do_audio, NULL) )
+	 {
+	   audio_errno = AUDIO_ERR_FORK;
+	   return -1;
+	 }
 
+   
+#endif
    /* Since most probably errors happen during initialization,
       we wait until the audio task signals either success or failure */
 
@@ -285,9 +314,15 @@ int audio_init(int a_read, int a_stereo, int a_size, int a_rate)
       /* Check for timeout, 10 Seconds should be plenty */
       if(i>1000)
       {
+#ifdef FORK_NOT_THREAD
          kill(pid,SIGKILL);
          shmemptr->exit_flag = 1;
          waitpid(pid,0,0);
+#else
+         shmemptr->exit_flag = 1;
+		 pthread_cancel( capture_thread );
+		 pthread_join( capture_thread, NULL );
+#endif
          audio_errno = AUDIO_ERR_TMOUT;
          return -1;
       }
@@ -321,8 +356,11 @@ void audio_shutdown()
    /* show the child we want to exit */
 
    shmemptr->exit_flag = 1;
-
+#ifdef FORK_NOT_THREAD
    waitpid(pid,0,0);
+#else
+   pthread_join( capture_thread, NULL );
+#endif
 
    initialized = 0;
 }
@@ -582,8 +620,11 @@ static void system_error(char *str, int use_strerror)
       sprintf((char*)shmemptr->error_string,"Error %s",str);
 
    shmemptr->audio_status = -1;
-
-   exit(1);
+#ifdef FORK_NOT_THREAD
+      exit(1);
+#else
+	  pthread_exit(NULL);
+#endif
 }
 
 #ifndef USE_ALSA
@@ -603,6 +644,28 @@ void do_audio()
 
    char *audio_dev_name;
 
+#ifndef FORK_NOT_THREAD
+   struct sched_param schedparam;
+   sigset_t blocked_signals;
+
+   /* Set the capture thread in a reasonable state - cancellation enabled
+	  and asynchronous, SIGINT's ignored... */
+   if( pthread_setcancelstate( PTHREAD_CANCEL_ENABLE, NULL) )
+	 {
+	   system_error( "Bad pthread_setcancelstate", 0 );
+	 }
+   if( pthread_setcanceltype( PTHREAD_CANCEL_ASYNCHRONOUS, NULL) )
+	 {
+	   system_error( "Bad pthread_setcanceltype", 0 );
+	 }
+
+   sigaddset( &blocked_signals, SIGINT );
+   if( pthread_sigmask( SIG_BLOCK, &blocked_signals, NULL ))
+	 {
+	   system_error( "Bad pthread_sigmask", 0 );
+	 }
+#endif
+	 
 
 /*
  * Fragment size and max possible number of frags
@@ -610,16 +673,16 @@ void do_audio()
 
    switch (audio_buffer_size)
    {
-      case 8192: frag = 0x7fff000d; break;
-      case 4096: frag = 0x7fff000c; break;
-      case 2048: frag = 0x7fff000b; break;
-      case 1024: frag = 0x7fff000a; break;
-      default:
-         system_error("Audio internal error",0);
+   case 8192: frag = 0x7fff000d; break;
+   case 4096: frag = 0x7fff000c; break;
+   case 2048: frag = 0x7fff000b; break;
+   case 1024: frag = 0x7fff000a; break;
+   default:
+	 system_error("Audio internal error - audio_buffer_size",0);
    }
    /* if somebody plays with BUFFSIZE without knowing what he does ... */
    if (audio_buffer_size>BUFFSIZE)
-      system_error("Audio internal error",0);
+      system_error("Audio internal error audio_buffer_size > BUFFSIZE",0);
 
 /*
  * Open Audio device, set number of frags wanted
@@ -683,19 +746,38 @@ void do_audio()
 
    if(ret<0) system_error("in ioctl SNDCTL_DSP_GET[IO]SPACE",1);
 
+   fprintf( stderr, "Hardware offers %d frags of %d bytes\n", 
+			info.fragstotal ,info.fragsize );
    if (info.fragsize != audio_buffer_size)
       system_error("Soundcard fragment size unexpected",0);
 
 /*
+ * Original comment:
  * Normally we should get at least 8 fragments (if we use 8KB buffers)
  * or even more if we use 4KB od 2 KB buffers
  * We consider 4 fragments as the absolut minimum here!
+ * 
+ * A.Stevens Jul 2000: I'm a bit puzzled by the above.  A 4096 byte
+ * buffer takes 1/20th second to fill at 44100 stereo.  So provide we
+ * empty one frag in less than this we should be o.k. hardly onerous.
+ * Presumably the problem was that this code wasn't running real-time
+ * and so could get starved on a load system.
+ * Anyway, insisting on 8 frags of 8192 bytes puts us sure out of luck
+ * drivers for quite a few modern PCI soundcards ... so lets try for 2
+ * and see what real-time scheduling can do!
  */
 
-   if (info.fragstotal < 4)
+   if (info.fragstotal < 2)
+   {
+	fprintf( stderr, "Fragments = %d of %d \n", info.fragstotal, info.fragsize );
       system_error("Could not get enough audio buffers",0);
+   }
 
+   /* TODO: Remove this... its a test top to force only two buffers to
+	see how well it works.*/
+   /* info.fragstotal = 2; */
    tmp = info.fragstotal*info.fragsize;
+   fprintf( stderr, "Attempting to map %d byte buffer space\n", tmp );
    if (audio_capt)
       buf=mmap(NULL, tmp, PROT_READ , MAP_SHARED, fd, 0);
    else
@@ -731,7 +813,6 @@ void do_audio()
    nbdone = 0;
    nbque  = 0;
    nbset  = 0;
-
    if(!audio_capt)
    {
 //      while(!shmemptr->used_flag[0])
@@ -753,6 +834,17 @@ void do_audio()
       for(nbset=nbque;nbset<info.fragstotal;nbset++)
          memset(buf+nbset*info.fragsize,0,info.fragsize);
    }
+
+#ifndef FORK_NOT_THREAD
+   /* Now we're ready to go move to Real-time scheduling... */
+   schedparam.sched_priority = 1;
+
+   if( (ret = pthread_setschedparam( pthread_self(), SCHED_RR, &schedparam ) ) )
+	 {
+	   fprintf( stderr, "Pthread RT scheduling attempt failed! with %d\n", ret  ); 
+	   system_error( "Bad pthread", 0 );
+	 }
+#endif
 
 /*
  * Fire up audio device
@@ -814,9 +906,13 @@ void do_audio()
          /* if exit_flag is set, exit immediatly */
 
          if(shmemptr->exit_flag)
-         {
+		   {
             shmemptr->audio_status = -1;
+#ifdef FORK_NOT_THREAD
             exit(0);
+#else
+			pthread_exit( NULL );
+#endif
          }
 
          /* copy the ready buffers to our audio ring buffer */
@@ -879,7 +975,11 @@ void do_audio()
          if(shmemptr->exit_flag && nbdone >= nbque)
          {
             shmemptr->audio_status = -1;
+#ifdef FORK_NOT_THREAD
             exit(0);
+#else
+			pthread_exit( NULL );
+#endif
          }
 
          /* Fill into the soundcard memory as many buffers
@@ -913,7 +1013,6 @@ void do_audio()
 
 #else
 
-Error: ALSA doesnt work right now
 
 /* Timeout (in seconds) for playing audio:
  * If all buffers are played and the calling program doesn't
@@ -992,8 +1091,10 @@ void do_audio()
 
    if (audio_capt)
      {
-       bzero(&record_fragparam, sizeof(record_fragparam)); 
-       record_fragparam.fragment_size = audio_buffer_size;
+       bzero(&chan_param, sizeof(record_fragparam)); 
+       chan.param.mode = SND_PCM_MODE_BLOCK;
+       chan_param.buf.block.frags_min = 1;
+       chan_param.buf.block.frags_size = audio_buffer_size;
        record_fragparam.fragments_min = 1;
        err = snd_pcm_record_params(handle, &record_fragparam); 
      }
