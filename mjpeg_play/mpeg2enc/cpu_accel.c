@@ -32,7 +32,7 @@
    illegal instruction errors.
 */
 
-static jmp_buf sigill_recover;
+static sigjmp_buf sigill_recover;
 
 void sigillhandler(int sig )
 {

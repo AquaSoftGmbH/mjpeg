@@ -50,7 +50,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#ifdef HAVE_FENV_H
 #include <fenv.h>
+#endif
 #include "global.h"
 #include "cpu_accel.h"
 #include "simd.h"

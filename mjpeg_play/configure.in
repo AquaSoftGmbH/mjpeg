@@ -31,6 +31,7 @@ AC_PROG_CC
 AC_PROG_INSTALL
 AC_PROG_LN_S
 AC_PROG_RANLIB
+AC_CHECK_HEADERS(fenv.h)
 
 
 dnl Set up the usual compiler infos...
