@@ -57,13 +57,13 @@
 #ifdef HAVE_X86CPU 
 int select_dct_type_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
 
-extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
-extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
+extern void fdct_mmx( int16_t * blk );
+extern void idct_mmx( int16_t * blk );
 
-extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
-				   int lx, int16_t *blk) __asm__ ("add_pred_mmx");
-extern void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
-				   int lx, int16_t *blk) __asm__ ("sub_pred_mmx");
+void add_pred_mmx (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
+void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
 #endif
 
 int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
@@ -176,7 +176,8 @@ int select_dct_type( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 	return dct_type;
 }
 #ifdef HAVE_X86CPU 
-static __inline__ void
+void
+__inline__
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 {
 	movq_m2r( *accs, mm1 );
@@ -194,7 +195,8 @@ mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
 }
 
 
-static __inline__ void
+void 
+__inline__
 sum_sumsq_8bytes( uint8_t *cur_lum_mb, 
 				  uint8_t *pred_lum_mb,
 				  mmx_t *sumtop_accs,

@@ -103,9 +103,9 @@
 
 /* TODO: This should *really* be aligned on 16-byte boundaries... */
 
-const int idct_r_inv_row[2] __asm__ ("idct_r_inv_row") __attribute__ ((aligned (16))) = { RND_INV_ROW, RND_INV_ROW};
-const int idct_r_inv_col[2] __asm__ ("idct_r_inv_col") __attribute__ ((aligned (16))) = {RND_INV_COL, RND_INV_COL};
-const int idct_r_inv_corr[2]  __asm__ ("idct_r_inv_corr") __attribute__ ((aligned (16))) = {RND_INV_CORR, RND_INV_CORR };
+const int idct_r_inv_row[2] = { RND_INV_ROW, RND_INV_ROW};
+const int idct_r_inv_col[2] = {RND_INV_COL, RND_INV_COL};
+const int idct_r_inv_corr[2] = {RND_INV_CORR, RND_INV_CORR };
 
 /* Unused and thus redundant...
 const long long dct_one_corr = 0x0001000100010001;
@@ -174,7 +174,7 @@ const long long dct_one_corr = 0x0001000100010001;
    In our implementation, however, we only use row0 !
 */
 
-const int16_t idct_tab_01234567[] __asm__ ("idct_tab_01234567") = {
+const int16_t idct_tab_01234567[] = {
 	//row0, this row is required
 	16384, 16384, 16384, -16384,	// ; movq-> w06 w04 w02 w00
 	21407, 8867, 8867, -21407,		// w07 w05 w03 w01

@@ -44,23 +44,23 @@ int quant_non_intra_mmx(	struct pict_data *picture,int16_t *src, int16_t *dst,
 							
 int quantize_ni_mmx(short *dst, short *src, short *quant_mat, 
 						   short *i_quant_mat, 
-						   int imquant, int mquant, int sat_limit) __asm__ ("quantize_ni_mmx");
-int quant_weight_coeff_sum_mmx (short *blk, unsigned short*i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
+						   int imquant, int mquant, int sat_limit);
+int quant_weight_coeff_sum_mmx (short *blk, unsigned short*i_quant_mat );
 int cpuid_flags();
 
-void iquant_non_intra_m1_sse(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_sse");
-void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_mmx");
+void iquant_non_intra_m1_sse(int16_t *src, int16_t *dst, uint16_t *qmat);
+void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat);
 
 
-void predcomp_00_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmxe");
-void predcomp_10_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmxe");
-void predcomp_11_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmxe");
-void predcomp_01_mmxe(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmxe");
+void predcomp_00_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_10_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_11_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_01_mmxe(char *src,char *dst,int lx, int w, int h, int addflag);
 
-void predcomp_00_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmx");
-void predcomp_10_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmx");
-void predcomp_11_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_11_mmx");
-void predcomp_01_mmx(char *src,char *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_01_mmx");
+void predcomp_00_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_10_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_11_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
+void predcomp_01_mmx(char *src,char *dst,int lx, int w, int h, int addflag);
 
 #endif
 
