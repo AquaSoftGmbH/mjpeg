@@ -39,7 +39,7 @@ static  void    usage(void);
 
 int main(int argc, char **argv)
         {
-        int     i, c, width, height, frames, err, uvlen;
+        int     i, c, width, height, frames, err, chroma_ss, ilace_factor;
         int     shiftnum = 0, shiftY = 0, rightshiftY, rightshiftUV;
         int     vshift = 0, vshiftY = 0, monochrome = 0;
         int     verbose = 0, fdin;
@@ -50,6 +50,8 @@ int main(int argc, char **argv)
         y4m_frame_info_t iframe;
 
         fdin = fileno(stdin);
+
+	y4m_accept_extensions(1);
 
         opterr = 0;
         while   ((c = getopt(argc, argv, "hvn:N:b:My:Y:")) != EOF)
@@ -104,96 +106,55 @@ int main(int argc, char **argv)
         err = y4m_read_stream_header(fdin, &istream);
         if      (err != Y4M_OK)
                 mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(err));
-	else
-		{
-		/* try to find a chromass xtag... */
-		y4m_xtag_list_t *xtags = y4m_si_xtags(&istream);
-		const char *tag = NULL;
-		int n;
 
-		for	(n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
-			{
-			tag = y4m_xtag_get(xtags, n);
-			if (!strncmp("XYSCSS=", tag, 7)) break;
-			}
-		if	((tag != NULL) && (n >= 0))
-			{
-			/* parse the tag */
-			tag += 7;
-			if	(!strcmp("411", tag))
-				{
-				SS_H = 4;
-				SS_V = 1;
-				} 
-			else if (!strcmp(tag, "420") || 
-				 !strcmp(tag, "420MPEG2") || 
-                         	 !strcmp(tag, "420PALDV") || 
-				 !strcmp(tag,"420JPEG"))
-				{
-				SS_H = 2;
-				SS_V = 2;
-				} 
-			}
-		  }
+	if	(y4m_si_get_plane_count(&istream) != 3)
+		mjpeg_error_exit1("Only 3 plane formats supported");
+
+	chroma_ss = y4m_si_get_chroma(&istream);
+	SS_H = y4m_chroma_ss_x_ratio(chroma_ss).d;
+	SS_V = y4m_chroma_ss_y_ratio(chroma_ss).d;
+
+	if	(y4m_si_get_interlace(&istream) == Y4M_ILACE_NONE)
+		ilace_factor = 1;
+	else
+		ilace_factor = 2;
 
         if      ((shiftnum % SS_H) != 0)
                 usage();
 
-        if      ((vshift % (2*SS_V)) != 0)
+        if      ((vshift % (ilace_factor * SS_V)) != 0)
                 usage();
 
         width = y4m_si_get_width(&istream);
         height = y4m_si_get_height(&istream);
-        uvlen = (height / SS_V) * (width / SS_H);
 
         if      (shiftnum > width / 2)
-                {
-                fprintf(stderr, "%s: nonsense to shift %d out of %d\n",
-                        __progname, shiftnum, width);
-                exit(1);
-                }
+                mjpeg_error_exit1("nonsense to shift %d out of %d",
+                        shiftnum, width);
         if      (shiftY > width / 2)
-                {
-                fprintf(stderr, "%s: nonsense to shift %d out of %d\n",
-                        __progname, shiftY, width);
-                exit(1);
-                }
+                mjpeg_error_exit1("nonsense to shift %d out of %d\n",
+                        shiftY, width);
 
         y4m_init_stream_info(&ostream);
         y4m_copy_stream_info(&ostream, &istream);
         y4m_write_stream_header(fileno(stdout), &ostream);
 
-        yuv[0] = malloc(height * width);
+        yuv[0] = malloc(y4m_si_get_plane_length(&istream, 0));
         if      (yuv[0] == NULL)
-                {
-                fprintf(stderr, "%s: malloc(%d) failed\n", __progname,
-                        width * height);
-                exit(1);
-                }
-        yuv[1] = malloc(uvlen);
+                mjpeg_error_exit1("malloc() failed for plane 0");
+        yuv[1] = malloc(y4m_si_get_plane_length(&istream, 1));
         if      (yuv[1] == NULL)
-                {
-                fprintf(stderr, "%s: malloc(%d) failed\n", __progname, uvlen);
-                exit(1);
-                }
-        yuv[2] = malloc(uvlen);
+                mjpeg_error_exit1("malloc() failed for plane 1");
+        yuv[2] = malloc(y4m_si_get_plane_length(&istream, 2));
         if      (yuv[2] == NULL)
-                {
-                fprintf(stderr, "%s: malloc(%d) failed\n", __progname, uvlen);
-                exit(1);
-                }
+                mjpeg_error_exit1("malloc() failed for plane 2");
 
         if      (verbose)
-                fprintf(stderr, "%s: W %d H %d R %d/%d Fsize %d\n", 
-                        __progname, width, height, istream.framerate.n,
-                        istream.framerate.d, istream.framelength);
+		y4m_log_stream_info(LOG_INFO, "", &istream);
 
         frames = 0;
         for     (;y4m_read_frame(fdin,&istream,&iframe,yuv) == Y4M_OK; frames++)
                 {
-                if      (verbose && ((frames % 100) == 0))
-                        fprintf(stderr, "%s: Frame %d\n", __progname, frames);
-
                 if      (shiftnum == 0 && shiftY == 0)
                         goto outputframe;
                 for     (i = 0; i < height; i++)
