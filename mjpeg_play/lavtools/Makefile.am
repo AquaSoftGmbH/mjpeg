@@ -170,6 +170,6 @@ ppmtoy4m_LDADD = -L$(top_srcdir)/utils -lmjpegutils
 y4mcolorbars_SOURCES = y4mcolorbars.c colorspace.h colorspace.c subsample.h subsample.c
 y4mcolorbars_LDADD = -L$(top_srcdir)/utils -lmjpegutils
 
-divxdec_SOURCES = divxdec.cpp
+divxdec_SOURCES = divxdec.cpp riffinfo.h
 divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
 	$(AVIPLAY_LIBS) -lm liblavfile.la liblavplay.la liblavjpeg.la
