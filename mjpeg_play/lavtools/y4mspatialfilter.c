@@ -25,7 +25,7 @@ extern  char    *__progname;
 
 static void *my_malloc(size_t);
 static void get_coeff(float **, int, float);
-static void convolve2D(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy);
+static void convolveFrame(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy);
 static void usage(void);
 
 int main(int argc, char **argv)
@@ -159,9 +159,9 @@ int main(int argc, char **argv)
 	    if (verbose && ((frames % 100) == 0))
 		mjpeg_log(LOG_INFO, "Frame %d\n", frames);
 	    
-            convolve2D(yuvinout[0],yuvtmp,ywidth,yheight,interlace,lumaXtaps,NlumaX,lumaYtaps,NlumaY);
-            convolve2D(yuvinout[1],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
-            convolve2D(yuvinout[2],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
+            convolveFrame(yuvinout[0],yuvtmp,ywidth,yheight,interlace,lumaXtaps,NlumaX,lumaYtaps,NlumaY);
+            convolveFrame(yuvinout[1],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
+            convolveFrame(yuvinout[2],yuvtmp,uvwidth,uvheight,interlace,chromaXtaps,NchromaX,chromaYtaps,NchromaY);
 
 	    y4m_write_frame(fileno(stdout), &ostream, &iframe, yuvinout);
 
@@ -214,64 +214,67 @@ static void get_coeff(float **taps, int length, float bandwidth)
    symmetrically truncated to match the input length.  
    Filter is odd and linear phase, only center and right-side taps are specified */
 
-static inline void convolveitem(u_char *data,int stride,float *filter,int flen,u_char *out)
+static void convolveLine(u_char *data,int width,int datastride,int outstride,float *filter,int flen,u_char *out)
 {
-    int k,r;
-    u_char *d1=data,*d2=data;
-    float tempout=filter[0]*data[0];
-    for( k=1; k<=flen; k++) {
-        d1-=stride;
-        d2+=stride;
-        tempout+=filter[k]*(d1[0]+d2[0]);
+    int i;
+    for( i=0; i<width; i++ ) {
+        int k,r;
+        u_char *d1=data,*d2=data;
+        float tempout=filter[0]*data[0];
+        for( k=1; k<=flen; k++) {
+            d1-=datastride;
+            d2+=datastride;
+            tempout+=filter[k]*(d1[0]+d2[0]);
+        }
+        r=tempout+0.5;
+        /* clip and cast to integer */
+        out[0]=MIN(MAX(r,0),255);
+        out+=outstride;
+        data+=1;
     }
-    r=tempout+0.5;
-    /* clip and cast to integer */
-    out[0]=MIN(MAX(r,0),255);
 }
 
-static void convolve1D(u_char *data, int datalength, int datastride, float **filter, int filterlength, u_char *output)
+static void convolveField(u_char *data, int width, int height, int outstride, float **filter, int filterlength, u_char *output)
 {
 
-    int   n;
+    int n,datastride,datalength;
+
+    datalength=height/outstride;
+    datastride=width*outstride;
 
     /* leading edge, use filters of increasing width */
     for(n=0;n<filterlength;n++)
 	{
-            convolveitem(data,datastride,filter[n],n,output);
+            convolveLine(data,width,datastride,height,filter[n],n,output);
             data+=datastride;
-            output+=datastride;
+            output+=outstride;
 	}
     /* center, use full-width filter */
     for(n=filterlength; n<datalength-filterlength; n++)
 	{
-            convolveitem(data,datastride,filter[filterlength],filterlength,output);
+            convolveLine(data,width,datastride,height,filter[filterlength],filterlength,output);
             data+=datastride;
-            output+=datastride;
+            output+=outstride;
 	}
     /* trailing edge, use filters of decreasing width */
     for(n=datalength-filterlength;n<datalength;n++)
 	{
-            convolveitem(data,datastride,filter[datalength-n-1],datalength-n-1,output);
+            convolveLine(data,width,datastride,height,filter[datalength-n-1],datalength-n-1,output);
             data+=datastride;
-            output+=datastride;
+            output+=outstride;
 	}
 }
 
-static void convolve2D(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy)
+static void convolveFrame(u_char *src,u_char *tmp,int w,int h,int interlace,float **xtap,int numx,float **ytap,int numy)
 {
-    int n;
-
     if (interlace ) {
-        for( n=0; n<w*2; n++ )
-            convolve1D(src+n,h/2,w*2,ytap,numy,tmp+n);
-    } else {
-        for( n=0; n<w; n++ )
-            convolve1D(src+n,h,w,ytap,numy,tmp+n);
+        convolveField(src,  w,h,2,ytap,numy,tmp);
+        convolveField(src+w,w,h,2,ytap,numy,tmp+1);
     }
+    else
+        convolveField(src,w,h,1,ytap,numy,tmp);
 
-    for( n=0; n<h; n++ )
-        convolve1D(tmp+n*w,w,1,xtap,numx,src+n*w);
-
+    convolveField(tmp,h,w,1,xtap,numx,src);
 }
 
 static void usage(void)
