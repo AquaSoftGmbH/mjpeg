@@ -359,7 +359,6 @@ Makefile
 utils/Makefile
 docs/Makefile
 lavtools/Makefile
-yuvscaler/Makefile
 mjpeg/Makefile
 mpeg2enc/Makefile
 aenc/Makefile
