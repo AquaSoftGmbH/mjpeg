@@ -401,6 +401,10 @@ if [ $video_width -gt $output_width -o $video_width -eq $output_width ]; then
    fi
 fi
 
+if [ $video_inter -eq 1 ]; then
+   yuvdenoise_flags="$yuvdenoise_flags -F"
+fi
+
 #encoder quality dependent
 case ${encode_quality} in
       0) 
