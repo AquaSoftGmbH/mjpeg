@@ -105,6 +105,7 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	case MPEG_VCD :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	video_buffer_size = 46*1024;
+	  	opt_VBR = 0;
  
 	case MPEG_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile\n");
@@ -118,7 +119,6 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 30;
 	  	sector_size = 2324;
-	  	opt_VBR = 0;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 1;
