@@ -18,6 +18,6 @@ mplex_SOURCES = \
 	systems.c 		\
 	vector.c 	vector.h
 
-mplex_LDADD = -L $(top_srcdir)/utils -lutils -lm 
+mplex_LDADD = -L$(top_srcdir)/utils -lutils -lm 
 
 
