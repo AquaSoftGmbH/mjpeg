@@ -30,9 +30,9 @@
 #include "simd.h"
 
 
-/* Routines written  in pure (NASM) assembler */
+/* Routines written in assembler */
 
-extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+extern void fdct_mmx( int16_t * blk );
 extern void init_fdct_sse(void);
 extern void fdct_sse( int16_t * blk );
 extern void fdct_test( int16_t * blk );
@@ -268,9 +268,7 @@ void init_x86_transform()
         char *opt_type1="";
         int flags = cpu_accel();
 
-#ifdef HAVE_ASM_NASM
 	pfdct = fdct_mmx;
-#endif
 	pidct = idct_mmx;
 	padd_pred = add_pred_mmx;
 	psub_pred = sub_pred_mmx;

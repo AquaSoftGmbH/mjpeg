@@ -5,12 +5,9 @@
 
 bin_PROGRAMS = mpeg2enc 
 
-mpeg2encpp_MMXSSE_ASM = \
-	fdct_mmx.s \
-	fdctdata.c
-
 mpeg2encpp_MMXSSE_INLINE = \
 	fdct_x86.c \
+	fdct_mmx.c \
 	idct_mmx.c \
 	quant_mmx.c \
 	predict_mmx.c \
@@ -32,11 +29,6 @@ lib_LTLIBRARIES = libmpeg2encpp.la
 
 if HAVE_ASM_MMX
 SIMD_INLINE = $(mpeg2encpp_MMXSSE_INLINE)
-if HAVE_ASM_NASM
-noinst_LTLIBRARIES = libmmxsseasm.la
-libmmxsseasm_la_SOURCES = $(mpeg2encpp_MMXSSE_ASM)
-LIBSIMDASM_LIB = libmmxsseasm.la
-endif # HAVE_ASM_NASM
 endif # HAVE_ASM_MMX
 
 # Reference implementations of lowlevel routines that may have Architecture

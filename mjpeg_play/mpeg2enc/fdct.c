@@ -79,7 +79,7 @@ void fdct (int16_t *block);
 void init_fdct_sse( void );
 void fdct_sse(int16_t *block);
 
-extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+void fdct_mmx( int16_t * blk );
 
 #ifdef FDCTTEST
 
