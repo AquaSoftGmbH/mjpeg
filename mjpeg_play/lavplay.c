@@ -135,8 +135,8 @@ static int  skip_seconds = 0;
 static double test_factor = 1.0; /* Internal test of synchronizaion only */
 
 /* gz: This makes lavplay play back in software */
-static int soft_play = 0;
-static int soft_fullscreen = 0;
+int soft_play = 0;
+int soft_fullscreen = 0;
 
 /* gz: This is the new handle for MJPEG library */
 struct mjpeg_handle *mjpeg;
