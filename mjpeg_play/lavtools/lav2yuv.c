@@ -59,7 +59,8 @@ int active_height = 0;
 
 static char roundadj[4] = { 0, 0, 1, 2 };
 
-
+static int param_offset = 0;
+static int param_frames = 0;
 
 
 #define BUFFER_ALIGN 16
@@ -148,6 +149,8 @@ void Usage(char *str)
    printf("   -S list.el Output a scene list with scene detection\n");
    printf("   -T num     Set scene detection threshold to num (default: 4)\n");
    printf("   -D num     Width decimation to use for scene detection (default: 2)\n");
+   printf("   -o num     Frame offset - skip num frames in the beginning\n");
+   printf("   -f num     Only num frames are written to stdout (0 means all frames)\n");
    exit(0);
 }
 
@@ -556,7 +559,7 @@ void streamout(void)
          if(index[i]>=0) fprintf(fd,"%s\n",el.video_file_list[i]);
       sprintf(temp,"%d %ld",index[N_EL_FILE(el.frame_list[0])],N_EL_FRAME(el.frame_list[0]));
    }
-   for (framenum = 0; framenum < el.video_frames; ++framenum) {
+   for (framenum = param_offset; framenum < (param_offset + param_frames); ++framenum) {
       readframe(framenum, frame_buf);
       if (param_scenefile) {
          lum_mean =
@@ -605,7 +608,7 @@ char *argv[];
    char *geom;
    char *end;
 
-   while ((n = getopt(argc, argv, "v:a:s:d:n:S:T:D:")) != EOF) {
+   while ((n = getopt(argc, argv, "v:a:s:d:n:S:T:D:o:f:")) != EOF) {
       switch (n) {
 
       case 'a':
@@ -686,6 +689,12 @@ char *argv[];
       case 'D':
          scene_detection_decimation = atoi(optarg);
          break;
+      case 'o':
+         param_offset = atoi(optarg);
+         break;
+      case 'f':
+         param_frames = atoi(optarg);
+         break;
       default:
          nerr++;
       }
@@ -697,12 +706,25 @@ char *argv[];
    if (nerr)
       Usage(argv[0]);
 
+
    /* Open editlist */
 
    read_video_files(argv + optind, argc - optind, &el);
 
    output_width = el.video_width;
    output_height = el.video_height;
+
+   if (param_offset >= el.video_frames) {
+      fprintf (stderr, "error: offset greater than # of frames in input\n");
+      exit (1);
+   }
+   if ((param_offset + param_frames) > el.video_frames) {
+      fprintf (stderr, "warning: input too short for -f %d\n", param_frames);
+      param_frames = el.video_frames - param_offset;
+   }
+   if (param_frames == 0) {
+      param_frames = el.video_frames - param_offset;
+   }
 
    switch (param_special) {
 

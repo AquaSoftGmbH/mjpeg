@@ -1,8 +1,9 @@
 /*
- *  ypipe - simple test program that blends the output of two
+ *  ypipe - simple test program that interlaces the output of two
  *          YUV4MPEG-emitting programs together into one output stream
+ *          frame-wise - better description urgently needed :)
  *
- *  Copyright (C) 2000, pHilipp Zabel <pzabel@gmx.de>
+ *  Copyright (C) 2001, pHilipp Zabel <pzabel@gmx.de>
  *
  *  This program is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU General Public License
@@ -105,8 +106,7 @@ int main (int argc, char *argv[]) {
    int w0, h0, w1, h1;
    int rate0, rate1;
    int outstream = 1;
-   int i,j;
-   unsigned char *yuv[3];
+   int n, i,j, x,y;
    unsigned char *yuv0[3];
    unsigned char *yuv1[3];
 
@@ -133,30 +133,20 @@ int main (int argc, char *argv[]) {
       fprintf (stderr, "warning: not the same frame_rate_code - different frame rates!\n");
    }
    
-   yuv[0] = (char *)malloc (w0*h0);   (char *)yuv0[0] = malloc (w0*h0);   (char *)yuv1[0] = malloc (w0*h0);
-   yuv[1] = (char *)malloc (w0*h0/4); (char *)yuv0[1] = malloc (w0*h0/4); (char *)yuv1[1] = malloc (w0*h0/4);
-   yuv[2] = (char *)malloc (w0*h0/4); (char *)yuv0[2] = malloc (w0*h0/4); (char *)yuv1[2] = malloc (w0*h0/4);
+   (char *)yuv0[0] = malloc (w0*h0);   (char *)yuv1[0] = malloc (w0*h0);
+   (char *)yuv0[1] = malloc (w0*h0/4); (char *)yuv1[1] = malloc (w0*h0/4);
+   (char *)yuv0[2] = malloc (w0*h0/4); (char *)yuv1[2] = malloc (w0*h0/4);
 
    yuv_write_header (outstream, w0, h0, rate0);
    
    while ((i = yuv_read_frame(stream0, yuv0, w0, h0)) &&
           (j = yuv_read_frame(stream1, yuv1, w1, h1))) {
       if ((i<0)||(j<0)) exit (1);
-      
-      /* PROCESS YUV FRAMES HERE */
-      /* test: Simple 50% / 50% blending.*/
-      
-      for (i=0; i<w0*h0; i++)
-         yuv[0][i] = (yuv0[0][i] + yuv1[0][i])/2;
-         
-      for (i=0; i<w0*h0/4; i++) {
-         yuv[1][i] = (yuv0[1][i] + yuv1[1][i])/2;
-         yuv[2][i] = (yuv0[2][i] + yuv1[2][i])/2;
-      }         
-      
-      yuv_write_frame (outstream, yuv, w0, h0);    
+
+      yuv_write_frame (outstream, yuv0, w0, h0);    
+      yuv_write_frame (outstream, yuv1, w0, h0);
    }
    fflush (stderr);
    fflush (stdout);
-   return 0;
+
 }
