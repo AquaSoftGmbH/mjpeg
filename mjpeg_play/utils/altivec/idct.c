@@ -358,13 +358,23 @@ void idct_altivec(IDCT_PDECL)
     IDCTCOL(b01, b11, b21, b31, b41, b51, b61, b71);
 
 
-    /* round and convert back to short {{{ */
+    /* round, convert back to short and clip {{{ */
+
+    /* cnsts0 = max = 255 = 0x00ff, cnsts2 = min = -256 = 0xff00 {{{ */
+    vu8(cnsts0) = vec_splat_u8(0);
+    vu8(x8) = vec_splat_u8(-1);
+    vu8(cnsts2) = vec_mergeh(vu8(x8), vu8(cnsts0));
+    vu8(cnsts0) = vec_mergeh(vu8(cnsts0), vu8(x8));
+    /* }}} */
+
 #define CTS(n) \
     b##n##0 = vec_round(b##n##0); \
     b##n##1 = vec_round(b##n##1); \
     vs32(b##n##0) = vec_cts(b##n##0, 0); \
     vs32(b##n##1) = vec_cts(b##n##1, 0); \
     vs16(b##n##0) = vec_pack(vs32(b##n##0), vs32(b##n##1)); \
+    vs16(b##n##0) = vec_min(vs16(b##n##0), vs16(cnsts0)); \
+    vs16(b##n##0) = vec_max(vs16(b##n##0), vs16(cnsts2)); \
     vec_st(vs16(b##n##0), 0, bp);
 
 
