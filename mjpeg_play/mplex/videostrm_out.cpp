@@ -152,16 +152,18 @@ void VideoStream::OutputSector ( )
 
 	max_packet_payload = 0;	/* 0 = Fill sector */
   	/* 	
- 	   We're now in the last AU of a segment. 
-		So we don't want to go beyond it's end when filling
-		sectors. Hence we limit packet payload size to (remaining) AU length.
-		The same applies when we wish to ensure sequence headers starting
-		ACCESS-POINT AU's in (S)VCD's etc are sector-aligned.
+ 	   We're now in the last AU of a segment.  So we don't want to go
+ 	   beyond it's end when filling sectors. Hence we limit packet
+ 	   payload size to (remaining) AU length.  The same applies when
+ 	   we wish to ensure sequence headers starting ACCESS-POINT AU's
+ 	   in (S)VCD's etc are sector-aligned.  
+
+       N.b.runout_PTS is the PTS of the first I picture following the
+       run-out is recorded.
 	*/
 	int nextAU = NextAUType();
-	if( ( muxinto.running_out && nextAU == IFRAME 
-          && NextRequiredPTS() > muxinto.runout_PTS) 
-        || (muxinto.sector_align_iframeAUs && nextAU == IFRAME )
+	if( ( muxinto.running_out && nextAU == IFRAME && NextRequiredPTS() >= muxinto.runout_PTS) 
+        || (muxinto.sector_align_iframeAUs && nextAU == IFRAME  )
 		) 
 	{
 		max_packet_payload = au_unsent;

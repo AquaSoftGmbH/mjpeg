@@ -116,7 +116,6 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 		always_buffers_in_audio = 1;
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
-		sector_align_iframeAUs = false;
         timestamp_iframe_only = false;
         video_buffers_iframe_only = false;
 		break;
@@ -240,7 +239,7 @@ void Multiplexor::InitSyntaxParameters(MultiplexJob &job)
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile");
-		mpeg = 1;
+		//mpeg = 1;
 		sys_header_in_pack1 = 1;
 		transport_prefix_sectors = 0;
 		buffers_in_video = 1;

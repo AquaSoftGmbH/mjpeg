@@ -74,7 +74,7 @@ MultiplexJob::MultiplexJob()
     mux_format = MPEG_FORMAT_MPEG1;
     multifile_segment = false;
     always_system_headers = false;
-    packets_per_pack = 20;
+    packets_per_pack = 1;
     max_timeouts = 10;
     max_PTS = 0;
     emul_vcdmplex = 0;
