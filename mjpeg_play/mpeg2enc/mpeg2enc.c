@@ -76,6 +76,7 @@ int do_not_search = 0;
 /* RJ: Parameters for creation of the MPEG file */
 
 static int param_bitrate    = 0;
+static int param_nonvid_bitrate = 0;
 static int param_quant      = 0;
 static int param_searchrad  = 16;
 static int param_mpeg       = 1;
@@ -196,6 +197,8 @@ static void Usage(char *str)
 	printf("              0 - Display MPEG1 and MPEG2 aspect ratio code tables");
 	printf("   -f num     Frame rate for encoded video (default: frame rate of input stream)\n");
 	printf("   -b num     Bitrate in KBit/sec (default: 1152 KBit/s for VCD)\n");
+	printf("   -B num     Non-video data bitrate to use for sequence splitting\n");
+	printf("              calculations (see -S).\n");
 	printf("   -q num     Quality factor [1..31] (1 is best, no default)\n");
 	printf("              Bitrate and Quality are mutually exclusive!\n");
 	printf("   -o name    Outputfile name (REQUIRED!!!)\n");
@@ -215,7 +218,8 @@ static void Usage(char *str)
 	printf("   -Q num     Amount quantisation of highly active blocks is reduced by [0.1 .. 10] (default: 2.5)\n");
 	printf("   -v num     Target video buffer size in KB (default 46)\n");
 	printf("   -n n|p|s   Force video norm (NTSC, PAL, SECAM) (default: PAL).\n");
-	printf("   -S num     Start a new sequence in the output every num Mbytes\n");
+	printf("   -S num     Start a new sequence every num Mbytes in the final mux-ed\n");
+	printf("              stream.  -B specifies the bitrate of non-video data\n");
 	printf("   -s         Generate a sequence header for every GOP rather than just for the first GOP\n");
 	printf("   -p         Generate header flags for 32 pull down of 24fps movie.");
 	printf("   -t         Activate dynamic thresholding of motion compensation window size\n" );
@@ -234,7 +238,7 @@ int main(argc,argv)
 	int nerr = 0;
 	int n;
 
-	while( (n=getopt(argc,argv,"m:a:f:n:b:q:o:S:F:r:M:4:2:Q:g:G:v:stpNhO?")) != EOF)
+	while( (n=getopt(argc,argv,"m:a:f:n:b:B:q:o:S:F:r:M:4:2:Q:g:G:v:stpNhO?")) != EOF)
 	{
 		switch(n) {
 
@@ -251,11 +255,19 @@ int main(argc,argv)
 			param_bitrate = atoi(optarg);
 			break;
 
+		case 'B':
+			param_nonvid_bitrate = atoi(optarg);
+			if( param_nonvid_bitrate < 0 )
+			{
+				fprintf(stderr,"-B requires arg > 0\n");
+				nerr++;
+			}
+			break;
 		case 'q':
 			param_quant = atoi(optarg);
-			if(param_quant<1 || param_quant>16)
+			if(param_quant<1 || param_quant>32)
 			{
-				fprintf(stderr,"-q option requires arg 1 .. 16\n");
+				fprintf(stderr,"-q option requires arg 1 .. 32\n");
 				nerr++;
 			}
 			break;
@@ -570,7 +582,10 @@ int main(argc,argv)
 		printf( "Sequence header only for first GOP\n");
 		
 	if( param_seq_length_limit )
+	{
 		printf( "New Sequence every %d Mbytes\n", param_seq_length_limit );
+		printf( "Assuming non-video stream of %d Mbps\n", param_nonvid_bitrate );
+	}
 	else
 		printf( "Sequence unlimited length\n" );
 
@@ -808,6 +823,7 @@ static void init_encoding_parms(void)
 	
 	seq_header_every_gop = param_seq_hdr_every_gop;
 	seq_length_limit = param_seq_length_limit;
+	nonvid_bit_rate = param_nonvid_bitrate * 1000;
 	low_delay       = 0;
 	constrparms     = mpeg1;       /* Will be reset, if not coompliant */
 	constrparms = 1;

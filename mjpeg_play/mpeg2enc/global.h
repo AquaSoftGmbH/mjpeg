@@ -407,6 +407,8 @@ EXTERN int frame_rate_code;		/* coded value of frame rate */
 EXTERN int dctsatlim;			/* Value to saturated DCT coeffs to */
 EXTERN double frame_rate;		/* frames per second */
 EXTERN double bit_rate;			/* bits per second */
+EXTERN double nonvid_bit_rate;	/* Bit-rate for non-video to assume for
+								 sequuence splitting calculations */
 
 EXTERN int mc_44_red;			/* Sub-mean population reduction passes for 4x4 and 2x2 */
 EXTERN int mc_22_red;			/* Motion compensation stages						*/

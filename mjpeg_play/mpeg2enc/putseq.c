@@ -299,9 +299,9 @@ struct _stream_state
 	 int i;						/* Index in current sequence */
 	 int g;						/* Index in current GOP */
 	 int b;						/* Index in current B frame group */
-	 int gop_start_frame;		/* Index start current sequence in
+	 int seq_start_frame;		/* Index start current sequence in
 								   input stream */
-	 int seq_start_frame;		/* Index start current gop in input stream */
+	 int gop_start_frame;		/* Index start current gop in input stream */
 	 int gop_length;			/* Length of current gop */
 	 int bigrp_length;			/* Length of current B-frame group */
 	 int bs_short;				/* Number of B frame GOP is short of
@@ -354,6 +354,8 @@ static void gop_start( stream_state_s *ss )
 {
 
 	int nb, np;
+	uint64_t bits_after_mux;
+	double frame_periods;
 	/* If	we're starting a GOP and have gone past the current
 	   sequence splitting point split the sequence and
 	   set the next splitting point.
@@ -362,7 +364,14 @@ static void gop_start( stream_state_s *ss )
 	ss->g = 0;
 	ss->b = 0;
 	ss->new_seq = 0;
-	if( ss->next_split_point != 0LL && 	bitcount() > ss->next_split_point )
+	
+	if( pulldown_32 )
+		frame_periods = (double)(ss->seq_start_frame + ss->i)*(5.0/4.0);
+	else
+		frame_periods = (double)(ss->seq_start_frame + ss->i);
+	bits_after_mux = bitcount() + 
+		(uint64_t)(frame_periods * frame_rate * nonvid_bit_rate);
+	if( ss->next_split_point != 0LL && 	bits_after_mux > ss->next_split_point )
 	{
 		printf( "\nSplitting sequence this GOP start\n" );
 		ss->next_split_point += ss->seq_split_length;

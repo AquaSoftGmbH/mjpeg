@@ -2,7 +2,6 @@ Fix all the BUGS (see BUGS) of course!
 
 IMMEDIATE
 
-Add support for field pictures to mplex.
 
 TASKS OUTSTANDING
 
@@ -17,6 +16,10 @@ Minor
 
 
 Medium
+
+- Add support for field pictures to mplex. Not urgent since for most
+  sources frame pictures with field DCT/motion compensation seems to
+  give better results.
 
 - Chrominance is only taken into account for motion compensation in P-frame's
 	for progressive sequences.  Curiously, experimentation showed that

@@ -73,7 +73,7 @@ if test x$with_jpeg_mmx != x ; then
   CFLAGS="$CFLAGS -I$with_jpeg_mmx"
   AC_CHECK_LIB(jpeg-mmx, jpeg_start_compress,
     [ JPEG_LIBS="$LIBS -ljpeg-mmx"
-      JPEG_INCLUDES="$CFLAGS"
+      JPEG_CFLAGS="-I$with_jpeg_mmx"
        have_jpeg=true ],,)
   LIBS="$OLD_LIBS"
   CFLAGS="$OLD_CFLAGS"
