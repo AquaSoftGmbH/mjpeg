@@ -19,7 +19,7 @@
                  Hint: If your AVI video looks strange, try 'A' instead 'a'
                  and vice versa.
 		 
-    -i [pPnNkKa]   Input Source:
+    -i [pPnNsSa]   Input Source:
                  'p' PAL   Composite Input
                  'P' PAL   SVHS-Input
                  'n' NTSC  Composite Input

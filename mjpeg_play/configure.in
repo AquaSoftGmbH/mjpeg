@@ -186,7 +186,7 @@ AC_ARG_ENABLE(x86-cpu,
 			)
 
 case "${hwaretype}" in
-foofofoi686) 
+i686) 
 	x86cpu="yes"
     AC_DEFINE(X86_CPU)
 	AC_DEFINE(P6_CPU)
