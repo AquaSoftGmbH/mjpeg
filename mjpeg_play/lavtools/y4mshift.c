@@ -31,17 +31,19 @@
 
 extern  char    *__progname;
 
-#define HALFSHIFT (shiftnum / 2)
+#define HALFSHIFT (shiftnum / SS_H)
 
-	void	black_border(u_char **, char *, int, int);
-	void	vertical_shift(u_char **, int, int, int);
+	void	black_border(u_char **, char *, int, int, int, int);
+	void	vertical_shift(u_char **, int, int, int, int, int, int);
 static  void    usage(void);
 
 int main(int argc, char **argv)
         {
         int     i, c, width, height, frames, err, uvlen;
-        int     shiftnum = 0, rightshift, vshift = 0, monochrome = 0;
+        int     shiftnum = 0, shiftY = 0, rightshiftY, rightshiftUV;
+        int     vshift = 0, vshiftY = 0, monochrome = 0;
         int     verbose = 0, fdin;
+        int     SS_H = 2, SS_V = 2;
         u_char  *yuv[3], *line;
 	char	*borderarg = NULL;
         y4m_stream_info_t istream, ostream;
@@ -50,7 +52,7 @@ int main(int argc, char **argv)
         fdin = fileno(stdin);
 
         opterr = 0;
-        while   ((c = getopt(argc, argv, "hvn:N:b:M")) != EOF)
+        while   ((c = getopt(argc, argv, "hvn:N:b:My:Y:")) != EOF)
                 {
                 switch  (c)
                         {
@@ -62,6 +64,12 @@ int main(int argc, char **argv)
 				break;
                         case    'n':
                                 shiftnum = atoi(optarg);
+                                break;
+                        case    'y':
+                                shiftY = atoi(optarg);
+                                break;
+                        case    'Y':
+                                vshiftY = atoi(optarg);
                                 break;
 			case	'N':
 				vshift = atoi(optarg);
@@ -76,17 +84,17 @@ int main(int argc, char **argv)
                         }
                 }
 
-        if      (shiftnum & 1)
-                usage();
-
-	if	(vshift & 0x3)
-		usage();
+	if      ( shiftnum + shiftY > 0 )
+		rightshiftY = 1;
+	else
+		rightshiftY = 0;
+	shiftY = abs(shiftnum + shiftY);  /* now shiftY is total Y shift */
 
         if      (shiftnum > 0)
-                rightshift = 1;
+                rightshiftUV = 1;
         else
                 {
-                rightshift = 0;
+                rightshiftUV = 0;
                 shiftnum = abs(shiftnum);
                 }
 
@@ -96,15 +104,55 @@ int main(int argc, char **argv)
         err = y4m_read_stream_header(fdin, &istream);
         if      (err != Y4M_OK)
                 mjpeg_error_exit1("Input stream error: %s\n", y4m_strerr(err));
+	else
+		{
+		/* try to find a chromass xtag... */
+		y4m_xtag_list_t *xtags = y4m_si_xtags(&istream);
+		const char *tag = NULL;
+		int n;
+
+		for	(n = y4m_xtag_count(xtags) - 1; n >= 0; n--) 
+			{
+			tag = y4m_xtag_get(xtags, n);
+			if (!strncmp("XYSCSS=", tag, 7)) break;
+			}
+		if	((tag != NULL) && (n >= 0))
+			{
+			/* parse the tag */
+			tag += 7;
+			if	(!strcmp("411", tag))
+				{
+				SS_H = 4;
+				SS_V = 1;
+				} 
+			else if (!strcmp("420", tag))
+				{
+				SS_H = 2;
+				SS_V = 2;
+				} 
+			}
+		  }
+
+        if      ((shiftnum % SS_H) != 0)
+                usage();
+
+        if      ((vshift % (2*SS_V)) != 0)
+                usage();
 
         width = y4m_si_get_width(&istream);
         height = y4m_si_get_height(&istream);
-        uvlen = (height / 2) * (width / 2);
+        uvlen = (height / SS_V) * (width / SS_H);
 
         if      (shiftnum > width / 2)
                 {
                 fprintf(stderr, "%s: nonsense to shift %d out of %d\n",
                         __progname, shiftnum, width);
+                exit(1);
+                }
+        if      (shiftY > width / 2)
+                {
+                fprintf(stderr, "%s: nonsense to shift %d out of %d\n",
+                        __progname, shiftY, width);
                 exit(1);
                 }
 
@@ -143,7 +191,7 @@ int main(int argc, char **argv)
                 if      (verbose && ((frames % 100) == 0))
                         fprintf(stderr, "%s: Frame %d\n", __progname, frames);
 
-                if      (shiftnum == 0)
+                if      (shiftnum == 0 && shiftY == 0)
                         goto outputframe;
                 for     (i = 0; i < height; i++)
                         {
@@ -151,60 +199,60 @@ int main(int argc, char **argv)
  * Y
 */
                         line = &yuv[0][i * width];
-                        if      (rightshift)
+                        if      (rightshiftY)
                                 {
-                                bcopy(line, line + shiftnum, width - shiftnum);
-                                memset(line, 16, shiftnum); /* black */
+                                bcopy(line, line + shiftY, width - shiftY);
+                                memset(line, 16, shiftY); /* black */
                                 }
                         else 
                                 {
-                                bcopy(line + shiftnum, line, width - shiftnum);
-                                memset(line + width - shiftnum, 16, shiftnum);
+                                bcopy(line + shiftY, line, width - shiftY);
+                                memset(line + width - shiftY, 16, shiftY);
                                 }
                         }
 /*
  * U
 */
-                for     (i = 0; i < height / 2; i++)
+                for     (i = 0; i < height / SS_V; i++)
                         {
-                        line = &yuv[1][i * (width / 2)];
-                        if      (rightshift)
+                        line = &yuv[1][i * (width / SS_H)];
+                        if      (rightshiftUV)
                                 {
-                                bcopy(line, line+HALFSHIFT, (width-shiftnum)/2);
+                                bcopy(line, line+HALFSHIFT, (width-shiftnum)/SS_H);
                                 memset(line, 128, HALFSHIFT); /* black */
                                 }
                         else
                                 {
-                                bcopy(line+HALFSHIFT, line, (width-shiftnum)/2);
-                                memset(line+(width-shiftnum)/2, 128, HALFSHIFT);
+                                bcopy(line+HALFSHIFT, line, (width-shiftnum)/SS_H);
+                                memset(line+(width-shiftnum)/SS_H, 128, HALFSHIFT);
                                 }
                         }
 /*
  * V
 */
-                for     (i = 0; i < height / 2; i++)
+                for     (i = 0; i < height / SS_V; i++)
                         {
-                        line = &yuv[2][i  * (width / 2)];
-                        if      (rightshift)
+                        line = &yuv[2][i  * (width / SS_H)];
+                        if      (rightshiftUV)
                                 {
-                                bcopy(line, line+HALFSHIFT, (width-shiftnum)/2);
+                                bcopy(line, line+HALFSHIFT, (width-shiftnum)/SS_H);
                                 memset(line, 128, HALFSHIFT); /* black */
                                 }
                         else
                                 {
-                                bcopy(line+HALFSHIFT, line, (width-shiftnum)/2);
-                                memset(line+(width-shiftnum)/2, 128, HALFSHIFT);
+                                bcopy(line+HALFSHIFT, line, (width-shiftnum)/SS_H);
+                                memset(line+(width-shiftnum)/SS_H, 128, HALFSHIFT);
                                 }
                         }
 outputframe:
 		if	(vshift)
-			vertical_shift(yuv, vshift, width, height);
+			vertical_shift(yuv, vshift, vshiftY, width, height, SS_H, SS_V);
 		if	(borderarg)
-			black_border(yuv, borderarg, width, height);
+			black_border(yuv, borderarg, width, height, SS_H, SS_V);
 		if	(monochrome)
 			{
-			memset(&yuv[1][0], 128, (width / 2) * (height / 2));
-			memset(&yuv[2][0], 128, (width / 2) * (height / 2));
+			memset(&yuv[1][0], 128, (width / SS_H) * (height / SS_V));
+			memset(&yuv[2][0], 128, (width / SS_H) * (height / SS_V));
 			}
                 y4m_write_frame(fileno(stdout), &ostream, &iframe, yuv);
                 }
@@ -219,7 +267,7 @@ outputframe:
  * -b Xoff,Yoff,Xsize,YSize
 */
 
-void black_border (u_char *yuv[], char *borderstring, int W, int H)
+void black_border (u_char *yuv[], char *borderstring, int W, int H, int SS_H, int SS_V)
 	{
 	static	int parsed = -1;
 	static	int BX0, BX1;	/* Left, Right border columns */
@@ -230,7 +278,7 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 		{
 		parsed = 0;
 		i = sscanf(borderstring, "%d,%d,%d,%d", &BX0, &BY0, &i1, &i2);
-		if	(i != 4 || (BX0 % 2) || (BY0 % 4) || i1 < 0 || i2 < 0 ||
+		if	(i != 4 || (BX0 % SS_H) || (BY0 % (2*SS_V)) || i1 < 0 || i2 < 0 ||
 			 (BX0 + i1 > W) || (BY0 + i2 > H))
 			{
 			mjpeg_log(LOG_WARN, " border args invalid - ignored");
@@ -247,8 +295,8 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 	if	(parsed == 0)
 		return;
 
-	W2 = W / 2;
-	H2 = H / 2;
+	W2 = W / SS_H;
+	H2 = H / SS_V;
 
 /*
  * Yoff Lines at the top.   If the vertical offset is 0 then no top border
@@ -257,8 +305,8 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 	if	(BY0 != 0)
 		{
 		memset(yuv[0], 16,  W  * BY0);
-		memset(yuv[1], 128, W2 * BY0/2);
-		memset(yuv[2], 128, W2 * BY0/2);
+		memset(yuv[1], 128, W2 * BY0/SS_V);
+		memset(yuv[2], 128, W2 * BY0/SS_V);
 		}
 /*
  * Height - (Ysize + Yoff) lines at bottom.   If the bottom coincides with
@@ -267,8 +315,8 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 	if	(H != BY1)
 		{
 		memset(&yuv[0][BY1 * W], 16, W  * (H - BY1));
-		memset(&yuv[1][(BY1 / 2) * W2], 128, W2 * (H - BY1)/2);
-		memset(&yuv[2][(BY1 / 2) * W2], 128, W2 * (H - BY1)/2);
+		memset(&yuv[1][(BY1 / SS_V) * W2], 128, W2 * (H - BY1)/SS_V);
+		memset(&yuv[2][(BY1 / SS_V) * W2], 128, W2 * (H - BY1)/SS_V);
 		}
 /*
  * Now the partial lines in the middle.   Go from rows BY0 thru BY1 because
@@ -283,8 +331,8 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 		if	(BX0 != 0)
 			{
 			memset(&yuv[0][dy * W], 16, BX0);
-			memset(&yuv[1][dy / 2 * W2], 128, BX0 / 2);
-			memset(&yuv[2][dy / 2 * W2], 128, BX0 / 2);
+			memset(&yuv[1][dy / SS_V * W2], 128, BX0 / SS_H);
+			memset(&yuv[2][dy / SS_V * W2], 128, BX0 / SS_H);
 			}
 /*
  * Then the columns on the right (x = BX1 thru W).   If the right border
@@ -293,65 +341,79 @@ void black_border (u_char *yuv[], char *borderstring, int W, int H)
 		if	(W != BX1)
 			{
 			memset(&yuv[0][(dy * W) + BX1], 16, W - BX1);
-			memset(&yuv[1][(dy/2 * W2) + BX1/2], 128, (W - BX1)/2);
-			memset(&yuv[2][(dy/2 * W2) + BX1/2], 128, (W - BX1)/2);
+			memset(&yuv[1][(dy/SS_V * W2) + BX1/SS_H], 128, (W - BX1)/SS_H);
+			memset(&yuv[2][(dy/SS_V * W2) + BX1/SS_H], 128, (W - BX1)/SS_H);
 			}
 		}
 
 	}
 
-void vertical_shift(u_char **yuv, int vshift, int width, int height)
+void vertical_shift(u_char **yuv, int vshift, int vshiftY, int width, int height, int SS_H, int SS_V)
 	{
-	int	downshift, w2 = width / 2, v2;
+	int	downshiftY, downshiftUV, w2 = width / SS_H, v2;
+
+	if      ( vshift + vshiftY > 0 )
+		downshiftY = 1;
+	else
+		downshiftY = 0;
+	vshiftY = abs(vshift + vshiftY);  /* now shiftY is total Y shift */
 
 	if	(vshift > 0)
-		downshift = 1;
+		downshiftUV = 1;
 	else
 		{
-		downshift = 0;
+		downshiftUV = 0;
 		vshift = abs(vshift);
 		}
-	v2 = vshift / 2;
+	v2 = vshift / SS_V;
 
-	if	(downshift)
+	if	(downshiftY)
 		{
-		memmove(&yuv[0][vshift * width], &yuv[0][0],
-			(height - vshift) * width);
-		memmove( &yuv[1][v2 * w2], &yuv[1][0],
-			(height - vshift) / 2 * w2);
-		memmove( &yuv[2][v2 * w2], &yuv[2][0],
-			(height - vshift) / 2 * w2);
+		memmove(&yuv[0][vshiftY * width], &yuv[0][0],
+			(height - vshiftY) * width);
+		memset(&yuv[0][0], 16, vshiftY * width);
+		}
+	else
+		{
+		memmove(&yuv[0][0], &yuv[0][vshiftY * width],
+			(height - vshiftY) * width);
+		memset(&yuv[0][(height - vshiftY) * width], 16, vshiftY * width);
+		}
 
-		memset(&yuv[0][0], 16, vshift * width);
+	if      (downshiftUV)
+	        {
+		memmove( &yuv[1][v2 * w2], &yuv[1][0],
+			(height - vshift) / SS_V * w2);
+		memmove( &yuv[2][v2 * w2], &yuv[2][0],
+			(height - vshift) / SS_V * w2);
+
 		memset(&yuv[1][0], 128, v2 * w2);
 		memset(&yuv[2][0], 128, v2 * w2);
 		}
 	else
 		{
-		memmove(&yuv[0][0], &yuv[0][vshift * width],
-			(height - vshift) * width);
 		memmove(&yuv[1][0], &yuv[1][v2 * w2],
-			(height - vshift) / 2 * w2);
+			(height - vshift) / SS_V * w2);
 		memmove(&yuv[2][0], &yuv[2][v2 * w2],
-			(height - vshift) / 2 * w2);
+			(height - vshift) / SS_V * w2);
 
-		memset(&yuv[0][(height - vshift) * width], 16, vshift * width);
-		memset(&yuv[1][((height - vshift) / 2) * w2], 128, v2 * w2);
-		memset(&yuv[2][((height - vshift) / 2) * w2], 128, v2 * w2);
+		memset(&yuv[1][((height - vshift) / SS_V) * w2], 128, v2 * w2);
+		memset(&yuv[2][((height - vshift) / SS_V) * w2], 128, v2 * w2);
 		}
 	}
 
 static void usage(void)
         {
 
-        fprintf(stderr, "%s: usage: [-v] [-h] [-M] [-b xoff,yoff,xsize,ysize] [-N num] -n N\n", __progname);
+        fprintf(stderr, "%s: usage: [-v] [-h] [-M] [-b xoff,yoff,xsize,ysize] [-y num] [-Y num] [-N num] -n N\n", __progname);
 	fprintf(stderr, "%s:\t-M = monochrome output\n", __progname);
-        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be even!\n",
-                __progname);
+        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be even for 4:2:0, multiple of 4 for 4:1:1!\n", __progname);
+        fprintf(stderr, "%s:\t-y num = Y-only horizontal shift count - need not be even\n", __progname);
         fprintf(stderr, "%s:\t\tpositive count shifts right\n",__progname);
         fprintf(stderr, "%s:\t\t0 passes the data thru unchanged\n",__progname);
         fprintf(stderr, "%s:\t\tnegative count shifts left\n", __progname);
-	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4!\n", __progname);
+	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4 for 4:2:0, even for 4:1:1!\n", __progname);
+	fprintf(stderr, "%s:\t-Y num = Y-only vertical shift count - should be even for interlaced material\n", __progname);
 	fprintf(stderr, "%s:\t\tnegative count shifts up\n", __progname);
 	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", __progname);
 	fprintf(stderr, "%s:\t\tpositive count shifts down\n", __progname);
