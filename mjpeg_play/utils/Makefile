@@ -8,10 +8,10 @@ CFLAGS= -O2 -I ..
 all:		lavtrans lavaddwav
 
 lavtrans:	lavtrans.o
-		cc -o lavtrans lavtrans.o ../editlist.o ../avilib.o ../lav_io.o $(QT_LIBS)
+		cc -o lavtrans lavtrans.o ../lavtools/editlist.o ../lavtools/avilib.o ../lavtools/lav_io.o $(QT_LIBS)
 
 lavaddwav:	lavaddwav.o
-		cc -o lavaddwav lavaddwav.o ../avilib.o ../lav_io.o $(QT_LIBS)
+		cc -o lavaddwav lavaddwav.o ../lavtools/avilib.o ../lavtools/lav_io.o $(QT_LIBS)
 
 install: all
 	/usr/bin/install -c lavtrans /usr/local/bin

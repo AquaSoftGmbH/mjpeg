@@ -72,17 +72,23 @@ for more information.
   MPEG-2 formats to smaller MPEG-2 or MPEG-1 formats.
 
 
-- "aenc" contains the source files for "mp2enc" the MPEG layer 2 audio compressor.
-  You may wish to try  using your favourite MPEG layer 3 "MP3" encoder for better
-  quality results.  However, make sure you use constant bit-rate
-  and turn of any extensions to the format.  Even then not all video
-  players will work.
+- "aenc" contains the source files for "wav2mp2" the MPEG layer 2 audio compressor.
+	It is not particularly good as encoders go, but for some reason
+	more capable and faster encoders like "toolame" screw up audio
+	synchronisation quite badly.  Why this should be I haven't the foggiest
+	but am trying to find out.
+	You may wish to try  using your favourite MPEG 1 layer 3 "MP3" 
+	encoder for better quality results.  However, make sure you 
+	use constant bit-rate  and turn of any extensions to the format.  
+	I have no idea how many players actually cope with layer 3.  Drop
+	as@comlab.ox.ac.uk an email if you get it to work!
 
 - mplex multiplexes (interleaves) MPEG-1/2 video and audio streams
   into a combined "system stream" that can be played back smoothly.
-  This is *not* as trivial a task as it might seem (see the authors 
- excellent paper on the subject - copy is in the documentation). 
-	MPEG-2 multiplexing is currently untested.
+  This is *not* as trivial a task as it might seem (see the original
+  authors paper on the subject - copy is in the documentation). Note that
+  the program has been fairly heavily modified since then.
+  MPEG-2 multiplexing is implemented but is currently untested.
   
 - mpegjoin joins *video* (not audio, not system) streams into a single
   stream.  This is very useful if you want to divide compressing

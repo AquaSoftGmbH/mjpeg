@@ -2,8 +2,6 @@
 # Automake Makefile template for mpeg2enc...
 
 bin_PROGRAMS = mpeg2enc 
-mpeg2enc_LDFLAGS = -L ../movtar 
-mpeg2enc_LDADD = ../editlist.o ../lav_io.o ../avilib.o -ljpeg @MOVTAR_LIBS@
 
 mpeg2enc_MMXSSE = 	fdist1_mmx.s dist1_00_mmx.s dist1_01_mmx.s dist1_10_mmx.s dist1_11_mmx.s \
     fdct_mmx.s fdctdata.c idct_mmx.s idctdata.c \
@@ -24,9 +22,9 @@ mpeg2enc_SOURCES = mpeg2enc.c conform.c putseq.c putpic.c puthdr.c putmpg.c \
 	$(mpeg2enc_SIMD)
 
 
-INCLUDES =  -I ..
+INCLUDES = 
 CPPFLAGS = -DX86_CPU @MTYPEFLAGS@
-CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized @MOVTAR_CFLAGS@
+CFLAGS =  -O6 -Werror -Wall -Wno-uninitialized
 ASM = nasm
 
 
