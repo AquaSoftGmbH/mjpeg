@@ -53,14 +53,18 @@
 #include <math.h>
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "syntaxparams.h"
 #include "transfrm_ref.h"
 #include "cpu_accel.h"
 #include "simd.h"
 
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
+extern void init_x86_transform();
+#endif
+
 #ifdef HAVE_ALTIVEC
 #include "../utils/altivec/altivec_transform.h"
 #endif
+
 
 void fdct( int16_t *blk );
 void idct( int16_t *blk );
@@ -78,10 +82,12 @@ void (*padd_pred) (uint8_t *pred, uint8_t *cur,
 				   int lx, int16_t *blk);
 void (*psub_pred) (uint8_t *pred, uint8_t *cur,
 				   int lx, int16_t *blk);
-int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
+int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride);
 
 
-int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
+int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb,
+					int stride
+					)
 {
 	/*
 	 * calculate prediction error (cur-pred) for top (blk0)
@@ -100,15 +106,15 @@ int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 			register int toppix = 
 				cur_lum_mb[rowoffs+i] - pred_lum_mb[rowoffs+i];
 			register int botpix = 
-				cur_lum_mb[rowoffs+encparams.phy_width+i] 
-				- pred_lum_mb[rowoffs+encparams.phy_width+i];
+				cur_lum_mb[rowoffs+stride+i] 
+				- pred_lum_mb[rowoffs+stride+i];
 			sumtop += toppix;
 			sumsqtop += toppix*toppix;
 			sumbot += botpix;
 			sumsqbot += botpix*botpix;
 			sumbottop += toppix*botpix;
 		}
-		rowoffs += (encparams.phy_width<<1);
+		rowoffs += (stride<<1);
 	}
 
 	/* Calculate Variances top and bottom.  If they're of similar
@@ -181,27 +187,19 @@ void init_transform(void)
 {
 	int flags;
 	flags = cpu_accel();
+	pfdct = fdct;
+	pidct = idct;
+	padd_pred = add_pred;
+	psub_pred = sub_pred;
+	pfield_dct_best = field_dct_best;
+
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM) 
-	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
+	if( flags &  ACCEL_X86_MMX )
 	{
-		mjpeg_info( "SETTING MMX for TRANSFORM!");
-		pfdct = fdct_mmx;
-		pidct = idct_mmx;
-		padd_pred = add_pred_mmx;
-		psub_pred = sub_pred_mmx;
-		pfield_dct_best = field_dct_best_mmx;
+		init_x86_transform();
 	}
-	else
 #endif
-	{
-		pfdct = fdct;
-		pidct = idct;
-		padd_pred = add_pred;
-		psub_pred = sub_pred;
-		pfield_dct_best = field_dct_best;
-	}
-
 #ifdef HAVE_ALTIVEC
 	if (flags > 0)
 	{

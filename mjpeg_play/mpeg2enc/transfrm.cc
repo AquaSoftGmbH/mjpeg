@@ -42,11 +42,11 @@ void MacroBlock::Transform()
 	field_dct =
 		! picture->frame_pred_dct 
 		&& picture->pict_struct == FRAME_PICTURE
-		&& pfield_dct_best( &cur[0][blocktopleft], 
-							&pred[0][blocktopleft]);
+		&& (*pfield_dct_best)( &cur[0][blocktopleft], &pred[0][blocktopleft],
+							   encparams.phy_width);
 	int i1, j1, n, cc, offs, lx;
 
-	for (n=0; n<encparams.block_count; n++)
+	for (n=0; n<BLOCK_COUNT; n++)
 	{
 		cc = (n<4) ? 0 : (n&1)+1; /* color component index */
 		if (cc==0)
@@ -76,11 +76,11 @@ void MacroBlock::Transform()
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (encparams.chroma_format==CHROMA444) ? i : i>>1;
-			j1 = (encparams.chroma_format!=CHROMA420) ? j : j>>1;
+			i1 = (CHROMA420==CHROMA444) ? i : i>>1;
+			j1 = (CHROMA420!=CHROMA420) ? j : j>>1;
 
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
-				&& (encparams.chroma_format!=CHROMA420))
+				&& (CHROMA420!=CHROMA420))
 			{
 				/* field DCT */
 				offs = i1 + (n&8) +  encparams.phy_chrom_width*(j1+((n&2)>>1));
@@ -122,7 +122,7 @@ void MacroBlock::ITransform()
 	int i = TopleftX();
 	int j = TopleftY();
 			
-	for (n=0; n<encparams.block_count; n++)
+	for (n=0; n<BLOCK_COUNT; n++)
 	{
 		cc = (n<4) ? 0 : (n&1)+1; /* color component index */
 			
@@ -150,11 +150,11 @@ void MacroBlock::ITransform()
 			/* chrominance */
 
 			/* scale coordinates */
-			i1 = (encparams.chroma_format==CHROMA444) ? i : i>>1;
-			j1 = (encparams.chroma_format!=CHROMA420) ? j : j>>1;
+			i1 = (CHROMA420==CHROMA444) ? i : i>>1;
+			j1 = (CHROMA420!=CHROMA420) ? j : j>>1;
 
 			if ((picture->pict_struct==FRAME_PICTURE) && field_dct
-				&& (encparams.chroma_format!=CHROMA420))
+				&& (CHROMA420!=CHROMA420))
 			{
 				/* field DCT */
 				offs = i1 + (n&8) + encparams.phy_chrom_width*(j1+((n&2)>>1));

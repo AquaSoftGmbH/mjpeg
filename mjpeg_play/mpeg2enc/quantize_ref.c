@@ -51,27 +51,33 @@
 #include "config.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #ifdef HAVE_FENV_H
 #include <fenv.h>
 #endif
-#include "mjpeg_logging.h"
-#include "syntaxparams.h"
+#include "syntaxconsts.h"
 #include "fastintfns.h"
 
 #include "cpu_accel.h"
 #include "simd.h"
+#include "quantize_precomp.h"
 
 #ifdef HAVE_ALTIVEC
 void enable_altivec_quantization(int opt_mpeg1);
 #endif
-
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+void enable_x86_quantization( int mpeg1 );
+#endif
 
 int (*pquant_non_intra)( int16_t *src, int16_t *dst,
-                                int q_scale_type, 
-                                int *nonsat_mquant);
-int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+                         int q_scale_type, 
+                         int dctsatlim,
+                         int *nonsat_mquant);
+int (*pquant_weight_coeff_intra)(int16_t *blk );
+int (*pquant_weight_coeff_inter)(int16_t *blk );
 
 void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
+void (*piquant_intra)(int16_t *src, int16_t *dst, int dc_prec, int mquant );
 
 /* non-linear quantization coefficient table */
 const uint8_t non_linear_mquant_table[32] =
@@ -96,6 +102,17 @@ const uint8_t map_non_linear_mquant[113] =
 	29,29,29,29,29,29,29,29,29,30,30,30,30,30,30,30,31,31,31,31,31
 };
 
+
+/* Precomputed quantisation factors for fast quantisation calculations */
+
+uint16_t intra_q_mat[64], i_intra_q_mat[64];
+uint16_t inter_q_mat[64], i_inter_q_mat[64];
+uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
+uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+
+float intra_q_tblf[113][64], inter_q_tblf[113][64];
+float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
+	
 
 /*
  * Return the code for a quantisation level
@@ -146,7 +163,9 @@ int next_larger_quant( int q_scale_type, int quant )
 
 void quant_intra( int16_t *src, 
 				  int16_t *dst,
-				  int q_scale_type, int dc_prec,
+				  int q_scale_type, 
+                  int dc_prec,
+                  int clipvalue,
 				  int *nonsat_mquant
 	)
 {
@@ -155,11 +174,11 @@ void quant_intra( int16_t *src,
   int x, y, d;
   int clipping;
   int mquant = *nonsat_mquant;
-  int clipvalue  = encparams.dctsatlim;
-  uint16_t *quant_mat = encparams.intra_q_tbl[mquant] /* intra_q */;
+  uint16_t *quant_mat = intra_q_tbl[mquant] /* intra_q */;
 
-
-  /* Inspired by suggestion by Juan.  Quantize a little harder if we clip...
+  /* 
+   * Complicate by handlin clipping by increasing quantisation.  This
+   * seems to avoid nasty artefacts in some situations...
    */
 
   do
@@ -167,7 +186,7 @@ void quant_intra( int16_t *src,
 	  clipping = 0;
 	  pbuf = dst;
 	  psrc = src;
-	  for( comp = 0; comp<encparams.block_count && !clipping; ++comp )
+	  for( comp = 0; comp<BLOCK_COUNT && !clipping; ++comp )
 	  {
 		x = psrc[0];
 		d = 8>>dc_prec; /* intra_dc_mult */
@@ -197,12 +216,12 @@ void quant_intra( int16_t *src,
 				/*(32*abs(x) + (d>>1) + d*((3*mquant+2)>>2))/(quant_mat[i]*2*mquant) */
 				;
 			if ( y > clipvalue )
-			  {
+            {
 				clipping = 1;
 				mquant = next_larger_quant(q_scale_type, mquant );
-				quant_mat = encparams.intra_q_tbl[mquant];
+				quant_mat =intra_q_tbl[mquant];
 				break;
-			  }
+            }
 #endif
 		  
 		  	pbuf[i] = intsamesign(x,y);
@@ -224,11 +243,12 @@ void quant_intra( int16_t *src,
  *
  */
 
-int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
+int quant_weight_coeff_intra( int16_t *blk  )
 {
-  int i;
-  int sum = 0;
-   for( i = 0; i < 64; i+=2 )
+    uint16_t * i_quant_mat = i_intra_q_mat;
+    int i;
+    int sum = 0;
+    for( i = 0; i < 64; i+=2 )
 	{
 		sum += abs((int)blk[i]) * (i_quant_mat[i]) + abs((int)blk[i+1]) * (i_quant_mat[i+1]);
 	}
@@ -237,6 +257,19 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
 	 noisy video are around 20.0.  */
 }
 
+int quant_weight_coeff_inter( int16_t *blk )
+{
+    uint16_t * i_quant_mat = i_inter_q_mat;
+    int i;
+    int sum = 0;
+    for( i = 0; i < 64; i+=2 )
+	{
+		sum += abs((int)blk[i]) * (i_quant_mat[i]) + abs((int)blk[i+1]) * (i_quant_mat[i+1]);
+	}
+    return sum;
+	/* In case you're wondering typical average coeff_sum's for a rather
+       noisy video are around 20.0.  */
+}
 
 							     
 /* 
@@ -258,19 +291,19 @@ int quant_weight_coeff_sum( int16_t *blk, uint16_t * i_quant_mat )
 																							     											     
 int quant_non_intra( int16_t *src, int16_t *dst,
 					 int q_scale_type,
+                     int clipvalue,
 					 int *nonsat_mquant)
 {
 	int i;
 	int x, y, d;
 	int nzflag;
 	int coeff_count;
-	int clipvalue  = encparams.dctsatlim;
 	int flags = 0;
 	int saturated = 0;
     int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = encparams.inter_q_tbl[mquant]; /* inter_q */
+	uint16_t *quant_mat = inter_q_tbl[mquant]; /* inter_q */
 	
-	coeff_count = 64*encparams.block_count;
+	coeff_count = 64*BLOCK_COUNT;
 	flags = 0;
 	nzflag = 0;
 	for (i=0; i<coeff_count; ++i)
@@ -305,7 +338,7 @@ restart:
 				if( new_mquant != mquant )
 				{
 					mquant = new_mquant;
-					quant_mat = encparams.inter_q_tbl[mquant];
+					quant_mat = inter_q_tbl[mquant];
 				}
 				else
 				{
@@ -326,10 +359,10 @@ restart:
 }
 
 /* MPEG-1 inverse quantization */
-static void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
+void iquant_intra_m1(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val;
-  uint16_t *quant_mat = encparams.intra_q;
+  uint16_t *quant_mat = intra_q_mat;
 
   dst[0] = src[0] << (3-dc_prec);
   for (i=1; i<64; i++)
@@ -347,29 +380,25 @@ static void iquant1_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 
 
 /* MPEG-2 inverse quantization */
-void iquant_intra(int16_t *src, int16_t *dst, int dc_prec, int mquant)
+void iquant_intra_m2(int16_t *src, int16_t *dst, int dc_prec, int mquant)
 {
   int i, val, sum;
 
-  if ( encparams.mpeg1  )
-    iquant1_intra(src,dst,dc_prec, mquant);
-  else
+  sum = dst[0] = src[0] << (3-dc_prec);
+  for (i=1; i<64; i++)
   {
-    sum = dst[0] = src[0] << (3-dc_prec);
-    for (i=1; i<64; i++)
-    {
-      val = (int)(src[i]*encparams.intra_q[i]*mquant)/16;
+      val = (int)(src[i]*intra_q_mat[i]*mquant)/16;
       sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-    }
-
-    /* mismatch control */
-    if ((sum&1)==0)
-      dst[63]^= 1;
   }
+  
+  /* mismatch control */
+  if ((sum&1)==0)
+      dst[63]^= 1;
 }
 
 
-void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
+
+static void iquant_non_intra_m1_low(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
 {
   int i, val;
 
@@ -412,46 +441,47 @@ void iquant_non_intra_m1(int16_t *src, int16_t *dst,  uint16_t *quant_mat)
 
 
 
-void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m1(int16_t *src, int16_t *dst, int mquant )
+{
+  iquant_non_intra_m1_low(src,dst,inter_q_tbl[mquant]);
+}
+
+void iquant_non_intra_m2(int16_t *src, int16_t *dst, int mquant )
 {
   int i, val, sum;
   uint16_t *quant_mat;
-
-  if ( encparams.mpeg1 )
-	  iquant_non_intra_m1(src,dst,encparams.inter_q_tbl[mquant]);
-  else
-  {
-	  sum = 0;
+  
+  sum = 0;
 #ifdef ORIGINAL_CODE
-
-	  for (i=0; i<64; i++)
-	  {
-		  val = src[i];
-		  if (val!=0)
-			  
-			  val = (int)((2*val+(val>0 ? 1 : -1))*encparams.inter_q[i]*mquant)/32;
-		  sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
-	  }
-#else
-	  quant_mat = encparams.inter_q_tbl[mquant];
-	  for (i=0; i<64; i++)
-	  {
-		  val = src[i];
-		  if( val != 0 )
-		  {
-			  val = abs(val);
-			  val = (int)((val+val+1)*quant_mat[i])>>5;
-			  val = intmin( val, 2047);
-			  sum += val;
-		  }
-		  dst[i] = intsamesign(src[i],val);
-	  }
-#endif
-
-    /* mismatch control */
-    if ((sum&1)==0)
-      dst[63]^= 1;
+  
+  for (i=0; i<64; i++)
+  {
+      val = src[i];
+      if (val!=0)
+          
+			  val = (int)((2*val+(val>0 ? 1 : -1))*inter_q[i]*mquant)/32;
+      sum+= dst[i] = (val>2047) ? 2047 : ((val<-2048) ? -2048 : val);
   }
+#else
+  quant_mat = inter_q_tbl[mquant];
+  for (i=0; i<64; i++)
+  {
+      val = src[i];
+      if( val != 0 )
+      {
+          val = abs(val);
+          val = (int)((val+val+1)*quant_mat[i])>>5;
+          val = intmin( val, 2047);
+          sum += val;
+      }
+      dst[i] = intsamesign(src[i],val);
+  }
+#endif
+  
+  /* mismatch control */
+  if ((sum&1)==0)
+      dst[63]^= 1;
+
 }
 
 /*
@@ -462,53 +492,59 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
   here...
 */
 
-void init_quantizer(void)
+void init_quantizer( int mpeg1, 
+                     uint16_t intra_q[64], 
+                     uint16_t inter_q[64])
 {
-#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
-	int flags = cpu_accel();
-	const char *opt_type1, *opt_type2;
-	if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
-	{
-		if( (flags & ACCEL_X86_3DNOW) != 0 )
-		{
-			opt_type1 = "3DNOW and";
-			pquant_non_intra = quant_non_intra_3dnow;
-		}
-		else if ( (flags & ACCEL_X86_SSE) != 0 )
-		{
-			opt_type1 = "SSE and";
-			pquant_non_intra = quant_non_intra_sse;
-		}
-		else 
-		{
-			opt_type1 = "MMX and";
-			pquant_non_intra = quant_non_intra_mmx;
-		}
 
-		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
-		{
-			opt_type2 = "EXTENDED MMX";
-			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra = iquant_non_intra_mmx;
-		}
-		else
-		{
-			opt_type2 = "MMX";
-			pquant_weight_coeff_sum = quant_weight_coeff_sum_mmx;
-			piquant_non_intra = iquant_non_intra_mmx;
-		}
-		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
-	}
-	else
+    int q, i;
+    for (i = 0; i < 64; i++)
+    {
+        intra_q_mat[i] = intra_q[i];
+        inter_q_mat[i] = inter_q[i];
+        i_intra_q_mat[i] = 
+            (int)(((double)IQUANT_SCALE) / ((double)intra_q[i]));
+        i_inter_q_mat[i] = 
+            (int)(((double)IQUANT_SCALE) / ((double)inter_q[i]));
+    }
+
+    for (q = 1; q <= 112; ++q)
+    {
+        for (i = 0; i < 64; i++)
+        {
+            intra_q_tbl[q][i] = intra_q[i] * q;
+            inter_q_tbl[q][i] = inter_q[i] * q;
+            intra_q_tblf[q][i] = (float)intra_q_tbl[q][i];
+            inter_q_tblf[q][i] = (float)inter_q_tbl[q][i];
+            i_intra_q_tblf[q][i] = (float)(1.0 / (intra_q_tblf[q][i] * 0.98));
+            i_intra_q_tbl[q][i] = (IQUANT_SCALE/intra_q_tbl[q][i]);
+            i_inter_q_tblf[q][i] =  (float)(1.0 / (inter_q_tblf[q][i] * 0.98));
+            i_inter_q_tbl[q][i] = (IQUANT_SCALE/inter_q_tbl[q][i]);
+        }
+    }
+    if( mpeg1 )
+    {
+        piquant_intra = iquant_intra_m1;
+        piquant_non_intra = iquant_non_intra_m1;
+    }
+    else
+    {
+        piquant_intra = iquant_intra_m2;
+        piquant_non_intra = iquant_non_intra_m2;
+    }
+    pquant_non_intra = quant_non_intra;	  
+    pquant_weight_coeff_intra = quant_weight_coeff_intra;
+    pquant_weight_coeff_inter = quant_weight_coeff_inter;
+    
+#if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
+    if( cpu_accel() )
+    {
+        enable_x86_quantization( mpeg1 );
+    }
 #endif
-	{
-		pquant_non_intra = quant_non_intra;	  
-		pquant_weight_coeff_sum = quant_weight_coeff_sum;
-		piquant_non_intra = iquant_non_intra;
-	}
 #ifdef HAVE_ALTIVEC
 	if (cpu_accel())
-	    enable_altivec_quantization(encparams.mpeg1);
+	    enable_altivec_quantization(mpeg1);
 #endif
 }
 

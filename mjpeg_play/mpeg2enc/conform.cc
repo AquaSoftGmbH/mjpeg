@@ -46,7 +46,7 @@ void range_checks(void)
     mjpeg_error_exit1("horizontal_size must be less than 4096 (MPEG-1)");
   if ((encparams.horizontal_size&4095)==0)
     mjpeg_error_exit1("horizontal_size must not be a multiple of 4096");
-  if (encparams.chroma_format!=CHROMA444 && encparams.horizontal_size%2 != 0)
+  if ( encparams.horizontal_size%2 != 0)
     mjpeg_error_exit1("horizontal_size must be a even (4:2:0 / 4:2:2)");
 
   if (encparams.vertical_size<1 || encparams.vertical_size>16383)
@@ -55,13 +55,13 @@ void range_checks(void)
     mjpeg_error_exit1("vertical size must be less than 4096 (MPEG-1)");
   if ((encparams.vertical_size&4095)==0)
     mjpeg_error_exit1("vertical_size must not be a multiple of 4096");
-  if (encparams.chroma_format==CHROMA420 && encparams.vertical_size%2 != 0)
+  if (encparams.vertical_size%2 != 0)
     mjpeg_error_exit1("vertical_size must be a even (4:2:0)");
   if(encparams.fieldpic)
   {
     if (encparams.vertical_size%2 != 0)
       mjpeg_error_exit1("vertical_size must be a even (field pictures)");
-    if (encparams.chroma_format==CHROMA420 && encparams.vertical_size%4 != 0)
+    if ( encparams.vertical_size%4 != 0)
       mjpeg_error_exit1("vertical_size must be a multiple of 4 (4:2:0 field pictures)");
   }
 
@@ -90,9 +90,6 @@ void range_checks(void)
     mjpeg_error_exit1("encparams.vbv_buffer_size must be in range 1..(2^18-1)");
   if (encparams.mpeg1 && encparams.vbv_buffer_code>=1024)
     mjpeg_error_exit1("vbv_buffer_size must be less than 1024 (MPEG-1)");
-
-  if (encparams.chroma_format<CHROMA420 || encparams.chroma_format>CHROMA444)
-    mjpeg_error_exit1("chroma_format must be in range 1...3");
 
   if (encparams.video_format<0 || encparams.video_format>5)
     mjpeg_error_exit1("video_format must be in range 0...5");
@@ -225,12 +222,6 @@ void profile_and_level_checks(void)
 
   if (encparams.profile==SP && ctl_M!=1)
     mjpeg_error_exit1("Simple Profile does not allow B pictures");
-
-  if (encparams.profile!=HP && encparams.chroma_format!=CHROMA420)
-    mjpeg_error_exit1("chroma format must be 4:2:0 in specified Profile");
-
-  if (encparams.profile==HP && encparams.chroma_format==CHROMA444)
-    mjpeg_error_exit1("chroma format must be 4:2:0 or 4:2:2 in High Profile");
 
 
   if (encparams.profile!=HP && encparams.dc_prec==3)

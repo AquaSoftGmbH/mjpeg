@@ -50,7 +50,6 @@
 #include "config.h"
 #include "mjpeg_types.h"
 #include "mjpeg_logging.h"
-#include "syntaxparams.h"
 #include "mpeg2enc.h"
 #include "predict_ref.h"
 #include "cpu_accel.h"
@@ -230,57 +229,44 @@ void calc_DMV( int pict_struct,  bool topfirst,
   }
 }
 
-void clearblock( int pict_struct,
-				 uint8_t *cur[], int i0, int j0
-	)
+void clearblock( uint8_t *cur[], int i0, int j0,
+                 int field_off,
+                 int stride
+	           )
 {
-  int i, j, w, h;
-  uint8_t *p;
+    int i, j;
+    uint8_t *p;
+    
+    p = cur[0] + field_off + i0 + stride*j0;
+    
+    for (j=0; j<16; j++)
+    {
+        for (i=0; i<16; i++)
+            p[i] = 128;
+        p+= stride;
+    }
 
-  p = cur[0] 
-	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_width : 0) 
-	  + i0 + encparams.phy_width2*j0;
+    // 422 Video
+    i0 >>= 1; j0 >>= 1; stride >>= 1; field_off >>= 1;
 
-  for (j=0; j<16; j++)
-  {
-    for (i=0; i<16; i++)
-      p[i] = 128;
-    p+= encparams.phy_width2;
-  }
 
-  w = h = 16;
-
-  if (encparams.chroma_format!=CHROMA444)
-  {
-    i0>>=1; w>>=1;
-  }
-
-  if (encparams.chroma_format==CHROMA420)
-  {
-    j0>>=1; h>>=1;
-  }
-
-  p = cur[1] 
-	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_chrom_width : 0) 
-	  + i0 + encparams.phy_chrom_width2*j0;
-
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<w; i++)
-      p[i] = 128;
-    p+= encparams.phy_chrom_width2;
-  }
-
-  p = cur[2] 
-	  + ((pict_struct==BOTTOM_FIELD) ? encparams.phy_chrom_width : 0) 
-	  + i0 + encparams.phy_chrom_width2*j0;
-
-  for (j=0; j<h; j++)
-  {
-    for (i=0; i<w; i++)
-      p[i] = 128;
-    p+= encparams.phy_chrom_width2;
-  }
+    p = cur[1] + field_off + i0 + stride*j0;
+    
+    for (j=0; j<8; j++)
+    {
+        for (i=0; i<8; i++)
+            p[i] = 128;
+        p+= stride;
+    }
+    
+    p = cur[2] + field_off + i0 + stride*j0;
+    
+    for (j=0; j<8; j++)
+    {
+        for (i=0; i<8; i++)
+            p[i] = 128;
+        p+= stride;
+    }
 }
 
 

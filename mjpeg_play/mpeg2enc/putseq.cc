@@ -61,10 +61,10 @@ void Picture::Init( EncoderParams &_encparams )
 	/* Allocate buffers for picture transformation */
 	blocks = 
         static_cast<DCTblock*>(
-            bufalloc(encparams->mb_per_pict*encparams->block_count*sizeof(DCTblock)));
+            bufalloc(encparams->mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
 	qblocks =
 		static_cast<DCTblock *>(
-            bufalloc(encparams->mb_per_pict*encparams->block_count*sizeof(DCTblock)));
+            bufalloc(encparams->mb_per_pict*BLOCK_COUNT*sizeof(DCTblock)));
     DCTblock *block = blocks;
     DCTblock *qblock = qblocks;
     for (j=0; j<encparams->enc_height2; j+=16)
@@ -72,8 +72,8 @@ void Picture::Init( EncoderParams &_encparams )
         for (i=0; i<encparams->enc_width; i+=16)
         {
             mbinfo.push_back(MacroBlock(*this, i,j, block,qblock ));
-            block += encparams->block_count;
-            qblock += encparams->block_count;
+            block += BLOCK_COUNT;
+            qblock += BLOCK_COUNT;
         }
     }
 
@@ -809,7 +809,7 @@ static void stencodeworker(Picture *picture)
 	}
 
 
-	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.1f %s", 
+	mjpeg_info("Frame end %d %c quant=%3.2f total act=%8.5f %s", 
                picture->decode, 
 			   pict_type_char[picture->pict_type],
                picture->AQ,

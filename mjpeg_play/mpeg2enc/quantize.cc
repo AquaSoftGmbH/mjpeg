@@ -59,15 +59,17 @@ void MacroBlock::Quantize()
                      qdctblocks[0],
                      picture->q_scale_type,
                      picture->dc_prec,
+                     encparams.dctsatlim,
                      &mquant );
 		
-        cbp = (1<<encparams.block_count) - 1;
+        cbp = (1<<BLOCK_COUNT) - 1;
     }
     else
     {
         cbp = (*pquant_non_intra)( dctblocks[0],
                                    qdctblocks[0],
                                    picture->q_scale_type,
+                                   encparams.dctsatlim,
                                    &mquant );
         if (cbp)
             final_me.mb_type|= MB_PATTERN;
@@ -80,14 +82,13 @@ void MacroBlock::IQuantize()
     int j;
     if (final_me.mb_type & MB_INTRA)
     {
-        for (j=0; j<encparams.block_count; j++)
-            iquant_intra(qdctblocks[j], qdctblocks[j], 
-                         picture->dc_prec, mquant);
+        for (j=0; j<BLOCK_COUNT; j++)
+            (*piquant_intra)(qdctblocks[j], qdctblocks[j], picture->dc_prec, mquant);
     }
     else
     {
-        for (j=0;j<encparams.block_count;j++)
-            iquant_non_intra(qdctblocks[j], qdctblocks[j], mquant);
+        for (j=0;j<BLOCK_COUNT;j++)
+            (*piquant_non_intra)(qdctblocks[j], qdctblocks[j], mquant);
     }
 }
 

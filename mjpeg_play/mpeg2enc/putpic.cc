@@ -153,10 +153,10 @@ void MacroBlock::PutBlocks( )
 {
     int comp;
     int cc;
-    for (comp=0; comp<encparams.block_count; comp++)
+    for (comp=0; comp<BLOCK_COUNT; comp++)
     {
         /* block loop */
-        if( cbp & (1<<(encparams.block_count-1-comp)))
+        if( cbp & (1<<(BLOCK_COUNT-1-comp)))
         {
             if (final_me.mb_type & MB_INTRA)
             {
@@ -489,9 +489,9 @@ void Picture::QuantiseAndPutEncoding(RateCtl &ratectl)
 
                 if (cur_mb->final_me.mb_type & MB_PATTERN)
                 {
-                    putcbp((cur_mb->cbp >> (encparams->block_count-6)) & 63);
-                    if (encparams->chroma_format!=CHROMA420)
-                        putbits(cur_mb->cbp,encparams->block_count-6);
+                    putcbp((cur_mb->cbp >> (BLOCK_COUNT-6)) & 63);
+                    if (CHROMA420!=CHROMA420)
+                        putbits(cur_mb->cbp,BLOCK_COUNT-6);
                 }
             
                 /* Output VLC DCT Blocks for Macroblock */

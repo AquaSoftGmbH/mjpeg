@@ -88,6 +88,7 @@ static void init_quantmat (void);
 #endif
 
 
+
 /* Command Parameter values.  These are checked and processed for
    defaults etc after parsing.  The resulting values then set the encdims->
    variables that control the actual encoder.
@@ -142,12 +143,11 @@ static int param_ignore_constraints = 0;
 static mpeg_aspect_code_t strm_aspect_ratio;
 static unsigned int strm_frame_rate_code;
 
-/* reserved: for later use */
-int param_422 = 0;
 
 static uint16_t custom_intra_quantizer_matrix[64];
 static uint16_t custom_nonintra_quantizer_matrix[64];
 
+struct EncoderParams encparams;
 
 static void DisplayFrameRates(void)
 {
@@ -1177,7 +1177,7 @@ static struct option long_options[]={
 	}
 
 	init_encoder();
-	init_quantizer();
+	init_quantizer( encparams.mpeg1, encparams.intra_q, encparams.inter_q );
 	init_motion();
 	init_transform();
 	init_predict();
@@ -1259,7 +1259,6 @@ static void init_encoder(void)
 {
 	int i;
     unsigned int n;
-	static int block_count_tab[3] = {6,8,12};
     int enc_chrom_width, enc_chrom_height;
 	initbits(); 
 
@@ -1310,6 +1309,12 @@ static void init_encoder(void)
 	encparams.enc_width = 16*encparams.mb_width;
 	encparams.enc_height = 16*encparams.mb_height;
 
+#ifdef DEBUG_MOTION_EST
+    static const int MARGIN = 64;
+#else
+    static const int MARGIN = 0;
+#endif
+    
 #ifdef HAVE_ALTIVEC
 	/* Pad encparams.phy_width to 64 so that the rowstride of 4*4
 	 * sub-sampled data will be a multiple of 16 (ideal for AltiVec)
@@ -1318,9 +1323,9 @@ static void init_encoder(void)
 	 */
 	encparams.phy_width = (encparams.enc_width + 63) & (~63);
 #else
-	encparams.phy_width = encparams.enc_width;
+	encparams.phy_width = encparams.enc_width+MARGIN;
 #endif
-	encparams.phy_height = encparams.enc_height;
+	encparams.phy_height = encparams.enc_height+MARGIN;
 
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
@@ -1329,16 +1334,16 @@ static void init_encoder(void)
 	   extra row to act as a margin to allow us to neglect / postpone
 	   edge condition checking in time-critical loops...  */
 
-	encparams.phy_chrom_width = (encparams.chroma_format==CHROMA444) 
+	encparams.phy_chrom_width = (CHROMA420==CHROMA444) 
         ? encparams.phy_width 
         : encparams.phy_width>>1;
-	encparams.phy_chrom_height = (encparams.chroma_format!=CHROMA420) 
+	encparams.phy_chrom_height = (CHROMA420!=CHROMA420) 
         ? encparams.phy_height 
         : encparams.phy_height>>1;
-	enc_chrom_width = (encparams.chroma_format==CHROMA444) 
+	enc_chrom_width = (CHROMA420==CHROMA444) 
         ? encparams.enc_width 
         : encparams.enc_width>>1;
-	enc_chrom_height = (encparams.chroma_format!=CHROMA420) 
+	enc_chrom_height = (CHROMA420!=CHROMA420) 
         ? encparams.enc_height 
         : encparams.enc_height>>1;
 
@@ -1349,12 +1354,11 @@ static void init_encoder(void)
         ? encparams.phy_chrom_width<<1 
         : encparams.phy_chrom_width;
  
-	encparams.block_count = block_count_tab[encparams.chroma_format-1];
 	encparams.lum_buffer_size = (encparams.phy_width*encparams.phy_height) +
 					 sizeof(uint8_t) *(encparams.phy_width/2)*(encparams.phy_height/2) +
-					 sizeof(uint8_t) *(encparams.phy_width/4)*(encparams.phy_height/4+1);
+					 sizeof(uint8_t) *(encparams.phy_width/4)*(encparams.phy_height/4);
 	encparams.chrom_buffer_size = encparams.phy_chrom_width*encparams.phy_chrom_height;
-
+    
 
 	encparams.fsubsample_offset = (encparams.phy_width)*(encparams.phy_height) * sizeof(uint8_t);
 	encparams.qsubsample_offset =  encparams.fsubsample_offset 
@@ -1505,9 +1509,8 @@ static void init_mpeg_parms(void)
 	encparams.low_delay       = 0;
 	encparams.constrparms     = (param_mpeg == 1 && 
 						   !MPEG_STILLS_FORMAT(param_format));
-	encparams.profile         = param_422 ? 1 : 4; /* High or Main profile resp. */
-	encparams.level           = 8;                 /* Main Level      CCIR 601 rates */
-	encparams.chroma_format   = param_422 ? CHROMA422 : CHROMA420;
+	encparams.profile         = 4; /* Main profile resp. */
+	encparams.level           = 8; /* Main Level      CCIR 601 rates */
 	switch(param_norm)
 	{
 	case 'p': encparams.video_format = 1; break;
@@ -1758,12 +1761,6 @@ static void init_mpeg_parms(void)
 			encparams.prog_seq = 1;
 		}
 
-		if (encparams.chroma_format!=CHROMA420)
-		{
-			mjpeg_info("mpeg1 - forcing chroma_format = 1 (4:2:0) - others not supported");
-			encparams.chroma_format = CHROMA420;
-		}
-
 		if (encparams.dc_prec!=0)
 		{
 			mjpeg_info("mpeg1 - setting intra_dc_precision = 0");
@@ -1885,7 +1882,7 @@ static int quant_hfnoise_filt(int orgquant, int qmat_pos )
 
 static void
 init_quantmat(void)
-    {
+{
     int i, v, q;
     const char *msg = NULL;
     const uint16_t *qmat, *niqmat;
@@ -1895,8 +1892,6 @@ init_quantmat(void)
     /* bufalloc to ensure alignment */
     encparams.intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
     encparams.inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    encparams.i_intra_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
-    encparams.i_inter_q = (uint16_t*)bufalloc(64*sizeof(uint16_t));
 
     switch  (param_hf_quant)
         {
@@ -1963,32 +1958,7 @@ init_quantmat(void)
         encparams.inter_q[i] = v;
         }
 
-    /* TODO: Inv Quant matrix initialisation should check if the
-     * fraction fits in 16 bits! */
-  
-    for (i = 0; i < 64; i++)
-        {
-            encparams.i_intra_q[i] = 
-                (int)(((double)IQUANT_SCALE) / ((double)encparams.intra_q[i]));
-            encparams.i_inter_q[i] = 
-                (int)(((double)IQUANT_SCALE) / ((double)encparams.inter_q[i]));
-        }
-    
-    for (q = 1; q <= 112; ++q)
-        {
-        for (i = 0; i < 64; i++)
-            {
-                encparams.intra_q_tbl[q][i] = encparams.intra_q[i] * q;
-                encparams.inter_q_tbl[q][i] = encparams.inter_q[i] * q;
-                encparams.intra_q_tblf[q][i] = (float)encparams.intra_q_tbl[q][i];
-                encparams.inter_q_tblf[q][i] = (float)encparams.inter_q_tbl[q][i];
-                encparams.i_intra_q_tblf[q][i] = 1.0f / (encparams.intra_q_tblf[q][i] * 0.98);
-                encparams.i_intra_q_tbl[q][i] = (IQUANT_SCALE/encparams.intra_q_tbl[q][i]);
-                encparams.i_inter_q_tblf[q][i] =  1.0f / (encparams.inter_q_tblf[q][i] * 0.98);
-                encparams.i_inter_q_tbl[q][i] = (IQUANT_SCALE/encparams.inter_q_tbl[q][i]);
-            }
-        }
-    }
+}
 
 
 /* 

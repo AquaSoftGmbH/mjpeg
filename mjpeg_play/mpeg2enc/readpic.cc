@@ -172,9 +172,9 @@ static void read_chunk(void)
          if(piperead(istrm_fd,frame_buffers[n][0]+i*encparams.phy_width,h)!=h) goto EOF_MARK;
 	  lum_mean[n] = luminance_mean(frame_buffers[n][0], encparams.phy_width, encparams.phy_height );
 
-      v = encparams.chroma_format==CHROMA420 ? 
+      v = CHROMA420==CHROMA420 ? 
 		  encparams.vertical_size/2 : encparams.vertical_size;
-      h = encparams.chroma_format!=CHROMA444 ? 
+      h = CHROMA420!=CHROMA444 ? 
 		  encparams.horizontal_size/2 : encparams.horizontal_size;
       for(i=0;i<v;i++)
          if(piperead(istrm_fd,frame_buffers[n][1]+i*encparams.phy_chrom_width,h)!=h) goto EOF_MARK;

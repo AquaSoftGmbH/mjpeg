@@ -197,7 +197,6 @@ void motion_subsampled_lum( Picture *picture )
 					 linestride,
 					 picture->curorg[0]+encparams.fsubsample_offset, 
 					 picture->curorg[0]+encparams.qsubsample_offset );
-
 }
 
 /*
@@ -877,6 +876,11 @@ void MacroBlock::FrameME()
  * TODO: MC_DMV should trigger on the current (dynamically selected)
  * bigroup length and not the fixed Maximum bi-group length M.
  */
+
+#ifdef DEBUG_MOTION_EST
+const static bool trace_me = false;
+#endif
+
 void MacroBlock::FrameMEs()
 {
     const Picture &picture = ParentPicture();
@@ -962,7 +966,10 @@ void MacroBlock::FrameMEs()
     /* We always have the possibility of INTRA coding */
 
     me.mb_type = MB_INTRA;
+    me.motion_type = 0;
     me.var = intravar;
+    me.MV[0][0][0] = 0;
+    me.MV[0][0][1] = 0;
     best_of_kind_me.push_back( me );
 
 	if (picture.pict_type==P_TYPE)
@@ -974,13 +981,11 @@ void MacroBlock::FrameMEs()
                                          encparams.phy_width, 16 );
         me.mb_type = 0;
         me.motion_type = MC_FRAME;
-        me.MV[0][0][0] = 0;
-        me.MV[0][0][1] = 0;
         me.var =  unidir_var_sum(&zeromot_mc, oldrefimg, &ssmb, 
                                  encparams.phy_width, 16 );
         best_of_kind_me.push_back( me );
 
-        
+        // DEBUG trace_me = picture.decode == 1 && i == 0 && j == 0;
         mb_me_search(picture.oldorg[0],oldrefimg[0],
                      0,
                      &ssmb, encparams.phy_width,
@@ -2083,6 +2088,42 @@ static void dpfield_estimate(
  *
  */
  
+#ifdef DEBUG_MOTION_EST
+static void log_result_set( me_result_set *rs )
+{
+    int i;
+    for( i = 0; i < rs->len; ++i )
+        printf( "%03d: %6d %3d %3d\n", 
+                i, rs->mests[i].weight, 
+                2*rs->mests[i].x, 2*rs->mests[i].y );
+}
+
+static int hash( uint8_t *blk, int stride )
+{
+    int i,j;
+    int sum = 0;
+    for( j= 0; j <16; ++j )
+        for( i = 0; i <16 ; ++i)
+            sum += *(blk+i+j*stride);
+    return sum;
+}
+
+static int dump( uint8_t *blk, int stride )
+{
+    int i,j;
+    int sum = 0;
+    for( j= 0; j <16; ++j )
+    {
+        for( i = 0; i <16 ; ++i)
+            printf( "%02x ", *(blk+i+j*stride) );
+        if( j & 1 )
+            printf( "\n" );
+        
+    }
+    return sum;
+}
+#endif
+
 static void mb_me_search(
 	uint8_t *org,
 	uint8_t *ref,
@@ -2159,14 +2200,16 @@ static void mb_me_search(
 
 
 	pbuild_sub44_mests( &sub44set,
-							ilow, jlow, ihigh, jhigh,
-							i0, j0,
-							best.weight,
-							s44org, 
-							ssblk->qmb, qlx, qh,
-							ctl_44_red); 
-
-	
+                        ilow, jlow, ihigh, jhigh,
+                        i0, j0,
+                        best.weight,
+                        s44org, 
+                        ssblk->qmb, qlx, qh,
+                        ctl_44_red); 
+#ifdef DEBUG_MOTION_EST
+    if( trace_me )
+        log_result_set( &sub44set );
+#endif	
 	/* Generate the best 2*2 sub-sampling matches from the
 	   immediate 2*2 neighbourhoods of the 4*4 sub-sampling matches.
 	   The precise fraction of the matches included is controlled
@@ -2176,12 +2219,16 @@ static void mb_me_search(
 	*/
 
 	pbuild_sub22_mests( &sub44set, &sub22set,
-							i0, j0, 
-							ihigh,  jhigh, 
-							best.weight,
-							s22org, ssblk->fmb, flx, fh,
-							ctl_22_red);
+                        i0, j0, 
+                        ihigh,  jhigh, 
+                        best.weight,
+                        s22org, ssblk->fmb, flx, fh,
+                        ctl_22_red);
 
+#ifdef DEBUG_MOTION_EST
+    if( trace_me )
+        log_result_set( &sub22set );
+#endif
 		
     /* Now choose best 1-pel match from the 2*2 neighbourhoods
 	   of the best 2*2 sub-sampled matches.
@@ -2191,10 +2238,24 @@ static void mb_me_search(
 	
 
 	pfind_best_one_pel( &sub22set,
-						   reffld, ssblk->mb, 
-						   i0, j0,
-						   ihigh, jhigh, 
-						   lx, h, &best );
+                        reffld, ssblk->mb, 
+                        i0, j0,
+                        ihigh, jhigh, 
+                        lx, h, &best );
+
+#ifdef DEBUG_MOTION_EST
+    if( trace_me )
+    {
+        printf( "BST: %6d %3d %3d @ %6d %7d (%7d)\n", 
+                best.weight, 
+                2*best.x, 2*best.y,
+                (i0+best.x)+lx*(j0+best.y),
+                hash(reffld+(i0+best.x)+lx*(j0+best.y), lx),
+                hash(ssblk->mb, lx)                
+            );
+        dump( reffld+(i0+best.x)+lx*(j0+best.y), lx );
+    };
+#endif
 	/* Final polish: half-pel search of best 1*1 against
 	   reconstructed image. 
 	*/
@@ -2228,9 +2289,19 @@ static void mb_me_search(
 				else
 					d = psad_00(orgblk,ssblk->mb,lx,h,res->sad);
 			}
+            // TODO: Mismatches motionsearch...
+#ifdef DEBUG_MOTION_EST
+            if( trace_me )
+                printf( "BSS: %6d %3d %3d @ %6d %7d\n", 
+                        d, 
+                        i, j,
+                        orgblk-reffld,
+                        hash(orgblk, lx) );
+#endif
 			d += (intabs(i-(i0<<1)) + intabs(j-(j0<<1)))<<3;
 			if (d<res->sad)
 			{
+
 				res->sad = d;
 				res->pos.x = i;
 				res->pos.y = j;

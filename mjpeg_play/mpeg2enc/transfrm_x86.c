@@ -24,10 +24,21 @@
 #include <config.h>
 #include <math.h>
 #include "mjpeg_types.h"
-#include "syntaxparams.h"
+#include "mjpeg_logging.h"
 #include "attributes.h"
 #include "mmx.h"
 #include "simd.h"
+
+
+/* Routines written  in pure (NASM) assembler */
+
+extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
+extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
+
+extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk) __asm__ ("add_pred_mmx");
+extern  void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk) __asm__ ("sub_pred_mmx");
 
 static __inline__ void
 mmx_sum_4_word_accs( mmx_t *accs, int32_t *res )
@@ -54,7 +65,8 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 				  mmx_t *sumbot_accs,
 				  mmx_t *sumsqtop_accs,
 				  mmx_t *sumsqbot_accs,
-				  mmx_t *sumxprod_accs
+				  mmx_t *sumxprod_accs,
+				  int stride
 	)
 {
 	pxor_r2r(mm0,mm0);
@@ -105,8 +117,8 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 
 	/* Load pixels from bot field into mm1.w,mm2.w
 	 */
-	movq_m2r( *((mmx_t*)(cur_lum_mb+encparams.phy_width)), mm1 );
-	movq_m2r( *((mmx_t*)(pred_lum_mb+encparams.phy_width)), mm2 );
+	movq_m2r( *((mmx_t*)(cur_lum_mb+stride)), mm1 );
+	movq_m2r( *((mmx_t*)(pred_lum_mb+stride)), mm2 );
 	
 	/* mm2 := mm1 mm4 := mm2
 	   mm1.w[0..3] := mm1.b[0..3]-mm2.b[0..3]
@@ -162,7 +174,7 @@ sum_sumsq_8bytes( uint8_t *cur_lum_mb,
 	emms();
 }
 
-int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
+int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride)
 {
 	/*
 	 * calculate prediction error (cur-pred) for top (blk0)
@@ -206,12 +218,13 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 #endif
 		sum_sumsq_8bytes( &cur_lum_mb[rowoffs], &pred_lum_mb[rowoffs],
 						  &sumtop_accs, &sumbot_accs,
-						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs
-						  );
+						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs,
+						  stride);
 		sum_sumsq_8bytes( &cur_lum_mb[rowoffs+8], &pred_lum_mb[rowoffs+8],
 						  &sumtop_accs, &sumbot_accs,
-						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs );
-		rowoffs += (encparams.phy_width<<1);
+						  &sumsqtop_accs, &sumsqbot_accs, &sumxprod_accs,
+						  stride);
+		rowoffs += (stride<<1);
 	}
 
 	mmx_sum_4_word_accs( &sumtop_accs, &sumtop );
@@ -241,4 +254,14 @@ int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb)
 		return 1; /* field DCT */
 
 	return dct_type;
+}
+
+void init_x86_transform()
+{
+	pfdct = fdct_mmx;
+	pidct = idct_mmx;
+	padd_pred = add_pred_mmx;
+	psub_pred = sub_pred_mmx;
+	pfield_dct_best = field_dct_best_mmx;
+	mjpeg_info( "SETTING MMX for TRANSFORM!");
 }

@@ -95,12 +95,12 @@ void pred (	uint8_t *src[], int sfield,
 		if (cc==1)
 		{
 			/* scale for color components */
-			if (encparams.chroma_format==CHROMA420)
+			if (CHROMA420==CHROMA420)
 			{
 				/* vertical */
 				h >>= 1; y >>= 1; dy /= 2;
 			}
-			if (encparams.chroma_format!=CHROMA444)
+			if (CHROMA420!=CHROMA444)
 			{
 				/* horizontal */
 				w >>= 1; x >>= 1; dx /= 2;
@@ -147,7 +147,9 @@ void MacroBlock::Predict()
 
 	if (final_me.mb_type&MB_INTRA)
 	{
-		clearblock(picture.pict_struct,cur,bx,by);
+		clearblock( cur,bx,by, 
+				   ((picture.pict_struct==BOTTOM_FIELD) ? encparams.phy_width : 0),
+					encparams.phy_width2);
 		return;
 	}
 

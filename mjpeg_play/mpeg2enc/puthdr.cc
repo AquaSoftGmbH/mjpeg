@@ -108,7 +108,7 @@ void putseqext(void)
 	putbits(SEQ_ID,4); /* extension_start_code_identifier */
 	putbits((encparams.profile<<4)|encparams.level,8); /* profile_and_level_indication */
 	putbits(encparams.prog_seq,1); /* progressive sequence */
-	putbits(encparams.chroma_format,2); /* chroma_format */
+	putbits(CHROMA420,2); /* chroma_format */
 	putbits(encparams.horizontal_size>>12,2); /* horizontal_size_extension */
 	putbits(encparams.vertical_size>>12,2); /* vertical_size_extension */
 	putbits(((int)ceil(encparams.bit_rate/400.0))>>18,12); /* bit_rate_extension */

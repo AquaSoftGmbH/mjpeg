@@ -52,43 +52,6 @@ extern "C"
 
 #if defined(HAVE_ASM_MMX) && defined(HAVE_ASM_NASM)
 
-	
-int quant_non_intra_3dnow( int16_t *src, int16_t *dst,
-						   int q_scale_type,
-						   int *mquant);
-int quant_non_intra_sse( int16_t *src, int16_t *dst,
-						 int q_scale_type,
-						 int *mquant);
-int quant_non_intra_mmx( int16_t *src, int16_t *dst,
-						 int q_scale_type,
-						 int *mquant);
-	
-int quantize_ni_mmx(int16_t *dst, int16_t *src, 
-					uint16_t *quant_mat, 
-					uint16_t *i_quant_mat, 
-					int imquant, int mquant, 
-					int sat_limit) __asm__ ("quantize_ni_mmx");
-
-int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
-int cpuid_flags();
-
-void iquant_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_extmmx");
-void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_m1_mmx");
-void iquant_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_extmmx");
-void iquant_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquant_non_intra_mmx");
-
-void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, int mquant );
-void iquant_non_intra_mmx(int16_t *src, int16_t *dst, int mquant );
-
-extern int field_dct_best_mmx( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
-
-extern void fdct_mmx( int16_t * blk ) __asm__ ("fdct_mmx");
-extern void idct_mmx( int16_t * blk ) __asm__ ("idct_mmx");
-
-extern void add_pred_mmx (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk) __asm__ ("add_pred_mmx");
-extern  void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
-						  int lx, int16_t *blk) __asm__ ("sub_pred_mmx");
 
 void predcomp_00_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_00_mmxe");
 void predcomp_10_mmxe(uint8_t *src,uint8_t *dst,int lx, int w, int h, int addflag) __asm__ ("predcomp_10_mmxe");
@@ -116,9 +79,6 @@ void pred_comp_mmx(
  * implementations 
  */
 
-extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
-						 int q_scale_type, 
-						 int *nonsat_mquant);
 extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );

@@ -1,6 +1,4 @@
-
-/* predict.h, Low-level Architecture neutral prediction
- * (motion compensated reconstruction) routines */
+/* syntaxparams.h, Global constants controlling MPEG syntax  */
 
 /*  (C) 2003 Andrew Stevens */
 
@@ -21,38 +19,27 @@
  *
  */
 
-#ifndef _PREDICT_H
-#define _PREDICT_H
+#ifndef _SYNTAXCONSTS_H
+#define _SYNTAXCONSTS_H
 
-#ifdef  __cplusplus
-extern "C" {
+
+/* SCale factor for fast integer arithmetic routines */
+/* Changed this and you *must* change the quantisation routines as
+   they depend on its absolute value */
+
+#define IQUANT_SCALE_POW2 16
+#define IQUANT_SCALE (1<<IQUANT_SCALE_POW2)
+#define COEFFSUM_SCALE (1<<16)
+
+#define BITCOUNT_OFFSET  0LL
+
+
+/* Globally defined MPEG syntax constants */
+
+#define CHROMA_FORMAT YUV420
+#define BLOCK_COUNT 6
+
 #endif
-
-extern void (*ppred_comp)( uint8_t *src, uint8_t *dst,
-						   int stride, int w, int h, int x, int y, int dx, int dy,
-						   int addflag);
-
-void pred_comp( uint8_t *src, uint8_t *dst,
-                int stride, int w, int h, int x, int y, int dx, int dy,
-                int addflag);
-
-void calc_DMV( int picture_struct, bool topfirst,
-			   int DMV[][2], 
-			   int *dmvector, int mvx, int mvy);
-
-void clearblock ( uint8_t *cur[3], int i0, int j0, 
-                  int field_off,
-                  int stride);
-
-void init_predict(void);
-
-
-#ifdef  __cplusplus
-}
-#endif
-
-#endif /* _PREDICT_H */
-
 
 /* 
  * Local variables:
@@ -61,4 +48,3 @@ void init_predict(void);
  *  indent-tabs-mode: nil
  * End:
  */
-

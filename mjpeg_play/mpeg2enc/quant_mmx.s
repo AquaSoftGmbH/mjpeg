@@ -21,8 +21,8 @@
 ;  quantize_ni_mmx.s:  MMX optimized coefficient quantization sub-routine
 
 
-global quantize_ni_mmx
-; int quantize_ni_mmx(short *dst, short *src, 
+global quantize_non_intra_mb_mmx
+; int quantize_non_intra_mb_mmx(short *dst, short *src, 
 ;		              short *quant_mat, short *i_quant_mat,
 ;                     int imquant, int mquant, int sat_limit)
 
@@ -58,15 +58,15 @@ overflim:
 			dw	1024-1
 			
 			;; BUFFER NO LONGER USED DUE TO IMPROVED MAIN ROUTINE...
-SECTION .bss
-align 32
-quant_buf:	resw 64
+;SECTION .bss					
+;align 32
+;quant_buf:	resw 64
 		
 SECTION .text
 		
 
 align 32
-quantize_ni_mmx:
+quantize_non_intra_mb_mmx:
 	push ebp				; save frame pointer
 	mov ebp, esp		; link
 	push ebx
@@ -257,7 +257,7 @@ saturated:
 
 
 ;;;		
-;;;  void iquant_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t
+;;;  void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t
 ;;;										 *quant_mat)
 ;;; mmx/sse Inverse mpeg-1 quantisation routine.
 ;;; 
@@ -272,9 +272,9 @@ saturated:
 		;; mm5 = 0
 
 				
-global iquant_non_intra_m1_extmmx
+global iquantize_non_intra_m1_extmmx
 align 32
-iquant_non_intra_m1_extmmx:
+iquantize_non_intra_m1_extmmx:
 		
 		push ebp				; save frame pointer
 		mov ebp, esp		; link
@@ -300,7 +300,7 @@ iquant_non_intra_m1_extmmx:
 		mov		eax, 64			; 64 coeffs in a DCT block
 		pxor	mm5, mm5
 		
-iquant_loop_m1_extmmx:
+iquantize_loop_m1_extmmx:
 		movq	mm0, [edi]      ; mm0 = *psrc
 		add		edi,8
 		pxor	mm1,mm1
@@ -343,7 +343,7 @@ iquant_loop_m1_extmmx:
 		add		esi,8
 
 		sub		eax, 4
-		jnz		iquant_loop_m1_extmmx
+		jnz		iquantize_loop_m1_extmmx
 		
 		pop	edx
 		pop edi
@@ -357,7 +357,7 @@ iquant_loop_m1_extmmx:
 
 
 ;;;		
-;;;  void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t
+;;;  void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t
 ;;;                               *quant_mat)
 ;;; eax - block counter...
 ;;; edi - src
@@ -370,9 +370,9 @@ iquant_loop_m1_extmmx:
 		;; mm5 = 0
 
 				
-global iquant_non_intra_m1_mmx
+global iquantize_non_intra_m1_mmx
 align 32
-iquant_non_intra_m1_mmx:
+iquantize_non_intra_m1_mmx:
 		
 		push ebp				; save frame pointer
 		mov ebp, esp		; link
@@ -398,7 +398,7 @@ iquant_non_intra_m1_mmx:
 		mov		eax, 64			; 64 coeffs in a DCT block
 		pxor	mm5, mm5
 		
-iquant_m1_loop:
+iquantize_m1_loop:
 		movq	mm0, [edi]      ; mm0 = *psrc
 		add		edi,8
 		pxor    mm1, mm1		
@@ -452,7 +452,7 @@ iquant_m1_loop:
 		add		esi,8
 
 		sub		eax, 4
-		jnz		near iquant_m1_loop
+		jnz		near iquantize_m1_loop
 		
 		pop	edx
 		pop edi
@@ -465,7 +465,7 @@ iquant_m1_loop:
 		ret			
 						
 ;;;		
-;;;  void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, uint16_t
+;;;  void iquantize_non_intra_extmmx(int16_t *src, int16_t *dst, uint16_t
 ;;;										 *quant_mat)
 ;;; extmmx Inverse mpeg-2 quantisation routine.
 ;;; 
@@ -474,9 +474,9 @@ iquant_m1_loop:
 ;;; esi - dst
 ;;; edx - quant_mat
 
-global iquant_non_intra_m2_extmmx
+global iquantize_non_intra_m2_extmmx
 align 32
-iquant_non_intra_m2_extmmx:
+iquantize_non_intra_m2_extmmx:
 		;; mm0
 		;; mm1
 		;; mm2
@@ -510,7 +510,7 @@ iquant_non_intra_m2_extmmx:
 		mov		eax, 64			; 64 coeffs in a DCT block
 		pxor	mm5, mm5
 		pxor	mm4, mm4
-iquant_loop_extmmx_m2:
+iquantize_loop_extmmx_m2:
 		movq	mm0, [edi]      ; mm0 = *psrc
 		add		edi,8
 		pxor	mm1,mm1
@@ -545,7 +545,7 @@ iquant_loop_extmmx_m2:
 		add		esi,8
 
 		sub		eax, 4
-		jnz		iquant_loop_extmmx_m2
+		jnz		iquantize_loop_extmmx_m2
 
 		;; Mismatch control compute lower bits of sum...
 		movq	mm3,mm4
@@ -572,7 +572,7 @@ iquant_loop_extmmx_m2:
 		ret			
 
 ;;;		
-;;;  void iquant_non_intra_mmx(int16_t *src, int16_t *dst, uint16_t
+;;;  void iquantize_non_intra_mmx(int16_t *src, int16_t *dst, uint16_t
 ;;;                               *quant_mat)
 ;;; eax - block counter...
 ;;; edi - src
@@ -581,9 +581,9 @@ iquant_loop_extmmx_m2:
 
 
 				
-global iquant_non_intra_m2_mmx
+global iquantize_non_intra_m2_mmx
 align 32
-iquant_non_intra_m2_mmx:
+iquantize_non_intra_m2_mmx:
 		;; mm0
 		;; mm1
 		;; mm2
@@ -617,7 +617,7 @@ iquant_non_intra_m2_mmx:
 		mov		eax, 64			; 64 coeffs in a DCT block
 		pxor	mm5, mm5
 		
-iquant_m2_loop:
+iquantize_m2_loop:
 		movq	mm0, [edi]      ; mm0 = *psrc
 		add		edi,8
 		pxor    mm1, mm1		
@@ -662,7 +662,7 @@ iquant_m2_loop:
 		add		esi,8
 
 		sub		eax, 4
-		jnz		near iquant_m2_loop
+		jnz		near iquantize_m2_loop
 
 		;; Mismatch control compute lower bits of sum...
 		movq	mm3,mm4

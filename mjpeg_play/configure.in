@@ -627,6 +627,7 @@ if test "x${GCC}" != "xyes" ; then
 fi
 AC_MSG_CHECKING(what warning flags to pass to the C compiler)
 warnCFLAGS=
+warnCXXFLAGS=
 if test "x$enable_compile_warnings" != "xno" ; then
  if test "x$GCC" = "xyes" ; then
     case "$CFLAGS" in
@@ -635,16 +636,19 @@ if test "x$enable_compile_warnings" != "xno" ; then
     esac
   if test "x$enable_compile_warnings" = "xyes" ; then
     warnCFLAGS="$warnCFLAGS -Wmissing-prototypes -Wmissing-declarations -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual"
+    warnCXXFLAGS="$warnCXXFLAGS -Wmissing-prototypes  -Wpointer-arith -Wcast-align -Wwrite-strings -Wcast-qual"
   fi
   if test "x$enable_warnings_as_errors" = "xyes" ; then
     warnCFLAGS="$warnCFLAGS -Werror"
+    warnCXXFLAGS="$warnCXXFLAGS -Werror"
   fi
  fi
 fi
 AC_MSG_RESULT($warnCFLAGS)
+AC_MSG_RESULT($warnCXXFLAGS)
 if test "x$cflags_set" != "xyes" ; then
   CFLAGS="$CFLAGS $warnCFLAGS"
-  CXXFLAGS="$CXXFLAGS $warnCFLAGS"
+  CXXFLAGS="$CXXFLAGS $warnCXXFLAGS"
   cflags_set=yes
 fi
 

@@ -5,6 +5,7 @@
 
 #include "config.h"
 #include "mjpeg_types.h"
+#include "syntaxconsts.h"
 
 /* choose between declaration (GLOBAL undefined) and definition
  * (GLOBAL defined) GLOBAL is defined in exactly one file (mpeg2enc.c)
@@ -46,15 +47,6 @@
  */
 
 
-/* SCale factor for fast integer arithmetic routines */
-/* Changed this and you *must* change the quantisation routines as
-   they depend on its absolute value */
-
-#define IQUANT_SCALE_POW2 16
-#define IQUANT_SCALE (1<<IQUANT_SCALE_POW2)
-#define COEFFSUM_SCALE (1<<16)
-
-#define BITCOUNT_OFFSET  0LL
 
 /*
   How many frames to read in one go and the size of the frame data buffer.
@@ -153,6 +145,7 @@ EXTERN int istrm_fd;
 
 struct RateCtl;
 
+
 struct EncoderParams
 {
 	/**************
@@ -200,7 +193,6 @@ struct EncoderParams
 			
 
 	bool prog_seq; /* progressive sequence */
-	int chroma_format;		/* YUV422 *ONLY* supported at present */
 	int low_delay; /* no B pictures, skipped pictures */
 
     /*******
@@ -240,7 +232,6 @@ struct EncoderParams
 	 * Encoder internal derived values and parameters
 	 *************************** */
 
-	struct RateCtl *bitrate_controller;	/* Ick struct for use in .c files */
 	int enc_width, 
 		enc_height;   /* encoded frame size (pels) multiples of 16 or 32 */
 	
@@ -252,7 +243,7 @@ struct EncoderParams
 	int lum_buffer_size, chrom_buffer_size;
 
 
-	int phy_chrom_width,phy_chrom_height, block_count;
+	int phy_chrom_width,phy_chrom_height;
 	int mb_width, mb_height;	/* frame size (macroblocks) */
 
 	/* Picture dimensioning (allowing for interlaced/non-interlaced coding) */
@@ -269,18 +260,10 @@ struct EncoderParams
     /* Selected intra/non_intra quantization matrices both ordinary*/
 	/* and inverted */
 	uint16_t *intra_q, *inter_q;
-	uint16_t *i_intra_q, *i_inter_q;
 
-	/* Precomputed quantisation factors for fast quantisation calculations */
-	uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
-	uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
-	float intra_q_tblf[113][64], inter_q_tblf[113][64];
-	float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
-	
+	struct RateCtl *bitrate_controller;	/* Ick struct for use in .c files */
 
 };
 
-
-EXTERN struct EncoderParams encparams;
 
 #endif

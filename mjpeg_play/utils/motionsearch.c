@@ -400,8 +400,7 @@ STATIC void find_best_one_pel( me_result_set *sub22set,
 
 		matchrec = sub22set->mests[k];
 		orgblk = org + (i0+matchrec.x)+rowstride*(j0+matchrec.y);
-		penalty = intmax(intabs(matchrec.x),intabs(matchrec.y))<<5;
-
+		penalty = (intabs(matchrec.x)+intabs(matchrec.y))<<3;
 		for( i = 0; i < 4; ++i )
 		{
 			if( matchrec.x <= ilim && matchrec.y <= jlim )

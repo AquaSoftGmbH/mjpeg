@@ -29,31 +29,36 @@
 
 extern int (*pquant_non_intra)( int16_t *src, int16_t *dst,
                                 int q_scale_type, 
+                                int dctsatlim,
                                 int *nonsat_mquant);
-extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
+extern int (*pquant_weight_coeff_intra)(int16_t *blk );
+extern int (*pquant_weight_coeff_inter)(int16_t *blk );
 
 extern void (*piquant_non_intra)(int16_t *src, int16_t *dst, int mquant );
+extern void (*piquant_intra)(int16_t *src, int16_t *dst, int dc_prec, int mquant );
 
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
-void init_quantizer(void);
+void init_quantizer( int mpeg1, uint16_t intra_q[64], uint16_t inter_q[64]);
 
 int next_larger_quant( int q_scale_type, int quant );
 int quant_code(  int q_scale_type, int mquant );
 void quant_intra( int16_t *src, int16_t *dst, 
 				  int q_scale_type, int dc_prec,
+                  int dctsatlim,
 				  int *nonsat_mquant);
 int quant_non_intra( int16_t *src, int16_t *dst,
 					 int q_scale_type,
+                     int dctsatlim,
 					 int *nonsat_mquant);
-void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
-void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
+void iquant_intra_m1 ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
+void iquant_intra_m2 ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
+void iquant_non_intra_m1 (int16_t *src, int16_t *dst, int mquant);
+void iquant_non_intra_m2 (int16_t *src, int16_t *dst, int mquant);
 
-int quant_weight_coeff_sum(int16_t *blk, uint16_t * i_quant_mat);
-void iquant_non_intra_m1(int16_t *src, int16_t *dst, uint16_t *quant_mat);
 
 
 

@@ -42,11 +42,36 @@
 #ifdef HAVE_FENV_H
 #include <fenv.h>
 #endif
-#include "syntaxparams.h"
-#include "tables.h"
+#include "syntaxconsts.h"
+#include "mjpeg_logging.h"
 #include "fastintfns.h"
+#include "cpu_accel.h"
 #include "simd.h"
 #include "mmx.h"
+#include "tables.h"
+#include "quantize_precomp.h"
+
+extern uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
+extern uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+
+extern float intra_q_tblf[113][64], inter_q_tblf[113][64];
+extern float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
+
+/* Implemented in pure (NASM) assembler routines 	*/
+
+int quantize_non_intra_mb_mmx(int16_t *dst, int16_t *src, 
+					uint16_t *quant_mat, 
+					uint16_t *i_quant_mat, 
+					int imquant, int mquant, 
+					int sat_limit) __asm__ ("quantize_non_intra_mb_mmx");
+					
+int quant_weight_coeff_sum_mmx (int16_t *blk, uint16_t *i_quant_mat ) __asm__ ("quant_weight_coeff_sum_mmx");
+
+
+void iquantize_non_intra_m1_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m1_extmmx");
+void iquantize_non_intra_m1_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m1_mmx");
+void iquantize_non_intra_m2_extmmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m2_extmmx");
+void iquantize_non_intra_m2_mmx(int16_t *src, int16_t *dst, uint16_t *qmat) __asm__ ("iquantize_non_intra_m2_mmx");
 
 /* 
  * Quantisation for non-intra blocks 
@@ -75,12 +100,12 @@
  
 int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 							int q_scale_type,
+							int satlim,
 							int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = encparams.dctsatlim;
 	float *i_quant_matf; 
-	int   coeff_count = 64*encparams.block_count;
+	int   coeff_count = 64*BLOCK_COUNT;
 	int mquant = *nonsat_mquant;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
@@ -98,7 +123,7 @@ int quant_non_intra_3dnow(	int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = encparams.i_inter_q_tblf[mquant];
+	i_quant_matf = i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -192,6 +217,7 @@ restart:
 				{
 					return quant_non_intra( src, dst, 
 											q_scale_type,
+										    satlim,
 											nonsat_mquant);
 				}
 			}
@@ -216,13 +242,13 @@ static int trunc_mxcsr = 0x7f80;
  
 int quant_non_intra_sse( int16_t *src, int16_t *dst,
 						 int q_scale_type,
+						 int satlim,
 						 int *nonsat_mquant)
 {
 	int saturated;
-	int satlim = encparams.dctsatlim;
 	float *i_quant_matf; 
 	int mquant = *nonsat_mquant;
-	int   coeff_count = 64*encparams.block_count;
+	int   coeff_count = 64*BLOCK_COUNT;
 	uint32_t nzflag, flags;
 	int16_t *psrc, *pdst;
 	float *piqf;
@@ -242,7 +268,7 @@ int quant_non_intra_sse( int16_t *src, int16_t *dst,
 	punpcklwd_r2r( mm1, mm1 );
 	punpckldq_r2r( mm1, mm1 );
 restart:
-	i_quant_matf = encparams.i_inter_q_tblf[mquant];
+	i_quant_matf = i_inter_q_tblf[mquant];
 	flags = 0;
 	piqf = i_quant_matf;
 	saturated = 0;
@@ -325,7 +351,9 @@ restart:
 				}
 				else
 				{
-					return quant_non_intra(src, dst, q_scale_type,
+					return quant_non_intra(src, dst, 
+										   q_scale_type,
+										   satlim,
 										   nonsat_mquant);
 				}
 			}
@@ -355,24 +383,24 @@ restart:
 																							     											     
 int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 						 int q_scale_type,
+						 int clipvalue,
 						 int *nonsat_mquant)
 {
 
 	int nzflag;
-	int clipvalue  = encparams.dctsatlim;
 	int flags = 0;
 	int saturated = 0;
 	int mquant = *nonsat_mquant;
-	uint16_t *quant_mat = encparams.inter_q;
+	uint16_t *quant_mat = inter_q_mat;
 	int comp;
-	uint16_t *i_quant_mat = encparams.i_inter_q;
+	uint16_t *i_quant_mat = i_inter_q_mat;
 	int imquant;
 	int16_t *psrc, *pdst;
 
 	/* MMX routine does not work right for MQ=2 ... (no unsigned mult) */
 	if( mquant == 2 )
 	{
-		return quant_non_intra(src, dst, q_scale_type, nonsat_mquant);
+		return quant_non_intra(src, dst, q_scale_type, clipvalue, nonsat_mquant);
 	}
 	/* If available use the fast MMX quantiser.  It returns
 	   flags to signal if coefficients are outside its limited range or
@@ -390,7 +418,7 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 	do
 	{
 		imquant = (IQUANT_SCALE/mquant);
-		flags = quantize_ni_mmx( pdst, psrc, quant_mat, i_quant_mat, 
+		flags = quantize_non_intra_mb_mmx( pdst, psrc, quant_mat, i_quant_mat, 
 								 imquant, mquant, clipvalue );
 		nzflag = (nzflag << 1) |( !!(flags & 0xffff0000));
   
@@ -427,33 +455,92 @@ int quant_non_intra_mmx( int16_t *src, int16_t *dst,
 			non 32-bit int machines ;-)) if out of dynamic range for MMX...
 		*/
 	}
-	while( comp < encparams.block_count  && (flags & 0xff) == 0  );
+	while( comp < BLOCK_COUNT  && (flags & 0xff) == 0  );
 
 
 	/* Coefficient out of range or can't avoid saturation:
 	fall back to the original 32-bit int version: this is rare */
 	if(  (flags & 0xff) != 0 || saturated)
 	{
-		return quant_non_intra( src, dst, q_scale_type, nonsat_mquant);
+		return quant_non_intra( src, dst, q_scale_type, clipvalue, nonsat_mquant);
 	}
 
 	*nonsat_mquant = mquant;
 	return nzflag;
 }
 
-void iquant_non_intra_extmmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m1_extmmx(int16_t *src, int16_t *dst, int mquant )
 {
-  if ( encparams.mpeg1 )
-	  iquant_non_intra_m1_extmmx(src,dst,encparams.inter_q_tbl[mquant]);
-  else
-	  iquant_non_intra_m2_extmmx(src,dst,encparams.inter_q_tbl[mquant]);
+	iquantize_non_intra_m1_extmmx(src,dst,inter_q_tbl[mquant]);
 }
 
-void iquant_non_intra_mmx(int16_t *src, int16_t *dst, int mquant )
+void iquant_non_intra_m2_extmmx(int16_t *src, int16_t *dst, int mquant )
 {
-  if ( encparams.mpeg1 )
-	  iquant_non_intra_m1_mmx(src,dst,encparams.inter_q_tbl[mquant]);
-  else
-	  iquant_non_intra_m2_mmx(src,dst,encparams.inter_q_tbl[mquant]);
-  
+	iquantize_non_intra_m2_extmmx(src,dst,inter_q_tbl[mquant]);
+}
+
+void iquant_non_intra_m1_mmx(int16_t *src, int16_t *dst, int mquant )
+{
+	iquantize_non_intra_m1_mmx(src,dst,inter_q_tbl[mquant]);
+}
+
+void iquant_non_intra_m2_mmx(int16_t *src, int16_t *dst, int mquant )
+{
+	iquantize_non_intra_m2_mmx(src,dst,inter_q_tbl[mquant]);
+}
+
+int quant_weight_coeff_x86_intra( int16_t *blk )
+{
+	return quant_weight_coeff_sum_mmx( blk, i_intra_q_mat );
+}
+int quant_weight_coeff_x86_inter( int16_t *blk )
+{
+	return quant_weight_coeff_sum_mmx( blk, i_inter_q_mat );
+}
+
+
+void enable_x86_quantization( int mpeg1)
+{
+	int flags = cpu_accel();
+	const char *opt_type1, *opt_type2;
+	if( (flags & ACCEL_X86_MMX) != 0 ) /* MMX CPU */
+	{
+		if( (flags & ACCEL_X86_3DNOW) != 0 )
+		{
+			opt_type1 = "3DNOW and";
+			pquant_non_intra = quant_non_intra_3dnow;
+		}
+		else if ( (flags & ACCEL_X86_SSE) != 0 )
+		{
+			opt_type1 = "SSE and";
+			pquant_non_intra = quant_non_intra_sse;
+		}
+		else 
+		{
+			opt_type1 = "MMX and";
+			pquant_non_intra = quant_non_intra_mmx;
+		}
+
+		if ( (flags & ACCEL_X86_MMXEXT) != 0 )
+		{
+			opt_type2 = "EXTENDED MMX";
+			pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+			pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+            if( mpeg1 )
+                piquant_non_intra = iquant_non_intra_m1_extmmx;
+            else
+                piquant_non_intra = iquant_non_intra_m2_extmmx;
+        }
+		else
+		{
+			opt_type2 = "MMX";
+			pquant_weight_coeff_intra = quant_weight_coeff_x86_intra;
+			pquant_weight_coeff_inter = quant_weight_coeff_x86_inter;
+            if( mpeg1 )
+                piquant_non_intra = iquant_non_intra_m1_mmx;
+            else
+                piquant_non_intra = iquant_non_intra_m2_mmx;
+		}
+		mjpeg_info( "SETTING %s %s for QUANTIZER!", opt_type1, opt_type2);
+	}
 }

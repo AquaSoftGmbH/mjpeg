@@ -707,18 +707,22 @@ static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 			varsum += (double)picture.mbinfo[k].final_me.var;
 			if( picture.mbinfo[k].final_me.mb_type  & MB_INTRA )
 			{
-				i_q_mat = encparams.i_intra_q;
 				/* Compensate for the wholly disproprotionate weight
 				 of the DC coefficients.  Shold produce more sensible
 				 results...  yes... it *is* an mostly empirically derived
 				 fudge factor ;-)
 				*/
 				blksum =  -80*COEFFSUM_SCALE;
+				for( l = 0; l < 6; ++l )
+					blksum += 
+						(*pquant_weight_coeff_intra)( picture.mbinfo[k].RawDCTblocks()[l] ) ;
 			}
 			else
 			{
-				i_q_mat = encparams.i_inter_q;
 				blksum = 0;
+				for( l = 0; l < 6; ++l )
+					blksum += 
+						(*pquant_weight_coeff_inter)( picture.mbinfo[k].RawDCTblocks()[l] ) ;
 			}
 			/* It takes some bits to code even an entirely zero block...
 			   It also makes a lot of calculations a lot better conditioned
@@ -727,10 +731,6 @@ static void calc_actj(Picture &picture, double *act_sum, double *var_sum)
 			 */
 
 
-			for( l = 0; l < 6; ++l )
-				blksum += 
-					(*pquant_weight_coeff_sum)
-					( picture.mbinfo[k].RawDCTblocks()[l], i_q_mat ) ;
 			actj = (double)blksum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;

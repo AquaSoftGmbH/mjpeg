@@ -66,9 +66,10 @@ extern void (*padd_pred) (uint8_t *pred, uint8_t *cur,
 				   int lx, int16_t *blk);
 extern void (*psub_pred) (uint8_t *pred, uint8_t *cur,
 				   int lx, int16_t *blk);
-extern int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
+extern int (*pfield_dct_best)( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb,
+                               int stride);
 
-int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb);
+int field_dct_best( uint8_t *cur_lum_mb, uint8_t *pred_lum_mb, int stride);
 
 void add_pred (uint8_t *pred, uint8_t *cur,
                int lx, int16_t *blk);

@@ -138,6 +138,7 @@ EXTERN unsigned int frame_buffer_size
 
 EXTERN FILE *outfile, *statfile; /* file descriptors */
 EXTERN int inputtype; /* format of input frames */
+extern struct EncoderParams encparams;
 
 
 

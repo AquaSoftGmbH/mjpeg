@@ -1,8 +1,15 @@
 IN PROGRESS
 
 	- Tidy up the source code placement of the Picture, StreamState etc classes
-	- Probably need to create and 'Encoder' object
-	- Shouldn't picture et al be called <X>Encoder?
+	- Probably need to create an 'Encoder' object
+	- Shouldn't <X> (picture et al) be called <X>Encoder?
+
+	- Remove 'clearing' of INTRA blocks for prediction... what a waste
+	of CPU resources...
+	- Remove old YUV444 YUV422 video support: search for CHROMA_FORMAT!!
+	- Set satlim and scale type in quantizer during init
+	- Move penalty for motion vector length into sad routine so it it
+	is always consistent (or write a penalty inline).
 
 Near Future improvements
 
