@@ -27,6 +27,8 @@
                These parameters are usefull for videos captured from other sources
                which do not appear centered when played with the BUZ
 
+    -a [01]    audio playback (defaults to on)
+
     -s num     skip num seconds before playing
 
     -c [01]    Sync correction off/on (default on)
@@ -146,6 +148,7 @@ static int  zoom_to_fit = 0;
 static int  MJPG_nbufs = 8;          /* Number of MJPEG buffers */
 static int  skip_seconds = 0;
 static double test_factor = 1.0; /* Internal test of synchronizaion only */
+static int  audio_enable = 1;
 
 /* gz: This makes lavplay play back in software */
 int soft_play = 0;
@@ -250,6 +253,15 @@ void malloc_error()
    exit(1);
 }
 
+void sig_cont(int sig)
+{
+   int res;
+
+   res = fcntl(0,F_SETFL,O_NONBLOCK);
+   if (res<0) system_error("making stdin nonblocking","fcntl F_SETFL");
+}
+
+
 static int inc_frames(long num)
 {
    nframe += num;
@@ -324,7 +336,7 @@ int queue_next_frame(char *vbuff, int skip_video, int skip_audio, int skip_incr)
 
    /* Read audio, if present */
 
-   if(el.has_audio && !skip_audio)
+   if(el.has_audio && !skip_audio && audio_enable)
    {
       mute = play_speed==0 ||
              (audio_mute && play_speed!=1 && play_speed!=-1);
@@ -373,8 +385,9 @@ void Usage(char *progname)
    fprintf(stderr, "   -x         Exchange fields of an interlaced video\n");
    fprintf(stderr, "   -z         Zoom video to fill screen as much as possible\n");
    fprintf(stderr, "   -S         Use software MJPEG playback (based on SDL and libmjpeg)\n");
-   fprintf(stderr, "   -Z         If using software MJPEG playback, switch to fullscreen\n");
+   fprintf(stderr, "   -Z         Switch to fullscreen\n");
    fprintf(stderr, "   -H         Use hardware MJPEG on-screen playback\n");
+   fprintf(stderr, "   -a [01]    Eanble audio playback\n");
    exit(1);
 }
 
@@ -417,6 +430,7 @@ int main(int argc, char ** argv)
    char *sbuffer;
    struct mjpeg_params bp;
    struct mjpeg_sync bs;
+   struct sigaction action, old_action;
    
    /* Output Version information */
 
@@ -426,9 +440,12 @@ int main(int argc, char ** argv)
    if(argc < 2) Usage(argv[0]);
 
    nerr = 0;
-   while( (n=getopt(argc,argv,"h:v:s:c:n:t:qSZHxzg")) != EOF)
+   while( (n=getopt(argc,argv,"a:h:v:s:c:n:t:qSZHxzg")) != EOF)
    {
       switch(n) {
+	 case 'a':
+	    audio_enable = atoi(optarg);
+	    break;
 
          case 'h':
             h_offset = atoi(optarg);
@@ -508,7 +525,7 @@ int main(int argc, char ** argv)
 
    /* Seconds per audio sample: */
 
-   if(el.has_audio)
+   if(el.has_audio && audio_enable)
       spas = 1.0/el.audio_rate;
    else
       spas = 0.;
@@ -611,7 +628,7 @@ int main(int argc, char ** argv)
 
        unlock_update_screen();
      }
-   if (el.has_audio)
+   if (el.has_audio && audio_enable)
    {
       res = audio_init(0,(el.audio_chans>1),el.audio_bits,
                        (int)(el.audio_rate*test_factor));
@@ -749,13 +766,19 @@ int main(int argc, char ** argv)
    mjpeg_set_params(mjpeg, &bp);
 
   /* Make stdin nonblocking */
+  memset(&action, 0, sizeof(action));
 
-   res = fcntl(0,F_SETFL,O_NONBLOCK);
-   if (res<0) system_error("making stdin nonblocking","fcntl F_SETFL");
+  action.sa_handler = sig_cont;
+  action.sa_flags = SA_RESTART;
+
+
+   sigaction(SIGCONT, &action, &old_action);
+
+   sig_cont(0);
 
    /* Queue the buffers read, this triggers video playback */
 
-   if (el.has_audio) audio_start();
+   if (el.has_audio && audio_enable) audio_start();
 
 
    for(n = 0; n < nqueue; n++)
@@ -806,7 +829,7 @@ int main(int argc, char ** argv)
       if((nsync-first_free)> mjpeg->br.count-3)
          lavplay_msg(LAVPLAY_WARNING,"Disk too slow, can not keep pace!","");
 
-      if(el.has_audio)
+      if(el.has_audio && audio_enable)
       {
          audio_get_output_status(&audio_tmstmp,&nb_out,&nb_err);
          if(audio_tmstmp.tv_sec)
