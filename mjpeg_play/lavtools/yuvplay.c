@@ -42,11 +42,12 @@ static void usage (void) {
 	  "  -s : display size, width x height\n"
 	  "  -f : frame rate (overrides rate in stream header)\n"
           "  -c : don't sync on frames - plays at stream speed\n"
+	  "  -v : verbosity {0, 1, 2} [default: 1]\n"
 	  );
 }
 
 static void sigint_handler (int signal) {
-   mjpeg_log (LOG_WARN, "Caugth SIGINT, exiting...\n");
+   mjpeg_warn("Caught SIGINT, exiting...\n");
    got_sigint = 1;
 }
 
@@ -69,6 +70,7 @@ static char *print_status(int frame, double framerate) {
 
 int main(int argc, char *argv[])
 {
+   int verbosity = 1;
    double time_between_frames = 0.0;
    double frame_rate = 0.0;
    struct timeval time_now;
@@ -82,7 +84,7 @@ int main(int argc, char *argv[])
    int frame_height;
    int wait_for_sync = 1;
 
-   while ((n = getopt(argc, argv, "hs:f:c")) != EOF) {
+   while ((n = getopt(argc, argv, "hs:f:cv:")) != EOF) {
       switch (n) {
          case 'c':
             wait_for_sync = 0;
@@ -99,6 +101,12 @@ int main(int argc, char *argv[])
 		  if( frame_rate <= 0.0 || frame_rate > 200.0 )
 			  mjpeg_error_exit1( "-f option needs argument > 0.0 and < 200.0\n");
 		  break;
+          case 'v':
+	    verbosity = atoi(optarg);
+	    if ((verbosity < 0) || (verbosity > 2))
+	      mjpeg_error_exit1("-v needs argument from {0, 1, 2} (not %d)\n",
+				verbosity);
+	    break;
 	  case 'h':
 	  case '?':
             usage();
@@ -110,10 +118,12 @@ int main(int argc, char *argv[])
       }
    }
 
+   mjpeg_default_handler_verbosity(verbosity);
+
    y4m_init_stream_info(&streaminfo);
    y4m_init_frame_info(&frameinfo);
    if ((n = y4m_read_stream_header(in_fd, &streaminfo)) != Y4M_OK) {
-      mjpeg_log (LOG_ERROR, "Couldn't read YUV4MPEG header: %s!\n",
+      mjpeg_error("Couldn't read YUV4MPEG2 header: %s!\n",
          y4m_strerr(n));
       exit (1);
    }
@@ -148,7 +158,7 @@ int main(int argc, char *argv[])
 
    /* Initialize the SDL library */
    if( SDL_Init(SDL_INIT_VIDEO) < 0 ) {
-      mjpeg_log(LOG_ERROR, "Couldn't initialize SDL: %s\n", SDL_GetError());
+      mjpeg_error("Couldn't initialize SDL: %s\n", SDL_GetError());
       exit(1);
    }
 
@@ -159,13 +169,13 @@ int main(int argc, char *argv[])
 
    screen = SDL_SetVideoMode(screenwidth, screenheight, 0, SDL_SWSURFACE);
    if ( screen == NULL ) {
-      mjpeg_log(LOG_ERROR, "SDL: Couldn't set %dx%d: %s\n", screenwidth,
-         screenheight, SDL_GetError());
+      mjpeg_error("SDL: Couldn't set %dx%d: %s\n",
+		  screenwidth, screenheight, SDL_GetError());
       exit(1);
    }
    else {
-      mjpeg_log(LOG_DEBUG, "SDL: Set %dx%d @ %d bpp\n", screenwidth,
-         screenheight, screen->format->BitsPerPixel);
+      mjpeg_debug("SDL: Set %dx%d @ %d bpp\n",
+		  screenwidth, screenheight, screen->format->BitsPerPixel);
    }
 
    /* since IYUV ordering is not supported by Xv accel on maddog's system
@@ -178,7 +188,8 @@ int main(int argc, char *argv[])
 				      SDL_YV12_OVERLAY,
 				      screen);
    if ( yuv_overlay == NULL ) {
-      mjpeg_log(LOG_ERROR, "SDL: Couldn't create SDL_yuv_overlay: %s\n", SDL_GetError());
+      mjpeg_error("SDL: Couldn't create SDL_yuv_overlay: %s\n",
+		      SDL_GetError());
       exit(1);
    }
    if ( yuv_overlay->hw_overlay ) 
@@ -198,10 +209,10 @@ int main(int argc, char *argv[])
    {
 	   /* frame rate has not been set from command-line... */
 	   if (Y4M_RATIO_EQL(y4m_fps_UNKNOWN, y4m_si_get_framerate(&streaminfo))) {
-		   mjpeg_info( "Frame-rate undefined in stream... assuming 25Hz!\n" );
-		   frame_rate = 25.0;
+	     mjpeg_info("Frame-rate undefined in stream... assuming 25Hz!\n" );
+	     frame_rate = 25.0;
 	   } else {
-		   frame_rate = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
+	     frame_rate = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
 	   }
    }
    time_between_frames = 1.e6 / frame_rate;
@@ -227,12 +238,10 @@ int main(int argc, char *argv[])
       }
       SDL_UnlockYUVOverlay(yuv_overlay);
 
-
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
-
-      fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
-          print_status(frame, frame_rate));
+      mjpeg_info("Playing frame %4.4d - %s\n",
+		 frame, print_status(frame, frame_rate));
 
       if (wait_for_sync)
          while(get_time_diff(time_now) < time_between_frames) {
@@ -243,16 +252,15 @@ int main(int argc, char *argv[])
       gettimeofday(&time_now,0);
    }
 
-   if (n != Y4M_OK && n != Y4M_ERR_EOF)
-      mjpeg_error("Couldn't read frame: %s\n",
-         y4m_strerr(n));
+   if ((n != Y4M_OK) && (n != Y4M_ERR_EOF))
+      mjpeg_error("Couldn't read frame: %s\n", y4m_strerr(n));
 
    for (n=0; n<3; n++) {
       free(yuv[n]);
    }
 
-   mjpeg_log(LOG_INFO, "Played %4.4d frames (%s)\n",
-	     frame, print_status(frame, frame_rate));
+   mjpeg_info("Played %4.4d frames (%s)\n",
+	      frame, print_status(frame, frame_rate));
 
    SDL_FreeYUVOverlay(yuv_overlay);
    SDL_Quit();

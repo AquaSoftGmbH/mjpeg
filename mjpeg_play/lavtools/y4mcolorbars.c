@@ -192,7 +192,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 /*
  * Color Bars:
  *
- *     top 2/3:  100% white, followed by 75% binary combinations
+ *     top 2/3:  75% white, followed by 75% binary combinations
  *                of R', G', and B' with decreasing luma
  *
  * middle 1/12:  reverse order of above, but with 75% white and
@@ -203,7 +203,7 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
  *
  */
 
-/* 100% white   */
+/*  75% white   */
 /*  75% yellow  */
 /*  75% cyan    */
 /*  75% green   */
@@ -211,9 +211,9 @@ void parse_args(cl_info_t *cl, int argc, char **argv)
 /*  75% red     */
 /*  75% blue    */
 static uint8_t rainbowRGB[][7] = {
-  { 255, 191,   0,   0, 191, 191,   0 },
-  { 255, 191, 191, 191,   0,   0,   0 },
-  { 255,   0, 191,   0, 191,   0, 191 }
+  { 191, 191,   0,   0, 191, 191,   0 },
+  { 191, 191, 191, 191,   0,   0,   0 },
+  { 191,   0, 191,   0, 191,   0, 191 }
 };
 static uint8_t *rainbow[3] = {
   rainbowRGB[0], rainbowRGB[1], rainbowRGB[2]
