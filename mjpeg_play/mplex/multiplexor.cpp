@@ -1102,12 +1102,14 @@ void Multiplexor::Multiplex()
 		clockticks earliest = 0;
 		for( str = estreams.begin(); str < estreams.end(); ++str )
 		{
-                mjpeg_debug("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
-                           (*str)->stream_id,
-                           current_SCR /300,
-                           (*str)->MuxPossible(current_SCR),
-                           (*str)->RequiredDTS()/300
+#ifdef STREAM_LOGGING
+            mjpeg_debug("STREAM %02x: SCR=%lld mux=%d reqDTS=%lld", 
+                        (*str)->stream_id,
+                        current_SCR /300,
+                        (*str)->MuxPossible(current_SCR),
+                        (*str)->RequiredDTS()/300
 				);
+#endif
 			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )

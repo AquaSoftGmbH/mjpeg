@@ -112,7 +112,6 @@ protected:
     int group_start_pic;
 	int group_start_field;
     int temporal_reference;
-    unsigned int pict_rate;
     unsigned int pict_struct;
 	int pulldown_32;
 	int repeat_first_field;
