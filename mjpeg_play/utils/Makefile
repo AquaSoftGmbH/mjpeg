@@ -1,6 +1,6 @@
 # Makefile for lavtools/utils
 
-QT_LIBS=   -lpthread -lpng -lz -lglib -lmovtar \
+QT_LIBS=  -L ../../quicktime  -lpthread -lpng -lz -lglib -lmovtar \
 	-lm -lquicktime -ljpeg                     
 
 CFLAGS= -O2 -I .. 
