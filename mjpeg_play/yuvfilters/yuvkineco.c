@@ -123,7 +123,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
       return NULL;
     }
   }
-  if (cytype != 'N' && h0->fpscode != 4 && h0->fpscode != 5) {
+  if (cytype != 'N' && (h0->fpscode < 3 || 5 < h0->fpscode)) {
     WERROR("unsupported input fps\n");
     return NULL;
   }
@@ -144,7 +144,8 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 			   ycsargv, h0)))
       return NULL;
   }
-  nframes = ((!cytype || cytype == 'C')? 9: 2);
+  nframes = ((cytype && cytype != 'C')? 2:
+	     (h0->fpscode == 3)? 49: 9);
   h = (YfTask_t *)
     YfAllocateTask(&yuvkineco,
 		   (sizeof *h +
