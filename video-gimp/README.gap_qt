@@ -1,0 +1,113 @@
+GAP_QT                   1999.10.07
+
+  Is an additional GIMP-Plugin for the
+  Gimp Animation Package (GAP).
+  
+  GAP_QT does Quicktime Video+Audio encoding for
+  GAP Anim Frames. It is based on the (free)
+  quicktime4linux Library.
+
+ ... before you expect too much:  
+
+  The quicktime4linux Libraray has LIMITED support on codecs.
+  (most of the Codecs like
+    Cinepak (cvid) Intel Indeo (iv31, iv32)
+    are not supported in 1.1.3)
+  
+  
+Required Software to build/run GAP_QT
+-------------------------------------
+   
+  - quicktime4linux library 1.1.3  (requires libjpeg, libpng libz)
+  
+       You can get quicktime4linux at:
+       
+          http://www.freeyellow.com/members4/heroine/quicktime.html          
+          
+       xanim 2801 exporting edition also contains a copy of
+       quicktime4linux. (if you have this one, you dont
+       need to get quicktime4linux1.1.3)
+       
+       You can get xanim_exporting edition at:
+       
+          http://www.freeyellow.com/members4/heroine/toys.html
+          
+          
+       NOTE: quicktime4linux has a bug in ulaw audio encoding
+             that leads to crash.
+             Apply the Patch  patch.ulaw.c if you want to fix that bug.
+             
+             cd <...>/quicktime4linux/src
+             patch ulaw.c patch.ulaw.c
+             
+          
+  - GIMP + GAP
+       GIMP 1.0.x + latest GAP (0.99.96??) from the PluginRegistry
+       or:
+       GIMP 1.1.8 (or later)  # -- GAP is part of this release --
+
+
+Installation
+------------
+
+       # make links to all gap sources needed to compile + link
+
+       GAP_HOME=<your gimp source dir>/plug-ins/gap
+       export GAP_HOME
+       ./ln_gap.sh
+
+       # make a copy of the Makefile.1.1 
+       # (or Makefile 1.0 if you have gimp 1.0.x)
+       
+       cp Makefile.1.1  Makefile
+       
+       # check / edit Makefile 
+       ... use an editor ...
+       
+       make
+
+       make install
+
+Handled Formats
+---------------
+  GAP_QT  Inputformats:
+  
+          Video:
+           Sequences of Numbered Images, 
+           (AnimFrames  img_0001.xcf, img_0002.xcf .... )
+           Imagefileformat must be supported by your GIMP
+           Version.
+
+          Audio:
+           Files with 16-bit RAW audiodata (1 channel)
+           
+           .wav files (RIFF WAVE Files PCM)
+               with 1 or 2 channels of uncompressed
+               8-Bit or 16-Bit audiodata
+
+  Quicktime Output is limited to the free codecs,
+  that are supported by the  quicktime4linux library.
+  in quicktime4linux 1.1.3 there is support for
+  
+         Video Codecs:
+             jpeg
+             png
+             yuv2
+             yuv4
+             
+         Audio Codecs:
+             ima4
+             ulaw
+             
+             (audiocodec  "ulaw" does not work with the unpatched lib.
+              audiocodecs "twos" and "raw " are not implemented in 1.1.3)
+
+
+Why is GAP_QT not included in GAP ?
+-----------------------------------
+- The Plugin Registry has a size limit
+- GIMP is in the feature freeze
+- the additional lib quicktime4linux is required
+  (i dont know if this lib can be compiled
+  on other Systems than Linux)
+  

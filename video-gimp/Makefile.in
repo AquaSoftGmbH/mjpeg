@@ -1,0 +1,638 @@
+# Makefile.in generated automatically by automake 1.4 from Makefile.am
+
+# Copyright (C) 1994, 1995-8, 1999 Free Software Foundation, Inc.
+# This Makefile.in is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY, to the extent permitted by law; without
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
+
+
+SHELL = @SHELL@
+
+srcdir = @srcdir@
+top_srcdir = @top_srcdir@
+VPATH = @srcdir@
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+
+bindir = @bindir@
+sbindir = @sbindir@
+datadir = @datadir@
+sysconfdir = @sysconfdir@
+sharedstatedir = @sharedstatedir@
+localstatedir = @localstatedir@
+libdir = @libdir@
+infodir = @infodir@
+mandir = @mandir@
+includedir = @includedir@
+oldincludedir = /usr/include
+
+DESTDIR =
+
+pkgdatadir = $(datadir)/@PACKAGE@
+pkglibdir = $(libdir)/@PACKAGE@
+pkgincludedir = $(includedir)/@PACKAGE@
+
+top_builddir = .
+
+ACLOCAL = @ACLOCAL@
+AUTOCONF = @AUTOCONF@
+AUTOMAKE = @AUTOMAKE@
+AUTOHEADER = @AUTOHEADER@
+
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL_PROGRAM@ $(AM_INSTALL_PROGRAM_FLAGS)
+INSTALL_DATA = @INSTALL_DATA@
+INSTALL_SCRIPT = @INSTALL_SCRIPT@
+transform = @program_transform_name@
+
+NORMAL_INSTALL = :
+PRE_INSTALL = :
+POST_INSTALL = :
+NORMAL_UNINSTALL = :
+PRE_UNINSTALL = :
+POST_UNINSTALL = :
+AWK = @AWK@
+CATALOGS = @CATALOGS@
+CATOBJEXT = @CATOBJEXT@
+CC = @CC@
+DATADIRNAME = @DATADIRNAME@
+GAP_DECODE_MPEG = @GAP_DECODE_MPEG@
+GENCAT = @GENCAT@
+GIMPTOOL = @GIMPTOOL@
+GIMP_CFLAGS = @GIMP_CFLAGS@
+GIMP_CFLAGS_NOUI = @GIMP_CFLAGS_NOUI@
+GIMP_DATA_DIR = @GIMP_DATA_DIR@
+GIMP_LIBS = @GIMP_LIBS@
+GIMP_LIBS_NOUI = @GIMP_LIBS_NOUI@
+GIMP_PLUGIN_DIR = @GIMP_PLUGIN_DIR@
+GLIB_CFLAGS = @GLIB_CFLAGS@
+GLIB_CONFIG = @GLIB_CONFIG@
+GLIB_LIBS = @GLIB_LIBS@
+GMOFILES = @GMOFILES@
+GMSGFMT = @GMSGFMT@
+GTK_CFLAGS = @GTK_CFLAGS@
+GTK_CONFIG = @GTK_CONFIG@
+GTK_LIBS = @GTK_LIBS@
+GT_NO = @GT_NO@
+GT_YES = @GT_YES@
+INCLUDE_LOCALE_H = @INCLUDE_LOCALE_H@
+INSTOBJEXT = @INSTOBJEXT@
+INTLDEPS = @INTLDEPS@
+INTLLIBS = @INTLLIBS@
+INTLOBJS = @INTLOBJS@
+LIBMPEG = @LIBMPEG@
+MAINT = @MAINT@
+MAKEINFO = @MAKEINFO@
+MKINSTALLDIRS = @MKINSTALLDIRS@
+MOVTAR_CFLAGS = @MOVTAR_CFLAGS@
+MOVTAR_CONFIG = @MOVTAR_CONFIG@
+MOVTAR_DATA_DIR = @MOVTAR_DATA_DIR@
+MOVTAR_LIBS = @MOVTAR_LIBS@
+MOVTAR_VERSION = @MOVTAR_VERSION@
+MSGFMT = @MSGFMT@
+MTYPEFLAGS = @MTYPEFLAGS@
+PACKAGE = @PACKAGE@
+POFILES = @POFILES@
+POSUB = @POSUB@
+QUICKTIME_INCLUDE = @QUICKTIME_INCLUDE@
+RANLIB = @RANLIB@
+SDL_CFLAGS = @SDL_CFLAGS@
+SDL_CONFIG = @SDL_CONFIG@
+SDL_LIBS = @SDL_LIBS@
+USE_INCLUDED_LIBINTL = @USE_INCLUDED_LIBINTL@
+USE_NLS = @USE_NLS@
+VERSION = @VERSION@
+X_CFLAGS = @X_CFLAGS@
+X_EXTRA_LIBS = @X_EXTRA_LIBS@
+X_LIBS = @X_LIBS@
+X_PRE_LIBS = @X_PRE_LIBS@
+l = @l@
+x_libraries = @x_libraries@
+
+SUBDIRS = intl po video_enc
+
+libexecdir = $(gimpplugindir)/plug-ins
+
+scriptdatadir = $(gimpdatadir)/scripts
+
+scriptdata_DATA = sel-to-anim-img.scm
+
+EXTRA_DIST =  	README								README_developers						TESTPROT_iter_ALT						iter_ALT/README_iter_subdirs					iter_ALT/gen/plug_in_CML_explorer_iter_ALT.inc			iter_ALT/gen/plug_in_alpha2color_iter_ALT.inc			iter_ALT/gen/plug_in_blinds_iter_ALT.inc			iter_ALT/gen/plug_in_borderaverage_iter_ALT.inc			iter_ALT/gen/plug_in_checkerboard_iter_ALT.inc			iter_ALT/gen/plug_in_color_map_iter_ALT.inc			iter_ALT/gen/plug_in_colorify_iter_ALT.inc			iter_ALT/gen/plug_in_cubism_iter_ALT.inc			iter_ALT/gen/plug_in_destripe_iter_ALT.inc			iter_ALT/gen/plug_in_diffraction_iter_ALT.inc			iter_ALT/gen/plug_in_displace_iter_ALT.inc			iter_ALT/gen/plug_in_edge_iter_ALT.inc				iter_ALT/gen/plug_in_engrave_iter_ALT.inc			iter_ALT/gen/plug_in_flarefx_iter_ALT.inc			iter_ALT/gen/plug_in_fractal_trace_iter_ALT.inc			iter_ALT/gen/plug_in_gauss_iir_iter_ALT.inc			iter_ALT/gen/plug_in_gauss_iir2_iter_ALT.inc			iter_ALT/gen/plug_in_gauss_rle_iter_ALT.inc			iter_ALT/gen/plug_in_gauss_rle2_iter_ALT.inc			iter_ALT/gen/plug_in_gfig_iter_ALT.inc				iter_ALT/gen/plug_in_glasstile_iter_ALT.inc			iter_ALT/gen/plug_in_grid_iter_ALT.inc				iter_ALT/gen/plug_in_jigsaw_iter_ALT.inc			iter_ALT/gen/plug_in_mblur_iter_ALT.inc				iter_ALT/gen/plug_in_mosaic_iter_ALT.inc			iter_ALT/gen/plug_in_newsprint_iter_ALT.inc			iter_ALT/gen/plug_in_noisify_iter_ALT.inc			iter_ALT/gen/plug_in_pixelize_iter_ALT.inc			iter_ALT/gen/plug_in_randomize_hurl_iter_ALT.inc		iter_ALT/gen/plug_in_randomize_pick_iter_ALT.inc		iter_ALT/gen/plug_in_randomize_slur_iter_ALT.inc		iter_ALT/gen/plug_in_ripple_iter_ALT.inc			iter_ALT/gen/plug_in_rotate_iter_ALT.inc			iter_ALT/gen/plug_in_scatter_hsv_iter_ALT.inc			iter_ALT/gen/plug_in_sharpen_iter_ALT.inc			iter_ALT/gen/plug_in_shift_iter_ALT.inc				iter_ALT/gen/plug_in_spread_iter_ALT.inc			iter_ALT/gen/plug_in_video_iter_ALT.inc				iter_ALT/gen/plug_in_vpropagate_iter_ALT.inc			iter_ALT/gen/plug_in_waves_iter_ALT.inc				iter_ALT/gen/plug_in_whirl_pinch_iter_ALT.inc			iter_ALT/gen/plug_in_wind_iter_ALT.inc				iter_ALT/mod/plug_in_Twist_iter_ALT.inc				iter_ALT/mod/plug_in_alienmap_iter_ALT.inc			iter_ALT/mod/plug_in_applylens_iter_ALT.inc			iter_ALT/mod/plug_in_blur_iter_ALT.inc				iter_ALT/mod/plug_in_bump_map_iter_ALT.inc			iter_ALT/mod/plug_in_convmatrix_iter_ALT.inc			iter_ALT/mod/plug_in_depth_merge_iter_ALT.inc			iter_ALT/mod/plug_in_despeckle_iter_ALT.inc			iter_ALT/mod/plug_in_emboss_iter_ALT.inc			iter_ALT/mod/plug_in_exchange_iter_ALT.inc			iter_ALT/mod/plug_in_flame_iter_ALT.inc				iter_ALT/mod/plug_in_lighting_iter_ALT.inc			iter_ALT/mod/plug_in_map_object_iter_ALT.inc			iter_ALT/mod/plug_in_maze_iter_ALT.inc				iter_ALT/mod/plug_in_nlfilt_iter_ALT.inc			iter_ALT/mod/plug_in_nova_iter_ALT.inc				iter_ALT/mod/plug_in_oilify_iter_ALT.inc			iter_ALT/mod/plug_in_pagecurl_iter_ALT.inc			iter_ALT/mod/plug_in_papertile_iter_ALT.inc			iter_ALT/mod/plug_in_plasma_iter_ALT.inc			iter_ALT/mod/plug_in_polar_coords_iter_ALT.inc			iter_ALT/mod/plug_in_sample_colorize_iter_ALT.inc		iter_ALT/mod/plug_in_sinus_iter_ALT.inc				iter_ALT/mod/plug_in_solid_noise_iter_ALT.inc			iter_ALT/mod/plug_in_sparkle_iter_ALT.inc			iter_ALT/old/plug_in_CentralReflection_iter_ALT.inc		iter_ALT/old/plug_in_anamorphose_iter_ALT.inc			iter_ALT/old/plug_in_blur2_iter_ALT.inc				iter_ALT/old/plug_in_colorify_iter_ALT.inc			iter_ALT/old/plug_in_encript_iter_ALT.inc			iter_ALT/old/plug_in_figures_iter_ALT.inc			iter_ALT/old/plug_in_gflare_iter_ALT.inc			iter_ALT/old/plug_in_holes_iter_ALT.inc				iter_ALT/old/plug_in_julia_iter_ALT.inc				iter_ALT/old/plug_in_magic_eye_iter_ALT.inc			iter_ALT/old/plug_in_mandelbrot_iter_ALT.inc			iter_ALT/old/plug_in_randomize_iter_ALT.inc			iter_ALT/old/plug_in_refract_iter_ALT.inc			iter_ALT/old/plug_in_struc_iter_ALT.inc				iter_ALT/old/plug_in_tileit_iter_ALT.inc			iter_ALT/old/plug_in_universal_filter_iter_ALT.inc		iter_ALT/old/plug_in_warp_iter_ALT.inc				$(scriptdata_DATA)
+
+
+libexec_PROGRAMS =  	gap_plugins			gap_filter			gap_frontends			gap_navigator_dialog		$(GAP_DECODE_MPEG)
+
+
+EXTRA_PROGRAMS =  	gap_decode_mpeg
+
+
+gap_plugins_SOURCES =  	gap_main.c			gap_mov_exec.c			gap_mov_exec.h			gap_range_ops.c			gap_range_ops.h			gap_arr_dialog.c		gap_arr_dialog.h		gap_mov_dialog.c		gap_mov_dialog.h		gap_layer_copy.c		gap_layer_copy.h 		gap_split.c			gap_split.h			gap_resi_dialog.c		gap_resi_dialog.h		gap_mod_layer.c			gap_mod_layer.h			gap_filter_pdb.c		gap_filter_pdb.h		gap_filter_codegen.c		gap_dbbrowser_utils.c		gap_dbbrowser_utils.h		gap_match.c			gap_match.h			gap_lib.c			gap_lib.h			gap_exchange_image.c		gap_exchange_image.h		gap_pdb_calls.c			gap_pdb_calls.h			resize.c			resize.h
+
+
+gap_filter_SOURCES =  	gap_filter_main.c		gap_dbbrowser_utils.c		gap_dbbrowser_utils.h		gap_filter_foreach.c		gap_filter_iterators.c		gap_filter_iterators.h		gap_filter_pdb.c		gap_filter_pdb.h		gap_filter_codegen.c		gap_arr_dialog.c		gap_arr_dialog.h		gap_pdb_calls.c			gap_pdb_calls.h			gap_filter.h
+
+
+gap_frontends_SOURCES =  	gap_frontends_main.c		gap_arr_dialog.c		gap_arr_dialog.h		gap_layer_copy.c		gap_layer_copy.h 		gap_match.c			gap_match.h			gap_lib.c			gap_lib.h			gap_exchange_image.c		gap_exchange_image.h		gap_pdb_calls.c			gap_pdb_calls.h			gap_mpege.c			gap_mpege.h			gap_decode_xanim.c		gap_decode_xanim.h
+
+
+gap_decode_mpeg_SOURCES =  	gap_decode_mpeg_main.c		gap_arr_dialog.c		gap_arr_dialog.h		gap_pdb_calls.c			gap_pdb_calls.h
+
+
+gap_navigator_dialog_SOURCES =  	gap_navigator_dialog.c		gap_lib.c			gap_lib.h			gap_arr_dialog.c		gap_arr_dialog.h		gap_pdb_calls.c			gap_pdb_calls.h			gap_layer_copy.c        	gap_layer_copy.h        	gap_exchange_image.c    	gap_exchange_image.h
+
+
+AM_CPPFLAGS =          -DLOCALEDIR=\""$(localedir)"\"
+
+
+INCLUDES =  	-I$(top_srcdir)				$(GTK_CFLAGS)				$(GIMP_CFLAGS)				-I$(includedir)
+
+
+LDADD =  	$(GIMP_LIBS)		$(GTK_LIBS)	        $(INTLLIBS)			
+
+
+gap_decode_mpeg_LDADD =  	$(GIMP_LIBS)		$(LIBMPEG)		$(GTK_LIBS)	        $(INTLLIBS)			
+
+ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
+mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
+CONFIG_HEADER = config.h
+CONFIG_CLEAN_FILES = 
+PROGRAMS =  $(libexec_PROGRAMS)
+
+
+DEFS = @DEFS@ -I. -I$(srcdir) -I.
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+gap_decode_mpeg_OBJECTS =  gap_decode_mpeg_main.o gap_arr_dialog.o \
+gap_pdb_calls.o
+gap_decode_mpeg_DEPENDENCIES = 
+gap_decode_mpeg_LDFLAGS = 
+gap_plugins_OBJECTS =  gap_main.o gap_mov_exec.o gap_range_ops.o \
+gap_arr_dialog.o gap_mov_dialog.o gap_layer_copy.o gap_split.o \
+gap_resi_dialog.o gap_mod_layer.o gap_filter_pdb.o gap_filter_codegen.o \
+gap_dbbrowser_utils.o gap_match.o gap_lib.o gap_exchange_image.o \
+gap_pdb_calls.o resize.o
+gap_plugins_LDADD = $(LDADD)
+gap_plugins_DEPENDENCIES = 
+gap_plugins_LDFLAGS = 
+gap_filter_OBJECTS =  gap_filter_main.o gap_dbbrowser_utils.o \
+gap_filter_foreach.o gap_filter_iterators.o gap_filter_pdb.o \
+gap_filter_codegen.o gap_arr_dialog.o gap_pdb_calls.o
+gap_filter_LDADD = $(LDADD)
+gap_filter_DEPENDENCIES = 
+gap_filter_LDFLAGS = 
+gap_frontends_OBJECTS =  gap_frontends_main.o gap_arr_dialog.o \
+gap_layer_copy.o gap_match.o gap_lib.o gap_exchange_image.o \
+gap_pdb_calls.o gap_mpege.o gap_decode_xanim.o
+gap_frontends_LDADD = $(LDADD)
+gap_frontends_DEPENDENCIES = 
+gap_frontends_LDFLAGS = 
+gap_navigator_dialog_OBJECTS =  gap_navigator_dialog.o gap_lib.o \
+gap_arr_dialog.o gap_pdb_calls.o gap_layer_copy.o gap_exchange_image.o
+gap_navigator_dialog_LDADD = $(LDADD)
+gap_navigator_dialog_DEPENDENCIES = 
+gap_navigator_dialog_LDFLAGS = 
+CFLAGS = @CFLAGS@
+COMPILE = $(CC) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CFLAGS) $(CFLAGS)
+CCLD = $(CC)
+LINK = $(CCLD) $(AM_CFLAGS) $(CFLAGS) $(LDFLAGS) -o $@
+DATA =  $(scriptdata_DATA)
+
+DIST_COMMON =  README ./stamp-h.in ABOUT-NLS AUTHORS COPYING ChangeLog \
+INSTALL Makefile.am Makefile.in NEWS acconfig.h aclocal.m4 config.h.in \
+configure configure.in install-sh missing mkinstalldirs
+
+
+DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
+
+TAR = gtar
+GZIP_ENV = --best
+DEP_FILES =  .deps/gap_arr_dialog.P .deps/gap_dbbrowser_utils.P \
+.deps/gap_decode_mpeg_main.P .deps/gap_decode_xanim.P \
+.deps/gap_exchange_image.P .deps/gap_filter_codegen.P \
+.deps/gap_filter_foreach.P .deps/gap_filter_iterators.P \
+.deps/gap_filter_main.P .deps/gap_filter_pdb.P \
+.deps/gap_frontends_main.P .deps/gap_layer_copy.P .deps/gap_lib.P \
+.deps/gap_main.P .deps/gap_match.P .deps/gap_mod_layer.P \
+.deps/gap_mov_dialog.P .deps/gap_mov_exec.P .deps/gap_mpege.P \
+.deps/gap_navigator_dialog.P .deps/gap_pdb_calls.P \
+.deps/gap_range_ops.P .deps/gap_resi_dialog.P .deps/gap_split.P \
+.deps/resize.P
+SOURCES = $(gap_decode_mpeg_SOURCES) $(gap_plugins_SOURCES) $(gap_filter_SOURCES) $(gap_frontends_SOURCES) $(gap_navigator_dialog_SOURCES)
+OBJECTS = $(gap_decode_mpeg_OBJECTS) $(gap_plugins_OBJECTS) $(gap_filter_OBJECTS) $(gap_frontends_OBJECTS) $(gap_navigator_dialog_OBJECTS)
+
+all: all-redirect
+.SUFFIXES:
+.SUFFIXES: .S .c .o .s
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ Makefile.am $(top_srcdir)/configure.in $(ACLOCAL_M4) 
+	cd $(top_srcdir) && $(AUTOMAKE) --gnu Makefile
+
+Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status $(BUILT_SOURCES)
+	cd $(top_builddir) \
+	  && CONFIG_FILES=$@ CONFIG_HEADERS= $(SHELL) ./config.status
+
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ configure.in 
+	cd $(srcdir) && $(ACLOCAL)
+
+config.status: $(srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
+	$(SHELL) ./config.status --recheck
+$(srcdir)/configure: @MAINTAINER_MODE_TRUE@$(srcdir)/configure.in $(ACLOCAL_M4) $(CONFIGURE_DEPENDENCIES)
+	cd $(srcdir) && $(AUTOCONF)
+
+config.h: stamp-h
+	@if test ! -f $@; then \
+		rm -f stamp-h; \
+		$(MAKE) stamp-h; \
+	else :; fi
+stamp-h: $(srcdir)/config.h.in $(top_builddir)/config.status
+	cd $(top_builddir) \
+	  && CONFIG_FILES= CONFIG_HEADERS=config.h \
+	     $(SHELL) ./config.status
+	@echo timestamp > stamp-h 2> /dev/null
+$(srcdir)/config.h.in: @MAINTAINER_MODE_TRUE@$(srcdir)/stamp-h.in
+	@if test ! -f $@; then \
+		rm -f $(srcdir)/stamp-h.in; \
+		$(MAKE) $(srcdir)/stamp-h.in; \
+	else :; fi
+$(srcdir)/stamp-h.in: $(top_srcdir)/configure.in $(ACLOCAL_M4) acconfig.h
+	cd $(top_srcdir) && $(AUTOHEADER)
+	@echo timestamp > $(srcdir)/stamp-h.in 2> /dev/null
+
+mostlyclean-hdr:
+
+clean-hdr:
+
+distclean-hdr:
+	-rm -f config.h
+
+maintainer-clean-hdr:
+
+mostlyclean-libexecPROGRAMS:
+
+clean-libexecPROGRAMS:
+	-test -z "$(libexec_PROGRAMS)" || rm -f $(libexec_PROGRAMS)
+
+distclean-libexecPROGRAMS:
+
+maintainer-clean-libexecPROGRAMS:
+
+install-libexecPROGRAMS: $(libexec_PROGRAMS)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(libexecdir)
+	@list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  if test -f $$p; then \
+	    echo "  $(INSTALL_PROGRAM) $$p $(DESTDIR)$(libexecdir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`"; \
+	     $(INSTALL_PROGRAM) $$p $(DESTDIR)$(libexecdir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
+	  else :; fi; \
+	done
+
+uninstall-libexecPROGRAMS:
+	@$(NORMAL_UNINSTALL)
+	list='$(libexec_PROGRAMS)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(libexecdir)/`echo $$p|sed 's/$(EXEEXT)$$//'|sed '$(transform)'|sed 's/$$/$(EXEEXT)/'`; \
+	done
+
+.s.o:
+	$(COMPILE) -c $<
+
+.S.o:
+	$(COMPILE) -c $<
+
+mostlyclean-compile:
+	-rm -f *.o core *.core
+
+clean-compile:
+
+distclean-compile:
+	-rm -f *.tab.c
+
+maintainer-clean-compile:
+
+gap_decode_mpeg: $(gap_decode_mpeg_OBJECTS) $(gap_decode_mpeg_DEPENDENCIES)
+	@rm -f gap_decode_mpeg
+	$(LINK) $(gap_decode_mpeg_LDFLAGS) $(gap_decode_mpeg_OBJECTS) $(gap_decode_mpeg_LDADD) $(LIBS)
+
+gap_plugins: $(gap_plugins_OBJECTS) $(gap_plugins_DEPENDENCIES)
+	@rm -f gap_plugins
+	$(LINK) $(gap_plugins_LDFLAGS) $(gap_plugins_OBJECTS) $(gap_plugins_LDADD) $(LIBS)
+
+gap_filter: $(gap_filter_OBJECTS) $(gap_filter_DEPENDENCIES)
+	@rm -f gap_filter
+	$(LINK) $(gap_filter_LDFLAGS) $(gap_filter_OBJECTS) $(gap_filter_LDADD) $(LIBS)
+
+gap_frontends: $(gap_frontends_OBJECTS) $(gap_frontends_DEPENDENCIES)
+	@rm -f gap_frontends
+	$(LINK) $(gap_frontends_LDFLAGS) $(gap_frontends_OBJECTS) $(gap_frontends_LDADD) $(LIBS)
+
+gap_navigator_dialog: $(gap_navigator_dialog_OBJECTS) $(gap_navigator_dialog_DEPENDENCIES)
+	@rm -f gap_navigator_dialog
+	$(LINK) $(gap_navigator_dialog_LDFLAGS) $(gap_navigator_dialog_OBJECTS) $(gap_navigator_dialog_LDADD) $(LIBS)
+
+install-scriptdataDATA: $(scriptdata_DATA)
+	@$(NORMAL_INSTALL)
+	$(mkinstalldirs) $(DESTDIR)$(scriptdatadir)
+	@list='$(scriptdata_DATA)'; for p in $$list; do \
+	  if test -f $(srcdir)/$$p; then \
+	    echo " $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(scriptdatadir)/$$p"; \
+	    $(INSTALL_DATA) $(srcdir)/$$p $(DESTDIR)$(scriptdatadir)/$$p; \
+	  else if test -f $$p; then \
+	    echo " $(INSTALL_DATA) $$p $(DESTDIR)$(scriptdatadir)/$$p"; \
+	    $(INSTALL_DATA) $$p $(DESTDIR)$(scriptdatadir)/$$p; \
+	  fi; fi; \
+	done
+
+uninstall-scriptdataDATA:
+	@$(NORMAL_UNINSTALL)
+	list='$(scriptdata_DATA)'; for p in $$list; do \
+	  rm -f $(DESTDIR)$(scriptdatadir)/$$p; \
+	done
+
+# This directory's subdirectories are mostly independent; you can cd
+# into them and run `make' without going through this Makefile.
+# To change the values of `make' variables: instead of editing Makefiles,
+# (1) if the variable is set in `config.status', edit `config.status'
+#     (which will cause the Makefiles to be regenerated when you run `make');
+# (2) otherwise, pass the desired values on the `make' command line.
+
+@SET_MAKE@
+
+all-recursive install-data-recursive install-exec-recursive \
+installdirs-recursive install-recursive uninstall-recursive  \
+check-recursive installcheck-recursive info-recursive dvi-recursive:
+	@set fnord $(MAKEFLAGS); amf=$$2; \
+	dot_seen=no; \
+	target=`echo $@ | sed s/-recursive//`; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    dot_seen=yes; \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	   || case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
+	done; \
+	if test "$$dot_seen" = "no"; then \
+	  $(MAKE) $(AM_MAKEFLAGS) "$$target-am" || exit 1; \
+	fi; test -z "$$fail"
+
+mostlyclean-recursive clean-recursive distclean-recursive \
+maintainer-clean-recursive:
+	@set fnord $(MAKEFLAGS); amf=$$2; \
+	dot_seen=no; \
+	rev=''; list='$(SUBDIRS)'; for subdir in $$list; do \
+	  rev="$$subdir $$rev"; \
+	  test "$$subdir" = "." && dot_seen=yes; \
+	done; \
+	test "$$dot_seen" = "no" && rev=". $$rev"; \
+	target=`echo $@ | sed s/-recursive//`; \
+	for subdir in $$rev; do \
+	  echo "Making $$target in $$subdir"; \
+	  if test "$$subdir" = "."; then \
+	    local_target="$$target-am"; \
+	  else \
+	    local_target="$$target"; \
+	  fi; \
+	  (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) $$local_target) \
+	   || case "$$amf" in *=*) exit 1;; *k*) fail=yes;; *) exit 1;; esac; \
+	done && test -z "$$fail"
+tags-recursive:
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+	  test "$$subdir" = . || (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) tags); \
+	done
+
+tags: TAGS
+
+ID: $(HEADERS) $(SOURCES) $(LISP)
+	list='$(SOURCES) $(HEADERS)'; \
+	unique=`for i in $$list; do echo $$i; done | \
+	  awk '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	here=`pwd` && cd $(srcdir) \
+	  && mkid -f$$here/ID $$unique $(LISP)
+
+TAGS: tags-recursive $(HEADERS) $(SOURCES) config.h.in $(TAGS_DEPENDENCIES) $(LISP)
+	tags=; \
+	here=`pwd`; \
+	list='$(SUBDIRS)'; for subdir in $$list; do \
+   if test "$$subdir" = .; then :; else \
+	    test -f $$subdir/TAGS && tags="$$tags -i $$here/$$subdir/TAGS"; \
+   fi; \
+	done; \
+	list='$(SOURCES) $(HEADERS)'; \
+	unique=`for i in $$list; do echo $$i; done | \
+	  awk '    { files[$$0] = 1; } \
+	       END { for (i in files) print i; }'`; \
+	test -z "$(ETAGS_ARGS)config.h.in$$unique$(LISP)$$tags" \
+	  || (cd $(srcdir) && etags $(ETAGS_ARGS) $$tags config.h.in $$unique $(LISP) -o $$here/TAGS)
+
+mostlyclean-tags:
+
+clean-tags:
+
+distclean-tags:
+	-rm -f TAGS ID
+
+maintainer-clean-tags:
+
+distdir = $(PACKAGE)-$(VERSION)
+top_distdir = $(distdir)
+
+# This target untars the dist file and tries a VPATH configuration.  Then
+# it guarantees that the distribution is self-contained by making another
+# tarfile.
+distcheck: dist
+	-rm -rf $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) zxf $(distdir).tar.gz
+	mkdir $(distdir)/=build
+	mkdir $(distdir)/=inst
+	dc_install_base=`cd $(distdir)/=inst && pwd`; \
+	cd $(distdir)/=build \
+	  && ../configure --with-included-gettext --srcdir=.. --prefix=$$dc_install_base \
+	  && $(MAKE) $(AM_MAKEFLAGS) \
+	  && $(MAKE) $(AM_MAKEFLAGS) dvi \
+	  && $(MAKE) $(AM_MAKEFLAGS) check \
+	  && $(MAKE) $(AM_MAKEFLAGS) install \
+	  && $(MAKE) $(AM_MAKEFLAGS) installcheck \
+	  && $(MAKE) $(AM_MAKEFLAGS) dist
+	-rm -rf $(distdir)
+	@banner="$(distdir).tar.gz is ready for distribution"; \
+	dashes=`echo "$$banner" | sed s/./=/g`; \
+	echo "$$dashes"; \
+	echo "$$banner"; \
+	echo "$$dashes"
+dist: distdir
+	-chmod -R a+r $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) chozf $(distdir).tar.gz $(distdir)
+	-rm -rf $(distdir)
+dist-all: distdir
+	-chmod -R a+r $(distdir)
+	GZIP=$(GZIP_ENV) $(TAR) chozf $(distdir).tar.gz $(distdir)
+	-rm -rf $(distdir)
+distdir: $(DISTFILES)
+	-rm -rf $(distdir)
+	mkdir $(distdir)
+	-chmod 777 $(distdir)
+	here=`cd $(top_builddir) && pwd`; \
+	top_distdir=`cd $(distdir) && pwd`; \
+	distdir=`cd $(distdir) && pwd`; \
+	cd $(top_srcdir) \
+	  && $(AUTOMAKE) --include-deps --build-dir=$$here --srcdir-name=$(top_srcdir) --output-dir=$$top_distdir --gnu Makefile
+	$(mkinstalldirs) $(distdir)/iter_ALT $(distdir)/iter_ALT/gen \
+	   $(distdir)/iter_ALT/mod $(distdir)/iter_ALT/old
+	@for file in $(DISTFILES); do \
+	  d=$(srcdir); \
+	  if test -d $$d/$$file; then \
+	    cp -pr $$/$$file $(distdir)/$$file; \
+	  else \
+	    test -f $(distdir)/$$file \
+	    || ln $$d/$$file $(distdir)/$$file 2> /dev/null \
+	    || cp -p $$d/$$file $(distdir)/$$file || :; \
+	  fi; \
+	done
+	for subdir in $(SUBDIRS); do \
+	  if test "$$subdir" = .; then :; else \
+	    test -d $(distdir)/$$subdir \
+	    || mkdir $(distdir)/$$subdir \
+	    || exit 1; \
+	    chmod 777 $(distdir)/$$subdir; \
+	    (cd $$subdir && $(MAKE) $(AM_MAKEFLAGS) top_distdir=../$(distdir) distdir=../$(distdir)/$$subdir distdir) \
+	      || exit 1; \
+	  fi; \
+	done
+
+DEPS_MAGIC := $(shell mkdir .deps > /dev/null 2>&1 || :)
+
+-include $(DEP_FILES)
+
+mostlyclean-depend:
+
+clean-depend:
+
+distclean-depend:
+	-rm -rf .deps
+
+maintainer-clean-depend:
+
+%.o: %.c
+	@echo '$(COMPILE) -c $<'; \
+	$(COMPILE) -Wp,-MD,.deps/$(*F).pp -c $<
+	@-cp .deps/$(*F).pp .deps/$(*F).P; \
+	tr ' ' '\012' < .deps/$(*F).pp \
+	  | sed -e 's/^\\$$//' -e '/^$$/ d' -e '/:$$/ d' -e 's/$$/ :/' \
+	    >> .deps/$(*F).P; \
+	rm .deps/$(*F).pp
+
+%.lo: %.c
+	@echo '$(LTCOMPILE) -c $<'; \
+	$(LTCOMPILE) -Wp,-MD,.deps/$(*F).pp -c $<
+	@-sed -e 's/^\([^:]*\)\.o[ 	]*:/\1.lo \1.o :/' \
+	  < .deps/$(*F).pp > .deps/$(*F).P; \
+	tr ' ' '\012' < .deps/$(*F).pp \
+	  | sed -e 's/^\\$$//' -e '/^$$/ d' -e '/:$$/ d' -e 's/$$/ :/' \
+	    >> .deps/$(*F).P; \
+	rm -f .deps/$(*F).pp
+info-am:
+info: info-recursive
+dvi-am:
+dvi: dvi-recursive
+check-am: all-am
+check: check-recursive
+installcheck-am:
+installcheck: installcheck-recursive
+all-recursive-am: config.h
+	$(MAKE) $(AM_MAKEFLAGS) all-recursive
+
+install-exec-am: install-libexecPROGRAMS
+install-exec: install-exec-recursive
+
+install-data-am: install-scriptdataDATA
+install-data: install-data-recursive
+
+install-am: all-am
+	@$(MAKE) $(AM_MAKEFLAGS) install-exec-am install-data-am
+install: install-recursive
+uninstall-am: uninstall-libexecPROGRAMS uninstall-scriptdataDATA
+uninstall: uninstall-recursive
+all-am: Makefile $(PROGRAMS) $(DATA) config.h
+all-redirect: all-recursive-am
+install-strip:
+	$(MAKE) $(AM_MAKEFLAGS) AM_INSTALL_PROGRAM_FLAGS=-s install
+installdirs: installdirs-recursive
+installdirs-am:
+	$(mkinstalldirs)  $(DESTDIR)$(libexecdir) $(DESTDIR)$(scriptdatadir)
+
+
+mostlyclean-generic:
+
+clean-generic:
+
+distclean-generic:
+	-rm -f Makefile $(CONFIG_CLEAN_FILES)
+	-rm -f config.cache config.log stamp-h stamp-h[0-9]*
+
+maintainer-clean-generic:
+mostlyclean-am:  mostlyclean-hdr mostlyclean-libexecPROGRAMS \
+		mostlyclean-compile mostlyclean-tags mostlyclean-depend \
+		mostlyclean-generic
+
+mostlyclean: mostlyclean-recursive
+
+clean-am:  clean-hdr clean-libexecPROGRAMS clean-compile clean-tags \
+		clean-depend clean-generic mostlyclean-am
+
+clean: clean-recursive
+
+distclean-am:  distclean-hdr distclean-libexecPROGRAMS distclean-compile \
+		distclean-tags distclean-depend distclean-generic \
+		clean-am
+
+distclean: distclean-recursive
+	-rm -f config.status
+
+maintainer-clean-am:  maintainer-clean-hdr \
+		maintainer-clean-libexecPROGRAMS \
+		maintainer-clean-compile maintainer-clean-tags \
+		maintainer-clean-depend maintainer-clean-generic \
+		distclean-am
+	@echo "This command is intended for maintainers to use;"
+	@echo "it deletes files that may require special tools to rebuild."
+
+maintainer-clean: maintainer-clean-recursive
+	-rm -f config.status
+
+.PHONY: mostlyclean-hdr distclean-hdr clean-hdr maintainer-clean-hdr \
+mostlyclean-libexecPROGRAMS distclean-libexecPROGRAMS \
+clean-libexecPROGRAMS maintainer-clean-libexecPROGRAMS \
+uninstall-libexecPROGRAMS install-libexecPROGRAMS mostlyclean-compile \
+distclean-compile clean-compile maintainer-clean-compile \
+uninstall-scriptdataDATA install-scriptdataDATA install-data-recursive \
+uninstall-data-recursive install-exec-recursive \
+uninstall-exec-recursive installdirs-recursive uninstalldirs-recursive \
+all-recursive check-recursive installcheck-recursive info-recursive \
+dvi-recursive mostlyclean-recursive distclean-recursive clean-recursive \
+maintainer-clean-recursive tags tags-recursive mostlyclean-tags \
+distclean-tags clean-tags maintainer-clean-tags distdir \
+mostlyclean-depend distclean-depend clean-depend \
+maintainer-clean-depend info-am info dvi-am dvi check check-am \
+installcheck-am installcheck all-recursive-am install-exec-am \
+install-exec install-data-am install-data install-am install \
+uninstall-am uninstall all-redirect all-am all installdirs-am \
+installdirs mostlyclean-generic distclean-generic clean-generic \
+maintainer-clean-generic clean mostlyclean distclean maintainer-clean
+
+
+files:
+	@files=`ls $(DISTFILES) 2> /dev/null`; for p in $$files; do \
+	  echo $$p; \
+	done
+
+# Tell versions [3.59,3.63) of GNU make to not export all variables.
+# Otherwise a system limit (for SysV at least) may be exceeded.
+.NOEXPORT:

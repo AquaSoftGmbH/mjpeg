@@ -1,0 +1,116 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:604: checking for a BSD compatible install
+configure:657: checking whether build environment is sane
+configure:714: checking whether make sets ${MAKE}
+configure:760: checking for working aclocal
+configure:773: checking for working autoconf
+configure:786: checking for working automake
+configure:799: checking for working autoheader
+configure:812: checking for working makeinfo
+configure:826: checking whether to enable maintainer-specific portions of Makefiles
+configure:853: checking for gcc
+configure:966: checking whether the C compiler (gcc  ) works
+configure:982: gcc -o conftest    conftest.c  1>&5
+configure:1008: checking whether the C compiler (gcc  ) is a cross-compiler
+configure:1013: checking whether we are using GNU C
+configure:1041: checking whether gcc accepts -g
+configure:1073: checking for POSIXized ISC
+configure:1097: checking for gcc
+configure:1210: checking whether the C compiler (gcc -g -O2 ) works
+configure:1226: gcc -o conftest -g -O2   conftest.c  1>&5
+configure:1252: checking whether the C compiler (gcc -g -O2 ) is a cross-compiler
+configure:1257: checking whether we are using GNU C
+configure:1285: checking whether gcc accepts -g
+configure:1319: checking for ranlib
+configure:1349: checking how to run the C preprocessor
+configure:1433: checking for X
+configure:1747: checking for dnet_ntoa in -ldnet
+configure:1788: checking for dnet_ntoa in -ldnet_stub
+configure:1836: checking for gethostbyname
+configure:1934: checking for connect
+configure:2026: checking for remove
+configure:2118: checking for shmat
+configure:2219: checking for IceConnectionNumber in -lICE
+configure:2274: checking for working alloca.h
+configure:2307: checking for alloca
+configure:2506: checking for vprintf
+configure:2613: checking for getcwd
+configure:2613: checking for mblen
+configure:2613: checking for memcpy
+configure:2613: checking for strchr
+configure:2613: checking for strerror
+configure:2613: checking for uname
+configure:2668: checking for getline
+configure:2668: checking for memmove
+configure:2668: checking for memset
+configure:2668: checking for stpcpy
+configure:2668: checking for stpncpy
+configure:2668: checking for strcspn
+configure:2668: checking for strncasecmp
+configure:2668: checking for strstr
+configure:2668: checking for strtoul
+configure:2668: checking for vasprintf
+configure:2781: checking for ANSI C header files
+configure:2888: checking for fcntl.h
+configure:2888: checking for unistd.h
+configure:2929: checking for dirent.h that defines DIR
+configure:2967: checking for opendir in -ldir
+configure:3051: checking for working const
+configure:3126: checking for inline
+configure:3166: checking for size_t
+configure:3200: checking return type of signal handlers
+configure:3294: checking for glib-config
+configure:3329: checking for GLIB - version >= 1.2.0
+configure:3428: gcc -o conftest -g -O2 -I/usr/lib/glib/include   conftest.c -L/usr/lib -lglib  1>&5
+configure:3561: checking for gtk-config
+configure:3596: checking for GTK - version >= 1.2.0
+configure:3697: gcc -o conftest -g -O2 -I/usr/lib/glib/include -I/usr/X11R6/include   conftest.c -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm  1>&5
+configure:3821: checking for gimptool
+configure:3856: checking for GIMP - version >= 1.1.25
+configure:3941: gcc -o conftest -g -O2 -I/usr/local/include -I/usr/lib/glib/include -I/usr/X11R6/include   conftest.c  -L/usr/local/lib -lgimpui -lgimp -L/usr/lib -L/usr/X11R6/lib -lgtk -lgdk -rdynamic -lgmodule -lglib -ldl -lXi -lXext -lX11 -lm 1>&5
+configure:4092: checking for jpeg_start_compress in -ljpeg
+configure:4187: checking for sdl-config
+configure:4222: checking for SDL - version >= 1.1.3
+configure:4307: gcc -o conftest -g -O2 -I/usr/include/SDL -D_REENTRANT   conftest.c -ljpeg  -L/usr/lib -Wl,-rpath,/usr/lib -lSDL -lpthread 1>&5
+configure:4400: checking for off_t
+configure:4436: checking for unistd.h
+configure:4475: checking for getpagesize
+configure:4528: checking for working mmap
+configure:4704: checking for argz.h
+configure:4704: checking for limits.h
+configure:4704: checking for locale.h
+configure:4704: checking for nl_types.h
+configure:4704: checking for malloc.h
+configure:4704: checking for string.h
+configure:4704: checking for unistd.h
+configure:4704: checking for sys/param.h
+configure:4744: checking for getcwd
+configure:4744: checking for munmap
+configure:4744: checking for putenv
+configure:4744: checking for setenv
+configure:4744: checking for setlocale
+configure:4744: checking for strchr
+configure:4744: checking for strcasecmp
+configure:4744: checking for strdup
+configure:4744: checking for __argz_count
+configure:4744: checking for __argz_stringify
+configure:4744: checking for __argz_next
+configure:4863: checking for LC_MESSAGES
+configure:4896: checking whether NLS is requested
+configure:4916: checking whether included gettext is requested
+configure:4935: checking for libintl.h
+configure:4962: checking for gettext in libc
+configure:4990: checking for bindtextdomain in -lintl
+configure:5276: checking whether catgets can be used
+configure:5548: checking for msgfmt
+configure:5582: checking for gmsgfmt
+configure:5618: checking for xgettext
+configure:5711: checking for catalogs to be installed
+configure:5815: checking for pthread_create in -lpthread
+configure:5862: checking for png_read_info in -lpng
+configure:5912: checking for jpeg_set_quality in -ljpeg
+configure:5979: checking for quicktime_open in -lquicktime
+configure:6095: checking for movtar-config
+configure:6218: checking for movtar - version >= 0.0.2

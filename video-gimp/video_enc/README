@@ -1,0 +1,17 @@
+gap_encode - The gap encoding facility
+======================================
+
+This plugin is used together with GAP (or Gimp Video) to encode
+animations into one of the common video formats like QT or AVI,
+and into more strange ones like Lokigames' SMJPEG and the buz_tools'
+movtar format.
+
+gap_encode is in a very early stage of development, and although it already
+produces usable output, it can change shape in any possible way in the
+future, and it certainly has a bunch of bugs, too ;) ... but none of the
+bugs should be so serious that it crashes your system - however, as usual:
+No responsibility for any damage using this software inflicts.
+
+Restrictions:
+Very basic sound support, each of the plugins 
+only allows import of WAV files.

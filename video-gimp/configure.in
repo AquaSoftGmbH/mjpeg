@@ -1,0 +1,218 @@
+dnl Process this file with autoconf to produce a configure script.
+AC_INIT(gap_main.c)
+AM_CONFIG_HEADER(config.h)
+AM_INIT_AUTOMAKE(gap, 1.1.23a)
+AM_MAINTAINER_MODE
+
+
+dnl Checks for programs.
+dnl AM_PROG_LIBTOOL
+AC_ISC_POSIX
+
+AC_PROG_CC
+AC_PROG_RANLIB
+
+
+dnl ---------------------------------------------------------------------       
+dnl X11 checks                                                                                                                                                  
+AC_PATH_XTRA                                                                    
+if test "-DX_DISPLAY_MISSING" = "$X_CFLAGS"; then                                 
+AC_MSG_ERROR(can not find X11)                                                
+fi                                                                              
+AC_SUBST(X_CFLAGS)                                                              
+AC_SUBST(X_PRE_LIBS)                                                            
+AC_SUBST(X_EXTRA_LIBS)                                                          
+AC_SUBST(X_LIBS)                                                                
+AC_SUBST(x_libraries)                                                           
+
+dnl Checks for library functions.                                               
+AC_FUNC_ALLOCA                                                                  
+AC_FUNC_VPRINTF                                                                 
+AC_CHECK_FUNCS([getcwd mblen memcpy strchr strerror uname])                     
+AC_REPLACE_FUNCS([getline memmove memset stpcpy stpncpy strcspn strncasecmp strstr strtoul vasprintf])
+if test $ac_cv_func_getline != yes; then                                          
+AC_CHECK_FUNCS(getdelim)                                                      
+fi                                                                              
+
+dnl Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS(fcntl.h unistd.h)
+AC_HEADER_DIRENT
+
+dnl Checks for typedefs, structures, and compiler characteristics.
+AC_C_CONST
+AC_C_INLINE
+AC_TYPE_SIZE_T
+
+dnl Checks for library functions.
+AC_TYPE_SIGNAL
+
+dnl Check for GLib
+AM_PATH_GLIB(1.2.0)
+dnl AC_SUBST(GLIB_CFLAGS)
+dnl AC_SUBST(GLIB_LIBS)
+
+dnl Check for GTK
+AM_PATH_GTK(1.2.0)
+dnl AC_SUBST(GTK_CFLAGS)
+dnl AC_SUBST(GTK_LIBS)
+
+dnl Check for GIMP lugin Extensions
+AM_PATH_GIMP(1.1.25)
+AC_SUBST(GIMP_CFLAGS)
+AC_SUBST(GIMP_LIBS)
+
+dnl Check for jpeg...
+have_jpeg="no"
+AC_ARG_ENABLE(jpeg, --enable-jpeg   Use jpeg library,
+			  [
+				if [ ! $enableval = "no" ]
+				then
+			      AC_CHECK_LIB(jpeg, jpeg_start_compress,
+	                           [ have_jpeg="yes"
+                                 LIBS="$LIBS -ljpeg"
+							   ])
+				else
+				   echo "*** jpeg disabled"
+                   have_jpeg="no"
+                fi
+              ],
+			  [
+			    AC_CHECK_LIB(jpeg, jpeg_start_compress)
+			  ]
+			)
+
+dnl Check for SDL
+
+if test $have_jpeg="yes"
+then
+AM_PATH_SDL(1.1.3, 
+			[ AC_DEFINE(BUILD_MJPEG)
+			  LIBS="$LIBS -lSDL"
+			  have_sdl="yes"
+			],
+			[ 
+			  have_sdl="no"	
+			  echo "*** Software MJPEG wont be built - SDL not available"
+			]
+	       )
+else
+    echo "*** Software MJPEG wont be built - jpeg not available"
+fi
+
+dnl i18n stuff                                                                  
+ALL_LINGUAS="de en_GB sv uk"
+AM_GNU_GETTEXT                                                                   
+
+dnl Misc. other libraries
+AC_CHECK_LIB(pthread, pthread_create)
+AC_CHECK_LIB(png,png_read_info,
+               [       
+                  AC_DEFINE(BUILD_PNG)
+                   LIBS="$LIBS -lpng -lz"
+               ], 
+
+              [  
+                  LIBS="$OLDLIBS"   
+              ],  
+              -lz 
+       ) 
+AC_CHECK_LIB(jpeg,jpeg_set_quality)
+
+dnl -- Quicktime checks --
+if test -r /usr/local/src/quicktime
+then
+  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime
+else
+  DEFAULT_QUICKTIME_LIBDIR=/usr/local/src/quicktime4linux-1.2
+fi
+	            
+AC_ARG_WITH(quicktime, [  --with-quicktime=PFX  Where to find the quicktime source dir [/usr/local/src/quicktime] ], 
+    QUICKTIME_LIBDIR="$withval", 
+    QUICKTIME_LIBDIR="$DEFAULT_QUICKTIME_LIBDIR")
+
+OLDLIBS="$LIBS"
+LIBS="-L $QUICKTIME_LIBDIR $LIBS"
+AC_SUBST(QUICKTIME_INCLUDE)
+AC_CHECK_LIB( quicktime, quicktime_open,
+	          [ 
+		        AC_DEFINE(BUILD_QUICKTIME)
+				LIBS="$LIBS -lquicktime"
+			    QUICKTIME_INCLUDE="-I $QUICKTIME_LIBDIR"
+			    have_quicktime="yes"
+		      ],
+			  [ 
+	            LIBS="$OLDLIBS"
+				have_quicktime="no"
+			  ],
+			  -lm -lm -lz -lpng -lpthread `glib-config --libs --cflags`
+			 )
+dnl
+dnl Check for type of SIMD support and machine specific optimisation
+dnl flags (currently only MMX/SSE on x86)
+dnl 
+AC_SUBST(MTYPEFLAGS)
+AC_ARG_ENABLE(x86-cpu,
+	         [ --enable-x86-cpu   Force support x86 CPU's SIMD features],
+	         [ hwaretype=i586 ],
+             [ hwaretype=`uname --machine`]
+			)
+
+case "${hwaretype}" in
+i686) 
+	x86cpu="yes"
+    MTYPEFLAGS="-mpentiumpro"
+	echo "Compiling in MMX/SSE support for PPro (or better) CPU"
+;;
+i586) 
+	x86cpu="yes"
+	MTYPEFLAGS="-mpentium"
+	echo "Compiling in MMX/SSE support for Pentium CPU"
+;;
+*) x86cpu="no"
+   MTYPEFLAGS=""
+   echo "Non x86 CPU: no MMX/SSE code will be included"
+;;
+esac
+
+dnl Avilib is deactivated until I find a nice solution for it.. 
+have_avilib="no"
+AM_PATH_MOVTAR(0.0.2, have_movtar="yes", have_movtar="no")
+AC_SUBST(MOVTAR_CFLAGS)
+AC_SUBST(MOVTAR_LIBS)
+
+LIBMPEG= 
+GAP_DECODE_MPEG=
+AC_SUBST(GAP_DECODE_MPEG)
+AC_SUBST(LIBMPEG)
+
+AM_CONDITIONAL(X86CPU, test $x86cpu=yes   )
+
+
+AC_OUTPUT(Makefile
+    video_enc/Makefile
+    intl/Makefile
+    po/Makefile.in
+dnl    video_dec/Makefile
+    )
+
+echo ""
+echo " Video/GIMP (GAP) ${VERSION} build configuration :"
+echo ""
+echo "    - software MJPEG playback     : ${have_sdl}"
+echo "    - movtar codec                : ${have_movtar}"
+echo "    - Quicktime codec             : ${have_quicktime}"
+echo "    - AVI MJPEG codec             : ${have_avilib}"
+echo ""
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,121 @@
+###########################
+# Makefile for GAP encoders
+#      gap_qt
+#      gap_avi
+#      gap_movtar
+###########################
+
+# Hinweis fuer gernot:
+#   das Makefile ist noch nicht fertig
+#   bisher ist nur gap_qt  richtig eingetragen,
+#      include und library pfade sind  anzupassen
+# 
+# umsteig auf automake geplant bei aufnahme ins CVS,
+# (ich weiss noch nicht genau welche libs (mit versionsangabe) wir dazu brauchen und wie
+# die libs konfiguration mit automake funktioniert)
+
+SHELL		= /bin/sh
+
+XINCL		= -I/usr/X11R6/include
+#GINCL		= -I/usr/lib/glib/include -I/usr/src/gimp-1.1.13
+GINCL		= -I/usr/local/lib/glib/include -I/usr/src/gimp/
+XLIBS		= /usr/X11R6/lib
+#GIMPHOME	= /usr/lib/gimp/1.1
+GIMPHOME	= /usr/lib/gimp/1.1
+#GAPHOME	= /usr/src/gimp-1.1.22/plug-ins/gap
+GAPHOME		= /usr/src/gimp/plug-ins/gap
+
+PLUG-INS	= $(GIMPHOME)/plug-ins
+
+CC        	= gcc 
+LIBS 		= ../intl/libintl.a -lgdk -lgtk -lgck -lgimpui -lgimp -rdynamic \
+		    -lgmodule -lglib -ldl -L$(XLIBS) -lX11 -lXext -lpthread 
+
+#LDFLAGS		= -L$(XLIBS) -L$(GAPHOME)
+LDFLAGS		= -L$(XLIBS) -L/usr/lib
+
+
+
+AVIHOME=/usr/src/lavtools-1.2
+
+
+# Workaround:
+#  both quicktime4linux.1.1.4x, und 1.1.9 crashes on gimpixII
+#    (but not on pc7465)
+#   at encoding jpeg or mjpa codecs. 
+#   it was linked with the reqired upgrade to libjpeg.6.2.
+#
+# On gimpixII I rcompiled/linked /usr/local/lib/quicktime.a
+# with the new libjpeg.6.2.
+# 
+# the includes /usr/local/include/quicktime4linux
+# are taken from the quicktime4linux.1.1.4x (to define MJPA codec)
+# (for the /usr/local/lib/quicktime.a I should normally
+# use the includes from quicktime4linux.1.1.3 without MJPA support)
+#
+# But gap_qt compiles, links and runs without crash now,
+#  and mjpa is available !!
+#  
+
+#QTLIB=/usr/local/lib/quicktime.a
+#QTLIB=-lquicktime -lpthread
+QTLIB=/usr/src/quicktime/libquicktime.a
+QTINCL=/usr/src/quicktime
+PLUGINCL += -I$(QTINCL)
+
+
+SMJPEGHOME=/usr/src/smjpeg
+PLUGINCL += -I$(SMJPEGHOME)
+
+##################################################
+# No changes should be necessary below this line #
+##################################################
+CFLAGS	+=  -g -O2 -ffast-math -Wall -I../ -I./ -I/usr/local/include \
+    -DHAVE_DIRENT_H $(PLUGINCL) $(XINCL) $(GINCL)
+
+# EXEFILES	= gap_qt  gap_avi  gap_movtar  gap_smjpeg
+# EXEFILES	= gap_qt  gap_avi
+EXEFILES	= gap_qt
+
+OBJS		= gap_enc_lib.o  gap_enc_audio.o \
+		  ../gap_arr_dialog.o  ../gap_lib.o  \
+		  ../gap_pdb_calls.o   ../gap_layer_copy.o  ../gap_exchange_image.o
+		  
+qt_OBJS		= gap_qt_main.o
+qt_LIBS		= $(QTLIB) -ljpeg -lpng -lz
+
+#avi_OBJS	= gap_avi_main.o  gap_enc_jpeg.o  $(AVIHOME)/avilib.o 
+avi_OBJS	= gap_avi_main.o  gap_enc_jpeg.o  avilib.o 
+avi_LIBS	= -ljpeg -lpng -lz
+
+movtar_OBJS	= gap_movtar_main.o $(BUZHOME)/movtar.o
+movtar_LIBS	=
+
+smjpeg_OBJS	= gap_smjpeg_main.o
+smjpeg_LIBS	= $(SMJPEGHOME)/libsmjpeg.a
+
+
+
+
+all: $(EXEFILES)
+
+
+gap_qt:  $(OBJS) $(qt_OBJS)
+	-$(CC) $(CFLAGS) -o gap_qt $(OBJS) $(qt_OBJS) $(LDFLAGS) $(LIBS) $(qt_LIBS)
+
+gap_avi:  $(OBJS) $(avi_OBJS)
+	-$(CC) $(CFLAGS) -o gap_avi  $(OBJS) $(avi_OBJS) $(LDFLAGS) $(LIBS) $(avi_LIBS)
+
+gap_movtar:  $(OBJS) $(movtar_OBJS)
+	-$(CC) $(CFLAGS) -o gap_movtar  $(OBJS) $(movtar_OBJS) $(LDFLAGS) $(LIBS) $(movtar_LIBS)
+
+gap_smjpeg:  $(OBJS) $(smjpeg_OBJS)
+	-$(CC) $(CFLAGS) -o gap_smjpeg  $(OBJS) $(smjpeg_OBJS) $(LDFLAGS) $(LIBS) $(smjpeg_LIBS)
+
+
+install: all
+	mv -f $(EXEFILES) $(PLUG-INS)/
+
+clean:
+	rm -f *.o *~ $(EXEFILES)
+

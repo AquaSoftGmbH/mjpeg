@@ -1,0 +1,162 @@
+To: gz@lysator.liu.se
+Subject: GAP/encoders Restrukturierung
+
+Hallo Gernot.
+
+Ich habe mir die modulstruktur mit getrennten main
+programmen anders vorgestellt.
+
+
+Ich habe als Vorschlag folgende Umstrukturierungen
+nach meinen vorstellungen durchgefuehrt:
+
+
+Das modul gap_encode_main.c entfaellt.
+Allgemeine Hilfsprozeduren
+werden in getrennte module ausgelagert.
+
+Weiters: Anpassung an gimp-1.1.13
+
+
+- src Subdirectory
+      hier sind (vorlaeufig) die Sourcen der Encoder
+      und der neuen Hilfsmodule abgelegt.
+      
+      im parent directory gibt es nur noch symbolic
+      links auf die neuen encoder sourcen,
+      und auf sourcen des gimp-1.1.13/plug-ins/gap
+      directories, sowie deine links auf
+         avilib.c  movtar.c movtar.h
+      (ln_gap.sh wurde entsprechend erweitert)
+  
+      Fuer eine saubere integration im CVS
+      muessen spaeter alle Links verschwinden !!!
+      
+      alles was nicht als Source in
+      gimp-1.1.13/plug-ins/gap eingebracht wird,
+      muss als externe library konfiguriert und
+      dazugebunden werden.
+
+- gap_enc_lib.h  / .c
+
+    Modul mit allgemeinen hilfsprozeduren
+    OHNE abhaengigkeiten zu (GAP-)externen libraries
+    
+    OFFEN:
+    p_load_file
+      if (len < 1 || len > MAX_MYFILESIZE)
+          return(NULL);
+     
+    ich bin dagegen ein limit auf MAX_MYFILESIZE in dieser
+    prozedur einzubauen. 
+    (gp_qt_main benuzt ebenfalls diese prozedur
+     und sollte nicht eingeschraenkt werden)
+
+- gap_enc_audio.h / .c
+    Modul mit hilfsprozeduren fuer Audiodaten (WAV)
+    OHNE abhaengigkeiten zu (GAP-)externen libraries
+    
+    OFFEN:
+      #define WAV_RIFF		0x46464952
+      #define WAV_WAVE		0x45564157
+      #define WAV_FMT		0x20746D66
+      #define WAV_DATA		0x61746164
+      #define WAV_PCM_CODE	1
+   
+   portierungsprobleme bei umstieg little/big endian Prozessoren !!!!
+
+- gap_enc_jpeg.h / .c
+    Modul mit allgemeinen hilfsprozeduren zur JPEG codierung
+    MIT abhaengigkeiten zur externen library libjpeg.h
+    
+    In GIMP sollten malloc und free nicht direkt aufgerufen werden.
+    als ersatz werden g_malloc und g_free verwendet.
+
+
+MAIN programme 
+--------------
+  Jedes dieser module wird zu je einem getrennten
+  programm gebunden 
+     wenn eine library fehlt, faellt nur das betroffene programm weg,
+     alle anderen werden erzeugt,
+     ohne dass der user in Sourcen oder makefiles etwas aendern muss.
+     
+     
+    
+- gap_qt_main.
+    Main modul fuer Quicktime encode
+    (bereits mit Umstellung auf NLS-Makros)
+    braucht libs:
+        quicktime4linux 
+
+
+- gap_avi_main.c  und  gap_movtar_main.c
+
+    Aenderungen: NLS_Makros, eigenes main
+    
+    geaenderte Dialoge: 
+       ich habe kuerzere Texte fuer die Label der Widgets benutzt
+       Die detailiertere Auskunft steht nun im help text.
+       (diser text wird als tooltip angezeigt, wenn die Maus
+        einige sekunden ueber dem widget bleibt)
+
+    Hinweise:
+
+    Das Modul gap_movtar_main.c konnte ich bei mir noch nicht binden,
+    weil ich movtar.c und movtar.h noch nicht habe.
+    es sollte jedoch compileclean sein.
+    (ich werde download spaeter nochmal versuchen
+    wenn der Rechner wieder erreichbar ist)
+    
+    Zum AVI Modul:
+      Ich konnte ein .avi video erzeugen,
+      das file kann aber nicht abgespielt werden:
+      1. versuch
+         bash gimpixII:[lavtools-1.0] #./lavplay  /home/hof/tmp/box_anim.avi
+         /dev/video: Operation not supported by device
+	 
+	 # ich habe lavplay noch nie zuvor benutzt,
+	 # sieht so aus als waere dazu video hardware erforderlich,
+	 # die ich nicht habe
+	 
+      2. versuch
+         xanim box_anim.avi 
+	   AVI Notice: No supported Video frames found.
+
+
+- gap_smjpeg_main.c
+    war nicht in deinem tarfile enthalten,
+    und ist noch (analog zu gap_qt_main.c) anzupassen
+
+- Makefile.am
+    in vorbereitung (file ist noch nicht in diesem tar archiv enthalten)
+    wird die Variante fuer integration in CVS Version
+    mit automake.
+    (dabei ist ein merge mit dem bestehenden
+     gimp-1.1.13/plug-ins/gap/Makefile.am notwendig !!!
+
+- Makefile
+    provisorisches Makefile (solange die encoder noch nicht
+    in CVS sind)
+    setzt nun auf gimp-1.1.13 auf.
+    
+
+mfG. Wolfgang Hofer  <hof@hotbot.com>
+
+
+PS:
+
+Ich verwende seit einiger Zeit folgendes Versionschema
+fuer GAP sourcen:
+   Bei jeder Aenderung einer Source
+   wird in der revision history die zugrunde liegende
+   GIMP Version und ein Buchstabe fuer den aktuellen Patch
+   eingetragen.
+   Derzeit 
+      1.1.13a      (der 1. patch fuer gimp 1.1.13)
+      
+   wenn der patch a bereits im CVS eingespielt ist,
+   und weitere Aenderungen zur aktuellen GIMP release
+   noetig sind wird der Buchtabe fuer den Patch erhoeht
+   
+      1.1.13b

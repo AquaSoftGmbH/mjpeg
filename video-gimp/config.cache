@@ -1,0 +1,100 @@
+# This file is a shell script that caches the results of configure
+# tests run on this system so they can be shared between configure
+# scripts and configure runs.  It is not useful on other systems.
+# If it contains results you don't want to keep, you may remove or edit it.
+#
+# By default, configure uses ./config.cache as the cache file,
+# creating it if it does not exist already.  You can give configure
+# the --cache-file=FILE option to use a different cache file; that is
+# what configure does when it calls configure scripts in
+# subdirectories, so they share the cache.
+# Giving --cache-file=/dev/null disables caching, for debugging configure.
+# config.status only pays attention to the cache file if you give it the
+# --recheck option to rerun configure.
+#
+ac_cv_c_const=${ac_cv_c_const='yes'}
+ac_cv_c_inline=${ac_cv_c_inline='inline'}
+ac_cv_func___argz_count=${ac_cv_func___argz_count='no'}
+ac_cv_func___argz_next=${ac_cv_func___argz_next='no'}
+ac_cv_func___argz_stringify=${ac_cv_func___argz_stringify='no'}
+ac_cv_func_alloca_works=${ac_cv_func_alloca_works='yes'}
+ac_cv_func_connect=${ac_cv_func_connect='yes'}
+ac_cv_func_getcwd=${ac_cv_func_getcwd='yes'}
+ac_cv_func_gethostbyname=${ac_cv_func_gethostbyname='yes'}
+ac_cv_func_getline=${ac_cv_func_getline='yes'}
+ac_cv_func_getpagesize=${ac_cv_func_getpagesize='no'}
+ac_cv_func_mblen=${ac_cv_func_mblen='yes'}
+ac_cv_func_memcpy=${ac_cv_func_memcpy='yes'}
+ac_cv_func_memmove=${ac_cv_func_memmove='yes'}
+ac_cv_func_memset=${ac_cv_func_memset='yes'}
+ac_cv_func_mmap_fixed_mapped=${ac_cv_func_mmap_fixed_mapped='no'}
+ac_cv_func_munmap=${ac_cv_func_munmap='no'}
+ac_cv_func_putenv=${ac_cv_func_putenv='no'}
+ac_cv_func_remove=${ac_cv_func_remove='yes'}
+ac_cv_func_setenv=${ac_cv_func_setenv='no'}
+ac_cv_func_setlocale=${ac_cv_func_setlocale='no'}
+ac_cv_func_shmat=${ac_cv_func_shmat='yes'}
+ac_cv_func_stpcpy=${ac_cv_func_stpcpy='yes'}
+ac_cv_func_stpncpy=${ac_cv_func_stpncpy='yes'}
+ac_cv_func_strcasecmp=${ac_cv_func_strcasecmp='no'}
+ac_cv_func_strchr=${ac_cv_func_strchr='yes'}
+ac_cv_func_strcspn=${ac_cv_func_strcspn='yes'}
+ac_cv_func_strdup=${ac_cv_func_strdup='no'}
+ac_cv_func_strerror=${ac_cv_func_strerror='yes'}
+ac_cv_func_strncasecmp=${ac_cv_func_strncasecmp='yes'}
+ac_cv_func_strstr=${ac_cv_func_strstr='yes'}
+ac_cv_func_strtoul=${ac_cv_func_strtoul='yes'}
+ac_cv_func_uname=${ac_cv_func_uname='yes'}
+ac_cv_func_vasprintf=${ac_cv_func_vasprintf='yes'}
+ac_cv_func_vprintf=${ac_cv_func_vprintf='yes'}
+ac_cv_have_x=${ac_cv_have_x='have_x=yes 		ac_x_includes=/usr/X11R6/include ac_x_libraries=/usr/X11R6/lib'}
+ac_cv_header_alloca_h=${ac_cv_header_alloca_h='yes'}
+ac_cv_header_argz_h=${ac_cv_header_argz_h='yes'}
+ac_cv_header_dirent_dirent_h=${ac_cv_header_dirent_dirent_h='yes'}
+ac_cv_header_fcntl_h=${ac_cv_header_fcntl_h='yes'}
+ac_cv_header_libintl_h=${ac_cv_header_libintl_h='yes'}
+ac_cv_header_limits_h=${ac_cv_header_limits_h='yes'}
+ac_cv_header_locale_h=${ac_cv_header_locale_h='yes'}
+ac_cv_header_malloc_h=${ac_cv_header_malloc_h='yes'}
+ac_cv_header_nl_types_h=${ac_cv_header_nl_types_h='yes'}
+ac_cv_header_stdc=${ac_cv_header_stdc='yes'}
+ac_cv_header_string_h=${ac_cv_header_string_h='yes'}
+ac_cv_header_sys_param_h=${ac_cv_header_sys_param_h='yes'}
+ac_cv_header_unistd_h=${ac_cv_header_unistd_h='yes'}
+ac_cv_lib_ICE_IceConnectionNumber=${ac_cv_lib_ICE_IceConnectionNumber='yes'}
+ac_cv_lib_dir_opendir=${ac_cv_lib_dir_opendir='no'}
+ac_cv_lib_dnet_dnet_ntoa=${ac_cv_lib_dnet_dnet_ntoa='no'}
+ac_cv_lib_dnet_stub_dnet_ntoa=${ac_cv_lib_dnet_stub_dnet_ntoa='no'}
+ac_cv_lib_intl_bindtextdomain=${ac_cv_lib_intl_bindtextdomain='no'}
+ac_cv_lib_jpeg_jpeg_set_quality=${ac_cv_lib_jpeg_jpeg_set_quality='yes'}
+ac_cv_lib_jpeg_jpeg_start_compress=${ac_cv_lib_jpeg_jpeg_start_compress='yes'}
+ac_cv_lib_png_png_read_info=${ac_cv_lib_png_png_read_info='yes'}
+ac_cv_lib_pthread_pthread_create=${ac_cv_lib_pthread_pthread_create='yes'}
+ac_cv_lib_quicktime_quicktime_open=${ac_cv_lib_quicktime_quicktime_open='no'}
+ac_cv_path_GIMPTOOL=${ac_cv_path_GIMPTOOL='/usr/local/bin/gimptool'}
+ac_cv_path_GLIB_CONFIG=${ac_cv_path_GLIB_CONFIG='/usr/bin/glib-config'}
+ac_cv_path_GMSGFMT=${ac_cv_path_GMSGFMT='/usr/bin/msgfmt'}
+ac_cv_path_GTK_CONFIG=${ac_cv_path_GTK_CONFIG='/usr/bin/gtk-config'}
+ac_cv_path_MOVTAR_CONFIG=${ac_cv_path_MOVTAR_CONFIG='no'}
+ac_cv_path_MSGFMT=${ac_cv_path_MSGFMT='/usr/bin/msgfmt'}
+ac_cv_path_SDL_CONFIG=${ac_cv_path_SDL_CONFIG='/usr/bin/sdl-config'}
+ac_cv_path_XGETTEXT=${ac_cv_path_XGETTEXT='/usr/bin/xgettext'}
+ac_cv_path_install=${ac_cv_path_install='/usr/bin/install -c'}
+ac_cv_prog_CC=${ac_cv_prog_CC='gcc'}
+ac_cv_prog_CPP=${ac_cv_prog_CPP='gcc -E'}
+ac_cv_prog_RANLIB=${ac_cv_prog_RANLIB='ranlib'}
+ac_cv_prog_cc_cross=${ac_cv_prog_cc_cross='no'}
+ac_cv_prog_cc_g=${ac_cv_prog_cc_g='yes'}
+ac_cv_prog_cc_works=${ac_cv_prog_cc_works='yes'}
+ac_cv_prog_gcc=${ac_cv_prog_gcc='yes'}
+ac_cv_prog_make_make_set=${ac_cv_prog_make_make_set='yes'}
+ac_cv_type_off_t=${ac_cv_type_off_t='yes'}
+ac_cv_type_signal=${ac_cv_type_signal='void'}
+ac_cv_type_size_t=${ac_cv_type_size_t='yes'}
+am_cv_val_LC_MESSAGES=${am_cv_val_LC_MESSAGES='no'}
+gt_cv_func_gettext_libc=${gt_cv_func_gettext_libc='no'}
+nls_cv_force_use_gnu_gettext=${nls_cv_force_use_gnu_gettext='no'}
+nls_cv_header_intl=${nls_cv_header_intl='intl/libintl.h'}
+nls_cv_header_libgt=${nls_cv_header_libgt='intl/libgettext.h'}
+nls_cv_use_catgets=${nls_cv_use_catgets='no'}
+nls_cv_use_gnu_gettext=${nls_cv_use_gnu_gettext='yes'}
