@@ -149,7 +149,7 @@ void MultiplexJob::Usage(char *str)
 
 static const char short_options[] = "o:b:r:O:v:m:f:l:s:S:q:p:L:VXMeh";
 
-#if defined(HAVE_GETLONG)
+#if defined(HAVE_GETOPT_LONG)
 static struct option long_options[] = 
 {
      { "verbose",           1, 0, 'v' },
@@ -238,7 +238,7 @@ void MultiplexJob::SetFromCmdLine(unsigned int argc, char *argv[])
     int n;
     outfile_pattern = NULL;
 
-#if defined(HAVE_GETLONG)
+#if defined(HAVE_GETOPT_LONG)
 	while( (n=getlong(argc,argv,short_options,long_options, NULL)) != -1 )
 #else
     while( (n=getopt(argc,argv,short_options)) != -1 )
