@@ -22,7 +22,6 @@
  *
  */
 
-#include <config.h>
 #include "mjpeg_types.h"
 #include "synchrolib.h"
 #include "elemstrmwriter.hh"

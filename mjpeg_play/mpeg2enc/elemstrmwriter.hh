@@ -20,7 +20,6 @@
  *
  */
 
-#include <config.h>
 #include "stdio.h"
 #include "mjpeg_types.h"
 

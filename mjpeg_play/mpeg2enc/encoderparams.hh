@@ -53,11 +53,8 @@
  */
 
 
-
-#include "config.h"
 #include "mjpeg_types.h"
 #include "syntaxconsts.h"
-
 
 /*
   How many frames to read in one go

@@ -22,9 +22,6 @@
  *
  */
 
-#include <config.h>
-
-
 
 struct MPEG2EncParams
 {

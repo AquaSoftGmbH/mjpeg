@@ -21,6 +21,11 @@
  *
  */
 
+
+#ifdef	HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "mpeg2encoder.hh"
 #include "picturereader.hh"
 #include "elemstrmwriter.hh"

@@ -20,7 +20,6 @@
 
 #ifndef __MJPEG_TYPES_H__
 #define __MJPEG_TYPES_H__
-//#include <config.h>
 
 #include <sys/types.h> /* FreeBSD, others - ssize_t */
 

@@ -23,7 +23,6 @@
 #define _PICTURE_HH
 /* picture.hh picture class... */
 
-#include "config.h"
 #include "mjpeg_types.h"
 #include "synchrolib.h"
 #include "macroblock.hh"

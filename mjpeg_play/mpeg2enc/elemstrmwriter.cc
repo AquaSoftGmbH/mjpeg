@@ -46,6 +46,10 @@
  */
 
 
+#ifdef	HAVE_CONFIG_H
+#include "config.h"
+#endif
+
 #include "elemstrmwriter.hh"
 #include "mpeg2encoder.hh"
 #include <stdio.h>
