@@ -178,11 +178,11 @@ int main(int argc, char ** argv)
    read_video_files(argv + optind, argc - optind, &el);
 
 
-   if(format == 'a' && el.video_inter == LAV_INTER_TOP_FIRST) format = 'A';
+   if(format == 'a' && el.video_inter == LAV_INTER_BOTTOM_FIRST) format = 'A';
 
-   if(format == 'q' && el.video_inter == LAV_INTER_TOP_FIRST)
+   if((format == 'q' || format == 'm') && el.video_inter == LAV_INTER_BOTTOM_FIRST)
    {
-      mjpeg_error_exit1("Output is Quicktime - wrong interlacing order\n");
+      mjpeg_error_exit1("Output is Quicktime/movtar - wrong interlacing order\n");
    }
 
    if(format == 'q' || format == 'a' || format == 'A' || format == 'm')
