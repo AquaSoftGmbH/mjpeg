@@ -89,7 +89,7 @@ private:
 	clockticks current_SCR;
 	clockticks audio_delay;
 	clockticks video_delay;
-
+	bool vbr;
 	/* Source data streams */
 	/* Note: 1st video stream is regarded as the "master" stream for
 	   the purpose of splitting sequences etc...

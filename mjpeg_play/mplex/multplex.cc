@@ -79,12 +79,13 @@ void OutputStream::InitSyntaxParameters()
 	case MPEG_FORMAT_VCD :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	video_buffer_size = 46*1024;
+	  	opt_VBR = 0;
  
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
 		mjpeg_info( "Selecting VCD output profile\n");
 		if( video_buffer_size == 0 )
 			video_buffer_size = opt_buffer_size * 1024;
-	  	opt_VBR = 0;
+		vbr = opt_VBR;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
@@ -120,11 +121,13 @@ void OutputStream::InitSyntaxParameters()
 		vcd_zero_stuffing = 0;
         dtspts_for_all_vau = 0;
 		sector_align_iframeAUs = false;
+		vbr = opt_VBR;
 		break;
 
 	case MPEG_FORMAT_SVCD :
 		opt_data_rate = 150*2324;
 	  	video_buffer_size = 230*1024;
+	  	opt_VBR = 1;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
 		mjpeg_info( "Selecting SVCD output profile\n");
@@ -139,8 +142,7 @@ void OutputStream::InitSyntaxParameters()
 	  	sector_transport_size = 2324;
 	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
-	  	opt_VBR = 1;
-
+		vbr = opt_VBR;
 		buffers_in_video = 0;
 		always_buffers_in_video = 0;
 		buffers_in_audio = 0;
@@ -153,7 +155,7 @@ void OutputStream::InitSyntaxParameters()
 	case MPEG_FORMAT_VCD_STILL :
 		opt_data_rate = 75*2352;  			 /* 75 raw CD sectors/sec */ 
 	  	video_buffer_size = 46*1024;
-	  	opt_VBR = 0;
+	  	vbr = opt_VBR = 0;
 		opt_mpeg = 1;
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 0;
@@ -172,6 +174,7 @@ void OutputStream::InitSyntaxParameters()
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
 		mjpeg_info( "Selecting generic MPEG1 output profile\n");
 		opt_mpeg = 1;
+		vbr = opt_VBR;
 	  	packets_per_pack = opt_packets_per_pack;
 	  	always_sys_header_in_pack = opt_always_system_headers;
 		sys_header_in_pack1 = 1;
@@ -196,8 +199,6 @@ void OutputStream::InitSyntaxParameters()
 void OutputStream::Init( char *multi_file)
 {
 	vector<ElementaryStream *>::iterator str;
-	unsigned int video_rate=0;
-	unsigned int audio_rate=0;
 	clockticks delay;
 	unsigned int sectors_delay;
 
@@ -222,7 +223,7 @@ void OutputStream::Init( char *multi_file)
 	{
 		// TODO: I don't think the locks should always be set...
 		psstrm->CreateSysHeader (&dummy_sys_header, mux_rate,  
-								 !opt_VBR, 1,  true, true, estreams);
+								 !vbr, 1,  true, true, estreams);
 		sys_hdr = &dummy_sys_header;
 	}
 	else
@@ -305,7 +306,7 @@ void OutputStream::Init( char *multi_file)
 	/* Set a start delay in SCR units that guarantees the buffers should
 	   be nicely filled up.
 	*/
-	if( opt_VBR )
+	if( vbr )
 		sectors_delay = 3*video_buffer_size / ( 4 * sector_size );
 	else
 		sectors_delay = 5 * video_buffer_size / ( 6 * sector_size );
@@ -370,7 +371,7 @@ void OutputStream::MuxStatus(log_level_t level)
 			break;
 		}
 	}
-	if( !opt_VBR )
+	if( !vbr )
 		mjpeg_log( level,
 				   "Padding : sector=%08d\n",
 				   (*str)->nsec
@@ -429,7 +430,7 @@ void OutputStream::OutputPrefix( )
 	case MPEG_FORMAT_SVCD :
 	case MPEG_FORMAT_SVCD_NSR :
 		/* First packet carries sys_header */
-		psstrm->CreateSysHeader (&sys_header, mux_rate,  !opt_VBR, true, 
+		psstrm->CreateSysHeader (&sys_header, mux_rate,  !vbr, true, 
 						   true, true, estreams );
 		sys_header_ptr = &sys_header;
 		pack_header_ptr = &pack_header;
@@ -456,7 +457,7 @@ void OutputStream::OutputPrefix( )
 	}
 
 	/* Create the in-stream header if needed */
-	psstrm->CreateSysHeader (&sys_header, mux_rate, !opt_VBR, true, 
+	psstrm->CreateSysHeader (&sys_header, mux_rate, !vbr, true, 
 					   true, true, estreams );
 
 
@@ -793,7 +794,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		{
 
 			OutputPadding (current_SCR, 
-							start_of_new_pack, include_sys_header, opt_VBR,
+							start_of_new_pack, include_sys_header, vbr,
 							false);
 			padding_packet =true;
 		}
@@ -843,7 +844,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		{
 
 			OutputPadding (current_SCR, 
-							start_of_new_pack, include_sys_header, opt_VBR,
+							start_of_new_pack, include_sys_header, vbr,
 							false);
 			padding_packet =true;
 		}
@@ -852,7 +853,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 		/* Update the counter for pack packets.  VBR is a tricky 
 		   case as here padding packets are "virtual" */
 		
-		if( ! (opt_VBR && padding_packet) )
+		if( ! (vbr && padding_packet) )
 		{
 			--packets_left_in_pack;
 			if (packets_left_in_pack == 0) 
