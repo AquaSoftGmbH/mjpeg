@@ -181,11 +181,12 @@ main(int argc, char **argv)
 static void usage()
 	{
 
-	fprintf(stderr, "%s usage: [-k] -w width -h height [-a pixel aspect] [-i p|t|b] -r rate\n", __progname);
-	fprintf(stderr, "\n  Swap U and V: -k\n");
-	fprintf(stderr, "\n  Interlace codes [-i X]: p (none) t (top first) b (bottom first)\n");
-	fprintf(stderr, "\n  Rate (as ratio) [-r N:M] (30000:1001):\n");
-	fprintf(stderr, "\n  Pixel aspect (as ratio) [-a N:M] (10:11):\n");
+	fprintf(stderr, "%s usage: [-k] -w width -h height [-x] [-a pixel aspect] [-i p|t|b] -r rate\n", __progname);
+	fprintf(stderr, "  Swap U and V: -k\n");
+	fprintf(stderr, "  Interlace codes [-i X]: p (none) t (top first) b (bottom first)\n");
+	fprintf(stderr, "  Rate (as ratio) [-r N:M] (30000:1001):\n");
+	fprintf(stderr, "  Pixel aspect (as ratio) [-a N:M] (10:11):\n");
+	fprintf(stderr, "  4:1:1 data [-x]\n");
 	fprintf(stderr, "\n");
 	exit(1);
 	}
