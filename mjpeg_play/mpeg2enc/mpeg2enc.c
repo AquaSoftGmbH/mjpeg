@@ -100,8 +100,8 @@ static int param_hf_quant = 0;
 static double param_act_boost = 0.0;
 static int param_video_buffer_size = 0;
 static int param_seq_length_limit = 2000;
-static int param_min_GOP_size = 12;
-static int param_max_GOP_size = 12;
+static int param_min_GOP_size = -1;
+static int param_max_GOP_size = -1;
 static int param_preserve_B = 0;
 static int param_Bgrp_size = 3;
 static int param_num_cpus = 1;
@@ -254,6 +254,8 @@ static void set_format_presets()
 		param_mpeg = 1;
 		param_bitrate = 1151929;
 		param_video_buffer_size = 46;
+        param_min_GOP_size = 12;
+        param_max_GOP_size = 12;
 		mjpeg_info("VCD default options selected\n");
 		
 	case MPEG_FORMAT_VCD_NSR : /* VCD format, non-standard rate */
@@ -265,7 +267,6 @@ static void set_format_presets()
 			param_bitrate = 1151929;
 		if( param_video_buffer_size == 0 )
 			param_video_buffer_size = 46 * param_bitrate / 1151929;
-
 		break;
 		
 	case  MPEG_FORMAT_MPEG2 : 
@@ -281,8 +282,7 @@ static void set_format_presets()
 	case MPEG_FORMAT_SVCD :
 		mjpeg_info("SVCD standard settings selected\n");
 		param_bitrate = 2500000;
-		param_min_GOP_size = 6;
-		param_max_GOP_size = 15;
+		param_max_GOP_size = param_norm == 'n' ? 18 : 15;
 		param_video_buffer_size = 230;
 
 	case  MPEG_FORMAT_SVCD_NSR :		/* Non-standard data-rate */
@@ -294,7 +294,6 @@ static void set_format_presets()
 			param_quant = 8;
 		if( param_svcd_scan_data == -1 )
 			param_svcd_scan_data = 1;
-		param_seq_hdr_every_gop = 1;
 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
@@ -408,8 +407,6 @@ static void set_format_presets()
 			param_bitrate = 7500000;
 		if( param_fieldenc == -1 )
 			param_fieldenc = 1;
-		param_min_GOP_size = 6;
-		param_max_GOP_size = 15;
 		param_video_buffer_size = 230;
 		param_mpeg = 2;
 		if( param_quant == 0 )
@@ -418,6 +415,21 @@ static void set_format_presets()
 		break;
 	}
 
+    switch( param_mpeg )
+    {
+    case 1 :
+        if( param_min_GOP_size == -1 )
+            param_min_GOP_size = 12;
+        if( param_max_GOP_size == -1 )
+            param_max_GOP_size = 12;
+        break;
+    case 2:
+        if( param_min_GOP_size == -1 )
+            param_min_GOP_size = 9;
+        if( param_max_GOP_size == -1 )
+            param_max_GOP_size = (param_norm == 'n' ? 18 : 15);
+        break;
+    }
 	if( param_svcd_scan_data == -1 )
 		param_svcd_scan_data = 0;
 }
@@ -1128,7 +1140,6 @@ static int f_code( int max_radius )
 	if( max_radius < 32) c = 3;
 	if( max_radius < 16) c = 2;
 	if( max_radius < 8) c = 1;
-	c = 5;
 	return c;
 }
 

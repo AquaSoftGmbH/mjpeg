@@ -49,7 +49,7 @@ in terms of data-rates and formats can handle interlaced video.
 There's more to it than that but most of the the other differences
 relate to support for digital TV broadcasting.
 
-2.2	   How does MPEG-1/MPEG-2 compare to MPEG-4 video (or DivX)
+2.2	   How does MPEG-1/MPEG-2 compare to MPEG-4 video (or "DivX")
 
 The MPEG-4 video compression standard provides somewhat better
 compression at low-to-medium bit-rates (up to around 1Mbps).
@@ -59,7 +59,8 @@ MPEG-4 gains less and less.  MPEG-4 is also not really set up to
 encode interlaced video. Basically, if you want to put an acceptable
 quality encoding of a Movie onto 1 CD MPEG-4 is the sensible choice.
 If you want higher quality and are willing to use 2 CD's MPEG-1/2 will
-work at least as well.
+work at least as well.  If you need to encode interlaced material
+MPEG-2 is a sensible choice.
 
 2.3	 What is the "multiplexing" business?
 
@@ -88,14 +89,23 @@ Unfortunately, consumer electronics people being who they are the
 standards also specify some things that are very "unnatural".  You
 have to tell the encoder
 
-2.5	   I'd love to be able to capture video and compress it so that I can
-burn it to CD and play it in my DVD player.
+2.5 Can I capture video and compress it so that I can burn it to CD
+and play it in my DVD player?
 
 Your best bet is probably to compress it as an SVCD stream and use the
 "vcdimager" program to create the burnable CD image. Many current DVD
 players can play SVCD format CDs.  Unfortunately, there's currently no
 free authoring software that would allow the same to be done for
 DVD-format MPEG.  Hopefully, this will change someday.
+
+2.6 I've just encoded a huge MPEG file on my P133 an it took *ages*.
+    Is there any way I can split it to fit ontp VCD's without re-encoding?
+
+In theory this is sort-of possible.  In practice there aren't any free
+tools around that can do the fine surgery on the synchronisation
+information and copying of headers that would be necessary.  If you
+want to play back using a computer the best solution is simply to
+split the file for storage and join it again for playback.
 
 
 3.		Questions about the MJPEG and audio drivers.

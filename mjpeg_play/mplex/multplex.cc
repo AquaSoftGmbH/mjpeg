@@ -547,12 +547,13 @@ void OutputStream::OutputPrefix( )
 				  transport_prefix_sectors*sector_transport_size );
 	
 	/* VCD: Two padding packets with video and audio system headers */
-	split_at_seq_end = true;
+	split_at_seq_end = !opt_multifile_segment;
 
 	switch (opt_mux_format)
 	{
 	case MPEG_FORMAT_VCD :
 	case MPEG_FORMAT_VCD_NSR :
+
 		/* Annoyingly VCD generates seperate system headers for
 		   audio and video ... DOH... */
 		if( astreams.size() > 1 || vstreams.size() > 1 ||
