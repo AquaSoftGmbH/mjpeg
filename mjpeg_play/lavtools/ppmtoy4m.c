@@ -515,9 +515,17 @@ int main(int argc, char **argv)
     if (count > 0) {
       err = read_ppm_frame(cl.fdin, &ppm, buffers, buffers2, 
 			   cl.interlace, cl.interleave);
-      if ((err == 1) && (cl.repeatlast)) {      /* EOF */
-	repeating_last = 1;
-	goto WRITE_FRAME;
+      if (err == 1) {
+	/* clean input EOF */
+	if (cl.repeatlast) {
+	  repeating_last = 1;
+	  goto WRITE_FRAME;
+	} else if (cl.framecount != 0) {
+	  mjpeg_error_exit1("Input frame shortfall (only %d converted).\n",
+			    count - cl.offset);
+	} else {
+	  break;  /* input is exhausted; we are done!  time to go home! */
+	}
       } else if (err)
 	mjpeg_error_exit1("Error reading ppm frame\n");
     }
