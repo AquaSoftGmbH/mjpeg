@@ -76,7 +76,8 @@ int main (int argc, char* argv[])
 		}
 
     outputstream (videoStrm,  audioStrm, audio_file,  multi_file );
-	videoStrm.close();
+	videoStrm.Close();
+	audioStrm.Close();
 	}
     return (0);	
 }

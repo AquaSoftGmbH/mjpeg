@@ -134,7 +134,7 @@ class ElementaryStream : public InputStream,
 						 public MuxStream
 {
 protected:
-	virtual void fillAUbuffer(unsigned int frames_to_buffer) = 0;
+	virtual void FillAUbuffer(unsigned int frames_to_buffer) = 0;
 
 	AUStream<T> aunits;
     static const int FRAME_CHUNK = frame_chunk;
@@ -152,7 +152,7 @@ public:
 				{
 					aunits.flush(FRAME_CHUNK);
 				}
-				fillAUbuffer(FRAME_CHUNK);
+				FillAUbuffer(FRAME_CHUNK);
 			}
 			
 			return aunits.next();
@@ -204,12 +204,13 @@ public:
 		}
 
 	void Init(const char *input_file);
-	void close();
+	void Close();
 
+	unsigned int NominalBitRate() { return bit_rate * 50; }
 
 private:
-	void output_seqhdr_info();
-	virtual void fillAUbuffer(unsigned int frames_to_buffer);
+	void OutputSeqhdrInfo();
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 
 public:	
     unsigned int num_sequence 	;
@@ -268,15 +269,17 @@ public:
 
 	void Init(char *audio_file);
 
-	void close();
-	
+	void Close();
+
+	unsigned int NominalBitRate();
+
     unsigned int num_syncword	;
     unsigned int num_frames [2]	;
     unsigned int size_frames[2] ;
 	unsigned int version_id ;
     unsigned int layer		;
     unsigned int protection	;
-    unsigned int bit_rate	;
+    unsigned int bit_rate_code;
     unsigned int frequency	;
     unsigned int mode		;
     unsigned int mode_extension ;
@@ -285,12 +288,12 @@ public:
     unsigned int emphasis	;
 
 private:
-	void output_audio_info();
-	virtual void fillAUbuffer(unsigned int frames_to_buffer);
+	void OutputHdrInfo();
+	unsigned int SizeFrame( int bit_rate, int padding_bit );
+	virtual void FillAUbuffer(unsigned int frames_to_buffer);
 
 	/* State variables for scanning source bit-stream */
     unsigned int framesize;
-	unsigned int padding_bit;
     unsigned int skip;
     unsigned int samples_per_second;
     AAunit access_unit;

@@ -283,12 +283,15 @@ static void init_outputstream( VideoStream 	&vstrm,
      
 	if (vstrm.init)
 	{
-		video_rate = vstrm.bit_rate * 50;
+		video_rate = vstrm.NominalBitRate();
 	}
   
+	// TODO We need to specify a *peak* rate if rate guessing is to work
+	// for VBR.
 	if (astrm.init)
-		audio_rate = bitrate_index[astrm.version_id][3-astrm.layer][astrm.bit_rate]*128;
-  
+	{
+		audio_rate = astrm.NominalBitRate();
+	}
     
 	/* Attempt to guess a sensible mux rate for the given video and audio streams 	*/
 	/* TODO: This is a pretty inexact guess and may need tweaking for different stream formats	 */

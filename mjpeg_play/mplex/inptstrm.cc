@@ -16,7 +16,7 @@ char *audio_version[4] =
 	"1.0"
 };
 
-unsigned int bitrate_index [4][3][16] =
+unsigned int bitrates_kbps [4][3][16] =
 {
 	{ /* MPEG audio V2.5 */
 		{0,32,48,56,64,80,96,112,128,144,160,176,192,224,256,0},
@@ -270,12 +270,12 @@ void VideoStream::Init (const char *video_file )
 	AU_pict_data = 0;
 	AU_start = 0LL;
 
-	fillAUbuffer(FRAME_CHUNK);
-    output_seqhdr_info();
+	FillAUbuffer(FRAME_CHUNK);
+    OutputSeqhdrInfo();
 	(void)NextAU();
 }
 
-void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
+void VideoStream::FillAUbuffer(unsigned int frames_to_buffer)
 {
 	last_buffered_AU += frames_to_buffer;
 	mjpeg_debug( "Scanning %d video frames to frame %d\n", 
@@ -457,7 +457,7 @@ void VideoStream::fillAUbuffer(unsigned int frames_to_buffer)
 
 }
 
-void VideoStream::close()
+void VideoStream::Close()
 {
 
 	bs.close();
@@ -499,13 +499,11 @@ void VideoStream::close()
 
 
 /*************************************************************************
-	Output_Info_Video
-	gibt Ubersicht ueber gesammelte Informationen aus
-
-	Prints information on video access units
+	OutputSeqHdrInfo
+     Display sequence header parameters
 *************************************************************************/
 
-void VideoStream::output_seqhdr_info ()
+void VideoStream::OutputSeqhdrInfo ()
 {
 	char *str;
 	mjpeg_info("VIDEO STREAM:\n");
@@ -560,7 +558,8 @@ void AudioStream::Init (char *audio_file)
 
 {
     unsigned int i;
-   
+	int padding_bit;
+
     mjpeg_info ("Scanning Audio stream for access units information. \n");
 	InputStream::Init( audio_file );
 	
@@ -572,9 +571,9 @@ void AudioStream::Init (char *audio_file)
 		version_id = bs.getbits( 2);
 		layer 		= bs.getbits( 2);
 		protection 		= bs.get1bit();
-		bit_rate 		= bs.getbits( 4);
+		bit_rate_code	= bs.getbits( 4);
 		frequency 		= bs.getbits( 2);
-		padding_bit                 = bs.get1bit();
+		padding_bit     = bs.get1bit();
 		bs.get1bit();
 		mode 		= bs.getbits( 2);
 		mode_extension 	= bs.getbits( 2);
@@ -583,7 +582,7 @@ void AudioStream::Init (char *audio_file)
 		emphasis		= bs.getbits( 2);
 
 		framesize =
-			bitrate_index[version_id][3-layer][bit_rate]  * 
+			bitrates_kbps[version_id][3-layer][bit_rate_code]  * 
 			slots [3-layer] *1000 /
 			freq_table[version_id][frequency];
 
@@ -610,14 +609,28 @@ void AudioStream::Init (char *audio_file)
     }
 
 
-	fillAUbuffer(FRAME_CHUNK);
+	FillAUbuffer(FRAME_CHUNK);
 	(void)NextAU();
-	output_audio_info();
+	OutputHdrInfo();
 }
 
-void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
+unsigned int AudioStream::NominalBitRate()
+{ 
+	return bitrates_kbps[version_id][3-layer][bit_rate_code]*128;
+}
+
+
+unsigned int AudioStream::SizeFrame( int rate_code, int padding )
+{
+	return bitrates_kbps[version_id][3-layer][rate_code]  * 
+		slots [3-layer] *1000 /
+		freq_table[version_id][frequency] + padding;
+}
+
+void AudioStream::FillAUbuffer(unsigned int frames_to_buffer )
 {
 	unsigned int i;
+	unsigned int padding_bit;
 	last_buffered_AU += frames_to_buffer;
 
 	mjpeg_debug( "Scanning %d MPEG audio frames to frame %d\n", 
@@ -665,7 +678,24 @@ void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
 				break;
 		}
 
-		bs.getbits( 11); /* Skip version, layer, protection, bitrate,sampling */
+		// Skip version_id:2, layer:2, protection:1
+		(void) bs.getbits( 5);
+		int rate_code	= bs.getbits( 4);
+		// Skip frequency
+		(void) bs.getbits( 2);
+
+		padding_bit=bs.get1bit();
+		access_unit.length = SizeFrame( rate_code, padding_bit );
+
+		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
+			/ samples_per_second;
+
+		decoding_order++;
+		aunits.append( access_unit );
+		num_frames[padding_bit]++;
+
+		bs.getbits( 9);
+
 		prozent =(int) bs.bitcount()*100/8/file_length;
 		num_syncword++;
 
@@ -678,67 +708,51 @@ void AudioStream::fillAUbuffer(unsigned int frames_to_buffer )
 		
 		}
 	
-		padding_bit=bs.get1bit();
-		access_unit.length = size_frames[padding_bit];
-	
-		access_unit.PTS = static_cast<clockticks>(decoding_order) * static_cast<clockticks>(samples[3-layer]) * static_cast<clockticks>(CLOCKS)
-			/ samples_per_second;
 
-		decoding_order++;
-		aunits.append( access_unit );
-		num_frames[padding_bit]++;
-
-		bs.getbits( 9);
 
     }
 	last_buffered_AU = decoding_order;
 	eoscan = bs.eos() || (opt_max_PTS && access_unit.PTS >= opt_max_PTS);
 
-	if( eoscan )
-	{
-		close();
-	}
 }
 
 
 
-void AudioStream::close()
+void AudioStream::Close()
 {
     stream_length = AU_start >> 3;
 
     mjpeg_info ("Audio stream length %lld.\n",AU_start);
     mjpeg_info   ("Syncwords      : %8u\n",num_syncword);
-    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
-			  num_frames[0],size_frames[0]);
-    mjpeg_info   ("Frames         : %8u size %6u bytes\n",
-			  num_frames[1],size_frames[1]);
+    mjpeg_info   ("Frames         : %8u padded\n",  num_frames[0]);
+    mjpeg_info   ("Frames         : %8u unpadded\n", num_frames[1]);
 	
     bs.close();
 }
 
 /*************************************************************************
-	Output_Info_Audio
+	OutputAudioInfo
 	gibt gesammelte Informationen zu den Audio Access Units aus.
 
 	Prints information on audio access units
 *************************************************************************/
 
-void AudioStream::output_audio_info ()
+void AudioStream::OutputHdrInfo ()
 {
     unsigned int bitrate;
-    bitrate = bitrate_index[version_id][3-layer][bit_rate];
+    bitrate = bitrates_kbps[version_id][3-layer][bit_rate_code];
 
 
 	mjpeg_info("AUDIO STREAM:\n");
 	mjpeg_info ("Audio version  : %s\n", audio_version[version_id]);
-    mjpeg_info   ("Layer          : %8u\n",1+layer);
+    mjpeg_info   ("Layer          : %8u\n",4-layer);
 
     if (protection == 0) mjpeg_info ("CRC checksums  :      yes\n");
     else  mjpeg_info ("CRC checksums  :       no\n");
 
-    if (bit_rate == 0)
+    if (bit_rate_code == 0)
 		mjpeg_info ("Bit rate       :     free\n");
-    else if (bit_rate == 0xf)
+    else if (bit_rate_code == 0xf)
 		mjpeg_info ("Bit rate       : reserved\n");
     else
 		mjpeg_info ("Bit rate       : %8u bytes/sec (%3u kbit/sec)\n",

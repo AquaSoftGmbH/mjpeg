@@ -103,13 +103,16 @@ static size_t do_write( int fd, void *buf, size_t count )
 
 int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int fd )
 {
+	off_t dummy_size = 0x7fffff00+sizeof(wave);
+
 	/* Write out a ZEROD wave header first */
 	memset(&wave, 0, sizeof(wave));
 
 	strncpy(wave.riff.id, "RIFF", 4);
 	strncpy(wave.riff.wave_id, "WAVE",4);
 	strncpy(wave.format.id, "fmt ",4);
-	wave.format.len = sizeof(struct common_struct);
+	dummy_size -=8;
+	wave.riff.len =  dummy_size;
 
 	/* Store information */
 	wave.common.wFormatTag = WAVE_FORMAT_PCM;
@@ -120,6 +123,8 @@ int wav_header( unsigned int bits, unsigned int rate, unsigned int channels, int
 	wave.common.wBitsPerSample = bits;
 
 	strncpy(wave.data.id, "data",4);
+	dummy_size -= 20+sizeof(struct common_struct);
+	wave.data.len = dummy_size;
 	if (do_write(fd, &wave, sizeof(wave)) != sizeof(wave)) 
 	{
 		return 1;

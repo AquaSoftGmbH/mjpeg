@@ -209,10 +209,10 @@ static void Usage(char *str)
 	fprintf(stderr,"              Bitrate and Quality are mutually exclusive!\n");
 	fprintf(stderr,"   -o name    Outputfile name (REQUIRED!!!)\n");
 	fprintf(stderr,"   -I num     only for MPEG 2 output:\n");
-	fprintf(stderr,"               0 = progressive output (no field MC/ MDCT)\n");
-	fprintf(stderr,"               1 = field pictures, bottom field first\n");
-	fprintf(stderr,"               2 = field pictures, top field first\n");
-	fprintf(stderr,"               3 = progressive output, field MC and MDCT\n");
+	fprintf(stderr,"               0 = encode by frame (progressive - per frame MC/ MDCT)\n");
+	fprintf(stderr,"               1 = encode by field, bottom fields before top first\n");
+	fprintf(stderr,"               2 = encode by field, top fields before bottom\n");
+	fprintf(stderr,"               3 = encode by frame (per-field MC and MDCT\n)");
 	fprintf(stderr,"   -r num     Search radius for motion compensation [0..32] (default 16)\n");
 	fprintf(stderr,"   -4 num     (default: 2)\n");
 	fprintf(stderr,"   			  Population halving passes 4*4-pel subsampled motion compensation\n" );
