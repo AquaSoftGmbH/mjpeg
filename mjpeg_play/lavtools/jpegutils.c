@@ -706,6 +706,7 @@ int decode_jpeg_raw (unsigned char *jpeg_data, int len,
  *                  Currently always 420 and hence ignored.
  */
 
+
 int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
 			  int itype, int ctype, int width, int height,
 			  unsigned char *raw0, unsigned char *raw1,
@@ -714,7 +715,6 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
    int numfields, hsf[3], vsf[3], field, yl, yc, x, y, xsl, xsc, xs, xd,
        hdown;
 
-   mjpeg_info("decoding jpeg gray\n");
    JSAMPROW row0[16] = { buf0[0], buf0[1], buf0[2], buf0[3],
       buf0[4], buf0[5], buf0[6], buf0[7],
       buf0[8], buf0[9], buf0[10], buf0[11],
@@ -723,6 +723,8 @@ int decode_jpeg_gray_raw (unsigned char *jpeg_data, int len,
    JSAMPARRAY scanarray[3] = { row0 };
    struct jpeg_decompress_struct dinfo;
    struct my_error_mgr jerr;
+
+   mjpeg_info("decoding jpeg gray\n");
 
    /* We set up the normal JPEG error routines, then override error_exit. */
    dinfo.err = jpeg_std_error (&jerr.pub);
