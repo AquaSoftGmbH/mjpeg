@@ -104,6 +104,8 @@ case "$pvendor" in
 			   fi
 			   ;;
 			15) 
+			    # Despite what the gcc into says 'athlon64' is not accepted as 
+			    # synonym for 'k8'
 			   proc=k8
 			   ;;
 			*) proc=athlon-xp

@@ -375,12 +375,8 @@ void SeqEncoder::Init()
 	old_ref_picture = 0;
     new_ref_picture = GetPicture();
 	ReleasePicture( new_ref_picture );
-	seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
-    next_split_point = BITCOUNT_OFFSET + seq_split_length;
 	ratecontroller.InitSeq(false);
-	
     ss.Init( reader.NumberOfFrames()-1 );
-	mjpeg_debug( "Split len = %lld", seq_split_length );
 }
 
 
@@ -429,17 +425,12 @@ void SeqEncoder::EncodeStream()
         else
         {
             Pass1EncodeFrame();
-         }
+            ss.Next( reader.NumberOfFrames()-1,  BitsAfterMux() ); 
+        }
     } while( pass2queue.size() != 0 ||  ss.FrameInStream() < reader.NumberOfFrames() );
 
-    while( pass1coded.size() )
-    {
-        pass2queue.push_back( pass1coded.front() );
-        pass1coded.pop_front();
-    }
-
-    while( pass2queue.size() )
-        Pass2EncodeFrame();
+    assert( pass2queue.size() == 0 );
+    assert( pass1coded.size() == 0 );
 
     StreamEnd();
 }
@@ -501,6 +492,7 @@ void SeqEncoder::Pass1EncodeFrame()
         cur_picture->fwd_ref_frame = old_ref_picture;
         cur_picture->bwd_ref_frame = new_ref_picture;
     }
+    
     cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
 
     
@@ -512,18 +504,6 @@ void SeqEncoder::Pass1EncodeFrame()
 #ifdef DEBUG
     writeframe(cur_picture->temp_ref+ss.gop_start_frame,cur_picture->rec_img);
 #endif
-    uint64_t bits_after_mux = BitsAfterMux();
-    bool split_seq;                      
-    if( (next_split_point != 0ULL && bits_after_mux > next_split_point)
-        || (ss.FrameInSeq() != 0 && encparams.seq_end_every_gop)
-        )
-    {
-        mjpeg_info( "Splitting sequence this GOP start" );
-        next_split_point += seq_split_length;
-        split_seq = true;
-    }
-    else
-        split_seq = false;
  
     // Hard-wired simple 1-pass encoder!!!
     //cur_picture->Commit();
@@ -532,8 +512,24 @@ void SeqEncoder::Pass1EncodeFrame()
     // Figure out how many pictures can be queued on to pass 2 encoding
     int to_queue = 0;
     int i;
-    if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
+    if( cur_picture->end_seq )
     {
+        // If end of sequence we flush everything as next GOP won't refer to this frame
+        to_queue = pass1coded.size();
+    }
+    else if( ss.b_idx == 0  )    // I or P Frame (First frame in B-group)
+    {
+    
+        // Decide if a P frame really should have been an I-frame, and re-encoded
+        // as such if necessary
+        if( cur_picture->IntraCodedBlocks() > 0.8 && ss.g_idx >= encparams.N_min )
+        {
+            mjpeg_info( "DEVEL: GOP split point found here... %.0f%% intra coded", 
+                        cur_picture->IntraCodedBlocks() * 100.0 );
+            //ss.ForceIFrame();
+            //cur_picture->SetEncodingParams(ss, reader.NumberOfFrames());
+            //ReEncodePicture( cur_picture );
+        }
         // We have a new fwd reference picture: anything decoded before
         // will no longer be referenced and can be passed on.
         for( i = 0; i < pass1coded.size();  ++i )
@@ -543,10 +539,7 @@ void SeqEncoder::Pass1EncodeFrame()
         }
         to_queue = i == pass1coded.size() ? 0 : i;
     }
-    else if( cur_picture->end_seq )
-    {
-        to_queue = pass1coded.size();
-    }
+ 
 
     for( i = 0; i < to_queue; ++i )
     {
@@ -554,8 +547,6 @@ void SeqEncoder::Pass1EncodeFrame()
         pass1coded.pop_front();
     }
     
-    ss.Next( reader.NumberOfFrames()-1, split_seq ); 
-
 
 }
 
@@ -611,9 +602,6 @@ void SeqEncoder::StreamEnd()
 {
     uint64_t bits_after_mux = BitsAfterMux();
     mjpeg_info( "Guesstimated final muxed size = %lld\n", bits_after_mux/8 );
-
-    assert( pass1coded.size() == 0 );
-    assert( pass2queue.size() == 0 );
     
     int i;
     for( i = 0; i < free_pictures.size(); ++i )

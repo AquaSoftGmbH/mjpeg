@@ -22,6 +22,7 @@
  */
  
  #include <config.h>
+ #include "mjpeg_types.h"
  
 /************************************************
  *
@@ -38,7 +39,7 @@ public:
     StreamState( EncoderParams &encparams );
     void Init( int num_last_frame );
 
-    void Next( int num_last_frame,   bool seq_split );
+    void Next( int num_last_frame,  int64_t bits_after_mux );
     
     inline int FrameInStream() const { return frame_num; }
     inline int FrameInSeq() const { return s_idx; }
@@ -72,10 +73,13 @@ public:
     bool closed_gop;            /* Current GOP is closed */
 
     // Sequence splitting state
+    bool gop_end_seq;       /* Current GOP is last in sequence */
     bool end_seq;           /* Current frame is last in sequence */
     bool new_seq;           /* Current GOP/frame starts new sequence */
 
 private:
+    uint64_t next_split_point;      // Keep track of size-based points to split individual sequences
+    uint64_t seq_split_length;
     EncoderParams &encparams;
 };
 

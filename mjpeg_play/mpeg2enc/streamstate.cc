@@ -37,6 +37,10 @@ StreamState::StreamState( EncoderParams &_encparams ) :
 
 void StreamState::Init( int num_last_frame )
 {
+    seq_split_length = ((int64_t)encparams.seq_length_limit)*(8*1024*1024);
+    next_split_point = BITCOUNT_OFFSET + seq_split_length;
+    mjpeg_debug( "Split len = %lld", seq_split_length );
+
     frame_num = 0;
     s_idx = 0;
     g_idx = 0;
@@ -44,7 +48,7 @@ void StreamState::Init( int num_last_frame )
     gop_length = 0;             // Forces new GOP start 1st sequence.
     seq_start_frame = 0;
     gop_start_frame = 0;
-    end_seq = false;
+    gop_end_seq = true;         // At start we act as after sequence split...
     GopStart(  );
     end_seq = frame_num == num_last_frame; // Catch single frame mpegs
 }
@@ -54,15 +58,15 @@ void StreamState::Init( int num_last_frame )
   Update ss to the next sequence state.
 */
 
-void StreamState::Next( int num_last_frame, // MAX_INT if not yet known
-                        bool seq_split      // Split sequence at end of this GOP?
+void StreamState::Next( int num_last_frame,     // MAX_INT if not yet known
+                        int64_t bits_after_mux   // Estimate of how much output would have been produced
                       )
 {
     ++frame_num;    
     ++s_idx;
     ++g_idx;
     ++b_idx;  
-
+    
     new_seq = false;
     /* Are we starting a new B group */
     if( b_idx >= bigrp_length )
@@ -94,13 +98,21 @@ void StreamState::Next( int num_last_frame, // MAX_INT if not yet known
     {
         frame_type = B_TYPE;
     }
-    end_seq = frame_num == num_last_frame || ( g_idx == gop_length-1 && seq_split);
+    
+    // Figure out if a sequence split is due...
+    if( (next_split_point != 0ULL && bits_after_mux > next_split_point)
+        || (FrameInSeq() != 0 && encparams.seq_end_every_gop)
+        )
+    {
+        mjpeg_info( "Splitting sequence next GOP start" );
+        next_split_point += seq_split_length;
+        gop_end_seq = true;
+    }
+    end_seq = frame_num == num_last_frame || ( g_idx == gop_length-1 && gop_end_seq);
 }
 
 
-
-
-void StreamState::GopStart( )
+void StreamState::GopStart(  )
 {
     //int nb, np;
     uint64_t bits_after_mux;
@@ -113,8 +125,8 @@ void StreamState::GopStart( )
     g_idx = 0;
     b_idx = 0;
     frame_type = I_TYPE;
-    /* Sequence ended at previous frame so this one starts a new sequence */
-    if( end_seq )
+    /* Sequence ended at end previous GOP so this one starts a new sequence */
+    if( gop_end_seq )
     {
           /* We split sequence last frame.This is the input stream display 
            * order sequence number of the frame that will become frame 0 in display
@@ -122,6 +134,7 @@ void StreamState::GopStart( )
            */
           seq_start_frame += s_idx;
           s_idx = 0;
+          gop_end_seq = false;
           new_seq = true;
     }
     

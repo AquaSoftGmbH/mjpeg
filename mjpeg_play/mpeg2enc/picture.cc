@@ -700,6 +700,18 @@ int Picture::SizeCodedMacroBlocks() const
     return coding->ByteCount() * 8; 
 }
 
+double Picture::IntraCodedBlocks() const
+{ 
+    vector<MacroBlock>::const_iterator mbi = mbinfo.begin();
+    int intra = 0;
+    for( mbi = mbinfo.begin(); mbi < mbinfo.end(); ++mbi)
+    {
+        if( mbi->final_me.mb_type&MB_INTRA )
+            ++intra;
+    }
+    return static_cast<double>(intra) / mbinfo.size();
+}
+
 /* *********************
  *
  * Commit   -   Commit to the current encoding of the frame

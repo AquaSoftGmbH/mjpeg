@@ -96,14 +96,19 @@ public:
     
     void SetEncodingParams(  const StreamState &ss, int last_frame );
     void Adjust2ndField();
+    
+    // Metrics used for stearing the encoding
+    int SizeCodedMacroBlocks() const;
+    double IntraCodedBlocks() const;   // Proportion of Macroblocks coded Intra
 
+    
     // In putpic..c
     void PutHeaders();
     void PutHeader(); 
 
     // In ratectl.cc
     void ActivityMeasures( double &act_sum, double &var_sum);
-
+    
     //
     //
     //
@@ -128,7 +133,6 @@ public:
             
         }
 
-    int SizeCodedMacroBlocks() const;
 
 protected:
     void Set_IP_Frame( const StreamState &ss, int last_frame );

@@ -129,10 +129,7 @@ private:
     
     
 	// Internal state of encoding...
-
 	StreamState ss;
-    uint64_t next_split_point;
-    uint64_t seq_split_length;
 
 	Picture *cur_picture, *old_picture;
 	Picture *new_ref_picture, *old_ref_picture;
