@@ -161,7 +161,7 @@ void OutputStream::InitSyntaxParameters()
 	  	sys_header_in_pack1 = 0;
 	  	always_sys_header_in_pack = 0;
 	  	sector_transport_size = 2352;	      /* Each 2352 bytes with 2324 bytes payload */
-	  	transport_prefix_sectors = 30;
+	  	transport_prefix_sectors = 0;
 	  	sector_size = 2324;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
@@ -169,6 +169,7 @@ void OutputStream::InitSyntaxParameters()
 		always_buffers_in_audio = 1;
 		vcd_zero_stuffing = 20;
 		dtspts_for_all_vau = 1;
+		sector_align_iframeAUs = true;
 		break;
 			 
 	default : /* MPEG_FORMAT_MPEG1 - auto format MPEG1 */
@@ -399,7 +400,7 @@ void OutputStream::OutputPrefix( )
 	psstrm->CreatePack (&pack_header, 0, mux_rate);
 	
 	/* VCD: Two padding packets with video and audio system headers */
-
+	split_at_seq_end = true;
 	switch (opt_mux_format)
 	{
 	case MPEG_FORMAT_VCD :
@@ -437,7 +438,7 @@ void OutputStream::OutputPrefix( )
 	  	OutputPadding( current_SCR, true,	true, false, 0);					 		break;
 
 	case MPEG_FORMAT_VCD_STILL :
-
+		split_at_seq_end = false;
 		/* First packet carries small-still sys_header */
 		/* TODO COMPLETELY BOGUS!!!! */
 		psstrm->CreateSysHeader (&sys_header, mux_rate, false, true,
@@ -589,15 +590,18 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 				runout_incomplete |= !(*str)->RunOutComplete();
 			}
 
+			running_out = false;
+
 			if( runout_incomplete )
 				break;
 
-			/* Current segment has been written out... 
-			 */
+			/* Otherwise we write the stream suffix and start a new
+			   stream file */
 			OutputSuffix();
 			psstrm->NextFile();
+
+
 			seg_state = start_segment;
-			running_out = false;
 
 			/* Start a new segment... */
 
@@ -675,7 +679,7 @@ void OutputStream::OutputMultiplex ( VideoStream *vstrm,
 			}
 			else if( master != 0 && master->EndSeq() )
 			{
-				if(  master->Lookahead( ) != 0 )
+				if(  split_at_seq_end && master->Lookahead( ) != 0 )
 				{
 					if( ! master->SeqHdrNext() || 
 						master->NextAUType() != IFRAME)

@@ -47,11 +47,14 @@ public:
 	bool buffers_in_audio;
 	bool always_buffers_in_audio;
 	bool sector_align_iframeAUs;
-	bool running_out;
-	clockticks runout_PTS;
-
+	bool split_at_seq_end;
 	unsigned int audio_buffer_size;
 	unsigned int video_buffer_size;
+
+
+	/* Sequence run-out control */
+	bool running_out;
+	clockticks runout_PTS;
 
 
 /* In some situations the system/PES packets are embedded with

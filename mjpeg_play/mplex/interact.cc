@@ -57,6 +57,7 @@ bitcount_t opt_max_PTS = 0;
 int opt_emul_vcdmplex = 0;
 bool opt_stills = false;
 bool opt_ignore_underrun = false;
+bool opt_split_at_seq_end = true;
 
 /* Should fit nicely on an ordinary CD ... */
 off_t opt_max_segment_size =  2000*1024*1024;
@@ -130,7 +131,7 @@ int intro_and_options(int argc, char *argv[], char **multplex_outfile)
 	  
 		case 'f' :
 			opt_mux_format = atoi(optarg);
-			if( opt_mux_format < MPEG_FORMAT_MPEG1 || opt_mux_format > MPEG_FORMAT_SVCD_NSR )
+			if( opt_mux_format < MPEG_FORMAT_MPEG1 || opt_mux_format > MPEG_FORMAT_LAST )
 				Usage(argv[0]);
 			break;
 		case 's' :
