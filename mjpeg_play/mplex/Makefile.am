@@ -14,13 +14,13 @@ bin_PROGRAMS = mplex
 mplex_SOURCES = \
 	main.cc	\
 	interact.cc		interact.hh \
-	bits.cc 		bits.hh	\
-	buffer.cc 		buffer.hh \
-	inptstrm.cc 		\
-	multplex.cc 	outputstream.hh	\
-	systems.cc 		systems.hh \
-	vector.cc 	vector.hh \
-	inputstrm.cc inputstrm.hh aunit.hh mpegconsts.hh \
+	bits.cc			bits.hh	\
+	buffer.cc		buffer.hh \
+	inptstrm.cc		\
+	multplex.cc	outputstream.hh	\
+	systems.cc		systems.hh \
+	vector.cc	vector.hh	mplexconsts.hh \
+	inputstrm.cc inputstrm.hh aunit.hh \
 	stillsstream.cc stillsstream.hh
 
 mplex_LDADD = -L$(top_srcdir)/utils -lmjpegutils $(LIBM_LIBS) 
