@@ -183,7 +183,10 @@ static void read_chunk()
       if ((y = y4m_read_frame_header (istrm_fd, &fi)) != Y4M_OK) 
 	  {
 		  if( y != Y4M_ERR_EOF )
-			  mjpeg_log (LOG_WARN, "Couldn't read FRAME header: %s!\n", y4m_strerr (n));
+			  mjpeg_log (LOG_WARN, 
+						 "Error reading frame header (%d): code%s!\n", 
+						 n,
+						 y4m_strerr (n));
          goto EOF_MARK;
       }
       

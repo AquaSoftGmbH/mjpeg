@@ -411,7 +411,9 @@ void transform(
 			mbi[k].dctblocks = &blocks[k*block_count];
 			mbi[k].dct_type =
 				(picture->frame_pred_dct || 
-				 picture->pict_struct != FRAME_PICTURE) 
+				 picture->pict_struct != FRAME_PICTURE ||
+				 ctl_progonly_dct_me
+				 ) 
 				? 0	: (*pselect_dct_type)( &cur[0][introwstart+i], 
 										   &pred[0][introwstart+i]);
 
@@ -587,79 +589,4 @@ static void sub_pred(pred,cur,lx,blk)
 	}
 }
 
-/*
- * select between frame and field DCT
- *
- * preliminary version: based on inter-field correlation
- */
 
-void dct_type_estimation(
-	pict_data_s *picture
-	)
-{
-	uint8_t *cur = picture->curorg[0];
-	uint8_t *pred = picture->pred[0];
-	struct mbinfo *mbi = picture->mbinfo;
-
-	int16_t blk0[128], blk1[128];
-	int i, j, i0, j0, k, offs, s0, s1, sq0, sq1, s01;
-	double d, r;
-
-	k = 0;
-
-	for (j0=0; j0<height2; j0+=16)
-		for (i0=0; i0<width; i0+=16)
-		{
-			if (picture->frame_pred_dct || picture->pict_struct!=FRAME_PICTURE)
-				mbi[k].dct_type = 0;
-			else
-			{
-				/* interlaced frame picture */
-				/*
-				 * calculate prediction error (cur-pred) for top (blk0)
-				 * and bottom field (blk1)
-				 */
-				for (j=0; j<8; j++)
-				{
-					offs = width*((j<<1)+j0) + i0;
-					for (i=0; i<16; i++)
-					{
-						blk0[16*j+i] = cur[offs] - pred[offs];
-						blk1[16*j+i] = cur[offs+width] - pred[offs+width];
-						offs++;
-					}
-				}
-				/* correlate fields */
-				s0=s1=sq0=sq1=s01=0;
-
-				for (i=0; i<128; i++)
-				{
-					s0+= blk0[i];
-					sq0+= blk0[i]*blk0[i];
-					s1+= blk1[i];
-					sq1+= blk1[i]*blk1[i];
-					s01+= blk0[i]*blk1[i];
-				}
-/*				
-				mbi[k].sumtop = s0;
-				mbi[k].sumbot = s1;
-				mbi[k].sumsqtop = sq0;
-				mbi[k].sumsqbot = sq1;
-				mbi[k].sumbottop = s01;
-*/
-				d = (sq0-(s0*s0)/128.0)*(sq1-(s1*s1)/128.0);
-				r = 0.0;
-				if (d>0.0)
-				{
-					r = (s01-(s0*s1)/128.0)/sqrt(d);
-					if (r>0.5)
-						mbi[k].dct_type = 0; /* frame DCT */
-					else
-						mbi[k].dct_type = 1; /* field DCT */
-				}
-				else
-					mbi[k].dct_type = 1; /* field DCT */
-			}
-			k++;
-		}
-}

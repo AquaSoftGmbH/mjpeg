@@ -248,6 +248,7 @@ void putpictcodext(pict_data_s *picture)
   putbits(picture->intravlc,1); /* intra_vlc_format */
   putbits(picture->altscan,1); /* alternate_scan */
   putbits(picture->repeatfirst,1); /* repeat_first_field */
+
   putbits(picture->prog_frame,1); /* chroma_420_type */
   putbits(picture->prog_frame,1); /* progressive_frame */
   putbits(0,1); /* composite_display_flag */

@@ -232,13 +232,6 @@ void profile_and_level_checks(void)
   if (opt_profile==HP && opt_chroma_format==CHROMA444)
     mjpeg_error_exit1("chroma format must be 4:2:0 or 4:2:2 in High Profile");
 
-  if (opt_profile>=MP) /* SP, MP: constrained repeat_first_field */
-  {
-    if (opt_frame_rate_code<=2 && opt_repeatfirst)
-      mjpeg_error_exit1("repeat_first_first must be zero");
-    if (opt_frame_rate_code<=6 && opt_prog_seq && opt_repeatfirst)
-      mjpeg_error_exit1("repeat_first_first must be zero");
-  }
 
   if (opt_profile!=HP && opt_dc_prec==3)
     mjpeg_error_exit1("11 bit DC precision only allowed in High Profile");

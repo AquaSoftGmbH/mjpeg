@@ -171,7 +171,9 @@ static void Usage(char *str)
 	fprintf(stderr,"               0 = encode by frame (progressive - per frame MC/ MDCT)\n");
 	fprintf(stderr,"               1 = encode by field, bottom fields before top first\n");
 	fprintf(stderr,"               2 = encode by field, top fields before bottom\n");
-	fprintf(stderr,"               3 = encode by frame (per-field MC and MDCT\n)");
+	fprintf(stderr,"               3 = encode by frame (interlaced per-field MC and MDCT\n)");
+	fprintf(stderr,"               4 = encode by frame (as 0 but with DXR2 bug workaround)\n)");
+
 	fprintf(stderr,"   -r num     Search radius for motion compensation [0..32] (default 16)\n");
 	fprintf(stderr,"   -4 num     (default: 2)\n");
 	fprintf(stderr,"   	  Population halving passes 4*4-pel subsampled motion compensation\n" );
@@ -356,17 +358,13 @@ static void set_format_presets()
 		mjpeg_info("SVCD standard settings selected\n");
 		
 		if( param_bitrate == 0 )
-			param_bitrate = 3800000;
+			param_bitrate = 7500000;
 		if( param_fieldenc == -1 )
 			param_fieldenc = 3;
-		if( param_quant == 0 )
-			param_quant = 12;
 		param_min_GOP_size = 6;
 		param_max_GOP_size = 15;
 		param_video_buffer_size = 230;
 		param_mpeg = 2;
-		if( param_fieldenc == -1 )
-			param_fieldenc = 3;
 		if( param_quant == 0 )
 			param_quant = 10;
 		param_seq_hdr_every_gop = 1;
@@ -492,9 +490,9 @@ static int check_param_constraints()
 				++nerr;
 			}
 		}
-		if( param_fieldenc != 0 && param_fieldenc != 3 )
+		if( param_fieldenc != 0 && param_fieldenc != 4 )
 		{
-			mjpeg_error( "3:2 movie pulldown only sensible for Frame pictures\n");
+			mjpeg_error( "3:2 pulldown only possible for frame pictures (-I 0 or 4)\n");
 			++nerr;
 		}
 	}
@@ -630,9 +628,11 @@ int main(argc,argv)
 
 		case 'I':
 			param_fieldenc = atoi(optarg);
-			if(param_fieldenc != 0 && param_fieldenc != 3)
+			if( param_fieldenc != 0 
+				&& param_fieldenc != 3 
+				&& param_fieldenc != 4)
 			{
-				mjpeg_error("-I option requires 0 or 3, (1 and 2 not current supported)\n");
+				mjpeg_error("-I option requires 0, 3 or 4 (1 and 2 not current supported)\n");
 				++nerr;
 			}
 			break;
@@ -952,6 +952,7 @@ static void init_encoder()
 		break;
 	}
 
+	ctl_progonly_dct_me = (param_fieldenc==4);
 	ctl_44_red		= param_44_red;
 	ctl_22_red		= param_22_red;
 	
@@ -1030,6 +1031,7 @@ static int f_code( int max_radius )
 	if( max_radius < 32) c = 3;
 	if( max_radius < 16) c = 2;
 	if( max_radius < 8) c = 1;
+	c = 5;
 	return c;
 }
 
@@ -1048,7 +1050,7 @@ static void init_mpeg_parms(void)
 	if( ctl_M >= ctl_N_min )
 		ctl_M = ctl_N_min-1;
 	opt_mpeg1           = (param_mpeg == 1);
-	opt_fieldpic        = (param_fieldenc!=0 && param_fieldenc != 3);
+	opt_fieldpic        = (param_fieldenc==1 || param_fieldenc == 2);
 	opt_prog_seq        = (param_mpeg == 1 || param_fieldenc == 0);
 	opt_pulldown_32     = param_32_pulldown;
 
@@ -1149,9 +1151,6 @@ static void init_mpeg_parms(void)
 	else
 		opt_topfirst = 0;
 
-	opt_repeatfirst     = 0;
-	opt_prog_frame      = (param_fieldenc==0);
-
 	opt_frame_pred_dct_tab[0] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
 	opt_frame_pred_dct_tab[1] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
 	opt_frame_pred_dct_tab[2] = param_mpeg == 1 ? 1 : (param_fieldenc == 0);
@@ -1164,9 +1163,9 @@ static void init_mpeg_parms(void)
 	opt_intravlc_tab[1] = param_mpeg == 1 ? 0 : 1;
 	opt_intravlc_tab[2] = param_mpeg == 1 ? 0 : 1;
 
-	opt_altscan_tab[0]  = param_mpeg == 1 ? 0 : (opt_fieldpic!=0);
-	opt_altscan_tab[1]  = param_mpeg == 1 ? 0 : (opt_fieldpic!=0);
-	opt_altscan_tab[2]  = param_mpeg == 1 ? 0 : (opt_fieldpic!=0);
+	opt_altscan_tab[0]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
+	opt_altscan_tab[1]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
+	opt_altscan_tab[2]  = param_mpeg == 1 ? 0 : !opt_fieldpic;
 
 
 	/*  A.Stevens 2000: The search radius *has* to be a multiple of 8
@@ -1355,36 +1354,24 @@ static void init_mpeg_parms(void)
 	}
 
 
-	if( (!opt_prog_seq || !opt_prog_frame ) &&
+	if( (!opt_prog_seq || opt_fieldpic != 0 ) &&
 		( (opt_vertical_size+15) / 16)%2 != 0 )
 	{
 		mjpeg_warn( "Frame height won't split into two equal field pictures...\n");
 		mjpeg_warn( "forcing encoding as progressive video\n");
 		opt_prog_seq = 1;
 		opt_fieldpic = 0;
-		opt_prog_frame = 1;
 	}
 
 
-	if (opt_prog_seq && !opt_prog_frame)
+	if (opt_prog_seq && opt_fieldpic != 0)
 	{
-		mjpeg_info("prog sequence - setting progressive_frame = 1\n");
-		opt_prog_frame = 1;
+		mjpeg_info("prog sequence - forcing progressive frame encoding\n");
+		opt_fieldpic = 1;
 	}
 
-	if (opt_prog_frame && opt_fieldpic)
-	{
-		mjpeg_info("prog frame - setting field_pictures = 0\n");
-		opt_fieldpic = 0;
-	}
 
-	if (!opt_prog_frame && opt_repeatfirst)
-	{
-		mjpeg_info("not prog frame setting repeat_first_field = 0\n");
-		opt_repeatfirst = 0;
-	}
-
-	if (opt_prog_seq && !opt_repeatfirst && opt_topfirst)
+	if (opt_prog_seq && opt_topfirst)
 	{
 		mjpeg_info("prog sequence setting top_field_first = 0\n");
 		opt_topfirst = 0;

@@ -532,7 +532,7 @@ static void frame_ME(pict_data_s *picture,
 		   provides much better performance at scene changes */
 		var += chrom_var_sum(&ssmb,16,width);
 
-		if (picture->frame_pred_dct)
+		if (picture->frame_pred_dct || ctl_progonly_dct_me )
 		{
 			mb_me_search(picture->oldorg[0],oldrefimg[0],&ssmb,
 					   width,i,j,picture->sxf,picture->syf,16,width,height,
@@ -673,7 +673,7 @@ static void frame_ME(pict_data_s *picture,
 	}
 	else /* if (pict_type==B_TYPE) */
 	{
-		if (picture->frame_pred_dct)
+		if (picture->frame_pred_dct || ctl_progonly_dct_me)
 		{
 
 
@@ -1795,165 +1795,6 @@ static void dpfield_estimate(
  *
  */
  
-
-#ifdef ORIGINAL_CODE
-
-static void mb_me_search(
-	uint8_t *org,
-	uint8_t *ref,
-	subsampled_mb_s *ssblk,
-	int lx, int i0, int j0, 
-	int sx, int sy, int h,
-	int xmax, int ymax,
-	mb_motion_s *res
-	)
-{
-	mb_motion_s best;
-	/* int imin, jmin, dmin */
-	int i,j,ilow,ihigh,jlow,jhigh;
-	int d;
-
-	/* NOTE: Surprisingly, the initial motion estimation search
-	   works better when the original image not the reference (reconstructed)
-	   image is used. 
-	*/
-	uint8_t *s22org = (uint8_t*)(org+fsubsample_offset);
-	uint8_t *s44org = (uint8_t*)(org+qsubsample_offset);
-	uint8_t *orgblk;
-
-
-	int flx = lx >> 1;
-	int qlx = lx >> 2;
-	int fh = h >> 1;
-	int qh = h >> 2;
-
-	me_result_set sub44set;
-	me_result_set sub22set;
-
-	/* xmax and ymax into more useful form... */
-	xmax -= 16;
-	ymax -= h;
-  
-  
-  	/* The search radii are *always* multiples of 4 to avoid messiness
-	   in the initial 4*4 pel search.  This is handled by the
-	   parameter checking/processing code in readparmfile() */
-  
-	/* Create a distance-order mests of possible motion estimations
-	  based on the fast estimation data - 4*4 pel sums (4*4
-	  sub-sampled) rather than actual pel's.  1/16 the size...  */
-	jlow = j0-sy;
-	jlow = jlow < 0 ? 0 : jlow;
-	jhigh =  j0+(sy-1);
-	jhigh = jhigh > ymax ? ymax : jhigh;
-	ilow = i0-sx;
-	ilow = ilow < 0 ? 0 : ilow;
-	ihigh =  i0+(sx-1);
-	ihigh = ihigh > xmax ? xmax : ihigh;
-
-	/*
- 	   Very rarely this may fail to find matchs due to all the good
-	   looking ones being over threshold. hence we make sure we
-	   fall back to a 0 motion estimation in this case.
-	   
-		 The sad for the 0 motion estimation is also very useful as
-		 a basis for setting thresholds for rejecting really dud 4*4
-		 and 2*2 sub-sampled matches.
-	*/
-	best.sad = (*psad_00)(ref+i0+j0*lx,ssblk->mb,lx,h,INT_MAX);
-	best.pos.x = i0;
-	best.pos.y = j0;
-
-	/* Generate the best matches at 4*4 sub-sampling. 
-	   The precise fraction of the matches included is
-	   controlled by ctl_44_red
-	   Note: we use the original picture here for the match...
-	 */
-	(*pbuild_sub44_mests)( &sub44set,
-							ilow, jlow, ihigh, jhigh,
-							i0, j0,
-							best.sad,
-							s44org, 
-							ssblk->qmb, qlx, qh );
-
-	
-	/* Generate the best 2*2 sub-sampling matches from the
-	   immediate 2*2 neighbourhoods of the 4*4 sub-sampling matches.
-	   The precise fraction of the matches included is controlled
-	   by ctl_22_red.
-	   Note: we use the original picture here for the match...
-
-	*/
-
-	(*pbuild_sub22_mests)( &sub44set, &sub22set,
-							i0, j0, ihigh,  jhigh, 
-							best.sad,
-							s22org, ssblk->fmb, flx, fh );
-
-		
-    /* Now choose best 1-pel match from the 2*2 neighbourhoods
-	   of the best 2*2 sub-sampled matches.
-	   Note that here we start using the reference picture not the
-	   original.
-	*/
-	
-
-	(*pfind_best_one_pel)( &sub22set,
-						   ref, ssblk->mb, 
-						   i0, j0,
-						   ilow, jlow, xmax, ymax, 
-						   lx, h, &best );
-
-	/* Final polish: half-pel search of best 1*1 against
-	   reconstructed image. 
-	*/
-
-	best.pos.x <<= 1; 
-	best.pos.y <<= 1;
-	best.hx = 0;
-	best.hy = 0;
-
-	ilow = best.pos.x - (best.pos.x>(ilow<<1));
-	ihigh = best.pos.x + (best.pos.x<((ihigh)<<1));
-	jlow = best.pos.y - (best.pos.y>(jlow<<1));
-	jhigh =  best.pos.y+ (best.pos.y<((jhigh)<<1));
-
-	for (j=jlow; j<=jhigh; j++)
-	{
-		for (i=ilow; i<=ihigh; i++)
-		{
-			orgblk = ref+(i>>1)+((j>>1)*lx);
-			if( i&1 )
-			{
-				if( j & 1 )
-					d = (*psad_11)(orgblk,ssblk->mb,lx,h);
-				else
-					d = (*psad_01)(orgblk,ssblk->mb,lx,h);
-			}
-			else
-			{
-				if( j & 1 )
-					d = (*psad_10)(orgblk,ssblk->mb,lx,h);
-				else
-					d = (*psad_00)(orgblk,ssblk->mb,lx,h,best.sad);
-			}
-			if (d<best.sad)
-			{
-				best.sad = d;
-				best.pos.x = i;
-				best.pos.y = j;
-				best.blk = orgblk;
-				best.hx = i&1;
-				best.hy = j&1;
-			}
-		}
-	}
-	best.var = (*psumsq)(best.blk, ssblk->mb, lx, best.hx, best.hy, h);
-	*res = best;
-}
-#else
-
-
 static void mb_me_search(
 	uint8_t *org,
 	uint8_t *ref,
@@ -2112,4 +1953,4 @@ static void mb_me_search(
 
 }
 
-#endif
+

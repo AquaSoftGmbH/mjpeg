@@ -412,8 +412,6 @@ EXTERN int opt_display_horizontal_size,
 /* picture specific data (currently controlled by global flags) */
 
 EXTERN int opt_dc_prec;
-EXTERN int opt_prog_frame;
-EXTERN int opt_repeatfirst;
 EXTERN int opt_topfirst;
 
 
@@ -483,10 +481,18 @@ EXTERN bool ctl_parallel_read; /* Does the input reader / bufferer
 								 run as a seperate thread?
 							  */
 
-
+EXTERN bool ctl_progonly_dct_me; /* Do no only progressive frame
+									motion estimation and DCT modes
+									even if frame_pred_frame_dct is 0
+									This is used to allow fast
+									encoding whilst working around a
+									bug in the DXR2 decoders firmware
+									which can't handle PAL streams
+									with frame_pred_frame_dct=1!
+									 */
 
 /* *************************
- * Input stream attributes
+ * input stream attributes
  ************************* */
 
 EXTERN int istrm_nframes;				/* total number of frames to encode
