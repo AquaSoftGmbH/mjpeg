@@ -37,12 +37,12 @@
 
 #include <sys/soundcard.h>
 
+#include <sys/time.h>
 #include <sys/resource.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
-#include <sys/time.h>
 
 /* The shared memory things */
 
