@@ -226,7 +226,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -S/--single-frame           Single frame capture mode\n");
 	fprintf(stderr, "  -T/--time-lapse num         Time lapse, capture only every <num>th frame\n");
 	fprintf(stderr, "  -w/--wait                   Wait for user confirmation to start\n");
-	fprintf(stderr, "  -b/--batch                  Batch mode for recording non-interactively\n");
+	fprintf(stderr, "  -B/--batch                  Batch mode for recording non-interactively\n");
 	fprintf(stderr, "  -a/--audio-bitsize num      Audio size, 0 for no audio, 8 or 16\n");
 	fprintf(stderr, "  -r/--audio-bitrate num      Audio rate [Hz]\n");
 	fprintf(stderr, "  -s/--stereo                 Stereo (default: mono)\n");

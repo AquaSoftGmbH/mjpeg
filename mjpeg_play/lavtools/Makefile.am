@@ -128,7 +128,7 @@ jpeg2yuv_LDADD = -L$(top_srcdir)/utils -lmjpegutils liblavjpeg.la ${GTK_LIBS}
 lav2divx_SOURCES = lav2divx.cpp lav_common.c $(lav_headers)
 lav2divx_LDADD = -L$(top_srcdir)/utils -lmjpegutils \
 	liblavfile.la liblavjpeg.la $(DV_LIBS) \
-	$(AVIPLAY_LIBS) -lm
+	$(AVIPLAY_LIBS) $(LIBM_LIBS)
 
 lavpipe_SOURCES = lavpipe.c pipelist.c pipelist.h $(lav_headers)
 lavpipe_LDADD = -L$(top_srcdir)/utils -lmjpegutils 
@@ -162,7 +162,7 @@ yuvplay_LDADD = $(SDL_LIBS) $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils
 
 yuv2divx_SOURCES = yuv2divx.cpp $(lav_headers)
 yuv2divx_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
-	$(AVIPLAY_LIBS) -lm liblavfile.la
+	$(AVIPLAY_LIBS) $(LIBM_LIBS) liblavfile.la
 
 ppmtoy4m_SOURCES = ppmtoy4m.c colorspace.h colorspace.c subsample.h subsample.c
 ppmtoy4m_LDADD = -L$(top_srcdir)/utils -lmjpegutils
@@ -172,4 +172,5 @@ y4mcolorbars_LDADD = -L$(top_srcdir)/utils -lmjpegutils
 
 divxdec_SOURCES = divxdec.cpp riffinfo.h
 divxdec_LDADD = $(PTHREAD_LIBS) -L$(top_srcdir)/utils -lmjpegutils \
-	$(AVIPLAY_LIBS) -lm liblavfile.la liblavplay.la liblavjpeg.la
+	$(AVIPLAY_LIBS) $(LIBM_LIBS) \
+	liblavfile.la liblavplay.la liblavjpeg.la
