@@ -161,7 +161,7 @@ static void Usage(char *progname)
 #else
       " "
 #endif
-#ifndef IRIX
+#ifdef HAVE_V4L
       "HC"
 #else
       "  "
@@ -170,7 +170,7 @@ static void Usage(char *progname)
 #ifdef HAVE_SDL
       "(S)oftware, "
 #endif
-#ifndef IRIX
+#ifdef HAVE_V4L
       "(H)ardware (screen) or (C)ard"
 #endif
       "\n");
@@ -390,7 +390,7 @@ static int set_option(char *name, char *value)
    {
       switch (value[0])
       {
-#ifndef IRIX
+#ifdef HAVE_V4L
          case 'H':
          case 'C':
 #endif

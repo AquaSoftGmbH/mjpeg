@@ -47,7 +47,7 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
-#ifndef IRIX 
+#ifdef HAVE_V4L 
 #include <linux/videodev.h>
 #include <linux/soundcard.h>
 #else
@@ -804,7 +804,7 @@ static int lavplay_mjpeg_open(lavplay_t *info)
 
    switch (info->playback_mode)
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       case 'H':
       case 'C':
          /* open video device */
@@ -906,7 +906,7 @@ static int lavplay_mjpeg_get_params(lavplay_t *info, struct mjpeg_params *bp)
 
    switch (info->playback_mode)
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       case 'H':
       case 'C':
          /* do a MJPIOC_G_PARAMS ioctl to get proper default values */
@@ -955,7 +955,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
    video_playback_setup *settings = (video_playback_setup *)info->settings;
    //EditList *editlist = info->editlist;
   
-#ifndef IRIX
+#ifdef HAVE_V4L
    if (info->playback_mode == 'H') /* only when doing on-screen (hardware-decoded) output */
    {
       struct video_window vw;
@@ -998,7 +998,7 @@ static int lavplay_mjpeg_set_params(lavplay_t *info, struct mjpeg_params *bp)
 
    switch (info->playback_mode)
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       case 'C':
       case 'H':
          /* All should be set up now, set the parameters */
@@ -1095,7 +1095,7 @@ static int lavplay_mjpeg_queue_buf(lavplay_t *info, int frame, int frame_periods
 
    switch (info->playback_mode)
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       case 'H':
       case 'C':
          if (ioctl(settings->video_fd, MJPIOC_QBUF_PLAY, &frame) < 0)
@@ -1139,7 +1139,7 @@ static int lavplay_mjpeg_sync_buf(lavplay_t *info, struct mjpeg_sync *bs)
 
    switch (info->playback_mode)
    {
-#ifndef IRIX 
+#ifdef HAVE_V4L 
       case 'H':
       case 'C':
          if (ioctl(settings->video_fd, MJPIOC_SYNC, bs) < 0)
@@ -1197,7 +1197,7 @@ static int lavplay_mjpeg_close(lavplay_t *info)
 
    switch (info->playback_mode)
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       case 'C':
       case 'H':
          n = -1;
@@ -1252,7 +1252,7 @@ static int lavplay_init(lavplay_t *info)
    long nqueue;
    struct mjpeg_params bp;
 
-#ifndef IRIX 
+#ifdef HAVE_V4L 
    struct video_capability vc;
 #endif 
 
@@ -1371,7 +1371,7 @@ static int lavplay_init(lavplay_t *info)
 
    if (info->playback_mode != 'S')
    {
-#ifndef IRIX
+#ifdef HAVE_V4L
       /* set correct width of device for hardware
        * DC10(+): 768 (PAL/SECAM) or 640 (NTSC), Buz/LML33: 720
        */
@@ -1482,7 +1482,7 @@ static int lavplay_init(lavplay_t *info)
          bp.HorDcm,bp.VerDcm*bp.TmpDcm);
 
 #else
-      fprintf(stderr, "IRIX doesn't support hardware MJPEG playback!\n");
+      fprintf(stderr, "No video4linux support!\n");
       return 0;
 #endif
    }

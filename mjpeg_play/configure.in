@@ -132,6 +132,22 @@ case "$HOSTTYPE" in
 esac
 
 dnl *********************************************************************
+dnl Test whether we're linux or not. If so, define HAVE_V4L and build the
+dnl video4linux/hardware dependent tools. Else, undefine HAVE_V4L
+
+os_type=`uname`
+have_video4linux=false
+if test x$os_type = x"Linux"; then
+  AC_CHECK_HEADER(linux/videodev.h,
+    have_video4linux=true
+    AC_DEFINE(HAVE_V4L),
+    AC_MSG_ERROR(videodev.h not found, please install the linux kernel headers)
+    )
+else
+  AC_MSG_WARN(Did not find linux platform - video4linux functionality will be disabled)
+fi
+
+dnl *********************************************************************
 dnl Check for the various libraries we depend on.
 dnl
 dnl First lets see if glib is present on this machine
@@ -576,6 +592,16 @@ AM_CONDITIONAL(BUILD_MJPEG, test x$have_sdl = xtrue)
 AM_CONDITIONAL(HAVE_AVIFILE, test x$have_aviplay = xtrue)
 AM_CONDITIONAL(HAVE_GTK, test x$have_gtk = xtrue)
 AM_CONDITIONAL(HAVE_SDL, test x$have_sdl = xtrue)
+AM_CONDITIONAL(HAVE_V4L, test x$have_video4linux = xtrue)
+have_v4l_or_sdl=false
+if test x$have_video4linux = xtrue; then
+  have_v4l_or_sdl=true
+else
+  if test x$have_sdl = xtrue; then
+    have_v4l_or_sdl=true
+  fi
+fi
+AM_CONDITIONAL(HAVE_V4L_OR_SDL, test x$have_v4l_or_sdl = xtrue)
 
 dnl *********************************************************************
 dnl Check for what warnings we want gcc to use and adjust the CFLAGS
@@ -722,6 +748,7 @@ echo "
 *   The resultant binaries will ***NOT*** run on a K6 or Pentium CPU       *
 ****************************************************************************"
 fi
+echo "    - video4linux recording/playback: ${have_video4linux}"
 echo "    - software MJPEG playback       : ${have_sdl}"
 echo "    - movtar playback/recording     : ${have_movtar}"
 echo "    - Quicktime playback/recording  : ${have_quicktime}"

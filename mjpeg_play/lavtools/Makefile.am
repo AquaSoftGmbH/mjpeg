@@ -12,7 +12,20 @@ INCLUDES =  -I$(top_srcdir) -I$(includedir) \
 # *********************************************************************
 # Support lib
 
-lib_LTLIBRARIES = liblavfile.la liblavjpeg.la liblavrec.la liblavplay.la
+if HAVE_V4L
+  LAVREC_LIB_FILE = liblavrec.la
+else
+  LAVREC_LIB_FILE =
+endif
+
+if HAVE_V4L_OR_SDL
+  LAVPLAY_LIB_FILE = liblavplay.la
+else
+  LAVPLAY_LIB_FILE =
+endif
+
+lib_LTLIBRARIES = liblavfile.la liblavjpeg.la $(LAVREC_LIB_FILE) \
+	$(LAVPLAY_LIB_FILE)
 
 liblavincludedir = $(includedir)/mjpegtools
 liblavinclude_HEADERS = editlist.h lav_io.h jpegutils.h frequencies.h \
@@ -40,28 +53,40 @@ liblavplay_la_LDFLAGS = $(LAV_ALL_LIB_OPTS)
 # The tools themselves
 
 if HAVE_AVIFILE
-AVIFILE_BIN = lav2divx yuv2divx
+  AVIFILE_BIN = lav2divx yuv2divx
 else
-AVIFILE_BIN = 
+  AVIFILE_BIN = 
 endif
 
 if HAVE_GTK
-GLAV_BIN = glav
+  GLAV_BIN = glav
 else
-GLAV_BIN = 
+  GLAV_BIN = 
 endif
 
 if HAVE_SDL
-YUVPLAY_BIN = yuvplay
+  YUVPLAY_BIN = yuvplay
 else
-YUVPLAY_BIN =
+  YUVPLAY_BIN =
+endif
+
+if HAVE_V4L
+  LAVREC_BIN = lavrec testrec lavvideo
+else
+  LAVREC_BIN =
+endif
+
+if HAVE_V4L_OR_SDL
+  LAVPLAY_BIN = lavplay
+else
+  LAVPLAY_BIN =
 endif
 
 bin_PROGRAMS = \
-	lavplay   lavrec   lav2wav  lav2yuv yuvmedianfilter  lavaddwav \
-	lavvideo  lavtrans $(GLAV_BIN)  ypipe yuv2lav testrec \
-	transist.flt matteblend.flt lavpipe yuvscaler jpeg2yuv \
-	$(AVIFILE_BIN) $(YUVPLAY_BIN)
+	$(LAVPLAY_BIN) $(LAVREC_BIN) lav2wav  lav2yuv \
+	yuvmedianfilter lavaddwav lavtrans $(GLAV_BIN) \
+ 	ypipe yuv2lav transist.flt matteblend.flt lavpipe \
+	yuvscaler jpeg2yuv $(AVIFILE_BIN) $(YUVPLAY_BIN)
 
 lav_headers = lav_io.h editlist.h glav.h avilib.h oldyuv4mpeg.h jpegutils.h \
 	yuvscaler.h frequencies.h lav_common.h

@@ -21,6 +21,9 @@
 /* Define if the nasm assembler is available */
 #undef HAVE_ASM_NASM
 
+/* whether we're in linux or not (video4linux?) */
+#undef HAVE_V4L
+
 /* Define if the libpthread library is present */
 #undef HAVE_LIBPTHREAD
 

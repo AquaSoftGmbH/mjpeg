@@ -77,6 +77,10 @@ extern "C"
 #include "mjpeg_logging.h"
 }
 
+#ifndef min
+#define min(a,b) (a<b)?a:b
+#endif
+
 typedef struct {
 	char riff[4] ;	// always "RIFF"
 	int  length ;	// Length (little endian)

@@ -90,6 +90,10 @@ extern "C"
 #include "lav_common.h"
 }
 
+#ifndef min
+#define min(a,b) (a<b)?a:b
+#endif
+
 void error(char *text)
 {
 	mjpeg_error(text);
