@@ -8,49 +8,6 @@
 
 extern int width;
 extern int height;
-extern int bttv_hack;
-
-void
-aa_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)
-{
-	int x,y,dx,vx;
-	uint32_t sad;
-	uint32_t min;
-	uint32_t min0;
-
-	for (y = field; y < height; y += 2)
-	{
-		for (x = 0; x < width; x+=8 )
-		{
-			min  = psad_sub22 ( inframe+x+(y-1)*width-4, inframe+x+(y+1)*width-4, 8, 2 );
-			min *= 2;
-			min0 = min;
-
-			vx=0;
-			for(dx=-16;dx<=16;dx++)
-			{
-				sad  = psad_sub22 ( inframe+x+(y-1)*width-4, inframe+x+dx+(y+1)*width-4, 8, 2 );
-				sad += psad_sub22 ( inframe+x+(y+1)*width-4, inframe+x-dx+(y-1)*width-4, 8, 2 );
-				if(sad<min)
-				{
-					min = sad;
-					vx=dx/2;
-				}
-			}
-
-			if(min>(min0/2) || min0<128 )
-			vx = 0;
-
-			for(dx=0;dx<8;dx++)
-			{
-				*(frame+x+dx+(y-1)*width) = *(inframe+(x+dx)+(y-1)*width);
-
-				*(frame+x+dx+y*width) = ( *(inframe+(x-vx+dx)+(y-1)*width) + 
-										  *(inframe+(x+vx+dx)+(y+1)*width) )/2;
-			}
-		}		
-	}
-}
 
 void
 sinc_interpolation_luma (uint8_t * frame, uint8_t * inframe, int field)

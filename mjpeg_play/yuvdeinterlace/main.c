@@ -70,11 +70,10 @@ int BLKmedian    =256;
 uint32_t predicted_count=0;
 uint32_t search_count=0;
 
-int search_radius=32;
+int search_radius=16;
 int verbose = 0;
 int fast_mode = 0;
 int field_order = -1;
-int bttv_hack = 0;
 int width = 0;
 int height = 0;
 int input_chroma_subsampling = 0;
@@ -85,65 +84,30 @@ struct vector forward_vector[768/16][576/16];
 struct vector last_forward_vector[768/16][576/16];
 struct vector last_forward_vector2[768/16][576/16];
 
-uint8_t fiy	[1024 * 768];
-uint8_t ficr[1024 * 768];
-uint8_t ficb[1024 * 768];
-uint8_t *inframe[3] = { fiy, ficr, ficb };
+uint8_t *inframe[3];
+uint8_t *outframe[3];
+uint8_t *frame1[3];
+uint8_t *frame2[3];
 
-uint8_t foy	[1024 * 768];
-uint8_t focr[1024 * 768];
-uint8_t focb[1024 * 768];
-uint8_t *outframe[3] = { foy, focr, focb };
+uint8_t f1y_s1	[1024 * 768];
+uint8_t f1cr_s1 [1024 * 768];
+uint8_t f1cb_s1	[1024 * 768];
+uint8_t *frame1_sub1[3] = { f1y_s1, f1cr_s1, f1cb_s1 };
 
-uint8_t _f1y_	[1024 * 768];
-uint8_t _f1cr_[1024 * 768];
-uint8_t _f1cb_[1024 * 768];
-uint8_t *_frame1_[3] = { _f1y_, _f1cr_, _f1cb_ };
+uint8_t f2y_s1	[1024 * 768];
+uint8_t f2cr_s1 [1024 * 768];
+uint8_t f2cb_s1	[1024 * 768];
+uint8_t *frame2_sub1[3] = { f2y_s1, f2cr_s1, f2cb_s1 };
 
-uint8_t _f2y_	[1024 * 768];
-uint8_t _f2cr_[1024 * 768];
-uint8_t _f2cb_[1024 * 768];
-uint8_t *_frame2_[3] = { _f2y_, _f2cr_, _f2cb_ };
+uint8_t f1y_s2	[1024 * 768];
+uint8_t f1cr_s2 [1024 * 768];
+uint8_t f1cb_s2	[1024 * 768];
+uint8_t *frame1_sub2[3] = { f1y_s2, f1cr_s2, f1cb_s2 };
 
-uint8_t f1y	[1024 * 768];
-uint8_t f1cr[1024 * 768];
-uint8_t f1cb[1024 * 768];
-uint8_t *frame1[3] = { f1y, f1cr, f1cb };
-
-uint8_t f2y	[1024 * 768];
-uint8_t f2cr[1024 * 768];
-uint8_t f2cb[1024 * 768];
-uint8_t *frame2[3] = { f2y, f2cr, f2cb };
-
-uint8_t f3y	[1024 * 768];
-uint8_t f3cr[1024 * 768];
-uint8_t f3cb[1024 * 768];
-uint8_t *frame3[3] = { f3y, f3cr, f3cb };
-
-uint8_t f4y	[1024 * 768];
-uint8_t f4cr[1024 * 768];
-uint8_t f4cb[1024 * 768];
-uint8_t *frame4[3] = { f4y, f4cr, f4cb };
-
-uint8_t f3y_s1	[1024 * 768];
-uint8_t f3cr_s1 [1024 * 768];
-uint8_t f3cb_s1	[1024 * 768];
-uint8_t *frame3_sub1[3] = { f3y_s1, f3cr_s1, f3cb_s1 };
-
-uint8_t f4y_s1	[1024 * 768];
-uint8_t f4cr_s1 [1024 * 768];
-uint8_t f4cb_s1	[1024 * 768];
-uint8_t *frame4_sub1[3] = { f4y_s1, f4cr_s1, f4cb_s1 };
-
-uint8_t f3y_s2	[1024 * 768];
-uint8_t f3cr_s2 [1024 * 768];
-uint8_t f3cb_s2	[1024 * 768];
-uint8_t *frame3_sub2[3] = { f3y_s2, f3cr_s2, f3cb_s2 };
-
-uint8_t f4y_s2	[1024 * 768];
-uint8_t f4cr_s2 [1024 * 768];
-uint8_t f4cb_s2	[1024 * 768];
-uint8_t *frame4_sub2[3] = { f4y_s2, f4cr_s2, f4cb_s2 };
+uint8_t f2y_s2	[1024 * 768];
+uint8_t f2cr_s2 [1024 * 768];
+uint8_t f2cb_s2	[1024 * 768];
+uint8_t *frame2_sub2[3] = { f2y_s2, f2cr_s2, f2cb_s2 };
 
 uint8_t ry	[1024 * 768];
 uint8_t rcr [1024 * 768];
@@ -168,7 +132,9 @@ struct vector
 {
 	int x;
 	int y;
-	uint32_t sad;
+//	int hx;
+//	int hy;
+//	uint32_t sad;
 };
 
 struct vector search_forward_vector(int , int);
@@ -245,11 +211,6 @@ main (int argc, char *argv[])
 		{
 			search_radius = atoi(optarg);
 			mjpeg_log (LOG_INFO,"serach-radius set to %i",search_radius);
-			break;
-		}
-		case 'b':
-		{
-			bttv_hack = 1;
 			break;
 		}
 		case 'f':
@@ -333,28 +294,6 @@ main (int argc, char *argv[])
 		exit (-1);
 	}
 
-	/* check for the field-order or if the fieldorder was forced */
-	if(field_order==-1)
-	{
-		if (Y4M_ILACE_TOP_FIRST == y4m_si_get_interlace (&istreaminfo))
-		{
-			mjpeg_log (LOG_INFO, "top-field-first");
-			field_order = 1;
-		}
-		else if (Y4M_ILACE_BOTTOM_FIRST == y4m_si_get_interlace (&istreaminfo))
-		{
-			mjpeg_log (LOG_INFO, "bottom-field-first");
-			field_order = 0;
-		}
-		else
-		{
-			mjpeg_log (LOG_WARN, "stream either is marked progressive");
-			mjpeg_log (LOG_WARN, "or stream has unknown field order");
-			mjpeg_log (LOG_WARN, "using top-field-first");
-			field_order = 1;
-		}
-	}
-
 	/* the output is not interlaced 4:2:0 MPEG 1 */
 	y4m_si_set_interlace    (&ostreaminfo, Y4M_ILACE_NONE);
 	y4m_si_set_chroma       (&ostreaminfo, Y4M_CHROMA_420JPEG);
@@ -365,6 +304,25 @@ main (int argc, char *argv[])
 
 	/* write the outstream header */
 	y4m_write_stream_header (fd_out, &ostreaminfo);
+
+	/* now allocate the needed buffers */
+	{
+        inframe[0] = malloc ( width*height );
+        inframe[1] = malloc ( width*height );
+        inframe[2] = malloc ( width*height );
+
+        outframe[0] = malloc ( width*height );
+        outframe[1] = malloc ( width*height );
+        outframe[2] = malloc ( width*height );
+
+        frame1[0] = malloc ( width*height );
+        frame1[1] = malloc ( width*height );
+        frame1[2] = malloc ( width*height );
+
+        frame2[0] = malloc ( width*height );
+        frame2[1] = malloc ( width*height );
+        frame2[2] = malloc ( width*height );
+	}
 
 	/* read every frame until the end of the input stream and process it */
 	while (Y4M_OK == (errno = y4m_read_frame (fd_in,
@@ -379,16 +337,13 @@ main (int argc, char *argv[])
 
 			/* interpolate first frame */
 			sinc_interpolation_luma (frame1[0],inframe[0],field_order);
-
-			sinc_interpolation_luma (_frame1_[0],inframe[0],field_order);
-			interpolation_420JPEG_to_444_chroma (_frame1_[1],inframe[1],field_order);
-			interpolation_420JPEG_to_444_chroma (_frame1_[2],inframe[2],field_order);
+			//interpolation_420JPEG_to_444_chroma (frame1[1],inframe[1],field_order);
+			//interpolation_420JPEG_to_444_chroma (frame1[2],inframe[2],field_order);
 
 			/* interpolate second frame */
 			sinc_interpolation_luma (frame2[0],inframe[0],1-field_order);
-			sinc_interpolation_luma (_frame2_[0],inframe[0],1-field_order);
-			interpolation_420JPEG_to_444_chroma (_frame2_[1],inframe[1],1-field_order);
-			interpolation_420JPEG_to_444_chroma (_frame2_[2],inframe[2],1-field_order);
+			interpolation_420JPEG_to_444_chroma (frame2[1],inframe[1],1-field_order);
+			interpolation_420JPEG_to_444_chroma (frame2[2],inframe[2],1-field_order);
 		}
 		else
 			if( input_chroma_subsampling == Y4M_CHROMA_420MPEG2 )
@@ -459,18 +414,18 @@ main (int argc, char *argv[])
 							}			
 
 		/* subsample by 2 */
-		subsample (frame4_sub1[0], frame2[0]);
-		subsample (frame3_sub1[0], frame1[0]);
+		subsample (frame2_sub1[0], frame2[0]);
+		subsample (frame1_sub1[0], frame1[0]);
 
 		/* subsample by 4 */
-		subsample (frame4_sub2[0], frame4_sub1[0]);
-		subsample (frame3_sub2[0], frame3_sub1[0]);
+		subsample (frame2_sub2[0], frame2_sub1[0]);
+		subsample (frame1_sub2[0], frame1_sub1[0]);
 
 		/* try to motion-compensate the next-field to the current */
 		motion_compensate_field();
 
 		/* mix current and motion-compensated field to a full frame */
-		blend_fields (outframe,_frame1_,reconstructed);
+		blend_fields (outframe,frame1,reconstructed);
 
 		/* downscale chroma to 420 JPEG/MPEG1 */
 		C444_to_C420 ( outframe[1], outframe[1] );
@@ -479,19 +434,30 @@ main (int argc, char *argv[])
  		/* write out reconstructed fields */
 		if(framenr++>0)
 		{
-	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, outframe);
-//			memset ( frame1[1], 128, width*height);
-//			memset ( frame1[2], 128, width*height);
-//	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
+	        y4m_write_frame (fd_out, &ostreaminfo, &oframeinfo, frame1);
 		}
 
-		/* rotate field-buffers */
-		memcpy ( frame3[0], frame1[0], width*height );
-		memcpy ( frame3[1], frame1[1], width*height );
-		memcpy ( frame3[2], frame1[2], width*height );
-		memcpy ( frame4[0], frame2[0], width*height );
-		memcpy ( frame4[1], frame2[1], width*height );
-		memcpy ( frame4[2], frame2[2], width*height );
+	}
+
+	/* free allocated buffers */
+	{
+        free(inframe[0]);
+        free(inframe[1]);
+        free(inframe[2]);
+
+        free(outframe[0]);
+        free(outframe[1]);
+        free(outframe[2]);
+
+        free(frame1[0]);
+        free(frame1[1]);
+        free(frame1[2]);
+
+        free(frame2[0]);
+        free(frame2[1]);
+        free(frame2[2]);
+
+		mjpeg_log (LOG_INFO,"Buffers freed.");
 	}
 
 	/* did stream end unexpectedly ? */
@@ -502,48 +468,6 @@ main (int argc, char *argv[])
 	return (0);
 }
 
-#if 0
-inline struct vector medianvector (struct vector v1, struct vector v2, struct vector v3)
-{
-	struct vector v;
-	v.x = 	(v1.x <= v2.x && v1.x >= v3.x ) ? v1.x :
-			(v2.x <= v1.x && v2.x >= v3.x ) ? v2.x :
-			v3.x ;
-	v.y = 	(v1.y <= v2.y && v1.y >= v3.y ) ? v1.y :
-			(v2.y <= v1.y && v2.y >= v3.y ) ? v2.y :
-			v3.y ;
-	v.sad =	(v1.sad <= v2.sad && v1.sad >= v3.sad ) ? v1.sad :
-			(v2.sad <= v1.sad && v2.sad >= v3.sad ) ? v2.sad :
-			v3.sad ;
-	return v;
-}
-
-int qsort_cmp_medianSAD ( const void * x, const void * y )
-{
-	int a = *(const uint32_t*)x;
-	int b = *(const uint32_t*)y;
-	if (a<b)  return -1;
-	else
-		if (a>b)  return  1;
-		else
-			return 0;
-}
-
-uint32_t medianSAD (uint32_t * SADlist, int n)
-{
-	qsort ( SADlist, n, sizeof(SADlist[0]), qsort_cmp_medianSAD);
-
-	return (SADlist[n/2]+SADlist[n/2+1])>>1;
-}
-
-inline uint32_t SADfunction ( uint8_t * f1, uint8_t * f2 )
-{
-	f1 -= 8+8*width;
-	f2 -= 8+8*width;
-	return psad_00( f1, f2, width, 32, 0 )+psad_00( f1+16, f2+16, width, 32, 0 );
-}
-#endif
-
 struct vector
 search_forward_vector( int x, int y )
 {
@@ -552,27 +476,32 @@ search_forward_vector( int x, int y )
 	int y2=y/2;
 	int x4=x/4;
 	int y4=y/4;
-	struct vector v,h;
-	static struct vector me_candidates1[50];
+	int sr4=search_radius/4;
+
+	struct vector v;
+	static struct vector me_candidates1[5];
 	int cc1=0; // candidate count
-	static struct vector me_candidates2[50];
+	static struct vector me_candidates2[5];
 	int cc2=0; // candidate count
 	int i;
-	int max_candidates = 8;
+	int max_candidates = 4;
 	uint32_t SAD;
+	uint32_t cSAD;
 	uint32_t min;
+	uint32_t cmin;
 
 	/* subsampled full-search with radius 16*4=64 */
-	min = psad_sub44 ( frame3_sub2[0]+(x4-1)+(y4-1)*width, frame4_sub2[0]+(x4-1)+(y4-1)*width, width, 4 );
+	min = psad_sub44 ( frame1_sub2[0]+(x4-1)+(y4-1)*width, frame2_sub2[0]+(x4-1)+(y4-1)*width, width, 4 );
 	me_candidates1[0].x = 0;
 	me_candidates1[0].y = 0;
 	cc1 = 1;
-	for(dy=(-search_radius/4);dy<=(search_radius/4);dy++)
-		for(dx=-search_radius/4;dx<=(search_radius/4);dx++)
-		{
-			SAD  = psad_sub44 ( frame3_sub2[0]+(x4-1)+(y4-1)*width, frame4_sub2[0]+(x4+dx-1)+(y4+dy-1)*width, width, 4 );
 
-			if(SAD <= min)
+	for(dy=-sr4;dy<=sr4;dy++)
+		for(dx=-sr4;dx<=sr4;dx++)
+		{
+			SAD  = psad_sub44 ( frame1_sub2[0]+(x4)+(y4)*width, frame2_sub2[0]+(x4+dx)+(y4+dy)*width, width, 4 );
+
+			if(SAD < min)
 			{
 				/* store new search-minimum */
 				min = SAD;
@@ -599,7 +528,7 @@ search_forward_vector( int x, int y )
 		}
 
 	/* subsampled reduced full-search arround sub44 candidates */
-	min = psad_sub44 ( frame3_sub1[0]+(x2)+(y2)*width, frame4_sub1[0]+(x2)+(y2)*width, width, 4 );
+	min = psad_sub22 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2)+(y2)*width, width, 8 );
 	me_candidates2[0].x = 0;
 	me_candidates2[0].y = 0;
 	cc2 = 1;
@@ -608,9 +537,9 @@ search_forward_vector( int x, int y )
 		for(dy=(me_candidates1[cc1].y*2-1);dy<=(me_candidates1[cc1].y*2+1);dy++)
 			for(dx=(me_candidates1[cc1].x*2-1);dx<=(me_candidates1[cc1].x*2+1);dx++)
 			{
-				SAD  = psad_sub44 ( frame3_sub1[0]+(x2)+(y2)*width, frame4_sub1[0]+(x2+dx)+(y2+dy)*width, width, 4 );
+				SAD  = psad_sub22 ( frame1_sub1[0]+(x2)+(y2)*width, frame2_sub1[0]+(x2+dx)+(y2+dy)*width, width, 8 );
 
-				if(SAD <= min)
+				if(SAD < min)
 				{
 					/* store new search-minimum */
 					min = SAD;
@@ -641,27 +570,22 @@ search_forward_vector( int x, int y )
 
 	/* reduced full-search arround sub22 candidates */
 
-	min  = psad_00 ( frame1[0]+(x-4)+(y-4)*width, frame2[0]+(x-4)+(y-4)*width, width, 16, 0x00ffffff  );
-//	min  = psad_sub22 ( frame1[0]+(x)+(y)*width, frame2[0]+(x)+(y)*width, width, 8 );
-
+	min  = psad_00 ( frame1[0]+(x)+(y)*width, frame2[0]+(x)+(y)*width, width, 16, 0x00ffffff );
 	v.x = 0;
 	v.y = 0;
+
 	while(cc2>-1)
 	{
-		dy=me_candidates2[cc2].y*2;
-//		for(dy=(me_candidates2[cc2].y*2-1);dy<=(me_candidates2[cc2].y*2+1);dy++)
+		for(dy=(me_candidates2[cc2].y*2-1);dy<=(me_candidates2[cc2].y*2+1);dy++)
 			for(dx=(me_candidates2[cc2].x*2-1);dx<=(me_candidates2[cc2].x*2+1);dx++)
 			{
-				SAD   = psad_00 ( frame1[0]+(x-4)+(y-4)*width, frame2[0]+(x+dx-4)+(y+dy-4)*width, width, 16, 0x00ffffff );
-//				SAD   = psad_sub22 ( frame1[0]+(x)+(y)*width, frame2[0]+(x+dx)+(y+dy)*width, width, 16 );
-				SAD  += dy*dy + dx*dx ;
+				SAD  = psad_00 ( frame1[0]+(x)+(y)*width, frame2[0]+(x+dx)+(y+dy)*width, width, 16, 0x00ffffff );
 				if( SAD<min )
 				{
-					/* store new search-minimum */
 					min   = SAD;
 					v.x = dx;
 					v.y = dy;
-				} 
+				}
 			}
 		cc2--;
     }
@@ -677,21 +601,25 @@ motion_compensate_field (void)
 	struct vector forward_vector;
 
 	/* search the vectors */
-	for(y=0;y<height;y+=8)
+	for(y=0;y<height;y+=16)
 	{
-		for(x=0;x<width;x+=8)
+		for(x=0;x<width;x+=16)
 		{
 			forward_vector = search_forward_vector ( x, y );
 
 			dx = forward_vector.x;
 			dy = forward_vector.y;
 
+			/* clip vectors */
+			if(y==0 && dy<0) dy=0;
+			if(y==(height-16) && dy>0) dy=0;
+
 			transform_block  (reconstructed[0]+x+y*width,
-							  _frame2_[0]+(x+dx)+(y+dy)*width, width );
+							   frame2[0]+(x+dx)+(y+dy)*width, width );
 			transform_block  (reconstructed[1]+x+y*width,
-							  _frame2_[1]+(x+dx)+(y+dy)*width, width );
+							   frame2[1]+(x+dx)+(y+dy)*width, width );
 			transform_block  (reconstructed[2]+x+y*width,
-							  _frame2_[2]+(x+dx)+(y+dy)*width, width );
+							   frame2[2]+(x+dx)+(y+dy)*width, width );
 		}
 	}
 }
