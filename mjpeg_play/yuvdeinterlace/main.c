@@ -303,18 +303,15 @@ blend_fields (void)
 		for (x = 0; x < width; x++)
 		{
 
-			delta = 
-				( *(frame4[0] + x + (y+0) * width) +
-				  *(frame4[0] + x + (y+1) * width) )/2 -
-				( *(frame5[0] + x + (y+0) * width) +
-				  *(frame5[0] + x + (y+1) * width) )/2 ;
-			delta = delta<0? -delta:delta;
+			delta1 = 
+				  *(frame4[0] + x + (y+0) * width) +
+				  *(frame4[0] + x + (y+0) * width) /2 ;
+			delta1 = delta1<0? -delta1:delta1;
 
 			blend = delta/256.f;
 			blend = blend>0.5? 0.5:blend;
 			blend = blend + 0.5;
 
-			blend=0.5;
 			*(frame6[0] + x + y * width) = 
 				*(frame4[0] + x + y * width)*(  blend)+
 				*(frame5[0] + x + y * width)*(1-blend);
@@ -346,31 +343,40 @@ motion_compensate_field (void)
 
 
 	//search-radius
-	int r = 24;
+	int r = 16;
 
-	for (yy = 0; yy < h; yy += 32)
-		for (xx = 0; xx < w; xx += 32)
+	for (yy = 0; yy < h; yy += 16)
+		for (xx = 0; xx < w; xx += 16)
 		{
-			/* search motionvector one *frame* forwards ... */
+			/* search motionvector one field forwards ... */
 
-			vlist[0].x = 0;
-			vlist[0].y = 0;
-			vlist[0].SAD = 0x00ffffff;
-			vlist[1] = vlist[2] = vlist[3] = vlist[0];
+			x1 = y1 = 0;
 
-			min = 0x00ffffff;
+			/* the center match is two fields forwards, other than
+               the motion search. This stabelizes zero-vectors! */
+			min = 0;
+			addr1 = (xx) + (yy) * w;
+			min  += psad_00 (frame20[0] + addr1,
+					        frame10[0] + addr1, w,
+					        16, 0);
+			if(bttv_hack==0)
+			{
+				/* match chroma */
+				addr1 = (xx) / 2 + (yy) * w / 4;
+				min += psad_00 (frame20[1] + addr1,
+						frame10[1] + addr1,
+						w / 2, 8, 0);
+			}
+			/* begin the search */
 			for (vy = -r; vy < r; vy++)
 				for (vx = -r; vx <r; vx++)
 				{
 					/* match luma */
 					addr1 = (xx) + (yy) * w;
 					addr2 = (xx + vx) + (yy + vy) * w;
-					SAD = psad_00 (frame10[0] + addr1,
-						       frame20[0] + addr2, w,
-						       32, 0);
-					SAD += psad_00 (frame10[0] + addr1+16,
-						       frame20[0] + addr2+16, w,
-						       32, 0);
+					SAD = psad_00 (frame20[0] + addr1,
+						       frame21[0] + addr2, w,
+						       16, 0);
 
 					if(bttv_hack==0)
 					{
@@ -378,113 +384,26 @@ motion_compensate_field (void)
 					addr1 = (xx) / 2 + (yy) * w / 4;
 					addr2 = (xx + vx) / 2 + (yy +
 								 vy) * w / 4;
-					SAD += psad_00 (frame10[1] + addr1,
-							frame20[1] + addr2,
-							w / 2, 16, 0);
-					SAD += psad_00 (frame10[2] + addr1,
-							frame20[2] + addr2,
-							w / 2, 16, 0);
+					SAD += psad_00 (frame20[1] + addr1,
+							frame21[1] + addr2,
+							w / 2, 8, 0);
 					}
 
 					if (SAD <= min)
 					{
 						min = SAD;
 
-						vlist[3] = vlist[2];
-						vlist[2] = vlist[1];
-						vlist[1] = vlist[0];
-
-						vlist[0].SAD =
-							SAD + fabs (vx) +
-							fabs (vy);
-						vlist[0].x = vx / 2;
-						vlist[0].y = vy / 2;
+						x1 = vx;
+						y1 = vy;
 					}
 				}
 
-			for(cnt=0;cnt<4;cnt++)
-			{
-			min=0x00ffffff;
-			x1=vlist[cnt].x;
-			y1=vlist[cnt].y;
-
-				for (vy = (vlist[cnt].y - 4); vy < (vlist[cnt].y + 4); vy++)
-					for (vx = (vlist[cnt].x - 4); vx <(vlist[cnt].y + 4); vx++)
-					{
-					/* match luma */
-					addr1 = (xx) + (yy) * w;
-					addr2 = (xx + vx) + (yy + vy) * w;
-					SAD = psad_00 (frame21[0] + addr1,
-						       frame20[0] + addr2, w,
-						       32, 0);
-					SAD += psad_00 (frame21[0] + addr1+16,
-						       frame20[0] + addr2+16, w,
-						       32, 0);
-
-					if(bttv_hack==0)
-					{
-					/* match chroma */
-					addr1 = (xx) / 2 + (yy) * w / 4;
-					addr2 = (xx + vx) / 2 + (yy +
-								 vy) * w / 4;
-					SAD += psad_00 (frame21[1] + addr1,
-							frame20[1] + addr2,
-							w / 2, 16, 0);
-					SAD += psad_00 (frame21[2] + addr1,
-							frame20[2] + addr2,
-							w / 2, 16, 0);
-					}
-
-					if (SAD <= min)
-					{
-						min = SAD;
-						x1=vx;
-						y1=vy;
-					}
-					}
-
-			vlist[cnt].SAD += min;
-		    }
-			if( vlist[0].SAD <= vlist[1].SAD &&
-				vlist[0].SAD <= vlist[2].SAD &&
-				vlist[0].SAD <= vlist[3].SAD )
-			{
-				x1=vlist[0].x;
-				y1=vlist[0].y;
-			}
-			
-					
-			if( vlist[1].SAD <= vlist[2].SAD &&
-				vlist[1].SAD <= vlist[3].SAD &&
-				vlist[1].SAD <= vlist[0].SAD )
-			{
-				x1=vlist[1].x;
-				y1=vlist[1].y;
-			}
-			
-			if( vlist[2].SAD <= vlist[3].SAD &&
-				vlist[2].SAD <= vlist[1].SAD &&
-				vlist[2].SAD <= vlist[0].SAD )
-			{
-				x1=vlist[2].x;
-				y1=vlist[2].y;
-			}
-
-			if( vlist[3].SAD <= vlist[1].SAD &&
-				vlist[3].SAD <= vlist[2].SAD &&
-				vlist[3].SAD <= vlist[0].SAD )
-			{
-				x1=vlist[3].x;
-				y1=vlist[3].y;
-			}
-
 			/* transform the sourceblock by the found vector */
-
-			for (y = 0; y < 32; y++)
-				for (x = 0; x < 32; x++)
+			for (y = 0; y < 16; y++)
+				for (x = 0; x < 16; x++)
 				{
 					*(frame5[0] + (xx + x) + (yy + y) * w) =
-						*(frame21[0] + (xx + x - x1) + (yy + y - y1) * w);
+						*(frame21[0] + (xx + x + x1) + (yy + y + y1) * w);
 				}
 		}
 }
@@ -551,7 +470,7 @@ void aa_interpolation( uint8_t * frame[3], int field)
 	int x,y,dx,v1,v2,z,d;
 	uint32_t SSE;
 	uint32_t min;
-	int w=6;
+	int w=8;
 
 	for (y = (field + 2); y < (height - 2); y += 2)
 		for (x = 0; x < width; x++)
@@ -576,6 +495,7 @@ void aa_interpolation( uint8_t * frame[3], int field)
 							*(frame[0]+z+x+dx  +(y+1)*width);
 					d *= d;
 					SSE += d;
+					//SSE += z*z/4;
 				}
 				if (SSE<(min*0.5))
 				{
