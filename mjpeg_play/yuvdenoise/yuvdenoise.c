@@ -1640,9 +1640,9 @@ calculate_motion_vectors (uint8_t * ref_frame[3], uint8_t * target[3])
         /* depending on the quality of the center SAD modulate
          * the search radius ...
          */
-        if (center_SAD<mean_SAD*4)
+        if (center_SAD<mean_SAD*2)
         {
-          mod_radius = (center_SAD/(mean_SAD*4))*RADIUS;
+          mod_radius = 8;
         }
         else
           mod_radius = RADIUS;
