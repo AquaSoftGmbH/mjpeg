@@ -227,8 +227,18 @@ a 1 hour TV show is now tolerable with the new super-duper fast
 mpeg2enc and a  300Mhz+  CPU on the job.  Personally, I split the
 work between 4 CPU's: Celeron 366, 2*PIII-450 and a K6-2 500.
 
-I suspect the code would need serious reworking on an alpha etc as it
-merrily abuses data alignment constraints.
+Anyway to give you some idea what to expect here are some peformance
+figures.  They're for the normal default settings and -4 1 -2 1 which 
+tries to squeeze the last few drops of quality out.
+
+Duron-700	  : 19fps / 13fps 
+PIII-450 (katmai) :  11    / 6fps
+PII-400		  :   8fps  /  4fps
+Celeron-366       : 7fps / 3fps
+
+It is interesting to note the how much less efficient the Intel CPU's are at 
+the motion compensation searches controlled by the -4 and -2 flags.  I can 
+only assume an Athlon would absolutely *fly* at this workload.
 
 STILL MORE PERFORMANCE?
 
