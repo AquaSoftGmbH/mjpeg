@@ -1,6 +1,6 @@
 %define prefix  /usr/local
 %define version 1.5.4
-@define release 1
+%define release 1
 
 Summary: Tools for recording, editing, playing back and mpeg/divx-encoding video under linux
 Name: mjpegtools
