@@ -920,7 +920,7 @@ static void *lavrec_encoding_thread(void* arg)
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
+            "Error re-queuing buffer: %s", sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
          pthread_mutex_unlock(&(settings->encoding_mutex));
          continue;
@@ -961,7 +961,7 @@ static int lavrec_software_init(lavrec_t *info)
    if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+         "Error getting device capabilities: %s", sys_errlist[errno]);
       return 0;
    }
    /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
@@ -1024,7 +1024,7 @@ static int lavrec_software_init(lavrec_t *info)
    if (ioctl(settings->video_fd, VIDIOCGMBUF, &(settings->softreq)) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting buffer information: %s", (char *)sys_errlist[errno]);
+         "Error getting buffer information: %s", sys_errlist[errno]);
       return 0;
    }
    if (settings->softreq.frames < MIN_QUEUES_NEEDED)
@@ -1040,11 +1040,11 @@ static int lavrec_software_init(lavrec_t *info)
 
    /* Map the buffers */
    settings->YUV_buff = mmap(0, settings->softreq.size, 
-      PROT_READ, MAP_SHARED, settings->video_fd, 0);
+      PROT_READ|PROT_WRITE, MAP_SHARED, settings->video_fd, 0);
    if (settings->YUV_buff == MAP_FAILED)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
+         "Error mapping video buffers: %s", sys_errlist[errno]);
       return 0;
    }
 
@@ -1114,7 +1114,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting device capabilities: %s", (char *)sys_errlist[errno]);
+         "Error getting device capabilities: %s", sys_errlist[errno]);
       return 0;
    }
    /* vc.maxwidth is often reported wrong - let's just keep it broken (sigh) */
@@ -1124,7 +1124,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    if (ioctl(settings->video_fd, MJPIOC_G_PARAMS, &bparm) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting video parameters: %s", (char *)sys_errlist[errno]);
+         "Error getting video parameters: %s", sys_errlist[errno]);
       return 0;
    }
    bparm.input = info->video_src;
@@ -1223,7 +1223,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    if (ioctl(settings->video_fd, MJPIOC_S_PARAMS, &bparm) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error setting video parameters: %s", (char *)sys_errlist[errno]);
+         "Error setting video parameters: %s", sys_errlist[errno]);
       return 0;
    }
 
@@ -1241,7 +1241,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    if (ioctl(settings->video_fd, MJPIOC_REQBUFS,&(settings->breq)) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error requesting video buffers: %s", (char *)sys_errlist[errno]);
+         "Error requesting video buffers: %s", sys_errlist[errno]);
       return 0;
    }
    lavrec_msg(LAVREC_MSG_INFO, info,
@@ -1253,7 +1253,7 @@ static int lavrec_hardware_init(lavrec_t *info)
    if (settings->MJPG_buff == MAP_FAILED)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error mapping video buffers: %s", (char *)sys_errlist[errno]);
+         "Error mapping video buffers: %s", sys_errlist[errno]);
       return 0;
    }
 
@@ -1353,12 +1353,12 @@ static int lavrec_init(lavrec_t *info)
    }
 
    /* open the video device */
-   settings->video_fd = open(info->video_dev, O_RDONLY);
+   settings->video_fd = open(info->video_dev, O_RDWR);
    if (settings->video_fd < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
          "Error opening video-device (%s): %s",
-         info->video_dev, (char *)sys_errlist[errno]);
+         info->video_dev, sys_errlist[errno]);
       return 0;
    }
 
@@ -1376,14 +1376,14 @@ static int lavrec_init(lavrec_t *info)
       if (ioctl(settings->video_fd, VIDIOCSCHAN, &vch) < 0)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error setting channel: %s", (char *)sys_errlist[errno]);
+            "Error setting channel: %s", sys_errlist[errno]);
          return 0;
       }
    }
    if (ioctl(settings->video_fd, VIDIOCGCHAN, &vch) < 0)
    {
       lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Error getting channel info: %s", (char *)sys_errlist[errno]);
+         "Error getting channel info: %s", sys_errlist[errno]);
       return 0;
    }
    settings->has_audio = (vch.flags & VIDEO_VC_AUDIO);
@@ -1397,7 +1397,7 @@ static int lavrec_init(lavrec_t *info)
       if (ioctl(settings->video_fd, VIDIOCSFREQ, &outfreq) < 0)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error setting tuner frequency: %s", (char *)sys_errlist[errno]);
+            "Error setting tuner frequency: %s", sys_errlist[errno]);
          return 0;
       }
    }
@@ -1413,7 +1413,7 @@ static int lavrec_init(lavrec_t *info)
       if (ioctl(settings->video_fd,VIDIOCGAUDIO, &vau) < 0)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error getting tuner audio params: %s", (char *)sys_errlist[errno]);
+            "Error getting tuner audio params: %s", sys_errlist[errno]);
          return 0;
       }
       /* unmute so we get sound to record
@@ -1425,7 +1425,7 @@ static int lavrec_init(lavrec_t *info)
       if (ioctl(settings->video_fd,VIDIOCSAUDIO, &vau) < 0)
       {
          lavrec_msg(LAVREC_MSG_INFO, info,
-            "Error setting tuner audio params: %s", (char *)sys_errlist[errno]);
+            "Error setting tuner audio params: %s", sys_errlist[errno]);
          return 0;
       }
    }
@@ -1839,7 +1839,7 @@ static void lavrec_record(lavrec_t *info)
       if (!lavrec_queue_buffer(info, &frame_cnt))
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error queuing buffers: %s", (char *)sys_errlist[errno]);
+            "Error queuing buffers: %s", sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
          return;
       }
@@ -1887,7 +1887,7 @@ static void lavrec_record(lavrec_t *info)
          if (info->files)
             lavrec_close_files_on_error(info);
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error syncing on a buffer: %s", (char *)sys_errlist[errno]);
+            "Error syncing on a buffer: %s", sys_errlist[errno]);
          nerr++;
       }
       stats.num_syncs++;
@@ -1981,7 +1981,7 @@ static void lavrec_record(lavrec_t *info)
             if (info->files)
                lavrec_close_files_on_error(info);
             lavrec_msg(LAVREC_MSG_ERROR, info,
-               "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
+               "Error re-queuing buffer: %s", sys_errlist[errno]);
             nerr++;
          }
 
@@ -2009,7 +2009,7 @@ static void lavrec_record(lavrec_t *info)
       if (ioctl(settings->video_fd, MJPIOC_QBUF_CAPT, &x) < 0)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error resetting buffer-queue: %s", (char *)sys_errlist[errno]);
+            "Error resetting buffer-queue: %s", sys_errlist[errno]);
       }
    }
 }
@@ -2081,7 +2081,7 @@ static void *lavrec_capture_thread(void *arg)
       if (ioctl(settings->video_fd,VIDIOCSAUDIO,&vau) < 0)
       {
          lavrec_msg(LAVREC_MSG_ERROR, info,
-            "Error resetting tuner audio params: %s", (char *)sys_errlist[errno]);
+            "Error resetting tuner audio params: %s", sys_errlist[errno]);
       }
    }
 

@@ -485,7 +485,7 @@ static void check_command_line_options(int argc, char *argv[])
 #ifdef HAVE_GETOPT_LONG
          /* getopt_long values */
          case 0:
-            nerr += set_option((char *)long_options[option_index].name,
+            nerr += set_option(long_options[option_index].name,
                optarg);
             break;
 #endif
