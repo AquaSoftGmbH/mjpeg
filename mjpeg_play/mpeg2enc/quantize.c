@@ -448,3 +448,23 @@ void iquant_non_intra(int16_t *src, int16_t *dst, int mquant )
       dst[63]^= 1;
   }
 }
+
+void iquantize( pict_data_s *picture )
+{
+	int j,k;
+	int16_t (*qblocks)[64] = picture->qblocks;
+	for (k=0; k<mb_per_pict; k++)
+	{
+		if (picture->mbinfo[k].mb_type & MB_INTRA)
+			for (j=0; j<block_count; j++)
+				iquant_intra(qblocks[k*block_count+j],
+							 qblocks[k*block_count+j],
+							 cur_picture.dc_prec,
+							 cur_picture.mbinfo[k].mquant);
+		else
+			for (j=0;j<block_count;j++)
+				iquant_non_intra(qblocks[k*block_count+j],
+								 qblocks[k*block_count+j],
+								 cur_picture.mbinfo[k].mquant);
+	}
+}

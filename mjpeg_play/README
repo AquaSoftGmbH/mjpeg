@@ -83,8 +83,8 @@ corresponding singleAVI or Quicktime file.
 	See the README for further details.
 	In the current beta release MPEG-2 is untested and variable
 	bit-rate probably won't work.  HOWEVER: speed and quality for
-	MPEG-1 are really rather good. Encoding at 16 fps on a 700Mhz
-	Duron or 10fps on a 450Mhz P-III.
+	MPEG-1 are really rather good. Encoding 352x288 PAL at 18
+	fps on a 700Mhz 	Duron or 11ps on a 450Mhz P-III.
 
 * The aenc directory - 
 

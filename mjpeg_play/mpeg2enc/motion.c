@@ -68,7 +68,7 @@ struct mb_motion
 	blockxy pos;        // Half-pel co-ordinates of source block
 	int sad;			// Sum of absolute difference
 	int var;
-	uint8_t *blk;		// Source block data (in luminace data array)
+	uint8_t *blk ;		// Source block data (in luminace data array)
 	int hx, hy;			// Half-pel offsets
 	int fieldsel;		// 0 = top 1 = bottom
 };
@@ -104,8 +104,8 @@ static void field_ME (pict_data_s *picture,
 								  int ipflag);
 
 static void frame_estimate (
-	unsigned char *org,
-	 unsigned char *ref, 
+	uint8_t *org,
+	 uint8_t *ref, 
 	 subsampled_mb_s *ssmb,
 	 int i, int j,
 	 int sx, int sy, 
@@ -115,10 +115,10 @@ static void frame_estimate (
 	 int imins[2][2], int jmins[2][2]);
 
 static void field_estimate (pict_data_s *picture,
-							unsigned char *toporg,
-							unsigned char *topref, 
-							unsigned char *botorg, 
-							unsigned char *botref,
+							uint8_t *toporg,
+							uint8_t *topref, 
+							uint8_t *botorg, 
+							uint8_t *botref,
 							subsampled_mb_s *ssmb,
 							int i, int j, int sx, int sy, int ipflag,
 							mb_motion_s *bestfr,
@@ -128,7 +128,7 @@ static void field_estimate (pict_data_s *picture,
 
 static void dpframe_estimate (
 	pict_data_s *picture,
-	unsigned char *ref,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int iminf[2][2], int jminf[2][2],
 	mb_motion_s *dpbest,
@@ -137,16 +137,16 @@ static void dpframe_estimate (
 
 static void dpfield_estimate (
 	pict_data_s *picture,
-	unsigned char *topref,
-	unsigned char *botref, 
-	unsigned char *mb,
+	uint8_t *topref,
+	uint8_t *botref, 
+	uint8_t *mb,
 	int i, int j, 
 	int imins, int jmins, 
 	mb_motion_s *dpbest,
 	int *vmcp);
 
 static void fullsearch (
-	unsigned char *org, unsigned char *ref,
+	uint8_t *org, uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h, 
@@ -182,32 +182,32 @@ int (*pqblock_near_dist)( uint8_t *blk,  uint8_t *ref,
 
 
 static int dist1_00( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
-static int dist1_01(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist1_10(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist1_11(unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int dist2 (unsigned char *blk1, unsigned char *blk2,
+static int dist1_01(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_10(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist1_11(uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int dist2 (uint8_t *blk1, uint8_t *blk2,
 							  int lx, int hx, int hy, int h);
-static int bdist2 (unsigned char *pf, unsigned char *pb,
-	unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
-static int bdist1 (unsigned char *pf, unsigned char *pb,
-				   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist2 (uint8_t *pf, uint8_t *pb,
+	uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int bdist1 (uint8_t *pf, uint8_t *pb,
+				   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 static int (*pfdist1) ( uint8_t *blk1, uint8_t *blk2,  int flx, int fh);
 static int (*pqdist1) ( uint8_t *blk1, uint8_t *blk2,  int qlx, int qh);
 static int (*pdist1_00) ( uint8_t *blk1, uint8_t *blk2,  int lx, int h, int distlim);
-static int (*pdist1_01) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int (*pdist1_10) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
-static int (*pdist1_11) (unsigned char *blk1, unsigned char *blk2, int lx, int h);
+static int (*pdist1_01) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int (*pdist1_10) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
+static int (*pdist1_11) (uint8_t *blk1, uint8_t *blk2, int lx, int h);
 
-static int (*pdist2) (unsigned char *blk1, unsigned char *blk2,
+static int (*pdist2) (uint8_t *blk1, uint8_t *blk2,
 					  int lx, int hx, int hy, int h);
   
   
-static int (*pbdist2) (unsigned char *pf, unsigned char *pb,
-					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int (*pbdist2) (uint8_t *pf, uint8_t *pb,
+					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
-static int (*pbdist1) (unsigned char *pf, unsigned char *pb,
-					   unsigned char *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
+static int (*pbdist1) (uint8_t *pf, uint8_t *pb,
+					   uint8_t *p2, int lx, int hxf, int hyf, int hxb, int hyb, int h);
 
 /*
   Initialise motion compensation - currently purely selection of which
@@ -265,26 +265,6 @@ void init_motion()
 #endif
 }
 
-
-
-
-/* 
-   Match distance Thresholds for full radius motion compensation search
-   Based on moving averages of fast motion compensation differences.
-   If after restricted search, the fast motion compensation block
-   difference is larger than this average search is expanded out to
-   the user-specified radius to see if we can do better.
- */
-
-
-/* 
-   Reset the match accuracy threshhold used to decide whether to
-   restrict the size of the the fast motion compensation search window.
- */
-
-void reset_thresholds(int macroblocks_per_frame)
-{
-}
 
 
 /*
@@ -366,6 +346,34 @@ void motion_estimation(
 	}
 }
 
+/* DEBUGGER...
+static void check_mc( const mb_motion_s *motion, int rx, int ry, int i, int j, char *str )
+{
+	rx *= 2; ry *= 2;
+	if( motion->sad < 0 || motion->sad > 0x10000 )
+	{
+		printf( "SAD ooops %s\n", str );
+		exit(1);
+	}
+	if( motion->pos.x-i*2 < -rx || motion->pos.x-i*2 >= rx )
+	{
+		printf( "X MC ooops %s = %d [%d]\n", str, motion->pos.x-i*2,rx );
+		exit(1);
+	}
+	if( motion->pos.y-j*2 < -ry || motion->pos.y-j*2 >= ry )
+	{
+		printf( "Y MC ooops %s %d [%d]\n", str, motion->pos.y-j*2, ry );
+		exit(1);
+	}
+}
+
+static void init_mc( mb_motion_s *motion )
+{
+	motion->sad = -123;
+	motion->pos.x = -1000;
+	motion->pos.y = -1000;
+}
+*/
 static void frame_ME(pict_data_s *picture,
 					 motion_comp_s *mc,
 					 int mb_row_start,
@@ -578,6 +586,7 @@ static void frame_ME(pict_data_s *picture,
 		}
 		else
 		{
+
 			/* forward prediction */
 			frame_estimate(mc->oldorg,mc->oldref,&ssmb,
 						   i,j,mc->sxf,mc->syf,
@@ -585,6 +594,7 @@ static void frame_ME(pict_data_s *picture,
 						   &topfldf_mc,
 						   &botfldf_mc,
 						   imins,jmins);
+
 			dmcf = framef_mc.sad;
 			dmcfieldf = topfldf_mc.sad + botfldf_mc.sad;
 			/* backward prediction */
@@ -700,7 +710,7 @@ static void frame_ME(pict_data_s *picture,
 				mbi->mv_field_sel[1][0] = botfldf_mc.fieldsel;
 				/* backward */
 				mbi->MV[0][1][0] = topfldb_mc.pos.x - (i<<1);
-				mbi->MV[0][1][1] = (topfldb_mc.pos.x<<1) - (j<<1);
+				mbi->MV[0][1][1] = (topfldb_mc.pos.y<<1) - (j<<1);
 				mbi->MV[1][1][0] = botfldb_mc.pos.x - (i<<1);
 				mbi->MV[1][1][1] = (botfldb_mc.pos.y<<1) - (j<<1);
 				mbi->mv_field_sel[0][1] = topfldb_mc.fieldsel;
@@ -743,7 +753,7 @@ static void field_ME(
 	int secondfield, int ipflag)
 {
 	int w2;
-	unsigned char *toporg, *topref, *botorg, *botref;
+	uint8_t *toporg, *topref, *botorg, *botref;
 	subsampled_mb_s ssmb;
 	mb_motion_s fields_mc, dualp_mc;
 	mb_motion_s fieldf_mc, fieldb_mc;
@@ -754,7 +764,7 @@ static void field_ME(
 	int iminf,jminf,imin8uf,jmin8uf,imin8lf,jmin8lf,dmc8f,self,sel8uf,sel8lf;
 	int iminr,jminr,imin8ur,jmin8ur,imin8lr,jmin8lr,dmc8rdmc8r,selr,sel8ur,sel8lr; */
 	int imins,jmins;
-	int dmc8f,dmc8r,ds;
+	int dmc8f,dmc8r;
 	/* int imindmv,jmindmv;*/
 	int vmc_dp,dmc_dp;
 
@@ -809,7 +819,6 @@ static void field_ME(
 					   &fields_mc);
 		dmcfield = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
-		ds = fields_mc.sad;
 
 		if (M==1 && !ipflag)  /* generic condition which permits Dual Prime */
 		{
@@ -845,7 +854,8 @@ static void field_ME(
 		}
 
 		/* select between intra and non-intra coding */
-		if (vmc>var && vmc>=9*256)
+		/* DEBUG */
+		if ( vmc>var && vmc>=9*256)
 			mbi->mb_type = MB_INTRA;
 		else
 		{
@@ -855,7 +865,7 @@ static void field_ME(
 			if (!ipflag)
 				v0 = (*pdist2)(((picture->pict_struct==BOTTOM_FIELD)?botref:topref) + i + w2*j,
 							   ssmb.mb,w2,0,0,16);
-			if (ipflag || (4*v0>5*vmc && v0>=9*256))
+			if (ipflag  || (4*v0>5*vmc && v0>=9*256))
 			{
 				var = vmc;
 				mbi->mb_type = MB_FORWARD;
@@ -910,8 +920,6 @@ static void field_ME(
 					   &fields_mc);
 		dmcfieldf = fieldf_mc.sad;
 		dmc8f = field8uf_mc.sad + field8lf_mc.sad;
-		/* TODO: ds is probably a dummy in this case... */
-		ds = fields_mc.sad;
 
 		/* backward prediction */
 		field_estimate(picture,
@@ -924,7 +932,6 @@ static void field_ME(
 					   &fields_mc);
 		dmcfieldr = fieldb_mc.sad;
 		dmc8r = field8ub_mc.sad + field8lb_mc.sad;
-		ds = fields_mc.sad;
 
 		/* calculate distances for bidirectional prediction */
 		/* field */
@@ -1043,8 +1050,8 @@ static void field_ME(
  */
 
 static void frame_estimate(
-	unsigned char *org,
-	unsigned char *ref,
+	uint8_t *org,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int sx, int sy,
 	mb_motion_s *bestfr,
@@ -1058,8 +1065,6 @@ static void frame_estimate(
 	mb_motion_s topfld_mc;
 	mb_motion_s botfld_mc;
 
-	topfld_mc.fieldsel = 0;
-	botfld_mc.fieldsel = 1;
 	botssmb.mb = ssmb->mb+width;
 	botssmb.fmb = ssmb->mb+(width>>1);
 	botssmb.qmb = ssmb->qmb+(width>>2);
@@ -1075,6 +1080,10 @@ static void frame_estimate(
 	/* predict top field from bottom field */
 	fullsearch(org+width,ref+width,ssmb, width<<1,i,j>>1,sx,sy>>1,8,
 			   width,height>>1, &botfld_mc);
+
+	/* set correct field selectors... */
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
 
 	imins[0][0] = topfld_mc.pos.x;
 	jmins[0][0] = topfld_mc.pos.y;
@@ -1100,6 +1109,10 @@ static void frame_estimate(
 	fullsearch(org+width,ref+width,&botssmb,
 					width<<1,i,j>>1,sx,sy>>1,8,width,height>>1,
 					&botfld_mc);
+
+	/* set correct field selectors... */
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
 
 	imins[0][1] = topfld_mc.pos.x;
 	jmins[0][1] = topfld_mc.pos.y;
@@ -1138,10 +1151,10 @@ static void frame_estimate(
 
 static void field_estimate (
 	pict_data_s *picture,
-	unsigned char *toporg,
-	unsigned char *topref, 
-	unsigned char *botorg, 
-	unsigned char *botref,
+	uint8_t *toporg,
+	uint8_t *topref, 
+	uint8_t *botorg, 
+	uint8_t *botref,
 	subsampled_mb_s *ssmb,
 	int i, int j, int sx, int sy, int ipflag,
 	mb_motion_s *bestfld,
@@ -1159,9 +1172,7 @@ static void field_estimate (
 	botssmb.mb = ssmb->mb+width;
 	botssmb.fmb = ssmb->fmb+(width>>1);
 	botssmb.qmb = ssmb->qmb+(width>>2);
-	
-	topfld_mc.fieldsel = 0;
-	botfld_mc.fieldsel = 1;
+
 	/* if ipflag is set, predict from field of opposite parity only */
 	notop = ipflag && (picture->pict_struct==TOP_FIELD);
 	nobot = ipflag && (picture->pict_struct==BOTTOM_FIELD);
@@ -1184,6 +1195,9 @@ static void field_estimate (
 				   i,j,sx,sy>>1,16,width,height>>1,
 				   &botfld_mc);
 	db = botfld_mc.sad;
+	/* Set correct field selectors */
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
 
 	/* same parity prediction (only valid if ipflag==0) */
 	if (picture->pict_struct==TOP_FIELD)
@@ -1224,6 +1238,11 @@ static void field_estimate (
 				   i,j,sx,sy>>1,8,width,height>>1,
 				    &botfld_mc);
 	db = botfld_mc.sad;
+
+	/* Set correct field selectors */
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
+
 	/* select prediction for upper half field */
 	if (dt<=db)
 	{
@@ -1261,6 +1280,10 @@ static void field_estimate (
 						i,j+8,sx,sy>>1,8,width,height>>1,
 				   /* &iminb,&jminb, &db,*/ &botfld_mc);
 	db = botfld_mc.sad;
+	/* Set correct field selectors */
+	topfld_mc.fieldsel = 0;
+	botfld_mc.fieldsel = 1;
+
 	/* select prediction for lower half field */
 	if (dt<=db)
 	{
@@ -1274,7 +1297,7 @@ static void field_estimate (
 
 static void dpframe_estimate (
 	pict_data_s *picture,
-	unsigned char *ref,
+	uint8_t *ref,
 	subsampled_mb_s *ssmb,
 	
 	int i, int j, int iminf[2][2], int jminf[2][2],
@@ -1437,16 +1460,16 @@ static void dpframe_estimate (
 
 static void dpfield_estimate(
 	pict_data_s *picture,
-	unsigned char *topref,
-	unsigned char *botref, 
-	unsigned char *mb,
+	uint8_t *topref,
+	uint8_t *botref, 
+	uint8_t *mb,
 	int i, int j, int imins, int jmins, 
 	mb_motion_s *bestdp_mc,
 	int *vmcp
 	)
 
 {
-	unsigned char *sameref, *oppref;
+	uint8_t *sameref, *oppref;
 	int io0,jo0,io,jo,delta_x,delta_y,mvxs,mvys,mvxo0,mvyo0;
 	int imino,jmino,imindmv,jmindmv,vmc_dp,local_dist;
 
@@ -1686,7 +1709,7 @@ static int build_sub44_mcomps( int ilow, int jlow, int ihigh, int jhigh,
 				{
 					sub44_mcomps[sub44_num_mcomps].x = i;
 					sub44_mcomps[sub44_num_mcomps].y = j;
-					sub44_mcomps[sub44_num_mcomps].blk = s44orgblk;
+					sub44_mcomps[sub44_num_mcomps].blk = s44orgblk-s44org;
 					sub44_mcomps[sub44_num_mcomps].weight = s1 ;
 					++sub44_num_mcomps;
 				}
@@ -1745,7 +1768,8 @@ static int build_sub22_mcomps( int i0,  int j0, int ihigh, int jhigh,
 
 		matchrec.x = sub44_mcomps[k].x;
 		matchrec.y = sub44_mcomps[k].y;
-		s22orgblk =  s22org + ((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
+
+		s22orgblk =  s22org +((matchrec.y+j0)>>1)*flx +((matchrec.x+i0)>>1);
 		  
 		for( i = 0; i < 4; ++i )
 		{
@@ -1800,7 +1824,7 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 	)
 
 {
-	int k;
+	int i,k;
 	int d;
 	blockxy minpos = res->pos;
 	int dmin = INT_MAX;
@@ -1819,44 +1843,35 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 		matchrec.y = j0 + sub22_mcomps[k].y;
 		orgblk = org + matchrec.x+lx*matchrec.y;
 		penalty = abs(matchrec.x)+abs(matchrec.y);
-	  
-		if( matchrec.x <= xmax && matchrec.y <= ymax )
+
+		for( i = 0; i < 4; ++i )
 		{
-
-			d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
-			if (d<dmin)
+			if( matchrec.x <= xmax && matchrec.y <= ymax )
 			{
-				dmin = d;
-				minpos = matchrec;
+				d = penalty+(*pdist1_00)(orgblk,blk,lx,h, dmin);
+				if (d<dmin)
+				{
+					dmin = d;
+					minpos = matchrec;
+				}
 			}
-			d = penalty+(*pdist1_00)(orgblk+1,blk,lx,h, dmin);
-			if (d<dmin && (matchrec.x < xmax))
+			if( i == 1 )
 			{
-				dmin = d;
-				minpos.x = matchrec.x+1;
-				minpos.y = matchrec.y;
+				orgblk += lx-1;
+				matchrec.x -= 1;
+				matchrec.y += 1;
 			}
-
-			d = penalty+(*pdist1_00)(orgblk+lx,blk,lx,h, dmin);
-			if( (d<dmin) && (matchrec.y < ymax))
+			else
 			{
-				dmin = d;
-				minpos.x = matchrec.x;
-				minpos.y = matchrec.y+1;
+				orgblk += 1;
+				matchrec.x += 1;
 			}
-			d = penalty+(*pdist1_00)(orgblk+lx+1,blk,lx,h, dmin);
-			if ( (d<dmin) && (matchrec.y < ymax) && (matchrec.x < xmax))
-			{
-				dmin = d;
-				minpos.x = matchrec.x+1;
-				minpos.y = matchrec.y+1;
-			}      
 		}
 
 	}
 
 	res->pos = minpos;
-	res->blk = org+minpos.x+lx*minpos.y;
+	res->blk = org + minpos.x+lx*minpos.y;
 	res->sad = dmin;
 
 }
@@ -1884,8 +1899,8 @@ static void find_best_one_pel( uint8_t *org, uint8_t *blk,
 
 
 static void fullsearch(
-	unsigned char *org,
-	unsigned char *ref,
+	uint8_t *org,
+	uint8_t *ref,
 	subsampled_mb_s *ssblk,
 	int lx, int i0, int j0, 
 	int sx, int sy, int h,
@@ -1915,9 +1930,6 @@ static void fullsearch(
 	/* xmax and ymax into more useful form... */
 	xmax -= 16;
 	ymax -= h;
-
-	best.pos.x = i0;
-	best.pos.y = j0;
   
   
   	/* The search radii are *always* multiples of 4 to avoid messiness
@@ -1929,16 +1941,16 @@ static void fullsearch(
 	  sub-sampled) rather than actual pel's.  1/16 the size...  */
 	jlow = j0-sy;
 	jlow = jlow < 0 ? 0 : jlow;
-	jhigh =  j0+sy;
+	jhigh =  j0+(sy-1);
 	jhigh = jhigh > ymax ? ymax : jhigh;
 	ilow = i0-sx;
 	ilow = ilow < 0 ? 0 : ilow;
-	ihigh =  i0+sx;
+	ihigh =  i0+(sx-1);
 	ihigh = ihigh > xmax ? xmax : ihigh;
 
 	/*
  	   Very rarely this may fail to find matchs due to all the good
-	   looking ones being "off the edge".... hence we make sure we
+	   looking ones being over threshold. hence we make sure we
 	   fall back to a 0 motion compensation in this case.
 	   
 		 The sad for the 0 motion compensation is also very useful as
@@ -1973,7 +1985,7 @@ static void fullsearch(
 	*/
 	
 
-	find_best_one_pel( org, ssblk->mb, sub22_num_mcomps,
+	find_best_one_pel( ref, ssblk->mb, sub22_num_mcomps,
 					   i0, j0,
 					   ilow, jlow, xmax, ymax, 
 					   lx, h, &best );
@@ -1987,10 +1999,10 @@ static void fullsearch(
 	best.hx = 0;
 	best.hy = 0;
 
-	ilow = best.pos.x - (best.pos.x>0);
-	ihigh = best.pos.x + (best.pos.x<((xmax)<<1));
-	jlow = best.pos.y - (best.pos.y>0);
-	jhigh =  best.pos.y+ (best.pos.y<((ymax)<<1));
+	ilow = best.pos.x - (best.pos.x>(ilow<<1));
+	ihigh = best.pos.x + (best.pos.x<((ihigh)<<1));
+	jlow = best.pos.y - (best.pos.y>(jlow<<1));
+	jhigh =  best.pos.y+ (best.pos.y<((jhigh)<<1));
 
 	for (j=jlow; j<=jhigh; j++)
 	{
@@ -2043,10 +2055,10 @@ static void fullsearch(
 */
 
 
-static int dist1_00(unsigned char *blk1,unsigned char *blk2,
+static int dist1_00(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h,int distlim)
 {
-	unsigned char *p1,*p2;
+	uint8_t *p1,*p2;
 	int j;
 	int s;
 	register int v;
@@ -2073,10 +2085,10 @@ static int dist1_00(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_01(unsigned char *blk1,unsigned char *blk2,
+static int dist1_01(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p2;
+	uint8_t *p1,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -2101,10 +2113,10 @@ static int dist1_01(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_10(unsigned char *blk1,unsigned char *blk2,
+static int dist1_10(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -2128,10 +2140,10 @@ static int dist1_10(unsigned char *blk1,unsigned char *blk2,
 	return s;
 }
 
-static int dist1_11(unsigned char *blk1,unsigned char *blk2,
+static int dist1_11(uint8_t *blk1,uint8_t *blk2,
 					int lx, int h)
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s;
 	register int v;
@@ -2156,9 +2168,9 @@ static int dist1_11(unsigned char *blk1,unsigned char *blk2,
 }
 
 /* USED only during debugging...
-void check_fast_motion_data(unsigned char *blk, char *label )
+void check_fast_motion_data(uint8_t *blk, char *label )
 {
-  unsigned char *b, *nb;
+  uint8_t *b, *nb;
   uint8_t *pb,*p;
   uint8_t *qb;
   uint8_t *start_s22blk, *start_s44blk;
@@ -2205,9 +2217,9 @@ void check_fast_motion_data(unsigned char *blk, char *label )
    for this information...
  */
 
-void fast_motion_data(unsigned char *blk, int picture_struct )
+void fast_motion_data(uint8_t *blk, int picture_struct )
 {
-	unsigned char *b, *nb;
+	uint8_t *b, *nb;
 	uint8_t *pb;
 	uint8_t *qb;
 	uint8_t *start_s22blk, *start_s44blk;
@@ -2278,7 +2290,7 @@ void fast_motion_data(unsigned char *blk, int picture_struct )
 	{
 		for( i = 0; i < nextfieldline/4; ++i )
 		{
-			/* TODO: BRITTLE: A.Stevens - this only works for uint8_t = unsigned char */
+			/* TODO: BRITTLE: A.Stevens - this only works for uint8_t = uint8_t */
 			qb[0] = (b[0]+b[1]+nb[0]+nb[1])>>2;
 			qb[1] = (b[2]+b[3]+nb[2]+nb[3])>>2;
 			qb += 2;
@@ -2425,10 +2437,10 @@ static int qdist1( uint8_t *s44blk1, uint8_t *s44blk2,int qlx,int qh)
  
 
 static int dist2(blk1,blk2,lx,hx,hy,h)
-	unsigned char *blk1,*blk2;
+	uint8_t *blk1,*blk2;
 	int lx,hx,hy,h;
 {
-	unsigned char *p1,*p1a,*p2;
+	uint8_t *p1,*p1a,*p2;
 	int i,j;
 	int s,v;
 
@@ -2505,10 +2517,10 @@ static int dist2(blk1,blk2,lx,hx,hy,h)
  
 
 static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-	unsigned char *pf,*pb,*p2;
+	uint8_t *pf,*pb,*p2;
 	int lx,hxf,hyf,hxb,hyb,h;
 {
-	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
 	int i,j;
 	int s,v;
 
@@ -2558,10 +2570,10 @@ static int bdist1(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
  
 
 static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
-	unsigned char *pf,*pb,*p2;
+	uint8_t *pf,*pb,*p2;
 	int lx,hxf,hyf,hxb,hyb,h;
 {
-	unsigned char *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
+	uint8_t *pfa,*pfb,*pfc,*pba,*pbb,*pbc;
 	int i,j;
 	int s,v;
 
@@ -2605,7 +2617,7 @@ static int bdist2(pf,pb,p2,lx,hxf,hyf,hxb,hyb,h)
  * lx: distance (in bytes) of vertically adjacent pels
  */
 static int variance(p,lx)
-	unsigned char *p;
+	uint8_t *p;
 	int lx;
 {
 	int i,j;

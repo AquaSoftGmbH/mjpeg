@@ -79,7 +79,6 @@ int SIMD_SUFFIX(qblock_8grid_dists)( uint8_t *blk,  uint8_t *ref,
 				cres->weight = (uint16_t)weight+((fastabs(x)+fastabs(y))>>3);
 				cres->x = (uint8_t)x;
 				cres->y = (uint8_t)y;
-				cres->blk = curblk;
 				++cres;
 			}
 			curblk += 1;
@@ -131,7 +130,6 @@ int SIMD_SUFFIX(qblock_near_dist)( uint8_t *blk,  uint8_t *ref,
 			cres->weight = weight;
 			cres->x = (int8_t)x;
 			cres->y = (int8_t)y;
-			cres->blk = curblk;
 			++cres;
 		}
 	}		

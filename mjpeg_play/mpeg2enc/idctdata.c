@@ -46,7 +46,7 @@
 //      As given by Intel, the #defines for SHIFT_INV_COL and RND_INV_COL are
 //      wrong.  Not surprising since I'm not using a true column-transform 
 //      operation, but the row-transform operation (as mentioned earlier.)
-//      round_inv_col[], which is given as "4 short" values, should have the
+//      round_inv_col[], which is given as "4 int16_t" values, should have the
 //      same dimensions as round_inv_row[].  The corrected variables are 
 //      shown.
 //
@@ -80,6 +80,7 @@
 //   liaor@umcc.ais.org  http://members.tripod.com/~liaor
 //  
 
+#include <inttypes.h>
 
 //;=============================================================================
 //;
@@ -118,7 +119,7 @@ const long long dct_one_corr = 0x0001000100010001;
 ; The 8-point inverse DCT direct algorithm
 ;-----------------------------------------------------------------------------
 ;
-; static const short w[32] = {
+; static const int16_t w[32] = {
 ; FIX(cos_4_16), FIX(cos_2_16), FIX(cos_4_16), FIX(cos_6_16),
 ; FIX(cos_4_16), FIX(cos_6_16), -FIX(cos_4_16), -FIX(cos_2_16),
 ; FIX(cos_4_16), -FIX(cos_6_16), -FIX(cos_4_16), FIX(cos_2_16),
@@ -162,7 +163,7 @@ const long long dct_one_corr = 0x0001000100010001;
 ; and are shifted to the left for better accuracy
 ;
 ; For the constants used,
-; FIX(float_const) = (short) (float_const * (1<<15) + 0.5)
+; FIX(float_const) = (int16_t) (float_const * (1<<15) + 0.5)
 ;
 ;=============================================================================
 */
@@ -172,7 +173,7 @@ const long long dct_one_corr = 0x0001000100010001;
    In our implementation, however, we only use row0 !
 */
 
-const short idct_tab_01234567[] = {
+const int16_t idct_tab_01234567[] = {
 	//row0, this row is required
 	16384, 16384, 16384, -16384,	// ; movq-> w06 w04 w02 w00
 	21407, 8867, 8867, -21407,		// w07 w05 w03 w01

@@ -139,11 +139,11 @@ void stats()
 					-(4<<cur_picture.back_vert_f_code),(4<<cur_picture.back_vert_f_code)-1);
 		}
 #endif
-  nmb = mb_width*mb_height2;
+  nmb = ;
 
   n_skipped=n_intra=n_ncoded=n_blocks=n_interp=n_forward=n_backward=0;
 
-  for (k=0; k<nmb; k++)
+  for (k=0; k<mb_per_piect; k++)
   {
     mbi = cur_picture.mbinfo+k;
     if (mbi->skipped)
@@ -170,19 +170,19 @@ void stats()
 
   fprintf(statfile,"\npicture statistics:\n");
   fprintf(statfile," # of intra coded macroblocks:  %4d (%.1f%%)\n",
-    n_intra,100.0*(double)n_intra/nmb);
+    n_intra,100.0*(double)n_intra/mb_per_piect);
   fprintf(statfile," # of coded blocks:             %4d (%.1f%%)\n",
-    n_blocks,100.0*(double)n_blocks/(block_count*nmb));
+    n_blocks,100.0*(double)n_blocks/(block_count*mb_per_piect));
   fprintf(statfile," # of not coded macroblocks:    %4d (%.1f%%)\n",
-    n_ncoded,100.0*(double)n_ncoded/nmb);
+    n_ncoded,100.0*(double)n_ncoded/mb_per_piect);
   fprintf(statfile," # of skipped macroblocks:      %4d (%.1f%%)\n",
-    n_skipped,100.0*(double)n_skipped/nmb);
+    n_skipped,100.0*(double)n_skipped/mb_per_piect);
   fprintf(statfile," # of forw. pred. macroblocks:  %4d (%.1f%%)\n",
-    n_forward,100.0*(double)n_forward/nmb);
+    n_forward,100.0*(double)n_forward/mb_per_piect);
   fprintf(statfile," # of backw. pred. macroblocks: %4d (%.1f%%)\n",
-    n_backward,100.0*(double)n_backward/nmb);
+    n_backward,100.0*(double)n_backward/mb_per_piect);
   fprintf(statfile," # of interpolated macroblocks: %4d (%.1f%%)\n",
-    n_interp,100.0*(double)n_interp/nmb);
+    n_interp,100.0*(double)n_interp/mb_per_piect);
 
   fprintf(statfile,"\nmacroblock_type map:\n");
 

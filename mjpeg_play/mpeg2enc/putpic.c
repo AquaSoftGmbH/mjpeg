@@ -60,7 +60,6 @@ static void putmvs(
 		vert_f_code = picture->forw_vert_f_code;
 	}
 
-
 	if (picture->pict_struct==FRAME_PICTURE)
 	{
 		if (mb->motion_type==MC_FRAME)
@@ -74,6 +73,7 @@ static void putmvs(
 		else if (mb->motion_type==MC_FIELD)
 		{
 			/* field prediction */
+
 			putbits(mb->mv_field_sel[0][back],1);
 			putmv(mb->MV[0][back][0]-PMV[0][back][0],hor_f_code);
 			putmv((mb->MV[0][back][1]>>1)-(PMV[0][back][1]>>1),vert_f_code);
@@ -84,6 +84,7 @@ static void putmvs(
 			PMV[0][back][1]=mb->MV[0][back][1];
 			PMV[1][back][0]=mb->MV[1][back][0];
 			PMV[1][back][1]=mb->MV[1][back][1];
+
 		}
 		else
 		{
@@ -152,7 +153,7 @@ static void putmvs(
  ******************/
 
 
-void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
+void putpict(pict_data_s *picture )
 {
 	int i, j, k, comp, cc;
 	int mb_type;
@@ -161,6 +162,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 	int cbp, MBAinc;
 	mbinfo_s *cur_mb;
 	int cur_mb_blocks;
+	short (*quant_blocks)[64] = picture->qblocks;
 	MBAinc = 0;          /* Annoying warning otherwise... */
 
 	calc_vbv_delay(picture);
@@ -358,6 +360,7 @@ void putpict(pict_data_s *picture, short (*quant_blocks)[64] )
 						: cur_mb->mquant>>1,5);
 				prev_mquant = cur_mb->mquant;
 			}
+
 
 			if (mb_type & MB_FORWARD)
 			{

@@ -117,7 +117,7 @@ static int min_d,max_d;
 static int min_q, max_q;
 
 /* TODO EXPERIMENT */
-static double avg_KI = 16.0;	/* TODO: These values empirically determined 		*/
+static double avg_KI = 2.5;	/* TODO: These values empirically determined 		*/
 static double avg_KB = 10.0;	/* for MPEG-1, may need tuning for MPEG-2	*/
 static double avg_KP = 10.0;
 #define K_AVG_WINDOW_I 4.0		/* TODO: MPEG-1, hard-wired settings */
@@ -205,7 +205,7 @@ static int scale_quant( pict_data_s *picture, double quant )
 
 void rc_init_seq()
 {
-	bits_per_mb = (double)bit_rate / (mb_width*mb_height2);
+	bits_per_mb = (double)bit_rate / (mb_per_pict);
 
 	/* reaction parameter (constant) decreased to increase response
 	   rate as encoder is currently tending to under/over-shoot... in
@@ -339,7 +339,7 @@ void rc_init_pict(pict_data_s *picture)
 	*/
 
 	actsum =  calc_actj(picture );
-	avg_act = (double)actsum/(double)(mb_width*mb_height2);
+	avg_act = (double)actsum/(double)(mb_per_pict);
 	actcovered = 0.0;
 
 	/* Allocate target bits for frame based on frames numbers in GOP
@@ -390,7 +390,7 @@ void rc_init_pict(pict_data_s *picture)
 		T = 4000.0;
 	}
 	target_Q = scale_quant(picture, 
-						   avg_K * avg_act *(mb_width*mb_height2) / T);
+						   avg_K * avg_act *(mb_per_pict) / T);
 	current_Q = scale_quant(picture,62.0*d / r);
 #ifdef DEBUG
 	if( !quiet )
@@ -422,7 +422,7 @@ static double calc_actj(pict_data_s *picture)
 {
 	int i,j,k,l;
 	double actj,sum;
-	unsigned short *i_q_mat;
+	uint16_t *i_q_mat;
 	int actsum;
 	sum = 0.0;
 	k = 0;
@@ -462,7 +462,7 @@ static double calc_actj(pict_data_s *picture)
 			for( l = 0; l < 6; ++l )
 				actsum += 
 					(*pquant_weight_coeff_sum)
-					    ( &cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
+					    ( cur_picture.mbinfo[k].dctblocks[l], i_q_mat ) ;
 			actj = (double)actsum / (double)COEFFSUM_SCALE;
 			if( actj < 12.0 )
 				actj = 12.0;

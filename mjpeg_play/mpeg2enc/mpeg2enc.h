@@ -134,7 +134,7 @@ struct mbinfo {
 	int p_act;  /* Activity measure for *forward* prediction (P-frame) */
 	int b_act;	/* Activity measure if bi-directionally coded (B-frame) */
 	int var; 	/* Macroblock luminance variance (measure of activity) */
-	short *dctblocks;
+	short (*dctblocks)[64];
 #ifdef OUTPUT_STAT
   double N_act;
 #endif
@@ -173,9 +173,11 @@ struct pict_data
 	int repeatfirst;			/* repeat first field after second field */
 	int prog_frame;				/* progressive frame */
 
-	/* 8*8 block data, raw (unquantised) and quantised, and
-	 inverse quantised */
+	/* 8*8 block data, raw (unquantised) and quantised, and (eventually but
+	   not yet inverse quantised */
 	short (*blocks)[64];
+	short (*qblocks)[64];
+
 	/* macroblock side information array */
 	struct mbinfo *mbinfo;
 	/* motion estimation parameters */
@@ -184,9 +186,6 @@ struct pict_data
 typedef struct pict_data pict_data_s;
 
 
-/* Type for fast motion compensation search integers */
-
-typedef unsigned char mcompuint;
 
 /* 4*4 sub-sampled pel Threshold below which initial 8*8 grid motion
    compensation matches are always discarded.

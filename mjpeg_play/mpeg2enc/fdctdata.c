@@ -27,6 +27,7 @@
 //  liaor@iname.com  http://members.tripod.com/~liaor  
 //////////////////////////////////////////////////////////////////////////////
 
+#include <inttypes.h>
 
 //////////////////////////////////////////////////////////////////////
 //
@@ -48,7 +49,7 @@
 #define RND_FRW_COL		(1 << (SHIFT_FRW_COL-1))
 
 //concatenated table, for forward DCT transformation
-const short fdct_tg_all_16[] = {
+const int16_t fdct_tg_all_16[] = {
 	13036, 13036, 13036, 13036,		// tg * (2<<16) + 0.5
 	27146, 27146, 27146, 27146,		// tg * (2<<16) + 0.5
 	-21746, -21746, -21746, -21746,	// tg * (2<<16) + 0.5
@@ -57,7 +58,7 @@ const short fdct_tg_all_16[] = {
 const long long  fdct_one_corr = 0x0001000100010001LL;
 const long fdct_r_row[2] = {RND_FRW_ROW, RND_FRW_ROW };
 
-const short tab_frw_01234567[] = {  // forward_dct coeff table
+const int16_t tab_frw_01234567[] = {  // forward_dct coeff table
     //row0
     16384, 16384, 21407, -8867,     //    w09 w01 w08 w00
     16384, 16384, 8867, -21407,     //    w13 w05 w12 w04

@@ -41,7 +41,6 @@ struct mc_result
 	uint16_t weight;
 	int8_t x;
 	int8_t y;
-	uint8_t *blk;
 };
 
 typedef struct mc_result mc_result_s;

@@ -51,10 +51,10 @@ void profile_and_level_checks _ANSI_ARGS_(());
 
 /* fdctref.c */
 void init_fdct _ANSI_ARGS_((void));
-void fdct _ANSI_ARGS_((short *block));
+void fdct _ANSI_ARGS_((int16_t *block));
 
 /* idct.c */
-void idct _ANSI_ARGS_((short *block));
+void idct _ANSI_ARGS_((int16_t *block));
 void init_idct _ANSI_ARGS_((void));
 
 /* motion.c */
@@ -67,8 +67,8 @@ void motion_estimation _ANSI_ARGS_((
 	motion_comp_s *mc_data,
 	int secondfield, int ipflag));
 
-void fast_motion_data _ANSI_ARGS_((unsigned char *mcompdata, int pict_struct));
-void check_fast_motion_data _ANSI_ARGS_((unsigned char *blk, char *label ));
+void fast_motion_data _ANSI_ARGS_((uint8_t *mcompdata, int pict_struct));
+void check_fast_motion_data _ANSI_ARGS_((uint8_t *blk, char *label ));
 
 void reset_thresholds _ANSI_ARGS_( (int macroblocks_per_frame ) );
 /* mpeg2enc.c */
@@ -78,8 +78,8 @@ void error _ANSI_ARGS_((char *text));
 void init_predict();
 
 void predict _ANSI_ARGS_((pict_data_s *picture,
-						  unsigned char *reff[], unsigned char *refb[],
-						  unsigned char *cur[3], 
+						  uint8_t *reff[], uint8_t *refb[],
+						  uint8_t *cur[3], 
 						  int secondfield));
 
 /* putbits.c */
@@ -99,12 +99,12 @@ void putpictcodext _ANSI_ARGS_((pict_data_s *picture));
 void putseqend _ANSI_ARGS_((void));
 
 /* putmpg.c */
-void putintrablk _ANSI_ARGS_((pict_data_s *picture, short *blk, int cc));
-void putnonintrablk _ANSI_ARGS_((pict_data_s *picture,short *blk));
+void putintrablk _ANSI_ARGS_((pict_data_s *picture, int16_t *blk, int cc));
+void putnonintrablk _ANSI_ARGS_((pict_data_s *picture,int16_t *blk));
 void putmv _ANSI_ARGS_((int dmv, int f_code));
 
 /* putpic.c */
-void putpict _ANSI_ARGS_((pict_data_s *picture, short (*quant_blocks)[64]));
+void putpict (pict_data_s *picture);
 
 /* putseq.c */
 void putseq _ANSI_ARGS_((void));
@@ -122,18 +122,19 @@ void putcbp _ANSI_ARGS_((int cbp));
 
 /* quantize.c */
 
+void iquantize( pict_data_s *picture );
 void quant_intra (	pict_data_s *picture,
-					short *src, short *dst, 
+					int16_t *src, int16_t *dst, 
 					int mquant, int *nonsat_mquant);
-void iquant_intra ( short *src, short *dst, int dc_prec, int mquant);
-void iquant_non_intra (short *src, short *dst, int mquant);
+void iquant_intra ( int16_t *src, int16_t *dst, int dc_prec, int mquant);
+void iquant_non_intra (int16_t *src, int16_t *dst, int mquant);
 void init_quantizer();
 int  next_larger_quant( pict_data_s *picture, int quant );
 
 extern int (*pquant_non_intra)(pict_data_s *picture, int16_t *src, int16_t *dst,
 						int mquant, int *nonsat_mquant);
 
-extern int (*pquant_weight_coeff_sum)(short *blk, unsigned short*i_quant_mat );
+extern int (*pquant_weight_coeff_sum)(int16_t *blk, uint16_t*i_quant_mat );
 
 
 /* ratectl.c */
@@ -147,38 +148,33 @@ void vbv_end_of_picture _ANSI_ARGS_((pict_data_s *picture));
 void calc_vbv_delay _ANSI_ARGS_((pict_data_s *picture));
 
 /* readpic.c */
-int readframe _ANSI_ARGS_((int frame_num, unsigned char *frame[]));
+int readframe _ANSI_ARGS_((int frame_num, uint8_t *frame[]));
 
 /* stats.c */
-void calcSNR _ANSI_ARGS_((unsigned char *org[3], unsigned char *rec[3]));
+void calcSNR _ANSI_ARGS_((uint8_t *org[3], uint8_t *rec[3]));
 void stats _ANSI_ARGS_((void));
 
 /* transfrm.c */
-void transform _ANSI_ARGS_((
-	pict_data_s *picture,
-	unsigned char *pred[], 
-	unsigned char *cur[]));
+void transform (pict_data_s *picture,
+				uint8_t *pred[], 
+				uint8_t *cur[]);
 
-void itransform _ANSI_ARGS_((
-	pict_data_s *picture,
-	unsigned char *pred[], unsigned char *cur[],
-	short blocks[][64]));
-void dct_type_estimation _ANSI_ARGS_((
-	pict_data_s *picture,
-	unsigned char *pred, unsigned char *cur
-	));
+void itransform ( pict_data_s *picture,
+				  uint8_t *pred[], uint8_t *cur[]);
+void dct_type_estimation (pict_data_s *picture,
+						  uint8_t *pred, uint8_t *cur );
 
 void init_transform();
 
 /* writepic.c */
-void writeframe _ANSI_ARGS_((int frame_num, unsigned char *frame[]));
+void writeframe _ANSI_ARGS_((int frame_num, uint8_t *frame[]));
 
 
 /* global variables */
 
 EXTERN char version[]
 #ifdef GLOBAL
-  ="MSSG+ 1.01 (development of mpeg2encode V1.2, 96/07/19)"
+  ="MSSG+ 1.1 2000/12/12 (development of mpeg2encode V1.2, 96/07/19)"
 #endif
 ;
 
@@ -189,7 +185,7 @@ EXTERN char author[]
 ;
 
 /* zig-zag scan */
-EXTERN unsigned char zig_zag_scan[64]
+EXTERN uint8_t zig_zag_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -202,7 +198,7 @@ EXTERN unsigned char zig_zag_scan[64]
 ;
 
 /* alternate scan */
-EXTERN unsigned char alternate_scan[64]
+EXTERN uint8_t alternate_scan[64]
 #ifdef GLOBAL
 =
 {
@@ -215,7 +211,7 @@ EXTERN unsigned char alternate_scan[64]
 ;
 
 /* default intra quantization matrix */
-EXTERN unsigned short default_intra_quantizer_matrix[64]
+EXTERN uint16_t default_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -231,7 +227,7 @@ EXTERN unsigned short default_intra_quantizer_matrix[64]
 #endif
 ;
 
-EXTERN unsigned short hires_intra_quantizer_matrix[64]
+EXTERN uint16_t hires_intra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -250,7 +246,7 @@ EXTERN unsigned short hires_intra_quantizer_matrix[64]
 /* Our default non intra quantization matrix
 	This is *not* the MPEG default
 	 */
-EXTERN unsigned short default_nonintra_quantizer_matrix[64]
+EXTERN uint16_t default_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 
@@ -270,7 +266,7 @@ EXTERN unsigned short default_nonintra_quantizer_matrix[64]
 
 /* Hires non intra quantization matrix.  THis *is*
 	the MPEG default...	 */
-EXTERN unsigned short hires_nonintra_quantizer_matrix[64]
+EXTERN uint16_t hires_nonintra_quantizer_matrix[64]
 #ifdef GLOBAL
 =
 {
@@ -287,7 +283,7 @@ EXTERN unsigned short hires_nonintra_quantizer_matrix[64]
 ;
 
 /* non-linear quantization coefficient table */
-EXTERN unsigned char non_linear_mquant_table[32]
+EXTERN uint8_t non_linear_mquant_table[32]
 #ifdef GLOBAL
 =
 {
@@ -304,7 +300,7 @@ EXTERN unsigned char non_linear_mquant_table[32]
  * it is up to the designer to determine most of the quantization levels
  */
 
-EXTERN unsigned char map_non_linear_mquant[113] 
+EXTERN uint8_t map_non_linear_mquant[113] 
 #ifdef GLOBAL
 =
 {
@@ -326,38 +322,37 @@ EXTERN char pict_type_char[6]
 int video_buffer_size;
 
 /* Buffers frame data */
-EXTERN unsigned char ***frame_buffers;
+EXTERN uint8_t ***frame_buffers;
 
 EXTERN pict_data_s cur_picture;
 
 /* Buffers for econstructed frames */
-EXTERN unsigned char *newrefframe[3], *oldrefframe[3], *auxframe[3];
+EXTERN uint8_t *newrefframe[3], *oldrefframe[3], *auxframe[3];
 /* Pointers to original frames in frame_buffers */
-EXTERN unsigned char *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
+EXTERN uint8_t *neworgframe[3], *oldorgframe[3], *auxorgframe[3];
 /* prediction of current frame */
-EXTERN unsigned char *predframe[3];
+EXTERN uint8_t *predframe[3];
 /* Buffer for filter pre-processing */
 
 EXTERN struct motion_data *motion_data;
-EXTERN short (*qblocks)[64];
 
 /* Orginal intra / non_intra quantization matrices */
-EXTERN unsigned short intra_q[64], inter_q[64];
-EXTERN unsigned short i_intra_q[64], i_inter_q[64];
+EXTERN uint16_t intra_q[64], inter_q[64];
+EXTERN uint16_t i_intra_q[64], i_inter_q[64];
 
 /* Table driven intra / non-intra quantization matrices */
-EXTERN unsigned short intra_q_tbl[113][64], inter_q_tbl[113][64];
-EXTERN unsigned short i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
+EXTERN uint16_t intra_q_tbl[113][64], inter_q_tbl[113][64];
+EXTERN uint16_t i_intra_q_tbl[113][64], i_inter_q_tbl[113][64];
 EXTERN float intra_q_tblf[113][64], inter_q_tblf[113][64];
 EXTERN float i_intra_q_tblf[113][64], i_inter_q_tblf[113][64];
 
 
 
-EXTERN unsigned short chrom_intra_q[64],chrom_inter_q[64];
+EXTERN uint16_t chrom_intra_q[64],chrom_inter_q[64];
 /* prediction values for DCT coefficient (0,0) */
 EXTERN int dc_dct_pred[3];
 /* clipping (=saturation) table */
-EXTERN unsigned char *clp;
+EXTERN uint8_t *clp;
 
 /* name strings */
 EXTERN char id_string[256], tplorg[256], tplref[256];

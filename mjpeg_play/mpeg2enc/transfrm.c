@@ -34,37 +34,37 @@
 #include "cpu_accel.h"
 
 #ifdef X86_CPU
-extern void fdct_mmx( short * blk );
-extern void idct_mmx( short * blk );
+extern void fdct_mmx( int16_t * blk );
+extern void idct_mmx( int16_t * blk );
 
-void add_pred_mmx (unsigned char *pred, unsigned char *cur,
-				   int lx, short *blk);
-void sub_pred_mmx (unsigned char *pred, unsigned char *cur,
-				   int lx, short *blk);
+void add_pred_mmx (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
+void sub_pred_mmx (uint8_t *pred, uint8_t *cur,
+				   int lx, int16_t *blk);
 #endif
 
-extern void fdct( short *blk );
-extern void idct( short *blk );
+extern void fdct( int16_t *blk );
+extern void idct( int16_t *blk );
 
 
 
 /* private prototypes*/
-static void add_pred (unsigned char *pred, unsigned char *cur,
-  int lx, short *blk);
-static void sub_pred (unsigned char *pred, unsigned char *cur,
-  int lx, short *blk);
+static void add_pred (uint8_t *pred, uint8_t *cur,
+					  int lx, int16_t *blk);
+static void sub_pred (uint8_t *pred, uint8_t *cur,
+					  int lx, int16_t *blk);
 
 /*
   Pointers to version of transform and prediction manipulation
   routines to be used..
  */
 
-static void (*pfdct)( short * blk );
-static void (*pidct)( short * blk );
-static void (*padd_pred) (unsigned char *pred, unsigned char *cur,
-  int lx, short *blk);
-static void (*psub_pred) (unsigned char *pred, unsigned char *cur,
-  int lx, short *blk);
+static void (*pfdct)( int16_t * blk );
+static void (*pidct)( int16_t * blk );
+static void (*padd_pred) (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk);
+static void (*psub_pred) (uint8_t *pred, uint8_t *cur,
+						  int lx, int16_t *blk);
 
 /*
   Initialise DCT transformation routines
@@ -74,23 +74,23 @@ static void (*psub_pred) (unsigned char *pred, unsigned char *cur,
 
 void init_transform()
 {
-  int flags;
-  flags = cpu_accel();
+	int flags;
+	flags = cpu_accel();
 
-  if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
+	if( (flags & ACCEL_X86_MMX) ) /* MMX CPU */
 	{
-	  fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
-      pfdct = fdct_mmx;
-	  pidct = idct_mmx;
-	  padd_pred = add_pred_mmx;
-	  psub_pred = sub_pred_mmx;
+		fprintf( stderr, "SETTING MMX for TRANSFORM!\n");
+		pfdct = fdct_mmx;
+		pidct = idct_mmx;
+		padd_pred = add_pred_mmx;
+		psub_pred = sub_pred_mmx;
 	}
-  else
+	else
 	{
-      pfdct = fdct;
-	  pidct = idct;
-	  padd_pred = add_pred;
-	  psub_pred = sub_pred;
+		pfdct = fdct;
+		pidct = idct;
+		padd_pred = add_pred;
+		psub_pred = sub_pred;
 
 	}
 }
@@ -99,18 +99,21 @@ void init_transform()
 /* subtract prediction and transform prediction error */
 void transform(
 	pict_data_s *picture,
-	unsigned char *pred[], unsigned char *cur[]
+	uint8_t *pred[], uint8_t *cur[]
 	)
 {
 	int i, j, i1, j1, k, n, cc, offs, lx;
 	mbinfo_s *mbi = picture->mbinfo;
-	short (*blocks)[64] = picture->blocks;
+	int16_t (*blocks)[64] = picture->blocks;
 
 	k = 0;
 
 	for (j=0; j<height2; j+=16)
 		for (i=0; i<width; i+=16)
 		{
+			/* TODO: BUG this needs to be outside the n loop! */
+			mbi[k].dctblocks = &blocks[k*block_count];
+
 			for (n=0; n<block_count; n++)
 			{
 				cc = (n<4) ? 0 : (n&1)+1; /* color component index */
@@ -118,7 +121,6 @@ void transform(
 				{
 					/* A.Stevens Jul 2000 Record dct blocks associated with macroblock */
 					/* We'll use this for quantisation calculations                    */
-					mbi[k].dctblocks = &blocks[k*block_count+n][0];
 					/* luminance */
 					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
 					{
@@ -175,109 +177,111 @@ void transform(
 /* inverse transform prediction error and add prediction */
 void itransform(
 	pict_data_s *picture,
-	unsigned char *pred[], unsigned char *cur[],
-	short blocks[][64])
+	uint8_t *pred[], uint8_t *cur[])
 {
     mbinfo_s *mbi = picture->mbinfo;
-  int i, j, i1, j1, k, n, cc, offs, lx;
+	/* Its the quantised / inverse quantised blocks were interested in
+	   for inverse transformation */
+	int16_t (*blocks)[64] = picture->qblocks;
+	int i, j, i1, j1, k, n, cc, offs, lx;
 
-  k = 0;
+	k = 0;
 
-  for (j=0; j<height2; j+=16)
-    for (i=0; i<width; i+=16)
-    {
-      for (n=0; n<block_count; n++)
-      {
-        cc = (n<4) ? 0 : (n&1)+1; /* color component index */
+	for (j=0; j<height2; j+=16)
+		for (i=0; i<width; i+=16)
+		{
+			for (n=0; n<block_count; n++)
+			{
+				cc = (n<4) ? 0 : (n&1)+1; /* color component index */
 
-        if (cc==0)
-        {
-          /* luminance */
-          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
-          {
-            /* field DCT */
-            offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
-            lx = width<<1;
-          }
-          else
-          {
-            /* frame DCT */
-            offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
-            lx = width2;
-          }
+				if (cc==0)
+				{
+					/* luminance */
+					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type)
+					{
+						/* field DCT */
+						offs = i + ((n&1)<<3) + width*(j+((n&2)>>1));
+						lx = width<<1;
+					}
+					else
+					{
+						/* frame DCT */
+						offs = i + ((n&1)<<3) + width2*(j+((n&2)<<2));
+						lx = width2;
+					}
 
-          if (picture->pict_struct==BOTTOM_FIELD)
-            offs += width;
-        }
-        else
-        {
-          /* chrominance */
+					if (picture->pict_struct==BOTTOM_FIELD)
+						offs += width;
+				}
+				else
+				{
+					/* chrominance */
 
-          /* scale coordinates */
-          i1 = (chroma_format==CHROMA444) ? i : i>>1;
-          j1 = (chroma_format!=CHROMA420) ? j : j>>1;
+					/* scale coordinates */
+					i1 = (chroma_format==CHROMA444) ? i : i>>1;
+					j1 = (chroma_format!=CHROMA420) ? j : j>>1;
 
-          if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
-              && (chroma_format!=CHROMA420))
-          {
-            /* field DCT */
-            offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
-            lx = chrom_width<<1;
-          }
-          else
-          {
-            /* frame DCT */
-            offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
-            lx = chrom_width2;
-          }
+					if ((picture->pict_struct==FRAME_PICTURE) && mbi[k].dct_type
+						&& (chroma_format!=CHROMA420))
+					{
+						/* field DCT */
+						offs = i1 + (n&8) + chrom_width*(j1+((n&2)>>1));
+						lx = chrom_width<<1;
+					}
+					else
+					{
+						/* frame DCT */
+						offs = i1 + (n&8) + chrom_width2*(j1+((n&2)<<2));
+						lx = chrom_width2;
+					}
 
-          if (picture->pict_struct==BOTTOM_FIELD)
-            offs += chrom_width;
-        }
-        (*pidct)(blocks[k*block_count+n]);
-        (*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
-      }
+					if (picture->pict_struct==BOTTOM_FIELD)
+						offs += chrom_width;
+				}
+				(*pidct)(blocks[k*block_count+n]);
+				(*padd_pred)(pred[cc]+offs,cur[cc]+offs,lx,blocks[k*block_count+n]);
+			}
 
-      k++;
-    }
+			k++;
+		}
 }
 
 
 /* add prediction and prediction error, saturate to 0...255 */
 static void add_pred(pred,cur,lx,blk)
-unsigned char *pred, *cur;
-int lx;
-short *blk;
+	uint8_t *pred, *cur;
+	int lx;
+	int16_t *blk;
 {
-  int i, j;
+	int i, j;
 
-  for (j=0; j<8; j++)
-  {
-    for (i=0; i<8; i++)
-      cur[i] = clp[blk[i] + pred[i]];
-    blk+= 8;
-    cur+= lx;
-    pred+= lx;
-  }
+	for (j=0; j<8; j++)
+	{
+		for (i=0; i<8; i++)
+			cur[i] = clp[blk[i] + pred[i]];
+		blk+= 8;
+		cur+= lx;
+		pred+= lx;
+	}
 }
 
 
 /* subtract prediction from block data */
 static void sub_pred(pred,cur,lx,blk)
-unsigned char *pred, *cur;
-int lx;
-short *blk;
+	uint8_t *pred, *cur;
+	int lx;
+	int16_t *blk;
 {
-  int i, j;
+	int i, j;
 
-  for (j=0; j<8; j++)
-  {
-    for (i=0; i<8; i++)
-      blk[i] = cur[i] - pred[i];
-    blk+= 8;
-    cur+= lx;
-    pred+= lx;
-  }
+	for (j=0; j<8; j++)
+	{
+		for (i=0; i<8; i++)
+			blk[i] = cur[i] - pred[i];
+		blk+= 8;
+		cur+= lx;
+		pred+= lx;
+	}
 }
 
 /*
@@ -288,65 +292,65 @@ short *blk;
 
 void dct_type_estimation(
 	pict_data_s *picture,
-	unsigned char *pred, unsigned char *cur
+	uint8_t *pred, uint8_t *cur
 	)
 {
 
 	struct mbinfo *mbi = picture->mbinfo;
 
-  short blk0[128], blk1[128];
-  int i, j, i0, j0, k, offs, s0, s1, sq0, sq1, s01;
-  double d, r;
+	int16_t blk0[128], blk1[128];
+	int i, j, i0, j0, k, offs, s0, s1, sq0, sq1, s01;
+	double d, r;
 
-  k = 0;
+	k = 0;
 
-  for (j0=0; j0<height2; j0+=16)
-    for (i0=0; i0<width; i0+=16)
-    {
-      if (picture->frame_pred_dct || picture->pict_struct!=FRAME_PICTURE)
-        mbi[k].dct_type = 0;
-      else
-      {
-        /* interlaced frame picture */
-        /*
-         * calculate prediction error (cur-pred) for top (blk0)
-         * and bottom field (blk1)
-         */
-        for (j=0; j<8; j++)
-        {
-          offs = width*((j<<1)+j0) + i0;
-          for (i=0; i<16; i++)
-          {
-            blk0[16*j+i] = cur[offs] - pred[offs];
-            blk1[16*j+i] = cur[offs+width] - pred[offs+width];
-            offs++;
-          }
-        }
-        /* correlate fields */
-        s0=s1=sq0=sq1=s01=0;
+	for (j0=0; j0<height2; j0+=16)
+		for (i0=0; i0<width; i0+=16)
+		{
+			if (picture->frame_pred_dct || picture->pict_struct!=FRAME_PICTURE)
+				mbi[k].dct_type = 0;
+			else
+			{
+				/* interlaced frame picture */
+				/*
+				 * calculate prediction error (cur-pred) for top (blk0)
+				 * and bottom field (blk1)
+				 */
+				for (j=0; j<8; j++)
+				{
+					offs = width*((j<<1)+j0) + i0;
+					for (i=0; i<16; i++)
+					{
+						blk0[16*j+i] = cur[offs] - pred[offs];
+						blk1[16*j+i] = cur[offs+width] - pred[offs+width];
+						offs++;
+					}
+				}
+				/* correlate fields */
+				s0=s1=sq0=sq1=s01=0;
 
-        for (i=0; i<128; i++)
-        {
-          s0+= blk0[i];
-          sq0+= blk0[i]*blk0[i];
-          s1+= blk1[i];
-          sq1+= blk1[i]*blk1[i];
-          s01+= blk0[i]*blk1[i];
-        }
+				for (i=0; i<128; i++)
+				{
+					s0+= blk0[i];
+					sq0+= blk0[i]*blk0[i];
+					s1+= blk1[i];
+					sq1+= blk1[i]*blk1[i];
+					s01+= blk0[i]*blk1[i];
+				}
 
-        d = (sq0-(s0*s0)/128.0)*(sq1-(s1*s1)/128.0);
+				d = (sq0-(s0*s0)/128.0)*(sq1-(s1*s1)/128.0);
 
-        if (d>0.0)
-        {
-          r = (s01-(s0*s1)/128.0)/sqrt(d);
-          if (r>0.5)
-            mbi[k].dct_type = 0; /* frame DCT */
-          else
-            mbi[k].dct_type = 1; /* field DCT */
-        }
-        else
-          mbi[k].dct_type = 1; /* field DCT */
-      }
-      k++;
-    }
+				if (d>0.0)
+				{
+					r = (s01-(s0*s1)/128.0)/sqrt(d);
+					if (r>0.5)
+						mbi[k].dct_type = 0; /* frame DCT */
+					else
+						mbi[k].dct_type = 1; /* field DCT */
+				}
+				else
+					mbi[k].dct_type = 1; /* field DCT */
+			}
+			k++;
+		}
 }

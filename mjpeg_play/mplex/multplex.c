@@ -123,17 +123,17 @@ void init_stream_syntax_parameters(	Video_struc 	*video_info,
 	 	packets_per_pack = 1;
 	  	sys_header_in_pack1 = 1;
 	  	always_sys_header_in_pack = 0;
-	  	trailing_pad_pack = 1;
-	  	sector_transport_size = 2324;	      /* Each 2352 bytes with 2324 bytes payload */
+	  	trailing_pad_pack = 0;
+	  	sector_transport_size = 2048;	      /* Each 2352 bytes with 2324 bytes payload */
 	  	transport_prefix_sectors = 0;
-	  	sector_size = 2324;
+	  	sector_size = 2048;
 	  	opt_mpeg = 1;
 	  	opt_VBR = 0;
 	  	video_buffer_size = 46*1024;
 		buffers_in_video = 1;
 		always_buffers_in_video = 0;
-		zero_stuffing = 1;
-		audio_packet_data_limit = 0;		/* Ugh... what *were* they thinking of? */
+		zero_stuffing = 0;
+		audio_packet_data_limit = 0;
         dtspts_for_all_vau = 0;
 		break;
 			 

@@ -1,6 +1,6 @@
 /* fdctref.c, forward discrete cosine transform, double precision           */
 
-/* RJ: Optimized version using integer arithmetic */
+#include <inttypes.h>
 
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
@@ -86,14 +86,14 @@ void init_fdctdaan( void )
  * Perform a floating point forward DCT on one block of samples.
  */
 
-void fdctdaan(short *block)
+void fdctdaan(int16_t *block)
 {
   double tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
   double tmp10, tmp11, tmp12, tmp13;
   double z1, z2, z3, z4, z5, z11, z13;
   double *dataptr;
   double data[64];
-  short *blkptr;
+  int16_t *blkptr;
   int i;
 
   /* Pass 1: process rows. */
@@ -211,8 +211,8 @@ void fdctdaan(short *block)
   }
   /* descale */
   for (i = 0; i < 64; i++)
-    //block[i] = (short int) floor(data[i] * aanscales[i] + 0.499999);
-    block[i] = (short int) floor(data[i] * aanscales[i] + 0.5);
+    //block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.499999);
+    block[i] = (int16_t) floor(data[i] * aanscales[i] + 0.5);
 }
 
 #ifndef PI
@@ -225,7 +225,7 @@ void fdctdaan(short *block)
 
 /* global declarations */
 void init_fdct _ANSI_ARGS_((void));
-void fdct _ANSI_ARGS_((short *block));
+void fdct _ANSI_ARGS_((int16_t *block));
 
 /* private data */
 static int c[8][8]; /* transform coefficients */
@@ -246,18 +246,12 @@ void init_fdct()
 
 
 void fdct(block)
-short *block;
+int16_t *block;
 {
 
   int i, j;
   int s;
   int tmp[64];
-/*
-  short temp1[64];
-  short temp2[64];
-  memcpy( temp1, block, sizeof(short)*64 );
-  memcpy( temp2, block, sizeof(short)*64 );
-*/
   for (i=0; i<8; i++)
     for (j=0; j<8; j++)
     {
@@ -298,7 +292,7 @@ short *block;
 	  if( abs(temp2[i] - block[i])>1 || abs(temp1[i] - temp2[i]) > 1 )
 		printf( "%03d: R%06d M%06d I%06d\n", i, temp2[i], temp1[i], block[i] );
   }
-	memcpy( block, temp1, sizeof(short)*64 );
+	memcpy( block, temp1, sizeof(int16_t)*64 );
 */
 
 }

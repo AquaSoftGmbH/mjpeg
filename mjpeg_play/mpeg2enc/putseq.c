@@ -38,7 +38,7 @@
 void putseq()
 {
 	/* this routine assumes (N % M) == 0 */
-	int i, j, k, f, f0, n, np, nb;
+	int i, j, f, f0, n, np, nb;
 	int ipflag;
 	int sxf = 0, sxb = 0, syf = 0, syb = 0;
 	motion_comp_s mc_data;
@@ -58,12 +58,6 @@ void putseq()
 	if (strlen(id_string) > 1)
 		putuserdata(id_string);
 
-  /* A.Stevens Jul 2000 - we initialise sliding motion 
-	 compensation window thresholding values - we need to
-	 know how many macroblocks per frame to choose sensible
-	 parameters. */
-
-	reset_thresholds( mb_height2*mb_width );
 
 	/* loop through all frames in encoding/decoding order */
 	for (i=0; i<nframes; i++)
@@ -244,6 +238,7 @@ void putseq()
 
         if (fieldpic)
 		{
+			cur_picture.topfirst = opt_topfirst;
 			if (!quiet)
 			{
 				fprintf(stderr,"\nfirst field  (%s) ",
@@ -260,28 +255,21 @@ void putseq()
 			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
 			transform(&cur_picture,predframe,curorg);
 
-			putpict(&cur_picture, qblocks);		/* Quantisation: blocks -> qblocks */
-
-			for (k=0; k<mb_height2*mb_width; k++)
+			putpict(&cur_picture);		/* Quantisation: blocks -> qblocks */
+#ifndef OUTPUT_STAT
+			if( cur_picture.pict_type!=B_TYPE)
 			{
-				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
-					for (j=0; j<block_count; j++)
-						iquant_intra(qblocks[k*block_count+j],
-									 qblocks[k*block_count+j],
-									 cur_picture.dc_prec,
-									 cur_picture.mbinfo[k].mquant);
-				else
-					for (j=0;j<block_count;j++)
-						iquant_non_intra(qblocks[k*block_count+j],
-										 qblocks[k*block_count+j],
-										 cur_picture.mbinfo[k].mquant);
+#endif
+				iquantize( &cur_picture );
+				itransform(&cur_picture,predframe,curref);
+				/* No use of FM data in ref frames...
+				fast_motion_data(curref[0], cur_picture.pict_struct);
+				*/
+				calcSNR(curorg,curref);
+				stats();
+#ifndef OUTPUT_STAT
 			}
-
-			itransform(&cur_picture,predframe,curref,qblocks);
-			fast_motion_data(curref[0], cur_picture.pict_struct);
-			calcSNR(curorg,curref);
-			stats();
-
+#endif
 			if (!quiet)
 			{
 				fprintf(stderr,"second field (%s) ",cur_picture.topfirst ? "bot" : "top");
@@ -309,27 +297,22 @@ void putseq()
 			dct_type_estimation(&cur_picture,predframe[0],curorg[0]);
 			transform(&cur_picture,predframe,curorg);
 
-			putpict(&cur_picture, qblocks);	/* Quantisation: blocks -> qblocks */
+			putpict(&cur_picture);	/* Quantisation: blocks -> qblocks */
 
-			for (k=0; k<mb_height2*mb_width; k++)
+#ifndef OUTPUT_STAT
+			if( cur_picture.pict_type!=B_TYPE)
 			{
-				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
-					for (j=0; j<block_count; j++)
-						iquant_intra(qblocks[k*block_count+j],
-									 qblocks[k*block_count+j],
-									 cur_picture.dc_prec,
-									 cur_picture.mbinfo[k].mquant);
-				else
-					for (j=0;j<block_count;j++)
-						iquant_non_intra(qblocks[k*block_count+j],
-										 qblocks[k*block_count+j],
-										 cur_picture.mbinfo[k].mquant);
+#endif			iquantize( &cur_picture );
+				itransform(&cur_picture,predframe,curref);
+				/* No use of FM data in ref frames
+				fast_motion_data(curref[0], cur_picture.pict_struct);
+				*/
+				calcSNR(curorg,curref);
+				stats();
+#ifndef OUTPUT_STAT
 			}
-
-			itransform(&cur_picture,predframe,curref,qblocks);
-			fast_motion_data(curref[0], cur_picture.pict_struct);
-			calcSNR(curorg,curref);
-			stats();
+#endif
+				
 		}
 		else
 		{
@@ -350,36 +333,26 @@ void putseq()
 			transform(&cur_picture,predframe,curorg);
 
 			/* Side-effect: quantisation blocks -> qblocks */
-			putpict(&cur_picture,qblocks);	
+			putpict(&cur_picture);	
 
-			for (k=0; k<mb_height*mb_width; k++)
+#ifndef OUTPUT_STAT
+			if( cur_picture.pict_type!=B_TYPE)
 			{
-				if (cur_picture.mbinfo[k].mb_type & MB_INTRA)
-					for (j=0; j<block_count; j++)
-						iquant_intra(qblocks[k*block_count+j],
-									 qblocks[k*block_count+j],
-									 cur_picture.dc_prec,
-									 cur_picture.mbinfo[k].mquant);
-				else
-				{
-					for (j=0;j<block_count;j++)
-					{
-						iquant_non_intra(qblocks[k*block_count+j],
-										 qblocks[k*block_count+j],
-										 cur_picture.mbinfo[k].mquant);
-					}
-				}
+#endif
+				iquantize( &cur_picture );
+				itransform(&cur_picture,predframe,curref);
+				/* All FM is now based on org frame...
+				fast_motion_data(curref[0], cur_picture.pict_struct); 
+				*/
+				calcSNR(curorg,curref);
+
+				stats();
+#ifndef OUTPUT_STAT
 			}
-
-			itransform(&cur_picture,predframe,curref,qblocks);
-			fast_motion_data(curref[0], cur_picture.pict_struct); 
-			calcSNR(curorg,curref);
-
-			stats();
+#endif
 		}
-
 		writeframe(f+frame0,curref);
-
+			
 	}
 
 	putseqend();

@@ -32,7 +32,7 @@
 #include "global.h"
 
 /* generate variable length codes for an intra-coded block (6.2.6, 6.3.17) */
-void putintrablk(pict_data_s *picture,short *blk, int cc)
+void putintrablk(pict_data_s *picture,int16_t *blk, int cc)
 {
   int n, dct_diff, run, signed_level;
 
@@ -68,7 +68,7 @@ void putintrablk(pict_data_s *picture,short *blk, int cc)
 }
 
 /* generate variable length codes for a non-intra-coded block (6.2.6, 6.3.17) */
-void putnonintrablk(pict_data_s *picture, short *blk)
+void putnonintrablk(pict_data_s *picture, int16_t *blk)
 {
   int n, run, signed_level, first;
 
@@ -122,7 +122,7 @@ int dmv,f_code;
   /* check value */
   if (dmv<vmin || dmv>vmax)
   {
-      fprintf(stderr,"INTERNAL error: invalid motion vecto generated\n");
+      fprintf(stderr,"Too large MV %03d not in [%04d..:%03d]\n", dmv, vmin, vmax);
       exit(1);
   }
 

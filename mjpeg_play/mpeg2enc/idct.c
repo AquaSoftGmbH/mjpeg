@@ -1,5 +1,7 @@
 /* idct.c, inverse fast discrete cosine transform                           */
 
+#include <inttypes.h>
+
 /* Copyright (C) 1996, MPEG Software Simulation Group. All Rights Reserved. */
 
 /*
@@ -51,16 +53,16 @@
 #define W7 565  /* 2048*sqrt(2)*cos(7*pi/16) */
 
 /* global declarations */
-void init_idct _ANSI_ARGS_((void));
-void idct _ANSI_ARGS_((short *block));
+void init_idct (void);
+void idct (int16_t *block);
 
 /* private data */
-static short iclip[1024]; /* clipping table */
-static short *iclp;
+static int16_t iclip[1024]; /* clipping table */
+static int16_t *iclp;
 
 /* private prototypes */
-static void idctrow _ANSI_ARGS_((short *blk));
-static void idctcol _ANSI_ARGS_((short *blk));
+static void idctrow (int16_t *blk);
+static void idctcol (int16_t *blk);
 
 /* row (horizontal) IDCT
  *
@@ -72,12 +74,11 @@ static void idctcol _ANSI_ARGS_((short *blk));
  *        c[1..7] = 128*sqrt(2)
  */
 
-static void idctrow(blk)
-short *blk;
+static void idctrow(int16_t *blk)
 {
   int x0, x1, x2, x3, x4, x5, x6, x7, x8;
 
-  /* shortcut */
+  /* int16_tcut */
   if (!((x1 = blk[4]<<11) | (x2 = blk[6]) | (x3 = blk[2]) |
         (x4 = blk[1]) | (x5 = blk[7]) | (x6 = blk[5]) | (x7 = blk[3])))
   {
@@ -134,12 +135,11 @@ short *blk;
  * where: c[0]    = 1/1024
  *        c[1..7] = (1/1024)*sqrt(2)
  */
-static void idctcol(blk)
-short *blk;
+static void idctcol(int16_t *blk)
 {
   int x0, x1, x2, x3, x4, x5, x6, x7, x8;
 
-  /* shortcut */
+  /* int16_tcut */
   if (!((x1 = (blk[8*4]<<8)) | (x2 = blk[8*6]) | (x3 = blk[8*2]) |
         (x4 = blk[8*1]) | (x5 = blk[8*7]) | (x6 = blk[8*5]) | (x7 = blk[8*3])))
   {
@@ -189,8 +189,7 @@ short *blk;
 }
 
 /* two dimensional inverse discrete cosine transform */
-void idct(block)
-short *block;
+void idct(int16_t *block)
 {
   int i;
 

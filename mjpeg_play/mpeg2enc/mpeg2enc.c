@@ -66,7 +66,7 @@ static int param_bitrate    = 0;
 static int param_quant      = 0;
 static int param_searchrad  = 0;
 static int param_mpeg       = 1;
-static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first */
+static int param_fieldpic   = 0;  /* 0: progressive, 1: bottom first, 2: top first, 3 = progressive seq, field MC and DCT in picture */
 static int param_norm       = 0;  /* 'n': NTSC, 'p': PAL, 's': SECAM, else unspecified */
 static int param_fastmc     = 10;
 static int param_threshold  = 0;
@@ -152,9 +152,9 @@ int main(argc,argv)
 
 		case 'F':
 			param_fieldpic = atoi(optarg);
-			if(param_fieldpic<0 || param_fieldpic>2)
+			if(param_fieldpic<0 || param_fieldpic>3)
 			{
-				fprintf(stderr,"-F option requires 0, 1 or 2\n");
+				fprintf(stderr,"-F option requires 0 ... 3\n");
 				nerr++;
 			}
 			break;
@@ -361,7 +361,7 @@ int main(argc,argv)
 	N.b.  don't try to free the resulting pointers, eh...
 	BUG: 	Of course this won't work if a char * won't fit in an int....
 */
-static unsigned char *bufalloc( size_t size )
+static uint8_t *bufalloc( size_t size )
 {
 	char *buf = malloc( size + BUFFER_ALIGN );
 	int adjust;
@@ -373,7 +373,7 @@ static unsigned char *bufalloc( size_t size )
 	adjust = BUFFER_ALIGN-((int)buf)%BUFFER_ALIGN;
 	if( adjust == BUFFER_ALIGN )
 		adjust = 0;
-	return (unsigned char*)(buf+adjust);
+	return (uint8_t*)(buf+adjust);
 }
 
 static void init()
@@ -396,7 +396,7 @@ static void init()
 	/* Calculate the sizes and offsets in to luminance and chrominance
 	   buffers.  A.Stevens 2000 for luminance data we allow space for
 	   fast motion estimation data.  This is actually 2*2 pixel
-	   sub-sampled mcompuint followed by 4*4 sub-sampled.  We add an
+	   sub-sampled uint8_t followed by 4*4 sub-sampled.  We add an
 	   extra row to act as a margin to allow us to neglect / postpone
 	   edge condition checking in time-critical loops...  */
 
@@ -411,23 +411,19 @@ static void init()
  
 	block_count = block_count_tab[chroma_format-1];
 	lum_buffer_size = (width*height) + 
-					 sizeof(mcompuint) *(width/2)*(height/2) +
-					 sizeof(mcompuint) *(width/4)*(height/4+1);
+					 sizeof(uint8_t) *(width/2)*(height/2) +
+					 sizeof(uint8_t) *(width/4)*(height/4+1);
 	chrom_buffer_size = chrom_width*chrom_height;
 
 
-	fsubsample_offset = (width)*(height) * sizeof(unsigned char);
-	qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(mcompuint);
+	fsubsample_offset = (width)*(height) * sizeof(uint8_t);
+	qsubsample_offset =  fsubsample_offset + (width/2)*(height/2)*sizeof(uint8_t);
 
 	mb_per_pict = mb_width*mb_height2;
 
-#ifdef TEST_RCSEARCH
-	rowsums_offset = qsubsample_offset +  (width/4)*(height/4)*sizeof(mcompuint);
-	colsums_offset = rowsums_offset + (width+1)*(height+1);
-#endif
 
 	/* clip table */
-	if (!(clp = (unsigned char *)malloc(1024)))
+	if (!(clp = (uint8_t *)malloc(1024)))
 		error("malloc failed\n");
 	clp+= 384;
 	for (i=-384; i<640; i++)
@@ -436,12 +432,12 @@ static void init()
 	/* Allocate the frame data buffer */
 
 
-	frame_buffers = (unsigned char ***) 
-		bufalloc(2*READ_LOOK_AHEAD*sizeof(unsigned char**));
+	frame_buffers = (uint8_t ***) 
+		bufalloc(2*READ_LOOK_AHEAD*sizeof(uint8_t**));
 	
 	for(n=0;n<2*READ_LOOK_AHEAD;n++)
 	{
-         frame_buffers[n] = (unsigned char **) bufalloc(4*sizeof(unsigned char*));
+         frame_buffers[n] = (uint8_t **) bufalloc(4*sizeof(uint8_t*));
 		 for (i=0; i<3; i++)
 		 {
 			 frame_buffers[n][i] = 
@@ -460,18 +456,18 @@ static void init()
 		predframe[i]   = bufalloc(size);
 	}
 
-	qblocks =
-		(short (*)[64])bufalloc(mb_width*mb_height2*block_count*sizeof(short [64]));
+	cur_picture.qblocks =
+		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
 
 	/* Initialise current transformed picture data tables
 	   These will soon become a buffer for transformed picture data to allow
 	   look-ahead for bit allocation etc.
 	 */
 	cur_picture.mbinfo = (
-		struct mbinfo *)bufalloc(mb_width*mb_height2*sizeof(struct mbinfo));
+		struct mbinfo *)bufalloc(mb_per_pict*sizeof(struct mbinfo));
 
 	cur_picture.blocks =
-		(short (*)[64])bufalloc(mb_width*mb_height2*block_count*sizeof(short [64]));
+		(int16_t (*)[64])bufalloc(mb_per_pict*block_count*sizeof(int16_t [64]));
   
 	/* open statistics output file */
 	if (statname[0]=='-')
@@ -516,7 +512,7 @@ static void readparmfile()
 	N = 12;      /* I frame distance */
 	M = 3;       /* I or P frame distance */
 	mpeg1           = (param_mpeg == 1);
-	fieldpic        = (param_fieldpic!=0);
+	fieldpic        = (param_fieldpic!=0 && param_fieldpic != 3);
 	/* RJ: horizontal_size, vertical_size, frame_rate_code
 	   are read from stdin! */
 	/* RJ: aspectratio is differently coded for MPEG1 and MPEG2.
@@ -596,9 +592,9 @@ static void readparmfile()
 	opt_dc_prec         = 0;  /* 8 bits */
 	opt_topfirst        = (param_fieldpic==2);
 
-	frame_pred_dct_tab[0] = mpeg1 ? 1 : 0;
-	frame_pred_dct_tab[1] = mpeg1 ? 1 : 0;
-	frame_pred_dct_tab[2] = mpeg1 ? 1 : 0;
+	frame_pred_dct_tab[0] = mpeg1 ? 1 : (param_fieldpic == 3);
+	frame_pred_dct_tab[1] = mpeg1 ? 1 : (param_fieldpic == 3);
+	frame_pred_dct_tab[2] = mpeg1 ? 1 : (param_fieldpic == 3);
 
 	conceal_tab[0]  = 0; /* not implemented */
 	conceal_tab[1]  = 0;
@@ -689,6 +685,7 @@ static void readparmfile()
 	low_delay = !!low_delay;
 	constrparms = !!constrparms;
 	prog_seq = !!prog_seq;
+	opt_topfirst = !!opt_topfirst;
 /*
 	topfirst = !!topfirst;
 	repeatfirst = !!repeatfirst;
@@ -854,6 +851,7 @@ static void readparmfile()
 		opt_repeatfirst = 0;
 	}
 
+/*
 	if (opt_prog_frame)
 	{
 		for (i=0; i<3; i++)
@@ -864,7 +862,7 @@ static void readparmfile()
 				frame_pred_dct_tab[i] = 1;
 			}
 	}
-
+*/
 	if (prog_seq && !opt_repeatfirst && opt_topfirst)
 	{
 		if (!quiet)
