@@ -88,6 +88,7 @@ AM_PROG_AS
 
 if test x"$with_extra_cflags" != "x"; then
    CFLAGS="$CFLAGS $with_extra_cflags"
+   CXXFLAGS="$CXXFLAGS $with_extra_cflags"
 fi
 
 dnl maddog:  What about CHECK-ALLOCA????
