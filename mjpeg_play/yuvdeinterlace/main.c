@@ -120,7 +120,16 @@ struct
   uint32_t SAD;
 } mv_table2[1024][1024];
 
-
+struct 
+      { 
+      int x;
+      int y;
+      }
+pattern[255];
+int pattern_length;
+  
+uint32_t mean_SAD=0;
+  
 struct vector search_forward_vector (int, int);
 
 /***********************************************************
@@ -130,6 +139,44 @@ struct vector search_forward_vector (int, int);
 void motion_compensate_field (void);
 void (*blend_fields) (uint8_t * dst[3], uint8_t * src[3]);
 void film_fx (void);
+
+void init_search_pattern (void)
+  {
+  int x,y,r,cnt,i;
+  int allready_in_path;
+  
+  cnt=0;
+  fprintf(stderr,"\n\n\n");
+  for(r=0;r<=100;r++)
+      {
+      for(y=-8;y<=8;y+=2)
+          for(x=-8;x<=8;x++)
+              {
+              if( r > (x*x+y*y) )
+                  {
+                  /* possible candidate */
+                  /* check if it's allready in the path */
+                  allready_in_path=0;
+                  for(i=0;i<=cnt;i++)
+                      {
+                      if( pattern[i].x == x &&
+                          pattern[i].y == y )
+                          {
+                          allready_in_path=1;
+                          }
+                      }
+                  /* if it's not allready in the path, store it */
+                  if( allready_in_path == 0 )
+                      {
+                      pattern[cnt].x = x;
+                      pattern[cnt].y = y;
+                      cnt++;
+                      }
+                  }
+              }
+      }
+  pattern_length = cnt + 1;
+  }
 
 /***********************************************************
  * Main Loop                                               *
@@ -325,6 +372,9 @@ main (int argc, char *argv[])
     mjpeg_log (LOG_INFO, "Buffers allocated.");
   }
 
+  /* initialize motion-search-pattern */
+  init_search_pattern();
+
   /* read every frame until the end of the input stream and process it */
   while (Y4M_OK == (errno = y4m_read_frame (fd_in,
 					    &istreaminfo,
@@ -344,6 +394,7 @@ main (int argc, char *argv[])
 	 * 0 == interpolate top field    
 	 * 1 == interpolate bottom field 
 	 */
+      if (0)
       {
       int x,y,v;
       for(y=0;y<height;y++)
@@ -460,20 +511,25 @@ search_forward_vector (int x, int y)
 {
 	uint32_t min,SAD;
 	int dx,dy;
+    int i;
 	struct vector v;
-		
-    min = psad_sub22
+	
+x -= 4;
+y -= 4;
+
+#if 0	
+    min = psad_00
       (frame2[0] + (x) + (y) * width,
-       frame1[0] + (x) + (y) * width, width, 8);
+       frame1[0] + (x) + (y) * width, width, 16, 0x00ffffff);
 	
     v.x = v.y = 0;
 	
     for (dy = -6; dy <= +6; dy+=2)
-      for (dx = -6; dx <= +6; dx++)
+      for (dx = -6; dx <= +6; dx+=1)
 	{
-	  SAD = psad_sub22
+	  SAD = psad_00
 	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame1[0] + (x - dx) + (y - dy ) * width, width, 8);
+	     frame1[0] + (x - dx) + (y - dy ) * width, width, 16, 0x00ffffff);
 
 	if (SAD <= min)
 	    {
@@ -482,8 +538,35 @@ search_forward_vector (int x, int y)
 	      v.y = dy;
 	    }
 	}
-  v.min = min;
+#endif
 
+    min = psad_00
+      (frame2[0] + (x) + (y) * width,
+       frame1[0] + (x) + (y) * width, width, 16, 0x00ffffff);
+	v.x = v.y = 0;
+	
+    for(i=1;i<pattern_length;i++)
+    {
+        dx = pattern[i].x;
+    dy = pattern[i].y;
+    
+	  SAD = psad_00
+	    (frame2[0] + (x     ) + (y      ) * width,
+	     frame1[0] + (x - dx) + (y - dy ) * width, width, 16, 0x00ffffff);
+
+	if (SAD < min)
+	    {
+	      min = SAD;
+	      v.x = dx;
+	      v.y = dy;
+	    }
+    if ( min<(mean_SAD/1) )
+        {
+        break;
+        }
+    }
+
+  v.min = min;
   return v;			/* return the found vector */
 }
 
@@ -493,81 +576,87 @@ search_backward_vector (int x, int y)
 	uint32_t min,SAD;
 	int dx,dy;
 	struct vector v;
-		
-    min = psad_sub22
+    int i;
+    
+    x -= 4;
+    y -= 4;
+    
+    min = psad_00
       (frame2[0] + (x) + (y) * width,
-       frame3[0] + (x) + (y) * width, width, 8);
-	
-    v.x = v.y = 0;
-	
-    for (dy = -6; dy <= +6; dy+=2)
-      for (dx = -6; dx <= +6; dx++)
-	{
-	  SAD = psad_sub22
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 8);
+       frame3[0] + (x) + (y) * width, width, 16, 0x00ffffff );
+	v.x = v.y = 0;
 
-	if (SAD <= min)
+#if 0	
+    for (dy = -6; dy <= +6; dy+=2)
+      for (dx = -6; dx <= +6; dx+=1)
+	{
+	  SAD = psad_00
+	    (frame2[0] + (x     ) + (y      ) * width,
+	     frame3[0] + (x + dx) + (y + dy ) * width, width, 16, 0x00ffffff );
+
+    if ( min<(mean_SAD/2) )
 	    {
 	      min = SAD;
 	      v.x = dx;
 	      v.y = dy;
 	    }
 	}
+#endif
+
+for(i=1;i<=pattern_length;i++)
+    {
+        dx = pattern[i].x;
+    dy = pattern[i].y;
+    
+	  SAD = psad_00
+	    (frame2[0] + (x     ) + (y      ) * width,
+	     frame3[0] + (x + dx) + (y + dy ) * width, width, 16, 0x00ffffff);
+
+	if (SAD < min)
+	    {
+	      min = SAD;
+	      v.x = dx;
+	      v.y = dy;
+	    }
+    if ( min<(mean_SAD/1) )
+        {
+        break;
+        }
+    }
+
   v.min = min;
 
   return v;			/* return the found vector */
 }
 
 struct vector
-search_direct_vector (int x, int y)
+search_direct_vector (int x, int y, struct vector v1, struct vector v2)
 {
 	uint32_t min,SAD;
 	int dx,dy;
 	struct vector v;
 		
-    min = psad_sub22
-      (frame1[0] + (x) + (y) * width,
-       frame3[0] + (x) + (y) * width, width, 8);
-	min += psad_sub22
-	    (frame2[0] + (x) + (y) * width,
-	     frame3[0] + (x) + (y) * width, width, 8);
-	min += psad_sub22
-	    (frame2[0] + (x) + (y) * width,
-	     frame1[0] + (x) + (y) * width, width, 8);
-
-	
-    v.x = v.y = 0;
-//	x -= 4;
-//	y -= 4;
-    /* search-radius may not exceed half of the macro-block-size ! */
-    for (dy = -6; dy <= +6; dy+=2)
-      for (dx = -6; dx <= +6; dx+=2)
+    min = 2 * psad_00
+      (frame1[0] + (x-v1.x) + (y-v1.y) * width,
+       frame3[0] + (x+v2.x) + (y+v2.y) * width, width, 16, 0x00ffffff);
+    v.x =v.y =0;
+    
+    dx=0;
+    for (dy = -4; dy <= +4; dy++)
+    //for (dx = -4; dx <= +4; dx++)
 	{
-	  SAD = psad_sub22
-	    (frame1[0] + (x - dx) + (y + dy ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 8);
-	  SAD += psad_sub22
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 8);
-	  SAD += psad_sub22
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame1[0] + (x - dx) + (y - dy ) * width, width, 8);
+    SAD = psad_00
+      (frame1[0] + (x-v1.x) + (y-v1.y) * width,
+       frame3[0] + (x+v2.x+dx) + (y+v2.y+dy) * width, width, 16, 0x00ffffff);
+    SAD += psad_00
+      (frame1[0] + (x-v1.x-dx) + (y-v1.y-dy) * width,
+       frame3[0] + (x+v2.x) + (y+v2.y) * width, width, 16, 0x00ffffff);
 
 	if (SAD <= min)
 	    {
-	      min = SAD;
 	      v.x = dx;
 	      v.y = dy;
-
-	  v.min = min;
-	  v.min23 = psad_sub22
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame3[0] + (x + dx) + (y + dy ) * width, width, 8);
-	  v.min21 = psad_sub22
-	    (frame2[0] + (x     ) + (y      ) * width,
-	     frame1[0] + (x - dx) + (y - dy ) * width, width, 8);
-		}
+        }
 	}
 
   return v;			/* return the found vector */
@@ -580,34 +669,48 @@ motion_compensate_field (void)
   struct vector dv;
   float match_coeff21;
   float match_coeff23;
+  uint32_t accuSAD;
   
   /* search the vectors */
 match_coeff21 = 0;
 match_coeff23 = 0;
-  
+
+    accuSAD = 0;
   for (y = 0; y < height; y += 8)
     {
       for (x = 0; x < width; x += 8)
 	{
-	  dv = search_direct_vector (x, y);
+	  fv = search_forward_vector (x, y);
+	  bv = search_backward_vector (x, y);
+#if 0    
+	  dv = search_direct_vector (x, y, fv, bv);
+
+      bv.y = bv.y - dv.y/2 ;
+      bv.x = bv.x - dv.x/2 ;
+      fv.y = fv.y + dv.y/2 ;
+      fv.x = fv.x + dv.x/2 ;
+#endif
+	  match_coeff21 += fv.min;
+	  match_coeff23 += bv.min;
+      accuSAD += (fv.min+bv.min)/2;
     
-	  match_coeff21 += dv.min21;
-	  match_coeff23 += dv.min23;
-      
 	  transform_block
 	    (reconstructed[0] + x + y * width,
-	     frame1[0] + (x - dv.x) + (y - dv.y) * width,
-	     frame3[0] + (x + dv.x) + (y + dv.y) * width, width);
+	     frame1[0] + (x - fv.x) + (y - fv.y) * width,
+	     frame3[0] + (x + bv.x) + (y + bv.y) * width, width);
 	transform_block_chroma
 	    (reconstructed[1] + x/2 + y/2 * width/2,
-	     frame1[1] + (x - dv.x)/2 + (y - dv.y)/2 * width/2,
-	     frame3[1] + (x + dv.x)/2 + (y + dv.y)/2 * width/2, width/2);
+	     frame1[1] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
+	     frame3[1] + (x + bv.x)/2 + (y + bv.y)/2 * width/2, width/2);
 		transform_block_chroma
 	    (reconstructed[2] + x/2 + y/2 * width/2,
-		frame1[2] + (x - dv.x)/2 + (y - dv.y)/2 * width/2,
-	     frame3[2] + (x + dv.x)/2 + (y + dv.y)/2 * width/2, width/2);
+		frame1[2] + (x - fv.x)/2 + (y - fv.y)/2 * width/2,
+	     frame3[2] + (x + bv.x)/2 + (y + bv.y)/2 * width/2, width/2);
 	}
     }
+    mean_SAD = accuSAD / (width*height/64);
+    fprintf(stderr,"mean_SAD:%i\n",mean_SAD);
+
     match_coeff21 = match_coeff21/match_coeff23;
 
     if(match_coeff21<0.5 || match_coeff21>2)
