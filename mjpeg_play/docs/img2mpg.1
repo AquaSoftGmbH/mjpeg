@@ -15,23 +15,23 @@ MjpegTools  ver >= 1.6.0 [ http://mjpeg.sourceforge.net/ ]
 .LP 
 This script used this externals binary programs :
 
-\- 'montage'   from ImageMagick for resize the images for the TV screen size.
+\- 'montage' from ImageMagick for resize the images for the TV screen size.
 .br 
 \- 'composite' from ImageMagick for make the transition between images.
 .br 
-\- 'convert'   from ImageMagick for convert the images before MPEG encoding.
+\- 'convert' from ImageMagick for convert the images before MPEG encoding.
 .br 
-\- 'identify'  from ImageMagick for check the background image file size.
+\- 'identify' from ImageMagick for check the background image file size.
 .br 
-\- 'ppmtoy4m'  from MjpegTools for create a video stream from the image.
+\- 'ppmtoy4m' from MjpegTools for create a video stream from the image.
 .br 
 \- 'yuvscaler' from MjpegTools for adapt the video stream size before MPEG encoding.
 .br 
-\- 'mpeg2enc'  from MjpegTools for encode the video stream in MPEG file.
+\- 'mpeg2enc' from MjpegTools for encode the video stream in MPEG file.
 .br 
-\- 'mp2enc'    from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
+\- 'mp2enc' from MjpegTools for encode on a MP2 file a WAV sound file if necessary.
 .br 
-\- 'mplex'     from MjpegTools for multiplexe the MPEG file and the MP2 sound and converte the final MPEG file to a X/S/VCD format compatible with vcdimager program.
+\- 'mplex' from MjpegTools for multiplexe the MPEG file and the MP2 sound and converte the final MPEG file to a X/S/VCD format compatible with vcdimager program.
 .SH "DESCRIPTION"
 .LP 
 The 'img2mpg' bash script convert some images on MPEG sequences with a specific duration and merge all images on an single MPEG file. It use the MjpegTools and ImageMagick packages.
@@ -79,29 +79,29 @@ XVCD :
 Note : \- The XVCD resolution is the same of DVD !
 .SH "OPTIONS"
 .LP 
-\fB\-v\fR <\fInum\fP>                : verbose level [0:none=default, 1:infos+warnings, 2:debug].
+\fB\-v\fR <\fInum\fP> : verbose level on the console. The possible values are  '0' for none (default), '1' for informations and warnings, or '2' for debug messages.
 
-\fB\-t\fR <\fInum\fP>                : enable transition between images with the speed [1=slow, 2, 4, 5, 10, 20=fast].
+\fB\-t\fR <\fInum\fP> : enable transition between images with a specific speed. The possible speed values are '1' for slow, '2', '4', '5', '10', or '20' for fast. When you enable this option, the script make with ImageMagick package a beautiful merging transition between images. Warning : it's a long calculating process.
 
-\fB\-f\fR <\fIVideo format\fP>       : video format  [XVCD=default, SVCD, VCD].
+\fB\-f\fR <\fIVideo format\fP> : MPEG video format. The possible values are 'XVCD' (default), 'SVCD', or 'VCD'. See the DESCRIPTION section for more details.
 
-\fB\-n\fR <\fIVideo type\fP>         : video type    [PAL=default, NTSC, SECAM].
+\fB\-n\fR <\fIVideo type\fP> : video type for your TV screen. The possible values are 'PAL' (default), 'NTSC', or 'SECAM'.
 
-\fB\-b\fR <\fIbackground file\fP>    : 768x576 pixels background image file name [black color = default].
+\fB\-b\fR <\fIbackground file\fP> : specify the 768x576 pixels background image file name. If you don't use this option, a default temporary black image file will be used.
 
-\fB\-c\fR <\fIRGB color\fP>          : hex RGB color for background image (ex: AA001F).
+\fB\-c\fR <\fIRGB color\fP> : if you don't use the background image file, you can change the default background color (black = default). Use an hexadecimal RGB color value (example : AA001F).
 
-\fB\-d\fR <\fInum\fP>                : duration for each image in MPEG file [10s = default, 1s = mini].
+\fB\-d\fR <\fInum\fP> : duration for each image in MPEG file. The default value is 10 secondes. The minimal value is 1secondes.
 
-\fB\-a\fR <\fIMPEG audio file\fP>    : MP2 audio file to merge with the video sequence.
+\fB\-a\fR <\fIMPEG audio file\fP> : MP2 audio file to merge with the video sequence.
 
-\fB\-w\fR <\fIwav audio file\fP>     : WAV audio file to convert in MPEG and to merge with the video sequence.
+\fB\-w\fR <\fIwav audio file\fP> : WAV audio file will be converted in MP2 file and merging with the video sequence.
 
-\fB\-o\fR <\fIoutput MPEG file\fP>   : the ouput MPEG file name [temporary file name = default].
+\fB\-o\fR <\fIoutput MPEG file\fP> : the ouput MPEG file name. If you don't use this option, a temporary file will be created.
 
 \fB\-i\fR <\fIinput images files\fP> : images files name to merge in MPEG.
 
-\fB\-h | \-\-help\fR                           : output help information and exit.
+\fB\-h | \-\-help\fR : output help information and exit.
 .SH "RETURN VALUES"
 .LP 
 0 \-> Process finish succefuly.
