@@ -35,6 +35,10 @@ struct benchmark_stats {
     struct benchmark_times times[2];
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int calibrate_benchmark(double precision, double increment, int timelimit,
                         int reqpasses, int *passes, int *iterations,
                         int *calibration, struct timeval *time,
@@ -55,6 +59,9 @@ void print_benchmark_stats(const char* name, struct benchmark_stats *stats);
 
 void print_benchmark_statistics();
 
+#ifdef __cplusplus
+}
+#endif
 
 #define BENCHMARK_TIME(i,iterations,do,start,end,time)                       \
   gettimeofday((start), (struct timezone*)0);                                \
