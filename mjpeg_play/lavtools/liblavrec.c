@@ -1588,7 +1588,9 @@ static void *lavrec_software_sync_thread(void* arg)
       pthread_mutex_lock(&(settings->queue_mutex));
       while (settings->queue_left < MIN_QUEUES_NEEDED)
       {
-         if (settings->is_queued[frame] <= 0) break; /* sync on all remaining frames */
+         if (settings->is_queued[frame] <= 0 ||
+             settings->state != LAVREC_STATE_RECORDING)
+            break; /* sync on all remaining frames */
          lavrec_msg(LAVREC_MSG_DEBUG, info,
             "Software sync thread: sleeping for new queues (%d)", frame);
          pthread_cond_wait(&(settings->queue_wait),
