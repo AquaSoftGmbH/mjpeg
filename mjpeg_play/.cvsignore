@@ -14,7 +14,7 @@ config.sub
 confdefs.h
 ltmain.sh
 libtool
-mjpegtools-config
+mjpegtools-config.h
 mjpegtools*.tar.gz
 *mjpegtools*.deb
 mjpegtools_*.asc
