@@ -43,8 +43,8 @@
 # define INFO1(fmt,a1) fprintf(stderr, fmt, a1)
 # define ERROR1(fmt,a1) fprintf(stderr, fmt, a1)
 #endif
-#include <yst_private.h>
-#include <yuvfilter.h>
+#include <mjpegtools/yst_private.h>
+#include <mjpegtools/yuvfilter.h>
 #include "yuvfilter_static.h"
 
 typedef struct task_tag {

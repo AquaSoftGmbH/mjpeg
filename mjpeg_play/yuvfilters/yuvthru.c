@@ -19,8 +19,8 @@
 
 #include <config.h>
 #include <stdlib.h>
-#include <yst.h>
-#include <yuvfilter.h>
+#include <mjpegtools/yst.h>
+#include <mjpegtools/yuvfilter.h>
 
 typedef struct {
   yst_stream_t *in, *out;

@@ -20,7 +20,7 @@
 #ifndef __YUVFILTER_STATIC_H__
 #define __YUVFILTER_STATIC_H__
 
-#include <yuvfilter.h>
+#include <mjpegtools/yuvfilter.h>
 
 #ifdef __cplusplus
 extern "C" {
