@@ -97,8 +97,6 @@ static void read_gop()
       if(strncmp(magic,"FRAME\n",6))
       {
          fprintf(stderr,"\n\nStart of new frame is not \"FRAME<NL>\"\n");
-		 magic[6]='\0';
-		 fprintf(stderr,"Got >%s< instead\n", magic);
          fprintf(stderr,"Exiting!!!!\n");
          exit(1);
       }
