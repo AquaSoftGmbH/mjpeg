@@ -62,9 +62,25 @@
 // Added the -m/--maxfilesize option to set the maximum file size (in MB) for LAV
 // files.
 //
+// 2002/01/11
+//
+// Added some #ifdef blocks that allows use of the old, obsolete
+// avifile-0.53. It is generally recommended that you use avifile 0.6
+// instead whenever possible. Remaining support for 0.53 could disappear at
+// any time.
+//
+// Addded code to redirect avifile log messages erroneously sent to stdout
+// to stderr where they should be.  This doesn't always work with avifile
+// 0.53.
+//
+// Discovered that convertPacked422 was badly damaged.  It's rewritten now
+// and actually works.  Also removed performance hack that worked on my
+// system, but not on some others with different versions of win32 codecs in
+// avifile.
+//
 #define APPNAME "divxdec"
-#define APPVERSION "0.0.22"
-#define LastChanged "2001/11/25"
+#define APPVERSION "0.0.25"
+#define LastChanged "2002/01/11"
 //#define DEBUG_DIVXDEC 1
 
 #include <vector>
@@ -94,6 +110,7 @@
 #include <creators.h>
 #else
 #include <aviutil.h>
+typedef unsigned int framepos_t;
 #endif
 #define __MODULE__ APPNAME	// Needed for avifile exceptions
 
@@ -201,10 +218,13 @@ readyDestination ( 	IAviReadStream *instream
 	{
 		fmt = RIFFINFO_IYUV;
 	}
+// only in avifile-0.6
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 	else if ( caps & IVideoDecoder::CAP_I420 )
 	{
 		fmt = RIFFINFO_I420;
 	}
+#endif
 	else if ( caps & IVideoDecoder::CAP_YV12 )
 	{
 		fmt = RIFFINFO_YV12;
@@ -226,23 +246,7 @@ readyDestination ( 	IAviReadStream *instream
 		mjpeg_error_exit1 ( "No YUV output capabilities." );
 	}
 
-	// we have the "officially supported" capabilities.  Some others
-	// are available, but these are special rules that only apply for
-	// some codecs.
-	switch ( compression )
-	{
-	case RIFFINFO_DIV3:
-	case RIFFINFO_DIV4:
-	case RIFFINFO_DIV5:
-	case RIFFINFO_DIV6:
-	case RIFFINFO_IV50:
-	case RIFFINFO_MJPG: // YV12 works but incorrectly (flipped)
-		fmt = RIFFINFO_YV12;
-		flip = 1 - flip;
-		break;
-	}
-
-	if ( instream->GetDecoder ()->SetDestFmt(24, fmt) < 0 )
+	if ( instream->GetDecoder ()->SetDestFmt(16, fmt) < 0 )
 	{
 		mjpeg_warn ( "Decoder didn't like dest format\n");
 	}
@@ -258,44 +262,62 @@ readyDestination ( 	IAviReadStream *instream
  *	source - source buffer with 8 bit 4:2:2 YUV packed data in.
  *	dest[3] - the destination YUV planes
  *	height, width - height and width of the image represented by source
- *	chromaOffset - 0 or 1 depending on whether the packed format is chroma
- *		first or luma first (respectively).
- *	firtChroma - 1 or 2, depening on whether U or V is the first of the
- *		chromas encountered.
+ *  lumaOffset - the position (0-3) of the first luma value in a 4 byte sequence.
+ *  uOffset - the position (0-3) of the "u" component in a 4 byte sequence.
  *
  *	The last two parameters essentially tell it the format.
- *	YUY2	1,1	(YUYV)
- *	YVYU	1,2
- *	UYVY	0,1
- *	VYUY	0,2
+ *	YUY2	0,1	(YUYV)
+ *	YVYU	0,3
+ *	UYVY	1,0
+ *	VYUY	1,2
  */
 static void
 convertPacked422 ( unsigned char *source
 		, unsigned char *dest[3]
 		, int height, int width
-		, int chromaOffset, int firstChroma )
+		, int lumaOffset, int uOffset )
 {
-	int lumaOffset = ( 1 - chromaOffset );
-	for (int y = 0; y < height; y+=2 )
+	lumaOffset = lumaOffset % 2; // YxYxYx {0,1}
+	uOffset = uOffset % 4; // xUxxxU {0,1,2,3}
+	int vOffset = ( 4 - uOffset ) % 4; // xxxVxxxV {0,1,2,3}
+	
+	int inWidth = 2 * width;
+	int inPoint = 0;
+	int inPointNext = inWidth;
+	int outPoint = 0;
+	int outPointNext = width;
+	int outPointChroma = 0;
+	unsigned int u,v;
+	
+	for ( int y = 0; y < height; y += 2 )
 	{
-		// calculate these only once per row.
-		int row = y * width;
-		int row1 = row + width;
-		int row2 = row<<1;
-		int row3 = row2 + width<<1;
-		int chromaRow = row>>2;
-		for (int x = 0; x < width; x ++ )
+		for ( int x = 0; x < inWidth; x += 4 )
 		{
-			int x2 = x<<2;
-			int chroma = 2 - ( ( firstChroma + ( x & 1 ) ) & 1 );
-			dest[0][row + x]
-					= source[row2 + x2 + lumaOffset];
-			dest[0][row1 + x]
-					= source[row3 + x2 + lumaOffset];
-			dest[chroma][chromaRow + x>>1 ]
-					= ( source[ row2 + x2 + chromaOffset ]
-						+ source[ row3 + x2 + chromaOffset ] )>>1;
+			// luma
+			dest[0][ outPoint ] = source[ inPoint + lumaOffset ];
+			dest[0][ outPointNext ] = source[ inPointNext + lumaOffset];
+			dest[0][ outPoint + 1 ] = source[ inPoint + lumaOffset + 2 ];
+			dest[0][ outPointNext + 1 ] = source[ inPointNext + lumaOffset + 2 ];
+			
+			// chroma
+			u = source[ inPoint + uOffset ];
+			u += source[ inPointNext + uOffset ];
+			dest[1][ outPointChroma ] = u >> 1;
+			v = source[ inPoint + vOffset ];
+			v += source[ inPointNext + vOffset ];
+			dest[2][ outPointChroma ] = v >> 1;
+
+			inPoint += 4;
+			inPointNext += 4;
+			outPoint += 2;
+			outPointNext += 2;
+			outPointChroma++;
+	
 		}
+		inPoint = inPointNext;
+		inPointNext += inWidth;
+		outPoint = outPointNext;
+		outPointNext += width;
 	}
 }
 
@@ -309,7 +331,6 @@ fourCCToString ( unsigned int fourcc, char str[5] )
 	str[0]=fourcc & 255;
 }
 
-// Necessary globals for lav device playback.
 // struct for current frame
 struct FrameData 
 {
@@ -578,13 +599,13 @@ readInputFrame ()
 		switch ( input.files[input.currentFile].outputCodec )
 		{
 		case RIFFINFO_YUY2:
-			convertPacked422( currentFrame.inputBuffer, currentFrame.frameYUV, input.height, input.width, 1, 1 );
-			break;
-		case RIFFINFO_UYVY:
 			convertPacked422( currentFrame.inputBuffer, currentFrame.frameYUV, input.height, input.width, 0, 1 );
 			break;
+		case RIFFINFO_UYVY:
+			convertPacked422( currentFrame.inputBuffer, currentFrame.frameYUV, input.height, input.width, 1, 0 );
+			break;
 		case RIFFINFO_YVYU:
-			convertPacked422( currentFrame.inputBuffer, currentFrame.frameYUV, input.height, input.width, 1, 2 );
+			convertPacked422( currentFrame.inputBuffer, currentFrame.frameYUV, input.height, input.width, 0, 3 );
 			break;
 		case RIFFINFO_YV12:
 			memcpy (currentFrame.frameYUV[0]
@@ -608,8 +629,12 @@ readInputFrame ()
 					, currentFrame.chromaPlaneSize );
 			break;
 		}
-		// done with image.
-		delete imsrc ;
+		// done with image.  ( was delete imsrc; )
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
+		imsrc->Release() ;
+#else
+		imsrc->release() ;
+#endif
 	}
 	if ( input.processAudio )
 	{
@@ -944,11 +969,20 @@ nextFile ()
 		// key frame.
 		if ( input.processVideo )
 		{
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 			framepos_t fp = input.invstream->SeekToKeyFrame ( firstFrame );
+#else
+			framepos_t fp = input.invstream->SeekToKeyframe ( firstFrame );
+#endif
 			if ( input.processAudio )
 			{
+#if AVIFILE_MAJOR_VERSION == 0 && AVIFILE_MINOR_VERSION < 50
 				double pos = input.invstream->GetTime ( max( 0, fp - 1 ) );
 				input.inastream->SeekTime ( pos );
+#else
+				double pos = input.invstream->GetTime (  );
+				input.inastream->SeekToTime ( pos );
+#endif
 			}
 		}
 		else if ( input.processAudio )
@@ -1203,10 +1237,27 @@ freeAll ()
 		delete currentFrame.audio ;
 	}
 	
-	if ( input.invstream != NULL ) delete input.invstream ;
-	if ( input.inastream != NULL ) delete input.inastream ;
+	if ( input.invstream != NULL ) 
+	{
+		if ( input.invstream->IsStreaming () )
+		{
+			input.invstream->StopStreaming () ;
+		}
+		delete input.invstream ;
+	}
+	if ( input.inastream != NULL )
+	{
+		if ( input.inastream->IsStreaming () )
+		{
+			input.inastream->StopStreaming () ;
+		}
+		delete input.inastream ;
+	}
 	// this appears to segfault!?
-//	if ( input.file != NULL ) delete input.file;
+	if ( input.file != NULL ) 
+	{
+		delete input.file;
+	}
 }
 
 // From yuvplay
@@ -1238,10 +1289,17 @@ sigkill_handler ( int signal )
 	exit (1);
 }
 
+FILE real_stdout;
+
 int
 main (int argc, char **argv)
 {
-
+	// redirect stdout, so that avifile log messages don't appear in normal std out, but go
+	// to stderr where they SHOULD be.
+	cout = cerr;		// this could be naughty.
+	real_stdout = * ( stdout );
+	stdout = stderr;
+	
 	displayGreeting();
 
 	if ( GetAvifileVersion (  ) != AVIFILE_VERSION )
@@ -1654,7 +1712,8 @@ main (int argc, char **argv)
 	{
 		if ( 0 == strcmp ( "-", filenameYUV ) )
 		{
-			output.fdYUV = FD_STDOUT;
+			//output.fdYUV = FD_STDOUT;
+			output.fdYUV = fileno ( &real_stdout );
 		}
 		else
 		{

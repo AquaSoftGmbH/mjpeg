@@ -1,3 +1,6 @@
+#ifndef RIFFINFO_IYUV
+#define RIFFINFO_IYUV fccIYUV
+#endif
 #ifndef RIFFINFO_YV12
 #define RIFFINFO_YV12 fccYV12
 #endif
@@ -11,13 +14,13 @@
 #define RIFFINFO_DIV4 fccDIV4
 #endif
 #ifndef RIFFINFO_DIV5
-#define RIFFINFO_DIV5 fccDIV5
+#define RIFFINFO_DIV5 mmioFOURCC('D', 'I', 'V', '5')
 #endif
 #ifndef RIFFINFO_DIV6
-#define RIFFINFO_DIV6 fccDIV6
+#define RIFFINFO_DIV6 mmioFOURCC('D', 'I', 'V', '6')
 #endif
 #ifndef RIFFINFO_I420
-#define RIFFINFO_I420 fccI420
+#define RIFFINFO_I420 mmioFOURCC('I', '4', '2', '0')
 #endif
 #ifndef RIFFINFO_YVYU
 #define RIFFINFO_YVYU fccYVYU
