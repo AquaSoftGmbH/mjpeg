@@ -527,7 +527,7 @@ void video_convert()
      }
    if ( ( (*pointenc).maxGop != 12 ) && 
         ( (*pointenc).minGop <= (*pointenc).maxGop) ) {
-      sprintf(temp16, "%i", (*pointenc).maxGop);
+      sprintf(temp17, "%i", (*pointenc).maxGop);
       mpeg2enc_command[n] =  "-G"; n++;
       mpeg2enc_command[n] =  temp17; n++;
      }
