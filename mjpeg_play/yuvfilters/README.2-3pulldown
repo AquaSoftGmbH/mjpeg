@@ -16,7 +16,7 @@ when we play FILM thru NTSC video, 1 frame on FILM is played
 FILM frames  0--.  1--.--.  2--.  3--.--.
              |  |  |  |  |  |  |  |  |  |
 NTSC fields  0T |  1T |  2T |  3T |  4T |
-                0B    1B    3B    3B    4B
+                0B    1B    2B    3B    4B
 
 In analog video world, this process is called 2-3 pulldown,
 because NTSC video is repeating of 2 fields from original 1 frame
@@ -37,7 +37,7 @@ FILM frames         0     1        2     3
                     |  0B |  1B |  2B |  3B-+--.
                     |  |  |  |  |  |  |  |  |  |
 NTSC fields         0T |  1T |  2T |  3T |  4T |
-                       0B    1B    3B    3B    4B
+                       0B    1B    2B    3B    4B
 
 This process is called 3:2 pulldown.
 
