@@ -44,7 +44,7 @@ static void usage () {
    fprintf (stderr, "Usage: lavpipe [options] <pipe list>\n");
    fprintf (stderr, "Options: -o num   Frame offset - skip num frames in the beginning\n");
    fprintf (stderr, "                  if num is negative, all but the last num frames are skipped\n");
-   fprintf (stderr, "         -n num   Only num frames are processed (0 means all frames\n");
+   fprintf (stderr, "         -n num   Only num frames are processed (0 means all frames)\n");
    fprintf (stderr, "         -v num  Verbosity of output [0..2]\n");
    
 }
