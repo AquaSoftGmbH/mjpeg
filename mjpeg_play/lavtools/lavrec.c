@@ -21,11 +21,11 @@
 		 
     -i [pPnNsSa]   Input Source:
                  'p' PAL   Composite Input
-                 'P' PAL   SVHS-Input
+                 'P' PAL   S-Video Input
                  'n' NTSC  Composite Input
-                 'N' NTSC  SVHS-Input
+                 'N' NTSC  S-Video Input
                  's' SECAM Composite Input
-                 'S' SECAM SVHS-Input
+                 'S' SECAM S-Video Input
                  't' PAL TV tuner input (if available)
                  'T' NTSC TV tuner input (if available)
                  'a' (or every other letter) Autosense (default)
@@ -1178,11 +1178,11 @@ int main(int argc, char ** argv)
 		switch(input_source)
 		{
         case 'p': source = "Composite PAL\n"; break;
-        case 'P': source = "S-VHS PAL\n"; break;
+        case 'P': source = "S-Video PAL\n"; break;
         case 'n': source = "Composite NTSC\n"; break;
-        case 'N': source = "S-VHS NTSC\n"; break;
+        case 'N': source = "S-Video NTSC\n"; break;
         case 's': source = "Composite SECAM\n"; break;
-        case 'S': source = "S-VHS SECAM\n"; break;
+        case 'S': source = "S-Video SECAM\n"; break;
         case 't': source = "PAL TV tuner\n"; break;
         case 'T': source = "NTSC TV tuner\n"; break;
         default:  source = "Auto detect\n";
