@@ -89,10 +89,11 @@ bool VideoStream::RunOutComplete()
  *******************************/
 
 
-bool VideoStream::MuxPossible()
+bool VideoStream::MuxPossible( clockticks currentSCR )
 {
-	return ( ElementaryStream::MuxPossible() 
-             && muxinto.current_SCR+CLOCKS > au->DTS  );
+
+	return ( ElementaryStream::MuxPossible(currentSCR) && 
+             RequiredDTS() < currentSCR + max_STD_buffer_delay );
 }
 
 /*********************************
@@ -172,9 +173,6 @@ void VideoStream::OutputSector ( )
 	old_au_then_new_payload = muxinto.PacketPayload( *this,
 													 buffers_in_header, 
 													 true, true);
-	PTS = RequiredPTS();
-	DTS = RequiredDTS();
-
 
 	/* CASE: Packet starts with new access unit			*/
 	if (new_au_next_sec  )
@@ -192,6 +190,8 @@ void VideoStream::OutputSector ( )
 
 		if( dtspts_for_all_au && max_packet_payload == 0 )
 			max_packet_payload = au_unsent;
+        PTS = RequiredPTS();
+        DTS = RequiredDTS();
 		actual_payload =
 			muxinto.WritePacket ( max_packet_payload,
 								  *this,

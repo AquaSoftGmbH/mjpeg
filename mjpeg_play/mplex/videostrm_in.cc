@@ -103,8 +103,33 @@ void VideoStream::Init ( const int stream_num )
     OutputSeqhdrInfo();
 }
 
+//
+// Set the Maximum STD buffer delay for this video stream.
+// By default we set 1 second but if we have specified a video
+// buffer that can hold more than 1.0 seconds demuxed data we
+// set the delay to the time to fill the buffer.
+//
 
+void VideoStream::SetMaxStdBufferDelay( unsigned int dmux_rate )
+{
+    double max_delay = CLOCKS;
+    if( static_cast<double>(BufferSize()) / dmux_rate > 1.0 )
+        max_delay = static_cast<double>(BufferSize()) / dmux_rate;
 
+    //
+    // To enforce a maximum STD buffer residency the
+    // calculation is a bit tricky as when we decide to mux we may
+    // (but not always) have some of the *previous* picture left to
+    // mux in which case it is the timestamp of the next picture that counts.
+    // For simplicity we simply reduce the limit by 1.5 frame intervals
+    // and use the timestamp for the current picture.
+    //
+    if( frame_rate > 10.0 )
+        max_STD_buffer_delay = static_cast<clockticks>(max_delay * (frame_rate-1.5)/frame_rate);
+    else
+        max_STD_buffer_delay = static_cast<clockticks>(10.0 * max_delay / frame_rate);
+
+}
 
 //
 // Refill the AU unit buffer setting  AU PTS DTS from the scanned

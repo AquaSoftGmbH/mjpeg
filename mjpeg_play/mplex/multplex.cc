@@ -697,8 +697,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	unsigned int video_bytes;
 
 	int i;
-	clockticks audio_next_SCR;
-	clockticks video_next_SCR;
 	vector<bool> completed;
 	vector<bool>::iterator pcomp;
 	vector<ElementaryStream *>::iterator str;
@@ -728,6 +726,19 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 	Init( multi_file );
 
+    //
+    // Now that we have both output and input streams initialised and
+    // data-rates set we can make a decent job of setting the maximum
+    // STD buffer delay in video streams.
+    //
+   
+    for( str = vstreams.begin(); str < vstreams.end(); ++str )
+    {
+        static_cast<VideoStream*>(*str)->SetMaxStdBufferDelay( dmux_rate );
+    }
+
+    
+    
 	/*  Let's try to read in unit after unit and to write it out into
 		the outputstream. The only difficulty herein lies into the
 		buffer management, and into the fact the the actual access
@@ -740,7 +751,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 	*/
 
 	ByteposTimecode( sector_transport_size, ticks_per_sector );
-	clockticks DEBUGticks;
 	seg_state = start_segment;
 	running_out = false;
 	for(;;)
@@ -819,7 +829,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 			for( str = vstreams.begin(); str < vstreams.end(); ++str )
             {
 				(*str)->SetTSOffset(video_delay + current_SCR );
-                DEBUGticks = video_delay + current_SCR;
             }
 
 			for( str = astreams.begin(); str < astreams.end(); ++str )
@@ -906,7 +915,7 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 					 (*str)->RequiredDTS()/300
 				);
 */
-			if( (*str)->MuxPossible() && 
+			if( (*str)->MuxPossible(current_SCR) && 
 				( !video_first || (*str)->Kind() == ElementaryStream::video )
 				 )
 			{
@@ -923,11 +932,6 @@ void OutputStream::OutputMultiplex( vector<ElementaryStream *> *strms,
 
 		if( despatch )
 		{
-            printf( "DTS = %lld CS+C = %lld DTS+D=%lld\n",
-                    despatch->au->DTS/300ll,
-                    (current_SCR+CLOCKS)/300ll,
-                    (despatch->au->DTS+DEBUGticks)/300ll
-                );
 			despatch->OutputSector();
 			video_first = false;
 			if( current_SCR >=  earliest && underrun_ignore == 0)

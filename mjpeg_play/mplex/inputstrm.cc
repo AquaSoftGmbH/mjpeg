@@ -121,7 +121,7 @@ ElementaryStream::ReadStrm(uint8_t *dst, unsigned int to_read)
 }
 
 
-bool ElementaryStream::MuxPossible()
+bool ElementaryStream::MuxPossible(clockticks currentSCR)
 {
 	return (!RunOutComplete() &&
 			bufmodel.Space() > max_packet_data);

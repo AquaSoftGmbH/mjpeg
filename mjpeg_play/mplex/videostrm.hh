@@ -65,8 +65,8 @@ public:
 
     virtual void OutputGOPControlSector();
 	bool RunOutComplete();
-	virtual bool MuxPossible();
-
+	virtual bool MuxPossible(clockticks currentSCR);
+    void SetMaxStdBufferDelay( unsigned int demux_rate );
 	void OutputSector();
 protected:
 	void OutputSeqhdrInfo();
@@ -118,6 +118,7 @@ protected:
 	int AU_pict_data;
 	int AU_hdr;
 	clockticks max_PTS;
+    clockticks max_STD_buffer_delay;
 }; 	
 
 //

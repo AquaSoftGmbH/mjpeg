@@ -163,7 +163,7 @@ public:
 	Aunit *Lookahead();
 	unsigned int BytesToMuxAUEnd(unsigned int sector_transport_size);
 	bool MuxCompleted();
-	virtual bool MuxPossible();
+	virtual bool MuxPossible(clockticks currentSCR );
 	void Muxed( unsigned int bytes_muxed );
 	void DemuxedTo( clockticks SCR );
 	void SetTSOffset( clockticks baseTS );
