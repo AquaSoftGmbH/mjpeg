@@ -445,7 +445,7 @@ void audio_convert()
       "Encoding audio: lav2wav | mp2enc");
 
    /* Calling void where the command is created */
-   create_command_mp2enc(mp2enc_command, 0 , pointenc, &machine4mpeg1, ".mp2");
+   create_command_mp2enc(mp2enc_command, 0 , pointenc, &machine4mpeg1, "");
    
    start_pipe_command(mp2enc_command, MP2ENC); /* lav2wav */
 
