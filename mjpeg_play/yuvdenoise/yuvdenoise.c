@@ -523,16 +523,16 @@ main (int argc, char *argv[])
 	if (!deinterlace_only)
 	{
 	    /* main denoise processing */
-	    //deflicker();
 	    denoise_frame (yuv);
-	    //denoise2();
+	    deflicker();
+	    denoise2();
 	}
 
-//    generate_black_border(BX0,BY0,BX1,BY1,avrg2);
+    generate_black_border(BX0,BY0,BX1,BY1,avrg2);
 
       /* write the frame */
-//    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
-      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
+    y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg2);
+//      y4m_write_frame (fd_out, &streaminfo, &frameinfo, avrg);
     }
 
   if(  errnr !=  Y4M_ERR_EOF )
@@ -1998,7 +1998,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
     int i=0;
     int qy, qx;
-    int dx, dy,dr,dr_uv;
+    int32_t dx, dy,dr,dr_uv;
     int32_t dt; //,dt_uv;
     uint32_t d=0;
     //uint32_t d_uv=0;
@@ -2022,7 +2022,7 @@ mb_search_44 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 	{
 	    dt = ((dx + qx ) >>2) + ((dy + qy ) >>2)*width;
 	    
-	    if(dt>0)
+	    if(dt>=0)
 		d = calc_SAD (tgt_frame[0],
 			      ref_frame[0],
 			      dt,
@@ -2056,7 +2056,7 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
     int i=nr_of_44_matches;
     int qy, qx,dx,dy,dr,dr_uv;
-    int dt; //,dt_uv;
+    int32_t dt; //,dt_uv;
     uint32_t  d=0;
     uint32_t  d_uv=0;
     uint32_t  SAD = (256 * BLOCKSIZE * BLOCKSIZE)*3;
@@ -2082,34 +2082,37 @@ mb_search_22 (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 	    {
 		dt = ((dx + qx ) >>1) + ((dy + qy ) >>1)*width;
 
-		if(dt>0)
+		if(dt>=0)
+		{
 		    d = calc_SAD (tgt_frame[0],
 				  ref_frame[0],
 				  dt,
 				  dr,
 				  1);
+
+		    if(!BW_mode && !qx&3 && !qy&3)
+		    {
+			d_uv = calc_SAD_uv (tgt_frame[1],
+					    ref_frame[1],
+					    ((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
+		    
+			d_uv += calc_SAD_uv (tgt_frame[2],
+					     ref_frame[2],
+					     ((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
+		    }
+		    d+=d_uv;
+		}
 		else
 		{
 		    d = 0x0ffffffff;
 		}
 
-		if(!BW_mode && !qx&3 && !qy&3)
-		{
-		    d_uv = calc_SAD_uv (tgt_frame[1],
-					ref_frame[1],
-					((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
-		    
-		    d_uv += calc_SAD_uv (tgt_frame[2],
-					 ref_frame[2],
-					 ((dx + qx ) >>2) + ((dy + qy ) >>2) * uv_width,dr_uv,2);
-		}
-		d+=d_uv;
 
 		if (d < SAD )
 		{
 		    int j;
 		    nr_of_22_matches++;
-
+		    
 		    for(j=1;j<save_population;j++)
 		    {
 			best_match_22_x[j] = best_match_22_x[j-1];
@@ -2129,6 +2132,7 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
 {
     int i=nr_of_22_matches;
     int qy, qx,dx,dy,dr,dr_uv;
+    int32_t dt; //,dt_uv;
     uint32_t d=0;
     uint32_t d_uv=0;
     uint32_t SAD = (256 * BLOCKSIZE * BLOCKSIZE)*3;
@@ -2150,22 +2154,28 @@ mb_search (int x, int y, uint8_t * ref_frame[3], uint8_t * tgt_frame[3])
     for (qy = (by - 1); qy <= (by + 1); qy++)
 	for (qx = (bx - 1); qx <= (bx + 1); qx++)
 	{
-	    d = calc_SAD (tgt_frame[0],
-			  ref_frame[0],
-			  (dx + qx) + (dy + qy) * width,
-			  dr, 1);
+	    dt = (dx + qx ) + (dy + qy )*width;
 
-	    if(!BW_mode && !qx&1 && !qy&1)
+	    if(dt>=0)
 	    {
-		d_uv = calc_SAD_uv (tgt_frame[1],
-				    ref_frame[1],
-				    ((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+		d = calc_SAD (tgt_frame[0],
+			      ref_frame[0],
+			      dt,
+			      dr,
+			      1);
 
-		d_uv += calc_SAD_uv (tgt_frame[2],
-				     ref_frame[2],
-				     ((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+		if(!BW_mode && !qx&1 && !qy&1)
+		{
+		    d_uv = calc_SAD_uv (tgt_frame[1],
+					ref_frame[1],
+					((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+
+		    d_uv += calc_SAD_uv (tgt_frame[2],
+					 ref_frame[2],
+					 ((dx + qx ) >>1) + ((dy + qy ) >>1) * uv_width,dr_uv,1);
+		}
+		d+=d_uv;
 	    }
-	    d+=d_uv;
 
 	    if (d < SAD)
 	    {
@@ -2844,7 +2854,7 @@ void denoise2(void)
     static int framenr;
     
     framenr++;
-    t=4;
+    t=2;
 
     for(y=0;y<height;y++)
 	for(x=0;x<width;x++)
@@ -2884,7 +2894,7 @@ void denoise2(void)
 	    difference=*( avrg2[1]+x+y*uv_width )-*( yuv[1]+x+y*uv_width );
 	    difference=(difference<0)? -difference:difference;
 
-	    if(difference>(t/2))
+	    if(difference>(t))
 		*( avrg2[1]+x+y*uv_width )=
 		    *( yuv[1]+x+y*uv_width );
 
@@ -2903,7 +2913,7 @@ void denoise2(void)
 	    difference=*( avrg2[2]+x+y*uv_width )-*( yuv[2]+x+y*uv_width );
 	    difference=(difference<0)? -difference:difference;
 
-	    if(difference>(t/2))
+	    if(difference>(t))
 		*( avrg2[2]+x+y*uv_width )=
 		    *( yuv[2]+x+y*uv_width );
 
@@ -2914,15 +2924,7 @@ void deflicker(void)
 {
     int x,y;
     int d1,d2;
-
-    memcpy(yuv3[0],yuv2[0],width*height);
-    memcpy(yuv3[1],yuv2[1],width*height/4);
-    memcpy(yuv3[2],yuv2[2],width*height/4);
-
-    memcpy(yuv2[0],yuv[0],width*height);
-    memcpy(yuv2[1],yuv[1],width*height/4);
-    memcpy(yuv2[2],yuv[2],width*height/4);
-
+#if 0
     for(y=0;y<height;y++)
 	for(x=0;x<width;x++)
 	{
@@ -2930,15 +2932,14 @@ void deflicker(void)
 	    d1=(d1<0)? -d1:d1;
 
 	    d2=*(yuv[0]+x+y*width)-*(yuv3[0]+x+y*width);
-	    d2=(d1<0)? -d2:d2;
+	    d2=(d2<0)? -d2:d2;
 
 	    if(d2<d1)
 	    {
-		*( yuv[0]+x+y*width )=
-		    ( *( yuv[0]+x+y*width ) + *( yuv2[0]+x+y*width ) )/2;
+		*( yuv[0]+x+y*width )=*(avrg[0]+x+y*width );
 	    }
 	}
-
+#endif
     for(y=0;y<uv_height;y++)
 	for(x=0;x<uv_width;x++)
 	{
@@ -2946,12 +2947,11 @@ void deflicker(void)
 	    d1=(d1<0)? -d1:d1;
 
 	    d2=*(yuv[1]+x+y*uv_width)-*(yuv3[1]+x+y*uv_width);
-	    d2=(d1<0)? -d2:d2;
+	    d2=(d2<0)? -d2:d2;
 
 	    if(d2<d1)
 	    {
-		*( yuv[1]+x+y*uv_width )=
-		    ( *( yuv[1]+x+y*uv_width ) + *( yuv2[1]+x+y*uv_width ) )/2;
+		*( yuv[1]+x+y*uv_width )=(*( yuv[1]+x+y*uv_width )+*( yuv2[1]+x+y*uv_width ) )/2;
 	    }
 	}
 
@@ -2962,12 +2962,22 @@ void deflicker(void)
 	    d1=(d1<0)? -d1:d1;
 
 	    d2=*(yuv[2]+x+y*uv_width)-*(yuv3[2]+x+y*uv_width);
-	    d2=(d1<0)? -d2:d2;
+	    d2=(d2<0)? -d2:d2;
 
 	    if(d2<d1)
 	    {
-		*( yuv[2]+x+y*uv_width )=
-		    ( *( yuv[2]+x+y*uv_width ) + *( yuv2[2]+x+y*uv_width ) )/2;
+		*( yuv[2]+x+y*uv_width )=*( avrg[2]+x+y*uv_width );
 	    }
 	}
+
+    memcpy(yuv3[0],yuv2[0],width*height);
+    memcpy(yuv3[1],yuv2[1],width*height/4);
+    memcpy(yuv3[2],yuv2[2],width*height/4);
+
+    memcpy(yuv2[0],yuv[0],width*height);
+    memcpy(yuv2[1],yuv[1],width*height/4);
+    memcpy(yuv2[2],yuv[2],width*height/4);
+
 }
+
+
