@@ -1047,7 +1047,7 @@ static struct option long_options[]={
 			break;
         case 'E':
             param_unit_coeff_elim = atoi(optarg);
-            if (param_hf_q_boost <-30 || param_hf_q_boost > 30)
+            if (param_unit_coeff_elim < -40 || param_unit_coeff_elim > 40)
             {
                 mjpeg_error( "-E option range arg -40 to 40" );
                 ++nerr;
