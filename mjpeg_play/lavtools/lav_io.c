@@ -511,7 +511,7 @@ int lav_write_frame(lav_file_t *lav_file, char *buff, long size, long count)
             }
             break;
 #endif
-#ifdef HAVE_LIBQUICKTIME
+#ifdef HAVE_LIBMOVTAR
          case 'm':
 
             jpgdata = buff;
