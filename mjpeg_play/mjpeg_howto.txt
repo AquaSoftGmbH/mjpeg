@@ -2043,10 +2043,15 @@
 
   o  all of the above : 3600 kb/s
 
-  While --reduce-hf or yuvdenoise alone is only a modest improvement,
+  While -N|--reduce-hf or yuvdenoise alone is only a modest improvement,
   together they reduce the bitrate substantially.  There is not really
   much visible difference between using yuvdenoise alone and yuvdenoise
-  with mpeg2enc --reduce-hf.
+  with mpeg2enc --reduce-hf. The usefull values are between 0.0 and 1.5.
+  Where you can say that the higher the quality factor you want, the
+  less this option improves. At a quality factor 4 you save using -N 1.0
+  about 1%. If you want a quality factor of 9 and use the -N 1.0 you
+  might save up to 40%. But you might save less, that depends on the
+  video you encode!!!
 
   If you ask yourselve why not alyways use all of the aboth filter ?
   Hmmm, hard question. The image softens, and the encoding time
@@ -2058,6 +2063,35 @@
 
   Note: The bitrate reduction you have depends on the material and on
   the noise of the images.
+
+  A other interresting mpeg2enc option is the -E|--unit-coeff-elim
+  option. This option is disabled by default. If you enable it, a
+  special "unit coefficient elimination" algorithm, discarges
+  information of a block that don't carry much information but cost much
+  bitrate to encode. A negative value menans that those coefficients are
+  zeroed, a positive means that only texture but not the base intensity
+  coefficients are zeroed. The recomended Values lies between -20 +20.
+  You usually can expect that you have a 5% decreased filesize. But that
+  amout you save is in a range from not really noticable up to 20%
+  sometimes.
+
+  If you think a other quantisation matrice will help use the
+  -K|--custom-quant-matrices option, you can try out your own
+  quanitsation matrice or use a other builtin that the default.  You can
+  choose between kvcd, tmpgenc, hires, and you own. That usually makes
+  the file smaler exept the hires option. Exact guidelines are hard to
+  tell, sometime a other quanitsation matrix saves almost nothing, and
+  the next time up to 20%. More than 20% is very unlikely, 10-15% at a
+  moderate qualityfactor (-q 9-11) are likely.  The higher the qualiy
+  the less it saves, at a quality factor of 4-6 you wont save more than
+  some bits
+
+  One thing is that the unit coefficient elimination and the
+  quantisation matrix option are increasing the quality for requested
+  quality factor.  So you have a better quality that you initally
+  wanted. The question is now, how big would the files be if you have
+  the same visual quality.  So you can lower the quality factor to have
+  the same visual quality.  But that is rather hard to measure.
 
   8.1.  Scaling and offset correction
 
@@ -2078,6 +2112,7 @@
   HeightOffset have to be a multiple by 4 if the video is interlaced.
   Else the values (width, height, widthoffset, heightoffset) have to be
   a multiple of 2.
+
 
   A other problem that cannot be solved that easy with scaling, is when
   the picture is not centered horizontal. On one side you have no black
@@ -2145,7 +2180,6 @@
 
   > lav2yuv video.eli | yuvdenoise -F | yuvfps -r 24000:1001 | yuvscaler
   -O SIZE_720x480 | mpeg2enc -f 3 -b 4000 -q 7 -o video_ntsc.m2v
-
   This example shows who you should use the tools. Denoise first and
   than change the framerate and in the last step change the image size.
 
@@ -2178,7 +2212,6 @@
   VCD 1152 kbps typically works just fine for MPEG1. The difference is
   in the Signal/Noise ratio of the original. The noise in the analog
   stuff makes it much harder to compress.
-
 
   One other very good guide that helps you transcoding videos can be
   found at: http://www.bunkus.org/dvdripping4linux/index.html
@@ -2245,7 +2278,6 @@
 
   You have to multiplex it with:
 
-
   > mplex -f 4 -O 234 svcd_stream.mp2 svcd_stream.m2v -o lowrate.mpg
 
   Problem: There is sometimes a problem with NTSC and VCD playback
@@ -2280,7 +2312,6 @@
 
   > cat sound.wav | mp2enc -V -v 2 -o audio.mp2
 
-
      -V forces VCD format, the sampling rate is converted to 44.1kHz
         from 48kHz
 
@@ -2312,6 +2343,7 @@
 
      -o YUVh
         the output size of the extracted frames.
+
   There are other output modes, try "mpeg2dec --help" but the most
   important here are:
 
@@ -2377,7 +2409,6 @@
 
   First run:
 
-
   > bbdmux myvideo.mpg
 
   You should get something like this:
@@ -2413,7 +2444,6 @@
   YUV. Using YUVh makes the video the half size!  The rest can be done
   just like editing and encoding other streams.  If you have videos with
   ac3 sound you only have to adapt the commands above.
-
   Extracting Audio:
 
   > cat test2.mpg | extract_ac3 - -s | ac3dec -o wav 2>dev/null
@@ -2444,6 +2474,7 @@
   because the statistical criteria mpeg2enc uses for discarding bad
   looking matches are usually fairly reliable the increase/decrease in
   quality is modest (but noticeable).
+
   Reducing the radius of the search for matching sections of images also
   increases speed. However due to the way the search algorithm works the
   search radius is in effect rounded to the nearest multiple of 8.

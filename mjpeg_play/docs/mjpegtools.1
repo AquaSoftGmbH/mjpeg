@@ -2159,12 +2159,15 @@ all of the above : 3600 kb/s
 .if \n(ll>1 .RE
 .nr ll -1
 .PP
-While --reduce-hf or yuvdenoise alone is only a modest
+While \fB-N\(br--reduce-hf\fP or yuvdenoise alone is only a modest
 improvement, together they reduce the bitrate substantially.
 There is not really much visible difference between using yuvdenoise alone
-and yuvdenoise with mpeg2enc --reduce-hf.
-.PP
-.PP
+and yuvdenoise with mpeg2enc --reduce-hf. The usefull values are between 0.0
+and 1.5. Where you can say that the higher the quality factor you want, the
+less this option improves. At a quality factor 4 you save using -N 1.0
+about 1%\&. If you want a quality factor of 9 and use the -N 1.0
+you might save up to 40%\&. But you might save less, that depends on 
+the video you encode!!!
 .PP
 If you ask yourselve why not alyways use all of the aboth filter ? 
 Hmmm, hard question. The image softens, and the encoding time increases.
@@ -2176,6 +2179,34 @@ should try to use the mpeg2enc --keep-hf\(br-h on the other hand
 .PP
 \fBNote:\fP The bitrate reduction you have depends on the material
 and on the noise of the images. 
+.PP
+A other interresting mpeg2enc option is the
+\fB-E\(br--unit-coeff-elim\fP
+option. This option is disabled by default. If you enable it, a special
+\&"unit coefficient elimination\&" algorithm, discarges information of a block
+that don't carry much information but cost much bitrate to encode. A negative
+value menans that those coefficients are zeroed, a positive means that only
+texture but not the base intensity coefficients are zeroed. The recomended 
+Values lies between -20 +20. You usually can expect that you have a 5% 
+decreased filesize. But that amout you save is in a range from not really
+noticable up to 20% sometimes.
+.PP
+If you think a other quantisation matrice will help use the  
+\fB-K\(br--custom-quant-matrices\fP option, you can try out your own 
+quanitsation matrice or use a other builtin that the default.
+You can choose between kvcd, tmpgenc, hires, and you own. That usually makes
+the file smaler exept the hires option. Exact guidelines are hard to tell,
+sometime a other quanitsation matrix saves almost nothing, and the
+next time up to 20%\&. More than 20% is very unlikely, 10-15% at a moderate 
+qualityfactor (-q 9-11) are likely.  The higher the qualiy the less it saves,
+at a quality factor of 4-6 you wont save more than some bits
+.PP
+One thing is that the unit coefficient elimination and the quantisation 
+matrix option are increasing the quality for requested quality factor.
+So you have a better quality that you initally wanted. The question is
+now, how big would the files be if you have the same visual quality. 
+So you can lower the quality factor to have the same visual quality. 
+But that is rather hard to measure.
 .SH Scaling and offset correction
 
 .PP
