@@ -155,7 +155,7 @@ int main(int argc, char **argv)
    }
 
    lav_out = lav_open_output_file(argv[3],
-                                  lav_filetype(lav_fd),
+                                  lav_fd->format,
                                   lav_video_width (lav_fd),
                                   lav_video_height(lav_fd),
                                   lav_video_interlacing(lav_fd),

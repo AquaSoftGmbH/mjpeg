@@ -868,11 +868,6 @@ long lav_read_audio(lav_file_t *lav_file, uint8_t *audbuf, long samps)
    return -1;
 }
 
-int lav_filetype(lav_file_t *lav_file)
-{
-   return lav_file->format;
-}
-
 lav_file_t *lav_open_input_file(char *filename)
 {
    int n;
