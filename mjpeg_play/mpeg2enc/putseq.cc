@@ -692,7 +692,7 @@ void SeqEncoder::Init()
     // Setup the parallel job despatcher...
     //
     despatcher.Init( encparams.mb_width, 
-                     encparams.mb_height, 
+                     encparams.mb_height2, 
                      encparams.encoding_parallelism );
 
     // Allocate the Buffers for pictures active when encoding...
