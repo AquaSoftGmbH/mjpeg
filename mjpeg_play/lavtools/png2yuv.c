@@ -502,10 +502,10 @@ static int generate_YUV4MPEG(parameters_t *param)
        (frame < param->numframes + param->begin) || (param->numframes == -1);
        frame++) 
     {
-      if (frame < 25)
-	snprintf(pngname, sizeof(pngname), param->pngformatstr, 0);
-      else      
-	snprintf(pngname, sizeof(pngname), param->pngformatstr, frame - 25);
+      //      if (frame < 25)
+      //      else      
+      //snprintf(pngname, sizeof(pngname), param->pngformatstr, frame - 25);
+      snprintf(pngname, sizeof(pngname), param->pngformatstr, frame);
             
       raw0 = yuv[0];
       raw1 = yuv[1];
