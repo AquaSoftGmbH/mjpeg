@@ -1094,11 +1094,7 @@ main (int argc, char *argv[])
       input_width = el.video_width;
       input_height = el.video_height;
       frame_rate = mpeg_conform_framerate (el.video_fps);
-      input_interlaced =
-	(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
-	(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
-	(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
-	Y4M_UNKNOWN;
+	  /* LAV interlace codes are aliases for YUV4MPEG ones */
       input_interlaced = el.video_inter;
       // this will be  eventually overrided by user's specification
       // Let's determine the frame rate code

@@ -81,6 +81,7 @@ typedef struct {
    unsigned int scene_detection_decimation; // = 2;
    int output_width;
    int output_height;
+	int interlace;				/* LAV not Y4M coding... */
 } LavParam;
 //=
 //{ 0, 0, 0, 0, 0, 0, NULL, 0, 0, 440, 220, -1, 4, 2, 0, 0 } ;
@@ -112,28 +113,27 @@ typedef struct {
 } LavBounds;
 
 typedef struct {
-   unsigned char *frame_buf[3];    /* YUV... */
-   unsigned char *read_buf[3];
-   unsigned char *double_buf[3];
-   unsigned char luma_blank[768 * 480];
-   unsigned char chroma_blank[768 * 480];
+   uint8_t *read_buf[3];
+   uint8_t *double_buf[3];
+   uint8_t luma_blank[768 * 480];
+   uint8_t chroma_blank[768 * 480];
 } LavBuffers;
 
-int luminance_mean(unsigned char *frame, int w, int h);
-int decode_jpeg_raw(unsigned char *jpeg_data, int len,
+int luminance_mean(uint8_t *frame, int w, int h);
+int decode_jpeg_raw(uint8_t *jpeg_data, int len,
                     int itype, int ctype, int width, int height,
-                    unsigned char *raw0, unsigned char *raw1,
-                    unsigned char *raw2);
+                    uint8_t *raw0, uint8_t *raw1,
+                    uint8_t *raw2);
 
-int readframe(int numframe, unsigned char *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, EditList el);
+int readframe(int numframe, uint8_t *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, EditList el);
 void writeoutYUV4MPEGheader(int out_fd, LavParam *param, EditList el);
-void writeoutframeinYUV4MPEG(int out_fd, unsigned char *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, y4m_frame_info_t *frame_info);
+void writeoutframeinYUV4MPEG(int out_fd, uint8_t *frame[], LavBounds *bounds, LavParam *param, LavBuffers *buffer, y4m_frame_info_t *frame_info);
 void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer);
 
 #ifdef SUPPORT_READ_DV2
 #include <libdv/dv.h>
-void frame_YUV422_to_YUV420P(unsigned char **output, unsigned char *input, int width, int height, LavParam *param);
-void frame_YUV420P_deinterlace(unsigned char **frame, unsigned char *previous_Y, int width, int height, int SpatialTolerance, int TemporalTolerance, int mode);
+void frame_YUV422_to_YUV420P(uint8_t **output, uint8_t *input, int width, int height, LavParam *param);
+void frame_YUV420P_deinterlace(uint8_t **frame, uint8_t *previous_Y, int width, int height, int SpatialTolerance, int TemporalTolerance, int mode);
 void lav_init_dv_decoder(void);
 
 #endif // SUPPORT_READ_DV2

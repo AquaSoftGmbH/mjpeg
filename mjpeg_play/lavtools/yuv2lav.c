@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <string.h>
 
 #include "mjpeg_logging.h"
 
@@ -210,13 +211,8 @@ int main(int argc, char *argv[])
    }
 
    if (param_interlace < 0) {
-       int ylace = y4m_si_get_interlace(&streaminfo);
-       param_interlace = 
-	 (ylace == Y4M_ILACE_NONE) ? LAV_NOT_INTERLACED :
-	 (ylace == Y4M_ILACE_TOP_FIRST) ? LAV_INTER_TOP_FIRST :
-	 (ylace == Y4M_ILACE_BOTTOM_FIRST) ? LAV_INTER_BOTTOM_FIRST :
-	 LAV_INTER_UNKNOWN;
-   }
+       param_interlace = y4m_si_get_interlace(&streaminfo);
+    }
    if (param_interlace == LAV_INTER_TOP_FIRST  && param_format == 'A')
       param_format = 'a';
    else if (param_interlace == LAV_INTER_BOTTOM_FIRST && param_format == 'a')

@@ -30,21 +30,21 @@
 #include "lav_common.h"
 #include "mpegconsts.h"
 
-static unsigned char jpeg_data[MAX_JPEG_LEN];
+static uint8_t jpeg_data[MAX_JPEG_LEN];
 
-unsigned char *filter_buf;
+uint8_t *filter_buf;
 int chroma_format = CHROMA420;
 
 #ifdef SUPPORT_READ_DV2
 
 dv_decoder_t *decoder;
 gint pitches[3];
-unsigned char *dv_frame[3];
-unsigned char *previous_Y;
+uint8_t *dv_frame[3] = {NULL,NULL,NULL};
+uint8_t *previous_Y;
 
 void frame_YUV422_to_YUV420P(
-	unsigned char **output
-        , unsigned char *input
+	uint8_t **output
+        , uint8_t *input
         , int width
         , int height
         , LavParam *param
@@ -99,13 +99,13 @@ void frame_YUV422_to_YUV420P(
     }
 }
                     
-void frame_YUV420P_deinterlace(unsigned char **frame, 
-        unsigned char *previous_Y, int width, int height,
+void frame_YUV420P_deinterlace(uint8_t **frame, 
+        uint8_t *previous_Y, int width, int height,
         int SpatialTolerance, int TemporalTolerance, int mode)
 {
     int i,j,weave;
     int cnt = 0;
-    unsigned char *M0, *T0, *B0, *M1, *T1, *B1;
+    uint8_t *M0, *T0, *B0, *M1, *T1, *B1;
 
     switch (mode) {
     case 1:
@@ -165,10 +165,10 @@ void frame_YUV420P_deinterlace(unsigned char **frame,
 }
 #endif
 
-int luminance_mean(unsigned char *frame, int w, int h )
+int luminance_mean(uint8_t *frame, int w, int h )
 {
-	unsigned char *p = frame;
-	unsigned char *lim = frame + w*h;
+	uint8_t *p = frame;
+	uint8_t *lim = frame + w*h;
 	int sum = 0;
 	while( p < lim )
 	{
@@ -186,7 +186,7 @@ int luminance_mean(unsigned char *frame, int w, int h )
 	BUG: 	Of course this won't work if a char * won't fit in an int....
 */
 
-static unsigned char *bufalloc(size_t size)
+static uint8_t *bufalloc(size_t size)
 {
    char *buf = malloc(size + BUFFER_ALIGN);
    int adjust;
@@ -196,7 +196,7 @@ static unsigned char *bufalloc(size_t size)
    adjust = BUFFER_ALIGN - ((int) buf) % BUFFER_ALIGN;
    if (adjust == BUFFER_ALIGN)
       adjust = 0;
-   return (unsigned char *) (buf + adjust);
+   return (uint8_t *) (buf + adjust);
 }
 
 void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
@@ -256,7 +256,7 @@ void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
          size = bounds->chroma_output_width * bounds->chroma_output_height;
 
       buffer->read_buf[i] = bufalloc(size);
-      buffer->double_buf[i] = bufalloc(size);
+      buffer->double_buf[i] = NULL;
    }
 
 #ifdef SUPPORT_READ_DV2
@@ -270,244 +270,262 @@ void init(LavBounds *bounds, LavParam *param, LavBuffers *buffer)
 }
 
 
-int readframe(
-	int numframe
-	, unsigned char *frame[]
-	, LavBounds *bounds
-	, LavParam *param
-	, LavBuffers *buffer
-	, EditList el
+int readframe(	int numframe, 
+				uint8_t *frame[],
+				LavBounds *bounds,
+				LavParam *param,
+				LavBuffers *buffer,
+				EditList el
 	)
 {
-   int len, i, res, data_format;
-   unsigned char *frame_tmp;
+	int len, i, res, data_format;
+	uint8_t *frame_tmp;
 
-   frame[0] = buffer->read_buf[0];
-   frame[1] = buffer->read_buf[1];
-   frame[2] = buffer->read_buf[2];
+	frame[0] = buffer->read_buf[0];
+	frame[1] = buffer->read_buf[1];
+	frame[2] = buffer->read_buf[2];
 
-   if (MAX_JPEG_LEN < el.max_frame_size) {
-      mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
-						 el.max_frame_size);
-   }
+	if (MAX_JPEG_LEN < el.max_frame_size) {
+		mjpeg_error_exit1( "Max size of JPEG frame = %ld: too big\n",
+						   el.max_frame_size);
+	}
 
-   len = el_get_video_frame(jpeg_data, numframe, &el);
+	len = el_get_video_frame(jpeg_data, numframe, &el);
 
-   data_format = el_video_frame_data_format(numframe, &el);
+	data_format = el_video_frame_data_format(numframe, &el);
 
-   switch(data_format) {
-   case DATAFORMAT_DV2 :
+	switch(data_format) {
+	case DATAFORMAT_DV2 :
 #ifndef SUPPORT_READ_DV2
-      mjpeg_error("DV input was not configured at compile time\n");
-       res = 1;
+		mjpeg_error("DV input was not configured at compile time\n");
+		res = 1;
 #else
-       mjpeg_info("DV frame %d   len %d\n",numframe,len);
-       res = 0;
-       dv_parse_header(decoder, jpeg_data);
-       switch(decoder->sampling) {
-            case e_dv_sample_420:
+		mjpeg_info("DV frame %d   len %d\n",numframe,len);
+		res = 0;
+		dv_parse_header(decoder, jpeg_data);
+		switch(decoder->sampling) {
+		case e_dv_sample_420:
 #ifdef LIBDV_PAL_YV12
-                /* libdv decodes PAL DV directly as planar YUV 420
-                 * (YV12 or 4CC 0x32315659) if configured with the flag
-                 * --with-pal-yuv=YV12 which is not (!) the default
-                 */
-                pitches[0] = decoder->width;
-                pitches[1] = decoder->width / 2;
-                pitches[2] = decoder->width / 2;
-                if (pitches[0] != param->output_width ||
-                    pitches[1] != bounds->chroma_output_width) {
-                       mjpeg_error("for DV 4:2:0 only full width output is supported\n");
-                        res = 1;
-                } else {
-                    dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-                                                (guchar **) frame, pitches);
-                    /* swap the U and V components */
-                    frame_tmp = frame[2];
-                    frame[2] = frame[1];
-                    frame[1] = frame_tmp;
-                }
-                break;
+			/* libdv decodes PAL DV directly as planar YUV 420
+			 * (YV12 or 4CC 0x32315659) if configured with the flag
+			 * --with-pal-yuv=YV12 which is not (!) the default
+			 */
+			pitches[0] = decoder->width;
+			pitches[1] = decoder->width / 2;
+			pitches[2] = decoder->width / 2;
+			if (pitches[0] != param->output_width ||
+				pitches[1] != bounds->chroma_output_width) {
+				mjpeg_error("for DV 4:2:0 only full width output is supported\n");
+				res = 1;
+			} else {
+				dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+									 (guchar **) frame, pitches);
+				/* swap the U and V components */
+				frame_tmp = frame[2];
+				frame[2] = frame[1];
+				frame[1] = frame_tmp;
+			}
+			break;
 #endif
-            case e_dv_sample_411:
-            case e_dv_sample_422:
-                /* libdv decodes NTSC DV (native 411) and by default also PAL
-                 * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
-                 * where the U and V information is repeated.  This can be
-                 * transformed to planar 420 (YV12 or 4CC 0x32315659).
-                 * For NTSC DV this transformation is lossy.
-                 */
-                pitches[0] = decoder->width * 2;
-                pitches[1] = 0;
-                pitches[2] = 0;
-                if (pitches[0] != 2*param->output_width) {
-                        mjpeg_error("for DV only full width output is supported\n");
-                        res = 1;
-                } else {
-                    dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
-                                        (guchar **) dv_frame, pitches);
-                    frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
+		case e_dv_sample_411:
+		case e_dv_sample_422:
+			/* libdv decodes NTSC DV (native 411) and by default also PAL
+			 * DV (native 420) as packed YUV 422 (YUY2 or 4CC 0x32595559)
+			 * where the U and V information is repeated.  This can be
+			 * transformed to planar 420 (YV12 or 4CC 0x32315659).
+			 * For NTSC DV this transformation is lossy.
+			 */
+			pitches[0] = decoder->width * 2;
+			pitches[1] = 0;
+			pitches[2] = 0;
+			if (pitches[0] != 2*param->output_width) {
+				mjpeg_error("for DV only full width output is supported\n");
+				res = 1;
+			} else {
+				dv_decode_full_frame(decoder, jpeg_data, e_dv_color_yuv,
+									 (guchar **) dv_frame, pitches);
+				frame_YUV422_to_YUV420P(frame, dv_frame[0], decoder->width,
                                         decoder->height, param);
 
-                }
-                break;
-            default:
-                res = 1;
-                break;
-       }
-       if (res == 0 && (param->DV_deinterlace == 1 || param->DV_deinterlace == 2)) {
-           frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
-                               decoder->height, param->spatial_tolerance,
-                               param->default_temporal_tolerance, param->DV_deinterlace);
-           if (param->default_temporal_tolerance < 0)
-               param->default_temporal_tolerance = param->temporal_tolerance;
-           memcpy(previous_Y, frame[0], decoder->width * decoder->height);
-       }
+			}
+			break;
+		default:
+			res = 1;
+			break;
+		}
+		if (res == 0 && (param->DV_deinterlace == 1 || param->DV_deinterlace == 2)) 
+		{
+			frame_YUV420P_deinterlace(frame, previous_Y, decoder->width,
+									  decoder->height, param->spatial_tolerance,
+									  param->default_temporal_tolerance, param->DV_deinterlace);
+			if (param->default_temporal_tolerance < 0)
+				param->default_temporal_tolerance = param->temporal_tolerance;
+			memcpy(previous_Y, frame[0], decoder->width * decoder->height);
+		}
 #endif
-       break;
-   case DATAFORMAT_YUV420 :
-       mjpeg_info("YUV420 frame %d   len %d\n",numframe,len);
-       frame_tmp = jpeg_data;
-       memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
-       frame_tmp += param->output_width * param->output_height;
-       memcpy(frame[1], frame_tmp, param->output_width * param->output_height/4);
-       frame_tmp += param->output_width * param->output_height/4;
-       memcpy(frame[2], frame_tmp, param->output_width * param->output_height/4);
-       res = 0;
-       break;
-   default:
-       mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
-   if (param->special == 4) {
-      res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-                            chroma_format, param->output_width, param->output_height / 2,
-                            frame[0], frame[1], frame[2]);
-   } else {
-      res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
-                            chroma_format, param->output_width, param->output_height,
-                            frame[0], frame[1], frame[2]);
-   }
+		break;
+	case DATAFORMAT_YUV420 :
+		mjpeg_info("YUV420 frame %d   len %d\n",numframe,len);
+		frame_tmp = jpeg_data;
+		memcpy(frame[0], frame_tmp, param->output_width * param->output_height);
+		frame_tmp += param->output_width * param->output_height;
+		memcpy(frame[1], frame_tmp, param->output_width * param->output_height/4);
+		frame_tmp += param->output_width * param->output_height/4;
+		memcpy(frame[2], frame_tmp, param->output_width * param->output_height/4);
+		res = 0;
+		break;
+	default:
+		mjpeg_debug("MJPEG frame %d   len %d\n",numframe,len);
 
-   if (param->special == 4) {
-      for (i = 0; i < param->output_height / 2; i++) {
-         memcpy(&buffer->double_buf[0][i * param->output_width * 2],
-                &buffer->read_buf[0][i * param->output_width], param->output_width);
-         memcpy(&buffer->double_buf[0][i * param->output_width * 2 + param->output_width],
-                &buffer->read_buf[0][i * param->output_width], param->output_width);
-      }
+		if (param->special == 4) {
+			res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
+								  chroma_format, param->output_width, param->output_height / 2,
+								  frame[0], frame[1], frame[2]);
+		} else {
+			res = decode_jpeg_raw(jpeg_data, len, el.video_inter,
+								  chroma_format, param->output_width, param->output_height,
+								  frame[0], frame[1], frame[2]);
+		}
 
-      for (i = 0; i < bounds->chroma_height / 2; i++) {
-         memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2],
-                &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
-         memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2 + bounds->chroma_width],
-                &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
+		if (param->special == 4) 
+		{
+			/* Allocate the extra buffering if we actually need it... */
+			if( buffer->double_buf[0] == NULL )
+			{
+				for (i = 0; i < 3; i++) 
+				{
+					if (i == 0)
+						buffer->double_buf[i] = 
+							bufalloc(param->output_width * 
+									 param->output_height);
+					else
+						buffer->double_buf[i] = 
+							bufalloc( bounds->chroma_output_width * 
+									  bounds->chroma_output_height );
+				}
+			}
 
-         memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2],
-                &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
-         memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2 + bounds->chroma_width],
-                &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
-      }
+			for (i = 0; i < param->output_height / 2; i++) {
+				memcpy(&buffer->double_buf[0][i * param->output_width * 2],
+					   &buffer->read_buf[0][i * param->output_width], param->output_width);
+				memcpy(&buffer->double_buf[0][i * param->output_width * 2 + param->output_width],
+					   &buffer->read_buf[0][i * param->output_width], param->output_width);
+			}
 
-      frame[0] = buffer->double_buf[0];
-      frame[1] = buffer->double_buf[1];
-      frame[2] = buffer->double_buf[2];
-   }
-   }
+			for (i = 0; i < bounds->chroma_height / 2; i++) {
+				memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2],
+					   &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
+				memcpy(&buffer->double_buf[1][i * bounds->chroma_width * 2 + bounds->chroma_width],
+					   &buffer->read_buf[1][i * bounds->chroma_width], bounds->chroma_width);
 
+				memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2],
+					   &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
+				memcpy(&buffer->double_buf[2][i * bounds->chroma_width * 2 + bounds->chroma_width],
+					   &buffer->read_buf[2][i * bounds->chroma_width], bounds->chroma_width);
+			}
 
-   if (res) {
-      mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
-      /* TODO: Selective exit here... */
-      return 1;
-   }
-
-   if (param->drop_lsb) {
-      int *p, *end, c;
-      int mask;
-      int round;
-      end = 0;                  /* Silence compiler */
-      for (c = 0; c < sizeof(int); ++c) {
-         ((char *) &mask)[c] = (0xff << param->drop_lsb) & 0xff;
-         ((char *) &round)[c] = roundadj[param->drop_lsb];
-      }
-
-
-      /* we know output_width is multiple of 16 so doing lsb dropping
-         int-wise will work for sane (32-bit or 64-bit) machines
-       */
-
-      for (c = 0; c < 3; ++c) {
-         p = (int *) frame[c];
-         if (c == 0) {
-            end = (int *) (frame[c] + param->output_width * param->output_height);
-         } else {
-            end =
-                (int *) (frame[c] +
-                         bounds->chroma_output_width * bounds->chroma_output_height);
-         }
-         while (p++ < end) {
-            *p = (*p & mask) + round;
-         }
-      }
-   }
-
-   if (param->noise_filt) {
-      unsigned char *bp;
-      unsigned char *p = frame[0] + param->output_width + 1;
-      unsigned char *end = frame[0] + param->output_width * (param->output_height - 1);
-
-      bp = filter_buf + param->output_width + 1;
-      if (param->noise_filt == 1) {
-         for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-            register int f =
-                (p[-param->output_width - 1] + p[-param->output_width] +
-                 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-                                                         1] +
-                 p[param->output_width] + p[param->output_width + 1]);
-            f = f + ((*p) << 3) + ((*p) << 4);	/* 8 + (8 + 16) = 32 */
-            *bp = (f + 16) >> (4 + 1);
-            ++bp;
-         }
-      } else if (param->noise_filt == 2) {
-         for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-            register int f =
-                (p[-param->output_width - 1] + p[-param->output_width] +
-                 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-                                                         1] +
-                 p[param->output_width] + p[param->output_width + 1]);
-
-            f = f + ((*p) << 3);
-            *bp = (f + 8) >> (3 + 1);
-            ++bp;
-         }
-      } else {
-         for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-            register int f =
-                (p[-param->output_width - 1] + p[-param->output_width] +
-                 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
-                                                         1] +
-                 p[param->output_width] + p[param->output_width + 1]);
-            /* f = f + (f<<1) + (*p << 3);
-               *bp = (f + (1 << 4)) >> (3+2); */
-            f = f + (*p << 3);
-            *bp = (f + (1 << 2)) >> (3 + 1);
-            ++bp;
-         }
-      }
-
-      bp = filter_buf + param->output_width + 1;
-      for (p = frame[0] + param->output_width + 1; p < end; ++p) {
-         *p = *bp;
-         ++bp;
-      }
+			frame[0] = buffer->double_buf[0];
+			frame[1] = buffer->double_buf[1];
+			frame[2] = buffer->double_buf[2];
+		}
+	}
 
 
-   }
+	if (res) {
+		mjpeg_warn( "Decoding of Frame %d failed\n", numframe);
+		/* TODO: Selective exit here... */
+		return 1;
+	}
 
-   if (param->mono) {
-      for (i = 0; i < bounds->chroma_output_width * bounds->chroma_output_height; ++i) {
-         frame[1][i] = frame[2][i] = 0x80;
-      }
-   }
-   return 0;
+	if (param->drop_lsb) {
+		int *p, *end, c;
+		int mask;
+		int round;
+		end = 0;                  /* Silence compiler */
+		for (c = 0; c < sizeof(int); ++c) {
+			((char *) &mask)[c] = (0xff << param->drop_lsb) & 0xff;
+			((char *) &round)[c] = roundadj[param->drop_lsb];
+		}
+
+
+		/* we know output_width is multiple of 16 so doing lsb dropping
+		   int-wise will work for sane (32-bit or 64-bit) machines
+		*/
+
+		for (c = 0; c < 3; ++c) {
+			p = (int *) frame[c];
+			if (c == 0) {
+				end = (int *) (frame[c] + param->output_width * param->output_height);
+			} else {
+				end =
+					(int *) (frame[c] +
+							 bounds->chroma_output_width * bounds->chroma_output_height);
+			}
+			while (p++ < end) {
+				*p = (*p & mask) + round;
+			}
+		}
+	}
+
+	if (param->noise_filt) {
+		uint8_t *bp;
+		uint8_t *p = frame[0] + param->output_width + 1;
+		uint8_t *end = frame[0] + param->output_width * (param->output_height - 1);
+
+		bp = filter_buf + param->output_width + 1;
+		if (param->noise_filt == 1) {
+			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
+				register int f =
+					(p[-param->output_width - 1] + p[-param->output_width] +
+					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
+																	1] +
+					 p[param->output_width] + p[param->output_width + 1]);
+				f = f + ((*p) << 3) + ((*p) << 4);	/* 8 + (8 + 16) = 32 */
+				*bp = (f + 16) >> (4 + 1);
+				++bp;
+			}
+		} else if (param->noise_filt == 2) {
+			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
+				register int f =
+					(p[-param->output_width - 1] + p[-param->output_width] +
+					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
+																	1] +
+					 p[param->output_width] + p[param->output_width + 1]);
+
+				f = f + ((*p) << 3);
+				*bp = (f + 8) >> (3 + 1);
+				++bp;
+			}
+		} else {
+			for (p = frame[0] + param->output_width + 1; p < end; ++p) {
+				register int f =
+					(p[-param->output_width - 1] + p[-param->output_width] +
+					 p[-param->output_width + 1] + p[-1] + p[1] + p[param->output_width -
+																	1] +
+					 p[param->output_width] + p[param->output_width + 1]);
+				/* f = f + (f<<1) + (*p << 3);
+				 *bp = (f + (1 << 4)) >> (3+2); */
+				f = f + (*p << 3);
+				*bp = (f + (1 << 2)) >> (3 + 1);
+				++bp;
+			}
+		}
+
+		bp = filter_buf + param->output_width + 1;
+		for (p = frame[0] + param->output_width + 1; p < end; ++p) {
+			*p = *bp;
+			++bp;
+		}
+
+
+	}
+
+	if (param->mono) {
+		for (i = 0; i < bounds->chroma_output_width * bounds->chroma_output_height; ++i) {
+			frame[1][i] = frame[2][i] = 0x80;
+		}
+	}
+	return 0;
 
 }
 
@@ -536,12 +554,7 @@ void writeoutYUV4MPEGheader(
    y4m_init_stream_info(&stream_info);
    y4m_si_set_width(&stream_info, param->output_width);
    y4m_si_set_height(&stream_info, param->output_height);
-   y4m_si_set_interlace(&stream_info, 
-			(el.video_inter == LAV_NOT_INTERLACED) ? Y4M_ILACE_NONE :
-			(el.video_inter == LAV_INTER_TOP_FIRST) ? Y4M_ILACE_TOP_FIRST :
-			(el.video_inter == LAV_INTER_BOTTOM_FIRST) ? Y4M_ILACE_BOTTOM_FIRST :
-			Y4M_UNKNOWN
-			);
+   y4m_si_set_interlace(&stream_info, param->interlace );
    y4m_si_set_framerate(&stream_info, mpeg_conform_framerate(el.video_fps));
    //stream_info->aspectratio = param->output_width / param->output_height;
    n = y4m_write_stream_header(out_fd, &stream_info);
@@ -551,7 +564,7 @@ void writeoutYUV4MPEGheader(
 }
 
 void writeoutframeinYUV4MPEG(int out_fd,
-			     unsigned char *frame[],
+			     uint8_t *frame[],
 			     LavBounds *bounds,
 			     LavParam *param,
 			     LavBuffers *buffer,

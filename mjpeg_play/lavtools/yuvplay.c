@@ -67,6 +67,7 @@ static char *print_status(int frame, double framerate) {
 
 int main(int argc, char *argv[])
 {
+	char dummy[10];
    double time_between_frames = 0.0;
    double frame_rate = 0.0;
    struct timeval time_now;
@@ -188,14 +189,15 @@ int main(int argc, char *argv[])
    signal (SIGINT, sigint_handler);
 
    frame = 0;
-   if ( frame_rate == 0.0 ) {
-     /* frame rate has not been set from command-line... */
-     if (Y4M_RATIO_EQL(y4m_fps_UNKNOWN, y4m_si_get_framerate(&streaminfo))) {
-       mjpeg_info( "Frame-rate undefined in stream... assuming 25Hz!\n" );
-       frame_rate = 25.0;
-     } else {
-       frame_rate = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
-     }
+   if ( frame_rate == 0.0 ) 
+   {
+	   /* frame rate has not been set from command-line... */
+	   if (Y4M_RATIO_EQL(y4m_fps_UNKNOWN, y4m_si_get_framerate(&streaminfo))) {
+		   mjpeg_info( "Frame-rate undefined in stream... assuming 25Hz!\n" );
+		   frame_rate = 25.0;
+	   } else {
+		   frame_rate = Y4M_RATIO_DBL(y4m_si_get_framerate(&streaminfo));
+	   }
    }
    time_between_frames = 1.e6 / frame_rate;
 
@@ -224,14 +226,17 @@ int main(int argc, char *argv[])
       /* Show, baby, show! */
       SDL_DisplayYUVOverlay(yuv_overlay, &rect);
 
-      fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
-			  print_status(frame, frame_rate));
 
-      while(get_time_diff(time_now) < time_between_frames) {
-         usleep(1000);
-      }
-      frame++;
-      gettimeofday(&time_now,0);
+	  fprintf(stderr, "Playing frame %4.4d - %s\r", frame,
+			  print_status(frame, frame_rate));
+	  
+	  
+	  while(get_time_diff(time_now) < time_between_frames) {
+		  usleep(1000);
+	  }
+	  frame++;
+	  gettimeofday(&time_now,0);
+
    }
 
    if (n != Y4M_OK)
