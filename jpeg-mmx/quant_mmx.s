@@ -86,8 +86,6 @@ nextquadniq:
 	psrlw   mm7, 1
 	paddw   mm2, mm7       ; mm2 = abs(*psrc)+((*pqf)/2) = "p"
 	
-	;;
-	;; To keep the CPU busy lets update some pointers too...
 			
 	movq mm7,mm0			;  mm7 = 0
 	pmulhw  mm2, [ecx]      ; mm2 = (p*iqm) >> 16 ~= p/*qm

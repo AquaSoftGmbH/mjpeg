@@ -56,7 +56,7 @@ METHODDEF(UINT8*)
 {
 	UINT8 *rawbuf = (*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, 
 												JPOOL_IMAGE,
-												bufsize	);
+												bufsize+SIMD_ALIGN );
 	unsigned int odd_bytes = ((size_t)rawbuf)%SIMD_ALIGN;
 	return odd_bytes == 0 ? rawbuf : rawbuf + SIMD_ALIGN-odd_bytes;
 	
@@ -148,8 +148,7 @@ start_pass_fdctmgr (j_compress_ptr cinfo)
 			case QUANT_INT :
 				if (fdct->divisors[qtblno] == NULL) {
 					fdct->divisors[qtblno] = (DCTELEM *)
-						(*cinfo->mem->alloc_small) ((j_common_ptr) cinfo, JPOOL_IMAGE,
-													DCTSIZE2 * SIZEOF(DCTELEM));
+						simd_aligned_smallbuf( cinfo, DCTSIZE2 * SIZEOF(DCTELEM));
 				}
 				break;
 			case QUANT_FLOAT32 :
@@ -237,8 +236,7 @@ static INT16 int16_centrejsample[8] ATTR_ALIGN(8) =
 
 METHODDEF(void)
 jcquant_int16( DCTELEM *workspace, INT16 *output_ptr,  
-			 DCTELEM *divisors,
-			 INT16 *idivisors)
+			   DCTELEM *divisors, INT16 *idivisors)
 { 
 	register int temp;
 	register int i;
@@ -248,25 +246,17 @@ jcquant_int16( DCTELEM *workspace, INT16 *output_ptr,
 		/* Divide the coefficient value by qval, ensuring proper rounding.
 		 * Since C does not specify the direction of rounding for negative
 		 * quotients, we have to force the dividend positive for portability.
-		 *
-		 * In most files, at least half of the output values will be zero
-		 * (at default quantization settings, more like three-quarters...)
-		 * so we should ensure that this case is fast.  On many machines,
-		 * a comparison is enough cheaper than a divide to make a special test
-		 * a win.  Since both inputs will be nonnegative, we need only test
-		 * for a < b to discover whether a/b is 0.
-		 * If your machine's division is fast enough, define FAST_DIVIDE.
 		 */
 
 		if (temp < 0) {
 			temp = -temp;
 			temp += divisors[i]>>1;	/* for rounding */
 			temp *= idivisors[i];
-			temp = -(temp>>(16+3));
+			temp = -(temp+(1<<(16+2))>>(16+3));
 		} else {
 			temp += divisors[i]>>1;	/* for rounding */
 			temp *= idivisors[i];
-			temp = temp>>(16+3);
+			temp = (temp+(1<<(16+2)))>>(16+3);
 			
 		}
 		output_ptr[i] = (JCOEF) temp;
@@ -444,6 +434,7 @@ METHODDEF(void)
 	}
 }
 
+
 METHODDEF(void)
 	forward_DCT_mmx (j_compress_ptr cinfo, jpeg_component_info * compptr,
 						  JSAMPARRAY sample_data, JBLOCKROW coef_blocks,
@@ -454,9 +445,10 @@ METHODDEF(void)
 	/* This routine is heavily used, so it's worth coding it tightly. */
 	my_fdct_ptr fdct = (my_fdct_ptr) cinfo->fdct;
 	forward_DCT_method_ptr do_dct = fdct->do_dct;
+	float32_quant_method_ptr do_quant = fdct->do_float32_quant;
 	DCTELEM workspace[DCTSIZE2] ATTR_ALIGN(SIMD_ALIGN);	/* work area for FDCT subroutine */
 	JDIMENSION bi;
-
+	int i;
 	sample_data += start_row;	/* fold in the vertical offset once */
 
 	for (bi = 0; bi < num_blocks; bi++, start_col += DCTSIZE) 
@@ -502,9 +494,11 @@ METHODDEF(void)
 		/* Perform the DCT */
 		(*do_dct)(workspace);
 		
-		jcquant_mmx( workspace, coef_blocks[bi], 
-					 fdct->divisors[compptr->quant_tbl_no],
-					 fdct->int16_divisors[compptr->quant_tbl_no]);
+		jcquant_mmx( workspace,
+					   coef_blocks[bi],  
+					   fdct->divisors[compptr->quant_tbl_no],
+					   fdct->int16_divisors[compptr->quant_tbl_no]);
+
 	}
 }
 
