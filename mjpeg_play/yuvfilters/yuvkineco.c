@@ -103,10 +103,14 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
   char *cyname = NULL;
   char *ycsthres = NULL;
   YfTaskCore_t *hycs = NULL;
+  int unknown_interlace = 0;
 
   fpscode = h0->fpscode;
-  while ((c = getopt(argc, argv, "S:F:C:O:N:")) != -1) {
+  while ((c = getopt(argc, argv, "uS:F:C:O:N:")) != -1) {
     switch (c) {
+    case 'u':
+      unknown_interlace = 1;
+      break;
     case 'S':
       ycsthres = optarg;
       break;
@@ -154,7 +158,7 @@ do_init(int argc, char **argv, const YfTaskCore_t *h0)
 		   (hycs? hycs: h0));
   if (!h)
     return NULL;
-  h->_.interlace = Y4M_ILACE_NONE;
+  h->_.interlace = (unknown_interlace? Y4M_UNKNOWN: Y4M_ILACE_NONE);
   h->_.fpscode = fpscode;
   h->fpscode0  = h0->fpscode;
   h->cytype    = cytype;
