@@ -407,13 +407,13 @@ static void usage(void)
 
         fprintf(stderr, "%s: usage: [-v] [-h] [-M] [-b xoff,yoff,xsize,ysize] [-y num] [-Y num] [-N num] -n N\n", __progname);
 	fprintf(stderr, "%s:\t-M = monochrome output\n", __progname);
-        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be even for 4:2:0, multiple of 4 for 4:1:1!\n", __progname);
+        fprintf(stderr, "%s:\t-n N = horizontal shift count - must be multiple of 2 for 4:2:0, multiple of 4 for 4:1:1!\n", __progname);
         fprintf(stderr, "%s:\t-y num = Y-only horizontal shift count - need not be even\n", __progname);
         fprintf(stderr, "%s:\t\tpositive count shifts right\n",__progname);
         fprintf(stderr, "%s:\t\t0 passes the data thru unchanged\n",__progname);
         fprintf(stderr, "%s:\t\tnegative count shifts left\n", __progname);
-	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4 for 4:2:0, even for 4:1:1!\n", __progname);
-	fprintf(stderr, "%s:\t-Y num = Y-only vertical shift count - should be even for interlaced material\n", __progname);
+	fprintf(stderr, "%s:\t-N num = vertical shift count - must be multiple of 4 for 4:2:0, multiple of 2 for 4:1:1!\n", __progname);
+	fprintf(stderr, "%s:\t-Y num = Y-only vertical shift count - multiple of 2 for interlaced material\n", __progname);
 	fprintf(stderr, "%s:\t\tnegative count shifts up\n", __progname);
 	fprintf(stderr, "%s:\t\t0 does no vertical shift (is ignored)\n", __progname);
 	fprintf(stderr, "%s:\t\tpositive count shifts down\n", __progname);
