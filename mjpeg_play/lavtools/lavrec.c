@@ -241,6 +241,7 @@ static void Usage(char *progname)
 	fprintf(stderr, "  -C/--channel LIST:CHAN      When using a TV tuner, channel list/number\n");
 	fprintf(stderr, "  -U/--use-read               Use read instead of mmap for recording\n");
 	fprintf(stderr, "  --software-encoding         Use software JPEG-encoding (for BTTV-capture)\n");
+	fprintf(stderr, "  --num-procs num             Number of encoding processes (default: 1)\n");
 	fprintf(stderr, "  --max-file-size num         Maximum size per file (in MB)\n");
 	fprintf(stderr, "  --file-flush num            Flush capture file to disk every num frames\n");
 
@@ -865,6 +866,10 @@ static int set_option(const char *name, char *value)
 	{
 		info->software_encoding = 1;
 	}
+	else if (strcmp(name, "num-procs")==0)
+	{
+		info->num_encoders = atoi(value);
+	}
 	else if (strcmp(name, "max-file-size")==0)
 	{
 		info->max_file_size_mb = atoi(optarg);
@@ -913,6 +918,7 @@ static void check_command_line_options(int argc, char *argv[])
 		{"channel"          ,1,0,0},   /* -C/--channel           */
 		{"use-read"         ,0,0,0},   /* -U/--use-read          */
 		{"software-encoding",0,0,0},   /* --software-encoding    */
+		{"num-procs"        ,1,0,0},   /* --num-procs            */
 		{"max-file-size"    ,1,0,0},   /* --max-file-size        */
 		{"file-flush"       ,1,0,0},   /* --file-flush           */
 		{0,0,0,0}

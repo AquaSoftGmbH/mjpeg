@@ -135,13 +135,15 @@ typedef struct {
    /* the JPEG video encoding thread mess */
    pthread_t encoding_thread;                 /* for software encoding recording */
    pthread_mutex_t encoding_mutex;            /* for software encoding recording */
-   short buffer_valid[MJPEG_MAX_BUF];         /* Non-zero if buffer has been filled */
+   int buffer_valid[MJPEG_MAX_BUF];           /* Non-zero if buffer has been filled */
+   int buffer_completed[MJPEG_MAX_BUF];       /* Non-zero if buffer has been compressed/written */
    pthread_cond_t buffer_filled[MJPEG_MAX_BUF];
+   pthread_cond_t buffer_completion[MJPEG_MAX_BUF];
 
    /* thread for correctly timestamping the V4L/YUV buffers */
    pthread_t software_sync_thread;            /* the thread */
    pthread_mutex_t software_sync_mutex;       /* the mutex */
-   unsigned char software_sync_ready[MJPEG_MAX_BUF]; /* whether the frame has already been synced on */
+   int software_sync_ready[MJPEG_MAX_BUF];    /* whether the frame has already been synced on */
    pthread_cond_t software_sync_wait[MJPEG_MAX_BUF]; /* wait for frame to be synced on */
    struct timeval software_sync_timestamp[MJPEG_MAX_BUF];
 
@@ -154,6 +156,26 @@ typedef struct {
    int    state;                              /* recording, paused or stoppped */
    pthread_t capture_thread;
 } video_capture_setup;
+
+
+/* Identity record for software encoding worker thread...
+ * Given N workers Worker i compresses frame i,i+n,i+2N and so on.
+ * There may not be more workers than there are capture buffers - 1.
+ */
+
+typedef struct {
+   lavrec_t *info;
+   unsigned int encoder_id;
+   unsigned int num_encoders;
+} encoder_info_t;
+
+/* Forward definitions */
+static int
+lavrec_queue_buffer (lavrec_t *info, unsigned long *num);
+
+static int
+lavrec_handle_audio (lavrec_t *info, struct timeval *timestamp);
+
 
 
 /******************************************************
@@ -807,19 +829,15 @@ static int audio_captured(lavrec_t *info, char *buff, long samps)
  *   The software encoding thread
  ******************************************************/
 
-/* definition, needed in here */
-static int
-lavrec_queue_buffer (lavrec_t *info, unsigned long *num);
-static int
-lavrec_handle_audio (lavrec_t *info, struct timeval *timestamp);
-
 static void *lavrec_encoding_thread(void* arg)
 {
-   lavrec_t *info = (lavrec_t *) arg; 
+   encoder_info_t *w_info = (encoder_info_t *)arg;
+   lavrec_t *info = w_info->info; 
    video_capture_setup *settings = (video_capture_setup *)info->settings;
    struct timeval timestamp[MJPEG_MAX_BUF];
    int jpegsize;
-   unsigned long current_frame = 0;
+   unsigned long current_frame = w_info->encoder_id;
+   unsigned long predecessor_frame;
 
    lavrec_msg(LAVREC_MSG_DEBUG, info,
       "Starting software encoding thread");
@@ -834,7 +852,7 @@ static void *lavrec_encoding_thread(void* arg)
       while (settings->buffer_valid[current_frame] == -1)
       {
          lavrec_msg(LAVREC_MSG_DEBUG, info,
-            "Encoding thread: sleeping for new frames (waiting for frame %d)", 
+            "Encoding thread: sleeping for new frames (waiting for frame %ld)", 
             current_frame);
          pthread_cond_wait(&(settings->buffer_filled[current_frame]),
             &(settings->encoding_mutex));
@@ -846,11 +864,12 @@ static void *lavrec_encoding_thread(void* arg)
             pthread_exit(NULL);
          }
       }
-      pthread_mutex_unlock(&(settings->encoding_mutex));
       memcpy(&(timestamp[current_frame]), &(settings->bsync.timestamp), sizeof(struct timeval));
 
       if (settings->buffer_valid[current_frame] > 0)
       {
+         pthread_mutex_unlock(&(settings->encoding_mutex));
+
          jpegsize = encode_jpeg_raw(settings->MJPG_buff+current_frame*settings->breq.size,
             settings->breq.size, info->quality, settings->interlaced,
             CHROMA420, info->geometry->w, info->geometry->h,
@@ -866,6 +885,19 @@ static void *lavrec_encoding_thread(void* arg)
             continue;
          }
 
+         /* Writing of video and audio data is non-reentrant and must
+          * occur in-order - acquire lock and wait for preceding
+          * frame's encoder to have completed writing that frames data
+          */
+         pthread_mutex_lock(&(settings->encoding_mutex));
+         predecessor_frame = (current_frame + settings->softreq.frames-1) %
+            settings->softreq.frames;
+         while( !settings->buffer_completed[predecessor_frame] )
+         {
+            pthread_cond_wait(&(settings->buffer_completion[predecessor_frame]),
+               &(settings->encoding_mutex));
+         }
+
          if (video_captured(info,
             settings->MJPG_buff+(settings->breq.size*current_frame), jpegsize,
             settings->buffer_valid[current_frame]) != 1)
@@ -873,13 +905,13 @@ static void *lavrec_encoding_thread(void* arg)
             lavrec_msg(LAVREC_MSG_ERROR, info,
                "Error writing the frame");
             lavrec_change_state(info, LAVREC_STATE_STOP);
+            pthread_mutex_unlock(&(settings->encoding_mutex));
             continue;
          }
       }
 
-      pthread_mutex_lock(&(settings->encoding_mutex));
+      /* Mark the capture buffer as once again as in progress for capture */
       settings->buffer_valid[current_frame] = -1;
-      pthread_mutex_unlock(&(settings->encoding_mutex));
 
       if (!lavrec_queue_buffer(info, &current_frame))
       {
@@ -888,15 +920,25 @@ static void *lavrec_encoding_thread(void* arg)
          lavrec_msg(LAVREC_MSG_ERROR, info,
             "Error re-queuing buffer: %s", (char *)sys_errlist[errno]);
          lavrec_change_state(info, LAVREC_STATE_STOP);
+         pthread_mutex_unlock(&(settings->encoding_mutex));
          continue;
       }
 
       if (!lavrec_handle_audio(info, &(timestamp[current_frame])))
          lavrec_change_state(info, LAVREC_STATE_STOP);
 
-      current_frame = (current_frame+1)%settings->softreq.frames;
+      /* Mark this frame as having completed compression and writing,
+       * signal any encoders waiting for this completion so they can write
+       * out their own results, and release lock.
+       */
+      settings->buffer_completed[current_frame] = 1;
+      pthread_cond_broadcast(&(settings->buffer_completion[current_frame]));
+      pthread_mutex_unlock(&(settings->encoding_mutex));
+
+      current_frame = (current_frame+w_info->num_encoders)%settings->softreq.frames;
    }
 
+   free(w_info);
    pthread_exit(NULL);
 }
 
@@ -912,7 +954,7 @@ static int lavrec_software_init(lavrec_t *info)
 {
    struct video_capability vc;
    int i;
-
+   encoder_info_t *encoder;
    video_capture_setup *settings = (video_capture_setup *)info->settings;
 
    if (ioctl(settings->video_fd, VIDIOCGCAP, &vc) < 0)
@@ -1006,6 +1048,18 @@ static int lavrec_software_init(lavrec_t *info)
          info->MJPG_numbufs, MJPEG_MAX_BUF);
       return 0;
    }
+
+   /* Check number of JPEG compression worker threads is consistent with
+    * with the number of buffers available
+    */
+   if (info->num_encoders > info->MJPG_numbufs-1 )
+   {
+      lavrec_msg(LAVREC_MSG_ERROR, info,
+         "More encoding workers (%d) than number of buffers-1 (%d)",
+         info->num_encoders,
+         info->MJPG_numbufs-1);
+      return 0;
+   }
    settings->breq.count = info->MJPG_numbufs;
    settings->breq.size = info->MJPG_bufsize*1024;
    settings->MJPG_buff = (char *) malloc(sizeof(char)*settings->breq.size*settings->breq.count);
@@ -1024,14 +1078,30 @@ static int lavrec_software_init(lavrec_t *info)
    for (i=0;i<MJPEG_MAX_BUF;i++)
    {
       settings->buffer_valid[i] = -1; /* 0 means to just omit the frame, -1 means "in progress" */
+      settings->buffer_completed[i] = 1; /* 1 means compression and writing completed,
+                                            0 means in progress */
       pthread_cond_init(&(settings->buffer_filled[i]), NULL);
+      pthread_cond_init(&(settings->buffer_completion[i]), NULL);
    }
-   if ( pthread_create( &(settings->encoding_thread), NULL,
-      lavrec_encoding_thread, (void *) info ) )
+
+   for( i=0; i < info->num_encoders; ++i )
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Failed to create software encoding thread");
-      return 0;
+      if( !(encoder = malloc(sizeof(encoder_info_t))) )
+      {
+         lavrec_msg (LAVREC_MSG_ERROR, info,
+            "Malloc error, you\'re probably out of memory");
+         return 0;
+      }
+      encoder->info = info;
+      encoder->encoder_id = i;
+      encoder->num_encoders = info->num_encoders;
+      if ( pthread_create( &(settings->encoding_thread), NULL,
+         lavrec_encoding_thread, (void *) encoder ) )
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Failed to create software encoding thread");
+         return 0;
+      }
    }
 
    /* queue setup */
@@ -1285,15 +1355,16 @@ static int lavrec_init(lavrec_t *info)
       settings->audio_buffer_size = audio_get_buffer_size();
    }
 
-   /* After we have fired up the audio system (which is assisted if we're
-    * installed setuid root, we want to set the effective user id to the
-    * real user id
-    */
-   if (seteuid(getuid()) < 0 )
+   /* back to normal user - only root needed during audio setup */
+   if (getuid() != geteuid())
    {
-      lavrec_msg(LAVREC_MSG_ERROR, info,
-         "Can't set effective user-id: %s", (char *)sys_errlist[errno]);
-      return 0;
+      if (setuid(getuid()) < 0)
+      {
+         lavrec_msg(LAVREC_MSG_ERROR, info,
+            "Failed to set effective user-ID: %s",
+            sys_errlist[errno]);
+         return 0;
+      }
    }
 
    /* open the video device */
@@ -1407,17 +1478,6 @@ static int lavrec_init(lavrec_t *info)
     */
    if( getpriority(PRIO_PROCESS, 0) > -5 )
       setpriority(PRIO_PROCESS, 0, -5 );
-
-   /* after setting priority and pthread real-time scheduling, there's
-    * no need for SUID anymore, so if we have it, kick it out (the result
-    * is that the files created by lavrec will be owned by the actual user
-    * calling lavrec instead of by root if we're set SUID)
-    */
-   if (getuid() != geteuid())
-      if (setuid(getuid()))
-         lavrec_msg(LAVREC_MSG_WARNING, info,
-            "Failed to set real user ID: %s",
-            sys_errlist[errno]);
 
    /* Seconds per video frame: */
    settings->spvf = (info->video_norm==VIDEO_MODE_NTSC) ? 1001./30000. : 0.040;
@@ -1845,6 +1905,7 @@ static void lavrec_record(lavrec_t *info)
       {
          pthread_mutex_lock(&(settings->encoding_mutex));
          settings->buffer_valid[settings->bsync.frame] = write_frame?nfout:0;
+         settings->buffer_completed[settings->bsync.frame] = 0;
          pthread_cond_broadcast(&(settings->buffer_filled[settings->bsync.frame]));
          pthread_mutex_unlock(&(settings->encoding_mutex));
       }
@@ -1997,6 +2058,7 @@ lavrec_t *lavrec_malloc(void)
    info->video_norm = 3;
    info->video_src = 3;
    info->software_encoding = 0;
+   info->num_encoders = 1; /* this should be set to the number of processors */
    info->horizontal_decimation = 4;
    info->vertical_decimation = 4;
    info->geometry = (rect *)malloc(sizeof(rect));
@@ -2087,13 +2149,16 @@ int lavrec_main(lavrec_t *info)
 
    int ret;
    struct sched_param schedparam;
+
    /* Now we're ready to go move to Real-time scheduling... */
    schedparam.sched_priority = 1;
    if(setpriority(PRIO_PROCESS, 0, -15)) { /* Give myself maximum priority */ 
-      mjpeg_info("Unable to set negative priority for main thread.\n");
+      lavrec_msg(LAVREC_MSG_WARNING, info,
+         "Unable to set negative priority for main thread");
    }
    if( (ret = pthread_setschedparam( pthread_self(), SCHED_FIFO, &schedparam ) ) ) {
-      mjpeg_info("Pthread Real-time scheduling for main thread could not be enabled.\n"); 
+      lavrec_msg(LAVREC_MSG_WARNING, info,
+         "Pthread Real-time scheduling for main thread could not be enabled"); 
    }
 
    /* Flush the Linux File buffers to disk */
@@ -2182,9 +2247,10 @@ int lavrec_stop(lavrec_t *info)
 
    lavrec_change_state(info, LAVREC_STATE_STOP);
 
-   //pthread_cancel( settings->capture_thread );
-   pthread_join( settings->encoding_thread, NULL );
-   pthread_join( settings->software_sync_thread, NULL );
+   if (info->software_encoding)
+      pthread_join( settings->encoding_thread, NULL );
+   if (info->software_encoding)
+      pthread_join( settings->software_sync_thread, NULL );
    pthread_join( settings->capture_thread, NULL );
 
    return 1;
@@ -2223,5 +2289,5 @@ int lavrec_free(lavrec_t *info)
 
 void lavrec_busy(lavrec_t *info)
 {
-   pthread_join( ((video_capture_setup*)(info->settings))->capture_thread, NULL );
+   pthread_join( ((video_capture_setup*)(info->settings))->capture_thread, NULL);
 }
