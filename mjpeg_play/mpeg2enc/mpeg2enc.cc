@@ -693,7 +693,7 @@ static struct option long_options[]={
      { "sequence-header-every-gop", 0, &param_seq_hdr_every_gop, 1},
      { "no-dummy-svcd-SOF", 0, &param_svcd_scan_data, 0 },
      { "correct-svcd-hds", 0, &param_hack_svcd_hds_bug, 0},
-     { "no-constraints", 0, &param_ignore_constraints, 0},
+     { "no-constraints", 0, &param_ignore_constraints, 1},
      { "no-altscan-mpeg2", 0, &param_hack_altscan_bug, 1},
      { "playback-field-order", 1, 0, 'z'},
      { "multi-thread",      1, 0, 'M' },
